@@ -715,13 +715,6 @@ void Device::OnNetworkValidationResult(const PortalDetector::Result& result) {
   }
 
   SetServiceState(state);
-
-  // If portal detection was not conclusive, also start additional connection
-  // diagnostics for the current network connection.
-  if (state == Service::kStateNoConnectivity ||
-      state == Service::kStatePortalSuspected) {
-    network()->StartConnectionDiagnostics();
-  }
 }
 
 RpcIdentifier Device::GetSelectedServiceRpcIdentifier(Error* /*error*/) {

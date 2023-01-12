@@ -109,6 +109,25 @@ IPConfig::Properties NetworkConfigToIPProperties(const NetworkConfig& config) {
   return props;
 }
 
+class MockConnectionDiagnostics : public ConnectionDiagnostics {
+ public:
+  MockConnectionDiagnostics()
+      : ConnectionDiagnostics(kTestIfname,
+                              kTestIfindex,
+                              IPAddress(kIPv4DHCPAddress),
+                              IPAddress(kIPv4DHCPGateway),
+                              {kIPv4DHCPNameServer},
+                              nullptr,
+                              nullptr,
+                              base::DoNothing()) {}
+  MockConnectionDiagnostics(const MockConnectionDiagnostics&) = delete;
+  MockConnectionDiagnostics& operator=(const MockConnectionDiagnostics&) =
+      delete;
+  ~MockConnectionDiagnostics() = default;
+
+  MOCK_METHOD(bool, Start, (const std::string& url_string), (override));
+};
+
 // Allows us to fake/mock some functions in this test.
 class NetworkInTest : public Network {
  public:
@@ -137,6 +156,10 @@ class NetworkInTest : public Network {
               (override));
   MOCK_METHOD(std::unique_ptr<PortalDetector>,
               CreatePortalDetector,
+              (),
+              (override));
+  MOCK_METHOD(std::unique_ptr<ConnectionDiagnostics>,
+              CreateConnectionDiagnostics,
               (),
               (override));
 };
@@ -689,6 +712,77 @@ TEST_F(NetworkTest, PortalDetectionRestartSuccess) {
   EXPECT_TRUE(network_->RestartPortalDetection());
   EXPECT_TRUE(network_->IsPortalDetectionInProgress());
   Mock::VerifyAndClearExpectations(portal_detector);
+}
+
+TEST_F(NetworkTest, PortalDetectionResult_PartialConnectivity) {
+  network_->set_state_for_testing(Network::State::kConnected);
+  PortalDetector::Result result;
+  result.http_phase = PortalDetector::Phase::kContent,
+  result.http_status = PortalDetector::Status::kSuccess;
+  result.https_phase = PortalDetector::Phase::kContent;
+  result.https_status = PortalDetector::Status::kFailure;
+  EXPECT_EQ(PortalDetector::ValidationState::kPartialConnectivity,
+            result.GetValidationState());
+  MockConnectionDiagnostics* conn_diag = new MockConnectionDiagnostics();
+
+  EXPECT_CALL(*network_, CreateConnectionDiagnostics()).WillOnce([conn_diag]() {
+    return std::unique_ptr<MockConnectionDiagnostics>(conn_diag);
+  });
+  EXPECT_CALL(event_handler_, OnNetworkValidationResult(_));
+  EXPECT_CALL(event_handler2_, OnNetworkValidationResult(_));
+  network_->OnPortalDetectorResult(result);
+}
+
+TEST_F(NetworkTest, PortalDetectionResult_NoConnectivity) {
+  network_->set_state_for_testing(Network::State::kConnected);
+  PortalDetector::Result result;
+  result.http_phase = PortalDetector::Phase::kConnection,
+  result.http_status = PortalDetector::Status::kFailure;
+  result.https_phase = PortalDetector::Phase::kContent;
+  result.https_status = PortalDetector::Status::kFailure;
+  EXPECT_EQ(PortalDetector::ValidationState::kNoConnectivity,
+            result.GetValidationState());
+  MockConnectionDiagnostics* conn_diag = new MockConnectionDiagnostics();
+
+  EXPECT_CALL(*network_, CreateConnectionDiagnostics()).WillOnce([conn_diag]() {
+    return std::unique_ptr<MockConnectionDiagnostics>(conn_diag);
+  });
+  EXPECT_CALL(event_handler_, OnNetworkValidationResult(_));
+  EXPECT_CALL(event_handler2_, OnNetworkValidationResult(_));
+  network_->OnPortalDetectorResult(result);
+}
+
+TEST_F(NetworkTest, PortalDetectionResult_InternetConnectivity) {
+  network_->set_state_for_testing(Network::State::kConnected);
+  PortalDetector::Result result;
+  result.http_phase = PortalDetector::Phase::kContent,
+  result.http_status = PortalDetector::Status::kSuccess;
+  result.https_phase = PortalDetector::Phase::kContent;
+  result.https_status = PortalDetector::Status::kSuccess;
+  EXPECT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
+            result.GetValidationState());
+
+  EXPECT_CALL(*network_, CreateConnectionDiagnostics()).Times(0);
+  EXPECT_CALL(event_handler_, OnNetworkValidationResult(_));
+  EXPECT_CALL(event_handler2_, OnNetworkValidationResult(_));
+  network_->OnPortalDetectorResult(result);
+}
+
+TEST_F(NetworkTest, PortalDetectionResult_PortalRedirect) {
+  network_->set_state_for_testing(Network::State::kConnected);
+  PortalDetector::Result result;
+  result.http_phase = PortalDetector::Phase::kContent,
+  result.http_status = PortalDetector::Status::kRedirect;
+  result.https_phase = PortalDetector::Phase::kContent;
+  result.https_status = PortalDetector::Status::kSuccess;
+  result.redirect_url_string = "https://portal.com/login";
+  EXPECT_EQ(PortalDetector::ValidationState::kPortalRedirect,
+            result.GetValidationState());
+
+  EXPECT_CALL(*network_, CreateConnectionDiagnostics()).Times(0);
+  EXPECT_CALL(event_handler_, OnNetworkValidationResult(_));
+  EXPECT_CALL(event_handler2_, OnNetworkValidationResult(_));
+  network_->OnPortalDetectorResult(result);
 }
 
 // This group of tests verify the interaction between Network and Connection,

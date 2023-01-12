@@ -836,6 +836,21 @@ void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
   for (auto* ev : event_handlers_) {
     ev->OnNetworkValidationResult(result);
   }
+  // If portal detection was not conclusive, also start additional connection
+  // diagnostics for the current network connection.
+  switch (result.GetValidationState()) {
+    case PortalDetector::ValidationState::kNoConnectivity:
+    case PortalDetector::ValidationState::kPartialConnectivity:
+      StartConnectionDiagnostics();
+      break;
+    case PortalDetector::ValidationState::kInternetConnectivity:
+      // Conclusive result that allows the Service to transition to the
+      // "online" state.
+    case PortalDetector::ValidationState::kPortalRedirect:
+      // Conclusive result that allows to start the portal detection sign-in
+      // flow.
+      break;
+  }
 }
 
 void Network::StartConnectionDiagnostics() {

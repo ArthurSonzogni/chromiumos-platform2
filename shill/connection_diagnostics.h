@@ -15,6 +15,7 @@
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 
+#include "shill/mockable.h"
 #include "shill/net/ip_address.h"
 
 namespace shill {
@@ -132,10 +133,10 @@ class ConnectionDiagnostics {
   ConnectionDiagnostics(const ConnectionDiagnostics&) = delete;
   ConnectionDiagnostics& operator=(const ConnectionDiagnostics&) = delete;
 
-  ~ConnectionDiagnostics();
+  virtual ~ConnectionDiagnostics();
 
   // Performs connectivity diagnostics for the hostname of the URL |url_string|.
-  bool Start(const std::string& url_string);
+  mockable bool Start(const std::string& url_string);
   void Stop();
 
   // Returns a string representation of |event|.

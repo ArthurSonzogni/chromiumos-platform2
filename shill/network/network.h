@@ -292,6 +292,12 @@ class Network {
   mockable bool ipv4_gateway_found() const { return ipv4_gateway_found_; }
   mockable bool ipv6_gateway_found() const { return ipv6_gateway_found_; }
 
+  // Called by the Portal Detector whenever a trial completes.  Device
+  // subclasses that choose unique mappings from portal results to connected
+  // states can override this method in order to do so.
+  // Visibility is public for usage in unit tests.
+  void OnPortalDetectorResult(const PortalDetector::Result& result);
+
   // Only used in tests.
   void set_connection_for_testing(std::unique_ptr<Connection> connection) {
     connection_ = std::move(connection);
@@ -375,11 +381,6 @@ class Network {
   void OnUpdateFromSLAAC(SLAACController::UpdateType update_type);
   void OnIPv6AddressChanged();
   void OnIPv6DnsServerAddressesChanged();
-
-  // Called by the Portal Detector whenever a trial completes.  Device
-  // subclasses that choose unique mappings from portal results to connected
-  // states can override this method in order to do so.
-  void OnPortalDetectorResult(const PortalDetector::Result& result);
 
   // Enable ARP filtering on the interface. Incoming ARP requests are responded
   // to only by the interface(s) owning the address. Outgoing ARP requests will
