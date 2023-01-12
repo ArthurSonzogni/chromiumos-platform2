@@ -7,6 +7,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/test/mock_callback.h>
@@ -23,8 +24,8 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
-#include "shill/network/network.h"
 #include "shill/network/mock_network.h"
+#include "shill/network/network.h"
 #include "shill/store/fake_store.h"
 #include "shill/test_event_dispatcher.h"
 
@@ -86,9 +87,9 @@ class CellularServiceProviderTest : public testing::Test {
   // TODO(b/154014577): Provide eID for identifying sim cards once supported.
   CellularRefPtr CreateDevice(const std::string& imsi,
                               const std::string& iccid) {
-    CellularRefPtr cellular = new Cellular(
-        &manager_, kTestDeviceName, kTestDeviceAddress, kTestInterfaceIndex,
-        Cellular::kType3gpp, kDBusService, kDBusPath);
+    CellularRefPtr cellular =
+        new Cellular(&manager_, kTestDeviceName, kTestDeviceAddress,
+                     kTestInterfaceIndex, kDBusService, kDBusPath);
     if (!iccid.empty()) {
       Cellular::SimProperties sim_properties;
       sim_properties.iccid = iccid;

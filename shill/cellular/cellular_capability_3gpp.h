@@ -20,9 +20,10 @@
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "shill/callbacks.h"
 #include "shill/cellular/cellular.h"
 #include "shill/cellular/cellular_bearer.h"
-#include "shill/cellular/cellular_capability.h"
+#include "shill/cellular/dbus_objectmanager_proxy_interface.h"
 #include "shill/cellular/mm1_modem_location_proxy_interface.h"
 #include "shill/cellular/mm1_modem_modem3gpp_profile_manager_proxy_interface.h"
 #include "shill/cellular/mm1_modem_modem3gpp_proxy_interface.h"
@@ -36,13 +37,29 @@
 
 namespace shill {
 
+class CellularBearer;
+class Error;
 class Metrics;
+class PendingActivationStore;
 
 // CellularCapability3gpp handles modems using the
 // org.freedesktop.ModemManager1 DBUS interface.  This class is used for
 // all types of modems, i.e. GSM and LTE modems.
-class CellularCapability3gpp : public CellularCapability {
+class CellularCapability3gpp {
  public:
+  static const int kTimeoutActivate;
+  static const int kTimeoutConnect;
+  static const int kTimeoutDefault;
+  static const int kTimeoutDisconnect;
+  static const int kTimeoutEnable;
+  static const int kTimeoutGetLocation;
+  static const int kTimeoutRegister;
+  static const int kTimeoutReset;
+  static const int kTimeoutScan;
+  static const int kTimeoutSetInitialEpsBearer;
+  static const int kTimeoutSetupLocation;
+  static const int kTimeoutSetupSignal;
+
   using ScanResults = std::vector<KeyValueStore>;
   using ScanResult = KeyValueStore;
   using LockRetryData = std::map<uint32_t, uint32_t>;
@@ -61,73 +78,180 @@ class CellularCapability3gpp : public CellularCapability {
   CellularCapability3gpp(const CellularCapability3gpp&) = delete;
   CellularCapability3gpp& operator=(const CellularCapability3gpp&) = delete;
 
-  ~CellularCapability3gpp() override;
+  ~CellularCapability3gpp();
 
-  // Inherited from CellularCapability.
-  std::string GetTypeString() const override;
-  void SetInitialProperties(const InterfaceToProperties& properties) override;
+  Cellular* cellular() const { return cellular_; }
+  ControlInterface* control_interface() const { return control_interface_; }
+  Metrics* metrics() const { return metrics_; }
+  PendingActivationStore* pending_activation_store() const {
+    return pending_activation_store_;
+  }
 
-  // Checks the modem state.  If the state is kModemStateDisabled, then the
-  // modem is enabled.  Otherwise, the enable command is buffered until the
-  // modem becomes disabled.  ModemManager rejects the enable command if the
-  // modem is not disabled, for example, if it is initializing instead.
-  void StartModem(const ResultCallback& callback) override;
-  void SetModemToLowPowerModeOnModemStop(bool set_low_power) override;
-  void StopModem(const ResultCallback& callback) override;
-  void Reset(const ResultCallback& callback) override;
-  bool IsServiceActivationRequired() const override;
-  bool IsActivating() const override;
-  void CompleteActivation(Error* error) override;
-  void Scan(Error* error, ResultStringmapsCallback callback) override;
+  std::string GetTypeString() const;
+  void SetInitialProperties(const InterfaceToProperties& properties);
+
+  // -------------------------------------------------------------------------
+  // Modem management
+  // -------------------------------------------------------------------------
+
+  // StartModem attempts to put the modem in a state in which it is usable for
+  // creating services and establishing connections (if network conditions
+  // permit). It potentially consists of multiple non-blocking calls to the
+  // modem-manager server. After each call, control is passed back up to the
+  // main loop. Each time a reply to a non-blocking call is received, the
+  // operation advances to the next step, until either an error occurs in one of
+  // them, or all the steps have been completed, at which point StartModem() is
+  // finished.
+  void StartModem(const ResultCallback& callback);
+
+  // Sets a flag to be used by |StopModem| to decide if the modem will be set
+  // to low power mode as the last step. By default, |StopModem| does set the
+  // modem to low power mode.
+  void SetModemToLowPowerModeOnModemStop(bool set_low_power);
+
+  // StopModem asynchronously disconnects, disables and sets the modem to low
+  // power mode. If |SetModemToLowPowerModeOnModemStop| was called with a
+  // `false` value, |StopModem| will not set the modem to low power mode.
+  // |callback| is invoked when this completes and the result is passed to the
+  // callback.
+  void StopModem(const ResultCallback& callback);
+
+  // Resets the modem.
+  void Reset(const ResultCallback& callback);
+
+  // -------------------------------------------------------------------------
+  // Activation
+  // -------------------------------------------------------------------------
+
+  // Returns true if service activation is required.
+  bool IsServiceActivationRequired() const;
+
+  // Returns true if the modem is being activated.
+  bool IsActivating() const;
+
+  // Initiates the necessary to steps to verify that the cellular service has
+  // been activated. Once these steps have been completed, the service should
+  // be marked as activated.
+  void CompleteActivation(Error* error);
+
+  // -------------------------------------------------------------------------
+  // Network service and registration
+  // -------------------------------------------------------------------------
+
+  // Asks the modem to scan for networks.
+  //
+  // Subclasses should implement this by fetching scan results asynchronously.
+  // When the results are ready, update the kFoundNetworksProperty and send a
+  // property change notification.  Finally, callback must be invoked to inform
+  // the caller that the scan has completed.
+  //
+  // Errors are not generally reported, but on error the kFoundNetworksProperty
+  // should be cleared and a property change notification sent out.
+  //
+  // TODO(jglasgow): Refactor to reuse code by putting notification logic into
+  // Cellular or CellularCapability.
+  //
+  // TODO(jglasgow): Implement real error handling.
+  void Scan(Error* error, ResultStringmapsCallback callback);
+
+  // Sets the parameters specified by |properties| for the LTE initial EPS
+  // bearer used at registration, particularly the 'Attach' APN settings.
+  // specified by |properties|.
   void SetInitialEpsBearer(const KeyValueStore& properties,
                            Error* error,
-                           const ResultCallback& callback) override;
+                           const ResultCallback& callback);
+
+  // Registers on a network with |network_id|.
   void RegisterOnNetwork(const std::string& network_id,
                          Error* error,
-                         const ResultCallback& callback) override;
-  bool IsRegistered() const override;
-  void SetUnregistered(bool searching) override;
-  void OnServiceCreated() override;
-  uint32_t GetActiveAccessTechnologies() const override;
-  std::string GetNetworkTechnologyString() const override;
-  std::string GetRoamingStateString() const override;
-  void Connect(const ResultCallback& callback) override;
-  void Disconnect(const ResultCallback& callback) override;
-  CellularBearer* GetActiveBearer() const override;
-  const std::vector<MobileOperatorInfo::MobileAPN>& GetProfiles()
-      const override;
+                         const ResultCallback& callback);
+
+  // Returns true if the modem is registered on a network, which can be a home
+  // or roaming network. It is possible that we cannot determine whether it is
+  // a home or roaming network, but we still consider the modem is registered.
+  bool IsRegistered() const;
+
+  // If we are informed by means of something other than a signal indicating
+  // a registration state change that the modem has unregistered from the
+  // network, we need to update the network-type-specific capability object.
+  void SetUnregistered(bool searching);
+
+  // Invoked by the parent Cellular device when a new service is created.
+  void OnServiceCreated();
+
+  // Returns all active access technologies
+  uint32_t GetActiveAccessTechnologies() const;
+
+  // Returns an empty string if the network technology is unknown.
+  std::string GetNetworkTechnologyString() const;
+
+  std::string GetRoamingStateString() const;
+
+  // -------------------------------------------------------------------------
+  // Connection management
+  // -------------------------------------------------------------------------
+
+  // Connects the modem to a network.
+  void Connect(const ResultCallback& callback);
+
+  // Disconnects the modem from a network.
+  void Disconnect(const ResultCallback& callback);
+
+  // Returns a pointer to the current active bearer object or nullptr if no
+  // active bearer exists. The returned bearer object is managed by this
+  // capability object.
+  CellularBearer* GetActiveBearer() const;
+
+  const std::vector<MobileOperatorInfo::MobileAPN>& GetProfiles() const;
+
+  // -------------------------------------------------------------------------
+  // SIM lock management
+  // -------------------------------------------------------------------------
+
   void RequirePin(const std::string& pin,
                   bool require,
                   Error* error,
-                  const ResultCallback& callback) override;
+                  const ResultCallback& callback);
+
   void EnterPin(const std::string& pin,
                 Error* error,
-                const ResultCallback& callback) override;
+                const ResultCallback& callback);
+
   void UnblockPin(const std::string& unblock_code,
                   const std::string& pin,
                   Error* error,
-                  const ResultCallback& callback) override;
+                  const ResultCallback& callback);
+
   void ChangePin(const std::string& old_pin,
                  const std::string& new_pin,
                  Error* error,
-                 const ResultCallback& callback) override;
-  KeyValueStore SimLockStatusToProperty(Error* error) override;
-  bool SetPrimarySimSlotForIccid(const std::string& iccid) override;
+                 const ResultCallback& callback);
 
-  virtual void GetProperties();
+  // Returns a KeyValueStore with kSIMLock* properties set if available, or
+  // an empty KeyValueStore if not.
+  KeyValueStore SimLockStatusToProperty(Error* error);
 
-  // Property change handler.
-  virtual void OnPropertiesChanged(const std::string& interface,
-                                   const KeyValueStore& changed_properties);
+  // Sends a request to the modem to set the primary SIM slot to the slot
+  // matching |iccid|. If |iccid| is empty, switches to the first valid slot.
+  bool SetPrimarySimSlotForIccid(const std::string& iccid);
 
-  // Location proxy methods
+  // -------------------------------------------------------------------------
+  // Location reporting
+  // -------------------------------------------------------------------------
+
   void SetupLocation(uint32_t sources,
                      bool signal_location,
-                     const ResultCallback& callback) override;
+                     const ResultCallback& callback);
 
-  void GetLocation(StringCallback callback) override;
+  void GetLocation(StringCallback callback);
 
-  void SetupSignal(uint32_t rate, const ResultCallback& callback) override;
+  bool IsLocationUpdateSupported() const;
+
+  // -------------------------------------------------------------------------
+  // Signal reporting
+  // -------------------------------------------------------------------------
+
+  void SetupSignal(uint32_t rate, const ResultCallback& callback);
 
   // Used to encapsulate bounds for rssi/rsrp
   struct SignalQualityBounds {
@@ -140,7 +264,21 @@ class CellularCapability3gpp : public CellularCapability {
     double GetAsPercentage(double signal_quality) const;
   };
 
-  bool IsLocationUpdateSupported() const override;
+  // -------------------------------------------------------------------------
+  // Online payment portal information
+  // -------------------------------------------------------------------------
+
+  // Updates the online payment portal information, if any, for the cellular
+  // provider.
+  void UpdateServiceOLP();
+
+  // -------------------------------------------------------------------------
+
+  void GetProperties();
+
+  // Property change handler.
+  void OnPropertiesChanged(const std::string& interface,
+                           const KeyValueStore& changed_properties);
 
   void SetDBusPropertiesProxyForTesting(
       std::unique_ptr<DBusPropertiesProxy> dbus_properties_proxy);
@@ -194,22 +332,6 @@ class CellularCapability3gpp : public CellularCapability {
   // Root path. The SIM path is reported by ModemManager to be the root path
   // when no SIM is present.
   static const RpcIdentifier kRootPath;
-
- protected:
-  virtual void SetupConnectProperties(KeyValueStore* properties);
-  virtual void InitProxies();
-  virtual void ReleaseProxies();
-
-  // Updates the online payment portal information, if any, for the cellular
-  // provider.
-  void UpdateServiceOLP() override;
-
-  // Post-payment activation handlers.
-  virtual void UpdatePendingActivationState();
-
-  // Returns the operator-specific form of |mdn|, which is passed to the online
-  // payment portal of a cellular operator.
-  std::string GetMdnForOLP(const MobileOperatorInfo* operator_info) const;
 
  private:
   friend class CellularTest;
@@ -372,6 +494,17 @@ class CellularCapability3gpp : public CellularCapability {
   // and removing other non-digit characters.
   std::string NormalizeMdn(const std::string& mdn) const;
 
+  void SetupConnectProperties(KeyValueStore* properties);
+  void InitProxies();
+  void ReleaseProxies();
+
+  // Post-payment activation handlers.
+  void UpdatePendingActivationState();
+
+  // Returns the operator-specific form of |mdn|, which is passed to the online
+  // payment portal of a cellular operator.
+  std::string GetMdnForOLP(const MobileOperatorInfo* operator_info) const;
+
   // Returns true, if |sim_path| constitutes a valid SIM path. Currently, a
   // path is accepted to be valid, as long as it is not equal to one of ""
   // and "/".
@@ -388,6 +521,11 @@ class CellularCapability3gpp : public CellularCapability {
 
   // Update uplink and downlink speed in service.
   void UpdateLinkSpeed(const KeyValueStore& properties);
+
+  Cellular* cellular_;
+  ControlInterface* control_interface_;
+  Metrics* metrics_;
+  PendingActivationStore* pending_activation_store_;
 
   bool proxies_initialized_ = false;
   std::unique_ptr<mm1::ModemModem3gppProxyInterface> modem_3gpp_proxy_;

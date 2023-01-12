@@ -35,7 +35,7 @@
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular/apn_list.h"
 #include "shill/cellular/cellular_bearer.h"
-#include "shill/cellular/cellular_capability.h"
+#include "shill/cellular/cellular_capability_3gpp.h"
 #include "shill/cellular/cellular_consts.h"
 #include "shill/cellular/cellular_helpers.h"
 #include "shill/cellular/cellular_service.h"
@@ -170,7 +170,6 @@ Cellular::Cellular(Manager* manager,
                    const std::string& link_name,
                    const std::string& address,
                    int interface_index,
-                   Type type,
                    const std::string& service,
                    const RpcIdentifier& path)
     : Device(
@@ -182,7 +181,6 @@ Cellular::Cellular(Manager* manager,
       dbus_service_(service),
       dbus_path_(path),
       dbus_path_str_(path.value()),
-      type_(type),
       process_manager_(ProcessManager::GetInstance()) {
   RegisterProperties();
 
@@ -988,8 +986,8 @@ void Cellular::OnModemDestroyed() {
 void Cellular::CreateCapability() {
   SLOG(1) << LoggingTag() << ": " << __func__;
   CHECK(!capability_);
-  capability_ = CellularCapability::Create(
-      type_, this, manager()->control_interface(), manager()->metrics(),
+  capability_ = std::make_unique<CellularCapability3gpp>(
+      this, manager()->control_interface(), manager()->metrics(),
       manager()->modem_info()->pending_activation_store());
   if (initial_properties_.has_value()) {
     SetInitialProperties(*initial_properties_);

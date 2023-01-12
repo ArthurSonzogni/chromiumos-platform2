@@ -19,7 +19,7 @@
 #include <gtest/gtest.h>
 
 #include "shill/cellular/cellular.h"
-#include "shill/cellular/cellular_capability.h"
+#include "shill/cellular/cellular_capability_3gpp.h"
 #include "shill/cellular/mock_cellular.h"
 #include "shill/cellular/mock_modem_info.h"
 #include "shill/dbus/dbus_properties_proxy.h"
@@ -275,7 +275,7 @@ TEST_F(ModemTest, Create3gppDevice) {
   DeviceRefPtr device = device_info_.GetDevice(interface_index);
   ASSERT_TRUE(device);
   Cellular* cellular = static_cast<Cellular*>(device.get());
-  CellularCapability* capability = cellular->capability_for_testing();
+  CellularCapability3gpp* capability = cellular->capability_for_testing();
   ASSERT_TRUE(capability);
   EXPECT_TRUE(capability->IsRegistered());
 }

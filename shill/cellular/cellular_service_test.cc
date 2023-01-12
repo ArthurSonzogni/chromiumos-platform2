@@ -9,7 +9,7 @@
 
 #include "base/containers/contains.h"
 #include "dbus/shill/dbus-constants.h"
-#include "shill/cellular/cellular_capability.h"
+#include "shill/cellular/cellular_capability_3gpp.h"
 #include "shill/cellular/cellular_service_provider.h"
 #include "shill/cellular/mock_cellular.h"
 #include "shill/cellular/mock_mobile_operator_info.h"
@@ -53,8 +53,8 @@ class CellularServiceTest : public testing::Test {
     EXPECT_CALL(manager_, cellular_service_provider())
         .WillRepeatedly(Return(&cellular_service_provider_));
 
-    device_ = new MockCellular(&manager_, "usb0", kAddress, 3,
-                               Cellular::kType3gpp, "", RpcIdentifier(""));
+    device_ =
+        new MockCellular(&manager_, "usb0", kAddress, 3, "", RpcIdentifier(""));
 
     // CellularService expects an IMSI and SIM ID be set in the Device.
     Cellular::SimProperties sim_properties;

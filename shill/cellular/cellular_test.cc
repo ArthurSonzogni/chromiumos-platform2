@@ -20,6 +20,7 @@
 #include <base/containers/contains.h>
 #include <base/memory/scoped_refptr.h>
 #include <chromeos/dbus/service_constants.h>
+#include <gtest/gtest.h>
 
 extern "C" {
 // A struct member in pppd.h has the name 'class'.
@@ -104,7 +105,6 @@ class CellularPropertyTest : public PropertyStoreTest {
                              "usb0",
                              "00:01:02:03:04:05",
                              3,
-                             Cellular::kType3gpp,
                              "",
                              RpcIdentifier(""))) {}
 
@@ -136,7 +136,7 @@ TEST_F(CellularPropertyTest, SetProperty) {
   }
 }
 
-class CellularTest : public testing::TestWithParam<Cellular::Type> {
+class CellularTest : public testing::Test {
  public:
   CellularTest()
       : kHomeProviderCode("10001"),
@@ -161,9 +161,8 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   void SetUp() override {
     EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(&device_info_));
     EXPECT_CALL(manager_, modem_info()).WillRepeatedly(Return(&modem_info_));
-    device_ =
-        new Cellular(&manager_, kTestDeviceName, kTestDeviceAddress,
-                     kInterfaceIndex, GetParam(), kDBusService, kDBusPath);
+    device_ = new Cellular(&manager_, kTestDeviceName, kTestDeviceAddress,
+                           kInterfaceIndex, kDBusService, kDBusPath);
     PopulateProxies();
     metrics_.RegisterDevice(device_->interface_index(), Technology::kCellular);
 
@@ -197,15 +196,6 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
     device_->service_ = nullptr;
     device_->SelectService(nullptr);
     device_ = nullptr;
-  }
-
-  // TODO(benchan): Instead of conditionally enabling many tests for specific
-  // capability types via IsCellularTypeUnderTestOneOf, migrate more tests to
-  // work under all capability types and probably migrate those tests for
-  // specific capability types into their own test fixture subclasses.
-  bool IsCellularTypeUnderTestOneOf(
-      const std::set<Cellular::Type>& valid_types) const {
-    return base::Contains(valid_types, GetParam());
   }
 
   void CreatePropertiesProxy() {
@@ -535,7 +525,7 @@ class CellularTest : public testing::TestWithParam<Cellular::Type> {
   }
 
   CellularCapability3gpp* GetCapability3gpp() {
-    return static_cast<CellularCapability3gpp*>(device_->capability_.get());
+    return device_->capability_for_testing();
   }
 
   // Different tests simulate a cellular service being set using a real /mock
@@ -635,11 +625,11 @@ const Stringmaps CellularTest::kTestNetworksCellular = {
      {kShortNameProperty, "short"}}};
 const int CellularTest::kStrength = 90;
 
-TEST_P(CellularTest, GetStorageIdentifier) {
+TEST_F(CellularTest, GetStorageIdentifier) {
   EXPECT_EQ("device_usb0", device_->GetStorageIdentifier());
 }
 
-TEST_P(CellularTest, HomeProviderServingOperator) {
+TEST_F(CellularTest, HomeProviderServingOperator) {
   // Test that the the home provider information is correctly updated under
   // different scenarios w.r.t. information about the mobile network operators.
   SetMockMobileOperatorInfoObjects();
@@ -744,7 +734,7 @@ TEST_P(CellularTest, HomeProviderServingOperator) {
                     kServingOperatorName, kServingOperatorCountry);
 }
 
-TEST_P(CellularTest, SetPrimarySimProperties) {
+TEST_F(CellularTest, SetPrimarySimProperties) {
   // The default storage identifier should always be cellular_{iccid}
   Cellular::SimProperties sim_properties;
   sim_properties.eid = "test_eid";
@@ -764,10 +754,7 @@ TEST_P(CellularTest, SetPrimarySimProperties) {
   EXPECT_EQ("test_imsi", device_->imsi());
 }
 
-TEST_P(CellularTest, SetSimSlotProperties) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
-    return;
-  }
+TEST_F(CellularTest, SetSimSlotProperties) {
   std::vector<Cellular::SimProperties> slot_properties = {
       {0, "iccid1", "eid1", "operator_id1", "spn1", "imsi1"},
       {1, "iccid2", "eid2", "operator_id2", "spn2", "imsi2"},
@@ -801,7 +788,7 @@ TEST_P(CellularTest, SetSimSlotProperties) {
   CallSetSimSlotProperties(slot_properties, 0u);
 }
 
-TEST_P(CellularTest, StorageIdentifier) {
+TEST_F(CellularTest, StorageIdentifier) {
   // The default storage identifier should always be cellular_{iccid}
   InitCapability3gppProxies();
   Cellular::SimProperties sim_properties;
@@ -813,7 +800,7 @@ TEST_P(CellularTest, StorageIdentifier) {
   device_->DestroyAllServices();
 }
 
-TEST_P(CellularTest, Connect) {
+TEST_F(CellularTest, Connect) {
   Error error;
   device_->set_state_for_testing(Cellular::State::kModemStarted);
   SetService();
@@ -856,7 +843,7 @@ TEST_P(CellularTest, Connect) {
   device_->set_skip_establish_link_for_testing(true);
   error.Populate(Error::kSuccess);
   EXPECT_CALL(*mm1_simple_proxy_,
-              Connect(_, _, CellularCapability::kTimeoutConnect))
+              Connect(_, _, CellularCapability3gpp::kTimeoutConnect))
       .Times(3)
       .WillRepeatedly(Invoke(this, &CellularTest::InvokeConnect));
   SetCapability3gppModemSimpleProxy();
@@ -891,11 +878,7 @@ TEST_P(CellularTest, Connect) {
   EXPECT_EQ(Cellular::State::kConnected, device_->state());
 }
 
-TEST_P(CellularTest, SimSlotSwitch) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
-    return;
-  }
-
+TEST_F(CellularTest, SimSlotSwitch) {
   // Only provide a SIM in the second slot. Setup capability with all sim
   // properties.
   std::vector<Cellular::SimProperties> slot_properties = {
@@ -961,7 +944,7 @@ TEST_P(CellularTest, SimSlotSwitch) {
   dispatcher_.task_environment().FastForwardBy(kTestTimeout);
 }
 
-TEST_P(CellularTest, Disconnect) {
+TEST_F(CellularTest, Disconnect) {
   Error error;
   device_->set_state_for_testing(Cellular::State::kRegistered);
   device_->Disconnect(&error, "in test");
@@ -970,7 +953,7 @@ TEST_P(CellularTest, Disconnect) {
 
   device_->set_state_for_testing(Cellular::State::kConnected);
   EXPECT_CALL(*mm1_simple_proxy_,
-              Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
+              Disconnect(_, _, CellularCapability3gpp::kTimeoutDisconnect))
       .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
   SetCapability3gppModemSimpleProxy();
   device_->Disconnect(&error, "in test");
@@ -978,13 +961,13 @@ TEST_P(CellularTest, Disconnect) {
   EXPECT_EQ(Cellular::State::kRegistered, device_->state());
 }
 
-TEST_P(CellularTest, DisconnectFailure) {
+TEST_F(CellularTest, DisconnectFailure) {
   // Test the case where the underlying modem state is set
   // to disconnecting, but shill thinks it's still connected
   Error error;
   device_->set_state_for_testing(Cellular::State::kConnected);
   EXPECT_CALL(*mm1_simple_proxy_,
-              Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
+              Disconnect(_, _, CellularCapability3gpp::kTimeoutDisconnect))
       .Times(2)
       .WillRepeatedly(Invoke(this, &CellularTest::InvokeDisconnectFail));
   SetCapability3gppModemSimpleProxy();
@@ -997,11 +980,11 @@ TEST_P(CellularTest, DisconnectFailure) {
   EXPECT_EQ(Cellular::State::kRegistered, device_->state());
 }
 
-TEST_P(CellularTest, ConnectFailure) {
+TEST_F(CellularTest, ConnectFailure) {
   SetRegisteredWithService();
   ASSERT_EQ(Service::kStateIdle, device_->service_->state());
   EXPECT_CALL(*mm1_simple_proxy_,
-              Connect(_, _, CellularCapability::kTimeoutConnect))
+              Connect(_, _, CellularCapability3gpp::kTimeoutConnect))
       .WillOnce(Invoke(this, &CellularTest::InvokeConnectFail));
   SetCapability3gppModemSimpleProxy();
   Error error;
@@ -1009,7 +992,7 @@ TEST_P(CellularTest, ConnectFailure) {
   EXPECT_EQ(Service::kStateFailure, device_->service_->state());
 }
 
-TEST_P(CellularTest, ConnectWhileInhibited) {
+TEST_F(CellularTest, ConnectWhileInhibited) {
   SetRegisteredWithService();
   EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _)).Times(0);
   SetCapability3gppModemSimpleProxy();
@@ -1022,7 +1005,7 @@ TEST_P(CellularTest, ConnectWhileInhibited) {
   EXPECT_EQ(Error::kWrongState, error.type());
 }
 
-TEST_P(CellularTest, PendingConnect) {
+TEST_F(CellularTest, PendingConnect) {
   CellularService* service = SetRegisteredWithService();
   EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _))
       .WillRepeatedly(Invoke(this, &CellularTest::InvokeConnect));
@@ -1048,7 +1031,7 @@ TEST_P(CellularTest, PendingConnect) {
   EXPECT_TRUE(device_->connect_pending_iccid().empty());
 }
 
-TEST_P(CellularTest, PendingDisconnect) {
+TEST_F(CellularTest, PendingDisconnect) {
   CellularService* service = SetRegisteredWithService();
   EXPECT_CALL(*mm1_simple_proxy_, Connect(_, _, _))
       .WillRepeatedly(Invoke(this, &CellularTest::InvokeConnect));
@@ -1069,7 +1052,7 @@ TEST_P(CellularTest, PendingDisconnect) {
   EXPECT_TRUE(device_->connect_pending_iccid().empty());
 }
 
-TEST_P(CellularTest, LinkEventInterfaceDown) {
+TEST_F(CellularTest, LinkEventInterfaceDown) {
   // If the network interface goes down, Cellular::LinkEvent should
   // drop the connection and destroy any services.
   device_->set_state_for_testing(Cellular::State::kLinked);
@@ -1083,7 +1066,7 @@ TEST_P(CellularTest, LinkEventInterfaceDown) {
 // TODO(b/232177767): Add a test to verify that Cellular start the Network with
 // the correct options.
 
-TEST_P(CellularTest, ModemStateChangeValidConnected) {
+TEST_F(CellularTest, ModemStateChangeValidConnected) {
   device_->set_state_for_testing(Cellular::State::kEnabled);
   device_->set_modem_state_for_testing(Cellular::kModemStateConnecting);
   SetService();
@@ -1091,11 +1074,7 @@ TEST_P(CellularTest, ModemStateChangeValidConnected) {
   EXPECT_EQ(Cellular::State::kConnected, device_->state());
 }
 
-TEST_P(CellularTest, ModemStateChangeLostRegistration) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
-    return;
-  }
-
+TEST_F(CellularTest, ModemStateChangeLostRegistration) {
   CellularCapability3gpp* capability = GetCapability3gpp();
   capability->registration_state_ = MM_MODEM_3GPP_REGISTRATION_STATE_HOME;
   EXPECT_TRUE(capability->IsRegistered());
@@ -1104,21 +1083,21 @@ TEST_P(CellularTest, ModemStateChangeLostRegistration) {
   EXPECT_FALSE(capability->IsRegistered());
 }
 
-TEST_P(CellularTest, StartModemCallback) {
+TEST_F(CellularTest, StartModemCallback) {
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   device_->set_state_for_testing(Cellular::State::kEnabled);
   CallStartModemCallback(Error(Error::kSuccess));
   EXPECT_EQ(device_->state(), Cellular::State::kModemStarted);
 }
 
-TEST_P(CellularTest, StartModemCallbackFail) {
+TEST_F(CellularTest, StartModemCallbackFail) {
   EXPECT_CALL(*this, TestCallback(IsFailure()));
   device_->set_state_for_testing(Cellular::State::kEnabled);
   CallStartModemCallback(Error(Error::kOperationFailed));
   EXPECT_EQ(device_->state(), Cellular::State::kEnabled);
 }
 
-TEST_P(CellularTest, StopModemCallback) {
+TEST_F(CellularTest, StopModemCallback) {
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   SetMockService();
   CallStopModemCallback(Error(Error::kSuccess));
@@ -1126,7 +1105,7 @@ TEST_P(CellularTest, StopModemCallback) {
   EXPECT_EQ(device_->service(), nullptr);
 }
 
-TEST_P(CellularTest, StopModemCallbackFail) {
+TEST_F(CellularTest, StopModemCallbackFail) {
   EXPECT_CALL(*this, TestCallback(IsFailure()));
   SetMockService();
   CallStopModemCallback(Error(Error::kOperationFailed));
@@ -1134,7 +1113,7 @@ TEST_P(CellularTest, StopModemCallbackFail) {
   EXPECT_EQ(device_->service(), nullptr);
 }
 
-TEST_P(CellularTest, SetPolicyAllowRoaming) {
+TEST_F(CellularTest, SetPolicyAllowRoaming) {
   EXPECT_TRUE(device_->policy_allow_roaming_);
   EXPECT_CALL(manager_, UpdateDevice(_));
   Error error;
@@ -1145,10 +1124,7 @@ TEST_P(CellularTest, SetPolicyAllowRoaming) {
   EXPECT_TRUE(error.IsSuccess());
 }
 
-TEST_P(CellularTest, SetUseAttachApn) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
-    return;
-  }
+TEST_F(CellularTest, SetUseAttachApn) {
   mm1::MockModemProxy* mm1_modem_proxy = mm1_modem_proxy_.get();
   mm1::MockModemModem3gppProfileManagerProxy*
       mm1_modem_3gpp_profile_manager_proxy =
@@ -1186,7 +1162,7 @@ TEST_P(CellularTest, SetUseAttachApn) {
   EXPECT_TRUE(device_->use_attach_apn_);
 }
 
-TEST_P(CellularTest, SetInhibited) {
+TEST_F(CellularTest, SetInhibited) {
   PopulateProxies();
 
   // Invoke Cellular::StartModemCallback() to simulate the modem starting, which
@@ -1207,7 +1183,7 @@ class TestRpcTaskDelegate : public RpcTaskDelegate,
                       const std::map<std::string, std::string>& dict) {}
 };
 
-TEST_P(CellularTest, LinkEventUpWithPPP) {
+TEST_F(CellularTest, LinkEventUpWithPPP) {
   // If PPP is running, don't start Network as well.
   TestRpcTaskDelegate task_delegate;
   base::OnceCallback<void(pid_t, int)> death_callback;
@@ -1221,7 +1197,7 @@ TEST_P(CellularTest, LinkEventUpWithPPP) {
   device_->LinkEvent(IFF_UP, 0);
 }
 
-TEST_P(CellularTest, LinkEventUpWithoutPPP) {
+TEST_F(CellularTest, LinkEventUpWithoutPPP) {
   // If PPP is not running, start Network.
   device_->set_state_for_testing(Cellular::State::kConnected);
   EXPECT_CALL(*network_,
@@ -1229,13 +1205,13 @@ TEST_P(CellularTest, LinkEventUpWithoutPPP) {
   device_->LinkEvent(IFF_UP, 0);
 }
 
-TEST_P(CellularTest, StartPPP) {
+TEST_F(CellularTest, StartPPP) {
   const int kPID = 234;
   EXPECT_EQ(nullptr, device_->ppp_task_);
   StartPPP(kPID);
 }
 
-TEST_P(CellularTest, StartPPPAlreadyStarted) {
+TEST_F(CellularTest, StartPPPAlreadyStarted) {
   const int kPID = 234;
   StartPPP(kPID);
 
@@ -1243,7 +1219,7 @@ TEST_P(CellularTest, StartPPPAlreadyStarted) {
   StartPPP(kPID2);
 }
 
-TEST_P(CellularTest, StartPPPAfterEthernetUp) {
+TEST_F(CellularTest, StartPPPAfterEthernetUp) {
   CellularService* service(SetService());
   device_->set_state_for_testing(Cellular::State::kLinked);
   device_->SelectService(service);
@@ -1253,7 +1229,7 @@ TEST_P(CellularTest, StartPPPAfterEthernetUp) {
   EXPECT_EQ(Cellular::State::kLinked, device_->state());
 }
 
-TEST_P(CellularTest, GetLogin) {
+TEST_F(CellularTest, GetLogin) {
   // Doesn't crash when there is no service.
   std::string username_to_pppd;
   std::string password_to_pppd;
@@ -1269,7 +1245,7 @@ TEST_P(CellularTest, GetLogin) {
   device_->GetLogin(&username_to_pppd, &password_to_pppd);
 }
 
-TEST_P(CellularTest, Notify) {
+TEST_F(CellularTest, Notify) {
   // Common setup.
   const int kPID = 91;
   SetMockService();
@@ -1358,11 +1334,7 @@ TEST_P(CellularTest, Notify) {
   dispatcher_.DispatchPendingEvents();
 }
 
-TEST_P(CellularTest, PPPConnectionFailedBeforeAuth) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
-    return;
-  }
-
+TEST_F(CellularTest, PPPConnectionFailedBeforeAuth) {
   // Test that we properly set Service state in the case where pppd
   // disconnects before authenticating (as opposed to the Notify test,
   // where pppd disconnects after connecting).
@@ -1382,11 +1354,7 @@ TEST_P(CellularTest, PPPConnectionFailedBeforeAuth) {
   dispatcher_.DispatchPendingEvents();
 }
 
-TEST_P(CellularTest, PPPConnectionFailedDuringAuth) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
-    return;
-  }
-
+TEST_F(CellularTest, PPPConnectionFailedDuringAuth) {
   // Test that we properly set Service state in the case where pppd
   // disconnects during authentication (as opposed to the Notify test,
   // where pppd disconnects after connecting).
@@ -1409,11 +1377,7 @@ TEST_P(CellularTest, PPPConnectionFailedDuringAuth) {
   dispatcher_.DispatchPendingEvents();
 }
 
-TEST_P(CellularTest, PPPConnectionFailedAfterAuth) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
-    return;
-  }
-
+TEST_F(CellularTest, PPPConnectionFailedAfterAuth) {
   // Test that we properly set Service state in the case where pppd
   // disconnects after authenticating, but before connecting (as
   // opposed to the Notify test, where pppd disconnects after
@@ -1436,11 +1400,7 @@ TEST_P(CellularTest, PPPConnectionFailedAfterAuth) {
   dispatcher_.DispatchPendingEvents();
 }
 
-TEST_P(CellularTest, PPPConnectionFailedAfterConnect) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
-    return;
-  }
-
+TEST_F(CellularTest, PPPConnectionFailedAfterConnect) {
   // Test that we properly set Service state in the case where pppd fails after
   // connecting (as opposed to the Notify test, where pppd disconnects normally
   // after connecting).
@@ -1477,11 +1437,7 @@ TEST_P(CellularTest, PPPConnectionFailedAfterConnect) {
   dispatcher_.DispatchPendingEvents();
 }
 
-TEST_P(CellularTest, OnPPPDied) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
-    return;
-  }
-
+TEST_F(CellularTest, OnPPPDied) {
   const int kPID = 1234;
   const int kExitStatus = 5;
   ExpectDisconnectCapability3gpp();
@@ -1489,11 +1445,7 @@ TEST_P(CellularTest, OnPPPDied) {
   VerifyDisconnect();
 }
 
-TEST_P(CellularTest, OnPPPDiedCleanupDevice) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
-    return;
-  }
-
+TEST_F(CellularTest, OnPPPDiedCleanupDevice) {
   // Test that OnPPPDied causes the ppp_device_ reference to be dropped.
   const int kPID = 123;
   const int kExitStatus = 5;
@@ -1508,13 +1460,13 @@ TEST_P(CellularTest, OnPPPDiedCleanupDevice) {
   dispatcher_.DispatchPendingEvents();
 }
 
-TEST_P(CellularTest, DropConnection) {
+TEST_F(CellularTest, DropConnection) {
   EXPECT_CALL(*network_, Stop());
   device_->DropConnection();
   Mock::VerifyAndClearExpectations(network_);  // verify before dtor
 }
 
-TEST_P(CellularTest, DropConnectionPPP) {
+TEST_F(CellularTest, DropConnectionPPP) {
   scoped_refptr<MockVirtualDevice> ppp_device(
       new MockVirtualDevice(&manager_, "ppp0", 123, Technology::kPPP));
   // Calling device_->DropConnection() explicitly will trigger
@@ -1525,7 +1477,7 @@ TEST_P(CellularTest, DropConnectionPPP) {
   device_->DropConnection();
 }
 
-TEST_P(CellularTest, ChangeServiceState) {
+TEST_F(CellularTest, ChangeServiceState) {
   MockCellularService* service(SetMockService());
   EXPECT_CALL(*service, SetState(_));
   EXPECT_CALL(*service, SetFailure(_));
@@ -1540,7 +1492,7 @@ TEST_P(CellularTest, ChangeServiceState) {
   Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
 }
 
-TEST_P(CellularTest, ChangeServiceStatePPP) {
+TEST_F(CellularTest, ChangeServiceStatePPP) {
   MockCellularService* service(SetMockService());
   scoped_refptr<MockVirtualDevice> ppp_device(
       new MockVirtualDevice(&manager_, "ppp0", 123, Technology::kPPP));
@@ -1560,7 +1512,7 @@ TEST_P(CellularTest, ChangeServiceStatePPP) {
   device_->SetServiceFailureSilent(Service::kFailureUnknown);
 }
 
-TEST_P(CellularTest, StopPPPOnDisconnect) {
+TEST_F(CellularTest, StopPPPOnDisconnect) {
   const int kPID = 123;
   Error error;
   StartPPP(kPID);
@@ -1570,7 +1522,7 @@ TEST_P(CellularTest, StopPPPOnDisconnect) {
   VerifyPPPStopped();
 }
 
-TEST_P(CellularTest, StopPPPOnSuspend) {
+TEST_F(CellularTest, StopPPPOnSuspend) {
   const int kPID = 123;
   StartPPP(kPID);
   FakeUpConnectedPPP();
@@ -1579,11 +1531,7 @@ TEST_P(CellularTest, StopPPPOnSuspend) {
   VerifyPPPStopped();
 }
 
-TEST_P(CellularTest, OnAfterResumeDisabledWantDisabled) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
-    return;
-  }
-
+TEST_F(CellularTest, OnAfterResumeDisabledWantDisabled) {
   // The Device was disabled prior to resume, and the profile settings
   // indicate that the device should be disabled. We should leave
   // things alone.
@@ -1604,11 +1552,7 @@ TEST_P(CellularTest, OnAfterResumeDisabledWantDisabled) {
   EXPECT_EQ(Cellular::State::kDisabled, device_->state());
 }
 
-TEST_P(CellularTest, OnAfterResumeDisableInProgressWantDisabled) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
-    return;
-  }
-
+TEST_F(CellularTest, OnAfterResumeDisableInProgressWantDisabled) {
   // The Device was not disabled prior to resume, but the profile
   // settings indicate that the device _should be_ disabled. Most
   // likely, we started disabling the device, but that did not
@@ -1653,11 +1597,7 @@ TEST_P(CellularTest, OnAfterResumeDisableInProgressWantDisabled) {
   EXPECT_EQ(Cellular::State::kDisabled, device_->state());
 }
 
-TEST_P(CellularTest, OnAfterResumeDisableQueuedWantEnabled) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
-    return;
-  }
-
+TEST_F(CellularTest, OnAfterResumeDisableQueuedWantEnabled) {
   // The Device was not disabled prior to resume, and the profile
   // settings indicate that the device should be enabled. In
   // particular, we went into suspend before we actually processed the
@@ -1726,11 +1666,7 @@ TEST_P(CellularTest, OnAfterResumeDisableQueuedWantEnabled) {
   EXPECT_EQ(Cellular::State::kDisabled, device_->state());
 }
 
-TEST_P(CellularTest, OnAfterResumePowerDownInProgressWantEnabled) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
-    return;
-  }
-
+TEST_F(CellularTest, OnAfterResumePowerDownInProgressWantEnabled) {
   // The Device was not fully disabled prior to resume, and the
   // profile settings indicate that the device should be enabled. In
   // this case, we have disabled the device, but are waiting for the
@@ -1808,11 +1744,7 @@ TEST_P(CellularTest, OnAfterResumePowerDownInProgressWantEnabled) {
   EXPECT_EQ(Cellular::State::kModemStarted, device_->state());
 }
 
-TEST_P(CellularTest, OnAfterResumeDisabledWantEnabled) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
-    return;
-  }
-
+TEST_F(CellularTest, OnAfterResumeDisabledWantEnabled) {
   // This is the ideal case. The disable process completed before
   // going into suspend.
   mm1::MockModemProxy* mm1_modem_proxy = SetupOnAfterResume();
@@ -1843,17 +1775,13 @@ TEST_P(CellularTest, OnAfterResumeDisabledWantEnabled) {
   EXPECT_EQ(Cellular::State::kModemStarted, device_->state());
 }
 
-TEST_P(CellularTest, EstablishLinkFailureNoBearer) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
-    return;
-  }
-
+TEST_F(CellularTest, EstablishLinkFailureNoBearer) {
   // Link establishment without active bearer set will fail and request
   // disconnection
   SetRegisteredWithService();
   device_->set_state_for_testing(Cellular::State::kConnected);
   EXPECT_CALL(*mm1_simple_proxy_,
-              Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
+              Disconnect(_, _, CellularCapability3gpp::kTimeoutDisconnect))
       .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
   SetCapability3gppModemSimpleProxy();
   device_->EstablishLink();
@@ -1861,11 +1789,7 @@ TEST_P(CellularTest, EstablishLinkFailureNoBearer) {
   EXPECT_EQ(Cellular::State::kRegistered, device_->state());
 }
 
-TEST_P(CellularTest, EstablishLinkFailureMismatchedDataInterface) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
-    return;
-  }
-
+TEST_F(CellularTest, EstablishLinkFailureMismatchedDataInterface) {
   // Bearer will report an interface different to the one in the
   // device, for now, disconnect
   auto bearer = std::make_unique<CellularBearer>(&control_interface_,
@@ -1879,7 +1803,7 @@ TEST_P(CellularTest, EstablishLinkFailureMismatchedDataInterface) {
       .WillOnce(Return(device_->interface_index() + 1));
 
   EXPECT_CALL(*mm1_simple_proxy_,
-              Disconnect(_, _, CellularCapability::kTimeoutDisconnect))
+              Disconnect(_, _, CellularCapability3gpp::kTimeoutDisconnect))
       .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
   SetCapability3gppModemSimpleProxy();
 
@@ -1890,11 +1814,7 @@ TEST_P(CellularTest, EstablishLinkFailureMismatchedDataInterface) {
   EXPECT_EQ(Cellular::State::kRegistered, device_->state());
 }
 
-TEST_P(CellularTest, EstablishLinkDHCP) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
-    return;
-  }
-
+TEST_F(CellularTest, EstablishLinkDHCP) {
   auto bearer = std::make_unique<CellularBearer>(&control_interface_,
                                                  RpcIdentifier(""), "");
   bearer->set_data_interface(kTestDeviceName);
@@ -1917,11 +1837,7 @@ TEST_P(CellularTest, EstablishLinkDHCP) {
   Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
 }
 
-TEST_P(CellularTest, EstablishLinkPPP) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
-    return;
-  }
-
+TEST_F(CellularTest, EstablishLinkPPP) {
   auto bearer = std::make_unique<CellularBearer>(&control_interface_,
                                                  RpcIdentifier(""), "");
   bearer->set_ipv4_config_method(CellularBearer::IPConfigMethod::kPPP);
@@ -1938,11 +1854,7 @@ TEST_P(CellularTest, EstablishLinkPPP) {
   EXPECT_NE(nullptr, device_->ppp_task_);
 }
 
-TEST_P(CellularTest, EstablishLinkStatic) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
-    return;
-  }
-
+TEST_F(CellularTest, EstablishLinkStatic) {
   IPAddress::Family kAddressFamily = IPAddress::kFamilyIPv4;
   const char kAddress[] = "10.0.0.1";
   const char kGateway[] = "10.0.0.254";
@@ -1983,7 +1895,7 @@ TEST_P(CellularTest, EstablishLinkStatic) {
   Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
 }
 
-TEST_P(CellularTest, GetGeolocationObjects) {
+TEST_F(CellularTest, GetGeolocationObjects) {
   static const Cellular::LocationInfo kGoodLocations[] = {
       {"310", "410", "DE7E", "4985F6"},
       {"001", "010", "O100", "googol"},
@@ -2041,7 +1953,7 @@ class FakeMobileOperatorInfo : public NiceMock<MockMobileOperatorInfo> {
   std::vector<MobileOperatorInfo::MobileAPN> apn_list_;
 };
 
-TEST_P(CellularTest, SimpleApnList) {
+TEST_F(CellularTest, SimpleApnList) {
   constexpr char kApn[] = "apn";
   constexpr char kUsername[] = "foo";
   constexpr char kPassword[] = "bar";
@@ -2062,11 +1974,7 @@ TEST_P(CellularTest, SimpleApnList) {
   CHECK_EQ(kPassword, apn_list_prop[0][kApnPasswordProperty]);
 }
 
-TEST_P(CellularTest, ProfilesApnList) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
-    return;
-  }
-
+TEST_F(CellularTest, ProfilesApnList) {
   constexpr char kApn1[] = "ota.apn";
   brillo::VariantDictionary profile;
   profile[CellularBearer::kMMApnProperty] = std::string(kApn1);
@@ -2088,11 +1996,7 @@ TEST_P(CellularTest, ProfilesApnList) {
   CHECK_EQ(kApn2, apn_list_prop[1][kApnProperty]);
 }
 
-TEST_P(CellularTest, MergeProfileAndOperatorApn) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
-    return;
-  }
-
+TEST_F(CellularTest, MergeProfileAndOperatorApn) {
   constexpr char kApn[] = "normal.apn";
   constexpr char kApnName[] = "Normal APN";
   brillo::VariantDictionary profile;
@@ -2113,11 +2017,7 @@ TEST_P(CellularTest, MergeProfileAndOperatorApn) {
   CHECK_EQ(kApnName, apn_list_prop[0][kApnNameProperty]);
 }
 
-TEST_P(CellularTest, DontMergeProfileAndOperatorApn) {
-  if (!IsCellularTypeUnderTestOneOf({Cellular::kType3gpp})) {
-    return;
-  }
-
+TEST_F(CellularTest, DontMergeProfileAndOperatorApn) {
   constexpr char kApn[] = "normal.apn";
   constexpr char kUsernameFromProfile[] = "user1";
   brillo::VariantDictionary profile;
@@ -2143,7 +2043,7 @@ TEST_P(CellularTest, DontMergeProfileAndOperatorApn) {
   CHECK_EQ(kUsernameFromOperator, apn_list_prop[1][kApnUsernameProperty]);
 }
 
-TEST_P(CellularTest, BuildApnTryListSetApn) {
+TEST_F(CellularTest, BuildApnTryListSetApn) {
   Stringmaps apn_list;
   Stringmap apn1, apn2;
   apn1[kApnProperty] = "apn1";
@@ -2228,7 +2128,7 @@ TEST_P(CellularTest, BuildApnTryListSetApn) {
   EXPECT_EQ(attach_apn_try_list[1], apn2);
 }
 
-TEST_P(CellularTest, BuildApnTryListSetUserApnList) {
+TEST_F(CellularTest, BuildApnTryListSetUserApnList) {
   Stringmaps apn_list;
   Stringmap apn1, apn2;
   apn1[kApnProperty] = "apn1";
@@ -2292,7 +2192,7 @@ TEST_P(CellularTest, BuildApnTryListSetUserApnList) {
   EXPECT_EQ(default_apn_try_list[2], apnS);
 }
 
-TEST_P(CellularTest, CompareApns) {
+TEST_F(CellularTest, CompareApns) {
   Stringmap apn1, apn2;
   EXPECT_TRUE(device_->CompareApns(apn1, apn2));
   apn1[kApnNameProperty] = "apn_name1";
@@ -2335,9 +2235,5 @@ TEST_P(CellularTest, CompareApns) {
   EXPECT_TRUE(device_->CompareApns(apn1, apn2));
   EXPECT_TRUE(device_->CompareApns(apn2, apn1));
 }
-
-INSTANTIATE_TEST_SUITE_P(CellularTest,
-                         CellularTest,
-                         testing::Values(Cellular::kType3gpp));
 
 }  // namespace shill

@@ -49,6 +49,20 @@ static std::string ObjectID(const CellularCapability3gpp* c) {
 }
 }  // namespace Logging
 
+// All timeout values are in milliseconds
+const int CellularCapability3gpp::kTimeoutActivate = 300000;
+const int CellularCapability3gpp::kTimeoutConnect = 90000;
+const int CellularCapability3gpp::kTimeoutDefault = 5000;
+const int CellularCapability3gpp::kTimeoutDisconnect = 90000;
+const int CellularCapability3gpp::kTimeoutEnable = 45000;
+const int CellularCapability3gpp::kTimeoutGetLocation = 45000;
+const int CellularCapability3gpp::kTimeoutRegister = 90000;
+const int CellularCapability3gpp::kTimeoutReset = 90000;
+const int CellularCapability3gpp::kTimeoutScan = 120000;
+const int CellularCapability3gpp::kTimeoutSetInitialEpsBearer = 45000;
+const int CellularCapability3gpp::kTimeoutSetupLocation = 45000;
+const int CellularCapability3gpp::kTimeoutSetupSignal = 45000;
+
 const int64_t CellularCapability3gpp::kEnterPinTimeoutMilliseconds = 20000;
 const int64_t
     CellularCapability3gpp::kRegistrationDroppedUpdateTimeoutMilliseconds =
@@ -263,8 +277,10 @@ CellularCapability3gpp::CellularCapability3gpp(
     ControlInterface* control_interface,
     Metrics* metrics,
     PendingActivationStore* pending_activation_store)
-    : CellularCapability(
-          cellular, control_interface, metrics, pending_activation_store),
+    : cellular_(cellular),
+      control_interface_(control_interface),
+      metrics_(metrics),
+      pending_activation_store_(pending_activation_store),
       parsed_scan_result_operator_info_(
           new MobileOperatorInfo(cellular->dispatcher(), "ParseScanResult")),
       weak_ptr_factory_(this) {

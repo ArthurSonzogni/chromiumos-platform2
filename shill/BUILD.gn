@@ -235,7 +235,6 @@ static_library("libshill") {
     "cellular/apn_list.cc",
     "cellular/cellular.cc",
     "cellular/cellular_bearer.cc",
-    "cellular/cellular_capability.cc",
     "cellular/cellular_capability_3gpp.cc",
     "cellular/cellular_error.cc",
     "cellular/cellular_helpers.cc",

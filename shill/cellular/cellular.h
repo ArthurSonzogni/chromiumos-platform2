@@ -30,7 +30,7 @@
 
 namespace shill {
 
-class CellularCapability;
+class CellularCapability3gpp;
 class Error;
 class ExternalTask;
 class NetlinkSockDiag;
@@ -40,11 +40,6 @@ class Cellular : public Device,
                  public RpcTaskDelegate,
                  public MobileOperatorInfo::Observer {
  public:
-  enum Type {
-    kType3gpp,  // ModemManager1
-    kTypeInvalid,
-  };
-
   enum class State {
     // Initial state. No Capability exists.
     kDisabled,
@@ -118,7 +113,6 @@ class Cellular : public Device,
            const std::string& link_name,
            const std::string& address,
            int interface_index,
-           Type type,
            const std::string& service,
            const RpcIdentifier& path);
   Cellular(const Cellular&) = delete;
@@ -336,7 +330,6 @@ class Cellular : public Device,
   bool provider_requires_roaming() const { return provider_requires_roaming_; }
   bool use_attach_apn() const { return use_attach_apn_; }
 
-  Type type() const { return type_; }
   bool inhibited() const { return inhibited_; }
   const std::string& connect_pending_iccid() const {
     return connect_pending_iccid_;
@@ -380,7 +373,7 @@ class Cellular : public Device,
     serving_operator_info_.reset(serving_operator_info);
   }
   void clear_found_networks_for_testing() { found_networks_.clear(); }
-  CellularCapability* capability_for_testing() { return capability_.get(); }
+  CellularCapability3gpp* capability_for_testing() { return capability_.get(); }
   const KeyValueStores& sim_slot_info_for_testing() { return sim_slot_info_; }
   void set_modem_state_for_testing(ModemState state) { modem_state_ = state; }
   void set_use_attach_apn_for_testing(bool on) { use_attach_apn_ = on; }
@@ -515,8 +508,6 @@ class Cellular : public Device,
 
   void HandleLinkEvent(unsigned int flags, unsigned int change);
 
-  void InitCapability(Type type);
-
   void SetPrimarySimProperties(const SimProperties& properties);
   void SetSimSlotProperties(const std::vector<SimProperties>& slot_properties,
                             int primary_slot);
@@ -586,7 +577,7 @@ class Cellular : public Device,
   // Returns true, if the device state is successfully changed.
   bool DisconnectCleanup();
 
-  // Executed after the asynchronous CellularCapability::StartModem
+  // Executed after the asynchronous CellularCapability3gpp::StartModem
   // call from OnAfterResume completes.
   static void LogRestartModemResult(const Error& error);
 
@@ -691,8 +682,7 @@ class Cellular : public Device,
   // End of DBus properties.
   // ///////////////////////////////////////////////////////////////////////////
 
-  Type type_;
-  std::unique_ptr<CellularCapability> capability_;
+  std::unique_ptr<CellularCapability3gpp> capability_;
   std::optional<InterfaceToProperties> initial_properties_;
 
   ProcessManager* process_manager_;

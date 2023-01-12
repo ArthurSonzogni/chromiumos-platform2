@@ -20,7 +20,6 @@ class MockCellular : public Cellular {
                const std::string& link_name,
                const std::string& address,
                int interface_index,
-               Type type,
                const std::string& service,
                const RpcIdentifier& path);
   MockCellular(const MockCellular&) = delete;

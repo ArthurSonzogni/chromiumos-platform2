@@ -41,7 +41,6 @@ class Modem {
   void OnDeviceInfoAvailable(const std::string& link_name);
 
   const std::string& link_name() const { return link_name_; }
-  Cellular::Type type() const { return type_; }
   const std::string& service() const { return service_; }
   const RpcIdentifier& path() const { return path_; }
 
@@ -86,7 +85,6 @@ class Modem {
   DeviceInfo* device_info_;
   std::optional<int> interface_index_;
   std::string link_name_;
-  Cellular::Type type_;
   bool has_pending_device_info_ = false;
 
   // Serial number used to uniquify fake device names for Cellular

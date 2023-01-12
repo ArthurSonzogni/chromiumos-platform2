@@ -50,15 +50,13 @@
 
 ## CellularCapability
 
-*   The [CellularCapability class](../cellular/cellular_capability.h) is owned
-    by the [Cellular](#Cellular) class. It has one subclass:
-    *   [CellularCapability3gpp](../cellular/cellular_capability_3gpp.h)
-        is the primary implementation class.
+*   The [CellularCapability3gpp](../cellular/cellular_capability_3gpp.h)is owned
+    by the [Cellular](#Cellular) class.
 *   `CellularCapability3gpp` owns a number of proxies for communicating with
     `ModemManager1` interfaces (`3gpp`, `Signal`, `Simple`, `Location`) and the
     `ModemManager1.Modem` object.
-*   When Cellular is enabled, `CellularCapability::Start` is called, invoking
-    the `ModemManager1.Modem.Enable` routine. On success this sets
+*   When Cellular is enabled, `CellularCapability3gpp::Start` is called,
+    invoking the `ModemManager1.Modem.Enable` routine. On success this sets
     `Cellular::State` to *Enabled* and starts the Modem registration process.
 *   Once enabled, `ModemManager` provides a list of paths for available SIMs
     (on devices that support multi-sim), and the path of the currently active
@@ -129,7 +127,7 @@ identifying *ICCID*.
             [Fails](#Connect-Failure).
     *   If the ICCID does not match any slot, an immediate Error is returned.
 5.  When the Modem is *Registered* and the *ICCID* matches,
-    `CellularCapability::Connect` is called which sets [Roaming](#Roaming)
+    `CellularCapability3gpp::Connect` is called which sets [Roaming](#Roaming)
     properties and builds and a list of [APN](#APN) properties to try.
 6.  The [CellularCapability](#CellularCapability) then calls
     `ModemManager1.ModemSimple.Connect` with the first APN in the try list.

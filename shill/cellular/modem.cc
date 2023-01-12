@@ -44,10 +44,7 @@ size_t Modem::fake_dev_serial_ = 0;
 Modem::Modem(const std::string& service,
              const RpcIdentifier& path,
              DeviceInfo* device_info)
-    : service_(service),
-      path_(path),
-      device_info_(device_info),
-      type_(Cellular::kTypeInvalid) {
+    : service_(service), path_(path), device_info_(device_info) {
   SLOG(this, 1) << "Modem() Path: " << path.value();
 }
 
@@ -82,10 +79,8 @@ void Modem::CreateDevice(const InterfaceToProperties& properties) {
         modem_props.Get<uint32_t>(MM_MODEM_PROPERTY_CURRENTCAPABILITIES);
   }
 
-  if (capabilities & (MM_MODEM_CAPABILITY_GSM_UMTS | MM_MODEM_CAPABILITY_LTE |
-                      MM_MODEM_CAPABILITY_5GNR)) {
-    type_ = Cellular::kType3gpp;
-  } else {
+  if (!(capabilities & (MM_MODEM_CAPABILITY_GSM_UMTS | MM_MODEM_CAPABILITY_LTE |
+                        MM_MODEM_CAPABILITY_5GNR))) {
     LOG(ERROR) << "Unsupported capabilities: " << capabilities;
     return;
   }
@@ -212,8 +207,7 @@ CellularRefPtr Modem::GetOrCreateCellularDevice(
     cellular = nullptr;
     device_info_->DeregisterDevice(interface_index);
   }
-  if (cellular &&
-      (cellular->type() != type_ || cellular->dbus_service() != service_)) {
+  if (cellular && (cellular->dbus_service() != service_)) {
     SLOG(this, 1) << "Cellular service changed: " << service_;
     cellular = nullptr;
     device_info_->DeregisterDevice(interface_index);
@@ -226,7 +220,7 @@ CellularRefPtr Modem::GetOrCreateCellularDevice(
   }
 
   cellular = new Cellular(device_info_->manager(), link_name_, mac_address,
-                          interface_index, type_, service_, path_);
+                          interface_index, service_, path_);
   device_info_->RegisterDevice(cellular);
   return cellular;
 }
