@@ -10,16 +10,18 @@
 #include <base/strings/strcat.h>
 #include <dbus/bus.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
+#include <dlcservice/dbus-constants.h>
 #include <dlcservice/dbus-proxies.h>
 
 namespace {
 constexpr char kDlcId[] = "ml-core-internal";
+constexpr uint8_t kMaxInstallAttempts = 5;
+const base::TimeDelta kRetryDelay = base::Seconds(15);
 
 class DlcClientImpl : public cros::DlcClient {
  public:
+  DlcClientImpl() = default;
   ~DlcClientImpl() override = default;
-
-  DlcClientImpl() : weak_factory_(this) {}
 
   void Initialize(
       base::OnceCallback<void(const base::FilePath&)> dlc_root_path_cb,
@@ -48,7 +50,8 @@ class DlcClientImpl : public cros::DlcClient {
   }
 
   void OnDlcStateChanged(const dlcservice::DlcState& dlc_state) {
-    LOG(INFO) << "OnDlcStateChanged";
+    LOG(INFO) << "OnDlcStateChanged (" << dlc_state.id()
+              << "): " << dlcservice::DlcState::State_Name(dlc_state.state());
 
     if (dlc_state.id() != kDlcId) {
       return;
@@ -79,34 +82,63 @@ class DlcClientImpl : public cros::DlcClient {
   void OnDlcStateChangedConnect(const std::string& interface,
                                 const std::string& signal,
                                 const bool success) {
-    LOG(INFO) << "OnDlcStateChangedConnect";
+    LOG(INFO) << "OnDlcStateChangedConnect (" << interface << ":" << signal
+              << "): " << (success ? "true" : "false");
     if (!success) {
       InvokeErrorCb(
           base::StrCat({"Error connecting ", interface, ". ", signal}));
     }
   }
 
-  // TODO(b/262167400): Move to use dlc_service_client.Install over InstallDlc
-  // TODO(b/262166553): In the event that certain error states are detected
-  // retry call to Install
-  void InstallDlc() override {
+  void InstallDlc() override { Install(/*attempt=*/1); }
+
+  void Install(int attempt) {
+    LOG(INFO) << "InstallDlc called for " << kDlcId << ", attempt: " << attempt;
     if (!bus_->IsConnected()) {
       InvokeErrorCb("Error calling dlcservice: DBus not connected");
       return;
     }
 
     brillo::ErrorPtr error;
+    dlcservice::InstallRequest install_request;
+    install_request.set_id(kDlcId);
 
-    if (!dlcservice_client_->InstallDlc(kDlcId, &error)) {
-      if (error != nullptr) {
-        InvokeErrorCb(
-            base::StrCat({"Error calling dlcservice (code=", error->GetCode(),
-                          "): ", error->GetMessage()}));
-      } else {
+    if (!dlcservice_client_->Install(install_request, &error)) {
+      LOG(ERROR) << "Error calling dlcservice_client_->Install for " << kDlcId;
+      if (error == nullptr) {
         InvokeErrorCb("Error calling dlcservice: unknown");
+        return;
       }
+
+      LOG(ERROR) << "Error code: " << error->GetCode()
+                 << " msg: " << error->GetMessage();
+
+      if (error->GetCode() == dlcservice::kErrorBusy) {
+        attempt++;
+        if (attempt > kMaxInstallAttempts) {
+          auto err = base::StrCat(
+              {"Install attempts for ", kDlcId, " exhausted, aborting."});
+          LOG(ERROR) << err;
+          InvokeErrorCb(err);
+          return;
+        }
+
+        auto retry_delay = kRetryDelay * attempt;
+        LOG(ERROR) << "dlcservice is busy. Retrying in " << retry_delay;
+
+        base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
+            FROM_HERE,
+            base::BindOnce(&DlcClientImpl::Install, weak_factory_.GetWeakPtr(),
+                           attempt),
+            retry_delay);
+        return;
+      }
+      InvokeErrorCb(
+          base::StrCat({"Error calling dlcservice (code=", error->GetCode(),
+                        "): ", error->GetMessage()}));
       return;
     }
+    LOG(INFO) << "InstallDlc successfully initiated for " << kDlcId;
   }
 
   void InvokeSuccessCb(const base::FilePath& dlc_root_path) {
@@ -124,7 +156,7 @@ class DlcClientImpl : public cros::DlcClient {
   scoped_refptr<dbus::Bus> bus_;
   base::OnceCallback<void(const base::FilePath&)> dlc_root_path_cb_;
   base::OnceCallback<void(const std::string&)> error_cb_;
-  base::WeakPtrFactory<DlcClientImpl> weak_factory_;
+  base::WeakPtrFactory<DlcClientImpl> weak_factory_{this};
 };
 
 }  // namespace

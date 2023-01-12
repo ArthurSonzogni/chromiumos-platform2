@@ -17,6 +17,8 @@
 #undef Status
 #include <absl/status/status.h>
 
+#include <base/memory/weak_ptr.h>
+
 #include "common/camera_buffer_pool.h"
 #include "common/camera_hal3_helpers.h"
 #include "common/metadata_logger.h"

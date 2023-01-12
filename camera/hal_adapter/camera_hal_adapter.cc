@@ -114,15 +114,18 @@ bool CameraHalAdapter::Start(GpuResources* gpu_resources) {
   }
 
   if (FeatureProfile().IsEnabled(FeatureProfile::FeatureType::kEffects)) {
+    LOGF(INFO) << "Effects are enabled, initiating DLC install.";
     dlc_client_ = DlcClient::Create(
         base::BindOnce(
             [](StreamManipulator::RuntimeOptions* options,
                const base::FilePath& dlc_path) {
+              LOGF(INFO) << "DLC Completed (success): Setting DlcRootPath.";
               options->SetDlcRootPath(dlc_path);
             },
             base::Unretained(&stream_manipulator_runtime_options_)),
-        base::BindOnce(
-            [](const std::string& error_msg) { LOGF(ERROR) << error_msg; }));
+        base::BindOnce([](const std::string& error_msg) {
+          LOGF(ERROR) << "DLC Completed (failed):" << error_msg;
+        }));
     dlc_client_->InstallDlc();
   }
 
