@@ -253,4 +253,26 @@ void FakeDiagnosticsService::RunAudioSetGainRoutine(
   NOTIMPLEMENTED();
 }
 
+void FakeDiagnosticsService::RunBluetoothPowerRoutine(
+    RunBluetoothPowerRoutineCallback callback) {
+  NOTIMPLEMENTED();
+}
+
+void FakeDiagnosticsService::RunBluetoothDiscoveryRoutine(
+    RunBluetoothDiscoveryRoutineCallback callback) {
+  NOTIMPLEMENTED();
+}
+
+void FakeDiagnosticsService::RunBluetoothScanningRoutine(
+    mojo_ipc::NullableUint32Ptr length_seconds,
+    RunBluetoothScanningRoutineCallback callback) {
+  NOTIMPLEMENTED();
+}
+
+void FakeDiagnosticsService::RunBluetoothPairingRoutine(
+    const std::string& peripheral_id,
+    RunBluetoothPairingRoutineCallback callback) {
+  NOTIMPLEMENTED();
+}
+
 }  // namespace diagnostics

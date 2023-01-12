@@ -180,6 +180,25 @@ class CrosHealthdRoutineFactory {
   // itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeAudioSetGainRoutine(
       uint64_t node_id, uint8_t gain, bool mute_on) = 0;
+  // Constructs a new instance of the Bluetooth power routine. See
+  // diagnostics/routines/bluetooth/bluetooth_power for details on the routine
+  // itself.
+  virtual std::unique_ptr<DiagnosticRoutine> MakeBluetoothPowerRoutine() = 0;
+  // Constructs a new instance of the Bluetooth discovery routine. See
+  // diagnostics/routines/bluetooth/bluetooth_discovery for details on the
+  // routine itself.
+  virtual std::unique_ptr<DiagnosticRoutine>
+  MakeBluetoothDiscoveryRoutine() = 0;
+  // Constructs a new instance of the Bluetooth scanning routine. See
+  // diagnostics/routines/bluetooth/bluetooth_scanning for details on the
+  // routine itself.
+  virtual std::unique_ptr<DiagnosticRoutine> MakeBluetoothScanningRoutine(
+      const std::optional<base::TimeDelta>& exec_duration) = 0;
+  // Constructs a new instance of the Bluetooth pairing routine. See
+  // diagnostics/routines/bluetooth/bluetooth_pairing for details on the
+  // routine itself.
+  virtual std::unique_ptr<DiagnosticRoutine> MakeBluetoothPairingRoutine(
+      const std::string& peripheral_id) = 0;
 };
 
 }  // namespace diagnostics

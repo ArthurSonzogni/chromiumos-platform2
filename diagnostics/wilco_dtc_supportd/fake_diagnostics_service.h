@@ -134,6 +134,16 @@ class FakeDiagnosticsService final
                               uint8_t gain,
                               bool mute_on,
                               RunAudioSetGainRoutineCallback) override;
+  void RunBluetoothDiscoveryRoutine(
+      RunBluetoothDiscoveryRoutineCallback callback) override;
+  void RunBluetoothPowerRoutine(
+      RunBluetoothPowerRoutineCallback callback) override;
+  void RunBluetoothScanningRoutine(
+      ash::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+      RunBluetoothScanningRoutineCallback callback) override;
+  void RunBluetoothPairingRoutine(
+      const std::string& peripheral_id,
+      RunBluetoothPairingRoutineCallback callback) override;
 
   // Overrides the default behavior of GetCrosHealthdDiagnosticsService to test
   // situations where mojo methods were called prior to wilco_dtc_supportd's

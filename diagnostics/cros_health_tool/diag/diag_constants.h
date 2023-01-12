@@ -84,6 +84,14 @@ constexpr struct {
      ash::cros_healthd::mojom::DiagnosticRoutineEnum::kAudioSetVolume},
     {"audio_set_gain",
      ash::cros_healthd::mojom::DiagnosticRoutineEnum::kAudioSetGain},
+    {"bluetooth_power",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kBluetoothPower},
+    {"bluetooth_discovery",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kBluetoothDiscovery},
+    {"bluetooth_scanning",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kBluetoothScanning},
+    {"bluetooth_pairing",
+     ash::cros_healthd::mojom::DiagnosticRoutineEnum::kBluetoothPairing},
 };
 
 }  // namespace diagnostics

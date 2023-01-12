@@ -81,7 +81,12 @@ std::set<mojo_ipc::DiagnosticRoutineEnum> GetAllAvailableRoutines() {
       mojo_ipc::DiagnosticRoutineEnum::kLedLitUp,
       mojo_ipc::DiagnosticRoutineEnum::kEmmcLifetime,
       mojo_ipc::DiagnosticRoutineEnum::kAudioSetVolume,
-      mojo_ipc::DiagnosticRoutineEnum::kAudioSetGain};
+      mojo_ipc::DiagnosticRoutineEnum::kAudioSetGain,
+      mojo_ipc::DiagnosticRoutineEnum::kBluetoothPower,
+      mojo_ipc::DiagnosticRoutineEnum::kBluetoothDiscovery,
+      mojo_ipc::DiagnosticRoutineEnum::kBluetoothScanning,
+      mojo_ipc::DiagnosticRoutineEnum::kBluetoothPairing,
+  };
 }
 
 std::set<mojo_ipc::DiagnosticRoutineEnum> GetBatteryRoutines() {

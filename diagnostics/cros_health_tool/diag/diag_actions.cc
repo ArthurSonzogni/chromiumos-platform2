@@ -683,6 +683,55 @@ bool DiagActions::ActionRunAudioSetGainRoutine(uint64_t node_id,
   return ProcessRoutineResponse(response);
 }
 
+bool DiagActions::ActionRunBluetoothPowerRoutine() {
+  mojom::RunRoutineResponsePtr response;
+  base::RunLoop run_loop;
+  cros_healthd_diagnostics_service_->RunBluetoothPowerRoutine(
+      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
+  run_loop.Run();
+  return ProcessRoutineResponse(response);
+}
+
+bool DiagActions::ActionRunBluetoothDiscoveryRoutine() {
+  mojom::RunRoutineResponsePtr response;
+  base::RunLoop run_loop;
+  cros_healthd_diagnostics_service_->RunBluetoothDiscoveryRoutine(
+      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
+  run_loop.Run();
+  return ProcessRoutineResponse(response);
+}
+
+bool DiagActions::ActionRunBluetoothScanningRoutine(
+    const std::optional<base::TimeDelta>& exec_duration) {
+  mojom::RunRoutineResponsePtr response;
+  base::RunLoop run_loop;
+  mojom::NullableUint32Ptr exec_duration_parameter;
+  if (exec_duration.has_value()) {
+    exec_duration_parameter =
+        mojom::NullableUint32::New(exec_duration.value().InSeconds());
+  }
+  cros_healthd_diagnostics_service_->RunBluetoothScanningRoutine(
+      std::move(exec_duration_parameter),
+      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
+  run_loop.Run();
+  return ProcessRoutineResponse(response);
+}
+
+bool DiagActions::ActionRunBluetoothPairingRoutine(
+    const std::string& peripheral_id) {
+  mojom::RunRoutineResponsePtr response;
+  base::RunLoop run_loop;
+  cros_healthd_diagnostics_service_->RunBluetoothPairingRoutine(
+      peripheral_id,
+      base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
+                     &response, run_loop.QuitClosure()));
+  run_loop.Run();
+  return ProcessRoutineResponse(response);
+}
+
 void DiagActions::ForceCancelAtPercent(uint32_t percent) {
   CHECK_LE(percent, 100) << "Percent must be <= 100.";
   force_cancel_ = true;

@@ -428,4 +428,26 @@ FakeCrosHealthdRoutineFactory::MakeAudioSetGainRoutine(uint64_t node_id,
   return std::move(next_routine_);
 }
 
+std::unique_ptr<DiagnosticRoutine>
+FakeCrosHealthdRoutineFactory::MakeBluetoothPowerRoutine() {
+  return std::move(next_routine_);
+}
+
+std::unique_ptr<DiagnosticRoutine>
+FakeCrosHealthdRoutineFactory::MakeBluetoothDiscoveryRoutine() {
+  return std::move(next_routine_);
+}
+
+std::unique_ptr<DiagnosticRoutine>
+FakeCrosHealthdRoutineFactory::MakeBluetoothScanningRoutine(
+    const std::optional<base::TimeDelta>& exec_duration) {
+  return std::move(next_routine_);
+}
+
+std::unique_ptr<DiagnosticRoutine>
+FakeCrosHealthdRoutineFactory::MakeBluetoothPairingRoutine(
+    const std::string& peripheral_id) {
+  return std::move(next_routine_);
+}
+
 }  // namespace diagnostics

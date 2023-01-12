@@ -133,6 +133,14 @@ inline constexpr char kDiagnosticResultAudioSetVolume[] =
     "ChromeOS.Healthd.DiagnosticResult.AudioSetVolume";
 inline constexpr char kDiagnosticResultAudioSetGain[] =
     "ChromeOS.Healthd.DiagnosticResult.AudioSetGain";
+inline constexpr char kDiagnosticResultBluetoothPower[] =
+    "ChromeOS.Healthd.DiagnosticResult.BluetoothPower";
+inline constexpr char kDiagnosticResultBluetoothDiscovery[] =
+    "ChromeOS.Healthd.DiagnosticResult.BluetoothDiscovery";
+inline constexpr char kDiagnosticResultBluetoothScanning[] =
+    "ChromeOS.Healthd.DiagnosticResult.BluetoothScanning";
+inline constexpr char kDiagnosticResultBluetoothPairing[] =
+    "ChromeOS.Healthd.DiagnosticResult.BluetoothPairing";
 
 }  // namespace metrics_name
 }  // namespace diagnostics

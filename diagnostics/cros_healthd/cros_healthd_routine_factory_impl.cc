@@ -21,6 +21,10 @@
 #include "diagnostics/cros_healthd/routines/battery_charge/battery_charge.h"
 #include "diagnostics/cros_healthd/routines/battery_discharge/battery_discharge.h"
 #include "diagnostics/cros_healthd/routines/battery_health/battery_health.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_discovery.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_pairing.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_power.h"
+#include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_scanning.h"
 #include "diagnostics/cros_healthd/routines/cpu_cache/cpu_cache.h"
 #include "diagnostics/cros_healthd/routines/cpu_stress/cpu_stress.h"
 #include "diagnostics/cros_healthd/routines/disk_read/disk_read.h"
@@ -323,6 +327,28 @@ CrosHealthdRoutineFactoryImpl::MakeAudioSetGainRoutine(uint64_t node_id,
                                                        bool mute_on) {
   return std::make_unique<AudioSetGainRoutine>(context_, node_id, gain,
                                                mute_on);
+}
+
+std::unique_ptr<DiagnosticRoutine>
+CrosHealthdRoutineFactoryImpl::MakeBluetoothPowerRoutine() {
+  return std::make_unique<BluetoothPowerRoutine>(context_);
+}
+
+std::unique_ptr<DiagnosticRoutine>
+CrosHealthdRoutineFactoryImpl::MakeBluetoothDiscoveryRoutine() {
+  return std::make_unique<BluetoothDiscoveryRoutine>(context_);
+}
+
+std::unique_ptr<DiagnosticRoutine>
+CrosHealthdRoutineFactoryImpl::MakeBluetoothScanningRoutine(
+    const std::optional<base::TimeDelta>& exec_duration) {
+  return std::make_unique<BluetoothScanningRoutine>(context_, exec_duration);
+}
+
+std::unique_ptr<DiagnosticRoutine>
+CrosHealthdRoutineFactoryImpl::MakeBluetoothPairingRoutine(
+    const std::string& peripheral_id) {
+  return std::make_unique<BluetoothPairingRoutine>(context_, peripheral_id);
 }
 
 }  // namespace diagnostics

@@ -147,6 +147,11 @@ int diag_main(int argc, char** argv) {
   DEFINE_uint32(gain, 100, "Target gain. [0-100]");
   DEFINE_bool(mute_on, false, "Mute or not.");
 
+  // Flag for the Bluetooth pairing routine.
+  DEFINE_string(
+      peripheral_id, "",
+      "ID of Bluetooth peripheral device for the Bluetooth pairing routine.");
+
   brillo::FlagHelper::Init(argc, argv, "diag - Device diagnostic tool.");
 
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
@@ -357,6 +362,24 @@ int diag_main(int argc, char** argv) {
       case mojo_ipc::DiagnosticRoutineEnum::kAudioSetGain:
         routine_result = actions.ActionRunAudioSetGainRoutine(
             FLAGS_node_id, FLAGS_gain, FLAGS_mute_on);
+        break;
+      case mojo_ipc::DiagnosticRoutineEnum::kBluetoothPower:
+        routine_result = actions.ActionRunBluetoothPowerRoutine();
+        break;
+      case mojo_ipc::DiagnosticRoutineEnum::kBluetoothDiscovery:
+        routine_result = actions.ActionRunBluetoothDiscoveryRoutine();
+        break;
+      case mojo_ipc::DiagnosticRoutineEnum::kBluetoothScanning:
+        routine_result = actions.ActionRunBluetoothScanningRoutine(
+            base::Seconds(FLAGS_length_seconds));
+        break;
+      case mojo_ipc::DiagnosticRoutineEnum::kBluetoothPairing:
+        if (FLAGS_peripheral_id.empty()) {
+          std::cout << "Invalid empty peripheral_id" << std::endl;
+          return EXIT_FAILURE;
+        }
+        routine_result =
+            actions.ActionRunBluetoothPairingRoutine(FLAGS_peripheral_id);
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kUnknown:
         // Never map FLAGS_routine to kUnknown field.

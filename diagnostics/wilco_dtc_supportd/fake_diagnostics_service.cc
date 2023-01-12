@@ -275,6 +275,28 @@ void FakeDiagnosticsService::RunAudioSetGainRoutine(
   std::move(callback).Run(run_routine_response_.Clone());
 }
 
+void FakeDiagnosticsService::RunBluetoothPowerRoutine(
+    RunBluetoothPowerRoutineCallback callback) {
+  std::move(callback).Run(run_routine_response_.Clone());
+}
+
+void FakeDiagnosticsService::RunBluetoothDiscoveryRoutine(
+    RunBluetoothDiscoveryRoutineCallback callback) {
+  std::move(callback).Run(run_routine_response_.Clone());
+}
+
+void FakeDiagnosticsService::RunBluetoothScanningRoutine(
+    mojo_ipc::NullableUint32Ptr length_seconds,
+    RunBluetoothScanningRoutineCallback callback) {
+  std::move(callback).Run(run_routine_response_.Clone());
+}
+
+void FakeDiagnosticsService::RunBluetoothPairingRoutine(
+    const std::string& peripheral_id,
+    RunBluetoothPairingRoutineCallback callback) {
+  std::move(callback).Run(run_routine_response_.Clone());
+}
+
 void FakeDiagnosticsService::SetMojoServiceIsAvailable(bool is_available) {
   is_available_ = is_available;
 }

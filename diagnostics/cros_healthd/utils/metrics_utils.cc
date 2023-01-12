@@ -152,6 +152,14 @@ std::optional<std::string> GetMetricName(mojom::DiagnosticRoutineEnum routine) {
       return metrics_name::kDiagnosticResultAudioSetVolume;
     case mojom::DiagnosticRoutineEnum::kAudioSetGain:
       return metrics_name::kDiagnosticResultAudioSetGain;
+    case mojom::DiagnosticRoutineEnum::kBluetoothPower:
+      return metrics_name::kDiagnosticResultBluetoothPower;
+    case mojom::DiagnosticRoutineEnum::kBluetoothDiscovery:
+      return metrics_name::kDiagnosticResultBluetoothDiscovery;
+    case mojom::DiagnosticRoutineEnum::kBluetoothScanning:
+      return metrics_name::kDiagnosticResultBluetoothScanning;
+    case mojom::DiagnosticRoutineEnum::kBluetoothPairing:
+      return metrics_name::kDiagnosticResultBluetoothPairing;
   }
 }
 

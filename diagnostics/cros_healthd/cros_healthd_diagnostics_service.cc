@@ -496,6 +496,39 @@ void CrosHealthdDiagnosticsService::RunAudioSetGainRoutine(
              std::move(callback));
 }
 
+void CrosHealthdDiagnosticsService::RunBluetoothPowerRoutine(
+    RunBluetoothPowerRoutineCallback callback) {
+  RunRoutine(routine_factory_->MakeBluetoothPowerRoutine(),
+             mojo_ipc::DiagnosticRoutineEnum::kBluetoothPower,
+             std::move(callback));
+}
+
+void CrosHealthdDiagnosticsService::RunBluetoothDiscoveryRoutine(
+    RunBluetoothDiscoveryRoutineCallback callback) {
+  RunRoutine(routine_factory_->MakeBluetoothDiscoveryRoutine(),
+             mojo_ipc::DiagnosticRoutineEnum::kBluetoothDiscovery,
+             std::move(callback));
+}
+
+void CrosHealthdDiagnosticsService::RunBluetoothScanningRoutine(
+    mojo_ipc::NullableUint32Ptr length_seconds,
+    RunBluetoothScanningRoutineCallback callback) {
+  std::optional<base::TimeDelta> exec_duration;
+  if (!length_seconds.is_null())
+    exec_duration = base::Seconds(length_seconds->value);
+  RunRoutine(routine_factory_->MakeBluetoothScanningRoutine(exec_duration),
+             mojo_ipc::DiagnosticRoutineEnum::kBluetoothScanning,
+             std::move(callback));
+}
+
+void CrosHealthdDiagnosticsService::RunBluetoothPairingRoutine(
+    const std::string& peripheral_id,
+    RunBluetoothPairingRoutineCallback callback) {
+  RunRoutine(routine_factory_->MakeBluetoothPairingRoutine(peripheral_id),
+             mojo_ipc::DiagnosticRoutineEnum::kBluetoothPairing,
+             std::move(callback));
+}
+
 void CrosHealthdDiagnosticsService::RunRoutine(
     std::unique_ptr<DiagnosticRoutine> routine,
     mojo_ipc::DiagnosticRoutineEnum routine_enum,
@@ -578,6 +611,10 @@ void CrosHealthdDiagnosticsService::PopulateAvailableRoutines(
       mojo_ipc::DiagnosticRoutineEnum::kSensitiveSensor,
       mojo_ipc::DiagnosticRoutineEnum::kAudioSetVolume,
       mojo_ipc::DiagnosticRoutineEnum::kAudioSetGain,
+      mojo_ipc::DiagnosticRoutineEnum::kBluetoothPower,
+      mojo_ipc::DiagnosticRoutineEnum::kBluetoothDiscovery,
+      mojo_ipc::DiagnosticRoutineEnum::kBluetoothScanning,
+      mojo_ipc::DiagnosticRoutineEnum::kBluetoothPairing,
   };
 
   if (context_->system_config()->HasBattery()) {

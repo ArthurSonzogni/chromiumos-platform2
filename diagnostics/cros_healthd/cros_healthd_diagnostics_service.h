@@ -141,6 +141,16 @@ class CrosHealthdDiagnosticsService final
                               uint8_t gain,
                               bool mute_on,
                               RunAudioSetGainRoutineCallback callback) override;
+  void RunBluetoothPowerRoutine(
+      RunBluetoothPowerRoutineCallback callback) override;
+  void RunBluetoothDiscoveryRoutine(
+      RunBluetoothDiscoveryRoutineCallback callback) override;
+  void RunBluetoothScanningRoutine(
+      ash::cros_healthd::mojom::NullableUint32Ptr length_seconds,
+      RunBluetoothScanningRoutineCallback callback) override;
+  void RunBluetoothPairingRoutine(
+      const std::string& peripheral_id,
+      RunBluetoothPairingRoutineCallback callback) override;
 
  private:
   void RunRoutine(

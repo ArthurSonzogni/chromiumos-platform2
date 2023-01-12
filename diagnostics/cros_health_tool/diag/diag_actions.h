@@ -105,6 +105,11 @@ class DiagActions final {
   bool ActionRunAudioSetGainRoutine(uint64_t node_id,
                                     uint8_t volume,
                                     bool mute_on);
+  bool ActionRunBluetoothPowerRoutine();
+  bool ActionRunBluetoothDiscoveryRoutine();
+  bool ActionRunBluetoothScanningRoutine(
+      const std::optional<base::TimeDelta>& exec_duration);
+  bool ActionRunBluetoothPairingRoutine(const std::string& peripheral_id);
 
   // Cancels the next routine run, when that routine reports a progress percent
   // greater than or equal to |percent|. Should be called before running the
