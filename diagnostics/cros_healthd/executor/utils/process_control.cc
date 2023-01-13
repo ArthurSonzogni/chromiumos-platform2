@@ -10,8 +10,14 @@
 namespace diagnostics {
 
 ProcessControl::ProcessControl(std::unique_ptr<brillo::Process> process)
-    : process_(std::move(process)) {}
+    : process_(std::move(process)) {
+  CHECK(!process_->pid()) << "The process has already started.";
+}
 
 ProcessControl::~ProcessControl() = default;
+
+void ProcessControl::Start() {
+  process_->Start();
+}
 
 }  // namespace diagnostics

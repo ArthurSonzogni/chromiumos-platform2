@@ -21,6 +21,7 @@
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
@@ -147,99 +148,27 @@ void ReadTrimFileAndReplyCallback(
   std::move(callback).Run(content);
 }
 
-void GetFingerprintFrameCallback(
-    mojom::Executor::GetFingerprintFrameCallback callback,
-    std::unique_ptr<DelegateProcess> delegate,
-    mojom::FingerprintFrameResultPtr result,
-    const std::optional<std::string>& err) {
-  delegate.reset();
-  std::move(callback).Run(std::move(result), err);
-}
-
-void GetFingerprintFrameTask(
-    mojom::FingerprintCaptureType type,
-    mojom::Executor::GetFingerprintFrameCallback callback) {
-  auto delegate = std::make_unique<DelegateProcess>(
-      seccomp_file::kFingerprint, kFingerprintUserAndGroup, kNullCapability,
-      /*readonly_mount_points=*/std::vector<base::FilePath>{},
-      /*writable_mount_points=*/
-      std::vector<base::FilePath>{base::FilePath{fingerprint::kCrosFpPath}});
-
-  auto cb = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
-      std::move(callback), mojom::FingerprintFrameResult::New(),
-      kFailToLaunchDelegate);
-  delegate->remote()->GetFingerprintFrame(
-      type, base::BindOnce(&GetFingerprintFrameCallback, std::move(cb),
-                           std::move(delegate)));
-}
-
-void GetFingerprintInfoCallback(
-    mojom::Executor::GetFingerprintInfoCallback callback,
-    std::unique_ptr<DelegateProcess> delegate,
-    mojom::FingerprintInfoResultPtr result,
-    const std::optional<std::string>& err) {
-  delegate.reset();
-  std::move(callback).Run(std::move(result), err);
-}
-
-void GetFingerprintInfoTask(
-    mojom::Executor::GetFingerprintInfoCallback callback) {
-  auto delegate = std::make_unique<DelegateProcess>(
-      seccomp_file::kFingerprint, kFingerprintUserAndGroup, kNullCapability,
-      /*readonly_mount_points=*/std::vector<base::FilePath>{},
-      /*writable_mount_points=*/
-      std::vector<base::FilePath>{base::FilePath{fingerprint::kCrosFpPath}});
-
-  auto cb = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
-      std::move(callback), mojom::FingerprintInfoResult::New(),
-      kFailToLaunchDelegate);
-  delegate->remote()->GetFingerprintInfo(base::BindOnce(
-      &GetFingerprintInfoCallback, std::move(cb), std::move(delegate)));
-}
-
-void SetLedColorCallback(mojom::Executor::SetLedColorCallback callback,
-                         std::unique_ptr<DelegateProcess> delegate,
-                         const std::optional<std::string>& err) {
-  delegate.reset();
-  std::move(callback).Run(err);
-}
-
-void SetLedColorTask(mojom::LedName name,
-                     mojom::LedColor color,
-                     mojom::Executor::SetLedColorCallback callback) {
-  auto delegate = std::make_unique<DelegateProcess>(
-      seccomp_file::kLed, kEcUserAndGroup, kNullCapability,
-      /*readonly_mount_points=*/std::vector<base::FilePath>{},
-      /*writable_mount_points=*/
-      std::vector<base::FilePath>{base::FilePath{kCrosEcDevice}});
-
-  auto cb = mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback),
-                                                        kFailToLaunchDelegate);
-  delegate->remote()->SetLedColor(
-      name, color,
-      base::BindOnce(&SetLedColorCallback, std::move(cb), std::move(delegate)));
-}
-
-void ResetLedColorCallback(mojom::Executor::ResetLedColorCallback callback,
-                           std::unique_ptr<DelegateProcess> delegate,
-                           const std::optional<std::string>& err) {
-  delegate.reset();
-  std::move(callback).Run(err);
-}
-
-void ResetLedColorTask(mojom::LedName name,
-                       mojom::Executor::ResetLedColorCallback callback) {
-  auto delegate = std::make_unique<DelegateProcess>(
-      seccomp_file::kLed, kEcUserAndGroup, kNullCapability,
-      /*readonly_mount_points=*/std::vector<base::FilePath>{},
-      /*writable_mount_points=*/
-      std::vector<base::FilePath>{base::FilePath{kCrosEcDevice}});
-
-  auto cb = mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback),
-                                                        kFailToLaunchDelegate);
-  delegate->remote()->ResetLedColor(
-      name, base::BindOnce(&ResetLedColorCallback, std::move(cb),
-                           std::move(delegate)));
+// A helper to create a delegate callback which only run once and reply the
+// result to a callback. This takes a delegate instance and will destruct it
+// after the callback is called. If the callback is dropped (e.g. mojo
+// disconnect), the `default_args` is used to reply the callback.
+//
+// Example:
+//   auto delegate = std::make_unique<DelegateProcess>(...);
+//   // Get pointer and move the delegate into the callback.
+//   auto* delegate_ptr = delegate.get();
+//   delegate_ptr->remote()->SomeMethod(
+//     CreateOnceDelegateCallback(
+//       std::move(delegate), std::move(callback), ...));
+//   delegate_ptr->StartAsync();
+//
+template <typename Callback, typename... Args>
+Callback CreateOnceDelegateCallback(std::unique_ptr<DelegateProcess> delegate,
+                                    Callback callback,
+                                    Args... default_args) {
+  base::OnceClosure deleter = base::DoNothingWithBoundArgs(std::move(delegate));
+  return mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+      std::move(callback).Then(std::move(deleter)), std::move(default_args)...);
 }
 
 }  // namespace
@@ -464,28 +393,64 @@ void Executor::GetLidAngle(GetLidAngleCallback callback) {
 
 void Executor::GetFingerprintFrame(mojom::FingerprintCaptureType type,
                                    GetFingerprintFrameCallback callback) {
-  base::SequencedTaskRunnerHandle::Get()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&GetFingerprintFrameTask, type, std::move(callback)));
+  auto delegate = std::make_unique<DelegateProcess>(
+      seccomp_file::kFingerprint, kFingerprintUserAndGroup, kNullCapability,
+      /*readonly_mount_points=*/std::vector<base::FilePath>{},
+      /*writable_mount_points=*/
+      std::vector<base::FilePath>{base::FilePath{fingerprint::kCrosFpPath}});
+
+  auto* delegate_ptr = delegate.get();
+  delegate_ptr->remote()->GetFingerprintFrame(
+      type, CreateOnceDelegateCallback(std::move(delegate), std::move(callback),
+                                       mojom::FingerprintFrameResult::New(),
+                                       kFailToLaunchDelegate));
+  delegate_ptr->StartAsync();
 }
 
 void Executor::GetFingerprintInfo(GetFingerprintInfoCallback callback) {
-  base::SequencedTaskRunnerHandle::Get()->PostTask(
-      FROM_HERE, base::BindOnce(&GetFingerprintInfoTask, std::move(callback)));
+  auto delegate = std::make_unique<DelegateProcess>(
+      seccomp_file::kFingerprint, kFingerprintUserAndGroup, kNullCapability,
+      /*readonly_mount_points=*/std::vector<base::FilePath>{},
+      /*writable_mount_points=*/
+      std::vector<base::FilePath>{base::FilePath{fingerprint::kCrosFpPath}});
+
+  auto* delegate_ptr = delegate.get();
+  delegate_ptr->remote()->GetFingerprintInfo(CreateOnceDelegateCallback(
+      std::move(delegate), std::move(callback),
+      mojom::FingerprintInfoResult::New(), kFailToLaunchDelegate));
+  delegate_ptr->StartAsync();
 }
 
 void Executor::SetLedColor(mojom::LedName name,
                            mojom::LedColor color,
                            SetLedColorCallback callback) {
-  base::SequencedTaskRunnerHandle::Get()->PostTask(
-      FROM_HERE,
-      base::BindOnce(&SetLedColorTask, name, color, std::move(callback)));
+  auto delegate = std::make_unique<DelegateProcess>(
+      seccomp_file::kLed, kEcUserAndGroup, kNullCapability,
+      /*readonly_mount_points=*/std::vector<base::FilePath>{},
+      /*writable_mount_points=*/
+      std::vector<base::FilePath>{base::FilePath{kCrosEcDevice}});
+
+  auto* delegate_ptr = delegate.get();
+  delegate_ptr->remote()->SetLedColor(
+      name, color,
+      CreateOnceDelegateCallback(std::move(delegate), std::move(callback),
+                                 kFailToLaunchDelegate));
+  delegate_ptr->StartAsync();
 }
 
 void Executor::ResetLedColor(ash::cros_healthd::mojom::LedName name,
                              ResetLedColorCallback callback) {
-  base::SequencedTaskRunnerHandle::Get()->PostTask(
-      FROM_HERE, base::BindOnce(&ResetLedColorTask, name, std::move(callback)));
+  auto delegate = std::make_unique<DelegateProcess>(
+      seccomp_file::kLed, kEcUserAndGroup, kNullCapability,
+      /*readonly_mount_points=*/std::vector<base::FilePath>{},
+      /*writable_mount_points=*/
+      std::vector<base::FilePath>{base::FilePath{kCrosEcDevice}});
+
+  auto* delegate_ptr = delegate.get();
+  delegate_ptr->remote()->ResetLedColor(
+      name, CreateOnceDelegateCallback(std::move(delegate), std::move(callback),
+                                       kFailToLaunchDelegate));
+  delegate_ptr->StartAsync();
 }
 
 void Executor::GetHciDeviceConfig(GetHciDeviceConfigCallback callback) {
@@ -500,9 +465,9 @@ void Executor::GetHciDeviceConfig(GetHciDeviceConfigCallback callback) {
                      /*combine_stdout_and_stderr=*/false);
 }
 
-void Executor::MonitorAudioJackTask(
+void Executor::MonitorAudioJack(
     mojo::PendingRemote<mojom::AudioJackObserver> observer,
-    mojo::PendingReceiver<mojom::ProcessControl> process_control) {
+    mojo::PendingReceiver<mojom::ProcessControl> process_control_receiver) {
   auto delegate = std::make_unique<DelegateProcess>(
       seccomp_file::kEvdev, kEvdevUserAndGroup, kNullCapability,
       /*readonly_mount_points=*/
@@ -512,16 +477,12 @@ void Executor::MonitorAudioJackTask(
 
   delegate->remote()->MonitorAudioJack(std::move(observer));
   auto controller = std::make_unique<ProcessControl>(std::move(delegate));
-  process_control_set_.Add(std::move(controller), std::move(process_control));
-}
 
-void Executor::MonitorAudioJack(
-    mojo::PendingRemote<mojom::AudioJackObserver> observer,
-    mojo::PendingReceiver<mojom::ProcessControl> process_control) {
   base::SequencedTaskRunnerHandle::Get()->PostTask(
       FROM_HERE,
-      base::BindOnce(&Executor::MonitorAudioJackTask, base::Unretained(this),
-                     std::move(observer), std::move(process_control)));
+      base::BindOnce(&Executor::RunLongRunningDelegate,
+                     weak_factory_.GetWeakPtr(), std::move(controller),
+                     std::move(process_control_receiver)));
 }
 
 void Executor::RunUntrackedBinary(
@@ -589,6 +550,13 @@ void Executor::OnTrackedBinaryFinished(
   DCHECK(itr != tracked_processes_.end());
   tracked_processes_.erase(itr);
   std::move(callback).Run(std::move(result));
+}
+
+void Executor::RunLongRunningDelegate(
+    std::unique_ptr<ProcessControl> process_control,
+    mojo::PendingReceiver<mojom::ProcessControl> receiver) {
+  process_control->Start();
+  process_control_set_.Add(std::move(process_control), std::move(receiver));
 }
 
 }  // namespace diagnostics

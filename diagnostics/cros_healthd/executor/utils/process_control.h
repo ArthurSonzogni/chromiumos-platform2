@@ -26,6 +26,9 @@ class ProcessControl : public ash::cros_healthd::mojom::ProcessControl {
   ProcessControl& operator=(const ProcessControl&) = delete;
   ~ProcessControl() override;
 
+  // Start the process.
+  void Start();
+
  private:
   std::unique_ptr<brillo::Process> process_;
 };

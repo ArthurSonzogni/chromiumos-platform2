@@ -28,6 +28,8 @@
 #include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace diagnostics {
+class ProcessControl;
+
 bool IsValidWirelessInterfaceName(const std::string& interface_name);
 
 // Production implementation of the mojom::Executor Mojo interface.
@@ -75,7 +77,7 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
   void MonitorAudioJack(
       mojo::PendingRemote<ash::cros_healthd::mojom::AudioJackObserver> observer,
       mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
-          process_control) override;
+          process_control_receiver) override;
 
  private:
   // Runs the given process and wait for it to die. Does not track the process
@@ -105,10 +107,11 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
       const std::string& binary_path_str,
       const siginfo_t& siginfo);
 
-  void MonitorAudioJackTask(
-      mojo::PendingRemote<ash::cros_healthd::mojom::AudioJackObserver> observer,
-      mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
-          process_control);
+  // Runs a long running delegate process. Takes a ProcessControl which holds
+  // the delegate and a receiver to connect to the ProcessControl.
+  void RunLongRunningDelegate(
+      std::unique_ptr<ProcessControl> process_control,
+      mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver);
 
   // Task runner for all Mojo callbacks.
   const scoped_refptr<base::SingleThreadTaskRunner> mojo_task_runner_;

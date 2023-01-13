@@ -8,9 +8,9 @@
 #include <utility>
 #include <vector>
 
-#include <mojo/public/cpp/bindings/remote.h>
+#include <base/threading/sequenced_task_runner_handle.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
-#include <mojo/public/cpp/system/invitation.h>
+#include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/system/message_pipe.h>
 
 #include "diagnostics/cros_healthd/delegate/constants.h"
@@ -42,8 +42,7 @@ DelegateProcess::DelegateProcess(
                        capabilities_mask,
                        readonly_mount_points,
                        writable_mount_points) {
-  SendMojoInvitation();
-  RunDelegate();
+  Init();
 }
 
 DelegateProcess::DelegateProcess(
@@ -51,23 +50,32 @@ DelegateProcess::DelegateProcess(
     const std::vector<base::FilePath>& readonly_mount_points)
     : SandboxedProcess(
           {kDelegateBinary}, seccomp_filename, readonly_mount_points) {
-  SendMojoInvitation();
-  RunDelegate();
+  Init();
 }
 
-void DelegateProcess::SendMojoInvitation() {
-  mojo::OutgoingInvitation invitation;
-  mojo::ScopedMessagePipeHandle pipe = invitation.AttachMessagePipe(0);
-  mojo::OutgoingInvitation::Send(std::move(invitation),
-                                 base::kNullProcessHandle,
-                                 channel_.TakeLocalEndpoint());
+void DelegateProcess::Init() {
+  mojo::ScopedMessagePipeHandle pipe = invitation_.AttachMessagePipe(0);
   remote_.Bind(mojo::PendingRemote<mojom::Delegate>(std::move(pipe), 0));
 }
 
-void DelegateProcess::RunDelegate() {
+void DelegateProcess::StartAsync() {
+  base::SequencedTaskRunnerHandle::Get()->PostTask(
+      FROM_HERE, base::BindOnce(&DelegateProcess::StartAndIgnoreResult,
+                                weak_factory_.GetWeakPtr()));
+}
+
+void DelegateProcess::StartAndIgnoreResult() {
+  Start();
+}
+
+bool DelegateProcess::Start() {
+  mojo::PlatformChannel channel;
+  mojo::OutgoingInvitation::Send(std::move(invitation_),
+                                 base::kNullProcessHandle,
+                                 channel.TakeLocalEndpoint());
   base::LaunchOptions options;
   std::string value;
-  channel_.PrepareToPassRemoteEndpoint(&options.fds_to_remap, &value);
+  channel.PrepareToPassRemoteEndpoint(&options.fds_to_remap, &value);
 
   AddArg(std::string("--") + kDelegateMojoChannelHandle + "=" + value);
 
@@ -75,8 +83,9 @@ void DelegateProcess::RunDelegate() {
     BindFd(pii.first, pii.second);
   }
 
-  SandboxedProcess::Start();
-  channel_.RemoteProcessLaunchAttempted();
+  bool res = SandboxedProcess::Start();
+  channel.RemoteProcessLaunchAttempted();
+  return res;
 }
 
 }  // namespace diagnostics

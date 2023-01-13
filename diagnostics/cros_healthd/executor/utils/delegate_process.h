@@ -8,8 +8,10 @@
 #include <string>
 #include <vector>
 
+#include <base/memory/weak_ptr.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/platform/platform_channel.h>
+#include <mojo/public/cpp/system/invitation.h>
 
 #include "diagnostics/cros_healthd/executor/utils/sandboxed_process.h"
 #include "diagnostics/cros_healthd/mojom/delegate.mojom.h"
@@ -22,34 +24,14 @@ namespace diagnostics {
 //     cros_healthd/executor/utils/sandboxed_process.h.
 //
 // Notice:
-// 1. |DelegateProcess| can't be initialized when the current thread is dealing
-// with a mojo task. For example, when calling `remote->Func()`, we can't create
-// |DelegateProcess| in `Func()`. A recommended way to create it is to launch a
-// new task in same thread.
+// 1. Mojo invitation can't be sent when the current thread is dealing with a
+// mojo task. This is done when `Start()` is called. A workaround is post a task
+// to call `Start()` in same thread, which is what `StartAsync()` does.
 //
 // 2. The users should be aware of the lifecycle of this object. Once it's
 // destroyed, the mojo connection to the delegate will disconnect.
-//
-// Example usage:
-//   // Assume `Func()` is the mojo receiver interface in the executor.
-//   void Executor::Func(callback) {
-//     base::SequencedTaskRunnerHandle::Get()->PostTask(
-//         FROM_HERE, base::BindOnce(&FuncTask, std::move(callback)));
-//   }
-//
-//   void FuncTask(base::OnceCallback<void(mojom::XXXResultPtr)> callback) {
-//     auto delegate = std::make_unique<DelegateProcess>("seccomp.policy");
-//     auto cb = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
-//         std::move(callback), default error params);
-//
-//     // Remember to move the |delegate| in to prevent being destroyed.
-//     delegate->remote()->GetData(
-//         base::BindOnce(&GetDataCallback, std::move(cb),
-//         std::move(delegate)));
-//   }
 class DelegateProcess : public SandboxedProcess {
  public:
-  using SandboxedProcess::SandboxedProcess;
   DelegateProcess(const std::string& seccomp_filename,
                   const std::string& user,
                   uint64_t capabilities_mask,
@@ -58,10 +40,14 @@ class DelegateProcess : public SandboxedProcess {
   DelegateProcess(
       const std::string& seccomp_filename,
       const std::vector<base::FilePath>& readonly_mount_points = {});
-
-  DelegateProcess(const DelegateProcess&) = delete;
-  DelegateProcess& operator=(const DelegateProcess&) = delete;
   ~DelegateProcess() override;
+
+ public:
+  // SandboxedProcess overrides.
+  bool Start() override;
+
+  // Start the process async on the same thread.
+  void StartAsync();
 
   auto remote() { return remote_.get(); }
 
@@ -69,11 +55,14 @@ class DelegateProcess : public SandboxedProcess {
   DelegateProcess();
 
  private:
-  virtual void SendMojoInvitation();
-  virtual void RunDelegate();
+  void Init();
 
-  mojo::PlatformChannel channel_;
+  void StartAndIgnoreResult();
+
   mojo::Remote<ash::cros_healthd::mojom::Delegate> remote_;
+  mojo::OutgoingInvitation invitation_;
+  // Must be the last member of the class.
+  base::WeakPtrFactory<DelegateProcess> weak_factory_{this};
 };
 
 }  // namespace diagnostics
