@@ -113,6 +113,7 @@ class VmBuilder {
   VmBuilder& SetBlockSize(size_t block_size);
 
   VmBuilder& SetVmMemoryId(VmMemoryId id);
+  VmBuilder& SetVmmSwapDir(base::FilePath vmm_swap_dir);
 
   // Builds the command line required to start a VM. Returns an empty list if
   // the vm args are invalid.
@@ -191,6 +192,7 @@ class VmBuilder {
   std::vector<std::vector<int32_t>> cpu_clusters_;
 
   std::optional<VmMemoryId> vm_memory_id_;
+  base::FilePath vmm_swap_dir_;
 
   base::StringPairs custom_params_;
 };
