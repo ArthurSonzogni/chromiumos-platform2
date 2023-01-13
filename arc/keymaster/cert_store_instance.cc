@@ -20,15 +20,6 @@ CertStoreInstance::CertStoreInstance(
     base::WeakPtr<KeymasterServer> keymaster_server)
     : keymaster_server_(keymaster_server) {}
 
-void CertStoreInstance::Init(mojo::PendingRemote<mojom::CertStoreHost> host,
-                             InitCallback callback) {
-  LOG(INFO) << "CertStoreInstance::Init";
-  host_.Bind(std::move(host));
-  std::move(callback).Run();
-
-  RequestSecurityTokenOperation();
-}
-
 void CertStoreInstance::UpdatePlaceholderKeys(
     std::vector<mojom::ChromeOsKeyPtr> keys,
     UpdatePlaceholderKeysCallback callback) {
@@ -38,31 +29,6 @@ void CertStoreInstance::UpdatePlaceholderKeys(
   } else {
     std::move(callback).Run(/*success=*/false);
   }
-}
-
-void CertStoreInstance::RequestSecurityTokenOperation() {
-  LOG(INFO) << "CertStoreInstance::RequestSecurityTokenOperation";
-  if (is_security_token_operation_proxy_ready_)
-    return;
-  mojo::PendingReceiver<mojom::SecurityTokenOperation> receiver =
-      security_token_operation_proxy_.BindNewPipeAndPassReceiver();
-  security_token_operation_proxy_.set_disconnect_handler(
-      base::BindRepeating(&CertStoreInstance::ResetSecurityTokenOperationProxy,
-                          weak_ptr_factory_.GetWeakPtr()));
-  host_->GetSecurityTokenOperation(
-      std::move(receiver),
-      base::BindOnce(&CertStoreInstance::OnSecurityTokenOperationProxyReady,
-                     weak_ptr_factory_.GetWeakPtr()));
-}
-
-void CertStoreInstance::ResetSecurityTokenOperationProxy() {
-  LOG(INFO) << "CertStoreInstance::ResetSecurityTokenOperationProxy";
-  is_security_token_operation_proxy_ready_ = false;
-}
-
-void CertStoreInstance::OnSecurityTokenOperationProxyReady() {
-  LOG(INFO) << "CertStoreInstance::OnSecurityTokenOperationProxyReady";
-  is_security_token_operation_proxy_ready_ = true;
 }
 
 }  // namespace keymaster

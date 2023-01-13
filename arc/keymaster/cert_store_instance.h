@@ -26,26 +26,10 @@ class CertStoreInstance : public mojom::CertStoreInstance {
 
   ~CertStoreInstance() override = default;
 
-  // mojom::CertStoreInstance overrides.
-  void Init(mojo::PendingRemote<mojom::CertStoreHost> host,
-            InitCallback callback) override;
-
   void UpdatePlaceholderKeys(std::vector<mojom::ChromeOsKeyPtr> keys,
                              UpdatePlaceholderKeysCallback callback) override;
 
  private:
-  // arc::mojom::CertStoreHost access methods.
-  void RequestSecurityTokenOperation();
-
-  void ResetSecurityTokenOperationProxy();
-  void OnSecurityTokenOperationProxyReady();
-
-  mojo::Remote<mojom::CertStoreHost> host_;
-  // Use as proxy only when initialized:
-  // |is_security_token_operation_proxy_ready_| is true.
-  mojo::Remote<mojom::SecurityTokenOperation> security_token_operation_proxy_;
-  bool is_security_token_operation_proxy_ready_ = false;
-
   base::WeakPtr<KeymasterServer> keymaster_server_;
 
   base::WeakPtrFactory<CertStoreInstance> weak_ptr_factory_{this};
