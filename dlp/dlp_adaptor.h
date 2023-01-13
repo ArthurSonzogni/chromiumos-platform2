@@ -17,6 +17,7 @@
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/scoped_file.h>
 #include <brillo/dbus/async_event_sequencer.h>
+#include <brillo/dbus/file_descriptor.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "dlp/dbus-proxies.h"
@@ -29,7 +30,6 @@
 namespace brillo {
 namespace dbus_utils {
 class DBusObject;
-class FileDescriptor;
 }  // namespace dbus_utils
 }  // namespace brillo
 

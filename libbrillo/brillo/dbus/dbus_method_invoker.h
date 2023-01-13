@@ -158,16 +158,9 @@ inline const T& HackMove(const T& val) {
 inline base::ScopedFD HackMove(const base::ScopedFD& val) {
   return std::move(const_cast<base::ScopedFD&>(val));
 }
-inline FileDescriptor HackMove(const FileDescriptor& val) {
-  return std::move(const_cast<FileDescriptor&>(val));
-}
 inline std::vector<base::ScopedFD> HackMove(
     const std::vector<base::ScopedFD>& val) {
   return std::move(const_cast<std::vector<base::ScopedFD>&>(val));
-}
-inline std::vector<FileDescriptor> HackMove(
-    const std::vector<FileDescriptor>& val) {
-  return std::move(const_cast<std::vector<FileDescriptor>&>(val));
 }
 }  // namespace internal
 

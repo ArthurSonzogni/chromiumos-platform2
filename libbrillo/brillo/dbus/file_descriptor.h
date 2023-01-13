@@ -12,32 +12,8 @@
 namespace brillo {
 namespace dbus_utils {
 
-// TODO(crbug.com/1330447): Repalce this by base::ScopedFD.
-// This struct wraps file descriptors to give them a type other than int.
-struct FileDescriptor {
-  FileDescriptor() = default;
-  FileDescriptor(FileDescriptor&& other) : fd(std::move(other.fd)) {}
-  FileDescriptor(base::ScopedFD&& other) : fd(std::move(other)) {}  // NOLINT
-  FileDescriptor(const FileDescriptor&) = delete;
-  FileDescriptor& operator=(const FileDescriptor&) = delete;
-
-  FileDescriptor& operator=(FileDescriptor&& other) {
-    fd = std::move(other.fd);
-    return *this;
-  }
-
-  FileDescriptor& operator=(base::ScopedFD&& other) {
-    fd = std::move(other);
-    return *this;
-  }
-
-  int release() { return fd.release(); }
-
-  int get() const { return fd.get(); }
-
- private:
-  base::ScopedFD fd;
-};
+// TODO(crbug.com/1330447): Remove FileDescriptor.
+using FileDescriptor = base::ScopedFD;
 
 }  // namespace dbus_utils
 }  // namespace brillo

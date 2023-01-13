@@ -428,13 +428,6 @@ struct DBusType<FileDescriptor> {
                            const FileDescriptor& value) {
     AppendValueToWriter(writer, value);
   }
-};
-
-template <>
-struct DBusType<base::ScopedFD> {
-  inline static std::string GetSignature() {
-    return DBUS_TYPE_UNIX_FD_AS_STRING;
-  }
   inline static bool Read(::dbus::MessageReader* reader,
                           base::ScopedFD* value) {
     return PopValueFromReader(reader, value);

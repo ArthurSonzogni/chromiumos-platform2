@@ -37,7 +37,6 @@ TEST(DBusUtils, Supported_BasicTypes) {
   EXPECT_TRUE(IsTypeSupported<double>::value);
   EXPECT_TRUE(IsTypeSupported<std::string>::value);
   EXPECT_TRUE(IsTypeSupported<ObjectPath>::value);
-  EXPECT_TRUE(IsTypeSupported<FileDescriptor>::value);
   EXPECT_TRUE(IsTypeSupported<base::ScopedFD>::value);
   EXPECT_TRUE(IsTypeSupported<Any>::value);
   EXPECT_TRUE(IsTypeSupported<google::protobuf::MessageLite>::value);
@@ -94,7 +93,6 @@ TEST(DBusUtils, Signatures_BasicTypes) {
   EXPECT_EQ("d", GetDBusSignature<double>());
   EXPECT_EQ("s", GetDBusSignature<std::string>());
   EXPECT_EQ("o", GetDBusSignature<ObjectPath>());
-  EXPECT_EQ("h", GetDBusSignature<FileDescriptor>());
   EXPECT_EQ("h", GetDBusSignature<base::ScopedFD>());
   EXPECT_EQ("v", GetDBusSignature<Any>());
 }
@@ -111,7 +109,6 @@ TEST(DBusUtils, Signatures_Arrays) {
   EXPECT_EQ("ad", GetDBusSignature<std::vector<double>>());
   EXPECT_EQ("as", GetDBusSignature<std::vector<std::string>>());
   EXPECT_EQ("ao", GetDBusSignature<std::vector<ObjectPath>>());
-  EXPECT_EQ("ah", GetDBusSignature<std::vector<FileDescriptor>>());
   EXPECT_EQ("ah", GetDBusSignature<std::vector<base::ScopedFD>>());
   EXPECT_EQ("av", GetDBusSignature<std::vector<Any>>());
   EXPECT_EQ("a(is)",
