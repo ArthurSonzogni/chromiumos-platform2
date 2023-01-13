@@ -222,6 +222,12 @@ VerifyStatAndGenerateImageHash(
       base::HexEncode(buf.data(), SHA256_DIGEST_LENGTH)};
 }
 
+// Safely initialized and trivially destructible static value of SC_CLK_TCK.
+const uint64_t GetScClockTck() {
+  static const uint64_t kScClockTck = sysconf(_SC_CLK_TCK);
+  return kScClockTck;
+}
+
 }  // namespace
 
 namespace secagentd {
@@ -231,9 +237,25 @@ constexpr ProcessCache::InternalProcessCacheType::size_type
 constexpr ProcessCache::InternalImageCacheType::size_type kImageCacheMaxSize =
     256;
 
+uint64_t ProcessCache::LossyNsecToClockT(bpf::time_ns_t ns) {
+  static constexpr uint64_t kNsecPerSec = 1000000000;
+  const uint64_t sc_clock_tck = GetScClockTck();
+  // Copied from the kernel procfs code though we unfortunately cannot use
+  // ifdefs and need to do comparisons live.
+  if ((kNsecPerSec % sc_clock_tck) == 0) {
+    return ns / (kNsecPerSec / sc_clock_tck);
+  } else if ((sc_clock_tck % 512) == 0) {
+    return (ns * sc_clock_tck / 512) / (kNsecPerSec / 512);
+  } else {
+    return (ns * 9) /
+           ((9ull * kNsecPerSec + (sc_clock_tck / 2)) / sc_clock_tck);
+  }
+}
+
 void ProcessCache::PartiallyFillProcessFromBpfTaskInfo(
     const bpf::cros_process_task_info& task_info, pb::Process* process_proto) {
-  ProcessCache::InternalProcessKeyType key{task_info.start_time, task_info.pid};
+  ProcessCache::InternalProcessKeyType key{
+      LossyNsecToClockT(task_info.start_time), task_info.pid};
   process_proto->set_process_uuid(StableUuid(key));
   process_proto->set_canonical_pid(task_info.pid);
   process_proto->set_canonical_uid(task_info.uid);
@@ -242,17 +264,14 @@ void ProcessCache::PartiallyFillProcessFromBpfTaskInfo(
       task_info.commandline_len));
 }
 
-ProcessCache::ProcessCache(const base::FilePath& root_path,
-                           uint64_t sc_clock_tck)
+ProcessCache::ProcessCache(const base::FilePath& root_path)
     : process_cache_(
           std::make_unique<InternalProcessCacheType>(kProcessCacheMaxSize)),
       image_cache_(
           std::make_unique<InternalImageCacheType>(kImageCacheMaxSize)),
-      root_path_(root_path),
-      sc_clock_tck_(sc_clock_tck) {}
+      root_path_(root_path) {}
 
-ProcessCache::ProcessCache()
-    : ProcessCache(base::FilePath("/"), sysconf(_SC_CLK_TCK)) {}
+ProcessCache::ProcessCache() : ProcessCache(base::FilePath("/")) {}
 
 void ProcessCache::PutFromBpfExec(
     const bpf::cros_process_start& process_start) {
@@ -473,20 +492,6 @@ ProcessCache::MakeFromProcfs(const ProcessCache::InternalProcessKeyType& key) {
     }
   }
   return InternalProcessValueType{std::move(process_proto), parent_key};
-}
-
-uint64_t ProcessCache::LossyNsecToClockT(bpf::time_ns_t ns) const {
-  static constexpr uint64_t kNsecPerSec = 1000000000;
-  // Copied from the kernel procfs code though we unfortunately cannot use
-  // ifdefs and need to do comparisons live.
-  if ((kNsecPerSec % sc_clock_tck_) == 0) {
-    return ns / (kNsecPerSec / sc_clock_tck_);
-  } else if ((sc_clock_tck_ % 512) == 0) {
-    return (ns * sc_clock_tck_ / 512) / (kNsecPerSec / 512);
-  } else {
-    return (ns * 9) /
-           ((9ull * kNsecPerSec + (sc_clock_tck_ / 2)) / sc_clock_tck_);
-  }
 }
 
 }  // namespace secagentd

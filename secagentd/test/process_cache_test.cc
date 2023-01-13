@@ -120,7 +120,7 @@ class ProcessCacheTestFixture : public ::testing::Test {
   void SetUp() override {
     ASSERT_TRUE(fake_root_.CreateUniqueTempDir());
     const base::FilePath& root = fake_root_.GetPath();
-    process_cache_ = ProcessCache::CreateForTesting(root, 100);
+    process_cache_ = ProcessCache::CreateForTesting(root);
 
     mock_procfs_ = {
         {kPidInit,
@@ -322,6 +322,24 @@ TEST_F(ProcessCacheTestFixture, TestStableUuid) {
   EXPECT_EQ(before[1]->process_uuid(), after[1]->process_uuid());
   // Might as well check that the UUIDs are somewhat unique.
   EXPECT_NE(before[0]->process_uuid(), before[1]->process_uuid());
+}
+
+TEST_F(ProcessCacheTestFixture, TestUuidBpfVsProcfs) {
+  const bpf::cros_process_task_info task_info = {
+      .pid = kPidChildOfInit,
+      .start_time = mock_procfs_[kPidChildOfInit].starttime_ns,
+  };
+  cros_xdr::reporting::Process bpf_process_proto;
+  ProcessCache::PartiallyFillProcessFromBpfTaskInfo(task_info,
+                                                    &bpf_process_proto);
+  EXPECT_TRUE(bpf_process_proto.has_process_uuid());
+  auto procfs_process_proto = process_cache_->GetProcessHierarchy(
+      kPidChildOfInit, mock_procfs_[kPidChildOfInit].starttime_ns, 1);
+  EXPECT_EQ(1, procfs_process_proto.size());
+  EXPECT_TRUE(procfs_process_proto[0]->has_process_uuid());
+
+  EXPECT_EQ(bpf_process_proto.process_uuid(),
+            procfs_process_proto[0]->process_uuid());
 }
 
 TEST_F(ProcessCacheTestFixture, ProcfsCacheHit) {

@@ -76,6 +76,11 @@ class ProcessCache : public ProcessCacheInterface {
   using InternalImageCacheType =
       base::LRUCache<InternalImageKeyType, InternalImageValueType>;
 
+  // Converts ns (from BPF) to clock_t for use in InternalProcessKeyType. It
+  // would be ideal to do this conversion in the BPF but we lack the required
+  // kernel constants there.
+  static uint64_t LossyNsecToClockT(bpf::time_ns_t ns);
+
   static void PartiallyFillProcessFromBpfTaskInfo(
       const bpf::cros_process_task_info& task_info,
       cros_xdr::reporting::Process* process_proto);
@@ -102,7 +107,7 @@ class ProcessCache : public ProcessCacheInterface {
  private:
   friend class testing::ProcessCacheTestFixture;
   // Internal constructor used for testing.
-  ProcessCache(const base::FilePath& root_path, uint64_t sc_clock_tck);
+  explicit ProcessCache(const base::FilePath& root_path);
   // Like LRUCache::Get, returns an internal iterator to the given key. Unlike
   // LRUCache::Get, best-effort tries to fetch missing keys from procfs. Then
   // inclusively Puts them in process_cache_ if successful and returns an
@@ -116,17 +121,12 @@ class ProcessCache : public ProcessCacheInterface {
   InternalImageCacheType::const_iterator InclusiveGetImage(
       const InternalImageKeyType& image_key,
       const base::FilePath& image_path_in_ns);
-  // Converts ns (from BPF) to clock_t for use in InternalKeyType. It would be
-  // ideal to do this conversion in the BPF but we lack the required kernel
-  // constants there.
-  uint64_t LossyNsecToClockT(bpf::time_ns_t ns) const;
 
   base::Lock process_cache_lock_;
   std::unique_ptr<InternalProcessCacheType> process_cache_;
   base::Lock image_cache_lock_;
   std::unique_ptr<InternalImageCacheType> image_cache_;
   const base::FilePath root_path_;
-  const uint64_t sc_clock_tck_;
 };
 
 }  // namespace secagentd
