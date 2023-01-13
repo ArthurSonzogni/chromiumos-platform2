@@ -116,7 +116,7 @@ int64_t BalanceAvailableBalloonPolicy::ComputeBalloonDelta(
     const int64_t delta = std::max(balloon_delta_capped, -balloon_actual);
     LOG(INFO) << "BalloonTrace:[" << vm << ","
               << (game_mode ? "game_mode_on," : ",") << (balloon_actual / MIB)
-              << "," << (delta / MIB) << (host_available / MIB) << ","
+              << "," << (delta / MIB) << "," << (host_available / MIB) << ","
               << (guest_cached / MIB) << "," << (guest_free / MIB) << "]";
     return delta;
   }
