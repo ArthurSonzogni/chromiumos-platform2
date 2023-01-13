@@ -11,7 +11,7 @@
 
 #include <base/files/file_path.h>
 
-#include "diagnostics/cros_healthd/routines/diag_routine.h"
+#include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
@@ -29,7 +29,7 @@ extern const uint32_t kAcPowerRoutineWaitingProgressPercent;
 
 // Checks the status of the power supply and optionally checks to see if the
 // type of the power supply matches the power_type argument.
-class AcPowerRoutine final : public DiagnosticRoutine {
+class AcPowerRoutine final : public DiagnosticRoutineWithStatus {
  public:
   // Override |root_dir| for testing only.
   AcPowerRoutine(ash::cros_healthd::mojom::AcPowerStatusEnum expected_status,
@@ -45,23 +45,17 @@ class AcPowerRoutine final : public DiagnosticRoutine {
   void Cancel() override;
   void PopulateStatusUpdate(ash::cros_healthd::mojom::RoutineUpdate* response,
                             bool include_output) override;
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() override;
 
  private:
   // Calculates the progress percent based on the current status.
   void CalculateProgressPercent();
   // Checks the machine state against the input parameters.
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum RunAcPowerRoutine();
+  void RunAcPowerRoutine();
 
-  // Status of the routine, reported by GetStatus() or noninteractive routine
-  // updates.
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_;
   // Expected status of the power supply.
   ash::cros_healthd::mojom::AcPowerStatusEnum expected_power_status_;
   // Expected type of the power supply.
   std::optional<std::string> expected_power_type_;
-  // Details of the routine's status, reported in noninteractive status updates.
-  std::string status_message_;
   // Root directory appended to relative paths used by the routine.
   base::FilePath root_dir_;
   // A measure of how far along the routine is, reported in all status updates.

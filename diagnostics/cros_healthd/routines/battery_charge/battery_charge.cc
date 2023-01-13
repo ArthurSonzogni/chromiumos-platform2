@@ -32,7 +32,6 @@ BatteryChargeRoutine::BatteryChargeRoutine(
     uint32_t minimum_charge_percent_required,
     const base::TickClock* tick_clock)
     : context_(context),
-      status_(mojo_ipc::DiagnosticRoutineStatusEnum::kReady),
       exec_duration_(exec_duration),
       minimum_charge_percent_required_(minimum_charge_percent_required) {
   if (tick_clock) {
@@ -48,37 +47,39 @@ BatteryChargeRoutine::BatteryChargeRoutine(
 BatteryChargeRoutine::~BatteryChargeRoutine() = default;
 
 void BatteryChargeRoutine::Start() {
-  DCHECK_EQ(status_, mojo_ipc::DiagnosticRoutineStatusEnum::kReady);
+  DCHECK_EQ(GetStatus(), mojo_ipc::DiagnosticRoutineStatusEnum::kReady);
   // Transition to waiting so the user can plug in the charger if necessary.
-  status_ = mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting;
+  UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting, "");
   CalculateProgressPercent();
 }
 
 void BatteryChargeRoutine::Resume() {
-  DCHECK_EQ(status_, mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting);
-  status_ = RunBatteryChargeRoutine();
-  if (status_ != mojo_ipc::DiagnosticRoutineStatusEnum::kRunning)
-    LOG(ERROR) << "Routine failed: " << status_message_;
+  DCHECK_EQ(GetStatus(), mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting);
+  RunBatteryChargeRoutine();
+  if (GetStatus() != mojo_ipc::DiagnosticRoutineStatusEnum::kRunning)
+    LOG(ERROR) << "Routine failed: " << GetStatusMessage();
 }
 
 void BatteryChargeRoutine::Cancel() {
+  auto status = GetStatus();
   // Cancel the routine if it hasn't already finished.
-  if (status_ == mojo_ipc::DiagnosticRoutineStatusEnum::kPassed ||
-      status_ == mojo_ipc::DiagnosticRoutineStatusEnum::kFailed ||
-      status_ == mojo_ipc::DiagnosticRoutineStatusEnum::kError) {
+  if (status == mojo_ipc::DiagnosticRoutineStatusEnum::kPassed ||
+      status == mojo_ipc::DiagnosticRoutineStatusEnum::kFailed ||
+      status == mojo_ipc::DiagnosticRoutineStatusEnum::kError) {
     return;
   }
 
   CalculateProgressPercent();
 
   callback_.Cancel();
-  status_ = mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled;
-  status_message_ = kBatteryChargeRoutineCancelledMessage;
+  UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled,
+               kBatteryChargeRoutineCancelledMessage);
 }
 
 void BatteryChargeRoutine::PopulateStatusUpdate(
     mojo_ipc::RoutineUpdate* response, bool include_output) {
-  if (status_ == mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting) {
+  auto status = GetStatus();
+  if (status == mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting) {
     auto interactive_update = mojo_ipc::InteractiveRoutineUpdate::New();
     interactive_update->user_message =
         mojo_ipc::DiagnosticRoutineUserMessageEnum::kPlugInACPower;
@@ -87,8 +88,8 @@ void BatteryChargeRoutine::PopulateStatusUpdate(
             std::move(interactive_update));
   } else {
     auto noninteractive_update = mojo_ipc::NonInteractiveRoutineUpdate::New();
-    noninteractive_update->status = status_;
-    noninteractive_update->status_message = status_message_;
+    noninteractive_update->status = status;
+    noninteractive_update->status_message = GetStatusMessage();
 
     response->routine_update_union =
         mojo_ipc::RoutineUpdateUnion::NewNoninteractiveUpdate(
@@ -105,43 +106,40 @@ void BatteryChargeRoutine::PopulateStatusUpdate(
   }
 }
 
-mojo_ipc::DiagnosticRoutineStatusEnum BatteryChargeRoutine::GetStatus() {
-  return status_;
-}
-
 void BatteryChargeRoutine::CalculateProgressPercent() {
-  if (status_ == mojo_ipc::DiagnosticRoutineStatusEnum::kPassed ||
-      status_ == mojo_ipc::DiagnosticRoutineStatusEnum::kFailed) {
+  auto status = GetStatus();
+  if (status == mojo_ipc::DiagnosticRoutineStatusEnum::kPassed ||
+      status == mojo_ipc::DiagnosticRoutineStatusEnum::kFailed) {
     // The routine has finished, so report 100.
     progress_percent_ = 100;
-  } else if (status_ != mojo_ipc::DiagnosticRoutineStatusEnum::kError &&
-             status_ != mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled &&
+  } else if (status != mojo_ipc::DiagnosticRoutineStatusEnum::kError &&
+             status != mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled &&
              start_ticks_.has_value()) {
     progress_percent_ =
         100 * (tick_clock_->NowTicks() - start_ticks_.value()) / exec_duration_;
   }
 }
 
-mojo_ipc::DiagnosticRoutineStatusEnum
-BatteryChargeRoutine::RunBatteryChargeRoutine() {
+void BatteryChargeRoutine::RunBatteryChargeRoutine() {
   std::optional<power_manager::PowerSupplyProperties> response =
       context_->powerd_adapter()->GetPowerSupplyProperties();
   if (!response.has_value()) {
-    status_message_ = kPowerdPowerSupplyPropertiesFailedMessage;
-    return mojo_ipc::DiagnosticRoutineStatusEnum::kError;
+    UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                 kPowerdPowerSupplyPropertiesFailedMessage);
+    return;
   }
   auto power_supply_proto = response.value();
 
   if (power_supply_proto.battery_state() !=
       power_manager::PowerSupplyProperties_BatteryState_CHARGING) {
-    status_message_ = kBatteryChargeRoutineNotChargingMessage;
-    return mojo_ipc::DiagnosticRoutineStatusEnum::kError;
+    UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                 kBatteryChargeRoutineNotChargingMessage);
+    return;
   }
 
   double beginning_charge_percent = power_supply_proto.battery_percent();
 
   if (beginning_charge_percent + minimum_charge_percent_required_ > 100) {
-    status_message_ = kBatteryChargeRoutineInvalidParametersMessage;
     base::Value error_dict(base::Value::Type::DICTIONARY);
     error_dict.SetKey("startingBatteryChargePercent",
                       base::Value(beginning_charge_percent));
@@ -149,7 +147,9 @@ BatteryChargeRoutine::RunBatteryChargeRoutine() {
         "chargePercentRequested",
         base::Value(static_cast<int>(minimum_charge_percent_required_)));
     output_.SetKey("errorDetails", std::move(error_dict));
-    return mojo_ipc::DiagnosticRoutineStatusEnum::kError;
+    UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                 kBatteryChargeRoutineInvalidParametersMessage);
+    return;
   }
 
   start_ticks_ = tick_clock_->NowTicks();
@@ -160,8 +160,8 @@ BatteryChargeRoutine::RunBatteryChargeRoutine() {
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE, callback_.callback(), exec_duration_);
 
-  status_message_ = kBatteryChargeRoutineRunningMessage;
-  return mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
+  UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kRunning,
+               kBatteryChargeRoutineRunningMessage);
 }
 
 void BatteryChargeRoutine::DetermineRoutineResult(
@@ -169,8 +169,8 @@ void BatteryChargeRoutine::DetermineRoutineResult(
   std::optional<power_manager::PowerSupplyProperties> response =
       context_->powerd_adapter()->GetPowerSupplyProperties();
   if (!response.has_value()) {
-    status_message_ = kPowerdPowerSupplyPropertiesFailedMessage;
-    status_ = mojo_ipc::DiagnosticRoutineStatusEnum::kError;
+    UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                 kPowerdPowerSupplyPropertiesFailedMessage);
     LOG(ERROR) << kPowerdPowerSupplyPropertiesFailedMessage;
     return;
   }
@@ -178,8 +178,8 @@ void BatteryChargeRoutine::DetermineRoutineResult(
   double ending_charge_percent = power_supply_proto.battery_percent();
 
   if (ending_charge_percent < beginning_charge_percent) {
-    status_message_ = kBatteryChargeRoutineNotChargingMessage;
-    status_ = mojo_ipc::DiagnosticRoutineStatusEnum::kError;
+    UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+                 kBatteryChargeRoutineNotChargingMessage);
     LOG(ERROR) << kBatteryChargeRoutineNotChargingMessage;
     return;
   }
@@ -189,13 +189,13 @@ void BatteryChargeRoutine::DetermineRoutineResult(
   result_dict.SetKey("chargePercent", base::Value(charge_percent));
   output_.SetKey("resultDetails", std::move(result_dict));
   if (charge_percent < minimum_charge_percent_required_) {
-    status_message_ = kBatteryChargeRoutineFailedInsufficientChargeMessage;
-    status_ = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
+    UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
+                 kBatteryChargeRoutineFailedInsufficientChargeMessage);
     return;
   }
 
-  status_message_ = kBatteryChargeRoutineSucceededMessage;
-  status_ = mojo_ipc::DiagnosticRoutineStatusEnum::kPassed;
+  UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kPassed,
+               kBatteryChargeRoutineSucceededMessage);
 }
 
 }  // namespace diagnostics

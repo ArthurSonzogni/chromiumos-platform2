@@ -11,7 +11,7 @@
 #include <base/values.h>
 
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_base.h"
-#include "diagnostics/cros_healthd/routines/diag_routine.h"
+#include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/dbus_bindings/bluetooth/dbus-proxies.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
@@ -23,7 +23,7 @@ constexpr base::TimeDelta kPowerRoutineTimeout = base::Seconds(5);
 // The Bluetooth power routine checks that the Bluetooth adapter's power
 // functionality is working correctly by checking the off and on powered status
 // in D-Bus level and in HCI level.
-class BluetoothPowerRoutine final : public DiagnosticRoutine,
+class BluetoothPowerRoutine final : public DiagnosticRoutineWithStatus,
                                     public BluetoothRoutineBase {
  public:
   explicit BluetoothPowerRoutine(Context* context);
@@ -37,7 +37,6 @@ class BluetoothPowerRoutine final : public DiagnosticRoutine,
   void Cancel() override;
   void PopulateStatusUpdate(ash::cros_healthd::mojom::RoutineUpdate* response,
                             bool include_output) override;
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() override;
 
  private:
   void RunNextStep();
@@ -70,11 +69,6 @@ class BluetoothPowerRoutine final : public DiagnosticRoutine,
   };
   TestStep step_ = TestStep::kInitialize;
 
-  // Status of the routine, reported by GetStatus() or routine updates.
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_ =
-      ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum::kReady;
-  // Details of the routine's status, reported in all status updates.
-  std::string status_message_;
   // Details about the routine's execution. Reported in status updates when
   // requested.
   base::Value::Dict output_dict_;

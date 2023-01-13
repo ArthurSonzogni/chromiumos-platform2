@@ -16,7 +16,7 @@
 
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_base.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
-#include "diagnostics/cros_healthd/routines/diag_routine.h"
+#include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/dbus_bindings/bluetooth/dbus-proxies.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
@@ -31,7 +31,7 @@ struct ScannedPeripheralDevice {
   std::vector<std::string> uuids;
 };
 
-class BluetoothScanningRoutine final : public DiagnosticRoutine,
+class BluetoothScanningRoutine final : public DiagnosticRoutineWithStatus,
                                        public BluetoothRoutineBase {
  public:
   explicit BluetoothScanningRoutine(Context* context,
@@ -46,7 +46,6 @@ class BluetoothScanningRoutine final : public DiagnosticRoutine,
   void Cancel() override;
   void PopulateStatusUpdate(ash::cros_healthd::mojom::RoutineUpdate* response,
                             bool include_output) override;
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() override;
 
  private:
   void RunNextStep();
@@ -85,11 +84,6 @@ class BluetoothScanningRoutine final : public DiagnosticRoutine,
   const base::TimeDelta exec_duration_;
   // Data of the scanned peripheral devices.
   std::map<dbus::ObjectPath, ScannedPeripheralDevice> scanned_devices_;
-  // Status of the routine, reported by GetStatus() or routine updates.
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_ =
-      ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum::kReady;
-  // Details of the routine's status, reported in all status updates.
-  std::string status_message_;
   // Must be the last class member.
   base::WeakPtrFactory<BluetoothScanningRoutine> weak_ptr_factory_{this};
 };

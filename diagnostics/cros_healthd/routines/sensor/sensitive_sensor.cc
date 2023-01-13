@@ -143,15 +143,15 @@ SensitiveSensorRoutine::SensitiveSensorRoutine(MojoService* const mojo_service)
 SensitiveSensorRoutine::~SensitiveSensorRoutine() = default;
 
 void SensitiveSensorRoutine::Start() {
-  DCHECK_EQ(status_, mojom::DiagnosticRoutineStatusEnum::kReady);
+  DCHECK_EQ(GetStatus(), mojom::DiagnosticRoutineStatusEnum::kReady);
 
   start_ticks_ = base::TimeTicks::Now();
 
   mojo_service_->GetSensorService()->GetAllDeviceIds(
       base::BindOnce(&SensitiveSensorRoutine::HandleGetAllDeviceIdsResponse,
                      weak_ptr_factory_.GetWeakPtr()));
-  status_ = mojom::DiagnosticRoutineStatusEnum::kRunning;
-  status_message_ = kSensitiveSensorRoutineRunningMessage;
+  UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kRunning,
+               kSensitiveSensorRoutineRunningMessage);
 
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
@@ -172,9 +172,11 @@ void SensitiveSensorRoutine::PopulateStatusUpdate(
     mojom::RoutineUpdate* response, bool include_output) {
   DCHECK(response);
 
+  auto status = GetStatus();
+
   response->routine_update_union =
       mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(
-          mojom::NonInteractiveRoutineUpdate::New(status_, status_message_));
+          mojom::NonInteractiveRoutineUpdate::New(status, GetStatusMessage()));
 
   if (include_output) {
     base::Value::Dict output_dict;
@@ -186,15 +188,15 @@ void SensitiveSensorRoutine::PopulateStatusUpdate(
   }
 
   // The routine is finished.
-  if (status_ == mojom::DiagnosticRoutineStatusEnum::kPassed ||
-      status_ == mojom::DiagnosticRoutineStatusEnum::kFailed ||
-      status_ == mojom::DiagnosticRoutineStatusEnum::kError) {
+  if (status == mojom::DiagnosticRoutineStatusEnum::kPassed ||
+      status == mojom::DiagnosticRoutineStatusEnum::kFailed ||
+      status == mojom::DiagnosticRoutineStatusEnum::kError) {
     response->progress_percent = 100;
     return;
   }
 
   // The routine is not started.
-  if (status_ == mojom::DiagnosticRoutineStatusEnum::kReady) {
+  if (status == mojom::DiagnosticRoutineStatusEnum::kReady) {
     response->progress_percent = 0;
     return;
   }
@@ -211,10 +213,6 @@ void SensitiveSensorRoutine::PopulateStatusUpdate(
   response->progress_percent =
       tested_sensor_percent +
       (100.0 - tested_sensor_percent) * std::min(1.0, running_time_ratio);
-}
-
-mojom::DiagnosticRoutineStatusEnum SensitiveSensorRoutine::GetStatus() {
-  return status_;
 }
 
 void SensitiveSensorRoutine::HandleGetAllDeviceIdsResponse(
@@ -361,8 +359,7 @@ void SensitiveSensorRoutine::SetResultAndStop(
   weak_ptr_factory_.InvalidateWeakPtrs();
   // Clear sensor observers.
   observer_receiver_set_.Clear();
-  status_ = status;
-  status_message_ = status_message;
+  UpdateStatus(status, std::move(status_message));
 }
 
 }  // namespace diagnostics

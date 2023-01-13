@@ -14,7 +14,7 @@
 #include <base/values.h>
 
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_base.h"
-#include "diagnostics/cros_healthd/routines/diag_routine.h"
+#include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/dbus_bindings/bluetooth/dbus-proxies.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
@@ -26,7 +26,7 @@ constexpr base::TimeDelta kRoutineDiscoveryTimeout = base::Seconds(5);
 // The Bluetooth discovery routine checks that the Bluetooth adapter can start
 // and stop discovery mode correctly by checking the on and off discovering
 // status in D-Bus level and in HCI level.
-class BluetoothDiscoveryRoutine final : public DiagnosticRoutine,
+class BluetoothDiscoveryRoutine final : public DiagnosticRoutineWithStatus,
                                         public BluetoothRoutineBase {
  public:
   explicit BluetoothDiscoveryRoutine(Context* context);
@@ -41,7 +41,6 @@ class BluetoothDiscoveryRoutine final : public DiagnosticRoutine,
   void Cancel() override;
   void PopulateStatusUpdate(ash::cros_healthd::mojom::RoutineUpdate* response,
                             bool include_output) override;
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() override;
 
  private:
   void RunNextStep();
@@ -93,11 +92,6 @@ class BluetoothDiscoveryRoutine final : public DiagnosticRoutine,
   bool hci_discovering_;
   // Current discovering status in D-Bus level.
   bool dbus_discovering_;
-  // Status of the routine, reported by GetStatus() or routine updates.
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_ =
-      ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum::kReady;
-  // Details of the routine's status, reported in all status updates.
-  std::string status_message_;
   // Details about the routine's execution. Reported in status updates when
   // requested.
   base::Value::Dict output_dict_;

@@ -10,13 +10,13 @@
 
 #include <base/memory/weak_ptr.h>
 
-#include "diagnostics/cros_healthd/routines/diag_routine.h"
+#include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
 
-class LedLitUpRoutine final : public DiagnosticRoutine {
+class LedLitUpRoutine final : public DiagnosticRoutineWithStatus {
  public:
   explicit LedLitUpRoutine(
       Context* context,
@@ -34,7 +34,6 @@ class LedLitUpRoutine final : public DiagnosticRoutine {
   void Cancel() override;
   void PopulateStatusUpdate(ash::cros_healthd::mojom::RoutineUpdate* response,
                             bool include_output) override;
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() override;
 
  private:
   void RunNextStep();
@@ -66,14 +65,6 @@ class LedLitUpRoutine final : public DiagnosticRoutine {
 
   // The response of |GetColorMatched| from |replier_|.
   bool color_matched_response_ = false;
-
-  // Status of the routine, reported by GetStatus() or noninteractive routine
-  // updates.
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_;
-
-  // Details of the routine's status, reported in non-interactive status
-  // updates.
-  std::string status_message_ = "";
 
   // Must be the last class member.
   base::WeakPtrFactory<LedLitUpRoutine> weak_ptr_factory_{this};

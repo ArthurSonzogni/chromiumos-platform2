@@ -19,8 +19,8 @@ PrivacyScreenRoutine::PrivacyScreenRoutine(Context* context, bool target_state)
 PrivacyScreenRoutine::~PrivacyScreenRoutine() = default;
 
 void PrivacyScreenRoutine::Start() {
-  DCHECK_EQ(status_, mojom::DiagnosticRoutineStatusEnum::kReady);
-  status_ = mojom::DiagnosticRoutineStatusEnum::kRunning;
+  DCHECK_EQ(GetStatus(), mojom::DiagnosticRoutineStatusEnum::kReady);
+  UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kRunning, "");
 
   if (!Initialize()) {
     // Routine status and failure message are already set. Directly exit.
@@ -55,21 +55,19 @@ void PrivacyScreenRoutine::Cancel() {
 
 void PrivacyScreenRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
                                                 bool include_output) {
+  auto status = GetStatus();
+
   auto update = mojom::NonInteractiveRoutineUpdate::New();
-  update->status = status_;
-  update->status_message = status_message_;
+  update->status = status;
+  update->status_message = GetStatusMessage();
   response->routine_update_union =
       mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
-  if (status_ == mojom::DiagnosticRoutineStatusEnum::kReady ||
-      status_ == mojom::DiagnosticRoutineStatusEnum::kRunning) {
+  if (status == mojom::DiagnosticRoutineStatusEnum::kReady ||
+      status == mojom::DiagnosticRoutineStatusEnum::kRunning) {
     response->progress_percent = 0;
   } else {
     response->progress_percent = 100;
   }
-}
-
-mojom::DiagnosticRoutineStatusEnum PrivacyScreenRoutine::GetStatus() {
-  return status_;
 }
 
 bool PrivacyScreenRoutine::Initialize() {
@@ -77,8 +75,8 @@ bool PrivacyScreenRoutine::Initialize() {
   if (!libdrm_util_->Initialize()) {
     // Failing to initialize libdrm_util is an internal error. It is not related
     // to privacy screen.
-    status_ = mojom::DiagnosticRoutineStatusEnum::kError;
-    status_message_ = kPrivacyScreenRoutineFailedToInitializeLibdrmUtilMessage;
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kError,
+                 kPrivacyScreenRoutineFailedToInitializeLibdrmUtilMessage);
     return false;
   }
 
@@ -92,15 +90,14 @@ void PrivacyScreenRoutine::OnReceiveResponse(bool success) {
 
 void PrivacyScreenRoutine::ValidateState() {
   if (request_processed_ == std::nullopt) {
-    status_ = mojom::DiagnosticRoutineStatusEnum::kFailed;
-    status_message_ =
-        kPrivacyScreenRoutineBrowserResponseTimeoutExceededMessage;
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
+                 kPrivacyScreenRoutineBrowserResponseTimeoutExceededMessage);
     return;
   }
 
   if (!request_processed_) {
-    status_ = mojom::DiagnosticRoutineStatusEnum::kFailed;
-    status_message_ = kPrivacyScreenRoutineRequestRejectedMessage;
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
+                 kPrivacyScreenRoutineRequestRejectedMessage);
     return;
   }
 
@@ -110,16 +107,16 @@ void PrivacyScreenRoutine::ValidateState() {
                                       &current_state);
 
   if (current_state != target_state_) {
-    status_ = mojom::DiagnosticRoutineStatusEnum::kFailed;
-    status_message_ =
+    UpdateStatus(
+        mojom::DiagnosticRoutineStatusEnum::kFailed,
         target_state_
             ? kPrivacyScreenRoutineFailedToTurnPrivacyScreenOnMessage
-            : kPrivacyScreenRoutineFailedToTurnPrivacyScreenOffMessage;
+            : kPrivacyScreenRoutineFailedToTurnPrivacyScreenOffMessage);
     return;
   }
 
-  status_ = mojom::DiagnosticRoutineStatusEnum::kPassed;
-  status_message_ = kPrivacyScreenRoutineSucceededMessage;
+  UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kPassed,
+               kPrivacyScreenRoutineSucceededMessage);
 }
 
 }  // namespace diagnostics

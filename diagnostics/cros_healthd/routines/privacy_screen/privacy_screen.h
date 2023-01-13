@@ -9,7 +9,7 @@
 #include <memory>
 #include <string>
 
-#include "diagnostics/cros_healthd/routines/diag_routine.h"
+#include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
 #include "diagnostics/cros_healthd/system/context.h"
 
 namespace diagnostics {
@@ -29,7 +29,7 @@ const char kPrivacyScreenRoutineRequestRejectedMessage[] =
 const char kPrivacyScreenRoutineBrowserResponseTimeoutExceededMessage[] =
     "Browser response timeout exceeded";
 
-class PrivacyScreenRoutine final : public DiagnosticRoutine {
+class PrivacyScreenRoutine final : public DiagnosticRoutineWithStatus {
  public:
   PrivacyScreenRoutine(Context* context, bool target_state);
   PrivacyScreenRoutine(const PrivacyScreenRoutine&) = delete;
@@ -42,7 +42,6 @@ class PrivacyScreenRoutine final : public DiagnosticRoutine {
   void Cancel() override;
   void PopulateStatusUpdate(mojom::RoutineUpdate* response,
                             bool include_output) override;
-  mojom::DiagnosticRoutineStatusEnum GetStatus() override;
 
  private:
   // Initializes |libdrm_util_| and |connector_id_|. Returns true if
@@ -65,15 +64,6 @@ class PrivacyScreenRoutine final : public DiagnosticRoutine {
 
   // The connector ID referring to the monitor component.
   uint32_t connector_id_;
-
-  // Status of the routine, reported by |GetStatus()| or non-interactive routine
-  // updates.
-  mojom::DiagnosticRoutineStatusEnum status_ =
-      mojom::DiagnosticRoutineStatusEnum::kReady;
-
-  // Details of the routine's status, reported in non-interactive status
-  // updates.
-  std::string status_message_ = "";
 
   // Expected privacy screen target state.
   bool target_state_;

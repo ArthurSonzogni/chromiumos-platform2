@@ -117,12 +117,13 @@ void SmartctlCheckRoutine::Start() {
       percentage_used_threshold_ < kPercentageUsedMin) {
     LOG(ERROR) << "Invalid threshold value (valid: 0-255): "
                << percentage_used_threshold_;
-    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kError,
-                 /*percent=*/100, kSmartctlCheckRoutineThresholdError);
+    UpdateStatusWithProgressPercent(mojom::DiagnosticRoutineStatusEnum::kError,
+                                    /*percent=*/100,
+                                    kSmartctlCheckRoutineThresholdError);
     return;
   }
 
-  status_ = mojom::DiagnosticRoutineStatusEnum::kRunning;
+  UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kRunning, "");
 
   auto result_callback =
       base::BindOnce(&SmartctlCheckRoutine::OnDebugdResultCallback,
@@ -138,37 +139,34 @@ void SmartctlCheckRoutine::Start() {
 void SmartctlCheckRoutine::Resume() {}
 void SmartctlCheckRoutine::Cancel() {}
 
-void SmartctlCheckRoutine::UpdateStatus(
+void SmartctlCheckRoutine::UpdateStatusWithProgressPercent(
     mojom::DiagnosticRoutineStatusEnum status,
     uint32_t percent,
     std::string msg) {
-  status_ = status;
+  UpdateStatus(status, std::move(msg));
   percent_ = percent;
-  status_message_ = std::move(msg);
 }
 
 void SmartctlCheckRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
                                                 bool include_output) {
+  auto status = GetStatus();
+
   auto update = mojom::NonInteractiveRoutineUpdate::New();
-  update->status = status_;
-  update->status_message = status_message_;
+  update->status = status;
+  update->status_message = GetStatusMessage();
 
   response->routine_update_union =
       mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
   response->progress_percent = percent_;
 
   if (include_output && !output_dict_.DictEmpty() &&
-      (status_ == mojom::DiagnosticRoutineStatusEnum::kPassed ||
-       status_ == mojom::DiagnosticRoutineStatusEnum::kFailed)) {
+      (status == mojom::DiagnosticRoutineStatusEnum::kPassed ||
+       status == mojom::DiagnosticRoutineStatusEnum::kFailed)) {
     std::string json;
     base::JSONWriter::Write(output_dict_, &json);
     response->output =
         CreateReadOnlySharedMemoryRegionMojoHandle(base::StringPiece(json));
   }
-}
-
-mojom::DiagnosticRoutineStatusEnum SmartctlCheckRoutine::GetStatus() {
-  return status_;
 }
 
 void SmartctlCheckRoutine::OnDebugdResultCallback(const std::string& result) {
@@ -182,8 +180,9 @@ void SmartctlCheckRoutine::OnDebugdResultCallback(const std::string& result) {
     LOG(ERROR) << "Unable to parse smartctl output: " << result;
     // TODO(b/260956052): Make the routine only available to NVMe, and return
     // kError in the parsing error.
-    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
-                 /*percent=*/100, kSmartctlCheckRoutineFailedToParse);
+    UpdateStatusWithProgressPercent(mojom::DiagnosticRoutineStatusEnum::kFailed,
+                                    /*percent=*/100,
+                                    kSmartctlCheckRoutineFailedToParse);
     return;
   }
 
@@ -208,19 +207,22 @@ void SmartctlCheckRoutine::OnDebugdResultCallback(const std::string& result) {
                << available_spare_check_passed
                << ", percentage_used check: " << percentage_used_check_passed
                << ", critical_warning check: " << critical_warning_check_passed;
-    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
-                 /*percent=*/100, kSmartctlCheckRoutineCheckFailed);
+    UpdateStatusWithProgressPercent(mojom::DiagnosticRoutineStatusEnum::kFailed,
+                                    /*percent=*/100,
+                                    kSmartctlCheckRoutineCheckFailed);
     return;
   }
-  UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kPassed,
-               /*percent=*/100, kSmartctlCheckRoutineSuccess);
+  UpdateStatusWithProgressPercent(mojom::DiagnosticRoutineStatusEnum::kPassed,
+                                  /*percent=*/100,
+                                  kSmartctlCheckRoutineSuccess);
 }
 
 void SmartctlCheckRoutine::OnDebugdErrorCallback(brillo::Error* error) {
   if (error) {
     LOG(ERROR) << "Debugd error: " << error->GetMessage();
-    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kError,
-                 /*percent=*/100, kSmartctlCheckRoutineDebugdError);
+    UpdateStatusWithProgressPercent(mojom::DiagnosticRoutineStatusEnum::kError,
+                                    /*percent=*/100,
+                                    kSmartctlCheckRoutineDebugdError);
   }
 }
 

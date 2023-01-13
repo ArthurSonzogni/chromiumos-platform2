@@ -50,8 +50,7 @@ FingerprintRoutine::FingerprintRoutine(Context* context,
                                        FingerprintParameter params)
     : context_(context),
       params_(std::move(params)),
-      step_(TestStep::kInitialize),
-      status_(mojom::DiagnosticRoutineStatusEnum::kReady) {}
+      step_(TestStep::kInitialize) {}
 
 FingerprintRoutine::~FingerprintRoutine() = default;
 
@@ -66,15 +65,11 @@ void FingerprintRoutine::Cancel() {}
 void FingerprintRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
                                               bool include_output) {
   auto update = mojom::NonInteractiveRoutineUpdate::New();
-  update->status = status_;
-  update->status_message = status_message_;
+  update->status = GetStatus();
+  update->status_message = GetStatusMessage();
   response->routine_update_union =
       mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
   response->progress_percent = step_ * 100 / TestStep::kComplete;
-}
-
-mojom::DiagnosticRoutineStatusEnum FingerprintRoutine::GetStatus() {
-  return status_;
 }
 
 bool FingerprintRoutine::CheckCheckerboardThreshold(
@@ -87,8 +82,8 @@ bool FingerprintRoutine::CheckCheckerboardThreshold(
         median_type1 > params_.pixel_median.cb_type1_upper ||
         median_type2 < params_.pixel_median.cb_type2_lower ||
         median_type2 > params_.pixel_median.cb_type2_upper) {
-      status_ = mojom::DiagnosticRoutineStatusEnum::kFailed;
-      status_message_ = "Checkerboard median deviation too large.";
+      UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
+                   "Checkerboard median deviation too large.");
       return false;
     }
   } else if (step_ == TestStep::kInvertedCheckerboardTest) {
@@ -96,25 +91,25 @@ bool FingerprintRoutine::CheckCheckerboardThreshold(
         median_type1 > params_.pixel_median.icb_type1_upper ||
         median_type2 < params_.pixel_median.icb_type2_lower ||
         median_type2 > params_.pixel_median.icb_type2_upper) {
-      status_ = mojom::DiagnosticRoutineStatusEnum::kFailed;
-      status_message_ = "Inverted checkerboard median deviation too large.";
+      UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
+                   "Inverted checkerboard median deviation too large.");
       return false;
     }
   } else {
-    status_ = mojom::DiagnosticRoutineStatusEnum::kError;
-    status_message_ = "Unexpected flow in checkerboard test.";
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kError,
+                 "Unexpected flow in checkerboard test.");
     return false;
   }
 
   if (dead_pixel > params_.max_dead_pixels) {
-    status_ = mojom::DiagnosticRoutineStatusEnum::kFailed;
-    status_message_ = "Dead pixel count exceed threshold.";
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
+                 "Dead pixel count exceed threshold.");
     return false;
   }
 
   if (dead_pixel_in_detect_zone > params_.max_dead_pixels_in_detect_zone) {
-    status_ = mojom::DiagnosticRoutineStatusEnum::kFailed;
-    status_message_ = "Dead pixel count in detect zone exceed threshold.";
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
+                 "Dead pixel count in detect zone exceed threshold.");
     return false;
   }
 
@@ -145,14 +140,13 @@ void FingerprintRoutine::ExamineCheckerboardFrame(
     mojom::FingerprintFrameResultPtr result,
     const std::optional<std::string>& err) {
   if (err.has_value()) {
-    status_ = mojom::DiagnosticRoutineStatusEnum::kFailed;
-    status_message_ = err.value();
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed, err.value());
     return;
   }
 
   if (!result) {
-    status_ = mojom::DiagnosticRoutineStatusEnum::kFailed;
-    status_message_ = "Failed to get frame result.";
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
+                 "Failed to get frame result.");
     return;
   }
 
@@ -196,8 +190,8 @@ void FingerprintRoutine::ExamineCheckerboardFrame(
 
 bool FingerprintRoutine::CheckResetTestThreshold(uint32_t error_reset_pixel) {
   if (error_reset_pixel > params_.max_error_reset_pixels) {
-    status_ = mojom::DiagnosticRoutineStatusEnum::kFailed;
-    status_message_ = "Error reset pixel count exceed threshold.";
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
+                 "Error reset pixel count exceed threshold.");
     return false;
   }
 
@@ -208,14 +202,13 @@ void FingerprintRoutine::ExamineResetFrame(
     mojom::FingerprintFrameResultPtr result,
     const std::optional<std::string>& err) {
   if (err.has_value()) {
-    status_ = mojom::DiagnosticRoutineStatusEnum::kFailed;
-    status_message_ = err.value();
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed, err.value());
     return;
   }
 
   if (!result) {
-    status_ = mojom::DiagnosticRoutineStatusEnum::kFailed;
-    status_message_ = "Failed to get frame result.";
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
+                 "Failed to get frame result.");
     return;
   }
 
@@ -246,32 +239,32 @@ void FingerprintRoutine::RunNextStep() {
 
   switch (step_) {
     case TestStep::kInitialize:
-      status_ = mojom::DiagnosticRoutineStatusEnum::kError;
-      status_message_ = "Unexpected fingerprint diagnostic flow.";
+      UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kError,
+                   "Unexpected fingerprint diagnostic flow.");
       break;
     case TestStep::kCheckerboardTest:
-      status_ = mojom::DiagnosticRoutineStatusEnum::kRunning;
+      UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kRunning, "");
       context_->executor()->GetFingerprintFrame(
           mojom::FingerprintCaptureType::kCheckerboardTest,
           base::BindOnce(&FingerprintRoutine::ExamineCheckerboardFrame,
                          base::Unretained(this)));
       break;
     case TestStep::kInvertedCheckerboardTest:
-      status_ = mojom::DiagnosticRoutineStatusEnum::kRunning;
+      UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kRunning, "");
       context_->executor()->GetFingerprintFrame(
           mojom::FingerprintCaptureType::kInvertedCheckerboardTest,
           base::BindOnce(&FingerprintRoutine::ExamineCheckerboardFrame,
                          base::Unretained(this)));
       break;
     case TestStep::kResetTest:
-      status_ = mojom::DiagnosticRoutineStatusEnum::kRunning;
+      UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kRunning, "");
       context_->executor()->GetFingerprintFrame(
           mojom::FingerprintCaptureType::kResetTest,
           base::BindOnce(&FingerprintRoutine::ExamineResetFrame,
                          base::Unretained(this)));
       break;
     case TestStep::kComplete:
-      status_ = mojom::DiagnosticRoutineStatusEnum::kPassed;
+      UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kPassed, "");
       break;
   }
 }

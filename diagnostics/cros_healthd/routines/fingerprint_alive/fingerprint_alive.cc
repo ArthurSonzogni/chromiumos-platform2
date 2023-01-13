@@ -20,12 +20,12 @@ namespace mojom = ::ash::cros_healthd::mojom;
 }  // namespace
 
 FingerprintAliveRoutine::FingerprintAliveRoutine(Context* context)
-    : context_(context), status_(mojom::DiagnosticRoutineStatusEnum::kReady) {}
+    : context_(context) {}
 
 FingerprintAliveRoutine::~FingerprintAliveRoutine() = default;
 
 void FingerprintAliveRoutine::Start() {
-  status_ = mojom::DiagnosticRoutineStatusEnum::kRunning;
+  UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kRunning, "");
   context_->executor()->GetFingerprintInfo(base::BindOnce(
       &FingerprintAliveRoutine::ExamineInfo, base::Unretained(this)));
 }
@@ -36,46 +36,43 @@ void FingerprintAliveRoutine::Cancel() {}
 
 void FingerprintAliveRoutine::PopulateStatusUpdate(
     mojom::RoutineUpdate* response, bool include_output) {
+  auto status = GetStatus();
+
   auto update = mojom::NonInteractiveRoutineUpdate::New();
-  update->status = status_;
-  update->status_message = status_message_;
+  update->status = status;
+  update->status_message = GetStatusMessage();
   response->routine_update_union =
       mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
-  if (status_ == mojom::DiagnosticRoutineStatusEnum::kReady ||
-      status_ == mojom::DiagnosticRoutineStatusEnum::kRunning) {
+  if (status == mojom::DiagnosticRoutineStatusEnum::kReady ||
+      status == mojom::DiagnosticRoutineStatusEnum::kRunning) {
     response->progress_percent = 0;
   } else {
     response->progress_percent = 100;
   }
 }
 
-mojom::DiagnosticRoutineStatusEnum FingerprintAliveRoutine::GetStatus() {
-  return status_;
-}
-
 void FingerprintAliveRoutine::ExamineInfo(
     mojom::FingerprintInfoResultPtr result,
     const std::optional<std::string>& err) {
   if (err.has_value()) {
-    status_ = mojom::DiagnosticRoutineStatusEnum::kFailed;
-    status_message_ = err.value();
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed, err.value());
     return;
   }
 
   if (!result) {
-    status_ = mojom::DiagnosticRoutineStatusEnum::kFailed;
-    status_message_ = "Failed to get fingerprint info.";
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
+                 "Failed to get fingerprint info.");
     return;
   }
 
   // The firmware copy should be RW in a normal state.
   if (!result->rw_fw) {
-    status_ = mojom::DiagnosticRoutineStatusEnum::kFailed;
-    status_message_ = "Fingerprint does not use a RW firmware copy.";
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
+                 "Fingerprint does not use a RW firmware copy.");
     return;
   }
 
-  status_ = mojom::DiagnosticRoutineStatusEnum::kPassed;
+  UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kPassed, "");
 }
 
 }  // namespace diagnostics

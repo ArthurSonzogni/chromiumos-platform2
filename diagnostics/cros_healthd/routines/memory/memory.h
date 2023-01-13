@@ -15,14 +15,14 @@
 #include <base/values.h>
 
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
-#include "diagnostics/cros_healthd/routines/diag_routine.h"
+#include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
 
 // The memory routine checks that the device's memory is working correctly.
-class MemoryRoutine final : public DiagnosticRoutine {
+class MemoryRoutine final : public DiagnosticRoutineWithStatus {
  public:
   // Override |tick_clock| for testing only.
   explicit MemoryRoutine(Context* context,
@@ -37,7 +37,6 @@ class MemoryRoutine final : public DiagnosticRoutine {
   void Cancel() override;
   void PopulateStatusUpdate(ash::cros_healthd::mojom::RoutineUpdate* response,
                             bool include_output) override;
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() override;
 
  private:
   // Takes the memtester result code from |process| and parses it to determine
@@ -51,10 +50,6 @@ class MemoryRoutine final : public DiagnosticRoutine {
   // Unowned. Should outlive this instance.
   Context* const context_ = nullptr;
 
-  // Status of the routine, reported by GetStatus() or routine updates.
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_;
-  // Details of the routine's status, reported in all status updates.
-  std::string status_message_;
   // Details about the routine's execution. Reported in status updates when
   // requested.
   base::Value output_dict_{base::Value::Type::DICTIONARY};

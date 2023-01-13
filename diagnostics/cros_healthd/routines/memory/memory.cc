@@ -72,7 +72,7 @@ std::string ProcessBackspaces(const std::string& raw_string) {
 
 MemoryRoutine::MemoryRoutine(Context* context,
                              const base::TickClock* tick_clock)
-    : context_(context), status_(mojom::DiagnosticRoutineStatusEnum::kReady) {
+    : context_(context) {
   DCHECK(context_);
 
   if (tick_clock) {
@@ -87,20 +87,20 @@ MemoryRoutine::MemoryRoutine(Context* context,
 MemoryRoutine::~MemoryRoutine() = default;
 
 void MemoryRoutine::Start() {
-  DCHECK_EQ(status_, mojom::DiagnosticRoutineStatusEnum::kReady);
+  DCHECK_EQ(GetStatus(), mojom::DiagnosticRoutineStatusEnum::kReady);
 
   auto memory_info = MemoryInfo::ParseFrom(context_->root_dir());
   if (!memory_info.has_value()) {
-    status_ = mojom::DiagnosticRoutineStatusEnum::kFailedToStart;
-    status_message_ = kMemoryRoutineFetchingAvailableMemoryFailureMessage;
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailedToStart,
+                 kMemoryRoutineFetchingAvailableMemoryFailureMessage);
     return;
   }
   uint32_t available_mem_kib = memory_info.value().available_memory_kib;
 
   // Ealry check and return if system doesn't have enough memory remains.
   if (available_mem_kib <= kMemoryRoutineReservedSizeKiB) {
-    status_ = mojom::DiagnosticRoutineStatusEnum::kFailedToStart;
-    status_message_ = kMemoryRoutineNotHavingEnoughAvailableMemoryMessage;
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailedToStart,
+                 kMemoryRoutineNotHavingEnoughAvailableMemoryMessage);
     return;
   }
 
@@ -108,8 +108,8 @@ void MemoryRoutine::Start() {
   expected_duration_us_ = available_mem_kib * 1024 * kMicrosecondsPerByte;
   start_ticks_ = tick_clock_->NowTicks();
 
-  status_ = mojom::DiagnosticRoutineStatusEnum::kRunning;
-  status_message_ = kMemoryRoutineRunningMessage;
+  UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kRunning,
+               kMemoryRoutineRunningMessage);
   context_->executor()->RunMemtester(
       available_mem_kib - kMemoryRoutineReservedSizeKiB,
       base::BindOnce(&MemoryRoutine::DetermineRoutineResult,
@@ -121,7 +121,7 @@ void MemoryRoutine::Resume() {}
 
 void MemoryRoutine::Cancel() {
   // Only cancel if the routine is running.
-  if (status_ != mojom::DiagnosticRoutineStatusEnum::kRunning)
+  if (GetStatus() != mojom::DiagnosticRoutineStatusEnum::kRunning)
     return;
 
   // Make sure any other callbacks won't run - they would override the state
@@ -129,19 +129,20 @@ void MemoryRoutine::Cancel() {
   weak_ptr_factory_.InvalidateWeakPtrs();
 
   context_->executor()->KillMemtester();
-  status_ = mojom::DiagnosticRoutineStatusEnum::kCancelled;
-  status_message_ = kMemoryRoutineCancelledMessage;
+  UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kCancelled,
+               kMemoryRoutineCancelledMessage);
 }
 
 void MemoryRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
                                          bool include_output) {
   DCHECK(response);
+  auto status = GetStatus();
 
   // Because the memory routine is non-interactive, we will never include a user
   // message.
   auto update = mojom::NonInteractiveRoutineUpdate::New();
-  update->status = status_;
-  update->status_message = status_message_;
+  update->status = status;
+  update->status_message = GetStatusMessage();
 
   response->routine_update_union =
       mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
@@ -155,14 +156,14 @@ void MemoryRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
 
   // If the routine has finished, set the progress percent to 100 and don't take
   // the amount of time ran into account.
-  if (status_ == mojom::DiagnosticRoutineStatusEnum::kPassed ||
-      status_ == mojom::DiagnosticRoutineStatusEnum::kFailed) {
+  if (status == mojom::DiagnosticRoutineStatusEnum::kPassed ||
+      status == mojom::DiagnosticRoutineStatusEnum::kFailed) {
     response->progress_percent = 100;
     return;
   }
 
-  if (status_ == mojom::DiagnosticRoutineStatusEnum::kReady ||
-      status_ == mojom::DiagnosticRoutineStatusEnum::kFailedToStart ||
+  if (status == mojom::DiagnosticRoutineStatusEnum::kReady ||
+      status == mojom::DiagnosticRoutineStatusEnum::kFailedToStart ||
       expected_duration_us_ <= 0) {
     // The routine has not started.
     response->progress_percent = 0;
@@ -177,18 +178,14 @@ void MemoryRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
                                                  expected_duration_us_ * 100));
 }
 
-mojom::DiagnosticRoutineStatusEnum MemoryRoutine::GetStatus() {
-  return status_;
-}
-
 void MemoryRoutine::DetermineRoutineResult(
     mojom::ExecutedProcessResultPtr process) {
   ParseMemtesterOutput(process->out);
 
   int32_t ret = process->return_code;
   if (ret == EXIT_SUCCESS) {
-    status_message_ = kMemoryRoutineSucceededMessage;
-    status_ = mojom::DiagnosticRoutineStatusEnum::kPassed;
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kPassed,
+                 kMemoryRoutineSucceededMessage);
     return;
   }
 
@@ -209,8 +206,7 @@ void MemoryRoutine::DetermineRoutineResult(
   if (ret & MemtesterErrorCodes::kOtherTestError)
     status_message += kMemoryRoutineOtherTestFailureMessage;
 
-  status_message_ = std::move(status_message);
-  status_ = status;
+  UpdateStatus(status, std::move(status_message));
 }
 
 void MemoryRoutine::ParseMemtesterOutput(const std::string& raw_output) {

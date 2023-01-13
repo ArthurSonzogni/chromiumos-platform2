@@ -26,35 +26,31 @@ AudioSetGainRoutine::AudioSetGainRoutine(Context* context,
                                          uint64_t node_id,
                                          uint8_t gain,
                                          bool mute_on)
-    : node_id_(node_id),
-      gain_(gain),
-      mute_on_(mute_on),
-      context_(context),
-      status_(mojom::DiagnosticRoutineStatusEnum::kReady) {
+    : node_id_(node_id), gain_(gain), mute_on_(mute_on), context_(context) {
   gain_ = std::min(gain_, (uint8_t)100);
 }
 
 AudioSetGainRoutine::~AudioSetGainRoutine() = default;
 
 void AudioSetGainRoutine::Start() {
-  status_ = mojom::DiagnosticRoutineStatusEnum::kRunning;
+  UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kRunning, "");
   brillo::ErrorPtr error;
 
   if (!context_->cras_proxy()->SetInputMute(mute_on_, &error)) {
     LOG(ERROR) << "Failed to set input mute: " << error->GetMessage();
-    status_ = mojom::DiagnosticRoutineStatusEnum::kError;
-    status_message_ = "Failed to set input mute";
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kError,
+                 "Failed to set input mute");
     return;
   }
   if (!context_->cras_proxy()->SetInputNodeGain(node_id_, gain_, &error)) {
     LOG(ERROR) << "Failed to set audio input node[" << node_id_ << "] to gain["
                << gain_ << "]: " << error->GetMessage();
-    status_ = mojom::DiagnosticRoutineStatusEnum::kError;
-    status_message_ = "Failed to set audio input node gain";
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kError,
+                 "Failed to set audio input node gain");
     return;
   }
 
-  status_ = mojom::DiagnosticRoutineStatusEnum::kPassed;
+  UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kPassed, "");
 }
 
 void AudioSetGainRoutine::Resume() {}
@@ -63,21 +59,19 @@ void AudioSetGainRoutine::Cancel() {}
 
 void AudioSetGainRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
                                                bool include_output) {
+  auto status = GetStatus();
+
   auto update = mojom::NonInteractiveRoutineUpdate::New();
-  update->status = status_;
-  update->status_message = status_message_;
+  update->status = status;
+  update->status_message = GetStatusMessage();
   response->routine_update_union =
       mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
-  if (status_ == mojom::DiagnosticRoutineStatusEnum::kReady ||
-      status_ == mojom::DiagnosticRoutineStatusEnum::kRunning) {
+  if (status == mojom::DiagnosticRoutineStatusEnum::kReady ||
+      status == mojom::DiagnosticRoutineStatusEnum::kRunning) {
     response->progress_percent = 0;
   } else {
     response->progress_percent = 100;
   }
-}
-
-mojom::DiagnosticRoutineStatusEnum AudioSetGainRoutine::GetStatus() {
-  return status_;
 }
 
 }  // namespace diagnostics

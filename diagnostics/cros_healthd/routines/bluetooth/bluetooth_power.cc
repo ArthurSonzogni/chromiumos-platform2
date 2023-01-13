@@ -30,10 +30,10 @@ BluetoothPowerRoutine::BluetoothPowerRoutine(Context* context)
 BluetoothPowerRoutine::~BluetoothPowerRoutine() = default;
 
 void BluetoothPowerRoutine::Start() {
-  DCHECK_EQ(status_, mojom::DiagnosticRoutineStatusEnum::kReady);
+  DCHECK_EQ(GetStatus(), mojom::DiagnosticRoutineStatusEnum::kReady);
 
-  status_ = mojom::DiagnosticRoutineStatusEnum::kRunning;
-  status_message_ = kBluetoothRoutineRunningMessage;
+  UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kRunning,
+               kBluetoothRoutineRunningMessage);
   start_ticks_ = base::TimeTicks::Now();
 
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
@@ -60,10 +60,11 @@ void BluetoothPowerRoutine::Cancel() {
 void BluetoothPowerRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
                                                  bool include_output) {
   DCHECK(response);
+  auto status = GetStatus();
 
   response->routine_update_union =
       mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(
-          mojom::NonInteractiveRoutineUpdate::New(status_, status_message_));
+          mojom::NonInteractiveRoutineUpdate::New(status, GetStatusMessage()));
 
   if (include_output) {
     std::string json;
@@ -73,14 +74,14 @@ void BluetoothPowerRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
   }
 
   // The routine is failed.
-  if (status_ == mojom::DiagnosticRoutineStatusEnum::kFailed ||
-      status_ == mojom::DiagnosticRoutineStatusEnum::kError) {
+  if (status == mojom::DiagnosticRoutineStatusEnum::kFailed ||
+      status == mojom::DiagnosticRoutineStatusEnum::kError) {
     response->progress_percent = 100;
     return;
   }
 
   // The routine is not started.
-  if (status_ == mojom::DiagnosticRoutineStatusEnum::kReady) {
+  if (status == mojom::DiagnosticRoutineStatusEnum::kReady) {
     response->progress_percent = 0;
     return;
   }
@@ -90,10 +91,6 @@ void BluetoothPowerRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
       (base::TimeTicks::Now() - start_ticks_) / kPowerRoutineTimeout;
   response->progress_percent =
       step_percent + (100 - step_percent) * std::min(1.0, running_time_ratio);
-}
-
-mojom::DiagnosticRoutineStatusEnum BluetoothPowerRoutine::GetStatus() {
-  return status_;
 }
 
 void BluetoothPowerRoutine::RunNextStep() {
@@ -205,8 +202,7 @@ void BluetoothPowerRoutine::SetResultAndStop(
     mojom::DiagnosticRoutineStatusEnum status, std::string status_message) {
   // Cancel all pending callbacks.
   weak_ptr_factory_.InvalidateWeakPtrs();
-  status_ = status;
-  status_message_ = status_message;
+  UpdateStatus(status, std::move(status_message));
 }
 
 }  // namespace diagnostics

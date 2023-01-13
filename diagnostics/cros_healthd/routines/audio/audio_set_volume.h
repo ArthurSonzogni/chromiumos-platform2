@@ -7,12 +7,12 @@
 
 #include <string>
 
-#include "diagnostics/cros_healthd/routines/diag_routine.h"
+#include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
 #include "diagnostics/cros_healthd/system/context.h"
 
 namespace diagnostics {
 
-class AudioSetVolumeRoutine final : public DiagnosticRoutine {
+class AudioSetVolumeRoutine final : public DiagnosticRoutineWithStatus {
  public:
   explicit AudioSetVolumeRoutine(Context* context,
                                  uint64_t node_id,
@@ -28,7 +28,6 @@ class AudioSetVolumeRoutine final : public DiagnosticRoutine {
   void Cancel() override;
   void PopulateStatusUpdate(ash::cros_healthd::mojom::RoutineUpdate* response,
                             bool include_output) override;
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() override;
 
  private:
   // Tartget node id.
@@ -42,14 +41,6 @@ class AudioSetVolumeRoutine final : public DiagnosticRoutine {
 
   // Context object used to communicate with the executor.
   Context* context_;
-
-  // Status of the routine, reported by GetStatus() or noninteractive routine
-  // updates.
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_;
-
-  // Details of the routine's status, reported in non-interactive status
-  // updates.
-  std::string status_message_ = "";
 };
 
 }  // namespace diagnostics

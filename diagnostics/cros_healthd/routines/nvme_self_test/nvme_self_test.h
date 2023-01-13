@@ -12,7 +12,7 @@
 #include <base/values.h>
 #include <brillo/errors/error.h>
 
-#include "diagnostics/cros_healthd/routines/diag_routine.h"
+#include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace org {
@@ -28,7 +28,7 @@ namespace diagnostics {
 // Please refer to https://nvmexpress.org/wp-content/uploads/NVM_Express_
 // Revision_1.3.pdf, Figure 98 "Device Self-test log" and Figure 99 "Self-test
 // Result Data Structure" from 5.14.1.6.
-class NvmeSelfTestRoutine final : public DiagnosticRoutine {
+class NvmeSelfTestRoutine final : public DiagnosticRoutineWithStatus {
  public:
   static const char kNvmeSelfTestRoutineStarted[];
   static const char kNvmeSelfTestRoutineStartError[];
@@ -68,7 +68,6 @@ class NvmeSelfTestRoutine final : public DiagnosticRoutine {
   void Cancel() override;
   void PopulateStatusUpdate(ash::cros_healthd::mojom::RoutineUpdate* response,
                             bool include_output) override;
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() override;
 
  private:
   bool CheckSelfTestCompleted(uint8_t progress, uint8_t status) const;
@@ -82,9 +81,9 @@ class NvmeSelfTestRoutine final : public DiagnosticRoutine {
   // dictionary with the key "rawData" and value |value|.
   void ResetOutputDictToValue(const std::string& value);
 
-  // Update percent_, status_message_, status_ at the same moment in case
+  // Update percent_, status_message, status at the same moment in case
   // misinformation occurring.
-  bool UpdateStatus(
+  bool UpdateStatusWithProgressPercent(
       ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status,
       uint32_t percent,
       std::string msg);
@@ -93,14 +92,11 @@ class NvmeSelfTestRoutine final : public DiagnosticRoutine {
   org::chromium::debugdProxyInterface* const debugd_proxy_ = nullptr;
   const SelfTestType self_test_type_;
 
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_ =
-      ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum::kReady;
   // On certain devices, routine will still be running even if percent_ reaches
   // 100. Hence, we cannot rely on percent_ to determine whether the routine is
-  // completed. Use status_ instead.
+  // completed. Use GetStatus() instead.
   uint32_t percent_ = 0;
   base::Value output_dict_{base::Value::Type::DICTIONARY};
-  std::string status_message_;
 
   FRIEND_TEST(NvmeSelfTestRoutineTest, RoutineStatusTransition);
 

@@ -541,11 +541,13 @@ TEST_F(NvmeSelfTestRoutineTest, RoutineStatusTransition) {
     RunRoutineStart();
     EXPECT_EQ(routine()->GetStatus(),
               mojo_ipc::DiagnosticRoutineStatusEnum::kRunning);
-    EXPECT_TRUE(reinterpret_cast<NvmeSelfTestRoutine*>(routine())->UpdateStatus(
-        testcase.source_status, 100, ""));
-    EXPECT_EQ(reinterpret_cast<NvmeSelfTestRoutine*>(routine())->UpdateStatus(
-                  testcase.target_status, 100, ""),
-              testcase.expected_return);
+    EXPECT_TRUE(
+        reinterpret_cast<NvmeSelfTestRoutine*>(routine())
+            ->UpdateStatusWithProgressPercent(testcase.source_status, 100, ""));
+    EXPECT_EQ(
+        reinterpret_cast<NvmeSelfTestRoutine*>(routine())
+            ->UpdateStatusWithProgressPercent(testcase.target_status, 100, ""),
+        testcase.expected_return);
   }
 }
 

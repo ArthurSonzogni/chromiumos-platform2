@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
-#include "diagnostics/cros_healthd/routines/diag_routine.h"
+#include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
 #include "diagnostics/cros_healthd/system/context.h"
 
 namespace diagnostics {
@@ -56,7 +56,7 @@ struct FingerprintParameter {
   std::vector<FingerprintZone> detect_zones;
 };
 
-class FingerprintRoutine final : public DiagnosticRoutine {
+class FingerprintRoutine final : public DiagnosticRoutineWithStatus {
  public:
   explicit FingerprintRoutine(Context* context, FingerprintParameter params);
   FingerprintRoutine(const FingerprintRoutine&) = delete;
@@ -69,7 +69,6 @@ class FingerprintRoutine final : public DiagnosticRoutine {
   void Cancel() override;
   void PopulateStatusUpdate(ash::cros_healthd::mojom::RoutineUpdate* response,
                             bool include_output) override;
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() override;
 
  private:
   void RunNextStep();
@@ -106,14 +105,6 @@ class FingerprintRoutine final : public DiagnosticRoutine {
   };
 
   TestStep step_;
-
-  // Status of the routine, reported by GetStatus() or noninteractive routine
-  // updates.
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_;
-
-  // Details of the routine's status, reported in non-interactive status
-  // updates.
-  std::string status_message_ = "";
 };
 
 }  // namespace diagnostics

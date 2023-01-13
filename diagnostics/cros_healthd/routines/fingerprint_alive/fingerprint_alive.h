@@ -8,12 +8,12 @@
 #include <string>
 
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
-#include "diagnostics/cros_healthd/routines/diag_routine.h"
+#include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
 #include "diagnostics/cros_healthd/system/context.h"
 
 namespace diagnostics {
 
-class FingerprintAliveRoutine final : public DiagnosticRoutine {
+class FingerprintAliveRoutine final : public DiagnosticRoutineWithStatus {
  public:
   explicit FingerprintAliveRoutine(Context* context);
   FingerprintAliveRoutine(const FingerprintAliveRoutine&) = delete;
@@ -26,7 +26,6 @@ class FingerprintAliveRoutine final : public DiagnosticRoutine {
   void Cancel() override;
   void PopulateStatusUpdate(ash::cros_healthd::mojom::RoutineUpdate* response,
                             bool include_output) override;
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() override;
 
  private:
   void ExamineInfo(ash::cros_healthd::mojom::FingerprintInfoResultPtr result,
@@ -34,14 +33,6 @@ class FingerprintAliveRoutine final : public DiagnosticRoutine {
 
   // Context object used to communicate with the executor.
   Context* context_;
-
-  // Status of the routine, reported by GetStatus() or noninteractive routine
-  // updates.
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_;
-
-  // Details of the routine's status, reported in non-interactive status
-  // updates.
-  std::string status_message_ = "";
 };
 
 }  // namespace diagnostics

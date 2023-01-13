@@ -107,7 +107,7 @@ EmmcLifetimeRoutine::EmmcLifetimeRoutine(
 EmmcLifetimeRoutine::~EmmcLifetimeRoutine() = default;
 
 void EmmcLifetimeRoutine::Start() {
-  status_ = mojom::DiagnosticRoutineStatusEnum::kRunning;
+  UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kRunning, "");
 
   auto result_callback =
       base::BindOnce(&EmmcLifetimeRoutine::OnDebugdResultCallback,
@@ -128,37 +128,34 @@ void EmmcLifetimeRoutine::Cancel() {
   LOG(INFO) << "eMMC lifetime routine does not support cancel operation.";
 }
 
-void EmmcLifetimeRoutine::UpdateStatus(
+void EmmcLifetimeRoutine::UpdateStatusWithProgressPercent(
     mojom::DiagnosticRoutineStatusEnum status,
     uint32_t percent,
     std::string msg) {
-  status_ = status;
+  UpdateStatus(status, std::move(msg));
   percent_ = percent;
-  status_message_ = std::move(msg);
 }
 
 void EmmcLifetimeRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
                                                bool include_output) {
+  auto status = GetStatus();
+
   auto update = mojom::NonInteractiveRoutineUpdate::New();
-  update->status = status_;
-  update->status_message = status_message_;
+  update->status = status;
+  update->status_message = GetStatusMessage();
 
   response->routine_update_union =
       mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
   response->progress_percent = percent_;
 
   if (include_output && !output_dict_.empty() &&
-      (status_ == mojom::DiagnosticRoutineStatusEnum::kPassed ||
-       status_ == mojom::DiagnosticRoutineStatusEnum::kFailed)) {
+      (status == mojom::DiagnosticRoutineStatusEnum::kPassed ||
+       status == mojom::DiagnosticRoutineStatusEnum::kFailed)) {
     std::string json;
     base::JSONWriter::Write(output_dict_, &json);
     response->output =
         CreateReadOnlySharedMemoryRegionMojoHandle(base::StringPiece(json));
   }
-}
-
-mojom::DiagnosticRoutineStatusEnum EmmcLifetimeRoutine::GetStatus() {
-  return status_;
 }
 
 void EmmcLifetimeRoutine::OnDebugdResultCallback(const std::string& result) {
@@ -168,8 +165,9 @@ void EmmcLifetimeRoutine::OnDebugdResultCallback(const std::string& result) {
   if (!ScrapeMmcAttributes(result, &pre_eol_info, &device_life_time_est_typ_a,
                            &device_life_time_est_typ_b)) {
     LOG(ERROR) << "Failed to parse mmc output: " << result;
-    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kError,
-                 /*percent=*/100, kEmmcLifetimeRoutineParseError);
+    UpdateStatusWithProgressPercent(mojom::DiagnosticRoutineStatusEnum::kError,
+                                    /*percent=*/100,
+                                    kEmmcLifetimeRoutineParseError);
     return;
   }
 
@@ -188,8 +186,9 @@ void EmmcLifetimeRoutine::OnDebugdResultCallback(const std::string& result) {
                << device_life_time_est_typ_a
                << " and DEVICE_LIFE_TIME_EST_TYP_B = "
                << device_life_time_est_typ_b;
-    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
-                 /*percent=*/100, kEmmcLifetimeRoutinePreEolInfoAbnormalError);
+    UpdateStatusWithProgressPercent(
+        mojom::DiagnosticRoutineStatusEnum::kFailed,
+        /*percent=*/100, kEmmcLifetimeRoutinePreEolInfoAbnormalError);
     return;
   }
   LOG(INFO) << "PRE_EOL_INFO == " << kMmcExtCsdFieldPreEolInfoNormal
@@ -197,8 +196,8 @@ void EmmcLifetimeRoutine::OnDebugdResultCallback(const std::string& result) {
             << device_life_time_est_typ_a
             << " and DEVICE_LIFE_TIME_EST_TYP_B = "
             << device_life_time_est_typ_b;
-  UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kPassed,
-               /*percent=*/100, kEmmcLifetimeRoutineSuccess);
+  UpdateStatusWithProgressPercent(mojom::DiagnosticRoutineStatusEnum::kPassed,
+                                  /*percent=*/100, kEmmcLifetimeRoutineSuccess);
 }
 
 void EmmcLifetimeRoutine::OnDebugdErrorCallback(brillo::Error* error) {
@@ -208,8 +207,9 @@ void EmmcLifetimeRoutine::OnDebugdErrorCallback(brillo::Error* error) {
     LOG(ERROR) << "Debugd error: " << error->GetMessage();
   }
 
-  UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kError,
-               /*percent=*/100, kEmmcLifetimeRoutineDebugdError);
+  UpdateStatusWithProgressPercent(mojom::DiagnosticRoutineStatusEnum::kError,
+                                  /*percent=*/100,
+                                  kEmmcLifetimeRoutineDebugdError);
 }
 
 }  // namespace diagnostics

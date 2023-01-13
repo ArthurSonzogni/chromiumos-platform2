@@ -12,7 +12,7 @@
 #include <base/values.h>
 #include <brillo/errors/error.h>
 
-#include "diagnostics/cros_healthd/routines/diag_routine.h"
+#include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace org {
@@ -39,7 +39,7 @@ inline constexpr char kSmartctlCheckRoutineThresholdError[] =
 // available_spare check: available_spare against available_spare_threshold.
 // percentage_used check: percentage_used against input threshold.
 // critical_warning check: critical_warning is 0x00 (no warning).
-class SmartctlCheckRoutine final : public DiagnosticRoutine {
+class SmartctlCheckRoutine final : public DiagnosticRoutineWithStatus {
  public:
   static const uint32_t kPercentageUsedMax;
   static const uint32_t kPercentageUsedMin;
@@ -58,14 +58,13 @@ class SmartctlCheckRoutine final : public DiagnosticRoutine {
   void Cancel() override;
   void PopulateStatusUpdate(ash::cros_healthd::mojom::RoutineUpdate* response,
                             bool include_output) override;
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() override;
 
  private:
   void OnDebugdResultCallback(const std::string& result);
   void OnDebugdErrorCallback(brillo::Error* error);
-  // Updates status_, percent_, status_message_ at the same moment to ensure
+  // Updates status, percent_, status_message at the same moment to ensure
   // each of them corresponds with the others.
-  void UpdateStatus(
+  void UpdateStatusWithProgressPercent(
       ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status,
       uint32_t percent,
       std::string msg);
@@ -73,11 +72,8 @@ class SmartctlCheckRoutine final : public DiagnosticRoutine {
   org::chromium::debugdProxyInterface* const debugd_proxy_;
   uint32_t percentage_used_threshold_;
 
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_ =
-      ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum::kReady;
   uint32_t percent_ = 0;
   base::Value output_dict_{base::Value::Type::DICTIONARY};
-  std::string status_message_;
 
   base::WeakPtrFactory<SmartctlCheckRoutine> weak_ptr_routine_{this};
 };

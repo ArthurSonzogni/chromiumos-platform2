@@ -100,7 +100,7 @@ NvmeSelfTestRoutine::NvmeSelfTestRoutine(
 NvmeSelfTestRoutine::~NvmeSelfTestRoutine() = default;
 
 void NvmeSelfTestRoutine::Start() {
-  status_ = mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
+  UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kRunning, "");
 
   auto result_callback =
       base::BindOnce(&NvmeSelfTestRoutine::OnDebugdNvmeSelfTestStartCallback,
@@ -125,8 +125,9 @@ void NvmeSelfTestRoutine::Start() {
 
 void NvmeSelfTestRoutine::Resume() {}
 void NvmeSelfTestRoutine::Cancel() {
-  if (!UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kCancelling,
-                    /*percent=*/0, "")) {
+  if (!UpdateStatusWithProgressPercent(
+          mojo_ipc::DiagnosticRoutineStatusEnum::kCancelling,
+          /*percent=*/0, "")) {
     return;
   }
   auto result_callback =
@@ -141,7 +142,7 @@ void NvmeSelfTestRoutine::Cancel() {
 
 void NvmeSelfTestRoutine::PopulateStatusUpdate(
     mojo_ipc::RoutineUpdate* response, bool include_output) {
-  if (status_ == mojo_ipc::DiagnosticRoutineStatusEnum::kRunning) {
+  if (GetStatus() == mojo_ipc::DiagnosticRoutineStatusEnum::kRunning) {
     auto result_callback =
         base::BindOnce(&NvmeSelfTestRoutine::OnDebugdResultCallback,
                        weak_ptr_routine_.GetWeakPtr());
@@ -155,9 +156,10 @@ void NvmeSelfTestRoutine::PopulateStatusUpdate(
                                 std::move(error_callback));
   }
 
+  auto status = GetStatus();
   auto update = mojo_ipc::NonInteractiveRoutineUpdate::New();
-  update->status = status_;
-  update->status_message = status_message_;
+  update->status = status;
+  update->status_message = GetStatusMessage();
 
   response->routine_update_union =
       mojo_ipc::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
@@ -166,8 +168,8 @@ void NvmeSelfTestRoutine::PopulateStatusUpdate(
   if (include_output && !output_dict_.DictEmpty()) {
     // If routine status is not at completed/cancelled then prints the debugd
     // raw data with output.
-    if (status_ != mojo_ipc::DiagnosticRoutineStatusEnum::kPassed &&
-        status_ != mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled) {
+    if (status != mojo_ipc::DiagnosticRoutineStatusEnum::kPassed &&
+        status != mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled) {
       std::string json;
       base::JSONWriter::Write(output_dict_, &json);
       response->output =
@@ -176,15 +178,12 @@ void NvmeSelfTestRoutine::PopulateStatusUpdate(
   }
 }
 
-mojo_ipc::DiagnosticRoutineStatusEnum NvmeSelfTestRoutine::GetStatus() {
-  return status_;
-}
-
 void NvmeSelfTestRoutine::OnDebugdErrorCallback(brillo::Error* error) {
   if (error) {
     LOG(ERROR) << "Debugd error: " << error->GetMessage();
-    UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kError,
-                 /*percent=*/100, error->GetMessage());
+    UpdateStatusWithProgressPercent(
+        mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+        /*percent=*/100, error->GetMessage());
   }
 }
 
@@ -196,12 +195,14 @@ void NvmeSelfTestRoutine::OnDebugdNvmeSelfTestStartCallback(
   if (!base::StartsWith(result, "Device self-test started",
                         base::CompareCase::SENSITIVE)) {
     LOG(ERROR) << "self-test failed to start: " << result;
-    UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kError,
-                 /*percent=*/100, kNvmeSelfTestRoutineStartError);
+    UpdateStatusWithProgressPercent(
+        mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+        /*percent=*/100, kNvmeSelfTestRoutineStartError);
     return;
   }
-  if (!UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kRunning,
-                    /*percent=*/0, kNvmeSelfTestRoutineStarted)) {
+  if (!UpdateStatusWithProgressPercent(
+          mojo_ipc::DiagnosticRoutineStatusEnum::kRunning,
+          /*percent=*/0, kNvmeSelfTestRoutineStarted)) {
     return;
   }
 }
@@ -214,12 +215,14 @@ void NvmeSelfTestRoutine::OnDebugdNvmeSelfTestCancelCallback(
   if (!base::StartsWith(result, "Aborting device self-test operation",
                         base::CompareCase::SENSITIVE)) {
     LOG(ERROR) << "self-test abortion failed:" << result;
-    UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kError,
-                 /*percent=*/100, kNvmeSelfTestRoutineAbortionError);
+    UpdateStatusWithProgressPercent(
+        mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+        /*percent=*/100, kNvmeSelfTestRoutineAbortionError);
     return;
   }
-  if (!UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled,
-                    /*percent=*/100, kNvmeSelfTestRoutineCancelled)) {
+  if (!UpdateStatusWithProgressPercent(
+          mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled,
+          /*percent=*/100, kNvmeSelfTestRoutineCancelled)) {
     return;
   }
 }
@@ -241,16 +244,18 @@ void NvmeSelfTestRoutine::OnDebugdResultCallback(const std::string& result) {
 
   if (!base::Base64Decode(result, &decoded_output)) {
     LOG(ERROR) << "Base64 decoding failed. Base64 data: " << result;
-    UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kError,
-                 /*percent=*/100, kNvmeSelfTestRoutineGetProgressFailed);
+    UpdateStatusWithProgressPercent(
+        mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+        /*percent=*/100, kNvmeSelfTestRoutineGetProgressFailed);
     return;
   }
 
   if (decoded_output.length() != kNvmeLogDataLength) {
     LOG(ERROR) << "String size is not as expected(" << kNvmeLogDataLength
                << "). Size: " << decoded_output.length();
-    UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kError,
-                 /*percent=*/100, kNvmeSelfTestRoutineGetProgressFailed);
+    UpdateStatusWithProgressPercent(
+        mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+        /*percent=*/100, kNvmeSelfTestRoutineGetProgressFailed);
     return;
   }
 
@@ -260,13 +265,15 @@ void NvmeSelfTestRoutine::OnDebugdResultCallback(const std::string& result) {
   const uint8_t complete_status = static_cast<uint8_t>(decoded_output[4]);
 
   if (CheckSelfTestCompleted(progress, complete_status)) {
-    if (!UpdateStatus(CheckSelfTestPassed(complete_status), /*percent=*/100,
-                      GetCompleteMessage(complete_status))) {
+    if (!UpdateStatusWithProgressPercent(CheckSelfTestPassed(complete_status),
+                                         /*percent=*/100,
+                                         GetCompleteMessage(complete_status))) {
       return;
     }
   } else if ((progress & 0xf) == self_test_type_) {
-    if (!UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kRunning, percent,
-                      kNvmeSelfTestRoutineRunning)) {
+    if (!UpdateStatusWithProgressPercent(
+            mojo_ipc::DiagnosticRoutineStatusEnum::kRunning, percent,
+            kNvmeSelfTestRoutineRunning)) {
       return;
     }
   } else {
@@ -275,8 +282,9 @@ void NvmeSelfTestRoutine::OnDebugdResultCallback(const std::string& result) {
                << static_cast<uint32_t>(progress)
                << ", percent: " << static_cast<uint32_t>(percent)
                << ", status:" << static_cast<uint32_t>(complete_status);
-    if (!UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kError,
-                      /*percent=*/100, kNvmeSelfTestRoutineGetProgressFailed)) {
+    if (!UpdateStatusWithProgressPercent(
+            mojo_ipc::DiagnosticRoutineStatusEnum::kError,
+            /*percent=*/100, kNvmeSelfTestRoutineGetProgressFailed)) {
       return;
     }
   }
@@ -290,24 +298,24 @@ void NvmeSelfTestRoutine::ResetOutputDictToValue(const std::string& value) {
   output_dict_.SetKey("resultDetails", std::move(result_dict));
 }
 
-bool NvmeSelfTestRoutine::UpdateStatus(
+bool NvmeSelfTestRoutine::UpdateStatusWithProgressPercent(
     mojo_ipc::DiagnosticRoutineStatusEnum status,
     uint32_t percent,
     std::string msg) {
+  auto old_status = GetStatus();
   // Final states (kPassed, kFailed, kError, kCancelled) cannot be updated.
   // Override kCancelling with kRunning is prohibited.
-  if (status_ == mojo_ipc::DiagnosticRoutineStatusEnum::kPassed ||
-      status_ == mojo_ipc::DiagnosticRoutineStatusEnum::kFailed ||
-      status_ == mojo_ipc::DiagnosticRoutineStatusEnum::kError ||
-      status_ == mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled ||
-      (status_ == mojo_ipc::DiagnosticRoutineStatusEnum::kCancelling &&
+  if (old_status == mojo_ipc::DiagnosticRoutineStatusEnum::kPassed ||
+      old_status == mojo_ipc::DiagnosticRoutineStatusEnum::kFailed ||
+      old_status == mojo_ipc::DiagnosticRoutineStatusEnum::kError ||
+      old_status == mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled ||
+      (old_status == mojo_ipc::DiagnosticRoutineStatusEnum::kCancelling &&
        status == mojo_ipc::DiagnosticRoutineStatusEnum::kRunning)) {
     return false;
   }
 
-  status_ = status;
+  UpdateStatus(status, std::move(msg));
   percent_ = percent;
-  status_message_ = std::move(msg);
   return true;
 }
 

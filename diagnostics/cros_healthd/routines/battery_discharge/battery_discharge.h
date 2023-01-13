@@ -17,14 +17,14 @@
 #include <base/time/time.h>
 #include <base/values.h>
 
-#include "diagnostics/cros_healthd/routines/diag_routine.h"
+#include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
 
 // Checks the discharge rate of the battery.
-class BatteryDischargeRoutine final : public DiagnosticRoutine {
+class BatteryDischargeRoutine final : public DiagnosticRoutineWithStatus {
  public:
   // |exec_duration| - length of time to run the routine for.
   // |maximum_discharge_percent_allowed| - the routine will fail if the battery
@@ -45,24 +45,17 @@ class BatteryDischargeRoutine final : public DiagnosticRoutine {
   void Cancel() override;
   void PopulateStatusUpdate(ash::cros_healthd::mojom::RoutineUpdate* response,
                             bool include_output) override;
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() override;
 
  private:
   // Calculates the progress percent based on the current status.
   void CalculateProgressPercent();
   // Checks the machine state against the input parameters.
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum
-  RunBatteryDischargeRoutine();
+  void RunBatteryDischargeRoutine();
   // Determine success or failure for the routine.
   void DetermineRoutineResult(double beginning_discharge_percent);
 
   // Unowned pointer that outlives this routine instance.
   Context* const context_;
-  // Status of the routine, reported by GetStatus() or noninteractive routine
-  // updates.
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_;
-  // Details of the routine's status, reported in noninteractive status updates.
-  std::string status_message_;
   // Details about the routine's execution. Reported in all status updates.
   base::Value output_dict_{base::Value::Type::DICTIONARY};
   // Length of time to run the routine for.

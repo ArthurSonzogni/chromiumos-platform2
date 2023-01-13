@@ -10,7 +10,7 @@
 #include <base/callback.h>
 #include <base/values.h>
 
-#include "diagnostics/cros_healthd/routines/diag_routine.h"
+#include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
@@ -39,7 +39,7 @@ namespace diagnostics {
 //   return std::make_unique<SimpleRoutine>(
 //       base::BindOnce(&DoRoutineWork, Params));
 // }
-class SimpleRoutine final : public DiagnosticRoutine {
+class SimpleRoutine final : public DiagnosticRoutineWithStatus {
  public:
   struct RoutineResult {
     ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status;
@@ -60,7 +60,6 @@ class SimpleRoutine final : public DiagnosticRoutine {
   void Cancel() override;
   void PopulateStatusUpdate(ash::cros_healthd::mojom::RoutineUpdate* response,
                             bool include_output) override;
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() override;
 
  private:
   void StoreRoutineResult(RoutineResult result);
@@ -68,8 +67,6 @@ class SimpleRoutine final : public DiagnosticRoutine {
   // Task encapsulating the logic of the routine to run.
   Task task_;
 
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_;
-  std::string status_message_;
   base::Value::Dict output_dict_;
 
   // Must be the last class member.

@@ -36,15 +36,13 @@ uint32_t CalculateProgressPercent(
 
 }  // namespace
 
-SimpleRoutine::SimpleRoutine(Task task)
-    : task_(std::move(task)),
-      status_(mojo_ipc::DiagnosticRoutineStatusEnum::kReady) {}
+SimpleRoutine::SimpleRoutine(Task task) : task_(std::move(task)) {}
 
 SimpleRoutine::~SimpleRoutine() = default;
 
 void SimpleRoutine::Start() {
-  DCHECK_EQ(status_, mojo_ipc::DiagnosticRoutineStatusEnum::kReady);
-  status_ = mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
+  DCHECK_EQ(GetStatus(), mojo_ipc::DiagnosticRoutineStatusEnum::kReady);
+  UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kRunning, "");
   std::move(task_).Run(base::BindOnce(&SimpleRoutine::StoreRoutineResult,
                                       weak_ptr_factory_.GetWeakPtr()));
 }
@@ -55,15 +53,16 @@ void SimpleRoutine::Cancel() {}
 
 void SimpleRoutine::PopulateStatusUpdate(mojo_ipc::RoutineUpdate* response,
                                          bool include_output) {
+  auto status = GetStatus();
   // Because simple routines are non-interactive, we will never include a user
   // message.
   auto update = mojo_ipc::NonInteractiveRoutineUpdate::New();
-  update->status = status_;
-  update->status_message = status_message_;
+  update->status = status;
+  update->status_message = GetStatusMessage();
 
   response->routine_update_union =
       mojo_ipc::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
-  response->progress_percent = CalculateProgressPercent(status_);
+  response->progress_percent = CalculateProgressPercent(status);
 
   if (include_output && !output_dict_.empty()) {
     std::string json;
@@ -73,13 +72,8 @@ void SimpleRoutine::PopulateStatusUpdate(mojo_ipc::RoutineUpdate* response,
   }
 }
 
-mojo_ipc::DiagnosticRoutineStatusEnum SimpleRoutine::GetStatus() {
-  return status_;
-}
-
 void SimpleRoutine::StoreRoutineResult(RoutineResult result) {
-  status_ = result.status;
-  status_message_ = std::move(result.status_message);
+  UpdateStatus(result.status, std::move(result.status_message));
   output_dict_ = std::move(result.output_dict);
 }
 

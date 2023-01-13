@@ -16,7 +16,7 @@
 #include <iioservice/mojo/sensor.mojom.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
-#include "diagnostics/cros_healthd/routines/diag_routine.h"
+#include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
 #include "diagnostics/cros_healthd/routines/sensor/sensitive_sensor_constants.h"
 #include "diagnostics/cros_healthd/system/mojo_service.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
@@ -28,7 +28,7 @@ constexpr base::TimeDelta kSensitiveSensorRoutineTimeout = base::Seconds(20);
 // The sensitive sensor routine checks that the device's sensors are working
 // correctly by acquiring dynamic sensor sample data without user interaction.
 class SensitiveSensorRoutine final
-    : public DiagnosticRoutine,
+    : public DiagnosticRoutineWithStatus,
       public cros::mojom::SensorDeviceSamplesObserver {
  public:
   explicit SensitiveSensorRoutine(MojoService* const mojo_service);
@@ -42,7 +42,6 @@ class SensitiveSensorRoutine final
   void Cancel() override;
   void PopulateStatusUpdate(ash::cros_healthd::mojom::RoutineUpdate* response,
                             bool include_output) override;
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() override;
 
  private:
   struct SensorDetail {
@@ -97,11 +96,6 @@ class SensitiveSensorRoutine final
 
   // Unowned. Should outlive this instance.
   MojoService* const mojo_service_;
-  // Status of the routine, reported by GetStatus() or routine updates.
-  ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_ =
-      ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum::kReady;
-  // Details of the routine's status, reported in all status updates.
-  std::string status_message_;
   // Details of the passed sensors and failed sensors, stored in |output| of
   // |response| and reported in status updates if requested. Also used to
   // calculate the progress percentage.

@@ -34,8 +34,7 @@ LedLitUpRoutine::LedLitUpRoutine(
     : context_(context),
       name_(name),
       color_(color),
-      step_(TestStep::kInitialize),
-      status_(mojom::DiagnosticRoutineStatusEnum::kReady) {
+      step_(TestStep::kInitialize) {
   // The disconnection of |replier_| is handled in |RunNextStep| to avoid
   // resetting the LED before the specified color is set.
   replier_.Bind(std::move(replier));
@@ -50,11 +49,10 @@ void LedLitUpRoutine::Start() {
 void LedLitUpRoutine::Resume() {}
 
 void LedLitUpRoutine::Cancel() {
-  if (status_ == mojom::DiagnosticRoutineStatusEnum::kWaiting) {
+  if (GetStatus() == mojom::DiagnosticRoutineStatusEnum::kWaiting) {
     context_->executor()->ResetLedColor(name_,
                                         base::BindOnce(&LogResetColorError));
-    status_ = mojom::DiagnosticRoutineStatusEnum::kCancelled;
-    status_message_ = "Canceled.";
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kCancelled, "Canceled.");
   }
 }
 
@@ -70,8 +68,8 @@ void LedLitUpRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
             std::move(interactive_update));
   } else {
     auto noninteractive_update = mojom::NonInteractiveRoutineUpdate::New();
-    noninteractive_update->status = status_;
-    noninteractive_update->status_message = status_message_;
+    noninteractive_update->status = GetStatus();
+    noninteractive_update->status_message = GetStatusMessage();
 
     response->routine_update_union =
         mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(
@@ -81,15 +79,11 @@ void LedLitUpRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
   response->progress_percent = step_ * 100 / TestStep::kComplete;
 }
 
-mojom::DiagnosticRoutineStatusEnum LedLitUpRoutine::GetStatus() {
-  return status_;
-}
-
 void LedLitUpRoutine::ReplierDisconnectHandler() {
   context_->executor()->ResetLedColor(name_,
                                       base::BindOnce(&LogResetColorError));
-  status_ = mojom::DiagnosticRoutineStatusEnum::kFailed;
-  status_message_ = "Replier disconnected.";
+  UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
+               "Replier disconnected.");
 }
 
 void LedLitUpRoutine::SetLedColorCallback(
@@ -97,8 +91,7 @@ void LedLitUpRoutine::SetLedColorCallback(
   if (err) {
     context_->executor()->ResetLedColor(name_,
                                         base::BindOnce(&LogResetColorError));
-    status_ = mojom::DiagnosticRoutineStatusEnum::kFailed;
-    status_message_ = err.value();
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed, err.value());
     return;
   }
   RunNextStep();
@@ -114,8 +107,7 @@ void LedLitUpRoutine::GetColorMatchedCallback(bool matched) {
 void LedLitUpRoutine::ResetLedColorCallback(
     const std::optional<std::string>& err) {
   if (err) {
-    status_ = mojom::DiagnosticRoutineStatusEnum::kFailed;
-    status_message_ = err.value();
+    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed, err.value());
     return;
   }
   RunNextStep();
@@ -126,18 +118,18 @@ void LedLitUpRoutine::RunNextStep() {
 
   switch (step_) {
     case TestStep::kInitialize:
-      status_ = mojom::DiagnosticRoutineStatusEnum::kError;
-      status_message_ = "Unexpected LED lit up diagnostic flow.";
+      UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kError,
+                   "Unexpected LED lit up diagnostic flow.");
       break;
     case TestStep::kSetColor:
-      status_ = mojom::DiagnosticRoutineStatusEnum::kRunning;
+      UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kRunning, "");
       context_->executor()->SetLedColor(
           name_, color_,
           base::BindOnce(&LedLitUpRoutine::SetLedColorCallback,
                          weak_ptr_factory_.GetWeakPtr()));
       break;
     case TestStep::kGetColorMatched:
-      status_ = mojom::DiagnosticRoutineStatusEnum::kWaiting;
+      UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kWaiting, "");
       if (!replier_.is_connected()) {
         // Handle the disconnection before calling the remote function.
         ReplierDisconnectHandler();
@@ -152,18 +144,18 @@ void LedLitUpRoutine::RunNextStep() {
       }
       break;
     case TestStep::kResetColor:
-      status_ = mojom::DiagnosticRoutineStatusEnum::kRunning;
+      UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kRunning, "");
       context_->executor()->ResetLedColor(
           name_, base::BindOnce(&LedLitUpRoutine::ResetLedColorCallback,
                                 weak_ptr_factory_.GetWeakPtr()));
       break;
     case TestStep::kComplete:
       if (color_matched_response_) {
-        status_ = mojom::DiagnosticRoutineStatusEnum::kPassed;
-        status_message_ = "Routine passed.";
+        UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kPassed,
+                     "Routine passed.");
       } else {
-        status_ = mojom::DiagnosticRoutineStatusEnum::kFailed;
-        status_message_ = "Not lit up in the specified color.";
+        UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailed,
+                     "Not lit up in the specified color.");
       }
       break;
   }
