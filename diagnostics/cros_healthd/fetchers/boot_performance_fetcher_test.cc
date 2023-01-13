@@ -18,7 +18,18 @@ namespace {
 
 using ::ash::cros_healthd::mojom::ErrorType;
 
-const char kFakeBiosTimes[] = "texts\n...\n\nTotal Time: 10,111,111";
+const char kFakeBiosTimes[] =
+    "texts\n"
+    "503:starting to initialize TPM                        50,000 (502)\n"
+    "random texts   \n"
+    "504:finished TPM initialization                       60,000 (10,000)\n"
+    "Total Time: 10,111,111";
+
+// TPM initialization time is equal to
+// The time of "starting to initialize TPM" - the time of "finished TPM
+// initialization" in kFakeBiosTimes.
+// Should be 60000 - 50000 = 10000, which is 0.01 in seconds.
+const double kTpmInitializationSeconds = 0.01;
 
 const char kUptimeLoginPath[] = "/tmp/uptime-login-prompt-visible";
 const char kFakeUptimeLog[] = "7.666666666 4.32\n17.000000000 123.00";
@@ -138,6 +149,8 @@ TEST_F(BootPerformanceFetcherTest, FetchBootPerformanceInfo) {
   EXPECT_EQ(info->shutdown_reason, kShutdownReason);
   EXPECT_NEAR(info->shutdown_timestamp, time.ToDoubleT(), 0.1);
   EXPECT_NEAR(info->shutdown_seconds, kShutdownSeconds, 0.1);
+  EXPECT_NEAR(info->tpm_initialization_seconds->value,
+              kTpmInitializationSeconds, 0.1);
 }
 
 TEST_F(BootPerformanceFetcherTest, TestNoBiosTimesInfo) {

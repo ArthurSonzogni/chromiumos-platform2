@@ -807,6 +807,7 @@ void DisplayBootPerformanceInfo(const mojom::BootPerformanceResultPtr& result) {
   SET_DICT(boot_up_timestamp, info, &output);
   SET_DICT(shutdown_seconds, info, &output);
   SET_DICT(shutdown_timestamp, info, &output);
+  SET_DICT(tpm_initialization_seconds, info, &output);
 
   OutputJson(output);
 }

@@ -836,6 +836,7 @@ event --help`.
 | shutdown_seconds | double | Total time(rough) since shutdown start to power off.<br />Only meaningful when shutdown_reason is not "N/A". |
 | shutdown_timestamp | double | The timestamp when shutdown.<br />Only meaningful when shutdown_reason is not "N/A". |
 | shutdown_reason | string | The shutdown reason (including reboot). |
+| tpm_initialization_seconds | double? | TPM initialization time. |
 
 
 ###  Sensor

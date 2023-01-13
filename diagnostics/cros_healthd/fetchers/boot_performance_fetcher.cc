@@ -24,7 +24,19 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-mojom::ProbeErrorPtr ParseBootFirmwareTime(double& firmware_time) {
+// A small constant to check if the time metric is close to zero, which is
+// impossible in real world.
+constexpr double kImpossibleTimeValue = 1e-7;
+
+void RemoveCommaAndConvertToDouble(std::string str, double* value) {
+  // |str| is something like "14,630,633".
+  str.erase(remove(str.begin(), str.end(), ','), str.end());
+  base::StringToDouble(str, value);
+}
+
+mojom::ProbeErrorPtr ParseBiosTime(double* firmware_time,
+                                   double* tpm_initialization_start_time,
+                                   double* tpm_initialization_finish_time) {
   const auto& data_path = GetRootedPath(path::kBiosTimes);
   std::string content;
   if (!ReadAndTrimString(data_path, &content)) {
@@ -34,29 +46,21 @@ mojom::ProbeErrorPtr ParseBootFirmwareTime(double& firmware_time) {
 
   std::vector<std::string> lines = base::SplitString(
       content, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-  std::string value;
-  const char regex[] = R"(Total Time: (.*))";
-  // The target line is super close to the end of the log.
-  // Example of target line:
-  // Total Time: 14,630,633
-  for (auto it = lines.rbegin(); it != lines.rend(); ++it) {
-    if (RE2::FullMatch(*it, regex, &value)) {
-      break;
+  std::vector<std::pair<const char*, double*>> regex_values = {
+      {R"(.*starting to initialize TPM\s+([\d,]+)\s.*)",
+       tpm_initialization_start_time},
+      {R"(.*finished TPM initialization\s+([\d,]+)\s.*)",
+       tpm_initialization_finish_time},
+      {R"(Total Time: (.*))", firmware_time}};
+  for (auto it = lines.begin(); it != lines.end(); ++it) {
+    for (const auto& [regex, value] : regex_values) {
+      std::string str_value;
+      if (RE2::FullMatch(*it, regex, &str_value)) {
+        RemoveCommaAndConvertToDouble(str_value, value);
+        *value /= base::Time::kMicrosecondsPerSecond;
+      }
     }
   }
-
-  if (value.empty()) {
-    return CreateAndLogProbeError(mojom::ErrorType::kParseError,
-                                  "Failed to parse file: " + data_path.value());
-  }
-
-  // value is "14,630,633", we need to remove the comma.
-  value.erase(remove(value.begin(), value.end(), ','), value.end());
-  if (!base::StringToDouble(value, &firmware_time)) {
-    return CreateAndLogProbeError(mojom::ErrorType::kParseError,
-                                  "Failed to parse total time value: " + value);
-  }
-  firmware_time /= base::Time::kMicrosecondsPerSecond;
 
   return nullptr;
 }
@@ -107,12 +111,23 @@ mojom::ProbeErrorPtr PopulateBootUpInfo(mojom::BootPerformanceInfoPtr& info) {
   info->boot_up_seconds = 0.0;
   info->boot_up_timestamp = 0;
 
-  double firmware_time;
-  auto error = ParseBootFirmwareTime(firmware_time);
+  double firmware_time = 0.0;
+  double tpm_initialization_start_time = 0.0;
+  double tpm_initialization_finish_time = 0.0;
+  auto error = ParseBiosTime(&firmware_time, &tpm_initialization_start_time,
+                             &tpm_initialization_finish_time);
   if (!error.is_null()) {
     return error;
   }
+  if (firmware_time < kImpossibleTimeValue ||
+      tpm_initialization_start_time < kImpossibleTimeValue ||
+      tpm_initialization_finish_time < kImpossibleTimeValue) {
+    return CreateAndLogProbeError(mojom::ErrorType::kParseError,
+                                  "Failed to parse /var/log/bios_times.txt");
+  }
   info->boot_up_seconds += firmware_time;
+  info->tpm_initialization_seconds = mojom::NullableDouble::New(
+      tpm_initialization_finish_time - tpm_initialization_start_time);
 
   double kernel_time;
   error = ParseBootKernelTime(kernel_time);
