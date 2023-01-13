@@ -21,6 +21,7 @@
 #include <metrics/metrics_library.h>
 #include <session_manager/dbus-proxies.h>
 #include <shill/dbus-proxies.h>
+#include <third_party/abseil-cpp/absl/types/variant.h>
 
 #include "crash-reporter/crash_sender_base.h"
 
@@ -235,14 +236,20 @@ class Sender : public SenderBase {
                                      const std::string& product_name,
                                      const CrashDetails& details);
 
+  // Creates an upload log entry and returns it. On failure, returns the reason.
+  absl::variant<std::string, SenderBase::CrashRemoveReason>
+  CreateUploadLogEntry(const std::string& report_id,
+                       const std::string& product_name,
+                       const CrashDetails& details);
+
   // Requests to send a crash report represented with the given crash details.
   // If the return code is kRetryUploading, the failure can be retried and the
   // caller should not remove the crash report. Otherwise, the caller should
   // remove the crash report using the returned removal reason code.
   SenderBase::CrashRemoveReason RequestToSendCrash(const CrashDetails& details);
 
-  // Writes upload.log based on crash details and report ID.
-  // TODO(b/264307614): Writes to stdout in dry run mode.
+  // Writes upload.log based on crash details and report ID. Writes to stdout
+  // under the dry run mode.
   SenderBase::CrashRemoveReason WriteUploadLog(const CrashDetails& details,
                                                const std::string& report_id,
                                                std::string product_name);

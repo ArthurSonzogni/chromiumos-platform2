@@ -1889,7 +1889,42 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Combine(
         testing::Values(kNone, kPayloadFile, kLogFile, kTextFile, kBinFile)));
 
-TEST_F(CrashSenderUtilTest, SendCrashes) {
+// SendCrash needs to be parametrized for under and not under the dry run mode.
+class CrashSenderSendCrashesTest : public CrashSenderUtilTest,
+                                   public ::testing::WithParamInterface<bool> {
+ protected:
+  // Capture cout. Reset cout to normal after the instance is destructed.
+  class ScopedCoutCapture {
+   public:
+    ScopedCoutCapture() {
+      cout_buf_ = std::cout.rdbuf();
+      std::cout.rdbuf(buffer_.rdbuf());
+    }
+
+    ~ScopedCoutCapture() { std::cout.rdbuf(cout_buf_); }
+
+    ScopedCoutCapture(const ScopedCoutCapture&) = delete;
+    ScopedCoutCapture(ScopedCoutCapture&&) = delete;
+    ScopedCoutCapture& operator=(const ScopedCoutCapture&) = delete;
+    ScopedCoutCapture& operator=(ScopedCoutCapture&&) = delete;
+
+    // Get the captured string.
+    std::string GetString() { return buffer_.str(); }
+
+   private:
+    std::streambuf* cout_buf_;
+    std::stringstream buffer_;
+  };
+
+  void SetUp() override {
+    dry_run_ = GetParam();
+    CrashSenderUtilTest::SetUp();
+  }
+
+  bool dry_run_;
+};
+
+TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
   // Set up the mock session manager client.
   auto mock =
       std::make_unique<org::chromium::SessionManagerInterfaceProxyMock>();
@@ -1986,6 +2021,7 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   options.max_crash_bytes = 0;
   options.sleep_function = base::BindRepeating(&FakeSleep, &sleep_times);
   options.always_write_uploads_log = true;
+  options.dry_run = dry_run_;
   MockSender sender(true /*success*/,
                     "123",  // upload_id
                     std::move(metrics_lib_),
@@ -2017,32 +2053,51 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   raw_metrics_lib->set_guest_mode(false);
   raw_metrics_lib->set_metrics_enabled(true);
 
-  // 2 times because there are 2 valid crashes to send
+  // expected UMA sending count.
+  // 2 times because there are 2 valid crashes to send.
+  const int expected_uma_send_count = dry_run_ ? 0 : 2;
   EXPECT_CALL(
       *raw_metrics_lib,
       SendEnumToUMA("Platform.CrOS.CrashSenderRemoveReason",
                     Sender::kFinishedUploading, Sender::kSendReasonCount))
-      .Times(2);
+      .Times(expected_uma_send_count);
   EXPECT_CALL(*raw_metrics_lib,
               SendEnumToUMA("Platform.CrOS.CrashSenderRemoveReason",
                             Sender::kTotalRemoval, Sender::kSendReasonCount))
-      .Times(2);
-  sender.SendCrashes(crashes_to_send);
+      .Times(expected_uma_send_count);
+
+  // uploads.log content
+  std::string contents;
+  if (dry_run_) {
+    ScopedCoutCapture cout_capture;
+    sender.SendCrashes(crashes_to_send);
+    contents = cout_capture.GetString();
+  } else {
+    sender.SendCrashes(crashes_to_send);
+    ASSERT_TRUE(
+        base::ReadFileToString(paths::Get(paths::kChromeCrashLog), &contents));
+  }
 
   // We shouldn't be processing any crashes still.
   EXPECT_FALSE(base::PathExists(system_processing));
   EXPECT_FALSE(base::PathExists(user_processing));
 
-  // Check the upload log from crash_sender.
-  std::string contents;
-  ASSERT_TRUE(
-      base::ReadFileToString(paths::Get(paths::kChromeCrashLog), &contents));
+  // Examine the upload log from crash_sender.
   std::vector<std::optional<base::Value>> rows =
       ParseChromeUploadsLog(contents);
-  // Should only contain two results, since max_crash_rate is set to 2.
-  // FakeSleep should be called three times since we sleep before we check the
-  // crash rate.
-  ASSERT_EQ(2, rows.size());
+
+  const char* expected_upload_id;
+  if (dry_run_) {
+    // No rate limiting in dry run mode.
+    ASSERT_EQ(3, rows.size());
+    expected_upload_id = "";
+  } else {
+    // Should only contain two results, since max_crash_rate is set to 2.
+    // FakeSleep should be called three times since we sleep before we check the
+    // crash rate.
+    ASSERT_EQ(2, rows.size());
+    expected_upload_id = "123";
+  }
   EXPECT_EQ(3, sleep_times.size());
 
   // Each line of the uploads.log file is "{"upload_time":<value>,"upload_id":
@@ -2054,7 +2109,7 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   auto dict = std::move(row->GetDict());
   ASSERT_EQ(6, dict.size());
   EXPECT_TRUE(dict.Find("upload_time"));
-  EXPECT_THAT(dict.FindString("upload_id"), Pointee(Eq("123")));
+  EXPECT_THAT(dict.FindString("upload_id"), Pointee(Eq(expected_upload_id)));
   EXPECT_THAT(dict.FindString("local_id"), Pointee(Eq("foo")));
   EXPECT_THAT(dict.FindString("capture_time"), Pointee(Eq("1000")));
   EXPECT_EQ(3, dict.FindInt("state"));
@@ -2066,23 +2121,43 @@ TEST_F(CrashSenderUtilTest, SendCrashes) {
   dict = std::move(row->GetDict());
   ASSERT_EQ(6, dict.size());
   EXPECT_TRUE(dict.Find("upload_time"));
-  EXPECT_THAT(dict.FindString("upload_id"),
-              Pointee(Eq("123")));  // This is the value we set before
+  EXPECT_THAT(
+      dict.FindString("upload_id"),
+      Pointee(Eq(expected_upload_id)));  // This is the value we set before
   EXPECT_THAT(dict.FindString("local_id"), Pointee(Eq("bar")));
   EXPECT_THAT(dict.FindString("capture_time"), Pointee(Eq("2000")));
   EXPECT_EQ(3, dict.FindInt("state"));
   EXPECT_THAT(dict.FindString("source"), Pointee(Eq("REDACTED")));
 
-  // The uploaded crash files should be removed now.
-  EXPECT_FALSE(base::PathExists(system_meta_file));
-  EXPECT_FALSE(base::PathExists(system_log));
-  EXPECT_FALSE(base::PathExists(user_meta_file));
-  EXPECT_FALSE(base::PathExists(user_log));
+  if (dry_run_) {
+    row = std::move(rows[2]);
+    ASSERT_TRUE(row.has_value() && row->is_dict());
+    dict = std::move(row->GetDict());
+    ASSERT_EQ(5, dict.size());
+    EXPECT_TRUE(dict.Find("upload_time"));
+    EXPECT_THAT(dict.FindString("upload_id"),
+                Pointee(Eq("")));  // This is empty
+    EXPECT_THAT(dict.FindString("local_id"), Pointee(Eq("baz")));
+    EXPECT_FALSE(dict.Find("capture_time"));
+    EXPECT_EQ(3, dict.FindInt("state"));
+    EXPECT_THAT(dict.FindString("source"), Pointee(Eq("REDACTED")));
+  }
+
+  // The crash files should be kept in dry run mode and removed otherwise.
+  EXPECT_THAT(base::PathExists(system_meta_file), Eq(dry_run_));
+  EXPECT_THAT(base::PathExists(system_log), Eq(dry_run_));
+  EXPECT_THAT(base::PathExists(user_meta_file), Eq(dry_run_));
+  EXPECT_THAT(base::PathExists(user_log), Eq(dry_run_));
 
   // The following should be kept since the crash report was not uploaded.
   EXPECT_TRUE(base::PathExists(user_meta_file2));
   EXPECT_TRUE(base::PathExists(user_log2));
 }
+
+INSTANTIATE_TEST_SUITE_P(CrashSenderSendCrashesInstantiation,
+                         CrashSenderSendCrashesTest,
+                         testing::Bool());
+
 TEST_F(CrashSenderUtilTest, SendCrashes_DontSendUnderDryRunMode) {
   // Set up the mock session manager client.
   auto mock =

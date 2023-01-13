@@ -40,6 +40,7 @@
 #include <brillo/userdb_utils.h>
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
+#include <third_party/abseil-cpp/absl/types/variant.h>
 
 #include "crash-reporter/constants.h"
 #include "crash-reporter/crash_sender.pb.h"
@@ -976,7 +977,15 @@ SenderBase::CrashRemoveReason Sender::WriteUploadLog(
     base::ReplaceSubstringsAfterOffset(&product_name, 0, "Chrome", "Chromium");
   }
   if (dry_run_) {
-    // TODO(b/264307614): Add logic that writes to stdout here.
+    // Writes the log to stdout under the dry run mode.
+    auto entry_or_reason =
+        CreateUploadLogEntry(report_id, product_name, details);
+    if (const auto* reason = absl::get_if<CrashRemoveReason>(&entry_or_reason);
+        reason != nullptr) {
+      return *reason;
+    }
+    std::cout << absl::get<std::string>(entry_or_reason);
+
     return CrashRemoveReason::kDryRun;
   }
 
@@ -993,16 +1002,15 @@ SenderBase::CrashRemoveReason Sender::WriteUploadLog(
     base::FilePath normalized_path;
     if (base::NormalizeFilePath(upload_logs_path, &normalized_path) &&
         upload_logs_path == normalized_path) {
-      base::Value::Dict json_entity =
-          CreateJsonEntity(report_id, product_name, details);
-      std::string upload_log_entry;
-      if (!base::JSONWriter::Write(json_entity, &upload_log_entry)) {
-        LOG(WARNING) << "Cannot construct a valid uploads.log entry in JSON "
-                        "format, so skip the update.";
-        return CrashRemoveReason::kUnparseableMetaFile;
+      auto entry_or_reason =
+          CreateUploadLogEntry(report_id, product_name, details);
+      if (const auto* reason =
+              absl::get_if<CrashRemoveReason>(&entry_or_reason);
+          reason != nullptr) {
+        return *reason;
       }
-
-      upload_log_entry += "\n";
+      const std::string& upload_log_entry =
+          absl::get<std::string>(entry_or_reason);
       if (!upload_logs_file.IsValid() ||
           upload_logs_file.WriteAtCurrentPos(upload_log_entry.c_str(),
                                              upload_log_entry.size()) !=
@@ -1018,6 +1026,21 @@ SenderBase::CrashRemoveReason Sender::WriteUploadLog(
   }
   LOG(INFO) << "Crash report receipt ID " << report_id;
   return CrashRemoveReason::kFinishedUploading;
+}
+
+absl::variant<std::string, SenderBase::CrashRemoveReason>
+Sender::CreateUploadLogEntry(const std::string& report_id,
+                             const std::string& product_name,
+                             const CrashDetails& details) {
+  base::Value::Dict json_entity =
+      CreateJsonEntity(report_id, product_name, details);
+  std::string upload_log_entry;
+  if (!base::JSONWriter::Write(json_entity, &upload_log_entry)) {
+    LOG(WARNING) << "Cannot construct a valid uploads.log entry in JSON "
+                    "format, so skip the update.";
+    return CrashRemoveReason::kUnparseableMetaFile;
+  }
+  return upload_log_entry + "\n";
 }
 
 bool Sender::IsNetworkOnline() {
