@@ -22,9 +22,9 @@
 #include "missive/client/report_queue.h"
 #include "missive/client/report_queue_provider_test_helper.h"
 #include "missive/proto/record_constants.pb.h"
-#include "missive/proto/security_xdr_events.pb.h"
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
+#include "secagentd/proto/security_xdr_events.pb.h"
 
 namespace secagentd::testing {
 

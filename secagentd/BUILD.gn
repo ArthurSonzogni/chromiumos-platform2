@@ -74,7 +74,10 @@ static_library("libsecagent") {
     "process_plugin.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [ ":bpf_process" ]
+  deps = [
+    ":bpf_process",
+    "proto:security_xdr_events_proto",
+  ]
 }
 
 executable("secagentd") {
@@ -128,6 +131,7 @@ if (use.test) {
     run_test = true
     deps = [
       ":libsecagent",
+      "proto:security_xdr_events_proto",
       "//common-mk/testrunner",
     ]
   }

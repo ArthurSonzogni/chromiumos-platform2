@@ -18,7 +18,7 @@
 #include "google/protobuf/message_lite.h"
 #include "missive/client/report_queue.h"
 #include "missive/proto/record_constants.pb.h"
-#include "missive/proto/security_xdr_events.pb.h"
+#include "secagentd/proto/security_xdr_events.pb.h"
 
 namespace secagentd {
 

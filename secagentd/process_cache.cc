@@ -26,10 +26,10 @@
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/synchronization/lock.h"
-#include "missive/proto/security_xdr_events.pb.h"
 #include "openssl/sha.h"
 #include "re2/re2.h"
 #include "secagentd/bpf/process.h"
+#include "secagentd/proto/security_xdr_events.pb.h"
 
 namespace {
 

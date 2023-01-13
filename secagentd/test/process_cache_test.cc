@@ -18,8 +18,8 @@
 #include "base/strings/string_util.h"
 #include "gmock/gmock.h"  // IWYU pragma: keep
 #include "gtest/gtest.h"
-#include "missive/proto/security_xdr_events.pb.h"
 #include "secagentd/bpf/process.h"
+#include "secagentd/proto/security_xdr_events.pb.h"
 
 namespace {
 

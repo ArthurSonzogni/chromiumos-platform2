@@ -19,9 +19,9 @@
 #include "missive/client/report_queue_configuration.h"
 #include "missive/client/report_queue_factory.h"
 #include "missive/proto/record_constants.pb.h"
-#include "missive/proto/security_xdr_events.pb.h"
 #include "missive/util/status.h"
 #include "re2/re2.h"
+#include "secagentd/proto/security_xdr_events.pb.h"
 
 namespace secagentd {
 

@@ -10,9 +10,9 @@
 #include <vector>
 
 #include "gmock/gmock-function-mocker.h"
-#include "missive/proto/security_xdr_events.pb.h"
 #include "secagentd/bpf/process.h"
 #include "secagentd/process_cache.h"
+#include "secagentd/proto/security_xdr_events.pb.h"
 
 namespace secagentd::testing {
 

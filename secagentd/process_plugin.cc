@@ -10,10 +10,10 @@
 #include "base/memory/scoped_refptr.h"
 #include "google/protobuf/message_lite.h"
 #include "missive/proto/record_constants.pb.h"
-#include "missive/proto/security_xdr_events.pb.h"
 #include "secagentd/bpf/process.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/plugins.h"
+#include "secagentd/proto/security_xdr_events.pb.h"
 
 namespace {
 

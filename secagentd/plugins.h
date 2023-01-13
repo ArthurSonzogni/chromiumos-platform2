@@ -14,10 +14,10 @@
 #include "attestation-client/attestation/dbus-proxies.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/timer/timer.h"
-#include "missive/proto/security_xdr_events.pb.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/process_cache.h"
+#include "secagentd/proto/security_xdr_events.pb.h"
 #include "tpm_manager/proto_bindings/tpm_manager.pb.h"
 #include "tpm_manager-client/tpm_manager/dbus-proxies.h"
 

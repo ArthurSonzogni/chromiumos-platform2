@@ -27,9 +27,9 @@
 #include "base/strings/stringprintf.h"
 #include "base/time/time.h"
 #include "missive/proto/record_constants.pb.h"
-#include "missive/proto/security_xdr_events.pb.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/plugins.h"
+#include "secagentd/proto/security_xdr_events.pb.h"
 #include "tpm_manager/proto_bindings/tpm_manager.pb.h"
 #include "vboot/crossystem.h"
 

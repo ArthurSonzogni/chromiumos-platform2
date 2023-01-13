@@ -16,8 +16,8 @@
 #include "base/memory/ref_counted.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/synchronization/lock.h"
-#include "missive/proto/security_xdr_events.pb.h"
 #include "secagentd/bpf/process.h"
+#include "secagentd/proto/security_xdr_events.pb.h"
 
 namespace secagentd {
 

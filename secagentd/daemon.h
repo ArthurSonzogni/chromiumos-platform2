@@ -11,11 +11,11 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/timer/timer.h"
 #include "brillo/daemons/dbus_daemon.h"
-#include "missive/proto/security_xdr_events.pb.h"
 #include "policy/libpolicy.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/plugins.h"
 #include "secagentd/process_cache.h"
+#include "secagentd/proto/security_xdr_events.pb.h"
 
 namespace secagentd {
 

@@ -10,8 +10,8 @@
 #include "gmock/gmock-function-mocker.h"
 #include "google/protobuf/message_lite.h"
 #include "missive/proto/record_constants.pb.h"
-#include "missive/proto/security_xdr_events.pb.h"
 #include "secagentd/message_sender.h"
+#include "secagentd/proto/security_xdr_events.pb.h"
 
 namespace secagentd::testing {
 
