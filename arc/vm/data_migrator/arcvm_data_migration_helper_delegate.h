@@ -28,6 +28,7 @@ class ArcVmDataMigrationHelperDelegate
   bool ShouldCopyQuotaProjectId() override;
   std::string GetMtimeXattrName() override;
   std::string GetAtimeXattrName() override;
+  std::string ConvertXattrName(const std::string& name) override;
 };
 
 }  // namespace arc

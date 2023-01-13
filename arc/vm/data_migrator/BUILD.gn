@@ -12,6 +12,9 @@ group("all") {
     ":install_init",
     ":install_systemd",
   ]
+  if (use.test) {
+    deps += [ ":arcvm_data_migrator_testrunner" ]
+  }
 }
 
 pkg_config("target_defaults") {
@@ -30,17 +33,22 @@ generate_dbus_adaptors("data_migrator_adaptors") {
 }
 
 executable("arcvm_data_migrator") {
-  sources = [
-    "arcvm_data_migration_helper_delegate.cc",
-    "data_migrator.cc",
-  ]
+  sources = [ "data_migrator.cc" ]
   configs += [ ":target_defaults" ]
   install_path = "bin"
-  deps = [ ":data_migrator_adaptors" ]
+  deps = [
+    ":data_migrator_adaptors",
+    ":libarcvm_data_migrator",
+  ]
   pkg_deps = [
     "libcryptohome_data_migrator",
     "libcryptohome_platform",
   ]
+}
+
+static_library("libarcvm_data_migrator") {
+  sources = [ "arcvm_data_migration_helper_delegate.cc" ]
+  configs += [ ":target_defaults" ]
 }
 
 install_config("install_init") {
@@ -51,4 +59,19 @@ install_config("install_init") {
 install_config("install_systemd") {
   sources = [ "init/dbus-1/org.chromium.ArcVmDataMigrator.conf" ]
   install_path = "/etc/dbus-1/system.d"
+}
+
+if (use.test) {
+  executable("arcvm_data_migrator_testrunner") {
+    sources = [ "arcvm_data_migration_helper_delegate_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libarcvm_data_migrator",
+      "//common-mk/testrunner:testrunner",
+    ]
+    run_test = true
+  }
 }

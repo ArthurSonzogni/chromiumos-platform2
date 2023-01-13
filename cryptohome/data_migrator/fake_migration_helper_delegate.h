@@ -5,6 +5,7 @@
 #ifndef CRYPTOHOME_DATA_MIGRATOR_FAKE_MIGRATION_HELPER_DELEGATE_H_
 #define CRYPTOHOME_DATA_MIGRATOR_FAKE_MIGRATION_HELPER_DELEGATE_H_
 
+#include <map>
 #include <string>
 #include <unordered_set>
 
@@ -29,17 +30,20 @@ class FakeMigrationHelperDelegate : public MigrationHelperDelegate {
   // migrated to the migration destination.
   void AddDenylistedPath(const base::FilePath& path);
 
-  // Clears all the denylisted paths added so far.
-  void ClearDenylistedPaths();
+  // Adds a rule to convert xattr that exactly matches |name_from| to |name_to|.
+  void AddXattrMapping(const std::string& name_from,
+                       const std::string& name_to);
 
   // dircrypto_data_migrator::MigrationHelperDelegate overrides:
   bool ShouldMigrateFile(const base::FilePath& child) override;
   bool ShouldCopyQuotaProjectId() override;
   std::string GetMtimeXattrName() override;
   std::string GetAtimeXattrName() override;
+  std::string ConvertXattrName(const std::string& name) override;
 
  private:
   std::unordered_set<base::FilePath> denylisted_paths_;
+  std::map<std::string, std::string> xattr_mappings_;
 };
 
 }  // namespace cryptohome::data_migrator

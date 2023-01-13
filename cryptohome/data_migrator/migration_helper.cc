@@ -808,23 +808,25 @@ bool MigrationHelper::CopyExtendedAttributes(const base::FilePath& child) {
     return false;
   }
 
-  for (const std::string& name : xattr_names) {
-    if (name == delegate_->GetMtimeXattrName() ||
-        name == delegate_->GetAtimeXattrName() || name == kSourceURLXattrName ||
-        name == kReferrerURLXattrName) {
+  for (const std::string& name_from : xattr_names) {
+    if (name_from == delegate_->GetMtimeXattrName() ||
+        name_from == delegate_->GetAtimeXattrName() ||
+        name_from == kSourceURLXattrName ||
+        name_from == kReferrerURLXattrName) {
       continue;
     }
     std::string value;
-    if (!platform_->GetExtendedFileAttributeAsString(from, name, &value)) {
+    if (!platform_->GetExtendedFileAttributeAsString(from, name_from, &value)) {
       RecordFileErrorWithCurrentErrno(kMigrationFailedAtGetAttribute, child);
       return false;
     }
-    if (!platform_->SetExtendedFileAttribute(to, name, value.data(),
+    const std::string name_to = delegate_->ConvertXattrName(name_from);
+    if (!platform_->SetExtendedFileAttribute(to, name_to, value.data(),
                                              value.length())) {
       bool nospace_error = errno == ENOSPC;
       RecordFileErrorWithCurrentErrno(kMigrationFailedAtSetAttribute, child);
       if (nospace_error) {
-        ReportTotalXattrSize(to, name.length() + 1 + value.length());
+        ReportTotalXattrSize(to, name_to.length() + 1 + value.length());
       }
       return false;
     }

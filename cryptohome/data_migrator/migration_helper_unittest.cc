@@ -455,6 +455,46 @@ TEST_F(MigrationHelperTest, CopyAttributesSymlink) {
   EXPECT_STREQ(value.c_str(), kValue);
 }
 
+TEST_F(MigrationHelperTest, ConvertXattrName) {
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
+
+  constexpr char kFileName[] = "file";
+  const FilePath kFromFilePath = from_dir_.Append(kFileName);
+  const FilePath kToFilePath = to_dir_.Append(kFileName);
+  ASSERT_TRUE(platform_.TouchFileDurable(kFromFilePath));
+
+  constexpr char kValue1[] = "value1";
+  constexpr char kValue2[] = "value2";
+
+  // Convert user.from1 to user.to1.
+  delegate_.AddXattrMapping("user.from1", "user.to1");
+
+  ASSERT_TRUE(platform_.SetExtendedFileAttribute(kFromFilePath, "user.from1",
+                                                 kValue1, sizeof(kValue1)));
+  ASSERT_TRUE(platform_.SetExtendedFileAttribute(kFromFilePath, "user.from2",
+                                                 kValue2, sizeof(kValue2)));
+
+  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
+
+  // user.from1 is converted to user.to1.
+  ASSERT_FALSE(platform_.GetExtendedFileAttributeAsString(
+      kToFilePath, "user.from1", nullptr));
+  ASSERT_EQ(ENODATA, errno);
+
+  std::string value1;
+  ASSERT_TRUE(platform_.GetExtendedFileAttributeAsString(kToFilePath,
+                                                         "user.to1", &value1));
+  EXPECT_STREQ(kValue1, value1.c_str());
+
+  // user.from2 is not converted.
+  std::string value2;
+  ASSERT_TRUE(platform_.GetExtendedFileAttributeAsString(
+      kToFilePath, "user.from2", &value2));
+  EXPECT_STREQ(kValue2, value2.c_str());
+}
+
 TEST_F(MigrationHelperTest, MigrateInProgress) {
   // Test the case where the migration was interrupted part way through, but in
   // a clean way such that the two directory trees are consistent (files are
@@ -745,7 +785,6 @@ TEST_F(MigrationHelperTest, CheckSkippedFiles) {
   ASSERT_TRUE(
       platform_.TouchFileDurable(from_dir_.Append("dir/nonskip_dir/file")));
 
-  delegate_.ClearDenylistedPaths();
   delegate_.AddDenylistedPath(FilePath("dir/skip_dir"));
   delegate_.AddDenylistedPath(FilePath("dir/skip_file"));
 

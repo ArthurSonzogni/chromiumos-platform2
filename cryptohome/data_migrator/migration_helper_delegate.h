@@ -43,6 +43,10 @@ class BRILLO_EXPORT MigrationHelperDelegate {
   virtual std::string GetMtimeXattrName() = 0;
   virtual std::string GetAtimeXattrName() = 0;
 
+  // Returns the name of xattr in the migration destination that corresponds to
+  // the xattr |name| in the migration source.
+  virtual std::string ConvertXattrName(const std::string& name) { return name; }
+
   // Reports the current time as the migration start time.
   virtual void ReportStartTime() {}
   // Reports the current time as the migration end time.

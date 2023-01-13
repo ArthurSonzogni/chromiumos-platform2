@@ -6,12 +6,23 @@
 
 #include <string>
 
+#include <base/strings/string_util.h>
+
 namespace arc {
 
 namespace {
 
 constexpr char kMtimeXattrName[] = "trusted.ArcVmDataMigrationMtime";
 constexpr char kAtimeXattrName[] = "trusted.ArcVmDataMigrationAtime";
+
+// Virtio-fs translates security.* xattrs in ARCVM to user.virtiofs.security.*
+// on the host-side (b/155443663), so convert them back to security.* xattr in
+// the migration.
+constexpr char kVirtiofsSecurityXattrPrefix[] = "user.virtiofs.security.";
+constexpr char kVirtiofsXattrPrefix[] = "user.virtiofs.";
+
+static_assert(base::StringPiece(kVirtiofsSecurityXattrPrefix)
+                  .find(kVirtiofsXattrPrefix) == 0);
 
 }  // namespace
 
@@ -29,6 +40,14 @@ std::string ArcVmDataMigrationHelperDelegate::GetMtimeXattrName() {
 
 std::string ArcVmDataMigrationHelperDelegate::GetAtimeXattrName() {
   return kAtimeXattrName;
+}
+
+std::string ArcVmDataMigrationHelperDelegate::ConvertXattrName(
+    const std::string& name) {
+  if (base::StartsWith(name, kVirtiofsSecurityXattrPrefix)) {
+    return name.substr(std::char_traits<char>::length(kVirtiofsXattrPrefix));
+  }
+  return name;
 }
 
 }  // namespace arc
