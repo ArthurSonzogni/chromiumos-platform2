@@ -1435,6 +1435,10 @@ void Cellular::HandleLinkEvent(unsigned int flags, unsigned int change) {
     Network::StartOptions opts = {
         .dhcp = dhcp_opts,
         .accept_ra = true,
+        // TODO(b/234300343#comment43): Read probe URL override configuration
+        // from shill APN dB.
+        .probing_configuration =
+            manager()->GetPortalDetectorProbingConfiguration(),
     };
     SelectService(service_);
     SetServiceState(Service::kStateConfiguring);

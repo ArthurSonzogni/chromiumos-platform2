@@ -72,7 +72,7 @@ class TestNetwork : public Network {
   // Network overrides
   bool IsConnected() const override { return true; }
 
-  bool StartPortalDetection(const ManagerProperties& props) override {
+  bool StartPortalDetection() override {
     portal_detection_delayed_ = false;
     portal_detection_started_ = true;
     portal_detection_running_ = true;
@@ -80,7 +80,7 @@ class TestNetwork : public Network {
     return true;
   }
 
-  bool RestartPortalDetection(const ManagerProperties& props) override {
+  bool RestartPortalDetection() override {
     portal_detection_delayed_ = true;
     portal_detection_running_ = false;
     return true;
@@ -231,8 +231,6 @@ class DevicePortalDetectorTest : public testing::Test {
   ~DevicePortalDetectorTest() override = default;
 
   void SetUp() override {
-    ManagerProperties props = GetManagerPortalProperties();
-    EXPECT_CALL(manager_, GetProperties()).WillRepeatedly(ReturnRef(props));
     device_->set_network_for_testing(std::make_unique<TestNetwork>());
     device_->network()->RegisterEventHandler(device_.get());
     // Set up a connected test Service for the Device.
@@ -281,16 +279,6 @@ class DevicePortalDetectorTest : public testing::Test {
   }
 
  protected:
-  ManagerProperties GetManagerPortalProperties() {
-    ManagerProperties props;
-    props.portal_http_url = PortalDetector::kDefaultHttpUrl;
-    props.portal_https_url = PortalDetector::kDefaultHttpsUrl;
-    props.portal_fallback_http_urls = std::vector<std::string>(
-        PortalDetector::kDefaultFallbackHttpUrls.begin(),
-        PortalDetector::kDefaultFallbackHttpUrls.end());
-    return props;
-  }
-
   NiceMock<MockControl> control_interface_;
   EventDispatcherForTest dispatcher_;
   Metrics metrics_;

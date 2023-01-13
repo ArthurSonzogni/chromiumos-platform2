@@ -13,7 +13,6 @@
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 
-#include "shill/manager.h"
 #include "shill/net/ip_address.h"
 
 namespace shill {
@@ -28,8 +27,7 @@ class MockPortalDetector : public PortalDetector {
 
   MOCK_METHOD(bool,
               Start,
-              (const ManagerProperties&,
-               const std::string& ifname,
+              (const std::string& ifname,
                const IPAddress&,
                const std::vector<std::string>&,
                const std::string& logging_tag,
@@ -37,8 +35,7 @@ class MockPortalDetector : public PortalDetector {
               (override));
   MOCK_METHOD(bool,
               Restart,
-              (const ManagerProperties&,
-               const std::string& ifname,
+              (const std::string& ifname,
                const IPAddress&,
                const std::vector<std::string>&,
                const std::string& logging_tag),

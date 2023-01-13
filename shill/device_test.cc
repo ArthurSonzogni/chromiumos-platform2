@@ -189,16 +189,6 @@ class DeviceTest : public testing::Test {
     device_->OnIPConfigsPropertyUpdated();
   }
 
-  static ManagerProperties MakePortalProperties() {
-    ManagerProperties props;
-    props.portal_http_url = PortalDetector::kDefaultHttpUrl;
-    props.portal_https_url = PortalDetector::kDefaultHttpsUrl;
-    props.portal_fallback_http_urls = std::vector<std::string>(
-        PortalDetector::kDefaultFallbackHttpUrls.begin(),
-        PortalDetector::kDefaultFallbackHttpUrls.end());
-    return props;
-  }
-
   NiceMock<MockControl> control_interface_;
   EventDispatcherForTest dispatcher_;
   NiceMock<MockMetrics> metrics_;
@@ -728,7 +718,7 @@ TEST_F(DevicePortalDetectionTest, NoSelectedService) {
   EXPECT_CALL(*service_, IsPortalDetectionDisabled()).Times(0);
   EXPECT_CALL(*service_, IsConnected(nullptr)).Times(0);
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(0);
-  EXPECT_CALL(*network_, StartPortalDetection(_)).Times(0);
+  EXPECT_CALL(*network_, StartPortalDetection()).Times(0);
 
   EXPECT_FALSE(UpdatePortalDetector(true));
   EXPECT_FALSE(UpdatePortalDetector(false));
@@ -739,7 +729,7 @@ TEST_F(DevicePortalDetectionTest, NoConnection) {
   EXPECT_CALL(*service_, IsPortalDetectionDisabled()).Times(0);
   EXPECT_CALL(*service_, IsConnected(nullptr)).Times(0);
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(0);
-  EXPECT_CALL(*network_, StartPortalDetection(_)).Times(0);
+  EXPECT_CALL(*network_, StartPortalDetection()).Times(0);
 
   EXPECT_FALSE(UpdatePortalDetector(true));
   EXPECT_FALSE(UpdatePortalDetector(false));
@@ -750,7 +740,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDisabled) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(2);
-  EXPECT_CALL(*network_, StartPortalDetection(_)).Times(0);
+  EXPECT_CALL(*network_, StartPortalDetection()).Times(0);
 
   EXPECT_FALSE(UpdatePortalDetector(true));
   EXPECT_FALSE(UpdatePortalDetector(false));
@@ -763,21 +753,18 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionInProgress_DoNotForceRestart) {
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(0);
-  EXPECT_CALL(*network_, StartPortalDetection(_)).Times(0);
+  EXPECT_CALL(*network_, StartPortalDetection()).Times(0);
 
   EXPECT_TRUE(UpdatePortalDetector(false));
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionInProgress_ForceRestart) {
-  const ManagerProperties props = MakePortalProperties();
-
   EXPECT_CALL(*network_, IsPortalDetectionInProgress())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(manager_, GetProperties()).WillRepeatedly(ReturnRef(props));
   EXPECT_CALL(*service_, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
-  EXPECT_CALL(*network_, StartPortalDetection(_)).WillOnce(Return(true));
+  EXPECT_CALL(*network_, StartPortalDetection()).WillOnce(Return(true));
 
   EXPECT_TRUE(UpdatePortalDetector(true));
 }
@@ -785,38 +772,31 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionInProgress_ForceRestart) {
 TEST_F(DevicePortalDetectionTest, PortalDetectionBadUrl) {
   const ManagerProperties props;
 
-  EXPECT_CALL(manager_, GetProperties()).WillRepeatedly(ReturnRef(props));
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*service_, SetState(Service::kStateOnline));
-  EXPECT_CALL(*network_, StartPortalDetection(_)).WillOnce(Return(false));
+  EXPECT_CALL(*network_, StartPortalDetection()).WillOnce(Return(false));
 
   EXPECT_FALSE(UpdatePortalDetector());
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionStart) {
-  const auto props = MakePortalProperties();
-
-  EXPECT_CALL(manager_, GetProperties()).WillRepeatedly(ReturnRef(props));
   EXPECT_CALL(*service_, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(0);
-  EXPECT_CALL(*network_, StartPortalDetection(_)).WillOnce(Return(true));
+  EXPECT_CALL(*network_, StartPortalDetection()).WillOnce(Return(true));
 
   EXPECT_TRUE(UpdatePortalDetector());
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionStartIPv6) {
-  const auto props = MakePortalProperties();
-
-  EXPECT_CALL(manager_, GetProperties()).WillRepeatedly(ReturnRef(props));
   EXPECT_CALL(*service_, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(0);
-  EXPECT_CALL(*network_, StartPortalDetection(_)).WillOnce(Return(true));
+  EXPECT_CALL(*network_, StartPortalDetection()).WillOnce(Return(true));
 
   EXPECT_TRUE(UpdatePortalDetector());
 }
@@ -825,7 +805,6 @@ TEST_F(DevicePortalDetectionTest, PortalRetryAfterDetectionFailure) {
   const int kFailureStatusCode = 204;
   const auto ip_addr = IPAddress("1.2.3.4");
   const std::vector<std::string> dns_list = {"8.8.8.8", "8.8.4.4"};
-  const auto props = MakePortalProperties();
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kConnection,
   result.http_status = PortalDetector::Status::kFailure;
@@ -834,7 +813,6 @@ TEST_F(DevicePortalDetectionTest, PortalRetryAfterDetectionFailure) {
   result.https_status = PortalDetector::Status::kSuccess;
   result.num_attempts = kPortalAttempts;
 
-  EXPECT_CALL(manager_, GetProperties()).WillRepeatedly(ReturnRef(props));
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillOnce(Return(true));
   EXPECT_CALL(*service_,
               SetPortalDetectionFailure(kPortalDetectionPhaseConnection,
@@ -847,8 +825,8 @@ TEST_F(DevicePortalDetectionTest, PortalRetryAfterDetectionFailure) {
               SendEnumToUMA(Metrics::kMetricPortalResult,
                             Technology(Technology::kUnknown),
                             Metrics::kPortalResultConnectionFailure));
-  EXPECT_CALL(*network_, RestartPortalDetection(_)).WillOnce(Return(true));
-  EXPECT_CALL(*network_, StartConnectionDiagnostics(_));
+  EXPECT_CALL(*network_, RestartPortalDetection()).WillOnce(Return(true));
+  EXPECT_CALL(*network_, StartConnectionDiagnostics());
 
   OnNetworkValidationResult(result);
 }
@@ -875,9 +853,6 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionSuccess) {
 // detection attempt fails, causing the Service State to be set to 'online'
 // since portal detection did not run.
 TEST_F(DevicePortalDetectionTest, NextAttemptFails) {
-  const auto props = MakePortalProperties();
-
-  EXPECT_CALL(manager_, GetProperties()).WillRepeatedly(ReturnRef(props));
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   // If portal detection attempts fail, default to optimistically assuming that
   // the Service is 'online'.
@@ -887,7 +862,7 @@ TEST_F(DevicePortalDetectionTest, NextAttemptFails) {
                              StrEq(kPortalDetectionStatusTimeout), 0));
   // The second portal detection attempt fails immediately, forcing the Device
   // to assume the Service state is 'online'.
-  EXPECT_CALL(*network_, RestartPortalDetection(_)).WillOnce(Return(false));
+  EXPECT_CALL(*network_, RestartPortalDetection()).WillOnce(Return(false));
 
   // First result indicating no connectivity and triggering a new portal
   // detection attempt.
@@ -900,9 +875,6 @@ TEST_F(DevicePortalDetectionTest, NextAttemptFails) {
 }
 
 TEST_F(DevicePortalDetectionTest, ScheduleNextDetectionAttempt) {
-  const auto props = MakePortalProperties();
-
-  EXPECT_CALL(manager_, GetProperties()).WillRepeatedly(ReturnRef(props));
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   // If portal detection attempts run successfully and do not validate the
   // network, the Service state does not become 'online'.
@@ -911,7 +883,7 @@ TEST_F(DevicePortalDetectionTest, ScheduleNextDetectionAttempt) {
                              StrEq(kPortalDetectionPhaseDns),
                              StrEq(kPortalDetectionStatusTimeout), 0));
   // The second portal detection attempt succeeds.
-  EXPECT_CALL(*network_, RestartPortalDetection(_)).WillOnce(Return(true));
+  EXPECT_CALL(*network_, RestartPortalDetection()).WillOnce(Return(true));
 
   // First result indicating no connectivity and triggering a new portal
   // detection attempt.
@@ -932,7 +904,6 @@ TEST_F(DevicePortalDetectionTest, CancelledOnSelectService) {
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   const int kFailureStatusCode = 204;
-  const auto props = MakePortalProperties();
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kDNS,
   result.http_status = PortalDetector::Status::kFailure;
@@ -941,21 +912,19 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSFailure) {
   result.https_status = PortalDetector::Status::kFailure;
   result.num_attempts = kPortalAttempts;
 
-  EXPECT_CALL(manager_, GetProperties()).WillRepeatedly(ReturnRef(props));
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_,
               SetPortalDetectionFailure(kPortalDetectionPhaseDns,
                                         kPortalDetectionStatusFailure,
                                         kFailureStatusCode));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
-  EXPECT_CALL(*network_, RestartPortalDetection(_)).WillOnce(Return(true));
-  EXPECT_CALL(*network_, StartConnectionDiagnostics(_));
+  EXPECT_CALL(*network_, RestartPortalDetection()).WillOnce(Return(true));
+  EXPECT_CALL(*network_, StartConnectionDiagnostics());
 
   OnNetworkValidationResult(result);
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionDNSTimeout) {
-  const auto props = MakePortalProperties();
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kDNS,
   result.http_status = PortalDetector::Status::kTimeout;
@@ -964,43 +933,39 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDNSTimeout) {
   result.https_status = PortalDetector::Status::kFailure;
   result.num_attempts = kPortalAttempts;
 
-  EXPECT_CALL(manager_, GetProperties()).WillRepeatedly(ReturnRef(props));
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_,
               SetPortalDetectionFailure(kPortalDetectionPhaseDns,
                                         kPortalDetectionStatusTimeout, 0));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
-  EXPECT_CALL(*network_, RestartPortalDetection(_)).WillOnce(Return(true));
-  EXPECT_CALL(*network_, StartConnectionDiagnostics(_));
+  EXPECT_CALL(*network_, RestartPortalDetection()).WillOnce(Return(true));
+  EXPECT_CALL(*network_, StartConnectionDiagnostics());
 
   OnNetworkValidationResult(result);
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionRedirect) {
-  const auto props = MakePortalProperties();
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kRedirect;
   result.http_status_code = 302;
   result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kSuccess;
-  result.redirect_url_string = props.portal_http_url;
+  result.redirect_url_string = PortalDetector::kDefaultHttpUrl;
   result.num_attempts = kPortalAttempts;
 
-  EXPECT_CALL(manager_, GetProperties()).WillRepeatedly(ReturnRef(props));
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_,
               SetPortalDetectionFailure(kPortalDetectionPhaseContent,
                                         kPortalDetectionStatusRedirect, 302));
   EXPECT_CALL(*service_, SetState(Service::kStateRedirectFound));
-  EXPECT_CALL(*network_, RestartPortalDetection(_)).WillOnce(Return(true));
-  EXPECT_CALL(*network_, StartConnectionDiagnostics(_)).Times(0);
+  EXPECT_CALL(*network_, RestartPortalDetection()).WillOnce(Return(true));
+  EXPECT_CALL(*network_, StartConnectionDiagnostics()).Times(0);
 
   OnNetworkValidationResult(result);
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionRedirectNoUrl) {
-  const auto props = MakePortalProperties();
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kRedirect;
@@ -1009,20 +974,18 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionRedirectNoUrl) {
   result.https_status = PortalDetector::Status::kSuccess;
   result.num_attempts = kPortalAttempts;
 
-  EXPECT_CALL(manager_, GetProperties()).WillRepeatedly(ReturnRef(props));
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_,
               SetPortalDetectionFailure(kPortalDetectionPhaseContent,
                                         kPortalDetectionStatusRedirect, 302));
   EXPECT_CALL(*service_, SetState(Service::kStatePortalSuspected));
-  EXPECT_CALL(*network_, RestartPortalDetection(_)).WillOnce(Return(true));
-  EXPECT_CALL(*network_, StartConnectionDiagnostics(_));
+  EXPECT_CALL(*network_, RestartPortalDetection()).WillOnce(Return(true));
+  EXPECT_CALL(*network_, StartConnectionDiagnostics());
 
   OnNetworkValidationResult(result);
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionPortalSuspected) {
-  const auto props = MakePortalProperties();
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kSuccess;
@@ -1031,20 +994,18 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionPortalSuspected) {
   result.https_status = PortalDetector::Status::kFailure;
   result.num_attempts = kPortalAttempts;
 
-  EXPECT_CALL(manager_, GetProperties()).WillRepeatedly(ReturnRef(props));
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_,
               SetPortalDetectionFailure(kPortalDetectionPhaseContent,
                                         kPortalDetectionStatusSuccess, 204));
   EXPECT_CALL(*service_, SetState(Service::kStatePortalSuspected));
-  EXPECT_CALL(*network_, RestartPortalDetection(_)).WillOnce(Return(true));
-  EXPECT_CALL(*network_, StartConnectionDiagnostics(_));
+  EXPECT_CALL(*network_, RestartPortalDetection()).WillOnce(Return(true));
+  EXPECT_CALL(*network_, StartConnectionDiagnostics());
 
   OnNetworkValidationResult(result);
 }
 
 TEST_F(DevicePortalDetectionTest, PortalDetectionNoConnectivity) {
-  const auto props = MakePortalProperties();
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kUnknown,
   result.http_status = PortalDetector::Status::kFailure;
@@ -1053,14 +1014,13 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionNoConnectivity) {
   result.https_status = PortalDetector::Status::kFailure;
   result.num_attempts = kPortalAttempts;
 
-  EXPECT_CALL(manager_, GetProperties()).WillRepeatedly(ReturnRef(props));
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_,
               SetPortalDetectionFailure(kPortalDetectionPhaseUnknown,
                                         kPortalDetectionStatusFailure, 0));
   EXPECT_CALL(*service_, SetState(Service::kStateNoConnectivity));
-  EXPECT_CALL(*network_, RestartPortalDetection(_)).WillOnce(Return(true));
-  EXPECT_CALL(*network_, StartConnectionDiagnostics(_));
+  EXPECT_CALL(*network_, RestartPortalDetection()).WillOnce(Return(true));
+  EXPECT_CALL(*network_, StartConnectionDiagnostics());
 
   OnNetworkValidationResult(result);
 }

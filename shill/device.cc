@@ -624,7 +624,7 @@ bool Device::UpdatePortalDetector(bool restart) {
     return true;
   }
 
-  if (!network_->StartPortalDetection(manager_->GetProperties())) {
+  if (!network_->StartPortalDetection()) {
     SetServiceState(Service::kStateOnline);
     return false;
   }
@@ -702,7 +702,7 @@ void Device::OnNetworkValidationResult(const PortalDetector::Result& result) {
         PortalDetector::PhaseToString(result.http_phase),
         PortalDetector::StatusToString(result.http_status),
         result.http_status_code);
-    if (!network_->RestartPortalDetection(manager_->GetProperties())) {
+    if (!network_->RestartPortalDetection()) {
       state = Service::kStateOnline;
     }
   } else {
@@ -720,7 +720,7 @@ void Device::OnNetworkValidationResult(const PortalDetector::Result& result) {
   // diagnostics for the current network connection.
   if (state == Service::kStateNoConnectivity ||
       state == Service::kStatePortalSuspected) {
-    network()->StartConnectionDiagnostics(manager_->GetProperties());
+    network()->StartConnectionDiagnostics();
   }
 }
 

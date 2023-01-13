@@ -727,12 +727,6 @@ TEST_F(EthernetTest, ReachabilityEvent_Online) {
   auto network =
       std::make_unique<MockNetwork>(1, "eth0", Technology::kEthernet);
   auto network_p = network.get();
-  ManagerProperties props = {};
-  props.portal_http_url = PortalDetector::kDefaultHttpUrl;
-  props.portal_https_url = PortalDetector::kDefaultHttpsUrl;
-  props.portal_fallback_http_urls =
-      std::vector<std::string>(PortalDetector::kDefaultFallbackHttpUrls.begin(),
-                               PortalDetector::kDefaultFallbackHttpUrls.end());
 
   ethernet_->set_network_for_testing(std::move(network));
   ethernet_->set_selected_service_for_testing(mock_service_);
@@ -744,10 +738,9 @@ TEST_F(EthernetTest, ReachabilityEvent_Online) {
   ON_CALL(*network_p, IsPortalDetectionInProgress())
       .WillByDefault(Return(false));
   ON_CALL(*network_p, IsConnected()).WillByDefault(Return(true));
-  ON_CALL(manager_, GetProperties()).WillByDefault(ReturnRef(props));
 
   // Service state is 'online', REACHABLE neighbor events are ignored.
-  EXPECT_CALL(*network_p, StartPortalDetection(_)).Times(0);
+  EXPECT_CALL(*network_p, StartPortalDetection()).Times(0);
   ethernet_->OnNeighborReachabilityEvent(ipv4_addr, NeighborSignal::GATEWAY,
                                          NeighborSignal::REACHABLE);
   ethernet_->OnNeighborReachabilityEvent(ipv6_addr,
@@ -757,12 +750,12 @@ TEST_F(EthernetTest, ReachabilityEvent_Online) {
 
   // Service state is 'online', FAILED gateway neighbor events triggers network
   // validation.
-  EXPECT_CALL(*network_p, StartPortalDetection(_)).WillOnce(Return(true));
+  EXPECT_CALL(*network_p, StartPortalDetection()).WillOnce(Return(true));
   ethernet_->OnNeighborReachabilityEvent(ipv4_addr, NeighborSignal::GATEWAY,
                                          NeighborSignal::FAILED);
   Mock::VerifyAndClearExpectations(network_p);
 
-  EXPECT_CALL(*network_p, StartPortalDetection(_));
+  EXPECT_CALL(*network_p, StartPortalDetection());
   ethernet_->OnNeighborReachabilityEvent(ipv6_addr,
                                          NeighborSignal::GATEWAY_AND_DNS_SERVER,
                                          NeighborSignal::FAILED);
@@ -777,12 +770,6 @@ TEST_F(EthernetTest, ReachabilityEvent_NotOnline) {
   auto network =
       std::make_unique<MockNetwork>(1, "eth0", Technology::kEthernet);
   auto network_p = network.get();
-  ManagerProperties props = {};
-  props.portal_http_url = PortalDetector::kDefaultHttpUrl;
-  props.portal_https_url = PortalDetector::kDefaultHttpsUrl;
-  props.portal_fallback_http_urls =
-      std::vector<std::string>(PortalDetector::kDefaultFallbackHttpUrls.begin(),
-                               PortalDetector::kDefaultFallbackHttpUrls.end());
 
   ethernet_->set_network_for_testing(std::move(network));
   ethernet_->set_selected_service_for_testing(mock_service_);
@@ -794,13 +781,12 @@ TEST_F(EthernetTest, ReachabilityEvent_NotOnline) {
   ON_CALL(*network_p, IsPortalDetectionInProgress())
       .WillByDefault(Return(false));
   ON_CALL(*network_p, IsConnected()).WillByDefault(Return(true));
-  ON_CALL(manager_, GetProperties()).WillByDefault(ReturnRef(props));
 
   // Service state is connected but not 'online', FAILED neighbor events are
   // ignored.
   ON_CALL(*mock_service_, state())
       .WillByDefault(Return(Service::kStateNoConnectivity));
-  EXPECT_CALL(*network_p, StartPortalDetection(_)).Times(0);
+  EXPECT_CALL(*network_p, StartPortalDetection()).Times(0);
   ethernet_->OnNeighborReachabilityEvent(ipv4_addr, NeighborSignal::GATEWAY,
                                          NeighborSignal::FAILED);
   ethernet_->OnNeighborReachabilityEvent(ipv6_addr,
@@ -810,12 +796,12 @@ TEST_F(EthernetTest, ReachabilityEvent_NotOnline) {
 
   // Service state is connected but not 'online', REACHABLE neighbor events
   // triggers network validation.
-  EXPECT_CALL(*network_p, StartPortalDetection(_));
+  EXPECT_CALL(*network_p, StartPortalDetection());
   ethernet_->OnNeighborReachabilityEvent(ipv4_addr, NeighborSignal::GATEWAY,
                                          NeighborSignal::REACHABLE);
   Mock::VerifyAndClearExpectations(network_p);
 
-  EXPECT_CALL(*network_p, StartPortalDetection(_));
+  EXPECT_CALL(*network_p, StartPortalDetection());
   ethernet_->OnNeighborReachabilityEvent(ipv6_addr,
                                          NeighborSignal::GATEWAY_AND_DNS_SERVER,
                                          NeighborSignal::REACHABLE);
@@ -830,12 +816,6 @@ TEST_F(EthernetTest, ReachabilityEvent_DNSServers) {
   auto network =
       std::make_unique<MockNetwork>(1, "eth0", Technology::kEthernet);
   auto network_p = network.get();
-  ManagerProperties props = {};
-  props.portal_http_url = PortalDetector::kDefaultHttpUrl;
-  props.portal_https_url = PortalDetector::kDefaultHttpsUrl;
-  props.portal_fallback_http_urls =
-      std::vector<std::string>(PortalDetector::kDefaultFallbackHttpUrls.begin(),
-                               PortalDetector::kDefaultFallbackHttpUrls.end());
 
   ethernet_->set_network_for_testing(std::move(network));
   ethernet_->set_selected_service_for_testing(mock_service_);
@@ -847,10 +827,9 @@ TEST_F(EthernetTest, ReachabilityEvent_DNSServers) {
   ON_CALL(*network_p, IsPortalDetectionInProgress())
       .WillByDefault(Return(false));
   ON_CALL(*network_p, IsConnected()).WillByDefault(Return(true));
-  ON_CALL(manager_, GetProperties()).WillByDefault(ReturnRef(props));
 
   // DNS neighbor events are always ignored.
-  EXPECT_CALL(*network_p, StartPortalDetection(_)).Times(0);
+  EXPECT_CALL(*network_p, StartPortalDetection()).Times(0);
   ON_CALL(*mock_service_, state())
       .WillByDefault(Return(Service::kStateConnected));
   ethernet_->OnNeighborReachabilityEvent(ipv4_addr, NeighborSignal::DNS_SERVER,

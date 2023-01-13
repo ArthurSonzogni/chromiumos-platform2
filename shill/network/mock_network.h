@@ -16,7 +16,6 @@
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
 #include "shill/ipconfig.h"
-#include "shill/manager.h"
 #include "shill/network/network.h"
 #include "shill/portal_detector.h"
 #include "shill/technology.h"
@@ -74,20 +73,11 @@ class MockNetwork : public Network {
               (const patchpanel::NeighborReachabilityEventSignal& signal));
   MOCK_METHOD(bool, ipv4_gateway_found, (), (const, override));
   MOCK_METHOD(bool, ipv6_gateway_found, (), (const, override));
-  MOCK_METHOD(bool,
-              StartPortalDetection,
-              (const ManagerProperties& props),
-              (override));
-  MOCK_METHOD(bool,
-              RestartPortalDetection,
-              (const ManagerProperties& props),
-              (override));
+  MOCK_METHOD(bool, StartPortalDetection, (), (override));
+  MOCK_METHOD(bool, RestartPortalDetection, (), (override));
   MOCK_METHOD(void, StopPortalDetection, (), (override));
   MOCK_METHOD(bool, IsPortalDetectionInProgress, (), (const, override));
-  MOCK_METHOD(void,
-              StartConnectionDiagnostics,
-              (const ManagerProperties& props),
-              (override));
+  MOCK_METHOD(void, StartConnectionDiagnostics, (), (override));
 };
 
 class MockNetworkEventHandler : public Network::EventHandler {

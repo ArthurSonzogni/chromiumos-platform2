@@ -17,8 +17,9 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/manager.h"
+#include "shill/http_request.h"
 #include "shill/mock_event_dispatcher.h"
+#include "shill/net/ip_address.h"
 
 using testing::_;
 using testing::Mock;
@@ -38,6 +39,10 @@ const char kHttpsUrl[] = "https://www.google.com";
 const std::vector<std::string> kFallbackHttpUrls{
     "http://www.google.com/gen_204",
     "http://play.googleapis.com/generate_204",
+};
+const std::vector<std::string> kFallbackHttpsUrls{
+    "http://url1.com/gen204",
+    "http://url2.com/gen204",
 };
 const IPAddress kIpAddress = IPAddress("1.2.3.4");
 const char kDNSServer0[] = "8.8.8.8";
@@ -84,8 +89,10 @@ class PortalDetectorTest : public Test {
       : transport_(std::make_shared<brillo::http::MockTransport>()),
         brillo_connection_(
             std::make_shared<brillo::http::MockConnection>(transport_)),
-        portal_detector_(new PortalDetector(
-            &dispatcher_, callback_target_.result_callback())),
+        portal_detector_(
+            new PortalDetector(&dispatcher_,
+                               MakeProbingConfiguration(),
+                               callback_target_.result_callback())),
         interface_name_(kInterfaceName),
         dns_servers_(kDNSServers, kDNSServers + 2),
         http_request_(nullptr),
@@ -130,17 +137,17 @@ class PortalDetectorTest : public Test {
     portal_detector_->https_request_.reset(https_request_);
   }
 
-  static ManagerProperties MakePortalProperties() {
-    ManagerProperties props;
-    props.portal_http_url = kHttpUrl;
-    props.portal_https_url = kHttpsUrl;
-    props.portal_fallback_http_urls = kFallbackHttpUrls;
-    return props;
+  static PortalDetector::ProbingConfiguration MakeProbingConfiguration() {
+    PortalDetector::ProbingConfiguration config;
+    config.portal_http_url = kHttpUrl;
+    config.portal_https_url = kHttpsUrl;
+    config.portal_fallback_http_urls = kFallbackHttpUrls;
+    config.portal_fallback_https_urls = kFallbackHttpsUrls;
+    return config;
   }
 
-  bool StartPortalRequest(const ManagerProperties& props,
-                          base::TimeDelta delay = base::TimeDelta()) {
-    if (!portal_detector_->Start(props, kInterfaceName, kIpAddress,
+  bool StartPortalRequest(base::TimeDelta delay = base::TimeDelta()) {
+    if (!portal_detector_->Start(kInterfaceName, kIpAddress,
                                  {kDNSServer0, kDNSServer1}, "tag", delay)) {
       return false;
     }
@@ -148,8 +155,8 @@ class PortalDetectorTest : public Test {
     return true;
   }
 
-  bool RestartPortalRequest(const ManagerProperties& props) {
-    if (!portal_detector_->Restart(props, kInterfaceName, kIpAddress,
+  bool RestartPortalRequest() {
+    if (!portal_detector_->Restart(kInterfaceName, kIpAddress,
                                    {kDNSServer0, kDNSServer1}, "tag")) {
       return false;
     }
@@ -189,8 +196,7 @@ class PortalDetectorTest : public Test {
 
   void StartAttempt() {
     EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta()));
-    ManagerProperties props = MakePortalProperties();
-    EXPECT_TRUE(StartPortalRequest(props));
+    EXPECT_TRUE(StartPortalRequest());
     StartTrialTask();
   }
 
@@ -228,9 +234,11 @@ TEST_F(PortalDetectorTest, Constructor) {
 TEST_F(PortalDetectorTest, InvalidURL) {
   EXPECT_FALSE(portal_detector()->IsInProgress());
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta())).Times(0);
-  ManagerProperties props = MakePortalProperties();
-  props.portal_http_url = kBadURL;
-  EXPECT_FALSE(StartPortalRequest(props));
+  auto probing_configuration = MakeProbingConfiguration();
+  probing_configuration.portal_http_url = kBadURL;
+  portal_detector()->set_probing_configuration_for_testing(
+      probing_configuration);
+  EXPECT_FALSE(StartPortalRequest());
   ExpectReset();
 
   EXPECT_FALSE(portal_detector()->IsInProgress());
@@ -242,8 +250,7 @@ TEST_F(PortalDetectorTest, IsInProgress) {
 
   // Once the trial is started, IsInProgress should return true.
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta()));
-  ManagerProperties props = MakePortalProperties();
-  EXPECT_TRUE(StartPortalRequest(props));
+  EXPECT_TRUE(StartPortalRequest());
 
   StartTrialTask();
   EXPECT_TRUE(portal_detector()->IsInProgress());
@@ -260,8 +267,7 @@ TEST_F(PortalDetectorTest, IsInProgress) {
 
 TEST_F(PortalDetectorTest, HttpStartAttemptFailed) {
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta()));
-  ManagerProperties props = MakePortalProperties();
-  EXPECT_TRUE(StartPortalRequest(props));
+  EXPECT_TRUE(StartPortalRequest());
 
   // Expect that the HTTP request will be started -- return failure.
   EXPECT_CALL(*http_request(), Start(_, _, _, _, _))
@@ -284,8 +290,7 @@ TEST_F(PortalDetectorTest, HttpStartAttemptFailed) {
 
 TEST_F(PortalDetectorTest, HttpsStartAttemptFailed) {
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta()));
-  ManagerProperties props = MakePortalProperties();
-  EXPECT_TRUE(StartPortalRequest(props));
+  EXPECT_TRUE(StartPortalRequest());
 
   // Expect that the HTTP request will be started successfully and the
   // HTTPS request will fail to start.
@@ -317,36 +322,33 @@ TEST_F(PortalDetectorTest, HttpsStartAttemptFailed) {
 TEST_F(PortalDetectorTest, GetNextAttemptDelay) {
   EXPECT_EQ(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
 
-  ManagerProperties props = MakePortalProperties();
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, base::TimeDelta()));
-  EXPECT_TRUE(StartPortalRequest(props));
+  EXPECT_TRUE(StartPortalRequest());
 
   EXPECT_GT(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
 }
 
 TEST_F(PortalDetectorTest, DelayedAttempt) {
   const auto delay = base::Seconds(123);
-  ManagerProperties props = MakePortalProperties();
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, delay)).Times(1);
-  EXPECT_TRUE(StartPortalRequest(props, delay));
+  EXPECT_TRUE(StartPortalRequest(delay));
 }
 
 TEST_F(PortalDetectorTest, Restart) {
   EXPECT_FALSE(portal_detector()->IsInProgress());
-  ManagerProperties props = MakePortalProperties();
 
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, _)).Times(1);
   EXPECT_EQ(portal_detector()->GetNextAttemptDelay(), base::TimeDelta());
   EXPECT_EQ(0, portal_detector()->attempt_count());
-  EXPECT_TRUE(StartPortalRequest(props));
-  EXPECT_EQ(portal_detector()->http_url_string_, props.portal_http_url);
+  EXPECT_TRUE(StartPortalRequest());
+  EXPECT_EQ(portal_detector()->http_url_string_, kHttpUrl);
   EXPECT_EQ(1, portal_detector()->attempt_count());
   Mock::VerifyAndClearExpectations(&dispatcher_);
 
   auto next_delay = portal_detector()->GetNextAttemptDelay();
   EXPECT_GT(next_delay, base::TimeDelta());
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, _)).Times(1);
-  EXPECT_TRUE(RestartPortalRequest(props));
+  EXPECT_TRUE(RestartPortalRequest());
   EXPECT_EQ(2, portal_detector()->attempt_count());
   Mock::VerifyAndClearExpectations(&dispatcher_);
 
@@ -357,9 +359,8 @@ TEST_F(PortalDetectorTest, Restart) {
 TEST_F(PortalDetectorTest, AttemptCount) {
   EXPECT_FALSE(portal_detector()->IsInProgress());
   EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, _)).Times(1);
-  ManagerProperties props = MakePortalProperties();
-  EXPECT_TRUE(StartPortalRequest(props));
-  EXPECT_EQ(portal_detector()->http_url_string_, props.portal_http_url);
+  EXPECT_TRUE(StartPortalRequest());
+  EXPECT_EQ(portal_detector()->http_url_string_, kHttpUrl);
   Mock::VerifyAndClearExpectations(&dispatcher_);
 
   PortalDetector::Result result;
@@ -370,15 +371,13 @@ TEST_F(PortalDetectorTest, AttemptCount) {
   result.num_attempts = kNumAttempts;
   EXPECT_CALL(callback_target(), ResultCallback(IsResult(result))).Times(3);
 
-  std::set<std::string> expected_retry_http_urls(
-      props.portal_fallback_http_urls.begin(),
-      props.portal_fallback_http_urls.end());
-  expected_retry_http_urls.insert(props.portal_http_url);
+  std::set<std::string> expected_retry_http_urls(kFallbackHttpUrls.begin(),
+                                                 kFallbackHttpUrls.end());
+  expected_retry_http_urls.insert(kHttpUrl);
 
-  std::set<std::string> expected_retry_https_urls(
-      props.portal_fallback_https_urls.begin(),
-      props.portal_fallback_https_urls.end());
-  expected_retry_https_urls.insert(props.portal_https_url);
+  std::set<std::string> expected_retry_https_urls(kFallbackHttpsUrls.begin(),
+                                                  kFallbackHttpsUrls.end());
+  expected_retry_https_urls.insert(kHttpsUrl);
 
   auto last_delay = base::TimeDelta();
   for (int i = 1; i < 4; i++) {
@@ -387,7 +386,7 @@ TEST_F(PortalDetectorTest, AttemptCount) {
     EXPECT_GT(delay, last_delay);
     EXPECT_CALL(dispatcher(), PostDelayedTask(_, _, _)).Times(1);
     last_delay = delay;
-    EXPECT_TRUE(RestartPortalRequest(props));
+    EXPECT_TRUE(RestartPortalRequest());
 
     EXPECT_NE(
         expected_retry_http_urls.find(portal_detector()->http_url_string_),

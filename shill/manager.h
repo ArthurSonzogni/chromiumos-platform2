@@ -400,6 +400,8 @@ class Manager {
   }
 
   virtual const ManagerProperties& GetProperties() const { return props_; }
+  PortalDetector::ProbingConfiguration GetPortalDetectorProbingConfiguration()
+      const;
 
   bool GetArpGateway() const { return props_.arp_gateway; }
 

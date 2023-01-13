@@ -2500,6 +2500,8 @@ void WiFi::StateChanged(const std::string& new_state) {
           .dhcp = dhcp_opts,
           .accept_ra = true,
           .ignore_link_monitoring = affected_service->link_monitor_disabled(),
+          .probing_configuration =
+              manager()->GetPortalDetectorProbingConfiguration(),
       };
       network()->Start(opts);
       LOG(INFO) << link_name() << " is up; started L3 configuration.";

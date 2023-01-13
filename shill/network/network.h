@@ -35,7 +35,6 @@ class EventDispatcher;
 class Metrics;
 class RoutingTable;
 class Service;
-struct ManagerProperties;
 
 // An object of Network class represents a network interface in the kernel, and
 // maintains the layer 3 configuration on this interface.
@@ -125,6 +124,8 @@ class Network {
     bool accept_ra = false;
     // When set to true, neighbor events from link monitoring are ignored.
     bool ignore_link_monitoring = false;
+    // PortalDetector probe configuration for network validation.
+    PortalDetector::ProbingConfiguration probing_configuration;
   };
 
   // State for tracking the L3 connectivity (e.g., portal state is not
@@ -251,18 +252,18 @@ class Network {
 
   // Starts a new network validation cycle and starts a first portal detection
   // attempt. Returns true if portal detection starts successfully.
-  mockable bool StartPortalDetection(const ManagerProperties& props);
+  mockable bool StartPortalDetection();
   // Schedules the next portal detection attempt for the current network
   // validation cycle. Returns true if portal detection restarts successfully.
   // If portal detection fails to restart, it is stopped.
-  mockable bool RestartPortalDetection(const ManagerProperties& props);
+  mockable bool RestartPortalDetection();
   // Stops the current network validation cycle if it is still running.
   mockable void StopPortalDetection();
   // Returns true if portal detection is currently in progress.
   mockable bool IsPortalDetectionInProgress() const;
 
   // Initiates connection diagnostics on this Network.
-  mockable void StartConnectionDiagnostics(const ManagerProperties& props);
+  mockable void StartConnectionDiagnostics();
 
   // Properties of the current IP config. Returns IPv4 properties if the Network
   // is dual-stack, and default (empty) values if the Network is not connected.
@@ -453,6 +454,7 @@ class Network {
   bool ipv4_gateway_found_ = false;
   bool ipv6_gateway_found_ = false;
 
+  PortalDetector::ProbingConfiguration probing_configuration_;
   std::unique_ptr<PortalDetector> portal_detector_;
   std::unique_ptr<ConnectionDiagnostics> connection_diagnostics_;
 

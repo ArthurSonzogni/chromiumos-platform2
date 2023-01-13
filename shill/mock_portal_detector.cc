@@ -4,10 +4,12 @@
 
 #include "shill/mock_portal_detector.h"
 
+#include <base/callback_helpers.h>
+
 namespace shill {
 
 MockPortalDetector::MockPortalDetector()
-    : PortalDetector(nullptr, base::DoNothing()) {}
+    : PortalDetector(nullptr, {}, base::DoNothing()) {}
 
 MockPortalDetector::~MockPortalDetector() = default;
 

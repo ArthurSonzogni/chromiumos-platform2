@@ -3108,7 +3108,7 @@ void Manager::StartConnectivityTest(const DeviceRefPtr& device) {
   }
 
   auto portal_detector = std::make_unique<PortalDetector>(
-      dispatcher(),
+      dispatcher(), GetPortalDetectorProbingConfiguration(),
       base::BindRepeating(&Manager::ConnectivityTestCallback,
                           weak_factory_.GetWeakPtr(), device->link_name(),
                           device->LoggingTag()));
@@ -3116,9 +3116,9 @@ void Manager::StartConnectivityTest(const DeviceRefPtr& device) {
                   .insert(std::make_pair(device->link_name(),
                                          std::move(portal_detector)))
                   .first;
-  if (!iter->second->Start(
-          GetProperties(), device->link_name(), device->network()->local(),
-          device->network()->dns_servers(), device->LoggingTag())) {
+  if (!iter->second->Start(device->link_name(), device->network()->local(),
+                           device->network()->dns_servers(),
+                           device->LoggingTag())) {
     LOG(WARNING) << device->LoggingTag()
                  << ": Failed to start connectivity test";
   } else {
@@ -3154,6 +3154,16 @@ bool Manager::SetLOHSConfig(const KeyValueStore& properties, Error* error) {
 
 void Manager::TetheringStatusChanged(const KeyValueStore& status) {
   adaptor_->EmitKeyValueStoreChanged(kTetheringStatusProperty, status);
+}
+
+PortalDetector::ProbingConfiguration
+Manager::GetPortalDetectorProbingConfiguration() const {
+  PortalDetector::ProbingConfiguration config;
+  config.portal_http_url = props_.portal_http_url;
+  config.portal_https_url = props_.portal_https_url;
+  config.portal_fallback_http_urls = props_.portal_fallback_http_urls;
+  config.portal_fallback_https_urls = props_.portal_fallback_https_urls;
+  return config;
 }
 
 }  // namespace shill

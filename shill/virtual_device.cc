@@ -12,6 +12,7 @@
 #include <utility>
 
 #include "shill/logging.h"
+#include "shill/manager.h"
 #include "shill/net/rtnl_handler.h"
 
 #include <base/logging.h>
@@ -65,6 +66,8 @@ void VirtualDevice::UpdateIPConfig(
   network()->Start(Network::StartOptions{
       .dhcp = std::nullopt,
       .accept_ra = false,
+      .probing_configuration =
+          manager()->GetPortalDetectorProbingConfiguration(),
   });
 }
 

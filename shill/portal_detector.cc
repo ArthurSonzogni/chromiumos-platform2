@@ -20,7 +20,6 @@
 #include "shill/dns_client.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
-#include "shill/manager.h"
 
 namespace {
 constexpr char kLinuxUserAgent[] =
@@ -50,12 +49,14 @@ static std::string ObjectID(const PortalDetector* pd) {
 
 PortalDetector::PortalDetector(
     EventDispatcher* dispatcher,
+    const ProbingConfiguration& probing_configuration,
     base::RepeatingCallback<void(const Result&)> callback)
     : attempt_count_(0),
       last_attempt_start_time_(),
       dispatcher_(dispatcher),
       weak_ptr_factory_(this),
       portal_result_callback_(callback),
+      probing_configuration_(probing_configuration),
       is_active_(false) {}
 
 PortalDetector::~PortalDetector() {
@@ -72,13 +73,12 @@ const std::string& PortalDetector::PickProbeUrl(
   return index < fallback_urls.size() ? fallback_urls[index] : default_url;
 }
 
-bool PortalDetector::Restart(const ManagerProperties& props,
-                             const std::string& ifname,
+bool PortalDetector::Restart(const std::string& ifname,
                              const IPAddress& src_address,
                              const std::vector<std::string>& dns_list,
                              const std::string& logging_tag) {
   auto next_delay = GetNextAttemptDelay();
-  if (!Start(props, ifname, src_address, dns_list, logging_tag, next_delay)) {
+  if (!Start(ifname, src_address, dns_list, logging_tag, next_delay)) {
     LOG(ERROR) << logging_tag << ": Failed to restart";
     return false;
   }
@@ -86,8 +86,7 @@ bool PortalDetector::Restart(const ManagerProperties& props,
   return true;
 }
 
-bool PortalDetector::Start(const ManagerProperties& props,
-                           const std::string& ifname,
+bool PortalDetector::Start(const std::string& ifname,
                            const IPAddress& src_address,
                            const std::vector<std::string>& dns_list,
                            const std::string& logging_tag,
@@ -101,9 +100,11 @@ bool PortalDetector::Start(const ManagerProperties& props,
   // Start() to abort on any obviously malformed URL strings.
   HttpUrl http_url, https_url;
   http_url_string_ =
-      PickProbeUrl(props.portal_http_url, props.portal_fallback_http_urls);
+      PickProbeUrl(probing_configuration_.portal_http_url,
+                   probing_configuration_.portal_fallback_http_urls);
   https_url_string_ =
-      PickProbeUrl(props.portal_https_url, props.portal_fallback_https_urls);
+      PickProbeUrl(probing_configuration_.portal_https_url,
+                   probing_configuration_.portal_fallback_https_urls);
   if (!http_url.ParseFromString(http_url_string_)) {
     LOG(ERROR) << LoggingTag() << ": Failed to parse HTTP probe URL string: "
                << http_url_string_;

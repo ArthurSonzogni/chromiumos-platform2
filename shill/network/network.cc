@@ -18,7 +18,6 @@
 #include "shill/connection.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
-#include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/net/ip_address.h"
 #include "shill/net/rtnl_handler.h"
@@ -79,6 +78,8 @@ void Network::Start(const Network::StartOptions& opts) {
   ignore_link_monitoring_ = opts.ignore_link_monitoring;
   ipv4_gateway_found_ = false;
   ipv6_gateway_found_ = false;
+
+  probing_configuration_ = opts.probing_configuration;
 
   // accept_ra and link_protocol_ipv6 should not be set at the same time.
   DCHECK(!(opts.accept_ra && link_protocol_ipv6_properties_));
@@ -771,9 +772,9 @@ IPAddress Network::gateway() const {
   return connection_->gateway();
 }
 
-bool Network::StartPortalDetection(const ManagerProperties& props) {
+bool Network::StartPortalDetection() {
   portal_detector_ = CreatePortalDetector();
-  if (!portal_detector_->Start(props, interface_name_, local(), dns_servers(),
+  if (!portal_detector_->Start(interface_name_, local(), dns_servers(),
                                logging_tag_)) {
     LOG(ERROR) << logging_tag_ << ": Portal detection failed to start.";
     portal_detector_.reset();
@@ -787,14 +788,14 @@ bool Network::StartPortalDetection(const ManagerProperties& props) {
   return true;
 }
 
-bool Network::RestartPortalDetection(const ManagerProperties& props) {
+bool Network::RestartPortalDetection() {
   if (!portal_detector_) {
     LOG(ERROR) << logging_tag_
                << ": Portal detection was not started, cannot restart";
     return false;
   }
 
-  if (!portal_detector_->Restart(props, interface_name_, local(), dns_servers(),
+  if (!portal_detector_->Restart(interface_name_, local(), dns_servers(),
                                  logging_tag_)) {
     LOG(ERROR) << logging_tag_ << ": Portal detection failed to restart.";
     StopPortalDetection();
@@ -827,7 +828,7 @@ bool Network::IsPortalDetectionInProgress() const {
 
 std::unique_ptr<PortalDetector> Network::CreatePortalDetector() {
   return std::make_unique<PortalDetector>(
-      dispatcher_,
+      dispatcher_, probing_configuration_,
       base::BindRepeating(&Network::OnPortalDetectorResult, AsWeakPtr()));
 }
 
@@ -837,14 +838,14 @@ void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
   }
 }
 
-void Network::StartConnectionDiagnostics(const ManagerProperties& props) {
+void Network::StartConnectionDiagnostics() {
   if (!IsConnected()) {
     LOG(INFO) << logging_tag_
               << ": Not connected, cannot start connection diagnostics";
     return;
   }
   connection_diagnostics_ = CreateConnectionDiagnostics();
-  if (!connection_diagnostics_->Start(props.portal_http_url)) {
+  if (!connection_diagnostics_->Start(probing_configuration_.portal_http_url)) {
     connection_diagnostics_.reset();
     LOG(WARNING) << logging_tag_ << ": Failed to start connection diagnostics";
     return;

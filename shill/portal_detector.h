@@ -27,7 +27,6 @@
 namespace shill {
 
 class EventDispatcher;
-struct ManagerProperties;
 
 // The PortalDetector class implements the portal detection facility in shill,
 // which is responsible for checking to see if a connection has "general
@@ -91,6 +90,22 @@ class PortalDetector {
   // enabled.
   static constexpr char kDefaultCheckPortalList[] = "ethernet,wifi,cellular";
 
+  // List of URLs to use for portal detection probes.
+  struct ProbingConfiguration {
+    // URL used for the first HTTP probe sent by PortalDetector on a new network
+    // connection.
+    std::string portal_http_url;
+    // URL used for the first HTTPS probe sent by PortalDetector on a new
+    // network connection.
+    std::string portal_https_url;
+    // Set of fallback URLs used for retrying the HTTP probe when portal
+    // detection is not conclusive.
+    std::vector<std::string> portal_fallback_http_urls;
+    // Set of fallback URLs used for retrying the HTTPS probe when portal
+    // detection is not conclusive.
+    std::vector<std::string> portal_fallback_https_urls;
+  };
+
   // The Phase enum indicates the phase at which the probe fails.
   enum class Phase {
     kUnknown,
@@ -152,6 +167,7 @@ class PortalDetector {
   };
 
   PortalDetector(EventDispatcher* dispatcher,
+                 const ProbingConfiguration& probing_configuration,
                  base::RepeatingCallback<void(const Result&)> callback);
   PortalDetector(const PortalDetector&) = delete;
   PortalDetector& operator=(const PortalDetector&) = delete;
@@ -181,18 +197,17 @@ class PortalDetector {
   // Returns true if url strings selected in |props| correctly parse as URLs.
   // Returns false (and does not start) if they fail to parse. As each attempt
   // completes the callback handed to the constructor will be called.
-  virtual bool Start(const ManagerProperties& props,
-                     const std::string& ifname,
+  virtual bool Start(const std::string& ifname,
                      const IPAddress& src_address,
                      const std::vector<std::string>& dns_list,
                      const std::string& logging_tag,
                      base::TimeDelta delay = kZeroTimeDelta);
 
-  // Continues a portal detection cycle and schedules a new single detection
-  // attempt. Returns true if url strings selected in |props| correctly parse as
-  // URLs. Returns false (and does not start) if they fail to parse.
-  virtual bool Restart(const ManagerProperties& props,
-                       const std::string& ifname,
+  // Continues a portal detection cycle with the current probe configuration and
+  // schedules a new single detection attempt. Returns true if url strings
+  // selected in |props| correctly parse as URLs. Returns false (and does not
+  // start) if they fail to parse.
+  virtual bool Restart(const std::string& ifname,
                        const IPAddress& src_address,
                        const std::vector<std::string>& dns_list,
                        const std::string& logging_tag);
@@ -209,6 +224,12 @@ class PortalDetector {
 
   // Return the total number of detection attempts scheduled so far.
   int attempt_count() const { return attempt_count_; }
+
+  // To use in unit tests only.
+  void set_probing_configuration_for_testing(
+      const ProbingConfiguration& probing_configuration) {
+    probing_configuration_ = probing_configuration;
+  }
 
  protected:
   base::RepeatingCallback<void(const Result&)>& portal_result_callback() {
@@ -284,6 +305,7 @@ class PortalDetector {
 
   std::string http_url_string_;
   std::string https_url_string_;
+  ProbingConfiguration probing_configuration_;
   base::CancelableOnceClosure trial_;
   bool is_active_;
 };

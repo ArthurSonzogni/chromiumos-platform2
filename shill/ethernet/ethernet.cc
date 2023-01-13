@@ -251,6 +251,8 @@ void Ethernet::ConnectTo(EthernetService* service) {
       .dhcp = dhcp_opts,
       .accept_ra = true,
       .ignore_link_monitoring = service->link_monitor_disabled(),
+      .probing_configuration =
+          manager()->GetPortalDetectorProbingConfiguration(),
   };
   network()->Start(opts);
   SetServiceState(Service::kStateConfiguring);
