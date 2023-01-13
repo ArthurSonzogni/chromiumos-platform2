@@ -63,7 +63,7 @@ class NvmeWearLevelRoutine final : public DiagnosticRoutineWithStatus {
   const std::optional<uint32_t> wear_level_threshold_;
 
   uint32_t percent_ = 0;
-  base::Value output_dict_{base::Value::Type::DICTIONARY};
+  base::Value::Dict output_dict_;
 
   base::WeakPtrFactory<NvmeWearLevelRoutine> weak_ptr_routine_{this};
 };

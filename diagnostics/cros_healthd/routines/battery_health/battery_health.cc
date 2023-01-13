@@ -28,11 +28,10 @@ bool TestWearPercentage(
     uint8_t percent_battery_wear_allowed,
     mojo_ipc::DiagnosticRoutineStatusEnum* status,
     std::string* status_message,
-    base::Value* result_dict) {
+    base::Value::Dict* result_dict) {
   DCHECK(status);
   DCHECK(status_message);
   DCHECK(result_dict);
-  DCHECK(result_dict->is_dict());
 
   double capacity = power_supply_proto.battery_charge_full();
   double design_capacity = power_supply_proto.battery_charge_full_design();
@@ -56,7 +55,7 @@ bool TestWearPercentage(
   uint32_t wear_percentage =
       capacity > design_capacity ? 0 : 100 - capacity * 100 / design_capacity;
 
-  result_dict->SetIntKey("wearPercentage", static_cast<int>(wear_percentage));
+  result_dict->Set("wearPercentage", static_cast<int>(wear_percentage));
   if (wear_percentage > percent_battery_wear_allowed) {
     *status_message = kBatteryHealthExcessiveWearMessage;
     *status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
@@ -71,11 +70,10 @@ bool TestCycleCount(
     uint32_t maximum_cycle_count,
     mojo_ipc::DiagnosticRoutineStatusEnum* status,
     std::string* status_message,
-    base::Value* result_dict) {
+    base::Value::Dict* result_dict) {
   DCHECK(status);
   DCHECK(status_message);
   DCHECK(result_dict);
-  DCHECK(result_dict->is_dict());
 
   google::protobuf::int64 cycle_count =
       power_supply_proto.battery_cycle_count();
@@ -85,7 +83,7 @@ bool TestCycleCount(
     return false;
   }
 
-  result_dict->SetIntKey("cycleCount", static_cast<int>(cycle_count));
+  result_dict->Set("cycleCount", static_cast<int>(cycle_count));
   if (cycle_count > maximum_cycle_count) {
     *status_message = kBatteryHealthExcessiveCycleCountMessage;
     *status = mojo_ipc::DiagnosticRoutineStatusEnum::kFailed;
@@ -115,7 +113,7 @@ SimpleRoutine::RoutineResult GetBatteryHealthResult(
   std::string status_message;
   base::Value::Dict output_dict;
 
-  base::Value result_dict(base::Value::Type::DICTIONARY);
+  base::Value::Dict result_dict;
 
   auto power_supply_proto = response.value();
   auto present =
@@ -123,16 +121,15 @@ SimpleRoutine::RoutineResult GetBatteryHealthResult(
               power_manager::PowerSupplyProperties_BatteryState_NOT_PRESENT
           ? 0
           : 1;
-  result_dict.SetIntKey("present", present);
-  result_dict.SetStringKey("manufacturer", power_supply_proto.battery_vendor());
-  result_dict.SetDoubleKey("currentNowA", power_supply_proto.battery_current());
-  result_dict.SetStringKey("status", power_supply_proto.battery_status());
-  result_dict.SetDoubleKey("voltageNowV", power_supply_proto.battery_voltage());
-  result_dict.SetDoubleKey("chargeFullAh",
-                           power_supply_proto.battery_charge_full());
-  result_dict.SetDoubleKey("chargeFullDesignAh",
-                           power_supply_proto.battery_charge_full_design());
-  result_dict.SetDoubleKey("chargeNowAh", power_supply_proto.battery_charge());
+  result_dict.Set("present", present);
+  result_dict.Set("manufacturer", power_supply_proto.battery_vendor());
+  result_dict.Set("currentNowA", power_supply_proto.battery_current());
+  result_dict.Set("status", power_supply_proto.battery_status());
+  result_dict.Set("voltageNowV", power_supply_proto.battery_voltage());
+  result_dict.Set("chargeFullAh", power_supply_proto.battery_charge_full());
+  result_dict.Set("chargeFullDesignAh",
+                  power_supply_proto.battery_charge_full_design());
+  result_dict.Set("chargeNowAh", power_supply_proto.battery_charge());
 
   if (TestWearPercentage(power_supply_proto, percent_battery_wear_allowed,
                          &status, &status_message, &result_dict) &&
@@ -142,7 +139,7 @@ SimpleRoutine::RoutineResult GetBatteryHealthResult(
     status = mojo_ipc::DiagnosticRoutineStatusEnum::kPassed;
   }
 
-  if (!result_dict.DictEmpty()) {
+  if (!result_dict.empty()) {
     output_dict.Set("resultDetails", std::move(result_dict));
   }
 

@@ -42,31 +42,31 @@ constexpr char kTestDataRoot[] = "cros_healthd/routines/memory/testdata";
 
 // Constructs expected output for the memory routine.
 std::string ConstructOutput() {
-  base::Value subtest_dict(base::Value::Type::DICTIONARY);
-  subtest_dict.SetStringKey("bitFlip", "ok");
-  subtest_dict.SetStringKey("bitSpread", "ok");
-  subtest_dict.SetStringKey("blockSequential", "ok");
-  subtest_dict.SetStringKey("checkerboard", "ok");
-  subtest_dict.SetStringKey("compareAND", "ok");
-  subtest_dict.SetStringKey("compareDIV", "ok");
-  subtest_dict.SetStringKey("compareMUL", "ok");
-  subtest_dict.SetStringKey("compareOR", "ok");
-  subtest_dict.SetStringKey("compareSUB", "ok");
-  subtest_dict.SetStringKey("compareXOR", "ok");
-  subtest_dict.SetStringKey("randomValue", "ok");
-  subtest_dict.SetStringKey("sequentialIncrement", "ok");
-  subtest_dict.SetStringKey("solidBits", "ok");
-  subtest_dict.SetStringKey("stuckAddress", "ok");
-  subtest_dict.SetStringKey("walkingOnes", "ok");
-  subtest_dict.SetStringKey("walkingZeroes", "ok");
+  base::Value::Dict subtest_dict;
+  subtest_dict.Set("bitFlip", "ok");
+  subtest_dict.Set("bitSpread", "ok");
+  subtest_dict.Set("blockSequential", "ok");
+  subtest_dict.Set("checkerboard", "ok");
+  subtest_dict.Set("compareAND", "ok");
+  subtest_dict.Set("compareDIV", "ok");
+  subtest_dict.Set("compareMUL", "ok");
+  subtest_dict.Set("compareOR", "ok");
+  subtest_dict.Set("compareSUB", "ok");
+  subtest_dict.Set("compareXOR", "ok");
+  subtest_dict.Set("randomValue", "ok");
+  subtest_dict.Set("sequentialIncrement", "ok");
+  subtest_dict.Set("solidBits", "ok");
+  subtest_dict.Set("stuckAddress", "ok");
+  subtest_dict.Set("walkingOnes", "ok");
+  subtest_dict.Set("walkingZeroes", "ok");
 
-  base::Value result_dict(base::Value::Type::DICTIONARY);
-  result_dict.SetKey("subtests", std::move(subtest_dict));
-  result_dict.SetStringKey("bytesTested", "104857600");
-  result_dict.SetStringKey("memtesterVersion", "4.2.2 (64-bit)");
+  base::Value::Dict result_dict;
+  result_dict.Set("subtests", std::move(subtest_dict));
+  result_dict.Set("bytesTested", "104857600");
+  result_dict.Set("memtesterVersion", "4.2.2 (64-bit)");
 
-  base::Value output_dict(base::Value::Type::DICTIONARY);
-  output_dict.SetKey("resultDetails", std::move(result_dict));
+  base::Value::Dict output_dict;
+  output_dict.Set("resultDetails", std::move(result_dict));
 
   std::string json;
   base::JSONWriter::Write(output_dict, &json);

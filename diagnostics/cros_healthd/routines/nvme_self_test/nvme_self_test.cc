@@ -165,7 +165,7 @@ void NvmeSelfTestRoutine::PopulateStatusUpdate(
       mojo_ipc::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
   response->progress_percent = percent_;
 
-  if (include_output && !output_dict_.DictEmpty()) {
+  if (include_output && !output_dict_.empty()) {
     // If routine status is not at completed/cancelled then prints the debugd
     // raw data with output.
     if (status != mojo_ipc::DiagnosticRoutineStatusEnum::kPassed &&
@@ -291,11 +291,9 @@ void NvmeSelfTestRoutine::OnDebugdResultCallback(const std::string& result) {
 }
 
 void NvmeSelfTestRoutine::ResetOutputDictToValue(const std::string& value) {
-  base::Value result_dict(base::Value::Type::DICTIONARY);
-  result_dict.SetStringKey("rawData", value);
-  // TODO(crbug/1146080): Replace this with DictClear() once it's supported.
-  output_dict_.RemoveKey("resultDetails");
-  output_dict_.SetKey("resultDetails", std::move(result_dict));
+  base::Value::Dict result_dict;
+  result_dict.Set("rawData", value);
+  output_dict_.Set("resultDetails", std::move(result_dict));
 }
 
 bool NvmeSelfTestRoutine::UpdateStatusWithProgressPercent(

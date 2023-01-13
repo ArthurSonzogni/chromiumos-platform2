@@ -147,7 +147,7 @@ void MemoryRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
   response->routine_update_union =
       mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
 
-  if (include_output && !output_dict_.DictEmpty()) {
+  if (include_output && !output_dict_.empty()) {
     std::string json;
     base::JSONWriter::Write(output_dict_, &json);
     response->output =
@@ -222,20 +222,19 @@ void MemoryRoutine::ParseMemtesterOutput(const std::string& raw_output) {
   // |bytes_tested_str|.
   uint64_t bytes_tested;
   // Holds the results of all subtests.
-  base::Value subtest_dict(base::Value::Type::DICTIONARY);
+  base::Value::Dict subtest_dict;
   // Holds all the parsed output from memtester.
-  base::Value result_dict(base::Value::Type::DICTIONARY);
+  base::Value::Dict result_dict;
   for (int index = 0; index < lines.size(); index++) {
     std::string line = ProcessBackspaces(lines[index]);
 
     if (RE2::FullMatch(line, kMemtesterVersionRegex, &version)) {
-      result_dict.SetStringKey("memtesterVersion", version);
+      result_dict.Set("memtesterVersion", version);
     } else if (RE2::PartialMatch(line, kMemtesterBytesTestedRegex,
                                  &bytes_tested_str) &&
                base::StringToUint64(bytes_tested_str, &bytes_tested)) {
       // Use string here since |base::Value| does not support uint64_t.
-      result_dict.SetStringKey("bytesTested",
-                               base::NumberToString(bytes_tested));
+      result_dict.Set("bytesTested", base::NumberToString(bytes_tested));
     } else if (RE2::FullMatch(line, kMemtesterSubtestRegex, &subtest_name,
                               &subtest_result) &&
                !base::StartsWith(line, kMemtesterSubtestFailurePattern,
@@ -246,14 +245,14 @@ void MemoryRoutine::ParseMemtesterOutput(const std::string& raw_output) {
       base::RemoveChars(subtest_name, " ", &subtest_name);
       subtest_name[0] = std::tolower(subtest_name[0]);
 
-      subtest_dict.SetStringKey(subtest_name, subtest_result);
+      subtest_dict.Set(subtest_name, subtest_result);
     }
   }
 
-  if (!subtest_dict.DictEmpty())
-    result_dict.SetKey("subtests", std::move(subtest_dict));
-  if (!result_dict.DictEmpty())
-    output_dict_.SetKey("resultDetails", std::move(result_dict));
+  if (!subtest_dict.empty())
+    result_dict.Set("subtests", std::move(subtest_dict));
+  if (!result_dict.empty())
+    output_dict_.Set("resultDetails", std::move(result_dict));
 }
 
 }  // namespace diagnostics

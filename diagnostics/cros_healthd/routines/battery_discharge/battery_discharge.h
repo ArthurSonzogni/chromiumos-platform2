@@ -57,7 +57,7 @@ class BatteryDischargeRoutine final : public DiagnosticRoutineWithStatus {
   // Unowned pointer that outlives this routine instance.
   Context* const context_;
   // Details about the routine's execution. Reported in all status updates.
-  base::Value output_dict_{base::Value::Type::DICTIONARY};
+  base::Value::Dict output_dict_;
   // Length of time to run the routine for.
   const base::TimeDelta exec_duration_;
   // Maximum discharge percent allowed for the routine to pass.

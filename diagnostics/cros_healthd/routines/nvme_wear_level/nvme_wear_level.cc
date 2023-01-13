@@ -104,7 +104,7 @@ void NvmeWearLevelRoutine::PopulateStatusUpdate(
       mojo_ipc::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
   response->progress_percent = percent_;
 
-  if (include_output && !output_dict_.DictEmpty()) {
+  if (include_output && !output_dict_.empty()) {
     // If routine status is not at completed/cancelled then prints the debugd
     // raw data with output.
     if (status != mojo_ipc::DiagnosticRoutineStatusEnum::kPassed &&
@@ -118,9 +118,9 @@ void NvmeWearLevelRoutine::PopulateStatusUpdate(
 }
 
 void NvmeWearLevelRoutine::OnDebugdResultCallback(const std::string& result) {
-  base::Value result_dict(base::Value::Type::DICTIONARY);
-  result_dict.SetStringKey("rawData", result);
-  output_dict_.SetKey("resultDetails", std::move(result_dict));
+  base::Value::Dict result_dict;
+  result_dict.Set("rawData", result);
+  output_dict_.Set("resultDetails", std::move(result_dict));
   std::string decoded_output;
 
   if (!base::Base64Decode(result, &decoded_output)) {

@@ -98,7 +98,7 @@ void BatteryChargeRoutine::PopulateStatusUpdate(
 
   CalculateProgressPercent();
   response->progress_percent = progress_percent_;
-  if (include_output && !output_.DictEmpty()) {
+  if (include_output && !output_.empty()) {
     std::string json;
     base::JSONWriter::Write(output_, &json);
     response->output =
@@ -140,13 +140,11 @@ void BatteryChargeRoutine::RunBatteryChargeRoutine() {
   double beginning_charge_percent = power_supply_proto.battery_percent();
 
   if (beginning_charge_percent + minimum_charge_percent_required_ > 100) {
-    base::Value error_dict(base::Value::Type::DICTIONARY);
-    error_dict.SetKey("startingBatteryChargePercent",
-                      base::Value(beginning_charge_percent));
-    error_dict.SetKey(
-        "chargePercentRequested",
-        base::Value(static_cast<int>(minimum_charge_percent_required_)));
-    output_.SetKey("errorDetails", std::move(error_dict));
+    base::Value::Dict error_dict;
+    error_dict.Set("startingBatteryChargePercent", beginning_charge_percent);
+    error_dict.Set("chargePercentRequested",
+                   static_cast<int>(minimum_charge_percent_required_));
+    output_.Set("errorDetails", std::move(error_dict));
     UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kError,
                  kBatteryChargeRoutineInvalidParametersMessage);
     return;
@@ -185,9 +183,9 @@ void BatteryChargeRoutine::DetermineRoutineResult(
   }
 
   double charge_percent = ending_charge_percent - beginning_charge_percent;
-  base::Value result_dict(base::Value::Type::DICTIONARY);
-  result_dict.SetKey("chargePercent", base::Value(charge_percent));
-  output_.SetKey("resultDetails", std::move(result_dict));
+  base::Value::Dict result_dict;
+  result_dict.Set("chargePercent", charge_percent);
+  output_.Set("resultDetails", std::move(result_dict));
   if (charge_percent < minimum_charge_percent_required_) {
     UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
                  kBatteryChargeRoutineFailedInsufficientChargeMessage);

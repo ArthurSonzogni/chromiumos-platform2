@@ -159,7 +159,7 @@ void SmartctlCheckRoutine::PopulateStatusUpdate(mojom::RoutineUpdate* response,
       mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
   response->progress_percent = percent_;
 
-  if (include_output && !output_dict_.DictEmpty() &&
+  if (include_output && !output_dict_.empty() &&
       (status == mojom::DiagnosticRoutineStatusEnum::kPassed ||
        status == mojom::DiagnosticRoutineStatusEnum::kFailed)) {
     std::string json;
@@ -186,14 +186,14 @@ void SmartctlCheckRoutine::OnDebugdResultCallback(const std::string& result) {
     return;
   }
 
-  base::Value result_dict(base::Value::Type::DICTIONARY);
-  result_dict.SetIntKey("availableSpare", available_spare);
-  result_dict.SetIntKey("availableSpareThreshold", available_spare_threshold);
-  result_dict.SetIntKey("percentageUsed", percentage_used);
-  result_dict.SetIntKey("inputPercentageUsedThreshold",
-                        percentage_used_threshold_);
-  result_dict.SetIntKey("criticalWarning", critical_warning);
-  output_dict_.SetKey("resultDetails", std::move(result_dict));
+  base::Value::Dict result_dict;
+  result_dict.Set("availableSpare", available_spare);
+  result_dict.Set("availableSpareThreshold", available_spare_threshold);
+  result_dict.Set("percentageUsed", percentage_used);
+  result_dict.Set("inputPercentageUsedThreshold",
+                  static_cast<int>(percentage_used_threshold_));
+  result_dict.Set("criticalWarning", critical_warning);
+  output_dict_.Set("resultDetails", std::move(result_dict));
 
   const bool available_spare_check_passed =
       available_spare >= available_spare_threshold;

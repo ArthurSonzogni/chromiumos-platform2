@@ -97,7 +97,7 @@ void BatteryDischargeRoutine::PopulateStatusUpdate(
 
   CalculateProgressPercent();
   response->progress_percent = progress_percent_;
-  if (include_output && !output_dict_.DictEmpty()) {
+  if (include_output && !output_dict_.empty()) {
     std::string json;
     base::JSONWriter::Write(output_dict_, &json);
     response->output =
@@ -177,9 +177,9 @@ void BatteryDischargeRoutine::DetermineRoutineResult(
   }
 
   double discharge_percent = beginning_charge_percent - ending_charge_percent;
-  base::Value result_dict(base::Value::Type::DICTIONARY);
-  result_dict.SetDoubleKey("dischargePercent", discharge_percent);
-  output_dict_.SetKey("resultDetails", std::move(result_dict));
+  base::Value::Dict result_dict;
+  result_dict.Set("dischargePercent", discharge_percent);
+  output_dict_.Set("resultDetails", std::move(result_dict));
   if (discharge_percent > maximum_discharge_percent_allowed_) {
     UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kFailed,
                  kBatteryDischargeRoutineFailedExcessiveDischargeMessage);

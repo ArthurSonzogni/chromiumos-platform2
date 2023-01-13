@@ -29,9 +29,9 @@ constexpr int kMaximumCycleCount = 5;
 constexpr int kPercentBatteryWearAllowed = 10;
 constexpr int kHighCycleCount = 6;
 constexpr int kLowCycleCount = 4;
-constexpr int kHighChargeFull = 91;
+constexpr double kHighChargeFull = 91.0;
 constexpr int kLowChargeFull = 89;
-constexpr int kFakeBatteryChargeFullDesign = 100;
+constexpr double kFakeBatteryChargeFullDesign = 100.0;
 constexpr char kFakeManufacturer[] = "Fake Manufacturer";
 constexpr double kFakeCurrentNow = 0.512;
 constexpr int kFakePresent = 1;
@@ -41,20 +41,21 @@ constexpr double kFakeChargeNow = 6.154;
 
 std::string ConstructOutput() {
   std::string output;
-  base::Value result_dict(base::Value::Type::DICTIONARY);
-  result_dict.SetIntKey("wearPercentage", 100 - (kHighChargeFull * 100 /
-                                                 kFakeBatteryChargeFullDesign));
-  result_dict.SetIntKey("cycleCount", kLowCycleCount);
-  result_dict.SetStringKey("manufacturer", kFakeManufacturer);
-  result_dict.SetDoubleKey("currentNowA", kFakeCurrentNow);
-  result_dict.SetIntKey("present", kFakePresent);
-  result_dict.SetStringKey("status", kFakeStatus);
-  result_dict.SetDoubleKey("voltageNowV", kFakeVoltageNow);
-  result_dict.SetDoubleKey("chargeFullAh", kHighChargeFull);
-  result_dict.SetDoubleKey("chargeFullDesignAh", kFakeBatteryChargeFullDesign);
-  result_dict.SetDoubleKey("chargeNowAh", kFakeChargeNow);
-  base::Value output_dict(base::Value::Type::DICTIONARY);
-  output_dict.SetKey("resultDetails", std::move(result_dict));
+  base::Value::Dict result_dict;
+  result_dict.Set("wearPercentage",
+                  static_cast<int>(100 - (kHighChargeFull * 100 /
+                                          kFakeBatteryChargeFullDesign)));
+  result_dict.Set("cycleCount", kLowCycleCount);
+  result_dict.Set("manufacturer", kFakeManufacturer);
+  result_dict.Set("currentNowA", kFakeCurrentNow);
+  result_dict.Set("present", kFakePresent);
+  result_dict.Set("status", kFakeStatus);
+  result_dict.Set("voltageNowV", kFakeVoltageNow);
+  result_dict.Set("chargeFullAh", kHighChargeFull);
+  result_dict.Set("chargeFullDesignAh", kFakeBatteryChargeFullDesign);
+  result_dict.Set("chargeNowAh", kFakeChargeNow);
+  base::Value::Dict output_dict;
+  output_dict.Set("resultDetails", std::move(result_dict));
   base::JSONWriter::Write(output_dict, &output);
   return output;
 }

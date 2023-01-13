@@ -96,7 +96,7 @@ class NvmeSelfTestRoutine final : public DiagnosticRoutineWithStatus {
   // 100. Hence, we cannot rely on percent_ to determine whether the routine is
   // completed. Use GetStatus() instead.
   uint32_t percent_ = 0;
-  base::Value output_dict_{base::Value::Type::DICTIONARY};
+  base::Value::Dict output_dict_;
 
   FRIEND_TEST(NvmeSelfTestRoutineTest, RoutineStatusTransition);
 

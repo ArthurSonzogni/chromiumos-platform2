@@ -52,7 +52,7 @@ class MemoryRoutine final : public DiagnosticRoutineWithStatus {
 
   // Details about the routine's execution. Reported in status updates when
   // requested.
-  base::Value output_dict_{base::Value::Type::DICTIONARY};
+  base::Value::Dict output_dict_;
 
   // Expected duration of the routine, in microseconds.
   double expected_duration_us_ = 0;

@@ -73,7 +73,7 @@ class SmartctlCheckRoutine final : public DiagnosticRoutineWithStatus {
   uint32_t percentage_used_threshold_;
 
   uint32_t percent_ = 0;
-  base::Value output_dict_{base::Value::Type::DICTIONARY};
+  base::Value::Dict output_dict_;
 
   base::WeakPtrFactory<SmartctlCheckRoutine> weak_ptr_routine_{this};
 };
