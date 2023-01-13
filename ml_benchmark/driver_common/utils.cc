@@ -7,8 +7,6 @@
 #include <cstdint>
 #include <string>
 
-#include <base/check.h>
-
 #include "proto/benchmark_config.pb.h"
 
 namespace chrome {

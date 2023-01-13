@@ -5,9 +5,12 @@
 #ifndef ML_BENCHMARK_DRIVER_COMMON_UTILS_H_
 #define ML_BENCHMARK_DRIVER_COMMON_UTILS_H_
 
+#include <algorithm>
 #include <cstdint>
 #include <string>
 #include <vector>
+
+#include <base/check.h>
 
 #include "proto/benchmark_config.pb.h"
 
@@ -48,6 +51,8 @@ template <typename T>
 T ComputePercentile(const std::vector<T>& samples, double percent) {
   if (samples.size() == 0)
     return T(0);
+
+  CHECK(std::is_sorted(samples.begin(), samples.end()));
 
   double fraction = percent / 100.0;
 
