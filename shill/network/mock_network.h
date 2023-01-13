@@ -107,6 +107,7 @@ class MockNetworkEventHandler : public Network::EventHandler {
               OnNetworkValidationResult,
               (const PortalDetector::Result& result),
               (override));
+  MOCK_METHOD(void, OnNetworkDestroyed, (), (override));
 };
 
 }  // namespace shill

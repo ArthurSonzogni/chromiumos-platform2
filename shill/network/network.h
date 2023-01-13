@@ -109,6 +109,11 @@ class Network {
     // connectivity has been evaluated.
     virtual void OnNetworkValidationResult(
         const PortalDetector::Result& result) = 0;
+
+    // Called when the Network object is about to be destroyed and become
+    // invalid. Any EventHandler still registered should stop any reference
+    // they hold for that Network object.
+    virtual void OnNetworkDestroyed() = 0;
   };
 
   // Options for starting a network.
@@ -157,6 +162,9 @@ class Network {
   State state() const { return state_; }
 
   mockable bool IsConnected() const { return state_ == State::kConnected; }
+
+  void RegisterEventHandler(EventHandler* handler);
+  void UnregisterEventHandler(EventHandler* handler);
 
   // Sets IPv4 properties specific to technology. Currently this is used by
   // cellular and VPN.
@@ -294,7 +302,9 @@ class Network {
     routing_table_ = routing_table;
   }
   void set_state_for_testing(State state) { state_ = state; }
-  EventHandler* event_handler() { return event_handler_; }
+  const std::vector<EventHandler*>& event_handlers() const {
+    return event_handlers_;
+  }
   // Take ownership of an external created ProcFsStub and return the point to
   // internal proc_fs_ after move.
   ProcFsStub* set_proc_fs_for_testing(std::unique_ptr<ProcFsStub> proc_fs) {
@@ -437,7 +447,7 @@ class Network {
 
   std::unique_ptr<PortalDetector> portal_detector_;
 
-  EventHandler* event_handler_;
+  std::vector<EventHandler*> event_handlers_;
 
   // Other dependencies.
   ControlInterface* control_interface_;

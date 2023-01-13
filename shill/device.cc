@@ -496,6 +496,7 @@ void Device::OnNetworkValidationSuccess() {}
 void Device::OnNetworkValidationFailure() {}
 void Device::OnIPv4ConfiguredWithDHCPLease() {}
 void Device::OnIPv6ConfiguredWithSLAACAddress() {}
+void Device::OnNetworkDestroyed() {}
 
 void Device::OnIPConfigFailure() {
   if (selected_service_) {

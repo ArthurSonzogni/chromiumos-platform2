@@ -858,7 +858,9 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
   Mock::VerifyAndClearExpectations(&event_handler1);
 
   device0->network()->set_ipconfig(nullptr);
+  device0->network()->UnregisterEventHandler(&event_handler0);
   device1->network()->set_ip6config(nullptr);
+  device1->network()->UnregisterEventHandler(&event_handler1);
 }
 
 TEST_F(DeviceInfoTest, CreateWireGuardInterface) {

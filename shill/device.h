@@ -293,6 +293,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // class does nothing.
   void OnNetworkValidationStop() override;
   void OnNetworkValidationResult(const PortalDetector::Result& result) override;
+  void OnNetworkDestroyed() override;
 
   void set_selected_service_for_testing(ServiceRefPtr service) {
     selected_service_ = service;

@@ -4,6 +4,7 @@
 
 #include "shill/network/network.h"
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
@@ -46,15 +47,37 @@ Network::Network(int interface_index,
       logging_tag_(interface_name),
       fixed_ip_params_(fixed_ip_params),
       proc_fs_(std::make_unique<ProcFsStub>(interface_name_)),
-      event_handler_(event_handler),
       control_interface_(control_interface),
       dispatcher_(dispatcher),
       metrics_(metrics),
       dhcp_provider_(DHCPProvider::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
-      rtnl_handler_(RTNLHandler::GetInstance()) {}
+      rtnl_handler_(RTNLHandler::GetInstance()) {
+  if (event_handler) {
+    RegisterEventHandler(event_handler);
+  }
+}
 
-Network::~Network() = default;
+Network::~Network() {
+  for (auto* ev : event_handlers_) {
+    ev->OnNetworkDestroyed();
+  }
+}
+
+void Network::RegisterEventHandler(EventHandler* handler) {
+  if (std::find(event_handlers_.begin(), event_handlers_.end(), handler) !=
+      event_handlers_.end()) {
+    return;
+  }
+  event_handlers_.push_back(handler);
+}
+
+void Network::UnregisterEventHandler(EventHandler* handler) {
+  auto it = std::find(event_handlers_.begin(), event_handlers_.end(), handler);
+  if (it != event_handlers_.end()) {
+    event_handlers_.erase(it);
+  }
+}
 
 void Network::Start(const Network::StartOptions& opts) {
   ignore_link_monitoring_ = opts.ignore_link_monitoring;
@@ -160,7 +183,9 @@ void Network::SetupConnection(IPConfig* ipconfig) {
   connection_->UpdateRoutingPolicy(GetAddresses());
   state_ = State::kConnected;
   ConfigureStaticIPv6Address();
-  event_handler_->OnConnectionUpdated();
+  for (auto* ev : event_handlers_) {
+    ev->OnConnectionUpdated();
+  }
 
   const bool ipconfig_changed = current_ipconfig_ != ipconfig;
   current_ipconfig_ = ipconfig;
@@ -202,7 +227,9 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
   }
   // Emit updated IP configs if there are any changes.
   if (ipconfig_changed) {
-    event_handler_->OnIPConfigsPropertyUpdated();
+    for (auto* ev : event_handlers_) {
+      ev->OnIPConfigsPropertyUpdated();
+    }
   }
   if (current_ipconfig_) {
     current_ipconfig_ = nullptr;
@@ -213,7 +240,9 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
   state_ = State::kIdle;
   connection_ = nullptr;
   if (should_trigger_callback) {
-    event_handler_->OnNetworkStopped(is_failure);
+    for (auto* ev : event_handlers_) {
+      ev->OnNetworkStopped(is_failure);
+    }
   }
 }
 
@@ -230,7 +259,9 @@ void Network::InvalidateIPv6Config() {
   }
 
   set_ip6config(nullptr);
-  event_handler_->OnIPConfigsPropertyUpdated();
+  for (auto* ev : event_handlers_) {
+    ev->OnIPConfigsPropertyUpdated();
+  }
 }
 
 void Network::OnIPv4ConfigUpdated() {
@@ -250,7 +281,9 @@ void Network::OnIPv4ConfigUpdated() {
     dhcp_controller_->ReleaseIP(DHCPController::kReleaseReasonStaticIP);
   }
   SetupConnection(ipconfig());
-  event_handler_->OnIPConfigsPropertyUpdated();
+  for (auto* ev : event_handlers_) {
+    ev->OnIPConfigsPropertyUpdated();
+  }
 }
 
 void Network::OnStaticIPConfigChanged(const NetworkConfig& config) {
@@ -307,7 +340,9 @@ void Network::OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
   DCHECK(dhcp_controller_);
   DCHECK(ipconfig());
   if (new_lease_acquired) {
-    event_handler_->OnGetDHCPLease();
+    for (auto* ev : event_handlers_) {
+      ev->OnGetDHCPLease();
+    }
   }
   ipconfig()->UpdateProperties(properties);
   OnIPv4ConfigUpdated();
@@ -316,12 +351,16 @@ void Network::OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
   // result of the new lease. The current call pattern reproduces the same
   // conditions as before crrev/c/3840983.
   if (new_lease_acquired) {
-    event_handler_->OnIPv4ConfiguredWithDHCPLease();
+    for (auto* ev : event_handlers_) {
+      ev->OnIPv4ConfiguredWithDHCPLease();
+    }
   }
 }
 
 void Network::OnDHCPFailure() {
-  event_handler_->OnGetDHCPFailure();
+  for (auto* ev : event_handlers_) {
+    ev->OnGetDHCPFailure();
+  }
 
   // |dhcp_controller_| cannot be empty when the callback is invoked.
   DCHECK(dhcp_controller_);
@@ -358,7 +397,9 @@ void Network::OnDHCPFailure() {
   }
 
   ipconfig()->ResetProperties();
-  event_handler_->OnIPConfigsPropertyUpdated();
+  for (auto* ev : event_handlers_) {
+    ev->OnIPConfigsPropertyUpdated();
+  }
 
   // Fallback to IPv6 if possible.
   if (ip6config() && ip6config()->properties().HasIPAddressAndDNS()) {
@@ -427,7 +468,9 @@ void Network::OnIPv6AddressChanged() {
   if (slaac_addresses.size() == 0) {
     if (ip6config()) {
       set_ip6config(nullptr);
-      event_handler_->OnIPConfigsPropertyUpdated();
+      for (auto* ev : event_handlers_) {
+        ev->OnIPConfigsPropertyUpdated();
+      }
       // TODO(b/232177767): We may lose the whole IP connectivity here (if there
       // is no IPv4).
     }
@@ -489,15 +532,19 @@ void Network::OnIPv6AddressChanged() {
     properties.dns_servers = ipv6_static_properties_->dns_servers;
   }
   ip6config()->set_properties(properties);
-  event_handler_->OnGetSLAACAddress();
-  event_handler_->OnIPConfigsPropertyUpdated();
+  for (auto* ev : event_handlers_) {
+    ev->OnGetSLAACAddress();
+    ev->OnIPConfigsPropertyUpdated();
+  }
   OnIPv6ConfigUpdated();
   // TODO(b/232177767): OnIPv6ConfiguredWithSLAACAddress() should be called
   // inside Network::OnIPv6ConfigUpdated() and only if SetupConnection()
   // happened as a result of the new address (ignoring IPv4 and assuming Network
   // is fully dual-stack). The current call pattern reproduces the same
   // conditions as before crrev/c/3840983.
-  event_handler_->OnIPv6ConfiguredWithSLAACAddress();
+  for (auto* ev : event_handlers_) {
+    ev->OnIPv6ConfiguredWithSLAACAddress();
+  }
 }
 
 void Network::OnIPv6ConfigUpdated() {
@@ -539,7 +586,9 @@ void Network::OnIPv6DnsServerAddressesChanged() {
       return;
     }
     ip6config()->UpdateDNSServers(std::vector<std::string>());
-    event_handler_->OnIPConfigsPropertyUpdated();
+    for (auto* ev : event_handlers_) {
+      ev->OnIPConfigsPropertyUpdated();
+    }
     return;
   }
 
@@ -567,7 +616,9 @@ void Network::OnIPv6DnsServerAddressesChanged() {
   }
 
   ip6config()->UpdateDNSServers(std::move(addresses_str));
-  event_handler_->OnIPConfigsPropertyUpdated();
+  for (auto* ev : event_handlers_) {
+    ev->OnIPConfigsPropertyUpdated();
+  }
   OnIPv6ConfigUpdated();
 }
 
@@ -695,8 +746,9 @@ void Network::OnNeighborReachabilityEvent(
     *gateway_found = true;
   }
 
-  event_handler_->OnNeighborReachabilityEvent(ip_address, signal.role(),
-                                              signal.type());
+  for (auto* ev : event_handlers_) {
+    ev->OnNeighborReachabilityEvent(ip_address, signal.role(), signal.type());
+  }
 }
 
 std::vector<std::string> Network::dns_servers() const {
@@ -730,7 +782,9 @@ bool Network::StartPortalDetection(const ManagerProperties& props) {
   }
 
   LOG(INFO) << logging_tag_ << ": Portal detection started.";
-  event_handler_->OnNetworkValidationStart();
+  for (auto* ev : event_handlers_) {
+    ev->OnNetworkValidationStart();
+  }
   return true;
 }
 
@@ -752,14 +806,18 @@ bool Network::RestartPortalDetection(const ManagerProperties& props) {
   // TODO(b/216351118): this ignores the portal detection retry delay. The
   // callback should be triggered when the next attempt starts, not when it
   // is scheduled.
-  event_handler_->OnNetworkValidationStart();
+  for (auto* ev : event_handlers_) {
+    ev->OnNetworkValidationStart();
+  }
   return true;
 }
 
 void Network::StopPortalDetection() {
   if (IsPortalDetectionInProgress()) {
     LOG(INFO) << logging_tag_ << ": Portal detection stopped.";
-    event_handler_->OnNetworkValidationStop();
+    for (auto* ev : event_handlers_) {
+      ev->OnNetworkValidationStop();
+    }
   }
   portal_detector_.reset();
 }
@@ -775,7 +833,9 @@ std::unique_ptr<PortalDetector> Network::CreatePortalDetector() {
 }
 
 void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
-  event_handler_->OnNetworkValidationResult(result);
+  for (auto* ev : event_handlers_) {
+    ev->OnNetworkValidationResult(result);
+  }
 }
 
 }  // namespace shill
