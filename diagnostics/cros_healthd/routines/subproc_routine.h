@@ -9,6 +9,7 @@
 #include <list>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/command_line.h>
 #include <base/process/process.h>
@@ -76,6 +77,7 @@ class SubprocRoutine final : public DiagnosticRoutine {
   void PopulateStatusUpdate(ash::cros_healthd::mojom::RoutineUpdate* response,
                             bool include_output) override;
   ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() override;
+  void RegisterStatusChangedCallback(StatusChangedCallback callback) override;
 
   // Registers a callback that will execute before processes start. The routine
   // will stop and set status to failure if this callback returns false.
@@ -90,6 +92,7 @@ class SubprocRoutine final : public DiagnosticRoutine {
   void StartProcess();
   void KillProcess(bool from_dtor);
   // Handle state transitions due to process state within this object.
+  void UpdateSubprocessStatus(SubprocStatus subproc_status);
   void CheckProcessStatus();
   void CheckActiveProcessStatus();
   uint32_t CalculateProgressPercent();
@@ -133,6 +136,9 @@ class SubprocRoutine final : public DiagnosticRoutine {
   // |start_ticks_| records the time when the routine began. This is used with
   // |predicted_duration_| to report on progress percentate.
   base::TimeTicks start_ticks_;
+
+  // Callbacks to invoke when the routine status changes.
+  std::vector<StatusChangedCallback> status_changed_callbacks_;
 };
 
 }  // namespace diagnostics

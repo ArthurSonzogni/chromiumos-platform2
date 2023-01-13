@@ -16,14 +16,31 @@ mojom::DiagnosticRoutineStatusEnum DiagnosticRoutineWithStatus::GetStatus() {
   return status_;
 }
 
+void DiagnosticRoutineWithStatus::RegisterStatusChangedCallback(
+    StatusChangedCallback callback) {
+  status_changed_callbacks_.push_back(std::move(callback));
+}
+
 const std::string& DiagnosticRoutineWithStatus::GetStatusMessage() const {
   return status_message_;
 }
 
 void DiagnosticRoutineWithStatus::UpdateStatus(
     mojom::DiagnosticRoutineStatusEnum status, std::string message) {
+  bool is_status_changed = status_ != status;
+
   status_ = status;
   status_message_ = std::move(message);
+  if (is_status_changed) {
+    NotifyStatusChanged();
+  }
+}
+
+void DiagnosticRoutineWithStatus::NotifyStatusChanged() {
+  auto status = status_;
+  for (const auto& callback : status_changed_callbacks_) {
+    callback.Run(status);
+  }
 }
 
 }  // namespace diagnostics

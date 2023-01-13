@@ -22,6 +22,7 @@ class DiagnosticRoutineWithStatus : public DiagnosticRoutine {
  public:
   // DiagnosticRoutine overrides:
   ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() override;
+  void RegisterStatusChangedCallback(StatusChangedCallback callback) override;
 
  protected:
   const std::string& GetStatusMessage() const;
@@ -33,6 +34,9 @@ class DiagnosticRoutineWithStatus : public DiagnosticRoutine {
       std::string message);
 
  private:
+  // Notifies each of |status_changed_callbacks_| when the status changes.
+  void NotifyStatusChanged();
+
   // Status of the routine, reported by GetStatus() or noninteractive routine
   // updates.
   ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum status_ =
@@ -40,6 +44,8 @@ class DiagnosticRoutineWithStatus : public DiagnosticRoutine {
   // Details of the routine's status, reported in non-interactive status
   // updates.
   std::string status_message_;
+  // Callbacks to invoke when the status changes.
+  std::vector<StatusChangedCallback> status_changed_callbacks_;
 };
 
 }  // namespace diagnostics

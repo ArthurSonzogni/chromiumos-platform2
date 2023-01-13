@@ -125,7 +125,7 @@ void SubprocRoutine::Start() {
     pre_start_callback_result = std::move(pre_start_callback_).Run();
 
   if (!pre_start_callback_result) {
-    subproc_status_ = kSubprocStatusLaunchFailed;
+    UpdateSubprocessStatus(kSubprocStatusLaunchFailed);
     LOG(ERROR) << kSubprocRoutineFailedToLaunchProcessMessage;
     return;
   }
@@ -165,6 +165,11 @@ mojo_ipc::DiagnosticRoutineStatusEnum SubprocRoutine::GetStatus() {
   return GetDiagnosticRoutineStatusFromSubprocRoutineStatus(subproc_status_);
 }
 
+void SubprocRoutine::RegisterStatusChangedCallback(
+    StatusChangedCallback callback) {
+  status_changed_callbacks_.push_back(std::move(callback));
+}
+
 void SubprocRoutine::RegisterPreStartCallback(
     base::OnceCallback<bool()> callback) {
   DCHECK(pre_start_callback_.is_null());
@@ -184,7 +189,7 @@ void SubprocRoutine::StartProcess() {
     // Keep track of when we began the routine, in case we need to predict
     // progress.
     start_ticks_ = tick_clock_->NowTicks();
-    subproc_status_ = kSubprocStatusRunning;
+    UpdateSubprocessStatus(kSubprocStatusRunning);
   }
 
   // Multiple executables will be run in sequence and one at a time.
@@ -194,7 +199,7 @@ void SubprocRoutine::StartProcess() {
   VLOG(1) << "Starting command " << base::JoinString(command_line.argv(), " ");
 
   if (!process_adapter_->StartProcess(command_line.argv(), &handle_)) {
-    subproc_status_ = kSubprocStatusLaunchFailed;
+    UpdateSubprocessStatus(kSubprocStatusLaunchFailed);
     LOG(ERROR) << kSubprocRoutineFailedToLaunchProcessMessage;
   }
 }
@@ -211,7 +216,7 @@ void SubprocRoutine::KillProcess(bool from_dtor) {
                    << " from diagnostics::SubprocRoutine destructor, cannot "
                       "guarantee process will die.";
       }
-      subproc_status_ = kSubprocStatusCancelling;
+      UpdateSubprocessStatus(kSubprocStatusCancelling);
       process_adapter_->KillProcess(handle_);
       break;
     case kSubprocStatusCancelling:
@@ -231,6 +236,21 @@ void SubprocRoutine::KillProcess(bool from_dtor) {
   }
 }
 
+void SubprocRoutine::UpdateSubprocessStatus(SubprocStatus subproc_status) {
+  auto old_routine_status =
+      GetDiagnosticRoutineStatusFromSubprocRoutineStatus(subproc_status_);
+  auto new_routine_status =
+      GetDiagnosticRoutineStatusFromSubprocRoutineStatus(subproc_status);
+
+  subproc_status_ = subproc_status;
+
+  if (new_routine_status != old_routine_status) {
+    for (const auto& callback : status_changed_callbacks_) {
+      callback.Run(new_routine_status);
+    }
+  }
+}
+
 void SubprocRoutine::CheckActiveProcessStatus() {
   DCHECK_NE(handle_, base::kNullProcessHandle);
   switch (process_adapter_->GetStatus(handle_)) {
@@ -242,32 +262,32 @@ void SubprocRoutine::CheckActiveProcessStatus() {
       // The process is gone.
       handle_ = base::kNullProcessHandle;
       if (subproc_status_ == kSubprocStatusCancelling) {
-        subproc_status_ = kSubprocStatusCancelled;
+        UpdateSubprocessStatus(kSubprocStatusCancelled);
       } else {
         if (command_lines_.size())
           StartProcess();
         else
-          subproc_status_ = kSubprocStatusCompleteSuccess;
+          UpdateSubprocessStatus(kSubprocStatusCompleteSuccess);
       }
       break;
     case base::TERMINATION_STATUS_ABNORMAL_TERMINATION:
       // The process is gone.
       handle_ = base::kNullProcessHandle;
 
-      subproc_status_ = (subproc_status_ == kSubprocStatusCancelling)
-                            ? kSubprocStatusCancelled
-                            : kSubprocStatusCompleteFailure;
+      UpdateSubprocessStatus((subproc_status_ == kSubprocStatusCancelling)
+                                 ? kSubprocStatusCancelled
+                                 : kSubprocStatusCompleteFailure);
       break;
     case base::TERMINATION_STATUS_LAUNCH_FAILED:
       // The process never really was.
       handle_ = base::kNullProcessHandle;
 
-      subproc_status_ = kSubprocStatusLaunchFailed;
+      UpdateSubprocessStatus(kSubprocStatusLaunchFailed);
       break;
     default:
       // The process is mysteriously just missing.
       handle_ = base::kNullProcessHandle;
-      subproc_status_ = kSubprocStatusError;
+      UpdateSubprocessStatus(kSubprocStatusError);
       break;
   }
 }

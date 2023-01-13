@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_DIAG_ROUTINE_H_
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_DIAG_ROUTINE_H_
 
+#include <base/callback_forward.h>
+
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
@@ -13,6 +15,8 @@ namespace diagnostics {
 // controlled by the platform.
 class DiagnosticRoutine {
  public:
+  using StatusChangedCallback = base::RepeatingCallback<void(
+      ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum)>;
   // Note that the instance of this object may be destroyed before the routine
   // is finished - the implementation must ensure that the destructor
   // terminates all background processes in that case.
@@ -33,6 +37,14 @@ class DiagnosticRoutine {
       ash::cros_healthd::mojom::RoutineUpdate* response,
       bool include_output) = 0;
   virtual ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() = 0;
+  // Registers a callback that will be invoked each time the status changes.
+  // On each status change, the new status will be passed as the argument to
+  // |callback|.
+  // This function should not be used to observe changes of other properties
+  // (e.g., status_message) because the callback could be invoked after the
+  // status changes but before other properties are updated.
+  virtual void RegisterStatusChangedCallback(
+      StatusChangedCallback callback) = 0;
 };
 
 }  // namespace diagnostics

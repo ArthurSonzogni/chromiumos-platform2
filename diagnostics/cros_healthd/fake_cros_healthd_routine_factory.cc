@@ -44,6 +44,7 @@ class FakeDiagnosticRoutine : public DiagnosticRoutine {
   void PopulateStatusUpdate(mojo_ipc::RoutineUpdate* response,
                             bool include_output) override;
   mojo_ipc::DiagnosticRoutineStatusEnum GetStatus() override;
+  void RegisterStatusChangedCallback(StatusChangedCallback callback) override;
 
  private:
   // Value returned by GetStatus().
@@ -117,6 +118,11 @@ void FakeDiagnosticRoutine::PopulateStatusUpdate(
 
 mojo_ipc::DiagnosticRoutineStatusEnum FakeDiagnosticRoutine::GetStatus() {
   return status_;
+}
+
+void FakeDiagnosticRoutine::RegisterStatusChangedCallback(
+    StatusChangedCallback callback) {
+  // Not implemented since the status of this fake object never changes.
 }
 
 class FakeNonInteractiveDiagnosticRoutine final : public FakeDiagnosticRoutine {
