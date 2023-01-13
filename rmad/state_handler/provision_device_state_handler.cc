@@ -62,7 +62,7 @@ constexpr char kTestBoardIdType[] = "5a5a4352";  // ZZCR.
 constexpr char kCustomLabelPvtBoardIdFlags[] = "00003f80";
 
 const std::vector<std::string> kResetGbbFlagsArgv = {
-    "/usr/share/vboot/bin/set_gbb_flags.sh", "0"};
+    "/usr/bin/futility", "gbb", "--set", "--flash", "--flags=0"};
 
 }  // namespace
 

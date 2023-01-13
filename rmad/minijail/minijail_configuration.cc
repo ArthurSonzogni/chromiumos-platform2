@@ -71,9 +71,6 @@ void EnterMinijail(bool set_admin_caps) {
   // Required to read VPD and sensor attributes.
   minijail_bind(j.get(), "/sys/bus", "/sys/bus", 0);
 
-  // Required for get_gbb_flags.sh and set_gbb_flags.sh.
-  minijail_bind(j.get(), "/usr/share/vboot", "/usr/share/vboot", 0);
-
   minijail_mount_with_data(j.get(), "tmpfs", "/mnt/stateful_partition", "tmpfs",
                            0, nullptr);
   // Required to write rmad state file.

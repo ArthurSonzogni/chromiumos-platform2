@@ -30,7 +30,7 @@ iopl: 1
 stat: 1
 
 # PR_SET_NAME     for base::ThreadPoolInstance::CreateAndStartWithDefaultParams.
-# PR_SET_KEEPCAPS for /usr/share/vboot/bin/set_gbb_flags.sh.
+# PR_SET_KEEPCAPS for 'futility gbb --set --flash --flags=val'.
 prctl: arg0 == PR_SET_NAME || arg0 == PR_SET_KEEPCAPS
 execve: 1
 arch_prctl: 1
