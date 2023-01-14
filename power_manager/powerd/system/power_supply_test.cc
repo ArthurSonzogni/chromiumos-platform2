@@ -18,6 +18,8 @@
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
+#include <libec/display_soc_command.h>
+#include <libec/mock_ec_command_factory.h>
 
 #include "power_manager/common/battery_percentage_converter.h"
 #include "power_manager/common/fake_prefs.h"
@@ -27,6 +29,9 @@
 #include "power_manager/powerd/system/udev_stub.h"
 #include "power_manager/powerd/testing/test_environment.h"
 #include "power_manager/proto_bindings/power_supply_properties.pb.h"
+
+using ::testing::_;
+using ::testing::Return;
 
 namespace power_manager::system {
 
@@ -113,6 +118,11 @@ class TestObserver : public PowerSupplyObserver {
   TestMainLoopRunner runner_;
 };
 
+class MockDisplayStateOfChargeCommand : public ec::DisplayStateOfChargeCommand {
+ public:
+  MOCK_METHOD(bool, Run, (int fd));
+};
+
 }  // namespace
 
 class PowerSupplyTest : public TestEnvironment {
@@ -122,6 +132,19 @@ class PowerSupplyTest : public TestEnvironment {
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
     ASSERT_TRUE(temp_dir_.IsValid());
+
+    // Create the CrOS EC file.
+    cros_ec_path_ = temp_dir_.GetPath().Append("cros_ec");
+    EXPECT_EQ(0, base::WriteFile(cros_ec_path_, "", 0));
+
+    // Leave support for fetching the Display state of charge from the EC off by
+    // default.
+    ON_CALL(ec_command_factory_, DisplayStateOfChargeCommand)
+        .WillByDefault([]() {
+          auto cmd = std::make_unique<MockDisplayStateOfChargeCommand>();
+          EXPECT_CALL(*cmd, Run(_)).WillOnce(Return(false));
+          return cmd;
+        });
 
     prefs_.SetInt64(kLowBatteryShutdownTimePref, 180);
     prefs_.SetDouble(kPowerSupplyFullFactorPref, kFullFactor);
@@ -143,7 +166,8 @@ class PowerSupplyTest : public TestEnvironment {
     battery_percentage_converter_ =
         BatteryPercentageConverter::CreateFromPrefs(&prefs_);
 
-    power_supply_->Init(temp_dir_.GetPath(), &prefs_, &udev_, &dbus_wrapper_,
+    power_supply_->Init(temp_dir_.GetPath(), cros_ec_path_,
+                        &ec_command_factory_, &prefs_, &udev_, &dbus_wrapper_,
                         battery_percentage_converter_.get());
   }
 
@@ -304,7 +328,9 @@ class PowerSupplyTest : public TestEnvironment {
   }
 
   FakePrefs prefs_;
+  ec::MockEcCommandFactory ec_command_factory_;
   base::ScopedTempDir temp_dir_;
+  base::FilePath cros_ec_path_;
   base::FilePath ac_dir_;
   base::FilePath usbpd_dir_;
   base::FilePath battery_dir_;
@@ -1313,6 +1339,38 @@ TEST_F(PowerSupplyTest, DisplayBatteryPercent) {
   UpdateChargeAndCurrent(kShutdownPercent / 100.0, 0.0);
   ASSERT_TRUE(UpdateStatus(&status));
   EXPECT_DOUBLE_EQ(0.0, status.display_battery_percentage);
+}
+
+TEST_F(PowerSupplyTest, EcDisplayBatteryPercent) {
+  struct ec_response_display_soc resp;
+  // |display_soc| and |shutdown_soc| are divided by 10.0 to get the
+  // percentages. |full_factor| is divided by 1000.0 to get the |full_factor_|
+  resp.display_soc = 1000.0;
+  resp.full_factor = 970.0;
+  resp.shutdown_soc = 50.0;
+
+  ON_CALL(ec_command_factory_, DisplayStateOfChargeCommand)
+      .WillByDefault([r = &resp]() {
+        auto cmd = std::make_unique<MockDisplayStateOfChargeCommand>();
+        cmd->Resp()->display_soc = r->display_soc;
+        cmd->Resp()->full_factor = r->full_factor;
+        cmd->Resp()->shutdown_soc = r->shutdown_soc;
+        EXPECT_CALL(*cmd, Run(_)).WillOnce(Return(true));
+        return cmd;
+      });
+
+  WriteDefaultValues(PowerSource::AC);
+  UpdateChargeAndCurrent(1.0, 0.0);
+  Init();
+  PowerStatus status;
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(100.0, status.display_battery_percentage);
+
+  // Set a battery charge of 77% with a display battery percentage of 80%.
+  UpdateChargeAndCurrent(0.77, 0.0);
+  resp.display_soc = 800.0;
+  ASSERT_TRUE(UpdateStatus(&status));
+  EXPECT_EQ(80.0, status.display_battery_percentage);
 }
 
 TEST_F(PowerSupplyTest, BadSingleBattery) {

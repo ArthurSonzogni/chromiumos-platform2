@@ -15,6 +15,7 @@
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_executor.h>
 #include <brillo/process/process.h>
+#include <libec/ec_command_factory.h>
 
 #include "power_manager/common/battery_percentage_converter.h"
 #include "power_manager/common/power_constants.h"
@@ -77,13 +78,15 @@ bool BatteryStateIsCharging() {
   power_manager::system::UdevStub udev;
   power_manager::system::DBusWrapperStub dbus_wrapper;
   base::FilePath path(power_manager::kPowerStatusPath);
+  base::FilePath cros_ec_path(ec::kCrosEcPath);
+  ec::EcCommandFactory ec_command_factory;
 
   auto battery_percentage_converter =
       power_manager::BatteryPercentageConverter::CreateFromPrefs(&prefs);
 
   power_manager::system::PowerSupply power_supply;
-  power_supply.Init(path, &prefs, &udev, &dbus_wrapper,
-                    battery_percentage_converter.get());
+  power_supply.Init(path, cros_ec_path, &ec_command_factory, &prefs, &udev,
+                    &dbus_wrapper, battery_percentage_converter.get());
 
   CHECK(power_supply.RefreshImmediately());
   const power_manager::system::PowerStatus status =

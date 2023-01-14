@@ -170,6 +170,8 @@ class DaemonDelegate {
 
   virtual std::unique_ptr<system::PowerSupplyInterface> CreatePowerSupply(
       const base::FilePath& power_supply_path,
+      const base::FilePath& cros_ec_path,
+      ec::EcCommandFactoryInterface* ec_command_factory,
       PrefsInterface* prefs,
       system::UdevInterface* udev,
       system::DBusWrapperInterface* dbus_wrapper,

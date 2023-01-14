@@ -397,11 +397,15 @@ class DaemonTest : public TestEnvironment, public DaemonDelegate {
   }
   std::unique_ptr<system::PowerSupplyInterface> CreatePowerSupply(
       const base::FilePath& power_supply_path,
+      const base::FilePath& cros_ec_path,
+      ec::EcCommandFactoryInterface* ec_command_factory,
       PrefsInterface* prefs,
       system::UdevInterface* udev,
       system::DBusWrapperInterface* dbus_wrapper,
       BatteryPercentageConverter* battery_percentage_converter) override {
     EXPECT_EQ(kPowerStatusPath, power_supply_path.value());
+    EXPECT_EQ(cros_ec_path_, cros_ec_path);
+    EXPECT_EQ(ec_command_factory_, ec_command_factory);
     EXPECT_EQ(prefs_, prefs);
     EXPECT_EQ(udev_, udev);
     EXPECT_EQ(dbus_wrapper_, dbus_wrapper);

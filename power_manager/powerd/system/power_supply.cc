@@ -598,6 +598,8 @@ PowerSupply::~PowerSupply() {
 
 void PowerSupply::Init(
     const base::FilePath& power_supply_path,
+    const base::FilePath& cros_ec_path,
+    ec::EcCommandFactoryInterface* ec_command_factory,
     PrefsInterface* prefs,
     UdevInterface* udev,
     system::DBusWrapperInterface* dbus_wrapper,
@@ -607,6 +609,8 @@ void PowerSupply::Init(
 
   prefs_ = prefs;
   power_supply_path_ = power_supply_path;
+  cros_ec_path_ = cros_ec_path;
+  ec_command_factory_ = ec_command_factory;
 
   dbus_wrapper_ = dbus_wrapper;
   dbus_wrapper->ExportMethod(
@@ -777,22 +781,24 @@ bool PowerSupply::GetDisplayStateOfChargeFromEC(double* display_soc) {
   if (!import_display_soc_)
     return false;
 
-  base::ScopedFD ec_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
+  base::ScopedFD ec_fd =
+      base::ScopedFD(open(cros_ec_path_.value().c_str(), O_RDWR));
 
   if (!ec_fd.is_valid()) {
-    PLOG(ERROR) << "Failed to open " << ec::kCrosEcPath;
+    // This is expect on systems without the CrOS EC.
+    LOG(INFO) << "Failed to open " << cros_ec_path_;
     return false;
   }
 
-  ec::DisplayStateOfChargeCommand cmd;
-  if (!cmd.Run(ec_fd.get())) {
+  auto cmd = ec_command_factory_->DisplayStateOfChargeCommand();
+  if (!cmd->Run(ec_fd.get())) {
     // This is expected if EC doesn't export display SoC.
     LOG(INFO) << "Failed to read display SoC from EC";
     return false;
   }
 
   if (display_soc != nullptr) {
-    *display_soc = cmd.CurrentPercentCharge();
+    *display_soc = cmd->CurrentPercentCharge();
   }
 
   return true;

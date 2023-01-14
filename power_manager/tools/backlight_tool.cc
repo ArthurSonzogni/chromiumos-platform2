@@ -24,6 +24,7 @@
 #include <brillo/flag_helper.h>
 #include <chromeos/mojo/service_constants.h>
 #include <dbus/bus.h>
+#include <libec/ec_command_factory.h>
 #if USE_IIOSERVICE
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
@@ -130,12 +131,14 @@ class Converter {
     PowerSource power_source = PowerSource::BATTERY;
     if (!force_battery) {
       UdevStub udev;
+      ec::EcCommandFactory ec_command_factory;
 
       auto battery_percentage_converter =
           BatteryPercentageConverter::CreateFromPrefs(&prefs_);
 
       PowerSupply power_supply;
       power_supply.Init(base::FilePath(power_manager::kPowerStatusPath),
+                        base::FilePath(ec::kCrosEcPath), &ec_command_factory,
                         &prefs_, &udev, &dbus_wrapper_,
                         battery_percentage_converter.get());
       if (!power_supply.RefreshImmediately()) {

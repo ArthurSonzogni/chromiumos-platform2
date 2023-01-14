@@ -19,6 +19,7 @@
 #include <base/time/time.h>
 #include <base/timer/timer.h>
 #include <dbus/exported_object.h>
+#include <libec/ec_command_factory.h>
 
 #include "power_manager/powerd/system/power_supply_observer.h"
 #include "power_manager/powerd/system/rolling_average.h"
@@ -369,6 +370,8 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // Initializes the object and begins polling. Ownership of raw pointers
   // remains with the caller.
   void Init(const base::FilePath& power_supply_path,
+            const base::FilePath& cros_ec_path,
+            ec::EcCommandFactoryInterface* ec_command_factory,
             PrefsInterface* prefs,
             UdevInterface* udev,
             DBusWrapperInterface* dbus_wrapper,
@@ -511,9 +514,10 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // returning true on success.
   bool SetPowerSource(const std::string& id);
 
-  PrefsInterface* prefs_ = nullptr;               // non-owned
-  UdevInterface* udev_ = nullptr;                 // non-owned
-  DBusWrapperInterface* dbus_wrapper_ = nullptr;  // non-owned
+  ec::EcCommandFactoryInterface* ec_command_factory_ = nullptr;  // non-owned
+  PrefsInterface* prefs_ = nullptr;                              // non-owned
+  UdevInterface* udev_ = nullptr;                                // non-owned
+  DBusWrapperInterface* dbus_wrapper_ = nullptr;                 // non-owned
   BatteryPercentageConverter* battery_percentage_converter_ =
       nullptr;  // non-owned
 
@@ -533,6 +537,9 @@ class PowerSupply : public PowerSupplyInterface, public UdevSubsystemObserver {
   // Base sysfs directory containing subdirectories corresponding to power
   // supplies.
   base::FilePath power_supply_path_;
+
+  // File for communicating with the Embedded Controller (EC).
+  base::FilePath cros_ec_path_;
 
   // Should multiple battery directories in sysfs be read and combined?
   bool allow_multiple_batteries_ = false;
