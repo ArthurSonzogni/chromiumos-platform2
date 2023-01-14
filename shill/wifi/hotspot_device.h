@@ -6,6 +6,7 @@
 #define SHILL_WIFI_HOTSPOT_DEVICE_H_
 
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -77,6 +78,7 @@ class HotspotDevice : public LocalDevice,
   void StationAdded(const RpcIdentifier& Station,
                     const KeyValueStore& properties) override;
   void StationRemoved(const RpcIdentifier& Station) override;
+  void PskMismatch() override{};
 
  private:
   friend class HotspotDeviceTest;

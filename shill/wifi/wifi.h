@@ -172,6 +172,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void StationAdded(const RpcIdentifier& Station,
                     const KeyValueStore& properties) override{};
   void StationRemoved(const RpcIdentifier& Station) override{};
+  void PskMismatch() override;
 
   // Called by WiFiService.
   virtual void ConnectTo(WiFiService* service, Error* error);
@@ -518,6 +519,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void PropertiesChangedTask(const KeyValueStore& properties);
   void ScanDoneTask();
   void ScanFailedTask();
+  void PskMismatchTask();
   // UpdateScanStateAfterScanDone is spawned as a task from ScanDoneTask in
   // order to ensure that it is run after the start of any connections that
   // result from a scan.  This works because supplicant sends all BSSAdded

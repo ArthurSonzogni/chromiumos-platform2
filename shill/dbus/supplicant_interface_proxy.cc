@@ -123,6 +123,10 @@ SupplicantInterfaceProxy::SupplicantInterfaceProxy(
       base::BindRepeating(&SupplicantInterfaceProxy::StationRemoved,
                           weak_factory_.GetWeakPtr()),
       on_connected_callback);
+  interface_proxy_->RegisterPskMismatchSignalHandler(
+      base::BindRepeating(&SupplicantInterfaceProxy::PskMismatch,
+                          weak_factory_.GetWeakPtr()),
+      on_connected_callback);
 
   // Connect property signals and initialize cached values. Based on
   // recommendations from src/dbus/property.h.
@@ -539,6 +543,11 @@ void SupplicantInterfaceProxy::StationAdded(
 void SupplicantInterfaceProxy::StationRemoved(const dbus::ObjectPath& station) {
   SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
   delegate_->StationRemoved(station);
+}
+
+void SupplicantInterfaceProxy::PskMismatch() {
+  SLOG(&interface_proxy_->GetObjectPath(), 2) << __func__;
+  delegate_->PskMismatch();
 }
 
 void SupplicantInterfaceProxy::OnPropertyChanged(

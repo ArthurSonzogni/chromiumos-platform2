@@ -524,6 +524,12 @@ void WiFi::ScanDone(const bool& success) {
   }
 }
 
+void WiFi::PskMismatch() {
+  dispatcher()->PostTask(
+      FROM_HERE, base::BindOnce(&WiFi::PskMismatchTask,
+                                weak_ptr_factory_while_started_.GetWeakPtr()));
+}
+
 void WiFi::InterworkingAPAdded(const RpcIdentifier& BSS,
                                const RpcIdentifier& cred,
                                const KeyValueStore& properties) {
@@ -2176,6 +2182,17 @@ void WiFi::PropertiesChangedTask(const KeyValueStore& properties) {
   }
 }
 
+void WiFi::PskMismatchTask() {
+  WiFiService* affected_service =
+      current_service_.get() ? current_service_.get() : pending_service_.get();
+  if (!affected_service) {
+    SLOG(this, 2) << "WiFi " << link_name() << " " << __func__
+                  << " with no service";
+    return;
+  }
+  affected_service->AddSuspectedCredentialFailure();
+}
+
 void WiFi::SignalChanged(const KeyValueStore& properties) {
   station_stats_ = WiFiLinkStatistics::StationStatsFromSupplicantKV(properties);
 
@@ -2544,7 +2561,7 @@ bool WiFi::SuspectCredentials(WiFiServiceRefPtr service,
                               Service::ConnectFailure* failure) const {
   if (service->IsSecurityMatch(kSecurityClassPsk)) {
     if (supplicant_state_ == WPASupplicant::kInterfaceState4WayHandshake &&
-        service->AddSuspectedCredentialFailure()) {
+        service->CheckSuspectedCredentialFailure()) {
       if (failure) {
         *failure = Service::kFailureBadPassphrase;
       }
@@ -2552,7 +2569,7 @@ bool WiFi::SuspectCredentials(WiFiServiceRefPtr service,
     }
   } else if (service->IsSecurityMatch(kSecurityClass8021x)) {
     if (eap_state_handler_->is_eap_in_progress() &&
-        service->AddSuspectedCredentialFailure()) {
+        service->AddAndCheckSuspectedCredentialFailure()) {
       if (failure) {
         *failure = Service::kFailureEAPAuthentication;
       }
@@ -2949,7 +2966,7 @@ void WiFi::OnIPConfigFailure() {
   }
   if (current_service_->IsSecurityMatch(kSecurityWep) &&
       GetReceiveByteCount() == receive_byte_count_at_connect_ &&
-      current_service_->AddSuspectedCredentialFailure()) {
+      current_service_->AddAndCheckSuspectedCredentialFailure()) {
     // If we've connected to a WEP network and haven't successfully
     // decrypted any bytes at all during the configuration process,
     // it is fair to suspect that our credentials to this network

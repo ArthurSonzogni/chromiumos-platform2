@@ -1954,30 +1954,34 @@ TEST_F(WiFiServiceTest, CustomSetterNoopChange) {
 }
 
 TEST_F(WiFiServiceTest, SuspectedCredentialFailure) {
-  WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassPsk);
+  WiFiServiceRefPtr service = MakeServiceWithWiFi(kSecurityClassPsk);
   EXPECT_FALSE(service->has_ever_connected());
   EXPECT_EQ(0, service->suspected_credential_failures_);
 
-  EXPECT_TRUE(service->AddSuspectedCredentialFailure());
-  EXPECT_EQ(0, service->suspected_credential_failures_);
+  EXPECT_TRUE(service->AddAndCheckSuspectedCredentialFailure());
+  EXPECT_EQ(1, service->suspected_credential_failures_);
 
-  service->has_ever_connected_ = true;
+  // Reset failure state upon successful connection.
+  service->ResetSuspectedCredentialFailures();
+  service->SetState(Service::kStateConnected);
   for (int i = 0; i < WiFiService::kSuspectedCredentialFailureThreshold - 1;
        ++i) {
-    EXPECT_FALSE(service->AddSuspectedCredentialFailure());
+    EXPECT_FALSE(service->AddAndCheckSuspectedCredentialFailure());
     EXPECT_EQ(i + 1, service->suspected_credential_failures_);
   }
-
-  EXPECT_TRUE(service->AddSuspectedCredentialFailure());
+  EXPECT_TRUE(service->AddAndCheckSuspectedCredentialFailure());
   // Make sure the failure state does not reset just because we ask again.
-  EXPECT_TRUE(service->AddSuspectedCredentialFailure());
+  EXPECT_TRUE(service->AddAndCheckSuspectedCredentialFailure());
+
   // Make sure the failure state resets because of a credential change.
   // A credential change changes the has_ever_connected to false and
   // immediately returns true when attempting to add the failure.
   Error error;
   service->SetPassphrase("Panchromatic Resonance", &error);
   EXPECT_TRUE(error.IsSuccess());
-  EXPECT_TRUE(service->AddSuspectedCredentialFailure());
+  EXPECT_EQ(0, service->suspected_credential_failures_);
+  EXPECT_TRUE(service->AddAndCheckSuspectedCredentialFailure());
+  service->ResetSuspectedCredentialFailures();
   EXPECT_EQ(0, service->suspected_credential_failures_);
 
   // Make sure that we still return true after resetting the failure
@@ -1986,7 +1990,7 @@ TEST_F(WiFiServiceTest, SuspectedCredentialFailure) {
   EXPECT_EQ(3, service->suspected_credential_failures_);
   service->ResetSuspectedCredentialFailures();
   EXPECT_EQ(0, service->suspected_credential_failures_);
-  EXPECT_TRUE(service->AddSuspectedCredentialFailure());
+  EXPECT_TRUE(service->AddAndCheckSuspectedCredentialFailure());
 }
 
 TEST_F(WiFiServiceTest, GetTethering) {

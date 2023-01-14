@@ -37,7 +37,9 @@ class MockWiFiService : public WiFiService {
               (const std::string&, size_t),
               (override));
   MOCK_METHOD(bool, HasRecentConnectionIssues, (), (override));
-  MOCK_METHOD(bool, AddSuspectedCredentialFailure, (), (override));
+  MOCK_METHOD(bool, AddAndCheckSuspectedCredentialFailure, (), (override));
+  MOCK_METHOD(void, AddSuspectedCredentialFailure, (), (override));
+  MOCK_METHOD(bool, CheckSuspectedCredentialFailure, (), (override));
   MOCK_METHOD(void, ResetSuspectedCredentialFailures, (), (override));
   MOCK_METHOD(void, AddEndpoint, (const WiFiEndpointConstRefPtr&), (override));
   MOCK_METHOD(void,

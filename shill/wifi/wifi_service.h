@@ -173,13 +173,21 @@ class WiFiService : public Service {
   bool IsSecurityMatch(const std::string& security_class) const;
 
   // Used by WiFi objects to indicate that the credentials for this network
-  // have been called into question.  This method returns true if given this
-  // suspicion, if it is probable that indeed these credentials are likely
-  // to be incorrect.  Credentials that have never been used before are
-  // considered suspect by default, while those which have been used
-  // successfully in the past must have this method called a number of times
-  // since the last time ResetSuspectedCredentialsFailures() was called.
-  mockable bool AddSuspectedCredentialFailure();
+  // have been called into question. |CheckSuspectedCredentialFailure()|
+  // returns true if given this suspicion, if it is probable that indeed
+  // these credentials are likely to be incorrect. Credentials that have
+  // never been used before are considered suspect by default, while those
+  // which have been used successfully in the past must have this method
+  // called a number of times since the last time
+  // |ResetSuspectedCredentialsFailures()| was called.
+  // For PSK service, the suspicion is generated in wpa_supplicant so that
+  // |AddSuspectedCredentialFailure| and |CheckSuspectedCredentialFailure|
+  // are called separately; while for other security types, suspicion is
+  // generated in shill and thus the two methods are called at the same
+  // time as |AddAndCheckSuspectedCredentialFailure()|.
+  mockable bool AddAndCheckSuspectedCredentialFailure();
+  mockable void AddSuspectedCredentialFailure();
+  mockable bool CheckSuspectedCredentialFailure();
   mockable void ResetSuspectedCredentialFailures();
 
   bool hidden_ssid() const { return hidden_ssid_; }

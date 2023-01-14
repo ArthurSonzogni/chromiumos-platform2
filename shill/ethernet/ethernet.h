@@ -80,6 +80,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   void StationAdded(const RpcIdentifier& Station,
                     const KeyValueStore& properties) override{};
   void StationRemoved(const RpcIdentifier& Station) override{};
+  void PskMismatch() override{};
 
   std::string GetStorageIdentifier() const override;
 

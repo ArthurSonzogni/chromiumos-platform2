@@ -1156,6 +1156,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     wifi_->EAPEventTask(status, parameter);
   }
 
+  void ReportPskMismatch() { wifi_->PskMismatchTask(); }
+
   void RestartFastScanAttempts() { wifi_->RestartFastScanAttempts(); }
 
   void SetFastScansRemaining(int num) { wifi_->fast_scans_remaining_ = num; }
@@ -3918,16 +3920,25 @@ TEST_F(WiFiMainTest, ResumeWithUnreliableLink) {
   EXPECT_TRUE(ReliableLinkCallbackIsCancelled());
 }
 
+TEST_F(WiFiMainTest, PskMismatchSignalOnReceive) {
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kWpa2);
+  SetPendingService(service);
+  EXPECT_CALL(*service, AddSuspectedCredentialFailure()).Times(1);
+  ReportPskMismatch();
+}
+
 TEST_F(WiFiMainTest, SuspectCredentialsOpen) {
   MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
-  EXPECT_CALL(*service, AddSuspectedCredentialFailure()).Times(0);
+  EXPECT_CALL(*service, AddAndCheckSuspectedCredentialFailure()).Times(0);
   EXPECT_FALSE(SuspectCredentials(service, nullptr));
 }
 
 TEST_F(WiFiMainTest, SuspectCredentialsWPA) {
   MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kWpa2);
+  SetPendingService(service);
   ReportStateChanged(WPASupplicant::kInterfaceState4WayHandshake);
-  EXPECT_CALL(*service, AddSuspectedCredentialFailure())
+  ReportPskMismatch();
+  EXPECT_CALL(*service, CheckSuspectedCredentialFailure())
       .WillOnce(Return(false))
       .WillOnce(Return(true));
   EXPECT_FALSE(SuspectCredentials(service, nullptr));
@@ -3978,7 +3989,7 @@ TEST_F(WiFiMainTest, SuspectCredentialsWEP) {
 
   // Connection failed during DHCP but service does not (yet) believe this is
   // due to a passphrase issue.
-  EXPECT_CALL(*service, AddSuspectedCredentialFailure())
+  EXPECT_CALL(*service, AddAndCheckSuspectedCredentialFailure())
       .WillOnce(Return(false));
   EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureDHCP, _,
                                               HasSubstr("OnIPConfigFailure")));
@@ -3987,7 +3998,8 @@ TEST_F(WiFiMainTest, SuspectCredentialsWEP) {
 
   // Connection failed during DHCP and service believes this is due to a
   // passphrase issue.
-  EXPECT_CALL(*service, AddSuspectedCredentialFailure()).WillOnce(Return(true));
+  EXPECT_CALL(*service, AddAndCheckSuspectedCredentialFailure())
+      .WillOnce(Return(true));
   EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureBadPassphrase, _,
                                               HasSubstr("OnIPConfigFailure")));
   ReportIPConfigFailure();
@@ -4001,21 +4013,22 @@ TEST_F(WiFiMainTest, SuspectCredentialsEAPInProgress) {
       .WillOnce(Return(true))
       .WillOnce(Return(false))
       .WillOnce(Return(true));
-  EXPECT_CALL(*service, AddSuspectedCredentialFailure()).Times(0);
+  EXPECT_CALL(*service, AddAndCheckSuspectedCredentialFailure()).Times(0);
   EXPECT_FALSE(SuspectCredentials(service, nullptr));
   Mock::VerifyAndClearExpectations(service.get());
 
-  EXPECT_CALL(*service, AddSuspectedCredentialFailure()).WillOnce(Return(true));
+  EXPECT_CALL(*service, AddAndCheckSuspectedCredentialFailure())
+      .WillOnce(Return(true));
   Service::ConnectFailure failure;
   EXPECT_TRUE(SuspectCredentials(service, &failure));
   EXPECT_EQ(Service::kFailureEAPAuthentication, failure);
   Mock::VerifyAndClearExpectations(service.get());
 
-  EXPECT_CALL(*service, AddSuspectedCredentialFailure()).Times(0);
+  EXPECT_CALL(*service, AddAndCheckSuspectedCredentialFailure()).Times(0);
   EXPECT_FALSE(SuspectCredentials(service, nullptr));
   Mock::VerifyAndClearExpectations(service.get());
 
-  EXPECT_CALL(*service, AddSuspectedCredentialFailure())
+  EXPECT_CALL(*service, AddAndCheckSuspectedCredentialFailure())
       .WillOnce(Return(false));
   EXPECT_FALSE(SuspectCredentials(service, nullptr));
 }
@@ -4024,9 +4037,11 @@ TEST_F(WiFiMainTest, SuspectCredentialsYieldFailurePSK) {
   MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kWpa2);
   SetPendingService(service);
   ReportStateChanged(WPASupplicant::kInterfaceState4WayHandshake);
+  ReportPskMismatch();
 
   ExpectScanIdle();
-  EXPECT_CALL(*service, AddSuspectedCredentialFailure()).WillOnce(Return(true));
+  EXPECT_CALL(*service, CheckSuspectedCredentialFailure())
+      .WillOnce(Return(true));
   EXPECT_CALL(*service, SetFailure(Service::kFailureBadPassphrase));
   EXPECT_CALL(*service, SetState(Service::kStateIdle));
   ScopedMockLog log;
@@ -4048,7 +4063,8 @@ TEST_F(WiFiMainTest, SuspectCredentialsYieldFailureEAP) {
   // EAP handler's state.
   InSequence seq;
   EXPECT_CALL(*eap_state_handler_, is_eap_in_progress()).WillOnce(Return(true));
-  EXPECT_CALL(*service, AddSuspectedCredentialFailure()).WillOnce(Return(true));
+  EXPECT_CALL(*service, AddAndCheckSuspectedCredentialFailure())
+      .WillOnce(Return(true));
   EXPECT_CALL(*service, SetFailure(Service::kFailureEAPAuthentication));
   EXPECT_CALL(log, Log(logging::LOGGING_ERROR, _,
                        EndsWith(kErrorEapAuthenticationFailed)));

@@ -823,12 +823,20 @@ bool WiFiService::IsSecurityMatch(const std::string& sec_class) const {
   return sec_class == security_class();
 }
 
-bool WiFiService::AddSuspectedCredentialFailure() {
+void WiFiService::AddSuspectedCredentialFailure() {
+  ++suspected_credential_failures_;
+}
+
+bool WiFiService::CheckSuspectedCredentialFailure() {
   if (!has_ever_connected()) {
     return true;
   }
-  ++suspected_credential_failures_;
   return suspected_credential_failures_ >= kSuspectedCredentialFailureThreshold;
+}
+
+bool WiFiService::AddAndCheckSuspectedCredentialFailure() {
+  AddSuspectedCredentialFailure();
+  return CheckSuspectedCredentialFailure();
 }
 
 void WiFiService::ResetSuspectedCredentialFailures() {

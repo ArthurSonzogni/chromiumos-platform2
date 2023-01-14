@@ -54,6 +54,9 @@ class SupplicantEventDelegateInterface {
 
   // Supplicant has removed a station from the interface.
   virtual void StationRemoved(const RpcIdentifier& Station) = 0;
+
+  // Supplicant reports PSK mismatch.
+  virtual void PskMismatch() = 0;
 };
 
 }  // namespace shill
