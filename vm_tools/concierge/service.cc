@@ -167,6 +167,12 @@ constexpr const char* kPluginVmImageExtensions[] = {kPluginVmImageExtension,
 // Default name to use for a container.
 constexpr char kDefaultContainerName[] = "penguin";
 
+// The Id of the DLC that supplies the Bios for the Bruschetta VM.
+constexpr char kBruschettaBiosDlcId[] = "bruschetta-bios-dlc";
+
+// File path for the Bruschetta Bios file inside the DLC root.
+constexpr char kBruschettaBiosDlcPath[] = "opt/CLOUDHV.fd";
+
 constexpr uint64_t kMinimumDiskSize = 1ll * 1024 * 1024 * 1024;  // 1 GiB
 constexpr uint64_t kDiskSizeMask = ~4095ll;  // Round to disk block size.
 
@@ -4914,6 +4920,12 @@ VMImageSpec Service::GetImageSpec(
       return {};
     bios = base::FilePath(kProcFileDescriptorsPath)
                .Append(base::NumberToString(raw_fd));
+  } else if (!vm.bios_dlc_id().empty() &&
+             (vm.bios_dlc_id() == kBruschettaBiosDlcId)) {
+    bios = GetVmImagePath(vm.bios_dlc_id(), failure_reason);
+    if (!failure_reason->empty() || bios.empty())
+      return {};
+    bios = bios.Append(kBruschettaBiosDlcPath);
   }
 
   if (pflash_fd.has_value()) {
