@@ -2228,11 +2228,7 @@ std::deque<Stringmap> Cellular::BuildApnTryList(
 
       SLOG(3) << LoggingTag() << ": " << __func__
               << ": Adding User Specified APN: "
-              << GetStringmapValue(apn_try_list.back(), kApnProperty)
-              << " APN types: "
-              << GetStringmapValue(apn_try_list.back(), kApnTypesProperty)
-              << " APN source: "
-              << GetStringmapValue(apn_try_list.back(), kApnSourceProperty);
+              << GetPrintableApnStringmap(apn_try_list.back());
       if (user_apn_list ||
           (last_good_apn_info &&
            CompareApns(*last_good_apn_info, apn_try_list.back()))) {
@@ -2304,11 +2300,17 @@ std::deque<Stringmap> Cellular::BuildApnTryList(
   if (last_good_apn_info && add_last_good_apn &&
       ApnList::IsApnType(*last_good_apn_info, apn_type)) {
     apn_try_list.push_back(*last_good_apn_info);
-    LOG(INFO) << LoggingTag() << ": " << __func__
-              << ": Adding last good APN (fallback): "
-              << GetStringmapValue(*last_good_apn_info, kApnProperty)
-              << " APN types: "
-              << GetStringmapValue(*last_good_apn_info, kApnTypesProperty);
+    LOG(INFO) << LoggingTag() << ": " << __func__ << ": Adding last good APN: "
+              << GetPrintableApnStringmap(*last_good_apn_info);
+  }
+  // Print list for debugging
+  if (SLOG_IS_ON(Cellular, 3)) {
+    std::string log_string =
+        ": Try list: ApnType: " + ApnList::GetApnTypeString(apn_type);
+    for (const auto& it : apn_try_list) {
+      log_string += " " + GetPrintableApnStringmap(it);
+    }
+    SLOG(3) << __func__ << log_string;
   }
   ValidateApnTryList(apn_try_list);
   return apn_try_list;

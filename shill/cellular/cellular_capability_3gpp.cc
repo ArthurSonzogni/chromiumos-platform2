@@ -33,6 +33,7 @@
 #include "shill/cellular/pending_activation_store.h"
 #include "shill/cellular/verizon_subscription_state.h"
 #include "shill/control_interface.h"
+#include "shill/data_types.h"
 #include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/device_id.h"
 #include "shill/error.h"
@@ -267,18 +268,6 @@ std::string RegistrationStateToString(MMModem3gppRegistrationState state) {
     case MM_MODEM_3GPP_REGISTRATION_STATE_ATTACHED_RLOS:
       return "AttachedRlos";
   }
-}
-
-std::string MaskApnValue(const Stringmap& apn_info, const std::string& value) {
-  // Masking is not needed if LOG_LEVEL >= 3, or the APN is empty, or from the
-  // modem/MODB/fallback.
-  bool print_value =
-      SLOG_IS_ON(Cellular, 3) || value.empty() ||
-      (base::Contains(apn_info, kApnSourceProperty) &&
-       (apn_info.at(kApnSourceProperty) == cellular::kApnSourceMoDb ||
-        apn_info.at(kApnSourceProperty) == cellular::kApnSourceModem ||
-        apn_info.at(kApnSourceProperty) == cellular::kApnSourceFallback));
-  return print_value ? value : "*****";
 }
 
 }  // namespace
@@ -805,8 +794,8 @@ KeyValueStore CellularCapability3gpp::SetupNextConnectProperties() {
   // Initialize APN related properties from the first entry in the try list.
   const Stringmap& apn_info = apn_try_list_.front();
   DCHECK(base::Contains(apn_info, kApnProperty));
-  LOG(INFO) << __func__ << ": Using APN '"
-            << MaskApnValue(apn_info, apn_info.at(kApnProperty)) << "'";
+  LOG(INFO) << __func__ << ": Using APN '" << GetPrintableApnStringmap(apn_info)
+            << "'";
   SetApnProperties(apn_info, &properties);
 
   return properties;
@@ -958,8 +947,7 @@ void CellularCapability3gpp::FillInitialEpsBearerPropertyMap(
   // Store the last Attach APN we tried.
   last_attach_apn_ = apn_info;
   LOG(INFO) << __func__ << ": Using Attach APN '"
-            << MaskApnValue(apn_info, GetStringmapValue(apn_info, kApnProperty))
-            << "'";
+            << GetPrintableApnStringmap(apn_info) << "'";
   if (base::Contains(apn_info, kApnProperty))
     properties->Set<std::string>(CellularBearer::kMMApnProperty,
                                  apn_info.at(kApnProperty));

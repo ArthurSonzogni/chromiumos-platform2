@@ -17,6 +17,14 @@ std::string GetStringmapValue(const Stringmap& string_map,
                               const std::string& key,
                               const std::string& default_value = "");
 
+// Gets a printable value from an APN Stringmap masked using the function
+// |GetPrintableApnValue|.
+std::string GetPrintableApnStringmap(const Stringmap& apn_info);
+
+// Masks a value from the APN properties if the verbose level is lower than 3,
+// or the APN Source is not from modem/MODB/fallback.
+std::string GetPrintableApnValue(const Stringmap& apn_info,
+                                 const std::string& key);
 }  // namespace shill
 
 #endif  // SHILL_CELLULAR_CELLULAR_HELPERS_H_
