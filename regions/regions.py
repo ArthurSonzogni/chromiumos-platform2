@@ -2257,7 +2257,7 @@ def main(args=None, out=None):
         if args.output is None:
             out = sys.stdout
         else:
-            out = open(args.output, "w")
+            out = open(args.output, "w")  # pylint: disable=consider-using-with
 
     if args.notes or args.format == "csv":
         Region.FIELDS += ["notes"]

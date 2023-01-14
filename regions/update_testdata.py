@@ -12,15 +12,13 @@ from __future__ import print_function
 import argparse
 import base64
 import json
-
-# pylint: disable=cros-logging-import
 import logging
 import os
 import re
 import subprocess
 import sys
 
-import yaml
+import yaml  # pylint: disable=import-error
 
 
 # URLs to GIT paths.
