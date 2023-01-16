@@ -13,6 +13,7 @@ use dbus::{
     blocking::Connection,
 };
 use libchromeos::sys::error;
+use std::net::Ipv4Addr;
 use system_api::client::OrgChromiumFlimflamManager;
 use system_api::client::OrgChromiumFlimflamService;
 
@@ -33,7 +34,7 @@ new <name>
     Create a new WireGuard service with name <name>.
 del <name>
     Delete the configured WireGuard service with name <name>.
-set <name> [local-ip <ip>] [private-key] [mtu <mtu>] [dns <ip1>[,<ip2>]...]
+set <name> [local-ip <ip1>[,<ip2>]] [private-key] [mtu <mtu>] [dns <ip1>[,<ip2>]...]
            [peer <base64-public-key> [remove]
                                      [endpoint <hostname>/<ip>:<port>]
                                      [preshared-key]
@@ -42,8 +43,7 @@ set <name> [local-ip <ip>] [private-key] [mtu <mtu>] [dns <ip1>[,<ip2>]...]
     Configure properties for the WireGuard service with name <name>. Most options should
     have the same meaning and usage as in `wireguard-tools` (and `wg-quick`). Exceptions
     are:
-    - Only IPv4 is supported for the VPN overlay, so `local-ip`, `dns`, and `allowed-ips`
-      should be set to IPv4 address(es).
+    - At most one IPv4 address and one IPv6 address is supported for `local-ip`.
     - If `dns` is not set, it will be defaulted to "8.8.8.8,8.8.4.4".
     - If `mtu` is not set, it will be determined automatically. Set it to 0 to reset the
       existing value.
@@ -377,8 +377,8 @@ impl WireGuardService {
         // can handle that properly. Note that this will not affect the correctness in shill, as
         // long as the address written is the same as the IPv4 one in WireGuard.IPAddress. Can be
         // removed once the work in Chrome is done.
-        if self.local_ips.len() == 1 {
-            insert_ip_field(PROPERTY_ADDRESS, Box::new(self.local_ips[0].clone()));
+        if let Some(v) = self.get_local_ipv4() {
+            insert_ip_field(PROPERTY_ADDRESS, Box::new(v));
         }
         if let Some(name_servers) = &self.name_servers {
             insert_ip_field(PROPERTY_NAME_SERVERS, Box::new(name_servers.clone()));
@@ -428,6 +428,14 @@ impl WireGuardService {
         );
 
         properties
+    }
+
+    // Returns the local IPv4 address, if it exists.
+    fn get_local_ipv4(&self) -> Option<String> {
+        self.local_ips
+            .iter()
+            .find(|x| x.parse::<Ipv4Addr>().is_ok())
+            .cloned()
     }
 
     // Updates the service by |args| from `wireguard set` command. If `private-key` or
@@ -575,7 +583,7 @@ impl WireGuardService {
 mod option_util {
     use std::{
         io::{self, Write},
-        net::{Ipv4Addr, SocketAddr},
+        net::{IpAddr, Ipv4Addr, SocketAddr},
         ops::Range,
     };
 
@@ -641,14 +649,13 @@ mod option_util {
         }
     }
 
-    fn parse_comma_split_ips(prop: &str, val: &str) -> Result<Vec<String>, Error> {
+    fn parse_comma_split_ips(prop: &str, val: &str) -> Result<Vec<IpAddr>, Error> {
         val.split(',')
-            .map(|x| x.parse::<Ipv4Addr>())
-            .map(|x| x.map(|y| y.to_string()))
+            .map(|x| x.parse::<IpAddr>())
             .collect::<Result<Vec<_>, _>>()
             .map_err(|_| {
                 Error::InvalidArguments(format!(
-                    "'{}' should be a comma-separated list of valid IPv4 addresses, but got '{}'",
+                    "'{}' should be a comma-separated list of valid IP addresses, but got '{}'",
                     prop, val
                 ))
             })
@@ -656,11 +663,13 @@ mod option_util {
 
     pub(super) fn parse_local_ip(val: &str) -> Result<Vec<String>, Error> {
         match parse_comma_split_ips("local-ip", val) {
-            Ok(v) if v.len() == 1 => Ok(v),
-            Ok(v) => Err(Error::InvalidArguments(format!(
-                "Only support 1 local-ip, but got {}",
-                v.len()
-            ))),
+            Ok(v) if v.iter().filter(|x| x.is_ipv4()).count() > 1 => Err(Error::InvalidArguments(
+                "Support at most one IPv4 local-ip".to_string(),
+            )),
+            Ok(v) if v.iter().filter(|x| x.is_ipv6()).count() > 1 => Err(Error::InvalidArguments(
+                "Support at most one IPv6 local-ip".to_string(),
+            )),
+            Ok(v) => Ok(v.into_iter().map(|x| x.to_string()).collect()),
             Err(e) => Err(e),
         }
     }
@@ -670,7 +679,8 @@ mod option_util {
             return Ok(None);
         }
 
-        parse_comma_split_ips("dns", val).map(Some)
+        parse_comma_split_ips("dns", val)
+            .map(|v| Some(v.into_iter().map(|x| x.to_string()).collect()))
     }
 
     pub(super) fn parse_mtu(val: &str) -> Result<Option<i32>, Error> {
@@ -1012,21 +1022,36 @@ mod tests {
     #[test]
     fn test_update_local_ip() {
         let vars = TestVars::new();
-        let cases = ["192.168.1.1", "10.8.0.3"];
+        // Input and the IPv4 addr in it.
+        let cases = [
+            ("192.168.1.1", Some("192.168.1.1".to_string())),
+            ("fd01::1", None),
+            ("192.168.1.1,fd01::1", Some("192.168.1.1".to_string())),
+            ("fd01::1,192.168.1.1", Some("192.168.1.1".to_string())),
+        ];
         for c in cases.iter() {
             let mut expected = vars.service.clone();
-            expected.local_ips = vec![c.to_string()];
+            expected.local_ips = c.0.split(',').map(|x| x.to_string()).collect();
             let mut actual = vars.service.clone();
-            let args = ["local-ip", c];
+            let args = ["local-ip", c.0];
             actual.update_from_args(&args, "".as_bytes()).unwrap();
             assert_eq!(expected, actual);
+            assert_eq!(c.1, actual.get_local_ipv4())
         }
     }
 
     #[test]
     fn test_update_local_ip_invalid() {
         let vars = TestVars::new();
-        let cases = ["", "192.168.1", "abcdabcd", "fe80::1", "1.2.3.4,1.2.3.5"];
+        let cases = [
+            "",
+            "192.168.1",
+            "abcdabcd",
+            "1.2.3.4,1.2.3.5",
+            "fd01::1,fd01::2",
+            "1.2.3.4,1.2.3.5,fd01::1",
+            "fd01::1,fd01::2,1.2.3.4",
+        ];
         for c in cases.iter() {
             let mut actual = vars.service.clone();
             let args = ["local-ip", c];
@@ -1060,7 +1085,12 @@ mod tests {
     #[test]
     fn test_update_dns() {
         let vars = TestVars::new();
-        let cases = ["8.8.8.8,1.2.3.4", "8.8.8.8"];
+        let cases = [
+            "8.8.8.8,1.2.3.4",
+            "8.8.8.8",
+            "8.8.8.8,fd01::1",
+            "fd01::1,8.8.8.8",
+        ];
         for c in cases.iter() {
             let mut expected = vars.service.clone();
             expected.name_servers = Some(c.split(',').map(|x| x.to_string()).collect());
@@ -1085,7 +1115,7 @@ mod tests {
     #[test]
     fn test_update_dns_invalid() {
         let vars = TestVars::new();
-        let cases = ["192.168.1", "abcdabcd", "fe80::1", "8.8.8.8,abc"];
+        let cases = ["192.168.1", "abcdabcd", "8.8.8.8,abc", "fe80::1,abc"];
         for c in cases.iter() {
             let mut actual = vars.service.clone();
             let args = ["dns", c];
