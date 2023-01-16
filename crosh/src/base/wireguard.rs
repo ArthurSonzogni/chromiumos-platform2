@@ -241,6 +241,7 @@ const PROPERTY_TYPE: &str = "Type";
 const PROPERTY_NAME: &str = "Name";
 const PROPERTY_PROVIDER_TYPE: &str = "Provider.Type";
 const PROPERTY_PROVIDER_HOST: &str = "Provider.Host";
+const PROPERTY_WIREGUARD_IP_ADDRESS: &str = "WireGuard.IPAddress";
 const PROPERTY_WIREGUARD_PRIVATE_KEY: &str = "WireGuard.PrivateKey";
 const PROPERTY_WIREGUARD_PUBLIC_KEY: &str = "WireGuard.PublicKey";
 const PROPERTY_WIREGUARD_PEERS: &str = "WireGuard.Peers";
@@ -268,7 +269,7 @@ const TYPE_WIREGUARD: &str = "wireguard";
 struct WireGuardService {
     path: Option<String>,
     name: String,
-    local_ip: Option<String>,
+    local_ips: Vec<String>,
     private_key: Option<String>,
     public_key: String,
     mtu: Option<i32>,
@@ -297,21 +298,28 @@ impl WireGuardService {
             return Err(not_wg_service_err);
         }
 
+        // The value of the "Provider" property is a map. Translates it into a HashMap at first.
+        let provider_properties = service_properties.get_inner_prop_map("Provider")?;
+
+        // Read local ip from both Provider.WireGuardIPAddress, and also StaticIPConfig if the
+        // previous one is empty, for backward compatibility.
+        let mut local_ips = provider_properties.get_strings(PROPERTY_WIREGUARD_IP_ADDRESS)?;
+
         // Reads address, dns servers, and mtu from StaticIPConfig. This property and all the
         // sub-properties could be empty.
-        let mut local_ip = None;
         let mut mtu = None;
         let mut name_servers = None;
         if let Ok(props) = service_properties.get_inner_prop_map(PROPERTY_STATIC_IP_CONFIG) {
             // Note that the ok() below may potentially ignore some real parsing failures. It
             // should not happen if shill is working correctly so we use ok() here for simplicity.
-            local_ip = props.get_string(PROPERTY_ADDRESS).ok();
             name_servers = props.get_strings(PROPERTY_NAME_SERVERS).ok();
             mtu = props.get_i32(PROPERTY_MTU).ok();
+            if local_ips.is_empty() {
+                if let Ok(v) = props.get_string(PROPERTY_ADDRESS) {
+                    local_ips = vec![v]
+                }
+            }
         }
-
-        // The value of the "Provider" property is a map. Translates it into a HashMap at first.
-        let provider_properties = service_properties.get_inner_prop_map("Provider")?;
 
         if provider_properties.get_str(PROPERTY_TYPE)? != TYPE_WIREGUARD {
             return Err(not_wg_service_err);
@@ -320,7 +328,7 @@ impl WireGuardService {
         let ret = WireGuardService {
             path: None,
             name: service_name.to_string(),
-            local_ip,
+            local_ips,
             private_key: None,
             public_key: provider_properties.get_string(PROPERTY_WIREGUARD_PUBLIC_KEY)?,
             mtu,
@@ -345,24 +353,32 @@ impl WireGuardService {
 
     fn encode_into_prop_map(&self) -> OutputPropMap {
         let mut properties: OutputPropMap = HashMap::new();
-        let mut insert_string_field = |k: &'static str, v: &str| {
-            properties.insert(k.to_string(), Variant(Box::new(v.to_string())));
+        let mut insert_props_field = |k: &'static str, v: Box<dyn RefArg>| {
+            properties.insert(k.to_string(), Variant(v));
         };
 
-        insert_string_field(PROPERTY_TYPE, TYPE_VPN);
-        insert_string_field(PROPERTY_NAME, &self.name);
-        insert_string_field(PROPERTY_PROVIDER_TYPE, TYPE_WIREGUARD);
-        insert_string_field(PROPERTY_PROVIDER_HOST, TYPE_WIREGUARD);
+        insert_props_field(PROPERTY_TYPE, Box::new(TYPE_VPN.to_string()));
+        insert_props_field(PROPERTY_NAME, Box::new(self.name.to_string()));
+        insert_props_field(PROPERTY_PROVIDER_TYPE, Box::new(TYPE_WIREGUARD.to_string()));
+        insert_props_field(PROPERTY_PROVIDER_HOST, Box::new(TYPE_WIREGUARD.to_string()));
+        insert_props_field(
+            PROPERTY_WIREGUARD_IP_ADDRESS,
+            Box::new(self.local_ips.clone()),
+        );
         if let Some(val) = &self.private_key {
-            insert_string_field(PROPERTY_WIREGUARD_PRIVATE_KEY, val);
+            insert_props_field(PROPERTY_WIREGUARD_PRIVATE_KEY, Box::new(val.to_string()));
         }
 
         let mut static_ip_properties = HashMap::new();
         let mut insert_ip_field = |k: &str, v: Box<dyn RefArg>| {
             static_ip_properties.insert(k.to_string(), Variant(v));
         };
-        if let Some(local_ip) = &self.local_ip {
-            insert_ip_field(PROPERTY_ADDRESS, Box::new(local_ip.clone()));
+        // TODO(b/262662603): Still write the IPv4 address back to StaticIPConfig, so that Chrome
+        // can handle that properly. Note that this will not affect the correctness in shill, as
+        // long as the address written is the same as the IPv4 one in WireGuard.IPAddress. Can be
+        // removed once the work in Chrome is done.
+        if self.local_ips.len() == 1 {
+            insert_ip_field(PROPERTY_ADDRESS, Box::new(self.local_ips[0].clone()));
         }
         if let Some(name_servers) = &self.name_servers {
             insert_ip_field(PROPERTY_NAME_SERVERS, Box::new(name_servers.clone()));
@@ -446,7 +462,7 @@ impl WireGuardService {
             };
 
             match *key {
-                "local-ip" => self.local_ip = Some(parse_local_ip(get_next_as_val()?)?),
+                "local-ip" => self.local_ips = parse_local_ip(get_next_as_val()?)?,
                 "dns" => self.name_servers = parse_dns(get_next_as_val()?)?,
                 "mtu" => self.mtu = parse_mtu(get_next_as_val()?)?,
                 "private-key" => {
@@ -518,10 +534,7 @@ impl WireGuardService {
         // TODO(b/177877310): Print the connection state.
         println!("name: {}", self.name);
         // Always shows local ip since it's mandatory.
-        println!(
-            "  local ip: {}",
-            self.local_ip.as_ref().unwrap_or(&"".to_string())
-        );
+        println!("  local ip: {}", self.local_ips.join(", "));
         println!("  public key: {}", self.public_key);
         println!("  private key: (hidden)");
         if let Some(dns) = &self.name_servers {
@@ -628,15 +641,28 @@ mod option_util {
         }
     }
 
-    pub(super) fn parse_local_ip(val: &str) -> Result<String, Error> {
-        val.parse::<Ipv4Addr>()
-            .map(|ip| ip.to_string())
+    fn parse_comma_split_ips(prop: &str, val: &str) -> Result<Vec<String>, Error> {
+        val.split(',')
+            .map(|x| x.parse::<Ipv4Addr>())
+            .map(|x| x.map(|y| y.to_string()))
+            .collect::<Result<Vec<_>, _>>()
             .map_err(|_| {
                 Error::InvalidArguments(format!(
-                    "'local-ip' should contain a valid IPv4 address, but got '{}'",
-                    val
+                    "'{}' should be a comma-separated list of valid IPv4 addresses, but got '{}'",
+                    prop, val
                 ))
             })
+    }
+
+    pub(super) fn parse_local_ip(val: &str) -> Result<Vec<String>, Error> {
+        match parse_comma_split_ips("local-ip", val) {
+            Ok(v) if v.len() == 1 => Ok(v),
+            Ok(v) => Err(Error::InvalidArguments(format!(
+                "Only support 1 local-ip, but got {}",
+                v.len()
+            ))),
+            Err(e) => Err(e),
+        }
     }
 
     pub(super) fn parse_dns(val: &str) -> Result<Option<Vec<String>>, Error> {
@@ -644,17 +670,7 @@ mod option_util {
             return Ok(None);
         }
 
-        val.split(',')
-            .map(|x| x.parse::<Ipv4Addr>())
-            .map(|x| x.map(|y| y.to_string()))
-            .collect::<Result<Vec<_>, _>>()
-            .map(Some)
-            .map_err(|_| {
-                Error::InvalidArguments(format!(
-                    "'dns' should be a comma-separated list of valid IPv4 addresses, but got '{}'",
-                    val
-                ))
-            })
+        parse_comma_split_ips("dns", val).map(Some)
     }
 
     pub(super) fn parse_mtu(val: &str) -> Result<Option<i32>, Error> {
@@ -858,7 +874,7 @@ fn wireguard_new(service_name: &str) -> Result<(), Error> {
     let service = WireGuardService {
         path: None,
         name: service_name.to_string(),
-        local_ip: None,
+        local_ips: Vec::new(),
         private_key: None,
         public_key: "".to_string(),
         name_servers: None,
@@ -975,7 +991,7 @@ mod tests {
             let service = WireGuardService {
                 path: None,
                 name: "wg_test".to_string(),
-                local_ip: Some("192.168.1.2".to_string()),
+                local_ips: vec![("192.168.1.2".to_string())],
                 private_key: None,
                 public_key: "".to_string(),
                 name_servers: Some(vec!["4.3.2.1".to_string()]),
@@ -999,7 +1015,7 @@ mod tests {
         let cases = ["192.168.1.1", "10.8.0.3"];
         for c in cases.iter() {
             let mut expected = vars.service.clone();
-            expected.local_ip = Some(c.to_string());
+            expected.local_ips = vec![c.to_string()];
             let mut actual = vars.service.clone();
             let args = ["local-ip", c];
             actual.update_from_args(&args, "".as_bytes()).unwrap();
@@ -1323,7 +1339,7 @@ mod tests {
         };
 
         let mut expected = vars.service.clone();
-        expected.local_ip = Some(local_ip.to_string());
+        expected.local_ips = vec![local_ip.to_string()];
         expected.private_key = Some(private_key.to_string());
         expected.name_servers = Some(vec!["8.8.8.8".to_string(), "1.2.3.4".to_string()]);
         expected.mtu = Some(1000);
