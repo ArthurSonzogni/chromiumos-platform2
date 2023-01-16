@@ -10,6 +10,7 @@
 #include <utility>
 
 #include <base/test/task_environment.h>
+#include <biod/mock_biod_metrics.h>
 #include <biod/session_state_manager.h>
 #include <dbus/login_manager/dbus-constants.h>
 #include <dbus/mock_bus.h>
@@ -74,7 +75,9 @@ class SessionStateManagerTest : public ::testing::Test {
     EXPECT_CALL(*proxy_, SetNameOwnerChangedCallback)
         .WillRepeatedly(SaveArg<0>(&on_name_owner_changed_));
 
-    manager_.emplace(bus_.get());
+    mock_metrics_ = std::make_unique<metrics::MockBiodMetrics>();
+
+    manager_.emplace(bus_.get(), mock_metrics_.get());
   }
 
  protected:
@@ -82,10 +85,13 @@ class SessionStateManagerTest : public ::testing::Test {
   std::unique_ptr<dbus::Response> RetrievePrimarySessionResponse(
       const char* username, const char* sanitized_username);
 
+  base::test::SingleThreadTaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   scoped_refptr<dbus::MockBus> bus_;
   scoped_refptr<dbus::MockObjectProxy> proxy_;
   dbus::MockObjectProxy::NameOwnerChangedCallback on_name_owner_changed_;
   MockSessionStateObserver observer_;
+  std::unique_ptr<metrics::MockBiodMetrics> mock_metrics_;
   std::optional<SessionStateManager> manager_;
 
  private:
@@ -95,7 +101,6 @@ class SessionStateManagerTest : public ::testing::Test {
       dbus::ObjectProxy::SignalCallback signal_callback,
       dbus::ObjectProxy::OnConnectedCallback* on_connected_callback);
 
-  base::test::SingleThreadTaskEnvironment task_environment_;
   std::map<std::string, dbus::ObjectProxy::SignalCallback> signal_callbacks_;
 };
 
@@ -155,6 +160,11 @@ TEST_F(SessionStateManagerTest, TestPrimaryUserErrorNoReply) {
                              "Timeout");
               return nullptr;
             });
+        EXPECT_CALL(
+            *mock_metrics_,
+            SendSessionRetrievePrimarySessionResult(
+                BiodMetrics::RetrievePrimarySessionResult::kErrorDBusNoReply))
+            .Times(1);
         manager_->RefreshPrimaryUser();
       },
       "Timeout while getting primary session");
@@ -176,6 +186,11 @@ TEST_F(SessionStateManagerTest, TestPrimaryUserErrorServiceUnknown) {
                              "Service unknown");
               return nullptr;
             });
+        EXPECT_CALL(*mock_metrics_,
+                    SendSessionRetrievePrimarySessionResult(
+                        BiodMetrics::RetrievePrimarySessionResult::
+                            kErrorDBusServiceUnknown))
+            .Times(1);
         manager_->RefreshPrimaryUser();
       },
       "Can't find org.chromium.SessionManager service");
@@ -195,6 +210,11 @@ TEST_F(SessionStateManagerTest, TestPrimaryUserErrorOther) {
               dbus_set_error(error->get(), "TestError", "This is a test error");
               return nullptr;
             });
+        EXPECT_CALL(
+            *mock_metrics_,
+            SendSessionRetrievePrimarySessionResult(
+                BiodMetrics::RetrievePrimarySessionResult::kErrorUnknown))
+            .Times(1);
         manager_->RefreshPrimaryUser();
       },
       "Calling RetrievePrimarySession from "
@@ -210,6 +230,11 @@ TEST_F(SessionStateManagerTest, TestPrimaryUserNullResponse) {
           IsMember(login_manager::kSessionManagerRetrievePrimarySession), _, _))
       .WillOnce(Return(ByMove(nullptr)));
 
+  EXPECT_CALL(
+      *mock_metrics_,
+      SendSessionRetrievePrimarySessionResult(
+          BiodMetrics::RetrievePrimarySessionResult::kErrorResponseMissing))
+      .Times(1);
   EXPECT_FALSE(manager_->RefreshPrimaryUser());
   EXPECT_TRUE(manager_->GetPrimaryUser().empty());
 }
@@ -224,6 +249,10 @@ TEST_F(SessionStateManagerTest, TestPrimaryUserNoDataInResponse) {
           IsMember(login_manager::kSessionManagerRetrievePrimarySession), _, _))
       .WillOnce(Return(ByMove(std::move(response))));
 
+  EXPECT_CALL(*mock_metrics_,
+              SendSessionRetrievePrimarySessionResult(
+                  BiodMetrics::RetrievePrimarySessionResult::kErrorParsing))
+      .Times(1);
   EXPECT_FALSE(manager_->RefreshPrimaryUser());
   EXPECT_TRUE(manager_->GetPrimaryUser().empty());
 }
@@ -241,6 +270,10 @@ TEST_F(SessionStateManagerTest, TestPrimaryUserNoSanitizedUsername) {
           IsMember(login_manager::kSessionManagerRetrievePrimarySession), _, _))
       .WillOnce(Return(ByMove(std::move(response))));
 
+  EXPECT_CALL(*mock_metrics_,
+              SendSessionRetrievePrimarySessionResult(
+                  BiodMetrics::RetrievePrimarySessionResult::kErrorParsing))
+      .Times(1);
   EXPECT_FALSE(manager_->RefreshPrimaryUser());
   EXPECT_TRUE(manager_->GetPrimaryUser().empty());
 }
@@ -260,6 +293,10 @@ TEST_F(SessionStateManagerTest, TestPrimaryUserUsernameNotString) {
           IsMember(login_manager::kSessionManagerRetrievePrimarySession), _, _))
       .WillOnce(Return(ByMove(std::move(response))));
 
+  EXPECT_CALL(*mock_metrics_,
+              SendSessionRetrievePrimarySessionResult(
+                  BiodMetrics::RetrievePrimarySessionResult::kErrorParsing))
+      .Times(1);
   EXPECT_FALSE(manager_->RefreshPrimaryUser());
   EXPECT_TRUE(manager_->GetPrimaryUser().empty());
 }
@@ -279,6 +316,10 @@ TEST_F(SessionStateManagerTest, TestPrimaryUserSanitizedUsernameNotString) {
           IsMember(login_manager::kSessionManagerRetrievePrimarySession), _, _))
       .WillOnce(Return(ByMove(std::move(response))));
 
+  EXPECT_CALL(*mock_metrics_,
+              SendSessionRetrievePrimarySessionResult(
+                  BiodMetrics::RetrievePrimarySessionResult::kErrorParsing))
+      .Times(1);
   EXPECT_FALSE(manager_->RefreshPrimaryUser());
   EXPECT_TRUE(manager_->GetPrimaryUser().empty());
 }
@@ -294,6 +335,10 @@ TEST_F(SessionStateManagerTest, TestPrimaryUserNoSessionAvailable) {
           IsMember(login_manager::kSessionManagerRetrievePrimarySession), _, _))
       .WillOnce(Return(ByMove(std::move(response))));
 
+  EXPECT_CALL(*mock_metrics_,
+              SendSessionRetrievePrimarySessionResult(
+                  BiodMetrics::RetrievePrimarySessionResult::kSuccess))
+      .Times(1);
   EXPECT_FALSE(manager_->RefreshPrimaryUser());
   EXPECT_TRUE(manager_->GetPrimaryUser().empty());
 }
@@ -311,8 +356,33 @@ TEST_F(SessionStateManagerTest, TestPrimaryUserSuccess) {
           IsMember(login_manager::kSessionManagerRetrievePrimarySession), _, _))
       .WillOnce(Return(ByMove(std::move(response))));
 
+  EXPECT_CALL(*mock_metrics_,
+              SendSessionRetrievePrimarySessionResult(
+                  BiodMetrics::RetrievePrimarySessionResult::kSuccess))
+      .Times(1);
   EXPECT_TRUE(manager_->RefreshPrimaryUser());
   EXPECT_EQ(manager_->GetPrimaryUser(), kSanitizedUsername);
+}
+
+TEST_F(SessionStateManagerTest, TestRetrievePrimarySessionCallDuration) {
+  ON_CALL(
+      *proxy_,
+      CallMethodAndBlockWithErrorDetails(
+          IsMember(login_manager::kSessionManagerRetrievePrimarySession), _, _))
+      .WillByDefault([this](dbus::MethodCall* method, int delay,
+                            dbus::ScopedDBusError* error) {
+        // Prepare response with information about primary user.
+        std::unique_ptr<dbus::Response> response =
+            RetrievePrimarySessionResponse(kUsername, kSanitizedUsername);
+
+        task_environment_.FastForwardBy(base::Milliseconds(101));
+        return response;
+      });
+
+  // Check that duration is greater or equal to 0.
+  EXPECT_CALL(*mock_metrics_, SendSessionRetrievePrimarySessionDuration(101))
+      .Times(1);
+  EXPECT_TRUE(manager_->RefreshPrimaryUser());
 }
 
 TEST_F(SessionStateManagerTest, TestRefreshPrimarySessionNotifies) {
