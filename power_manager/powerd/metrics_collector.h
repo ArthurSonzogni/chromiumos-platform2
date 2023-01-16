@@ -146,6 +146,7 @@ class MetricsCollector {
       const base::TimeTicks& hold_start_time,
       const base::TimeTicks& hold_end_time,
       const base::TimeTicks& charge_finished_time,
+      const base::TimeDelta& time_spent_slow_charging,
       double display_battery_percent);
 
   // Handles the power button being pressed or released.

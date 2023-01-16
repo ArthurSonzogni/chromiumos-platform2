@@ -1203,10 +1203,11 @@ void Daemon::GenerateAdaptiveChargingUnplugMetrics(
     const base::TimeTicks& hold_start_time,
     const base::TimeTicks& hold_end_time,
     const base::TimeTicks& charge_finished_time,
+    const base::TimeDelta& time_spent_slow_charging,
     double display_battery_percentage) {
   metrics_collector_->GenerateAdaptiveChargingUnplugMetrics(
       state, target_time, hold_start_time, hold_end_time, charge_finished_time,
-      display_battery_percentage);
+      time_spent_slow_charging, display_battery_percentage);
 }
 
 void Daemon::OnAudioStateChange(bool active) {

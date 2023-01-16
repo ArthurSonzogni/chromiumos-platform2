@@ -107,6 +107,10 @@ const char kAdaptiveChargingStateUserDisabledSuffix[] = ".UserDisabled";
 const char kAdaptiveChargingStateShutdownSuffix[] = ".Shutdown";
 const char kAdaptiveChargingStateNotSupportedSuffix[] = ".NotSupported";
 
+const char kAdaptiveChargingTypeNormalChargingSuffix[] = ".NormalCharging";
+const char kAdaptiveChargingTypeSlowChargingSuffix[] = ".SlowCharging";
+const char kAdaptiveChargingTypeMixedChargingSuffix[] = ".MixedCharging";
+
 const char kAdaptiveChargingLateSuffix[] = ".Late";
 const char kAdaptiveChargingEarlySuffix[] = ".Early";
 
@@ -122,12 +126,12 @@ const char kAdaptiveChargingBatteryPercentageOnUnplugName[] =
     "Power.AdaptiveChargingBatteryPercentageOnUnplug";  // %
 
 // For tracking how long it takes to charge from the hold percent to max.
-// Anything longer than 4 hours would be extremely abnormal, especially since we
+// Anything longer than 5 hours would be extremely abnormal, especially since we
 // don't report this metric when charging with a low power USB charger.
 const char kAdaptiveChargingMinutesToFullName[] =
     "Power.AdaptiveChargingMinutesToFull";
 const int kAdaptiveChargingMinutesToFullMin = 0;
-const int kAdaptiveChargingMinutesToFullMax = 4 * 60;
+const int kAdaptiveChargingMinutesToFullMax = 5 * 60;
 
 // Set the max limit for the delay time to 3 days. If we start hitting that
 // often, we can consider increasing it.

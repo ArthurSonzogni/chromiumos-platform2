@@ -1135,7 +1135,7 @@ void AdaptiveChargingController::OnPowerStatusUpdate() {
         delegate_->GenerateAdaptiveChargingUnplugMetrics(
             state_, target_full_charge_time_, hold_percent_start_time_,
             hold_percent_end_time_, charge_finished_time_,
-            status.display_battery_percentage);
+            time_spent_slow_charging_, status.display_battery_percentage);
       }
 
       // Clear timestamps after reporting metrics.

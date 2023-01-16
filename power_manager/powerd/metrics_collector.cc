@@ -16,6 +16,7 @@
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 
+#include "policy/adaptive_charging_controller.h"
 #include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/metrics_sender.h"
 #include "power_manager/common/prefs.h"
@@ -624,11 +625,13 @@ void MetricsCollector::GenerateAdaptiveChargingUnplugMetrics(
     const base::TimeTicks& hold_start_time,
     const base::TimeTicks& hold_end_time,
     const base::TimeTicks& charge_finished_time,
+    const base::TimeDelta& time_spent_slow_charging,
     double display_battery_percentage) {
   base::TimeTicks now = clock_.GetCurrentBootTime();
   std::string metric_name = kAdaptiveChargingMinutesDeltaName;
   std::string state_suffix = "";
   std::string time_suffix = "";
+  std::string type_suffix = "";
 
   switch (state) {
     case AdaptiveChargingState::ACTIVE:
@@ -668,10 +671,20 @@ void MetricsCollector::GenerateAdaptiveChargingUnplugMetrics(
              kAdaptiveChargingDeltaMin, kAdaptiveChargingDeltaMax,
              kDefaultBuckets);
 
-  SendEnumMetric(kAdaptiveChargingBatteryPercentageOnUnplugName,
+  base::TimeDelta total_charge_time = charge_finished_time - hold_end_time;
+  if (time_spent_slow_charging == base::TimeDelta()) {
+    type_suffix = kAdaptiveChargingTypeNormalChargingSuffix;
+  } else if (total_charge_time - time_spent_slow_charging > base::Seconds(1)) {
+    type_suffix = kAdaptiveChargingTypeMixedChargingSuffix;
+  } else {
+    type_suffix = kAdaptiveChargingTypeSlowChargingSuffix;
+  }
+
+  SendEnumMetric(kAdaptiveChargingBatteryPercentageOnUnplugName + type_suffix,
                  lround(display_battery_percentage), kMaxPercent);
+
   if (charge_finished_time != base::TimeTicks()) {
-    SendMetric(kAdaptiveChargingMinutesToFullName,
+    SendMetric(kAdaptiveChargingMinutesToFullName + type_suffix,
                (charge_finished_time - hold_end_time).InMinutes(),
                kAdaptiveChargingMinutesToFullMin,
                kAdaptiveChargingMinutesToFullMax, kDefaultBuckets);
@@ -695,8 +708,16 @@ void MetricsCollector::GenerateAdaptiveChargingUnplugMetrics(
 
   // Compute the available time minus the time reserved for charging first. If
   // this is negative, the available hold time is 0.
-  delta =
-      available_time - policy::AdaptiveChargingController::kFinishChargingDelay;
+  base::TimeDelta slow_charging_delay =
+      policy::AdaptiveChargingController::kFinishSlowChargingDelay;
+  base::TimeDelta normal_charging_delay =
+      policy::AdaptiveChargingController::kFinishChargingDelay;
+  if (available_time >= slow_charging_delay) {
+    delta = available_time - slow_charging_delay;
+  } else {
+    delta = available_time - normal_charging_delay;
+  }
+
   if (delta.is_negative())
     delta = base::TimeDelta();
 

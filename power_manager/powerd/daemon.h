@@ -205,6 +205,7 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
       const base::TimeTicks& hold_start_time,
       const base::TimeTicks& hold_end_time,
       const base::TimeTicks& charge_finished_time,
+      const base::TimeDelta& time_spent_slow_charging,
       double display_battery_percentage) override;
 
   // Overridden from system::AudioObserver:

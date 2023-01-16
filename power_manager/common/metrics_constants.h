@@ -101,6 +101,9 @@ extern const char kAdaptiveChargingStateShutdownSuffix[];
 extern const char kAdaptiveChargingStateNotSupportedSuffix[];
 extern const char kAdaptiveChargingLateSuffix[];
 extern const char kAdaptiveChargingEarlySuffix[];
+extern const char kAdaptiveChargingTypeNormalChargingSuffix[];
+extern const char kAdaptiveChargingTypeSlowChargingSuffix[];
+extern const char kAdaptiveChargingTypeMixedChargingSuffix[];
 extern const int kAdaptiveChargingDeltaMin;
 extern const int kAdaptiveChargingDeltaMax;
 
