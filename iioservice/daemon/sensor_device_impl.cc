@@ -88,25 +88,35 @@ void SensorDeviceImpl::OnDeviceAdded(
 void SensorDeviceImpl::OnDeviceRemoved(int iio_device_id) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
-  for (auto it = clients_.begin(); it != clients_.end();) {
+  // Remove SensorDevice clients to prevent further mojo requests.
+  for (auto it = clients_.begin(); it != clients_.end(); ++it) {
     if (it->second.device_data->iio_device_id == iio_device_id) {
-      auto it_handler = samples_handlers_.find(iio_device_id);
-      if (it_handler != samples_handlers_.end()) {
-        it_handler->second->ResetWithReason(
-            cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED,
-            kDeviceRemovedDescription);
-        samples_handlers_.erase(it_handler);
-      }
-
       receiver_set_.RemoveWithReason(
           it->first,
           static_cast<uint32_t>(
               cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED),
           kDeviceRemovedDescription);
-      it = clients_.erase(it);
-    } else {
-      ++it;
     }
+  }
+
+  auto it_handler = samples_handlers_.find(iio_device_id);
+  if (it_handler != samples_handlers_.end()) {
+    it_handler->second->ResetWithReason(
+        cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED,
+        kDeviceRemovedDescription,
+        base::BindOnce(&SensorDeviceImpl::OnDeviceRemoved,
+                       weak_factory_.GetWeakPtr(), iio_device_id));
+    samples_handlers_.erase(it_handler);
+    // |OnDeviceRemoved| will be called again after SensorDeviceSamplesObserver
+    // mojo pipes are reset in |sample_thread_|.
+    return;
+  }
+
+  for (auto it = clients_.begin(); it != clients_.end();) {
+    if (it->second.device_data->iio_device_id == iio_device_id)
+      it = clients_.erase(it);
+    else
+      ++it;
   }
 
   devices_.erase(iio_device_id);

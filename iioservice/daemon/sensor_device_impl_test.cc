@@ -21,6 +21,7 @@
 #include "iioservice/daemon/sensor_device_impl.h"
 #include "iioservice/daemon/sensor_metrics_mock.h"
 #include "iioservice/daemon/test_fakes.h"
+#include "iioservice/include/common.h"
 #include "iioservice/mojo/sensor.mojom.h"
 
 namespace iioservice {
@@ -62,7 +63,7 @@ class SensorDeviceImplTest : public ::testing::Test {
     remote_.set_disconnect_handler(
         base::BindOnce(&SensorDeviceImplTest::OnSensorDeviceDisconnect,
                        base::Unretained(this)));
-    base::RunLoop().RunUntilIdle();
+    WaitUntilRemoteReset();
     EXPECT_FALSE(remote_.is_bound());
 
     auto device = std::make_unique<libmems::fakes::FakeIioDevice>(
@@ -97,6 +98,9 @@ class SensorDeviceImplTest : public ::testing::Test {
                                                cros::mojom::DeviceType::ACCEL});
     sensor_device_->AddReceiver(fakes::kAccelDeviceId,
                                 remote_.BindNewPipeAndPassReceiver());
+    remote_.set_disconnect_handler(
+        base::BindOnce(&SensorDeviceImplTest::OnSensorDeviceDisconnect,
+                       base::Unretained(this)));
   }
 
   void TearDown() override {
@@ -104,7 +108,18 @@ class SensorDeviceImplTest : public ::testing::Test {
     SensorMetrics::Shutdown();
   }
 
-  void OnSensorDeviceDisconnect() { remote_.reset(); }
+  void OnSensorDeviceDisconnect() {
+    remote_.reset();
+    if (remote_reset_closure_)
+      remote_reset_closure_.Run();
+  }
+
+  void WaitUntilRemoteReset() {
+    base::RunLoop loop;
+
+    remote_reset_closure_ = loop.QuitClosure();
+    loop.Run();
+  }
 
   void SetSysPathAndDriver() {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
@@ -144,6 +159,7 @@ class SensorDeviceImplTest : public ::testing::Test {
       nullptr, SensorDeviceImpl::SensorDeviceImplDeleter};
 
   mojo::Remote<cros::mojom::SensorDevice> remote_;
+  base::RepeatingClosure remote_reset_closure_;
 };
 
 TEST_F(SensorDeviceImplTest, CheckWeakPtrs) {
@@ -195,6 +211,49 @@ TEST_F(SensorDeviceImplTest, SetFrequency) {
                             },
                             loop.QuitClosure()));
   loop.Run();
+}
+
+TEST_F(SensorDeviceImplTest, OnDeviceRemoved) {
+  // No samples in this test, as the sample index may not match due to the
+  // potential missed samples between reconnections.
+  device_->SetPauseCallbackAtKthSamples(0, base::BindOnce([]() {}));
+
+  double frequency = libmems::fakes::kFakeSamplingFrequency;
+  remote_->SetTimeout(0);
+  remote_->SetFrequency(frequency, base::BindOnce([](double result_freq) {
+                          EXPECT_EQ(result_freq,
+                                    libmems::fakes::kFakeSamplingFrequency);
+                        }));
+
+  remote_->SetChannelsEnabled(
+      std::vector<int32_t>{0, 2, 3}, true,
+      base::BindOnce([](const std::vector<int32_t>& failed_indices) {
+        EXPECT_TRUE(failed_indices.empty());
+      }));
+
+  // No pause: setting pause_index_ to the size of fake data.
+  auto fake_observer = fakes::FakeSamplesObserver::Create(
+      device_, std::multiset<std::pair<int, cros::mojom::ObserverErrorType>>(),
+      frequency, frequency, frequency, frequency,
+      std::size(libmems::fakes::kFakeAccelSamples));
+
+  mojo::PendingRemote<cros::mojom::SensorDeviceSamplesObserver> pending_remote;
+  auto pending_receiver = pending_remote.InitWithNewPipeAndPassReceiver();
+  // Check SensorDevice::StopReadingSamples works.
+  remote_->StartReadingSamples(std::move(pending_remote));
+
+  // Wait until |sensor_device_| starts reading samples for |remote_|.
+  base::RunLoop().RunUntilIdle();
+
+  sensor_device_->OnDeviceRemoved(fakes::kAccelDeviceId);
+
+  remote_->SetFrequency(frequency, base::BindOnce([](double result_freq) {
+                          LOGF(FATAL) << "The device should've been deprecated";
+                        }));
+
+  WaitUntilRemoteReset();
+  EXPECT_FALSE(fake_observer->is_bound());
+  EXPECT_FALSE(remote_.is_bound());
 }
 
 TEST_F(SensorDeviceImplTest, StartAndStopReadingSamples) {

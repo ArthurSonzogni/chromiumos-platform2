@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include <base/callback.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/memory/weak_ptr.h>
 #include <libmems/iio_context.h>
@@ -43,7 +44,8 @@ class SamplesHandler : public SamplesHandlerBase {
   virtual ~SamplesHandler();
 
   void ResetWithReason(cros::mojom::SensorDeviceDisconnectReason reason,
-                       std::string description);
+                       std::string description,
+                       base::OnceCallback<void()> callback);
 
   // It's the user's responsibility to maintain |client_data| before being
   // removed or this class being destructed.

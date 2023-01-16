@@ -144,11 +144,14 @@ SamplesHandler::~SamplesHandler() {
 }
 
 void SamplesHandler::ResetWithReason(
-    cros::mojom::SensorDeviceDisconnectReason reason, std::string description) {
-  sample_task_runner_->PostTask(
+    cros::mojom::SensorDeviceDisconnectReason reason,
+    std::string description,
+    base::OnceCallback<void()> callback) {
+  sample_task_runner_->PostTaskAndReply(
       FROM_HERE,
       base::BindOnce(&SamplesHandler::ResetWithReasonOnThread,
-                     weak_factory_.GetWeakPtr(), reason, description));
+                     weak_factory_.GetWeakPtr(), reason, description),
+      std::move(callback));
 }
 
 void SamplesHandler::AddClient(
