@@ -7,10 +7,12 @@
 #include "common/reloadable_config_file.h"
 
 #include <iomanip>
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
 
+#include <base/files/file_path_watcher.h>
 #include <base/files/file_util.h>
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
@@ -24,7 +26,8 @@ ReloadableConfigFile::ReloadableConfigFile(const Options& options)
   ReadConfigFileLocked(default_config_file_path_);
   if (!override_config_file_path_.empty()) {
     ReadConfigFileLocked(override_config_file_path_);
-    bool ret = override_file_path_watcher_.Watch(
+    override_file_path_watcher_ = std::make_unique<base::FilePathWatcher>();
+    bool ret = override_file_path_watcher_->Watch(
         override_config_file_path_, base::FilePathWatcher::Type::kNonRecursive,
         base::BindRepeating(&ReloadableConfigFile::OnConfigFileUpdated,
                             base::Unretained(this)));
@@ -39,6 +42,10 @@ void ReloadableConfigFile::SetCallback(OptionsUpdateCallback callback) {
   if (json_values_.has_value()) {
     options_update_callback_.Run(*json_values_);
   }
+}
+
+void ReloadableConfigFile::StopOverrideFileWatcher() {
+  override_file_path_watcher_ = nullptr;
 }
 
 void ReloadableConfigFile::UpdateOption(std::string key, base::Value value) {

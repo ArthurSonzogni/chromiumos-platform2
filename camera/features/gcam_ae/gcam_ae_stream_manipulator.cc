@@ -58,6 +58,9 @@ bool GcamAeStreamManipulator::Initialize(
     base::AutoLock lock(ae_controller_lock_);
     auto cache_tet = [](ReloadableConfigFile* reloadable_config_file,
                         GcamAeController::CachedSettings settings) {
+      // Stop the override file path watcher to avoid triggering a callback
+      // that'll dereference the to-be-destroyed |config_|.
+      reloadable_config_file->StopOverrideFileWatcher();
       reloadable_config_file->UpdateOption(AeStateMachine::kInitialTet,
                                            base::Value(settings.last_tet));
       reloadable_config_file->UpdateOption(

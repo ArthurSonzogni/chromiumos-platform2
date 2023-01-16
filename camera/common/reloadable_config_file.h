@@ -7,6 +7,7 @@
 #ifndef CAMERA_COMMON_RELOADABLE_CONFIG_FILE_H_
 #define CAMERA_COMMON_RELOADABLE_CONFIG_FILE_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -53,6 +54,11 @@ class CROS_CAMERA_EXPORT ReloadableConfigFile {
   // will either be called synchronously before this returns, or be called on
   // the sequence that the constructor of this ReloadableConfigFile is called.
   void SetCallback(OptionsUpdateCallback callback);
+
+  // Stops the file path watcher for the override config file. By default the
+  // watcher is destructed along with the ReloadableConfigFile instance.
+  void StopOverrideFileWatcher();
+
   void UpdateOption(std::string key, base::Value value);
   base::Value::Dict CloneJsonValues() const;
   bool IsValid() const;
@@ -70,7 +76,7 @@ class CROS_CAMERA_EXPORT ReloadableConfigFile {
   // The override config file path. The override config is used to override the
   // default config at run-time for development or debugging purposes.
   base::FilePath override_config_file_path_;
-  base::FilePathWatcher override_file_path_watcher_;
+  std::unique_ptr<base::FilePathWatcher> override_file_path_watcher_;
 
   base::Lock options_lock_;
   std::optional<base::Value::Dict> json_values_ GUARDED_BY(options_lock_);
