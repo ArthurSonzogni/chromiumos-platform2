@@ -37,6 +37,7 @@ namespace cros {
 namespace {
 
 const int kSyncWaitTimeoutMs = 8;
+const base::TimeDelta kMaximumMetricsSessionDuration = base::Seconds(3600);
 
 bool GetStringFromKey(const base::Value::Dict& obj,
                       const std::string& key,
@@ -90,16 +91,22 @@ EffectsStreamManipulator::EffectsStreamManipulator(
           config_file_path, base::FilePath(kOverrideEffectsConfigFile)}),
       runtime_options_(runtime_options),
       gl_thread_("EffectsGlThread"),
-      set_effect_callback_(callback),
-      metrics_helper_(CameraMetrics::New()) {
+      set_effect_callback_(callback) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
   DETACH_FROM_THREAD(gl_thread_checker_);
 
   if (!config_.IsValid()) {
     LOGF(ERROR) << "Cannot load valid config. Turning off feature by default";
   }
-
   CHECK(gl_thread_.Start());
+
+  // TODO(b/260656766): find a better task runner than the one from gl_thread
+  // for metrics_uploader_. It would be nice to use
+  // base::ThreadPool::CreateSequencedTaskRunner, but seems that
+  // ThreadPoolInstance::Set() hasn't been set up in the camera stack, and it's
+  // not the responsibility of this class to do that.
+  metrics_uploader_ =
+      std::make_unique<EffectsMetricsUploader>(gl_thread_.task_runner());
 
   bool ret;
   gl_thread_.PostTaskSync(
@@ -117,12 +124,11 @@ EffectsStreamManipulator::EffectsStreamManipulator(
 }
 
 EffectsStreamManipulator::~EffectsStreamManipulator() {
-  // Post Sync so that this actually gets done before
-  // the destructor cleans things up.
-  gl_thread_.PostTaskSync(
-      FROM_HERE,
-      base::BindOnce(&EffectsStreamManipulator::UploadAndResetMetricsOnThread,
-                     base::Unretained(this)));
+  // UploadAndResetMetricsData currently posts a task to the gl_thread task
+  // runner (see constructor above). If we change that, we need to ensure the
+  // upload task is complete before the destructor exits, or change the
+  // behaviour to be synchronous in this situation.
+  UploadAndResetMetricsData();
   gl_thread_.Stop();
 }
 
@@ -135,13 +141,7 @@ bool EffectsStreamManipulator::Initialize(
 
 bool EffectsStreamManipulator::ConfigureStreams(
     Camera3StreamConfiguration* stream_config) {
-  // This is the signal that a new session has started. We can offload
-  // it to the GPU thread, since the session is not yet live and any
-  // small delay there will not be perceived by the user.
-  gl_thread_.PostTaskAsync(
-      FROM_HERE,
-      base::BindOnce(&EffectsStreamManipulator::UploadAndResetMetricsOnThread,
-                     base::Unretained(this)));
+  UploadAndResetMetricsData();
   return true;
 }
 
@@ -213,11 +213,14 @@ EffectsStreamManipulator::SelectEffectsBuffer(
 bool EffectsStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  auto processing_time_start = base::TimeTicks::Now();
+
   if (!process_thread_) {
     process_thread_ = base::ThreadTaskRunnerHandle::Get();
     config_.SetCallback(base::BindRepeating(
         &EffectsStreamManipulator::OnOptionsUpdated, base::Unretained(this)));
   }
+
   base::ScopedClosureRunner callback_action =
       StreamManipulator::MakeScopedCaptureResultCallbackRunner(
           callbacks_.result_callback, result);
@@ -239,9 +242,8 @@ bool EffectsStreamManipulator::ProcessCaptureResult(
     SetEffect(new_config);
   }
 
-  if (!effects_enabled_) {
+  if (!last_set_effect_config_.HasEnabledEffects())
     return true;
-  }
 
   std::optional<Camera3StreamBuffer> result_buffer =
       SelectEffectsBuffer(result);
@@ -315,6 +317,21 @@ bool EffectsStreamManipulator::ProcessCaptureResult(
   if (!frame_status_.ok()) {
     LOG(ERROR) << frame_status_.message();
     return false;
+  }
+
+  auto frame_processed_time = base::TimeTicks::Now();
+  // If we've recorded at least one frame
+  if (last_processed_frame_timestamp_ != base::TimeTicks()) {
+    metrics_.RecordFrameProcessingInterval(
+        last_set_effect_config_,
+        frame_processed_time - last_processed_frame_timestamp_);
+  }
+  last_processed_frame_timestamp_ = frame_processed_time;
+  metrics_.RecordFrameProcessingLatency(
+      last_set_effect_config_, frame_processed_time - processing_time_start);
+  if (metrics_uploader_->TimeSinceLastUpload() >
+      kMaximumMetricsSessionDuration) {
+    UploadAndResetMetricsData();
   }
 
   result_buffer->mutable_raw_buffer().status = CAMERA3_BUFFER_STATUS_OK;
@@ -438,13 +455,14 @@ void EffectsStreamManipulator::SetEffect(EffectsConfig new_config) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (pipeline_) {
     pipeline_->SetEffect(&new_config, set_effect_callback_);
-    effects_enabled_ = new_config.HasEnabledEffects();
+    last_set_effect_config_ = new_config;
 
-    gl_thread_.PostTaskAsync(
-        FROM_HERE,
-        base::BindOnce(
-            &EffectsStreamManipulator::AddSelectedEffectMetricOnThread,
-            base::Unretained(this), new_config));
+    if (new_config.HasEnabledEffects()) {
+      metrics_.RecordSelectedEffect(new_config);
+    } else {
+      // If no effect is set, stop recording frame intervals
+      last_processed_frame_timestamp_ = base::TimeTicks();
+    }
   } else {
     LOGF(WARNING) << "SetEffect called, but pipeline not ready.";
   }
@@ -535,26 +553,10 @@ void EffectsStreamManipulator::CreatePipeline(
                           base::Unretained(this))));
 }
 
-void EffectsStreamManipulator::AddSelectedEffectMetricOnThread(
-    EffectsConfig config) {
-  DCHECK(gl_thread_.task_runner()->BelongsToCurrentThread());
-  if (config.blur_enabled && config.relight_enabled) {
-    metrics_.selected_effects.insert(CameraEffect::kBlurAndRelight);
-  } else if (config.blur_enabled) {
-    metrics_.selected_effects.insert(CameraEffect::kBlur);
-  } else if (config.relight_enabled) {
-    metrics_.selected_effects.insert(CameraEffect::kRelight);
-  }
-}
-
-void EffectsStreamManipulator::UploadAndResetMetricsOnThread() {
-  DCHECK(gl_thread_.task_runner()->BelongsToCurrentThread());
-  for (CameraEffect effect : metrics_.selected_effects) {
-    metrics_helper_->SendEffectsSelectedEffect(effect);
-  }
-
-  // Clear metrics after upload.
-  metrics_ = EffectsStreamManipulator::Metrics();
+void EffectsStreamManipulator::UploadAndResetMetricsData() {
+  EffectsMetricsData metrics_copy(metrics_);
+  metrics_ = EffectsMetricsData();
+  metrics_uploader_->UploadMetricsData(std::move(metrics_copy));
 }
 
 }  // namespace cros

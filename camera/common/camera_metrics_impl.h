@@ -65,6 +65,12 @@ class CameraMetricsImpl : public CameraMetrics {
   void SendAutoFramingError(AutoFramingError error) override;
 
   void SendEffectsSelectedEffect(CameraEffect effect) override;
+  void SendEffectsAvgProcessingLatency(CameraEffect effect,
+                                       CameraEffectStreamType stream_type,
+                                       base::TimeDelta latency) override;
+  void SendEffectsAvgProcessedFrameInterval(CameraEffect effect,
+                                            CameraEffectStreamType stream_type,
+                                            base::TimeDelta interval) override;
 
  private:
   std::unique_ptr<MetricsLibraryInterface> metrics_lib_;

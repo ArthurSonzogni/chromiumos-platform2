@@ -15,7 +15,10 @@ pkg_config("target_defaults") {
 }
 
 source_set("effects") {
-  sources = [ "//camera/features/effects/effects_stream_manipulator.cc" ]
+  sources = [
+    "//camera/features/effects/effects_metrics.cc",
+    "//camera/features/effects/effects_stream_manipulator.cc",
+  ]
   libs = [ "cros_ml_core" ]
   public_configs = [ ":target_defaults" ]
 

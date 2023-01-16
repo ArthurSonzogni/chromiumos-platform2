@@ -106,6 +106,14 @@ enum class CameraEffect {
   kMaxValue = kBlurAndRelight,
 };
 
+// Could use HdrnetStreamType here but that wouldn't
+// read very well.
+enum class CameraEffectStreamType {
+  kYuv = 0,
+  kBlob = 1,  // Also JPEG
+  kMaxValue = kBlob,
+};
+
 class CROS_CAMERA_EXPORT CameraMetrics {
  public:
   static std::unique_ptr<CameraMetrics> New();
@@ -220,6 +228,20 @@ class CROS_CAMERA_EXPORT CameraMetrics {
 
   // Records the user selecting an effect during the session.
   virtual void SendEffectsSelectedEffect(CameraEffect effect) = 0;
+
+  // Records the average processing latency of the EffectsStreamManipulator
+  // ProcessCaptureResult method per session.
+  virtual void SendEffectsAvgProcessingLatency(
+      CameraEffect effect,
+      CameraEffectStreamType stream_type,
+      base::TimeDelta latency) = 0;
+
+  // Records the average interval between successfully processed frames in the
+  // EffectsStreamManipulator ProcessCaptureResult method per session.
+  virtual void SendEffectsAvgProcessedFrameInterval(
+      CameraEffect effect,
+      CameraEffectStreamType stream_type,
+      base::TimeDelta interval) = 0;
 };
 
 }  // namespace cros

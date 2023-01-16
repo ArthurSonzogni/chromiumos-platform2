@@ -27,6 +27,7 @@
 #include "cros-camera/camera_metrics.h"
 #include "cros-camera/camera_thread.h"
 #include "cros-camera/common_types.h"
+#include "features/effects/effects_metrics.h"
 #include "gpu/image_processor.h"
 #include "gpu/shared_image.h"
 
@@ -84,10 +85,7 @@ class EffectsStreamManipulator : public StreamManipulator {
   std::optional<int64_t> TryGetSensorTimestamp(Camera3CaptureDescriptor* desc);
   std::optional<Camera3StreamBuffer> SelectEffectsBuffer(
       Camera3CaptureDescriptor& result);
-
-  // Metrics helper methods
-  void AddSelectedEffectMetricOnThread(EffectsConfig config);
-  void UploadAndResetMetricsOnThread();
+  void UploadAndResetMetricsData();
 
   ReloadableConfigFile config_;
   RuntimeOptions* runtime_options_;
@@ -95,6 +93,11 @@ class EffectsStreamManipulator : public StreamManipulator {
 
   EffectsConfig active_runtime_effects_config_
       GUARDED_BY_CONTEXT(sequence_checker_) = EffectsConfig();
+  // Config state. last_set_effect_ can be different to
+  // active_runtime_effects_config_ when the effect is set
+  // via the ReloadableConfig mechanism.
+  EffectsConfig last_set_effect_config_ GUARDED_BY_CONTEXT(sequence_checker_) =
+      EffectsConfig();
 
   std::unique_ptr<EffectsPipeline> pipeline_
       GUARDED_BY_CONTEXT(sequence_checker_);
@@ -119,17 +122,14 @@ class EffectsStreamManipulator : public StreamManipulator {
   CameraThread gl_thread_;
   scoped_refptr<base::SingleThreadTaskRunner> process_thread_;
 
-  bool effects_enabled_ GUARDED_BY_CONTEXT(sequence_checker_) = true;
   void (*set_effect_callback_)(bool);
 
   SEQUENCE_CHECKER(sequence_checker_);
   THREAD_CHECKER(gl_thread_checker_);
 
-  struct Metrics {
-    base::flat_set<CameraEffect> selected_effects;
-  };
-  Metrics metrics_;
-  std::unique_ptr<CameraMetrics> metrics_helper_;
+  EffectsMetricsData metrics_;
+  std::unique_ptr<EffectsMetricsUploader> metrics_uploader_;
+  base::TimeTicks last_processed_frame_timestamp_;
 };
 
 }  // namespace cros

@@ -158,9 +158,58 @@ constexpr int kZoomRatioBuckets = 30;
 constexpr char kCameraAutoFramingError[] = "ChromeOS.Camera.AutoFraming.Error";
 
 // *** Effects metrics ***
+constexpr char kCameraEffectUnknown[] = "Unknown";
+constexpr char kCameraEffectNone[] = "None";
+constexpr char kCameraEffectBlur[] = "Blur";
+constexpr char kCameraEffectRelight[] = "Relight";
+constexpr char kCameraEffectBlurAndRelight[] = "BlurAndRelight";
+constexpr char kCameraEffectStreamTypeUnknown[] = "Unknown";
+constexpr char kCameraEffectStreamTypeYuv[] = "YUV";
+constexpr char kCameraEffectStreamTypeBlob[] = "BLOB";
 
 constexpr char kCameraEffectSelected[] =
     "ChromeOS.Camera.Effects.SelectedEffect";
+constexpr char kCameraEffectAvgProcessingLatency[] =
+    "ChromeOS.Camera.Effects.%s.%s.AvgProcessingLatency";
+// 0ms -> 250ms
+constexpr int kMinEffectsProcessingLatencyUs = 0;
+constexpr int kMaxEffectsProcessingLatencyUs = 250'000;
+constexpr int kEffectsProcessingLatencyBuckets = 100;
+
+constexpr char kCameraEffectAvgProcessedFrameInterval[] =
+    "ChromeOS.Camera.Effects.%s.%s.AvgProcessedFrameInterval";
+// 0ms -> 250ms
+constexpr int kMinEffectsFrameIntervalUs = 0;
+constexpr int kMaxEffectsFrameIntervalUs = 250'000;
+constexpr int kEffectsFrameIntervalBuckets = 100;
+
+const char* CameraEffectToString(CameraEffect effect) {
+  switch (effect) {
+    case CameraEffect::kNone:
+      return kCameraEffectNone;
+    case CameraEffect::kBlur:
+      return kCameraEffectBlur;
+    case CameraEffect::kRelight:
+      return kCameraEffectRelight;
+    case CameraEffect::kBlurAndRelight:
+      return kCameraEffectBlurAndRelight;
+    default:
+      break;
+  }
+  return kCameraEffectUnknown;
+}
+
+const char* CameraEffectStreamTypeToString(CameraEffectStreamType stream_type) {
+  switch (stream_type) {
+    case CameraEffectStreamType::kYuv:
+      return kCameraEffectStreamTypeYuv;
+    case CameraEffectStreamType::kBlob:
+      return kCameraEffectStreamTypeBlob;
+    default:
+      break;
+  }
+  return kCameraEffectStreamTypeUnknown;
+}
 
 }  // namespace
 
@@ -406,6 +455,30 @@ void CameraMetricsImpl::SendAutoFramingError(AutoFramingError error) {
 
 void CameraMetricsImpl::SendEffectsSelectedEffect(CameraEffect effect) {
   metrics_lib_->SendEnumToUMA(kCameraEffectSelected, effect);
+}
+
+void CameraMetricsImpl::SendEffectsAvgProcessingLatency(
+    CameraEffect effect,
+    CameraEffectStreamType stream_type,
+    base::TimeDelta latency) {
+  auto metric_name = base::StringPrintf(
+      kCameraEffectAvgProcessingLatency, CameraEffectToString(effect),
+      CameraEffectStreamTypeToString(stream_type));
+  metrics_lib_->SendToUMA(
+      metric_name, latency.InMicroseconds(), kMinEffectsProcessingLatencyUs,
+      kMaxEffectsProcessingLatencyUs, kEffectsProcessingLatencyBuckets);
+}
+
+void CameraMetricsImpl::SendEffectsAvgProcessedFrameInterval(
+    CameraEffect effect,
+    CameraEffectStreamType stream_type,
+    base::TimeDelta interval) {
+  auto metric_name = base::StringPrintf(
+      kCameraEffectAvgProcessedFrameInterval, CameraEffectToString(effect),
+      CameraEffectStreamTypeToString(stream_type));
+  metrics_lib_->SendToUMA(
+      metric_name, interval.InMicroseconds(), kMinEffectsFrameIntervalUs,
+      kMaxEffectsFrameIntervalUs, kEffectsFrameIntervalBuckets);
 }
 
 }  // namespace cros
