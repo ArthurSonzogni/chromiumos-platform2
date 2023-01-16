@@ -16,7 +16,7 @@ namespace ec {
 
 int EcUsbEndpoint::FindInterfaceWithEndpoint(struct usb_endpoint* uep) {
   struct libusb_config_descriptor* conf;
-  struct libusb_device* dev = libusb_->get_device(uep->dev_handle);
+  struct libusb_device* dev = uep->dev;
   int r = libusb_->get_active_config_descriptor(dev, &conf);
   if (r != LIBUSB_SUCCESS) {
     LOG(ERROR) << "get_active_config failed: " << libusb_error_name(r);
@@ -43,36 +43,27 @@ int EcUsbEndpoint::FindInterfaceWithEndpoint(struct usb_endpoint* uep) {
   return -1;
 }
 
-libusb_device_handle* EcUsbEndpoint::CheckDevice(libusb_device* dev,
-                                                 uint16_t vid,
-                                                 uint16_t pid) {
+bool EcUsbEndpoint::CheckDevice(libusb_device* dev,
+                                uint16_t vid,
+                                uint16_t pid) {
   struct libusb_device_descriptor desc;
   int r = libusb_->get_device_descriptor(dev, &desc);
   if (r != LIBUSB_SUCCESS) {
     LOG(ERROR) << "libusb_get_device_descriptor failed: "
                << libusb_error_name(r);
-    return nullptr;
-  }
-
-  libusb_device_handle* handle = nullptr;
-  r = libusb_->open(dev, &handle);
-  if (r != LIBUSB_SUCCESS) {
-    VLOG(1) << "libusb_open failed: " << libusb_error_name(r);
-    return nullptr;
+    return false;
   }
 
   if (vid != 0 && vid != desc.idVendor) {
     VLOG(1) << "idVendor doesn't match: " << std::hex << desc.idVendor;
-    libusb_->close(handle);
-    return nullptr;
+    return false;
   }
   if (pid != 0 && pid != desc.idProduct) {
     VLOG(1) << "idProduct doesn't match: " << std::hex << desc.idProduct;
-    libusb_->close(handle);
-    return nullptr;
+    return false;
   }
 
-  return handle;
+  return true;
 }
 
 const struct usb_endpoint& EcUsbEndpoint::GetEndpointPtr() {
@@ -94,24 +85,24 @@ bool EcUsbEndpoint::AttemptInit(uint16_t vid, uint16_t pid) {
     return false;
   }
 
-  libusb_device_handle* devh = nullptr;
+  bool dev_found = false;
   for (int i = 0; devs[i]; i++) {
-    devh = CheckDevice(devs[i], vid, pid);
-    if (devh) {
+    dev_found = CheckDevice(devs[i], vid, pid);
+    if (dev_found) {
       VLOG(1) << "Found device " << std::hex << vid << ":" << std::hex << pid;
+      endpoint_.dev = devs[i];
       break;
     }
   }
 
   libusb_->free_device_list(devs, 1);
 
-  if (!devh) {
+  if (!dev_found) {
     VLOG(1) << "Can't find device " << std::hex << vid << ":" << std::hex
             << pid;
     return false;
   }
 
-  endpoint_.dev_handle = devh;
   endpoint_.address = 2; /* USB_EP_HOSTCMD */
 
   int iface_num = FindInterfaceWithEndpoint(&endpoint_);
@@ -170,13 +161,19 @@ bool EcUsbEndpoint::ResetEndpoint() {
 }
 
 bool EcUsbEndpoint::ClaimInterface() {
-  if (endpoint_.dev_handle == nullptr || endpoint_.interface_number == 0) {
-    LOG(ERROR) << "Device handle or interface number are not set.";
+  if (!OpenDeviceHandle()) {
+    LOG(ERROR) << "Failed to open USB device handle";
     return false;
   }
 
-  int r =
-      libusb_claim_interface(endpoint_.dev_handle, endpoint_.interface_number);
+  if (endpoint_.dev_handle == nullptr || endpoint_.interface_number == 0) {
+    LOG(ERROR) << "Device handle or interface number are not set.";
+    CloseDeviceHandle();
+    return false;
+  }
+
+  int r = libusb_->claim_interface(endpoint_.dev_handle,
+                                   endpoint_.interface_number);
 
   int retries = max_retries_;
   while ((r == LIBUSB_ERROR_NO_DEVICE || r == LIBUSB_ERROR_BUSY) && retries--) {
@@ -188,14 +185,15 @@ bool EcUsbEndpoint::ClaimInterface() {
     }
 
     absl::SleepFor(absl::Milliseconds(timeout_ms_));
-    r = libusb_claim_interface(endpoint_.dev_handle,
-                               endpoint_.interface_number);
+    r = libusb_->claim_interface(endpoint_.dev_handle,
+                                 endpoint_.interface_number);
   }
 
   if (r != LIBUSB_SUCCESS) {
     LOG(ERROR) << "Failed to claim interface with error "
                << libusb_error_name(r) << " after retry #"
                << (max_retries_ - retries);
+    CloseDeviceHandle();
     return false;
   }
 
@@ -218,7 +216,27 @@ bool EcUsbEndpoint::ReleaseInterface() {
     return false;
   }
 
+  CloseDeviceHandle();
   return true;
+}
+
+bool EcUsbEndpoint::OpenDeviceHandle() {
+  libusb_device_handle* handle = nullptr;
+  int r = libusb_->open(endpoint_.dev, &handle);
+  if (r != LIBUSB_SUCCESS) {
+    LOG(ERROR) << "libusb_open failed: " << libusb_error_name(r);
+    return false;
+  }
+
+  endpoint_.dev_handle = handle;
+  return true;
+}
+
+void EcUsbEndpoint::CloseDeviceHandle() {
+  if (endpoint_.dev_handle != nullptr) {
+    libusb_->close(endpoint_.dev_handle);
+  }
+  endpoint_.dev_handle = nullptr;
 }
 
 void EcUsbEndpoint::CleanUp() {
@@ -228,9 +246,6 @@ void EcUsbEndpoint::CleanUp() {
   if (endpoint_.dev_handle) {
     if (endpoint_.interface_number)
       ReleaseInterface();
-
-    libusb_->close(endpoint_.dev_handle);
-    endpoint_.dev_handle = nullptr;
   }
 
   libusb_->exit(nullptr);

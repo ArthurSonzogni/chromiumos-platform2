@@ -44,10 +44,6 @@ class MockLibusb : public LibusbWrapper {
               (libusb_device * dev, libusb_device_handle** dev_handle),
               (override));
   MOCK_METHOD(void, close, (libusb_device_handle * dev_handle), (override));
-  MOCK_METHOD(libusb_device*,
-              get_device,
-              (libusb_device_handle * dev_handle),
-              (override));
   MOCK_METHOD(int,
               get_active_config_descriptor,
               (libusb_device * dev, struct libusb_config_descriptor** config),
@@ -126,19 +122,6 @@ TEST_F(EcUsbEndpointTest, Init_CantFindDevice) {
   EXPECT_FALSE(uep.Init(0x18d1, 0x5022));
 }
 
-TEST_F(EcUsbEndpointTest, Init_FailInOpen) {
-  EXPECT_CALL(*mock, init).WillOnce(Return(LIBUSB_SUCCESS));
-  EXPECT_CALL(*mock, get_device_list)
-      .WillOnce(DoAll(SetArgPointee<1>(devs), Return(LIBUSB_SUCCESS)));
-  EXPECT_CALL(*mock, get_device_descriptor).WillOnce(Return(LIBUSB_SUCCESS));
-  EXPECT_CALL(*mock, open).WillOnce(Return(LIBUSB_ERROR_IO));
-  EXPECT_CALL(*mock, free_device_list).WillOnce(Return());
-  EXPECT_CALL(*mock, exit).WillOnce(Return());
-
-  EcUsbEndpoint uep(std::move(mock), /*max_retries=*/0);
-  EXPECT_FALSE(uep.Init(0x18d1, 0x5022));
-}
-
 TEST_F(EcUsbEndpointTest, Init_FailInVid) {
   desc.idVendor = 0;
 
@@ -147,8 +130,6 @@ TEST_F(EcUsbEndpointTest, Init_FailInVid) {
       .WillOnce(DoAll(SetArgPointee<1>(devs), Return(LIBUSB_SUCCESS)));
   EXPECT_CALL(*mock, get_device_descriptor)
       .WillOnce(DoAll(SetArgPointee<1>(desc), Return(LIBUSB_SUCCESS)));
-  EXPECT_CALL(*mock, open).WillOnce(Return(LIBUSB_SUCCESS));
-  EXPECT_CALL(*mock, close).WillOnce(Return());
   EXPECT_CALL(*mock, free_device_list).WillOnce(Return());
   EXPECT_CALL(*mock, exit).WillOnce(Return());
 
@@ -164,8 +145,6 @@ TEST_F(EcUsbEndpointTest, Init_FailInPid) {
       .WillOnce(DoAll(SetArgPointee<1>(devs), Return(LIBUSB_SUCCESS)));
   EXPECT_CALL(*mock, get_device_descriptor)
       .WillOnce(DoAll(SetArgPointee<1>(desc), Return(LIBUSB_SUCCESS)));
-  EXPECT_CALL(*mock, open).WillOnce(Return(LIBUSB_SUCCESS));
-  EXPECT_CALL(*mock, close).WillOnce(Return());
   EXPECT_CALL(*mock, free_device_list).WillOnce(Return());
   EXPECT_CALL(*mock, exit).WillOnce(Return());
 
@@ -179,12 +158,8 @@ TEST_F(EcUsbEndpointTest, Init_FailInGetConfigDescriptor) {
       .WillOnce(DoAll(SetArgPointee<1>(devs), Return(LIBUSB_SUCCESS)));
   EXPECT_CALL(*mock, get_device_descriptor)
       .WillOnce(DoAll(SetArgPointee<1>(desc), Return(LIBUSB_SUCCESS)));
-  EXPECT_CALL(*mock, open)
-      .WillOnce(DoAll(SetArgPointee<1>(handle), Return(LIBUSB_SUCCESS)));
-  EXPECT_CALL(*mock, get_device).WillOnce(Return(nullptr));
   EXPECT_CALL(*mock, get_active_config_descriptor)
       .WillOnce(Return(LIBUSB_ERROR_IO));
-  EXPECT_CALL(*mock, close).WillOnce(Return());
   EXPECT_CALL(*mock, free_device_list).WillOnce(Return());
   EXPECT_CALL(*mock, exit).WillOnce(Return());
 
@@ -200,14 +175,10 @@ TEST_F(EcUsbEndpointTest, Init_BadMaxPacketSize) {
       .WillOnce(DoAll(SetArgPointee<1>(devs), Return(LIBUSB_SUCCESS)));
   EXPECT_CALL(*mock, get_device_descriptor)
       .WillOnce(DoAll(SetArgPointee<1>(desc), Return(LIBUSB_SUCCESS)));
-  EXPECT_CALL(*mock, open)
-      .WillOnce(DoAll(SetArgPointee<1>(handle), Return(LIBUSB_SUCCESS)));
-  EXPECT_CALL(*mock, get_device).WillOnce(Return(nullptr));
   EXPECT_CALL(*mock, get_active_config_descriptor)
       .WillOnce(DoAll(SetArgPointee<1>(&conf), Return(LIBUSB_SUCCESS)));
   EXPECT_CALL(*mock, free_config_descriptor).WillOnce(Return());
   EXPECT_CALL(*mock, free_device_list).WillOnce(Return());
-  EXPECT_CALL(*mock, close).WillOnce(Return());
   EXPECT_CALL(*mock, exit).WillOnce(Return());
 
   EcUsbEndpoint uep(std::move(mock), /*max_retries=*/0);
@@ -220,16 +191,10 @@ TEST_F(EcUsbEndpointTest, Init_Success) {
       .WillOnce(DoAll(SetArgPointee<1>(devs), Return(LIBUSB_SUCCESS)));
   EXPECT_CALL(*mock, get_device_descriptor)
       .WillOnce(DoAll(SetArgPointee<1>(desc), Return(LIBUSB_SUCCESS)));
-  EXPECT_CALL(*mock, open)
-      .WillOnce(DoAll(SetArgPointee<1>(handle), Return(LIBUSB_SUCCESS)));
-  EXPECT_CALL(*mock, get_device).WillOnce(Return(nullptr));
   EXPECT_CALL(*mock, get_active_config_descriptor)
       .WillOnce(DoAll(SetArgPointee<1>(&conf), Return(LIBUSB_SUCCESS)));
   EXPECT_CALL(*mock, free_config_descriptor).WillOnce(Return());
   EXPECT_CALL(*mock, free_device_list).WillOnce(Return());
-  EXPECT_CALL(*mock, release_interface)
-      .WillOnce(Return(LIBUSB_ERROR_NOT_FOUND));
-  EXPECT_CALL(*mock, close).WillOnce(Return());
   EXPECT_CALL(*mock, exit).WillOnce(Return());
 
   EcUsbEndpoint uep(std::move(mock), /*max_retries=*/0);
@@ -238,6 +203,24 @@ TEST_F(EcUsbEndpointTest, Init_Success) {
 
 TEST_F(EcUsbEndpointTest, ClaimInterface_NotInitialized) {
   EcUsbEndpoint uep(std::move(mock), /*max_retries=*/0);
+  EXPECT_FALSE(uep.ClaimInterface());
+}
+
+TEST_F(EcUsbEndpointTest, ClaimInterface_FailInOpen) {
+  EXPECT_CALL(*mock, init).WillOnce(Return(LIBUSB_SUCCESS));
+  EXPECT_CALL(*mock, get_device_list)
+      .WillOnce(DoAll(SetArgPointee<1>(devs), Return(LIBUSB_SUCCESS)));
+  EXPECT_CALL(*mock, get_device_descriptor)
+      .WillOnce(DoAll(SetArgPointee<1>(desc), Return(LIBUSB_SUCCESS)));
+  EXPECT_CALL(*mock, get_active_config_descriptor)
+      .WillOnce(DoAll(SetArgPointee<1>(&conf), Return(LIBUSB_SUCCESS)));
+
+  EXPECT_CALL(*mock, open).WillOnce(Return(LIBUSB_ERROR_IO));
+  EXPECT_CALL(*mock, claim_interface).Times(0);
+
+  EcUsbEndpoint uep(std::move(mock), /*max_retries=*/0);
+  EXPECT_TRUE(uep.Init(0x18d1, 0x5022));
+
   EXPECT_FALSE(uep.ClaimInterface());
 }
 

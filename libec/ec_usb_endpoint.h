@@ -23,6 +23,7 @@ inline constexpr uint32_t kDefaultTimeoutMs = 100;
 inline constexpr uint32_t kDefaultInitRetries = 0;
 
 struct usb_endpoint {
+  struct libusb_device* dev = nullptr;
   struct libusb_device_handle* dev_handle = nullptr;
   int interface_number = 0;
   uint8_t address = 0;
@@ -41,10 +42,10 @@ class EcUsbEndpointInterface {
  private:
   std::unique_ptr<LibusbWrapper> libusb_;
   struct usb_endpoint endpoint_;
-  virtual libusb_device_handle* CheckDevice(libusb_device* dev,
-                                            uint16_t vid,
-                                            uint16_t pid) = 0;
+  virtual bool CheckDevice(libusb_device* dev, uint16_t vid, uint16_t pid) = 0;
   virtual int FindInterfaceWithEndpoint(struct usb_endpoint* uep) = 0;
+  virtual bool OpenDeviceHandle() = 0;
+  virtual void CloseDeviceHandle() = 0;
 };
 
 class BRILLO_EXPORT EcUsbEndpoint : public EcUsbEndpointInterface {
@@ -64,10 +65,10 @@ class BRILLO_EXPORT EcUsbEndpoint : public EcUsbEndpointInterface {
   bool ReleaseInterface();
 
  private:
-  libusb_device_handle* CheckDevice(libusb_device* dev,
-                                    uint16_t vid,
-                                    uint16_t pid);
+  bool CheckDevice(libusb_device* dev, uint16_t vid, uint16_t pid);
   int FindInterfaceWithEndpoint(struct usb_endpoint* uep);
+  bool OpenDeviceHandle();
+  void CloseDeviceHandle();
   bool AttemptInit(uint16_t vid, uint16_t pid);
   bool ResetEndpoint();
   void CleanUp();
@@ -93,12 +94,12 @@ class BRILLO_EXPORT EcUsbEndpointStub : public EcUsbEndpointInterface {
  private:
   std::unique_ptr<LibusbWrapper> libusb_;
   struct usb_endpoint endpoint_;
-  libusb_device_handle* CheckDevice(libusb_device* dev,
-                                    uint16_t vid,
-                                    uint16_t pid) {
-    return nullptr;
+  bool CheckDevice(libusb_device* dev, uint16_t vid, uint16_t pid) {
+    return true;
   }
   int FindInterfaceWithEndpoint(struct usb_endpoint* uep) { return 0; }
+  bool OpenDeviceHandle() { return true; }
+  void CloseDeviceHandle() {}
 };
 
 }  // namespace ec
