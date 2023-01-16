@@ -55,6 +55,9 @@ struct ArcVmFeatures {
 
   // Apply the multi-arena config for jemalloc to low-RAM devices.
   bool low_mem_jemalloc_arenas_enabled;
+
+  // Enable vmm swap.
+  bool vmm_swap_enabled;
 };
 
 // Represents a single instance of a running termina VM.

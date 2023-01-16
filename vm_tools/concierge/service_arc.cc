@@ -51,6 +51,9 @@ constexpr char kPstoreExtension[] = ".pstore";
 constexpr char kArcVmLowMemJemallocArenasFeatureName[] =
     "CrOSLateBootArcVmLowMemJemallocArenas";
 
+// A feature name for enabling vmm swap.
+constexpr char kArcVmmSwapFeatureName[] = "CrOSArcVmmSwap";
+
 // The timeout in ms for LMKD to read from it's vsock connection to concierge.
 // 100ms is long enough to allow concierge to respond even under extreme system
 // load, but short enough that LMKD can still kill processes before the linux
@@ -60,6 +63,10 @@ constexpr uint32_t kLmkdVsockTimeoutMs = 100;
 // Needs to be const as libfeatures does pointers checking.
 const VariationsFeature kArcVmLowMemJemallocArenasFeature{
     kArcVmLowMemJemallocArenasFeatureName, FEATURE_DISABLED_BY_DEFAULT};
+
+// Needs to be const as libfeatures does pointers checking.
+const VariationsFeature kArcVmmSwapFeature{kArcVmmSwapFeatureName,
+                                           FEATURE_DISABLED_BY_DEFAULT};
 
 // Returns |image_path| on production. Returns a canonicalized path of the image
 // file when in dev mode.
@@ -86,9 +93,12 @@ base::FilePath GetImagePath(const base::FilePath& image_path,
   return image_path;
 }
 
+base::FilePath GetCryptohomePath(const std::string& owner_id) {
+  return base::FilePath(kCryptohomeRoot).Append(owner_id);
+}
+
 base::FilePath GetPstoreDest(const std::string& owner_id) {
-  return base::FilePath(kCryptohomeRoot)
-      .Append(owner_id)
+  return GetCryptohomePath(owner_id)
       .Append(vm_tools::GetEncodedName(kArcVmName))
       .AddExtension(kPstoreExtension);
 }
@@ -319,6 +329,8 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
   features.use_dev_conf = !request.ignore_dev_conf();
   features.low_mem_jemalloc_arenas_enabled =
       platform_features_->IsEnabledBlocking(kArcVmLowMemJemallocArenasFeature);
+  features.vmm_swap_enabled =
+      platform_features_->IsEnabledBlocking(kArcVmmSwapFeature);
 
   // Enable the responsive balloon feature in LMKD
   params.emplace_back(base::StringPrintf("androidboot.lmkd.vsock_timeout=%d",
@@ -438,6 +450,9 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
   if (USE_CROSVM_SIBLINGS) {
     vm_builder.SetVmMemoryId(vm_memory_id);
   }
+
+  if (features.vmm_swap_enabled)
+    vm_builder.SetVmmSwapDir(GetCryptohomePath(request.owner_id()));
 
   auto vm = ArcVm::Create(base::FilePath(kKernelPath), vsock_cid,
                           std::move(network_client), std::move(server_proxy),
