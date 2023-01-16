@@ -37,6 +37,8 @@ class RuntimeProbeClientImpl : public RuntimeProbeClient {
   bool ProbeCategories(const std::vector<RmadComponent>& categories,
                        bool use_customized_identifier,
                        ComponentsWithIdentifier* components) override;
+  bool ProbeSsfcComponents(bool use_customized_identifier,
+                           ComponentsWithIdentifier* components) override;
 
  private:
   // The proxy object for runtime_probe dbus service.

@@ -464,18 +464,52 @@ TEST_F(ComponentUtilsTest, ComponentFields_Unknown) {
   EXPECT_EQ(GetComponentFieldsIdentifier(fields), "unknown_component");
 }
 
-TEST_F(ComponentUtilsTest, Component_Battery) {
+TEST_F(ComponentUtilsTest, ApI2c) {
+  constexpr char prototext[] = R"(
+    data: 1
+  )";
+
+  runtime_probe::ApI2c_Fields fields;
+  EXPECT_TRUE(
+      google::protobuf::TextFormat::ParseFromString(prototext, &fields));
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "api2c_0001");
+}
+
+TEST_F(ComponentUtilsTest, Component_ApI2c) {
   constexpr char prototext[] = R"(
     values: {
-      manufacturer: "ABC"
-      model_name: "abc"
+      data: 1
     }
   )";
 
-  runtime_probe::Battery battery;
+  runtime_probe::ApI2c ap_i2c;
   EXPECT_TRUE(
-      google::protobuf::TextFormat::ParseFromString(prototext, &battery));
-  EXPECT_EQ(GetComponentIdentifier(battery), "battery_ABC_abc");
+      google::protobuf::TextFormat::ParseFromString(prototext, &ap_i2c));
+  EXPECT_EQ(GetComponentIdentifier(ap_i2c), "api2c_0001");
+}
+
+TEST_F(ComponentUtilsTest, EcI2c) {
+  constexpr char prototext[] = R"(
+    data: 1
+  )";
+
+  runtime_probe::EcI2c_Fields fields;
+  EXPECT_TRUE(
+      google::protobuf::TextFormat::ParseFromString(prototext, &fields));
+  EXPECT_EQ(GetComponentFieldsIdentifier(fields), "eci2c_0001");
+}
+
+TEST_F(ComponentUtilsTest, Component_EcI2c) {
+  constexpr char prototext[] = R"(
+    values: {
+      data: 1
+    }
+  )";
+
+  runtime_probe::EcI2c ec_i2c;
+  EXPECT_TRUE(
+      google::protobuf::TextFormat::ParseFromString(prototext, &ec_i2c));
+  EXPECT_EQ(GetComponentIdentifier(ec_i2c), "eci2c_0001");
 }
 
 }  // namespace rmad

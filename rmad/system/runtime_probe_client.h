@@ -40,6 +40,22 @@ class RuntimeProbeClient {
   virtual bool ProbeCategories(const std::vector<RmadComponent>& categories,
                                bool use_customized_identifier,
                                ComponentsWithIdentifier* components) = 0;
+
+  // Probe the SSFC components, and store their identifiers in |components|.
+  //
+  // Input parameters:
+  //   |use_customized_identifier| - Use customized identifier defined by rmad.
+  //                                 If the value is false, use the default
+  //                                 names in the runtime_probe probe config.
+  //
+  // Output parameters:
+  //   |components| - A list of components with their (category, identifier)
+  //                  pair.
+  //
+  // Returns True if the probing succeeds. Returns False if the probing fails,
+  // in this case |components| is not modified.
+  virtual bool ProbeSsfcComponents(bool use_customized_identifier,
+                                   ComponentsWithIdentifier* components) = 0;
 };
 
 }  // namespace rmad

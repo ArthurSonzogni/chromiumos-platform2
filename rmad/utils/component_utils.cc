@@ -110,6 +110,16 @@ std::string GetComponentFieldsIdentifier(
   return "network(" + fields.type() + ":unknown)";
 }
 
+std::string GetComponentFieldsIdentifier(
+    const runtime_probe::ApI2c_Fields& fields) {
+  return "api2c_" + Uint32ToHexString(fields.data(), 4);
+}
+
+std::string GetComponentFieldsIdentifier(
+    const runtime_probe::EcI2c_Fields& fields) {
+  return "eci2c_" + Uint32ToHexString(fields.data(), 4);
+}
+
 // Extension for |runtime_probe::ComponentFields|.
 std::string GetComponentFieldsIdentifier(
     const runtime_probe::ComponentFields& component_fields) {

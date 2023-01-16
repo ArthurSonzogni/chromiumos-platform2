@@ -26,6 +26,10 @@ std::string GetComponentFieldsIdentifier(
     const runtime_probe::Edid_Fields& fields);
 std::string GetComponentFieldsIdentifier(
     const runtime_probe::Network_Fields& fields);
+std::string GetComponentFieldsIdentifier(
+    const runtime_probe::ApI2c_Fields& fields);
+std::string GetComponentFieldsIdentifier(
+    const runtime_probe::EcI2c_Fields& fields);
 
 // Extension for |runtime_probe::ComponentFields|.
 std::string GetComponentFieldsIdentifier(

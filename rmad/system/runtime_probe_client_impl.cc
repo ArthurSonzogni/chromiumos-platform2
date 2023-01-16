@@ -140,4 +140,30 @@ bool RuntimeProbeClientImpl::ProbeCategories(
   return true;
 }
 
+bool RuntimeProbeClientImpl::ProbeSsfcComponents(
+    bool use_customized_identifier, ComponentsWithIdentifier* components) {
+  runtime_probe::ProbeSsfcComponentsRequest request;
+  brillo::ErrorPtr error;
+  runtime_probe::ProbeSsfcComponentsResponse reply;
+  if (!runtime_probe_proxy_->ProbeSsfcComponents(request, &reply, &error)) {
+    LOG(ERROR) << "Failed to call runtime_probe D-Bus service. "
+               << "code=" << error->GetCode()
+               << ", message=" << error->GetMessage() << "";
+    return false;
+  }
+
+  if (reply.error() != runtime_probe::RUNTIME_PROBE_ERROR_NOT_SET) {
+    LOG(ERROR) << "runtime_probe returns error code " << reply.error();
+    return false;
+  }
+
+  components->clear();
+  AppendComponents(rmad::RMAD_COMPONENT_AP_I2C, reply.ap_i2c(),
+                   use_customized_identifier, components);
+  AppendComponents(rmad::RMAD_COMPONENT_EC_I2C, reply.ec_i2c(),
+                   use_customized_identifier, components);
+
+  return true;
+}
+
 }  // namespace rmad

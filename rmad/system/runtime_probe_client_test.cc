@@ -167,4 +167,22 @@ TEST_F(RuntimeProbeClientTest, ProbeCategories_ErrorResponse) {
   EXPECT_FALSE(runtime_probe_client->ProbeCategories({}, false, &components));
 }
 
+TEST_F(RuntimeProbeClientTest, ProbeSsfcComponents_Success) {
+  auto mock_runtime_probe_proxy =
+      std::make_unique<StrictMock<org::chromium::RuntimeProbeProxyMock>>();
+  runtime_probe::ProbeSsfcComponentsResponse response_proto;
+  response_proto.add_ap_i2c();
+  response_proto.add_ec_i2c();
+  EXPECT_CALL(*mock_runtime_probe_proxy, ProbeSsfcComponents(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(response_proto), Return(true)));
+
+  auto runtime_probe_client = std::make_unique<RuntimeProbeClientImpl>(
+      std::move(mock_runtime_probe_proxy));
+  ComponentsWithIdentifier components;
+  EXPECT_TRUE(runtime_probe_client->ProbeSsfcComponents(false, &components));
+  EXPECT_EQ(2, components.size());
+  EXPECT_EQ(components[0].first, RMAD_COMPONENT_AP_I2C);
+  EXPECT_EQ(components[1].first, RMAD_COMPONENT_EC_I2C);
+}
+
 }  // namespace rmad

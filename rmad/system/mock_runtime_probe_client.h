@@ -26,6 +26,10 @@ class MockRuntimeProbeClient : public RuntimeProbeClient {
                bool,
                ComponentsWithIdentifier*),
               (override));
+  MOCK_METHOD(bool,
+              ProbeSsfcComponents,
+              (bool, ComponentsWithIdentifier*),
+              (override));
 };
 
 }  // namespace rmad
