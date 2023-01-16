@@ -145,11 +145,22 @@ StatusOr<brillo::Blob> SigningTpm2::RawSign(Key key,
   }
 
   std::string data_to_sign = brillo::BlobToString(data);
+  DigestAlgorithm digest_algorithm = options.digest_algorithm;
+
+  if (digest_algorithm == DigestAlgorithm::kNoDigest &&
+      sign_algorithm == trunks::TPM_ALG_RSASSA) {
+    // Parse and remove the digest info from the input if there is no specified
+    // digest algorithm.
+    std::optional<ParsedDigestInfo> parsed = ParseDigestInfo(data);
+    if (parsed.has_value()) {
+      digest_algorithm = parsed->algorithm;
+      data_to_sign = brillo::BlobToString(parsed->blob);
+    }
+  }
 
   trunks::TPM_ALG_ID digest_alg = trunks::TPM_ALG_NULL;
 
-  StatusOr<trunks::TPM_ALG_ID> alg =
-      ToTrunksDigestAlgorithm(options.digest_algorithm);
+  StatusOr<trunks::TPM_ALG_ID> alg = ToTrunksDigestAlgorithm(digest_algorithm);
   if (alg.ok()) {
     digest_alg = alg.value();
     // TODO(b/229523619): Check the pss_params are valid.
@@ -157,7 +168,7 @@ StatusOr<brillo::Blob> SigningTpm2::RawSign(Key key,
     // If TPM doesn't support the digest type (ex. MD5), we need to prepend
     // DigestInfo and then call TPM Sign with NULL scheme to sign and pad.
     ASSIGN_OR_RETURN(const brillo::Blob& der_header,
-                     GetDigestAlgorithmEncoding(options.digest_algorithm));
+                     GetDigestAlgorithmEncoding(digest_algorithm));
     data_to_sign = brillo::BlobToString(der_header) + data_to_sign;
     digest_alg = trunks::TPM_ALG_NULL;
   } else {

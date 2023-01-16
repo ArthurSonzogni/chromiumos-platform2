@@ -22,6 +22,11 @@ enum class DigestAlgorithm {
   kSha512,
 };
 
+struct ParsedDigestInfo {
+  DigestAlgorithm algorithm;
+  brillo::Blob blob;
+};
+
 inline constexpr size_t GetDigestLength(DigestAlgorithm algo) {
   switch (algo) {
     case DigestAlgorithm::kNoDigest:
@@ -59,6 +64,9 @@ inline constexpr const EVP_MD* GetOpenSSLDigest(DigestAlgorithm algo) {
       return EVP_sha512();
   }
 }
+
+// Parse the matched digest info from the blob.
+std::optional<ParsedDigestInfo> ParseDigestInfo(const brillo::Blob& input);
 
 StatusOr<brillo::Blob> GetDigestAlgorithmEncoding(DigestAlgorithm algo);
 StatusOr<brillo::Blob> DigestData(DigestAlgorithm algo, brillo::Blob data);

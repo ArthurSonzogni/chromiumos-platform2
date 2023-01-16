@@ -10,6 +10,7 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "libhwsec/backend/tpm2/backend_test_base.h"
+#include "trunks/tpm_generated.h"
 
 // Prevent the conflict definition from tss.h
 #undef TPM_ALG_RSA
@@ -831,6 +832,82 @@ TEST_F(BackendSigningTpm2Test, SignRSARsassaPssWithDecryptUnsupportedMgf1Alg) {
                           },
                   }),
               NotOkWith("Failed to produce the PSA PSS paddings"));
+}
+
+TEST_F(BackendSigningTpm2Test, SignRSAPkcs1v15WithoutDigestAlgorithm) {
+  constexpr uint8_t kSha512DigestInfo[] = {
+      0x30, 0x51, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86, 0x48, 0x01,
+      0x65, 0x03, 0x04, 0x02, 0x03, 0x05, 0x00, 0x04, 0x40};
+  const OperationPolicy kFakePolicy{};
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const std::string kDataToSign = std::string(64, 'X');
+  const std::string kFullDataToSign =
+      std::string(kSha512DigestInfo,
+                  kSha512DigestInfo + sizeof(kSha512DigestInfo)) +
+      kDataToSign;
+  const std::string kSignature = "signature";
+  const uint32_t kFakeKeyHandle = 0x1337;
+  const trunks::TPMT_PUBLIC kFakePublic = {
+      .type = trunks::TPM_ALG_RSA,
+      .name_alg = trunks::TPM_ALG_SHA256,
+      .object_attributes =
+          trunks::kFixedTPM | trunks::kFixedParent | trunks::kSign,
+      .auth_policy = trunks::TPM2B_DIGEST{.size = 0},
+      .parameters =
+          trunks::TPMU_PUBLIC_PARMS{
+              .rsa_detail =
+                  trunks::TPMS_RSA_PARMS{
+                      .symmetric =
+                          trunks::TPMT_SYM_DEF_OBJECT{
+                              .algorithm = trunks::TPM_ALG_NULL,
+                          },
+                      .scheme =
+                          trunks::TPMT_RSA_SCHEME{
+                              .scheme = trunks::TPM_ALG_NULL,
+                          },
+                      .key_bits = 2048,
+                      .exponent = 0,
+                  },
+          },
+      .unique =
+          trunks::TPMU_PUBLIC_ID{
+              .rsa =
+                  trunks::TPM2B_PUBLIC_KEY_RSA{
+                      .size = 10,
+                      .buffer = "9876543210",
+                  },
+          },
+  };
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+              GetKeyPublicArea(kFakeKeyHandle, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
+
+  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::LoadKeyOptions{});
+
+  ASSERT_OK(key);
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+              Sign(kFakeKeyHandle, trunks::TPM_ALG_RSASSA,
+                   trunks::TPM_ALG_SHA512, _, false, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<6>(kSignature), Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_THAT(
+      middleware_->CallSync<&Backend::Signing::RawSign>(
+          key->GetKey(), brillo::BlobFromString(kFullDataToSign),
+          SigningOptions{
+              .digest_algorithm = DigestAlgorithm::kNoDigest,
+              .rsa_padding_scheme = SigningOptions::RsaPaddingScheme::kPkcs1v15,
+          }),
+      IsOkAndHolds(brillo::BlobFromString(kSignature)));
 }
 
 }  // namespace hwsec

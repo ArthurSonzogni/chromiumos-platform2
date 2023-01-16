@@ -4,6 +4,10 @@
 
 #include "libhwsec/backend/digest_algorithms.h"
 
+#include <algorithm>
+#include <optional>
+#include <string>
+
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <openssl/evp.h>
@@ -83,8 +87,22 @@ constexpr struct {
 
 }  // namespace
 
+std::optional<ParsedDigestInfo> ParseDigestInfo(const brillo::Blob& input) {
+  for (const auto& info : kDigestInfos) {
+    if (input.size() == GetDigestLength(info.algorithm) + info.len) {
+      if (std::equal(info.digest_info, info.digest_info + info.len,
+                     input.begin())) {
+        return ParsedDigestInfo{
+            .algorithm = info.algorithm,
+            .blob = brillo::Blob(input.begin() + info.len, input.end()),
+        };
+      }
+    }
+  }
+  return std::nullopt;
+}
+
 StatusOr<brillo::Blob> GetDigestAlgorithmEncoding(DigestAlgorithm algo) {
-  brillo::Blob der_header;
   for (const auto& info : kDigestInfos) {
     if (info.algorithm == algo) {
       return brillo::Blob(info.digest_info, info.digest_info + info.len);
