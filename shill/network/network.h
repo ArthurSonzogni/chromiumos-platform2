@@ -261,6 +261,13 @@ class Network {
   mockable void StopPortalDetection();
   // Returns true if portal detection is currently in progress.
   mockable bool IsPortalDetectionInProgress() const;
+  // Returns the PortalDetector::Result from the last network validation
+  // attempt that completed, or nothing if no network validation attempt
+  // has completed for this network connection yet.
+  const std::optional<PortalDetector::Result>& network_validation_result()
+      const {
+    return network_validation_result_;
+  }
 
   // Initiates connection diagnostics on this Network.
   mockable void StartConnectionDiagnostics();
@@ -318,6 +325,9 @@ class Network {
   ProcFsStub* set_proc_fs_for_testing(std::unique_ptr<ProcFsStub> proc_fs) {
     proc_fs_ = std::move(proc_fs);
     return proc_fs_.get();
+  }
+  void set_portal_detector_for_testing(PortalDetector* portal_detector) {
+    portal_detector_.reset(portal_detector);
   }
 
  private:
@@ -457,6 +467,9 @@ class Network {
 
   PortalDetector::ProbingConfiguration probing_configuration_;
   std::unique_ptr<PortalDetector> portal_detector_;
+  // Only defined if PortalDetector completed at least one attempt for the
+  // current network connection.
+  std::optional<PortalDetector::Result> network_validation_result_;
   std::unique_ptr<ConnectionDiagnostics> connection_diagnostics_;
 
   std::vector<EventHandler*> event_handlers_;

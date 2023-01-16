@@ -201,6 +201,7 @@ void Network::Stop() {
 }
 
 void Network::StopInternal(bool is_failure, bool trigger_callback) {
+  network_validation_result_.reset();
   StopPortalDetection();
   StopConnectionDiagnostics();
 
@@ -833,6 +834,7 @@ std::unique_ptr<PortalDetector> Network::CreatePortalDetector() {
 }
 
 void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
+  network_validation_result_ = result;
   for (auto* ev : event_handlers_) {
     ev->OnNetworkValidationResult(result);
   }

@@ -715,6 +715,7 @@ TEST_F(NetworkTest, PortalDetectionRestartSuccess) {
 }
 
 TEST_F(NetworkTest, PortalDetectionResult_PartialConnectivity) {
+  EXPECT_FALSE(network_->network_validation_result().has_value());
   network_->set_state_for_testing(Network::State::kConnected);
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
@@ -731,9 +732,12 @@ TEST_F(NetworkTest, PortalDetectionResult_PartialConnectivity) {
   EXPECT_CALL(event_handler_, OnNetworkValidationResult(_));
   EXPECT_CALL(event_handler2_, OnNetworkValidationResult(_));
   network_->OnPortalDetectorResult(result);
+  EXPECT_EQ(PortalDetector::ValidationState::kPartialConnectivity,
+            network_->network_validation_result()->GetValidationState());
 }
 
 TEST_F(NetworkTest, PortalDetectionResult_NoConnectivity) {
+  EXPECT_FALSE(network_->network_validation_result().has_value());
   network_->set_state_for_testing(Network::State::kConnected);
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kConnection,
@@ -750,9 +754,12 @@ TEST_F(NetworkTest, PortalDetectionResult_NoConnectivity) {
   EXPECT_CALL(event_handler_, OnNetworkValidationResult(_));
   EXPECT_CALL(event_handler2_, OnNetworkValidationResult(_));
   network_->OnPortalDetectorResult(result);
+  EXPECT_EQ(PortalDetector::ValidationState::kNoConnectivity,
+            network_->network_validation_result()->GetValidationState());
 }
 
 TEST_F(NetworkTest, PortalDetectionResult_InternetConnectivity) {
+  EXPECT_FALSE(network_->network_validation_result().has_value());
   network_->set_state_for_testing(Network::State::kConnected);
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
@@ -766,9 +773,12 @@ TEST_F(NetworkTest, PortalDetectionResult_InternetConnectivity) {
   EXPECT_CALL(event_handler_, OnNetworkValidationResult(_));
   EXPECT_CALL(event_handler2_, OnNetworkValidationResult(_));
   network_->OnPortalDetectorResult(result);
+  EXPECT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
+            network_->network_validation_result()->GetValidationState());
 }
 
 TEST_F(NetworkTest, PortalDetectionResult_PortalRedirect) {
+  EXPECT_FALSE(network_->network_validation_result().has_value());
   network_->set_state_for_testing(Network::State::kConnected);
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
@@ -783,6 +793,28 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalRedirect) {
   EXPECT_CALL(event_handler_, OnNetworkValidationResult(_));
   EXPECT_CALL(event_handler2_, OnNetworkValidationResult(_));
   network_->OnPortalDetectorResult(result);
+  EXPECT_EQ(PortalDetector::ValidationState::kPortalRedirect,
+            network_->network_validation_result()->GetValidationState());
+}
+
+TEST_F(NetworkTest, PortalDetectionResult_ClearAfterStop) {
+  EXPECT_FALSE(network_->network_validation_result().has_value());
+  network_->set_state_for_testing(Network::State::kConnected);
+  PortalDetector::Result result;
+  result.http_phase = PortalDetector::Phase::kContent,
+  result.http_status = PortalDetector::Status::kSuccess;
+  result.https_phase = PortalDetector::Phase::kContent;
+  result.https_status = PortalDetector::Status::kSuccess;
+  MockPortalDetector* portal_detector = new MockPortalDetector();
+  ON_CALL(*portal_detector, IsInProgress()).WillByDefault(Return(true));
+  network_->set_portal_detector_for_testing(portal_detector);
+
+  network_->OnPortalDetectorResult(result);
+  EXPECT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
+            network_->network_validation_result()->GetValidationState());
+
+  network_->Stop();
+  EXPECT_FALSE(network_->network_validation_result().has_value());
 }
 
 // This group of tests verify the interaction between Network and Connection,
