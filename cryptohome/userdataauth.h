@@ -1484,7 +1484,7 @@ class UserDataAuth {
 
   // Flag to cache the status of whether Pk establishment is blocked
   // successfully, so we don't have to do this multiple times.
-  bool pk_establishment_blocked_;
+  bool pk_establishment_blocked_ = false;
 
   // Feature library to fetch enabled feature on Finch.
   std::unique_ptr<feature::PlatformFeaturesInterface> default_feature_lib_;
