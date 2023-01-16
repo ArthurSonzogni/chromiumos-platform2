@@ -808,6 +808,14 @@ REGIONS_LIST = [
         KML.ANSI,
         "Ukraine",
     ),
+    Region(
+        "ro.usintl",
+        ["xkb:us:intl:eng"],
+        ["Europe/Bucharest"],
+        ["ro", "hu", "de", "en-GB"],
+        KML.ANSI,
+        "Romania with US International keyboard layout",
+    ),
 ]
 
 """A list of :py:class:`regions.Region` objects for
