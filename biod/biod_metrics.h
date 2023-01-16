@@ -66,6 +66,10 @@ inline constexpr char kFpSensorErrorBadHardwareID[] =
     "Fingerprint.SensorError.BadHwid";
 inline constexpr char kFpSensorErrorInitializationFailure[] =
     "Fingerprint.SensorError.InitializationFailure";
+inline constexpr char kSessionRetrievePrimarySessionResult[] =
+    "Fingerprint.Session.RetrievePrimarySessionResult";
+inline constexpr char kSessionRetrievePrimarySessionDuration[] =
+    "Fingerprint.Session.RetrievePrimarySessionDuration";
 
 // Special value to send to UMA on EC command related metrics.
 inline constexpr int kCmdRunFailure = -1;
@@ -97,6 +101,20 @@ class BiodMetricsInterface {
     kMaxValue = kFailureUpdateRW,
   };
 
+  // This enum is tied directly to a UMA enum defined in
+  // tools/metrics/histograms/enums.xml, existing entries should not be
+  // modified.
+  enum class RetrievePrimarySessionResult : int {
+    kSuccess = 0,
+    kErrorUnknown = 1,
+    kErrorDBusNoReply = 2,
+    kErrorDBusServiceUnknown = 3,
+    kErrorResponseMissing = 4,
+    kErrorParsing = 5,
+
+    kMaxValue = kErrorParsing + 1,
+  };
+
   virtual bool SendEnrolledFingerCount(int finger_count) = 0;
   virtual bool SendEnrollmentCapturesCount(int captures_count) = 0;
   virtual bool SendFpUnlockEnabled(bool enabled) = 0;
@@ -120,6 +138,9 @@ class BiodMetricsInterface {
       bool spi_communication_error) = 0;
   virtual bool SendFpSensorErrorBadHardwareID(bool bad_hwid) = 0;
   virtual bool SendFpSensorErrorInitializationFailure(bool init_failure) = 0;
+  virtual bool SendSessionRetrievePrimarySessionResult(
+      RetrievePrimarySessionResult result) = 0;
+  virtual bool SendSessionRetrievePrimarySessionDuration(int ms) = 0;
 };
 
 class BiodMetrics : public BiodMetricsInterface {
@@ -182,6 +203,11 @@ class BiodMetrics : public BiodMetricsInterface {
   bool SendFpSensorErrorSpiCommunication(bool spi_communication_error) override;
   bool SendFpSensorErrorBadHardwareID(bool bad_hwid) override;
   bool SendFpSensorErrorInitializationFailure(bool init_failure) override;
+
+  // SessionStateManager metrics.
+  bool SendSessionRetrievePrimarySessionResult(
+      RetrievePrimarySessionResult result) override;
+  bool SendSessionRetrievePrimarySessionDuration(int ms) override;
 
   void SetMetricsLibraryForTesting(
       std::unique_ptr<MetricsLibraryInterface> metrics_lib);

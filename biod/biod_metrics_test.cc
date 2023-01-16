@@ -326,5 +326,29 @@ TEST_F(BiodMetricsTest, SendFpSensorErrorInitializationFailure) {
   testing::Mock::VerifyAndClearExpectations(GetMetricsLibraryMock());
 }
 
+TEST_F(BiodMetricsTest, SendSessionRetirevePrimarySessionResult) {
+  const auto result =
+      BiodMetrics::RetrievePrimarySessionResult::kErrorDBusNoReply;
+
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendEnumToUMA(metrics::kSessionRetrievePrimarySessionResult,
+                            base::to_underlying(result), 7))
+      .Times(1);
+
+  biod_metrics_.SendSessionRetrievePrimarySessionResult(result);
+  testing::Mock::VerifyAndClearExpectations(GetMetricsLibraryMock());
+}
+
+TEST_F(BiodMetricsTest, SendSessionRetrievePrimarySessionDuration) {
+  const int ms = 9999;
+  EXPECT_CALL(*GetMetricsLibraryMock(),
+              SendToUMA(metrics::kSessionRetrievePrimarySessionDuration, ms, 0,
+                        25000, 50))
+      .Times(1);
+
+  biod_metrics_.SendSessionRetrievePrimarySessionDuration(ms);
+  testing::Mock::VerifyAndClearExpectations(GetMetricsLibraryMock());
+}
+
 }  // namespace
 }  // namespace biod

@@ -65,6 +65,14 @@ class MockBiodMetrics : public BiodMetricsInterface {
               SendFpSensorErrorInitializationFailure,
               (bool init_failure),
               (override));
+  MOCK_METHOD(bool,
+              SendSessionRetrievePrimarySessionResult,
+              (RetrievePrimarySessionResult result),
+              (override));
+  MOCK_METHOD(bool,
+              SendSessionRetrievePrimarySessionDuration,
+              (int ms),
+              (override));
 };
 
 }  // namespace metrics

@@ -9,6 +9,7 @@
 #include <metrics/metrics_library.h>
 
 #include "biod/biod_storage.h"
+#include "biod/session_state_manager.h"
 #include "biod/updater/update_reason.h"
 #include "biod/utils.h"
 
@@ -194,4 +195,22 @@ bool BiodMetrics::SendFpSensorErrorInitializationFailure(bool init_failure) {
       metrics::kFpSensorErrorInitializationFailure, init_failure);
 }
 
+bool BiodMetrics::SendSessionRetrievePrimarySessionResult(
+    RetrievePrimarySessionResult result) {
+  return metrics_lib_->SendEnumToUMA(
+      metrics::kSessionRetrievePrimarySessionResult, result);
+}
+
+bool BiodMetrics::SendSessionRetrievePrimarySessionDuration(int ms) {
+  // Rename UMA histogram name in kSessionRetrievePrimarySessionDuration when
+  // changing these constants.
+  constexpr int kResponseDurationMaxMs = dbus_constants::kDbusTimeoutMs;
+  constexpr int kResponseDurationResolutionMs = 500;
+  constexpr int kResponseDurationBuckets =
+      kResponseDurationMaxMs / kResponseDurationResolutionMs;
+
+  return metrics_lib_->SendToUMA(
+      metrics::kSessionRetrievePrimarySessionDuration, ms, 0,
+      kResponseDurationMaxMs, kResponseDurationBuckets);
+}
 }  // namespace biod
