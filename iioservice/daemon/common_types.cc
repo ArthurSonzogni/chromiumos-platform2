@@ -41,7 +41,8 @@ DeviceData::DeviceData(libmems::IioDevice* const iio_device,
                        std::set<cros::mojom::DeviceType> types)
     : iio_device(iio_device),
       types(std::move(types)),
-      on_dut(IioDeviceOnDut(iio_device)) {}
+      on_dut(IioDeviceOnDut(iio_device)),
+      iio_device_id(iio_device->GetId()) {}
 
 ClientData::ClientData(const mojo::ReceiverId id, DeviceData* device_data)
     : id(id), device_data(device_data) {}

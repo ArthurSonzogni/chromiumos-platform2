@@ -108,10 +108,8 @@ class SensorDeviceImpl final : public cros::mojom::SensorDevice {
   // |clients_|.
   std::map<mojo::ReceiverId, ClientData> clients_;
 
-  std::map<libmems::IioDevice*, SamplesHandler::ScopedSamplesHandler>
-      samples_handlers_;
-  std::map<libmems::IioDevice*, EventsHandler::ScopedEventsHandler>
-      events_handlers_;
+  std::map<int, SamplesHandler::ScopedSamplesHandler> samples_handlers_;
+  std::map<int, EventsHandler::ScopedEventsHandler> events_handlers_;
 
   base::WeakPtrFactory<SensorDeviceImpl> weak_factory_{this};
 };

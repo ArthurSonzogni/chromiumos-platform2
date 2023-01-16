@@ -35,6 +35,8 @@ class DeviceData {
   libmems::IioDevice* const iio_device;
   const std::set<cros::mojom::DeviceType> types;
   const bool on_dut;
+
+  const int iio_device_id;
 };
 
 class ClientData {

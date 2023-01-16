@@ -89,9 +89,8 @@ void SensorDeviceImpl::OnDeviceRemoved(int iio_device_id) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   for (auto it = clients_.begin(); it != clients_.end();) {
-    if (it->second.device_data->iio_device->GetId() == iio_device_id) {
-      auto it_handler =
-          samples_handlers_.find(it->second.device_data->iio_device);
+    if (it->second.device_data->iio_device_id == iio_device_id) {
+      auto it_handler = samples_handlers_.find(iio_device_id);
       if (it_handler != samples_handlers_.end()) {
         it_handler->second->ResetWithReason(
             cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED,
@@ -219,7 +218,7 @@ void SensorDeviceImpl::GetAttributes(const std::vector<std::string>& attr_names,
           }
 
           if (only_device_id.has_value() &&
-              only_device_id == client.device_data->iio_device->GetId()) {
+              only_device_id == client.device_data->iio_device_id) {
             // It's the only motion sensor type on dut. Assume it on location
             // lid.
             value_opt = cros::mojom::kLocationLid;
@@ -248,7 +247,7 @@ void SensorDeviceImpl::SetFrequency(double frequency,
 
   ClientData& client = it->second;
 
-  auto it_handler = samples_handlers_.find(client.device_data->iio_device);
+  auto it_handler = samples_handlers_.find(client.device_data->iio_device_id);
   if (it_handler != samples_handlers_.end()) {
     it_handler->second->UpdateFrequency(&client, frequency,
                                         std::move(callback));
@@ -272,7 +271,7 @@ void SensorDeviceImpl::StartReadingSamples(
 
   ClientData& client = it->second;
 
-  if (samples_handlers_.find(client.device_data->iio_device) ==
+  if (samples_handlers_.find(client.device_data->iio_device_id) ==
       samples_handlers_.end()) {
     SamplesHandler::ScopedSamplesHandler handler = {
         nullptr, SamplesHandler::SamplesHandlerDeleter};
@@ -282,15 +281,15 @@ void SensorDeviceImpl::StartReadingSamples(
 
     if (!handler) {
       LOGF(ERROR) << "Failed to create the samples handler for device: "
-                  << client.device_data->iio_device->GetId();
+                  << client.device_data->iio_device_id;
       return;
     }
 
-    samples_handlers_.emplace(client.device_data->iio_device,
+    samples_handlers_.emplace(client.device_data->iio_device_id,
                               std::move(handler));
   }
 
-  samples_handlers_.at(client.device_data->iio_device)
+  samples_handlers_.at(client.device_data->iio_device_id)
       ->AddClient(&client, std::move(observer));
 }
 
@@ -336,7 +335,7 @@ void SensorDeviceImpl::SetChannelsEnabled(
 
   ClientData& client = it->second;
 
-  auto it_handler = samples_handlers_.find(client.device_data->iio_device);
+  auto it_handler = samples_handlers_.find(client.device_data->iio_device_id);
   if (it_handler != samples_handlers_.end()) {
     it_handler->second->UpdateChannelsEnabled(
         &client, std::move(iio_chn_indices), en, std::move(callback));
@@ -369,7 +368,7 @@ void SensorDeviceImpl::GetChannelsEnabled(
 
   ClientData& client = it->second;
 
-  auto it_handler = samples_handlers_.find(client.device_data->iio_device);
+  auto it_handler = samples_handlers_.find(client.device_data->iio_device_id);
   if (it_handler != samples_handlers_.end()) {
     it_handler->second->GetChannelsEnabled(&client, std::move(iio_chn_indices),
                                            std::move(callback));
@@ -466,7 +465,7 @@ void SensorDeviceImpl::SetEventsEnabled(
 
   ClientData& client = it->second;
 
-  auto it_handler = events_handlers_.find(client.device_data->iio_device);
+  auto it_handler = events_handlers_.find(client.device_data->iio_device_id);
   if (it_handler != events_handlers_.end()) {
     it_handler->second->UpdateEventsEnabled(
         &client, std::move(iio_event_indices), en, std::move(callback));
@@ -499,7 +498,7 @@ void SensorDeviceImpl::GetEventsEnabled(
 
   ClientData& client = it->second;
 
-  auto it_handler = events_handlers_.find(client.device_data->iio_device);
+  auto it_handler = events_handlers_.find(client.device_data->iio_device_id);
   if (it_handler != events_handlers_.end()) {
     it_handler->second->GetEventsEnabled(&client, std::move(iio_event_indices),
                                          std::move(callback));
@@ -573,7 +572,7 @@ void SensorDeviceImpl::StartReadingEvents(
 
   ClientData& client = it->second;
 
-  if (!base::Contains(events_handlers_, client.device_data->iio_device)) {
+  if (!base::Contains(events_handlers_, client.device_data->iio_device_id)) {
     EventsHandler::ScopedEventsHandler handler = {
         nullptr, EventsHandler::EventsHandlerDeleter};
 
@@ -583,15 +582,15 @@ void SensorDeviceImpl::StartReadingEvents(
 
     if (!handler) {
       LOGF(ERROR) << "Failed to create the events handler for device: "
-                  << client.device_data->iio_device->GetId();
+                  << client.device_data->iio_device_id;
       return;
     }
 
-    events_handlers_.emplace(client.device_data->iio_device,
+    events_handlers_.emplace(client.device_data->iio_device_id,
                              std::move(handler));
   }
 
-  events_handlers_.at(client.device_data->iio_device)
+  events_handlers_.at(client.device_data->iio_device_id)
       ->AddClient(&client, std::move(observer));
 }
 
@@ -652,10 +651,9 @@ void SensorDeviceImpl::StopReadingSamplesOnClient(mojo::ReceiverId id,
 
   ClientData& client = it->second;
 
-  if (samples_handlers_.find(client.device_data->iio_device) !=
-      samples_handlers_.end())
-    samples_handlers_.at(client.device_data->iio_device)
-        ->RemoveClient(&client, std::move(callback));
+  auto it_handler = samples_handlers_.find(client.device_data->iio_device_id);
+  if (it_handler != samples_handlers_.end())
+    it_handler->second->RemoveClient(&client, std::move(callback));
 }
 
 void SensorDeviceImpl::StopReadingEventsOnClient(mojo::ReceiverId id,
@@ -671,10 +669,9 @@ void SensorDeviceImpl::StopReadingEventsOnClient(mojo::ReceiverId id,
 
   ClientData& client = it->second;
 
-  if (base::Contains(events_handlers_, client.device_data->iio_device)) {
-    events_handlers_.at(client.device_data->iio_device)
-        ->RemoveClient(&client, std::move(callback));
-  }
+  auto it_handler = events_handlers_.find(client.device_data->iio_device_id);
+  if (it_handler != events_handlers_.end())
+    it_handler->second->RemoveClient(&client, std::move(callback));
 }
 
 }  // namespace iioservice
