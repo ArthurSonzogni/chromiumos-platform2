@@ -583,7 +583,7 @@ impl WireGuardService {
 mod option_util {
     use std::{
         io::{self, Write},
-        net::{IpAddr, Ipv4Addr, SocketAddr},
+        net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr},
         ops::Range,
     };
 
@@ -729,9 +729,12 @@ mod option_util {
             return Ok("".to_string());
         }
 
-        // Currently, only IPv4 addresses are allowed.
         let err = || {
-            Error::InvalidArguments(format!("'allowed-ips' should be a common-separated list of IPv4 addresses with CIDR notation, but got '{}'", val))
+            Error::InvalidArguments(format!(
+                "'allowed-ips' should be a common-separated list of \
+                 IP addresses with CIDR notation, but got '{}'",
+                val
+            ))
         };
 
         // Clears the bits after netmask (e.g., "192.168.1.1/24" => "192.168.1.0/24")
@@ -740,16 +743,36 @@ mod option_util {
             if segments.len() != 2 {
                 return Err(err());
             }
-            let addr = segments[0].parse::<Ipv4Addr>().map_err(|_| err())?.octets();
             let prefix = segments[1].parse::<i32>().map_err(|_| err())?;
-            let addr_u32 = addr.iter().fold(0u32, |acc, x| (acc << 8) + (*x as u32));
-            match prefix {
-                0..=31 => {
-                    let base_addr = Ipv4Addr::from(addr_u32 & !(0xFFFFFFFFu32 >> prefix));
-                    Ok(format!("{}/{}", base_addr, prefix))
+            match segments[0].parse::<IpAddr>().map_err(|_| err())? {
+                IpAddr::V4(addr) => {
+                    let addr_u32 = addr
+                        .octets()
+                        .iter()
+                        .fold(0u32, |acc, x| (acc << 8) + (*x as u32));
+                    match prefix {
+                        0..=31 => {
+                            let base_addr = Ipv4Addr::from(addr_u32 & !(u32::MAX >> prefix));
+                            Ok(format!("{}/{}", base_addr, prefix))
+                        }
+                        32 => Ok(s.to_string()),
+                        _ => Err(err()),
+                    }
                 }
-                32 => Ok(s.to_string()),
-                _ => Err(err()),
+                IpAddr::V6(addr) => {
+                    let addr_u128 = addr
+                        .octets()
+                        .iter()
+                        .fold(0u128, |acc, x| (acc << 8) + (*x as u128));
+                    match prefix {
+                        0..=127 => {
+                            let base_addr = Ipv6Addr::from(addr_u128 & !(u128::MAX >> prefix));
+                            Ok(format!("{}/{}", base_addr, prefix))
+                        }
+                        128 => Ok(s.to_string()),
+                        _ => Err(err()),
+                    }
+                }
             }
         };
 
@@ -1216,6 +1239,9 @@ mod tests {
             ("192.168.0.0/16", "192.168.0.0/16"),
             ("192.168.12.13/16", "192.168.0.0/16"),
             ("192.168.128.0/20,10.0.0.0/8", "192.168.128.0/20,10.0.0.0/8"),
+            ("fd01::1/64", "fd01::/64"),
+            ("fd01::1/8", "fd00::/8"),
+            ("fd01::1/128", "fd01::1/128"),
         ];
 
         for c in cases.iter() {
@@ -1234,11 +1260,13 @@ mod tests {
     fn test_update_peer_allowed_ips_invalid() {
         let vars = TestVars::new();
         let cases = [
-            "fe80::0/32",     // IPv6 is not supported
             "192.168.1.0/-1", // bad CIDR
             "192.168.1.0/256",
             "192.168.128.0/20, 10.0.0.0/8", // additional space
             "192.168.128.0/20;10.0.0.0/8",  // bad separator
+            "fd01::1/-1",
+            "fd01::1",
+            "fd01::/129",
         ];
         for c in cases.iter() {
             let mut actual = vars.service.clone();
