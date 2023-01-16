@@ -5,7 +5,6 @@
 #include "diagnostics/cros_healthd/fetchers/boot_performance_fetcher.h"
 
 #include <cctype>
-#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -23,14 +22,13 @@
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
-std::optional<mojo_ipc::ProbeErrorPtr> ParseBootFirmwareTime(
-    double* firmware_time) {
+mojom::ProbeErrorPtr ParseBootFirmwareTime(double& firmware_time) {
   const auto& data_path = GetRootedPath(path::kBiosTimes);
   std::string content;
   if (!ReadAndTrimString(data_path, &content)) {
-    return CreateAndLogProbeError(mojo_ipc::ErrorType::kFileReadError,
+    return CreateAndLogProbeError(mojom::ErrorType::kFileReadError,
                                   "Failed to read file: " + data_path.value());
   }
 
@@ -48,40 +46,39 @@ std::optional<mojo_ipc::ProbeErrorPtr> ParseBootFirmwareTime(
   }
 
   if (value.empty()) {
-    return CreateAndLogProbeError(mojo_ipc::ErrorType::kParseError,
+    return CreateAndLogProbeError(mojom::ErrorType::kParseError,
                                   "Failed to parse file: " + data_path.value());
   }
 
   // value is "14,630,633", we need to remove the comma.
   value.erase(remove(value.begin(), value.end(), ','), value.end());
-  if (!base::StringToDouble(value, firmware_time)) {
-    return CreateAndLogProbeError(mojo_ipc::ErrorType::kParseError,
+  if (!base::StringToDouble(value, &firmware_time)) {
+    return CreateAndLogProbeError(mojom::ErrorType::kParseError,
                                   "Failed to parse total time value: " + value);
   }
-  *firmware_time = *firmware_time / base::Time::kMicrosecondsPerSecond;
+  firmware_time /= base::Time::kMicrosecondsPerSecond;
 
-  return std::nullopt;
+  return nullptr;
 }
 
-std::optional<mojo_ipc::ProbeErrorPtr> ParseBootKernelTime(
-    double* kernel_time) {
+mojom::ProbeErrorPtr ParseBootKernelTime(double& kernel_time) {
   auto events = bootstat::BootStat(GetRootedPath("/"))
                     .GetEventTimings("login-prompt-visible");
   if (!events || events->empty()) {
-    return CreateAndLogProbeError(mojo_ipc::ErrorType::kFileReadError,
+    return CreateAndLogProbeError(mojom::ErrorType::kFileReadError,
                                   "Failed to get login-prompt stats");
   }
 
   // There may be multiple events; we only care about the first occurrence.
-  *kernel_time = (*events)[0].uptime.InSecondsF();
-  return std::nullopt;
+  kernel_time = (*events)[0].uptime.InSecondsF();
+  return nullptr;
 }
 
-std::optional<mojo_ipc::ProbeErrorPtr> ParseProcUptime(double* proc_uptime) {
+mojom::ProbeErrorPtr ParseProcUptime(double& proc_uptime) {
   const auto& data_path = GetRootedPath(path::kProcUptime);
   std::string content;
   if (!ReadAndTrimString(data_path, &content)) {
-    return CreateAndLogProbeError(mojo_ipc::ErrorType::kFileReadError,
+    return CreateAndLogProbeError(mojom::ErrorType::kFileReadError,
                                   "Failed to read file: " + data_path.value());
   }
 
@@ -89,17 +86,16 @@ std::optional<mojo_ipc::ProbeErrorPtr> ParseProcUptime(double* proc_uptime) {
   // 68061.02 520871.89
   // The first record is the total seconds after kernel is up.
   auto value = content.substr(0, content.find_first_of(" "));
-  if (!base::StringToDouble(value, proc_uptime)) {
+  if (!base::StringToDouble(value, &proc_uptime)) {
     return CreateAndLogProbeError(
-        mojo_ipc::ErrorType::kParseError,
+        mojom::ErrorType::kParseError,
         "Failed to parse /proc/uptime value: " + value);
   }
 
-  return std::nullopt;
+  return nullptr;
 }
 
-std::optional<mojo_ipc::ProbeErrorPtr> PopulateBootUpInfo(
-    mojo_ipc::BootPerformanceInfo* info) {
+mojom::ProbeErrorPtr PopulateBootUpInfo(mojom::BootPerformanceInfoPtr& info) {
   // Boot up stages
   //                              |<-             proc_uptime     ->
   //          |<- firmware_time ->|<-  kernel_time  ->|
@@ -112,33 +108,33 @@ std::optional<mojo_ipc::ProbeErrorPtr> PopulateBootUpInfo(
   info->boot_up_timestamp = 0;
 
   double firmware_time;
-  auto error = ParseBootFirmwareTime(&firmware_time);
-  if (error.has_value()) {
+  auto error = ParseBootFirmwareTime(firmware_time);
+  if (!error.is_null()) {
     return error;
   }
   info->boot_up_seconds += firmware_time;
 
   double kernel_time;
-  error = ParseBootKernelTime(&kernel_time);
-  if (error.has_value()) {
+  error = ParseBootKernelTime(kernel_time);
+  if (!error.is_null()) {
     return error;
   }
   info->boot_up_seconds += kernel_time;
 
   double proc_uptime;
-  error = ParseProcUptime(&proc_uptime);
-  if (error.has_value()) {
+  error = ParseProcUptime(proc_uptime);
+  if (!error.is_null()) {
     return error;
   }
   // Calculate the timestamp when power on.
   info->boot_up_timestamp =
       base::Time::Now().ToDoubleT() - proc_uptime - firmware_time;
 
-  return std::nullopt;
+  return nullptr;
 }
 
-bool ParsePreviousPowerdLog(double* shutdown_start_timestamp,
-                            std::string* shutdown_reason) {
+bool ParsePreviousPowerdLog(double& shutdown_start_timestamp,
+                            std::string& shutdown_reason) {
   const auto& data_path = GetRootedPath(path::kPreviousPowerdLog);
   std::string content;
   if (!ReadAndTrimString(data_path, &content)) {
@@ -159,32 +155,32 @@ bool ParsePreviousPowerdLog(double* shutdown_start_timestamp,
   for (auto it = lines.rbegin();
        it != lines.rend() && parsed_line_cnt < max_parsed_line;
        ++it, ++parsed_line_cnt) {
-    if (RE2::FullMatch(*it, shutdown_regex, &time_raw, shutdown_reason) ||
-        RE2::FullMatch(*it, restart_regex, &time_raw, shutdown_reason)) {
+    if (RE2::FullMatch(*it, shutdown_regex, &time_raw, &shutdown_reason) ||
+        RE2::FullMatch(*it, restart_regex, &time_raw, &shutdown_reason)) {
       base::Time time;
       if (base::Time::FromUTCString(time_raw.c_str(), &time)) {
-        *shutdown_start_timestamp = time.ToDoubleT();
+        shutdown_start_timestamp = time.ToDoubleT();
       }
       break;
     }
   }
 
-  return !shutdown_reason->empty();
+  return !shutdown_reason.empty();
 }
 
-bool GetShutdownEndTimestamp(double* shutdown_end_timestamp) {
+bool GetShutdownEndTimestamp(double& shutdown_end_timestamp) {
   const auto& data_path = GetRootedPath(path::kShutdownMetrics);
   base::File::Info file_info;
   if (!GetFileInfo(data_path, &file_info)) {
     return false;
   }
 
-  *shutdown_end_timestamp = file_info.last_modified.ToDoubleT();
+  shutdown_end_timestamp = file_info.last_modified.ToDoubleT();
 
   return true;
 }
 
-void PopulateShutdownInfo(mojo_ipc::BootPerformanceInfo* info) {
+void PopulateShutdownInfo(mojom::BootPerformanceInfoPtr& info) {
   // Shutdown stages
   //
   //           |<-     shutdown seconds      ->|
@@ -194,8 +190,8 @@ void PopulateShutdownInfo(mojo_ipc::BootPerformanceInfo* info) {
   double shutdown_end_timestamp;
   std::string shutdown_reason;
 
-  if (!ParsePreviousPowerdLog(&shutdown_start_timestamp, &shutdown_reason) ||
-      !GetShutdownEndTimestamp(&shutdown_end_timestamp) ||
+  if (!ParsePreviousPowerdLog(shutdown_start_timestamp, shutdown_reason) ||
+      !GetShutdownEndTimestamp(shutdown_end_timestamp) ||
       shutdown_end_timestamp < shutdown_start_timestamp) {
     info->shutdown_reason = "N/A";
     info->shutdown_timestamp = 0.0;
@@ -210,17 +206,17 @@ void PopulateShutdownInfo(mojo_ipc::BootPerformanceInfo* info) {
 
 }  // namespace
 
-mojo_ipc::BootPerformanceResultPtr FetchBootPerformanceInfo() {
-  mojo_ipc::BootPerformanceInfo info;
-  auto error = PopulateBootUpInfo(&info);
-  if (error.has_value()) {
-    return mojo_ipc::BootPerformanceResult::NewError(std::move(error.value()));
+mojom::BootPerformanceResultPtr FetchBootPerformanceInfo() {
+  auto info = mojom::BootPerformanceInfo::New();
+  auto error = PopulateBootUpInfo(info);
+  if (!error.is_null()) {
+    return mojom::BootPerformanceResult::NewError(std::move(error));
   }
 
   // There might be no shutdown info, so we don't check if there is any error.
-  PopulateShutdownInfo(&info);
+  PopulateShutdownInfo(info);
 
-  return mojo_ipc::BootPerformanceResult::NewBootPerformanceInfo(info.Clone());
+  return mojom::BootPerformanceResult::NewBootPerformanceInfo(std::move(info));
 }
 
 }  // namespace diagnostics
