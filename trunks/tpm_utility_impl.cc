@@ -512,6 +512,35 @@ TPM_RC TpmUtilityImpl::TakeOwnership(const std::string& owner_password,
   return TPM_RC_SUCCESS;
 }
 
+TPM_RC TpmUtilityImpl::ChangeOwnerPassword(const std::string& old_password,
+                                           const std::string& new_password) {
+  std::unique_ptr<TpmState> tpm_state(factory_.GetTpmState());
+  TPM_RC result = tpm_state->Initialize();
+  if (result != TPM_RC_SUCCESS) {
+    return result;
+  }
+
+  std::unique_ptr<HmacSession> session = factory_.GetHmacSession();
+  result = session->StartUnboundSession(true, true);
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Error initializing AuthorizationSession: "
+               << GetErrorString(result);
+    return result;
+  }
+
+  session->SetEntityAuthorizationValue(old_password);
+  session->SetFutureAuthorizationValue(new_password);
+  result = SetHierarchyAuthorization(TPM_RH_OWNER, new_password,
+                                     session->GetDelegate());
+  if (result != TPM_RC_SUCCESS) {
+    LOG(ERROR) << __func__ << ": Error changing owner authorization: "
+               << GetErrorString(result) << ", IsOwnerPasswordSet() : "
+               << tpm_state->IsOwnerPasswordSet();
+    return result;
+  }
+  return TPM_RC_SUCCESS;
+}
+
 TPM_RC TpmUtilityImpl::StirRandom(const std::string& entropy_data,
                                   AuthorizationDelegate* delegate) {
   std::string digest = crypto::SHA256HashString(entropy_data);

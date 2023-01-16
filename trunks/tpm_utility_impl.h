@@ -55,6 +55,8 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   TPM_RC TakeOwnership(const std::string& owner_password,
                        const std::string& endorsement_password,
                        const std::string& lockout_password) override;
+  TPM_RC ChangeOwnerPassword(const std::string& old_password,
+                             const std::string& new_password) override;
   TPM_RC StirRandom(const std::string& entropy_data,
                     AuthorizationDelegate* delegate) override;
   TPM_RC GenerateRandom(size_t num_bytes,

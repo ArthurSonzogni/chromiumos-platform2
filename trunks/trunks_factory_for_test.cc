@@ -165,6 +165,11 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->StirRandom(entropy_data, delegate);
   }
 
+  TPM_RC ChangeOwnerPassword(const std::string& old_password,
+                             const std::string& new_password) override {
+    return target_->ChangeOwnerPassword(old_password, new_password);
+  }
+
   TPM_RC GenerateRandom(size_t num_bytes,
                         AuthorizationDelegate* delegate,
                         std::string* random_data) override {

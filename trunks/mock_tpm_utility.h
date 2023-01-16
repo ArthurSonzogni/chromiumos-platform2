@@ -33,6 +33,8 @@ class MockTpmUtility : public TpmUtility {
                TPM_RC(const std::string&,
                       const std::string&,
                       const std::string&));
+  MOCK_METHOD2(ChangeOwnerPassword,
+               TPM_RC(const std::string&, const std::string&));
   MOCK_METHOD2(StirRandom, TPM_RC(const std::string&, AuthorizationDelegate*));
   MOCK_METHOD3(GenerateRandom,
                TPM_RC(size_t, AuthorizationDelegate*, std::string*));

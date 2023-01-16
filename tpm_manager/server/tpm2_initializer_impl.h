@@ -58,6 +58,8 @@ class Tpm2InitializerImpl : public TpmInitializer {
   DictionaryAttackResetStatus ResetDictionaryAttackLock() override;
   TpmInitializerStatus DisableDictionaryAttackMitigation() override;
   void PruneStoredPasswords() override;
+  bool ChangeOwnerPassword(const std::string& old_password,
+                           const std::string& new_password) override;
 
  private:
   // Seeds the onboard Tpm random number generator with random bytes from

@@ -20,12 +20,15 @@
 #include <base/logging.h>
 #include <base/message_loop/message_pump_type.h>
 #include <base/process/launch.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 #include <base/synchronization/lock.h>
+#include <brillo/secure_blob.h>
 #include <crypto/sha2.h>
 #include <inttypes.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 
+#include "tpm_manager/server/openssl_crypto_util_impl.h"
 #include "tpm_manager/server/pinweaver_provision.h"
 #include "tpm_manager/server/tpm_allowlist_impl.h"
 #include "tpm_manager/server/tpm_manager_metrics.h"
@@ -40,6 +43,9 @@ constexpr char kPowerWashCompletedFile[] =
 constexpr char kPowerWashReportedFile[] =
     "/var/lib/tpm_manager/.powerwash_reported";
 
+// Produce 20 random human unreadable bytes.
+constexpr size_t kRandomOwnerPasswordLength = 20;
+
 #if USE_TPM2
 // Timeout waiting for Trunks daemon readiness.
 constexpr base::TimeDelta kTrunksDaemonTimeout = base::Seconds(30);
@@ -47,18 +53,6 @@ constexpr base::TimeDelta kTrunksDaemonTimeout = base::Seconds(30);
 constexpr base::TimeDelta kTrunksDaemonInitAttemptDelay =
     base::Microseconds(300);
 #endif
-
-// Clears owner password in |local_data| if all dependencies have been removed
-// and it has not yet been cleared.
-// Returns true if |local_data| has been modified, false otherwise.
-bool ClearOwnerPasswordIfPossible(tpm_manager::LocalData* local_data) {
-  if (local_data->has_owner_password() &&
-      local_data->owner_dependency().empty()) {
-    local_data->clear_owner_password();
-    return true;
-  }
-  return false;
-}
 
 int GetFingerprint(uint32_t family,
                    uint64_t spec_level,
@@ -88,6 +82,23 @@ int GetFingerprint(uint32_t family,
 namespace tpm_manager {
 
 namespace {
+
+const std::string ToString(
+    TpmManagerService::ReplaceOwnerPasswordResult enum_param) {
+  switch (enum_param) {
+    case TpmManagerService::ReplaceOwnerPasswordResult::kSuccess:
+      return "kSuccess";
+    case TpmManagerService::ReplaceOwnerPasswordResult::
+        kClearSuccessButWriteFail:
+      return "kClearSuccessButWriteFail";
+    case TpmManagerService::ReplaceOwnerPasswordResult::kPasswordGenerationFail:
+      return "kPasswordGenerationFail";
+    case TpmManagerService::ReplaceOwnerPasswordResult::kFail:
+      return "kFail";
+    default:
+      LOG(ERROR) << __func__ << "Unimplemented enum!";
+  }
+}
 
 GetTpmNonsensitiveStatusReply ToGetTpmNonSensitiveStatusReply(
     const GetTpmStatusReply& from) {
@@ -931,11 +942,16 @@ TpmManagerService::ClearStoredOwnerPasswordTask(
     reply->set_status(STATUS_DEVICE_ERROR);
     return reply;
   }
-  if (ClearOwnerPasswordIfPossible(&local_data)) {
-    if (!local_data_store_->Write(local_data)) {
-      reply->set_status(STATUS_DEVICE_ERROR);
-      return reply;
-    }
+
+  auto ReplaceOwnerPasswordResult =
+      ClearOwnerPasswordAndReplaceWithRandomPasswordIfPossible(local_data);
+
+  LOG(INFO) << __func__ << "ReplaceOwnerPasswordResult: "
+            << ToString(ReplaceOwnerPasswordResult);
+  if (ReplaceOwnerPasswordResult ==
+      ReplaceOwnerPasswordResult::kClearSuccessButWriteFail) {
+    reply->set_status(STATUS_DEVICE_ERROR);
+    return reply;
   }
   reply->set_status(STATUS_SUCCESS);
   MarkTpmStatusCacheDirty();
@@ -1146,6 +1162,42 @@ std::unique_ptr<GetSpaceInfoReply> TpmManagerService::GetSpaceInfoTask(
     reply->set_policy(policy);
   }
   return reply;
+}
+
+TpmManagerService::ReplaceOwnerPasswordResult
+TpmManagerService::ClearOwnerPasswordAndReplaceWithRandomPasswordIfPossible(
+    LocalData& local_data) {
+  if (!local_data.has_owner_password()) {
+    LOG(ERROR) << __func__ << ": missing owner password.";
+    return ReplaceOwnerPasswordResult::kFail;
+  }
+
+  if (!local_data.owner_dependency().empty()) {
+    LOG(ERROR) << __func__ << ": owner dependency exists.";
+    return ReplaceOwnerPasswordResult::kFail;
+  }
+
+  const std::string old_password = local_data.owner_password();
+  local_data.clear_owner_password();
+
+  if (!local_data_store_->Write(local_data)) {
+    LOG(ERROR) << __func__ << ": error while writing to local_data_store_";
+    return ReplaceOwnerPasswordResult::kClearSuccessButWriteFail;
+  }
+
+  std::string new_password;
+  if (!openssl_util_.GetRandomBytes(kRandomOwnerPasswordLength,
+                                    &new_password)) {
+    LOG(ERROR) << __func__ << ": error while generating new random password.";
+    return ReplaceOwnerPasswordResult::kPasswordGenerationFail;
+  }
+
+  bool status =
+      tpm_initializer_->ChangeOwnerPassword(old_password, new_password);
+  brillo::SecureClearContainer(new_password);
+
+  return status ? ReplaceOwnerPasswordResult::kSuccess
+                : ReplaceOwnerPasswordResult::kFail;
 }
 
 std::string TpmManagerService::GetOwnerPassword() {

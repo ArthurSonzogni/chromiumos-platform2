@@ -128,6 +128,10 @@ class TRUNKS_EXPORT TpmUtility {
                                const std::string& endorsement_password,
                                const std::string& lockout_password) = 0;
 
+  // Changes the owner password from `old_password` to `new_password`.
+  virtual TPM_RC ChangeOwnerPassword(const std::string& old_password,
+                                     const std::string& new_password) = 0;
+
   // Stir the tpm random generation module with some random entropy data.
   // |delegate| specifies an optional authorization delegate to be used.
   virtual TPM_RC StirRandom(const std::string& entropy_data,

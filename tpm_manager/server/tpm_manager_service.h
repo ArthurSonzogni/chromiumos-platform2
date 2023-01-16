@@ -21,6 +21,7 @@
 
 #include "tpm_manager/common/typedefs.h"
 #include "tpm_manager/server/local_data_store.h"
+#include "tpm_manager/server/openssl_crypto_util_impl.h"
 #include "tpm_manager/server/passive_timer.h"
 #include "tpm_manager/server/pinweaver_provision.h"
 #include "tpm_manager/server/tpm_allowlist.h"
@@ -67,6 +68,12 @@ namespace tpm_manager {
 class TpmManagerService : public TpmNvramInterface,
                           public TpmOwnershipInterface {
  public:
+  enum class ReplaceOwnerPasswordResult {
+    kSuccess,
+    kClearSuccessButWriteFail,
+    kPasswordGenerationFail,
+    kFail,
+  };
   // If |perform_preinit| is additionally set, TPM pre-initialization will be
   // performed in case TPM initialization is postponed.
   //
@@ -290,6 +297,14 @@ class TpmManagerService : public TpmNvramInterface,
   std::unique_ptr<GetSpaceInfoReply> GetSpaceInfoTask(
       const GetSpaceInfoRequest& request);
 
+  // Clears owner password in |local_data| if all dependencies have been removed
+  // and it has not yet been cleared; returns true upon successful removal.
+  // Later, it generates another random owner password and assigns it to the TPM
+  // without storing it to |local_data|.
+  ReplaceOwnerPasswordResult
+  ClearOwnerPasswordAndReplaceWithRandomPasswordIfPossible(
+      LocalData& local_data);
+
   // Gets the owner password from local storage. Returns an empty string if the
   // owner password is not available.
   std::string GetOwnerPassword();
@@ -316,6 +331,7 @@ class TpmManagerService : public TpmNvramInterface,
   void CheckPowerWashResult(const TpmStatus::TpmOwnershipStatus status);
 
   LocalDataStore* local_data_store_;
+  OpensslCryptoUtilImpl openssl_util_;
 
   std::unique_ptr<PinWeaverProvision> pinweaver_provision_;
 

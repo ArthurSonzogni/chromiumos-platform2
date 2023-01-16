@@ -52,6 +52,10 @@ class TpmInitializerImpl : public TpmInitializer {
   DictionaryAttackResetStatus ResetDictionaryAttackLock() override;
   TpmInitializerStatus DisableDictionaryAttackMitigation() override;
   void PruneStoredPasswords() override;
+  // This method changes old owner password with a new owner password.
+  // Returns true on success, else false.
+  bool ChangeOwnerPassword(const std::string& old_password,
+                           const std::string& new_password) override;
 
  private:
   // This method checks if an EndorsementKey exists on the Tpm and creates it

@@ -7,6 +7,8 @@
 
 #include "tpm_manager/server/tpm_initializer.h"
 
+#include <string>
+
 #include <gmock/gmock.h>
 
 namespace tpm_manager {
@@ -29,6 +31,10 @@ class MockTpmInitializer : public TpmInitializer {
               (),
               (override));
   MOCK_METHOD(void, PruneStoredPasswords, (), (override));
+  MOCK_METHOD(bool,
+              ChangeOwnerPassword,
+              (const std::string&, const std::string&),
+              (override));
 };
 
 }  // namespace tpm_manager

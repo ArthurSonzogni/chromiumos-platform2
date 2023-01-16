@@ -286,6 +286,14 @@ void TpmInitializerImpl::PruneStoredPasswords() {
   }
 }
 
+bool TpmInitializerImpl::ChangeOwnerPassword(const std::string& old_password,
+                                             const std::string& new_password) {
+  LOG(INFO) << __func__ << ": attempting to change old tpm owner password"
+            << " to a new owner password";
+  TpmConnection connection(old_password);
+  return ChangeOwnerPassword(&connection, new_password);
+}
+
 bool TpmInitializerImpl::InitializeEndorsementKey() {
   TpmConnection connection;
   trousers::ScopedTssKey local_key_handle(connection.GetContext());
