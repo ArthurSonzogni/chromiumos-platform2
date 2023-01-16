@@ -32,7 +32,6 @@ executable("ml_core_effects_pipeline_test") {
     "test_utilities.cc",
   ]
   configs += [ ":target_defaults" ]
-
   defines = [ "EGL_NO_X11" ]
   deps = [
     "//ml_core:libcros_ml_core",
