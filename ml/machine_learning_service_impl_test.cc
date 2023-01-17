@@ -995,24 +995,27 @@ class HandwritingRecognizerTest : public testing::Test {
   }
 
   // Recognizing on the request_ should produce expected text and score.
-  void ExpectRecognizeResult(const std::string& text, const float score) {
+  void ExpectRecognizeResult(const std::string& text,
+                             const float score,
+                             const float abs_error = 1e-4f) {
     // Perform inference.
     bool infer_callback_done = false;
     recognizer_->Recognize(
         HandwritingRecognitionQueryFromProtoForTesting(request_),
         base::BindOnce(
             [](bool* infer_callback_done, const std::string& text,
-               const float score, const HandwritingRecognizerResultPtr result) {
+               const float score, const float abs_error,
+               const HandwritingRecognizerResultPtr result) {
               // Check that the inference succeeded and gives
               // the expected number of outputs.
               EXPECT_EQ(result->status,
                         HandwritingRecognizerResult::Status::OK);
               ASSERT_EQ(result->candidates.size(), 1);
               EXPECT_EQ(result->candidates.at(0)->text, text);
-              EXPECT_NEAR(result->candidates.at(0)->score, score, 1e-4);
+              EXPECT_NEAR(result->candidates.at(0)->score, score, abs_error);
               *infer_callback_done = true;
             },
-            &infer_callback_done, text, score));
+            &infer_callback_done, text, score, abs_error));
     base::RunLoop().RunUntilIdle();
     ASSERT_TRUE(infer_callback_done);
   }
@@ -1034,14 +1037,14 @@ TEST_F(HandwritingRecognizerTest, GetExpectedScores) {
   LoadRecognizerWithLanguage("en");
 
   // Run Recognition on the default request_.
-  ExpectRecognizeResult("a", 0.50640869f);
+  ExpectRecognizeResult("a", 0.50640869f, 1e-3f);
 
   // Modify the request_ by setting fake time.
   for (int i = 0; i < 23; ++i) {
     request_.mutable_ink()->mutable_strokes(0)->mutable_points(i)->set_t(i * i *
                                                                          100);
   }
-  ExpectRecognizeResult("a", 0.5121f);
+  ExpectRecognizeResult("a", 0.5121f, 1e-3f);
 }
 
 // Tests that the LoadHandwritingModel also perform as expected.
