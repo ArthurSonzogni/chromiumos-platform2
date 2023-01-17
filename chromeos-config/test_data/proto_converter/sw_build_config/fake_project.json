@@ -5,7 +5,6 @@
         "arc": {
           "build-properties": {
             "device": "fake_program_cheets",
-            "first-api-level": "28",
             "marketing-name": "Fake ChromeOS Device Brandname",
             "metrics-tag": "fake_ref_design",
             "oem": "FAKE_OEM",
@@ -260,7 +259,6 @@
         "arc": {
           "build-properties": {
             "device": "fake_program_cheets",
-            "first-api-level": "28",
             "marketing-name": "Fake ChromeOS Device Brandname",
             "metrics-tag": "fake_ref_design",
             "oem": "FAKE_OEM",
@@ -477,7 +475,6 @@
         "arc": {
           "build-properties": {
             "device": "fake_program_cheets",
-            "first-api-level": "28",
             "marketing-name": "ChromeOS Device Brandname A",
             "metrics-tag": "project_a",
             "oem": "FAKE_OEMA",
@@ -739,7 +736,6 @@
         "arc": {
           "build-properties": {
             "device": "fake_program_cheets",
-            "first-api-level": "28",
             "marketing-name": "ChromeOS Device Brandname B",
             "metrics-tag": "project_b",
             "oem": "FAKE_OEMB",
@@ -927,7 +923,6 @@
         "arc": {
           "build-properties": {
             "device": "fake_program_cheets",
-            "first-api-level": "28",
             "marketing-name": "ChromeOS Device Brandname B",
             "metrics-tag": "project_b",
             "oem": "FAKE_OEMB",
@@ -1137,7 +1132,6 @@
         "arc": {
           "build-properties": {
             "device": "fake_program_cheets",
-            "first-api-level": "28",
             "marketing-name": "ChromeOS Device Brandname B",
             "metrics-tag": "project_b",
             "oem": "FAKE_OEMB",
@@ -1339,7 +1333,6 @@
         "arc": {
           "build-properties": {
             "device": "fake_program_cheets",
-            "first-api-level": "28",
             "marketing-name": "ChromeOS Device Brandname C",
             "metrics-tag": "project_c",
             "oem": "FAKE_OEMC",
@@ -1536,7 +1529,6 @@
         "arc": {
           "build-properties": {
             "device": "fake_program_cheets",
-            "first-api-level": "28",
             "marketing-name": "ChromeOS Device Brandname D",
             "metrics-tag": "project_c",
             "oem": "FAKE_OEMC",
@@ -1733,7 +1725,6 @@
         "arc": {
           "build-properties": {
             "device": "fake_program_cheets",
-            "first-api-level": "28",
             "marketing-name": "ChromeOS Device Brandname WL",
             "metrics-tag": "project_wl",
             "oem": "FAKE_OEM",
@@ -1915,7 +1906,6 @@
         "arc": {
           "build-properties": {
             "device": "fake_program_cheets",
-            "first-api-level": "28",
             "marketing-name": "ChromeOS Device Brandname WL-A",
             "metrics-tag": "project_wl",
             "oem": "FAKE_LOEMA",
@@ -2098,7 +2088,6 @@
         "arc": {
           "build-properties": {
             "device": "fake_program_cheets",
-            "first-api-level": "28",
             "marketing-name": "ChromeOS Device Brandname WL-B",
             "metrics-tag": "project_wl",
             "oem": "FAKE_LOEMB",
@@ -2281,7 +2270,6 @@
         "arc": {
           "build-properties": {
             "device": "fake_program_cheets",
-            "first-api-level": "28",
             "marketing-name": "ChromeOS Device Brandname WL-C",
             "metrics-tag": "project_wl",
             "oem": "FAKE_LOEMC",
@@ -2464,7 +2452,6 @@
         "arc": {
           "build-properties": {
             "device": "fake_program_cheets",
-            "first-api-level": "28",
             "marketing-name": "ChromeOS Device Brandname REBRAND-D",
             "metrics-tag": "project_rebrand",
             "oem": "FAKE_OEMD",
@@ -2632,7 +2619,6 @@
         "arc": {
           "build-properties": {
             "device": "fake_program_cheets",
-            "first-api-level": "28",
             "marketing-name": "ChromeOS Device Brandname Box",
             "metrics-tag": "project_box",
             "oem": "FAKE_OEM",
@@ -2785,7 +2771,6 @@
         "arc": {
           "build-properties": {
             "device": "fake_program_cheets",
-            "first-api-level": "28",
             "marketing-name": "ChromeOS Device Brandname Box",
             "metrics-tag": "project_box",
             "oem": "FAKE_OEM",
@@ -2935,7 +2920,6 @@
         "arc": {
           "build-properties": {
             "device": "fake_program_cheets",
-            "first-api-level": "28",
             "marketing-name": "ChromeOS Device Brandname Box",
             "metrics-tag": "project_box",
             "oem": "FAKE_OEM",

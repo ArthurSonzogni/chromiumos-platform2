@@ -145,11 +145,7 @@ def _upsert(field, target, target_name, suffix=None):
 
 def _build_arc(config, config_files):
     build_properties = {
-        # TODO(chromium:1126527) - Push this into the overlay itself.
-        # This isn't/can't be device specific and shouldn't be configured as
-        # such.
         "device": "%s_cheets" % config.program.name.lower(),
-        "first-api-level": "28",
         "marketing-name": config.device_brand.brand_name,
         "metrics-tag": _get_model_name(config.hw_design.id),
         "product": config.program.name.lower(),
