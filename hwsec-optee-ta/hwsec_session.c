@@ -186,10 +186,19 @@ static TEE_Result GenerateSalt(uint8_t salt[SHA256_DIGEST_SIZE],
   if (res != TEE_SUCCESS) {
     EMSG("TEE_GetObjectBufferAttribute failed with code 0x%x", res);
     goto cleanup_key;
-  } else if (temp_len != SHA256_DIGEST_SIZE) {
+  } else if (temp_len > SHA256_DIGEST_SIZE) {
     EMSG("Unsupported ephemeral_point_x length %u", temp_len);
     res = TEE_ERROR_NOT_SUPPORTED;
     goto cleanup_key;
+  } else if (temp_len < SHA256_DIGEST_SIZE) {
+    uint32_t diff = SHA256_DIGEST_SIZE - temp_len;
+    for (uint32_t i = 0; i < temp_len; i++) {
+      ephemeral_point.x.t.buffer[SHA256_DIGEST_SIZE - 1 - i] =
+          ephemeral_point.x.t.buffer[SHA256_DIGEST_SIZE - 1 - i - diff];
+    }
+    for (uint32_t i = 0; i < diff; i++) {
+      ephemeral_point.x.t.buffer[i] = 0;
+    }
   }
 
   ephemeral_point.x.t.size = SHA256_DIGEST_SIZE;
@@ -200,10 +209,19 @@ static TEE_Result GenerateSalt(uint8_t salt[SHA256_DIGEST_SIZE],
   if (res != TEE_SUCCESS) {
     EMSG("TEE_GetObjectBufferAttribute failed with code 0x%x", res);
     goto cleanup_key;
-  } else if (temp_len != SHA256_DIGEST_SIZE) {
+  } else if (temp_len > SHA256_DIGEST_SIZE) {
     EMSG("Unsupported ephemeral_point_y length %u", temp_len);
     res = TEE_ERROR_NOT_SUPPORTED;
     goto cleanup_key;
+  } else if (temp_len < SHA256_DIGEST_SIZE) {
+    uint32_t diff = SHA256_DIGEST_SIZE - temp_len;
+    for (uint32_t i = 0; i < temp_len; i++) {
+      ephemeral_point.y.t.buffer[SHA256_DIGEST_SIZE - 1 - i] =
+          ephemeral_point.y.t.buffer[SHA256_DIGEST_SIZE - 1 - i - diff];
+    }
+    for (uint32_t i = 0; i < diff; i++) {
+      ephemeral_point.y.t.buffer[i] = 0;
+    }
   }
 
   ephemeral_point.y.t.size = SHA256_DIGEST_SIZE;
@@ -269,10 +287,19 @@ static TEE_Result GenerateSalt(uint8_t salt[SHA256_DIGEST_SIZE],
   if (res != TEE_SUCCESS) {
     EMSG("TEE_GetObjectBufferAttribute failed with code 0x%x", res);
     goto cleanup_op_and_key;
-  } else if (temp_len != SHA256_DIGEST_SIZE) {
+  } else if (temp_len > SHA256_DIGEST_SIZE) {
     EMSG("Unsupported z_value length %u", temp_len);
     res = TEE_ERROR_NOT_SUPPORTED;
     goto cleanup_op_and_key;
+  } else if (temp_len < SHA256_DIGEST_SIZE) {
+    uint32_t diff = SHA256_DIGEST_SIZE - temp_len;
+    for (uint32_t i = 0; i < temp_len; i++) {
+      z_value[SHA256_DIGEST_SIZE - 1 - i] =
+          z_value[SHA256_DIGEST_SIZE - 1 - i - diff];
+    }
+    for (uint32_t i = 0; i < diff; i++) {
+      z_value[i] = 0;
+    }
   }
 
   // Free the previous op.
