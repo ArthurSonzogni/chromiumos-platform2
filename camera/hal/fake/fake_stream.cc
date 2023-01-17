@@ -151,7 +151,8 @@ bool FakeStream::CopyBuffer(FrameBuffer& buffer,
 
   if (format_ == HAL_PIXEL_FORMAT_BLOB) {
     DCHECK_EQ(frame_buffer->GetFourcc(), V4L2_PIX_FMT_JPEG);
-  } else if (format_ == HAL_PIXEL_FORMAT_YCBCR_420_888) {
+  } else if (format_ == HAL_PIXEL_FORMAT_YCBCR_420_888 ||
+             format_ == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
     // TODO(pihsun): For HAL_PIXEL_FORMAT_YCBCR_420_888 there should be libyuv
     // conversion.
     DCHECK_EQ(frame_buffer->GetFourcc(), V4L2_PIX_FMT_NV12);
@@ -231,6 +232,7 @@ std::unique_ptr<GrallocFrameBuffer> FakeStream::ConvertBuffer(
       return output_buffer;
     }
     case HAL_PIXEL_FORMAT_YCBCR_420_888:
+    case HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED:
       return buffer;
     default:
       NOTIMPLEMENTED() << "format = " << format << " is not supported";

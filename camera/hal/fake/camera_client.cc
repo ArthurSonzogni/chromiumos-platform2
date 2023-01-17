@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <absl/cleanup/cleanup.h>
+#include <base/containers/contains.h>
 #include <linux/videodev2.h>
 #include <sync/sync.h>
 
@@ -98,9 +99,7 @@ int CameraClient::ConfigureStreams(
       LOGFID(ERROR, id_) << "Rotations are not supported yet";
       return -EINVAL;
     }
-    // TODO(pihsun): Support other stream formats.
-    if (stream->format != HAL_PIXEL_FORMAT_BLOB &&
-        stream->format != HAL_PIXEL_FORMAT_YCbCr_420_888) {
+    if (!base::Contains(kSupportedHalFormats, stream->format)) {
       LOGFID(ERROR, id_) << "Stream format " << stream->format
                          << " is not supported";
       return -EINVAL;

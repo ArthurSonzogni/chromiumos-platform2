@@ -335,41 +335,30 @@ absl::Status FillDefaultMetadata(android::CameraMetadata* static_metadata,
       available_fps_ranges.push_back(low);
       available_fps_ranges.push_back(high);
     }
-    available_min_frame_durations.insert(available_min_frame_durations.end(),
-                                         {
-                                             HAL_PIXEL_FORMAT_BLOB,
-                                             supported_format.width,
-                                             supported_format.height,
-                                             min_frame_duration,
-                                             HAL_PIXEL_FORMAT_YCbCr_420_888,
-                                             supported_format.width,
-                                             supported_format.height,
-                                             min_frame_duration,
-                                         });
-    available_stall_durations.insert(available_stall_durations.end(),
-                                     {
-                                         HAL_PIXEL_FORMAT_BLOB,
-                                         supported_format.width,
-                                         supported_format.height,
-                                         0,
-                                         HAL_PIXEL_FORMAT_YCbCr_420_888,
-                                         supported_format.width,
-                                         supported_format.height,
-                                         0,
-                                     });
-
-    available_stream_configurations.insert(
-        available_stream_configurations.end(),
-        {
-            HAL_PIXEL_FORMAT_BLOB,
-            supported_format.width,
-            supported_format.height,
-            ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT,
-            HAL_PIXEL_FORMAT_YCbCr_420_888,
-            supported_format.width,
-            supported_format.height,
-            ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT,
-        });
+    for (const auto& hal_format : kSupportedHalFormats) {
+      available_min_frame_durations.insert(available_min_frame_durations.end(),
+                                           {
+                                               hal_format,
+                                               supported_format.width,
+                                               supported_format.height,
+                                               min_frame_duration,
+                                           });
+      available_stall_durations.insert(available_stall_durations.end(),
+                                       {
+                                           hal_format,
+                                           supported_format.width,
+                                           supported_format.height,
+                                           0,
+                                       });
+      available_stream_configurations.insert(
+          available_stream_configurations.end(),
+          {
+              hal_format,
+              supported_format.width,
+              supported_format.height,
+              ANDROID_SCALER_AVAILABLE_STREAM_CONFIGURATIONS_OUTPUT,
+          });
+    }
 
     max_width = std::max(max_width, supported_format.width);
     max_height = std::max(max_height, supported_format.height);

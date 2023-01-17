@@ -15,6 +15,14 @@
 
 namespace cros {
 
+constexpr android_pixel_format_t kSupportedHalFormats[] = {
+    HAL_PIXEL_FORMAT_BLOB,
+    HAL_PIXEL_FORMAT_YCBCR_420_888,
+    // The HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED for fake HAL returns exactly
+    // the same content as HAL_PIXEL_FORMAT_YCBCR_420_888.
+    HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED,
+};
+
 absl::Status FillDefaultMetadata(android::CameraMetadata* static_metadata,
                                  android::CameraMetadata* request_metadata,
                                  const CameraSpec& spec);
