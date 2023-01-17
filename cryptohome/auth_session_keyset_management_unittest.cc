@@ -6,6 +6,7 @@
 #include <string>
 #include <utility>
 
+#include <base/files/file_path.h>
 #include <base/test/mock_callback.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
@@ -195,6 +196,21 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     for (const auto& user : users_) {
       ASSERT_TRUE(platform_.CreateDirectory(user.homedir_path));
     }
+  }
+
+  // Configures the mock Hwsec to simulate correct replies for authentication
+  // (unsealing) requests.
+  void SetUpHwsecAuthenticationMocks() {
+    // When sealing, remember the secret and configure the unseal mock to return
+    // it.
+    EXPECT_CALL(hwsec_, SealWithCurrentUser(_, _, _))
+        .WillRepeatedly([this](auto, auto, auto unsealed_value) {
+          EXPECT_CALL(hwsec_, UnsealWithCurrentUser(_, _, _))
+              .WillRepeatedly(ReturnValue(unsealed_value));
+          return brillo::Blob();
+        });
+    EXPECT_CALL(hwsec_, PreloadSealedData(_))
+        .WillRepeatedly(ReturnValue(std::nullopt));
   }
 
   void RemoveFactor(AuthSession& auth_session,
@@ -1539,6 +1555,62 @@ TEST_F(AuthSessionTestWithKeysetManagement, AuthFactorMapUserSecretStash) {
   ASSERT_EQ(
       auth_session2->auth_factor_map().Find(kPasswordLabel2)->storage_type(),
       AuthFactorStorageType::kVaultKeyset);
+}
+
+// Test the scenario of adding a new factor when the authenticated factor's
+// backup VaultKeyset was corrupted. The operation fails, but it's a regression
+// test for a crash.
+TEST_F(AuthSessionTestWithKeysetManagement, AddFactorAfterBackupVkCorruption) {
+  // Setup.
+  SetUserSecretStashExperimentForTesting(/*enabled=*/true);
+  SetUpHwsecAuthenticationMocks();
+  // Creating the user with a password factor.
+  {
+    CryptohomeStatusOr<AuthSession*> auth_session_status =
+        auth_session_manager_->CreateAuthSession(
+            kUsername, user_data_auth::AUTH_SESSION_FLAGS_NONE,
+            AuthIntent::kDecrypt);
+    ASSERT_THAT(auth_session_status, IsOk());
+    AuthSession& auth_session = *auth_session_status.value();
+    EXPECT_THAT(auth_session.OnUserCreated(), IsOk());
+    AddFactor(auth_session, kPasswordLabel, kPassword);
+  }
+  // Corrupt the backup VK (it's the user's only VK) by truncating it.
+  const base::FilePath vk_path =
+      VaultKeysetPath(SanitizeUserName(kUsername), /*index=*/0);
+  EXPECT_TRUE(platform_.FileExists(vk_path));
+  EXPECT_TRUE(platform_.WriteFile(vk_path, brillo::Blob()));
+  // Creating a new AuthSession for authentication.
+  CryptohomeStatusOr<AuthSession*> auth_session_status =
+      auth_session_manager_->CreateAuthSession(
+          kUsername, user_data_auth::AUTH_SESSION_FLAGS_NONE,
+          AuthIntent::kDecrypt);
+  ASSERT_THAT(auth_session_status, IsOk());
+  AuthSession& auth_session = *auth_session_status.value();
+  // Authenticating the AuthSession via the password.
+  user_data_auth::AuthenticateAuthFactorRequest auth_request;
+  auth_request.set_auth_session_id(auth_session.serialized_token());
+  auth_request.set_auth_factor_label(kPasswordLabel);
+  auth_request.mutable_auth_input()->mutable_password_input()->set_secret(
+      kPassword);
+  TestFuture<CryptohomeStatus> auth_future;
+  auth_session.AuthenticateAuthFactor(auth_request, auth_future.GetCallback());
+  EXPECT_THAT(auth_future.Get(), IsOk());
+
+  // Test.
+  user_data_auth::AddAuthFactorRequest add_request;
+  add_request.set_auth_session_id(auth_session.serialized_token());
+  add_request.mutable_auth_factor()->set_type(
+      user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  add_request.mutable_auth_factor()->set_label(kPasswordLabel2);
+  add_request.mutable_auth_factor()->mutable_password_metadata();
+  add_request.mutable_auth_input()->mutable_password_input()->set_secret(
+      kPassword2);
+  TestFuture<CryptohomeStatus> add_future;
+  auth_session.AddAuthFactor(add_request, add_future.GetCallback());
+
+  // Verify.
+  EXPECT_THAT(add_future.Get(), NotOk());
 }
 
 }  // namespace cryptohome

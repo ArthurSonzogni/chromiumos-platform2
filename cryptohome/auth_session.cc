@@ -510,6 +510,14 @@ CryptohomeStatus AuthSession::AddVaultKeyset(
               << ".";
     vault_keyset_ = std::move(vk_status).value();
   } else {
+    if (!vault_keyset_) {
+      // This shouldn't normally happen, but is possible if, e.g., the backup VK
+      // is corrupted and the authentication completed via USS.
+      return MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocAuthSessionNoVkInAddKeyset),
+          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
+    }
     // TODO(b/229825202): Migrate Keyset Management and wrap the returned error.
     user_data_auth::CryptohomeErrorCode error =
         static_cast<user_data_auth::CryptohomeErrorCode>(
