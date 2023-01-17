@@ -96,12 +96,7 @@ class RoutingTableTest : public Test {
 
   class QueryCallbackTarget {
    public:
-    QueryCallbackTarget()
-        : weak_ptr_factory_(this),
-          mocked_callback_(base::Bind(&QueryCallbackTarget::MockedTarget,
-                                      base::Unretained(this))),
-          unreached_callback_(base::Bind(&QueryCallbackTarget::UnreachedTarget,
-                                         weak_ptr_factory_.GetWeakPtr())) {}
+    QueryCallbackTarget() : weak_ptr_factory_(this) {}
 
     MOCK_METHOD(void, MockedTarget, (int, const RoutingTableEntry&));
 
@@ -109,18 +104,18 @@ class RoutingTableTest : public Test {
       CHECK(false);
     }
 
-    const RoutingTable::QueryCallback& mocked_callback() const {
-      return mocked_callback_;
+    RoutingTable::QueryCallback mocked_callback() {
+      return base::BindOnce(&QueryCallbackTarget::MockedTarget,
+                            base::Unretained(this));
     }
 
-    const RoutingTable::QueryCallback& unreached_callback() const {
-      return unreached_callback_;
+    RoutingTable::QueryCallback unreached_callback() {
+      return base::BindOnce(&QueryCallbackTarget::UnreachedTarget,
+                            weak_ptr_factory_.GetWeakPtr());
     }
 
    private:
     base::WeakPtrFactory<QueryCallbackTarget> weak_ptr_factory_;
-    const RoutingTable::QueryCallback mocked_callback_;
-    const RoutingTable::QueryCallback unreached_callback_;
   };
 
   std::unique_ptr<RoutingTable> routing_table_;
@@ -564,7 +559,7 @@ TEST_F(RoutingTableTest, RequestHostRoute) {
       .WillOnce(
           WithArg<1>(Invoke(this, &RoutingTableTest::SetSequenceForMessage)));
   EXPECT_TRUE(routing_table_->RequestRouteToHost(
-      destination_address, kTestDeviceIndex0, RoutingTable::QueryCallback()));
+      destination_address, kTestDeviceIndex0, base::DoNothing()));
 
   IPAddress gateway_address(IPAddress::kFamilyIPv4);
   gateway_address.SetAddressFromString(kTestGatewayAddress4);
@@ -591,7 +586,7 @@ TEST_F(RoutingTableTest, RequestHostRouteWithoutGateway) {
       .WillOnce(
           WithArg<1>(Invoke(this, &RoutingTableTest::SetSequenceForMessage)));
   EXPECT_TRUE(routing_table_->RequestRouteToHost(
-      destination_address, kTestDeviceIndex0, RoutingTable::QueryCallback()));
+      destination_address, kTestDeviceIndex0, base::DoNothing()));
 
   // Don't specify a gateway address.
   IPAddress gateway_address(IPAddress::kFamilyIPv4);

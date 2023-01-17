@@ -10,6 +10,7 @@
 #include <set>
 #include <string>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include <base/callback.h>
@@ -34,8 +35,8 @@ class RTNLListener;
 class RoutingTable {
  public:
   // Callback for RequestRouteToHost completion.
-  using QueryCallback =
-      base::Callback<void(int interface_index, const RoutingTableEntry& entry)>;
+  using QueryCallback = base::OnceCallback<void(
+      int interface_index, const RoutingTableEntry& entry)>;
 
   // Priority of the rule sending all traffic to the local routing table.
   static const uint32_t kRulePriorityLocal;
@@ -138,7 +139,7 @@ class RoutingTable {
   // received.
   virtual bool RequestRouteToHost(const IPAddress& destination,
                                   int interface_index,
-                                  const QueryCallback& callback);
+                                  QueryCallback callback);
 
   static uint32_t GetInterfaceTableId(int interface_index);
 
@@ -170,7 +171,7 @@ class RoutingTable {
   struct Query {
     Query() : sequence(0) {}
     Query(uint32_t sequence_in, QueryCallback callback_in)
-        : sequence(sequence_in), callback(callback_in) {}
+        : sequence(sequence_in), callback(std::move(callback_in)) {}
 
     uint32_t sequence;
     QueryCallback callback;

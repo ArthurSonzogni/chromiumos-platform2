@@ -487,11 +487,11 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
         return;
     }
 
-    const Query& query = route_queries_.front();
+    Query& query = route_queries_.front();
     if (query.sequence == message.seq()) {
       if (!query.callback.is_null()) {
         SLOG(2) << "Running query callback.";
-        query.callback.Run(interface_index, entry);
+        std::move(query.callback).Run(interface_index, entry);
       }
       route_queries_.pop_front();
     }
@@ -646,7 +646,7 @@ bool RoutingTable::FlushCache() {
 
 bool RoutingTable::RequestRouteToHost(const IPAddress& address,
                                       int interface_index,
-                                      const QueryCallback& callback) {
+                                      QueryCallback callback) {
   // Make sure we don't get a cached response that is no longer valid.
   FlushCache();
 
@@ -670,7 +670,7 @@ bool RoutingTable::RequestRouteToHost(const IPAddress& address,
 
   // Save the sequence number of the request so we can trigger the callback
   // when we get a reply.
-  route_queries_.push_back(Query(seq, callback));
+  route_queries_.push_back(Query(seq, std::move(callback)));
 
   return true;
 }
