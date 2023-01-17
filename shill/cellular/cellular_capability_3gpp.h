@@ -174,6 +174,11 @@ class CellularCapability3gpp : public CellularCapability {
   static const char kRssiProperty[];
   static const char kRscpProperty[];
 
+  // Keys for bearer stats properties. The unit of link speeds in the key value
+  // store come from modem manager is bps.
+  static const char kUplinkSpeedBpsProperty[];
+  static const char kDownlinkSpeedBpsProperty[];
+
   static const int64_t kEnterPinTimeoutMilliseconds;
   static const int64_t kRegistrationDroppedUpdateTimeoutMilliseconds;
   // The modem sends a new attach request every 10 seconds(See 3gpp T3411).
@@ -189,11 +194,6 @@ class CellularCapability3gpp : public CellularCapability {
   // Root path. The SIM path is reported by ModemManager to be the root path
   // when no SIM is present.
   static const RpcIdentifier kRootPath;
-
-  // Keys for bearer stats properties. The unit of link speeds in the key value
-  // store come from modemm manager is bps.
-  static constexpr char kPropertyUpLinkSpeedBps[] = "uplink-speed";
-  static constexpr char kPropertyDownLinkSpeedBps[] = "downlink-speed";
 
  protected:
   virtual void SetupConnectProperties(KeyValueStore* properties);

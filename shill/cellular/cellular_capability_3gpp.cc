@@ -77,6 +77,10 @@ const CellularCapability3gpp::SignalQualityBounds
 const CellularCapability3gpp::SignalQualityBounds
     CellularCapability3gpp::kRscpBounds = {-115, -89};
 
+const char CellularCapability3gpp::kUplinkSpeedBpsProperty[] = "uplink-speed";
+const char CellularCapability3gpp::kDownlinkSpeedBpsProperty[] =
+    "downlink-speed";
+
 const int CellularCapability3gpp::kSetPowerStateTimeoutMilliseconds = 20000;
 const int CellularCapability3gpp::kUnknownLockRetriesLeft = 999;
 
@@ -1623,27 +1627,27 @@ void CellularCapability3gpp::UpdateLinkSpeed(const KeyValueStore& properties) {
   }
 
   uint32_t link_speed_kbps;
-  if (properties.Contains<uint64_t>(kPropertyUpLinkSpeedBps)) {
-    if (properties.Get<uint64_t>(kPropertyUpLinkSpeedBps) / 1000 > UINT_MAX) {
+  if (properties.Contains<uint64_t>(kUplinkSpeedBpsProperty)) {
+    if (properties.Get<uint64_t>(kUplinkSpeedBpsProperty) / 1000 > UINT_MAX) {
       LOG(ERROR) << __func__ << " Uplink speed is: "
-                 << properties.Get<uint64_t>(kPropertyUpLinkSpeedBps) / 1000
+                 << properties.Get<uint64_t>(kUplinkSpeedBpsProperty) / 1000
                  << " kb/s, exceeding uint max: " << UINT_MAX
                  << ", not updated.";
       return;
     }
-    link_speed_kbps = properties.Get<uint64_t>(kPropertyUpLinkSpeedBps) / 1000;
+    link_speed_kbps = properties.Get<uint64_t>(kUplinkSpeedBpsProperty) / 1000;
     service->SetUplinkSpeedKbps(link_speed_kbps);
   }
-  if (properties.Contains<uint64_t>(kPropertyDownLinkSpeedBps)) {
-    if (properties.Get<uint64_t>(kPropertyDownLinkSpeedBps) / 1000 > UINT_MAX) {
+  if (properties.Contains<uint64_t>(kDownlinkSpeedBpsProperty)) {
+    if (properties.Get<uint64_t>(kDownlinkSpeedBpsProperty) / 1000 > UINT_MAX) {
       LOG(ERROR) << __func__ << " Downlink speed is: "
-                 << properties.Get<uint64_t>(kPropertyDownLinkSpeedBps) / 1000
+                 << properties.Get<uint64_t>(kDownlinkSpeedBpsProperty) / 1000
                  << " kb/s, exceeding uint max: " << UINT_MAX
                  << ", not updated.";
       return;
     }
     link_speed_kbps =
-        properties.Get<uint64_t>(kPropertyDownLinkSpeedBps) / 1000;
+        properties.Get<uint64_t>(kDownlinkSpeedBpsProperty) / 1000;
     service->SetDownlinkSpeedKbps(link_speed_kbps);
   }
 }
