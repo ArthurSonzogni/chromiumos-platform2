@@ -16,7 +16,9 @@
 namespace {
 constexpr char kDlcId[] = "ml-core-internal";
 constexpr uint8_t kMaxInstallAttempts = 5;
-const base::TimeDelta kRetryDelay = base::Seconds(15);
+const base::TimeDelta kRetryDelays[kMaxInstallAttempts] = {
+    base::Seconds(5), base::Seconds(10), base::Seconds(20), base::Seconds(40),
+    base::Seconds(80)};
 
 class DlcClientImpl : public cros::DlcClient {
  public:
@@ -123,7 +125,7 @@ class DlcClientImpl : public cros::DlcClient {
           return;
         }
 
-        auto retry_delay = kRetryDelay * attempt;
+        auto retry_delay = kRetryDelays[attempt - 1];
         LOG(ERROR) << "dlcservice is busy. Retrying in " << retry_delay;
 
         base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
