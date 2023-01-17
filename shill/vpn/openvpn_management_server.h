@@ -24,10 +24,10 @@ class Sockets;
 
 class OpenVPNManagementServer {
  public:
-  static const char kStateAuth[];
-  static const char kStateConnected[];
-  static const char kStateReconnecting[];
-  static const char kStateResolve[];
+  static constexpr char kStateAuth[] = "AUTH";
+  static constexpr char kStateConnected[] = "CONNECTED";
+  static constexpr char kStateReconnecting[] = "RECONNECTING";
+  static constexpr char kStateResolve[] = "RESOLVE";
 
   explicit OpenVPNManagementServer(OpenVPNDriver* driver);
   OpenVPNManagementServer(const OpenVPNManagementServer&) = delete;

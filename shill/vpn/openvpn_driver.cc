@@ -40,19 +40,19 @@ static auto kModuleLogScope = ScopeLogger::kVPN;
 
 namespace {
 
-const char kChromeOSReleaseName[] = "CHROMEOS_RELEASE_NAME";
-const char kChromeOSReleaseVersion[] = "CHROMEOS_RELEASE_VERSION";
-const char kOpenVPNForeignOptionPrefix[] = "foreign_option_";
-const char kOpenVPNIfconfigBroadcast[] = "ifconfig_broadcast";
-const char kOpenVPNIfconfigLocal[] = "ifconfig_local";
-const char kOpenVPNIfconfigNetmask[] = "ifconfig_netmask";
-const char kOpenVPNIfconfigRemote[] = "ifconfig_remote";
-const char kOpenVPNRedirectGateway[] = "redirect_gateway";
-const char kOpenVPNRouteOptionPrefix[] = "route_";
-const char kOpenVPNRouteNetGateway[] = "route_net_gateway";
-const char kOpenVPNRouteVPNGateway[] = "route_vpn_gateway";
-const char kOpenVPNTrustedIP[] = "trusted_ip";
-const char kOpenVPNTunMTU[] = "tun_mtu";
+constexpr char kChromeOSReleaseName[] = "CHROMEOS_RELEASE_NAME";
+constexpr char kChromeOSReleaseVersion[] = "CHROMEOS_RELEASE_VERSION";
+constexpr char kOpenVPNForeignOptionPrefix[] = "foreign_option_";
+constexpr char kOpenVPNIfconfigBroadcast[] = "ifconfig_broadcast";
+constexpr char kOpenVPNIfconfigLocal[] = "ifconfig_local";
+constexpr char kOpenVPNIfconfigNetmask[] = "ifconfig_netmask";
+constexpr char kOpenVPNIfconfigRemote[] = "ifconfig_remote";
+constexpr char kOpenVPNRedirectGateway[] = "redirect_gateway";
+constexpr char kOpenVPNRouteOptionPrefix[] = "route_";
+constexpr char kOpenVPNRouteNetGateway[] = "route_net_gateway";
+constexpr char kOpenVPNRouteVPNGateway[] = "route_vpn_gateway";
+constexpr char kOpenVPNTrustedIP[] = "trusted_ip";
+constexpr char kOpenVPNTunMTU[] = "tun_mtu";
 
 // Typically OpenVPN will set environment variables like:
 //   route_net_gateway=<existing default LAN gateway>
@@ -62,29 +62,28 @@ const char kOpenVPNTunMTU[] = "tun_mtu";
 //   route_network_1=192.168.10.0
 // This example shows a split include route of 192.168.10.0/24, and
 // 10.8.0.1 is the ifconfig_remote (remote peer) address.
-const char kOpenVPNRouteNetworkPrefix[] = "network_";
-const char kOpenVPNRouteNetmaskPrefix[] = "netmask_";
-const char kOpenVPNRouteGatewayPrefix[] = "gateway_";
+constexpr char kOpenVPNRouteNetworkPrefix[] = "network_";
+constexpr char kOpenVPNRouteNetmaskPrefix[] = "netmask_";
+constexpr char kOpenVPNRouteGatewayPrefix[] = "gateway_";
 
-const char kDefaultPKCS11Provider[] = "libchaps.so";
+constexpr char kDefaultPKCS11Provider[] = "libchaps.so";
 
 // Some configurations pass the netmask in the ifconfig_remote property.
 // This is due to some servers not explicitly indicating that they are using
 // a "broadcast mode" network instead of peer-to-peer.  See
 // http://crbug.com/241264 for an example of this issue.
-const char kSuspectedNetmaskPrefix[] = "255.";
+constexpr char kSuspectedNetmaskPrefix[] = "255.";
 
-void DoNothingWithExitStatus(int exit_status) {}
+constexpr char kOpenVPNPath[] = "/usr/sbin/openvpn";
+constexpr char kOpenVPNScript[] = SHIMDIR "/openvpn-script";
+
+// Directory where OpenVPN configuration files are exported while the
+// process is running.
+constexpr char kDefaultOpenVPNConfigurationDirectory[] =
+    RUNDIR "/openvpn_config";
 
 }  // namespace
 
-// static
-const char OpenVPNDriver::kDefaultCACertificates[] =
-    "/etc/ssl/certs/ca-certificates.crt";
-// static
-const char OpenVPNDriver::kOpenVPNPath[] = "/usr/sbin/openvpn";
-// static
-const char OpenVPNDriver::kOpenVPNScript[] = SHIMDIR "/openvpn-script";
 // static
 const VPNDriver::Property OpenVPNDriver::kProperties[] = {
     {kOpenVPNAuthNoCacheProperty, 0},
@@ -135,13 +134,6 @@ const VPNDriver::Property OpenVPNDriver::kProperties[] = {
     {kVPNMTUProperty, 0},
 };
 
-const char OpenVPNDriver::kLSBReleaseFile[] = "/etc/lsb-release";
-
-// Directory where OpenVPN configuration files are exported while the
-// process is running.
-const char OpenVPNDriver::kDefaultOpenVPNConfigurationDirectory[] =
-    RUNDIR "/openvpn_config";
-
 OpenVPNDriver::OpenVPNDriver(Manager* manager, ProcessManager* process_manager)
     : VPNDriver(manager, process_manager, kProperties, std::size(kProperties)),
       management_server_(new OpenVPNManagementServer(this)),
@@ -172,8 +164,7 @@ void OpenVPNDriver::Cleanup() {
   // the callback for OnOpenVPNDied, and then terminating and reaping
   // the process with StopProcess().
   if (pid_) {
-    process_manager()->UpdateExitCallback(
-        pid_, base::BindOnce(DoNothingWithExitStatus));
+    process_manager()->UpdateExitCallback(pid_, base::DoNothing());
   }
   management_server_->Stop();
   if (!tls_auth_file_.empty()) {

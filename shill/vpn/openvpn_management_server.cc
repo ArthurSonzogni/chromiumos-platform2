@@ -31,13 +31,8 @@ static auto kModuleLogScope = ScopeLogger::kVPN;
 }  // namespace Logging
 
 namespace {
-const char kPasswordTagAuth[] = "Auth";
+constexpr char kPasswordTagAuth[] = "Auth";
 }  // namespace
-
-const char OpenVPNManagementServer::kStateAuth[] = "AUTH";
-const char OpenVPNManagementServer::kStateConnected[] = "CONNECTED";
-const char OpenVPNManagementServer::kStateReconnecting[] = "RECONNECTING";
-const char OpenVPNManagementServer::kStateResolve[] = "RESOLVE";
 
 OpenVPNManagementServer::OpenVPNManagementServer(OpenVPNDriver* driver)
     : driver_(driver),

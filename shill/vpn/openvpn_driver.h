@@ -140,15 +140,12 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   using ForeignOptions = std::map<int, std::string>;
   using RouteOptions = std::map<int, IPConfig::Route>;
 
-  static const char kDefaultCACertificates[];
+  static constexpr char kDefaultCACertificates[] =
+      "/etc/ssl/certs/ca-certificates.crt";
 
-  static const char kOpenVPNPath[];
-  static const char kOpenVPNScript[];
   static const Property kProperties[];
 
-  static const char kLSBReleaseFile[];
-
-  static const char kDefaultOpenVPNConfigurationDirectory[];
+  static constexpr char kLSBReleaseFile[] = "/etc/lsb-release";
 
   static constexpr base::TimeDelta kConnectTimeout = base::Minutes(2);
   static constexpr base::TimeDelta kReconnectOfflineTimeout = base::Minutes(2);
