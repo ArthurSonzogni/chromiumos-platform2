@@ -57,18 +57,17 @@ class CpuMemoryFrameBuffer : public FrameBuffer {
 
   friend class ScopedMapping;
 
-  struct StoredPlane {
-    ScopedMapping::Plane plane;
-    // unique_ptr<uint8_t[]> instead of vector<uint8_t> is used here to avoid
-    // accidentally copying the data, invalidating the address in plane.
-    std::unique_ptr<uint8_t[]> data;
-  };
+  // Data of the buffer that all planes points to.
+  // unique_ptr<uint8_t[]> instead of vector<uint8_t> is used here to avoid
+  // accidentally copying the data, invalidating the address in plane.
+  std::unique_ptr<uint8_t[]> data_;
 
-  // planes and corresponding data.
-  std::vector<StoredPlane> planes_;
+  // Planes of the buffer.
+  std::vector<ScopedMapping::Plane> planes_;
 
-  // Allocates a plane with given size.
-  StoredPlane AllocatePlane(Size size);
+  // Allocates memory that can fit all the planes with given sizes, and set
+  // each plane address accordingly. This sets |data_| and |planes_|.
+  void AllocatePlanes(base::span<const Size> sizes);
 
   // Use to check all methods are called on the same thread.
   SEQUENCE_CHECKER(sequence_checker_);

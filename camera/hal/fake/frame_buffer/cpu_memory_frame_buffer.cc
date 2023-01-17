@@ -32,7 +32,7 @@ uint32_t CpuMemoryFrameBuffer::ScopedMapping::num_planes() const {
 FrameBuffer::ScopedMapping::Plane CpuMemoryFrameBuffer::ScopedMapping::plane(
     int planeIdx) const {
   CHECK(planeIdx >= 0 && planeIdx < buffer_->planes_.size());
-  auto plane = buffer_->planes_[planeIdx].plane;
+  auto plane = buffer_->planes_[planeIdx];
   CHECK(plane.addr != nullptr);
   return plane;
 }
@@ -47,31 +47,45 @@ bool CpuMemoryFrameBuffer::Initialize(Size size, uint32_t fourcc) {
 
   switch (fourcc) {
     case V4L2_PIX_FMT_NV12:
+    case V4L2_PIX_FMT_NV12M: {
       // TODO(pihsun): Support odd width / height by doing rounding up.
       if (size.width % 2 != 0 || size.height % 2 != 0) {
         LOGF(WARNING) << "Buffer width and height should both be even";
         return false;
       }
-      planes_.emplace_back(AllocatePlane(size));
-      planes_.emplace_back(AllocatePlane(Size(size.width, size.height / 2)));
+
+      Size plane_sizes[] = {
+          size,
+          Size(size.width, size.height / 2),
+      };
+      AllocatePlanes(plane_sizes);
       break;
+    }
 
     case V4L2_PIX_FMT_YUV420:
+    case V4L2_PIX_FMT_YUV420M: {
       // TODO(pihsun): Support odd width / height by doing rounding up.
       if (size.width % 2 != 0 || size.height % 2 != 0) {
         LOGF(WARNING) << "Buffer width and height should both be even";
         return false;
       }
-      planes_.emplace_back(AllocatePlane(size));
-      planes_.emplace_back(
-          AllocatePlane(Size(size.width / 2, size.height / 2)));
-      planes_.emplace_back(
-          AllocatePlane(Size(size.width / 2, size.height / 2)));
-      break;
 
-    case V4L2_PIX_FMT_JPEG:
-      planes_.emplace_back(AllocatePlane(size));
+      Size plane_sizes[] = {
+          size,
+          Size(size.width / 2, size.height / 2),
+          Size(size.width / 2, size.height / 2),
+      };
+      AllocatePlanes(plane_sizes);
       break;
+    }
+
+    case V4L2_PIX_FMT_JPEG: {
+      Size plane_sizes[] = {
+          size,
+      };
+      AllocatePlanes(plane_sizes);
+      break;
+    }
 
     default:
       LOGF(WARNING) << "Unsupported format " << FormatToString(fourcc);
@@ -91,21 +105,26 @@ std::unique_ptr<FrameBuffer::ScopedMapping> CpuMemoryFrameBuffer::Map() {
   return base::WrapUnique(new ScopedMapping(weak_ptr_factory_.GetSafeRef()));
 }
 
-CpuMemoryFrameBuffer::StoredPlane CpuMemoryFrameBuffer::AllocatePlane(
-    Size size) {
-  size_t memory_size =
-      base::CheckMul(size.width, size.height).ValueOrDie<size_t>();
-  std::unique_ptr<uint8_t[]> data(new uint8_t[memory_size]);
+void CpuMemoryFrameBuffer::AllocatePlanes(base::span<const Size> sizes) {
+  base::CheckedNumeric<size_t> memory_size = 0;
+  for (const auto& size : sizes) {
+    memory_size += base::CheckMul(size.width, size.height);
+  }
 
-  return {
-      .plane =
-          ScopedMapping::Plane{
-              .addr = data.get(),
-              .stride = size.width,
-              .size = memory_size,
-          },
-      .data = std::move(data),
-  };
+  data_ = std::make_unique<uint8_t[]>(memory_size.ValueOrDie());
+  planes_.clear();
+  planes_.reserve(sizes.size());
+
+  memory_size = 0;
+  for (const auto& size : sizes) {
+    auto plane_size = base::CheckMul(size.width, size.height);
+    planes_.push_back({
+        .addr = data_.get() + memory_size.ValueOrDie(),
+        .stride = size.width,
+        .size = plane_size.ValueOrDie(),
+    });
+    memory_size += plane_size;
+  }
 }
 
 }  // namespace cros
