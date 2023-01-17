@@ -92,19 +92,25 @@ using testing::WithArg;
 namespace shill {
 
 namespace {
-RpcIdentifier kTestBearerPath("/org/freedesktop/ModemManager1/Bearer/0");
-constexpr char kUid[] = "uid";
+constexpr int kTestInterfaceIndex = 3;
+constexpr char kTestInterfaceName[] = "wwan0";
+constexpr char kTestInterfaceAddress[] = "00:01:02:03:04:05";
+constexpr char kDBusService[] = "org.freedesktop.ModemManager1";
+constexpr char kModemUid[] = "uid";
 constexpr char kIccid[] = "1234567890000";
-constexpr int kInterfaceIndex = 3;
+const RpcIdentifier kTestModemDBusPath(
+    "/org/freedesktop/ModemManager1/Modem/0");
+const RpcIdentifier kTestBearerDBusPath(
+    "/org/freedesktop/ModemManager1/Bearer/0");
 }  // namespace
 
 class CellularPropertyTest : public PropertyStoreTest {
  public:
   CellularPropertyTest()
       : device_(new Cellular(manager(),
-                             "usb0",
-                             "00:01:02:03:04:05",
-                             3,
+                             kTestInterfaceName,
+                             kTestInterfaceAddress,
+                             kTestInterfaceIndex,
                              "",
                              RpcIdentifier(""))) {}
 
@@ -139,13 +145,7 @@ TEST_F(CellularPropertyTest, SetProperty) {
 class CellularTest : public testing::Test {
  public:
   CellularTest()
-      : kHomeProviderCode("10001"),
-        kHomeProviderCountry("us"),
-        kHomeProviderName("HomeProviderName"),
-        kServingOperatorCode("10002"),
-        kServingOperatorCountry("ca"),
-        kServingOperatorName("ServingOperatorName"),
-        control_interface_(this),
+      : control_interface_(this),
         manager_(&control_interface_, &dispatcher_, &metrics_),
         modem_info_(&control_interface_, &manager_),
         device_info_(&manager_),
@@ -161,8 +161,9 @@ class CellularTest : public testing::Test {
   void SetUp() override {
     EXPECT_CALL(manager_, device_info()).WillRepeatedly(Return(&device_info_));
     EXPECT_CALL(manager_, modem_info()).WillRepeatedly(Return(&modem_info_));
-    device_ = new Cellular(&manager_, kTestDeviceName, kTestDeviceAddress,
-                           kInterfaceIndex, kDBusService, kDBusPath);
+    device_ =
+        new Cellular(&manager_, kTestInterfaceName, kTestInterfaceAddress,
+                     kTestInterfaceIndex, kDBusService, kTestModemDBusPath);
     PopulateProxies();
     metrics_.RegisterDevice(device_->interface_index(), Technology::kCellular);
 
@@ -170,7 +171,7 @@ class CellularTest : public testing::Test {
     device_->process_manager_ = &process_manager_;
 
     auto network = std::make_unique<MockNetwork>(
-        kInterfaceIndex, kTestDeviceName, Technology::kCellular);
+        kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
     network_ = network.get();
     device_->set_network_for_testing(std::move(network));
 
@@ -213,7 +214,7 @@ class CellularTest : public testing::Test {
     // Set the Device property so that StartModem succeeds.
     fake_properties->SetForTesting(modemmanager::kModemManager1ModemInterface,
                                    MM_MODEM_PROPERTY_DEVICE,
-                                   brillo::Any(std::string(kUid)));
+                                   brillo::Any(std::string(kModemUid)));
   }
 
   void PopulateProxies() {
@@ -247,19 +248,11 @@ class CellularTest : public testing::Test {
                                        int timeout) {
     std::move(callback).Run(Error(Error::kWrongState));
   }
-  void InvokeGetModemStatus(Error* error,
-                            KeyValueStoreCallback callback,
-                            int timeout) {
-    KeyValueStore props;
-    props.Set<std::string>("carrier", kTestCarrier);
-    props.Set<std::string>("unknown-property", "irrelevant-value");
-    std::move(callback).Run(props, Error());
-  }
   void InvokeConnect(const KeyValueStore& props,
                      RpcIdentifierCallback callback,
                      int timeout) {
     EXPECT_EQ(Service::kStateAssociating, device_->service_->state());
-    std::move(callback).Run(kTestBearerPath, Error());
+    std::move(callback).Run(kTestBearerDBusPath, Error());
   }
   void InvokeConnectFail(const KeyValueStore& props,
                          RpcIdentifierCallback callback,
@@ -417,28 +410,6 @@ class CellularTest : public testing::Test {
   MOCK_METHOD(void, TestCallback, (const Error&));
 
  protected:
-  static const char kTestDeviceName[];
-  static const char kTestDeviceAddress[];
-  static const char kDBusService[];
-  static const RpcIdentifier kDBusPath;
-  static const char kTestCarrier[];
-  static const char kTestCarrierSPN[];
-  static const char kMEID[];
-  static const char kIMEI[];
-  static const char kIMSI[];
-  static const char kMSISDN[];
-  static const char kTestMobileProviderDBPath[];
-  static const Stringmaps kTestNetworksCellular;
-  static const int kStrength;
-
-  // Must be std::string so that we can safely ReturnRef.
-  const std::string kHomeProviderCode;
-  const std::string kHomeProviderCountry;
-  const std::string kHomeProviderName;
-  const std::string kServingOperatorCode;
-  const std::string kServingOperatorCountry;
-  const std::string kServingOperatorName;
-
   class TestControl : public MockControl {
    public:
     explicit TestControl(CellularTest* test) : test_(test) {}
@@ -605,31 +576,19 @@ class CellularTest : public testing::Test {
   scoped_refptr<NiceMock<MockProfile>> profile_;
 };
 
-const char CellularTest::kTestDeviceName[] = "usb0";
-const char CellularTest::kTestDeviceAddress[] = "000102030405";
-const char CellularTest::kDBusService[] = "org.freedesktop.ModemManager1";
-const RpcIdentifier CellularTest::kDBusPath(
-    "/org/freedesktop/ModemManager1/Modem/0");
-const char CellularTest::kTestCarrier[] = "The Cellular Carrier";
-const char CellularTest::kTestCarrierSPN[] = "Home Provider";
-const char CellularTest::kMEID[] = "01234567EF8901";
-const char CellularTest::kIMEI[] = "987654321098765";
-const char CellularTest::kIMSI[] = "123456789012345";
-const char CellularTest::kMSISDN[] = "12345678901";
-const char CellularTest::kTestMobileProviderDBPath[] =
-    "provider_db_unittest.bfd";
-const Stringmaps CellularTest::kTestNetworksCellular = {
-    {{kStatusProperty, "available"},
-     {kNetworkIdProperty, "0000"},
-     {kLongNameProperty, "some_long_name"},
-     {kShortNameProperty, "short"}}};
-const int CellularTest::kStrength = 90;
-
 TEST_F(CellularTest, GetStorageIdentifier) {
-  EXPECT_EQ("device_usb0", device_->GetStorageIdentifier());
+  EXPECT_EQ("device_wwan0", device_->GetStorageIdentifier());
 }
 
 TEST_F(CellularTest, HomeProviderServingOperator) {
+  // Must be std::string so that we can safely ReturnRef.
+  std::string kHomeProviderCode("10001");
+  std::string kHomeProviderCountry("us");
+  std::string kHomeProviderName("HomeProviderName");
+  std::string kServingOperatorCode("10002");
+  std::string kServingOperatorCountry("ca");
+  std::string kServingOperatorName("ServingOperatorName");
+
   // Test that the the home provider information is correctly updated under
   // different scenarios w.r.t. information about the mobile network operators.
   SetMockMobileOperatorInfoObjects();
@@ -920,7 +879,7 @@ TEST_F(CellularTest, SimSlotSwitch) {
 
   // Simulate MM changes that occur when a new MM DBus object appears after a
   // slot switch
-  device_->UpdateModemProperties(kDBusPath, "");
+  device_->UpdateModemProperties(kTestModemDBusPath, "");
   device_->OnModemStateChanged(Cellular::kModemStateDisabled);
   slot_properties[1].iccid = "8900000000000000000",
   GetCapability3gpp()->set_sim_properties_for_testing(sim_properties);
@@ -1828,7 +1787,7 @@ TEST_F(CellularTest, EstablishLinkFailureMismatchedDataInterface) {
 TEST_F(CellularTest, EstablishLinkDHCP) {
   auto bearer = std::make_unique<CellularBearer>(&control_interface_,
                                                  RpcIdentifier(""), "");
-  bearer->set_data_interface(kTestDeviceName);
+  bearer->set_data_interface(kTestInterfaceName);
   bearer->set_ipv4_config_method(CellularBearer::IPConfigMethod::kDHCP);
   SetCapability3gppActiveBearer(std::move(bearer));
   device_->set_state_for_testing(Cellular::State::kConnected);
@@ -1882,7 +1841,7 @@ TEST_F(CellularTest, EstablishLinkStatic) {
 
   auto bearer = std::make_unique<CellularBearer>(&control_interface_,
                                                  RpcIdentifier(""), "");
-  bearer->set_data_interface(kTestDeviceName);
+  bearer->set_data_interface(kTestInterfaceName);
   bearer->set_ipv4_config_method(CellularBearer::IPConfigMethod::kStatic);
   bearer->set_ipv4_config_properties(
       std::make_unique<IPConfig::Properties>(ipconfig_properties));
