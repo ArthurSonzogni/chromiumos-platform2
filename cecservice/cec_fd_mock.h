@@ -26,7 +26,7 @@ class CecFdMock : public CecFd {
   MOCK_CONST_METHOD1(TransmitMessage, TransmitResult(struct cec_msg*));
   MOCK_CONST_METHOD1(GetCapabilities, bool(struct cec_caps*));
   MOCK_CONST_METHOD1(SetMode, bool(uint32_t));
-  MOCK_METHOD1(SetEventCallback, bool(const Callback& callback));
+  MOCK_METHOD1(SetEventCallback, bool(const EventCallback& callback));
   MOCK_METHOD0(WriteWatch, bool());
   MOCK_METHOD0(CecFdDestructorCalled, void());
 };

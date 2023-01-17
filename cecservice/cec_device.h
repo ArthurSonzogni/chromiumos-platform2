@@ -22,7 +22,7 @@ namespace cecservice {
 // Object handling interaction with a single /dev/cec* node.
 class CecDevice {
  public:
-  using GetTvPowerStatusCallback = base::Callback<void(TvPowerStatus)>;
+  using GetTvPowerStatusCallback = base::OnceCallback<void(TvPowerStatus)>;
 
   virtual ~CecDevice() = default;
 

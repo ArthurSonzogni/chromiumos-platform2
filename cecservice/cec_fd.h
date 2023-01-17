@@ -28,7 +28,7 @@ class CecFd {
   };
 
   // Callback used to notify about events occurring on the FD.
-  using Callback = base::Callback<void(EventType)>;
+  using EventCallback = base::RepeatingCallback<void(EventType)>;
 
   // Result of transmit operation.
   enum class TransmitResult {
@@ -73,7 +73,7 @@ class CecFd {
   // Also, the callback is called when watching for write readiness has been
   // requested via WriteWatch method. This operation should be only performed
   // once during lifetime of the object. Returns false if the operation fails.
-  virtual bool SetEventCallback(const Callback& callback) = 0;
+  virtual bool SetEventCallback(const EventCallback& callback) = 0;
 
   // Starts watching descriptor for write readiness. It is one off request.
   // Returns false if the operation fails.
@@ -97,7 +97,7 @@ class CecFdImpl : public CecFd {
   TransmitResult TransmitMessage(struct cec_msg* message) const override;
   bool GetCapabilities(struct cec_caps* capabilities) const override;
   bool SetMode(uint32_t mode) const override;
-  bool SetEventCallback(const Callback& callback) override;
+  bool SetEventCallback(const EventCallback& callback) override;
   bool WriteWatch() override;
 
  private:
@@ -114,7 +114,7 @@ class CecFdImpl : public CecFd {
   std::unique_ptr<base::FileDescriptorWatcher::Controller> read_watcher_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> write_watcher_;
 
-  Callback callback_;
+  EventCallback callback_;
 
   base::WeakPtrFactory<CecFdImpl> weak_factory_{this};
 };

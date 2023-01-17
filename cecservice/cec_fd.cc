@@ -89,19 +89,19 @@ bool CecFdImpl::SetMode(uint32_t mode) const {
   return true;
 }
 
-bool CecFdImpl::SetEventCallback(const Callback& callback) {
+bool CecFdImpl::SetEventCallback(const EventCallback& callback) {
   DCHECK(!read_watcher_);
   DCHECK(!priority_watcher_);
 
   callback_ = callback;
 
   priority_watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      epoll_fd_.get(),
-      base::Bind(&CecFdImpl::OnPriorityDataReady, weak_factory_.GetWeakPtr()));
+      epoll_fd_.get(), base::BindRepeating(&CecFdImpl::OnPriorityDataReady,
+                                           weak_factory_.GetWeakPtr()));
 
   read_watcher_ = base::FileDescriptorWatcher::WatchReadable(
       fd_.get(),
-      base::Bind(&CecFdImpl::OnDataReady, weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&CecFdImpl::OnDataReady, weak_factory_.GetWeakPtr()));
 
   if (!priority_watcher_ || !read_watcher_) {
     LOG_IF(ERROR, !priority_watcher_)
@@ -121,8 +121,8 @@ bool CecFdImpl::WriteWatch() {
   }
 
   write_watcher_ = base::FileDescriptorWatcher::WatchWritable(
-      fd_.get(),
-      base::Bind(&CecFdImpl::OnWriteReady, weak_factory_.GetWeakPtr()));
+      fd_.get(), base::BindRepeating(&CecFdImpl::OnWriteReady,
+                                     weak_factory_.GetWeakPtr()));
 
   if (!write_watcher_) {
     LOG(ERROR) << "Failed to register watcher for FD write readiness";

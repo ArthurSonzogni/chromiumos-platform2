@@ -457,8 +457,8 @@ CecDeviceImpl::Impl::Impl(std::unique_ptr<CecFd> fd,
 }
 
 bool CecDeviceImpl::Impl::Init() {
-  if (!fd_->SetEventCallback(base::Bind(&CecDeviceImpl::Impl::OnFdEvent,
-                                        weak_factory_.GetWeakPtr()))) {
+  if (!fd_->SetEventCallback(base::BindRepeating(
+          &CecDeviceImpl::Impl::OnFdEvent, weak_factory_.GetWeakPtr()))) {
     DisableDevice();
     return false;
   }

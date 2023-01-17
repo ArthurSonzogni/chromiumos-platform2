@@ -66,9 +66,10 @@ struct CecManager::TvsPowerStatusQuery {
 CecManager::CecManager(const UdevFactory& udev_factory,
                        const CecDeviceFactory& cec_factory)
     : cec_factory_(cec_factory) {
-  udev_ = udev_factory.Create(
-      base::Bind(&CecManager::OnDeviceAdded, weak_factory_.GetWeakPtr()),
-      base::Bind(&CecManager::OnDeviceRemoved, weak_factory_.GetWeakPtr()));
+  udev_ = udev_factory.Create(base::BindRepeating(&CecManager::OnDeviceAdded,
+                                                  weak_factory_.GetWeakPtr()),
+                              base::BindRepeating(&CecManager::OnDeviceRemoved,
+                                                  weak_factory_.GetWeakPtr()));
   LOG_IF(FATAL, !udev_) << "Failed to create udev";
 
   EnumerateAndAddExistingDevices();
@@ -93,9 +94,9 @@ void CecManager::GetTvsPowerStatus(GetTvsPowerStatusCallback callback) {
   tv_power_status_queries_.insert(std::make_pair(id, std::move(query)));
 
   for (auto& kv : devices_) {
-    kv.second->GetTvPowerStatus(base::Bind(&CecManager::OnTvPowerResponse,
-                                           weak_factory_.GetWeakPtr(), id,
-                                           kv.first));
+    kv.second->GetTvPowerStatus(base::BindOnce(&CecManager::OnTvPowerResponse,
+                                               weak_factory_.GetWeakPtr(), id,
+                                               kv.first));
   }
 }
 
@@ -127,8 +128,7 @@ void CecManager::OnTvPowerResponse(QueryId id,
   }
 }
 
-bool CecManager::MaybeRespondToTvsPowerStatusQuery(
-    const TvsPowerStatusQuery& query) {
+bool CecManager::MaybeRespondToTvsPowerStatusQuery(TvsPowerStatusQuery& query) {
   std::vector<TvPowerStatus> result;
   for (auto& response : query.responses) {
     const TvPowerStatusResult& status = response.second;

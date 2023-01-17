@@ -20,7 +20,7 @@ namespace cecservice {
 // Simple wrapper around libudev.
 class Udev {
  public:
-  using DeviceCallback = base::Callback<void(const base::FilePath&)>;
+  using DeviceCallback = base::RepeatingCallback<void(const base::FilePath&)>;
 
   virtual ~Udev() = default;
 

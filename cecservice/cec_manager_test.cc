@@ -141,13 +141,15 @@ TEST_F(CecManagerTest, TestPowerQuery) {
       std::make_unique<CecManager>(udev_factory_mock_, cec_factory_mock_);
 
   CecDevice::GetTvPowerStatusCallback callback;
-  EXPECT_CALL(*cec_mock, GetTvPowerStatus(_)).WillOnce(::SaveArg<0>(&callback));
+  EXPECT_CALL(*cec_mock, GetTvPowerStatus(_)).WillOnce([&callback](auto&& cb) {
+    callback = std::move(cb);
+  });
 
   std::vector<TvPowerStatus> result;
-  cec_manager->GetTvsPowerStatus(base::Bind(Copy, &result));
+  cec_manager->GetTvsPowerStatus(base::BindOnce(Copy, &result));
 
   // Respond.
-  callback.Run(kTvPowerStatusToStandBy);
+  std::move(callback).Run(kTvPowerStatusToStandBy);
 
   ASSERT_EQ(1u, result.size());
   EXPECT_EQ(kTvPowerStatusToStandBy, result[0]);
@@ -168,7 +170,7 @@ TEST_F(CecManagerTest, TestDeviceRemovalWhileTvPowerQueryIsOngoing) {
   // We expect to get a vector of length 0 in response, in order to check for
   // that, set initial vector's length to 1.
   std::vector<TvPowerStatus> result(1);
-  cec_manager->GetTvsPowerStatus(base::Bind(Copy, &result));
+  cec_manager->GetTvsPowerStatus(base::BindOnce(Copy, &result));
 
   // Remove the device.
   device_removed_callback_.Run(base::FilePath("/dev/cec0"));

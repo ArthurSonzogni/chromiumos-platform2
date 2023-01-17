@@ -83,7 +83,7 @@ class CecDeviceTest : public ::testing::Test {
   // is about to probe the TV address.
   void SimulateProbingFailure();
 
-  CecFd::Callback event_callback_;
+  CecFd::EventCallback event_callback_;
   CecFdMock* cec_fd_mock_;  // owned by |device_|
   std::unique_ptr<CecDeviceImpl> device_;
   struct cec_msg sent_message_ = {};
@@ -636,9 +636,7 @@ TEST_F(CecDeviceTest, TestGetTvStatus) {
 
   TvPowerStatus power_status = kTvPowerStatusUnknown;
 
-  CecDevice::GetTvPowerStatusCallback callback =
-      base::Bind(Copy, &power_status);
-  device_->GetTvPowerStatus(callback);
+  device_->GetTvPowerStatus(base::BindOnce(Copy, &power_status));
 
   EXPECT_CALL(*cec_fd_mock_, TransmitMessage(_))
       .WillOnce(Invoke([](struct cec_msg* msg) {
@@ -667,7 +665,7 @@ TEST_F(CecDeviceTest, TestGetTvStatusOnDisconnect) {
   ConnectAndConfigureTVAddress(CEC_LOG_ADDR_TV);
 
   TvPowerStatus power_status = kTvPowerStatusUnknown;
-  device_->GetTvPowerStatus(base::Bind(Copy, &power_status));
+  device_->GetTvPowerStatus(base::BindOnce(Copy, &power_status));
 
   SendStateUpdateEvent(CEC_PHYS_ADDR_INVALID, CEC_LOG_ADDR_INVALID);
   EXPECT_EQ(kTvPowerStatusAdapterNotConfigured, power_status);
@@ -680,7 +678,7 @@ TEST_F(CecDeviceTest, TestGetTvStatusError) {
   TvPowerStatus power_status = kTvPowerStatusUnknown;
   EXPECT_CALL(*cec_fd_mock_, WriteWatch()).WillOnce(Return(false));
 
-  device_->GetTvPowerStatus(base::Bind(Copy, &power_status));
+  device_->GetTvPowerStatus(base::BindOnce(Copy, &power_status));
   EXPECT_EQ(kTvPowerStatusError, power_status);
 }
 
@@ -694,9 +692,7 @@ TEST_F(CecDeviceTest, TestGetTvStatusOnDisconnect2) {
   // in such case.
   TvPowerStatus power_status = kTvPowerStatusUnknown;
 
-  CecDevice::GetTvPowerStatusCallback callback =
-      base::Bind(Copy, &power_status);
-  device_->GetTvPowerStatus(callback);
+  device_->GetTvPowerStatus(base::BindOnce(Copy, &power_status));
 
   EXPECT_CALL(*cec_fd_mock_, TransmitMessage(_))
       .WillOnce(Invoke([](struct cec_msg* msg) {
@@ -759,12 +755,12 @@ TEST_F(CecDeviceTest, TestMaxTxQueueSize) {
 
   TvPowerStatus power_status;
   for (size_t i = 0; i < kCecDeviceMaxTxQueueSize; i++) {
-    device_->GetTvPowerStatus(base::Bind(Copy, &power_status));
+    device_->GetTvPowerStatus(base::BindOnce(Copy, &power_status));
   }
 
   // The output queue is full now, should respond immediately with an error.
   TvPowerStatus power_status_error = kTvPowerStatusUnknown;
-  device_->GetTvPowerStatus(base::Bind(Copy, &power_status_error));
+  device_->GetTvPowerStatus(base::BindOnce(Copy, &power_status_error));
   EXPECT_EQ(kTvPowerStatusError, power_status_error);
 }
 
@@ -1080,10 +1076,10 @@ TEST_F(CecDeviceTest, TestMessagesLostEventTriggersResponseToQuery) {
 
   // Send 2 get power status queries.
   TvPowerStatus power_status1 = kTvPowerStatusUnknown;
-  device_->GetTvPowerStatus(base::Bind(Copy, &power_status1));
+  device_->GetTvPowerStatus(base::BindOnce(Copy, &power_status1));
 
   TvPowerStatus power_status2 = kTvPowerStatusUnknown;
-  device_->GetTvPowerStatus(base::Bind(Copy, &power_status2));
+  device_->GetTvPowerStatus(base::BindOnce(Copy, &power_status2));
 
   // Make the fd write available, allowing the object to
   // send the first request.

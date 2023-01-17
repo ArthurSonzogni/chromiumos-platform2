@@ -25,7 +25,7 @@ namespace cecservice {
 class CecManager {
  public:
   using GetTvsPowerStatusCallback =
-      base::Callback<void(const std::vector<TvPowerStatus>&)>;
+      base::OnceCallback<void(const std::vector<TvPowerStatus>&)>;
 
   CecManager(const UdevFactory& udev_factory,
              const CecDeviceFactory& cec_factory);
@@ -63,7 +63,7 @@ class CecManager {
   // invoke the query's callback and return true. False is returned when not
   // all of the responses have been received and thus the query has not
   // completed yet.
-  bool MaybeRespondToTvsPowerStatusQuery(const TvsPowerStatusQuery& query);
+  bool MaybeRespondToTvsPowerStatusQuery(TvsPowerStatusQuery& query);
 
   // Called when udev reports that new device has been added.
   void OnDeviceAdded(const base::FilePath& device_path);

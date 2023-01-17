@@ -54,8 +54,8 @@ void CecServiceDBusAdaptor::GetTvsPowerStatus(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<std::vector<int32_t>>>
         response) {
-  cec_.GetTvsPowerStatus(base::Bind(&GetTvsPowerStatusCallback,
-                                    base::Passed(std::move(response))));
+  cec_.GetTvsPowerStatus(
+      base::BindOnce(&GetTvsPowerStatusCallback, std::move(response)));
 }
 
 }  // namespace cecservice

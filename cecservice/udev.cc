@@ -55,7 +55,8 @@ bool UdevImpl::Init(const DeviceCallback& device_added_callback,
 
   watcher_ = base::FileDescriptorWatcher::WatchReadable(
       udev_monitor_get_fd(monitor_.get()),
-      base::Bind(&UdevImpl::OnDeviceAction, weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&UdevImpl::OnDeviceAction,
+                          weak_factory_.GetWeakPtr()));
   if (!watcher_) {
     LOG(ERROR) << "Failed to register listener on udev descriptor";
     return false;
