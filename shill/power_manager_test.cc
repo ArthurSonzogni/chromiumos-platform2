@@ -78,14 +78,7 @@ class PowerManagerTest : public Test {
       : kTimeout(base::Seconds(3)),
         power_manager_(&control_),
         power_manager_proxy_(control_.power_manager_proxy()),
-        delegate_(control_.delegate()) {
-    suspend_imminent_callback_ = base::Bind(
-        &PowerManagerTest::SuspendImminentAction, base::Unretained(this));
-    suspend_done_callback_ = base::Bind(&PowerManagerTest::SuspendDoneAction,
-                                        base::Unretained(this));
-    dark_suspend_imminent_callback_ = base::Bind(
-        &PowerManagerTest::DarkSuspendImminentAction, base::Unretained(this));
-  }
+        delegate_(control_.delegate()) {}
 
   MOCK_METHOD(void, SuspendImminentAction, ());
   MOCK_METHOD(void, SuspendDoneAction, ());
@@ -93,9 +86,14 @@ class PowerManagerTest : public Test {
 
  protected:
   void SetUp() override {
-    power_manager_.Start(kTimeout, suspend_imminent_callback_,
-                         suspend_done_callback_,
-                         dark_suspend_imminent_callback_);
+    power_manager_.Start(
+        kTimeout,
+        base::BindRepeating(&PowerManagerTest::SuspendImminentAction,
+                            base::Unretained(this)),
+        base::BindRepeating(&PowerManagerTest::SuspendDoneAction,
+                            base::Unretained(this)),
+        base::BindRepeating(&PowerManagerTest::DarkSuspendImminentAction,
+                            base::Unretained(this)));
   }
 
   void TearDown() override { power_manager_.Stop(); }
@@ -184,9 +182,6 @@ class PowerManagerTest : public Test {
   PowerManager power_manager_;
   MockPowerManagerProxy* const power_manager_proxy_;
   PowerManagerProxyDelegate* const delegate_;
-  PowerManager::SuspendImminentCallback suspend_imminent_callback_;
-  PowerManager::SuspendDoneCallback suspend_done_callback_;
-  PowerManager::DarkSuspendImminentCallback dark_suspend_imminent_callback_;
 };
 
 const char PowerManagerTest::kDescription[] = "shill";

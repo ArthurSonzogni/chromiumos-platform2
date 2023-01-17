@@ -198,7 +198,7 @@ TEST_F(ProcessManagerTest,
   };
   pid_t actual_pid = process_manager_->StartProcessInMinijailWithPipes(
       FROM_HERE, base::FilePath(kProgram), kArgs, kEnv, minijail_options,
-      base::Callback<void(int)>(), std_fds);
+      base::DoNothing(), std_fds);
   EXPECT_EQ(kPid, actual_pid);
   AssertNonEmptyWatchedProcesses();
 }
@@ -231,7 +231,7 @@ TEST_F(ProcessManagerTest,
   struct std_file_descriptors std_fds = {nullptr, nullptr, nullptr};
   pid_t actual_pid = process_manager_->StartProcessInMinijailWithPipes(
       FROM_HERE, base::FilePath(kProgram), kArgs, {}, minijail_options,
-      base::Callback<void(int)>(), std_fds);
+      base::DoNothing(), std_fds);
   EXPECT_EQ(-1, actual_pid);
   AssertEmptyWatchedProcesses();
 }
@@ -265,7 +265,7 @@ TEST_F(ProcessManagerTest,
   struct std_file_descriptors std_fds = {nullptr, nullptr, nullptr};
   pid_t actual_pid = process_manager_->StartProcessInMinijailWithPipes(
       FROM_HERE, base::FilePath(kProgram), kArgs, kEnv, minijail_options,
-      base::Callback<void(int)>(), std_fds);
+      base::DoNothing(), std_fds);
   EXPECT_EQ(-1, actual_pid);
   AssertEmptyWatchedProcesses();
 }

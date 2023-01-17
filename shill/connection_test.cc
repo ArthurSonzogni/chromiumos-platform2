@@ -172,19 +172,6 @@ class ConnectionTest : public Test {
   }
 
  protected:
-  class DisconnectCallbackTarget {
-   public:
-    DisconnectCallbackTarget()
-        : callback_(base::Bind(&DisconnectCallbackTarget::CallTarget,
-                               base::Unretained(this))) {}
-
-    MOCK_METHOD(void, CallTarget, ());
-    const base::Closure& callback() const { return callback_; }
-
-   private:
-    base::Closure callback_;
-  };
-
   void AddDestructorExpectations() {
     ASSERT_NE(connection_, nullptr);
     EXPECT_CALL(routing_table_, FlushRoutes(connection_->interface_index_));

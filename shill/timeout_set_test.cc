@@ -67,8 +67,8 @@ template <typename T>
 class TimeoutSetTest : public Test {
  public:
   TimeoutSetTest() : current_time_(0), elements_(&current_time_) {
-    elements_.SetInformCallback(
-        base::Bind(&TimeoutSetTest::OnTimeout, base::Unretained(this)));
+    elements_.SetInformCallback(base::BindRepeating(&TimeoutSetTest::OnTimeout,
+                                                    base::Unretained(this)));
   }
 
  protected:

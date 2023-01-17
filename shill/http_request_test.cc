@@ -87,33 +87,21 @@ class HttpRequestTest : public Test {
  protected:
   class CallbackTarget {
    public:
-    CallbackTarget()
-        : request_success_callback_(
-              base::Bind(&CallbackTarget::RequestSuccessCallTarget,
-                         base::Unretained(this))),
-          request_error_callback_(
-              base::Bind(&CallbackTarget::RequestErrorCallTarget,
-                         base::Unretained(this))) {}
-
     MOCK_METHOD(void,
                 RequestSuccessCallTarget,
                 (std::shared_ptr<brillo::http::Response>));
     MOCK_METHOD(void, RequestErrorCallTarget, (HttpRequest::Result));
 
-    const base::Callback<void(std::shared_ptr<brillo::http::Response>)>&
-    request_success_callback() const {
-      return request_success_callback_;
+    base::OnceCallback<void(std::shared_ptr<brillo::http::Response>)>
+    request_success_callback() {
+      return base::BindOnce(&CallbackTarget::RequestSuccessCallTarget,
+                            base::Unretained(this));
     }
 
-    const base::Callback<void(HttpRequest::Result)>& request_error_callback()
-        const {
-      return request_error_callback_;
+    base::OnceCallback<void(HttpRequest::Result)> request_error_callback() {
+      return base::BindOnce(&CallbackTarget::RequestErrorCallTarget,
+                            base::Unretained(this));
     }
-
-   private:
-    base::Callback<void(std::shared_ptr<brillo::http::Response>)>
-        request_success_callback_;
-    base::Callback<void(HttpRequest::Result)> request_error_callback_;
   };
 
   void SetUp() override {

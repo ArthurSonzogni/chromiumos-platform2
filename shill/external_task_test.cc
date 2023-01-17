@@ -32,12 +32,12 @@ class ExternalTaskTest : public testing::Test, public RpcTaskDelegate {
  public:
   ExternalTaskTest()
       : weak_ptr_factory_(this),
-        death_callback_(base::Bind(&ExternalTaskTest::TaskDiedCallback,
-                                   weak_ptr_factory_.GetWeakPtr())),
-        external_task_(new ExternalTask(&control_,
-                                        &process_manager_,
-                                        weak_ptr_factory_.GetWeakPtr(),
-                                        death_callback_)),
+        external_task_(
+            new ExternalTask(&control_,
+                             &process_manager_,
+                             weak_ptr_factory_.GetWeakPtr(),
+                             base::BindOnce(&ExternalTaskTest::TaskDiedCallback,
+                                            weak_ptr_factory_.GetWeakPtr()))),
         test_rpc_task_destroyed_(false) {}
 
   ~ExternalTaskTest() override = default;
@@ -87,7 +87,6 @@ class ExternalTaskTest : public testing::Test, public RpcTaskDelegate {
   EventDispatcherForTest dispatcher_;
   MockProcessManager process_manager_;
   base::WeakPtrFactory<ExternalTaskTest> weak_ptr_factory_;
-  base::Callback<void(pid_t, int)> death_callback_;
   std::unique_ptr<ExternalTask> external_task_;
   bool test_rpc_task_destroyed_;
 };
