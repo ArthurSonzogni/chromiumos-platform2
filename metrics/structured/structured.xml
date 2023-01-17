@@ -764,6 +764,46 @@
   </event>
 </project>
 
+<project name="UsbDevice">
+  <owner>wonchung@google.com</owner>
+  <owner>chromeos-usb@google.com</owner>
+  <id>none</id>
+  <summary>
+    Project for recording basic USB device information that meets privacy constraints.
+  </summary>
+
+  <event name="UsbDeviceInfo">
+    <summary>
+      Records the USB device info.
+    </summary>
+    <metric name="VendorId" type="int">
+      <summary>
+        The vendor id of the USB device.
+      </summary>
+    </metric>
+    <metric name="VendorName" type="raw-string">
+      <summary>
+        The vendor name of the USB device.
+      </summary>
+    </metric>
+    <metric name="ProductId" type="int">
+      <summary>
+        The product id of the USB device.
+      </summary>
+    </metric>
+    <metric name="ProductName" type="raw-string">
+      <summary>
+        The product name of the USB device.
+      </summary>
+    </metric>
+    <metric name="DeviceClass" type="int">
+      <summary>
+        The device class of the USB device.
+      </summary>
+    </metric>
+  </event>
+</project>
+
 <project name="WiFiChipset">
   <owner>druth@google.com</owner>
   <owner>matthewmwang@chromium.org</owner>
