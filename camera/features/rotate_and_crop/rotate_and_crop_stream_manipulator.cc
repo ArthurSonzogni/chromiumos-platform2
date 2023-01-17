@@ -22,6 +22,7 @@
 #include <base/files/scoped_file.h>
 #include <base/strings/string_util.h>
 #include <base/task/bind_post_task.h>
+#include <brillo/key_value_store.h>
 
 #include "common/camera_hal3_helpers.h"
 #include "common/vendor_tag_manager.h"
@@ -73,6 +74,25 @@ libyuv::RotationMode RotateAndCropModeToLibyuvRotation(uint8_t rc_mode) {
   }
 }
 
+bool IsArcTBoard() {
+  static bool value = []() {
+    brillo::KeyValueStore store;
+    if (!store.Load(base::FilePath("/etc/lsb-release"))) {
+      LOGF(ERROR) << "Failed to read lsb-release";
+      return false;
+    }
+    std::string board;
+    if (!store.GetString("CHROMEOS_RELEASE_BOARD", &board)) {
+      LOGF(ERROR) << "Failed to read board name";
+      return false;
+    }
+    const std::string arc_t_suffix = "-arc-t";
+    return board.size() > arc_t_suffix.size() &&
+           board.substr(board.size() - arc_t_suffix.size()) == arc_t_suffix;
+  }();
+  return value;
+}
+
 }  // namespace
 
 RotateAndCropStreamManipulator::RotateAndCropStreamManipulator(
@@ -89,6 +109,9 @@ RotateAndCropStreamManipulator::~RotateAndCropStreamManipulator() {
 // static
 bool RotateAndCropStreamManipulator::UpdateVendorTags(
     VendorTagManager& vendor_tag_manager) {
+  if (!IsArcTBoard()) {
+    return true;
+  }
   if (!vendor_tag_manager.Add(RotateAndCropVendorTag::kHalAvailableModes,
                               RotateAndCropVendorTag::kSectionName,
                               RotateAndCropVendorTag::kHalAvailableModesTagName,
@@ -102,6 +125,9 @@ bool RotateAndCropStreamManipulator::UpdateVendorTags(
 // static
 bool RotateAndCropStreamManipulator::UpdateStaticMetadata(
     android::CameraMetadata* static_info) {
+  if (!IsArcTBoard()) {
+    return true;
+  }
   camera_metadata_entry_t entry =
       static_info->find(ANDROID_SCALER_AVAILABLE_ROTATE_AND_CROP_MODES);
   if (entry.count > 0) {
@@ -163,6 +189,9 @@ bool RotateAndCropStreamManipulator::Initialize(
 
 bool RotateAndCropStreamManipulator::ConfigureStreams(
     Camera3StreamConfiguration* stream_config) {
+  if (!IsArcTBoard()) {
+    return true;
+  }
   bool ret = false;
   thread_.PostTaskSync(
       FROM_HERE,
@@ -174,6 +203,9 @@ bool RotateAndCropStreamManipulator::ConfigureStreams(
 
 bool RotateAndCropStreamManipulator::OnConfiguredStreams(
     Camera3StreamConfiguration* stream_config) {
+  if (!IsArcTBoard()) {
+    return true;
+  }
   bool ret = false;
   thread_.PostTaskSync(
       FROM_HERE,
@@ -186,7 +218,7 @@ bool RotateAndCropStreamManipulator::OnConfiguredStreams(
 
 bool RotateAndCropStreamManipulator::ConstructDefaultRequestSettings(
     android::CameraMetadata* default_request_settings, int type) {
-  if (default_request_settings->isEmpty()) {
+  if (default_request_settings->isEmpty() || !IsArcTBoard()) {
     return true;
   }
   const uint8_t rc_mode = ANDROID_SCALER_ROTATE_AND_CROP_AUTO;
@@ -201,6 +233,9 @@ bool RotateAndCropStreamManipulator::ConstructDefaultRequestSettings(
 
 bool RotateAndCropStreamManipulator::ProcessCaptureRequest(
     Camera3CaptureDescriptor* request) {
+  if (!IsArcTBoard()) {
+    return true;
+  }
   bool ret = false;
   thread_.PostTaskSync(
       FROM_HERE,
@@ -213,6 +248,10 @@ bool RotateAndCropStreamManipulator::ProcessCaptureRequest(
 
 bool RotateAndCropStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
+  if (!IsArcTBoard()) {
+    callbacks_.result_callback.Run(std::move(result));
+    return true;
+  }
   bool ret = false;
   thread_.PostTaskSync(
       FROM_HERE,
@@ -236,6 +275,11 @@ bool RotateAndCropStreamManipulator::InitializeOnThread(
   DCHECK(thread_.IsCurrentThread());
 
   callbacks_ = callbacks;
+
+  if (!IsArcTBoard()) {
+    LOGF(INFO) << "Disabled on non-ARC-T board";
+    return true;
+  }
 
   base::span<const uint8_t> modes = GetRoMetadataAsSpan<uint8_t>(
       static_info, RotateAndCropVendorTag::kHalAvailableModes);
