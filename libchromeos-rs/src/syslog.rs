@@ -5,7 +5,7 @@
 use std::env;
 
 use crosvm_base::unix::getpid;
-use log::LevelFilter;
+pub use log::LevelFilter;
 use log::SetLoggerError;
 use stderrlog::StdErrLog;
 use syslog::{BasicLogger, Facility, Formatter3164};
@@ -46,18 +46,25 @@ pub fn get_syslog_logger(ident: String) -> Result<BasicLogger> {
 /// used. Afterward, debug!(...), info!(...), warn!(....), and error!(...)
 /// should be used instead.
 pub fn init(ident: String, log_to_stderr: bool) -> Result<()> {
+    init_with_level(ident, log_to_stderr, LevelFilter::Info)
+}
+
+pub fn init_with_level(ident: String, log_to_stderr: bool, max_level: LevelFilter) -> Result<()> {
     let syslog_logger = Box::new(get_syslog_logger(ident)?);
 
     if log_to_stderr {
         let mut stderr_logger = StdErrLog::new();
-        stderr_logger.verbosity(5);
+        stderr_logger.verbosity(max_level);
 
-        multi_log::MultiLogger::init(
-            vec![Box::new(stderr_logger), syslog_logger],
-            log::Level::Info,
-        )
+        if let Some(level) = max_level.to_level() {
+            multi_log::MultiLogger::init(vec![Box::new(stderr_logger), syslog_logger], level)
+        } else {
+            // When max_level is LevelFilter::Off, max_level.to_level() returns
+            // None. In this case, we don't need to initialize MultiLogger.
+            Ok(())
+        }
     } else {
-        log::set_boxed_logger(syslog_logger).map(|()| log::set_max_level(LevelFilter::Info))
+        log::set_boxed_logger(syslog_logger).map(|()| log::set_max_level(max_level))
     }
     .map_err(Error::SetLoggerError)
 }
