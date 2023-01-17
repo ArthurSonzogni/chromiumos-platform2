@@ -304,12 +304,7 @@ impl Command {
     }
 
     fn find_flag(&self, flag: &str) -> Option<&Flag> {
-        for f in &self.flags {
-            if f.name == flag {
-                return Some(f);
-            }
-        }
-        None
+        self.flags.iter().find(|&f| f.name == flag)
     }
 
     fn find_subcommand(&self, name: &str) -> Option<&Command> {
@@ -527,12 +522,7 @@ trait HasName {
 
 // Fetch a reference to an entry in a list by matching against get_name().
 fn find_by_name<'a, T: HasName>(name: &str, list: &'a [T]) -> Option<&'a T> {
-    for c in list {
-        if *c.get_name() == *name {
-            return Some(c);
-        }
-    }
-    None
+    list.iter().find(|&c| *c.get_name() == *name)
 }
 
 // Provide a CompletionResult after prefix matching against get_name().

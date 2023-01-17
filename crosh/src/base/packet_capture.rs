@@ -183,7 +183,7 @@ fn execute_packet_capture_helper(
     output_file_path: &str,
     dbus_options: HashMap<String, Variant<Box<dyn arg::RefArg>>>,
 ) -> Result<(), dispatcher::Error> {
-    let capture_file = File::create(&output_file_path).map_err(|err| {
+    let capture_file = File::create(output_file_path).map_err(|err| {
         eprintln!("Couldn't open capture file: {}", err);
         dispatcher::Error::CommandReturnedError
     })?;

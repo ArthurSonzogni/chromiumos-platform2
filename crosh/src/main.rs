@@ -127,7 +127,7 @@ fn handle_cmd(dispatcher: &Dispatcher, args: Vec<String>) -> Result<(), ()> {
         dispatch_cmd(dispatcher, args);
     }
 
-    COMMAND_RUNNING_PID.store(pid as i32, Ordering::Release);
+    COMMAND_RUNNING_PID.store(pid, Ordering::Release);
 
     let mut status: c_int = 1;
     // Safe because status is owned.
