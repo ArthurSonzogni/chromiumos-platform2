@@ -47,6 +47,9 @@ std::optional<std::string> IioDevice::GetLocation() const {
 
     if (label->find("-display") != std::string::npos)
       return "lid";
+
+    if (label->find("-camera") != std::string::npos)
+      return "camera";
   }
 
   return ReadStringAttribute(kLocationAttr);

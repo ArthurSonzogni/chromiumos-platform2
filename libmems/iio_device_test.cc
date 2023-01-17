@@ -186,7 +186,7 @@ INSTANTIATE_TEST_SUITE_P(
                       std::make_tuple(std::nullopt, "camera", "camera"),
                       std::make_tuple("accel-base", std::nullopt, "base"),
                       std::make_tuple("accel-display", "base", "lid"),
-                      std::make_tuple("accel-camera", "lid", "lid")));
+                      std::make_tuple("accel-camera", "lid", "camera")));
 
 }  // namespace
 
