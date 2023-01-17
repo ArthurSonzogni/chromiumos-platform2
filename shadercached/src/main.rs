@@ -27,7 +27,7 @@ pub async fn main() -> Result<()> {
 
     let identity =
         syslog::get_ident_from_process().unwrap_or_else(|| String::from(BINARY_IDENTITY));
-    if let Err(e) = syslog::init(identity, false) {
+    if let Err(e) = syslog::init_with_level(identity, false, syslog::LevelFilter::Info) {
         panic!("Failed to initialize syslog: {}", e);
     }
 
@@ -50,11 +50,7 @@ pub async fn main() -> Result<()> {
     let mount_points_resource = new_mount_map();
     tokio::spawn(async {
         let err = resource.await;
-        match mount_map_queue_unmount_all(mount_points_resource, None).await {
-            // TODO(b/264614608): wait for unmounts to be complete
-            Ok(_) => tokio::time::sleep(UNMOUNTER_INTERVAL * 2).await,
-            Err(e) => error!("Failed to queue unmounts: {}", e),
-        }
+        attempt_unmount_all(mount_points_resource).await;
         error!("Lost connection to D-Bus: {}", err);
         panic!("Lost connection to D-Bus: {}", err);
     });
@@ -178,11 +174,7 @@ pub async fn main() -> Result<()> {
     let (resource_listen, c_listen) = dbus_tokio::connection::new_system_sync()?;
     tokio::spawn(async {
         let err = resource_listen.await;
-        match mount_map_queue_unmount_all(listen_mount_points, None).await {
-            // TODO(b/264614608): wait for unmounts to be complete
-            Ok(_) => tokio::time::sleep(UNMOUNTER_INTERVAL * 2).await,
-            Err(e) => error!("Failed to queue unmounts: {}", e),
-        }
+        attempt_unmount_all(listen_mount_points).await;
 
         error!("Lost connection to D-Bus: {}", err);
         panic!("Lost connection to D-Bus: {}", err);
@@ -252,10 +244,21 @@ pub async fn main() -> Result<()> {
     drop(dlc_service_match);
     drop(concierge_match);
 
-    mount_map_queue_unmount_all(mount_points, None).await?;
-    // TODO(b/264614608): wait for unmounts to be complete instead of sleeping
-    tokio::time::sleep(UNMOUNTER_INTERVAL * 2).await;
+    mount_map_queue_unmount_all(mount_points.clone(), None).await?;
+    wait_unmount_completed(mount_points, None, None, UNMOUNTER_INTERVAL).await?;
 
     info!("Exiting!");
     Ok(())
+}
+
+async fn attempt_unmount_all(mount_map: ShaderCacheMountMap) {
+    match mount_map_queue_unmount_all(mount_map.clone(), None).await {
+        Ok(_) => {
+            if let Err(e) = wait_unmount_completed(mount_map, None, None, UNMOUNTER_INTERVAL).await
+            {
+                error!("Failed to wait for unmounts to complete: {}", e)
+            }
+        }
+        Err(e) => error!("Failed to queue unmounts: {}", e),
+    }
 }

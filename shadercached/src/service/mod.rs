@@ -209,11 +209,12 @@ pub async fn handle_purge(
     mount_map: ShaderCacheMountMap,
     conn: Arc<SyncConnection>,
 ) -> Result<(), MethodErr> {
-    mount_map_queue_unmount_all(mount_map, None)
+    mount_map_queue_unmount_all(mount_map.clone(), None)
         .await
         .map_err(to_method_err)?;
-    // TODO(b/264614608): wait for unmounts to be complete instead of sleeping
-    tokio::time::sleep(UNMOUNTER_INTERVAL * 2).await;
+    wait_unmount_completed(mount_map, None, None, UNMOUNTER_INTERVAL * 2)
+        .await
+        .map_err(to_method_err)?;
     let dlcservice_proxy = dbus::nonblock::Proxy::new(
         dlc_service::SERVICE_NAME,
         dlc_service::PATH_NAME,
@@ -380,4 +381,74 @@ pub async fn handle_vm_stopped(
         .map_err(to_method_err)?;
 
     Ok(())
+}
+
+pub async fn wait_unmount_completed(
+    mount_map: ShaderCacheMountMap,
+    steam_app_id: Option<SteamAppId>,
+    vm_id: Option<VmId>,
+    timeout: std::time::Duration,
+) -> Result<()> {
+    // Wait for unmount to be complete for all
+    let max_wait_time = if timeout < UNMOUNTER_INTERVAL {
+        debug!("Wait unmount timeout is smaller than unmounter interval, overridden to interval");
+        UNMOUNTER_INTERVAL
+    } else {
+        timeout
+    };
+
+    let start_time = std::time::Instant::now();
+    loop {
+        let mut still_mounted = false;
+        {
+            let mount_map = mount_map.read().await;
+            let mut shader_cache_mounts = std::vec::Vec::new();
+            if let Some(ref vm_id) = vm_id {
+                if let Some(item) = mount_map.get(vm_id) {
+                    shader_cache_mounts.push(item);
+                }
+            } else {
+                shader_cache_mounts.extend(mount_map.values());
+            }
+
+            // Note: We could use is_mounted() function instead of getting
+            // mount information manually here, but is_mounted() makes `mount`
+            // command every time, which we should avoid doing in this loop
+            // to minimize our time holding onto the read lock.
+            // TODO(b/266499555): code cleanup and restructuring
+            let output = std::process::Command::new("mount")
+                .stdout(std::process::Stdio::piped())
+                .output()?;
+            let mount_list = String::from_utf8(output.stdout)?;
+
+            for shader_cache_mount in shader_cache_mounts {
+                let path_to_check: String = if let Some(steam_app_id) = steam_app_id {
+                    shader_cache_mount.get_str_absolute_mount_destination_path(steam_app_id)?
+                } else {
+                    let shader_cache_mount_str_path = shader_cache_mount
+                        .absolute_mount_destination_path
+                        .to_str()
+                        .ok_or_else(|| anyhow!("Failed to convert PathBuf to string"))?;
+                    String::from(shader_cache_mount_str_path)
+                };
+
+                if mount_list.contains(&path_to_check) {
+                    still_mounted = true;
+                    break;
+                }
+            }
+        }
+
+        if !still_mounted {
+            return Ok(());
+        }
+
+        if start_time.elapsed() > max_wait_time {
+            break;
+        }
+        // No point checking more frequently than periodic unmounter
+        tokio::time::sleep(UNMOUNTER_INTERVAL).await;
+    }
+
+    Err(anyhow!("Time out while checking for mount status"))
 }

@@ -7,6 +7,7 @@ use crate::common::*;
 use anyhow::{anyhow, Result};
 use dbus::nonblock::SyncConnection;
 use libchromeos::sys::{debug, error, info, warn};
+use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
 use std::fs;
@@ -33,7 +34,7 @@ pub struct ShaderCacheMount {
     // Steam app ids to unmount in periodic unmount loop
     pub unmount_queue: HashSet<SteamAppId>,
     // Absolute path to bind-mount DLC contents into.
-    absolute_mount_destination_path: PathBuf,
+    pub absolute_mount_destination_path: PathBuf,
     // Within gpu cache directory, mesa creates a nested sub directory to store
     // shader cache. |relative_mesa_cache_path| is relative to the
     // render_server's base path within crosvm's gpu cache directory
@@ -142,10 +143,16 @@ impl ShaderCacheMount {
         // 620/foz_cache
         // 570/foz_cache
         //
+        let path_regex = Regex::new(r"([0-9]+)/.+")?;
         for relative_path in list_string.split('\n') {
-            // first entry in the relative path is the steam app id
-            if let Some(app_id_string) = relative_path.split('/').next() {
-                cleared_games.insert(app_id_string.parse::<SteamAppId>()?);
+            if let Some(capture) = path_regex.captures(relative_path) {
+                if let Some(app_id_string) = capture.get(1) {
+                    debug!("Converting to int {}", app_id_string.as_str());
+                    cleared_games.insert(app_id_string.as_str().parse::<SteamAppId>()?);
+                }
+            } else {
+                debug!("Unexpected path format, ignoring: {}", relative_path);
+                warn!("Unexpected path format found for one of the VM foz db list file");
             }
         }
 
@@ -153,12 +160,13 @@ impl ShaderCacheMount {
             let entry = entry?;
             if entry.path().is_dir() {
                 if let Ok(str_entry) = entry.file_name().into_string() {
-                    let found_id = str_entry.parse::<SteamAppId>()?;
-                    if !cleared_games.contains(&found_id) {
-                        debug!(
-                            "Found unexpected precompiled cache mount for app {}, ignoring",
-                            found_id
-                        );
+                    if let Ok(found_id) = str_entry.parse::<SteamAppId>() {
+                        if !cleared_games.contains(&found_id) {
+                            debug!(
+                                "Found unexpected precompiled cache mount for app {}, ignoring",
+                                found_id
+                            );
+                        }
                     }
                 }
             }

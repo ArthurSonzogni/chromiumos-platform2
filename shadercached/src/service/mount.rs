@@ -8,7 +8,6 @@ use crate::shader_cache_mount::*;
 use anyhow::{anyhow, Result};
 use dbus::{channel::Sender, nonblock::SyncConnection};
 use libchromeos::sys::{debug, info};
-use std::path::Path;
 use std::{
     fs,
     process::{Command, Stdio},
@@ -194,41 +193,13 @@ pub async fn unmount_dlc(
     }
 
     // Wait for unmount to be complete for all
-    let mut success = false;
-    for _ in 0..10 {
-        tokio::time::sleep(UNMOUNTER_INTERVAL).await;
-        let mut still_mounted = false;
-        {
-            // |mount_map| read mutex not required for background unmounter, but
-            // given |unmount_dlc| depends on other threads working on
-            // |mount_map|, it is safer to be conservative with mutex lifetimes.
-            let mount_map = mount_map.read().await;
-            for (vm_id, shader_cache_mount) in mount_map.iter() {
-                let str_path = shader_cache_mount
-                    .get_str_absolute_mount_destination_path(steam_app_id_to_unmount)?;
-                info!("checking if {} exists..", str_path);
-                let path = Path::new(&str_path);
-                if path.exists() {
-                    debug!("{:?} has {} still mounted", vm_id, steam_app_id_to_unmount);
-                    still_mounted = true;
-                    break;
-                }
-            }
-        }
-        if !still_mounted {
-            info!("{} has been unmounted for all VMs", steam_app_id_to_unmount);
-            success = true;
-            break;
-        }
-    }
+    super::wait_unmount_completed(
+        mount_map,
+        Some(steam_app_id_to_unmount),
+        None,
+        UNMOUNTER_INTERVAL * 2,
+    )
+    .await?;
 
-    if !success {
-        errors.push("DLC contents still mounted".into());
-    }
-
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(anyhow!("Unmount failure: {:?}", errors))
-    }
+    Ok(())
 }
