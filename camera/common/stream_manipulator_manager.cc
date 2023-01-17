@@ -282,9 +282,9 @@ bool StreamManipulatorManager::ConstructDefaultRequestSettings(
     android::CameraMetadata* default_request_settings, int type) {
   TRACE_COMMON();
 
-  for (auto& stream_manipulator : stream_manipulators_) {
-    stream_manipulator->ConstructDefaultRequestSettings(
-        default_request_settings, type);
+  for (auto it = stream_manipulators_.rbegin();
+       it != stream_manipulators_.rend(); ++it) {
+    (*it)->ConstructDefaultRequestSettings(default_request_settings, type);
   }
   return true;
 }

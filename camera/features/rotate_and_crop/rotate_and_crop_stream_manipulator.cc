@@ -186,6 +186,9 @@ bool RotateAndCropStreamManipulator::OnConfiguredStreams(
 
 bool RotateAndCropStreamManipulator::ConstructDefaultRequestSettings(
     android::CameraMetadata* default_request_settings, int type) {
+  if (default_request_settings->isEmpty()) {
+    return true;
+  }
   const uint8_t rc_mode = ANDROID_SCALER_ROTATE_AND_CROP_AUTO;
   if (default_request_settings->update(ANDROID_SCALER_ROTATE_AND_CROP, &rc_mode,
                                        1) != 0) {
