@@ -605,8 +605,7 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   EXPECT_EQ("1.2.255.255", props.broadcast_address);
   EXPECT_EQ(24, props.subnet_prefix);
   EXPECT_EQ("", props.peer_address);
-  EXPECT_EQ("99.88.77.66/32", props.exclusion_list[0]);
-  EXPECT_EQ(1, props.exclusion_list.size());
+  EXPECT_TRUE(props.exclusion_list.empty());
   EXPECT_EQ(1000, props.mtu);
   ASSERT_EQ(3, props.dns_servers.size());
   EXPECT_EQ("1.1.1.1", props.dns_servers[0]);

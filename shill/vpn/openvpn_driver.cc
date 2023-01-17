@@ -51,7 +51,6 @@ constexpr char kOpenVPNRedirectGateway[] = "redirect_gateway";
 constexpr char kOpenVPNRouteOptionPrefix[] = "route_";
 constexpr char kOpenVPNRouteNetGateway[] = "route_net_gateway";
 constexpr char kOpenVPNRouteVPNGateway[] = "route_vpn_gateway";
-constexpr char kOpenVPNTrustedIP[] = "trusted_ip";
 constexpr char kOpenVPNTunMTU[] = "tun_mtu";
 
 // Typically OpenVPN will set environment variables like:
@@ -371,10 +370,6 @@ void OpenVPNDriver::ParseIPConfiguration(
       }
     } else if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNRedirectGateway)) {
       redirect_gateway = true;
-    } else if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNTrustedIP)) {
-      size_t prefix = IPAddress::GetMaxPrefixLength(properties->address_family);
-      properties->exclusion_list.push_back(value + "/" +
-                                           base::NumberToString(prefix));
     } else if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNTunMTU)) {
       int mtu = 0;
       if (base::StringToInt(value, &mtu) && mtu >= IPConfig::kMinIPv4MTU) {
