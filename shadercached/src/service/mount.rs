@@ -67,7 +67,7 @@ pub fn bind_mount(shader_cache_mount: &ShaderCacheMount, steam_app_id: SteamAppI
         return Ok(());
     }
 
-    info!("Mounting {} into {}", src, dst);
+    debug!("Mounting {} into {}", src, dst);
 
     let mut mount_cmd = Command::new("mount")
         .arg("--bind")
@@ -122,6 +122,7 @@ pub async fn mount_dlc(
     mount_map: ShaderCacheMountMap,
     conn: Arc<SyncConnection>,
 ) -> Result<()> {
+    info!("Mounting DLC");
     // Iterate through all mount points then attempt to mount shader cache if
     // |target_steam_app_id| matches |steam_app_id_to_mount| (which was just
     // installed)
@@ -132,7 +133,7 @@ pub async fn mount_dlc(
         if shader_cache_mount.target_steam_app_id == steam_app_id_to_mount
             && !shader_cache_mount.mounted
         {
-            debug!("Mounting: {:?}", vm_id);
+            debug!("Mounting for {:?}", vm_id);
             let mount_result = shader_cache_mount
                 .setup_mount_destination(vm_id, steam_app_id_to_mount, conn.clone())
                 .await
@@ -167,6 +168,7 @@ pub async fn unmount_dlc(
     steam_app_id_to_unmount: SteamAppId,
     mount_map: ShaderCacheMountMap,
 ) -> Result<()> {
+    info!("Unmounting DLC");
     // Iterate through all mount points then queue unmount for
     // |steam_app_id_to_unmount|
     let mut errors: Vec<String> = vec![];

@@ -30,11 +30,12 @@ pub async fn handle_install(
 ) -> Result<(), MethodErr> {
     let request: InstallRequest = protobuf::Message::parse_from_bytes(&raw_bytes)
         .map_err(|e| dbus::MethodErr::invalid_arg(&e))?;
-
-    info!("Installing shader cache for {}", request.steam_app_id);
-
     // Populate mount path before installation to ensure mount happens
     if request.mount {
+        debug!(
+            "Install and mount requested for game {}",
+            request.steam_app_id
+        );
         let vm_id = VmId {
             vm_name: request.vm_name,
             vm_owner_id: request.vm_owner_id,
@@ -70,7 +71,7 @@ pub async fn handle_install(
         shader_cache_mount.mounted = false;
         shader_cache_mount.target_steam_app_id = request.steam_app_id;
 
-        info!(
+        debug!(
             "Mounting application {} to {:?} on successful installation",
             request.steam_app_id, vm_id
         );
@@ -91,7 +92,6 @@ pub async fn handle_uninstall(
     let request: UninstallRequest = protobuf::Message::parse_from_bytes(&raw_bytes)
         .map_err(|e| dbus::MethodErr::invalid_arg(&e))?;
 
-    info!("Uninstall called for app: {}", request.steam_app_id);
     // Instead of queueing unmount, we attempt to unmount directly here.
     // Uninstall should only succeed if umounting succeeds immediately
     // (ie. nothing is using this game's shader cache DLC).
@@ -117,7 +117,7 @@ async fn uninstall_shader_cache_dlc(
 
     let dlc_name = steam_app_id_to_dlc(steam_game_id);
 
-    info!("Requesting to uninstall {}", dlc_name);
+    debug!("Requesting to uninstall dlc {}", dlc_name);
     dlcservice_proxy
         .method_call(
             dlc_service::INTERFACE_NAME,
@@ -141,7 +141,7 @@ async fn install_shader_cache_dlc(
 
     let dlc_name = steam_app_id_to_dlc(steam_game_id);
 
-    info!("Requesting to install {}", dlc_name);
+    debug!("Requesting to install dlc {}", dlc_name);
     dlcservice_proxy
         .method_call(
             dlc_service::INTERFACE_NAME,
@@ -197,7 +197,8 @@ pub async fn handle_dlc_state_changed(
         && dlc_state.get_progress() == 1.0
     {
         if let Ok(id) = dlc_to_steam_app_id(dlc_state.get_id()) {
-            info!("ShaderCache DLC for {} installed, mounting if required", id);
+            info!("DLC state changed for shader cache DLC");
+            debug!("ShaderCache DLC for {} installed, mounting if required", id);
             if let Err(e) = mount_dlc(id, mount_map, conn).await {
                 warn!("Mount failed, {}", e);
             }
@@ -215,6 +216,7 @@ pub async fn handle_purge(
     wait_unmount_completed(mount_map, None, None, UNMOUNTER_INTERVAL * 2)
         .await
         .map_err(to_method_err)?;
+
     let dlcservice_proxy = dbus::nonblock::Proxy::new(
         dlc_service::SERVICE_NAME,
         dlc_service::PATH_NAME,

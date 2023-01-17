@@ -39,7 +39,7 @@ pub async fn main() -> Result<()> {
     // thread safe).
     let mount_points = new_mount_map();
 
-    info!(
+    debug!(
         "GPU PCI device ID is {:04x}, DLC variant {}",
         *GPU_DEVICE_ID, *GPU_DEVICE_DLC_VARIANT
     );
@@ -77,7 +77,7 @@ pub async fn main() -> Result<()> {
             ("install_request_proto",),
             (),
             move |mut ctx, _, (raw_bytes,): (Vec<u8>,)| {
-                info!("Received install request");
+                debug!("Received install request");
                 let handler =
                     handle_install(raw_bytes, mount_points_clone1.clone(), c_clone1.clone());
                 async move {
@@ -97,7 +97,7 @@ pub async fn main() -> Result<()> {
             ("uninstall_request_proto",),
             (),
             move |mut ctx, _, (raw_bytes,): (Vec<u8>,)| {
-                info!("Received uninstall request");
+                debug!("Received uninstall request");
                 let handler =
                     handle_uninstall(raw_bytes, mount_points_clone2.clone(), c_clone2.clone());
                 async move {
@@ -130,7 +130,7 @@ pub async fn main() -> Result<()> {
             ("unmount_request_proto",),
             (),
             move |mut ctx, _, (raw_bytes,): (Vec<u8>,)| {
-                info!("Received unmount request");
+                debug!("Received unmount request");
                 let handler = handle_unmount(raw_bytes, mount_points_clone4.clone());
                 async move {
                     match handler.await {
@@ -148,7 +148,7 @@ pub async fn main() -> Result<()> {
     let mount_points_clone_unmounter = mount_points.clone();
     tokio::spawn(async move {
         // Periodic unmount
-        info!(
+        debug!(
             "Periodic unmounter thread stated with interval {:?}",
             UNMOUNTER_INTERVAL
         );
@@ -247,7 +247,7 @@ pub async fn main() -> Result<()> {
     mount_map_queue_unmount_all(mount_points.clone(), None).await?;
     wait_unmount_completed(mount_points, None, None, UNMOUNTER_INTERVAL).await?;
 
-    info!("Exiting!");
+    info!("Exiting with successful cleanup!");
     Ok(())
 }
 

@@ -6,7 +6,7 @@ use crate::common::*;
 
 use anyhow::{anyhow, Result};
 use dbus::nonblock::SyncConnection;
-use libchromeos::sys::{debug, error, info, warn};
+use libchromeos::sys::{debug, error, warn};
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::ffi::OsString;
@@ -72,7 +72,7 @@ impl ShaderCacheMount {
             return Err(anyhow!("Failed to read contents: {}", e));
         }
 
-        info!("Adding {} to foz db list", steam_app_id);
+        debug!("Adding {} to foz db list", steam_app_id);
         let mut contents = read_result.unwrap();
 
         let entry_to_add = format!("{}/{}", steam_app_id, PRECOMPILED_CACHE_FILE_NAME);
@@ -103,7 +103,7 @@ impl ShaderCacheMount {
             return Err(anyhow!("Failed to read contents: {}", e));
         }
 
-        info!("Removing {} from foz db list if it exists", steam_app_id);
+        debug!("Removing {} from foz db list if it exists", steam_app_id);
         let contents = read_result.unwrap();
         let mut write_contents = String::new();
 
@@ -233,7 +233,7 @@ impl ShaderCacheMount {
         steam_app_id: SteamAppId,
         conn: Arc<SyncConnection>,
     ) -> Result<()> {
-        info!(
+        debug!(
             "Setting up mount destination for {:?}, game {}",
             vm_id, steam_app_id
         );
@@ -284,7 +284,7 @@ fn get_mesa_cache_relative_path(render_server_path: &Path) -> Result<PathBuf> {
         .join(MESA_SINGLE_FILE_DIR);
     let mut relative_path = Path::new(MESA_SINGLE_FILE_DIR).to_path_buf();
 
-    info!("Getting mesa hash and device id path");
+    debug!("Getting mesa hash and device id path");
 
     let mesa_hash = get_single_file(&absolute_path)?;
     absolute_path = absolute_path.join(&mesa_hash);
@@ -332,7 +332,7 @@ async fn add_shader_cache_group_permission(vm_id: &VmId, conn: Arc<SyncConnectio
     request.set_owner_id(vm_id.vm_owner_id.to_owned());
     let request_bytes = protobuf::Message::write_to_bytes(&request)?;
 
-    info!("Requesting concierge to add group permission");
+    debug!("Requesting concierge to add group permission");
     concierge_proxy
         .method_call(
             vm_concierge::INTERFACE_NAME,
