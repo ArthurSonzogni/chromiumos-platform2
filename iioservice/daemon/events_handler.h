@@ -37,7 +37,8 @@ class EventsHandler {
   ~EventsHandler();
 
   void ResetWithReason(cros::mojom::SensorDeviceDisconnectReason reason,
-                       std::string description);
+                       std::string description,
+                       base::OnceCallback<void()> callback);
 
   // It's the user's responsibility to maintain |client_data| before being
   // removed or this class being destructed.

@@ -65,11 +65,14 @@ EventsHandler::~EventsHandler() {
 }
 
 void EventsHandler::ResetWithReason(
-    cros::mojom::SensorDeviceDisconnectReason reason, std::string description) {
-  event_task_runner_->PostTask(
+    cros::mojom::SensorDeviceDisconnectReason reason,
+    std::string description,
+    base::OnceCallback<void()> callback) {
+  event_task_runner_->PostTaskAndReply(
       FROM_HERE,
       base::BindOnce(&EventsHandler::ResetWithReasonOnThread,
-                     weak_factory_.GetWeakPtr(), reason, description));
+                     weak_factory_.GetWeakPtr(), reason, description),
+      std::move(callback));
 }
 
 void EventsHandler::AddClient(

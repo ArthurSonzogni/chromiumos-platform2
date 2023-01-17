@@ -136,6 +136,16 @@ class FakeSamplesObserver : public cros::mojom::SensorDeviceSamplesObserver {
   int GetSampleIndex() const;
   const libmems::IioDevice::IioSample& GetLatestSample() const;
 
+  void WaitUntilReceiverReset() {
+    if (!is_bound())
+      return;
+
+    base::RunLoop loop;
+
+    reset_closure_ = loop.QuitClosure();
+    loop.Run();
+  }
+
  private:
   FakeSamplesObserver(
       libmems::IioDevice* device,
@@ -168,6 +178,7 @@ class FakeSamplesObserver : public cros::mojom::SensorDeviceSamplesObserver {
   libmems::IioDevice::IioSample sample_;
 
   mojo::Receiver<cros::mojom::SensorDeviceSamplesObserver> receiver_{this};
+  base::RepeatingClosure reset_closure_;
 
   SEQUENCE_CHECKER(sequence_checker_);
 
@@ -197,6 +208,16 @@ class FakeEventsObserver : public cros::mojom::SensorDeviceEventsObserver {
 
   void NextEventIndex();
 
+  void WaitUntilReceiverReset() {
+    if (!is_bound())
+      return;
+
+    base::RunLoop loop;
+
+    reset_closure_ = loop.QuitClosure();
+    loop.Run();
+  }
+
  private:
   void OnObserverDisconnect();
 
@@ -207,6 +228,7 @@ class FakeEventsObserver : public cros::mojom::SensorDeviceEventsObserver {
   int event_index_;
 
   mojo::Receiver<cros::mojom::SensorDeviceEventsObserver> receiver_{this};
+  base::RepeatingClosure reset_closure_;
 
   SEQUENCE_CHECKER(sequence_checker_);
 

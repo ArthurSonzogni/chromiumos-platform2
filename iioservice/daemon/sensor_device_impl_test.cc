@@ -89,6 +89,13 @@ class SensorDeviceImplTest : public ::testing::Test {
       device->AddChannel(std::move(chn));
     }
 
+    // Assume the device has iio events just for testing.
+    for (int i = 0; i < 4; ++i) {
+      device->AddEvent(std::make_unique<libmems::fakes::FakeIioEvent>(
+          iio_chan_type::IIO_PROXIMITY, iio_event_type::IIO_EV_TYPE_THRESH,
+          iio_event_direction::IIO_EV_DIR_EITHER, i));
+    }
+
     device_ = device.get();
     context_->AddDevice(std::move(device));
 
@@ -218,6 +225,10 @@ TEST_F(SensorDeviceImplTest, OnDeviceRemoved) {
   // potential missed samples between reconnections.
   device_->SetPauseCallbackAtKthSamples(0, base::BindOnce([]() {}));
 
+  // Set the pause in the beginning to prevent reading events before all
+  // clients added.
+  device_->SetPauseCallbackAtKthEvents(0, base::BindOnce([]() {}));
+
   double frequency = libmems::fakes::kFakeSamplingFrequency;
   remote_->SetTimeout(0);
   remote_->SetFrequency(frequency, base::BindOnce([](double result_freq) {
@@ -242,6 +253,14 @@ TEST_F(SensorDeviceImplTest, OnDeviceRemoved) {
   // Check SensorDevice::StopReadingSamples works.
   remote_->StartReadingSamples(std::move(pending_remote));
 
+  std::set<int32_t> enabled_events = {0, 1};
+  auto fake_events_observer = std::make_unique<fakes::FakeEventsObserver>(
+      device_, std::multiset<std::pair<int, cros::mojom::ObserverErrorType>>(),
+      enabled_events);
+  remote_->StartReadingEvents(
+      std::vector<int32_t>(enabled_events.begin(), enabled_events.end()),
+      fake_events_observer->GetRemote());
+
   // Wait until |sensor_device_| starts reading samples for |remote_|.
   base::RunLoop().RunUntilIdle();
 
@@ -251,8 +270,12 @@ TEST_F(SensorDeviceImplTest, OnDeviceRemoved) {
                           LOGF(FATAL) << "The device should've been deprecated";
                         }));
 
-  WaitUntilRemoteReset();
+  fake_observer->WaitUntilReceiverReset();
   EXPECT_FALSE(fake_observer->is_bound());
+
+  fake_events_observer->WaitUntilReceiverReset();
+  EXPECT_FALSE(fake_events_observer->is_bound());
+
   EXPECT_FALSE(remote_.is_bound());
 }
 

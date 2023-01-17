@@ -99,14 +99,27 @@ void SensorDeviceImpl::OnDeviceRemoved(int iio_device_id) {
     }
   }
 
-  auto it_handler = samples_handlers_.find(iio_device_id);
-  if (it_handler != samples_handlers_.end()) {
-    it_handler->second->ResetWithReason(
+  auto it_samples_handler = samples_handlers_.find(iio_device_id);
+  if (it_samples_handler != samples_handlers_.end()) {
+    it_samples_handler->second->ResetWithReason(
         cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED,
         kDeviceRemovedDescription,
         base::BindOnce(&SensorDeviceImpl::OnDeviceRemoved,
                        weak_factory_.GetWeakPtr(), iio_device_id));
-    samples_handlers_.erase(it_handler);
+    samples_handlers_.erase(it_samples_handler);
+    // |OnDeviceRemoved| will be called again after SensorDeviceSamplesObserver
+    // mojo pipes are reset in |sample_thread_|.
+    return;
+  }
+
+  auto it_events_handler = events_handlers_.find(iio_device_id);
+  if (it_events_handler != events_handlers_.end()) {
+    it_events_handler->second->ResetWithReason(
+        cros::mojom::SensorDeviceDisconnectReason::DEVICE_REMOVED,
+        kDeviceRemovedDescription,
+        base::BindOnce(&SensorDeviceImpl::OnDeviceRemoved,
+                       weak_factory_.GetWeakPtr(), iio_device_id));
+    events_handlers_.erase(it_events_handler);
     // |OnDeviceRemoved| will be called again after SensorDeviceSamplesObserver
     // mojo pipes are reset in |sample_thread_|.
     return;

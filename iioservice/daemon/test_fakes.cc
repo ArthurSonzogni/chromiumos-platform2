@@ -267,6 +267,9 @@ void FakeSamplesObserver::OnObserverDisconnect() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   receiver_.reset();
+
+  if (reset_closure_)
+    reset_closure_.Run();
 }
 
 int FakeSamplesObserver::GetStep() const {
@@ -395,6 +398,9 @@ void FakeEventsObserver::OnObserverDisconnect() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   receiver_.reset();
+
+  if (reset_closure_)
+    reset_closure_.Run();
 }
 
 }  // namespace fakes
