@@ -60,5 +60,12 @@ TEST_F(FileUtilsTest, ReadInteger) {
       ReadInteger(root_dir(), kFileNameNotExist, &base::StringToInt, &num));
 }
 
+TEST(FileUtilsDirectTest, RootDirWithoutOverridden) {
+  EXPECT_EQ(GetRootDir(), base::FilePath{"/"});
+  EXPECT_EQ(GetRootedPath(base::FilePath{"/"}), base::FilePath{"/"});
+  EXPECT_EQ(GetRootedPath(base::FilePath{"/abc"}), base::FilePath{"/abc"});
+  EXPECT_EQ(GetRootedPath("/abc"), base::FilePath{"/abc"});
+}
+
 }  // namespace
 }  // namespace diagnostics

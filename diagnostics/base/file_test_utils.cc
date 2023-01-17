@@ -24,14 +24,19 @@ base::FilePath& RootDir() {
 }  // namespace
 
 base::FilePath GetRootDir() {
-  CHECK(!RootDir().empty()) << "RootDir is not set.";
+  if (RootDir().empty())
+    return base::FilePath{"/"};
   return RootDir();
 }
 
 base::FilePath GetRootedPath(base::FilePath path) {
-  const base::FilePath& root_dir = RootDir();
   CHECK(!path.empty());
   CHECK(path.IsAbsolute());
+  const base::FilePath& root_dir = RootDir();
+  // If the path is not overridden, don't modify the path.
+  if (root_dir.empty())
+    return path;
+
   CHECK(!root_dir.IsParent(path))
       << "The path is already under the test root " << root_dir;
   // Special case for who only want to get the root dir, which is not supported
