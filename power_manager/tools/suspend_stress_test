@@ -48,6 +48,16 @@ record_dmesg_for_iteration() {
   dmesg | tail -${lines} > ${filename}
 }
 
+# Dump STB for AMD Systems for 1st failure.
+record_stb_for_s0ix_error() {
+  local stbFilename=${FLAGS_record_dmesg_dir}/stb_dump
+
+  if [ -e /sys/kernel/debug/amd_pmc/stb_read ]; then
+    echo -n " (stb > ${stbFilename})..."
+    cat /sys/kernel/debug/amd_pmc/stb_read > ${stbFilename}
+  fi
+}
+
 get_success_count() {
   awk '$1 == "success:" { print $2 }' /sys/kernel/debug/suspend_stats
 }
@@ -361,6 +371,9 @@ while true; do
       exit_loop=1
     elif [ -n "${FLAGS_record_dmesg_dir}" ]; then
       record_dmesg_for_iteration ${cur}
+      if [ "${s0ix_errors}" = 1 ]; then
+        record_stb_for_s0ix_error
+      fi
     fi
   elif [ "${check_s2idle_errors}" = 1 ] && \
        [ "${cur_s2idle_count}" = "${last_s2idle_count}" ]; then
@@ -405,6 +418,9 @@ while true; do
   if [ ${cur} -eq ${FLAGS_count} ] || [ ${exit_loop} -eq 1 ]; then
     if [ ${exit_loop} -eq 1 -a -n "${FLAGS_record_dmesg_dir}" ]; then
       record_dmesg_for_iteration ${cur}
+      if [ "${s0ix_errors}" = 1 ]; then
+        record_stb_for_s0ix_error
+      fi
     fi
     echo ""
     break
