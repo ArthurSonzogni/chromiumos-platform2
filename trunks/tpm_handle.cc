@@ -18,6 +18,7 @@
 
 #include "trunks/command_codes.h"
 #include "trunks/error_codes.h"
+#include "trunks/resilience/write_error_tracker.h"
 #include "trunks/tpm_generated.h"
 
 namespace trunks {
@@ -40,9 +41,14 @@ constexpr int kMaxRetry = 5;
 // Note that if this period is not enough, upstart will still respawn trunksd
 // after it all fall through.
 
+int MaskEINTR(int err) {
+  return (err == EINTR) ? 0 : err;
+}
+
 }  // namespace
 
-TpmHandle::TpmHandle() : fd_(kInvalidFileDescriptor) {}
+TpmHandle::TpmHandle(WriteErrorTracker& write_error_tracker)
+    : fd_(kInvalidFileDescriptor), write_error_tracker_(write_error_tracker) {}
 
 TpmHandle::~TpmHandle() {
   int result = IGNORE_EINTR(close(fd_));
@@ -115,6 +121,8 @@ std::string TpmHandle::SendCommandAndWait(const std::string& command) {
 TPM_RC TpmHandle::SendCommandInternal(const std::string& command,
                                       std::string* response) {
   CHECK_NE(fd_, kInvalidFileDescriptor);
+  // Make sure `errno` is set by `write()`.
+  errno = 0;
   int result = HANDLE_EINTR(write(fd_, command.data(), command.length()));
   if (result < 0 && errno == EREMOTEIO) {
     // Retry once in case the error is caused by late wakeup from sleep.
@@ -122,6 +130,13 @@ TPM_RC TpmHandle::SendCommandInternal(const std::string& command,
     LOG(WARNING) << "TPM: Retrying write after Remote I/O error.";
     result = HANDLE_EINTR(write(fd_, command.data(), command.length()));
   }
+
+  const int write_errno = MaskEINTR(errno);
+  const int prev_write_errno = write_error_tracker_.PushError(write_errno);
+  metrics_.ReportWriteErrorNo(prev_write_errno, write_errno);
+  // Recover errno in metrics reporting changes errno.
+  errno = write_errno;
+
   if (result < 0) {
     PLOG(ERROR) << "TPM: Error writing to TPM handle.";
     return TRUNKS_RC_WRITE_ERROR;

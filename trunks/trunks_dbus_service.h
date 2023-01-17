@@ -15,6 +15,7 @@
 
 #include "trunks/command_transceiver.h"
 #include "trunks/power_manager.h"
+#include "trunks/resilience/write_error_tracker.h"
 #include "trunks/trunks_interface.pb.h"
 
 namespace trunks {
@@ -29,7 +30,7 @@ namespace trunks {
 // service.Run();
 class TrunksDBusService : public brillo::DBusServiceDaemon {
  public:
-  TrunksDBusService();
+  explicit TrunksDBusService(WriteErrorTracker& write_error_tracker);
   TrunksDBusService(const TrunksDBusService&) = delete;
   TrunksDBusService& operator=(const TrunksDBusService&) = delete;
 
@@ -68,6 +69,7 @@ class TrunksDBusService : public brillo::DBusServiceDaemon {
   std::unique_ptr<brillo::dbus_utils::DBusObject> trunks_dbus_object_;
   CommandTransceiver* transceiver_ = nullptr;
   PowerManager* power_manager_ = nullptr;
+  WriteErrorTracker& write_error_tracker_;
 
   // Declared last so weak pointers are invalidated first on destruction.
   base::WeakPtrFactory<TrunksDBusService> weak_factory_{this};

@@ -7,6 +7,7 @@ import("//common-mk/proto_library.gni")
 
 group("all") {
   deps = [
+    ":install_tmpfiles_config",
     ":install_trunksd_conf",
     ":libtrunks",
     ":pinweaver_client",
@@ -20,7 +21,8 @@ group("all") {
 
   # TODO(b/265866896): provider better abstraction by adding trunks-pre-init
   # event instead
-  if (!use.cr50_onboard && !use.ti50_onboard) {
+  # TODO(b/267399953): remove use.generic_tpm2 once keeby-cq is removed.
+  if (!use.cr50_onboard && !use.ti50_onboard && !use.generic_tpm2) {
     deps += [ ":install_pre_init_config" ]
   }
   if (use.test) {
@@ -195,6 +197,7 @@ pkg_config("trunksd_lib_all_dependent_pkg_deps") {
 static_library("trunksd_lib") {
   sources = [
     "power_manager.cc",
+    "resilience/write_error_tracker_impl.cc",
     "resource_manager.cc",
     "tpm_handle.cc",
     "trunks_dbus_service.cc",
@@ -391,6 +394,11 @@ install_config("install_trunksd_conf") {
 install_config("install_pre_init_config") {
   sources = [ "placeholders/cr50-result.conf" ]
   install_path = "/etc/init"
+}
+
+install_config("install_tmpfiles_config") {
+  sources = [ "tmpfiles.d/trunks.conf" ]
+  install_path = "/usr/lib/tmpfiles.d"
 }
 
 generate_pkg_config("libtrunks") {

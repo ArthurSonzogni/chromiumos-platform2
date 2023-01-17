@@ -35,6 +35,8 @@ class TrunksMetrics {
   // This function reports the TPM command error code.
   void ReportTpmErrorCode(TPM_RC error_code);
 
+  void ReportWriteErrorNo(int prev, int next);
+
  private:
   MetricsLibrary metrics_library_;
 };

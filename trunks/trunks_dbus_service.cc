@@ -11,6 +11,7 @@
 
 #include "trunks/dbus_interface.h"
 #include "trunks/error_codes.h"
+#include "trunks/resilience/write_error_tracker.h"
 #include "trunks/trunks_interface.pb.h"
 
 namespace trunks {
@@ -18,8 +19,9 @@ namespace trunks {
 using brillo::dbus_utils::AsyncEventSequencer;
 using brillo::dbus_utils::DBusMethodResponse;
 
-TrunksDBusService::TrunksDBusService()
-    : brillo::DBusServiceDaemon(trunks::kTrunksServiceName) {}
+TrunksDBusService::TrunksDBusService(WriteErrorTracker& write_error_tracker)
+    : brillo::DBusServiceDaemon(trunks::kTrunksServiceName),
+      write_error_tracker_(write_error_tracker) {}
 
 void TrunksDBusService::RegisterDBusObjectsAsync(
     AsyncEventSequencer* sequencer) {
@@ -52,21 +54,28 @@ void TrunksDBusService::HandleSendCommand(
   using SharedResponsePointer =
       std::shared_ptr<DBusMethodResponse<const SendCommandResponse&>>;
   // A callback that constructs the response protobuf and sends it.
-  auto callback = [](const SharedResponsePointer& response,
+  auto callback = [](TrunksDBusService* service,
+                     const SharedResponsePointer& response,
                      const std::string& response_from_tpm) {
     SendCommandResponse tpm_response_proto;
     tpm_response_proto.set_response(response_from_tpm);
     response->Return(tpm_response_proto);
+    if (service->write_error_tracker_.ShallTryRecover()) {
+      // Note: we don't update the write errno in the file here, in case the
+      // the service loop quits for some other reasons.
+      LOG(INFO) << "Stopping service to try recovery from write error.";
+      service->Quit();
+    }
   };
   if (!request.has_command() || request.command().empty()) {
     LOG(ERROR) << "TrunksDBusService: Invalid request.";
-    callback(SharedResponsePointer(std::move(response_sender)),
+    callback(this, SharedResponsePointer(std::move(response_sender)),
              CreateErrorResponse(SAPI_RC_BAD_PARAMETER));
     return;
   }
   transceiver_->SendCommand(
       request.command(),
-      base::BindOnce(callback,
+      base::BindOnce(callback, base::Unretained(this),
                      SharedResponsePointer(std::move(response_sender))));
 }
 

@@ -10,6 +10,7 @@
 #include <string>
 
 #include "trunks/error_codes.h"
+#include "trunks/resilience/write_error_tracker.h"
 #include "trunks/trunks_metrics.h"
 
 namespace trunks {
@@ -25,7 +26,7 @@ namespace trunks {
 //   std::string response = handle.SendCommandAndWait(command);
 class TpmHandle : public CommandTransceiver {
  public:
-  TpmHandle();
+  explicit TpmHandle(WriteErrorTracker& write_error_tracker);
   TpmHandle(const TpmHandle&) = delete;
   TpmHandle& operator=(const TpmHandle&) = delete;
 
@@ -48,6 +49,7 @@ class TpmHandle : public CommandTransceiver {
   int fd_;  // A file descriptor for /dev/tpm0.
   // A TrunksMetrics instance for report UMA
   TrunksMetrics metrics_;
+  WriteErrorTracker& write_error_tracker_;
 };
 
 }  // namespace trunks

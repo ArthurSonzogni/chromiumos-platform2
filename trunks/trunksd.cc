@@ -10,6 +10,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/command_line.h>
+#include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/threading/thread.h>
 #include <brillo/syslog_logging.h>
@@ -20,6 +21,7 @@
 
 #include "trunks/background_command_transceiver.h"
 #include "trunks/power_manager.h"
+#include "trunks/resilience/write_error_tracker_impl.h"
 #include "trunks/resource_manager.h"
 #include "trunks/tpm_handle.h"
 #include "trunks/trunks_dbus_service.h"
@@ -41,6 +43,7 @@ const char kTrunksUser[] = "trunks";
 const char kTrunksGroup[] = "trunks";
 const char kTrunksSeccompPath[] = "/usr/share/policy/trunksd-seccomp.policy";
 const char kBackgroundThreadName[] = "trunksd_background_thread";
+const char kWriteErrorTrackingPath[] = "/run/trunks/last-write-error";
 
 void InitMinijailSandbox() {
   uid_t trunks_uid;
@@ -52,6 +55,7 @@ void InitMinijailSandbox() {
   ScopedMinijail j(minijail_new());
   minijail_set_seccomp_filter_tsync(j.get());
   minijail_no_new_privs(j.get());
+  minijail_bind(j.get(), "/run/trunks", "/run/trunks", 1);
   minijail_use_seccomp_filter(j.get());
   minijail_parse_seccomp_filters(j.get(), kTrunksSeccompPath);
   minijail_change_user(j.get(), kTrunksUser);
@@ -90,6 +94,8 @@ int main(int argc, char** argv) {
   bool noclose = cl->HasSwitch(switches::kNoCloseOnDaemonize);
   bool daemonize = !cl->HasSwitch(switches::kNoDaemonize);
 
+  trunks::WriteErrorTrackerImpl write_error_tracker(kWriteErrorTrackingPath);
+
   // Chain together command transceivers:
   //   [IPC] --> BackgroundCommandTransceiver
   //         --> ResourceManager
@@ -100,7 +106,7 @@ int main(int argc, char** argv) {
     LOG(INFO) << "Sending commands to FTDI SPI.";
     low_level_transceiver = new trunks::TrunksFtdiSpi();
   } else {
-    low_level_transceiver = new trunks::TpmHandle();
+    low_level_transceiver = new trunks::TpmHandle(write_error_tracker);
   }
   CHECK(low_level_transceiver->Init())
       << "Error initializing TPM communication.";
@@ -111,7 +117,7 @@ int main(int argc, char** argv) {
   }
 
   // Create a service instance so objects like AtExitManager exist.
-  trunks::TrunksDBusService service;
+  trunks::TrunksDBusService service(write_error_tracker);
 
   // This needs to be *after* opening the TPM handle and *before* starting the
   // background thread.
@@ -140,6 +146,10 @@ int main(int argc, char** argv) {
   hwsec_foundation::SetUpProfiling();
 
   int exit_code = service.Run();
+  if (!write_error_tracker.Write()) {
+    LOG(WARNING) << "Failed to write the write errorno.";
+  }
+
   // Need to stop the background thread before destroying ResourceManager
   // and PowerManager. Otherwise, a task posted by BackgroundCommandTransceiver
   // may attempt to access those destroyed objects.
