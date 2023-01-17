@@ -47,7 +47,7 @@ enum class EcCmdVersionSupportStatus {
 // See
 // https://source.chromium.org/chromiumos/_/chromium/chromiumos/platform/ec/+/f3ffccd7d0fe4d0ce60434310795a7bfdaa5274c:chip/stm32/spi.c;l=82;drc=dede4e01ae4c877bb05d671087a6e85a29a0f902
 // https://source.chromium.org/chromiumos/_/chromium/chromiumos/platform/ec/+/f3ffccd7d0fe4d0ce60434310795a7bfdaa5274c:chip/npcx/shi.c;l=118;drc=2a5ce905c11807a19035f7a072489df04be4db97
-inline constexpr static int kMaxPacketSize = 544;
+inline constexpr int kMaxPacketSize = 544;
 
 // Empty request or response for the EcCommand template below.
 struct EmptyParam {};
