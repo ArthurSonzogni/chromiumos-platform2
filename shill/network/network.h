@@ -299,6 +299,11 @@ class Network {
   mockable bool ipv4_gateway_found() const { return ipv4_gateway_found_; }
   mockable bool ipv6_gateway_found() const { return ipv6_gateway_found_; }
 
+  // Returns true if the DHCP parameters provided indicate that the Chromebook
+  // is tetherd to an Android mobile device or another Chromebook over a WiFi
+  // hotspot or a USB ethernet connection ("ANDROID_METERED" vendor option 43).
+  mockable bool IsConnectedViaTether() const;
+
   // Called by the Portal Detector whenever a trial completes.  Device
   // subclasses that choose unique mappings from portal results to connected
   // states can override this method in order to do so.

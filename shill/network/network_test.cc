@@ -817,6 +817,27 @@ TEST_F(NetworkTest, PortalDetectionResult_ClearAfterStop) {
   EXPECT_FALSE(network_->network_validation_result().has_value());
 }
 
+TEST_F(NetworkTest, IsConnectedViaTether) {
+  EXPECT_FALSE(network_->IsConnectedViaTether());
+
+  network_->set_ipconfig(
+      std::make_unique<IPConfig>(&control_interface_, kTestIfname));
+  EXPECT_FALSE(network_->IsConnectedViaTether());
+
+  IPConfig::Properties properties;
+  const char vendor_option1[] = "ANDROID_METERED";
+  properties.vendor_encapsulated_options =
+      ByteArray(vendor_option1, vendor_option1 + strlen(vendor_option1));
+  network_->ipconfig()->UpdateProperties(properties);
+  EXPECT_TRUE(network_->IsConnectedViaTether());
+
+  const char vendor_option2[] = "Some other non-empty value";
+  properties.vendor_encapsulated_options =
+      ByteArray(vendor_option2, vendor_option2 + strlen(vendor_option2));
+  network_->ipconfig()->UpdateProperties(properties);
+  EXPECT_FALSE(network_->IsConnectedViaTether());
+}
+
 // This group of tests verify the interaction between Network and Connection,
 // and the events sent out from Network, on calling Network::Start() and other
 // IP acquisition events.

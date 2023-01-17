@@ -33,6 +33,13 @@ namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDevice;
 }  // namespace Logging
 
+namespace {
+// Constant string advertised in DHCP Vendor option 43 by Android devices
+// sharing a metered network (typically a Cellular network) via tethering
+// over a WiFi hotspot or a USB ethernet connection.
+constexpr char kAndroidMeteredHotspotVendorOption[] = "ANDROID_METERED";
+}  // namespace
+
 Network::Network(int interface_index,
                  const std::string& interface_name,
                  Technology technology,
@@ -879,6 +886,19 @@ std::unique_ptr<ConnectionDiagnostics> Network::CreateConnectionDiagnostics() {
   return std::make_unique<ConnectionDiagnostics>(
       interface_name(), interface_index(), local(), gateway(), dns_servers(),
       dispatcher_, metrics_, base::DoNothing());
+}
+
+bool Network::IsConnectedViaTether() const {
+  if (!ipconfig_) {
+    return false;
+  }
+  const auto& vendor_option =
+      ipconfig_->properties().vendor_encapsulated_options;
+  if (vendor_option.size() != strlen(kAndroidMeteredHotspotVendorOption)) {
+    return false;
+  }
+  return memcmp(kAndroidMeteredHotspotVendorOption, vendor_option.data(),
+                vendor_option.size()) == 0;
 }
 
 }  // namespace shill

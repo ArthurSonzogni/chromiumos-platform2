@@ -1994,11 +1994,13 @@ TEST_F(WiFiServiceTest, SuspectedCredentialFailure) {
 }
 
 TEST_F(WiFiServiceTest, GetTethering) {
+  MockNetwork network(1, "ifname", Technology::kWiFi);
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
+  service->SetAttachedNetwork(network.AsWeakPtr());
   EXPECT_EQ(Service::TetheringState::kNotDetected, service->GetTethering());
 
   // Since the device isn't connected, we shouldn't even query the WiFi device.
-  EXPECT_CALL(*wifi(), IsConnectedViaTether()).Times(0);
+  EXPECT_CALL(network, IsConnectedViaTether()).Times(0);
   SetWiFiForService(service, wifi());
   EXPECT_EQ(Service::TetheringState::kNotDetected, service->GetTethering());
   Mock::VerifyAndClearExpectations(wifi().get());
@@ -2009,7 +2011,7 @@ TEST_F(WiFiServiceTest, GetTethering) {
 
   // A connected service should return "confirmed" iff the underlying device
   // reports it is tethered.
-  EXPECT_CALL(*wifi(), IsConnectedViaTether())
+  EXPECT_CALL(network, IsConnectedViaTether())
       .WillOnce(Return(true))
       .WillOnce(Return(false));
   EXPECT_EQ(Service::TetheringState::kConfirmed, service->GetTethering());
@@ -2026,17 +2028,17 @@ TEST_F(WiFiServiceTest, GetTethering) {
   service->AddEndpoint(endpoint_android2);
 
   // Since there are two endpoints, we should not detect tethering mode.
-  EXPECT_CALL(*wifi(), IsConnectedViaTether()).WillOnce(Return(false));
+  EXPECT_CALL(network, IsConnectedViaTether()).WillOnce(Return(false));
   EXPECT_EQ(Service::TetheringState::kNotDetected, service->GetTethering());
 
   // If the device reports that it is tethered, this should override any
   // findings gained from examining the endpoints.
-  EXPECT_CALL(*wifi(), IsConnectedViaTether()).WillOnce(Return(true));
+  EXPECT_CALL(network, IsConnectedViaTether()).WillOnce(Return(true));
   EXPECT_EQ(Service::TetheringState::kConfirmed, service->GetTethering());
 
   // Continue in the un-tethered device case for a few more tests below.
   Mock::VerifyAndClearExpectations(wifi().get());
-  EXPECT_CALL(*wifi(), IsConnectedViaTether()).WillRepeatedly(Return(false));
+  EXPECT_CALL(network, IsConnectedViaTether()).WillRepeatedly(Return(false));
 
   // Removing an endpoint so we only have one should put us in the "Suspected"
   // state.
@@ -2061,7 +2063,7 @@ TEST_F(WiFiServiceTest, GetTethering) {
   // If the device reports that it is tethered, this should override any
   // findings gained from examining the endpoints.
   Mock::VerifyAndClearExpectations(wifi().get());
-  EXPECT_CALL(*wifi(), IsConnectedViaTether()).WillOnce(Return(true));
+  EXPECT_CALL(network, IsConnectedViaTether()).WillOnce(Return(true));
   EXPECT_EQ(Service::TetheringState::kConfirmed, service->GetTethering());
 }
 

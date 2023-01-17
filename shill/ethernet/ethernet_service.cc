@@ -124,7 +124,7 @@ void EthernetService::OnVisibilityChanged() {
 }
 
 Service::TetheringState EthernetService::GetTethering() const {
-  return props_.ethernet_ && props_.ethernet_->IsConnectedViaTether()
+  return attached_network() && attached_network()->IsConnectedViaTether()
              ? TetheringState::kConfirmed
              : TetheringState::kNotDetected;
 }

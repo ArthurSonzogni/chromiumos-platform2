@@ -396,6 +396,9 @@ class Service : public base::RefCounted<Service> {
   // its value to true and mark it saved.
   virtual void EnableAndRetainAutoConnect();
 
+  // Returns the Network attached to this Service, or nullptr if the Service is
+  // not connected and has no associated Network.
+  Network* attached_network() const { return attached_network_.get(); }
   // Notifies Service that a connecting or connected Network is attached to this
   // Service.
   mockable void SetAttachedNetwork(base::WeakPtr<Network> network);

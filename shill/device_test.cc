@@ -575,31 +575,6 @@ TEST_F(DeviceTest, Resume) {
   device_->OnAfterResume();
 }
 
-TEST_F(DeviceTest, IsConnectedViaTether) {
-  EXPECT_FALSE(device_->IsConnectedViaTether());
-
-  // An empty ipconfig doesn't mean we're tethered.
-  network_->set_ipconfig(
-      std::make_unique<IPConfig>(control_interface(), kDeviceName));
-  EXPECT_FALSE(device_->IsConnectedViaTether());
-
-  // Add an ipconfig property that indicates this is an Android tether.
-  IPConfig::Properties properties;
-  properties.vendor_encapsulated_options =
-      ByteArray(Tethering::kAndroidVendorEncapsulatedOptions,
-                Tethering::kAndroidVendorEncapsulatedOptions +
-                    strlen(Tethering::kAndroidVendorEncapsulatedOptions));
-  network_->ipconfig()->UpdateProperties(properties);
-  EXPECT_TRUE(device_->IsConnectedViaTether());
-
-  const char kTestVendorEncapsulatedOptions[] = "Some other non-empty value";
-  properties.vendor_encapsulated_options = ByteArray(
-      kTestVendorEncapsulatedOptions,
-      kTestVendorEncapsulatedOptions + sizeof(kTestVendorEncapsulatedOptions));
-  network_->ipconfig()->UpdateProperties(properties);
-  EXPECT_FALSE(device_->IsConnectedViaTether());
-}
-
 TEST_F(DeviceTest, AvailableIPConfigs) {
   EXPECT_EQ(std::vector<RpcIdentifier>(), device_->AvailableIPConfigs(nullptr));
   network_->set_ipconfig(

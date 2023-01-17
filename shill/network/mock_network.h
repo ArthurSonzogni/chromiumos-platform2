@@ -78,6 +78,7 @@ class MockNetwork : public Network {
   MOCK_METHOD(void, StopPortalDetection, (), (override));
   MOCK_METHOD(bool, IsPortalDetectionInProgress, (), (const, override));
   MOCK_METHOD(void, StartConnectionDiagnostics, (), (override));
+  MOCK_METHOD(bool, IsConnectedViaTether, (), (const, override));
 };
 
 class MockNetworkEventHandler : public Network::EventHandler {

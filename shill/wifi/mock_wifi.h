@@ -53,7 +53,6 @@ class MockWiFi : public WiFi {
               (const WiFiEndpointConstRefPtr&),
               (override));
   MOCK_METHOD(bool, IsCurrentService, (const WiFiService* service), (const));
-  MOCK_METHOD(bool, IsConnectedViaTether, (), (const, override));
   MOCK_METHOD(int16_t, GetSignalLevelForActiveService, (), (override));
   MOCK_METHOD(bool, SupportAP, (), (const, override));
   MOCK_METHOD(void,

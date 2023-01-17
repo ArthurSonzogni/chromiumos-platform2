@@ -135,10 +135,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // no connected service, or if it does not match |service|.
   mockable bool IsConnectedToService(const ServiceRefPtr& service) const;
 
-  // Returns true if the DHCP parameters provided indicate that we are tethered
-  // to a mobile device.
-  mockable bool IsConnectedViaTether() const;
-
   // Called by Device so that subclasses can run hooks on the selected service
   // changed. This function is called after the |selected_service_| changed so
   // the subclasses can call the getter to retrieve the new selected service.
@@ -313,7 +309,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   FRIEND_TEST(DeviceTest, AvailableIPConfigs);
   FRIEND_TEST(DeviceTest, FetchTrafficCounters);
   FRIEND_TEST(DeviceTest, GetProperties);
-  FRIEND_TEST(DeviceTest, IsConnectedViaTether);
   FRIEND_TEST(DeviceTest, LinkMonitorFailure);
   FRIEND_TEST(DeviceTest, Load);
   FRIEND_TEST(DeviceTest, ResetConnection);

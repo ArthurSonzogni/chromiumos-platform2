@@ -557,7 +557,8 @@ bool WiFiService::SetMACPolicy(const std::string& policy, Error* error) {
 }
 
 Service::Service::TetheringState WiFiService::GetTethering() const {
-  if (IsConnected() && wifi_ && wifi_->IsConnectedViaTether()) {
+  if (IsConnected() && attached_network() &&
+      attached_network()->IsConnectedViaTether()) {
     return TetheringState::kConfirmed;
   }
 

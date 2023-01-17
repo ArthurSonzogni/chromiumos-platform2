@@ -51,7 +51,6 @@
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
 #include "shill/technology.h"
-#include "shill/tethering.h"
 
 namespace shill {
 
@@ -287,23 +286,6 @@ bool Device::IsConnected() const {
 
 bool Device::IsConnectedToService(const ServiceRefPtr& service) const {
   return service == selected_service_ && IsConnected();
-}
-
-bool Device::IsConnectedViaTether() const {
-  const auto* ipconfig = network_->ipconfig();
-  if (!ipconfig)
-    return false;
-
-  ByteArray vendor_encapsulated_options =
-      ipconfig->properties().vendor_encapsulated_options;
-  size_t android_vendor_encapsulated_options_len =
-      strlen(Tethering::kAndroidVendorEncapsulatedOptions);
-
-  return (vendor_encapsulated_options.size() ==
-          android_vendor_encapsulated_options_len) &&
-         !memcmp(&vendor_encapsulated_options[0],
-                 Tethering::kAndroidVendorEncapsulatedOptions,
-                 vendor_encapsulated_options.size());
 }
 
 void Device::OnSelectedServiceChanged(const ServiceRefPtr&) {}

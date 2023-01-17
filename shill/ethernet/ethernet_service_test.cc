@@ -4,6 +4,7 @@
 
 #include "shill/ethernet/ethernet_service.h"
 
+#include <base/memory/weak_ptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -12,10 +13,12 @@
 #include "shill/mock_adaptors.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_profile.h"
+#include "shill/network/mock_network.h"
 #include "shill/refptr_types.h"
 #include "shill/service_property_change_test.h"
 #include "shill/store/fake_store.h"
 #include "shill/store/property_store_test.h"
+#include "shill/technology.h"
 
 using ::testing::_;
 using ::testing::NiceMock;
@@ -112,9 +115,15 @@ TEST_F(EthernetServiceTest, LoadAutoConnect) {
 }
 
 TEST_F(EthernetServiceTest, GetTethering) {
-  EXPECT_CALL(*ethernet_, IsConnectedViaTether())
+  EXPECT_EQ(nullptr, service_->attached_network());
+  EXPECT_EQ(Service::TetheringState::kNotDetected, service_->GetTethering());
+
+  MockNetwork network(1, "eth0", Technology::kEthernet);
+  service_->SetAttachedNetwork(network.AsWeakPtr());
+  EXPECT_CALL(network, IsConnectedViaTether())
       .WillOnce(Return(true))
       .WillOnce(Return(false));
+  EXPECT_NE(nullptr, service_->attached_network());
   EXPECT_EQ(Service::TetheringState::kConfirmed, service_->GetTethering());
   EXPECT_EQ(Service::TetheringState::kNotDetected, service_->GetTethering());
 }

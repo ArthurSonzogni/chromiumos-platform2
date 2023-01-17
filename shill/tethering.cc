@@ -11,7 +11,6 @@
 namespace shill {
 
 // static
-const char Tethering::kAndroidVendorEncapsulatedOptions[] = "ANDROID_METERED";
 const uint8_t Tethering::kAndroidBSSIDPrefix[] = {0x02, 0x1a, 0x11};
 const uint32_t Tethering::kIosOui = 0x0017f2;
 const uint8_t Tethering::kLocallyAdministratedMacBit = 0x02;
