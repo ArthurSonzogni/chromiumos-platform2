@@ -33,9 +33,7 @@ using InterfacesRemovedSignalCallback = base::RepeatingCallback<void(
 class DBusObjectManagerProxyInterface {
  public:
   virtual ~DBusObjectManagerProxyInterface() = default;
-  virtual void GetManagedObjects(Error* error,
-                                 ManagedObjectsCallback callback,
-                                 int timeout) = 0;
+  virtual void GetManagedObjects(ManagedObjectsCallback callback) = 0;
   virtual void set_interfaces_added_callback(
       const InterfacesAddedSignalCallback& callback) = 0;
   virtual void set_interfaces_removed_callback(

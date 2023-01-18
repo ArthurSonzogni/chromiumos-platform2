@@ -32,9 +32,7 @@ class DBusObjectManagerProxy : public DBusObjectManagerProxyInterface {
   ~DBusObjectManagerProxy() override;
 
   // Inherited methods from DBusObjectManagerProxyInterface.
-  void GetManagedObjects(Error* error,
-                         ManagedObjectsCallback callback,
-                         int timeout) override;
+  void GetManagedObjects(ManagedObjectsCallback callback) override;
 
   void set_interfaces_added_callback(
       const InterfacesAddedSignalCallback& callback) override {

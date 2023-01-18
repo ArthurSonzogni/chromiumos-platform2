@@ -8,6 +8,7 @@
 
 #include <base/callback_helpers.h>
 #include <base/logging.h>
+#include <base/time/time.h>
 
 #include "shill/cellular/cellular_error.h"
 #include "shill/event_dispatcher.h"
@@ -21,6 +22,10 @@ static std::string ObjectID(const dbus::ObjectPath* p) {
   return p->value();
 }
 }  // namespace Logging
+
+namespace {
+constexpr base::TimeDelta kGetManagedObjectsTimeout = base::Seconds(5);
+}
 
 DBusObjectManagerProxy::DBusObjectManagerProxy(
     EventDispatcher* dispatcher,
@@ -60,12 +65,12 @@ DBusObjectManagerProxy::DBusObjectManagerProxy(
 
 DBusObjectManagerProxy::~DBusObjectManagerProxy() = default;
 
-void DBusObjectManagerProxy::GetManagedObjects(Error* error,
-                                               ManagedObjectsCallback callback,
-                                               int timeout) {
+void DBusObjectManagerProxy::GetManagedObjects(
+    ManagedObjectsCallback callback) {
   if (!service_available_) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kInternalError,
-                          "Service not available");
+    std::move(callback).Run(
+        ObjectsWithProperties(),
+        Error(Error::kInternalError, "Service not available", FROM_HERE));
     return;
   }
   auto split_cb = base::SplitOnceCallback(std::move(callback));
@@ -74,7 +79,7 @@ void DBusObjectManagerProxy::GetManagedObjects(Error* error,
                      weak_factory_.GetWeakPtr(), std::move(split_cb.first)),
       base::BindOnce(&DBusObjectManagerProxy::OnGetManagedObjectsFailure,
                      weak_factory_.GetWeakPtr(), std::move(split_cb.second)),
-      timeout);
+      kGetManagedObjectsTimeout.InMilliseconds());
 }
 
 void DBusObjectManagerProxy::OnServiceAvailable(bool available) {

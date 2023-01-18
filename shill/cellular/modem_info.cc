@@ -28,10 +28,6 @@ namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kModem;
 }  // namespace Logging
 
-namespace {
-constexpr int kGetManagedObjectsTimeout = 5000;
-}
-
 ModemInfo::ModemInfo(ControlInterface* control_interface, Manager* manager)
     : control_interface_(control_interface),
       manager_(manager),
@@ -92,12 +88,9 @@ std::unique_ptr<Modem> ModemInfo::CreateModem(
 void ModemInfo::Connect() {
   SLOG(1) << __func__;
   service_connected_ = true;
-  Error error;
   CHECK(proxy_);
-  proxy_->GetManagedObjects(&error,
-                            Bind(&ModemInfo::OnGetManagedObjectsReply,
-                                 weak_ptr_factory_.GetWeakPtr()),
-                            kGetManagedObjectsTimeout);
+  proxy_->GetManagedObjects(Bind(&ModemInfo::OnGetManagedObjectsReply,
+                                 weak_ptr_factory_.GetWeakPtr()));
 }
 
 void ModemInfo::Disconnect() {
@@ -162,8 +155,10 @@ void ModemInfo::OnInterfacesRemovedSignal(
 
 void ModemInfo::OnGetManagedObjectsReply(const ObjectsWithProperties& objects,
                                          const Error& error) {
-  if (!error.IsSuccess())
+  if (!error.IsSuccess()) {
+    error.Log();
     return;
+  }
   SLOG(2) << __func__;
   for (const auto& object_properties_pair : objects) {
     OnInterfacesAddedSignal(object_properties_pair.first,

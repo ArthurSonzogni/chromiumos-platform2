@@ -20,10 +20,7 @@ class MockDBusObjectManagerProxy : public DBusObjectManagerProxyInterface {
 
   ~MockDBusObjectManagerProxy() override;
 
-  MOCK_METHOD(void,
-              GetManagedObjects,
-              (Error*, ManagedObjectsCallback, int),
-              (override));
+  MOCK_METHOD(void, GetManagedObjects, (ManagedObjectsCallback), (override));
   MOCK_METHOD(void,
               set_interfaces_added_callback,
               (const InterfacesAddedSignalCallback&),

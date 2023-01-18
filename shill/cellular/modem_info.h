@@ -60,6 +60,7 @@ class ModemInfo {
   FRIEND_TEST(ModemInfoTest, AddRemoveInterfaces);
   FRIEND_TEST(ModemInfoTest, Connect);
   FRIEND_TEST(ModemInfoTest, StartStop);
+  FRIEND_TEST(ModemInfoTest, ModemManagerDown);
   FRIEND_TEST(ModemInfoTest, RestartModemManager);
 
   // Stops watching for the DBus modem manager service and destroys any
