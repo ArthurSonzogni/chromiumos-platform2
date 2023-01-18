@@ -68,6 +68,11 @@ std::optional<base::Value> MapFilesToDict(const base::FilePath& dir_path,
 std::vector<base::FilePath> Glob(const base::FilePath& pattern);
 std::vector<base::FilePath> Glob(const std::string& pattern);
 
+// Gets the path under the root directory provided by the `Context`. The path
+// should be absolute.
+base::FilePath GetRootedPath(const base::FilePath& path);
+base::FilePath GetRootedPath(base::StringPiece path);
+
 }  // namespace runtime_probe
 
 #endif  // RUNTIME_PROBE_UTILS_FILE_UTILS_H_

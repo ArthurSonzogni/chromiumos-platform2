@@ -12,8 +12,10 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_piece.h>
 #include <base/strings/string_util.h>
 
+#include "runtime_probe/system/context.h"
 #include "runtime_probe/utils/file_utils.h"
 
 namespace {
@@ -124,6 +126,26 @@ std::vector<base::FilePath> Glob(const base::FilePath& pattern) {
 
 std::vector<base::FilePath> Glob(const std::string& pattern) {
   return Glob(base::FilePath(pattern));
+}
+
+base::FilePath GetRootedPath(const base::FilePath& path) {
+  CHECK(!path.empty());
+  CHECK(path.IsAbsolute());
+  const base::FilePath& root_dir = Context::Get()->root_dir();
+
+  // Special case for who only want to get the root dir, which is not supported
+  // by `AppendRelativePath()`.
+  if (path == base::FilePath("/"))
+    return root_dir;
+  base::FilePath res = root_dir;
+  CHECK(base::FilePath("/").AppendRelativePath(path, &res))
+      << "Cannot append path " << path << " to " << root_dir
+      << " related to /.";
+  return res;
+}
+
+base::FilePath GetRootedPath(base::StringPiece path) {
+  return GetRootedPath(base::FilePath{path});
 }
 
 }  // namespace runtime_probe

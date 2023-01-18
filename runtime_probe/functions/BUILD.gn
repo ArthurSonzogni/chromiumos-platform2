@@ -24,6 +24,7 @@ source_set("functions") {
   sources = [
     "all_functions.cc",
     "ata_storage.cc",
+    "audio_codec.cc",
     "cellular_network.cc",
     "ectool_i2cread.cc",
     "edid.cc",
@@ -54,6 +55,7 @@ if (use.test) {
   source_set("test") {
     sources = [
       "ata_storage_test.cc",
+      "audio_codec_test.cc",
       "edid_test.cc",
       "generic_battery_test.cc",
       "generic_camera_test.cc",

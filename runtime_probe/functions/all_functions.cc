@@ -9,6 +9,7 @@
 #include "runtime_probe/probe_function.h"
 
 #include "runtime_probe/functions/ata_storage.h"
+#include "runtime_probe/functions/audio_codec.h"
 #include "runtime_probe/functions/cellular_network.h"
 #include "runtime_probe/functions/ectool_i2cread.h"
 #include "runtime_probe/functions/edid.h"
@@ -57,6 +58,7 @@ auto ConstructRegisteredFunctionTable() {
 
 auto ProbeFunction::registered_functions_ =
     ConstructRegisteredFunctionTable<AtaStorageFunction,
+                                     AudioCodecFunction,
                                      CellularNetworkFunction,
                                      EctoolI2Cread,
                                      EdidFunction,

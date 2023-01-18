@@ -32,6 +32,8 @@ class BaseFileTest : public ::testing::Test {
         : file_path_(path) {}
     PathType(const std::string& path)  // NOLINT(runtime/explicit)
         : file_path_(path) {}
+    PathType(base::StringPiece path)  // NOLINT(runtime/explicit)
+        : file_path_(path) {}
     PathType(const base::FilePath& path)  // NOLINT(runtime/explicit)
         : file_path_(path) {}
     PathType(base::FilePath&& path)  // NOLINT(runtime/explicit)
