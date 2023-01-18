@@ -521,6 +521,16 @@ int ChromeosStartup::Run() {
   base::FilePath encrypted_state_mnt = stateful_.Append(kEncryptedStatefulMnt);
   mount_helper_->RememberMount(encrypted_state_mnt);
 
+  // Setup the encrypted reboot vault once the encrypted stateful partition
+  // is available. If unlocking the encrypted reboot vault failed (due to
+  // power loss/reboot/invalid vault), attempt to recreate the encrypted reboot
+  // vault.
+  if (flags_.encrypted_reboot_vault) {
+    if (!utils::UnlockEncryptedRebootVault()) {
+      utils::CreateEncryptedRebootVault();
+    }
+  }
+
   int ret = RunChromeosStartupScript();
   if (ret) {
     // TODO(b/232901639): Improve failure reporting.
