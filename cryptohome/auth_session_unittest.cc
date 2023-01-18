@@ -102,6 +102,7 @@ using ::testing::VariantWith;
 constexpr char kFakeLabel[] = "test_label";
 constexpr char kFakeOtherLabel[] = "test_other_label";
 constexpr char kFakePinLabel[] = "test_pin_label";
+constexpr char kLegacyLabel[] = "legacy-0";
 // Fake passwords to be in used in this test suite.
 constexpr char kFakePass[] = "test_pass";
 constexpr char kFakePin[] = "123456";
@@ -4341,6 +4342,96 @@ TEST_F(AuthSessionWithUssExperimentTest, FingerprintAuthenticationForWebAuthn) {
   EXPECT_THAT(
       auth_session->authorized_intents(),
       UnorderedElementsAre(AuthIntent::kVerifyOnly, AuthIntent::kWebAuthn));
+}
+
+// Test that we can authenticate a old-style kiosk VK, and migrate it to USS
+// correctly. These old VKs show up as password VKs and so we need the
+// authenticate to successfully convert it to a kiosk based on the input.
+TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordVkToKioskUss) {
+  // Setup.
+  // Create a factor containing a password that will become a kiosk factor.
+  AuthFactorMap auth_factor_map;
+  auth_factor_map.Add(
+      std::make_unique<AuthFactor>(
+          AuthFactorType::kPassword, kLegacyLabel,
+          AuthFactorMetadata{.metadata = PasswordAuthFactorMetadata()},
+          AuthBlockState()),
+      AuthFactorStorageType::kVaultKeyset);
+  // Start a session with this single factor and USS migration enabled.
+  AuthSession auth_session(
+      {.username = kFakeUsername,
+       .obfuscated_username = SanitizeUserName(kFakeUsername),
+       .flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE,
+       .intent = AuthIntent::kDecrypt,
+       .on_timeout = base::DoNothing(),
+       .user_exists = true,
+       .auth_factor_map = std::move(auth_factor_map),
+       .migrate_to_user_secret_stash = true},
+      backing_apis_);
+  // Helpers to make keysets and keyblobs in the test.
+  auto make_vk = [this]() {
+    auto vk = std::make_unique<VaultKeyset>();
+    vk->Initialize(backing_apis_.platform, backing_apis_.crypto);
+    vk->SetLegacyIndex(0);
+    return vk;
+  };
+  auto make_key_blobs = []() {
+    auto key_blobs = std::make_unique<KeyBlobs>();
+    key_blobs->vkk_key = brillo::SecureBlob(32, 'J');
+    return key_blobs;
+  };
+  // Called within the converter_.PopulateKeyDataForVK(). We return an empty VK
+  // with no KeyData, like a legacy kiosk VK would have. We also have to fake
+  // out the actual authentication calls. Since the point here is to test the
+  // migration, not the authentication itself, we just respond with "yes, all
+  // good" everywhere.
+  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kLegacyLabel))
+      .WillRepeatedly([&](auto...) { return make_vk(); });
+  EXPECT_CALL(auth_block_utility_,
+              GetAuthBlockStateFromVaultKeyset(kLegacyLabel, _, _))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
+      .WillRepeatedly(Return(AuthBlockType::kScrypt));
+  EXPECT_CALL(auth_block_utility_,
+              DeriveKeyBlobsWithAuthBlockAsync(AuthBlockType::kScrypt, _, _, _))
+      .WillOnce([&](AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    const AuthBlockState& auth_state,
+                    AuthBlock::DeriveCallback derive_callback) {
+        std::move(derive_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(), make_key_blobs());
+      });
+  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
+      .WillOnce([&](auto...) { return make_vk(); });
+  // These calls will happen during the migration.
+  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(_, _, _))
+      .WillOnce([&](AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    AuthBlock::CreateCallback create_callback) {
+        std::move(create_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(), make_key_blobs(),
+                 std::make_unique<AuthBlockState>());
+      });
+
+  // Test.
+  user_data_auth::AuthenticateAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_label(kLegacyLabel);
+  request.mutable_auth_input()->mutable_kiosk_input();
+
+  TestFuture<CryptohomeStatus> authenticate_future;
+  auth_session.AuthenticateAuthFactor(request,
+                                      authenticate_future.GetCallback());
+
+  // Verify.
+  EXPECT_THAT(authenticate_future.Get(), IsOk());
+  ASSERT_THAT(auth_session.auth_factor_map().size(), Eq(1));
+  AuthFactorMap::ValueView stored_auth_factor =
+      *auth_session.auth_factor_map().begin();
+  const AuthFactor& auth_factor = stored_auth_factor.auth_factor();
+  EXPECT_THAT(stored_auth_factor.storage_type(),
+              Eq(AuthFactorStorageType::kUserSecretStash));
+  EXPECT_THAT(auth_factor.type(), Eq(AuthFactorType::kKiosk));
+  EXPECT_THAT(auth_factor.metadata().metadata,
+              VariantWith<KioskAuthFactorMetadata>(_));
 }
 
 }  // namespace cryptohome
