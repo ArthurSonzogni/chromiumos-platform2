@@ -2189,8 +2189,8 @@ TEST_F(KeysetManagementTest, AddKeysetWithKeyBlobsSuccess) {
   EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
             keyset_management_->AddKeysetWithKeyBlobs(
                 VaultKeysetIntent{.backup = false}, users_[0].obfuscated,
-                new_data, *vk_status.value().get(), std::move(new_key_blobs),
-                std::move(auth_state), false));
+                new_data.label(), new_data, *vk_status.value().get(),
+                std::move(new_key_blobs), std::move(auth_state), false));
 
   // VERIFY
   // After we add an additional keyset, we can list and read both of them.
@@ -2236,8 +2236,8 @@ TEST_F(KeysetManagementTest, AddKeysetWithKeyBlobsClobberSuccess) {
       CRYPTOHOME_ERROR_NOT_SET,
       keyset_management_->AddKeysetWithKeyBlobs(
           VaultKeysetIntent{.backup = false}, users_[0].obfuscated,
-          new_key_data, *vk_status.value().get(), std::move(new_key_blobs),
-          std::move(auth_state), true /*clobber*/));
+          new_key_data.label(), new_key_data, *vk_status.value().get(),
+          std::move(new_key_blobs), std::move(auth_state), true /*clobber*/));
 
   // VERIFY
   // After we add an additional keyset, we can list and read both of them.
@@ -2278,8 +2278,8 @@ TEST_F(KeysetManagementTest, AddKeysetWithKeyBlobsNoClobber) {
       CRYPTOHOME_ERROR_KEY_LABEL_EXISTS,
       keyset_management_->AddKeysetWithKeyBlobs(
           VaultKeysetIntent{.backup = false}, users_[0].obfuscated,
-          new_key_data, *vk_status.value().get(), std::move(new_key_blobs),
-          std::move(auth_state), false /*clobber*/));
+          new_key_data.label(), new_key_data, *vk_status.value().get(),
+          std::move(new_key_blobs), std::move(auth_state), false /*clobber*/));
 
   // VERIFY
   // After we add an additional keyset, we can list and read both of them.
@@ -2354,11 +2354,12 @@ TEST_F(KeysetManagementTest, AddKeysetWithKeyBlobsNoFreeIndices) {
       keyset_management_->GetValidKeysetWithKeyBlobs(
           users_[0].obfuscated, std::move(key_blobs_), kPasswordLabel);
   ASSERT_TRUE(vk_status.ok());
-  EXPECT_EQ(CRYPTOHOME_ERROR_KEY_QUOTA_EXCEEDED,
-            keyset_management_->AddKeysetWithKeyBlobs(
-                VaultKeysetIntent{.backup = false}, users_[0].obfuscated,
-                new_data, *vk_status.value().get(), std::move(new_key_blobs),
-                std::move(auth_state_), false /*clobber*/));
+  EXPECT_EQ(
+      CRYPTOHOME_ERROR_KEY_QUOTA_EXCEEDED,
+      keyset_management_->AddKeysetWithKeyBlobs(
+          VaultKeysetIntent{.backup = false}, users_[0].obfuscated,
+          new_data.label(), new_data, *vk_status.value().get(),
+          std::move(new_key_blobs), std::move(auth_state_), false /*clobber*/));
 
   // VERIFY
   // Nothing should change if we were not able to add keyset due to a lack of
@@ -2395,11 +2396,12 @@ TEST_F(KeysetManagementTest, AddKeysetWithKeyBlobsEncryptFail) {
   ASSERT_TRUE(vk_status.ok());
 
   // TEST
-  ASSERT_EQ(CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
-            keyset_management_->AddKeysetWithKeyBlobs(
-                VaultKeysetIntent{.backup = false}, users_[0].obfuscated,
-                new_data, *vk_status.value().get(), std::move(new_key_blobs),
-                std::move(auth_state_), false /*clobber*/));
+  ASSERT_EQ(
+      CRYPTOHOME_ERROR_BACKING_STORE_FAILURE,
+      keyset_management_->AddKeysetWithKeyBlobs(
+          VaultKeysetIntent{.backup = false}, users_[0].obfuscated,
+          new_data.label(), new_data, *vk_status.value().get(),
+          std::move(new_key_blobs), std::move(auth_state_), false /*clobber*/));
 
   // VERIFY
   // If we failed to save the added keyset due to disk failure, the old

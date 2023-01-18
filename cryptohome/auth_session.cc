@@ -438,7 +438,7 @@ void AuthSession::CreateAndPersistVaultKeyset(
   }
 
   CryptohomeStatus status =
-      AddVaultKeyset(key_data,
+      AddVaultKeyset(key_data.label(), key_data,
                      !auth_factor_map_.HasFactorWithStorage(
                          AuthFactorStorageType::kVaultKeyset),
                      VaultKeysetIntent{.backup = false}, std::move(key_blobs),
@@ -475,6 +475,7 @@ void AuthSession::CreateAndPersistVaultKeyset(
 }
 
 CryptohomeStatus AuthSession::AddVaultKeyset(
+    const std::string& key_label,
     const KeyData& key_data,
     bool is_initial_keyset,
     VaultKeysetIntent vk_backup_intent,
@@ -522,7 +523,7 @@ CryptohomeStatus AuthSession::AddVaultKeyset(
     user_data_auth::CryptohomeErrorCode error =
         static_cast<user_data_auth::CryptohomeErrorCode>(
             keyset_management_->AddKeysetWithKeyBlobs(
-                vk_backup_intent, obfuscated_username_, key_data,
+                vk_backup_intent, obfuscated_username_, key_label, key_data,
                 *vault_keyset_.get(), std::move(*key_blobs.get()),
                 std::move(auth_state), true /*clobber*/));
     if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
@@ -530,8 +531,7 @@ CryptohomeStatus AuthSession::AddVaultKeyset(
           CRYPTOHOME_ERR_LOC(kLocAuthSessionAddFailedInAddKeyset),
           ErrorActionSet({ErrorAction::kReboot}), error);
     }
-    LOG(INFO) << "AuthSession: added additional keyset " << key_data.label()
-              << ".";
+    LOG(INFO) << "AuthSession: added additional keyset " << key_label << ".";
   }
 
   return OkStatus<CryptohomeError>();
@@ -2051,12 +2051,13 @@ void AuthSession::PersistAuthFactorToUserSecretStashOnMigration(
     CryptoStatus callback_error,
     std::unique_ptr<KeyBlobs> key_blobs,
     std::unique_ptr<AuthBlockState> auth_block_state) {
+  // During the migration existing VaultKeyset should be recreated with the
+  // backup VaultKeyset logic.
   CryptohomeStatus status = PersistAuthFactorToUserSecretStashImpl(
       auth_factor_type, auth_factor_label, auth_factor_metadata, auth_input,
       key_data, std::move(auth_session_performance_timer),
       std::move(callback_error), std::move(key_blobs),
       std::move(auth_block_state));
-
   if (!status.ok()) {
     LOG(ERROR) << "USS migration of VaultKeyset with label "
                << auth_factor_label << " is failed: " << status;
@@ -2078,12 +2079,14 @@ void AuthSession::PersistAuthFactorToUserSecretStashOnMigration(
   // non-authenticated (encrypted) VaultKeyset object since it is costly to
   // create a new KeyBlob and encrypt the VaultKeyset again.
   bool migration_persisted = false;
+
   std::unique_ptr<VaultKeyset> vk = keyset_management_->GetVaultKeyset(
       obfuscated_username_, auth_factor_label);
   if (vk) {
     vk->MarkMigrated(/*migrated=*/true);
     migration_persisted = vk->Save(vk->GetSourceFile());
   }
+
   if (!migration_persisted) {
     LOG(ERROR)
         << "USS migration of VaultKeyset with label " << auth_factor_label
@@ -2216,7 +2219,7 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
   if (enable_create_backup_vk_with_uss_) {
     // Clobbering is on by default, so if USS&AuthFactor is added for migration
     // this will convert a regular VaultKeyset to a backup VaultKeyset.
-    status = AddVaultKeyset(key_data, /*is_initial_keyset=*/
+    status = AddVaultKeyset(auth_factor_label, key_data, /*is_initial_keyset=*/
                             auth_factor_map_.empty(),
                             VaultKeysetIntent{.backup = true},
                             std::move(key_blobs), std::move(auth_block_state));

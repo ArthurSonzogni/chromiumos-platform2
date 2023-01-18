@@ -546,6 +546,26 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationToUssWithNoKeyData) {
   ASSERT_NE(factor_map.find(kDefaultLabel), factor_map.end());
   ASSERT_EQ(auth_session->auth_factor_map().Find(kDefaultLabel)->storage_type(),
             AuthFactorStorageType::kUserSecretStash);
+
+  // Verify that the authentication succeeds after migration.
+  CryptohomeStatusOr<AuthSession*> auth_session2_status =
+      auth_session_manager_impl_->CreateAuthSession(kUsername, flags,
+                                                    AuthIntent::kDecrypt);
+  EXPECT_TRUE(auth_session2_status.ok());
+  AuthSession* auth_session2 = auth_session2_status.value();
+  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
+              auth_session2->GetStatus());
+
+  // Test that authenticating the password should migrate VaultKeyset to
+  // UserSecretStash, converting the VaultKeyset to a backup VaultKeyset.
+  EXPECT_FALSE(auth_session2->auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kVaultKeyset));
+  EXPECT_TRUE(auth_session2->auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kUserSecretStash));
+  AuthenticateAndMigrate(*auth_session2, kDefaultLabel, kPassword);
+
+  // Test that adding a new keyset succeeds
+  AddFactorWithMockAuthBlockUtility(*auth_session2, kPasswordLabel, kPassword);
 }
 
 // Test that creating user with USS and adding AuthFactors adds backup

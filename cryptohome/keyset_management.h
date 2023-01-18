@@ -234,6 +234,7 @@ class KeysetManagement {
   virtual CryptohomeErrorCode AddKeysetWithKeyBlobs(
       const VaultKeysetIntent& vk_intent,
       const std::string& obfuscated_username_new,
+      const std::string& key_label,
       const KeyData& key_data_new,
       const VaultKeyset& vault_keyset_old,
       KeyBlobs key_blobs_new,
@@ -286,6 +287,7 @@ class KeysetManagement {
   // nothing; if there is an identically labeled key, it will overwrite it.
   CryptohomeErrorCode AddKeysetImpl(const VaultKeysetIntent& vk_intent,
                                     const std::string& obfuscated_username_new,
+                                    const std::string& key_label,
                                     const KeyData& key_data_new,
                                     const VaultKeyset& vault_keyset_old,
                                     EncryptVkCallback encrypt_vk_callback,

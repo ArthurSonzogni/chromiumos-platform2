@@ -350,7 +350,8 @@ class AuthSession final {
   // Adds VaultKeyset for the |obfuscated_username_| by calling
   // KeysetManagement::AddInitialKeyset() or KeysetManagement::AddKeyset()
   // based on |is_initial_keyset|.
-  CryptohomeStatus AddVaultKeyset(const KeyData& key_data,
+  CryptohomeStatus AddVaultKeyset(const std::string& key_label,
+                                  const KeyData& key_data,
                                   bool is_initial_keyset,
                                   VaultKeysetIntent vk_backup_intent,
                                   std::unique_ptr<KeyBlobs> key_blobs,

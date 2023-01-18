@@ -118,6 +118,7 @@ class MockKeysetManagement : public KeysetManagement {
               AddKeysetWithKeyBlobs,
               (const VaultKeysetIntent&,
                const std::string&,
+               const std::string&,
                const KeyData&,
                const VaultKeyset&,
                KeyBlobs,
