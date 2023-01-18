@@ -685,7 +685,7 @@ bool MigrationHelper::MigrateFile(const base::FilePath& child,
     RecordFileErrorWithCurrentErrno(kMigrationFailedAtSync, child);
     return false;
   }
-  if (!RemoveTimeXattrs(child))
+  if (!RemoveTimeXattrsIfPresent(child))
     return false;
 
   return true;
@@ -718,6 +718,9 @@ bool MigrationHelper::CopyAttributes(const base::FilePath& child,
     return false;
   }
 
+  // Store mtime/atime to xattr if it's not done already. This should be after
+  // copying the other xattrs since this might cause ENOSPC error, in which case
+  // we proceed with the migration without copying mtime/atime.
   const auto& mtime = info.stat().st_mtim;
   const auto& atime = info.stat().st_atim;
   if (!SetExtendedAttributeIfNotPresent(child, delegate_->GetMtimeXattrName(),
@@ -760,6 +763,11 @@ bool MigrationHelper::FixTimes(const base::FilePath& child) {
   if (!platform_->GetExtendedFileAttribute(file, delegate_->GetMtimeXattrName(),
                                            reinterpret_cast<char*>(&mtime),
                                            sizeof(mtime))) {
+    if (errno == ENODATA) {
+      // If the xattr does not exist, it means it could not be set due to the
+      // ENOSPC error. In this case we proceed without copying mtime and atime.
+      return true;
+    }
     RecordFileErrorWithCurrentErrno(kMigrationFailedAtGetAttribute, child);
     return false;
   }
@@ -767,6 +775,10 @@ bool MigrationHelper::FixTimes(const base::FilePath& child) {
   if (!platform_->GetExtendedFileAttribute(file, delegate_->GetAtimeXattrName(),
                                            reinterpret_cast<char*>(&atime),
                                            sizeof(atime))) {
+    if (errno == ENODATA) {
+      // Same as mtime, proceed without copying mtime and atime.
+      return true;
+    }
     RecordFileErrorWithCurrentErrno(kMigrationFailedAtGetAttribute, child);
     return false;
   }
@@ -779,23 +791,27 @@ bool MigrationHelper::FixTimes(const base::FilePath& child) {
   return true;
 }
 
-bool MigrationHelper::RemoveTimeXattrs(const base::FilePath& child) {
+bool MigrationHelper::RemoveTimeXattrsIfPresent(const base::FilePath& child) {
   const base::FilePath file = to_base_path_.Append(child);
 
   if (!platform_->RemoveExtendedFileAttribute(file,
                                               delegate_->GetMtimeXattrName())) {
-    PLOG(ERROR) << "Failed to remove mtime extended attribute from "
-                << file.value();
-    RecordFileErrorWithCurrentErrno(kMigrationFailedAtRemoveAttribute, child);
-    return false;
+    if (errno != ENODATA) {
+      PLOG(ERROR) << "Failed to remove mtime extended attribute from "
+                  << file.value();
+      RecordFileErrorWithCurrentErrno(kMigrationFailedAtRemoveAttribute, child);
+      return false;
+    }
   }
 
   if (!platform_->RemoveExtendedFileAttribute(file,
                                               delegate_->GetAtimeXattrName())) {
-    PLOG(ERROR) << "Failed to remove atime extended attribute from "
-                << file.value();
-    RecordFileErrorWithCurrentErrno(kMigrationFailedAtRemoveAttribute, child);
-    return false;
+    if (errno != ENODATA) {
+      PLOG(ERROR) << "Failed to remove atime extended attribute from "
+                  << file.value();
+      RecordFileErrorWithCurrentErrno(kMigrationFailedAtRemoveAttribute, child);
+      return false;
+    }
   }
   return true;
 }
@@ -855,12 +871,12 @@ bool MigrationHelper::SetExtendedAttributeIfNotPresent(
     return false;
   }
   if (!platform_->SetExtendedFileAttribute(file, xattr, value, size)) {
-    bool nospace_error = errno == ENOSPC;
-    RecordFileErrorWithCurrentErrno(kMigrationFailedAtSetAttribute, child);
-    if (nospace_error) {
-      ReportTotalXattrSize(file, xattr.length() + 1 + size);
+    // If it's the ENOSPC error, proceed without copying mtime/atime.
+    if (errno != ENOSPC) {
+      RecordFileErrorWithCurrentErrno(kMigrationFailedAtSetAttribute, child);
+      return false;
     }
-    return false;
+    ReportTotalXattrSize(file, xattr.length() + 1 + size);
   }
   return true;
 }
@@ -977,7 +993,7 @@ bool MigrationHelper::DecrementChildCountAndDeleteIfNecessary(
     RecordFileErrorWithCurrentErrno(kMigrationFailedAtSync, child);
     return false;
   }
-  if (!RemoveTimeXattrs(child))
+  if (!RemoveTimeXattrsIfPresent(child))
     return false;
 
   // Don't delete the top directory.

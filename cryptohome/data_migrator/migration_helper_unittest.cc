@@ -556,6 +556,74 @@ TEST_F(MigrationHelperTest, ConvertXattrName) {
   EXPECT_STREQ(kValue2, value2.c_str());
 }
 
+TEST_F(MigrationHelperTest, SkipCopyingTimeOnMtimeENOSPC) {
+  // Test the case where mtime and atime of a file were not migrated because
+  // setting time xattr for mtime resulted in ENOSPC failure.
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
+
+  const FilePath kFromFile = from_dir_.Append("file");
+  const FilePath kToFile = to_dir_.Append("file");
+  ASSERT_TRUE(platform_.TouchFileDurable(kFromFile));
+
+  // Storing mtime in xattr fails with ENOSPC.
+  EXPECT_CALL(platform_, SetExtendedFileAttribute(_, _, _, _))
+      .WillRepeatedly(DoDefault());
+  EXPECT_CALL(platform_, SetExtendedFileAttribute(
+                             kToFile, delegate_.GetMtimeXattrName(), _, _))
+      .WillOnce(SetErrnoAndReturn(ENOSPC, false));
+
+  base::stat_wrapper_t from_stat;
+  ASSERT_TRUE(platform_.Stat(kFromFile, &from_stat));
+
+  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
+
+  // File is migrated and removed from the source.
+  base::stat_wrapper_t to_stat;
+  EXPECT_TRUE(platform_.Stat(kToFile, &to_stat));
+  EXPECT_FALSE(platform_.FileExists(kFromFile));
+
+  // The temporary xattr for storing atime should not exist.
+  ASSERT_FALSE(platform_.GetExtendedFileAttribute(
+      kToFile, delegate_.GetAtimeXattrName(), nullptr, 0));
+  ASSERT_EQ(ENODATA, errno);
+}
+
+TEST_F(MigrationHelperTest, SkipCopyingTimeOnAtimeENOSPC) {
+  // Test the case where mtime and atime of a file were not migrated because
+  // setting time xattr for atime resulted in ENOSPC failure.
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
+
+  const FilePath kFromFile = from_dir_.Append("file");
+  const FilePath kToFile = to_dir_.Append("file");
+  ASSERT_TRUE(platform_.TouchFileDurable(kFromFile));
+
+  // Storing atime in xattr fails with ENOSPC.
+  EXPECT_CALL(platform_, SetExtendedFileAttribute(_, _, _, _))
+      .WillRepeatedly(DoDefault());
+  EXPECT_CALL(platform_, SetExtendedFileAttribute(
+                             kToFile, delegate_.GetAtimeXattrName(), _, _))
+      .WillOnce(SetErrnoAndReturn(ENOSPC, false));
+
+  base::stat_wrapper_t from_stat;
+  ASSERT_TRUE(platform_.Stat(kFromFile, &from_stat));
+
+  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
+
+  // File is migrated and removed from the source.
+  base::stat_wrapper_t to_stat;
+  EXPECT_TRUE(platform_.Stat(kToFile, &to_stat));
+  EXPECT_FALSE(platform_.FileExists(kFromFile));
+
+  // The temporary xattr for storing mtime should not exist.
+  ASSERT_FALSE(platform_.GetExtendedFileAttribute(
+      kToFile, delegate_.GetMtimeXattrName(), nullptr, 0));
+  ASSERT_EQ(ENODATA, errno);
+}
+
 TEST_F(MigrationHelperTest, MigrateInProgress) {
   // Test the case where the migration was interrupted part way through, but in
   // a clean way such that the two directory trees are consistent (files are

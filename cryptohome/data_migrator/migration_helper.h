@@ -133,9 +133,11 @@ class BRILLO_EXPORT MigrationHelper {
   bool CopyAttributes(const base::FilePath& child,
                       const FileEnumerator::FileInfo& info);
   bool FixTimes(const base::FilePath& child);
-  // Remove the temporary xattrs used to store atime and mtime.
-  bool RemoveTimeXattrs(const base::FilePath& child);
+  // Remove the temporary xattrs used to store atime and mtime if they exist.
+  bool RemoveTimeXattrsIfPresent(const base::FilePath& child);
   bool CopyExtendedAttributes(const base::FilePath& child);
+  // Sets |xattr| with |value| for |to_base_path_|/|child|, but ignores ENOSPC
+  // failures. Used for temporarily storing atime and mtime in xattr.
   bool SetExtendedAttributeIfNotPresent(const base::FilePath& child,
                                         const std::string& xattr,
                                         const char* value,
