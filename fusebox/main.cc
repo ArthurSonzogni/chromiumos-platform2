@@ -826,6 +826,14 @@ class FuseBoxClient : public FileSystem {
       return;
     }
 
+    CallRead2(std::move(request), fuse_handle, size, off, std::vector<char>());
+  }
+
+  void CallRead2(std::unique_ptr<BufferRequest> request,
+                 uint64_t fuse_handle,
+                 size_t size,
+                 off_t off,
+                 std::vector<char> previous_data) {
     Read2RequestProto request_proto;
     request_proto.set_fuse_handle(fuse_handle);
     request_proto.set_offset(off);
@@ -835,13 +843,17 @@ class FuseBoxClient : public FileSystem {
     dbus::MessageWriter writer(&method);
     writer.AppendProtoAsArrayOfBytes(request_proto);
 
-    auto read2_response =
-        base::BindOnce(&FuseBoxClient::Read2Response,
-                       weak_ptr_factory_.GetWeakPtr(), std::move(request));
+    auto read2_response = base::BindOnce(
+        &FuseBoxClient::Read2Response, weak_ptr_factory_.GetWeakPtr(),
+        std::move(request), fuse_handle, size, off, std::move(previous_data));
     CallFuseBoxServerMethod(&method, std::move(read2_response));
   }
 
   void Read2Response(std::unique_ptr<BufferRequest> request,
+                     uint64_t fuse_handle,
+                     size_t size,
+                     off_t off,
+                     std::vector<char> previous_data,
                      dbus::Response* response) {
     VLOG(1) << "read2-resp";
 
@@ -856,7 +868,36 @@ class FuseBoxClient : public FileSystem {
     }
 
     const std::string& data = response_proto.data();
-    request->ReplyBuffer(data.data(), data.size());
+    const char* data_ptr = data.data();
+    const size_t data_len = data.size();
+
+    // Both the FUSE API and Chrome's storage C++ API have a "read up to MAX
+    // bytes" method. The semantics are subtly different when returning "N
+    // bytes were read". (N == 0) means EOF-or-error in both cases. (0 < N) &&
+    // (N < MAX) always means EOF-or-error for FUSE but not necessarily so for
+    // Chrome. In that case, save the partial response in the previous_data
+    // vector and issue another Chrome read call (via D-Bus).
+    bool partial_response = (0 < data_len) && (data_len < size);
+
+    if (!partial_response && previous_data.empty()) {
+      request->ReplyBuffer(data_ptr, data_len);
+      return;
+    }
+    previous_data.reserve(size);
+    previous_data.insert(previous_data.end(), data_ptr, data_ptr + data_len);
+    if (!partial_response) {
+      request->ReplyBuffer(previous_data.data(), previous_data.size());
+      return;
+    } else if ((off_t)(off + data_len) < off) {
+      errno = EINVAL;
+      request->ReplyError(errno);
+      PLOG(ERROR) << "read2-resp";
+      return;
+    }
+    size -= data_len;
+    off += data_len;
+    CallRead2(std::move(request), fuse_handle, size, off,
+              std::move(previous_data));
   }
 
   void Write(std::unique_ptr<WriteRequest> request,
