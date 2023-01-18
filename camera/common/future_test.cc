@@ -32,11 +32,11 @@ class FutureTest : public ::testing::Test {
 
   void TearDown() override { thread_.Stop(); }
 
-  void SignalCallback(const base::Callback<void()>& cb) { cb.Run(); }
+  void SignalCallback(base::OnceCallback<void()> cb) { std::move(cb).Run(); }
 
   template <typename T>
-  void SignalCallbackWith(const base::Callback<void(T)>& cb, T val) {
-    cb.Run(std::move(val));
+  void SignalCallbackWith(base::OnceCallback<void(T)> cb, T val) {
+    std::move(cb).Run(std::move(val));
   }
 
   void CancelCallback() { relay_.CancelAllFutures(); }
@@ -54,8 +54,8 @@ TEST_F(FutureTest, WaitTest) {
   auto future = Future<void>::Create(&relay_);
   thread_.task_runner()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&FutureTest::SignalCallback, base::Unretained(this),
-                 cros::GetFutureCallback(future)),
+      base::BindOnce(&FutureTest::SignalCallback, base::Unretained(this),
+                     cros::GetFutureCallback(future)),
       base::Milliseconds(2000));
   ASSERT_TRUE(future->Wait());
 
@@ -131,7 +131,7 @@ TEST_F(FutureTest, DelayedCancelTest) {
   auto future = Future<void>::Create(&relay_);
   thread_.task_runner()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&FutureTest::CancelCallback, base::Unretained(this)),
+      base::BindOnce(&FutureTest::CancelCallback, base::Unretained(this)),
       base::Milliseconds(2000));
   ASSERT_FALSE(future->Wait());
 }
@@ -147,8 +147,8 @@ TEST_F(FutureTest, FutureRefcountTest) {
   relay_.CancelAllFutures();
   thread_.task_runner()->PostDelayedTask(
       FROM_HERE,
-      base::Bind(&FutureTest::SignalCallback, base::Unretained(this),
-                 cros::GetFutureCallback(future)),
+      base::BindOnce(&FutureTest::SignalCallback, base::Unretained(this),
+                     cros::GetFutureCallback(future)),
       base::Milliseconds(2000));
   ASSERT_FALSE(future->Wait());
 }

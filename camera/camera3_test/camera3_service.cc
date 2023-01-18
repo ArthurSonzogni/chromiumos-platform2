@@ -563,14 +563,14 @@ void Camera3Service::Camera3DeviceService::StartPreviewOnServiceThread(
 }
 
 void Camera3Service::Camera3DeviceService::StopPreviewOnServiceThread(
-    base::Callback<void()> cb) {
+    base::OnceCallback<void()> cb) {
   DCHECK(service_thread_.IsCurrentThread());
 
   if (preview_state_ != PREVIEW_STARTED && preview_state_ != PREVIEW_STARTING) {
     return;
   }
   preview_state_ = PREVIEW_STOPPING;
-  stop_preview_cb_ = cb;
+  stop_preview_cb_ = std::move(cb);
 }
 
 void Camera3Service::Camera3DeviceService::StartAutoFocusOnServiceThread() {
@@ -590,10 +590,10 @@ void Camera3Service::Camera3DeviceService::StartAutoFocusOnServiceThread() {
 void Camera3Service::Camera3DeviceService::AddMetadataListenerOnServiceThread(
     int32_t key,
     std::unordered_set<int32_t> values,
-    base::Callback<void()> cb,
+    base::OnceCallback<void()> cb,
     int32_t* result) {
   DCHECK(service_thread_.IsCurrentThread());
-  metadata_listener_list_.emplace_back(key, values, cb, result);
+  metadata_listener_list_.emplace_back(key, values, std::move(cb), result);
 }
 
 void Camera3Service::Camera3DeviceService::
@@ -649,21 +649,22 @@ void Camera3Service::Camera3DeviceService::TakeStillCaptureOnServiceThread(
 }
 
 void Camera3Service::Camera3DeviceService::StartRecordingOnServiceThread(
-    const camera_metadata_t* metadata, base::Callback<void(int)> cb) {
+    const camera_metadata_t* metadata, base::OnceCallback<void(int)> cb) {
   DCHECK(service_thread_.IsCurrentThread());
 
   if (!metadata) {
     LOGF(ERROR) << "Invalid metadata settings";
-    cb.Run(-EINVAL);
+    std::move(cb).Run(-EINVAL);
     return;
   }
   if (preview_state_ != PREVIEW_STARTED) {
     VLOGF(2) << "Preview is not started yet. Retrying...";
     usleep(500);
     service_thread_.PostTaskAsync(
-        FROM_HERE, base::BindOnce(&Camera3Service::Camera3DeviceService::
-                                      StartRecordingOnServiceThread,
-                                  base::Unretained(this), metadata, cb));
+        FROM_HERE,
+        base::BindOnce(&Camera3Service::Camera3DeviceService::
+                           StartRecordingOnServiceThread,
+                       base::Unretained(this), metadata, std::move(cb)));
     return;
   }
   auto it = std::find_if(
@@ -672,7 +673,7 @@ void Camera3Service::Camera3DeviceService::StartRecordingOnServiceThread(
       });
   if (it == streams_.end()) {
     ADD_FAILURE() << "Failed to find configured recording stream";
-    cb.Run(-EINVAL);
+    std::move(cb).Run(-EINVAL);
     return;
   }
   const camera3_stream_t* record_stream = *it;
@@ -683,20 +684,20 @@ void Camera3Service::Camera3DeviceService::StartRecordingOnServiceThread(
     if (cam_device_.AllocateOutputBuffersByStreams(streams, &output_buffers) !=
         0) {
       ADD_FAILURE() << "Failed to allocate output buffer";
-      cb.Run(-EINVAL);
+      std::move(cb).Run(-EINVAL);
       return;
     }
     output_stream_buffers_[i][kRecordingOutputStreamIdx] =
         output_buffers.front();
   }
   recording_metadata_ = metadata;
-  cb.Run(0);
+  std::move(cb).Run(0);
 }
 
 void Camera3Service::Camera3DeviceService::StopRecordingOnServiceThread(
-    base::Callback<void()> cb) {
+    base::OnceCallback<void()> cb) {
   recording_metadata_ = nullptr;
-  stop_recording_cb_ = cb;
+  stop_recording_cb_ = std::move(cb);
 }
 
 void Camera3Service::Camera3DeviceService::
@@ -798,7 +799,7 @@ void Camera3Service::Camera3DeviceService::
       if (it->result) {
         *it->result = entry.data.i32[0];
       }
-      it->cb.Run();
+      std::move(it->cb).Run();
       it = metadata_listener_list_.erase(it);
     } else {
       it++;
@@ -876,16 +877,16 @@ void Camera3Service::Camera3DeviceService::
   sem_post(&preview_frame_sem_);
 
   if (!stop_recording_cb_.is_null() && !have_yuv_buffer) {
-    stop_recording_cb_.Run();
-    stop_recording_cb_.Reset();
+    std::move(stop_recording_cb_).Run();
   }
   if (stopping_preview) {
     VLOGF(1) << "Stopping preview ... (" << number_of_in_flight_requests_
              << " requests in flight";
     if (number_of_in_flight_requests_ == 0) {
       preview_state_ = PREVIEW_STOPPED;
-      stop_preview_cb_.Run();
-      stop_preview_cb_.Reset();
+      if (!stop_preview_cb_.is_null()) {
+        std::move(stop_preview_cb_).Run();
+      }
     }
     return;
   }

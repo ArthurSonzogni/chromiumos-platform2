@@ -11,8 +11,9 @@ namespace camera3_test {
 void Camera3RecordingFixture::SetUp() {
   ASSERT_EQ(0, cam_service_.Initialize(
                    Camera3Service::ProcessStillCaptureResultCallback(),
-                   base::Bind(&Camera3RecordingFixture::ProcessRecordingResult,
-                              base::Unretained(this))))
+                   base::BindRepeating(
+                       &Camera3RecordingFixture::ProcessRecordingResult,
+                       base::Unretained(this))))
       << "Failed to initialize camera service";
 }
 

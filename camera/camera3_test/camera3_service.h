@@ -44,17 +44,17 @@ class Camera3Service {
 
   ~Camera3Service();
 
-  typedef base::Callback<void(int cam_id,
-                              uint32_t frame_number,
-                              ScopedCameraMetadata metadata,
-                              cros::ScopedBufferHandle buffer)>
+  typedef base::RepeatingCallback<void(int cam_id,
+                                       uint32_t frame_number,
+                                       ScopedCameraMetadata metadata,
+                                       cros::ScopedBufferHandle buffer)>
       ProcessStillCaptureResultCallback;
 
-  typedef base::Callback<void(
+  typedef base::RepeatingCallback<void(
       int cam_id, uint32_t frame_number, ScopedCameraMetadata metadata)>
       ProcessRecordingResultCallback;
 
-  typedef base::Callback<void(
+  typedef base::RepeatingCallback<void(
       int cam_id, uint32_t frame_number, ScopedCameraMetadata metadata)>
       ProcessPreviewResultCallback;
 
@@ -218,11 +218,11 @@ class Camera3Service::Camera3DeviceService {
 
   void StartAutoFocusOnServiceThread();
 
-  void StopPreviewOnServiceThread(base::Callback<void()> cb);
+  void StopPreviewOnServiceThread(base::OnceCallback<void()> cb);
 
   void AddMetadataListenerOnServiceThread(int32_t key,
                                           std::unordered_set<int32_t> values,
-                                          base::Callback<void()> cb,
+                                          base::OnceCallback<void()> cb,
                                           int32_t* result);
 
   void DeleteMetadataListenerOnServiceThread(
@@ -240,9 +240,9 @@ class Camera3Service::Camera3DeviceService {
                                        base::Callback<void()> cb);
 
   void StartRecordingOnServiceThread(const camera_metadata_t* metadata,
-                                     base::Callback<void(int)> cb);
+                                     base::OnceCallback<void(int)> cb);
 
-  void StopRecordingOnServiceThread(base::Callback<void()> cb);
+  void StopRecordingOnServiceThread(base::OnceCallback<void()> cb);
 
   // This function can be called by PrepareStillCaptureAndStartPreview() or
   // ProcessResultMetadataOutputBuffers() to process one preview request.
@@ -270,7 +270,7 @@ class Camera3Service::Camera3DeviceService {
 
   int32_t preview_state_ = PREVIEW_STOPPED;
 
-  base::Callback<void()> stop_preview_cb_;
+  base::OnceCallback<void()> stop_preview_cb_;
 
   std::vector<const camera3_stream_t*> streams_;
 
@@ -302,18 +302,18 @@ class Camera3Service::Camera3DeviceService {
   // Metadata for recording requests
   const camera_metadata_t* recording_metadata_ = nullptr;
 
-  base::Callback<void()> stop_recording_cb_;
+  base::OnceCallback<void()> stop_recording_cb_;
 
   struct MetadataListener {
     int32_t key;
     std::unordered_set<int32_t> values;
-    base::Callback<void()> cb;
+    base::OnceCallback<void()> cb;
     int32_t* result;
     MetadataListener(int32_t k,
                      const std::unordered_set<int32_t>& v,
-                     base::Callback<void()> c,
+                     base::OnceCallback<void()> c,
                      int32_t* r)
-        : key(k), values(v), cb(c), result(r) {}
+        : key(k), values(v), cb(std::move(c)), result(r) {}
   };
 
   std::list<MetadataListener> metadata_listener_list_;

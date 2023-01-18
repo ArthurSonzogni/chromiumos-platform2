@@ -19,11 +19,11 @@
 namespace camera3_test {
 
 void Camera3StillCaptureFixture::SetUp() {
-  ASSERT_EQ(
-      0, cam_service_.Initialize(
-             base::Bind(&Camera3StillCaptureFixture::ProcessStillCaptureResult,
-                        base::Unretained(this)),
-             Camera3Service::ProcessRecordingResultCallback()))
+  ASSERT_EQ(0, cam_service_.Initialize(
+                   base::BindRepeating(
+                       &Camera3StillCaptureFixture::ProcessStillCaptureResult,
+                       base::Unretained(this)),
+                   Camera3Service::ProcessRecordingResultCallback()))
       << "Failed to initialize camera service";
   for (const auto& it : cam_ids_) {
     jpeg_max_sizes_[it] = cam_service_.GetStaticInfo(it)->GetJpegMaxSize();
