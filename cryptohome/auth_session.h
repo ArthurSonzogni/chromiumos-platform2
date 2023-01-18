@@ -154,16 +154,6 @@ class AuthSession final {
   // Must be called no more than once.
   CryptohomeStatus OnUserCreated();
 
-  // AddCredentials is called when newly created or existing user wants to add
-  // new credentials.
-  void AddCredentials(const user_data_auth::AddCredentialsRequest& request,
-                      StatusCallback on_done);
-
-  // UpdateCredential is called when an existing user wants to update
-  // an existing credential.
-  void UpdateCredential(const user_data_auth::UpdateCredentialRequest& request,
-                        StatusCallback on_done);
-
   // AddAuthFactor is called when newly created or existing user wants to add
   // new AuthFactor.
   void AddAuthFactor(const user_data_auth::AddAuthFactorRequest& request,
@@ -356,22 +346,6 @@ class AuthSession final {
       CryptoStatus error,
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_block_state);
-
-  // Determines which AuthBlockType to use, instantiates an AuthBlock of that
-  // type, and uses that AuthBlock to derive KeyBlobs for the AuthSession to
-  // add a VaultKeyset.
-  void CreateKeyBlobsToAddKeyset(const AuthInput& auth_input,
-                                 const KeyData& key_data,
-                                 bool is_initial_keyset,
-                                 std::unique_ptr<AuthSessionPerformanceTimer>
-                                     auth_session_performance_timer,
-                                 StatusCallback on_done);
-
-  // Determines which AuthBlockType to use, instantiates an AuthBlock of that
-  // type, and uses that AuthBlock to create KeyBlobs for the AuthSession to
-  // update a VaultKeyset.
-  void CreateKeyBlobsToUpdateKeyset(const Credentials& credentials,
-                                    StatusCallback on_done);
 
   // Adds VaultKeyset for the |obfuscated_username_| by calling
   // KeysetManagement::AddInitialKeyset() or KeysetManagement::AddKeyset()

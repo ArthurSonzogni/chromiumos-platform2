@@ -98,13 +98,13 @@ enum TimerType {
   kPerformEphemeralMountTimer = 13,
   kPerformMountTimer = 14,
   kGenerateEccAuthValueTimer = 15,
-  kAuthSessionAddCredentialsTimer = 16,
+  kAuthSessionAddCredentialsTimer = 16,  // Obsolete.
   kAuthSessionAddAuthFactorVKTimer = 17,
   kAuthSessionAddAuthFactorUSSTimer = 18,
   kAuthSessionAuthenticateTimer = 19,
   kAuthSessionAuthenticateAuthFactorVKTimer = 20,
   kAuthSessionAuthenticateAuthFactorUSSTimer = 21,
-  kAuthSessionUpdateCredentialsTimer = 22,
+  kAuthSessionUpdateCredentialsTimer = 22,  // Obsolete.
   kAuthSessionUpdateAuthFactorVKTimer = 23,
   kAuthSessionUpdateAuthFactorUSSTimer = 24,
   kAuthSessionRemoveAuthFactorVKTimer = 25,
