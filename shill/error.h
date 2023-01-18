@@ -74,7 +74,7 @@ class Error {
                 const std::string& message,
                 const base::Location& location);
 
-  void Log();
+  void Log() const;
 
   void Reset();
 

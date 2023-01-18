@@ -113,7 +113,7 @@ void Error::Populate(Type type,
   location_ = location;
 }
 
-void Error::Log() {
+void Error::Log() const {
   LogMessage(location_, type_, message_);
 }
 
