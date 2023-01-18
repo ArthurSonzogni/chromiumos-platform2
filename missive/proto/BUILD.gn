@@ -7,10 +7,7 @@ import("//common-mk/proto_library.gni")
 
 # Only used by the reporting-proto ebuild.
 group("all") {
-  deps = [
-    ":libmissive-events-goprotos",
-    ":libmissive-interface-goprotos",
-  ]
+  deps = [ ":libmissive-interface-goprotos" ]
 }
 
 proto_library("libmissiveprotostatus") {
@@ -79,14 +76,6 @@ proto_library("libmissiveprotointerface") {
   ]
 }
 
-proto_library("libmissiveprotosecurityxdrevents") {
-  sources = [ "synced/events/security_xdr_events.proto" ]
-
-  proto_in_dir = "//missive/proto/synced/events"
-  proto_out_dir = "include/missive/proto"
-  standalone = true
-}
-
 goproto_library("libmissive-interface-goprotos") {
   proto_in_dir = "//missive/proto/synced/pipeline"
   proto_out_dir = "go/src/"
@@ -105,11 +94,4 @@ goproto_library("libmissive-interface-goprotos") {
     "synced/pipeline/record_constants.proto",
     "synced/pipeline/status.proto",
   ]
-}
-
-goproto_library("libmissive-events-goprotos") {
-  proto_in_dir = "//missive/proto/synced/events"
-  proto_out_dir = "go/src/"
-  import_mapping = [ "security_xdr_events.proto=chromiumos/xdr/reporting" ]
-  sources = [ "synced/events/security_xdr_events.proto" ]
 }

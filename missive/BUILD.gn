@@ -51,7 +51,6 @@ generate_pkg_config("libmissiveclient_pc") {
   libs = [
     "-lmissiveclientlib",
     "-lmissiveprotohealth",
-    "-lmissiveprotosecurityxdrevents",
     "-lmissiveprotostatus",
     "-lmissiveprotorecordconstants",
     "-lmissiveprotorecord",
@@ -108,7 +107,6 @@ static_library("missiveclientlib") {
     "//missive/proto:libmissiveprotointerface",
     "//missive/proto:libmissiveprotorecord",
     "//missive/proto:libmissiveprotorecordconstants",
-    "//missive/proto:libmissiveprotosecurityxdrevents",
   ]
 }
 
