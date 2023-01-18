@@ -853,7 +853,7 @@ class AuthorManager:
         (2700, "emaxx@chromium.org"),
         (2900, "dlunev@chromium.org"),
         (3100, "hardikgoyal@google.com"),
-        (3300, "sherrilin@google.com"),
+        (3300, "hcyang@google.com"),
         (3500, "lziest@google.com"),
     ]
 
