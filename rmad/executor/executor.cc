@@ -47,6 +47,7 @@ constexpr char kDirectoryNameFormat[] = "rma-logs-%s";
 constexpr char kTextLogFilename[] = "text-log.txt";
 constexpr char kJsonLogFilename[] = "json-log.json";
 constexpr char kSystemLogFilename[] = "system-log.txt";
+constexpr char kDiagnosticsLogFilename[] = "diagnostics-log.txt";
 // Supported file systems for saving logs.
 const std::vector<std::string> kLogFileSystems = {"vfat", "ext4", "ext3",
                                                   "ext2"};
@@ -95,6 +96,7 @@ void Executor::MountAndWriteLog(uint8_t device_id,
                                 const std::string& text_log,
                                 const std::string& json_log,
                                 const std::string& system_log,
+                                const std::string& diagnostics_log,
                                 MountAndWriteLogCallback callback) {
   // Input argument check.
   if (!islower(device_id)) {
@@ -144,6 +146,15 @@ void Executor::MountAndWriteLog(uint8_t device_id,
         directory_filepath.Append(kTextLogFilename);
     if (base::WriteFile(text_log_path, text_log.c_str())) {
       brillo::SyncFileOrDirectory(text_log_path, false, true);
+    } else {
+      std::move(callback).Run(std::nullopt);
+      return;
+    }
+
+    const base::FilePath diagnostics_log_path =
+        directory_filepath.Append(kDiagnosticsLogFilename);
+    if (base::WriteFile(diagnostics_log_path, diagnostics_log.c_str())) {
+      brillo::SyncFileOrDirectory(diagnostics_log_path, false, true);
     } else {
       std::move(callback).Run(std::nullopt);
       return;

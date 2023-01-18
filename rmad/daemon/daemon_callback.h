@@ -36,6 +36,7 @@ using ExecuteMountAndWriteLogCallback = base::RepeatingCallback<void(
     const std::string&,
     const std::string&,
     const std::string&,
+    const std::string&,
     base::OnceCallback<void(const std::optional<std::string>&)>)>;
 using ExecuteMountAndCopyFirmwareUpdaterCallback =
     base::RepeatingCallback<void(uint8_t, base::OnceCallback<void(bool)>)>;

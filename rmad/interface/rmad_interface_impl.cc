@@ -575,7 +575,8 @@ void RmadInterfaceImpl::SaveLog(const std::string& diagnostics_log_text,
   }
 
   SaveLogToFirstMountableDevice(std::move(device_list), text_log, json_log,
-                                system_log, std::move(callback));
+                                system_log, diagnostics_log_text,
+                                std::move(callback));
 }
 
 void RmadInterfaceImpl::SaveLogToFirstMountableDevice(
@@ -583,6 +584,7 @@ void RmadInterfaceImpl::SaveLogToFirstMountableDevice(
     const std::string& text_log,
     const std::string& json_log,
     const std::string& system_log,
+    const std::string& diagnostics_log,
     SaveLogCallback callback) {
   if (devices->empty()) {
     // No devices left to try.
@@ -594,14 +596,17 @@ void RmadInterfaceImpl::SaveLogToFirstMountableDevice(
   if (char device_id; GetDeviceIdFromDeviceFile(devices->front(), &device_id)) {
     daemon_callback_->GetExecuteMountAndWriteLogCallback().Run(
         static_cast<uint8_t>(device_id), text_log, json_log, system_log,
+        diagnostics_log,
         base::BindOnce(&RmadInterfaceImpl::SaveLogExecutorCompleteCallback,
                        base::Unretained(this), std::move(devices), text_log,
-                       json_log, system_log, std::move(callback)));
+                       json_log, system_log, diagnostics_log,
+                       std::move(callback)));
   } else {
     // Try next device.
     devices->pop_front();
     SaveLogToFirstMountableDevice(std::move(devices), text_log, json_log,
-                                  system_log, std::move(callback));
+                                  system_log, diagnostics_log,
+                                  std::move(callback));
   }
 }
 
@@ -610,6 +615,7 @@ void RmadInterfaceImpl::SaveLogExecutorCompleteCallback(
     const std::string& text_log,
     const std::string& json_log,
     const std::string& system_log,
+    const std::string& diagnostics_log,
     SaveLogCallback callback,
     const std::optional<std::string>& file_name) {
   CHECK(!devices->empty());
@@ -629,7 +635,8 @@ void RmadInterfaceImpl::SaveLogExecutorCompleteCallback(
     // Failed to save file. Try next device.
     devices->pop_front();
     SaveLogToFirstMountableDevice(std::move(devices), text_log, json_log,
-                                  system_log, std::move(callback));
+                                  system_log, diagnostics_log,
+                                  std::move(callback));
   }
 }
 

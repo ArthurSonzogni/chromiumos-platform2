@@ -87,12 +87,14 @@ class RmadInterfaceImpl final : public RmadInterface {
       const std::string& text_log,
       const std::string& json_log,
       const std::string& system_log,
+      const std::string& diagnostics_log,
       SaveLogCallback callback);
   void SaveLogExecutorCompleteCallback(
       std::unique_ptr<std::list<std::string>> devices,
       const std::string& text_log,
       const std::string& json_log,
       const std::string& system_log,
+      const std::string& diagnostics_log,
       SaveLogCallback callback,
       const std::optional<std::string>& file_name);
   std::vector<std::string> GetRemovableBlockDevicePaths() const;
