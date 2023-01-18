@@ -15,7 +15,7 @@ import "diagnostics/mojom/external/network_types.mojom";
 [Stable, Extensible]
 enum NetworkState {
   // The network type is available but not yet initialized.
-  kUninitialized,
+  [Default] kUninitialized,
   // The network type is available but disabled or disabling.
   kDisabled,
   // The network type is prohibited by policy.
