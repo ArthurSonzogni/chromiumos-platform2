@@ -53,6 +53,7 @@
 #include "cryptohome/storage/keyring/fake_keyring.h"
 #include "cryptohome/storage/mock_mount_factory.h"
 #include "cryptohome/storage/mount_factory.h"
+#include "cryptohome/user_secret_stash.h"
 #include "cryptohome/userdataauth.h"
 
 namespace cryptohome {
@@ -291,6 +292,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       base::MakeRefCounted<NiceMock<dbus::MockBus>>(dbus::Bus::Options());
   auto mount_thread_bus =
       base::MakeRefCounted<NiceMock<dbus::MockBus>>(dbus::Bus::Options());
+  // Set the USS experiment value to a "random" value. This is done in addition
+  // to using `MockUssExperimentConfigFetcher` as the latter is a no-op.
+  SetUssExperimentOverride uss_experiment_override(provider.ConsumeBool());
 
   // Prepare `UserDataAuth`. Set up a single-thread mode (which is not how the
   // daemon works in production, but allows faster and reproducible fuzzing).
