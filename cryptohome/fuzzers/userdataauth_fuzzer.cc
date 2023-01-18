@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -273,6 +274,20 @@ void SimulateSleep(const base::TimeTicks& start_time,
   env.task_environment().FastForwardBy(base::Microseconds(current_sleep));
 }
 
+// Simulates "locking" the device. This corresponds to the real world's one-time
+// operation of finalizing InstallAttributes during enterprise enrollment or
+// first consumer user login. Until it's done, some mount-related operations
+// fail and fuzzer can't test code in them.
+void SimulateDeviceLocking(UserDataAuth& userdataauth,
+                           FuzzedDataProvider& provider) {
+  // We set specific attributes instead of completely "random" contents, as
+  // empirically it's hard for the Libfuzzer to figure out the right strings.
+  std::ignore = userdataauth.InstallAttributesSet(
+      "enterprise.owned",
+      BlobFromString(provider.ConsumeBool() ? "true" : "false"));
+  std::ignore = userdataauth.InstallAttributesFinalize();
+}
+
 }  // namespace
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
@@ -332,8 +347,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   enum class Command {
     kIncomingDBusCall,  // Simulate an incoming D-Bus call.
     kSleep,             // Simulate clocks moving forward.
+    kLockDevice,        // Simulates "locking" the device.
     // Must be the last item.
-    kMaxValue = kSleep
+    kMaxValue = kLockDevice
   };
   const base::TimeTicks start_time = base::TimeTicks::Now();
   // `breadcrumbs` contain blobs which are useful to reuse across multiple calls
@@ -349,6 +365,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
       }
       case Command::kSleep: {
         SimulateSleep(start_time, env, provider);
+        break;
+      }
+      case Command::kLockDevice: {
+        SimulateDeviceLocking(*userdataauth, provider);
         break;
       }
     }
