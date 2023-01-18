@@ -183,22 +183,13 @@ bool EntryManager::HandleUdev(UdevAction action, const std::string& devpath) {
             user_entries.find(user_key) == user_entries.end()
                 ? UMADeviceRecognized::kUnrecognized
                 : UMADeviceRecognized::kRecognized;
-        if (user_db_read_only_) {
-          UMALogDeviceAttached(&metrics_, rule, new_entry,
-                               UMAEventTiming::kLocked);
-          if (IsExternalDevice(devpath)) {
-            UMALogExternalDeviceAttached(
-                &metrics_, rule, new_entry, UMAEventTiming::kLocked,
-                GetPortType(devpath), GetDeviceSpeed(devpath));
-          }
-        } else {
-          UMALogDeviceAttached(&metrics_, rule, new_entry,
-                               UMAEventTiming::kLoggedIn);
-          if (IsExternalDevice(devpath)) {
-            UMALogExternalDeviceAttached(
-                &metrics_, rule, new_entry, UMAEventTiming::kLoggedIn,
-                GetPortType(devpath), GetDeviceSpeed(devpath));
-          }
+        const UMAEventTiming timing = user_db_read_only_
+                                          ? UMAEventTiming::kLocked
+                                          : UMAEventTiming::kLoggedIn;
+
+        ReportMetrics(devpath, rule, new_entry, timing);
+
+        if (!user_db_read_only_) {
           (*user_db_.Get().mutable_entries())[user_key] = entry;
         }
       }
@@ -254,17 +245,14 @@ bool EntryManager::HandleUserLogin() {
       const auto& global_key = entry.first;
       const auto& devpaths = global_db_.Get().devpaths();
 
+      const std::string devpath = devpaths.find(global_key) != devpaths.end()
+                                      ? devpaths.find(global_key)->second
+                                      : std::string();
+
       for (const auto& rule : entry.second.rules()) {
-        UMALogDeviceAttached(&metrics_, rule, new_entry,
-                             UMAEventTiming::kLoggedOut);
-        if (devpaths.find(global_key) != devpaths.end() &&
-            IsExternalDevice(devpaths.find(global_key)->second)) {
-          const std::string& devpath = devpaths.find(global_key)->second;
-          UMALogExternalDeviceAttached(
-              &metrics_, rule, new_entry, UMAEventTiming::kLoggedOut,
-              GetPortType(devpath), GetDeviceSpeed(devpath));
-        }
+        ReportMetrics(devpath, rule, new_entry, UMAEventTiming::kLoggedOut);
       }
+
       (*user_entries)[user_key] = entry.second;
     }
   }
@@ -320,6 +308,25 @@ bool EntryManager::PersistChanges() {
     success = false;
   }
   return success;
+}
+
+void EntryManager::ReportMetrics(const std::string& devpath,
+                                 const std::string& rule,
+                                 UMADeviceRecognized new_entry,
+                                 UMAEventTiming timing) {
+  LOG(INFO) << "Reporting metrics for " << devpath;
+
+  UMALogDeviceAttached(&metrics_, rule, new_entry, timing);
+
+  if (devpath.empty() || !IsExternalDevice(devpath))
+    return;
+
+  UMALogExternalDeviceAttached(&metrics_, rule, new_entry, timing,
+                               GetPortType(devpath), GetDeviceSpeed(devpath));
+
+  StructuredMetricsExternalDeviceAttached(
+      GetVendorId(devpath), GetVendorName(devpath), GetProductId(devpath),
+      GetProductName(devpath), GetDeviceClass(devpath));
 }
 
 bool EntryManager::IsExternalDevice(const std::string& devpath) {
@@ -380,6 +387,100 @@ UMADeviceSpeed EntryManager::GetDeviceSpeed(const std::string& devpath) {
   } else {
     return UMADeviceSpeed::kOther;
   }
+}
+
+int EntryManager::GetVendorId(const std::string& devpath) {
+  base::FilePath normalized_devpath =
+      root_dir_.Append("sys").Append(StripLeadingPathSeparators(devpath));
+
+  std::string vendor_id;
+  int vendor_id_int;
+  if (base::ReadFileToString(normalized_devpath.Append("idVendor"),
+                             &vendor_id)) {
+    base::TrimWhitespaceASCII(vendor_id, base::TRIM_ALL, &vendor_id);
+    if (base::HexStringToInt(vendor_id, &vendor_id_int)) {
+      return vendor_id_int;
+    }
+  }
+
+  return 0;
+}
+
+std::string EntryManager::GetVendorName(const std::string& devpath) {
+  base::FilePath normalized_devpath =
+      root_dir_.Append("sys").Append(StripLeadingPathSeparators(devpath));
+
+  std::string vendor_name;
+  if (base::ReadFileToString(normalized_devpath.Append("manufacturer"),
+                             &vendor_name)) {
+    base::TrimWhitespaceASCII(vendor_name, base::TRIM_ALL, &vendor_name);
+    return vendor_name;
+  }
+
+  return std::string();
+}
+
+int EntryManager::GetProductId(const std::string& devpath) {
+  base::FilePath normalized_devpath =
+      root_dir_.Append("sys").Append(StripLeadingPathSeparators(devpath));
+
+  std::string product_id;
+  int product_id_int;
+  if (base::ReadFileToString(normalized_devpath.Append("idProduct"),
+                             &product_id)) {
+    base::TrimWhitespaceASCII(product_id, base::TRIM_ALL, &product_id);
+    if (base::HexStringToInt(product_id, &product_id_int)) {
+      return product_id_int;
+    }
+  }
+
+  return 0;
+}
+
+std::string EntryManager::GetProductName(const std::string& devpath) {
+  base::FilePath normalized_devpath =
+      root_dir_.Append("sys").Append(StripLeadingPathSeparators(devpath));
+
+  std::string product_name;
+  if (base::ReadFileToString(normalized_devpath.Append("product"),
+                             &product_name)) {
+    base::TrimWhitespaceASCII(product_name, base::TRIM_ALL, &product_name);
+    return product_name;
+  }
+
+  return std::string();
+}
+
+int EntryManager::GetDeviceClass(const std::string& devpath) {
+  base::FilePath normalized_devpath =
+      root_dir_.Append("sys").Append(StripLeadingPathSeparators(devpath));
+
+  std::string device_class;
+  int device_class_int;
+  if (base::ReadFileToString(normalized_devpath.Append("bDeviceClass"),
+                             &device_class)) {
+    base::TrimWhitespaceASCII(device_class, base::TRIM_ALL, &device_class);
+    if (base::HexStringToInt(device_class, &device_class_int) &&
+        device_class_int != 0) {
+      return device_class_int;
+    }
+  }
+
+  std::string base_name = normalized_devpath.BaseName().value();
+  base::FilePath normalized_intfpath =
+      normalized_devpath.Append(base_name.append(":1.0"));
+
+  std::string intf_class;
+  int intf_class_int;
+  if (base::ReadFileToString(normalized_intfpath.Append("bInterfaceClass"),
+                             &intf_class)) {
+    base::TrimWhitespaceASCII(intf_class, base::TRIM_ALL, &intf_class);
+    if (base::HexStringToInt(intf_class, &intf_class_int)) {
+      return intf_class_int;
+    }
+  }
+
+  return 0;
 }
 
 }  // namespace usb_bouncer

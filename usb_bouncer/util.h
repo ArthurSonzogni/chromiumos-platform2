@@ -116,6 +116,13 @@ void UMALogExternalDeviceAttached(MetricsLibrary* metrics,
                                   UMAPortType port,
                                   UMADeviceSpeed speed);
 
+// Report structured metrics on external device attach events.
+void StructuredMetricsExternalDeviceAttached(int VendorId,
+                                             std::string VendorName,
+                                             int ProductId,
+                                             std::string ProductName,
+                                             int DeviceClass);
+
 // Returns the path where the user DB should be written if there is a user
 // signed in and CrOS is unlocked. Otherwise, returns an empty path. In the
 // multi-login case, the primary user's daemon-store is used.

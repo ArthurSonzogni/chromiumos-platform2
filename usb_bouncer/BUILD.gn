@@ -46,7 +46,10 @@ static_library("usb_bouncer_common") {
     "util.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [ ":usb_bouncer_protos" ]
+  deps = [
+    ":usb_bouncer_protos",
+    "//metrics/structured:libstructuredmetrics",
+  ]
 }
 
 pkg_config("usb_bouncer_pkg_deps") {

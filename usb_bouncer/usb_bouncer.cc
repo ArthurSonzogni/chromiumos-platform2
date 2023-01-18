@@ -54,6 +54,9 @@ class Configuration {
 static constexpr char kLogPath[] = "/dev/log";
 static constexpr char kUMAEventsPath[] = "/var/lib/metrics/uma-events";
 static constexpr char kNoLoginPath[] = "/run/nologin";
+static constexpr char kStructuredMetricsPath[] = "/var/lib/metrics/structured";
+static constexpr char kStructuredMetricsEventsPath[] =
+    "/var/lib/metrics/structured/events";
 
 void DropPrivileges(const Configuration& config) {
   if (!CanChown()) {
@@ -127,6 +130,17 @@ void DropPrivileges(const Configuration& config) {
       minijail_bind(j.get(), kUMAEventsPath, kUMAEventsPath, 1 /*writable*/) !=
           0) {
     PLOG(FATAL) << "minijail_bind('" << kUMAEventsPath << "') failed";
+  }
+  if (base::PathExists(base::FilePath(kStructuredMetricsPath)) &&
+      minijail_bind(j.get(), kStructuredMetricsPath, kStructuredMetricsPath,
+                    1 /*writable*/) != 0) {
+    PLOG(FATAL) << "minijail_bind('" << kStructuredMetricsPath << "') failed";
+  }
+  if (base::PathExists(base::FilePath(kStructuredMetricsEventsPath)) &&
+      minijail_bind(j.get(), kStructuredMetricsEventsPath,
+                    kStructuredMetricsEventsPath, 1 /*writable*/) != 0) {
+    PLOG(FATAL) << "minijail_bind('" << kStructuredMetricsEventsPath
+                << "') failed";
   }
 
   minijail_remount_mode(j.get(), MS_SLAVE);

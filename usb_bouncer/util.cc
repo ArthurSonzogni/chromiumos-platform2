@@ -31,6 +31,7 @@
 #include <brillo/files/file_util.h>
 #include <brillo/files/scoped_dir.h>
 #include <brillo/userdb_utils.h>
+#include <metrics/structured/structured_events.h>
 #include <openssl/sha.h>
 #include <session_manager/dbus-proxies.h>
 #include <usbguard/Device.hpp>
@@ -510,6 +511,26 @@ void UMALogExternalDeviceAttached(MetricsLibrary* metrics,
                                             to_string(port).c_str()),
                          static_cast<int>(speed),
                          static_cast<int>(UMADeviceSpeed::kMaxValue));
+}
+
+void StructuredMetricsExternalDeviceAttached(int VendorId,
+                                             std::string VendorName,
+                                             int ProductId,
+                                             std::string ProductName,
+                                             int DeviceClass) {
+  // Limit string length to prevent badly behaving device from creating huge
+  // metrics packet.
+  int string_len_limit = 200;
+  VendorName = VendorName.substr(0, string_len_limit);
+  ProductName = ProductName.substr(0, string_len_limit);
+
+  metrics::structured::events::usb_device::UsbDeviceInfo()
+      .SetVendorId(VendorId)
+      .SetVendorName(VendorName)
+      .SetProductId(ProductId)
+      .SetProductName(ProductName)
+      .SetDeviceClass(DeviceClass)
+      .Record();
 }
 
 base::FilePath GetUserDBDir() {
