@@ -3563,7 +3563,8 @@ int sl_run_parent(int argc,
             strstr(arg, "--accelerators") == arg ||
             strstr(arg, "--windowed-accelerators") == arg ||
             strstr(arg, "--drm-device") == arg ||
-            strstr(arg, "--support-damage-buffer") == arg) {
+            strstr(arg, "--support-damage-buffer") == arg ||
+            strstr(arg, "--vm-identififer") == arg) {
           args[i++] = arg;
         }
       }
@@ -3695,6 +3696,7 @@ int real_main(int argc, char** argv) {
       getenv("SOMMELIER_XWAYLAND_GL_DRIVER_PATH");
   const char* xauth_path = getenv("SOMMELIER_XAUTH_PATH");
   const char* xfont_path = getenv("SOMMELIER_XFONT_PATH");
+  const char* vm_id = getenv("SOMMELIER_VM_IDENTIFIER");
   const char* socket_name = "wayland-0";
   bool noop_driver = false;
   struct wl_event_loop* event_loop;
@@ -3746,14 +3748,7 @@ int real_main(int argc, char** argv) {
     } else if (strstr(arg, "--windowed-accelerators") == arg) {
       windowed_accelerators = sl_arg_value(arg);
     } else if (strstr(arg, "--vm-identifier") == arg) {
-      // Some GuestOS instances of sommelier will be started with a
-      // container_token taken from /dev/.container_token as the vm_id.
-      // The vm_identifier may be empty if the token does not yet exist.
-      // Keep the vm_id as default (termina) if this occurs.
-      const char* vm_id_arg = sl_arg_value(arg);
-      if (strlen(vm_id_arg)) {
-        ctx.vm_id = vm_id_arg;
-      }
+      vm_id = sl_arg_value(arg);
     } else if (strstr(arg, "--application-id-x11-property") == arg) {
       // NB: Must be parsed before --application-id.
       ctx.application_id_property_name = sl_arg_value(arg);
@@ -3819,6 +3814,14 @@ int real_main(int argc, char** argv) {
       ctx.runprog = &argv[i];
       break;
     }
+  }
+
+  if (vm_id && strlen(vm_id)) {
+    // Some GuestOS instances of sommelier will be started with vm_id set to a
+    // container_token from /dev/.container_token.
+    // The vm_id may be empty if the token or file does not yet exist.
+    // Keep the vm_id as default (termina) if this occurs.
+    ctx.vm_id = vm_id;
   }
 
   if (ctx.application_id && ctx.vm_id) {
