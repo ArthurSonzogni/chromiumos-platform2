@@ -21,6 +21,7 @@
 #include <base/run_loop.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
+#include <featured/fake_platform_features.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/fake_prefs.h"
@@ -102,6 +103,8 @@ class AdaptiveChargingControllerTest : public TestEnvironment {
         std::move(recheck_alarm));
     adaptive_charging_controller_.set_charge_alarm_for_testing(
         std::move(charge_alarm));
+    platform_features_ =
+        std::make_unique<feature::FakePlatformFeatures>(dbus_wrapper_.GetBus());
     prefs_.SetInt64(kAdaptiveChargingHoldPercentPref, kDefaultTestPercent);
     EXPECT_TRUE(temp_dir_.CreateUniqueTempDir());
     EXPECT_TRUE(temp_dir_.IsValid());
@@ -155,9 +158,9 @@ class AdaptiveChargingControllerTest : public TestEnvironment {
   }
 
   void InitNoHistory() {
-    adaptive_charging_controller_.Init(&delegate_, &backlight_controller_,
-                                       &input_watcher_, &power_supply_,
-                                       &dbus_wrapper_, &prefs_);
+    adaptive_charging_controller_.Init(
+        &delegate_, &backlight_controller_, &input_watcher_, &power_supply_,
+        &dbus_wrapper_, platform_features_.get(), &prefs_);
     power_supply_.NotifyObservers();
 
     // Adaptive Charging is not enabled yet.
@@ -184,9 +187,9 @@ class AdaptiveChargingControllerTest : public TestEnvironment {
     power_status_.adaptive_delaying_charge = false;
     power_status_.battery_state = PowerSupplyProperties_BatteryState_FULL;
     power_supply_.set_status(power_status_);
-    adaptive_charging_controller_.Init(&delegate_, &backlight_controller_,
-                                       &input_watcher_, &power_supply_,
-                                       &dbus_wrapper_, &prefs_);
+    adaptive_charging_controller_.Init(
+        &delegate_, &backlight_controller_, &input_watcher_, &power_supply_,
+        &dbus_wrapper_, platform_features_.get(), &prefs_);
     power_supply_.NotifyObservers();
 
     // Adaptive Charging is not enabled yet.
@@ -345,6 +348,7 @@ class AdaptiveChargingControllerTest : public TestEnvironment {
   system::PowerSupplyStub power_supply_;
   system::DBusWrapperStub dbus_wrapper_;
   FakePrefs prefs_;
+  std::unique_ptr<feature::FakePlatformFeatures> platform_features_;
   brillo::timers::SimpleAlarmTimer* recheck_alarm_;
   brillo::timers::SimpleAlarmTimer* charge_alarm_;
   system::PowerStatus power_status_;
@@ -1161,6 +1165,29 @@ TEST_F(AdaptiveChargingControllerTest, TestMaxDelayHeuristic) {
       clock->GetCurrentBootTime() + base::Hours(10) +
           AdaptiveChargingController::kFinishChargingDelay,
       adaptive_charging_controller_.get_target_full_charge_time_for_testing());
+}
+
+// Test that the Finch flag for slow charging enables slow charging
+// in adaptive charging correctly.
+TEST_F(AdaptiveChargingControllerTest, FinchFlagEnablesSlowChargingFeature) {
+  // We expect slow charging to be enabled if either the pref is true or Finch
+  // flag is enabled. Here, pref is set to false, but enabling the Finch flag
+  // should enable slow charging.
+  prefs_.SetBool(kSlowAdaptiveChargingEnabledPref, false);
+  platform_features_->SetEnabled(kSlowAdaptiveChargingFeatureName, true);
+  Init();
+  delegate_.fake_result = {0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0};
+  adaptive_charging_controller_.set_recheck_delay_for_testing(
+      base::TimeDelta());
+  base::RunLoop().RunUntilIdle();
+
+  // We expect the charge delay to be 2 hours as the system is predicted to be
+  // unplugged in 5 hours, but check for 1.5 hours < `charge_delay` <= 2 hours
+  // due to timestamps being slightly off.
+  base::TimeDelta charge_delay =
+      adaptive_charging_controller_.get_charge_delay_for_testing();
+  EXPECT_LE(charge_delay, base::Hours(2));
+  EXPECT_GT(charge_delay, base::Hours(1.5));
 }
 
 // Test that if slow charging is disabled because the system does not support

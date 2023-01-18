@@ -16,11 +16,13 @@
 #include <base/time/time.h>
 #include <brillo/errors/error.h>
 #include <brillo/timers/alarm_timer.h>
+#include <featured/feature_library.h>
 
 #include "ml/proto_bindings/ranker_example.pb.h"
 
 #include "power_manager/common/clock.h"
 #include "power_manager/common/metrics_constants.h"
+#include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
@@ -32,6 +34,10 @@
 #include "power_manager/proto_bindings/user_charging_event.pb.h"
 
 namespace power_manager::policy {
+
+// The feature name for slow charging in Adaptive Charging Finch gradual
+// rollout.
+extern const char kSlowAdaptiveChargingFeatureName[];
 
 class AdaptiveChargingControllerInterface : public system::PowerSupplyObserver {
  public:
@@ -447,6 +453,7 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
             system::InputWatcherInterface* input_watcher,
             system::PowerSupplyInterface* power_supply,
             system::DBusWrapperInterface* dbus_wrapper,
+            feature::PlatformFeaturesInterface* platform_features,
             PrefsInterface* prefs);
 
   Clock* clock() { return &clock_; }
@@ -582,6 +589,8 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   system::InputWatcherInterface* input_watcher_;  // non-owned
 
   policy::BacklightController* backlight_controller_;  // non-owned
+
+  feature::PlatformFeaturesInterface* platform_features_;  // non-owned
 
   PrefsInterface* prefs_;  // non-owned
 

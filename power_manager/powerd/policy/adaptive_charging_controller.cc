@@ -17,6 +17,7 @@
 #include <base/time/time.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
+#include <featured/feature_library.h>
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/util.h"
@@ -24,7 +25,13 @@
 
 namespace power_manager::policy {
 
+const char kSlowAdaptiveChargingFeatureName[] =
+    "CrOSLateBootSlowAdaptiveCharging";
+const VariationsFeature kSlowAdaptiveChargingFeature{
+    kSlowAdaptiveChargingFeatureName, FEATURE_DISABLED_BY_DEFAULT};
+
 namespace {
+
 const char kDefaultChargeHistoryDir[] =
     "/var/lib/power_manager/charge_history/";
 const char kChargeEventsSubDir[] = "charge_events/";
@@ -790,12 +797,14 @@ void AdaptiveChargingController::Init(
     system::InputWatcherInterface* input_watcher,
     system::PowerSupplyInterface* power_supply,
     system::DBusWrapperInterface* dbus_wrapper,
+    feature::PlatformFeaturesInterface* platform_features,
     PrefsInterface* prefs) {
   delegate_ = delegate;
   backlight_controller_ = backlight_controller;
   input_watcher_ = input_watcher;
   power_supply_ = power_supply;
   dbus_wrapper_ = dbus_wrapper;
+  platform_features_ = platform_features;
   prefs_ = prefs;
   recheck_alarm_interval_ = kDefaultAlarmInterval;
   report_charge_time_ = false;
@@ -897,6 +906,7 @@ void AdaptiveChargingController::HandlePolicyChange(
     if (adaptive_charging_supported_) {
       adaptive_charging_enabled_ = policy.adaptive_charging_enabled();
       restart_adaptive = true;
+
       if (!adaptive_charging_enabled_) {
         LOG(INFO) << "Policy update disabling Adaptive Charging";
         state_ = AdaptiveChargingState::USER_DISABLED;
@@ -1274,11 +1284,20 @@ bool AdaptiveChargingController::StartAdaptiveCharging(
     state_ = AdaptiveChargingState::USER_DISABLED;
   }
 
-  // Check if slow charging is enabled via pref and supported by the EC.
-  prefs_->GetBool(kSlowAdaptiveChargingEnabledPref, &slow_charging_enabled_);
+  if (adaptive_charging_enabled_) {
+    // Check if slow charging is enabled. Set `slow_charging_enabled_` to true
+    // if enabled via pref or Finch flag. If slow charging is not supported by
+    // the EC, set `slow_charging_enabled_` to false to disable it.
+    prefs_->GetBool(kSlowAdaptiveChargingEnabledPref, &slow_charging_enabled_);
 
-  if (!slow_charging_supported_)
-    slow_charging_enabled_ = false;
+    if (slow_charging_enabled_ ||
+        platform_features_->IsEnabledBlocking(kSlowAdaptiveChargingFeature)) {
+      slow_charging_enabled_ = true;
+    }
+
+    if (!slow_charging_supported_)
+      slow_charging_enabled_ = false;
+  }
 
   LOG(INFO) << "Slow charging is "
             << (slow_charging_supported_ ? "supported" : "not supported")

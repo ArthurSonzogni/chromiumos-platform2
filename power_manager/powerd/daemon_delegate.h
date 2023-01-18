@@ -209,6 +209,7 @@ class DaemonDelegate {
       system::InputWatcherInterface* input_watcher,
       system::PowerSupplyInterface* power_supply,
       system::DBusWrapperInterface* dbus_wrapper,
+      feature::PlatformFeaturesInterface* platform_features,
       PrefsInterface* prefs) = 0;
 
   virtual std::unique_ptr<
