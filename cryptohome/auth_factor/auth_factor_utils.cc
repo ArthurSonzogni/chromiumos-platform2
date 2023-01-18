@@ -318,43 +318,6 @@ std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
   return proto;
 }
 
-void LoadUserAuthFactorProtos(
-    AuthFactorManager* manager,
-    const AuthBlockUtility& auth_block_utility,
-    const std::string& obfuscated_username,
-    google::protobuf::RepeatedPtrField<user_data_auth::AuthFactorWithStatus>*
-        out_auth_factors_status) {
-  for (const auto& [label, auth_factor_type] :
-       manager->ListAuthFactors(obfuscated_username)) {
-    // Try to load the auth factor. If this fails we just skip it and move on
-    // rather than failing the entire operation.
-    CryptohomeStatusOr<std::unique_ptr<AuthFactor>> owned_auth_factor =
-        manager->LoadAuthFactor(obfuscated_username, auth_factor_type, label);
-    if (!owned_auth_factor.ok() || *owned_auth_factor == nullptr) {
-      LOG(WARNING) << "Unable to load an AuthFactor with label " << label
-                   << ".";
-      continue;
-    }
-    // Use the auth factor to populate the response.
-    AuthFactor& auth_factor = **owned_auth_factor;
-    auto auth_factor_proto = GetAuthFactorProto(
-        auth_factor.metadata(), auth_factor.type(), auth_factor.label());
-    if (auth_factor_proto) {
-      user_data_auth::AuthFactorWithStatus auth_factor_with_status;
-      *auth_factor_with_status.mutable_auth_factor() =
-          std::move(*auth_factor_proto);
-      auto supported_intents = auth_block_utility.GetSupportedIntentsFromState(
-          auth_factor.auth_block_state());
-      for (const auto& auth_intent : supported_intents) {
-        auth_factor_with_status.add_available_for_intents(
-            AuthIntentToProto(auth_intent));
-      }
-
-      *out_auth_factors_status->Add() = std::move(auth_factor_with_status);
-    }
-  }
-}
-
 bool LoadUserAuthFactorByLabel(AuthFactorManager* manager,
                                const AuthBlockUtility& auth_block_utility,
                                const std::string& obfuscated_username,

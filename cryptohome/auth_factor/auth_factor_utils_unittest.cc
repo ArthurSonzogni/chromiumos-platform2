@@ -41,8 +41,6 @@ using ::testing::Return;
 using ::testing::StrictMock;
 
 constexpr char kLabel[] = "some-label";
-constexpr char kPinLabel[] = "some-pin-label";
-constexpr char kObfuscatedUsername[] = "obfuscated";
 constexpr char kChromeosVersion[] = "1.2.3_a_b_c";
 constexpr char kChromeVersion[] = "1.2.3.4";
 
@@ -115,32 +113,6 @@ AuthFactorMetadata CreateMetadataWithType() {
                  .chrome_version_last_updated = kChromeVersion},
       .metadata = MetadataType(),
   };
-}
-
-std::unique_ptr<AuthFactor> CreatePasswordAuthFactor() {
-  return std::make_unique<AuthFactor>(
-      AuthFactorType::kPassword, kLabel,
-      CreateMetadataWithType<PasswordAuthFactorMetadata>(),
-      AuthBlockState{
-          .state = TpmBoundToPcrAuthBlockState{
-              .scrypt_derived = false,
-              .salt = SecureBlob("fake salt"),
-              .tpm_key = SecureBlob("fake tpm key"),
-              .extended_tpm_key = SecureBlob("fake extended tpm key"),
-              .tpm_public_key_hash = SecureBlob("fake tpm public key hash"),
-          }});
-}
-std::unique_ptr<AuthFactor> CreatePinAuthFactor() {
-  return std::make_unique<AuthFactor>(
-      AuthFactorType::kPin, kPinLabel,
-      CreateMetadataWithType<PinAuthFactorMetadata>(),
-      AuthBlockState{.state = PinWeaverAuthBlockState{
-                         .le_label = 0xbaadf00d,
-                         .salt = SecureBlob("fake salt"),
-                         .chaps_iv = SecureBlob("fake chaps IV"),
-                         .fek_iv = SecureBlob("fake file encryption IV"),
-                         .reset_salt = SecureBlob("more fake salt"),
-                     }});
 }
 
 std::unique_ptr<VaultKeyset> CreatePasswordVaultKeyset(
@@ -348,87 +320,6 @@ TEST(AuthFactorUtilsTest, GetProtoPasswordErrorNoMetadata) {
 
   // Verify
   EXPECT_FALSE(proto.has_value());
-}
-
-// Test `LoadUserAuthFactorProtos()` with no auth factors available.
-TEST(AuthFactorUtilsTest, LoadUserAuthFactorProtosNoFactors) {
-  // Setup
-  NiceMock<MockPlatform> platform;
-  AuthFactorManager manager(&platform);
-  NiceMock<MockAuthBlockUtility> auth_block_utility_;
-  google::protobuf::RepeatedPtrField<user_data_auth::AuthFactorWithStatus>
-      protos;
-
-  // Test
-  LoadUserAuthFactorProtos(&manager, auth_block_utility_, kObfuscatedUsername,
-                           &protos);
-
-  // Verify
-  EXPECT_THAT(protos, IsEmpty());
-}
-
-// Test `LoadUserAuthFactorProtos()` with an some auth factors available.
-TEST(AuthFactorUtilsTest, LoadUserAuthFactorProtosWithFactors) {
-  // Setup
-  NiceMock<MockPlatform> platform;
-  AuthFactorManager manager(&platform);
-  NiceMock<MockAuthBlockUtility> auth_block_utility_;
-
-  auto factor1 = CreatePasswordAuthFactor();
-  ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUsername, *factor1), IsOk());
-  auto factor2 = CreatePinAuthFactor();
-  ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUsername, *factor2), IsOk());
-  google::protobuf::RepeatedPtrField<user_data_auth::AuthFactorWithStatus>
-      protos;
-
-  // Test
-  LoadUserAuthFactorProtos(&manager, auth_block_utility_, kObfuscatedUsername,
-                           &protos);
-
-  // Sort the protos by label. This is done to produce a consistent ordering
-  // which makes it easier to verify the results.
-  std::sort(protos.pointer_begin(), protos.pointer_end(),
-            [](const user_data_auth::AuthFactorWithStatus* lhs,
-               const user_data_auth::AuthFactorWithStatus* rhs) {
-              return lhs->auth_factor().label() < rhs->auth_factor().label();
-            });
-
-  // Verify
-  ASSERT_EQ(protos.size(), 2);
-  EXPECT_EQ(
-      protos[0].auth_factor().common_metadata().chromeos_version_last_updated(),
-      kChromeosVersion);
-  EXPECT_EQ(
-      protos[1].auth_factor().common_metadata().chrome_version_last_updated(),
-      kChromeVersion);
-  EXPECT_EQ(protos[0].auth_factor().label(), kLabel);
-  EXPECT_TRUE(protos[0].auth_factor().has_password_metadata());
-  EXPECT_EQ(protos[1].auth_factor().label(), kPinLabel);
-  EXPECT_TRUE(protos[1].auth_factor().has_pin_metadata());
-}
-
-// Test `LoadUserAuthFactorProtos()` with some auth factors that we can't read.
-TEST(AuthFactorUtilsTest, LoadUserAuthFactorProtosWithUnreadableFactors) {
-  // Setup
-  NiceMock<MockPlatform> platform;
-  AuthFactorManager manager(&platform);
-  NiceMock<MockAuthBlockUtility> auth_block_utility_;
-
-  auto factor1 = CreatePasswordAuthFactor();
-  ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUsername, *factor1), IsOk());
-  auto factor2 = CreatePinAuthFactor();
-  ASSERT_THAT(manager.SaveAuthFactor(kObfuscatedUsername, *factor2), IsOk());
-  google::protobuf::RepeatedPtrField<user_data_auth::AuthFactorWithStatus>
-      protos;
-  // Make all file reads fail now, so that we can't read the auth factors.
-  EXPECT_CALL(platform, ReadFile(_, _)).WillRepeatedly(Return(false));
-
-  // Test
-  LoadUserAuthFactorProtos(&manager, auth_block_utility_, kObfuscatedUsername,
-                           &protos);
-
-  // Verify
-  EXPECT_THAT(protos, IsEmpty());
 }
 
 // Test `GetAuthFactorProto()` for a pin auth factor.

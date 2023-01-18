@@ -52,15 +52,6 @@ std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
     const AuthFactorType& auth_factor_type,
     const std::string& auth_factor_label);
 
-// Populates the D-Bus API proto with all of the auth factor data for a given
-// user using the provided factor manager.
-void LoadUserAuthFactorProtos(
-    AuthFactorManager* manager,
-    const AuthBlockUtility& auth_block_utility,
-    const std::string& obfuscated_username,
-    google::protobuf::RepeatedPtrField<user_data_auth::AuthFactorWithStatus>*
-        out_auth_factors);
-
 // Gets AuthFactor for a given user and label. Returns false if the
 // corresponding AuthFactor does not exist.
 bool LoadUserAuthFactorByLabel(AuthFactorManager* manager,
