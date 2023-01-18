@@ -101,9 +101,9 @@ int SysfsUtils::OnInit(void) {
     return EX_IOERR;
   }
 
-  for (auto drvr_name : kAllowlist) {
-    if (base::WriteFile(allowlist_path_, drvr_name, sizeof(drvr_name)) ==
-        sizeof(drvr_name))
+  for (const char* drvr_name : kAllowlist) {
+    auto len = strlen(drvr_name);
+    if (base::WriteFile(allowlist_path_, drvr_name, len) == len)
       LOG(INFO) << "Allowed " << drvr_name;
     else
       PLOG(ERROR) << "Couldn't allow " << drvr_name;
