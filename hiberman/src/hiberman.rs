@@ -30,16 +30,24 @@ mod sysfs;
 mod update_engine;
 mod volume;
 
+use std::path::Path;
+
 use crate::dbus::send_abort;
+use crate::snapdev::SnapshotDevice;
+use crate::snapdev::SnapshotMode;
+
 pub use hiberutil::AbortResumeOptions;
 pub use hiberutil::HibernateOptions;
 pub use hiberutil::ResumeInitOptions;
 pub use hiberutil::ResumeOptions;
 
 use anyhow::Result;
+use anyhow::Context;
 use resume::ResumeConductor;
 use resume_init::ResumeInitConductor;
 use suspend::SuspendConductor;
+
+use crate::hiberutil::HibernateError;
 
 /// Send an abort resume request to the hiberman process driving resume.
 pub fn abort_resume(options: AbortResumeOptions) -> Result<()> {
@@ -71,4 +79,14 @@ pub fn resume_init(options: ResumeInitOptions) -> Result<()> {
 pub fn resume(options: ResumeOptions) -> Result<()> {
     let mut conductor = ResumeConductor::new()?;
     conductor.resume(options)
+}
+
+pub fn set_snapshot_block_device<P: AsRef<Path>>(path: Option<P>) -> Result<()> {
+    if let Some(path) = path {
+        let mut snap_dev = SnapshotDevice::new(SnapshotMode::Read)?;
+        snap_dev.set_block_device(path.as_ref())?;
+        return Ok(())
+    } else {
+        return Err(HibernateError::HibernateVolumeError()).context("no device name");
+    }
 }

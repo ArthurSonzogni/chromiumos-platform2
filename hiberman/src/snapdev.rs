@@ -28,6 +28,7 @@ use log::error;
 use log::info;
 
 use crate::hiberutil::HibernateError;
+use crate::hiberutil::get_device_id;
 
 const SNAPSHOT_PATH: &str = "/dev/snapshot";
 
@@ -104,6 +105,7 @@ ioctl_io_nr!(SNAPSHOT_UNFREEZE, SNAPSHOT_IOC_MAGIC, 2);
 ioctl_io_nr!(SNAPSHOT_ATOMIC_RESTORE, SNAPSHOT_IOC_MAGIC, 4);
 ioctl_ior_nr!(SNAPSHOT_GET_IMAGE_SIZE, SNAPSHOT_IOC_MAGIC, 14, u64);
 ioctl_iow_nr!(SNAPSHOT_CREATE_IMAGE, SNAPSHOT_IOC_MAGIC, 17, u32);
+ioctl_iow_nr!(SNAPSHOT_SET_BLOCK_DEVICE, SNAPSHOT_IOC_MAGIC, 21, u32);
 ioctl_iowr_nr!(
     SNAPSHOT_ENABLE_ENCRYPTION,
     SNAPSHOT_IOC_MAGIC,
@@ -125,6 +127,7 @@ const CREATE_IMAGE: u64 = SNAPSHOT_CREATE_IMAGE();
 #[allow(dead_code)]
 const ENABLE_ENCRYPTION: u64 = SNAPSHOT_ENABLE_ENCRYPTION();
 const SET_USER_KEY: u64 = SNAPSHOT_SET_USER_KEY();
+const SET_BLOCK_DEVICE: u64 = SNAPSHOT_SET_BLOCK_DEVICE();
 
 /// The SnapshotDevice is mostly a group of method functions that send ioctls to
 /// an open snapshot device file descriptor.
@@ -207,6 +210,14 @@ impl SnapshotDevice {
             )?;
         }
         Ok(in_suspend != 0)
+    }
+
+    pub fn set_block_device(&mut self, path: &Path) -> Result<()> {
+        let dev_id = get_device_id(path)?;
+        unsafe {
+            let rc = ioctl_with_val(&self.file, SET_BLOCK_DEVICE, dev_id as c_ulong);
+            self.evaluate_ioctl_return("SET_BLOCK_DEVICE", rc)
+        }
     }
 
     /// Jump into the fully loaded resume image. On success, this does not

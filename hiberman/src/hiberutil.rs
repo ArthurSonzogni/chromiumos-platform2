@@ -4,11 +4,15 @@
 
 //! Implements common functions and definitions used throughout the app and library.
 
+
 use std::convert::TryInto;
 use std::fs;
+use std::ffi::CString;
+use std::mem::MaybeUninit;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
+use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
 use std::process::exit;
 use std::process::Command;
@@ -17,6 +21,7 @@ use std::time::Duration;
 
 use anyhow::Context;
 use anyhow::Result;
+use libchromeos::sys::syscall;
 use log::debug;
 use log::error;
 use log::info;
@@ -115,6 +120,9 @@ pub enum HibernateError {
     /// Update engine busy error
     #[error("Update engine busy")]
     UpdateEngineBusyError(),
+    /// Syscall stat error
+    #[error("Snapshot stat error: {0}")]
+    SnapshotStatDeviceError(libchromeos::sys::Error),
 }
 
 /// Options taken from the command line affecting hibernate.
@@ -146,6 +154,22 @@ impl Default for AbortResumeOptions {
             reason: "Manually aborted by hiberman abort-resume".to_string(),
         }
     }
+}
+
+/// Get a device id from the path.
+pub fn get_device_id<P: AsRef<std::path::Path>>(path: P) -> Result<u32> {
+    let path_str_c = CString::new(path.as_ref().as_os_str().as_bytes())?;
+    let mut stats: MaybeUninit<libc::stat> = MaybeUninit::zeroed();
+
+    // This is safe because only stats is modified.
+    if let Err(_) = syscall!(unsafe { libc::stat(path_str_c.as_ptr(), stats.as_mut_ptr()) }) {
+        return Err(HibernateError::SnapshotStatDeviceError(libchromeos::sys::Error::last()))
+                .context("Failed to stat device");
+    }
+
+    // Safe because the syscall just initialized it, and we just verified
+    // the return was successful.
+    unsafe { Ok(stats.assume_init().st_rdev as u32) }
 }
 
 /// Get the page size on this system.
