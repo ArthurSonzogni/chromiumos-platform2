@@ -595,7 +595,8 @@ void Sender::SendCrashes(const std::vector<MetaFile>& crash_meta_files) {
 
       const base::FilePath timestamps_dir =
           paths::Get(paths::kTimestampsDirectory);
-      if (!IsBelowRate(timestamps_dir, max_crash_rate_, max_crash_bytes_)) {
+      if (!dry_run_ &&
+          !IsBelowRate(timestamps_dir, max_crash_rate_, max_crash_bytes_)) {
         LOG(WARNING) << "Cannot send more crashes. Sending "
                      << meta_file.value()
                      << " would exceed the max daily rate of "

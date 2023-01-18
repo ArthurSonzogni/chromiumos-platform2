@@ -13,6 +13,7 @@
 #include <memory>
 #include <numeric>
 #include <optional>
+#include <sstream>
 #include <string>
 #include <tuple>
 #include <utility>
@@ -1890,8 +1891,9 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(kNone, kPayloadFile, kLogFile, kTextFile, kBinFile)));
 
 // SendCrash needs to be parametrized for under and not under the dry run mode.
-class CrashSenderSendCrashesTest : public CrashSenderUtilTest,
-                                   public ::testing::WithParamInterface<bool> {
+class CrashSenderSendCrashesTest
+    : public CrashSenderUtilTest,
+      public ::testing::WithParamInterface<std::tuple<bool, int>> {
  protected:
   // Capture cout. Reset cout to normal after the instance is destructed.
   class ScopedCoutCapture {
@@ -1917,11 +1919,12 @@ class CrashSenderSendCrashesTest : public CrashSenderUtilTest,
   };
 
   void SetUp() override {
-    dry_run_ = GetParam();
+    std::tie(dry_run_, max_crash_rate_) = GetParam();
     CrashSenderUtilTest::SetUp();
   }
 
   bool dry_run_;
+  int max_crash_rate_;
 };
 
 TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
@@ -2015,7 +2018,7 @@ TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
   std::vector<base::TimeDelta> sleep_times;
   Sender::Options options;
   options.session_manager_proxy = mock.release();
-  options.max_crash_rate = 2;
+  options.max_crash_rate = max_crash_rate_;
   // Setting max_crash_bytes to 0 will limit to the uploader to
   // max_crash_rate.
   options.max_crash_bytes = 0;
@@ -2054,8 +2057,9 @@ TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
   raw_metrics_lib->set_metrics_enabled(true);
 
   // expected UMA sending count.
-  // 2 times because there are 2 valid crashes to send.
-  const int expected_uma_send_count = dry_run_ ? 0 : 2;
+  // max_crash_rate_ times because there are max_crash_rate_ valid crashes to
+  // send.
+  const int expected_uma_send_count = dry_run_ ? 0 : max_crash_rate_;
   EXPECT_CALL(
       *raw_metrics_lib,
       SendEnumToUMA("Platform.CrOS.CrashSenderRemoveReason",
@@ -2074,8 +2078,13 @@ TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
     contents = cout_capture.GetString();
   } else {
     sender.SendCrashes(crashes_to_send);
-    ASSERT_TRUE(
-        base::ReadFileToString(paths::Get(paths::kChromeCrashLog), &contents));
+    if (max_crash_rate_ > 0) {
+      ASSERT_TRUE(base::ReadFileToString(paths::Get(paths::kChromeCrashLog),
+                                         &contents));
+    } else {
+      // No log file, contents remain empty.
+      EXPECT_FALSE(base::PathExists(paths::Get(paths::kChromeCrashLog)));
+    }
   }
 
   // We shouldn't be processing any crashes still.
@@ -2087,52 +2096,61 @@ TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
       ParseChromeUploadsLog(contents);
 
   const char* expected_upload_id;
+  int expected_sleep_times;
   if (dry_run_) {
     // No rate limiting in dry run mode.
     ASSERT_EQ(3, rows.size());
     expected_upload_id = "";
+    expected_sleep_times = 3;
   } else {
-    // Should only contain two results, since max_crash_rate is set to 2.
-    // FakeSleep should be called three times since we sleep before we check the
-    // crash rate.
-    ASSERT_EQ(2, rows.size());
+    // Should only contain max_crash_rate results, since max_crash_rate is set
+    // to max_crash_rate_. FakeSleep should be called three times since we sleep
+    // before we check the crash rate.
+    ASSERT_EQ(max_crash_rate_, rows.size());
     expected_upload_id = "123";
+    expected_sleep_times = max_crash_rate_ + 1;
   }
-  EXPECT_EQ(3, sleep_times.size());
+  EXPECT_EQ(expected_sleep_times, sleep_times.size());
 
   // Each line of the uploads.log file is "{"upload_time":<value>,"upload_id":
   // <value>,"local_id":<value>,"capture_time":<value>,"state":<value>,"source":
   // <value>}".
-  // The first run should be for the meta file in the system directory.
-  std::optional<base::Value> row = std::move(rows[0]);
-  ASSERT_TRUE(row.has_value() && row->is_dict());
-  auto dict = std::move(row->GetDict());
-  ASSERT_EQ(6, dict.size());
-  EXPECT_TRUE(dict.Find("upload_time"));
-  EXPECT_THAT(dict.FindString("upload_id"), Pointee(Eq(expected_upload_id)));
-  EXPECT_THAT(dict.FindString("local_id"), Pointee(Eq("foo")));
-  EXPECT_THAT(dict.FindString("capture_time"), Pointee(Eq("1000")));
-  EXPECT_EQ(3, dict.FindInt("state"));
-  EXPECT_THAT(dict.FindString("source"), Pointee(Eq("exec_foo")));
-
-  // The second run should be for the meta file in the "user" directory.
-  row = std::move(rows[1]);
-  ASSERT_TRUE(row.has_value() && row->is_dict());
-  dict = std::move(row->GetDict());
-  ASSERT_EQ(6, dict.size());
-  EXPECT_TRUE(dict.Find("upload_time"));
-  EXPECT_THAT(
-      dict.FindString("upload_id"),
-      Pointee(Eq(expected_upload_id)));  // This is the value we set before
-  EXPECT_THAT(dict.FindString("local_id"), Pointee(Eq("bar")));
-  EXPECT_THAT(dict.FindString("capture_time"), Pointee(Eq("2000")));
-  EXPECT_EQ(3, dict.FindInt("state"));
-  EXPECT_THAT(dict.FindString("source"), Pointee(Eq("REDACTED")));
-
-  if (dry_run_) {
-    row = std::move(rows[2]);
+  if (max_crash_rate_ >= 1 || dry_run_) {
+    // The first run should be for the meta file in the system directory.
+    std::optional<base::Value> row = std::move(rows[0]);
     ASSERT_TRUE(row.has_value() && row->is_dict());
-    dict = std::move(row->GetDict());
+    auto dict = std::move(row->GetDict());
+    ASSERT_EQ(6, dict.size());
+    EXPECT_TRUE(dict.Find("upload_time"));
+    EXPECT_THAT(dict.FindString("upload_id"), Pointee(Eq(expected_upload_id)));
+    EXPECT_THAT(dict.FindString("local_id"), Pointee(Eq("foo")));
+    EXPECT_THAT(dict.FindString("capture_time"), Pointee(Eq("1000")));
+    EXPECT_EQ(3, dict.FindInt("state"));
+    EXPECT_THAT(dict.FindString("source"), Pointee(Eq("exec_foo")));
+  }
+
+  if (max_crash_rate_ >= 2 || dry_run_) {
+    // The second run should be for the meta file in the "user" directory.
+    std::optional<base::Value> row = std::move(rows[1]);
+    ASSERT_TRUE(row.has_value() && row->is_dict());
+    auto dict = std::move(row->GetDict());
+    ASSERT_EQ(6, dict.size());
+    EXPECT_TRUE(dict.Find("upload_time"));
+    EXPECT_THAT(
+        dict.FindString("upload_id"),
+        Pointee(Eq(expected_upload_id)));  // This is the value we set before
+    EXPECT_THAT(dict.FindString("local_id"), Pointee(Eq("bar")));
+    EXPECT_THAT(dict.FindString("capture_time"), Pointee(Eq("2000")));
+    EXPECT_EQ(3, dict.FindInt("state"));
+    EXPECT_THAT(dict.FindString("source"), Pointee(Eq("REDACTED")));
+  }
+
+  // We don't have a test with max_crash_rate_ >= 3. However, had there been
+  // one, this if-block should only take effect when max_crash_rate_ >= 3.
+  if (max_crash_rate_ >= 3 || dry_run_) {
+    std::optional<base::Value> row = std::move(rows[2]);
+    ASSERT_TRUE(row.has_value() && row->is_dict());
+    auto dict = std::move(row->GetDict());
     ASSERT_EQ(5, dict.size());
     EXPECT_TRUE(dict.Find("upload_time"));
     EXPECT_THAT(dict.FindString("upload_id"),
@@ -2144,19 +2162,46 @@ TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
   }
 
   // The crash files should be kept in dry run mode and removed otherwise.
-  EXPECT_THAT(base::PathExists(system_meta_file), Eq(dry_run_));
-  EXPECT_THAT(base::PathExists(system_log), Eq(dry_run_));
-  EXPECT_THAT(base::PathExists(user_meta_file), Eq(dry_run_));
-  EXPECT_THAT(base::PathExists(user_log), Eq(dry_run_));
+  EXPECT_THAT(base::PathExists(system_meta_file),
+              Eq(dry_run_ || max_crash_rate_ < 1));
+  EXPECT_THAT(base::PathExists(system_log),
+              Eq(dry_run_ || max_crash_rate_ < 1));
+  EXPECT_THAT(base::PathExists(user_meta_file),
+              Eq(dry_run_ || max_crash_rate_ < 2));
+  EXPECT_THAT(base::PathExists(user_log), Eq(dry_run_ || max_crash_rate_ < 2));
 
   // The following should be kept since the crash report was not uploaded.
   EXPECT_TRUE(base::PathExists(user_meta_file2));
   EXPECT_TRUE(base::PathExists(user_log2));
 }
 
-INSTANTIATE_TEST_SUITE_P(CrashSenderSendCrashesInstantiation,
-                         CrashSenderSendCrashesTest,
-                         testing::Bool());
+// Notes on the combination of parameters:
+//
+// - dry_run=true, max_crash_rate=0 is essential because as long as additional
+//   files (max_crash_rate > 1) are allowed to be uploaded, dry run mode won't
+//   consume the allowance, thus IsBelowRate always returns true. Therefore,
+//   dry_run=true, max_crash_rate=1,2 won't be able to reveal a (broken) dry run
+//   mode that depends on rate limiting.
+// - dry_run=true, max_crash_rate=1,2 ensures dry run mode works correctly under
+//   normal circumstances, i.e., max_crash_rate>0.
+// - dry_run=false, max_crash_rate=0,1,2 ensures the correct order of upload
+//   (system first, then user).
+INSTANTIATE_TEST_SUITE_P(
+    CrashSenderSendCrashesInstantiation,
+    CrashSenderSendCrashesTest,
+    testing::Combine(
+        /*dry_run=*/testing::Bool(),
+        /*max_crash_rate=*/testing::Values(0,    // No upload
+                                           1,    // Upload the system crash only
+                                           2)),  // upload the user crash only
+    [](const ::testing::TestParamInfo<CrashSenderSendCrashesTest::ParamType>&
+           info) {
+      // Can use info.param here to generate the test suffix
+      std::ostringstream name;
+      name << "dry_run_" << std::get<0>(info.param) << "_max_crash_rate_"
+           << std::get<1>(info.param);
+      return name.str();
+    });
 
 TEST_F(CrashSenderUtilTest, SendCrashes_DontSendUnderDryRunMode) {
   // Set up the mock session manager client.
