@@ -64,6 +64,10 @@ using ::brillo::BlobFromString;
 using ::testing::_;
 using ::testing::NiceMock;
 
+// Run at most this number of "commands" when processing a single fuzzer input.
+// This is chosen semi-arbitrarily, just to avoid spurious timeout reports.
+constexpr int kMaxCommandCount = 10000;
+
 constexpr char kStubSystemSalt[] = "stub-system-salt";
 // A few typical values to choose from when simulating the system info in the
 // fuzzer. We don't use completely random strings as only few aspects are
@@ -335,7 +339,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // `breadcrumbs` contain blobs which are useful to reuse across multiple calls
   // but which Libfuzzer cannot realistically generate itself.
   std::vector<Blob> breadcrumbs;
-  while (provider.remaining_bytes() > 0) {
+  for (int command_number = 0;
+       command_number < kMaxCommandCount && provider.remaining_bytes() > 0;
+       ++command_number) {
     switch (provider.ConsumeEnum<Command>()) {
       case Command::kIncomingDBusCall: {
         SimulateIncomingDBusCall(provider, dbus_object, breadcrumbs);
