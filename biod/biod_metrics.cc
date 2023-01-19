@@ -81,7 +81,7 @@ bool BiodMetrics::SendFwUpdaterStatus(FwUpdaterStatus status,
   constexpr int kUpdateBuckets = kUpdateMaxMSec / kUpdateResolutionMSec;
 
   bool rc = true;
-  // TODO(crbug.com/1218246) Change UMA enum name kUpdaterStatus if new enums
+  // TODO(b/266077024) Change UMA enum name kUpdaterStatus if new enums
   // for FWUpdaterStatus are added to avoid data discontinuity, then use
   // kMaxValue+1 rather than kMaxValue (or templated SendEnumToUMA()).
   if (!metrics_lib_->SendEnumToUMA(
@@ -125,7 +125,7 @@ bool BiodMetrics::SendPositiveMatchSecretCorrect(bool correct) {
 }
 
 bool BiodMetrics::SendRecordFormatVersion(int version) {
-  // TODO(crbug.com/1218246) Change UMA enum name kRecordFormatVersionMetric if
+  // TODO(b/266077024) Change UMA enum name kRecordFormatVersionMetric if
   // kRecordFormatVersion changes to avoid data discontinuity, then use
   // kRecordFormatVersion+1 rather than kRecordFormatVersion for
   // 'exclusive_max'.

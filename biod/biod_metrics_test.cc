@@ -126,7 +126,7 @@ TEST_F(BiodMetricsTest, SendFwUpdaterStatusOnNoUpdate) {
   const auto reason = updater::UpdateReason::kNone;
   const int overall_ms = 60;
 
-  // TODO(crbug.com/1218246) Change UMA enum names for kUpdaterStatus if new
+  // TODO(b/266077024) Change UMA enum names for kUpdaterStatus if new
   // enums are added to avoid data discontinuity, and then use kMaxValue+1
   // rather than kMaxValue for 'exclusive_max'.
   EXPECT_CALL(*GetMetricsLibraryMock(),
