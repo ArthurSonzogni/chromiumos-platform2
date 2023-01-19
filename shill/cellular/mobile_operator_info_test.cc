@@ -1069,38 +1069,12 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
       EXPECT_FALSE(operator_info_->mccmnc().empty());
     }
 
+    // 2 |operator_name_list| cannot be compared with equality because
+    // |UpdateOperatorName| only adds the operator name, and not the language.
     VerifyNameListsMatch(operator_name_list_,
                          operator_info_->operator_name_list());
-
-    // This comparison breaks if two apns have the same |apn| field.
-    EXPECT_EQ(apn_list_.size(), operator_info_->apn_list().size());
-    std::map<std::string, const MobileOperatorInfo::MobileAPN*> mobile_apns;
-    for (const auto& apn_node : operator_info_->apn_list()) {
-      mobile_apns[apn_node.apn] = &apn_node;
-    }
-    for (const auto& apn_lhs : apn_list_) {
-      ASSERT_TRUE(mobile_apns.find(apn_lhs.apn) != mobile_apns.end());
-      const auto& apn_rhs = mobile_apns[apn_lhs.apn];
-      // Only comparing apn, name, username, password.
-      EXPECT_EQ(apn_lhs.apn, apn_rhs->apn);
-      EXPECT_EQ(apn_lhs.username, apn_rhs->username);
-      EXPECT_EQ(apn_lhs.password, apn_rhs->password);
-      VerifyNameListsMatch(apn_lhs.operator_name_list,
-                           apn_rhs->operator_name_list);
-    }
-
-    EXPECT_EQ(olp_list_.size(), operator_info_->olp_list().size());
-    // This comparison breaks if two OLPs have the same |url|.
-    std::map<std::string, MobileOperatorInfo::OnlinePortal> olps;
-    for (const auto& olp : operator_info_->olp_list()) {
-      olps[olp.url] = olp;
-    }
-    for (const auto& olp : olp_list_) {
-      ASSERT_TRUE(olps.find(olp.url) != olps.end());
-      const auto& olp_rhs = olps[olp.url];
-      EXPECT_EQ(olp.method, olp_rhs.method);
-      EXPECT_EQ(olp.post_data, olp_rhs.post_data);
-    }
+    EXPECT_EQ(apn_list_, operator_info_->apn_list());
+    EXPECT_EQ(olp_list_, operator_info_->olp_list());
   }
 
   void VerifyNameListsMatch(
@@ -1136,6 +1110,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     apn.apn = "test@test.com";
     apn.username = "testuser";
     apn.password = "is_public_boohoohoo";
+    apn.ip_type = "ipv4";
     apn.operator_name_list = {{"name200003", "hi"}};
     apn.apn_types = apn_types_;
     apn_list_.push_back(std::move(apn));
@@ -1158,6 +1133,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     apn.apn = "test2@test.com";
     apn.username = "testuser2";
     apn.password = "is_public_boohoohoo_too";
+    apn.ip_type = "ipv4";
     apn.apn_types = apn_types_;
     apn_list_.push_back(std::move(apn));
 

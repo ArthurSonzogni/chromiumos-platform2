@@ -104,6 +104,14 @@ class MobileOperatorInfo {
     // field, as sometimes the underlying database does not contain that
     // information.
     std::string language;
+
+   private:
+    auto tuple() const { return std::make_tuple(name, language); }
+
+   public:
+    bool operator==(const LocalizedName& rhs) const {
+      return tuple() == rhs.tuple();
+    }
   };
 
   // Encapsulates information on a mobile access point name. This information
@@ -139,6 +147,17 @@ class MobileOperatorInfo {
     std::set<std::string> apn_types;
     // IP type as one of "ipv4", "ipv6", "ipv4v6" (dual-stack)
     std::string ip_type;
+
+   private:
+    auto tuple() const {
+      return std::make_tuple(apn, operator_name_list, username, password,
+                             authentication, apn_types, ip_type);
+    }
+
+   public:
+    bool operator==(const MobileAPN& rhs) const {
+      return tuple() == rhs.tuple();
+    }
   };
 
   // Encapsulates information about the Online payment portal used by chrome to
@@ -147,6 +166,14 @@ class MobileOperatorInfo {
     std::string url;
     std::string method;
     std::string post_data;
+
+   private:
+    auto tuple() const { return std::make_tuple(url, method, post_data); }
+
+   public:
+    bool operator==(const OnlinePortal& rhs) const {
+      return tuple() == rhs.tuple();
+    }
   };
 
   // ///////////////////////////////////////////////////////////////////////////
