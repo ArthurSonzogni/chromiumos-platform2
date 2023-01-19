@@ -36,16 +36,21 @@ DEFINE_string  record_dmesg_dir "" "dir to record dmesgs for failed iterations"
 DEFINE_string  pre_suspend_command "" "Command to run before each suspend"
 DEFINE_string  post_resume_command "" "Command to run after each resume"
 
+dmesg_last_cycle() {
+  local lines=0
+
+  lines=$(dmesg | tac | grep -m1 -n "PM: suspend entry" \
+            | cut -f1 -d:)
+  dmesg | tail -${lines}
+}
+
 # Record the dmesg for the last iteration.
 # Accepts iteration number as an argument (to name the file dmesg_<iter_num>)
 record_dmesg_for_iteration() {
-  local lines=0
   local filename=${FLAGS_record_dmesg_dir}/dmesg_$1
 
   echo -n " (dmesg > ${filename})..."
-  lines=$(dmesg | tac | grep -m1 -n "PM: suspend entry" \
-          | cut -f1 -d:)
-  dmesg | tail -${lines} > ${filename}
+  dmesg_last_cycle > ${filename}
 }
 
 # Dump STB for AMD Systems for 1st failure.
@@ -106,6 +111,7 @@ dump_stats_and_exit() {
   echo "Late wakes: ${late_wake_count}"
   echo "Suspend failures: $(( cur -
                               ($(get_success_count) - initial_successes) ))"
+  echo "Hwrng errors: ${hwrng_errors}"
   echo "Wakealarm errors: ${wakealarm_errors}"
   echo "Firmware log errors: ${firmware_errors}"
   echo "EC detected AP suspend errors: ${ec_suspend_errors}"
@@ -244,6 +250,7 @@ ec_suspend_errors=0
 firmware_errors=0
 s0ix_errors=0
 s2idle_errors=0
+hwrng_errors=0
 last_successes=${initial_successes}
 exit_loop=0
 cur_ignore_count=0
@@ -377,20 +384,42 @@ while true; do
     fi
   elif [ "${check_s2idle_errors}" = 1 ] && \
        [ "${cur_s2idle_count}" = "${last_s2idle_count}" ]; then
-    echo "Suspend failed, s2idle count did not increment from ${last_s2idle_count}"
-    : $(( s2idle_errors += 1 ))
-    if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then
-      exit_loop=1
-    elif [ -n "${FLAGS_record_dmesg_dir}" ]; then
-      record_dmesg_for_iteration ${cur}
+    if ! dmesg_last_cycle | grep -q "hwrng: no data available"; then
+      echo "Suspend failed, s2idle count did not increment from ${last_s2idle_count}"
+      : $(( s2idle_errors += 1 ))
+      if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then
+        exit_loop=1
+      elif [ -n "${FLAGS_record_dmesg_dir}" ]; then
+        record_dmesg_for_iteration ${cur}
+      fi
+    else
+      # failure caused by hwrng kthread, don't abort (yet), but count the error
+      : $(( hwrng_errors += 1 ))
     fi
   elif [ "$(($(get_ec_resume_result) & 0x80000000))" -ne 0 ]; then
-    echo "EC detected AP suspend error: $(get_ec_resume_result)"
-    : $(( ec_suspend_errors += 1 ))
-    if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then
+    if ! dmesg_last_cycle | grep -q "hwrng: no data available"; then
+      echo "EC detected AP suspend error: $(get_ec_resume_result)"
+      : $(( ec_suspend_errors += 1 ))
+      if [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then
+        exit_loop=1
+      elif [ -n "${FLAGS_record_dmesg_dir}" ]; then
+        record_dmesg_for_iteration ${cur}
+      fi
+    else
+      # failure caused by hwrng kthread, don't abort (yet), but count the error
+      : $(( hwrng_errors += 1 ))
+    fi
+  fi
+
+  # check hwrng error rate if at least two hwrng related errors were observed
+  if [ ${hwrng_errors} -ge 2 ] && \
+     [ ${FLAGS_errors_fatal} -eq ${FLAGS_TRUE} ]; then
+    hwrng_errors_per_1000=$(( (${hwrng_errors} * 1000) / ${cur} ))
+
+    if [ ${hwrng_errors_per_1000} -gt 0 ]; then
+      # rate of suspend failures due to hwrng is >= 1/1000
+      echo "Rate of suspend failures caused by hwrng kthread is too high."
       exit_loop=1
-    elif [ -n "${FLAGS_record_dmesg_dir}" ]; then
-      record_dmesg_for_iteration ${cur}
     fi
   fi
   last_successes=${cur_successes}
