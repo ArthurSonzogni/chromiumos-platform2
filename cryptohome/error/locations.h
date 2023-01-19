@@ -1435,6 +1435,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocPinWeaverAuthBlockNoKeyLoaderInIsSupported = 2727,
   /* ./auth_session.cc */
   kLocAuthSessionNoVkInAddKeyset = 2728,
+  /* ./auth_factor/auth_factor_manager.cc */
+  kLocAuthFactorManagerEmptyReadInLoad = 2729,
+  /* ./user_secret_stash.cc */
+  kLocUSSEmptySerializedInGetContainerFromFB = 2730,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2900
   //// See location_db.py for more info.

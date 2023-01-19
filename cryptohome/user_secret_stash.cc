@@ -307,6 +307,17 @@ CryptohomeStatus GetContainerFromFlatbuffer(
     brillo::Blob* tag,
     std::map<std::string, UserSecretStash::WrappedKeyBlock>* wrapped_key_blocks,
     std::string* created_on_os_version) {
+  // This check is redundant to the flatbuffer parsing below, but we check it
+  // here in order to distinguish "empty file" from "corrupted file" in metrics
+  // and logs.
+  if (flatbuffer.empty()) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSEmptySerializedInGetContainerFromFB),
+        ErrorActionSet({ErrorAction::kDeleteVault, ErrorAction::kAuth,
+                        ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  }
+
   std::optional<UserSecretStashContainer> deserialized =
       UserSecretStashContainer::Deserialize(flatbuffer);
   if (!deserialized.has_value()) {
