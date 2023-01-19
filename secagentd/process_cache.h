@@ -81,6 +81,9 @@ class ProcessCache : public ProcessCacheInterface {
   // kernel constants there.
   static uint64_t LossyNsecToClockT(bpf::time_ns_t ns);
 
+  // Converts clock_t to seconds.
+  static int64_t ClockTToSeconds(uint64_t clock_t);
+
   static void PartiallyFillProcessFromBpfTaskInfo(
       const bpf::cros_process_task_info& task_info,
       cros_xdr::reporting::Process* process_proto);

@@ -6,6 +6,7 @@
 #include <memory>
 
 #include "absl/status/status.h"
+#include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/memory/scoped_refptr.h"
 #include "google/protobuf/message_lite.h"
@@ -87,6 +88,8 @@ void ProcessPlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
   if (message) {
     message_sender_->SendMessage(destination, mutable_common,
                                  std::move(message), std::nullopt);
+  } else {
+    LOG(ERROR) << "Message construction failed for event.";
   }
 }
 
@@ -119,6 +122,10 @@ std::unique_ptr<pb::XdrProcessEvent> ProcessPlugin::MakeExecEvent(
   // that spawned that process, and its parent process. I.e a total of three.
   auto hierarchy = process_cache_->GetProcessHierarchy(
       process_start.task_info.pid, process_start.task_info.start_time, 3);
+  if (hierarchy.empty()) {
+    LOG(ERROR) << "PID:" << process_start.task_info.pid
+               << " not found in the process cache.";
+  }
   if (hierarchy.size() > 0) {
     process_exec_event->set_allocated_spawn_process(hierarchy[0].release());
   }

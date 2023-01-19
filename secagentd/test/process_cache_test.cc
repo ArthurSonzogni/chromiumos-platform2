@@ -278,6 +278,9 @@ class ProcessCacheTestFixture : public ::testing::Test {
     mock_spawns_[kPidChildOfChild].expected_proto.set_canonical_pid(
         kPidChildOfChild);
     mock_spawns_[kPidChildOfChild].expected_proto.set_canonical_uid(0);
+    mock_spawns_[kPidChildOfChild].expected_proto.set_rel_start_time_s(
+        ProcessCache::ClockTToSeconds(
+            ProcessCache::LossyNsecToClockT(5029384029)));
     mock_spawns_[kPidChildOfChild].expected_proto.set_commandline(
         "'/usr/sbin/spaced_cli' '--get_free_disk_space=/home/.shadow'");
     mock_spawns_[kPidChildOfChild].expected_proto.mutable_image()->set_pathname(

@@ -252,6 +252,11 @@ uint64_t ProcessCache::LossyNsecToClockT(bpf::time_ns_t ns) {
   }
 }
 
+// Converts clock_t to seconds.
+int64_t ProcessCache::ClockTToSeconds(uint64_t clock_t) {
+  return clock_t / GetScClockTck();
+}
+
 void ProcessCache::PartiallyFillProcessFromBpfTaskInfo(
     const bpf::cros_process_task_info& task_info, pb::Process* process_proto) {
   ProcessCache::InternalProcessKeyType key{
@@ -262,6 +267,7 @@ void ProcessCache::PartiallyFillProcessFromBpfTaskInfo(
   process_proto->set_commandline(SafeTransformArgvEnvp(
       task_info.commandline, sizeof(task_info.commandline),
       task_info.commandline_len));
+  process_proto->set_rel_start_time_s(ClockTToSeconds(key.start_time_t));
 }
 
 ProcessCache::ProcessCache(const base::FilePath& root_path)
@@ -393,6 +399,7 @@ ProcessCache::MakeFromProcfs(const ProcessCache::InternalProcessKeyType& key) {
   auto process_proto = std::make_unique<pb::Process>();
   process_proto->set_canonical_pid(key.pid);
   process_proto->set_process_uuid(StableUuid(key));
+  process_proto->set_rel_start_time_s(ClockTToSeconds(key.start_time_t));
 
   const base::FilePath proc_pid_dir =
       root_path_.Append(base::StringPrintf("proc/%" PRIu64, key.pid));
