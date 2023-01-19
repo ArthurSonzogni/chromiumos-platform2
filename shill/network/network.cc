@@ -550,6 +550,21 @@ void Network::OnIPv6ConfigUpdated() {
     return;
   }
 
+  // Apply search domains from StaticIPConfig, if the list is not empty and
+  // there is a change. This is a workaround to apply search domains from policy
+  // on IPv6-only network (b/265680125), since StaticIPConfig is only applied to
+  // IPv4 now. This workaround can be removed after we unify IPv4 and IPv6
+  // config into a single object. Since currently we don't update it in
+  // OnStaticIPConfigChanged() (because it will make the code more tricky to
+  // handle IPv6 in that code path), SearchDomains change will not take effect
+  // on a connected network. This limitation should be acceptable that it cannot
+  // be changed via UI, but only through policy.
+  const auto& search_domains = static_network_config_.dns_search_domains;
+  if (search_domains.has_value() && !search_domains->empty() &&
+      ip6config()->properties().domain_search != *search_domains) {
+    ip6config()->UpdateSearchDomains(*search_domains);
+  }
+
   // Setup connection using IPv6 configuration only if the IPv6 configuration is
   // ready for connection (contained both IP address and DNS servers), and there
   // is no existing IPv4 connection. We always prefer IPv4 configuration over
