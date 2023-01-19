@@ -22,6 +22,7 @@
 
 #include <chromeos/dbus/service_constants.h>
 
+#include "biod/biod_constants.h"
 #include "biod/biod_proxy/biometrics_manager_proxy_base.h"
 #include "biod/biod_version.h"
 #include "biod/biometrics_manager.h"
@@ -49,8 +50,6 @@ static const char kHelpText[] =
     "biometrics manager, and can be abbreviated as the path's basename (the "
     "part after the last forward slash)\n\n"
     "The <record> parameter is also a D-Bus object path.";
-
-static const int kDbusTimeoutMs = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
 
 using BiometricsManagerType = biod::BiometricType;
 using ScanResult = biod::ScanResult;
@@ -85,13 +84,15 @@ class RecordProxy {
                                  biod::kRecordSetLabelMethod);
     dbus::MessageWriter method_writer(&method_call);
     method_writer.AppendString(label);
-    return !!proxy_->CallMethodAndBlock(&method_call, kDbusTimeoutMs);
+    return !!proxy_->CallMethodAndBlock(&method_call,
+                                        biod::dbus_constants::kDbusTimeoutMs);
   }
 
   bool Remove() {
     dbus::MethodCall method_call(biod::kRecordInterface,
                                  biod::kRecordRemoveMethod);
-    return !!proxy_->CallMethodAndBlock(&method_call, kDbusTimeoutMs);
+    return !!proxy_->CallMethodAndBlock(&method_call,
+                                        biod::dbus_constants::kDbusTimeoutMs);
   }
 
  private:
@@ -101,8 +102,8 @@ class RecordProxy {
     dbus::MessageWriter method_writer(&method_call);
     method_writer.AppendString(biod::kRecordInterface);
     method_writer.AppendString(biod::kRecordLabelProperty);
-    std::unique_ptr<dbus::Response> response =
-        proxy_->CallMethodAndBlock(&method_call, kDbusTimeoutMs);
+    std::unique_ptr<dbus::Response> response = proxy_->CallMethodAndBlock(
+        &method_call, biod::dbus_constants::kDbusTimeoutMs);
     CHECK(response);
 
     dbus::MessageReader response_reader(response.get());
@@ -143,8 +144,8 @@ class BiometricsManagerProxy : public biod::BiometricsManagerProxyBase {
     method_writer.AppendString(user_id);
     method_writer.AppendString(label);
 
-    std::unique_ptr<dbus::Response> response =
-        proxy_->CallMethodAndBlock(&method_call, kDbusTimeoutMs);
+    std::unique_ptr<dbus::Response> response = proxy_->CallMethodAndBlock(
+        &method_call, biod::dbus_constants::kDbusTimeoutMs);
     if (!response)
       return nullptr;
 
@@ -160,7 +161,8 @@ class BiometricsManagerProxy : public biod::BiometricsManagerProxyBase {
     dbus::MethodCall method_call(
         biod::kBiometricsManagerInterface,
         biod::kBiometricsManagerDestroyAllRecordsMethod);
-    return !!proxy_->CallMethodAndBlock(&method_call, kDbusTimeoutMs);
+    return !!proxy_->CallMethodAndBlock(&method_call,
+                                        biod::dbus_constants::kDbusTimeoutMs);
   }
 
   std::vector<RecordProxy> GetRecordsForUser(const std::string& user_id) const {
@@ -170,8 +172,8 @@ class BiometricsManagerProxy : public biod::BiometricsManagerProxyBase {
     dbus::MessageWriter method_writer(&method_call);
     method_writer.AppendString(user_id);
 
-    std::unique_ptr<dbus::Response> response =
-        proxy_->CallMethodAndBlock(&method_call, kDbusTimeoutMs);
+    std::unique_ptr<dbus::Response> response = proxy_->CallMethodAndBlock(
+        &method_call, biod::dbus_constants::kDbusTimeoutMs);
 
     std::vector<RecordProxy> records;
     if (!response)
@@ -319,8 +321,8 @@ class BiodProxy {
     dbus::MethodCall get_objects_method(dbus::kObjectManagerInterface,
                                         dbus::kObjectManagerGetManagedObjects);
 
-    std::unique_ptr<dbus::Response> objects_msg =
-        proxy_->CallMethodAndBlock(&get_objects_method, kDbusTimeoutMs);
+    std::unique_ptr<dbus::Response> objects_msg = proxy_->CallMethodAndBlock(
+        &get_objects_method, biod::dbus_constants::kDbusTimeoutMs);
     CHECK(objects_msg) << "Failed to retrieve biometrics managers.";
 
     dbus::MessageReader reader(objects_msg.get());
@@ -429,7 +431,8 @@ int DoEnroll(base::WeakPtr<BiometricsManagerProxy> biometrics_manager,
     LOG(INFO) << "Ending biometric enrollment";
     dbus::MethodCall cancel_call(biod::kEnrollSessionInterface,
                                  biod::kEnrollSessionCancelMethod);
-    enroll_session_object->CallMethodAndBlock(&cancel_call, kDbusTimeoutMs);
+    enroll_session_object->CallMethodAndBlock(
+        &cancel_call, biod::dbus_constants::kDbusTimeoutMs);
   }
 
   return ret;

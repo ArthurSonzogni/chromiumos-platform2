@@ -11,10 +11,11 @@
 #include <base/observer_list.h>
 #include <dbus/object_proxy.h>
 
+#include "biod/biod_constants.h"
+
 namespace biod {
 
 namespace dbus_constants {
-inline constexpr int kDbusTimeoutMs = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
 inline constexpr char kSessionStateStarted[] = "started";
 inline constexpr char kSessionStateStopped[] = "stopped";
 inline constexpr char kDBusErrorNoReply[] =

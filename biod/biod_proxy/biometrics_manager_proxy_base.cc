@@ -13,9 +13,9 @@
 #include <base/memory/ptr_util.h>
 #include <chromeos/dbus/service_constants.h>
 
-namespace biod {
+#include "biod/biod_constants.h"
 
-static const int kDbusTimeoutMs = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT;
+namespace biod {
 
 using FinishCallback = base::RepeatingCallback<void(bool success)>;
 
@@ -139,7 +139,7 @@ bool BiometricsManagerProxyBase::StartAuthSession() {
                                biod::kBiometricsManagerStartAuthSessionMethod);
 
   std::unique_ptr<dbus::Response> response =
-      proxy_->CallMethodAndBlock(&method_call, kDbusTimeoutMs);
+      proxy_->CallMethodAndBlock(&method_call, dbus_constants::kDbusTimeoutMs);
 
   biod_auth_session_ = HandleAuthSessionResponse(response.get());
   return biod_auth_session_ != nullptr;
@@ -158,7 +158,7 @@ void BiometricsManagerProxyBase::StartAuthSessionAsync(
                                biod::kBiometricsManagerStartAuthSessionMethod);
 
   proxy_->CallMethod(
-      &method_call, kDbusTimeoutMs,
+      &method_call, dbus_constants::kDbusTimeoutMs,
       base::BindOnce(&BiometricsManagerProxyBase::OnStartAuthSessionResp,
                      base::Unretained(this), std::move(callback)));
 }
@@ -167,7 +167,8 @@ void BiometricsManagerProxyBase::EndAuthSession() {
   LOG(INFO) << "Ending biometric authentication";
   dbus::MethodCall end_call(biod::kAuthSessionInterface,
                             biod::kAuthSessionEndMethod);
-  biod_auth_session_->CallMethodAndBlock(&end_call, kDbusTimeoutMs);
+  biod_auth_session_->CallMethodAndBlock(&end_call,
+                                         dbus_constants::kDbusTimeoutMs);
 }
 
 void BiometricsManagerProxyBase::OnFinish(bool success) {
