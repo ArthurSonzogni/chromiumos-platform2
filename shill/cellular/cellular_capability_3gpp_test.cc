@@ -1632,10 +1632,10 @@ TEST_F(CellularCapability3gppTest, GetMdnForOLP) {
 }
 
 TEST_F(CellularCapability3gppTest, UpdateServiceOLP) {
-  const MobileOperatorInfo::OnlinePortal kOlp{
+  const MobileOperatorMapper::OnlinePortal kOlp{
       "http://testurl", "POST",
       "imei=${imei}&imsi=${imsi}&mdn=${mdn}&min=${min}&iccid=${iccid}"};
-  const std::vector<MobileOperatorInfo::OnlinePortal> kOlpList{kOlp};
+  const std::vector<MobileOperatorMapper::OnlinePortal> kOlpList{kOlp};
   const std::string kUuidVzw = "c83d6597-dc91-4d48-a3a7-d86b80123751";
   const std::string kUuidFoo = "foo";
 
@@ -1710,7 +1710,7 @@ TEST_F(CellularCapability3gppTest, CompleteActivation) {
 }
 
 TEST_F(CellularCapability3gppTest, UpdateServiceActivationState) {
-  const std::vector<MobileOperatorInfo::OnlinePortal> olp_list{
+  const std::vector<MobileOperatorMapper::OnlinePortal> olp_list{
       {"some@url", "some_method", "some_post_data"}};
 
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
@@ -1898,8 +1898,8 @@ TEST_F(CellularCapability3gppTest, UpdatePendingActivationState) {
 }
 
 TEST_F(CellularCapability3gppTest, IsServiceActivationRequired) {
-  const std::vector<MobileOperatorInfo::OnlinePortal> empty_list;
-  const std::vector<MobileOperatorInfo::OnlinePortal> olp_list{
+  const std::vector<MobileOperatorMapper::OnlinePortal> empty_list;
+  const std::vector<MobileOperatorMapper::OnlinePortal> olp_list{
       {"some@url", "some_method", "some_post_data"}};
 
   capability_->subscription_state_ = SubscriptionState::kProvisioned;

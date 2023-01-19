@@ -17,12 +17,25 @@
 #include <base/observer_list.h>
 #include <google/protobuf/text_format.h>
 
-#include "shill/cellular/mobile_operator_info.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mobile_operator_db/mobile_operator_db.pb.h"
 
 namespace shill {
 
+// Temporarily move the Observer into MobileOperatorMapper so it can be
+// used here. This will be moved back a few CLs later when
+// |MobileOperatorMapper| no longer uses the observer
+class MobileOperatorInfoObserver : public base::CheckedObserver {
+ public:
+  virtual ~MobileOperatorInfoObserver() = default;
+  // This event fires when
+  //   - A mobile [virtual] network operator
+  //     - is first determined.
+  //     - changes.
+  //     - becomes invalid.
+  //   - Some information about the known operator changes.
+  virtual void OnOperatorChanged() = 0;
+};
 class MobileOperatorMapper {
  public:
   using StringToMNOListMap =
@@ -34,13 +47,100 @@ class MobileOperatorMapper {
                        const std::string& info_owner);
   ~MobileOperatorMapper();
 
+  // ///////////////////////////////////////////////////////////////////////////
+  // Objects that encapsulate related information about the mobile operator.
+
+  // Encapsulates a name and the language that name has been localized to.
+  // The name can be a carrier name, or the name that a cellular carrier
+  // prefers to show for a certain access point.
+  struct LocalizedName {
+    // The name as it appears in the corresponding language.
+    std::string name;
+    // The language of this localized name. The format of a language is a two
+    // letter language code, e.g. 'en' for English.
+    // It is legal for an instance of LocalizedName to have an empty |language|
+    // field, as sometimes the underlying database does not contain that
+    // information.
+    std::string language;
+
+   private:
+    auto tuple() const { return std::make_tuple(name, language); }
+
+   public:
+    bool operator==(const LocalizedName& rhs) const {
+      return tuple() == rhs.tuple();
+    }
+  };
+
+  // Encapsulates information on a mobile access point name. This information
+  // is usually necessary for 3GPP networks to be able to connect to a mobile
+  // network.
+  struct MobileAPN {
+    // The access point url, which is fed to the modemmanager while connecting.
+    std::string apn;
+    // A list of localized names for this access point. Usually there is only
+    // one for each country that the associated cellular carrier operates in.
+    std::vector<LocalizedName> operator_name_list;
+    // The username and password fields that are required by the modemmanager.
+    // Either of these values can be empty if none is present. If a MobileAPN
+    // instance that is obtained from this parser contains a non-empty value
+    // for username/password, this usually means that the carrier requires
+    // a certain default pair.
+    std::string username;
+    std::string password;
+    // The authentication method for sending username / password, which could
+    // be one of the following values:
+    // * (empty):
+    //   - When no username or password is provided, no authentication method
+    //     is specified.
+    //   - When a username and password is provided, the default authentication
+    //     method is used (which is PAP for most cases in the current
+    //     implementation of ModemManager).
+    // * "pap" (kApnAuthenticationPap):
+    //   - Password Authentication Protocol (PAP) is used for authentication
+    // * "chap" (kApnAuthenticationChap):
+    //   - Challenge-Handshake Authentication Protocol (CHAP) for authentication
+    std::string authentication;
+    // A list of APN types.
+    std::set<std::string> apn_types;
+    // IP type as one of "ipv4", "ipv6", "ipv4v6" (dual-stack)
+    std::string ip_type;
+
+   private:
+    auto tuple() const {
+      return std::make_tuple(apn, operator_name_list, username, password,
+                             authentication, apn_types, ip_type);
+    }
+
+   public:
+    bool operator==(const MobileAPN& rhs) const {
+      return tuple() == rhs.tuple();
+    }
+  };
+
+  // Encapsulates information about the Online payment portal used by chrome to
+  // redirect users for some carriers.
+  struct OnlinePortal {
+    std::string url;
+    std::string method;
+    std::string post_data;
+
+   private:
+    auto tuple() const { return std::make_tuple(url, method, post_data); }
+
+   public:
+    bool operator==(const OnlinePortal& rhs) const {
+      return tuple() == rhs.tuple();
+    }
+  };
+
   // API functions of the interface.
   // See mobile_operator_info.h for details.
   void ClearDatabasePaths();
   void AddDatabasePath(const base::FilePath& absolute_path);
   bool Init();
-  void AddObserver(MobileOperatorInfo::Observer* observer);
-  void RemoveObserver(MobileOperatorInfo::Observer* observer);
+  void AddObserver(MobileOperatorInfoObserver* observer);
+  void RemoveObserver(MobileOperatorInfoObserver* observer);
   bool IsMobileNetworkOperatorKnown() const;
   bool IsMobileVirtualNetworkOperatorKnown() const;
   const std::string& info_owner() const;
@@ -50,10 +150,10 @@ class MobileOperatorMapper {
   const std::string& mccmnc() const;
   const std::string& gid1() const;
   const std::vector<std::string>& mccmnc_list() const;
-  const std::vector<MobileOperatorInfo::LocalizedName>& operator_name_list()
+  const std::vector<MobileOperatorMapper::LocalizedName>& operator_name_list()
       const;
-  const std::vector<MobileOperatorInfo::MobileAPN>& apn_list() const;
-  const std::vector<MobileOperatorInfo::OnlinePortal>& olp_list() const;
+  const std::vector<MobileOperatorMapper::MobileAPN>& apn_list() const;
+  const std::vector<MobileOperatorMapper::OnlinePortal>& olp_list() const;
   bool requires_roaming() const;
   int32_t mtu() const;
   void Reset();
@@ -65,7 +165,7 @@ class MobileOperatorMapper {
   void UpdateOnlinePortal(const std::string& url,
                           const std::string& method,
                           const std::string& post_data);
-  void UpdateRequiresRoaming(const MobileOperatorInfo* serving_operator_info);
+  void UpdateRequiresRoaming(const MobileOperatorMapper* serving_operator_info);
 
  private:
   friend class MobileOperatorInfoInitTest;
@@ -161,7 +261,7 @@ class MobileOperatorMapper {
   // The observers added to this list are not owned by this object. Moreover,
   // the observer is likely to outlive this object. We do enforce removal of all
   // observers before this object is destroyed.
-  base::ObserverList<MobileOperatorInfo::Observer> observers_;
+  base::ObserverList<MobileOperatorInfoObserver> observers_;
   base::CancelableClosure notify_operator_changed_task_;
 
   std::unique_ptr<mobile_operator_db::MobileOperatorDB> database_;
@@ -191,12 +291,12 @@ class MobileOperatorMapper {
   std::string mccmnc_;
   std::string gid1_;
   std::vector<std::string> mccmnc_list_;
-  std::vector<MobileOperatorInfo::LocalizedName> operator_name_list_;
+  std::vector<MobileOperatorMapper::LocalizedName> operator_name_list_;
   bool prioritizes_db_operator_name_;
   std::vector<mobile_operator_db::MobileAPN> raw_apn_list_;
   std::set<mobile_operator_db::Filter_Type> raw_apn_filters_types_;
-  std::vector<MobileOperatorInfo::MobileAPN> apn_list_;
-  std::vector<MobileOperatorInfo::OnlinePortal> olp_list_;
+  std::vector<MobileOperatorMapper::MobileAPN> apn_list_;
+  std::vector<MobileOperatorMapper::OnlinePortal> olp_list_;
   std::vector<mobile_operator_db::OnlinePortal> raw_olp_list_;
   bool requires_roaming_;
   std::vector<mobile_operator_db::Filter> roaming_filter_list_;
@@ -215,7 +315,7 @@ class MobileOperatorMapper {
   std::string user_operator_name_;
   std::string user_gid1_;
   bool user_olp_empty_;
-  MobileOperatorInfo::OnlinePortal user_olp_;
+  MobileOperatorMapper::OnlinePortal user_olp_;
 
   // This must be the last data member of this class.
   base::WeakPtrFactory<MobileOperatorMapper> weak_ptr_factory_;

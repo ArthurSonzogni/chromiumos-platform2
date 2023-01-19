@@ -182,12 +182,12 @@ bool MobileOperatorMapper::Init() {
   return true;
 }
 
-void MobileOperatorMapper::AddObserver(MobileOperatorInfo::Observer* observer) {
+void MobileOperatorMapper::AddObserver(MobileOperatorInfoObserver* observer) {
   observers_.AddObserver(observer);
 }
 
 void MobileOperatorMapper::RemoveObserver(
-    MobileOperatorInfo::Observer* observer) {
+    MobileOperatorInfoObserver* observer) {
   observers_.RemoveObserver(observer);
 }
 
@@ -229,17 +229,17 @@ const std::vector<std::string>& MobileOperatorMapper::mccmnc_list() const {
   return mccmnc_list_;
 }
 
-const std::vector<MobileOperatorInfo::LocalizedName>&
+const std::vector<MobileOperatorMapper::LocalizedName>&
 MobileOperatorMapper::operator_name_list() const {
   return operator_name_list_;
 }
 
-const std::vector<MobileOperatorInfo::MobileAPN>&
+const std::vector<MobileOperatorMapper::MobileAPN>&
 MobileOperatorMapper::apn_list() const {
   return apn_list_;
 }
 
-const std::vector<MobileOperatorInfo::OnlinePortal>&
+const std::vector<MobileOperatorMapper::OnlinePortal>&
 MobileOperatorMapper::olp_list() const {
   return olp_list_;
 }
@@ -853,8 +853,8 @@ void MobileOperatorMapper::HandleMCCMNCUpdate() {
 
 void MobileOperatorMapper::HandleOperatorNameUpdate() {
   if (!user_operator_name_.empty()) {
-    std::vector<MobileOperatorInfo::LocalizedName> localized_names;
-    MobileOperatorInfo::LocalizedName localized_name{user_operator_name_, ""};
+    std::vector<MobileOperatorMapper::LocalizedName> localized_names;
+    MobileOperatorMapper::LocalizedName localized_name{user_operator_name_, ""};
     localized_names.emplace_back(localized_name);
     for (auto it = operator_name_list_.begin();
          it != operator_name_list_.end();) {
@@ -898,7 +898,7 @@ void MobileOperatorMapper::HandleOnlinePortalUpdate() {
   olp_list_.clear();
   for (const auto& raw_olp : raw_olp_list_) {
     if (!raw_olp.has_olp_filter() || FilterMatches(raw_olp.olp_filter())) {
-      olp_list_.push_back(MobileOperatorInfo::OnlinePortal{
+      olp_list_.push_back(MobileOperatorMapper::OnlinePortal{
           raw_olp.url(), (raw_olp.method() == raw_olp.GET) ? "GET" : "POST",
           raw_olp.post_data()});
     }
@@ -931,7 +931,7 @@ void MobileOperatorMapper::HandleAPNListUpdate() {
     if (!passed_all_filters)
       continue;
 
-    MobileOperatorInfo::MobileAPN apn;
+    MobileOperatorMapper::MobileAPN apn;
     apn.apn = apn_data.apn();
     apn.username = apn_data.username();
     apn.password = apn_data.password();
@@ -955,7 +955,7 @@ void MobileOperatorMapper::HandleAPNListUpdate() {
 // When serving operator updates, filter it using |roaming_filter_list_|
 // to decide if |requires_roaming_| is true or false.
 void MobileOperatorMapper::UpdateRequiresRoaming(
-    const MobileOperatorInfo* serving_operator_info) {
+    const MobileOperatorMapper* serving_operator_info) {
   if (!serving_operator_info || serving_operator_info->mccmnc().empty())
     return;
   for (const auto& filter : roaming_filter_list_) {
@@ -985,7 +985,7 @@ void MobileOperatorMapper::PostNotifyOperatorChanged() {
 }
 
 void MobileOperatorMapper::NotifyOperatorChanged() {
-  for (MobileOperatorInfo::Observer& observer : observers_)
+  for (auto& observer : observers_)
     observer.OnOperatorChanged();
 }
 

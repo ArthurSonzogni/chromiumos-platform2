@@ -38,7 +38,7 @@ class ProcessManager;
 
 class Cellular : public Device,
                  public RpcTaskDelegate,
-                 public MobileOperatorInfo::Observer {
+                 public MobileOperatorInfoObserver {
  public:
   enum class State {
     // Initial state. No Capability exists.

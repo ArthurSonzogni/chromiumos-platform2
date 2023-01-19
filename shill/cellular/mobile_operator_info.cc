@@ -49,13 +49,12 @@ bool MobileOperatorInfo::Init() {
   return result;
 }
 
-void MobileOperatorInfo::AddObserver(MobileOperatorInfo::Observer* observer) {
+void MobileOperatorInfo::AddObserver(MobileOperatorInfoObserver* observer) {
   SLOG(3) << GetLogPrefix(__func__);
   impl_->AddObserver(observer);
 }
 
-void MobileOperatorInfo::RemoveObserver(
-    MobileOperatorInfo::Observer* observer) {
+void MobileOperatorInfo::RemoveObserver(MobileOperatorInfoObserver* observer) {
   SLOG(3) << GetLogPrefix(__func__);
   impl_->RemoveObserver(observer);
 }
@@ -114,7 +113,7 @@ const std::vector<std::string>& MobileOperatorInfo::mccmnc_list() const {
   return result;
 }
 
-const std::vector<MobileOperatorInfo::LocalizedName>&
+const std::vector<MobileOperatorMapper::LocalizedName>&
 MobileOperatorInfo::operator_name_list() const {
   const auto& result = impl_->operator_name_list();
   if (SLOG_IS_ON(Cellular, 3)) {
@@ -128,8 +127,8 @@ MobileOperatorInfo::operator_name_list() const {
   return result;
 }
 
-const std::vector<MobileOperatorInfo::MobileAPN>& MobileOperatorInfo::apn_list()
-    const {
+const std::vector<MobileOperatorMapper::MobileAPN>&
+MobileOperatorInfo::apn_list() const {
   const auto& result = impl_->apn_list();
   if (SLOG_IS_ON(Cellular, 3)) {
     std::stringstream pp_result;
@@ -149,7 +148,7 @@ const std::vector<MobileOperatorInfo::MobileAPN>& MobileOperatorInfo::apn_list()
   return result;
 }
 
-const std::vector<MobileOperatorInfo::OnlinePortal>&
+const std::vector<MobileOperatorMapper::OnlinePortal>&
 MobileOperatorInfo::olp_list() const {
   const auto& result = impl_->olp_list();
   if (SLOG_IS_ON(Cellular, 3)) {
@@ -210,7 +209,7 @@ void MobileOperatorInfo::UpdateOnlinePortal(const std::string& url,
 
 void MobileOperatorInfo::UpdateRequiresRoaming(
     const MobileOperatorInfo* serving_operator_info) {
-  impl_->UpdateRequiresRoaming(serving_operator_info);
+  impl_->UpdateRequiresRoaming(serving_operator_info->impl());
   SLOG(3) << GetLogPrefix(__func__)
           << "Updated requires_roaming: " << impl_->requires_roaming();
 }

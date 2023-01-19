@@ -1033,7 +1033,7 @@ void CellularCapability3gpp::UpdateServiceOLP() {
     return;
   }
 
-  const std::vector<MobileOperatorInfo::OnlinePortal>& olp_list =
+  const std::vector<MobileOperatorMapper::OnlinePortal>& olp_list =
       cellular()->home_provider_info()->olp_list();
   if (olp_list.empty()) {
     SLOG(this, 3) << "Empty OLP list";
@@ -1469,7 +1469,7 @@ CellularBearer* CellularCapability3gpp::GetActiveBearer() const {
   return active_bearer_.get();
 }
 
-const std::vector<MobileOperatorInfo::MobileAPN>&
+const std::vector<MobileOperatorMapper::MobileAPN>&
 CellularCapability3gpp::GetProfiles() const {
   return profiles_;
 }
@@ -1970,7 +1970,7 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
   SLOG(this, 3) << __func__;
   profiles_.clear();
   for (const auto& profile : profiles) {
-    MobileOperatorInfo::MobileAPN apn_info;
+    MobileOperatorMapper::MobileAPN apn_info;
     apn_info.apn = brillo::GetVariantValueOrDefault<std::string>(
         profile, CellularBearer::kMMApnProperty);
     apn_info.username = brillo::GetVariantValueOrDefault<std::string>(

@@ -14,10 +14,10 @@
 #include <base/files/file_path.h>
 #include <base/observer_list_types.h>
 
+#include "shill/cellular/mobile_operator_mapper.h"
 namespace shill {
 
 class EventDispatcher;
-class MobileOperatorMapper;
 
 // An MobileOperatorInfo object encapsulates the knowledge pertaining to all
 // mobile operators. Typical usage consists of three steps:
@@ -52,21 +52,9 @@ class MobileOperatorMapper;
 //   through |my_observer|.
 // };
 //
+
 class MobileOperatorInfo {
  public:
-  class Observer : public base::CheckedObserver {
-   public:
-    virtual ~Observer() = default;
-
-    // This event fires when
-    //   - A mobile [virtual] network operator
-    //     - is first determined.
-    //     - changes.
-    //     - becomes invalid.
-    //   - Some information about the known operator changes.
-    virtual void OnOperatorChanged() = 0;
-  };
-
   // |Init| must be called on the constructed object before it is used.
   // This object does not take ownership of dispatcher, and |dispatcher| is
   // expected to outlive this object.
@@ -86,95 +74,8 @@ class MobileOperatorInfo {
   bool Init();
 
   // Add/remove observers to subscribe to notifications.
-  void AddObserver(MobileOperatorInfo::Observer* observer);
-  void RemoveObserver(MobileOperatorInfo::Observer* observer);
-
-  // ///////////////////////////////////////////////////////////////////////////
-  // Objects that encapsulate related information about the mobile operator.
-
-  // Encapsulates a name and the language that name has been localized to.
-  // The name can be a carrier name, or the name that a cellular carrier
-  // prefers to show for a certain access point.
-  struct LocalizedName {
-    // The name as it appears in the corresponding language.
-    std::string name;
-    // The language of this localized name. The format of a language is a two
-    // letter language code, e.g. 'en' for English.
-    // It is legal for an instance of LocalizedName to have an empty |language|
-    // field, as sometimes the underlying database does not contain that
-    // information.
-    std::string language;
-
-   private:
-    auto tuple() const { return std::make_tuple(name, language); }
-
-   public:
-    bool operator==(const LocalizedName& rhs) const {
-      return tuple() == rhs.tuple();
-    }
-  };
-
-  // Encapsulates information on a mobile access point name. This information
-  // is usually necessary for 3GPP networks to be able to connect to a mobile
-  // network.
-  struct MobileAPN {
-    // The access point url, which is fed to the modemmanager while connecting.
-    std::string apn;
-    // A list of localized names for this access point. Usually there is only
-    // one for each country that the associated cellular carrier operates in.
-    std::vector<LocalizedName> operator_name_list;
-    // The username and password fields that are required by the modemmanager.
-    // Either of these values can be empty if none is present. If a MobileAPN
-    // instance that is obtained from this parser contains a non-empty value
-    // for username/password, this usually means that the carrier requires
-    // a certain default pair.
-    std::string username;
-    std::string password;
-    // The authentication method for sending username / password, which could
-    // be one of the following values:
-    // * (empty):
-    //   - When no username or password is provided, no authentication method
-    //     is specified.
-    //   - When a username and password is provided, the default authentication
-    //     method is used (which is PAP for most cases in the current
-    //     implementation of ModemManager).
-    // * "pap" (kApnAuthenticationPap):
-    //   - Password Authentication Protocol (PAP) is used for authentication
-    // * "chap" (kApnAuthenticationChap):
-    //   - Challenge-Handshake Authentication Protocol (CHAP) for authentication
-    std::string authentication;
-    // A list of APN types.
-    std::set<std::string> apn_types;
-    // IP type as one of "ipv4", "ipv6", "ipv4v6" (dual-stack)
-    std::string ip_type;
-
-   private:
-    auto tuple() const {
-      return std::make_tuple(apn, operator_name_list, username, password,
-                             authentication, apn_types, ip_type);
-    }
-
-   public:
-    bool operator==(const MobileAPN& rhs) const {
-      return tuple() == rhs.tuple();
-    }
-  };
-
-  // Encapsulates information about the Online payment portal used by chrome to
-  // redirect users for some carriers.
-  struct OnlinePortal {
-    std::string url;
-    std::string method;
-    std::string post_data;
-
-   private:
-    auto tuple() const { return std::make_tuple(url, method, post_data); }
-
-   public:
-    bool operator==(const OnlinePortal& rhs) const {
-      return tuple() == rhs.tuple();
-    }
-  };
+  void AddObserver(MobileOperatorInfoObserver* observer);
+  void RemoveObserver(MobileOperatorInfoObserver* observer);
 
   // ///////////////////////////////////////////////////////////////////////////
   // Functions to obtain information about the current mobile operator.
@@ -205,13 +106,15 @@ class MobileOperatorInfo {
   // associated mcc/mnc pairs concatenated together.
   const std::vector<std::string>& mccmnc_list() const;
   // All localized names associated with this carrier entry.
-  const std::vector<LocalizedName>& operator_name_list() const;
+  const std::vector<MobileOperatorMapper::LocalizedName>& operator_name_list()
+      const;
   // All access point names associated with this carrier entry.
-  virtual const std::vector<MobileAPN>& apn_list() const;
+  virtual const std::vector<MobileOperatorMapper::MobileAPN>& apn_list() const;
   // All Online Payment Portal URLs associated with this carrier entry. There
   // are usually multiple OLPs based on access technology and it is up to the
   // application to use the appropriate one.
-  virtual const std::vector<OnlinePortal>& olp_list() const;
+  virtual const std::vector<MobileOperatorMapper::OnlinePortal>& olp_list()
+      const;
 
   // Some carriers are only available while roaming. This is mainly used by
   // Chrome.
@@ -242,7 +145,7 @@ class MobileOperatorInfo {
 
   // ///////////////////////////////////////////////////////////////////////////
   // Expose implementation for test purposes only.
-  MobileOperatorMapper* impl() { return impl_.get(); }
+  MobileOperatorMapper* impl() const { return impl_.get(); }
 
  private:
   std::unique_ptr<MobileOperatorMapper> impl_;

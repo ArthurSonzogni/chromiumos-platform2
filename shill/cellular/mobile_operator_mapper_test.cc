@@ -59,7 +59,7 @@ base::FilePath GetTestProtoPath(const std::string& file) {
 
 }  // namespace
 
-class MockMobileOperatorInfoObserver : public MobileOperatorInfo::Observer {
+class MockMobileOperatorInfoObserver : public MobileOperatorInfoObserver {
  public:
   MockMobileOperatorInfoObserver() = default;
 
@@ -1078,12 +1078,12 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
   }
 
   void VerifyNameListsMatch(
-      const std::vector<MobileOperatorInfo::LocalizedName>&
+      const std::vector<MobileOperatorMapper::LocalizedName>&
           operator_name_list_lhs,
-      const std::vector<MobileOperatorInfo::LocalizedName>&
+      const std::vector<MobileOperatorMapper::LocalizedName>&
           operator_name_list_rhs) {
     // This comparison breaks if two localized names have the same |name|.
-    std::map<std::string, MobileOperatorInfo::LocalizedName> localized_names;
+    std::map<std::string, MobileOperatorMapper::LocalizedName> localized_names;
     for (const auto& localized_name : operator_name_list_rhs) {
       localized_names[localized_name.name] = localized_name;
     }
@@ -1106,7 +1106,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     apn_types_ = {"DEFAULT"};
 
     apn_list_.clear();
-    MobileOperatorInfo::MobileAPN apn;
+    MobileOperatorMapper::MobileAPN apn;
     apn.apn = "test@test.com";
     apn.username = "testuser";
     apn.password = "is_public_boohoohoo";
@@ -1129,7 +1129,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     apn_types_ = {"DEFAULT"};
 
     apn_list_.clear();
-    MobileOperatorInfo::MobileAPN apn;
+    MobileOperatorMapper::MobileAPN apn;
     apn.apn = "test2@test.com";
     apn.username = "testuser2";
     apn.password = "is_public_boohoohoo_too";
@@ -1146,9 +1146,9 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
   int32_t mtu_;
   std::set<std::string> apn_types_;
   std::vector<std::string> mccmnc_list_;
-  std::vector<MobileOperatorInfo::LocalizedName> operator_name_list_;
-  std::vector<MobileOperatorInfo::MobileAPN> apn_list_;
-  std::vector<MobileOperatorInfo::OnlinePortal> olp_list_;
+  std::vector<MobileOperatorMapper::LocalizedName> operator_name_list_;
+  std::vector<MobileOperatorMapper::MobileAPN> apn_list_;
+  std::vector<MobileOperatorMapper::OnlinePortal> olp_list_;
 };
 
 TEST_P(MobileOperatorInfoDataTest, MNODetailedInformation) {

@@ -202,7 +202,7 @@ class CellularCapability3gpp {
   // capability object.
   CellularBearer* GetActiveBearer() const;
 
-  const std::vector<MobileOperatorInfo::MobileAPN>& GetProfiles() const;
+  const std::vector<MobileOperatorMapper::MobileAPN>& GetProfiles() const;
 
   // -------------------------------------------------------------------------
   // SIM lock management
@@ -558,7 +558,7 @@ class CellularCapability3gpp {
   std::unique_ptr<CellularBearer> active_bearer_;
   RpcIdentifiers bearer_paths_;
   bool reset_done_ = false;
-  std::vector<MobileOperatorInfo::MobileAPN> profiles_;
+  std::vector<MobileOperatorMapper::MobileAPN> profiles_;
   bool set_modem_to_low_power_mode_on_stop_ = true;
 
   // SIM properties

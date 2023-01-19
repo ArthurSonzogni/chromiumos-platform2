@@ -11,7 +11,7 @@
 #include <vector>
 
 #include "shill/cellular/cellular_consts.h"
-#include "shill/cellular/mobile_operator_info.h"
+#include "shill/cellular/mobile_operator_mapper.h"
 #include "shill/data_types.h"
 
 namespace shill {
@@ -23,7 +23,7 @@ class ApnList {
 
   enum class ApnSource { kModb, kModem };
   enum class ApnType { kDefault, kAttach, kDun };
-  void AddApns(const std::vector<MobileOperatorInfo::MobileAPN>& apns,
+  void AddApns(const std::vector<MobileOperatorMapper::MobileAPN>& apns,
                ApnSource source);
 
   const Stringmaps& GetList() { return apn_dict_list_; }
@@ -40,9 +40,9 @@ class ApnList {
  private:
   using ApnIndexKey = std::
       tuple<std::string, std::string, std::string, std::string, std::string>;
-  ApnIndexKey GetKey(const MobileOperatorInfo::MobileAPN& mobile_apn);
+  ApnIndexKey GetKey(const MobileOperatorMapper::MobileAPN& mobile_apn);
 
-  void AddApn(const MobileOperatorInfo::MobileAPN& mobile_apn,
+  void AddApn(const MobileOperatorMapper::MobileAPN& mobile_apn,
               ApnSource source);
 
   Stringmaps apn_dict_list_;
