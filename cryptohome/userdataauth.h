@@ -695,11 +695,6 @@ class UserDataAuth {
       base::OnceCallback<void(const user_data_auth::StartAuthSessionReply&)>
           on_done);
 
-  void AuthenticateAuthSession(
-      user_data_auth::AuthenticateAuthSessionRequest request,
-      base::OnceCallback<
-          void(const user_data_auth::AuthenticateAuthSessionReply&)> on_done);
-
   void InvalidateAuthSession(
       user_data_auth::InvalidateAuthSessionRequest request,
       base::OnceCallback<

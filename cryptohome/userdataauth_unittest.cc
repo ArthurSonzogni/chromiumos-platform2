@@ -2538,8 +2538,6 @@ class UserDataAuthExTest : public UserDataAuthTest {
     get_key_data_req_.reset(new user_data_auth::GetKeyDataRequest);
     remove_homedir_req_.reset(new user_data_auth::RemoveRequest);
     start_auth_session_req_.reset(new user_data_auth::StartAuthSessionRequest);
-    authenticate_auth_session_req_.reset(
-        new user_data_auth::AuthenticateAuthSessionRequest);
   }
 
   template <class ProtoBuf>
@@ -2565,8 +2563,6 @@ class UserDataAuthExTest : public UserDataAuthTest {
   std::unique_ptr<user_data_auth::RemoveRequest> remove_homedir_req_;
   std::unique_ptr<user_data_auth::StartAuthSessionRequest>
       start_auth_session_req_;
-  std::unique_ptr<user_data_auth::AuthenticateAuthSessionRequest>
-      authenticate_auth_session_req_;
 
   static constexpr char kUser[] = "chromeos-user";
   static constexpr char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
@@ -3952,25 +3948,6 @@ TEST_F(UserDataAuthExTest, StartAuthSessionUnusableClobber) {
   EXPECT_THAT(userdataauth_->auth_session_manager_->FindAuthSession(
                   auth_session_id.value()),
               NotNull());
-}
-TEST_F(UserDataAuthExTest, AuthenticateAuthSessionInvalidToken) {
-  PrepareArguments();
-  std::string invalid_token = "invalid_token_16";
-  authenticate_auth_session_req_->set_auth_session_id(invalid_token);
-  user_data_auth::AuthenticateAuthSessionReply auth_session_reply;
-  {
-    userdataauth_->AuthenticateAuthSession(
-        *authenticate_auth_session_req_,
-        base::BindOnce(
-            [](user_data_auth::AuthenticateAuthSessionReply* auth_reply_ptr,
-               const user_data_auth::AuthenticateAuthSessionReply& reply) {
-              *auth_reply_ptr = reply;
-            },
-            base::Unretained(&auth_session_reply)));
-  }
-  EXPECT_EQ(auth_session_reply.error(),
-            user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
-  EXPECT_FALSE(auth_session_reply.authenticated());
 }
 
 TEST_F(UserDataAuthExTest, MountAuthSessionInvalidToken) {
@@ -5625,17 +5602,6 @@ class UserDataAuthApiTest : public UserDataAuthTest {
     return session_id.value();
   }
 
-  std::optional<user_data_auth::AuthenticateAuthSessionReply>
-  AuthenticateAuthSessionSync(
-      const user_data_auth::AuthenticateAuthSessionRequest& in_request) {
-    TestFuture<user_data_auth::AuthenticateAuthSessionReply> reply_future;
-    userdataauth_->AuthenticateAuthSession(
-        in_request, reply_future.GetCallback<
-                        const user_data_auth::AuthenticateAuthSessionReply&>());
-    RunUntilIdle();
-    return reply_future.Get();
-  }
-
   std::optional<user_data_auth::AuthenticateAuthFactorReply>
   AuthenticateAuthFactorSync(
       const user_data_auth::AuthenticateAuthFactorRequest& in_request) {
@@ -5801,24 +5767,6 @@ TEST_F(UserDataAuthApiTest, RemoveNoID) {
       reply.error_info(),
       HasPossibleAction(
           user_data_auth::PossibleAction::POSSIBLY_DEV_CHECK_UNEXPECTED_STATE));
-}
-
-TEST_F(UserDataAuthApiTest, AuthAuthSessionNoSession) {
-  user_data_auth::AuthenticateAuthSessionRequest req;
-  req.set_auth_session_id("NOT_A_VALID_AUTH_SESSION!");
-  user_data_auth::AuthenticateAuthSessionReply reply;
-
-  std::optional<user_data_auth::AuthenticateAuthSessionReply> result =
-      AuthenticateAuthSessionSync(req);
-  ASSERT_TRUE(result.has_value());
-  reply = *result;
-
-  // Failure to AuthenticateAuthSession() due to missing session should result
-  // in recommendation to reboot, because we'll need to restart the session
-  // after reboot so the problem might go away.
-  EXPECT_THAT(
-      reply.error_info(),
-      HasPossibleAction(user_data_auth::PossibleAction::POSSIBLY_REBOOT));
 }
 
 TEST_F(UserDataAuthApiTest, AuthAuthFactorNoSession) {

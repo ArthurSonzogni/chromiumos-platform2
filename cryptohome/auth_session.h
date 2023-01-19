@@ -160,12 +160,6 @@ class AuthSession final {
                      StatusCallback on_done);
 
   // Authenticate is called when the user wants to authenticate the current
-  // AuthSession. It may be called multiple times depending on errors or various
-  // steps involved in multi-factor authentication.
-  void Authenticate(const AuthorizationRequest& authorization_request,
-                    StatusCallback on_done);
-
-  // Authenticate is called when the user wants to authenticate the current
   // AuthSession via an auth factor. It may be called multiple times depending
   // on errors or various steps involved in multi-factor authentication.
   // Note: only USS users are supported currently.
@@ -374,8 +368,7 @@ class AuthSession final {
   // corresponding label are updated through the information provided by
   // |key_data|. This function is needed for processing callback results in an
   // asynchronous manner through |on_done| callback.
-  // TODO(b/204482221): Make `auth_factor_type` mandatory.
-  void UpdateVaultKeyset(std::optional<AuthFactorType> auth_factor_type,
+  void UpdateVaultKeyset(AuthFactorType auth_factor_type,
                          const KeyData& key_data,
                          const AuthInput& auth_input,
                          std::unique_ptr<AuthSessionPerformanceTimer>
@@ -518,12 +511,11 @@ class AuthSession final {
       StatusCallback on_done);
 
   // Authenticates the user using VaultKeysets with the given |auth_input|.
-  // TODO(b/204482221): Make `request_auth_factor_type` mandatory.
   void AuthenticateViaVaultKeysetAndMigrateToUss(
-      std::optional<AuthFactorType> request_auth_factor_type,
+      AuthFactorType request_auth_factor_type,
       const std::string& key_label,
       const AuthInput& auth_input,
-      const std::optional<AuthFactorMetadata>& metadata,
+      const AuthFactorMetadata& metadata,
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,
       StatusCallback on_done);
@@ -534,17 +526,15 @@ class AuthSession final {
   // KeysetManagement::GetValidKeysetWithKeyBlobs(). This function is needed for
   // processing callback results in an asynchronous manner through the |on_done|
   // callback.
-  // TODO(b/204482221): Make `request_auth_factor_type` mandatory.
-  void LoadVaultKeysetAndFsKeys(
-      std::optional<AuthFactorType> request_auth_factor_type,
-      const AuthInput& auth_input,
-      AuthBlockType auth_block_type,
-      const std::optional<AuthFactorMetadata>& metadata,
-      std::unique_ptr<AuthSessionPerformanceTimer>
-          auth_session_performance_timer,
-      StatusCallback on_done,
-      CryptoStatus error,
-      std::unique_ptr<KeyBlobs> key_blobs);
+  void LoadVaultKeysetAndFsKeys(AuthFactorType request_auth_factor_type,
+                                const AuthInput& auth_input,
+                                AuthBlockType auth_block_type,
+                                const AuthFactorMetadata& metadata,
+                                std::unique_ptr<AuthSessionPerformanceTimer>
+                                    auth_session_performance_timer,
+                                StatusCallback on_done,
+                                CryptoStatus error,
+                                std::unique_ptr<KeyBlobs> key_blobs);
 
   // Updates, wraps and resaves |vault_keyset_| and restores on failure.
   // |user_input| is needed to generate the AuthInput used for key blob creation

@@ -287,7 +287,7 @@ any persistent users present.
 ### Chrome wants to migrate eCryptfs to DirCrypto encryption scheme
 
 1.  `StartAuthSession` – Chrome initiates an AuthSession.
-2.  `AuthenticateAuthSession`
+2.  `AuthenticateAuthFactor`
 3.  `PrepareVaultForMigration`
 4.  `StartMigrateToDircrypto`
     -   Ensure that this is called with the ```auth_session_id``` field set.

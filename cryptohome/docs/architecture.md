@@ -72,14 +72,6 @@ StartAuthSession starts a new AuthSession with a given username. It
 also starts a timer, after which the AuthSession becomes invalid.The
 timer ensures that the credentials do not stay in the memory indefinitely.
 
-#### AuthenticateAuthSession
-
-When credentials are ready to be supplied to the AuthSession,
-AuthenticateAuthSession is called. For single factor authentication, this
-will either succeed or return an error. For multi-factor authentication,
-AuthenticateAuthSession must be called once per credential. Once all
-credentials authenticate, the AuthSession can be used to mount.
-
 ### AuthFactors
 
 AuthFactors abstract credentials to represent the many credentials used

@@ -211,17 +211,6 @@ class UserDataAuthAdaptor
           user_data_auth::StartAuthSessionReply>> response,
       const user_data_auth::StartAuthSessionRequest& in_request);
 
-  void AuthenticateAuthSession(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::AuthenticateAuthSessionReply>> response,
-      const user_data_auth::AuthenticateAuthSessionRequest& in_request)
-      override;
-
-  void DoAuthenticateAuthSession(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::AuthenticateAuthSessionReply>> response,
-      const user_data_auth::AuthenticateAuthSessionRequest& in_request);
-
   void InvalidateAuthSession(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::InvalidateAuthSessionReply>> response,

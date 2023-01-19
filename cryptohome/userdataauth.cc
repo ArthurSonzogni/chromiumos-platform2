@@ -291,19 +291,6 @@ bool GetKeyLabels(const KeysetManagement& keyset_management,
   return true;
 }
 
-void ReplyWithLegacyAuthenticationResult(
-    const AuthSession* auth_session,
-    base::OnceCallback<
-        void(const user_data_auth::AuthenticateAuthSessionReply&)> on_done,
-    CryptohomeStatus status) {
-  DCHECK(auth_session);
-  DCHECK(!on_done.is_null());
-  user_data_auth::AuthenticateAuthSessionReply reply;
-  reply.set_authenticated(auth_session->GetStatus() ==
-                          AuthStatus::kAuthStatusAuthenticated);
-  ReplyWithError(std::move(on_done), std::move(reply), status);
-}
-
 void ReplyWithAuthenticationResult(
     const AuthSession* auth_session,
     base::OnceCallback<void(const user_data_auth::AuthenticateAuthFactorReply&)>
@@ -4014,36 +4001,6 @@ void UserDataAuth::OnUpdateAuthFactorFinished(AuthSession* auth_session,
                              /*override_existing_data=*/true);
   }
   std::move(on_done).Run(std::move(status));
-}
-
-void UserDataAuth::AuthenticateAuthSession(
-    user_data_auth::AuthenticateAuthSessionRequest request,
-    base::OnceCallback<
-        void(const user_data_auth::AuthenticateAuthSessionReply&)> on_done) {
-  AssertOnMountThread();
-
-  user_data_auth::AuthenticateAuthSessionReply reply;
-
-  AuthSession* auth_session =
-      auth_session_manager_->FindAuthSession(request.auth_session_id());
-  if (!auth_session) {
-    ReplyWithError(std::move(on_done), reply,
-                   MakeStatus<CryptohomeError>(
-                       CRYPTOHOME_ERR_LOC(
-                           kLocUserDataAuthSessionNotFoundInAuthAuthSession),
-                       ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                                       ErrorAction::kReboot}),
-                       user_data_auth::CryptohomeErrorCode::
-                           CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
-    return;
-  }
-
-  // Perform authentication using data in AuthorizationRequest and
-  // auth_session_token.
-  auth_session->Authenticate(
-      request.authorization(),
-      base::BindOnce(&ReplyWithLegacyAuthenticationResult, auth_session,
-                     std::move(on_done)));
 }
 
 void UserDataAuth::InvalidateAuthSession(

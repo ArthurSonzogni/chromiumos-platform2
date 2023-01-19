@@ -538,7 +538,7 @@ CryptohomeStatus AuthSession::AddVaultKeyset(
 }
 
 void AuthSession::UpdateVaultKeyset(
-    std::optional<AuthFactorType> auth_factor_type,
+    AuthFactorType auth_factor_type,
     const KeyData& key_data,
     const AuthInput& auth_input,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
@@ -580,23 +580,19 @@ void AuthSession::UpdateVaultKeyset(
   // Add the new secret to the AuthSession's credential verifier. On successful
   // completion of the UpdateAuthFactor this will be passed to UserSession's
   // credential verifier to cache the secret for future lightweight
-  // verifications. If we don't know what the factor type is then assume we have
-  // a password verifier as that's the only type that works with the old APIs.
-  AuthFactorType verifier_type = AuthFactorType::kPassword;
-  if (auth_factor_type) {
-    verifier_type = *auth_factor_type;
-  }
-  AddCredentialVerifier(verifier_type, vault_keyset_->GetLabel(), auth_input);
+  // verifications.
+  AddCredentialVerifier(auth_factor_type, vault_keyset_->GetLabel(),
+                        auth_input);
 
   ReportTimerDuration(auth_session_performance_timer.get());
   std::move(on_done).Run(OkStatus<CryptohomeError>());
 }
 
 void AuthSession::AuthenticateViaVaultKeysetAndMigrateToUss(
-    std::optional<AuthFactorType> request_auth_factor_type,
+    AuthFactorType request_auth_factor_type,
     const std::string& key_label,
     const AuthInput& auth_input,
-    const std::optional<AuthFactorMetadata>& metadata,
+    const AuthFactorMetadata& metadata,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done) {
   DCHECK(!key_label.empty());
@@ -641,19 +637,14 @@ void AuthSession::AuthenticateViaVaultKeysetAndMigrateToUss(
 }
 
 void AuthSession::LoadVaultKeysetAndFsKeys(
-    std::optional<AuthFactorType> request_auth_factor_type,
+    AuthFactorType request_auth_factor_type,
     const AuthInput& auth_input,
     AuthBlockType auth_block_type,
-    const std::optional<AuthFactorMetadata>& metadata,
+    const AuthFactorMetadata& metadata,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done,
     CryptoStatus status,
     std::unique_ptr<KeyBlobs> key_blobs) {
-  // The error should be evaluated the same way as it is done in
-  // AuthSession::Authenticate(), which directly returns the GetValidKeyset()
-  // error. So we are doing a similar error handling here as in
-  // KeysetManagement::GetValidKeyset() to preserve the behavior. Empty label
-  // case is dropped in here since it is not a valid case anymore.
   if (!status.ok() || !key_blobs) {
     // For LE credentials, if deriving the key blobs failed due to too many
     // attempts, set auth_locked=true in the corresponding keyset. Then save it
@@ -744,31 +735,22 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
   SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
 
   // Set the credential verifier for this credential.
-  if (request_auth_factor_type) {
-    AddCredentialVerifier(*request_auth_factor_type, vault_keyset_->GetLabel(),
-                          auth_input);
-  } else if (auth_input.user_input.has_value()) {
-    // If we don't know what the
-    // factor type is then assume we have a password verifier as that's the only
-    // type that works with the old APIs.
-    AddCredentialVerifier(AuthFactorType::kPassword, vault_keyset_->GetLabel(),
-                          auth_input);
-  }
+  AddCredentialVerifier(request_auth_factor_type, vault_keyset_->GetLabel(),
+                        auth_input);
 
   ReportTimerDuration(auth_session_performance_timer.get());
 
   if ((migrate_to_user_secret_stash_ || ShouldMigrateToUss()) &&
       GetStatus() == AuthStatus::kAuthStatusAuthenticated &&
-      IsUserSecretStashExperimentEnabled(platform_) && metadata.has_value()) {
+      IsUserSecretStashExperimentEnabled(platform_)) {
     UssMigrator migrator(username_);
 
     migrator.MigrateVaultKeysetToUss(
         *user_secret_stash_storage_, *vault_keyset_,
         base::BindOnce(
             &AuthSession::OnMigrationUssCreated, weak_factory_.GetWeakPtr(),
-            auth_block_type_for_resaved_vk, request_auth_factor_type.value(),
-            metadata.value(), auth_input, std::move(prepare_status),
-            std::move(on_done)));
+            auth_block_type_for_resaved_vk, request_auth_factor_type, metadata,
+            auth_input, std::move(prepare_status), std::move(on_done)));
     return;
   }
 
@@ -824,94 +806,6 @@ void AuthSession::OnMigrationUssCreated(
   auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
       auth_block_type, migration_auth_input_status.value(),
       std::move(create_callback));
-}
-
-void AuthSession::Authenticate(
-    const cryptohome::AuthorizationRequest& authorization_request,
-    StatusCallback on_done) {
-  LOG(INFO) << "AuthSession: authentication attempt via "
-            << authorization_request.key().data().label() << ".";
-
-  MountStatusOr<std::unique_ptr<Credentials>> credentials_or_err =
-      GetCredentials(authorization_request);
-
-  if (!credentials_or_err.ok()) {
-    std::move(on_done).Run(
-        MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocAuthSessionGetCredFailedInAuth))
-            .Wrap(std::move(credentials_or_err).status()));
-    return;
-  }
-
-  if (authorization_request.key().data().type() != KeyData::KEY_TYPE_PASSWORD &&
-      authorization_request.key().data().type() != KeyData::KEY_TYPE_KIOSK &&
-      authorization_request.key().data().type() !=
-          KeyData::KEY_TYPE_CHALLENGE_RESPONSE) {
-    // AuthSession::Authenticate is only supported for three types of cases
-    std::move(on_done).Run(MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionUnsupportedKeyTypesInAuth),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED));
-    return;
-  }
-
-  std::unique_ptr<Credentials> credentials =
-      std::move(credentials_or_err).value();
-
-  if (credentials->key_data().label().empty()) {
-    LOG(ERROR) << "Authenticate: Credentials key_data.label() is empty.";
-    std::move(on_done).Run(MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionEmptyKeyLabelInAuth),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
-    return;
-  }
-
-  // Store key data in current auth_factor for future use.
-  key_data_ = credentials->key_data();
-
-  // Record current time for timing for how long Authenticate will take.
-  auto auth_session_performance_timer =
-      std::make_unique<AuthSessionPerformanceTimer>(
-          kAuthSessionAuthenticateTimer);
-
-  if (is_ephemeral_user_) {  // Ephemeral mount.
-    // For ephemeral session, just authenticate the session, no need to derive
-    // KeyBlobs. Set the credential verifier for this credential. We use a
-    // password verifier as that's the only type of verifier that will work with
-    // the credential passkey.
-    AuthInput auth_input = CreatePasswordAuthInputForLegacyCode(
-        obfuscated_username_, auth_block_utility_->GetLockedToSingleUser(),
-        credentials->passkey());
-    AddCredentialVerifier(AuthFactorType::kPassword, key_data_.label(),
-                          auth_input);
-
-    // SetAuthSessionAsAuthenticated() should already have been called
-    // in the constructor by this point.
-    std::move(on_done).Run(OkStatus<CryptohomeError>());
-    return;
-  }
-  // Persistent mount.
-  // A persistent mount will always have a persistent key on disk. Here
-  // keyset_management tries to fetch that persistent credential.
-  // TODO(dlunev): fix conditional error when we switch to StatusOr.
-  AuthInput auth_input = {
-      .user_input = credentials->passkey(),
-      .locked_to_single_user = auth_block_utility_->GetLockedToSingleUser(),
-      .username = username_,
-      .obfuscated_username = std::nullopt,
-      .reset_secret = std::nullopt,
-      .reset_seed = std::nullopt,
-      .cryptohome_recovery_auth_input = std::nullopt,
-      .challenge_credential_auth_input =
-          CreateChallengeCredentialAuthInput(authorization_request)};
-
-  // This path won't trigger the Uss migration.
-  AuthenticateViaVaultKeysetAndMigrateToUss(
-      /*request_auth_factor_type=*/std::nullopt,
-      credentials->key_data().label(), auth_input,
-      /*auth_factor_metadata=*/std::nullopt,
-      std::move(auth_session_performance_timer), std::move(on_done));
 }
 
 const FileSystemKeyset& AuthSession::file_system_keyset() const {
