@@ -54,12 +54,15 @@
 #include "crash-reporter/util.h"
 
 using ::testing::_;
+using ::testing::AllOf;
 using ::testing::DoAll;
 using ::testing::Eq;
 using ::testing::ExitedWithCode;
+using ::testing::Ge;
 using ::testing::HasSubstr;
 using ::testing::Invoke;
 using ::testing::IsEmpty;
+using ::testing::Le;
 using ::testing::Pointee;
 using ::testing::Return;
 using ::testing::UnorderedElementsAre;
@@ -1891,9 +1894,9 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(kNone, kPayloadFile, kLogFile, kTextFile, kBinFile)));
 
 // SendCrash needs to be parametrized for under and not under the dry run mode.
-class CrashSenderSendCrashesTest
-    : public CrashSenderUtilTest,
-      public ::testing::WithParamInterface<std::tuple<bool, int>> {
+class CrashSenderSendCrashesTest : public CrashSenderUtilTest,
+                                   public ::testing::WithParamInterface<
+                                       std::tuple<bool, int, base::TimeDelta>> {
  protected:
   // Capture cout. Reset cout to normal after the instance is destructed.
   class ScopedCoutCapture {
@@ -1919,12 +1922,13 @@ class CrashSenderSendCrashesTest
   };
 
   void SetUp() override {
-    std::tie(dry_run_, max_crash_rate_) = GetParam();
+    std::tie(dry_run_, max_crash_rate_, max_spread_time_) = GetParam();
     CrashSenderUtilTest::SetUp();
   }
 
   bool dry_run_;
   int max_crash_rate_;
+  base::TimeDelta max_spread_time_;
 };
 
 TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
@@ -2024,6 +2028,8 @@ TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
   options.max_crash_bytes = 0;
   options.sleep_function = base::BindRepeating(&FakeSleep, &sleep_times);
   options.always_write_uploads_log = true;
+  options.hold_off_time = base::TimeDelta();
+  options.max_spread_time = max_spread_time_;
   options.dry_run = dry_run_;
   MockSender sender(true /*success*/,
                     "123",  // upload_id
@@ -2101,13 +2107,25 @@ TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
     // No rate limiting in dry run mode.
     ASSERT_EQ(3, rows.size());
     expected_upload_id = "";
+    // Under the dry run mode, spread time should be always zero. Given that
+    // hold off time is zero, sleep time should always be zero.
+    for (const auto& sleep_time : sleep_times) {
+      EXPECT_EQ(sleep_time, base::TimeDelta());
+    }
     expected_sleep_times = 3;
   } else {
     // Should only contain max_crash_rate results, since max_crash_rate is set
-    // to max_crash_rate_. FakeSleep should be called three times since we sleep
-    // before we check the crash rate.
+    // to max_crash_rate_. FakeSleep should be called max_crash_rate_ + 1 times
+    // since we sleep before we check the crash rate.
     ASSERT_EQ(max_crash_rate_, rows.size());
     expected_upload_id = "123";
+    // When it's not under the dry run mode, spread time should be always
+    // between 0 and max_spread_time_. Given that hold off time is zero, sleep
+    // time should always be in the same range.
+    for (const auto& sleep_time : sleep_times) {
+      EXPECT_THAT(sleep_time,
+                  AllOf(Ge(base::TimeDelta()), Le(max_spread_time_)));
+    }
     expected_sleep_times = max_crash_rate_ + 1;
   }
   EXPECT_EQ(expected_sleep_times, sleep_times.size());
@@ -2177,6 +2195,7 @@ TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
 
 // Notes on the combination of parameters:
 //
+// When max_spread_time=0:
 // - dry_run=true, max_crash_rate=0 is essential because as long as additional
 //   files (max_crash_rate > 1) are allowed to be uploaded, dry run mode won't
 //   consume the allowance, thus IsBelowRate always returns true. Therefore,
@@ -2186,20 +2205,30 @@ TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
 //   normal circumstances, i.e., max_crash_rate>0.
 // - dry_run=false, max_crash_rate=0,1,2 ensures the correct order of upload
 //   (system first, then user).
+//
+// When max_spread_time=5:
+// - dry_run=true, max_crash_rate=0,1,2 ensures that crash_sender under the dry
+//   run mode ignores max_spread_time.
+// - dry_run=false, max_crash_rate=0,1,2 ensures that crash_sender not under the
+//   dry run mode respects max_spread_time.
 INSTANTIATE_TEST_SUITE_P(
     CrashSenderSendCrashesInstantiation,
     CrashSenderSendCrashesTest,
     testing::Combine(
         /*dry_run=*/testing::Bool(),
-        /*max_crash_rate=*/testing::Values(0,    // No upload
-                                           1,    // Upload the system crash only
-                                           2)),  // upload the user crash only
+        /*max_crash_rate=*/
+        testing::Values(0,   // No upload
+                        1,   // Upload the system crash only
+                        2),  // upload the user crash only
+        /*max_spread_time=*/
+        testing::Values(base::TimeDelta(), base::Seconds(5))),
     [](const ::testing::TestParamInfo<CrashSenderSendCrashesTest::ParamType>&
            info) {
       // Can use info.param here to generate the test suffix
       std::ostringstream name;
       name << "dry_run_" << std::get<0>(info.param) << "_max_crash_rate_"
-           << std::get<1>(info.param);
+           << std::get<1>(info.param) << "_max_spread_time_"
+           << std::get<2>(info.param).InSeconds();
       return name.str();
     });
 

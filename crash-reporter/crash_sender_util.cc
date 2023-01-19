@@ -550,8 +550,10 @@ void Sender::SendCrashes(const std::vector<MetaFile>& crash_meta_files) {
     LOG(INFO) << "Evaluating crash report: " << meta_file.value();
 
     base::TimeDelta sleep_time;
-    if (!GetSleepTime(meta_file, max_spread_time_, hold_off_time_,
-                      &sleep_time)) {
+    if (!GetSleepTime(meta_file,
+                      // max spread time set to 0 under the dry run mode
+                      dry_run_ ? base::TimeDelta() : max_spread_time_,
+                      hold_off_time_, &sleep_time)) {
       LOG(WARNING) << "Failed to compute sleep time for " << meta_file.value();
       continue;
     }
