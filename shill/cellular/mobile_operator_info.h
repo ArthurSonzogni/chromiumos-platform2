@@ -17,7 +17,7 @@
 namespace shill {
 
 class EventDispatcher;
-class MobileOperatorInfoImpl;
+class MobileOperatorMapper;
 
 // An MobileOperatorInfo object encapsulates the knowledge pertaining to all
 // mobile operators. Typical usage consists of three steps:
@@ -242,10 +242,10 @@ class MobileOperatorInfo {
 
   // ///////////////////////////////////////////////////////////////////////////
   // Expose implementation for test purposes only.
-  MobileOperatorInfoImpl* impl() { return impl_.get(); }
+  MobileOperatorMapper* impl() { return impl_.get(); }
 
  private:
-  std::unique_ptr<MobileOperatorInfoImpl> impl_;
+  std::unique_ptr<MobileOperatorMapper> impl_;
 };
 
 }  // namespace shill

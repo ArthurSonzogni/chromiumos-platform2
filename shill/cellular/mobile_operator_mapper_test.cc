@@ -15,7 +15,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/cellular/mobile_operator_info_impl.h"
+#include "shill/cellular/mobile_operator_mapper.h"
 #include "shill/logging.h"
 #include "shill/test_event_dispatcher.h"
 
@@ -71,7 +71,7 @@ class MobileOperatorInfoInitTest : public Test {
   MobileOperatorInfoInitTest()
       : operator_info_(new MobileOperatorInfo(&dispatcher_, "Operator")),
         serving_operator_info_(new MobileOperatorInfo(&dispatcher_, "Serving")),
-        operator_info_impl_(operator_info_->impl()) {}
+        operator_mapper_(operator_info_->impl()) {}
   MobileOperatorInfoInitTest(const MobileOperatorInfoInitTest&) = delete;
   MobileOperatorInfoInitTest& operator=(const MobileOperatorInfoInitTest&) =
       delete;
@@ -88,19 +88,19 @@ class MobileOperatorInfoInitTest : public Test {
   }
 
   void AssertDatabaseEmpty() {
-    EXPECT_EQ(0, operator_info_impl_->database()->mno_size());
-    EXPECT_EQ(0, operator_info_impl_->database()->mvno_size());
+    EXPECT_EQ(0, operator_mapper_->database()->mno_size());
+    EXPECT_EQ(0, operator_mapper_->database()->mvno_size());
   }
 
   const shill::mobile_operator_db::MobileOperatorDB* GetDatabase() {
-    return operator_info_impl_->database();
+    return operator_mapper_->database();
   }
 
   EventDispatcherForTest dispatcher_;
   std::unique_ptr<MobileOperatorInfo> operator_info_;
   std::unique_ptr<MobileOperatorInfo> serving_operator_info_;
   // Owned by |operator_info_| and tied to its life cycle.
-  MobileOperatorInfoImpl* operator_info_impl_;
+  MobileOperatorMapper* operator_mapper_;
 };
 
 TEST_F(MobileOperatorInfoInitTest, FailedInitNoPath) {

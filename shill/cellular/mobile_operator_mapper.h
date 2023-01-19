@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_CELLULAR_MOBILE_OPERATOR_INFO_IMPL_H_
-#define SHILL_CELLULAR_MOBILE_OPERATOR_INFO_IMPL_H_
+#ifndef SHILL_CELLULAR_MOBILE_OPERATOR_MAPPER_H_
+#define SHILL_CELLULAR_MOBILE_OPERATOR_MAPPER_H_
 
 #include <map>
 #include <memory>
@@ -23,16 +23,16 @@
 
 namespace shill {
 
-class MobileOperatorInfoImpl {
+class MobileOperatorMapper {
  public:
   using StringToMNOListMap =
       std::map<std::string,
                std::vector<const mobile_operator_db::MobileNetworkOperator*>>;
 
   // Delegates to private constructor
-  MobileOperatorInfoImpl(EventDispatcher* dispatcher,
-                         const std::string& info_owner);
-  ~MobileOperatorInfoImpl();
+  MobileOperatorMapper(EventDispatcher* dispatcher,
+                       const std::string& info_owner);
+  ~MobileOperatorMapper();
 
   // API functions of the interface.
   // See mobile_operator_info.h for details.
@@ -73,12 +73,12 @@ class MobileOperatorInfoImpl {
 
   // ///////////////////////////////////////////////////////////////////////////
   // Constructor
-  MobileOperatorInfoImpl(EventDispatcher* dispatcher,
-                         const std::string& info_owner,
-                         const base::FilePath& default_db_path,
-                         const base::FilePath& exclusive_override_db_path);
-  MobileOperatorInfoImpl(const MobileOperatorInfoImpl&) = delete;
-  MobileOperatorInfoImpl& operator=(const MobileOperatorInfoImpl&) = delete;
+  MobileOperatorMapper(EventDispatcher* dispatcher,
+                       const std::string& info_owner,
+                       const base::FilePath& default_db_path,
+                       const base::FilePath& exclusive_override_db_path);
+  MobileOperatorMapper(const MobileOperatorMapper&) = delete;
+  MobileOperatorMapper& operator=(const MobileOperatorMapper&) = delete;
 
   // ///////////////////////////////////////////////////////////////////////////
   // Static variables.
@@ -149,15 +149,15 @@ class MobileOperatorInfoImpl {
 
   // ///////////////////////////////////////////////////////////////////////////
   // Data.
-  // Not owned by MobileOperatorInfoImpl.
+  // Not owned by MobileOperatorMapper.
   EventDispatcher* const dispatcher_;
 
   const std::string info_owner_;
 
-  // Owned by MobileOperatorInfoImpl, may be created externally.
+  // Owned by MobileOperatorMapper, may be created externally.
   std::vector<base::FilePath> database_paths_;
 
-  // Owned and modified only by MobileOperatorInfoImpl.
+  // Owned and modified only by MobileOperatorMapper.
   // The observers added to this list are not owned by this object. Moreover,
   // the observer is likely to outlive this object. We do enforce removal of all
   // observers before this object is destroyed.
@@ -218,9 +218,9 @@ class MobileOperatorInfoImpl {
   MobileOperatorInfo::OnlinePortal user_olp_;
 
   // This must be the last data member of this class.
-  base::WeakPtrFactory<MobileOperatorInfoImpl> weak_ptr_factory_;
+  base::WeakPtrFactory<MobileOperatorMapper> weak_ptr_factory_;
 };
 
 }  // namespace shill
 
-#endif  // SHILL_CELLULAR_MOBILE_OPERATOR_INFO_IMPL_H_
+#endif  // SHILL_CELLULAR_MOBILE_OPERATOR_MAPPER_H_

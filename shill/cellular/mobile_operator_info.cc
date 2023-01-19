@@ -6,7 +6,7 @@
 
 #include <sstream>
 
-#include "shill/cellular/mobile_operator_info_impl.h"
+#include "shill/cellular/mobile_operator_mapper.h"
 #include "shill/logging.h"
 
 #include <base/logging.h>
@@ -25,7 +25,7 @@ static auto kModuleLogScope = ScopeLogger::kCellular;
 
 MobileOperatorInfo::MobileOperatorInfo(EventDispatcher* dispatcher,
                                        const std::string& info_owner)
-    : impl_(new MobileOperatorInfoImpl(dispatcher, info_owner)) {}
+    : impl_(new MobileOperatorMapper(dispatcher, info_owner)) {}
 
 MobileOperatorInfo::~MobileOperatorInfo() = default;
 

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/cellular/mobile_operator_info_impl.h"
+#include "shill/cellular/mobile_operator_mapper.h"
 
 #include <memory>
 #include <optional>
@@ -30,12 +30,12 @@ static auto kModuleLogScope = ScopeLogger::kCellular;
 }  // namespace Logging
 
 // static
-const char MobileOperatorInfoImpl::kDefaultDatabasePath[] =
+const char MobileOperatorMapper::kDefaultDatabasePath[] =
     "/usr/share/shill/serviceproviders.pbf";
 // The exclusive-override db can be used to replace the default modb.
-const char MobileOperatorInfoImpl::kExclusiveOverrideDatabasePath[] =
+const char MobileOperatorMapper::kExclusiveOverrideDatabasePath[] =
     "/var/cache/shill/serviceproviders-exclusive-override.pbf";
-const int MobileOperatorInfoImpl::kMCCMNCMinLen = 5;
+const int MobileOperatorMapper::kMCCMNCMinLen = 5;
 
 namespace {
 
@@ -102,7 +102,7 @@ std::set<std::string> GetApnTypes(
 
 }  // namespace
 
-MobileOperatorInfoImpl::MobileOperatorInfoImpl(
+MobileOperatorMapper::MobileOperatorMapper(
     EventDispatcher* dispatcher,
     const std::string& info_owner,
     const base::FilePath& default_db_path,
@@ -122,26 +122,26 @@ MobileOperatorInfoImpl::MobileOperatorInfoImpl(
     AddDatabasePath(default_db_path);
 }
 
-MobileOperatorInfoImpl::MobileOperatorInfoImpl(EventDispatcher* dispatcher,
-                                               const std::string& info_owner)
-    : MobileOperatorInfoImpl::MobileOperatorInfoImpl(
+MobileOperatorMapper::MobileOperatorMapper(EventDispatcher* dispatcher,
+                                           const std::string& info_owner)
+    : MobileOperatorMapper::MobileOperatorMapper(
           dispatcher,
           info_owner,
           base::FilePath(kDefaultDatabasePath),
           base::FilePath(kExclusiveOverrideDatabasePath)) {}
 
-MobileOperatorInfoImpl::~MobileOperatorInfoImpl() = default;
+MobileOperatorMapper::~MobileOperatorMapper() = default;
 
-void MobileOperatorInfoImpl::ClearDatabasePaths() {
+void MobileOperatorMapper::ClearDatabasePaths() {
   database_paths_.clear();
 }
 
-void MobileOperatorInfoImpl::AddDatabasePath(
+void MobileOperatorMapper::AddDatabasePath(
     const base::FilePath& absolute_path) {
   database_paths_.push_back(absolute_path);
 }
 
-bool MobileOperatorInfoImpl::Init() {
+bool MobileOperatorMapper::Init() {
   // |database_| is guaranteed to be set once |Init| is called.
   database_.reset(new shill::mobile_operator_db::MobileOperatorDB());
 
@@ -182,80 +182,79 @@ bool MobileOperatorInfoImpl::Init() {
   return true;
 }
 
-void MobileOperatorInfoImpl::AddObserver(
-    MobileOperatorInfo::Observer* observer) {
+void MobileOperatorMapper::AddObserver(MobileOperatorInfo::Observer* observer) {
   observers_.AddObserver(observer);
 }
 
-void MobileOperatorInfoImpl::RemoveObserver(
+void MobileOperatorMapper::RemoveObserver(
     MobileOperatorInfo::Observer* observer) {
   observers_.RemoveObserver(observer);
 }
 
-bool MobileOperatorInfoImpl::IsMobileNetworkOperatorKnown() const {
+bool MobileOperatorMapper::IsMobileNetworkOperatorKnown() const {
   return (current_mno_ != nullptr);
 }
 
-bool MobileOperatorInfoImpl::IsMobileVirtualNetworkOperatorKnown() const {
+bool MobileOperatorMapper::IsMobileVirtualNetworkOperatorKnown() const {
   return (current_mvno_ != nullptr);
 }
 
 // ///////////////////////////////////////////////////////////////////////////
 // Getters.
-const std::string& MobileOperatorInfoImpl::info_owner() const {
+const std::string& MobileOperatorMapper::info_owner() const {
   return info_owner_;
 }
 
-const std::string& MobileOperatorInfoImpl::uuid() const {
+const std::string& MobileOperatorMapper::uuid() const {
   return uuid_;
 }
 
-const std::string& MobileOperatorInfoImpl::operator_name() const {
+const std::string& MobileOperatorMapper::operator_name() const {
   return operator_name_;
 }
 
-const std::string& MobileOperatorInfoImpl::country() const {
+const std::string& MobileOperatorMapper::country() const {
   return country_;
 }
 
-const std::string& MobileOperatorInfoImpl::mccmnc() const {
+const std::string& MobileOperatorMapper::mccmnc() const {
   return mccmnc_;
 }
 
-const std::string& MobileOperatorInfoImpl::gid1() const {
+const std::string& MobileOperatorMapper::gid1() const {
   return gid1_;
 }
 
-const std::vector<std::string>& MobileOperatorInfoImpl::mccmnc_list() const {
+const std::vector<std::string>& MobileOperatorMapper::mccmnc_list() const {
   return mccmnc_list_;
 }
 
 const std::vector<MobileOperatorInfo::LocalizedName>&
-MobileOperatorInfoImpl::operator_name_list() const {
+MobileOperatorMapper::operator_name_list() const {
   return operator_name_list_;
 }
 
 const std::vector<MobileOperatorInfo::MobileAPN>&
-MobileOperatorInfoImpl::apn_list() const {
+MobileOperatorMapper::apn_list() const {
   return apn_list_;
 }
 
 const std::vector<MobileOperatorInfo::OnlinePortal>&
-MobileOperatorInfoImpl::olp_list() const {
+MobileOperatorMapper::olp_list() const {
   return olp_list_;
 }
 
-bool MobileOperatorInfoImpl::requires_roaming() const {
+bool MobileOperatorMapper::requires_roaming() const {
   return requires_roaming_;
 }
 
-int32_t MobileOperatorInfoImpl::mtu() const {
+int32_t MobileOperatorMapper::mtu() const {
   return mtu_;
 }
 
 // ///////////////////////////////////////////////////////////////////////////
 // Functions used to notify this object of operator data changes.
-void MobileOperatorInfoImpl::UpdateIMSI(const std::string& imsi) {
+void MobileOperatorMapper::UpdateIMSI(const std::string& imsi) {
   bool operator_changed = false;
   if (user_imsi_ == imsi) {
     return;
@@ -294,7 +293,7 @@ void MobileOperatorInfoImpl::UpdateIMSI(const std::string& imsi) {
   }
 }
 
-void MobileOperatorInfoImpl::UpdateICCID(const std::string& iccid) {
+void MobileOperatorMapper::UpdateICCID(const std::string& iccid) {
   if (user_iccid_ == iccid) {
     return;
   }
@@ -312,7 +311,7 @@ void MobileOperatorInfoImpl::UpdateICCID(const std::string& iccid) {
   }
 }
 
-void MobileOperatorInfoImpl::UpdateMCCMNC(const std::string& mccmnc) {
+void MobileOperatorMapper::UpdateMCCMNC(const std::string& mccmnc) {
   if (user_mccmnc_ == mccmnc) {
     return;
   }
@@ -338,7 +337,7 @@ void MobileOperatorInfoImpl::UpdateMCCMNC(const std::string& mccmnc) {
   }
 }
 
-void MobileOperatorInfoImpl::UpdateOperatorName(
+void MobileOperatorMapper::UpdateOperatorName(
     const std::string& operator_name) {
   bool operator_changed = false;
   if (user_operator_name_ == operator_name) {
@@ -377,7 +376,7 @@ void MobileOperatorInfoImpl::UpdateOperatorName(
   }
 }
 
-void MobileOperatorInfoImpl::UpdateGID1(const std::string& gid1) {
+void MobileOperatorMapper::UpdateGID1(const std::string& gid1) {
   if (user_gid1_ == gid1) {
     return;
   }
@@ -397,9 +396,9 @@ void MobileOperatorInfoImpl::UpdateGID1(const std::string& gid1) {
   }
 }
 
-void MobileOperatorInfoImpl::UpdateOnlinePortal(const std::string& url,
-                                                const std::string& method,
-                                                const std::string& post_data) {
+void MobileOperatorMapper::UpdateOnlinePortal(const std::string& url,
+                                              const std::string& method,
+                                              const std::string& post_data) {
   if (!user_olp_empty_ && user_olp_.url == url && user_olp_.method == method &&
       user_olp_.post_data == post_data) {
     return;
@@ -418,7 +417,7 @@ void MobileOperatorInfoImpl::UpdateOnlinePortal(const std::string& url,
   }
 }
 
-void MobileOperatorInfoImpl::Reset() {
+void MobileOperatorMapper::Reset() {
   SLOG(1) << __func__;
   bool should_notify = current_mno_ != nullptr || current_mvno_ != nullptr;
 
@@ -444,7 +443,7 @@ void MobileOperatorInfoImpl::Reset() {
   }
 }
 
-void MobileOperatorInfoImpl::PreprocessDatabase() {
+void MobileOperatorMapper::PreprocessDatabase() {
   SLOG(3) << __func__;
 
   mccmnc_to_mnos_.clear();
@@ -474,14 +473,14 @@ void MobileOperatorInfoImpl::PreprocessDatabase() {
 // This function assumes that duplicate |values| are never inserted for the
 // same |key|. If you do that, the function is too dumb to deduplicate the
 // |value|s, and two copies will get stored.
-void MobileOperatorInfoImpl::InsertIntoStringToMNOListMap(
+void MobileOperatorMapper::InsertIntoStringToMNOListMap(
     StringToMNOListMap* table,
     const std::string& key,
     const shill::mobile_operator_db::MobileNetworkOperator* value) {
   (*table)[key].push_back(value);
 }
 
-bool MobileOperatorInfoImpl::AppendToCandidatesByMCCMNC(
+bool MobileOperatorMapper::AppendToCandidatesByMCCMNC(
     const std::string& mccmnc) {
   operator_code_type_ = OperatorCodeType::kMCCMNC;
   StringToMNOListMap::const_iterator cit = mccmnc_to_mnos_.find(mccmnc);
@@ -497,7 +496,7 @@ bool MobileOperatorInfoImpl::AppendToCandidatesByMCCMNC(
   return true;
 }
 
-std::string MobileOperatorInfoImpl::OperatorCodeString() const {
+std::string MobileOperatorMapper::OperatorCodeString() const {
   switch (operator_code_type_) {
     case OperatorCodeType::kMCCMNC:
       return "MCCMNC";
@@ -506,7 +505,7 @@ std::string MobileOperatorInfoImpl::OperatorCodeString() const {
   }
 }
 
-bool MobileOperatorInfoImpl::UpdateMNO() {
+bool MobileOperatorMapper::UpdateMNO() {
   SLOG(3) << __func__;
   const shill::mobile_operator_db::MobileNetworkOperator* candidate = nullptr;
 
@@ -583,7 +582,7 @@ bool MobileOperatorInfoImpl::UpdateMNO() {
   return false;
 }
 
-bool MobileOperatorInfoImpl::UpdateMVNO() {
+bool MobileOperatorMapper::UpdateMVNO() {
   SLOG(3) << __func__;
 
   std::vector<const shill::mobile_operator_db::MobileVirtualNetworkOperator*>
@@ -625,7 +624,7 @@ bool MobileOperatorInfoImpl::UpdateMVNO() {
 }
 
 const shill::mobile_operator_db::MobileNetworkOperator*
-MobileOperatorInfoImpl::PickOneFromDuplicates(
+MobileOperatorMapper::PickOneFromDuplicates(
     const std::vector<const shill::mobile_operator_db::MobileNetworkOperator*>&
         duplicates) const {
   if (duplicates.empty())
@@ -641,7 +640,7 @@ MobileOperatorInfoImpl::PickOneFromDuplicates(
   return duplicates[0];
 }
 
-bool MobileOperatorInfoImpl::FilterMatches(
+bool MobileOperatorMapper::FilterMatches(
     const shill::mobile_operator_db::Filter& filter, std::string to_match) {
   DCHECK(filter.has_regex() || filter.has_exclude_regex() ||
          filter.range_size());
@@ -717,7 +716,7 @@ bool MobileOperatorInfoImpl::FilterMatches(
   return true;
 }
 
-void MobileOperatorInfoImpl::RefreshDBInformation() {
+void MobileOperatorMapper::RefreshDBInformation() {
   ClearDBInformation();
 
   if (current_mno_ == nullptr) {
@@ -737,7 +736,7 @@ void MobileOperatorInfoImpl::RefreshDBInformation() {
   }
 }
 
-void MobileOperatorInfoImpl::ClearDBInformation() {
+void MobileOperatorMapper::ClearDBInformation() {
   uuid_.clear();
   country_.clear();
   mccmnc_list_.clear();
@@ -757,7 +756,7 @@ void MobileOperatorInfoImpl::ClearDBInformation() {
   mtu_ = IPConfig::kUndefinedMTU;
 }
 
-void MobileOperatorInfoImpl::ReloadData(
+void MobileOperatorMapper::ReloadData(
     const shill::mobile_operator_db::Data& data) {
   SLOG(3) << __func__;
   // |uuid_| is *always* overwritten. An MNO and MVNO should not share the
@@ -828,7 +827,7 @@ void MobileOperatorInfoImpl::ReloadData(
   }
 }
 
-void MobileOperatorInfoImpl::HandleMCCMNCUpdate() {
+void MobileOperatorMapper::HandleMCCMNCUpdate() {
   if (!user_mccmnc_.empty()) {
     bool append_to_list = true;
     for (const auto& mccmnc : mccmnc_list_) {
@@ -852,7 +851,7 @@ void MobileOperatorInfoImpl::HandleMCCMNCUpdate() {
   HandleGID1Update();
 }
 
-void MobileOperatorInfoImpl::HandleOperatorNameUpdate() {
+void MobileOperatorMapper::HandleOperatorNameUpdate() {
   if (!user_operator_name_.empty()) {
     std::vector<MobileOperatorInfo::LocalizedName> localized_names;
     MobileOperatorInfo::LocalizedName localized_name{user_operator_name_, ""};
@@ -880,7 +879,7 @@ void MobileOperatorInfoImpl::HandleOperatorNameUpdate() {
 
 // The user-specified GID1 will be used exclusively if the user-specified
 // MCCMNC is in use, otherwise unused.
-void MobileOperatorInfoImpl::HandleGID1Update() {
+void MobileOperatorMapper::HandleGID1Update() {
   if (!mccmnc_.empty() && (mccmnc_ == user_mccmnc_) && !user_gid1_.empty())
     gid1_ = user_gid1_;
   else
@@ -894,7 +893,7 @@ void MobileOperatorInfoImpl::HandleGID1Update() {
 // reloaded then.
 // This is a corner case that we don't expect to hit, since MCCMNC doesn't
 // really change in a running system.
-void MobileOperatorInfoImpl::HandleOnlinePortalUpdate() {
+void MobileOperatorMapper::HandleOnlinePortalUpdate() {
   // Always recompute |olp_list_|. We don't expect this list to be big.
   olp_list_.clear();
   for (const auto& raw_olp : raw_olp_list_) {
@@ -917,7 +916,7 @@ void MobileOperatorInfoImpl::HandleOnlinePortalUpdate() {
   }
 }
 
-void MobileOperatorInfoImpl::HandleAPNListUpdate() {
+void MobileOperatorMapper::HandleAPNListUpdate() {
   SLOG(3) << __func__;
   // Always recompute |apn_list_|. We don't expect this list to be big.
   apn_list_.clear();
@@ -955,7 +954,7 @@ void MobileOperatorInfoImpl::HandleAPNListUpdate() {
 
 // When serving operator updates, filter it using |roaming_filter_list_|
 // to decide if |requires_roaming_| is true or false.
-void MobileOperatorInfoImpl::UpdateRequiresRoaming(
+void MobileOperatorMapper::UpdateRequiresRoaming(
     const MobileOperatorInfo* serving_operator_info) {
   if (!serving_operator_info || serving_operator_info->mccmnc().empty())
     return;
@@ -976,26 +975,26 @@ void MobileOperatorInfoImpl::UpdateRequiresRoaming(
   }
 }
 
-void MobileOperatorInfoImpl::PostNotifyOperatorChanged() {
+void MobileOperatorMapper::PostNotifyOperatorChanged() {
   SLOG(3) << __func__;
   // If there was an outstanding task, it will get replaced.
   notify_operator_changed_task_.Reset(
-      base::Bind(&MobileOperatorInfoImpl::NotifyOperatorChanged,
-                 weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(&MobileOperatorMapper::NotifyOperatorChanged,
+                          weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostTask(FROM_HERE, notify_operator_changed_task_.callback());
 }
 
-void MobileOperatorInfoImpl::NotifyOperatorChanged() {
+void MobileOperatorMapper::NotifyOperatorChanged() {
   for (MobileOperatorInfo::Observer& observer : observers_)
     observer.OnOperatorChanged();
 }
 
-bool MobileOperatorInfoImpl::ShouldNotifyPropertyUpdate() const {
+bool MobileOperatorMapper::ShouldNotifyPropertyUpdate() const {
   return IsMobileNetworkOperatorKnown() ||
          IsMobileVirtualNetworkOperatorKnown();
 }
 
-std::string MobileOperatorInfoImpl::NormalizeOperatorName(
+std::string MobileOperatorMapper::NormalizeOperatorName(
     const std::string& name) const {
   auto result = base::ToLowerASCII(name);
   base::RemoveChars(result, base::kWhitespaceASCII, &result);
