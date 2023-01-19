@@ -43,7 +43,7 @@ record_dmesg_for_iteration() {
   local filename=${FLAGS_record_dmesg_dir}/dmesg_$1
 
   echo -n " (dmesg > ${filename})..."
-  lines=$(dmesg | tac | grep -m1 -n "PM: Syncing filesystems" \
+  lines=$(dmesg | tac | grep -m1 -n "PM: suspend entry" \
           | cut -f1 -d:)
   dmesg | tail -${lines} > ${filename}
 }
