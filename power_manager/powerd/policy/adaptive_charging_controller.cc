@@ -965,33 +965,19 @@ void AdaptiveChargingController::OnPredictionResponse(
     return;
   }
 
-  // This goes through the predictions, which are a value between (0.0, 1.0),
-  // which indicate the probability of being unplugged at a certain hour.
-  int hour = 0;
-  for (int i = 1; i < result.size(); ++i) {
-    // In the case of 2 probabilities being the max values, bias towards the
-    // earlier probability.
-    if (result[i] > result[hour])
-      hour = i;
+  // This sums the predictions, which are a value between (0.0, 1.0), until the
+  // result is greater than `min_probability_`. The `hour` at which that happens
+  // is our prediction.
+  double probability_sum = 0.0;
+  int hour;
+  for (hour = 0; hour < result.size(); ++hour) {
+    probability_sum += result[hour];
+    if (probability_sum >= min_probability_)
+      break;
   }
 
   LOG(INFO) << "Adaptive Charging ML predicts AC unplug will occur after "
             << hour << " hour(s)";
-
-  // If the max probability is less than `min_probability_` we treat that as the
-  // model not having enough confidence in the prediction to delay charging.
-  if (result[hour] < min_probability_) {
-    StopAdaptiveCharging();
-
-    // If charging was delayed already, treat this as an unplug prediction for
-    // `kFinishChargingDelay` time from now.
-    if (hold_percent_start_time_ != base::TimeTicks())
-      target_full_charge_time_ =
-          clock_.GetCurrentBootTime() + kFinishChargingDelay;
-    else
-      target_full_charge_time_ = clock_.GetCurrentBootTime();
-    return;
-  }
 
   // If slow charging has commenced, check how long we have been slow-charging
   // for as well as the total charging time we may get with the new prediction
@@ -1065,10 +1051,9 @@ void AdaptiveChargingController::OnPredictionResponse(
 
   const system::PowerStatus status = power_supply_->GetPowerStatus();
 
-  // If the last value in `result` was the largest probability and greater than
-  // `min_probability_`, we don't set the `charge_alarm_` yet. It will be set
-  // when this is no longer the case when this function is run again via the
-  // `recheck_alarm_` or a suspend attempt.
+  // If the prediction is for the final hour in `result`, we don't set
+  // `charge_alarm_` yet. It will be set when this is no longer the case when
+  // this function is run again via the `recheck_alarm_` or a suspend attempt.
   if (target_delay != base::TimeDelta::Max()) {
     // Don't allow the time to start charging, which is
     // `target_full_charge_time_` - `kFinishChargingDelay`,

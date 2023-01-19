@@ -62,9 +62,10 @@ class AdaptiveChargingControllerInterface : public system::PowerSupplyObserver {
     virtual bool SetBatteryChargeLimit(uint32_t limit_mA) = 0;
 
     // Get the prediction for the next X hours on whether the charger will be
-    // connected. If a value in `result` is >= `min_probability_` and larger
-    // than any other value in `result`, the charger is predicted to be
-    // unplugged during that hour (except for the last value, which means longer
+    // connected. Each value in the `result` is added to a sum, one at a time,
+    // starting from the first value in `result`. When this value is >=
+    // `min_probability_`, the corresponding hour is the prediction for when the
+    // charger will be unplugged (except for the last value, which means longer
     // than the number of hours associated with the second to last value).
     // `proto` contains all of the features for the ML model, and `async`
     // indicates if this should not block. Calls `OnPredictionResponse` on
@@ -687,11 +688,12 @@ class AdaptiveChargingController : public AdaptiveChargingControllerInterface {
   // starts if it's higher than `hold_percent_`.
   int64_t display_percent_;
 
-  // Minimum value for the prediction from the Adaptive Charging ml-service that
-  // is interpreted as expecting the AC to be unplugged at a specific hour. The
-  // service returns a vector of doubles in the range (0.0, 1.0). The largest
-  // value in this vector must be larger than `min_probability_` for the
-  // prediction to be used to delay charging.
+  // The ML service returns a vector of nine doubles in the range (0.0, 1.0).
+  // These doubles sum to 1.0. Each value in this vector is added to a sum, one
+  // at a time. When that sum is greater than or equal to this value, the index
+  // of the last value to be added is the number of hours we predict the charger
+  // will remain plugged in, except for the last index, which corresponds with
+  // 8+ hours.
   double min_probability_;
 
   // The percentile for ChargeHistory::charge_events_ durations to use as the

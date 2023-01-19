@@ -514,25 +514,41 @@ TEST_F(AdaptiveChargingControllerTest, TestMaxTimeSustain) {
   EXPECT_EQ(delegate_.fake_upper, kDefaultTestPercent);
 }
 
-// Test that we stop delaying charge if there's no probability above
-// `min_probability_`.
-TEST_F(AdaptiveChargingControllerTest, TestResultLessThanMinProbability) {
-  prefs_.SetDouble(kAdaptiveChargingMinProbabilityPref, 0.5);
+// Test that the prediction for Adaptive Charging is based on the iterative sum
+// of the result.
+TEST_F(AdaptiveChargingControllerTest, TestProbabilitySum) {
+  Clock* clock = adaptive_charging_controller_.clock();
+  clock->set_current_boot_time_for_testing(base::TimeTicks() +
+                                           base::Seconds(1));
   Init();
 
-  // Set a slightly higher fake result for an hour that would still result in
-  // delaying charging if it were selected for the prediction.
-  delegate_.fake_result = std::vector<double>(9, 0.1);
-  delegate_.fake_result[5] = 0.2;
-  adaptive_charging_controller_.set_recheck_delay_for_testing(
-      base::TimeDelta());
-  base::RunLoop().RunUntilIdle();
+  delegate_.fake_result = {0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.2};
+  PowerManagementPolicy policy;
+  // Adjust the `max_delay_percentile` to make sure our predictions aren't
+  // limited by it.
+  policy.set_adaptive_charging_max_delay_percentile(1.0);
+  policy.set_adaptive_charging_min_probability(0.5);
+  adaptive_charging_controller_.HandlePolicyChange(policy);
+  EXPECT_TRUE(charge_alarm_->IsRunning());
+  EXPECT_EQ(
+      clock->GetCurrentBootTime() + base::Hours(4),
+      adaptive_charging_controller_.get_target_full_charge_time_for_testing());
 
-  // Adaptive Charging should be stopped.
-  EXPECT_FALSE(recheck_alarm_->IsRunning());
+  // Check that changing the |min_probability| restarts Adaptive Charging as
+  // well.
+  policy.set_adaptive_charging_min_probability(0.6);
+  adaptive_charging_controller_.HandlePolicyChange(policy);
+  EXPECT_TRUE(charge_alarm_->IsRunning());
+  EXPECT_EQ(
+      clock->GetCurrentBootTime() + base::Hours(5),
+      adaptive_charging_controller_.get_target_full_charge_time_for_testing());
+
+  policy.set_adaptive_charging_min_probability(0.9);
+  adaptive_charging_controller_.HandlePolicyChange(policy);
   EXPECT_FALSE(charge_alarm_->IsRunning());
-  EXPECT_EQ(delegate_.fake_lower, kBatterySustainDisabled);
-  EXPECT_EQ(delegate_.fake_upper, kBatterySustainDisabled);
+  EXPECT_EQ(
+      base::TimeTicks::Max(),
+      adaptive_charging_controller_.get_target_full_charge_time_for_testing());
 }
 
 // Test that calling the ChargeNowForAdaptiveCharging method via dbus
