@@ -4,6 +4,10 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+echo "$0: This command is deprecated." >&2
+echo "$0: Please see https://issuetracker.google.com/267537630" >&2
+exit 1
+
 # Use $PATH lookup for tools.  Add sbin in case script is run by non-root.
 PATH+=:/sbin:/usr/sbin
 
