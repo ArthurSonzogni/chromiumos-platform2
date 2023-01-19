@@ -7,13 +7,6 @@
 
 #include <string>
 
-#include <dbus/message.h>
-
-// Returns errno from |reader| containing the |response| message.
-int GetResponseErrno(dbus::MessageReader* reader,
-                     dbus::Response* response,
-                     const char* operation = nullptr);
-
 // Returns fuse open flags string: eg., "O_RDWR|O_CREAT|O_TRUNC".
 std::string OpenFlagsToString(int flags);
 

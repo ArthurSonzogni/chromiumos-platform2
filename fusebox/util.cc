@@ -7,35 +7,7 @@
 #include <fcntl.h>
 #include <fuse_lowlevel.h>
 
-#include <base/check.h>
-#include <base/check_op.h>
-#include <base/logging.h>
-#include <base/posix/safe_strerror.h>
 #include <base/strings/stringprintf.h>
-
-int GetResponseErrno(dbus::MessageReader* reader,
-                     dbus::Response* response,
-                     const char* operation) {
-  DCHECK(reader);
-
-  if (!response) {
-    LOG(ERROR) << base::safe_strerror(EHOSTUNREACH);
-    return EHOSTUNREACH;
-  }
-
-  int32_t error;
-  CHECK(reader->PopInt32(&error));
-
-  if (error) {
-    std::string cause;
-    if (operation)
-      cause.append("server ").append(operation).append(": ");
-    LOG(ERROR) << cause << base::safe_strerror(error);
-    return error;
-  }
-
-  return 0;
-}
 
 namespace {
 
