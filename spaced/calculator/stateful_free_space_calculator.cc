@@ -10,6 +10,7 @@
 #include <algorithm>
 
 #include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <brillo/blkdev_utils/lvm.h>
@@ -70,7 +71,7 @@ void StatefulFreeSpaceCalculator::UpdateSize() {
   struct statvfs stat;
 
   if (StatVFS(base::FilePath(kStatefulMountPath), &stat) != 0) {
-    LOG(ERROR) << "Failed to run statvfs() on stateful partition";
+    PLOG(ERROR) << "Failed to run statvfs() on stateful partition";
     SetSize(-1);
     return;
   }
@@ -119,7 +120,7 @@ void StatefulFreeSpaceCalculator::MaybeSignalDiskSpaceUpdate() {
 
 int StatefulFreeSpaceCalculator::StatVFS(const base::FilePath& path,
                                          struct statvfs* st) {
-  return statvfs(path.value().c_str(), st);
+  return HANDLE_EINTR(statvfs(path.value().c_str(), st));
 }
 
 }  // namespace spaced

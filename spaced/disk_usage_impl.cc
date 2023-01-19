@@ -36,7 +36,7 @@ int64_t DiskUsageUtilImpl::GetFreeDiskSpace(const base::FilePath& path) {
   struct statvfs stat;
 
   if (StatVFS(path, &stat) != 0) {
-    LOG(ERROR) << "Failed to run statvfs() on " << path;
+    PLOG(ERROR) << "Failed to run statvfs() on " << path;
     return -1;
   }
 
@@ -50,7 +50,7 @@ int64_t DiskUsageUtilImpl::GetTotalDiskSpace(const base::FilePath& path) {
   struct statvfs stat;
 
   if (StatVFS(path, &stat) != 0) {
-    LOG(ERROR) << "Failed to run statvfs() on " << path;
+    PLOG(ERROR) << "Failed to run statvfs() on " << path;
     return -1;
   }
 
