@@ -47,6 +47,7 @@ powerd_prefs: &powerd_prefs
   use-lid:
     <<: *powerd_prefs_default
     default: "1"
+  preferred-lid-device: *powerd_prefs_default
   detect-hover: *powerd_prefs_default
   retry-suspend-ms:
     <<: *powerd_prefs_default

@@ -916,6 +916,7 @@ In the tables below,
 | plugged-quick-lock-ms | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | plugged-suspend-ms | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | power-supply-full-factor | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
+| preferred-lid-device | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | require-usb-input-device-to-suspend | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | retry-suspend-attempts | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |
 | retry-suspend-ms | string |  | False |  | False | For details, see https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/ |

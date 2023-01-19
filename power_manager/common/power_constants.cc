@@ -28,6 +28,7 @@ const char kSendFeedbackIfUndimmedPref[] = "send_feedback_if_undimmed";
 const char kDisableIdleSuspendPref[] = "disable_idle_suspend";
 const char kFactoryModePref[] = "factory_mode";
 const char kUseLidPref[] = "use_lid";
+const char kPreferredLidDevicePref[] = "preferred_lid_device";
 const char kDetectHoverPref[] = "detect_hover";
 const char kRetrySuspendMsPref[] = "retry_suspend_ms";
 const char kRetrySuspendAttemptsPref[] = "retry_suspend_attempts";

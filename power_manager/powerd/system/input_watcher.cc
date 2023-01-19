@@ -128,6 +128,9 @@ bool InputWatcher::Init(
 
   prefs->GetBool(kDetectHoverPref, &detect_hover_);
 
+  prefs->GetString(power_manager::kPreferredLidDevicePref,
+                   &preferred_lid_device_);
+
   udev_->AddSubsystemObserver(kInputUdevSubsystem, this);
 
   std::vector<UdevDeviceInfo> input_device_list;
@@ -395,7 +398,9 @@ void InputWatcher::HandleAddedInput(const std::string& input_name,
   // Note that it's possible for a power button and lid switch to share a single
   // event device.
   if (use_lid_ && device->IsLidSwitch()) {
-    if (lid_device_) {
+    if (lid_device_ && (preferred_lid_device_.empty() ||
+                        lid_device_->GetName() == preferred_lid_device_ ||
+                        device->GetName() != preferred_lid_device_)) {
       LOG(WARNING) << "Skipping additional lid switch device "
                    << device->GetDebugName();
     } else {

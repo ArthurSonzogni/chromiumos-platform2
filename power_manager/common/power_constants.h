@@ -48,6 +48,12 @@ extern const char kFactoryModePref[];
 // If true, powerd will monitor the lid switch.
 extern const char kUseLidPref[];
 
+// If non-empty, an input device with this name with a lid switch will be
+// preferred over any other devices with a lid switch, rather than the first
+// device found having priority. If no device with this name exists, this has no
+// effect.
+extern const char kPreferredLidDevicePref[];
+
 // If true, powerd will detect hovering if a capable device is present.
 extern const char kDetectHoverPref[];
 

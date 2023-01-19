@@ -295,14 +295,34 @@ TEST_F(InputWatcherTest, PowerButton) {
 }
 
 TEST_F(InputWatcherTest, LidSwitch) {
-  std::shared_ptr<EventDeviceStub> lid_switch(new EventDeviceStub());
+  // Unused since it doesn't have the preferred name.
+  auto unused_lid_switch = std::make_shared<EventDeviceStub>();
+  unused_lid_switch->set_is_lid_switch(true);
+  unused_lid_switch->set_initial_lid_state(LidState::OPEN);
+  unused_lid_switch->set_phys_path("PNP0C0D:00");
   const base::FilePath kAcpiLidSysfsFile("/sys/devices/LNXSYSTM:00/PNP0C0D:00");
+  int lid_switch_event_num = 0;
+  AddDevice("event" + base::NumberToString(lid_switch_event_num++),
+            unused_lid_switch, kAcpiLidSysfsFile.value());
+
+  std::shared_ptr<EventDeviceStub> lid_switch(new EventDeviceStub());
   lid_switch->set_is_lid_switch(true);
   lid_switch->set_initial_lid_state(LidState::CLOSED);
   lid_switch->set_phys_path("PNP0C0D:00");
-  int kLidSwitchEventNum = 0;
-  AddDevice("event" + base::NumberToString(kLidSwitchEventNum), lid_switch,
+  lid_switch->set_name("preferred_lid");
+  AddDevice("event" + base::NumberToString(lid_switch_event_num++), lid_switch,
             kAcpiLidSysfsFile.value());
+
+  // Unused since another device with the preferred name has already been found.
+  unused_lid_switch = std::make_shared<EventDeviceStub>();
+  unused_lid_switch->set_is_lid_switch(true);
+  unused_lid_switch->set_initial_lid_state(LidState::OPEN);
+  unused_lid_switch->set_phys_path("PNP0C0D:00");
+  unused_lid_switch->set_name("preferred_lid");
+  AddDevice("event" + base::NumberToString(lid_switch_event_num++),
+            unused_lid_switch, kAcpiLidSysfsFile.value());
+
+  prefs_.SetString(power_manager::kPreferredLidDevicePref, "preferred_lid");
 
   // Before any events have been received, check that the initially-read state
   // is returned but no event is sent.

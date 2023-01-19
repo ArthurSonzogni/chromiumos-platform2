@@ -154,6 +154,9 @@ class InputWatcher : public InputWatcherInterface,
   // Should the lid be watched for events if present?
   bool use_lid_ = true;
 
+  // If non-empty, which device name should be preferred for lid switch events.
+  std::string preferred_lid_device_;
+
   // Most-recently-seen lid state.
   LidState lid_state_ = LidState::OPEN;
 
