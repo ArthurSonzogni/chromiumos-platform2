@@ -407,9 +407,9 @@ TEST_F(X11Test, UpdatesApplicationIdFromContext) {
 
   window->managed = 1;  // pretend window is mapped
   // Should be ignored; global app id from context takes priority.
-  window->app_id_property = "org.chromium.guest_os.termina.appid.from.window";
+  window->app_id_property = "org.chromium.appid.from.window";
 
-  ctx.application_id = "org.chromium.guest_os.termina.appid.from.context";
+  ctx.application_id = "org.chromium.appid.from.context";
   sl_update_application_id(&ctx, window);
   EXPECT_CALL(mock_wayland_channel_,
               send(AllOf(ExactlyOneMessage(AuraSurfaceId(window),
@@ -424,7 +424,7 @@ TEST_F(X11Test, UpdatesApplicationIdFromWindow) {
   Pump();
 
   window->managed = 1;  // pretend window is mapped
-  window->app_id_property = "org.chromium.guest_os.termina.appid.from.window";
+  window->app_id_property = "org.chromium.appid.from.window";
   sl_update_application_id(&ctx, window);
   EXPECT_CALL(mock_wayland_channel_,
               send(AllOf(ExactlyOneMessage(AuraSurfaceId(window),
@@ -442,12 +442,11 @@ TEST_F(X11Test, UpdatesApplicationIdFromWindowClass) {
   window->clazz = strdup("very_classy");  // not const, can't use a literal
   ctx.vm_id = "testvm";
   sl_update_application_id(&ctx, window);
-  EXPECT_CALL(
-      mock_wayland_channel_,
-      send(AllOf(ExactlyOneMessage(AuraSurfaceId(window),
-                                   ZAURA_SURFACE_SET_APPLICATION_ID),
-                 AnyMessageContainsString(
-                     "org.chromium.guest_os.testvm.wmclass.very_classy"))))
+  EXPECT_CALL(mock_wayland_channel_,
+              send(AllOf(ExactlyOneMessage(AuraSurfaceId(window),
+                                           ZAURA_SURFACE_SET_APPLICATION_ID),
+                         AnyMessageContainsString(
+                             "org.chromium.testvm.wmclass.very_classy"))))
       .RetiresOnSaturation();
   Pump();
   free(window->clazz);
@@ -465,7 +464,7 @@ TEST_F(X11Test, UpdatesApplicationIdFromClientLeader) {
               send(AllOf(ExactlyOneMessage(AuraSurfaceId(window),
                                            ZAURA_SURFACE_SET_APPLICATION_ID),
                          AnyMessageContainsString(
-                             "org.chromium.guest_os.testvm.wmclientleader."))))
+                             "org.chromium.testvm.wmclientleader."))))
       .RetiresOnSaturation();
   Pump();
 }
@@ -480,8 +479,7 @@ TEST_F(X11Test, UpdatesApplicationIdFromXid) {
   EXPECT_CALL(mock_wayland_channel_,
               send(AllOf(ExactlyOneMessage(AuraSurfaceId(window),
                                            ZAURA_SURFACE_SET_APPLICATION_ID),
-                         AnyMessageContainsString(
-                             "org.chromium.guest_os.testvm.xid."))))
+                         AnyMessageContainsString("org.chromium.testvm.xid."))))
       .RetiresOnSaturation();
   Pump();
 }
