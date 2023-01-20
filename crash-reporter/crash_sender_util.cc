@@ -19,6 +19,7 @@
 #include <base/check.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
+#include <base/hash/md5.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/notreached.h>
@@ -61,6 +62,7 @@ constexpr char kJsonLogKeyLocalId[] = "local_id";
 constexpr char kJsonLogKeyCaptureTime[] = "capture_time";
 constexpr char kJsonLogKeyState[] = "state";
 constexpr char kJsonLogKeySource[] = "source";
+constexpr char kJsonLogKeyPathHash[] = "path_hash";
 
 // Keys used in CrashDetails::metadata.
 constexpr char kMetadataKeyCaptureTimeMillis[] = "upload_var_reportTimeMillis";
@@ -826,6 +828,10 @@ base::Value::Dict Sender::CreateJsonEntity(const std::string& report_id,
       source = kMetadataValueRedacted;
     root_dict.Set(kJsonLogKeySource, source);
   }
+
+  // Set the MD5 hash of the meta file path.
+  root_dict.Set(kJsonLogKeyPathHash,
+                base::MD5String(details.meta_file.value()));
 
   return root_dict;
 }

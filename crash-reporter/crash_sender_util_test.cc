@@ -27,6 +27,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/hash/md5.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/strings/strcat.h>
@@ -2138,13 +2139,15 @@ TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
     std::optional<base::Value> row = std::move(rows[0]);
     ASSERT_TRUE(row.has_value() && row->is_dict());
     auto dict = std::move(row->GetDict());
-    ASSERT_EQ(6, dict.size());
+    ASSERT_EQ(7, dict.size());
     EXPECT_TRUE(dict.Find("upload_time"));
     EXPECT_THAT(dict.FindString("upload_id"), Pointee(Eq(expected_upload_id)));
     EXPECT_THAT(dict.FindString("local_id"), Pointee(Eq("foo")));
     EXPECT_THAT(dict.FindString("capture_time"), Pointee(Eq("1000")));
     EXPECT_EQ(3, dict.FindInt("state"));
     EXPECT_THAT(dict.FindString("source"), Pointee(Eq("exec_foo")));
+    EXPECT_THAT(dict.FindString("path_hash"),
+                Pointee(Eq(base::MD5String(system_meta_file.value()))));
   }
 
   if (max_crash_rate_ >= 2 || dry_run_) {
@@ -2152,7 +2155,7 @@ TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
     std::optional<base::Value> row = std::move(rows[1]);
     ASSERT_TRUE(row.has_value() && row->is_dict());
     auto dict = std::move(row->GetDict());
-    ASSERT_EQ(6, dict.size());
+    ASSERT_EQ(7, dict.size());
     EXPECT_TRUE(dict.Find("upload_time"));
     EXPECT_THAT(
         dict.FindString("upload_id"),
@@ -2161,6 +2164,8 @@ TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
     EXPECT_THAT(dict.FindString("capture_time"), Pointee(Eq("2000")));
     EXPECT_EQ(3, dict.FindInt("state"));
     EXPECT_THAT(dict.FindString("source"), Pointee(Eq("REDACTED")));
+    EXPECT_THAT(dict.FindString("path_hash"),
+                Pointee(Eq(base::MD5String(user_meta_file.value()))));
   }
 
   // We don't have a test with max_crash_rate_ >= 3. However, had there been
@@ -2169,7 +2174,7 @@ TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
     std::optional<base::Value> row = std::move(rows[2]);
     ASSERT_TRUE(row.has_value() && row->is_dict());
     auto dict = std::move(row->GetDict());
-    ASSERT_EQ(5, dict.size());
+    ASSERT_EQ(6, dict.size());
     EXPECT_TRUE(dict.Find("upload_time"));
     EXPECT_THAT(dict.FindString("upload_id"),
                 Pointee(Eq("")));  // This is empty
@@ -2177,6 +2182,8 @@ TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
     EXPECT_FALSE(dict.Find("capture_time"));
     EXPECT_EQ(3, dict.FindInt("state"));
     EXPECT_THAT(dict.FindString("source"), Pointee(Eq("REDACTED")));
+    EXPECT_THAT(dict.FindString("path_hash"),
+                Pointee(Eq(base::MD5String(user_meta_file2.value()))));
   }
 
   // The crash files should be kept in dry run mode and removed otherwise.
