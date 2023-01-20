@@ -415,6 +415,8 @@ class WiFiProviderTest : public testing::Test {
             Metrics::kMetricRememberedWiFiNetworkCountMax,
             Metrics::kMetricRememberedWiFiNetworkCountNumBuckets))
         .Times(AnyNumber());
+
+    Nl80211Message::SetMessageType(kNl80211FamilyId);
     provider_.netlink_manager_ = &netlink_manager_;
   }
 
