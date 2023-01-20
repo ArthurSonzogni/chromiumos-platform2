@@ -181,6 +181,15 @@ bool IsConvertibleTo(const ipp::ValueTag source, const ipp::ValueTag target) {
   return false;
 }
 
+// Parses two bytes from `ptr` and move it forward by 2 bytes.
+uint16_t ParseUInt16(const uint8_t*& ptr) {
+  uint16_t val = *ptr;
+  val <<= 8;
+  val += *++ptr;
+  ++ptr;
+  return val;
+}
+
 }  //  namespace
 
 std::string_view ToStrView(ParserCode code) {
@@ -474,26 +483,18 @@ bool Parser::ReadFrameFromBuffer(const uint8_t* ptr,
                                  const uint8_t* const buf_end) {
   buffer_begin_ = ptr;
   buffer_end_ = buf_end;
-  bool error_in_header = true;
   if (buf_end - ptr < 9) {
     LogParserError("Frame is too short to be correct (less than 9 bytes).",
                    ptr);
-  } else if (!ParseUnsignedInteger<1>(&ptr, &frame_->major_version_number_)) {
-    LogParserError("major-version-number is out of range.", ptr);
-  } else if (!ParseUnsignedInteger<1>(&ptr, &frame_->minor_version_number_)) {
-    LogParserError("minor-version-number is out of range.", ptr);
-  } else if (!ParseUnsignedInteger<2>(&ptr,
-                                      &frame_->operation_id_or_status_code_)) {
-    LogParserError("operation-id or status-code is out of range.", ptr);
-  } else if (!ParseUnsignedInteger<4>(&ptr, &frame_->request_id_)) {
-    LogParserError("request-id is out of range.", ptr);
-  } else if (*ptr > max_begin_attribute_group_tag) {
-    LogParserError("begin-attribute-group-tag was expected.", ptr);
-  } else {
-    error_in_header = false;
-  }
-  if (error_in_header)
     return false;
+  }
+  frame_->version_ = ParseUInt16(ptr);
+  ParseSignedInteger<2>(&ptr, &frame_->operation_id_or_status_code_);
+  ParseSignedInteger<4>(&ptr, &frame_->request_id_);
+  if (*ptr > max_begin_attribute_group_tag) {
+    LogParserError("begin-attribute-group-tag was expected.", ptr);
+    return false;
+  }
   while (*ptr != end_of_attributes_tag) {
     if (frame_->groups_tags_.size() >= kMaxCountOfAttributeGroups) {
       LogParserError(

@@ -30,6 +30,32 @@ TEST_F(ValidatorTest, NoErrors) {
   EXPECT_TRUE(log_.Entries().empty());
 }
 
+TEST_F(ValidatorTest, InvalidHeader) {
+  frame_.OperationIdOrStatusCode() = -1;
+  frame_.VersionNumber() = static_cast<Version>(0x1234);
+  frame_.RequestId() = -1;
+
+  EXPECT_FALSE(Validate(frame_, log_));
+  ASSERT_EQ(log_.Entries().size(), 4);
+  EXPECT_EQ(log_.Entries()[0].path.AsString(),
+            "header[0]>major-version-number");
+  EXPECT_EQ(log_.Entries()[0].error.Index(), 0);
+  EXPECT_EQ(log_.Entries()[0].error.ErrorsAsVector(),
+            (std::vector{ValidationCode::kIntegerOutOfRange}));
+  EXPECT_EQ(log_.Entries()[1].path.AsString(),
+            "header[0]>minor-version-number");
+  EXPECT_EQ(log_.Entries()[1].error.Index(), 0);
+  EXPECT_EQ(log_.Entries()[1].error.ErrorsAsVector(),
+            (std::vector{ValidationCode::kIntegerOutOfRange}));
+  EXPECT_EQ(log_.Entries()[2].error.Index(), 0);
+  EXPECT_EQ(log_.Entries()[2].error.ErrorsAsVector(),
+            (std::vector{ValidationCode::kIntegerOutOfRange}));
+  EXPECT_EQ(log_.Entries()[3].path.AsString(), "header[0]>request-id");
+  EXPECT_EQ(log_.Entries()[3].error.Index(), 0);
+  EXPECT_EQ(log_.Entries()[3].error.ErrorsAsVector(),
+            (std::vector{ValidationCode::kIntegerOutOfRange}));
+}
+
 TEST_F(ValidatorTest, InvalidAttributeName) {
   const std::string too_long = std::string(kMaxLengthOfName + 1, 'x');
   const std::string too_long_2 = std::string(kMaxLengthOfName + 1, '%');

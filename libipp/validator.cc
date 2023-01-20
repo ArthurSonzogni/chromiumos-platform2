@@ -4,6 +4,7 @@
 
 #include "validator.h"
 
+#include <limits>
 #include <set>
 #include <string>
 #include <string_view>
@@ -419,10 +420,45 @@ ValidationResult ValidateCollections(
   return result;
 }
 
+// Checks the values saved in the header of `frame`.
+ValidationResult ValidateHeader(const Frame& frame, ErrorsLog& log) {
+  std::vector<std::string> invalid_fields;
+  invalid_fields.reserve(4);
+  uint8_t ver_major = static_cast<uint16_t>(frame.VersionNumber()) >> 8;
+  uint8_t ver_minor = static_cast<uint16_t>(frame.VersionNumber()) & 0xffu;
+  if (ver_major < 1 || ver_major > 9) {
+    invalid_fields.push_back("major-version-number");
+  }
+  if (ver_minor > 9) {
+    invalid_fields.push_back("minor-version-number");
+  }
+  if (frame.OperationIdOrStatusCode() < 0) {
+    invalid_fields.push_back("operation-id or status-code");
+  }
+  if (frame.RequestId() < 1) {
+    invalid_fields.push_back("request-id");
+  }
+  ValidationResult result;
+  result.no_errors = invalid_fields.empty();
+  AttrError error = AttrError(0, {ValidationCode::kIntegerOutOfRange});
+  AttrPath path = AttrPath(AttrPath::kHeader);
+  for (const std::string& name : invalid_fields) {
+    path.PushBack(0, name);
+    result.keep_going = log.AddValidationError(path, error);
+    if (!result.keep_going) {
+      break;
+    }
+    path.PopBack();
+  }
+  return result;
+}
+
 }  // namespace
 
 bool Validate(const Frame& frame, ErrorsLog& log) {
-  ValidationResult result;
+  ValidationResult result = ValidateHeader(frame, log);
+  if (!result.keep_going)
+    return result.no_errors;
   for (GroupTag group_tag : kGroupTags) {
     std::vector<const Collection*> groups = frame.GetGroups(group_tag);
     for (size_t index = 0; index < groups.size(); ++index) {

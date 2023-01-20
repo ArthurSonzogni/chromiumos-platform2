@@ -121,6 +121,13 @@ bool SaveRangeOfInteger(const ipp::RangeOfInteger& v,
   return false;
 }
 
+// Writes 2-byte `value` to `ptr` and shifts `ptr` accordingly.
+void WriteUInt16(uint16_t value, uint8_t*& ptr) {
+  WriteAsBytes(value, ptr);
+  ++ptr;
+  ++ptr;
+}
+
 }  //  namespace
 
 void FrameBuilder::LogFrameBuilderError(const std::string& message) {
@@ -297,20 +304,9 @@ void FrameBuilder::BuildFrameFromPackage(const Frame* package) {
 }
 
 bool FrameBuilder::WriteFrameToBuffer(uint8_t* ptr) {
-  bool error_in_header = true;
-  if (!WriteInteger<1>(&ptr, frame_->major_version_number_)) {
-    LogFrameBuilderError("major-version-number is out of range");
-  } else if (!WriteInteger<1>(&ptr, frame_->minor_version_number_)) {
-    LogFrameBuilderError("minor-version-number is out of range");
-  } else if (!WriteInteger<2>(&ptr, frame_->operation_id_or_status_code_)) {
-    LogFrameBuilderError("operation-id or status-code is out of range");
-  } else if (!WriteInteger<4>(&ptr, frame_->request_id_)) {
-    LogFrameBuilderError("request-id is out of range");
-  } else {
-    error_in_header = false;
-  }
-  if (error_in_header)
-    return false;
+  WriteUInt16(frame_->version_, ptr);
+  WriteInteger<2>(&ptr, frame_->operation_id_or_status_code_);
+  WriteInteger<4>(&ptr, frame_->request_id_);
   for (size_t i = 0; i < frame_->groups_tags_.size(); ++i) {
     if (frame_->groups_tags_[i] > max_begin_attribute_group_tag) {
       LogFrameBuilderError("begin-attribute-group-tag is out of range");

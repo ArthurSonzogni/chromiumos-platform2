@@ -2632,7 +2632,7 @@ enum class E_notify_events : uint16_t {
   system_stopped = 0x0021
 };
 enum class E_notify_pull_method : uint16_t { ippget = 0x0000 };
-enum class E_operations_supported : uint16_t {
+enum class E_operations_supported : int16_t {
   Print_Job = 0x0002,
   Print_URI = 0x0003,
   Validate_Job = 0x0004,
@@ -3678,7 +3678,7 @@ enum class E_sheet_collate : uint16_t {
   collated = 0x0000,
   uncollated = 0x0001
 };
-enum class E_status_code : uint16_t {
+enum class E_status_code : int16_t {
   successful_ok = 0x0000,
   successful_ok_ignored_or_substituted_attributes = 0x0001,
   successful_ok_conflicting_attributes = 0x0002,

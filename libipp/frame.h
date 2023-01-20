@@ -158,7 +158,8 @@ class IPP_EXPORT Frame {
   // the same field, they just cast the same value to different enums. The field
   // is interpreted as operation id in IPP request and as status code in IPP
   // responses.
-  uint16_t& OperationIdOrStatusCode();
+  int16_t& OperationIdOrStatusCode();
+  int16_t OperationIdOrStatusCode() const;
   Operation OperationId() const;
   Status StatusCode() const;
   // Access request id.
@@ -219,7 +220,7 @@ class IPP_EXPORT Frame {
 
  private:
   Version version_;
-  uint16_t operation_id_or_status_code_;
+  int16_t operation_id_or_status_code_;
   int32_t request_id_;
   // Groups stored in the order they appear in the binary representation.
   std::vector<std::pair<GroupTag, Collection*>> groups_;

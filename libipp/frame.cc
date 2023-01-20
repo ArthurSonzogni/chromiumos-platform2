@@ -35,8 +35,7 @@ struct Converter {
             uint16_t operation_id_or_status_code,
             int32_t request_id,
             const Frame* package) {
-    frame_data.major_version_number_ = (static_cast<uint16_t>(version) >> 8);
-    frame_data.minor_version_number_ = (static_cast<uint16_t>(version) & 0xffu);
+    frame_data.version_ = static_cast<uint16_t>(version);
     frame_data.operation_id_or_status_code_ = operation_id_or_status_code;
     frame_data.request_id_ = request_id;
     builder.BuildFrameFromPackage(package);
@@ -97,10 +96,7 @@ Frame::Frame(const uint8_t* buffer, size_t size, ParsingResults* result) {
     result->whole_buffer_was_parsed = completed1 && completed2;
     result->errors.swap(log);
   }
-  uint16_t ver = frame_data.major_version_number_;
-  ver <<= 8;
-  ver += frame_data.minor_version_number_;
-  version_ = static_cast<Version>(ver);
+  version_ = static_cast<Version>(frame_data.version_);
   operation_id_or_status_code_ = frame_data.operation_id_or_status_code_;
   request_id_ = frame_data.request_id_;
 }
@@ -170,7 +166,11 @@ Version& Frame::VersionNumber() {
   return version_;
 }
 
-uint16_t& Frame::OperationIdOrStatusCode() {
+int16_t Frame::OperationIdOrStatusCode() const {
+  return operation_id_or_status_code_;
+}
+
+int16_t& Frame::OperationIdOrStatusCode() {
   return operation_id_or_status_code_;
 }
 

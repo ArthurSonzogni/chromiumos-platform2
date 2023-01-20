@@ -25,10 +25,9 @@ struct TagNameValue {
 // This represents single IPP frame, described in rfc8010.
 struct FrameData {
   // Variables save to/load from a frame's header.
-  uint8_t major_version_number_ = 1;
-  uint8_t minor_version_number_ = 1;
-  uint16_t operation_id_or_status_code_ = 0;
-  uint32_t request_id_;
+  uint16_t version_;
+  int16_t operation_id_or_status_code_;
+  int32_t request_id_;
   // The content of frame being (internal buffer).
   std::vector<uint8_t> groups_tags_;
   std::vector<std::list<TagNameValue>> groups_content_;

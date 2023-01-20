@@ -76,7 +76,7 @@ std::vector<ValidationCode> AttrError::ErrorsAsVector() const {
 }
 
 std::string AttrPath::AsString() const {
-  std::string out = ToString(group_);
+  std::string out = (group_ == kHeader) ? "header" : ToString(group_);
   for (const Segment& segment : path_) {
     out += "[";
     out += UnsignedToString(segment.collection_index);

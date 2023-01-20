@@ -44,6 +44,8 @@ enum class ValidationCode {
   kResolutionInvalidDimension,
   // The rangeOfIntegers value has min threshold larger than max threshold.
   kRangeOfIntegerMaxLessMin,
+  // The integer value is out of allowed range.
+  kIntegerOutOfRange
 };
 
 // Represents information about invalid value or name of an attribute.
@@ -77,6 +79,8 @@ class IPP_EXPORT AttrPath {
     uint16_t collection_index;
     std::string attribute_name;
   };
+  // Invalid value of GroupTag used to represent location in a frame's header.
+  static constexpr GroupTag kHeader = static_cast<GroupTag>(0);
   explicit AttrPath(GroupTag group) : group_(group) {}
   // Returns a string representation of the attribute's locations.
   std::string AsString() const;
