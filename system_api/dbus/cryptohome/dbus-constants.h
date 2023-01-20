@@ -49,7 +49,6 @@ inline constexpr char kGetAccountDiskUsage[] = "GetAccountDiskUsage";
 inline constexpr char kStartAuthSession[] = "StartAuthSession";
 inline constexpr char kAddCredentials[] = "AddCredentials";
 inline constexpr char kUpdateCredential[] = "UpdateCredential";
-inline constexpr char kAuthenticateAuthSession[] = "AuthenticateAuthSession";
 inline constexpr char kInvalidateAuthSession[] = "InvalidateAuthSession";
 inline constexpr char kExtendAuthSession[] = "ExtendAuthSession";
 inline constexpr char kCreatePersistentUser[] = "CreatePersistentUser";
