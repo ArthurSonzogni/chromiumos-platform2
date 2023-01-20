@@ -569,6 +569,14 @@ constexpr char kArcKeymasterInterfaceName[] = "org.chromium.ArcKeymaster";
 constexpr char kBootstrapMojoConnectionMethod[] = "BootstrapMojoConnection";
 }  // namespace keymaster
 
+namespace keymint {
+constexpr char kArcKeyMintServiceName[] = "org.chromium.ArcKeyMint";
+constexpr char kArcKeyMintServicePath[] = "/org/chromium/ArcKeyMint";
+constexpr char kArcKeyMintInterfaceName[] = "org.chromium.ArcKeyMint";
+// Methods
+constexpr char kBootstrapMojoConnectionMethod[] = "BootstrapMojoConnection";
+}  // namespace keymint
+
 namespace obb_mounter {
 // D-Bus service constants.
 constexpr char kArcObbMounterInterface[] =
