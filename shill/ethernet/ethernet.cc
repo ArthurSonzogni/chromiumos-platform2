@@ -893,7 +893,7 @@ bool Ethernet::RunEthtoolCmd(ifreq* interface_command) {
   strncpy(interface_command->ifr_name, link_name().c_str(),
           sizeof(interface_command->ifr_name));
 
-  return sockets_->Ioctl(sock, SIOCETHTOOL, &interface_command) > 0;
+  return sockets_->Ioctl(sock, SIOCETHTOOL, interface_command) >= 0;
 }
 
 }  // namespace shill

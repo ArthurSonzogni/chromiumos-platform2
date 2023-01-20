@@ -696,9 +696,6 @@ TEST_F(EthernetTest, UpdateLinkSpeedNoSelectedService) {
 
 TEST_F(EthernetTest, RunEthtoolCmd) {
   constexpr int kFakeFd = 789;
-  EXPECT_CALL(*mock_sockets_, Socket(_, _, _)).WillOnce(Return(kFakeFd));
-  EXPECT_CALL(*mock_sockets_, Ioctl(kFakeFd, SIOCETHTOOL, _));
-  EXPECT_CALL(*mock_sockets_, Close(kFakeFd));
 
   struct ethtool_cmd ecmd;
   struct ifreq ifr;
@@ -707,7 +704,16 @@ TEST_F(EthernetTest, RunEthtoolCmd) {
   ecmd.cmd = ETHTOOL_GSET;
   ifr.ifr_data = &ecmd;
 
-  ethernet_->RunEthtoolCmd(&ifr);
+  EXPECT_CALL(*mock_sockets_,
+              Socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_IP))
+      .WillRepeatedly(Return(kFakeFd));
+  EXPECT_CALL(*mock_sockets_, Ioctl(kFakeFd, SIOCETHTOOL, &ifr))
+      .WillOnce(Return(0))
+      .WillOnce(Return(-1));
+  EXPECT_CALL(*mock_sockets_, Close(kFakeFd)).Times(2);
+
+  EXPECT_TRUE(ethernet_->RunEthtoolCmd(&ifr));
+  EXPECT_FALSE(ethernet_->RunEthtoolCmd(&ifr));
 }
 
 }  // namespace shill
