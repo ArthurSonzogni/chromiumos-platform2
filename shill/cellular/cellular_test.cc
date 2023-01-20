@@ -2019,27 +2019,36 @@ TEST_F(CellularTest, DontMergeProfileAndOperatorApn) {
 }
 
 TEST_F(CellularTest, BuildApnTryListSetApn) {
+  // The default and attach try list always have an additional empty APN
+  // fallback added automatically
+  Stringmap default_empty_apn =
+      Cellular::BuildFallbackEmptyApn(ApnList::ApnType::kDefault);
+  Stringmap attach_empty_apn =
+      Cellular::BuildFallbackEmptyApn(ApnList::ApnType::kAttach);
+
   Stringmaps apn_list;
   Stringmap apn1, apn2;
   apn1[kApnProperty] = "apn1";
   apn1[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
   apn1[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn_list.push_back(apn1);
   apn2[kApnProperty] = "apn2";
   apn2[kApnTypesProperty] =
       ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeIA});
   apn2[kApnSourceProperty] = cellular::kApnSourceMoDb;
-  apn_list.push_back(apn1);
   apn_list.push_back(apn2);
   device_->SetApnList(apn_list);
 
   std::deque<Stringmap> default_apn_try_list =
       device_->BuildDefaultApnTryList();
   std::deque<Stringmap> attach_apn_try_list = device_->BuildAttachApnTryList();
-  ASSERT_EQ(attach_apn_try_list.size(), 1);
+  ASSERT_EQ(attach_apn_try_list.size(), 2);
   EXPECT_EQ(attach_apn_try_list[0], apn2);
-  ASSERT_EQ(default_apn_try_list.size(), apn_list.size());
+  EXPECT_EQ(attach_apn_try_list[1], attach_empty_apn);
+  ASSERT_EQ(default_apn_try_list.size(), 3);
   EXPECT_EQ(default_apn_try_list[0], apn1);
   EXPECT_EQ(default_apn_try_list[1], apn2);
+  EXPECT_EQ(default_apn_try_list[2], default_empty_apn);
 
   // Add a custom APN
   CellularService* service = SetService();
@@ -2050,12 +2059,14 @@ TEST_F(CellularTest, BuildApnTryListSetApn) {
   service->set_apn_info_for_testing(custom_apn);
   default_apn_try_list = device_->BuildDefaultApnTryList();
   attach_apn_try_list = device_->BuildAttachApnTryList();
-  ASSERT_EQ(attach_apn_try_list.size(), 1);
+  ASSERT_EQ(attach_apn_try_list.size(), 2);
   EXPECT_EQ(attach_apn_try_list[0], apn2);
-  ASSERT_EQ(default_apn_try_list.size(), apn_list.size() + 1u);
+  EXPECT_EQ(attach_apn_try_list[1], attach_empty_apn);
+  ASSERT_EQ(default_apn_try_list.size(), 4);
   EXPECT_EQ(default_apn_try_list[0], custom_apn);
   EXPECT_EQ(default_apn_try_list[1], apn1);
   EXPECT_EQ(default_apn_try_list[2], apn2);
+  EXPECT_EQ(default_apn_try_list[3], default_empty_apn);
 
   // Set the last good APN to an APN not in the current list
   Stringmap last_good_apn;
@@ -2065,29 +2076,42 @@ TEST_F(CellularTest, BuildApnTryListSetApn) {
   service->SetLastGoodApn(last_good_apn);
   default_apn_try_list = device_->BuildDefaultApnTryList();
   attach_apn_try_list = device_->BuildAttachApnTryList();
-  ASSERT_EQ(attach_apn_try_list.size(), 1);
+  ASSERT_EQ(attach_apn_try_list.size(), 2);
   EXPECT_EQ(attach_apn_try_list[0], apn2);
-  ASSERT_EQ(default_apn_try_list.size(), apn_list.size() + 2u);
+  EXPECT_EQ(attach_apn_try_list[1], attach_empty_apn);
+  ASSERT_EQ(default_apn_try_list.size(), 5);
   EXPECT_EQ(default_apn_try_list[0], custom_apn);
   EXPECT_EQ(default_apn_try_list[1], apn1);
   EXPECT_EQ(default_apn_try_list[2], apn2);
-  EXPECT_EQ(default_apn_try_list[3], last_good_apn);
+  EXPECT_EQ(default_apn_try_list[3], default_empty_apn);
+  EXPECT_EQ(default_apn_try_list[4], last_good_apn);
 
   // Set the last good APN to an existing APN
   service->SetLastGoodApn(apn2);
   default_apn_try_list = device_->BuildDefaultApnTryList();
-  ASSERT_EQ(default_apn_try_list.size(), apn_list.size() + 1u);
+  ASSERT_EQ(default_apn_try_list.size(), 4);
   EXPECT_EQ(default_apn_try_list[0], custom_apn);
   EXPECT_EQ(default_apn_try_list[1],
             apn2);  // MODB sorted based on last_good_apn
   EXPECT_EQ(default_apn_try_list[2], apn1);
+  EXPECT_EQ(default_apn_try_list[3], default_empty_apn);
+
+  // Set the last good APN to the empty fallback APN
+  service->SetLastGoodApn(default_empty_apn);
+  default_apn_try_list = device_->BuildDefaultApnTryList();
+  ASSERT_EQ(default_apn_try_list.size(), 4);
+  EXPECT_EQ(default_apn_try_list[0], custom_apn);
+  EXPECT_EQ(default_apn_try_list[1], apn1);
+  EXPECT_EQ(default_apn_try_list[2], apn2);
+  EXPECT_EQ(default_apn_try_list[3], default_empty_apn);
 
   // Set the custom APN to an existing APN
   service->set_apn_info_for_testing(apn1);
   default_apn_try_list = device_->BuildDefaultApnTryList();
-  ASSERT_EQ(default_apn_try_list.size(), apn_list.size());
+  ASSERT_EQ(default_apn_try_list.size(), 3);
   EXPECT_EQ(default_apn_try_list[0], apn1);
   EXPECT_EQ(default_apn_try_list[1], apn2);
+  EXPECT_EQ(default_apn_try_list[2], default_empty_apn);
 
   // Add a custom IA APN
   Stringmap custom_apn2;
@@ -2095,15 +2119,21 @@ TEST_F(CellularTest, BuildApnTryListSetApn) {
   custom_apn2[kApnSourceProperty] = kApnSourceUi;
   custom_apn2[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeIA});
   service->set_apn_info_for_testing(custom_apn2);
-  default_apn_try_list = device_->BuildDefaultApnTryList();
   attach_apn_try_list = device_->BuildAttachApnTryList();
-  ASSERT_EQ(default_apn_try_list.size(), 2);
-  ASSERT_EQ(attach_apn_try_list.size(), 2);
+  ASSERT_EQ(attach_apn_try_list.size(), 3);
   EXPECT_EQ(attach_apn_try_list[0], custom_apn2);
   EXPECT_EQ(attach_apn_try_list[1], apn2);
+  EXPECT_EQ(attach_apn_try_list[2], attach_empty_apn);
 }
 
 TEST_F(CellularTest, BuildApnTryListSetUserApnList) {
+  // The default and attach try list always have an additional empty APN
+  // fallback added automatically
+  Stringmap default_empty_apn =
+      Cellular::BuildFallbackEmptyApn(ApnList::ApnType::kDefault);
+  Stringmap attach_empty_apn =
+      Cellular::BuildFallbackEmptyApn(ApnList::ApnType::kAttach);
+
   Stringmaps apn_list;
   Stringmap apn1, apn2;
   apn1[kApnProperty] = "apn1";
@@ -2118,27 +2148,31 @@ TEST_F(CellularTest, BuildApnTryListSetUserApnList) {
   device_->SetApnList(apn_list);
 
   // Without any custom APNs, Build*ApnTryList should return APNs from modb and
-  // modem(apn_list).
+  // modem(apn_list), as well as the empty APN fallback
   std::deque<Stringmap> default_apn_try_list =
       device_->BuildDefaultApnTryList();
   std::deque<Stringmap> attach_apn_try_list = device_->BuildAttachApnTryList();
-  ASSERT_EQ(attach_apn_try_list.size(), 1);
+  ASSERT_EQ(attach_apn_try_list.size(), 2);
   EXPECT_EQ(attach_apn_try_list[0], apn2);
-  ASSERT_EQ(default_apn_try_list.size(), apn_list.size());
+  EXPECT_EQ(attach_apn_try_list[1], attach_empty_apn);
+  ASSERT_EQ(default_apn_try_list.size(), 3);
   EXPECT_EQ(default_apn_try_list[0], apn1);
   EXPECT_EQ(default_apn_try_list[1], apn2);
+  EXPECT_EQ(default_apn_try_list[2], default_empty_apn);
 
   // Check that when an empty UserAPnList is used, the APNs from the modb and
-  // modem are included.
+  // modem are included, as well as the empty APN fallback
   CellularService* service = SetService();
   service->set_user_apn_list_for_testing(Stringmaps());
   default_apn_try_list = device_->BuildDefaultApnTryList();
   attach_apn_try_list = device_->BuildAttachApnTryList();
-  ASSERT_EQ(attach_apn_try_list.size(), 1);
+  ASSERT_EQ(attach_apn_try_list.size(), 2);
   EXPECT_EQ(attach_apn_try_list[0], apn2);
-  ASSERT_EQ(default_apn_try_list.size(), apn_list.size());
+  EXPECT_EQ(attach_apn_try_list[1], attach_empty_apn);
+  ASSERT_EQ(default_apn_try_list.size(), 3);
   EXPECT_EQ(default_apn_try_list[0], apn1);
   EXPECT_EQ(default_apn_try_list[1], apn2);
+  EXPECT_EQ(default_apn_try_list[2], default_empty_apn);
 
   // Set UserApnList
   Stringmap apnP({{kApnProperty, "apnP"},
@@ -2168,6 +2202,13 @@ TEST_F(CellularTest, BuildApnTryListSetUserApnList) {
 }
 
 TEST_F(CellularTest, BuildApnTryListWithInvalid) {
+  // The default and attach try list always have an additional empty APN
+  // fallback added automatically
+  Stringmap default_empty_apn =
+      Cellular::BuildFallbackEmptyApn(ApnList::ApnType::kDefault);
+  Stringmap attach_empty_apn =
+      Cellular::BuildFallbackEmptyApn(ApnList::ApnType::kAttach);
+
   Stringmaps apn_list;
   Stringmap apn1, apn2, apn3;
   // Valid default APN
@@ -2191,11 +2232,13 @@ TEST_F(CellularTest, BuildApnTryListWithInvalid) {
   std::deque<Stringmap> default_apn_try_list =
       device_->BuildDefaultApnTryList();
   std::deque<Stringmap> attach_apn_try_list = device_->BuildAttachApnTryList();
-  ASSERT_EQ(attach_apn_try_list.size(), 1);
+  ASSERT_EQ(attach_apn_try_list.size(), 2);
   EXPECT_EQ(attach_apn_try_list[0], apn2);
-  ASSERT_EQ(default_apn_try_list.size(), 2);
+  EXPECT_EQ(attach_apn_try_list[1], attach_empty_apn);
+  ASSERT_EQ(default_apn_try_list.size(), 3);
   EXPECT_EQ(default_apn_try_list[0], apn1);
   EXPECT_EQ(default_apn_try_list[1], apn2);
+  EXPECT_EQ(default_apn_try_list[2], default_empty_apn);
 }
 
 TEST_F(CellularTest, CompareApns) {

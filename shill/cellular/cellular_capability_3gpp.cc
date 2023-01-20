@@ -277,12 +277,13 @@ std::string RegistrationStateToString(MMModem3gppRegistrationState state) {
 
 std::string MaskApnValue(const Stringmap& apn_info, const std::string& value) {
   // Masking is not needed if LOG_LEVEL >= 3, or the APN is empty, or from the
-  // modem or the MODB.
+  // modem/MODB/fallback.
   bool print_value =
       SLOG_IS_ON(Cellular, 3) || value.empty() ||
       (base::Contains(apn_info, kApnSourceProperty) &&
        (apn_info.at(kApnSourceProperty) == cellular::kApnSourceMoDb ||
-        apn_info.at(kApnSourceProperty) == cellular::kApnSourceModem));
+        apn_info.at(kApnSourceProperty) == cellular::kApnSourceModem ||
+        apn_info.at(kApnSourceProperty) == cellular::kApnSourceFallback));
   return print_value ? value : "*****";
 }
 
@@ -585,9 +586,14 @@ void CellularCapability3gpp::Connect(const ResultCallback& callback) {
   SLOG(this, 3) << __func__;
   DCHECK(callback);
 
-  KeyValueStore properties;
-  SetupConnectProperties(&properties);
-  CallConnect(properties, callback);
+  // The default APN try list is ensured to have at least the fallback
+  // empty APN
+  apn_try_list_ = cellular()->BuildDefaultApnTryList();
+  DCHECK(!apn_try_list_.empty());
+
+  SLOG(this, 2) << "Connection request started with " << apn_try_list_.size()
+                << " APNs to try";
+  CallConnect(SetupNextConnectProperties(), callback);
 }
 
 void CellularCapability3gpp::Disconnect(const ResultCallback& callback) {
@@ -794,18 +800,22 @@ void CellularCapability3gpp::OnServiceCreated() {
   cellular()->service()->SetNetworkTechnology(GetNetworkTechnologyString());
 }
 
-void CellularCapability3gpp::SetupConnectProperties(KeyValueStore* properties) {
-  SetRoamingProperties(properties);
-  apn_try_list_ = cellular()->BuildDefaultApnTryList();
-  for (const auto& apn_info : apn_try_list_) {
-    if (SetApnProperties(apn_info, properties))
-      break;
-  }
-}
+KeyValueStore CellularCapability3gpp::SetupNextConnectProperties() {
+  DCHECK(!apn_try_list_.empty());
 
-void CellularCapability3gpp::SetRoamingProperties(KeyValueStore* properties) {
-  properties->Set<bool>(CellularBearer::kMMAllowRoamingProperty,
-                        cellular()->IsRoamingAllowed());
+  KeyValueStore properties;
+  // Initialize roaming related properties
+  properties.Set<bool>(CellularBearer::kMMAllowRoamingProperty,
+                       cellular()->IsRoamingAllowed());
+
+  // Initialize APN related properties from the first entry in the try list.
+  const Stringmap& apn_info = apn_try_list_.front();
+  DCHECK(base::Contains(apn_info, kApnProperty));
+  LOG(INFO) << __func__ << ": Using APN '"
+            << MaskApnValue(apn_info, apn_info.at(kApnProperty)) << "'";
+  SetApnProperties(apn_info, &properties);
+
+  return properties;
 }
 
 bool CellularCapability3gpp::IsDualStackSupported() {
@@ -848,16 +858,11 @@ bool CellularCapability3gpp::IsModemFM101() {
   return cellular()->device_id()->Match(fm101_device_id);
 }
 
-bool CellularCapability3gpp::SetApnProperties(const Stringmap& apn_info,
+void CellularCapability3gpp::SetApnProperties(const Stringmap& apn_info,
                                               KeyValueStore* properties) {
-  if (!base::Contains(apn_info, kApnProperty)) {
-    LOG(ERROR) << "Malformed APN entry";
-    return false;
-  }
-  const std::string& apn = apn_info.at(kApnProperty);
-  LOG(INFO) << __func__ << ": Using APN '" << MaskApnValue(apn_info, apn)
-            << "'";
-  properties->Set<std::string>(CellularBearer::kMMApnProperty, apn);
+  DCHECK(base::Contains(apn_info, kApnProperty));
+  properties->Set<std::string>(CellularBearer::kMMApnProperty,
+                               apn_info.at(kApnProperty));
   if (base::Contains(apn_info, kApnUsernameProperty)) {
     properties->Set<std::string>(CellularBearer::kMMUserProperty,
                                  apn_info.at(kApnUsernameProperty));
@@ -884,8 +889,6 @@ bool CellularCapability3gpp::SetApnProperties(const Stringmap& apn_info,
         CellularBearer::kMMIpTypeProperty,
         IpTypeToMMBearerIpFamily(apn_info.at(kApnIpTypeProperty)));
   }
-
-  return true;
 }
 
 void CellularCapability3gpp::CallConnect(const KeyValueStore& properties,
@@ -903,6 +906,7 @@ void CellularCapability3gpp::OnConnectReply(const ResultCallback& callback,
                                             const Error& error) {
   SLOG(this, 3) << __func__ << "(" << error << ")";
   DCHECK(callback);
+  DCHECK((!apn_try_list_.empty()));
 
   CellularServiceRefPtr service = cellular()->service();
   if (!service) {
@@ -913,10 +917,8 @@ void CellularCapability3gpp::OnConnectReply(const ResultCallback& callback,
     return;
   }
 
-  shill::Stringmap apn_info;
-  if (!apn_try_list_.empty())
-    apn_info = apn_try_list_.front();
-  cellular()->NotifyDetailedCellularConnectionResult(error, apn_info);
+  cellular()->NotifyDetailedCellularConnectionResult(error,
+                                                     apn_try_list_.front());
 
   if (error.IsFailure()) {
     service->ClearLastGoodApn();
@@ -927,10 +929,7 @@ void CellularCapability3gpp::OnConnectReply(const ResultCallback& callback,
     return;
   }
 
-  if (!apn_try_list_.empty()) {
-    service->SetLastGoodApn(apn_try_list_.front());
-    apn_try_list_.clear();
-  }
+  service->SetLastGoodApn(apn_try_list_.front());
 
   SLOG(this, 2) << "Connected bearer " << bearer.value();
   UpdatePendingActivationState();
@@ -938,22 +937,18 @@ void CellularCapability3gpp::OnConnectReply(const ResultCallback& callback,
 }
 
 bool CellularCapability3gpp::ConnectToNextApn(const ResultCallback& callback) {
-  // The last connect attempt did not use an APN, nothing more to try.
-  if (apn_try_list_.empty())
-    return false;
-
-  // Remove the APN that was just tried and failed. If the APN list is empty,
-  // we still try again without an APN. This may succeed with some modems in
-  // some cases.
+  // Remove the APN that was just tried and failed.
   apn_try_list_.pop_front();
+
+  // And stop if no more APNs to try
+  if (apn_try_list_.empty()) {
+    SLOG(this, 2) << "Connect failed, no remaining APNs to try";
+    return false;
+  }
 
   SLOG(this, 2) << "Connect failed with invalid APN, " << apn_try_list_.size()
                 << " remaining APNs to try";
-  KeyValueStore props;
-  SetRoamingProperties(&props);
-  if (!apn_try_list_.empty())
-    SetApnProperties(apn_try_list_.front(), &props);
-  CallConnect(props, callback);
+  CallConnect(SetupNextConnectProperties(), callback);
   return true;
 }
 
@@ -2400,13 +2395,6 @@ double CellularCapability3gpp::SignalQualityBounds::GetAsPercentage(
 void CellularCapability3gpp::SetDBusPropertiesProxyForTesting(
     std::unique_ptr<DBusPropertiesProxy> dbus_properties_proxy) {
   dbus_properties_proxy_ = std::move(dbus_properties_proxy);
-}
-
-void CellularCapability3gpp::FillConnectPropertyMapForTesting(
-    KeyValueStore* properties) {
-  SetRoamingProperties(properties);
-  if (!apn_try_list_.empty())
-    SetApnProperties(apn_try_list_.front(), properties);
 }
 
 }  // namespace shill

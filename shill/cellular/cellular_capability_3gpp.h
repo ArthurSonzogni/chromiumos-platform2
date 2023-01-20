@@ -202,6 +202,11 @@ class CellularCapability3gpp {
   // capability object.
   CellularBearer* GetActiveBearer() const;
 
+  // Creates a key-value store with the next connection properties scheduled
+  // to be used. This method is guaranteed to not change any state as long as
+  // the APN try list has valid entries.
+  KeyValueStore SetupNextConnectProperties();
+
   const std::vector<MobileOperatorMapper::MobileAPN>& GetProfiles() const;
 
   // -------------------------------------------------------------------------
@@ -282,7 +287,6 @@ class CellularCapability3gpp {
 
   void SetDBusPropertiesProxyForTesting(
       std::unique_ptr<DBusPropertiesProxy> dbus_properties_proxy);
-  void FillConnectPropertyMapForTesting(KeyValueStore* properties);
 
   uint32_t access_technologies_for_testing() const {
     return access_technologies_;
@@ -393,8 +397,8 @@ class CellularCapability3gpp {
 
   Stringmap ParseScanResult(const ScanResult& result);
 
-  void SetRoamingProperties(KeyValueStore* properties);
-  bool SetApnProperties(const Stringmap& apn_info, KeyValueStore* properties);
+  void SetApnProperties(const Stringmap& apn_info, KeyValueStore* properties);
+
   // Disable dual-stack on FM350
   // TODO(b/228528516) Remove this hack once the fix for
   // b/228042798 lands.
@@ -484,7 +488,6 @@ class CellularCapability3gpp {
   // and removing other non-digit characters.
   std::string NormalizeMdn(const std::string& mdn) const;
 
-  void SetupConnectProperties(KeyValueStore* properties);
   void InitProxies();
   void ReleaseProxies();
 

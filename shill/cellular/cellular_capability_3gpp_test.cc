@@ -374,8 +374,8 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
     capability_->apn_try_list_ = apn;
   }
 
-  void FillConnectPropertyMap(KeyValueStore* properties) {
-    capability_->FillConnectPropertyMapForTesting(properties);
+  KeyValueStore SetupNextConnectProperties() {
+    return capability_->SetupNextConnectProperties();
   }
 
   void CallConnect(const KeyValueStore& properties,
@@ -1391,7 +1391,7 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
   Stringmap apn;
   apn[kApnProperty] = kTestApn;
   SetApnTryList({apn});
-  FillConnectPropertyMap(&properties);
+  properties = SetupNextConnectProperties();
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasNoUser());
   EXPECT_THAT(properties, HasNoPassword());
@@ -1400,7 +1400,7 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
 
   apn[kApnUsernameProperty] = kTestUser;
   SetApnTryList({apn});
-  FillConnectPropertyMap(&properties);
+  properties = SetupNextConnectProperties();
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
   EXPECT_THAT(properties, HasNoPassword());
@@ -1409,7 +1409,7 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
 
   apn[kApnPasswordProperty] = kTestPassword;
   SetApnTryList({apn});
-  FillConnectPropertyMap(&properties);
+  properties = SetupNextConnectProperties();
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
   EXPECT_THAT(properties, HasPassword(kTestPassword));
@@ -1418,7 +1418,7 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
 
   apn[kApnAuthenticationProperty] = kApnAuthenticationPap;
   SetApnTryList({apn});
-  FillConnectPropertyMap(&properties);
+  properties = SetupNextConnectProperties();
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
   EXPECT_THAT(properties, HasPassword(kTestPassword));
@@ -1427,7 +1427,7 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
 
   apn[kApnAuthenticationProperty] = kApnAuthenticationChap;
   SetApnTryList({apn});
-  FillConnectPropertyMap(&properties);
+  properties = SetupNextConnectProperties();
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
   EXPECT_THAT(properties, HasPassword(kTestPassword));
@@ -1436,7 +1436,7 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
 
   apn[kApnAuthenticationProperty] = "something";
   SetApnTryList({apn});
-  FillConnectPropertyMap(&properties);
+  properties = SetupNextConnectProperties();
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
   EXPECT_THAT(properties, HasPassword(kTestPassword));
@@ -1445,7 +1445,7 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
 
   apn[kApnAuthenticationProperty] = "";
   SetApnTryList({apn});
-  FillConnectPropertyMap(&properties);
+  properties = SetupNextConnectProperties();
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
   EXPECT_THAT(properties, HasPassword(kTestPassword));
@@ -1454,7 +1454,7 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
 
   apn[kApnIpTypeProperty] = kApnIpTypeV4;
   SetApnTryList({apn});
-  FillConnectPropertyMap(&properties);
+  properties = SetupNextConnectProperties();
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
   EXPECT_THAT(properties, HasPassword(kTestPassword));
@@ -1463,7 +1463,7 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
 
   apn[kApnIpTypeProperty] = kApnIpTypeV6;
   SetApnTryList({apn});
-  FillConnectPropertyMap(&properties);
+  properties = SetupNextConnectProperties();
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
   EXPECT_THAT(properties, HasPassword(kTestPassword));
@@ -1472,7 +1472,7 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
 
   apn[kApnIpTypeProperty] = kApnIpTypeV4V6;
   SetApnTryList({apn});
-  FillConnectPropertyMap(&properties);
+  properties = SetupNextConnectProperties();
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
   EXPECT_THAT(properties, HasPassword(kTestPassword));
@@ -1482,7 +1482,7 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
   // IP type defaults to v4 if something unsupported is specified.
   apn[kApnIpTypeProperty] = "orekid";
   SetApnTryList({apn});
-  FillConnectPropertyMap(&properties);
+  properties = SetupNextConnectProperties();
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
   EXPECT_THAT(properties, HasPassword(kTestPassword));
@@ -1530,23 +1530,25 @@ TEST_F(CellularCapability3gppTest, Connect) {
 TEST_F(CellularCapability3gppTest, ConnectApns) {
   mm1::MockModemSimpleProxy* modem_simple_proxy = modem_simple_proxy_.get();
   SetSimpleProxy();
-  KeyValueStore properties;
-  ResultCallback callback = base::Bind(
+  ResultCallback callback = base::BindRepeating(
       &CellularCapability3gppTest::TestCallback, base::Unretained(this));
   RpcIdentifier bearer("/bearer0");
 
   const char apn_name_foo[] = "foo";
   const char apn_name_bar[] = "bar";
-  EXPECT_CALL(*modem_simple_proxy, Connect(HasApn(apn_name_foo), _, _))
-      .WillRepeatedly(
-          WithArg<1>([this](auto cb) { connect_callback_ = std::move(cb); }));
+  const char apn_name_empty[] = "";
   Stringmap apn1;
   apn1[kApnProperty] = apn_name_foo;
   Stringmap apn2;
   apn2[kApnProperty] = apn_name_bar;
-  SetApnTryList({apn1, apn2});
-  FillConnectPropertyMap(&properties);
-  CallConnect(properties, callback);
+  Stringmap apn3;
+  apn3[kApnProperty] = apn_name_empty;
+  SetApnTryList({apn1, apn2, apn3});
+
+  EXPECT_CALL(*modem_simple_proxy, Connect(HasApn(apn_name_foo), _, _))
+      .WillRepeatedly(
+          WithArg<1>([this](auto cb) { connect_callback_ = std::move(cb); }));
+  CallConnect(SetupNextConnectProperties(), callback);
   Mock::VerifyAndClearExpectations(modem_simple_proxy);
 
   EXPECT_CALL(*modem_simple_proxy, Connect(HasApn(apn_name_bar), _, _))
@@ -1555,7 +1557,13 @@ TEST_F(CellularCapability3gppTest, ConnectApns) {
   EXPECT_CALL(*service_, ClearLastGoodApn());
   std::move(connect_callback_).Run(bearer, Error(Error::kInvalidApn));
 
-  EXPECT_CALL(*service_, SetLastGoodApn(apn2));
+  EXPECT_CALL(*modem_simple_proxy, Connect(HasApn(apn_name_empty), _, _))
+      .WillRepeatedly(
+          WithArg<1>([this](auto cb) { connect_callback_ = std::move(cb); }));
+  EXPECT_CALL(*service_, ClearLastGoodApn());
+  std::move(connect_callback_).Run(bearer, Error(Error::kInvalidApn));
+
+  EXPECT_CALL(*service_, SetLastGoodApn(apn3)).Times(1);
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   std::move(connect_callback_).Run(bearer, Error(Error::kSuccess));
 }

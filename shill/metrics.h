@@ -485,6 +485,7 @@ class Metrics : public DefaultServiceObserver {
     kCellularApnSourceMoDb = 0,
     kCellularApnSourceUi = 1,
     kCellularApnSourceModem = 2,
+    kCellularApnSourceFallback = 3,
     kCellularApnSourceMax
   };
 
