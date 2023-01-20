@@ -4,8 +4,14 @@
 
 #include "arc/vm/data_migrator/arcvm_data_migration_helper_delegate.h"
 
+#include <sys/stat.h>
+
+#include <array>
+#include <optional>
 #include <string>
 
+#include <base/files/file.h>
+#include <base/logging.h>
 #include <base/strings/string_util.h>
 
 namespace arc {
@@ -24,6 +30,46 @@ constexpr char kVirtiofsXattrPrefix[] = "user.virtiofs.";
 static_assert(base::StringPiece(kVirtiofsSecurityXattrPrefix)
                   .find(kVirtiofsXattrPrefix) == 0);
 
+// Struct to describe a single range of Android UID/GID mapping.
+// 'T' is either uid_t or gid_t.
+template <typename T>
+struct IdMap {
+  T guest;  // start of range on the guest side.
+  T host;   // start of range on the host side.
+  T size;   // size of the range of the mapping.
+};
+
+// UID mappings for Android's /data directory done by virtio-fs.
+// Taken from platform2/vm_tools/concierge/vm_util.cc (originally from
+// platform2/arc/container/bundle/pi/config.json).
+constexpr std::array<IdMap<uid_t>, 3> kAndroidUidMap{{
+    {0, 655360, 5000},
+    {5000, 600, 50},
+    {5050, 660410, 1994950},
+}};
+
+// GID equivalent of |kAndroidUidMap|.
+constexpr std::array<IdMap<gid_t>, 5> kAndroidGidMap{{
+    {0, 655360, 1065},
+    {1065, 20119, 1},
+    {1066, 656426, 3934},
+    {5000, 600, 50},
+    {5050, 660410, 1994950},
+}};
+
+template <typename T, size_t N>
+std::optional<T> MapToGuestId(T host_id,
+                              const std::array<IdMap<T>, N>& id_maps,
+                              base::StringPiece id_name) {
+  for (const auto& id_map : id_maps) {
+    if (id_map.host <= host_id && host_id < id_map.host + id_map.size) {
+      return host_id - id_map.host + id_map.guest;
+    }
+  }
+  LOG(ERROR) << "Failed to translate host " << id_name << ": " << host_id;
+  return std::nullopt;
+}
+
 }  // namespace
 
 ArcVmDataMigrationHelperDelegate::ArcVmDataMigrationHelperDelegate() = default;
@@ -40,6 +86,20 @@ std::string ArcVmDataMigrationHelperDelegate::GetMtimeXattrName() {
 
 std::string ArcVmDataMigrationHelperDelegate::GetAtimeXattrName() {
   return kAtimeXattrName;
+}
+
+bool ArcVmDataMigrationHelperDelegate::ConvertFileMetadata(
+    base::stat_wrapper_t* stat) {
+  std::optional<uid_t> guest_uid =
+      MapToGuestId(stat->st_uid, kAndroidUidMap, "UID");
+  std::optional<gid_t> guest_gid =
+      MapToGuestId(stat->st_gid, kAndroidGidMap, "GID");
+  if (!guest_uid.has_value() || !guest_gid.has_value()) {
+    return false;
+  }
+  stat->st_uid = guest_uid.value();
+  stat->st_gid = guest_gid.value();
+  return true;
 }
 
 std::string ArcVmDataMigrationHelperDelegate::ConvertXattrName(

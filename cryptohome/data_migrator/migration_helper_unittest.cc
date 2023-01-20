@@ -455,6 +455,67 @@ TEST_F(MigrationHelperTest, CopyAttributesSymlink) {
   EXPECT_STREQ(value.c_str(), kValue);
 }
 
+TEST_F(MigrationHelperTest, ConvertFileMetadata) {
+  MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
+                         status_files_dir_, kDefaultChunkSize);
+  constexpr uid_t kFromErrorUid = 0;
+  constexpr uid_t kFromFileUid = 10001;
+  constexpr uid_t kFromDirUid = 10002;
+  constexpr uid_t kToFileUid = 20001;
+  constexpr uid_t kToDirUid = 20002;
+  constexpr gid_t kGid = 1000;
+
+  // Map |kFromErrorUid| to null so that files with this UID won't be migrated.
+  delegate_.AddUidMapping(kFromErrorUid, /*uid_to=*/std::nullopt);
+  // Map |kFromFileUid| to |kToFileUid|, and |kFromDirUid| to |kToDirUid|.
+  delegate_.AddUidMapping(kFromFileUid, kToFileUid);
+  delegate_.AddUidMapping(kFromDirUid, kToDirUid);
+
+  ASSERT_TRUE(platform_.TouchFileDurable(from_dir_.Append("file1")));
+  ASSERT_TRUE(platform_.TouchFileDurable(from_dir_.Append("file2")));
+  ASSERT_TRUE(platform_.CreateDirectory(from_dir_.Append("dir1")));
+  ASSERT_TRUE(platform_.TouchFileDurable(from_dir_.Append("dir1/file")));
+  ASSERT_TRUE(platform_.CreateDirectory(from_dir_.Append("dir2")));
+  ASSERT_TRUE(platform_.TouchFileDurable(from_dir_.Append("dir2/file")));
+
+  // file1 and dir1 have UID |kFromErrorUid|.
+  ASSERT_TRUE(platform_.SetOwnership(from_dir_.Append("file1"), kFromErrorUid,
+                                     kGid, /*follow_links=*/false));
+  ASSERT_TRUE(platform_.SetOwnership(from_dir_.Append("dir1"), kFromErrorUid,
+                                     kGid, /*follow_links=*/false));
+
+  // file2, dir2 and dir2/file all have UID that can be converted.
+  ASSERT_TRUE(platform_.SetOwnership(from_dir_.Append("file2"), kFromFileUid,
+                                     kGid, /*follow_links=*/false));
+  ASSERT_TRUE(platform_.SetOwnership(from_dir_.Append("dir2"), kFromDirUid,
+                                     kGid, /*follow_links=*/false));
+  ASSERT_TRUE(platform_.SetOwnership(from_dir_.Append("dir2/file"),
+                                     kFromFileUid, kGid,
+                                     /*follow_links=*/false));
+
+  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
+
+  // file1 and dir1 are not migrated because their UID cannot be converted.
+  EXPECT_FALSE(platform_.FileExists(to_dir_.Append("file1")));
+  EXPECT_FALSE(platform_.DirectoryExists(to_dir_.Append("dir1")));
+
+  // file2 and dir2 are migrated because their UID can be converted.
+  EXPECT_TRUE(platform_.FileExists(to_dir_.Append("file2")));
+  EXPECT_TRUE(platform_.DirectoryExists(to_dir_.Append("dir2")));
+  EXPECT_TRUE(platform_.FileExists(to_dir_.Append("dir2/file")));
+
+  // Check that the UID of file2 and dir2 are correctly converted.
+  uid_t to_file2_uid = 0, to_dir2_uid = 0;
+  gid_t to_gid = 0;
+  EXPECT_TRUE(platform_.GetOwnership(to_dir_.Append("file2"), &to_file2_uid,
+                                     &to_gid, /*follow_links=*/false));
+  EXPECT_EQ(to_file2_uid, kToFileUid);
+  EXPECT_TRUE(platform_.GetOwnership(to_dir_.Append("dir2"), &to_dir2_uid,
+                                     &to_gid, /*follow_links=*/false));
+  EXPECT_EQ(to_dir2_uid, kToDirUid);
+}
+
 TEST_F(MigrationHelperTest, ConvertXattrName) {
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);

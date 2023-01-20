@@ -43,6 +43,13 @@ class BRILLO_EXPORT MigrationHelperDelegate {
   virtual std::string GetMtimeXattrName() = 0;
   virtual std::string GetAtimeXattrName() = 0;
 
+  // Takes metadata of a file, converts it and overwrites it with the result.
+  // The result will be used as the metadata of the file copied in the migration
+  // destination. Returns true on conversion success. Returning false means that
+  // the file will be deleted from the migration source, but not copied to the
+  // migration destination.
+  virtual bool ConvertFileMetadata(base::stat_wrapper_t* stat) { return true; }
+
   // Returns the name of xattr in the migration destination that corresponds to
   // the xattr |name| in the migration source.
   virtual std::string ConvertXattrName(const std::string& name) { return name; }

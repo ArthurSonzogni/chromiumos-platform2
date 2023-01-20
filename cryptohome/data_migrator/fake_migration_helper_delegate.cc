@@ -31,6 +31,11 @@ void FakeMigrationHelperDelegate::AddXattrMapping(const std::string& name_from,
   xattr_mappings_[name_from] = name_to;
 }
 
+void FakeMigrationHelperDelegate::AddUidMapping(
+    uid_t uid_from, const std::optional<uid_t>& uid_to) {
+  uid_mappings_[uid_from] = uid_to;
+}
+
 bool FakeMigrationHelperDelegate::ShouldMigrateFile(
     const base::FilePath& child) {
   return !base::Contains(denylisted_paths_, child);
@@ -46,6 +51,19 @@ std::string FakeMigrationHelperDelegate::GetMtimeXattrName() {
 
 std::string FakeMigrationHelperDelegate::GetAtimeXattrName() {
   return kAtimeXattrName;
+}
+
+bool FakeMigrationHelperDelegate::ConvertFileMetadata(
+    base::stat_wrapper_t* stat) {
+  auto iter = uid_mappings_.find(stat->st_uid);
+  if (iter != uid_mappings_.end()) {
+    if (iter->second.has_value()) {
+      stat->st_uid = iter->second.value();
+      return true;
+    }
+    return false;
+  }
+  return true;
 }
 
 std::string FakeMigrationHelperDelegate::ConvertXattrName(

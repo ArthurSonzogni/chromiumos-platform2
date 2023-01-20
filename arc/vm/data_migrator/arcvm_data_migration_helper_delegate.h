@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include <base/files/file.h>
+
 #include <cryptohome/data_migrator/migration_helper_delegate.h>
 
 namespace arc {
@@ -28,6 +30,7 @@ class ArcVmDataMigrationHelperDelegate
   bool ShouldCopyQuotaProjectId() override;
   std::string GetMtimeXattrName() override;
   std::string GetAtimeXattrName() override;
+  bool ConvertFileMetadata(base::stat_wrapper_t* stat) override;
   std::string ConvertXattrName(const std::string& name) override;
 };
 

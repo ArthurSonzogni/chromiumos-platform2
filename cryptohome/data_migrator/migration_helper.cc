@@ -491,10 +491,10 @@ bool MigrationHelper::MigrateDir(const base::FilePath& child,
 
   for (base::FilePath entry = enumerator->Next(); !entry.empty();
        entry = enumerator->Next()) {
-    const FileEnumerator::FileInfo& entry_info = enumerator->GetInfo();
     const base::FilePath& new_child = child.Append(entry.BaseName());
-    mode_t mode = entry_info.stat().st_mode;
-    if (!delegate_->ShouldMigrateFile(new_child)) {
+    base::stat_wrapper_t stat = enumerator->GetInfo().stat();
+    if (!delegate_->ShouldMigrateFile(new_child) ||
+        !delegate_->ConvertFileMetadata(&stat)) {
       // Delete paths which should be skipped
       if (!platform_->DeletePathRecursively(entry)) {
         PLOG(ERROR) << "Failed to delete " << entry.value();
@@ -504,8 +504,10 @@ bool MigrationHelper::MigrateDir(const base::FilePath& child,
       continue;
     }
 
+    FileEnumerator::FileInfo entry_info(from_base_path_.Append(new_child),
+                                        stat);
     IncrementChildCount(child);
-    if (S_ISDIR(mode)) {
+    if (S_ISDIR(stat.st_mode)) {
       // Directory.
       if (!MigrateDir(new_child, entry_info))
         return false;
