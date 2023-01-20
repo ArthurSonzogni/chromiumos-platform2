@@ -956,6 +956,8 @@ std::vector<std::string> ArcVm::GetKernelParams(
       "androidboot.enable_consumer_auto_update_toggle=" +
           std::to_string(
               mini_instance_request.enable_consumer_auto_update_toggle()),
+      "androidboot.enable_privacy_hub_for_chrome=" +
+          std::to_string(mini_instance_request.enable_privacy_hub_for_chrome()),
       base::StringPrintf("androidboot.keyboard_shortcut_helper_integration=%d",
                          request.enable_keyboard_shortcut_helper_integration()),
       base::StringPrintf("androidboot.arcvm_virtio_blk_data=%d",

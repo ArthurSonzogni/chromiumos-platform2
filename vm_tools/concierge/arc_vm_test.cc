@@ -744,5 +744,27 @@ TEST(ArcVmTest, WebViewZygoteLazyInitDisabled) {
   EXPECT_FALSE(
       base::Contains(params, "androidboot.arc.web_view_zygote.lazy_init=1"));
 }
+
+TEST(ArcVmTest, PrivacyHubForChromeEnabled) {
+  crossystem::fake::CrossystemFake cros_system;
+  StartArcVmRequest request;
+  auto* mini_instance_request = request.mutable_mini_instance_request();
+  mini_instance_request->set_enable_privacy_hub_for_chrome(true);
+  std::vector<std::string> params =
+      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
+  EXPECT_TRUE(
+      base::Contains(params, "androidboot.enable_privacy_hub_for_chrome=1"));
+}
+
+TEST(ArcVmTest, PrivacyHubForChromeDisabled) {
+  crossystem::fake::CrossystemFake cros_system;
+  StartArcVmRequest request;
+  auto* mini_instance_request = request.mutable_mini_instance_request();
+  mini_instance_request->set_enable_privacy_hub_for_chrome(false);
+  std::vector<std::string> params =
+      ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
+  EXPECT_TRUE(
+      base::Contains(params, "androidboot.enable_privacy_hub_for_chrome=0"));
+}
 }  // namespace concierge
 }  // namespace vm_tools

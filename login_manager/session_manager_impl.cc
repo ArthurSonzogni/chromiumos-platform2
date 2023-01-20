@@ -1535,6 +1535,8 @@ bool SessionManagerImpl::StartArcMiniContainer(
                          request.enable_consumer_auto_update_toggle()),
       base::StringPrintf("ENABLE_NOTIFICATIONS_REFRESH=%d",
                          request.enable_notifications_refresh()),
+      base::StringPrintf("ENABLE_PRIVACY_HUB_FOR_CHROME=%d",
+                         request.enable_privacy_hub_for_chrome()),
       base::StringPrintf("ENABLE_TTS_CACHING=%d", request.enable_tts_caching()),
       base::StringPrintf("HOST_UREADAHEAD_GENERATION=%d",
                          request.host_ureadahead_generation()),

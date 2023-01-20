@@ -93,7 +93,10 @@ message StartArcMiniInstanceRequest {
   // TODO(b/264585671): Refactore this and disable_ureadahead to mode enum.
   optional bool host_ureadahead_generation = 16 [default = false];
 
-  // Next ID to use: 17
+  // Option to enable privacy hub for chrome in android settings.
+  optional bool enable_privacy_hub_for_chrome = 17 [default = false];
+
+  // Next ID to use: 18
 }
 
 // ARC upgrade options sent from Chrome to session manager. This message is used
