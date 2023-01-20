@@ -706,33 +706,6 @@
 				"gid": 0
 			},
 			{
-				"path": "/dev/dri/card0",
-				"type": "c",
-				"major": 226,
-				"minor": 0,
-				"fileMode": 438,
-				"uid": 0,
-				"gid": 0
-			},
-			{
-				"path": "/dev/dri/card1",
-				"type": "c",
-				"major": 226,
-				"minor": 1,
-				"fileMode": 438,
-				"uid": 0,
-				"gid": 0
-			},
-			{
-				"path": "/dev/dri/controlD64",
-				"type": "c",
-				"major": 226,
-				"minor": 64,
-				"fileMode": 438,
-				"uid": 0,
-				"gid": 0
-			},
-			{
 				"path": "/dev/dri/renderD128",
 				"type": "c",
 				"major": 226,
