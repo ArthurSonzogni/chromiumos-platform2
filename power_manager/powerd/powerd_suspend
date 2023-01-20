@@ -103,7 +103,7 @@ igb_devices=""
 # (see b/189345571). So in order to enter S0ix, need to unbind its devices while
 # suspending, and rebind again at resume.
 unbind_igb_devices() {
-  /sbin/lsmod | grep -qw "^igb"
+  lsmod | grep -qw "^igb"
   if [ $? -ne 0 ]; then
     return
   fi
