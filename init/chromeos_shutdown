@@ -12,8 +12,6 @@ set +e
 
 bootstat shutdown-start
 
-. /sbin/killers
-
 # Set nologin so services (like usb_bouncer) can check that a shutdown is
 # happening.
 touch /run/nologin
