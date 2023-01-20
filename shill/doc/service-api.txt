@@ -2117,3 +2117,20 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			configured for the WireGuard interface on this device. This
 			property is only readable in the "Provider" property of this
 			service.
+
+		array{string} WiFi.BSSIDAllowlist [readwrite]
+
+			(WiFi only) List of BSSIDs that control what APs can be
+			connected to. The BSSID should be formatted as
+			colon-separated octets (e.g. "00:01:02:03:04:05").
+
+			Empty list: The WiFi network can associate with any AP.
+
+			Non-empty list: The WiFi network will only associate
+			with the specified BSSes.
+
+			["00:00:00:00:00:00"]: Special value indicating the
+			network shouldn't associate with any AP.
+			"00:00:00:00:00:00" shouldn't be a part of any other
+			list of values, otherwise an error will be
+			returned.

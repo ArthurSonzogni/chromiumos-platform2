@@ -95,6 +95,17 @@ static constexpr std::array<const char*, 5> SSIDsExcludedFromRandomization = {
 // priority. A (not Passpoint) network should have a score equivalent to a
 // "home" Passpoint network.
 constexpr uint64_t kDefaultMatchPriority = WiFiProvider::MatchPriority::kHome;
+
+// Returns true if every element of |bytes| is zero, false otherwise.
+bool IsZero(const ByteArray& bytes) {
+  for (const auto& byte : bytes) {
+    if (byte != 0) {
+      return false;
+    }
+  }
+  return true;
+}
+
 }  // namespace
 
 const char WiFiService::kAnyDeviceAddress[] = "any";
@@ -115,6 +126,7 @@ const char WiFiService::kStoragePasspointCredentials[] =
     "WiFi.PasspointCredentialsId";
 const char WiFiService::kStoragePasspointMatchPriority[] =
     "WiFi.PasspointMatchPriority";
+const char WiFiService::kStorageBSSIDAllowlist[] = "WiFi.BSSIDAllowlist";
 
 bool WiFiService::logged_signal_warning = false;
 // Clock for time-related events.
@@ -196,6 +208,10 @@ WiFiService::WiFiService(Manager* manager,
                                  &WiFiService::GetPasspointMatchType);
   HelpRegisterConstDerivedInt32(kWifiSignalStrengthRssiProperty,
                                 &WiFiService::GetSignalLevel);
+
+  HelpRegisterDerivedStrings(kWifiBSSIDAllowlist,
+                             &WiFiService::GetBSSIDAllowlist,
+                             &WiFiService::SetBSSIDAllowlist);
 
   SetEapCredentials(new EapCredentials());
   SetSecurityProperties();
@@ -666,6 +682,17 @@ bool WiFiService::Load(const StoreInterface* storage) {
   }
   storage->GetUint64(id, WiFiService::kStoragePasspointMatchPriority,
                      &match_priority_);
+
+  Error bssid_allowlist_error;
+  std::vector<std::string> bssid_allowlist;
+  storage->GetStringList(id, kStorageBSSIDAllowlist, &bssid_allowlist);
+  SetBSSIDAllowlist(bssid_allowlist, &bssid_allowlist_error);
+  if (!bssid_allowlist_error.IsSuccess()) {
+    LOG(ERROR) << "Failed to load BSSID allowlist: ["
+               << base::JoinString(bssid_allowlist, ", ") << "]";
+    return false;
+  }
+
   return true;
 }
 
@@ -723,6 +750,10 @@ bool WiFiService::Save(StoreInterface* storage) {
   }
   storage->SetUint64(id, kStoragePasspointMatchPriority, match_priority_);
 
+  Error unused_error;
+  storage->SetStringList(id, kStorageBSSIDAllowlist,
+                         GetBSSIDAllowlist(&unused_error));
+
   return true;
 }
 
@@ -748,6 +779,7 @@ bool WiFiService::Unload() {
   match_priority_ = kDefaultMatchPriority;
   PasspointCredentialsRefPtr creds = parent_credentials_;
   parent_credentials_ = nullptr;
+  bssid_allowlist_.clear();
   return provider_->OnServiceUnloaded(this, creds);
 }
 
@@ -891,6 +923,15 @@ void WiFiService::HelpRegisterDerivedString(
   mutable_store()->RegisterDerivedString(
       name, StringAccessor(
                 new CustomAccessor<WiFiService, std::string>(this, get, set)));
+}
+
+void WiFiService::HelpRegisterDerivedStrings(
+    const std::string& name,
+    Strings (WiFiService::*get)(Error* error),
+    bool (WiFiService::*set)(const Strings&, Error*)) {
+  mutable_store()->RegisterDerivedStrings(
+      name, StringsAccessor(
+                new CustomAccessor<WiFiService, Strings>(this, get, set)));
 }
 
 void WiFiService::HelpRegisterWriteOnlyDerivedString(
@@ -1901,6 +1942,76 @@ bool WiFiService::CompareWithSameTechnology(const ServiceRefPtr& service,
   if (Service::DecideBetween(wifi_service->match_priority(), match_priority_,
                              decision)) {
     return true;
+  }
+
+  return false;
+}
+
+Strings WiFiService::GetBSSIDAllowlist(Error* /*error*/) {
+  Strings bssid_allowlist;
+  for (const ByteArray& bssid : bssid_allowlist_) {
+    bssid_allowlist.push_back(Device::MakeStringFromHardwareAddress(bssid));
+  }
+  return bssid_allowlist;
+}
+
+bool WiFiService::SetBSSIDAllowlist(const Strings& bssid_allowlist,
+                                    Error* error) {
+  std::set<ByteArray> filtered_bssid_allowlist;
+  bool found_zero = false;
+  for (const std::string& bssid : bssid_allowlist) {
+    const ByteArray bssid_bytes = Device::MakeHardwareAddressFromString(bssid);
+
+    if (bssid_bytes.empty()) {
+      Error::PopulateAndLog(
+          FROM_HERE, error, Error::kInvalidArguments,
+          base::StringPrintf("Invalid BSSID '%s' in BSSID allowlist: [%s]",
+                             bssid.c_str(),
+                             base::JoinString(bssid_allowlist, ", ").c_str()));
+      return false;
+    }
+
+    if (IsZero(bssid_bytes)) {
+      found_zero = true;
+    }
+
+    filtered_bssid_allowlist.insert(bssid_bytes);
+  }
+
+  // If there is a zero BSSID, it must be the only element in the list
+  if (found_zero && filtered_bssid_allowlist.size() != 1) {
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kInvalidArguments,
+        base::StringPrintf("00:00:00:00:00:00 should be the only element in a "
+                           "BSSID allowlist: [%s]",
+                           base::JoinString(bssid_allowlist, ", ").c_str()));
+    return false;
+  }
+
+  if (bssid_allowlist_ == filtered_bssid_allowlist) {
+    return false;
+  }
+
+  bssid_allowlist_ = filtered_bssid_allowlist;
+  return true;
+}
+
+bool WiFiService::HasConnectableEndpoints() const {
+  if (bssid_allowlist_.size() == 0) {
+    // An empty list means nothing is restricted and everything is allowed.
+    return HasEndpoints();
+  }
+
+  if (bssid_allowlist_.size() == 1 && IsZero(*bssid_allowlist_.begin())) {
+    // Special case where a single element of zeroes means don't connect to
+    // any AP.
+    return false;
+  }
+
+  for (const auto& endpoint : endpoints_) {
+    if (base::Contains(bssid_allowlist_, endpoint->bssid())) {
+      return true;
+    }
   }
 
   return false;

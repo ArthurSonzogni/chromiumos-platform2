@@ -236,6 +236,7 @@ const char kWifiRekeyInProgressProperty[] = "WiFi.RekeyInProgress";
 const char kWifiRoamStateProperty[] = "WiFi.RoamState";
 const char kWifiVendorInformationProperty[] = "WiFi.VendorInformation";
 const char kWifiSignalStrengthRssiProperty[] = "WiFi.SignalStrengthRssi";
+const char kWifiBSSIDAllowlist[] = "WiFi.BSSIDAllowlist";
 
 // Base VPN Service property names.
 const char kHostProperty[] = "Host";

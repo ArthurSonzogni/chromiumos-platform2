@@ -46,6 +46,7 @@ class WiFiService : public Service {
   static const char kStorageSSID[];
   static const char kStoragePasspointCredentials[];
   static const char kStoragePasspointMatchPriority[];
+  static const char kStorageBSSIDAllowlist[];
 
   // Default signal level value without any endpoint.
   static const int16_t SignalLevelMin = std::numeric_limits<int16_t>::min();
@@ -168,6 +169,7 @@ class WiFiService : public Service {
   base::Time last_rekey_time() const { return last_rekey_time_; }
 
   mockable bool HasEndpoints() const { return !endpoints_.empty(); }
+  bool HasConnectableEndpoints() const;
   bool IsVisible() const override;
   bool IsSecurityMatch(WiFiSecurity::Mode mode) const;
   bool IsSecurityMatch(const std::string& security_class) const;
@@ -299,6 +301,9 @@ class WiFiService : public Service {
   uint64_t match_priority() const { return match_priority_; }
   void set_match_priority(uint64_t priority) { match_priority_ = priority; }
 
+  Strings GetBSSIDAllowlist(Error* error);
+  bool SetBSSIDAllowlist(const Strings& ssid_allowlist, Error* error);
+
  protected:
   // Inherited from Service.
   void OnConnect(Error* error) override;
@@ -362,6 +367,10 @@ class WiFiService : public Service {
       const std::string& name,
       std::string (WiFiService::*get)(Error* error),
       bool (WiFiService::*set)(const std::string& value, Error* error));
+  void HelpRegisterDerivedStrings(const std::string& name,
+                                  Strings (WiFiService::*get)(Error* error),
+                                  bool (WiFiService::*set)(const Strings& value,
+                                                           Error* error));
   void HelpRegisterWriteOnlyDerivedString(
       const std::string& name,
       bool (WiFiService::*set)(const std::string& value, Error* error),
@@ -547,6 +556,7 @@ class WiFiService : public Service {
   std::string hex_ssid_;
   std::string storage_identifier_;
   std::string bssid_;
+  std::set<ByteArray> bssid_allowlist_;
   Stringmap vendor_information_;
   // The country code reported by the current endpoint.
   std::string country_code_;

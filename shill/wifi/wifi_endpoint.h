@@ -101,6 +101,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   const std::vector<uint8_t>& ssid() const;
   const std::string& ssid_string() const;
   const std::string& ssid_hex() const;
+  const std::vector<uint8_t>& bssid() const;
   const std::string& bssid_string() const;
   const std::string& bssid_hex() const;
   const std::string& country_code() const;

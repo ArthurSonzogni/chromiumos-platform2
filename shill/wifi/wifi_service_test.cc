@@ -2881,4 +2881,100 @@ TEST_F(WiFiServiceTest, ConnectionAttemptInfoSecurity) {
   }
 }
 
+TEST_F(WiFiServiceTest, SetBSSIDAllowlist) {
+  WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
+  Error error;
+
+  // Default value
+  std::vector<std::string> empty_list;
+  EXPECT_EQ(empty_list, service->GetBSSIDAllowlist(&error));
+
+  // Set some values
+  std::vector<std::string> bssid_allowlist = {"aa:bb:cc:dd:ee:ff"};
+  EXPECT_TRUE(service->SetBSSIDAllowlist(bssid_allowlist, &error));
+  EXPECT_EQ(bssid_allowlist, service->GetBSSIDAllowlist(&error));
+
+  // Setting the same allowlist returns false
+  EXPECT_FALSE(service->SetBSSIDAllowlist(bssid_allowlist, &error));
+  EXPECT_EQ(bssid_allowlist, service->GetBSSIDAllowlist(&error));
+
+  // Set back to empty list is ok
+  bssid_allowlist = {};
+  EXPECT_TRUE(service->SetBSSIDAllowlist(bssid_allowlist, &error));
+  EXPECT_EQ(bssid_allowlist, service->GetBSSIDAllowlist(&error));
+
+  // Single value of zeroes is ok
+  std::vector<std::string> zeroes_bssid_allowlist = {"00:00:00:00:00:00"};
+  EXPECT_TRUE(service->SetBSSIDAllowlist(zeroes_bssid_allowlist, &error));
+  EXPECT_EQ(zeroes_bssid_allowlist, service->GetBSSIDAllowlist(&error));
+
+  // Unparsable hardware address
+  std::vector<std::string> invalid_values = {"foo"};
+  EXPECT_FALSE(service->SetBSSIDAllowlist(invalid_values, &error));
+  EXPECT_TRUE(error.type() == Error::kInvalidArguments);
+
+  // Can't have zeroes and non-zeroes values at the same time
+  std::vector<std::string> non_zeroes_bssid_allowlist = {"00:00:00:00:00:00",
+                                                         "aa:bb:cc:dd:ee:ff"};
+  EXPECT_FALSE(service->SetBSSIDAllowlist(non_zeroes_bssid_allowlist, &error));
+  EXPECT_TRUE(error.type() == Error::kInvalidArguments);
+}
+
+TEST_F(WiFiServiceTest, HasConnectableEndpoints) {
+  WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
+
+  // No endpoints and no allowlist still means nothing is connectable
+  EXPECT_FALSE(service->HasConnectableEndpoints());
+
+  // By default, an endpoint is potentially connectable
+  WiFiEndpoint::SecurityFlags flags;
+  WiFiEndpointRefPtr endpoint =
+      MakeEndpoint(/*ssid=*/"a", "00:00:00:00:00:01", /*frequency=*/0,
+                   /*signal_dbm=*/0, flags);
+  service->AddEndpoint(endpoint);
+  EXPECT_TRUE(service->HasConnectableEndpoints());
+}
+
+TEST_F(WiFiServiceTest, HasNoConnectableEndpoints) {
+  WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
+
+  WiFiEndpoint::SecurityFlags flags;
+  WiFiEndpointRefPtr endpoint =
+      MakeEndpoint(/*ssid=*/"a", "aa:bb:cc:dd:ee:ff", /*frequency=*/0,
+                   /*signal_dbm=*/0, flags);
+  service->AddEndpoint(endpoint);
+  EXPECT_TRUE(service->HasConnectableEndpoints());
+
+  std::vector<std::string> bssid_allowlist = {"00:00:00:00:00:00"};
+  Error error;
+  EXPECT_TRUE(service->SetBSSIDAllowlist(bssid_allowlist, &error));
+  EXPECT_FALSE(service->HasConnectableEndpoints());
+
+  bssid_allowlist = {"00:00:00:00:00:01"};
+  EXPECT_TRUE(service->SetBSSIDAllowlist(bssid_allowlist, &error));
+  EXPECT_FALSE(service->HasConnectableEndpoints());
+}
+
+TEST_F(WiFiServiceTest, HasAllowlistedConnectableEndpoints) {
+  WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
+
+  WiFiEndpoint::SecurityFlags flags;
+  WiFiEndpointRefPtr endpoint =
+      MakeEndpoint(/*ssid=*/"a", "aa:bb:cc:dd:ee:ff", /*frequency=*/0,
+                   /*signal_dbm=*/0, flags);
+  service->AddEndpoint(endpoint);
+  EXPECT_TRUE(service->HasConnectableEndpoints());
+
+  // Allowlist matches endpoints
+  std::vector<std::string> bssid_allowlist = {"aa:bb:cc:dd:ee:ff"};
+  Error error;
+  EXPECT_TRUE(service->SetBSSIDAllowlist(bssid_allowlist, &error));
+  EXPECT_TRUE(service->HasConnectableEndpoints());
+
+  // Extra allowlisted BSSIDs don't affect anything
+  bssid_allowlist = {"00:00:00:00:00:01", "aa:bb:cc:dd:ee:ff"};
+  EXPECT_TRUE(service->SetBSSIDAllowlist(bssid_allowlist, &error));
+  EXPECT_TRUE(service->HasConnectableEndpoints());
+}
+
 }  // namespace shill

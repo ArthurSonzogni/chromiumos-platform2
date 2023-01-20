@@ -249,6 +249,10 @@ const std::string& WiFiEndpoint::ssid_hex() const {
   return ssid_hex_;
 }
 
+const std::vector<uint8_t>& WiFiEndpoint::bssid() const {
+  return bssid_;
+}
+
 const std::string& WiFiEndpoint::bssid_string() const {
   return bssid_string_;
 }
