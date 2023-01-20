@@ -13,24 +13,16 @@
 #include <vector>
 
 #include <base/bind.h>
-#include <base/files/file_util.h>
 #include <base/run_loop.h>
 #include <base/test/bind.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/remote.h>
-#if USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION
-#include <opencv2/core.hpp>
-#include <opencv2/imgcodecs/imgcodecs.hpp>
-#include <opencv2/imgproc.hpp>
-#endif
 
 #include "ml/handwriting.h"
 #include "ml/machine_learning_service_impl.h"
-#include "ml/mojom/image_content_annotation.mojom.h"
 #include "ml/mojom/machine_learning_service.mojom.h"
-#include "ml/mojom/shared_memory.mojom.h"
 #include "ml/mojom/web_platform_handwriting.mojom.h"
 #include "ml/process.h"
 #include "ml/test_utils.h"
@@ -41,13 +33,8 @@ namespace {
 
 // We intend not to using `chromeos::machine_learning::web_platform::mojom::*`
 // to avoid confusion.
-using ::chromeos::machine_learning::mojom::ImageAnnotationResult;
-using ::chromeos::machine_learning::mojom::ImageAnnotationResultPtr;
 using ::chromeos::machine_learning::mojom::LoadHandwritingModelResult;
-using ::chromeos::machine_learning::mojom::LoadModelResult;
 using ::chromeos::machine_learning::mojom::MachineLearningService;
-using ::mojo_base::mojom::ReadOnlySharedMemoryRegion;
-using ::mojo_base::mojom::ReadOnlySharedMemoryRegionPtr;
 
 // Points that are used to generate a stroke for handwriting.
 constexpr float kHandwritingTestPoints[23][2] = {
@@ -259,123 +246,5 @@ TEST(WebPlatformHandwritingModel, NoCrashOnNonsupportedBoards) {
   runloop.Run();
   EXPECT_TRUE(model_callback_done);
 }
-
-#if USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION
-static ReadOnlySharedMemoryRegionPtr ToSharedMemory(
-    const std::vector<uint8_t>& data) {
-  base::MappedReadOnlyRegion mapped_region =
-      base::ReadOnlySharedMemoryRegion::Create(data.size());
-  memcpy(mapped_region.mapping.memory(), data.data(), data.size());
-  auto image = mojo_base::mojom::ReadOnlySharedMemoryRegion::New();
-  image->buffer =
-      mojo::WrapReadOnlySharedMemoryRegion(std::move(mapped_region.region));
-  return image;
-}
-
-TEST(ImageAnnotationMultiProcessTest, LoadAndAnnotate) {
-  base::RunLoop runloop;
-
-  // Sets the process to be control to test multiprocess code.
-  Process::GetInstance()->SetTypeForTesting(Process::Type::kControlForTest);
-
-  // Set the callback when the worker process has been reaped successfully. We
-  // need to quit the runloop here.
-  Process::GetInstance()->SetReapWorkerProcessSucceedCallbackForTesting(
-      base::BindLambdaForTesting([&]() { runloop.Quit(); }));
-
-  // Set the callback when the worker process fails to be reaped. We need to
-  // quit the runloop here. Also we should set a flag and report the error.
-  bool reap_worker_process_succeeded = true;
-  std::string reap_worker_process_fail_reason;
-  Process::GetInstance()->SetReapWorkerProcessFailCallbackForTesting(
-      base::BindLambdaForTesting([&](std::string reason) {
-        reap_worker_process_succeeded = false;
-        reap_worker_process_fail_reason = reason;
-        runloop.Quit();
-      }));
-
-  // Binds the disconnection handler. We need to quit the runloop here.
-  Process::GetInstance()->SetReapWorkerProcessSucceedCallbackForTesting(
-      base::BindLambdaForTesting([&]() { runloop.Quit(); }));
-
-  // Sets the mlservice binary path which should be at the same dir of the test
-  // binary.
-  Process::GetInstance()->SetMlServicePathForTesting(GetMlServicePath());
-
-  mojo::Remote<MachineLearningService> ml_service;
-  auto ml_service_impl = std::make_unique<MachineLearningServiceImplForTesting>(
-      ml_service.BindNewPipeAndPassReceiver());
-
-  // Tries to load a model.
-  mojo::Remote<chromeos::machine_learning::mojom::ImageContentAnnotator>
-      annotator;
-  bool model_callback_done = false;
-  auto config = chromeos::machine_learning::mojom::ImageAnnotatorConfig::New();
-  config->locale = "en-US";
-  ml_service->LoadImageAnnotator(
-      std::move(config), annotator.BindNewPipeAndPassReceiver(),
-      base::BindLambdaForTesting([&](const LoadModelResult result) {
-        ASSERT_EQ(result, LoadModelResult::OK);
-        // Check the worker process is registered.
-        EXPECT_EQ(Process::GetInstance()->GetWorkerPidInfoMap().size(), 1u);
-        // Check the worker process is alive.
-        pid_t worker_pid =
-            Process::GetInstance()->GetWorkerPidInfoMap().begin()->first;
-        ASSERT_GT(worker_pid, 0);
-        EXPECT_EQ(kill(worker_pid, 0), 0);
-
-        model_callback_done = true;
-      }));
-
-  std::string image_encoded;
-  ASSERT_TRUE(base::ReadFileToString(
-      base::FilePath("/build/share/ica/moon_big.jpg"), &image_encoded));
-  auto matrix =
-      cv::imdecode(cv::_InputArray(image_encoded.data(), image_encoded.size()),
-                   cv::IMREAD_COLOR);
-  cv::cvtColor(matrix, matrix, cv::COLOR_BGR2RGB);
-  std::vector<uint8_t> buf;
-  buf.assign(matrix.data, matrix.data + matrix.step * matrix.rows);
-  ImageAnnotationResultPtr results;
-  bool annotate_callback_done = false;
-  annotator->AnnotateRawImage(
-      ToSharedMemory(buf), matrix.cols, matrix.rows, matrix.step,
-      base::BindLambdaForTesting([&](ImageAnnotationResultPtr p) {
-        results.Swap(&p);
-        // Post a task to disconnect the mojom connection to test whether
-        // the worker process exits.
-        base::ThreadTaskRunnerHandle::Get()->PostTask(
-            FROM_HERE,
-            base::BindLambdaForTesting([&]() { annotator.reset(); }));
-
-        annotate_callback_done = true;
-      }));
-
-  // For safety, set a timeout to avoid test hangs.
-  bool is_timeout = false;
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
-      FROM_HERE, base::BindLambdaForTesting([&]() {
-        is_timeout = true;
-        runloop.Quit();
-      }),
-      base::Milliseconds(1000 * 60 * 5));
-
-  runloop.Run();
-  // If timeout, the unit test failed.
-  ASSERT_FALSE(is_timeout);
-
-  ASSERT_TRUE(model_callback_done);
-
-  ASSERT_TRUE(annotate_callback_done);
-  ASSERT_NE(results.get(), nullptr);
-  ASSERT_EQ(results->status, ImageAnnotationResult::Status::OK);
-  ASSERT_GE(results->annotations.size(), 1);
-
-  // Fail the test if the worker process can not be reaped.
-  ASSERT_TRUE(reap_worker_process_succeeded) << reap_worker_process_fail_reason;
-  // Verify the worker process has been unregistered.
-  EXPECT_EQ(Process::GetInstance()->GetWorkerPidInfoMap().size(), 0u);
-}
-#endif
 
 }  // namespace ml

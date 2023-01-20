@@ -17,8 +17,6 @@
 namespace ml {
 
 // A singleton proxy class for the Image Content Annotation DSO.
-// Used by ImageContentAnnotatorImpl to call into the DSO.
-//
 // Usage:
 //   auto* const library = ImageContentAnnotationLibrary::GetInstance();
 //   if (library->GetStatus() == ImageContentAnnotationLibrary::kOk) {
@@ -36,6 +34,16 @@ class ImageContentAnnotationLibrary {
     kFunctionLookupFailed = 3,
     kNotSupported = 4,
   };
+
+  // Returns whether Image Content Annotation is supported.
+  static constexpr bool IsImageContentAnnotationSupported() {
+    return IsUseImageContentAnnotationEnabled();
+  }
+
+  // Returns bool of use.ondevice_handwriting.
+  static constexpr bool IsUseImageContentAnnotationEnabled() {
+    return USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION;
+  }
 
   static ImageContentAnnotationLibrary* GetInstance();
 
@@ -55,7 +63,7 @@ class ImageContentAnnotationLibrary {
   virtual bool InitImageContentAnnotator(ImageContentAnnotator* annotator,
                                          const char* locale);
   virtual bool AnnotateImage(ImageContentAnnotator* annotator,
-                             const uint8_t* rgb_bytes,
+                             uint8_t* rgb_bytes,
                              int width,
                              int height,
                              int line_stride,

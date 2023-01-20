@@ -8,23 +8,23 @@
 
 #include <base/logging.h>
 #include <base/native_library.h>
-#include <chromeos/libica/interface.h>
-
-#include "chrome/knowledge/ica/ica.pb.h"
 
 namespace ml {
 
 ImageContentAnnotationLibrary::ImageContentAnnotationLibrary() {
+  if (!IsImageContentAnnotationSupported()) {
+    status_ = Status::kNotSupported;
+    return;
+  }
+
   // Load the library with an option preferring own symbols. Otherwise the
   // library will try to call, e.g., external tflite, which leads to crash.
   base::NativeLibraryOptions native_library_options;
   native_library_options.prefer_own_symbols = true;
-  base::NativeLibraryLoadError error;
   library_.reset(base::LoadNativeLibraryWithOptions(
       base::FilePath("/opt/google/chrome/ml_models/ica/libica.so"),
-      native_library_options, &error));
+      native_library_options, nullptr));
   if (!library_.is_valid()) {
-    LOG(ERROR) << "Error loading library: " << error.ToString();
     status_ = Status::kLoadLibraryFailed;
     return;
   }
@@ -81,7 +81,7 @@ bool ImageContentAnnotationLibrary::InitImageContentAnnotator(
 
 bool ImageContentAnnotationLibrary::AnnotateImage(
     ImageContentAnnotator* annotator,
-    const uint8_t* rgb_bytes,
+    uint8_t* rgb_bytes,
     int width,
     int height,
     int line_stride,
@@ -89,10 +89,8 @@ bool ImageContentAnnotationLibrary::AnnotateImage(
   DCHECK(status_ == Status::kOk);
   uint8_t* result_data = nullptr;
   int32_t result_size = 0;
-  // TODO(nbowe): Remove const_cast after next uprev.
-  bool successful =
-      (*annotate_image_)(annotator, const_cast<uint8_t*>(rgb_bytes), width,
-                         height, line_stride, &result_data, &result_size);
+  bool successful = (*annotate_image_)(annotator, rgb_bytes, width, height,
+                                       line_stride, &result_data, &result_size);
   if (successful) {
     result->Clear();
     const bool parse_result_status =

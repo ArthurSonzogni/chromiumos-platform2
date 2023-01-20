@@ -30,14 +30,8 @@
 #include "ml/grammar_library.h"
 #include "ml/handwriting.h"
 #include "ml/handwriting_recognizer_impl.h"
-#include "ml/mojom/shared_memory.mojom.h"
-#if USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION
-#include "ml/image_content_annotation.h"
-#endif
-#include "ml/image_content_annotation_impl.h"
 #include "ml/model_impl.h"
 #include "ml/mojom/handwriting_recognizer.mojom.h"
-#include "ml/mojom/image_content_annotation.mojom.h"
 #include "ml/mojom/model.mojom.h"
 #include "ml/mojom/soda.mojom.h"
 #include "ml/mojom/web_platform_handwriting.mojom.h"
@@ -839,65 +833,6 @@ void MachineLearningServiceImpl::CreateWebPlatformModelLoader(
   request_metrics.FinishRecordingPerformanceMetrics();
   request_metrics.RecordRequestEvent(
       model_loader::mojom::CreateModelLoaderResult::kOk);
-}
-
-void MachineLearningServiceImpl::LoadImageAnnotator(
-    chromeos::machine_learning::mojom::ImageAnnotatorConfigPtr config,
-    mojo::PendingReceiver<
-        ::chromeos::machine_learning::mojom::ImageContentAnnotator> receiver,
-    LoadImageAnnotatorCallback callback) {
-  if (!USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION) {
-    LOG(ERROR) << "Image content annotator library is not supported";
-    std::move(callback).Run(LoadModelResult::FEATURE_NOT_SUPPORTED_ERROR);
-    return;
-  }
-#if USE_ONDEVICE_IMAGE_CONTENT_ANNOTATION
-  auto* const ica_library = ImageContentAnnotationLibrary::GetInstance();
-  if (ica_library->GetStatus() != ImageContentAnnotationLibrary::Status::kOk) {
-    LOG(ERROR) << "Failed to initialize ImageContentAnnotationLibrary, error "
-               << static_cast<int>(ica_library->GetStatus());
-    std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
-    return;
-  }
-#endif
-
-  // If it is run in the control process, spawn a worker process and forward the
-  // request to it.
-  if (Process::GetInstance()->IsControlProcess()) {
-    pid_t worker_pid;
-    mojo::PlatformChannel channel;
-    constexpr char kModelName[] = "ImageAnnotator";
-    if (!Process::GetInstance()->SpawnWorkerProcessAndGetPid(
-            channel, kModelName, &worker_pid)) {
-      // UMA metrics have already been reported in
-      // `SpawnWorkerProcessAndGetPid`.
-      std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
-      return;
-    }
-    Process::GetInstance()
-        ->SendMojoInvitationAndGetRemote(worker_pid, std::move(channel),
-                                         kModelName)
-        ->LoadImageAnnotator(std::move(config), std::move(receiver),
-                             std::move(callback));
-    return;
-  }
-
-  // From here below is the worker process.
-  RequestMetrics request_metrics("ImageAnnotator", kMetricsRequestName);
-  request_metrics.StartRecordingPerformanceMetrics();
-
-  if (!ImageContentAnnotatorImpl::Create(std::move(config),
-                                         std::move(receiver))) {
-    LOG(ERROR) << "Image content annotator creation failed.";
-    std::move(callback).Run(LoadModelResult::LOAD_MODEL_ERROR);
-    request_metrics.RecordRequestEvent(LoadModelResult::LOAD_MODEL_ERROR);
-    brillo::MessageLoop::current()->BreakLoop();
-    return;
-  }
-
-  request_metrics.FinishRecordingPerformanceMetrics();
-  std::move(callback).Run(LoadModelResult::OK);
-  request_metrics.RecordRequestEvent(LoadModelResult::OK);
 }
 
 }  // namespace ml
