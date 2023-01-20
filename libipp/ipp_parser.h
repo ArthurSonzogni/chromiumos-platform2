@@ -29,15 +29,17 @@ struct RawCollection;
 // actions taken by the parser.
 enum class ParserCode : uint8_t {
   kOK = 0,
-  kAttributeNameIsEmpty,             // the parser stopped
-  kValueMismatchTagConverted,        // the value was converted
-  kValueMismatchTagOmitted,          // the value was omitted
-  kAttributeNoValues,                // the attribute was omitted
-  kAttributeNameConflict,            // the attribute was omitted
-  kBooleanValueOutOfRange,           // the boolean value was set to 1
-  kValueInvalidSize,                 // the value was omitted
-  kErrorWhenAddingAttribute,         // the attribute was omitted
-  kOutOfBandAttributeWithManyValues  // additional values were ignored
+  kAttributeNameIsEmpty,              // the parser stopped
+  kValueMismatchTagConverted,         // the value was converted
+  kValueMismatchTagOmitted,           // the value was omitted
+  kAttributeNoValues,                 // the attribute was omitted
+  kAttributeNameConflict,             // the attribute was omitted
+  kBooleanValueOutOfRange,            // the boolean value was set to 1
+  kValueInvalidSize,                  // the value was omitted
+  kErrorWhenAddingAttribute,          // the attribute was omitted
+  kOutOfBandAttributeWithManyValues,  // additional values were ignored
+  kUnexpectedEndOfFrame,              // the parser stopped
+  kGroupTagWasExpected                // the parser stopped
 };
 
 std::string_view ToStrView(ParserCode code);
@@ -72,7 +74,7 @@ class Parser {
   // Methods for adding entries to the log.
   void LogParserError(std::string_view message,
                       const uint8_t* position = nullptr);
-  void LogParserError(ParserCode error_code);
+  void LogParserError(ParserCode error_code, const uint8_t* position = nullptr);
   void LogParserErrors(const std::vector<ParserCode>& errors);
 
   // Reads single tag_name_value from the buffer (ptr is updated) and append it

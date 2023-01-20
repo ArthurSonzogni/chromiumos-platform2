@@ -16,11 +16,11 @@
 
 namespace ipp {
 
-// Some constants from the IPP specification [rfc8010].
+// Some constants from the IPP specification [rfc8010] (section 3.2).
+// begin-attribute-group-tag is from the range 0x00-0x0f without 0x03.
+// value-tag is from the range 0x10-0xff.
 constexpr uint8_t end_of_attributes_tag = 0x03;
 constexpr uint8_t max_begin_attribute_group_tag = 0x0f;
-constexpr uint8_t min_value_tag = 0x10;
-constexpr uint8_t max_value_tag = 0x7f;
 constexpr uint8_t begCollection_value_tag = 0x34;
 constexpr uint8_t endCollection_value_tag = 0x37;
 constexpr uint8_t memberAttrName_value_tag = 0x4a;
@@ -123,17 +123,28 @@ bool ParseUnsignedInteger(const uint8_t** ptr, OutInt* out_val) {
   return true;
 }
 
-// Helper for writing unsigned integer to given address.
+// Write unsigned integer to next sizeof(UnsignedInt) bytes with the most
+// significant byte coming first and shifts |ptr| accordingly.
+// UnsignedInt must be one of the following: uint8_t, uint16_t, uint32_t,
+// uint64_t.
 template <typename UnsignedInt>
-inline void WriteAsBytes(UnsignedInt uval, uint8_t* ptr) {
-  for (auto ptr2 = ptr + sizeof(UnsignedInt) - 1; ptr2 >= ptr; --ptr2) {
+inline void WriteUnsigned(uint8_t** ptr, UnsignedInt uval) {
+  // given type must by unsigned integer
+  static_assert(std::is_integral<UnsignedInt>::value, "integral expected");
+  static_assert(std::is_unsigned<UnsignedInt>::value,
+                "unsigned integral expected");
+  // save as a sequence of bytes starting from the last one
+  for (auto ptr2 = *ptr + sizeof(UnsignedInt) - 1; ptr2 >= *ptr; --ptr2) {
     *ptr2 = uval & 0xffu;
     uval >>= 8;
   }
+  // move the pointer
+  *ptr += sizeof(UnsignedInt);
 }
 template <>
-inline void WriteAsBytes<uint8_t>(uint8_t uval, uint8_t* ptr) {
-  *ptr = uval;
+inline void WriteUnsigned<uint8_t>(uint8_t** ptr, uint8_t uval) {
+  **ptr = uval;
+  ++*ptr;
 }
 
 // Write signed integer to next sizeof(Integer) bytes with two's-complement
@@ -161,8 +172,7 @@ void WriteInteger(uint8_t** ptr, Integer val) {
     ++uval;
   }
   // write value starting from the last byte
-  WriteAsBytes(uval, *ptr);
-  *ptr += sizeof(Integer);
+  WriteUnsigned(ptr, uval);
 }
 
 // Write integer to next BytesCount bytes and shifts the pointer ptr

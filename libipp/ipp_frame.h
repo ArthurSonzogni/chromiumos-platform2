@@ -9,6 +9,8 @@
 #include <list>
 #include <vector>
 
+#include "ipp_enums.h"
+
 // Internal structures used during parsing & building IPP frames. You probably
 // do not want to use it directly. See ipp.h for information how to use this
 // library.
@@ -29,7 +31,7 @@ struct FrameData {
   int16_t operation_id_or_status_code_;
   int32_t request_id_;
   // The content of frame being (internal buffer).
-  std::vector<uint8_t> groups_tags_;
+  std::vector<GroupTag> groups_tags_;
   std::vector<std::list<TagNameValue>> groups_content_;
   std::vector<uint8_t> data_;
 };

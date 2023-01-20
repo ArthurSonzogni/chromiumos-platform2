@@ -220,6 +220,10 @@ std::string_view ToStrView(ParserCode code) {
     case ParserCode::kOutOfBandAttributeWithManyValues:
       return "An out-of-band attribute has more than one value. Additional "
              "values were ignored.";
+    case ParserCode::kUnexpectedEndOfFrame:
+      return "Unexpected end of frame.";
+    case ParserCode::kGroupTagWasExpected:
+      return "begin-attribute-group-tag was expected but other value was read.";
   }
 }
 
@@ -246,12 +250,12 @@ void Parser::LogParserError(std::string_view message, const uint8_t* ptr) {
   errors_->push_back(l);
 }
 
-void Parser::LogParserError(ParserCode error_code) {
+void Parser::LogParserError(ParserCode error_code, const uint8_t* position) {
   if (error_code == ParserCode::kOK) {
     // ignore
     return;
   }
-  LogParserError(ToStrView(error_code));
+  LogParserError(ToStrView(error_code), position);
 }
 
 void Parser::LogParserErrors(const std::vector<ParserCode>& error_codes) {
@@ -454,10 +458,10 @@ std::vector<ParserCode> LoadAttrValues(Collection* coll,
 
 bool Parser::SaveFrameToPackage(bool log_unknown_values, Frame* package) {
   for (size_t i = 0; i < frame_->groups_tags_.size(); ++i) {
-    GroupTag gn = static_cast<GroupTag>(frame_->groups_tags_[i]);
+    GroupTag gn = frame_->groups_tags_[i];
     std::string grp_name = ToString(gn);
     if (grp_name.empty())
-      grp_name = "(" + ToHexByte(frame_->groups_tags_[i]) + ")";
+      grp_name = "(" + ToHexByte(static_cast<uint8_t>(gn)) + ")";
     ContextPathGuard path_update(&parser_context_, grp_name);
     Collection* coll = nullptr;
     Code err = package->AddGroup(gn, &coll);
@@ -484,18 +488,19 @@ bool Parser::ReadFrameFromBuffer(const uint8_t* ptr,
   buffer_begin_ = ptr;
   buffer_end_ = buf_end;
   if (buf_end - ptr < 9) {
-    LogParserError("Frame is too short to be correct (less than 9 bytes).",
-                   ptr);
+    LogParserError(ParserCode::kUnexpectedEndOfFrame, ptr);
     return false;
   }
   frame_->version_ = ParseUInt16(ptr);
   ParseSignedInteger<2>(&ptr, &frame_->operation_id_or_status_code_);
   ParseSignedInteger<4>(&ptr, &frame_->request_id_);
-  if (*ptr > max_begin_attribute_group_tag) {
-    LogParserError("begin-attribute-group-tag was expected.", ptr);
-    return false;
-  }
   while (*ptr != end_of_attributes_tag) {
+    GroupTag group_tag = static_cast<GroupTag>(*ptr);
+    if (!IsValid(group_tag)) {
+      // begin-attribute-group-tag was expected.
+      LogParserError(ParserCode::kGroupTagWasExpected, ptr);
+      return false;
+    }
     if (frame_->groups_tags_.size() >= kMaxCountOfAttributeGroups) {
       LogParserError(
           "The package has too many attribute groups; the maximum allowed "
@@ -504,15 +509,14 @@ bool Parser::ReadFrameFromBuffer(const uint8_t* ptr,
           ptr);
       return false;
     }
-    frame_->groups_tags_.push_back(*ptr);
+    frame_->groups_tags_.push_back(group_tag);
     frame_->groups_content_.resize(frame_->groups_tags_.size());
     ++ptr;
     if (!ReadTNVsFromBuffer(&ptr, buf_end, &(frame_->groups_content_.back())))
       return false;
     if (ptr >= buf_end) {
-      LogParserError(
-          "Unexpected end of frame, begin-attribute-group-tag was expected.",
-          ptr);
+      // begin-attribute-group-tag or end-of-attributes-tag was expected.
+      LogParserError(ParserCode::kUnexpectedEndOfFrame);
       return false;
     }
   }
@@ -536,26 +540,22 @@ bool Parser::ReadTNVsFromBuffer(const uint8_t** ptr2,
     TagNameValue tnv;
 
     if (buf_end - ptr < 5) {
-      LogParserError(
-          "Unexpected end of frame when reading tag-name-value (expected at "
-          "least 1-byte tag, 2-bytes name-length and 2-bytes value-length).",
-          ptr);
+      // Expected at least 1-byte tag, 2-bytes name-length and 2-bytes
+      // value-length.
+      LogParserError(ParserCode::kUnexpectedEndOfFrame, ptr);
       return false;
     }
-    if (!ParseUnsignedInteger<1>(&ptr, &tnv.tag)) {
-      LogParserError("value-tag is negative.", ptr);
-      return false;
-    }
+    // *ptr is a ValueTag because it was already checked in while (...)
+    tnv.tag = *ptr;
+    ++ptr;
     int length = 0;
     if (!ParseUnsignedInteger<2>(&ptr, &length)) {
       LogParserError("name-length is negative.", ptr);
       return false;
     }
     if (buf_end - ptr < length + 2) {
-      LogParserError(
-          "Unexpected end of frame when reading name (expected at least " +
-              std::to_string(length) + "-bytes name and 2-bytes value-length).",
-          ptr);
+      // Expected at least `length`-bytes name and 2-bytes value-length.
+      LogParserError(ParserCode::kUnexpectedEndOfFrame, ptr);
       return false;
     }
     tnv.name.assign(ptr, ptr + length);
@@ -565,9 +565,7 @@ bool Parser::ReadTNVsFromBuffer(const uint8_t** ptr2,
       return false;
     }
     if (buf_end - ptr < length) {
-      LogParserError("Unexpected end of frame when reading value (expected " +
-                         std::to_string(length) + "-bytes value).",
-                     ptr);
+      LogParserError(ParserCode::kUnexpectedEndOfFrame, ptr);
       return false;
     }
     tnv.value.assign(ptr, ptr + length);
@@ -595,8 +593,7 @@ bool Parser::ParseRawValue(int coll_level,
                            std::list<TagNameValue>* tnvs,
                            RawAttribute* attr) {
   // Is it correct attribute's value tag? If not then fail.
-  if (tnv.tag < min_value_tag || tnv.tag > max_value_tag ||
-      tnv.tag == endCollection_value_tag ||
+  if (tnv.tag == endCollection_value_tag ||
       tnv.tag == memberAttrName_value_tag) {
     LogParserError(
         "Incorrect tag when parsing Tag-name-value with a value: 0x" +

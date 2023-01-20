@@ -121,13 +121,6 @@ bool SaveRangeOfInteger(const ipp::RangeOfInteger& v,
   return false;
 }
 
-// Writes 2-byte `value` to `ptr` and shifts `ptr` accordingly.
-void WriteUInt16(uint16_t value, uint8_t*& ptr) {
-  WriteAsBytes(value, ptr);
-  ++ptr;
-  ++ptr;
-}
-
 }  //  namespace
 
 void FrameBuilder::LogFrameBuilderError(const std::string& message) {
@@ -296,7 +289,7 @@ void FrameBuilder::BuildFrameFromPackage(const Frame* package) {
   std::vector<std::pair<GroupTag, const Collection*>> groups =
       package->GetGroups();
   for (std::pair<GroupTag, const Collection*> grp : groups) {
-    frame_->groups_tags_.push_back(static_cast<uint8_t>(grp.first));
+    frame_->groups_tags_.push_back(grp.first);
     frame_->groups_content_.resize(frame_->groups_tags_.size());
     SaveGroup(grp.second, &(frame_->groups_content_.back()));
   }
@@ -304,20 +297,16 @@ void FrameBuilder::BuildFrameFromPackage(const Frame* package) {
 }
 
 bool FrameBuilder::WriteFrameToBuffer(uint8_t* ptr) {
-  WriteUInt16(frame_->version_, ptr);
+  WriteUnsigned(&ptr, frame_->version_);
   WriteInteger<2>(&ptr, frame_->operation_id_or_status_code_);
   WriteInteger<4>(&ptr, frame_->request_id_);
   for (size_t i = 0; i < frame_->groups_tags_.size(); ++i) {
-    if (frame_->groups_tags_[i] > max_begin_attribute_group_tag) {
-      LogFrameBuilderError("begin-attribute-group-tag is out of range");
-      return false;
-    }
     // write a group to the buffer
-    if (!WriteInteger<1>(&ptr, frame_->groups_tags_[i]) ||
-        !WriteTNVsToBuffer(frame_->groups_content_[i], &ptr))
+    WriteUnsigned(&ptr, static_cast<uint8_t>(frame_->groups_tags_[i]));
+    if (!WriteTNVsToBuffer(frame_->groups_content_[i], &ptr))
       return false;
   }
-  WriteInteger<int8_t>(&ptr, end_of_attributes_tag);
+  WriteUnsigned(&ptr, end_of_attributes_tag);
   std::copy(frame_->data_.begin(), frame_->data_.end(), ptr);
   return true;
 }
