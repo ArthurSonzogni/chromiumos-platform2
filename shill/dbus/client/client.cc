@@ -120,7 +120,6 @@ void Client::SetupDefaultServiceProxy(const dbus::ObjectPath& service_path) {
 }
 
 void Client::ReleaseDefaultServiceProxy() {
-  default_service_connected_ = false;
   default_device_path_.clear();
 
   if (default_service_proxy_) {
@@ -293,6 +292,10 @@ void Client::HandleDefaultServiceChanged(const brillo::Any& property_value) {
     for (auto& handler : default_service_handlers_) {
       handler.Run("");
     }
+    LOG(INFO) << "Default service device is removed";
+    for (auto& handler : default_device_handlers_) {
+      handler.Run(nullptr);
+    }
     return;
   }
 
@@ -375,34 +378,21 @@ void Client::OnDefaultServicePropertyChangeRegistration(
 
 void Client::OnDefaultServicePropertyChange(const std::string& property_name,
                                             const brillo::Any& property_value) {
-  if (property_name == kIsConnectedProperty) {
-    bool connected = property_value.TryGet<bool>();
-    if (connected == default_service_connected_)
-      return;
-
-    std::string service_path;
-    if (default_service_proxy_)
-      service_path = default_service_proxy_->GetObjectPath().value();
-
-    LOG(INFO) << "Default service [" << service_path << "] "
-              << (connected ? "is now connected" : "disconnected");
-    default_service_connected_ = connected;
-  } else if (property_name == kDeviceProperty) {
-    std::string path = property_value.TryGet<dbus::ObjectPath>().value();
-    if (path == default_device_path_)
-      return;
-
-    LOG(INFO) << "Default service device changed from [" << default_device_path_
-              << "] to [" << path << "]";
-    default_device_path_ = path;
-  } else {
+  if (property_name != kDeviceProperty) {
     return;
   }
 
+  std::string path = property_value.TryGet<dbus::ObjectPath>().value();
+  if (path == default_device_path_) {
+    return;
+  }
+
+  LOG(INFO) << "Default service device changed to [" << path << "]";
+  default_device_path_ = path;
+
   // When there is no service, run the handlers with a nullptr to indicate this
   // condition.
-  if (!default_service_connected_ || default_device_path_ == "" ||
-      default_device_path_ == "/") {
+  if (default_device_path_ == "" || default_device_path_ == "/") {
     for (auto& handler : default_device_handlers_) {
       handler.Run(nullptr);
     }

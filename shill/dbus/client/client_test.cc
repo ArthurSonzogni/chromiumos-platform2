@@ -149,7 +149,6 @@ class ClientTest : public testing::Test {
  protected:
   void SetUp() override {
     default_service_changed_ = false;
-    default_device_connected_ = false;
     default_device_ = {};
     devices_.clear();
     last_device_changed_.clear();
@@ -201,11 +200,9 @@ class ClientTest : public testing::Test {
   }
   void DefaultDeviceHandler(const Client::Device* const device) {
     if (!device) {
-      default_device_connected_ = false;
       default_device_ = {};
       return;
     }
-    default_device_connected_ = true;
     default_device_ = *device;
   }
   void DeviceChangedHandler(const Client::Device* const device) {
@@ -221,7 +218,6 @@ class ClientTest : public testing::Test {
 
   bool default_service_changed_;
   std::string default_service_type_;
-  bool default_device_connected_;
   Client::Device default_device_;
   std::map<std::string, Client::Device> devices_;
   std::string last_device_changed_;
@@ -307,17 +303,15 @@ TEST_F(ClientTest, DefaultDeviceDiscoveredOnNewService) {
   EXPECT_CALL(*mock_service, GetProperties(_, _, _))
       .WillOnce(DoAll(testing::SetArgPointee<0>(service_props), Return(true)));
 
-  EXPECT_FALSE(default_device_connected_);
   EXPECT_EQ(default_device_.ifname, "");
 
   std::move(service_callback)
       .Run(kFlimflamServiceName, kMonitorPropertyChanged, true);
 
-  EXPECT_TRUE(default_device_connected_);
   EXPECT_EQ(default_device_.ifname, "eth0");
 }
 
-TEST_F(ClientTest, DefaultServiceConnectionChangeCallsDefaultHandler) {
+TEST_F(ClientTest, DefaultServiceDisconnectedCallsDefaultHandler) {
   // We want the device to exist first so the client doesn't run through the new
   // device setup process when it detects the change.
   const dbus::ObjectPath device_path("/device/eth0");
@@ -343,14 +337,15 @@ TEST_F(ClientTest, DefaultServiceConnectionChangeCallsDefaultHandler) {
   // Set the default device.
   client_->NotifyDefaultServicePropertyChange(kDeviceProperty, device_path);
 
-  // Trigger the change handler.
-  EXPECT_FALSE(default_device_connected_);
+  // IsConnected property change should not trigger the handler.
   client_->NotifyDefaultServicePropertyChange(kIsConnectedProperty, true);
-  EXPECT_TRUE(default_device_connected_);
   client_->NotifyDefaultServicePropertyChange(kIsConnectedProperty, false);
-  EXPECT_FALSE(default_device_connected_);
-  client_->NotifyDefaultServicePropertyChange(kIsConnectedProperty, true);
-  EXPECT_TRUE(default_device_connected_);
+  EXPECT_EQ(default_device_.ifname, "eth0");
+
+  // Service disconnection should trigger the handler.
+  client_->NotifyManagerPropertyChange(kDefaultServiceProperty,
+                                       dbus::ObjectPath("/"));
+  EXPECT_EQ(default_device_.ifname, "");
 }
 
 TEST_F(ClientTest, DefaultServiceDeviceChangeCallsDefaultHandler) {
@@ -389,13 +384,11 @@ TEST_F(ClientTest, DefaultServiceDeviceChangeCallsDefaultHandler) {
   client_->NotifyDefaultServicePropertyChange(kDeviceProperty, eth0_path);
   client_->NotifyDefaultServicePropertyChange(kIsConnectedProperty, true);
 
-  EXPECT_TRUE(default_device_connected_);
   EXPECT_EQ(default_device_.ifname, "eth0");
 
   // Now trigger the default device change to wifi.
   client_->NotifyDefaultServicePropertyChange(kDeviceProperty, wlan0_path);
 
-  EXPECT_TRUE(default_device_connected_);
   EXPECT_EQ(default_device_.ifname, "wlan0");
 }
 
@@ -431,7 +424,6 @@ TEST_F(ClientTest, DefaultServiceChangeAddsDefaultDeviceIfMissing) {
   EXPECT_TRUE(devices_.find("ppp0") != devices_.end());
 
   // This change should have also invoked the default device handler as well.
-  EXPECT_TRUE(default_device_connected_);
   EXPECT_EQ(default_device_.ifname, "ppp0");
 }
 
@@ -562,12 +554,10 @@ TEST_F(ClientTest, DeviceHandlersCalledOnIPConfigChange) {
   EXPECT_EQ(last_device_changed_, "wlan0");
   // Now the default. We're also going to verify the default device handler is
   // called next, so clear that state first as well.
-  default_device_connected_ = false;
   default_device_ = {};
   client_->NotifyDevicePropertyChange("/device/eth0", kIPConfigsProperty,
                                       brillo::Any());
   EXPECT_EQ(last_device_changed_, "eth0");
-  EXPECT_TRUE(default_device_connected_);
   EXPECT_EQ(default_device_.ifname, "eth0");
 }
 

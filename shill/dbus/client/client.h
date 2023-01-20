@@ -243,11 +243,11 @@ class BRILLO_EXPORT Client {
   // |handler| will be invoked whenever the device associated with the default
   // service changes. The following changes will triggers this handler:
   // * The default service itself changes,
-  // * The default service is connected or disconnected,
+  // * The default service device connection state changes,
   // * The device connected to the default service changes,
   // * The IP configuration of the default device changes.
   //
-  // If the default service is disconnected, the device will be null.
+  // If the default service is empty, the device will be null.
   // Multiple handlers may be registered.
   virtual void RegisterDefaultDeviceChangedHandler(
       const DeviceChangedHandler& handler);
@@ -466,7 +466,6 @@ class BRILLO_EXPORT Client {
   std::vector<DeviceChangedHandler> device_added_handlers_;
   std::vector<DeviceChangedHandler> device_removed_handlers_;
 
-  bool default_service_connected_ = false;
   std::string default_device_path_;
 
   // Tracked devices keyed by path.
