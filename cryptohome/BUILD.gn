@@ -288,6 +288,7 @@ if (use.test) {
       "auth_session_keyset_management_unittest.cc",
       "auth_session_manager_unittest.cc",
       "auth_session_proto_utils_unittest.cc",
+      "auth_session_tpm_simulator_unittest.cc",
       "auth_session_unittest.cc",
       "challenge_credentials/challenge_credentials_helper_impl_unittest.cc",
       "challenge_credentials/challenge_credentials_test_utils.cc",
