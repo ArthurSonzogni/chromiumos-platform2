@@ -6,7 +6,6 @@
 
 #include <inttypes.h>
 #include <utility>
-#include <vector>
 
 #include <base/logging.h>
 #include <base/time/time.h>
@@ -137,21 +136,20 @@ void BuiltInRead(scoped_refptr<dbus::ObjectProxy> dbus_proxy,
   PLOG(ERROR) << "BuiltInRead";
 }
 
-void BuiltInReadDir(off_t off, std::unique_ptr<DirEntryResponse> response) {
-  std::vector<DirEntry> entries;
+void BuiltInReadDir(off_t off, std::unique_ptr<DirEntryRequest> request) {
+  static const std::pair<ino_t, const char*> entries[] = {
+      {INO_BUILT_IN_FUSE_STATUS, kFuseStatusFilename},
+      {INO_BUILT_IN_PING, kPingFilename},
+  };
+  static constexpr size_t n = sizeof(entries) / sizeof(entries[0]);
 
-  if (off == 0) {
-    off = 1;
-    entries.push_back(
-        {INO_BUILT_IN_FUSE_STATUS, kFuseStatusFilename, S_IFREG | 0444});
+  for (size_t i = off; i < n; i++) {
+    if (!request->AddEntry(
+            {entries[i].first, entries[i].second, S_IFREG | 0444}, i + 1)) {
+      break;
+    }
   }
-
-  if (off == 1) {
-    off = 2;
-    entries.push_back({INO_BUILT_IN_PING, kPingFilename, S_IFREG | 0444});
-  }
-
-  response->Append(std::move(entries), true);
+  request->ReplyDone();
 }
 
 }  // namespace fusebox

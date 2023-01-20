@@ -511,7 +511,14 @@ class FuseBoxClient : public FileSystem {
       return;
     }
 
-    request->ReplyOpen(NextClientSideFuseHandle());
+    uint64_t client_side_fuse_handle = NextClientSideFuseHandle();
+    if (ino >= FIRST_UNRESERVED_INO) {
+      dir_entry_responses_.insert(std::pair{
+          client_side_fuse_handle, std::make_unique<DirEntryResponse>(ino)});
+      CallReadDir2(ino, GetInodeTable().GetDevicePath(node), 0, 0,
+                   client_side_fuse_handle);
+    }
+    request->ReplyOpen(client_side_fuse_handle);
   }
 
   void ReadDir(std::unique_ptr<DirEntryRequest> request,
@@ -527,37 +534,44 @@ class FuseBoxClient : public FileSystem {
       request->ReplyError(errno);
       PLOG(ERROR) << "readdir";
       return;
-    }
-
-    auto dir_entry_response = std::make_unique<DirEntryResponse>(ino);
-    dir_entry_response->Append(std::move(request));
-
-    if (node->ino <= FUSE_ROOT_ID) {
-      RootReadDir(off, std::move(dir_entry_response));
+    } else if (node->ino <= FUSE_ROOT_ID) {
+      RootReadDir(off, std::move(request));
       return;
     } else if (node->ino == INO_BUILT_IN) {
-      BuiltInReadDir(off, std::move(dir_entry_response));
+      BuiltInReadDir(off, std::move(request));
       return;
     }
-    CallReadDir2(ino, GetInodeTable().GetDevicePath(node), 0, 0,
-                 std::move(dir_entry_response));
+
+    uint64_t fuse_handle = request->fh();
+    auto it = dir_entry_responses_.find(fuse_handle);
+    if (it == dir_entry_responses_.end()) {
+      errno = request->ReplyError(EINVAL);
+      PLOG(ERROR) << "readdir";
+      return;
+    }
+    it->second->Append(std::move(request));
   }
 
-  void RootReadDir(off_t off, std::unique_ptr<DirEntryResponse> response) {
+  void RootReadDir(off_t off, std::unique_ptr<DirEntryRequest> request) {
     VLOG(1) << "root-readdir off " << off;
 
-    std::vector<DirEntry> entries;
-    for (const auto& item : device_dir_entry_)
-      entries.push_back(item.second);
-
-    response->Append(std::move(entries), true);
+    size_t i = 0;
+    for (const auto& item : device_dir_entry_) {
+      if (i < off) {
+        // No-op.
+      } else if (!request->AddEntry(item.second, i + 1)) {
+        break;
+      }
+      i++;
+    }
+    request->ReplyDone();
   }
 
   void CallReadDir2(ino_t parent_ino,
                     std::string parent_path,
                     uint64_t cookie,
                     int32_t cancel_error_code,
-                    std::unique_ptr<DirEntryResponse> dir_entry_response) {
+                    uint64_t client_side_fuse_handle) {
     ReadDir2RequestProto request_proto;
     request_proto.set_file_system_url(parent_path);
     request_proto.set_cookie(cookie);
@@ -569,23 +583,43 @@ class FuseBoxClient : public FileSystem {
 
     auto readdir2_response = base::BindOnce(
         &FuseBoxClient::ReadDir2Response, weak_ptr_factory_.GetWeakPtr(),
-        parent_path, parent_ino, std::move(dir_entry_response));
+        parent_path, parent_ino, client_side_fuse_handle);
     CallFuseBoxServerMethod(&method, std::move(readdir2_response));
   }
 
   void ReadDir2Response(std::string parent_path,
                         ino_t parent_ino,
-                        std::unique_ptr<DirEntryResponse> dir_entry_response,
+                        uint64_t client_side_fuse_handle,
                         dbus::Response* response) {
     VLOG(1) << "readdir2-resp";
 
+    DirEntryResponse* dir_entry_response = nullptr;
+    if (auto it = dir_entry_responses_.find(client_side_fuse_handle);
+        it != dir_entry_responses_.end()) {
+      dir_entry_response = it->second.get();
+    }
+
     ReadDir2ResponseProto response_proto;
     if (errno = ReadDBusProto(response, &response_proto); errno) {
-      dir_entry_response->Append(errno);
+      if (dir_entry_response) {
+        dir_entry_response->Append(errno);
+      }
       PLOG(ERROR) << "readdir2-resp";
       return;
     }
     uint64_t cookie = response_proto.has_cookie() ? response_proto.cookie() : 0;
+
+    if (!dir_entry_response) {
+      if (cookie) {
+        // Per the fusebox.proto comments, a non-zero cookie (in a D-Bus RPC
+        // response) means that the D-Bus server is expecting a follow-up D-Bus
+        // RPC request, even if the downstream FUSE request is invalid (i.e.
+        // even if dir_entry_response is nullptr).
+        CallReadDir2(parent_ino, std::move(parent_path), cookie, EINVAL,
+                     client_side_fuse_handle);
+      }
+      return;
+    }
 
     std::vector<fusebox::DirEntry> entries;
     for (const auto& item : response_proto.entries()) {
@@ -597,8 +631,13 @@ class FuseBoxClient : public FileSystem {
         dir_entry_response->Append(errno);
         PLOG(ERROR) << "readdir2-resp";
         if (cookie != 0) {
+          // Per the fusebox.proto comments, as above, a non-zero cookie means
+          // that we still need to send another D-Bus request. The non-zero
+          // cancel_error_code = errno argument tells the D-Bus server to
+          // cancel the overall operation, but it still needs explicitly being
+          // told that.
           CallReadDir2(parent_ino, std::move(parent_path), cookie, errno,
-                       std::move(dir_entry_response));
+                       client_side_fuse_handle);
         }
         return;
       }
@@ -607,7 +646,7 @@ class FuseBoxClient : public FileSystem {
 
     if (cookie != 0) {
       CallReadDir2(parent_ino, std::move(parent_path), cookie, 0,
-                   std::move(dir_entry_response));
+                   client_side_fuse_handle);
     }
   }
 
@@ -617,6 +656,7 @@ class FuseBoxClient : public FileSystem {
     if (request->IsInterrupted())
       return;
 
+    dir_entry_responses_.erase(request->fh());
     request->ReplyOk();
   }
 
@@ -1152,6 +1192,9 @@ class FuseBoxClient : public FileSystem {
 
   // Fuse user-space frontend.
   std::unique_ptr<FuseFrontend> fuse_frontend_;
+
+  // ReadDir responses, keyed by the client-side FUSE handle.
+  std::map<uint64_t, std::unique_ptr<DirEntryResponse>> dir_entry_responses_;
 
   base::WeakPtrFactory<FuseBoxClient> weak_ptr_factory_;
 };
