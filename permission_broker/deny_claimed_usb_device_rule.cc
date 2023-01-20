@@ -13,6 +13,7 @@
 
 #include "base/logging.h"
 #include "base/strings/string_number_conversions.h"
+#include "permission_broker/allow_lists.h"
 #include "permission_broker/rule_utils.h"
 #include "permission_broker/udev_scopers.h"
 
@@ -168,105 +169,36 @@ bool IsInterfaceSafeToDetach(udev_device* iface) {
 }
 
 bool IsDeviceAllowedSerial(udev_device* device) {
-  // The Arduino vendor IDs are derived from https://raw.githubusercontent.com
-  // /arduino/ArduinoCore-avr/master/boards.txt
-  // /arduino/ArduinoCore-sam/master/boards.txt
-  // /arduino/ArduinoCore-samd/master/boards.txt
-  // using
-  // grep -o -E  "vid\..*=(0x.*)" *boards.txt | sed "s/vid\..=//g" | sort -f | \
-  // uniq -i
-  const DevicePolicy::UsbDeviceId kAllowedIds[] = {
-      {0x03eb, 0x2145},  // Arduino Uno WiFi Rev2 (ATmega4809)
-
-      {0x0525, 0xa4a7},  // Linux-USB Serial Gadget (CDC ACM mode)
-
-      {0x067b, 0x2323},  // Prolific Technology USB-Serial Controller
-
-      {0x093c, 0x1101},  // Intrepid Control Systems ValueCAN 4
-
-      {0x0d28, 0x0204},  // BBC micro:bit
-
-      {0x1a86, 0x55d3},  // QinHeng Electronics USB Single Serial
-      {0x1a86, 0x55d4},  // QinHeng Electronics USB Single Serial
-
-      {0x2341, 0},  // Arduino
-      {0x1b4f, 0},  // Sparkfun
-      {0x239a, 0},  // Adafruit
-      {0x2a03, 0},  // doghunter.org
-      {0x10c4, 0},  // Silicon Labs
-
-      {0x2c99, 0},  // Prusa Research
-
-      {0x2e8a, 0},  // Raspberry Pi
-
-      {0x18d1, 0x4f00},  // Google Pixel ROM recovery
-      {0x18d1, 0x5002},  // Google Servo V2
-      {0x18d1, 0x5003},  // Google Servo V2
-      {0x18d1, 0x500a},  // Google twinkie
-      {0x18d1, 0x500b},  // Google Plankton
-      {0x18d1, 0x500c},  // Google Plankton
-      {0x18d1, 0x5014},  // Google Cr50
-      {0x18d1, 0x501a},  // Google Servo micro
-      {0x18d1, 0x501b},  // Google Servo V4
-      {0x18d1, 0x501f},  // Google Suzyq
-      {0x18d1, 0x5020},  // Google Sweetberry
-      {0x18d1, 0x5027},  // Google Tigertail
-      {0x18d1, 0x5036},  // Google Chocodile
-      {0x18d1, 0x504a},  // Google Ti50
-      {0x18d1, 0x520D},  // Google Servo V4p1
-
-      {0x1d50, 0x6140},  // QuickLogic QuickFeather evaluation board bootloader
-      {0x1d50, 0x6130},  // TinyFPGA BX Bootloader old openmoko VID:PID
-      {0x1d50, 0x614e},  // OpenMoko, Inc. Klipper
-      {0x1209, 0x2100},  // TinyFPGA BX Bootloader new pid.codes VID:PID
-      {0x1209, 0x5bf0},  // Arty FPGA board
-  };
   uint32_t vendor_id, product_id;
   if (!GetUIntSysattr(device, "idVendor", &vendor_id) ||
       !GetUIntSysattr(device, "idProduct", &product_id))
     return false;
 
-  return UsbDeviceListContainsId(std::begin(kAllowedIds), std::end(kAllowedIds),
-                                 vendor_id, product_id);
+  return UsbDeviceListContainsId(std::begin(kSerialAllowedIds),
+                                 std::end(kSerialAllowedIds), vendor_id,
+                                 product_id);
 }
 
 bool IsDeviceAllowedHID(udev_device* device) {
-  const DevicePolicy::UsbDeviceId kAllowedIds[] = {
-      {0x2e73, 0x0001},  // BackyardBrains Neuron SpikerBox
-      {0x2e73, 0x0002},  // BackyardBrains Neuron SpikerBox
-      {0x2e73, 0x0003},  // BackyardBrains Neuron SpikerBox
-      {0x2e73, 0x0004},  // BackyardBrains Neuron SpikerBox
-      {0x2e73, 0x0005},  // BackyardBrains Neuron SpikerBox
-      {0x2e73, 0x0006},  // BackyardBrains Neuron SpikerBox
-      {0x2e73, 0x0007},  // BackyardBrains Neuron SpikerBox
-      {0x2e73, 0x0008},  // BackyardBrains Neuron SpikerBox
-      {0x2e73, 0x0009},  // BackyardBrains Neuron SpikerBox
-      {0x2e73, 0x0010},  // BackyardBrains Neuron SpikerBox
-      {0x2e73, 0x0011},  // BackyardBrains Neuron SpikerBox
-      {0x2e73, 0x0012},  // BackyardBrains Neuron SpikerBox
-  };
   uint32_t vendor_id, product_id;
   if (!GetUIntSysattr(device, "idVendor", &vendor_id) ||
       !GetUIntSysattr(device, "idProduct", &product_id))
     return false;
 
-  return UsbDeviceListContainsId(std::begin(kAllowedIds), std::end(kAllowedIds),
-                                 vendor_id, product_id);
+  return UsbDeviceListContainsId(std::begin(kHIDAllowedIds),
+                                 std::end(kHIDAllowedIds), vendor_id,
+                                 product_id);
 }
 
 bool IsDeviceAllowedFixed(udev_device* device) {
-  const DevicePolicy::UsbDeviceId kAllowedIds[] = {
-      {0x0c27, 0x3bfa},  // USB card reader
-      {0x0554, 0x1001},  // Nuance PowerMic III
-      {0xdf04, 0x0004},  // Nuance PowerMic III
-  };
   uint32_t vendor_id, product_id;
   if (!GetUIntSysattr(device, "idVendor", &vendor_id) ||
       !GetUIntSysattr(device, "idProduct", &product_id))
     return false;
 
-  return UsbDeviceListContainsId(std::begin(kAllowedIds), std::end(kAllowedIds),
-                                 vendor_id, product_id);
+  return UsbDeviceListContainsId(std::begin(kFixedAllowedIds),
+                                 std::end(kFixedAllowedIds), vendor_id,
+                                 product_id);
 }
 
 Rule::Result DenyClaimedUsbDeviceRule::ProcessUsbDevice(udev_device* device) {

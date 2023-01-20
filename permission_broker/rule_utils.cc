@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "base/strings/string_number_conversions.h"
+#include "permission_broker/allow_lists.h"
 
 namespace permission_broker {
 
@@ -31,13 +32,6 @@ bool UsbDeviceListContainsId(Iterator first,
 }
 
 bool IsDeviceAllowedWebHID(udev_device* device) {
-  const DevicePolicy::UsbDeviceId kWebHIDAllowedIds[] = {
-      {0x0c27, 0x3bfa},  // rf IDEAS reader
-      {0x0c27, 0x3b1e},  // rf IDEAS reader
-      {0x0c27, 0xccda},  // rf IDEAS reader
-      {0x0c27, 0xccdb},  // rf IDEAS reader
-  };
-
   uint32_t vendor_id, product_id;
   if (!GetUIntSysattr(device, "idVendor", &vendor_id) ||
       !GetUIntSysattr(device, "idProduct", &product_id)) {
