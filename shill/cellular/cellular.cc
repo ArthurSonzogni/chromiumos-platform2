@@ -174,21 +174,15 @@ Cellular::Cellular(Manager* manager,
                    const RpcIdentifier& path)
     : Device(
           manager, link_name, address, interface_index, Technology::kCellular),
-      home_provider_info_(
-          new MobileOperatorInfo(manager->dispatcher(), "HomeProvider")),
-      serving_operator_info_(
-          new MobileOperatorInfo(manager->dispatcher(), "ServingOperator")),
+      mobile_operator_info_(
+          new MobileOperatorInfo(manager->dispatcher(), "cellular")),
       dbus_service_(service),
       dbus_path_(path),
       dbus_path_str_(path.value()),
       process_manager_(ProcessManager::GetInstance()) {
   RegisterProperties();
 
-  // TODO(pprabhu) Split MobileOperatorInfo into a context that stores the
-  // costly database, and lighter objects that |Cellular| can own.
-  // crbug.com/363874
-  home_provider_info_->Init();
-  serving_operator_info_->Init();
+  mobile_operator_info_->Init();
 
   socket_destroyer_ = NetlinkSockDiag::Create(std::make_unique<Sockets>());
   if (!socket_destroyer_) {
@@ -994,8 +988,7 @@ void Cellular::CreateCapability() {
     initial_properties_ = std::nullopt;
   }
 
-  home_provider_info_->AddObserver(this);
-  serving_operator_info_->AddObserver(this);
+  mobile_operator_info_->AddObserver(this);
 
   // If Cellular::Start has not been called, or Cellular::Stop has been called,
   // we still want to create the capability, but not call StartModem.
@@ -1012,12 +1005,10 @@ void Cellular::CreateCapability() {
 void Cellular::DestroyCapability() {
   SLOG(1) << LoggingTag() << ": " << __func__;
 
-  home_provider_info_->RemoveObserver(this);
-  serving_operator_info_->RemoveObserver(this);
+  mobile_operator_info_->RemoveObserver(this);
   // When there is a SIM swap, ModemManager destroys and creates a new modem
   // object. Reset the mobile operator info to avoid stale data.
-  home_provider_info()->Reset();
-  serving_operator_info()->Reset();
+  mobile_operator_info()->Reset();
 
   // Make sure we are disconnected.
   StopPPP();
@@ -1110,18 +1101,18 @@ void Cellular::NotifyDetailedCellularConnectionResult(
   Metrics::DetailedCellularConnectionResult result;
   result.error = error.type();
   result.detailed_error = cellular_error;
-  result.uuid = home_provider_info_->uuid();
+  result.uuid = mobile_operator_info_->uuid();
   result.apn_info = apn_info;
   result.ipv4_config_method = ipv4;
   result.ipv6_config_method = ipv6;
-  result.home_mccmnc = home_provider_info_->mccmnc();
-  result.serving_mccmnc = serving_operator_info_->mccmnc();
+  result.home_mccmnc = mobile_operator_info_->mccmnc();
+  result.serving_mccmnc = mobile_operator_info_->serving_mccmnc();
   result.roaming_state = roaming_state;
   result.use_apn_revamp_ui = use_apn_revamp_ui;
   result.tech_used = tech_used;
   result.iccid_length = iccid_len;
   result.sim_type = sim_type;
-  result.gid1 = home_provider_info_->gid1();
+  result.gid1 = mobile_operator_info_->gid1();
   result.modem_state = modem_state_;
   result.interface_index = interface_index();
   metrics()->NotifyDetailedCellularConnectionResult(result);
@@ -1417,15 +1408,15 @@ void Cellular::HandleLinkEvent(unsigned int flags, unsigned int change) {
                       CellularBearer::IPConfigMethod::kStatic) {
       SLOG(2) << LoggingTag()
               << ": Assign static IPv4 configuration from bearer.";
-      // Override the MTU with a given limit for a specific serving operator
-      // if the network doesn't report something lower.
+      // Override the MTU with a given limit for a specific operator if the
+      // network doesn't report something lower.
       static_ipv4_props = std::make_unique<IPConfig::Properties>(
           *bearer->ipv4_config_properties());
-      if (serving_operator_info_ &&
-          serving_operator_info_->mtu() != IPConfig::kUndefinedMTU &&
+      if (mobile_operator_info_ &&
+          mobile_operator_info_->mtu() != IPConfig::kUndefinedMTU &&
           (static_ipv4_props->mtu == IPConfig::kUndefinedMTU ||
-           serving_operator_info_->mtu() < static_ipv4_props->mtu)) {
-        static_ipv4_props->mtu = serving_operator_info_->mtu();
+           mobile_operator_info_->mtu() < static_ipv4_props->mtu)) {
+        static_ipv4_props->mtu = mobile_operator_info_->mtu();
       }
     } else if (!ipv6_configured ||
                (bearer && bearer->ipv4_config_method() ==
@@ -2362,21 +2353,14 @@ void Cellular::SetPrimarySimProperties(const SimProperties& sim_properties) {
   iccid_ = sim_properties.iccid;
   imsi_ = sim_properties.imsi;
 
-  home_provider_info()->UpdateMCCMNC(sim_properties.operator_id);
-  home_provider_info()->UpdateOperatorName(sim_properties.spn);
-  home_provider_info()->UpdateICCID(iccid_);
-  // Provide ICCID to serving operator as well to aid in MVNO identification.
-  serving_operator_info()->UpdateICCID(iccid_);
+  mobile_operator_info()->UpdateMCCMNC(sim_properties.operator_id);
+  mobile_operator_info()->UpdateOperatorName(sim_properties.spn);
+  mobile_operator_info()->UpdateICCID(iccid_);
   if (!imsi_.empty()) {
-    home_provider_info()->UpdateIMSI(imsi_);
-    // We do not obtain IMSI OTA right now. Provide the value to serving
-    // operator as well, to aid in MVNO identification.
-    serving_operator_info()->UpdateIMSI(imsi_);
+    mobile_operator_info()->UpdateIMSI(imsi_);
   }
   if (!sim_properties.gid1.empty()) {
-    home_provider_info()->UpdateGID1(sim_properties.gid1);
-    // Provide GID1 to serving operator as well, to aid in MVNO identification.
-    serving_operator_info()->UpdateGID1(sim_properties.gid1);
+    mobile_operator_info()->UpdateGID1(sim_properties.gid1);
   }
 
   adaptor()->EmitStringChanged(kEidProperty, eid_);
@@ -2584,21 +2568,28 @@ void Cellular::SetApnList(const Stringmaps& apn_list) {
   adaptor()->EmitStringmapsChanged(kCellularApnListProperty, apn_list_);
 }
 
-void Cellular::UpdateHomeProvider(const MobileOperatorInfo* operator_info) {
+void Cellular::UpdateHomeProvider() {
   SLOG(2) << LoggingTag() << ": " << __func__;
 
   Stringmap home_provider;
-  if (!operator_info->mccmnc().empty()) {
-    home_provider[kOperatorCodeKey] = operator_info->mccmnc();
-  }
-  if (!operator_info->operator_name().empty()) {
-    home_provider[kOperatorNameKey] = operator_info->operator_name();
-  }
-  if (!operator_info->country().empty()) {
-    home_provider[kOperatorCountryKey] = operator_info->country();
-  }
-  if (!operator_info->uuid().empty()) {
-    home_provider[kOperatorUuidKey] = operator_info->uuid();
+  auto AssingIfNotEmpty = [&](const std::string& key,
+                              const std::string& value) {
+    if (!value.empty())
+      home_provider[key] = value;
+  };
+  if (mobile_operator_info_->IsMobileNetworkOperatorKnown()) {
+    AssingIfNotEmpty(kOperatorCodeKey, mobile_operator_info_->mccmnc());
+    AssingIfNotEmpty(kOperatorNameKey, mobile_operator_info_->operator_name());
+    AssingIfNotEmpty(kOperatorCountryKey, mobile_operator_info_->country());
+    AssingIfNotEmpty(kOperatorUuidKey, mobile_operator_info_->uuid());
+  } else if (mobile_operator_info_->IsServingMobileNetworkOperatorKnown()) {
+    SLOG(2) << "Serving provider proxying in for home provider.";
+    AssingIfNotEmpty(kOperatorCodeKey, mobile_operator_info_->serving_mccmnc());
+    AssingIfNotEmpty(kOperatorNameKey,
+                     mobile_operator_info_->serving_operator_name());
+    AssingIfNotEmpty(kOperatorCountryKey,
+                     mobile_operator_info_->serving_country());
+    AssingIfNotEmpty(kOperatorUuidKey, mobile_operator_info_->serving_uuid());
   }
   if (home_provider != home_provider_) {
     home_provider_ = home_provider;
@@ -2613,49 +2604,56 @@ void Cellular::UpdateHomeProvider(const MobileOperatorInfo* operator_info) {
   // mark APNs as bad and can skip the null APN for data connections
   if (manufacturer_ != kQ6V5ModemManufacturerName)
     apn_list.AddApns(capability_->GetProfiles(), ApnList::ApnSource::kModem);
-  apn_list.AddApns(operator_info->apn_list(), ApnList::ApnSource::kModb);
+  apn_list.AddApns(mobile_operator_info_->apn_list(),
+                   ApnList::ApnSource::kModb);
   SetApnList(apn_list.GetList());
 
-  SetProviderRequiresRoaming(operator_info->requires_roaming());
+  SetProviderRequiresRoaming(mobile_operator_info_->requires_roaming());
 }
 
-void Cellular::UpdateServingOperator(
-    const MobileOperatorInfo* operator_info,
-    const MobileOperatorInfo* home_provider_info) {
+void Cellular::UpdateServingOperator() {
   SLOG(3) << LoggingTag() << ": " << __func__;
   if (!service()) {
     return;
   }
 
   Stringmap serving_operator;
-  if (!operator_info->mccmnc().empty()) {
-    serving_operator[kOperatorCodeKey] = operator_info->mccmnc();
+  auto AssingIfNotEmpty = [&](const std::string& key,
+                              const std::string& value) {
+    if (!value.empty())
+      serving_operator[key] = value;
+  };
+  if (mobile_operator_info_->IsServingMobileNetworkOperatorKnown()) {
+    AssingIfNotEmpty(kOperatorCodeKey, mobile_operator_info_->serving_mccmnc());
+    AssingIfNotEmpty(kOperatorNameKey,
+                     mobile_operator_info_->serving_operator_name());
+    AssingIfNotEmpty(kOperatorCountryKey,
+                     mobile_operator_info_->serving_country());
+    AssingIfNotEmpty(kOperatorUuidKey, mobile_operator_info_->serving_uuid());
+  } else if (mobile_operator_info_->IsMobileNetworkOperatorKnown()) {
+    AssingIfNotEmpty(kOperatorCodeKey, mobile_operator_info_->mccmnc());
+    AssingIfNotEmpty(kOperatorNameKey, mobile_operator_info_->operator_name());
+    AssingIfNotEmpty(kOperatorCountryKey, mobile_operator_info_->country());
+    AssingIfNotEmpty(kOperatorUuidKey, mobile_operator_info_->uuid());
   }
-  if (!operator_info->operator_name().empty()) {
-    serving_operator[kOperatorNameKey] = operator_info->operator_name();
-  }
-  if (!operator_info->country().empty()) {
-    serving_operator[kOperatorCountryKey] = operator_info->country();
-  }
-  if (!operator_info->uuid().empty()) {
-    serving_operator[kOperatorUuidKey] = operator_info->uuid();
-  }
+
   service()->SetServingOperator(serving_operator);
 
   // Set friendly name of service.
   std::string service_name;
-  if (!operator_info->operator_name().empty()) {
+  if (base::Contains(serving_operator, kOperatorNameKey)) {
     // If roaming, try to show "<home-provider> | <serving-operator>", per 3GPP
     // rules (TS 31.102 and annex A of 122.101).
     if (service()->roaming_state() == kRoamingStateRoaming &&
-        home_provider_info && !home_provider_info->operator_name().empty() &&
-        home_provider_info->operator_name() != operator_info->operator_name()) {
-      service_name += home_provider_info->operator_name() + " | ";
+        !mobile_operator_info_->operator_name().empty() &&
+        mobile_operator_info_->operator_name() !=
+            serving_operator.at(kOperatorNameKey)) {
+      service_name += mobile_operator_info_->operator_name() + " | ";
     }
-    service_name += operator_info->operator_name();
-  } else if (!operator_info->mccmnc().empty()) {
+    service_name += serving_operator.at(kOperatorNameKey);
+  } else if (base::Contains(serving_operator, kOperatorCodeKey)) {
     // We could not get a name for the operator, just use the code.
-    service_name = "cellular_" + operator_info->mccmnc();
+    service_name = "cellular_" + serving_operator.at(kOperatorCodeKey);
   }
   if (service_name.empty()) {
     LOG(WARNING) << LoggingTag()
@@ -2667,11 +2665,8 @@ void Cellular::UpdateServingOperator(
           << ": Service: " << service()->log_name()
           << " Name: " << service_name;
   service()->SetFriendlyName(service_name);
-  if (service()->roaming_state() == kRoamingStateRoaming &&
-      home_provider_info) {
-    home_provider_info_.get()->UpdateRequiresRoaming(operator_info);
-    SetProviderRequiresRoaming(home_provider_info->requires_roaming());
-  }
+
+  SetProviderRequiresRoaming(mobile_operator_info_->requires_roaming());
 }
 
 void Cellular::OnOperatorChanged() {
@@ -2682,28 +2677,10 @@ void Cellular::OnOperatorChanged() {
     capability_->UpdateServiceOLP();
   }
 
-  const bool home_provider_known =
-      home_provider_info_->IsMobileNetworkOperatorKnown();
-  const bool serving_operator_known =
-      serving_operator_info_->IsMobileNetworkOperatorKnown();
-
-  if (home_provider_known) {
-    UpdateHomeProvider(home_provider_info_.get());
-  } else if (serving_operator_known) {
-    SLOG(2) << LoggingTag()
-            << ": Serving provider proxying in for home provider.";
-    UpdateHomeProvider(serving_operator_info_.get());
-  }
-
-  if (serving_operator_known) {
-    if (home_provider_known) {
-      UpdateServingOperator(serving_operator_info_.get(),
-                            home_provider_info_.get());
-    } else {
-      UpdateServingOperator(serving_operator_info_.get(), nullptr);
-    }
-  } else if (home_provider_known) {
-    UpdateServingOperator(home_provider_info_.get(), home_provider_info_.get());
+  if (mobile_operator_info_->IsMobileNetworkOperatorKnown() ||
+      mobile_operator_info_->IsServingMobileNetworkOperatorKnown()) {
+    UpdateHomeProvider();
+    UpdateServingOperator();
   }
 }
 

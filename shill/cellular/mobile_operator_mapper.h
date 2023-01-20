@@ -22,30 +22,20 @@
 
 namespace shill {
 
-// Temporarily move the Observer into MobileOperatorMapper so it can be
-// used here. This will be moved back a few CLs later when
-// |MobileOperatorMapper| no longer uses the observer
-class MobileOperatorInfoObserver : public base::CheckedObserver {
- public:
-  virtual ~MobileOperatorInfoObserver() = default;
-  // This event fires when
-  //   - A mobile [virtual] network operator
-  //     - is first determined.
-  //     - changes.
-  //     - becomes invalid.
-  //   - Some information about the known operator changes.
-  virtual void OnOperatorChanged() = 0;
-};
+using MobileOperatorMapperOnOperatorChangedCallback = base::RepeatingClosure;
+
 class MobileOperatorMapper {
  public:
   using StringToMNOListMap =
       std::map<std::string,
                std::vector<const mobile_operator_db::MobileNetworkOperator*>>;
 
-  // Delegates to private constructor
   MobileOperatorMapper(EventDispatcher* dispatcher,
                        const std::string& info_owner);
-  ~MobileOperatorMapper();
+  MobileOperatorMapper(const MobileOperatorMapper&) = delete;
+  MobileOperatorMapper& operator=(const MobileOperatorMapper&) = delete;
+
+  virtual ~MobileOperatorMapper();
 
   // ///////////////////////////////////////////////////////////////////////////
   // Objects that encapsulate related information about the mobile operator.
@@ -134,57 +124,85 @@ class MobileOperatorMapper {
     }
   };
 
-  // API functions of the interface.
-  // See mobile_operator_info.h for details.
-  void ClearDatabasePaths();
-  void AddDatabasePath(const base::FilePath& absolute_path);
-  bool Init();
-  void AddObserver(MobileOperatorInfoObserver* observer);
-  void RemoveObserver(MobileOperatorInfoObserver* observer);
-  bool IsMobileNetworkOperatorKnown() const;
+  // These functions can be called before Init to read non default database
+  // file(s). Files included earlier will take precedence over later additions.
+  virtual void ClearDatabasePaths();
+  virtual void AddDatabasePath(const base::FilePath& absolute_path);
+
+  std::string GetLogPrefix(const char* func) const;
+  virtual bool Init(
+      MobileOperatorMapperOnOperatorChangedCallback on_operator_changed);
+
+  // ///////////////////////////////////////////////////////////////////////////
+  // Functions to obtain information about the current mobile operator.
+  // Any of these accessors can return an empty response if the information is
+  // not available. Use |IsMobileNetworkOperatorKnown| and
+  // |IsMobileVirtualNetworkOperatorKnown| to determine if a fix on the operator
+  // has been made. Note that the information returned by the other accessors is
+  // only valid when at least |IsMobileNetworkOperatorKnown| returns true. Their
+  // values are undefined otherwise.
+
+  // Query whether a mobile network operator has been successfully determined.
+  virtual bool IsMobileNetworkOperatorKnown() const;
+  // Query whether a mobile network operator has been successfully
+  // determined.
   bool IsMobileVirtualNetworkOperatorKnown() const;
-  const std::string& info_owner() const;
-  const std::string& uuid() const;
-  const std::string& operator_name() const;
-  const std::string& country() const;
-  const std::string& mccmnc() const;
-  const std::string& gid1() const;
+
+  // The unique identifier of this carrier. This is primarily used to
+  // identify the user profile in store for each carrier. This identifier is
+  // access technology agnostic.
+  virtual const std::string& uuid() const;
+
+  virtual const std::string& operator_name() const;
+  virtual const std::string& country() const;
+  virtual const std::string& mccmnc() const;
+  virtual const std::string& gid1() const;
+
+  // A given MVNO can be associated with multiple mcc/mnc pairs. A list of all
+  // associated mcc/mnc pairs concatenated together.
   const std::vector<std::string>& mccmnc_list() const;
-  const std::vector<MobileOperatorMapper::LocalizedName>& operator_name_list()
-      const;
-  const std::vector<MobileOperatorMapper::MobileAPN>& apn_list() const;
-  const std::vector<MobileOperatorMapper::OnlinePortal>& olp_list() const;
-  bool requires_roaming() const;
-  int32_t mtu() const;
-  void Reset();
-  void UpdateIMSI(const std::string& imsi);
+  // All localized names associated with this carrier entry.
+  const std::vector<LocalizedName>& operator_name_list() const;
+  // All access point names associated with this carrier entry.
+  virtual const std::vector<MobileAPN>& apn_list() const;
+  // All Online Payment Portal URLs associated with this carrier entry. There
+  // are usually multiple OLPs based on access technology and it is up to the
+  // application to use the appropriate one.
+  virtual const std::vector<OnlinePortal>& olp_list() const;
+
+  // Some carriers are only available while roaming. This is mainly used by
+  // Chrome.
+  virtual bool requires_roaming() const;
+  // If specified, the MTU value to be used on the network interface.
+  virtual int32_t mtu() const;
+
+  // ///////////////////////////////////////////////////////////////////////////
+  // Functions used to notify this object of operator data changes.
+  // The Update* methods update the corresponding property of the network
+  // operator, and this value may be used to determine the M[V]NO.
+  // These values are also the values reported through accessors, overriding any
+  // information from the database.
+
+  // Throw away all information provided to the object, and start from top.
+  virtual void Reset();
+
+  virtual void UpdateMCCMNC(const std::string& mccmnc);
+  virtual void UpdateIMSI(const std::string& imsi);
   void UpdateICCID(const std::string& iccid);
-  void UpdateMCCMNC(const std::string& mccmnc);
-  void UpdateOperatorName(const std::string& operator_name);
+  virtual void UpdateOperatorName(const std::string& operator_name);
   void UpdateGID1(const std::string& gid1);
   void UpdateOnlinePortal(const std::string& url,
                           const std::string& method,
                           const std::string& post_data);
-  void UpdateRequiresRoaming(const MobileOperatorMapper* serving_operator_info);
+
+  virtual bool RequiresRoamingOnOperator(
+      const MobileOperatorMapper* serving_operator) const;
 
  private:
-  friend class MobileOperatorInfoInitTest;
-  friend class MobileOperatorInfoOverrideTest;
-
-  // ///////////////////////////////////////////////////////////////////////////
-  // Constructor
-  MobileOperatorMapper(EventDispatcher* dispatcher,
-                       const std::string& info_owner,
-                       const base::FilePath& default_db_path,
-                       const base::FilePath& exclusive_override_db_path);
-  MobileOperatorMapper(const MobileOperatorMapper&) = delete;
-  MobileOperatorMapper& operator=(const MobileOperatorMapper&) = delete;
+  friend class MobileOperatorMapperInitTest;
 
   // ///////////////////////////////////////////////////////////////////////////
   // Static variables.
-  // Default databases to load.
-  static const char kDefaultDatabasePath[];
-  static const char kExclusiveOverrideDatabasePath[];
   // MCCMNC can be of length 5 or 6. When using this constant, keep in mind that
   // the length of MCCMNC can by |kMCCMNCMinLen| or |kMCCMNCMinLen + 1|.
   static const int kMCCMNCMinLen;
@@ -203,7 +221,7 @@ class MobileOperatorMapper {
   bool UpdateMNO();
   bool UpdateMVNO();
   bool FilterMatches(const shill::mobile_operator_db::Filter& filter,
-                     std::string to_match = "");
+                     std::string to_match = "") const;
   const mobile_operator_db::MobileNetworkOperator* PickOneFromDuplicates(
       const std::vector<const mobile_operator_db::MobileNetworkOperator*>&
           duplicates) const;
@@ -257,11 +275,6 @@ class MobileOperatorMapper {
   // Owned by MobileOperatorMapper, may be created externally.
   std::vector<base::FilePath> database_paths_;
 
-  // Owned and modified only by MobileOperatorMapper.
-  // The observers added to this list are not owned by this object. Moreover,
-  // the observer is likely to outlive this object. We do enforce removal of all
-  // observers before this object is destroyed.
-  base::ObserverList<MobileOperatorInfoObserver> observers_;
   base::CancelableClosure notify_operator_changed_task_;
 
   std::unique_ptr<mobile_operator_db::MobileOperatorDB> database_;
@@ -316,9 +329,10 @@ class MobileOperatorMapper {
   std::string user_gid1_;
   bool user_olp_empty_;
   MobileOperatorMapper::OnlinePortal user_olp_;
+  base::CancelableRepeatingClosure on_operator_changed_cb_;
 
   // This must be the last data member of this class.
-  base::WeakPtrFactory<MobileOperatorMapper> weak_ptr_factory_;
+  base::WeakPtrFactory<MobileOperatorMapper> weak_ptr_factory_{this};
 };
 
 }  // namespace shill

@@ -814,7 +814,7 @@ bool CellularCapability3gpp::IsDualStackSupported() {
     return true;
 
   SLOG(this, 2) << "device_id: " << cellular()->device_id()->AsString()
-                << " MCCMNC: " << cellular()->home_provider_info()->mccmnc();
+                << " MCCMNC: " << cellular()->mobile_operator_info()->mccmnc();
   // Disable dual-stack on L850 + Verizon
   const struct {
     DeviceId device_id;
@@ -829,7 +829,7 @@ bool CellularCapability3gpp::IsDualStackSupported() {
       if (affected_device.operator_code.size() == 0 ||
           std::find(affected_device.operator_code.begin(),
                     affected_device.operator_code.end(),
-                    cellular()->home_provider_info()->mccmnc()) !=
+                    cellular()->mobile_operator_info()->mccmnc()) !=
               affected_device.operator_code.end())
         return false;
     }
@@ -1028,13 +1028,13 @@ void CellularCapability3gpp::UpdateServiceOLP() {
   SLOG(this, 3) << __func__;
 
   // OLP is based off of the Home Provider.
-  if (!cellular()->home_provider_info()->IsMobileNetworkOperatorKnown()) {
+  if (!cellular()->mobile_operator_info()->IsMobileNetworkOperatorKnown()) {
     SLOG(this, 3) << "Mobile Network Operator Unknown";
     return;
   }
 
   const std::vector<MobileOperatorMapper::OnlinePortal>& olp_list =
-      cellular()->home_provider_info()->olp_list();
+      cellular()->mobile_operator_info()->olp_list();
   if (olp_list.empty()) {
     SLOG(this, 3) << "Empty OLP list";
     return;
@@ -1051,7 +1051,8 @@ void CellularCapability3gpp::UpdateServiceOLP() {
   base::ReplaceSubstringsAfterOffset(&post_data, 0, "${imsi}",
                                      cellular()->imsi());
   base::ReplaceSubstringsAfterOffset(
-      &post_data, 0, "${mdn}", GetMdnForOLP(cellular()->home_provider_info()));
+      &post_data, 0, "${mdn}",
+      GetMdnForOLP(cellular()->mobile_operator_info()));
   base::ReplaceSubstringsAfterOffset(&post_data, 0, "${min}",
                                      cellular()->min());
   cellular()->service()->SetOLP(olp_list[0].url, olp_list[0].method, post_data);
@@ -1110,8 +1111,8 @@ bool CellularCapability3gpp::IsServiceActivationRequired() const {
 
   // If there is no online payment portal information, it's safer to assume
   // the service does not require activation.
-  if (!cellular()->home_provider_info()->IsMobileNetworkOperatorKnown() ||
-      cellular()->home_provider_info()->olp_list().empty()) {
+  if (!cellular()->mobile_operator_info()->IsMobileNetworkOperatorKnown() ||
+      cellular()->mobile_operator_info()->olp_list().empty()) {
     return false;
   }
 
@@ -2030,7 +2031,7 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
     }
   }
 
-  if (!cellular()->home_provider_info()->IsMobileNetworkOperatorKnown()) {
+  if (!cellular()->mobile_operator_info()->IsMobileNetworkOperatorKnown()) {
     // If the carrier is not in shill's db, shill should use the user APN or
     // at least clear the attach APN, so the modem can clear any previous value
     // and try to attach on its own.
@@ -2145,8 +2146,9 @@ void CellularCapability3gpp::Handle3gppRegistrationChange(
   registration_state_ = updated_state;
   serving_operator_[kOperatorCodeKey] = updated_operator_code;
   serving_operator_[kOperatorNameKey] = updated_operator_name;
-  cellular()->serving_operator_info()->UpdateMCCMNC(updated_operator_code);
-  cellular()->serving_operator_info()->UpdateOperatorName(
+  cellular()->mobile_operator_info()->UpdateServingMCCMNC(
+      updated_operator_code);
+  cellular()->mobile_operator_info()->UpdateServingOperatorName(
       updated_operator_name);
 
   CellularServiceRefPtr service = cellular()->service();

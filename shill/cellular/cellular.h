@@ -38,7 +38,7 @@ class ProcessManager;
 
 class Cellular : public Device,
                  public RpcTaskDelegate,
-                 public MobileOperatorInfoObserver {
+                 public MobileOperatorInfo::Observer {
  public:
   enum class State {
     // Initial state. No Capability exists.
@@ -273,25 +273,19 @@ class Cellular : public Device,
   // Same as BuildApnTryList, but it only returns DUN APNs.
   std::deque<Stringmap> BuildTetheringApnTryList() const;
 
-  // Update the home provider from the information in |operator_info|. This
-  // information may be from the SIM / received OTA.
-  void UpdateHomeProvider(const MobileOperatorInfo* operator_info);
+  // Update the home provider. This information may be from the SIM or received
+  // OTA.
+  void UpdateHomeProvider();
 
-  // Update the serving operator using information in |operator_info|.
-  // Additionally, if |home_provider_info| is not nullptr, use it to come up
-  // with a better name.
-  void UpdateServingOperator(const MobileOperatorInfo* operator_info,
-                             const MobileOperatorInfo* home_provider_info);
+  // Update the serving operator info.
+  void UpdateServingOperator();
 
   // Implements MobileOperatorInfo::Observer:
   void OnOperatorChanged() override;
 
   const CellularServiceRefPtr& service() const { return service_; }
-  MobileOperatorInfo* home_provider_info() const {
-    return home_provider_info_.get();
-  }
-  MobileOperatorInfo* serving_operator_info() const {
-    return serving_operator_info_.get();
+  MobileOperatorInfo* mobile_operator_info() const {
+    return mobile_operator_info_.get();
   }
   State state() const { return state_; }
   ModemState modem_state() const { return modem_state_; }
@@ -365,13 +359,9 @@ class Cellular : public Device,
   void set_home_provider_for_testing(const Stringmap& home_provider) {
     home_provider_ = home_provider;
   }
-  void set_home_provider_info_for_testing(
-      MobileOperatorInfo* home_provider_info) {
-    home_provider_info_.reset(home_provider_info);
-  }
-  void set_serving_operator_info_for_testing(
-      MobileOperatorInfo* serving_operator_info) {
-    serving_operator_info_.reset(serving_operator_info);
+  void set_mobile_operator_info_for_testing(
+      MobileOperatorInfo* mobile_operator_info) {
+    mobile_operator_info_.reset(mobile_operator_info);
   }
   void clear_found_networks_for_testing() { found_networks_.clear(); }
   CellularCapability3gpp* capability_for_testing() { return capability_.get(); }
@@ -629,13 +619,12 @@ class Cellular : public Device,
   };
   LocationInfo location_info_;
 
-  // Operator info objects. These objects receive updates as we receive
-  // information about the network operators from the SIM or OTA. In turn, they
-  // send out updates through their observer interfaces whenever the identity of
+  // Network Operator info object. This object receives updates as we receive
+  // information about the network operators from the SIM or OTA. In turn, it
+  // sends out updates through its observer interface whenever the identity of
   // the network operator changes, or any other property of the operator
   // changes.
-  std::unique_ptr<MobileOperatorInfo> home_provider_info_;
-  std::unique_ptr<MobileOperatorInfo> serving_operator_info_;
+  std::unique_ptr<MobileOperatorInfo> mobile_operator_info_;
 
   // ///////////////////////////////////////////////////////////////////////////
   // All DBus Properties exposed by the Cellular device.

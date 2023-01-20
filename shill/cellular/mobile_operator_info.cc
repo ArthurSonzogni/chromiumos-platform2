@@ -3,13 +3,11 @@
 // found in the LICENSE file.
 
 #include "shill/cellular/mobile_operator_info.h"
-
-#include <sstream>
+#include <algorithm>
 
 #include "shill/cellular/mobile_operator_mapper.h"
+#include "shill/ipconfig.h"
 #include "shill/logging.h"
-
-#include <base/logging.h>
 
 namespace shill {
 
@@ -17,206 +15,210 @@ namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
 }  // namespace Logging
 
-// /////////////////////////////////////////////////////////////////////////////
-// MobileOperatorInfo implementation note:
-// MobileOperatorInfo simply forwards all operations to |impl_|.
-// It also logs the functions/arguments/results at reasonable log levels. So the
-// implementation need not leave a trace itself.
+// static
+const char MobileOperatorInfo::kDefaultDatabasePath[] =
+    "/usr/share/shill/serviceproviders.pbf";
+// The exclusive-override db can be used to replace the default modb.
+const char MobileOperatorInfo::kExclusiveOverrideDatabasePath[] =
+    "/var/cache/shill/serviceproviders-exclusive-override.pbf";
+
+std::string MobileOperatorInfo::GetLogPrefix(const char* func) const {
+  return info_owner_ + ": " + func;
+}
+
+MobileOperatorInfo::MobileOperatorInfo(EventDispatcher* dispatcher,
+                                       const std::string& info_owner,
+                                       MobileOperatorMapper* home,
+                                       MobileOperatorMapper* serving)
+    : info_owner_(info_owner) {
+  home_.reset(home);
+  serving_.reset(serving);
+  AddDefaultDatabasePaths();
+}
 
 MobileOperatorInfo::MobileOperatorInfo(EventDispatcher* dispatcher,
                                        const std::string& info_owner)
-    : impl_(new MobileOperatorMapper(dispatcher, info_owner)) {}
+    : info_owner_(info_owner) {
+  home_ =
+      std::make_unique<MobileOperatorMapper>(dispatcher, info_owner + ":home");
+  serving_ = std::make_unique<MobileOperatorMapper>(dispatcher,
+                                                    info_owner + ":serving");
+  AddDefaultDatabasePaths();
+}
 
 MobileOperatorInfo::~MobileOperatorInfo() = default;
 
-std::string MobileOperatorInfo::GetLogPrefix(const char* func) const {
-  return impl_->info_owner() + ": " + func;
+void MobileOperatorInfo::AddDefaultDatabasePaths() {
+  if (base::PathExists(base::FilePath(kExclusiveOverrideDatabasePath)))
+    AddDatabasePath(base::FilePath(kExclusiveOverrideDatabasePath));
+  else
+    AddDatabasePath(base::FilePath(kDefaultDatabasePath));
 }
-
 void MobileOperatorInfo::ClearDatabasePaths() {
-  SLOG(3) << GetLogPrefix(__func__);
-  impl_->ClearDatabasePaths();
+  SLOG(3) << __func__;
+  home_->ClearDatabasePaths();
+  serving_->ClearDatabasePaths();
 }
 
 void MobileOperatorInfo::AddDatabasePath(const base::FilePath& absolute_path) {
-  SLOG(3) << GetLogPrefix(__func__) << "(" << absolute_path.value() << ")";
-  impl_->AddDatabasePath(absolute_path);
+  SLOG(3) << __func__;
+  home_->AddDatabasePath(absolute_path);
+  serving_->AddDatabasePath(absolute_path);
 }
 
 bool MobileOperatorInfo::Init() {
-  auto result = impl_->Init();
-  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
-  return result;
+  auto result_home = home_->Init(
+      base::BindRepeating(&MobileOperatorInfo::OnHomeOperatorChanged,
+                          weak_ptr_factory_.GetWeakPtr()));
+  auto result_serving = serving_->Init(
+      base::BindRepeating(&MobileOperatorInfo::OnServingOperatorChanged,
+                          weak_ptr_factory_.GetWeakPtr()));
+  SLOG(3) << __func__ << ": Result[" << (result_home && result_serving) << "]";
+  return result_home && result_serving;
 }
 
-void MobileOperatorInfo::AddObserver(MobileOperatorInfoObserver* observer) {
+void MobileOperatorInfo::AddObserver(MobileOperatorInfo::Observer* observer) {
   SLOG(3) << GetLogPrefix(__func__);
-  impl_->AddObserver(observer);
+  observers_.AddObserver(observer);
 }
 
-void MobileOperatorInfo::RemoveObserver(MobileOperatorInfoObserver* observer) {
+void MobileOperatorInfo::RemoveObserver(
+    MobileOperatorInfo::Observer* observer) {
   SLOG(3) << GetLogPrefix(__func__);
-  impl_->RemoveObserver(observer);
+  observers_.RemoveObserver(observer);
+}
+
+void MobileOperatorInfo::OnHomeOperatorChanged() {
+  SLOG(3) << GetLogPrefix(__func__);
+  for (MobileOperatorInfo::Observer& observer : observers_)
+    observer.OnOperatorChanged();
+}
+
+void MobileOperatorInfo::OnServingOperatorChanged() {
+  SLOG(3) << GetLogPrefix(__func__);
+  for (MobileOperatorInfo::Observer& observer : observers_)
+    observer.OnOperatorChanged();
 }
 
 bool MobileOperatorInfo::IsMobileNetworkOperatorKnown() const {
-  auto result = impl_->IsMobileNetworkOperatorKnown();
+  auto result = home_->IsMobileNetworkOperatorKnown();
   SLOG(3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
   return result;
 }
 
 bool MobileOperatorInfo::IsMobileVirtualNetworkOperatorKnown() const {
-  auto result = impl_->IsMobileVirtualNetworkOperatorKnown();
+  auto result = home_->IsMobileVirtualNetworkOperatorKnown();
   SLOG(3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
   return result;
 }
 
-const std::string& MobileOperatorInfo::uuid() const {
-  const auto& result = impl_->uuid();
+bool MobileOperatorInfo::IsServingMobileNetworkOperatorKnown() const {
+  auto result = serving_->IsMobileNetworkOperatorKnown();
   SLOG(3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
   return result;
+}
+
+// ///////////////////////////////////////////////////////////////////////////
+// Getters.
+const std::string& MobileOperatorInfo::uuid() const {
+  return home_->uuid();
 }
 
 const std::string& MobileOperatorInfo::operator_name() const {
-  const auto& result = impl_->operator_name();
-  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
-  return result;
+  return home_->operator_name();
 }
 
 const std::string& MobileOperatorInfo::country() const {
-  const auto& result = impl_->country();
-  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
-  return result;
+  return home_->country();
 }
 
 const std::string& MobileOperatorInfo::mccmnc() const {
-  const auto& result = impl_->mccmnc();
-  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
-  return result;
+  return home_->mccmnc();
 }
 
 const std::string& MobileOperatorInfo::gid1() const {
-  const auto& result = impl_->gid1();
-  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
-  return result;
+  return home_->gid1();
 }
 
-const std::vector<std::string>& MobileOperatorInfo::mccmnc_list() const {
-  const auto& result = impl_->mccmnc_list();
-  if (SLOG_IS_ON(Cellular, 3)) {
-    std::stringstream pp_result;
-    for (const auto& mccmnc : result) {
-      pp_result << mccmnc << " ";
-    }
-    SLOG(3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str() << "]";
-  }
-  return result;
+const std::string& MobileOperatorInfo::serving_uuid() const {
+  return serving_->uuid();
 }
 
-const std::vector<MobileOperatorMapper::LocalizedName>&
-MobileOperatorInfo::operator_name_list() const {
-  const auto& result = impl_->operator_name_list();
-  if (SLOG_IS_ON(Cellular, 3)) {
-    std::stringstream pp_result;
-    for (const auto& operator_name : result) {
-      pp_result << "(" << operator_name.name << ", " << operator_name.language
-                << ") ";
-    }
-    SLOG(3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str() << "]";
-  }
-  return result;
+const std::string& MobileOperatorInfo::serving_operator_name() const {
+  return serving_->operator_name();
+}
+
+const std::string& MobileOperatorInfo::serving_country() const {
+  return serving_->country();
+}
+
+const std::string& MobileOperatorInfo::serving_mccmnc() const {
+  return serving_->mccmnc();
 }
 
 const std::vector<MobileOperatorMapper::MobileAPN>&
 MobileOperatorInfo::apn_list() const {
-  const auto& result = impl_->apn_list();
-  if (SLOG_IS_ON(Cellular, 3)) {
-    std::stringstream pp_result;
-    for (const auto& mobile_apn : result) {
-      pp_result << "(apn: " << mobile_apn.apn
-                << ", username: " << mobile_apn.username
-                << ", password: " << mobile_apn.password;
-      pp_result << ", operator_name_list: '";
-      for (const auto& operator_name : mobile_apn.operator_name_list) {
-        pp_result << "(" << operator_name.name << ", " << operator_name.language
-                  << ") ";
-      }
-      pp_result << "') ";
-    }
-    SLOG(3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str() << "]";
-  }
-  return result;
+  return home_->apn_list();
 }
 
 const std::vector<MobileOperatorMapper::OnlinePortal>&
 MobileOperatorInfo::olp_list() const {
-  const auto& result = impl_->olp_list();
-  if (SLOG_IS_ON(Cellular, 3)) {
-    std::stringstream pp_result;
-    for (const auto& olp : result) {
-      pp_result << "(url: " << olp.url << ", method: " << olp.method
-                << ", post_data: " << olp.post_data << ") ";
-    }
-    SLOG(3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str() << "]";
-  }
-  return result;
+  return home_->olp_list();
 }
 
 bool MobileOperatorInfo::requires_roaming() const {
-  auto result = impl_->requires_roaming();
-  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
-  return result;
+  if (!home_->IsMobileNetworkOperatorKnown() &&
+      !home_->IsMobileVirtualNetworkOperatorKnown())
+    return false;
+  return home_->requires_roaming() ||
+         home_->RequiresRoamingOnOperator(serving_.get());
 }
 
 int32_t MobileOperatorInfo::mtu() const {
-  auto result = impl_->mtu();
-  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
-  return result;
+  // Choose the smaller mtu size.
+  if (serving_->mtu() != IPConfig::kUndefinedMTU &&
+      home_->mtu() != IPConfig::kUndefinedMTU)
+    return std::min(serving_->mtu(), home_->mtu());
+  else if (home_->mtu() != IPConfig::kUndefinedMTU)
+    return home_->mtu();
+
+  return serving_->mtu();
 }
 
+// ///////////////////////////////////////////////////////////////////////////
+// Functions used to notify this object of operator data changes.
 void MobileOperatorInfo::UpdateIMSI(const std::string& imsi) {
-  SLOG(3) << GetLogPrefix(__func__) << "(" << imsi << ")";
-  impl_->UpdateIMSI(imsi);
+  home_->UpdateIMSI(imsi);
 }
 
 void MobileOperatorInfo::UpdateICCID(const std::string& iccid) {
-  SLOG(3) << GetLogPrefix(__func__) << "(" << iccid << ")";
-  impl_->UpdateICCID(iccid);
+  home_->UpdateICCID(iccid);
 }
 
 void MobileOperatorInfo::UpdateMCCMNC(const std::string& mccmnc) {
-  SLOG(3) << GetLogPrefix(__func__) << "(" << mccmnc << ")";
-  impl_->UpdateMCCMNC(mccmnc);
+  home_->UpdateMCCMNC(mccmnc);
 }
 
 void MobileOperatorInfo::UpdateOperatorName(const std::string& operator_name) {
-  SLOG(3) << GetLogPrefix(__func__) << "(" << operator_name << ")";
-  impl_->UpdateOperatorName(operator_name);
+  home_->UpdateOperatorName(operator_name);
+}
+
+void MobileOperatorInfo::UpdateServingMCCMNC(const std::string& mccmnc) {
+  serving_->UpdateMCCMNC(mccmnc);
+}
+
+void MobileOperatorInfo::UpdateServingOperatorName(
+    const std::string& operator_name) {
+  serving_->UpdateOperatorName(operator_name);
 }
 
 void MobileOperatorInfo::UpdateGID1(const std::string& gid1) {
-  SLOG(3) << GetLogPrefix(__func__) << "(" << gid1 << ")";
-  impl_->UpdateGID1(gid1);
-}
-
-void MobileOperatorInfo::UpdateOnlinePortal(const std::string& url,
-                                            const std::string& method,
-                                            const std::string& post_data) {
-  SLOG(3) << GetLogPrefix(__func__) << "(" << url << ", " << method << ", "
-          << post_data << ")";
-  impl_->UpdateOnlinePortal(url, method, post_data);
-}
-
-void MobileOperatorInfo::UpdateRequiresRoaming(
-    const MobileOperatorInfo* serving_operator_info) {
-  impl_->UpdateRequiresRoaming(serving_operator_info->impl());
-  SLOG(3) << GetLogPrefix(__func__)
-          << "Updated requires_roaming: " << impl_->requires_roaming();
+  home_->UpdateGID1(gid1);
 }
 
 void MobileOperatorInfo::Reset() {
-  SLOG(3) << GetLogPrefix(__func__);
-  impl_->Reset();
+  home_->Reset();
+  serving_->Reset();
 }
 
 }  // namespace shill

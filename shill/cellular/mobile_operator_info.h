@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/memory/weak_ptr.h>
 #include <base/observer_list_types.h>
 
 #include "shill/cellular/mobile_operator_mapper.h"
@@ -30,7 +31,7 @@ class EventDispatcher;
 // So a class Foo that wants to use this object typically looks like:
 //
 // class Foo {
-//   class OperatorObserver : public MobileOperatorInfoObserver {
+//   class OperatorObserver : public MobileOperatorInfo::Observer {
 //     // Implement all Observer functions.
 //   }
 //   ...
@@ -55,6 +56,17 @@ class EventDispatcher;
 
 class MobileOperatorInfo {
  public:
+  class Observer : public base::CheckedObserver {
+   public:
+    virtual ~Observer() = default;
+    // This event fires when
+    //   - A mobile [virtual] network operator
+    //     - is first determined.
+    //     - changes.
+    //     - becomes invalid.
+    //   - Some information about the known operator changes.
+    virtual void OnOperatorChanged() = 0;
+  };
   // |Init| must be called on the constructed object before it is used.
   // This object does not take ownership of dispatcher, and |dispatcher| is
   // expected to outlive this object.
@@ -74,12 +86,12 @@ class MobileOperatorInfo {
   bool Init();
 
   // Add/remove observers to subscribe to notifications.
-  void AddObserver(MobileOperatorInfoObserver* observer);
-  void RemoveObserver(MobileOperatorInfoObserver* observer);
+  void AddObserver(MobileOperatorInfo::Observer* observer);
+  void RemoveObserver(MobileOperatorInfo::Observer* observer);
 
   // ///////////////////////////////////////////////////////////////////////////
   // Functions to obtain information about the current mobile operator.
-  // Any of these accessors can return an emtpy response if the information is
+  // Any of these accessors can return an empty response if the information is
   // not available. Use |IsMobileNetworkOperatorKnown| and
   // |IsMobileVirtualNetworkOperatorKnown| to determine if a fix on the operator
   // has been made. Note that the information returned by the other accessors is
@@ -88,26 +100,23 @@ class MobileOperatorInfo {
 
   // Query whether a mobile network operator has been successfully determined.
   virtual bool IsMobileNetworkOperatorKnown() const;
-  // Query whether a mobile network operator has been successfully
+  // Query whether the serving network operator has been successfully
   // determined.
-  bool IsMobileVirtualNetworkOperatorKnown() const;
+  virtual bool IsServingMobileNetworkOperatorKnown() const;
 
   // The unique identifier of this carrier. This is primarily used to
   // identify the user profile in store for each carrier. This identifier is
   // access technology agnostic.
   virtual const std::string& uuid() const;
-
   virtual const std::string& operator_name() const;
   virtual const std::string& country() const;
   virtual const std::string& mccmnc() const;
-  virtual const std::string& gid1() const;
+  virtual const std::string& serving_uuid() const;
+  virtual const std::string& serving_operator_name() const;
+  virtual const std::string& serving_country() const;
+  virtual const std::string& serving_mccmnc() const;
+  const std::string& gid1() const;
 
-  // A given MVNO can be associated with multiple mcc/mnc pairs. A list of all
-  // associated mcc/mnc pairs concatenated together.
-  const std::vector<std::string>& mccmnc_list() const;
-  // All localized names associated with this carrier entry.
-  const std::vector<MobileOperatorMapper::LocalizedName>& operator_name_list()
-      const;
   // All access point names associated with this carrier entry.
   virtual const std::vector<MobileOperatorMapper::MobileAPN>& apn_list() const;
   // All Online Payment Portal URLs associated with this carrier entry. There
@@ -137,18 +146,49 @@ class MobileOperatorInfo {
   virtual void UpdateIMSI(const std::string& imsi);
   void UpdateICCID(const std::string& iccid);
   virtual void UpdateOperatorName(const std::string& operator_name);
+  virtual void UpdateServingMCCMNC(const std::string& mccmnc);
+  virtual void UpdateServingOperatorName(const std::string& operator_name);
   void UpdateGID1(const std::string& gid1);
-  void UpdateOnlinePortal(const std::string& url,
-                          const std::string& method,
-                          const std::string& post_data);
-  void UpdateRequiresRoaming(const MobileOperatorInfo* serving_operator_info);
 
+ protected:
   // ///////////////////////////////////////////////////////////////////////////
-  // Expose implementation for test purposes only.
-  MobileOperatorMapper* impl() const { return impl_.get(); }
+  // Static variables.
+  // Default databases to load.
+  static const char kDefaultDatabasePath[];
+  static const char kExclusiveOverrideDatabasePath[];
+
+  // For testing
+  explicit MobileOperatorInfo(EventDispatcher* dispatcher,
+                              const std::string& info_owner,
+                              MobileOperatorMapper* home,
+                              MobileOperatorMapper* serving);
 
  private:
-  std::unique_ptr<MobileOperatorMapper> impl_;
+  // Callbacks for MobileOperatorMapper:
+  void OnHomeOperatorChanged();
+  void OnServingOperatorChanged();
+
+  // Query whether a mobile network operator has been successfully
+  // determined.
+  bool IsMobileVirtualNetworkOperatorKnown() const;
+
+  void AddDefaultDatabasePaths();
+
+  // ///////////////////////////////////////////////////////////////////////////
+  // Data.
+  const std::string info_owner_;
+
+  // The observers added to this list are not owned by this object. Moreover,
+  // the observer is likely to outlive this object. We do enforce removal of all
+  // observers before this object is destroyed.
+  base::ObserverList<MobileOperatorInfo::Observer> observers_;
+
+  // Instance for the home provider
+  std::unique_ptr<MobileOperatorMapper> home_;
+  // Instance for the serving operator
+  std::unique_ptr<MobileOperatorMapper> serving_;
+
+  base::WeakPtrFactory<MobileOperatorInfo> weak_ptr_factory_{this};
 };
 
 }  // namespace shill

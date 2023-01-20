@@ -2,18 +2,19 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/cellular/mock_mobile_operator_info.h"
+#include "shill/cellular/mock_mobile_operator_mapper.h"
 
 #include <gmock/gmock.h>
 
+using testing::_;
 using testing::Return;
 using testing::ReturnRef;
 
 namespace shill {
 
-MockMobileOperatorInfo::MockMobileOperatorInfo(EventDispatcher* dispatcher,
-                                               const std::string& info_owner)
-    : MobileOperatorInfo(dispatcher, info_owner) {
+MockMobileOperatorMapper::MockMobileOperatorMapper(
+    EventDispatcher* dispatcher, const std::string& info_owner)
+    : MobileOperatorMapper(dispatcher, info_owner) {
   ON_CALL(*this, IsMobileNetworkOperatorKnown()).WillByDefault(Return(false));
   ON_CALL(*this, mccmnc()).WillByDefault(ReturnRef(empty_mccmnc_));
   ON_CALL(*this, apn_list()).WillByDefault(ReturnRef(empty_apn_list_));
@@ -22,15 +23,10 @@ MockMobileOperatorInfo::MockMobileOperatorInfo(EventDispatcher* dispatcher,
       .WillByDefault(ReturnRef(empty_operator_name_));
   ON_CALL(*this, country()).WillByDefault(ReturnRef(empty_country_));
   ON_CALL(*this, uuid()).WillByDefault(ReturnRef(empty_uuid_));
-  ON_CALL(*this, serving_country())
-      .WillByDefault(ReturnRef(empty_serving_country_));
-  ON_CALL(*this, serving_mccmnc())
-      .WillByDefault(ReturnRef(empty_serving_mccmnc_));
-  ON_CALL(*this, serving_operator_name())
-      .WillByDefault(ReturnRef(empty_serving_operator_name_));
-  ON_CALL(*this, serving_uuid()).WillByDefault(ReturnRef(empty_serving_uuid_));
+  ON_CALL(*this, gid1()).WillByDefault(ReturnRef(empty_gid1_));
+  ON_CALL(*this, RequiresRoamingOnOperator(_)).WillByDefault(Return(false));
 }
 
-MockMobileOperatorInfo::~MockMobileOperatorInfo() = default;
+MockMobileOperatorMapper::~MockMobileOperatorMapper() = default;
 
 }  // namespace shill

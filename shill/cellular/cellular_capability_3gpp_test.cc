@@ -142,8 +142,7 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
         modem_signal_proxy_(new NiceMock<mm1::MockModemSignalProxy>()),
         modem_simple_proxy_(new NiceMock<mm1::MockModemSimpleProxy>()),
         profile_(new NiceMock<MockProfile>(&manager_)),
-        mock_home_provider_info_(nullptr),
-        mock_serving_operator_info_(nullptr) {
+        mock_mobile_operator_info_(nullptr) {
     cellular_service_provider_.set_profile_for_testing(profile_);
   }
 
@@ -345,17 +344,11 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
   }
 
   void SetMockMobileOperatorInfoObjects() {
-    CHECK(!mock_home_provider_info_);
-    CHECK(!mock_serving_operator_info_);
-    mock_home_provider_info_ =
+    CHECK(!mock_mobile_operator_info_);
+    mock_mobile_operator_info_ =
         new NiceMock<MockMobileOperatorInfo>(&dispatcher_, "HomeProvider");
-    mock_serving_operator_info_ =
-        new NiceMock<MockMobileOperatorInfo>(&dispatcher_, "ServingOperator");
-    mock_home_provider_info_->Init();
-    mock_serving_operator_info_->Init();
-    cellular_->set_home_provider_info_for_testing(mock_home_provider_info_);
-    cellular_->set_serving_operator_info_for_testing(
-        mock_serving_operator_info_);
+    mock_mobile_operator_info_->Init();
+    cellular_->set_mobile_operator_info_for_testing(mock_mobile_operator_info_);
   }
 
   void ReleaseCapabilityProxies() {
@@ -554,8 +547,7 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
   RpcIdentifierCallback connect_callback_;
 
   // Set when required and passed to |cellular_|. Owned by |cellular_|.
-  MockMobileOperatorInfo* mock_home_provider_info_;
-  MockMobileOperatorInfo* mock_serving_operator_info_;
+  MockMobileOperatorInfo* mock_mobile_operator_info_;
 
  private:
   std::vector<RpcIdentifier> sim_paths_;
@@ -1647,11 +1639,11 @@ TEST_F(CellularCapability3gppTest, UpdateServiceOLP) {
   cellular_->SetMdn("10123456789");
   cellular_->SetMin("5");
 
-  EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*mock_home_provider_info_, olp_list())
+  EXPECT_CALL(*mock_mobile_operator_info_, olp_list())
       .WillRepeatedly(ReturnRef(kOlpList));
-  EXPECT_CALL(*mock_home_provider_info_, uuid())
+  EXPECT_CALL(*mock_mobile_operator_info_, uuid())
       .WillRepeatedly(ReturnRef(kUuidVzw));
   CreateService();
   capability_->UpdateServiceOLP();
@@ -1661,13 +1653,13 @@ TEST_F(CellularCapability3gppTest, UpdateServiceOLP) {
   EXPECT_EQ("POST", vzw_olp[kPaymentPortalMethod]);
   EXPECT_EQ("imei=1&imsi=2&mdn=0123456789&min=5&iccid=6",
             vzw_olp[kPaymentPortalPostData]);
-  Mock::VerifyAndClearExpectations(mock_home_provider_info_);
+  Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
 
-  EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*mock_home_provider_info_, olp_list())
+  EXPECT_CALL(*mock_mobile_operator_info_, olp_list())
       .WillRepeatedly(ReturnRef(kOlpList));
-  EXPECT_CALL(*mock_home_provider_info_, uuid())
+  EXPECT_CALL(*mock_mobile_operator_info_, uuid())
       .WillRepeatedly(ReturnRef(kUuidFoo));
   capability_->UpdateServiceOLP();
   // Copy to simplify assertions below.
@@ -1720,9 +1712,9 @@ TEST_F(CellularCapability3gppTest, UpdateServiceActivationState) {
   capability_->subscription_state_ = SubscriptionState::kUnprovisioned;
   ClearCellularSimProperties();
   cellular_->SetMdn("0000000000");
-  EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*mock_home_provider_info_, olp_list())
+  EXPECT_CALL(*mock_mobile_operator_info_, olp_list())
       .WillRepeatedly(ReturnRef(olp_list));
 
   EXPECT_CALL(*service_, SetActivationState(kActivationStateNotActivated))
@@ -1912,22 +1904,22 @@ TEST_F(CellularCapability3gppTest, IsServiceActivationRequired) {
   cellular_->SetMdn("0000000000");
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
 
-  EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(false));
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
-  Mock::VerifyAndClearExpectations(mock_home_provider_info_);
+  Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
 
-  EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*mock_home_provider_info_, olp_list())
+  EXPECT_CALL(*mock_mobile_operator_info_, olp_list())
       .WillRepeatedly(ReturnRef(empty_list));
   EXPECT_FALSE(capability_->IsServiceActivationRequired());
-  Mock::VerifyAndClearExpectations(mock_home_provider_info_);
+  Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
 
   // Set expectations for all subsequent cases.
-  EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*mock_home_provider_info_, olp_list())
+  EXPECT_CALL(*mock_mobile_operator_info_, olp_list())
       .WillRepeatedly(ReturnRef(olp_list));
 
   cellular_->SetMdn("");

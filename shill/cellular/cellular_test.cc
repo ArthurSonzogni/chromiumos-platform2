@@ -148,8 +148,7 @@ class CellularTest : public testing::Test {
         modem_info_(&control_interface_, &manager_),
         device_info_(&manager_),
         dhcp_hostname_("chromeos"),
-        mock_home_provider_info_(nullptr),
-        mock_serving_operator_info_(nullptr),
+        mock_mobile_operator_info_(nullptr),
         profile_(new NiceMock<MockProfile>(&manager_)) {
     cellular_service_provider_.set_profile_for_testing(profile_);
   }
@@ -227,15 +226,10 @@ class CellularTest : public testing::Test {
   }
 
   void SetMockMobileOperatorInfoObjects() {
-    mock_home_provider_info_ =
-        new NiceMock<MockMobileOperatorInfo>(&dispatcher_, "HomeProvider");
+    mock_mobile_operator_info_ =
+        new NiceMock<MockMobileOperatorInfo>(&dispatcher_, "Test");
     // Takes ownership.
-    device_->set_home_provider_info_for_testing(mock_home_provider_info_);
-
-    mock_serving_operator_info_ =
-        new NiceMock<MockMobileOperatorInfo>(&dispatcher_, "ServingOperator");
-    // Takes ownership.
-    device_->set_serving_operator_info_for_testing(mock_serving_operator_info_);
+    device_->set_mobile_operator_info_for_testing(mock_mobile_operator_info_);
   }
 
   void InvokeEnable(bool enable, ResultOnceCallback callback, int timeout) {
@@ -565,8 +559,7 @@ class CellularTest : public testing::Test {
   std::unique_ptr<mm1::MockModemProxy> mm1_modem_proxy_;
   std::unique_ptr<mm1::MockModemSignalProxy> mm1_signal_proxy_;
   std::unique_ptr<mm1::MockModemSimpleProxy> mm1_simple_proxy_;
-  MockMobileOperatorInfo* mock_home_provider_info_;
-  MockMobileOperatorInfo* mock_serving_operator_info_;
+  MockMobileOperatorInfo* mock_mobile_operator_info_;
   CellularRefPtr device_;
   MockNetwork* network_ = nullptr;  // owned by |device_|
   CellularServiceProvider cellular_service_provider_{&manager_};
@@ -590,17 +583,17 @@ TEST_F(CellularTest, HomeProviderServingOperator) {
   // Test that the the home provider information is correctly updated under
   // different scenarios w.r.t. information about the mobile network operators.
   SetMockMobileOperatorInfoObjects();
-  CHECK(mock_home_provider_info_);
-  CHECK(mock_serving_operator_info_);
+  CHECK(mock_mobile_operator_info_);
   Stringmap home_provider;
   Stringmap serving_operator;
 
   InitCapability3gppProxies();
 
   // (1) Neither home provider nor serving operator known.
-  EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_,
+              IsServingMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(false));
 
   device_->CreateServices();
@@ -609,21 +602,21 @@ TEST_F(CellularTest, HomeProviderServingOperator) {
   VerifyOperatorMap(home_provider, "", "", "");
   serving_operator = device_->service_->serving_operator();
   VerifyOperatorMap(serving_operator, "", "", "");
-  Mock::VerifyAndClearExpectations(mock_home_provider_info_);
-  Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
+  Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
   device_->DestroyAllServices();
 
   // (2) serving operator known.
   // When home provider is not known, serving operator proxies in.
-  EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_,
+              IsServingMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*mock_serving_operator_info_, mccmnc())
+  EXPECT_CALL(*mock_mobile_operator_info_, serving_mccmnc())
       .WillRepeatedly(ReturnRef(kServingOperatorCode));
-  EXPECT_CALL(*mock_serving_operator_info_, operator_name())
+  EXPECT_CALL(*mock_mobile_operator_info_, serving_operator_name())
       .WillRepeatedly(ReturnRef(kServingOperatorName));
-  EXPECT_CALL(*mock_serving_operator_info_, country())
+  EXPECT_CALL(*mock_mobile_operator_info_, serving_country())
       .WillRepeatedly(ReturnRef(kServingOperatorCountry));
 
   device_->CreateServices();
@@ -634,21 +627,21 @@ TEST_F(CellularTest, HomeProviderServingOperator) {
   serving_operator = device_->service_->serving_operator();
   VerifyOperatorMap(serving_operator, kServingOperatorCode,
                     kServingOperatorName, kServingOperatorCountry);
-  Mock::VerifyAndClearExpectations(mock_home_provider_info_);
-  Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
+  Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
   device_->DestroyAllServices();
 
   // (3) home provider known.
   // When serving operator is not known, home provider proxies in.
-  EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_,
+              IsServingMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(false));
-  EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*mock_home_provider_info_, mccmnc())
+  EXPECT_CALL(*mock_mobile_operator_info_, mccmnc())
       .WillRepeatedly(ReturnRef(kHomeProviderCode));
-  EXPECT_CALL(*mock_home_provider_info_, operator_name())
+  EXPECT_CALL(*mock_mobile_operator_info_, operator_name())
       .WillRepeatedly(ReturnRef(kHomeProviderName));
-  EXPECT_CALL(*mock_home_provider_info_, country())
+  EXPECT_CALL(*mock_mobile_operator_info_, country())
       .WillRepeatedly(ReturnRef(kHomeProviderCountry));
 
   device_->CreateServices();
@@ -659,26 +652,26 @@ TEST_F(CellularTest, HomeProviderServingOperator) {
   serving_operator = device_->service_->serving_operator();
   VerifyOperatorMap(serving_operator, kHomeProviderCode, kHomeProviderName,
                     kHomeProviderCountry);
-  Mock::VerifyAndClearExpectations(mock_home_provider_info_);
-  Mock::VerifyAndClearExpectations(mock_serving_operator_info_);
+  Mock::VerifyAndClearExpectations(mock_mobile_operator_info_);
   device_->DestroyAllServices();
 
   // (4) Serving operator known, home provider known.
-  EXPECT_CALL(*mock_home_provider_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_, IsMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*mock_home_provider_info_, mccmnc())
+  EXPECT_CALL(*mock_mobile_operator_info_, mccmnc())
       .WillRepeatedly(ReturnRef(kHomeProviderCode));
-  EXPECT_CALL(*mock_home_provider_info_, operator_name())
+  EXPECT_CALL(*mock_mobile_operator_info_, operator_name())
       .WillRepeatedly(ReturnRef(kHomeProviderName));
-  EXPECT_CALL(*mock_home_provider_info_, country())
+  EXPECT_CALL(*mock_mobile_operator_info_, country())
       .WillRepeatedly(ReturnRef(kHomeProviderCountry));
-  EXPECT_CALL(*mock_serving_operator_info_, IsMobileNetworkOperatorKnown())
+  EXPECT_CALL(*mock_mobile_operator_info_,
+              IsServingMobileNetworkOperatorKnown())
       .WillRepeatedly(Return(true));
-  EXPECT_CALL(*mock_serving_operator_info_, mccmnc())
+  EXPECT_CALL(*mock_mobile_operator_info_, serving_mccmnc())
       .WillRepeatedly(ReturnRef(kServingOperatorCode));
-  EXPECT_CALL(*mock_serving_operator_info_, operator_name())
+  EXPECT_CALL(*mock_mobile_operator_info_, serving_operator_name())
       .WillRepeatedly(ReturnRef(kServingOperatorName));
-  EXPECT_CALL(*mock_serving_operator_info_, country())
+  EXPECT_CALL(*mock_mobile_operator_info_, serving_country())
       .WillRepeatedly(ReturnRef(kServingOperatorCountry));
 
   device_->CreateServices();
@@ -1933,9 +1926,13 @@ TEST_F(CellularTest, SimpleApnList) {
   mobile_apn.username = kUsername;
   mobile_apn.password = kPassword;
   apn_list.emplace_back(std::move(mobile_apn));
-  FakeMobileOperatorInfo info(&dispatcher_, std::move(apn_list));
 
-  device_->UpdateHomeProvider(&info);
+  FakeMobileOperatorInfo* info =
+      new FakeMobileOperatorInfo(&dispatcher_, std::move(apn_list));
+  // Pass ownership of |info|
+  device_->set_mobile_operator_info_for_testing(info);
+
+  device_->UpdateHomeProvider();
   auto apn_list_prop = device_->apn_list();
   CHECK_EQ(1U, apn_list_prop.size());
   CHECK_EQ(kApn, apn_list_prop[0][kApnProperty]);
@@ -1954,9 +1951,12 @@ TEST_F(CellularTest, ProfilesApnList) {
   MobileOperatorMapper::MobileAPN mobile_apn;
   mobile_apn.apn = kApn2;
   apn_list.emplace_back(std::move(mobile_apn));
-  FakeMobileOperatorInfo info(&dispatcher_, std::move(apn_list));
+  FakeMobileOperatorInfo* info =
+      new FakeMobileOperatorInfo(&dispatcher_, std::move(apn_list));
+  // Pass ownership of |info|
+  device_->set_mobile_operator_info_for_testing(info);
 
-  device_->UpdateHomeProvider(&info);
+  device_->UpdateHomeProvider();
   auto apn_list_prop = device_->apn_list();
   CHECK_EQ(2U, apn_list_prop.size());
   // Profile APNs are likely deployed by the network. They should be tried
@@ -1977,9 +1977,12 @@ TEST_F(CellularTest, MergeProfileAndOperatorApn) {
   mobile_apn.apn = kApn;
   mobile_apn.operator_name_list.push_back({kApnName, ""});
   apn_list.emplace_back(std::move(mobile_apn));
-  FakeMobileOperatorInfo info(&dispatcher_, std::move(apn_list));
+  FakeMobileOperatorInfo* info =
+      new FakeMobileOperatorInfo(&dispatcher_, std::move(apn_list));
+  // Pass ownership of |info|
+  device_->set_mobile_operator_info_for_testing(info);
 
-  device_->UpdateHomeProvider(&info);
+  device_->UpdateHomeProvider();
   auto apn_list_prop = device_->apn_list();
   CHECK_EQ(1U, apn_list_prop.size());
   CHECK_EQ(kApn, apn_list_prop[0][kApnProperty]);
@@ -2000,9 +2003,12 @@ TEST_F(CellularTest, DontMergeProfileAndOperatorApn) {
   mobile_apn.apn = kApn;
   mobile_apn.username = kUsernameFromOperator;
   apn_list.emplace_back(std::move(mobile_apn));
-  FakeMobileOperatorInfo info(&dispatcher_, std::move(apn_list));
+  FakeMobileOperatorInfo* info =
+      new FakeMobileOperatorInfo(&dispatcher_, std::move(apn_list));
+  // Pass ownership of |info|
+  device_->set_mobile_operator_info_for_testing(info);
 
-  device_->UpdateHomeProvider(&info);
+  device_->UpdateHomeProvider();
   auto apn_list_prop = device_->apn_list();
   CHECK_EQ(2U, apn_list_prop.size());
   // As before, profile APNs come first.

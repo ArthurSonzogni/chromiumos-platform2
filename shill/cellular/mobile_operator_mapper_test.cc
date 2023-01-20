@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "shill/cellular/mobile_operator_info.h"
+#include "shill/cellular/mobile_operator_mapper.h"
 
 #include <map>
 #include <memory>
@@ -12,20 +12,21 @@
 
 #include <base/check_op.h>
 #include <base/files/file_path.h>
+#include <base/test/mock_callback.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "shill/cellular/mobile_operator_mapper.h"
 #include "shill/logging.h"
 #include "shill/test_event_dispatcher.h"
 
 using testing::Mock;
+using testing::StrictMock;
 using testing::Test;
 using testing::Values;
 using testing::WithParamInterface;
 
-// The tests run from the fixture |MobileOperatorInfoMainTest| and
-// |MobileOperatorDataTest| can be run in two modes:
+// The tests run from the fixture |MobileOperatorMapperMainTest| and
+// |MobileOperatorMapperDataTest| can be run in two modes:
 //   - strict event checking: We check that an event is raised for each update
 //     to the state of the object.
 //   - non-strict event checking: We check that a single event is raised as a
@@ -59,119 +60,94 @@ base::FilePath GetTestProtoPath(const std::string& file) {
 
 }  // namespace
 
-class MockMobileOperatorInfoObserver : public MobileOperatorInfoObserver {
- public:
-  MockMobileOperatorInfoObserver() = default;
+using MobileOperatorMapperOnOperatorChangedCallbackMock =
+    base::MockRepeatingCallback<void()>;
 
-  MOCK_METHOD(void, OnOperatorChanged, (), (override));
-};
-
-class MobileOperatorInfoInitTest : public Test {
+class MobileOperatorMapperInitTest : public Test {
  public:
-  MobileOperatorInfoInitTest()
-      : operator_info_(new MobileOperatorInfo(&dispatcher_, "Operator")),
-        serving_operator_info_(new MobileOperatorInfo(&dispatcher_, "Serving")),
-        operator_mapper_(operator_info_->impl()) {}
-  MobileOperatorInfoInitTest(const MobileOperatorInfoInitTest&) = delete;
-  MobileOperatorInfoInitTest& operator=(const MobileOperatorInfoInitTest&) =
+  MobileOperatorMapperInitTest()
+      : operator_info_(new MobileOperatorMapper(&dispatcher_, "Operator")) {}
+  MobileOperatorMapperInitTest(const MobileOperatorMapperInitTest&) = delete;
+  MobileOperatorMapperInitTest& operator=(const MobileOperatorMapperInitTest&) =
       delete;
 
  protected:
   bool SetUpDatabase(const std::vector<std::string>& files) {
     operator_info_->ClearDatabasePaths();
-    serving_operator_info_->ClearDatabasePaths();
     for (const auto& file : files) {
       operator_info_->AddDatabasePath(GetTestProtoPath(file));
-      serving_operator_info_->AddDatabasePath(GetTestProtoPath(file));
     }
-    return operator_info_->Init() && serving_operator_info_->Init();
+    return operator_info_->Init(on_operator_changed_cb_.Get());
   }
 
   void AssertDatabaseEmpty() {
-    EXPECT_EQ(0, operator_mapper_->database()->mno_size());
-    EXPECT_EQ(0, operator_mapper_->database()->mvno_size());
+    EXPECT_EQ(0, operator_info_->database()->mno_size());
+    EXPECT_EQ(0, operator_info_->database()->mvno_size());
   }
 
   const shill::mobile_operator_db::MobileOperatorDB* GetDatabase() {
-    return operator_mapper_->database();
+    return operator_info_->database();
   }
 
   EventDispatcherForTest dispatcher_;
-  std::unique_ptr<MobileOperatorInfo> operator_info_;
-  std::unique_ptr<MobileOperatorInfo> serving_operator_info_;
-  // Owned by |operator_info_| and tied to its life cycle.
-  MobileOperatorMapper* operator_mapper_;
+  std::unique_ptr<MobileOperatorMapper> operator_info_;
+  MobileOperatorMapperOnOperatorChangedCallbackMock on_operator_changed_cb_;
 };
 
-TEST_F(MobileOperatorInfoInitTest, FailedInitNoPath) {
+TEST_F(MobileOperatorMapperInitTest, FailedInitNoPath) {
   // - Initialize object with no database paths set
   // - Verify that initialization fails.
   operator_info_->ClearDatabasePaths();
-  EXPECT_FALSE(operator_info_->Init());
+  EXPECT_FALSE(operator_info_->Init(on_operator_changed_cb_.Get()));
   AssertDatabaseEmpty();
 }
 
-TEST_F(MobileOperatorInfoInitTest, FailedInitBadPath) {
+TEST_F(MobileOperatorMapperInitTest, FailedInitBadPath) {
   // - Initialize object with non-existent path.
   // - Verify that initialization fails.
   EXPECT_FALSE(SetUpDatabase({"nonexistent.pbf"}));
   AssertDatabaseEmpty();
 }
 
-TEST_F(MobileOperatorInfoInitTest, FailedInitBadDatabase) {
+TEST_F(MobileOperatorMapperInitTest, FailedInitBadDatabase) {
   // - Initialize object with malformed database.
   // - Verify that initialization fails.
   // TODO(pprabhu): It's hard to get a malformed database in binary format.
 }
 
-TEST_F(MobileOperatorInfoInitTest, EmptyDBInit) {
+TEST_F(MobileOperatorMapperInitTest, EmptyDBInit) {
   // - Initialize the object with a database file that is empty.
   // - Verify that initialization succeeds, and that the database is empty.
   EXPECT_TRUE(SetUpDatabase({"init_test_empty_db_init.pbf"}));
   AssertDatabaseEmpty();
 }
 
-TEST_F(MobileOperatorInfoInitTest, SuccessfulInit) {
+TEST_F(MobileOperatorMapperInitTest, SuccessfulInit) {
   EXPECT_TRUE(SetUpDatabase({"init_test_successful_init.pbf"}));
   EXPECT_GT(GetDatabase()->mno_size(), 0);
   EXPECT_GT(GetDatabase()->mvno_size(), 0);
 }
 
-TEST_F(MobileOperatorInfoInitTest, MultipleDBInit) {
+TEST_F(MobileOperatorMapperInitTest, MultipleDBInit) {
   // - Initialize the object with two database files.
-  // - Verify that intialization succeeds, and both databases are loaded.
+  // - Verify that initialization succeeds, and both databases are loaded.
   EXPECT_TRUE(SetUpDatabase({"init_test_multiple_db_init_1.pbf",
                              "init_test_multiple_db_init_2.pbf"}));
-  EXPECT_TRUE(operator_info_->Init());
+  EXPECT_TRUE(operator_info_->Init(on_operator_changed_cb_.Get()));
   EXPECT_GT(GetDatabase()->mno_size(), 0);
   EXPECT_GT(GetDatabase()->mvno_size(), 0);
 }
 
-TEST_F(MobileOperatorInfoInitTest, InitWithObserver) {
-  // - Add an Observer.
-  // - Initialize the object with empty database file.
-  // - Verify innitialization succeeds.
-  MockMobileOperatorInfoObserver dumb_observer;
-
-  EXPECT_TRUE(SetUpDatabase({"init_test_empty_db_init.pbf"}));
-  operator_info_->AddObserver(&dumb_observer);
-  EXPECT_TRUE(operator_info_->Init());
-}
-
-class MobileOperatorInfoMainTest
-    : public MobileOperatorInfoInitTest,
+class MobileOperatorMapperMainTest
+    : public MobileOperatorMapperInitTest,
       public WithParamInterface<EventCheckingPolicy> {
  public:
-  MobileOperatorInfoMainTest() : event_checking_policy_(GetParam()) {}
-  MobileOperatorInfoMainTest(const MobileOperatorInfoMainTest&) = delete;
-  MobileOperatorInfoMainTest& operator=(const MobileOperatorInfoMainTest&) =
+  MobileOperatorMapperMainTest() : event_checking_policy_(GetParam()) {}
+  MobileOperatorMapperMainTest(const MobileOperatorMapperMainTest&) = delete;
+  MobileOperatorMapperMainTest& operator=(const MobileOperatorMapperMainTest&) =
       delete;
 
-  void SetUp() override {
-    EXPECT_TRUE(SetUpDatabase({"main_test.pbf"}));
-    operator_info_->AddObserver(&observer_);
-    serving_operator_info_->AddObserver(&observer_);
-  }
+  void SetUp() override { EXPECT_TRUE(SetUpDatabase({"main_test.pbf"})); }
 
  protected:
   // ///////////////////////////////////////////////////////////////////////////
@@ -200,17 +176,16 @@ class MobileOperatorInfoMainTest
     if (event_checking_policy_ == kEventCheckingPolicyNonStrict) {
       count = (count > 0) ? 1 : 0;
     }
-    EXPECT_CALL(observer_, OnOperatorChanged()).Times(count);
+    EXPECT_CALL(on_operator_changed_cb_, Run()).Times(count);
   }
 
   void VerifyEventCount() {
     dispatcher_.DispatchPendingEvents();
-    Mock::VerifyAndClearExpectations(&observer_);
+    Mock::VerifyAndClearExpectations(&on_operator_changed_cb_);
   }
 
   void ResetOperatorInfo() {
     operator_info_->Reset();
-    serving_operator_info_->Reset();
     // Eat up any events caused by |Reset|.
     dispatcher_.DispatchPendingEvents();
     VerifyNoMatch();
@@ -259,11 +234,10 @@ class MobileOperatorInfoMainTest
 
   // ///////////////////////////////////////////////////////////////////////////
   // Data.
-  MockMobileOperatorInfoObserver observer_;
   const EventCheckingPolicy event_checking_policy_;
 };
 
-TEST_P(MobileOperatorInfoMainTest, InitialConditions) {
+TEST_P(MobileOperatorMapperMainTest, InitialConditions) {
   // - Initialize a new object.
   // - Verify that all initial values of properties are reasonable.
   EXPECT_FALSE(operator_info_->IsMobileNetworkOperatorKnown());
@@ -280,10 +254,10 @@ TEST_P(MobileOperatorInfoMainTest, InitialConditions) {
   EXPECT_EQ(0, operator_info_->mtu());
 }
 
-TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNC) {
+TEST_P(MobileOperatorMapperMainTest, MNOByMCCMNC) {
   // message: Has an MNO with no MVNO.
   // match by: MCCMNC.
-  // verify: Observer event, uuid.
+  // verify: Callback event, uuid.
 
   ExpectEventCount(0);
   UpdateMCCMNC("101999");  // No match.
@@ -301,17 +275,17 @@ TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNC) {
   VerifyNoMatch();
 }
 
-TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCMultipleMCCMNCOptions) {
+TEST_P(MobileOperatorMapperMainTest, MNOByMCCMNCMultipleMCCMNCOptions) {
   // message: Has an MNO with no MCCMNC.
   // match by: One of the MCCMNCs of the multiple ones in the MNO.
-  // verify: Observer event, uuid.
+  // verify: Callback event, uuid.
   ExpectEventCount(1);
   UpdateMCCMNC("102002");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid102");
 }
 
-TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCMultipleMNOOptions) {
+TEST_P(MobileOperatorMapperMainTest, MNOByMCCMNCMultipleMNOOptions) {
   // message: Two messages with the same MCCMNC.
   // match by: Both MNOs matched, one is earmarked.
   // verify: The earmarked MNO is picked.
@@ -321,10 +295,10 @@ TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCMultipleMNOOptions) {
   VerifyMNOWithUUID("uuid124002");
 }
 
-TEST_P(MobileOperatorInfoMainTest, MNOByOperatorName) {
+TEST_P(MobileOperatorMapperMainTest, MNOByOperatorName) {
   // message: Has an MNO with no MVNO.
   // match by: OperatorName.
-  // verify: Observer event, uuid.
+  // verify: Callback event, uuid.
   ExpectEventCount(0);
   UpdateOperatorName("name103999");  // No match.
   VerifyEventCount();
@@ -341,7 +315,7 @@ TEST_P(MobileOperatorInfoMainTest, MNOByOperatorName) {
   VerifyNoMatch();
 }
 
-TEST_P(MobileOperatorInfoMainTest, MNOByOperatorNameMultipleMNOOptions) {
+TEST_P(MobileOperatorMapperMainTest, MNOByOperatorNameMultipleMNOOptions) {
   // message: Two messages with the same operator name.
   // match by: Both MNOs matched, one is earmarked.
   // verify: The earmarked MNO is picked.
@@ -351,10 +325,10 @@ TEST_P(MobileOperatorInfoMainTest, MNOByOperatorNameMultipleMNOOptions) {
   VerifyMNOWithUUID("uuid125002");
 }
 
-TEST_P(MobileOperatorInfoMainTest, MNOByOperatorNameAggressiveMatch) {
+TEST_P(MobileOperatorMapperMainTest, MNOByOperatorNameAggressiveMatch) {
   // These network operators match by name but only after normalizing the names.
   // Both the name from the database and the name provided to
-  // |UpdateOperatoName| must be normalized for this test to pass.
+  // |UpdateOperatorName| must be normalized for this test to pass.
   ExpectEventCount(1);
   UpdateOperatorName("name126001 casedoesnotmatch");
   VerifyEventCount();
@@ -385,31 +359,31 @@ TEST_P(MobileOperatorInfoMainTest, MNOByOperatorNameAggressiveMatch) {
   VerifyMNOWithUUID("uuid126005");
 }
 
-TEST_P(MobileOperatorInfoMainTest, MNOByOperatorNameWithLang) {
+TEST_P(MobileOperatorMapperMainTest, MNOByOperatorNameWithLang) {
   // message: Has an MNO with no MVNO.
   // match by: OperatorName.
-  // verify: Observer event, fields.
+  // verify: Callback event, fields.
   ExpectEventCount(1);
   UpdateOperatorName("name105");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid105");
 }
 
-TEST_P(MobileOperatorInfoMainTest, MNOByOperatorNameMultipleNameOptions) {
+TEST_P(MobileOperatorMapperMainTest, MNOByOperatorNameMultipleNameOptions) {
   // message: Has an MNO with no MVNO.
   // match by: OperatorName, one of the multiple present in the MNO.
-  // verify: Observer event, fields.
+  // verify: Callback event, fields.
   ExpectEventCount(1);
   UpdateOperatorName("name104002");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid104");
 }
 
-TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCAndOperatorName) {
+TEST_P(MobileOperatorMapperMainTest, MNOByMCCMNCAndOperatorName) {
   // message: Has MNOs with no MVNO.
   // match by: MCCMNC finds two candidates (first one is chosen), Name narrows
   //           down to one.
-  // verify: Observer event, fields.
+  // verify: Callback event, fields.
   // This is merely a MCCMNC update.
   ExpectEventCount(1);
   UpdateMCCMNC("106001");
@@ -429,11 +403,11 @@ TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCAndOperatorName) {
   VerifyMNOWithUUID("uuid106001");
 }
 
-TEST_P(MobileOperatorInfoMainTest, MNOByOperatorNameAndMCCMNC) {
+TEST_P(MobileOperatorMapperMainTest, MNOByOperatorNameAndMCCMNC) {
   // message: Has MNOs with no MVNO.
   // match by: OperatorName finds two (first one is chosen), MCCMNC narrows down
   //           to one.
-  // verify: Observer event, fields.
+  // verify: Callback event, fields.
   // This is merely an OperatorName update.
   ExpectEventCount(1);
   UpdateOperatorName("name107");
@@ -453,7 +427,7 @@ TEST_P(MobileOperatorInfoMainTest, MNOByOperatorNameAndMCCMNC) {
   VerifyMNOWithUUID("uuid107001");
 }
 
-TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCOverridesOperatorName) {
+TEST_P(MobileOperatorMapperMainTest, MNOByMCCMNCOverridesOperatorName) {
   // message: Has MNOs with no MVNO.
   // match by: First MCCMNC finds one. Then, OperatorName matches another.
   // verify: MCCMNC match prevails. No change on OperatorName update.
@@ -499,7 +473,7 @@ TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCOverridesOperatorName) {
   VerifyNoMatch();
 }
 
-TEST_P(MobileOperatorInfoMainTest, MNOByIMSI) {
+TEST_P(MobileOperatorMapperMainTest, MNOByIMSI) {
   // message: Has MNO with no MVNO.
   // match by: MCCMNC part of IMSI of length 5 / 6.
   ExpectEventCount(0);
@@ -527,11 +501,11 @@ TEST_P(MobileOperatorInfoMainTest, MNOByIMSI) {
   VerifyMNOWithUUID("uuid109002");
 }
 
-TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCOverridesIMSI) {
+TEST_P(MobileOperatorMapperMainTest, MNOByMCCMNCOverridesIMSI) {
   // message: Has MNOs with no MVNO.
   // match by: One matches MCCMNC, then one matches a different MCCMNC substring
   //    of IMSI
-  // verify: Observer event for the first match, all fields. Second Update
+  // verify: Callback event for the first match, all fields. Second Update
   // ignored.
   ExpectEventCount(1);
   UpdateMCCMNC("110001");
@@ -544,7 +518,7 @@ TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCOverridesIMSI) {
   VerifyEventCount();
   VerifyMNOWithUUID("uuid110001");
 
-  // MNO remains uncnaged on an invalid IMSI update.
+  // MNO remains unchanged on an invalid IMSI update.
   ExpectEventCount(0);
   UpdateIMSI("1100035432154321");  // Prefix does not match.
   VerifyEventCount();
@@ -569,34 +543,33 @@ TEST_P(MobileOperatorInfoMainTest, MNOByMCCMNCOverridesIMSI) {
   VerifyMNOWithUUID("uuid110001");
 }
 
-TEST_P(MobileOperatorInfoMainTest, MNORoamingFilterMCCMNCMatch) {
+TEST_P(MobileOperatorMapperMainTest, MNORoamingFilterMCCMNCMatch) {
   // This test verifies that the network is identified as Home when roaming on
   // a carrier that matches the roaming filter.
   // message: MNO with a roaming_filter.
   // match by: Serving operator MCCMNC.
+  MobileOperatorMapper serving_operator_info(&dispatcher_, "Serving");
+  MobileOperatorMapperOnOperatorChangedCallbackMock cb;
+  serving_operator_info.Init(cb.Get());
   ExpectEventCount(1);
   UpdateMCCMNC("129001");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid129001");
-  serving_operator_info_->UpdateMCCMNC("128001");  // matches "128[0-6]..?"
-  DispatchPendingEventsIfStrict();
-  operator_info_->UpdateRequiresRoaming(serving_operator_info_.get());
-  EXPECT_TRUE(operator_info_->requires_roaming());
+  serving_operator_info.UpdateMCCMNC("128001");  // matches "128[0-6]..?"
+  EXPECT_TRUE(
+      operator_info_->RequiresRoamingOnOperator(&serving_operator_info));
 
-  ExpectEventCount(1);
-  serving_operator_info_->UpdateMCCMNC("127001");  // no match
-  DispatchPendingEventsIfStrict();
-  operator_info_->UpdateRequiresRoaming(serving_operator_info_.get());
-  VerifyEventCount();
-  EXPECT_FALSE(operator_info_->requires_roaming());
+  serving_operator_info.UpdateMCCMNC("127001");  // no match
+  EXPECT_FALSE(
+      operator_info_->RequiresRoamingOnOperator(&serving_operator_info));
 }
 
-TEST_P(MobileOperatorInfoMainTest, MVNODefaultMatch) {
+TEST_P(MobileOperatorMapperMainTest, MVNODefaultMatch) {
   // message: MNO with one MVNO (no filter).
   // match by: MNO matches by MCCMNC.
-  // verify: Observer event for MVNO match. Uuid match the MVNO.
+  // verify: Callback event for MVNO match. Uuid match the MVNO.
   // second update: ICCID.
-  // verify: No observer event, match remains unchanged.
+  // verify: No callback event, match remains unchanged.
   ExpectEventCount(1);
   UpdateMCCMNC("112001");
   VerifyEventCount();
@@ -608,12 +581,12 @@ TEST_P(MobileOperatorInfoMainTest, MVNODefaultMatch) {
   VerifyMVNOWithUUID("uuid112002");
 }
 
-TEST_P(MobileOperatorInfoMainTest, MVNONameMatch) {
+TEST_P(MobileOperatorMapperMainTest, MVNONameMatch) {
   // message: MNO with one MVNO (name filter).
   // match by: MNO matches by MCCMNC,
   //           MVNO fails to match by fist name update,
   //           then MVNO matches by name.
-  // verify: Two Observer events: MNO followed by MVNO.
+  // verify: Two callback events: MNO followed by MVNO.
   ExpectEventCount(1);
   UpdateMCCMNC("113001");
   VerifyEventCount();
@@ -633,7 +606,7 @@ TEST_P(MobileOperatorInfoMainTest, MVNONameMatch) {
   EXPECT_EQ("name113002", operator_info_->operator_name());
 }
 
-TEST_P(MobileOperatorInfoMainTest, MVNONameMalformedRegexMatch) {
+TEST_P(MobileOperatorMapperMainTest, MVNONameMalformedRegexMatch) {
   // message: MNO with one MVNO (name filter with a malformed regex).
   // match by: MNO matches by MCCMNC.
   //           MVNO does not match
@@ -644,7 +617,7 @@ TEST_P(MobileOperatorInfoMainTest, MVNONameMalformedRegexMatch) {
   VerifyMNOWithUUID("uuid114001");
 }
 
-TEST_P(MobileOperatorInfoMainTest, MVNONameSubexpressionRegexMatch) {
+TEST_P(MobileOperatorMapperMainTest, MVNONameSubexpressionRegexMatch) {
   // message: MNO with one MVNO (name filter with simple regex).
   // match by: MNO matches by MCCMNC.
   //           MVNO does not match with a name whose subexpression matches the
@@ -684,7 +657,7 @@ TEST_P(MobileOperatorInfoMainTest, MVNONameSubexpressionRegexMatch) {
   VerifyMVNOWithUUID("uuid115002");
 }
 
-TEST_P(MobileOperatorInfoMainTest, MVNONameRegexMatch) {
+TEST_P(MobileOperatorMapperMainTest, MVNONameRegexMatch) {
   // message: MNO with one MVNO (name filter with non-trivial regex).
   // match by: MNO matches by MCCMNC.
   //           MVNO fails to match several times with different strings.
@@ -734,7 +707,7 @@ TEST_P(MobileOperatorInfoMainTest, MVNONameRegexMatch) {
   VerifyMVNOWithUUID("uuid116002");
 }
 
-TEST_P(MobileOperatorInfoMainTest, MVNONameMatchMultipleFilters) {
+TEST_P(MobileOperatorMapperMainTest, MVNONameMatchMultipleFilters) {
   // message: MNO with one MVNO with two name filters.
   // match by: MNO matches by MCCMNC.
   //           MVNO first fails on the second filter alone.
@@ -768,12 +741,12 @@ TEST_P(MobileOperatorInfoMainTest, MVNONameMatchMultipleFilters) {
   VerifyMVNOWithUUID("uuid117002");
 }
 
-TEST_P(MobileOperatorInfoMainTest, MVNOIMSIMatch) {
+TEST_P(MobileOperatorMapperMainTest, MVNOIMSIMatch) {
   // message: MNO with one MVNO (imsi filter).
   // match by: MNO matches by MCCMNC,
   //           MVNO fails to match by fist imsi update,
   //           then MVNO matches by imsi.
-  // verify: Two Observer events: MNO followed by MVNO.
+  // verify: Two Callback events: MNO followed by MVNO.
   //         the MVNO database operator name has higher priority
   //         than the MNO name returned by the SIM.
   ExpectEventCount(2);
@@ -795,13 +768,13 @@ TEST_P(MobileOperatorInfoMainTest, MVNOIMSIMatch) {
   EXPECT_EQ("name118002", operator_info_->operator_name());
 }
 
-TEST_P(MobileOperatorInfoMainTest, MVNOIMSIMatchByRange) {
+TEST_P(MobileOperatorMapperMainTest, MVNOIMSIMatchByRange) {
   // message: MNO with one MVNO (IMSI filter with 2 numerical ranges).
   // match by: MNO matches by MCCMNC,
   //           MVNO fails to match by first IMSI update,
   //           then MVNO matches in the first IMSI,
   //           then alternately put IMSI inside and outside the ranges.
-  // verify: Observer events: alternately MNO when no match,
+  // verify: Callback events: alternately MNO when no match,
   //                          then MVNO when match.
   ExpectEventCount(1);
   UpdateMCCMNC("128001");
@@ -849,12 +822,12 @@ TEST_P(MobileOperatorInfoMainTest, MVNOIMSIMatchByRange) {
   VerifyMVNOWithUUID("uuid128002");
 }
 
-TEST_P(MobileOperatorInfoMainTest, MVNOICCIDMatch) {
+TEST_P(MobileOperatorMapperMainTest, MVNOICCIDMatch) {
   // message: MNO with one MVNO (iccid filter).
   // match by: MNO matches by MCCMNC,
   //           MVNO fails to match by fist iccid update,
   //           then MVNO matches by iccid.
-  // verify: Two Observer events: MNO followed by MVNO.
+  // verify: Two Callback events: MNO followed by MVNO.
   ExpectEventCount(1);
   UpdateMCCMNC("119001");
   VerifyEventCount();
@@ -871,12 +844,12 @@ TEST_P(MobileOperatorInfoMainTest, MVNOICCIDMatch) {
   VerifyMVNOWithUUID("uuid119002");
 }
 
-TEST_P(MobileOperatorInfoMainTest, InternationalMVNOMatch) {
+TEST_P(MobileOperatorMapperMainTest, InternationalMVNOMatch) {
   // message: international MVNO (imsi filter).
   // match by: MNO matches by MCCMNC,
   //           MVNO matches by IMSI after first IMSI update,
   //           MVNO matches again after MCCMNC change.
-  // verify: Three Observer events: MNO followed by MVNO twice.
+  // verify: Three Callback events: MNO followed by MVNO twice.
   ExpectEventCount(1);
   UpdateMCCMNC("127001");
   VerifyEventCount();
@@ -893,7 +866,7 @@ TEST_P(MobileOperatorInfoMainTest, InternationalMVNOMatch) {
   VerifyMVNOWithUUID("uuid127001-mvno");
 }
 
-TEST_P(MobileOperatorInfoMainTest, MVNOAllMatch) {
+TEST_P(MobileOperatorMapperMainTest, MVNOAllMatch) {
   // message: MNO with following MVNOS:
   //   - one with no filter.
   //   - one with name filter.
@@ -941,7 +914,7 @@ TEST_P(MobileOperatorInfoMainTest, MVNOAllMatch) {
   VerifyMVNOWithUUID("uuid121006");
 }
 
-TEST_P(MobileOperatorInfoMainTest, MVNOMatchAndMismatch) {
+TEST_P(MobileOperatorMapperMainTest, MVNOMatchAndMismatch) {
   // message: MNO with one MVNO with name filter.
   // match by: MNO matches by MCCMNC
   //           MVNO matches by name.
@@ -965,11 +938,11 @@ TEST_P(MobileOperatorInfoMainTest, MVNOMatchAndMismatch) {
   EXPECT_EQ("name113999", operator_info_->operator_name());
 }
 
-TEST_P(MobileOperatorInfoMainTest, MVNOMatchAndReset) {
+TEST_P(MobileOperatorMapperMainTest, MVNOMatchAndReset) {
   // message: MVNO with name filter.
   // verify;
   //   - match MVNO by name.
-  //   - Reset object, verify Observer event, and not match.
+  //   - Reset object, verify Callback event, and not match.
   //   - match MVNO by name again.
   ExpectEventCount(1);
   UpdateMCCMNC("113001");
@@ -997,7 +970,7 @@ TEST_P(MobileOperatorInfoMainTest, MVNOMatchAndReset) {
   EXPECT_EQ("name113002", operator_info_->operator_name());
 }
 
-TEST_P(MobileOperatorInfoMainTest, APNFilter) {
+TEST_P(MobileOperatorMapperMainTest, APNFilter) {
   // This test verifies that APNs can be filtered
   // message: MNO with a apn_filters.
   // match by: IMSI.
@@ -1029,26 +1002,22 @@ TEST_P(MobileOperatorInfoMainTest, APNFilter) {
   EXPECT_STREQ(operator_info_->apn_list()[0].apn.c_str(), "apn_regex");
 }
 
-class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
+class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
  public:
-  MobileOperatorInfoDataTest() = default;
-  MobileOperatorInfoDataTest(const MobileOperatorInfoDataTest&) = delete;
-  MobileOperatorInfoDataTest& operator=(const MobileOperatorInfoDataTest&) =
+  MobileOperatorMapperDataTest() = default;
+  MobileOperatorMapperDataTest(const MobileOperatorMapperDataTest&) = delete;
+  MobileOperatorMapperDataTest& operator=(const MobileOperatorMapperDataTest&) =
       delete;
 
-  // Same as MobileOperatorInfoMainTest, except that the database used is
+  // Same as MobileOperatorMapperMainTest, except that the database used is
   // different.
-  void SetUp() override {
-    EXPECT_TRUE(SetUpDatabase({"data_test.pbf"}));
-    operator_info_->AddObserver(&observer_);
-    serving_operator_info_->AddObserver(&observer_);
-  }
+  void SetUp() override { EXPECT_TRUE(SetUpDatabase({"data_test.pbf"})); }
 
  protected:
   // This is a function that does a best effort verification of the information
-  // that is obtained from the database by the MobileOperatorInfo object against
-  // expectations stored in the form of data members in this class.
-  // This is not a full proof check. In particular:
+  // that is obtained from the database by the MobileOperatorMapper object
+  // against expectations stored in the form of data members in this class. This
+  // is not a full proof check. In particular:
   //  - It is unspecified in some case which of the values from a list is
   //    exposed as a property.
   //  - It is not robust to use "" as property values at times.
@@ -1095,7 +1064,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
     }
   }
 
-  // Use this function to pre-popluate all the data members of this object with
+  // Use this function to pre-populate all the data members of this object with
   // values matching the MNO for the database in |data_test.prototxt|.
   void PopulateMNOData() {
     country_ = "us";
@@ -1119,7 +1088,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
   }
 
   // Use this function to pre-populate all the data members of this object with
-  // values matching the MVNO for the database in |data_test.prototext|.
+  // values matching the MVNO for the database in |data_test.prototxt|.
   void PopulateMVNOData() {
     country_ = "ca";
     requires_roaming_ = false;
@@ -1151,7 +1120,7 @@ class MobileOperatorInfoDataTest : public MobileOperatorInfoMainTest {
   std::vector<MobileOperatorMapper::OnlinePortal> olp_list_;
 };
 
-TEST_P(MobileOperatorInfoDataTest, MNODetailedInformation) {
+TEST_P(MobileOperatorMapperDataTest, MNODetailedInformation) {
   // message: MNO with all the information filled in.
   // match by: MNO matches by MCCMNC
   // verify: All information is correctly loaded.
@@ -1164,7 +1133,7 @@ TEST_P(MobileOperatorInfoDataTest, MNODetailedInformation) {
   VerifyDatabaseData();
 }
 
-TEST_P(MobileOperatorInfoDataTest, MVNOInheritsInformation) {
+TEST_P(MobileOperatorMapperDataTest, MVNOInheritsInformation) {
   // message: MVNO with name filter.
   // verify: All the missing fields are carried over to the MVNO from MNO.
   ExpectEventCount(2);
@@ -1177,7 +1146,7 @@ TEST_P(MobileOperatorInfoDataTest, MVNOInheritsInformation) {
   VerifyDatabaseData();
 }
 
-TEST_P(MobileOperatorInfoDataTest, MVNOOverridesInformation) {
+TEST_P(MobileOperatorMapperDataTest, MVNOOverridesInformation) {
   // match by: MNO matches by MCCMNC, MVNO by name.
   // verify: All information is correctly loaded.
   //         The MVNO in this case overrides the information provided by MNO.
@@ -1191,7 +1160,7 @@ TEST_P(MobileOperatorInfoDataTest, MVNOOverridesInformation) {
   VerifyDatabaseData();
 }
 
-TEST_P(MobileOperatorInfoDataTest, NoUpdatesBeforeMNOMatch) {
+TEST_P(MobileOperatorMapperDataTest, NoUpdatesBeforeMNOMatch) {
   // message: MVNO.
   // - do not match MNO with mccmnc/name
   // - on different updates, verify no events.
@@ -1203,7 +1172,7 @@ TEST_P(MobileOperatorInfoDataTest, NoUpdatesBeforeMNOMatch) {
   VerifyNoMatch();
 }
 
-TEST_P(MobileOperatorInfoDataTest, UserUpdatesOverrideMVNO) {
+TEST_P(MobileOperatorMapperDataTest, UserUpdatesOverrideMVNO) {
   // - match MVNO.
   // - send updates to properties and verify events are raised and values of
   //   updated properties override the ones provided by the database.
@@ -1237,7 +1206,7 @@ TEST_P(MobileOperatorInfoDataTest, UserUpdatesOverrideMVNO) {
   VerifyDatabaseData();
 }
 
-TEST_P(MobileOperatorInfoDataTest, RedundantUserUpdatesMVNO) {
+TEST_P(MobileOperatorMapperDataTest, RedundantUserUpdatesMVNO) {
   // - match MVNO.
   // - send redundant updates to properties.
   // - Verify no events, no updates to properties.
@@ -1264,7 +1233,7 @@ TEST_P(MobileOperatorInfoDataTest, RedundantUserUpdatesMVNO) {
   VerifyDatabaseData();
 }
 
-TEST_P(MobileOperatorInfoDataTest, RedundantCachedUpdatesMVNO) {
+TEST_P(MobileOperatorMapperDataTest, RedundantCachedUpdatesMVNO) {
   // message: MVNO.
   // - First send updates that don't identify MVNO, but match the data.
   // - Then idenityf an MNO and MVNO.
@@ -1286,7 +1255,7 @@ TEST_P(MobileOperatorInfoDataTest, RedundantCachedUpdatesMVNO) {
   VerifyDatabaseData();
 }
 
-TEST_P(MobileOperatorInfoDataTest, ResetClearsInformation) {
+TEST_P(MobileOperatorMapperDataTest, ResetClearsInformation) {
   // Repeatedly reset the object and check M[V]NO identification and data.
   ExpectEventCount(2);
   UpdateMCCMNC("200001");
@@ -1322,7 +1291,7 @@ TEST_P(MobileOperatorInfoDataTest, ResetClearsInformation) {
   VerifyDatabaseData();
 }
 
-TEST_P(MobileOperatorInfoDataTest, FilteredOLP) {
+TEST_P(MobileOperatorMapperDataTest, FilteredOLP) {
   // We only check basic filter matching, using the fact that the regex matching
   // code is shared with the MVNO filtering, and is already well tested.
   // (1) None of the filters match.
@@ -1354,118 +1323,45 @@ TEST_P(MobileOperatorInfoDataTest, FilteredOLP) {
   EXPECT_TRUE(found_olp_by_mccmnc);
 }
 
-class MobileOperatorInfoObserverTest : public MobileOperatorInfoMainTest {
+class MobileOperatorMapperObserverTest : public MobileOperatorMapperMainTest {
  public:
-  MobileOperatorInfoObserverTest() = default;
-  MobileOperatorInfoObserverTest(const MobileOperatorInfoObserverTest&) =
+  MobileOperatorMapperObserverTest() = default;
+  MobileOperatorMapperObserverTest(const MobileOperatorMapperObserverTest&) =
       delete;
-  MobileOperatorInfoObserverTest& operator=(
-      const MobileOperatorInfoObserverTest&) = delete;
+  MobileOperatorMapperObserverTest& operator=(
+      const MobileOperatorMapperObserverTest&) = delete;
 
-  // Same as |MobileOperatorInfoMainTest::SetUp|, except that we don't add a
+  // Same as |MobileOperatorMapperMainTest::SetUp|, except that we don't add a
   // default observer.
   void SetUp() override { EXPECT_TRUE(SetUpDatabase({"data_test.pbf"})); }
-
- protected:
-  // ///////////////////////////////////////////////////////////////////////////
-  // Data.
-  MockMobileOperatorInfoObserver second_observer_;
 };
 
-TEST_P(MobileOperatorInfoObserverTest, NoObserver) {
-  // - Don't add any observers, and then cause an MVNO update to occur.
-  // - Verify no crash.
-  UpdateMCCMNC("200001");
-  UpdateOperatorName("name200101");
-}
-
-TEST_P(MobileOperatorInfoObserverTest, MultipleObservers) {
-  // - Add two observers, and then cause an MVNO update to occur.
-  // - Verify both observers are notified.
-  operator_info_->AddObserver(&observer_);
-  operator_info_->AddObserver(&second_observer_);
-
-  EXPECT_CALL(observer_, OnOperatorChanged()).Times(2);
-  EXPECT_CALL(second_observer_, OnOperatorChanged()).Times(2);
-  UpdateMCCMNC("200001");
-  UpdateOperatorName("name200101");
-  VerifyMVNOWithUUID("uuid200101");
-
-  dispatcher_.DispatchPendingEvents();
-}
-
-TEST_P(MobileOperatorInfoObserverTest, LateObserver) {
-  // - Add one observer, and verify it gets an MVNO update.
-  operator_info_->AddObserver(&observer_);
-
-  EXPECT_CALL(observer_, OnOperatorChanged()).Times(2);
-  EXPECT_CALL(second_observer_, OnOperatorChanged()).Times(0);
+TEST_P(MobileOperatorMapperObserverTest, OnOperatorChangedCallback) {
+  // - Verify the callback gets an MVNO update.
+  EXPECT_CALL(on_operator_changed_cb_, Run()).Times(2);
   UpdateMCCMNC("200001");
   UpdateOperatorName("name200101");
   VerifyMVNOWithUUID("uuid200101");
   dispatcher_.DispatchPendingEvents();
-  Mock::VerifyAndClearExpectations(&observer_);
-  Mock::VerifyAndClearExpectations(&second_observer_);
+  Mock::VerifyAndClearExpectations(&on_operator_changed_cb_);
 
-  EXPECT_CALL(observer_, OnOperatorChanged()).Times(1);
-  EXPECT_CALL(second_observer_, OnOperatorChanged()).Times(0);
+  EXPECT_CALL(on_operator_changed_cb_, Run()).Times(1);
   operator_info_->Reset();
   VerifyNoMatch();
   dispatcher_.DispatchPendingEvents();
-  Mock::VerifyAndClearExpectations(&observer_);
-  Mock::VerifyAndClearExpectations(&second_observer_);
-
-  // - Add another observer, verify both get an MVNO update.
-  operator_info_->AddObserver(&second_observer_);
-
-  EXPECT_CALL(observer_, OnOperatorChanged()).Times(2);
-  EXPECT_CALL(second_observer_, OnOperatorChanged()).Times(2);
-  UpdateMCCMNC("200001");
-  UpdateOperatorName("name200101");
-  VerifyMVNOWithUUID("uuid200101");
-  dispatcher_.DispatchPendingEvents();
-  Mock::VerifyAndClearExpectations(&observer_);
-  Mock::VerifyAndClearExpectations(&second_observer_);
-
-  EXPECT_CALL(observer_, OnOperatorChanged()).Times(1);
-  EXPECT_CALL(second_observer_, OnOperatorChanged()).Times(1);
-  operator_info_->Reset();
-  VerifyNoMatch();
-  dispatcher_.DispatchPendingEvents();
-  Mock::VerifyAndClearExpectations(&observer_);
-  Mock::VerifyAndClearExpectations(&second_observer_);
-
-  // - Remove an observer, verify it no longer gets updates.
-  operator_info_->RemoveObserver(&observer_);
-
-  EXPECT_CALL(observer_, OnOperatorChanged()).Times(0);
-  EXPECT_CALL(second_observer_, OnOperatorChanged()).Times(2);
-  UpdateMCCMNC("200001");
-  UpdateOperatorName("name200101");
-  VerifyMVNOWithUUID("uuid200101");
-  dispatcher_.DispatchPendingEvents();
-  Mock::VerifyAndClearExpectations(&observer_);
-  Mock::VerifyAndClearExpectations(&second_observer_);
-
-  EXPECT_CALL(observer_, OnOperatorChanged()).Times(0);
-  EXPECT_CALL(second_observer_, OnOperatorChanged()).Times(1);
-  operator_info_->Reset();
-  VerifyNoMatch();
-  dispatcher_.DispatchPendingEvents();
-  Mock::VerifyAndClearExpectations(&observer_);
-  Mock::VerifyAndClearExpectations(&second_observer_);
+  Mock::VerifyAndClearExpectations(&on_operator_changed_cb_);
 }
 
-INSTANTIATE_TEST_SUITE_P(MobileOperatorInfoMainTestInstance,
-                         MobileOperatorInfoMainTest,
+INSTANTIATE_TEST_SUITE_P(MobileOperatorMapperMainTestInstance,
+                         MobileOperatorMapperMainTest,
                          Values(kEventCheckingPolicyStrict,
                                 kEventCheckingPolicyNonStrict));
-INSTANTIATE_TEST_SUITE_P(MobileOperatorInfoDataTestInstance,
-                         MobileOperatorInfoDataTest,
+INSTANTIATE_TEST_SUITE_P(MobileOperatorMapperDataTestInstance,
+                         MobileOperatorMapperDataTest,
                          Values(kEventCheckingPolicyStrict,
                                 kEventCheckingPolicyNonStrict));
 // It only makes sense to do strict checking here.
-INSTANTIATE_TEST_SUITE_P(MobileOperatorInfoObserverTestInstance,
-                         MobileOperatorInfoObserverTest,
+INSTANTIATE_TEST_SUITE_P(MobileOperatorMapperObserverTestInstance,
+                         MobileOperatorMapperObserverTest,
                          Values(kEventCheckingPolicyStrict));
 }  // namespace shill

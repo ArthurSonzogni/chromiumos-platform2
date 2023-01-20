@@ -19,6 +19,7 @@
 #include <google/protobuf/repeated_field.h>
 #include <re2/re2.h>
 
+#include "base/functional/bind.h"
 #include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/protobuf_lite_streams.h"
@@ -29,12 +30,6 @@ namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kCellular;
 }  // namespace Logging
 
-// static
-const char MobileOperatorMapper::kDefaultDatabasePath[] =
-    "/usr/share/shill/serviceproviders.pbf";
-// The exclusive-override db can be used to replace the default modb.
-const char MobileOperatorMapper::kExclusiveOverrideDatabasePath[] =
-    "/var/cache/shill/serviceproviders-exclusive-override.pbf";
 const int MobileOperatorMapper::kMCCMNCMinLen = 5;
 
 namespace {
@@ -102,11 +97,12 @@ std::set<std::string> GetApnTypes(
 
 }  // namespace
 
-MobileOperatorMapper::MobileOperatorMapper(
-    EventDispatcher* dispatcher,
-    const std::string& info_owner,
-    const base::FilePath& default_db_path,
-    const base::FilePath& exclusive_override_db_path)
+std::string MobileOperatorMapper::GetLogPrefix(const char* func) const {
+  return info_owner_ + ": " + func;
+}
+
+MobileOperatorMapper::MobileOperatorMapper(EventDispatcher* dispatcher,
+                                           const std::string& info_owner)
     : dispatcher_(dispatcher),
       info_owner_(info_owner),
       operator_code_type_(OperatorCodeType::kUnknown),
@@ -115,33 +111,27 @@ MobileOperatorMapper::MobileOperatorMapper(
       requires_roaming_(false),
       mtu_(IPConfig::kUndefinedMTU),
       user_olp_empty_(true),
-      weak_ptr_factory_(this) {
-  if (base::PathExists(exclusive_override_db_path))
-    AddDatabasePath(exclusive_override_db_path);
-  else
-    AddDatabasePath(default_db_path);
+      weak_ptr_factory_(this) {}
+
+MobileOperatorMapper::~MobileOperatorMapper() {
+  on_operator_changed_cb_.Cancel();
 }
 
-MobileOperatorMapper::MobileOperatorMapper(EventDispatcher* dispatcher,
-                                           const std::string& info_owner)
-    : MobileOperatorMapper::MobileOperatorMapper(
-          dispatcher,
-          info_owner,
-          base::FilePath(kDefaultDatabasePath),
-          base::FilePath(kExclusiveOverrideDatabasePath)) {}
-
-MobileOperatorMapper::~MobileOperatorMapper() = default;
-
 void MobileOperatorMapper::ClearDatabasePaths() {
+  SLOG(3) << GetLogPrefix(__func__);
   database_paths_.clear();
 }
 
 void MobileOperatorMapper::AddDatabasePath(
     const base::FilePath& absolute_path) {
+  SLOG(3) << GetLogPrefix(__func__);
   database_paths_.push_back(absolute_path);
 }
 
-bool MobileOperatorMapper::Init() {
+bool MobileOperatorMapper::Init(
+    MobileOperatorMapperOnOperatorChangedCallback cb) {
+  SLOG(3) << GetLogPrefix(__func__);
+  on_operator_changed_cb_.Reset(cb);
   // |database_| is guaranteed to be set once |Init| is called.
   database_.reset(new shill::mobile_operator_db::MobileOperatorDB());
 
@@ -182,79 +172,116 @@ bool MobileOperatorMapper::Init() {
   return true;
 }
 
-void MobileOperatorMapper::AddObserver(MobileOperatorInfoObserver* observer) {
-  observers_.AddObserver(observer);
-}
-
-void MobileOperatorMapper::RemoveObserver(
-    MobileOperatorInfoObserver* observer) {
-  observers_.RemoveObserver(observer);
-}
-
 bool MobileOperatorMapper::IsMobileNetworkOperatorKnown() const {
-  return (current_mno_ != nullptr);
+  bool result = (current_mno_ != nullptr);
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  return result;
 }
 
 bool MobileOperatorMapper::IsMobileVirtualNetworkOperatorKnown() const {
-  return (current_mvno_ != nullptr);
+  bool result = (current_mvno_ != nullptr);
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << result << "]";
+  return result;
 }
 
 // ///////////////////////////////////////////////////////////////////////////
 // Getters.
-const std::string& MobileOperatorMapper::info_owner() const {
-  return info_owner_;
-}
-
 const std::string& MobileOperatorMapper::uuid() const {
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << uuid_ << "]";
   return uuid_;
 }
 
 const std::string& MobileOperatorMapper::operator_name() const {
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << operator_name_ << "]";
   return operator_name_;
 }
 
 const std::string& MobileOperatorMapper::country() const {
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << country_ << "]";
   return country_;
 }
 
 const std::string& MobileOperatorMapper::mccmnc() const {
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << mccmnc_ << "]";
   return mccmnc_;
 }
 
 const std::string& MobileOperatorMapper::gid1() const {
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << gid1_ << "]";
   return gid1_;
 }
 
 const std::vector<std::string>& MobileOperatorMapper::mccmnc_list() const {
+  if (SLOG_IS_ON(Cellular, 3)) {
+    std::stringstream pp_result;
+    for (const auto& mccmnc : mccmnc_list_) {
+      pp_result << mccmnc << " ";
+    }
+    SLOG(3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str() << "]";
+  }
   return mccmnc_list_;
 }
 
 const std::vector<MobileOperatorMapper::LocalizedName>&
 MobileOperatorMapper::operator_name_list() const {
+  if (SLOG_IS_ON(Cellular, 3)) {
+    std::stringstream pp_result;
+    for (const auto& operator_name : operator_name_list_) {
+      pp_result << "(" << operator_name.name << ", " << operator_name.language
+                << ") ";
+    }
+    SLOG(3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str() << "]";
+  }
   return operator_name_list_;
 }
 
 const std::vector<MobileOperatorMapper::MobileAPN>&
 MobileOperatorMapper::apn_list() const {
+  if (SLOG_IS_ON(Cellular, 3)) {
+    std::stringstream pp_result;
+    for (const auto& mobile_apn : apn_list_) {
+      pp_result << "(apn: " << mobile_apn.apn
+                << ", username: " << mobile_apn.username
+                << ", password: " << mobile_apn.password;
+      pp_result << ", operator_name_list: '";
+      for (const auto& operator_name : mobile_apn.operator_name_list) {
+        pp_result << "(" << operator_name.name << ", " << operator_name.language
+                  << ") ";
+      }
+      pp_result << "') ";
+    }
+    SLOG(3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str() << "]";
+  }
   return apn_list_;
 }
 
 const std::vector<MobileOperatorMapper::OnlinePortal>&
 MobileOperatorMapper::olp_list() const {
+  if (SLOG_IS_ON(Cellular, 3)) {
+    std::stringstream pp_result;
+    for (const auto& olp : olp_list_) {
+      pp_result << "(url: " << olp.url << ", method: " << olp.method
+                << ", post_data: " << olp.post_data << ") ";
+    }
+    SLOG(3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str() << "]";
+  }
   return olp_list_;
 }
 
 bool MobileOperatorMapper::requires_roaming() const {
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << requires_roaming_ << "]";
   return requires_roaming_;
 }
 
 int32_t MobileOperatorMapper::mtu() const {
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << mtu_ << "]";
   return mtu_;
 }
 
 // ///////////////////////////////////////////////////////////////////////////
 // Functions used to notify this object of operator data changes.
 void MobileOperatorMapper::UpdateIMSI(const std::string& imsi) {
+  SLOG(3) << GetLogPrefix(__func__) << "(" << imsi << ")";
   bool operator_changed = false;
   if (user_imsi_ == imsi) {
     return;
@@ -294,6 +321,7 @@ void MobileOperatorMapper::UpdateIMSI(const std::string& imsi) {
 }
 
 void MobileOperatorMapper::UpdateICCID(const std::string& iccid) {
+  SLOG(3) << GetLogPrefix(__func__) << "(" << iccid << ")";
   if (user_iccid_ == iccid) {
     return;
   }
@@ -312,6 +340,7 @@ void MobileOperatorMapper::UpdateICCID(const std::string& iccid) {
 }
 
 void MobileOperatorMapper::UpdateMCCMNC(const std::string& mccmnc) {
+  SLOG(3) << GetLogPrefix(__func__) << "(" << mccmnc << ")";
   if (user_mccmnc_ == mccmnc) {
     return;
   }
@@ -339,6 +368,7 @@ void MobileOperatorMapper::UpdateMCCMNC(const std::string& mccmnc) {
 
 void MobileOperatorMapper::UpdateOperatorName(
     const std::string& operator_name) {
+  SLOG(3) << GetLogPrefix(__func__) << "(" << operator_name << ")";
   bool operator_changed = false;
   if (user_operator_name_ == operator_name) {
     return;
@@ -377,6 +407,7 @@ void MobileOperatorMapper::UpdateOperatorName(
 }
 
 void MobileOperatorMapper::UpdateGID1(const std::string& gid1) {
+  SLOG(3) << GetLogPrefix(__func__) << "(" << gid1 << ")";
   if (user_gid1_ == gid1) {
     return;
   }
@@ -399,6 +430,8 @@ void MobileOperatorMapper::UpdateGID1(const std::string& gid1) {
 void MobileOperatorMapper::UpdateOnlinePortal(const std::string& url,
                                               const std::string& method,
                                               const std::string& post_data) {
+  SLOG(3) << GetLogPrefix(__func__) << "(" << url << ", " << method << ", "
+          << post_data << ")";
   if (!user_olp_empty_ && user_olp_.url == url && user_olp_.method == method &&
       user_olp_.post_data == post_data) {
     return;
@@ -418,7 +451,7 @@ void MobileOperatorMapper::UpdateOnlinePortal(const std::string& url,
 }
 
 void MobileOperatorMapper::Reset() {
-  SLOG(1) << __func__;
+  SLOG(1) << GetLogPrefix(__func__);
   bool should_notify = current_mno_ != nullptr || current_mvno_ != nullptr;
 
   current_mno_ = nullptr;
@@ -485,6 +518,7 @@ bool MobileOperatorMapper::AppendToCandidatesByMCCMNC(
   operator_code_type_ = OperatorCodeType::kMCCMNC;
   StringToMNOListMap::const_iterator cit = mccmnc_to_mnos_.find(mccmnc);
   if (cit == mccmnc_to_mnos_.end()) {
+    LOG(WARNING) << "Unknown MCCMNC value [" << mccmnc << "].";
     return false;
   }
 
@@ -641,7 +675,8 @@ MobileOperatorMapper::PickOneFromDuplicates(
 }
 
 bool MobileOperatorMapper::FilterMatches(
-    const shill::mobile_operator_db::Filter& filter, std::string to_match) {
+    const shill::mobile_operator_db::Filter& filter,
+    std::string to_match) const {
   DCHECK(filter.has_regex() || filter.has_exclude_regex() ||
          filter.range_size());
   if (to_match.empty()) {
@@ -952,29 +987,6 @@ void MobileOperatorMapper::HandleAPNListUpdate() {
   }
 }
 
-// When serving operator updates, filter it using |roaming_filter_list_|
-// to decide if |requires_roaming_| is true or false.
-void MobileOperatorMapper::UpdateRequiresRoaming(
-    const MobileOperatorMapper* serving_operator_info) {
-  if (!serving_operator_info || serving_operator_info->mccmnc().empty())
-    return;
-  for (const auto& filter : roaming_filter_list_) {
-    if (filter.type() != mobile_operator_db::Filter_Type_MCCMNC ||
-        (!filter.has_regex() && !filter.has_exclude_regex())) {
-      continue;
-    }
-
-    requires_roaming_ = FilterMatches(filter, serving_operator_info->mccmnc());
-    if (requires_roaming_) {
-      SLOG(1) << "requires_roaming is updated to true due to roaming filtering";
-      break;
-    }
-    SLOG(2) << "Serving operator MCCMNC: " << serving_operator_info->mccmnc()
-            << " filtering regex: " << filter.regex()
-            << " results, requires_roaming: " << requires_roaming_;
-  }
-}
-
 void MobileOperatorMapper::PostNotifyOperatorChanged() {
   SLOG(3) << __func__;
   // If there was an outstanding task, it will get replaced.
@@ -985,8 +997,9 @@ void MobileOperatorMapper::PostNotifyOperatorChanged() {
 }
 
 void MobileOperatorMapper::NotifyOperatorChanged() {
-  for (auto& observer : observers_)
-    observer.OnOperatorChanged();
+  if (!on_operator_changed_cb_.IsCancelled()) {
+    on_operator_changed_cb_.callback().Run();
+  }
 }
 
 bool MobileOperatorMapper::ShouldNotifyPropertyUpdate() const {
@@ -999,6 +1012,30 @@ std::string MobileOperatorMapper::NormalizeOperatorName(
   auto result = base::ToLowerASCII(name);
   base::RemoveChars(result, base::kWhitespaceASCII, &result);
   return result;
+}
+
+bool MobileOperatorMapper::RequiresRoamingOnOperator(
+    const MobileOperatorMapper* serving_operator) const {
+  if (!serving_operator || serving_operator->mccmnc().empty())
+    return false;
+
+  for (const auto& filter : roaming_filter_list_) {
+    if (filter.type() != mobile_operator_db::Filter_Type_MCCMNC ||
+        (!filter.has_regex() && !filter.has_exclude_regex())) {
+      continue;
+    }
+    bool requires_roaming = FilterMatches(filter, serving_operator->mccmnc());
+    if (requires_roaming) {
+      SLOG(1)
+          << __func__
+          << "Roaming is required on serving operator due to roaming filtering";
+      return true;
+    }
+    SLOG(2) << "Serving operator MCCMNC: " << serving_operator->mccmnc()
+            << " filtering regex: " << filter.regex()
+            << " results, requires_roaming: " << requires_roaming;
+  }
+  return false;
 }
 
 }  // namespace shill

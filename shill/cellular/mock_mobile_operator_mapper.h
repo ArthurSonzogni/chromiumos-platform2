@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_CELLULAR_MOCK_MOBILE_OPERATOR_INFO_H_
-#define SHILL_CELLULAR_MOCK_MOBILE_OPERATOR_INFO_H_
+#ifndef SHILL_CELLULAR_MOCK_MOBILE_OPERATOR_MAPPER_H_
+#define SHILL_CELLULAR_MOCK_MOBILE_OPERATOR_MAPPER_H_
 
 #include <memory>
 #include <string>
@@ -11,19 +11,28 @@
 
 #include <gmock/gmock.h>
 
-#include "shill/cellular/mobile_operator_info.h"
 #include "shill/cellular/mobile_operator_mapper.h"
 
 namespace shill {
 
-class MockMobileOperatorInfo : public MobileOperatorInfo {
+class MockMobileOperatorMapper : public MobileOperatorMapper {
  public:
-  MockMobileOperatorInfo(EventDispatcher* dispatcher,
-                         const std::string& info_owner);
-  ~MockMobileOperatorInfo() override;
+  explicit MockMobileOperatorMapper(EventDispatcher* dispatcher,
+                                    const std::string& info_owner);
+  MockMobileOperatorMapper(const MockMobileOperatorMapper&) = delete;
+  MockMobileOperatorMapper& operator=(const MockMobileOperatorMapper&) = delete;
+
+  ~MockMobileOperatorMapper() override;
+
+  MOCK_METHOD(void, AddDatabasePath, (const base::FilePath&), (override));
+  MOCK_METHOD(void, ClearDatabasePaths, (), (override));
+  MOCK_METHOD(bool,
+              Init,
+              (MobileOperatorMapperOnOperatorChangedCallback),
+              (override));
+  MOCK_METHOD(void, Reset, (), (override));
 
   MOCK_METHOD(bool, IsMobileNetworkOperatorKnown, (), (const, override));
-  MOCK_METHOD(bool, IsServingMobileNetworkOperatorKnown, (), (const, override));
 
   MOCK_METHOD(const std::string&, mccmnc, (), (const, override));
   MOCK_METHOD(const std::vector<MobileOperatorMapper::MobileAPN>&,
@@ -37,19 +46,17 @@ class MockMobileOperatorInfo : public MobileOperatorInfo {
   MOCK_METHOD(const std::string&, operator_name, (), (const, override));
   MOCK_METHOD(const std::string&, country, (), (const, override));
   MOCK_METHOD(const std::string&, uuid, (), (const, override));
-  MOCK_METHOD(const std::string&, serving_mccmnc, (), (const, override));
-  MOCK_METHOD(const std::string&, serving_operator_name, (), (const, override));
-  MOCK_METHOD(const std::string&, serving_country, (), (const, override));
-  MOCK_METHOD(const std::string&, serving_uuid, (), (const, override));
+  MOCK_METHOD(const std::string&, gid1, (), (const, override));
+  MOCK_METHOD(bool, requires_roaming, (), (const, override));
 
   MOCK_METHOD(void, UpdateMCCMNC, (const std::string&), (override));
   MOCK_METHOD(void, UpdateIMSI, (const std::string&), (override));
   MOCK_METHOD(void, UpdateOperatorName, (const std::string&), (override));
-  MOCK_METHOD(void, UpdateServingMCCMNC, (const std::string&), (override));
-  MOCK_METHOD(void,
-              UpdateServingOperatorName,
-              (const std::string&),
-              (override));
+
+  MOCK_METHOD(bool,
+              RequiresRoamingOnOperator,
+              (const MobileOperatorMapper*),
+              (const, override));
 
  private:
   std::string empty_mccmnc_;
@@ -58,12 +65,9 @@ class MockMobileOperatorInfo : public MobileOperatorInfo {
   std::string empty_operator_name_;
   std::string empty_country_;
   std::string empty_uuid_;
-  std::string empty_serving_country_;
-  std::string empty_serving_mccmnc_;
-  std::string empty_serving_operator_name_;
-  std::string empty_serving_uuid_;
+  std::string empty_gid1_;
 };
 
 }  // namespace shill
 
-#endif  // SHILL_CELLULAR_MOCK_MOBILE_OPERATOR_INFO_H_
+#endif  // SHILL_CELLULAR_MOCK_MOBILE_OPERATOR_MAPPER_H_
