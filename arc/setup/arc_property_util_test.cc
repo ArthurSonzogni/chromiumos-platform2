@@ -622,6 +622,11 @@ TEST_F(ArcPropertyUtilTest, AppendX86SocProperties) {
          "ro.soc.manufacturer=Intel\n"
          "ro.soc.model=i5-1250P\n"},
 
+        // For a Brya board (skolas).
+        {"model name\t: 13th Gen Intel(R) Core(TM) i7-1365U\n",
+         "ro.soc.manufacturer=Intel\n"
+         "ro.soc.model=i7-1365U\n"},
+
         // For a Brya (anahera) board.
         {"model name\t: Intel(R) Celeron(R) 7305\n",
          "ro.soc.manufacturer=Intel\n"
@@ -663,6 +668,11 @@ TEST_F(ArcPropertyUtilTest, AppendX86SocProperties) {
         {"model name\t: AMD 3015Ce with Radeon Graphics\n",
          "ro.soc.manufacturer=AMD\n"
          "ro.soc.model=3015Ce\n"},
+
+        // For a Skyrim (whiterun) board.
+        {"model name\t: AMD Athlon Silver 7120C with Radeon Graphics\n",
+         "ro.soc.manufacturer=AMD\n"
+         "ro.soc.model=7120C\n"},
 
         // For a Zork board (morphius).
         {"model name\t: AMD Athlon Gold 3150C with Radeon Graphics\n",

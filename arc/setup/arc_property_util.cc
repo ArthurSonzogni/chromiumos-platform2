@@ -511,10 +511,11 @@ void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
       re2::RE2::PartialMatch(
           model_field, R"(11th Gen Intel\(R\) Core\(TM\) ([^ ]+) @)", &model) ||
 
-      // 12th Gen doesn't have trailing clock freq in field.
+      // 12th+13th Gens don't have trailing clock freq in field.
       // For i5-1245U, the "C" in Core is missing.
       re2::RE2::PartialMatch(
-          model_field, R"(12th Gen Intel\(R\) C?ore\(TM\) ([^ ]+)$)", &model) ||
+          model_field, R"(1[23]th Gen Intel\(R\) C?ore\(TM\) ([^ ]+)$)",
+          &model) ||
 
       // Alderlake-N series.
       re2::RE2::PartialMatch(model_field, R"(Intel\(R\) (N[0-9]+)$)", &model) ||
@@ -541,7 +542,8 @@ void AppendX86SocProperties(const base::FilePath& cpuinfo_path,
       // Simpler AMD model names missing Ryzen name and a watt value.
       re2::RE2::PartialMatch(
           model_field,
-          R"(AMD (?:Athlon Gold )?([0-9A-Za-z]+) with Radeon Graphics)",
+          R"(AMD(?: Athlon Gold| Athlon Silver)?)"
+          R"( ([0-9A-Za-z]+) with Radeon Graphics)",
           &model) ||
 
       re2::RE2::PartialMatch(model_field,
