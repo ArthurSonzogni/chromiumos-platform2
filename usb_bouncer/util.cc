@@ -33,6 +33,7 @@
 #include <brillo/userdb_utils.h>
 #include <metrics/structured/structured_events.h>
 #include <openssl/sha.h>
+#include <re2/re2.h>
 #include <session_manager/dbus-proxies.h>
 #include <usbguard/Device.hpp>
 #include <usbguard/DeviceManager.hpp>
@@ -826,6 +827,20 @@ UMADeviceClass GetClassFromRule(const usbguard::Rule& rule) {
         MergeClasses(device_class, GetClassEnumFromValue(interfaces.get(x)));
   }
   return device_class;
+}
+
+base::FilePath GetRootDevice(base::FilePath dev) {
+  auto dev_components = dev.GetComponents();
+  auto it = dev_components.begin();
+  base::FilePath root_dev(*it++);
+
+  for (; it != dev_components.end(); it++) {
+    root_dev = root_dev.Append(*it);
+    if (RE2::FullMatch(*it, R"((\d+)-(\d+))")) {
+      break;
+    }
+  }
+  return root_dev;
 }
 
 }  // namespace usb_bouncer

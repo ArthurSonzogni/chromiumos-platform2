@@ -332,18 +332,32 @@ void EntryManager::ReportMetrics(const std::string& devpath,
 bool EntryManager::IsExternalDevice(const std::string& devpath) {
   base::FilePath normalized_devpath =
       root_dir_.Append("sys").Append(StripLeadingPathSeparators(devpath));
-  std::string panel;
-  if (!base::ReadFileToString(
-          normalized_devpath.Append("physical_location/panel"), &panel)) {
-    return false;
+  normalized_devpath = GetRootDevice(normalized_devpath);
+
+  std::string removable;
+  if (base::ReadFileToString(normalized_devpath.Append("removable"),
+                             &removable)) {
+    base::TrimWhitespaceASCII(removable, base::TRIM_ALL, &removable);
+    if (removable == "removable")
+      return true;
   }
-  base::TrimWhitespaceASCII(panel, base::TRIM_TRAILING, &panel);
-  return (panel != "unknown");
+
+  std::string panel;
+  if (base::ReadFileToString(
+          normalized_devpath.Append("physical_location/panel"), &panel)) {
+    base::TrimWhitespaceASCII(panel, base::TRIM_ALL, &panel);
+    if (panel != "unknown")
+      return true;
+  }
+
+  return false;
 }
 
 UMAPortType EntryManager::GetPortType(const std::string& devpath) {
   base::FilePath normalized_devpath =
       root_dir_.Append("sys").Append(StripLeadingPathSeparators(devpath));
+  normalized_devpath = GetRootDevice(normalized_devpath);
+
   std::string connector_uevent;
   std::string devtype;
   if (base::ReadFileToString(normalized_devpath.Append("port/connector/uevent"),

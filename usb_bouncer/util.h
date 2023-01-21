@@ -168,6 +168,13 @@ void Daemonize();
 void UpdateTimestamp(Timestamp* timestamp);
 size_t RemoveEntriesOlderThan(base::TimeDelta cutoff, EntryMap* map);
 
+// Given an USB device path, parse its root device path through USB device sysfs
+// topology. If the given device is not part of a tree (no USB hub in between),
+// return |dev| as it is.
+//
+// E.g. .../1-2/1-2.3/1-2.3.4 is attached to the root hub, .../1-2.
+base::FilePath GetRootDevice(base::FilePath dev);
+
 }  // namespace usb_bouncer
 
 #endif  // USB_BOUNCER_UTIL_H_
