@@ -57,9 +57,7 @@ std::optional<ProbeConfigData> LoadProbeConfig(
 
 }  // namespace
 
-ProbeConfigLoaderImpl::ProbeConfigLoaderImpl() : root_("/") {
-  cros_config_ = std::make_unique<brillo::CrosConfig>();
-}
+ProbeConfigLoaderImpl::ProbeConfigLoaderImpl() : root_("/") {}
 
 std::optional<ProbeConfigData> ProbeConfigLoaderImpl::LoadDefault() const {
   for (const auto& file_path : GetDefaultPaths()) {
@@ -101,11 +99,6 @@ std::vector<base::FilePath> ProbeConfigLoaderImpl::GetDefaultPaths() const {
   return file_paths;
 }
 
-void ProbeConfigLoaderImpl::SetCrosConfigForTesting(
-    std::unique_ptr<brillo::CrosConfigInterface> cros_config) {
-  cros_config_ = std::move(cros_config);
-}
-
 void ProbeConfigLoaderImpl::SetRootForTest(const base::FilePath& root) {
   root_ = root;
 }
@@ -123,8 +116,8 @@ int ProbeConfigLoaderImpl::GetCrosDebug() const {
 std::string ProbeConfigLoaderImpl::GetModelName() const {
   std::string model_name;
 
-  if (cros_config_->GetString(kCrosConfigModelNamePath, kCrosConfigModelNameKey,
-                              &model_name))
+  if (Context::Get()->cros_config()->GetString(
+          kCrosConfigModelNamePath, kCrosConfigModelNameKey, &model_name))
     return model_name;
 
   // Fallback to sys_info.

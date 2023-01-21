@@ -34,19 +34,16 @@ class ProbeConfigLoaderImplTest : public ::testing::Test {
   void SetUp() {
     PCHECK(scoped_temp_dir_.CreateUniqueTempDir());
 
-    auto cros_config = std::make_unique<brillo::FakeCrosConfig>();
-    cros_config_ = cros_config.get();
     testdata_root_ = GetTestDataPath();
 
     probe_config_loader_ = std::make_unique<ProbeConfigLoaderImpl>();
-    probe_config_loader_->SetCrosConfigForTesting(std::move(cros_config));
     probe_config_loader_->SetRootForTest(GetRootDir());
   }
 
   // Sets model names to the given value.
   void SetModel(const std::string& val) {
-    cros_config_->SetString(kCrosConfigModelNamePath, kCrosConfigModelNameKey,
-                            val);
+    mock_context_.fake_cros_config()->SetString(kCrosConfigModelNamePath,
+                                                kCrosConfigModelNameKey, val);
   }
 
   // Sets cros_debug flag to the given value.
@@ -69,7 +66,6 @@ class ProbeConfigLoaderImplTest : public ::testing::Test {
   }
 
   std::unique_ptr<ProbeConfigLoaderImpl> probe_config_loader_;
-  brillo::FakeCrosConfig* cros_config_;
   base::FilePath testdata_root_;
 
  private:

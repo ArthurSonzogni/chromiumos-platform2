@@ -8,6 +8,7 @@
 #include <memory>
 
 #include <base/check.h>
+#include <chromeos-config/libcros_config/cros_config.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <libcrossystem/crossystem.h>
 #include <shill/dbus-proxies.h>
@@ -19,6 +20,8 @@ namespace runtime_probe {
 class ContextImpl : public Context {
  public:
   ~ContextImpl() override;
+
+  brillo::CrosConfigInterface* cros_config() override { return &cros_config_; }
 
   crossystem::Crossystem* crossystem() override { return &crossystem_; }
 
@@ -54,6 +57,8 @@ class ContextImpl : public Context {
 
   // The object to hold the dbus connection.
   brillo::DBusConnection connection_;
+  // The object to access the ChromeOS model configuration.
+  brillo::CrosConfig cros_config_;
   // The object to access crossystem system properties.
   crossystem::CrossystemImpl crossystem_;
   // The reference of the dbus connection.

@@ -14,15 +14,14 @@
 
 #include <base/files/file_path.h>
 #include <base/values.h>
-#include <chromeos-config/libcros_config/cros_config.h>
 #include <gtest/gtest.h>
 
 namespace runtime_probe {
 
-constexpr char kCrosConfigModelNamePath[] = "/";
-constexpr char kCrosConfigModelNameKey[] = "name";
-constexpr char kRuntimeProbeConfigDir[] = "etc/runtime_probe";
-constexpr char kRuntimeProbeConfigName[] = "probe_config.json";
+inline constexpr char kCrosConfigModelNamePath[] = "/";
+inline constexpr char kCrosConfigModelNameKey[] = "name";
+inline constexpr char kRuntimeProbeConfigDir[] = "etc/runtime_probe";
+inline constexpr char kRuntimeProbeConfigName[] = "probe_config.json";
 
 // ProbeConfigLoaderImpl includes all operations and logics related to probe
 // config loading.
@@ -53,12 +52,9 @@ class ProbeConfigLoaderImpl : public ProbeConfigLoader {
 
   std::vector<base::FilePath> GetDefaultPaths() const;
 
-  void SetCrosConfigForTesting(
-      std::unique_ptr<brillo::CrosConfigInterface> cros_config);
   void SetRootForTest(const base::FilePath& root);
 
  private:
-  std::unique_ptr<brillo::CrosConfigInterface> cros_config_;
   base::FilePath root_;
 
   int GetCrosDebug() const;

@@ -11,6 +11,10 @@
 
 #include "runtime_probe/system/helper_invoker.h"
 
+namespace brillo {
+class CrosConfigInterface;
+}
+
 namespace crossystem {
 class Crossystem;
 }
@@ -45,6 +49,9 @@ class Context {
   // overridden by derived classes. Only one global instance is allowed at a
   // time.
   static Context* Get();
+
+  // The object to access the ChromeOS model configuration.
+  virtual brillo::CrosConfigInterface* cros_config() = 0;
 
   // The object to access crossystem system properties.
   virtual crossystem::Crossystem* crossystem() = 0;

@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <base/files/scoped_temp_dir.h>
+#include <chromeos-config/libcros_config/fake_cros_config.h>
 #include <debugd/dbus-proxy-mocks.h>
 #include <gmock/gmock.h>
 #include <libcrossystem/crossystem_fake.h>
@@ -28,15 +29,30 @@ class ContextMockImpl : public Context {
   ContextMockImpl();
   ~ContextMockImpl() override;
 
+  brillo::CrosConfigInterface* cros_config() override {
+    return &fake_cros_config_;
+  }
+
   crossystem::Crossystem* crossystem() override { return &fake_crossystem_; }
 
   org::chromium::debugdProxyInterface* debugd_proxy() override {
     return &mock_debugd_proxy_;
   };
 
+  org::chromium::flimflam::ManagerProxyInterface* shill_manager_proxy()
+      override {
+    return &mock_shill_manager_proxy_;
+  }
+
+  std::unique_ptr<org::chromium::flimflam::DeviceProxyInterface>
+  CreateShillDeviceProxy(const dbus::ObjectPath& path) override;
+
   HelperInvoker* helper_invoker() override { return &helper_invoker_direct_; }
 
   const base::FilePath& root_dir() override { return root_dir_; }
+
+  // Interfaces to access fake/mock objects.
+  brillo::FakeCrosConfig* fake_cros_config() { return &fake_cros_config_; }
 
   crossystem::fake::CrossystemFake* fake_crossystem() {
     return &fake_crossystem_;
@@ -46,17 +62,9 @@ class ContextMockImpl : public Context {
     return &mock_debugd_proxy_;
   }
 
-  org::chromium::flimflam::ManagerProxyInterface* shill_manager_proxy()
-      override {
-    return &mock_shill_manager_proxy_;
-  }
-
   org::chromium::flimflam::ManagerProxyMock* mock_shill_manager_proxy() {
     return &mock_shill_manager_proxy_;
   }
-
-  std::unique_ptr<org::chromium::flimflam::DeviceProxyInterface>
-  CreateShillDeviceProxy(const dbus::ObjectPath& path) override;
 
   // Set up shill devices paths that will be returned by the shill manager
   // proxy, and devices properties that will be returned by the shill device
@@ -68,6 +76,7 @@ class ContextMockImpl : public Context {
       const std::map<std::string, brillo::VariantDictionary>& shill_devices);
 
  private:
+  brillo::FakeCrosConfig fake_cros_config_;
   crossystem::fake::CrossystemFake fake_crossystem_;
   testing::StrictMock<org::chromium::debugdProxyMock> mock_debugd_proxy_;
   testing::NiceMock<org::chromium::flimflam::ManagerProxyMock>
