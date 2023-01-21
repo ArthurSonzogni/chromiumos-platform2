@@ -38,8 +38,19 @@ enum class ParserCode : uint8_t {
   kValueInvalidSize,                  // the value was omitted
   kErrorWhenAddingAttribute,          // the attribute was omitted
   kOutOfBandAttributeWithManyValues,  // additional values were ignored
+  kOutOfBandValueWithNonEmptyData,    // the data field was ignored
   kUnexpectedEndOfFrame,              // the parser stopped
-  kGroupTagWasExpected                // the parser stopped
+  kGroupTagWasExpected,               // the parser stopped
+  kEmptyNameExpectedInTNV,            // the parser stopped
+  kEmptyValueExpectedInTNV,           // the parser stopped
+  kNegativeNameLengthInTNV,           // the parser stopped
+  kNegativeValueLengthInTNV,          // the parser stopped
+  kTNVWithUnexpectedValueTag,         // the parser stopped
+  kUnsupportedValueTag,               // the value was omitted
+  kUnexpectedEndOfGroup,              // the parser stopped
+  kLimitOnCollectionsLevelExceeded,   // the parser stopped
+  kLimitOnGroupsCountExceeded,        // the parser stopped
+  kErrorWhenAddingGroup               // the group was omitted
 };
 
 std::string_view ToStrView(ParserCode code);
@@ -72,8 +83,6 @@ class Parser {
   Parser& operator=(Parser&&) = delete;
 
   // Methods for adding entries to the log.
-  void LogParserError(std::string_view message,
-                      const uint8_t* position = nullptr);
   void LogParserError(ParserCode error_code, const uint8_t* position = nullptr);
   void LogParserErrors(const std::vector<ParserCode>& errors);
 
