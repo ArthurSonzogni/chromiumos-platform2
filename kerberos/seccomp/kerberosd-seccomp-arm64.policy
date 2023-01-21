@@ -81,4 +81,4 @@ newfstatat: 1
 fstatfs: 1
 statfs: 1
 process_vm_readv: 1
-rename: 1
+renameat: 1
