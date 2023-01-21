@@ -1188,22 +1188,22 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
   // will see these files, but other than that, the /data and /cache
   // directories are empty and read-only which is the best for security.
 
-  // Unconditionally generate host-side code here for P.
-  // TODO(b/254712128): Support ANDROID_R if we REALLY want to do a full-fledged
-  // mini-R-container.
+  base::ElapsedTimer timer;
   if (GetSdkVersion() == AndroidSdkVersion::ANDROID_P) {
-    base::ElapsedTimer timer;
+    // Unconditionally generate host-side code here for P.
     EXIT_IF(!GenerateHostSideCode(arc_paths_->art_dalvik_cache_directory));
-    EXIT_IF(!Chown(kRootUid, kRootGid, arc_paths_->art_dalvik_cache_directory));
-    // Remove the file zygote may have created.
-    IGNORE_ERRORS(base::DeleteFile(
-        arc_paths_->art_dalvik_cache_directory.Append(kZygotePreloadDoneFile)));
-
-    // For now, integrity checking time is the time needed to relocate
-    // boot*.art files because of b/67912719. Once TPM is enabled, this will
-    // report the total time spend on code verification + [relocation + sign]
-    arc_setup_metrics_->SendCodeIntegrityCheckingTotalTime(timer.Elapsed());
+  } else {
+    LOG(INFO) << "Skip generation of host-side code for versions higher than P";
   }
+  EXIT_IF(!Chown(kRootUid, kRootGid, arc_paths_->art_dalvik_cache_directory));
+  // Remove the file zygote may have created.
+  IGNORE_ERRORS(base::DeleteFile(
+      arc_paths_->art_dalvik_cache_directory.Append(kZygotePreloadDoneFile)));
+
+  // For now, integrity checking time is the time needed to relocate
+  // boot*.art files because of b/67912719. Once TPM is enabled, this will
+  // report the total time spend on code verification + [relocation + sign]
+  arc_setup_metrics_->SendCodeIntegrityCheckingTotalTime(timer.Elapsed());
 
   // Make sure directories for all ISA are there just to make config.json happy.
   for (const auto* isa : {"arm", "arm64", "x86", "x86_64"}) {
@@ -2286,17 +2286,12 @@ void ArcSetup::OnBootContinue() {
   // don't exist, this has to be done before calling ShareAndroidData().
   SetUpAndroidData(arc_paths_->android_mutable_source);
 
-  // TODO(b/254712128): Support ANDROID_R if we REALLY want to do a full-fledged
-  // mini-R-container.
-  if (GetSdkVersion() == AndroidSdkVersion::ANDROID_P) {
-    if (!InstallLinksToHostSideCode()) {
-      arc_setup_metrics_->SendBootContinueCodeInstallationResult(
-          ArcBootContinueCodeInstallationResult::
-              ERROR_CANNOT_INSTALL_HOST_CODE);
-    } else {
-      arc_setup_metrics_->SendBootContinueCodeInstallationResult(
-          ArcBootContinueCodeInstallationResult::SUCCESS);
-    }
+  if (!InstallLinksToHostSideCode()) {
+    arc_setup_metrics_->SendBootContinueCodeInstallationResult(
+        ArcBootContinueCodeInstallationResult::ERROR_CANNOT_INSTALL_HOST_CODE);
+  } else {
+    arc_setup_metrics_->SendBootContinueCodeInstallationResult(
+        ArcBootContinueCodeInstallationResult::SUCCESS);
   }
 
   // Set up /run/arc/shared_mounts/{cache,data,demo_apps} to expose the user's
