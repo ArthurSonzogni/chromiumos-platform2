@@ -783,36 +783,34 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
 
   scoped_refptr<MockDevice> device0(
       new MockDevice(&manager_, "null0", "addr0", kTestDeviceIndex));
-  scoped_refptr<MockDevice> device1(
-      new MockDevice(&manager_, "null1", "addr1", kTestDeviceIndex + 1));
   device_info_.RegisterDevice(device0);
-  device_info_.RegisterDevice(device1);
-
-  MockNetworkEventHandler event_handler0;
-  MockNetworkEventHandler event_handler1;
   device0->set_network_for_testing(std::make_unique<Network>(
       kTestDeviceIndex, "null0", Technology::kEthernet,
       /*fixed_ip_params=*/false,
-      /*event_handler=*/&event_handler0,
       /*control_interface=*/&control_interface_,
       /*dispatcher=*/&dispatcher_,
       /*metrics=*/&metrics_));
-  device1->set_network_for_testing(std::make_unique<Network>(
-      kTestDeviceIndex + 1, "null1", Technology::kWiFi,
-      /*fixed_ip_params=*/false,
-      /*event_handler=*/&event_handler1,
-      /*control_interface=*/&control_interface_,
-      /*dispatcher=*/&dispatcher_,
-      /*metrics=*/&metrics_));
+  MockNetworkEventHandler event_handler0;
   device0->network()->set_state_for_testing(Network::State::kConnected);
-  device1->network()->set_state_for_testing(Network::State::kConnected);
-
+  device0->network()->RegisterEventHandler(&event_handler0);
   IPConfig::Properties props0 = {};
   props0.gateway = kTestIPAddress0;
   device0->network()->set_ipconfig(
       std::make_unique<IPConfig>(&control_interface_, "null0"));
   device0->network()->ipconfig()->UpdateProperties(props0);
 
+  scoped_refptr<MockDevice> device1(
+      new MockDevice(&manager_, "null1", "addr1", kTestDeviceIndex + 1));
+  MockNetworkEventHandler event_handler1;
+  device1->set_network_for_testing(std::make_unique<Network>(
+      kTestDeviceIndex + 1, "null1", Technology::kWiFi,
+      /*fixed_ip_params=*/false,
+      /*control_interface=*/&control_interface_,
+      /*dispatcher=*/&dispatcher_,
+      /*metrics=*/&metrics_));
+  device_info_.RegisterDevice(device1);
+  device1->network()->set_state_for_testing(Network::State::kConnected);
+  device1->network()->RegisterEventHandler(&event_handler1);
   IPConfig::Properties props1 = {};
   props1.gateway = kTestIPAddress2;
   device1->network()->set_ip6config(

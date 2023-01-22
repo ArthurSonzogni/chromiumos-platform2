@@ -57,12 +57,11 @@ constexpr Technology kTestTechnology = Technology::kUnknown;
 
 class TestNetwork : public Network {
  public:
-  explicit TestNetwork(Network::EventHandler* event_handler)
+  TestNetwork()
       : Network(kDeviceInterfaceIndex,
                 kDeviceName,
                 kTestTechnology,
                 /*fixed_ip_params=*/false,
-                event_handler,
                 /*control_interface=*/nullptr,
                 /*dispatcher=*/nullptr,
                 /*metrics=*/nullptr) {}
@@ -236,8 +235,8 @@ class DevicePortalDetectorTest : public testing::Test {
   void SetUp() override {
     ManagerProperties props = GetManagerPortalProperties();
     EXPECT_CALL(manager_, GetProperties()).WillRepeatedly(ReturnRef(props));
-    device_->set_network_for_testing(
-        std::make_unique<TestNetwork>(device_.get()));
+    device_->set_network_for_testing(std::make_unique<TestNetwork>());
+    device_->network()->RegisterEventHandler(device_.get());
     // Set up a connected test Service for the Device.
     service_ = new TestService(&manager_);
     service_->SetState(Service::kStateConnected);

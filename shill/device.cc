@@ -149,7 +149,6 @@ Device::Device(Manager* manager,
                            link_name,
                            technology,
                            fixed_ip_params,
-                           this,
                            manager->control_interface(),
                            manager->dispatcher(),
                            manager->metrics())),
@@ -193,6 +192,8 @@ Device::Device(Manager* manager,
   store_.RegisterConstBool(kPoweredProperty, &enabled_);
   HelpRegisterConstDerivedString(kTypeProperty, &Device::GetTechnologyString);
 
+  network_->RegisterEventHandler(this);
+
   // kScanningProperty: Registered in WiFi, Cellular
   // kScanIntervalProperty: Registered in WiFi, Cellular
   // kWakeOnWiFiFeaturesEnabledProperty: Registered in WiFi
@@ -203,6 +204,7 @@ Device::Device(Manager* manager,
 Device::~Device() {
   SLOG(this, 1) << "~Device(): " << link_name_
                 << " index: " << interface_index_;
+  network_->UnregisterEventHandler(this);
 }
 
 void Device::Initialize() {

@@ -116,7 +116,6 @@ class NetworkInTest : public Network {
                 const std::string& interface_name,
                 Technology technology,
                 bool fixed_ip_params,
-                EventHandler* event_handler,
                 ControlInterface* control_interface,
                 EventDispatcher* dispatcher,
                 Metrics* metrics)
@@ -124,7 +123,6 @@ class NetworkInTest : public Network {
                 interface_name,
                 technology,
                 fixed_ip_params,
-                event_handler,
                 control_interface,
                 dispatcher,
                 metrics) {}
@@ -148,10 +146,11 @@ class NetworkTest : public ::testing::Test {
   NetworkTest() : manager_(&control_interface_, &dispatcher_, nullptr) {
     network_ = std::make_unique<NiceMock<NetworkInTest>>(
         kTestIfindex, kTestIfname, kTestTechnology,
-        /*fixed_ip_params=*/false, &event_handler_, &control_interface_,
-        &dispatcher_, &metrics_);
+        /*fixed_ip_params=*/false, &control_interface_, &dispatcher_,
+        &metrics_);
     network_->set_dhcp_provider_for_testing(&dhcp_provider_);
     network_->set_routing_table_for_testing(&routing_table_);
+    network_->RegisterEventHandler(&event_handler_);
     network_->RegisterEventHandler(&event_handler2_);
     proc_fs_ = dynamic_cast<MockProcFsStub*>(network_->set_proc_fs_for_testing(
         std::make_unique<NiceMock<MockProcFsStub>>(kTestIfname)));

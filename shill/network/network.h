@@ -139,13 +139,10 @@ class Network {
     kConnected,
   };
 
-  // Note that |event_handler| should live longer than the created Network
-  // object, so usually it should be the owner of this object.
   explicit Network(int interface_index,
                    const std::string& interface_name,
                    Technology technology,
                    bool fixed_ip_params,
-                   EventHandler* event_handler,
                    ControlInterface* control_interface,
                    EventDispatcher* dispatcher,
                    Metrics* metrics);

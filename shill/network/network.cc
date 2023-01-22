@@ -37,7 +37,6 @@ Network::Network(int interface_index,
                  const std::string& interface_name,
                  Technology technology,
                  bool fixed_ip_params,
-                 EventHandler* event_handler,
                  ControlInterface* control_interface,
                  EventDispatcher* dispatcher,
                  Metrics* metrics)
@@ -52,11 +51,7 @@ Network::Network(int interface_index,
       metrics_(metrics),
       dhcp_provider_(DHCPProvider::GetInstance()),
       routing_table_(RoutingTable::GetInstance()),
-      rtnl_handler_(RTNLHandler::GetInstance()) {
-  if (event_handler) {
-    RegisterEventHandler(event_handler);
-  }
-}
+      rtnl_handler_(RTNLHandler::GetInstance()) {}
 
 Network::~Network() {
   for (auto* ev : event_handlers_) {
