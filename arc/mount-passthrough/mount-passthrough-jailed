@@ -18,6 +18,8 @@ DEFINE_string fuse_umask "" \
 DEFINE_string fuse_uid "" "UID set as file owner in FUSE (required)"
 DEFINE_string fuse_gid "" "GID set as file group in FUSE (required)"
 DEFINE_string android_app_access_type "full" "Access type of Android apps"
+DEFINE_boolean use_default_selinux_context "${FLAGS_FALSE}" \
+  "Use default \"fuse\" SELinux context"
 DEFINE_boolean enter_concierge_namespace "${FLAGS_FALSE}" \
   "Enter concierge namespace"
 # This is larger than the default value 1024 because this process handles many
@@ -118,6 +120,10 @@ main() {
       "--fuse_umask=${FLAGS_fuse_umask}" \
       "--fuse_uid=${FLAGS_fuse_uid}" "--fuse_gid=${FLAGS_fuse_gid}" \
       "--android_app_access_type=${FLAGS_android_app_access_type}"
+
+  if [ "${FLAGS_use_default_selinux_context}" = "${FLAGS_TRUE}" ]; then
+    set -- "$@" "--use_default_selinux_context"
+  fi
 
   exec minijail0 "$@"
 }

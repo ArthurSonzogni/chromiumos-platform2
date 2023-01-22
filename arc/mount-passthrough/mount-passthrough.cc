@@ -439,6 +439,8 @@ int main(int argc, char** argv) {
       android_app_access_type, "",
       "What type of permission checks should be done for Android apps."
       " Must be either full, read, or write (required)");
+  DEFINE_bool(use_default_selinux_context, false,
+              "Use the default \"fuse\" SELinux context");
 
   // Use "arc-" prefix so that the log is recorded in /var/log/arc.log.
   brillo::OpenLog("arc-mount-passthrough", true /*log_pid*/);
@@ -493,30 +495,6 @@ int main(int argc, char** argv) {
   const uid_t fuse_uid = FLAGS_fuse_uid + USER_NS_SHIFT;
   const gid_t fuse_gid = FLAGS_fuse_gid + USER_NS_SHIFT;
 
-  // NOTE: Commas are escaped by "\\" to avoid being processed by lifuse's
-  // option parsing code.
-  std::string security_context;
-  if (USE_ARCPP) {
-    // In Android P, the security context of directories under /data/media/0 is
-    // "u:object_r:media_rw_data_file:s0:c512,c768".
-    security_context = std::string(kMediaRwDataFileContext) + ":c512\\,c768";
-  } else {
-    // In Android R, the security context of directories under /data/media/0
-    // looks like "u:object_r:media_rw_data_file:s0:c64,c256,c512,c768".
-    //
-    // Calculate the categories in the same way as set_range_from_level() in
-    // Android's external/selinux/libselinux/src/android/android_platform.c.
-    if (fuse_uid < kAndroidAppUidStart || kAndroidAppUidEnd < fuse_uid) {
-      LOG(ERROR) << "Unexpected FUSE file system UID: " << fuse_uid;
-      return 1;
-    }
-    const uid_t media_provider_app_id = fuse_uid - kAndroidAppUidStart;
-    security_context =
-        std::string(kMediaRwDataFileContext) +
-        base::StringPrintf(":c%d\\,c%d\\,c512\\,c768",
-                           media_provider_app_id & 0xff,
-                           256 + ((media_provider_app_id >> 8) & 0xff));
-  }
 
   struct fuse_operations passthrough_ops;
   setup_passthrough_ops(&passthrough_ops);
@@ -524,19 +502,13 @@ int main(int argc, char** argv) {
   const std::string fuse_uid_opt("uid=" + std::to_string(fuse_uid));
   const std::string fuse_gid_opt("gid=" + std::to_string(fuse_gid));
   const std::string fuse_umask_opt("umask=" + FLAGS_fuse_umask);
-  // The context string is quoted using "\"" so that the kernel won't split the
-  // mount option string at commas.
-  const std::string fuse_context_opt(std::string("context=\"") +
-                                     security_context + "\"");
-  const std::string fuse_fscontext_opt(std::string("fscontext=") +
-                                       kCrosMountPassthroughFsContext);
   LOG(INFO) << "uid_opt(" << fuse_uid_opt << ") "
             << "gid_opt(" << fuse_gid_opt << ") "
             << "umask_opt(" << fuse_umask_opt << ")";
 
-  const char* fuse_argv[] = {
+  std::vector<std::string> fuse_args({
       argv[0],
-      FLAGS_dest.c_str(),
+      FLAGS_dest,
       "-f",
       "-o",
       "allow_other",
@@ -555,21 +527,55 @@ int main(int argc, char** argv) {
       "-o",
       "fsname=passthrough",
       "-o",
-      fuse_uid_opt.c_str(),
+      fuse_uid_opt,
       "-o",
-      fuse_gid_opt.c_str(),
+      fuse_gid_opt,
       "-o",
       "direct_io",
       "-o",
-      fuse_umask_opt.c_str(),
+      fuse_umask_opt,
       "-o",
       "noexec",
-      "-o",
-      fuse_context_opt.c_str(),
-      "-o",
-      fuse_fscontext_opt.c_str(),
-  };
-  int fuse_argc = sizeof(fuse_argv) / sizeof(fuse_argv[0]);
+  });
+
+  if (!FLAGS_use_default_selinux_context) {
+    // NOTE: Commas are escaped by "\\" to avoid being processed by lifuse's
+    // option parsing code.
+    std::string security_context;
+    if (USE_ARCPP) {
+      // In Android P, the security context of directories under /data/media/0
+      // is "u:object_r:media_rw_data_file:s0:c512,c768".
+      // TODO(b/259000117): Ensure that Container R is handled correctly.
+      security_context = std::string(kMediaRwDataFileContext) + ":c512\\,c768";
+    } else {
+      // In Android R, the security context of directories under /data/media/0
+      // looks like "u:object_r:media_rw_data_file:s0:c64,c256,c512,c768".
+      //
+      // Calculate the categories in the same way as set_range_from_level() in
+      // Android's external/selinux/libselinux/src/android/android_platform.c.
+      if (fuse_uid < kAndroidAppUidStart || kAndroidAppUidEnd < fuse_uid) {
+        LOG(ERROR) << "Unexpected FUSE file system UID: " << fuse_uid;
+        return 1;
+      }
+      const uid_t media_provider_app_id = fuse_uid - kAndroidAppUidStart;
+      security_context =
+          std::string(kMediaRwDataFileContext) +
+          base::StringPrintf(":c%d\\,c%d\\,c512\\,c768",
+                             media_provider_app_id & 0xff,
+                             256 + ((media_provider_app_id >> 8) & 0xff));
+    }
+
+    // The context string is quoted using "\"" so that the kernel won't split
+    // the mount option string at commas.
+    std::string fuse_context_opt(std::string("context=\"") + security_context +
+                                 "\"");
+    std::string fuse_fscontext_opt(std::string("fscontext=") +
+                                   kCrosMountPassthroughFsContext);
+    fuse_args.push_back("-o");
+    fuse_args.push_back(std::move(fuse_context_opt));
+    fuse_args.push_back("-o");
+    fuse_args.push_back(std::move(fuse_fscontext_opt));
+  }
 
   umask(0022);
 
@@ -577,14 +583,19 @@ int main(int argc, char** argv) {
   private_data.android_app_access_type = FLAGS_android_app_access_type;
   private_data.root = base::FilePath(FLAGS_source);
 
+  std::vector<const char*> fuse_argv(fuse_args.size());
+  std::transform(
+      fuse_args.begin(), fuse_args.end(), std::begin(fuse_argv),
+      [](const std::string& arg) -> const char* { return arg.c_str(); });
+
   // The code below does the same thing as fuse_main() except that it ignores
   // signals during shutdown to perform clean shutdown. b/183343552
   // TODO(hashimoto): Stop using deprecated libfuse functions b/185322557.
   char* mountpoint = nullptr;
   int multithreaded = 0;
-  struct fuse* fuse = fuse_setup(fuse_argc, const_cast<char**>(fuse_argv),
-                                 &passthrough_ops, sizeof(passthrough_ops),
-                                 &mountpoint, &multithreaded, &private_data);
+  struct fuse* fuse = fuse_setup(
+      fuse_argv.size(), const_cast<char**>(fuse_argv.data()), &passthrough_ops,
+      sizeof(passthrough_ops), &mountpoint, &multithreaded, &private_data);
   if (fuse == nullptr)
     return 1;
 
