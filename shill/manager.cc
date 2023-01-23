@@ -2724,13 +2724,6 @@ void Manager::RequestScan(const std::string& technology, Error* error) {
 
   switch (technology_identifier) {
     case Technology::kCellular:
-      for (const auto& device : FilterByTechnology(technology_identifier)) {
-        // TODO(benchan): Add a metric to track user-initiated scan for cellular
-        // technology.
-        device->Scan(error, __func__);
-      }
-      break;
-
     case Technology::kWiFi:
       for (const auto& device : FilterByTechnology(technology_identifier)) {
         device->Scan(error, __func__);
