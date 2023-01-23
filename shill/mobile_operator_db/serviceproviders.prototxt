@@ -13330,6 +13330,7 @@ mno {
       localized_name {
         name : "LaptopConnect (data cards)"
       }
+      ip_type: IPV4V6
       type : DEFAULT
       type : IA
     }
