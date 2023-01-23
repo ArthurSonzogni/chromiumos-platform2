@@ -8,13 +8,16 @@
 #include <map>
 #include <string>
 
+#include "secanomalyd/mount_entry.h"
+
 SystemContext::SystemContext(SessionManagerProxyInterface* session_manager)
     : session_manager_{session_manager} {
-  Refresh();
+  std::ignore = UpdateLoggedInState();
 }
 
 void SystemContext::Refresh() {
   std::ignore = UpdateLoggedInState();
+  UpdateKnownMountsState();
 }
 
 bool SystemContext::UpdateLoggedInState() {
@@ -32,4 +35,22 @@ bool SystemContext::UpdateLoggedInState() {
   logged_in_ = sessions.size() > 0;
   VLOG(1) << "logged_in_ -> " << std::boolalpha << logged_in_;
   return true;
+}
+
+void SystemContext::UpdateKnownMountsState() {
+  previous_known_mounts_.clear();
+  previous_known_mounts_.merge(current_known_mounts_);
+}
+
+bool SystemContext::IsMountPersistent(const base::FilePath& known_mount) const {
+  return (previous_known_mounts_.count(known_mount) == 1);
+}
+
+void SystemContext::RecordKnownMountObservation(
+    const base::FilePath& known_mount) {
+  // Ensures `known_mount` is indeed a predefined known mount.
+  if (secanomalyd::kKnownMounts.count(known_mount) == 0) {
+    return;
+  }
+  current_known_mounts_.insert(known_mount);
 }

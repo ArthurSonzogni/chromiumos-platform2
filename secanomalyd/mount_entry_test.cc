@@ -102,11 +102,19 @@ TEST(MountEntryTest, IsKnownMountIncludesRunArcSharedMountsData) {
       "/dev/mmcblk1p1 /run/arc/shared_mounts/data ext4 "
       "rw,seclabel,nosuid,nodev");
 
-  SystemContextMock c_login_screen(/*logged_in=*/false);
-  SystemContextMock c_logged_in(/*logged_in=*/true);
+  SystemContextMock c_login_screen_persistent_mount(
+      /*logged_in=*/false, /*known_mounts=*/{e.dest()});
+  SystemContextMock c_logged_in_persistent_mount(
+      /*logged_in=*/true, /*known_mounts=*/{e.dest()});
+  SystemContextMock c_login_screen_temporary_mount(/*logged_in=*/false,
+                                                   /*known_mounts=*/{});
+  SystemContextMock c_logged_in_temporary_mount(/*logged_in=*/true,
+                                                /*known_mounts=*/{});
 
-  ASSERT_TRUE(e.IsKnownMount(c_login_screen));
-  ASSERT_FALSE(e.IsKnownMount(c_logged_in));
+  ASSERT_FALSE(e.IsKnownMount(c_login_screen_persistent_mount));
+  ASSERT_FALSE(e.IsKnownMount(c_logged_in_persistent_mount));
+  ASSERT_FALSE(e.IsKnownMount(c_login_screen_temporary_mount));
+  ASSERT_TRUE(e.IsKnownMount(c_logged_in_temporary_mount));
 }
 
 TEST(MountEntryTest, RandomMountIsNotKnown) {
@@ -114,7 +122,7 @@ TEST(MountEntryTest, RandomMountIsNotKnown) {
       "/dev/mmcblk1p1 /some/random/location ext4 "
       "rw,seclabel,nosuid,nodev");
 
-  SystemContextMock c(/*logged_in=*/false);
+  SystemContextMock c(/*logged_in=*/false, /*known_mounts=*/{});
   ASSERT_FALSE(e.IsKnownMount(c));
 }
 

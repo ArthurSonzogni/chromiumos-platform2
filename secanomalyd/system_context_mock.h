@@ -7,11 +7,19 @@
 
 #include "secanomalyd/system_context.h"
 
+#include <set>
+
+#include <base/files/file_path.h>
+
 #include <gmock/gmock.h>
 
 class SystemContextMock : public SystemContext {
  public:
-  explicit SystemContextMock(bool logged_in) { set_logged_in(logged_in); }
+  explicit SystemContextMock(bool logged_in,
+                             std::set<base::FilePath> known_mounts) {
+    set_logged_in(logged_in);
+    set_previous_known_mounts(known_mounts);
+  }
 
   MOCK_METHOD(void, Refresh, (), (override));
 };

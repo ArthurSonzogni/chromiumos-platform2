@@ -17,6 +17,7 @@
 
 #include "secanomalyd/audit_log_reader.h"
 #include "secanomalyd/mount_entry.h"
+#include "secanomalyd/system_context.h"
 
 namespace secanomalyd {
 
@@ -65,6 +66,8 @@ class Daemon : public brillo::DBusDaemon {
   bool dev_ = false;
 
   std::unique_ptr<SessionManagerProxy> session_manager_proxy_;
+
+  std::unique_ptr<SystemContext> system_context_;
 
   MountEntryMap wx_mounts_;
 

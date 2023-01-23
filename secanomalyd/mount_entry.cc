@@ -35,21 +35,6 @@ const std::vector<base::FilePath> kDestPathsToFilter = {
     base::FilePath("/media/removable"),
 };
 
-using ContextChecker = base::RepeatingCallback<bool(const SystemContext&)>;
-
-// For every known mount there is a callback that ensures mounts are only
-// ignored in the right context (e.g. only ignored on the login screen).
-const std::map<base::FilePath, ContextChecker> kKnownMounts{
-    // b/219574442: Make /run/arc/shared_mounts/data not W+X.
-    // /run/arc/shared_mounts/data exists temporarily after the ARC++
-    // mini-container starts but before any users log in. Therefore, it's not
-    // exposed to any user session.
-    {base::FilePath("/run/arc/shared_mounts/data"),
-     base::BindRepeating([](const SystemContext& context) {
-       return !context.IsUserLoggedIn();
-     })},
-};
-
 const base::FilePath kUsrLocal = base::FilePath("/usr/local");
 
 const re2::RE2 sha1_re("[a-f0-9]{40}");

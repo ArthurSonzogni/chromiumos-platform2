@@ -84,6 +84,11 @@ int Daemon::OnInit() {
 
   session_manager_proxy_ = std::make_unique<SessionManagerProxy>(bus_);
 
+  // The raw SessionManagerProxy pointer is un-owned by the SystemContext
+  // object.
+  system_context_ =
+      std::make_unique<SystemContext>(session_manager_proxy_.get());
+
   return EX_OK;
 }
 
@@ -144,10 +149,8 @@ void Daemon::DoWXMountScan() {
     return;
   }
 
-  // Recreated on every check to have the most up-to-date state.
-  // The raw SessionManagerProxy pointer is un-owned by the SystemContext
-  // object.
-  SystemContext context(session_manager_proxy_.get());
+  // Refreshed on every check to have the most up-to-date state.
+  system_context_->Refresh();
 
   for (const auto& e : mount_entries.value()) {
     if (e.IsWX()) {
@@ -160,16 +163,20 @@ void Daemon::DoWXMountScan() {
           continue;
         }
 
-        if (e.IsNamespaceBindMount() || e.IsKnownMount(context)) {
+        if (e.IsNamespaceBindMount() || e.IsKnownMount(*system_context_)) {
           // Namespace mounts happen when a namespace file in /proc/<pid>/ns/
           // gets bind-mounted somewhere else. These mounts can be W+X but are
           // not concerning since they consist of a single file and these files
           // cannot be executed.
-          // There are other W+X mounts that are low-risk (e.g. only exist on
-          // the login screen) and that we're in the process of fixing. These
-          // are considered "known" W+X mounts and are also skipped.
+          // There are other W+X mounts that are low-risk (e.g. non-persistent
+          // mounts) and that we're in the process of fixing. These are
+          // considered "known" W+X mounts and are also skipped.
           VLOG(1) << "Not recording W+X mount at '" << e.dest() << "', type "
                   << e.type();
+          // In case of a known mount, we need to update the context to remember
+          // that this mount was observed, as we might use this information to
+          // determine whether it should be ignored again in the future scans.
+          system_context_->RecordKnownMountObservation(e.dest());
           continue;
         }
 

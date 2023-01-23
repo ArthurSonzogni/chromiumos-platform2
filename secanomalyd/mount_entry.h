@@ -19,6 +19,21 @@
 
 namespace secanomalyd {
 
+using ContextChecker = base::RepeatingCallback<bool(const SystemContext&)>;
+// For every known mount there is a callback that ensures mounts are only
+// ignored in the right context (e.g. only ignored if non-persistent).
+const std::map<base::FilePath, ContextChecker> kKnownMounts{
+    // TODO(b/219574442): Make /run/arc/shared_mounts/data not W+X.
+    // /run/arc/shared_mounts/data exists for less than a second during the
+    // setup phase of ARC++ (only applicable in container based systems).
+    {base::FilePath("/run/arc/shared_mounts/data"),
+     base::BindRepeating([](const SystemContext& context) {
+       return (context.IsUserLoggedIn() &&
+               !context.IsMountPersistent(
+                   base::FilePath("/run/arc/shared_mounts/data")));
+     })},
+};
+
 class MountEntry;
 using MountEntryMap = std::map<base::FilePath, MountEntry>;
 
