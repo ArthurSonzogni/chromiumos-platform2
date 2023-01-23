@@ -2564,6 +2564,8 @@ bool WiFi::SuspectCredentials(WiFiServiceRefPtr service,
         service->CheckSuspectedCredentialFailure()) {
       if (failure) {
         *failure = Service::kFailureBadPassphrase;
+        metrics()->NotifyWiFiBadPassphrase(service->has_ever_connected(),
+                                           service->is_in_user_connect());
       }
       return true;
     }

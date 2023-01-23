@@ -1006,6 +1006,46 @@ TEST_F(MetricsTest, NotifyNeighborLinkMonitorFailure) {
       NeighborSignal::GATEWAY_AND_DNS_SERVER);
 }
 
+TEST_F(MetricsTest, NotifyWiFiBadPassphraseNonUserInitiatedNeverConnected) {
+  bool ever_connected = false;
+  bool user_initiate = false;
+  EXPECT_CALL(library_,
+              SendEnumToUMA("Network.Shill.WiFi.BadPassphraseServiceType", 0,
+                            Metrics::kBadPassphraseServiceTypeMax))
+      .Times(1);
+  metrics_.NotifyWiFiBadPassphrase(ever_connected, user_initiate);
+}
+
+TEST_F(MetricsTest, NotifyWiFiBadPassphraseUserInitiatedNeverConnected) {
+  bool ever_connected = false;
+  bool user_initiate = true;
+  EXPECT_CALL(library_,
+              SendEnumToUMA("Network.Shill.WiFi.BadPassphraseServiceType", 2,
+                            Metrics::kBadPassphraseServiceTypeMax))
+      .Times(1);
+  metrics_.NotifyWiFiBadPassphrase(ever_connected, user_initiate);
+}
+
+TEST_F(MetricsTest, NotifyWiFiBadPassphraseNonUserInitiatedConnectedBefore) {
+  bool ever_connected = true;
+  bool user_initiate = false;
+  EXPECT_CALL(library_,
+              SendEnumToUMA("Network.Shill.WiFi.BadPassphraseServiceType", 1,
+                            Metrics::kBadPassphraseServiceTypeMax))
+      .Times(1);
+  metrics_.NotifyWiFiBadPassphrase(ever_connected, user_initiate);
+}
+
+TEST_F(MetricsTest, NotifyWiFiBadPassphraseUserInitiatedConnectedBefore) {
+  bool ever_connected = true;
+  bool user_initiate = true;
+  EXPECT_CALL(library_,
+              SendEnumToUMA("Network.Shill.WiFi.BadPassphraseServiceType", 3,
+                            Metrics::kBadPassphraseServiceTypeMax))
+      .Times(1);
+  metrics_.NotifyWiFiBadPassphrase(ever_connected, user_initiate);
+}
+
 TEST_F(MetricsTest, NotifyWiFiAdapterStateDisabledNoAllowlistUMA) {
   EXPECT_CALL(library_, SendEnumToUMA(_, _, _)).Times(AnyNumber());
   // Verify that we do not emit any "AdapterAllowlisted" UMA event if the

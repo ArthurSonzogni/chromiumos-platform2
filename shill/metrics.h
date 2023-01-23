@@ -1305,6 +1305,18 @@ class Metrics : public DefaultServiceObserver {
   static constexpr char kWiFiSessionTagLinkQualityReportSuffix[] =
       "LinkQualityReport";
 
+  enum WiFiBadPassphraseServiceType {
+    kNonUserInitiatedNeverConnected = 0,
+    kNonUserInitiatedConnectedBefore = 1,
+    kUserInitiatedNeverConnected = 2,
+    kUserInitiatedConnectedBefore = 3,
+    kBadPassphraseServiceTypeMax
+  };
+  static constexpr EnumMetric<FixedName> kMetricWiFiBadPassphraseServiceType = {
+      .n = FixedName{"Network.Shill.WiFi.BadPassphraseServiceType"},
+      .max = kBadPassphraseServiceTypeMax,
+  };
+
   Metrics();
   Metrics(const Metrics&) = delete;
   Metrics& operator=(const Metrics&) = delete;
@@ -1837,6 +1849,9 @@ class Metrics : public DefaultServiceObserver {
 
   // Notifies the object that a rekey event has started.
   virtual void NotifyRekeyStart();
+
+  // Notifies this object of the status when bad-passphrase is identified
+  virtual void NotifyWiFiBadPassphrase(bool ever_connected, bool user_initiate);
 
   // Sends linear histogram data to UMA for a metric with a fixed name.
   virtual void SendEnumToUMA(const EnumMetric<FixedName>& metric, int sample);

@@ -1271,6 +1271,18 @@ void Metrics::NotifyRekeyStart() {
   }
 }
 
+void Metrics::NotifyWiFiBadPassphrase(bool ever_connected, bool user_initiate) {
+  WiFiBadPassphraseServiceType type;
+  if (user_initiate) {
+    type = ever_connected ? kUserInitiatedConnectedBefore
+                          : kUserInitiatedNeverConnected;
+  } else {
+    type = ever_connected ? kNonUserInitiatedConnectedBefore
+                          : kNonUserInitiatedNeverConnected;
+  }
+  SendEnumToUMA(kMetricWiFiBadPassphraseServiceType, type);
+}
+
 void Metrics::NotifyWiFiAdapterStateChanged(bool enabled,
                                             const WiFiAdapterInfo& info) {
   int64_t usecs;
