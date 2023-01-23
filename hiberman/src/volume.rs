@@ -288,7 +288,7 @@ impl VolumeManager {
     fn setup_snapshot(&mut self, name: &str) -> Result<()> {
         info!("Setting up snapshot for LV: {}", name);
         let path = snapshot_file_path(name);
-        let loop_path = Self::setup_loop_device(&path)?;
+        let loop_path = Self::setup_loop_device(path)?;
         let activated_lv = ActivatedLogicalVolume::new(&self.vg_name, name)
             .context(format!("Failed to activate LV: {}", name))?;
         let origin_lv = read_link(lv_path(&self.vg_name, name))?;

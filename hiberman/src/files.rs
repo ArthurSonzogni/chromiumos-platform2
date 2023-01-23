@@ -77,7 +77,7 @@ const HIBER_METRICS_SIZE: i64 = 1024 * 1024 * 4;
 /// Preallocates the metadata file and opens it for I/O.
 pub fn preallocate_metadata_file(zero_out: bool) -> Result<BouncedDiskFile> {
     let metadata_path = Path::new(HIBERNATE_DIR).join(HIBER_META_NAME);
-    preallocate_bounced_disk_file(&metadata_path, HIBER_META_SIZE, zero_out)
+    preallocate_bounced_disk_file(metadata_path, HIBER_META_SIZE, zero_out)
 }
 
 /// Preallocate and open the suspend or resume log file.
@@ -151,13 +151,13 @@ pub fn open_bounced_disk_file<P: AsRef<Path>>(path: P) -> Result<BouncedDiskFile
 /// Open a pre-existing header file, still with read and write permissions.
 pub fn open_header_file() -> Result<DiskFile> {
     let path = Path::new(HIBERNATE_DIR).join(HIBER_HEADER_NAME);
-    open_disk_file(&path)
+    open_disk_file(path)
 }
 
 /// Open a pre-existing hiberfile, still with read and write permissions.
 pub fn open_hiberfile() -> Result<DiskFile> {
     let hiberfile_path = Path::new(HIBERNATE_DIR).join(HIBER_DATA_NAME);
-    open_disk_file(&hiberfile_path)
+    open_disk_file(hiberfile_path)
 }
 
 /// Helper function to determine if the hiberfile already exists.
@@ -169,13 +169,13 @@ pub fn does_hiberfile_exist() -> bool {
 /// Open a pre-existing kernel key file with read and write permissions.
 pub fn open_kernel_key_file() -> Result<BouncedDiskFile> {
     let path = Path::new(HIBERNATE_DIR).join(HIBER_KERNEL_KEY_FILE_NAME);
-    open_bounced_disk_file(&path)
+    open_bounced_disk_file(path)
 }
 
 /// Open a pre-existing hiberfile, still with read and write permissions.
 pub fn open_metafile() -> Result<BouncedDiskFile> {
     let hiberfile_path = Path::new(HIBERNATE_DIR).join(HIBER_META_NAME);
-    open_bounced_disk_file(&hiberfile_path)
+    open_bounced_disk_file(hiberfile_path)
 }
 
 /// Check if a metrics file exists.
@@ -197,7 +197,7 @@ pub fn open_metrics_file(metrics_file: MetricsFile) -> Result<BouncedDiskFile> {
     };
 
     let hiberfile_path = Path::new(HIBERNATE_DIR).join(name);
-    open_bounced_disk_file(&hiberfile_path)
+    open_bounced_disk_file(hiberfile_path)
 }
 
 /// Open one of the log files, either the suspend or resume log.
@@ -208,7 +208,7 @@ pub fn open_log_file(log_file: HiberlogFile) -> Result<BouncedDiskFile> {
     };
 
     let path = Path::new(HIBERNATE_DIR).join(name);
-    open_bounced_disk_file(&path)
+    open_bounced_disk_file(path)
 }
 
 /// Open a metrics file.

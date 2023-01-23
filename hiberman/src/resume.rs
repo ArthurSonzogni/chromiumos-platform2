@@ -505,7 +505,7 @@ impl ResumeConductor {
         let mut mover = ImageMover::new(
             &mut decryptor,
             &mut snap_dev.file,
-            image_size as i64,
+            image_size,
             page_size * BUFFER_PAGES,
             page_size,
         )?;

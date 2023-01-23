@@ -478,7 +478,7 @@ fn hiberman_main() -> std::result::Result<(), ()> {
 
 fn main() {
     libchromeos::panic_handler::install_memfd_handler();
-    std::process::exit(if hiberman_main().is_ok() { 0 } else { 1 });
+    std::process::exit(i32::from(hiberman_main().is_err()));
 }
 
 #[cfg(test)]
