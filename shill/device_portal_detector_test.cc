@@ -73,7 +73,7 @@ class TestNetwork : public Network {
   bool IsConnected() const override { return true; }
   void StartConnectionDiagnostics() override {}
 
-  bool StartPortalDetection() override {
+  bool StartPortalDetection(bool reset) override {
     portal_detection_delayed_ = false;
     portal_detection_started_ = true;
     portal_detection_running_ = true;

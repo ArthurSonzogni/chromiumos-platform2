@@ -251,8 +251,11 @@ class Network {
       const patchpanel::NeighborReachabilityEventSignal& signal);
 
   // Starts a new network validation cycle and starts a first portal detection
-  // attempt. Returns true if portal detection starts successfully.
-  mockable bool StartPortalDetection();
+  // attempt. If portal detection was already running, a new network validation
+  // cycle is started only if |reset| is true, otherwise the call does nothing.
+  // Returns true if portal detection starts successfully or was already running
+  // and |reset| is false.
+  mockable bool StartPortalDetection(bool reset);
   // Schedules the next portal detection attempt for the current network
   // validation cycle. Returns true if portal detection restarts successfully.
   // If portal detection fails to restart, it is stopped.

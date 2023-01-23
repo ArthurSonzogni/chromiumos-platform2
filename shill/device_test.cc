@@ -693,18 +693,17 @@ TEST_F(DevicePortalDetectionTest, NoSelectedService) {
   EXPECT_CALL(*service_, IsPortalDetectionDisabled()).Times(0);
   EXPECT_CALL(*service_, IsConnected(nullptr)).Times(0);
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(0);
-  EXPECT_CALL(*network_, StartPortalDetection()).Times(0);
+  EXPECT_CALL(*network_, StartPortalDetection(_)).Times(0);
 
   EXPECT_FALSE(UpdatePortalDetector(true));
   EXPECT_FALSE(UpdatePortalDetector(false));
 }
 
-TEST_F(DevicePortalDetectionTest, NoConnection) {
-  EXPECT_CALL(*network_, IsConnected()).WillRepeatedly(Return(false));
+TEST_F(DevicePortalDetectionTest, ServiceNotConnected) {
   EXPECT_CALL(*service_, IsPortalDetectionDisabled()).Times(0);
-  EXPECT_CALL(*service_, IsConnected(nullptr)).Times(0);
+  EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(false));
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(0);
-  EXPECT_CALL(*network_, StartPortalDetection()).Times(0);
+  EXPECT_CALL(*network_, StartPortalDetection(_)).Times(0);
 
   EXPECT_FALSE(UpdatePortalDetector(true));
   EXPECT_FALSE(UpdatePortalDetector(false));
@@ -715,31 +714,17 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionDisabled) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(2);
-  EXPECT_CALL(*network_, StartPortalDetection()).Times(0);
+  EXPECT_CALL(*network_, StartPortalDetection(_)).Times(0);
 
   EXPECT_FALSE(UpdatePortalDetector(true));
   EXPECT_FALSE(UpdatePortalDetector(false));
 }
 
-TEST_F(DevicePortalDetectionTest, PortalDetectionInProgress_DoNotForceRestart) {
-  EXPECT_CALL(*network_, IsPortalDetectionInProgress())
-      .WillRepeatedly(Return(true));
-  EXPECT_CALL(*service_, IsPortalDetectionDisabled())
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
-  EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(0);
-  EXPECT_CALL(*network_, StartPortalDetection()).Times(0);
-
-  EXPECT_TRUE(UpdatePortalDetector(false));
-}
-
 TEST_F(DevicePortalDetectionTest, PortalDetectionInProgress_ForceRestart) {
-  EXPECT_CALL(*network_, IsPortalDetectionInProgress())
-      .WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
-  EXPECT_CALL(*network_, StartPortalDetection()).WillOnce(Return(true));
+  EXPECT_CALL(*network_, StartPortalDetection(_)).WillOnce(Return(true));
 
   EXPECT_TRUE(UpdatePortalDetector(true));
 }
@@ -751,7 +736,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionBadUrl) {
   EXPECT_CALL(*service_, IsPortalDetectionDisabled())
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*service_, SetState(Service::kStateOnline));
-  EXPECT_CALL(*network_, StartPortalDetection()).WillOnce(Return(false));
+  EXPECT_CALL(*network_, StartPortalDetection(_)).WillOnce(Return(false));
 
   EXPECT_FALSE(UpdatePortalDetector());
 }
@@ -761,7 +746,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionStart) {
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(0);
-  EXPECT_CALL(*network_, StartPortalDetection()).WillOnce(Return(true));
+  EXPECT_CALL(*network_, StartPortalDetection(_)).WillOnce(Return(true));
 
   EXPECT_TRUE(UpdatePortalDetector());
 }
@@ -771,7 +756,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionStartIPv6) {
       .WillRepeatedly(Return(false));
   EXPECT_CALL(*service_, IsConnected(nullptr)).WillRepeatedly(Return(true));
   EXPECT_CALL(*service_, SetState(Service::kStateOnline)).Times(0);
-  EXPECT_CALL(*network_, StartPortalDetection()).WillOnce(Return(true));
+  EXPECT_CALL(*network_, StartPortalDetection(_)).WillOnce(Return(true));
 
   EXPECT_TRUE(UpdatePortalDetector());
 }

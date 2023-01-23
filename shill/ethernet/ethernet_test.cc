@@ -740,7 +740,7 @@ TEST_F(EthernetTest, ReachabilityEvent_Online) {
   ON_CALL(*network_p, IsConnected()).WillByDefault(Return(true));
 
   // Service state is 'online', REACHABLE neighbor events are ignored.
-  EXPECT_CALL(*network_p, StartPortalDetection()).Times(0);
+  EXPECT_CALL(*network_p, StartPortalDetection(_)).Times(0);
   ethernet_->OnNeighborReachabilityEvent(ipv4_addr, NeighborSignal::GATEWAY,
                                          NeighborSignal::REACHABLE);
   ethernet_->OnNeighborReachabilityEvent(ipv6_addr,
@@ -750,12 +750,12 @@ TEST_F(EthernetTest, ReachabilityEvent_Online) {
 
   // Service state is 'online', FAILED gateway neighbor events triggers network
   // validation.
-  EXPECT_CALL(*network_p, StartPortalDetection()).WillOnce(Return(true));
+  EXPECT_CALL(*network_p, StartPortalDetection(false)).WillOnce(Return(true));
   ethernet_->OnNeighborReachabilityEvent(ipv4_addr, NeighborSignal::GATEWAY,
                                          NeighborSignal::FAILED);
   Mock::VerifyAndClearExpectations(network_p);
 
-  EXPECT_CALL(*network_p, StartPortalDetection());
+  EXPECT_CALL(*network_p, StartPortalDetection(false));
   ethernet_->OnNeighborReachabilityEvent(ipv6_addr,
                                          NeighborSignal::GATEWAY_AND_DNS_SERVER,
                                          NeighborSignal::FAILED);
@@ -786,7 +786,7 @@ TEST_F(EthernetTest, ReachabilityEvent_NotOnline) {
   // ignored.
   ON_CALL(*mock_service_, state())
       .WillByDefault(Return(Service::kStateNoConnectivity));
-  EXPECT_CALL(*network_p, StartPortalDetection()).Times(0);
+  EXPECT_CALL(*network_p, StartPortalDetection(_)).Times(0);
   ethernet_->OnNeighborReachabilityEvent(ipv4_addr, NeighborSignal::GATEWAY,
                                          NeighborSignal::FAILED);
   ethernet_->OnNeighborReachabilityEvent(ipv6_addr,
@@ -796,12 +796,12 @@ TEST_F(EthernetTest, ReachabilityEvent_NotOnline) {
 
   // Service state is connected but not 'online', REACHABLE neighbor events
   // triggers network validation.
-  EXPECT_CALL(*network_p, StartPortalDetection());
+  EXPECT_CALL(*network_p, StartPortalDetection(true));
   ethernet_->OnNeighborReachabilityEvent(ipv4_addr, NeighborSignal::GATEWAY,
                                          NeighborSignal::REACHABLE);
   Mock::VerifyAndClearExpectations(network_p);
 
-  EXPECT_CALL(*network_p, StartPortalDetection());
+  EXPECT_CALL(*network_p, StartPortalDetection(true));
   ethernet_->OnNeighborReachabilityEvent(ipv6_addr,
                                          NeighborSignal::GATEWAY_AND_DNS_SERVER,
                                          NeighborSignal::REACHABLE);
@@ -829,7 +829,7 @@ TEST_F(EthernetTest, ReachabilityEvent_DNSServers) {
   ON_CALL(*network_p, IsConnected()).WillByDefault(Return(true));
 
   // DNS neighbor events are always ignored.
-  EXPECT_CALL(*network_p, StartPortalDetection()).Times(0);
+  EXPECT_CALL(*network_p, StartPortalDetection(_)).Times(0);
   ON_CALL(*mock_service_, state())
       .WillByDefault(Return(Service::kStateConnected));
   ethernet_->OnNeighborReachabilityEvent(ipv4_addr, NeighborSignal::DNS_SERVER,

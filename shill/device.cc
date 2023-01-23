@@ -576,12 +576,6 @@ bool Device::UpdatePortalDetector(bool restart) {
     return false;
   }
 
-  if (!network_->IsConnected()) {
-    LOG(INFO) << LoggingTag()
-              << ": Skipping portal detection: Network is not connected";
-    return false;
-  }
-
   // Do not run portal detection unless in a connected state (i.e. connected,
   // online, or portalled).
   if (!selected_service_->IsConnected()) {
@@ -601,12 +595,7 @@ bool Device::UpdatePortalDetector(bool restart) {
     return false;
   }
 
-  if (!restart && network_->IsPortalDetectionInProgress()) {
-    LOG(INFO) << LoggingTag() << ": Portal detection is already running.";
-    return true;
-  }
-
-  if (!network_->StartPortalDetection()) {
+  if (!network_->StartPortalDetection(restart)) {
     SetServiceState(Service::kStateOnline);
     return false;
   }
@@ -635,12 +624,6 @@ void Device::OnNetworkValidationResult(const PortalDetector::Result& result) {
     LOG(WARNING)
         << LoggingTag() << ": "
         << "Portal detection completed but no selected service exists.";
-    return;
-  }
-
-  if (!network_->IsConnected()) {
-    LOG(INFO) << LoggingTag()
-              << ": Portal detection completed but Network is not connected";
     return;
   }
 

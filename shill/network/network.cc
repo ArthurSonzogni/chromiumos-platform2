@@ -780,7 +780,18 @@ IPAddress Network::gateway() const {
   return connection_->gateway();
 }
 
-bool Network::StartPortalDetection() {
+bool Network::StartPortalDetection(bool reset) {
+  if (!IsConnected()) {
+    LOG(INFO) << logging_tag_
+              << ": Cannot start portal detection: Network is not connected";
+    return false;
+  }
+
+  if (!reset && IsPortalDetectionInProgress()) {
+    LOG(INFO) << logging_tag_ << ": Portal detection is already running.";
+    return true;
+  }
+
   portal_detector_ = CreatePortalDetector();
   if (!portal_detector_->Start(interface_name_, local(), dns_servers(),
                                logging_tag_)) {
@@ -849,11 +860,18 @@ void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
   LOG(INFO) << logging_tag_
             << " OnPortalDetectorResult: " << previous_validation_state
             << " -> " << result.GetValidationState();
-  network_validation_result_ = result;
 
   int portal_status = Metrics::PortalDetectionResultToEnum(result);
   metrics_->SendEnumToUMA(Metrics::kMetricPortalResult, technology_,
                           portal_status);
+
+  if (!IsConnected()) {
+    LOG(INFO) << logging_tag_
+              << ": Portal detection completed but Network is not connected";
+    return;
+  }
+
+  network_validation_result_ = result;
 
   for (auto* ev : event_handlers_) {
     ev->OnNetworkValidationResult(result);
