@@ -220,6 +220,7 @@ proto_library("crash_sender_proto") {
 static_library("libcrash_sender") {
   sources = [
     "crash_sender_base.cc",
+    "crash_sender_paths.cc",
     "crash_sender_util.cc",
   ]
   all_dependent_configs = [ ":libcrash_sender_config" ]
@@ -408,6 +409,7 @@ if (use.test) {
       "crash_reporter_failure_collector_test.cc",
       "crash_reporter_logs_test.cc",
       "crash_sender_base_test.cc",
+      "crash_sender_paths_test.cc",
       "crash_sender_util_test.cc",
       "crash_serializer_test.cc",
       "ec_collector_test.cc",

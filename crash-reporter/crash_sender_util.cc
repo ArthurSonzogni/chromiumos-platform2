@@ -172,6 +172,9 @@ void ParseCommandLine(int argc,
   }
 
   if (flags->dry_run) {
+    // Forbid access to the path of uploads.log.
+    paths::ChromeCrashLog::SetDryRun(true);
+
     // Set the prefix. In /var/log/messages, this looks like the follows:
     //
     // 2023-01-10T01:52:39.729632Z ERR crash_sender[13359]: dryrun:ERROR
@@ -1031,7 +1034,7 @@ SenderBase::CrashRemoveReason Sender::WriteUploadLog(
   std::string silent;
   details.metadata.GetString("silent", &silent);
   if (always_write_uploads_log_ || (!USE_CHROMELESS_TTY && silent != "true")) {
-    base::FilePath upload_logs_path(paths::Get(paths::kChromeCrashLog));
+    base::FilePath upload_logs_path(paths::Get(paths::ChromeCrashLog::Get()));
 
     // Open the file before we check the normalized path or it will fail if the
     // path doesn't exist.

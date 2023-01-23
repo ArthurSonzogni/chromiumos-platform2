@@ -76,6 +76,8 @@ using test_util::kFakeClientId;
 namespace util {
 namespace {
 
+constexpr char kChromeCrashLog[] = "/var/log/chrome/Crash Reports/uploads.log";
+
 // Enum types for setting the runtime conditions.
 enum BuildType { kOfficialBuild, kUnofficialBuild };
 enum SessionType { kSignInMode, kGuestMode };
@@ -244,8 +246,8 @@ class CrashSenderUtilTest : public testing::Test {
 
     // Creates the directory where crashes will be stored, normally done by
     // Chrome
-    ASSERT_TRUE(
-        base::CreateDirectory(paths::Get(paths::kChromeCrashLog).DirName()));
+    ASSERT_TRUE(base::CreateDirectory(
+        paths::Get(paths::ChromeCrashLog::Get()).DirName()));
 
     // We need to properly init the CommandLine object for the command line
     // parsing tests.
@@ -658,6 +660,8 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_NoFlags) {
   EXPECT_FALSE(flags.force_upload_on_test_images);
   EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
   EXPECT_FALSE(flags.dry_run);
+  // Test here because the setting of ChromeCrashLog is done during CLI parsing.
+  EXPECT_STREQ(paths::ChromeCrashLog::Get(), kChromeCrashLog);
 }
 
 TEST_F(CrashSenderUtilDeathTest, ParseCommandLine_InvalidMaxSpreadTime) {
@@ -688,6 +692,8 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_ValidMaxSpreadTime) {
   EXPECT_FALSE(flags.force_upload_on_test_images);
   EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
   EXPECT_FALSE(flags.dry_run);
+  // Test here because the setting of ChromeCrashLog is done during CLI parsing.
+  EXPECT_STREQ(paths::ChromeCrashLog::Get(), kChromeCrashLog);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnoreRateLimits) {
@@ -708,6 +714,8 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnoreRateLimits) {
   EXPECT_FALSE(flags.force_upload_on_test_images);
   EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
   EXPECT_FALSE(flags.dry_run);
+  // Test here because the setting of ChromeCrashLog is done during CLI parsing.
+  EXPECT_STREQ(paths::ChromeCrashLog::Get(), kChromeCrashLog);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnoreHoldOffTime) {
@@ -728,6 +736,8 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnoreHoldOffTime) {
   EXPECT_FALSE(flags.force_upload_on_test_images);
   EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
   EXPECT_FALSE(flags.dry_run);
+  // Test here because the setting of ChromeCrashLog is done during CLI parsing.
+  EXPECT_STREQ(paths::ChromeCrashLog::Get(), kChromeCrashLog);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_CrashDirectory) {
@@ -748,6 +758,8 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_CrashDirectory) {
   EXPECT_FALSE(flags.force_upload_on_test_images);
   EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
   EXPECT_FALSE(flags.dry_run);
+  // Test here because the setting of ChromeCrashLog is done during CLI parsing.
+  EXPECT_STREQ(paths::ChromeCrashLog::Get(), kChromeCrashLog);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_Dev) {
@@ -768,6 +780,8 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_Dev) {
   EXPECT_FALSE(flags.force_upload_on_test_images);
   EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
   EXPECT_FALSE(flags.dry_run);
+  // Test here because the setting of ChromeCrashLog is done during CLI parsing.
+  EXPECT_STREQ(paths::ChromeCrashLog::Get(), kChromeCrashLog);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnorePauseFile) {
@@ -788,6 +802,8 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_IgnorePauseFile) {
   EXPECT_FALSE(flags.force_upload_on_test_images);
   EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
   EXPECT_FALSE(flags.dry_run);
+  // Test here because the setting of ChromeCrashLog is done during CLI parsing.
+  EXPECT_STREQ(paths::ChromeCrashLog::Get(), kChromeCrashLog);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_UploadOldReports) {
@@ -808,6 +824,8 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_UploadOldReports) {
   EXPECT_FALSE(flags.force_upload_on_test_images);
   EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
   EXPECT_FALSE(flags.dry_run);
+  // Test here because the setting of ChromeCrashLog is done during CLI parsing.
+  EXPECT_STREQ(paths::ChromeCrashLog::Get(), kChromeCrashLog);
 }
 
 TEST_F(CrashSenderUtilTest, ParseCommandLine_ForceUploadOnTestImages) {
@@ -828,6 +846,8 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_ForceUploadOnTestImages) {
   EXPECT_TRUE(flags.force_upload_on_test_images);
   EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
   EXPECT_FALSE(flags.dry_run);
+  // Test here because the setting of ChromeCrashLog is done during CLI parsing.
+  EXPECT_STREQ(paths::ChromeCrashLog::Get(), kChromeCrashLog);
 }
 
 TEST_F(CrashSenderUtilDeathTest,
@@ -862,11 +882,13 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_ConsentAlreadyCheckedWithDir) {
   EXPECT_FALSE(flags.force_upload_on_test_images);
   EXPECT_TRUE(flags.consent_already_checked_by_crash_reporter);
   EXPECT_FALSE(flags.dry_run);
+  // Test here because the setting of ChromeCrashLog is done during CLI parsing.
+  EXPECT_STREQ(paths::ChromeCrashLog::Get(), kChromeCrashLog);
 }
 
 // After the dry run mode has been implemented, replace the following test with
-// one that tests flags. When CRASH_SENDER_DRY_RUN_DEV is undefined, this test
-// effectively does nothing.
+// one that tests flags and ChromeCrashLog::Get(). When CRASH_SENDER_DRY_RUN_DEV
+// is undefined, this test effectively does nothing.
 TEST_F(CrashSenderUtilDeathTest, ParseCommandLine_DryRun) {
   const char* argv[] = {"crash_sender", "--dry_run"};
   base::CommandLine command_line(std::size(argv), argv);
@@ -1921,7 +1943,6 @@ INSTANTIATE_TEST_SUITE_P(
     testing::Combine(
         testing::Values(kNone, kPayloadFile, kLogFile, kTextFile, kBinFile)));
 
-// SendCrash needs to be parametrized for under and not under the dry run mode.
 class CrashSenderSendCrashesTest : public CrashSenderUtilTest,
                                    public ::testing::WithParamInterface<
                                        std::tuple<bool, int, base::TimeDelta>> {
@@ -2084,7 +2105,7 @@ TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
   // The Chrome uploads.log file shouldn't exist because we had nothing to
   // upload, but we will have slept once until we determined we shouldn't be
   // doing uploads.
-  EXPECT_FALSE(base::PathExists(paths::Get(paths::kChromeCrashLog)));
+  EXPECT_FALSE(base::PathExists(paths::Get(paths::ChromeCrashLog::Get())));
   EXPECT_EQ(1, sleep_times.size());
   sleep_times.clear();
 
@@ -2116,11 +2137,11 @@ TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
   } else {
     sender.SendCrashes(crashes_to_send);
     if (max_crash_rate_ > 0) {
-      ASSERT_TRUE(base::ReadFileToString(paths::Get(paths::kChromeCrashLog),
-                                         &contents));
+      ASSERT_TRUE(base::ReadFileToString(
+          paths::Get(paths::ChromeCrashLog::Get()), &contents));
     } else {
       // No log file, contents remain empty.
-      EXPECT_FALSE(base::PathExists(paths::Get(paths::kChromeCrashLog)));
+      EXPECT_FALSE(base::PathExists(paths::Get(paths::ChromeCrashLog::Get())));
     }
   }
 
@@ -2452,7 +2473,7 @@ TEST_F(CrashSenderUtilTest, SendCrashes_Fail) {
 
   // The Chrome uploads.log file shouldn't exist because we had nothing to
   // report.
-  EXPECT_FALSE(base::PathExists(paths::Get(paths::kChromeCrashLog)));
+  EXPECT_FALSE(base::PathExists(paths::Get(paths::ChromeCrashLog::Get())));
 }
 
 // Verify behavior when SendCrashes itself crashes.

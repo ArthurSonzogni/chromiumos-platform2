@@ -38,7 +38,8 @@ bool CreateClientIdFile() {
 bool SetMockCrashSending(bool success) {
   util::g_force_is_mock = true;
   util::g_force_is_mock_successful = success;
-  return base::CreateDirectory(paths::Get(paths::kChromeCrashLog).DirName());
+  return base::CreateDirectory(
+      paths::Get(paths::ChromeCrashLog::Get()).DirName());
 }
 
 // Reset "force" flags to clear out IsMock flags
@@ -53,7 +54,8 @@ bool SetIntegrationTesting(bool success) {
   return test_util::CreateFile(paths::GetAt(paths::kSystemRunStateDirectory,
                                             paths::kMockCrashSending),
                                success ? "" : "0") &&
-         base::CreateDirectory(paths::Get(paths::kChromeCrashLog).DirName());
+         base::CreateDirectory(
+             paths::Get(paths::ChromeCrashLog::Get()).DirName());
 }
 
 class CrashSenderBaseForTesting : public util::SenderBase {

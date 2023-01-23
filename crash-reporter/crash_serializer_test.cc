@@ -34,7 +34,8 @@ namespace {
 bool SetMockCrashSending(bool success) {
   util::g_force_is_mock = true;
   util::g_force_is_mock_successful = success;
-  return base::CreateDirectory(paths::Get(paths::kChromeCrashLog).DirName());
+  return base::CreateDirectory(
+      paths::Get(paths::ChromeCrashLog::Get()).DirName());
 }
 
 }  // namespace

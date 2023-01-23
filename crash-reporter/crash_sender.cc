@@ -18,7 +18,9 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_piece.h>
 #include <base/time/default_clock.h>
+#include <brillo/array_utils.h>
 #include <brillo/syslog_logging.h>
 #include <libminijail.h>
 #include <metrics/metrics_library.h>
@@ -30,6 +32,19 @@
 #include "crash-reporter/util.h"
 
 namespace {
+
+// Does the CLI contain the dry run flag?
+bool IsDryRun(int argc, const char* argv[]) {
+  static constexpr base::StringPiece kDryRunFlag("--dry_run");
+
+  for (int i = 1; i < argc; ++i) {
+    if (kDryRunFlag == argv[i]) {
+      return true;
+    }
+  }
+
+  return false;
+}
 
 // Sets up the minijail sandbox.
 //
@@ -62,8 +77,23 @@ void SetUpSandbox(struct minijail* jail) {
   minijail_forward_signals(jail);
 }
 
+// Sets up the minijail sandbox for dry run in addition to the standard ones. It
+// bind-mounts as read-only directories that we know crash_sender shouldn't
+// write under the dry run mode.
+void SetUpSandboxForDryRun(struct minijail* jail) {
+  static constexpr auto kReadOnlyDirs = brillo::make_array<const char*>(
+      // Prevent modifying crash meta file directories
+      paths::kFallbackUserCrashDirectory, paths::kCryptohomeCrashDirectory,
+      paths::kSystemCrashDirectory,
+      // Prevent UMA reporting
+      "/var/lib");
+  for (const char* dir : kReadOnlyDirs) {
+    minijail_bind(jail, dir, dir, /*writable=*/0);
+  }
+}
+
 // Runs the main function for the child process.
-int RunChildMain(int argc, char* argv[]) {
+int RunChildMain(int argc, const char* argv[]) {
   util::CommandLineFlags flags;
   util::ParseCommandLine(argc, argv, &flags);
 
@@ -124,7 +154,9 @@ int RunChildMain(int argc, char* argv[]) {
 
   base::File lock_file(sender.AcquireLockFileOrDie());
   for (const auto& directory : crash_directories) {
-    util::RemoveOrphanedCrashFiles(directory);
+    if (!flags.dry_run) {
+      util::RemoveOrphanedCrashFiles(directory);
+    }
     sender.RemoveAndPickCrashFiles(directory, &reports_to_send);
   }
   lock_file.Close();
@@ -145,7 +177,7 @@ void CleanUp(void*) {
 
 }  // namespace
 
-int main(int argc, char* argv[]) {
+int main(int argc, const char* argv[]) {
   // Log to syslog (/var/log/messages), and stderr if stdin is a tty.
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
   // Register the cleanup function to be called at exit.
@@ -155,6 +187,9 @@ int main(int argc, char* argv[]) {
   // Set up a sandbox, and jail the child process.
   ScopedMinijail jail(minijail_new());
   SetUpSandbox(jail.get());
+  if (IsDryRun(argc, argv)) {
+    SetUpSandboxForDryRun(jail.get());
+  }
   const pid_t pid = minijail_fork(jail.get());
 
   if (pid == 0)
