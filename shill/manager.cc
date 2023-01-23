@@ -2711,16 +2711,7 @@ void Manager::RecheckPortal(Error* /*error*/) {
 }
 
 void Manager::RequestScan(const std::string& technology, Error* error) {
-  Technology technology_identifier;
-  // TODO(benchan): To maintain backward compatibility, we treat an unspecified
-  // technology as WiFi. We should remove this special handling and treat an
-  // unspecified technology as an error after we update existing clients of
-  // this API to specify a valid technology when calling this method.
-  if (technology.empty()) {
-    technology_identifier = Technology::kWiFi;
-  } else {
-    technology_identifier = TechnologyFromName(technology);
-  }
+  Technology technology_identifier = TechnologyFromName(technology);
 
   switch (technology_identifier) {
     case Technology::kCellular:
