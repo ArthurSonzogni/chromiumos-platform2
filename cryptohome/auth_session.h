@@ -649,8 +649,7 @@ class AuthSession final {
   // Should be the last member.
   base::WeakPtrFactory<AuthSession> weak_factory_{this};
 
-  friend class AuthSessionInterfaceTest;
-  friend class AuthSessionTestWithKeysetManagement;
+  FRIEND_TEST(AuthSessionInterfaceTest, PreparePersistentVaultNoShadowDir);
   FRIEND_TEST(AuthSessionManagerTest, CreateExpire);
   FRIEND_TEST(AuthSessionTest, AddCredentialNewUser);
   FRIEND_TEST(AuthSessionTest, AddCredentialNewUserTwice);
@@ -663,10 +662,6 @@ class AuthSession final {
   FRIEND_TEST(AuthSessionTest, TimeoutTest);
   FRIEND_TEST(AuthSessionTest, GetCredentialRegularUser);
   FRIEND_TEST(AuthSessionTest, GetCredentialKioskUser);
-  FRIEND_TEST(AuthSessionTestWithKeysetManagement, USSEnabledRemovesBackupVKs);
-  FRIEND_TEST(AuthSessionTestWithKeysetManagement, USSEnabledUpdateBackupVKs);
-  FRIEND_TEST(AuthSessionTestWithKeysetManagement,
-              USSRollbackAuthWithBackupVKSuccess);
   FRIEND_TEST(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss);
   FRIEND_TEST(AuthSessionWithUssExperimentTest,
               AddPasswordAuthFactorViaAsyncUss);

@@ -406,11 +406,6 @@ class AuthSessionInterfaceTest : public AuthSessionInterfaceTestBase {
     CreateAuthSessionManager(auth_block_utility_impl_.get());
   }
 
-  void SetAuthSessionAsAuthenticated(AuthSession* auth_session,
-                                     base::span<const AuthIntent> intents) {
-    auth_session->SetAuthSessionAsAuthenticated(intents);
-  }
-
   AuthorizationRequest CreateAuthorization(const std::string& secret) {
     AuthorizationRequest req;
     req.mutable_key()->set_secret(secret);
@@ -546,6 +541,8 @@ TEST_F(AuthSessionInterfaceTest,
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
+}  // namespace
+
 // Test to check if PreparePersistentVaultImpl will succeed if user is not
 // created.
 TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultNoShadowDir) {
@@ -554,7 +551,7 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultNoShadowDir) {
                                                AuthIntent::kDecrypt);
   EXPECT_THAT(auth_session_status, IsOk());
   AuthSession* auth_session = auth_session_status.value();
-  SetAuthSessionAsAuthenticated(auth_session, kAuthorizedIntentsForFullAuth);
+  auth_session->SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
 
   // If no shadow homedir - we do not have a user.
   EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
@@ -567,6 +564,8 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultNoShadowDir) {
   ASSERT_EQ(status->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
 }
+
+namespace {
 
 // Test CreatePersistentUserImpl with invalid auth_session.
 TEST_F(AuthSessionInterfaceTest, CreatePersistentUserInvalidAuthSession) {
