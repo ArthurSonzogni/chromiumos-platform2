@@ -121,6 +121,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/mount-passthrough        u:object_r:cros_mount_passthrough_exec:s0
 /usr/bin/mount-passthrough-jailed u:object_r:cros_mount_passthrough_jailed_exec:s0
 /usr/bin/newblued               u:object_r:cros_newblued_exec:s0
+/usr/bin/opencl_cacher          u:object_r:cros_opencl_cacher_exec:s0
 /usr/bin/patchpaneld            u:object_r:cros_patchpaneld_exec:s0
 /usr/bin/periodic_scheduler     u:object_r:cros_periodic_scheduler_exec:s0
 /usr/bin/permission_broker      u:object_r:cros_permission_broker_exec:s0
@@ -309,6 +310,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /var/lib/metrics(/.*)?          u:object_r:cros_metrics_file:s0
 /var/lib/metrics/uma-events     u:object_r:cros_metrics_uma_events_file:s0
 /var/lib/misc                   u:object_r:cros_var_lib_misc:s0
+/var/lib/ml_core(/.*)?          u:object_r:cros_var_lib_ml_core:s0
 /var/lib/modemfwd(/.*)?         u:object_r:cros_modemfwd_file:s0
 /var/lib/oemcrypto(/.*)?        u:object_r:cros_var_lib_oemcrypto:s0
 /var/lib/oobe_config_restore(/.*)? u:object_r:cros_var_lib_oobe_config_restore:s0

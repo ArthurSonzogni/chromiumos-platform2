@@ -17,7 +17,7 @@ namespace {
 using org::chromium::SessionManagerInterfaceProxy;
 
 constexpr char kLibraryName[] = "libcros_ml_core_internal.so";
-constexpr char kDaemonStoreBase[] = "/run/daemon-store/ml-core-effects";
+constexpr char kOpenCLCachingDir[] = "/var/lib/ml_core/opencl_cache";
 
 class EffectsPipelineImpl : public cros::EffectsPipeline {
  public:
@@ -110,18 +110,8 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
       return false;
     }
 
-    base::FilePath caching_dir;
-    if (caching_dir_override.empty()) {
-      caching_dir = GetDaemonStoreDir();
-    } else {
-      caching_dir = caching_dir_override;
-    }
-
-    const char* caching_dir_ptr(
-        caching_dir.empty() ? nullptr : caching_dir.value().c_str());
-
-    pipeline_ = create_fn_(share_context, caching_dir_ptr);
-    LOG(INFO) << "Pipeline created, cache_dir: " << caching_dir;
+    pipeline_ = create_fn_(share_context, kOpenCLCachingDir);
+    LOG(INFO) << "Pipeline created, cache_dir: " << kOpenCLCachingDir;
     set_rendered_image_observer_fn_(
         pipeline_, this, &EffectsPipelineImpl::RenderedImageFrameHandler);
 
@@ -139,37 +129,6 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
       pipeline->rendered_image_observer_->OnFrameProcessed(
           timestamp, frame_texture, frame_width, frame_height);
     }
-  }
-
-  base::FilePath GetDaemonStoreDir() {
-    // Default to "/tmp" if there is no user hash available (e.g. Guest mode)
-    // TODO(b/260157682): Investigate whether we should keep this, if so, how do
-    //                    we protect against corruption / malicious intent.
-    base::FilePath default_caching_dir("/tmp");
-    dbus::Bus::Options options;
-    options.bus_type = dbus::Bus::SYSTEM;
-    scoped_refptr<dbus::Bus> bus = new dbus::Bus(options);
-    if (!bus->Connect()) {
-      LOG(ERROR) << "Error connecting to DBus.";
-      return default_caching_dir;
-    }
-
-    auto session_manager = std::make_unique<SessionManagerInterfaceProxy>(bus);
-    brillo::ErrorPtr error;
-    std::string username, hashed_username;
-    if (!session_manager->RetrievePrimarySession(&username, &hashed_username,
-                                                 &error)) {
-      LOG(ERROR) << "Error in DBus call RetrievePrimarySession: "
-                 << error->GetMessage();
-      return default_caching_dir;
-    }
-
-    if (hashed_username.empty()) {
-      LOG(ERROR) << "No user available, using default caching dir.";
-      return default_caching_dir;
-    }
-
-    return base::FilePath(kDaemonStoreBase).Append(hashed_username);
   }
 
   std::optional<base::ScopedNativeLibrary> library_;

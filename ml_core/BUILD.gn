@@ -37,4 +37,5 @@ shared_library("libcros_ml_core") {
   sources = [ "effects_pipeline.cc" ]
   configs += [ ":target_defaults" ]
   public_deps = [ ":effects_pipeline_mojom" ]
+  install_path = "lib"
 }

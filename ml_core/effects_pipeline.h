@@ -58,7 +58,9 @@ class BRILLO_EXPORT EffectsPipeline {
   virtual bool SetRenderedImageObserver(
       std::unique_ptr<ProcessedFrameObserver> observer) = 0;
 
-  // Select effect to apply
+  // Select effect to apply. `callback` is called when the effect has been
+  // fully set up, which includes loading any TFLite models and preparing
+  // them for execution.
   virtual void SetEffect(EffectsConfig* effects_config,
                          void (*callback)(bool)) = 0;
 };

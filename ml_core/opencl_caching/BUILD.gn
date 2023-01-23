@@ -5,7 +5,13 @@
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":opencl_cacher" ]
+  deps = [
+    ":install_dbus",
+    ":install_init",
+    ":install_seccomp",
+    ":install_tmpfiles",
+    ":opencl_cacher",
+  ]
   if (use.test) {
     deps += []
   }
@@ -30,4 +36,25 @@ executable("opencl_cacher") {
     "//ml_core/dlc:dlc_client",
   ]
   install_path = "bin"
+}
+
+install_config("install_init") {
+  sources = [ "init/opencl-cacher.conf" ]
+  install_path = "/etc/init"
+}
+
+install_config("install_tmpfiles") {
+  sources = [ "tmpfiles.d/opencl-cacher.conf" ]
+  install_path = "/usr/lib/tmpfiles.d"
+}
+
+install_config("install_dbus") {
+  sources = [ "dbus/opencl-cacher-dbus.conf" ]
+  install_path = "/etc/dbus-1/system.d"
+}
+
+# Only on AMD64 for now
+install_config("install_seccomp") {
+  sources = [ "seccomp_filter/opencl-cacher-amd64.policy" ]
+  install_path = "/usr/share/policy"
 }
