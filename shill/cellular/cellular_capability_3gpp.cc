@@ -1565,6 +1565,11 @@ void CellularCapability3gpp::OnModemPropertiesChanged(
     cellular()->SetEquipmentId(
         properties.Get<std::string>(MM_MODEM_PROPERTY_EQUIPMENTIDENTIFIER));
   }
+  if (properties.Contains<uint32_t>(
+          MM_MODEM_PROPERTY_MAXACTIVEMULTIPLEXEDBEARERS)) {
+    cellular()->SetMaxActiveMultiplexedBearers(properties.Get<uint32_t>(
+        MM_MODEM_PROPERTY_MAXACTIVEMULTIPLEXEDBEARERS));
+  }
 
   // Unlock required and SimLock
   bool lock_status_changed = false;

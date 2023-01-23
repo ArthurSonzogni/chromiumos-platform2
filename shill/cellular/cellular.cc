@@ -314,6 +314,12 @@ std::string Cellular::GetDeviceId(Error* error) {
   return device_id_ ? device_id_->AsString() : "";
 }
 
+bool Cellular::GetMultiplexSupport() {
+  // The device allows multiplexing support when more than one multiplexed
+  // bearers can be setup at a given time.
+  return (max_multiplexed_bearers_ > 1);
+}
+
 bool Cellular::ShouldBringNetworkInterfaceDownAfterDisabled() const {
   if (!device_id_)
     return false;
@@ -2568,6 +2574,11 @@ void Cellular::SetModelId(const std::string& model_id) {
 
 void Cellular::SetMMPlugin(const std::string& mm_plugin) {
   mm_plugin_ = mm_plugin;
+}
+
+void Cellular::SetMaxActiveMultiplexedBearers(
+    uint32_t max_multiplexed_bearers) {
+  max_multiplexed_bearers_ = max_multiplexed_bearers;
 }
 
 void Cellular::StartLocationPolling() {

@@ -135,6 +135,9 @@ class Cellular : public Device,
   // Returns the device id as a string if it has been set.
   std::string GetDeviceId(Error* error);
 
+  // Returns whether the device supports multiplexed data sessions
+  bool GetMultiplexSupport();
+
   // Inherited from Device.
   std::string GetStorageIdentifier() const override;
   bool Load(const StoreInterface* storage) override;
@@ -344,6 +347,7 @@ class Cellular : public Device,
   void SetManufacturer(const std::string& manufacturer);
   void SetModelId(const std::string& model_id);
   void SetMMPlugin(const std::string& mm_plugin);
+  void SetMaxActiveMultiplexedBearers(uint32_t max_multiplexed_bearers);
 
   void SetSelectedNetwork(const std::string& selected_network);
   void SetFoundNetworks(const Stringmaps& found_networks);
@@ -656,6 +660,7 @@ class Cellular : public Device,
   std::string min_;
   std::string model_id_;
   std::string mm_plugin_;
+  uint32_t max_multiplexed_bearers_ = 1;
   bool scanning_ = false;
   bool polling_location_ = false;
   base::CancelableClosure poll_location_task_;
