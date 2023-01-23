@@ -33,9 +33,7 @@ class ModemModem3gppProxy : public ModemModem3gppProxyInterface {
                 Error* error,
                 const ResultCallback& callback,
                 int timeout) override;
-  void Scan(Error* error,
-            KeyValueStoresCallback callback,
-            int timeout) override;
+  void Scan(KeyValueStoresCallback callback) override;
   void SetInitialEpsBearerSettings(const KeyValueStore& properties,
                                    Error* error,
                                    const ResultCallback& callback,

@@ -523,15 +523,9 @@ void Cellular::Scan(Error* error, const std::string& /*reason*/) {
   if (!capability_)
     return;
 
-  capability_->Scan(error, base::BindOnce(&Cellular::OnScanReply,
-                                          weak_ptr_factory_.GetWeakPtr()));
-  // An immediate failure in |cabapility_->Scan(...)| is indicated through the
-  // |error| argument.
-  if (error->IsFailure())
-    return;
-
-  proposed_scan_in_progress_ = true;
-  UpdateScanning();
+  capability_->Scan(
+      base::BindOnce(&Cellular::OnScanStarted, weak_ptr_factory_.GetWeakPtr()),
+      base::BindOnce(&Cellular::OnScanReply, weak_ptr_factory_.GetWeakPtr()));
 }
 
 void Cellular::RegisterOnNetwork(const std::string& network_id,
@@ -764,6 +758,11 @@ void Cellular::CancelPendingConnect() {
   ConnectToPendingFailed(Service::kFailureDisconnect);
 }
 
+void Cellular::OnScanStarted() {
+  proposed_scan_in_progress_ = true;
+  UpdateScanning();
+}
+
 void Cellular::OnScanReply(const Stringmaps& found_networks,
                            const Error& error) {
   SLOG(2) << LoggingTag() << ": Scanning completed";
@@ -773,6 +772,7 @@ void Cellular::OnScanReply(const Stringmaps& found_networks,
   // TODO(jglasgow): fix error handling.
   // At present, there is no way of notifying user of this asynchronous error.
   if (error.IsFailure()) {
+    error.Log();
     if (!found_networks_.empty())
       SetFoundNetworks(Stringmaps());
     return;

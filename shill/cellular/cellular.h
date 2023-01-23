@@ -177,6 +177,7 @@ class Cellular : public Device,
   // Cancel any pending connect request.
   void CancelPendingConnect();
 
+  void OnScanStarted();
   void OnScanReply(const Stringmaps& found_networks, const Error& error);
 
   // Asynchronously queries capability for cellular location.

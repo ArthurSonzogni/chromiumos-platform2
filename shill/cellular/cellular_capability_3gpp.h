@@ -151,7 +151,8 @@ class CellularCapability3gpp {
   // should be cleared and a property change notification sent out.
   //
   // TODO(jglasgow): Implement real error handling.
-  void Scan(Error* error, ResultStringmapsCallback callback);
+  void Scan(base::OnceClosure started_callback,
+            ResultStringmapsCallback finished_callback);
 
   // Sets the parameters specified by |properties| for the LTE initial EPS
   // bearer used at registration, particularly the 'Attach' APN settings.

@@ -63,8 +63,6 @@ constexpr base::TimeDelta CellularCapability3gpp::kTimeoutRegister =
     base::Seconds(90);
 constexpr base::TimeDelta CellularCapability3gpp::kTimeoutReset =
     base::Seconds(90);
-constexpr base::TimeDelta CellularCapability3gpp::kTimeoutScan =
-    base::Seconds(120);
 constexpr base::TimeDelta CellularCapability3gpp::kTimeoutSetInitialEpsBearer =
     base::Seconds(45);
 constexpr base::TimeDelta CellularCapability3gpp::kTimeoutSetupLocation =
@@ -1261,18 +1259,20 @@ void CellularCapability3gpp::OnResetReply(const ResultCallback& callback,
     callback.Run(error);
 }
 
-void CellularCapability3gpp::Scan(Error* error,
-                                  ResultStringmapsCallback callback) {
+void CellularCapability3gpp::Scan(base::OnceClosure started_callback,
+                                  ResultStringmapsCallback finished_callback) {
+  KeyValueStoresCallback cb = base::BindOnce(
+      &CellularCapability3gpp::OnScanReply, weak_ptr_factory_.GetWeakPtr(),
+      std::move(finished_callback));
+
   if (!modem_3gpp_proxy_) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kWrongState,
-                          "No 3gpp proxy");
+    std::move(cb).Run(ScanResults(),
+                      Error(Error::kWrongState, "No 3gpp proxy", FROM_HERE));
     return;
   }
 
-  KeyValueStoresCallback cb =
-      base::BindOnce(&CellularCapability3gpp::OnScanReply,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback));
-  modem_3gpp_proxy_->Scan(error, std::move(cb), kTimeoutScan.InMilliseconds());
+  std::move(started_callback).Run();
+  modem_3gpp_proxy_->Scan(std::move(cb));
 }
 
 void CellularCapability3gpp::OnScanReply(ResultStringmapsCallback callback,

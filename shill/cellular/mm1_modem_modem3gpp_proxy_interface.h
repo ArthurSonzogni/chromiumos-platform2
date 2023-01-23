@@ -27,9 +27,7 @@ class ModemModem3gppProxyInterface {
                         Error* error,
                         const ResultCallback& callback,
                         int timeout) = 0;
-  virtual void Scan(Error* error,
-                    KeyValueStoresCallback callback,
-                    int timeout) = 0;
+  virtual void Scan(KeyValueStoresCallback callback) = 0;
   virtual void SetInitialEpsBearerSettings(const KeyValueStore& properties,
                                            Error* error,
                                            const ResultCallback& callback,

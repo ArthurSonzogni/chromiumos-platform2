@@ -4,9 +4,14 @@
 
 #include "shill/cellular/mock_mm1_modem_modem3gpp_proxy.h"
 
+#include <utility>
+#include <vector>
+
 #include "shill/testing.h"
 
-using testing::_;
+using ::testing::_;
+using ::testing::Invoke;
+using ::testing::WithArgs;
 
 namespace shill {
 namespace mm1 {
@@ -14,8 +19,11 @@ namespace mm1 {
 MockModemModem3gppProxy::MockModemModem3gppProxy() {
   ON_CALL(*this, Register(_, _, _, _))
       .WillByDefault(SetOperationFailedInArgumentAndWarn<1>());
-  ON_CALL(*this, Scan(_, _, _))
-      .WillByDefault(SetOperationFailedInArgumentAndWarn<0>());
+  ON_CALL(*this, Scan(_))
+      .WillByDefault(WithArgs<0>(Invoke([](KeyValueStoresCallback callback) {
+        std::move(callback).Run(std::vector<KeyValueStore>(),
+                                Error(Error::kOperationFailed));
+      })));
 }
 
 MockModemModem3gppProxy::~MockModemModem3gppProxy() = default;

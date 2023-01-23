@@ -6,10 +6,11 @@
 
 #include <utility>
 
+#include <base/logging.h>
+#include <base/time/time.h>
+
 #include "shill/cellular/cellular_error.h"
 #include "shill/logging.h"
-
-#include <base/logging.h>
 
 namespace shill {
 
@@ -19,6 +20,10 @@ static std::string ObjectID(const dbus::ObjectPath* p) {
   return p->value();
 }
 }  // namespace Logging
+
+namespace {
+constexpr base::TimeDelta kScanTimeout = base::Minutes(2);
+}  // namespace
 
 namespace mm1 {
 
@@ -43,9 +48,7 @@ void ModemModem3gppProxy::Register(const std::string& operator_id,
                         timeout);
 }
 
-void ModemModem3gppProxy::Scan(Error* error,
-                               KeyValueStoresCallback callback,
-                               int timeout) {
+void ModemModem3gppProxy::Scan(KeyValueStoresCallback callback) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   auto split_callback = base::SplitOnceCallback(std::move(callback));
   proxy_->ScanAsync(base::BindOnce(&ModemModem3gppProxy::OnScanSuccess,
@@ -54,7 +57,7 @@ void ModemModem3gppProxy::Scan(Error* error,
                     base::BindOnce(&ModemModem3gppProxy::OnScanFailure,
                                    weak_factory_.GetWeakPtr(),
                                    std::move(split_callback.second)),
-                    timeout);
+                    kScanTimeout.InMilliseconds());
 }
 
 void ModemModem3gppProxy::SetInitialEpsBearerSettings(
