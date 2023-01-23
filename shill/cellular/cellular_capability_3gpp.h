@@ -141,18 +141,14 @@ class CellularCapability3gpp {
   // Network service and registration
   // -------------------------------------------------------------------------
 
-  // Asks the modem to scan for networks.
+  // Asks the modem to scan for networks asynchronously.
   //
-  // Subclasses should implement this by fetching scan results asynchronously.
   // When the results are ready, update the kFoundNetworksProperty and send a
   // property change notification.  Finally, callback must be invoked to inform
   // the caller that the scan has completed.
   //
   // Errors are not generally reported, but on error the kFoundNetworksProperty
   // should be cleared and a property change notification sent out.
-  //
-  // TODO(jglasgow): Refactor to reuse code by putting notification logic into
-  // Cellular or CellularCapability.
   //
   // TODO(jglasgow): Implement real error handling.
   void Scan(Error* error, ResultStringmapsCallback callback);
