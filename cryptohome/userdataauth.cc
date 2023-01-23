@@ -1401,6 +1401,19 @@ UserSession* UserDataAuth::GetOrCreateUserSession(const std::string& username) {
   return session;
 }
 
+void UserDataAuth::RemoveInactiveUserSession(const std::string& username) {
+  AssertOnMountThread();
+
+  UserSession* session = sessions_->Find(username);
+  if (!session || session->IsActive()) {
+    return;
+  }
+
+  if (!sessions_->Remove(username)) {
+    NOTREACHED() << "Failed to remove inactive user session.";
+  }
+}
+
 void UserDataAuth::MountGuest(
     base::OnceCallback<void(const user_data_auth::MountReply&)> on_done) {
   AssertOnMountThread();
@@ -4300,6 +4313,7 @@ CryptohomeStatus UserDataAuth::PrepareGuestVaultImpl() {
     DCHECK(status->mount_error() != MOUNT_ERROR_NONE);
     LOG(ERROR) << "Finished mounting with status code: "
                << status->mount_error();
+    RemoveInactiveUserSession(guest_user_);
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
                    kLocUserDataAuthMountFailedInPrepareGuestVault))
@@ -4361,6 +4375,7 @@ CryptohomeStatus UserDataAuth::PrepareEphemeralVaultImpl(
   ReportTimerStop(kMountExTimer);
   PostMountHook(session_status.value(), mount_status);
   if (!mount_status.ok()) {
+    RemoveInactiveUserSession(auth_session->username());
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
                    kLocUserDataAuthMountFailedInPrepareEphemeralVault))
@@ -4442,6 +4457,7 @@ CryptohomeStatus UserDataAuth::PreparePersistentVaultImpl(
   ReportTimerStop(kMountExTimer);
   PostMountHook(session_status.value(), mount_status);
   if (!mount_status.ok()) {
+    RemoveInactiveUserSession(auth_session_status.value()->username());
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
                    kLocUserDataAuthMountFailedInPreparePersistentVault))

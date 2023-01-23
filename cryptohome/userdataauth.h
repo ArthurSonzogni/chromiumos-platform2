@@ -864,6 +864,9 @@ class UserDataAuth {
   // Returns either an existing or a newly created UserSession, if not present.
   UserSession* GetOrCreateUserSession(const std::string& username);
 
+  // Removes an inactive user session.
+  void RemoveInactiveUserSession(const std::string& username);
+
   // Calling this method will mount the home directory for guest users.
   // This is usually called by DoMount(). Note that this method is asynchronous,
   // and will call |on_done| exactly once to deliver the result regardless of

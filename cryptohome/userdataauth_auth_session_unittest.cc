@@ -921,6 +921,144 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PrepareGuestVault) {
             user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
 }
 
+TEST_F(AuthSessionInterfaceMockAuthTest, PrepareGuestVaultAfterFailedGuest) {
+  auto user_session = std::make_unique<MockUserSession>();
+  const CryptohomeError::ErrorLocationPair fake_error_location =
+      CryptohomeError::ErrorLocationPair(
+          static_cast<CryptohomeError::ErrorLocation>(1),
+          std::string("FakeErrorLocation"));
+
+  EXPECT_CALL(*user_session, IsActive()).WillRepeatedly(Return(false));
+  EXPECT_CALL(*user_session, MountGuest()).WillOnce(Invoke([&]() {
+    return MakeStatus<CryptohomeMountError>(
+        fake_error_location,
+        error::ErrorActionSet({error::ErrorAction::kReboot}), MOUNT_ERROR_FATAL,
+        std::nullopt);
+  }));
+
+  auto user_session2 = std::make_unique<MockUserSession>();
+  EXPECT_CALL(*user_session2, IsActive()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*user_session2, MountGuest()).WillOnce(Invoke([]() {
+    return OkStatus<CryptohomeMountError>();
+  }));
+
+  EXPECT_CALL(user_session_factory_, New(_, _, _))
+      .WillOnce(Return(ByMove(std::move(user_session))))
+      .WillOnce(Return(ByMove(std::move(user_session2))));
+
+  // We set first invocation to fail, but the second should succeed.
+  ASSERT_THAT(PrepareGuestVaultImpl(), NotOk());
+  ASSERT_THAT(PrepareGuestVaultImpl(), IsOk());
+}
+
+TEST_F(AuthSessionInterfaceMockAuthTest,
+       PrepareGuestVaultAfterFailedEphemeral) {
+  // Auth session is initially not authenticated for ephemeral users.
+  CryptohomeStatusOr<AuthSession*> auth_session_status =
+      auth_session_manager_->CreateAuthSession(
+          kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER, AuthIntent::kDecrypt);
+  EXPECT_TRUE(auth_session_status.ok());
+  AuthSession* auth_session = auth_session_status.value();
+
+  auto user_session = std::make_unique<MockUserSession>();
+  const CryptohomeError::ErrorLocationPair fake_error_location =
+      CryptohomeError::ErrorLocationPair(
+          static_cast<CryptohomeError::ErrorLocation>(1),
+          std::string("FakeErrorLocation"));
+  EXPECT_CALL(*user_session, IsActive())
+      .WillOnce(Return(false))
+      .WillOnce(Return(false));
+  EXPECT_CALL(*user_session, MountEphemeral(kUsername))
+      .WillOnce(Invoke([&](const std::string&) {
+        return MakeStatus<CryptohomeMountError>(
+            fake_error_location,
+            error::ErrorActionSet({error::ErrorAction::kReboot}),
+            MOUNT_ERROR_FATAL, std::nullopt);
+      }));
+
+  auto user_session2 = std::make_unique<MockUserSession>();
+  EXPECT_CALL(*user_session2, IsActive()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*user_session2, MountGuest()).WillOnce(Invoke([]() {
+    return OkStatus<CryptohomeMountError>();
+  }));
+
+  EXPECT_CALL(user_session_factory_, New(_, _, _))
+      .WillOnce(Return(ByMove(std::move(user_session))))
+      .WillOnce(Return(ByMove(std::move(user_session2))));
+
+  // We set first invocation to fail, but the second should succeed.
+  ASSERT_THAT(PrepareEphemeralVaultImpl(auth_session->serialized_token()),
+              NotOk());
+  ASSERT_THAT(PrepareGuestVaultImpl(), IsOk());
+}
+
+TEST_F(AuthSessionInterfaceMockAuthTest,
+       PrepareGuestVaultAfterFailedPersistent) {
+  const std::string obfuscated_username = SanitizeUserName(kUsername);
+
+  // Arrange.
+  EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
+      .WillRepeatedly(ReturnValue(true));
+  const SerializedVaultKeyset serialized_vk =
+      CreateFakePasswordVk(kPasswordLabel);
+  MockVKToAuthFactorMapLoading(obfuscated_username, {serialized_vk},
+                               keyset_management_);
+  MockKeysetLoadingByLabel(obfuscated_username, serialized_vk,
+                           keyset_management_);
+  MockKeysetDerivation(obfuscated_username, serialized_vk, CryptoError::CE_NONE,
+                       mock_auth_block_utility_);
+  MockKeysetLoadingViaBlobs(obfuscated_username, serialized_vk,
+                            keyset_management_);
+  CryptohomeStatusOr<AuthSession*> auth_session_status =
+      auth_session_manager_->CreateAuthSession(kUsername, /*flags=*/0,
+                                               AuthIntent::kDecrypt);
+  EXPECT_THAT(auth_session_status, IsOk());
+  AuthSession* auth_session = auth_session_status.value();
+  ASSERT_TRUE(auth_session);
+
+  // Authenticate the session.
+  user_data_auth::AuthenticateAuthFactorRequest auth_request;
+  auth_request.set_auth_session_id(auth_session->serialized_token());
+  auth_request.set_auth_factor_label(kPasswordLabel);
+  auth_request.mutable_auth_input()->mutable_password_input()->set_secret(
+      kPassword);
+  const user_data_auth::AuthenticateAuthFactorReply auth_reply =
+      AuthenticateAuthFactor(auth_request);
+  ASSERT_EQ(auth_reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  ASSERT_TRUE(auth_reply.authenticated());
+
+  // Arrange the vault operations.
+  auto user_session = std::make_unique<MockUserSession>();
+  EXPECT_CALL(*user_session, IsActive()).WillRepeatedly(Return(false));
+  const CryptohomeError::ErrorLocationPair fake_error_location =
+      CryptohomeError::ErrorLocationPair(
+          static_cast<CryptohomeError::ErrorLocation>(1),
+          std::string("FakeErrorLocation"));
+  EXPECT_CALL(*user_session, MountVault(kUsername, _, _))
+      .WillOnce(Invoke([&](const std::string&, const FileSystemKeyset&,
+                           const CryptohomeVault::Options&) {
+        return MakeStatus<CryptohomeMountError>(
+            fake_error_location,
+            error::ErrorActionSet({error::ErrorAction::kReboot}),
+            MOUNT_ERROR_FATAL, std::nullopt);
+      }));
+  EXPECT_CALL(homedirs_, Exists(SanitizeUserName(kUsername)))
+      .WillRepeatedly(Return(true));
+
+  auto user_session2 = std::make_unique<MockUserSession>();
+  EXPECT_CALL(*user_session2, IsActive()).WillRepeatedly(Return(true));
+  EXPECT_CALL(*user_session2, MountGuest()).WillOnce(Invoke([]() {
+    return OkStatus<CryptohomeMountError>();
+  }));
+
+  EXPECT_CALL(user_session_factory_, New(_, _, _))
+      .WillOnce(Return(ByMove(std::move(user_session))))
+      .WillOnce(Return(ByMove(std::move(user_session2))));
+  ASSERT_THAT(PreparePersistentVaultImpl(auth_session->serialized_token(), {}),
+              NotOk());
+  ASSERT_THAT(PrepareGuestVaultImpl(), IsOk());
+}
+
 TEST_F(AuthSessionInterfaceMockAuthTest, PrepareEphemeralVault) {
   MockOwnerUser("whoever", homedirs_);
 
