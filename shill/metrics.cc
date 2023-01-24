@@ -1461,7 +1461,11 @@ void Metrics::NotifyWiFiLinkQualityReport(const WiFiLinkQualityReport& report,
       .SetTXNSS(report.tx.nss)
       .SetTXDCM(report.tx.dcm);
 #if !defined(DISABLE_FLOSS)
-  sm_report.SetBTEnabled(report.bt_enabled).SetBTStack(report.bt_stack);
+  sm_report.SetBTEnabled(report.bt_enabled)
+      .SetBTStack(report.bt_stack)
+      .SetBTHFP(report.bt_hfp)
+      .SetBTA2DP(report.bt_a2dp)
+      .SetBTActivelyScanning(report.bt_active_scanning);
 #else   // DISABLE_FLOSS
   sm_report.SetBTStack(kBTStackBlueZ);
 #endif  // DISABLE_FLOSS
