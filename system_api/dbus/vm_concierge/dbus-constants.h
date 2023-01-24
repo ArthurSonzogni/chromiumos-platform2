@@ -39,7 +39,6 @@ const char kStartArcVmMethod[] = "StartArcVm";
 const char kSetVmCpuRestrictionMethod[] = "SetVmCpuRestriction";
 const char kAdjustVmMethod[] = "AdjustVm";
 const char kReclaimVmMemoryMethod[] = "ReclaimVmMemory";
-const char kMakeRtVcpuMethod[] = "MakeRtVcpu";
 const char kListVmsMethod[] = "ListVms";
 const char kArcVmCompleteBootMethod[] = "ArcVmCompleteBoot";
 const char kSetBalloonTimerMethod[] = "SetBalloonTimer";
