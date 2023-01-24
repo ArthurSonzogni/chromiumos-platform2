@@ -11,8 +11,8 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
-#include <base/callback_helpers.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/strings/string_util.h>
 #include <gtest/gtest.h>
 

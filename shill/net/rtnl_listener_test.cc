@@ -4,7 +4,7 @@
 
 #include "shill/net/rtnl_listener.h"
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

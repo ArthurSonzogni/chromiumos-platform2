@@ -9,7 +9,7 @@
 #include <string>
 #include <utility>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 
 #include "shill/event_dispatcher.h"
 #include "shill/ipconfig.h"

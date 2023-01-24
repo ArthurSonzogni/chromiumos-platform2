@@ -5,7 +5,7 @@
 #ifndef MISSIVE_ENCRYPTION_TEST_ENCRYPTION_MODULE_H_
 #define MISSIVE_ENCRYPTION_TEST_ENCRYPTION_MODULE_H_
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/strings/string_piece.h>
 
 #include "missive/encryption/encryption_module_interface.h"

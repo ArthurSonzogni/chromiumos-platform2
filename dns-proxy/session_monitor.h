@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 
-#include <base/callback_helpers.h>
+#include <base/functional/callback_helpers.h>
 #include <session_manager/dbus-proxies.h>
 
 namespace dns_proxy {

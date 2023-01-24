@@ -8,10 +8,10 @@
 #include <gtest/gtest.h>
 #include <utility>
 
-#include <base/bind.h>
-#include <base/callback_helpers.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/memory/weak_ptr.h>
 #include <base/strings/stringprintf.h>
 #include <base/task/single_thread_task_executor.h>

@@ -6,10 +6,10 @@
 
 #include <utility>
 
-#include <base/bind.h>
 #include <base/check_op.h>
 #include <base/containers/contains.h>
 #include <base/files/file.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/numerics/safe_conversions.h>
 

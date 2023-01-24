@@ -10,15 +10,15 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_tokenizer.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <base/values.h>
 
 #include <chromeos/dbus/service_constants.h>

@@ -14,16 +14,16 @@
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/notreached.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/synchronization/lock.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
-#include <base/strings/string_number_conversions.h>
 
 #include "rmad/constants.h"
 #include "rmad/system/power_manager_client_impl.h"

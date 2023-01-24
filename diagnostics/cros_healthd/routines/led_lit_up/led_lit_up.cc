@@ -6,8 +6,8 @@
 
 #include <utility>
 
-#include <base/callback.h>
 #include <base/cancelable_callback.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"

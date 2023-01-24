@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/test/task_environment.h>
 #include <brillo/dbus/mock_dbus_method_response.h>

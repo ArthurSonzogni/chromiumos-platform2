@@ -8,7 +8,7 @@
 #include <tuple>
 #include <vector>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <brillo/errors/error_codes.h>
 #include <brillo/strings/string_utils.h>
 

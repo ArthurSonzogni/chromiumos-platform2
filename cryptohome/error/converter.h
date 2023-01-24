@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/crypto_error.h"

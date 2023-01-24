@@ -13,17 +13,17 @@
 #include <memory>
 
 #include <base/at_exit.h>
-#include <base/bind.h>
 #include <base/check.h>
 #include <base/command_line.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/message_loop/message_pump_type.h>
 #include <base/run_loop.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <base/task/single_thread_task_executor.h>
+#include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
 #include <brillo/file_utils.h>

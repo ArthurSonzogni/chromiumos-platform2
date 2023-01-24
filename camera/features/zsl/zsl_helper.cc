@@ -13,9 +13,9 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/functional/bind.h>
 #include <base/numerics/safe_conversions.h>
 #include <camera/camera_metadata.h>
 #include <sync/sync.h>

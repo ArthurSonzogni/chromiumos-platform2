@@ -14,11 +14,11 @@
 #include <unordered_map>
 #include <utility>
 
-#include <base/callback.h>
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/functional/callback.h>
 #include <base/strings/stringprintf.h>
 #include <cros_config/fake_cros_config.h>
 #include <gtest/gtest.h>

@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <brillo/variant_dictionary.h>

@@ -10,8 +10,8 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
-#include <base/bind.h>
 #include <base/check_op.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <brillo/asynchronous_signal_handler.h>
 

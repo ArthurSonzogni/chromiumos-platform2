@@ -7,7 +7,7 @@
 #include <string>
 #include <utility>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/system/bluetooth_info_manager.h"

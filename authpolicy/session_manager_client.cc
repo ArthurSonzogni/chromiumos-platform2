@@ -7,7 +7,7 @@
 #include <memory>
 #include <utility>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/errors/error.h>

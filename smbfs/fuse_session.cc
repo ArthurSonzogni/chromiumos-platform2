@@ -12,10 +12,10 @@
 #include <string>
 #include <utility>
 
-#include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/posix/safe_strerror.h>
 #include <base/strings/stringprintf.h>

@@ -7,7 +7,7 @@
 
 #include <memory>
 
-#include <base/callback_helpers.h>
+#include <base/functional/callback_helpers.h>
 #include <base/synchronization/condition_variable.h>
 #include <base/synchronization/lock.h>
 

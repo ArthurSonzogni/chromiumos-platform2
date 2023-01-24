@@ -11,7 +11,7 @@
 #include <string>
 #include <utility>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/memory/scoped_refptr.h>
 #include <brillo/errors/error.h>
 #include <dbus/mock_object_proxy.h>

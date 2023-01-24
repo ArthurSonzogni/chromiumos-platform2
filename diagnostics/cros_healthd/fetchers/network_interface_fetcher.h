@@ -5,8 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_FETCHERS_NETWORK_INTERFACE_FETCHER_H_
 #define DIAGNOSTICS_CROS_HEALTHD_FETCHERS_NETWORK_INTERFACE_FETCHER_H_
 
-#include <base/callback_forward.h>
 #include <base/files/file_path.h>
+#include <base/functional/callback_forward.h>
 #include <base/memory/weak_ptr.h>
 #include <string>
 #include <vector>

@@ -9,7 +9,7 @@
 
 #include <absl/random/random.h>
 #include <absl/status/status.h>
-#include <base/callback_forward.h>
+#include <base/functional/callback_forward.h>
 
 namespace faced {
 

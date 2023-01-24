@@ -5,7 +5,7 @@
 #ifndef DIAGNOSTICS_BINDINGS_CONNECTIVITY_UTILS_H_
 #define DIAGNOSTICS_BINDINGS_CONNECTIVITY_UTILS_H_
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 
 namespace ash::cros_healthd::connectivity {
 

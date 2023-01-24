@@ -4,7 +4,7 @@
 
 #include "shill/wifi/local_device.h"
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/test/mock_callback.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

@@ -10,9 +10,9 @@
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <crypto/libcrypto-compat.h>
 #include <crypto/scoped_openssl_types.h>

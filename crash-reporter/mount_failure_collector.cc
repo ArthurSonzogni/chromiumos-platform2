@@ -8,9 +8,9 @@
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/rand_util.h>
 #include <base/strings/stringprintf.h>

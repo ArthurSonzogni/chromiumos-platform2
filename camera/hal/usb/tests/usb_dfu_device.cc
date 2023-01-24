@@ -11,8 +11,8 @@
 #include <algorithm>
 #include <optional>
 
-#include <base/bind.h>
-#include <base/callback_helpers.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/numerics/safe_conversions.h>
 #include <base/threading/platform_thread.h>

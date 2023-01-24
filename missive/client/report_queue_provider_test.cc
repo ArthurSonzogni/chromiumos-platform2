@@ -7,7 +7,7 @@
 #include <string>
 #include <utility>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/task/bind_post_task.h>
 #include <base/task/thread_pool.h>
 #include <base/test/scoped_feature_list.h>

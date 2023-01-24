@@ -5,9 +5,9 @@
 #ifndef DLP_FANOTIFY_WATCHER_H_
 #define DLP_FANOTIFY_WATCHER_H_
 
-#include "base/callback.h"
 #include "base/files/file_path.h"
 #include "base/files/scoped_file.h"
+#include "base/functional/callback.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/threading/sequenced_task_runner_handle.h"
 #include "dlp/dlp_metrics.h"

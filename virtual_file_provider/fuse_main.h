@@ -10,9 +10,9 @@
 #include <optional>
 #include <string>
 
-#include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/callback.h>
 
 namespace virtual_file_provider {
 

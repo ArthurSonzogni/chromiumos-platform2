@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 
 #include "diagnostics/cros_healthd/cros_healthd_routine_factory.h"

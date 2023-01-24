@@ -6,7 +6,7 @@
 
 #include <utility>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <dbus/message.h>
 
 #include <arc/data-snapshotd/dbus-constants.h>

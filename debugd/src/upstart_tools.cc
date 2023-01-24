@@ -6,7 +6,7 @@
 
 #include <utility>
 
-#include <base/callback_helpers.h>
+#include <base/functional/callback_helpers.h>
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <debugd/src/error_utils.h>
 #include <dbus/message.h>

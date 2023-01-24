@@ -8,7 +8,7 @@
 #include <queue>
 #include <string>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <gmock/gmock.h>

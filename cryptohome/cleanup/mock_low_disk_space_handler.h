@@ -10,7 +10,7 @@
 #include <cstdint>
 #include <string>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 

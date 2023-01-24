@@ -4,8 +4,8 @@
 
 #include "shill/dbus/supplicant_bss_proxy.h"
 
-#include <base/bind.h>
-#include <base/callback_helpers.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 
 #include "shill/logging.h"

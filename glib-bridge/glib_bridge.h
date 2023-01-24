@@ -14,9 +14,9 @@
 #include <memory>
 #include <vector>
 
-#include <base/bind.h>
 #include <base/cancelable_callback.h>
 #include <base/files/file_descriptor_watcher_posix.h>
+#include <base/functional/bind.h>
 
 #include "glib-bridge/glib_bridge_export.h"
 

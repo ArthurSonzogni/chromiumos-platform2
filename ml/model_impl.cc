@@ -7,8 +7,8 @@
 #include <algorithm>
 #include <utility>
 
-#include <base/bind.h>
-#include <base/callback_helpers.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/notreached.h>
 #include <brillo/message_loops/message_loop.h>
 

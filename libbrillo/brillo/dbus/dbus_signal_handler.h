@@ -9,7 +9,7 @@
 #include <string>
 #include <utility>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <brillo/dbus/dbus_param_reader.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>

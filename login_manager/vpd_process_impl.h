@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 
 #include "login_manager/child_exit_handler.h"
 #include "login_manager/subprocess.h"

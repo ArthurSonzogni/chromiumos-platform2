@@ -11,7 +11,7 @@
 #include <string>
 #include <utility>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libhwsec-foundation/error/error.h>
 #include <libhwsec-foundation/status/status_chain_or.h>

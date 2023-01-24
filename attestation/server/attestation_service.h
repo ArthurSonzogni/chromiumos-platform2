@@ -18,8 +18,8 @@
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <attestation/proto_bindings/pca_agent.pb.h>
-#include <base/callback.h>
 #include <base/check.h>
+#include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/threading/thread.h>
 #include <brillo/secure_blob.h>

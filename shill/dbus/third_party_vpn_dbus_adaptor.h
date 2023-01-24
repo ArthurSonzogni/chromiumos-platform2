@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
 
 #include "dbus_bindings/org.chromium.flimflam.ThirdPartyVpn.h"

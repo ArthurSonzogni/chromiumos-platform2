@@ -10,8 +10,8 @@
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
 #include <base/files/file_path.h>
+#include <base/functional/bind.h>
 #include <base/memory/weak_ptr.h>
 #include <base/strings/string_util.h>
 #include <gmock/gmock.h>

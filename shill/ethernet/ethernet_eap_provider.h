@@ -8,7 +8,7 @@
 #include <map>
 #include <string>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 
 #include "shill/provider_interface.h"
 #include "shill/refptr_types.h"

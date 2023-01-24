@@ -15,11 +15,11 @@
 #include <unordered_map>
 #include <utility>
 
-#include <base/bind.h>
 #include <base/compiler_specific.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 
 namespace cecservice {
 

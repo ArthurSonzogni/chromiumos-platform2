@@ -12,15 +12,15 @@
 #include <memory>
 
 #include <base/at_exit.h>
-#include <base/callback_helpers.h>
 #include <base/check.h>
-#include <base/files/scoped_file.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/files/file_descriptor_watcher_posix.h>
+#include <base/files/scoped_file.h>
+#include <base/functional/callback_helpers.h>
+#include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/run_loop.h>
-#include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/task/single_thread_task_executor.h>
 #include <brillo/file_utils.h>

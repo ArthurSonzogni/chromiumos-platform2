@@ -8,7 +8,7 @@
 #include <optional>
 #include <vector>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <brillo/secure_blob.h>
 
 #include "libhwsec/backend/storage.h"

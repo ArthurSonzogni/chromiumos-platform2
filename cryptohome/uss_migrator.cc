@@ -8,7 +8,7 @@
 #include <string>
 #include <utility>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/crypto/hmac.h>

@@ -4,9 +4,9 @@
 
 #include "login_manager/dev_mode_unblock_broker.h"
 
-#include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <dbus/exported_object.h>

@@ -11,7 +11,7 @@
 #include <memory>
 #include <vector>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include "cros-camera/camera_mojo_channel_manager_token.h"
 #include "cros-camera/export.h"
 #include "cros-camera/jpeg_compressor.h"

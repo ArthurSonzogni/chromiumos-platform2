@@ -9,14 +9,14 @@
 #include <string>
 #include <utility>
 
-#include <base/bind.h>
 #include <base/check.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <brillo/errors/error.h>
 #include <re2/re2.h>

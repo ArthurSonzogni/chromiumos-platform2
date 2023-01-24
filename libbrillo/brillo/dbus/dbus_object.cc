@@ -10,8 +10,8 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
-#include <base/callback_helpers.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/exported_object_manager.h>

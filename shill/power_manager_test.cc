@@ -8,8 +8,8 @@
 #include <string>
 #include <utility>
 
-#include <base/bind.h>
 #include <base/check.h>
+#include <base/functional/bind.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

@@ -6,7 +6,7 @@
 
 #include <set>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <brillo/variant_dictionary.h>
 #include <shill/net/ip_address.h>

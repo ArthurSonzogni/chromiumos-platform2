@@ -5,8 +5,8 @@
 #include <memory>
 #include <utility>
 
-#include <base/callback.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/functional/callback.h>
 #include <base/run_loop.h>
 #include <base/test/bind.h>
 #include <base/test/scoped_chromeos_version_info.h>

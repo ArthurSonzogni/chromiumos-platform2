@@ -9,8 +9,8 @@
 #include <unordered_map>
 
 #include <base/at_exit.h>
-#include <base/bind.h>
 #include <base/command_line.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/writable_shared_memory_region.h>
 #include <brillo/message_loops/base_message_loop.h>

@@ -7,7 +7,7 @@
 
 #include <memory>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/dbus/dbus_object.h>

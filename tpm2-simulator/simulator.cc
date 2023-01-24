@@ -5,11 +5,11 @@
 #include <string>
 #include <utility>
 
-#include <base/callback.h>
-#include <base/check_op.h>
 #include <base/check.h>
-#include <base/files/file_util.h>
+#include <base/check_op.h>
 #include <base/files/file.h>
+#include <base/files/file_util.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <brillo/userdb_utils.h>

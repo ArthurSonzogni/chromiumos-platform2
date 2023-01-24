@@ -14,10 +14,10 @@
 #include <unordered_set>
 #include <vector>
 
-#include <base/bind.h>
-#include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/time/time.h>
 #include <brillo/files/safe_fd.h>
 #include <google/protobuf/repeated_field.h>

@@ -8,11 +8,11 @@
 #include <string>
 #include <vector>
 
-#include <base/callback.h>
-#include <base/callback_helpers.h>
-#include <base/check.h>
-#include <base/logging.h>
 #include "base/time/time.h"
+#include <base/check.h>
+#include <base/functional/callback.h>
+#include <base/functional/callback_helpers.h>
+#include <base/logging.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 #include <dbus/scoped_dbus_error.h>

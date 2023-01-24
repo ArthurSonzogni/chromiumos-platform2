@@ -7,7 +7,7 @@
 
 #include <memory>
 
-#include "base/callback.h"
+#include "base/functional/callback.h"
 #include "hps/proto_bindings/hps_service.pb.h"
 
 namespace hps {

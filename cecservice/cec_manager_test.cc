@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <gmock/gmock.h>
 
 #include "cecservice/cec_device_mock.h"

@@ -5,7 +5,7 @@
 #ifndef LIBHWSEC_BACKEND_STATE_H_
 #define LIBHWSEC_BACKEND_STATE_H_
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 
 #include "libhwsec/status.h"
 

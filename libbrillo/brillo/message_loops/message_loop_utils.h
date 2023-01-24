@@ -5,7 +5,7 @@
 #ifndef LIBBRILLO_BRILLO_MESSAGE_LOOPS_MESSAGE_LOOP_UTILS_H_
 #define LIBBRILLO_BRILLO_MESSAGE_LOOPS_MESSAGE_LOOP_UTILS_H_
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/time/time.h>
 
 #include <brillo/brillo_export.h>

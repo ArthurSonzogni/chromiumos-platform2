@@ -11,8 +11,8 @@
 #include <optional>
 #include <vector>
 
-#include <base/callback.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/callback.h>
 #include <base/task/single_thread_task_runner.h>
 #include <system/camera_metadata.h>
 

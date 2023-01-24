@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 
-#include <base/callback_helpers.h>
+#include <base/functional/callback_helpers.h>
 #include <crypto/scoped_openssl_types.h>
 #include <libhwsec/frontend/chaps/frontend.h>
 #include <openssl/evp.h>

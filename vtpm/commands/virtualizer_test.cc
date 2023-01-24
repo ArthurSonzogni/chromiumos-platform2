@@ -9,7 +9,7 @@
 #include <unordered_map>
 #include <utility>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <trunks/mock_command_parser.h>

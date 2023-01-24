@@ -15,9 +15,9 @@
 #include <string>
 #include <vector>
 
-#include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/callback.h>
 #include <brillo/files/safe_fd.h>
 
 #include "arc/setup/android_sdk_version.h"

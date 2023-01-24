@@ -11,13 +11,13 @@
 #include <utility>
 #include <vector>
 
-#include <base/callback.h>
 #include <base/check.h>
+#include <base/functional/callback.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/weak_ptr.h>
 #include <base/synchronization/lock.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <base/threading/thread.h>
+#include <base/threading/thread_task_runner_handle.h>
 
 #include "tpm_manager/common/typedefs.h"
 #include "tpm_manager/server/local_data_store.h"

@@ -12,8 +12,8 @@
 
 #include <memory>
 
-#include <base/callback.h>
 #include <base/files/file_path.h>
+#include <base/functional/callback.h>
 #include <metrics/metrics_library.h>
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size);

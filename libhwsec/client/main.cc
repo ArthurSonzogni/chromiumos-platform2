@@ -8,9 +8,9 @@
 #include <cstdlib>
 #include <sysexits.h>
 
-#include <base/bind.h>
 #include <base/check.h>
 #include <base/command_line.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>

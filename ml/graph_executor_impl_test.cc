@@ -9,11 +9,11 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
 #include <base/check_op.h>
 #include <base/containers/flat_map.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/run_loop.h>
-#include <base/callback_helpers.h>
 #include <brillo/test_helpers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

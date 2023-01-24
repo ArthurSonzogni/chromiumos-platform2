@@ -9,8 +9,8 @@
 #include <string>
 #include <vector>
 
-#include <base/callback.h>
 #include <base/files/file_path.h>
+#include <base/functional/callback.h>
 #include <base/strings/string_piece.h>
 #include <google/protobuf/repeated_field.h>
 #include <grpcpp/grpcpp.h>

@@ -10,7 +10,7 @@
 #include <base/at_exit.h>
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
 #include <brillo/message_loops/base_message_loop.h>

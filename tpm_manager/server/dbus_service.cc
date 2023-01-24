@@ -7,8 +7,8 @@
 #include <memory>
 #include <utility>
 
-#include <base/bind.h>
 #include <base/check.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/dbus/async_event_sequencer.h>

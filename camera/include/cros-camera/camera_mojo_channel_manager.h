@@ -10,8 +10,8 @@
 #include <memory>
 #include <string>
 
-#include <base/callback.h>
-#include <base/callback_forward.h>
+#include <base/functional/callback.h>
+#include <base/functional/callback_forward.h>
 #include <base/memory/ref_counted.h>
 #include <iioservice/mojo/cros_sensor_service.mojom.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>

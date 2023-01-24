@@ -9,11 +9,11 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/memory/ptr_util.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 #include <base/unguessable_token.h>
 #include <brillo/dbus/dbus_method_invoker.h>

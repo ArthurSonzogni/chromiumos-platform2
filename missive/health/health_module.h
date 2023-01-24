@@ -8,10 +8,10 @@
 #include <memory>
 #include <utility>
 
-#include <base/bind.h>
-#include <base/time/time.h>
-#include <base/sequence_checker.h>
+#include <base/functional/bind.h>
 #include <base/memory/ref_counted.h>
+#include <base/sequence_checker.h>
+#include <base/time/time.h>
 
 #include "missive/health/health_module_delegate.h"
 #include "missive/proto/health.pb.h"

@@ -99,8 +99,8 @@ _HEADER_FILE_INCLUDES = """
 #include <iterator>
 #include <string>
 
-#include <base/callback_forward.h>
 #include <base/check.h>
+#include <base/functional/callback_forward.h>
 
 #include "trunks/trunks_export.h"
 """
@@ -108,8 +108,8 @@ _IMPLEMENTATION_FILE_INCLUDES = """
 #include <memory>
 #include <string>
 
-#include <base/bind.h>
-#include <base/callback.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_forward.h>
 #include <base/logging.h>
 #include <base/stl_util.h>
 #include <base/strings/string_number_conversions.h>

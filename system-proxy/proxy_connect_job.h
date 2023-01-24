@@ -12,9 +12,9 @@
 
 #include <curl/curl.h>
 
-#include <base/callback_forward.h>
 #include <base/cancelable_callback.h>
 #include <base/files/file_descriptor_watcher_posix.h>
+#include <base/functional/callback_forward.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 namespace patchpanel {

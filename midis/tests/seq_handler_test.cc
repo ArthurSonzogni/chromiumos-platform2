@@ -7,7 +7,7 @@
 #include <string>
 #include <utility>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <brillo/test_helpers.h>
 #include <gtest/gtest.h>
 

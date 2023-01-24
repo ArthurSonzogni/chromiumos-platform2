@@ -15,8 +15,8 @@
 #include <brillo/process/process.h>
 #include <chromeos/libminijail.h>
 
-#include "base/bind.h"
-#include "base/callback_helpers.h"
+#include "base/functional/bind.h"
+#include "base/functional/callback_helpers.h"
 #include "base/strings/string_piece.h"
 #include "cros-disks/filesystem_label.h"
 #include "cros-disks/format_manager_observer_interface.h"

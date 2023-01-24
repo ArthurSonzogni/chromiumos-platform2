@@ -11,9 +11,9 @@
 #include <string>
 #include <vector>
 
-#include <base/callback_helpers.h>
 #include <base/files/file_path.h>
 #include <base/files/file_path_watcher.h>
+#include <base/functional/callback_helpers.h>
 #include <base/synchronization/lock.h>
 #include <base/values.h>
 

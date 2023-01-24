@@ -17,9 +17,9 @@
 
 #include <hardware/camera3.h>
 
-#include <base/callback_helpers.h>
 #include <base/containers/flat_map.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/callback_helpers.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
 #include <base/timer/timer.h>

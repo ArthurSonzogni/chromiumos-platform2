@@ -14,10 +14,10 @@
 
 #include <curl/curl.h>
 
-#include <base/bind.h>
-#include <base/callback_helpers.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/strings/stringprintf.h>
 #include <base/task/single_thread_task_executor.h>
 #include <base/test/test_mock_time_task_runner.h>

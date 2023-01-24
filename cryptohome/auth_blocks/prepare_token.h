@@ -8,7 +8,7 @@
 #include <memory>
 #include <utility>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <libhwsec-foundation/status/status_chain.h>
 
 #include "cryptohome/auth_factor/auth_factor_type.h"

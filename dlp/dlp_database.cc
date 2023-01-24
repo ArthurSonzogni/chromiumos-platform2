@@ -8,15 +8,15 @@
 #include <utility>
 #include "dlp/dlp_metrics.h"
 
-#include <base/callback.h>
 #include <base/containers/contains.h>
 #include <base/containers/cxx20_erase_set.h>
 #include <base/files/file_path.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/strings/strcat.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <base/threading/sequenced_task_runner_handle.h>
 #include <sqlite3.h>
 

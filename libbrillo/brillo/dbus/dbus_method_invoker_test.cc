@@ -9,8 +9,8 @@
 
 #include <string>
 
-#include <base/bind.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>

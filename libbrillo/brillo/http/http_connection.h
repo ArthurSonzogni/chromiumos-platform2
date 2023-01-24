@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include <base/callback_forward.h>
+#include <base/functional/callback_forward.h>
 #include <brillo/brillo_export.h>
 #include <brillo/errors/error.h>
 #include <brillo/http/http_transport.h>

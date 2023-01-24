@@ -10,8 +10,8 @@
 #include <unordered_set>
 #include <vector>
 
-#include <base/callback.h>
 #include <base/files/file_path.h>
+#include <base/functional/callback.h>
 
 #include "bindings/kerberos_containers.pb.h"
 #include "kerberos/config_parser.h"

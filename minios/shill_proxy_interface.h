@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
 

@@ -7,7 +7,7 @@
 
 #include <memory>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
 #include <dbus/bus.h>
 #include <spaced/disk_usage_proxy.h>

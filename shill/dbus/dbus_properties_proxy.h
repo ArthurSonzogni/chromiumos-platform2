@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "cellular/dbus-proxies.h"
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <brillo/any.h>
 
 #include "shill/error.h"

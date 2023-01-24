@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/strings/string_split.h>
 
 #include "diagnostics/cros_healthd/fetchers/graphics_header.h"

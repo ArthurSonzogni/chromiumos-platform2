@@ -10,9 +10,9 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
 #include <base/check.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/bind.h>
 #include <brillo/errors/error.h>
 
 using std::string;

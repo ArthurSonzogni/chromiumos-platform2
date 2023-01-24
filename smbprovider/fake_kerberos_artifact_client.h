@@ -11,7 +11,7 @@
 #include <utility>
 
 #include <authpolicy/proto_bindings/active_directory_info.pb.h>
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/dbus/dbus_object.h>
 #include <dbus/object_proxy.h>

@@ -5,7 +5,7 @@
 #include <base/check.h>
 #include <brillo/http/http_connection_fake.h>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <brillo/http/http_request.h>
 #include <brillo/mime_utils.h>

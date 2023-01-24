@@ -7,9 +7,9 @@
 #include <functional>
 #include <utility>
 
-#include <base/bind.h>
-#include <base/callback.h>
 #include <base/check.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "debugd/src/error_utils.h"

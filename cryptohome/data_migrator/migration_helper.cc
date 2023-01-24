@@ -18,9 +18,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include <base/bind.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/message_loop/message_pump_type.h>
 #include <base/strings/string_number_conversions.h>

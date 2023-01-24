@@ -10,7 +10,7 @@
 #include <stdint.h>
 #include <memory>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 
 #include <cutils/native_handle.h>
 

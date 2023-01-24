@@ -75,9 +75,7 @@ issues:
    so doesn't require FILE_PATH_LITERAL, base::FilePath::CharType, or
    base::FilePath::StringType. It can be assumed that these are simple char or
    std::strings.
-4. base::DoNothing() comes from <base/bind_helpers.h> rather than
-   "base/callback_helpers.h"
-5. Files that end with `_unittest.cc` should be renamed to end with `_test.cc`.
+4. Files that end with `_unittest.cc` should be renamed to end with `_test.cc`.
 
 ### Specific Files
 

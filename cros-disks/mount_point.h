@@ -12,8 +12,8 @@
 #include <utility>
 #include <vector>
 
-#include <base/callback.h>
 #include <base/files/file_path.h>
+#include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest_prod.h>

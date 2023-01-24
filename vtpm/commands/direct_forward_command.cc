@@ -7,8 +7,8 @@
 #include <string>
 #include <utility>
 
-#include <base/callback.h>
 #include <base/check.h>
+#include <base/functional/callback.h>
 #include <trunks/trunks_factory.h>
 
 namespace vtpm {

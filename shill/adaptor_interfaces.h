@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 
 #include "shill/data_types.h"
 #include "shill/store/key_value_store.h"

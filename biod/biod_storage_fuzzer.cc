@@ -10,8 +10,8 @@
 #include <fuzzer/FuzzedDataProvider.h>
 #include <vector>
 
-#include <base/bind.h>
 #include <base/files/file_path.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/values.h>
 #include <openssl/sha.h>

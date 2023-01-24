@@ -13,7 +13,7 @@
 #include <vector>
 
 #include <attestation/proto_bindings/interface.pb.h>
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/dbus/dbus_connection.h>

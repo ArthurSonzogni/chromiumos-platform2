@@ -11,7 +11,7 @@
 #include <vector>
 
 #include <absl/container/flat_hash_set.h>
-#include <base/callback_helpers.h>
+#include <base/functional/callback_helpers.h>
 #include <base/numerics/safe_conversions.h>
 #include <base/timer/timer.h>
 #include <brillo/secure_blob.h>

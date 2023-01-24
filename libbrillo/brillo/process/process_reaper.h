@@ -9,7 +9,7 @@
 
 #include <map>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/location.h>
 #include <brillo/asynchronous_signal_handler.h>
 

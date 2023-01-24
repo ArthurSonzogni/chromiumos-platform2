@@ -5,7 +5,7 @@
 #ifndef RMAD_STATE_HANDLER_BASE_STATE_HANDLER_H_
 #define RMAD_STATE_HANDLER_BASE_STATE_HANDLER_H_
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/scoped_refptr.h>
 

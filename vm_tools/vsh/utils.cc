@@ -12,8 +12,8 @@
 #include <arpa/inet.h>
 #include <sys/types.h>
 
-#include <base/bind.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <brillo/message_loops/message_loop.h>

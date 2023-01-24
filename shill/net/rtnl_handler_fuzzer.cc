@@ -7,9 +7,9 @@
 #include "shill/net/rtnl_listener.h"
 
 #include <base/at_exit.h>
-#include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 
 namespace shill {

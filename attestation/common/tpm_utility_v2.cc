@@ -10,7 +10,7 @@
 #include <optional>
 #include <vector>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/hash/sha1.h>
 #include <base/logging.h>
 #include <crypto/libcrypto-compat.h>

@@ -7,7 +7,7 @@
 
 #include <memory>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
 #include "diagnostics/bindings/connectivity/mojom/state.mojom.h"

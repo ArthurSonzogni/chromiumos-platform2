@@ -8,10 +8,10 @@
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <attestation/proto_bindings/pca_agent.pb.h>
-#include <base/bind.h>
-#include <base/callback.h>
-#include <base/callback_helpers.h>
 #include <base/check.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
+#include <base/functional/callback_helpers.h>
 #include <base/run_loop.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>

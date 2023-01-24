@@ -11,7 +11,7 @@
 #include <memory>
 #include <vector>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/synchronization/lock.h>
 
 #include "cros-camera/camera_algorithm_bridge.h"

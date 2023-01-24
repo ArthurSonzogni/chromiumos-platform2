@@ -7,7 +7,7 @@
 #include <linux/fuse.h>
 #include <sys/socket.h>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/run_loop.h>
 #include <base/test/task_environment.h>

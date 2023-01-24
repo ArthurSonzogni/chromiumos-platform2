@@ -9,8 +9,8 @@
 #include <optional>
 #include <string>
 
-#include <base/callback.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/callback.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>

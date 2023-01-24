@@ -7,8 +7,8 @@
 #include <memory>
 #include <utility>
 
+#include <base/functional/bind.h>
 #include <base/logging.h>
-#include <base/bind.h>
 #include <base/threading/thread.h>
 #include <base/time/time.h>
 #include <brillo/blkdev_utils/disk_iostat.h>

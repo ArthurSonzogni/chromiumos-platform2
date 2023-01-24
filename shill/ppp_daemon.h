@@ -9,7 +9,7 @@
 #include <memory>
 #include <string>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>
 

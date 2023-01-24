@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 
 #include "rmad/utils/iio_ec_sensor_utils.h"
 #include "rmad/utils/mojo_service_utils.h"

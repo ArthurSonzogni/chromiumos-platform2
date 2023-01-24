@@ -7,7 +7,7 @@
 
 #include <vector>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <components/policy/core/common/policy_types.h>
 
 #include "authpolicy/policy/policy_encoder_helper.h"

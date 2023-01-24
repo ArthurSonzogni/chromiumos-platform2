@@ -7,8 +7,8 @@
 
 #include <vector>
 
-#include <base/callback_forward.h>
 #include <base/files/file_path.h>
+#include <base/functional/callback_forward.h>
 #include <base/memory/weak_ptr.h>
 
 #include "diagnostics/cros_healthd/fetchers/base_fetcher.h"

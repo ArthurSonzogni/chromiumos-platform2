@@ -9,7 +9,7 @@
 
 #include <string>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <trunks/command_parser.h>
 #include <trunks/response_serializer.h>
 

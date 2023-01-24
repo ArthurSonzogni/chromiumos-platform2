@@ -8,9 +8,9 @@
 #include <utility>
 #include <vector>
 
-#include <base/callback.h>
 #include <base/check.h>
 #include <base/files/file_util.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 #include <brillo/errors/error_codes.h>
 #include <chromeos/dbus/service_constants.h>

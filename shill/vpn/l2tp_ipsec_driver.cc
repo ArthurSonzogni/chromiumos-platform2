@@ -12,7 +12,7 @@
 #include <arpa/inet.h>  // for inet_ntop
 #include <netdb.h>      // for getaddrinfo
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <brillo/type_list.h>
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>

@@ -19,11 +19,11 @@
 #include <utility>
 #include <vector>
 
-#include <base/callback_forward.h>
 #include <base/files/file.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/callback_forward.h>
 #include <base/unguessable_token.h>
 #include <brillo/blkdev_utils/loop_device.h>
 #include <brillo/blkdev_utils/lvm.h>

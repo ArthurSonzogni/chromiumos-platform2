@@ -8,7 +8,7 @@
 
 #include <unordered_map>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/writable_shared_memory_region.h>
 #include <base/threading/thread.h>

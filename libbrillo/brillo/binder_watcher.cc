@@ -4,7 +4,7 @@
 
 #include <brillo/binder_watcher.h>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <binder/IPCThreadState.h>
 #include <binder/ProcessState.h>

@@ -6,7 +6,7 @@
 
 #include <utility>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 
 #include "trunks/dbus_interface.h"

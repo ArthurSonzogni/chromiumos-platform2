@@ -8,7 +8,7 @@
 #include <string>
 #include <vector>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 
 #include "shill/ethernet/ethernet_service.h"

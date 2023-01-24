@@ -9,8 +9,8 @@
 #include <string>
 #include <utility>
 
-#include <base/bind.h>
 #include <base/check.h>
+#include <base/functional/bind.h>
 #include <base/notreached.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libhwsec/status.h>

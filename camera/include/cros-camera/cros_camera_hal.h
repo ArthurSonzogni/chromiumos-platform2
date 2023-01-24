@@ -12,7 +12,7 @@
 
 #include <vector>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <hardware/camera3.h>
 #include <hardware/camera_common.h>
 

@@ -4,9 +4,9 @@
 
 #include "power_manager/powerd/policy/suspender.h"
 
-#include <base/bind.h>
-#include <base/callback.h>
 #include <base/compiler_specific.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>

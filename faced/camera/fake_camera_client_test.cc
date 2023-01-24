@@ -7,7 +7,7 @@
 #include <memory>
 
 #include <absl/status/status.h>
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/test/task_environment.h>
 #include <gtest/gtest.h>

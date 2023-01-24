@@ -10,8 +10,8 @@
 #include <optional>
 #include <utility>
 
-#include <base/bind.h>
 #include <base/containers/contains.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/posix/safe_strerror.h>
 #include <base/strings/string_number_conversions.h>

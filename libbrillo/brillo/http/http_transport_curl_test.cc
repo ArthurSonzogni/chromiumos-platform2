@@ -7,7 +7,7 @@
 #include <brillo/http/http_transport_curl.h>
 
 #include <base/at_exit.h>
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
 #include <base/threading/thread_task_runner_handle.h>

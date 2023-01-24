@@ -4,8 +4,8 @@
 
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
 
-#include <base/bind.h>
 #include <base/check.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <libhwsec-foundation/crypto/sha.h>

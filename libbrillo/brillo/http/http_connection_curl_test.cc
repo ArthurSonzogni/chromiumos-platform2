@@ -9,7 +9,7 @@
 #include <set>
 #include <utility>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 #include <brillo/http/http_request.h>
 #include <brillo/http/http_transport.h>

@@ -11,7 +11,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/synchronization/waitable_event.h>
 #include <dbus/u2f/dbus-constants.h>

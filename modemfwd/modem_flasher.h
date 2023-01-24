@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <brillo/errors/error.h>
 #include <chromeos/switches/modemfwd_switches.h>
 

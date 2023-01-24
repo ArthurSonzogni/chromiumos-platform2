@@ -8,10 +8,10 @@
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/functional/bind.h>
 #include <base/run_loop.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>

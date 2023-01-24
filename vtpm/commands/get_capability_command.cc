@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 #include <trunks/command_parser.h>
 #include <trunks/error_codes.h>

@@ -4,7 +4,7 @@
 
 #include <brillo/dbus/dbus_service_watcher.h>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 
 namespace brillo {
 namespace dbus_utils {

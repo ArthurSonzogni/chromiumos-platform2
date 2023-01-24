@@ -118,7 +118,7 @@ func TestGenerateMockProxies(t *testing.T) {
 #include <string>
 #include <vector>
 
-#include <base/callback_forward.h>
+#include <base/functional/callback_forward.h>
 #include <base/logging.h>
 #include <brillo/any.h>
 #include <brillo/errors/error.h>
@@ -287,7 +287,7 @@ func TestGenerateMockProxiesEmpty(t *testing.T) {
 #include <string>
 #include <vector>
 
-#include <base/callback_forward.h>
+#include <base/functional/callback_forward.h>
 #include <base/logging.h>
 #include <brillo/any.h>
 #include <brillo/errors/error.h>
@@ -347,7 +347,7 @@ func TestGenerateMockProxiesWithProxyPath(t *testing.T) {
 #include <string>
 #include <vector>
 
-#include <base/callback_forward.h>
+#include <base/functional/callback_forward.h>
 #include <base/logging.h>
 #include <brillo/any.h>
 #include <brillo/errors/error.h>
@@ -499,7 +499,7 @@ func TestGenerateMockProxiesWithMethods(t *testing.T) {
 #include <string>
 #include <vector>
 
-#include <base/callback_forward.h>
+#include <base/functional/callback_forward.h>
 #include <base/logging.h>
 #include <brillo/any.h>
 #include <brillo/errors/error.h>
@@ -734,7 +734,7 @@ func TestGenerateMockProxiesWithSignals(t *testing.T) {
 #include <string>
 #include <vector>
 
-#include <base/callback_forward.h>
+#include <base/functional/callback_forward.h>
 #include <base/logging.h>
 #include <brillo/any.h>
 #include <brillo/errors/error.h>
@@ -819,7 +819,7 @@ func TestGenerateMockProxiesWithProperties(t *testing.T) {
 #include <string>
 #include <vector>
 
-#include <base/callback_forward.h>
+#include <base/functional/callback_forward.h>
 #include <base/logging.h>
 #include <brillo/any.h>
 #include <brillo/errors/error.h>
@@ -895,7 +895,7 @@ func TestGenerateMockProxiesWithPropertiesAndObjectManager(t *testing.T) {
 #include <string>
 #include <vector>
 
-#include <base/callback_forward.h>
+#include <base/functional/callback_forward.h>
 #include <base/logging.h>
 #include <brillo/any.h>
 #include <brillo/errors/error.h>

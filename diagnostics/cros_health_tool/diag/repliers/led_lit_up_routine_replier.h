@@ -9,7 +9,7 @@
 
 #include <optional>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
 namespace diagnostics {

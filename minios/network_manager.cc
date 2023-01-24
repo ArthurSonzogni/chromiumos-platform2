@@ -4,7 +4,7 @@
 
 #include "minios/network_manager.h"
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/errors/error_codes.h>

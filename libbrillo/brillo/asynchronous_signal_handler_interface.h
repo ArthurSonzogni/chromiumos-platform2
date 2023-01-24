@@ -7,7 +7,7 @@
 
 #include <sys/signalfd.h>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <brillo/brillo_export.h>
 
 namespace brillo {

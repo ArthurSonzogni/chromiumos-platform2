@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <dbus/object_path.h>
 #include <base/callback_list.h>
 

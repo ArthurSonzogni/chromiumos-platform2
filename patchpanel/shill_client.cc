@@ -4,8 +4,8 @@
 
 #include "patchpanel/shill_client.h"
 
-#include <base/bind.h>
 #include <base/check.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <brillo/variant_dictionary.h>

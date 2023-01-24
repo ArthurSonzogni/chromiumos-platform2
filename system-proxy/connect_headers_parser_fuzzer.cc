@@ -10,8 +10,8 @@
 
 #include <curl/curl.h>
 
-#include <base/bind.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>

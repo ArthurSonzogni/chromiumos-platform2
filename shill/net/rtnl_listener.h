@@ -5,7 +5,7 @@
 #ifndef SHILL_NET_RTNL_LISTENER_H_
 #define SHILL_NET_RTNL_LISTENER_H_
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/observer_list_types.h>
 
 #include "shill/net/shill_export.h"

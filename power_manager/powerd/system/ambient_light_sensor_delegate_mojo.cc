@@ -13,10 +13,10 @@
 #include <optional>
 #include <utility>
 
-#include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/containers/flat_map.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 

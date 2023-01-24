@@ -4,7 +4,7 @@
 
 #include <brillo/streams/memory_containers.h>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <brillo/streams/stream_errors.h>
 
 namespace brillo {

@@ -10,8 +10,8 @@
 #include <string>
 #include <utility>
 
-#include <base/callback.h>
 #include "base/files/file_path.h"
+#include <base/functional/callback.h>
 #include "brillo/storage_balloon.h"
 #include <grpcpp/grpcpp.h>
 #include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>

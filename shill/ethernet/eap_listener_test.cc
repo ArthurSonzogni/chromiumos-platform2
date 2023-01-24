@@ -11,7 +11,7 @@
 
 #include <algorithm>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <gtest/gtest.h>
 
 #include "shill/ethernet/eap_protocol.h"

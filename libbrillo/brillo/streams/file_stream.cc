@@ -12,9 +12,9 @@
 #include <algorithm>
 #include <utility>
 
-#include <base/bind.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
 #include <base/posix/eintr_wrapper.h>
 #include <brillo/errors/error_codes.h>
 #include <brillo/message_loops/message_loop.h>

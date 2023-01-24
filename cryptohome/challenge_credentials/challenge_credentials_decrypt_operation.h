@@ -11,7 +11,7 @@
 #include <optional>
 #include <string>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec/error/tpm_error.h>

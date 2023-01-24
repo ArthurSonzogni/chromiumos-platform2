@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/auth_blocks/prepare_token.h"

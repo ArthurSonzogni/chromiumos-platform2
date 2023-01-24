@@ -7,7 +7,7 @@
 
 #include <memory>
 
-#include "base/callback.h"
+#include "base/functional/callback.h"
 #include "hps/daemon/filters/filter.h"
 
 namespace hps {

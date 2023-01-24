@@ -11,7 +11,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <brillo/message_loops/message_loop.h>
 #include <brillo/streams/stream_errors.h>
 

@@ -10,7 +10,7 @@
 #include <string>
 #include <utility>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 
 #include "shill/net/attribute_list.h"
 #include "shill/net/byte_string.h"

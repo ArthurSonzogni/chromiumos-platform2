@@ -9,8 +9,8 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/functional/bind.h>
 #include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/bind.h>

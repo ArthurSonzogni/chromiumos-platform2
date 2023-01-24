@@ -11,7 +11,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <camera/camera_metadata.h>
 #include <hardware/gralloc.h>
 #include <system/camera_metadata.h>

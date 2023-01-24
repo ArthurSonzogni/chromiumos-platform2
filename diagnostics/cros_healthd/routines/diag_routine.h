@@ -5,7 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_DIAG_ROUTINE_H_
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_DIAG_ROUTINE_H_
 
-#include <base/callback_forward.h>
+#include <base/functional/callback_forward.h>
 
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 

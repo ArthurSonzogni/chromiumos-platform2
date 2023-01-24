@@ -7,7 +7,7 @@
 
 #include <atomic>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/strings/string_piece.h>
 #include <base/time/time.h>

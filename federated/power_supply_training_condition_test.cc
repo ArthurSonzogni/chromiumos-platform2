@@ -6,8 +6,8 @@
 #include <string>
 #include <unordered_map>
 
-#include <base/callback.h>
 #include <base/check.h>
+#include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
 #include <dbus/message.h>
 #include <dbus/mock_bus.h>

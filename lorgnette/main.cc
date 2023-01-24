@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <brillo/process/process.h>
 #include <brillo/syslog_logging.h>

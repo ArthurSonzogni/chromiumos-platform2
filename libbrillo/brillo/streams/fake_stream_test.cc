@@ -7,8 +7,8 @@
 #include <memory>
 #include <vector>
 
-#include <base/bind.h>
-#include <base/callback.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/test/simple_test_clock.h>
 #include <brillo/message_loops/mock_message_loop.h>
 #include <gmock/gmock.h>

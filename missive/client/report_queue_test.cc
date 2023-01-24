@@ -4,7 +4,7 @@
 
 #include "missive/client/report_queue.h"
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/strings/strcat.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>

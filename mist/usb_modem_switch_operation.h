@@ -10,8 +10,8 @@
 #include <memory>
 #include <string>
 
-#include <base/callback.h>
 #include <base/cancelable_callback.h>
+#include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <brillo/usb/usb_device_event_observer.h>

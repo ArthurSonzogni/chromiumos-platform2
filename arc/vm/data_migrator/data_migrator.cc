@@ -5,10 +5,10 @@
 #include <sys/mount.h>
 
 #include <arcvm_data_migrator/proto_bindings/arcvm_data_migrator.pb.h>
-#include <base/bind.h>
 #include <base/command_line.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/thread.h>

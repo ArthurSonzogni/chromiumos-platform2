@@ -5,8 +5,8 @@
 #include <memory>
 #include <utility>
 
-#include <base/bind.h>
 #include <base/check_op.h>
+#include <base/functional/bind.h>
 #include <base/memory/weak_ptr.h>
 #include <base/run_loop.h>
 #include <base/task/bind_post_task.h>

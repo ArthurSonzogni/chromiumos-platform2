@@ -5,8 +5,8 @@
 #include <base/check.h>
 #include <brillo/http/http_request.h>
 
-#include <base/bind.h>
-#include <base/callback.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 #include <brillo/http/http_form_data.h>
 #include <brillo/map_utils.h>

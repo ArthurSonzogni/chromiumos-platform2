@@ -4,7 +4,7 @@
 
 #include "shill/dbus/upstart_proxy.h"
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 
 #include "shill/logging.h"

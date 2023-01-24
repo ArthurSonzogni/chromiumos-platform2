@@ -9,8 +9,8 @@
 #include <memory>
 #include <vector>
 
-#include <base/bind.h>
-#include <base/callback.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>

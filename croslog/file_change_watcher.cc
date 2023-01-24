@@ -11,8 +11,8 @@
 #include <sys/inotify.h>
 #include <sys/ioctl.h>
 
-#include "base/bind.h"
 #include "base/files/scoped_file.h"
+#include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/no_destructor.h"
 #include "base/posix/eintr_wrapper.h"

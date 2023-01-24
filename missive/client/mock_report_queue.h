@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <gmock/gmock.h>
 #include <google/protobuf/message_lite.h>
 

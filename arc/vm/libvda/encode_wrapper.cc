@@ -6,8 +6,8 @@
 
 #include <utility>
 
-#include <base/bind.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 
 #include "arc/vm/libvda/encode/fake/fake_vea_impl.h"

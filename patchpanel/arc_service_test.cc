@@ -13,8 +13,8 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
-#include <base/callback_helpers.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>

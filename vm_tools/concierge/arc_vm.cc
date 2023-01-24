@@ -20,17 +20,17 @@
 #include <tuple>
 #include <utility>
 
-#include <base/bind.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/strings/stringprintf.h>
-#include <base/strings/string_util.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>

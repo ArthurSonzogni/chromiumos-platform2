@@ -7,11 +7,11 @@
 
 #include <string>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
-#include "base/callback_forward.h"
+#include "base/functional/callback_forward.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/proto_bindings/backlight.pb.h"
 

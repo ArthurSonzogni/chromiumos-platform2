@@ -20,13 +20,13 @@
 #include <vector>
 
 #include <base/at_exit.h>
-#include <base/bind.h>
 #include <base/check.h>
 #include <base/command_line.h>
 #include <base/files/file.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/functional/bind.h>
 #include <base/hash/md5.h>
 #include <base/json/json_reader.h>
 #include <base/logging.h>

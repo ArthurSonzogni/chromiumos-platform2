@@ -8,7 +8,7 @@
 #include <queue>
 #include <string>
 
-#include <base/callback_forward.h>
+#include <base/functional/callback_forward.h>
 #include <base/time/clock.h>
 #include <base/time/time.h>
 #include <brillo/secure_blob.h>

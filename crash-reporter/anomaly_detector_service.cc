@@ -6,9 +6,9 @@
 
 #include <utility>
 
-#include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/functional/bind.h>
 #include <base/time/default_clock.h>
 #include <chromeos/dbus/service_constants.h>
 #include <metrics/metrics_library.h>

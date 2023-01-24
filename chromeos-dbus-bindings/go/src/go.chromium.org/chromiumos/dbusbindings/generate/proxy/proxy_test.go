@@ -119,9 +119,9 @@ func TestGenerateProxies(t *testing.T) {
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
-#include <base/callback.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/any.h>
@@ -649,9 +649,9 @@ func TestGenerateProxiesEmpty(t *testing.T) {
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
-#include <base/callback.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/any.h>
@@ -757,9 +757,9 @@ func TestGenerateProxiesWithServiceName(t *testing.T) {
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
-#include <base/callback.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/any.h>
@@ -862,9 +862,9 @@ func TestGenerateProxiesWithNodeName(t *testing.T) {
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
-#include <base/callback.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/any.h>
@@ -1020,9 +1020,9 @@ func TestGenerateProxiesWithMethods(t *testing.T) {
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
-#include <base/callback.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/any.h>
@@ -1436,9 +1436,9 @@ func TestGenerateProxiesWithSignals(t *testing.T) {
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
-#include <base/callback.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/any.h>
@@ -1590,9 +1590,9 @@ func TestGenerateProxiesWithProperties(t *testing.T) {
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
-#include <base/callback.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/any.h>
@@ -1763,9 +1763,9 @@ func TestGenerateProxiesWithObjectManager(t *testing.T) {
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
-#include <base/callback.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/any.h>
@@ -2003,9 +2003,9 @@ func TestGenerateProxiesWithObjectManagerAndServiceName(t *testing.T) {
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
-#include <base/callback.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/any.h>
@@ -2245,9 +2245,9 @@ func TestGenerateProxiesWithPropertiesAndObjectManager(t *testing.T) {
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
-#include <base/callback.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/any.h>

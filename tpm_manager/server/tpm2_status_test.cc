@@ -6,7 +6,7 @@
 
 #include <memory>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <trunks/mock_tpm_state.h>

@@ -6,9 +6,9 @@
 
 #include <memory>
 
-#include <base/bind.h>
-#include <base/callback.h>
 #include <base/check.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/dbus/dbus_method_invoker.h>

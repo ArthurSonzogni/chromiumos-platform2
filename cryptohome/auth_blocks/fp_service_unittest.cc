@@ -7,9 +7,9 @@
 #include <string>
 #include <utility>
 
-#include <base/bind.h>
-#include <base/test/repeating_test_future.h>
+#include <base/functional/bind.h>
 #include <base/task/sequenced_task_runner.h>
+#include <base/test/repeating_test_future.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <base/threading/sequenced_task_runner_handle.h>

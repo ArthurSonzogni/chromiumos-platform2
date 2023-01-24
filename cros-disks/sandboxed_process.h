@@ -12,9 +12,9 @@
 #include <string>
 #include <vector>
 
-#include <base/callback.h>
 #include <base/containers/span.h>
 #include <base/files/file.h>
+#include <base/functional/callback.h>
 
 #include "cros-disks/process.h"
 #include "cros-disks/sandboxed_init.h"

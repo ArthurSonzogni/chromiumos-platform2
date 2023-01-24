@@ -12,7 +12,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/rand_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/shill/dbus-constants.h>

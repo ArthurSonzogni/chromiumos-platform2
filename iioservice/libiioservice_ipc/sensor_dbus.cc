@@ -6,9 +6,9 @@
 
 #include <utility>
 
-#include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/bind.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <chromeos/dbus/service_constants.h>
 

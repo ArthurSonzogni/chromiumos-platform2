@@ -6,7 +6,7 @@
 #define HPS_DAEMON_FILTERS_STATUS_CALLBACK_H_
 
 #include <vector>
-#include "base/callback.h"
+#include "base/functional/callback.h"
 
 namespace hps {
 

@@ -11,7 +11,7 @@
 #include <memory>
 #include <string>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST.
 

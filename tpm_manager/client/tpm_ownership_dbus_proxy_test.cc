@@ -7,7 +7,7 @@
 #include <string>
 #include <utility>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <brillo/dbus/dbus_param_writer.h>
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>

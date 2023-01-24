@@ -7,7 +7,7 @@
 #include <optional>
 #include <utility>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 
 #include "diagnostics/mojom/external/network_health.mojom.h"

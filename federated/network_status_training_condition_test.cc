@@ -5,8 +5,8 @@
 #include <memory>
 #include <utility>
 
-#include <base/callback.h>
 #include <base/check.h>
+#include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
 #include <brillo/variant_dictionary.h>
 #include <dbus/message.h>

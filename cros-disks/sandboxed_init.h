@@ -9,8 +9,8 @@
 
 #include <sys/types.h>
 
-#include <base/callback.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/callback.h>
 
 namespace cros_disks {
 

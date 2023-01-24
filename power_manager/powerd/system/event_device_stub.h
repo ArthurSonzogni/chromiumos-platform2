@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <linux/input.h>
 
 namespace power_manager::system {

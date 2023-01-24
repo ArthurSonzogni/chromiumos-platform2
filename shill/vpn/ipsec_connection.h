@@ -11,10 +11,10 @@
 #include <tuple>
 #include <vector>
 
-#include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/files/file_path_watcher.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/functional/callback.h>
 
 #include "shill/certificate_file.h"
 #include "shill/device_info.h"

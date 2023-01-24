@@ -11,7 +11,7 @@
 #include <absl/random/random.h>
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
-#include <base/callback_forward.h>
+#include <base/functional/callback_forward.h>
 #include <brillo/grpc/async_grpc_client.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>

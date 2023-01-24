@@ -11,7 +11,7 @@
 
 #include <memory>
 
-#include <base/callback_helpers.h>
+#include <base/functional/callback_helpers.h>
 #include <base/synchronization/lock.h>
 #include <camera/camera_metadata.h>
 

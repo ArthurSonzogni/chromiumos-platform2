@@ -12,7 +12,7 @@
 #include <vector>
 
 #include <base/base64.h>
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <chromeos/dbus/service_constants.h>
 #include <base/strings/string_util.h>
 

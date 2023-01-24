@@ -10,9 +10,9 @@
 #include <string>
 #include <utility>
 
-#include <base/bind.h>
 #include <base/check.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>

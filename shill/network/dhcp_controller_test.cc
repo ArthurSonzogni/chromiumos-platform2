@@ -9,9 +9,9 @@
 #include <sys/time.h>
 #include <utility>
 
-#include <base/bind.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/functional/bind.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>

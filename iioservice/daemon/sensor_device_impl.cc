@@ -7,11 +7,11 @@
 #include <optional>
 #include <utility>
 
-#include <base/bind.h>
 #include <base/check.h>
 #include <base/containers/contains.h>
-#include <base/strings/stringprintf.h>
+#include <base/functional/bind.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <libmems/common_types.h>
 #include <libmems/iio_channel.h>
 

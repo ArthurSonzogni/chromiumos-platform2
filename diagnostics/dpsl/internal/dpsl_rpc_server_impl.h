@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/sequence_checker_impl.h>
 #include <brillo/grpc/async_grpc_server.h>
 

@@ -10,7 +10,7 @@
 
 #include <string>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 
 using std::string;

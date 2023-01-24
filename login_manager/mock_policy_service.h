@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 

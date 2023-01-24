@@ -9,7 +9,7 @@
 #include <string>
 #include <utility>
 
-#include <base/callback_helpers.h>
+#include <base/functional/callback_helpers.h>
 #include <base/numerics/safe_conversions.h>
 #include <base/rand_util.h>
 #include <brillo/secure_blob.h>

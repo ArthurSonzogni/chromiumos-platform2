@@ -9,8 +9,8 @@
 #include <cstring>
 #include <utility>
 
-#include <base/callback.h>
 #include <base/check.h>
+#include <base/functional/callback.h>
 
 #include "trunks/command_parser.h"
 #include "trunks/fuzzed_command_transceiver.h"

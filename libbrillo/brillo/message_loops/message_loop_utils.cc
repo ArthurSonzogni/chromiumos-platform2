@@ -4,7 +4,7 @@
 
 #include <brillo/message_loops/message_loop_utils.h>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/location.h>
 
 namespace brillo {

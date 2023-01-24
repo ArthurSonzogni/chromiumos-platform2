@@ -4,9 +4,9 @@
 
 #include <unistd.h>
 
-#include <base/bind.h>
 #include <base/command_line.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <brillo/daemons/daemon.h>
 

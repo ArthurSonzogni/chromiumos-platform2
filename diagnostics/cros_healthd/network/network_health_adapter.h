@@ -7,7 +7,7 @@
 
 #include <optional>
 
-#include <base/callback_forward.h>
+#include <base/functional/callback_forward.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
 #include "diagnostics/mojom/external/network_health.mojom.h"

@@ -17,7 +17,7 @@
 #include <map>
 #include <utility>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <brillo/process/process.h>
 

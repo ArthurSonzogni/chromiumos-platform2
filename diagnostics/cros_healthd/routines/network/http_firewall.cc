@@ -9,8 +9,8 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
 #include <base/check.h>
+#include <base/functional/bind.h>
 
 #include "diagnostics/cros_healthd/routines/simple_routine.h"
 #include "diagnostics/mojom/external/network_diagnostics.mojom.h"

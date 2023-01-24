@@ -12,11 +12,11 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
-#include <base/callback.h>
 #include <base/cancelable_callback.h>
 #include <base/compiler_specific.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/location.h>
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>

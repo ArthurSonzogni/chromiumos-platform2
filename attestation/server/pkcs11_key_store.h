@@ -9,7 +9,7 @@
 
 #include <string>
 
-#include <base/callback_forward.h>
+#include <base/functional/callback_forward.h>
 #include <chaps/pkcs11/cryptoki.h>
 #include <chaps/token_manager_client.h>
 

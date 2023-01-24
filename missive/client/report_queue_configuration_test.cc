@@ -6,8 +6,8 @@
 
 #include <stdio.h>
 
-#include <base/bind.h>
-#include <base/callback.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

@@ -38,7 +38,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <shill/dbus-proxies.h>
 
-#include "base/bind.h"
+#include "base/functional/bind.h"
 #include "debugd/src/bluetooth_utils.h"
 #include "debugd/src/constants.h"
 #include "debugd/src/metrics.h"

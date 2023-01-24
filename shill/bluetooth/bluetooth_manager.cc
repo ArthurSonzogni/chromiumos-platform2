@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 
 #include "shill/control_interface.h"
 #include "shill/logging.h"

@@ -9,9 +9,9 @@
 
 #include <string>
 
-#include <base/callback.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
+#include <base/functional/callback.h>
 #include <base/strings/strcat.h>
 
 #include "missive/util/status.h"

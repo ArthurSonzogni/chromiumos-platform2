@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 
 #include "smbprovider/kerberos_artifact_client_interface.h"
 

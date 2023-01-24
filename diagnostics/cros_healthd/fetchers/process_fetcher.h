@@ -13,8 +13,8 @@
 #include <utility>
 #include <vector>
 
-#include <base/callback.h>
 #include <base/files/file_path.h>
+#include <base/functional/callback.h>
 
 #include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
 #include "diagnostics/cros_healthd/system/context.h"

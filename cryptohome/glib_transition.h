@@ -7,7 +7,7 @@
 
 #include <utility>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include "cryptohome/cryptohome_event_source.h"
 
 namespace cryptohome {

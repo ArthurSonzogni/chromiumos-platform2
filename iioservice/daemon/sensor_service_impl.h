@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/memory/weak_ptr.h>
 #include <base/task/sequenced_task_runner.h>
 #include <libmems/iio_context.h>

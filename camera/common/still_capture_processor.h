@@ -9,7 +9,7 @@
 
 #include <hardware/camera3.h>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 
 #include "common/camera_hal3_helpers.h"
 

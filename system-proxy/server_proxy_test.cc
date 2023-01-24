@@ -14,12 +14,12 @@
 #include <gtest/gtest.h>
 #include <utility>
 
-#include <base/bind.h>
-#include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/strings/string_util.h>
 #include <base/task/single_thread_task_executor.h>
 #include <brillo/dbus/async_event_sequencer.h>

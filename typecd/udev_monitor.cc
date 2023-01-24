@@ -4,8 +4,8 @@
 
 #include "typecd/udev_monitor.h"
 
-#include <base/bind.h>
 #include <base/check.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <brillo/udev/udev_enumerate.h>
 #include <re2/re2.h>

@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/values.h>
 
 #include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"

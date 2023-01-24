@@ -9,12 +9,12 @@
 
 #include <unistd.h>
 
-#include <base/bind.h>
-#include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/files/memory_mapped_file.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <brillo/message_loops/message_loop.h>

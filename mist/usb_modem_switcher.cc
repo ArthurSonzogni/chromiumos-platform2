@@ -6,8 +6,8 @@
 
 #include <memory>
 
-#include <base/bind.h>
 #include <base/check.h>
+#include <base/functional/bind.h>
 #include <brillo/usb/usb_device_event_notifier.h>
 
 #include "mist/config_loader.h"

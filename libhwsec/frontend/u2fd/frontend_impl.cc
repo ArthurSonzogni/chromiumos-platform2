@@ -6,7 +6,7 @@
 
 #include <utility>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 

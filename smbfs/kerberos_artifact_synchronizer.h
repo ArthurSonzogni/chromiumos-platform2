@@ -9,8 +9,8 @@
 #include <string>
 
 #include <authpolicy/proto_bindings/active_directory_info.pb.h>
-#include <base/callback.h>
 #include <base/files/file_path.h>
+#include <base/functional/callback.h>
 
 #include "smbfs/kerberos_artifact_client_interface.h"
 

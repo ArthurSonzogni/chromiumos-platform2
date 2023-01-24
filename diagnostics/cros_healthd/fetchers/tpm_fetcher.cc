@@ -9,8 +9,8 @@
 #include <utility>
 
 #include <attestation-client/attestation/dbus-proxies.h>
-#include <base/callback.h>
 #include <base/check.h>
+#include <base/functional/callback.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <brillo/errors/error.h>

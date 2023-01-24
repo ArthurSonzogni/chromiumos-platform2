@@ -11,7 +11,7 @@
 #include <ostream>  // NOLINT(readability/streams)
 #include <string>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <brillo/brillo_export.h>
 #include <gtest/gtest_prod.h>
 

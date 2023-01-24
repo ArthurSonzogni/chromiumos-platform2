@@ -4,8 +4,8 @@
 
 #include "typecd/session_manager_proxy.h"
 
-#include <base/bind.h>
 #include <base/check.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 
 namespace typecd {

@@ -11,8 +11,8 @@
 #include <utility>
 #include <vector>
 
-#include <base/callback_helpers.h>
 #include <base/check.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/time/time.h>
 #include <chromeos/mojo/service_constants.h>

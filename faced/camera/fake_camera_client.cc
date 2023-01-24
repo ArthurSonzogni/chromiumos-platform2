@@ -9,8 +9,8 @@
 #include <vector>
 
 #include <absl/status/status.h>
-#include <base/bind.h>
-#include <base/callback_forward.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_forward.h>
 #include <cros-camera/camera_service_connector.h>
 #include <linux/videodev2.h>
 

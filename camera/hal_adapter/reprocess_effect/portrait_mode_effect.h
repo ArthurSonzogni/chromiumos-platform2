@@ -11,11 +11,11 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
-#include <base/callback_helpers.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
+#include <base/process/process.h>
 #include <base/synchronization/condition_variable.h>
 #include <base/synchronization/lock.h>
-#include <base/process/process.h>
 
 #include "cros-camera/camera_buffer_manager.h"
 #include "hal_adapter/reprocess_effect/gpu_algo_manager.h"

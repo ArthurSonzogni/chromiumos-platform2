@@ -6,7 +6,7 @@
 
 #include <utility>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

@@ -6,8 +6,8 @@
 
 #include <string>
 
-#include <base/bind.h>
-#include <base/callback.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <brillo/http/mock_connection.h>
 #include <brillo/http/mock_transport.h>
 #include <brillo/mime_utils.h>

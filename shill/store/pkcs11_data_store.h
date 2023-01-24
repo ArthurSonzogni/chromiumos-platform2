@@ -10,7 +10,7 @@
 #include <memory>
 #include <string>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <chaps/pkcs11/cryptoki.h>
 
 namespace shill {

@@ -9,7 +9,7 @@
 #include <memory>
 #include <string>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 
 #include "shill/data_types.h"
 #include "shill/logging.h"

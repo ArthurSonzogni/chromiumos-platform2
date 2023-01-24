@@ -4,7 +4,7 @@
 
 #include "shill/ethernet/ethernet_provider.h"
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/memory/ref_counted.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

@@ -17,11 +17,11 @@
 #include <memory>
 #include <utility>
 
-#include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/process/process_metrics.h>

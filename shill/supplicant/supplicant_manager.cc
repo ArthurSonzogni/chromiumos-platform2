@@ -4,8 +4,8 @@
 
 #include "shill/supplicant/supplicant_manager.h"
 
-#include <base/bind.h>
-#include <base/callback.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 
 #include "shill/control_interface.h"
 #include "shill/event_dispatcher.h"

@@ -8,7 +8,7 @@
 #include <optional>
 #include <string>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 
 namespace dbus {

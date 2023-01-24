@@ -9,9 +9,9 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 

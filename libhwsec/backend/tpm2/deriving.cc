@@ -10,7 +10,7 @@
 #include <string>
 #include <utility>
 
-#include <base/callback_helpers.h>
+#include <base/functional/callback_helpers.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/crypto/big_num_util.h>
 #include <libhwsec-foundation/crypto/elliptic_curve.h>

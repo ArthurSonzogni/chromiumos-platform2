@@ -11,8 +11,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include <base/bind.h>
 #include <base/files/file_path.h>
+#include <base/functional/bind.h>
 #include <brillo/blkdev_utils/device_mapper_fake.h>
 #include <brillo/secure_blob.h>
 

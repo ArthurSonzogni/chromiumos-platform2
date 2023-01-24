@@ -16,9 +16,9 @@
 #include <utility>
 #include <vector>
 
-#include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/functional/callback.h>
 #include <base/time/time.h>
 #include <brillo/blkdev_utils/lvm.h>
 #include <brillo/secure_blob.h>

@@ -10,9 +10,9 @@
 #include <utility>
 #include <vector>
 
-#include <base/callback.h>
 #include <base/files/file.h>
 #include <base/files/file_path.h>
+#include <base/functional/callback.h>
 #include <base/time/clock.h>
 #include <base/time/time.h>
 #include <brillo/key_value_store.h>

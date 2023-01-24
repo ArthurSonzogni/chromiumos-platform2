@@ -13,8 +13,8 @@
 
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
-#include <base/callback_forward.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/callback_forward.h>
 #include <base/threading/sequenced_task_runner_handle.h>
 #include <brillo/grpc/async_grpc_client.h>
 

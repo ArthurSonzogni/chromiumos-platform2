@@ -10,9 +10,9 @@
 #include <string>
 #include <vector>
 
-#include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/functional/callback.h>
 #include <libimageloader/manifest.h>
 
 #include "dlcservice/boot/boot_slot.h"

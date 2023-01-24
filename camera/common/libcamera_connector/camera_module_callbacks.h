@@ -7,7 +7,7 @@
 #ifndef CAMERA_COMMON_LIBCAMERA_CONNECTOR_CAMERA_MODULE_CALLBACKS_H_
 #define CAMERA_COMMON_LIBCAMERA_CONNECTOR_CAMERA_MODULE_CALLBACKS_H_
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <mojo/public/cpp/bindings/associated_receiver.h>
 #include <mojo/public/cpp/bindings/pending_associated_remote.h>
 

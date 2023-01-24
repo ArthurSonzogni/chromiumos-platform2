@@ -11,7 +11,7 @@
 #include <string>
 #include <utility>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/values.h>
 #include <google/protobuf/message_lite.h>
 

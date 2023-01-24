@@ -7,7 +7,7 @@
 #include <optional>
 #include <utility>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 
 #include "iioservice/include/common.h"
 

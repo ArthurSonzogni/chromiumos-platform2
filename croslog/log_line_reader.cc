@@ -13,9 +13,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "base/bind.h"
 #include "base/files/file.h"
 #include "base/files/file_util.h"
+#include "base/functional/bind.h"
 #include "base/strings/string_util.h"
 
 #include "croslog/file_map_reader.h"

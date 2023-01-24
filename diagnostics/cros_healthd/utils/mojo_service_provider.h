@@ -8,7 +8,7 @@
 #include <string>
 #include <utility>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>

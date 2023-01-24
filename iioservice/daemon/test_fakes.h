@@ -10,7 +10,7 @@
 #include <set>
 #include <utility>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/sequence_checker.h>
 #include <base/task/single_thread_task_runner.h>
 #include <mojo/public/cpp/bindings/receiver.h>

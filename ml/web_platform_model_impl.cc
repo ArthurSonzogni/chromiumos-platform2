@@ -7,10 +7,10 @@
 #include <algorithm>
 #include <utility>
 
-#include <base/bind.h>
-#include <base/time/time.h>
-#include <base/callback_helpers.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/notreached.h>
+#include <base/time/time.h>
 #include <brillo/message_loops/message_loop.h>
 
 #include "base/debug/leak_annotations.h"

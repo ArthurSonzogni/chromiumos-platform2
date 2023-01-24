@@ -33,14 +33,14 @@ const int kSyslogCritical = LOG_CRIT;
 }  // namespace
 
 #include <base/at_exit.h>
-#include <base/bind.h>
 #include <base/command_line.h>
 #include <base/files/file_descriptor_watcher_posix.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/message_loop/message_pump_type.h>
 #include <base/run_loop.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/system/sys_info.h>
 #include <base/task/single_thread_task_executor.h>

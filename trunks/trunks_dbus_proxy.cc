@@ -8,7 +8,7 @@
 #include <utility>
 
 #include <absl/strings/str_format.h>
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <libhwsec-foundation/tpm_error/tpm_error_data.h>
 #include <libhwsec-foundation/tpm_error/tpm_error_uma_reporter_impl.h>

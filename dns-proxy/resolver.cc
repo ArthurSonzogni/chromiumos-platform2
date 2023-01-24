@@ -11,8 +11,8 @@
 #include <set>
 #include <utility>
 
-#include <base/bind.h>
 #include <base/containers/contains.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/rand_util.h>

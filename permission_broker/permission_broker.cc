@@ -16,9 +16,9 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
-#include <base/callback.h>
 #include <base/compiler_specific.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <brillo/userdb_utils.h>

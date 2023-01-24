@@ -6,10 +6,10 @@
 
 #include <string>
 
-#include <base/bind.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/functional/bind.h>
 #include <gtest/gtest.h>
 
 #include "arc/setup/xml/android_binary_xml_tokenizer_test_util.h"

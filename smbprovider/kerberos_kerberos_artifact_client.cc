@@ -7,7 +7,7 @@
 #include <memory>
 #include <utility>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <kerberos/proto_bindings/kerberos_service.pb.h>
 #include <dbus/kerberos/dbus-constants.h>

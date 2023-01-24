@@ -6,8 +6,8 @@
 
 #include <ModemManager/ModemManager.h>
 
-#include <base/bind.h>
 #include <base/check.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <chromeos/dbus/service_constants.h>
 

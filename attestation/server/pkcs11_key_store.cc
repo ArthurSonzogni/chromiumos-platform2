@@ -9,9 +9,9 @@
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
-#include <base/callback.h>
 #include <base/files/file_path.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/strings/string_util.h>

@@ -11,9 +11,9 @@
 
 #include <vector>
 
-#include <base/bind.h>
 #include <base/check_op.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 

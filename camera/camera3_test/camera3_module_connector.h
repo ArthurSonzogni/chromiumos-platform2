@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <cros-camera/camera_thread.h>
 #include <hardware/camera3.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>

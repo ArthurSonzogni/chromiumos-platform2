@@ -10,7 +10,7 @@
 #include <string>
 #include <vector>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <brillo/any.h>
 #include <brillo/variant_dictionary.h>
 

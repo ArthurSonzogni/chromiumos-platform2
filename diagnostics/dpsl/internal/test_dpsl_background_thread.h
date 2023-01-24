@@ -9,7 +9,7 @@
 #include <memory>
 #include <string>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/simple_thread.h>
 

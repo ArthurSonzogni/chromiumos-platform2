@@ -4,8 +4,8 @@
 
 #include "shill/net/nl80211_attribute.h"
 
-#include <base/bind.h>
 #include <base/format_macros.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 

@@ -12,7 +12,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
 #include <brillo/message_loops/base_message_loop.h>

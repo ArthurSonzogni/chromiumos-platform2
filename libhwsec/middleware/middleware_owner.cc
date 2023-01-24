@@ -8,8 +8,8 @@
 #include <optional>
 #include <utility>
 
-#include <base/callback.h>
-#include <base/callback_helpers.h>
+#include <base/functional/callback.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 

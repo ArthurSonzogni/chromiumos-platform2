@@ -7,7 +7,7 @@
 
 #include <string>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>

@@ -9,7 +9,7 @@
 #include <utility>
 
 #include <base/base64.h>
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/test/task_environment.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>

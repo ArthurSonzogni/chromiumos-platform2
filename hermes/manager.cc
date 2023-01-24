@@ -13,7 +13,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/logging.h>
 #include <brillo/errors/error_codes.h>
 #include <google-lpa/lpa/core/lpa.h>

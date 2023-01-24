@@ -4,7 +4,7 @@
 
 #include "shill/scope_logger.h"
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/memory/weak_ptr.h>
 
 #include "shill/logging.h"

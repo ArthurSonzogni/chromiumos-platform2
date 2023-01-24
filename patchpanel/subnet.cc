@@ -9,8 +9,8 @@
 #include <string>
 #include <utility>
 
-#include <base/bind.h>
 #include <base/check_op.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 
 #include "patchpanel/net_util.h"

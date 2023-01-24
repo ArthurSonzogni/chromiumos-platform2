@@ -11,8 +11,8 @@
 #include <memory>
 #include <string>
 
-#include <base/callback.h>
 #include <base/files/file_path.h>
+#include <base/functional/callback.h>
 #include <dbus/bus.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>

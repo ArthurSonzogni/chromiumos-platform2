@@ -18,12 +18,11 @@
 #include <string>
 #include <utility>
 
-#include <base/callback_helpers.h>
+#include <base/containers/stack_container.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
-#include <base/time/time.h>
-#include <base/containers/stack_container.h>
 #include <base/functional/callback_helpers.h>
+#include <base/time/time.h>
 
 #include "common/camera_hal3_helpers.h"
 #include "common/stream_manipulator.h"

@@ -15,11 +15,11 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
 #include <base/bits.h>
-#include <base/callback_helpers.h>
 #include <base/containers/contains.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/strings/string_util.h>
 #include <base/task/bind_post_task.h>
 #include <brillo/key_value_store.h>

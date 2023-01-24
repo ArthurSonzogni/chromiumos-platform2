@@ -9,9 +9,9 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
-#include <base/check.h>
 #include "base/logging.h"
+#include <base/check.h>
+#include <base/functional/bind.h>
 #include <base/run_loop.h>
 #include <base/test/simple_test_tick_clock.h>
 #include <chromeos/dbus/service_constants.h>

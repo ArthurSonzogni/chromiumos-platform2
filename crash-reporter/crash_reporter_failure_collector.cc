@@ -7,8 +7,8 @@
 #include <memory>
 #include <string>
 
-#include <base/bind.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 
 #include "crash-reporter/constants.h"

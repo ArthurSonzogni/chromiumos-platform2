@@ -9,7 +9,7 @@
 #include <vector>
 
 #include <attestation/proto_bindings/interface.pb.h>
-#include <base/callback_forward.h>
+#include <base/functional/callback_forward.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/errors/error.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>

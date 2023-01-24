@@ -5,7 +5,7 @@
 #ifndef OCR_OCR_SERVICE_IMPL_H_
 #define OCR_OCR_SERVICE_IMPL_H_
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
 #include <mojo/public/cpp/system/handle.h>

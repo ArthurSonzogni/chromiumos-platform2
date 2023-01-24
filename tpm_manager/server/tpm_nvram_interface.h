@@ -5,7 +5,7 @@
 #ifndef TPM_MANAGER_SERVER_TPM_NVRAM_INTERFACE_H_
 #define TPM_MANAGER_SERVER_TPM_NVRAM_INTERFACE_H_
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 

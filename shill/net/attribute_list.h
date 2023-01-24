@@ -11,8 +11,8 @@
 #include <memory>
 #include <string>
 
-#include <base/bind.h>
-#include <base/callback.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 
 #include "shill/net/netlink_message.h"
 #include "shill/net/shill_export.h"

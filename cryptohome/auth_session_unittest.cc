@@ -13,7 +13,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/callback_helpers.h>
+#include <base/functional/callback_helpers.h>
 #include <base/run_loop.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/test/bind.h>
@@ -34,7 +34,6 @@
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
-#include "base/functional/callback_helpers.h"
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
 #include "cryptohome/auth_blocks/mock_auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"

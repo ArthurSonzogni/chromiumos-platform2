@@ -9,8 +9,8 @@
 #include <memory>
 #include <string>
 
-#include <base/bind.h>
-#include <base/callback.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
 #include <gmock/gmock.h>

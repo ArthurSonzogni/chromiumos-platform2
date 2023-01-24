@@ -8,7 +8,7 @@
 
 #include <iomanip>
 
-#include "base/bind.h"
+#include "base/functional/bind.h"
 #include "base/sequence_checker.h"
 #include "cros-camera/device_config.h"
 #include "cros-camera/future.h"

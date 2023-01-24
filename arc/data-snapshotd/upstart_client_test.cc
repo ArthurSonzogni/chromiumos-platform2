@@ -6,7 +6,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <brillo/dbus/mock_dbus_method_response.h>
 #include <dbus/bus.h>
 #include <dbus/mock_bus.h>

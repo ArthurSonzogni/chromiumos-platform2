@@ -7,9 +7,9 @@
 #include <optional>
 #include <utility>
 
-#include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <crypto/scoped_openssl_types.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>

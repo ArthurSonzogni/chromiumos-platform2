@@ -9,8 +9,8 @@
 
 #include <vector>
 
-#include <base/callback.h>
 #include <base/containers/flat_map.h>
+#include <base/functional/callback.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>

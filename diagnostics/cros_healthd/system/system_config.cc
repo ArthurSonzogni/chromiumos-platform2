@@ -10,12 +10,12 @@
 #include <utility>
 
 #include <chromeos/chromeos-config/libcros_config/cros_config.h>
-#include <base/callback.h>
 #include <base/check.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
-#include <base/strings/string_split.h>
+#include <base/functional/callback.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/system/sys_info.h>
 #include <brillo/errors/error.h>

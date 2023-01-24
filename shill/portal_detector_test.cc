@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/time/time.h>
 #include <brillo/http/http_request.h>
 #include <brillo/http/mock_connection.h>

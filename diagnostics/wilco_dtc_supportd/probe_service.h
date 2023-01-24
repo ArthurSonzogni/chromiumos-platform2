@@ -7,7 +7,7 @@
 
 #include <vector>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"

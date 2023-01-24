@@ -10,7 +10,7 @@
 #include <string>
 #include <utility>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 
 #include <brillo/grpc/async_grpc_client.h>
 #include <brillo/grpc/async_grpc_server.h>

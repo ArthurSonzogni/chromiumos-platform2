@@ -6,7 +6,7 @@
 
 #include <sstream>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 // Ignore Wconversion warnings in libbase headers.
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wconversion"

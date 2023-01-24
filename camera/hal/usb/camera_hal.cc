@@ -10,10 +10,10 @@
 #include <optional>
 #include <utility>
 
-#include <base/bind.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
 #include <base/no_destructor.h>
 #include <base/strings/string_util.h>
 #include <base/threading/thread_task_runner_handle.h>

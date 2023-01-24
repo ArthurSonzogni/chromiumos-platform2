@@ -7,7 +7,7 @@
 #include <string>
 #include <utility>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/threading/thread_task_runner_handle.h>
 
 #include "mojo_service_manager/daemon/mojo_error_util.h"

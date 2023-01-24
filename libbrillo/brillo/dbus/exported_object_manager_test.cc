@@ -6,7 +6,7 @@
 
 #include <utility>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <brillo/dbus/dbus_object_test_helpers.h>
 #include <brillo/dbus/utils.h>
 #include <dbus/mock_bus.h>

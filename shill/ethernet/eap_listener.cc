@@ -8,8 +8,8 @@
 #include <linux/if_packet.h>
 #include <netinet/in.h>
 
-#include <base/bind.h>
 #include <base/compiler_specific.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 
 #include "shill/ethernet/eap_protocol.h"

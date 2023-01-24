@@ -10,8 +10,8 @@
 
 #include <signal.h>
 
-#include <base/callback.h>
 #include <base/cancelable_callback.h>
+#include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/errors/error.h>

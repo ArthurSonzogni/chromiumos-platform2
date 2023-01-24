@@ -4,7 +4,7 @@
 
 #include "shill/result_aggregator.h"
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/memory/ref_counted.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>

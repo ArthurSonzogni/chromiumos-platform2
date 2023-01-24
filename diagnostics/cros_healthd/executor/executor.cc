@@ -17,14 +17,14 @@
 #include <optional>
 #include <utility>
 
-#include <base/bind.h>
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
-#include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/strings/stringprintf.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
 #include <base/time/time.h>

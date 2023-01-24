@@ -5,8 +5,8 @@
 #ifndef HPS_HPS_H_
 #define HPS_HPS_H_
 
-#include <base/callback.h>
 #include <base/files/file_path.h>
+#include <base/functional/callback.h>
 #include <base/time/time.h>
 
 #include "hps/hps_reg.h"

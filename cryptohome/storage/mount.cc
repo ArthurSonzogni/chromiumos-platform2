@@ -17,13 +17,13 @@
 #include <utility>
 
 #include <absl/cleanup/cleanup.h>
-#include <base/bind.h>
-#include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/files/file_path.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
+#include <base/hash/sha1.h>
 #include <base/location.h>
 #include <base/logging.h>
-#include <base/hash/sha1.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>

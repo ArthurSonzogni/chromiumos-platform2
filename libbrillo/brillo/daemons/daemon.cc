@@ -9,8 +9,8 @@
 #include <sysexits.h>
 #include <time.h>
 
-#include <base/bind.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/run_loop.h>
 

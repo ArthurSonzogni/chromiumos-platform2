@@ -10,7 +10,7 @@
 #include <memory>
 #include <string>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

@@ -13,8 +13,8 @@
 #include <vector>
 
 #include <absl/cleanup/cleanup.h>
-#include <base/callback_helpers.h>
 #include <base/check.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>

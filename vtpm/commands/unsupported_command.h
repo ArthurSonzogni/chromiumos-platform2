@@ -9,7 +9,7 @@
 
 #include <string>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <trunks/response_serializer.h>
 
 namespace vtpm {

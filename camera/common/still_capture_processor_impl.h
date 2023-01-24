@@ -16,8 +16,8 @@
 #include <memory>
 #include <vector>
 
-#include <base/callback_helpers.h>
 #include <base/containers/span.h>
+#include <base/functional/callback_helpers.h>
 #include <base/threading/thread.h>
 
 #include "cros-camera/camera_buffer_manager.h"

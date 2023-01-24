@@ -14,9 +14,10 @@
 #include <utility>
 #include <vector>
 
-#include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <brillo/secure_blob.h>
@@ -33,8 +34,6 @@
 #include <openssl/rsa.h>
 #include <openssl/ec.h>
 
-#include "base/functional/bind.h"
-#include "base/functional/callback_helpers.h"
 #include "chaps/chaps.h"
 #include "chaps/chaps_factory.h"
 #include "chaps/chaps_utility.h"

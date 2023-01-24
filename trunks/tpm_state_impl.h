@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 
 #include "trunks/tpm_generated.h"
 #include "trunks/trunks_export.h"

@@ -7,7 +7,7 @@
 #include <utility>
 
 #include <absl/cleanup/cleanup.h>
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/auth_blocks/fp_service.h"

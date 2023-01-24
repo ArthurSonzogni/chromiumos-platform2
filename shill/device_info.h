@@ -13,9 +13,9 @@
 #include <utility>
 #include <vector>
 
-#include <base/callback.h>
 #include <base/cancelable_callback.h>
 #include <base/files/file_path.h>
+#include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>

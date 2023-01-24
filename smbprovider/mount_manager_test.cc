@@ -9,9 +9,9 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
 #include <base/files/file.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
 #include <base/test/simple_test_tick_clock.h>
 #include <gtest/gtest.h>
 

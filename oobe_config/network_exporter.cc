@@ -9,10 +9,10 @@
 #include <string>
 #include <utility>
 
-#include <base/bind.h>
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/threading/thread_task_runner_handle.h>

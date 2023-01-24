@@ -14,8 +14,8 @@
 #include <optional>
 #include <vector>
 
-#include <base/callback.h>
 #include <base/containers/flat_map.h>
+#include <base/functional/callback.h>
 #include <base/synchronization/condition_variable.h>
 #include <base/synchronization/lock.h>
 #include <base/time/time.h>

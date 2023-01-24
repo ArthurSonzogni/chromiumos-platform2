@@ -6,7 +6,7 @@
 
 #include <memory>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <brillo/dbus/dbus_object_test_helpers.h>
 #include <brillo/dbus/mock_exported_object_manager.h>
 #include <dbus/message.h>

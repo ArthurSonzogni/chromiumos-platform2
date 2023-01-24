@@ -15,7 +15,7 @@
 #include <brillo/grpc/async_grpc_server.h>
 #include <gmock/gmock.h>
 
-#include "base/callback_forward.h"
+#include "base/functional/callback_forward.h"
 #include "faced/face_service.h"
 #include "faced/proto/face_service.grpc.pb.h"
 #include "faced/proto/face_service.pb.h"

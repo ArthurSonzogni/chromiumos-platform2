@@ -4,7 +4,7 @@
 
 #include "shill/ethernet/ethernet_eap_service.h"
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 

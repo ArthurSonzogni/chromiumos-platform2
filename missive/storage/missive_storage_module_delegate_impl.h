@@ -5,7 +5,7 @@
 #ifndef MISSIVE_STORAGE_MISSIVE_STORAGE_MODULE_DELEGATE_IMPL_H_
 #define MISSIVE_STORAGE_MISSIVE_STORAGE_MODULE_DELEGATE_IMPL_H_
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"

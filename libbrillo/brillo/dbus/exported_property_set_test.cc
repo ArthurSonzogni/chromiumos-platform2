@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/dbus/dbus_object_test_helpers.h>
 #include <brillo/errors/error_codes.h>

@@ -4,7 +4,7 @@
 
 #include "attestation/server/enrollment_queue.h"
 
-#include <base/callback_helpers.h>
+#include <base/functional/callback_helpers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

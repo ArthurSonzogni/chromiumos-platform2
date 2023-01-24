@@ -12,7 +12,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/flatbuffer_schemas/structures.h"

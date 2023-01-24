@@ -7,8 +7,8 @@
 #include <optional>
 #include <utility>
 
-#include <base/callback.h>
 #include <base/check.h>
+#include <base/functional/callback.h>
 
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/mojom/external/network_health_types.mojom.h"

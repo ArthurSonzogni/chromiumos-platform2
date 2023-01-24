@@ -8,7 +8,7 @@
 #include <string>
 #include <utility>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/threading/thread.h>
 #include <dbus/object_proxy.h>
 #include <gmock/gmock.h>

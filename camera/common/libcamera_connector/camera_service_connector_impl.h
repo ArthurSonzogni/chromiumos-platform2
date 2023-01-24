@@ -9,7 +9,7 @@
 
 #include <memory>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/sequence_checker.h>
 #include <base/synchronization/atomic_flag.h>
 #include <base/threading/thread.h>

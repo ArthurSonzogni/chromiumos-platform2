@@ -4,8 +4,8 @@
 
 #include <string>
 
-#include <base/bind.h>
 #include <base/check_op.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/flag_helper.h>

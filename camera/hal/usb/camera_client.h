@@ -11,7 +11,7 @@
 #include <string>
 #include <vector>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/synchronization/lock.h>
 #include <base/threading/thread.h>
 #include <base/threading/thread_checker.h>

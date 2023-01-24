@@ -5,7 +5,7 @@
 #ifndef TPM_MANAGER_COMMON_TYPEDEFS_H_
 #define TPM_MANAGER_COMMON_TYPEDEFS_H_
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 
 namespace tpm_manager {
 using OwnershipTakenCallBack = base::RepeatingClosure;

@@ -9,11 +9,11 @@
 #include <string.h>
 #include <utility>
 
-#include <base/bind.h>
-#include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/memory/free_deleter.h>
 #include <base/strings/string_util.h>

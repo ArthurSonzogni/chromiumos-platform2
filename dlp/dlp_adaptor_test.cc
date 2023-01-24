@@ -9,10 +9,10 @@
 #include <string>
 #include <utility>
 
-#include <base/callback.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/functional/callback.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/run_loop.h>
 #include <brillo/dbus/mock_dbus_method_response.h>

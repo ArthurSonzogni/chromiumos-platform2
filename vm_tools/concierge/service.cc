@@ -38,10 +38,6 @@
 #include <vector>
 
 #include <base/base64url.h>
-#include <base/bind.h>
-#include <base/callback.h>
-#include <base/callback_forward.h>
-#include <base/callback_helpers.h>
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/files/file_enumerator.h>
@@ -49,6 +45,10 @@
 #include <base/files/file_path_watcher.h>
 #include <base/files/file_util.h>
 #include <base/format_macros.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback.h>
+#include <base/functional/callback_forward.h>
+#include <base/functional/callback_helpers.h>
 #include <base/guid.h>
 #include <base/hash/md5.h>
 #include <base/location.h>

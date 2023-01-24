@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #include "dns-proxy/session_monitor.h"
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 
 namespace dns_proxy {

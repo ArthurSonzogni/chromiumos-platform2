@@ -10,7 +10,7 @@
 #include <string>
 
 #include <base/files/file.h>
-#include <base/callback.h>
+#include <base/functional/callback.h>
 
 #include "image-burner/image_burner_utils_interfaces.h"
 

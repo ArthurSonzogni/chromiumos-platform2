@@ -7,7 +7,7 @@
 #include <memory>
 #include <string>
 
-#include <base/callback_helpers.h>
+#include <base/functional/callback_helpers.h>
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <trunks/openssl_utility.h>

@@ -9,7 +9,7 @@
 #include <tuple>
 #include <type_traits>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 
 namespace hwsec_foundation {
 

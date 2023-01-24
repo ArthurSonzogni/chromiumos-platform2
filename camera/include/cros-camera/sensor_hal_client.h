@@ -11,7 +11,7 @@
 #include <memory>
 #include <vector>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 
 #include "cros-camera/camera_mojo_channel_manager_token.h"
 #include "cros-camera/export.h"

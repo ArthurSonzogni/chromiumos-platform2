@@ -4,8 +4,8 @@
 
 #include "vm_tools/cicerone/guest_metrics.h"
 
-#include <base/bind.h>
 #include <base/files/file_path.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/numerics/safe_conversions.h>
 #include <base/ranges/algorithm.h>

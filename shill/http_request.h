@@ -9,8 +9,8 @@
 #include <string>
 #include <vector>
 
-#include <base/callback.h>
 #include <base/cancelable_callback.h>
+#include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/errors/error.h>

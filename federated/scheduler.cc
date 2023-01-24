@@ -8,7 +8,7 @@
 #include <string>
 #include <utility>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
 #include <base/threading/sequenced_task_runner_handle.h>

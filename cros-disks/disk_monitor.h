@@ -11,8 +11,8 @@
 #include <string>
 #include <vector>
 
-#include <base/callback.h>
 #include <base/files/file_path.h>
+#include <base/functional/callback.h>
 #include <gtest/gtest_prod.h>
 
 #include "cros-disks/device_event.h"

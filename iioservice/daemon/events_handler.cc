@@ -7,8 +7,8 @@
 #include <optional>
 #include <utility>
 
-#include <base/bind.h>
 #include <base/containers/contains.h>
+#include <base/functional/bind.h>
 
 #include "iioservice/daemon/common_types.h"
 #include "iioservice/include/common.h"

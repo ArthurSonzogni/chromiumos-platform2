@@ -10,7 +10,7 @@
 #include <utility>
 
 #include <attestation/proto_bindings/interface.pb.h>
-#include <base/callback.h>
+#include <base/functional/callback.h>
 
 #include "attestation/common/attestation_interface.h"
 

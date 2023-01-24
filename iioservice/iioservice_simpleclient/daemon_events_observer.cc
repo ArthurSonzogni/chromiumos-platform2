@@ -6,7 +6,7 @@
 
 #include <utility>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 
 #include "iioservice/iioservice_simpleclient/events_observer.h"
 

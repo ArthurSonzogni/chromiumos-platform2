@@ -11,7 +11,7 @@
 
 #include <absl/random/random.h>
 #include <absl/status/status.h>
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/run_loop.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>

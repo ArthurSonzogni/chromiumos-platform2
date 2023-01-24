@@ -7,8 +7,8 @@
 #include <memory>
 #include <utility>
 
-#include <base/bind.h>
 #include <base/check.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/sequence_checker.h>
 #include <base/task/sequenced_task_runner.h>

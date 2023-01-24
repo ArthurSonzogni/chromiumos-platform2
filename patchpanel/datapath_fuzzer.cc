@@ -14,8 +14,8 @@
 #pragma GCC diagnostic ignored "-Wconversion"
 #include <base/at_exit.h>
 #pragma GCC diagnostic pop
-#include <base/bind.h>
-#include <base/callback_helpers.h>
+#include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <fuzzer/FuzzedDataProvider.h>
 

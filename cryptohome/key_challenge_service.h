@@ -8,7 +8,7 @@
 #include <memory>
 #include <string>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <cryptohome/proto_bindings/fido.pb.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
 

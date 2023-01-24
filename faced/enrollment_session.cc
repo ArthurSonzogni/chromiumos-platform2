@@ -10,7 +10,7 @@
 #include <vector>
 
 #include <absl/status/status.h>
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/location.h>
 #include <base/threading/sequenced_task_runner_handle.h>
 

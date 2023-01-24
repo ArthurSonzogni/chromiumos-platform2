@@ -6,7 +6,7 @@
 
 #include <utility>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <dbus/login_manager/dbus-constants.h>
 
 #include "federated/utils.h"

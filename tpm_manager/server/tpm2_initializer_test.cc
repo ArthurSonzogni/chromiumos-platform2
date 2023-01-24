@@ -6,7 +6,7 @@
 
 #include <memory>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/strings/string_number_conversions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

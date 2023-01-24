@@ -10,8 +10,8 @@
 
 #include <hardware/hardware.h>
 
-#include <base/bind.h>
 #include <base/command_line.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/syslog_logging.h>

@@ -9,7 +9,7 @@
 #include <set>
 #include <string>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/memory/weak_ptr.h>
 #include <brillo/process/process_reaper.h>
 #include <chromeos/dbus/service_constants.h>

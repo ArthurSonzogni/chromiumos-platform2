@@ -7,8 +7,8 @@
 #include <memory>
 #include <utility>
 
-#include <base/bind.h>
 #include <base/check.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/run_loop.h>
 #include <mojo/public/cpp/bindings/remote.h>

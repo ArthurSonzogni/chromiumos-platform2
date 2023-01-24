@@ -6,8 +6,8 @@
 
 #include <string.h>
 
-#include <base/bind.h>
 #include <base/containers/contains.h>
+#include <base/functional/bind.h>
 
 #include "shill/device.h"
 #include "shill/event_dispatcher.h"

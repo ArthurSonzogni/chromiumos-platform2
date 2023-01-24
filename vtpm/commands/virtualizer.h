@@ -14,7 +14,7 @@
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <attestation/proto_bindings/interface.pb.h>
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/errors/error.h>
 #include <trunks/command_parser.h>

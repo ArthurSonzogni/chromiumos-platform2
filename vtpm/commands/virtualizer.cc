@@ -10,8 +10,8 @@
 #include <unordered_map>
 #include <utility>
 
-#include <base/callback.h>
 #include <base/files/file_path.h>
+#include <base/functional/callback.h>
 #include <trunks/command_parser.h>
 #include <trunks/response_serializer.h>
 #include <trunks/tpm_generated.h>

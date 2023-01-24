@@ -5,7 +5,7 @@
 #ifndef DIAGNOSTICS_WILCO_DTC_SUPPORTD_GRPC_CLIENT_MANAGER_H_
 #define DIAGNOSTICS_WILCO_DTC_SUPPORTD_GRPC_CLIENT_MANAGER_H_
 
-#include <base/callback_forward.h>
+#include <base/functional/callback_forward.h>
 #include <brillo/grpc/async_grpc_client.h>
 
 #include <memory>

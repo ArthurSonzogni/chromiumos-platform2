@@ -7,7 +7,7 @@
 
 #include <memory>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
 

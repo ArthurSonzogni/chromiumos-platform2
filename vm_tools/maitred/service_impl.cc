@@ -34,12 +34,11 @@
 #include <utility>
 #include <vector>
 
-#include <base/bind.h>
-#include <base/check.h>
 #include "base/files/file_path.h"
+#include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
-#include <base/synchronization/lock.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/posix/safe_strerror.h>
@@ -47,6 +46,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/synchronization/lock.h>
 #include <base/system/sys_info.h>
 #include <brillo/file_utils.h>
 

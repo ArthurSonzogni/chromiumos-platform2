@@ -9,7 +9,7 @@
 #include <memory>
 #include <string>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <brillo/secure_blob.h>
 
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>

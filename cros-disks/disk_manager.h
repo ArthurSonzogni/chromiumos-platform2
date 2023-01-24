@@ -13,7 +13,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <gtest/gtest_prod.h>
 
 #include "cros-disks/disk.h"

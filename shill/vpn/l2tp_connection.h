@@ -9,9 +9,9 @@
 #include <memory>
 #include <string>
 
-#include <base/callback.h>
 #include <base/files/file_path.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/functional/callback.h>
 #include <libpasswordprovider/password_provider.h>
 
 #include "shill/control_interface.h"

@@ -14,7 +14,7 @@
 #include <libusb-1.0/libusb.h>
 #include <linux/usb/ch11.h>
 
-#include <base/bind.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/threading/platform_thread.h>
