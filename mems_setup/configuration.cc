@@ -539,19 +539,29 @@ bool Configuration::ConfigAccelerometer() {
    * Gather gyroscope. If one of them is on the same plane, set
    * accelerometer range to 4g to meet Android 10 CCD Requirements
    * (Section 7.1.4, C.1.4).
-   * If no gyro found, set range to 4g on the lid accel.
+   * If no gyro found, set range to 4g on the lid accel if there are 2 accels
    */
   int range = 0;
   auto location = sensor_->GetLocation();
   if (location && !location->empty()) {
     auto gyros = context_->GetDevicesByName("cros-ec-gyro");
-    if (gyros.size() != 1 && strcmp(location->c_str(), kLidSensorLocation) == 0)
+    if (gyros.size() > 1) {
       range = 4;
-    else if (gyros.size() == 1 &&
-             strcmp(location->c_str(), gyros[0]->GetLocation()->c_str()) == 0)
-      range = 4;
-    else
-      range = 2;
+    } else if (gyros.size() == 1) {
+      if (strcmp(location->c_str(), gyros[0]->GetLocation()->c_str()) == 0)
+        range = 4;
+      else
+        range = 2;
+    } else {
+      auto accels = context_->GetDevicesByName("cros-ec-accel");
+      if (accels.size() == 1)
+        range = 4;
+      else if (accels.size() > 1 &&
+               strcmp(location->c_str(), kLidSensorLocation) == 0)
+        range = 4;
+      else
+        range = 2;
+    }
 
     if (!sensor_->WriteNumberAttribute(kCalibrationScale, range))
       return false;

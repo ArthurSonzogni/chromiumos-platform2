@@ -361,8 +361,36 @@ TEST_F(AccelerometerTest, OkWithSysfstrigDefined) {
   EXPECT_TRUE(GetConfiguration()->Configure());
 }
 
-TEST_F(AccelerometerTest, SetRangeNoGyroLid) {
+TEST_F(AccelerometerTest, SetSingleAccelRangeNoGyroLid) {
   SetSingleSensor(kLidSensorLocation);
+  EXPECT_TRUE(GetConfiguration()->Configure());
+  EXPECT_EQ(4, mock_device_->ReadNumberAttribute("scale").value());
+}
+
+TEST_F(AccelerometerTest, SetSingleAccelRangeNoGyroBase) {
+  SetSingleSensor(kLidSensorLocation);
+  EXPECT_TRUE(GetConfiguration()->Configure());
+  EXPECT_EQ(4, mock_device_->ReadNumberAttribute("scale").value());
+}
+
+TEST_F(AccelerometerTest, SetPairAccelRangeNoGyroBase) {
+  SetSingleSensor(kBaseSensorLocation);
+  auto mock_lid_accel =
+      std::make_unique<FakeIioDevice>(mock_context_.get(), "cros-ec-accel", 2);
+  mock_lid_accel->WriteStringAttribute("location", kLidSensorLocation);
+  mock_context_->AddDevice(std::move(mock_lid_accel));
+
+  EXPECT_TRUE(GetConfiguration()->Configure());
+  EXPECT_EQ(2, mock_device_->ReadNumberAttribute("scale").value());
+}
+
+TEST_F(AccelerometerTest, SetPairAccelRangeNoGyroLid) {
+  SetSingleSensor(kLidSensorLocation);
+  auto mock_base_accel =
+      std::make_unique<FakeIioDevice>(mock_context_.get(), "cros-ec-accel", 2);
+  mock_base_accel->WriteStringAttribute("location", kBaseSensorLocation);
+  mock_context_->AddDevice(std::move(mock_base_accel));
+
   EXPECT_TRUE(GetConfiguration()->Configure());
   EXPECT_EQ(4, mock_device_->ReadNumberAttribute("scale").value());
 }
@@ -371,7 +399,7 @@ TEST_F(AccelerometerTest, SetRangeNoGyroLidOld) {
   SetSharedSensor();
   SetSingleSensor(kBaseSensorLocation);
   EXPECT_TRUE(GetConfiguration()->Configure());
-  EXPECT_NE(4, mock_device_->ReadNumberAttribute("scale").value_or(0));
+  EXPECT_EQ(4, mock_device_->ReadNumberAttribute("scale").value());
 }
 
 TEST_F(AccelerometerTest, SetRangeGyroBaseBase) {
@@ -411,7 +439,6 @@ TEST_F(AccelerometerTest, SetRangeMultipleGyroLid) {
   EXPECT_TRUE(GetConfiguration()->Configure());
   EXPECT_EQ(4, mock_device_->ReadNumberAttribute("scale").value());
 }
-
 TEST_F(AccelerometerTest, SetRangeMultipleGyroBase) {
   auto mock_gyro1 =
       std::make_unique<FakeIioDevice>(mock_context_.get(), "cros-ec-gyro", 2);
@@ -425,7 +452,13 @@ TEST_F(AccelerometerTest, SetRangeMultipleGyroBase) {
 
   SetSingleSensor(kBaseSensorLocation);
   EXPECT_TRUE(GetConfiguration()->Configure());
-  EXPECT_EQ(2, mock_device_->ReadNumberAttribute("scale").value());
+  EXPECT_EQ(4, mock_device_->ReadNumberAttribute("scale").value());
+}
+
+TEST_F(AccelerometerTest, SetRangeSingleAccelBase) {
+  SetSingleSensor(kBaseSensorLocation);
+  EXPECT_TRUE(GetConfiguration()->Configure());
+  EXPECT_EQ(4, mock_device_->ReadNumberAttribute("scale").value());
 }
 
 }  // namespace
