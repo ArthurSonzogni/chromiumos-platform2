@@ -201,7 +201,6 @@ constexpr const char* kActions[] = {"mount_ex",
                                     "is_mounted",
                                     "check_key_ex",
                                     "remove_key_ex",
-                                    "get_key_data_ex",
                                     "list_keys_ex",
                                     "add_key_ex",
                                     "update_key_ex",
@@ -295,7 +294,6 @@ enum ActionEnum {
   ACTION_MOUNTED,
   ACTION_CHECK_KEY_EX,
   ACTION_REMOVE_KEY_EX,
-  ACTION_GET_KEY_DATA_EX,
   ACTION_LIST_KEYS_EX,
   ACTION_ADD_KEY_EX,
   ACTION_UPDATE_KEY_EX,
@@ -1208,38 +1206,6 @@ int main(int argc, char** argv) {
       return reply.error();
     }
     printer.PrintHumanOutput("Key removed.\n");
-  } else if (!strcmp(switches::kActions[switches::ACTION_GET_KEY_DATA_EX],
-                     action.c_str())) {
-    user_data_auth::GetKeyDataRequest req;
-    cryptohome::AccountIdentifier id;
-    if (!BuildAccountId(printer, cl, req.mutable_account_id())) {
-      return 1;
-    }
-    // Make sure has_authorization_request() returns true.
-    req.mutable_authorization_request();
-    const std::string label =
-        cl->GetSwitchValueASCII(switches::kKeyLabelSwitch);
-    if (label.empty()) {
-      printer.PrintHumanOutput("No key_label specified.\n");
-      return 1;
-    }
-    req.mutable_key()->mutable_data()->set_label(label);
-
-    user_data_auth::GetKeyDataReply reply;
-    brillo::ErrorPtr error;
-    if (!userdataauth_proxy.GetKeyData(req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "GetKeyDataEx call failed: %s",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    printer.PrintReplyProtobuf(reply);
-    if (reply.error() !=
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printer.PrintHumanOutput("Key retrieval failed.\n");
-      return reply.error();
-    }
   } else if (!strcmp(switches::kActions[switches::ACTION_LIST_KEYS_EX],
                      action.c_str())) {
     user_data_auth::ListKeysRequest req;

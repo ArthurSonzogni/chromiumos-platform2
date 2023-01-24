@@ -98,19 +98,6 @@ do.
       </arg>
     </method>
 
-    <method name="GetKeyData">
-      <annotation name="org.chromium.DBus.Method.Kind"
-                  value="async"/>
-      <arg name="request" type="ay" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetKeyDataRequest" />
-      </arg>
-      <arg name="reply" type="ay" direction="out">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::GetKeyDataReply" />
-      </arg>
-    </method>
-
     <method name="CheckKey">
       <annotation name="org.chromium.DBus.Method.Kind"
                   value="async"/>

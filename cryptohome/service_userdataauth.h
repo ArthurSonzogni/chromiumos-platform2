@@ -76,13 +76,6 @@ class UserDataAuthAdaptor
                       user_data_auth::ListKeysReply>> response,
                   const user_data_auth::ListKeysRequest& in_request);
 
-  void GetKeyData(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                      user_data_auth::GetKeyDataReply>> response,
-                  const user_data_auth::GetKeyDataRequest& in_request) override;
-  void DoGetKeyData(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                        user_data_auth::GetKeyDataReply>> response,
-                    const user_data_auth::GetKeyDataRequest& in_request);
-
   void CheckKey(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                     user_data_auth::CheckKeyReply>> response,
                 const user_data_auth::CheckKeyRequest& in_request) override;

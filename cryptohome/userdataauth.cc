@@ -3071,45 +3071,6 @@ user_data_auth::ListKeysReply UserDataAuth::ListKeys(
   return reply;
 }
 
-user_data_auth::CryptohomeErrorCode UserDataAuth::GetKeyData(
-    const user_data_auth::GetKeyDataRequest& request,
-    KeyData* data_out,
-    bool* found) {
-  AssertOnMountThread();
-
-  if (!request.has_account_id()) {
-    // Note that authorization request is currently not required.
-    LOG(ERROR) << "GetKeyDataRequest must have account_id.";
-    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
-  }
-
-  std::string account_id = GetAccountId(request.account_id());
-  if (account_id.empty()) {
-    LOG(ERROR) << "GetKeyDataRequest must have vaid account_id.";
-    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
-  }
-
-  if (!request.has_key()) {
-    LOG(ERROR) << "No key attributes provided in GetKeyDataRequest.";
-    return user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT;
-  }
-
-  const std::string obfuscated_username = SanitizeUserName(account_id);
-  if (!homedirs_->Exists(obfuscated_username)) {
-    return user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND;
-  }
-
-  // Requests only support using the key label at present.
-  std::unique_ptr<VaultKeyset> vk(keyset_management_->GetVaultKeyset(
-      obfuscated_username, request.key().data().label()));
-  *found = (vk != nullptr);
-  if (*found) {
-    *data_out = vk->GetKeyDataOrDefault();
-  }
-
-  return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
-}
-
 user_data_auth::RemoveReply UserDataAuth::Remove(
     const user_data_auth::RemoveRequest& request) {
   AssertOnMountThread();
