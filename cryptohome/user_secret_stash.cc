@@ -515,7 +515,7 @@ void ResetUserSecretStashExperimentFlagForTesting() {
 
 std::optional<bool> SetUserSecretStashExperimentForTesting(
     std::optional<bool> enabled) {
-  std::optional<bool> original = enabled;
+  std::optional<bool> original = GetUserSecretStashExperimentOverride();
   GetUserSecretStashExperimentOverride() = enabled;
   return original;
 }
