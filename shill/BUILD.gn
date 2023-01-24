@@ -624,6 +624,7 @@ if (use.test) {
       "cellular/cellular_service_provider_test.cc",
       "cellular/cellular_service_test.cc",
       "cellular/cellular_test.cc",
+      "cellular/mobile_operator_info_carriers_test.cc",
       "cellular/mobile_operator_info_test.cc",
       "cellular/mobile_operator_mapper_test.cc",
       "cellular/mock_cellular.cc",
