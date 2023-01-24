@@ -950,6 +950,11 @@ std::vector<base::FilePath> ClobberState::GetPreservedFilesList() {
     // For rollback wipes, we preserve additional data as defined in
     // oobe_config/rollback_data.proto.
     if (args_.rollback_wipe) {
+      // Devices produced >= 2023 use the new rollback data
+      // ("rollback_data_tpm") encryption.
+      stateful_paths.push_back("unencrypted/preserve/rollback_data_tpm");
+      // TODO(b/263065223) Preservation of the old format ("rollback_data") can
+      // be removed when all devices produced before 2023 are EOL.
       stateful_paths.push_back("unencrypted/preserve/rollback_data");
     }
   }

@@ -743,7 +743,8 @@ TEST_F(GetPreservedFilesListTest, SafeAndRollbackWipe) {
       "manifest.fingerprint",
       "unencrypted/cros-components/offline-demo-mode-resources/manifest.json",
       "unencrypted/cros-components/offline-demo-mode-resources/table",
-      "unencrypted/preserve/rollback_data"};
+      "unencrypted/preserve/rollback_data",
+      "unencrypted/preserve/rollback_data_tpm"};
   SetCompare(expected_preserved_set, preserved_set);
 }
 
@@ -831,6 +832,7 @@ TEST_F(GetPreservedFilesListTest, SafeRollbackFactoryWipe) {
       "unencrypted/cros-components/offline-demo-mode-resources/manifest.json",
       "unencrypted/cros-components/offline-demo-mode-resources/table",
       "unencrypted/preserve/rollback_data",
+      "unencrypted/preserve/rollback_data_tpm",
       "unencrypted/import_extensions/extensions/fileA.crx",
       "unencrypted/import_extensions/extensions/fileB.crx",
       "unencrypted/dlc-factory-images/test-dlc1/package/dlc.img",
