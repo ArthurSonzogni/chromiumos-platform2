@@ -34,7 +34,12 @@ bool PingTool::Start(const base::ScopedFD& outfd,
                      brillo::ErrorPtr* error) {
   ProcessWithId* p = CreateProcess(
       true /* sandboxed */, false /* access_root_mount_ns */,
-      {"-pvrl", "--profile=minimalistic-mountns", "--uts", "-k",
+      {"-pvrl", "--profile=minimalistic-mountns",
+       // Ping needs cap_net_raw.
+       "-c", "cap_net_raw=eip",
+       // Inherit capabilities because kSetuidHack is used.
+       "--ambient",
+       "--uts", "-k",
        "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
        // A /run/shill bind mount is needed to access /etc/resolv.conf, which
        // is a symlink to /run/shill/resolv.conf.
