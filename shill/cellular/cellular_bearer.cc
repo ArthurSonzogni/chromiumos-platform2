@@ -168,6 +168,8 @@ void CellularBearer::GetIPConfigMethodAndProperties(
 
 void CellularBearer::ResetProperties() {
   connected_ = false;
+  apn_.clear();
+  apn_types_.clear();
   data_interface_.clear();
   ipv4_config_method_ = IPConfigMethod::kUnknown;
   ipv4_config_properties_.reset();
@@ -192,6 +194,24 @@ void CellularBearer::OnPropertiesChanged(
 
   if (interface != MM_DBUS_INTERFACE_BEARER)
     return;
+
+  if (changed_properties.Contains<KeyValueStore>(
+          MM_BEARER_PROPERTY_PROPERTIES)) {
+    KeyValueStore properties =
+        changed_properties.Get<KeyValueStore>(MM_BEARER_PROPERTY_PROPERTIES);
+    if (properties.Contains<std::string>(kMMApnProperty)) {
+      apn_ = properties.Get<std::string>(kMMApnProperty);
+    }
+    if (properties.Contains<uint32_t>(kMMApnTypeProperty)) {
+      uint32_t apns_mask = properties.Get<uint32_t>(kMMApnTypeProperty);
+      if (apns_mask & MM_BEARER_APN_TYPE_DEFAULT)
+        apn_types_.push_back(ApnList::ApnType::kDefault);
+      if (apns_mask & MM_BEARER_APN_TYPE_INITIAL)
+        apn_types_.push_back(ApnList::ApnType::kAttach);
+      if (apns_mask & MM_BEARER_APN_TYPE_TETHERING)
+        apn_types_.push_back(ApnList::ApnType::kDun);
+    }
+  }
 
   if (changed_properties.Contains<bool>(MM_BEARER_PROPERTY_CONNECTED)) {
     connected_ = changed_properties.Get<bool>(MM_BEARER_PROPERTY_CONNECTED);

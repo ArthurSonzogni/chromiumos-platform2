@@ -13,6 +13,7 @@
 #include <base/memory/weak_ptr.h>
 #include <gtest/gtest_prod.h>
 
+#include "shill/cellular/apn_list.h"
 #include "shill/ipconfig.h"
 
 namespace shill {
@@ -74,6 +75,9 @@ class CellularBearer {
   const IPConfig::Properties* ipv6_config_properties() const {
     return ipv6_config_properties_.get();
   }
+
+  const std::string& apn() const { return apn_; }
+  const std::vector<ApnList::ApnType>& apn_types() const { return apn_types_; }
 
  private:
   friend class CellularBearerTest;
@@ -137,6 +141,11 @@ class CellularBearer {
   std::unique_ptr<IPConfig::Properties> ipv4_config_properties_;
   IPConfigMethod ipv6_config_method_ = IPConfigMethod::kUnknown;
   std::unique_ptr<IPConfig::Properties> ipv6_config_properties_;
+
+  // Properties that were used to create the bearer, just the ones we need
+  // in the already created bearer
+  std::string apn_;
+  std::vector<ApnList::ApnType> apn_types_;
 
   base::WeakPtrFactory<CellularBearer> weak_ptr_factory_{this};
 };

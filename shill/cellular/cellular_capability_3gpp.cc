@@ -793,6 +793,10 @@ KeyValueStore CellularCapability3gpp::SetupNextConnectProperties() {
   properties.Set<bool>(CellularBearer::kMMAllowRoamingProperty,
                        cellular()->IsRoamingAllowed());
 
+  // Default APN type always when using the apn_try_list_
+  properties.Set<uint32_t>(CellularBearer::kMMApnTypeProperty,
+                           MM_BEARER_APN_TYPE_DEFAULT);
+
   // Initialize APN related properties from the first entry in the try list.
   const Stringmap& apn_info = apn_try_list_.front();
   DCHECK(base::Contains(apn_info, kApnProperty));
