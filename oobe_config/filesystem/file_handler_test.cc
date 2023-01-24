@@ -32,8 +32,10 @@ class FileHandlerTest : public ::testing::Test {
   static constexpr char kExpectedSavePath[] = "var/lib/oobe_config_save";
   static constexpr char kExpectedPreservePath[] =
       "mnt/stateful_partition/unencrypted/preserve";
-  static constexpr char kExpectedEncryptedRollbackData[] =
+  static constexpr char kExpectedOpensslEncryptedRollbackData[] =
       "mnt/stateful_partition/unencrypted/preserve/rollback_data";
+  static constexpr char kExpectedTpmEncryptedRollbackData[] =
+      "mnt/stateful_partition/unencrypted/preserve/rollback_data_tpm";
   static constexpr char kExpectedDecryptedRollbackData[] =
       "var/lib/oobe_config_restore/rollback_data";
   static constexpr char kExpectedRollbackSaveTriggerFlag[] =
@@ -155,30 +157,59 @@ TEST_F(FileHandlerTest, RemoveRestorePath) {
                                            base::Unretained(&file_handler)));
 }
 
-TEST_F(FileHandlerTest, HasEncryptedRollbackData) {
-  VerifyHasFunction(FileHandlerTest::kExpectedEncryptedRollbackData,
-                    base::BindRepeating(&FileHandler::HasEncryptedRollbackData,
-                                        base::Unretained(&file_handler)));
+TEST_F(FileHandlerTest, HasOpensslEncryptedRollbackData) {
+  VerifyHasFunction(
+      FileHandlerTest::kExpectedOpensslEncryptedRollbackData,
+      base::BindRepeating(&FileHandler::HasOpensslEncryptedRollbackData,
+                          base::Unretained(&file_handler)));
 }
 
-TEST_F(FileHandlerTest, ReadEncryptedRollbackData) {
+TEST_F(FileHandlerTest, ReadOpensslEncryptedRollbackData) {
   VerifyReadFunction(
-      FileHandlerTest::kExpectedEncryptedRollbackData,
-      base::BindRepeating(&FileHandler::ReadEncryptedRollbackData,
+      FileHandlerTest::kExpectedOpensslEncryptedRollbackData,
+      base::BindRepeating(&FileHandler::ReadOpensslEncryptedRollbackData,
                           base::Unretained(&file_handler)));
 }
 
-TEST_F(FileHandlerTest, WriteEncryptedRollbackData) {
+TEST_F(FileHandlerTest, WriteOpensslEncryptedRollbackData) {
   VerifyWriteFunction(
-      FileHandlerTest::kExpectedEncryptedRollbackData,
-      base::BindRepeating(&FileHandler::WriteEncryptedRollbackData,
+      FileHandlerTest::kExpectedOpensslEncryptedRollbackData,
+      base::BindRepeating(&FileHandler::WriteOpensslEncryptedRollbackData,
                           base::Unretained(&file_handler)));
 }
 
-TEST_F(FileHandlerTest, RemoveEncryptedRollbackData) {
+TEST_F(FileHandlerTest, RemoveOpensslEncryptedRollbackData) {
   VerifyRemoveFunction(
-      FileHandlerTest::kExpectedEncryptedRollbackData,
-      base::BindRepeating(&FileHandler::RemoveEncryptedRollbackData,
+      FileHandlerTest::kExpectedOpensslEncryptedRollbackData,
+      base::BindRepeating(&FileHandler::RemoveOpensslEncryptedRollbackData,
+                          base::Unretained(&file_handler)));
+}
+
+TEST_F(FileHandlerTest, HasTpmEncryptedRollbackData) {
+  VerifyHasFunction(
+      FileHandlerTest::kExpectedTpmEncryptedRollbackData,
+      base::BindRepeating(&FileHandler::HasTpmEncryptedRollbackData,
+                          base::Unretained(&file_handler)));
+}
+
+TEST_F(FileHandlerTest, ReadTpmEncryptedRollbackData) {
+  VerifyReadFunction(
+      FileHandlerTest::kExpectedTpmEncryptedRollbackData,
+      base::BindRepeating(&FileHandler::ReadTpmEncryptedRollbackData,
+                          base::Unretained(&file_handler)));
+}
+
+TEST_F(FileHandlerTest, WriteTpmEncryptedRollbackData) {
+  VerifyWriteFunction(
+      FileHandlerTest::kExpectedTpmEncryptedRollbackData,
+      base::BindRepeating(&FileHandler::WriteTpmEncryptedRollbackData,
+                          base::Unretained(&file_handler)));
+}
+
+TEST_F(FileHandlerTest, RemoveTpmEncryptedRollbackData) {
+  VerifyRemoveFunction(
+      FileHandlerTest::kExpectedTpmEncryptedRollbackData,
+      base::BindRepeating(&FileHandler::RemoveTpmEncryptedRollbackData,
                           base::Unretained(&file_handler)));
 }
 

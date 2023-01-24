@@ -50,7 +50,7 @@ DEFINE_PROTO_FUZZER(const RollbackData& input) {
 
   // TODO(b/234826714): Pass data directly to load_config instead of relying on
   // files. Could use a fake file handler to easily do so.
-  CHECK(file_handler.WriteEncryptedRollbackData(
+  CHECK(file_handler.WriteOpensslEncryptedRollbackData(
       brillo::BlobToString(encrypted_data->data)));
 
   std::string hex_data_with_header =

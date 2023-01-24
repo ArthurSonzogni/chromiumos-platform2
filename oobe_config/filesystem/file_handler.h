@@ -36,15 +36,29 @@ class FileHandler {
   // Removes the folder in encrypted stateful used by oobe_config_restore.
   bool RemoveRestorePath() const;
 
-  // Checks if encrypted rollback data in powerwash-safe directory exists.
-  bool HasEncryptedRollbackData() const;
-  // Reads encrypted rollback data from powerwash-safe directory
-  bool ReadEncryptedRollbackData(std::string* encrypted_rollback_data) const;
-  // Writes encrypted rollback data to powerwash-safe directory.
-  bool WriteEncryptedRollbackData(
-      const std::string& encrypted_rollback_data) const;
-  // Removes encrypted rollback data in powerwash-safe directory.
-  bool RemoveEncryptedRollbackData() const;
+  // Checks if OpenSSL encrypted rollback data in powerwash-safe directory
+  // exists.
+  bool HasOpensslEncryptedRollbackData() const;
+  // Reads OpenSSL encrypted rollback data from powerwash-safe directory
+  bool ReadOpensslEncryptedRollbackData(
+      std::string* openssl_encrypted_rollback_data) const;
+  // Writes OpenSSL encrypted rollback data to powerwash-safe directory.
+  bool WriteOpensslEncryptedRollbackData(
+      const std::string& openssl_encrypted_rollback_data) const;
+  // Removes OpenSSL encrypted rollback data in powerwash-safe directory.
+  bool RemoveOpensslEncryptedRollbackData() const;
+
+  // Checks if TPM encrypted rollback data in powerwash-safe directory
+  // exists.
+  bool HasTpmEncryptedRollbackData() const;
+  // Reads TPM encrypted rollback data from powerwash-safe directory
+  bool ReadTpmEncryptedRollbackData(
+      std::string* tpm_encrypted_rollback_data) const;
+  // Writes TPM encrypted rollback data to powerwash-safe directory.
+  bool WriteTpmEncryptedRollbackData(
+      const std::string& tpm_encrypted_rollback_data) const;
+  // Removes TPM encrypted rollback data in powerwash-safe directory.
+  bool RemoveTpmEncryptedRollbackData() const;
 
   // Checks if decrypted rollback data in oobe_config_restore directory exists.
   bool HasDecryptedRollbackData() const;
@@ -90,7 +104,11 @@ class FileHandler {
   static constexpr char kSaveRollbackDataFile[] =
       "mnt/stateful_partition/.save_rollback_data";
 
-  static constexpr char kRollbackDataFileName[] = "rollback_data";
+  static constexpr char kDecryptedRollbackDataFileName[] = "rollback_data";
+  static constexpr char kOpensslEncryptedRollbackDataFileName[] =
+      "rollback_data";
+  static constexpr char kTpmEncryptedRollbackDataFileName[] =
+      "rollback_data_tpm";
   static constexpr char kDataSavedFileName[] = ".data_saved";
 
   static constexpr char kOobeCompletedFileName[] = ".oobe_completed";

@@ -47,7 +47,8 @@ TEST_F(OobeConfigTest, EncryptedSaveAndRestoreTest) {
   ASSERT_TRUE(file_handler_.HasDataSavedFlag());
 
   std::string rollback_data_str;
-  ASSERT_TRUE(file_handler_.ReadEncryptedRollbackData(&rollback_data_str));
+  ASSERT_TRUE(
+      file_handler_.ReadOpensslEncryptedRollbackData(&rollback_data_str));
   ASSERT_FALSE(rollback_data_str.empty());
 
   std::string pstore_data;
@@ -59,7 +60,8 @@ TEST_F(OobeConfigTest, EncryptedSaveAndRestoreTest) {
 
   // Rewrite the rollback data to simulate the preservation that happens
   // during a rollback powerwash.
-  ASSERT_TRUE(file_handler_.WriteEncryptedRollbackData(rollback_data_str));
+  ASSERT_TRUE(
+      file_handler_.WriteOpensslEncryptedRollbackData(rollback_data_str));
   ASSERT_TRUE(file_handler_.WriteRamoopsData(pstore_data));
 
   oobe_config_ = std::make_unique<OobeConfig>(file_handler_);

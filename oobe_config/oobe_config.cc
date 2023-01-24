@@ -85,7 +85,7 @@ bool OobeConfig::EncryptedRollbackSave() const {
     return false;
   }
 
-  if (!file_handler_.WriteEncryptedRollbackData(
+  if (!file_handler_.WriteOpensslEncryptedRollbackData(
           brillo::BlobToString(encrypted_rollback_data->data))) {
     LOG(ERROR) << "Failed to write encrypted rollback data file.";
     return false;
@@ -108,7 +108,7 @@ bool OobeConfig::EncryptedRollbackRestore() const {
   }
 
   std::string encrypted_data;
-  if (!file_handler_.ReadEncryptedRollbackData(&encrypted_data)) {
+  if (!file_handler_.ReadOpensslEncryptedRollbackData(&encrypted_data)) {
     return false;
   }
   std::optional<brillo::SecureBlob> decrypted_data = Decrypt(

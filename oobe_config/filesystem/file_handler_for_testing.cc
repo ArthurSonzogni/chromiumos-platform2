@@ -55,7 +55,12 @@ bool FileHandlerForTesting::HasDataSavedFlag() const {
 
 bool FileHandlerForTesting::CreateOobeCompletedFlag() const {
   return base::WriteFile(
-      GetFullPath(kChronosPath).Append(kOobeCompletedFileName), std::string());
+      GetFullPath(kChronosPath).Append(kOobeCompletedFileName), "");
+}
+
+bool FileHandlerForTesting::CreateMetricsReportingEnabledFile() const {
+  return base::WriteFile(
+      GetFullPath(kChronosPath).Append(kMetricsReportingEnabledFileName), "");
 }
 
 bool FileHandlerForTesting::ReadPstoreData(std::string* data) const {

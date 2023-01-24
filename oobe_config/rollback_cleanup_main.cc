@@ -14,6 +14,6 @@
 int main(int argc, char* argv[]) {
   oobe_config::FileHandler file_handler;
   file_handler.RemoveRestorePath();
-  file_handler.RemoveEncryptedRollbackData();
+  file_handler.RemoveOpensslEncryptedRollbackData();
   return 0;
 }

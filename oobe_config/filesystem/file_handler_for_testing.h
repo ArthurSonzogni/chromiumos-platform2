@@ -49,6 +49,11 @@ class FileHandlerForTesting : public FileHandler {
   // directory.
   bool CreateOobeCompletedFlag() const;
 
+  // Creates the file that indicates metrics reporting is enabled. Usually it
+  // contains an Id, but rollback does not save or care about the Id, so placing
+  // and empty file for tests suffices.
+  bool CreateMetricsReportingEnabledFile() const;
+
   // Reads data staged to be preserved across powerwash in pstore from
   // oobe_config_save directory.
   bool ReadPstoreData(std::string* data) const;

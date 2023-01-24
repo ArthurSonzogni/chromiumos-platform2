@@ -35,7 +35,7 @@ bool LoadOobeConfigRollback::GetOobeConfigJson(string* config,
   // Restore path is created by tmpfiles config.
   CHECK(file_handler_.HasRestorePath());
 
-  if (file_handler_.HasEncryptedRollbackData() &&
+  if (file_handler_.HasOpensslEncryptedRollbackData() &&
       !file_handler_.HasDecryptedRollbackData()) {
     LOG(INFO) << "Decrypting rollback data.";
 

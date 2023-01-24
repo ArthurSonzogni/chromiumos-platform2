@@ -29,12 +29,12 @@ class LoadOobeConfigRollbackTest : public OobeConfigTest {
     ASSERT_TRUE(file_handler_.CreateOobeCompletedFlag());
     ASSERT_TRUE(oobe_config_->EncryptedRollbackSave());
     std::string rollback_data;
-    ASSERT_TRUE(file_handler_.ReadEncryptedRollbackData(&rollback_data));
+    ASSERT_TRUE(file_handler_.ReadOpensslEncryptedRollbackData(&rollback_data));
     std::string pstore_data;
     ASSERT_TRUE(file_handler_.ReadPstoreData(&pstore_data));
 
     // Move data around to fake preceding rollback.
-    ASSERT_TRUE(file_handler_.WriteEncryptedRollbackData(rollback_data));
+    ASSERT_TRUE(file_handler_.WriteOpensslEncryptedRollbackData(rollback_data));
     ASSERT_TRUE(file_handler_.WriteRamoopsData(pstore_data));
   }
 

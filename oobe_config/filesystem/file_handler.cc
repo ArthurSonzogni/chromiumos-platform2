@@ -26,54 +26,76 @@ bool FileHandler::RemoveRestorePath() const {
   return base::DeletePathRecursively(GetFullPath(kDataRestorePath));
 }
 
-bool FileHandler::HasEncryptedRollbackData() const {
+bool FileHandler::HasOpensslEncryptedRollbackData() const {
   return base::PathExists(
-      GetFullPath(kPreservePath).Append(kRollbackDataFileName));
+      GetFullPath(kPreservePath).Append(kOpensslEncryptedRollbackDataFileName));
 }
 
-bool FileHandler::ReadEncryptedRollbackData(
-    std::string* encrypted_rollback_data) const {
-  base::FilePath encrypted_data_file =
-      GetFullPath(kPreservePath).Append(kRollbackDataFileName);
-
-  return base::ReadFileToString(encrypted_data_file, encrypted_rollback_data);
+bool FileHandler::ReadOpensslEncryptedRollbackData(
+    std::string* openssl_encrypted_rollback_data) const {
+  return base::ReadFileToString(
+      GetFullPath(kPreservePath).Append(kOpensslEncryptedRollbackDataFileName),
+      openssl_encrypted_rollback_data);
 }
 
-bool FileHandler::WriteEncryptedRollbackData(
-    const std::string& encrypted_rollback_data) const {
-  base::FilePath encrypted_data_file =
-      GetFullPath(kPreservePath).Append(kRollbackDataFileName);
-
-  return base::WriteFile(encrypted_data_file, encrypted_rollback_data);
+bool FileHandler::WriteOpensslEncryptedRollbackData(
+    const std::string& openssl_encrypted_rollback_data) const {
+  return base::WriteFile(
+      GetFullPath(kPreservePath).Append(kOpensslEncryptedRollbackDataFileName),
+      openssl_encrypted_rollback_data);
 }
 
-bool FileHandler::RemoveEncryptedRollbackData() const {
+bool FileHandler::RemoveOpensslEncryptedRollbackData() const {
   return base::DeleteFile(
-      GetFullPath(kPreservePath).Append(kRollbackDataFileName));
+      GetFullPath(kPreservePath).Append(kOpensslEncryptedRollbackDataFileName));
+}
+
+bool FileHandler::HasTpmEncryptedRollbackData() const {
+  return base::PathExists(
+      GetFullPath(kPreservePath).Append(kTpmEncryptedRollbackDataFileName));
+}
+
+bool FileHandler::ReadTpmEncryptedRollbackData(
+    std::string* tpm_encrypted_rollback_data) const {
+  return base::ReadFileToString(
+      GetFullPath(kPreservePath).Append(kTpmEncryptedRollbackDataFileName),
+      tpm_encrypted_rollback_data);
+}
+
+bool FileHandler::WriteTpmEncryptedRollbackData(
+    const std::string& tpm_encrypted_rollback_data) const {
+  return base::WriteFile(
+      GetFullPath(kPreservePath).Append(kTpmEncryptedRollbackDataFileName),
+      tpm_encrypted_rollback_data);
+}
+
+bool FileHandler::RemoveTpmEncryptedRollbackData() const {
+  return base::DeleteFile(
+      GetFullPath(kPreservePath).Append(kTpmEncryptedRollbackDataFileName));
 }
 
 bool FileHandler::HasDecryptedRollbackData() const {
   return base::PathExists(
-      GetFullPath(kDataRestorePath).Append(kRollbackDataFileName));
+      GetFullPath(kDataRestorePath).Append(kDecryptedRollbackDataFileName));
 }
 
 bool FileHandler::ReadDecryptedRollbackData(
     std::string* decrypted_rollback_data) const {
   return base::ReadFileToString(
-      GetFullPath(kDataRestorePath).Append(kRollbackDataFileName),
+      GetFullPath(kDataRestorePath).Append(kDecryptedRollbackDataFileName),
       decrypted_rollback_data);
 }
 
 bool FileHandler::WriteDecryptedRollbackData(
     const std::string& decrypted_rollback_data) const {
   return base::WriteFile(
-      GetFullPath(kDataRestorePath).Append(kRollbackDataFileName),
+      GetFullPath(kDataRestorePath).Append(kDecryptedRollbackDataFileName),
       decrypted_rollback_data);
 }
 
 bool FileHandler::RemoveDecryptedRollbackData() const {
   return base::DeleteFile(
-      GetFullPath(kDataRestorePath).Append(kRollbackDataFileName));
+      GetFullPath(kDataRestorePath).Append(kDecryptedRollbackDataFileName));
 }
 
 bool FileHandler::HasRollbackSaveTriggerFlag() const {
