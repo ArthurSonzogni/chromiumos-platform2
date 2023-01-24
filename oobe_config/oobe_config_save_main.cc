@@ -10,8 +10,6 @@
 #include "oobe_config/metrics/metrics_uma.h"
 #include "oobe_config/oobe_config.h"
 
-namespace oobe_config {
-
 namespace {
 
 void InitLog() {
@@ -21,18 +19,29 @@ void InitLog() {
                        true /* enable_tickcount */);
 }
 
+// Pass this to run oobe_config_save with TPM-based encryption. Only do this if
+// the target you are rolling back to knows about TPM encryption and is able to
+// clear out the TPM rollback space.
+constexpr char kWithTpmEncryption[] = "tpm_encrypt";
 }  // namespace
 
-}  // namespace oobe_config
-
 int main(int argc, char* argv[]) {
-  oobe_config::InitLog();
+  InitLog();
 
   oobe_config::MetricsUMA metrics_uma;
 
   base::CommandLine::Init(argc, argv);
   LOG(INFO) << "Starting oobe_config_save";
-  bool save_result = oobe_config::OobeConfig().EncryptedRollbackSave();
+  hwsec::FactoryImpl hwsec_factory(hwsec::ThreadingMode::kCurrentThread);
+  std::unique_ptr<hwsec::OobeConfigFrontend> hwsec_oobe_config =
+      hwsec_factory.GetOobeConfigFrontend();
+  oobe_config::OobeConfig oobe_config(hwsec_oobe_config.get());
+
+  base::CommandLine::Init(argc, argv);
+  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
+  bool run_tpm_encryption = cl->HasSwitch(kWithTpmEncryption);
+
+  bool save_result = oobe_config.EncryptedRollbackSave(run_tpm_encryption);
 
   if (!save_result) {
     LOG(ERROR) << "Failed to save rollback data";

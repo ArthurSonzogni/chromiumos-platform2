@@ -12,7 +12,6 @@
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 
-#include "oobe_config/encryption/openssl_encryption.h"
 #include "oobe_config/filesystem/file_handler_for_testing.h"
 #include "oobe_config/load_oobe_config_rollback.h"
 #include "oobe_config/oobe_config.h"
@@ -27,38 +26,23 @@ class Environment {
 
 namespace oobe_config {
 
-namespace {
-
-// TODO(b/234826714): Remove.
-constexpr char kRollbackDataKey[] = "rollback_data";
-
-}  // namespace
-
+// Fuzzes content of RollbackData proto. There is a separate fuzzer for
+// encryption and decryption, we can skip that part of
+// `load_oobe_config_rollback` and only fuzz everything that happens after
+// reading the unencrypted proto from disk.
 DEFINE_PROTO_FUZZER(const RollbackData& input) {
   static Environment env;
-
-  FileHandlerForTesting file_handler;
 
   std::string serialized_input;
   CHECK(input.SerializeToString(&serialized_input));
 
-  OobeConfig oobe_config(file_handler);
-  LoadOobeConfigRollback load_config(&oobe_config, file_handler);
-
-  auto encrypted_data = Encrypt(brillo::SecureBlob(serialized_input));
-  CHECK(encrypted_data.has_value());
-
   // TODO(b/234826714): Pass data directly to load_config instead of relying on
   // files. Could use a fake file handler to easily do so.
-  CHECK(file_handler.WriteOpensslEncryptedRollbackData(
-      brillo::BlobToString(encrypted_data->data)));
+  FileHandlerForTesting file_handler;
+  CHECK(file_handler.WriteDecryptedRollbackData(serialized_input));
 
-  std::string hex_data_with_header =
-      base::StrCat({kRollbackDataKey, " ",
-                    base::HexEncode(encrypted_data->key.data(),
-                                    encrypted_data->key.size())});
-
-  CHECK(file_handler.WriteRamoopsData(hex_data_with_header));
+  OobeConfig oobe_config(nullptr, file_handler);
+  LoadOobeConfigRollback load_config(&oobe_config, file_handler);
 
   std::string config, enrollment_domain;
   CHECK(load_config.GetOobeConfigJson(&config, &enrollment_domain));

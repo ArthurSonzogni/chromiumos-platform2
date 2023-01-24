@@ -4,9 +4,12 @@
 
 #include "oobe_config/oobe_config_restore_service.h"
 
+#include <memory>
 #include <string>
 #include <utility>
 
+#include "libhwsec/factory/factory.h"
+#include "libhwsec/frontend/oobe_config/frontend.h"
 #include "oobe_config/load_oobe_config_rollback.h"
 #include "oobe_config/oobe_config.h"
 #include "oobe_config/proto_bindings/oobe_config.pb.h"
@@ -38,7 +41,10 @@ void OobeConfigRestoreService::ProcessAndGetOobeAutoConfig(
 
   LOG(INFO) << "Chrome requested OOBE config.";
 
-  OobeConfig oobe_config;
+  hwsec::FactoryImpl hwsec_factory(hwsec::ThreadingMode::kCurrentThread);
+  std::unique_ptr<hwsec::OobeConfigFrontend> hwsec_oobe_config =
+      hwsec_factory.GetOobeConfigFrontend();
+  OobeConfig oobe_config(hwsec_oobe_config.get());
   LoadOobeConfigRollback load_oobe_config_rollback(&oobe_config);
   std::string chrome_config_json, unused_enrollment_domain;
 

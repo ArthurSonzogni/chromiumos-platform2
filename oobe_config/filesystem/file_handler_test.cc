@@ -139,145 +139,145 @@ class FileHandlerTest : public ::testing::Test {
   }
 
   base::FilePath RootedPath(const std::string& path) {
-    return file_handler.GetFullPath(path);
+    return file_handler_.GetFullPath(path);
   }
 
-  FileHandlerForTesting file_handler;
+  FileHandlerForTesting file_handler_;
 };
 
 TEST_F(FileHandlerTest, HasRestorePath) {
   VerifyHasFunction(FileHandlerTest::kExpectedRestorePath,
                     base::BindRepeating(&FileHandler::HasRestorePath,
-                                        base::Unretained(&file_handler)));
+                                        base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, RemoveRestorePath) {
   VerifyRemoveFunction(FileHandlerTest::kExpectedRestorePath,
                        base::BindRepeating(&FileHandler::RemoveRestorePath,
-                                           base::Unretained(&file_handler)));
+                                           base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, HasOpensslEncryptedRollbackData) {
   VerifyHasFunction(
       FileHandlerTest::kExpectedOpensslEncryptedRollbackData,
       base::BindRepeating(&FileHandler::HasOpensslEncryptedRollbackData,
-                          base::Unretained(&file_handler)));
+                          base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, ReadOpensslEncryptedRollbackData) {
   VerifyReadFunction(
       FileHandlerTest::kExpectedOpensslEncryptedRollbackData,
       base::BindRepeating(&FileHandler::ReadOpensslEncryptedRollbackData,
-                          base::Unretained(&file_handler)));
+                          base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, WriteOpensslEncryptedRollbackData) {
   VerifyWriteFunction(
       FileHandlerTest::kExpectedOpensslEncryptedRollbackData,
       base::BindRepeating(&FileHandler::WriteOpensslEncryptedRollbackData,
-                          base::Unretained(&file_handler)));
+                          base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, RemoveOpensslEncryptedRollbackData) {
   VerifyRemoveFunction(
       FileHandlerTest::kExpectedOpensslEncryptedRollbackData,
       base::BindRepeating(&FileHandler::RemoveOpensslEncryptedRollbackData,
-                          base::Unretained(&file_handler)));
+                          base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, HasTpmEncryptedRollbackData) {
   VerifyHasFunction(
       FileHandlerTest::kExpectedTpmEncryptedRollbackData,
       base::BindRepeating(&FileHandler::HasTpmEncryptedRollbackData,
-                          base::Unretained(&file_handler)));
+                          base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, ReadTpmEncryptedRollbackData) {
   VerifyReadFunction(
       FileHandlerTest::kExpectedTpmEncryptedRollbackData,
       base::BindRepeating(&FileHandler::ReadTpmEncryptedRollbackData,
-                          base::Unretained(&file_handler)));
+                          base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, WriteTpmEncryptedRollbackData) {
   VerifyWriteFunction(
       FileHandlerTest::kExpectedTpmEncryptedRollbackData,
       base::BindRepeating(&FileHandler::WriteTpmEncryptedRollbackData,
-                          base::Unretained(&file_handler)));
+                          base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, RemoveTpmEncryptedRollbackData) {
   VerifyRemoveFunction(
       FileHandlerTest::kExpectedTpmEncryptedRollbackData,
       base::BindRepeating(&FileHandler::RemoveTpmEncryptedRollbackData,
-                          base::Unretained(&file_handler)));
+                          base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, HasDecryptedRollbackData) {
   VerifyHasFunction(FileHandlerTest::kExpectedDecryptedRollbackData,
                     base::BindRepeating(&FileHandler::HasDecryptedRollbackData,
-                                        base::Unretained(&file_handler)));
+                                        base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, ReadDecryptedRollbackData) {
   VerifyReadFunction(
       FileHandlerTest::kExpectedDecryptedRollbackData,
       base::BindRepeating(&FileHandler::ReadDecryptedRollbackData,
-                          base::Unretained(&file_handler)));
+                          base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, WriteDecryptedRollbackData) {
   VerifyWriteFunction(
       FileHandlerTest::kExpectedDecryptedRollbackData,
       base::BindRepeating(&FileHandler::WriteDecryptedRollbackData,
-                          base::Unretained(&file_handler)));
+                          base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, RemoveDecryptedRollbackData) {
   VerifyRemoveFunction(
       FileHandlerTest::kExpectedDecryptedRollbackData,
       base::BindRepeating(&FileHandler::RemoveDecryptedRollbackData,
-                          base::Unretained(&file_handler)));
+                          base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, HasRollbackSaveTriggerFlag) {
   VerifyHasFunction(
       FileHandlerTest::kExpectedRollbackSaveTriggerFlag,
       base::BindRepeating(&FileHandler::HasRollbackSaveTriggerFlag,
-                          base::Unretained(&file_handler)));
+                          base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, RemoveRollbackSaveTriggerFlag) {
   VerifyRemoveFunction(
       FileHandlerTest::kExpectedRollbackSaveTriggerFlag,
       base::BindRepeating(&FileHandler::RemoveRollbackSaveTriggerFlag,
-                          base::Unretained(&file_handler)));
+                          base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, CreateDataSavedFlag) {
   VerifyCreateFlagFunction(
       FileHandlerTest::kExpectedDataSavedFlag,
       base::BindRepeating(&FileHandler::CreateDataSavedFlag,
-                          base::Unretained(&file_handler)));
+                          base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, HasOobeCompletedFlag) {
   VerifyHasFunction(FileHandlerTest::kExpectedOobeCompletedFlag,
                     base::BindRepeating(&FileHandler::HasOobeCompletedFlag,
-                                        base::Unretained(&file_handler)));
+                                        base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, HasMetricsReportingEnabledFlag) {
   VerifyHasFunction(
       FileHandlerTest::kExpectedMetricsReportingEnabledFlag,
       base::BindRepeating(&FileHandler::HasMetricsReportingEnabledFlag,
-                          base::Unretained(&file_handler)));
+                          base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, WritePstoreData) {
   VerifyWriteFunction(FileHandlerTest::kExpectedPstoreData,
                       base::BindRepeating(&FileHandler::WritePstoreData,
-                                          base::Unretained(&file_handler)));
+                                          base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, RamoopsFileEnumeratorEmptyFolder) {
@@ -287,7 +287,7 @@ TEST_F(FileHandlerTest, RamoopsFileEnumeratorEmptyFolder) {
   ASSERT_TRUE(base::CreateDirectory(path));
 
   // Empty folder should give an enumerator, but no files to enumerate over.
-  base::FileEnumerator enumerator_empty = file_handler.RamoopsFileEnumerator();
+  base::FileEnumerator enumerator_empty = file_handler_.RamoopsFileEnumerator();
   for (auto file = enumerator_empty.Next(); !file.empty();
        file = enumerator_empty.Next()) {
     NOTREACHED();
@@ -302,7 +302,7 @@ TEST_F(FileHandlerTest, RamoopsFileEnumeratorTwoFiles) {
 
   ASSERT_TRUE(base::WriteFile(path.Append("file1"), kFileData));
   ASSERT_TRUE(base::WriteFile(path.Append("file2"), kFileData));
-  base::FileEnumerator enumerator_files = file_handler.RamoopsFileEnumerator();
+  base::FileEnumerator enumerator_files = file_handler_.RamoopsFileEnumerator();
   for (auto file = enumerator_files.Next(); !file.empty();
        file = enumerator_files.Next()) {
     std::string read_data;
@@ -316,55 +316,55 @@ TEST_F(FileHandlerTest, CreateRestorePath) {
   VerifyCreateFunction(
       FileHandlerTest::kExpectedRestorePath,
       base::BindRepeating(&FileHandlerForTesting::CreateRestorePath,
-                          base::Unretained(&file_handler)));
+                          base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, CreateSavePath) {
   VerifyCreateFunction(
       FileHandlerTest::kExpectedSavePath,
       base::BindRepeating(&FileHandlerForTesting::CreateSavePath,
-                          base::Unretained(&file_handler)));
+                          base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, CreatePreservePath) {
   VerifyCreateFunction(
       FileHandlerTest::kExpectedPreservePath,
       base::BindRepeating(&FileHandlerForTesting::CreatePreservePath,
-                          base::Unretained(&file_handler)));
+                          base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, HasDataSavedFlag) {
   VerifyHasFunction(
       FileHandlerTest::kExpectedDataSavedFlag,
       base::BindRepeating(&FileHandlerForTesting::HasDataSavedFlag,
-                          base::Unretained(&file_handler)));
+                          base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, ReadPstoreData) {
   VerifyReadFunction(FileHandlerTest::kExpectedPstoreData,
                      base::BindRepeating(&FileHandlerForTesting::ReadPstoreData,
-                                         base::Unretained(&file_handler)));
+                                         base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, CreateRamoopsPath) {
   VerifyCreateFunction(
       FileHandlerTest::kExpectedRamoopsPath,
       base::BindRepeating(&FileHandlerForTesting::CreateRamoopsPath,
-                          base::Unretained(&file_handler)));
+                          base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, WriteRamoopsData) {
   VerifyWriteFunction(
       FileHandlerTest::kExpectedRamoopsData,
       base::BindRepeating(&FileHandlerForTesting::WriteRamoopsData,
-                          base::Unretained(&file_handler)));
+                          base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, RemoveRamoops) {
   VerifyRemoveFunction(
       FileHandlerTest::kExpectedRamoopsData,
       base::BindRepeating(&FileHandlerForTesting::RemoveRamoopsData,
-                          base::Unretained(&file_handler)));
+                          base::Unretained(&file_handler_)));
 }
 
 }  // namespace oobe_config

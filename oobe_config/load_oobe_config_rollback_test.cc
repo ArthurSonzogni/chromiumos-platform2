@@ -25,17 +25,10 @@ class LoadOobeConfigRollbackTest : public OobeConfigTest {
   }
 
   void FakePreceedingRollback() {
-    // First create rollback data and pstore data.
-    ASSERT_TRUE(file_handler_.CreateOobeCompletedFlag());
     ASSERT_TRUE(oobe_config_->EncryptedRollbackSave());
-    std::string rollback_data;
-    ASSERT_TRUE(file_handler_.ReadOpensslEncryptedRollbackData(&rollback_data));
-    std::string pstore_data;
-    ASSERT_TRUE(file_handler_.ReadPstoreData(&pstore_data));
-
-    // Move data around to fake preceding rollback.
-    ASSERT_TRUE(file_handler_.WriteOpensslEncryptedRollbackData(rollback_data));
-    ASSERT_TRUE(file_handler_.WriteRamoopsData(pstore_data));
+    SimulatePowerwash();
+    load_config_ = std::make_unique<LoadOobeConfigRollback>(oobe_config_.get(),
+                                                            file_handler_);
   }
 
   void DeletePstoreData() { ASSERT_TRUE(file_handler_.RemoveRamoopsData()); }

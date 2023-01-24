@@ -58,7 +58,7 @@ class OobeConfigRestoreDaemon : public brillo::DBusServiceDaemon {
 };
 
 // Runs OobeConfigRestoreDaemon.
-int RunDaemon(bool force_start) {
+int RunDaemon() {
   LOG(INFO) << "Starting oobe_config_restore daemon";
   OobeConfigRestoreDaemon daemon;
   int res = daemon.Run();
@@ -69,21 +69,7 @@ int RunDaemon(bool force_start) {
 
 }  // namespace oobe_config
 
-// Execute the first stage of the restore process itself immediately (without
-// waiting for Chrome to initiate it). Use only for testing.
-constexpr char kTestEncrypted[] = "test-encrypted";
-
-// Starts the service even if OOBE is already complete. Use only for testing.
-constexpr char kForceStart[] = "force-start";
-
 int main(int argc, char* argv[]) {
   oobe_config::InitLog();
-
-  base::CommandLine::Init(argc, argv);
-  base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
-  if (cl->HasSwitch(kTestEncrypted)) {
-    return oobe_config::OobeConfig().EncryptedRollbackRestore();
-  } else {
-    return oobe_config::RunDaemon(cl->HasSwitch(kForceStart));
-  }
+  return oobe_config::RunDaemon();
 }

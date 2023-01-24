@@ -74,7 +74,10 @@ static_library("liboobeconfig") {
   ]
   configs += [ ":liboobeconfig_config" ]
   all_dependent_configs = [ ":target_defaults" ]
-  libs = [ "policy" ]
+  libs = [
+    "hwsec",
+    "policy",
+  ]
   deps = [
     ":librollback_helper_mojom",
     ":oobe_config_proto",
@@ -191,6 +194,7 @@ if (use.test) {
       ":test_config",
     ]
     run_test = true
+    libs = [ "hwsec_test" ]
     deps = [
       ":liboobeconfig",
       "//common-mk/testrunner",
