@@ -126,6 +126,13 @@ static bool query_support_for_enc_vp9(int fd,
                            min_width, min_height);
 }
 
+static bool query_support_for_enc_av1(int fd,
+                                      int32_t min_width,
+                                      int32_t min_height) {
+  return query_support_for(fd, va_profiles_av1, VAEntrypointEncSliceLP, false,
+                           min_width, min_height);
+}
+
 static bool query_support_for_dec_av1(int fd,
                                       int32_t min_width,
                                       int32_t min_height) {
@@ -465,6 +472,19 @@ bool detect_4k_device_enc_vp9(void) {
   if (is_any_device(kVideoDevicePattern, is_v4l2_4k_device_enc_vp9))
     return true;
 #endif  // defined(USE_V4L2_CODEC)
+
+  return false;
+}
+
+/* Determines "4k_video_enc_av1". Return true, if the VAAPI device
+ * supports 4k resolution AV1 encoding, has encoding entry point,
+ * and input YUV420 formats.
+ */
+bool detect_4k_device_enc_av1(void) {
+#if defined(USE_VAAPI)
+  return does_any_device_support_resolution(
+      kDRMDevicePattern, query_support_for_enc_av1, width_4k, height_4k);
+#endif  // defined(USE_VAAPI)
 
   return false;
 }

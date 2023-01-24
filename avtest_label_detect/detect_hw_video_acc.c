@@ -434,6 +434,37 @@ static bool is_vaapi_enc_vp9_vbr_device(int fd) {
   return false;
 }
 
+/* Helper function for detect_video_acc_enc_av1.
+ * Determine if a VAAPI device supports AV1 encoding.
+ */
+static bool is_vaapi_enc_av1_vbr_device(int fd) {
+#if VA_CHECK_VERSION(1, 17, 0)
+  VAProfile va_profiles[] = {VAProfileAV1Profile0, VAProfileNone};
+  VAConfigAttrib va_attribs[] = {{VAConfigAttribRateControl, VA_RC_VBR}};
+  if (is_vaapi_support_formats(fd, va_profiles, VAEntrypointEncSliceLP,
+                               VA_RT_FORMAT_YUV420) &&
+      are_vaapi_attribs_supported(fd, VAProfileAV1Profile0,
+                                  VAEntrypointEncSliceLP, va_attribs, 1)) {
+    return true;
+  }
+#endif
+  return false;
+}
+
+/* Helper function for detect_video_acc_enc_av1.
+ * Determine if a VAAPI device supports AV1 encoding.
+ */
+static bool is_vaapi_enc_av1_device(int fd) {
+#if VA_CHECK_VERSION(1, 17, 0)
+  VAProfile va_profiles[] = {VAProfileAV1Profile0, VAProfileNone};
+  if (is_vaapi_support_formats(fd, va_profiles, VAEntrypointEncSliceLP,
+                               VA_RT_FORMAT_YUV420)) {
+    return true;
+  }
+#endif
+  return false;
+}
+
 /* Helper function for detect_jpeg_acc_dec.
  * Determine given |fd| is a VAAPI device supports JPEG decoding, i.e. it
  * supports JPEG profile, has decoding entry point, and output YUV420
@@ -687,6 +718,32 @@ bool detect_video_acc_enc_vp9(void) {
 bool detect_video_acc_enc_vp9_vbr(void) {
 #if defined(USE_VAAPI)
   if (is_any_device(kDRMDevicePattern, is_vaapi_enc_vp9_vbr_device))
+    return true;
+#endif  // defined(USE_VAAPI)
+
+  return false;
+}
+
+/* Determines "hw_video_acc_enc_av1" label. That is, there is a VAAPI device
+ * that supports a AV1 profile with an encoding entrypoint and input YUV420
+ * formats.
+ */
+bool detect_video_acc_enc_av1(void) {
+#if defined(USE_VAAPI)
+  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_av1_device))
+    return true;
+#endif  // defined(USE_VAAPI)
+
+  return false;
+}
+
+/* Determines "hw_video_acc_enc_av1_vbr" label. That is, there is a VAAPI device
+ * that supports a AV1 profile with an encoding entrypoint and input YUV420
+ * formats.
+ */
+bool detect_video_acc_enc_av1_vbr(void) {
+#if defined(USE_VAAPI)
+  if (is_any_device(kDRMDevicePattern, is_vaapi_enc_av1_vbr_device))
     return true;
 #endif  // defined(USE_VAAPI)
 
