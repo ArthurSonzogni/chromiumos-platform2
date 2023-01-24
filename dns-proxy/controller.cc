@@ -139,12 +139,15 @@ void Controller::OnPatchpanelReset(bool reset) {
 
 void Controller::OnShillReady(bool success) {
   shill_ready_ = success;
-  if (shill_ready_)
+  if (!shill_ready_) {
+    metrics_.RecordProcessEvent(Metrics::ProcessType::kController,
+                                Metrics::ProcessEvent::kShillNotReady);
+    LOG(DFATAL) << "Failed to connect to shill";
     return;
+  }
 
-  metrics_.RecordProcessEvent(Metrics::ProcessType::kController,
-                              Metrics::ProcessEvent::kShillNotReady);
-  LOG(DFATAL) << "Failed to connect to shill";
+  shill_->RegisterDeviceRemovedHandler(base::BindRepeating(
+      &Controller::OnDeviceRemoved, weak_factory_.GetWeakPtr()));
 }
 
 void Controller::OnShillReset(bool reset) {
@@ -342,7 +345,12 @@ void Controller::OnVirtualDeviceChanged(
       VirtualDeviceAdded(signal.device());
       break;
     case patchpanel::NetworkDeviceChangedSignal::DEVICE_REMOVED:
-      VirtualDeviceRemoved(signal.device());
+      // For b/266496850, we prevented ARC proxies from being terminated in
+      // order to preserve its namespace and IPv6 addresses. This allows less
+      // usage of IPv6 on ARC restarts. For the longer term solution, we'd want
+      // DNS proxy to use less IPv6 address.
+      // TODO(b/266496966): Re-add ARC proxies removal logic on ARC shutdown,
+      // once the IPv6 address limit problem is resolved.
       break;
     default:
       NOTREACHED();
@@ -356,11 +364,11 @@ void Controller::VirtualDeviceAdded(const patchpanel::NetworkDevice& device) {
   }
 }
 
-void Controller::VirtualDeviceRemoved(const patchpanel::NetworkDevice& device) {
-  if (device.guest_type() == patchpanel::NetworkDevice::ARC ||
-      device.guest_type() == patchpanel::NetworkDevice::ARCVM) {
-    KillProxy(Proxy::Type::kARC, device.phys_ifname());
+void Controller::OnDeviceRemoved(const shill::Client::Device* const device) {
+  if (!device) {
+    return;
   }
+  KillProxy(Proxy::Type::kARC, device->ifname);
 }
 
 }  // namespace dns_proxy

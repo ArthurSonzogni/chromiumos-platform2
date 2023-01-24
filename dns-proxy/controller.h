@@ -104,12 +104,14 @@ class Controller : public brillo::DBusDaemon {
   // Notified by shill whenever the default device changes.
   void OnDefaultDeviceChanged(const shill::Client::Device* const device);
 
+  // Notified by shill whenever a device is removed.
+  void OnDeviceRemoved(const shill::Client::Device* const device);
+
   // Notified by patchpanel whenever a change occurs in one of its virtual
   // network devices.
   void OnVirtualDeviceChanged(
       const patchpanel::NetworkDeviceChangedSignal& signal);
   void VirtualDeviceAdded(const patchpanel::NetworkDevice& device);
-  void VirtualDeviceRemoved(const patchpanel::NetworkDevice& device);
 
   // Triggered by the Chrome features client in response to checking
   // IsDNSProxyEnabled.
