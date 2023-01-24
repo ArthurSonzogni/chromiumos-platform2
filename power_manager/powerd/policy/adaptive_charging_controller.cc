@@ -38,9 +38,10 @@ const char kChargeEventsSubDir[] = "charge_events/";
 const char kHoldTimeOnACSubDir[] = "hold_time_on_ac/";
 const char kTimeFullOnACSubDir[] = "time_full_on_ac/";
 const char kTimeOnACSubDir[] = "time_on_ac/";
-// `kRententionDays`, `kChargeHistoryTimeBucketSize`, and `kMaxChargeEvents`
-// require a privacy review to be changed.
-const base::TimeDelta kRetentionDays = base::Days(30);
+// `kMaxRetentionDays`, `kRententionDays`, `kChargeHistoryTimeBucketSize`, and
+// `kMaxChargeEvents` require a privacy review to be changed.
+const int kMaxRetentionDays = 30;
+const base::TimeDelta kRetentionDays = base::Days(kMaxRetentionDays);
 const base::TimeDelta kChargeHistoryTimeInterval = base::Minutes(15);
 const int kMaxChargeEvents = 50;
 
@@ -1348,6 +1349,106 @@ void AdaptiveChargingController::UpdateAdaptiveCharging(
     features["ScreenBrightnessPercent"].set_int32_value(0);
 
   features["Reason"].set_int32_value(static_cast<int32_t>(reason));
+
+  // Add various ChargeHistory stats to `features`.
+  base::TimeDelta time_on_ac = charge_history_.GetTimeOnAC();
+  if (time_on_ac != base::TimeDelta()) {
+    base::TimeDelta time_full_on_ac = charge_history_.GetTimeFullOnAC();
+    base::TimeDelta hold_time_on_ac = charge_history_.GetHoldTimeOnAC();
+    features["RatioTimeFullCharge"].set_int32_value(static_cast<int32_t>(
+        10 * (time_full_on_ac + hold_time_on_ac) / time_on_ac));
+  } else {
+    features["RatioTimeFullCharge"].set_int32_value(0);
+  }
+
+  ChargeHistoryState charge_state;
+  charge_history_.CopyToProtocolBuffer(&charge_state);
+  features["ChargeEventHistorySize"].set_int32_value(
+      charge_state.charge_event_size());
+
+  // The indices are reversed in `RankerExample` versus `ChargeHistoryState`.
+  const auto& charge_events = charge_state.charge_event();
+  int event = 0;
+  for (auto rit = charge_events.rbegin();
+       rit != charge_events.rend() && event < kMaxChargeEvents;
+       ++rit, ++event) {
+    std::string suffix = std::to_string(event);
+    int32_t val = -1;
+    if (rit->has_duration()) {
+      val = base::Microseconds(rit->duration()).InMinutes();
+    }
+    features[std::string("ChargeEventHistoryDuration") + suffix]
+        .set_int32_value(val);
+
+    val = -1;
+    if (rit->has_start_time()) {
+      val = base::Microseconds(rit->start_time()).InMinutes();
+    }
+    features[std::string("ChargeEventHistoryStartTime") + suffix]
+        .set_int32_value(val);
+  }
+
+  // The model assumes missing values, up to the max number of events, have -1
+  // filled in.
+  for (; event < kMaxChargeEvents; ++event) {
+    std::string suffix = std::to_string(event);
+    features[std::string("ChargeEventHistoryDuration") + suffix]
+        .set_int32_value(-1);
+    features[std::string("ChargeEventHistoryStartTime") + suffix]
+        .set_int32_value(-1);
+  }
+
+  features["DailySummarySize"].set_int32_value(
+      charge_state.daily_history_size());
+
+  // These indices are also reversed in `RankerExample` versus
+  // `ChargeHistoryState`.
+  auto& daily_history = charge_state.daily_history();
+  auto rit = daily_history.rbegin();
+  for (int day = 0; day < kMaxRetentionDays; ++day) {
+    base::Time date = now.UTCMidnight() - base::Days(day);
+    std::string suffix = std::to_string(day);
+
+    // Fill in missing days with -1 values.
+    if (rit == daily_history.rend() || !rit->has_utc_midnight() ||
+        base::Time::FromDeltaSinceWindowsEpoch(
+            base::Microseconds(rit->utc_midnight())) < date) {
+      features[std::string("DailySummaryHoldTimeOnAc") + suffix]
+          .set_int32_value(-1);
+      features[std::string("DailySummaryTimeFullOnAc") + suffix]
+          .set_int32_value(-1);
+      features[std::string("DailySummaryTimeOnAc") + suffix].set_int32_value(
+          -1);
+      // Skip over DailyHistories without a utc_midnight value.
+      if (rit != daily_history.rend() && !rit->has_utc_midnight())
+        rit++;
+
+      continue;
+    }
+
+    // Missing values for existing days are also filled in with -1.
+    int32_t val = -1;
+    if (rit->has_hold_time_on_ac()) {
+      val = base::Microseconds(rit->hold_time_on_ac()).InMinutes();
+    }
+    features[std::string("DailySummaryHoldTimeOnAc") + suffix].set_int32_value(
+        val);
+
+    val = -1;
+    if (rit->has_time_full_on_ac()) {
+      val = base::Microseconds(rit->time_full_on_ac()).InMinutes();
+    }
+    features[std::string("DailySummaryTimeFullOnAc") + suffix].set_int32_value(
+        val);
+
+    val = -1;
+    if (rit->has_time_on_ac()) {
+      val = base::Microseconds(rit->time_on_ac()).InMinutes();
+    }
+    features[std::string("DailySummaryTimeOnAc") + suffix].set_int32_value(val);
+
+    ++rit;
+  }
 
   // This will call back into AdaptiveChargingController: when the DBus call to
   // the Adaptive Charging ml-service completes. Blocks if async is false.
