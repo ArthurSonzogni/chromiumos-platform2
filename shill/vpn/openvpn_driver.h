@@ -126,7 +126,6 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   FRIEND_TEST(OpenVPNDriverTest, OnConnectTimeoutResolve);
   FRIEND_TEST(OpenVPNDriverTest, OnDefaultPhysicalServiceEvent);
   FRIEND_TEST(OpenVPNDriverTest, OnOpenVPNDied);
-  FRIEND_TEST(OpenVPNDriverTest, ParseForeignOption);
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOptions);
   FRIEND_TEST(OpenVPNDriverTest, ParseIPConfiguration);
   FRIEND_TEST(OpenVPNDriverTest, ParseRouteOption);
@@ -153,10 +152,8 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
       base::Seconds(20);
 
   static void ParseForeignOptions(const ForeignOptions& options,
-                                  IPConfig::Properties* properties);
-  static void ParseForeignOption(const std::string& option,
-                                 std::vector<std::string>* domain_search,
-                                 std::vector<std::string>* dns_servers);
+                                  std::vector<std::string>* domain_search,
+                                  std::vector<std::string>* dns_servers);
   static IPConfig::Route* GetRouteOptionEntry(const std::string& prefix,
                                               const std::string& key,
                                               RouteOptions* routes);

@@ -397,7 +397,13 @@ void OpenVPNDriver::ParseIPConfiguration(
       SLOG(2) << "Key ignored.";
     }
   }
-  ParseForeignOptions(foreign_options, properties);
+
+  if (!foreign_options.empty()) {
+    ParseForeignOptions(foreign_options, &properties->domain_search,
+                        &properties->dns_servers);
+  } else {
+    LOG(INFO) << "No foreign option provided";
+  }
 
   // Ignore the route_vpn_gateway parameter as VPNs don't need gateway IPs.
   // This guarantees that we will pass the various coherence checks in
@@ -415,41 +421,38 @@ void OpenVPNDriver::ParseIPConfiguration(
   properties->method = kTypeVPN;
 }
 
-// static
-void OpenVPNDriver::ParseForeignOptions(const ForeignOptions& options,
-                                        IPConfig::Properties* properties) {
-  std::vector<std::string> domain_search;
-  std::vector<std::string> dns_servers;
-  for (const auto& option_map : options) {
-    ParseForeignOption(option_map.second, &domain_search, &dns_servers);
-  }
-  if (!domain_search.empty()) {
-    properties->domain_search.swap(domain_search);
-  }
-  LOG_IF(INFO, properties->domain_search.empty())
-      << "No search domains provided.";
-  if (!dns_servers.empty()) {
-    properties->dns_servers.swap(dns_servers);
-  }
-  LOG_IF(WARNING, properties->dns_servers.empty())
-      << "No DNS servers provided.";
-}
-
-// static
-void OpenVPNDriver::ParseForeignOption(const std::string& option,
-                                       std::vector<std::string>* domain_search,
-                                       std::vector<std::string>* dns_servers) {
+namespace {
+bool ParseForeignOption(const std::string& option,
+                        std::vector<std::string>* domain_search,
+                        std::vector<std::string>* dns_servers) {
   SLOG(2) << __func__ << "(" << option << ")";
   const auto tokens = base::SplitString(option, " ", base::TRIM_WHITESPACE,
                                         base::SPLIT_WANT_ALL);
   if (tokens.size() != 3 ||
       !base::EqualsCaseInsensitiveASCII(tokens[0], "dhcp-option")) {
-    return;
+    return false;
   }
   if (base::EqualsCaseInsensitiveASCII(tokens[1], "domain")) {
     domain_search->push_back(tokens[2]);
+    return true;
   } else if (base::EqualsCaseInsensitiveASCII(tokens[1], "dns")) {
     dns_servers->push_back(tokens[2]);
+    return true;
+  }
+  return false;
+}
+}  // namespace
+
+// static
+void OpenVPNDriver::ParseForeignOptions(const ForeignOptions& options,
+                                        std::vector<std::string>* domain_search,
+                                        std::vector<std::string>* dns_servers) {
+  domain_search->clear();
+  dns_servers->clear();
+  for (const auto& option_map : options) {
+    if (!ParseForeignOption(option_map.second, domain_search, dns_servers)) {
+      LOG(INFO) << "Ignore foreign option " << option_map.second;
+    }
   }
 }
 

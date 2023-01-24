@@ -522,25 +522,6 @@ TEST_F(OpenVPNDriverTest, SplitPortFromHost) {
   EXPECT_EQ("12345", port);
 }
 
-TEST_F(OpenVPNDriverTest, ParseForeignOption) {
-  std::vector<std::string> domain_search;
-  std::vector<std::string> dns_servers;
-  IPConfig::Properties props;
-  OpenVPNDriver::ParseForeignOption("", &domain_search, &dns_servers);
-  OpenVPNDriver::ParseForeignOption("dhcp-option DOMAIN", &domain_search,
-                                    &dns_servers);
-  OpenVPNDriver::ParseForeignOption("dhcp-option DOMAIN zzz.com foo",
-                                    &domain_search, &dns_servers);
-  OpenVPNDriver::ParseForeignOption("dhcp-Option DOmAIN xyz.com",
-                                    &domain_search, &dns_servers);
-  ASSERT_EQ(1, domain_search.size());
-  EXPECT_EQ("xyz.com", domain_search[0]);
-  OpenVPNDriver::ParseForeignOption("dhcp-option DnS 1.2.3.4", &domain_search,
-                                    &dns_servers);
-  ASSERT_EQ(1, dns_servers.size());
-  EXPECT_EQ("1.2.3.4", dns_servers[0]);
-}
-
 TEST_F(OpenVPNDriverTest, ParseForeignOptions) {
   // This also tests that std::map is a sorted container.
   std::map<int, std::string> options;
@@ -548,24 +529,20 @@ TEST_F(OpenVPNDriverTest, ParseForeignOptions) {
   options[2] = "dhcp-option DOMAIN two.com";
   options[8] = "dhcp-option DOMAIN eight.com";
   options[7] = "dhcp-option DOMAIN seven.com";
-  options[4] = "dhcp-option DOMAIN four.com";
+  options[4] = "dhcp-Option DOmAIN four.com";      // cases do not matter
+  options[9] = "dhcp-option dns 1.2.3.4 1.2.3.4";  // ignore invalid
   options[10] = "dhcp-option dns 1.2.3.4";
-  IPConfig::Properties props;
-  OpenVPNDriver::ParseForeignOptions(options, &props);
-  ASSERT_EQ(5, props.domain_search.size());
-  EXPECT_EQ("two.com", props.domain_search[0]);
-  EXPECT_EQ("four.com", props.domain_search[1]);
-  EXPECT_EQ("five.com", props.domain_search[2]);
-  EXPECT_EQ("seven.com", props.domain_search[3]);
-  EXPECT_EQ("eight.com", props.domain_search[4]);
-  ASSERT_EQ(1, props.dns_servers.size());
-  EXPECT_EQ("1.2.3.4", props.dns_servers[0]);
-
-  // Test that the DNS properties are not updated if no new DNS properties are
-  // supplied.
-  OpenVPNDriver::ParseForeignOptions(std::map<int, std::string>(), &props);
-  EXPECT_EQ(5, props.domain_search.size());
-  ASSERT_EQ(1, props.dns_servers.size());
+  std::vector<std::string> search_domains;
+  std::vector<std::string> name_servers;
+  OpenVPNDriver::ParseForeignOptions(options, &search_domains, &name_servers);
+  ASSERT_EQ(5, search_domains.size());
+  EXPECT_EQ("two.com", search_domains[0]);
+  EXPECT_EQ("four.com", search_domains[1]);
+  EXPECT_EQ("five.com", search_domains[2]);
+  EXPECT_EQ("seven.com", search_domains[3]);
+  EXPECT_EQ("eight.com", search_domains[4]);
+  ASSERT_EQ(1, name_servers.size());
+  EXPECT_EQ("1.2.3.4", name_servers[0]);
 }
 
 TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
