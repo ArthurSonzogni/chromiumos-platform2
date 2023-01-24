@@ -552,16 +552,23 @@ CryptohomeStatus AuthFactorManager::RemoveAuthFactor(
   }
 
   // Remove the file.
-  if (!platform_->DeleteFile(file_path.value())) {
-    LOG(ERROR) << "Failed to delete from disk auth factor "
-               << auth_factor.label() << " of type "
-               << AuthFactorTypeToString(auth_factor.type()) << " for "
-               << obfuscated_username;
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerDeleteFailedInRemove),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kRetry, ErrorAction::kReboot}),
-        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  if (!platform_->DeleteFileSecurely(file_path.value())) {
+    LOG(WARNING) << "Failed to securely delete from disk auth factor "
+                 << auth_factor.label() << " of type "
+                 << AuthFactorTypeToString(auth_factor.type()) << " for "
+                 << obfuscated_username
+                 << ". Attempting to delete without zeroization.";
+    if (!platform_->DeleteFile(file_path.value())) {
+      LOG(ERROR) << "Failed to delete from disk auth factor "
+                 << auth_factor.label() << " of type "
+                 << AuthFactorTypeToString(auth_factor.type()) << " for "
+                 << obfuscated_username;
+      return MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocAuthFactorManagerDeleteFailedInRemove),
+          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                          ErrorAction::kRetry, ErrorAction::kReboot}),
+          user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+    }
   }
   LOG(INFO) << "Deleted from disk auth factor label: " << auth_factor.label();
   return OkStatus<CryptohomeError>();
