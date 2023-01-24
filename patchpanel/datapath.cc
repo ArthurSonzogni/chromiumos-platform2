@@ -1636,6 +1636,28 @@ void Datapath::SetVpnLockdown(bool enable_vpn_lockdown) {
   }
 }
 
+bool Datapath::StartDownstreamNetwork(const DownstreamNetworkInfo& info) {
+  // TODO(b/239559602) Implement forwarding setup:
+  //   - Apply IPv4 configuration on downstream interface.
+  //   - Set up iptables rules for:
+  //      - traffic marking (IPv4, IPv6)
+  //      - connection pinning and routing (IPv4, IPv6)
+  //      - forwarding (IPv4, IPv6)
+  //      - SNAT (IPv4 Tethering)
+  // TODO(b/239559602) Clarify which service, shill or networking, is in charge
+  // of IFF_UP and MAC address configuration.
+  return true;
+}
+
+void Datapath::StopDownstreamNetwork(const DownstreamNetworkInfo& info) {
+  // TODO(b/239559602) Implement forwarding setup teardown:
+  //   - Remove IPv4 configuration on downstream interface.
+  //   - Remove associated iptables rules.
+  //   - Remove SNAT (IPv4 Tethering)
+  // TODO(b/239559602) Clarify which service, shill or networking, is in charge
+  // of IFF_DOWN.
+}
+
 bool Datapath::ModifyConnmarkSet(IpFamily family,
                                  const std::string& chain,
                                  const std::string& op,
@@ -2088,6 +2110,39 @@ std::ostream& operator<<(std::ostream& stream, const DnsRedirectionRule& rule) {
   }
   stream << " }";
   return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream,
+                         const DownstreamNetworkInfo& info) {
+  stream << "{ topology: ";
+  switch (info.topology) {
+    case DownstreamNetworkTopology::kTethering:
+      stream << "Tethering";
+      stream << ", upstream: " << info.upstream_ifname;
+      break;
+    case DownstreamNetworkTopology::kLocalOnly:
+      stream << "LocalOnlyNetwork";
+      break;
+  }
+  stream << ", downstream: " << info.downstream_ifname;
+  stream << ", ipv4 subnet: ";
+  stream << IPv4AddressToCidrString(info.ipv4_base_addr,
+                                    info.ipv4_prefix_length);
+  stream << ", ipv4 addr: ";
+  stream << IPv4AddressToString(info.ipv4_addr);
+  stream << ", ipv6: ";
+  switch (info.ipv6_mode) {
+    case DownstreamNetworkIPv6Mode::kDisabled:
+      stream << "disabled";
+      break;
+    case DownstreamNetworkIPv6Mode::kNDProxy:
+      stream << "NDProxy";
+      break;
+    case DownstreamNetworkIPv6Mode::kRAServer:
+      stream << "RAServer";
+      break;
+  }
+  return stream << "}";
 }
 
 }  // namespace patchpanel

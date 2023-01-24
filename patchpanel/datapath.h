@@ -76,6 +76,7 @@ struct ConnectedNamespace {
   std::string tracked_outbound_ifname;
 };
 
+// Describes a DNS DNAT redirection rule issued by dns-proxy.
 struct DnsRedirectionRule {
   patchpanel::SetDnsRedirectionRuleRequest::RuleType type;
   std::string input_ifname;
@@ -84,10 +85,50 @@ struct DnsRedirectionRule {
   std::string host_ifname;
 };
 
+// Describes the type of CreateNetwork request issued by shill.
+enum class DownstreamNetworkTopology {
+  // CreateTetheredNetwork DBus method call.
+  kTethering,
+  // CreateLocalOnlyNetwork DBus method call.
+  kLocalOnly,
+};
+
+// Describes the IPv6 provisioning mode used for a CreateLocalOnlyNetwork or
+// a CreateTetheredNetwork request issued by shill.
+enum class DownstreamNetworkIPv6Mode {
+  kDisabled,
+  kNDProxy,
+  kRAServer,
+};
+
+// Describes a CreateNetwork request issued by shill.
+struct DownstreamNetworkInfo {
+  DownstreamNetworkTopology topology;
+  // The upstream interface is only defined for Tethering. It is empty for
+  // LocalOnlyNetwork.
+  std::string upstream_ifname;
+  std::string downstream_ifname;
+  // TODO(b/239559602) Introduce better types for IPv4 addr and IPv4 CIDR.
+  // IPv4 address of the DUT on the downstream network in network order. This
+  // is the effective gateway address for clients connected on the network.
+  uint32_t ipv4_addr;
+  // Base address of the IPv4 subnet assigned to the downstream network in
+  // network order.
+  uint32_t ipv4_base_addr;
+  // Prefix length of the IPv4 subnet assigned to the downstream network.
+  int ipv4_prefix_length;
+  // TODO(b/239559602) Add IPv4 dhcp configuration.
+  DownstreamNetworkIPv6Mode ipv6_mode;
+  // TODO(b/239559602) Add IPv6 configuration.
+};
+
 std::ostream& operator<<(std::ostream& stream,
                          const ConnectedNamespace& nsinfo);
 
 std::ostream& operator<<(std::ostream& stream, const DnsRedirectionRule& rule);
+
+std::ostream& operator<<(std::ostream& stream,
+                         const DownstreamNetworkInfo& info);
 
 // Simple enum of bitmasks used for specifying a set of IP family values.
 enum IpFamily {
@@ -219,8 +260,8 @@ class Datapath {
                                   bool route_on_vpn,
                                   uint32_t peer_ipv4_addr = 0);
 
-  // Removes IPv4 iptables, IP forwarding, and traffic marking for the given
-  // downstream network interface |int_ifname|.
+  // Removes IPv4 iptables, IP forwarding, and traffic marking rules for the
+  // given downstream network interface |int_ifname|.
   virtual void StopRoutingDevice(const std::string& ext_ifname,
                                  const std::string& int_ifname,
                                  uint32_t int_ipv4_addr,
@@ -249,6 +290,16 @@ class Datapath {
   // VPN connection is instead rejected in iptables. ARC traffic is ignored
   // because Android already implements VPN lockdown.
   virtual void SetVpnLockdown(bool enable_vpn_lockdown);
+
+  // Configures IPv4 interface parameters, IP forwarding rules, and traffic
+  // marking for the downstream network interface specified in |info|. Exact
+  // firewall rules being configured depend on the DownstreamNetworkTopology
+  // value specified in |info|. If the downstream network interface is used in
+  // tethering, IPv4 SNAT is also configured with the upstream.
+  virtual bool StartDownstreamNetwork(const DownstreamNetworkInfo& info);
+  // Clears IPv4 interface parameters, IPv4 SNAT, IP forwarding rules, and
+  // traffic marking previously configured with StartDownstreamNetwork.
+  virtual void StopDownstreamNetwork(const DownstreamNetworkInfo& info);
 
   // Methods supporting IPv6 configuration for ARC.
   virtual bool MaskInterfaceFlags(const std::string& ifname,

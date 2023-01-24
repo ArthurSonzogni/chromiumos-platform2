@@ -211,6 +211,16 @@ class Manager final : public brillo::DBusDaemon {
   bool RedirectDns(base::ScopedFD client_fd,
                    const patchpanel::SetDnsRedirectionRuleRequest& request);
 
+  // Checks the validaty of a CreateTetheredNetwork or CreatedLocalOnlyNetwork
+  // DBus request.
+  bool ValidateDownstreamNetworkRequest(const DownstreamNetworkInfo& info);
+  // Creates a downstream L3 network for CreateTetheredNetwork or
+  // CreatedLocalOnlyNetwork on the network interface specified by |info|.
+  // If successful, |client_fd| is monitored and triggers the teardown of the
+  // network setup when closed.
+  patchpanel::DownstreamNetworkResult CreateDownstreamNetwork(
+      base::ScopedFD client_fd, const DownstreamNetworkInfo& info);
+
   // Disable and re-enable IPv6 inside a namespace.
   void RestartIPv6(const std::string& netns_name);
 
@@ -272,8 +282,7 @@ class Manager final : public brillo::DBusDaemon {
   // All external network interfaces currently managed by patchpanel through
   // the CreateTetheredNetwork or CreateLocalOnlyNetwork DBus APIs, keyed by the
   // file descriptors committed by the DBus clients.
-  // TODO(b/239559602) Also store the clients' original requests.
-  std::map<int, std::string> downstream_networks_;
+  std::map<int, DownstreamNetworkInfo> downstream_networks_;
 
   // All rules currently created through patchpanel RedirectDns
   // API, keyed by file descriptors committed by clients when calling the

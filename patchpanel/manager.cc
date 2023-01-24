@@ -1252,7 +1252,6 @@ std::unique_ptr<dbus::Response> Manager::OnCreateTetheredNetwork(
   if (!reader.PopArrayOfBytesAsProto(&request)) {
     LOG(ERROR) << kCreateTetheredNetworkMethod
                << ": Unable to parse TetheredNetworkRequest";
-    // TODO(b/239559602) Define error codes.
     response.set_response_code(
         patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT);
     writer.AppendProtoAsArrayOfBytes(response);
@@ -1269,22 +1268,19 @@ std::unique_ptr<dbus::Response> Manager::OnCreateTetheredNetwork(
     return dbus_response;
   }
 
-  base::ScopedFD local_client_fd(AddLifelineFd(client_fd.get()));
-  if (!local_client_fd.is_valid()) {
-    LOG(ERROR) << kCreateTetheredNetworkMethod
-               << ": Failed to create lifeline fd";
-    response.set_response_code(patchpanel::DownstreamNetworkResult::ERROR);
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+  DownstreamNetworkInfo info = {};
+  info.topology = DownstreamNetworkTopology::kTethering;
+  // TODO(b/239559602) Enable IPv6 tethering according to upstream technology.
+  info.ipv6_mode = DownstreamNetworkIPv6Mode::kDisabled;
+  info.upstream_ifname = request.upstream_ifname();
+  info.downstream_ifname = request.ifname();
+  // TODO(b/239559602) Copy IPv4 configuration.
+
+  auto response_code = CreateDownstreamNetwork(std::move(client_fd), info);
+  if (response_code == patchpanel::DownstreamNetworkResult::SUCCESS) {
+    RecordDbusEvent(metrics_, DbusUmaEvent::kCreateTetheredNetworkSuccess);
   }
-
-  int fdkey = local_client_fd.release();
-  downstream_networks_[fdkey] = request.ifname();
-
-  // TODO(b/239559602) Implement CreateTetheredNetwork.
-
-  RecordDbusEvent(metrics_, DbusUmaEvent::kCreateTetheredNetworkSuccess);
-  response.set_response_code(patchpanel::DownstreamNetworkResult::SUCCESS);
+  response.set_response_code(response_code);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
@@ -1305,7 +1301,6 @@ std::unique_ptr<dbus::Response> Manager::OnCreateLocalOnlyNetwork(
   if (!reader.PopArrayOfBytesAsProto(&request)) {
     LOG(ERROR) << kCreateLocalOnlyNetworkMethod
                << ": Unable to parse LocalOnlyNetworkRequest";
-    // TODO(b/239559602) Define error codes.
     response.set_response_code(
         patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT);
     writer.AppendProtoAsArrayOfBytes(response);
@@ -1322,22 +1317,19 @@ std::unique_ptr<dbus::Response> Manager::OnCreateLocalOnlyNetwork(
     return dbus_response;
   }
 
-  base::ScopedFD local_client_fd(AddLifelineFd(client_fd.get()));
-  if (!local_client_fd.is_valid()) {
-    LOG(ERROR) << kCreateLocalOnlyNetworkMethod
-               << ": Failed to create lifeline fd";
-    response.set_response_code(patchpanel::DownstreamNetworkResult::ERROR);
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
+  DownstreamNetworkInfo info = {};
+  info.topology = DownstreamNetworkTopology::kLocalOnly;
+  // TODO(b/239559602) Enable IPv6 LocalOnlyNetwork with RAServer
+  info.ipv6_mode = DownstreamNetworkIPv6Mode::kDisabled;
+  info.downstream_ifname = request.ifname();
+  // TODO(b/239559602) Copy IPv4 configuration.
+  // TODO(b/239559602) Copy IPv6 configuration.
+
+  auto response_code = CreateDownstreamNetwork(std::move(client_fd), info);
+  if (response_code == patchpanel::DownstreamNetworkResult::SUCCESS) {
+    RecordDbusEvent(metrics_, DbusUmaEvent::kCreateLocalOnlyNetworkSuccess);
   }
-
-  int fdkey = local_client_fd.release();
-  downstream_networks_[fdkey] = request.ifname();
-
-  // TODO(b/239559602) Implement CreateLocalOnlyNetwork.
-
-  RecordDbusEvent(metrics_, DbusUmaEvent::kCreateLocalOnlyNetworkSuccess);
-  response.set_response_code(patchpanel::DownstreamNetworkResult::SUCCESS);
+  response.set_response_code(response_code);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
 }
@@ -1364,6 +1356,8 @@ std::unique_ptr<dbus::Response> Manager::OnDownstreamNetworkInfo(
   }
 
   // TODO(b/239559602) Implement DownstreamNetworkInfo.
+  // TODO(b/239559602) Check a DownstreamNetwork exists for |downstream_ifname|.
+  // TODO(b/239559602) Copy IPv4 config into |downstream_network|.
 
   RecordDbusEvent(metrics_, DbusUmaEvent::kDownstreamNetworkInfoSuccess);
   response.set_success(true);
@@ -1532,9 +1526,11 @@ void Manager::OnLifelineFdClosed(int client_fd) {
 
   auto downstream_network_it = downstream_networks_.find(client_fd);
   if (downstream_network_it != downstream_networks_.end()) {
-    // TODO(b/239559602) tear down iptables setup, clear interface address
-    // assignments, stop any forwarding service, stop dhcp server.
-    LOG(INFO) << "Disconnected Network on interface "
+    // TODO(b/239559602) If IPv6 was specified in the request, stop guest IPv6
+    // service.
+    // TODO(b/239559602) If DHCP was specified in the request, stop DHCP server.
+    datapath_->StopDownstreamNetwork(downstream_network_it->second);
+    LOG(INFO) << "Disconnected Downstream Network "
               << downstream_network_it->second;
     downstream_networks_.erase(downstream_network_it);
     return;
@@ -1634,6 +1630,47 @@ bool Manager::RedirectDns(
   dns_redirection_rules_.emplace(fdkey, std::move(rule));
 
   return true;
+}
+
+bool Manager::ValidateDownstreamNetworkRequest(
+    const DownstreamNetworkInfo& info) {
+  // TODO(b/239559602) Validate the request and log any invalid argument:
+  //    - |upstream_ifname| should be an active shill Device/Network,
+  //    - |downstream_ifname| should not be a shill Device/Network already in
+  //    use,
+  //    - |downstream_ifname| should not be already in use in another
+  //    DownstreamNetworkInfo,
+  //    - if there are IPv4 and/or IPv6 configurations, check the prefixes are
+  //      correct and available.
+  return true;
+}
+
+patchpanel::DownstreamNetworkResult Manager::CreateDownstreamNetwork(
+    base::ScopedFD client_fd, const DownstreamNetworkInfo& info) {
+  if (!ValidateDownstreamNetworkRequest(info)) {
+    return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
+  }
+
+  // TODO(b/239559602) Select IPv4 config if none.
+
+  base::ScopedFD local_client_fd(AddLifelineFd(client_fd.get()));
+  if (!local_client_fd.is_valid()) {
+    LOG(ERROR) << __func__ << ": " << info << ": Failed to create lifeline fd";
+    return patchpanel::DownstreamNetworkResult::ERROR;
+  }
+
+  if (!datapath_->StartDownstreamNetwork(info)) {
+    return patchpanel::DownstreamNetworkResult::ERROR;
+  }
+
+  // TODO(b/239559602) If DHCP is specified in the request, start DHCP server.
+
+  // TODO(b/239559602) If IPv6 is specified in the request, start guest IPv6
+  // service.
+
+  int fdkey = local_client_fd.release();
+  downstream_networks_[fdkey] = info;
+  return patchpanel::DownstreamNetworkResult::SUCCESS;
 }
 
 void Manager::SendGuestMessage(const GuestMessage& msg) {
