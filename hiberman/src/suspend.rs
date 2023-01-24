@@ -210,10 +210,11 @@ impl SuspendConductor {
         if snap_dev.atomic_snapshot()? {
             // Suspend path. Everything after this point is invisible to the
             // hibernated kernel.
-            self.write_image(header_file, hiber_file, snap_dev)?;
-            meta_file.rewind()?;
-            self.metadata.write_to_disk(&mut meta_file)?;
-            drop(meta_file);
+            if let Err(e) = snap_dev.transfer_block_device() {
+                snap_dev.unfreeze_userspace()?;
+                return Err(e);
+            }
+
             // Set the hibernate cookie so the next boot knows to start in RO mode.
             info!("Setting hibernate cookie at {}", block_path);
             set_hibernate_cookie(Some(&block_path), HibernateCookieValue::ResumeReady)?;

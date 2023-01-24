@@ -41,8 +41,8 @@ pub use hiberutil::HibernateOptions;
 pub use hiberutil::ResumeInitOptions;
 pub use hiberutil::ResumeOptions;
 
-use anyhow::Result;
 use anyhow::Context;
+use anyhow::Result;
 use resume::ResumeConductor;
 use resume_init::ResumeInitConductor;
 use suspend::SuspendConductor;
@@ -85,7 +85,7 @@ pub fn set_snapshot_block_device<P: AsRef<Path>>(path: Option<P>) -> Result<()> 
     if let Some(path) = path {
         let mut snap_dev = SnapshotDevice::new(SnapshotMode::Read)?;
         snap_dev.set_block_device(path.as_ref())?;
-        return Ok(())
+        return Ok(());
     } else {
         return Err(HibernateError::HibernateVolumeError()).context("no device name");
     }

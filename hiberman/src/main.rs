@@ -186,7 +186,7 @@ fn hiberman_set_device(args: &mut std::env::Args) -> std::result::Result<(), ()>
         .unwrap();
 
     if let Err(e) = hiberman::set_snapshot_block_device(dev_path.as_ref()) {
-        error!("Failed to set block device: {}", e);
+        error!("Failed to set block device: {:?}", e);
     }
 
     Ok(())

@@ -4,14 +4,13 @@
 
 //! Implements common functions and definitions used throughout the app and library.
 
-
 use std::convert::TryInto;
-use std::fs;
 use std::ffi::CString;
-use std::mem::MaybeUninit;
+use std::fs;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
+use std::mem::MaybeUninit;
 use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
 use std::process::exit;
@@ -163,8 +162,10 @@ pub fn get_device_id<P: AsRef<std::path::Path>>(path: P) -> Result<u32> {
 
     // This is safe because only stats is modified.
     if let Err(_) = syscall!(unsafe { libc::stat(path_str_c.as_ptr(), stats.as_mut_ptr()) }) {
-        return Err(HibernateError::SnapshotStatDeviceError(libchromeos::sys::Error::last()))
-                .context("Failed to stat device");
+        return Err(HibernateError::SnapshotStatDeviceError(
+            libchromeos::sys::Error::last(),
+        ))
+        .context("Failed to stat device");
     }
 
     // Safe because the syscall just initialized it, and we just verified
