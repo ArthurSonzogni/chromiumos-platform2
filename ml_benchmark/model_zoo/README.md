@@ -56,3 +56,34 @@ Example usage:
 |----------------------------|--------------:|---------------------------------------:|-------------|------------|
 | mobilenet_v2_1.0_224       |          <= 5 | avg_err <=0.00005<br/>std_dev <=6e-06  |         TBD |    <=150MB |
 | mobilenet_v2_1.0_224_quant |          <= 5 | avg_err <=1.5<br/>std_dev <=0.2        |         TBD |    <=150MB |
+
+# ML accelerator requirements
+
+The API for running ML workloads on ChromeOS is
+[Tensorflow Lite](https://www.tensorflow.org/lite).
+A discrete ML accelerator such as a TPU/NPU or a GPU can be made accessible
+through TFLite to improve the performance of ML workloads.
+
+The following requirements apply to such accelerators:
+
+## Functional requirements
+
+1. Any device kernel driver must be open source and integrated with upstream
+   Linux or implemented in userspace through VFIO.
+1. Direct dmabuf data sharing must be supported between the accelerator and
+   other relevant IP blocks (e.g., GPU, ISP). Both buffer-user and exporter
+   roles must be supported.
+
+## Security requirements
+
+1. Sandboxing must be supported for isolating untrusted workloads and any binary-only driver
+   components.
+1. Only signed and verified firmware must be allowed to be loaded onto the accelerator.
+1. An IOMMU must control access to system memory from the accelerator. See
+   [Peripheral Firmware Security](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/security/firmware_updating.md).
+
+## Miscellaneous requirements
+
+1. The driver's binary size (including dependent libraries and middleware) must be below 64 MB.
+1. Tools should be provided for ChromeOS developers to analyze the performance of inference
+   workloads (e.g. Perfetto and/or ftrace instrumentation).
