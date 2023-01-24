@@ -13,9 +13,9 @@
 #include <dbus/runtime_probe/dbus-constants.h>
 #include <google/protobuf/util/json_util.h>
 
+#include "runtime_probe/avl_probe_config_loader.h"
 #include "runtime_probe/daemon.h"
 #include "runtime_probe/probe_config.h"
-#include "runtime_probe/probe_config_loader_impl.h"
 #include "runtime_probe/proto_bindings/runtime_probe.pb.h"
 
 namespace runtime_probe {
@@ -23,10 +23,9 @@ namespace runtime_probe {
 using brillo::dbus_utils::AsyncEventSequencer;
 using brillo::dbus_utils::DBusObject;
 
-Daemon::Daemon(ProbeConfigLoader* config_loader)
+Daemon::Daemon()
     : brillo::DBusServiceDaemon(kRuntimeProbeServiceName),
-      org::chromium::RuntimeProbeAdaptor(this),
-      config_loader_(config_loader) {}
+      org::chromium::RuntimeProbeAdaptor(this) {}
 
 int Daemon::OnInit() {
   VLOG(1) << "Starting D-Bus service";
@@ -47,7 +46,8 @@ void Daemon::ProbeCategories(Daemon::DBusCallback<ProbeResult> cb,
                              const ProbeRequest& request) {
   ProbeResult reply;
 
-  const auto probe_config_data = config_loader_->LoadDefault();
+  AvlProbeConfigLoader config_loader;
+  const auto probe_config_data = config_loader.Load();
   if (!probe_config_data) {
     reply.set_error(RUNTIME_PROBE_ERROR_PROBE_CONFIG_INVALID);
     cb->Return(reply);
@@ -107,12 +107,15 @@ void Daemon::GetKnownComponents(
     const GetKnownComponentsRequest& request) {
   GetKnownComponentsResult reply;
 
-  const auto probe_config_data = config_loader_->LoadDefault();
+  AvlProbeConfigLoader config_loader;
+  const auto probe_config_data = config_loader.Load();
   if (!probe_config_data) {
     reply.set_error(RUNTIME_PROBE_ERROR_PROBE_CONFIG_INVALID);
     cb->Return(reply);
     return Quit();
   }
+  LOG(INFO) << "Load probe config from: " << probe_config_data->path
+            << " (checksum: " << probe_config_data->sha1_hash << ")";
 
   const auto probe_config = ProbeConfig::FromValue(probe_config_data->config);
   if (!probe_config) {

@@ -13,9 +13,8 @@
 #include <gtest/gtest.h>
 
 #include "runtime_probe/daemon.h"
-#include "runtime_probe/fake_probe_config_loader.h"
-#include "runtime_probe/probe_config_loader.h"
 #include "runtime_probe/proto_bindings/runtime_probe.pb.h"
+#include "runtime_probe/system/context_mock_impl.h"
 
 namespace runtime_probe {
 
@@ -28,20 +27,14 @@ using ::testing::Return;
 
 class DaemonTest : public ::testing::Test {
  protected:
-  void SetUp() { SetDefaultProbeConfigData(); }
-  void SetDefaultProbeConfigData() {
-    config_loader_.set_fake_probe_config_data(ProbeConfigData{
-        .path = base::FilePath{"/etc/runtime_probe/probe_config.json"},
-        .config = base::Value(base::Value::Type::DICT),
-        .sha1_hash = "0123456789abcdef"});
-  }
-  FakeProbeConfigLoader config_loader_;
-  Daemon daemon_{&config_loader_};
+  Daemon daemon_;
   org::chromium::RuntimeProbeInterface* const dbus_adaptor_{&daemon_};
+
+ private:
+  ContextMockImpl mock_context_;
 };
 
 TEST_F(DaemonTest, ProbeCategories_LoadDefaultFailed) {
-  config_loader_.clear_fake_probe_config_data();
   ProbeRequest request;
   request.set_probe_default_category(true);
   std::optional<ProbeResult> reply;

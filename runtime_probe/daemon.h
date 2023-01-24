@@ -17,7 +17,6 @@
 // TODO(crbug.com/1255584): Includes headers in alphabetical order.
 #include "runtime_probe/proto_bindings/runtime_probe.pb.h"
 #include "runtime_probe/dbus_adaptors/org.chromium.RuntimeProbe.h"  // NOLINT(build/include_alpha)
-#include "runtime_probe/probe_config_loader.h"
 
 namespace runtime_probe {
 
@@ -27,7 +26,7 @@ class Daemon : public brillo::DBusServiceDaemon,
                public org::chromium::RuntimeProbeAdaptor,
                public org::chromium::RuntimeProbeInterface {
  public:
-  explicit Daemon(ProbeConfigLoader* config_loader);
+  Daemon();
   Daemon(const Daemon&) = delete;
   Daemon& operator=(const Daemon&) = delete;
 
@@ -51,9 +50,6 @@ class Daemon : public brillo::DBusServiceDaemon,
       brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
-
-  // Dependent classes.
-  ProbeConfigLoader* const config_loader_;
 };
 
 }  // namespace runtime_probe

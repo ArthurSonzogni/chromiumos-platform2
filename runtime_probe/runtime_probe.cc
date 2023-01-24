@@ -12,9 +12,11 @@
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 
+#include "runtime_probe/avl_probe_config_loader.h"
 #include "runtime_probe/daemon.h"
+#include "runtime_probe/generic_probe_config_loader.h"
 #include "runtime_probe/probe_config.h"
-#include "runtime_probe/probe_config_loader_impl.h"
+#include "runtime_probe/probe_config_loader.h"
 #include "runtime_probe/probe_function.h"
 #include "runtime_probe/system/context_helper_impl.h"
 #include "runtime_probe/system/context_runtime_impl.h"
@@ -72,8 +74,7 @@ int RunAsHelper() {
 int RunAsDaemon() {
   LOG(INFO) << "Starting Runtime Probe. Running in daemon mode";
   runtime_probe::ContextRuntimeImpl context;
-  runtime_probe::ProbeConfigLoaderImpl config_loader;
-  runtime_probe::Daemon daemon{&config_loader};
+  runtime_probe::Daemon daemon;
   return daemon.Run();
 }
 
@@ -86,15 +87,14 @@ int RunningInCli(const std::string& config_file_path, bool to_stdout) {
   base::AtExitManager at_exit_manager;
   runtime_probe::ContextRuntimeImpl context;
 
-  runtime_probe::ProbeConfigLoaderImpl probe_config_loader;
-
-  std::optional<runtime_probe::ProbeConfigData> probe_config_data;
-  if (config_file_path == "") {
-    probe_config_data = probe_config_loader.LoadDefault();
+  std::unique_ptr<runtime_probe::ProbeConfigLoader> config_loader;
+  if (config_file_path.empty()) {
+    config_loader = std::make_unique<runtime_probe::AvlProbeConfigLoader>();
   } else {
-    probe_config_data =
-        probe_config_loader.LoadFromFile(base::FilePath{config_file_path});
+    config_loader = std::make_unique<runtime_probe::GenericProbeConfigLoader>(
+        base::FilePath{config_file_path});
   }
+  const auto probe_config_data = config_loader->Load();
   if (!probe_config_data) {
     LOG(ERROR) << "Failed to load probe config";
     return ExitStatus::kFailedToLoadProbeConfig;

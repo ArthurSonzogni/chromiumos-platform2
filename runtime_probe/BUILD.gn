@@ -37,10 +37,12 @@ pkg_config("target_defaults") {
 # TODO(chungsheng): We should consider moving these into a subdirectory.
 source_set("lib") {
   sources = [
+    "avl_probe_config_loader.cc",
     "component_category.cc",
     "field_converter.cc",
+    "generic_probe_config_loader.cc",
     "probe_config.cc",
-    "probe_config_loader_impl.cc",
+    "probe_config_loader.cc",
     "probe_function.cc",
     "probe_function_argument.cc",
     "probe_result_checker.cc",
@@ -75,9 +77,11 @@ executable("runtime_probe") {
 if (use.test) {
   executable("unittest_runner") {
     sources = [
+      "avl_probe_config_loader_test.cc",
       "daemon_test.cc",
       "field_converter_test.cc",
-      "probe_config_loader_impl_test.cc",
+      "generic_probe_config_loader_test.cc",
+      "probe_config_loader_test.cc",
       "probe_config_test.cc",
       "probe_function_argument_test.cc",
       "probe_result_checker_test.cc",
