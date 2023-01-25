@@ -16,6 +16,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/cellular/mobile_operator_storage.h"
 #include "shill/logging.h"
 #include "shill/test_event_dispatcher.h"
 
@@ -80,13 +81,19 @@ class MobileOperatorMapperInitTest : public Test {
     return operator_info_->Init(on_operator_changed_cb_.Get());
   }
 
-  void AssertDatabaseEmpty() {
-    EXPECT_EQ(0, operator_info_->database()->mno_size());
-    EXPECT_EQ(0, operator_info_->database()->mvno_size());
+  void SetUp() override {
+    shill::ScopeLogger::GetInstance()->set_verbose_level(0);
+    shill::ScopeLogger::GetInstance()->EnableScopesByName("cellular");
   }
 
-  const shill::mobile_operator_db::MobileOperatorDB* GetDatabase() {
-    return operator_info_->database();
+  void AssertDatabaseEmpty() {
+    EXPECT_EQ(0, operator_info_->databases()[0]->mno_size());
+    EXPECT_EQ(0, operator_info_->databases()[0]->mvno_size());
+  }
+
+  const std::vector<const shill::mobile_operator_db::MobileOperatorDB*>
+  GetDatabases() {
+    return operator_info_->databases();
   }
 
   EventDispatcherForTest dispatcher_;
@@ -98,15 +105,16 @@ TEST_F(MobileOperatorMapperInitTest, FailedInitNoPath) {
   // - Initialize object with no database paths set
   // - Verify that initialization fails.
   operator_info_->ClearDatabasePaths();
+  MobileOperatorStorage::GetInstance()->ClearDatabases();
   EXPECT_FALSE(operator_info_->Init(on_operator_changed_cb_.Get()));
-  AssertDatabaseEmpty();
+  EXPECT_TRUE(GetDatabases().empty());
 }
 
 TEST_F(MobileOperatorMapperInitTest, FailedInitBadPath) {
   // - Initialize object with non-existent path.
   // - Verify that initialization fails.
   EXPECT_FALSE(SetUpDatabase({"nonexistent.pbf"}));
-  AssertDatabaseEmpty();
+  EXPECT_TRUE(GetDatabases().empty());
 }
 
 TEST_F(MobileOperatorMapperInitTest, FailedInitBadDatabase) {
@@ -124,8 +132,8 @@ TEST_F(MobileOperatorMapperInitTest, EmptyDBInit) {
 
 TEST_F(MobileOperatorMapperInitTest, SuccessfulInit) {
   EXPECT_TRUE(SetUpDatabase({"init_test_successful_init.pbf"}));
-  EXPECT_GT(GetDatabase()->mno_size(), 0);
-  EXPECT_GT(GetDatabase()->mvno_size(), 0);
+  EXPECT_GT(GetDatabases()[0]->mno_size(), 0);
+  EXPECT_GT(GetDatabases()[0]->mvno_size(), 0);
 }
 
 TEST_F(MobileOperatorMapperInitTest, MultipleDBInit) {
@@ -134,8 +142,13 @@ TEST_F(MobileOperatorMapperInitTest, MultipleDBInit) {
   EXPECT_TRUE(SetUpDatabase({"init_test_multiple_db_init_1.pbf",
                              "init_test_multiple_db_init_2.pbf"}));
   EXPECT_TRUE(operator_info_->Init(on_operator_changed_cb_.Get()));
-  EXPECT_GT(GetDatabase()->mno_size(), 0);
-  EXPECT_GT(GetDatabase()->mvno_size(), 0);
+  EXPECT_GT(GetDatabases()[0]->mno_size(), 0);
+  EXPECT_GT(GetDatabases()[1]->mno_size(), 0);
+  EXPECT_EQ(operator_info_->uuid(), "");
+  operator_info_->UpdateMCCMNC("999001");
+  EXPECT_EQ(operator_info_->uuid(), "muahahahaha");
+  operator_info_->UpdateMCCMNC("999002");
+  EXPECT_EQ(operator_info_->uuid(), "teeheehee");
 }
 
 class MobileOperatorMapperMainTest

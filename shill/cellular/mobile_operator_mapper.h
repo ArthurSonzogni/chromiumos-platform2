@@ -263,7 +263,9 @@ class MobileOperatorMapper {
   void HandleAPNListUpdate();
 
   // Accessor functions for testing purpose only.
-  mobile_operator_db::MobileOperatorDB* database() { return database_.get(); }
+  const std::vector<const mobile_operator_db::MobileOperatorDB*> databases() {
+    return databases_;
+  }
 
   // ///////////////////////////////////////////////////////////////////////////
   // Data.
@@ -277,7 +279,7 @@ class MobileOperatorMapper {
 
   base::CancelableClosure notify_operator_changed_task_;
 
-  std::unique_ptr<mobile_operator_db::MobileOperatorDB> database_;
+  std::vector<const mobile_operator_db::MobileOperatorDB*> databases_;
   StringToMNOListMap mccmnc_to_mnos_;
   StringToMNOListMap name_to_mnos_;
 

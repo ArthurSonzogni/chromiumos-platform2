@@ -238,6 +238,7 @@ static_library("libshill") {
     "cellular/cellular_service_provider.cc",
     "cellular/mobile_operator_info.cc",
     "cellular/mobile_operator_mapper.cc",
+    "cellular/mobile_operator_storage.cc",
     "cellular/modem.cc",
     "cellular/modem_info.cc",
     "cellular/pending_activation_store.cc",

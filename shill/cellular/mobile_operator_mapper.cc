@@ -19,10 +19,9 @@
 #include <google/protobuf/repeated_field.h>
 #include <re2/re2.h>
 
-#include "base/functional/bind.h"
+#include "shill/cellular/mobile_operator_storage.h"
 #include "shill/ipconfig.h"
 #include "shill/logging.h"
-#include "shill/protobuf_lite_streams.h"
 
 namespace shill {
 
@@ -120,6 +119,7 @@ MobileOperatorMapper::~MobileOperatorMapper() {
 void MobileOperatorMapper::ClearDatabasePaths() {
   SLOG(3) << GetLogPrefix(__func__);
   database_paths_.clear();
+  databases_.clear();
 }
 
 void MobileOperatorMapper::AddDatabasePath(
@@ -132,42 +132,20 @@ bool MobileOperatorMapper::Init(
     MobileOperatorMapperOnOperatorChangedCallback cb) {
   SLOG(3) << GetLogPrefix(__func__);
   on_operator_changed_cb_.Reset(cb);
-  // |database_| is guaranteed to be set once |Init| is called.
-  database_.reset(new shill::mobile_operator_db::MobileOperatorDB());
 
-  bool found_databases = false;
-  for (const auto& database_path : database_paths_) {
-    const char* database_path_cstr = database_path.value().c_str();
-    std::unique_ptr<google::protobuf::io::CopyingInputStreamAdaptor>
-        database_stream;
-    database_stream.reset(protobuf_lite_file_input_stream(database_path_cstr));
-    if (!database_stream) {
-      LOG(ERROR) << "Failed to read mobile operator database: "
-                 << database_path_cstr;
-      continue;
-    }
-
-    shill::mobile_operator_db::MobileOperatorDB database;
-    if (!database.ParseFromZeroCopyStream(database_stream.get())) {
-      LOG(ERROR) << "Could not parse mobile operator database: "
-                 << database_path_cstr;
-      continue;
-    }
-    SLOG(1) << "Successfully loaded database: " << database_path_cstr;
-    // Collate loaded databases into one as they're found.
-    // TODO(pprabhu) This merge might be very costly. Determine if we need to
-    // implement move semantics / bias the merge to use the largest database
-    // as the base database and merge other databases into it.
-    database_->MergeFrom(database);
-    found_databases = true;
-  }
-
-  if (!found_databases) {
-    LOG(ERROR) << "Could not read any mobile operator database. "
-               << "Will not be able to determine MVNO.";
+  // |databases_| is guaranteed to be set once |Init| is called.
+  databases_.clear();
+  if (database_paths_.empty())
     return false;
-  }
 
+  for (const auto& database_path : database_paths_) {
+    const mobile_operator_db::MobileOperatorDB* database =
+        MobileOperatorStorage::GetInstance()->GetDatabase(database_path);
+    if (!database)
+      return false;
+
+    databases_.push_back(database);
+  }
   PreprocessDatabase();
   return true;
 }
@@ -482,23 +460,25 @@ void MobileOperatorMapper::PreprocessDatabase() {
   mccmnc_to_mnos_.clear();
   name_to_mnos_.clear();
 
-  const auto& mnos = database_->mno();
-  for (const auto& mno : mnos) {
-    // MobileNetworkOperator::data is a required field.
-    DCHECK(mno.has_data());
-    const auto& data = mno.data();
+  for (const auto& database : databases_) {
+    const auto& mnos = database->mno();
+    for (const auto& mno : mnos) {
+      // MobileNetworkOperator::data is a required field.
+      DCHECK(mno.has_data());
+      const auto& data = mno.data();
 
-    const auto& mccmncs = data.mccmnc();
-    for (const auto& mccmnc : mccmncs) {
-      InsertIntoStringToMNOListMap(&mccmnc_to_mnos_, mccmnc, &mno);
-    }
+      const auto& mccmncs = data.mccmnc();
+      for (const auto& mccmnc : mccmncs) {
+        InsertIntoStringToMNOListMap(&mccmnc_to_mnos_, mccmnc, &mno);
+      }
 
-    const auto& localized_names = data.localized_name();
-    for (const auto& localized_name : localized_names) {
-      // LocalizedName::name is a required field.
-      DCHECK(localized_name.has_name());
-      InsertIntoStringToMNOListMap(
-          &name_to_mnos_, NormalizeOperatorName(localized_name.name()), &mno);
+      const auto& localized_names = data.localized_name();
+      for (const auto& localized_name : localized_names) {
+        // LocalizedName::name is a required field.
+        DCHECK(localized_name.has_name());
+        InsertIntoStringToMNOListMap(
+            &name_to_mnos_, NormalizeOperatorName(localized_name.name()), &mno);
+      }
     }
   }
 }
@@ -621,8 +601,10 @@ bool MobileOperatorMapper::UpdateMVNO() {
 
   std::vector<const shill::mobile_operator_db::MobileVirtualNetworkOperator*>
       candidate_mvnos;
-  for (const auto& mvno : database_->mvno()) {
-    candidate_mvnos.push_back(&mvno);
+  for (const auto& database : databases_) {
+    for (const auto& mvno : database->mvno()) {
+      candidate_mvnos.push_back(&mvno);
+    }
   }
   if (current_mno_) {
     for (const auto& mvno : current_mno_->mvno()) {
