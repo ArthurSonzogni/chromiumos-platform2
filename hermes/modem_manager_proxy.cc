@@ -177,21 +177,21 @@ void ModemManagerProxy::OnPropertiesChanged(
       break;
     }
   }
-  if (cached_primary_port_.has_value() && cached_primary_port_ != mbim_port) {
+  if (cached_mbim_port_.has_value() && cached_mbim_port_ != mbim_port) {
     LOG(ERROR) << "Unexpected modem appeared at " << mbim_port;
     return;
   }
-  cached_primary_port_ = mbim_port;
+  cached_mbim_port_ = mbim_port;
   if (!on_modem_appeared_cb_.is_null())
     std::move(on_modem_appeared_cb_).Run();
 }
 
-std::string ModemManagerProxy::GetPrimaryPort() const {
-  if (!cached_primary_port_.has_value()) {
+std::string ModemManagerProxy::GetMbimPort() const {
+  if (!cached_mbim_port_.has_value()) {
     LOG(ERROR) << __func__ << ": Primary port has never been read.";
     return "";
   }
-  return cached_primary_port_.value();
+  return cached_mbim_port_.value();
 }
 
 void ModemManagerProxy::Uninhibit() {

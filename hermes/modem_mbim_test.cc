@@ -35,7 +35,7 @@ class MockModemManagerProxy : public ModemManagerProxyInterface {
               (override));
   MOCK_METHOD(void, WaitForModem, (base::OnceClosure cb), (override));
 
-  MOCK_METHOD(std::string, GetPrimaryPort, (), (const, override));
+  MOCK_METHOD(std::string, GetMbimPort, (), (const, override));
 
   MOCK_METHOD(void, ScheduleUninhibit, (base::TimeDelta timeout), (override));
   MOCK_METHOD(void, WaitForModemAndInhibit, (ResultCallback cb), (override));
@@ -46,7 +46,7 @@ class MockModemManagerProxy : public ModemManagerProxyInterface {
     ON_CALL(*this, WaitForModemAndInhibit).WillByDefault([](ResultCallback cb) {
       std::move(cb).Run(kModemSuccess);
     });
-    ON_CALL(*this, GetPrimaryPort).WillByDefault([]() { return "wwan0"; });
+    ON_CALL(*this, GetMbimPort).WillByDefault([]() { return "wwan0"; });
   }
 };
 

@@ -36,7 +36,7 @@ class ModemManagerProxy : public ModemManagerProxyInterface {
   // waits for MM to export a DBus object.
   void WaitForModem(base::OnceClosure cb) override;
 
-  std::string GetPrimaryPort() const override;
+  std::string GetMbimPort() const override;
 
   void ScheduleUninhibit(base::TimeDelta timeout) override;
   void WaitForModemAndInhibit(ResultCallback cb) override;
@@ -71,7 +71,7 @@ class ModemManagerProxy : public ModemManagerProxyInterface {
   std::unique_ptr<org::freedesktop::DBus::ObjectManagerProxy>
       object_manager_proxy_;
   std::unique_ptr<org::freedesktop::ModemManager1Proxy> mm_proxy_;
-  std::optional<std::string> cached_primary_port_;
+  std::optional<std::string> cached_mbim_port_;
   std::unique_ptr<org::freedesktop::ModemManager1::ModemProxy> modem_proxy_;
 
   std::optional<std::basic_string<char>> device_identifier_;

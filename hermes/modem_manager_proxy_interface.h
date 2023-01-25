@@ -19,7 +19,7 @@ class ModemManagerProxyInterface {
   // waits for MM to export a DBus object.
   virtual void WaitForModem(base::OnceClosure cb) = 0;
 
-  virtual std::string GetPrimaryPort() const = 0;
+  virtual std::string GetMbimPort() const = 0;
 
   virtual void ScheduleUninhibit(base::TimeDelta timeout) = 0;
   virtual void WaitForModemAndInhibit(ResultCallback cb) = 0;

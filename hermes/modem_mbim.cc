@@ -223,12 +223,12 @@ void ModemMbim::InitializationStep(ModemMbim::State::Value next_state,
           State::kMbimInitializeStarted, std::move(cb)));
       break;
     case State::kMbimInitializeStarted: {
-      if (modem_manager_proxy_->GetPrimaryPort().empty()) {
+      if (modem_manager_proxy_->GetMbimPort().empty()) {
         LOG(ERROR) << __func__ << ": Could not get primary port from MM";
         std::move(init_done_cb_).Run(kModemManagerError);
         break;
       }
-      std::string dev_path = "/dev/" + modem_manager_proxy_->GetPrimaryPort();
+      std::string dev_path = "/dev/" + modem_manager_proxy_->GetMbimPort();
       const gchar* const path = dev_path.c_str();
       LOG(INFO) << __func__ << ": Opening path:" << path;
       file_ = g_file_new_for_path(path);
