@@ -39,6 +39,7 @@
 #include "cryptohome/auth_session.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_keys_manager.h"
+#include "cryptohome/error/action.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/fake_platform.h"
 #include "cryptohome/le_credential_manager_impl.h"
@@ -51,8 +52,12 @@ namespace cryptohome {
 namespace {
 
 using ::base::test::TestFuture;
+using ::cryptohome::error::CryptohomeError;
+using ::cryptohome::error::ErrorActionSet;
 using ::hwsec_foundation::error::testing::IsOk;
+using ::hwsec_foundation::error::testing::NotOk;
 using ::hwsec_foundation::error::testing::ReturnValue;
+using ::hwsec_foundation::status::MakeStatus;
 using ::testing::Combine;
 using ::testing::NiceMock;
 using ::testing::ValuesIn;
@@ -66,6 +71,13 @@ constexpr char kUsername[] = "foo@example.com";
 
 constexpr char kPasswordLabel[] = "fake-password-label";
 constexpr char kPassword[] = "fake-password";
+constexpr char kOtherPassword[] = "fake-other-password";
+
+CryptohomeStatus MakeFakeCryptohomeError() {
+  CryptohomeError::ErrorLocationPair fake_error_location(
+      static_cast<CryptohomeError::ErrorLocation>(1), "FakeErrorLocation");
+  return MakeStatus<CryptohomeError>(fake_error_location, ErrorActionSet());
+}
 
 CryptohomeStatus RunAddAuthFactor(
     const user_data_auth::AddAuthFactorRequest& request,
@@ -80,6 +92,14 @@ CryptohomeStatus RunAuthenticateAuthFactor(
     AuthSession& auth_session) {
   TestFuture<CryptohomeStatus> future;
   auth_session.AuthenticateAuthFactor(request, future.GetCallback());
+  return future.Take();
+}
+
+CryptohomeStatus RunUpdateAuthFactor(
+    const user_data_auth::UpdateAuthFactorRequest& request,
+    AuthSession& auth_session) {
+  TestFuture<CryptohomeStatus> future;
+  auth_session.UpdateAuthFactor(request, future.GetCallback());
   return future.Take();
 }
 
@@ -104,6 +124,21 @@ CryptohomeStatus AuthenticatePasswordFactor(const std::string& label,
   request.set_auth_factor_label(label);
   request.mutable_auth_input()->mutable_password_input()->set_secret(password);
   return RunAuthenticateAuthFactor(request, auth_session);
+}
+
+CryptohomeStatus UpdatePasswordFactor(const std::string& label,
+                                      const std::string& new_password,
+                                      AuthSession& auth_session) {
+  user_data_auth::UpdateAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_label(label);
+  user_data_auth::AuthFactor& factor = *request.mutable_auth_factor();
+  factor.set_type(user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
+  factor.set_label(label);
+  factor.mutable_password_metadata();
+  request.mutable_auth_input()->mutable_password_input()->set_secret(
+      new_password);
+  return RunUpdateAuthFactor(request, auth_session);
 }
 
 // Fixture for testing `AuthSession` against TPM simulator and real
@@ -267,6 +302,63 @@ TEST_P(AuthSessionWithTpmSimulatorUssMigrationAgnosticTest,
 
   // Assert.
   EXPECT_THAT(auth_status, IsOk());
+}
+
+// Test that updating via a previously added password works correctly: you can
+// authenticate via the new password but not via the old one.
+TEST_P(AuthSessionWithTpmSimulatorUssMigrationAgnosticTest, UpdatePassword) {
+  auto create_auth_session = [this]() {
+    return AuthSession::Create(
+        kUsername, user_data_auth::AUTH_SESSION_FLAGS_NONE,
+        AuthIntent::kDecrypt,
+        /*on_timeout=*/base::DoNothing(), &platform_features_, backing_apis_);
+  };
+
+  // Arrange.
+  // Configure the creation via USS or VK, depending on the first test
+  // parameter.
+  SetToInitialStorageType();
+  {
+    // Create a user with a password factor.
+    std::unique_ptr<AuthSession> auth_session = create_auth_session();
+    ASSERT_TRUE(auth_session);
+    EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
+    EXPECT_THAT(AddPasswordFactor(kPasswordLabel, kPassword, *auth_session),
+                IsOk());
+  }
+  // Switch to the new backend (USS or VK) depending on the second test
+  // parameter).
+  SetToFinalStorageType();
+
+  // Act.
+  // Update the password factor after authenticating via the old password.
+  {
+    std::unique_ptr<AuthSession> auth_session = create_auth_session();
+    ASSERT_TRUE(auth_session);
+    EXPECT_THAT(
+        AuthenticatePasswordFactor(kPasswordLabel, kPassword, *auth_session),
+        IsOk());
+    EXPECT_THAT(
+        UpdatePasswordFactor(kPasswordLabel, kOtherPassword, *auth_session),
+        IsOk());
+  }
+
+  // Assert.
+  auto try_authenticate = [&](const std::string& password) {
+    std::unique_ptr<AuthSession> auth_session = create_auth_session();
+    if (!auth_session) {
+      ADD_FAILURE() << "Failed to create AuthSession";
+      return MakeFakeCryptohomeError();
+    }
+    return AuthenticatePasswordFactor(kPasswordLabel, password, *auth_session);
+  };
+  // Check the old password isn't accepted, but the new one is.
+  EXPECT_THAT(try_authenticate(kPassword), NotOk());
+  EXPECT_THAT(try_authenticate(kOtherPassword), IsOk());
+  // Check the same holds after switching back to the initial storage type.
+  SetToInitialStorageType();
+  EXPECT_THAT(try_authenticate(kPassword), NotOk());
+  EXPECT_THAT(try_authenticate(kOtherPassword), IsOk());
 }
 
 }  // namespace
