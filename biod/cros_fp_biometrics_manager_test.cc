@@ -124,11 +124,13 @@ class CrosFpBiometricsManagerTest : public ::testing::Test {
     ON_CALL(*mock_cros_dev_, SetMkbpEventCallback)
         .WillByDefault(SaveArg<0>(&on_mkbp_event_));
 
-    mock_metrics_ = std::make_unique<metrics::MockBiodMetrics>();
+    auto mock_metrics = std::make_unique<metrics::MockBiodMetrics>();
+    // Keep a pointer to metrics to manipulate it later.
+    mock_metrics_ = mock_metrics.get();
 
     auto cros_fp_biometrics_manager = std::make_unique<CrosFpBiometricsManager>(
         PowerButtonFilter::Create(mock_bus), std::move(mock_cros_dev),
-        mock_metrics_.get(), std::move(mock_record_manager));
+        std::move(mock_metrics), std::move(mock_record_manager));
     cros_fp_biometrics_manager_ = cros_fp_biometrics_manager.get();
 
     // Register OnAuthScanDone and OnSessionFailed callbacks which are actually
@@ -153,7 +155,7 @@ class CrosFpBiometricsManagerTest : public ::testing::Test {
 
  protected:
   std::optional<CrosFpBiometricsManagerPeer> cros_fp_biometrics_manager_peer_;
-  std::unique_ptr<metrics::MockBiodMetrics> mock_metrics_;
+  metrics::MockBiodMetrics* mock_metrics_;
   MockCrosFpRecordManager* mock_record_manager_;
   MockCrosFpDevice* mock_cros_dev_;
   CrosFpBiometricsManager* cros_fp_biometrics_manager_;
@@ -857,25 +859,26 @@ class CrosFpBiometricsManagerMockTest : public ::testing::Test {
     // objects.
     auto mock_cros_fp_dev = std::make_unique<MockCrosFpDevice>();
     mock_cros_dev_ = mock_cros_fp_dev.get();
+    auto mock_biod_metrics = std::make_unique<metrics::MockBiodMetrics>();
+    mock_metrics_ = mock_biod_metrics.get();
     auto mock_record_manager = std::make_unique<MockCrosFpRecordManager>();
     mock_record_manager_ = mock_record_manager.get();
 
-    mock_metrics_ = std::make_unique<metrics::MockBiodMetrics>();
     EXPECT_CALL(*mock_cros_dev_, SupportsPositiveMatchSecret())
         .WillRepeatedly(Return(true));
 
     mock_ = std::make_unique<MockCrosFpBiometricsManager>(
         PowerButtonFilter::Create(mock_bus), std::move(mock_cros_fp_dev),
-        mock_metrics_.get(), std::move(mock_record_manager));
+        std::move(mock_biod_metrics), std::move(mock_record_manager));
     EXPECT_TRUE(mock_);
   }
 
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   scoped_refptr<dbus::MockObjectProxy> power_manager_proxy_;
-  std::unique_ptr<metrics::MockBiodMetrics> mock_metrics_;
   std::unique_ptr<MockCrosFpBiometricsManager> mock_;
   MockCrosFpDevice* mock_cros_dev_;
+  metrics::MockBiodMetrics* mock_metrics_;
   MockCrosFpRecordManager* mock_record_manager_;
 };
 

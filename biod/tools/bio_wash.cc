@@ -54,7 +54,7 @@ int DoBioWash(const bool factory_init = false) {
       biod::PowerButtonFilter::Create(bus),
       biod::CrosFpDevice::Create(biod_metrics.get(),
                                  std::make_unique<ec::EcCommandFactory>()),
-      biod_metrics.get(),
+      std::move(biod_metrics),
       std::make_unique<biod::CrosFpRecordManager>(std::move(biod_storage)));
   if (cros_fp_bio) {
     managers.emplace_back(std::move(cros_fp_bio));

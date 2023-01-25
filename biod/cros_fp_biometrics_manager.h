@@ -30,7 +30,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
   CrosFpBiometricsManager(
       std::unique_ptr<PowerButtonFilterInterface> power_button_filter,
       std::unique_ptr<ec::CrosFpDeviceInterface> cros_fp_device,
-      BiodMetricsInterface* biod_metrics,
+      std::unique_ptr<BiodMetricsInterface> biod_metrics,
       std::unique_ptr<CrosFpRecordManagerInterface> record_manager);
   CrosFpBiometricsManager(const CrosFpBiometricsManager&) = delete;
   CrosFpBiometricsManager& operator=(const CrosFpBiometricsManager&) = delete;
@@ -153,7 +153,10 @@ class CrosFpBiometricsManager : public BiometricsManager {
   // Removes record from disk and from FPMCU.
   bool RemoveRecord(const std::string& id);
 
-  BiodMetricsInterface* biod_metrics_ = nullptr;  // Not owned.
+  // BiodMetrics must come before CrosFpDevice, since CrosFpDevice has a
+  // raw pointer to BiodMetrics. We must ensure CrosFpDevice is destructed
+  // first.
+  std::unique_ptr<BiodMetricsInterface> biod_metrics_;
   std::unique_ptr<ec::CrosFpDeviceInterface> cros_dev_;
 
   SessionAction next_session_action_;

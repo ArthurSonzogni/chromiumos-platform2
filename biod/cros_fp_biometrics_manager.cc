@@ -375,9 +375,9 @@ void CrosFpBiometricsManager::KillMcuSession() {
 CrosFpBiometricsManager::CrosFpBiometricsManager(
     std::unique_ptr<PowerButtonFilterInterface> power_button_filter,
     std::unique_ptr<ec::CrosFpDeviceInterface> cros_fp_device,
-    BiodMetricsInterface* biod_metrics,
+    std::unique_ptr<BiodMetricsInterface> biod_metrics,
     std::unique_ptr<CrosFpRecordManagerInterface> record_manager)
-    : biod_metrics_(biod_metrics),
+    : biod_metrics_(std::move(biod_metrics)),
       cros_dev_(std::move(cros_fp_device)),
       session_weak_factory_(this),
       weak_factory_(this),
