@@ -582,7 +582,6 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   EXPECT_EQ("", props.peer_address);
 
   config["ifconfig_loCal"] = "4.5.6.7";
-  config["ifconfiG_broadcast"] = "1.2.255.255";
   config["ifconFig_netmAsk"] = "255.255.255.0";
   config["ifconfig_remotE"] = "33.44.55.66";
   config["route_vpN_gateway"] = "192.168.1.1";
@@ -602,7 +601,6 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   EXPECT_EQ(IPAddress::kFamilyIPv4, props.address_family);
   EXPECT_EQ("4.5.6.7", props.address);
   EXPECT_EQ("4.5.6.7", props.gateway);
-  EXPECT_EQ("1.2.255.255", props.broadcast_address);
   EXPECT_EQ(24, props.subnet_prefix);
   EXPECT_EQ("", props.peer_address);
   EXPECT_TRUE(props.exclusion_list.empty());

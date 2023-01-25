@@ -43,7 +43,6 @@ namespace {
 constexpr char kChromeOSReleaseName[] = "CHROMEOS_RELEASE_NAME";
 constexpr char kChromeOSReleaseVersion[] = "CHROMEOS_RELEASE_VERSION";
 constexpr char kOpenVPNForeignOptionPrefix[] = "foreign_option_";
-constexpr char kOpenVPNIfconfigBroadcast[] = "ifconfig_broadcast";
 constexpr char kOpenVPNIfconfigLocal[] = "ifconfig_local";
 constexpr char kOpenVPNIfconfigNetmask[] = "ifconfig_netmask";
 constexpr char kOpenVPNIfconfigRemote[] = "ifconfig_remote";
@@ -345,9 +344,6 @@ void OpenVPNDriver::ParseIPConfiguration(
     SLOG(2) << "Processing: " << key << " -> " << value;
     if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNIfconfigLocal)) {
       properties->address = value;
-    } else if (base::EqualsCaseInsensitiveASCII(key,
-                                                kOpenVPNIfconfigBroadcast)) {
-      properties->broadcast_address = value;
     } else if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNIfconfigNetmask)) {
       properties->subnet_prefix =
           IPAddress::GetPrefixLengthFromMask(properties->address_family, value);
