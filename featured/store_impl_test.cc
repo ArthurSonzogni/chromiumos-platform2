@@ -76,12 +76,8 @@ class StoreImplTest : public testing::Test {
     store.set_boot_attempts_since_last_seed_update(0);
     SeedDetails* seed = store.mutable_last_good_seed();
     seed->set_compressed_data("test_compressed_data");
-    google::protobuf::Timestamp* date = seed->mutable_date();
-    date->set_seconds(1);
-    date->set_nanos(1);
-    google::protobuf::Timestamp* fetch_time = seed->mutable_fetch_time();
-    fetch_time->set_seconds(2);
-    fetch_time->set_nanos(2);
+    seed->set_date(1);
+    seed->set_fetch_time(1);
     seed->set_locale("test_locale");
     seed->set_milestone(110);
     seed->set_permanent_consistency_country("us");

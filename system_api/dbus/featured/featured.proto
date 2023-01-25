@@ -11,8 +11,6 @@ package featured;
 
 option go_package = "chromiumos/system_api/featured_proto";
 
-import "google/protobuf/timestamp.proto";
-
 // Defines the key and value of a feature's parameter.
 message Param {
   // Key of an experiment's parameter.
@@ -38,14 +36,6 @@ message SeedDetails {
   // Last known "safe" seed represented as the base64-encoded gzip-compressed
   // serialized form of the variations seed protobuf.
   string compressed_data = 1;
-  // Timestamp when the last known "safe" seed was received. However, it could
-  // be a build timestamp if the received date is unknown or an empty
-  // (default-constructed) base::Time if there is no known "safe" seed. This is
-  // a server-provided timestamp.
-  google.protobuf.Timestamp date = 2;
-  // Timestamp of the fetch corresponding to the last known "safe" seed. This is
-  // a client timestamp.
-  google.protobuf.Timestamp fetch_time = 3;
   // The active client locale that was successfully used in association with the
   // last known "safe" seed.
   string locale = 4;
@@ -61,6 +51,23 @@ message SeedDetails {
   // Digital signature of the last known "safe" seed's binary data. Empty if
   // there is no known "safe" seed.
   string signature = 8;
+  // The serialized base::Time used for safe seed expiry checks. This is usually
+  // the time at which the last known "safe" seed was received; however, it
+  // could be a build timestamp if the received date is unknown. An empty
+  // (default-constructed) base::Time if there is no known "safe" seed. This is
+  // a server-provided timestamp in milliseconds.
+  int64 date = 9;
+  // The serialized base::Time from the fetch corresponding to the last known
+  // "safe" seed. This is a client timestamp in milliseconds.
+  int64 fetch_time = 10;
+
+  // Tags 2 and 3 are reserved since they have been deleted.
+  // These tags were used for older versions of the date and fetch_time fields,
+  // which were both of type google.protobuf.Timestamp. Importing
+  // google.protobuf.Timestamp is not supported in Chromium's
+  // third_party/cros_system_api, so both fields were changed to type int64 (the
+  // same data type finch protos use for dates).
+  reserved 2, 3;
 }
 
 // Encapsulates information necessary for platform disaster recovery.
