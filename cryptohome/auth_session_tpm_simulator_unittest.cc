@@ -17,6 +17,7 @@
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <brillo/secure_blob.h>
+#include <cryptohome/cryptorecovery/cryptorecovery.pb.h>
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/bus.h>
@@ -39,6 +40,7 @@
 #include "cryptohome/auth_session.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_keys_manager.h"
+#include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
 #include "cryptohome/error/action.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/fake_platform.h"
@@ -52,6 +54,7 @@ namespace cryptohome {
 namespace {
 
 using ::base::test::TestFuture;
+using ::cryptohome::cryptorecovery::FakeRecoveryMediatorCrypto;
 using ::cryptohome::error::CryptohomeError;
 using ::cryptohome::error::ErrorActionSet;
 using ::hwsec_foundation::error::testing::IsOk;
@@ -71,7 +74,11 @@ constexpr char kUsername[] = "foo@example.com";
 
 constexpr char kPasswordLabel[] = "fake-password-label";
 constexpr char kPassword[] = "fake-password";
-constexpr char kOtherPassword[] = "fake-other-password";
+constexpr char kNewPassword[] = "fake-new-password";
+
+constexpr char kRecoveryLabel[] = "fake-recovery-label";
+constexpr char kUserGaiaId[] = "fake-gaia-id";
+constexpr char kDeviceUserId[] = "fake-device-user-id";
 
 CryptohomeStatus MakeFakeCryptohomeError() {
   CryptohomeError::ErrorLocationPair fake_error_location(
@@ -149,6 +156,80 @@ CryptohomeStatus UpdatePasswordFactor(const std::string& label,
   request.mutable_auth_input()->mutable_password_input()->set_secret(
       new_password);
   return RunUpdateAuthFactor(request, auth_session);
+}
+
+CryptohomeStatus AddRecoveryFactor(AuthSession& auth_session) {
+  brillo::SecureBlob mediator_pub_key;
+  EXPECT_TRUE(
+      FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(&mediator_pub_key));
+
+  user_data_auth::AddAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  user_data_auth::AuthFactor& factor = *request.mutable_auth_factor();
+  factor.set_type(user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY);
+  factor.set_label(kRecoveryLabel);
+  factor.mutable_cryptohome_recovery_metadata();
+  user_data_auth::CryptohomeRecoveryAuthInput& input =
+      *request.mutable_auth_input()->mutable_cryptohome_recovery_input();
+  input.set_mediator_pub_key(mediator_pub_key.to_string());
+  input.set_user_gaia_id(kUserGaiaId);
+  input.set_device_user_id(kDeviceUserId);
+  return RunAddAuthFactor(request, auth_session);
+}
+
+CryptohomeStatus AuthenticateRecoveryFactor(AuthSession& auth_session) {
+  // Retrieve fake server parameters.
+  brillo::SecureBlob epoch_pub_key;
+  EXPECT_TRUE(
+      FakeRecoveryMediatorCrypto::GetFakeEpochPublicKey(&epoch_pub_key));
+  brillo::SecureBlob epoch_priv_key;
+  EXPECT_TRUE(
+      FakeRecoveryMediatorCrypto::GetFakeEpochPrivateKey(&epoch_priv_key));
+  brillo::SecureBlob mediator_priv_key;
+  EXPECT_TRUE(FakeRecoveryMediatorCrypto::GetFakeMediatorPrivateKey(
+      &mediator_priv_key));
+  cryptorecovery::CryptoRecoveryEpochResponse epoch_response;
+  EXPECT_TRUE(
+      FakeRecoveryMediatorCrypto::GetFakeEpochResponse(&epoch_response));
+
+  // Obtain request for the server.
+  user_data_auth::GetRecoveryRequestRequest get_recovery_request;
+  get_recovery_request.set_auth_session_id(auth_session.serialized_token());
+  get_recovery_request.set_auth_factor_label(kRecoveryLabel);
+  get_recovery_request.set_epoch_response(epoch_response.SerializeAsString());
+  TestFuture<user_data_auth::GetRecoveryRequestReply> recovery_request_future;
+  auth_session.GetRecoveryRequest(
+      get_recovery_request,
+      recovery_request_future
+          .GetCallback<const user_data_auth::GetRecoveryRequestReply&>());
+  EXPECT_FALSE(recovery_request_future.Get().has_error_info());
+  cryptorecovery::CryptoRecoveryRpcRequest recovery_request;
+  EXPECT_TRUE(recovery_request.ParseFromString(
+      recovery_request_future.Get().recovery_request()));
+
+  // Create fake server.
+  std::unique_ptr<FakeRecoveryMediatorCrypto> recovery_crypto =
+      FakeRecoveryMediatorCrypto::Create();
+  if (!recovery_crypto) {
+    ADD_FAILURE() << "FakeRecoveryMediatorCrypto::Create failed";
+    return MakeFakeCryptohomeError();
+  }
+
+  // Generate fake server reply.
+  cryptorecovery::CryptoRecoveryRpcResponse recovery_response;
+  EXPECT_TRUE(recovery_crypto->MediateRequestPayload(
+      epoch_pub_key, epoch_priv_key, mediator_priv_key, recovery_request,
+      &recovery_response));
+
+  // Authenticate auth factor.
+  user_data_auth::AuthenticateAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_label(kRecoveryLabel);
+  user_data_auth::CryptohomeRecoveryAuthInput& input =
+      *request.mutable_auth_input()->mutable_cryptohome_recovery_input();
+  input.set_epoch_response(epoch_response.SerializeAsString());
+  input.set_recovery_response(recovery_response.SerializeAsString());
+  return RunAuthenticateAuthFactor(request, auth_session);
 }
 
 // Fixture for testing `AuthSession` against TPM simulator and real
@@ -349,7 +430,7 @@ TEST_P(AuthSessionWithTpmSimulatorUssMigrationAgnosticTest, UpdatePassword) {
         AuthenticatePasswordFactor(kPasswordLabel, kPassword, *auth_session),
         IsOk());
     EXPECT_THAT(
-        UpdatePasswordFactor(kPasswordLabel, kOtherPassword, *auth_session),
+        UpdatePasswordFactor(kPasswordLabel, kNewPassword, *auth_session),
         IsOk());
   }
 
@@ -364,11 +445,72 @@ TEST_P(AuthSessionWithTpmSimulatorUssMigrationAgnosticTest, UpdatePassword) {
   };
   // Check the old password isn't accepted, but the new one is.
   EXPECT_THAT(try_authenticate(kPassword), NotOk());
-  EXPECT_THAT(try_authenticate(kOtherPassword), IsOk());
+  EXPECT_THAT(try_authenticate(kNewPassword), IsOk());
   // Check the same holds after switching back to the initial storage type.
   SetToInitialStorageType();
   EXPECT_THAT(try_authenticate(kPassword), NotOk());
-  EXPECT_THAT(try_authenticate(kOtherPassword), IsOk());
+  EXPECT_THAT(try_authenticate(kNewPassword), IsOk());
+}
+
+// Test a password factor can be successfully updated after authenticating via a
+// recovery factor.
+TEST_P(AuthSessionWithTpmSimulatorUssMigrationAgnosticTest,
+       UpdatePasswordAfterRecoveryAuth) {
+  auto create_auth_session = [this]() {
+    return AuthSession::Create(
+        kUsername, user_data_auth::AUTH_SESSION_FLAGS_NONE,
+        AuthIntent::kDecrypt,
+        /*on_timeout=*/base::DoNothing(), &platform_features_, backing_apis_);
+  };
+
+  // Arrange.
+  // Create a user with a password factor. Configure the creation via USS or VK,
+  // depending on the first test parameter.
+  SetToInitialStorageType();
+  {
+    std::unique_ptr<AuthSession> auth_session = create_auth_session();
+    ASSERT_TRUE(auth_session);
+    EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
+    EXPECT_THAT(AddPasswordFactor(kPasswordLabel, kPassword, *auth_session),
+                IsOk());
+  }
+  // Add a recovery factor after authenticating via the password. Do this with
+  // the USS usage configured, since recovery isn't supported on VKs.
+  SetStorageType(AuthFactorStorageType::kUserSecretStash);
+  {
+    std::unique_ptr<AuthSession> auth_session = create_auth_session();
+    ASSERT_TRUE(auth_session);
+    EXPECT_THAT(
+        AuthenticatePasswordFactor(kPasswordLabel, kPassword, *auth_session),
+        IsOk());
+    EXPECT_THAT(AddRecoveryFactor(*auth_session), IsOk());
+  }
+
+  // Test.
+  // Update password after authenticating via recovery.
+  {
+    std::unique_ptr<AuthSession> auth_session = create_auth_session();
+    ASSERT_TRUE(auth_session);
+    EXPECT_THAT(AuthenticateRecoveryFactor(*auth_session), IsOk());
+    EXPECT_THAT(
+        UpdatePasswordFactor(kPasswordLabel, kNewPassword, *auth_session),
+        IsOk());
+  }
+
+  // Verify.
+  // Check the old password isn't accepted, meanwhile the new one does.
+  {
+    std::unique_ptr<AuthSession> auth_session = create_auth_session();
+    ASSERT_TRUE(auth_session);
+    EXPECT_THAT(
+        AuthenticatePasswordFactor(kPasswordLabel, kPassword, *auth_session),
+        NotOk());
+    EXPECT_THAT(
+        AuthenticatePasswordFactor(kPasswordLabel, kNewPassword, *auth_session),
+        IsOk());
+  }
+  // TODO(b:262632342): Fix the bug with leftover backup VKs and check the old
+  // password isn't accepted regardless of the final storage type.
 }
 
 }  // namespace
