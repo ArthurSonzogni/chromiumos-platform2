@@ -581,16 +581,14 @@ impl Methods {
             if dlc_state.get_last_error_code() == DLCSERVICE_NO_IMAGE_FOUND_ERROR {
                 return Err(FailedDlcInstall(
                     name.to_owned(),
-                    "Parallels DLC not found for this build. Please try again after updating Chrome OS."
+                    "DLC not found for this build. Please try again after updating Chrome OS."
                         .to_string(),
                 )
                 .into());
             }
-            return Err(FailedDlcInstall(
-                name.to_owned(),
-                "Failed to install Parallels DLC".to_string(),
-            )
-            .into());
+            return Err(
+                FailedDlcInstall(name.to_owned(), "Failed to install DLC".to_string()).into(),
+            );
         }
         Ok(())
     }
