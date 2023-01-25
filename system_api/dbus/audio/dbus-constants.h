@@ -36,6 +36,8 @@ const char kGetNumberOfActiveInputStreams[] = "GetNumberOfActiveInputStreams";
 const char kGetNumberOfActiveOutputStreams[] = "GetNumberOfActiveOutputStreams";
 const char kGetNumberOfInputStreamsWithPermission[] =
     "GetNumberOfInputStreamsWithPermission";
+const char kGetNumberOfNonChromeOutputStreams[] =
+    "GetNumberOfNonChromeOutputStreams";
 const char kIsAudioOutputActive[] = "IsAudioOutputActive";
 const char kSetGlobalOutputChannelRemix[] = "SetGlobalOutputChannelRemix";
 const char kGetSystemAecSupported[] = "GetSystemAecSupported";
@@ -106,6 +108,8 @@ const char kActiveInputNodeChanged[] = "ActiveInputNodeChanged";
 const char kNumberOfActiveStreamsChanged[] = "NumberOfActiveStreamsChanged";
 const char kNumberOfInputStreamsWithPermissionChanged[] =
     "NumberOfInputStreamsWithPermissionChanged";
+const char kNumberOfNonChromeOutputStreamsChanged[] =
+    "NumberOfNonChromeOutputStreamsChanged";
 const char kAudioOutputActiveStateChanged[] = "AudioOutputActiveStateChanged";
 const char kHotwordTriggered[] = "HotwordTriggered";
 const char kBluetoothBatteryChanged[] = "BluetoothBatteryChanged";
