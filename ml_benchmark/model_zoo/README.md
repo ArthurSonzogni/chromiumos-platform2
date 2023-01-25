@@ -78,9 +78,9 @@ The following requirements apply to such accelerators:
 
 1. Sandboxing must be supported for isolating untrusted workloads and any binary-only driver
    components.
-1. Only signed and verified firmware must be allowed to be loaded onto the accelerator.
-1. An IOMMU must control access to system memory from the accelerator. See
+1. Only signed and verified firmware must be allowed to be loaded onto the accelerator. See
    [Peripheral Firmware Security](https://chromium.googlesource.com/chromiumos/docs/+/HEAD/security/firmware_updating.md).
+1. An IOMMU must control access to system memory from the accelerator.
 
 ## Miscellaneous requirements
 
