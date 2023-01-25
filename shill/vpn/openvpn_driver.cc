@@ -308,8 +308,9 @@ void OpenVPNDriver::Notify(const std::string& reason,
   for (const auto& [k, v] : dict) {
     params_[k] = v;
   }
-  ipv4_properties_ = std::make_unique<IPConfig::Properties>();
-  ParseIPConfiguration(params_, ipv4_properties_.get());
+  ipv4_properties_ = ParseIPConfiguration(
+      params_,
+      const_args()->Contains<std::string>(kOpenVPNIgnoreDefaultRouteProperty));
   ReportConnectionMetrics();
   if (event_handler_) {
     event_handler_->OnDriverConnected(interface_name_, interface_index_);
@@ -329,9 +330,12 @@ std::unique_ptr<IPConfig::Properties> OpenVPNDriver::GetIPv6Properties() const {
   return nullptr;
 }
 
-void OpenVPNDriver::ParseIPConfiguration(
+// static
+std::unique_ptr<IPConfig::Properties> OpenVPNDriver::ParseIPConfiguration(
     const std::map<std::string, std::string>& configuration,
-    IPConfig::Properties* properties) const {
+    bool ignore_redirect_gateway) {
+  auto properties = std::make_unique<IPConfig::Properties>();
+
   ForeignOptions foreign_options;
   RouteOptions routes;
   bool redirect_gateway = false;
@@ -410,15 +414,15 @@ void OpenVPNDriver::ParseIPConfiguration(
   // connection.cc.
   properties->gateway = properties->address;
 
-  if (redirect_gateway &&
-      const_args()->Contains<std::string>(kOpenVPNIgnoreDefaultRouteProperty)) {
+  if (redirect_gateway && ignore_redirect_gateway) {
     LOG(INFO) << "Ignoring default route parameter as requested by "
               << "configuration.";
     redirect_gateway = false;
   }
   properties->default_route = properties->blackhole_ipv6 = redirect_gateway;
-  SetRoutes(routes, properties);
+  SetRoutes(routes, properties.get());
   properties->method = kTypeVPN;
+  return properties;
 }
 
 namespace {

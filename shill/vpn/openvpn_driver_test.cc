@@ -547,22 +547,18 @@ TEST_F(OpenVPNDriverTest, ParseForeignOptions) {
 
 TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   std::map<std::string, std::string> config;
-  IPConfig::Properties props;
+  std::unique_ptr<IPConfig::Properties> props;
 
-  driver_->ParseIPConfiguration(config, &props);
-  EXPECT_EQ(IPAddress::kFamilyIPv4, props.address_family);
-  EXPECT_EQ(32, props.subnet_prefix);
-
-  props.subnet_prefix = 18;
-  driver_->ParseIPConfiguration(config, &props);
-  EXPECT_EQ(18, props.subnet_prefix);
+  props = OpenVPNDriver::ParseIPConfiguration(config, false);
+  EXPECT_EQ(IPAddress::kFamilyIPv4, props->address_family);
+  EXPECT_EQ(32, props->subnet_prefix);
 
   // An "ifconfig_remote" parameter that looks like a netmask should be
   // applied to the subnet prefix instead of to the peer address.
   config["ifconfig_remotE"] = "255.255.0.0";
-  driver_->ParseIPConfiguration(config, &props);
-  EXPECT_EQ(16, props.subnet_prefix);
-  EXPECT_EQ("", props.peer_address);
+  props = OpenVPNDriver::ParseIPConfiguration(config, false);
+  EXPECT_EQ(16, props->subnet_prefix);
+  EXPECT_EQ("", props->peer_address);
 
   config["ifconfig_loCal"] = "4.5.6.7";
   config["ifconFig_netmAsk"] = "255.255.255.0";
@@ -580,37 +576,34 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   config["route_gateway_2"] = kGateway2;
   config["route_gateway_1"] = kGateway1;
   config["foo"] = "bar";
-  driver_->ParseIPConfiguration(config, &props);
-  EXPECT_EQ(IPAddress::kFamilyIPv4, props.address_family);
-  EXPECT_EQ("4.5.6.7", props.address);
-  EXPECT_EQ("4.5.6.7", props.gateway);
-  EXPECT_EQ(24, props.subnet_prefix);
-  EXPECT_EQ("", props.peer_address);
-  EXPECT_TRUE(props.exclusion_list.empty());
-  EXPECT_EQ(1000, props.mtu);
-  ASSERT_EQ(3, props.dns_servers.size());
-  EXPECT_EQ("1.1.1.1", props.dns_servers[0]);
-  EXPECT_EQ("4.4.4.4", props.dns_servers[1]);
-  EXPECT_EQ("2.2.2.2", props.dns_servers[2]);
-  ASSERT_EQ(3, props.inclusion_list.size());
-  ASSERT_EQ("33.44.55.66/32", props.inclusion_list[0]);
+  props = OpenVPNDriver::ParseIPConfiguration(config, false);
+  EXPECT_EQ(IPAddress::kFamilyIPv4, props->address_family);
+  EXPECT_EQ("4.5.6.7", props->address);
+  EXPECT_EQ("4.5.6.7", props->gateway);
+  EXPECT_EQ(24, props->subnet_prefix);
+  EXPECT_EQ("", props->peer_address);
+  EXPECT_TRUE(props->exclusion_list.empty());
+  EXPECT_EQ(1000, props->mtu);
+  ASSERT_EQ(3, props->dns_servers.size());
+  EXPECT_EQ("1.1.1.1", props->dns_servers[0]);
+  EXPECT_EQ("4.4.4.4", props->dns_servers[1]);
+  EXPECT_EQ("2.2.2.2", props->dns_servers[2]);
+  ASSERT_EQ(3, props->inclusion_list.size());
+  ASSERT_EQ("33.44.55.66/32", props->inclusion_list[0]);
   ASSERT_EQ(base::StringPrintf("%s/%d", kNetwork1, kPrefix1),
-            props.inclusion_list[1]);
+            props->inclusion_list[1]);
   ASSERT_EQ(base::StringPrintf("%s/%d", kNetwork2, kPrefix2),
-            props.inclusion_list[2]);
-  EXPECT_FALSE(props.default_route);
+            props->inclusion_list[2]);
+  EXPECT_FALSE(props->default_route);
 
   config["redirect_gateway"] = "def1";
-  IPConfig::Properties props_with_gateway;
-  driver_->ParseIPConfiguration(config, &props_with_gateway);
-  EXPECT_TRUE(props_with_gateway.default_route);
-  EXPECT_TRUE(props_with_gateway.blackhole_ipv6);
+  props = OpenVPNDriver::ParseIPConfiguration(config, false);
+  EXPECT_TRUE(props->default_route);
+  EXPECT_TRUE(props->blackhole_ipv6);
 
   // Don't set a default route if the user asked to ignore it.
-  SetArg(kOpenVPNIgnoreDefaultRouteProperty, "some value");
-  IPConfig::Properties props_without_gateway;
-  driver_->ParseIPConfiguration(config, &props_without_gateway);
-  EXPECT_FALSE(props_without_gateway.default_route);
+  props = OpenVPNDriver::ParseIPConfiguration(config, true);
+  EXPECT_FALSE(props->default_route);
 }
 
 TEST_F(OpenVPNDriverTest, InitOptionsNoHost) {

@@ -169,6 +169,10 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
                                 std::string* name,
                                 std::string* port);
 
+  static std::unique_ptr<IPConfig::Properties> ParseIPConfiguration(
+      const std::map<std::string, std::string>& configuration,
+      bool ignore_redirect_gateway);
+
   void InitOptions(std::vector<std::vector<std::string>>* options,
                    Error* error);
   bool InitCAOptions(std::vector<std::vector<std::string>>* options,
@@ -184,9 +188,6 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   void InitLoggingOptions(std::vector<std::vector<std::string>>* options);
 
   std::vector<std::string> GetCommandLineArgs();
-  void ParseIPConfiguration(
-      const std::map<std::string, std::string>& configuration,
-      IPConfig::Properties* properties) const;
 
   void OnLinkReady(const std::string& link_name, int interface_index);
 
