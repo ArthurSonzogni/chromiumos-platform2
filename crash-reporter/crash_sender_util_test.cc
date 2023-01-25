@@ -1950,6 +1950,7 @@ TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
   const base::FilePath system_processing =
       system_dir.Append("0.0.0.0.0.processing");
   const char system_meta[] =
+      "upload_var_collector=kernel\n"
       "payload=0.0.0.0.0.log\n"
       "exec_name=exec_foo\n"
       "fake_report_id=123\n"
@@ -1974,6 +1975,7 @@ TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
   const base::FilePath user_processing =
       user_dir.Append("0.0.0.0.0.processing");
   const char user_meta[] =
+      "upload_var_collector=ec\n"
       "payload=0.0.0.0.0.log\n"
       "exec_name=exec_bar\n"
       "fake_report_id=456\n"
@@ -1995,6 +1997,7 @@ TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
   const base::FilePath user_meta_file2 = user_dir.Append("1.1.1.1.1.meta");
   const base::FilePath user_log2 = user_dir.Append("1.1.1.1.1.log");
   const char user_meta2[] =
+      "upload_var_collector=collector_baz\n"
       "payload=1.1.1.1.1.log\n"
       "exec_name=exec_baz\n"
       "fake_report_id=789\n"
@@ -2139,13 +2142,14 @@ TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
     std::optional<base::Value> row = std::move(rows[0]);
     ASSERT_TRUE(row.has_value() && row->is_dict());
     auto dict = std::move(row->GetDict());
-    ASSERT_EQ(7, dict.size());
+    ASSERT_EQ(8, dict.size());
     EXPECT_TRUE(dict.Find("upload_time"));
     EXPECT_THAT(dict.FindString("upload_id"), Pointee(Eq(expected_upload_id)));
     EXPECT_THAT(dict.FindString("local_id"), Pointee(Eq("foo")));
     EXPECT_THAT(dict.FindString("capture_time"), Pointee(Eq("1000")));
     EXPECT_EQ(3, dict.FindInt("state"));
     EXPECT_THAT(dict.FindString("source"), Pointee(Eq("exec_foo")));
+    EXPECT_THAT(dict.FindString("fatal_crash_type"), Pointee(Eq("kernel")));
     EXPECT_THAT(dict.FindString("path_hash"),
                 Pointee(Eq(base::MD5String(system_meta_file.value()))));
   }
@@ -2155,7 +2159,7 @@ TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
     std::optional<base::Value> row = std::move(rows[1]);
     ASSERT_TRUE(row.has_value() && row->is_dict());
     auto dict = std::move(row->GetDict());
-    ASSERT_EQ(7, dict.size());
+    ASSERT_EQ(8, dict.size());
     EXPECT_TRUE(dict.Find("upload_time"));
     EXPECT_THAT(
         dict.FindString("upload_id"),
@@ -2164,6 +2168,7 @@ TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
     EXPECT_THAT(dict.FindString("capture_time"), Pointee(Eq("2000")));
     EXPECT_EQ(3, dict.FindInt("state"));
     EXPECT_THAT(dict.FindString("source"), Pointee(Eq("REDACTED")));
+    EXPECT_THAT(dict.FindString("fatal_crash_type"), Pointee(Eq("ec")));
     EXPECT_THAT(dict.FindString("path_hash"),
                 Pointee(Eq(base::MD5String(user_meta_file.value()))));
   }
@@ -2231,7 +2236,6 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Values(base::TimeDelta(), base::Seconds(5))),
     [](const ::testing::TestParamInfo<CrashSenderSendCrashesTest::ParamType>&
            info) {
-      // Can use info.param here to generate the test suffix
       std::ostringstream name;
       name << "dry_run_" << std::get<0>(info.param) << "_max_crash_rate_"
            << std::get<1>(info.param) << "_max_spread_time_"
@@ -2472,6 +2476,60 @@ TEST_F(CrashSenderUtilDeathTest, SendCrashes_Crash) {
   // We crashed, so the ".processing" file should still exist.
   EXPECT_TRUE(base::PathExists(system_processing));
 }
+
+class CrashSenderGetFatalCrashTypeTest
+    : public ::testing::TestWithParam<
+          std::tuple<std::optional<std::string>, std::optional<std::string>>> {
+ protected:
+  void SetUp() override {
+    std::tie(collector_, fatal_crash_type_) = GetParam();
+  }
+
+  std::optional<std::string> collector_;
+  std::optional<std::string> fatal_crash_type_;
+};
+
+TEST_P(CrashSenderGetFatalCrashTypeTest, GetFatalCrashType) {
+  brillo::KeyValueStore metadata;
+  if (collector_.has_value()) {
+    metadata.SetString("upload_var_collector", collector_.value());
+  }
+  // Add some random fields
+  metadata.SetString("exec_name", "fake_exec_name");
+  metadata.SetString("ver", "fake_chromeos_ver");
+  metadata.SetString("upload_var_prod", "fake_product");
+  metadata.SetString("upload_var_ver", "fake_version");
+  CrashDetails details = {
+      // Add some other random fields
+      .payload_kind = "fake_payload",
+      .client_id = kFakeClientId,
+
+      .metadata = metadata,
+  };
+  EXPECT_EQ(GetFatalCrashType(details), fatal_crash_type_);
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    CrashSenderGetFatalCrashTypeInstantiation,
+    CrashSenderGetFatalCrashTypeTest,
+    testing::Values(
+        CrashSenderGetFatalCrashTypeTest::ParamType(std::nullopt, std::nullopt),
+        CrashSenderGetFatalCrashTypeTest::ParamType("cool_collector",
+                                                    std::nullopt),
+        CrashSenderGetFatalCrashTypeTest::ParamType("kernel", "kernel"),
+        CrashSenderGetFatalCrashTypeTest::ParamType("ec", "ec")),
+    [](const ::testing::TestParamInfo<
+        CrashSenderGetFatalCrashTypeTest::ParamType>& info) {
+      std::ostringstream name;
+      auto collector = std::get<0>(info.param);
+      auto fatal_crash_type = std::get<1>(info.param);
+      name << "collector_"
+           << (collector.has_value() ? collector.value() : "absent")
+           << "_crash_type_"
+           << (fatal_crash_type.has_value() ? fatal_crash_type.value()
+                                            : "absent");
+      return name.str();
+    });
 
 TEST_F(CrashSenderUtilTest, LockFile) {
   auto clock = std::make_unique<MockClock>();

@@ -63,12 +63,18 @@ constexpr char kJsonLogKeyCaptureTime[] = "capture_time";
 constexpr char kJsonLogKeyState[] = "state";
 constexpr char kJsonLogKeySource[] = "source";
 constexpr char kJsonLogKeyPathHash[] = "path_hash";
+constexpr char kJsonLogKeyFatalCrashType[] = "fatal_crash_type";
 
 // Keys used in CrashDetails::metadata.
 constexpr char kMetadataKeyCaptureTimeMillis[] = "upload_var_reportTimeMillis";
 constexpr char kMetadataKeySource[] = "exec_name";
+constexpr char kMetadataKeyCollector[] = "upload_var_collector";
 constexpr char kHwTestSuiteRun[] = "upload_var_hwtest_suite_run";
 constexpr char kHwTestSenderUpload[] = "upload_var_hwtest_sender_direct";
+
+// Collectors' names.
+constexpr char kCollectorNameKernel[] = "kernel";
+constexpr char kCollectorNameEmbeddedController[] = "ec";
 
 // Values used for kJsonLogKeySource.
 constexpr char kMetadataValueRedacted[] = "REDACTED";
@@ -385,6 +391,23 @@ void RecordSendAttempt(const base::FilePath& timestamps_dir, int bytes) {
     record.SerializeToString(&serialized);
     fwrite(serialized.c_str(), 1, serialized.size(), temp_file.get());
   }
+}
+
+std::optional<std::string> GetFatalCrashType(const CrashDetails& details) {
+  std::string collector;
+  if (!details.metadata.GetString(kMetadataKeyCollector, &collector)) {
+    // no sufficient info
+    return std::nullopt;
+  }
+
+  if (collector == kCollectorNameKernel) {
+    return "kernel";
+  } else if (collector == kCollectorNameEmbeddedController) {
+    return "ec";
+  }
+
+  // unknown type
+  return std::nullopt;
 }
 
 Sender::Sender(std::unique_ptr<MetricsLibraryInterface> metrics_lib,
@@ -820,13 +843,17 @@ base::Value::Dict Sender::CreateJsonEntity(const std::string& report_id,
   // UploadList::UploadInfo::State::Uploaded.
   root_dict.Set(kJsonLogKeyState, 3);
 
-  std::string source;
-  if (details.metadata.GetString(kMetadataKeySource, &source)) {
+  if (std::string source;
+      details.metadata.GetString(kMetadataKeySource, &source)) {
     // Hide the real source to avoid privacy concern if it is not a system
     // crash.
     if (!paths::Get(paths::kSystemCrashDirectory).IsParent(details.meta_file))
       source = kMetadataValueRedacted;
     root_dict.Set(kJsonLogKeySource, source);
+  }
+
+  if (auto crash_type = GetFatalCrashType(details); crash_type.has_value()) {
+    root_dict.Set(kJsonLogKeyFatalCrashType, crash_type.value());
   }
 
   // Set the MD5 hash of the meta file path.

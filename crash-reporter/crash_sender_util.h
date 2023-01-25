@@ -6,6 +6,7 @@
 #define CRASH_REPORTER_CRASH_SENDER_UTIL_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -123,6 +124,10 @@ bool IsBelowRate(const base::FilePath& timestamps_dir,
 // |timestamps_dir| should be the same directory passed to IsBelowRate().
 // |bytes| is the number of bytes sent over the network.
 void RecordSendAttempt(const base::FilePath& timestamps_dir, int bytes);
+
+// Gets the crash type based on crash details. Returns std::nullopt if the crash
+// type is unknown. This is mainly used by healthD for fatal crashes.
+std::optional<std::string> GetFatalCrashType(const CrashDetails& details);
 
 // A helper class for sending crashes. The behaviors can be customized with
 // Options class for unit testing.
