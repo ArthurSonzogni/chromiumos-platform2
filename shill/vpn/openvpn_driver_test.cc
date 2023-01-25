@@ -450,17 +450,21 @@ TEST_F(OpenVPNDriverTest, GetRouteOptionEntry) {
   EXPECT_EQ(route, &routes[13]);
 }
 
-TEST_F(OpenVPNDriverTest, ParseRouteOption) {
+TEST_F(OpenVPNDriverTest, ParseIPv4RouteOption) {
   OpenVPNDriver::RouteOptions routes;
-  OpenVPNDriver::ParseRouteOption("foo", "bar", &routes);
+  const auto invoke = [&routes](const std::string& key,
+                                const std::string& value) {
+    return OpenVPNDriver::ParseIPv4RouteOption(key, value, &routes);
+  };
+  EXPECT_FALSE(invoke("foo", "bar"));
   EXPECT_TRUE(routes.empty());
-  OpenVPNDriver::ParseRouteOption("gateway_2", kGateway2, &routes);
-  OpenVPNDriver::ParseRouteOption("netmask_2", kNetmask2, &routes);
-  OpenVPNDriver::ParseRouteOption("network_2", kNetwork2, &routes);
+  EXPECT_TRUE(invoke("gateway_2", kGateway2));
+  EXPECT_TRUE(invoke("netmask_2", kNetmask2));
+  EXPECT_TRUE(invoke("network_2", kNetwork2));
   EXPECT_EQ(1, routes.size());
-  OpenVPNDriver::ParseRouteOption("gateway_1", kGateway1, &routes);
-  OpenVPNDriver::ParseRouteOption("netmask_1", kNetmask1, &routes);
-  OpenVPNDriver::ParseRouteOption("network_1", kNetwork1, &routes);
+  EXPECT_TRUE(invoke("gateway_1", kGateway1));
+  EXPECT_TRUE(invoke("netmask_1", kNetmask1));
+  EXPECT_TRUE(invoke("network_1", kNetwork1));
   EXPECT_EQ(2, routes.size());
   EXPECT_EQ(kGateway1, routes[1].gateway);
   EXPECT_EQ(kPrefix1, routes[1].prefix);
@@ -468,6 +472,42 @@ TEST_F(OpenVPNDriverTest, ParseRouteOption) {
   EXPECT_EQ(kGateway2, routes[2].gateway);
   EXPECT_EQ(kPrefix2, routes[2].prefix);
   EXPECT_EQ(kNetwork2, routes[2].host);
+}
+
+TEST_F(OpenVPNDriverTest, ParseIPv6RouteOption) {
+  OpenVPNDriver::RouteOptions routes;
+  const auto invoke = [&routes](const std::string& key,
+                                const std::string& value) {
+    return OpenVPNDriver::ParseIPv6RouteOption(key, value, &routes);
+  };
+  EXPECT_FALSE(invoke("foo", "bar"));
+  EXPECT_FALSE(invoke("network_1", "fd00::/64"));  // network_* is for IPv4
+  EXPECT_TRUE(routes.empty());
+
+  // Do not verify routes.empty() here, since a valid key with an invalid value
+  // will actually create an entry.
+  EXPECT_FALSE(invoke("ipv6_network_1", "fd00::"));
+
+  constexpr char kAddr1[] = "fd00::";
+  constexpr int kPrefix1 = 64;
+  constexpr char kGateway1[] = "fd00::1";
+  constexpr char kAddr2[] = "fd01::";
+  constexpr int kPrefix2 = 96;
+  constexpr char kGateway2[] = "fd01::1";
+  const auto prefix_str = [](const char* addr, int prefix) {
+    return base::StringPrintf("%s/%d", addr, prefix);
+  };
+  EXPECT_TRUE(invoke("ipv6_network_2", prefix_str(kAddr2, kPrefix2)));
+  EXPECT_TRUE(invoke("ipv6_gateway_2", kGateway2));
+  EXPECT_TRUE(invoke("ipv6_network_1", prefix_str(kAddr1, kPrefix1)));
+  EXPECT_TRUE(invoke("ipv6_gateway_1", kGateway1));
+  EXPECT_EQ(2, routes.size());
+  EXPECT_EQ(kAddr1, routes[1].host);
+  EXPECT_EQ(kPrefix1, routes[1].prefix);
+  EXPECT_EQ(kGateway1, routes[1].gateway);
+  EXPECT_EQ(kAddr2, routes[2].host);
+  EXPECT_EQ(kPrefix2, routes[2].prefix);
+  EXPECT_EQ(kGateway2, routes[2].gateway);
 }
 
 TEST_F(OpenVPNDriverTest, SplitPortFromHost) {

@@ -52,7 +52,7 @@ constexpr char kOpenVPNRouteNetGateway[] = "route_net_gateway";
 constexpr char kOpenVPNRouteVPNGateway[] = "route_vpn_gateway";
 constexpr char kOpenVPNTunMTU[] = "tun_mtu";
 
-// Typically OpenVPN will set environment variables like:
+// Typically OpenVPN will set environment variables for IPv4 like:
 //   route_net_gateway=<existing default LAN gateway>
 //   route_vpn_gateway=10.8.0.1
 //   route_gateway_1=10.8.0.1
@@ -60,9 +60,21 @@ constexpr char kOpenVPNTunMTU[] = "tun_mtu";
 //   route_network_1=192.168.10.0
 // This example shows a split include route of 192.168.10.0/24, and
 // 10.8.0.1 is the ifconfig_remote (remote peer) address.
+//
+// For IPv6, they will be like:
+//   ifconfig_ipv6_local: fdfd::1000
+//   ifconfig_ipv6_netbits: 64
+//   ifconfig_ipv6_remote: fdfd::1
+//   route_ipv6_gateway_1: fdfd::1
+//   route_ipv6_network_1: ::/3
+// Different from IPv4, for a route entry, there are only two variables for it
+// in IPv6, and the network variable will be a prefix string.
+
 constexpr char kOpenVPNRouteNetworkPrefix[] = "network_";
 constexpr char kOpenVPNRouteNetmaskPrefix[] = "netmask_";
 constexpr char kOpenVPNRouteGatewayPrefix[] = "gateway_";
+constexpr char kOpenVPNRouteIPv6NetworkPrefix[] = "ipv6_network_";
+constexpr char kOpenVPNRouteIPv6GatewayPrefix[] = "ipv6_gateway_";
 
 constexpr char kDefaultPKCS11Provider[] = "libchaps.so";
 
@@ -401,7 +413,8 @@ std::unique_ptr<IPConfig::Properties> OpenVPNDriver::ParseIPConfiguration(
     const std::map<std::string, std::string>& configuration,
     bool ignore_redirect_gateway) {
   ForeignOptions foreign_options;
-  RouteOptions routes;
+  RouteOptions ipv4_routes;
+  RouteOptions ipv6_routes;
   int mtu = 0;
   std::string ipv4_local;
   std::string ipv4_peer;
@@ -459,8 +472,12 @@ std::unique_ptr<IPConfig::Properties> OpenVPNDriver::ParseIPConfiguration(
       // get passed to ParseRouteOption().
     } else if (base::StartsWith(key, kOpenVPNRouteOptionPrefix,
                                 base::CompareCase::INSENSITIVE_ASCII)) {
-      ParseRouteOption(key.substr(strlen(kOpenVPNRouteOptionPrefix)), value,
-                       &routes);
+      const std::string trimmed_key =
+          key.substr(strlen(kOpenVPNRouteOptionPrefix));
+      if (!ParseIPv4RouteOption(trimmed_key, value, &ipv4_routes) &&
+          !ParseIPv6RouteOption(trimmed_key, value, &ipv6_routes)) {
+        LOG(WARNING) << "Route option ignored: " << key;
+      }
     } else {
       SLOG(2) << "Key ignored.";
     }
@@ -476,7 +493,7 @@ std::unique_ptr<IPConfig::Properties> OpenVPNDriver::ParseIPConfiguration(
 
   auto ipv4_props =
       CreateIPProperties(IPAddress::kFamilyIPv4, ipv4_local, ipv4_peer,
-                         ipv4_prefix, ipv4_redirect_gateway, routes);
+                         ipv4_prefix, ipv4_redirect_gateway, ipv4_routes);
   ipv4_props->blackhole_ipv6 = ipv4_redirect_gateway;
   ipv4_props->domain_search = search_domains;
   ipv4_props->dns_servers = dns_servers;
@@ -538,29 +555,52 @@ IPConfig::Route* OpenVPNDriver::GetRouteOptionEntry(const std::string& prefix,
 }
 
 // static
-void OpenVPNDriver::ParseRouteOption(const std::string& key,
-                                     const std::string& value,
-                                     RouteOptions* routes) {
+bool OpenVPNDriver::ParseIPv4RouteOption(const std::string& key,
+                                         const std::string& value,
+                                         RouteOptions* routes) {
   // IPv4 uses route_{network,netmask,gateway}_<index>
-  // IPv6 uses route_ipv6_{network,gateway}_<index>
   IPConfig::Route* route =
       GetRouteOptionEntry(kOpenVPNRouteNetworkPrefix, key, routes);
   if (route) {
     route->host = value;
-    return;
+    return true;
   }
   route = GetRouteOptionEntry(kOpenVPNRouteNetmaskPrefix, key, routes);
   if (route) {
     route->prefix =
         IPAddress::GetPrefixLengthFromMask(IPAddress::kFamilyIPv4, value);
-    return;
+    return true;
   }
   route = GetRouteOptionEntry(kOpenVPNRouteGatewayPrefix, key, routes);
   if (route) {
     route->gateway = value;
-    return;
+    return true;
   }
-  LOG(WARNING) << "Unknown route option ignored: " << key;
+  return false;
+}
+
+// static
+bool OpenVPNDriver::ParseIPv6RouteOption(const std::string& key,
+                                         const std::string& value,
+                                         RouteOptions* routes) {
+  // IPv6 uses route_ipv6_{network,gateway}_<index>
+  IPConfig::Route* route =
+      GetRouteOptionEntry(kOpenVPNRouteIPv6NetworkPrefix, key, routes);
+  if (route) {
+    auto addr = IPAddress::CreateFromPrefixString(value);
+    if (!addr.IsValid()) {
+      return false;
+    }
+    route->host = addr.ToString();
+    route->prefix = addr.prefix();
+    return true;
+  }
+  route = GetRouteOptionEntry(kOpenVPNRouteIPv6GatewayPrefix, key, routes);
+  if (route) {
+    route->gateway = value;
+    return true;
+  }
+  return false;
 }
 
 // static
