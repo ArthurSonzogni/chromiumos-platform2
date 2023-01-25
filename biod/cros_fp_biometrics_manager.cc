@@ -29,6 +29,8 @@
 #include "biod/biod_metrics.h"
 #include "biod/power_button_filter.h"
 #include "biod/utils.h"
+#include "libec/fingerprint/cros_fp_device_interface.h"
+#include "libec/fingerprint/fp_mode.h"
 #include "libec/fingerprint/fp_sensor_errors.h"
 
 namespace {
@@ -377,7 +379,7 @@ CrosFpBiometricsManager::CrosFpBiometricsManager(
       weak_factory_(this),
       power_button_filter_(std::move(power_button_filter)),
       record_manager_(std::move(record_manager)),
-      maintenance_timer_(std::make_unique<base::RepeatingTimer>()) {
+      maintenance_timer_(std::make_unique<base::OneShotTimer>()) {
   CHECK(power_button_filter_);
   CHECK(cros_dev_);
   CHECK(biod_metrics_);
@@ -389,16 +391,15 @@ CrosFpBiometricsManager::CrosFpBiometricsManager(
 
   CHECK(cros_dev_->SupportsPositiveMatchSecret());
 
-// TODO(b/187951992): The following automatic maintenance routine needs to
-// be re-enabled in such a way that it will not interfere with the
-// auth/unlock or enroll session. This maintenance timer was disabled due
-// to b/184783529.
-#if 0
+  ScheduleMaintenance(base::Days(1));
+}
+
+void CrosFpBiometricsManager::ScheduleMaintenance(
+    const base::TimeDelta& delta) {
   maintenance_timer_->Start(
-      FROM_HERE, base::Days(1),
-      base::BindRepeating(&CrosFpBiometricsManager::OnMaintenanceTimerFired,
-                 base::Unretained(this)));
-#endif
+      FROM_HERE, delta,
+      base::BindOnce(&CrosFpBiometricsManager::OnMaintenanceTimerFired,
+                     base::Unretained(this)));
 }
 
 CrosFpBiometricsManager::~CrosFpBiometricsManager() {}
@@ -819,6 +820,13 @@ bool CrosFpBiometricsManager::LoadRecord(
 }
 
 void CrosFpBiometricsManager::OnMaintenanceTimerFired() {
+  auto fp_sensor_mode = cros_dev_->GetFpMode();
+  if (fp_sensor_mode != ec::FpMode(Mode::kNone)) {
+    LOG(INFO) << "Rescheduling maintenance due to fp_sensor_mode: "
+              << fp_sensor_mode;
+    ScheduleMaintenance(base::Minutes(10));
+    return;
+  }
   LOG(INFO) << "Maintenance timer fired";
 
   // Report the number of dead pixels
@@ -829,6 +837,7 @@ void CrosFpBiometricsManager::OnMaintenanceTimerFired() {
   // an asynchronous mode (the state is cleared by the FPMCU after it is
   // finished with the operation).
   cros_dev_->SetFpMode(ec::FpMode(Mode::kSensorMaintenance));
+  ScheduleMaintenance(base::Days(1));
 }
 
 std::vector<int> CrosFpBiometricsManager::GetDirtyList() {

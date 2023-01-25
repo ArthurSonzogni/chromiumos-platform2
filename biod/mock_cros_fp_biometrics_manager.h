@@ -37,6 +37,10 @@ class MockCrosFpBiometricsManager : public CrosFpBiometricsManager {
               (override));
   MOCK_METHOD(bool, DestroyAllRecords, (), (override));
   MOCK_METHOD(void, RemoveRecordsFromMemory, (), (override));
+  MOCK_METHOD(void,
+              ScheduleMaintenance,
+              (const base::TimeDelta& delta),
+              (override));
   MOCK_METHOD(bool,
               ReadRecordsForSingleUser,
               (const std::string& user_id),

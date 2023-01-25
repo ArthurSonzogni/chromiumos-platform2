@@ -16,6 +16,7 @@
 #include <gtest/gtest.h>
 #include <libec/fingerprint/cros_fp_device_interface.h>
 
+#include "base/time/time.h"
 #include "biod/biod_crypto.h"
 #include "biod/biod_crypto_test_data.h"
 #include "biod/mock_biod_metrics.h"
@@ -23,6 +24,7 @@
 #include "biod/mock_cros_fp_device.h"
 #include "biod/mock_cros_fp_record_manager.h"
 #include "ec/ec_commands.h"
+#include "libec/fingerprint/fp_mode.h"
 #include "libec/fingerprint/fp_sensor_errors.h"
 
 namespace biod {
@@ -57,7 +59,7 @@ using testing::SaveArg;
 // making the text fixture a friend class.
 class CrosFpBiometricsManagerPeer {
  public:
-  CrosFpBiometricsManagerPeer(
+  explicit CrosFpBiometricsManagerPeer(
       std::unique_ptr<CrosFpBiometricsManager> cros_fp_biometrics_manager)
       : cros_fp_biometrics_manager_(std::move(cros_fp_biometrics_manager)) {}
 
@@ -158,6 +160,8 @@ class CrosFpBiometricsManagerTest : public ::testing::Test {
   MockCrosFpDevice* mock_cros_dev_;
   CrosFpBiometricsManager* cros_fp_biometrics_manager_;
   CrosFpDevice::MkbpCallback on_mkbp_event_;
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 };
 
 TEST_F(CrosFpBiometricsManagerTest, TestComputeValidationValue) {
@@ -879,37 +883,19 @@ class CrosFpBiometricsManagerMockTest : public ::testing::Test {
   MockCrosFpRecordManager* mock_record_manager_;
 };
 
-// TODO(b/187951992): The following tests for the automatic maintenance timer
-// need to be re-enabled when the maintenace-auth interference is fixed.
-// The tests were disabled due to b/184783529.
-TEST_F(CrosFpBiometricsManagerMockTest,
-       DISABLED_TestMaintenanceTimer_TooShort) {
+TEST_F(CrosFpBiometricsManagerMockTest, TestMaintenanceTimer_TooShort) {
   EXPECT_CALL(*mock_, OnMaintenanceTimerFired).Times(0);
   task_environment_.FastForwardBy(base::Hours(12));
 }
 
-TEST_F(CrosFpBiometricsManagerMockTest, DISABLED_TestMaintenanceTimer_Once) {
+TEST_F(CrosFpBiometricsManagerMockTest, TestMaintenanceTimer_Once) {
   EXPECT_CALL(*mock_, OnMaintenanceTimerFired).Times(1);
-  task_environment_.FastForwardBy(base::Days(1));
-}
-
-TEST_F(CrosFpBiometricsManagerMockTest,
-       DISABLED_TestMaintenanceTimer_Multiple) {
-  EXPECT_CALL(*mock_, OnMaintenanceTimerFired).Times(2);
-  task_environment_.FastForwardBy(base::Days(2));
-}
-
-// TODO(b/187951992): The following test must be removed when the
-// maintenace-auth interference is fixed.
-// This test was added when the maintenance timer was disabled due to
-// b/184783529.
-TEST_F(CrosFpBiometricsManagerMockTest, TestMaintenanceTimer_Disabled) {
-  EXPECT_CALL(*mock_, OnMaintenanceTimerFired).Times(0);
   task_environment_.FastForwardBy(base::Days(1));
 }
 
 TEST_F(CrosFpBiometricsManagerMockTest, TestOnMaintenanceTimerFired) {
   constexpr int kNumDeadPixels = 1;
+  const base::TimeDelta delta = base::Days(1);
 
   EXPECT_NE(mock_cros_dev_, nullptr);
   EXPECT_NE(mock_metrics_, nullptr);
@@ -919,9 +905,25 @@ TEST_F(CrosFpBiometricsManagerMockTest, TestOnMaintenanceTimerFired) {
   EXPECT_CALL(*mock_cros_dev_, DeadPixelCount)
       .WillOnce(testing::Return(kNumDeadPixels));
 
+  EXPECT_CALL(*mock_cros_dev_, GetFpMode)
+      .WillOnce(Return(ec::FpMode(Mode::kNone)));
+
   EXPECT_CALL(*mock_cros_dev_,
               SetFpMode(ec::FpMode(ec::FpMode::Mode::kSensorMaintenance)))
       .Times(1);
+  EXPECT_CALL(*mock_, ScheduleMaintenance(delta)).Times(1);
+
+  mock_->OnMaintenanceTimerFiredDelegate();
+}
+
+TEST_F(CrosFpBiometricsManagerMockTest, TestOnMaintenanceTimerRescheduled) {
+  const base::TimeDelta delta = base::Minutes(10);
+  EXPECT_NE(mock_cros_dev_, nullptr);
+
+  EXPECT_CALL(*mock_cros_dev_, GetFpMode)
+      .Times(1)
+      .WillOnce(Return(ec::FpMode(Mode::kEnrollSession)));
+  EXPECT_CALL(*mock_, ScheduleMaintenance(delta)).Times(1);
 
   mock_->OnMaintenanceTimerFiredDelegate();
 }

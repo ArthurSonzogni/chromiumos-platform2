@@ -48,6 +48,8 @@ class CrosFpBiometricsManager : public BiometricsManager {
   void RemoveRecordsFromMemory() override;
   bool ReadRecordsForSingleUser(const std::string& user_id) override;
 
+  void ScheduleMaintenance(const base::TimeDelta& delta) override;
+
   void SetEnrollScanDoneHandler(const BiometricsManager::EnrollScanDoneCallback&
                                     on_enroll_scan_done) override;
   void SetAuthScanDoneHandler(const BiometricsManager::AuthScanDoneCallback&
@@ -175,7 +177,7 @@ class CrosFpBiometricsManager : public BiometricsManager {
 
   std::unique_ptr<CrosFpRecordManagerInterface> record_manager_;
 
-  std::unique_ptr<base::RepeatingTimer> maintenance_timer_;
+  std::unique_ptr<base::OneShotTimer> maintenance_timer_;
 
   uint8_t num_enrollment_captures_ = 0;
 };

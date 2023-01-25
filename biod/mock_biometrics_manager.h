@@ -56,6 +56,10 @@ class MockBiometricsManager : public BiometricsManager {
   MOCK_METHOD(bool, ResetEntropy, (bool factory_init), (override));
   MOCK_METHOD(void, EndEnrollSession, (), (override));
   MOCK_METHOD(void, EndAuthSession, (), (override));
+  MOCK_METHOD(void,
+              ScheduleMaintenance,
+              (const base::TimeDelta& delta),
+              (override));
 
   base::WeakPtrFactory<MockBiometricsManager> session_weak_factory_;
 };

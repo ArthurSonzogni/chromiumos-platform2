@@ -16,6 +16,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <base/strings/string_util.h>
 
+#include "base/time/time.h"
 #include "biod/biometrics_manager_record.h"
 #include "biod/proto_bindings/constants.pb.h"
 #include "biod/proto_bindings/messages.pb.h"
@@ -92,6 +93,8 @@ class BiometricsManager {
 
   // Read all the records for one user. Return true if successful.
   virtual bool ReadRecordsForSingleUser(const std::string& user_id) = 0;
+
+  virtual void ScheduleMaintenance(const base::TimeDelta& delta) = 0;
 
   // The callbacks should remain valid as long as this object is valid.
 
