@@ -232,6 +232,14 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   base::FilePath tls_auth_file_;
   base::FilePath openvpn_config_directory_;
   base::FilePath openvpn_config_file_;
+
+  // The environment variables set by openvpn client when invoking the up
+  // script. Shill reads them to get the IP configs for the VPN connection. This
+  // map is updated in Notify() and cleared in Cleanup(). We need to keep it
+  // because on openvpn restart, Notify() will not re-provide us with all the
+  // needed routing information, so we need a merged result to generate IP
+  // configs.
+  std::map<std::string, std::string> params_;
   std::unique_ptr<IPConfig::Properties> ipv4_properties_;
 
   // The PID of the spawned openvpn process. May be 0 if no process has been

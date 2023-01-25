@@ -293,22 +293,28 @@ TEST_F(OpenVPNDriverTest, ConnectAsync) {
 }
 
 TEST_F(OpenVPNDriverTest, Notify) {
-  std::map<std::string, std::string> config;
   SetEventHandler(&event_handler_);
   driver_->interface_name_ = kInterfaceName;
   driver_->interface_index_ = kInterfaceIndex;
   EXPECT_CALL(event_handler_,
               OnDriverConnected(kInterfaceName, kInterfaceIndex));
-  driver_->Notify("up", config);
+  driver_->Notify("up", {});
   auto ip_properties = driver_->GetIPv4Properties();
   ASSERT_NE(ip_properties, nullptr);
   EXPECT_EQ(ip_properties->address, "");
 
   // Tests that existing properties are reused if no new ones provided.
+  constexpr auto kAddr = "1.2.3.4";
   EXPECT_CALL(event_handler_,
               OnDriverConnected(kInterfaceName, kInterfaceIndex));
-  driver_->ipv4_properties_->address = "1.2.3.4";
-  driver_->Notify("up", config);
+  driver_->Notify("up", {{"ifconfig_local", kAddr}});
+  ip_properties = driver_->GetIPv4Properties();
+  ASSERT_NE(ip_properties, nullptr);
+  EXPECT_EQ(ip_properties->address, "1.2.3.4");
+
+  EXPECT_CALL(event_handler_,
+              OnDriverConnected(kInterfaceName, kInterfaceIndex));
+  driver_->Notify("up", {});
   ip_properties = driver_->GetIPv4Properties();
   ASSERT_NE(ip_properties, nullptr);
   EXPECT_EQ(ip_properties->address, "1.2.3.4");

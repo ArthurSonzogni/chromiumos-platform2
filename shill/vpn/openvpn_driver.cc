@@ -174,6 +174,7 @@ void OpenVPNDriver::Cleanup() {
     openvpn_config_file_.clear();
   }
   rpc_task_.reset();
+  params_.clear();
   ipv4_properties_ = nullptr;
   if (pid_) {
     process_manager()->StopProcessAndBlock(pid_);
@@ -294,9 +295,6 @@ void OpenVPNDriver::GetLogin(std::string* /*user*/, std::string* /*password*/) {
 
 void OpenVPNDriver::Notify(const std::string& reason,
                            const std::map<std::string, std::string>& dict) {
-  if (ipv4_properties_ == nullptr) {
-    ipv4_properties_ = std::make_unique<IPConfig::Properties>();
-  }
   LOG(INFO) << "IP configuration received: " << reason;
   // We only registered "--up" script so this should be the only
   // reason we get notified here. Note that "--up-restart" is set
@@ -305,8 +303,13 @@ void OpenVPNDriver::Notify(const std::string& reason,
     LOG(DFATAL) << "Unexpected notification reason";
     return;
   }
-  // On restart/reconnect, update the existing IP configuration.
-  ParseIPConfiguration(dict, ipv4_properties_.get());
+  // On restart/reconnect, update the existing dict, and generate IP
+  // configurations from it.
+  for (const auto& [k, v] : dict) {
+    params_[k] = v;
+  }
+  ipv4_properties_ = std::make_unique<IPConfig::Properties>();
+  ParseIPConfiguration(params_, ipv4_properties_.get());
   ReportConnectionMetrics();
   if (event_handler_) {
     event_handler_->OnDriverConnected(interface_name_, interface_index_);
@@ -395,13 +398,6 @@ void OpenVPNDriver::ParseIPConfiguration(
     }
   }
   ParseForeignOptions(foreign_options, properties);
-
-  // Since we use persist-tun, we expect that a reconnection will use the same
-  // routes *and* that OpenVPN will not re-provide us with all the needed
-  // routing information. Simply re-use the routing information we attained from
-  // the initial connection.
-  if (!properties->inclusion_list.empty())
-    return;
 
   // Ignore the route_vpn_gateway parameter as VPNs don't need gateway IPs.
   // This guarantees that we will pass the various coherence checks in
