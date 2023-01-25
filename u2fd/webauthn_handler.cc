@@ -19,6 +19,8 @@
 #include <chromeos/cbor/values.h>
 #include <chromeos/cbor/writer.h>
 #include <chromeos/dbus/service_constants.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
+#include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <openssl/rand.h>
 #include <u2f/proto_bindings/u2f_interface.pb.h>
 
@@ -56,9 +58,6 @@ enum class AuthenticatorDataFlag : uint8_t {
   kAttestedCredentialData = 1u << 6,
   kExtensionDataIncluded = 1u << 7,
 };
-
-// Key label in cryptohome.
-constexpr char kCryptohomePinLabel[] = "pin";
 
 // Relative DBus object path for fingerprint manager in biod.
 const char kCrosFpBiometricsManagerRelativePath[] = "/CrosFpBiometricsManager";
@@ -1192,18 +1191,14 @@ GetSupportedFeaturesResponse WebAuthnHandler::GetSupportedFeatures(
 }
 
 bool WebAuthnHandler::HasPin(const std::string& account_id) {
-  user_data_auth::GetKeyDataRequest request;
+  user_data_auth::ListAuthFactorsRequest request;
   request.mutable_account_id()->set_account_id(account_id);
-  // Touch mutable_authorization_request() so that has_authorization_request()
-  // would return true.
-  request.mutable_authorization_request();
-  request.mutable_key()->mutable_data()->set_label(kCryptohomePinLabel);
 
-  user_data_auth::GetKeyDataReply reply;
+  user_data_auth::ListAuthFactorsReply reply;
   brillo::ErrorPtr error;
 
-  if (!cryptohome_proxy_->GetKeyData(request, &reply, &error,
-                                     kCryptohomeTimeout.InMilliseconds())) {
+  if (!cryptohome_proxy_->ListAuthFactors(
+          request, &reply, &error, kCryptohomeTimeout.InMilliseconds())) {
     LOG(ERROR) << "Cannot query PIN availability from cryptohome, error: "
                << error->GetMessage();
     return false;
@@ -1211,11 +1206,16 @@ bool WebAuthnHandler::HasPin(const std::string& account_id) {
 
   if (reply.error() !=
       user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-    LOG(ERROR) << "GetKeyData response has error " << reply.error();
+    LOG(ERROR) << "ListAuthFactors response has error " << reply.error();
     return false;
   }
 
-  return reply.key_data_size() > 0;
+  for (const auto& factor : reply.configured_auth_factors()) {
+    if (factor.type() == user_data_auth::AUTH_FACTOR_TYPE_PIN) {
+      return true;
+    }
+  }
+  return false;
 }
 
 bool WebAuthnHandler::HasFingerprint(const std::string& sanitized_user) {

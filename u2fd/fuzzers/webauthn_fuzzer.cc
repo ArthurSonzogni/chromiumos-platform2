@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <sysexits.h>
 #include <memory>
 #include <string>
@@ -215,15 +216,17 @@ class WebAuthnFuzzer : public brillo::Daemon {
           });
     }
 
-    // GetKeyData
+    // ListAuthFactors
     {
-      bool has_key_data = data_provider_.ConsumeBool();
-      EXPECT_CALL(*mock_cryptohome_proxy, GetKeyData)
-          .WillRepeatedly([has_key_data](auto in_request, auto out_reply,
-                                         brillo::ErrorPtr* error,
-                                         int timeout_ms) {
-            if (has_key_data)
-              out_reply->add_key_data();
+      bool has_pin_factor = data_provider_.ConsumeBool();
+      EXPECT_CALL(*mock_cryptohome_proxy, ListAuthFactors)
+          .WillRepeatedly([has_pin_factor](auto in_request, auto out_reply,
+                                           brillo::ErrorPtr* error,
+                                           int timeout_ms) {
+            if (has_pin_factor) {
+              auto* factor = out_reply->add_configured_auth_factors();
+              factor->set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
+            }
             return true;
           });
     }
