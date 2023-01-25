@@ -45,7 +45,6 @@ namespace cros {
 
 namespace {
 
-const base::FilePath kSWPrivacySwitchFilePath("/run/camera/sw_privacy_switch");
 constexpr char kSWPrivacySwitchOn[] = "on";
 constexpr char kSWPrivacySwitchOff[] = "off";
 

@@ -72,6 +72,8 @@ class EffectsStreamManipulatorTest : public ::testing::Test {
         base::FilePath(EffectsStreamManipulator::kOverrideEffectsConfigFile));
 
     runtime_options_.SetDlcRootPath(base::FilePath(dlc_path));
+    runtime_options_.SetSWPrivacySwitchState(
+        mojom::CameraPrivacySwitchState::OFF);
 
     if (!base::CreateTemporaryFile(&config_path_)) {
       FAIL() << "Failed to create temporary file";

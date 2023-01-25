@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/file_util.h>
 #include <base/test/task_environment.h>
 // gtest's internal typedef of None and Bool conflicts with the None and Bool
 // macros in X11/X.h (https://github.com/google/googletest/issues/371).
@@ -137,6 +138,12 @@ class SWPrivacySwitchTest : public ::testing::Test {
         camera3_capture_result_t{.frame_number = 0,
                                  .num_output_buffers = 1,
                                  .output_buffers = &stream_buffer}));
+  }
+
+  void TearDown() override {
+    if (base::PathExists(kSWPrivacySwitchFilePath)) {
+      base::DeleteFile(base::FilePath(kSWPrivacySwitchFilePath));
+    }
   }
 
   StreamManipulator::RuntimeOptions runtime_options_;

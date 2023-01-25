@@ -20,6 +20,8 @@
 
 namespace cros {
 
+const base::FilePath kSWPrivacySwitchFilePath("/run/camera/sw_privacy_switch");
+
 class SWPrivacySwitchStreamManipulator : public StreamManipulator {
  public:
   SWPrivacySwitchStreamManipulator(
