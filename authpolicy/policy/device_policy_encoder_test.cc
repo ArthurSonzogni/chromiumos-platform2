@@ -795,6 +795,38 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
       policy.login_screen_extension_manifest_v2_availability()
           .login_screen_extension_manifest_v2_availability());
 
+  EncodeBoolean(&policy, key::kDeviceScreensaverEnabled, kBool);
+  EXPECT_EQ(kBool,
+            policy.device_screensaver_enabled().device_screensaver_enabled());
+
+  EncodeInteger(&policy, key::kDeviceScreensaverIdleTimeoutSeconds, kInt);
+  EXPECT_EQ(kInt, policy.device_screensaver_idle_timeout_seconds()
+                      .device_screensaver_idle_timeout_seconds());
+
+  EncodeInteger(&policy, key::kDeviceScreensaverImageDisplayIntervalSeconds,
+                kInt);
+  EXPECT_EQ(kInt, policy.device_screensaver_image_display_interval_seconds()
+                      .device_screensaver_image_display_interval_seconds());
+
+  EncodeString(&policy, key::kDeviceScreensaverImages,
+               R"!!!(
+[
+  {
+    "hash": "38aae2b1647f1f37729c4f3632c297ceb901a130bf5881d72c3a19e16ff97e7a",
+    "url": "https://www.example.com/img_1.jpg"
+  },
+  {
+    "hash": "439189aabe4fb024450ca7f0f5a7bc06841200e14b286db87e820d8674e316cd",
+    "url": "https://www.example.com/img_2.jpg"
+  },
+  {
+    "hash": "b6d9d35eb4d2957dbb78ba82f47c94727b8563ee7e3030c3c56be227c4ef4f78",
+    "url": "https://www.example.com/img_3.jpg"
+  }
+]
+               })!!!");
+  EXPECT_TRUE(policy.has_device_screensaver_images());
+
   //
   // Check whether all device policies have been handled.
   //

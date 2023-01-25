@@ -1120,6 +1120,25 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
         ->set_login_screen_extension_manifest_v2_availability(
             static_cast<em::LoginScreenExtensionManifestV2AvailabilityProto::
                             Availability>(value.value()));
+
+  if (std::optional<bool> value = EncodeBoolean(key::kDeviceScreensaverEnabled))
+    policy->mutable_device_screensaver_enabled()
+        ->set_device_screensaver_enabled(value.value());
+
+  if (std::optional<int> value =
+          EncodeInteger(key::kDeviceScreensaverIdleTimeoutSeconds))
+    policy->mutable_device_screensaver_idle_timeout_seconds()
+        ->set_device_screensaver_idle_timeout_seconds(value.value());
+
+  if (std::optional<int> value =
+          EncodeInteger(key::kDeviceScreensaverImageDisplayIntervalSeconds))
+    policy->mutable_device_screensaver_image_display_interval_seconds()
+        ->set_device_screensaver_image_display_interval_seconds(value.value());
+
+  if (std::optional<std::string> value =
+          EncodeString(key::kDeviceScreensaverImages))
+    policy->mutable_device_screensaver_images()->set_device_screensaver_images(
+        value.value());
 }
 
 std::optional<bool> DevicePolicyEncoder::EncodeBoolean(
