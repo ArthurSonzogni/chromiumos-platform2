@@ -9,6 +9,7 @@
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
 
+#include "base/hash/sha1.h"
 #include "libhwsec/backend/tpm2/backend_test_base.h"
 #include "trunks/tpm_generated.h"
 
@@ -99,6 +100,91 @@ TEST_F(BackendSigningTpm2Test, SignRSA) {
               .rsa_padding_scheme = SigningOptions::RsaPaddingScheme::kPkcs1v15,
           }),
       IsOkAndHolds(brillo::BlobFromString(kSignature)));
+}
+
+TEST_F(BackendSigningTpm2Test, SignECCSha1Raw) {
+  const OperationPolicy kFakePolicy{};
+  const std::string kFakeKeyBlob = "fake_key_blob";
+  const std::string kDataToHash = "data_to_sign";
+  const std::string kDataToSign = base::SHA1HashString(kDataToHash);
+  trunks::TPMT_SIGNATURE fake_signature;
+  const std::string kSignatureR = "signature_r";
+  const std::string kSignatureS = "signature_s";
+  fake_signature.sig_alg = trunks::TPM_ALG_ECDSA;
+  fake_signature.signature.ecdsa.signature_r =
+      trunks::Make_TPM2B_ECC_PARAMETER(kSignatureR);
+  fake_signature.signature.ecdsa.signature_s =
+      trunks::Make_TPM2B_ECC_PARAMETER(kSignatureS);
+  std::string kSignature;
+  ASSERT_EQ(Serialize_TPMT_SIGNATURE(fake_signature, &kSignature),
+            trunks::TPM_RC_SUCCESS);
+  const uint32_t kFakeKeyHandle = 0x1337;
+  const trunks::TPMT_PUBLIC kFakePublic = {
+      .type = trunks::TPM_ALG_ECC,
+      .name_alg = trunks::TPM_ALG_SHA1,
+      .object_attributes =
+          trunks::kFixedTPM | trunks::kFixedParent | trunks::kSign,
+      .auth_policy = trunks::TPM2B_DIGEST{.size = 0},
+      .parameters =
+          trunks::TPMU_PUBLIC_PARMS{
+              .ecc_detail =
+                  trunks::TPMS_ECC_PARMS{
+                      .symmetric =
+                          trunks::TPMT_SYM_DEF_OBJECT{
+                              .algorithm = trunks::TPM_ALG_NULL,
+                          },
+                      .scheme =
+                          trunks::TPMT_ECC_SCHEME{
+                              .scheme = trunks::TPM_ALG_NULL,
+                          },
+                      .curve_id = trunks::TPM_ECC_NIST_P256,
+                      .kdf =
+                          trunks::TPMT_KDF_SCHEME{
+                              .scheme = trunks::TPM_ALG_NULL,
+                          },
+                  },
+          },
+      .unique =
+          trunks::TPMU_PUBLIC_ID{
+              .ecc =
+                  trunks::TPMS_ECC_POINT{
+                      .x =
+                          trunks::TPM2B_ECC_PARAMETER{
+                              .size = 10,
+                              .buffer = "0123456789",
+                          },
+                      .y = trunks::TPM2B_ECC_PARAMETER{.size = 0},
+                  },
+          },
+  };
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+              GetKeyPublicArea(kFakeKeyHandle, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
+
+  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+      kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
+      Backend::KeyManagement::LoadKeyOptions{});
+
+  ASSERT_OK(key);
+
+  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+              Sign(kFakeKeyHandle, trunks::TPM_ALG_ECDSA, trunks::TPM_ALG_SHA1,
+                   kDataToSign, false, _, _))
+      .WillOnce(
+          DoAll(SetArgPointee<6>(kSignature), Return(trunks::TPM_RC_SUCCESS)));
+
+  EXPECT_THAT(middleware_->CallSync<&Backend::Signing::RawSign>(
+                  key->GetKey(), brillo::BlobFromString(kDataToSign),
+                  SigningOptions{
+                      .digest_algorithm = DigestAlgorithm::kNoDigest,
+                  }),
+              IsOkAndHolds(brillo::BlobFromString(kSignatureR + kSignatureS)));
 }
 
 TEST_F(BackendSigningTpm2Test, SignECC) {

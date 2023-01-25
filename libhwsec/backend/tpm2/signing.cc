@@ -16,6 +16,7 @@
 #include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/status.h"
+#include "trunks/tpm_generated.h"
 
 using brillo::BlobFromString;
 using hwsec_foundation::Sha256;
@@ -155,6 +156,29 @@ StatusOr<brillo::Blob> SigningTpm2::RawSign(Key key,
     if (parsed.has_value()) {
       digest_algorithm = parsed->algorithm;
       data_to_sign = brillo::BlobToString(parsed->blob);
+    }
+  }
+
+  // Detect digest algorithm based on data length. Fixes 802.1x
+  // wpa_supplicant which uses RawSign with ECDSA SHA1.
+  if (sign_algorithm == trunks::TPM_ALG_ECDSA &&
+      digest_algorithm == DigestAlgorithm::kNoDigest) {
+    switch (data.size()) {
+      case GetDigestLength(DigestAlgorithm::kSha1):
+        digest_algorithm = DigestAlgorithm::kSha1;
+        break;
+      case GetDigestLength(DigestAlgorithm::kSha224):
+        digest_algorithm = DigestAlgorithm::kSha224;
+        break;
+      case GetDigestLength(DigestAlgorithm::kSha256):
+        digest_algorithm = DigestAlgorithm::kSha256;
+        break;
+      case GetDigestLength(DigestAlgorithm::kSha384):
+        digest_algorithm = DigestAlgorithm::kSha384;
+        break;
+      case GetDigestLength(DigestAlgorithm::kSha512):
+        digest_algorithm = DigestAlgorithm::kSha512;
+        break;
     }
   }
 
