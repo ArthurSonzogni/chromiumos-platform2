@@ -18,11 +18,8 @@
 namespace biod {
 
 using dbus::ObjectPath;
-using RetrievePrimarySessionResult = BiodMetrics::RetrievePrimarySessionResult;
 
-SessionStateManager::SessionStateManager(dbus::Bus* bus,
-                                         BiodMetricsInterface* biod_metrics)
-    : biod_metrics_(biod_metrics) {
+SessionStateManager::SessionStateManager(dbus::Bus* bus) {
   session_manager_proxy_ = bus->GetObjectProxy(
       login_manager::kSessionManagerServiceName,
       dbus::ObjectPath(login_manager::kSessionManagerServicePath));
@@ -71,17 +68,9 @@ std::optional<std::string> SessionStateManager::RetrievePrimaryUser() {
       login_manager::kSessionManagerInterface,
       login_manager::kSessionManagerRetrievePrimarySession);
 
-  base::Time start_time = base::Time::Now();
-
   std::unique_ptr<dbus::Response> response =
       session_manager_proxy_->CallMethodAndBlockWithErrorDetails(
           &method_call, dbus_constants::kDbusTimeoutMs, &error);
-
-  // Record RetrievePrimarySession duration.
-  base::TimeDelta call_duration = base::Time::Now() - start_time;
-  biod_metrics_->SendSessionRetrievePrimarySessionDuration(
-      call_duration.InMilliseconds());
-
   if (error.is_set()) {
     std::string error_name = error.name();
     LOG(ERROR) << "Calling "
@@ -90,25 +79,17 @@ std::optional<std::string> SessionStateManager::RetrievePrimaryUser() {
                << " interface finished with " << error_name << " error.";
 
     if (error_name == dbus_constants::kDBusErrorNoReply) {
-      biod_metrics_->SendSessionRetrievePrimarySessionResult(
-          RetrievePrimarySessionResult::kErrorDBusNoReply);
       LOG(FATAL) << "Timeout while getting primary session";
     } else if (error_name == dbus_constants::kDBusErrorServiceUnknown) {
-      biod_metrics_->SendSessionRetrievePrimarySessionResult(
-          RetrievePrimarySessionResult::kErrorDBusServiceUnknown);
       LOG(FATAL) << "Can't find " << login_manager::kSessionManagerServiceName
                  << " service. Maybe session_manager is not running?";
     } else {
-      biod_metrics_->SendSessionRetrievePrimarySessionResult(
-          RetrievePrimarySessionResult::kErrorUnknown);
       LOG(FATAL) << "Error details: " << error.message();
     }
     return std::nullopt;
   }
 
   if (!response.get()) {
-    biod_metrics_->SendSessionRetrievePrimarySessionResult(
-        RetrievePrimarySessionResult::kErrorResponseMissing);
     LOG(ERROR) << "Cannot retrieve username for primary session.";
     return std::nullopt;
   }
@@ -116,20 +97,14 @@ std::optional<std::string> SessionStateManager::RetrievePrimaryUser() {
   dbus::MessageReader response_reader(response.get());
   std::string username;
   if (!response_reader.PopString(&username)) {
-    biod_metrics_->SendSessionRetrievePrimarySessionResult(
-        RetrievePrimarySessionResult::kErrorParsing);
     LOG(ERROR) << "Primary session username bad format.";
     return std::nullopt;
   }
   if (!response_reader.PopString(&sanitized_username)) {
-    biod_metrics_->SendSessionRetrievePrimarySessionResult(
-        RetrievePrimarySessionResult::kErrorParsing);
     LOG(ERROR) << "Primary session sanitized username bad format.";
     return std::nullopt;
   }
 
-  biod_metrics_->SendSessionRetrievePrimarySessionResult(
-      RetrievePrimarySessionResult::kSuccess);
   return sanitized_username;
 }
 

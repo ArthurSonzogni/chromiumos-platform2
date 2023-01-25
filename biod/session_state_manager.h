@@ -12,7 +12,6 @@
 #include <dbus/object_proxy.h>
 
 #include "biod/biod_constants.h"
-#include "biod/biod_metrics.h"
 
 namespace biod {
 
@@ -53,8 +52,7 @@ class SessionStateManagerInterface {
 
 class SessionStateManager : public SessionStateManagerInterface {
  public:
-  explicit SessionStateManager(dbus::Bus* bus,
-                               BiodMetricsInterface* biod_metrics);
+  explicit SessionStateManager(dbus::Bus* bus);
   explicit SessionStateManager(const SessionStateManager&) = delete;
   SessionStateManager& operator=(const SessionStateManager&) = delete;
   ~SessionStateManager() override = default;
@@ -90,8 +88,6 @@ class SessionStateManager : public SessionStateManagerInterface {
 
   // List of SessionStateManager observers
   base::ObserverList<Observer>::Unchecked observers_;
-
-  BiodMetricsInterface* biod_metrics_ = nullptr;  // Not owned.
 };
 }  // namespace biod
 
