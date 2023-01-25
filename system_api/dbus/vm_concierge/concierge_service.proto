@@ -1196,8 +1196,7 @@ message ListUsbDeviceResponse {
   repeated UsbDeviceMessage usb_devices = 2;
 }
 
-// Response sent back by vm_concierge after it receives a GetDnsSettings call.
-// Also being broadcast via DnsSettingsChanged signal.
+// Message broadcast via DnsSettingsChanged signal.
 message DnsSettings {
   // List of DNS servers.
   repeated string nameservers = 1;
