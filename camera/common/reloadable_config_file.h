@@ -14,7 +14,9 @@
 #include <base/files/file_path.h>
 #include <base/files/file_path_watcher.h>
 #include <base/functional/callback_helpers.h>
+#include <base/memory/scoped_refptr.h>
 #include <base/synchronization/lock.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/values.h>
 
 #include "cros-camera/common.h"
@@ -48,7 +50,7 @@ class CROS_CAMERA_EXPORT ReloadableConfigFile {
   explicit ReloadableConfigFile(const Options& options);
   ReloadableConfigFile(const ReloadableConfigFile& other) = delete;
   ReloadableConfigFile& operator=(const ReloadableConfigFile& other) = delete;
-  ~ReloadableConfigFile() = default;
+  ~ReloadableConfigFile();
 
   // Set the callback to be called when the config file changes. |callback|
   // will either be called synchronously before this returns, or be called on
@@ -77,6 +79,7 @@ class CROS_CAMERA_EXPORT ReloadableConfigFile {
   // default config at run-time for development or debugging purposes.
   base::FilePath override_config_file_path_;
   std::unique_ptr<base::FilePathWatcher> override_file_path_watcher_;
+  scoped_refptr<base::SequencedTaskRunner> file_path_watcher_runner_;
 
   base::Lock options_lock_;
   std::optional<base::Value::Dict> json_values_ GUARDED_BY(options_lock_);

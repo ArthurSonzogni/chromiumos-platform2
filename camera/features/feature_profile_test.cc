@@ -10,9 +10,11 @@
 #include <utility>
 
 #include <base/at_exit.h>
+#include <base/command_line.h>
+#include <base/json/json_reader.h>
+#include <base/test/task_environment.h>
+#include <base/test/test_timeouts.h>
 #include <gtest/gtest.h>
-
-#include "base/json/json_reader.h"
 
 namespace cros {
 
@@ -27,6 +29,8 @@ base::Value::Dict CreateFakeFeatureProfile(std::string json_str) {
 }  // namespace
 
 TEST(FeatureProfile, BasicCorrectnessTest) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   std::string profile = R"({
     "acme": {
       "feature_set": [ {
@@ -68,6 +72,8 @@ TEST(FeatureProfile, BasicCorrectnessTest) {
 }
 
 TEST(FeatureProfile, ModuleAndSensorIdTest) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+
   {
     std::string profile = R"({
       "acme": {
@@ -172,6 +178,8 @@ TEST(FeatureProfile, ModuleAndSensorIdTest) {
 
 int main(int argc, char** argv) {
   base::AtExitManager exit_manager;
+  base::CommandLine::Init(argc, argv);
+  TestTimeouts::Initialize();
   ::testing::InitGoogleTest(&argc, argv);
   LOG_ASSERT(logging::InitLogging(logging::LoggingSettings()));
   return RUN_ALL_TESTS();

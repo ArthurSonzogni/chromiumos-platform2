@@ -14,8 +14,11 @@
 
 #include <base/files/file_path_watcher.h>
 #include <base/files/file_util.h>
+#include <base/functional/bind.h>
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
+#include <base/synchronization/waitable_event.h>
+#include <base/task/sequenced_task_runner.h>
 
 namespace cros {
 
@@ -27,6 +30,8 @@ ReloadableConfigFile::ReloadableConfigFile(const Options& options)
   if (!override_config_file_path_.empty()) {
     ReadConfigFileLocked(override_config_file_path_);
     override_file_path_watcher_ = std::make_unique<base::FilePathWatcher>();
+    CHECK(base::SequencedTaskRunner::HasCurrentDefault());
+    file_path_watcher_runner_ = base::SequencedTaskRunner::GetCurrentDefault();
     bool ret = override_file_path_watcher_->Watch(
         override_config_file_path_, base::FilePathWatcher::Type::kNonRecursive,
         base::BindRepeating(&ReloadableConfigFile::OnConfigFileUpdated,
@@ -34,6 +39,10 @@ ReloadableConfigFile::ReloadableConfigFile(const Options& options)
     DCHECK(ret) << "Can't monitor override config file path: "
                 << override_config_file_path_;
   }
+}
+
+ReloadableConfigFile::~ReloadableConfigFile() {
+  StopOverrideFileWatcher();
 }
 
 void ReloadableConfigFile::SetCallback(OptionsUpdateCallback callback) {
@@ -45,7 +54,22 @@ void ReloadableConfigFile::SetCallback(OptionsUpdateCallback callback) {
 }
 
 void ReloadableConfigFile::StopOverrideFileWatcher() {
-  override_file_path_watcher_ = nullptr;
+  if (!override_file_path_watcher_) {
+    return;
+  }
+
+  // base::FilePathWatcher needs to be started and stopped on the same sequence
+  // on |file_path_watcher_runner_|.
+  if (file_path_watcher_runner_->RunsTasksInCurrentSequence()) {
+    override_file_path_watcher_ = nullptr;
+  } else {
+    file_path_watcher_runner_->PostTask(
+        FROM_HERE, base::BindOnce(
+                       [](std::unique_ptr<base::FilePathWatcher> watcher) {
+                         watcher = nullptr;
+                       },
+                       std::move(override_file_path_watcher_)));
+  }
 }
 
 void ReloadableConfigFile::UpdateOption(std::string key, base::Value value) {
