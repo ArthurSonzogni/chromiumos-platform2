@@ -680,11 +680,9 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSEnabledRemovesBackupVKs) {
   // test
   SetUserSecretStashExperimentForTesting(/*enabled=*/true);
 
-  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
-
   AuthSession auth_session({.username = kUsername,
                             .obfuscated_username = SanitizeUserName(kUsername),
-                            .flags = flags,
+                            .is_ephemeral_user = false,
                             .intent = AuthIntent::kDecrypt,
                             .on_timeout = base::DoNothing(),
                             .user_exists = false,
@@ -732,11 +730,9 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSEnabledUpdateBackupVKs) {
   // test
   SetUserSecretStashExperimentForTesting(/*enabled=*/true);
 
-  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
-
   AuthSession auth_session({.username = kUsername,
                             .obfuscated_username = SanitizeUserName(kUsername),
-                            .flags = flags,
+                            .is_ephemeral_user = false,
                             .intent = AuthIntent::kDecrypt,
                             .on_timeout = base::DoNothing(),
                             .user_exists = false,
@@ -776,8 +772,9 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSEnabledUpdateBackupVKs) {
 
   // Verify that on AuthSession start it lists the USS-AuthFactors.
   CryptohomeStatusOr<AuthSession*> auth_session2_status =
-      auth_session_manager_->CreateAuthSession(kUsername, flags,
-                                               AuthIntent::kDecrypt);
+      auth_session_manager_->CreateAuthSession(
+          kUsername, user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE,
+          AuthIntent::kDecrypt);
   EXPECT_TRUE(auth_session2_status.ok());
   AuthSession* auth_session2 = auth_session2_status.value();
   EXPECT_TRUE(auth_session2->auth_factor_map().HasFactorWithStorage(
@@ -934,13 +931,11 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   // test
   SetUserSecretStashExperimentForTesting(/*enabled=*/true);
 
-  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
-
   AuthSession::BackingApis backing_apis = backing_apis_;
   backing_apis.auth_block_utility = &mock_auth_block_utility_;
   AuthSession auth_session({.username = kUsername,
                             .obfuscated_username = SanitizeUserName(kUsername),
-                            .flags = flags,
+                            .is_ephemeral_user = false,
                             .intent = AuthIntent::kDecrypt,
                             .on_timeout = base::DoNothing(),
                             .user_exists = false,
@@ -1005,8 +1000,9 @@ TEST_F(AuthSessionTestWithKeysetManagement,
       &mock_auth_block_utility_, &auth_factor_manager_,
       &user_secret_stash_storage_);
   CryptohomeStatusOr<AuthSession*> auth_session2_status =
-      auth_session_manager_impl_->CreateAuthSession(kUsername, flags,
-                                                    AuthIntent::kDecrypt);
+      auth_session_manager_impl_->CreateAuthSession(
+          kUsername, user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE,
+          AuthIntent::kDecrypt);
   EXPECT_TRUE(auth_session2_status.ok());
   AuthSession* auth_session2 = auth_session2_status.value();
   EXPECT_TRUE(auth_session2->auth_factor_map().HasFactorWithStorage(

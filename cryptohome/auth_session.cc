@@ -22,6 +22,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <brillo/cryptohome.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
@@ -246,7 +247,7 @@ std::unique_ptr<AuthSession> AuthSession::Create(
   // Assumption here is that keyset_management_ will outlive this AuthSession.
   AuthSession::Params params = {std::move(account_id),
                                 std::move(obfuscated_username),
-                                flags,
+                                flags & AUTH_SESSION_FLAGS_EPHEMERAL_USER,
                                 intent,
                                 std::move(on_timeout),
                                 user_exists,
@@ -258,7 +259,7 @@ std::unique_ptr<AuthSession> AuthSession::Create(
 AuthSession::AuthSession(Params params, BackingApis backing_apis)
     : username_(std::move(*params.username)),
       obfuscated_username_(SanitizeUserName(username_)),
-      is_ephemeral_user_(*params.flags & AUTH_SESSION_FLAGS_EPHEMERAL_USER),
+      is_ephemeral_user_(*params.is_ephemeral_user),
       auth_intent_(*params.intent),
       auth_session_creation_time_(base::TimeTicks::Now()),
       on_timeout_(std::move(params.on_timeout)),

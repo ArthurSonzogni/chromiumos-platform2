@@ -422,7 +422,7 @@ TEST_F(AuthSessionTest, TimeoutTest) {
   AuthSession auth_session(
       {.username = kFakeUsername,
        .obfuscated_username = SanitizeUserName(kFakeUsername),
-       .flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE,
+       .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .on_timeout =
            timeout_future.GetCallback<const base::UnguessableToken&>(),
@@ -597,7 +597,7 @@ TEST_F(AuthSessionTest, NoLightweightAuthForDecryption) {
   AuthSession auth_session(
       {.username = kFakeUsername,
        .obfuscated_username = SanitizeUserName(kFakeUsername),
-       .flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE,
+       .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .on_timeout = base::DoNothing(),
        .user_exists = true,
@@ -645,7 +645,6 @@ TEST_F(AuthSessionTest, NoLightweightAuthForDecryption) {
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
 }
-
 
 // Test if AuthSession reports the correct attributes on an already-existing
 // ephemeral user.
@@ -704,7 +703,7 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave) {
   AuthSession auth_session(
       {.username = kFakeUsername,
        .obfuscated_username = SanitizeUserName(kFakeUsername),
-       .flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE,
+       .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .on_timeout = base::DoNothing(),
        .user_exists = true,
@@ -739,7 +738,7 @@ TEST_F(AuthSessionTest,
   AuthSession auth_session(
       {.username = kFakeUsername,
        .obfuscated_username = SanitizeUserName(kFakeUsername),
-       .flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE,
+       .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .on_timeout = base::DoNothing(),
        .user_exists = true,
@@ -832,7 +831,7 @@ TEST_F(AuthSessionTest,
   AuthSession auth_session(
       {.username = kFakeUsername,
        .obfuscated_username = SanitizeUserName(kFakeUsername),
-       .flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE,
+       .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .on_timeout = base::DoNothing(),
        .user_exists = true,
@@ -927,7 +926,7 @@ TEST_F(AuthSessionTest,
   AuthSession auth_session(
       {.username = kFakeUsername,
        .obfuscated_username = SanitizeUserName(kFakeUsername),
-       .flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE,
+       .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .on_timeout = base::DoNothing(),
        .user_exists = true,
@@ -1003,7 +1002,7 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorMismatchLabelAndType) {
   AuthSession auth_session(
       {.username = kFakeUsername,
        .obfuscated_username = SanitizeUserName(kFakeUsername),
-       .flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE,
+       .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .on_timeout = base::DoNothing(),
        .user_exists = true,
@@ -1324,7 +1323,7 @@ TEST_F(AuthSessionTest, UpdateAuthFactorSucceedsForPasswordVK) {
   AuthSession auth_session(
       {.username = kFakeUsername,
        .obfuscated_username = SanitizeUserName(kFakeUsername),
-       .flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE,
+       .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .on_timeout = base::DoNothing(),
        .user_exists = true,
@@ -1398,7 +1397,7 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotMatchForVK) {
   AuthSession auth_session(
       {.username = kFakeUsername,
        .obfuscated_username = SanitizeUserName(kFakeUsername),
-       .flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE,
+       .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .on_timeout = base::DoNothing(),
        .user_exists = true,
@@ -1441,7 +1440,7 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotFoundForVK) {
   AuthSession auth_session(
       {.username = kFakeUsername,
        .obfuscated_username = SanitizeUserName(kFakeUsername),
-       .flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE,
+       .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .on_timeout = base::DoNothing(),
        .user_exists = true,
@@ -1485,7 +1484,7 @@ TEST_F(AuthSessionTest, ExtensionTest) {
   AuthSession auth_session(
       {.username = kFakeUsername,
        .obfuscated_username = SanitizeUserName(kFakeUsername),
-       .flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE,
+       .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .on_timeout = base::DoNothing(),
        .user_exists = false,
@@ -1522,7 +1521,7 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorWebAuthnIntent) {
   AuthSession auth_session(
       {.username = kFakeUsername,
        .obfuscated_username = SanitizeUserName(kFakeUsername),
-       .flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE,
+       .is_ephemeral_user = false,
        .intent = AuthIntent::kWebAuthn,
        .on_timeout = base::DoNothing(),
        .user_exists = true,
@@ -1592,7 +1591,7 @@ TEST_F(AuthSessionTest, RemoveAuthFactorUpdatesAuthFactorMap) {
   AuthSession auth_session(
       {.username = kFakeUsername,
        .obfuscated_username = SanitizeUserName(kFakeUsername),
-       .flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE,
+       .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .on_timeout = base::DoNothing(),
        .user_exists = true,
@@ -2993,7 +2992,7 @@ TEST_F(AuthSessionWithUssExperimentTest, LightweightPasswordAuthentication) {
   AuthSession auth_session(
       {.username = kFakeUsername,
        .obfuscated_username = SanitizeUserName(kFakeUsername),
-       .flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE,
+       .is_ephemeral_user = false,
        .intent = AuthIntent::kVerifyOnly,
        .on_timeout = base::DoNothing(),
        .user_exists = true,
@@ -3071,7 +3070,7 @@ TEST_F(AuthSessionWithUssExperimentTest, PrepareLegacyFingerprintAuth) {
       AuthSession::Params{
           .username = kFakeUsername,
           .obfuscated_username = SanitizeUserName(kFakeUsername),
-          .flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE,
+          .is_ephemeral_user = false,
           .intent = AuthIntent::kVerifyOnly,
           .on_timeout = base::DoNothing(),
           .user_exists = true,
@@ -4013,7 +4012,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordVkToKioskUss) {
   AuthSession auth_session(
       {.username = kFakeUsername,
        .obfuscated_username = SanitizeUserName(kFakeUsername),
-       .flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE,
+       .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .on_timeout = base::DoNothing(),
        .user_exists = true,

@@ -91,7 +91,7 @@ class AuthSession final {
   struct Params {
     hwsec::ExplicitInit<std::string> username;
     hwsec::ExplicitInit<std::string> obfuscated_username;
-    hwsec::ExplicitInit<unsigned int> flags;
+    hwsec::ExplicitInit<bool> is_ephemeral_user;
     hwsec::ExplicitInit<AuthIntent> intent;
     base::OnceCallback<void(const base::UnguessableToken&)> on_timeout;
     hwsec::ExplicitInit<bool> user_exists;
