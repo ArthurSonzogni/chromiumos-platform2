@@ -198,14 +198,28 @@ StorageStatus Mount::MountCryptohome(
   // directory to decide on the action on failure when we  move on to the next
   // phase in the cryptohome SELinux development, i.e. making cryptohome
   // enforcing.
-  if (platform_->RestoreSELinuxContexts(UserPath(obfuscated_username),
-                                        true /*recursive*/)) {
-    ReportRestoreSELinuxContextResultForHomeDir(true);
-  } else {
-    ReportRestoreSELinuxContextResultForHomeDir(false);
+  bool result = platform_->RestoreSELinuxContexts(UserPath(obfuscated_username),
+                                                  true /*recursive*/);
+
+  // For dm-crypt cryptohomes, cache volumes may be reset as a part of the
+  // cleanup mechanism; the newly created filesystem's root inode will be
+  // unlabeled. Relabel the mounted cache directory unconditionally; this will
+  // be a no-op if the cache directory was already relabelled but if the cache
+  // volume is reset, this will restore the SELinux contexts of the cache
+  // volume.
+  base::FilePath user_cache_dir =
+      GetDmcryptUserCacheDirectory(obfuscated_username);
+  if (base::PathExists(user_cache_dir)) {
+    result &=
+        platform_->RestoreSELinuxContexts(user_cache_dir, true /*recursive*/);
+  }
+
+  if (!result) {
     LOG(ERROR) << "RestoreSELinuxContexts(" << UserPath(obfuscated_username)
                << ") failed.";
   }
+
+  ReportRestoreSELinuxContextResultForHomeDir(result);
 
   return StorageStatus::Ok();
 }
