@@ -31,7 +31,6 @@ inline constexpr char kUnmount[] = "Unmount";
 inline constexpr char kMount[] = "Mount";
 inline constexpr char kRemove[] = "Remove";
 inline constexpr char kListKeys[] = "ListKeys";
-inline constexpr char kGetKeyData[] = "GetKeyData";
 inline constexpr char kCheckKey[] = "CheckKey";
 inline constexpr char kAddKey[] = "AddKey";
 inline constexpr char kRemoveKey[] = "RemoveKey";
