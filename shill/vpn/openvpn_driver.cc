@@ -331,29 +331,50 @@ std::unique_ptr<IPConfig::Properties> OpenVPNDriver::GetIPv6Properties() const {
 }
 
 // static
+std::unique_ptr<IPConfig::Properties> OpenVPNDriver::CreateIPProperties(
+    IPAddress::Family family,
+    const std::string& local,
+    const std::string& peer,
+    int prefix) {
+  auto properties = std::make_unique<IPConfig::Properties>();
+  properties->method = kTypeVPN;
+  properties->address_family = family;
+  properties->address = local;
+  // |peer_address| will be cleared in SetRoutes().
+  properties->peer_address = peer;
+  if (prefix == 0) {
+    properties->subnet_prefix =
+        IPAddress::GetMaxPrefixLength(properties->address_family);
+  } else {
+    properties->subnet_prefix = prefix;
+  }
+  // L3 VPN doesn't need gateway. Setting it to the local IP guarantees that we
+  // will pass the various coherence checks in connection.cc.
+  properties->gateway = local;
+  return properties;
+}
+
+// static
 std::unique_ptr<IPConfig::Properties> OpenVPNDriver::ParseIPConfiguration(
     const std::map<std::string, std::string>& configuration,
     bool ignore_redirect_gateway) {
-  auto properties = std::make_unique<IPConfig::Properties>();
-
   ForeignOptions foreign_options;
   RouteOptions routes;
-  bool redirect_gateway = false;
+  int mtu = 0;
+  std::string ipv4_local;
+  std::string ipv4_peer;
+  int ipv4_prefix = 0;
+  bool ipv4_redirect_gateway = false;
 
-  properties->address_family = IPAddress::kFamilyIPv4;
-  if (!properties->subnet_prefix) {
-    properties->subnet_prefix =
-        IPAddress::GetMaxPrefixLength(properties->address_family);
-  }
   for (const auto& configuration_map : configuration) {
     const std::string& key = configuration_map.first;
     const std::string& value = configuration_map.second;
     SLOG(2) << "Processing: " << key << " -> " << value;
     if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNIfconfigLocal)) {
-      properties->address = value;
+      ipv4_local = value;
     } else if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNIfconfigNetmask)) {
-      properties->subnet_prefix =
-          IPAddress::GetPrefixLengthFromMask(properties->address_family, value);
+      ipv4_prefix =
+          IPAddress::GetPrefixLengthFromMask(IPAddress::kFamilyIPv4, value);
     } else if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNIfconfigRemote)) {
       if (base::StartsWith(value, kSuspectedNetmaskPrefix,
                            base::CompareCase::INSENSITIVE_ASCII)) {
@@ -365,20 +386,16 @@ std::unique_ptr<IPConfig::Properties> OpenVPNDriver::ParseIPConfiguration(
         // interface as if it were a broadcast-style network.  The
         // kernel will, automatically set the peer address equal to
         // the local address.
-        properties->subnet_prefix = IPAddress::GetPrefixLengthFromMask(
-            properties->address_family, value);
+        ipv4_prefix =
+            IPAddress::GetPrefixLengthFromMask(IPAddress::kFamilyIPv4, value);
       } else {
-        // This creates an explicit route to the peer address in SetRoutes().
-        properties->peer_address = value;
+        ipv4_peer = value;
       }
     } else if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNRedirectGateway)) {
-      redirect_gateway = true;
+      ipv4_redirect_gateway = true;
     } else if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNTunMTU)) {
-      int mtu = 0;
-      if (base::StringToInt(value, &mtu) && mtu >= IPConfig::kMinIPv4MTU) {
-        properties->mtu = mtu;
-      } else {
-        LOG(ERROR) << "MTU " << value << " ignored.";
+      if (!base::StringToInt(value, &mtu)) {
+        LOG(ERROR) << "Failed to parse MTU " << value;
       }
     } else if (base::StartsWith(key, kOpenVPNForeignOptionPrefix,
                                 base::CompareCase::INSENSITIVE_ASCII)) {
@@ -402,27 +419,34 @@ std::unique_ptr<IPConfig::Properties> OpenVPNDriver::ParseIPConfiguration(
     }
   }
 
+  std::vector<std::string> search_domains;
+  std::vector<std::string> dns_servers;
   if (!foreign_options.empty()) {
-    ParseForeignOptions(foreign_options, &properties->domain_search,
-                        &properties->dns_servers);
+    ParseForeignOptions(foreign_options, &search_domains, &dns_servers);
   } else {
     LOG(INFO) << "No foreign option provided";
   }
 
-  // Ignore the route_vpn_gateway parameter as VPNs don't need gateway IPs.
-  // This guarantees that we will pass the various coherence checks in
-  // connection.cc.
-  properties->gateway = properties->address;
-
-  if (redirect_gateway && ignore_redirect_gateway) {
+  auto ipv4_props = CreateIPProperties(IPAddress::kFamilyIPv4, ipv4_local,
+                                       ipv4_peer, ipv4_prefix);
+  if (ipv4_redirect_gateway && ignore_redirect_gateway) {
     LOG(INFO) << "Ignoring default route parameter as requested by "
               << "configuration.";
-    redirect_gateway = false;
+    ipv4_redirect_gateway = false;
   }
-  properties->default_route = properties->blackhole_ipv6 = redirect_gateway;
-  SetRoutes(routes, properties.get());
-  properties->method = kTypeVPN;
-  return properties;
+  ipv4_props->default_route = ipv4_redirect_gateway;
+  ipv4_props->blackhole_ipv6 = ipv4_redirect_gateway;
+  SetRoutes(routes, ipv4_props.get());
+  ipv4_props->domain_search = search_domains;
+  ipv4_props->dns_servers = dns_servers;
+  if (mtu != 0) {
+    if (mtu >= IPConfig::kMinIPv4MTU) {
+      ipv4_props->mtu = mtu;
+    } else {
+      LOG(ERROR) << "MTU value " << mtu << " ignored";
+    }
+  }
+  return ipv4_props;
 }
 
 namespace {

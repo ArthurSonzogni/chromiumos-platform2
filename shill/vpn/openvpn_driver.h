@@ -169,6 +169,12 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
                                 std::string* name,
                                 std::string* port);
 
+  static std::unique_ptr<IPConfig::Properties> CreateIPProperties(
+      IPAddress::Family family,
+      const std::string& local,
+      const std::string& peer,
+      int prefix);
+
   static std::unique_ptr<IPConfig::Properties> ParseIPConfiguration(
       const std::map<std::string, std::string>& configuration,
       bool ignore_redirect_gateway);
