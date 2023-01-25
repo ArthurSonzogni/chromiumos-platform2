@@ -1362,6 +1362,15 @@ void Cellular::EstablishLink() {
     return;
   }
 
+  const std::vector<ApnList::ApnType>& apn_types = bearer->apn_types();
+  if (std::find(apn_types.begin(), apn_types.end(),
+                ApnList::ApnType::kDefault) == apn_types.end()) {
+    LOG(WARNING) << LoggingTag()
+                 << ": Disconnecting due to wrong APN type in active bearer";
+    Disconnect(nullptr, "wrong APN type in active bearer");
+    return;
+  }
+
   if (bearer->ipv4_config_method() == CellularBearer::IPConfigMethod::kPPP) {
     LOG(INFO) << LoggingTag() << ": Start PPP connection on "
               << bearer->data_interface();

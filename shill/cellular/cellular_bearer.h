@@ -125,6 +125,9 @@ class CellularBearer {
       std::unique_ptr<IPConfig::Properties> ipv6_config_properties) {
     ipv6_config_properties_ = std::move(ipv6_config_properties);
   }
+  void set_apn_type(ApnList::ApnType apn_type) {
+    apn_types_.push_back(apn_type);
+  }
 
   ControlInterface* control_interface_;
   RpcIdentifier dbus_path_;

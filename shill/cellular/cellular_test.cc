@@ -1722,6 +1722,7 @@ TEST_F(CellularTest, EstablishLinkFailureMismatchedDataInterface) {
   // device, for now, disconnect
   auto bearer = std::make_unique<CellularBearer>(&control_interface_,
                                                  RpcIdentifier(""), "");
+  bearer->set_apn_type(ApnList::ApnType::kDefault);
   bearer->set_data_interface("another_one");
   bearer->set_ipv4_config_method(CellularBearer::IPConfigMethod::kDHCP);
   SetCapability3gppActiveBearer(std::move(bearer));
@@ -1747,6 +1748,7 @@ TEST_F(CellularTest, EstablishLinkFailureMismatchedDataInterface) {
 TEST_F(CellularTest, EstablishLinkPPP) {
   auto bearer = std::make_unique<CellularBearer>(&control_interface_,
                                                  RpcIdentifier(""), "");
+  bearer->set_apn_type(ApnList::ApnType::kDefault);
   bearer->set_ipv4_config_method(CellularBearer::IPConfigMethod::kPPP);
   SetCapability3gppActiveBearer(std::move(bearer));
   device_->set_state_for_testing(Cellular::State::kConnected);
@@ -1770,6 +1772,7 @@ TEST_F(CellularTest, EstablishLinkPPP) {
 TEST_F(CellularTest, EstablishLinkDHCP) {
   auto bearer = std::make_unique<CellularBearer>(&control_interface_,
                                                  RpcIdentifier(""), "");
+  bearer->set_apn_type(ApnList::ApnType::kDefault);
   bearer->set_data_interface(kTestInterfaceName);
   bearer->set_ipv4_config_method(CellularBearer::IPConfigMethod::kDHCP);
   SetCapability3gppActiveBearer(std::move(bearer));
@@ -1798,6 +1801,7 @@ TEST_F(CellularTest, EstablishLinkDHCP) {
 TEST_F(CellularTest, LinkUpDHCP) {
   auto bearer = std::make_unique<CellularBearer>(&control_interface_,
                                                  RpcIdentifier(""), "");
+  bearer->set_apn_type(ApnList::ApnType::kDefault);
   bearer->set_data_interface(kTestInterfaceName);
   bearer->set_ipv4_config_method(CellularBearer::IPConfigMethod::kDHCP);
   SetCapability3gppActiveBearer(std::move(bearer));
@@ -1822,6 +1826,7 @@ TEST_F(CellularTest, LinkUpDHCP) {
 TEST_F(CellularTest, EstablishLinkStatic) {
   auto bearer = std::make_unique<CellularBearer>(&control_interface_,
                                                  RpcIdentifier(""), "");
+  bearer->set_apn_type(ApnList::ApnType::kDefault);
   bearer->set_data_interface(kTestInterfaceName);
   bearer->set_ipv4_config_method(CellularBearer::IPConfigMethod::kStatic);
   SetCapability3gppActiveBearer(std::move(bearer));
@@ -1864,6 +1869,7 @@ TEST_F(CellularTest, LinkUpStatic) {
 
   auto bearer = std::make_unique<CellularBearer>(&control_interface_,
                                                  RpcIdentifier(""), "");
+  bearer->set_apn_type(ApnList::ApnType::kDefault);
   bearer->set_data_interface(kTestInterfaceName);
   bearer->set_ipv4_config_method(CellularBearer::IPConfigMethod::kStatic);
   bearer->set_ipv4_config_properties(
