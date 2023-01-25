@@ -155,7 +155,7 @@ void ModemManagerProxy::OnPropertiesChanged(
   VLOG(3) << __func__ << " : " << prop << " changed.";
 
   // wait for all properties that we will be read by ModemMbim.
-  if (!modem_proxy_->GetProperties()->primary_port.is_valid() ||
+  if (!modem_proxy_->GetProperties()->ports.is_valid() ||
       !modem_proxy_->GetProperties()->state.is_valid())
     return;
 
@@ -170,13 +170,18 @@ void ModemManagerProxy::OnPropertiesChanged(
   if (!modem_appeared_)
     return;
   modem_appeared_ = false;
-  if (cached_primary_port_.has_value() &&
-      cached_primary_port_ != modem_proxy_->primary_port()) {
-    LOG(ERROR) << "Unexpected modem appeared at "
-               << modem_proxy_->primary_port();
+  std::string mbim_port;
+  for (const auto& [port, port_type] : modem_proxy_->ports()) {
+    if (port_type == MM_MODEM_PORT_TYPE_MBIM) {
+      mbim_port = port;
+      break;
+    }
+  }
+  if (cached_primary_port_.has_value() && cached_primary_port_ != mbim_port) {
+    LOG(ERROR) << "Unexpected modem appeared at " << mbim_port;
     return;
   }
-  cached_primary_port_ = modem_proxy_->primary_port();
+  cached_primary_port_ = mbim_port;
   if (!on_modem_appeared_cb_.is_null())
     std::move(on_modem_appeared_cb_).Run();
 }
