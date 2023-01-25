@@ -370,6 +370,7 @@ static_library("libshill") {
     "wifi/wifi_rf.cc",
     "wifi/wifi_security.cc",
     "wifi/wifi_service.cc",
+    "wifi/wifi_state.cc",
   ]
   configs += [
     ":libshill_config",
@@ -786,6 +787,7 @@ if (use.test) {
       "wifi/wifi_rf_test.cc",
       "wifi/wifi_security_test.cc",
       "wifi/wifi_service_test.cc",
+      "wifi/wifi_state_test.cc",
       "wifi/wifi_test.cc",
     ]
     configs += [

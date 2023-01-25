@@ -2092,9 +2092,11 @@ void Manager::AutoConnect() {
 void Manager::ScanAndConnectToBestServices(Error* error) {
   DeviceRefPtr device = GetEnabledDeviceWithTechnology(Technology::kWiFi);
   if (device) {
+    LOG(INFO) << "ScanAndConnectToBestServices: ensure scan";
     static_cast<WiFi*>(device.get())->EnsureScanAndConnectToBestService(error);
     return;
   }
+  LOG(INFO) << "ScanAndConnectToBestServices: no WiFi device available";
   ConnectToBestServices(error);
 }
 

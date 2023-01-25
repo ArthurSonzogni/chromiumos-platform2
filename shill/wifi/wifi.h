@@ -103,6 +103,7 @@
 #include "shill/supplicant/supplicant_event_delegate_interface.h"
 #include "shill/supplicant/supplicant_manager.h"
 #include "shill/wifi/wifi_link_statistics.h"
+#include "shill/wifi/wifi_state.h"
 
 namespace shill {
 
@@ -262,24 +263,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
       WiFiLinkStatistics::Trigger trigger);
 
  private:
-  enum ScanMethod { kScanMethodNone, kScanMethodFull };
-  enum ScanState {
-    kScanIdle,
-    kScanScanning,
-    kScanBackgroundScanning,
-    kScanTransitionToConnecting,
-    kScanConnecting,
-    kScanConnected,
-    kScanFoundNothing
-  };
-
-  // Represents the state of a "ensured" queued scan
-  enum class EnsuredScanState {
-    kIdle,     // No queued scan
-    kWaiting,  // Queued scan
-    kScanning  // Queued scan in progress
-  };
-
   // Result from a BSSAdded or BSSRemoved event.
   struct ScanResult {
     ScanResult() : is_removal(false) {}
@@ -324,15 +307,15 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   friend class WiFiObjectTest;  // access to supplicant_*_proxy_, link_up_
   friend class WiFiTimerTest;   // kNumFastScanAttempts, kFastScanInterval
-  friend class WiFiMainTest;    // ScanState, ScanMethod
+  friend class WiFiMainTest;    // wifi_state_
   FRIEND_TEST(WiFiMainTest, AppendBgscan);
-  FRIEND_TEST(WiFiMainTest, BackgroundScan);  // ScanMethod, ScanState
+  FRIEND_TEST(WiFiMainTest, BackgroundScan);  // wifi_state_
   FRIEND_TEST(WiFiMainTest, BSSIDChangeInvokesNotifyBSSIDChange);
-  FRIEND_TEST(WiFiMainTest, ConnectToServiceNotPending);  // ScanState
+  FRIEND_TEST(WiFiMainTest, ConnectToServiceNotPending);  // wifi_state
   FRIEND_TEST(WiFiMainTest, ConnectToServiceWithoutRecentIssues);
   // is_debugging_connection_
-  FRIEND_TEST(WiFiMainTest, ConnectToWithError);       // ScanState
-  FRIEND_TEST(WiFiMainTest, ConnectWhileNotScanning);  // ScanState
+  FRIEND_TEST(WiFiMainTest, ConnectToWithError);       // wifi_state_
+  FRIEND_TEST(WiFiMainTest, ConnectWhileNotScanning);  // wifi_state_
   FRIEND_TEST(WiFiMainTest, CurrentBSSChangedUpdateServiceEndpoint);
   FRIEND_TEST(WiFiMainTest, DisconnectReasonUpdated);
   FRIEND_TEST(WiFiMainTest, DisconnectReasonCleared);
@@ -340,36 +323,36 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, GetSuffixFromAuthMode);
   FRIEND_TEST(WiFiMainTest, FlushBSSOnResume);  // kMaxBSSResumeAgeSeconds
   FRIEND_TEST(WiFiMainTest, FullScanConnectingToConnected);
-  FRIEND_TEST(WiFiMainTest, FullScanFindsNothing);    // ScanMethod, ScanState
+  FRIEND_TEST(WiFiMainTest,
+              FullScanFindsNothing);                  // wifi_state_
   FRIEND_TEST(WiFiMainTest, InitialSupplicantState);  // kInterfaceStateUnknown
   FRIEND_TEST(WiFiMainTest, NoScansWhileConnecting);  // ScanState
   FRIEND_TEST(WiFiMainTest, PendingScanEvents);       // EndpointMap
-  FRIEND_TEST(WiFiMainTest, EnsuredScan);             // ScanState, ScanMethod
-  FRIEND_TEST(WiFiMainTest, QueueEnsuredScan);        // ScanState, ScanMethod
-  FRIEND_TEST(WiFiMainTest, QueuedEnsuredScan);       // ScanState, ScanMethod
+  FRIEND_TEST(WiFiMainTest, EnsuredScan);             // wifi_state_
   FRIEND_TEST(WiFiMainTest,
-              QueuedEnsuredScanFoundNothing);  // ScanState, ScanMethod
+              QueueEnsuredScan);  // wifi_state_
+  FRIEND_TEST(WiFiMainTest,
+              QueuedEnsuredScan);  // wifi_state_
+  FRIEND_TEST(WiFiMainTest,
+              QueuedEnsuredScanFoundNothing);  // wifi_state_
+  FRIEND_TEST(WiFiMainTest,
+              QueuedEnsuredScanBackgroundScanFinished);  // wifi_state_
+  FRIEND_TEST(WiFiMainTest,
+              QueuedEnsuredScanInterruptedByConnect);  // wifi_state_
+  FRIEND_TEST(WiFiMainTest,
+              QueuedEnsuredScanInterruptedByConnecting);  // wifi_state_
   FRIEND_TEST(
       WiFiMainTest,
-      QueuedEnsuredScanBackgroundScanFinished);  // ScanState, ScanMethod
-  FRIEND_TEST(WiFiMainTest,
-              QueuedEnsuredScanInterruptedByConnect);  // ScanState, ScanMethod
+      QueuedEnsuredScanInterruptedByTransitionToConnecting);  // wifi_state_
   FRIEND_TEST(
       WiFiMainTest,
-      QueuedEnsuredScanInterruptedByConnecting);  // ScanState, ScanMethod
-  FRIEND_TEST(
-      WiFiMainTest,
-      QueuedEnsuredScanInterruptedByTransitionToConnecting);  // ScanState,
-                                                              // ScanMethod
-  FRIEND_TEST(WiFiMainTest,
-              QueuedEnsuredScanInterruptedByUnexpectedIdleState);  // ScanState,
-                                                                   // ScanMethod
+      QueuedEnsuredScanInterruptedByUnexpectedIdleState);  // wifi_state_
   FRIEND_TEST(WiFiMainTest, RekeyInvokesNotifyRekeyStart);
-  FRIEND_TEST(WiFiMainTest, ScanRejected);                         // ScanState
+  FRIEND_TEST(WiFiMainTest, ScanRejected);               // wifi_state_
   FRIEND_TEST(WiFiMainTest, ScanResults);                // EndpointMap
   FRIEND_TEST(WiFiMainTest, ScanStateHandleDisconnect);  // ScanState
   FRIEND_TEST(WiFiMainTest, ScanStateNotScanningNoUma);  // ScanState
-  FRIEND_TEST(WiFiMainTest, ScanStateUma);  // ScanState, ScanMethod
+  FRIEND_TEST(WiFiMainTest, ScanStateUma);               // wifi_state_
   FRIEND_TEST(WiFiMainTest, Stop);          // weak_ptr_factory_while_started_
   FRIEND_TEST(WiFiMainTest, TimeoutPendingServiceWithEndpoints);
   FRIEND_TEST(WiFiMainTest,
@@ -383,7 +366,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiTimerTest, ResumeDispatchesConnectivityReportTask);
   // kFastScanInterval
   FRIEND_TEST(WiFiTimerTest, StartScanTimer_HaveFastScansRemaining);
-  // ScanMethod, ScanState
+  // wifi_state_
   FRIEND_TEST(WiFiMainTest, ResetScanStateWhenScanFailed);
   // kPostScanFailedDelay
   FRIEND_TEST(WiFiTimerTest, ScanDoneDispatchesTasks);
@@ -677,17 +660,17 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   void OnTriggerPassiveScanResponse(const Nl80211Message& netlink_message);
 
-  void SetScanState(ScanState new_state,
-                    ScanMethod new_method,
-                    const char* reason);
+  void SetPhyState(WiFiState::PhyState new_state,
+                   WiFiState::ScanMethod new_method,
+                   const char* reason);
 
-  // Handles the radio state transitions required to make a ensured scan.
-  // Note: This is an internal method designed only to be called when the radio
-  // is idle.  Calling this from contexts in which the radio is not idle will
+  // Handles the phy state transitions required to make a ensured scan.
+  // Note: This is an internal method designed only to be called when the phy
+  // is idle.  Calling this from contexts in which the phy is not idle will
   // have unexpected behavior (the scan may not actually occur).
-  void HandleEnsuredScan(ScanState old_state);
-  void ReportScanResultToUma(ScanState state, ScanMethod method);
-  static std::string ScanStateString(ScanState state, ScanMethod type);
+  void HandleEnsuredScan(WiFiState::PhyState old_state);
+  void ReportScanResultToUma(WiFiState::PhyState state,
+                             WiFiState::ScanMethod method);
 
   // Call WakeOnWiFi::PrepareForWakeOnWiFiBeforeSuspend.
   void OnIPv4ConfiguredWithDHCPLease() override;
@@ -898,9 +881,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // closure for processing the pending tasks in PendingScanResultsHandler().
   std::unique_ptr<PendingScanResults> pending_scan_results_;
 
-  ScanState scan_state_;
-  ScanMethod scan_method_;
-  EnsuredScanState ensured_scan_state_ = EnsuredScanState::kIdle;
+  std::unique_ptr<WiFiState> wifi_state_;
 
   // Indicates if the last scan skipped the broadcast probe.
   bool broadcast_probe_was_skipped_;

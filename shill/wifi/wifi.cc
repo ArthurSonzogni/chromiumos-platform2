@@ -71,6 +71,7 @@
 #include "shill/wifi/wifi_phy.h"
 #include "shill/wifi/wifi_provider.h"
 #include "shill/wifi/wifi_service.h"
+#include "shill/wifi/wifi_state.h"
 
 namespace shill {
 
@@ -179,8 +180,6 @@ WiFi::WiFi(Manager* manager,
       random_mac_enabled_(false),
       sched_scan_supported_(false),
       ap_mode_supported_(false),
-      scan_state_(kScanIdle),
-      scan_method_(kScanMethodNone),
       broadcast_probe_was_skipped_(false),
       interworking_select_enabled_(false),
       hs20_bss_count_(0),
@@ -247,6 +246,7 @@ WiFi::WiFi(Manager* manager,
   netlink_handler_ = base::BindRepeating(&WiFi::HandleNetlinkBroadcast,
                                          weak_ptr_factory_.GetWeakPtr());
   netlink_manager_->AddBroadcastHandler(netlink_handler_);
+  wifi_state_ = std::make_unique<WiFiState>();
   SLOG(this, 2) << "WiFi device " << link_name() << " initialized.";
 }
 
@@ -327,7 +327,8 @@ void WiFi::Stop(const EnabledStateChangedCallback& callback) {
   current_service_ = nullptr;  // breaks a reference cycle
   pending_service_ = nullptr;  // breaks a reference cycle
   is_debugging_connection_ = false;
-  SetScanState(kScanIdle, kScanMethodNone, __func__);
+  SetPhyState(WiFiState::PhyState::kIdle, WiFiState::ScanMethod::kNone,
+              __func__);
   StopPendingTimer();
   StopReconnectTimer();
   StopRequestingStationInfo();
@@ -349,7 +350,7 @@ void WiFi::Stop(const EnabledStateChangedCallback& callback) {
 }
 
 void WiFi::Scan(Error* /*error*/, const std::string& reason) {
-  if ((scan_state_ != kScanIdle) ||
+  if ((wifi_state_->GetPhyState() != WiFiState::PhyState::kIdle) ||
       (current_service_.get() && current_service_->IsConnecting())) {
     SLOG(this, 2) << "Ignoring scan request while scanning or connecting.";
     return;
@@ -429,11 +430,11 @@ bool WiFi::RemoveCred(const PasspointCredentialsRefPtr& credentials) {
 void WiFi::EnsureScanAndConnectToBestService(Error* error) {
   // If the radio is currently idle, start a scan.  Otherwise, wait until the
   // radio becomes idle.
-  if (scan_state_ == kScanIdle) {
-    ensured_scan_state_ = EnsuredScanState::kScanning;
+  if (wifi_state_->GetPhyState() == WiFiState::PhyState::kIdle) {
+    wifi_state_->SetEnsuredScanState(WiFiState::EnsuredScanState::kScanning);
     Scan(error, "Starting ensured scan.");
   } else {
-    ensured_scan_state_ = EnsuredScanState::kWaiting;
+    wifi_state_->SetEnsuredScanState(WiFiState::EnsuredScanState::kWaiting);
   }
 }
 
@@ -652,8 +653,9 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
     // state since the overall story arc isn't reflected by the disconnect.
     // It is, instead, described by the transition to either kScanFoundNothing
     // or kScanConnecting (made by |SetPendingService|, below).
-    if (scan_method_ != kScanMethodNone) {
-      SetScanState(kScanTransitionToConnecting, scan_method_, __func__);
+    if (wifi_state_->GetScanMethod() != WiFiState::ScanMethod::kNone) {
+      SetPhyState(WiFiState::PhyState::kTransitionToConnecting,
+                  wifi_state_->GetScanMethod(), __func__);
     }
     // Explicitly disconnect pending service.
     pending_service_->set_expecting_disconnect(true);
@@ -676,7 +678,8 @@ void WiFi::ConnectTo(WiFiService* service, Error* error) {
                                                  &network_rpcid)) {
       Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
                             "Failed to add network");
-      SetScanState(kScanIdle, scan_method_, __func__);
+      SetPhyState(WiFiState::PhyState::kIdle, wifi_state_->GetScanMethod(),
+                  __func__);
       return;
     }
     CHECK(!network_rpcid.value().empty());  // No DBus path should be empty.
@@ -1557,7 +1560,8 @@ void WiFi::HandleRoam(const RpcIdentifier& new_bss,
     // Boring case: we've connected to the service we asked
     // for. Simply update |current_service_| and |pending_service_|.
     current_service_ = service;
-    SetScanState(kScanConnected, scan_method_, __func__);
+    SetPhyState(WiFiState::PhyState::kConnected, wifi_state_->GetScanMethod(),
+                __func__);
     SetPendingService(nullptr);
     return;
   }
@@ -2268,25 +2272,29 @@ void WiFi::ScanDoneTask() {
 
 void WiFi::ScanFailedTask() {
   SLOG(this, 2) << __func__;
-  SetScanState(kScanIdle, kScanMethodNone, __func__);
+  SetPhyState(WiFiState::PhyState::kIdle, WiFiState::ScanMethod::kNone,
+              __func__);
 }
 
 void WiFi::UpdateScanStateAfterScanDone() {
-  if (scan_method_ == kScanMethodFull) {
+  if (wifi_state_->GetScanMethod() == WiFiState::ScanMethod::kFull) {
     // Only notify the Manager on completion of full scans, since the manager
     // will replace any cached geolocation info with the BSSes we have right
     // now.
     manager()->OnDeviceGeolocationInfoUpdated(this);
   }
-  if (scan_state_ == kScanBackgroundScanning) {
+  if (wifi_state_->GetPhyState() == WiFiState::PhyState::kBackgroundScanning) {
     // Going directly to kScanIdle (instead of to kScanFoundNothing) inhibits
-    // some UMA reporting in SetScanState.  That's desired -- we don't want
+    // some UMA reporting in SetPhyState.  That's desired -- we don't want
     // to report background scan results to UMA since the drivers may play
     // background scans over a longer period in order to not interfere with
     // traffic.
-    SetScanState(kScanIdle, kScanMethodNone, __func__);
-  } else if (scan_state_ != kScanIdle && IsIdle()) {
-    SetScanState(kScanFoundNothing, scan_method_, __func__);
+    SetPhyState(WiFiState::PhyState::kIdle, WiFiState::ScanMethod::kNone,
+                __func__);
+  } else if (wifi_state_->GetPhyState() != WiFiState::PhyState::kIdle &&
+             IsIdle()) {
+    SetPhyState(WiFiState::PhyState::kFoundNothing,
+                wifi_state_->GetScanMethod(), __func__);
   }
 }
 
@@ -2323,12 +2331,14 @@ void WiFi::ScanTask() {
   SLOG(this, 2) << "WiFi " << link_name() << " scan requested.";
   if (!enabled()) {
     SLOG(this, 2) << "Ignoring scan request while device is not enabled.";
-    SetScanState(kScanIdle, kScanMethodNone, __func__);  // Probably redundant.
+    SetPhyState(WiFiState::PhyState::kIdle, WiFiState::ScanMethod::kNone,
+                __func__);  // Probably redundant.
     return;
   }
   if (!supplicant_present_ || !supplicant_interface_proxy_.get()) {
     SLOG(this, 2) << "Ignoring scan request while supplicant is not present.";
-    SetScanState(kScanIdle, kScanMethodNone, __func__);
+    SetPhyState(WiFiState::PhyState::kIdle, WiFiState::ScanMethod::kNone,
+                __func__);
     return;
   }
   if ((pending_service_.get() && pending_service_->IsConnecting()) ||
@@ -2381,9 +2391,10 @@ void WiFi::ScanTask() {
 
   // Only set the scan state/method if we are starting a full scan from
   // scratch.
-  if (scan_state_ != kScanScanning) {
-    SetScanState(IsIdle() ? kScanScanning : kScanBackgroundScanning,
-                 kScanMethodFull, __func__);
+  if (wifi_state_->GetPhyState() != WiFiState::PhyState::kScanning) {
+    SetPhyState(IsIdle() ? WiFiState::PhyState::kScanning
+                         : WiFiState::PhyState::kBackgroundScanning,
+                WiFiState::ScanMethod::kFull, __func__);
   }
 }
 
@@ -2845,7 +2856,8 @@ void WiFi::OnAfterResume() {
 }
 
 void WiFi::AbortScan() {
-  SetScanState(kScanIdle, kScanMethodNone, __func__);
+  SetPhyState(WiFiState::PhyState::kIdle, WiFiState::ScanMethod::kNone,
+              __func__);
 }
 
 void WiFi::InitiateScan() {
@@ -3021,14 +3033,17 @@ void WiFi::ScanTimerHandler() {
     SLOG(this, 5) << "Not scanning: still in suspend";
     return;
   }
-  if (scan_state_ == kScanIdle && IsIdle()) {
+  if (wifi_state_->GetPhyState() == WiFiState::PhyState::kIdle && IsIdle()) {
     Scan(nullptr, __func__);
     if (fast_scans_remaining_ > 0) {
       --fast_scans_remaining_;
     }
   } else {
-    if (scan_state_ != kScanIdle) {
-      SLOG(this, 5) << "Skipping scan: scan_state_ is " << scan_state_;
+    if (wifi_state_->GetPhyState() != WiFiState::PhyState::kIdle) {
+      SLOG(this, 5) << "Skipping scan: phy state is "
+                    << wifi_state_->GetPhyStateString()
+                    << " ensured scan state is "
+                    << wifi_state_->GetEnsuredScanStateString();
     }
     if (current_service_) {
       SLOG(this, 5) << "Skipping scan: current_service_ is service "
@@ -3059,7 +3074,8 @@ void WiFi::SetPendingService(const WiFiServiceRefPtr& service) {
   SLOG(this, 2) << "WiFi " << link_name() << " setting pending service to "
                 << (service ? service->log_name() : "<none>");
   if (service) {
-    SetScanState(kScanConnecting, scan_method_, __func__);
+    SetPhyState(WiFiState::PhyState::kConnecting, wifi_state_->GetScanMethod(),
+                __func__);
     service->SetState(Service::kStateAssociating);
     StartPendingTimer();
   } else {
@@ -3076,10 +3092,12 @@ void WiFi::SetPendingService(const WiFiServiceRefPtr& service) {
     //     from a service during a scan (scan_state_ == kScanScanning or
     //     kScanConnecting).  This is an odd case -- let's discard any
     //     statistics we're gathering by transitioning directly into kScanIdle.
-    if (scan_state_ == kScanScanning ||
-        scan_state_ == kScanBackgroundScanning ||
-        scan_state_ == kScanConnecting) {
-      SetScanState(kScanIdle, kScanMethodNone, __func__);
+    if (wifi_state_->GetPhyState() == WiFiState::PhyState::kScanning ||
+        wifi_state_->GetPhyState() ==
+            WiFiState::PhyState::kBackgroundScanning ||
+        wifi_state_->GetPhyState() == WiFiState::PhyState::kConnecting) {
+      SetPhyState(WiFiState::PhyState::kIdle, WiFiState::ScanMethod::kNone,
+                  __func__);
     }
     if (pending_service_) {
       StopPendingTimer();
@@ -3092,7 +3110,8 @@ void WiFi::PendingTimeoutHandler() {
   Error unused_error;
   LOG(INFO) << "WiFi Device " << link_name() << ": " << __func__;
   CHECK(pending_service_);
-  SetScanState(kScanFoundNothing, scan_method_, __func__);
+  SetPhyState(WiFiState::PhyState::kFoundNothing, wifi_state_->GetScanMethod(),
+              __func__);
   WiFiServiceRefPtr pending_service = pending_service_;
 
   SLOG(this, 4) << "Supplicant authentication status: "
@@ -3499,32 +3518,36 @@ Uint16s WiFi::GetAllScanFrequencies(Error* /* error */) {
 }
 
 bool WiFi::GetScanPending(Error* /* error */) {
-  return scan_state_ == kScanScanning || scan_state_ == kScanBackgroundScanning;
+  WiFiState::PhyState state = wifi_state_->GetPhyState();
+  return state == WiFiState::PhyState::kScanning ||
+         state == WiFiState::PhyState::kBackgroundScanning;
 }
 
 bool WiFi::GetWakeOnWiFiSupported(Error* /* error */) {
   return wake_on_wifi_ != nullptr;
 }
 
-void WiFi::SetScanState(ScanState new_state,
-                        ScanMethod new_method,
-                        const char* reason) {
-  if (new_state == kScanIdle)
-    new_method = kScanMethodNone;
-  if (new_state == kScanConnected) {
+void WiFi::SetPhyState(WiFiState::PhyState new_state,
+                       WiFiState::ScanMethod new_method,
+                       const char* reason) {
+  if (new_state == WiFiState::PhyState::kIdle)
+    new_method = WiFiState::ScanMethod::kNone;
+  if (new_state == WiFiState::PhyState::kConnected) {
     // The scan method shouldn't be changed by the connection process, so
     // we'll put a CHECK, here, to verify.  NOTE: this assumption is also
     // enforced by the parameters to the call to |ReportScanResultToUma|.
-    CHECK(new_method == scan_method_);
+    CHECK(new_method == wifi_state_->GetScanMethod());
   }
 
   int log_level = 6;
   bool state_or_method_changed = true;
   bool is_terminal_state = false;
-  if (new_state == scan_state_ && new_method == scan_method_) {
+  if (new_state == wifi_state_->GetPhyState() &&
+      new_method == wifi_state_->GetScanMethod()) {
     log_level = 7;
     state_or_method_changed = false;
-  } else if (new_state == kScanConnected || new_state == kScanFoundNothing) {
+  } else if (new_state == WiFiState::PhyState::kConnected ||
+             new_state == WiFiState::PhyState::kFoundNothing) {
     // These 'terminal' states are slightly more interesting than the
     // intermediate states.
     // NOTE: Since background scan goes directly to kScanIdle (skipping over
@@ -3534,49 +3557,63 @@ void WiFi::SetScanState(ScanState new_state,
     is_terminal_state = true;
   }
 
-  SLOG(this, log_level) << (reason ? reason : "<unknown>") << " - "
-                        << link_name() << ": Scan state: "
-                        << ScanStateString(scan_state_, scan_method_) << " -> "
-                        << ScanStateString(new_state, new_method);
+  if (wifi_state_->GetEnsuredScanState() ==
+      WiFiState::EnsuredScanState::kIdle) {
+    SLOG(this, log_level) << (reason ? reason : "<unknown>") << " - "
+                          << link_name() << ": Scan state: "
+                          << WiFiState::LegacyStateString(
+                                 wifi_state_->GetPhyState(),
+                                 wifi_state_->GetScanMethod())
+                          << " -> "
+                          << wifi_state_->LegacyStateString(new_state,
+                                                            new_method);
+  } else {
+    LOG(INFO) << (reason ? reason : "<unknown>") << " - " << link_name()
+              << ": Scan state: "
+              << WiFiState::LegacyStateString(wifi_state_->GetPhyState(),
+                                              wifi_state_->GetScanMethod())
+              << " -> " << wifi_state_->LegacyStateString(new_state, new_method)
+              << "ensured scan: " << wifi_state_->GetEnsuredScanStateString();
+  }
+
   if (!state_or_method_changed)
     return;
 
   // Actually change the state.
-  ScanState old_state = scan_state_;
-  ScanMethod old_method = scan_method_;
+  WiFiState::PhyState old_state = wifi_state_->GetPhyState();
+  WiFiState::ScanMethod old_method = wifi_state_->GetScanMethod();
   bool old_scan_pending = GetScanPending(nullptr);
-  scan_state_ = new_state;
-  scan_method_ = new_method;
+  wifi_state_->SetPhyState(new_state, new_method);
   bool new_scan_pending = GetScanPending(nullptr);
   if (old_scan_pending != new_scan_pending) {
     adaptor()->EmitBoolChanged(kScanningProperty, new_scan_pending);
   }
   switch (new_state) {
-    case kScanIdle:
+    case WiFiState::PhyState::kIdle:
       metrics()->ResetScanTimer(interface_index());
       metrics()->ResetConnectTimer(interface_index());
       HandleEnsuredScan(old_state);
       break;
-    case kScanScanning:  // FALLTHROUGH
-    case kScanBackgroundScanning:
+    case WiFiState::PhyState::kScanning:  // FALLTHROUGH
+    case WiFiState::PhyState::kBackgroundScanning:
       if (new_state != old_state) {
         metrics()->NotifyDeviceScanStarted(interface_index());
       }
       break;
-    case kScanConnecting:
+    case WiFiState::PhyState::kConnecting:
       metrics()->NotifyDeviceScanFinished(interface_index());
       metrics()->NotifyDeviceConnectStarted(interface_index());
       break;
-    case kScanConnected:
+    case WiFiState::PhyState::kConnected:
       metrics()->NotifyDeviceConnectFinished(interface_index());
       break;
-    case kScanFoundNothing:
+    case WiFiState::PhyState::kFoundNothing:
       // Note that finishing a scan that hasn't started (if, for example, we
       // get here when we fail to complete a connection) does nothing.
       metrics()->NotifyDeviceScanFinished(interface_index());
       metrics()->ResetConnectTimer(interface_index());
       break;
-    case kScanTransitionToConnecting:  // FALLTHROUGH
+    case WiFiState::PhyState::kTransitionToConnecting:  // FALLTHROUGH
     default:
       break;
   }
@@ -3584,122 +3621,62 @@ void WiFi::SetScanState(ScanState new_state,
     ReportScanResultToUma(new_state, old_method);
     // Now that we've logged a terminal state, let's call ourselves to
     // transition to the idle state.
-    SetScanState(kScanIdle, kScanMethodNone, reason);
+    SetPhyState(WiFiState::PhyState::kIdle, WiFiState::ScanMethod::kNone,
+                reason);
   }
 }
 
-void WiFi::HandleEnsuredScan(ScanState old_scan_state) {
-  switch (ensured_scan_state_) {
-    case EnsuredScanState::kWaiting:
-      ensured_scan_state_ = EnsuredScanState::kScanning;
-      // This starts a scan in the event loop, allowing SetScanState
+void WiFi::HandleEnsuredScan(WiFiState::PhyState old_phy_state) {
+  switch (wifi_state_->GetEnsuredScanState()) {
+    case WiFiState::EnsuredScanState::kWaiting:
+      wifi_state_->SetEnsuredScanState(WiFiState::EnsuredScanState::kScanning);
+      // This starts a scan in the event loop, allowing SetPhyState
       // to complete before proceeding.
       Scan(nullptr, "Previous scan complete. Starting ensured scan.");
       break;
-    case EnsuredScanState::kScanning:
+    case WiFiState::EnsuredScanState::kScanning:
       // If the last state was a scanning-related state, the scan actually
       // executed.  Otherwise there was a race condition for the radio, and
       // a new scan should be started.
-      switch (old_scan_state) {
-        case kScanScanning:
-        case kScanBackgroundScanning:
-        case kScanFoundNothing:
-          ensured_scan_state_ = EnsuredScanState::kIdle;
+      switch (old_phy_state) {
+        case WiFiState::PhyState::kScanning:
+        case WiFiState::PhyState::kBackgroundScanning:
+        case WiFiState::PhyState::kFoundNothing:
+          wifi_state_->SetEnsuredScanState(WiFiState::EnsuredScanState::kIdle);
           // This connects to best services in the event loop, allowing
-          // SetScanState to complete before proceeding.
+          // SetPhyState to complete before proceeding.
           manager()->ConnectToBestServices(nullptr);
           break;
-        case kScanTransitionToConnecting:
-        case kScanConnecting:
-        case kScanConnected:
-        case kScanIdle:
-          // This starts a scan in the event loop, allowing SetScanState
+        case WiFiState::PhyState::kTransitionToConnecting:
+        case WiFiState::PhyState::kConnecting:
+        case WiFiState::PhyState::kConnected:
+        case WiFiState::PhyState::kIdle:
+          // This starts a scan in the event loop, allowing SetPhyState
           // to complete before proceeding.
           Scan(nullptr, "Ensured scan didn't occur. Requesting another scan.");
           break;
       }
       break;
-    case EnsuredScanState::kIdle:
+    case WiFiState::EnsuredScanState::kIdle:
       break;
   }
 }
 
-// static
-std::string WiFi::ScanStateString(ScanState state, ScanMethod method) {
-  switch (state) {
-    case kScanIdle:
-      return "IDLE";
-    case kScanScanning:
-      DCHECK(method != kScanMethodNone) << "Scanning with no scan method.";
-      switch (method) {
-        case kScanMethodFull:
-          return "FULL_START";
-        default:
-          NOTREACHED();
-      }
-      // TODO(denik): Remove break after fall-through check
-      // is fixed with NOTREACHED(), https://crbug.com/973960.
-      break;
-    case kScanBackgroundScanning:
-      return "BACKGROUND_START";
-    case kScanTransitionToConnecting:
-      return "TRANSITION_TO_CONNECTING";
-    case kScanConnecting:
-      switch (method) {
-        case kScanMethodNone:
-          return "CONNECTING (not scan related)";
-        case kScanMethodFull:
-          return "FULL_CONNECTING";
-        default:
-          NOTREACHED();
-      }
-      // TODO(denik): Remove break after fall-through check
-      // is fixed with NOTREACHED(), https://crbug.com/973960.
-      break;
-    case kScanConnected:
-      switch (method) {
-        case kScanMethodNone:
-          return "CONNECTED (not scan related; e.g., from a supplicant roam)";
-        case kScanMethodFull:
-          return "FULL_CONNECTED";
-        default:
-          NOTREACHED();
-      }
-      // TODO(denik): Remove break after fall-through check
-      // is fixed with NOTREACHED(), https://crbug.com/973960.
-      break;
-    case kScanFoundNothing:
-      switch (method) {
-        case kScanMethodNone:
-          return "CONNECT FAILED (not scan related)";
-        case kScanMethodFull:
-          return "FULL_NOCONNECTION";
-        default:
-          NOTREACHED();
-      }
-      // TODO(denik): Remove break after fall-through check
-      // is fixed with NOTREACHED(), https://crbug.com/973960.
-      break;
-    default:
-      NOTREACHED();
-  }
-  return "";  // To shut up the compiler (that doesn't understand NOTREACHED).
-}
-
-void WiFi::ReportScanResultToUma(ScanState state, ScanMethod method) {
+void WiFi::ReportScanResultToUma(WiFiState::PhyState state,
+                                 WiFiState::ScanMethod method) {
   Metrics::WiFiScanResult result = Metrics::kScanResultMax;
-  if (state == kScanConnected) {
+  if (state == WiFiState::PhyState::kConnected) {
     switch (method) {
-      case kScanMethodFull:
+      case WiFiState::ScanMethod::kFull:
         result = Metrics::kScanResultFullScanConnected;
         break;
       default:
         // OK: Connect resulting from something other than scan.
         break;
     }
-  } else if (state == kScanFoundNothing) {
+  } else if (state == WiFiState::PhyState::kFoundNothing) {
     switch (method) {
-      case kScanMethodFull:
+      case WiFiState::ScanMethod::kFull:
         result = Metrics::kScanResultFullScanFoundNothing;
         break;
       default:
