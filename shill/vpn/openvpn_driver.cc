@@ -335,22 +335,64 @@ std::unique_ptr<IPConfig::Properties> OpenVPNDriver::CreateIPProperties(
     IPAddress::Family family,
     const std::string& local,
     const std::string& peer,
-    int prefix) {
+    int prefix,
+    bool default_route,
+    const RouteOptions& routes) {
+  const int max_prefix = IPAddress::GetMaxPrefixLength(family);
   auto properties = std::make_unique<IPConfig::Properties>();
   properties->method = kTypeVPN;
   properties->address_family = family;
   properties->address = local;
-  // |peer_address| will be cleared in SetRoutes().
-  properties->peer_address = peer;
   if (prefix == 0) {
-    properties->subnet_prefix =
-        IPAddress::GetMaxPrefixLength(properties->address_family);
+    properties->subnet_prefix = max_prefix;
   } else {
     properties->subnet_prefix = prefix;
   }
   // L3 VPN doesn't need gateway. Setting it to the local IP guarantees that we
   // will pass the various coherence checks in connection.cc.
   properties->gateway = local;
+
+  properties->default_route = default_route;
+  if (!peer.empty()) {
+    // --topology net30 or p2p will set ifconfig_remote
+
+    // Setting a point-to-point address in the kernel will create a route
+    // in RT_TABLE_MAIN instead of our per-device table.  To avoid this,
+    // create an explicit host route here, and clear
+    // |properties->peer_address.|
+    properties->inclusion_list.push_back(
+        base::StringPrintf("%s/%d", peer.c_str(), max_prefix));
+  } else if (properties->subnet_prefix != max_prefix) {
+    // --topology subnet will set ifconfig_netmask instead
+    IPAddress network_addr(properties->address);
+    if (network_addr.family() != properties->address_family) {
+      LOG(WARNING) << "Error obtaining network address for "
+                   << properties->address;
+    } else {
+      network_addr.set_prefix(properties->subnet_prefix);
+      const std::string prefix = base::StringPrintf(
+          "%s/%d", network_addr.GetNetworkPart().ToString().c_str(),
+          properties->subnet_prefix);
+      properties->inclusion_list.push_back(prefix);
+    }
+  }
+
+  // Ignore |route.gateway|.  If it's wrong, it can cause the kernel to
+  // refuse to add the route.  If it's correct, it has no effect anyway.
+  for (const auto& route_map : routes) {
+    const IPConfig::Route& route = route_map.second;
+    if (route.host.empty() || route.gateway.empty()) {
+      LOG(WARNING) << "Ignoring incomplete route: " << route_map.first;
+      continue;
+    }
+    properties->inclusion_list.push_back(
+        base::StringPrintf("%s/%d", route.host.c_str(), route.prefix));
+  }
+
+  if (properties->inclusion_list.empty() && properties->default_route) {
+    LOG(WARNING) << "No routes provided for " << family;
+  }
+
   return properties;
 }
 
@@ -392,7 +434,12 @@ std::unique_ptr<IPConfig::Properties> OpenVPNDriver::ParseIPConfiguration(
         ipv4_peer = value;
       }
     } else if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNRedirectGateway)) {
-      ipv4_redirect_gateway = true;
+      if (ignore_redirect_gateway) {
+        LOG(INFO) << "Ignoring default route parameter as requested by "
+                  << "configuration.";
+      } else {
+        ipv4_redirect_gateway = true;
+      }
     } else if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNTunMTU)) {
       if (!base::StringToInt(value, &mtu)) {
         LOG(ERROR) << "Failed to parse MTU " << value;
@@ -427,16 +474,10 @@ std::unique_ptr<IPConfig::Properties> OpenVPNDriver::ParseIPConfiguration(
     LOG(INFO) << "No foreign option provided";
   }
 
-  auto ipv4_props = CreateIPProperties(IPAddress::kFamilyIPv4, ipv4_local,
-                                       ipv4_peer, ipv4_prefix);
-  if (ipv4_redirect_gateway && ignore_redirect_gateway) {
-    LOG(INFO) << "Ignoring default route parameter as requested by "
-              << "configuration.";
-    ipv4_redirect_gateway = false;
-  }
-  ipv4_props->default_route = ipv4_redirect_gateway;
+  auto ipv4_props =
+      CreateIPProperties(IPAddress::kFamilyIPv4, ipv4_local, ipv4_peer,
+                         ipv4_prefix, ipv4_redirect_gateway, routes);
   ipv4_props->blackhole_ipv6 = ipv4_redirect_gateway;
-  SetRoutes(routes, ipv4_props.get());
   ipv4_props->domain_search = search_domains;
   ipv4_props->dns_servers = dns_servers;
   if (mtu != 0) {
@@ -520,56 +561,6 @@ void OpenVPNDriver::ParseRouteOption(const std::string& key,
     return;
   }
   LOG(WARNING) << "Unknown route option ignored: " << key;
-}
-
-// static
-void OpenVPNDriver::SetRoutes(const RouteOptions& routes,
-                              IPConfig::Properties* properties) {
-  std::vector<std::string> included_routes;
-  const int32_t max_prefix =
-      IPAddress::GetMaxPrefixLength(properties->address_family);
-  if (!properties->peer_address.empty()) {
-    // --topology net30 or p2p will set ifconfig_remote
-
-    // Setting a point-to-point address in the kernel will create a route
-    // in RT_TABLE_MAIN instead of our per-device table.  To avoid this,
-    // create an explicit host route here, and clear
-    // |properties->peer_address.|
-    included_routes.push_back(base::StringPrintf(
-        "%s/%d", properties->peer_address.c_str(), max_prefix));
-    properties->peer_address.clear();
-  } else if (properties->subnet_prefix != max_prefix) {
-    // --topology subnet will set ifconfig_netmask instead
-    IPAddress network_addr(properties->address);
-    if (network_addr.family() != properties->address_family) {
-      LOG(WARNING) << "Error obtaining network address for "
-                   << properties->address;
-    } else {
-      network_addr.set_prefix(properties->subnet_prefix);
-      const std::string prefix = base::StringPrintf(
-          "%s/%d", network_addr.GetNetworkPart().ToString().c_str(),
-          properties->subnet_prefix);
-      included_routes.push_back(prefix);
-    }
-  }
-
-  // Ignore |route.gateway|.  If it's wrong, it can cause the kernel to
-  // refuse to add the route.  If it's correct, it has no effect anyway.
-  for (const auto& route_map : routes) {
-    const IPConfig::Route& route = route_map.second;
-    if (route.host.empty() || route.gateway.empty()) {
-      LOG(WARNING) << "Ignoring incomplete route: " << route_map.first;
-      continue;
-    }
-    included_routes.push_back(
-        base::StringPrintf("%s/%d", route.host.c_str(), route.prefix));
-  }
-
-  if (!included_routes.empty()) {
-    properties->inclusion_list.swap(included_routes);
-  } else if (!properties->default_route) {
-    LOG(WARNING) << "No routes provided.";
-  }
 }
 
 // static

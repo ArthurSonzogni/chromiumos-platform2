@@ -470,35 +470,6 @@ TEST_F(OpenVPNDriverTest, ParseRouteOption) {
   EXPECT_EQ(kNetwork2, routes[2].host);
 }
 
-TEST_F(OpenVPNDriverTest, SetRoutes) {
-  OpenVPNDriver::RouteOptions routes;
-  routes[2].host = "2.3.4.5";
-  routes[2].prefix = 8;
-
-  routes[3].prefix = 8;
-  routes[3].gateway = "1.2.3.5";
-
-  routes[4].host = kNetwork1;
-  routes[4].prefix = kPrefix1;
-  routes[4].gateway = kGateway1;
-
-  routes[5].host = kNetwork2;
-  routes[5].prefix = kPrefix2;
-  routes[5].gateway = kGateway2;
-
-  IPConfig::Properties props;
-  props.address = kGateway1;
-  OpenVPNDriver::SetRoutes(routes, &props);
-  ASSERT_EQ(2, props.inclusion_list.size());
-  ASSERT_EQ(base::StringPrintf("%s/%d", kNetwork1, kPrefix1),
-            props.inclusion_list[0]);
-  ASSERT_EQ(base::StringPrintf("%s/%d", kNetwork2, kPrefix2),
-            props.inclusion_list[1]);
-  // Tests that the routes are not reset if no new routes are supplied.
-  OpenVPNDriver::SetRoutes(OpenVPNDriver::RouteOptions(), &props);
-  EXPECT_EQ(2, props.inclusion_list.size());
-}
-
 TEST_F(OpenVPNDriverTest, SplitPortFromHost) {
   std::string name, port;
   EXPECT_FALSE(OpenVPNDriver::SplitPortFromHost("", nullptr, nullptr));

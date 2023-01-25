@@ -129,7 +129,6 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   FRIEND_TEST(OpenVPNDriverTest, ParseForeignOptions);
   FRIEND_TEST(OpenVPNDriverTest, ParseIPConfiguration);
   FRIEND_TEST(OpenVPNDriverTest, ParseRouteOption);
-  FRIEND_TEST(OpenVPNDriverTest, SetRoutes);
   FRIEND_TEST(OpenVPNDriverTest, SpawnOpenVPN);
   FRIEND_TEST(OpenVPNDriverTest, SplitPortFromHost);
   FRIEND_TEST(OpenVPNDriverTest, WriteConfigFile);
@@ -160,8 +159,6 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   static void ParseRouteOption(const std::string& key,
                                const std::string& value,
                                RouteOptions* routes);
-  static void SetRoutes(const RouteOptions& routes,
-                        IPConfig::Properties* properties);
 
   // If |host| is in the "name:port" format, sets up |name| and |port|
   // appropriately and returns true. Otherwise, returns false.
@@ -173,7 +170,9 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
       IPAddress::Family family,
       const std::string& local,
       const std::string& peer,
-      int prefix);
+      int prefix,
+      bool default_route,
+      const RouteOptions& routes);
 
   static std::unique_ptr<IPConfig::Properties> ParseIPConfiguration(
       const std::map<std::string, std::string>& configuration,
