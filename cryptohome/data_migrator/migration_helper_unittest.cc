@@ -110,12 +110,8 @@ TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
   ASSERT_TRUE(platform_.SetOwnership(kFromDirPath, kUid, kGid,
                                      /*follow_links=*/false));
 
-  mode_t mode = S_ISVTX | S_IRUSR | S_IWUSR | S_IXUSR;
-  ASSERT_TRUE(platform_.SetPermissions(kFromDirPath, mode));
-  // GetPermissions call is needed because some bits to mode are applied
-  // automatically, so our original |mode| value is not what the resulting file
-  // actually has.
-  ASSERT_TRUE(platform_.GetPermissions(kFromDirPath, &mode));
+  mode_t kMode = S_ISVTX | S_IRUSR | S_IWUSR | S_IXUSR;
+  ASSERT_TRUE(platform_.SetPermissions(kFromDirPath, kMode));
 
   constexpr char kAttrName[] = "user.attr";
   constexpr char kValue[] = "value";
@@ -136,11 +132,12 @@ TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
       &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 
   const FilePath kToDirPath = to_dir_.Append(kDirectory);
-  base::stat_wrapper_t to_stat;
-  ASSERT_TRUE(platform_.Stat(kToDirPath, &to_stat));
   EXPECT_TRUE(platform_.DirectoryExists(kToDirPath));
 
-  // Verify mtime was coppied.  atime for directories is not
+  base::stat_wrapper_t to_stat;
+  ASSERT_TRUE(platform_.Stat(kToDirPath, &to_stat));
+
+  // Verify mtime was copied.  atime for directories is not
   // well-preserved because we have to traverse the directories to determine
   // migration size.
   EXPECT_EQ(from_stat.st_mtim.tv_sec, to_stat.st_mtim.tv_sec);
@@ -149,14 +146,15 @@ TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
   // Verify UID/GID, permissions and xattrs were copied
   EXPECT_EQ(to_stat.st_uid, kUid);
   EXPECT_EQ(to_stat.st_gid, kGid);
+  // GetPermissions call is needed here because some bits have been
+  // automatically applied to to_stat.st_mode.
   mode_t to_mode;
   ASSERT_TRUE(platform_.GetPermissions(kToDirPath, &to_mode));
-  EXPECT_EQ(mode, to_mode);
-  char value[sizeof(kValue) + 1];
-  ASSERT_TRUE(platform_.GetExtendedFileAttribute(kToDirPath, kAttrName, value,
-                                                 sizeof(kValue)));
-  value[sizeof(kValue)] = '\0';
-  EXPECT_STREQ(kValue, value);
+  EXPECT_EQ(to_mode, kMode);
+  std::string value;
+  ASSERT_TRUE(platform_.GetExtendedFileAttributeAsString(kToDirPath, kAttrName,
+                                                         &value));
+  EXPECT_STREQ(value.c_str(), kValue);
 
   // Verify ext2 flags were copied
   int new_ext2_attrs;
@@ -332,12 +330,8 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
   ASSERT_TRUE(platform_.SetOwnership(kFromFilePath, kUid, kGid,
                                      /*follow_links=*/false));
 
-  mode_t mode = S_ISVTX | S_IRUSR | S_IWUSR | S_IXUSR;
-  ASSERT_TRUE(platform_.SetPermissions(kFromFilePath, mode));
-  // GetPermissions call is needed because some bits to mode are applied
-  // automatically, so our original |mode| value is not what the resulting file
-  // actually has.
-  ASSERT_TRUE(platform_.GetPermissions(kFromFilePath, &mode));
+  mode_t kMode = S_ISVTX | S_IRUSR | S_IWUSR | S_IXUSR;
+  ASSERT_TRUE(platform_.SetPermissions(kFromFilePath, kMode));
 
   constexpr char kAttrName[] = "user.attr";
   constexpr char kValue[] = "value";
@@ -361,6 +355,8 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
   EXPECT_TRUE(helper.Migrate(base::BindRepeating(
       &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
 
+  EXPECT_TRUE(platform_.FileExists(kToFilePath));
+
   base::stat_wrapper_t to_stat;
   ASSERT_TRUE(platform_.Stat(kToFilePath, &to_stat));
   EXPECT_EQ(from_stat.st_atim.tv_sec, to_stat.st_atim.tv_sec);
@@ -369,20 +365,18 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
   EXPECT_EQ(from_stat.st_mtim.tv_nsec, to_stat.st_mtim.tv_nsec);
   EXPECT_EQ(to_stat.st_uid, kUid);
   EXPECT_EQ(to_stat.st_gid, kGid);
+  // GetPermissions call is needed here because some bits have been
+  // automatically applied to to_stat.st_mode.
+  mode_t to_mode;
+  ASSERT_TRUE(platform_.GetPermissions(kToFilePath, &to_mode));
+  EXPECT_EQ(to_mode, kMode);
 
-  EXPECT_TRUE(platform_.FileExists(kToFilePath));
+  std::string value;
+  ASSERT_TRUE(platform_.GetExtendedFileAttributeAsString(kToFilePath, kAttrName,
+                                                         &value));
+  EXPECT_STREQ(value.c_str(), kValue);
 
-  mode_t permission;
-  ASSERT_TRUE(platform_.GetPermissions(kToFilePath, &permission));
-  EXPECT_EQ(mode, permission);
-
-  char value[sizeof(kValue) + 1];
-  ASSERT_TRUE(platform_.GetExtendedFileAttribute(kToFilePath, kAttrName, value,
-                                                 sizeof(kValue)));
-  value[sizeof(kValue)] = '\0';
-  EXPECT_STREQ(kValue, value);
-
-  // The temporary xatttrs for storing mtime/atime should be removed.
+  // The temporary xattrs for storing mtime/atime should be removed.
   ASSERT_FALSE(platform_.GetExtendedFileAttribute(
       kToFilePath, delegate_.GetMtimeXattrName(), nullptr, 0));
   ASSERT_EQ(ENODATA, errno);
