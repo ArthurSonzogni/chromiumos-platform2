@@ -2167,6 +2167,37 @@ TEST_F(CellularTest, BuildApnTryListSetUserApnList) {
   EXPECT_EQ(default_apn_try_list[2], apnS);
 }
 
+TEST_F(CellularTest, BuildApnTryListWithInvalid) {
+  Stringmaps apn_list;
+  Stringmap apn1, apn2, apn3;
+  // Valid default APN
+  apn1[kApnProperty] = "apn1";
+  apn1[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
+  apn1[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn_list.push_back(apn1);
+  // Valid default+initial APN
+  apn2[kApnProperty] = "apn2";
+  apn2[kApnTypesProperty] =
+      ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeIA});
+  apn2[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn_list.push_back(apn2);
+  // Invalid APN entry without kApnProperty
+  apn3[kApnTypesProperty] =
+      ApnList::JoinApnTypes({kApnTypeDefault, kApnTypeIA});
+  apn3[kApnSourceProperty] = cellular::kApnSourceMoDb;
+  apn_list.push_back(apn3);
+  device_->SetApnList(apn_list);
+
+  std::deque<Stringmap> default_apn_try_list =
+      device_->BuildDefaultApnTryList();
+  std::deque<Stringmap> attach_apn_try_list = device_->BuildAttachApnTryList();
+  ASSERT_EQ(attach_apn_try_list.size(), 1);
+  EXPECT_EQ(attach_apn_try_list[0], apn2);
+  ASSERT_EQ(default_apn_try_list.size(), 2);
+  EXPECT_EQ(default_apn_try_list[0], apn1);
+  EXPECT_EQ(default_apn_try_list[1], apn2);
+}
+
 TEST_F(CellularTest, CompareApns) {
   Stringmap apn1, apn2;
   EXPECT_TRUE(device_->CompareApns(apn1, apn2));

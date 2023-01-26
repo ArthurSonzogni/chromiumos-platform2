@@ -166,6 +166,16 @@ std::string Cellular::GetModemStateString(ModemState modem_state) {
   return base::StringPrintf("ModemStateUnknown-%d", modem_state);
 }
 
+// static
+void Cellular::ValidateApnTryList(std::deque<Stringmap>& apn_try_list) {
+  // Entries in the APN try list must have the APN property
+  apn_try_list.erase(
+      std::remove_if(
+          apn_try_list.begin(), apn_try_list.end(),
+          [](const auto& item) { return !base::Contains(item, kApnProperty); }),
+      apn_try_list.end());
+}
+
 Cellular::Cellular(Manager* manager,
                    const std::string& link_name,
                    const std::string& address,
@@ -2225,6 +2235,7 @@ std::deque<Stringmap> Cellular::BuildApnTryList(
   // With the revamp APN UI, if the user has entered an APN in the UI, only
   // customs APNs are used. Return early.
   if (user_apn_list && user_apn_list->size() > 0) {
+    ValidateApnTryList(apn_try_list);
     return apn_try_list;
   }
   // Ensure all Modem APNs are added before MODB APNs.
@@ -2282,6 +2293,7 @@ std::deque<Stringmap> Cellular::BuildApnTryList(
               << " APN types: "
               << GetStringmapValue(*last_good_apn_info, kApnTypesProperty);
   }
+  ValidateApnTryList(apn_try_list);
   return apn_try_list;
 }
 

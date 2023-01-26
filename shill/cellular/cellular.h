@@ -460,6 +460,9 @@ class Cellular : public Device,
   // Time between asynchronous calls to ModemManager1's GetLocation()
   static constexpr base::TimeDelta kPollLocationInterval = base::Minutes(5);
 
+  // Cleans up the APN try list removing invalid entries
+  static void ValidateApnTryList(std::deque<Stringmap>& apn_try_list);
+
   enum class StopSteps {
     // Initial state.
     kStopModem,
