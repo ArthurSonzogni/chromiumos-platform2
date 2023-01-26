@@ -45,33 +45,6 @@ class DBusAdaptor {
   // Callback to wrap around DBus method response.
   ResultCallback GetMethodReplyCallback(DBusMethodResponsePtr<> response);
 
-  // Adaptors call this method just before returning. If |error|
-  // indicates that the operation has completed, with no asynchronously
-  // delivered result expected, then a DBus method reply is immediately
-  // sent to the client that initiated the method invocation. Otherwise,
-  // the operation is ongoing, and the result will be sent to the client
-  // when the operation completes at some later time.
-  //
-  // Adaptors should always construct an Error initialized to the value
-  // Error::kOperationInitiated. A pointer to this Error is passed down
-  // through the call stack. Any layer that determines that the operation
-  // has completed, either because of a failure that prevents carrying it
-  // out, or because it was possible to complete it without sending a request
-  // to an external server, should call error.Reset() to indicate success,
-  // or to some error type to reflect the kind of failure that occurred.
-  // Otherwise, they should leave the Error alone.
-  //
-  // The general structure of an adaptor method is
-  //
-  // void XXXXDBusAdaptor::SomeMethod(<args...>, DBusMethodResponsePtr<> resp) {
-  //   Error e(Error::kOperationInitiated);
-  //   ResultCallback callback = GetMethodReplyCallback(resp);
-  //   xxxx_->SomeMethod(<args...>, &e, callback);
-  //   ReturnResultOrDefer(callback, e);
-  // }
-  //
-  void ReturnResultOrDefer(const ResultCallback& callback, const Error& error);
-
   brillo::dbus_utils::DBusObject* dbus_object() const {
     return dbus_object_.get();
   }

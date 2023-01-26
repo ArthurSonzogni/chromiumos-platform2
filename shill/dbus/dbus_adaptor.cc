@@ -91,15 +91,6 @@ ResultCallback DBusAdaptor::GetMethodReplyCallback(
                     weak_factory_.GetWeakPtr(), base::Passed(&response));
 }
 
-void DBusAdaptor::ReturnResultOrDefer(const ResultCallback& callback,
-                                      const Error& error) {
-  // Invoke response if command is completed synchronously (either
-  // success or failure).
-  if (!error.IsOngoing()) {
-    callback.Run(error);
-  }
-}
-
 void DBusAdaptor::MethodReplyCallback(DBusMethodResponsePtr<> response,
                                       const Error& error) {
   brillo::ErrorPtr chromeos_error;
