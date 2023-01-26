@@ -25,6 +25,10 @@ class BiometricsDaemon {
 
  private:
   scoped_refptr<dbus::Bus> bus_;
+  // Raw pointer to BiodMetrics is passed to CrosFpDevice (owned by
+  // CrosFpBiometricsManager), CrosFpBiometricsManager (one of the
+  // biometrics managers) and SessionStateManager. This line must be placed
+  // above these object to ensure correct destruction order.
   std::unique_ptr<BiodMetricsInterface> biod_metrics_;
   std::unique_ptr<SessionStateManager> session_state_manager_;
   std::unique_ptr<brillo::dbus_utils::ExportedObjectManager> object_manager_;

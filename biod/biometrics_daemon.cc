@@ -45,7 +45,8 @@ BiometricsDaemon::BiometricsDaemon() {
   auto biod_storage =
       std::make_unique<BiodStorage>(biod::kCrosFpBiometricsManagerName);
 
-  session_state_manager_ = std::make_unique<SessionStateManager>(bus_.get());
+  session_state_manager_ =
+      std::make_unique<SessionStateManager>(bus_.get(), biod_metrics_.get());
 
   auto cros_fp_bio = std::make_unique<CrosFpBiometricsManager>(
       std::move(power_button_filter), std::move(cros_fp_device),
