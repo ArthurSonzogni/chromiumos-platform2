@@ -24,6 +24,25 @@ const MEDIA_MIN_ECORE_NUM: u32 = 4;
 
 static MEDIA_DYNAMIC_CGROUP_ACTIVE: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
 
+// List of sysfs, resourced updates during media dynamic cgroup.
+const CGROUP_CPUSET_ALL: [&str; 4] = [
+    "sys/fs/cgroup/cpuset/chrome/urgent/cpus",
+    "sys/fs/cgroup/cpuset/chrome/non-urgent/cpus",
+    "sys/fs/cgroup/cpuset/chrome/cpus",
+    "sys/fs/cgroup/cpuset/user_space/media/cpus",
+];
+
+// List of sysfs, which has no constraint (i.e allowed to use all cpus) at boot.
+const CGROUP_CPUSET_NO_LIMIT: [&str; 3] = [
+    "sys/fs/cgroup/cpuset/chrome/urgent/cpus",
+    "sys/fs/cgroup/cpuset/chrome/cpus",
+    "sys/fs/cgroup/cpuset/user_space/media/cpus",
+];
+
+// ChromeOS limits non-urgent chrome tasks to use only power efficient cores at boot.
+const CGROUP_CPUSET_NONURGENT: &str = "sys/fs/cgroup/cpuset/chrome/non-urgent/cpus";
+const SCHEDULER_NONURGENT_PATH: &str = "run/chromeos-config/v1/scheduler-tune/cpuset-nonurgent";
+
 // Protects Feature access with a mutex.
 #[cfg(feature = "chromeos")]
 struct FeatureWrapper {
@@ -81,13 +100,7 @@ fn is_dynamic_cgroup_enabled() -> Result<bool> {
 }
 
 fn write_cpusets(root: &Path, cpus: &str) -> Result<()> {
-    const CGROUP_CPUSET_SYSFS: [&str; 3] = [
-        "sys/fs/cgroup/cpuset/chrome/urgent/cpus",
-        "sys/fs/cgroup/cpuset/chrome/non-urgent/cpus",
-        "sys/fs/cgroup/cpuset/chrome/cpus",
-    ];
-
-    for sysfs_path in CGROUP_CPUSET_SYSFS.iter() {
+    for sysfs_path in CGROUP_CPUSET_ALL.iter() {
         std::fs::write(root.join(sysfs_path), cpus).with_context(|| {
             format!(
                 "Error writing to path: {}, new value: {}",
@@ -100,7 +113,6 @@ fn write_cpusets(root: &Path, cpus: &str) -> Result<()> {
 }
 
 fn get_scheduler_tune_cpuset_nonurgent(root: &Path) -> Result<Option<String>> {
-    const SCHEDULER_NONURGENT_PATH: &str = "run/chromeos-config/v1/scheduler-tune/cpuset-nonurgent";
     let scheduler_tune_path = root.join(SCHEDULER_NONURGENT_PATH);
 
     if !scheduler_tune_path.exists() {
@@ -191,8 +203,7 @@ fn get_little_cores(root: &Path) -> Result<String> {
 }
 
 fn write_default_nonurgent_cpusets(root: &Path) -> Result<()> {
-    const NONURGENT_CPUSET_CPUS: &str = "sys/fs/cgroup/cpuset/chrome/non-urgent/cpus";
-    let cpuset_path = root.join(NONURGENT_CPUSET_CPUS);
+    let cpuset_path = root.join(CGROUP_CPUSET_NONURGENT);
 
     match get_scheduler_tune_cpuset_nonurgent(root) {
         Ok(Some(cpusets)) => {
@@ -217,12 +228,8 @@ fn write_default_cpusets(root: &Path) -> Result<()> {
 
     // Other cpusets
     let all_cpus = get_cpuset_all_cpus(root)?;
-    const OTHER_CPUSET_CPUS: [&str; 2] = [
-        "sys/fs/cgroup/cpuset/chrome/urgent/cpus",
-        "sys/fs/cgroup/cpuset/chrome/cpus",
-    ];
 
-    for cpus in OTHER_CPUSET_CPUS {
+    for cpus in CGROUP_CPUSET_NO_LIMIT {
         let cpus_path = root.join(cpus);
         std::fs::write(cpus_path, all_cpus.as_bytes())?;
     }
@@ -522,12 +529,7 @@ mod tests {
     }
 
     fn test_write_cpusets(root: &Path, cpus_content: &str) {
-        const CGROUP_CPUSET_CPUS: [&str; 3] = [
-            "sys/fs/cgroup/cpuset/chrome/urgent/cpus",
-            "sys/fs/cgroup/cpuset/chrome/non-urgent/cpus",
-            "sys/fs/cgroup/cpuset/chrome/cpus",
-        ];
-        for cpus in CGROUP_CPUSET_CPUS.iter() {
+        for cpus in CGROUP_CPUSET_ALL.iter() {
             let cpuset_cpus = root.join(cpus);
             test_create_parent_dir(&cpuset_cpus);
             std::fs::write(cpuset_cpus, cpus_content).unwrap();
@@ -579,13 +581,7 @@ mod tests {
         write_default_cpusets(root.path())?;
 
         // Check result.
-        const OTHER_CPUSET_CPUS: [&str; 2] = [
-            "sys/fs/cgroup/cpuset/chrome/urgent/cpus",
-            "sys/fs/cgroup/cpuset/chrome/cpus",
-        ];
-        const SCHEDULER_NONURGENT_PATH: &str =
-            "run/chromeos-config/v1/scheduler-tune/cpuset-nonurgent";
-        for cpuset_path in OTHER_CPUSET_CPUS.iter() {
+        for cpuset_path in CGROUP_CPUSET_NO_LIMIT.iter() {
             let path = root.path().join(cpuset_path);
             test_check_file_content(&path, "0-7");
         }
@@ -605,16 +601,11 @@ mod tests {
         write_default_cpusets(root.path())?;
 
         // Check result.
-        const OTHER_CPUSET_CPUS: [&str; 2] = [
-            "sys/fs/cgroup/cpuset/chrome/urgent/cpus",
-            "sys/fs/cgroup/cpuset/chrome/cpus",
-        ];
-        const NONURGENT_CPUSET_CPUS: &str = "sys/fs/cgroup/cpuset/chrome/non-urgent/cpus";
-        for cpuset_path in OTHER_CPUSET_CPUS.iter() {
+        for cpuset_path in CGROUP_CPUSET_NO_LIMIT.iter() {
             let path = root.path().join(cpuset_path);
             test_check_file_content(&path, "0-7");
         }
-        test_check_file_content(&root.path().join(NONURGENT_CPUSET_CPUS), "0-7");
+        test_check_file_content(&root.path().join(CGROUP_CPUSET_NONURGENT), "0-7");
         Ok(())
     }
 
@@ -636,19 +627,14 @@ mod tests {
         write_default_cpusets(root.path())?;
 
         // Check result.
-        const OTHER_CPUSET_CPUS: [&str; 2] = [
-            "sys/fs/cgroup/cpuset/chrome/urgent/cpus",
-            "sys/fs/cgroup/cpuset/chrome/cpus",
-        ];
-        const NONURGENT_CPUSET_CPUS: &str = "sys/fs/cgroup/cpuset/chrome/non-urgent/cpus";
-        for cpuset_path in OTHER_CPUSET_CPUS.iter() {
+        for cpuset_path in CGROUP_CPUSET_NO_LIMIT.iter() {
             let path = root.path().join(cpuset_path);
             test_check_file_content(&path, "0-7");
         }
 
         // In the sysfs, the content would be converted to "0-5". But there is no auto conversion
         // in the test temp files.
-        test_check_file_content(&root.path().join(NONURGENT_CPUSET_CPUS), "0,1,2,3,4,5");
+        test_check_file_content(&root.path().join(CGROUP_CPUSET_NONURGENT), "0,1,2,3,4,5");
         Ok(())
     }
 
@@ -670,17 +656,15 @@ mod tests {
         write_default_cpusets(root.path())?;
 
         // Check result.
-        const OTHER_CPUSET_CPUS: [&str; 2] = [
-            "sys/fs/cgroup/cpuset/chrome/urgent/cpus",
-            "sys/fs/cgroup/cpuset/chrome/cpus",
-        ];
-        const NONURGENT_CPUSET_CPUS: &str = "sys/fs/cgroup/cpuset/chrome/non-urgent/cpus";
-        for cpuset_path in OTHER_CPUSET_CPUS.iter() {
+        for cpuset_path in CGROUP_CPUSET_NO_LIMIT.iter() {
             let path = root.path().join(cpuset_path);
             test_check_file_content(&path, "0-11");
         }
 
-        test_check_file_content(&root.path().join(NONURGENT_CPUSET_CPUS), "0,1,2,3,4,5,6,7");
+        test_check_file_content(
+            &root.path().join(CGROUP_CPUSET_NONURGENT),
+            "0,1,2,3,4,5,6,7",
+        );
         Ok(())
     }
 
