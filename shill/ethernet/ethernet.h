@@ -89,6 +89,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   // current connection state (neighbor failure + kStateOnline, or neighbour
   // reachable + kStateNoConnectivity).
   void OnNeighborReachabilityEvent(
+      int interface_index,
       const IPAddress& ip_address,
       patchpanel::NeighborReachabilityEventSignal::Role role,
       patchpanel::NeighborReachabilityEventSignal::EventType event_type)

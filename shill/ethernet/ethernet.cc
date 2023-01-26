@@ -905,9 +905,12 @@ bool Ethernet::RunEthtoolCmd(ifreq* interface_command) {
 }
 
 void Ethernet::OnNeighborReachabilityEvent(
+    int net_interface_index,
     const IPAddress& ip_address,
     patchpanel::NeighborReachabilityEventSignal::Role role,
     patchpanel::NeighborReachabilityEventSignal::EventType event_type) {
+  DCHECK(net_interface_index == interface_index());
+
   using NeighborSignal = patchpanel::NeighborReachabilityEventSignal;
   if (role != NeighborSignal::GATEWAY &&
       role != NeighborSignal::GATEWAY_AND_DNS_SERVER) {

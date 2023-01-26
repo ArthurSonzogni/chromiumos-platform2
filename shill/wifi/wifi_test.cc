@@ -999,12 +999,12 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
                         uint16_t frequency,
                         const char* mode,
                         const std::vector<uint8_t>& ies);
-  void ReportGetDHCPLease() { wifi_->OnGetDHCPLease(); }
+  void ReportGetDHCPLease() { wifi_->OnGetDHCPLease(wifi_->interface_index()); }
   void ReportIPv4ConfiguredWithDHCPLease() {
-    wifi_->OnIPv4ConfiguredWithDHCPLease();
+    wifi_->OnIPv4ConfiguredWithDHCPLease(wifi_->interface_index());
   }
   void ReportIPv6ConfiguredWithSLAACAddress() {
-    wifi_->OnIPv6ConfiguredWithSLAACAddress();
+    wifi_->OnIPv6ConfiguredWithSLAACAddress(wifi_->interface_index());
   }
 
   // Calls the delayed version of the BSS methods.
@@ -1176,7 +1176,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
       const IPAddress& ip_address,
       patchpanel::NeighborReachabilityEventSignal::Role role,
       patchpanel::NeighborReachabilityEventSignal::EventType event_type) {
-    wifi_->OnNeighborReachabilityEvent(ip_address, role, event_type);
+    wifi_->OnNeighborReachabilityEvent(wifi_->interface_index(), ip_address,
+                                       role, event_type);
   }
 
   MOCK_METHOD(void, ReliableLinkCallback, ());

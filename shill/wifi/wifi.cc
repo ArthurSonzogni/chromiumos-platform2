@@ -3900,19 +3900,23 @@ void WiFi::RemoveSupplicantNetworks() {
   rpcid_by_service_.clear();
 }
 
-void WiFi::OnGetDHCPLease() {
+void WiFi::OnGetDHCPLease(int net_interface_index) {
+  DCHECK(net_interface_index == interface_index());
   RetrieveLinkStatistics(WiFiLinkStatistics::Trigger::kDHCPSuccess);
 }
 
-void WiFi::OnGetDHCPFailure() {
+void WiFi::OnGetDHCPFailure(int net_interface_index) {
+  DCHECK(net_interface_index == interface_index());
   RetrieveLinkStatistics(WiFiLinkStatistics::Trigger::kDHCPFailure);
 }
 
-void WiFi::OnGetSLAACAddress() {
+void WiFi::OnGetSLAACAddress(int net_interface_index) {
+  DCHECK(net_interface_index == interface_index());
   RetrieveLinkStatistics(WiFiLinkStatistics::Trigger::kSlaacFinished);
 }
 
-void WiFi::OnNetworkValidationStart() {
+void WiFi::OnNetworkValidationStart(int net_interface_index) {
+  DCHECK(net_interface_index == interface_index());
   RetrieveLinkStatistics(WiFiLinkStatistics::Trigger::kNetworkValidationStart);
 }
 
@@ -3926,7 +3930,8 @@ void WiFi::OnNetworkValidationFailure() {
       WiFiLinkStatistics::Trigger::kNetworkValidationFailure);
 }
 
-void WiFi::OnIPv4ConfiguredWithDHCPLease() {
+void WiFi::OnIPv4ConfiguredWithDHCPLease(int net_interface_index) {
+  DCHECK(net_interface_index == interface_index());
   if (!wake_on_wifi_) {
     return;
   }
@@ -3936,7 +3941,8 @@ void WiFi::OnIPv4ConfiguredWithDHCPLease() {
       network()->TimeToNextDHCPLeaseRenewal());
 }
 
-void WiFi::OnIPv6ConfiguredWithSLAACAddress() {
+void WiFi::OnIPv6ConfiguredWithSLAACAddress(int net_interface_index) {
+  DCHECK(net_interface_index == interface_index());
   if (!IsConnectedToCurrentService()) {
     return;
   }
@@ -3996,10 +4002,13 @@ void WiFi::GetDeviceHardwareIds(int* vendor,
 }
 
 void WiFi::OnNeighborReachabilityEvent(
+    int net_interface_index,
     const IPAddress& ip_address,
     patchpanel::NeighborReachabilityEventSignal::Role role,
     patchpanel::NeighborReachabilityEventSignal::EventType event_type) {
   using EventSignal = patchpanel::NeighborReachabilityEventSignal;
+
+  DCHECK(net_interface_index == interface_index());
 
   // Checks if the signal is for the gateway of the current connection.
   if (role != EventSignal::GATEWAY &&

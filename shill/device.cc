@@ -390,6 +390,7 @@ void Device::FetchTrafficCounters(const ServiceRefPtr& old_service,
 }
 
 void Device::OnNeighborReachabilityEvent(
+    int interface_index,
     const IPAddress& ip_address,
     patchpanel::NeighborReachabilityEventSignal::Role role,
     patchpanel::NeighborReachabilityEventSignal::EventType event_type) {
@@ -424,7 +425,9 @@ void Device::HelpRegisterConstDerivedUint64(const std::string& name,
       Uint64Accessor(new CustomAccessor<Device, uint64_t>(this, get, nullptr)));
 }
 
-void Device::OnConnectionUpdated() {
+void Device::OnConnectionUpdated(int interface_index) {
+  DCHECK(interface_index == interface_index_);
+
   if (!selected_service_) {
     return;
   }
@@ -459,22 +462,23 @@ void Device::OnConnectionUpdated() {
   UpdatePortalDetector(/*restart=*/true);
 }
 
-void Device::OnNetworkStopped(bool is_failure) {
+void Device::OnNetworkStopped(int interface_index, bool is_failure) {
+  DCHECK(interface_index == interface_index_);
   if (is_failure) {
     OnIPConfigFailure();
   }
 }
 
-void Device::OnGetDHCPLease() {}
-void Device::OnGetDHCPFailure() {}
-void Device::OnGetSLAACAddress() {}
-void Device::OnNetworkValidationStart() {}
-void Device::OnNetworkValidationStop() {}
+void Device::OnGetDHCPLease(int interface_index) {}
+void Device::OnGetDHCPFailure(int interface_index) {}
+void Device::OnGetSLAACAddress(int interface_index) {}
+void Device::OnNetworkValidationStart(int interface_index) {}
+void Device::OnNetworkValidationStop(int interface_index) {}
 void Device::OnNetworkValidationSuccess() {}
 void Device::OnNetworkValidationFailure() {}
-void Device::OnIPv4ConfiguredWithDHCPLease() {}
-void Device::OnIPv6ConfiguredWithSLAACAddress() {}
-void Device::OnNetworkDestroyed() {}
+void Device::OnIPv4ConfiguredWithDHCPLease(int interface_index) {}
+void Device::OnIPv6ConfiguredWithSLAACAddress(int interface_index) {}
+void Device::OnNetworkDestroyed(int interface_index) {}
 
 void Device::OnIPConfigFailure() {
   if (selected_service_) {
@@ -618,7 +622,10 @@ void Device::set_mac_address(const std::string& mac_address) {
   EmitMACAddress();
 }
 
-void Device::OnNetworkValidationResult(const PortalDetector::Result& result) {
+void Device::OnNetworkValidationResult(int interface_index,
+                                       const PortalDetector::Result& result) {
+  DCHECK(interface_index == interface_index_);
+
   if (!selected_service_) {
     // A race can happen if the Service has disconnected in the meantime.
     LOG(WARNING)
@@ -822,7 +829,8 @@ void Device::SetEnabledUnchecked(bool enable,
   }
 }
 
-void Device::OnIPConfigsPropertyUpdated() {
+void Device::OnIPConfigsPropertyUpdated(int interface_index) {
+  DCHECK(interface_index == interface_index_);
   adaptor_->EmitRpcIdentifierArrayChanged(kIPConfigsProperty,
                                           AvailableIPConfigs(nullptr));
 }

@@ -83,26 +83,27 @@ class MockNetwork : public Network {
 
 class MockNetworkEventHandler : public Network::EventHandler {
  public:
-  MOCK_METHOD(void, OnConnectionUpdated, (), (override));
-  MOCK_METHOD(void, OnNetworkStopped, (bool), (override));
-  MOCK_METHOD(void, OnIPConfigsPropertyUpdated, (), (override));
-  MOCK_METHOD(void, OnGetDHCPLease, (), (override));
-  MOCK_METHOD(void, OnGetDHCPFailure, (), (override));
-  MOCK_METHOD(void, OnGetSLAACAddress, (), (override));
-  MOCK_METHOD(void, OnIPv4ConfiguredWithDHCPLease, (), (override));
-  MOCK_METHOD(void, OnIPv6ConfiguredWithSLAACAddress, (), (override));
+  MOCK_METHOD(void, OnConnectionUpdated, (int), (override));
+  MOCK_METHOD(void, OnNetworkStopped, (int, bool), (override));
+  MOCK_METHOD(void, OnIPConfigsPropertyUpdated, (int), (override));
+  MOCK_METHOD(void, OnGetDHCPLease, (int), (override));
+  MOCK_METHOD(void, OnGetDHCPFailure, (int), (override));
+  MOCK_METHOD(void, OnGetSLAACAddress, (int), (override));
+  MOCK_METHOD(void, OnIPv4ConfiguredWithDHCPLease, (int), (override));
+  MOCK_METHOD(void, OnIPv6ConfiguredWithSLAACAddress, (int), (override));
   MOCK_METHOD(void,
               OnNeighborReachabilityEvent,
-              (const IPAddress&,
+              (int,
+               const IPAddress&,
                patchpanel::NeighborReachabilityEventSignal::Role,
                patchpanel::NeighborReachabilityEventSignal::EventType));
-  MOCK_METHOD(void, OnNetworkValidationStart, (), (override));
-  MOCK_METHOD(void, OnNetworkValidationStop, (), (override));
+  MOCK_METHOD(void, OnNetworkValidationStart, (int), (override));
+  MOCK_METHOD(void, OnNetworkValidationStop, (int), (override));
   MOCK_METHOD(void,
               OnNetworkValidationResult,
-              (const PortalDetector::Result& result),
+              (int, const PortalDetector::Result& result),
               (override));
-  MOCK_METHOD(void, OnNetworkDestroyed, (), (override));
+  MOCK_METHOD(void, OnNetworkDestroyed, (int), (override));
 };
 
 }  // namespace shill

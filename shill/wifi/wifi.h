@@ -238,6 +238,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Inherited from Device.
   void OnNeighborReachabilityEvent(
+      int interface_index,
       const IPAddress& ip_address,
       patchpanel::NeighborReachabilityEventSignal::Role role,
       patchpanel::NeighborReachabilityEventSignal::EventType event_type)
@@ -673,14 +674,14 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
                              WiFiState::ScanMethod method);
 
   // Call WakeOnWiFi::PrepareForWakeOnWiFiBeforeSuspend.
-  void OnIPv4ConfiguredWithDHCPLease() override;
-  void OnIPv6ConfiguredWithSLAACAddress() override;
+  void OnIPv4ConfiguredWithDHCPLease(int interface_index) override;
+  void OnIPv6ConfiguredWithSLAACAddress(int interface_index) override;
 
   // These Device functions are overridden for retrieving link statistics.
-  void OnGetDHCPLease() override;
-  void OnGetDHCPFailure() override;
-  void OnGetSLAACAddress() override;
-  void OnNetworkValidationStart() override;
+  void OnGetDHCPLease(int interface_index) override;
+  void OnGetDHCPFailure(int interface_index) override;
+  void OnGetSLAACAddress(int interface_index) override;
+  void OnNetworkValidationStart(int interface_index) override;
   void OnNetworkValidationSuccess() override;
   void OnNetworkValidationFailure() override;
 

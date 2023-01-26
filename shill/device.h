@@ -258,6 +258,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // Responds to a neighbor reachability event from patchpanel. The base class
   // does nothing here so the derived class doesn't need to call this.
   void OnNeighborReachabilityEvent(
+      int interface_index,
       const IPAddress& ip_address,
       patchpanel::NeighborReachabilityEventSignal::Role role,
       patchpanel::NeighborReachabilityEventSignal::EventType event_type)
@@ -269,27 +270,28 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
 
   // Overrides for Network::EventHandler. See the comments for
   // Network::EventHandler for more details.
-  void OnConnectionUpdated() override;
-  void OnNetworkStopped(bool is_failure) override;
+  void OnConnectionUpdated(int interface_index) override;
+  void OnNetworkStopped(int interface_index, bool is_failure) override;
   // Emit a property change signal for the "IPConfigs" property of this device.
-  void OnIPConfigsPropertyUpdated() override;
+  void OnIPConfigsPropertyUpdated(int interface_index) override;
   // Derived class should implement this function to listen to this event. Base
   // class does nothing.
-  void OnGetDHCPLease() override;
+  void OnGetDHCPLease(int interface_index) override;
   // Derived class should implement this function to listen to this event. Base
   // class does nothing.
-  void OnGetDHCPFailure() override;
+  void OnGetDHCPFailure(int interface_index) override;
   // Derived class should implement this function to listen to this event. Base
   // class does nothing.
-  void OnGetSLAACAddress() override;
+  void OnGetSLAACAddress(int interface_index) override;
   // Derived class should implement this function to listen to this event. Base
   // class does nothing.
-  void OnNetworkValidationStart() override;
+  void OnNetworkValidationStart(int interface_index) override;
   // Derived class should implement this function to listen to this event. Base
   // class does nothing.
-  void OnNetworkValidationStop() override;
-  void OnNetworkValidationResult(const PortalDetector::Result& result) override;
-  void OnNetworkDestroyed() override;
+  void OnNetworkValidationStop(int interface_index) override;
+  void OnNetworkValidationResult(int interface_index,
+                                 const PortalDetector::Result& result) override;
+  void OnNetworkDestroyed(int interface_index) override;
 
   void set_selected_service_for_testing(ServiceRefPtr service) {
     selected_service_ = service;
@@ -370,10 +372,10 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
 
   // This is currently only used in the WiFi child class for triggering
   // WakeOnWiFi::OnConnectedAndReachable().
-  void OnIPv4ConfiguredWithDHCPLease() override;
+  void OnIPv4ConfiguredWithDHCPLease(int interface_index) override;
   // This is currently only used in the WiFi child class for triggering
   // WakeOnWiFi::OnConnectedAndReachable().
-  void OnIPv6ConfiguredWithSLAACAddress() override;
+  void OnIPv6ConfiguredWithSLAACAddress(int interface_index) override;
 
   // Called by Device so that subclasses can run hooks on the selected service
   // failing to get an IP.  The default implementation disconnects the selected

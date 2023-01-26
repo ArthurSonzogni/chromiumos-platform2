@@ -825,7 +825,8 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
   signal0.set_role(NeighborSignal::GATEWAY);
   signal0.set_type(NeighborSignal::FAILED);
   EXPECT_CALL(event_handler0,
-              OnNeighborReachabilityEvent(IPAddress(kTestIPAddress0),
+              OnNeighborReachabilityEvent(device0->network()->interface_index(),
+                                          IPAddress(kTestIPAddress0),
                                           NeighborSignal::GATEWAY,
                                           NeighborSignal::FAILED));
   patchpanel_client_->TriggerNeighborReachabilityEvent(signal0);
@@ -837,7 +838,8 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
   signal1.set_role(NeighborSignal::DNS_SERVER);
   signal1.set_type(NeighborSignal::FAILED);
   EXPECT_CALL(event_handler0,
-              OnNeighborReachabilityEvent(IPAddress(kTestIPAddress1),
+              OnNeighborReachabilityEvent(device0->network()->interface_index(),
+                                          IPAddress(kTestIPAddress1),
                                           NeighborSignal::DNS_SERVER,
                                           NeighborSignal::FAILED));
   patchpanel_client_->TriggerNeighborReachabilityEvent(signal1);
@@ -848,10 +850,11 @@ TEST_F(DeviceInfoTest, OnNeighborReachabilityEvent) {
   signal2.set_ip_addr(kTestIPAddress2);
   signal2.set_role(NeighborSignal::GATEWAY_AND_DNS_SERVER);
   signal2.set_type(NeighborSignal::REACHABLE);
-  EXPECT_CALL(event_handler1, OnNeighborReachabilityEvent(
-                                  IPAddress(kTestIPAddress2),
-                                  NeighborSignal::GATEWAY_AND_DNS_SERVER,
-                                  NeighborSignal::REACHABLE));
+  EXPECT_CALL(
+      event_handler1,
+      OnNeighborReachabilityEvent(
+          device1->network()->interface_index(), IPAddress(kTestIPAddress2),
+          NeighborSignal::GATEWAY_AND_DNS_SERVER, NeighborSignal::REACHABLE));
   patchpanel_client_->TriggerNeighborReachabilityEvent(signal2);
   Mock::VerifyAndClearExpectations(&event_handler1);
 

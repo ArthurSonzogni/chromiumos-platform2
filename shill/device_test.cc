@@ -185,8 +185,8 @@ class DeviceTest : public testing::Test {
     EXPECT_CALL(*network_, IsConnected()).WillRepeatedly(Return(true));
     network_->set_ipconfig(
         std::make_unique<MockIPConfig>(control_interface(), kDeviceName));
-    device_->OnConnectionUpdated();
-    device_->OnIPConfigsPropertyUpdated();
+    device_->OnConnectionUpdated(device_->interface_index());
+    device_->OnIPConfigsPropertyUpdated(device_->interface_index());
   }
 
   NiceMock<MockControl> control_interface_;
@@ -309,7 +309,7 @@ TEST_F(DeviceTest, NetworkFailure) {
   SelectService(service);
   EXPECT_CALL(*service, DisconnectWithFailure(Service::kFailureDHCP, _,
                                               HasSubstr("OnIPConfigFailure")));
-  device_->OnNetworkStopped(/*is_failure=*/true);
+  device_->OnNetworkStopped(device_->interface_index(), /*is_failure=*/true);
 }
 
 TEST_F(DeviceTest, ConnectionUpdated) {
@@ -680,7 +680,7 @@ class DevicePortalDetectionTest : public DeviceTest {
   }
 
   void OnNetworkValidationResult(const PortalDetector::Result& result) {
-    device_->OnNetworkValidationResult(result);
+    device_->OnNetworkValidationResult(device_->interface_index(), result);
   }
 
   scoped_refptr<MockService> service_;

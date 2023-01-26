@@ -62,7 +62,7 @@ Network::Network(int interface_index,
 
 Network::~Network() {
   for (auto* ev : event_handlers_) {
-    ev->OnNetworkDestroyed();
+    ev->OnNetworkDestroyed(interface_index_);
   }
 }
 
@@ -188,7 +188,7 @@ void Network::SetupConnection(IPConfig* ipconfig) {
   state_ = State::kConnected;
   ConfigureStaticIPv6Address();
   for (auto* ev : event_handlers_) {
-    ev->OnConnectionUpdated();
+    ev->OnConnectionUpdated(interface_index_);
   }
 
   const bool ipconfig_changed = current_ipconfig_ != ipconfig;
@@ -236,7 +236,7 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
   // Emit updated IP configs if there are any changes.
   if (ipconfig_changed) {
     for (auto* ev : event_handlers_) {
-      ev->OnIPConfigsPropertyUpdated();
+      ev->OnIPConfigsPropertyUpdated(interface_index_);
     }
   }
   if (current_ipconfig_) {
@@ -249,7 +249,7 @@ void Network::StopInternal(bool is_failure, bool trigger_callback) {
   connection_ = nullptr;
   if (should_trigger_callback) {
     for (auto* ev : event_handlers_) {
-      ev->OnNetworkStopped(is_failure);
+      ev->OnNetworkStopped(interface_index_, is_failure);
     }
   }
 }
@@ -268,7 +268,7 @@ void Network::InvalidateIPv6Config() {
 
   set_ip6config(nullptr);
   for (auto* ev : event_handlers_) {
-    ev->OnIPConfigsPropertyUpdated();
+    ev->OnIPConfigsPropertyUpdated(interface_index_);
   }
 }
 
@@ -290,7 +290,7 @@ void Network::OnIPv4ConfigUpdated() {
   }
   SetupConnection(ipconfig());
   for (auto* ev : event_handlers_) {
-    ev->OnIPConfigsPropertyUpdated();
+    ev->OnIPConfigsPropertyUpdated(interface_index_);
   }
 }
 
@@ -349,7 +349,7 @@ void Network::OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
   DCHECK(ipconfig());
   if (new_lease_acquired) {
     for (auto* ev : event_handlers_) {
-      ev->OnGetDHCPLease();
+      ev->OnGetDHCPLease(interface_index_);
     }
   }
   ipconfig()->UpdateProperties(properties);
@@ -360,14 +360,14 @@ void Network::OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
   // conditions as before crrev/c/3840983.
   if (new_lease_acquired) {
     for (auto* ev : event_handlers_) {
-      ev->OnIPv4ConfiguredWithDHCPLease();
+      ev->OnIPv4ConfiguredWithDHCPLease(interface_index_);
     }
   }
 }
 
 void Network::OnDHCPFailure() {
   for (auto* ev : event_handlers_) {
-    ev->OnGetDHCPFailure();
+    ev->OnGetDHCPFailure(interface_index_);
   }
 
   // |dhcp_controller_| cannot be empty when the callback is invoked.
@@ -406,7 +406,7 @@ void Network::OnDHCPFailure() {
 
   ipconfig()->ResetProperties();
   for (auto* ev : event_handlers_) {
-    ev->OnIPConfigsPropertyUpdated();
+    ev->OnIPConfigsPropertyUpdated(interface_index_);
   }
 
   // Fallback to IPv6 if possible.
@@ -477,7 +477,7 @@ void Network::OnIPv6AddressChanged() {
     if (ip6config()) {
       set_ip6config(nullptr);
       for (auto* ev : event_handlers_) {
-        ev->OnIPConfigsPropertyUpdated();
+        ev->OnIPConfigsPropertyUpdated(interface_index_);
       }
       // TODO(b/232177767): We may lose the whole IP connectivity here (if there
       // is no IPv4).
@@ -541,8 +541,8 @@ void Network::OnIPv6AddressChanged() {
   }
   ip6config()->set_properties(properties);
   for (auto* ev : event_handlers_) {
-    ev->OnGetSLAACAddress();
-    ev->OnIPConfigsPropertyUpdated();
+    ev->OnGetSLAACAddress(interface_index_);
+    ev->OnIPConfigsPropertyUpdated(interface_index_);
   }
   OnIPv6ConfigUpdated();
   // TODO(b/232177767): OnIPv6ConfiguredWithSLAACAddress() should be called
@@ -551,7 +551,7 @@ void Network::OnIPv6AddressChanged() {
   // is fully dual-stack). The current call pattern reproduces the same
   // conditions as before crrev/c/3840983.
   for (auto* ev : event_handlers_) {
-    ev->OnIPv6ConfiguredWithSLAACAddress();
+    ev->OnIPv6ConfiguredWithSLAACAddress(interface_index_);
   }
 }
 
@@ -595,7 +595,7 @@ void Network::OnIPv6DnsServerAddressesChanged() {
     }
     ip6config()->UpdateDNSServers(std::vector<std::string>());
     for (auto* ev : event_handlers_) {
-      ev->OnIPConfigsPropertyUpdated();
+      ev->OnIPConfigsPropertyUpdated(interface_index_);
     }
     return;
   }
@@ -625,7 +625,7 @@ void Network::OnIPv6DnsServerAddressesChanged() {
 
   ip6config()->UpdateDNSServers(std::move(addresses_str));
   for (auto* ev : event_handlers_) {
-    ev->OnIPConfigsPropertyUpdated();
+    ev->OnIPConfigsPropertyUpdated(interface_index_);
   }
   OnIPv6ConfigUpdated();
 }
@@ -755,7 +755,8 @@ void Network::OnNeighborReachabilityEvent(
   }
 
   for (auto* ev : event_handlers_) {
-    ev->OnNeighborReachabilityEvent(ip_address, signal.role(), signal.type());
+    ev->OnNeighborReachabilityEvent(interface_index_, ip_address, signal.role(),
+                                    signal.type());
   }
 }
 
@@ -802,7 +803,7 @@ bool Network::StartPortalDetection(bool reset) {
 
   LOG(INFO) << logging_tag_ << ": Portal detection started.";
   for (auto* ev : event_handlers_) {
-    ev->OnNetworkValidationStart();
+    ev->OnNetworkValidationStart(interface_index_);
   }
   return true;
 }
@@ -826,7 +827,7 @@ bool Network::RestartPortalDetection() {
   // callback should be triggered when the next attempt starts, not when it
   // is scheduled.
   for (auto* ev : event_handlers_) {
-    ev->OnNetworkValidationStart();
+    ev->OnNetworkValidationStart(interface_index_);
   }
   return true;
 }
@@ -835,7 +836,7 @@ void Network::StopPortalDetection() {
   if (IsPortalDetectionInProgress()) {
     LOG(INFO) << logging_tag_ << ": Portal detection stopped.";
     for (auto* ev : event_handlers_) {
-      ev->OnNetworkValidationStop();
+      ev->OnNetworkValidationStop(interface_index_);
     }
   }
   portal_detector_.reset();
@@ -874,7 +875,7 @@ void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
   network_validation_result_ = result;
 
   for (auto* ev : event_handlers_) {
-    ev->OnNetworkValidationResult(result);
+    ev->OnNetworkValidationResult(interface_index_, result);
   }
   // If portal detection was not conclusive, also start additional connection
   // diagnostics for the current network connection.

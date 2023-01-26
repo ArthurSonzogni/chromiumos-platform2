@@ -53,7 +53,8 @@ class MockDevice : public Device {
               (const, override));
   MOCK_METHOD(void,
               OnNeighborReachabilityEvent,
-              (const IPAddress&,
+              (int,
+               const IPAddress&,
                patchpanel::NeighborReachabilityEventSignal::Role,
                patchpanel::NeighborReachabilityEventSignal::EventType),
               (override));
