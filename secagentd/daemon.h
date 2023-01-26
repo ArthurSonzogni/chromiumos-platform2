@@ -11,6 +11,8 @@
 #include "base/memory/scoped_refptr.h"
 #include "base/timer/timer.h"
 #include "brillo/daemons/dbus_daemon.h"
+#include "featured/feature_library.h"
+#include "missive/proto/security_xdr_events.pb.h"
 #include "policy/libpolicy.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/plugins.h"
@@ -40,14 +42,16 @@ class Daemon : public brillo::DBusDaemon {
   explicit Daemon(struct Inject);
   Daemon(bool bypass_policy_for_testing, bool bypass_enq_ok_wait_for_testing);
   ~Daemon() override = default;
+  // Starts the plugin loading process. First creates the agent plugin and
+  // waits for a successfully sent heartbeat before creating and running
+  // the remaining plugins.
+  // isEnabled: is the XDR feature flag is set?
+  void HandleXDRFeatureFlag(bool isEnabled);
 
  protected:
   int OnInit() override;
   int OnEventLoopStarted() override;
   void OnShutdown(int*) override;
-  // Creates and runs the agent plugin. The agent plugin will call back and run
-  // the other plugins after agent start event is successfully sent.
-  int CreateAndRunAgentPlugin();
   // Runs all of the plugin within the plugins_ vector.
   void RunPlugins();
   // Creates plugin of the given type.
@@ -59,6 +63,7 @@ class Daemon : public brillo::DBusDaemon {
   void PollXdrReportingIsEnabled();
 
  private:
+  std::unique_ptr<feature::PlatformFeaturesInterface> features_;
   base::RepeatingTimer check_xdr_reporting_timer_;
   scoped_refptr<MessageSender> message_sender_;
   scoped_refptr<ProcessCacheInterface> process_cache_;
@@ -69,6 +74,7 @@ class Daemon : public brillo::DBusDaemon {
   bool bypass_policy_for_testing_ = false;
   bool bypass_enq_ok_wait_for_testing_ = false;
   bool xdr_reporting_policy_ = false;
+  base::WeakPtrFactory<Daemon> weak_ptr_factory_;
 };
 };  // namespace secagentd
 

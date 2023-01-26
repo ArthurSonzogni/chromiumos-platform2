@@ -50,6 +50,7 @@ pkg_config("target_defaults") {
     "libbpf",
     "libbrillo",
     "libchrome",
+    "libfeatures",
     "libmissiveclient",
     "libmetrics",
     "libtpm_manager-client",

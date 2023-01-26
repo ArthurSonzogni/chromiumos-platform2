@@ -12,6 +12,7 @@
 #include "absl/status/status.h"
 #include "attestation/proto_bindings/interface.pb.h"
 #include "attestation-client/attestation/dbus-proxies.h"
+#include "base/feature_list.h"
 #include "base/functional/callback_forward.h"
 #include "base/functional/callback_helpers.h"
 #include "base/logging.h"
@@ -19,6 +20,8 @@
 #include "base/task/thread_pool/thread_pool_instance.h"
 #include "base/time/time.h"
 #include "brillo/daemons/dbus_daemon.h"
+#include "featured/c_feature_library.h"
+#include "featured/feature_library.h"
 #include "missive/client/missive_client.h"
 #include "policy/device_policy.h"
 #include "policy/libpolicy.h"
@@ -29,8 +32,11 @@
 #include "secagentd/process_cache.h"
 
 namespace secagentd {
+static const struct VariationsFeature kCrOSLateBootSecagentdXDRReporting = {
+    .name = "CrOSLateBootSecagentdXDRReporting",
+    .default_state = FEATURE_ENABLED_BY_DEFAULT};
 
-Daemon::Daemon(struct Inject injected) {
+Daemon::Daemon(struct Inject injected) : weak_ptr_factory_(this) {
   plugin_factory_ = std::move(injected.plugin_factory_);
   message_sender_ = std::move(injected.message_sender_);
   process_cache_ = std::move(injected.process_cache_);
@@ -40,12 +46,18 @@ Daemon::Daemon(struct Inject injected) {
 Daemon::Daemon(bool bypass_policy_for_testing,
                bool bypass_enq_ok_wait_for_testing)
     : bypass_policy_for_testing_(bypass_policy_for_testing),
-      bypass_enq_ok_wait_for_testing_(bypass_enq_ok_wait_for_testing) {}
+      bypass_enq_ok_wait_for_testing_(bypass_enq_ok_wait_for_testing),
+      weak_ptr_factory_(this) {}
 
 int Daemon::OnInit() {
   int rv = brillo::DBusDaemon::OnInit();
   if (rv != EX_OK) {
     return rv;
+  }
+
+  // Finch feature interface which allows us to run experiments.
+  if (features_ == nullptr) {
+    features_ = feature::PlatformFeatures::New(bus_);
   }
 
   if (plugin_factory_ == nullptr) {
@@ -78,7 +90,11 @@ int Daemon::OnInit() {
   return EX_OK;
 }
 
-int Daemon::CreateAndRunAgentPlugin() {
+void Daemon::HandleXDRFeatureFlag(bool isEnabled) {
+  if (!isEnabled) {
+    LOG(INFO) << "XDR reporting feature on this device is disabled. Exiting.";
+    QuitWithExitCode(EXIT_FAILURE);
+  }
   using CbType = base::OnceCallback<void()>;
   CbType cb_for_agent =
       base::BindOnce(&Daemon::RunPlugins, base::Unretained(this));
@@ -93,19 +109,17 @@ int Daemon::CreateAndRunAgentPlugin() {
       std::move(cb_for_agent));
 
   if (!agent_plugin_) {
-    return EX_SOFTWARE;
+    QuitWithExitCode(EX_SOFTWARE);
   }
 
   absl::Status result = agent_plugin_->Activate();
   if (!result.ok()) {
     LOG(ERROR) << result.message();
-    return EX_SOFTWARE;
+    QuitWithExitCode(EX_SOFTWARE);
   }
 
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, std::move(cb_for_now));
-
-  return EX_OK;
 }
 
 void Daemon::RunPlugins() {
@@ -190,10 +204,9 @@ void Daemon::PollXdrReportingIsEnabled() {
           metrics::kPolicy, metrics::Policy::kEnabled);
       // Agent plugin will call back and run other plugins after agent start
       // event is successfully sent.
-      int rv = CreateAndRunAgentPlugin();
-      if (rv != EX_OK) {
-        QuitWithExitCode(rv);
-      }
+      features_->IsEnabled(kCrOSLateBootSecagentdXDRReporting,
+                           base::BindOnce(&Daemon::HandleXDRFeatureFlag,
+                                          weak_ptr_factory_.GetWeakPtr()));
     } else {
       LOG(INFO) << "Stopping event reporting and quitting";
       // Will exit and restart secagentd.
