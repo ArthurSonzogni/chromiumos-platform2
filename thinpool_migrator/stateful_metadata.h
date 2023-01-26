@@ -31,6 +31,11 @@ class BRILLO_EXPORT StatefulMetadata {
   uint64_t GetUnencryptedStatefulExtentCount() const {
     return unencrypted_stateful_extent_count_;
   }
+
+  uint64_t GetResizedFilesystemSize() const;
+  uint64_t GetThinpoolMetadataOffset() const;
+  uint64_t GetThinpoolMetadataSize() const;
+
   uint64_t GetThinpoolExtentCount() const { return thinpool_extent_count_; }
 
   uint64_t GetThinpoolMetadataExtentCount() const {

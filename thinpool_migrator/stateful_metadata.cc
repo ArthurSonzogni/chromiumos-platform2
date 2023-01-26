@@ -71,6 +71,27 @@ PhysicalVolumeMetadata StatefulMetadata::GeneratePhysicalVolumeMetadata()
           .pe_count = total_extent_count_};
 }
 
+// The first 1M of the partition contains LVM2 metadata, followed by the
+// physical extents. Given the size of the unencrypted stateful logical
+// volume in extents, the filesystem on the stateful partition needs to be
+// resized down to be able to write the header to end of the logical
+// volume.
+uint64_t StatefulMetadata::GetResizedFilesystemSize() const {
+  return (GetUnencryptedStatefulExtentCount() - 1) * kPhysicalExtentSize +
+         kStartingPhysicalExtentAddress;
+}
+
+// The thinpool's metadata partition starts at the end of thinpool's data
+// partition.
+uint64_t StatefulMetadata::GetThinpoolMetadataOffset() const {
+  return GetThinpoolExtentCount() * kPhysicalExtentSize +
+         kStartingPhysicalExtentAddress;
+}
+
+uint64_t StatefulMetadata::GetThinpoolMetadataSize() const {
+  return GetThinpoolMetadataExtentCount() * kPhysicalExtentSize;
+}
+
 std::vector<LogicalVolumeMetadata>
 StatefulMetadata::GenerateLogicalVolumeMetadata() const {
   std::vector<LogicalVolumeMetadata> lv_metadata;

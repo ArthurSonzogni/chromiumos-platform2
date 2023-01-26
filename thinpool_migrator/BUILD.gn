@@ -35,6 +35,7 @@ shared_library("libthinpool_migrator") {
   sources = [
     "lvm_metadata.cc",
     "stateful_metadata.cc",
+    "thinpool_migrator.cc",
   ]
   configs += [ ":target_defaults" ]
   install_path = "lib"
@@ -44,6 +45,7 @@ install_config("install_headers") {
   sources = [
     "lvm_metadata.h",
     "stateful_metadata.h",
+    "thinpool_migrator.h",
   ]
   install_path = "/usr/include/thinpool_migrator"
 }
@@ -53,6 +55,7 @@ if (use.test) {
     sources = [
       "lvm_metadata_test.cc",
       "stateful_metadata_test.cc",
+      "thinpool_migrator_test.cc",
     ]
     configs += [
       "//common-mk:test",
@@ -62,6 +65,10 @@ if (use.test) {
     deps = [
       ":libthinpool_migrator",
       "//common-mk/testrunner",
+    ]
+    pkg_deps = [
+      "libbrillo-test",
+      "libchrome-test",
     ]
   }
 }
