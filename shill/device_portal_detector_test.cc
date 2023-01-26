@@ -57,20 +57,21 @@ constexpr Technology kTestTechnology = Technology::kUnknown;
 
 class TestNetwork : public Network {
  public:
-  TestNetwork()
+  explicit TestNetwork(Metrics* metrics)
       : Network(kDeviceInterfaceIndex,
                 kDeviceName,
                 kTestTechnology,
                 /*fixed_ip_params=*/false,
                 /*control_interface=*/nullptr,
                 /*dispatcher=*/nullptr,
-                /*metrics=*/nullptr) {}
+                metrics) {}
   ~TestNetwork() override = default;
   TestNetwork(const TestNetwork&) = delete;
   TestNetwork& operator=(const TestNetwork&) = delete;
 
   // Network overrides
   bool IsConnected() const override { return true; }
+  void StartConnectionDiagnostics() override {}
 
   bool StartPortalDetection() override {
     portal_detection_delayed_ = false;
@@ -157,9 +158,7 @@ class TestNetwork : public Network {
     // The callback might delete |this| so copy |portal_detection_result_|.
     PortalDetector::Result result = portal_detection_result_;
     result.num_attempts = portal_detection_num_attempts_;
-    for (auto* ev : event_handlers()) {
-      ev->OnNetworkValidationResult(result);
-    }
+    OnPortalDetectorResult(result);
   }
 
   const PortalDetector::Result& portal_detection_result() const {
@@ -231,7 +230,7 @@ class DevicePortalDetectorTest : public testing::Test {
   ~DevicePortalDetectorTest() override = default;
 
   void SetUp() override {
-    device_->set_network_for_testing(std::make_unique<TestNetwork>());
+    device_->set_network_for_testing(std::make_unique<TestNetwork>(&metrics_));
     device_->network()->RegisterEventHandler(device_.get());
     // Set up a connected test Service for the Device.
     service_ = new TestService(&manager_);

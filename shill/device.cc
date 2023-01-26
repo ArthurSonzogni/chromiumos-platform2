@@ -630,10 +630,6 @@ void Device::set_mac_address(const std::string& mac_address) {
 }
 
 void Device::OnNetworkValidationResult(const PortalDetector::Result& result) {
-  int portal_status = Metrics::PortalDetectionResultToEnum(result);
-  metrics()->SendEnumToUMA(Metrics::kMetricPortalResult, technology(),
-                           portal_status);
-
   if (!selected_service_) {
     // A race can happen if the Service has disconnected in the meantime.
     LOG(WARNING)

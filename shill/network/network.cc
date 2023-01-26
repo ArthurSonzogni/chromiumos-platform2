@@ -850,6 +850,11 @@ void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
             << " OnPortalDetectorResult: " << previous_validation_state
             << " -> " << result.GetValidationState();
   network_validation_result_ = result;
+
+  int portal_status = Metrics::PortalDetectionResultToEnum(result);
+  metrics_->SendEnumToUMA(Metrics::kMetricPortalResult, technology_,
+                          portal_status);
+
   for (auto* ev : event_handlers_) {
     ev->OnNetworkValidationResult(result);
   }
