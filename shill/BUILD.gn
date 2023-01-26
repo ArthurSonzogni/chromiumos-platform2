@@ -141,8 +141,6 @@ protoc_text_to_bin("mobile_operator_db-test-db") {
     "${protoc_text_dir}/init_test_empty_db_init.prototxt",
     "${protoc_text_dir}/init_test_multiple_db_init_1.prototxt",
     "${protoc_text_dir}/init_test_multiple_db_init_2.prototxt",
-    "${protoc_text_dir}/init_test_override_db_init_1.prototxt",
-    "${protoc_text_dir}/init_test_override_db_init_2.prototxt",
     "${protoc_text_dir}/init_test_successful_init.prototxt",
     "${protoc_text_dir}/main_test.prototxt",
   ]
