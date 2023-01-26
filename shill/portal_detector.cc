@@ -333,6 +333,21 @@ const std::string PortalDetector::StatusToString(Status status) {
 }
 
 // static
+const std::string PortalDetector::ValidationStateToString(
+    ValidationState state) {
+  switch (state) {
+    case ValidationState::kInternetConnectivity:
+      return "internet-connectivity";
+    case ValidationState::kNoConnectivity:
+      return "no-connectivity";
+    case ValidationState::kPartialConnectivity:
+      return "partial-connectivity";
+    case ValidationState::kPortalRedirect:
+      return "portal-redirect";
+  }
+}
+
+// static
 PortalDetector::Phase PortalDetector::GetPortalPhaseForRequestResult(
     HttpRequest::Result result) {
   switch (result) {
@@ -413,6 +428,11 @@ std::ostream& operator<<(std::ostream& stream, PortalDetector::Phase phase) {
 
 std::ostream& operator<<(std::ostream& stream, PortalDetector::Status status) {
   return stream << PortalDetector::StatusToString(status);
+}
+
+std::ostream& operator<<(std::ostream& stream,
+                         PortalDetector::ValidationState state) {
+  return stream << PortalDetector::ValidationStateToString(state);
 }
 
 }  // namespace shill

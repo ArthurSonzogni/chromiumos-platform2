@@ -841,6 +841,14 @@ std::unique_ptr<PortalDetector> Network::CreatePortalDetector() {
 }
 
 void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
+  std::string previous_validation_state = "unevaluated";
+  if (network_validation_result_) {
+    previous_validation_state = PortalDetector::ValidationStateToString(
+        network_validation_result_->GetValidationState());
+  }
+  LOG(INFO) << logging_tag_
+            << " OnPortalDetectorResult: " << previous_validation_state
+            << " -> " << result.GetValidationState();
   network_validation_result_ = result;
   for (auto* ev : event_handlers_) {
     ev->OnNetworkValidationResult(result);

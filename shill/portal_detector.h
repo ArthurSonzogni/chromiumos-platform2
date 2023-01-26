@@ -183,6 +183,10 @@ class PortalDetector {
   // status string. This method supports success, timeout and failure.
   static const std::string StatusToString(Status status);
 
+  // Static method to map from the validation state of a portal detection Result
+  // to a string.
+  static const std::string ValidationStateToString(ValidationState state);
+
   // Static method mapping from HttpRequest responses to PortalDetection
   // Phases. For example, if the HttpRequest result is kResultDNSFailure,
   // this method returns Phase::kDNS.
@@ -312,6 +316,8 @@ class PortalDetector {
 
 std::ostream& operator<<(std::ostream& stream, PortalDetector::Phase phase);
 std::ostream& operator<<(std::ostream& stream, PortalDetector::Status status);
+std::ostream& operator<<(std::ostream& stream,
+                         PortalDetector::ValidationState state);
 
 }  // namespace shill
 

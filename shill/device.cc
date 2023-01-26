@@ -630,10 +630,6 @@ void Device::set_mac_address(const std::string& mac_address) {
 }
 
 void Device::OnNetworkValidationResult(const PortalDetector::Result& result) {
-  LOG(INFO) << LoggingTag() << " Device: " << link_name()
-            << " Service: " << GetSelectedServiceRpcIdentifier(nullptr).value()
-            << " Received status: " << result.http_status;
-
   int portal_status = Metrics::PortalDetectionResultToEnum(result);
   metrics()->SendEnumToUMA(Metrics::kMetricPortalResult, technology(),
                            portal_status);
