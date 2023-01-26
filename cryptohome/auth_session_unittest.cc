@@ -102,10 +102,14 @@ constexpr char kFakeLabel[] = "test_label";
 constexpr char kFakeOtherLabel[] = "test_other_label";
 constexpr char kFakePinLabel[] = "test_pin_label";
 constexpr char kLegacyLabel[] = "legacy-0";
+constexpr char kRecoveryLabel[] = "recovery";
+
 // Fake passwords to be in used in this test suite.
 constexpr char kFakePass[] = "test_pass";
 constexpr char kFakePin[] = "123456";
 constexpr char kFakeOtherPass[] = "test_other_pass";
+constexpr char kFakeRecoverySecret[] = "test_recovery_secret";
+
 // Fake username to be used in this test suite.
 constexpr char kFakeUsername[] = "test_username";
 
@@ -1589,6 +1593,48 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
     bool is_key_valid = false;
   };
 
+  user_data_auth::CryptohomeErrorCode AddRecoveryAuthFactor(
+      const std::string& label,
+      const std::string& secret,
+      AuthSession& auth_session) {
+    EXPECT_CALL(auth_block_utility_,
+                GetAuthBlockTypeForCreation(false, true, false))
+        .WillRepeatedly(ReturnValue(AuthBlockType::kCryptohomeRecovery));
+    EXPECT_CALL(auth_block_utility_,
+                CreateKeyBlobsWithAuthBlockAsync(
+                    AuthBlockType::kCryptohomeRecovery, _, _))
+        .WillOnce([&secret](auto auth_block_type, auto auth_input,
+                            auto create_callback) {
+          auto key_blobs = std::make_unique<KeyBlobs>();
+          key_blobs->vkk_key = brillo::SecureBlob(secret);
+          auto auth_block_state = std::make_unique<AuthBlockState>();
+          auth_block_state->state = CryptohomeRecoveryAuthBlockState();
+          std::move(create_callback)
+              .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
+                   std::move(auth_block_state));
+        });
+    // Prepare recovery add request.
+    user_data_auth::AddAuthFactorRequest request;
+    request.set_auth_session_id(auth_session.serialized_token());
+    request.mutable_auth_factor()->set_type(
+        user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY);
+    request.mutable_auth_factor()->set_label(label);
+    request.mutable_auth_factor()->mutable_cryptohome_recovery_metadata();
+    request.mutable_auth_input()
+        ->mutable_cryptohome_recovery_input()
+        ->set_mediator_pub_key("mediator pub key");
+    // Add recovery AuthFactor.
+    TestFuture<CryptohomeStatus> add_future;
+    auth_session.AddAuthFactor(request, add_future.GetCallback());
+
+    if (add_future.Get().ok() ||
+        !add_future.Get()->local_legacy_error().has_value()) {
+      return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+    }
+
+    return add_future.Get()->local_legacy_error().value();
+  }
+
   user_data_auth::CryptohomeErrorCode AddPasswordAuthFactor(
       const std::string& label,
       const std::string& password,
@@ -1634,11 +1680,47 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
     TestFuture<CryptohomeStatus> add_future;
     auth_session.AddAuthFactor(request, add_future.GetCallback());
 
-    if (add_future.Get().ok()) {
+    if (add_future.Get().ok() ||
+        !add_future.Get()->local_legacy_error().has_value()) {
       return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
     }
 
     return add_future.Get()->local_legacy_error().value();
+  }
+
+  user_data_auth::CryptohomeErrorCode AuthenticateRecoveryAuthFactor(
+      const std::string& auth_factor_label,
+      const std::string& secret,
+      AuthSession& auth_session) {
+    EXPECT_CALL(auth_block_utility_,
+                GetAuthBlockTypeFromState(
+                    AuthBlockStateTypeIs<CryptohomeRecoveryAuthBlockState>()))
+        .WillRepeatedly(Return(AuthBlockType::kCryptohomeRecovery));
+    EXPECT_CALL(auth_block_utility_,
+                DeriveKeyBlobsWithAuthBlockAsync(
+                    AuthBlockType::kCryptohomeRecovery, _, _, _))
+        .WillOnce([&secret](auto auth_block_type, auto auth_input,
+                            auto auth_state, auto derive_callback) {
+          auto key_blobs = std::make_unique<KeyBlobs>();
+          key_blobs->vkk_key = brillo::SecureBlob(secret);
+          std::move(derive_callback)
+              .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs));
+        });
+    // Prepare recovery authentication request.
+    std::string auth_factor_labels[] = {auth_factor_label};
+    user_data_auth::AuthInput auth_input_proto;
+    auth_input_proto.mutable_cryptohome_recovery_input()
+        ->mutable_recovery_response();
+    TestFuture<CryptohomeStatus> authenticate_future;
+    // Authenticate using recovery.
+    auth_session.AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
+                                        authenticate_future.GetCallback());
+    // Verify.
+    if (authenticate_future.Get().ok() ||
+        !authenticate_future.Get()->local_legacy_error().has_value()) {
+      return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
+    }
+    return authenticate_future.Get()->local_legacy_error().value();
   }
 
   user_data_auth::CryptohomeErrorCode AuthenticatePasswordAuthFactor(
@@ -1718,7 +1800,8 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
     TestFuture<CryptohomeStatus> update_future;
     auth_session.UpdateAuthFactor(request, update_future.GetCallback());
 
-    if (update_future.Get().ok()) {
+    if (update_future.Get().ok() ||
+        !update_future.Get()->local_legacy_error().has_value()) {
       return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
     }
 
@@ -1726,7 +1809,9 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
   }
 
   user_data_auth::CryptohomeErrorCode AddPinAuthFactor(
-      const std::string& pin, AuthSession& auth_session) {
+      bool backup_keyset_enabled,
+      const std::string& pin,
+      AuthSession& auth_session) {
     EXPECT_CALL(auth_block_utility_,
                 GetAuthBlockTypeForCreation(true, false, false))
         .WillRepeatedly(ReturnValue(AuthBlockType::kPinWeaver));
@@ -1744,10 +1829,13 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
               .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
                    std::move(auth_block_state));
         });
-    // Setting the expectation that a backup VaultKeyset will be created.
-    EXPECT_CALL(keyset_management_,
-                AddKeysetWithKeyBlobs(_, _, _, _, _, _, _, _))
-        .WillOnce(Return(CRYPTOHOME_ERROR_NOT_SET));
+    // Setting the expectation that a backup VaultKeyset will be created if it
+    // is not explicitly disabled by adding a USS-only factor.
+    if (backup_keyset_enabled) {
+      EXPECT_CALL(keyset_management_,
+                  AddKeysetWithKeyBlobs(_, _, _, _, _, _, _, _))
+          .WillOnce(Return(CRYPTOHOME_ERROR_NOT_SET));
+    }
     // Calling AddAuthFactor.
     user_data_auth::AddAuthFactorRequest add_pin_request;
     add_pin_request.set_auth_session_id(auth_session.serialized_token());
@@ -1759,7 +1847,8 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
     TestFuture<CryptohomeStatus> add_future;
     auth_session.AddAuthFactor(add_pin_request, add_future.GetCallback());
 
-    if (add_future.Get().ok()) {
+    if (add_future.Get().ok() ||
+        !add_future.Get()->local_legacy_error().has_value()) {
       return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
     }
 
@@ -3126,7 +3215,8 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   std::unique_ptr<VaultKeyset> backup_vk = CreateBackupVaultKeyset(kFakeLabel);
   auth_session->set_vault_keyset_for_testing(std::move(backup_vk));
-  error = AddPinAuthFactor(kFakePin, *auth_session);
+  error =
+      AddPinAuthFactor(/*backup_keyset_enabled=*/true, kFakePin, *auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Both password and pin are available.
@@ -3299,7 +3389,8 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAndReAddAuthFactor) {
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   std::unique_ptr<VaultKeyset> backup_vk = CreateBackupVaultKeyset(kFakeLabel);
   auth_session->set_vault_keyset_for_testing(std::move(backup_vk));
-  error = AddPinAuthFactor(kFakePin, *auth_session);
+  error =
+      AddPinAuthFactor(/*backup_keyset_enabled=*/true, kFakePin, *auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Test.
@@ -3318,7 +3409,8 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAndReAddAuthFactor) {
   EXPECT_THAT(remove_future.Get(), IsOk());
 
   // Add the same pin auth factor again.
-  error = AddPinAuthFactor(kFakePin, *auth_session);
+  error =
+      AddPinAuthFactor(/*backup_keyset_enabled=*/true, kFakePin, *auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   // The verifier still uses the original password.
   UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
@@ -3458,11 +3550,73 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactor) {
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
 }
 
+// Test that AddauthFactor successfully adds a PIN factor on a
+// session that was authenticated via a recovery factor.
+TEST_F(AuthSessionWithUssExperimentTest, AddPinAfterRecoveryAuth) {
+  // Setup.
+  // Initially the user does not exist.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
+  {
+    // Obtain AuthSession for user setup.
+    CryptohomeStatusOr<AuthSession*> auth_session_status =
+        auth_session_manager_.CreateAuthSession(
+            kFakeUsername, user_data_auth::AUTH_SESSION_FLAGS_NONE,
+            AuthIntent::kDecrypt);
+    ASSERT_THAT(auth_session_status, IsOk());
+    AuthSession* auth_session = auth_session_status.value();
+    // Create the user with password and recovery factors.
+    EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
+    EXPECT_EQ(AddPasswordAuthFactor(kFakeLabel, kFakePass,
+                                    /*first_factor=*/true, *auth_session),
+              user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+    EXPECT_EQ(AddRecoveryAuthFactor(kRecoveryLabel, kFakeRecoverySecret,
+                                    *auth_session),
+              user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+    EXPECT_FALSE(auth_session->enable_create_backup_vk_with_uss_for_testing());
+  }
+
+  // Set up mocks for the now-existing user.
+  EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  // Obtain AuthSession for authentication.
+  CryptohomeStatusOr<AuthSession*> new_auth_session_status =
+      auth_session_manager_.CreateAuthSession(
+          kFakeUsername, user_data_auth::AUTH_SESSION_FLAGS_NONE,
+          AuthIntent::kDecrypt);
+  ASSERT_THAT(new_auth_session_status, IsOk());
+  AuthSession* new_auth_session = new_auth_session_status.value();
+  EXPECT_FALSE(
+      new_auth_session->enable_create_backup_vk_with_uss_for_testing());
+  // Authenticate the new auth session with recovery factor.
+  EXPECT_EQ(AuthenticateRecoveryAuthFactor(kRecoveryLabel, kFakeRecoverySecret,
+                                           *new_auth_session),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_THAT(
+      new_auth_session->authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_TRUE(new_auth_session->has_user_secret_stash());
+
+  // Test adding a PIN AuthFactor.
+  user_data_auth::CryptohomeErrorCode error = AddPinAuthFactor(
+      /*backup_keyset_enabled=*/false, kFakePin, *new_auth_session);
+  EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+  // Verify PIN factor is added.
+  std::map<std::string, AuthFactorType> stored_factors =
+      auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
+  EXPECT_THAT(stored_factors,
+              UnorderedElementsAre(
+                  Pair(kFakeLabel, AuthFactorType::kPassword),
+                  Pair(kRecoveryLabel, AuthFactorType::kCryptohomeRecovery),
+                  Pair(kFakePinLabel, AuthFactorType::kPin)));
+  // Verify that reset secret for the pin label is added to USS.
+  EXPECT_TRUE(new_auth_session->HasResetSecretInUssForTesting(kFakePinLabel));
+}
+
 // Test that UpdateAuthFactor successfully updates a password factor on a
 // session that was authenticated via a recovery factor.
 TEST_F(AuthSessionWithUssExperimentTest, UpdatePasswordAfterRecoveryAuth) {
   // Setup.
-  constexpr char kRecoveryLabel[] = "recovery";
   constexpr char kNewFakePass[] = "new fake pass";
   // Initially the user does not exist.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
@@ -3480,38 +3634,14 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdatePasswordAfterRecoveryAuth) {
     EXPECT_EQ(AddPasswordAuthFactor(kFakeLabel, kFakePass,
                                     /*first_factor=*/true, *auth_session),
               user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-    // Set mocks for recovery AuthFactor creation.
-    EXPECT_CALL(auth_block_utility_,
-                GetAuthBlockTypeForCreation(false, true, false))
-        .WillRepeatedly(ReturnValue(AuthBlockType::kCryptohomeRecovery));
-    EXPECT_CALL(auth_block_utility_,
-                CreateKeyBlobsWithAuthBlockAsync(
-                    AuthBlockType::kCryptohomeRecovery, _, _))
-        .WillOnce(
-            [](auto auth_block_type, auto auth_input, auto create_callback) {
-              auto key_blobs = std::make_unique<KeyBlobs>();
-              key_blobs->vkk_key = brillo::SecureBlob("fake vkk key");
-              auto auth_block_state = std::make_unique<AuthBlockState>();
-              auth_block_state->state = CryptohomeRecoveryAuthBlockState();
-              std::move(create_callback)
-                  .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
-                       std::move(auth_block_state));
-            });
-    // Prepare recovery add request.
-    user_data_auth::AddAuthFactorRequest request;
-    request.set_auth_session_id(auth_session->serialized_token());
-    request.mutable_auth_factor()->set_type(
-        user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY);
-    request.mutable_auth_factor()->set_label(kRecoveryLabel);
-    request.mutable_auth_factor()->mutable_cryptohome_recovery_metadata();
-    request.mutable_auth_input()
-        ->mutable_cryptohome_recovery_input()
-        ->set_mediator_pub_key("mediator pub key");
     // Add recovery AuthFactor.
-    TestFuture<CryptohomeStatus> add_future;
-    auth_session->AddAuthFactor(request, add_future.GetCallback());
-    EXPECT_THAT(add_future.Get(), IsOk());
+    EXPECT_EQ(AddRecoveryAuthFactor(kRecoveryLabel, kFakeRecoverySecret,
+                                    *auth_session),
+              user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
+    EXPECT_FALSE(auth_session->enable_create_backup_vk_with_uss_for_testing());
   }
+
   // Set up mocks for the now-existing user.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
   // Obtain AuthSession for authentication.
@@ -3521,40 +3651,25 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdatePasswordAfterRecoveryAuth) {
           AuthIntent::kDecrypt);
   ASSERT_THAT(new_auth_session_status, IsOk());
   AuthSession* new_auth_session = new_auth_session_status.value();
-  // Set up mocks for recovery authentication.
-  EXPECT_CALL(auth_block_utility_,
-              GetAuthBlockTypeFromState(
-                  AuthBlockStateTypeIs<CryptohomeRecoveryAuthBlockState>()))
-      .WillRepeatedly(Return(AuthBlockType::kCryptohomeRecovery));
-  EXPECT_CALL(auth_block_utility_,
-              DeriveKeyBlobsWithAuthBlockAsync(
-                  AuthBlockType::kCryptohomeRecovery, _, _, _))
-      .WillOnce([](auto auth_block_type, auto auth_input, auto auth_state,
-                   auto derive_callback) {
-        auto key_blobs = std::make_unique<KeyBlobs>();
-        key_blobs->vkk_key = brillo::SecureBlob("fake vkk key");
-        std::move(derive_callback)
-            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs));
-      });
-  // Prepare recovery authentication request.
-  std::string auth_factor_labels[] = {kRecoveryLabel};
-  user_data_auth::AuthInput auth_input_proto;
-  auth_input_proto.mutable_cryptohome_recovery_input()
-      ->mutable_recovery_response();
-  TestFuture<CryptohomeStatus> authenticate_future;
-  // Authenticate using recovery.
-  new_auth_session->AuthenticateAuthFactor(auth_factor_labels, auth_input_proto,
-                                           authenticate_future.GetCallback());
-  EXPECT_THAT(authenticate_future.Get(), IsOk());
+  EXPECT_FALSE(
+      new_auth_session->enable_create_backup_vk_with_uss_for_testing());
+  // Authenticate the new auth session with recovery factor.
+  EXPECT_EQ(AuthenticateRecoveryAuthFactor(kRecoveryLabel, kFakeRecoverySecret,
+                                           *new_auth_session),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+  EXPECT_THAT(
+      new_auth_session->authorized_intents(),
+      UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
+  EXPECT_TRUE(new_auth_session->has_user_secret_stash());
   EXPECT_THAT(
       new_auth_session->authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
 
-  // Test.
+  // Test updating existing password factor.
   user_data_auth::CryptohomeErrorCode error =
       UpdatePasswordAuthFactor(kNewFakePass, *new_auth_session);
 
-  // Verify.
+  // Verify update succeeded.
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 }
 

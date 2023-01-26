@@ -174,6 +174,13 @@ class AuthSession final {
     return user_secret_stash_ && user_secret_stash_main_key_;
   }
 
+  // Indicates if there is a reset_secret in session's User Secret Stash for
+  // the given label.
+  inline bool HasResetSecretInUssForTesting(const std::string& label) const {
+    return user_secret_stash_ &&
+           user_secret_stash_->GetResetSecretForLabel(label).has_value();
+  }
+
   // OnUserCreated is called when the user and their homedir are newly created.
   // Must be called no more than once.
   CryptohomeStatus OnUserCreated();
@@ -234,6 +241,10 @@ class AuthSession final {
   // Sets |vault_keyset_| for testing purpose.
   void set_vault_keyset_for_testing(std::unique_ptr<VaultKeyset> value) {
     vault_keyset_ = std::move(value);
+  }
+
+  bool enable_create_backup_vk_with_uss_for_testing() const {
+    return enable_create_backup_vk_with_uss_;
   }
 
   // Static function which returns a serialized token in a vector format. The

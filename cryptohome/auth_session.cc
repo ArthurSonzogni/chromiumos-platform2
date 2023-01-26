@@ -1853,6 +1853,16 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
     return std::move(auth_input.value());
   }
 
+  if (user_secret_stash_ && !enable_create_backup_vk_with_uss_) {
+    // When using USS, every resettable factor gets a unique reset secret.
+    // When USS is not backed up by VaultKeysets this secret needs to be
+    // generated independently.
+    LOG(INFO) << "Adding random reset secret for UserSecretStash.";
+    auth_input->reset_secret =
+        CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH);
+    return std::move(auth_input.value());
+  }
+
   // When using VaultKeyset, reset is implemented via a seed that's shared
   // among all of the user's VKs. Hence copy it from the previously loaded VK.
   if (!vault_keyset_) {
