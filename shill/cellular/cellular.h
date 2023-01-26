@@ -146,18 +146,14 @@ class Cellular : public Device,
                          const ResultCallback& callback) override;
   void RequirePin(const std::string& pin,
                   bool require,
-                  Error* error,
                   const ResultCallback& callback) override;
   void EnterPin(const std::string& pin,
-                Error* error,
                 const ResultCallback& callback) override;
   void UnblockPin(const std::string& unblock_code,
                   const std::string& pin,
-                  Error* error,
                   const ResultCallback& callback) override;
   void ChangePin(const std::string& old_pin,
                  const std::string& new_pin,
-                 Error* error,
                  const ResultCallback& callback) override;
   void Reset(const ResultCallback& callback) override;
   void DropConnection() override;

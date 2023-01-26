@@ -18,6 +18,12 @@ static std::string ObjectID(const dbus::ObjectPath* p) {
 }
 }  // namespace Logging
 
+namespace {
+constexpr base::TimeDelta kDefaultTimeout = base::Seconds(5);
+constexpr base::TimeDelta kSendPinTimeout = base::Seconds(20);
+constexpr base::TimeDelta kSendPukTimeout = base::Seconds(20);
+}  // namespace
+
 namespace mm1 {
 
 SimProxy::SimProxy(const scoped_refptr<dbus::Bus>& bus,
@@ -28,10 +34,7 @@ SimProxy::SimProxy(const scoped_refptr<dbus::Bus>& bus,
 
 SimProxy::~SimProxy() = default;
 
-void SimProxy::SendPin(const std::string& pin,
-                       Error* error,
-                       const ResultCallback& callback,
-                       int timeout) {
+void SimProxy::SendPin(const std::string& pin, const ResultCallback& callback) {
   // pin is intentionally not logged.
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   proxy_->SendPinAsync(
@@ -40,14 +43,12 @@ void SimProxy::SendPin(const std::string& pin,
                      callback, __func__),
       base::BindOnce(&SimProxy::OnOperationFailure, weak_factory_.GetWeakPtr(),
                      callback, __func__),
-      timeout);
+      kSendPinTimeout.InMilliseconds());
 }
 
 void SimProxy::SendPuk(const std::string& puk,
                        const std::string& pin,
-                       Error* error,
-                       const ResultCallback& callback,
-                       int timeout) {
+                       const ResultCallback& callback) {
   // pin and puk are intentionally not logged.
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   proxy_->SendPukAsync(
@@ -56,14 +57,12 @@ void SimProxy::SendPuk(const std::string& puk,
                      callback, __func__),
       base::BindOnce(&SimProxy::OnOperationFailure, weak_factory_.GetWeakPtr(),
                      callback, __func__),
-      timeout);
+      kSendPukTimeout.InMilliseconds());
 }
 
 void SimProxy::EnablePin(const std::string& pin,
                          const bool enabled,
-                         Error* error,
-                         const ResultCallback& callback,
-                         int timeout) {
+                         const ResultCallback& callback) {
   // pin is intentionally not logged.
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << enabled;
   proxy_->EnablePinAsync(
@@ -72,14 +71,12 @@ void SimProxy::EnablePin(const std::string& pin,
                      callback, __func__),
       base::BindOnce(&SimProxy::OnOperationFailure, weak_factory_.GetWeakPtr(),
                      callback, __func__),
-      timeout);
+      kDefaultTimeout.InMilliseconds());
 }
 
 void SimProxy::ChangePin(const std::string& old_pin,
                          const std::string& new_pin,
-                         Error* error,
-                         const ResultCallback& callback,
-                         int timeout) {
+                         const ResultCallback& callback) {
   // old_pin and new_pin are intentionally not logged.
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   proxy_->ChangePinAsync(
@@ -88,7 +85,7 @@ void SimProxy::ChangePin(const std::string& old_pin,
                      callback, __func__),
       base::BindOnce(&SimProxy::OnOperationFailure, weak_factory_.GetWeakPtr(),
                      callback, __func__),
-      timeout);
+      kDefaultTimeout.InMilliseconds());
 }
 
 void SimProxy::OnOperationSuccess(const ResultCallback& callback,

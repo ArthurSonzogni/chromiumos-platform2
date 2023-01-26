@@ -28,25 +28,16 @@ class SimProxy : public SimProxyInterface {
   ~SimProxy() override;
 
   // Inherited methods from SimProxyInterface.
-  void SendPin(const std::string& pin,
-               Error* error,
-               const ResultCallback& callback,
-               int timeout) override;
+  void SendPin(const std::string& pin, const ResultCallback& callback) override;
   void SendPuk(const std::string& puk,
                const std::string& pin,
-               Error* error,
-               const ResultCallback& callback,
-               int timeout) override;
+               const ResultCallback& callback) override;
   void EnablePin(const std::string& pin,
                  const bool enabled,
-                 Error* error,
-                 const ResultCallback& callback,
-                 int timeout) override;
+                 const ResultCallback& callback) override;
   void ChangePin(const std::string& old_pin,
                  const std::string& new_pin,
-                 Error* error,
-                 const ResultCallback& callback,
-                 int timeout) override;
+                 const ResultCallback& callback) override;
 
  private:
   // Callbacks for async method calls.

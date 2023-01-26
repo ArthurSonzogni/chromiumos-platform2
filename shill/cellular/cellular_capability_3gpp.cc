@@ -65,8 +65,6 @@ constexpr base::TimeDelta CellularCapability3gpp::kTimeoutSetupLocation =
     base::Seconds(45);
 constexpr base::TimeDelta CellularCapability3gpp::kTimeoutSetupSignal =
     base::Seconds(45);
-constexpr base::TimeDelta CellularCapability3gpp::kTimeoutEnterPin =
-    base::Seconds(20);
 constexpr base::TimeDelta
     CellularCapability3gpp::kTimeoutRegistrationDroppedUpdate =
         base::Seconds(15);
@@ -1184,37 +1182,26 @@ void CellularCapability3gpp::SetUnregistered(bool searching) {
 
 void CellularCapability3gpp::RequirePin(const std::string& pin,
                                         bool require,
-                                        Error* error,
                                         const ResultCallback& callback) {
-  CHECK(error);
-  sim_proxy_->EnablePin(pin, require, error, callback,
-                        kTimeoutDefault.InMilliseconds());
+  sim_proxy_->EnablePin(pin, require, callback);
 }
 
 void CellularCapability3gpp::EnterPin(const std::string& pin,
-                                      Error* error,
                                       const ResultCallback& callback) {
-  CHECK(error);
   SLOG(this, 3) << __func__;
-  sim_proxy_->SendPin(pin, error, callback, kTimeoutEnterPin.InMilliseconds());
+  sim_proxy_->SendPin(pin, callback);
 }
 
 void CellularCapability3gpp::UnblockPin(const std::string& unblock_code,
                                         const std::string& pin,
-                                        Error* error,
                                         const ResultCallback& callback) {
-  CHECK(error);
-  sim_proxy_->SendPuk(unblock_code, pin, error, callback,
-                      kTimeoutDefault.InMilliseconds());
+  sim_proxy_->SendPuk(unblock_code, pin, callback);
 }
 
 void CellularCapability3gpp::ChangePin(const std::string& old_pin,
                                        const std::string& new_pin,
-                                       Error* error,
                                        const ResultCallback& callback) {
-  CHECK(error);
-  sim_proxy_->ChangePin(old_pin, new_pin, error, callback,
-                        kTimeoutDefault.InMilliseconds());
+  sim_proxy_->ChangePin(old_pin, new_pin, callback);
 }
 
 void CellularCapability3gpp::Reset(const ResultCallback& callback) {

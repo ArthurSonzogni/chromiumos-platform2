@@ -7,19 +7,25 @@
 #include "shill/testing.h"
 
 using testing::_;
+using testing::Invoke;
+using testing::WithArgs;
 
 namespace shill {
 namespace mm1 {
 
 MockSimProxy::MockSimProxy() {
-  ON_CALL(*this, SendPin(_, _, _, _))
-      .WillByDefault(SetOperationFailedInArgumentAndWarn<1>());
-  ON_CALL(*this, SendPuk(_, _, _, _, _))
-      .WillByDefault(SetOperationFailedInArgumentAndWarn<2>());
-  ON_CALL(*this, EnablePin(_, _, _, _, _))
-      .WillByDefault(SetOperationFailedInArgumentAndWarn<2>());
-  ON_CALL(*this, ChangePin(_, _, _, _, _))
-      .WillByDefault(SetOperationFailedInArgumentAndWarn<2>());
+  ON_CALL(*this, SendPin(_, _))
+      .WillByDefault(
+          WithArgs<1>(Invoke(ReturnOperationFailed<ResultCallback>)));
+  ON_CALL(*this, SendPuk(_, _, _))
+      .WillByDefault(
+          WithArgs<2>(Invoke(ReturnOperationFailed<ResultCallback>)));
+  ON_CALL(*this, EnablePin(_, _, _))
+      .WillByDefault(
+          WithArgs<2>(Invoke(ReturnOperationFailed<ResultCallback>)));
+  ON_CALL(*this, ChangePin(_, _, _))
+      .WillByDefault(
+          WithArgs<2>(Invoke(ReturnOperationFailed<ResultCallback>)));
 }
 
 MockSimProxy::~MockSimProxy() = default;

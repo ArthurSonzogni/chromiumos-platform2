@@ -213,21 +213,17 @@ class CellularCapability3gpp {
 
   void RequirePin(const std::string& pin,
                   bool require,
-                  Error* error,
                   const ResultCallback& callback);
 
   void EnterPin(const std::string& pin,
-                Error* error,
                 const ResultCallback& callback);
 
   void UnblockPin(const std::string& unblock_code,
                   const std::string& pin,
-                  Error* error,
                   const ResultCallback& callback);
 
   void ChangePin(const std::string& old_pin,
                  const std::string& new_pin,
-                 Error* error,
                  const ResultCallback& callback);
 
   // Returns a KeyValueStore with kSIMLock* properties set if available, or

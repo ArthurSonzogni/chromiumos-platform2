@@ -10,9 +10,6 @@
 #include "shill/callbacks.h"
 
 namespace shill {
-
-class Error;
-
 namespace mm1 {
 
 // These are the methods that a org.freedesktop.ModemManager1.Sim
@@ -24,24 +21,16 @@ class SimProxyInterface {
   virtual ~SimProxyInterface() = default;
 
   virtual void SendPin(const std::string& pin,
-                       Error* error,
-                       const ResultCallback& callback,
-                       int timeout) = 0;
+                       const ResultCallback& callback) = 0;
   virtual void SendPuk(const std::string& puk,
                        const std::string& pin,
-                       Error* error,
-                       const ResultCallback& callback,
-                       int timeout) = 0;
+                       const ResultCallback& callback) = 0;
   virtual void EnablePin(const std::string& pin,
                          const bool enabled,
-                         Error* error,
-                         const ResultCallback& callback,
-                         int timeout) = 0;
+                         const ResultCallback& callback) = 0;
   virtual void ChangePin(const std::string& old_pin,
                          const std::string& new_pin,
-                         Error* error,
-                         const ResultCallback& callback,
-                         int timeout) = 0;
+                         const ResultCallback& callback) = 0;
 };
 
 }  // namespace mm1

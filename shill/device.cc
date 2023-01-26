@@ -234,41 +234,41 @@ void Device::RegisterOnNetwork(const std::string& /*network_id*/,
 
 void Device::RequirePin(const std::string& /*pin*/,
                         bool /*require*/,
-                        Error* error,
-                        const ResultCallback& /*callback*/) {
-  SLOG(this, 2) << __func__;
+                        const ResultCallback& callback) {
+  Error error;
   Error::PopulateAndLog(
-      FROM_HERE, error, Error::kNotImplemented,
+      FROM_HERE, &error, Error::kNotImplemented,
       GetTechnologyName() + " device doesn't implement RequirePin");
+  callback.Run(error);
 }
 
 void Device::EnterPin(const std::string& /*pin*/,
-                      Error* error,
-                      const ResultCallback& /*callback*/) {
-  SLOG(this, 2) << __func__;
+                      const ResultCallback& callback) {
+  Error error;
   Error::PopulateAndLog(
-      FROM_HERE, error, Error::kNotImplemented,
+      FROM_HERE, &error, Error::kNotImplemented,
       GetTechnologyName() + " device doesn't implement EnterPin");
+  callback.Run(error);
 }
 
 void Device::UnblockPin(const std::string& /*unblock_code*/,
                         const std::string& /*pin*/,
-                        Error* error,
-                        const ResultCallback& /*callback*/) {
-  SLOG(this, 2) << __func__;
+                        const ResultCallback& callback) {
+  Error error;
   Error::PopulateAndLog(
-      FROM_HERE, error, Error::kNotImplemented,
+      FROM_HERE, &error, Error::kNotImplemented,
       GetTechnologyName() + " device doesn't implement UnblockPin");
+  callback.Run(error);
 }
 
 void Device::ChangePin(const std::string& /*old_pin*/,
                        const std::string& /*new_pin*/,
-                       Error* error,
-                       const ResultCallback& /*callback*/) {
-  SLOG(this, 2) << __func__;
+                       const ResultCallback& callback) {
+  Error error;
   Error::PopulateAndLog(
-      FROM_HERE, error, Error::kNotImplemented,
+      FROM_HERE, &error, Error::kNotImplemented,
       GetTechnologyName() + " device doesn't implement ChangePin");
+  callback.Run(error);
 }
 
 void Device::Reset(const ResultCallback& callback) {

@@ -552,49 +552,45 @@ void Cellular::RegisterOnNetwork(const std::string& network_id,
 
 void Cellular::RequirePin(const std::string& pin,
                           bool require,
-                          Error* error,
                           const ResultCallback& callback) {
   SLOG(2) << LoggingTag() << ": " << __func__ << ": " << require;
   if (!capability_) {
     callback.Run(Error(Error::Type::kOperationFailed));
     return;
   }
-  capability_->RequirePin(pin, require, error, callback);
+  capability_->RequirePin(pin, require, callback);
 }
 
 void Cellular::EnterPin(const std::string& pin,
-                        Error* error,
                         const ResultCallback& callback) {
   SLOG(2) << LoggingTag() << ": " << __func__;
   if (!capability_) {
     callback.Run(Error(Error::Type::kOperationFailed));
     return;
   }
-  capability_->EnterPin(pin, error, callback);
+  capability_->EnterPin(pin, callback);
 }
 
 void Cellular::UnblockPin(const std::string& unblock_code,
                           const std::string& pin,
-                          Error* error,
                           const ResultCallback& callback) {
   SLOG(2) << LoggingTag() << ": " << __func__;
   if (!capability_) {
     callback.Run(Error(Error::Type::kOperationFailed));
     return;
   }
-  capability_->UnblockPin(unblock_code, pin, error, callback);
+  capability_->UnblockPin(unblock_code, pin, callback);
 }
 
 void Cellular::ChangePin(const std::string& old_pin,
                          const std::string& new_pin,
-                         Error* error,
                          const ResultCallback& callback) {
   SLOG(2) << LoggingTag() << ": " << __func__;
   if (!capability_) {
     callback.Run(Error(Error::Type::kOperationFailed));
     return;
   }
-  capability_->ChangePin(old_pin, new_pin, error, callback);
+  capability_->ChangePin(old_pin, new_pin, callback);
 }
 
 void Cellular::Reset(const ResultCallback& callback) {
