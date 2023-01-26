@@ -40,7 +40,6 @@ bool IsFingerprintSupported() {
 int DoBioWash(const bool factory_init = false) {
   base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
   base::FileDescriptorWatcher watcher(task_executor.task_runner());
-  std::vector<std::unique_ptr<biod::BiometricsManager>> managers;
   dbus::Bus::Options options;
   options.bus_type = dbus::Bus::SYSTEM;
   // It's o.k to not connect to the bus as we don't really care about D-Bus
@@ -54,8 +53,13 @@ int DoBioWash(const bool factory_init = false) {
       biod::PowerButtonFilter::Create(bus),
       biod::CrosFpDevice::Create(biod_metrics.get(),
                                  std::make_unique<ec::EcCommandFactory>()),
-      std::move(biod_metrics),
+      biod_metrics.get(),
       std::make_unique<biod::CrosFpRecordManager>(std::move(biod_storage)));
+
+  // Declare vector of biometrics managers here to ensure correct destruction
+  // order (CrosFpBiometricsManager is moved to a vector. It's destructed when
+  // vector is destructed).
+  std::vector<std::unique_ptr<biod::BiometricsManager>> managers;
   if (cros_fp_bio) {
     managers.emplace_back(std::move(cros_fp_bio));
   }

@@ -11,6 +11,7 @@
 #include <brillo/dbus/exported_object_manager.h>
 #include <dbus/bus.h>
 
+#include "biod/biod_metrics.h"
 #include "biod/biometrics_manager_wrapper.h"
 #include "biod/session_state_manager.h"
 
@@ -24,6 +25,7 @@ class BiometricsDaemon {
 
  private:
   scoped_refptr<dbus::Bus> bus_;
+  std::unique_ptr<BiodMetricsInterface> biod_metrics_;
   std::unique_ptr<SessionStateManager> session_state_manager_;
   std::unique_ptr<brillo::dbus_utils::ExportedObjectManager> object_manager_;
   // BiometricsManagerWrapper holds raw pointers to SessionStateManager and
