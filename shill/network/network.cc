@@ -179,6 +179,7 @@ void Network::SetupConnection(IPConfig* ipconfig) {
     connection_ = CreateConnection();
   }
   connection_->UpdateFromIPConfig(ipconfig->properties());
+  connection_->UpdateRoutingPolicy(GetAddresses());
   state_ = State::kConnected;
   ConfigureStaticIPv6Address();
   event_handler_->OnConnectionUpdated();
