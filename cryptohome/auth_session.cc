@@ -743,7 +743,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
   ReportTimerDuration(auth_session_performance_timer.get());
 
   if ((migrate_to_user_secret_stash_ || ShouldMigrateToUss()) &&
-      GetStatus() == AuthStatus::kAuthStatusAuthenticated &&
+      status_ == AuthStatus::kAuthStatusAuthenticated &&
       IsUserSecretStashExperimentEnabled(platform_)) {
     UssMigrator migrator(username_);
 

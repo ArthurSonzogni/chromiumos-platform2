@@ -144,11 +144,34 @@ class AuthSession final {
   const std::string& serialized_token() const { return serialized_token_; }
 
   // This function return the current status of this AuthSession.
-  const AuthStatus GetStatus() const { return status_; }
+  AuthStatus status() const { return status_; }
 
   // Returns the intents that the AuthSession has been authorized for.
   const base::flat_set<AuthIntent>& authorized_intents() const {
     return authorized_intents_;
+  }
+
+  // Returns the file system keyset used to access the filesystem. This is set
+  // when the session gets into an authenticated state and so the caller must
+  // ensure that the AuthSession has been authenticated before accessing this.
+  const FileSystemKeyset& file_system_keyset() const;
+
+  // This function returns if the user existed when the auth session started.
+  bool user_exists() const { return user_exists_; }
+
+  // This function returns if the AuthSession is being setup for an ephemeral
+  // user.
+  bool ephemeral_user() const { return is_ephemeral_user_; }
+
+  // Returns the key data with which this AuthSession is authenticated with.
+  const KeyData& current_key_data() const { return key_data_; }
+
+  // Returns the map from the label to the auth factor.
+  const AuthFactorMap& auth_factor_map() const { return auth_factor_map_; }
+
+  // Indicates if the session has a User Secret Stash configured.
+  bool has_user_secret_stash() const {
+    return user_secret_stash_ && user_secret_stash_main_key_;
   }
 
   // OnUserCreated is called when the user and their homedir are newly created.
@@ -169,13 +192,12 @@ class AuthSession final {
                               StatusCallback on_done);
 
   // RemoveAuthFactor is called when the user wants to remove auth factor
-  // provided in the `request`. Note: only USS users are supported currently.
-  // TODO(b/236869367): Implement for VaultKeyset users.
+  // provided in the `request`.
   void RemoveAuthFactor(const user_data_auth::RemoveAuthFactorRequest& request,
                         StatusCallback on_done);
 
   // UpdateAuthFactor is called when the user wants to update auth factor
-  // provided in the `request`. Note: only USS users are supported currently.
+  // provided in the `request`.
   void UpdateAuthFactor(const user_data_auth::UpdateAuthFactorRequest& request,
                         StatusCallback on_done);
 
@@ -208,43 +230,6 @@ class AuthSession final {
                              StatusCallback on_done,
                              std::unique_ptr<UserSecretStash> user_secret_stash,
                              brillo::SecureBlob uss_main_key);
-
-  // Return a const reference to FileSystemKeyset.
-  // FileSystemKeyset is set when the auth session gets into an authenticated
-  // state. So, the caller must ensure that AuthSession is in authenticated
-  // state before requesting the file system keyset.
-  const FileSystemKeyset& file_system_keyset() const;
-
-  // This function returns if the user existed when the auth session started.
-  bool user_exists() const { return user_exists_; }
-
-  // This function returns if the AuthSession is being setup for an ephemeral
-  // user.
-  bool ephemeral_user() const { return is_ephemeral_user_; }
-
-  // Returns the key data with which this AuthSession is authenticated with.
-  KeyData current_key_data() const { return key_data_; }
-
-  // Returns the map from the label to the auth factor.
-  const AuthFactorMap& auth_factor_map() const { return auth_factor_map_; }
-
-  // Returns the decrypted USS object, or null if it's not available. Exposed
-  // only for unit tests.
-  const UserSecretStash* user_secret_stash_for_testing() const {
-    return user_secret_stash_.get();
-  }
-
-  // Returns the decrypted USS Main Key, or nullopt if it's not available.
-  // Exposed only for unit tests.
-  const std::optional<brillo::SecureBlob>&
-  user_secret_stash_main_key_for_testing() const {
-    return user_secret_stash_main_key_;
-  }
-
-  const std::optional<brillo::SecureBlob>&
-  cryptohome_recovery_ephemeral_pub_key_for_testing() const {
-    return cryptohome_recovery_ephemeral_pub_key_;
-  }
 
   // Sets |vault_keyset_| for testing purpose.
   void set_vault_keyset_for_testing(std::unique_ptr<VaultKeyset> value) {

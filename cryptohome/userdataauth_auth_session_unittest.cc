@@ -486,7 +486,7 @@ TEST_F(AuthSessionInterfaceTest,
                                                AuthIntent::kDecrypt);
   EXPECT_THAT(auth_session_status, IsOk());
   AuthSession* auth_session = auth_session_status.value();
-  EXPECT_THAT(auth_session->GetStatus(),
+  EXPECT_THAT(auth_session->status(),
               AuthStatus::kAuthStatusFurtherFactorRequired);
 
   // User authed and exists.
@@ -663,7 +663,7 @@ TEST_P(AuthSessionInterfaceUssExperimentParamTest,
   EXPECT_CALL(homedirs_, Create(kUsername)).WillOnce(Return(true));
   EXPECT_THAT(CreatePersistentUserImpl(auth_session->serialized_token()),
               IsOk());
-  EXPECT_THAT(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_THAT(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_EQ(auth_session->GetRemainingTime().InSeconds(),
             time_left_after_authenticate);
 
@@ -1086,7 +1086,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PrepareEphemeralVault) {
           kUsername, AUTH_SESSION_FLAGS_EPHEMERAL_USER, AuthIntent::kDecrypt);
   EXPECT_THAT(auth_session_status, IsOk());
   AuthSession* auth_session = auth_session_status.value();
-  EXPECT_THAT(auth_session->GetStatus(),
+  EXPECT_THAT(auth_session->status(),
               AuthStatus::kAuthStatusFurtherFactorRequired);
 
   // User authed and exists.
@@ -1103,7 +1103,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PrepareEphemeralVault) {
 
   EXPECT_THAT(PrepareEphemeralVaultImpl(auth_session->serialized_token()),
               IsOk());
-  EXPECT_THAT(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_THAT(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_EQ(auth_session->GetRemainingTime().InSeconds(),
             time_left_after_authenticate);
 
@@ -1688,7 +1688,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoKeys) {
 
   ASSERT_TRUE(auth_session);
   EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
-  EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_EQ(auth_session->GetRemainingTime().InSeconds(),
             time_left_after_authenticate);
   EXPECT_THAT(

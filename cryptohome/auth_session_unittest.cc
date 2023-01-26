@@ -346,7 +346,7 @@ TEST_F(AuthSessionTest, InitiallyNotAuthenticated) {
   EXPECT_TRUE(auth_session_status.ok());
   AuthSession* auth_session = auth_session_status.value();
 
-  EXPECT_EQ(auth_session->GetStatus(),
+  EXPECT_EQ(auth_session->status(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
   EXPECT_THAT(auth_session->authorized_intents(), IsEmpty());
 }
@@ -361,7 +361,7 @@ TEST_F(AuthSessionTest, InitiallyNotAuthenticatedForExistingUser) {
   EXPECT_TRUE(auth_session_status.ok());
   AuthSession* auth_session = auth_session_status.value();
 
-  EXPECT_EQ(auth_session->GetStatus(),
+  EXPECT_EQ(auth_session->status(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
   EXPECT_THAT(auth_session->authorized_intents(), IsEmpty());
 }
@@ -429,13 +429,13 @@ TEST_F(AuthSessionTest, TimeoutTest) {
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
       backing_apis_);
-  EXPECT_EQ(auth_session.GetStatus(),
+  EXPECT_EQ(auth_session.status(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
   auth_session.SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
 
   ASSERT_TRUE(auth_session.timeout_timer_.IsRunning());
   auth_session.timeout_timer_.FireNow();
-  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusTimedOut);
+  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusTimedOut);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
   EXPECT_TRUE(timeout_future.IsReady());
   EXPECT_EQ(timeout_future.Get(), auth_session.token());
@@ -607,15 +607,11 @@ TEST_F(AuthSessionTest, NoUssByDefault) {
   AuthSession* auth_session = auth_session_status.value();
 
   // Test.
-  EXPECT_EQ(auth_session->user_secret_stash_for_testing(), nullptr);
-  EXPECT_EQ(auth_session->user_secret_stash_main_key_for_testing(),
-            std::nullopt);
+  EXPECT_FALSE(auth_session->has_user_secret_stash());
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
 
   // Verify.
-  EXPECT_EQ(auth_session->user_secret_stash_for_testing(), nullptr);
-  EXPECT_EQ(auth_session->user_secret_stash_main_key_for_testing(),
-            std::nullopt);
+  EXPECT_FALSE(auth_session->has_user_secret_stash());
 }
 
 // Test if AuthenticateAuthFactor authenticates existing credentials for a
@@ -634,14 +630,14 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorExistingVKUserNoResave) {
        .migrate_to_user_secret_stash = false},
       backing_apis_);
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.GetStatus());
+              auth_session.status());
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test
   // Calling AuthenticateAuthFactor.
   EXPECT_EQ(AuthenticateAuthFactorVK(kFakeLabel, kFakePass, auth_session),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
@@ -669,7 +665,7 @@ TEST_F(AuthSessionTest,
        .migrate_to_user_secret_stash = false},
       backing_apis_);
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.GetStatus());
+              auth_session.status());
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test
@@ -733,7 +729,7 @@ TEST_F(AuthSessionTest,
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
-  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
@@ -761,7 +757,7 @@ TEST_F(AuthSessionTest,
        .migrate_to_user_secret_stash = false},
       backing_apis_);
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.GetStatus());
+              auth_session.status());
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test
@@ -828,7 +824,7 @@ TEST_F(AuthSessionTest,
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
-  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
@@ -854,7 +850,7 @@ TEST_F(AuthSessionTest,
        .migrate_to_user_secret_stash = false},
       backing_apis_);
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.GetStatus());
+              auth_session.status());
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test
@@ -908,7 +904,7 @@ TEST_F(AuthSessionTest,
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
-  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       auth_session.authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
@@ -929,7 +925,7 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorMismatchLabelAndType) {
        .migrate_to_user_secret_stash = false},
       backing_apis_);
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.GetStatus());
+              auth_session.status());
   EXPECT_TRUE(auth_session.user_exists());
 
   // Test
@@ -945,7 +941,7 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorMismatchLabelAndType) {
   ASSERT_THAT(authenticate_future.Get(), NotOk());
   EXPECT_EQ(authenticate_future.Get()->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-  EXPECT_EQ(auth_session.GetStatus(),
+  EXPECT_EQ(auth_session.status(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
 }
 
@@ -974,13 +970,13 @@ TEST_F(AuthSessionTest, AddAuthFactorNewUser) {
   AuthSession* auth_session = auth_session_status.value();
 
   // Setting the expectation that the user does not exist.
-  EXPECT_EQ(auth_session->GetStatus(),
+  EXPECT_EQ(auth_session->status(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
   EXPECT_FALSE(auth_session->user_exists());
 
   // Creating the user.
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
-  EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       auth_session->authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
@@ -1036,13 +1032,13 @@ TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
   AuthSession* auth_session = auth_session_status.value();
 
   // Setting the expectation that the user does not exist.
-  EXPECT_EQ(auth_session->GetStatus(),
+  EXPECT_EQ(auth_session->status(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
   EXPECT_FALSE(auth_session->user_exists());
 
   // Creating the user.
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
-  EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       auth_session->authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
@@ -1252,12 +1248,12 @@ TEST_F(AuthSessionTest, UpdateAuthFactorSucceedsForPasswordVK) {
                                         ->auth_factor()
                                         .auth_block_state();
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.GetStatus());
+              auth_session.status());
   EXPECT_TRUE(auth_session.user_exists());
 
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
-  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_TRUE(auth_session.user_exists());
 
   // GetAuthBlockTypeForCreation() and CreateKeyBlobsWithAuthBlockAsync() are
@@ -1322,12 +1318,12 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotMatchForVK) {
        .migrate_to_user_secret_stash = false},
       backing_apis_);
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.GetStatus());
+              auth_session.status());
   EXPECT_TRUE(auth_session.user_exists());
 
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
-  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_TRUE(auth_session.user_exists());
 
   user_data_auth::UpdateAuthFactorRequest request;
@@ -1365,12 +1361,12 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsLabelNotFoundForVK) {
        .migrate_to_user_secret_stash = false},
       backing_apis_);
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.GetStatus());
+              auth_session.status());
   EXPECT_TRUE(auth_session.user_exists());
 
   // Creating the user.
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
-  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_TRUE(auth_session.user_exists());
 
   user_data_auth::UpdateAuthFactorRequest request;
@@ -1407,7 +1403,7 @@ TEST_F(AuthSessionTest, ExtensionTest) {
        .auth_factor_map = AuthFactorMap(),
        .migrate_to_user_secret_stash = false},
       backing_apis_);
-  EXPECT_EQ(auth_session.GetStatus(),
+  EXPECT_EQ(auth_session.status(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
   auth_session.SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
 
@@ -1420,7 +1416,7 @@ TEST_F(AuthSessionTest, ExtensionTest) {
   EXPECT_EQ(auth_session.timeout_timer_.GetCurrentDelay(), requested_delay);
 
   auth_session.timeout_timer_.FireNow();
-  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusTimedOut);
+  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusTimedOut);
   EXPECT_THAT(auth_session.authorized_intents(), IsEmpty());
 }
 
@@ -1513,13 +1509,13 @@ TEST_F(AuthSessionTest, RemoveAuthFactorUpdatesAuthFactorMap) {
        .auth_factor_map = std::move(auth_factor_map),
        .migrate_to_user_secret_stash = false},
       backing_apis_);
-  EXPECT_EQ(auth_session.GetStatus(),
+  EXPECT_EQ(auth_session.status(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
   EXPECT_TRUE(auth_session.user_exists());
 
   EXPECT_EQ(AuthenticateAuthFactorVK(kFakeLabel, kFakePass, auth_session),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
 
   // Test that RemoveAuthFactor success removes the factor from the map.
   user_data_auth::RemoveAuthFactorRequest remove_request;
@@ -1536,7 +1532,7 @@ TEST_F(AuthSessionTest, RemoveAuthFactorUpdatesAuthFactorMap) {
   ASSERT_THAT(remove_future.Get(), IsOk());
   EXPECT_EQ(AuthenticateAuthFactorVK(kFakeOtherLabel, kFakePass, auth_session),
             user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
-  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
 
   // Test that RemoveAuthFactor failure doesn't remove the factor from the map.
   user_data_auth::RemoveAuthFactorRequest remove_request2;
@@ -1553,7 +1549,7 @@ TEST_F(AuthSessionTest, RemoveAuthFactorUpdatesAuthFactorMap) {
             user_data_auth::CRYPTOHOME_REMOVE_CREDENTIALS_FAILED);
   EXPECT_EQ(AuthenticateAuthFactorVK(kFakeLabel, kFakePass, auth_session),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
 }
 
 // A variant of the auth session test that has the UserSecretStash experiment
@@ -1786,15 +1782,11 @@ TEST_F(AuthSessionWithUssExperimentTest, UssCreation) {
   AuthSession* auth_session = auth_session_status.value();
 
   // Test.
-  EXPECT_EQ(auth_session->user_secret_stash_for_testing(), nullptr);
-  EXPECT_EQ(auth_session->user_secret_stash_main_key_for_testing(),
-            std::nullopt);
+  EXPECT_FALSE(auth_session->has_user_secret_stash());
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
 
   // Verify.
-  EXPECT_NE(auth_session->user_secret_stash_for_testing(), nullptr);
-  EXPECT_NE(auth_session->user_secret_stash_main_key_for_testing(),
-            std::nullopt);
+  EXPECT_TRUE(auth_session->has_user_secret_stash());
   UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
   EXPECT_THAT(user_session->GetCredentialVerifiers(), IsEmpty());
 }
@@ -1816,9 +1808,7 @@ TEST_F(AuthSessionWithUssExperimentTest, NoUssForEphemeral) {
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
 
   // Verify.
-  EXPECT_EQ(auth_session->user_secret_stash_for_testing(), nullptr);
-  EXPECT_EQ(auth_session->user_secret_stash_main_key_for_testing(),
-            std::nullopt);
+  EXPECT_FALSE(auth_session->has_user_secret_stash());
 }
 
 // Test that a new auth factor can be added to the newly created user, in case
@@ -1835,9 +1825,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss) {
   AuthSession* auth_session = auth_session_status.value();
   // Creating the user.
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
-  EXPECT_NE(auth_session->user_secret_stash_for_testing(), nullptr);
-  EXPECT_NE(auth_session->user_secret_stash_main_key_for_testing(),
-            std::nullopt);
+  EXPECT_TRUE(auth_session->has_user_secret_stash());
 
   // Test.
   // Setting the expectation that the auth block utility will create key blobs.
@@ -1907,9 +1895,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaAsyncUss) {
 
   // Creating the user.
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
-  EXPECT_NE(auth_session->user_secret_stash_for_testing(), nullptr);
-  EXPECT_NE(auth_session->user_secret_stash_main_key_for_testing(),
-            std::nullopt);
+  EXPECT_TRUE(auth_session->has_user_secret_stash());
 
   // Test.
   // Setting the expectation that the auth block utility will create key blobs.
@@ -1982,9 +1968,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
 
   // Creating the user.
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
-  EXPECT_NE(auth_session->user_secret_stash_for_testing(), nullptr);
-  EXPECT_NE(auth_session->user_secret_stash_main_key_for_testing(),
-            std::nullopt);
+  EXPECT_TRUE(auth_session->has_user_secret_stash());
 
   // Test.
   // Setting the expectation that the auth block utility will be called an that
@@ -2079,9 +2063,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
 
   // Creating the user.
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
-  EXPECT_NE(auth_session->user_secret_stash_for_testing(), nullptr);
-  EXPECT_NE(auth_session->user_secret_stash_main_key_for_testing(),
-            std::nullopt);
+  EXPECT_TRUE(auth_session->has_user_secret_stash());
   // Add a password first.
   // Setting the expectation that the auth block utility will create key blobs.
   EXPECT_CALL(auth_block_utility_,
@@ -2171,13 +2153,6 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
   EXPECT_THAT(user_session->GetCredentialVerifiers(),
               UnorderedElementsAre(
                   IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass)));
-
-  // Ensure that a reset secret for the PIN was added.
-  const auto reset_secret =
-      auth_session->user_secret_stash_for_testing()->GetResetSecretForLabel(
-          kFakePinLabel);
-  EXPECT_TRUE(reset_secret.has_value());
-  EXPECT_EQ(CRYPTOHOME_RESET_SECRET_LENGTH, reset_secret->size());
 }
 
 // Test that an existing user with an existing password auth factor can be
@@ -2266,13 +2241,11 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
-  EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       auth_session->authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
-  EXPECT_NE(auth_session->user_secret_stash_for_testing(), nullptr);
-  EXPECT_NE(auth_session->user_secret_stash_main_key_for_testing(),
-            std::nullopt);
+  EXPECT_TRUE(auth_session->has_user_secret_stash());
 
   UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
   EXPECT_THAT(user_session->GetCredentialVerifiers(),
@@ -2369,13 +2342,11 @@ TEST_F(AuthSessionWithUssExperimentTest,
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
-  EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       auth_session->authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
-  EXPECT_NE(auth_session->user_secret_stash_for_testing(), nullptr);
-  EXPECT_NE(auth_session->user_secret_stash_main_key_for_testing(),
-            std::nullopt);
+  EXPECT_TRUE(auth_session->has_user_secret_stash());
 
   UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
   EXPECT_THAT(user_session->GetCredentialVerifiers(),
@@ -2470,9 +2441,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
             user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
   UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
   EXPECT_THAT(user_session->GetCredentialVerifiers(), IsEmpty());
-  EXPECT_EQ(auth_session->user_secret_stash_for_testing(), nullptr);
-  EXPECT_EQ(auth_session->user_secret_stash_main_key_for_testing(),
-            std::nullopt);
+  EXPECT_FALSE(auth_session->has_user_secret_stash());
 }
 
 // Test that an existing user with an existing pin auth factor can be
@@ -2550,13 +2519,11 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
-  EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       auth_session->authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
-  EXPECT_NE(auth_session->user_secret_stash_for_testing(), nullptr);
-  EXPECT_NE(auth_session->user_secret_stash_main_key_for_testing(),
-            std::nullopt);
+  EXPECT_TRUE(auth_session->has_user_secret_stash());
 }
 
 TEST_F(AuthSessionWithUssExperimentTest, AddCryptohomeRecoveryAuthFactor) {
@@ -2571,9 +2538,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddCryptohomeRecoveryAuthFactor) {
   AuthSession* auth_session = auth_session_status.value();
   // Creating the user.
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
-  EXPECT_NE(auth_session->user_secret_stash_for_testing(), nullptr);
-  EXPECT_NE(auth_session->user_secret_stash_main_key_for_testing(),
-            std::nullopt);
+  EXPECT_TRUE(auth_session->has_user_secret_stash());
   // Setting the expectation that the auth block utility will create key blobs.
   EXPECT_CALL(auth_block_utility_,
               GetAuthBlockTypeForCreation(false, true, false))
@@ -2678,7 +2643,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
         *out_ephemeral_pub_key = brillo::SecureBlob("test");
         return OkStatus<CryptohomeCryptoError>();
       });
-  EXPECT_EQ(auth_session->user_secret_stash_for_testing(), nullptr);
+  EXPECT_FALSE(auth_session->has_user_secret_stash());
 
   // Calling GetRecoveryRequest.
   user_data_auth::GetRecoveryRequestRequest request;
@@ -2693,14 +2658,9 @@ TEST_F(AuthSessionWithUssExperimentTest,
   // Verify.
   EXPECT_EQ(reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_EQ(auth_session->GetStatus(),
+  EXPECT_EQ(auth_session->status(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
   EXPECT_THAT(auth_session->authorized_intents(), IsEmpty());
-  EXPECT_TRUE(auth_session->cryptohome_recovery_ephemeral_pub_key_for_testing()
-                  .has_value());
-  EXPECT_EQ(
-      auth_session->cryptohome_recovery_ephemeral_pub_key_for_testing().value(),
-      brillo::SecureBlob("test"));
 
   // Test.
   // Setting the expectation that the auth block utility will derive key blobs.
@@ -2715,6 +2675,9 @@ TEST_F(AuthSessionWithUssExperimentTest,
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
                     const AuthBlockState& auth_state,
                     AuthBlock::DeriveCallback derive_callback) {
+        EXPECT_THAT(
+            auth_input.cryptohome_recovery_auth_input->ephemeral_pub_key,
+            Optional(brillo::SecureBlob("test")));
         auto key_blobs = std::make_unique<KeyBlobs>();
         key_blobs->vkk_key = kFakePerCredentialSecret;
         std::move(derive_callback)
@@ -2732,13 +2695,11 @@ TEST_F(AuthSessionWithUssExperimentTest,
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
-  EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       auth_session->authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
-  EXPECT_NE(auth_session->user_secret_stash_for_testing(), nullptr);
-  EXPECT_NE(auth_session->user_secret_stash_main_key_for_testing(),
-            std::nullopt);
+  EXPECT_TRUE(auth_session->has_user_secret_stash());
   // There should be no verifier created for the recovery factor.
   UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
   EXPECT_THAT(user_session->GetCredentialVerifiers(), IsEmpty());
@@ -2794,10 +2755,10 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
   EXPECT_TRUE(auth_session_status.ok());
   AuthSession* auth_session = auth_session_status.value();
   EXPECT_TRUE(auth_session->user_exists());
-  EXPECT_EQ(auth_session->user_secret_stash_for_testing(), nullptr);
+  EXPECT_FALSE(auth_session->has_user_secret_stash());
 
   // Verify.
-  EXPECT_EQ(auth_session->GetStatus(),
+  EXPECT_EQ(auth_session->status(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
   EXPECT_THAT(auth_session->authorized_intents(), IsEmpty());
 
@@ -2836,13 +2797,11 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
 
   // Verify.
   EXPECT_THAT(authenticate_future.Get(), IsOk());
-  EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       auth_session->authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
-  EXPECT_NE(auth_session->user_secret_stash_for_testing(), nullptr);
-  EXPECT_NE(auth_session->user_secret_stash_main_key_for_testing(),
-            std::nullopt);
+  EXPECT_TRUE(auth_session->has_user_secret_stash());
   // There should be a verifier created for the smart card factor.
   UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
   EXPECT_THAT(user_session->GetCredentialVerifiers(),
@@ -3158,9 +3117,7 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {
   AuthSession* auth_session = auth_session_status.value();
   // Creating the user.
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
-  EXPECT_NE(auth_session->user_secret_stash_for_testing(), nullptr);
-  EXPECT_NE(auth_session->user_secret_stash_main_key_for_testing(),
-            std::nullopt);
+  EXPECT_TRUE(auth_session->has_user_secret_stash());
 
   user_data_auth::CryptohomeErrorCode error =
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
@@ -3244,9 +3201,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
   AuthSession* auth_session = auth_session_status.value();
   // Creating the user.
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
-  EXPECT_NE(auth_session->user_secret_stash_for_testing(), nullptr);
-  EXPECT_NE(auth_session->user_secret_stash_main_key_for_testing(),
-            std::nullopt);
+  EXPECT_TRUE(auth_session->has_user_secret_stash());
 
   user_data_auth::CryptohomeErrorCode error =
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
@@ -3335,9 +3290,7 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAndReAddAuthFactor) {
   AuthSession* auth_session = auth_session_status.value();
   // Creating the user.
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
-  EXPECT_NE(auth_session->user_secret_stash_for_testing(), nullptr);
-  EXPECT_NE(auth_session->user_secret_stash_main_key_for_testing(),
-            std::nullopt);
+  EXPECT_TRUE(auth_session->has_user_secret_stash());
 
   user_data_auth::CryptohomeErrorCode error =
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
@@ -3388,9 +3341,7 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactorFailsForLastFactor) {
 
   // Creating the user.
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
-  EXPECT_NE(auth_session->user_secret_stash_for_testing(), nullptr);
-  EXPECT_NE(auth_session->user_secret_stash_main_key_for_testing(),
-            std::nullopt);
+  EXPECT_TRUE(auth_session->has_user_secret_stash());
 
   user_data_auth::CryptohomeErrorCode error =
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
@@ -3460,9 +3411,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactor) {
 
     // Creating the user.
     EXPECT_TRUE(auth_session->OnUserCreated().ok());
-    EXPECT_NE(auth_session->user_secret_stash_for_testing(), nullptr);
-    EXPECT_NE(auth_session->user_secret_stash_main_key_for_testing(),
-              std::nullopt);
+    EXPECT_TRUE(auth_session->has_user_secret_stash());
 
     user_data_auth::CryptohomeErrorCode error =
         user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
@@ -3490,7 +3439,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactor) {
                                               AuthIntent::kDecrypt);
   EXPECT_TRUE(new_auth_session_status.ok());
   AuthSession* new_auth_session = new_auth_session_status.value();
-  EXPECT_EQ(new_auth_session->GetStatus(),
+  EXPECT_EQ(new_auth_session->status(),
             AuthStatus::kAuthStatusFurtherFactorRequired);
   EXPECT_THAT(new_auth_session->authorized_intents(), IsEmpty());
 
@@ -3504,8 +3453,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactor) {
   user_data_auth::CryptohomeErrorCode error =
       AuthenticatePasswordAuthFactor(new_pass, *new_auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_EQ(new_auth_session->GetStatus(),
-            AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(new_auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_THAT(
       new_auth_session->authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));
@@ -3623,9 +3571,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorFailsForWrongLabel) {
   AuthSession* auth_session = auth_session_status.value();
   // Creating the user.
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
-  EXPECT_NE(auth_session->user_secret_stash_for_testing(), nullptr);
-  EXPECT_NE(auth_session->user_secret_stash_main_key_for_testing(),
-            std::nullopt);
+  EXPECT_TRUE(auth_session->has_user_secret_stash());
 
   user_data_auth::CryptohomeErrorCode error =
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
@@ -3675,9 +3621,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactorFailsForWrongType) {
   AuthSession* auth_session = auth_session_status.value();
   // Creating the user.
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
-  EXPECT_NE(auth_session->user_secret_stash_for_testing(), nullptr);
-  EXPECT_NE(auth_session->user_secret_stash_main_key_for_testing(),
-            std::nullopt);
+  EXPECT_TRUE(auth_session->has_user_secret_stash());
 
   user_data_auth::CryptohomeErrorCode error =
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
@@ -3725,9 +3669,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
   AuthSession* auth_session = auth_session_status.value();
   // Creating the user.
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
-  EXPECT_NE(auth_session->user_secret_stash_for_testing(), nullptr);
-  EXPECT_NE(auth_session->user_secret_stash_main_key_for_testing(),
-            std::nullopt);
+  EXPECT_TRUE(auth_session->has_user_secret_stash());
 
   user_data_auth::CryptohomeErrorCode error =
       user_data_auth::CRYPTOHOME_ERROR_NOT_SET;

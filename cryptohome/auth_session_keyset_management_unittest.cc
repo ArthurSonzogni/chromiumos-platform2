@@ -230,26 +230,11 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
       FallbackVaultKeyset vk;
       vk.Initialize(&platform_, &crypto_);
       vk.CreateFromFileSystemKeyset(file_system_keyset_);
-      const brillo::SecureBlob kBlob32(32, 'A');
-      const brillo::SecureBlob kBlob16(16, 'C');
-      KeyBlobs key_blobs = {
-          .vkk_key = kBlob32,
-          .vkk_iv = kBlob16,
-          .chaps_iv = kBlob16,
-      };
-      TpmEccAuthBlockState tpm_state = {
-          .salt = brillo::SecureBlob(kSalt),
-          .vkk_iv = kBlob32,
-          .auth_value_rounds = kAuthValueRounds,
-          .sealed_hvkkm = kBlob32,
-          .extended_sealed_hvkkm = kBlob32,
-          .tpm_public_key_hash = brillo::SecureBlob(kPublicHash),
-      };
       AuthBlockState auth_block_state = {
-          .state = tpm_state,
+          .state = kTpmState,
       };
 
-      ASSERT_THAT(vk.EncryptEx(key_blobs, auth_block_state), IsOk());
+      ASSERT_THAT(vk.EncryptEx(kKeyBlobs, auth_block_state), IsOk());
       ASSERT_TRUE(
           vk.Save(user.homedir_path.Append(kKeyFile).AddExtension("0")));
     }
@@ -260,22 +245,9 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
                                          const std::string& secret) {
     EXPECT_CALL(mock_auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _))
         .WillOnce(ReturnValue(AuthBlockType::kTpmEcc));
-    auto key_blobs = std::make_unique<KeyBlobs>();
-    const brillo::SecureBlob kBlob32(32, 'A');
-    const brillo::SecureBlob kBlob16(16, 'C');
-    key_blobs->vkk_key = kBlob32;
-    key_blobs->vkk_iv = kBlob16;
-    key_blobs->chaps_iv = kBlob16;
-    TpmEccAuthBlockState tpm_state = {
-        .salt = brillo::SecureBlob(kSalt),
-        .vkk_iv = kBlob32,
-        .auth_value_rounds = kAuthValueRounds,
-        .sealed_hvkkm = kBlob32,
-        .extended_sealed_hvkkm = kBlob32,
-        .tpm_public_key_hash = brillo::SecureBlob(kPublicHash),
-    };
+    auto key_blobs = std::make_unique<KeyBlobs>(kKeyBlobs);
     auto auth_block_state = std::make_unique<AuthBlockState>();
-    auth_block_state->state = tpm_state;
+    auth_block_state->state = kTpmState;
 
     EXPECT_CALL(mock_auth_block_utility_,
                 CreateKeyBlobsWithAuthBlockAsync(_, _, _))
@@ -309,12 +281,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     EXPECT_CALL(mock_auth_block_utility_, GetAuthBlockTypeFromState(_))
         .WillRepeatedly(Return(AuthBlockType::kTpmEcc));
 
-    auto key_blobs2 = std::make_unique<KeyBlobs>();
-    const brillo::SecureBlob kBlob32(32, 'A');
-    const brillo::SecureBlob kBlob16(16, 'C');
-    key_blobs2->vkk_key = kBlob32;
-    key_blobs2->vkk_iv = kBlob16;
-    key_blobs2->chaps_iv = kBlob16;
+    auto key_blobs2 = std::make_unique<KeyBlobs>(kKeyBlobs);
     EXPECT_CALL(mock_auth_block_utility_,
                 DeriveKeyBlobsWithAuthBlockAsync(_, _, _, _))
         .WillOnce([&key_blobs2](AuthBlockType auth_block_type,
@@ -325,20 +292,9 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
               .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs2));
           return true;
         });
-    auto key_blobs = std::make_unique<KeyBlobs>();
-    key_blobs->vkk_key = kBlob32;
-    key_blobs->vkk_iv = kBlob16;
-    key_blobs->chaps_iv = kBlob16;
-    TpmEccAuthBlockState tpm_state = {
-        .salt = brillo::SecureBlob(kSalt),
-        .vkk_iv = kBlob32,
-        .auth_value_rounds = kAuthValueRounds,
-        .sealed_hvkkm = kBlob32,
-        .extended_sealed_hvkkm = kBlob32,
-        .tpm_public_key_hash = brillo::SecureBlob(kPublicHash),
-    };
+    auto key_blobs = std::make_unique<KeyBlobs>(kKeyBlobs);
     auto auth_block_state = std::make_unique<AuthBlockState>();
-    auth_block_state->state = tpm_state;
+    auth_block_state->state = kTpmState;
 
     EXPECT_CALL(mock_auth_block_utility_,
                 CreateKeyBlobsWithAuthBlockAsync(_, _, _))
@@ -402,6 +358,20 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
                                         authenticate_future.GetCallback());
     EXPECT_THAT(authenticate_future.Get(), IsOk());
   }
+
+  // Standard key blob and TPM state objects to use in testing.
+  const brillo::SecureBlob kBlob32{std::string(32, 'A')};
+  const brillo::SecureBlob kBlob16{std::string(16, 'C')};
+  const KeyBlobs kKeyBlobs{
+      .vkk_key = kBlob32, .vkk_iv = kBlob16, .chaps_iv = kBlob16};
+  const TpmEccAuthBlockState kTpmState = {
+      .salt = brillo::SecureBlob(kSalt),
+      .vkk_iv = kBlob32,
+      .auth_value_rounds = kAuthValueRounds,
+      .sealed_hvkkm = kBlob32,
+      .extended_sealed_hvkkm = kBlob32,
+      .tpm_public_key_hash = brillo::SecureBlob(kPublicHash),
+  };
 
   base::test::TaskEnvironment task_environment_;
 
@@ -505,7 +475,7 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationToUssWithNoKeyData) {
   EXPECT_TRUE(auth_session_status.ok());
   AuthSession* auth_session = auth_session_status.value();
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session->GetStatus());
+              auth_session->status());
 
   // Test that authenticating the password should migrate VaultKeyset to
   // UserSecretStash, converting the VaultKeyset to a backup VaultKeyset.
@@ -528,10 +498,15 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationToUssWithNoKeyData) {
   CryptohomeStatusOr<brillo::Blob> uss_serialized_container_status =
       uss_storage.LoadPersisted(users_[0].obfuscated);
   ASSERT_TRUE(uss_serialized_container_status.ok());
+  std::optional<brillo::SecureBlob> uss_credential_secret =
+      kKeyBlobs.DeriveUssCredentialSecret();
+  ASSERT_TRUE(uss_credential_secret.has_value());
+  brillo::SecureBlob decrypted_main_key;
   CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
-      user_secret_stash_status = UserSecretStash::FromEncryptedContainer(
-          uss_serialized_container_status.value(),
-          auth_session->user_secret_stash_main_key_for_testing().value());
+      user_secret_stash_status =
+          UserSecretStash::FromEncryptedContainerWithWrappingKey(
+              *uss_serialized_container_status, kDefaultLabel,
+              *uss_credential_secret, &decrypted_main_key);
   ASSERT_TRUE(user_secret_stash_status.ok());
   // Verify that the user_secret_stash has the wrapped_key_block for
   // the default label.
@@ -552,7 +527,7 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationToUssWithNoKeyData) {
   EXPECT_TRUE(auth_session2_status.ok());
   AuthSession* auth_session2 = auth_session2_status.value();
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session2->GetStatus());
+              auth_session2->status());
 
   // Test that authenticating the password should migrate VaultKeyset to
   // UserSecretStash, converting the VaultKeyset to a backup VaultKeyset.
@@ -584,9 +559,9 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSEnabledCreatesBackupVKs) {
 
   // Test.
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session->GetStatus());
+              auth_session->status());
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
-  EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
 
   // Add an initial and an additional factor
   AddFactor(*auth_session, kPasswordLabel, kPassword);
@@ -638,9 +613,9 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSDisabledNotCreatesBackupVKs) {
 
   // Test.
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session->GetStatus());
+              auth_session->status());
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
-  EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
 
   // Add an initial and an additional factor
   AddFactor(*auth_session, kPasswordLabel, kPassword);
@@ -689,9 +664,9 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSEnabledRemovesBackupVKs) {
                            backing_apis_);
 
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.GetStatus());
+              auth_session.status());
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
-  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
   // Add factors and see backup VaultKeysets are also added.
   AddFactor(auth_session, kPasswordLabel, kPassword);
   AddFactor(auth_session, kPasswordLabel2, kPassword2);
@@ -739,9 +714,9 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSEnabledUpdateBackupVKs) {
                            backing_apis_);
 
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.GetStatus());
+              auth_session.status());
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
-  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
 
   // Add an initial factor to USS and backup VK
   AddFactor(auth_session, kPasswordLabel, kPassword);
@@ -805,9 +780,9 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   AuthSession* auth_session = auth_session_status.value();
 
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session->GetStatus());
+              auth_session->status());
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
-  EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
 
   EXPECT_CALL(mock_auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _))
       .WillRepeatedly(ReturnValue(AuthBlockType::kTpmEcc));
@@ -918,7 +893,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   AuthenticateFactor(*auth_session2, kPasswordLabel, kPassword2);
 
   // Verify
-  EXPECT_EQ(auth_session2->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session2->status(), AuthStatus::kAuthStatusAuthenticated);
 }
 
 // Test that authentication with backup VK succeeds when USS is rolled back.
@@ -942,9 +917,9 @@ TEST_F(AuthSessionTestWithKeysetManagement,
                            backing_apis);
 
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session.GetStatus());
+              auth_session.status());
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
-  EXPECT_EQ(auth_session.GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
 
   EXPECT_CALL(mock_auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _))
       .WillOnce(ReturnValue(AuthBlockType::kTpmEcc));
@@ -1032,7 +1007,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   AuthenticateFactor(*auth_session2, kPasswordLabel, kPassword);
 
   // Verify
-  EXPECT_EQ(auth_session2->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session2->status(), AuthStatus::kAuthStatusAuthenticated);
 }
 
 // Test that AuthSession list the non-backup VKs on session start
@@ -1047,9 +1022,9 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSDisableddNotListBackupVKs) {
   EXPECT_TRUE(auth_session_status.ok());
   AuthSession* auth_session = auth_session_status.value();
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session->GetStatus());
+              auth_session->status());
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
-  EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
   // Add factors
   AddFactor(*auth_session, kPasswordLabel, kPassword);
   AddFactor(*auth_session, kPasswordLabel2, kPassword2);
@@ -1091,9 +1066,9 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSRollbackListBackupVKs) {
   EXPECT_TRUE(auth_session_status.ok());
   AuthSession* auth_session = auth_session_status.value();
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session->GetStatus());
+              auth_session->status());
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
-  EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
   // Add factors
   AddFactor(*auth_session, kPasswordLabel, kPassword);
   AddFactor(*auth_session, kPasswordLabel2, kPassword2);
@@ -1151,9 +1126,9 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationEnabledMigratesToUss) {
   EXPECT_TRUE(auth_session_status.ok());
   AuthSession* auth_session = auth_session_status.value();
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session->GetStatus());
+              auth_session->status());
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
-  EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
   // Add the first factor with VaultKeyset backing.
   AddFactorWithMockAuthBlockUtility(*auth_session, kPasswordLabel, kPassword);
   AddFactorWithMockAuthBlockUtility(*auth_session, kPasswordLabel2, kPassword2);
@@ -1187,10 +1162,15 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationEnabledMigratesToUss) {
   CryptohomeStatusOr<brillo::Blob> uss_serialized_container_status =
       uss_storage.LoadPersisted(users_[0].obfuscated);
   ASSERT_TRUE(uss_serialized_container_status.ok());
+  std::optional<brillo::SecureBlob> uss_credential_secret =
+      kKeyBlobs.DeriveUssCredentialSecret();
+  ASSERT_TRUE(uss_credential_secret.has_value());
+  brillo::SecureBlob decrypted_main_key;
   CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
-      user_secret_stash_status = UserSecretStash::FromEncryptedContainer(
-          uss_serialized_container_status.value(),
-          auth_session2->user_secret_stash_main_key_for_testing().value());
+      user_secret_stash_status =
+          UserSecretStash::FromEncryptedContainerWithWrappingKey(
+              *uss_serialized_container_status, kPasswordLabel,
+              *uss_credential_secret, &decrypted_main_key);
   ASSERT_TRUE(user_secret_stash_status.ok());
 
   // Verify that the user_secret_stash has the wrapped_key_blocks for the
@@ -1251,9 +1231,9 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   EXPECT_TRUE(auth_session_status.ok());
   AuthSession* auth_session = auth_session_status.value();
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session->GetStatus());
+              auth_session->status());
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
-  EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
   // Add the first factor with VaultKeyset backing.
   AddFactorWithMockAuthBlockUtility(*auth_session, kPasswordLabel, kPassword);
 
@@ -1307,10 +1287,15 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   CryptohomeStatusOr<brillo::Blob> uss_serialized_container_status =
       uss_storage.LoadPersisted(users_[0].obfuscated);
   ASSERT_TRUE(uss_serialized_container_status.ok());
+  std::optional<brillo::SecureBlob> uss_credential_secret =
+      kKeyBlobs.DeriveUssCredentialSecret();
+  ASSERT_TRUE(uss_credential_secret.has_value());
+  brillo::SecureBlob decrypted_main_key;
   CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
-      user_secret_stash_status = UserSecretStash::FromEncryptedContainer(
-          uss_serialized_container_status.value(),
-          auth_session2->user_secret_stash_main_key_for_testing().value());
+      user_secret_stash_status =
+          UserSecretStash::FromEncryptedContainerWithWrappingKey(
+              *uss_serialized_container_status, kPasswordLabel,
+              *uss_credential_secret, &decrypted_main_key);
   ASSERT_TRUE(user_secret_stash_status.ok());
   // Verify that the user_secret_stash has the wrapped_key_blocks for both
   // AuthFactor labels.
@@ -1355,9 +1340,9 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   EXPECT_TRUE(auth_session_status.ok());
   AuthSession* auth_session = auth_session_status.value();
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session->GetStatus());
+              auth_session->status());
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
-  EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_FALSE(auth_session->auth_factor_map().HasFactorWithStorage(
       AuthFactorStorageType::kVaultKeyset));
   EXPECT_FALSE(auth_session->auth_factor_map().HasFactorWithStorage(
@@ -1471,9 +1456,9 @@ TEST_F(AuthSessionTestWithKeysetManagement, AuthFactorMapRegularVaultKeysets) {
   EXPECT_TRUE(auth_session_status.ok());
   AuthSession* auth_session = auth_session_status.value();
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session->GetStatus());
+              auth_session->status());
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
-  EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_FALSE(auth_session->auth_factor_map().HasFactorWithStorage(
       AuthFactorStorageType::kVaultKeyset));
   EXPECT_FALSE(auth_session->auth_factor_map().HasFactorWithStorage(
@@ -1520,9 +1505,9 @@ TEST_F(AuthSessionTestWithKeysetManagement, AuthFactorMapUserSecretStash) {
   EXPECT_TRUE(auth_session_status.ok());
   AuthSession* auth_session = auth_session_status.value();
   EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
-              auth_session->GetStatus());
+              auth_session->status());
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
-  EXPECT_EQ(auth_session->GetStatus(), AuthStatus::kAuthStatusAuthenticated);
+  EXPECT_EQ(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_FALSE(auth_session->auth_factor_map().HasFactorWithStorage(
       AuthFactorStorageType::kVaultKeyset));
   EXPECT_FALSE(auth_session->auth_factor_map().HasFactorWithStorage(
