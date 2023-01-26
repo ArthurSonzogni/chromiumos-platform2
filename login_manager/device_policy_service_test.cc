@@ -103,7 +103,6 @@ class DevicePolicyServiceTest : public ::testing::Test {
   DevicePolicyServiceTest() = default;
 
   void SetUp() override {
-    fake_loop_.SetAsCurrent();
     ASSERT_TRUE(tmpdir_.CreateUniqueTempDir());
     install_attributes_file_ =
         tmpdir_.GetPath().AppendASCII("install_attributes.pb");
@@ -197,7 +196,6 @@ class DevicePolicyServiceTest : public ::testing::Test {
     EXPECT_TRUE(service_->Store(
         ns, SerializeAsBlob(policy_proto), PolicyService::KEY_CLOBBER,
         SignatureCheck::kEnabled, MockPolicyService::CreateDoNothing()));
-    fake_loop_.Run();
   }
 
   bool UpdateSystemSettings(DevicePolicyService* service) {
@@ -255,23 +253,14 @@ class DevicePolicyServiceTest : public ::testing::Test {
   }
 
   void ExpectPersistKeyAndPolicy(bool is_populated) {
-    Mock::VerifyAndClearExpectations(&key_);
-    Mock::VerifyAndClearExpectations(store_);
-
     EXPECT_CALL(key_, IsPopulated()).WillRepeatedly(Return(is_populated));
-
     EXPECT_CALL(key_, Persist()).WillOnce(Return(true));
     EXPECT_CALL(*store_, Persist()).WillOnce(Return(true));
-    fake_loop_.Run();
   }
 
   void ExpectNoPersistKeyAndPolicy() {
-    Mock::VerifyAndClearExpectations(&key_);
-    Mock::VerifyAndClearExpectations(store_);
-
     EXPECT_CALL(key_, Persist()).Times(0);
     EXPECT_CALL(*store_, Persist()).Times(0);
-    fake_loop_.Run();
   }
 
   void ExpectKeyPopulated(bool key_populated) {
@@ -333,8 +322,6 @@ class DevicePolicyServiceTest : public ::testing::Test {
   const std::vector<uint8_t> fake_sig_ = StringToBlob("fake_signature");
   const std::vector<uint8_t> fake_key_ = StringToBlob("fake_key");
   const std::vector<uint8_t> new_fake_sig_ = StringToBlob("new_fake_signature");
-
-  brillo::FakeMessageLoop fake_loop_{nullptr};
 
   base::ScopedTempDir tmpdir_;
   base::FilePath install_attributes_file_;
@@ -541,9 +528,8 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessNewKey) {
   ExpectInstallNewOwnerPolicy(s, &nss);
 
   SetDefaultSettings();
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetDescriptor());
-
   ExpectPersistKeyAndPolicy(true);
+  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetDescriptor());
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessMitigating) {
@@ -562,9 +548,8 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_SuccessMitigating) {
   ExpectInstallNewOwnerPolicy(s, &nss);
   SetDefaultSettings();
 
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetDescriptor());
-
   ExpectPersistKeyAndPolicy(true);
+  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetDescriptor());
 }
 
 TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_FailedMitigating) {
@@ -581,9 +566,8 @@ TEST_F(DevicePolicyServiceTest, ValidateAndStoreOwnerKey_FailedMitigating) {
       .WillOnce(Return(true));
   ExpectFailedInstallNewOwnerPolicy(s, &nss);
 
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetDescriptor());
-
   ExpectNoPersistKeyAndPolicy();
+  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetDescriptor());
 }
 
 TEST_F(DevicePolicyServiceTest,
@@ -606,9 +590,8 @@ TEST_F(DevicePolicyServiceTest,
   ExpectInstallNewOwnerPolicy(s, &nss);
   SetDefaultSettings();
 
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetDescriptor());
-
   ExpectPersistKeyAndPolicy(true);
+  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetDescriptor());
 }
 
 TEST_F(DevicePolicyServiceTest,
@@ -631,9 +614,8 @@ TEST_F(DevicePolicyServiceTest,
   ExpectInstallNewOwnerPolicy(s, &nss);
   SetDefaultSettings();
 
-  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetDescriptor());
-
   ExpectPersistKeyAndPolicy(true);
+  service_->ValidateAndStoreOwnerKey(owner_, fake_key_, nss.GetDescriptor());
 }
 
 // Ensure block devmode is set properly in NVRAM.

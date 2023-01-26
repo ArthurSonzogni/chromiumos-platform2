@@ -164,8 +164,8 @@ bool DevicePolicyService::ValidateAndStoreOwnerKey(
   // TODO(cmasone): Remove this as well once the browser can tolerate it:
   // http://crbug.com/472132
   if (StoreOwnerProperties(current_user, signing_key.get())) {
-    PostPersistKeyTask();
-    PostPersistPolicyTask(MakeChromePolicyNamespace(), Completion());
+    PersistKey();
+    PersistPolicy(MakeChromePolicyNamespace(), Completion());
   } else {
     LOG(WARNING) << "Could not immediately store owner properties in policy";
   }
@@ -213,7 +213,7 @@ bool DevicePolicyService::Initialize() {
     key_success = key()->PopulateFromBuffer(
         StringToBlob(GetChromeStore()->Get().new_public_key()));
     if (key_success)
-      PostPersistKeyTask();
+      PersistKey();
   }
 
   ReportPolicyFileMetrics(key_success, policy_success);

@@ -53,9 +53,6 @@ class DeviceLocalAccountManager {
   // is lazily created on the fly if not present yet.
   PolicyService* GetPolicyService(const std::string& account_id);
 
-  // Persists policy for accounts and namespaces.
-  void PersistAllPolicy();
-
  private:
   // Migrate uppercase local-account directories to their lowercase variants.
   // This is to repair the damage caused by http://crbug.com/225472.

@@ -125,8 +125,9 @@ class PolicyService {
   // |completion| and the result to OnPolicyPersisted().
   virtual void PersistPolicy(const PolicyNamespace& ns, Completion completion);
 
-  // Persists policy for all namespaces.
-  virtual void PersistAllPolicy();
+  // Persists key() to disk synchronously and passes the result to
+  // OnKeyPersisted().
+  void PersistKey();
 
   // Sets the policystore for namespace |ns|. Deletes the previous store if it
   // exists.
@@ -147,12 +148,6 @@ class PolicyService {
 
   PolicyKey* key() { return policy_key_; }
   void set_policy_key_for_test(PolicyKey* key) { policy_key_ = key; }
-
-  // Posts a task to run PersistKey().
-  void PostPersistKeyTask();
-
-  // Posts a task to run PersistPolicy().
-  void PostPersistPolicyTask(const PolicyNamespace& ns, Completion completion);
 
   // Store a policy blob under the namespace |ns|. This does the heavy lifting
   // for Store(), making the signature checks, taking care of key changes and
@@ -179,10 +174,6 @@ class PolicyService {
   LoginMetrics* metrics_ = nullptr;
 
  private:
-  // Persists key() to disk synchronously and passes the result to
-  // OnKeyPersisted().
-  void PersistKey();
-
   // Returns the file path of the policy for the given namespace |ns|.
   base::FilePath GetPolicyPath(const PolicyNamespace& ns);
 
