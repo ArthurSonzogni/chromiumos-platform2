@@ -120,6 +120,7 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   FRIEND_TEST(OpenVPNDriverTest, InitOptionsNoPrimaryHost);
   FRIEND_TEST(OpenVPNDriverTest, InitPKCS11Options);
   FRIEND_TEST(OpenVPNDriverTest, Notify);
+  FRIEND_TEST(OpenVPNDriverTest, NotifyIPv6);
   FRIEND_TEST(OpenVPNDriverTest, NotifyUMA);
   FRIEND_TEST(OpenVPNDriverTest, NotifyFail);
   FRIEND_TEST(OpenVPNDriverTest, OnConnectTimeout);
@@ -181,7 +182,11 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
       bool default_route,
       const RouteOptions& routes);
 
-  static std::unique_ptr<IPConfig::Properties> ParseIPConfiguration(
+  struct IPProperties {
+    std::unique_ptr<IPConfig::Properties> ipv4_props;
+    std::unique_ptr<IPConfig::Properties> ipv6_props;
+  };
+  static IPProperties ParseIPConfiguration(
       const std::map<std::string, std::string>& configuration,
       bool ignore_redirect_gateway);
 
@@ -251,6 +256,7 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   // configs.
   std::map<std::string, std::string> params_;
   std::unique_ptr<IPConfig::Properties> ipv4_properties_;
+  std::unique_ptr<IPConfig::Properties> ipv6_properties_;
 
   // The PID of the spawned openvpn process. May be 0 if no process has been
   // spawned yet or the process has died.

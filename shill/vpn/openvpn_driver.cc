@@ -46,6 +46,8 @@ constexpr char kOpenVPNForeignOptionPrefix[] = "foreign_option_";
 constexpr char kOpenVPNIfconfigLocal[] = "ifconfig_local";
 constexpr char kOpenVPNIfconfigNetmask[] = "ifconfig_netmask";
 constexpr char kOpenVPNIfconfigRemote[] = "ifconfig_remote";
+constexpr char kOpenVPNIfconfigIPv6Local[] = "ifconfig_ipv6_local";
+constexpr char kOpenVPNIfconfigIPv6Netbits[] = "ifconfig_ipv6_netbits";
 constexpr char kOpenVPNRedirectGateway[] = "redirect_gateway";
 constexpr char kOpenVPNRouteOptionPrefix[] = "route_";
 constexpr char kOpenVPNRouteNetGateway[] = "route_net_gateway";
@@ -188,6 +190,7 @@ void OpenVPNDriver::Cleanup() {
   rpc_task_.reset();
   params_.clear();
   ipv4_properties_ = nullptr;
+  ipv6_properties_ = nullptr;
   if (pid_) {
     process_manager()->StopProcessAndBlock(pid_);
     pid_ = 0;
@@ -320,9 +323,15 @@ void OpenVPNDriver::Notify(const std::string& reason,
   for (const auto& [k, v] : dict) {
     params_[k] = v;
   }
-  ipv4_properties_ = ParseIPConfiguration(
+  auto props = ParseIPConfiguration(
       params_,
       const_args()->Contains<std::string>(kOpenVPNIgnoreDefaultRouteProperty));
+  ipv4_properties_ = std::move(props.ipv4_props);
+  ipv6_properties_ = std::move(props.ipv6_props);
+  if (!ipv4_properties_ && !ipv6_properties_) {
+    FailService(Service::kFailureConnect, "No valid IP config");
+    return;
+  }
   ReportConnectionMetrics();
   if (event_handler_) {
     event_handler_->OnDriverConnected(interface_name_, interface_index_);
@@ -339,7 +348,10 @@ std::unique_ptr<IPConfig::Properties> OpenVPNDriver::GetIPv4Properties() const {
 }
 
 std::unique_ptr<IPConfig::Properties> OpenVPNDriver::GetIPv6Properties() const {
-  return nullptr;
+  if (ipv6_properties_ == nullptr) {
+    return nullptr;
+  }
+  return std::make_unique<IPConfig::Properties>(*ipv6_properties_);
 }
 
 // static
@@ -360,9 +372,13 @@ std::unique_ptr<IPConfig::Properties> OpenVPNDriver::CreateIPProperties(
   } else {
     properties->subnet_prefix = prefix;
   }
-  // L3 VPN doesn't need gateway. Setting it to the local IP guarantees that we
-  // will pass the various coherence checks in connection.cc.
-  properties->gateway = local;
+  // L3 VPN doesn't need gateway. Set it to default to skip RTA_GATEWAY when
+  // installing routes.
+  if (family == IPAddress::kFamilyIPv4) {
+    properties->gateway = "0.0.0.0";
+  } else if (family == IPAddress::kFamilyIPv6) {
+    properties->gateway = "::";
+  }
 
   properties->default_route = default_route;
   if (!peer.empty()) {
@@ -409,17 +425,20 @@ std::unique_ptr<IPConfig::Properties> OpenVPNDriver::CreateIPProperties(
 }
 
 // static
-std::unique_ptr<IPConfig::Properties> OpenVPNDriver::ParseIPConfiguration(
+OpenVPNDriver::IPProperties OpenVPNDriver::ParseIPConfiguration(
     const std::map<std::string, std::string>& configuration,
     bool ignore_redirect_gateway) {
+  // Values parsed from |configuration|.
   ForeignOptions foreign_options;
-  RouteOptions ipv4_routes;
-  RouteOptions ipv6_routes;
   int mtu = 0;
   std::string ipv4_local;
   std::string ipv4_peer;
   int ipv4_prefix = 0;
   bool ipv4_redirect_gateway = false;
+  RouteOptions ipv4_routes;
+  std::string ipv6_local;
+  int ipv6_prefix = 0;
+  RouteOptions ipv6_routes;
 
   for (const auto& configuration_map : configuration) {
     const std::string& key = configuration_map.first;
@@ -452,6 +471,14 @@ std::unique_ptr<IPConfig::Properties> OpenVPNDriver::ParseIPConfiguration(
                   << "configuration.";
       } else {
         ipv4_redirect_gateway = true;
+      }
+    } else if (base::EqualsCaseInsensitiveASCII(key,
+                                                kOpenVPNIfconfigIPv6Local)) {
+      ipv6_local = value;
+    } else if (base::EqualsCaseInsensitiveASCII(key,
+                                                kOpenVPNIfconfigIPv6Netbits)) {
+      if (!base::StringToInt(value, &ipv6_prefix)) {
+        LOG(ERROR) << "IPv6 netbits ignored, value=" << value;
       }
     } else if (base::EqualsCaseInsensitiveASCII(key, kOpenVPNTunMTU)) {
       if (!base::StringToInt(value, &mtu)) {
@@ -491,20 +518,64 @@ std::unique_ptr<IPConfig::Properties> OpenVPNDriver::ParseIPConfiguration(
     LOG(INFO) << "No foreign option provided";
   }
 
-  auto ipv4_props =
-      CreateIPProperties(IPAddress::kFamilyIPv4, ipv4_local, ipv4_peer,
-                         ipv4_prefix, ipv4_redirect_gateway, ipv4_routes);
-  ipv4_props->blackhole_ipv6 = ipv4_redirect_gateway;
-  ipv4_props->domain_search = search_domains;
-  ipv4_props->dns_servers = dns_servers;
+  const bool has_ipv4 = !ipv4_local.empty();
+  const bool has_ipv6 = !ipv6_local.empty();
   if (mtu != 0) {
-    if (mtu >= IPConfig::kMinIPv4MTU) {
-      ipv4_props->mtu = mtu;
-    } else {
+    const int min_mtu =
+        has_ipv6 ? IPConfig::kMinIPv6MTU : IPConfig::kMinIPv4MTU;
+    if (mtu < min_mtu) {
       LOG(ERROR) << "MTU value " << mtu << " ignored";
+      mtu = 0;
     }
   }
-  return ipv4_props;
+
+  // Notes on `redirect-gateway`:
+  //
+  // In openvpn configuration, the user can add a `ipv6` flag to the
+  // `redirect-gateway` option to indicate a default route for IPv6, but in the
+  // context of environment variables passed from openvpn, `redirect-gateway` is
+  // an IPv4-only option: for IPv6, openvpn client will translate it into routes
+  // and set them in the variables. So at the server side, suppose there is no
+  // route configured directly, there are 4 cases:
+  // - No `redirect-gateway`: indicates no default route for both v4 and v6;
+  //   openvpn client will set neither `redirect-gateway` nor routes in env
+  //   variables.
+  // - `redirect-gateway (def1)?`: indicates IPv4-only default route; openvpn
+  //   client will set only `redirect-gateway` but no route in env variables.
+  // - `redirect-gateway ipv6 !ipv4`: indicates IPv6-only default route; openvpn
+  //   client will set only routes (for IPv6) but no `redirect-gateway` in env
+  //   variables.
+  // - `redirect-gateway ipv6`: indicates default route for both v4 and v6;
+  //   openvpn client will set both `redirect-gateway` and routes (for IPv6) in
+  //   env variables.
+  std::unique_ptr<IPConfig::Properties> ipv4_props, ipv6_props;
+  if (has_ipv4) {
+    ipv4_props =
+        CreateIPProperties(IPAddress::kFamilyIPv4, ipv4_local, ipv4_peer,
+                           ipv4_prefix, ipv4_redirect_gateway, ipv4_routes);
+    ipv4_props->blackhole_ipv6 = ipv4_redirect_gateway && !has_ipv6;
+    ipv4_props->domain_search = search_domains;
+    // For DNS servers, ideally we want put v4 servers here and v6 servers below
+    // given the current IPConfig structure. Having a merged list in both
+    // objects should have no real impact, and this issue will be resolved by
+    // the latter IPConfig refactor.
+    ipv4_props->dns_servers = dns_servers;
+    ipv4_props->mtu = mtu;
+  }
+  if (has_ipv6) {
+    ipv6_props =
+        CreateIPProperties(IPAddress::kFamilyIPv6, ipv6_local, /*peer=*/"",
+                           ipv6_prefix, /*default_route=*/false, ipv6_routes);
+    // We probably want a blackhole_ipv4 here, but that cannot be done easily at
+    // the routing layer now, and IPv6-only OpenVPN should be rare.
+    ipv6_props->domain_search = search_domains;
+    ipv6_props->dns_servers = dns_servers;
+    ipv6_props->mtu = mtu;
+  }
+  return {
+      .ipv4_props = std::move(ipv4_props),
+      .ipv6_props = std::move(ipv6_props),
+  };
 }
 
 namespace {

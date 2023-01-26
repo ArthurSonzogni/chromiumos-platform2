@@ -6,6 +6,7 @@
 
 #include <iterator>
 #include <memory>
+#include <utility>
 
 #include <base/check.h>
 #include <base/containers/contains.h>
@@ -293,35 +294,55 @@ TEST_F(OpenVPNDriverTest, ConnectAsync) {
 }
 
 TEST_F(OpenVPNDriverTest, Notify) {
+  constexpr auto kIPv4Addr = "1.2.3.4";
+  constexpr auto kIPv6Addr = "fd01::1";
   SetEventHandler(&event_handler_);
   driver_->interface_name_ = kInterfaceName;
   driver_->interface_index_ = kInterfaceIndex;
+
+  // OpenVPN process does not give us a valid config.
+  EXPECT_CALL(event_handler_,
+              OnDriverConnected(kInterfaceName, kInterfaceIndex))
+      .Times(0);
+  driver_->Notify("up", {});
+  ASSERT_EQ(driver_->GetIPv4Properties(), nullptr);
+  ASSERT_EQ(driver_->GetIPv6Properties(), nullptr);
+
+  // Sets up the environment again.
+  SetEventHandler(&event_handler_);
+  driver_->interface_name_ = kInterfaceName;
+  driver_->interface_index_ = kInterfaceIndex;
+
+  // Gets IPv4 configurations.
+  EXPECT_CALL(event_handler_,
+              OnDriverConnected(kInterfaceName, kInterfaceIndex));
+  driver_->Notify("up", {{"ifconfig_local", kIPv4Addr}});
+  ASSERT_NE(driver_->GetIPv4Properties(), nullptr);
+  EXPECT_EQ(driver_->GetIPv4Properties()->address, kIPv4Addr);
+  ASSERT_EQ(driver_->GetIPv6Properties(), nullptr);
+
+  // Gets IPv6 configurations. This also tests that existing properties are
+  // reused if no new ones provided. (Note that normally v4 and v6 configuration
+  // should come together.)
+  EXPECT_CALL(event_handler_,
+              OnDriverConnected(kInterfaceName, kInterfaceIndex));
+  driver_->Notify("up", {{"ifconfig_ipv6_local", kIPv6Addr}});
+  ASSERT_NE(driver_->GetIPv4Properties(), nullptr);
+  EXPECT_EQ(driver_->GetIPv4Properties()->address, kIPv4Addr);
+  ASSERT_NE(driver_->GetIPv6Properties(), nullptr);
+  EXPECT_EQ(driver_->GetIPv6Properties()->address, kIPv6Addr);
+
   EXPECT_CALL(event_handler_,
               OnDriverConnected(kInterfaceName, kInterfaceIndex));
   driver_->Notify("up", {});
-  auto ip_properties = driver_->GetIPv4Properties();
-  ASSERT_NE(ip_properties, nullptr);
-  EXPECT_EQ(ip_properties->address, "");
-
-  // Tests that existing properties are reused if no new ones provided.
-  constexpr auto kAddr = "1.2.3.4";
-  EXPECT_CALL(event_handler_,
-              OnDriverConnected(kInterfaceName, kInterfaceIndex));
-  driver_->Notify("up", {{"ifconfig_local", kAddr}});
-  ip_properties = driver_->GetIPv4Properties();
-  ASSERT_NE(ip_properties, nullptr);
-  EXPECT_EQ(ip_properties->address, "1.2.3.4");
-
-  EXPECT_CALL(event_handler_,
-              OnDriverConnected(kInterfaceName, kInterfaceIndex));
-  driver_->Notify("up", {});
-  ip_properties = driver_->GetIPv4Properties();
-  ASSERT_NE(ip_properties, nullptr);
-  EXPECT_EQ(ip_properties->address, "1.2.3.4");
+  ASSERT_NE(driver_->GetIPv4Properties(), nullptr);
+  EXPECT_EQ(driver_->GetIPv4Properties()->address, kIPv4Addr);
+  ASSERT_NE(driver_->GetIPv6Properties(), nullptr);
+  EXPECT_EQ(driver_->GetIPv6Properties()->address, kIPv6Addr);
 }
 
 TEST_P(OpenVPNDriverTest, NotifyUMA) {
-  std::map<std::string, std::string> config;
+  std::map<std::string, std::string> config = {{"ifconfig_local", "1.2.3.4"}};
   SetEventHandler(&event_handler_);
 
   // Check that UMA metrics are emitted on Notify.
@@ -558,20 +579,32 @@ TEST_F(OpenVPNDriverTest, ParseForeignOptions) {
 
 TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   std::map<std::string, std::string> config;
-  std::unique_ptr<IPConfig::Properties> props;
+  std::unique_ptr<IPConfig::Properties> ipv4_props;
+  std::unique_ptr<IPConfig::Properties> ipv6_props;
 
-  props = OpenVPNDriver::ParseIPConfiguration(config, false);
-  EXPECT_EQ(IPAddress::kFamilyIPv4, props->address_family);
-  EXPECT_EQ(32, props->subnet_prefix);
+  const auto invoke = [&](bool ignore_redirect_gateway) {
+    auto ret =
+        OpenVPNDriver::ParseIPConfiguration(config, ignore_redirect_gateway);
+    ipv4_props = std::move(ret.ipv4_props);
+    ipv6_props = std::move(ret.ipv6_props);
+  };
+
+  config["ifconfig_loCal"] = "4.5.6.7";
+  invoke(false);
+  ASSERT_NE(ipv4_props, nullptr);
+  ASSERT_EQ(ipv6_props, nullptr);
+  EXPECT_EQ(IPAddress::kFamilyIPv4, ipv4_props->address_family);
+  EXPECT_EQ(32, ipv4_props->subnet_prefix);
 
   // An "ifconfig_remote" parameter that looks like a netmask should be
   // applied to the subnet prefix instead of to the peer address.
   config["ifconfig_remotE"] = "255.255.0.0";
-  props = OpenVPNDriver::ParseIPConfiguration(config, false);
-  EXPECT_EQ(16, props->subnet_prefix);
-  EXPECT_EQ("", props->peer_address);
+  invoke(false);
+  ASSERT_NE(ipv4_props, nullptr);
+  ASSERT_EQ(ipv6_props, nullptr);
+  EXPECT_EQ(16, ipv4_props->subnet_prefix);
+  EXPECT_EQ("", ipv4_props->peer_address);
 
-  config["ifconfig_loCal"] = "4.5.6.7";
   config["ifconFig_netmAsk"] = "255.255.255.0";
   config["ifconfig_remotE"] = "33.44.55.66";
   config["route_vpN_gateway"] = "192.168.1.1";
@@ -587,34 +620,73 @@ TEST_F(OpenVPNDriverTest, ParseIPConfiguration) {
   config["route_gateway_2"] = kGateway2;
   config["route_gateway_1"] = kGateway1;
   config["foo"] = "bar";
-  props = OpenVPNDriver::ParseIPConfiguration(config, false);
-  EXPECT_EQ(IPAddress::kFamilyIPv4, props->address_family);
-  EXPECT_EQ("4.5.6.7", props->address);
-  EXPECT_EQ("4.5.6.7", props->gateway);
-  EXPECT_EQ(24, props->subnet_prefix);
-  EXPECT_EQ("", props->peer_address);
-  EXPECT_TRUE(props->exclusion_list.empty());
-  EXPECT_EQ(1000, props->mtu);
-  ASSERT_EQ(3, props->dns_servers.size());
-  EXPECT_EQ("1.1.1.1", props->dns_servers[0]);
-  EXPECT_EQ("4.4.4.4", props->dns_servers[1]);
-  EXPECT_EQ("2.2.2.2", props->dns_servers[2]);
-  ASSERT_EQ(3, props->inclusion_list.size());
-  ASSERT_EQ("33.44.55.66/32", props->inclusion_list[0]);
+  invoke(false);
+  ASSERT_NE(ipv4_props, nullptr);
+  ASSERT_EQ(ipv6_props, nullptr);
+  EXPECT_EQ(IPAddress::kFamilyIPv4, ipv4_props->address_family);
+  EXPECT_EQ("4.5.6.7", ipv4_props->address);
+  EXPECT_EQ("0.0.0.0", ipv4_props->gateway);
+  EXPECT_EQ(24, ipv4_props->subnet_prefix);
+  EXPECT_EQ("", ipv4_props->peer_address);
+  EXPECT_TRUE(ipv4_props->exclusion_list.empty());
+  EXPECT_EQ(1000, ipv4_props->mtu);
+  ASSERT_EQ(3, ipv4_props->dns_servers.size());
+  EXPECT_EQ("1.1.1.1", ipv4_props->dns_servers[0]);
+  EXPECT_EQ("4.4.4.4", ipv4_props->dns_servers[1]);
+  EXPECT_EQ("2.2.2.2", ipv4_props->dns_servers[2]);
+  ASSERT_EQ(3, ipv4_props->inclusion_list.size());
+  ASSERT_EQ("33.44.55.66/32", ipv4_props->inclusion_list[0]);
   ASSERT_EQ(base::StringPrintf("%s/%d", kNetwork1, kPrefix1),
-            props->inclusion_list[1]);
+            ipv4_props->inclusion_list[1]);
   ASSERT_EQ(base::StringPrintf("%s/%d", kNetwork2, kPrefix2),
-            props->inclusion_list[2]);
-  EXPECT_FALSE(props->default_route);
+            ipv4_props->inclusion_list[2]);
+  EXPECT_FALSE(ipv4_props->default_route);
 
   config["redirect_gateway"] = "def1";
-  props = OpenVPNDriver::ParseIPConfiguration(config, false);
-  EXPECT_TRUE(props->default_route);
-  EXPECT_TRUE(props->blackhole_ipv6);
+  invoke(false);
+  ASSERT_NE(ipv4_props, nullptr);
+  ASSERT_EQ(ipv6_props, nullptr);
+  EXPECT_TRUE(ipv4_props->default_route);
+  EXPECT_TRUE(ipv4_props->blackhole_ipv6);
 
   // Don't set a default route if the user asked to ignore it.
-  props = OpenVPNDriver::ParseIPConfiguration(config, true);
-  EXPECT_FALSE(props->default_route);
+  invoke(true);
+  ASSERT_NE(ipv4_props, nullptr);
+  ASSERT_EQ(ipv6_props, nullptr);
+  EXPECT_FALSE(ipv4_props->default_route);
+
+  // Set IPv6 properties, both v4 and v6 properties should not be nullptr.
+  config["ifconfig_ipv6_local"] = "fd00::1";
+  config["ifconfig_ipv6_netbits"] = "64";
+  config["route_ipv6_network_1"] = "fd02::/96";
+  config["route_ipv6_gateway_1"] = "fd02::1";
+  invoke(false);
+  ASSERT_NE(ipv4_props, nullptr);
+  ASSERT_NE(ipv6_props, nullptr);
+  EXPECT_TRUE(ipv4_props->default_route);
+  EXPECT_FALSE(ipv4_props->blackhole_ipv6);
+  EXPECT_EQ(kTypeVPN, ipv6_props->method);
+  EXPECT_EQ(IPAddress::kFamilyIPv6, ipv6_props->address_family);
+  EXPECT_EQ("fd00::1", ipv6_props->address);
+  EXPECT_EQ(64, ipv6_props->subnet_prefix);
+  EXPECT_EQ(2, ipv6_props->inclusion_list.size());
+  EXPECT_EQ("fd00::/64", ipv6_props->inclusion_list[0]);
+  EXPECT_EQ("fd02::/96", ipv6_props->inclusion_list[1]);
+  EXPECT_FALSE(ipv6_props->default_route);
+  // Original MTU value is too small for IPv6, so should be reset.
+  EXPECT_EQ(0, ipv6_props->mtu);
+  ASSERT_EQ(3, ipv6_props->dns_servers.size());
+  EXPECT_EQ("1.1.1.1", ipv6_props->dns_servers[0]);
+  EXPECT_EQ("4.4.4.4", ipv6_props->dns_servers[1]);
+  EXPECT_EQ("2.2.2.2", ipv6_props->dns_servers[2]);
+
+  // Update MTU value.
+  config["tun_mtu"] = "1500";
+  invoke(false);
+  ASSERT_NE(ipv4_props, nullptr);
+  ASSERT_NE(ipv6_props, nullptr);
+  EXPECT_EQ(1500, ipv4_props->mtu);
+  EXPECT_EQ(1500, ipv6_props->mtu);
 }
 
 TEST_F(OpenVPNDriverTest, InitOptionsNoHost) {
