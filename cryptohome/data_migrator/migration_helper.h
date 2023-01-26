@@ -101,8 +101,6 @@ class BRILLO_EXPORT MigrationHelper {
   void Cancel();
 
  private:
-  FRIEND_TEST(MigrationHelperTest, CopyOwnership);
-
   struct Job;
   class WorkerPool;
 

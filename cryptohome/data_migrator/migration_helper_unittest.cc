@@ -99,8 +99,8 @@ TEST_F(MigrationHelperTest, EmptyTest) {
 }
 
 TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
-  // This test only covers permissions and xattrs.  Ownership copying requires
-  // more extensive mocking and is covered in CopyOwnership test.
+  // Test that UID/GID, mtime, permission, xattr, ext2 attributes and
+  // project quota ID of a directory are migrated.
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
 
@@ -109,6 +109,11 @@ TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
   ASSERT_TRUE(platform_.CreateDirectory(kFromDirPath));
 
   // Set some attributes to this directory.
+
+  constexpr uid_t kUid = 100;
+  constexpr gid_t kGid = 200;
+  ASSERT_TRUE(platform_.SetOwnership(kFromDirPath, kUid, kGid,
+                                     /*follow_links=*/false));
 
   mode_t mode = S_ISVTX | S_IRUSR | S_IWUSR | S_IXUSR;
   ASSERT_TRUE(platform_.SetPermissions(kFromDirPath, mode));
@@ -146,7 +151,9 @@ TEST_F(MigrationHelperTest, CopyAttributesDirectory) {
   EXPECT_EQ(from_stat.st_mtim.tv_sec, to_stat.st_mtim.tv_sec);
   EXPECT_EQ(from_stat.st_mtim.tv_nsec, to_stat.st_mtim.tv_nsec);
 
-  // Verify Permissions and xattrs were copied
+  // Verify UID/GID, permissions and xattrs were copied
+  EXPECT_EQ(to_stat.st_uid, kUid);
+  EXPECT_EQ(to_stat.st_gid, kGid);
   mode_t to_mode;
   ASSERT_TRUE(platform_.GetPermissions(kToDirPath, &to_mode));
   EXPECT_EQ(mode, to_mode);
@@ -199,9 +206,7 @@ TEST_F(MigrationHelperTest, DirectoryPartiallyMigrated) {
 }
 
 TEST_F(MigrationHelperTest, CopySymlink) {
-  // This test does not cover setting ownership values as that requires more
-  // extensive mocking.  Ownership copying instead is covered by the
-  // CopyOwnership test.
+  // Test that the symlinks and their targets are migrated correctly.
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
   FilePath target;
@@ -236,14 +241,6 @@ TEST_F(MigrationHelperTest, CopySymlink) {
       to_dir_.Append(kTargetInMigrationDirAbsLinkName);
   const FilePath kExpectedTargetInMigrationDirAbsLinkTarget =
       to_dir_.Append(kFileName);
-
-  // Verify that timestamps were updated appropriately.
-  base::stat_wrapper_t to_stat;
-  ASSERT_TRUE(platform_.Stat(kToRelLinkPath, &to_stat));
-  EXPECT_EQ(from_stat.st_atim.tv_sec, to_stat.st_atim.tv_sec);
-  EXPECT_EQ(from_stat.st_atim.tv_nsec, to_stat.st_atim.tv_nsec);
-  EXPECT_EQ(from_stat.st_mtim.tv_sec, to_stat.st_mtim.tv_sec);
-  EXPECT_EQ(from_stat.st_mtim.tv_nsec, to_stat.st_mtim.tv_nsec);
 
   // Verify that all links have been copied correctly
   EXPECT_TRUE(platform_.ReadLink(kToRelLinkPath, &target));
@@ -322,9 +319,8 @@ TEST_F(MigrationHelperTest, UnreadableFile) {
 }
 
 TEST_F(MigrationHelperTest, CopyAttributesFile) {
-  // This test does not cover setting ownership values as that requires more
-  // extensive mocking.  Ownership copying instead is covered by the
-  // CopyOwnership test.
+  // Test that UID/GID, mtime/atime, permission, xattr, ext2 attributes and
+  // project quota ID of a file are migrated.
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
 
@@ -333,7 +329,13 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
   const FilePath kToFilePath = to_dir_.Append(kFileName);
 
   ASSERT_TRUE(platform_.TouchFileDurable(from_dir_.Append(kFileName)));
+
   // Set some attributes to this file.
+
+  constexpr uid_t kUid = 1;
+  constexpr gid_t kGid = 2;
+  ASSERT_TRUE(platform_.SetOwnership(kFromFilePath, kUid, kGid,
+                                     /*follow_links=*/false));
 
   mode_t mode = S_ISVTX | S_IRUSR | S_IWUSR | S_IXUSR;
   ASSERT_TRUE(platform_.SetPermissions(kFromFilePath, mode));
@@ -370,6 +372,8 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
   EXPECT_EQ(from_stat.st_atim.tv_nsec, to_stat.st_atim.tv_nsec);
   EXPECT_EQ(from_stat.st_mtim.tv_sec, to_stat.st_mtim.tv_sec);
   EXPECT_EQ(from_stat.st_mtim.tv_nsec, to_stat.st_mtim.tv_nsec);
+  EXPECT_EQ(to_stat.st_uid, kUid);
+  EXPECT_EQ(to_stat.st_gid, kGid);
 
   EXPECT_TRUE(platform_.FileExists(kToFilePath));
 
@@ -410,57 +414,45 @@ TEST_F(MigrationHelperTest, CopyAttributesFile) {
   EXPECT_EQ(from_project_id, to_project_id);
 }
 
-TEST_F(MigrationHelperTest, CopyOwnership) {
+TEST_F(MigrationHelperTest, CopyAttributesSymlink) {
+  // Test that UID/GID, mtime/atime and xattrs of a symlink are migrated.
   MigrationHelper helper(&platform_, &delegate_, from_dir_, to_dir_,
                          status_files_dir_, kDefaultChunkSize);
 
-  const base::FilePath kLinkTarget = base::FilePath("foo");
-  const base::FilePath kLink("link");
-  const base::FilePath kFile("file");
-  const base::FilePath kDir("dir");
-  const base::FilePath kFromLink = from_dir_.Append(kLink);
-  const base::FilePath kFromFile = from_dir_.Append(kFile);
-  const base::FilePath kFromDir = from_dir_.Append(kDir);
-  const base::FilePath kToLink = to_dir_.Append(kLink);
-  const base::FilePath kToFile = to_dir_.Append(kFile);
-  const base::FilePath kToDir = to_dir_.Append(kDir);
-  uid_t file_uid = 1;
-  gid_t file_gid = 2;
-  uid_t link_uid = 3;
-  gid_t link_gid = 4;
-  uid_t dir_uid = 5;
-  gid_t dir_gid = 6;
-  ASSERT_TRUE(platform_.TouchFileDurable(kFromFile));
-  ASSERT_TRUE(platform_.CreateSymbolicLink(kFromLink, kLinkTarget));
-  ASSERT_TRUE(platform_.CreateDirectory(kFromDir));
-  ASSERT_TRUE(platform_.TouchFileDurable(kToFile));
-  ASSERT_TRUE(platform_.CreateSymbolicLink(kToLink, kLinkTarget));
-  ASSERT_TRUE(platform_.CreateDirectory(kToDir));
+  const FilePath kFromLink = from_dir_.Append("link");
+  const FilePath kToLink = to_dir_.Append("link");
+  ASSERT_TRUE(platform_.CreateSymbolicLink(kFromLink, FilePath("/dev/null")));
 
-  base::stat_wrapper_t stat;
-  ASSERT_TRUE(platform_.Stat(kFromFile, &stat));
-  stat.st_uid = file_uid;
-  stat.st_gid = file_gid;
-  EXPECT_CALL(platform_, SetOwnership(kToFile, file_uid, file_gid, false))
-      .WillOnce(Return(true));
-  EXPECT_TRUE(
-      helper.CopyAttributes(kFile, FileEnumerator::FileInfo(kFromFile, stat)));
+  // Set some attributes to this symlink.
 
-  ASSERT_TRUE(platform_.Stat(kFromLink, &stat));
-  stat.st_uid = link_uid;
-  stat.st_gid = link_gid;
-  EXPECT_CALL(platform_, SetOwnership(kToLink, link_uid, link_gid, false))
-      .WillOnce(Return(true));
-  EXPECT_TRUE(
-      helper.CopyAttributes(kLink, FileEnumerator::FileInfo(kFromLink, stat)));
+  constexpr uid_t kUid = 10;
+  constexpr gid_t kGid = 20;
+  ASSERT_TRUE(platform_.SetOwnership(kFromLink, kUid, kGid,
+                                     /*follow_links=*/false));
 
-  ASSERT_TRUE(platform_.Stat(kFromDir, &stat));
-  stat.st_uid = dir_uid;
-  stat.st_gid = dir_gid;
-  EXPECT_CALL(platform_, SetOwnership(kToDir, dir_uid, dir_gid, false))
-      .WillOnce(Return(true));
-  EXPECT_TRUE(
-      helper.CopyAttributes(kDir, FileEnumerator::FileInfo(kFromDir, stat)));
+  constexpr char kAttrName[] = "user.attr";
+  constexpr char kValue[] = "value";
+  ASSERT_TRUE(platform_.SetExtendedFileAttribute(kFromLink, kAttrName, kValue,
+                                                 sizeof(kValue)));
+
+  base::stat_wrapper_t from_stat;
+  ASSERT_TRUE(platform_.Stat(kFromLink, &from_stat));
+  EXPECT_TRUE(helper.Migrate(base::BindRepeating(
+      &MigrationHelperTest::ProgressCaptor, base::Unretained(this))));
+
+  base::stat_wrapper_t to_stat;
+  EXPECT_TRUE(platform_.Stat(kToLink, &to_stat));
+  EXPECT_EQ(from_stat.st_atim.tv_sec, to_stat.st_atim.tv_sec);
+  EXPECT_EQ(from_stat.st_atim.tv_nsec, to_stat.st_atim.tv_nsec);
+  EXPECT_EQ(from_stat.st_mtim.tv_sec, to_stat.st_mtim.tv_sec);
+  EXPECT_EQ(from_stat.st_mtim.tv_nsec, to_stat.st_mtim.tv_nsec);
+  EXPECT_EQ(to_stat.st_uid, kUid);
+  EXPECT_EQ(to_stat.st_gid, kGid);
+
+  std::string value;
+  ASSERT_TRUE(
+      platform_.GetExtendedFileAttributeAsString(kToLink, kAttrName, &value));
+  EXPECT_STREQ(value.c_str(), kValue);
 }
 
 TEST_F(MigrationHelperTest, MigrateInProgress) {
