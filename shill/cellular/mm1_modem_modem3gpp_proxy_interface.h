@@ -29,9 +29,7 @@ class ModemModem3gppProxyInterface {
                         int timeout) = 0;
   virtual void Scan(KeyValueStoresCallback callback) = 0;
   virtual void SetInitialEpsBearerSettings(const KeyValueStore& properties,
-                                           Error* error,
-                                           const ResultCallback& callback,
-                                           int timeout) = 0;
+                                           const ResultCallback& callback) = 0;
 };
 
 }  // namespace mm1

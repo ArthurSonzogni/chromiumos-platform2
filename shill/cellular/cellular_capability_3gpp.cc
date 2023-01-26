@@ -63,8 +63,6 @@ constexpr base::TimeDelta CellularCapability3gpp::kTimeoutRegister =
     base::Seconds(90);
 constexpr base::TimeDelta CellularCapability3gpp::kTimeoutReset =
     base::Seconds(90);
-constexpr base::TimeDelta CellularCapability3gpp::kTimeoutSetInitialEpsBearer =
-    base::Seconds(45);
 constexpr base::TimeDelta CellularCapability3gpp::kTimeoutSetupLocation =
     base::Seconds(45);
 constexpr base::TimeDelta CellularCapability3gpp::kTimeoutSetupSignal =
@@ -1355,19 +1353,21 @@ Stringmap CellularCapability3gpp::ParseScanResult(const ScanResult& result) {
 
 void CellularCapability3gpp::SetInitialEpsBearer(
     const KeyValueStore& properties,
-    Error* error,
     const ResultCallback& callback) {
   SLOG(this, 3) << __func__;
-  if (modem_3gpp_proxy_) {
-    modem_3gpp_proxy_->SetInitialEpsBearerSettings(
-        properties, error, callback,
-        kTimeoutSetInitialEpsBearer.InMilliseconds());
-  } else {
+  if (!modem_3gpp_proxy_) {
     SLOG(this, 3) << __func__ << " skipping, no 3GPP proxy";
+    return;
   }
+
+  modem_3gpp_proxy_->SetInitialEpsBearerSettings(
+      properties,
+      base::BindRepeating(&CellularCapability3gpp::OnSetInitialEpsBearerReply,
+                          weak_ptr_factory_.GetWeakPtr(), callback));
 }
 
-void CellularCapability3gpp::OnSetInitialEpsBearerReply(const Error& error) {
+void CellularCapability3gpp::OnSetInitialEpsBearerReply(
+    const ResultCallback& callback, const Error& error) {
   SLOG(this, 3) << __func__;
 
   CellularServiceRefPtr service = cellular()->service();
@@ -1377,6 +1377,7 @@ void CellularCapability3gpp::OnSetInitialEpsBearerReply(const Error& error) {
     last_attach_apn_.clear();
     if (service)
       service->ClearLastAttachApn();
+    callback.Run(error);
     return;
   }
 
@@ -1386,10 +1387,12 @@ void CellularCapability3gpp::OnSetInitialEpsBearerReply(const Error& error) {
     // and then quickly disabled.
     SLOG(this, 2) << __func__ << ": Cellular service does not exist.";
     last_attach_apn_.clear();
+    callback.Run(Error(Error::kNotFound));
     return;
   }
 
   service->SetLastAttachApn(last_attach_apn_);
+  callback.Run(Error(Error::kSuccess));
 }
 
 void CellularCapability3gpp::SetupLocation(uint32_t sources,
@@ -2052,14 +2055,15 @@ void CellularCapability3gpp::SetNextAttachApn() {
   }
 
   KeyValueStore properties;
-  Error error;
   FillInitialEpsBearerPropertyMap(&properties);
-  ResultCallback cb =
-      base::Bind(&CellularCapability3gpp::OnSetInitialEpsBearerReply,
-                 weak_ptr_factory_.GetWeakPtr());
   // If 'properties' is empty, this will clear the 'attach APN' on the modem.
-  SetInitialEpsBearer(properties, &error, cb);
+  SetInitialEpsBearer(
+      properties,
+      base::BindRepeating(&CellularCapability3gpp::ScheduleNextAttach,
+                          weak_ptr_factory_.GetWeakPtr()));
+}
 
+void CellularCapability3gpp::ScheduleNextAttach(const Error& error) {
   // A finished callback does not qualify as a canceled callback.
   // We test for a canceled callback to check for outstanding callbacks.
   // So, explicitly cancel the callback here.

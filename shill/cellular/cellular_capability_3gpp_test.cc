@@ -1364,20 +1364,16 @@ TEST_F(CellularCapability3gppTest, SetInitialEpsBearer) {
       &CellularCapability3gppTest::TestCallback, base::Unretained(this));
 
   ResultCallback set_callback;
-  EXPECT_CALL(
-      *modem_3gpp_proxy_,
-      SetInitialEpsBearerSettings(
-          _, _, _,
-          CellularCapability3gpp::kTimeoutSetInitialEpsBearer.InMilliseconds()))
+  EXPECT_CALL(*modem_3gpp_proxy_, SetInitialEpsBearerSettings(_, _))
       .Times(1)
-      .WillOnce(SaveArg<2>(&set_callback));
+      .WillOnce(SaveArg<1>(&set_callback));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   properties.Set<std::string>(CellularBearer::kMMApnProperty, kTestApn);
 
   cellular_->set_use_attach_apn_for_testing(true);
 
   InitProxies();
-  capability_->SetInitialEpsBearer(properties, &error, callback);
+  capability_->SetInitialEpsBearer(properties, std::move(callback));
   set_callback.Run(Error(Error::kSuccess));
 }
 

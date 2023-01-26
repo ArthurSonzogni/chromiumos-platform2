@@ -29,10 +29,7 @@ class MockModemModem3gppProxy : public ModemModem3gppProxyInterface {
   MOCK_METHOD(void, Scan, (KeyValueStoresCallback), (override));
   MOCK_METHOD(void,
               SetInitialEpsBearerSettings,
-              (const KeyValueStore& properties,
-               Error* error,
-               const ResultCallback& callback,
-               int timeout),
+              (const KeyValueStore&, const ResultCallback&),
               (override));
 };
 

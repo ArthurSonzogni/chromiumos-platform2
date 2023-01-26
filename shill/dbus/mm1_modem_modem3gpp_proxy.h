@@ -35,9 +35,7 @@ class ModemModem3gppProxy : public ModemModem3gppProxyInterface {
                 int timeout) override;
   void Scan(KeyValueStoresCallback callback) override;
   void SetInitialEpsBearerSettings(const KeyValueStore& properties,
-                                   Error* error,
-                                   const ResultCallback& callback,
-                                   int timeout) override;
+                                   const ResultCallback& callback) override;
 
  private:
   // Callbacks for Register async call.

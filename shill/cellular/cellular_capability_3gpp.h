@@ -158,7 +158,6 @@ class CellularCapability3gpp {
   // bearer used at registration, particularly the 'Attach' APN settings.
   // specified by |properties|.
   void SetInitialEpsBearer(const KeyValueStore& properties,
-                           Error* error,
                            const ResultCallback& callback);
 
   // Registers on a network with |network_id|.
@@ -405,6 +404,7 @@ class CellularCapability3gpp {
   bool IsDualStackSupported();
   bool IsModemFM101();
   void SetNextAttachApn();
+  void ScheduleNextAttach(const Error& error);
   void FillInitialEpsBearerPropertyMap(KeyValueStore* properties);
 
   // Returns true if a connect error should be retried.  This function
@@ -482,7 +482,8 @@ class CellularCapability3gpp {
                           const std::map<uint32_t, brillo::Any>& results,
                           const Error& error);
   void OnSetupSignalReply(const Error& error);
-  void OnSetInitialEpsBearerReply(const Error& error);
+  void OnSetInitialEpsBearerReply(const ResultCallback& callback,
+                                  const Error& error);
 
   // Returns the normalized version of |mdn| by keeping only digits in |mdn|
   // and removing other non-digit characters.

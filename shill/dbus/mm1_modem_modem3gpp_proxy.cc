@@ -23,6 +23,7 @@ static std::string ObjectID(const dbus::ObjectPath* p) {
 
 namespace {
 constexpr base::TimeDelta kScanTimeout = base::Minutes(2);
+constexpr base::TimeDelta kSetInitialEpsBearerTimeout = base::Seconds(45);
 }  // namespace
 
 namespace mm1 {
@@ -61,10 +62,7 @@ void ModemModem3gppProxy::Scan(KeyValueStoresCallback callback) {
 }
 
 void ModemModem3gppProxy::SetInitialEpsBearerSettings(
-    const KeyValueStore& properties,
-    Error* error,
-    const ResultCallback& callback,
-    int timeout) {
+    const KeyValueStore& properties, const ResultCallback& callback) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   brillo::VariantDictionary properties_dict =
       KeyValueStore::ConvertToVariantDictionary(properties);
@@ -74,7 +72,7 @@ void ModemModem3gppProxy::SetInitialEpsBearerSettings(
                      weak_factory_.GetWeakPtr(), callback),
       base::BindOnce(&ModemModem3gppProxy::OnSetInitialEpsBearerSettingsFailure,
                      weak_factory_.GetWeakPtr(), callback),
-      timeout);
+      kSetInitialEpsBearerTimeout.InMilliseconds());
 }
 
 void ModemModem3gppProxy::OnRegisterSuccess(const ResultCallback& callback) {
