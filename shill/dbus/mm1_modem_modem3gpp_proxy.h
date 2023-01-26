@@ -30,9 +30,7 @@ class ModemModem3gppProxy : public ModemModem3gppProxyInterface {
   ~ModemModem3gppProxy() override;
   // Inherited methods from ModemModem3gppProxyInterface.
   void Register(const std::string& operator_id,
-                Error* error,
-                const ResultCallback& callback,
-                int timeout) override;
+                const ResultCallback& callback) override;
   void Scan(KeyValueStoresCallback callback) override;
   void SetInitialEpsBearerSettings(const KeyValueStore& properties,
                                    const ResultCallback& callback) override;

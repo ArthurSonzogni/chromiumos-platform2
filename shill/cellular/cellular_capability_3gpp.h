@@ -162,7 +162,6 @@ class CellularCapability3gpp {
 
   // Registers on a network with |network_id|.
   void RegisterOnNetwork(const std::string& network_id,
-                         Error* error,
                          const ResultCallback& callback);
 
   // Returns true if the modem is registered on a network, which can be a home

@@ -59,8 +59,6 @@ constexpr base::TimeDelta CellularCapability3gpp::kTimeoutEnable =
     base::Seconds(45);
 constexpr base::TimeDelta CellularCapability3gpp::kTimeoutGetLocation =
     base::Seconds(45);
-constexpr base::TimeDelta CellularCapability3gpp::kTimeoutRegister =
-    base::Seconds(90);
 constexpr base::TimeDelta CellularCapability3gpp::kTimeoutReset =
     base::Seconds(90);
 constexpr base::TimeDelta CellularCapability3gpp::kTimeoutSetupLocation =
@@ -1132,25 +1130,20 @@ bool CellularCapability3gpp::IsMdnValid() const {
 void CellularCapability3gpp::Register(const ResultCallback& callback) {
   SLOG(this, 3) << __func__ << " \"" << cellular()->selected_network() << "\"";
   CHECK(!callback.is_null());
-  Error error;
-  ResultCallback cb = base::Bind(&CellularCapability3gpp::OnRegisterReply,
-                                 weak_ptr_factory_.GetWeakPtr(), callback);
-  modem_3gpp_proxy_->Register(cellular()->selected_network(), &error, cb,
-                              kTimeoutRegister.InMilliseconds());
-  if (error.IsFailure())
-    callback.Run(error);
+  modem_3gpp_proxy_->Register(
+      cellular()->selected_network(),
+      base::BindRepeating(&CellularCapability3gpp::OnRegisterReply,
+                          weak_ptr_factory_.GetWeakPtr(), callback));
 }
 
 void CellularCapability3gpp::RegisterOnNetwork(const std::string& network_id,
-                                               Error* error,
                                                const ResultCallback& callback) {
   SLOG(this, 3) << __func__ << "(" << network_id << ")";
-  CHECK(error);
   desired_network_ = network_id;
-  ResultCallback cb = base::Bind(&CellularCapability3gpp::OnRegisterReply,
-                                 weak_ptr_factory_.GetWeakPtr(), callback);
-  modem_3gpp_proxy_->Register(network_id, error, cb,
-                              kTimeoutRegister.InMilliseconds());
+  modem_3gpp_proxy_->Register(
+      network_id,
+      base::BindRepeating(&CellularCapability3gpp::OnRegisterReply,
+                          weak_ptr_factory_.GetWeakPtr(), callback));
 }
 
 void CellularCapability3gpp::OnRegisterReply(const ResultCallback& callback,

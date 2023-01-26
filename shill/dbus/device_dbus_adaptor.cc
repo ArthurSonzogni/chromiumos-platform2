@@ -160,10 +160,8 @@ void DeviceDBusAdaptor::Disable(DBusMethodResponsePtr<> response) {
 void DeviceDBusAdaptor::Register(DBusMethodResponsePtr<> response,
                                  const std::string& network_id) {
   SLOG(this, 2) << __func__ << ": " << network_id;
-  Error e(Error::kOperationInitiated);
   ResultCallback callback = GetMethodReplyCallback(std::move(response));
-  device_->RegisterOnNetwork(network_id, &e, callback);
-  ReturnResultOrDefer(callback, e);
+  device_->RegisterOnNetwork(network_id, callback);
 }
 
 void DeviceDBusAdaptor::RequirePin(DBusMethodResponsePtr<> response,

@@ -143,7 +143,6 @@ class Cellular : public Device,
   void LinkEvent(unsigned int flags, unsigned int change) override;
   void Scan(Error* error, const std::string& /*reason*/) override;
   void RegisterOnNetwork(const std::string& network_id,
-                         Error* error,
                          const ResultCallback& callback) override;
   void RequirePin(const std::string& pin,
                   bool require,

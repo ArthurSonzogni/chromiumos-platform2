@@ -102,7 +102,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // The default implementation sets |error| to kNotSupported.
   virtual void Scan(Error* error, const std::string& reason);
   virtual void RegisterOnNetwork(const std::string& network_id,
-                                 Error* error,
                                  const ResultCallback& callback);
   virtual void RequirePin(const std::string& pin,
                           bool require,

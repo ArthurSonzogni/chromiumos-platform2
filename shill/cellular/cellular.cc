@@ -542,13 +542,12 @@ void Cellular::Scan(Error* error, const std::string& /*reason*/) {
 }
 
 void Cellular::RegisterOnNetwork(const std::string& network_id,
-                                 Error* error,
                                  const ResultCallback& callback) {
   if (!capability_) {
     callback.Run(Error(Error::Type::kOperationFailed));
     return;
   }
-  capability_->RegisterOnNetwork(network_id, error, callback);
+  capability_->RegisterOnNetwork(network_id, callback);
 }
 
 void Cellular::RequirePin(const std::string& pin,

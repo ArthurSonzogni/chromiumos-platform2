@@ -223,11 +223,12 @@ void Device::Scan(Error* error, const std::string& reason) {
 }
 
 void Device::RegisterOnNetwork(const std::string& /*network_id*/,
-                               Error* error,
-                               const ResultCallback& /*callback*/) {
+                               const ResultCallback& callback) {
+  Error error;
   Error::PopulateAndLog(
-      FROM_HERE, error, Error::kNotImplemented,
+      FROM_HERE, &error, Error::kNotImplemented,
       GetTechnologyName() + " device doesn't implement RegisterOnNetwork");
+  callback.Run(error);
 }
 
 void Device::RequirePin(const std::string& /*pin*/,

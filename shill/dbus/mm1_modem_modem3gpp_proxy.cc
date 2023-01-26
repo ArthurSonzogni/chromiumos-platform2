@@ -24,6 +24,7 @@ static std::string ObjectID(const dbus::ObjectPath* p) {
 namespace {
 constexpr base::TimeDelta kScanTimeout = base::Minutes(2);
 constexpr base::TimeDelta kSetInitialEpsBearerTimeout = base::Seconds(45);
+constexpr base::TimeDelta kRegisterTimeout = base::Seconds(90);
 }  // namespace
 
 namespace mm1 {
@@ -37,16 +38,14 @@ ModemModem3gppProxy::ModemModem3gppProxy(const scoped_refptr<dbus::Bus>& bus,
 ModemModem3gppProxy::~ModemModem3gppProxy() = default;
 
 void ModemModem3gppProxy::Register(const std::string& operator_id,
-                                   Error* error,
-                                   const ResultCallback& callback,
-                                   int timeout) {
+                                   const ResultCallback& callback) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << operator_id;
   proxy_->RegisterAsync(operator_id,
                         base::BindOnce(&ModemModem3gppProxy::OnRegisterSuccess,
                                        weak_factory_.GetWeakPtr(), callback),
                         base::BindOnce(&ModemModem3gppProxy::OnRegisterFailure,
                                        weak_factory_.GetWeakPtr(), callback),
-                        timeout);
+                        kRegisterTimeout.InMilliseconds());
 }
 
 void ModemModem3gppProxy::Scan(KeyValueStoresCallback callback) {
