@@ -48,7 +48,6 @@ constexpr char kWireGuardPath[] = "/usr/sbin/wireguard";
 constexpr char kWireGuardToolsPath[] = "/usr/bin/wg";
 constexpr char kDefaultInterfaceName[] = "wg0";
 
-constexpr char kWireGuardIPAddress[] = "WireGuard.IPAddress";
 // The name of the property which indicates where the key pair comes from. This
 // property only appears in storage but not in D-Bus API.
 constexpr char kWireGuardKeyPairSource[] = "WireGuard.KeyPairSource";

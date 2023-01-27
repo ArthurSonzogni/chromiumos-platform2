@@ -2065,6 +2065,12 @@ Properties	string ArcVpn.TunnelChrome [writeonly]
 			of the service. This is typically between -90 and -20 dBm. Unknown
 			value is represented as -32768 dBm (int16 min value).
 
+		array{string} WireGuard.IPAddress [writeonly]
+
+			(VPN services of type WireGuard only) The list of IP addresses
+			configured for this WireGuard interface. At most 1 IPv4 address + 1
+			IPv6 address is supported now.
+
 		array{dict} WireGuard.Peers [writeonly]
 
 			(VPN services of type WireGuard only) The list of peers

@@ -327,6 +327,7 @@ const char kExtensionNameProperty[] = "ExtensionName";
 const char kObjectPathSuffixProperty[] = "ObjectPathSuffix";
 
 // WireGuard Service property names.
+const char kWireGuardIPAddress[] = "WireGuard.IPAddress";
 const char kWireGuardPrivateKey[] = "WireGuard.PrivateKey";
 const char kWireGuardPublicKey[] = "WireGuard.PublicKey";
 const char kWireGuardPeers[] = "WireGuard.Peers";
