@@ -25,6 +25,8 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
+#include "power_manager/common/tracing.h"
+
 namespace power_manager::system {
 
 namespace {
@@ -117,6 +119,7 @@ void AmbientLightSensorDelegateFile::StartTimer() {
 }
 
 void AmbientLightSensorDelegateFile::ReadAls() {
+  TRACE_EVENT("power", "AmbientLightSensorDelegateFile::ReadAls");
   // We really want to read the ambient light level.
   // Complete the deferred lux file open if necessary.
   if (!als_file_.HasOpenedFile() && !InitAlsFile()) {

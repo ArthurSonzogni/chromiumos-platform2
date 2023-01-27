@@ -12,6 +12,7 @@
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
+#include "power_manager/common/tracing.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/system/power_supply.h"
 #include "power_manager/powerd/system/suspend_configurator.h"
@@ -166,6 +167,7 @@ void ShutdownFromSuspend::HandleFullResume() {
 }
 
 void ShutdownFromSuspend::OnTimerWake() {
+  TRACE_EVENT("power", "ShutdownFromSuspend::OnTimerWake");
   timer_fired_ = true;
 }
 

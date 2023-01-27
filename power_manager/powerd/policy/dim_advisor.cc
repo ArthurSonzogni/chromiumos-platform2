@@ -11,6 +11,7 @@
 #include <chromeos/dbus/service_constants.h>
 
 #include "hps/proto_bindings/hps_service.pb.h"
+#include "power_manager/common/tracing.h"
 #include "power_manager/powerd/policy/state_controller.h"
 
 namespace power_manager::policy {
@@ -225,6 +226,7 @@ void DimAdvisor::HandleHpsSenseSignal(dbus::Signal* signal) {
 }
 
 void DimAdvisor::ReenableHps() {
+  TRACE_EVENT("power", "DimAdvisor::ReenableHps");
   LOG(INFO) << "DimAdvisor::ReenableHps hps temporarily disabling is over";
   hps_temporarily_disabled_ = false;
 }

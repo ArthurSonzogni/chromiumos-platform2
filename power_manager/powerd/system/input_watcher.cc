@@ -23,6 +23,7 @@
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
+#include "power_manager/common/tracing.h"
 #include "power_manager/powerd/system/event_device_interface.h"
 #include "power_manager/powerd/system/input_observer.h"
 #include "power_manager/powerd/system/udev.h"
@@ -279,6 +280,8 @@ void InputWatcher::OnNewEvents(EventDeviceInterface* device) {
 
 void InputWatcher::ProcessEvent(const input_event& event,
                                 uint32_t device_types) {
+  TRACE_EVENT("power", "InputWatcher::ProcessEvent", "type", event.type, "code",
+              event.code, "value", event.value, "device_types", device_types);
   LidState lid_state = LidState::OPEN;
   if ((device_types & DEVICE_LID_SWITCH) &&
       GetLidStateFromEvent(event, &lid_state)) {
@@ -477,6 +480,7 @@ void InputWatcher::HandleRemovedInput(int input_num) {
 }
 
 void InputWatcher::SendQueuedEvents() {
+  TRACE_EVENT("power", "InputWatcher::SendQueuedEvents");
   for (auto event_pair : queued_events_)
     ProcessEvent(event_pair.first, event_pair.second);
   queued_events_.clear();

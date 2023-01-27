@@ -25,6 +25,7 @@
 #include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/metrics_sender.h"
 #include "power_manager/common/power_constants.h"
+#include "power_manager/common/tracing.h"
 #include "power_manager/common/util.h"
 
 namespace power_manager::system {
@@ -298,6 +299,7 @@ bool ExternalDisplay::WriteBrightness() {
 }
 
 void ExternalDisplay::UpdateState() {
+  TRACE_EVENT("power", "ExternalDisplay::UpdateState", "state", state_);
   switch (state_) {
     case State::IDLE:
       // Nothing to do.

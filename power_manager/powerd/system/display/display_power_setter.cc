@@ -13,6 +13,7 @@
 #include <base/time/time.h>
 #include <dbus/message.h>
 
+#include "power_manager/common/tracing.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 
 namespace power_manager::system {
@@ -72,6 +73,8 @@ void DisplayPowerSetter::SetDisplaySoftwareDimming(bool dimmed) {
 
 void DisplayPowerSetter::SendStateToDisplayService(
     chromeos::DisplayPowerState state) {
+  TRACE_EVENT("power", "DisplayPowerSetter::SendStateToDisplayService", "state",
+              DisplayPowerStateToString(state));
   LOG(INFO) << "Asking DisplayService to turn "
             << DisplayPowerStateToString(state);
   dbus::MethodCall method_call(chromeos::kDisplayServiceInterface,

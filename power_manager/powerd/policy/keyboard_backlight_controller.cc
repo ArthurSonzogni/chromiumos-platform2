@@ -29,6 +29,7 @@
 #include "power_manager/common/clock.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
+#include "power_manager/common/tracing.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/system/backlight_interface.h"
 #include "power_manager/proto_bindings/backlight.pb.h"
@@ -435,6 +436,7 @@ void KeyboardBacklightController::OnBacklightDeviceChanged(
 }
 
 void KeyboardBacklightController::HandleVideoTimeout() {
+  TRACE_EVENT("power", "KeyboardBacklightController::HandleVideoTimeout");
   if (fullscreen_video_playing_)
     VLOG(1) << "Fullscreen video stopped";
   fullscreen_video_playing_ = false;
@@ -671,6 +673,8 @@ bool KeyboardBacklightController::UpdateState(
     Transition transition,
     BacklightBrightnessChange_Cause cause,
     SignalBehavior signal_behavior) {
+  TRACE_EVENT("power", "KeyboardBacklightController::UpdateState", "transition",
+              transition, "cause", cause, "signal_behavior", signal_behavior);
   // Force the backlight off immediately in several special cases.
   if (forced_off_ || shutting_down_ || suspended_ ||
       lid_state_ == LidState::CLOSED || tablet_mode_ == TabletMode::ON)

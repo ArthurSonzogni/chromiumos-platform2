@@ -14,6 +14,7 @@
 #include "power_manager/common/clock.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
+#include "power_manager/common/tracing.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/display/display_watcher.h"
 #include "power_manager/powerd/system/input_watcher_interface.h"
@@ -179,6 +180,7 @@ void InputEventHandler::IgnoreNextPowerButtonPress(
 }
 
 void InputEventHandler::OnPowerButtonAcknowledgmentTimeout() {
+  TRACE_EVENT("power", "InputEventHandler::OnPowerButtonAcknowledgmentTimeout");
   delegate_->ReportPowerButtonAcknowledgmentDelay(
       kPowerButtonAcknowledgmentTimeout);
   delegate_->HandleMissingPowerButtonAcknowledgment();

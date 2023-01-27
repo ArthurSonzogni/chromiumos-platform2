@@ -20,6 +20,7 @@
 #include <featured/feature_library.h>
 
 #include "power_manager/common/power_constants.h"
+#include "power_manager/common/tracing.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/policy/adaptive_charging_controller.h"
 
@@ -628,6 +629,7 @@ void ChargeHistory::RemoveOldChargeEvents() {
 }
 
 void ChargeHistory::OnRetentionTimerFired() {
+  TRACE_EVENT("power", "ChargeHistory::OnRetentionTimerFired");
   RemoveOldChargeEvents();
   RemoveOldChargeDays(hold_time_on_ac_dir_, &hold_time_on_ac_days_,
                       &hold_duration_on_ac_);
@@ -646,6 +648,7 @@ void ChargeHistory::ScheduleRewrites() {
 }
 
 void ChargeHistory::OnRewriteTimerFired() {
+  TRACE_EVENT("power", "ChargeHistory::OnRewriteTimerFired");
   for (const std::pair<const base::FilePath, base::TimeDelta>& it :
        scheduled_rewrites_) {
     bool success = WriteTimeDeltaToFile(it.first, it.second);
@@ -1473,6 +1476,7 @@ void AdaptiveChargingController::StartSlowCharging() {
 }
 
 void AdaptiveChargingController::StopAdaptiveCharging() {
+  TRACE_EVENT("power", "AdaptiveChargingController::StopAdaptiveCharging");
   base::TimeTicks now = clock_.GetCurrentBootTime();
 
   if (state_ == AdaptiveChargingState::SLOWCHARGE) {
@@ -1536,6 +1540,7 @@ void AdaptiveChargingController::StartChargeAlarm(base::TimeDelta delay) {
 }
 
 void AdaptiveChargingController::OnRecheckAlarmFired() {
+  TRACE_EVENT("power", "AdaptiveChargingController::OnRecheckAlarmFired");
   UpdateAdaptiveCharging(UserChargingEvent::Event::PERIODIC_LOG,
                          true /* async */);
 }

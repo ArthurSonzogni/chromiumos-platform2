@@ -20,6 +20,7 @@
 #include "power_manager/common/metrics_sender.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
+#include "power_manager/common/tracing.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/policy/adaptive_charging_controller.h"
 #include "power_manager/powerd/policy/shutdown_from_suspend_interface.h"
@@ -402,6 +403,7 @@ void Suspender::RecordDarkResumeWakeReason(
 }
 
 void Suspender::HandleEvent(Event event) {
+  TRACE_EVENT("power", "Suspender::HandleEvent", "event", EventToString(event));
   // If a new event is received while handling an event, save it for later. This
   // can happen when e.g. |delegate_|'s UndoPrepareToSuspend() method attempts
   // to resuspend or ShutDownFor*() calls HandleShutdown().

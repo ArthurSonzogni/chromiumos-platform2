@@ -22,6 +22,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <re2/re2.h>
 
+#include "power_manager/common/tracing.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/proto_bindings/peripheral_battery_status.pb.h"
 
@@ -259,6 +260,7 @@ void PeripheralBatteryWatcher::ReadBatteryStatus(const base::FilePath& path,
 }
 
 void PeripheralBatteryWatcher::ReadBatteryStatuses() {
+  TRACE_EVENT("power", "PeripheralBatteryWatcher::ReadBatteryStatuses");
   battery_readers_.clear();
 
   std::vector<base::FilePath> new_battery_list;

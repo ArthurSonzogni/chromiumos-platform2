@@ -175,6 +175,9 @@ class DBusWrapper : public DBusWrapperInterface {
 
   base::ObserverList<Observer> observers_;
 
+  // Trace identifier used to connect async method calls to their responses.
+  uint64_t next_async_trace_id_ = reinterpret_cast<uint64_t>(this);
+
   base::WeakPtrFactory<DBusWrapper> weak_ptr_factory_;
 };
 

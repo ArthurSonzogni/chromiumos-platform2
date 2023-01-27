@@ -18,6 +18,7 @@
 #include <linux/fb.h>
 
 #include "power_manager/common/clock.h"
+#include "power_manager/common/tracing.h"
 #include "power_manager/common/util.h"
 
 namespace power_manager::system {
@@ -180,6 +181,7 @@ bool InternalBacklight::WriteBrightness(int64_t new_level) {
 }
 
 void InternalBacklight::HandleTransitionTimeout() {
+  TRACE_EVENT("power", "InternalBacklight::HandleTransitionTimeout");
   base::TimeTicks now = clock_->GetCurrentTime();
   int64_t new_level = 0;
 

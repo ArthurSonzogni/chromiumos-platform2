@@ -82,6 +82,10 @@ class AsyncFileReader {
   // Accumulator for data read by AIO.
   std::string stored_data_;
 
+  // Unique identifier for this object for joining async operations with trace
+  // flow events.
+  uint64_t trace_id_ = 0;
+
   // Callbacks invoked when the read completes or encounters an error.
   base::OnceCallback<void(const std::string&)> read_cb_;
   base::OnceCallback<void()> error_cb_;

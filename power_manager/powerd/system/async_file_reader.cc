@@ -15,6 +15,8 @@
 #include <base/logging.h>
 #include <base/time/time.h>
 
+#include "power_manager/common/tracing.h"
+
 namespace power_manager::system {
 
 namespace {
@@ -44,6 +46,7 @@ bool AsyncFileReader::Init(const base::FilePath& path) {
     return false;
   }
   path_ = path;
+  trace_id_ = reinterpret_cast<uint64_t>(this) ^ fd_;
   return true;
 }
 
@@ -54,6 +57,8 @@ bool AsyncFileReader::HasOpenedFile() const {
 void AsyncFileReader::StartRead(
     base::OnceCallback<void(const std::string&)> read_cb,
     base::OnceCallback<void()> error_cb) {
+  TRACE_EVENT("power", "AsyncFileReader::StartRead",
+              perfetto::Flow::ProcessScoped(trace_id_), "path", path_.value());
   Reset();
 
   if (fd_ == -1) {
@@ -74,12 +79,16 @@ void AsyncFileReader::StartRead(
 }
 
 void AsyncFileReader::UpdateState() {
+  TRACE_EVENT("power", "AsyncFileReader::UpdateState",
+              perfetto::Flow::ProcessScoped(trace_id_), "path", path_.value());
   if (!read_in_progress_) {
     update_state_timer_.Reset();
     return;
   }
 
   int status = aio_error(&aio_control_);
+  TRACE_EVENT_INSTANT("power", "AsyncFileReader::UpdateState::Result", "status",
+                      status);
 
   // If the read is still in-progress, keep the timer running.
   if (status == EINPROGRESS)

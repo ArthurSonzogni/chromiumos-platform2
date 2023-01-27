@@ -29,6 +29,7 @@
 #include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
+#include "power_manager/common/tracing.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/system/cros_ec_device_event.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
@@ -434,6 +435,8 @@ void StateController::Init(Delegate* delegate,
 }
 
 void StateController::HandlePowerSourceChange(PowerSource source) {
+  TRACE_EVENT("power", "StateController::HandlePowerSourceChange", "source",
+              source);
   CHECK(initialized_);
   if (source == power_source_)
     return;
@@ -444,6 +447,7 @@ void StateController::HandlePowerSourceChange(PowerSource source) {
 }
 
 void StateController::HandleLidStateChange(LidState state) {
+  TRACE_EVENT("power", "StateController::HandleLidStateChange", "state", state);
   CHECK(initialized_);
   if (state == lid_state_)
     return;
@@ -458,6 +462,7 @@ void StateController::HandleLidStateChange(LidState state) {
 }
 
 void StateController::HandleTabletModeChange(TabletMode mode) {
+  TRACE_EVENT("power", "StateController::HandleTabletModeChange", "mode", mode);
   DCHECK(initialized_);
 
   // We don't care about the mode, but we treat events as user activity.
@@ -466,6 +471,8 @@ void StateController::HandleTabletModeChange(TabletMode mode) {
 }
 
 void StateController::HandleSessionStateChange(SessionState state) {
+  TRACE_EVENT("power", "StateController::HandleSessionStateChange", "state",
+              state);
   CHECK(initialized_);
   if (state == session_state_)
     return;
@@ -478,6 +485,8 @@ void StateController::HandleSessionStateChange(SessionState state) {
 }
 
 void StateController::HandleDisplayModeChange(DisplayMode mode) {
+  TRACE_EVENT("power", "StateController::HandleDisplayModeChange", "mode",
+              mode);
   CHECK(initialized_);
   if (mode == display_mode_ && got_initial_display_mode_)
     return;
@@ -507,6 +516,7 @@ void StateController::HandleDisplayModeChange(DisplayMode mode) {
 }
 
 void StateController::HandleResume(LidState state) {
+  TRACE_EVENT("power", "StateController::HandleResume", "state", state);
   CHECK(initialized_);
 
   lid_state_ = state;
@@ -529,6 +539,7 @@ void StateController::HandleResume(LidState state) {
 }
 
 void StateController::HandlePolicyChange(const PowerManagementPolicy& policy) {
+  TRACE_EVENT("power", "StateController::HandlePolicyChange");
   CHECK(initialized_);
   policy_ = policy;
   if (!got_initial_policy_) {
@@ -548,6 +559,7 @@ void StateController::HandlePolicyChange(const PowerManagementPolicy& policy) {
 }
 
 void StateController::HandleUserActivity() {
+  TRACE_EVENT("power", "StateController::HandleUserActivity");
   CHECK(initialized_);
 
   // Ignore user activity reported while the lid is closed unless we're in
@@ -579,6 +591,7 @@ void StateController::HandleUserActivity() {
 }
 
 void StateController::HandleVideoActivity() {
+  TRACE_EVENT("power", "StateController::HandleVideoActivity");
   CHECK(initialized_);
   if (screen_dimmed_ || screen_turned_off_) {
     LOG(INFO) << "Ignoring video since screen is dimmed or off";
@@ -589,6 +602,7 @@ void StateController::HandleVideoActivity() {
 }
 
 void StateController::HandleWakeNotification() {
+  TRACE_EVENT("power", "StateController::HandleWakeNotification");
   CHECK(initialized_);
 
   // Ignore user activity reported while the lid is closed unless we're in
@@ -603,12 +617,16 @@ void StateController::HandleWakeNotification() {
 }
 
 void StateController::HandleAudioStateChange(bool active) {
+  TRACE_EVENT("power", "StateController::HandleAudioStateChange", "active",
+              active);
   CHECK(initialized_);
   audio_activity_->SetActive(active, clock_->GetCurrentTime());
   UpdateState();
 }
 
 void StateController::HandleTpmStatus(int dictionary_attack_count) {
+  TRACE_EVENT("power", "StateController::HandleTpmStatus",
+              "dictionary_attack_count", dictionary_attack_count);
   if (tpm_dictionary_attack_count_ == dictionary_attack_count)
     return;
 
@@ -659,6 +677,7 @@ bool StateController::ShouldRequestDimDeferSuggestion(base::TimeTicks now) {
 }
 
 void StateController::HandleDeferFromSmartDim() {
+  TRACE_EVENT("power", "StateController::HandleDeferFromSmartDim");
   if (screen_dimmed_) {
     VLOG(1) << "Screen is already dimmed";
     return;
@@ -995,6 +1014,7 @@ void StateController::LoadPrefs() {
 }
 
 void StateController::UpdateSettingsAndState() {
+  TRACE_EVENT("power", "UpdateSettingsAndState");
   const Action old_idle_action = idle_action_;
   const Action old_lid_closed_action = lid_closed_action_;
   const Delays old_delays = delays_;
@@ -1175,6 +1195,8 @@ void StateController::LogSettings() {
 }
 
 void StateController::PerformAction(Action action, ActionReason reason) {
+  TRACE_EVENT("power", "StateController::PerformAction", "action",
+              ActionToString(action), "reason", reason);
   switch (action) {
     case Action::SUSPEND:
       delegate_->Suspend(reason);
@@ -1212,6 +1234,7 @@ StateController::Action StateController::GetIdleAction() const {
 }
 
 void StateController::UpdateState() {
+  TRACE_EVENT("power", "UpdateState");
   base::TimeTicks now = clock_->GetCurrentTime();
   base::TimeDelta idle_duration = now - GetLastActivityTimeForIdle(now);
   base::TimeDelta duration_since_last_activity_for_screen_dim =
@@ -1397,6 +1420,7 @@ void StateController::UpdateState() {
 }
 
 void StateController::ScheduleActionTimeout(base::TimeTicks now) {
+  TRACE_EVENT_BEGIN("power", "StateController::ScheduleActionTimeout");
   // Find the minimum of the delays that haven't yet occurred.
   base::TimeDelta timeout_delay;
   if (!IsScreenDimBlocked()) {
@@ -1452,14 +1476,17 @@ void StateController::ScheduleActionTimeout(base::TimeTicks now) {
     action_timer_.Stop();
     action_timer_time_for_testing_ = base::TimeTicks();
   }
+  TRACE_EVENT_END("power", "timeout_delay_ms", timeout_delay.InMillisecondsF());
 }
 
 void StateController::HandleActionTimeout() {
+  TRACE_EVENT("power", "StateController::HandleActionTimeout");
   action_timer_time_for_testing_ = base::TimeTicks();
   UpdateState();
 }
 
 void StateController::HandleInitialStateTimeout() {
+  TRACE_EVENT("power", "StateController::HandleInitialStateTimeout");
   LOG(INFO) << "Didn't receive initial notification about display mode or "
             << "policy; using " << DisplayModeToString(display_mode_)
             << " display mode";
@@ -1467,6 +1494,7 @@ void StateController::HandleInitialStateTimeout() {
 }
 
 void StateController::HandleCrashBootCollectTimeout() {
+  TRACE_EVENT("power", "StateController::HandleCrashBootCollectTimeout");
   LOG(INFO) << "CrashBootCollect did not complete sucessfully in "
             << util::TimeDeltaToString(kCrashBootCollectTimeout);
   if (lid_state_ == LidState::CLOSED)
@@ -1474,6 +1502,7 @@ void StateController::HandleCrashBootCollectTimeout() {
 }
 
 void StateController::HandleWaitForExternalDisplayTimeout() {
+  TRACE_EVENT("power", "StateController::HandleWaitForExternalDisplayTimeout");
   LOG(INFO) << "Didn't receive display mode change notification in "
             << util::TimeDeltaToString(KWaitForExternalDisplayTimeout)
             << " on resuming with lid closed";

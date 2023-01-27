@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "power_manager/common/file_prefs_store.h"
+#include "power_manager/common/tracing.h"
 #include "power_manager/common/util.h"
 
 #include <base/files/file_enumerator.h>
@@ -56,6 +57,8 @@ bool FilePrefsStore::Watch(
 }
 
 void FilePrefsStore::HandlePathChanged(const base::FilePath& path, bool error) {
+  TRACE_EVENT("power", "FilePrefsStore::HandlePathChanged", "path",
+              path.value(), "error", error, "pref_path", pref_path_.value());
   if (error) {
     LOG(ERROR) << "Got error while hearing about change to " << path.value();
     return;

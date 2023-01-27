@@ -25,6 +25,7 @@
 #include <dbus/message.h>
 
 #include "power_manager/common/clock.h"
+#include "power_manager/common/tracing.h"
 #include "power_manager/powerd/system/wakeup_timer.h"
 
 namespace power_manager::system {
@@ -41,6 +42,8 @@ std::unique_ptr<dbus::Response> CreateInvalidArgsError(
 // Expiration callback for timer of type |timer_id|. |expiration_fd| is the fd
 // to write to to indicate timer expiration to the instance.
 void OnExpiration(ArcTimerManager::TimerId timer_id, int expiration_fd) {
+  TRACE_EVENT("power", "ArcTimerManager::OnExpiration", "timer_id", timer_id,
+              "expiration_fd", expiration_fd);
   DVLOG(1) << "Expiration callback for timer id=" << timer_id;
   // Write to the |expiration_fd| to indicate to the instance that the timer has
   // expired. The instance expects 8 bytes on the read end similar to what

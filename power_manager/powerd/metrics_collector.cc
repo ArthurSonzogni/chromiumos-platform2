@@ -20,6 +20,7 @@
 #include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/metrics_sender.h"
 #include "power_manager/common/prefs.h"
+#include "power_manager/common/tracing.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/policy/backlight_controller.h"
 
@@ -497,6 +498,7 @@ void MetricsCollector::GenerateUserActivityMetrics() {
 }
 
 void MetricsCollector::GenerateBacklightLevelMetrics() {
+  TRACE_EVENT("power", "MetricsCollector::GenerateBacklightLevelMetrics");
   if (!screen_dim_timestamp_.is_null() || !screen_off_timestamp_.is_null())
     return;
 

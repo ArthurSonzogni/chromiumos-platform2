@@ -10,6 +10,8 @@
 #include <base/functional/bind.h>
 #include <base/threading/thread_task_runner_handle.h>
 
+#include "power_manager/common/tracing.h"
+
 namespace power_manager::system {
 namespace {
 constexpr uint32_t kMaxReconnectDelayInSeconds = 1000;
@@ -147,6 +149,8 @@ void SensorServiceHandler::GetAllDeviceIdsCallback(
 
 void SensorServiceHandler::NotifyObserverWithCurrentDevices(
     SensorServiceHandlerObserver* observer) {
+  TRACE_EVENT("power",
+              "SensorServiceHandler::NotifyObserverWithCurrentDevices");
   for (auto& id_types : iio_device_ids_types_)
     observer->OnNewDeviceAdded(id_types.first, id_types.second);
 }

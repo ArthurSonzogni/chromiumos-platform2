@@ -12,6 +12,7 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 
+#include "power_manager/common/tracing.h"
 #include "power_manager/powerd/system/udev.h"
 
 namespace power_manager::system {
@@ -148,6 +149,7 @@ base::FilePath DisplayWatcher::FindI2CDeviceInDir(const base::FilePath& dir) {
 }
 
 void DisplayWatcher::HandleDebounceTimeout() {
+  TRACE_EVENT("power", "DisplayWatcher::HandleDebounceTimeout");
   for (DisplayWatcherObserver& observer : observers_)
     observer.OnDisplaysChanged(displays_);
 }

@@ -42,6 +42,7 @@
 #include "power_manager/common/metrics_sender.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
+#include "power_manager/common/tracing.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/daemon_delegate.h"
 #include "power_manager/powerd/metrics_collector.h"
@@ -380,6 +381,7 @@ void Daemon::Init() {
   }
 
   prefs_ = delegate_->CreatePrefs();
+  InitTracing();
   InitDBus();
 
   factory_mode_ = BoolPrefIsTrue(kFactoryModePref);
@@ -638,6 +640,7 @@ bool Daemon::TriggerRetryShutdownTimerForTesting() {
 
 #if USE_IIOSERVICE
 void Daemon::ConnectToMojoServiceManager() {
+  TRACE_EVENT("power", "Daemon::ConnectToMojoServiceManager");
   DCHECK(!service_manager_.is_bound());
 
   auto service_manager_remote =
@@ -658,6 +661,7 @@ void Daemon::ConnectToMojoServiceManager() {
 }
 
 void Daemon::ReconnectToMojoServiceManagerWithDelay() {
+  TRACE_EVENT("power", "Daemon::ReconnectToMojoServiceManagerWithDelay");
   base::SequencedTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&Daemon::ConnectToMojoServiceManager,
@@ -666,6 +670,7 @@ void Daemon::ReconnectToMojoServiceManagerWithDelay() {
 }
 
 void Daemon::RequestIioSensor() {
+  TRACE_EVENT("power", "Daemon::RequestIioSensor");
   if (!service_manager_.is_bound())
     return;
 
@@ -696,6 +701,7 @@ void Daemon::OnServiceManagerDisconnect(uint32_t custom_reason,
 }
 
 void Daemon::OnIioSensorDisconnect(base::TimeDelta delay) {
+  TRACE_EVENT("power", "Daemon::OnIioSensorDisconnect");
   DCHECK(service_manager_.is_bound());
 
   base::SequencedTaskRunnerHandle::Get()->PostDelayedTask(
@@ -1225,6 +1231,7 @@ void Daemon::OnDBusNameOwnerChanged(const std::string& name,
 }
 
 void Daemon::OnPowerStatusUpdate() {
+  TRACE_EVENT("power", "OnPowerStatusUpdate");
   const system::PowerStatus status = power_supply_->GetPowerStatus();
   if (status.battery_is_present)
     LOG(INFO) << system::GetPowerStatusBatteryDebugString(status);
@@ -1782,6 +1789,7 @@ void Daemon::OnPrivacyScreenStateChange(
 }
 
 void Daemon::RequestTpmStatus() {
+  TRACE_EVENT("power", "Daemon::RequestTpmStatus");
   DCHECK(tpm_manager_proxy_);
   tpm_manager::GetDictionaryAttackInfoRequest request;
   tpm_manager_proxy_->GetDictionaryAttackInfoAsync(

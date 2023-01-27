@@ -14,6 +14,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 
+#include "power_manager/common/tracing.h"
 #include "power_manager/powerd/system/thermal/device_thermal_state.h"
 
 namespace power_manager::system {
@@ -63,6 +64,7 @@ void ThermalDevice::StartTimer() {
 }
 
 void ThermalDevice::ReadDeviceState() {
+  TRACE_EVENT("power", "ThermalDevice::ReadDeviceState");
   if (!polling_file_.HasOpenedFile() && !InitSysfsFile()) {
     if (num_init_attempts_++ >= kNumErrorBeforeGivingUp) {
       LOG(ERROR) << "Giving up on thermal device: " << device_path_;
@@ -108,6 +110,8 @@ void ThermalDevice::UpdateThermalState(DeviceThermalState new_state) {
   if (current_state_ == new_state)
     return;
   current_state_ = new_state;
+  TRACE_COUNTER("power", "ThermalDevice::DeviceThermalState",
+                static_cast<int>(new_state));
   LOG(INFO) << "UpdateThermalState device: " << device_path_
             << " new_state: " << DeviceThermalStateToString(new_state);
   for (auto& observer : observers_)

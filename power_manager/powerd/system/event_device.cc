@@ -4,6 +4,8 @@
 
 #include "power_manager/powerd/system/event_device.h"
 
+#include <utility>
+
 #include <fcntl.h>
 #include <linux/input.h>
 
@@ -12,6 +14,7 @@
 #include <base/posix/eintr_wrapper.h>
 
 #include "power_manager/common/power_constants.h"
+#include "power_manager/common/tracing.h"
 
 // Helper macros for accessing the bitfields returned by the kernel interface,
 // compare with include/linux/bitops.h.
@@ -136,6 +139,8 @@ bool EventDevice::GetSwitchBit(int bit) {
 }
 
 bool EventDevice::ReadEvents(std::vector<input_event>* events_out) {
+  TRACE_EVENT("power", "EventDevice::ReadEvents", "fd", fd_, "path",
+              path_.value());
   DCHECK(events_out);
   events_out->clear();
 
@@ -165,7 +170,17 @@ bool EventDevice::ReadEvents(std::vector<input_event>* events_out) {
 }
 
 void EventDevice::WatchForEvents(const base::RepeatingClosure& new_events_cb) {
-  fd_watcher_ = base::FileDescriptorWatcher::WatchReadable(fd_, new_events_cb);
+  // Annotate received events with a trace event.
+  auto callback = base::BindRepeating(
+      [](const base::RepeatingClosure& callback, int fd,
+         const base::FilePath& path) {
+        TRACE_EVENT("power", "EventDevice::OnEvent", "fd", fd, "path",
+                    path.value());
+        callback.Run();
+      },
+      new_events_cb, fd_, std::ref(path_));
+  fd_watcher_ =
+      base::FileDescriptorWatcher::WatchReadable(fd_, std::move(callback));
 }
 
 std::shared_ptr<EventDeviceInterface> EventDeviceFactory::Open(

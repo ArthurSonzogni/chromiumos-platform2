@@ -37,6 +37,7 @@
 #include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
+#include "power_manager/common/tracing.h"
 #include "power_manager/common/util.h"
 #include "power_manager/powerd/system/dbus_wrapper.h"
 #include "power_manager/powerd/system/udev.h"
@@ -1481,6 +1482,8 @@ bool PowerSupply::IsSupplyIgnored(const std::string& sysname) const {
 
 bool PowerSupply::PerformUpdate(UpdatePolicy update_policy,
                                 NotifyPolicy notify_policy) {
+  TRACE_EVENT("power", "PowerSupply::PerformUpdate", "update_policy",
+              update_policy, "notify_policy", notify_policy);
   const bool success = UpdatePowerStatus(update_policy);
   if (!is_suspended_)
     SchedulePoll();
@@ -1558,11 +1561,13 @@ void PowerSupply::SchedulePoll() {
 }
 
 void PowerSupply::OnPollTimeout() {
+  TRACE_EVENT("power", "PowerSupply::OnPollTimeout");
   current_poll_delay_for_testing_ = base::TimeDelta();
   PerformUpdate(UpdatePolicy::UNCONDITIONALLY, NotifyPolicy::SYNCHRONOUSLY);
 }
 
 void PowerSupply::NotifyObservers() {
+  TRACE_EVENT("power", "PowerSupply::NotifyObservers");
   for (PowerSupplyObserver& observer : observers_)
     observer.OnPowerStatusUpdate();
 }
