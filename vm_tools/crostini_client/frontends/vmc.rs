@@ -299,6 +299,12 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             "path to a r/w bios flash image. Only valid on untrusted VMs.",
             "PATH",
         );
+        opts.optopt(
+            "",
+            "bios-dlc",
+            "Identifier for the DLC from which the bios should be pulled.",
+            "ID",
+        );
         opts.optopt("", "timeout", "seconds to wait until timeout.", "PARAM");
         opts.optflag("", "no-shell", "Don't start a shell in the started VM.");
 
@@ -321,6 +327,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             .map(|x| x.parse())
             .transpose()?
             .unwrap_or(0);
+
         let features = VmFeatures {
             gpu,
             vulkan,
@@ -335,6 +342,7 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
             tools_dlc_id: matches.opt_str("tools-dlc"),
             timeout,
             oem_strings: matches.opt_strs("oem-string"),
+            bios_dlc_id: matches.opt_str("bios-dlc"),
         };
 
         let user_disks = UserDisks {
@@ -1391,6 +1399,7 @@ mod tests {
             &["vmc", "start", "termina", "--tools-dlc"],
             &["vmc", "start", "termina", "--timeout"],
             &["vmc", "start", "termina", "--timeout", "xyz"],
+            &["vmc", "start", "termina", "--bios-dlc"],
             &["vmc", "stop"],
             &["vmc", "stop", "termina", "extra args"],
             &["vmc", "launch"],

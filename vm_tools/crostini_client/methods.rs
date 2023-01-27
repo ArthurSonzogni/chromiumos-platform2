@@ -49,6 +49,8 @@ enum ChromeOSError {
     BadDiskImageStatus(DiskImageStatus, String),
     BadVmStatus(VmStatus, String),
     BadVmPluginDispatcherStatus,
+    BiosAlreadySpecified(String),
+    BiosDlcNotAllowed(String),
     CrostiniVmDisabled,
     CrostiniVmDisabledReason(String),
     DiskImageOutOfSpace,
@@ -110,6 +112,12 @@ impl fmt::Display for ChromeOSError {
             }
             BadVmStatus(s, reason) => write!(f, "bad VM status: `{:?}`: {}", s, reason),
             BadVmPluginDispatcherStatus => write!(f, "failed to start Parallels dispatcher"),
+            BiosAlreadySpecified(dlc) => write!(
+                f,
+                "bios path already specified bios dlc `{}` is not allowed",
+                dlc
+            ),
+            BiosDlcNotAllowed(dlc) => write!(f, "bios dlc `{}` is not allowed", dlc),
             CrostiniVmDisabled => write!(f, "Crostini VMs are not available"),
             CrostiniVmDisabledReason(reason) => {
                 write!(f, "Crostini VMs are not available: {}", reason)
@@ -254,6 +262,7 @@ pub struct VmFeatures {
     pub tools_dlc_id: Option<String>,
     pub timeout: u32,
     pub oem_strings: Vec<String>,
+    pub bios_dlc_id: Option<String>,
 }
 
 pub enum ContainerSource {
@@ -1253,6 +1262,7 @@ impl Methods {
             self.install_dlc(&dlc_id)?;
             request.mut_vm().dlc_id = dlc_id;
         }
+
         if let Some(tools_dlc_id) = features.tools_dlc_id {
             // TODO(crbug/1276157): add `termina-tools` to this list when `termina-dlc` is split.
             match tools_dlc_id.as_ref() {
@@ -1262,6 +1272,20 @@ impl Methods {
             self.install_dlc(&tools_dlc_id)?;
             request.mut_vm().tools_dlc_id = tools_dlc_id;
         }
+
+        if let Some(bios_dlc_id) = features.bios_dlc_id {
+            if user_disks.bios.is_some() {
+                return Err(BiosAlreadySpecified(bios_dlc_id.to_owned()).into());
+            }
+
+            match bios_dlc_id.as_ref() {
+                "bruschetta-bios-dlc" => (),
+                _ => return Err(BiosDlcNotAllowed(bios_dlc_id.to_owned()).into()),
+            }
+            self.install_dlc(&bios_dlc_id)?;
+            request.mut_vm().bios_dlc_id = bios_dlc_id;
+        }
+
         request.start_termina = start_termina;
         request.owner_id = user_id_hash.to_owned();
         request.vm_username = username.to_owned();
