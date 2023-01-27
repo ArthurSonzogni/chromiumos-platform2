@@ -949,6 +949,7 @@ void MobileOperatorMapper::HandleAPNListUpdate() {
       continue;
     }
     apn.ip_type = ip_type.value();
+    apn.is_required_by_carrier_spec = apn_data.is_required_by_carrier_spec();
 
     apn_list_.push_back(std::move(apn));
   }

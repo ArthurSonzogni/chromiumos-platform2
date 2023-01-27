@@ -95,11 +95,14 @@ class MobileOperatorMapper {
     std::set<std::string> apn_types;
     // IP type as one of "ipv4", "ipv6", "ipv4v6" (dual-stack)
     std::string ip_type;
+    // If the APN overrides all other APNs of the same type.
+    bool is_required_by_carrier_spec = false;
 
    private:
     auto tuple() const {
       return std::make_tuple(apn, operator_name_list, username, password,
-                             authentication, apn_types, ip_type);
+                             authentication, apn_types, ip_type,
+                             is_required_by_carrier_spec);
     }
 
    public:

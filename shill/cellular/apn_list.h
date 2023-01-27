@@ -38,8 +38,12 @@ class ApnList {
   static std::string GetApnTypeString(enum ApnType apn_type);
 
  private:
-  using ApnIndexKey = std::
-      tuple<std::string, std::string, std::string, std::string, std::string>;
+  using ApnIndexKey = std::tuple<std::string,
+                                 std::string,
+                                 std::string,
+                                 std::string,
+                                 std::string,
+                                 bool>;
   ApnIndexKey GetKey(const MobileOperatorMapper::MobileAPN& mobile_apn);
 
   void AddApn(const MobileOperatorMapper::MobileAPN& mobile_apn,

@@ -16,6 +16,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/dbus/shill/dbus-constants.h>
 
+#include "shill/cellular/cellular_consts.h"
 #include "shill/cellular/cellular_helpers.h"
 #include "shill/logging.h"
 namespace shill {
@@ -37,7 +38,8 @@ ApnList::ApnIndexKey ApnList::GetKey(
     const MobileOperatorMapper::MobileAPN& mobile_apn) {
   return std::make_tuple(mobile_apn.apn, mobile_apn.username,
                          mobile_apn.password, mobile_apn.authentication,
-                         mobile_apn.ip_type);
+                         mobile_apn.ip_type,
+                         mobile_apn.is_required_by_carrier_spec);
 }
 
 void ApnList::AddApn(const MobileOperatorMapper::MobileAPN& mobile_apn,
@@ -69,6 +71,9 @@ void ApnList::AddApn(const MobileOperatorMapper::MobileAPN& mobile_apn,
   if (!mobile_apn.ip_type.empty())
     (*props)[kApnIpTypeProperty] = mobile_apn.ip_type;
 
+  (*props)[kApnIsRequiredByCarrierSpecProperty] =
+      mobile_apn.is_required_by_carrier_spec ? kApnIsRequiredByCarrierSpecTrue
+                                             : kApnIsRequiredByCarrierSpecFalse;
   (*props)[cellular::kApnVersionProperty] =
       base::NumberToString(cellular::kCurrentApnCacheVersion);
   // Find the first localized and non-localized name, if any.

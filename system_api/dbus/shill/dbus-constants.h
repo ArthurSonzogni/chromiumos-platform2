@@ -532,6 +532,8 @@ const char kApnNameProperty[] = "name";
 const char kApnLocalizedNameProperty[] = "localized_name";
 const char kApnLanguageProperty[] = "language";
 const char kApnAuthenticationProperty[] = "authentication";
+const char kApnIsRequiredByCarrierSpecProperty[] =
+    "is_required_by_carrier_spec";
 // TODO(b/251551314): Remove kApnAttachProperty after 2025Q2
 const char kApnAttachProperty[] = "attach";
 const char kApnIpTypeProperty[] = "ip_type";
@@ -556,6 +558,10 @@ const char kApnTypeDun[] = "DUN";
 // APN source property values.
 const char kApnSourceAdmin[] = "admin";
 const char kApnSourceUi[] = "ui";
+
+// APN IsRequiredByCarrierSpec values.
+const char kApnIsRequiredByCarrierSpecTrue[] = "1";
+const char kApnIsRequiredByCarrierSpecFalse[] = "0";
 
 // Payment Portal property names.
 const char kPaymentPortalURL[] = "url";

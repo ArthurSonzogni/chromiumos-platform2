@@ -410,6 +410,7 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, PPPConnectionFailedBeforeAuth);
   FRIEND_TEST(CellularTest, PPPConnectionFailedDuringAuth);
   FRIEND_TEST(CellularTest, PPPConnectionFailedAfterConnect);
+  FRIEND_TEST(CellularTest, RequiredApnExists);
   FRIEND_TEST(CellularTest, SetPolicyAllowRoaming);
   FRIEND_TEST(CellularTest, SetUseAttachApn);
   FRIEND_TEST(CellularTest, StopPPPOnDisconnect);
@@ -507,6 +508,9 @@ class Cellular : public Device,
   // information related to each APN, but these properties are not used as
   // connection properties.
   bool CompareApns(const Stringmap& apn1, const Stringmap& apn2) const;
+
+  bool IsRequiredByCarrierApn(const Stringmap& apn) const;
+  bool RequiredApnExists(ApnList::ApnType apn_type) const;
 
   // Creates or updates services for secondary SIMs.
   void UpdateSecondaryServices();

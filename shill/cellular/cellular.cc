@@ -2199,15 +2199,40 @@ std::deque<Stringmap> Cellular::BuildTetheringApnTryList() const {
   return BuildApnTryList(ApnList::ApnType::kDun);
 }
 
+bool Cellular::IsRequiredByCarrierApn(const Stringmap& apn) const {
+  // Only check the property in MODB APNs to avoid getting into a situation in
+  // which the UI or user send the property by mistake and the UI cannot
+  // update the APN list because there is an existing APN with the property
+  // set to true.
+  return base::Contains(apn, kApnSourceProperty) &&
+         apn.at(kApnSourceProperty) == cellular::kApnSourceMoDb &&
+         base::Contains(apn, kApnIsRequiredByCarrierSpecProperty) &&
+         apn.at(kApnIsRequiredByCarrierSpecProperty) ==
+             kApnIsRequiredByCarrierSpecTrue;
+}
+
+bool Cellular::RequiredApnExists(ApnList::ApnType apn_type) const {
+  for (auto apn : apn_list_) {
+    if (ApnList::IsApnType(apn, apn_type) && IsRequiredByCarrierApn(apn))
+      return true;
+  }
+  return false;
+}
+
 std::deque<Stringmap> Cellular::BuildApnTryList(
     ApnList::ApnType apn_type) const {
   std::deque<Stringmap> apn_try_list;
-  bool add_last_good_apn = true;
+  // When a required APN exists, no other APNs of that type will be included in
+  // the try list.
+  bool modb_required_apn_exists = RequiredApnExists(apn_type);
+  // If a required APN exists, the last good APN is not added.
+  bool add_last_good_apn = !modb_required_apn_exists;
   std::vector<const Stringmap*> custom_apns_info;
   const Stringmap* custom_apn_info = nullptr;
   const Stringmap* last_good_apn_info = nullptr;
   const Stringmaps* user_apn_list = nullptr;
-  if (service_) {
+  // Add custom APNs(from UI or Admin)
+  if (!modb_required_apn_exists && service_) {
     if (service_->user_apn_list().has_value()) {
       user_apn_list = &service_->user_apn_list().value();
       for (const auto& user_apn : *user_apn_list) {
@@ -2244,7 +2269,11 @@ std::deque<Stringmap> Cellular::BuildApnTryList(
   }
   // Ensure all Modem APNs are added before MODB APNs.
   for (auto apn : apn_list_) {
-    if (!ApnList::IsApnType(apn, apn_type))
+    // TODO(b/267804414): Include modem APNs when the
+    // |modb_required_apn_exists| is true. We need to exclude them for now to
+    // enforce a DUN APN until multiple APNs are supported.
+    if (!ApnList::IsApnType(apn, apn_type) ||
+        (modb_required_apn_exists && !IsRequiredByCarrierApn(apn)))
       continue;
     DCHECK(base::Contains(apn, kApnSourceProperty));
     // Verify all APNs are either from the Modem or MODB.
@@ -2257,7 +2286,8 @@ std::deque<Stringmap> Cellular::BuildApnTryList(
   // Add MODB APNs and update the origin of the custom APN(only for old UI).
   int index_of_first_modb_apn = apn_try_list.size();
   for (const auto& apn : apn_list_) {
-    if (!ApnList::IsApnType(apn, apn_type))
+    if (!ApnList::IsApnType(apn, apn_type) ||
+        (modb_required_apn_exists && !IsRequiredByCarrierApn(apn)))
       continue;
     // Updating the origin of the custom APN is only needed for the old UI,
     // since the APN UI revamp will include the correct APN source.
@@ -2286,8 +2316,11 @@ std::deque<Stringmap> Cellular::BuildApnTryList(
     }
   }
   // Add fallback empty APN as a last try for Default and Attach
-  if (apn_type == ApnList::ApnType::kDefault ||
-      apn_type == ApnList::ApnType::kAttach) {
+  // TODO(b/267804414): Include the fallback APN when the
+  // |modb_required_apn_exists| is true. We need to exclude it for now to
+  // enforce a DUN APN until multiple APNs are supported.
+  if (!modb_required_apn_exists && (apn_type == ApnList::ApnType::kDefault ||
+                                    apn_type == ApnList::ApnType::kAttach)) {
     Stringmap empty_apn = BuildFallbackEmptyApn(apn_type);
     apn_try_list.push_back(empty_apn);
     bool is_same_as_last_good_apn =

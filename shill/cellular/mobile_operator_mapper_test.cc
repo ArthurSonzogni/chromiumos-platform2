@@ -7,15 +7,20 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <string>
 #include <utility>
 #include <vector>
 
 #include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/test/mock_callback.h>
+#include "base/strings/string_number_conversions.h"
+#include "base/strings/string_util.h"
+#include "base/strings/stringprintf.h"
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "shill/cellular/apn_list.h"
 #include "shill/cellular/mobile_operator_storage.h"
 #include "shill/logging.h"
 #include "shill/test_event_dispatcher.h"
@@ -1055,8 +1060,33 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
     // |UpdateOperatorName| only adds the operator name, and not the language.
     VerifyNameListsMatch(operator_name_list_,
                          operator_info_->operator_name_list());
-    EXPECT_EQ(apn_list_, operator_info_->apn_list());
+    EXPECT_EQ(apn_list_, operator_info_->apn_list())
+        << " apn_list_:" << ApnsToString(apn_list_)
+        << " \noperator_info_->apn_list():"
+        << ApnsToString(operator_info_->apn_list());
     EXPECT_EQ(olp_list_, operator_info_->olp_list());
+  }
+
+  std::string ApnsToString(std::vector<MobileOperatorMapper::MobileAPN> apns) {
+    std::vector<std::string> apn_strings;
+    for (const auto& apn : apns) {
+      apn_strings.push_back(ApnToString(apn));
+    }
+    return base::JoinString(apn_strings, ",");
+  }
+
+  std::string ApnToString(MobileOperatorMapper::MobileAPN apn) {
+    return base::StringPrintf(
+        "{apn: %s, username: %s, password: %s, authentication: %s, ip_type: %s "
+        ", apn_types: %s , operator_name_list.size(): %s, "
+        "is_required_by_carrier_spec: %d}",
+        apn.apn.c_str(), apn.username.c_str(), apn.password.c_str(),
+        apn.authentication.c_str(), apn.ip_type.c_str(),
+        ApnList::JoinApnTypes(std::vector<std::string>(apn.apn_types.begin(),
+                                                       apn.apn_types.end()))
+            .c_str(),
+        base::NumberToString(apn.operator_name_list.size()).c_str(),
+        apn.is_required_by_carrier_spec);
   }
 
   void VerifyNameListsMatch(
@@ -1117,8 +1147,8 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
     apn.password = "is_public_boohoohoo_too";
     apn.ip_type = "ipv4";
     apn.apn_types = apn_types_;
+    apn.is_required_by_carrier_spec = true;
     apn_list_.push_back(std::move(apn));
-
     olp_list_ = {{"someother@random.com", "GET", ""}};
   }
 

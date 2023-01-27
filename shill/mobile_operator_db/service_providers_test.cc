@@ -2,11 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <map>
 #include <set>
 
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <google/protobuf/repeated_field.h>
+#include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
 #include <re2/re2.h>
 
@@ -338,6 +340,39 @@ TEST_F(ServiceProvidersTest, CheckConflictingFilters) {
         filter_check(filter, mvno->data().uuid(), "apn_filter");
       }
     }
+  }
+}
+
+TEST_F(ServiceProvidersTest, CheckForUnusedApns) {
+  // When an APN has is_required_by_carrier_spec set to true, no other APNs of
+  // that type will be used. The flag is intended to block APNs from the UI, so
+  // check that no APNS in modb are blocked.
+  auto check_for_unused_apns =
+      [](const std::string& mno_mvno,
+         const ::shill::mobile_operator_db::Data& data) {
+        std::map<int, const shill::mobile_operator_db::MobileAPN*> apn_per_type;
+        for (int i = 0; i < data.mobile_apn_size(); i++) {
+          auto mobile_apn = &data.mobile_apn()[i];
+          for (auto apn_type : mobile_apn->type()) {
+            if (apn_per_type.find(apn_type) == apn_per_type.end()) {
+              apn_per_type[apn_type] = mobile_apn;
+            } else {
+              ASSERT_EQ(apn_per_type[apn_type]->is_required_by_carrier_spec(),
+                        mobile_apn->is_required_by_carrier_spec())
+                  << " " << mno_mvno << " with uuid: " << data.uuid()
+                  << ", apn:'" << mobile_apn->apn()
+                  << "' is overriding apn:" << apn_per_type[apn_type]->apn();
+            }
+          }
+        }
+      };
+
+  for (const auto& mno : database_->mno()) {
+    check_for_unused_apns("MNO", mno.data());
+  }
+  for (auto mvno_mno_pair : mvnos_) {
+    auto mvno = mvno_mno_pair.first;
+    check_for_unused_apns("MVNO", mvno->data());
   }
 }
 

@@ -130,21 +130,22 @@ class MobileOperatorInfoCarriersTest : public Test {
   string ApnToString(MobileOperatorMapper::MobileAPN apn) {
     return base::StringPrintf(
         "{apn: %s, username: %s, password: %s, authentication: %s, ip_type: %s "
-        ", apn_types: %s , operator_name_list.size(): %s}",
+        ", apn_types: %s , operator_name_list.size(): %s, "
+        "is_required_by_carrier_spec: %d}",
         apn.apn.c_str(), apn.username.c_str(), apn.password.c_str(),
         apn.authentication.c_str(), apn.ip_type.c_str(),
         ApnList::JoinApnTypes(
             std::vector<string>(apn.apn_types.begin(), apn.apn_types.end()))
             .c_str(),
-        base::NumberToString(apn.operator_name_list.size()).c_str());
+        base::NumberToString(apn.operator_name_list.size()).c_str(),
+        apn.is_required_by_carrier_spec);
   }
 
   void CheckFirstApn(ApnBuilder apn_builder) {
     EXPECT_GT(operator_info_->apn_list().size(), 0);
-    EXPECT_EQ(PrepareModbApnForComparison(operator_info_->apn_list()[0]),
-              apn_builder.apn())
-        << " operator_info_->apn_list()[0]:"
-        << ApnToString(operator_info_->apn_list()[0])
+    auto apn = PrepareModbApnForComparison(operator_info_->apn_list()[0]);
+    EXPECT_EQ(apn, apn_builder.apn())
+        << " operator_info_->apn_list()[0]:" << ApnToString(apn)
         << " \napn_builder.apn():" << ApnToString(apn_builder.apn());
   }
 

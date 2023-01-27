@@ -83,6 +83,7 @@ mno {
         type : DEFAULT
         username: "testuser2"
         password: "is_public_boohoohoo_too"
+        is_required_by_carrier_spec : true
       }
     }
   }
