@@ -53,8 +53,8 @@ class Session {
       F f;
       f(biometrics_manager_.get());
       biometrics_manager_.reset();
-      error_.clear();
     }
+    error_.clear();
   }
 
   void set_error(const std::string& error) { error_ = error; }

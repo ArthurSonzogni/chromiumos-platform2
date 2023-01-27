@@ -63,5 +63,37 @@ TEST(SessionTest, MoveAssignment) {
   EXPECT_TRUE(enroll_session_2);
 }
 
+TEST(SessionTest, EndValidSession) {
+  MockBiometricsManager mock_biometrics_manager;
+  const std::string kSessionError = "HW is not available";
+
+  BiometricsManager::EnrollSession enroll_session_1(
+      mock_biometrics_manager.session_weak_factory_.GetWeakPtr());
+  enroll_session_1.set_error(kSessionError);
+
+  ASSERT_TRUE(enroll_session_1);
+  ASSERT_EQ(enroll_session_1.error(), kSessionError);
+
+  enroll_session_1.End();
+
+  EXPECT_FALSE(enroll_session_1);
+  EXPECT_TRUE(enroll_session_1.error().empty());
+}
+
+TEST(SessionTest, EndInvalidSession) {
+  const std::string kSessionError = "HW is not available";
+
+  BiometricsManager::EnrollSession enroll_session_1;
+  enroll_session_1.set_error(kSessionError);
+
+  ASSERT_FALSE(enroll_session_1);
+  ASSERT_EQ(enroll_session_1.error(), kSessionError);
+
+  enroll_session_1.End();
+
+  EXPECT_FALSE(enroll_session_1);
+  EXPECT_TRUE(enroll_session_1.error().empty());
+}
+
 }  // namespace
 }  // namespace biod
