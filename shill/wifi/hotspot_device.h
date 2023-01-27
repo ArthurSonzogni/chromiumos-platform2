@@ -27,6 +27,7 @@ class HotspotDevice : public LocalDevice,
  public:
   // Constructor function
   HotspotDevice(Manager* manager,
+                const std::string& primary_link_name,
                 const std::string& link_name,
                 const std::string& mac_address,
                 uint32_t phy_index,
@@ -92,6 +93,14 @@ class HotspotDevice : public LocalDevice,
   bool RemoveInterface();
   void PropertiesChangedTask(const KeyValueStore& properties);
   void StateChanged(const std::string& new_state);
+
+  // Primary interface link name.
+  std::string primary_link_name_;
+  // wpa_supplicant's RPC path for the primary interface.
+  RpcIdentifier supplicant_primary_interface_path_;
+  // If the primary interface was controlled by wpa_supplicant before starting a
+  // virtual interface.
+  bool prev_primary_iface_control_state_;
 
   std::unique_ptr<SupplicantInterfaceProxyInterface>
       supplicant_interface_proxy_;

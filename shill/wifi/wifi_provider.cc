@@ -1131,17 +1131,27 @@ HotspotDeviceRefPtr WiFiProvider::CreateHotspotDevice(
     WiFiBand band,
     WiFiSecurity security,
     LocalDevice::EventCallback callback) {
-  // TODO (b/257340615) Select capable WiFiPhy according to band and security
-  // requirement.
   if (wifi_phys_.empty()) {
     LOG(ERROR) << "No WiFiPhy available.";
     return nullptr;
   }
+
+  // TODO (b/257340615) Select capable WiFiPhy according to band and security
+  // requirement.
   uint32_t phy_index = wifi_phys_.begin()->second->GetPhyIndex();
+
+  // TODO (b/269163735) Use WiFi device registered in WiFiPhy to get the primary
+  // interface.
+  const auto wifi_devices = manager_->FilterByTechnology(Technology::kWiFi);
+  if (wifi_devices.empty()) {
+    LOG(ERROR) << "No WiFi device available.";
+    return nullptr;
+  }
 
   std::string link_name = GetUniqueLocalDeviceName(kHotspotIfacePrefix);
   HotspotDeviceRefPtr dev =
-      new HotspotDevice(manager_, link_name, mac_address, phy_index, callback);
+      new HotspotDevice(manager_, wifi_devices.front().get()->link_name(),
+                        link_name, mac_address, phy_index, callback);
 
   if (dev->SetEnabled(true)) {
     RegisterLocalDevice(dev);

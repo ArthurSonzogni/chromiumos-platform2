@@ -115,7 +115,7 @@ class TetheringManagerTest : public testing::Test {
         ethernet_provider_(new NiceMock<MockEthernetProvider>()),
         upstart_(new NiceMock<MockUpstart>(&control_interface_)),
         hotspot_device_(new NiceMock<MockHotspotDevice>(
-            &manager_, "ap0", "", 0, event_cb_.Get())) {
+            &manager_, "wlan0", "ap0", "", 0, event_cb_.Get())) {
     // Replace the manager's WiFi provider with our mock.
     manager_.wifi_provider_.reset(wifi_provider_);
     // Replace the manager's Ethernet provider with mock.

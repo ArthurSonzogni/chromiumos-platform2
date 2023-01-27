@@ -42,14 +42,16 @@ using ::testing::Test;
 namespace shill {
 
 namespace {
-const char kDeviceName[] = "ap0";
+const char kPrimaryInterfaceName[] = "wlan0";
+const char kInterfaceName[] = "ap0";
 const char kDeviceAddress[] = "00:01:02:03:04:05";
 const char kHotspotSSID[] = "chromeOS-1234";
 const char kHotspotPassphrase[] = "test0000";
 const std::vector<uint8_t> kStationAddress1 = {00, 11, 22, 33, 44, 55};
 const std::vector<uint8_t> kStationAddress2 = {00, 11, 22, 33, 44, 66};
 const uint32_t kPhyIndex = 5678;
-const RpcIdentifier kIfacePath = RpcIdentifier("/interface/path");
+const RpcIdentifier kPrimaryIfacePath = RpcIdentifier("/interface/wlan0");
+const RpcIdentifier kIfacePath = RpcIdentifier("/interface/ap0");
 const RpcIdentifier kNetworkPath = RpcIdentifier("/network/path");
 const RpcIdentifier kStationPath1 = RpcIdentifier("/station/path/1");
 const RpcIdentifier kStationPath2 = RpcIdentifier("/station/path/2");
@@ -60,8 +62,12 @@ class HotspotDeviceTest : public testing::Test {
  public:
   HotspotDeviceTest()
       : manager_(&control_interface_, &dispatcher_, &metrics_),
-        device_(new HotspotDevice(
-            &manager_, kDeviceName, kDeviceAddress, kPhyIndex, cb.Get())),
+        device_(new HotspotDevice(&manager_,
+                                  kPrimaryInterfaceName,
+                                  kInterfaceName,
+                                  kDeviceAddress,
+                                  kPhyIndex,
+                                  cb.Get())),
         supplicant_process_proxy_(new NiceMock<MockSupplicantProcessProxy>()),
         supplicant_interface_proxy_(
             new NiceMock<MockSupplicantInterfaceProxy>()) {
@@ -94,13 +100,45 @@ class HotspotDeviceTest : public testing::Test {
   std::unique_ptr<MockSupplicantInterfaceProxy> supplicant_interface_proxy_;
 };
 
-TEST_F(HotspotDeviceTest, DeviceCleanStartStop) {
+TEST_F(HotspotDeviceTest, DeviceCleanStartStopWiFiDisabled) {
+  // wpa_supplicant does not control wlan0 if WiFi is disabled.
+  EXPECT_CALL(*supplicant_process_proxy_,
+              GetInterface(kPrimaryInterfaceName, _))
+      .WillOnce(Return(false));
+  // Expect to ask wpa_supplicant to control wlan0 first then ap0.
+  EXPECT_CALL(*supplicant_process_proxy_, CreateInterface(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kPrimaryIfacePath), Return(true)))
+      .WillOnce(DoAll(SetArgPointee<1>(kIfacePath), Return(true)));
+  EXPECT_TRUE(device_->Start());
+
+  // Expect disconnect wpa_supplicant from ap0 and wlan0.
+  EXPECT_CALL(*supplicant_process_proxy_, RemoveInterface(kIfacePath))
+      .WillOnce(Return(true));
+  EXPECT_CALL(*supplicant_process_proxy_, RemoveInterface(kPrimaryIfacePath))
+      .WillOnce(Return(true));
+
+  // Expect no DeviceEvent::kInterfaceDisabled sent if the interface is
+  // destroyed by caller not Kernel.
+  EXPECT_CALL(cb, Run(_, _)).Times(0);
+  EXPECT_TRUE(device_->Stop());
+  DispatchPendingEvents();
+  Mock::VerifyAndClearExpectations(&cb);
+}
+
+TEST_F(HotspotDeviceTest, DeviceCleanStartStopWiFiEnabled) {
+  // wpa_supplicant already controls wlan0 if WiFi is enabled.
+  EXPECT_CALL(*supplicant_process_proxy_,
+              GetInterface(kPrimaryInterfaceName, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kPrimaryIfacePath), Return(true)));
+  // wpa_supplicant only need to control ap0.
   EXPECT_CALL(*supplicant_process_proxy_, CreateInterface(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(kIfacePath), Return(true)));
   EXPECT_TRUE(device_->Start());
 
+  // Expect disconnect wpa_supplicant from ap0 only.
   EXPECT_CALL(*supplicant_process_proxy_, RemoveInterface(kIfacePath))
       .WillOnce(Return(true));
+
   // Expect no DeviceEvent::kInterfaceDisabled sent if the interface is
   // destroyed by caller not Kernel.
   EXPECT_CALL(cb, Run(_, _)).Times(0);
@@ -110,9 +148,12 @@ TEST_F(HotspotDeviceTest, DeviceCleanStartStop) {
 }
 
 TEST_F(HotspotDeviceTest, DeviceExistStart) {
+  EXPECT_CALL(*supplicant_process_proxy_,
+              GetInterface(kPrimaryInterfaceName, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kPrimaryIfacePath), Return(true)));
   EXPECT_CALL(*supplicant_process_proxy_, CreateInterface(_, _))
       .WillOnce(Return(false));
-  EXPECT_CALL(*supplicant_process_proxy_, GetInterface(_, _))
+  EXPECT_CALL(*supplicant_process_proxy_, GetInterface(kInterfaceName, _))
       .WillOnce(DoAll(SetArgPointee<1>(kIfacePath), Return(true)));
   EXPECT_TRUE(device_->Start());
 }

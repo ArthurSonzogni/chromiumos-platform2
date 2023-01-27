@@ -28,14 +28,18 @@ const char kInterfaceStateUnknown[] = "unknown";
 
 // Constructor function
 HotspotDevice::HotspotDevice(Manager* manager,
+                             const std::string& primary_link_name,
                              const std::string& link_name,
                              const std::string& mac_address,
                              uint32_t phy_index,
                              LocalDevice::EventCallback callback)
     : LocalDevice(
           manager, IfaceType::kAP, link_name, mac_address, phy_index, callback),
+      primary_link_name_(primary_link_name),
+      prev_primary_iface_control_state_(false),
       service_(nullptr),
       supplicant_state_(kInterfaceStateUnknown) {
+  supplicant_primary_interface_path_ = RpcIdentifier("");
   supplicant_interface_proxy_.reset();
   supplicant_interface_path_ = RpcIdentifier("");
   supplicant_network_path_ = RpcIdentifier("");
@@ -44,11 +48,44 @@ HotspotDevice::HotspotDevice(Manager* manager,
 HotspotDevice::~HotspotDevice() {}
 
 bool HotspotDevice::Start() {
+  prev_primary_iface_control_state_ = SupplicantProcessProxy()->GetInterface(
+      primary_link_name_, &supplicant_primary_interface_path_);
+
+  if (!prev_primary_iface_control_state_) {
+    // Connect wpa_supplicant to the primary interface.
+    KeyValueStore create_interface_args;
+    create_interface_args.Set<std::string>(
+        WPASupplicant::kInterfacePropertyName, primary_link_name_);
+    create_interface_args.Set<std::string>(
+        WPASupplicant::kInterfacePropertyDriver, WPASupplicant::kDriverNL80211);
+    create_interface_args.Set<std::string>(
+        WPASupplicant::kInterfacePropertyConfigFile,
+        WPASupplicant::kSupplicantConfPath);
+    if (!SupplicantProcessProxy()->CreateInterface(
+            create_interface_args, &supplicant_primary_interface_path_)) {
+      LOG(ERROR) << __func__ << ": Cannot connect to the primary interface "
+                 << primary_link_name_;
+      return false;
+    }
+  }
+
   return CreateInterface();
 }
 
 bool HotspotDevice::Stop() {
-  return RemoveInterface();
+  bool ret = RemoveInterface();
+
+  if (!prev_primary_iface_control_state_ &&
+      !supplicant_primary_interface_path_.value().empty()) {
+    // Disconnect wpa_supplicant from the primary interface.
+    if (!SupplicantProcessProxy()->RemoveInterface(
+            supplicant_primary_interface_path_)) {
+      ret = false;
+    }
+  }
+
+  supplicant_primary_interface_path_ = RpcIdentifier("");
+  return ret;
 }
 
 bool HotspotDevice::ConfigureService(std::unique_ptr<HotspotService> service) {
