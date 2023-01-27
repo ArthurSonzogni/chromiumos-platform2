@@ -13,8 +13,11 @@
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/functional/bind.h"
+#include "base/json/string_escape.h"
+#include "base/logging.h"
 #include "base/synchronization/lock.h"
 #include "base/task/sequenced_task_runner.h"
+#include "google/protobuf/message_lite.h"
 #include "missive/client/report_queue.h"
 #include "missive/client/report_queue_configuration.h"
 #include "missive/client/report_queue_factory.h"
@@ -24,6 +27,8 @@
 #include "secagentd/proto/security_xdr_events.pb.h"
 
 namespace secagentd {
+
+namespace pb = cros_xdr::reporting;
 
 namespace {
 
@@ -41,9 +46,33 @@ void SendMessageStatusCallback(
   }
 }
 
-}  // namespace
+void VlogEventForDebug(reporting::Destination destination,
+                       google::protobuf::MessageLite* message) {
+  switch (destination) {
+    case reporting::CROS_SECURITY_AGENT: {
+      auto agent_event =
+          google::protobuf::internal::down_cast<pb::XdrAgentEvent*>(message);
+      VLOG(1) << "XdrAgentEvent:";
+      VLOG(1) << agent_event->DebugString();
+      break;
+    }
+    case reporting::CROS_SECURITY_PROCESS: {
+      auto process_event =
+          google::protobuf::internal::down_cast<pb::XdrProcessEvent*>(message);
+      VLOG(1) << "XdrProcessEvent:";
+      VLOG(1) << process_event->DebugString();
+      break;
+    }
+    default:
+      LOG(FATAL) << "Unknown destination: " << destination;
+  }
+  VLOG(1) << "Raw serialized message:";
+  // GetQuotedJSONString just escapes the given string for cleaner output.
+  // There's no actual JSON conversion happening here.
+  VLOG(1) << base::GetQuotedJSONString(message->SerializeAsString());
+}
 
-namespace pb = cros_xdr::reporting;
+}  // namespace
 
 MessageSender::MessageSender(const base::FilePath& root_path)
     : root_path_(root_path) {}
@@ -149,6 +178,9 @@ void MessageSender::SendMessage(
     mutable_common->CopyFrom(common_);
   }
 
+  if (logging::GetVlogVerbosity() > 0) {
+    VlogEventForDebug(destination, message.get());
+  }
   it->second.get()->Enqueue(
       std::move(message), reporting::SLOW_BATCH,
       base::BindOnce(&SendMessageStatusCallback, destination, std::move(cb)));
