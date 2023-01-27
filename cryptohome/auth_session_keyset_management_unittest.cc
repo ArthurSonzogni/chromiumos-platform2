@@ -7,6 +7,8 @@
 #include <utility>
 
 #include <base/files/file_path.h>
+#include <base/functional/bind.h>
+#include <base/test/bind.h>
 #include <base/test/mock_callback.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
@@ -15,6 +17,7 @@
 #include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <libhwsec/factory/factory_impl.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver/mock_frontend.h>
 #include <libhwsec-foundation/error/testing_helper.h>
@@ -31,6 +34,7 @@
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/key_objects.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_install_attributes.h"
 #include "cryptohome/mock_key_challenge_service_factory.h"
@@ -449,6 +453,157 @@ TEST_F(AuthSessionTestWithKeysetManagement, StartAuthSessionWithoutKeyData) {
 }
 
 // Test that a VaultKeyset without KeyData migration succeeds during login.
+TEST_F(AuthSessionTestWithKeysetManagement,
+       MigrationToUssWithNoKeyDataAndNewFactor) {
+  if (!USE_USS_MIGRATION) {
+    GTEST_SKIP() << "Skipped because this test is valid only when USS "
+                    "migration is enabled.";
+  }
+  // Setup
+  // UserSecretStash is not enabled, setup VaultKeysets for the user.
+
+  SetUpHwsecAuthenticationMocks();
+  int flags = user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE;
+  SetUserSecretStashExperimentForTesting(/*enabled=*/false);
+  AuthInput auth_input = {
+      .user_input = brillo::SecureBlob(kPassword),
+      .locked_to_single_user = std::nullopt,
+      .username = users_[0].name,
+      .obfuscated_username = users_[0].obfuscated,
+  };
+  auth_block_utility_.CreateKeyBlobsWithAuthBlockAsync(
+      AuthBlockType::kTpmEcc, auth_input,
+      base::BindLambdaForTesting(
+          [&](CryptoStatus error, std::unique_ptr<KeyBlobs> key_blobs,
+              std::unique_ptr<AuthBlockState> auth_block_state) {
+            ASSERT_THAT(error, IsOk());
+            FallbackVaultKeyset vk;
+            vk.Initialize(&platform_, &crypto_);
+            KeyData key_data;
+            key_data.set_label(kDefaultLabel);
+            vk.SetKeyData(key_data);
+            vk.CreateFromFileSystemKeyset(file_system_keyset_);
+            ASSERT_THAT(vk.EncryptEx(*key_blobs, *auth_block_state), IsOk());
+            ASSERT_TRUE(vk.Save(
+                users_[0].homedir_path.Append(kKeyFile).AddExtension("0")));
+          }));
+  // Set the UserSecretStash experiment for testing to enable USS
+  // migration with the authentication.
+  SetUserSecretStashExperimentForTesting(/*enabled=*/true);
+  auto auth_session_manager_impl_ = std::make_unique<AuthSessionManager>(
+      &crypto_, &platform_, &user_session_map_, &keyset_management_,
+      &auth_block_utility_, &auth_factor_manager_, &user_secret_stash_storage_);
+
+  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
+      auth_session_manager_impl_->CreateAuthSession(Username(kUsername), flags,
+                                                    AuthIntent::kDecrypt);
+  EXPECT_TRUE(auth_session_status.ok());
+  AuthSession* auth_session = auth_session_status.value().Get();
+  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
+              auth_session->status());
+
+  // Test that authenticating the password should migrate VaultKeyset to
+  // UserSecretStash, converting the VaultKeyset to a backup VaultKeyset.
+  EXPECT_TRUE(auth_session->auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kVaultKeyset));
+  EXPECT_FALSE(auth_session->auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kUserSecretStash));
+  AuthenticateFactor(*auth_session, kDefaultLabel, kPassword);
+
+  // Verify that the vault_keysets still exist and converted to backup and
+  // migrated VaultKeysets.
+  std::unique_ptr<VaultKeyset> vk1 =
+      keyset_management_.GetVaultKeyset(users_[0].obfuscated, kDefaultLabel);
+  ASSERT_NE(vk1, nullptr);
+  ASSERT_TRUE(vk1->IsForBackup());
+  ASSERT_TRUE(vk1->IsMigrated());
+
+  // Verify that migrator created the user_secret_stash and uss_main_key.
+  UserSecretStashStorage uss_storage(&platform_);
+  CryptohomeStatusOr<brillo::Blob> uss_serialized_container_status =
+      uss_storage.LoadPersisted(users_[0].obfuscated);
+  ASSERT_TRUE(uss_serialized_container_status.ok());
+  std::optional<brillo::SecureBlob> uss_credential_secret =
+      kKeyBlobs.DeriveUssCredentialSecret();
+  ASSERT_TRUE(uss_credential_secret.has_value());
+  brillo::SecureBlob decrypted_main_key;
+  CryptohomeStatusOr<std::unique_ptr<UserSecretStash>>
+      user_secret_stash_status =
+          UserSecretStash::FromEncryptedContainerWithWrappingKey(
+              *uss_serialized_container_status, kDefaultLabel,
+              *uss_credential_secret, &decrypted_main_key);
+  ASSERT_TRUE(user_secret_stash_status.ok());
+  // Verify that the user_secret_stash has the wrapped_key_block for
+  // the default label.
+  ASSERT_TRUE(
+      user_secret_stash_status.value()->HasWrappedMainKey(kDefaultLabel));
+  //  Verify that the AuthFactors are created for the AuthFactor labels and
+  //  storage type is updated in the AuthFactor map for each of them.
+  std::map<std::string, std::unique_ptr<AuthFactor>> factor_map =
+      auth_factor_manager_.LoadAllAuthFactors(users_[0].obfuscated);
+  ASSERT_NE(factor_map.find(kDefaultLabel), factor_map.end());
+  ASSERT_EQ(auth_session->auth_factor_map().Find(kDefaultLabel)->storage_type(),
+            AuthFactorStorageType::kUserSecretStash);
+
+  // Verify that the authentication succeeds after migration.
+  CryptohomeStatusOr<InUseAuthSession> auth_session2_status =
+      auth_session_manager_impl_->CreateAuthSession(Username(kUsername), flags,
+                                                    AuthIntent::kDecrypt);
+  EXPECT_TRUE(auth_session2_status.ok());
+  AuthSession* auth_session2 = auth_session2_status.value().Get();
+  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
+              auth_session2->status());
+
+  // Verify that authenticating the password should migrate VaultKeyset to
+  // UserSecretStash, converting the VaultKeyset to a backup VaultKeyset.
+  EXPECT_FALSE(auth_session2->auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kVaultKeyset));
+  EXPECT_TRUE(auth_session2->auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kUserSecretStash));
+  AuthenticateFactor(*auth_session2, kDefaultLabel, kPassword);
+
+  // Test that adding a new keyset succeeds
+  AddFactor(*auth_session2, kPasswordLabel2, kPassword2);
+
+  // Verify authentication works with the added keyset
+  CryptohomeStatusOr<InUseAuthSession> auth_session3_status =
+      auth_session_manager_impl_->CreateAuthSession(Username(kUsername), flags,
+                                                    AuthIntent::kDecrypt);
+  EXPECT_TRUE(auth_session3_status.ok());
+  AuthSession* auth_session3 = auth_session3_status.value().Get();
+  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
+              auth_session3->status());
+
+  // Verify that authenticating the password should migrate VaultKeyset to
+  // UserSecretStash, converting the VaultKeyset to a backup VaultKeyset.
+  EXPECT_FALSE(auth_session3->auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kVaultKeyset));
+  EXPECT_TRUE(auth_session3->auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kUserSecretStash));
+  AuthenticateFactor(*auth_session3, kPasswordLabel2, kPassword2);
+
+  // Test that after the USS is disabled backup keysets are used for login.
+  // TODO(265967183): Disable USS migration rather than USS.
+  SetUserSecretStashExperimentForTesting(/*enabled=*/false);
+  CryptohomeStatusOr<InUseAuthSession> auth_session4_status =
+      auth_session_manager_impl_->CreateAuthSession(Username(kUsername), flags,
+                                                    AuthIntent::kDecrypt);
+  EXPECT_TRUE(auth_session4_status.ok());
+  AuthSession* auth_session4 = auth_session4_status.value().Get();
+  EXPECT_THAT(AuthStatus::kAuthStatusFurtherFactorRequired,
+              auth_session4->status());
+
+  // Verify that authenticating the password should migrate VaultKeyset to
+  // UserSecretStash, converting the VaultKeyset to a backup VaultKeyset.
+  EXPECT_TRUE(auth_session4->auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kVaultKeyset));
+  EXPECT_FALSE(auth_session4->auth_factor_map().HasFactorWithStorage(
+      AuthFactorStorageType::kUserSecretStash));
+  AuthenticateFactor(*auth_session4, kPasswordLabel2, kPassword2);
+  AuthenticateFactor(*auth_session4, kDefaultLabel, kPassword);
+}
+
+// Test that a VaultKeyset without KeyData migration succeeds during login.
 TEST_F(AuthSessionTestWithKeysetManagement, MigrationToUssWithNoKeyData) {
   if (!USE_USS_MIGRATION) {
     GTEST_SKIP() << "Skipped because this test is valid only when USS "
@@ -536,9 +691,6 @@ TEST_F(AuthSessionTestWithKeysetManagement, MigrationToUssWithNoKeyData) {
   EXPECT_TRUE(auth_session2->auth_factor_map().HasFactorWithStorage(
       AuthFactorStorageType::kUserSecretStash));
   AuthenticateAndMigrate(*auth_session2, kDefaultLabel, kPassword);
-
-  // Test that adding a new keyset succeeds
-  AddFactorWithMockAuthBlockUtility(*auth_session2, kPasswordLabel, kPassword);
 }
 
 // Test that creating user with USS and adding AuthFactors adds backup
