@@ -962,7 +962,7 @@ void Cellular::GetLocationCallback(const std::string& gpp_lac_ci_string,
   std::vector<std::string> location_vec = SplitString(
       gpp_lac_ci_string, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   if (location_vec.size() < 4) {
-    LOG(ERROR) << LoggingTag() << ": " << "Unable to parse location string "
+    LOG(ERROR) << LoggingTag() << ": Unable to parse location string "
                << gpp_lac_ci_string;
     return;
   }
@@ -1160,8 +1160,6 @@ void Cellular::OnNetworkValidationResult(int interface_index,
 
   Device::OnNetworkValidationResult(interface_index, result);
 
-  int portal_result = Device::PortalResultToMetricsEnum(result);
-
   // TODO(b/309512268) add support for tethering PDN.
   if (!IsEventOnPrimaryNetwork(interface_index)) {
     return;
@@ -1173,8 +1171,8 @@ void Cellular::OnNetworkValidationResult(int interface_index,
     return;
   }
   // Report cellular specific metrics with APN information.
-  NotifyNetworkValidationResult(*service_->GetLastGoodApn(), portal_result,
-                                result.num_attempts);
+  NotifyNetworkValidationResult(*service_->GetLastGoodApn(),
+                                result.GetResultMetric(), result.num_attempts);
 }
 
 void Cellular::OnModemDestroyed() {

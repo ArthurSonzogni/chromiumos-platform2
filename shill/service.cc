@@ -44,6 +44,7 @@
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/network/network.h"
+#include "shill/portal_detector.h"
 #include "shill/profile.h"
 #include "shill/refptr_types.h"
 #include "shill/store/pkcs11_slot_getter.h"
@@ -215,7 +216,7 @@ Service::Service(Manager* manager, Technology technology)
       store_(base::BindRepeating(&Service::OnPropertyChanged,
                                  weak_ptr_factory_.GetWeakPtr())),
       serial_number_(next_serial_number_++),
-      network_event_handler_(std::make_unique<NetworkEventHandler>()),
+      network_event_handler_(std::make_unique<NetworkEventHandler>(this)),
       adaptor_(manager->control_interface()->CreateServiceAdaptor(this)),
       manager_(manager),
       link_monitor_disabled_(false),
@@ -453,7 +454,7 @@ void Service::Disconnect(Error* error, const char* reason) {
   CHECK(reason);
   if (!IsDisconnectable(error)) {
     LOG(WARNING) << "Disconnect attempted but " << log_name()
-                 << " is not Disconnectable" << ": " << reason;
+                 << " is not Disconnectable: " << reason;
     return;
   }
 
@@ -632,16 +633,8 @@ void Service::SetState(ConnectState state) {
                              technology(), portal_detection_count_);
         portal_detection_count_ = 0;
         break;
-      case kStateRedirectFound:
-        metrics()->SendToUMA(Metrics::kPortalDetectorAttemptsToRedirectFound,
-                             technology(), portal_detection_count_);
-        // Do not reset the counter, state might reach 'online'.
-        break;
-      case kStateOnline:
-        metrics()->SendToUMA(Metrics::kPortalDetectorAttemptsToOnline,
-                             technology(), portal_detection_count_);
-        portal_detection_count_ = 0;
-        break;
+      case kStateRedirectFound:   // FALLTHROUGH
+      case kStateOnline:          // FALLTHROUGH
       case kStateConnected:       // FALLTHROUGH
       case kStateNoConnectivity:  // FALLTHROUGH
       case kStatePortalSuspected:
@@ -2674,4 +2667,50 @@ void Service::AddServiceStateTransitionTimer(const std::string& histogram_name,
   service_metrics_->timers.push_back(std::move(timer));
 }
 
+void Service::NetworkEventHandler::OnNetworkValidationResult(
+    int interface_index, const PortalDetector::Result& result) {
+  if (!service_->IsConnected()) {
+    // A race can happen if the Service is currently disconnecting.
+    LOG(WARNING) << service_->log_name() << ": "
+                 << "Portal detection completed but service is not connected";
+    return;
+  }
+
+  service_->portal_detection_count_++;
+  service_->metrics()->SendEnumToUMA(service_->portal_detection_count_ == 1
+                                         ? Metrics::kPortalDetectorInitialResult
+                                         : Metrics::kPortalDetectorRetryResult,
+                                     service_->technology(),
+                                     result.GetResultMetric());
+
+  // Set the probe URL. It should be empty if there is no redirect.
+  service_->SetProbeUrl(result.probe_url_string);
+
+  switch (result.GetValidationState()) {
+    case PortalDetector::ValidationState::kInternetConnectivity:
+      service_->metrics()->SendToUMA(Metrics::kPortalDetectorAttemptsToOnline,
+                                     service_->technology(),
+                                     service_->portal_detection_count_);
+      service_->portal_detection_count_ = 0;
+      break;
+    case PortalDetector::ValidationState::kPortalRedirect:
+      service_->metrics()->SendToUMA(
+          Metrics::kPortalDetectorAttemptsToRedirectFound,
+          service_->technology(), service_->portal_detection_count_);
+      // Do not reset |portal_detection_count_|, state might reach 'online'.
+      break;
+    case PortalDetector::ValidationState::kNoConnectivity:
+      break;
+    case PortalDetector::ValidationState::kPartialConnectivity:
+      break;
+  }
+
+  if (result.GetValidationState() !=
+      PortalDetector::ValidationState::kInternetConnectivity) {
+    service_->SetPortalDetectionFailure(
+        PortalDetector::PhaseToString(result.http_phase),
+        PortalDetector::StatusToString(result.http_status),
+        result.http_status_code);
+  }
+}
 }  // namespace shill

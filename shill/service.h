@@ -217,7 +217,7 @@ class Service : public base::RefCounted<Service> {
   // state. See the comments for Network::EventHandler for more details.
   class NetworkEventHandler : public Network::EventHandler {
    public:
-    NetworkEventHandler() = default;
+    explicit NetworkEventHandler(Service* service) : service_(service) {}
     virtual ~NetworkEventHandler() = default;
     void OnConnectionUpdated(int interface_index) override {}
     void OnNetworkStopped(int interface_index, bool is_failure) override {}
@@ -235,8 +235,11 @@ class Service : public base::RefCounted<Service> {
     void OnNetworkValidationStart(int interface_index) override {}
     void OnNetworkValidationStop(int interface_index) override {}
     void OnNetworkValidationResult(
-        int interface_index, const PortalDetector::Result& result) override {}
+        int interface_index, const PortalDetector::Result& result) override;
     void OnNetworkDestroyed(int interface_index) override {}
+
+   protected:
+    Service* service_;
   };
 
   static const int kPriorityNone;
@@ -715,8 +718,26 @@ class Service : public base::RefCounted<Service> {
     return traffic_counter_snapshot_;
   }
 
-  void increment_portal_detection_count() { portal_detection_count_++; }
-  int portal_detection_count() const { return portal_detection_count_; }
+  void increment_portal_detection_count_for_testing() {
+    portal_detection_count_++;
+  }
+  int portal_detection_count_for_testing() const {
+    return portal_detection_count_;
+  }
+  const std::string& probe_url_string() const { return probe_url_string_; }
+  const std::string& portal_detection_failure_phase() const {
+    return portal_detection_failure_phase_;
+  }
+  const std::string& portal_detection_failure_status() {
+    return portal_detection_failure_status_;
+  }
+  int portal_detection_failure_status_code() {
+    return portal_detection_failure_status_code_;
+  }
+
+  NetworkEventHandler* network_event_handler() const {
+    return network_event_handler_.get();
+  }
 
   // Read only access to previous error number.  This can f.e. be used to check
   // if SetFailure*() has been called for a service without any additional flags

@@ -238,6 +238,7 @@ class DevicePortalDetectorTest : public testing::Test {
     service_->SetState(Service::kStateConnected);
     SetServiceCheckPortal(true);
     device_->SelectService(service_);
+    service_->AttachNetwork(device_->GetPrimaryNetwork()->AsWeakPtr());
   }
 
   void UpdatePortalDetector() {

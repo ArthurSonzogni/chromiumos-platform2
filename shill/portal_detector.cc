@@ -487,6 +487,54 @@ bool PortalDetector::Result::IsComplete() const {
   return https_probe_completed;
 }
 
+Metrics::PortalDetectorResult PortalDetector::Result::GetResultMetric() const {
+  switch (http_phase) {
+    case PortalDetector::Phase::kUnknown:
+      return Metrics::kPortalDetectorResultUnknown;
+    case PortalDetector::Phase::kDNS:
+      // DNS timeout or failure, portal detection stopped.
+      if (http_status == PortalDetector::Status::kTimeout) {
+        return Metrics::kPortalDetectorResultDNSTimeout;
+      } else {
+        return Metrics::kPortalDetectorResultDNSFailure;
+      }
+    case PortalDetector::Phase::kConnection:
+      // Connection failed, portal detection stopped.
+      return Metrics::kPortalDetectorResultConnectionFailure;
+    case PortalDetector::Phase::kHTTP:
+      if (http_status == PortalDetector::Status::kTimeout) {
+        return Metrics::kPortalDetectorResultHTTPTimeout;
+      } else {
+        return Metrics::kPortalDetectorResultHTTPFailure;
+      }
+    case PortalDetector::Phase::kContent:
+      switch (http_status) {
+        case PortalDetector::Status::kFailure:
+          return Metrics::kPortalDetectorResultContentFailure;
+        case PortalDetector::Status::kSuccess:
+          if (https_status == PortalDetector::Status::kSuccess) {
+            return Metrics::kPortalDetectorResultOnline;
+          } else {
+            return Metrics::kPortalDetectorResultHTTPSFailure;
+          }
+        case PortalDetector::Status::kTimeout:
+          if (https_status == PortalDetector::Status::kSuccess) {
+            // The HTTP probe timed out but the HTTPS probe succeeded.
+            // We expect this to be an uncommon edge case.
+            return Metrics::kPortalDetectorResultContentTimeout;
+          } else {
+            return Metrics::kPortalDetectorResultNoConnectivity;
+          }
+        case PortalDetector::Status::kRedirect:
+          if (!redirect_url_string.empty()) {
+            return Metrics::kPortalDetectorResultRedirectFound;
+          } else {
+            return Metrics::kPortalDetectorResultRedirectNoUrl;
+          }
+      }
+  }
+}
+
 std::ostream& operator<<(std::ostream& stream, PortalDetector::Phase phase) {
   return stream << PortalDetector::PhaseToString(phase);
 }

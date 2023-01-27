@@ -22,6 +22,7 @@
 #include <net-base/ip_address.h>
 
 #include "shill/http_request.h"
+#include "shill/metrics.h"
 
 namespace shill {
 
@@ -177,6 +178,8 @@ class PortalDetector {
     // If the HTTP probe completed normally, returns a HTTP code equivalent to
     // log with UMA. Used for metrics only.
     std::optional<int> GetHTTPResponseCodeMetricResult() const;
+
+    Metrics::PortalDetectorResult GetResultMetric() const;
   };
 
   PortalDetector(EventDispatcher* dispatcher,

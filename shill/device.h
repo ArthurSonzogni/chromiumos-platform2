@@ -286,7 +286,6 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   void OnNetworkValidationResult(int interface_index,
                                  const PortalDetector::Result& result) override;
   void OnNetworkDestroyed(int interface_index) override;
-  int PortalResultToMetricsEnum(PortalDetector::Result portal_result);
 
   void set_enabled_for_testing(bool enabled) { enabled_ = enabled; }
 

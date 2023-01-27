@@ -79,54 +79,6 @@ Service::ConnectState PortalValidationStateToConnectionState(
 }
 }  // namespace
 
-int Device::PortalResultToMetricsEnum(PortalDetector::Result portal_result) {
-  switch (portal_result.http_phase) {
-    case PortalDetector::Phase::kUnknown:
-      return Metrics::kPortalDetectorResultUnknown;
-    case PortalDetector::Phase::kDNS:
-      // DNS timeout or failure, portal detection stopped.
-      if (portal_result.http_status == PortalDetector::Status::kTimeout) {
-        return Metrics::kPortalDetectorResultDNSTimeout;
-      } else {
-        return Metrics::kPortalDetectorResultDNSFailure;
-      }
-    case PortalDetector::Phase::kConnection:
-      // Connection failed, portal detection stopped.
-      return Metrics::kPortalDetectorResultConnectionFailure;
-    case PortalDetector::Phase::kHTTP:
-      if (portal_result.http_status == PortalDetector::Status::kTimeout) {
-        return Metrics::kPortalDetectorResultHTTPTimeout;
-      } else {
-        return Metrics::kPortalDetectorResultHTTPFailure;
-      }
-    case PortalDetector::Phase::kContent:
-      switch (portal_result.http_status) {
-        case PortalDetector::Status::kFailure:
-          return Metrics::kPortalDetectorResultContentFailure;
-        case PortalDetector::Status::kSuccess:
-          if (portal_result.https_status == PortalDetector::Status::kSuccess) {
-            return Metrics::kPortalDetectorResultOnline;
-          } else {
-            return Metrics::kPortalDetectorResultHTTPSFailure;
-          }
-        case PortalDetector::Status::kTimeout:
-          if (portal_result.https_status == PortalDetector::Status::kSuccess) {
-            // The HTTP probe timed out but the HTTPS probe succeeded.
-            // We expect this to be an uncommon edge case.
-            return Metrics::kPortalDetectorResultContentTimeout;
-          } else {
-            return Metrics::kPortalDetectorResultNoConnectivity;
-          }
-        case PortalDetector::Status::kRedirect:
-          if (!portal_result.redirect_url_string.empty()) {
-            return Metrics::kPortalDetectorResultRedirectFound;
-          } else {
-            return Metrics::kPortalDetectorResultRedirectNoUrl;
-          }
-      }
-  }
-}
-
 const char Device::kStoragePowered[] = "Powered";
 
 Device::Device(Manager* manager,
@@ -683,17 +635,6 @@ void Device::OnNetworkValidationResult(int interface_index,
   // When already connected, a Network must exist.
   DCHECK(GetPrimaryNetwork());
 
-  selected_service_->increment_portal_detection_count();
-  int portal_detection_count = selected_service_->portal_detection_count();
-  int portal_result = PortalResultToMetricsEnum(result);
-  metrics()->SendEnumToUMA(portal_detection_count == 1
-                               ? Metrics::kPortalDetectorInitialResult
-                               : Metrics::kPortalDetectorRetryResult,
-                           technology(), portal_result);
-
-  // Set the probe URL. It should be empty if there is no redirect.
-  selected_service_->SetProbeUrl(result.probe_url_string);
-
   Service::ConnectState state =
       PortalValidationStateToConnectionState(result.GetValidationState());
   if (state == Service::kStateOnline) {
@@ -703,10 +644,6 @@ void Device::OnNetworkValidationResult(int interface_index,
     GetPrimaryNetwork()->StopPortalDetection();
   } else if (Service::IsPortalledState(state)) {
     OnNetworkValidationFailure();
-    selected_service_->SetPortalDetectionFailure(
-        PortalDetector::PhaseToString(result.http_phase),
-        PortalDetector::StatusToString(result.http_status),
-        result.http_status_code);
     if (!GetPrimaryNetwork()->RestartPortalDetection()) {
       state = Service::kStateNoConnectivity;
     }
@@ -769,8 +706,7 @@ bool Device::IsUnderlyingDeviceEnabled() const {
 void Device::OnEnabledStateChanged(ResultCallback callback,
                                    const Error& error) {
   LOG(INFO) << __func__ << " (target: " << enabled_pending_ << ","
-            << " success: " << error.IsSuccess() << ")"
-            << " on " << link_name_;
+            << " success: " << error.IsSuccess() << ") on " << link_name_;
 
   if (error.IsSuccess()) {
     UpdateEnabledState();
@@ -786,8 +722,7 @@ void Device::OnEnabledStateChanged(ResultCallback callback,
 
 void Device::UpdateEnabledState() {
   SLOG(this, 1) << __func__ << " (current: " << enabled_
-                << ", target: " << enabled_pending_ << ")"
-                << " on " << link_name_;
+                << ", target: " << enabled_pending_ << ") on " << link_name_;
   enabled_ = enabled_pending_;
   if (!enabled_ && ShouldBringNetworkInterfaceDownAfterDisabled()) {
     BringNetworkInterfaceDown();
