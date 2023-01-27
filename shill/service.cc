@@ -9,6 +9,7 @@
 #include <algorithm>
 #include <array>
 #include <map>
+#include <memory>
 #include <optional>
 #include <set>
 #include <string>
@@ -226,6 +227,7 @@ Service::Service(Manager* manager, Technology technology)
       store_(base::BindRepeating(&Service::OnPropertyChanged,
                                  weak_ptr_factory_.GetWeakPtr())),
       serial_number_(next_serial_number_++),
+      network_event_handler_(std::make_unique<NetworkEventHandler>()),
       adaptor_(manager->control_interface()->CreateServiceAdaptor(this)),
       manager_(manager),
       link_monitor_disabled_(false),
@@ -351,6 +353,10 @@ Service::Service(Manager* manager, Technology technology)
 }
 
 Service::~Service() {
+  if (attached_network_) {
+    LOG(WARNING) << "Service " << log_name() << " still had a Network attached";
+    attached_network_->UnregisterEventHandler(network_event_handler_.get());
+  }
   SLOG(this, 1) << technology() << " Service " << serial_number_
                 << " destroyed.";
 }
@@ -1216,13 +1222,16 @@ void Service::SetAttachedNetwork(base::WeakPtr<Network> network) {
     // Network.
     attached_network_->RegisterCurrentIPConfigChangeHandler({});
     attached_network_->OnStaticIPConfigChanged({});
+    attached_network_->UnregisterEventHandler(network_event_handler_.get());
   }
   attached_network_ = network;
   EmitIPConfigPropertyChange();
   if (attached_network_) {
+    // TODO(b/265607618): Migrate to NetworkEventHandler
     attached_network_->RegisterCurrentIPConfigChangeHandler(base::BindRepeating(
         &Service::EmitIPConfigPropertyChange, weak_ptr_factory_.GetWeakPtr()));
     NotifyStaticIPConfigChanged();
+    attached_network_->RegisterEventHandler(network_event_handler_.get());
   }
 }
 

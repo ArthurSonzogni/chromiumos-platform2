@@ -23,6 +23,7 @@
 #include <chromeos/patchpanel/dbus/client.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <metrics/timer.h>
+#include <net-base/ip_address.h>
 
 #include "shill/adaptor_interfaces.h"
 #include "shill/callbacks.h"
@@ -30,6 +31,8 @@
 #include "shill/event_history.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
+#include "shill/network/network.h"
+#include "shill/portal_detector.h"
 #include "shill/refptr_types.h"
 #include "shill/static_ip_parameters.h"
 #include "shill/store/pkcs11_slot_getter.h"
@@ -217,6 +220,34 @@ class Service : public base::RefCounted<Service> {
     kNotDetected,
     kSuspected,
     kConfirmed,
+  };
+
+  // Delegate class for Network::EventHandler. The NetworkEventHandler of a
+  // Service is only registered to a Network when the Service is attached to
+  // that Network, i.e when the Service is in an active connecting or connected
+  // state. See the comments for Network::EventHandler for more details.
+  class NetworkEventHandler : public Network::EventHandler {
+   public:
+    NetworkEventHandler() = default;
+    virtual ~NetworkEventHandler() = default;
+    void OnConnectionUpdated(int interface_index) override {}
+    void OnNetworkStopped(int interface_index, bool is_failure) override {}
+    void OnIPConfigsPropertyUpdated(int interface_index) override {}
+    void OnGetDHCPLease(int interface_index) override {}
+    void OnGetDHCPFailure(int interface_index) override {}
+    void OnGetSLAACAddress(int interface_index) override {}
+    void OnIPv4ConfiguredWithDHCPLease(int interface_index) override {}
+    void OnIPv6ConfiguredWithSLAACAddress(int interface_index) override {}
+    void OnNeighborReachabilityEvent(
+        int interface_index,
+        const net_base::IPAddress& ip_address,
+        patchpanel::Client::NeighborRole role,
+        patchpanel::Client::NeighborStatus status) override {}
+    void OnNetworkValidationStart(int interface_index) override {}
+    void OnNetworkValidationStop(int interface_index) override {}
+    void OnNetworkValidationResult(
+        int interface_index, const PortalDetector::Result& result) override {}
+    void OnNetworkDestroyed(int interface_index) override {}
   };
 
   static const int kPriorityNone;
@@ -1118,6 +1149,8 @@ class Service : public base::RefCounted<Service> {
   // The Network which is attached to this Service now, if there is any. Service
   // will push static IP configs to the attached network.
   base::WeakPtr<Network> attached_network_;
+  // EventHandler registered to |attached_network_| when it is defined.
+  std::unique_ptr<NetworkEventHandler> network_event_handler_;
 
   std::unique_ptr<ServiceAdaptorInterface> adaptor_;
   StaticIPParameters static_ip_parameters_;
