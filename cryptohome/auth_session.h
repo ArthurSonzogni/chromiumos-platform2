@@ -289,11 +289,6 @@ class AuthSession final {
   void SetAuthSessionAsAuthenticated(
       base::span<const AuthIntent> new_authorized_intents);
 
-  // This function returns credentials based on the state of the current
-  // |AuthSession|.
-  MountStatusOr<std::unique_ptr<Credentials>> GetCredentials(
-      const AuthorizationRequest& authorization_request);
-
   // Converts the D-Bus AuthInput proto into the C++ struct. Returns nullopt on
   // failure.
   CryptohomeStatusOr<AuthInput> CreateAuthInputForAuthentication(

@@ -1859,35 +1859,6 @@ std::optional<base::UnguessableToken> AuthSession::GetTokenFromSerializedString(
   return base::UnguessableToken::Deserialize(high, low);
 }
 
-MountStatusOr<std::unique_ptr<Credentials>> AuthSession::GetCredentials(
-    const cryptohome::AuthorizationRequest& authorization_request) {
-  auto credentials = std::make_unique<Credentials>(
-      username_, brillo::SecureBlob(authorization_request.key().secret()));
-  credentials->set_key_data(authorization_request.key().data());
-
-  if (authorization_request.key().data().type() == KeyData::KEY_TYPE_KIOSK) {
-    if (!credentials->passkey().empty()) {
-      LOG(ERROR) << "Non-empty passkey in kiosk key.";
-      return MakeStatus<CryptohomeMountError>(
-          CRYPTOHOME_ERR_LOC(kLocAuthSessionNonEmptyKioskKeyInGetCred),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-          MountError::MOUNT_ERROR_INVALID_ARGS);
-    }
-    brillo::SecureBlob public_mount_passkey =
-        keyset_management_->GetPublicMountPassKey(username_);
-    if (public_mount_passkey.empty()) {
-      LOG(ERROR) << "Could not get public mount passkey.";
-      return MakeStatus<CryptohomeMountError>(
-          CRYPTOHOME_ERR_LOC(kLocAuthSessionEmptyPublicMountKeyInGetCred),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-          MountError::MOUNT_ERROR_KEY_FAILURE);
-    }
-    credentials->set_passkey(public_mount_passkey);
-  }
-
-  return credentials;
-}
-
 std::optional<ChallengeCredentialAuthInput>
 AuthSession::CreateChallengeCredentialAuthInput(
     const cryptohome::AuthorizationRequest& authorization) {

@@ -844,16 +844,6 @@ class UserDataAuth {
   // Note: This must only be called on mount thread
   bool RemoveAllMounts();
 
-  // Calling this function will try to ensure that |public_mount_salt_| is ready
-  // to use. If it's not ready, we'll generate it. Returns true if
-  // |public_mount_salt_| is ready.
-  bool CreatePublicMountSaltIfNeeded();
-
-  // Gets passkey for |public_mount_id|. Returns true if a passkey is generated
-  // successfully. Otherwise, returns false.
-  bool GetPublicMountPassKey(const std::string& public_mount_id,
-                             std::string* public_mount_passkey);
-
   // Determines whether the mount request should be ephemeral. On error, returns
   // status, otherwise, return the result (whether to mount ephemeral).
   CryptohomeStatusOr<bool> GetShouldMountAsEphemeral(
@@ -987,20 +977,8 @@ class UserDataAuth {
 
   // =============== Periodic Maintenance Related Methods ===============
 
-  // Called periodically on Mount thread to detect low disk space and emit a
-  // signal if detected. This also does various cleanup task.
-  void LowDiskCallback();
-
-  // This is called periodically, and does some routine cleanups. Currently this
-  // free disk space consumed by unused cryptohomes and reset the dictionary
-  // attack mitigation.
-  void DoAutoCleanup();
-
   // Does what its name suggests. Usually called by DoAutoCleanup().
   void ResetDictionaryAttackMitigation();
-
-  // This method takes entropy from the TPM and seeds it to /dev/urandom.
-  void SeedUrandom();
 
   // =============== PKCS#11 Related Utilities ===============
 
@@ -1039,27 +1017,6 @@ class UserDataAuth {
   void OnOwnershipTakenSignal();
 
   // =============== Stateful Recovery related Helpers ===============
-
-  // This is a utility function for stateful recovery functionality to call when
-  // it wants to mount a user's home directory. The user specified by
-  // |username|'s home is mounted with |passkey|, and if successfully mounted,
-  // the function returns true and set |out_home_path| to the mounted home.
-  // Otherwise, return false. Note that this function must log any error itself,
-  // no logging will be done by the caller.
-  bool StatefulRecoveryMount(const std::string& username,
-                             const std::string& passkey,
-                             base::FilePath* out_home_path);
-
-  // This is a utility function for stateful recovery to unmount all user's home
-  // directories. It'll return true if all the user's home directories are
-  // successfully unmounted. Otherwise, it'll return false. Note that this
-  // function must log any error itself, no logging will be done by the caller.
-  bool StatefulRecoveryUnmount();
-
-  // This is a utility function for stateful recovery to check if a user is the
-  // owner. It'll return true if the user specified by |username| is the owner,
-  // and false otherwise.
-  bool StatefulRecoveryIsOwner(const std::string& username);
 
   // Ensures BootLockbox is finalized;
   void EnsureBootLockboxFinalized();
