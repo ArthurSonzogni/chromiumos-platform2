@@ -93,7 +93,7 @@ class StaticIPParametersTest : public Test {
   // static config into service, and since there is Connection and ipconfig() in
   // the Network, the new IPConfig will be applied.
   void AttachNetwork() {
-    service_->SetAttachedNetwork(network_->AsWeakPtr());
+    service_->AttachNetwork(network_->AsWeakPtr());
     dispatcher_.task_environment().RunUntilIdle();
   }
 

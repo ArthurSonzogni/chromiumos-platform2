@@ -118,7 +118,7 @@ TEST_F(EthernetServiceTest, GetTethering) {
   EXPECT_EQ(Service::TetheringState::kNotDetected, service_->GetTethering());
 
   MockNetwork network(1, "eth0", Technology::kEthernet);
-  service_->SetAttachedNetwork(network.AsWeakPtr());
+  service_->AttachNetwork(network.AsWeakPtr());
   EXPECT_CALL(network, IsConnectedViaTether())
       .WillOnce(Return(true))
       .WillOnce(Return(false));

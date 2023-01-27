@@ -1213,26 +1213,35 @@ void Service::EnableAndRetainAutoConnect() {
   RetainAutoConnect();
 }
 
-void Service::SetAttachedNetwork(base::WeakPtr<Network> network) {
-  if (attached_network_.get() == network.get()) {
-    return;
-  }
+void Service::AttachNetwork(base::WeakPtr<Network> network) {
   if (attached_network_) {
-    // Clear the handler and static IP config registered on the previous
-    // Network.
-    attached_network_->RegisterCurrentIPConfigChangeHandler({});
-    attached_network_->OnStaticIPConfigChanged({});
-    attached_network_->UnregisterEventHandler(network_event_handler_.get());
+    LOG(ERROR) << log_name() << ": Network was already attached.";
+    DetachNetwork();
+  }
+  if (!network) {
+    LOG(ERROR) << log_name() << ": cannot attach null Network";
+    return;
   }
   attached_network_ = network;
   EmitIPConfigPropertyChange();
-  if (attached_network_) {
-    // TODO(b/265607618): Migrate to NetworkEventHandler
-    attached_network_->RegisterCurrentIPConfigChangeHandler(base::BindRepeating(
-        &Service::EmitIPConfigPropertyChange, weak_ptr_factory_.GetWeakPtr()));
-    NotifyStaticIPConfigChanged();
-    attached_network_->RegisterEventHandler(network_event_handler_.get());
+  attached_network_->RegisterCurrentIPConfigChangeHandler(base::BindRepeating(
+      &Service::EmitIPConfigPropertyChange, weak_ptr_factory_.GetWeakPtr()));
+  attached_network_->OnStaticIPConfigChanged(static_ip_parameters_.config());
+  attached_network_->RegisterEventHandler(network_event_handler_.get());
+}
+
+void Service::DetachNetwork() {
+  if (!attached_network_) {
+    LOG(ERROR) << log_name() << ": no Network to detach";
+    return;
   }
+  // Clear the handler and static IP config registered on the previous
+  // Network.
+  attached_network_->UnregisterEventHandler(network_event_handler_.get());
+  attached_network_->RegisterCurrentIPConfigChangeHandler({});
+  attached_network_->OnStaticIPConfigChanged({});
+  attached_network_ = nullptr;
+  EmitIPConfigPropertyChange();
 }
 
 void Service::EmitIPConfigPropertyChange() {

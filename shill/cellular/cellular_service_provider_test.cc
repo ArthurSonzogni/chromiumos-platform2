@@ -573,7 +573,7 @@ TEST_F(CellularServiceProviderTest, AcquireTetheringNetwork) {
   std::unique_ptr<MockNetwork> network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestDeviceName, Technology::kCellular);
   auto network_ptr = network.get();
-  service->SetAttachedNetwork(network->AsWeakPtr());
+  service->AttachNetwork(network->AsWeakPtr());
 
   // The tethering network acquisition in the device succeeds
   // and a valid Network is returned

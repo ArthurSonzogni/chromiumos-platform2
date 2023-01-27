@@ -470,7 +470,9 @@ class Service : public base::RefCounted<Service> {
   Network* attached_network() const { return attached_network_.get(); }
   // Notifies Service that a connecting or connected Network is attached to this
   // Service.
-  mockable void SetAttachedNetwork(base::WeakPtr<Network> network);
+  mockable void AttachNetwork(base::WeakPtr<Network> network);
+  // Removes the attached Network from this Service.
+  mockable void DetachNetwork();
   // Notifies D-Bus listeners of a IPConfig change event if the new IPConfig is
   // not empty.
   void EmitIPConfigPropertyChange();

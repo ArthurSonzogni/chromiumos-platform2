@@ -764,7 +764,7 @@ TEST_F(ServiceTest, StaticIPConfigsChanged) {
 
   auto network =
       std::make_unique<MockNetwork>(1, "test_ifname", Technology::kEthernet);
-  service_->SetAttachedNetwork(network->AsWeakPtr());
+  service_->AttachNetwork(network->AsWeakPtr());
   SetStateField(Service::kStateConnected);
 
   // Changes the address, network should be notified.
@@ -781,7 +781,7 @@ TEST_F(ServiceTest, StaticIPConfigsChanged) {
   ASSERT_TRUE(service_->Save(&storage));
   // Detaches the network, it should be notified once, but not any more.
   EXPECT_CALL(*network, OnStaticIPConfigChanged(_));
-  service_->SetAttachedNetwork(nullptr);
+  service_->DetachNetwork();
   update_address(kTestIpAddress2);
 }
 
@@ -1672,7 +1672,7 @@ TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
     Error error;
     auto network =
         std::make_unique<MockNetwork>(1, kIfName, Technology::kEthernet);
-    service_->SetAttachedNetwork(network->AsWeakPtr());
+    service_->AttachNetwork(network->AsWeakPtr());
     auto ipconfig =
         std::make_unique<MockIPConfig>(control_interface(), kIfName);
     EXPECT_CALL(*network, GetCurrentIPConfig())
@@ -1680,13 +1680,14 @@ TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
     EXPECT_EQ(ipconfig->GetRpcIdentifier(),
               service_->GetIPConfigRpcIdentifier(&error));
     EXPECT_TRUE(error.IsSuccess());
+    service_->DetachNetwork();
   }
 
   {
     Error error;
     auto network =
         std::make_unique<MockNetwork>(1, kIfName, Technology::kEthernet);
-    service_->SetAttachedNetwork(network->AsWeakPtr());
+    service_->AttachNetwork(network->AsWeakPtr());
     EXPECT_EQ(DBusControl::NullRpcIdentifier(),
               service_->GetIPConfigRpcIdentifier(&error));
     EXPECT_EQ(Error::kNotFound, error.type());

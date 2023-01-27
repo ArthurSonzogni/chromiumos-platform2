@@ -31,7 +31,7 @@ class MockCellularService : public CellularService {
   MOCK_METHOD(void, SetState, (ConnectState), (override));
   MOCK_METHOD(void, SetFailure, (ConnectFailure), (override));
   MOCK_METHOD(void, SetFailureSilent, (ConnectFailure), (override));
-  MOCK_METHOD(void, SetAttachedNetwork, (base::WeakPtr<Network>), (override));
+  MOCK_METHOD(void, AttachNetwork, (base::WeakPtr<Network>), (override));
   MOCK_METHOD(bool, IsPortalDetectionDisabled, (), (const, override));
   MOCK_METHOD(void, SetStrength, (uint8_t), (override));
   MOCK_METHOD(ConnectState, state, (), (const, override));

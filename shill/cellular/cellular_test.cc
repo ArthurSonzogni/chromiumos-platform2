@@ -3345,7 +3345,7 @@ TEST_F(CellularTest, AcquireTetheringNetwork_DunAsDefault) {
 
   // Service would get the attached network updated, and state transitions to
   // Configuring.
-  EXPECT_CALL(*service, SetAttachedNetwork(IsWeakPtrTo(default_pdn_)));
+  EXPECT_CALL(*service, AttachNetwork(IsWeakPtrTo(default_pdn_)));
   ON_CALL(*service, state()).WillByDefault(Return(Service::kStateAssociating));
   EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
 
@@ -3732,7 +3732,7 @@ TEST_F(CellularTest, ReleaseTetheringNetwork_DunAsDefault) {
 
   // Service would get the attached network updated, and state transitions to
   // Configuring.
-  EXPECT_CALL(*service, SetAttachedNetwork(IsWeakPtrTo(default_pdn_)));
+  EXPECT_CALL(*service, AttachNetwork(IsWeakPtrTo(default_pdn_)));
   ON_CALL(*service, state()).WillByDefault(Return(Service::kStateAssociating));
   EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
 

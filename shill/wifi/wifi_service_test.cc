@@ -2075,7 +2075,7 @@ TEST_F(WiFiServiceTest, SuspectedCredentialFailure) {
 TEST_F(WiFiServiceTest, GetTethering) {
   MockNetwork network(1, "ifname", Technology::kWiFi);
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
-  service->SetAttachedNetwork(network.AsWeakPtr());
+  service->AttachNetwork(network.AsWeakPtr());
   EXPECT_EQ(Service::TetheringState::kNotDetected, service->GetTethering());
 
   // Since the device isn't connected, we shouldn't even query the WiFi device.

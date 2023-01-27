@@ -565,7 +565,7 @@ void Device::SelectService(const ServiceRefPtr& service,
         selected_service_->state() != Service::kStateFailure) {
       SetServiceState(Service::kStateIdle);
     }
-    selected_service_->SetAttachedNetwork(nullptr);
+    selected_service_->DetachNetwork();
   }
 
   selected_service_ = service;
@@ -583,7 +583,7 @@ void Device::ResetServiceAttachedNetwork() {
     auto primary_network = GetPrimaryNetwork();
     CHECK(primary_network);
     primary_network->set_logging_tag(LoggingTag());
-    selected_service_->SetAttachedNetwork(primary_network->AsWeakPtr());
+    selected_service_->AttachNetwork(primary_network->AsWeakPtr());
   }
 }
 
