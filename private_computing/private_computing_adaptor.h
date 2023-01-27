@@ -8,6 +8,7 @@
 #include <memory>
 #include <vector>
 
+#include <base/files/file_util.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include "private_computing/org.chromium.PrivateComputing.h"
 #include "private_computing/proto_bindings/private_computing_service.pb.h"
@@ -39,8 +40,16 @@ class PrivateComputingAdaptor
 
   std::vector<uint8_t> GetLastPingDatesStatus() override;
 
+  void SetVarLibDirForTest(const base::FilePath& dir) { var_lib_dir_ = dir; }
+
+  void SetPreserveDirForTest(const base::FilePath& dir) { preserve_dir_ = dir; }
+
  private:
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+  // Base sysfs directory save the status after every successful ping.
+  base::FilePath var_lib_dir_;
+  // Base sysfs directory to preserve the status after powerwash.
+  base::FilePath preserve_dir_;
 };
 
 }  // namespace private_computing

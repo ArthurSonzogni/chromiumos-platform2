@@ -56,12 +56,39 @@ std::string ParseProto(const base::Location& from_here,
   return "";
 }
 
+std::optional<std::string> ReadActiveStatusFile(
+    const base::FilePath& filePath) {
+  base::File file(filePath, base::File::FLAG_OPEN | base::File::FLAG_READ);
+
+  if (!file.IsValid()) {
+    return std::nullopt;
+  }
+
+  base::File::Info file_info;
+  if (!file.GetInfo(&file_info) || file_info.size <= 0) {
+    return std::nullopt;
+  }
+
+  std::string result;
+  result.resize(file_info.size);
+  const int read_result =
+      file.Read(/* offset */ 0, result.data(), file_info.size);
+
+  if (read_result != file_info.size) {
+    return std::nullopt;
+  }
+
+  return result;
+}
+
 }  // namespace
 
 PrivateComputingAdaptor::PrivateComputingAdaptor(
     std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object)
     : org::chromium::PrivateComputingAdaptor(this),
-      dbus_object_(std::move(dbus_object)) {}
+      dbus_object_(std::move(dbus_object)),
+      var_lib_dir_(kPrivateComputingLastActiveDatesWritePath),
+      preserve_dir_(kPrivateComputingLastActiveDatesReadPath) {}
 
 void PrivateComputingAdaptor::RegisterAsync(
     brillo::dbus_utils::AsyncEventSequencer::CompletionAction
@@ -83,7 +110,7 @@ std::vector<uint8_t> PrivateComputingAdaptor::SaveLastPingDatesStatus(
   }
 
   // Write serialized request to |kPrivateComputingLastActiveDatesWritePath|
-  base::File file(base::FilePath(kPrivateComputingLastActiveDatesWritePath),
+  base::File file(var_lib_dir_,
                   base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
 
   if (!file.IsValid()) {
@@ -110,44 +137,42 @@ std::vector<uint8_t> PrivateComputingAdaptor::SaveLastPingDatesStatus(
 }
 
 std::vector<uint8_t> PrivateComputingAdaptor::GetLastPingDatesStatus() {
-  LOG(INFO) << "Get the last ping dates from preserved file.";
-
-  base::File file(base::FilePath(kPrivateComputingLastActiveDatesReadPath),
-                  base::File::FLAG_OPEN | base::File::FLAG_READ);
+  // First try to read from `/var/lib/private_computing` folder.
+  // Because this file will be updated after every successfully ping.
+  // If this file exists, then it will be the latest value.
+  std::optional<std::string> result_string = ReadActiveStatusFile(var_lib_dir_);
 
   GetStatusResponse response;
 
-  if (!file.IsValid()) {
-    response.set_error_message(base::StrCat(
-        {"Could not open file ", kPrivateComputingLastActiveDatesReadPath}));
-    return SerializeProto(response);
+  if (!result_string) {
+    LOG(ERROR) << "PSM: Cannot read from "
+               << kPrivateComputingLastActiveDatesWritePath;
+
+    // Next try to read from preserved file if reading from var/lib failed,
+    // which means the device was powerwashed/recovery/new device. If the
+    // device was powerwashed, then the preserved file should be existed.
+    // If the device was recovery/new device, reading from preserved file
+    // should be failed as well.
+    result_string = ReadActiveStatusFile(preserve_dir_);
+
+    if (!result_string) {
+      LOG(ERROR) << "PSM: Cannot read from "
+                 << kPrivateComputingLastActiveDatesReadPath;
+
+      // Cannot read neither from /var/lib or preserved file, then return
+      // the response with error message.
+      response.set_error_message(
+          "PSM: Neither from /var/lib or the preserved file");
+      return SerializeProto(response);
+    }
   }
 
-  base::File::Info file_info;
+  LOG(INFO) << "PSM: Successfully read from /var/lib or /preserved file.";
 
-  if (!file.GetInfo(&file_info) || file_info.size < 0) {
-    response.set_error_message(
-        base::StrCat({"Failed to read data file info ",
-                      kPrivateComputingLastActiveDatesReadPath}));
-    return SerializeProto(response);
-  }
-
-  std::string result;
-  result.resize(file_info.size);
-  const int read_result =
-      file.Read(/* offset */ 0, result.data(), file_info.size);
-  if (read_result != file_info.size) {
-    response.set_error_message(
-        base::StrCat({"Failed to read data file ",
-                      kPrivateComputingLastActiveDatesReadPath}));
-    return SerializeProto(response);
-  }
-
-  // Successfully read file into |result|.
+  // Successfully read file into |result_string|.
   SaveStatusRequest request;
-  LOG(INFO) << "Successfully read the last ping dates from preserved file.";
 
-  if (!request.ParseFromString(result)) {
+  if (!request.ParseFromString(result_string.value())) {
     response.set_error_message(
         base::StrCat({"Failed to parse result string as a SaveStatusRequest ",
                       kPrivateComputingLastActiveDatesReadPath}));

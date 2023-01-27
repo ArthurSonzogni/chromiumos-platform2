@@ -77,7 +77,7 @@ if (use.test) {
     ]
   }
   executable("private_computing_test") {
-    sources = []
+    sources = [ "private_computing_adaptor_test.cc" ]
     configs += [
       "//common-mk:test",
       ":private_computing_test_config",
