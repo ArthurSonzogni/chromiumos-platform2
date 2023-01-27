@@ -35,6 +35,9 @@ void PackSecurity(const WiFiEndpoint::SecurityFlags& flags,
                   KeyValueStore* args) {
   Strings wpa, rsn;
 
+  if (flags.rsn_8021x_wpa3)
+    rsn.push_back(std::string(WPASupplicant::kKeyManagementMethodPrefixEAP) +
+                  std::string(WPASupplicant::kKeyManagementMethodSuiteB));
   if (flags.rsn_sae)
     rsn.push_back(WPASupplicant::kKeyManagementMethodSAE);
   if (flags.rsn_8021x) {
