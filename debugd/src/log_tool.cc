@@ -1033,10 +1033,10 @@ std::vector<std::vector<std::string>> GetAllDebugTitlesForTest() {
 // track the duration of each subtasks. Location:
 // tools/metrics/histograms/metadata/chromeos/histograms.xml.
 // name="ChromeOS.Debugd.Perf.GetBigFeedbackLogs.{SubTaskName}".
-void LogTool::GetBigFeedbackLogs(const base::ScopedFD& fd,
-                                 const std::string& username,
-                                 PerfTool* perf_tool,
-                                 const std::vector<int32_t>& requested_logs) {
+void LogTool::GetFeedbackLogsV2(const base::ScopedFD& fd,
+                                const std::string& username,
+                                PerfTool* perf_tool,
+                                const std::vector<int32_t>& requested_logs) {
   LogMap results;
   base::Value::Dict dictionary;
   // Maps each subtask to a callable, which performs that task when invoked.
@@ -1107,6 +1107,17 @@ void LogTool::GetBigFeedbackLogs(const base::ScopedFD& fd,
   sw.Lap("PopulateDictionaryValue");
   SerializeLogsAsJSON(dictionary, fd);
   sw.Lap("SerializeLogsAsJSON");
+}
+
+void LogTool::GetFeedbackLogsV3(const base::ScopedFD& fd,
+                                const std::string& username,
+                                PerfTool* perf_tool,
+                                const std::vector<int32_t>& requested_logs) {
+  base::Value::Dict dictionary;
+  // TODO(xiangdongkong@): Implement the logic that collects the same logs as
+  // GetFeedbackLogsV2 in parallel whenever possible.
+  dictionary.Set("fake log section", "fake log value");
+  SerializeLogsAsJSON(dictionary, fd);
 }
 
 std::string GetSanitizedUsername(

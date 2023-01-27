@@ -339,12 +339,13 @@
       <arg name="logs" type="a{ss}" direction="out" />
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
-    <!-- GetFeedbackLogs has been replaced by GetBigFeedbackLogs -->
-    <method name="GetBigFeedbackLogs">
+    <!-- GetBigFeedbackLogs has been replaced by GetFeedbackLogsV2 -->
+    <method name="GetFeedbackLogsV2">
       <tp:docstring>
         Fills the system logs for feedback reports in the file whose file
         descriptor is given. This is used for logs that are so big that they
-        exceed the limits of D-Bus returning them.
+        exceed the limits of D-Bus returning them. Provides options to change
+        the scope of the collected logs.
       </tp:docstring>
       <arg name="outfd" type="h" direction="in">
         <tp:docstring>
@@ -356,14 +357,21 @@
           Username of the user for which the logs are requested.
         </tp:docstring>
       </arg>
+      <arg name="requested_logs" type="ai" direction="in">
+        <tp:docstring>
+          The list of log types that will be returned to the caller. The array
+          will contain debugd::FeedbackLogTypes enums. An empty array means
+          all available log types will be included.
+        </tp:docstring>
+      </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
-    <!-- GetFeedbackLogsV2 is the version of GetBigFeedbackLogs that
-      accepts more arguments. This function will replace GetBigFeedbackLogs.
-      Both GetBigFeedbackLogs and GetFeedbackLogsV2 will exist until we migrate
-      all callers of GetBigFeedbackLogs to use the new function.
-      GetBigFeedbackLogs will be deleted after the migration. -->
-    <method name="GetFeedbackLogsV2">
+    <!-- GetFeedbackLogsV3 is the same as GetFeedbackLogsV2 except that it
+    collects logs in parallel whenever possible. The indention is to reduce the
+    client wait time. A feature flag will be used in client side to control
+    which method to call. When this new method proves to be better and stable,
+    the v2 method will be removed. -->
+    <method name="GetFeedbackLogsV3">
       <tp:docstring>
         Fills the system logs for feedback reports in the file whose file
         descriptor is given. This is used for logs that are so big that they
