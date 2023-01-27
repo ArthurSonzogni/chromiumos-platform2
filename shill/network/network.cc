@@ -912,21 +912,22 @@ void Network::OnPortalDetectorResult(const PortalDetector::Result& result) {
     network_validation_log_->AddResult(result);
   }
 
-  // If portal detection was not conclusive, also start additional connection
-  // diagnostics for the current network connection.
   switch (result.GetValidationState()) {
     case PortalDetector::ValidationState::kNoConnectivity:
     case PortalDetector::ValidationState::kPartialConnectivity:
+      // If portal detection was not conclusive, also start additional
+      // connection diagnostics for the current network connection.
       StartConnectionDiagnostics();
       break;
     case PortalDetector::ValidationState::kInternetConnectivity:
       // Conclusive result that allows the Service to transition to the
-      // "online" state.
+      // "online" state. Stop portal detection.
       metrics_->SendToUMA(Metrics::kPortalDetectorInternetValidationDuration,
                           technology_, total_duration);
       // Stop recording results in |network_validation_log_| as soon as the
       // first kInternetConnectivity result is observed.
       StopNetworkValidationLog();
+      StopPortalDetection();
       break;
     case PortalDetector::ValidationState::kPortalRedirect:
       // Conclusive result that allows to start the portal detection sign-in

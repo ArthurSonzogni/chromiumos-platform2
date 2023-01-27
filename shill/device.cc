@@ -635,28 +635,20 @@ void Device::OnNetworkValidationResult(int interface_index,
   // When already connected, a Network must exist.
   DCHECK(GetPrimaryNetwork());
 
-  Service::ConnectState state =
-      PortalValidationStateToConnectionState(result.GetValidationState());
-  if (state == Service::kStateOnline) {
+  auto validation_state = result.GetValidationState();
+  Service::ConnectState connection_state =
+      PortalValidationStateToConnectionState(validation_state);
+  if (validation_state ==
+      PortalDetector::ValidationState::kInternetConnectivity) {
     OnNetworkValidationSuccess();
-    // TODO(b/248028325) Move StopPortalDetection inside Network and only
-    // process the new ConnectState in OnNetworkValidationResult.
-    GetPrimaryNetwork()->StopPortalDetection();
-  } else if (Service::IsPortalledState(state)) {
+  } else {
     OnNetworkValidationFailure();
     if (!GetPrimaryNetwork()->RestartPortalDetection()) {
-      state = Service::kStateNoConnectivity;
+      connection_state = Service::kStateNoConnectivity;
     }
-  } else {
-    // TODO(b/248028325) Use PortalDetector::ValidationState directly to avoid
-    // this branch at compile time.
-    LOG(ERROR) << LoggingTag() << ": unexpected Service state " << state
-               << " from portal detection result";
-    state = Service::kStateOnline;
-    GetPrimaryNetwork()->StopPortalDetection();
   }
 
-  SetServiceState(state);
+  SetServiceState(connection_state);
 }
 
 RpcIdentifier Device::GetSelectedServiceRpcIdentifier(Error* /*error*/) {

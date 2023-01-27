@@ -1057,14 +1057,13 @@ TEST_F(NetworkTest, PortalDetectionRestartSuccess) {
   Mock::VerifyAndClearExpectations(portal_detector);
 }
 
-TEST_F(NetworkTest, PortalDetectionResultAfterDisconnection) {
+TEST_F(NetworkTest, PortalDetectionResult_AfterDisconnection) {
   EXPECT_FALSE(network_->IsConnected());
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
-  result.https_phase = PortalDetector::Phase::kContent;
   result.http_status = PortalDetector::Status::kSuccess;
+  result.https_phase = PortalDetector::Phase::kContent;
   result.https_status = PortalDetector::Status::kFailure;
-
   EXPECT_EQ(PortalDetector::ValidationState::kPartialConnectivity,
             result.GetValidationState());
   EXPECT_CALL(event_handler_, OnNetworkValidationResult).Times(0);
@@ -1087,6 +1086,9 @@ TEST_F(NetworkTest, PortalDetectionResult_PartialConnectivity) {
   EXPECT_EQ(PortalDetector::ValidationState::kPartialConnectivity,
             result.GetValidationState());
   MockConnectionDiagnostics* conn_diag = new MockConnectionDiagnostics();
+  MockPortalDetector* portal_detector = new MockPortalDetector();
+  ON_CALL(*portal_detector, IsInProgress()).WillByDefault(Return(true));
+  network_->set_portal_detector_for_testing(portal_detector);
 
   EXPECT_CALL(*network_, CreateConnectionDiagnostics)
       .WillOnce([conn_diag](const net_base::IPAddress&,
@@ -1105,9 +1107,12 @@ TEST_F(NetworkTest, PortalDetectionResult_PartialConnectivity) {
   EXPECT_CALL(metrics_,
               SendSparseToUMA(Metrics::kPortalDetectorHTTPResponseCode,
                               Technology::kWiFi, 204));
+  EXPECT_CALL(event_handler_, OnNetworkValidationStop).Times(0);
+  EXPECT_CALL(event_handler2_, OnNetworkValidationStop).Times(0);
   network_->OnPortalDetectorResult(result);
   EXPECT_EQ(PortalDetector::ValidationState::kPartialConnectivity,
             network_->network_validation_result()->GetValidationState());
+  EXPECT_TRUE(network_->IsPortalDetectionInProgress());
 }
 
 TEST_F(NetworkTest, PortalDetectionResult_NoConnectivity) {
@@ -1124,6 +1129,9 @@ TEST_F(NetworkTest, PortalDetectionResult_NoConnectivity) {
   EXPECT_EQ(PortalDetector::ValidationState::kNoConnectivity,
             result.GetValidationState());
   MockConnectionDiagnostics* conn_diag = new MockConnectionDiagnostics();
+  MockPortalDetector* portal_detector = new MockPortalDetector();
+  ON_CALL(*portal_detector, IsInProgress()).WillByDefault(Return(true));
+  network_->set_portal_detector_for_testing(portal_detector);
 
   EXPECT_CALL(*network_, CreateConnectionDiagnostics)
       .WillOnce([conn_diag](const net_base::IPAddress&,
@@ -1137,9 +1145,12 @@ TEST_F(NetworkTest, PortalDetectionResult_NoConnectivity) {
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(metrics_, SendToUMA(Metrics::kPortalDetectorHTTPSProbeDuration,
                                   Technology::kWiFi, 200));
+  EXPECT_CALL(event_handler_, OnNetworkValidationStop).Times(0);
+  EXPECT_CALL(event_handler2_, OnNetworkValidationStop).Times(0);
   network_->OnPortalDetectorResult(result);
   EXPECT_EQ(PortalDetector::ValidationState::kNoConnectivity,
             network_->network_validation_result()->GetValidationState());
+  EXPECT_TRUE(network_->IsPortalDetectionInProgress());
 }
 
 TEST_F(NetworkTest, PortalDetectionResult_InternetConnectivity) {
@@ -1155,6 +1166,9 @@ TEST_F(NetworkTest, PortalDetectionResult_InternetConnectivity) {
   result.http_status_code = 204;
   EXPECT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
             result.GetValidationState());
+  MockPortalDetector* portal_detector = new MockPortalDetector();
+  ON_CALL(*portal_detector, IsInProgress()).WillByDefault(Return(true));
+  network_->set_portal_detector_for_testing(portal_detector);
 
   EXPECT_CALL(*network_, CreateConnectionDiagnostics).Times(0);
   EXPECT_CALL(event_handler_,
@@ -1171,9 +1185,14 @@ TEST_F(NetworkTest, PortalDetectionResult_InternetConnectivity) {
   EXPECT_CALL(metrics_,
               SendSparseToUMA(Metrics::kPortalDetectorHTTPResponseCode,
                               Technology::kWiFi, 204));
+  EXPECT_CALL(event_handler_,
+              OnNetworkValidationStop(network_->interface_index()));
+  EXPECT_CALL(event_handler2_,
+              OnNetworkValidationStop(network_->interface_index()));
   network_->OnPortalDetectorResult(result);
   EXPECT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
             network_->network_validation_result()->GetValidationState());
+  EXPECT_FALSE(network_->IsPortalDetectionInProgress());
 }
 
 TEST_F(NetworkTest, PortalDetectionResult_PortalRedirect) {
@@ -1190,6 +1209,9 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalRedirect) {
   result.http_status_code = 302;
   EXPECT_EQ(PortalDetector::ValidationState::kPortalRedirect,
             result.GetValidationState());
+  MockPortalDetector* portal_detector = new MockPortalDetector();
+  ON_CALL(*portal_detector, IsInProgress()).WillByDefault(Return(true));
+  network_->set_portal_detector_for_testing(portal_detector);
 
   EXPECT_CALL(*network_, CreateConnectionDiagnostics).Times(0);
   EXPECT_CALL(event_handler_,
@@ -1206,9 +1228,12 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalRedirect) {
   EXPECT_CALL(metrics_,
               SendSparseToUMA(Metrics::kPortalDetectorHTTPResponseCode,
                               Technology::kWiFi, 302));
+  EXPECT_CALL(event_handler_, OnNetworkValidationStop).Times(0);
+  EXPECT_CALL(event_handler2_, OnNetworkValidationStop).Times(0);
   network_->OnPortalDetectorResult(result);
   EXPECT_EQ(PortalDetector::ValidationState::kPortalRedirect,
             network_->network_validation_result()->GetValidationState());
+  EXPECT_TRUE(network_->IsPortalDetectionInProgress());
 }
 
 TEST_F(NetworkTest, PortalDetectionResult_PortalInvalidRedirect) {
@@ -1276,9 +1301,14 @@ TEST_F(NetworkTest, PortalDetectionResult_ClearAfterStop) {
   EXPECT_CALL(metrics_,
               SendSparseToUMA(Metrics::kPortalDetectorHTTPResponseCode,
                               Technology::kWiFi, 204));
+  EXPECT_CALL(event_handler_,
+              OnNetworkValidationStop(network_->interface_index()));
+  EXPECT_CALL(event_handler2_,
+              OnNetworkValidationStop(network_->interface_index()));
   network_->OnPortalDetectorResult(result);
   EXPECT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
             network_->network_validation_result()->GetValidationState());
+  EXPECT_FALSE(network_->IsPortalDetectionInProgress());
 
   network_->Stop();
   EXPECT_FALSE(network_->network_validation_result().has_value());
