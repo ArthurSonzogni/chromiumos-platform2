@@ -82,7 +82,8 @@ class PrintscanToolTest : public testing::Test {
 TEST_F(PrintscanToolTest, SetNoCategories) {
   brillo::ErrorPtr error;
   // Test disabling debugging when it is already off.
-  EXPECT_CALL(*mock_upstart_tools_, StopJob(_, _)).Times(2);
+  EXPECT_CALL(*mock_upstart_tools_, RestartJob("cupsd", _));
+  EXPECT_CALL(*mock_upstart_tools_, StopJob("lorgnette", _));
   EXPECT_TRUE(printscan_tool_->DebugSetCategories(
       &error, PrintscanCategories::PRINTSCAN_NO_CATEGORIES));
   EXPECT_EQ(error, nullptr);
@@ -95,7 +96,8 @@ TEST_F(PrintscanToolTest, SetNoCategories) {
 TEST_F(PrintscanToolTest, SetPrintingCategory) {
   brillo::ErrorPtr error;
   // Test starting printing debugging only.
-  EXPECT_CALL(*mock_upstart_tools_, StopJob(_, _)).Times(2);
+  EXPECT_CALL(*mock_upstart_tools_, RestartJob("cupsd", _));
+  EXPECT_CALL(*mock_upstart_tools_, StopJob("lorgnette", _));
   EXPECT_TRUE(printscan_tool_->DebugSetCategories(
       &error, PrintscanCategories::PRINTSCAN_PRINTING_CATEGORY));
   EXPECT_EQ(error, nullptr);
@@ -108,7 +110,8 @@ TEST_F(PrintscanToolTest, SetPrintingCategory) {
 TEST_F(PrintscanToolTest, SetScanningCategory) {
   brillo::ErrorPtr error;
   // Test starting scanning debugging only.
-  EXPECT_CALL(*mock_upstart_tools_, StopJob(_, _)).Times(2);
+  EXPECT_CALL(*mock_upstart_tools_, RestartJob("cupsd", _));
+  EXPECT_CALL(*mock_upstart_tools_, StopJob("lorgnette", _));
   EXPECT_TRUE(printscan_tool_->DebugSetCategories(
       &error, PrintscanCategories::PRINTSCAN_SCANNING_CATEGORY));
   EXPECT_EQ(error, nullptr);
@@ -121,7 +124,8 @@ TEST_F(PrintscanToolTest, SetScanningCategory) {
 TEST_F(PrintscanToolTest, SetAllCategories) {
   brillo::ErrorPtr error;
   // Test starting all debugging.
-  EXPECT_CALL(*mock_upstart_tools_, StopJob(_, _)).Times(2);
+  EXPECT_CALL(*mock_upstart_tools_, RestartJob("cupsd", _));
+  EXPECT_CALL(*mock_upstart_tools_, StopJob("lorgnette", _));
   EXPECT_TRUE(printscan_tool_->DebugSetCategories(
       &error, PrintscanCategories::PRINTSCAN_ALL_CATEGORIES));
   EXPECT_EQ(error, nullptr);
@@ -134,7 +138,8 @@ TEST_F(PrintscanToolTest, SetAllCategories) {
 TEST_F(PrintscanToolTest, ResetCategories) {
   brillo::ErrorPtr error;
   // Test starting all debugging.
-  EXPECT_CALL(*mock_upstart_tools_, StopJob(_, _)).Times(4);
+  EXPECT_CALL(*mock_upstart_tools_, RestartJob("cupsd", _)).Times(2);
+  EXPECT_CALL(*mock_upstart_tools_, StopJob("lorgnette", _)).Times(2);
   EXPECT_TRUE(printscan_tool_->DebugSetCategories(
       &error, PrintscanCategories::PRINTSCAN_ALL_CATEGORIES));
   EXPECT_EQ(error, nullptr);

@@ -185,7 +185,12 @@ bool PrintscanTool::ToggleLorgnette(brillo::ErrorPtr* error, bool enable) {
 
 // Restart cups, lorgnette, and ippusb_bridge.
 bool PrintscanTool::RestartServices(brillo::ErrorPtr* error) {
-  bool success = upstart_tools_->StopJob("cupsd", error);
+  // cupsd is intended to have the same lifetime as the ui, so we need to
+  // fully restart it.
+  bool success = upstart_tools_->RestartJob("cupsd", error);
+
+  // lorgnette will be restarted when the next d-bus call happens, so it
+  // can simply be shut down.
   success &= upstart_tools_->StopJob("lorgnette", error);
   return success;
 }
