@@ -36,48 +36,10 @@ constexpr base::TimeDelta kMinimalRetryWindow = base::Seconds(60);
 
 // TODO(b/251378482): Just dummpy impl for now, might need to log to UMA.
 void LogCrosEvent(const fcp::client::CrosEvent& cros_event) {
-  LOG(INFO) << "In LogCrosEvent, model_id is " << cros_event.model_id();
+  LOG(INFO) << "In LogCrosEvent, model_id is " << cros_event.model_id()
+            << ", event_type is "
+            << fcp::client::CrosEvent::EventType_Name(cros_event.event_type());
   DVLOG(1) << "cros_event is " << cros_event.DebugString();
-
-  if (cros_event.has_eligibility_eval_checkin()) {
-    LOG(INFO) << "cros_event has_eligibility_eval_checkin";
-  } else if (cros_event.has_eligibility_eval_plan_received()) {
-    LOG(INFO) << "cros_event has_eligibility_eval_plan_received";
-  } else if (cros_event.has_eligibility_eval_not_configured()) {
-    LOG(INFO) << "cros_event.has_eligibility_eval_not_configured";
-  } else if (cros_event.has_eligibility_eval_rejected()) {
-    LOG(INFO) << "cros_event.has_eligibility_eval_rejected";
-  } else if (cros_event.has_checkin()) {
-    LOG(INFO) << "cros_event.has_checkin";
-  } else if (cros_event.has_checkin_finished()) {
-    LOG(INFO) << "cros_event.has_checkin_finished";
-  } else if (cros_event.has_rejected()) {
-    LOG(INFO) << "cros_event.has_rejected";
-  } else if (cros_event.has_report_started()) {
-    LOG(INFO) << "cros_event.has_report_started";
-  } else if (cros_event.has_report_finished()) {
-    LOG(INFO) << "cros_event.has_report_finished";
-  } else if (cros_event.has_plan_execution_started()) {
-    LOG(INFO) << "cros_event.has_plan_execution_started";
-  } else if (cros_event.has_epoch_started()) {
-    LOG(INFO) << "cros_event.has_epoch_started";
-  } else if (cros_event.has_tensorflow_error()) {
-    LOG(ERROR) << "cros_event.has_tensorflow_error";
-  } else if (cros_event.has_io_error()) {
-    LOG(ERROR) << "cros_event.has_io_error";
-  } else if (cros_event.has_example_selector_error()) {
-    LOG(ERROR) << "cros_event.has_example_selector_error";
-  } else if (cros_event.has_interruption()) {
-    LOG(INFO) << "cros_event.has_interruption";
-  } else if (cros_event.has_epoch_completed()) {
-    LOG(INFO) << "cros_event.has_epoch_completed";
-  } else if (cros_event.has_stats()) {
-    LOG(INFO) << "cros_event.has_stats";
-  } else if (cros_event.has_plan_completed()) {
-    LOG(INFO) << "cros_event.has_plan_completed";
-  } else {
-    LOG(INFO) << "cros_event doesn't have any event log";
-  }
 }
 
 // TODO(b/251378482): Just dummpy impl for now, might need to log to UMA.
