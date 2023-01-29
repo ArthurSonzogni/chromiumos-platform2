@@ -133,35 +133,18 @@ bool LoadRangeOfInteger(const std::vector<uint8_t>& buf,
 // the path while destructor removes it from the path.
 class ContextPathGuard {
  public:
-  ContextPathGuard(std::vector<std::pair<std::string, bool>>* path,
-                   const std::string& name,
-                   bool is_known = true)
-      : path_(path) {
-    if (!path_->empty() && !path_->back().second)
-      is_known = false;
-    path_->push_back(std::make_pair(name, is_known));
+  ContextPathGuard(AttrPath* path, uint16_t index) : path_(path) {
+    path_->PushBack(index, "");
   }
-  ~ContextPathGuard() { path_->pop_back(); }
+  ~ContextPathGuard() { path_->PopBack(); }
 
  private:
   ContextPathGuard(const ContextPathGuard&) = delete;
   ContextPathGuard(ContextPathGuard&&) = delete;
   ContextPathGuard& operator=(const ContextPathGuard&) = delete;
   ContextPathGuard& operator=(ContextPathGuard&&) = delete;
-  std::vector<std::pair<std::string, bool>>* path_;
+  AttrPath* path_;
 };
-
-// Builds nice string with context path.
-std::string PathAsString(
-    const std::vector<std::pair<std::string, bool>>& path) {
-  std::string s;
-  for (auto& e : path) {
-    if (!s.empty())
-      s += "->";
-    s += e.first;
-  }
-  return s;
-}
 
 // Return true if source type can be used in attribute of target type.
 bool IsConvertibleTo(const ipp::ValueTag source, const ipp::ValueTag target) {
@@ -269,7 +252,7 @@ void Parser::LogParserError(ParserCode error_code, const uint8_t* ptr) {
   }
   Log l;
   l.message = ToStrView(error_code);
-  l.parser_context = PathAsString(parser_context_);
+  l.parser_context = parser_context_.AsString();
   // Let's try to save to frame_context the closest neighborhood of ptr.
   if (ptr != nullptr && ptr >= buffer_begin_ && ptr <= buffer_end_) {
     // Current position in the buffer.
@@ -490,10 +473,8 @@ std::vector<ParserCode> LoadAttrValues(Collection* coll,
 bool Parser::SaveFrameToPackage(bool log_unknown_values, Frame* package) {
   for (size_t i = 0; i < frame_->groups_tags_.size(); ++i) {
     GroupTag gn = frame_->groups_tags_[i];
-    std::string grp_name = ToString(gn);
-    if (grp_name.empty())
-      grp_name = "(" + ToHexByte(static_cast<uint8_t>(gn)) + ")";
-    ContextPathGuard path_update(&parser_context_, grp_name);
+    parser_context_ = AttrPath(gn);
+    parser_context_.PushBack(package->Groups(gn).size(), "");
     Collection* coll = nullptr;
     Code err = package->AddGroup(gn, &coll);
     if (err != Code::kOK) {
@@ -515,6 +496,7 @@ bool Parser::SaveFrameToPackage(bool log_unknown_values, Frame* package) {
 
 bool Parser::ReadFrameFromBuffer(const uint8_t* ptr,
                                  const uint8_t* const buf_end) {
+  parser_context_ = AttrPath(AttrPath::kHeader);
   buffer_begin_ = ptr;
   buffer_end_ = buf_end;
   if (buf_end - ptr < 9) {
@@ -526,6 +508,7 @@ bool Parser::ReadFrameFromBuffer(const uint8_t* ptr,
   ParseSignedInteger<4>(&ptr, &frame_->request_id_);
   while (*ptr != end_of_attributes_tag) {
     GroupTag group_tag = static_cast<GroupTag>(*ptr);
+    parser_context_ = AttrPath(group_tag);
     if (!IsValid(group_tag)) {
       // begin-attribute-group-tag was expected.
       LogParserError(ParserCode::kGroupTagWasExpected, ptr);
@@ -605,7 +588,7 @@ bool Parser::ReadTNVsFromBuffer(const uint8_t** ptr2,
 void Parser::ResetContent() {
   buffer_begin_ = nullptr;
   buffer_end_ = nullptr;
-  parser_context_.clear();
+  parser_context_ = AttrPath(AttrPath::kHeader);
 }
 
 // Parses single attribute's value and add it to |attr|. |tnv| is the first TNV
@@ -626,6 +609,7 @@ bool Parser::ParseRawValue(int coll_level,
   }
   // Is it a collection ?
   if (tnv.tag == begCollection_value_tag) {
+    ContextPathGuard path_update(&parser_context_, attr->values.size());
     if (!tnv.value.empty()) {
       LogParserError(ParserCode::kEmptyValueExpectedInTNV);
       return false;
@@ -682,18 +666,18 @@ bool Parser::ParseRawCollection(int coll_level,
       return false;
     }
     // parse name & create attribute
+    const std::string name = LoadString(tnv.value);
+    parser_context_.Back().attribute_name = name;
     if (!tnv.name.empty()) {
       LogParserError(ParserCode::kEmptyNameExpectedInTNV);
       return false;
     }
-    const std::string name = LoadString(tnv.value);
     if (name.empty()) {
       LogParserErrors({ParserCode::kAttributeNameIsEmpty});
       return false;
     }
     coll->attributes.emplace_back(name);
     RawAttribute* attr = &coll->attributes.back();
-    ContextPathGuard path_update(&parser_context_, name);
     // parse tag
     if (tnvs->empty()) {
       LogParserError(ParserCode::kUnexpectedEndOfGroup);
@@ -723,13 +707,13 @@ bool Parser::ParseRawGroup(std::list<TagNameValue>* tnvs, RawCollection* coll) {
     tnvs->pop_front();
     // parse name & create attribute
     const std::string name = LoadString(tnv.name);
+    parser_context_.Back().attribute_name = name;
     if (name.empty()) {
       LogParserErrors({ParserCode::kAttributeNameIsEmpty});
       return false;
     }
     coll->attributes.emplace_back(name);
     RawAttribute* attr = &coll->attributes.back();
-    ContextPathGuard path_update(&parser_context_, name);
     // parse all values
     while (true) {
       // parse value
@@ -751,9 +735,8 @@ bool Parser::ParseRawGroup(std::list<TagNameValue>* tnvs, RawCollection* coll) {
 void Parser::DecodeCollection(RawCollection* raw_coll, Collection* coll) {
   for (RawAttribute& raw_attr : raw_coll->attributes) {
     // Tries to match the attribute to existing one by name.
+    parser_context_.Back().attribute_name = raw_attr.name;
     Attribute* attr = coll->GetAttribute(raw_attr.name);
-    ContextPathGuard path_update(&parser_context_, raw_attr.name,
-                                 attr != nullptr);
     if (attr != nullptr) {
       // The attribute exists.
       LogParserErrors({ParserCode::kAttributeNameConflict});
@@ -802,6 +785,7 @@ void Parser::DecodeCollection(RawCollection* raw_coll, Collection* coll) {
       Code err = coll->AddAttr(raw_attr.name, colls);
       if (err == Code::kOK) {
         for (size_t i = 0; i < colls.size(); ++i) {
+          ContextPathGuard path_update(&parser_context_, i);
           DecodeCollection(raw_colls[i], colls[i]);
         }
       } else {

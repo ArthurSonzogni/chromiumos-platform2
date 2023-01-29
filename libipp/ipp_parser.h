@@ -13,6 +13,7 @@
 #include <utility>
 #include <vector>
 
+#include "errors.h"
 #include "ipp_attribute.h"
 #include "ipp_frame.h"
 #include "ipp_log.h"
@@ -113,12 +114,9 @@ class Parser {
   const uint8_t* buffer_begin_ = nullptr;
   const uint8_t* buffer_end_ = nullptr;
 
-  // This is a path to group/attribute being processed currently by the parser.
-  // Each segment contains a name and a flag (true/false). When the  flag is
-  // set to true then notices about direct offspring unknown attributes are
-  // added to the log with LogParserNewElement(...) method. When false, this
-  // method has no effect for offspring attributes.
-  std::vector<std::pair<std::string, bool>> parser_context_;
+  // This is a path to group/collection/attribute being processed currently by
+  // the parser.
+  AttrPath parser_context_ = AttrPath(AttrPath::kHeader);
 };
 
 }  // namespace ipp

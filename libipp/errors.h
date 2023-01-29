@@ -92,6 +92,8 @@ class IPP_EXPORT AttrPath {
   // Removes the last segment from the attribute's path. Converts the
   // attribute's path to the path to its parent attribute.
   void PopBack() { path_.pop_back(); }
+  // Returns reference to the last element.
+  Segment& Back() { return path_.back(); }
 
  private:
   GroupTag group_;
