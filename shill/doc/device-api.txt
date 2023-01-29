@@ -483,6 +483,17 @@ Properties	string Address [readonly]
 				     addresses for when using this APN. The latter
 				     specifies dual-stack operation.
 
+		string Cellular.PrimaryMultiplexedInterface [readonly]
+
+			(Cellular only) Indicates the name of the network interface
+			connected to the default APN, where the IP config would be
+			applied. This property is unset if the cellular device is
+			disconnected.
+
+			This is a temporary property to be used until shill and
+			patchpanel interact with each other to automatically notify
+			the existing networks.
+
 		bool EapAuthenticatorDetected [readonly]
 
 			(Ethernet only) Indicates whether an EAP (802.1X)

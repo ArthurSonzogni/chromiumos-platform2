@@ -346,6 +346,7 @@ class Cellular : public Device,
 
   void SetSelectedNetwork(const std::string& selected_network);
   void SetFoundNetworks(const Stringmaps& found_networks);
+  void SetPrimaryMultiplexedInterface(const std::string& interface_name);
   void SetProviderRequiresRoaming(bool provider_requires_roaming);
   bool IsRoamingAllowed();
   void SetApnList(const Stringmaps& apn_list);
@@ -654,6 +655,7 @@ class Cellular : public Device,
   Stringmaps found_networks_;
   uint16_t scan_interval_ = 0;
   Stringmaps apn_list_;
+  std::string primary_multiplexed_interface_;
 
   // Primary SIM properties.
   std::string eid_;  // SIM eID, aka eUICCID

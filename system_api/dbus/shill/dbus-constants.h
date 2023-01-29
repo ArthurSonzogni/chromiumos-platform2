@@ -416,6 +416,8 @@ const char kSIMPresentProperty[] = "Cellular.SIMPresent";
 const char kSIMSlotInfoProperty[] = "Cellular.SIMSlotInfo";
 const char kSupportNetworkScanProperty[] = "Cellular.SupportNetworkScan";
 const char kUseAttachAPNProperty[] = "Cellular.UseAttachAPN";
+const char kPrimaryMultiplexedInterfaceProperty[] =
+    "Cellular.PrimaryMultiplexedInterface";
 
 const char kDBusObjectProperty[] = "DBus.Object";
 const char kDBusServiceProperty[] = "DBus.Service";

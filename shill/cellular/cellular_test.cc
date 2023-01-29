@@ -1754,6 +1754,12 @@ TEST_F(CellularTest, EstablishLinkPPP) {
   EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _))
       .WillOnce(Return(kPID));
   EXPECT_CALL(*network_, Start(_)).Times(0);
+
+  auto* adaptor = static_cast<DeviceMockAdaptor*>(device_->adaptor());
+  EXPECT_CALL(*adaptor,
+              EmitStringChanged(kPrimaryMultiplexedInterfaceProperty, _))
+      .Times(0);
+
   device_->EstablishLink();
   EXPECT_FALSE(device_->selected_service());
   EXPECT_FALSE(device_->is_ppp_authenticating_);
@@ -1777,6 +1783,12 @@ TEST_F(CellularTest, EstablishLinkDHCP) {
   // Associating because the internal RTNL handler handles the interface up
   // logic, and at this point that is not yet known.
   EXPECT_CALL(*service, SetState(Service::kStateAssociating));
+
+  auto* adaptor = static_cast<DeviceMockAdaptor*>(device_->adaptor());
+  EXPECT_CALL(*adaptor,
+              EmitStringChanged(kPrimaryMultiplexedInterfaceProperty, _))
+      .Times(0);
+
   device_->EstablishLink();
   EXPECT_FALSE(device_->selected_service());
   Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
@@ -1796,6 +1808,11 @@ TEST_F(CellularTest, LinkUpDHCP) {
   EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
   EXPECT_CALL(*network_,
               Start(Field(&Network::StartOptions::dhcp, Optional(_))));
+
+  auto* adaptor = static_cast<DeviceMockAdaptor*>(device_->adaptor());
+  EXPECT_CALL(*adaptor, EmitStringChanged(kPrimaryMultiplexedInterfaceProperty,
+                                          kTestInterfaceName));
+
   device_->LinkUp(device_->interface_index());
   EXPECT_EQ(service, device_->selected_service());
   Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
@@ -1817,6 +1834,12 @@ TEST_F(CellularTest, EstablishLinkStatic) {
   EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink)).Times(1);
   // Associating because the internal RTNL handler handles the interface up
   // logic, and at this point that is not yet known.
+
+  auto* adaptor = static_cast<DeviceMockAdaptor*>(device_->adaptor());
+  EXPECT_CALL(*adaptor,
+              EmitStringChanged(kPrimaryMultiplexedInterfaceProperty, _))
+      .Times(0);
+
   EXPECT_CALL(*service, SetState(Service::kStateAssociating));
   device_->EstablishLink();
   EXPECT_FALSE(device_->selected_service());
@@ -1851,6 +1874,11 @@ TEST_F(CellularTest, LinkUpStatic) {
   ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
 
   EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
+
+  auto* adaptor = static_cast<DeviceMockAdaptor*>(device_->adaptor());
+  EXPECT_CALL(*adaptor, EmitStringChanged(kPrimaryMultiplexedInterfaceProperty,
+                                          kTestInterfaceName));
+
   EXPECT_CALL(*network_,
               set_link_protocol_ipv4_properties(Pointee(ipconfig_properties)));
   EXPECT_CALL(*network_,
@@ -1879,6 +1907,7 @@ TEST_F(CellularTest, LinkDownOnLinked) {
   // If device is Linked and we receive a LinkDown(), we should ensure the
   // modem is disconnected.
   SetRegisteredWithService();
+  device_->SetPrimaryMultiplexedInterface(kTestInterfaceName);
   device_->set_state_for_testing(Cellular::State::kLinked);
 
   EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, _, _)).Times(0);
@@ -1889,6 +1918,10 @@ TEST_F(CellularTest, LinkDownOnLinked) {
       .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
   SetCapability3gppModemSimpleProxy();
 
+  auto* adaptor = static_cast<DeviceMockAdaptor*>(device_->adaptor());
+  EXPECT_CALL(*adaptor,
+              EmitStringChanged(kPrimaryMultiplexedInterfaceProperty, ""));
+
   device_->LinkDown(device_->interface_index());
   dispatcher_.DispatchPendingEvents();
 
@@ -1897,9 +1930,14 @@ TEST_F(CellularTest, LinkDownOnLinked) {
 
 TEST_F(CellularTest, LinkDeleted) {
   MockCellularService* service = SetMockService();
+  device_->SetPrimaryMultiplexedInterface(kTestInterfaceName);
   device_->SetServiceState(Service::kStateConfiguring);
   device_->SelectService(service);
   device_->set_state_for_testing(Cellular::State::kLinked);
+
+  auto* adaptor = static_cast<DeviceMockAdaptor*>(device_->adaptor());
+  EXPECT_CALL(*adaptor,
+              EmitStringChanged(kPrimaryMultiplexedInterfaceProperty, ""));
 
   device_->LinkDeleted(device_->interface_index());
 

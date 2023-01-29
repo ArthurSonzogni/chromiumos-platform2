@@ -612,6 +612,7 @@ void Cellular::DropConnection() {
     // rather than the netdev plumbed into |this|.
     ppp_device_->DropConnection();
   } else {
+    SetPrimaryMultiplexedInterface("");
     Device::DropConnection();
   }
 }
@@ -1382,6 +1383,7 @@ void Cellular::LinkUp(int data_interface_index) {
 
   // Connected -> Linked transition launches Network creation
   LOG(INFO) << LoggingTag() << ": Link is up.";
+  SetPrimaryMultiplexedInterface(link_name());
   SetState(State::kLinked);
 
   CHECK(capability_);
@@ -1693,6 +1695,7 @@ bool Cellular::DisconnectCleanup() {
   StopLinkListener();
   SetState(State::kRegistered);
   SetServiceFailureSilent(Service::kFailureNone);
+  SetPrimaryMultiplexedInterface("");
   network()->Stop();
   return true;
 }
@@ -2109,6 +2112,8 @@ void Cellular::RegisterProperties() {
   store->RegisterConstKeyValueStores(kSIMSlotInfoProperty, &sim_slot_info_);
   store->RegisterConstStringmaps(kCellularApnListProperty, &apn_list_);
   store->RegisterConstString(kIccidProperty, &iccid_);
+  store->RegisterConstString(kPrimaryMultiplexedInterfaceProperty,
+                             &primary_multiplexed_interface_);
 
   // TODO(pprabhu): Decide whether these need their own custom setters.
   HelpRegisterConstDerivedString(kTechnologyFamilyProperty,
@@ -2652,6 +2657,17 @@ void Cellular::SetFoundNetworks(const Stringmaps& found_networks) {
   // So don't check for redundant updates.
   found_networks_ = found_networks;
   adaptor()->EmitStringmapsChanged(kFoundNetworksProperty, found_networks_);
+}
+
+void Cellular::SetPrimaryMultiplexedInterface(
+    const std::string& interface_name) {
+  if (primary_multiplexed_interface_ == interface_name) {
+    return;
+  }
+
+  primary_multiplexed_interface_ = interface_name;
+  adaptor()->EmitStringChanged(kPrimaryMultiplexedInterfaceProperty,
+                               primary_multiplexed_interface_);
 }
 
 void Cellular::SetProviderRequiresRoaming(bool provider_requires_roaming) {
