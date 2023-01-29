@@ -6,11 +6,13 @@
 
 #include <unistd.h>
 
+#include <algorithm>
 #include <cinttypes>
 #include <memory>
 #include <string>
 #include <vector>
 
+#include "absl/container/flat_hash_set.h"
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
 #include "base/containers/lru_cache.h"
@@ -175,11 +177,8 @@ absl::Status GetStatFromProcfs(const base::FilePath& stat_path,
   return absl::OkStatus();
 }
 
-absl::StatusOr<ProcessCache::InternalImageValueType>
-VerifyStatAndGenerateImageHash(
-    const ProcessCache::InternalImageKeyType& image_key,
+absl::StatusOr<std::string> GenerateImageHash(
     const base::FilePath& image_path_in_ns) {
-  LOG(INFO) << "Attempting to hash " << image_path_in_ns.value();
   base::File image(image_path_in_ns,
                    base::File::FLAG_OPEN | base::File::FLAG_READ);
   if (!image.IsValid()) {
@@ -205,7 +204,17 @@ VerifyStatAndGenerateImageHash(
   if (!SHA256_Final(reinterpret_cast<unsigned char*>(buf.data()), &ctx)) {
     return absl::InternalError(kErrorSslSha);
   }
+  return base::HexEncode(buf.data(), SHA256_DIGEST_LENGTH);
+}
 
+absl::StatusOr<ProcessCache::InternalImageValueType>
+VerifyStatAndGenerateImageHash(
+    const ProcessCache::InternalImageKeyType& image_key,
+    const base::FilePath& image_path_in_ns) {
+  auto hash = GenerateImageHash(image_path_in_ns);
+  if (!hash.ok()) {
+    return hash.status();
+  }
   base::stat_wrapper_t image_stat;
   if (base::File::Stat(image_path_in_ns.value().c_str(), &image_stat) ||
       (image_stat.st_dev != image_key.inode_device_id) ||
@@ -218,8 +227,7 @@ VerifyStatAndGenerateImageHash(
         base::StrCat({"Failed to match stat of image hashed at ",
                       image_path_in_ns.value()}));
   }
-  return ProcessCache::InternalImageValueType{
-      base::HexEncode(buf.data(), SHA256_DIGEST_LENGTH)};
+  return ProcessCache::InternalImageValueType{.sha256 = hash.value()};
 }
 
 // Safely initialized and trivially destructible static value of SC_CLK_TCK.
@@ -501,4 +509,112 @@ ProcessCache::MakeFromProcfs(const ProcessCache::InternalProcessKeyType& key) {
   return InternalProcessValueType{std::move(process_proto), parent_key};
 }
 
+bool ProcessCache::IsEventFiltered(
+    const cros_xdr::reporting::XdrProcessEvent& event) {
+  const cros_xdr::reporting::Process* p = nullptr;
+  const cros_xdr::reporting::Process* pp = nullptr;
+  if (event.has_process_exec()) {
+    pp = event.process_exec().has_process() ? &event.process_exec().process()
+                                            : nullptr;
+    p = event.process_exec().has_spawn_process()
+            ? &event.process_exec().spawn_process()
+            : nullptr;
+  } else if (event.has_process_terminate()) {
+    pp = event.process_terminate().has_parent_process()
+             ? &event.process_terminate().parent_process()
+             : nullptr;
+    p = event.process_terminate().has_process()
+            ? &event.process_terminate().process()
+            : nullptr;
+  }
+  const auto& parent_filter = filter_rules_parent_;
+  const auto& image_filter = filter_rules_process_;
+  const auto& should_filter = [](const cros_xdr::reporting::Process& p,
+                                 const InternalFilterRuleSetType& filters,
+                                 const std::string& type) -> bool {
+    const auto& matching_filter = filters.find(p.image().sha256());
+    if (matching_filter == filters.end()) {
+      return false;
+    }
+    if (matching_filter->second.commandline.empty()) {
+      // Commands match and there is no shell script to match.
+      return true;
+    }
+    for (const auto& commandline : matching_filter->second.commandline) {
+      if (p.commandline() == commandline) {
+        // Exact commandline match.
+        return true;
+      }
+    }
+    // Commands match but no matching shell script.
+    return false;
+  };
+
+  if (pp && should_filter(*pp, parent_filter, "parent_process")) {
+    return true;
+  }
+  if (p && should_filter(*p, image_filter, "process")) {
+    return true;
+  }
+
+  return false;
+}
+
+void ProcessCache::InitializeFilter(bool underscorify) {
+  // image path names are adjusted by root_path_
+  // this is needed for unit tests to work.
+  // also for testing they need to be underscorified for the unit
+  // test framework to function correctly.
+
+  // since shell scripts just look at commandline they don't need to
+  // be underscorified or adjusted by root_path_ for testing.
+
+  std::vector<InternalFilterRule> parent_filter_seeds = {
+      // Shell rules
+      // TODO(b:267391331): make temp logger into a real application.
+      {
+          .image_pathname = "bin/sh",
+          .commandline = {"'/bin/sh' '/usr/share/cros/init/temp_logger.sh'"},
+      }};
+
+  std::vector<InternalFilterRule> process_filter_seeds = {
+      // Command rules
+      // TODO(b:267391049): We think this is being execve by some base library
+      // to determine how much space is left on the system. This spams the event
+      // logs so we add a filter. The base library should really be fixed.
+      {.image_pathname = "usr/sbin/spaced_cli"}};
+
+  std::vector<
+      std::pair<InternalFilterRuleSetType&, std::vector<InternalFilterRule>&>>
+      filter_seeds = {{filter_rules_parent_, parent_filter_seeds},
+                      {filter_rules_process_, process_filter_seeds}};
+
+  for (auto& v : filter_seeds) {
+    for (auto& k : v.second) {
+      if (underscorify) {
+        std::replace(k.image_pathname.begin(), k.image_pathname.end(), '/',
+                     '_');
+      }
+      k.image_pathname = root_path_.Append(k.image_pathname).value();
+      auto result = GenerateImageHash(base::FilePath(k.image_pathname));
+      if (!result.ok()) {
+        LOG(ERROR) << "XdrProcessEvent filter failed to create rule for "
+                   << "image_path_name:" << k.image_pathname
+                   << " error:" << result.status();
+        continue;
+      }
+      v.first.emplace(std::make_pair(result.value(), std::move(k)));
+    }
+  }
+  LOG(INFO) << "Process filter rules created:";
+  for (const auto& key : filter_rules_parent_) {
+    LOG(INFO) << "PARENT: SHA256:" << key.first
+              << " command:" << key.second.image_pathname;
+  }
+
+  for (const auto& key : filter_rules_process_) {
+    LOG(INFO) << "PROCESS: SHA256:" << key.first
+              << " command:" << key.second.image_pathname;
+  }
+}
 }  // namespace secagentd

@@ -27,6 +27,13 @@ class MockProcessCache : public ProcessCacheInterface {
               (uint64_t, bpf::time_ns_t, int),
               (override));
   MOCK_METHOD(void, EraseProcess, (uint64_t, bpf::time_ns_t), (override));
+
+  MOCK_METHOD(bool,
+              IsEventFiltered,
+              (const cros_xdr::reporting::XdrProcessEvent&),
+              (override));
+
+  MOCK_METHOD(void, InitializeFilter, (bool underscorify), (override));
 };
 
 }  // namespace secagentd::testing

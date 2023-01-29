@@ -4,11 +4,12 @@
 
 #include <iterator>
 #include <memory>
-
+#include <optional>
 #include "absl/status/status.h"
 #include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/memory/scoped_refptr.h"
+#include "base/memory/weak_ptr.h"
 #include "google/protobuf/message_lite.h"
 #include "missive/proto/record_constants.pb.h"
 #include "secagentd/bpf/process.h"
@@ -31,7 +32,6 @@ void FillNamespaces(const secagentd::bpf::cros_namespace_info& ns,
   ns_proto->set_net_ns(ns.net_ns);
   ns_proto->set_ipc_ns(ns.ipc_ns);
 }
-
 }  // namespace
 
 namespace secagentd {
@@ -54,7 +54,7 @@ std::string ProcessPlugin::GetName() const {
 }
 
 void ProcessPlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
-  std::unique_ptr<google::protobuf::MessageLite> message;
+  std::unique_ptr<google::protobuf::MessageLite> message = nullptr;
   pb::CommonEventDataFields* mutable_common = nullptr;
   reporting::Destination destination =
       reporting::Destination::CROS_SECURITY_PROCESS;
@@ -65,6 +65,9 @@ void ProcessPlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
       // Record the newly spawned process into our cache.
       process_cache_->PutFromBpfExec(process_start);
       auto exec_event = MakeExecEvent(process_start);
+      if (process_cache_->IsEventFiltered(*exec_event)) {
+        return;
+      }
       // Save a pointer to the common field before downcasting.
       mutable_common = exec_event->mutable_common();
       message = std::move(exec_event);
@@ -74,6 +77,9 @@ void ProcessPlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
       if (process_exit.is_leaf) {
         process_cache_->EraseProcess(process_exit.task_info.pid,
                                      process_exit.task_info.start_time);
+      }
+      if (process_cache_->IsEventFiltered(*terminate_event)) {
+        return;
       }
       mutable_common = terminate_event->mutable_common();
       message = std::move(terminate_event);
@@ -135,6 +141,7 @@ std::unique_ptr<pb::XdrProcessEvent> ProcessPlugin::MakeExecEvent(
   if (hierarchy.size() > 2) {
     process_exec_event->set_allocated_parent_process(hierarchy[2].release());
   }
+
   return process_event;
 }
 
@@ -167,7 +174,6 @@ std::unique_ptr<pb::XdrProcessEvent> ProcessPlugin::MakeTerminateEvent(
           parent[0].release());
     }
   }
-
   return process_event;
 }
 

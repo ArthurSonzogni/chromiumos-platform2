@@ -127,6 +127,7 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExecEvent) {
   EXPECT_CALL(*process_cache_,
               GetProcessHierarchy(kPids[0], kSpawnStartTime, 3))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
+  EXPECT_CALL(*process_cache_, IsEventFiltered(_)).WillOnce(Return(false));
 
   std::unique_ptr<google::protobuf::MessageLite> actual_sent_message;
   pb::CommonEventDataFields* actual_mutable_common = nullptr;
@@ -148,6 +149,7 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExecEvent) {
   pb::XdrProcessEvent* actual_process_event =
       google::protobuf::down_cast<pb::XdrProcessEvent*>(
           actual_sent_message.get());
+
   EXPECT_EQ(actual_process_event->mutable_common(), actual_mutable_common);
   EXPECT_EQ(
       kPids[0],
@@ -201,6 +203,7 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExecEventPartialHierarchy) {
               GetProcessHierarchy(kPids[0], kSpawnStartTime, 3))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
 
+  EXPECT_CALL(*process_cache_, IsEventFiltered(_)).WillOnce(Return(false));
   std::unique_ptr<google::protobuf::MessageLite> actual_sent_message;
   EXPECT_CALL(
       *message_sender_,
@@ -224,6 +227,41 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExecEventPartialHierarchy) {
   EXPECT_EQ(kPids[1],
             actual_process_event->process_exec().process().canonical_pid());
   EXPECT_FALSE(actual_process_event->process_exec().has_parent_process());
+}
+
+TEST_F(ProcessPluginTestFixture, TestProcessPluginFilteredExecEvent) {
+  constexpr bpf::time_ns_t kSpawnStartTime = 2222;
+  // Descending order in time starting from the youngest.
+  constexpr uint64_t kPids[] = {3, 2, 1};
+  std::vector<std::unique_ptr<pb::Process>> hierarchy;
+  for (int i = 0; i < std::size(kPids); ++i) {
+    hierarchy.push_back(std::make_unique<pb::Process>());
+    // Just some basic verification to make sure we consume the protos in the
+    // expected order. The process cache unit test should cover the remaining
+    // fields.
+    hierarchy[i]->set_canonical_pid(kPids[i]);
+  }
+
+  const bpf::cros_event a = {
+      .data.process_event = {.type = bpf::process_start_type,
+                             .data.process_start =
+                                 {
+                                     .task_info =
+                                         {
+                                             .pid = kPids[0],
+                                             .start_time = kSpawnStartTime,
+                                         },
+                                 }},
+      .type = bpf::process_type,
+  };
+  EXPECT_CALL(*process_cache_,
+              PutFromBpfExec(Ref(a.data.process_event.data.process_start)));
+  EXPECT_CALL(*process_cache_,
+              GetProcessHierarchy(kPids[0], kSpawnStartTime, 3))
+      .WillOnce(Return(ByMove(std::move(hierarchy))));
+  EXPECT_CALL(*process_cache_, IsEventFiltered(_)).WillOnce(Return(true));
+  EXPECT_CALL(*message_sender_, SendMessage(_, _, _, _)).Times(0);
+  cbs_.ring_buffer_event_callback.Run(a);
 }
 
 TEST_F(ProcessPluginTestFixture, TestProcessPluginExitEventCacheHit) {
@@ -354,6 +392,36 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExitEventCacheMiss) {
                               .parent_process()
                               .image()
                               .pathname());
+}
+TEST_F(ProcessPluginTestFixture, TestProcessPluginFilteredExitEvent) {
+  constexpr bpf::time_ns_t kStartTime = 2222;
+  constexpr uint64_t kPids[] = {2, 1};
+  std::vector<std::unique_ptr<pb::Process>> hierarchy;
+  for (int i = 0; i < std::size(kPids); ++i) {
+    hierarchy.push_back(std::make_unique<pb::Process>());
+    hierarchy[i]->set_canonical_pid(kPids[i]);
+  }
+
+  const bpf::cros_event a = {
+      .data.process_event = {.type = bpf::process_exit_type,
+                             .data.process_exit =
+                                 {
+                                     .task_info =
+                                         {
+                                             .pid = kPids[0],
+                                             .start_time = kStartTime,
+                                         },
+                                     .is_leaf = true,
+                                 }},
+      .type = bpf::process_type,
+  };
+  EXPECT_CALL(*process_cache_, GetProcessHierarchy(kPids[0], kStartTime, 2))
+      .WillOnce(Return(ByMove(std::move(hierarchy))));
+
+  EXPECT_CALL(*process_cache_, IsEventFiltered(_)).WillOnce(Return(true));
+  EXPECT_CALL(*message_sender_, SendMessage(_, _, _, _)).Times(0);
+  EXPECT_CALL(*process_cache_, EraseProcess(kPids[0], kStartTime));
+  cbs_.ring_buffer_event_callback.Run(a);
 }
 
 }  // namespace secagentd::testing

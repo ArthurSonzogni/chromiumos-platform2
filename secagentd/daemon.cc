@@ -81,6 +81,7 @@ int Daemon::OnInit() {
 
   if (process_cache_ == nullptr) {
     process_cache_ = base::MakeRefCounted<ProcessCache>();
+    process_cache_->InitializeFilter();
   }
 
   if (policy_provider_ == nullptr) {

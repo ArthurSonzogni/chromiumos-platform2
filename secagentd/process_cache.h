@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include "absl/container/flat_hash_map.h"
 #include "absl/status/statusor.h"
 #include "base/containers/lru_cache.h"
 #include "base/files/file_path.h"
@@ -40,6 +41,16 @@ class ProcessCacheInterface
   GetProcessHierarchy(uint64_t pid,
                       bpf::time_ns_t start_time_ns,
                       int num_generations) = 0;
+
+  // Is the event a noisy background event that should be dropped?
+  virtual bool IsEventFiltered(
+      const cros_xdr::reporting::XdrProcessEvent& event) = 0;
+
+  // Initializes the event filter for use.
+  // underscorify is used for unit testing purposes.
+  // the fake root in the unit test uses underscores for denoting
+  // subdirectories rather than creating real subdirectories.
+  virtual void InitializeFilter(bool underscorify = false) = 0;
 };
 
 class ProcessCache : public ProcessCacheInterface {
@@ -76,6 +87,15 @@ class ProcessCache : public ProcessCacheInterface {
   using InternalImageCacheType =
       base::LRUCache<InternalImageKeyType, InternalImageValueType>;
 
+  struct InternalFilterRule {
+    std::string image_pathname;
+    // Optionally match against the entire commandline.
+    std::vector<std::string> commandline;
+  };
+
+  using InternalFilterRuleSetType =
+      absl::flat_hash_map<std::string, InternalFilterRule>;
+
   // Converts ns (from BPF) to clock_t for use in InternalProcessKeyType. It
   // would be ideal to do this conversion in the BPF but we lack the required
   // kernel constants there.
@@ -95,6 +115,9 @@ class ProcessCache : public ProcessCacheInterface {
   GetProcessHierarchy(uint64_t pid,
                       bpf::time_ns_t start_time_ns,
                       int num_generations) override;
+  bool IsEventFiltered(
+      const cros_xdr::reporting::XdrProcessEvent& event) override;
+  void InitializeFilter(bool underscorify = false) override;
   // Allow calling the private test-only constructor without befriending
   // scoped_refptr.
   template <typename... Args>
@@ -130,6 +153,8 @@ class ProcessCache : public ProcessCacheInterface {
   base::Lock image_cache_lock_;
   std::unique_ptr<InternalImageCacheType> image_cache_;
   const base::FilePath root_path_;
+  InternalFilterRuleSetType filter_rules_parent_;
+  InternalFilterRuleSetType filter_rules_process_;
 };
 
 }  // namespace secagentd

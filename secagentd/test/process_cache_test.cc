@@ -86,7 +86,10 @@ class ProcessCacheTestFixture : public ::testing::Test {
   static constexpr uint64_t kPidKthreadd = 2;
   static constexpr uint64_t kPidChildOfInit = 962;
   static constexpr uint64_t kPidChildOfChild = 23888;
+  static constexpr uint64_t kPidSiblingOfChildOfChild = 1234;
   static constexpr uint64_t kPidTrickyComm = 8934;
+  static constexpr uint64_t kPidThermalProcess = 9843;
+  static constexpr uint64_t kPidChildOfThermalProcess = 9024;
 
   void CreateFakeFs(const base::FilePath& root) {
     const base::FilePath proc_dir = root.Append("proc");
@@ -186,7 +189,28 @@ class ProcessCacheTestFixture : public ::testing::Test {
           .exe_contents = "unused",
           .exe_sha256 = "unused",
           .mnt_ns_symlink = base::FilePath("mnt:[402653184]"),
-          .expected_proto = pb::Process()}}};
+          .expected_proto = pb::Process()}},
+        {kPidThermalProcess,
+         {
+             .procstat =
+                 "9843 (temp_logger.sh) S 9842 9841 9841 0 -1 4194560 118 142 "
+                 "0 0 0 0 0 0 20 0 1 0 978 2838528 306 "
+                 "18446744073709551615 97600878653440 97600878726528 "
+                 "140731096167264 0 0 0 0 0 65538 1 0 0 17 2 0 0 0 0 0 "
+                 "97600878738944 97600878739424 97600907300864 140731096170227 "
+                 "140731096170271 140731096170271 140731096170452 0",
+             .starttime_ns = 9780000000,
+             .cmdline = std::string(
+                 "/bin/sh\0/usr/share/cros/init/temp_logger.sh", 43),
+             .exe_path = root.Append("bin_sh"),
+             .exe_contents = "This is the shell binary",
+             // echo -ne "This is the shell binary" | sha256sum
+             // 9DF8B99E5B9F67AAD3F2382F7633BDE35EE032881F7FFE4037550F831392FF81
+             .exe_sha256 = "9DF8B99E5B9F67AAD3F2382F7633BDE35EE032881F7FFE40375"
+                           "50F831392FF81",
+             .mnt_ns_symlink = base::FilePath("mnt:[4026532856]"),
+             .expected_proto = pb::Process(),
+         }}};
     // ParseFromString unfortunately doesn't work with Lite protos.
     mock_procfs_[kPidInit].expected_proto.set_canonical_pid(kPidInit);
     mock_procfs_[kPidInit].expected_proto.set_commandline("'/sbin/init'");
@@ -221,6 +245,84 @@ class ProcessCacheTestFixture : public ::testing::Test {
         mock_procfs_[kPidTrickyComm].exe_sha256);
 
     mock_spawns_ = {
+        {kPidChildOfThermalProcess,
+         {.process_start =
+              {.task_info =
+                   {.pid = kPidChildOfThermalProcess,
+                    .ppid = kPidThermalProcess,
+                    .start_time = 5029384029,
+                    .parent_start_time =
+                        mock_procfs_[kPidThermalProcess].starttime_ns,
+                    .commandline =
+                        "/usr/bin/logger\0-t\0temp_logger\0\"Exiting "
+                        "temp_logger, system does not have any temp sensor.\"",
+                    .commandline_len = 58,
+                    .uid = 0,
+                    .gid = 0},
+               .image_info =
+                   {
+                       .pathname = "usr_bin_logger",
+                       .mnt_ns = 4026531840,
+                       .inode_device_id = 0,
+                       .inode = 0,
+                       .uid = 0,
+                       .gid = 0,
+                       .mode = 0100755,
+                   },
+               .spawn_namespace =
+                   {
+                       .cgroup_ns = 4026532932,
+                       .pid_ns = 4026532856,
+                       .user_ns = 4026531837,
+                       .uts_ns = 4026532858,
+                       .mnt_ns = 4026532857,
+                       .net_ns = 4026532859,
+                       .ipc_ns = 4026533674,
+                   }},
+          .exe_contents = "This is the logger binary",
+          // # echo -ne "This is the logger binary" | sha256sum -
+          // D1F76C43FB64CDCB35DE37F518C4AD1EE8EE247D540B6F2C07358657E4AA2F59
+          .exe_sha256 = "D1F76C43FB64CDCB35DE37F518C4AD1EE8EE247D540B6F2C073586"
+                        "57E4AA2F59",
+          .expected_proto = pb::Process()}},
+        {kPidSiblingOfChildOfChild,
+         {.process_start =
+              {.task_info = {.pid = kPidSiblingOfChildOfChild,
+                             .ppid = kPidChildOfInit,
+                             .start_time = 5029384029,
+                             .parent_start_time =
+                                 mock_procfs_[kPidChildOfInit].starttime_ns,
+                             .commandline =
+                                 "/bin/sh\0/usr/share/cros/init/temp_logger.sh",
+                             .commandline_len = 43,
+                             .uid = 0,
+                             .gid = 0},
+               .image_info =
+                   {
+                       .pathname = "bin_sh",
+                       .mnt_ns = 4026531840,
+                       .inode_device_id = 0,
+                       .inode = 0,
+                       .uid = 0,
+                       .gid = 0,
+                       .mode = 0100755,
+                   },
+               .spawn_namespace =
+                   {
+                       .cgroup_ns = 4026531835,
+                       .pid_ns = 4026531836,
+                       .user_ns = 4026531837,
+                       .uts_ns = 4026531838,
+                       .mnt_ns = 4026531840,
+                       .net_ns = 4026531999,
+                       .ipc_ns = 4026531839,
+                   }},
+          .exe_contents = "This is the shell binary",
+          // echo -ne "This is the shell binary" | sha256sum
+          // 9DF8B99E5B9F67AAD3F2382F7633BDE35EE032881F7FFE4037550F831392FF81
+          .exe_sha256 = "9DF8B99E5B9F67AAD3F2382F7633BDE35EE032881F7FFE40375"
+                        "50F831392FF81",
+          .expected_proto = pb::Process()}},
         {kPidChildOfChild,
          {.process_start =
               {.task_info = {.pid = kPidChildOfChild,
@@ -368,6 +470,94 @@ TEST_F(ProcessCacheTestFixture, ProcfsCacheHit) {
 
   ExpectPartialMatch(mock_procfs_[kPidChildOfInit].expected_proto, *before[1]);
   ExpectPartialMatch(mock_procfs_[kPidInit].expected_proto, *before[2]);
+}
+
+TEST_F(ProcessCacheTestFixture, ThermalLoggerChildrenExecEventsAreFiltered) {
+  // underscorify the filter paths.
+  process_cache_->InitializeFilter(true);
+  const bpf::cros_process_start& process_start =
+      mock_spawns_[kPidChildOfThermalProcess].process_start;
+  process_cache_->PutFromBpfExec(process_start);
+  auto hierarchy = process_cache_->GetProcessHierarchy(
+      process_start.task_info.pid, process_start.task_info.start_time, 3);
+  EXPECT_GE(hierarchy.size(), 2);
+  cros_xdr::reporting::XdrProcessEvent process_event;
+  process_event.mutable_process_exec()->set_allocated_spawn_process(
+      hierarchy[0].release());
+  process_event.mutable_process_exec()->set_allocated_process(
+      hierarchy[1].release());
+  EXPECT_TRUE(process_cache_->IsEventFiltered(process_event));
+}
+
+TEST_F(ProcessCacheTestFixture,
+       ThermalLoggerChildrenTerminateEventsAreFiltered) {
+  // underscorify the filter paths.
+  process_cache_->InitializeFilter(true);
+  const bpf::cros_process_start& process_start =
+      mock_spawns_[kPidChildOfThermalProcess].process_start;
+  process_cache_->PutFromBpfExec(process_start);
+  auto hierarchy = process_cache_->GetProcessHierarchy(
+      process_start.task_info.pid, process_start.task_info.start_time, 3);
+  EXPECT_GE(hierarchy.size(), 2);
+  cros_xdr::reporting::XdrProcessEvent process_event;
+  process_event.mutable_process_terminate()->set_allocated_process(
+      hierarchy[0].release());
+  process_event.mutable_process_terminate()->set_allocated_parent_process(
+      hierarchy[1].release());
+  EXPECT_TRUE(process_cache_->IsEventFiltered(process_event));
+}
+
+TEST_F(ProcessCacheTestFixture, SpacedCliExecEventsAreFiltered) {
+  // underscorify the filter paths.
+  process_cache_->InitializeFilter(true);
+  // this is spaced_cli as called by cryptohome.
+  const bpf::cros_process_start& process_start =
+      mock_spawns_[kPidChildOfChild].process_start;
+  process_cache_->PutFromBpfExec(process_start);
+  auto hierarchy = process_cache_->GetProcessHierarchy(
+      process_start.task_info.pid, process_start.task_info.start_time, 2);
+  EXPECT_GE(hierarchy.size(), 2);
+  cros_xdr::reporting::XdrProcessEvent process_event;
+  process_event.mutable_process_exec()->set_allocated_spawn_process(
+      hierarchy[0].release());
+  process_event.mutable_process_exec()->set_allocated_process(
+      hierarchy[1].release());
+  EXPECT_TRUE(process_cache_->IsEventFiltered(process_event));
+}
+
+TEST_F(ProcessCacheTestFixture, SpacedCliTerminateEventsAreFiltered) {
+  // underscorify the filter paths.
+  process_cache_->InitializeFilter(true);
+  // this is spaced_cli as called by cryptohome.
+  const bpf::cros_process_start& process_start =
+      mock_spawns_[kPidChildOfChild].process_start;
+  process_cache_->PutFromBpfExec(process_start);
+  auto hierarchy = process_cache_->GetProcessHierarchy(
+      process_start.task_info.pid, process_start.task_info.start_time, 2);
+  EXPECT_GE(hierarchy.size(), 2);
+  cros_xdr::reporting::XdrProcessEvent process_event;
+  process_event.mutable_process_terminate()->set_allocated_process(
+      hierarchy[0].release());
+  process_event.mutable_process_terminate()->set_allocated_parent_process(
+      hierarchy[1].release());
+  EXPECT_TRUE(process_cache_->IsEventFiltered(process_event));
+}
+
+TEST_F(ProcessCacheTestFixture, NotEverythingIsFiltered) {
+  process_cache_->InitializeFilter(true);
+  // this is cryptohom
+  const bpf::cros_process_start& process_start =
+      mock_spawns_[kPidSiblingOfChildOfChild].process_start;
+  process_cache_->PutFromBpfExec(process_start);
+  auto hierarchy = process_cache_->GetProcessHierarchy(
+      process_start.task_info.pid, process_start.task_info.start_time, 2);
+  EXPECT_GE(hierarchy.size(), 2);
+  cros_xdr::reporting::XdrProcessEvent process_event;
+  process_event.mutable_process_exec()->set_allocated_spawn_process(
+      hierarchy[0].release());
+  process_event.mutable_process_exec()->set_allocated_process(
+      hierarchy[1].release());
+  EXPECT_FALSE(process_cache_->IsEventFiltered(process_event));
 }
 
 TEST_F(ProcessCacheTestFixture, BpfCacheHit) {
