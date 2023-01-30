@@ -49,7 +49,8 @@ class ActiveProcess {
 
   pid_t GetPid() const { return pid_; }
 
-  void LogProcess() const;
+  void LogProcess(const re2::RE2& files_regex,
+                  const re2::RE2& mounts_regex) const;
 
  private:
   pid_t pid_;

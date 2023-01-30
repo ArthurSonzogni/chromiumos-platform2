@@ -45,14 +45,32 @@ bool ActiveProcess::HasMountOpenFromDevice(const re2::RE2& pattern) const {
   return open_mounts > 0;
 }
 
-void ActiveProcess::LogProcess() const {
+void ActiveProcess::LogProcess(const re2::RE2& files_regex,
+                               const re2::RE2& mounts_regex) const {
+  bool printed_mounts_header = false;
+  bool printed_file_header = false;
+
   LOG(INFO) << "Process: " << pid_ << "; Comm: " << comm_;
-  LOG(INFO) << "Process Mounts: (Source, Target, Device)";
-  for (auto& m : mounts_)
+
+  for (auto& m : mounts_) {
+    if (!re2::RE2::PartialMatch(m.device, mounts_regex))
+      continue;
+    if (!printed_mounts_header) {
+      LOG(INFO) << "Matching process Mounts: (Source, Target, Device)";
+      printed_mounts_header = true;
+    }
     LOG(INFO) << ">> " << m.source << " " << m.target << " " << m.device;
-  LOG(INFO) << "Open files: (Path)";
-  for (auto& fd : file_descriptors_)
+  }
+
+  for (auto& fd : file_descriptors_) {
+    if (!re2::RE2::PartialMatch(fd.path.value(), files_regex))
+      continue;
+    if (!printed_file_header) {
+      LOG(INFO) << "Matching open files: (Path)";
+      printed_file_header = true;
+    }
     LOG(INFO) << ">> " << fd.path;
+  }
 }
 
 }  // namespace init

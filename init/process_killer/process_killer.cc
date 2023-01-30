@@ -91,7 +91,7 @@ ProcessKiller::ProcessKiller(bool session, bool shutdown)
 
 void ProcessKiller::LogProcesses() {
   for (ActiveProcess& p : process_list_) {
-    p.LogProcess();
+    p.LogProcess(mount_regex_, device_regex_);
   }
 }
 
