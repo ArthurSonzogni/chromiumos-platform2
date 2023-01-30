@@ -5,6 +5,7 @@
 #include "debugd/src/lp_tools.h"
 
 #include <signal.h>
+#include <unistd.h>
 
 #include <string>
 #include <vector>
@@ -39,14 +40,14 @@ constexpr char kLpGroup[] = "lp";
 }  // namespace
 
 // Returns the exit code for the executed process.
-int LpTools::RunAsUser(const std::string& user,
-                       const std::string& group,
-                       const std::string& command,
-                       const std::string& seccomp_policy,
-                       const ProcessWithOutput::ArgList& arg_list,
-                       const std::vector<uint8_t>* std_input,
-                       bool inherit_usergroups,
-                       std::string* out) {
+int LpToolsImpl::RunAsUser(const std::string& user,
+                           const std::string& group,
+                           const std::string& command,
+                           const std::string& seccomp_policy,
+                           const ProcessWithOutput::ArgList& arg_list,
+                           const std::vector<uint8_t>* std_input,
+                           bool inherit_usergroups,
+                           std::string* out) const {
   ProcessWithOutput process;
   process.set_separate_stderr(true);
   process.SandboxAs(user, group);
@@ -156,6 +157,12 @@ int LpToolsImpl::CupsUriHelper(const std::string& uri) const {
 const base::FilePath& LpToolsImpl::GetCupsPpdDir() const {
   static const base::FilePath kCupsPpdDir("/var/cache/cups/printers/ppd");
   return kCupsPpdDir;
+}
+
+int LpToolsImpl::Chown(const std::string& path,
+                       uid_t owner,
+                       gid_t group) const {
+  return chown(path.c_str(), owner, group);
 }
 
 }  // namespace debugd

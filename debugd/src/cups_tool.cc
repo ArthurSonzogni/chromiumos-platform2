@@ -69,7 +69,7 @@ int TestPPD(const LpTools& lp_tools, const std::vector<uint8_t>& ppd_data) {
   std::vector<uint8_t> ppd_content = ppd_data;
   if (ppd_content[0] == 0x1f && ppd_content[1] == 0x8b) {  // gzip header
     std::string out;
-    int ret = LpTools::RunAsUser(kLpadminUser, kLpadminGroup, kGzipCommand, "",
+    int ret = lp_tools.RunAsUser(kLpadminUser, kLpadminGroup, kGzipCommand, "",
                                  {"-cfd"}, &ppd_content, false, &out);
     if (ret || out.empty()) {
       LOG(ERROR) << "gzip failed";
@@ -94,9 +94,10 @@ int TestPPD(const LpTools& lp_tools, const std::vector<uint8_t>& ppd_data) {
       PLOG(ERROR) << "Could not write to file";
       return 1;
     }
-    if (chown(tmp.GetPath().MaybeAsASCII().c_str(),
-              getpwnam(kLpadminUser)->pw_uid, -1)) {
-      PLOG(ERROR) << "Could not set directory ownership";
+    if (lp_tools.Chown(tmp.GetPath().MaybeAsASCII(),
+                       getpwnam(kLpadminUser)->pw_uid, -1)) {
+      PLOG(ERROR) << "Could not set directory ownership ("
+                  << tmp.GetPath().MaybeAsASCII() << ")";
       return 1;
     }
     auto env = base::Environment::Create();
@@ -105,7 +106,7 @@ int TestPPD(const LpTools& lp_tools, const std::vector<uint8_t>& ppd_data) {
     env->SetVar("PPD", ppd_file.MaybeAsASCII());
     const std::vector<uint8_t> kPdf(std::begin(kPdfContent),
                                     std::end(kPdfContent));
-    ret = LpTools::RunAsUser(
+    ret = lp_tools.RunAsUser(
         kLpadminUser, kLpadminGroup, kFoomaticCommand, "",
         {"1" /*jobID*/, "chronos" /*user*/, "Untitled" /*title*/,
          "1" /*copies*/, "" /*options*/},

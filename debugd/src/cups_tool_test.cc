@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <algorithm>
 #include <utility>
 
 #include <gtest/gtest.h>
@@ -54,7 +55,7 @@ class FakeLpTools : public LpTools {
   int Lpadmin(const ProcessWithOutput::ArgList& arg_list,
               bool inherit_usergroups,
               const std::vector<uint8_t>* std_input) override {
-    return 0;
+    return lpadmin_result_;
   }
 
   // Return 1 if lpstat_output_ is empty, else populate output (if non-null) and
@@ -80,8 +81,23 @@ class FakeLpTools : public LpTools {
     return urihelper_result_;
   }
 
+  int RunAsUser(const std::string& user,
+                const std::string& group,
+                const std::string& command,
+                const std::string& seccomp_policy,
+                const ProcessWithOutput::ArgList& arg_list,
+                const std::vector<uint8_t>* std_input = nullptr,
+                bool inherit_usergroups = false,
+                std::string* out = nullptr) const override {
+    return runasuser_result_;
+  }
+
   const base::FilePath& GetCupsPpdDir() const override {
     return ppd_dir_.GetPath();
+  }
+
+  int Chown(const std::string& path, uid_t owner, gid_t group) const override {
+    return chown_result_;
   }
 
   // The following methods allow the user to setup the fake object to return the
@@ -92,6 +108,12 @@ class FakeLpTools : public LpTools {
   void SetCupsTestPPDResult(int result) { cupstestppd_result_ = result; }
 
   void SetCupsUriHelperResult(int result) { urihelper_result_ = result; }
+
+  void SetRunAsUserResult(int result) { runasuser_result_ = result; }
+
+  void SetChownResult(int result) { chown_result_ = result; }
+
+  void SetLpadminResult(int result) { lpadmin_result_ = result; }
 
   // Create some valid output for lpstat based on printerName
   void CreateValidLpstatOutput(const std::string& printerName) {
@@ -128,6 +150,9 @@ class FakeLpTools : public LpTools {
   base::ScopedTempDir ppd_dir_;
   int cupstestppd_result_{0};
   int urihelper_result_{0};
+  int runasuser_result_{0};
+  int chown_result_{0};
+  int lpadmin_result_{0};
 };
 
 TEST(CupsToolTest, RetrievePpd) {
@@ -295,6 +320,74 @@ TEST(CupsToolTest, ManualMissingName) {
             CupsResult::CUPS_FATAL);
 }
 
+TEST(CupsToolTest, ManualUnknownError) {
+  std::vector<uint8_t> good_ppd(kMinimalPPDContent.begin(),
+                                kMinimalPPDContent.end());
+
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+  lptools->SetCupsTestPPDResult(0);    // Successful validation.
+  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetLpadminResult(1);
+
+  CupsTool cups;
+  cups.SetLpToolsForTesting(std::move(lptools));
+
+  EXPECT_EQ(cups.AddManuallyConfiguredPrinter(
+                "test", "ipp://127.0.0.1:631/ipp/print", good_ppd),
+            CupsResult::CUPS_LPADMIN_FAILURE);
+}
+
+TEST(CupsToolTest, ManualInvalidPpdDuringLpadmin) {
+  std::vector<uint8_t> good_ppd(kMinimalPPDContent.begin(),
+                                kMinimalPPDContent.end());
+
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+  lptools->SetCupsTestPPDResult(0);    // Successful validation.
+  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetLpadminResult(5);
+
+  CupsTool cups;
+  cups.SetLpToolsForTesting(std::move(lptools));
+
+  EXPECT_EQ(cups.AddManuallyConfiguredPrinter(
+                "test", "ipp://127.0.0.1:631/ipp/print", good_ppd),
+            CupsResult::CUPS_INVALID_PPD);
+}
+
+TEST(CupsToolTest, ManualNotAutoConf) {
+  std::vector<uint8_t> good_ppd(kMinimalPPDContent.begin(),
+                                kMinimalPPDContent.end());
+
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+  lptools->SetCupsTestPPDResult(0);    // Successful validation.
+  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetLpadminResult(9);
+
+  CupsTool cups;
+  cups.SetLpToolsForTesting(std::move(lptools));
+
+  EXPECT_EQ(cups.AddManuallyConfiguredPrinter(
+                "test", "ipp://127.0.0.1:631/ipp/print", good_ppd),
+            CupsResult::CUPS_FATAL);
+}
+
+TEST(CupsToolTest, ManualUnhandledError) {
+  std::vector<uint8_t> good_ppd(kMinimalPPDContent.begin(),
+                                kMinimalPPDContent.end());
+
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+  lptools->SetCupsTestPPDResult(0);    // Successful validation.
+  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetLpadminResult(100);      // Error code without CUPS equivalent.
+
+  CupsTool cups;
+  cups.SetLpToolsForTesting(std::move(lptools));
+
+  EXPECT_EQ(cups.AddManuallyConfiguredPrinter(
+                "test", "ipp://127.0.0.1:631/ipp/print", good_ppd),
+            CupsResult::CUPS_FATAL);
+}
+
 TEST(CupsToolTest, AutoMissingURI) {
   CupsTool cups;
   EXPECT_EQ(cups.AddAutoConfiguredPrinter("test", ""), CupsResult::CUPS_FATAL);
@@ -309,6 +402,195 @@ TEST(CupsToolTest, AutoMissingName) {
 
   EXPECT_EQ(cups.AddAutoConfiguredPrinter("", "ipp://127.0.0.1:631/ipp/print"),
             CupsResult::CUPS_FATAL);
+}
+
+TEST(CupsToolTest, AutoUnreasonableUri) {
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+  lptools->SetCupsUriHelperResult(-1);  // Unreasonable URI.
+
+  CupsTool cups;
+  cups.SetLpToolsForTesting(std::move(lptools));
+
+  EXPECT_EQ(cups.AddAutoConfiguredPrinter("", "ipp://127.0.0.1:631/ipp/print"),
+            CupsResult::CUPS_BAD_URI);
+}
+
+TEST(CupsToolTest, AddAutoConfiguredPrinter) {
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+  lptools->SetCupsUriHelperResult(0);  // URI validated.
+
+  CupsTool cups;
+  cups.SetLpToolsForTesting(std::move(lptools));
+
+  EXPECT_EQ(
+      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
+      CupsResult::CUPS_SUCCESS);
+}
+
+TEST(CupsToolTest, AutoUnknwonError) {
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetLpadminResult(1);
+
+  CupsTool cups;
+  cups.SetLpToolsForTesting(std::move(lptools));
+
+  EXPECT_EQ(
+      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
+      CupsResult::CUPS_AUTOCONF_FAILURE);
+}
+
+TEST(CupsToolTest, AutoFatalError) {
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetLpadminResult(2);
+
+  CupsTool cups;
+  cups.SetLpToolsForTesting(std::move(lptools));
+
+  EXPECT_EQ(
+      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
+      CupsResult::CUPS_FATAL);
+}
+
+TEST(CupsToolTest, AutoIoError) {
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetLpadminResult(3);
+
+  CupsTool cups;
+  cups.SetLpToolsForTesting(std::move(lptools));
+
+  EXPECT_EQ(
+      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
+      CupsResult::CUPS_IO_ERROR);
+}
+
+TEST(CupsToolTest, AutoMemoryAllocError) {
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetLpadminResult(4);
+
+  CupsTool cups;
+  cups.SetLpToolsForTesting(std::move(lptools));
+
+  EXPECT_EQ(
+      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
+      CupsResult::CUPS_MEMORY_ALLOC_ERROR);
+}
+
+TEST(CupsToolTest, AutoInvalidPpd) {
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetLpadminResult(5);
+
+  CupsTool cups;
+  cups.SetLpToolsForTesting(std::move(lptools));
+
+  EXPECT_EQ(
+      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
+      CupsResult::CUPS_FATAL);
+}
+
+TEST(CupsToolTest, AutoServerUnreachable) {
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetLpadminResult(6);
+
+  CupsTool cups;
+  cups.SetLpToolsForTesting(std::move(lptools));
+
+  EXPECT_EQ(
+      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
+      CupsResult::CUPS_FATAL);
+}
+
+TEST(CupsToolTest, AutoPrinterUnreachable) {
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetLpadminResult(7);
+
+  CupsTool cups;
+  cups.SetLpToolsForTesting(std::move(lptools));
+
+  EXPECT_EQ(
+      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
+      CupsResult::CUPS_PRINTER_UNREACHABLE);
+}
+
+TEST(CupsToolTest, AutoPrinterWrongResponse) {
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetLpadminResult(8);
+
+  CupsTool cups;
+  cups.SetLpToolsForTesting(std::move(lptools));
+
+  EXPECT_EQ(
+      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
+      CupsResult::CUPS_PRINTER_WRONG_RESPONSE);
+}
+
+TEST(CupsToolTest, AutoPrinterNotAutoConf) {
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetLpadminResult(9);
+
+  CupsTool cups;
+  cups.SetLpToolsForTesting(std::move(lptools));
+
+  EXPECT_EQ(
+      cups.AddAutoConfiguredPrinter("test", "ipp://127.0.0.1:631/ipp/print"),
+      CupsResult::CUPS_PRINTER_NOT_AUTOCONF);
+}
+
+TEST(CupsToolTest, FoomaticPPD) {
+  // Make the PPD look like it has a foomatic-rip filter.
+  constexpr base::StringPiece kFoomaticLine(
+      R"foo(*cupsFilter: "application/vnd.cups-pdf 0 foomatic-rip")foo");
+  std::vector<uint8_t> foomatic_ppd(kMinimalPPDContent.begin(),
+                                    kMinimalPPDContent.end());
+  std::copy(kFoomaticLine.begin(), kFoomaticLine.end(),
+            std::back_inserter(foomatic_ppd));
+
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+  lptools->SetRunAsUserResult(0);
+  lptools->SetChownResult(0);
+
+  CupsTool cups;
+  cups.SetLpToolsForTesting(std::move(lptools));
+  EXPECT_EQ(cups.AddManuallyConfiguredPrinter("test", "ipp://", foomatic_ppd),
+            CupsResult::CUPS_SUCCESS);
+}
+
+TEST(CupsToolTest, FoomaticError) {
+  // Make the PPD look like it has a foomatic-rip filter.
+  constexpr base::StringPiece kFoomaticLine(
+      R"foo(*cupsFilter: "application/vnd.cups-pdf 0 foomatic-rip")foo");
+  std::vector<uint8_t> foomatic_ppd(kMinimalPPDContent.begin(),
+                                    kMinimalPPDContent.end());
+  std::copy(kFoomaticLine.begin(), kFoomaticLine.end(),
+            std::back_inserter(foomatic_ppd));
+
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+  lptools->SetRunAsUserResult(0);
+  lptools->SetChownResult(-1);
+
+  CupsTool cups;
+  cups.SetLpToolsForTesting(std::move(lptools));
+  EXPECT_EQ(cups.AddManuallyConfiguredPrinter("test", "ipp://", foomatic_ppd),
+            CupsResult::CUPS_INVALID_PPD);
+}
+
+TEST(CupsToolTest, RemovePrinter) {
+  std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
+
+  CupsTool cups;
+  cups.SetLpToolsForTesting(std::move(lptools));
+
+  // Our FakeLpTools always returns 0 for lpadmin calls, so we expect this to
+  // pass.
+  EXPECT_EQ(cups.RemovePrinter("printer-name"), true);
 }
 
 }  // namespace debugd

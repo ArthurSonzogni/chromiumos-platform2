@@ -36,14 +36,19 @@ class LpTools {
   virtual const base::FilePath& GetCupsPpdDir() const = 0;
 
   // Returns the exit code for the executed process.
-  static int RunAsUser(const std::string& user,
-                       const std::string& group,
-                       const std::string& command,
-                       const std::string& seccomp_policy,
-                       const ProcessWithOutput::ArgList& arg_list,
-                       const std::vector<uint8_t>* std_input = nullptr,
-                       bool inherit_usergroups = false,
-                       std::string* out = nullptr);
+  virtual int RunAsUser(const std::string& user,
+                        const std::string& group,
+                        const std::string& command,
+                        const std::string& seccomp_policy,
+                        const ProcessWithOutput::ArgList& arg_list,
+                        const std::vector<uint8_t>* std_input = nullptr,
+                        bool inherit_usergroups = false,
+                        std::string* out = nullptr) const = 0;
+
+  // Change ownership of a file.  Return 0 on success, -1 on error.
+  virtual int Chown(const std::string& path,
+                    uid_t owner,
+                    gid_t group) const = 0;
 };
 
 class LpToolsImpl : public LpTools {
@@ -62,6 +67,17 @@ class LpToolsImpl : public LpTools {
   int CupsUriHelper(const std::string& uri) const override;
 
   const base::FilePath& GetCupsPpdDir() const override;
+
+  int RunAsUser(const std::string& user,
+                const std::string& group,
+                const std::string& command,
+                const std::string& seccomp_policy,
+                const ProcessWithOutput::ArgList& arg_list,
+                const std::vector<uint8_t>* std_input = nullptr,
+                bool inherit_usergroups = false,
+                std::string* out = nullptr) const override;
+
+  int Chown(const std::string& path, uid_t owner, gid_t group) const override;
 };
 
 }  // namespace debugd
