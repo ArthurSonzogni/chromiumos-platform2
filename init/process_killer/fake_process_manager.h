@@ -19,7 +19,10 @@ class FakeProcessManager : public ProcessManager {
   FakeProcessManager() : ProcessManager(base::FilePath("/foo")) {}
   ~FakeProcessManager() override = default;
 
-  std::vector<ActiveProcess> GetProcessList() override { return process_list_; }
+  std::vector<ActiveProcess> GetProcessList(bool need_files,
+                                            bool need_mounts) override {
+    return process_list_;
+  }
   bool SendSignalToProcess(const ActiveProcess& p, int signal) override {
     if (signal == SIGTERM || signal == SIGKILL) {
       auto iter = std::find_if(process_list_.begin(), process_list_.end(),

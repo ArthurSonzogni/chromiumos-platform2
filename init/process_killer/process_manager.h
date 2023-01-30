@@ -20,7 +20,8 @@ class ProcessManager {
  public:
   explicit ProcessManager(const base::FilePath& proc);
   virtual ~ProcessManager() = default;
-  virtual std::vector<ActiveProcess> GetProcessList();
+  virtual std::vector<ActiveProcess> GetProcessList(bool need_files,
+                                                    bool need_mounts);
   virtual bool SendSignalToProcess(const ActiveProcess& p, int signal);
 
  private:

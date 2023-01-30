@@ -75,7 +75,7 @@ class ProcessManagerTest : public ::testing::Test {
 TEST_F(ProcessManagerTest, InvalidProcessTest) {
   ASSERT_TRUE(base::WriteFile(
       tmp_dir_.GetPath().AppendASCII("proc").AppendASCII("123"), "foo", 3));
-  EXPECT_TRUE(pm_->GetProcessList().empty());
+  EXPECT_TRUE(pm_->GetProcessList(true, true).empty());
 }
 
 TEST_F(ProcessManagerTest, ValidProcessTest) {
@@ -84,7 +84,7 @@ TEST_F(ProcessManagerTest, ValidProcessTest) {
   OpenFileDescriptor fd = {base::FilePath("foo")};
   SetUpProcess(2, "foo", mountinfo, {fd});
 
-  std::vector<ActiveProcess> list = pm_->GetProcessList();
+  std::vector<ActiveProcess> list = pm_->GetProcessList(true, true);
   EXPECT_EQ(list.size(), 1);
   ActiveProcess p = list[0];
 

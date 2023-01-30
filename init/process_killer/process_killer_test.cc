@@ -53,7 +53,7 @@ TEST(ProcessKiller, SessionIrrelevantProcessTest) {
   process_killer->SetProcessManagerForTesting(std::move(pm));
   process_killer->KillProcesses(true, true);
 
-  EXPECT_EQ(fake_pm->GetProcessList().size(), 1);
+  EXPECT_EQ(fake_pm->GetProcessList(true, true).size(), 1);
 }
 
 TEST(ProcessKiller, ShutdownIrrelevantProcessTest) {
@@ -67,7 +67,7 @@ TEST(ProcessKiller, ShutdownIrrelevantProcessTest) {
   process_killer->SetProcessManagerForTesting(std::move(pm));
   process_killer->KillProcesses(true, true);
 
-  EXPECT_EQ(fake_pm->GetProcessList().size(), 1);
+  EXPECT_EQ(fake_pm->GetProcessList(true, true).size(), 1);
 }
 
 TEST(ProcessKiller, SessionFileOpenTest) {
@@ -81,7 +81,7 @@ TEST(ProcessKiller, SessionFileOpenTest) {
   process_killer->SetProcessManagerForTesting(std::move(pm));
   process_killer->KillProcesses(true, false);
 
-  EXPECT_EQ(fake_pm->GetProcessList().size(), 0);
+  EXPECT_EQ(fake_pm->GetProcessList(true, true).size(), 0);
 }
 
 TEST(ProcessKiller, SessionMountOpenTest) {
@@ -95,7 +95,7 @@ TEST(ProcessKiller, SessionMountOpenTest) {
   process_killer->SetProcessManagerForTesting(std::move(pm));
   process_killer->KillProcesses(false, true);
 
-  EXPECT_EQ(fake_pm->GetProcessList().size(), 0);
+  EXPECT_EQ(fake_pm->GetProcessList(true, true).size(), 0);
 }
 
 TEST(ProcessKiller, ShutdownFileOpenTest) {
@@ -109,7 +109,7 @@ TEST(ProcessKiller, ShutdownFileOpenTest) {
   process_killer->SetProcessManagerForTesting(std::move(pm));
   process_killer->KillProcesses(true, false);
 
-  EXPECT_EQ(fake_pm->GetProcessList().size(), 0);
+  EXPECT_EQ(fake_pm->GetProcessList(true, true).size(), 0);
 }
 
 TEST(ProcessKiller, ShutdownMountOpenTest) {
@@ -123,7 +123,7 @@ TEST(ProcessKiller, ShutdownMountOpenTest) {
   process_killer->SetProcessManagerForTesting(std::move(pm));
   process_killer->KillProcesses(false, true);
 
-  EXPECT_EQ(fake_pm->GetProcessList().size(), 0);
+  EXPECT_EQ(fake_pm->GetProcessList(true, true).size(), 0);
 }
 
 }  // namespace init

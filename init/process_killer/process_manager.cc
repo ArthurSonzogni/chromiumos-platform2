@@ -91,7 +91,8 @@ std::vector<OpenFileDescriptor> ProcessManager::GetFileDescriptorsForProcess(
   return ret;
 }
 
-std::vector<ActiveProcess> ProcessManager::GetProcessList() {
+std::vector<ActiveProcess> ProcessManager::GetProcessList(bool need_files,
+                                                          bool need_mounts) {
   std::vector<ActiveProcess> process_list;
 
   base::FileEnumerator dir_enum(proc_path_, false /* recursive */,
@@ -105,8 +106,13 @@ std::vector<ActiveProcess> ProcessManager::GetProcessList() {
       continue;
 
     pid_t pid = base::checked_cast<pid_t>(pid64);
-    auto mounts = GetMountsForProcess(pid);
-    auto fds = GetFileDescriptorsForProcess(pid);
+    std::vector<ActiveMount> mounts;
+    std::vector<OpenFileDescriptor> fds;
+
+    if (need_mounts)
+      mounts = GetMountsForProcess(pid);
+    if (need_files)
+      fds = GetFileDescriptorsForProcess(pid);
 
     base::FilePath comm_path = base::FilePath(base::StringPrintf(
         "%s/%d/%s", proc_path_.value().c_str(), pid, kCommPath));

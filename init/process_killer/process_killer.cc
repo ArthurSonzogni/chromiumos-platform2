@@ -132,7 +132,7 @@ void ProcessKiller::KillProcesses(bool files, bool devices) {
 }
 
 void ProcessKiller::UpdateProcessList(bool files, bool devices) {
-  process_list_ = pm_->GetProcessList();
+  process_list_ = pm_->GetProcessList(files, devices);
 
   process_list_.erase(
       std::remove_if(process_list_.begin(), process_list_.end(),
