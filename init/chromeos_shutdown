@@ -12,6 +12,21 @@ set +e
 
 bootstat shutdown-start
 
+# Let's send output of this script through the kernel. This means that
+# we can see any relevant output after bootup in console-ramoops.
+# We'll also explicitly set `printk_devkmsg` to on which will prevent
+# rate-limiting.
+#
+# NOTE: this trick generally works more reliably with stderr than stdout.
+# Specifically writes to stdout may fail because programs may detect the
+# "/dev/kmsg" is a file and try to buffer output to stdout. If any individual
+# write is over the 1024 byte limit in the kernel then it will fail. We
+# expect most things we care about to be on stderr, but if an individual
+# program is getting a failure it could likely be handled by piping its
+# stdout to `sed -u -e ''`.
+sysctl -w kernel.printk_devkmsg=on
+exec 1> /dev/kmsg 2> /dev/kmsg
+
 # Set nologin so services (like usb_bouncer) can check that a shutdown is
 # happening.
 touch /run/nologin
@@ -26,8 +41,27 @@ PROCESS_KILLER_LOG=/run/process_killer.log
 # Kill any that may prevent us from unmounting the stateful partition
 # or the crypto-home and then unmount. These should be all that we need
 # to unmount for a clean shutdown.
+#
+# We send the output of this script in two places: stdout (which is
+# redirected to /dev/kmsg) and "${PROCESS_KILLER_LOG}".
+#
+# Having ouptut in kmsg is useful because it captures the kills that
+# process_killer does even in the case that we don't have a catastrophic
+# unmount failure. We still care about these non-catastrophic cases because
+# processes _should_ have been killed before this script was even called (this
+# script is a last resort). Thus, having these logs show up in console-ramoops
+# is a good way to call attention to these kills.
+#
+# Another benefit of having process_killer logs in /dev/kmsg is that the
+# system is more likely than normal to crash at reboot/shutdown time as it
+# executes code that isn't exercised as much. Writing to /dev/kmsg shows up in
+# console-ramoops even if the kernel crashes partway through.
+#
+# Having process_killer logs in "${PROCESS_KILLER_LOG}" is also useful because,
+# if we do have an unmount failure, the output of process_killer is very
+# relevant and unmount failure crash reports don't include the kernel messages.
 process_killer --shutdown --log_to_stderr --file_holders \
-  --mount_holders >"${PROCESS_KILLER_LOG}" 2>&1
+  --mount_holders 2>&1 | tee "${PROCESS_KILLER_LOG}" | sed -u -e ""
 
 # CROS_DEBUG equals one if we've booted in developer mode or we've booted a
 # developer image.
