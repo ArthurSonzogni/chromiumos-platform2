@@ -27,6 +27,13 @@ ActiveProcess GetInitProcess(pid_t pid, const std::string& comm) {
       {{base::FilePath("/sbin/chromeos_startup")}});
 }
 
+ActiveProcess GetInitProcessWithLog(pid_t pid, const std::string& comm) {
+  return ActiveProcess(
+      pid, comm,
+      {{base::FilePath("/"), base::FilePath("/"), std::string("/dev/sda3")}},
+      {{base::FilePath("/var/log/init.log")}});
+}
+
 ActiveProcess GetEncstatefulProcess(pid_t pid, const std::string& comm) {
   return ActiveProcess(pid, comm,
                        {{base::FilePath("/var"), base::FilePath("/var"),
@@ -66,6 +73,20 @@ TEST(ProcessKiller, ShutdownIrrelevantProcessTest) {
       std::make_unique<ProcessKiller>(false /*session*/, true /*shutdown*/);
   process_killer->SetProcessManagerForTesting(std::move(pm));
   process_killer->KillProcesses(true, true);
+
+  EXPECT_EQ(fake_pm->GetProcessList(true, true).size(), 1);
+}
+
+TEST(ProcessKiller, DontKillInitTest) {
+  std::unique_ptr<FakeProcessManager> pm =
+      std::make_unique<FakeProcessManager>();
+  FakeProcessManager* fake_pm = pm.get();
+  fake_pm->SetProcessListForTesting({GetInitProcessWithLog(1, "init")});
+
+  std::unique_ptr<ProcessKiller> process_killer =
+      std::make_unique<ProcessKiller>(false /*session*/, true /*shutdown*/);
+  process_killer->SetProcessManagerForTesting(std::move(pm));
+  process_killer->KillProcesses(true, false);
 
   EXPECT_EQ(fake_pm->GetProcessList(true, true).size(), 1);
 }

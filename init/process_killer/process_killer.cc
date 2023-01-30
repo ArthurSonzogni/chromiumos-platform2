@@ -142,7 +142,10 @@ void ProcessKiller::UpdateProcessList(bool files, bool devices) {
                          ret |= !p.HasFileOpenOnMount(mount_regex_);
                        if (devices)
                          ret |= !p.HasMountOpenFromDevice(device_regex_);
-
+                       if (!ret && p.GetPid() == 1) {
+                         LOG(ERROR) << "Cowardly refusing to kill init";
+                         return true;
+                       }
                        return ret;
                      }),
       process_list_.end());
