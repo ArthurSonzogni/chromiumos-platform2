@@ -375,8 +375,8 @@ void Manager::OnShillDefaultLogicalDeviceChanged(
   }
 
   if (new_device.type == ShillClient::Device::Type::kVPN) {
-    datapath_->StartVpnRouting(new_device.ifname);
     counters_svc_->OnVpnDeviceAdded(new_device.ifname);
+    datapath_->StartVpnRouting(new_device.ifname);
   }
 
   // When the default logical network changes, Crostini's tap devices must leave
