@@ -123,7 +123,6 @@ class MockFirewall : public Firewall {
                     uint16_t dst_port));
 };
 
-
 void Verify_ip(MockProcessRunner& runner, const std::string& command) {
   auto args = SplitCommand(command);
   const auto object = args[0];
@@ -310,6 +309,14 @@ TEST(DatapathTest, Start) {
        "--tcp-flags FIN,PSH "
        "FIN,PSH -o wwan+ -j DROP -w"},
       {IPv4,
+       "filter -I drop_guest_invalid_ipv4 -s 100.115.92.0/23 -p tcp "
+       "--tcp-flags FIN,PSH "
+       "FIN,PSH -o mbimmux+ -j DROP -w"},
+      {IPv4,
+       "filter -I drop_guest_invalid_ipv4 -s 100.115.92.0/23 -p tcp "
+       "--tcp-flags FIN,PSH "
+       "FIN,PSH -o qmapmux+ -j DROP -w"},
+      {IPv4,
        "nat -A POSTROUTING -m mark --mark 0x00000001/0x00000001 -j MASQUERADE "
        "-w"},
       // Asserts for AddForwardEstablishedRule
@@ -335,6 +342,14 @@ TEST(DatapathTest, Start) {
        "-w"},
       {IPv4,
        "filter -I drop_guest_ipv4_prefix -o rmnet+ -s 100.115.92.0/23 -j DROP "
+       "-w"},
+      {IPv4,
+       "filter -I drop_guest_ipv4_prefix -o mbimmux+ -s 100.115.92.0/23 -j "
+       "DROP "
+       "-w"},
+      {IPv4,
+       "filter -I drop_guest_ipv4_prefix -o qmapmux+ -s 100.115.92.0/23 -j "
+       "DROP "
        "-w"},
       // Asserts for forwarding ICMP6.
       {IPv6, "filter -A FORWARD -p ipv6-icmp -j ACCEPT -w"},

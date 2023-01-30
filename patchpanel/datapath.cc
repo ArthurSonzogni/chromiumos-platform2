@@ -45,10 +45,13 @@ constexpr uint16_t kAdbServerPort = 5555;
 // Constants used for dropping locally originated traffic bound to an incorrect
 // source IPv4 address.
 constexpr char kGuestIPv4Subnet[] = "100.115.92.0/23";
-constexpr std::array<const char*, 6> kPhysicalIfnamePrefixes{
-    {"eth+", "wlan+", "mlan+", "usb+", "wwan+", "rmnet+"}};
-constexpr std::array<const char*, 2> kCellularIfnamePrefixes{
-    {"wwan+", "rmnet+"}};
+// Interface name patterns matching all Cellular physical and virtual interfaces
+// supported on ChromeOS.
+constexpr std::array<const char*, 4> kCellularIfnamePrefixes{
+    {"wwan+", "rmnet+", "mbimmux+", "qmapmux+"}};
+// Same as |kCellularIfnamePrefixes| but for other network technologies.
+constexpr std::array<const char*, 4> kOtherPhysicalIfnamePrefixes{
+    {"eth+", "wlan+", "mlan+", "usb+"}};
 
 // Chains for tagging egress traffic in the OUTPUT and PREROUTING chains of the
 // mangle table.
@@ -288,10 +291,15 @@ void Datapath::Start() {
 
   // chromium:898210: Drop any locally originated traffic that would exit a
   // physical interface with a source IPv4 address from the subnet of IPs used
-  // for VMs, containers, and connected namespaces This is needed to prevent
+  // for VMs, containers, and connected namespaces. This is needed to prevent
   // packets leaking with an incorrect src IP when a local process binds to the
   // wrong interface.
-  for (const auto& oif : kPhysicalIfnamePrefixes) {
+  std::vector<std::string> prefixes;
+  prefixes.insert(prefixes.end(), kCellularIfnamePrefixes.begin(),
+                  kCellularIfnamePrefixes.end());
+  prefixes.insert(prefixes.end(), kOtherPhysicalIfnamePrefixes.begin(),
+                  kOtherPhysicalIfnamePrefixes.end());
+  for (const auto& oif : prefixes) {
     if (!AddSourceIPv4DropRule(oif, kGuestIPv4Subnet)) {
       LOG(WARNING) << "Failed to set up IPv4 drop rule for src ip "
                    << kGuestIPv4Subnet << " exiting " << oif;
