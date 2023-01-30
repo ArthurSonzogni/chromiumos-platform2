@@ -101,6 +101,8 @@ void ProcessKiller::KillProcesses(bool files, bool devices) {
     UpdateProcessList(files, devices);
     if (process_list_.empty())
       return;
+    LOG(INFO) << "Sending SIGTERM";
+    LogProcesses();
     for (ActiveProcess& p : process_list_) {
       pm_->SendSignalToProcess(p, SIGTERM);
     }
@@ -112,6 +114,8 @@ void ProcessKiller::KillProcesses(bool files, bool devices) {
     UpdateProcessList(files, devices);
     if (process_list_.empty())
       return;
+    LOG(INFO) << "Sending SIGKILL";
+    LogProcesses();
     for (ActiveProcess& p : process_list_) {
       pm_->SendSignalToProcess(p, SIGKILL);
     }
