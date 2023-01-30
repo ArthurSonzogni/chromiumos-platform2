@@ -12,7 +12,8 @@ recommended to use a device on dev channel as backwards compatibility with
 older versions of ChromeOS is not guaranteed.
 
 IME Support is currently limited to GTK3 applications (including Electron-based
-apps). Known issues are tracked [here][issue hotlist] and bugs can be reported
+apps), and only Debian Bullseye containers are officially supported.  Known
+issues are tracked [here][issue hotlist] and bugs can be reported
 [here][new issue].
 
 ## System configuration
@@ -22,9 +23,12 @@ required. Doing so will also set the env var `GTK_IM_MODULE=cros` globally.
 Configuring sommelier to allow the host compositor to handle Ctrl+Space is
 suggested for users of multiple IMEs.
 
-From M108, cros\_im can be installed in Crostini from apt:
+### Installing cros-im:
+
+From M108, cros-im can be installed in Crostini from apt. It is installed by
+default from M112.
 ```bash
-sudo apt install cros_im
+sudo apt install cros-im
 ```
 
 ## Building with pdebuild
