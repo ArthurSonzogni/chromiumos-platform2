@@ -19,3 +19,6 @@ ENV{ID_V4L_CAPABILITIES}==":capture:", SUBSYSTEM=="video4linux", GROUP="camera"
 
 # Limit access to v4l subdevices to the camera HAL.
 SUBSYSTEM=="video4linux", KERNEL=="v4l-subdev*", GROUP="camera"
+
+# Limit access to media devices to the camera HAL.
+SUBSYSTEM=="media", ENV{MEDIA_DEVICE_TYPE}!="decoder", GROUP="camera"
