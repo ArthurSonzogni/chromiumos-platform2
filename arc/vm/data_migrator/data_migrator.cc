@@ -29,6 +29,12 @@ namespace {
 // The mount point for the migration destinaiton.
 constexpr char kDestinationMountPoint[] = "/tmp/arcvm-data-migration-mount";
 
+void PLogAndAddDBusError(brillo::ErrorPtr* error, const std::string& message) {
+  PLOG(ERROR) << message;
+  brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                       DBUS_ERROR_FAILED, message);
+}
+
 class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
                     public org::chromium::ArcVmDataMigratorInterface {
  public:
@@ -90,22 +96,21 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
     // The mount point will be automatically removed when the upstart job stops
     // since it is created under /tmp where tmpfs is mounted.
     if (!base::CreateDirectory(base::FilePath(kDestinationMountPoint))) {
-      PLOG(ERROR) << "Failed to create destination mount point "
-                  << kDestinationMountPoint;
+      PLogAndAddDBusError(error, "Failed to create destination mount point");
       return false;
     }
 
     loop_device_manager_ = std::make_unique<brillo::LoopDeviceManager>();
     loop_device_ = loop_device_manager_->AttachDeviceToFile(destination_disk);
     if (!loop_device_->IsValid()) {
-      PLOG(ERROR) << "Failed to attach a loop device";
+      PLogAndAddDBusError(error, "Failed to attach a loop device");
       CleanupMount();
       return false;
     }
 
     if (mount(loop_device_->GetDevicePath().value().c_str(),
               kDestinationMountPoint, "ext4", 0, "")) {
-      PLOG(ERROR) << "Failed to mount the loop device";
+      PLogAndAddDBusError(error, "Failed to mount the loop device");
       CleanupMount();
       return false;
     }
@@ -116,7 +121,11 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
     auto migrate = base::BindOnce(&DBusAdaptor::Migrate, base::Unretained(this),
                                   source_dir, android_data_dir);
     migration_thread_ = std::make_unique<base::Thread>("migration_helper");
-    migration_thread_->Start();
+    if (!migration_thread_->Start()) {
+      PLogAndAddDBusError(error, "Failed to start thread for migration");
+      CleanupMount();
+      return false;
+    }
     migration_thread_->task_runner()->PostTask(FROM_HERE, std::move(migrate));
 
     return true;
