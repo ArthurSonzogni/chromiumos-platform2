@@ -46,6 +46,7 @@
 #include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/proto/record.pb.h"
+#include "missive/resources/resource_managed_buffer.h"
 #include "missive/resources/resource_manager.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_uploader_interface.h"
@@ -2005,7 +2006,8 @@ StorageQueue::SingleFile::SingleFile(
       filename_(filename),
       size_(size),
       memory_resource_(memory_resource),
-      disk_space_resource_(disk_space_resource) {
+      disk_space_resource_(disk_space_resource),
+      buffer_(memory_resource) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 }
 
@@ -2047,13 +2049,7 @@ Status StorageQueue::SingleFile::Open(bool read_only) {
 void StorageQueue::SingleFile::Close() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   is_readonly_ = std::nullopt;
-  if (buffer_) {
-    buffer_.reset();
-  }
-  if (buffer_size_ > 0) {
-    memory_resource_->Discard(buffer_size_);
-    buffer_size_ = 0;
-  }
+  buffer_.Clear();
   if (!handle_) {
     // TODO(b/157943192): Restart auto-closing timer.
     return;
@@ -2092,18 +2088,14 @@ StatusOr<base::StringPiece> StorageQueue::SingleFile::Read(
   // If no buffer yet, allocate.
   // TODO(b/157943192): Add buffer management - consider adding an UMA for
   // tracking the average + peak memory the Storage module is consuming.
-  if (!buffer_) {
+  if (buffer_.empty()) {
     const auto buffer_size =
         std::min(max_buffer_size, RoundUpToFrameSize(size_));
-    // Register with resource management.
-    if (!memory_resource_->Reserve(buffer_size)) {
+    auto alloc_status = buffer_.Allocate(buffer_size);
+    if (!alloc_status.ok()) {
       SendResExCaseToUma(ResourceExhaustedCase::NO_MEMORY_FOR_READ_BUFFER);
-      return Status(error::RESOURCE_EXHAUSTED,
-                    "Not enough memory for the read buffer");
+      return alloc_status;
     }
-    // Commit memory reservation.
-    buffer_size_ = buffer_size;
-    buffer_ = std::make_unique<char[]>(buffer_size_);
     data_start_ = data_end_ = 0;
     file_position_ = 0;
   }
@@ -2114,10 +2106,11 @@ StatusOr<base::StringPiece> StorageQueue::SingleFile::Read(
   }
   // If expected data size does not fit into the buffer, move what's left to the
   // start.
-  if (data_start_ + size > buffer_size_) {
+  if (data_start_ + size > buffer_.size()) {
     DCHECK_GT(data_start_, 0u);  // Cannot happen if 0.
-    memmove(buffer_.get(), buffer_.get() + data_start_,
-            data_end_ - data_start_);
+    if (data_end_ > data_start_) {
+      memmove(buffer_.at(0), buffer_.at(data_start_), data_end_ - data_start_);
+    }
     data_end_ -= data_start_;
     data_start_ = 0;
   }
@@ -2125,10 +2118,9 @@ StatusOr<base::StringPiece> StorageQueue::SingleFile::Read(
   pos += actual_size;
   while (actual_size < size) {
     // Read as much as possible.
-    DCHECK_LT(data_end_, buffer_size_);
+    DCHECK_LT(data_end_, buffer_.size());
     const int32_t result =
-        handle_->Read(pos, reinterpret_cast<char*>(buffer_.get() + data_end_),
-                      buffer_size_ - data_end_);
+        handle_->Read(pos, buffer_.at(data_end_), buffer_.size() - data_end_);
     if (result < 0) {
       return Status(
           error::DATA_LOSS,
@@ -2141,7 +2133,7 @@ StatusOr<base::StringPiece> StorageQueue::SingleFile::Read(
     }
     pos += result;
     data_end_ += result;
-    DCHECK_LE(data_end_, buffer_size_);
+    DCHECK_LE(data_end_, buffer_.size());
     actual_size += result;
   }
   if (actual_size > size) {
@@ -2152,7 +2144,7 @@ StatusOr<base::StringPiece> StorageQueue::SingleFile::Read(
     return Status(error::OUT_OF_RANGE, "End of file");
   }
   // Prepare reference to actually loaded data.
-  auto read_data = base::StringPiece(buffer_.get() + data_start_, actual_size);
+  auto read_data = base::StringPiece(buffer_.at(data_start_), actual_size);
   // Move start and file position to after that data.
   data_start_ += actual_size;
   file_position_ += actual_size;

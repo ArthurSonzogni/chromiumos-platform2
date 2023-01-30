@@ -34,3 +34,17 @@ static_library("resource_manager") {
     "//missive/util:time",
   ]
 }
+
+static_library("resource_managed_buffer") {
+  sources = [
+    "resource_managed_buffer.cc",
+    "resource_managed_buffer.h",
+  ]
+
+  configs += [ ":target_defaults" ]
+
+  public_deps = [
+    ":resource_manager",
+    "//missive/util:status",
+  ]
+}

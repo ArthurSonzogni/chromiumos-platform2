@@ -182,6 +182,7 @@ if (use.test) {
       "compression/compression_module_test.cc",
       "dbus/upload_client_impl_test.cc",
       "resources/enqueuing_record_tallier_test.cc",
+      "resources/resource_managed_buffer_test.cc",
       "resources/resource_manager_test.cc",
       "scheduler/enqueue_job_test.cc",
       "scheduler/scheduler_test.cc",
