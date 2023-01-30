@@ -116,6 +116,7 @@ std::vector<ActiveProcess> ProcessManager::GetProcessList() {
       PLOG_IF(ERROR, errno != ENOENT) << "Failed to read comm for process";
       continue;
     }
+    base::TrimWhitespaceASCII(comm, base::TRIM_TRAILING, &comm);
 
     process_list.push_back(ActiveProcess(pid, comm, mounts, fds));
   }
