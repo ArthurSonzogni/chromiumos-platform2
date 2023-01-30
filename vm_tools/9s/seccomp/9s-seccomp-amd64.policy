@@ -67,6 +67,7 @@ fdatasync: 1
 ftruncate: 1
 mkdirat: 1
 mremap: 1
+readlinkat: 1
 renameat: 1
 newfstatat: 1
 sendto: 1

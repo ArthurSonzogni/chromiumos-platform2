@@ -66,5 +66,6 @@ fchownat: 1
 mremap: 1
 newfstatat: 1
 sendto: 1
+readlinkat: 1
 recvfrom: 1
 clock_gettime: 1
