@@ -39,7 +39,7 @@ std::vector<ActiveMount> ProcessManager::GetMountsForProcess(pid_t pid) {
   std::vector<ActiveMount> ret;
 
   if (!base::ReadFileToString(mounts_for_process, &mount_info)) {
-    PLOG_IF(ERROR, errno != ENOENT) << "Failed to read mount info";
+    PLOG_IF(ERROR, errno != ENOENT) << "Failed to read mount info for " << pid;
     return ret;
   }
   auto mounts = base::SplitStringPiece(mount_info, "\n", base::KEEP_WHITESPACE,
@@ -113,7 +113,7 @@ std::vector<ActiveProcess> ProcessManager::GetProcessList() {
 
     std::string comm;
     if (!base::ReadFileToString(comm_path, &comm)) {
-      PLOG_IF(ERROR, errno != ENOENT) << "Failed to read comm for process";
+      PLOG_IF(ERROR, errno != ENOENT) << "Failed to read comm for " << pid;
       continue;
     }
     base::TrimWhitespaceASCII(comm, base::TRIM_TRAILING, &comm);
