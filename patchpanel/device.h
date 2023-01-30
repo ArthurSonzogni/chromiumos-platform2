@@ -33,10 +33,14 @@ namespace patchpanel {
 //  veth interface is attached.
 //  - ARCVM: a TAP device plus a software bridge to which the TAP device is
 //  attached.
-//  - Termina VMs, plugin VMs: a TAP device, with no software bridge.
-// Connected namespaces have currently no Device representation.
+//  - Termina VMs, plugin VMs, other crosvm guests: a TAP device, with no
+// software bridge.
+// The main interface interacting with other parts of the network layer is:
+//  - ARC, ARCVM: the software bridge.
+//  - other crosvm guests: the TAP device.
 // A Device always is always associated with a unique IPv4 subnet statically
-// assigned by AddressManager based on the type of guest.
+// assigned by AddressManager based on the type of guest. Connected namespaces
+// have currently no Device representation.
 class Device {
  public:
   enum class ChangeEvent {
@@ -128,10 +132,25 @@ class Device {
   std::unique_ptr<Config> release_config();
 
  private:
+  // The type of virtual device setup and guest.
   GuestType type_;
+  // The physical interface managed by shill that this virtual device is
+  // attached to. Only defined for ARC and ARCVM. Otherwise:
+  //   - for ARC0, |phys_ifname_| is set to a fixed constant ("arc0"),
+  //   - for virtual devices used by other crosvm guests, |phys_ifname_| is the
+  //   same as |host_ifname_|.
   std::string phys_ifname_;
+  // The name of the main virtual interface created by patchpanel for carrying
+  // packets out of the guest environment and onto the host routing setup. For
+  // all ARC virtual devices, |host_ifname_| corresponds to the virtual bridge
+  // created with Datapath::AddBridge(). For other crosvm guests (Termina,
+  // Crostini, PluginVM, etc) this corresponds to the TAP device created with
+  // Datapath::AddTAP().
   std::string host_ifname_;
+  // The name of the virtual interface used inside the guest environment. Only
+  // available for ARC virtual devices, otherwise empty for other crosvm guests.
   std::string guest_ifname_;
+  // The MAC address and IPv4 configuration for this virtual device.
   std::unique_ptr<Config> config_;
 
   FRIEND_TEST(DeviceTest, DisableLegacyAndroidDeviceSendsTwoMessages);

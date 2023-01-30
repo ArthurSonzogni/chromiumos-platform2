@@ -197,6 +197,11 @@ std::unique_ptr<Device> CrostiniService::AddTAP(bool is_termina,
       mac_addr, std::move(ipv4_subnet), std::move(host_ipv4_addr),
       std::move(guest_ipv4_addr), std::move(lxd_subnet));
 
+  // The crosvm virtual devices used for non ARC guests are isolated TAP
+  // devices without any bridge setup. They are not associated to any specific
+  // physical network and instead follows the current default logical network,
+  // therefore |phys_ifname| is set to a placeholder value. |guest_ifname| is
+  // not used inside the crosvm guest and is left empty.
   return std::make_unique<Device>(guest_type, tap, tap, "", std::move(config));
 }
 

@@ -176,6 +176,10 @@ std::unique_ptr<Device> MakeArc0Device(AddressManager* addr_mgr,
       addr_mgr->GenerateMacAddress(subnet_index), std::move(ipv4_subnet),
       std::move(host_ipv4_addr), std::move(guest_ipv4_addr));
 
+  // The "arc0" virtual device is either attached on demand to host VPNs or is
+  // used to forward host traffic into an Android VPN. Therefore, |phys_ifname|
+  // is not meaningful for the "arc0" virtual device and is set to a placeholder
+  // value.
   return std::make_unique<Device>(GuestType::ARC0, kArcIfname, kArcBridge,
                                   kArcIfname, std::move(config));
 }
@@ -469,6 +473,11 @@ void ArcService::AddDevice(const std::string& ifname,
     return;
   }
 
+  // The interface name visible inside ARC depends on the type of ARC
+  // environment:
+  //  - ARC container: the veth interface created inside ARC has the same name
+  //  as the physical interface that this ARC virtual device is attached to.
+  //  - ARCVM: the interfaces created by virtio-net follow the pattern eth%d.
   auto guest_ifname = ifname;
   if (guest_ == GuestMessage::ARC_VM) {
     const auto it = arcvm_guest_ifnames_.find(config->tap_ifname());
