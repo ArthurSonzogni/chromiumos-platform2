@@ -46,6 +46,7 @@ main() {
   else
     # Use minimalistic-mountns profile.
     set -- "$@" --profile=minimalistic-mountns
+    set -- "$@" --no-fs-restrictions
   fi
 
   # Enter a new cgroup namespace.
