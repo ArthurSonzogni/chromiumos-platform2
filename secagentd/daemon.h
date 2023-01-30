@@ -12,7 +12,6 @@
 #include "base/timer/timer.h"
 #include "brillo/daemons/dbus_daemon.h"
 #include "featured/feature_library.h"
-#include "missive/proto/security_xdr_events.pb.h"
 #include "policy/libpolicy.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/plugins.h"
