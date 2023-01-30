@@ -39,7 +39,7 @@ dontaudit cros_spaced {
   audio_device
   cros_hps_device
   devpts
-  iio_device
+  cros_iio_device
   input_device
   mei_device
   tpm_device

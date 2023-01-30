@@ -11,7 +11,7 @@ allow cros_iioservice cros_browser:unix_stream_socket { read write };
 allow cros_iioservice sysfs:file rw_file_perms;
 
 # Access to iio device character device.
-allow cros_iioservice iio_device:chr_file rw_file_perms;
+allow cros_iioservice cros_iio_device:chr_file rw_file_perms;
 
 # Used by libiio to check if the device is "high speed". Not implemented by the kernel.
-allowxperm cros_iioservice iio_device:chr_file ioctl 27041;
+allowxperm cros_iioservice cros_iio_device:chr_file ioctl 27041;
