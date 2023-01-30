@@ -439,25 +439,6 @@ TEST(AuthFactorUtilsTest, NeedsResetSecret) {
                 "All types of AuthFactorType are not all included here");
 }
 
-TEST(AuthFactorUtilsTest, GetAuthFactorLabelArity) {
-  EXPECT_EQ(AuthFactorLabelArity::kSingle,
-            GetAuthFactorLabelArity(AuthFactorType::kPassword));
-  EXPECT_EQ(AuthFactorLabelArity::kSingle,
-            GetAuthFactorLabelArity(AuthFactorType::kPin));
-  EXPECT_EQ(AuthFactorLabelArity::kSingle,
-            GetAuthFactorLabelArity(AuthFactorType::kCryptohomeRecovery));
-  EXPECT_EQ(AuthFactorLabelArity::kSingle,
-            GetAuthFactorLabelArity(AuthFactorType::kKiosk));
-  EXPECT_EQ(AuthFactorLabelArity::kSingle,
-            GetAuthFactorLabelArity(AuthFactorType::kSmartCard));
-  EXPECT_EQ(AuthFactorLabelArity::kNone,
-            GetAuthFactorLabelArity(AuthFactorType::kLegacyFingerprint));
-  EXPECT_EQ(AuthFactorLabelArity::kNone,
-            GetAuthFactorLabelArity(AuthFactorType::kUnspecified));
-  EXPECT_EQ(AuthFactorLabelArity::kMultiple,
-            GetAuthFactorLabelArity(AuthFactorType::kFingerprint));
-}
-
 TEST(AuthSessionProtoUtils, AuthFactorPreparePurposeFromProto) {
   EXPECT_EQ(AuthFactorPreparePurposeFromProto(
                 user_data_auth::PURPOSE_ADD_AUTH_FACTOR),

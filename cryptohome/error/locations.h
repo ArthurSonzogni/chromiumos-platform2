@@ -469,7 +469,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionGetValidKeysetFailedInAuth = 321,
   /* ./auth_session.cc */
   kLocAuthSessionFactorNotFoundInAuthAuthFactor = 322,
-  /* =Obsolete= */
+  /* ./auth_session.cc */
   kLocAuthSessionInputParseFailedInAuthAuthFactor = 323,
   /* =Obsolete= */
   kLocAuthSessionUSSAuthFailedInAuthAuthFactor = 324,
@@ -1485,26 +1485,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionTerminateInactiveAuthFactor = 3513,
   /* ./auth_blocks/fp_service.cc */
   kLocFpServiceCheckSessionStartCouldNotGetFpManager = 3514,
+  /* =Obsolete= */
+  kLocAuthBlockUtilTerminateInvalidAuthFactorType = 3515,
   /* ./auth_blocks/auth_block_utility_impl.cc */
-  kLocAuthBlockUtilUnimplementedPrepareForAuthFingerprint = 3515,
-  /* ./auth_session.cc */
-  kLocAuthSessionMismatchedZeroLabelSizeAuthAuthFactor = 3516,
-  /* ./auth_session.cc */
-  kLocAuthSessionVerifierNotValidInAuthAuthFactor = 3517,
-  /* ./auth_session.cc */
-  kLocAuthSessionAuthInputParseFailedInAuthAuthFactor = 3518,
-  /* ./auth_session.cc */
-  kLocAuthSessionMismatchedSingleLabelSizeAuthAuthFactor = 3519,
-  /* ./auth_session.cc */
-  kLocAuthSessionAuthInputParseFailed2InAuthAuthFactor = 3520,
-  /* ./auth_session.cc */
-  kLocAuthSessionAuthInputParseFailed3InAuthAuthFactor = 3521,
-  /* ./auth_session.cc */
-  kLocAuthSessionMismatchedMultipLabelSizeAuthAuthFactor = 3522,
-  /* ./auth_session.cc */
-  kLocAuthSessionLabelLookupUnimplemented = 3523,
-  /* ./userdataauth.cc */
-  kLocUserDataMalformedRequestInAuthAuthFactor = 3524,
+  kLocAuthBlockUtilUnimplementedPrepareForAuthFingerprint = 3516,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way

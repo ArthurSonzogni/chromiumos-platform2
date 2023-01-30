@@ -16,7 +16,6 @@
 
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_label.h"
-#include "cryptohome/auth_factor/auth_factor_label_arity.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_prepare_purpose.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
@@ -423,22 +422,6 @@ AuthFactorMap LoadAuthFactorMap(bool is_uss_migration_enabled,
   }
 
   return auth_factor_map;
-}
-
-AuthFactorLabelArity GetAuthFactorLabelArity(AuthFactorType auth_factor_type) {
-  switch (auth_factor_type) {
-    case AuthFactorType::kPassword:
-    case AuthFactorType::kPin:
-    case AuthFactorType::kCryptohomeRecovery:
-    case AuthFactorType::kKiosk:
-    case AuthFactorType::kSmartCard:
-      return AuthFactorLabelArity::kSingle;
-    case AuthFactorType::kFingerprint:
-      return AuthFactorLabelArity::kMultiple;
-    case AuthFactorType::kLegacyFingerprint:
-    case AuthFactorType::kUnspecified:
-      return AuthFactorLabelArity::kNone;
-  }
 }
 
 }  // namespace cryptohome

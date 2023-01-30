@@ -281,8 +281,6 @@ TEST_F(AuthBlockUtilityImplTest, IsVerifyWithAuthFactorSupported) {
   EXPECT_FALSE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
       AuthIntent::kDecrypt, AuthFactorType::kLegacyFingerprint));
   EXPECT_FALSE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
-      AuthIntent::kVerifyOnly, AuthFactorType::kFingerprint));
-  EXPECT_FALSE(auth_block_utility_impl_->IsVerifyWithAuthFactorSupported(
       AuthIntent::kVerifyOnly, AuthFactorType::kUnspecified));
 }
 
@@ -301,8 +299,6 @@ TEST_F(AuthBlockUtilityImplTest, IsPrepareAuthFactorRequired) {
       AuthFactorType::kSmartCard));
   EXPECT_TRUE(auth_block_utility_impl_->IsPrepareAuthFactorRequired(
       AuthFactorType::kLegacyFingerprint));
-  EXPECT_TRUE(auth_block_utility_impl_->IsPrepareAuthFactorRequired(
-      AuthFactorType::kFingerprint));
   EXPECT_FALSE(auth_block_utility_impl_->IsPrepareAuthFactorRequired(
       AuthFactorType::kUnspecified));
 }

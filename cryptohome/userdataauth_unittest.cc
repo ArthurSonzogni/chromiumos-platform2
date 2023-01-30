@@ -5580,7 +5580,7 @@ class UserDataAuthApiTest : public UserDataAuthTest {
 
     user_data_auth::AuthenticateAuthFactorRequest auth_request;
     auth_request.set_auth_session_id(session_id.value());
-    auth_request.add_auth_factor_labels(kPasswordLabel);
+    auth_request.set_auth_factor_label(kPasswordLabel);
     auth_request.mutable_auth_input()->mutable_password_input()->set_secret(
         kPassword1);
 

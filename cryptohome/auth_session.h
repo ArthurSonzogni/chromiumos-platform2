@@ -29,7 +29,6 @@
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_factor/auth_factor_map.h"
-#include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
@@ -164,9 +163,9 @@ class AuthSession final {
   // AuthSession via an auth factor. It may be called multiple times depending
   // on errors or various steps involved in multi-factor authentication.
   // Note: only USS users are supported currently.
-  void AuthenticateAuthFactor(base::span<const std::string> auth_factor_labels,
-                              const user_data_auth::AuthInput& auth_input_proto,
-                              StatusCallback on_done);
+  void AuthenticateAuthFactor(
+      const user_data_auth::AuthenticateAuthFactorRequest& request,
+      StatusCallback on_done);
 
   // RemoveAuthFactor is called when the user wants to remove auth factor
   // provided in the `request`. Note: only USS users are supported currently.
@@ -500,17 +499,6 @@ class AuthSession final {
   // USSv2 world, with passwords or even other auth types backed by PinWeaver,
   // the code will need to reset specific LE credentials.
   void ResetLECredentials();
-
-  // Authenticate the user with the single given auth factor. Additional
-  // parameters are provided to aid legacy vault keyset authentication and
-  // migration.
-  void AuthenticateViaSingleFactor(
-      const AuthFactorType& request_auth_factor_type,
-      const std::string& auth_factor_label,
-      const AuthInput& auth_input,
-      const AuthFactorMetadata& metadata,
-      const AuthFactorMap::ValueView& stored_auth_factor,
-      StatusCallback on_done);
 
   // Authenticates the user using USS with the |auth_factor_label|, |auth_input|
   // and the |auth_factor|.
