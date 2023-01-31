@@ -139,7 +139,7 @@ void ReloadableConfigFile::OnConfigFileUpdated(const base::FilePath& file_path,
                                                bool error) {
   base::AutoLock lock(options_lock_);
   ReadConfigFileLocked(override_config_file_path_);
-  if (options_update_callback_) {
+  if (options_update_callback_ && json_values_.has_value()) {
     options_update_callback_.Run(*json_values_);
   }
 }
