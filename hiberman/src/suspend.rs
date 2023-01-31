@@ -24,7 +24,6 @@ use crate::cookie::set_hibernate_cookie;
 use crate::cookie::HibernateCookieValue;
 use crate::crypto::CryptoMode;
 use crate::crypto::CryptoWriter;
-use crate::dbus::is_keylocker_enabled;
 use crate::diskfile::BouncedDiskFile;
 use crate::diskfile::DiskFile;
 use crate::files::does_hiberfile_exist;
@@ -54,7 +53,6 @@ use crate::hiberutil::path_to_stateful_block;
 use crate::hiberutil::prealloc_mem;
 use crate::hiberutil::HibernateError;
 use crate::hiberutil::HibernateOptions;
-use crate::hiberutil::PlatformMode;
 use crate::hiberutil::BUFFER_PAGES;
 use crate::imagemover::ImageMover;
 use crate::keyman::HibernateKeyManager;
@@ -82,7 +80,6 @@ const LOW_DISK_FREE_THRESHOLD_PERCENT: u64 = 10;
 /// symphony of hibernation.
 pub struct SuspendConductor {
     options: HibernateOptions,
-    s4_supported: bool,
     metadata: HibernateMetadata,
     metrics: MetricsLogger,
     volume_manager: VolumeManager,
@@ -93,7 +90,6 @@ impl SuspendConductor {
     pub fn new() -> Result<Self> {
         Ok(SuspendConductor {
             options: Default::default(),
-            s4_supported: false,
             metadata: HibernateMetadata::new()?,
             metrics: MetricsLogger::new()?,
             volume_manager: VolumeManager::new()?,
@@ -163,12 +159,6 @@ impl SuspendConductor {
         } else {
             key_manager.load_public_key()?;
         }
-
-        self.s4_supported = match self.options.platform_mode {
-            PlatformMode::ForceS4 => true,
-            PlatformMode::ForceS5 => false,
-            PlatformMode::DetectPlatform => is_keylocker_enabled()?,
-        };
 
         // Now that the public key is loaded, derive a metadata encryption key.
         key_manager.install_new_metadata_key(&mut self.metadata)?;
@@ -279,7 +269,6 @@ impl SuspendConductor {
             self.options.unencrypted = true;
         }
 
-        snap_dev.set_platform_mode(self.s4_supported)?;
         // This is where the suspend path and resume path fork. On success,
         // both halves of these conditions execute, just at different times.
         if snap_dev.atomic_snapshot()? {
@@ -300,8 +289,6 @@ impl SuspendConductor {
             set_hibernate_cookie(Some(&block_path), HibernateCookieValue::ResumeReady)?;
             if dry_run {
                 info!("Not powering off due to dry run");
-            } else if self.s4_supported {
-                info!("Entering S4");
             } else {
                 info!("Powering off");
             }
@@ -314,12 +301,7 @@ impl SuspendConductor {
             redirect_log(HiberlogOut::BufferInMemory);
             // Power the thing down.
             if !dry_run {
-                if self.s4_supported {
-                    snap_dev.power_off()?;
-                } else {
-                    Self::power_off()?;
-                }
-
+                Self::power_off()?;
                 error!("Returned from power off");
             }
         } else {

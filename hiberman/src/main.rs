@@ -11,7 +11,6 @@ use hiberman::metrics::log_hibernate_failure;
 use hiberman::metrics::log_resume_failure;
 use hiberman::AbortResumeOptions;
 use hiberman::HibernateOptions;
-use hiberman::PlatformMode;
 use hiberman::ResumeInitOptions;
 use hiberman::ResumeOptions;
 use hiberman::{self};
@@ -210,11 +209,6 @@ fn hiberman_hibernate(args: &mut std::env::Args) -> std::result::Result<(), ()> 
     );
     opts.optflag("n", "dry-run", "Create the hibernate image, but then exit rather than shutting down. This image should only be restored with --dry-run");
     opts.optflag(
-        "p",
-        "platform-mode",
-        "Set the platform mode to force_s4, force_s5, detect_platform",
-    );
-    opts.optflag(
         "u",
         "unencrypted",
         "Do not encrypt the hibernate image. Use only for test and debugging",
@@ -235,25 +229,8 @@ fn hiberman_hibernate(args: &mut std::env::Args) -> std::result::Result<(), ()> 
         return Ok(());
     }
 
-    let platform_value = matches.opt_str("p");
-    let platform_mode = if let Some(platform_value) = platform_value {
-        match platform_value.as_str() {
-            "force_s4" => PlatformMode::ForceS4,
-            "force_s5" => PlatformMode::ForceS5,
-            "detect_platform" => PlatformMode::DetectPlatform,
-            _ => {
-                eprintln!("Invalid platform-mode value: {}", platform_value);
-                hibernate_usage(true, &opts);
-                return Err(());
-            }
-        }
-    } else {
-        PlatformMode::DetectPlatform
-    };
-
     let options = HibernateOptions {
         dry_run: matches.opt_present("n"),
-        platform_mode,
         test_keys: matches.opt_present("t"),
         unencrypted: matches.opt_present("u"),
         no_kernel_encryption: matches.opt_present("k"),

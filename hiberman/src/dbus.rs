@@ -29,8 +29,6 @@ use protobuf::SingularPtrField;
 use sync::Mutex;
 use system_api::client::OrgChromiumUserDataAuthInterface;
 use system_api::rpc::AccountIdentifier;
-use system_api::UserDataAuth::GetEncryptionInfoReply;
-use system_api::UserDataAuth::GetEncryptionInfoRequest;
 use system_api::UserDataAuth::GetHibernateSecretReply;
 use system_api::UserDataAuth::GetHibernateSecretRequest;
 use zeroize::Zeroize;
@@ -418,26 +416,6 @@ fn get_secret_seed(account_id: &str, auth_session_id: &[u8], seed: &mut Vec<u8>)
     seed.copy_from_slice(&reply.hibernate_secret);
     reply.hibernate_secret.fill(0);
     Ok(())
-}
-
-/// Ask cryptohome for the encryption info that contains information about
-/// Keylocker security feature. Keylocker availability determines the power state
-/// which hiberman selects. Returns true, if keylocker is supported by the platform.
-pub fn is_keylocker_enabled() -> Result<bool> {
-    let conn = Connection::new_system().context("Failed to connect to dbus for encryption info")?;
-    let conn_path = conn.with_proxy(
-        CRYPTOHOME_DBUS_NAME,
-        CRYPTOHOME_DBUS_PATH,
-        DEFAULT_DBUS_TIMEOUT,
-    );
-    let proto: GetEncryptionInfoRequest = Message::new();
-    let response = conn_path
-        .get_encryption_info(proto.write_to_bytes().unwrap())
-        .context("Failed to call GetEncryptionInfo dbus method")?;
-    let reply: GetEncryptionInfoReply = Message::parse_from_bytes(&response)
-        .context("Failed to parse GetEncryptionInfo dbus response")?;
-    let keylocker = reply.get_keylocker_supported();
-    Ok(keylocker)
 }
 
 /// Send an abort request over dbus to cancel a pending resume. The hiberman

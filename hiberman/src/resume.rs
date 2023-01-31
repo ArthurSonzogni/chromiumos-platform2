@@ -276,7 +276,6 @@ impl ResumeConductor {
         // Start logging to the resume logger.
         redirect_log(HiberlogOut::File(Box::new(log_file)));
         let mut snap_dev = SnapshotDevice::new(SnapshotMode::Write)?;
-        snap_dev.set_platform_mode(false)?;
         if (self.metadata.flags & META_FLAG_KERNEL_ENCRYPTED) != 0 {
             debug!("Loading kernel key blob");
             self.load_kernel_key_blob(&mut snap_dev, &mut kernel_key_file)

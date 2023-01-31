@@ -24,7 +24,6 @@ use libchromeos::sys::ioctl_iow_nr;
 use libchromeos::sys::ioctl_iowr_nr;
 use libchromeos::sys::ioctl_with_mut_ptr;
 use libchromeos::sys::ioctl_with_ptr;
-use libchromeos::sys::ioctl_with_val;
 use log::error;
 use log::info;
 
@@ -102,8 +101,6 @@ ioctl_io_nr!(SNAPSHOT_FREEZE, SNAPSHOT_IOC_MAGIC, 1);
 ioctl_io_nr!(SNAPSHOT_UNFREEZE, SNAPSHOT_IOC_MAGIC, 2);
 ioctl_io_nr!(SNAPSHOT_ATOMIC_RESTORE, SNAPSHOT_IOC_MAGIC, 4);
 ioctl_ior_nr!(SNAPSHOT_GET_IMAGE_SIZE, SNAPSHOT_IOC_MAGIC, 14, u64);
-ioctl_io_nr!(SNAPSHOT_PLATFORM_SUPPORT, SNAPSHOT_IOC_MAGIC, 15);
-ioctl_io_nr!(SNAPSHOT_POWER_OFF, SNAPSHOT_IOC_MAGIC, 16);
 ioctl_iow_nr!(SNAPSHOT_CREATE_IMAGE, SNAPSHOT_IOC_MAGIC, 17, u32);
 ioctl_iowr_nr!(
     SNAPSHOT_ENABLE_ENCRYPTION,
@@ -122,8 +119,6 @@ const FREEZE: u64 = SNAPSHOT_FREEZE();
 const UNFREEZE: u64 = SNAPSHOT_UNFREEZE();
 const ATOMIC_RESTORE: u64 = SNAPSHOT_ATOMIC_RESTORE();
 const GET_IMAGE_SIZE: u64 = SNAPSHOT_GET_IMAGE_SIZE();
-const PLATFORM_SUPPORT: u64 = SNAPSHOT_PLATFORM_SUPPORT();
-const POWER_OFF: u64 = SNAPSHOT_POWER_OFF();
 const CREATE_IMAGE: u64 = SNAPSHOT_CREATE_IMAGE();
 const ENABLE_ENCRYPTION: u64 = SNAPSHOT_ENABLE_ENCRYPTION();
 const SET_USER_KEY: u64 = SNAPSHOT_SET_USER_KEY();
@@ -232,23 +227,6 @@ impl SnapshotDevice {
             )?;
         }
         Ok(image_size)
-    }
-
-    /// Indicate to the kernel whether or not to power down into "platform" mode
-    /// (which is only meaningful on Intel systems, and means S4).
-    pub fn set_platform_mode(&mut self, use_platform_mode: bool) -> Result<()> {
-        let param_ulong: c_ulong = use_platform_mode as c_ulong;
-        unsafe {
-            let rc = ioctl_with_val(&self.file, PLATFORM_SUPPORT, param_ulong);
-            self.evaluate_ioctl_return("PLATFORM_SUPPORT", rc)
-        }
-    }
-
-    /// Power down the system.
-    pub fn power_off(&mut self) -> Result<()> {
-        // This is safe because powering the system off does not violate any
-        // Rust guarantees.
-        unsafe { self.simple_ioctl(POWER_OFF, "POWER_OFF") }
     }
 
     /// Get the encryption key from the kernel.
