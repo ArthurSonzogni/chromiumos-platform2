@@ -127,6 +127,15 @@ typeDefs:
      - KEYBOARD
      - POWER_BUTTON
      - RECOVERY_BUTTON
+  storage-type: &storage-type
+    description: "Type of the fixed storage device."
+    type: string
+    enum:
+     - STORAGE_TYPE_UNKNOWN
+     - EMMC
+     - NVME
+     - SATA
+     - UFS
   ath10k-wifi-transmit-power-chain: &ath10k-wifi-transmit-power-chain
     description: "[ath10k] WiFi power chain for use with QCA ath10k drivers. Limits
       in units of 0.25 dBm. 5g band power limit applies to all 5g bands."
@@ -1176,6 +1185,7 @@ properties:
                 psu-type: *psu-type
                 form-factor: *form-factor
                 recovery-input: *recovery-input
+                storage-type: *storage-type
               additionalProperties: false
             cros-healthd:
               type: object
