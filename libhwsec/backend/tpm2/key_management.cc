@@ -605,9 +605,18 @@ StatusOr<ScopedKey> KeyManagementTpm2::LoadKey(
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
       context.factory.GetPasswordAuthorization("");
 
-  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->LoadKey(
-                      BlobToString(key_blob), delegate.get(), &key_handle)))
-      .WithStatus<TPMError>("Failed to load SRK wrapped key");
+  if (auto status = MakeStatus<TPM2Error>(context.tpm_utility->LoadKey(
+          BlobToString(key_blob), delegate.get(), &key_handle));
+      !status.ok() && trunks::GetFormatOneError(status->ErrorCode()) ==
+                          trunks::TPM_RC_INTEGRITY) {
+    return MakeStatus<TPMError>(
+               "Failed to load SRK wrapped key due to integrity",
+               TPMRetryAction::kNoRetry)
+        .Wrap(std::move(status));
+  } else if (!status.ok()) {
+    return MakeStatus<TPMError>("Failed to load SRK wrapped key")
+        .Wrap(std::move(status));
+  }
 
   KeyTpm2::Type key_type = KeyTpm2::Type::kTransientKey;
   std::optional<KeyReloadDataTpm2> reload_data;
