@@ -100,7 +100,7 @@ void Controller::OnFeatureEnabled(std::optional<bool> enabled) {
                << "service will be enabled by default";
     feature_enabled_.emplace(true);
   } else {
-    feature_enabled_.emplace(enabled);
+    feature_enabled_.emplace(enabled.value());
     LOG(INFO) << "Service "
               << (feature_enabled_.value() ? "enabled" : "disabled")
               << " by feature flag";
