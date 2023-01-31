@@ -266,7 +266,7 @@ bool WebAuthnStorage::LoadRecords() {
 
     records_.emplace_back(WebAuthnRecord{
         .credential_id = credential_id,
-        .secret = brillo::SecureBlob(secret.begin(), secret.end()),
+        .secret = brillo::BlobFromString(secret),
         .key_blob = brillo::Blob(key_blob.begin(), key_blob.end()),
         .rp_id = *rp_id,
         .rp_display_name = *rp_display_name,
@@ -290,7 +290,7 @@ std::optional<brillo::SecureBlob> WebAuthnStorage::GetSecretByCredentialId(
     const std::string& credential_id) {
   for (const WebAuthnRecord& record : records_) {
     if (record.credential_id == credential_id) {
-      return record.secret;
+      return brillo::SecureBlob(record.secret);
     }
   }
   return std::nullopt;
@@ -303,7 +303,7 @@ bool WebAuthnStorage::GetSecretAndKeyBlobByCredentialId(
   for (const WebAuthnRecord& record : records_) {
     if (record.credential_id == credential_id) {
       if (secret) {
-        *secret = record.secret;
+        *secret = brillo::SecureBlob(record.secret);
       }
       if (key_blob) {
         *key_blob = record.key_blob;

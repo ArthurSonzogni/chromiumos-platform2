@@ -551,7 +551,13 @@ void WebAuthnHandler::DoMakeCredential(
     // All steps succeeded, so write to record.
     WebAuthnRecord record;
     AppendToString(credential_id, &record.credential_id);
-    record.secret = std::move(credential_secret);
+    // Because the credential secret is more like a salt in the protocol
+    // and loading too much secure blob might cause RLIMIT_MEMLOCK, the
+    // underlying storage class use blob to handle it. Logically it's still
+    // a secret so we don't want to change interfaces elsewhere to take a blob,
+    // instead just perform the conversion here.
+    record.secret =
+        brillo::Blob(credential_secret.begin(), credential_secret.end());
     record.key_blob = std::move(credential_key_blob);
     record.rp_id = session.request.rp_id();
     record.rp_display_name = session.request.rp_display_name();

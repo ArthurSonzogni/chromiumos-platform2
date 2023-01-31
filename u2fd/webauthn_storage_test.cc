@@ -37,12 +37,6 @@ brillo::Blob HexArrayToBlob(const char* array) {
   return blob;
 }
 
-brillo::SecureBlob ArrayToSecureBlob(const char* array) {
-  brillo::SecureBlob blob;
-  CHECK(brillo::SecureBlob::HexStringToSecureBlob(array, &blob));
-  return blob;
-}
-
 using ::testing::_;
 using ::testing::Return;
 
@@ -72,7 +66,7 @@ class WebAuthnStorageTest : public ::testing::Test {
 
 TEST_F(WebAuthnStorageTest, WriteAndReadRecord) {
   const WebAuthnRecord record{.credential_id = kCredentialId,
-                              .secret = ArrayToSecureBlob(kCredentialSecret),
+                              .secret = HexArrayToBlob(kCredentialSecret),
                               .key_blob = HexArrayToBlob(kCredentialKeyBlob),
                               .rp_id = kRpId,
                               .rp_display_name = kRpDisplayName,
@@ -104,7 +98,7 @@ TEST_F(WebAuthnStorageTest, WriteAndReadRecord) {
 
 TEST_F(WebAuthnStorageTest, WriteAndReadRecordWithEmptyUserIdAndDisplayName) {
   const WebAuthnRecord record{.credential_id = kCredentialId,
-                              .secret = ArrayToSecureBlob(kCredentialSecret),
+                              .secret = HexArrayToBlob(kCredentialSecret),
                               .key_blob = HexArrayToBlob(kCredentialKeyBlob),
                               .rp_id = kRpId,
                               .rp_display_name = kRpDisplayName,
@@ -138,7 +132,7 @@ TEST_F(WebAuthnStorageTest, LoadManyRecords) {
   for (int i = 0; i < 30; i++) {
     const WebAuthnRecord record{
         .credential_id = std::string(kCredentialId) + std::to_string(i),
-        .secret = ArrayToSecureBlob(kCredentialSecret),
+        .secret = HexArrayToBlob(kCredentialSecret),
         .key_blob = HexArrayToBlob(kCredentialKeyBlob),
         .rp_id = kRpId,
         .rp_display_name = kRpDisplayName,
@@ -162,7 +156,7 @@ TEST_F(WebAuthnStorageTest, CountAndDeleteRecords) {
   for (int i = 0; i < 10; i++) {
     const WebAuthnRecord record{
         .credential_id = std::string(kCredentialId) + std::to_string(i),
-        .secret = ArrayToSecureBlob(kCredentialSecret),
+        .secret = HexArrayToBlob(kCredentialSecret),
         .rp_id = kRpId,
         .rp_display_name = kRpDisplayName,
         .user_id = kUserId,
