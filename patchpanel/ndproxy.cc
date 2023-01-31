@@ -535,7 +535,9 @@ void NDProxy::NotifyPacketCallbacks(int recv_ifindex,
       // there is no chance that we get the guest IP as normally from NA.
       // Instead, we have to monitor DAD NS frames and use it as judgement.
       // Notice that since upstream never reply NA, this DAD never fails.
-      if (IsGuestToIrregularRouter(recv_ifindex)) {
+      // b/266514205: extent this workaround to all technologies as we are
+      // observing similar behavior in some wifi APs.
+      if (IsGuestInterface(recv_ifindex)) {
         uint8_t zerobuf[sizeof(in6_addr)] = {0};
         // Empty source IP indicates DAD
         if (memcmp(&ip6->ip6_src, zerobuf, sizeof(in6_addr)) == 0) {
@@ -832,16 +834,6 @@ bool NDProxy::IsGuestInterface(int ifindex) {
 
 bool NDProxy::IsRouterInterface(int ifindex) {
   return if_map_ra_.find(ifindex) != if_map_ra_.end();
-}
-
-bool NDProxy::IsGuestToIrregularRouter(int ifindex) {
-  if (!IsGuestInterface(ifindex))
-    return false;
-  for (int target_if : if_map_rs_[ifindex]) {
-    if (modify_ra_uplinks_.count(target_if) > 0)
-      return true;
-  }
-  return false;
 }
 
 NDProxyDaemon::NDProxyDaemon(base::ScopedFD control_fd)
