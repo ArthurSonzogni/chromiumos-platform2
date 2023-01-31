@@ -490,23 +490,8 @@ void GuestIPv6Service::OnNDProxyMessage(const FeedbackMessage& fm) {
     memcpy(&ip, inner_msg.ip().data(), sizeof(in6_addr));
     std::string ip6_str = IPv6AddressToString(ip);
     std::string ifname = system_->IfIndextoname(inner_msg.if_id());
-    downstream_neighbors_[ifname].insert(ip6_str);
 
-    const auto& uplink = DownlinkToUplink(ifname);
-    if (!uplink) {
-      LOG(WARNING) << "OnNeighborDetectedSignal: " << ifname << ", neighbor IP "
-                   << ip6_str << ", no corresponding uplink";
-      return;
-    } else {
-      VLOG(3) << "OnNeighborDetectedSignal: " << ifname << ", neighbor IP "
-              << ip6_str << ", corresponding uplink " << uplink.value() << "["
-              << uplink_ips_[uplink.value()] << "]";
-    }
-    if (!datapath_->AddIPv6HostRoute(ifname, ip6_str, 128,
-                                     uplink_ips_[uplink.value()])) {
-      LOG(WARNING) << "Failed to setup the IPv6 route: " << ip6_str << " dev "
-                   << ifname << " src " << uplink_ips_[uplink.value()];
-    }
+    RegisterDownstreamNeighborIP(ifname, ip6_str);
     return;
   }
 
@@ -517,6 +502,27 @@ void GuestIPv6Service::OnNDProxyMessage(const FeedbackMessage& fm) {
 
   LOG(ERROR) << "Unknown NDProxy event ";
   NOTREACHED();
+}
+
+void GuestIPv6Service::RegisterDownstreamNeighborIP(
+    const std::string& ifname_downlink, const std::string& ip) {
+  downstream_neighbors_[ifname_downlink].insert(ip);
+
+  const auto& uplink = DownlinkToUplink(ifname_downlink);
+  if (!uplink) {
+    LOG(WARNING) << __func__ << ": " << ifname_downlink << ", neighbor IP "
+                 << ip << ", no corresponding uplink";
+    return;
+  }
+
+  VLOG(3) << __func__ << ": " << ifname_downlink << ", neighbor IP " << ip
+          << ", corresponding uplink " << uplink.value() << "["
+          << uplink_ips_[uplink.value()] << "]";
+  if (!datapath_->AddIPv6HostRoute(ifname_downlink, ip, 128,
+                                   uplink_ips_[uplink.value()])) {
+    LOG(WARNING) << "Failed to setup the IPv6 route: " << ip << " dev "
+                 << ifname_downlink << " src " << uplink_ips_[uplink.value()];
+  }
 }
 
 std::optional<std::string> GuestIPv6Service::DownlinkToUplink(

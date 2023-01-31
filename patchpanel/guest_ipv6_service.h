@@ -67,6 +67,12 @@ class GuestIPv6Service {
   // purpose. This will be exposed by Manager through dbus for tast.
   void SetForwardMethod(const std::string& ifname_uplink, ForwardMethod method);
 
+  // Notify GuestIPv6Service that a certain (global) IPv6 address |ip| is
+  // configured on a cartain downstream neighbor, connected through
+  // |ifname_downlink|. GuestIPv6Service will add a /128 route to that downlink.
+  void RegisterDownstreamNeighborIP(const std::string& ifname_downlink,
+                                    const std::string& ip);
+
  protected:
   virtual void SendNDProxyControl(
       NDProxyControlMessage::NDProxyRequestType type,
