@@ -137,16 +137,21 @@ void ProcessKiller::UpdateProcessList(bool files, bool devices) {
   process_list_.erase(
       std::remove_if(process_list_.begin(), process_list_.end(),
                      [this, files, devices](const ActiveProcess& p) {
-                       bool ret = false;
-                       if (files)
-                         ret |= !p.HasFileOpenOnMount(mount_regex_);
-                       if (devices)
-                         ret |= !p.HasMountOpenFromDevice(device_regex_);
-                       if (!ret && p.GetPid() == 1) {
+                       bool dont_kill_this_process = false;
+                       if (files && !p.HasFileOpenOnMount(mount_regex_))
+                         dont_kill_this_process = true;
+                       // Kill processes with a non-init mount namespace and a
+                       // mount open that matches the device regex.
+                       if (devices &&
+                           (p.InInitMountNamespace() ||
+                            !p.HasMountOpenFromDevice(device_regex_)))
+                         dont_kill_this_process = true;
+
+                       if (!dont_kill_this_process && p.GetPid() == 1) {
                          LOG(ERROR) << "Cowardly refusing to kill init";
                          return true;
                        }
-                       return ret;
+                       return dont_kill_this_process;
                      }),
       process_list_.end());
 }

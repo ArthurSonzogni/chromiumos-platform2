@@ -37,10 +37,12 @@ struct OpenFileDescriptor {
 // ActiveProcess represents a process that is currently active at the time of
 // querying. In addition to the standard identifiers (pid, comm), ActiveProcess
 // also stores active mounts and open file descriptors seen at the time of
-// querying.
+// querying. |in_init_mnt_ns| annotates whether the process resides in the init
+// mount namespace or not.
 class ActiveProcess {
  public:
   ActiveProcess(pid_t pid,
+                bool in_init_mnt_ns,
                 const std::string& comm,
                 const std::vector<ActiveMount>& mounts,
                 const std::vector<OpenFileDescriptor>& file_descriptors);
@@ -48,12 +50,14 @@ class ActiveProcess {
   bool HasMountOpenFromDevice(const re2::RE2& pattern) const;
 
   pid_t GetPid() const { return pid_; }
+  bool InInitMountNamespace() const { return in_init_mnt_ns_; }
 
   void LogProcess(const re2::RE2& files_regex,
                   const re2::RE2& mounts_regex) const;
 
  private:
   pid_t pid_;
+  bool in_init_mnt_ns_;
   std::string comm_;
   std::vector<ActiveMount> mounts_;
   std::vector<OpenFileDescriptor> file_descriptors_;

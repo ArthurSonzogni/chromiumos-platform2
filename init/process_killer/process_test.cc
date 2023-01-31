@@ -32,14 +32,14 @@ std::vector<OpenFileDescriptor> GetSampleFds() {
 }
 
 TEST(Process, ProcessOpenFileOnMountTest) {
-  ActiveProcess p(1, "foo", GetSampleMounts(), GetSampleFds());
+  ActiveProcess p(1, true, "foo", GetSampleMounts(), GetSampleFds());
   EXPECT_TRUE(p.HasFileOpenOnMount(re2::RE2("/a")));
   EXPECT_TRUE(p.HasFileOpenOnMount(re2::RE2("/e")));
   EXPECT_FALSE(p.HasFileOpenOnMount(re2::RE2("/d")));
 }
 
 TEST(Process, ProcessOpenMountFromDeviceTest) {
-  ActiveProcess p(1, "foo", GetSampleMounts(), GetSampleFds());
+  ActiveProcess p(1, true, "foo", GetSampleMounts(), GetSampleFds());
   EXPECT_TRUE(p.HasMountOpenFromDevice(re2::RE2("foo")));
   EXPECT_TRUE(p.HasMountOpenFromDevice(re2::RE2("bar")));
   EXPECT_TRUE(p.HasMountOpenFromDevice(re2::RE2("baz")));

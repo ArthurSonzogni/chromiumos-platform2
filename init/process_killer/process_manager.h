@@ -6,6 +6,8 @@
 #define INIT_PROCESS_KILLER_PROCESS_MANAGER_H_
 
 #include <sys/types.h>
+
+#include <string>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -27,6 +29,7 @@ class ProcessManager {
  private:
   std::vector<ActiveMount> GetMountsForProcess(pid_t pid);
   std::vector<OpenFileDescriptor> GetFileDescriptorsForProcess(pid_t pid);
+  std::string GetMountNamespaceForProcess(pid_t pid);
 
   base::FilePath proc_path_;
 };

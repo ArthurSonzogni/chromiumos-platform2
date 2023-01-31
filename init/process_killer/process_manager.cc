@@ -25,6 +25,8 @@ namespace {
 constexpr char kCommPath[] = "comm";
 constexpr char kMountInfoPath[] = "mountinfo";
 constexpr char kFDPath[] = "fd";
+constexpr char kMntNsPath[] = "ns/mnt";
+constexpr pid_t kInitPid = 1;
 }  // namespace
 
 namespace init {
@@ -92,9 +94,28 @@ std::vector<OpenFileDescriptor> ProcessManager::GetFileDescriptorsForProcess(
   return ret;
 }
 
+std::string ProcessManager::GetMountNamespaceForProcess(pid_t pid) {
+  base::FilePath mnt_ns_path = base::FilePath(base::StringPrintf(
+      "%s/%d/%s", proc_path_.value().c_str(), pid, kMntNsPath));
+  base::FilePath mount_namespace;
+
+  if (!base::ReadSymbolicLink(mnt_ns_path, &mount_namespace)) {
+    PLOG_IF(ERROR, errno != ENOENT) << "Failed to read link " << mnt_ns_path;
+    return "";
+  }
+
+  return mount_namespace.value();
+}
+
 std::vector<ActiveProcess> ProcessManager::GetProcessList(bool need_files,
                                                           bool need_mounts) {
   std::vector<ActiveProcess> process_list;
+  std::string init_mnt_ns = GetMountNamespaceForProcess(kInitPid);
+
+  if (init_mnt_ns.empty()) {
+    LOG(ERROR) << "Failed to get init mount namespace";
+    return process_list;
+  }
 
   base::FileEnumerator dir_enum(proc_path_, false /* recursive */,
                                 base::FileEnumerator::DIRECTORIES);
@@ -125,7 +146,14 @@ std::vector<ActiveProcess> ProcessManager::GetProcessList(bool need_files,
     }
     base::TrimWhitespaceASCII(comm, base::TRIM_TRAILING, &comm);
 
-    process_list.push_back(ActiveProcess(pid, comm, mounts, fds));
+    std::string pid_mnt_ns = GetMountNamespaceForProcess(pid);
+
+    // Assume that a failure to parse the mount namespace for a process implies
+    // that it is in the init mount namespace.
+    bool in_init_mnt_ns = pid_mnt_ns.empty() || pid_mnt_ns == init_mnt_ns;
+
+    process_list.push_back(
+        ActiveProcess(pid, in_init_mnt_ns, comm, mounts, fds));
   }
 
   return process_list;

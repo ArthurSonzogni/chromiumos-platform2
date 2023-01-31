@@ -22,28 +22,32 @@ namespace init {
 
 ActiveProcess GetInitProcess(pid_t pid, const std::string& comm) {
   return ActiveProcess(
-      pid, comm,
+      pid, true, comm,
       {{base::FilePath("/"), base::FilePath("/"), std::string("/dev/sda3")}},
       {{base::FilePath("/sbin/chromeos_startup")}});
 }
 
 ActiveProcess GetInitProcessWithLog(pid_t pid, const std::string& comm) {
   return ActiveProcess(
-      pid, comm,
+      pid, true, comm,
       {{base::FilePath("/"), base::FilePath("/"), std::string("/dev/sda3")}},
       {{base::FilePath("/var/log/init.log")}});
 }
 
-ActiveProcess GetEncstatefulProcess(pid_t pid, const std::string& comm) {
-  return ActiveProcess(pid, comm,
+ActiveProcess GetEncstatefulProcess(pid_t pid,
+                                    const std::string& comm,
+                                    bool root_ns) {
+  return ActiveProcess(pid, root_ns, comm,
                        {{base::FilePath("/var"), base::FilePath("/var"),
                          std::string("/dev/mapper/encstateful")}},
                        {{base::FilePath("/var/log/foo")}});
 }
 
-ActiveProcess GetCryptohomeProcess(pid_t pid, const std::string& comm) {
+ActiveProcess GetCryptohomeProcess(pid_t pid,
+                                   const std::string& comm,
+                                   bool root_ns) {
   return ActiveProcess(
-      pid, comm,
+      pid, root_ns, comm,
       {{base::FilePath("/user"), base::FilePath("/home/chronos/user"),
         std::string("/dev/mapper/dmcrypt-foo-data")}},
       {{base::FilePath("/home/chronos/user/foo")}});
@@ -95,7 +99,7 @@ TEST(ProcessKiller, SessionFileOpenTest) {
   std::unique_ptr<FakeProcessManager> pm =
       std::make_unique<FakeProcessManager>();
   FakeProcessManager* fake_pm = pm.get();
-  fake_pm->SetProcessListForTesting({GetCryptohomeProcess(5, "chrome")});
+  fake_pm->SetProcessListForTesting({GetCryptohomeProcess(5, "chrome", false)});
 
   std::unique_ptr<ProcessKiller> process_killer =
       std::make_unique<ProcessKiller>(true /*session*/, false /*shutdown*/);
@@ -109,7 +113,7 @@ TEST(ProcessKiller, SessionMountOpenTest) {
   std::unique_ptr<FakeProcessManager> pm =
       std::make_unique<FakeProcessManager>();
   FakeProcessManager* fake_pm = pm.get();
-  fake_pm->SetProcessListForTesting({GetCryptohomeProcess(5, "chrome")});
+  fake_pm->SetProcessListForTesting({GetCryptohomeProcess(5, "chrome", false)});
 
   std::unique_ptr<ProcessKiller> process_killer =
       std::make_unique<ProcessKiller>(true /*session*/, false /*shutdown*/);
@@ -123,7 +127,8 @@ TEST(ProcessKiller, ShutdownFileOpenTest) {
   std::unique_ptr<FakeProcessManager> pm =
       std::make_unique<FakeProcessManager>();
   FakeProcessManager* fake_pm = pm.get();
-  fake_pm->SetProcessListForTesting({GetEncstatefulProcess(7, "dlcservice")});
+  fake_pm->SetProcessListForTesting(
+      {GetEncstatefulProcess(7, "dlcservice", false)});
 
   std::unique_ptr<ProcessKiller> process_killer =
       std::make_unique<ProcessKiller>(false /*session*/, true /*shutdown*/);
@@ -137,7 +142,8 @@ TEST(ProcessKiller, ShutdownMountOpenTest) {
   std::unique_ptr<FakeProcessManager> pm =
       std::make_unique<FakeProcessManager>();
   FakeProcessManager* fake_pm = pm.get();
-  fake_pm->SetProcessListForTesting({GetEncstatefulProcess(7, "dlcservice")});
+  fake_pm->SetProcessListForTesting(
+      {GetEncstatefulProcess(7, "dlcservice", false)});
 
   std::unique_ptr<ProcessKiller> process_killer =
       std::make_unique<ProcessKiller>(false /*session*/, true /*shutdown*/);
