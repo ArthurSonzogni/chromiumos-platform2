@@ -552,6 +552,7 @@ bool DoCreateVaultKeyset(const std::string& username,
                          const std::string& key_data_label,
                          const std::string& password,
                          bool enable_key_data,
+                         bool use_public_mount_salt,
                          Platform* platform) {
   // Initialize all class helper functions for creating and saving a
   // VaultKeyset.
@@ -582,9 +583,13 @@ bool DoCreateVaultKeyset(const std::string& username,
   std::string trimmed_password;
   base::TrimString(password, "/r/n", &trimmed_password);
   SecureBlob passkey;
-  SecureBlob system_salt;
-  GetSystemSalt(platform, &system_salt);
-  Crypto::PasswordToPasskey(trimmed_password.c_str(), system_salt, &passkey);
+  SecureBlob salt;
+  if (use_public_mount_salt) {
+    GetPublicMountSalt(platform, &salt);
+  } else {
+    GetSystemSalt(platform, &salt);
+  }
+  Crypto::PasswordToPasskey(trimmed_password.c_str(), salt, &passkey);
 
   // Create and initialize AuthInput.
   AuthInput auth_input = {.user_input = passkey,
@@ -774,6 +779,9 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(enable_key_data, true,
               "Boolean to enable or disable adding a KeyData object to "
               "the VaultKeyset during creation.");
+  DEFINE_bool(use_public_mount_salt, false,
+              "When set, use the public mount salt for creating passkeys in a "
+              "custom vault keyset. Otherwise the system salt will be used");
   brillo::FlagHelper::Init(argc, argv,
                            "cryptohome-test-tool - Test tool for cryptohome.");
 
@@ -785,7 +793,7 @@ int main(int argc, char* argv[]) {
         CheckMandatoryFlag("passkey", FLAGS_passkey)) {
       success = cryptohome::DoCreateVaultKeyset(
           FLAGS_username, FLAGS_key_data_label, FLAGS_passkey,
-          FLAGS_enable_key_data, &platform);
+          FLAGS_enable_key_data, FLAGS_use_public_mount_salt, &platform);
     }
   } else if (FLAGS_action == "recovery_crypto_create_hsm_payload") {
     if (CheckMandatoryFlag("rsa_priv_key_out_file",
