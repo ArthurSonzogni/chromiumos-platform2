@@ -2176,21 +2176,6 @@ TPM_RC TpmUtilityImpl::GetAuthPolicyEndorsementKey(
   if (key_type != TPM_ALG_RSA && key_type != TPM_ALG_ECC) {
     return SAPI_RC_BAD_PARAMETER;
   }
-  // The RSA EK may have already been generated and made persistent. The ECC EK
-  // is always generated on demand.
-  if (key_type == TPM_ALG_RSA) {
-    bool exists = false;
-    TPM_RC result = DoesPersistentKeyExist(kRSAEndorsementKey, &exists);
-    if (result != TPM_RC_SUCCESS) {
-      LOG(ERROR) << __func__ << ": Check Peristent RSA Key failed: "
-                 << GetErrorString(result);
-      return result;
-    }
-    if (exists) {
-      *key_handle = kRSAEndorsementKey;
-      return TPM_RC_SUCCESS;
-    }
-  }
 
   Tpm* tpm = factory_.GetTpm();
   TPML_PCR_SELECTION creation_pcrs;
@@ -2255,6 +2240,22 @@ TPM_RC TpmUtilityImpl::GetEndorsementKey(
     AuthorizationDelegate* endorsement_delegate,
     AuthorizationDelegate* owner_delegate,
     TPM_HANDLE* key_handle) {
+  // The RSA EK may have already been generated and made persistent. The ECC EK
+  // is always generated on demand.
+  if (key_type == TPM_ALG_RSA) {
+    bool exists = false;
+    TPM_RC result = DoesPersistentKeyExist(kRSAEndorsementKey, &exists);
+    if (result != TPM_RC_SUCCESS) {
+      LOG(ERROR) << __func__ << ": Check Peristent RSA Key failed: "
+                 << GetErrorString(result);
+      return result;
+    }
+    if (exists) {
+      *key_handle = kRSAEndorsementKey;
+      return TPM_RC_SUCCESS;
+    }
+  }
+
   TPM_HANDLE object_handle;
   TPM2B_NAME object_name;
 
