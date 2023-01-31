@@ -420,6 +420,8 @@ class AuthSessionInterfaceTest : public AuthSessionInterfaceTestBase {
     Credentials creds(username, secret);
     EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
         .WillOnce(Return(ByMove(std::move(vk))));
+    ON_CALL(keyset_management_, UserExists(SanitizeUserName(username)))
+        .WillByDefault(Return(true));
   }
 
   void ExpectVaultKeyset(int num_of_keysets) {
@@ -1665,7 +1667,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoUser) {
       AuthenticateAuthFactor(request);
 
   // Assert.
-  EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+  EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
   EXPECT_FALSE(reply.authenticated());
   EXPECT_FALSE(reply.has_seconds_left());
   EXPECT_THAT(reply.authorized_for(), IsEmpty());

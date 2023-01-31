@@ -935,6 +935,19 @@ void AuthSession::AuthenticateAuthFactor(
       std::optional<AuthFactorMap::ValueView> stored_auth_factor =
           auth_factor_map_.Find(auth_factor_labels[0]);
       if (!stored_auth_factor) {
+        // This could happen for 2 reasons, either the user doesn't exist or the
+        // auth factor is not available for this user.
+        if (!user_exists_) {
+          // Attempting to authenticate a user that doesn't exist.
+          LOG(ERROR) << "Attempting to authenticate user that doesn't exist: "
+                     << username_;
+          std::move(on_done).Run(MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(kLocAuthSessionUserNotFoundInAuthAuthFactor),
+              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+              user_data_auth::CryptohomeErrorCode::
+                  CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND));
+          return;
+        }
         LOG(ERROR) << "Authentication factor not found: "
                    << auth_factor_labels[0];
         std::move(on_done).Run(MakeStatus<CryptohomeError>(

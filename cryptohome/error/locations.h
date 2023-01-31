@@ -1289,6 +1289,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocLECredManPCRNotMatchInConvertTpmError = 1505,
   /* ./le_credential_manager_impl.cc */
   kLocLECredManHashTreeInConvertTpmError = 1506,
+  /* ./auth_session.cc */
+  kLocAuthSessionUserNotFoundInAuthAuthFactor = 1507,
   //////////////////////////////////////////////////
   //// This is a separator block at value 1700
   //// See location_db.py for more info.
