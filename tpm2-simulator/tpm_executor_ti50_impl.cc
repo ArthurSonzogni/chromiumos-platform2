@@ -49,8 +49,8 @@ constexpr char kMinijail[] = "/sbin/minijail0";
 constexpr char kTi50EmulatorKernel[] = "/usr/bin/ti50-emulator-kernel";
 constexpr char const* kTi50EmulatorApps[] = {
     "/usr/bin/ti50-emulator-fw_updater", "/usr/bin/ti50-emulator-tpm2",
-    "/usr/bin/ti50-emulator-sys_mgr",    "/usr/bin/ti50-emulator-ec_comm",
-    "/usr/bin/ti50-emulator-u2f",        "/usr/bin/ti50-emulator-pinweaver",
+    "/usr/bin/ti50-emulator-sys_mgr",    "/usr/bin/ti50-emulator-u2f",
+    "/usr/bin/ti50-emulator-pinweaver",
 };
 
 constexpr size_t kBufferSize = 1024;
