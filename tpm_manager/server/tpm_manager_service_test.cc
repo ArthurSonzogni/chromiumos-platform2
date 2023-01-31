@@ -166,10 +166,20 @@ TEST_F(TpmManagerServiceTest_Preinit, InitializeMetrics) {
 
   EXPECT_CALL(mock_tpm_status_, GetAlertsData(_)).WillOnce(Return(true));
 
+  EXPECT_CALL(mock_tpm_status_, GetTi50Stats(_, _, _, _))
+      .WillOnce(Return(true));
+
   EXPECT_CALL(mock_tpm_manager_metrics_, ReportTimeToTakeOwnership(_)).Times(1);
   EXPECT_CALL(mock_tpm_manager_metrics_, ReportVersionFingerprint(_)).Times(1);
   EXPECT_CALL(mock_tpm_manager_metrics_, ReportAlertsData(_))
       .WillOnce([this](auto&&) { Quit(); });
+  EXPECT_CALL(mock_tpm_manager_metrics_, ReportFilesystemInitTime(_)).Times(1);
+  EXPECT_CALL(mock_tpm_manager_metrics_, ReportFilesystemUtilization(_))
+      .Times(1);
+  EXPECT_CALL(mock_tpm_manager_metrics_, ReportApRoVerificationTime(_))
+      .Times(1);
+  EXPECT_CALL(mock_tpm_manager_metrics_, ReportExpApRoVerificationStatus(_))
+      .Times(1);
   SetupService();
   Run();
 }

@@ -309,6 +309,18 @@ std::unique_ptr<GetTpmStatusReply> TpmManagerService::InitializeTask() {
   reply->set_enabled(true);
   tpm_initializer_->VerifiedBootHelper();
 
+  uint32_t fs_time = 0;
+  uint32_t fs_size = 0;
+  uint32_t aprov_time = 0;
+  uint32_t aprov_status = 0;
+  if (tpm_status_->GetTi50Stats(&fs_time, &fs_size, &aprov_time,
+                                &aprov_status)) {
+    tpm_manager_metrics_->ReportFilesystemInitTime(fs_time);
+    tpm_manager_metrics_->ReportFilesystemUtilization(fs_size);
+    tpm_manager_metrics_->ReportApRoVerificationTime(aprov_time);
+    tpm_manager_metrics_->ReportExpApRoVerificationStatus(aprov_status);
+  }
+
   TpmStatus::TpmOwnershipStatus ownership_status;
   if (!tpm_status_->GetTpmOwned(&ownership_status)) {
     LOG(ERROR) << __func__
@@ -367,6 +379,7 @@ std::unique_ptr<GetTpmStatusReply> TpmManagerService::InitializeTask() {
     DisableDictionaryAttackMitigationIfNeeded();
     reply->set_status(STATUS_SUCCESS);
     NotifyTpmIsOwned();
+
     return reply;
   }
 

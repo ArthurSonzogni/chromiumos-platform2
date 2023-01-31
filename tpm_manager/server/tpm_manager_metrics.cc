@@ -18,8 +18,15 @@ constexpr base::TimeDelta kTimeToTakeOwnershipMin = base::Milliseconds(1);
 constexpr base::TimeDelta kTimeToTakeOwnershipMax = base::Minutes(5);
 constexpr int kTimeToTakeOwnershipNumBuckets = 50;
 
-}  // namespace
+constexpr uint32_t kFilesystemInitTimeMin = 1;
+constexpr uint32_t kFilesystemInitTimeMax = 60000;
+constexpr int kFilesystemInitTimeBuckets = 50;
 
+constexpr uint32_t kApRoVerificationTimeMin = 1;
+constexpr uint32_t kApRoVerificationTimeMax = 60000;
+constexpr int kApRoVerificationTimeBuckets = 50;
+
+}  // namespace
 
 void TpmManagerMetrics::ReportDictionaryAttackResetStatus(
     DictionaryAttackResetStatus status) {
@@ -97,6 +104,26 @@ void TpmManagerMetrics::ReportTakeOwnershipResult(
       static_cast<int>(TPMTakeOwnershipResult::kMaxValue);
   metrics_library_->SendEnumToUMA(kTPMTakeOwnershipResult,
                                   static_cast<int>(result), max_value + 1);
+}
+
+void TpmManagerMetrics::ReportFilesystemUtilization(uint32_t size) {
+  metrics_library_->SendSparseToUMA(kFilesystemUtilization, size);
+}
+
+void TpmManagerMetrics::ReportFilesystemInitTime(uint32_t time) {
+  metrics_library_->SendToUMA(kFilesystemInitTime, time, kFilesystemInitTimeMin,
+                              kFilesystemInitTimeMax,
+                              kFilesystemInitTimeBuckets);
+}
+
+void TpmManagerMetrics::ReportApRoVerificationTime(uint32_t time) {
+  metrics_library_->SendToUMA(
+      kApRoVerificationTime, time, kApRoVerificationTimeMin,
+      kApRoVerificationTimeMax, kApRoVerificationTimeBuckets);
+}
+
+void TpmManagerMetrics::ReportExpApRoVerificationStatus(uint32_t status) {
+  metrics_library_->SendSparseToUMA(kExpandedApRoVerificationStatus, status);
 }
 
 }  // namespace tpm_manager

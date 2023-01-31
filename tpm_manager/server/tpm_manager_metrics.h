@@ -70,6 +70,14 @@ class TpmManagerMetrics : private MetricsLibrary {
 
   virtual void ReportTakeOwnershipResult(TPMTakeOwnershipResult result);
 
+  virtual void ReportFilesystemUtilization(uint32_t size);
+
+  virtual void ReportFilesystemInitTime(uint32_t time);
+
+  virtual void ReportApRoVerificationTime(uint32_t time);
+
+  virtual void ReportExpApRoVerificationStatus(uint32_t status);
+
   void set_metrics_library_for_testing(
       MetricsLibraryInterface* metrics_library) {
     metrics_library_ = metrics_library;

@@ -3809,4 +3809,28 @@ TEST_F(TpmUtilityTest, GetRoVerificationStatusForNotCr50) {
   EXPECT_EQ(status, TpmUtility::ApRoStatus::kApRoUnsupportedNotTriggered);
 }
 
+TEST_F(TpmUtilityTest, GetTi50Stats) {
+  std::string command_response(
+      "\x80\x01"           // tag=TPM_STD_NO_SESSIONS
+      "\x00\x00\x00\x1C"   // size=28
+      "\x00\x00\x00\x00"   // code=TPM_RC_SUCCESS
+      "\x00\x41"           // subcommand=kTi50GetMetrics
+      "\xAA\xBB\xCC\xDD"   // fs_init_time = 0xAABBCCDD
+      "\x11\x22\x33\x44"   // fs_size = 0x11223344
+      "\x55\x66\x77\x88"   // aprov_time = 0x55667788
+      "\x99\x00\xAA\xBB",  // aprov_status = 0x9900AABB
+      28);
+  EXPECT_CALL(mock_transceiver_, SendCommandAndWait(_))
+      .WillOnce(Return(command_response));
+  uint32_t fs_time = 0;
+  uint32_t fs_size = 0;
+  uint32_t aprov_time = 0;
+  uint32_t aprov_status = 0;
+  EXPECT_EQ(TPM_RC_SUCCESS, utility_.GetTi50Stats(&fs_time, &fs_size,
+                                                  &aprov_time, &aprov_status));
+  EXPECT_EQ(fs_time, 0xAABBCCDD);
+  EXPECT_EQ(fs_size, 0x11223344);
+  EXPECT_EQ(aprov_time, 0x55667788);
+  EXPECT_EQ(aprov_status, 0x9900AABB);
+}
 }  // namespace trunks

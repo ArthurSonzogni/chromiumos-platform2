@@ -480,4 +480,10 @@ bool TpmStatusImpl::GetAlertsData(AlertsData* alerts) {
   return false;
 }
 
+bool TpmStatusImpl::GetTi50Stats(uint32_t* fs_init_time,
+                                 uint32_t* fs_size,
+                                 uint32_t* aprov_time,
+                                 uint32_t* aprov_status) {
+  return false;
+}
 }  // namespace tpm_manager

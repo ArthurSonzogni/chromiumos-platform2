@@ -379,4 +379,55 @@ TEST_F(Tpm2StatusTest, GetAlertsDataFailure) {
   EXPECT_EQ(alerts.counters[1], 0);
 }
 
+TEST_F(Tpm2StatusTest, GetTi50StatsSuccess) {
+  EXPECT_CALL(mock_tpm_utility_, GetTi50Stats(_, _, _, _))
+      .WillOnce([](uint32_t* fs_time, uint32_t* fs_size, uint32_t* aprov_time,
+                   uint32_t* aprov_status) {
+        *fs_time = 1234;
+        *fs_size = 5678;
+        *aprov_time = 9012;
+        *aprov_status = 3456;
+        return TPM_RC_SUCCESS;
+      });
+  uint32_t fs_time = 0;
+  uint32_t fs_size = 0;
+  uint32_t aprov_time = 0;
+  uint32_t aprov_status = 0;
+  EXPECT_TRUE(tpm_status_->GetTi50Stats(&fs_time, &fs_size, &aprov_time,
+                                        &aprov_status));
+  EXPECT_EQ(fs_time, 1234);
+  EXPECT_EQ(fs_size, 5678);
+  EXPECT_EQ(aprov_time, 9012);
+  EXPECT_EQ(aprov_status, 3456);
+}
+
+TEST_F(Tpm2StatusTest, GetTi50StatsFailure) {
+  EXPECT_CALL(mock_tpm_utility_, GetTi50Stats(_, _, _, _))
+      .WillRepeatedly(Return(trunks::TPM_RC_FAILURE));
+  uint32_t fs_time = 0;
+  uint32_t fs_size = 0;
+  uint32_t aprov_time = 0;
+  uint32_t aprov_status = 0;
+  EXPECT_FALSE(tpm_status_->GetTi50Stats(&fs_time, &fs_size, &aprov_time,
+                                         &aprov_status));
+  EXPECT_EQ(fs_time, 0);
+  EXPECT_EQ(fs_size, 0);
+  EXPECT_EQ(aprov_time, 0);
+  EXPECT_EQ(aprov_status, 0);
+}
+
+TEST_F(Tpm2StatusTest, GetTi50StatsNoSuchCommand) {
+  EXPECT_CALL(mock_tpm_utility_, GetTi50Stats(_, _, _, _))
+      .WillRepeatedly(Return(trunks::TPM_RC_NO_SUCH_COMMAND));
+  uint32_t fs_time = 0;
+  uint32_t fs_size = 0;
+  uint32_t aprov_time = 0;
+  uint32_t aprov_status = 0;
+  EXPECT_FALSE(tpm_status_->GetTi50Stats(&fs_time, &fs_size, &aprov_time,
+                                         &aprov_status));
+  EXPECT_EQ(fs_time, 0);
+  EXPECT_EQ(fs_size, 0);
+  EXPECT_EQ(aprov_time, 0);
+  EXPECT_EQ(aprov_status, 0);
+}
 }  // namespace tpm_manager

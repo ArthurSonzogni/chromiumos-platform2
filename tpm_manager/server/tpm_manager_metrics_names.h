@@ -34,6 +34,14 @@ inline constexpr int kSecretStatusHasOwnerPassword = 1 << 4;
 inline constexpr int kSecretStatusIsTpm2 = 1 << 7;
 inline constexpr int kSecretMaxBit = kSecretStatusIsTpm2;
 
+inline constexpr char kFilesystemUtilization[] =
+    "Platform.TPM.FilesystemUtilization";
+inline constexpr char kFilesystemInitTime[] = "Platform.TPM.FilesystemInitTime";
+inline constexpr char kApRoVerificationTime[] =
+    "Platform.TPM.ApRoVerificationTime";
+inline constexpr char kExpandedApRoVerificationStatus[] =
+    "Platform.TPM.ExpandedApRoVerificationStatus";
+
 }  // namespace tpm_manager
 
 #endif  // TPM_MANAGER_SERVER_TPM_MANAGER_METRICS_NAMES_H_

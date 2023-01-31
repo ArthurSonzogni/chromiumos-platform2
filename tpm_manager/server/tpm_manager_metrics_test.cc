@@ -143,4 +143,35 @@ TEST_F(TpmManagerMetricsTest, ReportTakeOwnershipResult) {
   }
 }
 
+TEST_F(TpmManagerMetricsTest, ReportFilesystemUtilization) {
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kFilesystemUtilization, 0xdeadbeaf))
+      .WillOnce(Return(true));
+  tpm_manager_metrics_.ReportFilesystemUtilization(0xdeadbeaf);
+}
+
+TEST_F(TpmManagerMetricsTest, ReportFilesystemInitTime) {
+  const uint32_t time = 35;
+  EXPECT_CALL(mock_metrics_library_,
+              SendToUMA(kFilesystemInitTime, time, _, _, _))
+      .WillOnce(Return(true));
+  tpm_manager_metrics_.ReportFilesystemInitTime(time);
+}
+
+TEST_F(TpmManagerMetricsTest, ReportApRoVerificationTime) {
+  const uint32_t time = 35;
+  EXPECT_CALL(mock_metrics_library_,
+              SendToUMA(kApRoVerificationTime, time, _, _, _))
+      .WillOnce(Return(true));
+  tpm_manager_metrics_.ReportApRoVerificationTime(time);
+}
+
+TEST_F(TpmManagerMetricsTest, ReportExpApRoVerificationStatus) {
+  const uint32_t status = 35;
+  EXPECT_CALL(mock_metrics_library_,
+              SendSparseToUMA(kExpandedApRoVerificationStatus, status))
+      .WillOnce(Return(true));
+  tpm_manager_metrics_.ReportExpApRoVerificationStatus(status);
+}
+
 }  // namespace tpm_manager

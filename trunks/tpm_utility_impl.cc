@@ -75,6 +75,7 @@ const uint16_t kCr50SubcmdU2fGenerate = 44;
 const uint16_t kCr50SubcmdU2fSign = 45;
 const uint16_t kCr50SubcmdU2fAttest = 46;
 const uint16_t kCr50SubcmdGetRoStatus = 57;
+const uint16_t kTi50GetMetrics = 65;
 
 // Salt used exclusively for the Remote Server Unlock process due to the privacy
 // reasons.
@@ -3616,4 +3617,32 @@ TPM_RC TpmUtilityImpl::GetMaxNVChunkSize(size_t* size) {
   return TPM_RC_SUCCESS;
 }
 
+TPM_RC TpmUtilityImpl::GetTi50Stats(uint32_t* fs_init_time,
+                                    uint32_t* fs_size,
+                                    uint32_t* aprov_time,
+                                    uint32_t* aprov_status) {
+  CHECK(fs_init_time);
+  CHECK(fs_size);
+  CHECK(aprov_time);
+  CHECK(aprov_status);
+  std::string res;
+  TPM_RC result = Cr50VendorCommand(kTi50GetMetrics, std::string(), &res);
+  if (result != TPM_RC_SUCCESS)
+    return result;
+
+  result = Parse_UINT32(&res, fs_init_time, nullptr);
+  if (result != TPM_RC_SUCCESS)
+    return result;
+
+  result = Parse_UINT32(&res, fs_size, nullptr);
+  if (result != TPM_RC_SUCCESS)
+    return result;
+
+  result = Parse_UINT32(&res, aprov_time, nullptr);
+  if (result != TPM_RC_SUCCESS)
+    return result;
+
+  result = Parse_UINT32(&res, aprov_status, nullptr);
+  return result;
+}
 }  // namespace trunks

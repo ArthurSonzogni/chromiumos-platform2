@@ -1060,6 +1060,13 @@ class TRUNKS_EXPORT TpmUtility {
   // This method creates an RSA/ECC decryption key to be used for salting
   // sessions.
   virtual TPM_RC CreateSaltingKey(TPM_HANDLE* key, TPM2B_NAME* key_name) = 0;
+
+  // Get Ti50 metrics: filesystem init time, filesystem size, AP RO verification
+  // time, and AP RO verifiction status.
+  virtual TPM_RC GetTi50Stats(uint32_t* fs_init_time,
+                              uint32_t* fs_size,
+                              uint32_t* aprov_time,
+                              uint32_t* aprov_status) = 0;
 };
 
 }  // namespace trunks

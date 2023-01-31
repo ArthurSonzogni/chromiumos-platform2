@@ -32,6 +32,10 @@ class MockTpmManagerMetrics : public TpmManagerMetrics {
               ReportTakeOwnershipResult,
               (TPMTakeOwnershipResult),
               (override));
+  MOCK_METHOD(void, ReportFilesystemUtilization, (uint32_t), (override));
+  MOCK_METHOD(void, ReportFilesystemInitTime, (uint32_t), (override));
+  MOCK_METHOD(void, ReportApRoVerificationTime, (uint32_t), (override));
+  MOCK_METHOD(void, ReportExpApRoVerificationStatus, (uint32_t), (override));
 };
 
 }  // namespace tpm_manager

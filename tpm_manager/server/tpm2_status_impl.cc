@@ -378,4 +378,15 @@ bool Tpm2StatusImpl::GetAlertsData(AlertsData* alerts) {
   return true;
 }
 
+bool Tpm2StatusImpl::GetTi50Stats(uint32_t* fs_init_time,
+                                  uint32_t* fs_size,
+                                  uint32_t* aprov_time,
+                                  uint32_t* aprov_status) {
+  TPM_RC result = trunks_tpm_utility_->GetTi50Stats(fs_init_time, fs_size,
+                                                    aprov_time, aprov_status);
+  if (result != trunks::TPM_RC_SUCCESS) {
+    return false;
+  }
+  return true;
+}
 }  // namespace tpm_manager

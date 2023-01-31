@@ -48,6 +48,10 @@ class Tpm2StatusImpl : public TpmStatus {
   bool GetRoVerificationStatus(
       tpm_manager::RoVerificationStatus* status) override;
   bool GetAlertsData(AlertsData* alerts) override;
+  bool GetTi50Stats(uint32_t* fs_init_time,
+                    uint32_t* fs_size,
+                    uint32_t* aprov_time,
+                    uint32_t* aprov_status) override;
 
  private:
   // Refreshes the Tpm state information. Can be called as many times as needed

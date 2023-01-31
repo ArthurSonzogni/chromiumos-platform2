@@ -103,6 +103,13 @@ class TpmStatus {
   //   alerts (OUT) - Struct that contains TPM alerts information
   // Returns true is hardware supports Alerts reporting, false otherwise
   virtual bool GetAlertsData(AlertsData* alerts) = 0;
+
+  // Gets Ti50 specific metrics filesystem init time, filesystem size, AP RO
+  // verification time, and expanded AP RO verification status.
+  virtual bool GetTi50Stats(uint32_t* fs_init_time,
+                            uint32_t* fs_size,
+                            uint32_t* aprov_time,
+                            uint32_t* aprov_status) = 0;
 };
 
 }  // namespace tpm_manager
