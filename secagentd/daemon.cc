@@ -44,9 +44,11 @@ Daemon::Daemon(struct Inject injected) : weak_ptr_factory_(this) {
 }
 
 Daemon::Daemon(bool bypass_policy_for_testing,
-               bool bypass_enq_ok_wait_for_testing)
+               bool bypass_enq_ok_wait_for_testing,
+               uint32_t set_heartbeat_period_s_for_testing)
     : bypass_policy_for_testing_(bypass_policy_for_testing),
       bypass_enq_ok_wait_for_testing_(bypass_enq_ok_wait_for_testing),
+      set_heartbeat_period_s_for_testing_(set_heartbeat_period_s_for_testing),
       weak_ptr_factory_(this) {}
 
 int Daemon::OnInit() {
@@ -132,7 +134,7 @@ void Daemon::StartXDRReporting() {
       Types::Plugin::kAgent, message_sender_,
       std::make_unique<org::chromium::AttestationProxy>(bus_),
       std::make_unique<org::chromium::TpmManagerProxy>(bus_),
-      std::move(cb_for_agent));
+      std::move(cb_for_agent), set_heartbeat_period_s_for_testing_);
 
   if (!agent_plugin_) {
     QuitWithExitCode(EX_SOFTWARE);

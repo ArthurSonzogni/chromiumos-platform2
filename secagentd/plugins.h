@@ -68,7 +68,8 @@ class AgentPlugin : public PluginInterface {
                            attestation_proxy,
                        std::unique_ptr<org::chromium::TpmManagerProxyInterface>
                            tpm_manager_proxy,
-                       base::OnceCallback<void()> cb);
+                       base::OnceCallback<void()> cb,
+                       uint32_t heartbeat_timer);
 
   // Initialize Agent proto and starts agent heartbeat events.
   absl::Status Activate() override;
@@ -110,6 +111,7 @@ class AgentPlugin : public PluginInterface {
   std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy_;
   base::OnceCallback<void()> daemon_cb_;
   base::Lock tcb_attributes_lock_;
+  base::TimeDelta heartbeat_timer_ = base::Minutes(5);
 };
 
 class PluginFactoryInterface {
@@ -127,7 +129,8 @@ class PluginFactoryInterface {
           attestation_proxy,
       std::unique_ptr<org::chromium::TpmManagerProxyInterface>
           tpm_manager_proxy,
-      base::OnceCallback<void()> cb) = 0;
+      base::OnceCallback<void()> cb,
+      uint32_t heartbeat_timer) = 0;
   virtual ~PluginFactoryInterface() = default;
 };
 
@@ -162,7 +165,8 @@ class PluginFactory : public PluginFactoryInterface {
           attestation_proxy,
       std::unique_ptr<org::chromium::TpmManagerProxyInterface>
           tpm_manager_proxy,
-      base::OnceCallback<void()> cb) override;
+      base::OnceCallback<void()> cb,
+      uint32_t heartbeat_timer) override;
 
  private:
   scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory_;

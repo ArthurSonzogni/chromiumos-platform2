@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
@@ -103,13 +104,15 @@ std::unique_ptr<PluginInterface> PluginFactory::Create(
     scoped_refptr<MessageSenderInterface> message_sender,
     std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy,
     std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy,
-    base::OnceCallback<void()> cb) {
+    base::OnceCallback<void()> cb,
+    uint32_t set_heartbeat_period_s_for_testing) {
   std::unique_ptr<PluginInterface> rv{nullptr};
   switch (type) {
     case PluginType::kAgent:
       rv = std::make_unique<AgentPlugin>(
           message_sender, std::move(attestation_proxy),
-          std::move(tpm_manager_proxy), std::move(cb));
+          std::move(tpm_manager_proxy), std::move(cb),
+          set_heartbeat_period_s_for_testing);
       break;
 
     default:

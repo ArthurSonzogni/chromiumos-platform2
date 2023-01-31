@@ -5,6 +5,7 @@
 #ifndef SECAGENTD_DAEMON_H_
 #define SECAGENTD_DAEMON_H_
 
+#include <cstdint>
 #include <memory>
 #include <vector>
 
@@ -39,7 +40,9 @@ class Daemon : public brillo::DBusDaemon {
   Daemon() = delete;
   /* dependency injection for unit tests */
   explicit Daemon(struct Inject);
-  Daemon(bool bypass_policy_for_testing, bool bypass_enq_ok_wait_for_testing);
+  Daemon(bool bypass_policy_for_testing,
+         bool bypass_enq_ok_wait_for_testing,
+         uint32_t set_heartbeat_period_s_for_testing);
   ~Daemon() override = default;
 
  protected:
@@ -77,6 +80,7 @@ class Daemon : public brillo::DBusDaemon {
   bool bypass_enq_ok_wait_for_testing_ = false;
   bool reporting_events_ = false;
   bool xdr_reporting_policy_ = false;
+  uint32_t set_heartbeat_period_s_for_testing_ = 300;
   base::WeakPtrFactory<Daemon> weak_ptr_factory_;
 };
 };  // namespace secagentd

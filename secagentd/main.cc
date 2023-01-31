@@ -19,11 +19,15 @@ int main(int argc, char** argv) {
       bypass_enq_ok_wait_for_testing, false,
       "Set to true to skip waiting for an Agent Start event to be "
       "enqueued successfully before attempting to enqueue subsequent events");
+  DEFINE_uint32(
+      set_heartbeat_period_s_for_testing, 300,
+      "Set value in seconds > 0 for the agent heartbeat timer for testing.");
   brillo::FlagHelper::Init(argc, argv,
                            "ChromiumOS Security Event Reporting Daemon");
   brillo::InitLog(brillo::kLogToStderrIfTty | brillo::kLogToSyslog);
   logging::SetMinLogLevel(FLAGS_log_level);
   auto daemon = secagentd::Daemon(FLAGS_bypass_policy_for_testing,
-                                  FLAGS_bypass_enq_ok_wait_for_testing);
+                                  FLAGS_bypass_enq_ok_wait_for_testing,
+                                  FLAGS_set_heartbeat_period_s_for_testing);
   return daemon.Run();
 }

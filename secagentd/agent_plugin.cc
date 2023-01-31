@@ -4,6 +4,7 @@
 
 #include <unistd.h>
 
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
@@ -72,8 +73,11 @@ AgentPlugin::AgentPlugin(
     scoped_refptr<MessageSenderInterface> message_sender,
     std::unique_ptr<org::chromium::AttestationProxyInterface> attestation_proxy,
     std::unique_ptr<org::chromium::TpmManagerProxyInterface> tpm_manager_proxy,
-    base::OnceCallback<void()> cb)
-    : weak_ptr_factory_(this), message_sender_(message_sender) {
+    base::OnceCallback<void()> cb,
+    uint32_t heartbeat_timer)
+    : weak_ptr_factory_(this),
+      message_sender_(message_sender),
+      heartbeat_timer_(base::Seconds(std::max(heartbeat_timer, uint32_t(1)))) {
   CHECK(message_sender != nullptr);
   attestation_proxy_ = std::move(attestation_proxy);
   tpm_manager_proxy_ = std::move(tpm_manager_proxy);
@@ -270,7 +274,7 @@ void AgentPlugin::StartEventStatusCallback(reporting::Status status) {
   if (status.ok()) {
     // Start heartbeat timer.
     agent_heartbeat_timer_.Start(
-        FROM_HERE, base::Minutes(5),
+        FROM_HERE, heartbeat_timer_,
         base::BindRepeating(&AgentPlugin::SendAgentHeartbeatEvent,
                             weak_ptr_factory_.GetWeakPtr()));
 

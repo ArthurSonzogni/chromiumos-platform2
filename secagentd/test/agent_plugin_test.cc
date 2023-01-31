@@ -77,6 +77,7 @@ class AgentPluginTestFixture : public ::testing::TestWithParam<BootmodeAndTpm> {
     dbus::Bus::Options options;
     options.bus_type = dbus::Bus::SYSTEM;
     bus_ = new dbus::MockBus(options);
+    heartbeat_timer = 300;
   }
   void TearDown() override { task_environment_.RunUntilIdle(); }
 
@@ -97,7 +98,8 @@ class AgentPluginTestFixture : public ::testing::TestWithParam<BootmodeAndTpm> {
                                               run_loop->Quit();
                                             }
                                           },
-                                          run_loop));
+                                          run_loop),
+                                      heartbeat_timer);
     EXPECT_NE(nullptr, plugin_);
     agent_plugin_ = static_cast<AgentPlugin*>(plugin_.get());
   }
@@ -172,6 +174,7 @@ class AgentPluginTestFixture : public ::testing::TestWithParam<BootmodeAndTpm> {
   AgentPlugin* agent_plugin_;
   std::unique_ptr<org::chromium::AttestationProxyMock> attestation_proxy_;
   std::unique_ptr<org::chromium::TpmManagerProxyMock> tpm_manager_proxy_;
+  uint32_t heartbeat_timer;
 };
 
 TEST_F(AgentPluginTestFixture, TestGetName) {
@@ -247,6 +250,48 @@ TEST_F(AgentPluginTestFixture, TestSendStartEventServicesAvailable) {
   CheckTcbAttributes(agent_heartbeat_message->agent_heartbeat().tcb(),
                      tpm_information, level, revision, family_string,
                      manufacturer_string);
+}
+
+TEST_F(AgentPluginTestFixture, TestSetHeartbeatTimerNonzero) {
+  SetupObjectProxies(false);
+
+  EXPECT_CALL(*message_sender_,
+              SendMessage(reporting::Destination::CROS_SECURITY_AGENT, _, _, _))
+      .Times(4)
+      .WillOnce(WithArgs<3>(
+          Invoke([](std::optional<reporting::ReportQueue::EnqueueCallback> cb) {
+            EXPECT_TRUE(cb.has_value());
+            std::move(cb.value()).Run(reporting::Status::StatusOK());
+          })))
+      .WillRepeatedly(WithArgs<3>(
+          Invoke([](std::optional<reporting::ReportQueue::EnqueueCallback> cb) {
+            EXPECT_FALSE(cb.has_value());
+          })));
+
+  heartbeat_timer = 3;
+  CreateAndRunAgentPlugin();
+  task_environment_.FastForwardBy(base::Seconds(10));
+}
+
+TEST_F(AgentPluginTestFixture, TestSetHeartbeatTimerZero) {
+  SetupObjectProxies(false);
+
+  EXPECT_CALL(*message_sender_,
+              SendMessage(reporting::Destination::CROS_SECURITY_AGENT, _, _, _))
+      .Times(4)
+      .WillOnce(WithArgs<3>(
+          Invoke([](std::optional<reporting::ReportQueue::EnqueueCallback> cb) {
+            EXPECT_TRUE(cb.has_value());
+            std::move(cb.value()).Run(reporting::Status::StatusOK());
+          })))
+      .WillRepeatedly(WithArgs<3>(
+          Invoke([](std::optional<reporting::ReportQueue::EnqueueCallback> cb) {
+            EXPECT_FALSE(cb.has_value());
+          })));
+
+  heartbeat_timer = 0;
+  CreateAndRunAgentPlugin();
+  task_environment_.FastForwardBy(base::Seconds(3.5));
 }
 
 TEST_F(AgentPluginTestFixture, TestSendStartEventServicesUnvailable) {
