@@ -20,9 +20,10 @@
 #include <base/strings/string_piece.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
-#include <crypto/random.h>
-#include <metrics/metrics_library.h>
 #include <base/timer/timer.h>
+#include <crypto/random.h>
+#include <dbus/bus.h>
+#include <metrics/metrics_library.h>
 
 #include "biod/biod_crypto.h"
 #include "biod/biod_metrics.h"
@@ -145,18 +146,16 @@ BiometricsManager::EnrollSession CrosFpBiometricsManager::StartEnrollSession(
   LOG(INFO) << __func__;
   // Another session is on-going, fail early ...
   if (!next_session_action_.is_null()) {
-    std::string error_message = "Another EnrollSession already exists.";
-    LOG(ERROR) << error_message;
+    LOG(ERROR) << kEnrollSessionExists;
     BiometricsManager::EnrollSession enroll_session;
-    enroll_session.set_error(error_message);
+    enroll_session.set_error(kEnrollSessionExists);
     return enroll_session;
   }
 
   if (loaded_records_.size() >= cros_dev_->MaxTemplateCount()) {
-    std::string error_message = "No space for an additional template.";
-    LOG(ERROR) << error_message;
+    LOG(ERROR) << kTemplatesFull;
     BiometricsManager::EnrollSession enroll_session;
-    enroll_session.set_error(error_message);
+    enroll_session.set_error(kTemplatesFull);
     return enroll_session;
   }
 
@@ -164,18 +163,16 @@ BiometricsManager::EnrollSession CrosFpBiometricsManager::StartEnrollSession(
   if (!RequestEnrollImage(BiodStorageInterface::RecordMetadata{
           kRecordFormatVersion, BiodStorage::GenerateNewRecordId(),
           std::move(user_id), std::move(label), std::move(validation_val)})) {
-    std::string error_message = "Enroll image was not requested.";
-    LOG(ERROR) << error_message;
+    LOG(ERROR) << kEnrollImageNotRequested;
     BiometricsManager::EnrollSession enroll_session;
-    enroll_session.set_error(error_message);
+    enroll_session.set_error(kEnrollImageNotRequested);
     return enroll_session;
   }
 
   if (cros_dev_->GetHwErrors() != ec::FpSensorErrors::kNone) {
-    std::string error_message = "Fingerprint hardware is unavailable.";
-    LOG(ERROR) << error_message;
+    LOG(ERROR) << kFpHwUnavailable;
     BiometricsManager::EnrollSession enroll_session;
-    enroll_session.set_error(error_message);
+    enroll_session.set_error(kFpHwUnavailable);
     return enroll_session;
   }
 
@@ -187,26 +184,23 @@ BiometricsManager::AuthSession CrosFpBiometricsManager::StartAuthSession() {
   LOG(INFO) << __func__;
   // Another session is on-going, fail early ...
   if (!next_session_action_.is_null()) {
-    std::string error_message = "Another AuthSession already exists.";
-    LOG(ERROR) << error_message;
+    LOG(ERROR) << kAuthSessionExists;
     BiometricsManager::AuthSession auth_session;
-    auth_session.set_error(error_message);
+    auth_session.set_error(kAuthSessionExists);
     return auth_session;
   }
 
   if (!RequestMatch()) {
-    std::string error_message = "Match was not requested.";
-    LOG(ERROR) << error_message;
+    LOG(ERROR) << kMatchNotRequested;
     BiometricsManager::AuthSession auth_session;
-    auth_session.set_error(error_message);
+    auth_session.set_error(kMatchNotRequested);
     return auth_session;
   }
 
   if (cros_dev_->GetHwErrors() != ec::FpSensorErrors::kNone) {
-    std::string error_message = "Fingerprint hardware is unavailable.";
-    LOG(ERROR) << error_message;
+    LOG(ERROR) << kFpHwUnavailable;
     BiometricsManager::AuthSession auth_session;
-    auth_session.set_error(error_message);
+    auth_session.set_error(kFpHwUnavailable);
     return auth_session;
   }
 

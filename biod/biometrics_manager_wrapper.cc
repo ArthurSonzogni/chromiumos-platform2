@@ -23,12 +23,6 @@ using brillo::dbus_utils::DBusObject;
 using brillo::dbus_utils::ExportedObjectManager;
 using dbus::ObjectPath;
 
-namespace errors {
-const char kDomain[] = "biod";
-const char kInternalError[] = "internal_error";
-const char kInvalidArguments[] = "invalid_arguments";
-}  // namespace errors
-
 BiometricsManagerWrapper::BiometricsManagerWrapper(
     std::unique_ptr<BiometricsManager> biometrics_manager,
     ExportedObjectManager* object_manager,
@@ -120,9 +114,8 @@ BiometricsManagerWrapper::RecordWrapper::~RecordWrapper() {
 bool BiometricsManagerWrapper::RecordWrapper::SetLabel(
     brillo::ErrorPtr* error, const std::string& new_label) {
   if (!record_->SetLabel(new_label)) {
-    *error =
-        brillo::Error::Create(FROM_HERE, errors::kDomain,
-                              errors::kInternalError, "Failed to set label");
+    *error = brillo::Error::Create(FROM_HERE, kDomain, kInternalError,
+                                   "Failed to set label");
     return false;
   }
   property_label_.SetValue(new_label);
@@ -131,8 +124,7 @@ bool BiometricsManagerWrapper::RecordWrapper::SetLabel(
 
 bool BiometricsManagerWrapper::RecordWrapper::Remove(brillo::ErrorPtr* error) {
   if (!record_->Remove()) {
-    *error = brillo::Error::Create(FROM_HERE, errors::kDomain,
-                                   errors::kInternalError,
+    *error = brillo::Error::Create(FROM_HERE, kDomain, kInternalError,
                                    "Failed to remove record");
     return false;
   }
@@ -287,8 +279,7 @@ bool BiometricsManagerWrapper::StartEnrollSession(
   if (session_state_manager_->GetPrimaryUser().empty()) {
     LOG(WARNING) << message->GetSender() << " tried to start EnrollSession "
                  << "when primary user is not set";
-    *error = brillo::Error::Create(FROM_HERE, errors::kDomain,
-                                   errors::kInternalError,
+    *error = brillo::Error::Create(FROM_HERE, kDomain, kInternalError,
                                    "Primary user is not set");
     return false;
   }
@@ -296,8 +287,7 @@ bool BiometricsManagerWrapper::StartEnrollSession(
   BiometricsManager::EnrollSession enroll_session =
       biometrics_manager_->StartEnrollSession(user_id, label);
   if (!enroll_session) {
-    *error = brillo::Error::Create(FROM_HERE, errors::kDomain,
-                                   errors::kInternalError,
+    *error = brillo::Error::Create(FROM_HERE, kDomain, kInternalError,
                                    "Failed to start EnrollSession");
     return false;
   }
@@ -331,8 +321,7 @@ bool BiometricsManagerWrapper::GetRecordsForUser(brillo::ErrorPtr* error,
   if (session_state_manager_->GetPrimaryUser().empty()) {
     LOG(WARNING) << "GetRecordsForUser called when primary user is not "
                  << "available.";
-    *error = brillo::Error::Create(FROM_HERE, errors::kDomain,
-                                   errors::kInternalError,
+    *error = brillo::Error::Create(FROM_HERE, kDomain, kInternalError,
                                    "Primary user is not set");
     return false;
   }
@@ -347,15 +336,13 @@ bool BiometricsManagerWrapper::GetRecordsForUser(brillo::ErrorPtr* error,
 bool BiometricsManagerWrapper::DestroyAllRecords(brillo::ErrorPtr* error) {
   if (session_state_manager_->GetPrimaryUser().empty()) {
     LOG(WARNING) << "DestroyAllRecords called when primary user is not set";
-    *error = brillo::Error::Create(FROM_HERE, errors::kDomain,
-                                   errors::kInternalError,
+    *error = brillo::Error::Create(FROM_HERE, kDomain, kInternalError,
                                    "Primary user is not set");
     return false;
   }
 
   if (!biometrics_manager_->DestroyAllRecords()) {
-    *error = brillo::Error::Create(FROM_HERE, errors::kDomain,
-                                   errors::kInternalError,
+    *error = brillo::Error::Create(FROM_HERE, kDomain, kInternalError,
                                    "Failed to destroy all records");
     return false;
   }
@@ -369,8 +356,7 @@ bool BiometricsManagerWrapper::StartAuthSession(brillo::ErrorPtr* error,
   if (session_state_manager_->GetPrimaryUser().empty()) {
     LOG(WARNING) << message->GetSender() << " tried to start AuthSession when "
                  << "primary user is not set";
-    *error = brillo::Error::Create(FROM_HERE, errors::kDomain,
-                                   errors::kInternalError,
+    *error = brillo::Error::Create(FROM_HERE, kDomain, kInternalError,
                                    "Primary user is not set");
     return false;
   }
@@ -378,8 +364,7 @@ bool BiometricsManagerWrapper::StartAuthSession(brillo::ErrorPtr* error,
   BiometricsManager::AuthSession auth_session =
       biometrics_manager_->StartAuthSession();
   if (!auth_session) {
-    *error = brillo::Error::Create(FROM_HERE, errors::kDomain,
-                                   errors::kInternalError,
+    *error = brillo::Error::Create(FROM_HERE, kDomain, kInternalError,
                                    "Failed to start AuthSession");
     return false;
   }
@@ -403,8 +388,7 @@ bool BiometricsManagerWrapper::StartAuthSession(brillo::ErrorPtr* error,
 bool BiometricsManagerWrapper::EnrollSessionCancel(brillo::ErrorPtr* error) {
   if (!enroll_session_) {
     LOG(WARNING) << "DBus client attempted to cancel null EnrollSession";
-    *error = brillo::Error::Create(FROM_HERE, errors::kDomain,
-                                   errors::kInvalidArguments,
+    *error = brillo::Error::Create(FROM_HERE, kDomain, kInvalidArguments,
                                    "EnrollSession object was null");
     return false;
   }
@@ -422,8 +406,7 @@ bool BiometricsManagerWrapper::EnrollSessionCancel(brillo::ErrorPtr* error) {
 bool BiometricsManagerWrapper::AuthSessionEnd(brillo::ErrorPtr* error) {
   if (!auth_session_) {
     LOG(WARNING) << "DBus client attempted to cancel null AuthSession";
-    *error = brillo::Error::Create(FROM_HERE, errors::kDomain,
-                                   errors::kInvalidArguments,
+    *error = brillo::Error::Create(FROM_HERE, kDomain, kInvalidArguments,
                                    "AuthSession object was null");
     return false;
   }

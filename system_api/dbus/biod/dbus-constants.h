@@ -59,6 +59,17 @@ enum BiometricType {
   BIOMETRIC_TYPE_FINGERPRINT = 1,
   BIOMETRIC_TYPE_MAX,
 };
+
+// Enroll and Auth Session Errors
+const char kDomain[] = "biod";
+const char kInternalError[] = "Internal error";
+const char kInvalidArguments[] = "Invalid Arguments";
+const char kEnrollSessionExists[] = "Another EnrollSession already exists";
+const char kAuthSessionExists[] = "Another AuthSession already exists";
+const char kTemplatesFull[] = "No space for an additional template";
+const char kEnrollImageNotRequested[] = "Enroll image was not requested";
+const char kFpHwUnavailable[] = "Fingerprint hardware is unavailable";
+const char kMatchNotRequested[] = "Match was not requested";
 }  // namespace biod
 
 #endif  // SYSTEM_API_DBUS_BIOD_DBUS_CONSTANTS_H_

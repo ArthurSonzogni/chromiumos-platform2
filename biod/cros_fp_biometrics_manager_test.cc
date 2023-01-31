@@ -351,7 +351,7 @@ TEST_F(CrosFpBiometricsManagerTest, TestStartEnrollSessionHwFailure) {
 
   enroll_session = cros_fp_biometrics_manager_->StartEnrollSession("0", "0");
   EXPECT_FALSE(enroll_session);
-  EXPECT_EQ(enroll_session.error(), "Fingerprint hardware is unavailable.");
+  EXPECT_EQ(enroll_session.error(), "Fingerprint hardware is unavailable");
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestStartEnrollSessionTwiceFailed) {
@@ -370,7 +370,7 @@ TEST_F(CrosFpBiometricsManagerTest, TestStartEnrollSessionTwiceFailed) {
       cros_fp_biometrics_manager_->StartEnrollSession("0", "0");
   EXPECT_FALSE(second_enroll_session);
   EXPECT_EQ(second_enroll_session.error(),
-            "Another EnrollSession already exists.");
+            "Another EnrollSession already exists");
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchModeFailed) {
@@ -383,7 +383,7 @@ TEST_F(CrosFpBiometricsManagerTest, TestAuthSessionMatchModeFailed) {
   // Auth session should fail to start when FPMCU refuses to set match mode.
   auth_session = cros_fp_biometrics_manager_->StartAuthSession();
   EXPECT_FALSE(auth_session);
-  EXPECT_EQ(auth_session.error(), "Match was not requested.");
+  EXPECT_EQ(auth_session.error(), "Match was not requested");
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestStartAuthSessionHwFailure) {
@@ -396,7 +396,7 @@ TEST_F(CrosFpBiometricsManagerTest, TestStartAuthSessionHwFailure) {
 
   auth_session = cros_fp_biometrics_manager_->StartAuthSession();
   EXPECT_FALSE(auth_session);
-  EXPECT_EQ(auth_session.error(), "Fingerprint hardware is unavailable.");
+  EXPECT_EQ(auth_session.error(), "Fingerprint hardware is unavailable");
 }
 
 TEST_F(CrosFpBiometricsManagerTest, TestDoEnrollImageEventSuccess) {
