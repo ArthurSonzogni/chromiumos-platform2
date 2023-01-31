@@ -39,7 +39,8 @@ std::vector<ActiveMount> ProcessManager::GetMountsForProcess(pid_t pid) {
   std::vector<ActiveMount> ret;
 
   if (!base::ReadFileToString(mounts_for_process, &mount_info)) {
-    PLOG_IF(ERROR, errno != ENOENT) << "Failed to read mount info for " << pid;
+    PLOG_IF(ERROR, errno != ENOENT && errno != EINVAL)
+        << "Failed to read mount info for " << pid;
     return ret;
   }
   auto mounts = base::SplitStringPiece(mount_info, "\n", base::KEEP_WHITESPACE,
