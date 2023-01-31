@@ -1913,7 +1913,7 @@ std::optional<base::UnguessableToken> AuthSession::GetTokenFromSerializedString(
     LOG(ERROR) << "AuthSession: all-zeroes serialized token is invalid";
     return std::nullopt;
   }
-  return base::UnguessableToken::Deserialize(high, low);
+  return base::UnguessableToken::Deserialize2(high, low);
 }
 
 std::optional<ChallengeCredentialAuthInput>

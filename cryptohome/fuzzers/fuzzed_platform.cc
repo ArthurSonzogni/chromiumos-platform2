@@ -1670,7 +1670,10 @@ base::UnguessableToken FuzzedPlatform::CreateUnguessableToken() {
     high = random_engine_64_();
     low = random_engine_64_();
   } while (high == 0 && low == 0);
-  return base::UnguessableToken::Deserialize(high, low);
+  std::optional<base::UnguessableToken> token =
+      base::UnguessableToken::Deserialize2(high, low);
+  CHECK(token.has_value());
+  return *token;
 }
 
 bool FuzzedPlatform::ReadFileImpl(const base::FilePath& path, Blob* blob) {
