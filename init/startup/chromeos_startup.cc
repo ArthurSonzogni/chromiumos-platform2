@@ -36,7 +36,6 @@
 
 namespace {
 
-constexpr char kTracingOn[] = "sys/kernel/tracing/tracing_on";
 constexpr char kHome[] = "home";
 constexpr char kUnencrypted[] = "unencrypted";
 constexpr char kVar[] = "var";
@@ -249,20 +248,6 @@ void ChromeosStartup::EarlySetup() {
                         "mode=0755")) {
     // TODO(b/232901639): Improve failure reporting.
     PLOG(WARNING) << "Unable to mount " << tracefs.value();
-  }
-
-  // /sys/kernel/tracing/tracing_on is 1 right after tracefs is initialized in
-  // the kernel. Set it to a reasonable initial state of 0 after debugfs is
-  // mounted. This needs to be done early during boot to avoid interference
-  // with ureadahead that uses ftrace to build the list of files to preload in
-  // the block cache. Android's init running in the ARC++ container sets this
-  // file to 0, and we set it to 0 here so the the initial state of tracing_on
-  // is always 0 regardless of ARC++.
-  const base::FilePath tracing = root_.Append(kTracingOn);
-  if (platform_->Stat(tracing, &st) && S_ISREG(st.st_mode)) {
-    if (!base::WriteFile(tracing, "0")) {
-      PLOG(WARNING) << "Failed to write to " << tracing.value();
-    }
   }
 
   // Mount configfs, if present.
