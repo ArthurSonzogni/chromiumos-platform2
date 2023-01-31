@@ -459,6 +459,8 @@ void Manager::RestartIPv6(const std::string& netns_name) {
 
 void Manager::OnShillDevicesChanged(const std::vector<std::string>& added,
                                     const std::vector<std::string>& removed) {
+  // Rules for traffic counters should be installed at the first and removed at
+  // the last to make sure every packet is counted.
   for (const std::string& ifname : removed) {
     for (auto& [_, nsinfo] : connected_namespaces_) {
       if (nsinfo.outbound_ifname != ifname) {
@@ -470,11 +472,12 @@ void Manager::OnShillDevicesChanged(const std::vector<std::string>& added,
     StopForwarding(ifname, "" /* ifname_virtual */);
     datapath_->StopConnectionPinning(ifname);
     datapath_->RemoveRedirectDnsRule(ifname);
-    counters_svc_->OnPhysicalDeviceRemoved(ifname);
     arc_svc_->RemoveDevice(ifname);
+    counters_svc_->OnPhysicalDeviceRemoved(ifname);
   }
 
   for (const std::string& ifname : added) {
+    counters_svc_->OnPhysicalDeviceAdded(ifname);
     for (auto& [_, nsinfo] : connected_namespaces_) {
       if (nsinfo.outbound_ifname != ifname) {
         continue;
@@ -496,7 +499,6 @@ void Manager::OnShillDevicesChanged(const std::vector<std::string>& added,
       datapath_->AddRedirectDnsRule(
           ifname, shill_device.ipconfig.ipv4_dns_addresses.front());
 
-    counters_svc_->OnPhysicalDeviceAdded(ifname);
     arc_svc_->AddDevice(ifname, shill_device.type);
   }
 }
