@@ -1389,3 +1389,45 @@ message GetVmLogsResponse {
   // The log for the vm.
   string log = 1;
 }
+
+// Vmm swap operations.
+enum SwapOperation {
+  // Disable vmm swap.
+  DISABLE = 0;
+
+  // Enable vmm swap and staging memory.
+  ENABLE = 1;
+
+  // Swapout staged memory.
+  SWAPOUT = 2;
+}
+
+// Request sent to vm_concierge for executing vmm swap operation on a VM.
+message SwapVmRequest {
+  // The name of the VM.
+  string name = 1;
+
+  // The owner of the VM.
+  string owner_id = 2;
+
+  // The swap state changing operation.
+  SwapOperation operation = 3;
+}
+
+// Response to an SwapVmRequest.
+message SwapVmResponse {
+  // If true, the swap state changing operation of the VM was success.
+  bool success = 1;
+
+  // If the attempt to change swap state failed, the reason for failure.
+  string failure_reason = 2;
+}
+
+// Message used in the signal for when a VM enabled vmm swap.
+message VmSwappingSignal {
+  // The name of the VM.
+  string name = 1;
+
+  // The owner of the VM.
+  string owner_id = 2;
+}

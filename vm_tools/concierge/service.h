@@ -242,6 +242,10 @@ class Service final {
 
   std::unique_ptr<dbus::Response> GetVmLogs(dbus::MethodCall* method_call);
 
+  // Handles a request to change VM swap state.
+  std::unique_ptr<dbus::Response> SwapVm(dbus::MethodCall* method_call);
+  void NotifyVmSwapping(const VmId& vm_id);
+
   // Asynchronously handles a request to reclaim memory of a given VM.
   void ReclaimVmMemory(dbus::MethodCall* method_call,
                        dbus::ExportedObject::ResponseSender response_sender);

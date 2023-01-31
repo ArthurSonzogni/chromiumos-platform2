@@ -1541,6 +1541,7 @@ bool Service::Init() {
       {kAddGroupPermissionMesaMethod, &Service::AddGroupPermissionMesa},
       {kGetVmLaunchAllowedMethod, &Service::GetVmLaunchAllowed},
       {kGetVmLogsMethod, &Service::GetVmLogs},
+      {kSwapVmMethod, &Service::SwapVm},
   };
 
   using AsyncServiceMethod = void (Service::*)(
@@ -5336,6 +5337,75 @@ std::unique_ptr<dbus::Response> Service::GetVmLogs(
   writer.AppendProtoAsArrayOfBytes(response);
 
   return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::SwapVm(dbus::MethodCall* method_call) {
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  SwapVmRequest request;
+  SwapVmResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    return dbus::ErrorResponse::FromMethodCall(
+        method_call, DBUS_ERROR_FAILED,
+        "Unable to parse SwapVmRequest from message");
+  }
+
+  if (!IsValidOwnerId(request.owner_id())) {
+    LOG(ERROR) << "Empty or malformed owner ID";
+    response.set_success(false);
+    response.set_failure_reason("Empty or malformed owner ID");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (!IsValidVmName(request.name())) {
+    LOG(ERROR) << "Empty or malformed VM name";
+    response.set_success(false);
+    response.set_failure_reason("Empty or malformed VM name");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  auto iter = FindVm(request.owner_id(), request.name());
+  if (iter == vms_.end()) {
+    LOG(ERROR) << "Requested VM does not exist";
+    response.set_success(false);
+    response.set_failure_reason("Requested VM does not exist");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  const auto& vm = iter->second;
+  if (request.operation() == SwapOperation::ENABLE) {
+    response.set_success(vm->VmmSwap(VmInterface::SwapState::ENABLED));
+  } else if (request.operation() == SwapOperation::SWAPOUT) {
+    response.set_success(vm->VmmSwap(VmInterface::SwapState::SWAPPED_OUT));
+  } else if (request.operation() == SwapOperation::DISABLE) {
+    response.set_success(vm->VmmSwap(VmInterface::SwapState::DISABLED));
+  } else {
+    response.set_success(false);
+    response.set_failure_reason("Unknown operation");
+  }
+
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
+}
+
+void Service::NotifyVmSwapping(const VmId& vm_id) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+
+  // Send the D-Bus signal out to notify everyone that we are swapping a VM.
+  dbus::Signal signal(kVmConciergeInterface, kVmSwappingSignal);
+  vm_tools::concierge::VmSwappingSignal proto;
+  proto.set_owner_id(vm_id.owner_id());
+  proto.set_name(vm_id.name());
+  dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
+  exported_object_->SendSignal(&signal);
 }
 
 // TODO(b/244486983): separate out GPU VM cache methods out of service.cc file

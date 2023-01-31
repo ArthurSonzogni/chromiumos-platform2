@@ -117,6 +117,7 @@ class VmBaseImpl : public VmInterface {
  private:
   void HandleSuspendImminent() override;
   void HandleSuspendDone() override;
+  bool HandleVmmSwapStateChange(SwapState state) override;
 
   // Name of the socket to communicate to the crosvm binary.
   const std::string cros_vm_socket_;

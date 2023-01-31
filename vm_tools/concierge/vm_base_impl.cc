@@ -160,5 +160,17 @@ void VmBaseImpl::MakeRtVcpu() {
   crosvm_client_make_rt_vm(GetVmSocketPath().c_str());
 }
 
+bool VmBaseImpl::HandleVmmSwapStateChange(SwapState state) {
+  if (state == SwapState::ENABLED) {
+    return crosvm_client_swap_enable_vm(GetVmSocketPath().c_str());
+  } else if (state == SwapState::SWAPPED_OUT) {
+    return crosvm_client_swap_swapout_vm(GetVmSocketPath().c_str());
+  } else if (state == SwapState::DISABLED) {
+    return crosvm_client_swap_disable_vm(GetVmSocketPath().c_str());
+  }
+  LOG(ERROR) << "Unknown vmm swap state: " << static_cast<int>(state);
+  return false;
+}
+
 }  // namespace concierge
 }  // namespace vm_tools

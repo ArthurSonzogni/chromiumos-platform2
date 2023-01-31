@@ -46,6 +46,7 @@ const char kGetVmGpuCachePathMethod[] = "GetVmGpuCachePath";
 const char kAddGroupPermissionMesaMethod[] = "AddGroupPermissionMesa";
 const char kGetVmLaunchAllowedMethod[] = "GetVmLaunchAllowed";
 const char kGetVmLogsMethod[] = "GetVmLogs";
+const char kSwapVmMethod[] = "SwapVm";
 
 const char kDiskImageProgressSignal[] = "DiskImageProgress";
 const char kDnsSettingsChangedSignal[] = "DnsSettingsChanged";
@@ -53,6 +54,7 @@ const char kVmStartedSignal[] = "VmStartedSignal";
 const char kVmStartingUpSignal[] = "VmStartingUpSignal";
 const char kVmStoppedSignal[] = "VmStoppedSignal";
 const char kVmStoppingSignal[] = "VmStoppingSignal";
+const char kVmSwappingSignal[] = "VmSwappingSignal";
 
 }  // namespace concierge
 }  // namespace vm_tools
