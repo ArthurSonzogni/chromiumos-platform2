@@ -5460,6 +5460,25 @@ mno {
 
 mno {
   data {
+    uuid : "88cd541e-1fb0-44d3-a385-9f07548ec119"
+    country : "hk"
+    localized_name {
+      name : "Webbing"
+    }
+    mccmnc : "45435"
+    mobile_apn {
+      apn : "wbdata"
+      localized_name {
+        name : "Webbing"
+      }
+      ip_type : IPV4
+      type : DEFAULT
+    }
+  }
+}
+
+mno {
+  data {
     uuid : "e52e25a0-aa17-4442-b7ec-2f7559009c1a"
     country : "hn"
     localized_name {
@@ -14484,6 +14503,34 @@ mvno {
       ip_type : IPV4V6
       type : DEFAULT
       type : IA
+    }
+  }
+}
+
+# In addition to its own MCCMNC 45435, Webbing has partnerships with multiple
+# other operators: 24007, 20801, 45403, 45400, 42501.
+# Unlike IMSI, the ICCID doesn't change.
+mvno {
+  mvno_filter {
+    type : ICCID
+    regex : "8985235[0-9]+[fF]*"
+  }
+  data {
+    uuid : "20796c91-7c2e-49af-bb49-3bf31b90263a"
+    roaming_filter {
+      type : MCCMNC
+      regex : ".*"
+    }
+    localized_name {
+      name : "Webbing"
+    }
+    mobile_apn {
+      localized_name {
+        name : "Webbing"
+      }
+      apn : "wbdata"
+      ip_type : IPV4
+      type : DEFAULT
     }
   }
 }
