@@ -101,7 +101,6 @@ void StreamManipulator::RuntimeOptions::SetEffectsConfig(
 EffectsConfig StreamManipulator::RuntimeOptions::GetEffectsConfig() {
   base::AutoLock lock(lock_);
   return EffectsConfig{
-      .effect = effects_config_->effect,
       .relight_enabled = effects_config_->relight_enabled,
       .blur_enabled = effects_config_->blur_enabled,
       .replace_enabled = effects_config_->replace_enabled,

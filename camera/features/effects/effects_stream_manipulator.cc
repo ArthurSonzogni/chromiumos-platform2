@@ -369,20 +369,18 @@ void EffectsStreamManipulator::OnOptionsUpdated(
   std::string effect;
   if (GetStringFromKey(json_values, kEffectKey, &effect)) {
     if (effect == std::string("blur")) {
-      new_config.effect = mojom::CameraEffect::kBackgroundBlur;
       new_config.blur_enabled = true;
     } else if (effect == std::string("replace")) {
-      new_config.effect = mojom::CameraEffect::kBackgroundReplace;
       new_config.replace_enabled = true;
     } else if (effect == std::string("relight")) {
-      new_config.effect = mojom::CameraEffect::kPortraitRelight;
       new_config.relight_enabled = true;
     } else if (effect == std::string("blur_relight")) {
-      new_config.effect = mojom::CameraEffect::kBackgroundBlurPortraitRelight;
       new_config.blur_enabled = true;
       new_config.relight_enabled = true;
     } else if (effect == std::string("none")) {
-      new_config.effect = mojom::CameraEffect::kNone;
+      new_config.blur_enabled = false;
+      new_config.relight_enabled = false;
+      new_config.replace_enabled = false;
     } else {
       LOGF(WARNING) << "Unknown Effect: " << effect;
       return;

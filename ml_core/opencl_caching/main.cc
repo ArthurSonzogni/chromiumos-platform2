@@ -38,18 +38,10 @@ int main(int argc, char* argv[]) {
   config.segmentation_gpu_api = cros::mojom::GpuApi::kOpenCL;
   config.relighting_gpu_api = cros::mojom::GpuApi::kOpenCL;
 
-  // TODO(jmpollock): Extend this to the full set of effects once
-  //                  they've been set up in Google3 for caching.
-  auto effects = {cros::mojom::CameraEffect::kNone,
-                  cros::mojom::CameraEffect::kBackgroundBlur,
-                  cros::mojom::CameraEffect::kPortraitRelight};
-
-  for (auto effect : effects) {
-    LOG(INFO) << "Setting effect: " << effect;
-    config.effect = effect;
-    kEffectApplied.Reset();
-    pipeline->SetEffect(&config, SetEffectCallback);
-    kEffectApplied.Wait();
-  }
+  config.blur_enabled = true;
+  config.relight_enabled = true;
+  kEffectApplied.Reset();
+  pipeline->SetEffect(&config, SetEffectCallback);
+  kEffectApplied.Wait();
   LOG(INFO) << "Done.";
 }

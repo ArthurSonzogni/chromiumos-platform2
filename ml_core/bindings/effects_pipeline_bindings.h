@@ -23,8 +23,9 @@ namespace cros {
 // options. Needs to be kept in sync with g3 version found in
 // chromeos/ml/effects_pipeline/effects_pipeline.h
 struct BRILLO_EXPORT EffectsConfig {
+  // DEPRECATED: Do not use!
   // Name of the effect. Used to identify which effect object to instantiate
-  mojom::CameraEffect effect = mojom::CameraEffect::kNone;
+  mojom::CameraEffect deprecated_effect = mojom::CameraEffect::kNone;
 
   // Whether portrait relighting should be enabled.
   bool relight_enabled = false;
@@ -57,13 +58,16 @@ struct BRILLO_EXPORT EffectsConfig {
   bool enable_auto_light_pos = true;
 
   inline bool operator==(const EffectsConfig& rhs) const {
-    return effect == rhs.effect && blur_level == rhs.blur_level &&
+    return blur_level == rhs.blur_level &&
            segmentation_gpu_api == rhs.segmentation_gpu_api &&
            graph_max_frames_in_flight == rhs.graph_max_frames_in_flight &&
            enable_profiling == rhs.enable_profiling &&
            relight_enabled == rhs.relight_enabled &&
            blur_enabled == rhs.blur_enabled &&
-           replace_enabled == rhs.replace_enabled;
+           replace_enabled == rhs.replace_enabled &&
+           relighting_gpu_api == rhs.relighting_gpu_api &&
+           enable_profiling == rhs.enable_profiling &&
+           enable_auto_light_pos == rhs.enable_auto_light_pos;
   }
 
   inline bool operator!=(const EffectsConfig& rhs) const {
