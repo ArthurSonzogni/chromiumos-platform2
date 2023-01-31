@@ -1136,8 +1136,10 @@ pid_t Init::Worker::FindProcessByName(const string& name) {
   return 0;
 }
 
-std::unique_ptr<Init> Init::Create() {
-  auto init = base::WrapUnique<Init>(new Init());
+Init::Init(bool maitred_is_pid1) : maitred_is_pid1_{maitred_is_pid1} {}
+
+std::unique_ptr<Init> Init::Create(bool maitred_is_pid1) {
+  auto init = base::WrapUnique<Init>(new Init(maitred_is_pid1));
 
   if (!init->Setup()) {
     init.reset();
@@ -1259,19 +1261,50 @@ bool Init::Setup() {
   // Set the umask properly or the directory modes will not work.
   umask(0000);
 
-  // Do all the mounts.
-  for (const auto& mt : mounts) {
-    if (mkdir(mt.target, 0755) != 0 && errno != EEXIST) {
-      PLOG(ERROR) << "Failed to create " << mt.target;
-      if (mt.failure_is_fatal)
-        return false;
+  if (maitred_is_pid1_) {
+    for (const auto& mt : mounts) {
+      if (mkdir(mt.target, 0755) != 0 && errno != EEXIST) {
+        PLOG(ERROR) << "Failed to create " << mt.target;
+        if (mt.failure_is_fatal)
+          return false;
+      }
+
+      if (mount(mt.source, mt.target, mt.fstype, mt.flags, mt.data) != 0) {
+        rmdir(mt.target);
+        PLOG(ERROR) << "Failed to mount " << mt.target;
+        if (mt.failure_is_fatal)
+          return false;
+      }
     }
 
-    if (mount(mt.source, mt.target, mt.fstype, mt.flags, mt.data) != 0) {
-      rmdir(mt.target);
-      PLOG(ERROR) << "Failed to mount " << mt.target;
-      if (mt.failure_is_fatal)
+    // Create all the symlinks
+    for (const auto& sl : symlinks) {
+      if (symlink(sl.source, sl.target) != 0) {
+        PLOG(ERROR) << "Failed to create symlink: source " << sl.source
+                    << ", target " << sl.target;
         return false;
+      }
+    }
+
+    // Enable hierarchial memory accounting for LXD.
+    base::FilePath use_hierarchy = base::FilePath(kCgroupRootDir)
+                                       .Append("memory")
+                                       .Append("memory.use_hierarchy");
+    if (base::WriteFile(use_hierarchy, "1", 1) != 1) {
+      PLOG(ERROR) << "Failed to set use_hierarchy to 1 on memory cgroup";
+      return false;
+    }
+
+    // Maitred becomes the session leader if PID1.
+    if (setsid() == -1) {
+      PLOG(ERROR) << "Failed to become session leader";
+      return false;
+    }
+
+    // Set the controlling terminal.
+    if (ioctl(STDIN_FILENO, TIOCSCTTY, 1) != 0) {
+      PLOG(ERROR) << "Failed to set controlling terminal";
+      return false;
     }
   }
 
@@ -1280,42 +1313,12 @@ bool Init::Setup() {
     return false;
   }
 
-  // Create all the symlinks.
-  for (const auto& sl : symlinks) {
-    if (symlink(sl.source, sl.target) != 0) {
-      PLOG(ERROR) << "Failed to create symlink: source " << sl.source
-                  << ", target " << sl.target;
-      return false;
-    }
-  }
-
   // Create all the directories.
   for (const auto& dir : boot_dirs) {
     if (mkdir(dir.path, dir.mode) != 0 && errno != EEXIST) {
       PLOG(ERROR) << "Failed to create " << dir.path;
       return false;
     }
-  }
-
-  // Enable hierarchial memory accounting for LXD.
-  base::FilePath use_hierarchy = base::FilePath(kCgroupRootDir)
-                                     .Append("memory")
-                                     .Append("memory.use_hierarchy");
-  if (base::WriteFile(use_hierarchy, "1", 1) != 1) {
-    PLOG(ERROR) << "Failed to set use_hierarchy to 1 on memory cgroup";
-    return false;
-  }
-
-  // Become the session leader.
-  if (setsid() == -1) {
-    PLOG(ERROR) << "Failed to become session leader";
-    return false;
-  }
-
-  // Set the controlling terminal.
-  if (ioctl(STDIN_FILENO, TIOCSCTTY, 1) != 0) {
-    PLOG(ERROR) << "Failed to set controlling terminal";
-    return false;
   }
 
   // Setup up PATH.

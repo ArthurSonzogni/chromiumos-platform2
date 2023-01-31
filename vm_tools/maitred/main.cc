@@ -7,7 +7,9 @@
 #include <string.h>
 #include <sys/reboot.h>
 #include <sys/socket.h>
+#include <sys/types.h>
 #include <sys/uio.h>
+#include <unistd.h>
 
 #include <linux/vm_sockets.h>  // Needs to come after sys/socket.h
 
@@ -141,15 +143,20 @@ int main(int argc, char** argv) {
     CHECK_EQ(fd, newfd);
   }
 
-  // Set up logging to /dev/kmsg.
-  base::ScopedFD kmsg_fd(open(kDevKmsg, O_WRONLY | O_CLOEXEC));
-  PCHECK(kmsg_fd.is_valid()) << "Failed to open " << kDevKmsg;
+  // Get PID of maitred to decide at runtime how maitred ran as PID 1 or
+  // non-PID 1. If maitred is non-PID 1, maitred will not have to run init
+  // functionality that systemd already does
+  bool maitred_is_pid1 = getpid() == 1;
+  LOG(INFO) << "maitred running as PID1 " << maitred_is_pid1;
 
-  g_kmsg_fd = kmsg_fd.get();
-  logging::SetLogMessageHandler(LogToKmsg);
+  // Set up logging to /dev/kmsg if maitred is PID 1.
+  if (maitred_is_pid1) {
+    g_kmsg_fd = open(kDevKmsg, O_WRONLY | O_CLOEXEC);
+    logging::SetLogMessageHandler(LogToKmsg);
+  }
 
   std::unique_ptr<vm_tools::maitred::Init> init;
-  init = vm_tools::maitred::Init::Create();
+  init = vm_tools::maitred::Init::Create(maitred_is_pid1);
   CHECK(init);
 
   // Check for kernel parameter to set startup listener port.

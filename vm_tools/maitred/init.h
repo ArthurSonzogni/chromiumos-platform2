@@ -67,7 +67,7 @@ class Init final {
   // Creates a new instance of this class and performs various bits of early
   // setup up like mounting file systems, creating directories, and setting
   // up signal handlers.
-  static std::unique_ptr<Init> Create();
+  static std::unique_ptr<Init> Create(bool maitred_is_pid1);
   ~Init();
 
   // Spawn a process with the given argv and environment.  |argv[0]| must be
@@ -88,7 +88,7 @@ class Init final {
   void Shutdown();
 
  private:
-  Init() = default;
+  explicit Init(bool maitred_is_pid1);
   Init(const Init&) = delete;
   Init& operator=(const Init&) = delete;
 
@@ -105,6 +105,9 @@ class Init final {
 
   // The actual worker thread.
   base::Thread worker_thread_{"init worker thread"};
+
+  // Check at runtime if maitred is pid 1, true is maitred is pid 1.
+  bool maitred_is_pid1_;
 };
 
 }  //  namespace maitred
