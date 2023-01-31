@@ -29,7 +29,7 @@
 
 namespace {
 
-base::UnguessableToken ReadTestClientToken() {
+std::optional<base::UnguessableToken> ReadTestClientToken() {
   static constexpr char kTestClientTokenPath[] =
       "/run/camera_tokens/testing/token";
 
@@ -37,7 +37,7 @@ base::UnguessableToken ReadTestClientToken() {
   std::string token_string;
   if (!base::ReadFileToString(token_path, &token_string)) {
     LOGF(ERROR) << "Failed to read token for test client";
-    return {};
+    return std::nullopt;
   }
   return cros::TokenFromString(token_string);
 }
@@ -243,15 +243,15 @@ void CameraHalClient::ConnectToDispatcher(
     return;
   }
 
-  base::UnguessableToken token = ReadTestClientToken();
-  if (token.is_empty()) {
+  auto token = ReadTestClientToken();
+  if (!token.has_value()) {
     LOGF(ERROR) << "Failed to read test client token";
     std::move(callback).Run(-EIO);
     return;
   }
   auto mojo_token = mojo_base::mojom::UnguessableToken::New();
-  mojo_token->high = token.GetHighForSerialization();
-  mojo_token->low = token.GetLowForSerialization();
+  mojo_token->high = token->GetHighForSerialization();
+  mojo_token->low = token->GetLowForSerialization();
   dispatcher_->RegisterClientWithToken(
       camera_hal_client_.BindNewPipeAndPassRemote(),
       cros::mojom::CameraClientType::TESTING, std::move(mojo_token),

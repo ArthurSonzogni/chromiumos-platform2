@@ -262,9 +262,10 @@ MojoResult CreateMojoChannelToChildByUnixDomainSocket(
   return MOJO_RESULT_OK;
 }
 
-base::UnguessableToken TokenFromString(const std::string& token_string) {
+std::optional<base::UnguessableToken> TokenFromString(
+    const std::string& token_string) {
   if (token_string.length() != 32) {
-    return {};
+    return std::nullopt;
   }
   std::string token_high_string = token_string.substr(0, 16);
   std::string token_low_string = token_string.substr(16, 16);
@@ -272,7 +273,7 @@ base::UnguessableToken TokenFromString(const std::string& token_string) {
   if (!base::HexStringToUInt64(token_high_string, &token_high) ||
       !base::HexStringToUInt64(token_low_string, &token_low)) {
     LOGF(ERROR) << "Failed to convert token strings";
-    return {};
+    return std::nullopt;
   }
   return base::UnguessableToken::Deserialize(token_high, token_low);
 }

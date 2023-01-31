@@ -44,11 +44,12 @@ int CameraServiceConnector::Init(const cros_cam_init_option_t* option) {
   // TODO(b/170075468): Remove support for api_version 0 when Parallels migrates
   // to api_version 1.
   if (option->api_version >= 1) {
-    token_ = TokenFromString(option->token);
-    if (token_.is_empty()) {
+    auto token = TokenFromString(option->token);
+    if (!token.has_value()) {
       LOGF(ERROR) << "Failed to parse token string";
       return -EPERM;
     }
+    token_ = *token;
   }
 
   mojo::core::Init();

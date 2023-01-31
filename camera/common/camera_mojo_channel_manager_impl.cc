@@ -60,12 +60,12 @@ ino_t GetSocketInodeNumber(const base::FilePath& socket_path) {
   return st.st_ino;
 }
 
-base::UnguessableToken ReadToken(std::string path) {
+std::optional<base::UnguessableToken> ReadToken(std::string path) {
   base::FilePath token_path(path);
   std::string token_string;
   if (!base::ReadFileToString(token_path, &token_string)) {
     LOGF(ERROR) << "Failed to read server token";
-    return {};
+    return std::nullopt;
   }
   return cros::TokenFromString(token_string);
 }
@@ -302,14 +302,14 @@ void CameraMojoChannelManagerImpl::TryConsumePendingMojoTasks() {
 
   if (camera_hal_server_task_.pendingReceiverOrRemote) {
     auto server_token = ReadToken(kServerTokenPath);
-    if (server_token.is_empty()) {
+    if (!server_token.has_value()) {
       LOGF(ERROR) << "Failed to read server token";
       std::move(camera_hal_server_task_.on_construct_callback)
           .Run(-EPERM, mojo::NullRemote());
     } else {
       auto token = mojo_base::mojom::UnguessableToken::New();
-      token->high = server_token.GetHighForSerialization();
-      token->low = server_token.GetLowForSerialization();
+      token->high = server_token->GetHighForSerialization();
+      token->low = server_token->GetLowForSerialization();
       dispatcher_->RegisterServerWithToken(
           std::move(camera_hal_server_task_.pendingReceiverOrRemote),
           std::move(token),
@@ -319,13 +319,13 @@ void CameraMojoChannelManagerImpl::TryConsumePendingMojoTasks() {
 
   if (sensor_hal_client_task_.pendingReceiverOrRemote) {
     auto server_sensor_client_token = ReadToken(kServerSensorClientTokenPath);
-    if (server_sensor_client_token.is_empty()) {
+    if (!server_sensor_client_token.has_value()) {
       LOGF(ERROR) << "Failed to read server token for sensor";
       std::move(sensor_hal_client_task_.on_construct_callback).Run(-EPERM);
     } else {
       auto token = mojo_base::mojom::UnguessableToken::New();
-      token->high = server_sensor_client_token.GetHighForSerialization();
-      token->low = server_sensor_client_token.GetLowForSerialization();
+      token->high = server_sensor_client_token->GetHighForSerialization();
+      token->low = server_sensor_client_token->GetLowForSerialization();
       dispatcher_->RegisterSensorClientWithToken(
           std::move(sensor_hal_client_task_.pendingReceiverOrRemote),
           std::move(token),
