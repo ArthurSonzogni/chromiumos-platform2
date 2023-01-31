@@ -43,6 +43,15 @@ ActiveProcess GetEncstatefulProcess(pid_t pid,
                        {{base::FilePath("/var/log/foo")}});
 }
 
+ActiveProcess GetEncstatefulProcessNoFilesOpen(pid_t pid,
+                                               const std::string& comm,
+                                               bool root_ns) {
+  return ActiveProcess(pid, root_ns, comm,
+                       {{base::FilePath("/var"), base::FilePath("/var"),
+                         std::string("/dev/mapper/encstateful")}},
+                       {{base::FilePath("/sbin/mount-encrypted")}});
+}
+
 ActiveProcess GetCryptohomeProcess(pid_t pid,
                                    const std::string& comm,
                                    bool root_ns) {
@@ -143,12 +152,27 @@ TEST(ProcessKiller, ShutdownMountOpenTest) {
       std::make_unique<FakeProcessManager>();
   FakeProcessManager* fake_pm = pm.get();
   fake_pm->SetProcessListForTesting(
-      {GetEncstatefulProcess(7, "dlcservice", false)});
+      {GetEncstatefulProcessNoFilesOpen(7, "dlcservice", false)});
 
   std::unique_ptr<ProcessKiller> process_killer =
       std::make_unique<ProcessKiller>(false /*session*/, true /*shutdown*/);
   process_killer->SetProcessManagerForTesting(std::move(pm));
   process_killer->KillProcesses(false, true);
+
+  EXPECT_EQ(fake_pm->GetProcessList(true, true).size(), 0);
+}
+
+TEST(ProcessKiller, ShutdownFileAndMountOpenTest) {
+  std::unique_ptr<FakeProcessManager> pm =
+      std::make_unique<FakeProcessManager>();
+  FakeProcessManager* fake_pm = pm.get();
+  fake_pm->SetProcessListForTesting(
+      {GetEncstatefulProcess(7, "dlcservice", false)});
+
+  std::unique_ptr<ProcessKiller> process_killer =
+      std::make_unique<ProcessKiller>(false /*session*/, true /*shutdown*/);
+  process_killer->SetProcessManagerForTesting(std::move(pm));
+  process_killer->KillProcesses(true, true);
 
   EXPECT_EQ(fake_pm->GetProcessList(true, true).size(), 0);
 }
