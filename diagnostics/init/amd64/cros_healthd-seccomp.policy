@@ -113,6 +113,7 @@ getuid: 1
 #   0xc0106443 == DRM_IOCTL_VIRTGPU_GETPARAM
 #   0xc0186449 == DRM_IOCTL_VIRTGPU_GET_CAPS
 #   0xc0206442 == DRM_IOCTL_VIRTGPU_EXECBUFFER
+#   0xc0286442 == DRM_IOCTL_VIRTGPU_EXECBUFFER
 #   0xc0386444 == DRM_IOCTL_VIRTGPU_RESOURCE_CREATE
 #   0xc0106462 == DRM_IOCTL_I915_GEM_GET_TILING
 #   0x40086478 == DRM_IOCTL_I915_PERF_REMOVE_CONFIG
@@ -137,7 +138,7 @@ ioctl: arg1 == BLKGETSIZE64 || arg1 == BLKSSZGET || arg1 == TCGETS || \
        arg1 == 0xc0106441 || arg1 == 0xc0106443 || arg1 == 0xc0186449 || \
        arg1 == 0xc0206442 || arg1 == 0xc0386444 || arg1 == 0xc010640c || \
        arg1 == 0xc010646d || arg1 == 0xc01064ac || arg1 == 0xc0106462 || \
-       arg1 == 0x40086478
+       arg1 == 0x40086478 || arg1 == 0xc0286442
 kill: arg1 == SIGKILL || arg1 == SIGTERM
 lseek: 1
 lstat: 1
