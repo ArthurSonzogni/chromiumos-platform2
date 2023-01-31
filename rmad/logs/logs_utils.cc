@@ -135,7 +135,24 @@ std::string GenerateTextLogString(scoped_refptr<JsonStore> json_store) {
 
         switch (current_state) {
           case RmadState::kWelcome: {
-            generated_text_log.append(kLogRepairStartString);
+            const std::optional<bool> is_compliant =
+                details->FindBool(kLogIsCompliant);
+
+            // `is_compliant` only has a value from the hardware verifier
+            // event.
+            if (is_compliant.has_value()) {
+              if (is_compliant.value()) {
+                generated_text_log.append(kLogNoUnqualifiedComponentsString);
+              } else {
+                const std::string unqualified_components =
+                    *details->FindString(kLogUnqualifiedComponents);
+                generated_text_log.append(
+                    base::StringPrintf(kLogUnqualifiedComponentsDetectedFormat,
+                                       unqualified_components.c_str()));
+              }
+            } else {
+              generated_text_log.append(kLogRepairStartString);
+            }
             break;
           }
           case RmadState::kComponentsRepair: {
@@ -299,6 +316,18 @@ bool RecordRepairStartToLogs(scoped_refptr<JsonStore> json_store) {
   }
 
   base::Value::Dict details;
+  return AddEventToJson(json_store, RmadState::kWelcome, LogEventType::kData,
+                        std::move(details));
+}
+
+bool RecordUnqualifiedComponentsToLogs(
+    scoped_refptr<JsonStore> json_store,
+    bool is_compliant,
+    const std::string& unqualified_components) {
+  base::Value::Dict details;
+  details.Set(kLogUnqualifiedComponents, unqualified_components);
+  details.Set(kLogIsCompliant, is_compliant);
+
   return AddEventToJson(json_store, RmadState::kWelcome, LogEventType::kData,
                         std::move(details));
 }

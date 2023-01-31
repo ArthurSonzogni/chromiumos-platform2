@@ -47,6 +47,15 @@ constexpr char kSampleLogsJson[] = R"(
       },
       {
         "details": {
+          "is_compliant": false,
+          "unqualified_components": "Display"
+        },
+        "state_id": 1,
+        "timestamp": 1668635055.687762,
+        "type": 1
+      },
+      {
+        "details": {
            "from_state_id": 1,
            "to_state_id": 10
         },
@@ -151,6 +160,7 @@ constexpr char kSampleLogsJson[] = R"(
 )";
 constexpr char kExpectedLogText[] =
     "[2022-11-16 21:44:15] Welcome: Shimless RMA Started\n"
+    "[2022-11-16 21:44:15] Welcome: Unqualified components detected - Display\n"
     "[2022-11-16 21:44:15] Transitioned from Welcome to Restock\n"
     "[2022-11-18 22:23:50] ComponentsRepair: Selected RMAD_COMPONENT_KEYBOARD,"
     " RMAD_COMPONENT_CAMERA\n"
@@ -241,6 +251,30 @@ TEST_F(LogsUtilsTest, RecordRepairStart) {
 
   // Attempt to record again and verify it's not added.
   EXPECT_FALSE(RecordRepairStartToLogs(json_store_));
+}
+
+// Simulates adding unqualified components to an empty `logs` json.
+TEST_F(LogsUtilsTest, RecordUnqualifiedComponents) {
+  EXPECT_TRUE(CreateInputFile(kDefaultJson, std::size(kDefaultJson) - 1));
+
+  const bool is_compliant = true;
+  const std::string battery = RmadComponent_Name(RMAD_COMPONENT_BATTERY);
+
+  EXPECT_TRUE(
+      RecordUnqualifiedComponentsToLogs(json_store_, is_compliant, battery));
+  base::Value logs(base::Value::Type::DICT);
+  json_store_->GetValue(kLogs, &logs);
+
+  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  EXPECT_EQ(1, events->size());
+  const base::Value::Dict& event = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(RmadState::kWelcome), event.FindInt(kStateId));
+  EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
+
+  EXPECT_EQ(is_compliant,
+            event.FindDict(kDetails)->FindBool(kLogIsCompliant).value());
+  EXPECT_EQ(battery,
+            *event.FindDict(kDetails)->FindString(kLogUnqualifiedComponents));
 }
 
 // Simulates adding replaced components to an empty `logs` json.

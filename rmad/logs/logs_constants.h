@@ -30,6 +30,8 @@ inline constexpr char kToStateId[] = "to_state_id";
 inline constexpr char kOccurredError[] = "occurred_error";
 
 // State specific attributes.
+inline constexpr char kLogIsCompliant[] = "is_compliant";
+inline constexpr char kLogUnqualifiedComponents[] = "unqualified_components";
 inline constexpr char kLogReplacedComponents[] = "replaced_components";
 inline constexpr char kLogReworkSelected[] = "rework_selected";
 inline constexpr char kLogDestination[] = "destination";
@@ -51,6 +53,10 @@ constexpr char kLogTransitionFormat[] = "Transitioned from %s to %s";
 constexpr char kLogErrorFormat[] = "ERROR in %s: %s";
 constexpr char kLogDetailPrefixFormat[] = "%s: ";
 constexpr char kLogRepairStartString[] = "Shimless RMA Started";
+constexpr char kLogNoUnqualifiedComponentsString[] =
+    "No unqualified components detected";
+constexpr char kLogUnqualifiedComponentsDetectedFormat[] =
+    "Unqualified components detected - %s";
 constexpr char kLogSelectComponentsFormat[] = "Selected %s";
 constexpr char kLogSelectComponentsReworkString[] = "Selected Mainboard Rework";
 constexpr char kLogChooseDeviceDestinationFormat[] = "Selected %s";

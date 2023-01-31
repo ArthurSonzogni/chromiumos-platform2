@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "rmad/logs/logs_utils.h"
 #include "rmad/state_handler/welcome_screen_state_handler.h"
 
 #include <memory>
@@ -71,6 +72,8 @@ void WelcomeScreenStateHandler::RunHardwareVerifier() const {
   HardwareVerificationResult result;
   if (hardware_verifier_client_->GetHardwareVerificationResult(&result)) {
     daemon_callback_->GetHardwareVerificationSignalCallback().Run(result);
+    RecordUnqualifiedComponentsToLogs(json_store_, result.is_compliant(),
+                                      result.error_str());
   } else {
     LOG(ERROR) << "Failed to get hardware verification result";
   }

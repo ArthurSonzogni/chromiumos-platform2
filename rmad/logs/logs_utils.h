@@ -39,6 +39,13 @@ bool RecordOccurredErrorToLogs(scoped_refptr<JsonStore> json_store,
 // successful.
 bool RecordRepairStartToLogs(scoped_refptr<JsonStore> json_store);
 
+// Adds the unqualified components (if any) to `json_store`. Returns true if
+// successful.
+bool RecordUnqualifiedComponentsToLogs(
+    scoped_refptr<JsonStore> json_store,
+    bool is_compliant,
+    const std::string& unqualified_components);
+
 // Adds the selected repair components to `json_store`. Returns true if
 // successful.
 bool RecordSelectedComponentsToLogs(
