@@ -71,6 +71,11 @@ bool Metrics::PostUMATask(FuncType send_to_uma_func, ArgTypes... args) {
 }
 
 // static
+bool Metrics::SendBoolToUMA(const std::string& name, bool sample) {
+  return PostUMATask(&MetricsLibraryInterface::SendBoolToUMA, name, sample);
+}
+
+// static
 bool Metrics::SendPercentageToUMA(const std::string& name, int sample) {
   return PostUMATask(&MetricsLibraryInterface::SendPercentageToUMA, name,
                      sample);

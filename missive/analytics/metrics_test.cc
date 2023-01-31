@@ -31,6 +31,16 @@ TEST_F(MetricsTest, SendToUMA) {
   task_environment_.RunUntilIdle();
 }
 
+TEST_F(MetricsTest, SendBoolToUMA) {
+  static constexpr const char* kName = "test";
+  static constexpr bool sample = true;
+  EXPECT_CALL(Metrics::TestEnvironment::GetMockMetricsLibrary(),
+              SendBoolToUMA(kName, sample))
+      .Times(1);
+  Metrics::SendBoolToUMA(kName, sample);
+  task_environment_.RunUntilIdle();
+}
+
 TEST_F(MetricsTest, SendLinearToUMA) {
   static constexpr const char* kName = "test";
   static constexpr int sample = 30;

@@ -33,6 +33,9 @@ class Metrics {
   // Initialize the metrics instance.
   static void Initialize();
 
+  // Proxy of `MetricsLibraryInterface::SendBoolToUMA`.
+  static bool SendBoolToUMA(const std::string& name, bool sample);
+
   // Proxy of `MetricsLibraryInterface::SendPercentageToUMA`.
   static bool SendPercentageToUMA(const std::string& name, int sample);
 
