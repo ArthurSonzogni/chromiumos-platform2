@@ -1460,6 +1460,12 @@ bool Manager::RedirectDns(
       LOG(ERROR) << "Failed to delete lifeline fd";
     return false;
   }
+  // Notify GuestIPv6Service to add a route for the IPv6 proxy address to the
+  // namespace if it did not exist yet, so that the address is reachable.
+  if (GetIpFamily(rule.proxy_address) == AF_INET6) {
+    ipv6_svc_->RegisterDownstreamNeighborIP(rule.host_ifname,
+                                            rule.proxy_address);
+  }
 
   // Propagate DNS proxy addresses change.
   if (rule.type == patchpanel::SetDnsRedirectionRuleRequest::ARC) {
