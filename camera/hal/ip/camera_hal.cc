@@ -3,19 +3,23 @@
  * found in the LICENSE file.
  */
 
-#include <base/files/file_util.h>
+#include "cros-camera/cros_camera_hal.h"
+
+#include <stdlib.h>
+#include <sys/types.h>
+#include <sys/uio.h>
+
+#include <utility>
+
+#include <base/functional/bind.h>
+#include <base/files/scoped_file.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <chromeos-config/libcros_config/cros_config.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/platform/platform_channel.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/uio.h>
-#include <utility>
 
 #include "cros-camera/common.h"
-#include "cros-camera/cros_camera_hal.h"
 #include "cros-camera/export.h"
 #include "dbus_proxies/dbus-proxies.h"
 #include "hal/ip/camera_hal.h"
@@ -152,8 +156,8 @@ void CameraHal::InitOnIpcThread(scoped_refptr<Future<int>> return_val) {
       dbus_connection.Connect(), "org.chromium.IpPeripheralService");
 
   mojo::PlatformChannel channel;
-  brillo::dbus_utils::FileDescriptor handle(
-      channel.TakeRemoteEndpoint().TakePlatformHandle().TakeFD());
+  base::ScopedFD handle =
+      channel.TakeRemoteEndpoint().TakePlatformHandle().TakeFD();
 
   if (!proxy.BootstrapMojoConnection(handle, nullptr)) {
     LOGF(ERROR) << "Failed to send handle over DBus";
