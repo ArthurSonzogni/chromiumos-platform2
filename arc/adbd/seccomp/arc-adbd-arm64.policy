@@ -16,7 +16,7 @@ fstat: 1
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 write: 1
 getdents64: 1
-mkdir: 1
+mkdirat: 1
 munmap: 1
 brk: 1
 gettimeofday: 1
@@ -24,10 +24,7 @@ rt_sigprocmask: 1
 faccessat: 1
 faccessat2: 1
 lseek: 1
-rename: 1
-# mknod should only be used to create FIFOs. 010777 means
-# S_IFIFO|S_IRWXU|S_IRWXG|S_IRWXO.
-mknod: arg1 in 010777
+renameat: 1
 exit_group: 1
 unlinkat: 1
 mount: arg3 == MS_BIND || arg3 == MS_NOSUID|MS_NODEV|MS_NOEXEC
@@ -36,12 +33,14 @@ restart_syscall: 1
 exit: 1
 rt_sigreturn: 1
 set_tid_address: 1
-symlink: 1
+symlinkat: 1
 tgkill: 1
 sendto: 1
 gettid:1
 futex:1
-mknodat: 1
+# mknod should only be used to create FIFOs. 010777 means
+# S_IFIFO|S_IRWXU|S_IRWXG|S_IRWXO.
+mknodat: arg2 in 010777
 mremap: 1
 
 # For modprobe(8)
