@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/prime_search/prime_number_search.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/prime_number_search.h"
 
 #include <cmath>
 

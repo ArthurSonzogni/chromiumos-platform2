@@ -21,7 +21,7 @@
 #include "diagnostics/cros_health_tool/diag/diag_actions.h"
 #include "diagnostics/cros_health_tool/diag/diag_constants.h"
 #include "diagnostics/cros_healthd/routines/shared_defaults.h"
-#include "diagnostics/cros_healthd/routines/urandom/urandom.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/urandom.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {

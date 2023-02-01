@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_MEMORY_CONSTANTS_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_MEMORY_CONSTANTS_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_CONSTANTS_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_CONSTANTS_H_
 
 namespace diagnostics {
 
@@ -48,4 +48,4 @@ inline constexpr char kMemoryRoutineOtherTestFailureMessage[] =
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_MEMORY_CONSTANTS_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_CONSTANTS_H_

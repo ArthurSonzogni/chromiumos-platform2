@@ -29,7 +29,7 @@ class CrosHealthdRoutineFactory {
   virtual ~CrosHealthdRoutineFactory() = default;
 
   // Constructs a new instance of the urandom routine. See
-  // diagnostics/routines/urandom for details on the routine itself.
+  // diagnostics/routines/memory_and_cpu for details on the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeUrandomRoutine(
       ash::cros_healthd::mojom::NullableUint32Ptr length_seconds) = 0;
   // Constructs a new instance of the battery capacity routine. See
@@ -50,15 +50,15 @@ class CrosHealthdRoutineFactory {
       ash::cros_healthd::mojom::AcPowerStatusEnum expected_status,
       const std::optional<std::string>& expected_power_type) = 0;
   // Constructs a new instance of the CPU cache routine. See
-  // diagnostics/routines/cpu_cache for details on the routine itself.
+  // diagnostics/routines/memory_and_cpu for details on the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeCpuCacheRoutine(
       const std::optional<base::TimeDelta>& exec_duration) = 0;
   // Constructs a new instance of the CPU stress routine. See
-  // diagnostics/routines/cpu_stress for details on the routine itself.
+  // diagnostics/routines/memory_and_cpu for details on the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeCpuStressRoutine(
       const std::optional<base::TimeDelta>& exec_duration) = 0;
   // Constructs a new instance of the floating point accuracy routine. See
-  // diagnostics/routines/floating_point for details on the routine itself.
+  // diagnostics/routines/memory_and_cpu for details on the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeFloatingPointAccuracyRoutine(
       const std::optional<base::TimeDelta>& exec_duration) = 0;
   // Constructs a new instance of the nvme_wear_level routine. See
@@ -78,7 +78,7 @@ class CrosHealthdRoutineFactory {
       base::TimeDelta exec_duration,
       uint32_t file_size_mb) = 0;
   // Constructs a new instance of the prime search routine. See
-  // diagnostics/routines/prime_search for details on the routine itself.
+  // diagnostics/routines/memory_and_cpu for details on the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakePrimeSearchRoutine(
       const std::optional<base::TimeDelta>& exec_duration) = 0;
   // Constructs a new instance of the battery discharge routine. See
@@ -92,7 +92,7 @@ class CrosHealthdRoutineFactory {
       base::TimeDelta exec_duration,
       uint32_t minimum_charge_percent_required) = 0;
   // Constructs a new instance of the memory routine. See
-  // diagnostics/routines/memory for details on the routine itself.
+  // diagnostics/routines/memory_and_cpu for details on the routine itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeMemoryRoutine() = 0;
   // Constructs a new instance of the LAN connectivity routine. See
   // diagnostics/routines/lan_connectivity for details on the routine itself.

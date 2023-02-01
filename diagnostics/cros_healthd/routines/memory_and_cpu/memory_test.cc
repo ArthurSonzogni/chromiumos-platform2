@@ -22,8 +22,8 @@
 #include "diagnostics/base/file_test_utils.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
-#include "diagnostics/cros_healthd/routines/memory/memory.h"
-#include "diagnostics/cros_healthd/routines/memory/memory_constants.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/constants.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/memory.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
@@ -37,7 +37,8 @@ using ::testing::Invoke;
 using ::testing::WithArg;
 
 // Location of files containing test data (fake memtester output).
-constexpr char kTestDataRoot[] = "cros_healthd/routines/memory/testdata";
+constexpr char kTestDataRoot[] =
+    "cros_healthd/routines/memory_and_cpu/testdata";
 
 // Constructs expected output for the memory routine.
 std::string ConstructOutput() {

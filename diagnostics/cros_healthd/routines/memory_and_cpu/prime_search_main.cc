@@ -9,7 +9,7 @@
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
 
-#include "diagnostics/cros_healthd/routines/prime_search/prime_number_search.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/prime_number_search.h"
 
 // 'prime_search' command-line tool:
 //  Calculates prime number between 2 to max_num and verifies the calculation

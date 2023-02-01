@@ -320,7 +320,7 @@ Errors:
 - `Could not get cycle count.`
 - `Battery cycle count is too high.`
 
-## CPU Routines
+## Memory and CPU Routines
 
 ### CPU Cache
 
@@ -475,8 +475,6 @@ Status message: Routine passed.
 ```
 
 Errors: N/A.
-
-## Memory Routines
 
 ### Memory
 

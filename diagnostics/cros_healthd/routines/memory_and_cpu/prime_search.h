@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_PRIME_SEARCH_PRIME_SEARCH_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_PRIME_SEARCH_PRIME_SEARCH_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_PRIME_SEARCH_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_PRIME_SEARCH_H_
 
 #include <cstdint>
 #include <memory>
@@ -25,4 +25,4 @@ std::unique_ptr<DiagnosticRoutine> CreatePrimeSearchRoutine(
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_PRIME_SEARCH_PRIME_SEARCH_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_PRIME_SEARCH_H_

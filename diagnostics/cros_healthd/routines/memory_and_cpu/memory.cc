@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/memory/memory.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/memory.h"
 
 #include <algorithm>
 #include <cctype>
@@ -24,7 +24,7 @@
 #include <re2/re2.h>
 
 #include "diagnostics/base/mojo_utils.h"
-#include "diagnostics/cros_healthd/routines/memory/memory_constants.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/constants.h"
 #include "diagnostics/cros_healthd/utils/memory_info.h"
 
 namespace diagnostics {

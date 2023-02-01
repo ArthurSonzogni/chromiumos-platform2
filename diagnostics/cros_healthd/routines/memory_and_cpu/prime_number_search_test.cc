@@ -7,7 +7,7 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/cros_healthd/routines/prime_search/prime_number_search.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/prime_number_search.h"
 
 namespace diagnostics {
 namespace {

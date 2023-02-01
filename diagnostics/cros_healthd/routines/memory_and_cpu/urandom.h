@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_URANDOM_URANDOM_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_URANDOM_URANDOM_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_URANDOM_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_URANDOM_H_
 
 #include <memory>
 #include <optional>
@@ -24,4 +24,4 @@ std::unique_ptr<DiagnosticRoutine> CreateUrandomRoutine(
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_URANDOM_URANDOM_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_URANDOM_H_

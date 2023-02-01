@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/cpu_cache/cpu_cache.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_cache.h"
 
 #include <optional>
 #include <string>

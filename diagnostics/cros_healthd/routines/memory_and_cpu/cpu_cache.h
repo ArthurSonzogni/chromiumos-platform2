@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_CPU_STRESS_CPU_STRESS_H_
-#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_CPU_STRESS_CPU_STRESS_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_CPU_CACHE_H_
+#define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_CPU_CACHE_H_
 
 #include <cstdint>
 #include <memory>
@@ -15,9 +15,9 @@
 
 namespace diagnostics {
 
-std::unique_ptr<DiagnosticRoutine> CreateCpuStressRoutine(
+std::unique_ptr<DiagnosticRoutine> CreateCpuCacheRoutine(
     const std::optional<base::TimeDelta>& exec_duration);
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_CPU_STRESS_CPU_STRESS_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_CPU_CACHE_H_

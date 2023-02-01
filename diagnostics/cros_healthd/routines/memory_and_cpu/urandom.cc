@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/urandom/urandom.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/urandom.h"
 
 #include <optional>
 #include <string>

@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/routines/prime_search/prime_search.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/floating_point_accuracy.h"
 
+#include <memory>
 #include <optional>
 #include <string>
 #include <vector>
 
-#include <base/command_line.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 
@@ -19,22 +19,18 @@ namespace diagnostics {
 
 namespace {
 
-constexpr char kPrimeSearchExePath[] = "/usr/libexec/diagnostics/prime-search";
+constexpr char kFloatingPointAccuracyTestExePath[] =
+    "/usr/libexec/diagnostics/floating-point-accuracy";
 
 }  // namespace
 
-const uint64_t kPrimeSearchDefaultMaxNum = 1000000;
-
-std::unique_ptr<DiagnosticRoutine> CreatePrimeSearchRoutine(
-    const std::optional<base::TimeDelta>& exec_duration,
-    const std::optional<uint64_t>& max_num) {
+std::unique_ptr<DiagnosticRoutine> CreateFloatingPointAccuracyRoutine(
+    const std::optional<base::TimeDelta>& exec_duration) {
   base::TimeDelta duration = exec_duration.value_or(kDefaultCpuStressRuntime);
   return std::make_unique<SubprocRoutine>(
       base::CommandLine(std::vector<std::string>{
-          kPrimeSearchExePath,
-          "--time=" + base::NumberToString(duration.InSeconds()),
-          "--max_num=" + base::NumberToString(
-                             max_num.value_or(kPrimeSearchDefaultMaxNum))}),
+          kFloatingPointAccuracyTestExePath,
+          "--duration=" + base::NumberToString(duration.InSeconds())}),
       duration);
 }
 
