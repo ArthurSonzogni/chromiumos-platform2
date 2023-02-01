@@ -6,6 +6,7 @@
 #define SHILL_ETHERNET_EAP_LISTENER_H_
 
 #include <memory>
+#include <string>
 
 #include <base/functional/callback.h>
 
@@ -22,7 +23,7 @@ class EapListener {
  public:
   using EapRequestReceivedCallback = base::RepeatingCallback<void()>;
 
-  explicit EapListener(int interface_index);
+  EapListener(int interface_index, const std::string& link_name);
   EapListener(const EapListener&) = delete;
   EapListener& operator=(const EapListener&) = delete;
 
@@ -54,11 +55,16 @@ class EapListener {
   // configured on |receive_request_handler_|.
   void ReceiveRequest(int fd);
 
+  const std::string& LoggingTag();
+
   // Factory to use for creating an input handler.
   IOHandlerFactory* io_handler_factory_;
 
-  // The interface index fo the device to monitor.
+  // The interface index for the device to monitor.
   const int interface_index_;
+
+  // The link name of the parent device (for logging).
+  const std::string link_name_;
 
   // Callback handle to invoke when an EAP request is received.
   EapRequestReceivedCallback request_received_callback_;

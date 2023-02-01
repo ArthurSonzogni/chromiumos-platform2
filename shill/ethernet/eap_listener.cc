@@ -4,6 +4,8 @@
 
 #include "shill/ethernet/eap_listener.h"
 
+#include <string>
+
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
 #include <netinet/in.h>
@@ -20,12 +22,17 @@
 
 namespace shill {
 
+namespace Logging {
+static auto kModuleLogScope = ScopeLogger::kEthernet;
+}  // namespace Logging
+
 const size_t EapListener::kMaxEapPacketLength =
     sizeof(eap_protocol::Ieee8021xHdr) + sizeof(eap_protocol::EapHeader);
 
-EapListener::EapListener(int interface_index)
+EapListener::EapListener(int interface_index, const std::string& link_name)
     : io_handler_factory_(IOHandlerFactory::GetInstance()),
       interface_index_(interface_index),
+      link_name_(link_name),
       sockets_(new Sockets()),
       socket_(-1) {}
 
@@ -33,7 +40,7 @@ EapListener::~EapListener() = default;
 
 bool EapListener::Start() {
   if (!CreateSocket()) {
-    LOG(ERROR) << "Could not open EAP listener socket.";
+    LOG(ERROR) << LoggingTag() << ": Could not open EAP listener socket";
     Stop();
     return false;
   }
@@ -56,14 +63,14 @@ bool EapListener::CreateSocket() {
   int socket =
       sockets_->Socket(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC, htons(ETH_P_PAE));
   if (socket == -1) {
-    PLOG(ERROR) << "Could not create EAP listener socket";
+    PLOG(ERROR) << LoggingTag() << ": Could not create EAP listener socket";
     return false;
   }
   socket_ = socket;
   socket_closer_.reset(new ScopedSocketCloser(sockets_.get(), socket_));
 
   if (sockets_->SetNonBlocking(socket_) != 0) {
-    PLOG(ERROR) << "Could not set socket to be non-blocking";
+    PLOG(ERROR) << LoggingTag() << ": Could not set socket to be non-blocking";
     return false;
   }
 
@@ -76,7 +83,7 @@ bool EapListener::CreateSocket() {
   if (sockets_->Bind(socket_,
                      reinterpret_cast<struct sockaddr*>(&socket_address),
                      sizeof(socket_address)) != 0) {
-    PLOG(ERROR) << "Could not bind socket to interface";
+    PLOG(ERROR) << LoggingTag() << ": Could not bind socket to interface";
     return false;
   }
 
@@ -95,24 +102,35 @@ void EapListener::ReceiveRequest(int fd) {
       socket_, &payload, sizeof(payload), 0,
       reinterpret_cast<struct sockaddr*>(&remote_address), &socklen);
   if (result < 0) {
-    PLOG(ERROR) << "Socket recvfrom failed";
+    PLOG(ERROR) << LoggingTag() << ": Socket recvfrom failed";
     Stop();
     return;
   }
 
   if (result != sizeof(payload)) {
-    LOG(INFO) << "Short EAP packet received";
+    LOG(INFO) << LoggingTag() << ": Short EAP packet received";
     return;
   }
 
+  SLOG(2) << LoggingTag() << ": EAP Request packet received" << std::hex
+          << " version=0x" << static_cast<int>(payload.onex_header.version)
+          << " type=0x" << static_cast<int>(payload.onex_header.type)
+          << " code=0x" << static_cast<int>(payload.eap_header.code);
   if (payload.onex_header.version < eap_protocol::kIeee8021xEapolVersion1 ||
       payload.onex_header.type != eap_protocol::kIIeee8021xTypeEapPacket ||
       payload.eap_header.code != eap_protocol::kEapCodeRequest) {
-    LOG(INFO) << "Packet is not a valid EAP request";
+    LOG(INFO) << LoggingTag() << ": Packet is not a valid EAP request";
     return;
   }
+  LOG(INFO) << LoggingTag()
+            << ": EAP request received with version=" << std::hex
+            << static_cast<int>(payload.onex_header.version);
 
   request_received_callback_.Run();
+}
+
+const std::string& EapListener::LoggingTag() {
+  return link_name_;
 }
 
 }  // namespace shill

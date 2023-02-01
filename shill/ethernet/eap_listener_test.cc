@@ -7,9 +7,11 @@
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
 #include <netinet/in.h>
-#include <string.h>
 
 #include <algorithm>
+#include <memory>
+#include <string>
+#include <utility>
 
 #include <base/functional/bind.h>
 #include <gtest/gtest.h>
@@ -30,16 +32,16 @@ namespace shill {
 
 class EapListenerTest : public testing::Test {
  public:
-  EapListenerTest() : listener_(kInterfaceIndex) {
+  EapListenerTest() : listener_(kInterfaceIndex, kLinkName) {
     listener_.io_handler_factory_ = &io_handler_factory_;
   }
 
   ~EapListenerTest() override = default;
 
   void SetUp() override {
-    sockets_ = new StrictMock<MockSockets>();
-    // Passes ownership.
-    listener_.sockets_.reset(sockets_);
+    auto sockets = std::make_unique<StrictMock<MockSockets>>();
+    sockets_ = sockets.get();
+    listener_.sockets_ = std::move(sockets);
     listener_.set_request_received_callback(base::BindRepeating(
         &EapListenerTest::ReceiveCallback, base::Unretained(this)));
   }
@@ -61,9 +63,20 @@ class EapListenerTest : public testing::Test {
   MOCK_METHOD(void, ReceiveCallback, ());
 
  protected:
-  static const int kInterfaceIndex;
-  static const int kSocketFD;
-  static const uint8_t kEapPacketPayload[];
+  static constexpr int kInterfaceIndex = 123;
+  static constexpr char kLinkName[] = "eth0";
+  static constexpr int kSocketFD = 456;
+  static constexpr uint8_t kEapPacketPayload[] = {
+      eap_protocol::kIeee8021xEapolVersion2,
+      eap_protocol::kIIeee8021xTypeEapPacket,
+      0x00,
+      0x00,  // Payload length (should be 5, but unparsed by EapListener).
+      eap_protocol::kEapCodeRequest,
+      0x00,  // Identifier (unparsed).
+      0x00,
+      0x00,  // Packet length (should be 5, but unparsed by EapListener).
+      0x01   // Request type: Identity (not parsed by EapListener).
+  };
 
   bool CreateSocket() { return listener_.CreateSocket(); }
   int GetInterfaceIndex() { return listener_.interface_index_; }
@@ -82,21 +95,6 @@ class EapListenerTest : public testing::Test {
   // Tests can assign this in order to set the data isreturned in our
   // mock implementation of Sockets::RecvFrom().
   ByteString recvfrom_reply_data_;
-};
-
-// static
-const int EapListenerTest::kInterfaceIndex = 123;
-const int EapListenerTest::kSocketFD = 456;
-const uint8_t EapListenerTest::kEapPacketPayload[] = {
-    eap_protocol::kIeee8021xEapolVersion2,
-    eap_protocol::kIIeee8021xTypeEapPacket,
-    0x00,
-    0x00,  // Payload length (should be 5, but unparsed by EapListener).
-    eap_protocol::kEapCodeRequest,
-    0x00,  // Identifier (unparsed).
-    0x00,
-    0x00,  // Packet length (should be 5, but unparsed by EapListener).
-    0x01   // Request type: Identity (not parsed by EapListener).
 };
 
 ssize_t EapListenerTest::SimulateRecvFrom(int sockfd,

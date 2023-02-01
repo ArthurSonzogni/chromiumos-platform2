@@ -10,13 +10,16 @@
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/ether.h
 #include <linux/netdevice.h>
 #include <linux/sockios.h>
-#include <set>
 #include <stdio.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <time.h>
 #include <utility>
 
+#include <memory>
+#include <set>
+
+#include <base/bind.h>
 #include <base/check.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -128,8 +131,8 @@ Ethernet::Ethernet(Manager* manager,
       bus_type_(GetDeviceBusType()),
       is_eap_authenticated_(false),
       is_eap_detected_(false),
-      eap_listener_(new EapListener(interface_index)),
-      sockets_(new Sockets()),
+      eap_listener_(std::make_unique<EapListener>(interface_index, link_name)),
+      sockets_(std::make_unique<Sockets>()),
       permanent_mac_address_(GetPermanentMacAddressFromKernel()),
       weak_ptr_factory_(this) {
   PropertyStore* store = this->mutable_store();
@@ -141,7 +144,7 @@ Ethernet::Ethernet(Manager* manager,
   store->RegisterConstString(kDeviceBusTypeProperty, &bus_type_);
   store->RegisterDerivedString(
       kUsbEthernetMacAddressSourceProperty,
-      StringAccessor(new CustomAccessor<Ethernet, std::string>(
+      StringAccessor(std::make_unique<CustomAccessor<Ethernet, std::string>>(
           this, &Ethernet::GetUsbEthernetMacAddressSource, nullptr)));
 
   eap_listener_->set_request_received_callback(base::BindRepeating(
@@ -426,6 +429,7 @@ bool Ethernet::StartEapAuthentication() {
   }
   CHECK(!supplicant_network_path_.value().empty());
 
+  LOG(INFO) << LoggingTag() << ": Triggering EAP authentication";
   supplicant_interface_proxy_->SelectNetwork(supplicant_network_path_);
   supplicant_interface_proxy_->EAPLogon();
   return true;
@@ -567,7 +571,7 @@ bool Ethernet::DisableOffloadFeatures() {
     ethtool_gstrings gstrings;
     char features[MAX_FEATURE_COUNT][ETH_GSTRING_LEN];
   };
-  std::unique_ptr<GstringsBuf> gstrings_buf(new GstringsBuf);
+  auto gstrings_buf = std::make_unique<GstringsBuf>();
   memset(gstrings_buf.get(), 0, sizeof(GstringsBuf));
   struct ethtool_gstrings* gstrings = &gstrings_buf->gstrings;
   gstrings->cmd = ETHTOOL_GSTRINGS;

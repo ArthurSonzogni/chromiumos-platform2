@@ -6,7 +6,7 @@
 
 namespace shill {
 
-MockEapListener::MockEapListener() : EapListener(0) {}
+MockEapListener::MockEapListener() : EapListener(0, "eth0") {}
 
 MockEapListener::~MockEapListener() = default;
 
