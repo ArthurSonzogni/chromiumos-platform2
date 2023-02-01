@@ -6,6 +6,7 @@
 #define DIAGNOSTICS_CROS_HEALTHD_CROS_HEALTHD_MOJO_SERVICE_H_
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -17,6 +18,7 @@
 
 #include "diagnostics/cros_healthd/event_aggregator.h"
 #include "diagnostics/cros_healthd/fetch_aggregator.h"
+#include "diagnostics/cros_healthd/routines/base_routine_control.h"
 #include "diagnostics/cros_healthd/utils/mojo_service_provider.h"
 #include "diagnostics/mojom/external/network_health.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
@@ -90,6 +92,13 @@ class CrosHealthdMojoService final
           routine_receiver) override;
 
  private:
+  // A helper function that adds a routine into the routine receiver set and
+  // perform necessary setup.
+  void AddRoutine(
+      std::unique_ptr<BaseRoutineControl> routine,
+      mojo::PendingReceiver<ash::cros_healthd::mojom::RoutineControl>
+          routine_receiver);
+
   // A function to be run by Routines in CrosHealthdRoutineService. When routine
   // encounters an exception, this function should be able to disconnect its
   // mojo connection.

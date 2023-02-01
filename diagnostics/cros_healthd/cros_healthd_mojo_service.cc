@@ -15,6 +15,8 @@
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
 #include "diagnostics/cros_healthd/fetchers/process_fetcher.h"
+#include "diagnostics/cros_healthd/routines/base_routine_control.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/memory_v2.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
@@ -109,11 +111,28 @@ void CrosHealthdMojoService::CreateRoutine(
     mojo::PendingReceiver<mojom::RoutineControl> routine_receiver) {
   switch (routine_arg->which()) {
     case mojom::RoutineArgument::Tag::kMemory:
-      NOTIMPLEMENTED();
+      AddRoutine(std::make_unique<MemoryRoutineV2>(context_),
+                 std::move(routine_receiver));
       break;
     case mojom::RoutineArgument::Tag::kUnrecognizedArgument:
       LOG(ERROR) << "Routine Argument not recognized/supported";
+      routine_receiver.ResetWithReason(
+          static_cast<uint32_t>(
+              mojom::RoutineControlExceptionEnum::kNotSupported),
+          "Routine Argument not recognized/supported");
+      break;
   }
+}
+
+void CrosHealthdMojoService::AddRoutine(
+    std::unique_ptr<BaseRoutineControl> routine,
+    mojo::PendingReceiver<mojom::RoutineControl> routine_receiver) {
+  auto routine_ptr = routine.get();
+  mojo::ReceiverId receiver_id =
+      receiver_set_.Add(std::move(routine), std::move(routine_receiver));
+  routine_ptr->SetOnExceptionCallback(
+      base::BindOnce(&CrosHealthdMojoService::OnRoutineException,
+                     weak_ptr_factory_.GetWeakPtr(), receiver_id));
 }
 
 void CrosHealthdMojoService::OnRoutineException(mojo::ReceiverId receiver_id,
