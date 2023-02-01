@@ -98,6 +98,8 @@ namespace {
 constexpr int kTestInterfaceIndex = 3;
 constexpr char kTestInterfaceName[] = "wwan0";
 constexpr char kTestInterfaceAddress[] = "00:01:02:03:04:05";
+constexpr int kTestMultiplexedInterfaceIndex = 4;
+constexpr char kTestMultiplexedInterfaceName[] = "wwan0mux0";
 constexpr char kDBusService[] = "org.freedesktop.ModemManager1";
 constexpr char kModemUid[] = "uid";
 constexpr char kIccid[] = "1234567890000";
@@ -1731,35 +1733,6 @@ TEST_F(CellularTest, EstablishLinkFailureNoBearer) {
   EXPECT_EQ(Cellular::State::kRegistered, device_->state());
 }
 
-TEST_F(CellularTest, EstablishLinkFailureMismatchedDataInterface) {
-  // Bearer will report an interface different to the one in the
-  // device, for now, disconnect
-  auto bearer = std::make_unique<CellularBearer>(&control_interface_,
-                                                 kTestBearerDBusPath, "");
-  bearer->set_apn_type_for_testing(ApnList::ApnType::kDefault);
-  bearer->set_data_interface_for_testing("another_one");
-  bearer->set_ipv4_config_method_for_testing(
-      CellularBearer::IPConfigMethod::kDHCP);
-  SetCapability3gppActiveBearer(ApnList::ApnType::kDefault, std::move(bearer));
-
-  // Ensure a different interface index with +1
-  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex("another_one"))
-      .WillOnce(Return(device_->interface_index() + 1));
-
-  EXPECT_CALL(
-      *mm1_simple_proxy_,
-      Disconnect(_, _,
-                 CellularCapability3gpp::kTimeoutDisconnect.InMilliseconds()))
-      .WillOnce(Invoke(this, &CellularTest::InvokeDisconnect));
-  SetCapability3gppModemSimpleProxy();
-
-  SetRegisteredWithService();
-  device_->set_state_for_testing(Cellular::State::kConnected);
-  device_->EstablishLink();
-  dispatcher_.DispatchPendingEvents();
-  EXPECT_EQ(Cellular::State::kRegistered, device_->state());
-}
-
 TEST_F(CellularTest, EstablishLinkPPP) {
   auto bearer = std::make_unique<CellularBearer>(&control_interface_,
                                                  kTestBearerDBusPath, "");
@@ -1801,6 +1774,38 @@ TEST_F(CellularTest, EstablishLinkDHCP) {
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(device_->link_name()))
       .WillOnce(Return(device_->interface_index()));
   EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink)).Times(1);
+  // Associating because the internal RTNL handler handles the interface up
+  // logic, and at this point that is not yet known.
+  EXPECT_CALL(*service, SetState(Service::kStateAssociating));
+
+  auto* adaptor = static_cast<DeviceMockAdaptor*>(device_->adaptor());
+  EXPECT_CALL(*adaptor,
+              EmitStringChanged(kPrimaryMultiplexedInterfaceProperty, _))
+      .Times(0);
+
+  device_->EstablishLink();
+  EXPECT_FALSE(device_->selected_service());
+  Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
+}
+
+TEST_F(CellularTest, EstablishLinkMultiplexDHCP) {
+  // Bearer will report an interface different to the one in the
+  // device, allow it as it may be a multiplexed interface
+  auto bearer = std::make_unique<CellularBearer>(&control_interface_,
+                                                 RpcIdentifier(""), "");
+  bearer->set_apn_type_for_testing(ApnList::ApnType::kDefault);
+  bearer->set_data_interface_for_testing(kTestMultiplexedInterfaceName);
+  bearer->set_ipv4_config_method_for_testing(
+      CellularBearer::IPConfigMethod::kDHCP);
+  SetCapability3gppActiveBearer(ApnList::ApnType::kDefault, std::move(bearer));
+  device_->set_state_for_testing(Cellular::State::kConnected);
+
+  MockCellularService* service = SetMockService();
+  ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
+
+  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(kTestMultiplexedInterfaceName))
+      .WillOnce(Return(kTestMultiplexedInterfaceIndex));
+
   // Associating because the internal RTNL handler handles the interface up
   // logic, and at this point that is not yet known.
   EXPECT_CALL(*service, SetState(Service::kStateAssociating));
@@ -1882,6 +1887,37 @@ TEST_F(CellularTest, DefaultLinkUpDHCPL850) {
   Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
 }
 
+TEST_F(CellularTest, DefaultLinkUpMultiplexDHCP) {
+  auto bearer = std::make_unique<CellularBearer>(&control_interface_,
+                                                 kTestBearerDBusPath, "");
+  bearer->set_apn_type_for_testing(ApnList::ApnType::kDefault);
+  bearer->set_data_interface_for_testing(kTestMultiplexedInterfaceName);
+  bearer->set_ipv4_config_method_for_testing(
+      CellularBearer::IPConfigMethod::kDHCP);
+  SetCapability3gppActiveBearer(ApnList::ApnType::kDefault, std::move(bearer));
+  device_->set_state_for_testing(Cellular::State::kConnected);
+
+  MockCellularService* service = SetMockService();
+  ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
+  EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
+
+  auto* adaptor = static_cast<DeviceMockAdaptor*>(device_->adaptor());
+  EXPECT_CALL(*adaptor, EmitStringChanged(kPrimaryMultiplexedInterfaceProperty,
+                                          kTestMultiplexedInterfaceName));
+
+  auto network = std::make_unique<MockNetwork>(kTestMultiplexedInterfaceIndex,
+                                               kTestMultiplexedInterfaceName,
+                                               Technology::kCellular);
+  default_pdn_ = network.get();
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network));
+  EXPECT_CALL(*default_pdn_,
+              Start(Field(&Network::StartOptions::dhcp, Optional(_))));
+
+  device_->DefaultLinkUp();
+  EXPECT_EQ(service, device_->selected_service());
+  Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
+}
+
 TEST_F(CellularTest, EstablishLinkStatic) {
   auto bearer = std::make_unique<CellularBearer>(&control_interface_,
                                                  kTestBearerDBusPath, "");
@@ -1907,6 +1943,36 @@ TEST_F(CellularTest, EstablishLinkStatic) {
       .Times(0);
 
   EXPECT_CALL(*service, SetState(Service::kStateAssociating));
+  device_->EstablishLink();
+  EXPECT_FALSE(device_->selected_service());
+  Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
+}
+
+TEST_F(CellularTest, EstablishLinkMultiplexStatic) {
+  auto bearer = std::make_unique<CellularBearer>(&control_interface_,
+                                                 kTestBearerDBusPath, "");
+  bearer->set_apn_type_for_testing(ApnList::ApnType::kDefault);
+  bearer->set_data_interface_for_testing(kTestMultiplexedInterfaceName);
+  bearer->set_ipv4_config_method_for_testing(
+      CellularBearer::IPConfigMethod::kStatic);
+  SetCapability3gppActiveBearer(ApnList::ApnType::kDefault, std::move(bearer));
+  device_->set_state_for_testing(Cellular::State::kConnected);
+
+  MockCellularService* service = SetMockService();
+  ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
+
+  EXPECT_CALL(rtnl_handler_, GetInterfaceIndex(kTestMultiplexedInterfaceName))
+      .WillOnce(Return(kTestMultiplexedInterfaceIndex));
+  EXPECT_CALL(rtnl_handler_, RequestDump(RTNLHandler::kRequestLink)).Times(1);
+  // Associating because the internal RTNL handler handles the interface up
+  // logic, and at this point that is not yet known.
+  EXPECT_CALL(*service, SetState(Service::kStateAssociating));
+
+  auto* adaptor = static_cast<DeviceMockAdaptor*>(device_->adaptor());
+  EXPECT_CALL(*adaptor,
+              EmitStringChanged(kPrimaryMultiplexedInterfaceProperty, _))
+      .Times(0);
+
   device_->EstablishLink();
   EXPECT_FALSE(device_->selected_service());
   Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
@@ -1948,6 +2014,55 @@ TEST_F(CellularTest, DefaultLinkUpStatic) {
 
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
+  default_pdn_ = network.get();
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network));
+  EXPECT_CALL(*default_pdn_,
+              set_link_protocol_ipv4_properties(Pointee(ipconfig_properties)));
+  EXPECT_CALL(*default_pdn_,
+              Start(Field(&Network::StartOptions::dhcp, Eq(std::nullopt))));
+
+  device_->DefaultLinkUp();
+  EXPECT_EQ(service, device_->selected_service());
+  Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
+}
+
+TEST_F(CellularTest, DefaultLinkUpMultiplexStatic) {
+  IPAddress::Family kAddressFamily = IPAddress::kFamilyIPv4;
+  const char kAddress[] = "10.0.0.1";
+  const char kGateway[] = "10.0.0.254";
+  const int32_t kSubnetPrefix = 16;
+  const char* const kDNS[] = {"10.0.0.2", "8.8.4.4", "8.8.8.8"};
+
+  IPConfig::Properties ipconfig_properties;
+  ipconfig_properties.address_family = kAddressFamily;
+  ipconfig_properties.address = kAddress;
+  ipconfig_properties.gateway = kGateway;
+  ipconfig_properties.subnet_prefix = kSubnetPrefix;
+  ipconfig_properties.dns_servers =
+      std::vector<std::string>{kDNS[0], kDNS[1], kDNS[2]};
+
+  auto bearer = std::make_unique<CellularBearer>(&control_interface_,
+                                                 kTestBearerDBusPath, "");
+  bearer->set_apn_type_for_testing(ApnList::ApnType::kDefault);
+  bearer->set_data_interface_for_testing(kTestMultiplexedInterfaceName);
+  bearer->set_ipv4_config_method_for_testing(
+      CellularBearer::IPConfigMethod::kStatic);
+  bearer->set_ipv4_config_properties_for_testing(
+      std::make_unique<IPConfig::Properties>(ipconfig_properties));
+  SetCapability3gppActiveBearer(ApnList::ApnType::kDefault, std::move(bearer));
+  device_->set_state_for_testing(Cellular::State::kConnected);
+
+  MockCellularService* service = SetMockService();
+  ON_CALL(*service, state()).WillByDefault(Return(Service::kStateUnknown));
+  EXPECT_CALL(*service, SetState(Service::kStateConfiguring));
+
+  auto* adaptor = static_cast<DeviceMockAdaptor*>(device_->adaptor());
+  EXPECT_CALL(*adaptor, EmitStringChanged(kPrimaryMultiplexedInterfaceProperty,
+                                          kTestMultiplexedInterfaceName));
+
+  auto network = std::make_unique<MockNetwork>(kTestMultiplexedInterfaceIndex,
+                                               kTestMultiplexedInterfaceName,
+                                               Technology::kCellular);
   default_pdn_ = network.get();
   device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network));
   EXPECT_CALL(*default_pdn_,

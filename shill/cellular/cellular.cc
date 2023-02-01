@@ -445,6 +445,9 @@ bool Cellular::ShouldBringNetworkInterfaceDownAfterDisabled() const {
 void Cellular::BringNetworkInterfaceDown() {
   // The physical network interface always exists, unconditionally, so it can
   // be brought down safely regardless of whether a Network exists or not.
+  // There is no need to bring down explicitly any additional multiplexed
+  // network interface managed by the device because those are fully removed
+  // whenever the corresponding PDN is disconnected.
   rtnl_handler()->SetInterfaceFlags(interface_index(), 0, IFF_UP);
 }
 
@@ -1545,20 +1548,14 @@ void Cellular::EstablishLink() {
   // ModemManager specifies which is the network interface that has been
   // connected at this point, which may be either the same interface that was
   // used to reference this Cellular device, or a completely different one.
-  // At this point, only the physical network interface is expected to be
-  // connected; fail otherwise.
   LOG(INFO) << LoggingTag() << ": Establish link on "
             << bearer->data_interface();
-  int data_interface_index =
-      rtnl_handler()->GetInterfaceIndex(bearer->data_interface());
-  if (data_interface_index != interface_index()) {
-    Disconnect(nullptr, "Unexpected data interface to connect");
-    return;
-  }
 
   // Create default network
-  default_pdn_.emplace(this, bearer->dbus_path(), data_interface_index,
-                       bearer->data_interface());
+  default_pdn_.emplace(
+      this, bearer->dbus_path(),
+      rtnl_handler()->GetInterfaceIndex(bearer->data_interface()),
+      bearer->data_interface());
 
   // Start the link listener, which will ensure the initial link state for the
   // data interface is notified.
@@ -1613,8 +1610,12 @@ void Cellular::DefaultLinkDown() {
 
 void Cellular::DefaultLinkDeleted() {
   LOG(INFO) << LoggingTag() << ": Default link is deleted.";
-  // This is an indication that the cellular device is gone from the system.
-  DestroyAllServices();
+
+  // If not multiplexing, this is an indication that the cellular device is gone
+  // from the system. If multiplexing, just a no-op.
+  if (default_pdn_->network()->interface_index() == interface_index()) {
+    DestroyAllServices();
+  }
 }
 
 void Cellular::LinkMsgHandler(const RTNLMessage& msg) {

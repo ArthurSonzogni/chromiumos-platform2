@@ -436,7 +436,8 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, EstablishLinkPPP);
   FRIEND_TEST(CellularTest, EstablishLinkStatic);
   FRIEND_TEST(CellularTest, EstablishLinkFailureNoBearer);
-  FRIEND_TEST(CellularTest, EstablishLinkFailureMismatchedDataInterface);
+  FRIEND_TEST(CellularTest, EstablishLinkMultiplexDHCP);
+  FRIEND_TEST(CellularTest, EstablishLinkMultiplexStatic);
   FRIEND_TEST(CellularTest, HomeProviderServingOperator);
   FRIEND_TEST(CellularTest, Notify);
   FRIEND_TEST(CellularTest, OnAfterResumeDisableInProgressWantDisabled);
