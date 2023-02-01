@@ -140,6 +140,13 @@ core dump and converts it to a minidump before sending it out to the host.
 The host daemon passes the report on to `crash-reporter`, which takes care of
 uploading it to Google servers.
 
+## metric_collector
+
+`metric_collector` is an IO reporting daemon for the default Crostini container.
+It periodically polls the vmstats of the container (or really, the whole termina
+VM, since the stats are not namespaced) and reports those to UMA by invoking
+`garcon`.
+
 ## VM <-> host communication
 
 All communication between `vm_concierge` and the applications inside the VM
