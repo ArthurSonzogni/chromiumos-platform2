@@ -1508,20 +1508,14 @@ void UserDataAuth::DoMount(
 
   // AuthSession associated with this request's auth_session_id. Can be empty
   // in case auth_session_id is not supplied.
-  AuthSession* auth_session = nullptr;
-
+  InUseAuthSession auth_session;
   if (!request.auth_session_id().empty()) {
     auth_session =
         auth_session_manager_->FindAuthSession(request.auth_session_id());
-    if (!auth_session) {
-      LOG(ERROR) << "Invalid AuthSession token provided.";
-      ReplyWithError(
-          std::move(on_done), reply,
-          MakeStatus<CryptohomeError>(
-              CRYPTOHOME_ERR_LOC(kLocUserDataAuthMountAuthSessionNotFound),
-              ErrorActionSet({ErrorAction::kReboot}),
-              user_data_auth::CryptohomeErrorCode::
-                  CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
+    CryptohomeStatus auth_session_status = auth_session.AuthSessionStatus();
+    if (!auth_session_status.ok()) {
+      ReplyWithError(std::move(on_done), reply,
+                     std::move(auth_session_status.status()));
       return;
     }
     if (auth_session->status() != AuthStatus::kAuthStatusAuthenticated) {
@@ -1539,8 +1533,9 @@ void UserDataAuth::DoMount(
     }
   }
 
+  CryptohomeStatus auth_session_status = auth_session.AuthSessionStatus();
   // Check for empty account ID
-  if (account_id.empty() && !auth_session) {
+  if (account_id.empty() && !auth_session_status.ok()) {
     LOG(ERROR) << "No email supplied";
     ReplyWithError(std::move(on_done), reply,
                    MakeStatus<CryptohomeError>(
@@ -1553,7 +1548,7 @@ void UserDataAuth::DoMount(
 
   // Key generation is not needed if there is a valid AuthSession as part of the
   // request. Key generation is handled in AuthSession.
-  if (request.public_mount() && !auth_session) {
+  if (request.public_mount() && !auth_session_status.ok()) {
     // Public mount have a set of passkey/password that is generated directly
     // from the username (and a local system salt.)
     brillo::SecureBlob public_mount_passkey =
@@ -1583,7 +1578,7 @@ void UserDataAuth::DoMount(
   if (request.authorization().key().secret().empty() &&
       request.authorization().key().data().type() !=
           KeyData::KEY_TYPE_CHALLENGE_RESPONSE &&
-      !auth_session) {
+      !auth_session_status.ok()) {
     LOG(ERROR) << "No key secret supplied";
     ReplyWithError(std::move(on_done), reply,
                    MakeStatus<CryptohomeError>(
@@ -1594,7 +1589,7 @@ void UserDataAuth::DoMount(
     return;
   }
 
-  if (request.has_create() && !auth_session) {
+  if (request.has_create() && !auth_session_status.ok()) {
     // copy_authorization_key in CreateRequest means that we'll copy the
     // authorization request's key and use it as if it's the key specified in
     // CreateRequest.
@@ -1648,11 +1643,12 @@ void UserDataAuth::DoMount(
   bool is_ephemeral = false;
   bool require_ephemeral =
       request.require_ephemeral() ||
-      (auth_session ? auth_session->ephemeral_user() : false);
+      (auth_session_status.ok() ? auth_session->ephemeral_user() : false);
 
   CryptohomeStatusOr<bool> should_mount_as_ephemeral_status =
-      GetShouldMountAsEphemeral(account_id, require_ephemeral,
-                                (request.has_create() || auth_session));
+      GetShouldMountAsEphemeral(
+          account_id, require_ephemeral,
+          (request.has_create() || auth_session_status.ok()));
   if (!should_mount_as_ephemeral_status.ok()) {
     ReplyWithError(std::move(on_done), reply,
                    std::move(should_mount_as_ephemeral_status.status()));
@@ -1677,7 +1673,8 @@ void UserDataAuth::DoMount(
   // can temporarily bypass create_if_missing as a first step to prevent
   // credentials from flowing to mount call. Later, this would be replaced by
   // CreateEphemeral, CreatePersistent calls.
-  mount_args.create_if_missing = (request.has_create() || auth_session);
+  mount_args.create_if_missing =
+      (request.has_create() || auth_session_status.ok());
   mount_args.is_ephemeral = is_ephemeral;
   mount_args.create_as_ecryptfs =
       force_ecryptfs_ ||
@@ -1690,7 +1687,7 @@ void UserDataAuth::DoMount(
   // Process challenge-response credentials asynchronously.
   if ((request.authorization().key().data().type() ==
        KeyData::KEY_TYPE_CHALLENGE_RESPONSE) &&
-      !auth_session) {
+      !auth_session_status.ok()) {
     DoChallengeResponseMount(request, mount_args, std::move(on_done));
     return;
   }
@@ -1701,7 +1698,7 @@ void UserDataAuth::DoMount(
   credentials->set_key_data(request.authorization().key().data());
 
   std::optional<base::UnguessableToken> token = std::nullopt;
-  if (auth_session) {
+  if (auth_session_status.ok()) {
     token = auth_session->token();
   }
 
@@ -1948,9 +1945,9 @@ void UserDataAuth::ContinueMountWithCredentials(
     base::OnceCallback<void(const user_data_auth::MountReply&)> on_done) {
   AssertOnMountThread();
 
-  AuthSession* auth_session =
+  InUseAuthSession auth_session =
       token.has_value() ? auth_session_manager_->FindAuthSession(token.value())
-                        : nullptr;
+                        : InUseAuthSession();
 
   // Setup a reply for use during error handling.
   user_data_auth::MountReply reply;
@@ -1987,8 +1984,9 @@ void UserDataAuth::ContinueMountWithCredentials(
     return;
   }
 
-  std::string account_id =
-      auth_session ? auth_session->username() : GetAccountId(request.account());
+  std::string account_id = auth_session.AuthSessionStatus().ok()
+                               ? auth_session->username()
+                               : GetAccountId(request.account());
   // Provide an authoritative filesystem-sanitized username.
   reply.set_sanitized_username(
       brillo::cryptohome::home::SanitizeUserName(account_id));
@@ -2137,8 +2135,8 @@ void UserDataAuth::ContinueMountWithCredentials(
     homedirs_->RemoveNonOwnerCryptohomes();
 
   MountStatus code;
-  if (auth_session) {
-    code = AttemptUserMount(auth_session, mount_args, user_session);
+  if (auth_session.AuthSessionStatus().ok()) {
+    code = AttemptUserMount(auth_session.Get(), mount_args, user_session);
   } else {
     code = AttemptUserMount(*credentials, mount_args, user_session);
   }
@@ -2936,24 +2934,20 @@ user_data_auth::RemoveReply UserDataAuth::Remove(
     return reply;
   }
 
-  AuthSession* auth_session = nullptr;
+  InUseAuthSession auth_session;
   if (!request.auth_session_id().empty()) {
     auth_session =
         auth_session_manager_->FindAuthSession(request.auth_session_id());
-    if (!auth_session) {
-      PopulateReplyWithError(
-          MakeStatus<CryptohomeError>(
-              CRYPTOHOME_ERR_LOC(kLocUserDataAuthInvalidAuthSessionInRemove),
-              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                              ErrorAction::kReboot}),
-              user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN),
-          &reply);
+    CryptohomeStatus auth_session_status = auth_session.AuthSessionStatus();
+    if (!auth_session_status.ok()) {
+      PopulateReplyWithError(auth_session_status.status(), &reply);
       return reply;
     }
   }
 
-  std::string account_id = auth_session ? auth_session->username()
-                                        : GetAccountId(request.identifier());
+  std::string account_id = auth_session.AuthSessionStatus().ok()
+                               ? auth_session->username()
+                               : GetAccountId(request.identifier());
   if (account_id.empty()) {
     // RemoveRequest must have valid account_id.
     PopulateReplyWithError(
@@ -2994,7 +2988,7 @@ user_data_auth::RemoveReply UserDataAuth::Remove(
 
   // Since the user is now removed, any further operations require a fresh
   // AuthSession.
-  if (auth_session) {
+  if (auth_session.AuthSessionStatus().ok()) {
     if (!auth_session_manager_->RemoveAuthSession(request.auth_session_id())) {
       NOTREACHED() << "Failed to remove AuthSession when removing user.";
     }
@@ -3062,8 +3056,9 @@ void UserDataAuth::StartMigrateToDircrypto(
   // this is why they are left with the default value of 0 here.
   user_data_auth::DircryptoMigrationProgress progress;
   AuthSession* auth_session = nullptr;
+  InUseAuthSession in_use_auth_session;
   if (!request.auth_session_id().empty()) {
-    CryptohomeStatusOr<AuthSession*> auth_session_status =
+    CryptohomeStatusOr<InUseAuthSession> auth_session_status =
         GetAuthenticatedAuthSession(request.auth_session_id());
     if (!auth_session_status.ok()) {
       LOG(ERROR) << "StartMigrateToDircrypto: Invalid auth_session_id.";
@@ -3071,7 +3066,8 @@ void UserDataAuth::StartMigrateToDircrypto(
       progress_callback.Run(progress);
       return;
     }
-    auth_session = auth_session_status.value();
+    in_use_auth_session = std::move(auth_session_status.value());
+    auth_session = in_use_auth_session.Get();
   }
 
   std::string account_id = auth_session ? auth_session->username()
@@ -3427,7 +3423,7 @@ user_data_auth::GetHibernateSecretReply UserDataAuth::GetHibernateSecret(
   // If there's an auth_session_id, use that to create the hibernate
   // secret on demand (otherwise it's not available until later).
   if (!request.auth_session_id().empty()) {
-    CryptohomeStatusOr<AuthSession*> auth_session_status =
+    CryptohomeStatusOr<InUseAuthSession> auth_session_status =
         GetAuthenticatedAuthSession(request.auth_session_id());
     if (!auth_session_status.ok()) {
       LOG(ERROR) << "Invalid AuthSession for HibernateSecret.";
@@ -3679,7 +3675,7 @@ void UserDataAuth::StartAuthSession(
     return;
   }
 
-  CryptohomeStatusOr<AuthSession*> auth_session_status =
+  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
       auth_session_manager_->CreateAuthSession(
           request.account_id().account_id(), request.flags(),
           auth_intent.value());
@@ -3693,7 +3689,7 @@ void UserDataAuth::StartAuthSession(
             .Wrap(std::move(auth_session_status).status()));
     return;
   }
-  AuthSession* auth_session = auth_session_status.value();
+  AuthSession* auth_session = auth_session_status.value().Get();
 
   reply.set_auth_session_id(auth_session->serialized_token());
   reply.set_user_exists(auth_session->user_exists());
@@ -3850,7 +3846,7 @@ void UserDataAuth::ExtendAuthSession(
   // Fetch only authenticated authsession. This is because the timer only runs
   // AuthSession is authenticated. If the timer is not running, then there is
   // nothing to extend.
-  CryptohomeStatusOr<AuthSession*> auth_session_status =
+  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
       GetAuthenticatedAuthSession(request.auth_session_id());
   if (!auth_session_status.ok()) {
     ReplyWithError(std::move(on_done), reply,
@@ -3860,7 +3856,7 @@ void UserDataAuth::ExtendAuthSession(
                        .Wrap(std::move(auth_session_status).status()));
     return;
   }
-  AuthSession* auth_session = auth_session_status.value();
+  AuthSession* auth_session = auth_session_status.value().Get();
 
   // Extend specified AuthSession.
   auto timer_extension = base::Seconds(request.extension_duration());
@@ -3879,20 +3875,22 @@ void UserDataAuth::ExtendAuthSession(
   ReplyWithError(std::move(on_done), reply, std::move(err));
 }
 
-CryptohomeStatusOr<AuthSession*> UserDataAuth::GetAuthenticatedAuthSession(
+CryptohomeStatusOr<InUseAuthSession> UserDataAuth::GetAuthenticatedAuthSession(
     const std::string& auth_session_id) {
   AssertOnMountThread();
 
   // Check if the token refers to a valid AuthSession.
-  AuthSession* auth_session =
+  InUseAuthSession auth_session =
       auth_session_manager_->FindAuthSession(auth_session_id);
-  if (!auth_session) {
+  CryptohomeStatus auth_session_status = auth_session.AuthSessionStatus();
+  if (!auth_session_status.ok()) {
     LOG(ERROR) << "AuthSession not found.";
     return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInGetAuthedAS),
-        ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
-        user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
+               CRYPTOHOME_ERR_LOC(kLocUserDataAuthSessionNotFoundInGetAuthedAS),
+               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                               ErrorAction::kReboot}),
+               user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
+        .Wrap(std::move(auth_session_status).status());
   }
 
   // Check if the AuthSession is properly authenticated.
@@ -3910,9 +3908,9 @@ CryptohomeStatusOr<AuthSession*> UserDataAuth::GetAuthenticatedAuthSession(
 
 std::string UserDataAuth::SanitizedUserNameForSession(
     const std::string& auth_session_id) {
-  AuthSession* auth_session =
+  InUseAuthSession auth_session =
       auth_session_manager_->FindAuthSession(auth_session_id);
-  if (!auth_session) {
+  if (!auth_session.AuthSessionStatus().ok()) {
     return "";
   }
   return auth_session->obfuscated_username();
@@ -4149,9 +4147,10 @@ CryptohomeStatus UserDataAuth::PrepareEphemeralVaultImpl(
             CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
   }
 
-  AuthSession* auth_session =
+  InUseAuthSession auth_session =
       auth_session_manager_->FindAuthSession(auth_session_id);
-  if (!auth_session) {
+  CryptohomeStatus auth_session_status = auth_session.AuthSessionStatus();
+  if (!auth_session_status.ok()) {
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(
             kLocUserDataAuthNoAuthSessionInPrepareEphemeralVault),
@@ -4170,7 +4169,7 @@ CryptohomeStatus UserDataAuth::PrepareEphemeralVaultImpl(
   }
 
   CryptohomeStatusOr<UserSession*> session_status =
-      GetMountableUserSession(auth_session);
+      GetMountableUserSession(auth_session.Get());
   if (!session_status.ok()) {
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
@@ -4215,7 +4214,7 @@ CryptohomeStatus UserDataAuth::PreparePersistentVaultImpl(
     CleanUpStaleMounts(false);
   }
 
-  CryptohomeStatusOr<AuthSession*> auth_session_status =
+  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
       GetAuthenticatedAuthSession(auth_session_id);
   if (!auth_session_status.ok()) {
     return MakeStatus<CryptohomeError>(
@@ -4247,7 +4246,7 @@ CryptohomeStatus UserDataAuth::PreparePersistentVaultImpl(
   }
 
   CryptohomeStatusOr<UserSession*> session_status =
-      GetMountableUserSession(auth_session_status.value());
+      GetMountableUserSession(auth_session_status.value().Get());
   if (!session_status.ok()) {
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
@@ -4274,7 +4273,7 @@ CryptohomeStatus UserDataAuth::PreparePersistentVaultImpl(
         .Wrap(std::move(mount_status).status());
   }
 
-  SetKeyDataForUserSession(auth_session_status.value(),
+  SetKeyDataForUserSession(auth_session_status.value().Get(),
                            /*override_existing_data=*/false);
   return OkStatus<CryptohomeError>();
 }
@@ -4283,17 +4282,19 @@ CryptohomeStatus UserDataAuth::CreatePersistentUserImpl(
     const std::string& auth_session_id) {
   AssertOnMountThread();
 
-  AuthSession* auth_session =
+  InUseAuthSession auth_session =
       auth_session_manager_->FindAuthSession(auth_session_id);
-  if (!auth_session) {
+  CryptohomeStatus auth_session_status = auth_session.AuthSessionStatus();
+  if (!auth_session_status.ok()) {
     LOG(ERROR) << "AuthSession not found.";
     return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocUserDataAuthSessionNotFoundInCreatePersistentUser),
-        ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
-        user_data_auth::CryptohomeErrorCode::
-            CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
+               CRYPTOHOME_ERR_LOC(
+                   kLocUserDataAuthSessionNotFoundInCreatePersistentUser),
+               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                               ErrorAction::kReboot}),
+               user_data_auth::CryptohomeErrorCode::
+                   CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
+        .Wrap(std::move(auth_session_status).status());
   }
 
   if (auth_session->ephemeral_user()) {
@@ -4385,7 +4386,7 @@ void UserDataAuth::AddAuthFactor(
         on_done) {
   AssertOnMountThread();
   user_data_auth::AddAuthFactorReply reply;
-  CryptohomeStatusOr<AuthSession*> auth_session_status =
+  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
       GetAuthenticatedAuthSession(request.auth_session_id());
   if (!auth_session_status.ok()) {
     ReplyWithError(
@@ -4401,7 +4402,7 @@ void UserDataAuth::AddAuthFactor(
 
   StatusCallback on_add_auth_factor_finished = base::BindOnce(
       &UserDataAuth::OnAddAuthFactorFinished, base::Unretained(this),
-      auth_session_status.value(),
+      auth_session_status.value().Get(),
       base::BindOnce(&ReplyWithStatus<user_data_auth::AddAuthFactorReply>,
                      std::move(on_done)));
   auth_session_status.value()->AddAuthFactor(
@@ -4415,9 +4416,10 @@ void UserDataAuth::AuthenticateAuthFactor(
   AssertOnMountThread();
   user_data_auth::AuthenticateAuthFactorReply reply;
 
-  AuthSession* const auth_session =
+  InUseAuthSession auth_session =
       auth_session_manager_->FindAuthSession(request.auth_session_id());
-  if (!auth_session) {
+  CryptohomeStatus auth_session_status = auth_session.AuthSessionStatus();
+  if (!auth_session_status.ok()) {
     LOG(ERROR) << "Invalid AuthSession token provided.";
     ReplyWithError(
         std::move(on_done), reply,
@@ -4426,7 +4428,8 @@ void UserDataAuth::AuthenticateAuthFactor(
             ErrorActionSet(
                 {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
             user_data_auth::CryptohomeErrorCode::
-                CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
+                CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
+            .Wrap(std::move(auth_session_status).status()));
     return;
   }
 
@@ -4457,7 +4460,7 @@ void UserDataAuth::AuthenticateAuthFactor(
   }
   auth_session->AuthenticateAuthFactor(
       auth_factor_labels, request.auth_input(),
-      base::BindOnce(&ReplyWithAuthenticationResult, auth_session,
+      base::BindOnce(&ReplyWithAuthenticationResult, auth_session.Get(),
                      std::move(on_done)));
 }
 
@@ -4469,7 +4472,7 @@ void UserDataAuth::UpdateAuthFactor(
 
   user_data_auth::UpdateAuthFactorReply reply;
 
-  CryptohomeStatusOr<AuthSession*> auth_session_status =
+  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
       GetAuthenticatedAuthSession(request.auth_session_id());
   if (!auth_session_status.ok()) {
     ReplyWithError(
@@ -4485,7 +4488,7 @@ void UserDataAuth::UpdateAuthFactor(
 
   StatusCallback on_update_auth_factor_finished = base::BindOnce(
       &UserDataAuth::OnUpdateAuthFactorFinished, base::Unretained(this),
-      auth_session_status.value(),
+      auth_session_status.value().Get(),
       base::BindOnce(&ReplyWithStatus<user_data_auth::UpdateAuthFactorReply>,
                      std::move(on_done)));
   auth_session_status.value()->UpdateAuthFactor(
@@ -4499,7 +4502,7 @@ void UserDataAuth::RemoveAuthFactor(
   AssertOnMountThread();
   user_data_auth::RemoveAuthFactorReply reply;
 
-  CryptohomeStatusOr<AuthSession*> auth_session_status =
+  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
       GetAuthenticatedAuthSession(request.auth_session_id());
   if (!auth_session_status.ok()) {
     ReplyWithError(std::move(on_done), reply,
@@ -4745,9 +4748,10 @@ void UserDataAuth::PrepareAuthFactor(
         on_done) {
   AssertOnMountThread();
   user_data_auth::PrepareAuthFactorReply reply;
-  AuthSession* auth_session =
+  InUseAuthSession auth_session =
       auth_session_manager_->FindAuthSession(request.auth_session_id());
-  if (!auth_session) {
+  CryptohomeStatus auth_session_status = auth_session.AuthSessionStatus();
+  if (!auth_session_status.ok()) {
     ReplyWithError(
         std::move(on_done), reply,
         MakeStatus<CryptohomeError>(
@@ -4755,7 +4759,8 @@ void UserDataAuth::PrepareAuthFactor(
                 kLocUserDataAuthPrepareAuthFactorAuthSessionNotFound),
             ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
             user_data_auth::CryptohomeErrorCode::
-                CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
+                CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
+            .Wrap(std::move(auth_session_status).status()));
     return;
   }
   auth_session->PrepareAuthFactor(
@@ -4770,9 +4775,10 @@ void UserDataAuth::TerminateAuthFactor(
         on_done) {
   AssertOnMountThread();
   user_data_auth::TerminateAuthFactorReply reply;
-  AuthSession* auth_session =
+  InUseAuthSession auth_session =
       auth_session_manager_->FindAuthSession(request.auth_session_id());
-  if (!auth_session) {
+  CryptohomeStatus auth_session_status = auth_session.AuthSessionStatus();
+  if (!auth_session_status.ok()) {
     ReplyWithError(
         std::move(on_done), reply,
         MakeStatus<CryptohomeError>(
@@ -4780,7 +4786,8 @@ void UserDataAuth::TerminateAuthFactor(
                 kLocUserDataAuthTerminateAuthFactorAuthSessionNotFound),
             ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
             user_data_auth::CryptohomeErrorCode::
-                CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
+                CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
+            .Wrap(std::move(auth_session_status).status()));
     return;
   }
   auth_session->TerminateAuthFactor(
@@ -4796,14 +4803,15 @@ void UserDataAuth::GetAuthSessionStatus(
   AssertOnMountThread();
   user_data_auth::GetAuthSessionStatusReply reply;
 
-  AuthSession* auth_session =
+  InUseAuthSession auth_session =
       auth_session_manager_->FindAuthSession(request.auth_session_id());
-  if (!auth_session) {
+  CryptohomeStatus auth_session_status = auth_session.AuthSessionStatus();
+  if (!auth_session_status.ok()) {
     reply.set_error(user_data_auth::CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN);
     LOG(ERROR) << "GetAuthSessionStatus: AuthSession not found.";
     return;
   }
-  GetAuthSessionStatusImpl(auth_session, reply);
+  GetAuthSessionStatusImpl(auth_session.Get(), reply);
 }
 
 void UserDataAuth::GetAuthSessionStatusImpl(
@@ -4829,9 +4837,10 @@ void UserDataAuth::GetRecoveryRequest(
   AssertOnMountThread();
 
   user_data_auth::GetRecoveryRequestReply reply;
-  AuthSession* const auth_session =
+  InUseAuthSession auth_session =
       auth_session_manager_->FindAuthSession(request.auth_session_id());
-  if (!auth_session) {
+  CryptohomeStatus auth_session_status = auth_session.AuthSessionStatus();
+  if (!auth_session_status.ok()) {
     LOG(ERROR) << "Invalid AuthSession token provided.";
     ReplyWithError(std::move(on_done), reply,
                    MakeStatus<CryptohomeError>(
@@ -4840,7 +4849,8 @@ void UserDataAuth::GetRecoveryRequest(
                        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
                                        ErrorAction::kReboot}),
                        user_data_auth::CryptohomeErrorCode::
-                           CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN));
+                           CRYPTOHOME_INVALID_AUTH_SESSION_TOKEN)
+                       .Wrap(std::move(auth_session_status).status()));
     return;
   }
   auth_session->GetRecoveryRequest(request, std::move(on_done));

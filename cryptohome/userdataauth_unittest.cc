@@ -3074,13 +3074,15 @@ TEST_F(UserDataAuthExTest,
           auth_session_reply_future.Get().auth_session_id());
   ASSERT_TRUE(auth_session_id.has_value());
 
-  AuthSession* auth_session =
-      userdataauth_->auth_session_manager_->FindAuthSession(
-          auth_session_id.value());
-  ASSERT_THAT(auth_session, NotNull());
+  {
+    InUseAuthSession auth_session =
+        userdataauth_->auth_session_manager_->FindAuthSession(
+            auth_session_id.value());
+    ASSERT_TRUE(auth_session.AuthSessionStatus().ok());
 
-  // Migration only happens for authenticated auth session.
-  auth_session->SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
+    // Migration only happens for authenticated auth session.
+    auth_session->SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
+  }
 
   user_data_auth::StartMigrateToDircryptoRequest request;
   request.set_auth_session_id(
@@ -3127,10 +3129,10 @@ TEST_F(UserDataAuthExTest,
           auth_session_reply_future.Get().auth_session_id());
   ASSERT_TRUE(auth_session_id.has_value());
 
-  AuthSession* auth_session =
+  InUseAuthSession auth_session =
       userdataauth_->auth_session_manager_->FindAuthSession(
           auth_session_id.value());
-  ASSERT_THAT(auth_session, NotNull());
+  ASSERT_TRUE(auth_session.AuthSessionStatus().ok());
 
   user_data_auth::StartMigrateToDircryptoRequest request;
   request.set_auth_session_id(
@@ -3633,9 +3635,9 @@ TEST_F(UserDataAuthExTest, RemoveValidityWithAuthSession) {
       user_data_auth::PrimaryAction::PRIMARY_NO_ERROR);
 
   // Verify
-  EXPECT_EQ(
-      userdataauth_->auth_session_manager_->FindAuthSession(auth_session_id),
-      nullptr);
+  InUseAuthSession auth_session =
+      userdataauth_->auth_session_manager_->FindAuthSession(auth_session_id);
+  EXPECT_FALSE(auth_session.AuthSessionStatus().ok());
 }
 
 TEST_F(UserDataAuthExTest, StartAuthSession) {
@@ -3653,9 +3655,10 @@ TEST_F(UserDataAuthExTest, StartAuthSession) {
       AuthSession::GetTokenFromSerializedString(
           auth_session_reply_future.Get().auth_session_id());
   EXPECT_TRUE(auth_session_id.has_value());
-  EXPECT_THAT(userdataauth_->auth_session_manager_->FindAuthSession(
-                  auth_session_id.value()),
-              NotNull());
+  InUseAuthSession auth_session =
+      userdataauth_->auth_session_manager_->FindAuthSession(
+          auth_session_id.value());
+  EXPECT_TRUE(auth_session.AuthSessionStatus().ok());
 }
 
 TEST_F(UserDataAuthExTest, StartAuthSessionUnusableClobber) {
@@ -3676,9 +3679,10 @@ TEST_F(UserDataAuthExTest, StartAuthSessionUnusableClobber) {
       AuthSession::GetTokenFromSerializedString(
           auth_session_reply_future.Get().auth_session_id());
   EXPECT_TRUE(auth_session_id.has_value());
-  EXPECT_THAT(userdataauth_->auth_session_manager_->FindAuthSession(
-                  auth_session_id.value()),
-              NotNull());
+  InUseAuthSession auth_session =
+      userdataauth_->auth_session_manager_->FindAuthSession(
+          auth_session_id.value());
+  EXPECT_TRUE(auth_session.AuthSessionStatus().ok());
 }
 
 TEST_F(UserDataAuthExTest, MountAuthSessionInvalidToken) {
@@ -3725,9 +3729,12 @@ TEST_F(UserDataAuthExTest, MountUnauthenticatedAuthSession) {
       AuthSession::GetTokenFromSerializedString(
           auth_session_reply.auth_session_id());
   EXPECT_TRUE(auth_session_id.has_value());
-  EXPECT_THAT(userdataauth_->auth_session_manager_->FindAuthSession(
-                  auth_session_id.value()),
-              NotNull());
+  {
+    InUseAuthSession auth_session =
+        userdataauth_->auth_session_manager_->FindAuthSession(
+            auth_session_id.value());
+    EXPECT_TRUE(auth_session.AuthSessionStatus().ok());
+  }
 
   user_data_auth::MountRequest mount_req;
   mount_req.set_auth_session_id(auth_session_reply.auth_session_id());
@@ -3764,9 +3771,10 @@ TEST_F(UserDataAuthExTest, InvalidateAuthSession) {
       AuthSession::GetTokenFromSerializedString(
           auth_session_reply_future.Get().auth_session_id());
   EXPECT_TRUE(auth_session_id.has_value());
-  EXPECT_THAT(userdataauth_->auth_session_manager_->FindAuthSession(
-                  auth_session_id.value()),
-              NotNull());
+  InUseAuthSession auth_session =
+      userdataauth_->auth_session_manager_->FindAuthSession(
+          auth_session_id.value());
+  EXPECT_TRUE(auth_session.AuthSessionStatus().ok());
 
   // Test.
   user_data_auth::InvalidateAuthSessionRequest inv_auth_session_req;
@@ -3781,10 +3789,9 @@ TEST_F(UserDataAuthExTest, InvalidateAuthSession) {
           .GetCallback<const user_data_auth::InvalidateAuthSessionReply&>());
   EXPECT_EQ(reply_future.Get().error(),
             user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-
-  EXPECT_THAT(userdataauth_->auth_session_manager_->FindAuthSession(
-                  auth_session_id.value()),
-              IsNull());
+  auth_session = userdataauth_->auth_session_manager_->FindAuthSession(
+      auth_session_id.value());
+  EXPECT_FALSE(auth_session.AuthSessionStatus().ok());
 }
 
 TEST_F(UserDataAuthExTest, ExtendAuthSession) {
@@ -3805,13 +3812,15 @@ TEST_F(UserDataAuthExTest, ExtendAuthSession) {
           auth_session_reply_future.Get().auth_session_id());
   EXPECT_TRUE(auth_session_id.has_value());
 
-  AuthSession* auth_session =
-      userdataauth_->auth_session_manager_->FindAuthSession(
-          auth_session_id.value());
-  EXPECT_THAT(auth_session, NotNull());
+  {
+    InUseAuthSession auth_session =
+        userdataauth_->auth_session_manager_->FindAuthSession(
+            auth_session_id.value());
+    ASSERT_TRUE(auth_session.AuthSessionStatus().ok());
 
-  // Extension only happens for authenticated auth session.
-  auth_session->SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
+    // Extension only happens for authenticated auth session.
+    auth_session->SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
+  }
 
   // Test.
   user_data_auth::ExtendAuthSessionRequest ext_auth_session_req;
@@ -3831,8 +3840,9 @@ TEST_F(UserDataAuthExTest, ExtendAuthSession) {
   EXPECT_GT(reply_future.Get().seconds_left(), kAuthSessionExtensionDuration);
 
   // Verify that timer has changed, within a resaonsable degree of error.
-  auth_session = userdataauth_->auth_session_manager_->FindAuthSession(
-      auth_session_id.value());
+  InUseAuthSession auth_session =
+      userdataauth_->auth_session_manager_->FindAuthSession(
+          auth_session_id.value());
   auto requested_delay = auth_session->timeout_timer_.GetCurrentDelay();
   auto time_difference =
       (kAuthSessionTimeout + kAuthSessionExtension) - requested_delay;
@@ -3857,10 +3867,12 @@ TEST_F(UserDataAuthExTest, ExtendUnAuthenticatedAuthSessionFail) {
           auth_session_reply_future.Get().auth_session_id());
   EXPECT_TRUE(auth_session_id.has_value());
 
-  AuthSession* auth_session =
-      userdataauth_->auth_session_manager_->FindAuthSession(
-          auth_session_id.value());
-  EXPECT_THAT(auth_session, NotNull());
+  {
+    InUseAuthSession auth_session =
+        userdataauth_->auth_session_manager_->FindAuthSession(
+            auth_session_id.value());
+    ASSERT_TRUE(auth_session.AuthSessionStatus().ok());
+  }
 
   // Test.
   user_data_auth::ExtendAuthSessionRequest ext_auth_session_req;
@@ -3897,10 +3909,10 @@ TEST_F(UserDataAuthExTest, CheckTimeoutTimerSetAfterAuthentication) {
           auth_session_reply_future.Get().auth_session_id());
   EXPECT_TRUE(auth_session_id.has_value());
 
-  AuthSession* auth_session =
+  InUseAuthSession auth_session =
       userdataauth_->auth_session_manager_->FindAuthSession(
           auth_session_id.value());
-  EXPECT_THAT(auth_session, NotNull());
+  ASSERT_TRUE(auth_session.AuthSessionStatus().ok());
 
   // Timer is not set before authentication.
   EXPECT_FALSE(auth_session->timeout_timer_.IsRunning());

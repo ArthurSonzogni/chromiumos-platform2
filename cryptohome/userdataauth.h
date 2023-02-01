@@ -995,7 +995,7 @@ class UserDataAuth {
   // auth session associated with the id. If the session is missing or not
   // authenticated, an error status is returned. The returned pointer is owner
   // by |auth_session_manager|.
-  CryptohomeStatusOr<AuthSession*> GetAuthenticatedAuthSession(
+  CryptohomeStatusOr<InUseAuthSession> GetAuthenticatedAuthSession(
       const std::string& auth_session_id);
 
   // Returns sanitized username for an existing auth session or an empty string
