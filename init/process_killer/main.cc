@@ -16,7 +16,9 @@ int main(int argc, char* argv[]) {
   DEFINE_bool(session, false, "Kill session-related processes");
   DEFINE_bool(shutdown, false, "Kill shutdown-related processes");
   DEFINE_bool(file_holders, false, "Kill processes that keep files open");
-  DEFINE_bool(mount_holders, false, "Kill processes that keep mounts open");
+  DEFINE_bool(
+      mount_holders, false,
+      "Kill processes that keep mounts open in a non-init mount namespace");
   brillo::FlagHelper::Init(argc, argv, "Chromium OS Process Killer");
 
   // Add a flag to explicitly log to stderr: this is useful for situations where
