@@ -8,6 +8,7 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [
     ":backlight_tool",
+    ":battery_saver_tool",
     ":check_powerd_config",
     ":cpufreq_config",
     ":dump_power_status",
@@ -38,6 +39,7 @@ group("all") {
       ":power_manager_daemon_test",
       ":power_manager_policy_test",
       ":power_manager_system_test",
+      ":power_manager_tools_battery_saver_test",
       ":power_manager_util_test",
     ]
   }
@@ -136,6 +138,14 @@ pkg_config("libchrome_test_config") {
 
 pkg_config("libutil_dependent_config") {
   pkg_deps = [ "libmetrics" ]
+}
+
+pkg_config("libpower_manager_client_config") {
+  pkg_deps = [ "libpower_manager-client" ]
+}
+
+pkg_config("libpower_manager_client_test_config") {
+  pkg_deps = [ "libpower_manager-client-test" ]
 }
 
 static_library("libutil") {
@@ -364,6 +374,25 @@ executable("backlight_tool") {
   ]
 }
 
+source_set("libbattery_saver_tool") {
+  sources = [
+    "tools/battery_saver/battery_saver.cc",
+    "tools/battery_saver/battery_saver.h",
+    "tools/battery_saver/proto_util.h",
+  ]
+  configs += [
+    ":target_defaults",
+    ":libpower_manager_client_config",
+  ]
+}
+
+executable("battery_saver_tool") {
+  output_name = "battery_saver"
+  sources = [ "tools/battery_saver/main.cc" ]
+  configs += [ ":target_defaults" ]
+  deps = [ ":libbattery_saver_tool" ]
+}
+
 executable("check_powerd_config") {
   sources = [ "tools/check_powerd_config.cc" ]
   configs += [ ":target_defaults" ]
@@ -589,6 +618,23 @@ if (use.test) {
       ":libutil_test",
       "//common-mk/testrunner",
       "//metrics:metrics_test_support",
+    ]
+  }
+
+  executable("power_manager_tools_battery_saver_test") {
+    sources = [
+      "tools/battery_saver/battery_saver_test.cc",
+      "tools/battery_saver/proto_util_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":libchrome_test_config",
+      ":libpower_manager_client_test_config",
+      ":target_defaults",
+    ]
+    deps = [
+      ":libbattery_saver_tool",
+      "//common-mk/testrunner",
     ]
   }
 }
