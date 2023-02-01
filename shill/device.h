@@ -302,7 +302,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
  protected:
   friend class base::RefCounted<Device>;
   FRIEND_TEST(CellularServiceTest, IsAutoConnectable);
-  FRIEND_TEST(CellularTest, LinkDeleted);
+  FRIEND_TEST(CellularTest, DefaultLinkDeleted);
   FRIEND_TEST(DeviceTest, AvailableIPConfigs);
   FRIEND_TEST(DeviceTest, FetchTrafficCounters);
   FRIEND_TEST(DeviceTest, GetProperties);

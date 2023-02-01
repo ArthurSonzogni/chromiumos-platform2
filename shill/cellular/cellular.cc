@@ -48,6 +48,7 @@
 #include "shill/cellular/modem_info.h"
 #include "shill/control_interface.h"
 #include "shill/data_types.h"
+#include "shill/dbus/dbus_control.h"
 #include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
@@ -308,6 +309,9 @@ Cellular::Cellular(Manager* manager,
   // Create an initial Capability.
   CreateCapability();
 
+  // Reset networks
+  default_pdn_ = std::nullopt;
+
   carrier_entitlement_ = std::make_unique<CarrierEntitlement>(
       dispatcher(), metrics(),
       base::BindRepeating(&Cellular::OnEntitlementCheckUpdated,
@@ -319,6 +323,15 @@ Cellular::~Cellular() {
   LOG(INFO) << LoggingTag() << ": ~Cellular()";
   if (capability_)
     DestroyCapability();
+}
+
+void Cellular::CreateImplicitNetwork(bool fixed_ip_params) {
+  // No implicit network in Cellular.
+}
+
+Network* Cellular::GetPrimaryNetwork() const {
+  // The default network is considered as primary always.
+  return default_pdn_ ? default_pdn_->network() : nullptr;
 }
 
 std::string Cellular::GetLegacyEquipmentIdentifier() const {
@@ -427,6 +440,12 @@ bool Cellular::ShouldBringNetworkInterfaceDownAfterDisabled() const {
   }
 
   return false;
+}
+
+void Cellular::BringNetworkInterfaceDown() {
+  // The physical network interface always exists, unconditionally, so it can
+  // be brought down safely regardless of whether a Network exists or not.
+  rtnl_handler()->SetInterfaceFlags(interface_index(), 0, IFF_UP);
 }
 
 void Cellular::SetState(State state) {
@@ -602,18 +621,9 @@ void Cellular::DestroySockets() {
   if (!socket_destroyer_)
     return;
 
-  auto primary_network = GetPrimaryNetwork();
-  for (const auto& address : primary_network->GetAddresses()) {
-    SLOG(2) << LoggingTag() << ": Destroy all sockets of address:" << address;
-    rtnl_handler()->RemoveInterfaceAddress(primary_network->interface_index(),
-                                           address);
-    if (!socket_destroyer_->DestroySockets(IPPROTO_TCP, address))
-      SLOG(2) << LoggingTag() << ": no tcp sockets found for " << address;
-    // Chrome sometimes binds to UDP sockets, so lets destroy them.
-    if (!socket_destroyer_->DestroySockets(IPPROTO_UDP, address))
-      SLOG(2) << LoggingTag() << ": no udp sockets found for " << address;
+  if (default_pdn_) {
+    default_pdn_->DestroySockets();
   }
-  SLOG(2) << LoggingTag() << ": " << __func__ << " complete.";
 }
 
 void Cellular::CompleteActivation(Error* error) {
@@ -714,15 +724,21 @@ void Cellular::Reset(ResultCallback callback) {
   capability_->Reset(std::move(callback));
 }
 
+void Cellular::DropConnectionDefault() {
+  SetPrimaryMultiplexedInterface("");
+  default_pdn_ = std::nullopt;
+  SelectService(nullptr);
+}
+
 void Cellular::DropConnection() {
   if (ppp_device_) {
     // For PPP dongles, IP configuration is handled on the |ppp_device_|,
     // rather than the netdev plumbed into |this|.
     ppp_device_->DropConnection();
-  } else {
-    SetPrimaryMultiplexedInterface("");
-    Device::DropConnection();
+    return;
   }
+
+  DropConnectionDefault();
 }
 
 void Cellular::SetServiceState(Service::ConnectState state) {
@@ -1540,6 +1556,10 @@ void Cellular::EstablishLink() {
     return;
   }
 
+  // Create default network
+  default_pdn_.emplace(this, bearer->dbus_path(), data_interface_index,
+                       bearer->data_interface());
+
   // Start the link listener, which will ensure the initial link state for the
   // data interface is notified.
   StartLinkListener();
@@ -1548,123 +1568,51 @@ void Cellular::EstablishLink() {
   OnConnecting();
 }
 
-void Cellular::LinkUp(int data_interface_index) {
-  DCHECK(data_interface_index == interface_index());
-
+void Cellular::DefaultLinkUp() {
   if (state_ != State::kConnected) {
-    SLOG(3) << LoggingTag() << ": Link is up.";
+    SLOG(3) << LoggingTag() << ": Default link is up.";
     return;
   }
 
   // Connected -> Linked transition launches Network creation
-  LOG(INFO) << LoggingTag() << ": Link is up.";
-  SetPrimaryMultiplexedInterface(link_name());
-  SetState(State::kLinked);
+  LOG(INFO) << LoggingTag() << ": Default link is up.";
 
   CHECK(capability_);
-  CellularBearer* bearer =
-      capability_->GetActiveBearer(ApnList::ApnType::kDefault);
-  if (!bearer) {
-    LOG(WARNING) << LoggingTag() << ": No bearer found";
+  if (!default_pdn_->Configure(
+          capability_->GetActiveBearer(ApnList::ApnType::kDefault))) {
+    LOG(INFO) << LoggingTag() << ": Default link network configuration failed";
     // TODO(b/282250501): Update Cellular interface IP configurations.
     // Add disconnect here.
     return;
   }
-  bool ipv6_configured = false;
-  bool ipv4_configured = false;
-  std::unique_ptr<IPConfig::Properties> static_ipv4_props;
-  std::optional<DHCPProvider::Options> dhcp_opts = std::nullopt;
-  // Some modems use kMethodStatic and some use kMethodDHCP for IPv6 config
-  if (bearer->ipv6_config_method() !=
-      CellularBearer::IPConfigMethod::kUnknown) {
-    SLOG(2) << LoggingTag()
-            << ": Assign static IPv6 configuration from bearer.";
-    const auto& ipv6_props = *bearer->ipv6_config_properties();
-    // Only apply static config if the address is link local. This is a
-    // workaround for b/230336493.
-    const auto link_local_mask =
-        IPAddress::CreateFromStringAndPrefix("fe80::", 10);
-    CHECK(link_local_mask.has_value());
-    const auto local = IPAddress::CreateFromString(ipv6_props.address);
-    if (!local.has_value()) {
-      LOG(ERROR) << "IPv6 address is not valid: " << ipv6_props.address;
-    } else if (link_local_mask->CanReachAddress(*local)) {
-      GetPrimaryNetwork()->set_ipv6_static_properties(
-          std::make_unique<IPConfig::Properties>(ipv6_props));
-    }
-    ipv6_configured = true;
-  }
 
-  if (bearer->ipv4_config_method() == CellularBearer::IPConfigMethod::kStatic) {
-    SLOG(2) << LoggingTag()
-            << ": Assign static IPv4 configuration from bearer.";
-    // Override the MTU with a given limit for a specific serving operator
-    // if the network doesn't report something lower.
-    static_ipv4_props = std::make_unique<IPConfig::Properties>(
-        *bearer->ipv4_config_properties());
-    if (mobile_operator_info_ &&
-        mobile_operator_info_->mtu() != IPConfig::kUndefinedMTU &&
-        (static_ipv4_props->mtu == IPConfig::kUndefinedMTU ||
-         mobile_operator_info_->mtu() < static_ipv4_props->mtu)) {
-      static_ipv4_props->mtu = mobile_operator_info_->mtu();
-    }
-    ipv4_configured = true;
-  } else if (bearer->ipv4_config_method() ==
-             CellularBearer::IPConfigMethod::kDHCP) {
-    if (capability_->IsModemL850()) {
-      LOG(WARNING) << LoggingTag()
-                   << ": DHCP configuration not supported on L850"
-                      " (Ignoring kDHCP).";
-    } else {
-      dhcp_opts = manager()->CreateDefaultDHCPOption();
-      dhcp_opts->use_arp_gateway = false;
-      dhcp_opts->use_rfc_8925 = false;
-      ipv4_configured = true;
-    }
-  }
-
-  if (!ipv6_configured && !ipv4_configured) {
-    LOG(WARNING) << LoggingTag()
-                 << ": No supported IP configuration found in bearer";
-    // TODO(b/282250501): Update Cellular interface IP configurations.
-    // Add disconnect here.
-  }
-  Network::StartOptions opts = {
-      .dhcp = dhcp_opts,
-      .accept_ra = true,
-      // TODO(b/234300343#comment43): Read probe URL override configuration
-      // from shill APN dB.
-      .probing_configuration =
-          manager()->GetPortalDetectorProbingConfiguration(),
-  };
+  SetPrimaryMultiplexedInterface(default_pdn_->network()->interface_name());
+  SetState(State::kLinked);
   SelectService(service_);
   SetServiceState(Service::kStateConfiguring);
-  GetPrimaryNetwork()->set_link_protocol_ipv4_properties(
-      std::move(static_ipv4_props));
-  GetPrimaryNetwork()->Start(opts);
+
+  default_pdn_->Start();
 }
 
-void Cellular::LinkDown(int data_interface_index) {
-  DCHECK(data_interface_index == interface_index());
-
+void Cellular::DefaultLinkDown() {
   if (state_ == State::kLinked) {
-    LOG(INFO) << LoggingTag() << ": Link is down, disconnecting.";
+    LOG(INFO) << LoggingTag() << ": Default link is down, disconnecting.";
     Disconnect(nullptr, "link is down.");
     return;
   }
 
   if (state_ == State::kConnected) {
-    LOG(INFO) << LoggingTag() << ": Link is down, bringing up.";
-    rtnl_handler()->SetInterfaceFlags(data_interface_index, IFF_UP, IFF_UP);
+    LOG(INFO) << LoggingTag() << ": Default link is down, bringing up.";
+    rtnl_handler()->SetInterfaceFlags(
+        default_pdn_->network()->interface_index(), IFF_UP, IFF_UP);
     return;
   }
 
-  SLOG(3) << LoggingTag() << ": Link is down.";
+  SLOG(3) << LoggingTag() << ": Default link is down.";
 }
 
-void Cellular::LinkDeleted(int data_interface_index) {
-  DCHECK(data_interface_index == interface_index());
-  LOG(INFO) << LoggingTag() << ": Link is deleted.";
+void Cellular::DefaultLinkDeleted() {
+  LOG(INFO) << LoggingTag() << ": Default link is deleted.";
   // This is an indication that the cellular device is gone from the system.
   DestroyAllServices();
 }
@@ -1673,25 +1621,25 @@ void Cellular::LinkMsgHandler(const RTNLMessage& msg) {
   DCHECK(msg.type() == RTNLMessage::kTypeLink);
 
   int data_interface_index = msg.interface_index();
-  if (data_interface_index != interface_index())
-    return;
 
-  if (msg.mode() == RTNLMessage::kModeDelete) {
-    LinkDeleted(data_interface_index);
-    return;
-  }
-
-  if (msg.mode() == RTNLMessage::kModeAdd) {
-    if (msg.link_status().flags & IFF_UP) {
-      LinkUp(data_interface_index);
+  // Actions on the default APN Network
+  if (default_pdn_ &&
+      data_interface_index == default_pdn_->network()->interface_index()) {
+    if (msg.mode() == RTNLMessage::kModeDelete) {
+      DefaultLinkDeleted();
+    } else if (msg.mode() == RTNLMessage::kModeAdd) {
+      if (msg.link_status().flags & IFF_UP) {
+        DefaultLinkUp();
+      } else {
+        DefaultLinkDown();
+      }
     } else {
-      LinkDown(data_interface_index);
+      LOG(WARNING) << LoggingTag()
+                   << ": Unexpected link message mode: " << msg.mode();
     }
-    return;
   }
 
-  LOG(WARNING) << LoggingTag()
-               << ": Unexpected link message mode: " << msg.mode();
+  // Events on other links
 }
 
 void Cellular::StopLinkListener() {
@@ -1888,7 +1836,7 @@ bool Cellular::DisconnectCleanup() {
   SetState(State::kRegistered);
   SetServiceFailureSilent(Service::kFailureNone);
   SetPrimaryMultiplexedInterface("");
-  GetPrimaryNetwork()->Stop();
+  default_pdn_ = std::nullopt;
   ResetCarrierEntitlement();
   return true;
 }
@@ -1970,18 +1918,20 @@ void Cellular::StartPPP(const std::string& serial_device) {
   // Detach any SelectedService from this device. It will be grafted onto
   // the PPPDevice after PPP is up (in Cellular::Notify).
   //
-  // This kills dhcpcd if it is running.
+  // This has two important effects: 1) kills dhcpcd if it is running.
+  // 2) stops Cellular::LinkEvent from driving changes to the
+  // SelectedService.
   if (selected_service()) {
     CHECK_EQ(service_.get(), selected_service().get());
     // Save and restore |service_| state, as DropConnection calls
     // SelectService, and SelectService will move selected_service()
     // to State::kIdle.
     Service::ConnectState original_state(service_->state());
-    Device::DropConnection();  // Don't redirect to PPPDevice.
+    DropConnectionDefault();  // Don't redirect to PPPDevice.
     service_->SetState(original_state);
   } else {
-    // Network shouldn't be connected without selected_service().
-    DCHECK(!GetPrimaryNetwork()->IsConnected());
+    // There should be no regular cellular network connected
+    DCHECK(!default_pdn_);
   }
 
   PPPDaemon::DeathCallback death_callback(
@@ -3160,6 +3110,144 @@ void Cellular::OnEntitlementCheckUpdated(CarrierEntitlement::Result result) {
       // TODO(b/273355097): Disconnect DUN and end hotspot session.
       break;
   }
+}
+
+void Cellular::SetDefaultPdnForTesting(const RpcIdentifier& dbus_path,
+                                       std::unique_ptr<Network> network) {
+  default_pdn_.emplace(this, dbus_path, std::move(network));
+}
+
+Cellular::NetworkInfo::NetworkInfo(Cellular* cellular,
+                                   const RpcIdentifier& bearer_path,
+                                   int interface_index,
+                                   const std::string& interface_name)
+    : cellular_(cellular), bearer_path_(bearer_path) {
+  network_ = std::make_unique<Network>(
+      interface_index, interface_name, Technology::kCellular, false,
+      cellular_->manager()->control_interface(),
+      cellular_->manager()->dispatcher(), cellular_->manager()->metrics());
+  network_->RegisterEventHandler(cellular_);
+}
+
+Cellular::NetworkInfo::NetworkInfo(Cellular* cellular,
+                                   const RpcIdentifier& bearer_path,
+                                   std::unique_ptr<Network> network)
+    : cellular_(cellular),
+      bearer_path_(bearer_path),
+      network_(std::move(network)) {}
+
+Cellular::NetworkInfo::~NetworkInfo() {
+  network_->Stop();
+}
+
+std::string Cellular::NetworkInfo::LoggingTag() {
+  return cellular_->LoggingTag() + " [" + network_->interface_name() + "]";
+}
+
+bool Cellular::NetworkInfo::Configure(const CellularBearer* bearer) {
+  if (!bearer) {
+    LOG(INFO) << LoggingTag()
+              << ": No active bearer detected: aborting network setup.";
+    return false;
+  }
+  if (bearer->dbus_path() != bearer_path_) {
+    LOG(INFO) << LoggingTag()
+              << ": Mismatched active bearer detected: aborting network setup.";
+    return false;
+  }
+
+  // Some modems use kMethodStatic and some use kMethodDHCP for IPv6 config
+  bool ipv6_configured = false;
+  bool ipv4_configured = false;
+  if (bearer->ipv6_config_method() !=
+      CellularBearer::IPConfigMethod::kUnknown) {
+    SLOG(2) << LoggingTag()
+            << ": Assign static IPv6 configuration from bearer.";
+    const auto& props = *bearer->ipv6_config_properties();
+    // Only apply static config if the address is link local. This is a
+    // workaround for b/230336493.
+    const auto link_local_mask =
+        IPAddress::CreateFromStringAndPrefix("fe80::", 10);
+    CHECK(link_local_mask.has_value());
+    const auto local = IPAddress::CreateFromString(props.address);
+    if (!local.has_value()) {
+      LOG(ERROR) << LoggingTag()
+                 << ": IPv6 address is not valid: " << props.address;
+    } else if (link_local_mask->CanReachAddress(*local)) {
+      ipv6_props_ = props;
+    }
+    ipv6_configured = true;
+  }
+
+  std::optional<DHCPProvider::Options> dhcp_opts;
+  if (bearer->ipv4_config_method() == CellularBearer::IPConfigMethod::kStatic) {
+    SLOG(2) << LoggingTag()
+            << ": Assign static IPv4 configuration from bearer.";
+    // Override the MTU with a given limit for a specific serving operator
+    // if the network doesn't report something lower.
+    ipv4_props_ = *bearer->ipv4_config_properties();
+    if (cellular_->mobile_operator_info_ &&
+        cellular_->mobile_operator_info_->mtu() != IPConfig::kUndefinedMTU &&
+        (ipv4_props_->mtu == IPConfig::kUndefinedMTU ||
+         cellular_->mobile_operator_info_->mtu() < ipv4_props_->mtu)) {
+      ipv4_props_->mtu = cellular_->mobile_operator_info_->mtu();
+    }
+    ipv4_configured = true;
+  } else if (bearer->ipv4_config_method() ==
+             CellularBearer::IPConfigMethod::kDHCP) {
+    if (cellular_->capability_->IsModemL850()) {
+      LOG(WARNING) << LoggingTag()
+                   << ": DHCP configuration not supported on L850"
+                      " (Ignoring kDHCP).";
+    } else {
+      SLOG(2) << LoggingTag() << ": Needs DHCP to acquire IPv4 configuration.";
+      dhcp_opts = cellular_->manager()->CreateDefaultDHCPOption();
+      dhcp_opts->use_arp_gateway = false;
+      dhcp_opts->use_rfc_8925 = false;
+      ipv4_configured = true;
+    }
+  }
+
+  if (!ipv6_configured && !ipv4_configured) {
+    LOG(WARNING) << LoggingTag()
+                 << ": No supported IP configuration found in bearer";
+    return false;
+  }
+
+  start_opts_.dhcp = dhcp_opts;
+  start_opts_.accept_ra = true;
+  // TODO(b/234300343#comment43): Read probe URL override configuration
+  // from shill APN dB.
+  start_opts_.probing_configuration =
+      cellular_->manager()->GetPortalDetectorProbingConfiguration();
+
+  return true;
+}
+
+void Cellular::NetworkInfo::Start() {
+  if (ipv6_props_) {
+    network_->set_ipv6_static_properties(
+        std::make_unique<IPConfig::Properties>(ipv6_props_.value()));
+  }
+  if (ipv4_props_) {
+    network_->set_link_protocol_ipv4_properties(
+        std::make_unique<IPConfig::Properties>(ipv4_props_.value()));
+  }
+  network_->Start(start_opts_);
+}
+
+void Cellular::NetworkInfo::DestroySockets() {
+  for (const auto& address : network_->GetAddresses()) {
+    SLOG(2) << LoggingTag() << ": Destroy all sockets of address: " << address;
+    cellular_->rtnl_handler()->RemoveInterfaceAddress(
+        network_->interface_index(), address);
+    if (!cellular_->socket_destroyer_->DestroySockets(IPPROTO_TCP, address))
+      SLOG(2) << LoggingTag() << ": no tcp sockets found for " << address;
+    // Chrome sometimes binds to UDP sockets, so lets destroy them.
+    if (!cellular_->socket_destroyer_->DestroySockets(IPPROTO_UDP, address))
+      SLOG(2) << LoggingTag() << ": no udp sockets found for " << address;
+  }
+  SLOG(2) << LoggingTag() << ": " << __func__ << " complete.";
 }
 
 }  // namespace shill

@@ -20,6 +20,7 @@
 
 #include "shill/cellular/apn_list.h"
 #include "shill/cellular/carrier_entitlement.h"
+#include "shill/cellular/cellular_bearer.h"
 #include "shill/cellular/dbus_objectmanager_proxy_interface.h"
 #include "shill/cellular/mobile_operator_info.h"
 #include "shill/device.h"
@@ -142,6 +143,8 @@ class Cellular : public Device,
   bool GetMultiplexSupport();
 
   // Inherited from Device.
+  void CreateImplicitNetwork(bool fixed_ip_params) override;
+  Network* GetPrimaryNetwork() const override;
   std::string GetStorageIdentifier() const override;
   bool Load(const StoreInterface* storage) override;
   bool Save(StoreInterface* storage) override;
@@ -392,11 +395,16 @@ class Cellular : public Device,
   void set_skip_establish_link_for_testing(bool on) {
     skip_establish_link_for_testing_ = on;
   }
+  void SetDefaultPdnForTesting(const RpcIdentifier& dbus_path,
+                               std::unique_ptr<Network> network);
+  Network* default_pdn_for_testing() {
+    return default_pdn_ ? default_pdn_->network() : nullptr;
+  }
 
   // Public to ease testing without real RTNL link events.
-  void LinkDeleted(int interface_index);
-  void LinkUp(int interface_index);
-  void LinkDown(int interface_index);
+  void DefaultLinkDeleted();
+  void DefaultLinkUp();
+  void DefaultLinkDown();
 
   // Delay before connecting to pending connect requests. This helps prevent
   // connect failures while the Modem is still starting up.
@@ -497,6 +505,7 @@ class Cellular : public Device,
   void DestroySockets();
 
   bool ShouldBringNetworkInterfaceDownAfterDisabled() const override;
+  void BringNetworkInterfaceDown() override;
 
   void SetDbusPath(const shill::RpcIdentifier& dbus_path);
   void SetState(State state);
@@ -535,6 +544,9 @@ class Cellular : public Device,
   // circular references between this device and the associated service,
   // allowing eventual device destruction.
   void DestroyAllServices();
+
+  // Drops connection but never through the |ppp_device_|, if there is any.
+  void DropConnectionDefault();
 
   // Compares 2 APN configurations ignoring fields that are not connection
   // properties. This is needed since we add tags to the APN Stringmap to track
@@ -639,6 +651,46 @@ class Cellular : public Device,
 
   State state_ = State::kDisabled;
   ModemState modem_state_ = kModemStateUnknown;
+
+  // Nested network info associated to a single PDN connection in the cellular
+  // device.
+  class NetworkInfo {
+   public:
+    explicit NetworkInfo(Cellular* cellular,
+                         const RpcIdentifier& bearer_path,
+                         int interface_index,
+                         const std::string& interface_name);
+    // Constructor for testing purposes only.
+    explicit NetworkInfo(Cellular* cellular,
+                         const RpcIdentifier& bearer_path,
+                         std::unique_ptr<Network> network);
+    NetworkInfo(const NetworkInfo&) = delete;
+    NetworkInfo& operator=(const NetworkInfo&) = delete;
+    virtual ~NetworkInfo();
+
+    Network* network() const { return network_.get(); }
+
+    bool Configure(const CellularBearer* bearer);
+    void Start();
+    void DestroySockets();
+
+   private:
+    std::string LoggingTag();
+
+    Cellular* cellular_;
+    RpcIdentifier bearer_path_;
+    std::unique_ptr<Network> network_;
+    // Start options and IP config properties only set after a successful
+    // Configure() operation.
+    Network::StartOptions start_opts_;
+    std::optional<IPConfig::Properties> ipv4_props_;
+    std::optional<IPConfig::Properties> ipv6_props_;
+  };
+
+  // Connection associated to the PDN with APN type "default". In Cellular
+  // devices this will always be treated as primary network (e.g. when
+  // returning a Network in GetPrimaryNetwork()).
+  std::optional<NetworkInfo> default_pdn_;
 
   struct LocationInfo {
     std::string mcc;

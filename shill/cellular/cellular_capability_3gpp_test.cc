@@ -44,6 +44,7 @@
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
 #include "shill/mock_profile.h"
+#include "shill/network/mock_network.h"
 #include "shill/store/fake_store.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
@@ -163,7 +164,6 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
     capability_ = static_cast<CellularCapability3gpp*>(
         cellular_->capability_for_testing());
     cellular_->SetServiceForTesting(service_);
-    cellular_->SetSelectedServiceForTesting(service_);
     cellular_service_provider_.Start();
     metrics_.RegisterDevice(cellular_->interface_index(),
                             Technology::kCellular);
@@ -410,6 +410,22 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
     *error = e.Get();
   }
 
+  void SetStateDisconnected(Cellular::State state) {
+    CHECK(state != Cellular::State::kLinked &&
+          state != Cellular::State::kConnected);
+    cellular_->set_state_for_testing(state);
+    cellular_->SetSelectedServiceForTesting(nullptr);
+  }
+
+  void SetStateConnected(Cellular::State state) {
+    CHECK(state == Cellular::State::kLinked ||
+          state == Cellular::State::kConnected);
+    auto network = std::make_unique<MockNetwork>(0, "", Technology::kCellular);
+    cellular_->SetDefaultPdnForTesting(RpcIdentifier(""), std::move(network));
+    cellular_->set_state_for_testing(state);
+    cellular_->SetSelectedServiceForTesting(service_);
+  }
+
   void InitProxies() { capability_->InitProxies(); }
 
   MOCK_METHOD(void, TestCallback, (const Error&));
@@ -645,7 +661,7 @@ TEST_F(CellularCapability3gppTest, StartModemInWrongState) {
       .WillOnce(Invoke(this, &CellularCapability3gppTest::InvokeEnable));
 
   Error error;
-  cellular_->set_state_for_testing(Cellular::State::kEnabled);
+  SetStateDisconnected(Cellular::State::kEnabled);
   StartModem(&error);
   EXPECT_TRUE(error.IsFailure());
 
@@ -2070,18 +2086,18 @@ TEST_F(CellularCapability3gppTest, UpdatePendingActivationState) {
       .WillRepeatedly(Return(PendingActivationStore::kStateUnknown));
 
   // Device is connected.
-  cellular_->set_state_for_testing(Cellular::State::kConnected);
+  SetStateConnected(Cellular::State::kConnected);
   capability_->UpdatePendingActivationState();
 
   // Device is linked.
-  cellular_->set_state_for_testing(Cellular::State::kLinked);
+  SetStateConnected(Cellular::State::kLinked);
   capability_->UpdatePendingActivationState();
 
   // Got valid MDN, subscription_state_ is SubscriptionState::kUnknown
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               RemoveEntry(PendingActivationStore::kIdentifierICCID, kIccid));
 
-  cellular_->set_state_for_testing(Cellular::State::kRegistered);
+  SetStateDisconnected(Cellular::State::kRegistered);
   cellular_->SetMdn("1020304");
   capability_->subscription_state_ = SubscriptionState::kUnknown;
   capability_->UpdatePendingActivationState();
@@ -2098,7 +2114,7 @@ TEST_F(CellularCapability3gppTest, UpdatePendingActivationState) {
   EXPECT_CALL(*modem_info_.mock_pending_activation_store(),
               RemoveEntry(PendingActivationStore::kIdentifierICCID, kIccid));
 
-  cellular_->set_state_for_testing(Cellular::State::kRegistered);
+  SetStateDisconnected(Cellular::State::kRegistered);
   cellular_->SetMdn("0000000");
   capability_->subscription_state_ = SubscriptionState::kProvisioned;
   capability_->UpdatePendingActivationState();
@@ -2457,6 +2473,7 @@ TEST_F(CellularCapability3gppTest, UnknownIccid) {
 
 TEST_F(CellularCapability3gppTest, UpdateLinkSpeed) {
   InitProxies();
+  SetStateConnected(Cellular::State::kLinked);
 
   constexpr char kPropertyUpLinkSpeed[] = "uplink-speed";
   constexpr char kPropertyDownLinkSpeed[] = "downlink-speed";
@@ -2474,7 +2491,7 @@ TEST_F(CellularCapability3gppTest, UpdateLinkSpeed) {
 
 TEST_F(CellularCapability3gppTest, UpdateLinkSpeedNoSelectedService) {
   InitProxies();
-  cellular_->SetSelectedServiceForTesting(nullptr);
+  SetStateDisconnected(Cellular::State::kRegistered);
 
   constexpr char kPropertyUpLinkSpeed[] = "uplink-speed";
   constexpr char kPropertyDownLinkSpeed[] = "downlink-speed";
