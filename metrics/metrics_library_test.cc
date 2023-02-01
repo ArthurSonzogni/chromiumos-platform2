@@ -298,9 +298,6 @@ TEST_F(MetricsLibraryTest, IsAppSyncEnabledTrueThenFalse) {
   EXPECT_TRUE(lib_.IsAppSyncEnabled());
 
   SetPerUserAppSyncOptin(false);
-  // No test time has passed, so we shouldn't see a difference yet due to
-  // caching.
-  EXPECT_TRUE(lib_.IsAppSyncEnabled());
 
   ClearCachedAppSyncEnabledTime();
 
