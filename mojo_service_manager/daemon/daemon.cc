@@ -19,7 +19,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <chromeos/constants/mojo_service_manager.h>
 #include <mojo/public/cpp/platform/platform_channel_endpoint.h>
 #include <mojo/public/cpp/system/invitation.h>
@@ -122,7 +122,7 @@ Daemon::Daemon(Delegate* delegate,
                const std::vector<base::FilePath>& policy_dir_paths,
                Configuration configuration)
     : ipc_support_(std::make_unique<mojo::core::ScopedIPCSupport>(
-          base::ThreadTaskRunnerHandle::Get(),
+          base::SingleThreadTaskRunner::GetCurrentDefault(),
           // Don't block shutdown. All mojo pipes are not expected to work after
           // the broker shutdown, so we don't need to wait them.
           mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST)),

@@ -10,7 +10,6 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>
-#include <base/threading/sequenced_task_runner_handle.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -58,7 +57,7 @@ TEST_F(RefCountedClosureListTest, BasicUsageTest) {
 
       {
         const auto closure_list = base::MakeRefCounted<RefCountedClosureList>(
-            base::SequencedTaskRunnerHandle::Get());
+            base::SequencedTaskRunner::GetCurrentDefault());
         closure_list->RegisterCompletionCallback(base::BindOnce(
             &test::TestCallbackAutoWaiter::Signal, base::Unretained(&waiter)));
         for (size_t t = 0; t < num_tasks; ++t) {

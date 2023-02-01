@@ -15,7 +15,7 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_util.h>
 #include <base/system/sys_info.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/key_value_store.h>
 #include <brillo/process/process.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
@@ -87,7 +87,8 @@ namespace cicerone {
 
 CrashListenerImpl::CrashListenerImpl(
     base::WeakPtr<vm_tools::cicerone::Service> service)
-    : service_(service), task_runner_(base::ThreadTaskRunnerHandle::Get()) {}
+    : service_(service),
+      task_runner_(base::SingleThreadTaskRunner::GetCurrentDefault()) {}
 
 grpc::Status CrashListenerImpl::CheckMetricsConsent(
     grpc::ServerContext* ctx,

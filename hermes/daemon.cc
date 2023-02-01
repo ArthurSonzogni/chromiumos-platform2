@@ -8,7 +8,7 @@
 #include <utility>
 
 #include <base/logging.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <chromeos/dbus/service_constants.h>
 #include <google-lpa/lpa/core/lpa.h>
 
@@ -25,7 +25,7 @@
 namespace hermes {
 Daemon::Daemon(const std::string& fw_path)
     : DBusServiceDaemon(kHermesServiceName),
-      executor_(base::ThreadTaskRunnerHandle::Get()),
+      executor_(base::SingleThreadTaskRunner::GetCurrentDefault()),
       smdp_(&logger_, &executor_),
       glib_bridge_(std::make_unique<glib_bridge::GlibBridge>()),
       fw_path_(fw_path) {

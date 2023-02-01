@@ -11,7 +11,7 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/task/bind_post_task.h>
-#include <base/threading/sequenced_task_runner_handle.h>
+#include <base/task/sequenced_task_runner.h>
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
 
 namespace attestation {
@@ -32,7 +32,7 @@ bool TpmUtilityCommon::Initialize() {
     tpm_manager_utility_ = tpm_manager::TpmManagerUtility::GetSingleton();
   }
   tpm_manager_utility_->AddOwnershipCallback(base::BindPostTask(
-      base::SequencedTaskRunnerHandle::Get(),
+      base::SequencedTaskRunner::GetCurrentDefault(),
       base::BindRepeating(&TpmUtilityCommon::OnOwnershipTakenSignal,
                           base::Unretained(this))));
   return tpm_manager_utility_;

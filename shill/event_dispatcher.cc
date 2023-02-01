@@ -7,7 +7,7 @@
 #include <utility>
 
 #include <base/run_loop.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 
 namespace shill {
@@ -34,8 +34,8 @@ void EventDispatcher::PostTask(const base::Location& location,
 void EventDispatcher::PostDelayedTask(const base::Location& location,
                                       base::OnceClosure task,
                                       base::TimeDelta delay) {
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(location,
-                                                       std::move(task), delay);
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+      location, std::move(task), delay);
 }
 
 void EventDispatcher::QuitDispatchForever() {

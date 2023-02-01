@@ -12,7 +12,7 @@
 #include <base/functional/bind.h>
 #include <base/location.h>
 #include <base/notreached.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/dbus/dbus_method_response.h>
 
 namespace hwsec_foundation {
@@ -38,7 +38,7 @@ class ThreadSafeDBusMethodResponse
             nullptr, base::BindOnce([](std::unique_ptr<dbus::Response>) {
               NOTREACHED();
             })),
-        origin_task_runner_(base::ThreadTaskRunnerHandle::Get()),
+        origin_task_runner_(base::SingleThreadTaskRunner::GetCurrentDefault()),
         origin_thread_id_(base::PlatformThread::CurrentId()),
         original_callback_(new BaseClass(std::move(original_callback))) {}
 

@@ -8,7 +8,7 @@
 
 #include <base/barrier_closure.h>
 #include <base/logging.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 
 namespace diagnostics {
 namespace wilco {
@@ -23,7 +23,7 @@ void GrpcClientManager::Start(
   for (const auto& uri : wilco_dtc_grpc_client_uris) {
     wilco_dtc_grpc_clients_.push_back(
         std::make_unique<brillo::AsyncGrpcClient<grpc_api::WilcoDtc>>(
-            base::ThreadTaskRunnerHandle::Get(), uri));
+            base::SingleThreadTaskRunner::GetCurrentDefault(), uri));
     VLOG(0) << "Created gRPC wilco_dtc client on " << uri;
   }
 
@@ -31,7 +31,7 @@ void GrpcClientManager::Start(
   // gRPC client that talks to the wilco_dtc daemon.
   wilco_dtc_grpc_clients_.push_back(
       std::make_unique<brillo::AsyncGrpcClient<grpc_api::WilcoDtc>>(
-          base::ThreadTaskRunnerHandle::Get(),
+          base::SingleThreadTaskRunner::GetCurrentDefault(),
           ui_message_receiver_wilco_dtc_grpc_uri));
   VLOG(0) << "Created gRPC wilco_dtc client on "
           << ui_message_receiver_wilco_dtc_grpc_uri;

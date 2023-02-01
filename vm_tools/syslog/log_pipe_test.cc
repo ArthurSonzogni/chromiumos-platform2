@@ -8,8 +8,8 @@
 #include <base/files/file_util.h>
 #include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/test/task_environment.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 #include <gtest/gtest.h>
@@ -120,7 +120,7 @@ TEST_F(LogPipeTest, ShutdownNoCrash) {
 
   base::RunLoop().RunUntilIdle();
 
-  base::ThreadTaskRunnerHandle::Get()->PostTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(
           [](std::unique_ptr<LogPipeManager> manager) { manager->OnSigterm(); },

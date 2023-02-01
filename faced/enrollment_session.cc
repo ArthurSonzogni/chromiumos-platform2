@@ -12,7 +12,7 @@
 #include <absl/status/status.h>
 #include <base/functional/bind.h>
 #include <base/location.h>
-#include <base/threading/sequenced_task_runner_handle.h>
+#include <base/task/sequenced_task_runner.h>
 
 #include "faced/common/face_status.h"
 #include "faced/util/task.h"

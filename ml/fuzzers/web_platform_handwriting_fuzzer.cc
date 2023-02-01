@@ -56,7 +56,7 @@ class WebPlatformHandwritingFuzzer {
 
   void SetUp(const std::string& language) {
     ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
-        base::ThreadTaskRunnerHandle::Get(),
+        base::SingleThreadTaskRunner::GetCurrentDefault(),
         mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
 
     Process::GetInstance()->SetTypeForTesting(

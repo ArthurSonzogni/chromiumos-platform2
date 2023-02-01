@@ -21,7 +21,7 @@
 #include <base/logging.h>
 #include <base/posix/safe_strerror.h>
 #include <base/synchronization/waitable_event.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 
 #include "vm_tools/common/spawn_util.h"
 
@@ -54,7 +54,7 @@ bool CreatePipe(base::ScopedFD* read_fd,
 }  // namespace
 
 AnsiblePlaybookApplication::AnsiblePlaybookApplication()
-    : task_runner_(base::ThreadTaskRunnerHandle::Get()),
+    : task_runner_(base::SingleThreadTaskRunner::GetCurrentDefault()),
       weak_ptr_factory_(this) {}
 
 void AnsiblePlaybookApplication::AddObserver(Observer* observer) {

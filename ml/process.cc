@@ -263,7 +263,7 @@ void Process::WorkerProcessRun() {
   DETACH_FROM_SEQUENCE(sequence_checker_);
   mojo::core::Init();
   mojo::core::ScopedIPCSupport ipc_support(
-      base::ThreadTaskRunnerHandle::Get(),
+      base::SingleThreadTaskRunner::GetCurrentDefault(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
   mojo::IncomingInvitation invitation;
   {
@@ -382,7 +382,7 @@ void Process::ReapWorkerProcess(pid_t child_pid,
     DCHECK(times_tried < sizeof(kWaitPidRetrialDelayTimesMilliseconds) /
                              sizeof(kWaitPidRetrialDelayTimesMilliseconds[0]));
     // Try to reap the process again after some time.
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&Process::ReapWorkerProcess, base::Unretained(this),
                        child_pid, times_tried + 1, begin_time),

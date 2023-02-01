@@ -18,10 +18,10 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/memory/weak_ptr.h>
 #include <base/task/bind_post_task.h>
+#include <base/task/sequenced_task_runner.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/task/task_runner.h>
-#include <base/threading/sequenced_task_runner_handle.h>
 #include <base/threading/thread.h>
-#include <base/threading/thread_task_runner_handle.h>
 
 #include "libhwsec/backend/backend.h"
 #include "libhwsec/error/tpm_retry_handler.h"
@@ -385,8 +385,8 @@ class Middleware {
   }
 
   static scoped_refptr<base::TaskRunner> GetReplyRunner() {
-    CHECK(base::SequencedTaskRunnerHandle::IsSet());
-    return base::SequencedTaskRunnerHandle::Get();
+    CHECK(base::SequencedTaskRunner::HasCurrentDefault());
+    return base::SequencedTaskRunner::GetCurrentDefault();
   }
 
   MiddlewareDerivative middleware_derivative_;

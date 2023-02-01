@@ -15,7 +15,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/http/http_connection_curl.h>
 #include <brillo/http/http_request.h>
 #include <brillo/strings/string_utils.h>
@@ -255,7 +255,8 @@ std::shared_ptr<http::Connection> Transport::CreateConnection(
 
 void Transport::RunCallbackAsync(const base::Location& from_here,
                                  base::OnceClosure callback) {
-  base::ThreadTaskRunnerHandle::Get()->PostTask(from_here, std::move(callback));
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+      from_here, std::move(callback));
 }
 
 RequestID Transport::StartAsyncTransfer(http::Connection* connection,
@@ -444,7 +445,8 @@ int Transport::MultiSocketCallback(
     poll_data->StopWatcher();
     // This method can be called indirectly from SocketPollData::OnSocketReady,
     // so delay destruction of SocketPollData object till the next loop cycle.
-    base::ThreadTaskRunnerHandle::Get()->DeleteSoon(FROM_HERE, poll_data);
+    base::SingleThreadTaskRunner::GetCurrentDefault()->DeleteSoon(FROM_HERE,
+                                                                  poll_data);
     return 0;
   }
 
@@ -468,7 +470,7 @@ int Transport::MultiTimerCallback(CURLM* /* multi */,
   // Cancel any previous timer callbacks.
   transport->weak_ptr_factory_for_timer_.InvalidateWeakPtrs();
   if (timeout_ms >= 0) {
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&Transport::OnTimer,
                        transport->weak_ptr_factory_for_timer_.GetWeakPtr()),

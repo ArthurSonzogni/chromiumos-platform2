@@ -8,7 +8,7 @@
 #include <string>
 #include <utility>
 
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos-config/libcros_config/cros_config_interface.h>
 #include <dbus/bus.h>
@@ -103,7 +103,7 @@ void DBusAdaptor::GetRgbKeyboardCapabilities(
   // of the daemon.
   if (daemon_ &&
       capabilities == static_cast<uint32_t>(RgbKeyboardCapabilities::kNone)) {
-    base::SequencedTaskRunnerHandle::Get()->PostTask(
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
         base::BindOnce(&RgbkbdDaemon::Quit, base::Unretained(daemon_)));
   }

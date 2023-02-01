@@ -10,7 +10,7 @@
 #include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 
 namespace imageburn {
 
@@ -50,7 +50,7 @@ bool ImageBurnService::BurnImage(brillo::ErrorPtr* error,
 
   burning_ = true;
   amount_burnt_for_next_signal_ = 0;
-  base::ThreadTaskRunnerHandle::Get()->PostTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(&ImageBurnService::BurnImageInternal,
                                 base::Unretained(this), from_path, to_path));
 

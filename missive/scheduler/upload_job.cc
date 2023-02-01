@@ -19,7 +19,6 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
-#include <base/threading/sequenced_task_runner_handle.h>
 
 #include "missive/dbus/upload_client.h"
 #include "missive/proto/record.pb.h"

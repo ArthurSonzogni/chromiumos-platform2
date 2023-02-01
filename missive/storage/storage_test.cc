@@ -807,7 +807,8 @@ class StorageTest
                                                std::move(processed_cb)));
                },
                std::move(sequence_information), std::move(processed_cb),
-               base::SequencedTaskRunnerHandle::Get(), base::Unretained(this))))
+               base::SequencedTaskRunner::GetCurrentDefault(),
+               base::Unretained(this))))
           ->Start();
     }
 
@@ -1138,7 +1139,7 @@ class StorageTest
 
   // Sequenced task runner where all EXPECTs will happen - main thread.
   const scoped_refptr<base::SequencedTaskRunner> main_task_runner_{
-      base::SequencedTaskRunnerHandle::Get()};
+      base::SequencedTaskRunner::GetCurrentDefault()};
 
   base::test::ScopedFeatureList scoped_feature_list_;
 

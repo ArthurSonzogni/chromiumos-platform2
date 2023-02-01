@@ -9,7 +9,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/logging.h>
-#include <base/threading/sequenced_task_runner_handle.h>
+#include <base/task/sequenced_task_runner.h>
 
 namespace glib_bridge {
 
@@ -36,7 +36,7 @@ GlibBridge::GlibBridge()
       weak_ptr_factory_(this) {
   CHECK(glib_context_);
   g_main_context_push_thread_default(glib_context_);
-  base::SequencedTaskRunnerHandle::Get()->PostTask(
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(&GlibBridge::PrepareIteration,
                                 weak_ptr_factory_.GetWeakPtr()));
 }
@@ -62,7 +62,7 @@ void GlibBridge::PrepareIteration() {
                        num_fds);
   if (immediate || (num_fds == 0 && timeout_ms == 0)) {
     DVLOG(1) << "Iteration can be dispatched immediately";
-    base::SequencedTaskRunnerHandle::Get()->PostTask(
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
         base::BindOnce(&GlibBridge::Dispatch, weak_ptr_factory_.GetWeakPtr()));
     state_ = State::kReadyForDispatch;
@@ -110,7 +110,7 @@ void GlibBridge::PrepareIteration() {
   base::TimeDelta timeout = base::Milliseconds(timeout_ms);
   timeout_closure_.Reset(
       base::BindOnce(&GlibBridge::Timeout, weak_ptr_factory_.GetWeakPtr()));
-  base::SequencedTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE, timeout_closure_.callback(), timeout);
 }
 
@@ -130,7 +130,7 @@ void GlibBridge::OnEvent(int fd, int flag) {
   if (state_ == State::kReadyForDispatch)
     return;
 
-  base::SequencedTaskRunnerHandle::Get()->PostTask(
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(&GlibBridge::Dispatch, weak_ptr_factory_.GetWeakPtr()));
   state_ = State::kReadyForDispatch;
@@ -138,7 +138,7 @@ void GlibBridge::OnEvent(int fd, int flag) {
 
 void GlibBridge::Timeout() {
   CHECK_EQ(state_, State::kWaitingForEvents);
-  base::SequencedTaskRunnerHandle::Get()->PostTask(
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(&GlibBridge::Dispatch, weak_ptr_factory_.GetWeakPtr()));
   state_ = State::kReadyForDispatch;
@@ -158,7 +158,7 @@ void GlibBridge::Dispatch() {
   poll_fds_.clear();
   fd_map_.clear();
   max_priority_ = -1;
-  base::SequencedTaskRunnerHandle::Get()->PostTask(
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(&GlibBridge::PrepareIteration,
                                 weak_ptr_factory_.GetWeakPtr()));
   state_ = State::kPreparingIteration;

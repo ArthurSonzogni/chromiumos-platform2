@@ -13,8 +13,8 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/memory/ref_counted.h>
 #include <base/task/single_thread_task_executor.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/threading/thread.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
 #include <dbus/mock_object_proxy.h>

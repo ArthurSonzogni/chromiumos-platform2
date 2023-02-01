@@ -8,7 +8,7 @@
 
 #include <base/files/file_path.h>
 #include <base/strings/stringprintf.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/errors/error.h>
 #include <brillo/errors/error_codes.h>
 #include <brillo/strings/string_utils.h>
@@ -268,7 +268,7 @@ void Lvmd::OnShutdown(int* return_code) {
 void Lvmd::PostponeShutdown() {
   shutdown_callback_.Reset(
       base::BindRepeating(&brillo::Daemon::Quit, weak_factory_.GetWeakPtr()));
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE, shutdown_callback_.callback(), kShutdownTimeout);
 }
 

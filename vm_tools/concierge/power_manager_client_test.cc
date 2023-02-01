@@ -12,8 +12,8 @@
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/test/task_environment.h>
-#include <base/threading/sequenced_task_runner_handle.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
@@ -68,7 +68,8 @@ class PowerManagerClientTest : public ::testing::Test {
         .WillOnce(Return(power_manager_proxy_.get()));
 
     EXPECT_CALL(*mock_bus_, GetDBusTaskRunner())
-        .WillRepeatedly(Return(base::SequencedTaskRunnerHandle::Get().get()));
+        .WillRepeatedly(
+            Return(base::SequencedTaskRunner::GetCurrentDefault().get()));
   }
 
  protected:

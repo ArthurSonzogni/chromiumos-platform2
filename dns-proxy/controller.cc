@@ -18,7 +18,7 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/process/launch.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <chromeos/scoped_minijail.h>
 #include <chromeos/patchpanel/message_dispatcher.h>
@@ -63,7 +63,7 @@ int Controller::OnInit() {
   process_reaper_.Register(this);
 
   /// Run after Daemon::OnInit()
-  base::ThreadTaskRunnerHandle::Get()->PostTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(&Controller::Setup, weak_factory_.GetWeakPtr()));
   return DBusDaemon::OnInit();
@@ -189,7 +189,7 @@ void Controller::OnShillReset(bool reset) {
 
 void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
   if (!feature_enabled_.has_value()) {
-    base::ThreadTaskRunnerHandle::Get()->PostTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(&Controller::RunProxy,
                                   weak_factory_.GetWeakPtr(), type, ifname));
     return;
@@ -225,7 +225,7 @@ void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
     int control[2];
     if (socketpair(AF_UNIX, SOCK_SEQPACKET, 0, control) != 0) {
       PLOG(ERROR) << "Failed to start system proxy. socketpair failed";
-      base::ThreadTaskRunnerHandle::Get()->PostTask(
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
           FROM_HERE, base::BindOnce(&Controller::RunProxy,
                                     weak_factory_.GetWeakPtr(), type, ifname));
       return;
@@ -396,7 +396,7 @@ bool Controller::RestartProxy(const ProxyProc& proc) {
     return false;
   }
 
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&Controller::RunProxy, weak_factory_.GetWeakPtr(),
                      proc.opts.type, proc.opts.ifname),

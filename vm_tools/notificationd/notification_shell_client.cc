@@ -18,7 +18,7 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <linux/virtwl.h>
 #include <wayland-client.h>
 #include <wayland-util.h>
@@ -109,8 +109,8 @@ void NotificationShellClient::OnEventReadable() {
   if (wl_event_loop_dispatch(event_loop_.get(), 0) < 0) {
     PLOG(ERROR) << "Failed to dispatch event loop for wayland";
     if (quit_closure_) {
-      base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
-                                                    std::move(quit_closure_));
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+          FROM_HERE, std::move(quit_closure_));
     }
   }
 }
@@ -306,16 +306,16 @@ int NotificationShellClient::HandleEvent(uint32_t mask) {
   if (mask & WL_EVENT_HANGUP) {
     LOG(ERROR) << "Wayland connection hung up";
     if (quit_closure_) {
-      base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
-                                                    std::move(quit_closure_));
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+          FROM_HERE, std::move(quit_closure_));
     }
     return -1;
   }
   if (mask & WL_EVENT_ERROR) {
     LOG(ERROR) << "Wayland connection error occurred";
     if (quit_closure_) {
-      base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
-                                                    std::move(quit_closure_));
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+          FROM_HERE, std::move(quit_closure_));
     }
     return -1;
   }
@@ -349,8 +349,8 @@ void NotificationShellClient::HandleVirtwlCtxEvent() {
   if (ioctl(virtwl_ctx_fd_.get(), VIRTWL_IOCTL_RECV, ioctl_recv)) {
     LOG(ERROR) << "Failed to receive data from virtwl context";
     if (quit_closure_) {
-      base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
-                                                    std::move(quit_closure_));
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+          FROM_HERE, std::move(quit_closure_));
     }
   }
 

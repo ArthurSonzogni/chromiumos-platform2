@@ -124,7 +124,7 @@ int TestToolMain(int argc, char* argv[]) {
   mojo::core::Init();
   brillo::Daemon daemon;
   mojo::core::ScopedIPCSupport ipc_support(
-      base::ThreadTaskRunnerHandle::Get(),
+      base::SingleThreadTaskRunner::GetCurrentDefault(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::
           CLEAN /* blocking shutdown */);
   mojo::Remote<mojom::ServiceManager> service_manager{

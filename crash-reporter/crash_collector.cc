@@ -39,7 +39,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/key_value_store.h>
 #include <brillo/process/process.h>
 #include <brillo/syslog_logging.h>

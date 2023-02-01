@@ -469,7 +469,7 @@ void Executor::MonitorAudioJack(
   auto controller =
       std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
 
-  base::SequencedTaskRunnerHandle::Get()->PostTask(
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(&Executor::RunLongRunningDelegate,
                      weak_factory_.GetWeakPtr(), std::move(controller),
@@ -490,7 +490,7 @@ void Executor::MonitorTouchpad(
   auto controller =
       std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
 
-  base::SequencedTaskRunnerHandle::Get()->PostTask(
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(&Executor::RunLongRunningDelegate,
                      weak_factory_.GetWeakPtr(), std::move(controller),
@@ -555,7 +555,7 @@ void Executor::MonitorTouchscreen(
   auto controller =
       std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
 
-  base::SequencedTaskRunnerHandle::Get()->PostTask(
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(&Executor::RunLongRunningDelegate,
                      weak_factory_.GetWeakPtr(), std::move(controller),
@@ -576,7 +576,7 @@ void Executor::MonitorStylusGarage(
   auto controller =
       std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
 
-  base::SequencedTaskRunnerHandle::Get()->PostTask(
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(&Executor::RunLongRunningDelegate,
                      weak_factory_.GetWeakPtr(), std::move(controller),
@@ -597,7 +597,7 @@ void Executor::MonitorStylus(
   auto controller =
       std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
 
-  base::SequencedTaskRunnerHandle::Get()->PostTask(
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(&Executor::RunLongRunningDelegate,
                      weak_factory_.GetWeakPtr(), std::move(controller),

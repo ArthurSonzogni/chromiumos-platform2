@@ -23,13 +23,13 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/task/single_thread_task_executor.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/task/thread_pool.h>
 #include <base/test/bind.h>
 #include <base/test/simple_test_clock.h>
 #include <base/test/task_environment.h>
 #include <base/threading/platform_thread.h>
 #include <base/threading/simple_thread.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <brillo/syslog_logging.h>
 #include <dbus/object_path.h>
@@ -2454,21 +2454,21 @@ void CrashCollectorTest::TestFinishCrashInCrashLoopMode(
         EXPECT_TRUE(meta_file.IsValid());
         EXPECT_GT(meta_file.GetLength(), 0);
 
-        ASSERT_TRUE(base::ThreadTaskRunnerHandle::IsSet());
+        ASSERT_TRUE(base::SingleThreadTaskRunner::HasCurrentDefault());
         // Serial would normally be set by the transmission code before we tried
         // to make a reply from it. Since we are bypassing the transmission
         // code, we must set the serial number here.
         method_call->SetSerial(1);
         if (give_success_response) {
           empty_response = dbus::Response::FromMethodCall(method_call);
-          base::ThreadTaskRunnerHandle::Get()->PostTask(
+          base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
               FROM_HERE,
               base::BindOnce(std::move(*callback), empty_response.get()));
         } else {
           empty_error_response = dbus::ErrorResponse::FromMethodCall(
               method_call, "org.freedesktop.DBus.Error.Failed",
               "Things didn't work");
-          base::ThreadTaskRunnerHandle::Get()->PostTask(
+          base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
               FROM_HERE, base::BindOnce(std::move(*error_callback),
                                         empty_error_response.get()));
         }

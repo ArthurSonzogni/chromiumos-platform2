@@ -10,7 +10,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 
 namespace dns_proxy {
 namespace {
@@ -196,10 +196,12 @@ void DoHCurlClient::TimeoutCallback() {
   CheckMultiInfo();
 }
 
-int DoHCurlClient::TimerCallback(CURLM* multi, long timeout_ms, void* userp) {
+int DoHCurlClient::TimerCallback(CURLM* multi,
+                                 int64_t timeout_ms,
+                                 void* userp) {
   DoHCurlClient* client = static_cast<DoHCurlClient*>(userp);
   if (timeout_ms > 0) {
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindRepeating(&DoHCurlClient::TimeoutCallback,
                             client->GetWeakPtr()),
@@ -207,7 +209,7 @@ int DoHCurlClient::TimerCallback(CURLM* multi, long timeout_ms, void* userp) {
   } else if (timeout_ms == 0) {
     // Libcurl explicitly disallow calling its API directly from it's callback.
     // Post the call such that is run outside the callback.
-    base::ThreadTaskRunnerHandle::Get()->PostTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindRepeating(&DoHCurlClient::TimeoutCallback,
                                        client->GetWeakPtr()));
   }

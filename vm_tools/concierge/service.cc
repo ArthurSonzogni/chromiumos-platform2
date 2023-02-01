@@ -66,7 +66,6 @@
 #include <base/synchronization/waitable_event.h>
 #include <base/system/sys_info.h>
 #include <base/task/single_thread_task_runner.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <base/version.h>
 #include <blkid/blkid.h>
@@ -1825,8 +1824,8 @@ void Service::HandleSigterm() {
 
   StopAllVmsImpl(SERVICE_SHUTDOWN);
   if (!quit_closure_.is_null()) {
-    base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
-                                                  std::move(quit_closure_));
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, std::move(quit_closure_));
   }
 }
 
@@ -3289,7 +3288,7 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
     if (op->status() == DISK_STATUS_IN_PROGRESS) {
       std::string uuid = op->uuid();
       disk_image_ops_.emplace_back(DiskOpInfo(std::move(op)));
-      base::ThreadTaskRunnerHandle::Get()->PostTask(
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
           FROM_HERE,
           base::BindOnce(&Service::RunDiskImageOperation,
                          weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
@@ -3611,7 +3610,7 @@ std::unique_ptr<dbus::Response> Service::ResizeDiskImage(
   if (op->status() == DISK_STATUS_IN_PROGRESS) {
     std::string uuid = op->uuid();
     disk_image_ops_.emplace_back(DiskOpInfo(std::move(op)));
-    base::ThreadTaskRunnerHandle::Get()->PostTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
         base::BindOnce(&Service::RunDiskImageOperation,
                        weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
@@ -3812,7 +3811,7 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
   if (op->status() == DISK_STATUS_IN_PROGRESS) {
     std::string uuid = op->uuid();
     disk_image_ops_.emplace_back(DiskOpInfo(std::move(op)));
-    base::ThreadTaskRunnerHandle::Get()->PostTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
         base::BindOnce(&Service::RunDiskImageOperation,
                        weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
@@ -3895,7 +3894,7 @@ std::unique_ptr<dbus::Response> Service::ImportDiskImage(
   if (op->status() == DISK_STATUS_IN_PROGRESS) {
     std::string uuid = op->uuid();
     disk_image_ops_.emplace_back(DiskOpInfo(std::move(op)));
-    base::ThreadTaskRunnerHandle::Get()->PostTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
         base::BindOnce(&Service::RunDiskImageOperation,
                        weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
@@ -3943,7 +3942,7 @@ void Service::RunDiskImageOperation(std::string uuid) {
 
   if (op->status() == DISK_STATUS_IN_PROGRESS) {
     // Reschedule ourselves so we can execute next chunk of work.
-    base::ThreadTaskRunnerHandle::Get()->PostTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
         base::BindOnce(&Service::RunDiskImageOperation,
                        weak_ptr_factory_.GetWeakPtr(), std::move(uuid)));
@@ -5451,7 +5450,7 @@ void Service::RemoveStorageBalloonVm(VmId vm_id) {
 void Service::OnStatefulDiskSpaceUpdate(
     const spaced::StatefulDiskSpaceUpdate& update) {
   for (auto& vm_id : storage_balloon_vms_) {
-    base::ThreadTaskRunnerHandle::Get()->PostTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
         base::BindOnce(&Service::HandleStatefulDiskSpaceUpdate,
                        weak_ptr_factory_.GetWeakPtr(), vm_id, update));
@@ -5478,7 +5477,7 @@ void Service::OnSiblingVmDead(VmId vm_id) {
   // This function is called from a `TerminaVm` instance. If we don't post
   // `StopVm` as a task, we will destroy it while we're being called from it.
   // This is complicated and we rather do it as a separate task.
-  base::ThreadTaskRunnerHandle::Get()->PostTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(&Service::StopVmInternalAsTask,
                                 weak_ptr_factory_.GetWeakPtr(), vm_id,
                                 VmStopReason::SIBLING_VM_EXITED));

@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-#include <base/threading/sequenced_task_runner_handle.h>
+#include <base/task/sequenced_task_runner.h>
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/system/message_pipe.h>
@@ -59,7 +59,7 @@ void DelegateProcess::Init() {
 }
 
 void DelegateProcess::StartAsync() {
-  base::SequencedTaskRunnerHandle::Get()->PostTask(
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(&DelegateProcess::StartAndIgnoreResult,
                                 weak_factory_.GetWeakPtr()));
 }

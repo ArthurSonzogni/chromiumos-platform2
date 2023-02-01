@@ -12,7 +12,7 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/run_loop.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 
 #include "diagnostics/constants/grpc_constants.h"
 #include "diagnostics/dpsl/internal/callback_utils.h"
@@ -38,7 +38,7 @@ std::string DpslRequesterImpl::GetWilcoDtcSupportdGrpcUri(
 
 DpslRequesterImpl::DpslRequesterImpl(
     const std::string& wilco_dtc_supportd_grpc_uri)
-    : task_runner_(base::ThreadTaskRunnerHandle::Get()),
+    : task_runner_(base::SingleThreadTaskRunner::GetCurrentDefault()),
       async_grpc_client_(task_runner_, wilco_dtc_supportd_grpc_uri) {
   DCHECK(task_runner_);
 }

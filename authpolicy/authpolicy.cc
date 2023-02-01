@@ -14,7 +14,7 @@
 #include <base/notreached.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <dbus/authpolicy/dbus-constants.h>
 #include <login_manager/proto_bindings/policy_descriptor.pb.h>
 
@@ -185,7 +185,7 @@ void AuthPolicy::RegisterAsync(
   // Make sure the task runner used in some places is actually the D-Bus task
   // runner. This guarantees that tasks scheduled on the task runner won't
   // interfere with D-Bus calls.
-  CHECK_EQ(base::ThreadTaskRunnerHandle::Get(),
+  CHECK_EQ(base::SingleThreadTaskRunner::GetCurrentDefault(),
            dbus_object_->GetBus()->GetDBusTaskRunner());
   RegisterWithDBusObject(dbus_object_.get());
   dbus_object_->RegisterAsync(std::move(completion_callback));

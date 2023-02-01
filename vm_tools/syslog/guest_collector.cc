@@ -32,7 +32,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <chromeos/scoped_minijail.h>
 #include <grpcpp/grpcpp.h>
@@ -125,8 +125,8 @@ void GuestCollector::OnSignalReadable() {
   }
   DCHECK_EQ(info.ssi_signo, SIGTERM);
 
-  base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
-                                                std::move(shutdown_closure_));
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, std::move(shutdown_closure_));
 }
 
 bool GuestCollector::SendUserLogs() {

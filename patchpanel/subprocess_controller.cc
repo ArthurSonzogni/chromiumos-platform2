@@ -14,7 +14,7 @@
 #include <base/check_op.h>
 #include <base/logging.h>
 #include <base/process/launch.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/syslog_logging.h>
 #include <shill/net/process_manager.h>
 
@@ -94,7 +94,7 @@ void SubprocessController::OnProcessExitedUnexpectedly(int exit_status) {
   }
 
   // Restart the subprocess with exponential backoff delay.
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&SubprocessController::Start, weak_factory_.GetWeakPtr()),
       delay);

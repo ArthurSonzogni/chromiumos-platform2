@@ -21,8 +21,8 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/threading/thread.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <brillo/data_encoding.h>
 #include <brillo/http/http_transport.h>
 #include <chromeos/patchpanel/socket.h>
@@ -248,8 +248,8 @@ void ServerProxy::HandleStdinReadable() {
 }
 
 bool ServerProxy::HandleSignal(const struct signalfd_siginfo& siginfo) {
-  base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
-                                                std::move(quit_closure_));
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, std::move(quit_closure_));
   return true;
 }
 

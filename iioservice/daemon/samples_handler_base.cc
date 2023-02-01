@@ -6,7 +6,7 @@
 
 #include <utility>
 
-#include <base/threading/sequenced_task_runner_handle.h>
+#include <base/task/sequenced_task_runner.h>
 #include <libmems/common_types.h>
 
 #include "iioservice/daemon/sensor_metrics.h"
@@ -25,7 +25,7 @@ constexpr char kNoBatchChannels[][10] = {"timestamp", "count"};
 
 SamplesHandlerBase::SampleData::SampleData(ClientData* client_data)
     : client_data_(client_data) {
-  task_runner_ = base::SequencedTaskRunnerHandle::Get();
+  task_runner_ = base::SequencedTaskRunner::GetCurrentDefault();
 }
 
 SamplesHandlerBase::SampleData::~SampleData() = default;

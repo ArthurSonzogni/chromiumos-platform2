@@ -5,7 +5,7 @@
 #include <iostream>
 
 #include <base/at_exit.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/flag_helper.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <mojo/core/embedder/embedder.h>
@@ -18,7 +18,7 @@ void StartMojo() {
   (new brillo::BaseMessageLoop())->SetAsCurrent();
   mojo::core::Init();
   mojo::core::ScopedIPCSupport _(
-      base::ThreadTaskRunnerHandle::Get(),
+      base::SingleThreadTaskRunner::GetCurrentDefault(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
 }
 

@@ -14,7 +14,7 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/logging.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/unguessable_token.h>
 #include <dbus/object_path.h>
 #include <chromeos/dbus/service_constants.h>
@@ -42,7 +42,8 @@ int OcrDaemon::OnInit() {
   // Initialize Mojo IPC.
   mojo::core::Init();
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
-      base::ThreadTaskRunnerHandle::Get() /* io_thread_task_runner */,
+      base::SingleThreadTaskRunner::
+          GetCurrentDefault() /* io_thread_task_runner */,
       mojo::core::ScopedIPCSupport::ShutdownPolicy::
           CLEAN /* blocking shutdown */);
 

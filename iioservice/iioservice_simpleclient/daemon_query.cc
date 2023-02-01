@@ -22,10 +22,11 @@ DaemonQuery::DaemonQuery(cros::mojom::DeviceType device_type,
 DaemonQuery::~DaemonQuery() = default;
 
 void DaemonQuery::SetSensorClient() {
-  sensor_client_ = QueryImpl::Create(
-      base::ThreadTaskRunnerHandle::Get(), device_type_, attributes_,
-      base::BindOnce(&DaemonQuery::OnMojoDisconnect,
-                     weak_ptr_factory_.GetWeakPtr()));
+  sensor_client_ =
+      QueryImpl::Create(base::SingleThreadTaskRunner::GetCurrentDefault(),
+                        device_type_, attributes_,
+                        base::BindOnce(&DaemonQuery::OnMojoDisconnect,
+                                       weak_ptr_factory_.GetWeakPtr()));
 }
 
 }  // namespace iioservice

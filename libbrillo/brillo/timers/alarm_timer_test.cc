@@ -17,7 +17,6 @@
 #include <base/task/single_thread_task_executor.h>
 #include <base/task/single_thread_task_runner.h>
 #include <base/threading/platform_thread.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <testing/gtest/include/gtest/gtest.h>
 
@@ -128,7 +127,7 @@ TEST(AlarmTimerTest, SimpleAlarmTimer_Cancel) {
       new AlarmTimerTester(&did_run_a, kTenMilliseconds, base::OnceClosure());
 
   // This should run before the timer expires.
-  base::ThreadTaskRunnerHandle::Get()->DeleteSoon(FROM_HERE, a);
+  base::SingleThreadTaskRunner::GetCurrentDefault()->DeleteSoon(FROM_HERE, a);
 
   // Now start the timer.
   a->Start();
@@ -186,7 +185,7 @@ TEST(AlarmTimerTest, AlarmTimerZeroDelay_Cancel) {
       new AlarmTimerTester(&did_run_a, base::TimeDelta(), base::OnceClosure());
 
   // This should run before the timer expires.
-  base::ThreadTaskRunnerHandle::Get()->DeleteSoon(FROM_HERE, a);
+  base::SingleThreadTaskRunner::GetCurrentDefault()->DeleteSoon(FROM_HERE, a);
 
   // Now start the timer.
   a->Start();

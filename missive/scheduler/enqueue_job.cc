@@ -11,9 +11,9 @@
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/task/bind_post_task.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
-#include <base/threading/sequenced_task_runner_handle.h>
 
 #include "missive/proto/interface.pb.h"
 #include "missive/scheduler/scheduler.h"
@@ -25,7 +25,7 @@ namespace reporting {
 EnqueueJob::EnqueueResponseDelegate::EnqueueResponseDelegate(
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<EnqueueRecordResponse>> response)
-    : task_runner_(base::SequencedTaskRunnerHandle::Get()),
+    : task_runner_(base::SequencedTaskRunner::GetCurrentDefault()),
       response_(std::move(response)) {
   DCHECK(task_runner_);
   DCHECK(response_);

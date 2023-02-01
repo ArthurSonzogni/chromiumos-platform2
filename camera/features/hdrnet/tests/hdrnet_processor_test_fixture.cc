@@ -14,7 +14,7 @@
 #include <base/json/json_reader.h>
 #include <base/location.h>
 #include <base/strings/stringprintf.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <camera/camera_metadata.h>
 #include <drm_fourcc.h>
@@ -252,7 +252,7 @@ void HdrNetProcessorTestFixture::InitializeOnGpuThread(
     device_adapter = std::make_unique<HdrNetProcessorDeviceAdapter>();
   } else {
     device_adapter = HdrNetProcessorDeviceAdapter::CreateInstance(
-        locked_info, base::ThreadTaskRunnerHandle::Get());
+        locked_info, base::SingleThreadTaskRunner::GetCurrentDefault());
   }
   processor_ = std::make_unique<HdrNetProcessorImpl>(
       locked_info, gpu_resources_.gpu_task_runner(), std::move(device_adapter));

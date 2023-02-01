@@ -811,7 +811,7 @@ class StorageQueueTest
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   // Sequenced task runner where all EXPECTs will happen.
   const scoped_refptr<base::SequencedTaskRunner> main_task_runner_{
-      base::SequencedTaskRunnerHandle::Get()};
+      base::SequencedTaskRunner::GetCurrentDefault()};
 
   analytics::Metrics::TestEnvironment metrics_test_environment_;
 

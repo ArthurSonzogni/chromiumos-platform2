@@ -9,7 +9,7 @@
 #include <vector>
 
 #include <base/logging.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/errors/error.h>
 #include <brillo/flag_helper.h>
@@ -67,7 +67,7 @@ class MiniOsClient : public brillo::Daemon {
 
     // We can't call QuitWithExitCode from OnInit(), so we delay the execution
     // of the ProcessFlags method after the Daemon initialization is done.
-    base::ThreadTaskRunnerHandle::Get()->PostTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(&MiniOsClient::ProcessFlagsAndExit,
                                   base::Unretained(this)));
     return EX_OK;

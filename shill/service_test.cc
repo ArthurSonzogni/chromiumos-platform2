@@ -15,8 +15,8 @@
 #include <base/functional/bind.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/test/bind.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/test/test_future.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <gmock/gmock.h>
@@ -201,7 +201,7 @@ class ServiceTest : public PropertyStoreTest {
   std::optional<base::TimeDelta> GetTimeSinceFailed() {
     // Wait 1 MS before calling GetTimeSinceFailed.
     base::test::TestFuture<void> future;
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE, future.GetCallback(), base::Milliseconds(1));
     EXPECT_TRUE(future.Wait());
     return service_->GetTimeSinceFailed();

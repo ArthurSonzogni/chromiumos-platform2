@@ -12,7 +12,7 @@
 #include <base/logging.h>
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <gtest/gtest.h>
 
 #include "brillo/grpc/async_grpc_server.h"
@@ -50,7 +50,7 @@ class AsyncGrpcServerTest : public ::testing::Test {
     DCHECK(!server_);
     server_ = std::make_unique<
         AsyncGrpcServer<test_rpcs::ExampleService::AsyncService>>(
-        base::ThreadTaskRunnerHandle::Get(),
+        base::SingleThreadTaskRunner::GetCurrentDefault(),
         std::vector<std::string>{service_uri});
   }
 

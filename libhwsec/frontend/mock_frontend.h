@@ -8,8 +8,8 @@
 #include <memory>
 #include <utility>
 
+#include <base/task/single_thread_task_runner.h>
 #include <base/task/task_runner.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <base/threading/thread.h>
 
 #include "libhwsec/middleware/middleware_derivative.h"
@@ -23,8 +23,8 @@ class MockFrontend {
 
   MiddlewareDerivative GetFakeMiddlewareDerivative() {
     return MiddlewareDerivative{
-        .task_runner = base::SequencedTaskRunnerHandle::IsSet()
-                           ? base::SequencedTaskRunnerHandle::Get()
+        .task_runner = base::SequencedTaskRunner::HasCurrentDefault()
+                           ? base::SequencedTaskRunner::GetCurrentDefault()
                            : nullptr,
         .thread_id = base::PlatformThread::CurrentId(),
         .middleware = nullptr,

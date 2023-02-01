@@ -33,7 +33,7 @@ CameraClientOps::CameraClientOps() : camera3_callback_ops_(this) {}
 
 mojo::PendingReceiver<mojom::Camera3DeviceOps> CameraClientOps::Init(
     uint32_t device_api_version, CaptureResultCallback result_callback) {
-  ops_runner_ = base::SequencedTaskRunnerHandle::Get();
+  ops_runner_ = base::SequencedTaskRunner::GetCurrentDefault();
   capturing_ = false;
   device_api_version_ = device_api_version;
   result_callback_ = std::move(result_callback);

@@ -7,8 +7,8 @@
 
 #include "base/files/scoped_file.h"
 #include "base/memory/scoped_refptr.h"
+#include "base/task/sequenced_task_runner.h"
 #include "base/threading/platform_thread.h"
-#include "base/threading/sequenced_task_runner_handle.h"
 #include "dlp/dlp_metrics.h"
 
 namespace dlp {

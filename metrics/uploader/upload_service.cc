@@ -17,7 +17,7 @@
 #include <base/metrics/histogram_snapshot_manager.h>
 #include <base/metrics/sparse_histogram.h>
 #include <base/metrics/statistics_recorder.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 
 #include "metrics/serialization/metric_sample.h"
 #include "metrics/serialization/serialization_utils.h"
@@ -51,7 +51,7 @@ void UploadService::Init(const base::TimeDelta& upload_interval,
   skip_upload_ = !uploads_enabled;
 
   if (!testing_) {
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&UploadService::UploadEventCallback,
                        base::Unretained(this), upload_interval),
@@ -70,7 +70,7 @@ void UploadService::StartNewLog() {
 void UploadService::UploadEventCallback(const base::TimeDelta& interval) {
   UploadEvent();
 
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&UploadService::UploadEventCallback,
                      base::Unretained(this), interval),

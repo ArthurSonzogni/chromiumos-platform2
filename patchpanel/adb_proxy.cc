@@ -20,7 +20,7 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/key_value_store.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
@@ -76,7 +76,7 @@ int AdbProxy::OnInit() {
   }
   EnterChildProcessJail();
   // Run after DBusDaemon::OnInit().
-  base::ThreadTaskRunnerHandle::Get()->PostTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(&AdbProxy::InitialSetup, weak_factory_.GetWeakPtr()));
   return DBusDaemon::OnInit();
@@ -305,7 +305,7 @@ void AdbProxy::CheckAdbSideloadingStatus(int num_try) {
       proxy->CallMethodAndBlock(&method_call, kDbusTimeoutMs);
 
   if (!dbus_response) {
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&AdbProxy::CheckAdbSideloadingStatus,
                        weak_factory_.GetWeakPtr(), num_try + 1),

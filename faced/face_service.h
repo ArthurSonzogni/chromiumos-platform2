@@ -15,7 +15,7 @@
 #include <absl/status/statusor.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/callback_forward.h>
-#include <base/threading/sequenced_task_runner_handle.h>
+#include <base/task/sequenced_task_runner.h>
 #include <brillo/grpc/async_grpc_client.h>
 
 #include "faced/proto/face_service.grpc.pb.h"

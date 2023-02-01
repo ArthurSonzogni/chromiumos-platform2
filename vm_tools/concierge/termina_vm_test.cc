@@ -28,7 +28,6 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/test/task_environment.h>
 #include <base/threading/thread.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <chromeos/patchpanel/address_manager.h>
 #include <chromeos/patchpanel/guest_type.h>
 #include <chromeos/patchpanel/mac_address_generator.h>
@@ -372,7 +371,8 @@ void TerminaVmTest::SetUp() {
   server_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::BindOnce(
-          &StartFakeMaitredService, this, base::ThreadTaskRunnerHandle::Get(),
+          &StartFakeMaitredService, this,
+          base::SingleThreadTaskRunner::GetCurrentDefault(),
           temp_dir_.GetPath().Append(kServerSocket),
           base::BindOnce(&TerminaVmTest::ServerStartCallback,
                          weak_factory_.GetWeakPtr(), run_loop.QuitClosure())));

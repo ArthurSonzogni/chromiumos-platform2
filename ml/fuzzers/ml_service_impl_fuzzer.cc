@@ -72,7 +72,7 @@ class MLServiceFuzzer {
 
   void SetUp() {
     ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
-        base::ThreadTaskRunnerHandle::Get(),
+        base::SingleThreadTaskRunner::GetCurrentDefault(),
         mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
 
     ml_service_impl_ = std::make_unique<MachineLearningServiceImplForTesting>(

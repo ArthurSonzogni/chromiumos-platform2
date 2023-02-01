@@ -14,7 +14,7 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/strings/string_util.h>
-#include <base/threading/sequenced_task_runner_handle.h>
+#include <base/task/sequenced_task_runner.h>
 
 #include "rmad/system/hardware_verifier_client_impl.h"
 #include "rmad/utils/dbus_utils.h"
@@ -52,7 +52,7 @@ RmadErrorCode WelcomeScreenStateHandler::InitializeState() {
 }
 
 void WelcomeScreenStateHandler::OnGetStateTask() const {
-  base::SequencedTaskRunnerHandle::Get()->PostTask(
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(&WelcomeScreenStateHandler::RunHardwareVerifier,
                                 base::Unretained(this)));
 }

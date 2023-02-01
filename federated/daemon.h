@@ -8,7 +8,7 @@
 #include <memory>
 
 #include <base/memory/weak_ptr.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <dbus/exported_object.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>

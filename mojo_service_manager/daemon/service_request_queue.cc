@@ -8,7 +8,7 @@
 #include <utility>
 
 #include <base/functional/bind.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 
 #include "mojo_service_manager/daemon/mojo_error_util.h"
 
@@ -28,7 +28,7 @@ void ServiceRequestQueue::Push(mojom::ProcessIdentityPtr identity,
       .receiver = std::move(receiver),
   });
   if (timeout.has_value()) {
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&ServiceRequestQueue::PopAndRejectTimeoutRequest,
                        weak_factory_.GetWeakPtr(), requests_.begin()),

@@ -51,7 +51,7 @@ void BluetoothPairingRoutine::Start() {
                kBluetoothRoutineRunningMessage);
   start_ticks_ = base::TimeTicks::Now();
 
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&BluetoothPairingRoutine::OnTimeoutOccurred,
                      weak_ptr_factory_.GetWeakPtr()),

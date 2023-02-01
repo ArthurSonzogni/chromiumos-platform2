@@ -13,8 +13,8 @@
 
 #include <base/check.h>
 #include <base/notreached.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/threading/thread.h>
-#include <base/threading/thread_task_runner_handle.h>
 
 #include "cros-camera/common.h"
 #include "cros-camera/future.h"

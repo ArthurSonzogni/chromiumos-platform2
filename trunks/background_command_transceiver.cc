@@ -12,7 +12,6 @@
 #include <base/logging.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/task/single_thread_task_runner.h>
-#include <base/threading/thread_task_runner_handle.h>
 
 namespace {
 
@@ -51,7 +50,7 @@ void BackgroundCommandTransceiver::SendCommand(const std::string& command,
   if (task_runner_.get()) {
     ResponseCallback background_callback =
         base::BindOnce(PostCallbackToTaskRunner, std::move(callback),
-                       base::ThreadTaskRunnerHandle::Get());
+                       base::SingleThreadTaskRunner::GetCurrentDefault());
     // Use SendCommandTask instead of binding to next_transceiver_ directly to
     // leverage weak pointer semantics.
     base::OnceClosure task =

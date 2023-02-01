@@ -14,7 +14,7 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/strings/strcat.h>
-#include <base/threading/sequenced_task_runner_handle.h>
+#include <base/task/sequenced_task_runner.h>
 #include <shill/net/rtnl_handler.h>
 #include <shill/net/rtnl_listener.h>
 

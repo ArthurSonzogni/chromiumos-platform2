@@ -12,7 +12,7 @@
 #include <base/functional/bind.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/string_util.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/dbus/mock_dbus_method_response.h>
 #include <brillo/errors/error.h>
@@ -113,7 +113,7 @@ class WebAuthnFuzzer : public brillo::Daemon {
   }
 
   void ScheduleFuzzDbusApi() {
-    base::SequencedTaskRunnerHandle::Get()->PostTask(
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
         base::BindOnce(&WebAuthnFuzzer::FuzzDbusApi, base::Unretained(this)));
   }
@@ -203,9 +203,10 @@ class WebAuthnFuzzer : public brillo::Daemon {
                                           auto success_callback,
                                           auto error_callback, int timeout_ms) {
             if (success) {
-              base::SequencedTaskRunnerHandle::Get()->PostNonNestableTask(
-                  FROM_HERE, base::BindOnce(std::move(success_callback),
-                                            get_web_authn_secret_reply));
+              base::SequencedTaskRunner::GetCurrentDefault()
+                  ->PostNonNestableTask(
+                      FROM_HERE, base::BindOnce(std::move(success_callback),
+                                                get_web_authn_secret_reply));
             } else {
               // TODO(domen): Prevent showing the error message.
               // |brillo::Error| shows the error message regardless of the

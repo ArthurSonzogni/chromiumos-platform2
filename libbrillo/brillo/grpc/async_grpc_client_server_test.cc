@@ -20,7 +20,7 @@
 #include <base/location.h>
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <gmock/gmock.h>
 #include <grpcpp/grpcpp.h>
 #include <gtest/gtest.h>
@@ -174,7 +174,8 @@ class RpcReply {
 class ManualExampleService final {
  public:
   explicit ManualExampleService(const std::vector<std::string>& server_uris)
-      : server_(base::ThreadTaskRunnerHandle::Get(), server_uris) {
+      : server_(base::SingleThreadTaskRunner::GetCurrentDefault(),
+                server_uris) {
     server_.RegisterHandler(
         &test_rpcs::ExampleService::AsyncService::RequestEmptyRpc,
         pending_empty_rpcs_.GetRpcHandlerCallback());
@@ -243,7 +244,8 @@ class SelfStoppingExampleService final {
  public:
   explicit SelfStoppingExampleService(
       const std::vector<std::string>& server_uris)
-      : server_(base::ThreadTaskRunnerHandle::Get(), server_uris) {
+      : server_(base::SingleThreadTaskRunner::GetCurrentDefault(),
+                server_uris) {
     server_.RegisterHandler(
         &test_rpcs::ExampleService::AsyncService::RequestEmptyRpc,
         base::BindRepeating(&SelfStoppingExampleService::OnEmptyRpc,
@@ -287,7 +289,7 @@ class SelfStoppingExampleService final {
   }
 
   void ScheduleSelfShutDown() {
-    base::ThreadTaskRunnerHandle::Get()->PostTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
         base::BindOnce(
             &AsyncGrpcServer<test_rpcs::ExampleService::AsyncService>::ShutDown,

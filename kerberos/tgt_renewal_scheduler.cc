@@ -9,7 +9,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 
 #include "bindings/kerberos_containers.pb.h"
@@ -106,7 +106,7 @@ void TgtRenewalScheduler::ScheduleRenewal(bool notify_expiration) {
 
   tgt_renewal_callback_.Reset(base::BindOnce(
       &TgtRenewalScheduler::RunScheduledTgtRenewal, base::Unretained(this)));
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE, tgt_renewal_callback_.callback(),
       base::Seconds(delay_seconds));
 }

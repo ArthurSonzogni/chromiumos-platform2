@@ -30,8 +30,8 @@ namespace {
 constexpr char kThreadName[] = "libhwsec_thread";
 
 scoped_refptr<base::TaskRunner> GetCurrentTaskRunnerOrNullptr() {
-  return base::SequencedTaskRunnerHandle::IsSet()
-             ? base::SequencedTaskRunnerHandle::Get()
+  return base::SequencedTaskRunner::HasCurrentDefault()
+             ? base::SequencedTaskRunner::GetCurrentDefault()
              : nullptr;
 }
 }  // namespace

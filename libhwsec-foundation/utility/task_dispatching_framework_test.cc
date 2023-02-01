@@ -6,8 +6,8 @@
 #include <utility>
 
 #include <base/functional/bind.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/threading/thread.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <gmock/gmock.h>

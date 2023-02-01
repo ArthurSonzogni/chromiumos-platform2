@@ -12,8 +12,8 @@
 #include <base/functional/callback.h>
 #include <base/location.h>
 #include <base/memory/ref_counted.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/task/task_runner.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <grpcpp/grpcpp.h>
 
 namespace diagnostics {
@@ -112,8 +112,8 @@ MakeOriginTaskRunnerPostingCallback(
     const base::Location& location,
     base::OnceCallback<void(ArgTypes...)> callback) {
   return base::BindOnce(&internal::RunCallbackOnTaskRunner<ArgTypes...>,
-                        base::ThreadTaskRunnerHandle::Get(), location,
-                        std::move(callback));
+                        base::SingleThreadTaskRunner::GetCurrentDefault(),
+                        location, std::move(callback));
 }
 
 }  // namespace diagnostics

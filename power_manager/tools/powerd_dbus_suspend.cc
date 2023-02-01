@@ -23,7 +23,7 @@
 #include <base/run_loop.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/task/single_thread_task_executor.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
 #include <brillo/file_utils.h>
@@ -243,7 +243,7 @@ int main(int argc, char* argv[]) {
 
   // Schedule a task to fire after the timeout.
   if (FLAGS_timeout) {
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE, base::BindOnce(&OnTimeout), base::Seconds(FLAGS_timeout));
   }
 

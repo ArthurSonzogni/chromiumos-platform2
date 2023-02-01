@@ -50,7 +50,7 @@ class MLServiceFuzzer {
   ~MLServiceFuzzer() = default;
   void SetUp() {
     ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
-        base::ThreadTaskRunnerHandle::Get(),
+        base::SingleThreadTaskRunner::GetCurrentDefault(),
         mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
     ml_service_impl_ = std::make_unique<MachineLearningServiceImpl>(
         ml_service_.BindNewPipeAndPassReceiver(), base::OnceClosure());

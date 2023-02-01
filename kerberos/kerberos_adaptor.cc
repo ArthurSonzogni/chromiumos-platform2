@@ -12,7 +12,7 @@
 #include <base/check.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/errors/error.h>
@@ -141,7 +141,7 @@ void KerberosAdaptor::RegisterAsync(
   // are not quite wired up properly at this point. If signals are emitted here,
   // they never reach Chrome, even if Chrome made sure it connected to the
   // signal.
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindRepeating(&KerberosAdaptor::StartObservingTickets,
                           weak_ptr_factory_.GetWeakPtr()),

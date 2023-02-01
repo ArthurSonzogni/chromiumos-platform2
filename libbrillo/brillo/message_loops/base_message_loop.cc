@@ -29,7 +29,7 @@
 #include <base/run_loop.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 
 #include <brillo/location_logging.h>
 #include <brillo/strings/string_utils.h>
@@ -47,7 +47,7 @@ const int BaseMessageLoop::kInvalidMinor = -1;
 const int BaseMessageLoop::kUninitializedMinor = -2;
 
 BaseMessageLoop::BaseMessageLoop() {
-  CHECK(!base::ThreadTaskRunnerHandle::IsSet())
+  CHECK(!base::SingleThreadTaskRunner::HasCurrentDefault())
       << "You can't create a base::SingleThreadTaskExecutor when another "
          "base::SingleThreadTaskExecutor is already created for this thread.";
   owned_task_executor_.reset(

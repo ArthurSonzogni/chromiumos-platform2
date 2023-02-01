@@ -16,7 +16,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <vm_applications/apps.pb.h>
 #include <vm_cicerone/cicerone_service.pb.h>
 #include <vm_protos/proto_bindings/container_host.pb.h>
@@ -37,7 +37,7 @@ namespace cicerone {
 ContainerListenerImpl::ContainerListenerImpl(
     base::WeakPtr<vm_tools::cicerone::Service> service)
     : service_(service),
-      task_runner_(base::ThreadTaskRunnerHandle::Get()),
+      task_runner_(base::SingleThreadTaskRunner::GetCurrentDefault()),
       open_count_(0),
       open_rate_window_start_(base::TimeTicks::Now()) {}
 

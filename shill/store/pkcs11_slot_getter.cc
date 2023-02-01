@@ -9,7 +9,7 @@
 
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <chaps/isolate.h>
 
 #include "base/time/time.h"
@@ -61,7 +61,7 @@ void Pkcs11SlotGetter::GetPkcs11SlotIdWithRetries(
     std::move(callback).Run(slot_id);
     return;
   }
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&Pkcs11SlotGetter::GetPkcs11SlotIdWithRetries,
                      weak_factory_.GetWeakPtr(), slot, std::move(callback),

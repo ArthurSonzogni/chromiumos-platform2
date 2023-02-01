@@ -10,7 +10,7 @@
 
 #include <base/functional/bind.h>
 #include <base/run_loop.h>
-#include <base/threading/sequenced_task_runner_handle.h>
+#include <base/task/sequenced_task_runner.h>
 #include <gtest/gtest.h>
 
 #include "power_manager/common/fake_prefs.h"
@@ -64,7 +64,7 @@ class AmbientLightSensorManagerMojoTest : public MojoTestEnvironment {
     // SensorService mojo pipe exists. |sensor_service_handler_::SetUpChannel|
     // should be called after the disconnect handler is executed, to setup the
     // SensorService mojo pipe again.
-    base::SequencedTaskRunnerHandle::Get()->PostTask(
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
         base::BindOnce(&SensorServiceHandler::SetUpChannel,
                        base::Unretained(&sensor_service_handler_),

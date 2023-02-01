@@ -34,7 +34,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/time/default_tick_clock.h>
 #include <base/time/time.h>
 #include <brillo/cryptohome.h>
@@ -1450,7 +1450,7 @@ void SessionManagerImpl::OnGotSystemClockLastSyncInfo(
   if (!response) {
     LOG(ERROR) << system_clock::kSystemClockInterface << "."
                << system_clock::kSystemLastSyncInfo << " request failed.";
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&SessionManagerImpl::GetSystemClockLastSyncInfo,
                        weak_ptr_factory_.GetWeakPtr()),
@@ -1473,7 +1473,7 @@ void SessionManagerImpl::OnGotSystemClockLastSyncInfo(
       device_identifier_generator_->RequestStateKeys(std::move(callback));
     pending_state_key_callbacks_.clear();
   } else {
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&SessionManagerImpl::GetSystemClockLastSyncInfo,
                        weak_ptr_factory_.GetWeakPtr()),

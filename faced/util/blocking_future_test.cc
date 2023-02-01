@@ -8,10 +8,10 @@
 #include <string>
 
 #include <base/functional/bind.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/task/thread_pool.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
-#include <base/threading/sequenced_task_runner_handle.h>
 #include <base/threading/thread.h>
 #include <gtest/gtest.h>
 

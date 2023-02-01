@@ -9,7 +9,7 @@
 #include <base/logging.h>
 #include <base/process/launch.h>
 #include <base/process/process_iterator.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 
 namespace {
 

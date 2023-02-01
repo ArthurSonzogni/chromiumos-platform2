@@ -21,8 +21,8 @@
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/synchronization/lock.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/threading/thread.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <gtest/gtest_prod.h>
 
@@ -329,7 +329,7 @@ class SmbFilesystem : public Filesystem {
 
   // Origin/constructor thread task runner.
   scoped_refptr<base::SingleThreadTaskRunner> main_task_runner_ =
-      base::ThreadTaskRunnerHandle::Get();
+      base::SingleThreadTaskRunner::GetCurrentDefault();
 
   std::unordered_map<uint64_t, SMBCFILE*> open_files_;
   uint64_t open_files_seq_ = 1;

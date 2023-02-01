@@ -14,8 +14,8 @@
 #include <base/location.h>
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/task/task_runner.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>
 #include <grpcpp/alarm.h>
@@ -88,7 +88,8 @@ class ObjectDestroyedTester {
   // Will set |*has_been_destroyed| to true when this instance is being
   // destroyed.
   explicit ObjectDestroyedTester(bool* has_been_destroyed)
-      : expected_task_runner_(base::ThreadTaskRunnerHandle::Get()),
+      : expected_task_runner_(
+            base::SingleThreadTaskRunner::GetCurrentDefault()),
         has_been_destroyed_(has_been_destroyed) {
     *has_been_destroyed_ = false;
   }
@@ -120,7 +121,8 @@ void ObjectDestroyedTesterAdapter(
 class GrpcCompletionQueueDispatcherTest : public ::testing::Test {
  public:
   GrpcCompletionQueueDispatcherTest()
-      : dispatcher_(&completion_queue_, base::ThreadTaskRunnerHandle::Get()) {
+      : dispatcher_(&completion_queue_,
+                    base::SingleThreadTaskRunner::GetCurrentDefault()) {
     dispatcher_.Start();
   }
   GrpcCompletionQueueDispatcherTest(const GrpcCompletionQueueDispatcherTest&) =

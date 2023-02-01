@@ -8,7 +8,7 @@
 #include <utility>
 
 #include <base/check.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/system/invitation.h>
 #include <mojo/public/cpp/system/message_pipe.h>
@@ -20,7 +20,7 @@ namespace diagnostics {
 namespace mojom = ::ash::cros_healthd::mojom;
 
 ExecutorDaemon::ExecutorDaemon(mojo::PlatformChannelEndpoint endpoint)
-    : mojo_task_runner_(base::ThreadTaskRunnerHandle::Get()) {
+    : mojo_task_runner_(base::SingleThreadTaskRunner::GetCurrentDefault()) {
   DCHECK(endpoint.is_valid());
 
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(

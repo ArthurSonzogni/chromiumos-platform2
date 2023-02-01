@@ -9,8 +9,8 @@
 #include <base/functional/bind.h>
 #include <base/memory/ref_counted.h>
 #include <base/run_loop.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/test/task_environment.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_manager.h>
 #include <dbus/mock_object_proxy.h>
@@ -118,7 +118,8 @@ class BluetoothClientImplTest : public ::testing::Test {
 
   void SetUp() override {
     ON_CALL(*dbus_bus_, GetDBusTaskRunner())
-        .WillByDefault(Return(base::ThreadTaskRunnerHandle::Get().get()));
+        .WillByDefault(
+            Return(base::SingleThreadTaskRunner::GetCurrentDefault().get()));
 
     EXPECT_CALL(*dbus_bus_,
                 GetObjectProxy(

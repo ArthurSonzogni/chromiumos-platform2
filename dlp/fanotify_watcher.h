@@ -12,7 +12,7 @@
 #include "base/files/scoped_file.h"
 #include "base/functional/callback.h"
 #include "base/memory/scoped_refptr.h"
-#include "base/threading/sequenced_task_runner_handle.h"
+#include "base/task/sequenced_task_runner.h"
 #include <base/threading/watchdog.h>
 #include "dlp/dlp_metrics.h"
 #include "dlp/fanotify_reader_thread.h"

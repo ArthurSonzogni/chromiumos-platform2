@@ -15,7 +15,6 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
-#include <base/threading/sequenced_task_runner_handle.h>
 #include <biod/biod_proxy/mock_auth_stack_manager_proxy_base.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
@@ -107,7 +106,7 @@ class BaseTestFixture : public ::testing::Test {
   base::test::SingleThreadTaskEnvironment task_environment_ = {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   scoped_refptr<base::SequencedTaskRunner> task_runner_ =
-      base::SequencedTaskRunnerHandle::Get();
+      base::SequencedTaskRunner::GetCurrentDefault();
 };
 
 class BiometricsCommandProcessorImplTest : public BaseTestFixture {

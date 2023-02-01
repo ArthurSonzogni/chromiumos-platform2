@@ -8,7 +8,7 @@
 #include <utility>
 
 #include <base/functional/bind.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 
 #include "power_manager/common/tracing.h"
 
@@ -69,7 +69,7 @@ void SensorServiceHandler::AddObserver(SensorServiceHandlerObserver* observer) {
 
   observers_.AddObserver(observer);
 
-  base::ThreadTaskRunnerHandle::Get()->PostTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(&SensorServiceHandler::NotifyObserverWithCurrentDevices,
                      weak_factory_.GetWeakPtr(), observer));

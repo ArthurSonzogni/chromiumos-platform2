@@ -37,7 +37,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/system/sys_info.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/timezone/tzif_parser.h>
 #include <chromeos/constants/vm_tools.h>
 #include <chromeos/dbus/service_constants.h>
@@ -1914,8 +1914,8 @@ void Service::HandleSigterm() {
   LOG(INFO) << "Shutting down due to SIGTERM";
 
   if (quit_closure_) {
-    base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
-                                                  std::move(quit_closure_));
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, std::move(quit_closure_));
   }
 }
 

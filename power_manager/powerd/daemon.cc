@@ -24,8 +24,8 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/threading/platform_thread.h>
-#include <base/threading/sequenced_task_runner_handle.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/mojo/service_constants.h>
@@ -662,7 +662,7 @@ void Daemon::ConnectToMojoServiceManager() {
 
 void Daemon::ReconnectToMojoServiceManagerWithDelay() {
   TRACE_EVENT("power", "Daemon::ReconnectToMojoServiceManagerWithDelay");
-  base::SequencedTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&Daemon::ConnectToMojoServiceManager,
                      base::Unretained(this)),
@@ -704,7 +704,7 @@ void Daemon::OnIioSensorDisconnect(base::TimeDelta delay) {
   TRACE_EVENT("power", "Daemon::OnIioSensorDisconnect");
   DCHECK(service_manager_.is_bound());
 
-  base::SequencedTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&Daemon::RequestIioSensor, base::Unretained(this)), delay);
 }

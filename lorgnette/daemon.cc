@@ -12,7 +12,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/run_loop.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 
@@ -68,7 +68,7 @@ void Daemon::OnTimeout() {
 void Daemon::PostponeShutdown(base::TimeDelta delay) {
   shutdown_callback_.Reset(
       base::BindOnce(&Daemon::OnTimeout, weak_factory_.GetWeakPtr()));
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE, shutdown_callback_.callback(), delay);
 }
 

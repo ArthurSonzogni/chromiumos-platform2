@@ -14,9 +14,9 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/sequence_checker.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
-#include <base/threading/sequenced_task_runner_handle.h>
 #include <brillo/file_utils.h>
 #include <re2/re2.h>
 
@@ -94,7 +94,7 @@ RmadErrorCode UpdateRoFirmwareStateHandler::InitializeState() {
     update_ro_firmware->set_optional(CanSkipUpdate());
     state_.set_allocated_update_ro_firmware(update_ro_firmware.release());
 
-    sequenced_task_runner_ = base::SequencedTaskRunnerHandle::Get();
+    sequenced_task_runner_ = base::SequencedTaskRunner::GetCurrentDefault();
     updater_task_runner_ = base::ThreadPool::CreateTaskRunner(
         {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
   }

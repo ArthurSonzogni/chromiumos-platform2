@@ -19,7 +19,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/rand_util.h>
 #include <base/strings/string_util.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <chromeos/patchpanel/dns/dns_protocol.h>
 #include <chromeos/patchpanel/dns/dns_query.h>
 #include <chromeos/patchpanel/dns/io_buffer.h>
@@ -321,7 +321,7 @@ void Resolver::HandleAresResult(base::WeakPtr<SocketFd> sock_fd,
   }
 
   // Retry resolving the domain.
-  base::ThreadTaskRunnerHandle::Get()->PostTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(&Resolver::Resolve, weak_factory_.GetWeakPtr(),
                                 sock_fd, false /* fallback */));
 }
@@ -367,7 +367,7 @@ void Resolver::HandleCurlResult(base::WeakPtr<SocketFd> sock_fd,
       sock_fds_.erase(sock_fd->id);
       return;
     }
-    base::ThreadTaskRunnerHandle::Get()->PostTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
         base::BindOnce(&Resolver::Resolve, weak_factory_.GetWeakPtr(), sock_fd,
                        true /* fallback */));
@@ -393,7 +393,7 @@ void Resolver::HandleCurlResult(base::WeakPtr<SocketFd> sock_fd,
           (1 - (base::RandDouble() * kRetryJitterMultiplier)) * retry_delay_;
 
       // Retry resolving the domain.
-      base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
           FROM_HERE,
           base::BindOnce(&Resolver::Resolve, weak_factory_.GetWeakPtr(),
                          sock_fd, false /* fallback */),
@@ -409,7 +409,7 @@ void Resolver::HandleCurlResult(base::WeakPtr<SocketFd> sock_fd,
         sock_fds_.erase(sock_fd->id);
         return;
       }
-      base::ThreadTaskRunnerHandle::Get()->PostTask(
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
           FROM_HERE,
           base::BindOnce(&Resolver::Resolve, weak_factory_.GetWeakPtr(),
                          sock_fd, true /* fallback */));
@@ -774,7 +774,7 @@ void Resolver::Probe(base::WeakPtr<ProbeState> probe_state) {
     return;
 
   // Schedule the next probe now as the probe may run for a long time.
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&Resolver::Probe, weak_factory_.GetWeakPtr(), probe_state),
       GetTimeUntilProbe(probe_state->num_retries));

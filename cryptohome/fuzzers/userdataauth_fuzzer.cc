@@ -18,12 +18,11 @@
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/task/sequenced_task_runner.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/test/scoped_chromeos_version_info.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <base/test/test_timeouts.h>
-#include <base/threading/sequenced_task_runner_handle.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <brillo/dbus/dbus_object_test_helpers.h>
 #include <brillo/dbus/dbus_object.h>
@@ -316,7 +315,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // Prepare `UserDataAuth`. Set up a single-thread mode (which is not how the
   // daemon works in production, but allows faster and reproducible fuzzing).
   auto userdataauth = std::make_unique<UserDataAuth>();
-  userdataauth->set_mount_task_runner(base::ThreadTaskRunnerHandle::Get());
+  userdataauth->set_mount_task_runner(
+      base::SingleThreadTaskRunner::GetCurrentDefault());
   userdataauth->set_platform(&platform);
   userdataauth->set_vault_factory_for_testing(vault_factory.get());
   userdataauth->set_mount_factory_for_testing(mount_factory.get());

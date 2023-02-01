@@ -16,7 +16,6 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/test/simple_test_clock.h>
 #include <base/test/simple_test_tick_clock.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library.h>
@@ -267,8 +266,7 @@ class TestMetricsLibrary : public MetricsLibraryInterface {
 class CumulativeUseTimeMetricTest : public testing::Test {
  public:
   CumulativeUseTimeMetricTest()
-      : task_runner_(new FakeSingleThreadTaskRunner(&clock_, &tick_clock_)),
-        task_runner_handle_(task_runner_.get()) {}
+      : task_runner_(new FakeSingleThreadTaskRunner(&clock_, &tick_clock_)) {}
   CumulativeUseTimeMetricTest(const CumulativeUseTimeMetricTest&) = delete;
   CumulativeUseTimeMetricTest& operator=(const CumulativeUseTimeMetricTest&) =
       delete;
@@ -344,7 +342,8 @@ class CumulativeUseTimeMetricTest : public testing::Test {
   base::SimpleTestTickClock tick_clock_;
 
   scoped_refptr<FakeSingleThreadTaskRunner> task_runner_;
-  base::ThreadTaskRunnerHandle task_runner_handle_;
+  base::SingleThreadTaskRunner::CurrentDefaultHandle task_runner_handle_{
+      task_runner_};
 
   base::ScopedTempDir temp_dir_;
 };

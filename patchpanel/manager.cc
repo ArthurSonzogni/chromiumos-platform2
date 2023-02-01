@@ -25,7 +25,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/key_value_store.h>
 #include <brillo/minijail/minijail.h>
 #include <metrics/metrics_library.h>
@@ -218,7 +218,7 @@ int Manager::OnInit() {
   nd_proxy_->Start();
 
   // Run after Daemon::OnInit().
-  base::ThreadTaskRunnerHandle::Get()->PostTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(&Manager::InitialSetup, weak_factory_.GetWeakPtr()));
 
@@ -391,7 +391,7 @@ void Manager::OnShillDefaultLogicalDeviceChanged(
 
     // Disable and re-enable IPv6. This is necessary to trigger SLAAC in the
     // kernel to send RS. Add a delay for the forwarding to be set up.
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&Manager::RestartIPv6, weak_factory_.GetWeakPtr(),
                        nsinfo.netns_name),
@@ -424,7 +424,7 @@ void Manager::OnShillDefaultPhysicalDeviceChanged(
 
     // Disable and re-enable IPv6. This is necessary to trigger SLAAC in the
     // kernel to send RS. Add a delay for the forwarding to be set up.
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&Manager::RestartIPv6, weak_factory_.GetWeakPtr(),
                        nsinfo.netns_name),
@@ -471,7 +471,7 @@ void Manager::OnShillDevicesChanged(const std::vector<std::string>& added,
       }
       StartForwarding(nsinfo.outbound_ifname, nsinfo.host_ifname,
                       ForwardingSet{.ipv6 = true});
-      base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
           FROM_HERE,
           base::BindOnce(&Manager::RestartIPv6, weak_factory_.GetWeakPtr(),
                          nsinfo.netns_name),
@@ -1451,7 +1451,7 @@ std::unique_ptr<patchpanel::ConnectNamespaceResponse> Manager::ConnectNamespace(
   // Start forwarding for IPv6.
   StartForwarding(nsinfo.tracked_outbound_ifname, nsinfo.host_ifname,
                   ForwardingSet{.ipv6 = true});
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&Manager::RestartIPv6, weak_factory_.GetWeakPtr(),
                      nsinfo.netns_name),

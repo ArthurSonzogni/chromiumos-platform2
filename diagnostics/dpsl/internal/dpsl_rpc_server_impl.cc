@@ -14,7 +14,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/notreached.h>
 #include <base/run_loop.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 
 #include "diagnostics/constants/grpc_constants.h"
 #include "diagnostics/dpsl/internal/callback_utils.h"
@@ -43,7 +43,7 @@ DpslRpcServerImpl::DpslRpcServerImpl(DpslRpcHandler* rpc_handler,
                                      GrpcServerUri grpc_server_uri,
                                      const std::string& grpc_server_uri_string)
     : rpc_handler_(rpc_handler),
-      async_grpc_server_(base::ThreadTaskRunnerHandle::Get(),
+      async_grpc_server_(base::SingleThreadTaskRunner::GetCurrentDefault(),
                          {grpc_server_uri_string}) {
   DCHECK(rpc_handler_);
   auto handle_message_from_ui_handler =

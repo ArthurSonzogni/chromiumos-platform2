@@ -8,7 +8,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <re2/re2.h>
 
 #include "typecd/pd_vdo_constants.h"
@@ -662,7 +662,7 @@ void Port::EnqueueMetricsTask(Metrics* metrics, bool mode_entry_supported) {
   report_metrics_callback_.Reset(base::BindOnce(&Port::ReportMetrics,
                                                 base::Unretained(this), metrics,
                                                 mode_entry_supported));
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE, report_metrics_callback_.callback(),
       base::Milliseconds(kPDNegotiationDelayMs));
 }

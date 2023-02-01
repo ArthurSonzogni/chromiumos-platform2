@@ -11,7 +11,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 
 namespace dns_proxy {
 namespace {
@@ -106,7 +106,7 @@ void AresClient::AresCallback(
   auto buf = std::make_unique<unsigned char[]>(len);
   memcpy(buf.get(), msg, len);
   // Handle the result outside this function to avoid undefined behaviors.
-  base::ThreadTaskRunnerHandle::Get()->PostTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(&AresClient::HandleResult,
                                 state->client->weak_factory_.GetWeakPtr(),
                                 state, status, std::move(buf), len));
@@ -155,7 +155,7 @@ void AresClient::ResetTimeout(ares_channel channel) {
     return;
   }
   int timeout_ms = tv->tv_sec * 1000 + tv->tv_usec / 1000;
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindRepeating(&AresClient::ResetTimeout, weak_factory_.GetWeakPtr(),
                           channel),

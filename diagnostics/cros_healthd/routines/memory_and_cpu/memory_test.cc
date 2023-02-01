@@ -138,15 +138,16 @@ class MemoryRoutineTest : public BaseFileTest {
                 return;
               }
 
-              base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
-                  FROM_HERE,
-                  base::BindOnce(
-                      [](mojom::Executor::RunMemtesterCallback callback,
-                         mojom::ExecutedProcessResultPtr result) {
-                        std::move(callback).Run(std::move(result));
-                      },
-                      std::move(callback), result.Clone()),
-                  delay.value());
+              base::SingleThreadTaskRunner::GetCurrentDefault()
+                  ->PostDelayedTask(
+                      FROM_HERE,
+                      base::BindOnce(
+                          [](mojom::Executor::RunMemtesterCallback callback,
+                             mojom::ExecutedProcessResultPtr result) {
+                            std::move(callback).Run(std::move(result));
+                          },
+                          std::move(callback), result.Clone()),
+                      delay.value());
             })));
   }
 

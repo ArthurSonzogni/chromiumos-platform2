@@ -26,8 +26,8 @@ DaemonEventsObserver::~DaemonEventsObserver() = default;
 
 void DaemonEventsObserver::SetSensorClient() {
   sensor_client_ = EventsObserver::Create(
-      base::ThreadTaskRunnerHandle::Get(), device_id_, device_type_,
-      std::move(event_indices_), events_,
+      base::SingleThreadTaskRunner::GetCurrentDefault(), device_id_,
+      device_type_, std::move(event_indices_), events_,
       base::BindOnce(&DaemonEventsObserver::OnMojoDisconnect,
                      weak_ptr_factory_.GetWeakPtr()));
 }

@@ -143,7 +143,8 @@ class BRILLO_EXPORT AsyncGrpcServerBase {
 // handled must be registered using |RegisterHandler| before starting the server
 // using |AsyncGrpcServerBase::Start|.
 // Example usage:
-//   AsyncGrpcServer<Foo> server(base::ThreadTaskRunnerHandle::Get(),
+//   AsyncGrpcServer<Foo>
+//   server(base::SingleThreadTaskRunner::GetCurrentDefault(),
 //                               "unix:/path/to/socket");
 //   server.RegisterHandler(&FooService::AsyncService::RequestDoSomething,
 //                          do_something_handler);

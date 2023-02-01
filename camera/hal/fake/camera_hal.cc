@@ -12,7 +12,7 @@
 #include <base/containers/contains.h>
 #include <base/no_destructor.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/threading/sequenced_task_runner_handle.h>
+#include <base/task/sequenced_task_runner.h>
 
 #include "cros-camera/common.h"
 #include "cros-camera/cros_camera_hal.h"
@@ -132,7 +132,7 @@ int CameraHal::SetCallbacks(const camera_module_callbacks_t* callbacks) {
 int CameraHal::Init() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
-  task_runner_ = base::SequencedTaskRunnerHandle::Get();
+  task_runner_ = base::SequencedTaskRunner::GetCurrentDefault();
   config_file_ = std::make_unique<ReloadableConfigFile>(
       ReloadableConfigFile::Options{base::FilePath(kDefaultFakeHalSpecFile),
                                     base::FilePath(kOverrideFakeHalSpecFile)});

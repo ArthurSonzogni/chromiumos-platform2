@@ -11,7 +11,7 @@
 #include <base/functional/bind.h>
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
-#include <base/threading/sequenced_task_runner_handle.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>
 #include <brillo/errors/error.h>
 #include <dbus/scoped_dbus_error.h>
@@ -72,7 +72,7 @@ Scheduler::Scheduler(StorageManager* storage_manager,
       device_status_monitor_(std::move(device_status_monitor)),
       dlcservice_client_(
           std::make_unique<org::chromium::DlcServiceInterfaceProxy>(bus)),
-      task_runner_(base::SequencedTaskRunnerHandle::Get()),
+      task_runner_(base::SequencedTaskRunner::GetCurrentDefault()),
       scheduling_started_(false),
       weak_ptr_factory_(this) {}
 

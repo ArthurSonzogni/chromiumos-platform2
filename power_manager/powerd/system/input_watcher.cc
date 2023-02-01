@@ -19,7 +19,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
@@ -194,7 +194,7 @@ LidState InputWatcher::QueryLidState() {
   if (!queued_events_.empty()) {
     send_queued_events_task_.Reset(base::BindOnce(
         &InputWatcher::SendQueuedEvents, base::Unretained(this)));
-    base::ThreadTaskRunnerHandle::Get()->PostTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, send_queued_events_task_.callback());
   }
 

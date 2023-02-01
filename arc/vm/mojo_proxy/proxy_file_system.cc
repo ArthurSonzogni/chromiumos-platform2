@@ -20,8 +20,8 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece.h>
 #include <base/synchronization/waitable_event.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/task/task_runner.h>
-#include <base/threading/thread_task_runner_handle.h>
 
 #include "arc/vm/mojo_proxy/fuse_mount.h"
 
@@ -113,7 +113,7 @@ ProxyFileSystem::~ProxyFileSystem() {
 
 bool ProxyFileSystem::Init() {
   DCHECK(!init_task_runner_) << "Init can only be called once.";
-  init_task_runner_ = base::ThreadTaskRunnerHandle::Get();
+  init_task_runner_ = base::SingleThreadTaskRunner::GetCurrentDefault();
 
   const std::string path_str = mount_path_.value();
   const char* fuse_argv[] = {

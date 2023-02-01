@@ -12,8 +12,8 @@
 #include <base/lazy_instance.h>
 #include <base/location.h>
 #include <base/logging.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/threading/thread_local.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 
 #include "diagnostics/dpsl/internal/callback_utils.h"
@@ -39,11 +39,11 @@ DpslThreadContextImpl::DpslThreadContextImpl()
       // yet (it could be already set up by the calling code via other means,
       // e.g., brillo::Daemon).
       owned_task_executor_(
-          base::ThreadTaskRunnerHandle::IsSet()
+          base::SingleThreadTaskRunner::HasCurrentDefault()
               ? nullptr
               : std::make_unique<base::SingleThreadTaskExecutor>(
                     base::MessagePumpType::IO)),
-      task_runner_(base::ThreadTaskRunnerHandle::Get()) {}
+      task_runner_(base::SingleThreadTaskRunner::GetCurrentDefault()) {}
 
 DpslThreadContextImpl::~DpslThreadContextImpl() {
   CHECK(sequence_checker_.CalledOnValidSequence())

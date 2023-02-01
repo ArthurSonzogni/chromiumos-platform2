@@ -9,7 +9,7 @@
 
 #include <base/at_exit.h>
 #include <base/task/single_thread_task_executor.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/syslog_logging.h>
 #include <mojo/core/embedder/embedder.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
@@ -42,7 +42,8 @@ int main(int argc, char* argv[]) {
   base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
   mojo::core::Init();
   mojo::core::ScopedIPCSupport ipc_support(
-      base::ThreadTaskRunnerHandle::Get() /* io_thread_task_runner */,
+      base::SingleThreadTaskRunner::
+          GetCurrentDefault() /* io_thread_task_runner */,
       mojo::core::ScopedIPCSupport::ShutdownPolicy::
           CLEAN /* blocking shutdown */);
 

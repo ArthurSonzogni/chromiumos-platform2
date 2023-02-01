@@ -24,7 +24,7 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <camera/camera_metadata.h>
 #include <system/camera_metadata_hidden.h>
 
@@ -69,7 +69,7 @@ CameraHalAdapter::CameraHalAdapter(
     CameraMojoChannelManagerToken* token,
     CameraActivityCallback activity_callback)
     : camera_interfaces_(camera_interfaces),
-      main_task_runner_(base::ThreadTaskRunnerHandle::Get()),
+      main_task_runner_(base::SingleThreadTaskRunner::GetCurrentDefault()),
       camera_module_thread_("CameraModuleThread"),
       camera_module_callbacks_thread_("CameraModuleCallbacksThread"),
       module_id_(0),
@@ -256,7 +256,8 @@ int32_t CameraHalAdapter::OpenDevice(
   // runner of the current thread in the callback functor.
   base::OnceCallback<void()> close_callback = base::BindOnce(
       &CameraHalAdapter::CloseDeviceCallback, base::Unretained(this),
-      base::ThreadTaskRunnerHandle::Get(), camera_id, camera_client_type);
+      base::SingleThreadTaskRunner::GetCurrentDefault(), camera_id,
+      camera_client_type);
   base::OnceCallback<void(FaceDetectionResultCallback)>
       set_face_detection_result_callback;
   if (cros_camera_hal->set_face_detection_result_callback != nullptr) {

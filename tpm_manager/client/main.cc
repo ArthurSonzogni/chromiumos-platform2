@@ -14,7 +14,7 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/syslog_logging.h>
 #include <crypto/sha2.h>
@@ -326,7 +326,8 @@ class ClientLoop : public ClientLoopBase {
       // Command line arguments did not match any valid commands.
       return EX_USAGE;
     }
-    base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, std::move(task));
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, std::move(task));
     return EX_OK;
   }
 

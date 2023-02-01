@@ -18,7 +18,7 @@
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <chromeos/patchpanel/message_dispatcher.h>
 #include <chromeos/patchpanel/net_util.h>
@@ -158,7 +158,7 @@ int Proxy::OnInit() {
   LOG(INFO) << *this << " Starting DNS proxy";
 
   /// Run after Daemon::OnInit()
-  base::ThreadTaskRunnerHandle::Get()->PostTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(&Proxy::Setup, weak_factory_.GetWeakPtr()));
   return DBusDaemon::OnInit();
 }
@@ -773,7 +773,7 @@ void Proxy::SetShillDNSProxyAddresses(const std::string& ipv4_addr,
              << base::JoinString(addrs, ",")
              << "] on shill: " << error->GetMessage() << ". Retrying...";
 
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&Proxy::SetShillDNSProxyAddresses,
                      weak_factory_.GetWeakPtr(), ipv4_addr, ipv6_addr,

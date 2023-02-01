@@ -3,8 +3,8 @@
 // found in the LICENSE file.
 
 #include <array>
+#include <base/task/sequenced_task_runner.h>
 #include <base/test/task_environment.h>
-#include <base/threading/sequenced_task_runner_handle.h>
 #include <base/threading/platform_thread.h>
 #include <base/threading/thread.h>
 #include <gtest/gtest.h>
@@ -293,12 +293,12 @@ TEST_F(FutureTest, Collect) {
     constexpr int n = 10;
     for (int i = 0; i < n; ++i) {
       futures.push_back(
-          Async(base::SequencedTaskRunnerHandle::Get(),
+          Async(base::SequencedTaskRunner::GetCurrentDefault(),
                 base::BindOnce([](int x) { return Resolve<int>(x); }, i)));
     }
 
-    Future<std::vector<int>> future =
-        Collect(base::SequencedTaskRunnerHandle::Get(), std::move(futures));
+    Future<std::vector<int>> future = Collect(
+        base::SequencedTaskRunner::GetCurrentDefault(), std::move(futures));
     GetResult<std::vector<int>> ret = future.GetWithRunLoop();
     for (int i = 0; i < n; ++i) {
       EXPECT_EQ(ret.val[i], i);
@@ -312,7 +312,7 @@ TEST_F(FutureTest, Collect) {
 
     constexpr int n = 10;
     for (int i = 0; i < n; ++i) {
-      futures.push_back(Async(base::SequencedTaskRunnerHandle::Get(),
+      futures.push_back(Async(base::SequencedTaskRunner::GetCurrentDefault(),
                               base::BindOnce(
                                   [](int x) {
                                     if (x == 7) {
@@ -324,8 +324,8 @@ TEST_F(FutureTest, Collect) {
                                   i)));
     }
 
-    Future<std::vector<int>> future =
-        Collect(base::SequencedTaskRunnerHandle::Get(), std::move(futures));
+    Future<std::vector<int>> future = Collect(
+        base::SequencedTaskRunner::GetCurrentDefault(), std::move(futures));
     GetResult<std::vector<int>> ret = future.GetWithRunLoop();
     EXPECT_TRUE(ret.rejected);
   }
@@ -340,23 +340,23 @@ TEST_F(FutureTest, Flatten) {
 
   // Same thread
   EXPECT_TRUE(
-      AsyncNoReject(base::SequencedTaskRunnerHandle::Get(),
+      AsyncNoReject(base::SequencedTaskRunner::GetCurrentDefault(),
                     base::BindOnce([]() { return ResolvedFuture(true); }))
           .Flatten()
           .GetWithRunLoop()
           .val);
 
-  AsyncNoReject(base::SequencedTaskRunnerHandle::Get(),
+  AsyncNoReject(base::SequencedTaskRunner::GetCurrentDefault(),
                 base::BindOnce([]() { return ResolvedFuture<void>(); }))
       .Flatten()
       .GetWithRunLoop();
 
   {
-    auto ret = AsyncNoReject(base::SequencedTaskRunnerHandle::Get(),
+    auto ret = AsyncNoReject(base::SequencedTaskRunner::GetCurrentDefault(),
                              base::BindOnce([]() { return 2; }))
                    .ThenNoReject(base::BindOnce([](int x) {
                      return AsyncNoReject(
-                         base::SequencedTaskRunnerHandle::Get(),
+                         base::SequencedTaskRunner::GetCurrentDefault(),
                          base::BindOnce([](int x) { return x * 3; }, x));
                    }))
                    .Flatten()
@@ -366,15 +366,16 @@ TEST_F(FutureTest, Flatten) {
   }
 
   {
-    auto ret = AsyncNoReject(base::SequencedTaskRunnerHandle::Get(),
-                             base::BindOnce([]() { return 2; }))
-                   .ThenNoReject(base::BindOnce([](int x) {
-                     return Async(base::SequencedTaskRunnerHandle::Get(),
-                                  base::BindOnce(
-                                      [](int x) { return Reject<int>(); }, x));
-                   }))
-                   .Flatten()
-                   .GetWithRunLoop();
+    auto ret =
+        AsyncNoReject(base::SequencedTaskRunner::GetCurrentDefault(),
+                      base::BindOnce([]() { return 2; }))
+            .ThenNoReject(base::BindOnce([](int x) {
+              return Async(
+                  base::SequencedTaskRunner::GetCurrentDefault(),
+                  base::BindOnce([](int x) { return Reject<int>(); }, x));
+            }))
+            .Flatten()
+            .GetWithRunLoop();
     EXPECT_TRUE(ret.rejected);
   }
 }
@@ -395,14 +396,14 @@ TEST_F(FutureTest, NoDeadlock) {
   // Nested run loops
   {
     base::RunLoop loop;
-    base::SequencedTaskRunnerHandle::Get()->PostTask(
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
         base::BindOnce(
             [](base::RepeatingClosure closure) {
               Promise<bool> promise;
-              Future<bool> future =
-                  promise.GetFuture(base::SequencedTaskRunnerHandle::Get());
-              base::SequencedTaskRunnerHandle::Get()->PostDelayedTask(
+              Future<bool> future = promise.GetFuture(
+                  base::SequencedTaskRunner::GetCurrentDefault());
+              base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
                   FROM_HERE,
                   base::BindOnce(
                       [](Promise<bool> promise) { promise.SetValue(true); },
@@ -418,7 +419,7 @@ TEST_F(FutureTest, NoDeadlock) {
   {
     Promise<bool> promise;
     Future<bool> future =
-        promise.GetFuture(base::SequencedTaskRunnerHandle::Get());
+        promise.GetFuture(base::SequencedTaskRunner::GetCurrentDefault());
     task_runner_->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(
@@ -430,7 +431,7 @@ TEST_F(FutureTest, NoDeadlock) {
                       [](Promise<bool> promise) { promise.SetValue(true); },
                       std::move(promise)));
             },
-            std::move(promise), base::SequencedTaskRunnerHandle::Get()),
+            std::move(promise), base::SequencedTaskRunner::GetCurrentDefault()),
         base::Milliseconds(10));
     EXPECT_TRUE(future.GetWithRunLoop().val);
   }
@@ -438,7 +439,7 @@ TEST_F(FutureTest, NoDeadlock) {
   {
     Promise<bool> promise;
     Future<bool> future =
-        promise.GetFuture(base::SequencedTaskRunnerHandle::Get());
+        promise.GetFuture(base::SequencedTaskRunner::GetCurrentDefault());
     task_runner_->PostTask(
         FROM_HERE,
         base::BindOnce(
@@ -451,7 +452,8 @@ TEST_F(FutureTest, NoDeadlock) {
                       [](Promise<bool> promise) { promise.SetValue(true); },
                       std::move(promise)));
             },
-            std::move(promise), base::SequencedTaskRunnerHandle::Get()));
+            std::move(promise),
+            base::SequencedTaskRunner::GetCurrentDefault()));
     EXPECT_TRUE(future.GetWithRunLoop().val);
   }
 }
@@ -459,13 +461,13 @@ TEST_F(FutureTest, NoDeadlock) {
 TEST_F(FutureTest, SameThread) {
   {
     auto sum = Async(
-        base::SequencedTaskRunnerHandle::Get(),
+        base::SequencedTaskRunner::GetCurrentDefault(),
         base::BindOnce([](int x, int y) { return Resolve<int>(x + y); }, 4, 3));
     EXPECT_EQ(sum.GetWithRunLoop().val, 7);
   }
 
   {
-    auto future = Async(base::SequencedTaskRunnerHandle::Get(),
+    auto future = Async(base::SequencedTaskRunner::GetCurrentDefault(),
                         base::BindOnce([]() { return Resolve<void>(); }));
     future.GetWithRunLoop();
   }
@@ -473,7 +475,7 @@ TEST_F(FutureTest, SameThread) {
   {
     Promise<bool> promise;
     Future<bool> future =
-        promise.GetFuture(base::SequencedTaskRunnerHandle::Get());
+        promise.GetFuture(base::SequencedTaskRunner::GetCurrentDefault());
     promise.SetValue(true);
     EXPECT_EQ(future.GetWithRunLoop().val, true);
   }
@@ -482,7 +484,7 @@ TEST_F(FutureTest, SameThread) {
     auto func = []() {
       Promise<bool> promise;
       Future<bool> future =
-          promise.GetFuture(base::SequencedTaskRunnerHandle::Get());
+          promise.GetFuture(base::SequencedTaskRunner::GetCurrentDefault());
       promise.SetValue(true);
       return future;
     };
@@ -492,8 +494,8 @@ TEST_F(FutureTest, SameThread) {
   {
     Promise<void> promise;
     Future<void> future =
-        promise.GetFuture(base::SequencedTaskRunnerHandle::Get());
-    base::SequencedTaskRunnerHandle::Get()->PostTask(
+        promise.GetFuture(base::SequencedTaskRunner::GetCurrentDefault());
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE,
         base::BindOnce([](Promise<void> promise) { promise.SetValue(); },
                        std::move(promise)));

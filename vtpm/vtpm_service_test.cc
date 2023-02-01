@@ -9,10 +9,10 @@
 
 #include <base/functional/bind.h>
 #include <base/task/single_thread_task_executor.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <base/threading/thread.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <brillo/dbus/mock_dbus_method_response.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <chromeos/dbus/service_constants.h>

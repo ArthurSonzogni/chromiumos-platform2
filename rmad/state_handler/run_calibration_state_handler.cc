@@ -9,9 +9,9 @@
 #include <string>
 
 #include <base/logging.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
-#include <base/threading/thread_task_runner_handle.h>
 
 #include "rmad/utils/calibration_utils.h"
 #include "rmad/utils/mojo_service_utils.h"
@@ -82,7 +82,7 @@ RmadErrorCode RunCalibrationStateHandler::InitializeState() {
           weak_factory_.GetMutableWeakPtr()));
     }
     state_.set_allocated_run_calibration(new RunCalibrationState);
-    sequenced_task_runner_ = base::SequencedTaskRunnerHandle::Get();
+    sequenced_task_runner_ = base::SequencedTaskRunner::GetCurrentDefault();
   }
   setup_instruction_ = RMAD_CALIBRATION_INSTRUCTION_NEED_TO_CHECK;
   if (std::string calibration_instruction;

@@ -5,8 +5,8 @@
 #ifndef MOJO_SERVICE_MANAGER_TESTING_MOJO_TEST_ENVIRONMENT_H_
 #define MOJO_SERVICE_MANAGER_TESTING_MOJO_TEST_ENVIRONMENT_H_
 
+#include <base/task/single_thread_task_runner.h>
 #include <base/test/task_environment.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
 
 namespace chromeos {
@@ -18,7 +18,7 @@ class MojoTaskEnvironment : public base::test::SingleThreadTaskEnvironment {
   template <class... ArgTypes>
   explicit MojoTaskEnvironment(ArgTypes... args)
       : base::test::SingleThreadTaskEnvironment(MainThreadType::IO, args...),
-        ipc_support_(base::ThreadTaskRunnerHandle::Get(),
+        ipc_support_(base::SingleThreadTaskRunner::GetCurrentDefault(),
                      mojo::core::ScopedIPCSupport::ShutdownPolicy::
                          CLEAN /* blocking shutdown */) {}
 

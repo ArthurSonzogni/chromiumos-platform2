@@ -10,8 +10,8 @@
 #include <utility>
 
 #include <base/files/scoped_temp_dir.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/test/task_environment.h>
-#include <base/threading/sequenced_task_runner_handle.h>
 #include <brillo/grpc/async_grpc_server.h>
 #include <gmock/gmock.h>
 

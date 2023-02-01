@@ -26,9 +26,9 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/synchronization/lock.h>
 #include <base/synchronization/waitable_event.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/threading/platform_thread.h>
 #include <base/threading/thread.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/syslog_logging.h>
 #include <libhwsec/factory/factory_impl.h>
@@ -116,8 +116,8 @@ class Daemon : public brillo::DBusServiceDaemon {
 
     chaps_metrics_.reset(new ChapsMetrics);
     factory_.reset(new ChapsFactoryImpl(chaps_metrics_.get()));
-    system_shutdown_blocker_.reset(
-        new SystemShutdownBlocker(base::ThreadTaskRunnerHandle::Get()));
+    system_shutdown_blocker_.reset(new SystemShutdownBlocker(
+        base::SingleThreadTaskRunner::GetCurrentDefault()));
     slot_manager_.reset(new SlotManagerImpl(
         factory_.get(), hwsec_.get(), auto_load_system_token_,
         system_shutdown_blocker_.get(), chaps_metrics_.get()));

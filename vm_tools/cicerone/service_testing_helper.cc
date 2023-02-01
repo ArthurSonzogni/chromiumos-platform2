@@ -440,7 +440,7 @@ void ServiceTestingHelper::SetUpPluginVm() {
 }
 
 void ServiceTestingHelper::CreateService(base::WaitableEvent* event) {
-  dbus_task_runner_ = base::ThreadTaskRunnerHandle::Get();
+  dbus_task_runner_ = base::SingleThreadTaskRunner::GetCurrentDefault();
   EXPECT_CALL(*mock_bus_, GetDBusTaskRunner())
       .WillRepeatedly(Return(dbus_task_runner_.get()));
 

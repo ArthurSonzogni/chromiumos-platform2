@@ -127,7 +127,7 @@ Context::Context(mojo::PlatformChannelEndpoint executor_endpoint,
   memory_cpu_resource_queue_ = std::make_unique<ResourceQueue>();
 
   // TODO(b/270471793): Remove this workaround after the Bluez issue is fixed.
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&Context::BootstrapBluezProxy,
                      weak_ptr_factory_.GetWeakPtr()),

@@ -11,7 +11,7 @@
 
 #include <base/logging.h>
 #include <base/task/bind_post_task.h>
-#include <base/threading/sequenced_task_runner_handle.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>

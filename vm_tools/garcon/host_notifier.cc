@@ -29,7 +29,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <chromeos/constants/vm_tools.h>
 #include <vm_protos/proto_bindings/common.pb.h>
@@ -484,7 +484,7 @@ bool HostNotifier::InitServer(base::OnceClosure shutdown_closure,
   CHECK(package_kit_proxy);
   package_kit_proxy_ = package_kit_proxy;
   shutdown_closure_ = std::move(shutdown_closure);
-  task_runner_ = base::ThreadTaskRunnerHandle::Get();
+  task_runner_ = base::SingleThreadTaskRunner::GetCurrentDefault();
   sftp_vsock_port_ = sftp_port;
   if (!NotifyHostGarconIsReady(garcon_port, sftp_port)) {
     return false;

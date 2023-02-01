@@ -19,7 +19,7 @@
 #include <base/message_loop/message_pump_type.h>
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
 #include <chromeos/mojo/service_constants.h>
@@ -254,7 +254,7 @@ void GetAmbientLightLux(bool keyboard) {
 #if USE_IIOSERVICE
   mojo::core::Init();
   mojo::core::ScopedIPCSupport ipc_support(
-      base::ThreadTaskRunnerHandle::Get(),
+      base::SingleThreadTaskRunner::GetCurrentDefault(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
 
   SensorServiceHandler sensor_service_handler;

@@ -24,7 +24,7 @@
 #include <base/posix/unix_domain_socket.h>
 #include <base/stl_util.h>
 #include <base/synchronization/waitable_event.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/files/file_util.h>
 #include <brillo/userdb_utils.h>
 
@@ -81,7 +81,7 @@ ServerProxy::ServerProxy(
     base::OnceClosure quit_closure)
     : proxy_file_system_task_runner_(proxy_file_system_task_runner),
       proxy_file_system_(this,
-                         base::ThreadTaskRunnerHandle::Get(),
+                         base::SingleThreadTaskRunner::GetCurrentDefault(),
                          proxy_file_system_mount_path),
       quit_closure_(std::move(quit_closure)) {}
 

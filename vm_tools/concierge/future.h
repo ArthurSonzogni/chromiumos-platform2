@@ -15,8 +15,8 @@
 #include <base/functional/bind.h>
 #include <base/run_loop.h>
 #include <base/synchronization/condition_variable.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/task/task_runner.h>
-#include <base/threading/sequenced_task_runner_handle.h>
 
 #include "vm_tools/concierge/apply_impl.h"
 
@@ -588,11 +588,11 @@ template <typename T, typename Error = void>
 std::enable_if_t<!std::is_void<T>::value, Future<T, Error>> ResolvedFuture(
     T val,
     scoped_refptr<base::TaskRunner> task_runner =
-        base::SequencedTaskRunnerHandle::Get());
+        base::SequencedTaskRunner::GetCurrentDefault());
 template <typename T, typename Error = void>
 std::enable_if_t<std::is_void<T>::value, Future<T, Error>> ResolvedFuture(
     scoped_refptr<base::TaskRunner> task_runner =
-        base::SequencedTaskRunnerHandle::Get());
+        base::SequencedTaskRunner::GetCurrentDefault());
 
 /* ------ Non class method implementation ------ */
 

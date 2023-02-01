@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #include <base/command_line.h>
-#include <base/logging.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/syslog_logging.h>
 #include <mojo/core/embedder/embedder.h>
@@ -24,10 +24,10 @@ namespace mojom = ::ash::cros_healthd::mojom;
 class DelegateDaemon : public brillo::Daemon {
  public:
   explicit DelegateDaemon(mojo::PlatformChannelEndpoint endpoint)
-      : scoped_ipc_support_(
-            base::ThreadTaskRunnerHandle::Get() /* io_thread_task_runner */,
-            mojo::core::ScopedIPCSupport::ShutdownPolicy::
-                CLEAN /* blocking shutdown */) {
+      : scoped_ipc_support_(base::SingleThreadTaskRunner::
+                                GetCurrentDefault() /* io_thread_task_runner */,
+                            mojo::core::ScopedIPCSupport::ShutdownPolicy::
+                                CLEAN /* blocking shutdown */) {
     mojo::IncomingInvitation invitation =
         mojo::IncomingInvitation::Accept(std::move(endpoint));
     mojo::ScopedMessagePipeHandle pipe = invitation.ExtractMessagePipe(0);

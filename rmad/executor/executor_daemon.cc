@@ -8,7 +8,7 @@
 #include <utility>
 
 #include <base/check.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <mojo/public/cpp/bindings/pending_receiver.h>
 #include <mojo/public/cpp/system/invitation.h>
 #include <mojo/public/cpp/system/message_pipe.h>
@@ -22,7 +22,7 @@ ExecutorDaemon::ExecutorDaemon(mojo::PlatformChannelEndpoint endpoint) {
   DCHECK(endpoint.is_valid());
 
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
-      base::ThreadTaskRunnerHandle::Get(),
+      base::SingleThreadTaskRunner::GetCurrentDefault(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
 
   // Accept invitation from rmad.

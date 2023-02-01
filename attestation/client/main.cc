@@ -19,7 +19,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/syslog_logging.h>
@@ -593,7 +593,8 @@ class ClientLoop : public ClientLoopBase {
     } else {
       return EX_USAGE;
     }
-    base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE, std::move(task));
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, std::move(task));
     return EX_OK;
   }
 

@@ -22,7 +22,7 @@
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/posix/eintr_wrapper.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 
 namespace diagnostics {
 
@@ -173,7 +173,8 @@ size_t EcService::EcEvent::PayloadSizeInBytes() const {
   return (sanitized_size - 1) * sizeof(uint16_t);
 }
 
-EcService::EcService() : task_runner_(base::ThreadTaskRunnerHandle::Get()) {}
+EcService::EcService()
+    : task_runner_(base::SingleThreadTaskRunner::GetCurrentDefault()) {}
 
 EcService::~EcService() {
   DCHECK(sequence_checker_.CalledOnValidSequence());

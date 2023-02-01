@@ -15,7 +15,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/message_loops/base_message_loop.h>
@@ -54,7 +54,7 @@ scoped_refptr<dbus::Bus> InitDBus(brillo::DBusConnection* dbus_connection) {
 std::unique_ptr<mojo::core::ScopedIPCSupport> InitMojo() {
   mojo::core::Init();
   return std::make_unique<mojo::core::ScopedIPCSupport>(
-      base::ThreadTaskRunnerHandle::Get(),
+      base::SingleThreadTaskRunner::GetCurrentDefault(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
 }
 

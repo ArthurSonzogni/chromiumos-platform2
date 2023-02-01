@@ -17,7 +17,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/string_util.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 
 #include "vm_tools/cicerone/service.h"
 
@@ -26,7 +26,8 @@ namespace cicerone {
 
 TremplinListenerImpl::TremplinListenerImpl(
     base::WeakPtr<vm_tools::cicerone::Service> service)
-    : service_(service), task_runner_(base::ThreadTaskRunnerHandle::Get()) {}
+    : service_(service),
+      task_runner_(base::SingleThreadTaskRunner::GetCurrentDefault()) {}
 
 void TremplinListenerImpl::OverridePeerAddressForTesting(
     const std::string& testing_peer_address) {

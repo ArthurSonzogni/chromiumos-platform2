@@ -15,7 +15,7 @@
 #pragma GCC diagnostic ignored "-Wconversion"
 #include <base/test/task_environment.h>
 #pragma GCC diagnostic pop
-#include <base/threading/sequenced_task_runner_handle.h>
+#include <base/task/sequenced_task_runner.h>
 #include <chromeos/dbus/service_constants.h>
 // Ignore Wconversion warnings in dbus headers.
 #pragma GCC diagnostic push
@@ -67,7 +67,8 @@ class ClientTest : public testing::Test {
 
   void SetUp() override {
     EXPECT_CALL(*dbus_, GetDBusTaskRunner())
-        .WillRepeatedly(Return(base::SequencedTaskRunnerHandle::Get().get()));
+        .WillRepeatedly(
+            Return(base::SequencedTaskRunner::GetCurrentDefault().get()));
   }
 
   base::test::TaskEnvironment task_environment_;

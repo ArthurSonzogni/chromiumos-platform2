@@ -32,7 +32,7 @@
 #include <base/logging.h>
 #include <base/posix/safe_strerror.h>
 #include <base/task/bind_post_task.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 
 #include "common/utils/camera_hal_enumerator.h"
 #include "cros-camera/camera_mojo_channel_manager.h"
@@ -101,7 +101,7 @@ CameraHalServerImpl::IPCBridge::IPCBridge(
     : camera_hal_server_(camera_hal_server),
       mojo_manager_(mojo_manager),
       ipc_task_runner_(mojo_manager_->GetIpcTaskRunner()),
-      main_task_runner_(base::ThreadTaskRunnerHandle::Get()),
+      main_task_runner_(base::SingleThreadTaskRunner::GetCurrentDefault()),
       receiver_(this) {}
 
 CameraHalServerImpl::IPCBridge::~IPCBridge() {

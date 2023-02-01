@@ -16,7 +16,7 @@
 #include <base/functional/bind.h>
 #include <base/no_destructor.h>
 #include <base/strings/string_util.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 
 #include "cros-camera/common.h"
 #include "cros-camera/constants.h"
@@ -333,7 +333,7 @@ int CameraHal::OpenDevice(int id,
     return -ENODEV;
   }
   if (!task_runner_) {
-    task_runner_ = base::ThreadTaskRunnerHandle::Get();
+    task_runner_ = base::SingleThreadTaskRunner::GetCurrentDefault();
   }
   return 0;
 }
@@ -417,7 +417,8 @@ int CameraHal::Init() {
                      "function incorrectly";
   }
 
-  if (!udev_watcher_->Start(base::ThreadTaskRunnerHandle::Get())) {
+  if (!udev_watcher_->Start(
+          base::SingleThreadTaskRunner::GetCurrentDefault())) {
     LOGF(ERROR) << "Failed to Start()";
     return -ENODEV;
   }

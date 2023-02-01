@@ -6,7 +6,7 @@
 #define HERMES_EXECUTOR_H_
 
 #include <base/memory/scoped_refptr.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <google-lpa/lpa/util/executor.h>
 
 namespace hermes {

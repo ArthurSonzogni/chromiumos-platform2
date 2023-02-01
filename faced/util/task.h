@@ -8,7 +8,6 @@
 #include <utility>
 
 #include <base/location.h>
-#include <base/threading/sequenced_task_runner_handle.h>
 
 #include "base/task/sequenced_task_runner.h"
 
@@ -16,9 +15,9 @@ namespace faced {
 
 // Get the current task's SequencedTaskRunner.
 //
-// A shorter way of writing `base::SequencedTaskRunnerHandle::Get()`.
+// A shorter way of writing `base::SequencedTaskRunner::GetCurrentDefault()`.
 inline const scoped_refptr<base::SequencedTaskRunner>& CurrentSequence() {
-  return base::SequencedTaskRunnerHandle::Get();
+  return base::SequencedTaskRunner::GetCurrentDefault();
 }
 
 // Post a task to the current thread's SequencedTaskRunner.

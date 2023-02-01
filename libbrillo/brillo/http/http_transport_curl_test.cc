@@ -10,7 +10,7 @@
 #include <base/functional/bind.h>
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/http/http_connection_curl.h>
 #include <brillo/http/http_request.h>
 #include <brillo/http/mock_curl_api.h>
@@ -239,8 +239,8 @@ TEST_F(HttpCurlTransportAsyncTest, StartAsyncTransfer) {
                              base::OnceClosure quit_closure,
                              RequestID /* request_id */,
                              std::unique_ptr<http::Response> /* resp */) {
-    base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
-                                                  std::move(quit_closure));
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, std::move(quit_closure));
     (*success_call_count)++;
   };
 

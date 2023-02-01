@@ -47,7 +47,7 @@ void FakeSensorService::GetDeviceIds(cros::mojom::DeviceType type,
       ids.push_back(device_info.first);
   }
 
-  base::SequencedTaskRunnerHandle::Get()->PostTask(
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(std::move(callback), std::move(ids)));
 }
 
@@ -58,7 +58,7 @@ void FakeSensorService::GetAllDeviceIds(GetAllDeviceIdsCallback callback) {
                                             device_info.second.type});
   }
 
-  base::SequencedTaskRunnerHandle::Get()->PostTask(
+  base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(std::move(callback), std::move(id_types)));
 }
 

@@ -19,7 +19,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <cros_config/cros_config.h>
 #include <dbus/modemfwd/dbus-constants.h>
@@ -240,7 +240,7 @@ int Daemon::SetupFirmwareDirectory() {
     } else {
       InstallModemDlcOnceCallback cb = base::BindOnce(
           &Daemon::InstallDlcCompleted, weak_ptr_factory_.GetWeakPtr());
-      base::ThreadTaskRunnerHandle::Get()->PostTask(
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
           FROM_HERE,
           base::BindOnce(&DlcManager::InstallModemDlc,
                          base::Unretained(dlc_manager_.get()), std::move(cb)));
@@ -300,7 +300,7 @@ void Daemon::CompleteInitialization() {
                           weak_ptr_factory_.GetWeakPtr()));
 
   if (dlc_manager_) {
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&DlcManager::RemoveUnecessaryModemDlcs,
                        base::Unretained(dlc_manager_.get())),
@@ -313,7 +313,7 @@ void Daemon::CompleteInitialization() {
   if (helper_directory_->GetHelperForDeviceId(kSocInternalDeviceId))
     ForceFlash(kSocInternalDeviceId);
 
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&Daemon::CheckForWedgedModems,
                      weak_ptr_factory_.GetWeakPtr()),
@@ -436,7 +436,7 @@ void Daemon::ForceFlashIfWedged(const std::string& device_id,
   if (!helper->FlashModeCheck()) {
     LOG(WARNING) << "Modem not found, trying to reset it...";
     if (helper->Reboot()) {
-      base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
           FROM_HERE,
           base::BindOnce(&Daemon::ForceFlashIfNeverAppeared,
                          weak_ptr_factory_.GetWeakPtr(), device_id),
@@ -547,7 +547,7 @@ void Daemon::CheckModemIsResponsive() {
 
     // Schedule closure task to gather ping result and time out ping process
     // if necessary
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(
             &Daemon::GetModemCheckResult, weak_ptr_factory_.GetWeakPtr(),

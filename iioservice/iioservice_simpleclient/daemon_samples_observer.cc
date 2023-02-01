@@ -31,8 +31,8 @@ DaemonSamplesObserver::~DaemonSamplesObserver() = default;
 
 void DaemonSamplesObserver::SetSensorClient() {
   sensor_client_ = SamplesObserver::Create(
-      base::ThreadTaskRunnerHandle::Get(), device_id_, device_type_,
-      std::move(channel_ids_), frequency_, timeout_, samples_,
+      base::SingleThreadTaskRunner::GetCurrentDefault(), device_id_,
+      device_type_, std::move(channel_ids_), frequency_, timeout_, samples_,
       base::BindOnce(&DaemonSamplesObserver::OnMojoDisconnect,
                      weak_ptr_factory_.GetWeakPtr()));
 }

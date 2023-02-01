@@ -8,8 +8,8 @@
 
 #include <base/check.h>
 #include <base/functional/bind.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/threading/platform_thread.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <keymaster/android_keymaster_messages.h>
 #include <mojo/cert_store.mojom.h>
 #include <mojo/keymaster.mojom.h>
@@ -62,7 +62,7 @@ void KeymasterServer::UpdateContextPlaceholderKeys(
         original_task_runner->PostTask(
             FROM_HERE, base::BindOnce(std::move(callback), success));
       },
-      base::ThreadTaskRunnerHandle::Get(), std::move(callback));
+      base::SingleThreadTaskRunner::GetCurrentDefault(), std::move(callback));
 
   backend_thread_.task_runner()->PostTask(
       FROM_HERE, base::BindOnce(
@@ -118,8 +118,9 @@ void KeymasterServer::RunKeymasterRequest(
                 location,
                 base::BindOnce(std::move(callback), std::move(response)));
           },
-          location, base::ThreadTaskRunnerHandle::Get(), backend_.keymaster(),
-          member, std::move(request), std::move(callback)));
+          location, base::SingleThreadTaskRunner::GetCurrentDefault(),
+          backend_.keymaster(), member, std::move(request),
+          std::move(callback)));
 }
 
 void KeymasterServer::AddRngEntropy(const std::vector<uint8_t>& data,

@@ -5,7 +5,7 @@
 #ifndef VM_TOOLS_CONCIERGE_SYSFS_NOTIFY_WATCHER_IMPL_H_
 #define VM_TOOLS_CONCIERGE_SYSFS_NOTIFY_WATCHER_IMPL_H_
 
-#include <base/threading/sequenced_task_runner_handle.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/threading/thread.h>
 
 #include "vm_tools/concierge/sysfs_notify_watcher.h"
@@ -46,7 +46,7 @@ class SysfsNotifyWatcherImpl final : public SysfsNotifyWatcher {
   // Runs tasks on the sequence on which this was instantiated (the
   // sequence on which the callback must run).
   const scoped_refptr<base::SequencedTaskRunner> main_thread_task_runner_ =
-      base::SequencedTaskRunnerHandle::Get();
+      base::SequencedTaskRunner::GetCurrentDefault();
 };
 
 }  // namespace vm_tools::concierge

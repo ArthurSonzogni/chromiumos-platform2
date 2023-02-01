@@ -11,7 +11,7 @@
 #include <base/containers/contains.h>
 #include <base/location.h>
 #include <base/logging.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 
 #include "shill/net/attribute_list.h"
@@ -544,7 +544,7 @@ bool NetlinkManager::SendMessageInternal(
     dump_pending_ = true;
     pending_dump_timeout_callback_.Reset(base::BindOnce(
         &NetlinkManager::OnPendingDumpTimeout, weak_ptr_factory_.GetWeakPtr()));
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE, pending_dump_timeout_callback_.callback(),
         kPendingDumpTimeout);
   }
@@ -819,7 +819,7 @@ void NetlinkManager::ResendPendingDumpMessageAfterDelay() {
   resend_dump_message_callback_.Reset(
       base::BindOnce(&NetlinkManager::ResendPendingDumpMessage,
                      weak_ptr_factory_.GetWeakPtr()));
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE, resend_dump_message_callback_.callback(),
       kNlMessageRetryDelay);
 }

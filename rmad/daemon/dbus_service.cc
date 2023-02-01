@@ -16,7 +16,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/process/launch.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <dbus/bus.h>
 #include <dbus/object_path.h>
 #include <dbus/rmad/dbus-constants.h>
@@ -53,7 +53,7 @@ DBusService::DBusService(mojo::PlatformChannelEndpoint endpoint,
       is_interface_set_up_(false) {
   // Establish connection to the executor process.
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
-      base::ThreadTaskRunnerHandle::Get(),
+      base::SingleThreadTaskRunner::GetCurrentDefault(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
   // Send invitation to the executor process.
   mojo::OutgoingInvitation invitation;

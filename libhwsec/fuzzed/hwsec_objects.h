@@ -7,9 +7,9 @@
 
 #include <type_traits>
 
+#include <base/task/single_thread_task_runner.h>
 #include <base/task/task_runner.h>
 #include <base/threading/thread.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <fuzzer/FuzzedDataProvider.h>
 
 #include "libhwsec/fuzzed/basic_objects.h"

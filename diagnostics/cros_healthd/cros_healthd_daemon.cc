@@ -7,7 +7,7 @@
 #include <memory>
 #include <utility>
 
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/udev/udev_monitor.h>
 #include <mojo/public/cpp/platform/platform_channel_endpoint.h>
 
@@ -16,7 +16,7 @@ namespace diagnostics {
 CrosHealthdDaemon::CrosHealthdDaemon(
     mojo::PlatformChannelEndpoint endpoint,
     std::unique_ptr<brillo::UdevMonitor>&& udev_monitor)
-    : ipc_support_(base::ThreadTaskRunnerHandle::Get(),
+    : ipc_support_(base::SingleThreadTaskRunner::GetCurrentDefault(),
                    mojo::core::ScopedIPCSupport::ShutdownPolicy::
                        CLEAN /* blocking shutdown */),
       context_(

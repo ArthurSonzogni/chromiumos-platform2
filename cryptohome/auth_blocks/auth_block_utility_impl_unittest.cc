@@ -17,7 +17,6 @@
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
-#include <base/threading/sequenced_task_runner_handle.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
@@ -174,7 +173,7 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   base::test::SingleThreadTaskEnvironment task_environment_ = {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   scoped_refptr<base::SequencedTaskRunner> task_runner_ =
-      base::SequencedTaskRunnerHandle::Get();
+      base::SequencedTaskRunner::GetCurrentDefault();
 
   MockPlatform platform_;
   MockFingerprintManager fp_manager_;

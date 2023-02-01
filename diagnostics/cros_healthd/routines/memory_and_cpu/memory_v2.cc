@@ -370,7 +370,7 @@ void MemoryRoutineV2::UpdatePercentage() {
   }
 
   if (state()->percentage < 99) {
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&MemoryRoutineV2::UpdatePercentage,
                        weak_ptr_factory_.GetWeakPtr()),
@@ -388,7 +388,7 @@ void MemoryRoutineV2::SetUpStdout(mojo::ScopedHandle handle) {
   read_stdout_size_ = 0;
   // Initialize an empty std::vector<std::vector<std::string>>.
   parsed_memtester_result_ = {{""}};
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&MemoryRoutineV2::UpdatePercentage,
                      weak_ptr_factory_.GetWeakPtr()),

@@ -14,7 +14,7 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 
 #include "diagnostics/wilco_dtc_supportd/grpc_client_manager.h"
 #include "diagnostics/wilco_dtc_supportd/mojo_service.h"
@@ -109,7 +109,8 @@ Core::Core(Delegate* delegate,
     : delegate_(delegate),
       grpc_client_manager_(grpc_client_manager),
       grpc_service_uris_(grpc_service_uris),
-      grpc_server_(base::ThreadTaskRunnerHandle::Get(), grpc_service_uris_),
+      grpc_server_(base::SingleThreadTaskRunner::GetCurrentDefault(),
+                   grpc_service_uris_),
       mojo_service_factory_(mojo_service_factory) {
   DCHECK(delegate);
   DCHECK(grpc_client_manager_);

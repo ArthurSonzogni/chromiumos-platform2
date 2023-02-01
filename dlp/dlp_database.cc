@@ -17,7 +17,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <base/threading/sequenced_task_runner_handle.h>
+#include <base/task/sequenced_task_runner.h>
 #include <sqlite3.h>
 
 namespace dlp {
@@ -386,8 +386,8 @@ DlpDatabase::DlpDatabase(const base::FilePath& db_path, Delegate* delegate)
   task_runner_ = database_thread_.task_runner();
 
   CHECK(!task_runner_->RunsTasksInCurrentSequence());
-  core_ = std::make_unique<Core>(db_path,
-                                 base::SequencedTaskRunnerHandle::Get(), this);
+  core_ = std::make_unique<Core>(
+      db_path, base::SequencedTaskRunner::GetCurrentDefault(), this);
 }
 
 DlpDatabase::~DlpDatabase() {

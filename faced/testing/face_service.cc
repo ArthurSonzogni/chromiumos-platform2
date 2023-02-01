@@ -169,7 +169,7 @@ FakeFaceServiceManager::Create() {
       brillo::AsyncGrpcServer<faceauth::eora::FaceService::AsyncService>>
       server = std::make_unique<
           brillo::AsyncGrpcServer<faceauth::eora::FaceService::AsyncService>>(
-          base::SequencedTaskRunnerHandle::Get(), server_uris);
+          base::SequencedTaskRunner::GetCurrentDefault(), server_uris);
 
   // Create the mock rpc handler to be used by the server
   std::shared_ptr<MockFaceServiceRpcHandler> mock_handler =
@@ -219,7 +219,8 @@ FakeFaceServiceManager::Create() {
 
   manager->client_ =
       std::make_unique<brillo::AsyncGrpcClient<faceauth::eora::FaceService>>(
-          base::SequencedTaskRunnerHandle::Get(), manager->uds_address_);
+          base::SequencedTaskRunner::GetCurrentDefault(),
+          manager->uds_address_);
 
   manager->client_->SetDefaultRpcDeadlineForTesting(base::Seconds(5));
 

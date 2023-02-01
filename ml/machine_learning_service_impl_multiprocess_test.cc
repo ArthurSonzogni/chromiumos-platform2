@@ -15,6 +15,7 @@
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/run_loop.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/test/bind.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>
@@ -184,7 +185,7 @@ TEST(WebPlatformHandwritingModel, LoadModelAndRecognize) {
 
             // Post a task to disconnect the mojom connection to test whether
             // the worker process exits.
-            base::ThreadTaskRunnerHandle::Get()->PostTask(
+            base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
                 FROM_HERE,
                 base::BindLambdaForTesting([&]() { recognizer.reset(); }));
 
@@ -194,7 +195,7 @@ TEST(WebPlatformHandwritingModel, LoadModelAndRecognize) {
   // For safety, sets a timeout of 5min. This is just to guarantee the test will
   // not hang.
   bool is_timeout = false;
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE, base::BindLambdaForTesting([&]() {
         is_timeout = true;
         runloop.Quit();
@@ -344,7 +345,7 @@ TEST(ImageAnnotationMultiProcessTest, LoadAndAnnotate) {
         results.Swap(&p);
         // Post a task to disconnect the mojom connection to test whether
         // the worker process exits.
-        base::ThreadTaskRunnerHandle::Get()->PostTask(
+        base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
             FROM_HERE,
             base::BindLambdaForTesting([&]() { annotator.reset(); }));
 
@@ -353,7 +354,7 @@ TEST(ImageAnnotationMultiProcessTest, LoadAndAnnotate) {
 
   // For safety, set a timeout to avoid test hangs.
   bool is_timeout = false;
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE, base::BindLambdaForTesting([&]() {
         is_timeout = true;
         runloop.Quit();

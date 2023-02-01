@@ -67,7 +67,8 @@ class BRILLO_EXPORT AsyncGrpcClientBase {
 
 // A gRPC client that is specific to |ServiceType|.
 // Example usage:
-//   AsyncGrpcClient<Foo> client(base::ThreadTaskRunnerHandle::Get(),
+//   AsyncGrpcClient<Foo>
+//   client(base::SingleThreadTaskRunner::GetCurrentDefault(),
 //                               "unix:/path/to/socket");
 //   client.CallRpc(&FooStub::AsyncDoSomething,
 //                  something_request,

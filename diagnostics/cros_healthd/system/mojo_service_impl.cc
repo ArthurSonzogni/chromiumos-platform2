@@ -9,7 +9,7 @@
 #include <string>
 #include <utility>
 
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <chromeos/mojo/service_constants.h>
 #include <mojo/public/cpp/bindings/enum_utils.h>
@@ -114,7 +114,7 @@ template <typename InterfaceType>
 void MojoServiceImpl::RequestService(const std::string& service_name,
                                      mojo::Remote<InterfaceType>& remote,
                                      const base::TimeDelta& delay) {
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&MojoServiceImpl::SendServiceRequest<InterfaceType>,
                      weak_ptr_factory_.GetWeakPtr(), service_name,

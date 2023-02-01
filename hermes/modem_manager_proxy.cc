@@ -209,7 +209,7 @@ void ModemManagerProxy::ScheduleUninhibit(base::TimeDelta timeout) {
 
   uninhibit_cb_.Reset(base::BindOnce(&ModemManagerProxy::Uninhibit,
                                      weak_factory_.GetWeakPtr()));
-  base::SequencedTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE, uninhibit_cb_.callback(), timeout);
 }
 
@@ -250,7 +250,7 @@ void ModemManagerProxy::InhibitDevice(bool inhibit, ResultCallback cb) {
     pending_inhibit_cb_ = base::BindOnce(&ModemManagerProxy::InhibitDevice,
                                          weak_factory_.GetWeakPtr(), inhibit,
                                          return_inhibit_result);
-    base::SequencedTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&ModemManagerProxy::InhibitTimeout,
                        weak_factory_.GetWeakPtr(), return_inhibit_result),

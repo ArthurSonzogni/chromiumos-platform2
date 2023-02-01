@@ -179,7 +179,7 @@ TpmManagerService::~TpmManagerService() {
 }
 
 bool TpmManagerService::Initialize() {
-  origin_task_runner_ = base::ThreadTaskRunnerHandle::Get();
+  origin_task_runner_ = base::SingleThreadTaskRunner::GetCurrentDefault();
   worker_thread_.reset(
       new ServiceWorkerThread("TpmManager Service Worker", this));
   worker_thread_->StartWithOptions(

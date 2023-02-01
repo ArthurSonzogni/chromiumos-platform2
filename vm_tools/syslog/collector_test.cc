@@ -24,7 +24,6 @@
 #include <base/task/single_thread_task_runner.h>
 #include <base/test/task_environment.h>
 #include <base/threading/thread.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/util/message_differencer.h>
@@ -198,7 +197,8 @@ void CollectorTest::SetUp() {
   server_thread_.task_runner()->PostTask(
       FROM_HERE,
       base::BindOnce(
-          &StartFakeLogCollectorService, base::ThreadTaskRunnerHandle::Get(),
+          &StartFakeLogCollectorService,
+          base::SingleThreadTaskRunner::GetCurrentDefault(),
           temp_dir_.GetPath().Append(kServerSocket),
           base::BindOnce(&CollectorTest::ServerStartCallback,
                          weak_factory_.GetWeakPtr(), run_loop.QuitClosure()),

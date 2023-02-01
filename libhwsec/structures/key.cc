@@ -30,7 +30,7 @@ void ScopedKey::Invalidate() {
 
     // Using async flush if we have task runner on the current thread to improve
     // the performance.
-    if (base::SequencedTaskRunnerHandle::IsSet()) {
+    if (base::SequencedTaskRunner::HasCurrentDefault()) {
       base::OnceCallback<void(hwsec::Status)> callback =
           base::BindOnce([](hwsec::Status result) {
             if (!result.ok()) {

@@ -13,8 +13,8 @@
 #include "base/logging.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/posix/eintr_wrapper.h"
-#include "base/threading/sequenced_task_runner_handle.h"
-#include "base/threading/thread_task_runner_handle.h"
+#include "base/task/sequenced_task_runner.h"
+#include "base/task/single_thread_task_runner.h"
 #include "dlp/fanotify_reader_thread.h"
 #include "dlp/kernel_version_tools.h"
 
@@ -23,7 +23,7 @@ namespace dlp {
 FanotifyWatcher::FanotifyWatcher(Delegate* delegate,
                                  int fanotify_perm_fd,
                                  int fanotify_notif_fd)
-    : task_runner_(base::SequencedTaskRunnerHandle::Get()),
+    : task_runner_(base::SequencedTaskRunner::GetCurrentDefault()),
       fd_events_thread_(task_runner_, this),
       fh_events_thread_(task_runner_, this),
       fanotify_fd_events_fd_(fanotify_perm_fd),

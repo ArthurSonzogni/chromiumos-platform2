@@ -723,7 +723,7 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
     return true;
 
   if (!process_thread_) {
-    process_thread_ = base::ThreadTaskRunnerHandle::Get();
+    process_thread_ = base::SingleThreadTaskRunner::GetCurrentDefault();
     config_.SetCallback(
         base::BindRepeating(&EffectsStreamManipulatorImpl::OnOptionsUpdated,
                             base::Unretained(this)));

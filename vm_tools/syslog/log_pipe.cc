@@ -23,7 +23,7 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/synchronization/lock.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
 #include <dbus/message.h>
@@ -133,7 +133,7 @@ void LogPipe::Flush() {
 
 LogPipeManager::LogPipeManager(base::OnceClosure shutdown_closure)
     : shutdown_closure_(std::move(shutdown_closure)),
-      task_runner_(base::ThreadTaskRunnerHandle::Get()),
+      task_runner_(base::SingleThreadTaskRunner::GetCurrentDefault()),
       weak_ptr_factory_(this) {}
 
 LogPipeManager::~LogPipeManager() {

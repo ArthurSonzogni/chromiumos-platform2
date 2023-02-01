@@ -46,7 +46,7 @@ int Daemon::OnInit() {
 
   mojo::core::Init();
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
-      base::ThreadTaskRunnerHandle::Get(),
+      base::SingleThreadTaskRunner::GetCurrentDefault(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::CLEAN);
 
   ConnectToMojoServiceManager();
@@ -96,7 +96,7 @@ void Daemon::ConnectToMojoServiceManager() {
       service_provider_remote;
 
   iio_sensor_ = IioSensor::Create(
-      base::ThreadTaskRunnerHandle::Get(),
+      base::SingleThreadTaskRunner::GetCurrentDefault(),
       service_provider_remote.InitWithNewPipeAndPassReceiver());
   service_manager_->Register(chromeos::mojo_services::kIioSensor,
                              std::move(service_provider_remote));

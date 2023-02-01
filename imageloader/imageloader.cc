@@ -14,7 +14,7 @@
 #include <base/check_op.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <chromeos/constants/imageloader.h>
 #include <chromeos/dbus/service_constants.h>
@@ -95,7 +95,7 @@ void ImageLoader::OnSubprocessExited(pid_t pid, const siginfo_t& info) {
 void ImageLoader::PostponeShutdown() {
   shutdown_callback_.Reset(
       base::BindOnce(&brillo::Daemon::Quit, weak_factory_.GetWeakPtr()));
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE, shutdown_callback_.callback(), kShutdownTimeout);
 }
 

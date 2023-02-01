@@ -16,8 +16,8 @@
 #include <base/functional/callback_forward.h>
 #include <base/memory/ref_counted.h>
 #include <base/run_loop.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/task/thread_pool.h>
-#include <base/threading/sequenced_task_runner_handle.h>
 #include <base/threading/thread.h>
 #include <cros-camera/camera_service_connector.h>
 #include <unordered_map>
@@ -132,7 +132,7 @@ class CrosCameraClient : public CameraClient {
  private:
   // CrosCameraClient can only be constructed via CrosCameraClient::Create()
   explicit CrosCameraClient(std::unique_ptr<CameraService> camera_service)
-      : task_runner_(base::SequencedTaskRunnerHandle::Get()),
+      : task_runner_(base::SequencedTaskRunner::GetCurrentDefault()),
         camera_service_(std::move(camera_service)) {}
 
   // Callback for the cros-camera-service to process camera captures when they

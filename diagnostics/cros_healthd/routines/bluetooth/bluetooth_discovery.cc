@@ -13,6 +13,7 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <base/task/single_thread_task_runner.h>
 #include <re2/re2.h>
 
 #include "diagnostics/base/mojo_utils.h"
@@ -39,7 +40,7 @@ void BluetoothDiscoveryRoutine::Start() {
                kBluetoothRoutineRunningMessage);
   start_ticks_ = base::TimeTicks::Now();
 
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&BluetoothDiscoveryRoutine::OnTimeoutOccurred,
                      weak_ptr_factory_.GetWeakPtr()),

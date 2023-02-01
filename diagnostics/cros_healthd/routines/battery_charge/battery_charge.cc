@@ -15,7 +15,7 @@
 #include <base/check_op.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <power_manager/proto_bindings/power_supply_properties.pb.h>
 
 #include "diagnostics/base/mojo_utils.h"
@@ -155,7 +155,7 @@ void BatteryChargeRoutine::RunBatteryChargeRoutine() {
   callback_.Reset(base::BindOnce(&BatteryChargeRoutine::DetermineRoutineResult,
                                  weak_ptr_factory_.GetWeakPtr(),
                                  beginning_charge_percent));
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE, callback_.callback(), exec_duration_);
 
   UpdateStatus(mojo_ipc::DiagnosticRoutineStatusEnum::kRunning,

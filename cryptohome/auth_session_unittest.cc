@@ -21,7 +21,6 @@
 #include <base/test/simple_test_clock.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
-#include <base/threading/sequenced_task_runner_handle.h>
 #include <base/timer/mock_timer.h>
 #include <base/unguessable_token.h>
 #include <brillo/cryptohome.h>
@@ -330,7 +329,7 @@ class AuthSessionTest : public ::testing::Test {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   base::SimpleTestClock clock_;
   scoped_refptr<base::SequencedTaskRunner> task_runner_ =
-      base::SequencedTaskRunnerHandle::Get();
+      base::SequencedTaskRunner::GetCurrentDefault();
 
   // Mocks and fakes for the test AuthSessions to use.
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec_;

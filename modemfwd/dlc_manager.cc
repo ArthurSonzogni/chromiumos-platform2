@@ -10,7 +10,7 @@
 #include <base/logging.h>
 #include <base/memory/weak_ptr.h>
 #include <base/strings/stringprintf.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/errors/error.h>
 #include "dlcservice/dbus-proxies.h"
 #include "dlcservice/proto_bindings/dlcservice.pb.h"
@@ -150,7 +150,7 @@ void DlcManager::InstallModemDlc(InstallModemDlcOnceCallback cb) {
       &DlcManager::InstallDlcTimedout, weak_ptr_factory_.GetWeakPtr()));
   // Add a timeout in case dlcservice is offline, or the Install call never
   // returns. This will allow modemfwd to continue with other tasks.
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE, install_timeout_callback_.callback(),
       dlcmanager::kInstallTimeout);
 
@@ -170,7 +170,7 @@ void DlcManager::OnServiceAvailable(bool available) {
 
 void DlcManager::PostRetryInstallTask() {
   LOG(INFO) << "Posting DLC install retry task";
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&DlcManager::TryInstall, weak_ptr_factory_.GetWeakPtr()),
       install_retry_period_);
@@ -256,7 +256,7 @@ void DlcManager::OnInstallError(brillo::Error* dbus_error) {
 void DlcManager::OnInstallGetDlcStateSuccess(
     const dlcservice::DlcState& state) {
   if (state.state() == dlcservice::DlcState::INSTALLING) {
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&DlcManager::CallGetDlcStateAsync,
                        base::Unretained(this)),

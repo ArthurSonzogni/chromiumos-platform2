@@ -10,8 +10,8 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
 #include <base/run_loop.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/test/task_environment.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <gtest/gtest.h>
 
 #include "trunks/mock_authorization_delegate.h"
@@ -316,7 +316,7 @@ class PostResponse {
  public:
   explicit PostResponse(const std::string& response) : response_(response) {}
   void operator()(base::OnceCallback<void(const std::string&)> callback) {
-    base::ThreadTaskRunnerHandle::Get()->PostTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(std::move(callback), response_));
   }
 

@@ -12,7 +12,7 @@
 
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
-#include <base/threading/sequenced_task_runner_handle.h>
+#include <base/task/sequenced_task_runner.h>
 
 #include "missive/dbus/upload_client.h"
 #include "missive/proto/record.pb.h"

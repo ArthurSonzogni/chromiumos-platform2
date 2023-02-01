@@ -11,7 +11,7 @@
 
 #include <base/memory/ref_counted.h>
 #include <base/memory/weak_ptr.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/dbus/dbus_method_response.h>
 #include <brillo/dbus/dbus_object.h>
 #include <trunks/trunks_factory.h>
@@ -63,7 +63,7 @@ class VtpmService : public org::chromium::VtpmInterface {
           response);
 
   scoped_refptr<base::TaskRunner> origin_task_runner_ =
-      base::ThreadTaskRunnerHandle::Get();
+      base::SingleThreadTaskRunner::GetCurrentDefault();
 
   // the delegate of the TPM command execution.
   Command* const command_;

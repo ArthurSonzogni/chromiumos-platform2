@@ -12,7 +12,7 @@
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/variant_dictionary.h>
 #include <dbus/shill/dbus-constants.h>
 
@@ -172,7 +172,7 @@ void ModemTracker::OnDeviceListChanged(
     }
     if (!sim_present) {
       // Test the SIMPresent property again after short delay before fw update
-      base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
           FROM_HERE,
           BindOnce(&ModemTracker::DelayedSimCheck,
                    weak_ptr_factory_.GetWeakPtr(), device_path),

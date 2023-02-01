@@ -14,7 +14,7 @@
 #include <base/message_loop/message_pump_type.h>
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
 #include <chromeos/dbus/service_constants.h>
@@ -102,7 +102,7 @@ class SuspendDelayRegisterer {
 
     LOG(INFO) << "Got notification about suspend attempt " << suspend_id;
     LOG(INFO) << "Sleeping " << delay_ms_ << " ms before responding";
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&SuspendDelayRegisterer::SendSuspendReady,
                        weak_ptr_factory_.GetWeakPtr(), suspend_id),

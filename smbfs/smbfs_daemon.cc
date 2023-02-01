@@ -16,7 +16,7 @@
 #include <base/logging.h>
 #include <base/no_destructor.h>
 #include <base/notreached.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/message_loops/message_loop.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <chromeos/dbus/service_constants.h>
@@ -167,7 +167,7 @@ bool SmbFsDaemon::InitMojo() {
 
   mojo::core::Init();
   ipc_support_ = std::make_unique<mojo::core::ScopedIPCSupport>(
-      base::ThreadTaskRunnerHandle::Get(),
+      base::SingleThreadTaskRunner::GetCurrentDefault(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
 
   mojo::PlatformChannel channel;

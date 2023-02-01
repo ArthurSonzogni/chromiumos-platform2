@@ -7,13 +7,13 @@
 #include <memory>
 #include <utility>
 
+#include "base/task/single_thread_task_runner.h"
 #include <base/check.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include "base/threading/thread_task_runner_handle.h"
 #include <chromeos/constants/vm_tools.h>
 #include <chromeos/dbus/service_constants.h>
 // Ignore Wconversion warnings in dbus headers.
@@ -246,7 +246,7 @@ void CrostiniService::CheckAdbSideloadingStatus() {
       proxy->CallMethodAndBlock(&method_call, kDbusTimeoutMs);
 
   if (!dbus_response) {
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&CrostiniService::CheckAdbSideloadingStatus,
                        weak_factory_.GetWeakPtr()),

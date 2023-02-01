@@ -42,7 +42,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <brillo/file_utils.h>
 #include <chromeos/dbus/service_constants.h>
@@ -397,8 +397,8 @@ void Service::HandleSigterm() {
 
   // Stop the message loop.
   if (quit_closure_) {
-    base::ThreadTaskRunnerHandle::Get()->PostTask(FROM_HERE,
-                                                  std::move(quit_closure_));
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE, std::move(quit_closure_));
   }
 }
 
@@ -684,7 +684,7 @@ std::unique_ptr<dbus::Response> Service::StopServer(
     return dbus_response;
   }
 
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&Service::KillServer, weak_factory_.GetWeakPtr(),
                      request.handle()),

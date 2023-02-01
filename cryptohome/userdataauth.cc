@@ -22,7 +22,7 @@
 #include <base/notreached.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <biod/biod_proxy/auth_stack_manager_proxy_base.h>
 #include <bootlockbox/boot_lockbox_client.h>
 #include <brillo/cryptohome.h>
@@ -259,7 +259,7 @@ bool UserDataAuth::Initialize(scoped_refptr<::dbus::Bus> mount_thread_bus) {
   // are available here because they may have been set to an overridden value
   // during unit testing before Initialize() is called.
   if (!origin_task_runner_) {
-    origin_task_runner_ = base::ThreadTaskRunnerHandle::Get();
+    origin_task_runner_ = base::SingleThreadTaskRunner::GetCurrentDefault();
   }
   if (!mount_task_runner_) {
     mount_thread_ = std::make_unique<MountThread>(kMountThreadName, this);

@@ -3,7 +3,7 @@
 // found in the LICENSE file.
 
 #include <base/at_exit.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/message_loops/base_message_loop.h>
 #include <brillo/test_helpers.h>
 #include <mojo/core/embedder/embedder.h>
@@ -18,7 +18,7 @@ int main(int argc, char** argv) {
 
   mojo::core::Init();
   mojo::core::ScopedIPCSupport ipc_support(
-      base::ThreadTaskRunnerHandle::Get(),
+      base::SingleThreadTaskRunner::GetCurrentDefault(),
       mojo::core::ScopedIPCSupport::ShutdownPolicy::FAST);
 
   return RUN_ALL_TESTS();

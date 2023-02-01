@@ -25,7 +25,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <dbus/message.h>
 #include <dbus/property.h>
 #include <dbus/scoped_dbus_error.h>
@@ -1065,7 +1065,7 @@ void RunAptUpdate(scoped_refptr<dbus::Bus> bus,
     // Don't do the update now, but schedule another one for later and we will
     // check the setting again then.
     LOG(INFO) << "Not performing automatic update because they are disabled";
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&RunAptUpdate, bus, packagekit_proxy,
                        packagekit_service_proxy),
@@ -1106,7 +1106,7 @@ void RunAptUpdate(scoped_refptr<dbus::Bus> bus,
     LOG(ERROR) << "Failure performing refresh of package cache, output: "
                << output;
   }
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&RunAptUpdate, bus, packagekit_proxy,
                      packagekit_service_proxy),
@@ -1236,7 +1236,7 @@ std::unique_ptr<PackageKitProxy> PackageKitProxy::Create(
 }
 
 PackageKitProxy::PackageKitProxy(PackageKitObserver* observer)
-    : task_runner_(base::ThreadTaskRunnerHandle::Get()),
+    : task_runner_(base::SingleThreadTaskRunner::GetCurrentDefault()),
       observer_(observer),
       blocking_operation_active_(false) {}
 

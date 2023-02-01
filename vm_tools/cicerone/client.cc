@@ -29,7 +29,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
 #include <base/task/single_thread_task_executor.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <chromeos/dbus/service_constants.h>
@@ -165,7 +165,7 @@ int CreateLxdContainer(dbus::ObjectProxy* proxy,
     // Start the RunLoop which'll get the D-Bus signal callbacks and set the
     // final result for us.
     LOG(INFO) << "Waiting for D-Bus signal for container creation status";
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE, run_loop.QuitClosure(), base::Minutes(10));
     run_loop.Run();
 
@@ -248,7 +248,7 @@ int StartLxdContainer(dbus::ObjectProxy* proxy,
     // Start the RunLoop which'll get the D-Bus signal callbacks and set the
     // final result for us.
     LOG(INFO) << "Waiting for D-Bus signal for container start status";
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE, run_loop.QuitClosure(), base::Minutes(10));
     run_loop.Run();
 
@@ -707,7 +707,7 @@ int InstallLinuxPackage(dbus::ObjectProxy* proxy,
       // Start the RunLoop which'll get the D-Bus signal callbacks and set the
       // final result for us.
       LOG(INFO) << "Waiting for D-Bus signal for application install status";
-      base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
           FROM_HERE, run_loop.QuitClosure(), base::Minutes(10));
       run_loop.Run();
 
@@ -814,7 +814,7 @@ int UninstallApplication(dbus::ObjectProxy* proxy,
       // Start the RunLoop which'll get the D-Bus signal callbacks and set the
       // final result for us.
       LOG(INFO) << "Waiting for D-Bus signal for application uninstall status";
-      base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
           FROM_HERE, run_loop.QuitClosure(), base::Minutes(10));
       run_loop.Run();
 
@@ -921,7 +921,7 @@ int ApplyAnsiblePlaybook(dbus::ObjectProxy* proxy,
       // Start the RunLoop which'll get the D-Bus signal callbacks and set the
       // final result for us.
       LOG(INFO) << "Waiting for D-Bus signal for playbook application status";
-      base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
           FROM_HERE, run_loop.QuitClosure(), base::Minutes(10));
       run_loop.Run();
 

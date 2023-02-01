@@ -15,7 +15,7 @@
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/task/bind_post_task.h>
-#include <base/threading/sequenced_task_runner_handle.h>
+#include <base/task/sequenced_task_runner.h>
 
 #include "missive/client/empty_dm_token_retriever.h"
 #include "missive/client/missive_client.h"

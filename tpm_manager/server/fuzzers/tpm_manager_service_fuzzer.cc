@@ -11,7 +11,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/daemons/daemon.h>
 #include <fuzzer/FuzzedDataProvider.h>
 #include <gmock/gmock.h>
@@ -102,7 +102,7 @@ class TpmManagerServiceFuzzer : public brillo::Daemon {
   }
 
   void ScheduleSendFuzzedRequest() {
-    base::ThreadTaskRunnerHandle::Get()->PostTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
         FROM_HERE, base::BindOnce(&TpmManagerServiceFuzzer::SendFuzzedRequest,
                                   base::Unretained(this)));
   }

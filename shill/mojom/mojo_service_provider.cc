@@ -74,7 +74,7 @@ void MojoServiceProvider::OnManagerDisconnected(uint32_t error,
     // The remote service probably restarted, try to reconnect.
     // TODO(b/266150324): implement a backoff or a max reconnection logic.
     service_manager_.reset();
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&MojoServiceProvider::ConnectAndRegister,
                        weak_ptr_factory_.GetWeakPtr()),

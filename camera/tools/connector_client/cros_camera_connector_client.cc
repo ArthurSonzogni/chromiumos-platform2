@@ -17,7 +17,7 @@
 #include <base/posix/safe_strerror.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
-#include <base/threading/sequenced_task_runner_handle.h>
+#include <base/task/sequenced_task_runner.h>
 
 #include "cros-camera/common.h"
 #include "tools/connector_client/cros_camera_connector_client.h"
@@ -96,7 +96,7 @@ int OnCaptureResultAvailable(void* context,
 }
 
 CrosCameraConnectorClient::CrosCameraConnectorClient()
-    : client_runner_(base::SequencedTaskRunnerHandle::Get()),
+    : client_runner_(base::SequencedTaskRunner::GetCurrentDefault()),
       init_done_(false),
       current_id_(-1),
       capture_thread_("CamConnClient"),

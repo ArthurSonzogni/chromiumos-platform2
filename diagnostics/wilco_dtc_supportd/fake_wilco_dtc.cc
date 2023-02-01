@@ -9,16 +9,18 @@
 #include <base/barrier_closure.h>
 #include <base/check.h>
 #include <base/run_loop.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 
 namespace diagnostics {
 namespace wilco {
 
 FakeWilcoDtc::FakeWilcoDtc(const std::string& grpc_server_uri,
                            const std::string& wilco_dtc_supportd_grpc_uri)
-    : grpc_server_(base::ThreadTaskRunnerHandle::Get(), {grpc_server_uri}),
-      wilco_dtc_supportd_grp_client_(base::ThreadTaskRunnerHandle::Get(),
-                                     wilco_dtc_supportd_grpc_uri) {
+    : grpc_server_(base::SingleThreadTaskRunner::GetCurrentDefault(),
+                   {grpc_server_uri}),
+      wilco_dtc_supportd_grp_client_(
+          base::SingleThreadTaskRunner::GetCurrentDefault(),
+          wilco_dtc_supportd_grpc_uri) {
   grpc_server_.RegisterHandler(
       &grpc_api::WilcoDtc::AsyncService::RequestHandleMessageFromUi,
       base::BindRepeating(&FakeWilcoDtc::HandleMessageFromUi,

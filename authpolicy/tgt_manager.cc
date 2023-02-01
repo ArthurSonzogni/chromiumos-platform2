@@ -15,8 +15,8 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/strings/stringprintf.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/threading/platform_thread.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 
 #include "authpolicy/anonymizer.h"
@@ -712,7 +712,7 @@ void TgtManager::UpdateTgtAutoRenewal() {
 
         tgt_renewal_callback_.Reset(
             base::BindOnce(&TgtManager::AutoRenewTgt, base::Unretained(this)));
-        base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+        base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
             FROM_HERE, tgt_renewal_callback_.callback(),
             base::Seconds(delay_seconds));
       }

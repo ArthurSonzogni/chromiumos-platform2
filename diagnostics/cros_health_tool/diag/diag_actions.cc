@@ -19,6 +19,7 @@
 #include <base/logging.h>
 #include <base/no_destructor.h>
 #include <base/run_loop.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <mojo/service_constants.h>
 
@@ -792,7 +793,7 @@ bool DiagActions::PollRoutineAndProcessResult() {
     }
 
     base::RunLoop run_loop;
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE, run_loop.QuitClosure(), kPollingInterval);
     run_loop.Run();
   } while (

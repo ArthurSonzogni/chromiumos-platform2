@@ -18,8 +18,8 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/threading/thread.h>
-#include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <brillo/http/http_transport.h>
 #include <chromeos/patchpanel/net_util.h>
@@ -155,7 +155,7 @@ bool ProxyConnectJob::Start() {
     }
     return false;
   }
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE, client_connect_timeout_callback_.callback(),
       kWaitClientConnectTimeout);
   read_watcher_ = base::FileDescriptorWatcher::WatchReadable(
@@ -243,7 +243,7 @@ void ProxyConnectJob::AuthenticationRequired(
 
   if (!authentication_timer_started_) {
     authentication_timer_started_ = true;
-    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+    base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
         FROM_HERE, credentials_request_timeout_callback_.callback(),
         kCredentialsRequestTimeout);
   }

@@ -14,7 +14,6 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
-#include <base/threading/sequenced_task_runner_handle.h>
 
 #include "missive/util/status.h"
 #include "missive/util/statusor.h"
@@ -241,7 +240,7 @@ void Scheduler::AddObserver(SchedulerObserver* observer) {
 }
 
 void Scheduler::NotifyObservers(Notification notification) {
-  DCHECK(base::SequencedTaskRunnerHandle::IsSet());
+  DCHECK(base::SequencedTaskRunner::HasCurrentDefault());
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   for (auto* observer : observers_) {
     observer->Notify(notification);
@@ -272,7 +271,7 @@ void Scheduler::EnqueueJob(Job::SmartPtr<Job> job) {
 }
 
 void Scheduler::StartJobs() {
-  DCHECK(base::SequencedTaskRunnerHandle::IsSet());
+  DCHECK(base::SequencedTaskRunner::HasCurrentDefault());
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (jobs_queue_.empty()) {
@@ -296,7 +295,7 @@ void Scheduler::StartJobs() {
 }
 
 void Scheduler::MaybeStartNextJob(std::unique_ptr<JobBlocker> job_blocker) {
-  DCHECK(base::SequencedTaskRunnerHandle::IsSet());
+  DCHECK(base::SequencedTaskRunner::HasCurrentDefault());
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   if (jobs_queue_.empty()) {
@@ -315,7 +314,7 @@ void Scheduler::MaybeStartNextJob(std::unique_ptr<JobBlocker> job_blocker) {
 
 void Scheduler::RunJob(std::unique_ptr<JobBlocker> job_blocker,
                        Job::SmartPtr<Job> job) {
-  DCHECK(base::SequencedTaskRunnerHandle::IsSet());
+  DCHECK(base::SequencedTaskRunner::HasCurrentDefault());
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK(job_blocker);
   auto completion_cb = base::BindOnce(

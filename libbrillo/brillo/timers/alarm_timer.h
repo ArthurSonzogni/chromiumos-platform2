@@ -15,7 +15,7 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/memory/weak_ptr.h>
 #include <base/pending_task.h>
-#include <base/threading/sequenced_task_runner_handle.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>
 
 #include "brillo/brillo_export.h"
@@ -101,7 +101,7 @@ class BRILLO_EXPORT SimpleAlarmTimer {
 
   // Posts tasks to the sequence on which this AlarmTimer was instantiated.
   const scoped_refptr<base::SequencedTaskRunner> origin_task_runner_ =
-      base::SequencedTaskRunnerHandle::Get();
+      base::SequencedTaskRunner::GetCurrentDefault();
 
   // Keeps track of the user task we want to run. A new one is constructed every
   // time Reset() is called.

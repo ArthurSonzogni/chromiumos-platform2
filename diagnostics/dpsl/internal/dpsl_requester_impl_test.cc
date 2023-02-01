@@ -13,7 +13,7 @@
 #include <base/functional/bind.h>
 #include <base/sequence_checker.h>
 #include <base/strings/stringprintf.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <brillo/grpc/async_grpc_server.h>
 #include <gmock/gmock.h>
 #include <google/protobuf/util/message_differencer.h>
@@ -406,7 +406,8 @@ using GetStatefulPartitionAvailableCapacityTestParam =
 class TestDsplMultiRequesterServer {
  public:
   explicit TestDsplMultiRequesterServer(const std::string& uri)
-      : async_grpc_server_(base::ThreadTaskRunnerHandle::Get(), {uri}) {
+      : async_grpc_server_(base::SingleThreadTaskRunner::GetCurrentDefault(),
+                           {uri}) {
     async_grpc_server_.RegisterHandler(
         &grpc_api::WilcoDtcSupportd::AsyncService::RequestSendMessageToUi,
         base::BindRepeating(
@@ -595,7 +596,8 @@ class TestDsplRequesterServer {
   using Response = typename TestParam::Response;
 
   explicit TestDsplRequesterServer(const std::string& uri)
-      : async_grpc_server_(base::ThreadTaskRunnerHandle::Get(), {uri}) {
+      : async_grpc_server_(base::SingleThreadTaskRunner::GetCurrentDefault(),
+                           {uri}) {
     async_grpc_server_.RegisterHandler(
         TestParam::RequestRpcFunctionValue,
         base::BindRepeating(&TestDsplRequesterServer::HandleCall,

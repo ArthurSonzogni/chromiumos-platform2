@@ -22,7 +22,7 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 
 #include "shill/logging.h"
@@ -496,7 +496,7 @@ bool ProcessManager::TerminateProcess(pid_t pid, bool kill_signal) {
   auto termination_callback = std::make_unique<TerminationTimeoutCallback>(
       base::BindOnce(&ProcessManager::ProcessTerminationTimeoutHandler,
                      weak_factory_.GetWeakPtr(), pid, kill_signal));
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE, termination_callback->callback(), kTerminationTimeout);
   pending_termination_processes_[pid] = std::move(termination_callback);
   return true;

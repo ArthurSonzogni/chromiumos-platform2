@@ -13,7 +13,7 @@
 #include <absl/container/flat_hash_set.h>
 #include <base/functional/callback_helpers.h>
 #include <base/numerics/safe_conversions.h>
-#include <base/threading/sequenced_task_runner_handle.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/timer/timer.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
@@ -844,7 +844,7 @@ Status KeyManagementTpm2::FlushTransientKey(Key key, KeyTpm2& key_data) {
 
   if (key_data.reload_data.has_value() &&
       key_data.reload_data->lazy_expiration_time.is_positive() &&
-      base::SequencedTaskRunnerHandle::IsSet()) {
+      base::SequencedTaskRunner::HasCurrentDefault()) {
     base::OnceClosure flush_closure =
         base::BindOnce(&KeyManagementTpm2::FlushKeyTokenAndHandle,
                        base::Unretained(this), static_cast<KeyToken>(key.token),

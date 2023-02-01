@@ -31,7 +31,8 @@ class CrosHealthdConnectivityTest : public ::testing::Test {
   void SetUp() override {
     ::mojo::core::Init();
     ipc_support_ = std::make_unique<::mojo::core::ScopedIPCSupport>(
-        base::ThreadTaskRunnerHandle::Get() /* io_thread_task_runner */,
+        base::SingleThreadTaskRunner::
+            GetCurrentDefault() /* io_thread_task_runner */,
         ::mojo::core::ScopedIPCSupport::ShutdownPolicy::
             CLEAN /* blocking shutdown */);
 

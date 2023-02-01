@@ -13,7 +13,7 @@
 #include <base/json/json_writer.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
-#include <base/threading/sequenced_task_runner_handle.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>
 #include <base/values.h>
 
@@ -252,7 +252,7 @@ void ManateeMemoryService::LaunchVm(
       base::BindOnce(&ManateeMemoryService::LaunchVmOnThread,
                      base::Unretained(this), mem_size_mb,
                      std::move(start_vm_cb), std::move(stop_vm_cb),
-                     base::SequencedTaskRunnerHandle::Get()),
+                     base::SequencedTaskRunner::GetCurrentDefault()),
       std::move(result_cb));
 }
 

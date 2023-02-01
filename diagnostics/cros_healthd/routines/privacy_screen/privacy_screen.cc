@@ -6,7 +6,7 @@
 
 #include <utility>
 
-#include <base/threading/sequenced_task_runner_handle.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>
 
 #include "diagnostics/mojom/external/cros_healthd_internal.mojom.h"
@@ -32,7 +32,7 @@ void PrivacyScreenRoutine::Start() {
       target_state_, base::BindOnce(&PrivacyScreenRoutine::OnReceiveResponse,
                                     base::Unretained(this)));
 
-  base::SequencedTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&PrivacyScreenRoutine::ValidateState,
                      base::Unretained(this)),

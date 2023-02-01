@@ -10,8 +10,8 @@
 #include <base/functional/callback.h>
 #include <base/strings/string_piece.h>
 #include <base/task/bind_post_task.h>
+#include <base/task/sequenced_task_runner.h>
 #include <base/task/thread_pool.h>
-#include <base/threading/sequenced_task_runner_handle.h>
 #include <brillo/backoff_entry.h>
 
 #include "missive/client/report_queue_configuration.h"
@@ -52,7 +52,7 @@ std::unique_ptr<ReportQueue, base::OnTaskRunnerDeleter>
 ReportQueueFactory::CreateSpeculativeReportQueue(EventType event_type,
                                                  Destination destination,
                                                  int64_t reserved_space) {
-  DCHECK(base::SequencedTaskRunnerHandle::IsSet());
+  DCHECK(base::SequencedTaskRunner::HasCurrentDefault());
 
   auto config_result = ReportQueueConfiguration::Create(
       event_type, destination,
@@ -62,8 +62,8 @@ ReportQueueFactory::CreateSpeculativeReportQueue(EventType event_type,
         << "Cannot initialize report queue. Invalid ReportQueueConfiguration: "
         << config_result.status();
     return std::unique_ptr<ReportQueue, base::OnTaskRunnerDeleter>(
-        nullptr,
-        base::OnTaskRunnerDeleter(base::SequencedTaskRunnerHandle::Get()));
+        nullptr, base::OnTaskRunnerDeleter(
+                     base::SequencedTaskRunner::GetCurrentDefault()));
   }
 
   auto speculative_queue_result = ReportQueueProvider::CreateSpeculativeQueue(
@@ -72,8 +72,8 @@ ReportQueueFactory::CreateSpeculativeReportQueue(EventType event_type,
     DVLOG(1) << "Failed to create speculative queue: "
              << speculative_queue_result.status();
     return std::unique_ptr<ReportQueue, base::OnTaskRunnerDeleter>(
-        nullptr,
-        base::OnTaskRunnerDeleter(base::SequencedTaskRunnerHandle::Get()));
+        nullptr, base::OnTaskRunnerDeleter(
+                     base::SequencedTaskRunner::GetCurrentDefault()));
   }
 
   return std::move(speculative_queue_result.ValueOrDie());

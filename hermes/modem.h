@@ -305,7 +305,7 @@ void Modem<T>::RetryInitialization(ResultCallback cb) {
   retry_initialization_callback_ =
       base::BindOnce(&Modem<T>::Initialize, weak_factory_.GetWeakPtr(),
                      euicc_manager_, std::move(cb));
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE, std::move(retry_initialization_callback_), kInitRetryDelay);
   retry_count_++;
 }

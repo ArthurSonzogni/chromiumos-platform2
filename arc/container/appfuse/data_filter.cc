@@ -15,7 +15,7 @@
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_piece.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 
 namespace arc {
 namespace appfuse {
@@ -48,7 +48,7 @@ bool WriteData(int fd, const std::vector<char>& data, base::StringPiece name) {
 
 DataFilter::DataFilter()
     : watch_thread_("DataFilter"),
-      origin_task_runner_(base::ThreadTaskRunnerHandle::Get()) {}
+      origin_task_runner_(base::SingleThreadTaskRunner::GetCurrentDefault()) {}
 
 DataFilter::~DataFilter() {
   // File watching must be cleaned up on the |watch_thread_|.

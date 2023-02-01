@@ -15,7 +15,7 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/run_loop.h>
-#include <base/threading/thread_task_runner_handle.h>
+#include <base/task/single_thread_task_runner.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
 
@@ -117,7 +117,7 @@ int event_main(int argc, char** argv) {
             << std::endl;
 
   // Schedule an exit after |FLAGS_length_seconds|.
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
       FROM_HERE, run_loop.QuitClosure(), base::Seconds(FLAGS_length_seconds));
   run_loop.Run();
   return EXIT_SUCCESS;
