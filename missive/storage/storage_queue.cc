@@ -313,7 +313,7 @@ std::optional<std::string> StorageQueue::GetLastRecordDigest() const {
   return last_record_digest_;
 }
 
-Status StorageQueue::SetGenerationId(const base::FilePath& full_name) {
+Status StorageQueue::SetOrConfirmGenerationId(const base::FilePath& full_name) {
   // Data file should have generation id as an extension too.
   // TODO(b/195786943): Encapsulate file naming assumptions in objects.
   const auto generation_extension =
@@ -375,7 +375,6 @@ StatusOr<int64_t> StorageQueue::AddDataFile(
     const base::FileEnumerator::FileInfo& file_info) {
   ASSIGN_OR_RETURN(int64_t file_sequence_id,
                    GetFileSequenceIdFromPath(full_name));
-  RETURN_IF_ERROR(SetGenerationId(full_name));
 
   auto file_or_status = SingleFile::Create(
       full_name, file_info.GetSize(), options_.memory_resource(),
@@ -402,8 +401,21 @@ Status StorageQueue::EnumerateDataFiles(
                                 /*recursive=*/false,
                                 base::FileEnumerator::FILES,
                                 base::StrCat({options_.file_prefix(), ".*"}));
+
+  bool found_files_in_directory = false;
+
   for (auto full_name = dir_enum.Next(); !full_name.empty();
        full_name = dir_enum.Next()) {
+    found_files_in_directory = true;
+    // Try to parse a generation id from `full_name` and either set
+    // `generation_id_` or confirm that the generation id matches
+    // `generation_id_`
+    if (auto status = SetOrConfirmGenerationId(full_name); !status.ok()) {
+      LOG(WARNING) << "Failed to add file " << full_name.MaybeAsASCII()
+                   << ", status=" << status;
+      continue;
+    }
+    // Add file to `files_` if the sequence id in the file path is valid
     const auto file_sequencing_id_result =
         AddDataFile(full_name, dir_enum.GetInfo());
     if (!file_sequencing_id_result.ok()) {
@@ -416,6 +428,16 @@ Status StorageQueue::EnumerateDataFiles(
         first_sequencing_id.value() > file_sequencing_id_result.ValueOrDie()) {
       first_sequencing_id = file_sequencing_id_result.ValueOrDie();
     }
+  }
+
+  // If there were files in the queue directory, but we haven't found a
+  // generation id in any of the file paths, then the data is corrupt and we
+  // shouldn't proceed.
+  if (found_files_in_directory && generation_id_ <= 0) {
+    return Status(
+        error::DATA_LOSS,
+        base::StrCat({"All file paths missing generation id in directory",
+                      options_.directory().MaybeAsASCII()}));
   }
   // first_sequencing_id.has_value() is true only if we found some files.
   // Otherwise it is false, the StorageQueue is being initialized for the

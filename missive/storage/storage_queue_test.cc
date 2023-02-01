@@ -47,6 +47,7 @@ using ::testing::Between;
 using ::testing::DoAll;
 using ::testing::Eq;
 using ::testing::Invoke;
+using ::testing::Ne;
 using ::testing::Return;
 using ::testing::Sequence;
 using ::testing::StrEq;
@@ -750,13 +751,13 @@ class StorageQueueTest
     expected_uploads_count_ = count;
   }
 
-  void DeleteGenerationIdFromRecordFilePaths() {
-    // Remove the generation id from the path of non META files in the storage
+  void DeleteGenerationIdFromRecordFilePaths(const QueueOptions options) {
+    // Remove the generation id from the path of all data files in the storage
     // queue directory
     std::string file_prefix_regex =
-        base::StrCat({"*", storage_queue_->options().file_prefix(), "*"});
+        base::StrCat({"*", options.file_prefix(), "*"});
     base::FileEnumerator dir_enum(
-        storage_queue_->options().directory(),
+        options.directory(),
         /*recursive=*/false, base::FileEnumerator::FILES, file_prefix_regex);
     for (auto file_path = dir_enum.Next(); !file_path.empty();
          file_path = dir_enum.Next()) {
@@ -765,7 +766,7 @@ class StorageQueueTest
                                            .RemoveFinalExtension()
                                            .MaybeAsASCII(),
                                        file_path.FinalExtension()}));
-      Move(file_path, file_path_without_generation_id);
+      ASSERT_TRUE(Move(file_path, file_path_without_generation_id));
     }
   }
 
@@ -2463,25 +2464,22 @@ TEST_P(StorageQueueTest, UploadWithInsufficientMemory) {
   }
 }
 
-TEST_P(StorageQueueTest, ShouldNotUploadFilesWithoutGenerationIdInFilePath) {
+TEST_P(StorageQueueTest, WriteIntoNewStorageQueueReopenWithCorruptData) {
   CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
-
   WriteStringOrDie(kData[0]);
+  WriteStringOrDie(kData[1]);
+  WriteStringOrDie(kData[2]);
 
-  DeleteGenerationIdFromRecordFilePaths();
+  // Save copy of options.
+  const QueueOptions options = storage_queue_->options();
 
   ResetTestStorageQueue();
 
-  // Reopening with non-empty queue would normally cause an INIT_RESUME upload
-  // but shouldn't in this case.
-  EXPECT_CALL(set_mock_uploader_expectations_,
-              Call(Eq(UploaderInterface::UploadReason::INIT_RESUME)))
-      .Times(0);
+  DeleteGenerationIdFromRecordFilePaths(options);
 
-  // Queue will find a file in its directory but shouldn't upload since the file
-  // is missing generation id
-  CreateTestStorageQueueOrDie(BuildStorageQueueOptionsPeriodic());
-  task_environment_.RunUntilIdle();
+  // All data files should be irreparably corrupt
+  auto storage_queue_result = CreateTestStorageQueue(options);
+  EXPECT_THAT(storage_queue_result.status(), Ne(Status::StatusOK()));
 }
 
 INSTANTIATE_TEST_SUITE_P(
