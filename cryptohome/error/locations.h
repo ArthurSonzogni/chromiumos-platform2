@@ -395,7 +395,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocLECredManConvertTpmError = 284,
   /* ./userdataauth.cc */
   kLocUserDataAuthCreateFailedInStartAuthSession = 285,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthSessionNotFoundInAuthAuthSession = 286,
   /* =Obsolete= */
   kLocUserDataAuthAuthFailedInAuthAuthSession = 287,
@@ -419,17 +419,17 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionTimedOutInExtend = 296,
   /* ./auth_session.cc */
   kLocAuthSessionCreateUSSFailedInOnUserCreated = 297,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionGetCredFailedInAddCred = 298,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionKioskKeyNotAllowedInAddCred = 299,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionNotAuthedYetInAddCred = 300,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionInvalidBlockTypeInAddKeyset = 301,
   /* =Obsolete= */
   kLocAuthSessionChalCredUnsupportedInAddKeyset = 302,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionPinweaverUnsupportedInAddKeyset = 303,
   /* ./auth_session.cc */
   kLocAuthSessionNullParamInCallbackInAddKeyset = 304,
@@ -443,15 +443,15 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionNoChallengeInfoInAddKeyset = 308,
   /* ./auth_session.cc */
   kLocAuthSessionAddInitialFailedInAddKeyset = 309,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionGetCredFailedInUpdate = 310,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionUnsupportedKioskKeyInUpdate = 311,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionLabelMismatchInUpdate = 312,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionUnauthedInUpdate = 313,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionInvalidBlockTypeInUpdate = 314,
   /* =Obsolete= */
   kLocAuthSessionChalCredUnsupportedInUpdate = 315,
@@ -461,9 +461,9 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionCreateFailedInUpdateKeyset = 317,
   /* ./auth_session.cc */
   kLocAuthSessionUpdateWithBlobFailedInUpdateKeyset = 318,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionGetCredFailedInAuth = 319,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionUnsupportedKeyTypesInAuth = 320,
   /* =Obsolete= */
   kLocAuthSessionGetValidKeysetFailedInAuth = 321,
@@ -485,9 +485,9 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionDeriveFailedInLoadVaultKeyset = 329,
   /* ./auth_session.cc */
   kLocAuthSessionGetValidKeysetFailedInLoadVaultKeyset = 330,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionNonEmptyKioskKeyInGetCred = 331,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionEmptyPublicMountKeyInGetCred = 332,
   /* ./auth_session.cc */
   kLocAuthSessionUnauthedInAddAuthFactor = 333,
@@ -767,7 +767,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocPinWeaverAuthBlockNoResetSecretOrResetSeedInCreate = 470,
   /* ./auth_blocks/pin_weaver_auth_block.cc */
   kLocPinWeaverAuthBlockNoUserInputInDerive = 471,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthNoAuthSessionInUpdateCredential = 472,
   /* ./userdataauth.cc */
   kLocUserDataAuthSessionNotFoundInGetAuthedAS = 473,
@@ -895,7 +895,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocRecoveryAuthBlockCantParseResponseInDerive = 534,
   /* ./auth_session.cc */
   kLocWrongAuthFactorInGetRecoveryRequest = 535,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionEmptyKeyLabelInAuth = 536,
   /* =Obsolete= */
   kLocUserDataAuthAuthBlockUtilityNotValidForChallenge = 537,
