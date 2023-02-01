@@ -275,6 +275,9 @@ class Camera3Device::StaticInfo {
   // reported
   uint8_t GetHardwareLevel() const;
 
+  // Get ANDROID_SCALER_AVAILABLE_ROTATE_AND_CROP_MODES.
+  std::set<uint8_t> GetAvailableRotateAndCropModes() const;
+
  private:
   bool IsHardwareLevelAtLeast(uint8_t level) const;
 

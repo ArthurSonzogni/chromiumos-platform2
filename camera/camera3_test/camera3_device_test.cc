@@ -688,6 +688,18 @@ std::set<int32_t> Camera3Device::StaticInfo::GetAvailableRequestKeys() const {
   return std::set<int32_t>(entry.data.i32, entry.data.i32 + entry.count);
 }
 
+std::set<uint8_t> Camera3Device::StaticInfo::GetAvailableRotateAndCropModes()
+    const {
+  camera_metadata_ro_entry_t entry = {};
+  if (find_camera_metadata_ro_entry(
+          characteristics_, ANDROID_SCALER_AVAILABLE_ROTATE_AND_CROP_MODES,
+          &entry) != 0 ||
+      entry.count == 0) {
+    return {};
+  }
+  return std::set<uint8_t>(entry.data.u8, entry.data.u8 + entry.count);
+}
+
 // Test fixture
 
 void Camera3DeviceFixture::SetUp() {

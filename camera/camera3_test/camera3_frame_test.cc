@@ -1612,6 +1612,30 @@ TEST_P(Camera3PortraitRotationTest, GetFrame) {
   ASSERT_FALSE(test_pattern_modes.empty())
       << "Failed to get sensor available test pattern modes";
 
+  uint8_t rotate_and_crop_mode = ANDROID_SCALER_ROTATE_AND_CROP_NONE;
+  if (use_rotate_and_crop_api_) {
+    switch (rotation_degrees_) {
+      case 90:
+        rotate_and_crop_mode = ANDROID_SCALER_ROTATE_AND_CROP_90;
+        break;
+      case 270:
+        rotate_and_crop_mode = ANDROID_SCALER_ROTATE_AND_CROP_270;
+        break;
+      default:
+        FAIL() << "Invalid rotation degree: " << rotation_degrees_;
+    }
+    auto modes = cam_device_.GetStaticInfo()->GetAvailableRotateAndCropModes();
+    if (modes.size() <= 1) {
+      EXPECT_EQ(modes.count(ANDROID_SCALER_ROTATE_AND_CROP_NONE), modes.size());
+      GTEST_SKIP() << "ANDROID_SCALER_ROTATE_AND_CROP is not supported";
+    }
+    EXPECT_EQ(modes.count(ANDROID_SCALER_ROTATE_AND_CROP_NONE), 1);
+    EXPECT_EQ(modes.count(ANDROID_SCALER_ROTATE_AND_CROP_AUTO), 1);
+    // Android only requires 90 to be supported. We additionally check every
+    // tested rotation degrees here.
+    EXPECT_EQ(modes.count(rotate_and_crop_mode), 1);
+  }
+
   if (cam_device_.GetStaticInfo()->IsFormatAvailable(format_)) {
     VLOGF(1) << "Device " << cam_id_;
     VLOGF(1) << "Format 0x" << std::hex << format_;
@@ -1672,18 +1696,8 @@ TEST_P(Camera3PortraitRotationTest, GetFrame) {
         << "Configuring stream fails";
 
     if (use_rotate_and_crop_api_) {
-      uint8_t rc_mode = ANDROID_SCALER_ROTATE_AND_CROP_NONE;
-      switch (rotation_degrees_) {
-        case 90:
-          rc_mode = ANDROID_SCALER_ROTATE_AND_CROP_90;
-          break;
-        case 270:
-          rc_mode = ANDROID_SCALER_ROTATE_AND_CROP_270;
-          break;
-        default:
-          NOTREACHED();
-      }
-      UpdateMetadata(ANDROID_SCALER_ROTATE_AND_CROP, &rc_mode, 1, &metadata);
+      UpdateMetadata(ANDROID_SCALER_ROTATE_AND_CROP, &rotate_and_crop_mode, 1,
+                     &metadata);
     }
     ASSERT_EQ(0, CreateCaptureRequestByMetadata(metadata, nullptr))
         << "Creating capture request fails";
