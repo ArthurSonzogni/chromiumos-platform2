@@ -954,4 +954,29 @@ TEST_F(DlcServiceTest, UpdateEngineBecomesAvailable) {
   EXPECT_TRUE(system_state->IsUpdateEngineServiceAvailable());
 }
 
+TEST_F(DlcServiceTest, InstallRaceConditionCheck) {
+  auto mock_dlc_manager = std::make_unique<StrictMock<MockDlcManager>>();
+  auto* mock_dlc_manager_ptr = mock_dlc_manager.get();
+
+  dlc_service_->SetDlcManagerForTest(std::move(mock_dlc_manager));
+
+  EXPECT_CALL(*mock_dlc_manager_ptr, Install(_, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(true), Return(true)));
+  EXPECT_CALL(*mock_dlc_manager_ptr, CancelInstall(kSecondDlc, _, _))
+      .WillOnce(Return(true));
+
+  SetMountPath(mount_path_.value());
+  EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _)).Times(0);
+  EXPECT_CALL(*mock_metrics_,
+              SendInstallResult(InstallResult::kFailedUpdateEngineBusy));
+
+  constexpr char kFoobarDlc[] = "foobar-dlc";
+  dlc_service_->installing_dlc_id_ = kFoobarDlc;
+
+  // Mock another client call.
+  EXPECT_FALSE(dlc_service_->Install(CreateInstallRequest(kSecondDlc), &err_));
+
+  EXPECT_EQ(dlc_service_->installing_dlc_id_.value(), DlcId(kFoobarDlc));
+}
+
 }  // namespace dlcservice

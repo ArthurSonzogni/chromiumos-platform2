@@ -94,6 +94,11 @@ void DlcService::OnWaitForUpdateEngineServiceToBeAvailable(bool available) {
 }
 
 bool DlcService::Install(const InstallRequest& install_request, ErrorPtr* err) {
+  // TODO(b/220202911): Start parallelizing installations.
+  // Ash Chrome dlcservice client handled installations in a queue, but
+  // dlcservice has numerous other DBus clients that can all race to install
+  // various DLCs. This checks here need to guarantee atomic installation per
+  // DLC in sequence.
   bool result = InstallInternal(install_request, err);
   // Only send error metrics in here. Install success metrics is sent in
   // |DlcBase|.
@@ -124,6 +129,20 @@ bool DlcService::InstallInternal(const InstallRequest& install_request,
   // Install through update_engine only if needed.
   if (!external_install_needed)
     return true;
+
+  const auto& id = install_request.id();
+  if (installing_dlc_id_ && installing_dlc_id_ != id) {
+    auto err_str = base::StringPrintf(
+        "Installation already in progress for (%s), can't install %s right "
+        "now.",
+        installing_dlc_id_.value().c_str(), id.c_str());
+    LOG(ERROR) << err_str;
+    *err = Error::Create(FROM_HERE, kErrorBusy, err_str);
+    ErrorPtr tmp_err;
+    if (!dlc_manager_->CancelInstall(id, *err, &tmp_err))
+      LOG(ERROR) << "Failed to cancel install for DLC=" << id;
+    return false;
+  }
 
   if (!InstallWithUpdateEngine(install_request, err)) {
     // dlcservice must cancel the install as update_engine won't be able to
