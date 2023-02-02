@@ -15,33 +15,37 @@
 #include "brillo/fake_cryptohome.h"
 
 namespace brillo {
-
 namespace cryptohome {
-
 namespace home {
 
 TEST(Cryptohome, SanitizeUsername) {
-  constexpr char kUsername[] = "fakeuser";
+  const Username kUsername("fakeuser");
   FakeSystemSaltLoader fake_salt("01234567890123456789");
 
-  EXPECT_EQ(SanitizeUserName(kUsername),
-            "856b54169cd5d2d6ca9a4b258ada5e3bee242829");
+  const ObfuscatedUsername kExpected(
+      "856b54169cd5d2d6ca9a4b258ada5e3bee242829");
+  EXPECT_EQ(SanitizeUserName(kUsername), kExpected);
+  EXPECT_EQ(SanitizeUserName(*kUsername), *kExpected);
 }
 
 TEST(Cryptohome, SanitizeUsernameWithSalt) {
-  std::string username = "fakeuser";
+  Username username("fakeuser");
   SecureBlob salt = SecureBlob("01234567890123456789");
 
-  EXPECT_EQ("856b54169cd5d2d6ca9a4b258ada5e3bee242829",
-            SanitizeUserNameWithSalt(username, salt));
+  const ObfuscatedUsername kExpected(
+      "856b54169cd5d2d6ca9a4b258ada5e3bee242829");
+  EXPECT_EQ(kExpected, SanitizeUserNameWithSalt(username, salt));
+  EXPECT_EQ(*kExpected, SanitizeUserNameWithSalt(*username, salt));
 }
 
 TEST(Cryptohome, SanitizeUsernameWithSaltMixedCase) {
-  std::string username = "fakeuser";
+  Username username("fakeuser");
   SecureBlob salt = SecureBlob("01234567890123456789");
 
-  EXPECT_EQ("856b54169cd5d2d6ca9a4b258ada5e3bee242829",
-            SanitizeUserNameWithSalt(username, salt));
+  const ObfuscatedUsername kExpected(
+      "856b54169cd5d2d6ca9a4b258ada5e3bee242829");
+  EXPECT_EQ(kExpected, SanitizeUserNameWithSalt(username, salt));
+  EXPECT_EQ(*kExpected, SanitizeUserNameWithSalt(*username, salt));
 }
 
 TEST(Cryptohome, FakeSystemSaltLoader) {

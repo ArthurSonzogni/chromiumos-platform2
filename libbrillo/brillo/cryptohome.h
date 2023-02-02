@@ -14,6 +14,7 @@
 
 #include <base/files/file_path.h>
 #include <base/no_destructor.h>
+#include <base/types/strong_alias.h>
 #include <brillo/brillo_export.h>
 #include <brillo/secure_blob.h>
 
@@ -21,7 +22,28 @@ namespace brillo {
 namespace cryptohome {
 namespace home {
 
+// Types that define the types of "username" values that cryptohome uses to
+// manage user identities. This corresponds to the identifier that a user uses
+// to log into a machine, which will usually look something like an email
+// address. However, it is important to note that to cryptohome these are just
+// opaque identifiers.
+//
+// There is also an additional related type of "obfuscated username". This is a
+// sanitized version of the username which obfuscates any PII in the base
+// username and is the name which will be used in actual paths (e.g. the user's
+// homedir).
+//
+// Fundamentally both of these values are just strings, but by defining strong
+// alias types for them we make it much more difficult to accidentally use the
+// wrong type in the wrong context (e.g. passing the real username into a
+// function expecting the obfuscated one).
+using Username = base::StrongAlias<class UsernameTag, std::string>;
+using ObfuscatedUsername =
+    base::StrongAlias<class ObfuscatedUsernameTag, std::string>;
+
+// The standard username for a guest user.
 BRILLO_EXPORT extern const char kGuestUserName[];
+BRILLO_EXPORT const Username& GetGuestUsername();
 
 // Returns the common prefix under which the mount points for user homes are
 // created.
@@ -33,16 +55,20 @@ BRILLO_EXPORT base::FilePath GetRootPathPrefix();
 
 // Returns the path at which the user home for |username| will be mounted.
 // Returns "" for failures.
+BRILLO_EXPORT base::FilePath GetUserPath(const Username& username);
 BRILLO_EXPORT base::FilePath GetUserPath(const std::string& username);
 
 // Returns the path at which the user home for |hashed_username| will be
 // mounted. Useful when you already have the username hashed.
 // Returns "" for failures.
 BRILLO_EXPORT base::FilePath GetHashedUserPath(
+    const ObfuscatedUsername& hashed_username);
+BRILLO_EXPORT base::FilePath GetHashedUserPath(
     const std::string& hashed_username);
 
 // Returns the path at which the root home for |username| will be mounted.
 // Returns "" for failures.
+BRILLO_EXPORT base::FilePath GetRootPath(const Username& username);
 BRILLO_EXPORT base::FilePath GetRootPath(const std::string& username);
 
 // Returns the path at which the daemon |daemon| should store per-user data.
@@ -50,18 +76,24 @@ BRILLO_EXPORT base::FilePath GetRootPath(const std::string& username);
 // the preferred place to store per-user data.
 // See https://chromium.googlesource.com/chromiumos/docs/+/HEAD/sandboxing.md
 // for more details.
+BRILLO_EXPORT base::FilePath GetDaemonStorePath(const Username& username,
+                                                const std::string& daemon);
 BRILLO_EXPORT base::FilePath GetDaemonStorePath(const std::string& username,
                                                 const std::string& daemon);
 
 // Checks whether |sanitized| has the format of a sanitized username.
+BRILLO_EXPORT bool IsSanitizedUserName(const ObfuscatedUsername& sanitized);
 BRILLO_EXPORT bool IsSanitizedUserName(const std::string& sanitized);
 
 // Returns a sanitized form of |username|. For x != y, SanitizeUserName(x) !=
 // SanitizeUserName(y).
+BRILLO_EXPORT ObfuscatedUsername SanitizeUserName(const Username& username);
 BRILLO_EXPORT std::string SanitizeUserName(const std::string& username);
 
 // Returns a sanitized form of |username| with the salt provided. For x != y,
 // SanitizeUserName(x) != SanitizeUserName(y).
+BRILLO_EXPORT ObfuscatedUsername
+SanitizeUserNameWithSalt(const Username& username, const SecureBlob& salt);
 BRILLO_EXPORT std::string SanitizeUserNameWithSalt(const std::string& username,
                                                    const SecureBlob& salt);
 

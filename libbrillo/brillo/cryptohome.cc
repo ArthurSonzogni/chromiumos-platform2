@@ -22,15 +22,12 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/stringprintf.h>
 
-using base::FilePath;
-
 namespace brillo {
 namespace cryptohome {
 namespace home {
-
-const char kGuestUserName[] = "$guest";
-
 namespace {
+
+using base::FilePath;
 
 // Daemon store main directory.
 constexpr char kDaemonStorePath[] = "/run/daemon-store";
@@ -44,23 +41,33 @@ SystemSaltLoader* g_system_salt_loader = nullptr;
 
 }  // namespace
 
+const char kGuestUserName[] = "$guest";
+
+const Username& GetGuestUsername() {
+  static const base::NoDestructor<Username> kGuest(kGuestUserName);
+  return *kGuest;
+}
+
 bool EnsureSystemSaltIsLoaded() {
   return SystemSaltLoader::GetInstance()->EnsureLoaded();
 }
 
-std::string SanitizeUserName(const std::string& username) {
+ObfuscatedUsername SanitizeUserName(const Username& username) {
   if (!EnsureSystemSaltIsLoaded())
-    return std::string();
+    return ObfuscatedUsername();
 
   return SanitizeUserNameWithSalt(
       username,
       SecureBlob(*SystemSaltLoader::GetInstance()->value_or_override()));
 }
+std::string SanitizeUserName(const std::string& username) {
+  return *SanitizeUserName(Username(username));
+}
 
-std::string SanitizeUserNameWithSalt(const std::string& username,
-                                     const SecureBlob& salt) {
+ObfuscatedUsername SanitizeUserNameWithSalt(const Username& username,
+                                            const SecureBlob& salt) {
   unsigned char binmd[SHA_DIGEST_LENGTH];
-  std::string lowercase(username);
+  std::string lowercase(*username);
   std::transform(lowercase.begin(), lowercase.end(), lowercase.begin(),
                  ::tolower);
   SHA_CTX ctx;
@@ -71,7 +78,11 @@ std::string SanitizeUserNameWithSalt(const std::string& username,
   std::string final = base::HexEncode(binmd, sizeof(binmd));
   // Stay compatible with CryptoLib::HexEncodeToBuffer()
   std::transform(final.begin(), final.end(), final.begin(), ::tolower);
-  return final;
+  return ObfuscatedUsername(std::move(final));
+}
+std::string SanitizeUserNameWithSalt(const std::string& username,
+                                     const SecureBlob& salt) {
+  return *SanitizeUserNameWithSalt(Username(username), salt);
 }
 
 FilePath GetUserPathPrefix() {
@@ -82,37 +93,53 @@ FilePath GetRootPathPrefix() {
   return FilePath(kRootHomePrefix);
 }
 
-FilePath GetHashedUserPath(const std::string& hashed_username) {
+FilePath GetHashedUserPath(const ObfuscatedUsername& hashed_username) {
   return FilePath(
-      base::StringPrintf("%s%s", g_user_home_prefix, hashed_username.c_str()));
+      base::StringPrintf("%s%s", g_user_home_prefix, hashed_username->c_str()));
+}
+FilePath GetHashedUserPath(const std::string& hashed_username) {
+  return GetHashedUserPath(ObfuscatedUsername(hashed_username));
 }
 
-FilePath GetUserPath(const std::string& username) {
+FilePath GetUserPath(const Username& username) {
   if (!SystemSaltLoader::GetInstance()->EnsureLoaded())
     return FilePath();
   return GetHashedUserPath(SanitizeUserName(username));
 }
+FilePath GetUserPath(const std::string& username) {
+  return GetUserPath(Username(username));
+}
 
-FilePath GetRootPath(const std::string& username) {
+FilePath GetRootPath(const Username& username) {
   if (!SystemSaltLoader::GetInstance()->EnsureLoaded())
     return FilePath();
   return FilePath(base::StringPrintf("%s%s", kRootHomePrefix,
-                                     SanitizeUserName(username).c_str()));
+                                     SanitizeUserName(username)->c_str()));
+}
+FilePath GetRootPath(const std::string& username) {
+  return GetRootPath(Username(username));
 }
 
-FilePath GetDaemonStorePath(const std::string& username,
+FilePath GetDaemonStorePath(const Username& username,
                             const std::string& daemon) {
   if (!SystemSaltLoader::GetInstance()->EnsureLoaded())
     return FilePath();
   return FilePath(kDaemonStorePath)
       .Append(daemon)
-      .Append(SanitizeUserName(username));
+      .Append(*SanitizeUserName(username));
+}
+FilePath GetDaemonStorePath(const std::string& username,
+                            const std::string& daemon) {
+  return GetDaemonStorePath(Username(username), daemon);
 }
 
-bool IsSanitizedUserName(const std::string& sanitized) {
+bool IsSanitizedUserName(const ObfuscatedUsername& sanitized) {
   std::vector<uint8_t> bytes;
-  return (sanitized.length() == 2 * SHA_DIGEST_LENGTH) &&
-         base::HexStringToBytes(sanitized, &bytes);
+  return (sanitized->length() == 2 * SHA_DIGEST_LENGTH) &&
+         base::HexStringToBytes(*sanitized, &bytes);
+}
+bool IsSanitizedUserName(const std::string& sanitized) {
+  return IsSanitizedUserName(ObfuscatedUsername(sanitized));
 }
 
 void SetUserHomePrefix(const std::string& prefix) {
