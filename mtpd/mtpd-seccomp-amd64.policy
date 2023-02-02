@@ -96,3 +96,4 @@ lstat: 1
 fstatfs: 1
 eventfd2: 1
 statfs: 1
+process_vm_readv: 1

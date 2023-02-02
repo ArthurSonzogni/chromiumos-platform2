@@ -70,3 +70,4 @@ fstatfs64: 1
 clock_gettime: 1
 clock_gettime64: 1
 gettimeofday: 1
+process_vm_readv: 1

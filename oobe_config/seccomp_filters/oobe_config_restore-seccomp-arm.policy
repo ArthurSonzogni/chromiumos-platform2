@@ -57,6 +57,7 @@ nanosleep: 1
 openat: 1
 pipe2: 1
 poll: 1
+process_vm_readv: 1
 read: 1
 recv: 1
 recvmsg: 1

@@ -103,3 +103,4 @@ getdents64: 1
 fstatfs64: 1
 eventfd2: 1
 statfs64: 1
+process_vm_readv: 1

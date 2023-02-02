@@ -57,6 +57,7 @@ openat: 1
 pipe2: 1
 pipe: 1
 poll: 1
+process_vm_readv: 1
 read: 1
 recvmsg: 1
 restart_syscall: 1

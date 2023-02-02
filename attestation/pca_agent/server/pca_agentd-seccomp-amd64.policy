@@ -111,3 +111,5 @@ bind: 1
 ioctl: return 1
 prctl: return 1
 fstatfs: 1
+
+process_vm_readv: 1
