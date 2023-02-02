@@ -52,6 +52,8 @@ bool GetStringFromKey(const base::Value::Dict& obj,
 
 constexpr char kEffectKey[] = "effect";
 constexpr char kBlurLevelKey[] = "blur_level";
+constexpr char kGpuApiKey[] = "gpu_api";
+constexpr char kRelightingGpuApiKey[] = "relighting_gpu_api";
 constexpr char kBlurEnabled[] = "blur_enabled";
 constexpr char kReplaceEnabled[] = "replace_enabled";
 constexpr char kRelightEnabled[] = "relight_enabled";
@@ -347,27 +349,28 @@ void EffectsStreamManipulator::OnOptionsUpdated(
   }
   LOGF(INFO) << "Reloadable Options update detected";
   EffectsConfig new_config;
-  std::string tmp;
-  if (GetStringFromKey(json_values, kEffectKey, &tmp)) {
-    if (tmp == std::string("blur")) {
+  std::string effect;
+  if (GetStringFromKey(json_values, kEffectKey, &effect)) {
+    if (effect == std::string("blur")) {
       new_config.effect = mojom::CameraEffect::kBackgroundBlur;
       new_config.blur_enabled = true;
-    } else if (tmp == std::string("replace")) {
+    } else if (effect == std::string("replace")) {
       new_config.effect = mojom::CameraEffect::kBackgroundReplace;
       new_config.replace_enabled = true;
-    } else if (tmp == std::string("relight")) {
+    } else if (effect == std::string("relight")) {
       new_config.effect = mojom::CameraEffect::kPortraitRelight;
       new_config.relight_enabled = true;
-    } else if (tmp == std::string("blur_relight")) {
+    } else if (effect == std::string("blur_relight")) {
       new_config.effect = mojom::CameraEffect::kBackgroundBlurPortraitRelight;
       new_config.blur_enabled = true;
       new_config.relight_enabled = true;
-    } else if (tmp == std::string("none")) {
+    } else if (effect == std::string("none")) {
       new_config.effect = mojom::CameraEffect::kNone;
     } else {
-      LOGF(WARNING) << "Unknown Effect: " << tmp;
+      LOGF(WARNING) << "Unknown Effect: " << effect;
       return;
     }
+    LOGF(INFO) << "Effect Updated: " << effect;
   }
   LoadIfExist(json_values, kBlurEnabled, &new_config.blur_enabled);
   LoadIfExist(json_values, kReplaceEnabled, &new_config.replace_enabled);
@@ -385,9 +388,47 @@ void EffectsStreamManipulator::OnOptionsUpdated(
       new_config.blur_level = mojom::BlurLevel::kHeavy;
     } else if (blur_level == "maximum") {
       new_config.blur_level = mojom::BlurLevel::kMaximum;
+    } else {
+      LOGF(WARNING) << "Unknown Blur Level: " << blur_level;
+      return;
     }
+    LOGF(INFO) << "Blur Level: " << blur_level;
   }
-  LOGF(INFO) << "Effect Updated: " << tmp;
+
+  std::string gpu_api;
+  if (GetStringFromKey(json_values, kGpuApiKey, &gpu_api)) {
+    if (gpu_api == "opengl") {
+      new_config.segmentation_gpu_api = mojom::GpuApi::kOpenGL;
+      new_config.relighting_gpu_api = mojom::GpuApi::kOpenGL;
+    } else if (gpu_api == "opencl") {
+      new_config.segmentation_gpu_api = mojom::GpuApi::kOpenCL;
+      new_config.relighting_gpu_api = mojom::GpuApi::kOpenCL;
+    } else if (gpu_api == "any") {
+      new_config.segmentation_gpu_api = mojom::GpuApi::kAny;
+      new_config.relighting_gpu_api = mojom::GpuApi::kAny;
+    } else {
+      LOGF(WARNING) << "Unknown GPU API: " << gpu_api;
+      return;
+    }
+    LOGF(INFO) << "GPU API: " << gpu_api;
+  }
+
+  std::string relighting_gpu_api;
+  if (GetStringFromKey(json_values, kRelightingGpuApiKey,
+                       &relighting_gpu_api)) {
+    if (relighting_gpu_api == "opengl") {
+      new_config.relighting_gpu_api = mojom::GpuApi::kOpenGL;
+    } else if (relighting_gpu_api == "opencl") {
+      new_config.relighting_gpu_api = mojom::GpuApi::kOpenCL;
+    } else if (relighting_gpu_api == "any") {
+      new_config.relighting_gpu_api = mojom::GpuApi::kAny;
+    } else {
+      LOGF(WARNING) << "Unknown Relighting GPU API: " << gpu_api;
+      return;
+    }
+    LOGF(INFO) << "Relighting GPU API: " << relighting_gpu_api;
+  }
+
   process_thread_->PostTask(
       FROM_HERE, base::BindOnce(&EffectsStreamManipulator::SetEffect,
                                 base::Unretained(this), std::move(new_config)));
