@@ -82,7 +82,7 @@ TEST_F(GenericBatteryTest, Succeed) {
   for (const auto& kEctoolBatteryOutput : kEctoolBatteryOutputs) {
     EXPECT_CALL(*debugd, BatteryFirmware("info", _, _, _))
         .WillOnce(DoAll(SetArgPointee<1>(kEctoolBatteryOutput), Return(true)));
-    base::Value probe_statement(base::Value::Type::DICTIONARY);
+    base::Value probe_statement(base::Value::Type::DICT);
     auto probe_function = CreateProbeFunction<GenericBattery>(probe_statement);
     auto result = probe_function->Eval();
     EXPECT_EQ(result, ans);
@@ -109,7 +109,7 @@ TEST_F(GenericBatteryTest, CallEctoolFailed) {
   )JSON",
                          GetPathUnderRoot(bat0_path).value().c_str()));
 
-  base::Value probe_statement(base::Value::Type::DICTIONARY);
+  base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function = CreateProbeFunction<GenericBattery>(probe_statement);
   auto result = probe_function->Eval();
   EXPECT_EQ(result, ans);
@@ -135,7 +135,7 @@ TEST_F(GenericBatteryTest, ParseEctoolBatteryFailed) {
   )JSON",
                          GetPathUnderRoot(bat0_path).value().c_str()));
 
-  base::Value probe_statement(base::Value::Type::DICTIONARY);
+  base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function = CreateProbeFunction<GenericBattery>(probe_statement);
   auto result = probe_function->Eval();
   EXPECT_EQ(result, ans);

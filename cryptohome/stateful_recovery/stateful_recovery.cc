@@ -62,7 +62,7 @@ bool StatefulRecovery::CopyPartitionInfo() {
   if (!platform_->StatVFS(FilePath(kRecoverSource), &vfs))
     return false;
 
-  base::Value dv(base::Value::Type::DICTIONARY);
+  base::Value dv(base::Value::Type::DICT);
   dv.SetStringKey("filesystem", FilePath(kRecoverSource).value());
   dv.SetIntKey("blocks-total", vfs.f_blocks);
   dv.SetIntKey("blocks-free", vfs.f_bfree);

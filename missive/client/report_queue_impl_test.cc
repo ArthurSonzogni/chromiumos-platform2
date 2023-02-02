@@ -129,7 +129,7 @@ TEST_F(ReportQueueImplTest, SuccessfulStringRecord) {
 TEST_F(ReportQueueImplTest, SuccessfulBaseValueRecord) {
   static constexpr char kTestKey[] = "TEST_KEY";
   static constexpr char kTestValue[] = "TEST_VALUE";
-  base::Value test_dict(base::Value::Type::DICTIONARY);
+  base::Value test_dict(base::Value::Type::DICT);
   test_dict.SetStringKey(kTestKey, kTestValue);
   test::TestEvent<Status> a;
   report_queue_->Enqueue(test_dict.Clone(), priority_, a.cb());
@@ -246,7 +246,7 @@ TEST_F(ReportQueueImplTest, EnqueueValueFailsOnPolicy) {
       .WillOnce(Return(Status(error::UNAUTHENTICATED, "Failing for tests")));
   static constexpr char kTestKey[] = "TEST_KEY";
   static constexpr char kTestValue[] = "TEST_VALUE";
-  base::Value test_dict(base::Value::Type::DICTIONARY);
+  base::Value test_dict(base::Value::Type::DICT);
   test_dict.SetStringKey(kTestKey, kTestValue);
   test::TestEvent<Status> a;
   report_queue_->Enqueue(test_dict.Clone(), priority_, a.cb());
@@ -501,7 +501,7 @@ TEST_F(ReportQueueImplTest, AsyncProcessingReportQueue) {
   test::TestEvent<Status> a_json;
   static constexpr char kTestKey[] = "TEST_KEY";
   static constexpr char kTestValue[] = "TEST_VALUE";
-  base::Value test_dict(base::Value::Type::DICTIONARY);
+  base::Value test_dict(base::Value::Type::DICT);
   test_dict.SetStringKey(kTestKey, kTestValue);
   mock_queue->Enqueue(std::move(test_dict), priority_, a_json.cb());
 
@@ -530,7 +530,7 @@ TEST_F(ReportQueueImplTest, AsyncProcessingSpeculativeReportQueue) {
   test::TestEvent<Status> a_json;
   static constexpr char kTestKey[] = "TEST_KEY";
   static constexpr char kTestValue[] = "TEST_VALUE";
-  base::Value test_dict(base::Value::Type::DICTIONARY);
+  base::Value test_dict(base::Value::Type::DICT);
   test_dict.SetStringKey(kTestKey, kTestValue);
   speculative_report_queue->Enqueue(std::move(test_dict), priority_,
                                     a_json.cb());

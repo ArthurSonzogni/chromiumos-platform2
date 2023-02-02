@@ -68,7 +68,7 @@ bool WebAuthnStorage::WriteRecord(const WebAuthnRecord& record) {
     return false;
   }
 
-  base::Value record_value(base::Value::Type::DICTIONARY);
+  base::Value record_value(base::Value::Type::DICT);
   record_value.SetStringKey(kCredentialIdKey, credential_id_hex);
   record_value.SetStringKey(
       kSecretKey, base::Base64Encode(brillo::Blob(record.secret.begin(),

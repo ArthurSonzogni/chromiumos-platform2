@@ -11,7 +11,7 @@
 namespace runtime_probe {
 
 SequenceFunction::DataType SequenceFunction::EvalImpl() const {
-  base::Value result(base::Value::Type::DICTIONARY);
+  base::Value result(base::Value::Type::DICT);
 
   for (const auto& func : functions_) {
     const auto& probe_results = func->Eval();

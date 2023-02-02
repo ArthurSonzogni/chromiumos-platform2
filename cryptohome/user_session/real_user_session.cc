@@ -152,14 +152,14 @@ bool RealUserSession::Unmount() {
 }
 
 base::Value RealUserSession::GetStatus() const {
-  base::Value dv(base::Value::Type::DICTIONARY);
+  base::Value dv(base::Value::Type::DICT);
   std::string user = SanitizeUserName(username_);
   base::Value keysets(base::Value::Type::LIST);
   std::vector<int> key_indices;
   if (user.length() &&
       keyset_management_->GetVaultKeysets(user, &key_indices)) {
     for (auto key_index : key_indices) {
-      base::Value keyset_dict(base::Value::Type::DICTIONARY);
+      base::Value keyset_dict(base::Value::Type::DICT);
       std::unique_ptr<VaultKeyset> keyset(
           keyset_management_->LoadVaultKeysetForUser(user, key_index));
       if (keyset.get()) {

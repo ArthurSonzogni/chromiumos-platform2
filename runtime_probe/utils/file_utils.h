@@ -43,7 +43,7 @@ std::optional<base::Value> MapFilesToDict(
     const base::FilePath& dir_path,
     const KeyContainerType& keys,
     const OptionalKeyContainerType& optional_keys) {
-  base::Value result(base::Value::Type::DICTIONARY);
+  base::Value result(base::Value::Type::DICT);
 
   for (const auto& key : keys) {
     if (!internal::ReadFileToDict(dir_path, key, true, result))

@@ -33,10 +33,10 @@ class MockProbeFunction : public ProbeFunction {
 TEST(SequenceFunctionTest, TestEvalFailTooManyResults) {
   auto mock_probe_function_1 = std::make_unique<MockProbeFunction>();
 
-  base::Value a(base::Value::Type::DICTIONARY);
+  base::Value a(base::Value::Type::DICT);
   a.SetBoolKey("a", true);
 
-  base::Value b(base::Value::Type::DICTIONARY);
+  base::Value b(base::Value::Type::DICT);
   b.SetBoolKey("b", true);
 
   DataType val;
@@ -69,7 +69,7 @@ TEST(SequenceFunctionTest, TestEvalFailTooManyResults) {
 TEST(SequenceFunctionTest, TestEvalSuccess) {
   auto mock_probe_function_1 = std::make_unique<MockProbeFunction>();
 
-  base::Value a(base::Value::Type::DICTIONARY);
+  base::Value a(base::Value::Type::DICT);
   a.SetBoolKey("a", true);
   a.SetBoolKey("c", false);
 
@@ -81,7 +81,7 @@ TEST(SequenceFunctionTest, TestEvalSuccess) {
 
   auto mock_probe_function_2 = std::make_unique<MockProbeFunction>();
 
-  base::Value b(base::Value::Type::DICTIONARY);
+  base::Value b(base::Value::Type::DICT);
   b.SetBoolKey("b", true);
   b.SetBoolKey("c", true);
 

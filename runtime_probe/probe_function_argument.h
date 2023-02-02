@@ -94,7 +94,7 @@ bool ParseArgument<std::vector<std::unique_ptr<ProbeFunction>>>(
 // Assumes that |T| and |dict_value| are in the scope.
 // Define |instance|, |keys| and |result| into the scope.
 #define PARSE_BEGIN()                                              \
-  base::Value raw_value{base::Value::Type::DICTIONARY};            \
+  base::Value raw_value{base::Value::Type::DICT};                  \
   raw_value.SetKey(T::function_name, dict_value.Clone());          \
   auto instance = std::unique_ptr<T>{new T(std::move(raw_value))}; \
   std::set<std::string> keys;                                      \

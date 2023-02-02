@@ -77,7 +77,7 @@ std::optional<base::Value> AtaStorageFunction::ProbeFromSysfs(
 
 std::optional<base::Value> AtaStorageFunction::ProbeFromStorageTool(
     const base::FilePath& node_path) const {
-  base::Value result(base::Value::Type::DICTIONARY);
+  base::Value result(base::Value::Type::DICT);
   auto storage_fw_version = GetStorageFwVersion(base::FilePath(node_path));
   if (!storage_fw_version.empty())
     result.SetStringKey("storage_fw_version", storage_fw_version);

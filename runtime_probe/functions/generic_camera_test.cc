@@ -97,7 +97,7 @@ class Fake3GenericCameraFunction : public GenericCameraFunction {
 class GenericCameraFunctionTest : public BaseFunctionTest {};
 
 TEST_F(GenericCameraFunctionTest, ProbeGenericCamera) {
-  base::Value probe_statement(base::Value::Type::DICTIONARY);
+  base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<Fake1GenericCameraFunction>(probe_statement);
 
@@ -127,7 +127,7 @@ TEST_F(GenericCameraFunctionTest, ProbeGenericCamera) {
 }
 
 TEST_F(GenericCameraFunctionTest, ProbeEmptyResults) {
-  base::Value probe_statement(base::Value::Type::DICTIONARY);
+  base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<Fake3GenericCameraFunction>(probe_statement);
 
@@ -139,7 +139,7 @@ TEST_F(GenericCameraFunctionTest, ProbeEmptyResults) {
 }
 
 TEST_F(GenericCameraFunctionTest, ProberInitilizationFailed) {
-  base::Value probe_statement(base::Value::Type::DICTIONARY);
+  base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<Fake2GenericCameraFunction>(probe_statement);
 

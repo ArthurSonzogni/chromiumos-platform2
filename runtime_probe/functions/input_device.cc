@@ -99,7 +99,7 @@ void AppendInputDevice(InputDeviceFunction::DataType* list_value,
   auto path = Context::Get()->root_dir().Append(
       base::StringPrintf("sys%s", input_device->sysfs.c_str()));
 
-  base::Value value(base::Value::Type::DICTIONARY);
+  base::Value value(base::Value::Type::DICT);
   value.SetStringKey("bus", input_device->bus);
   value.SetStringKey("event", input_device->event);
   value.SetStringKey("name", input_device->name);

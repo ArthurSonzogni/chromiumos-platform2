@@ -100,7 +100,7 @@ std::optional<base::Value> NvmeStorageFunction::ProbeFromStorageTool(
   }
 
   const auto& device_name = node_path.BaseName();
-  base::Value result(base::Value::Type::DICTIONARY);
+  base::Value result(base::Value::Type::DICT);
   for (const auto& device : devices->GetList()) {
     const auto* path = device.FindStringKey("DevicePath");
     if (!path || base::FilePath(*path).BaseName() != device_name)

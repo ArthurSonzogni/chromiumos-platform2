@@ -748,7 +748,7 @@ bool VmBuilder::AddGpuSiblingCmd(
     SiblingStartCommands* cmds) const {
   base::StringPairs cmd = BuildVvuBaseCmd("gpu", vvu_device_info.proxy_device);
 
-  base::Value params(base::Value::Type::DICTIONARY);
+  base::Value params(base::Value::Type::DICT);
   params.SetKey("vulkan", base::Value(enable_vulkan_));
   params.SetKey("gles", base::Value(!enable_big_gl_));
   if (!gpu_cache_path_.empty()) {

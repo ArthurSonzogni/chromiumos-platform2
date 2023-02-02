@@ -26,7 +26,7 @@ class FileUtilsTest : public BaseFileTest {
   }
 
   base::Value ToDictValue(const std::map<std::string, std::string>& data) {
-    base::Value res(base::Value::Type::DICTIONARY);
+    base::Value res(base::Value::Type::DICT);
     for (const auto& item : data) {
       res.SetKey(item.first, base::Value(item.second));
     }

@@ -155,7 +155,7 @@ TEST(HttpUtils, SendRequest_Headers) {
   static const char json_echo_url[] = "http://localhost/echo/json";
   auto JsonEchoHandler = [](const fake::ServerRequest& request,
                             fake::ServerResponse* response) {
-    base::Value json(base::Value::Type::DICTIONARY);
+    base::Value json(base::Value::Type::DICT);
     json.SetStringKey("method", request.GetMethod());
     json.SetStringKey("data", request.GetDataAsString());
     for (const auto& pair : request.GetHeaders()) {
@@ -369,7 +369,7 @@ TEST(HttpUtils, PostPatchJson) {
   std::shared_ptr<fake::Transport> transport(new fake::Transport);
   transport->AddHandler(kFakeUrl, "*", base::BindRepeating(JsonHandler));
 
-  base::Value json(base::Value::Type::DICTIONARY);
+  base::Value json(base::Value::Type::DICT);
   json.SetStringKey("key1", "val1");
   json.SetStringKey("key2", "val2");
   const std::string* value;

@@ -260,7 +260,7 @@ void ServerResponse::ReplyJson(int status_code, const base::Value* json) {
 
 void ServerResponse::ReplyJson(int status_code,
                                const http::FormFieldList& fields) {
-  base::Value json(base::Value::Type::DICTIONARY);
+  base::Value json(base::Value::Type::DICT);
   for (const auto& pair : fields) {
     json.SetStringPath(pair.first, pair.second);
   }

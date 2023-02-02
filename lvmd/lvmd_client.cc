@@ -55,7 +55,7 @@ int PrintDict(const base::Value& dict) {
 }
 
 base::Value Dict() {
-  return base::Value(base::Value::Type::DICTIONARY);
+  return base::Value(base::Value::Type::DICT);
 }
 
 base::Value ToDict(const lvmd::PhysicalVolume& pv) {

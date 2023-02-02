@@ -20,7 +20,7 @@ using ReturnCode = FieldConverter::ReturnCode;
 }  // namespace
 
 TEST(StringFieldConverterTest, TestIntToString) {
-  base::Value dict_value(base::Value::Type::DICTIONARY);
+  base::Value dict_value(base::Value::Type::DICT);
   dict_value.SetIntKey("key", 123);
 
   auto converter = StringFieldConverter::Build("");
@@ -43,7 +43,7 @@ TEST(StringFieldConverterTest, TestInvalidRegexPattern) {
 
 TEST(IntegerFieldConverterTest, TestStringToInt) {
   for (const auto s : {"123", "  123", "123  ", "  123  "}) {
-    base::Value dict_value(base::Value::Type::DICTIONARY);
+    base::Value dict_value(base::Value::Type::DICT);
     dict_value.SetStringKey("key", s);
 
     auto converter = IntegerFieldConverter::Build("");
@@ -72,7 +72,7 @@ TEST(HexFieldConverterTest, TestHexStringToDecString) {
       {"-0x80000000", "-2147483648"},
   };
   for (const auto& [in, out] : cases) {
-    base::Value dict_value(base::Value::Type::DICTIONARY);
+    base::Value dict_value(base::Value::Type::DICT);
     dict_value.SetStringKey("key", in);
 
     auto converter = HexFieldConverter::Build("");
@@ -96,7 +96,7 @@ TEST(HexFieldConverterTest, TestIntToDecString) {
       {-0x7b, "-123"},
   };
   for (const auto& [in, out] : cases) {
-    base::Value dict_value(base::Value::Type::DICTIONARY);
+    base::Value dict_value(base::Value::Type::DICT);
     dict_value.SetIntKey("key", in);
 
     auto converter = HexFieldConverter::Build("");
@@ -112,7 +112,7 @@ TEST(HexFieldConverterTest, TestIntToDecString) {
 
 TEST(IntegerFieldConverterTest, TestDoubleToInt) {
   double v = 123.5;
-  base::Value dict_value(base::Value::Type::DICTIONARY);
+  base::Value dict_value(base::Value::Type::DICT);
   dict_value.SetDoubleKey("key", v);
 
   auto converter = IntegerFieldConverter::Build("");
@@ -127,7 +127,7 @@ TEST(IntegerFieldConverterTest, TestDoubleToInt) {
 
 TEST(DoubleFieldConverterTest, TestStringToDouble) {
   for (const auto s : {"123.5", "  123.5", "123.5  ", "  123.5  "}) {
-    base::Value dict_value(base::Value::Type::DICTIONARY);
+    base::Value dict_value(base::Value::Type::DICT);
     dict_value.SetStringKey("key", s);
 
     auto converter = DoubleFieldConverter::Build("");
@@ -143,7 +143,7 @@ TEST(DoubleFieldConverterTest, TestStringToDouble) {
 
 TEST(DoubleFieldConverterTest, TestInvalidStringToDouble) {
   for (const auto s : {"this is not double", "", "   "}) {
-    base::Value dict_value(base::Value::Type::DICTIONARY);
+    base::Value dict_value(base::Value::Type::DICT);
     dict_value.SetStringKey("key", s);
 
     auto converter = DoubleFieldConverter::Build("");

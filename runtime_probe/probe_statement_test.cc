@@ -40,14 +40,14 @@ TEST(ProbeStatementTest, TestEval) {
   // Set up |eval_|
   auto mock_eval = std::make_unique<MockProbeFunction>();
 
-  base::Value good_result(base::Value::Type::DICTIONARY);
+  base::Value good_result(base::Value::Type::DICT);
   good_result.SetStringKey("expected_field", "expected");
   good_result.SetStringKey("optional_field", "optional");
 
   auto good_result2 = good_result.Clone();
 
   // bad_result is empty, which doesn't have expected field
-  base::Value bad_result(base::Value::Type::DICTIONARY);
+  base::Value bad_result(base::Value::Type::DICT);
   bad_result.SetStringKey("optional_field", "optional");
 
   ProbeFunction::DataType val_a;

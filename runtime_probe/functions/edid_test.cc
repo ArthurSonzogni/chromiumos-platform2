@@ -39,7 +39,7 @@ class EdidFunctionTest : public BaseFunctionTest {
 };
 
 TEST_F(EdidFunctionTest, ProbeEdid) {
-  base::Value probe_statement(base::Value::Type::DICTIONARY);
+  base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function = CreateProbeFunction<EdidFunction>(probe_statement);
   auto result = probe_function->Eval();
   auto ans = CreateProbeResultFromJson(R"JSON(

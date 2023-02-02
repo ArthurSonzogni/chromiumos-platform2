@@ -72,7 +72,7 @@ std::optional<base::Value> UfsStorageFunction::ProbeFromSysfs(
 std::optional<base::Value> UfsStorageFunction::ProbeFromStorageTool(
     const base::FilePath&) const {
   // No-op currently.
-  return base::Value{base::Value::Type::DICTIONARY};
+  return base::Value{base::Value::Type::DICT};
 }
 
 }  // namespace runtime_probe

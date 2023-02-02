@@ -27,11 +27,11 @@ base::Value ProbeEdidPath(const base::FilePath& edid_path) {
 
   std::string raw_bytes;
   if (!base::ReadFileToString(edid_path, &raw_bytes))
-    return base::Value(base::Value::Type::DICTIONARY);
+    return base::Value(base::Value::Type::DICT);
   if (raw_bytes.length() == 0)
-    return base::Value(base::Value::Type::DICTIONARY);
+    return base::Value(base::Value::Type::DICT);
 
-  base::Value res(base::Value::Type::DICTIONARY);
+  base::Value res(base::Value::Type::DICT);
   auto edid =
       Edid::From(std::vector<uint8_t>(raw_bytes.begin(), raw_bytes.end()));
   if (!edid) {

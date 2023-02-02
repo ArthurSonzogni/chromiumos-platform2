@@ -126,7 +126,7 @@ MemoryFunction::DataType GetMemoryInfo() {
     auto dmi_path = dmi_dirname.Append(dmi_basename);
     if (!base::DirectoryExists(dmi_path))
       break;
-    base::Value info(base::Value::Type::DICTIONARY);
+    base::Value info(base::Value::Type::DICT);
     std::string raw_bytes;
     if (!base::ReadFileToString(dmi_path.Append("raw"), &raw_bytes)) {
       LOG(ERROR) << "Failed to read file in sysfs: " << dmi_path.value();

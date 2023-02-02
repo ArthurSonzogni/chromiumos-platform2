@@ -51,7 +51,7 @@ class FakeStorageFunction : public StorageFunction {
 class StorageFunctionTest : public BaseFunctionTest {};
 
 TEST_F(StorageFunctionTest, ProbeStorage) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<FakeStorageFunction>(probe_statement);
 
@@ -105,7 +105,7 @@ TEST_F(StorageFunctionTest, ProbeStorage) {
 }
 
 TEST_F(StorageFunctionTest, RemovableStorage) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<FakeStorageFunction>(probe_statement);
 
@@ -128,7 +128,7 @@ TEST_F(StorageFunctionTest, RemovableStorage) {
 }
 
 TEST_F(StorageFunctionTest, NoRemovableProperty) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<FakeStorageFunction>(probe_statement);
 
@@ -150,7 +150,7 @@ TEST_F(StorageFunctionTest, NoRemovableProperty) {
 }
 
 TEST_F(StorageFunctionTest, LoopbackDevice) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<FakeStorageFunction>(probe_statement);
 
@@ -172,7 +172,7 @@ TEST_F(StorageFunctionTest, LoopbackDevice) {
 }
 
 TEST_F(StorageFunctionTest, DmVerityDevice) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<FakeStorageFunction>(probe_statement);
 
@@ -194,7 +194,7 @@ TEST_F(StorageFunctionTest, DmVerityDevice) {
 }
 
 TEST_F(StorageFunctionTest, NoSysfsResult) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<FakeStorageFunction>(probe_statement);
 
@@ -229,7 +229,7 @@ TEST_F(StorageFunctionTest, NoSysfsResult) {
 }
 
 TEST_F(StorageFunctionTest, NoSectorCount) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<FakeStorageFunction>(probe_statement);
 
@@ -260,7 +260,7 @@ TEST_F(StorageFunctionTest, NoSectorCount) {
 }
 
 TEST_F(StorageFunctionTest, InvalidSectorCount) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<FakeStorageFunction>(probe_statement);
 
@@ -292,7 +292,7 @@ TEST_F(StorageFunctionTest, InvalidSectorCount) {
 }
 
 TEST_F(StorageFunctionTest, NoLogicalBlockSize) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<FakeStorageFunction>(probe_statement);
 
@@ -324,7 +324,7 @@ TEST_F(StorageFunctionTest, NoLogicalBlockSize) {
 }
 
 TEST_F(StorageFunctionTest, InvalidLogicalBlockSize) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<FakeStorageFunction>(probe_statement);
 
@@ -357,7 +357,7 @@ TEST_F(StorageFunctionTest, InvalidLogicalBlockSize) {
 }
 
 TEST_F(StorageFunctionTest, NonpositiveLogicalBlockSize) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<FakeStorageFunction>(probe_statement);
 

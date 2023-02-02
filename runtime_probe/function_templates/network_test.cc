@@ -90,7 +90,7 @@ class NetworkFunctionTest : public BaseFunctionTest {
 };
 
 TEST_F(NetworkFunctionTest, ProbeNetworkPci) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockNetworkFunction>(probe_statement);
 
@@ -121,7 +121,7 @@ TEST_F(NetworkFunctionTest, ProbeNetworkPci) {
 }
 
 TEST_F(NetworkFunctionTest, GetPciRevisionIdFromConfig) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockNetworkFunction>(probe_statement);
 
@@ -160,7 +160,7 @@ TEST_F(NetworkFunctionTest, GetPciRevisionIdFromConfig) {
 }
 
 TEST_F(NetworkFunctionTest, GetPciRevisionIdFromConfigFailed) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockNetworkFunction>(probe_statement);
 
@@ -197,7 +197,7 @@ TEST_F(NetworkFunctionTest, GetPciRevisionIdFromConfigFailed) {
 }
 
 TEST_F(NetworkFunctionTest, ProbeNetworkSdio) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockNetworkFunction>(probe_statement);
 
@@ -228,7 +228,7 @@ TEST_F(NetworkFunctionTest, ProbeNetworkSdio) {
 }
 
 TEST_F(NetworkFunctionTest, ProbeNetworkUsb) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockNetworkFunction>(probe_statement);
 
@@ -259,7 +259,7 @@ TEST_F(NetworkFunctionTest, ProbeNetworkUsb) {
 }
 
 TEST_F(NetworkFunctionTest, UnknownBusType) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockNetworkFunction>(probe_statement);
 
@@ -281,7 +281,7 @@ TEST_F(NetworkFunctionTest, UnknownBusType) {
 }
 
 TEST_F(NetworkFunctionTest, NoRequiredFields) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockNetworkFunction>(probe_statement);
 
@@ -302,7 +302,7 @@ TEST_F(NetworkFunctionTest, NoRequiredFields) {
 }
 
 TEST_F(NetworkFunctionTest, ProbeAllTypeNetwork) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockNetworkFunction>(probe_statement);
 
@@ -362,7 +362,7 @@ TEST_F(NetworkFunctionTest, ProbeAllTypeNetwork) {
 }
 
 TEST_F(NetworkFunctionTest, ProbeSpecificTypeNetwork) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockNetworkFunction>(probe_statement);
 

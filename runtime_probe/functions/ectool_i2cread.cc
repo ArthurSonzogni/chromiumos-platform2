@@ -34,7 +34,7 @@ EctoolI2Cread::DataType EctoolI2Cread::EvalImpl() const {
   pcrecpp::RE re(kRegexPattern);
   std::string reg_value;
   if (re.PartialMatch(ectool_output, &reg_value)) {
-    base::Value dict_value(base::Value::Type::DICTIONARY);
+    base::Value dict_value(base::Value::Type::DICT);
     dict_value.SetStringKey(key_, reg_value);
     result.Append(std::move(dict_value));
   }

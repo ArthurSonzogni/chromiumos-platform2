@@ -32,7 +32,7 @@ class DaemonTest : public ::testing::Test {
   void SetDefaultProbeConfigData() {
     config_loader_.set_fake_probe_config_data(ProbeConfigData{
         .path = base::FilePath{"/etc/runtime_probe/probe_config.json"},
-        .config = base::Value(base::Value::Type::DICTIONARY),
+        .config = base::Value(base::Value::Type::DICT),
         .sha1_hash = "0123456789abcdef"});
   }
   FakeProbeConfigLoader config_loader_;

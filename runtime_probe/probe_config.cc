@@ -42,7 +42,7 @@ base::Value ProbeConfig::Eval() const {
 }
 
 base::Value ProbeConfig::Eval(const std::vector<std::string>& category) const {
-  base::Value result(base::Value::Type::DICTIONARY);
+  base::Value result(base::Value::Type::DICT);
 
   for (const auto& c : category) {
     auto it = category_.find(c);

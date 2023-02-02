@@ -66,7 +66,7 @@ cros::PlatformCameraInfo CreateV4L2PlatformCameraInfo(std::string name,
 }
 
 TEST_F(MipiCameraFunctionTest, ProbeMipiCamera) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<FakeMipiCameraFunction>(probe_statement);
 
@@ -97,7 +97,7 @@ TEST_F(MipiCameraFunctionTest, ProbeMipiCamera) {
 }
 
 TEST_F(MipiCameraFunctionTest, GetDeviceConfigFailed) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<FakeMipiCameraFunction>(probe_statement);
 
@@ -112,7 +112,7 @@ TEST_F(MipiCameraFunctionTest, GetDeviceConfigFailed) {
 }
 
 TEST_F(MipiCameraFunctionTest, NoCamera) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<FakeMipiCameraFunction>(probe_statement);
 

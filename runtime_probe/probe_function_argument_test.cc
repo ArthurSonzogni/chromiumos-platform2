@@ -45,8 +45,8 @@ class Mock2ProbeFunction : public ProbeFunction {
 };
 
 TEST(ProbeFunctionArgumentTest, EmptyArgument) {
-  const base::Value empty_value(base::Value::Type::DICTIONARY);
-  base::Value arg_value(base::Value::Type::DICTIONARY);
+  const base::Value empty_value(base::Value::Type::DICT);
+  base::Value arg_value(base::Value::Type::DICT);
   arg_value.SetKey("a_str", base::Value("a_str"));
 
   auto mock_func1 = CreateProbeFunction<Mock1ProbeFunction>(empty_value);
@@ -57,8 +57,8 @@ TEST(ProbeFunctionArgumentTest, EmptyArgument) {
 }
 
 TEST(ProbeFunctionArgumentTest, WithArguments) {
-  const base::Value empty_value(base::Value::Type::DICTIONARY);
-  base::Value arg_value(base::Value::Type::DICTIONARY);
+  const base::Value empty_value(base::Value::Type::DICT);
+  base::Value arg_value(base::Value::Type::DICT);
   arg_value.SetStringKey("a_str", "a_str");
   arg_value.SetIntKey("a_int", 1);
   arg_value.SetBoolKey("a_bool", true);

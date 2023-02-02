@@ -51,7 +51,7 @@ class GpuFunctionTest : public BaseFunctionTest {
 };
 
 TEST_F(GpuFunctionTest, ProbeGpu) {
-  base::Value probe_statement(base::Value::Type::DICTIONARY);
+  base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function = CreateProbeFunction<MockGpuFunction>(probe_statement);
   SetPciDevice("0000:04:00.0", {
                                    {"class", "0x030000"},
@@ -104,7 +104,7 @@ TEST_F(GpuFunctionTest, ProbeGpu) {
 }
 
 TEST_F(GpuFunctionTest, NonGpu) {
-  base::Value probe_statement(base::Value::Type::DICTIONARY);
+  base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function = CreateProbeFunction<MockGpuFunction>(probe_statement);
   // Non-display controller (class it not 0x30).
   SetPciDevice("0000:04:00.0", {
@@ -131,7 +131,7 @@ TEST_F(GpuFunctionTest, NonGpu) {
 }
 
 TEST_F(GpuFunctionTest, MissField) {
-  base::Value probe_statement(base::Value::Type::DICTIONARY);
+  base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function = CreateProbeFunction<MockGpuFunction>(probe_statement);
   // Each of these miss one field so won't be probed.
   SetPciDevice("0000:04:00.0", {
@@ -167,7 +167,7 @@ TEST_F(GpuFunctionTest, MissField) {
 }
 
 TEST_F(GpuFunctionTest, MinigbmIsDGPU) {
-  base::Value probe_statement(base::Value::Type::DICTIONARY);
+  base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function = CreateProbeFunction<MockGpuFunction>(probe_statement);
   SetPciDevice("0000:04:00.0", {
                                    {"class", "0x030000"},
@@ -194,7 +194,7 @@ TEST_F(GpuFunctionTest, MinigbmIsDGPU) {
 }
 
 TEST_F(GpuFunctionTest, MinigbmIsIGPU) {
-  base::Value probe_statement(base::Value::Type::DICTIONARY);
+  base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function = CreateProbeFunction<MockGpuFunction>(probe_statement);
   SetPciDevice("0000:04:00.0", {
                                    {"class", "0x030000"},

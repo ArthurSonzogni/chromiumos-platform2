@@ -148,11 +148,11 @@ class NetInterface {
  private:
   int fd_;
   const char* name_;
-  Value ipv4_{Value::Type::DICTIONARY};
-  Value ipv6_{Value::Type::DICTIONARY};
+  Value ipv4_{Value::Type::DICT};
+  Value ipv6_{Value::Type::DICT};
   Value flags_{Value::Type::LIST};
   std::string mac_;
-  Value signal_strengths_{Value::Type::DICTIONARY};
+  Value signal_strengths_{Value::Type::DICT};
 
   void AddAddressTo(Value* dv, struct sockaddr* sa);
 };
@@ -197,7 +197,7 @@ void NetInterface::AddAddress(struct ifaddrs* ifa) {
 }
 
 Value NetInterface::ToValue() const {
-  Value dv(Value::Type::DICTIONARY);
+  Value dv(Value::Type::DICT);
   if (!ipv4_.DictEmpty())
     dv.SetKey("ipv4", ipv4_.Clone());
   if (!ipv6_.DictEmpty())
@@ -250,7 +250,7 @@ void AddSignalStrengths(
 int main() {
   struct ifaddrs* ifaddrs;
   int fd;
-  Value result(Value::Type::DICTIONARY);
+  Value result(Value::Type::DICT);
   std::map<std::string, std::unique_ptr<NetInterface>> interfaces;
 
   if (getifaddrs(&ifaddrs) == -1) {

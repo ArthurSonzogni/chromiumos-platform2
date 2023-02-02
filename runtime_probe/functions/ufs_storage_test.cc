@@ -45,7 +45,7 @@ class UfsStorageFunctionTest : public BaseFunctionTest {
 };
 
 TEST_F(UfsStorageFunctionTest, ProbeFromSysfs) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockUfsStorageFunction>(probe_statement);
 
@@ -66,7 +66,7 @@ TEST_F(UfsStorageFunctionTest, ProbeFromSysfs) {
 }
 
 TEST_F(UfsStorageFunctionTest, ProbeFromSysfsEmptyNodePath) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockUfsStorageFunction>(probe_statement);
 
@@ -80,7 +80,7 @@ TEST_F(UfsStorageFunctionTest, ProbeFromSysfsEmptyNodePath) {
 }
 
 TEST_F(UfsStorageFunctionTest, ProbeFromSysfsNoUfsBsg) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockUfsStorageFunction>(probe_statement);
 
@@ -95,7 +95,7 @@ TEST_F(UfsStorageFunctionTest, ProbeFromSysfsNoUfsBsg) {
 }
 
 TEST_F(UfsStorageFunctionTest, ProbeFromSysfsNoRequiredFields) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockUfsStorageFunction>(probe_statement);
 
@@ -110,7 +110,7 @@ TEST_F(UfsStorageFunctionTest, ProbeFromSysfsNoRequiredFields) {
 }
 
 TEST_F(UfsStorageFunctionTest, ProbeFromStorageTool) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockUfsStorageFunction>(probe_statement);
 
@@ -118,7 +118,7 @@ TEST_F(UfsStorageFunctionTest, ProbeFromStorageTool) {
 
   auto result = probe_function->ProbeFromStorageTool(ufs1_path);
   // No-op for UFS storages currently.
-  EXPECT_EQ(result, base::Value{base::Value::Type::DICTIONARY});
+  EXPECT_EQ(result, base::Value{base::Value::Type::DICT});
 }
 
 }  // namespace

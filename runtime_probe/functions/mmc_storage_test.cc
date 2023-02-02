@@ -50,7 +50,7 @@ class MmcStorageFunctionTest : public BaseFunctionTest {
 };
 
 TEST_F(MmcStorageFunctionTest, ProbeFromSysfs) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockMmcStorageFunction>(probe_statement);
 
@@ -73,7 +73,7 @@ TEST_F(MmcStorageFunctionTest, ProbeFromSysfs) {
 }
 
 TEST_F(MmcStorageFunctionTest, ProbeFromSysfsNonMmcStorage) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockMmcStorageFunction>(probe_statement);
 
@@ -90,7 +90,7 @@ TEST_F(MmcStorageFunctionTest, ProbeFromSysfsNonMmcStorage) {
 }
 
 TEST_F(MmcStorageFunctionTest, ProbeFromSysfsNoTypeFile) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockMmcStorageFunction>(probe_statement);
 
@@ -106,7 +106,7 @@ TEST_F(MmcStorageFunctionTest, ProbeFromSysfsNoTypeFile) {
 }
 
 TEST_F(MmcStorageFunctionTest, ProbeFromSysfsNoRequiredFields) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockMmcStorageFunction>(probe_statement);
 
@@ -122,7 +122,7 @@ TEST_F(MmcStorageFunctionTest, ProbeFromSysfsNoRequiredFields) {
 }
 
 TEST_F(MmcStorageFunctionTest, ProbeFromSysfsEmptyPath) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockMmcStorageFunction>(probe_statement);
 
@@ -133,7 +133,7 @@ TEST_F(MmcStorageFunctionTest, ProbeFromSysfsEmptyPath) {
 }
 
 TEST_F(MmcStorageFunctionTest, ProbeFromStorageToolWithAsciiStringFwVersion) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockMmcStorageFunction>(probe_statement);
 
@@ -162,7 +162,7 @@ TEST_F(MmcStorageFunctionTest, ProbeFromStorageToolWithAsciiStringFwVersion) {
 }
 
 TEST_F(MmcStorageFunctionTest, ProbeFromStorageToolWithHexValueFwVersion) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockMmcStorageFunction>(probe_statement);
 
@@ -191,7 +191,7 @@ TEST_F(MmcStorageFunctionTest, ProbeFromStorageToolWithHexValueFwVersion) {
 }
 
 TEST_F(MmcStorageFunctionTest, ProbeFromStorageToolInvalidFwVersionHexValue) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockMmcStorageFunction>(probe_statement);
 
@@ -222,7 +222,7 @@ TEST_F(MmcStorageFunctionTest, ProbeFromStorageToolInvalidFwVersionHexValue) {
 }
 
 TEST_F(MmcStorageFunctionTest, ProbeFromStorageToolInvalidFwVersionByteCount) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockMmcStorageFunction>(probe_statement);
 
@@ -246,7 +246,7 @@ TEST_F(MmcStorageFunctionTest, ProbeFromStorageToolInvalidFwVersionByteCount) {
 }
 
 TEST_F(MmcStorageFunctionTest, ProbeFromStorageToolDBusCallFailed) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockMmcStorageFunction>(probe_statement);
 

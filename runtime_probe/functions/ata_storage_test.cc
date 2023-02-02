@@ -43,7 +43,7 @@ class AtaStorageFunctionTest : public BaseFunctionTest {
 };
 
 TEST_F(AtaStorageFunctionTest, ProbeFromSysfs) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockAtaStorageFunction>(probe_statement);
 
@@ -64,7 +64,7 @@ TEST_F(AtaStorageFunctionTest, ProbeFromSysfs) {
 }
 
 TEST_F(AtaStorageFunctionTest, ProbeFromSysfsEmptyNodePath) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockAtaStorageFunction>(probe_statement);
 
@@ -78,7 +78,7 @@ TEST_F(AtaStorageFunctionTest, ProbeFromSysfsEmptyNodePath) {
 }
 
 TEST_F(AtaStorageFunctionTest, ProbeFromSysfsNotAtaVendor) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockAtaStorageFunction>(probe_statement);
 
@@ -93,7 +93,7 @@ TEST_F(AtaStorageFunctionTest, ProbeFromSysfsNotAtaVendor) {
 }
 
 TEST_F(AtaStorageFunctionTest, ProbeFromSysfsNoRequiredFields) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockAtaStorageFunction>(probe_statement);
 
@@ -107,7 +107,7 @@ TEST_F(AtaStorageFunctionTest, ProbeFromSysfsNoRequiredFields) {
 }
 
 TEST_F(AtaStorageFunctionTest, ProbeFromStorageTool) {
-  const base::Value probe_statement(base::Value::Type::DICTIONARY);
+  const base::Value probe_statement(base::Value::Type::DICT);
   auto probe_function =
       CreateProbeFunction<MockAtaStorageFunction>(probe_statement);
 

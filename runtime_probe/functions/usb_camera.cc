@@ -117,7 +117,7 @@ UsbCameraFunction::DataType UsbCameraFunction::EvalImpl() const {
   const auto rooted_dev_video_pattern =
       Context::Get()->root_dir().Append(kDevVideoPath);
   for (const auto& video_path : Glob(rooted_dev_video_pattern)) {
-    base::Value res(base::Value::Type::DICTIONARY);
+    base::Value res(base::Value::Type::DICT);
     res.SetStringKey("path", video_path.value());
     if (ExploreAsUsbCamera(video_path, &res)) {
       res.SetStringKey("bus_type", "usb");

@@ -56,7 +56,7 @@ TcpcFunction::DataType TcpcFunction::EvalImpl() const {
     if (RunCommandRetry(ec_dev, cmd.get()) != EC_RES_SUCCESS)
       break;
 
-    base::Value val{base::Value::Type::DICTIONARY};
+    base::Value val{base::Value::Type::DICT};
     val.SetStringKey("port", base::NumberToString(port));
     val.SetStringKey("vendor_id", base::StringPrintf("0x%x", cmd->VendorId()));
     val.SetStringKey("product_id",

@@ -3789,7 +3789,7 @@ std::string UserDataAuth::GetStatusString() {
     mounts.Append(session.GetStatus());
   }
 
-  base::Value dv(base::Value::Type::DICTIONARY);
+  base::Value dv(base::Value::Type::DICT);
   dv.SetKey("mounts", std::move(mounts));
   std::string json;
   base::JSONWriter::WriteWithOptions(dv, base::JSONWriter::OPTIONS_PRETTY_PRINT,
