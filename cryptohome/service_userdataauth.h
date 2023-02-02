@@ -86,20 +86,6 @@ class UserDataAuthAdaptor
                           user_data_auth::CheckKeyReply>> response,
                       user_data_auth::CryptohomeErrorCode status);
 
-  void AddKey(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                  user_data_auth::AddKeyReply>> response,
-              const user_data_auth::AddKeyRequest& in_request) override;
-  void DoAddKey(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                    user_data_auth::AddKeyReply>> response,
-                const user_data_auth::AddKeyRequest& in_request);
-
-  void RemoveKey(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                     user_data_auth::RemoveKeyReply>> response,
-                 const user_data_auth::RemoveKeyRequest& in_request) override;
-  void DoRemoveKey(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                       user_data_auth::RemoveKeyReply>> response,
-                   const user_data_auth::RemoveKeyRequest& in_request);
-
   void StartFingerprintAuthSession(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::StartFingerprintAuthSessionReply>> response,

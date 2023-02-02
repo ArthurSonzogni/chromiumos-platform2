@@ -56,25 +56,11 @@ class MockKeysetManagement : public KeysetManagement {
                const Credentials&,
                const FileSystemKeyset&),
               (override));
-  MOCK_METHOD(CryptohomeErrorCode,
-              AddWrappedResetSeedIfMissing,
-              (VaultKeyset * vault_keyset, const Credentials& credentials),
-              (override));
   MOCK_METHOD(
       CryptohomeErrorCode,
       AddKeyset,
       (const VaultKeysetIntent&, const Credentials&, const VaultKeyset&, bool),
       (override));
-  MOCK_METHOD(CryptohomeErrorCode,
-              UpdateKeyset,
-              (const VaultKeysetIntent&,
-               const Credentials&,
-               const VaultKeyset&),
-              (override));
-  MOCK_METHOD(CryptohomeStatus,
-              RemoveKeyset,
-              (const Credentials&, const KeyData&),
-              (override));
   MOCK_METHOD(CryptohomeStatus,
               ForceRemoveKeyset,
               (const std::string&, int),

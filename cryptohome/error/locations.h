@@ -687,15 +687,15 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocKeysetManagementEncryptFailedInReSaveKeyset = 430,
   /* ./keyset_management.cc */
   kLocKeysetManagementSaveFailedInReSaveKeyset = 431,
-  /* ./keyset_management.cc */
+  /* =Obsolete= */
   kLocKeysetManagementNoLabelInRemoveKeyset = 432,
-  /* ./keyset_management.cc */
+  /* =Obsolete= */
   kLocKeysetManagementVKNotFoundInRemoveKeyset = 433,
-  /* ./keyset_management.cc */
+  /* =Obsolete= */
   kLocKeysetManagementKeyNotFoundInRemoveKeyset = 434,
-  /* ./keyset_management.cc */
+  /* =Obsolete= */
   kLocKeysetManagementBadAuthInRemoveKeyset = 435,
-  /* ./keyset_management.cc */
+  /* =Obsolete= */
   kLocKeysetManagementRemoveFailedInRemoveKeyset = 436,
   /* ./keyset_management.cc */
   kLocKeysetManagementInvalidIndexInRemoveKeyset = 437,

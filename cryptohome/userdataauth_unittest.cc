@@ -2531,10 +2531,8 @@ class UserDataAuthExTest : public UserDataAuthTest {
 
  protected:
   void PrepareArguments() {
-    add_req_.reset(new user_data_auth::AddKeyRequest);
     check_req_.reset(new user_data_auth::CheckKeyRequest);
     mount_req_.reset(new user_data_auth::MountRequest);
-    remove_req_.reset(new user_data_auth::RemoveKeyRequest);
     list_keys_req_.reset(new user_data_auth::ListKeysRequest);
     remove_homedir_req_.reset(new user_data_auth::RemoveRequest);
     start_auth_session_req_.reset(new user_data_auth::StartAuthSessionRequest);
@@ -2554,10 +2552,8 @@ class UserDataAuthExTest : public UserDataAuthTest {
     return brillo::SecureBlob(serialized);
   }
 
-  std::unique_ptr<user_data_auth::AddKeyRequest> add_req_;
   std::unique_ptr<user_data_auth::CheckKeyRequest> check_req_;
   std::unique_ptr<user_data_auth::MountRequest> mount_req_;
-  std::unique_ptr<user_data_auth::RemoveKeyRequest> remove_req_;
   std::unique_ptr<user_data_auth::ListKeysRequest> list_keys_req_;
   std::unique_ptr<user_data_auth::RemoveRequest> remove_homedir_req_;
   std::unique_ptr<user_data_auth::StartAuthSessionRequest>
@@ -3059,47 +3055,6 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyError) {
             error_code);
 }
 
-TEST_F(UserDataAuthExTest, AddKeyInvalidArgs) {
-  PrepareArguments();
-
-  // Test for when there's no email supplied.
-  EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-
-  // Test for an invalid account_id, where it is initialized
-  // but the underlying string is empty.
-  // Initialize the authorization request but leave the secret empty.
-  add_req_->mutable_account_id()->set_account_id("");
-  add_req_->mutable_authorization_request()->mutable_key();
-  EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-  // Cleanup
-  add_req_->clear_authorization_request();
-
-  // Test for when there's no secret.
-  add_req_->mutable_account_id()->set_account_id("foo@gmail.com");
-  EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-
-  // Test for valid authorization request but empty secret.
-  add_req_->mutable_authorization_request()->mutable_key();
-  EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-
-  // Test for when there's no new key.
-  add_req_->mutable_authorization_request()->mutable_key()->set_secret("blerg");
-  add_req_->clear_key();
-  EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-
-  // Test for no new key label.
-  add_req_->mutable_key();
-  // No label
-  add_req_->mutable_key()->set_secret("some secret");
-  EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-}
-
 TEST_F(UserDataAuthExTest,
        StartMigrateToDircryptoWithAuthenticatedAuthSession) {
   // Setup.
@@ -3220,83 +3175,6 @@ TEST_F(UserDataAuthExTest, StartMigrateToDircryptoWithInvalidAuthSession) {
             base::Unretained(&called_ctr)));
   }
   EXPECT_EQ(called_ctr, 1);
-}
-
-TEST_F(UserDataAuthExTest, AddKeyNoObfuscatedName) {
-  // HomeDirs cant find the existing obfuscated username.
-  PrepareArguments();
-
-  // Prepare a valid AddKeyRequest.
-  add_req_->mutable_account_id()->set_account_id("foo@gmail.com");
-  add_req_->mutable_authorization_request()->mutable_key()->set_secret("blerg");
-  add_req_->mutable_key();
-  add_req_->mutable_key()->set_secret("some secret");
-  add_req_->mutable_key()->mutable_data()->set_label("just a label");
-  // Inject failure into homedirs->Exists().
-  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(false));
-
-  EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
-            user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
-}
-
-TEST_F(UserDataAuthExTest, AddKeyValidity) {
-  PrepareArguments();
-
-  add_req_->mutable_account_id()->set_account_id("foo@gmail.com");
-  add_req_->mutable_authorization_request()->mutable_key()->set_secret("blerg");
-  add_req_->mutable_key();
-  add_req_->mutable_key()->set_secret("some secret");
-  add_req_->mutable_key()->mutable_data()->set_label("just a label");
-
-  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
-  EXPECT_CALL(keyset_management_, GetValidKeyset(_))
-      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
-  EXPECT_CALL(keyset_management_, AddKeyset(_, _, _, _))
-      .WillOnce(Return(CRYPTOHOME_ERROR_NOT_SET));
-
-  EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-}
-
-// Tests the AddKey interface for reset seed generation.
-TEST_F(UserDataAuthExTest, AddKeyResetSeedGeneration) {
-  PrepareArguments();
-
-  add_req_->mutable_account_id()->set_account_id("foo@gmail.com");
-  add_req_->mutable_authorization_request()->mutable_key()->set_secret("blerg");
-  add_req_->mutable_key();
-  add_req_->mutable_key()->set_secret("some secret");
-  add_req_->mutable_key()->mutable_data()->set_label("just a label");
-
-  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
-  EXPECT_CALL(keyset_management_, GetValidKeyset(_))
-      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
-  EXPECT_CALL(keyset_management_, AddWrappedResetSeedIfMissing(_, _));
-  EXPECT_CALL(keyset_management_, AddKeyset(_, _, _, _))
-      .WillOnce(Return(CRYPTOHOME_ERROR_NOT_SET));
-
-  EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-}
-
-// Tests the AddKey interface for vault keyset not found case.
-TEST_F(UserDataAuthExTest, AddKeyKeysetNotFound) {
-  PrepareArguments();
-
-  add_req_->mutable_account_id()->set_account_id("foo@gmail.com");
-  add_req_->mutable_authorization_request()->mutable_key()->set_secret("blerg");
-  add_req_->mutable_key();
-  add_req_->mutable_key()->set_secret("some secret");
-  add_req_->mutable_key()->mutable_data()->set_label("just a label");
-
-  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
-  EXPECT_CALL(keyset_management_, GetValidKeyset(_))
-      .WillOnce(ReturnError<CryptohomeMountError>(
-          kErrorLocationPlaceholder, ErrorActionSet({ErrorAction::kReboot}),
-          MOUNT_ERROR_KEY_FAILURE));
-
-  EXPECT_EQ(userdataauth_->AddKey(*add_req_.get()),
-            user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
 }
 
 // Note that CheckKey tries to two method to check whether a key is valid or
@@ -3610,71 +3488,6 @@ TEST_F(UserDataAuthExTest, CheckKeyInvalidArgs) {
   // Empty secret.
   check_req_->mutable_authorization_request()->mutable_key()->set_secret("");
   CallCheckKeyAndVerify(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-}
-
-TEST_F(UserDataAuthExTest, RemoveKeyValidity) {
-  PrepareArguments();
-
-  constexpr char kUsername1[] = "foo@gmail.com";
-  constexpr char kLabel1[] = "some label";
-
-  remove_req_->mutable_account_id()->set_account_id(kUsername1);
-  remove_req_->mutable_authorization_request()->mutable_key()->set_secret(
-      "some secret");
-  remove_req_->mutable_key()->mutable_data()->set_label(kLabel1);
-
-  // Success case.
-  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
-  EXPECT_CALL(keyset_management_,
-              RemoveKeyset(Property(&Credentials::username, kUsername1),
-                           Property(&KeyData::label, kLabel1)))
-      .WillOnce(ReturnError<CryptohomeError>());
-
-  EXPECT_EQ(userdataauth_->RemoveKey(*remove_req_.get()),
-            user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-
-  // Check the case when the account doesn't exist.
-  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(false));
-
-  EXPECT_EQ(userdataauth_->RemoveKey(*remove_req_.get()),
-            user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
-
-  // Check when RemoveKeyset failed.
-  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
-  EXPECT_CALL(keyset_management_,
-              RemoveKeyset(Property(&Credentials::username, kUsername1),
-                           Property(&KeyData::label, kLabel1)))
-      .WillOnce(ReturnError<CryptohomeError>(
-          kErrorLocationPlaceholder, ErrorActionSet({ErrorAction::kReboot}),
-          user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE));
-
-  EXPECT_EQ(userdataauth_->RemoveKey(*remove_req_.get()),
-            user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
-}
-
-TEST_F(UserDataAuthExTest, RemoveKeyInvalidArgs) {
-  PrepareArguments();
-
-  // No email supplied.
-  EXPECT_EQ(userdataauth_->RemoveKey(*remove_req_.get()),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-
-  // No secret.
-  remove_req_->mutable_account_id()->set_account_id("foo@gmail.com");
-  EXPECT_EQ(userdataauth_->RemoveKey(*remove_req_.get()),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-
-  // Empty secret.
-  remove_req_->mutable_authorization_request()->mutable_key()->set_secret("");
-  EXPECT_EQ(userdataauth_->RemoveKey(*remove_req_.get()),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-
-  // No label provided for removal.
-  remove_req_->mutable_authorization_request()->mutable_key()->set_secret(
-      "some secret");
-  remove_req_->mutable_key()->mutable_data();
-  EXPECT_EQ(userdataauth_->RemoveKey(*remove_req_.get()),
-            user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
 constexpr char ListKeysValidityTest_label1[] = "Label 1";

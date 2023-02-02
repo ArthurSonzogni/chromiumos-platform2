@@ -105,11 +105,6 @@ class KeysetManagement {
   // no need to add the reset seed, i.e if it already exists.
   virtual bool AddResetSeedIfMissing(VaultKeyset& vault_keyset);
 
-  // Adds randomly generated reset_seed to the vault keyset if |reset_seed_|
-  // doesn't have any value.
-  virtual CryptohomeErrorCode AddWrappedResetSeedIfMissing(
-      VaultKeyset* vault_keyset, const Credentials& credentials);
-
   // Adds a new keyset to the given |vault_keyset| and persist to
   // disk. This function assumes the user is already authenticated and their
   // vault keyset with the existing credentials is unwrapped which should be
@@ -123,20 +118,6 @@ class KeysetManagement {
                                         const Credentials& new_credentials,
                                         const VaultKeyset& vault_keyset,
                                         bool clobber);
-
-  // Updates an existing |vault_keyset| with the new credentials. This function
-  // assumes the user is already authenticated and their |vault_keyset| with an
-  // existing credentials is unwrapped. New keyset is updated to have the key
-  // data from |new_credentials|, KeyBlobs from |VaultKeyset| and is wrapped by
-  // the secret in |new_credentials|.
-  virtual CryptohomeErrorCode UpdateKeyset(const VaultKeysetIntent& vk_intent,
-                                           const Credentials& new_credentials,
-                                           const VaultKeyset& vault_keyset);
-
-  // Removes the keyset identified by |key_data|.  The VaultKeyset backing
-  // |credentials| may be the same that |key_data| identifies.
-  virtual CryptohomeStatus RemoveKeyset(const Credentials& credentials,
-                                        const KeyData& key_data);
 
   // Removes the keyset specified by |index| from the list for the user
   // vault identified by its |obfuscated| username.

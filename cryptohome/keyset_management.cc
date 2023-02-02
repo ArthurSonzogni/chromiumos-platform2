@@ -649,25 +649,6 @@ CryptohomeErrorCode KeysetManagement::AddKeysetImpl(
   return ret_code;
 }
 
-CryptohomeErrorCode KeysetManagement::UpdateKeyset(
-    const VaultKeysetIntent& vk_intent,
-    const Credentials& new_credentials,
-    const VaultKeyset& vault_keyset) {
-  std::string obfuscated_username = new_credentials.GetObfuscatedUsername();
-
-  // Check if there is an existing labeled keyset.
-  std::unique_ptr<VaultKeyset> match =
-      GetVaultKeyset(obfuscated_username, new_credentials.key_data().label());
-  if (!match.get()) {
-    LOG(ERROR) << "Label does not exist.";
-    return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_NOT_FOUND;
-  }
-
-  // We set clobber to be true as we are sure that there is an existing keyset.
-  return AddKeyset(vk_intent, new_credentials, vault_keyset,
-                   true /* we are updating existing keyset */);
-}
-
 CryptohomeErrorCode KeysetManagement::UpdateKeysetWithKeyBlobs(
     const VaultKeysetIntent& vk_intent,
     const std::string& obfuscated_username_new,
@@ -688,85 +669,6 @@ CryptohomeErrorCode KeysetManagement::UpdateKeysetWithKeyBlobs(
                                key_data_new.label(), key_data_new, vault_keyset,
                                std::move(key_blobs), std::move(auth_state),
                                true /* we are updating existing keyset */);
-}
-
-CryptohomeErrorCode KeysetManagement::AddWrappedResetSeedIfMissing(
-    VaultKeyset* vault_keyset, const Credentials& credentials) {
-  if (!AddResetSeedIfMissing(*vault_keyset)) {
-    return CRYPTOHOME_ERROR_NOT_SET;
-  }
-
-  if (!vault_keyset
-           ->Encrypt(credentials.passkey(), credentials.GetObfuscatedUsername())
-           .ok() ||
-      !vault_keyset->Save(vault_keyset->GetSourceFile())) {
-    LOG(WARNING) << "Failed to re-encrypt the old keyset";
-    return CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
-  }
-
-  return CRYPTOHOME_ERROR_NOT_SET;
-}
-
-CryptohomeStatus KeysetManagement::RemoveKeyset(const Credentials& credentials,
-                                                const KeyData& key_data) {
-  // This error condition should be caught by the caller.
-  if (key_data.label().empty()) {
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocKeysetManagementNoLabelInRemoveKeyset),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
-  }
-
-  const std::string obfuscated = credentials.GetObfuscatedUsername();
-
-  std::unique_ptr<VaultKeyset> remove_vk =
-      GetVaultKeyset(obfuscated, key_data.label());
-  if (!remove_vk.get()) {
-    LOG(WARNING) << "RemoveKeyset: key to remove not found";
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocKeysetManagementVKNotFoundInRemoveKeyset),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
-  }
-
-  MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
-      GetValidKeyset(credentials);
-  if (!vk_status.ok()) {
-    // Differentiate between failure and non-existent.
-    if (!credentials.key_data().label().empty()) {
-      std::unique_ptr<VaultKeyset> vk =
-          GetVaultKeyset(obfuscated, credentials.key_data().label());
-      if (!vk.get()) {
-        LOG(WARNING) << "RemoveKeyset: key not found";
-        return MakeStatus<CryptohomeError>(
-            CRYPTOHOME_ERR_LOC(kLocKeysetManagementKeyNotFoundInRemoveKeyset),
-            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-            user_data_auth::CryptohomeErrorCode::
-                CRYPTOHOME_ERROR_AUTHORIZATION_KEY_NOT_FOUND);
-      }
-    }
-    LOG(WARNING) << "RemoveKeyset: invalid authentication provided";
-    return MakeStatus<CryptohomeError>(
-               CRYPTOHOME_ERR_LOC(kLocKeysetManagementBadAuthInRemoveKeyset),
-               ErrorActionSet({ErrorAction::kIncorrectAuth}),
-               user_data_auth::CryptohomeErrorCode::
-                   CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED)
-        .Wrap(std::move(vk_status).status());
-  }
-
-  CryptohomeStatus status =
-      ForceRemoveKeyset(obfuscated, remove_vk->GetLegacyIndex());
-  if (!status.ok()) {
-    LOG(ERROR) << "RemoveKeyset: failed to remove keyset file";
-    return MakeStatus<CryptohomeError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocKeysetManagementRemoveFailedInRemoveKeyset),
-               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-               user_data_auth::CryptohomeErrorCode::
-                   CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
-        .Wrap(std::move(status));
-  }
-  return OkStatus<CryptohomeError>();
 }
 
 CryptohomeStatus KeysetManagement::ForceRemoveKeyset(

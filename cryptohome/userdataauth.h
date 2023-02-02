@@ -210,12 +210,6 @@ class UserDataAuth {
           void(user_data_auth::FingerprintScanResult)>& callback);
 
   // =============== Key Related Public Utilities ===============
-  // Add the key specified in the request, and return a CryptohomeErrorCode to
-  // indicate the status of adding the key. If CryptohomeErrorCode is
-  // CRYPTOHOME_ERROR_NOT_SET, then the key is successfully added.
-  user_data_auth::CryptohomeErrorCode AddKey(
-      const user_data_auth::AddKeyRequest& request);
-
   // Check the key given in |request| again the currently mounted directories
   // and other credentials. |on_done| is called once the operation is completed,
   // and the error code is CRYPTOHOME_ERROR_NOT_SET if the key is found. Note
@@ -223,12 +217,6 @@ class UserDataAuth {
   void CheckKey(
       const user_data_auth::CheckKeyRequest& request,
       base::OnceCallback<void(user_data_auth::CryptohomeErrorCode)> on_done);
-
-  // Remove the key given in |request.key| with the authorization given in
-  // |request.authorization_request|. Returns CRYPTOHOME_ERROR_NOT_SET if the
-  // key is successfully removed, returns other Error Code if not.
-  user_data_auth::CryptohomeErrorCode RemoveKey(
-      const user_data_auth::RemoveKeyRequest request);
 
   // List the keys stored in |homedirs_|.
   // See definition of ListKeysReply for what is returned.
@@ -925,14 +913,6 @@ class UserDataAuth {
   // first, if the user is a new user.
   MountStatusOr<std::unique_ptr<VaultKeyset>> LoadVaultKeyset(
       const Credentials& credentials, bool is_new_user);
-
-  // This utility function adds a new credential to the user keyset. Obtains the
-  // existing vault keyset by authenticating with the existing credentials; adds
-  // a reset seed to the existing vault keyset; and then adds the new
-  // credentials and key data to the user vault keyset.
-  CryptohomeErrorCode AddVaultKeyset(const Credentials& existing_credentials,
-                                     const Credentials& new_credentials,
-                                     bool clobber);
 
   // ================ Fingerprint Auth Related Methods ==================
 
