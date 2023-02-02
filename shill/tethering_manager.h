@@ -102,6 +102,16 @@ class TetheringManager {
   FRIEND_TEST(TetheringManagerTest, SaveConfig);
   FRIEND_TEST(TetheringManagerTest, SetEnabled);
 
+  enum class StopReason {
+    kInitial,             // Initial idle state.
+    kClientStop,          // Client explicitly stops tethering.
+    kUserExit,            // User logs out or shuts down device.
+    kSuspend,             // Device suspend.
+    kUpstreamDisconnect,  // Upstream network disconnects.
+    kInactive,            // Inactive timer fires.
+    kError,               // Internal error.
+  };
+
   using SetEnabledResultCallback =
       base::OnceCallback<void(SetEnabledResult result)>;
 
@@ -140,8 +150,8 @@ class TetheringManager {
   void CheckAndPostTetheringResult();
   // Prepare tethering resources to start a tethering session.
   void StartTetheringSession();
-  // Stop and free tethering resources.
-  void StopTetheringSession();
+  // Stop and free tethering resources due to reason |reason|.
+  void StopTetheringSession(StopReason reason);
   // Kick off the tethering inactive timer when auto_disable_ is true and
   // TetheringState is kTetheringActive. Will not rearm the timer if it is
   // already running. It will tear down tethering session after timer fires.
@@ -151,6 +161,8 @@ class TetheringManager {
   void StopInactiveTimer();
   // Get the number of active clients.
   size_t GetClientCount();
+  // Convert stop reason enum to string.
+  static const char* StopReasonToString(StopReason reason);
 
   // TetheringManager is created and owned by Manager.
   Manager* manager_;
@@ -186,6 +198,8 @@ class TetheringManager {
   HotspotDeviceRefPtr hotspot_dev_;
   // If downstream hotspot device event kServiceUp has been received or not.
   bool hotspot_service_up_;
+  // The reason why tethering is stopped.
+  StopReason stop_reason_;
 };
 
 inline std::ostream& operator<<(std::ostream& stream,

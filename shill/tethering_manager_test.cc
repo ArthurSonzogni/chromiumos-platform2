@@ -277,10 +277,14 @@ class TetheringManagerTest : public testing::Test {
     return tethering_manager->state_;
   }
 
-  void CheckTetheringIdle(TetheringManager* tethering_manager) {
+  void CheckTetheringIdle(TetheringManager* tethering_manager,
+                          const char* reason) {
     EXPECT_EQ(tethering_manager->hotspot_dev_, nullptr);
     EXPECT_EQ(TetheringState(tethering_manager),
               TetheringManager::TetheringState::kTetheringIdle);
+    auto status = GetStatus(tethering_manager);
+    EXPECT_EQ(status.Get<std::string>(kTetheringStatusIdleReasonProperty),
+              reason);
   }
 
   KeyValueStore GetStatus(TetheringManager* tethering_manager) {
@@ -440,7 +444,7 @@ TEST_F(TetheringManagerTest, DefaultConfigCheck) {
   EXPECT_NE(GetConfigPassphrase(config), GetConfigPassphrase(default_config));
   // Log out user should also stop active tethering session and put tethering
   // state to idle.
-  CheckTetheringIdle(tethering_manager_);
+  CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonUserExit);
 
   // Log in user and check the tethering config matches.
   EXPECT_EQ(Error::kSuccess, TestPushProfile(&manager_, kUserProfile));
@@ -675,7 +679,7 @@ TEST_F(TetheringManagerTest, FailToCreateLocalInterface) {
   EXPECT_CALL(*hotspot_device_.get(), ConfigureService(_)).Times(0);
   SetEnabledVerifyResult(tethering_manager_, true,
                          TetheringManager::SetEnabledResult::kFailure);
-  CheckTetheringIdle(tethering_manager_);
+  CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonError);
 }
 
 TEST_F(TetheringManagerTest, FailToConfigureService) {
@@ -689,7 +693,7 @@ TEST_F(TetheringManagerTest, FailToConfigureService) {
 
   SetEnabledVerifyResult(tethering_manager_, true,
                          TetheringManager::SetEnabledResult::kFailure);
-  CheckTetheringIdle(tethering_manager_);
+  CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonError);
 }
 
 TEST_F(TetheringManagerTest, StopTetheringSession) {
@@ -704,7 +708,7 @@ TEST_F(TetheringManagerTest, StopTetheringSession) {
   EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
   SetEnabledVerifyResult(tethering_manager_, false,
                          TetheringManager::SetEnabledResult::kSuccess);
-  CheckTetheringIdle(tethering_manager_);
+  CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonClientStop);
 }
 
 TEST_F(TetheringManagerTest, DeviceEventInterfaceDisabled) {
@@ -721,7 +725,7 @@ TEST_F(TetheringManagerTest, DeviceEventInterfaceDisabled) {
                         LocalDevice::DeviceEvent::kInterfaceDisabled,
                         hotspot_device_.get());
   DispatchPendingEvents();
-  CheckTetheringIdle(tethering_manager_);
+  CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonError);
 }
 
 TEST_F(TetheringManagerTest, DeviceEventServiceDown) {
@@ -738,7 +742,7 @@ TEST_F(TetheringManagerTest, DeviceEventServiceDown) {
                         LocalDevice::DeviceEvent::kServiceDown,
                         hotspot_device_.get());
   DispatchPendingEvents();
-  CheckTetheringIdle(tethering_manager_);
+  CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonError);
 }
 
 TEST_F(TetheringManagerTest, InterfaceDisabledWhenTetheringIsStarting) {
@@ -760,7 +764,7 @@ TEST_F(TetheringManagerTest, InterfaceDisabledWhenTetheringIsStarting) {
                         LocalDevice::DeviceEvent::kInterfaceDisabled,
                         hotspot_device_.get());
   VerifyResult(TetheringManager::SetEnabledResult::kFailure);
-  CheckTetheringIdle(tethering_manager_);
+  CheckTetheringIdle(tethering_manager_, kTetheringIdleReasonError);
 }
 
 TEST_F(TetheringManagerTest, DeviceEventPeerConnectedDisconnected) {
@@ -785,6 +789,8 @@ TEST_F(TetheringManagerTest, GetStatus) {
   auto status = GetStatus(tethering_manager_);
   EXPECT_EQ(status.Get<std::string>(kTetheringStatusStateProperty),
             kTetheringStateIdle);
+  EXPECT_EQ(status.Get<std::string>(kTetheringStatusIdleReasonProperty),
+            kTetheringIdleReasonInitialState);
   EXPECT_FALSE(
       status.Contains<std::string>(kTetheringStatusUpstreamTechProperty));
   EXPECT_FALSE(
@@ -804,6 +810,8 @@ TEST_F(TetheringManagerTest, GetStatus) {
   EXPECT_EQ(status.Get<std::string>(kTetheringStatusDownstreamTechProperty),
             kTypeWifi);
   EXPECT_EQ(status.Get<Stringmaps>(kTetheringStatusClientsProperty).size(), 0);
+  EXPECT_FALSE(
+      status.Contains<std::string>(kTetheringStatusIdleReasonProperty));
 
   // Connect 2 clients.
   std::vector<std::vector<uint8_t>> clients;
@@ -821,6 +829,8 @@ TEST_F(TetheringManagerTest, GetStatus) {
   status = GetStatus(tethering_manager_);
   EXPECT_EQ(status.Get<std::string>(kTetheringStatusStateProperty),
             kTetheringStateIdle);
+  EXPECT_EQ(status.Get<std::string>(kTetheringStatusIdleReasonProperty),
+            kTetheringIdleReasonClientStop);
   EXPECT_FALSE(
       status.Contains<std::string>(kTetheringStatusUpstreamTechProperty));
   EXPECT_FALSE(

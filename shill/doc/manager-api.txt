@@ -795,6 +795,10 @@ Properties	object ActiveProfile [readonly]
 			string state
 				state of the tethering instance. The state could be any one of
 				"idle", "starting", "active"
+			string idle_reason
+				the reason why tethering is in idle state. Could be any one of
+				"initial_state", "client_stop", "user_exit", "inactive", "error"
+				"upstream_disconnect" or "suspend"
 			array{dict} active_clients
 				string IPv4
 					IPv4 address of the associated client expressed in the

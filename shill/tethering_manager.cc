@@ -76,9 +76,9 @@ TetheringManager::TetheringManager(Manager* manager)
       allowed_(false),
       state_(TetheringState::kTetheringIdle),
       hotspot_dev_(nullptr),
-      hotspot_service_up_(false) {
+      hotspot_service_up_(false),
+      stop_reason_(StopReason::kInitial) {
   ResetConfiguration();
-  LOG(INFO) << "TetheringManager started.";
 }
 
 TetheringManager::~TetheringManager() = default;
@@ -319,13 +319,16 @@ KeyValueStore TetheringManager::GetStatus() {
                           TetheringStateName(state_));
 
   if (state_ != TetheringState::kTetheringActive) {
+    if (state_ == TetheringState::kTetheringIdle) {
+      status.Set<std::string>(kTetheringStatusIdleReasonProperty,
+                              StopReasonToString(stop_reason_));
+    }
     return status;
   }
 
   status.Set<std::string>(kTetheringStatusUpstreamTechProperty,
                           TechnologyName(upstream_technology_));
   status.Set<std::string>(kTetheringStatusDownstreamTechProperty, kTypeWifi);
-  // TODO(b/235762295): Get channel information from HotspotDevice
 
   // Get stations information.
   Stringmaps clients;
@@ -374,7 +377,7 @@ const char* TetheringManager::TetheringStateName(const TetheringState& state) {
 void TetheringManager::Start() {}
 
 void TetheringManager::Stop() {
-  StopTetheringSession();
+  StopTetheringSession(StopReason::kUserExit);
 }
 
 void TetheringManager::PostSetEnabledResult(SetEnabledResult result) {
@@ -393,7 +396,7 @@ void TetheringManager::CheckAndPostTetheringResult() {
       LOG(ERROR) << "Has received kServiceUp event from hotspot device but the "
                     "device state is not correct. Terminate tethering session";
       PostSetEnabledResult(SetEnabledResult::kFailure);
-      StopTetheringSession();
+      StopTetheringSession(StopReason::kError);
     }
     return;
   }
@@ -434,7 +437,7 @@ void TetheringManager::StartTetheringSession() {
   if (!hotspot_dev_) {
     LOG(ERROR) << __func__ << ": failed to create a WiFi AP interface";
     PostSetEnabledResult(SetEnabledResult::kFailure);
-    StopTetheringSession();
+    StopTetheringSession(StopReason::kError);
     return;
   }
 
@@ -444,7 +447,7 @@ void TetheringManager::StartTetheringSession() {
   if (!hotspot_dev_->ConfigureService(std::move(service))) {
     LOG(ERROR) << __func__ << ": failed to configure the service";
     PostSetEnabledResult(SetEnabledResult::kFailure);
-    StopTetheringSession();
+    StopTetheringSession(StopReason::kError);
     return;
   }
 
@@ -457,12 +460,13 @@ void TetheringManager::StartTetheringSession() {
   // upstream Network with CellularServiceProvider::AcquireTetheringNetwork.
 }
 
-void TetheringManager::StopTetheringSession() {
+void TetheringManager::StopTetheringSession(StopReason reason) {
   if (state_ == TetheringState::kTetheringIdle) {
     return;
   }
 
-  LOG(INFO) << __func__;
+  LOG(INFO) << __func__ << ": " << StopReasonToString(reason);
+  stop_reason_ = reason;
 
   // Remove the downstream device if any.
   if (hotspot_dev_) {
@@ -485,8 +489,9 @@ void TetheringManager::StartInactiveTimer() {
 
   LOG(INFO) << __func__ << ": timer fires in " << kAutoDisableDelay;
 
-  inactive_timer_callback_.Reset(base::BindOnce(
-      &TetheringManager::StopTetheringSession, base::Unretained(this)));
+  inactive_timer_callback_.Reset(
+      base::BindOnce(&TetheringManager::StopTetheringSession,
+                     base::Unretained(this), StopReason::kInactive));
   manager_->dispatcher()->PostDelayedTask(
       FROM_HERE, inactive_timer_callback_.callback(), kAutoDisableDelay);
 }
@@ -542,7 +547,7 @@ void TetheringManager::OnDownstreamDeviceEvent(LocalDevice::DeviceEvent event,
     if (state_ == TetheringState::kTetheringStarting) {
       PostSetEnabledResult(SetEnabledResult::kFailure);
     }
-    StopTetheringSession();
+    StopTetheringSession(StopReason::kError);
   } else if (event == LocalDevice::DeviceEvent::kServiceUp) {
     hotspot_service_up_ = true;
     CheckAndPostTetheringResult();
@@ -593,7 +598,7 @@ void TetheringManager::SetEnabled(bool enabled,
       return;
     }
 
-    StopTetheringSession();
+    StopTetheringSession(StopReason::kClientStop);
     PostSetEnabledResult(SetEnabledResult::kSuccess);
   }
 }
@@ -725,7 +730,7 @@ void TetheringManager::LoadConfigFromProfile(const ProfileRefPtr& profile) {
 }
 
 void TetheringManager::UnloadConfigFromProfile() {
-  StopTetheringSession();
+  StopTetheringSession(StopReason::kUserExit);
   ResetConfiguration();
 }
 
@@ -765,6 +770,29 @@ bool TetheringManager::Load(const StoreInterface* storage) {
     valid = false;
   }
   return valid;
+}
+
+// static
+const char* TetheringManager::StopReasonToString(StopReason reason) {
+  switch (reason) {
+    case StopReason::kInitial:
+      return kTetheringIdleReasonInitialState;
+    case StopReason::kClientStop:
+      return kTetheringIdleReasonClientStop;
+    case StopReason::kUserExit:
+      return kTetheringIdleReasonUserExit;
+    case StopReason::kSuspend:
+      return kTetheringIdleReasonSuspend;
+    case StopReason::kUpstreamDisconnect:
+      return kTetheringIdleReasonUpstreamDisconnect;
+    case StopReason::kInactive:
+      return kTetheringIdleReasonInactive;
+    case StopReason::kError:
+      return kTetheringIdleReasonError;
+    default:
+      NOTREACHED() << "Unhandled stop reason " << static_cast<int>(reason);
+      return "Invalid";
+  }
 }
 
 }  // namespace shill

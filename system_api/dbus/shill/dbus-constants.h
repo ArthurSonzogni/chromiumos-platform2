@@ -949,10 +949,19 @@ const char kTetheringStatusClientIPv6Property[] = "IPv6";
 const char kTetheringStatusClientMACProperty[] = "MAC";
 const char kTetheringStatusClientsProperty[] = "active_clients";
 const char kTetheringStatusDownstreamTechProperty[] = "downstream_technology";
-const char kTetheringStatusErrorProperty[] = "error";
+const char kTetheringStatusIdleReasonProperty[] = "idle_reason";
 const char kTetheringStatusStateProperty[] = "state";
 const char kTetheringStatusUpstreamTechProperty[] = "upstream_technology";
 const char kTetheringStatusUpstreamServiceProperty[] = "upstream_service";
+
+// kTetheringStatusIdleReasonProperty values
+const char kTetheringIdleReasonClientStop[] = "client_stop";
+const char kTetheringIdleReasonError[] = "error";
+const char kTetheringIdleReasonInactive[] = "inactive";
+const char kTetheringIdleReasonInitialState[] = "initial_state";
+const char kTetheringIdleReasonSuspend[] = "suspend";
+const char kTetheringIdleReasonUpstreamDisconnect[] = "upstream_disconnect";
+const char kTetheringIdleReasonUserExit[] = "user_exit";
 
 // kTetheringStatusStateProperty values
 const char kTetheringStateActive[] = "active";
