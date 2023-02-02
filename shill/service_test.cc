@@ -72,8 +72,8 @@ using testing::Values;
 namespace {
 const char kConnectDisconnectReason[] = "RPC";
 const char kGUID[] = "guid";
-const char kDeviceName[] = "testdevice";
-const char kDeviceHwAddr[] = "01:02:03:0a:0b:0c";
+const char kIfName[] = "testdevice";
+const char kHwAddr[] = "01:02:03:0a:0b:0c";
 }  // namespace
 
 namespace shill {
@@ -1424,7 +1424,7 @@ TEST_F(ServiceTest, OnPropertyChanged) {
 
 TEST_F(ServiceTest, SetCheckPortal) {
   scoped_refptr<MockDevice> mock_device =
-      new MockDevice(&mock_manager_, kDeviceName, kDeviceHwAddr, 1);
+      new MockDevice(&mock_manager_, kIfName, kHwAddr, 1);
   ON_CALL(mock_manager_, FindDeviceFromService(_))
       .WillByDefault(Return(mock_device));
 
@@ -1485,7 +1485,7 @@ TEST_F(ServiceTest, SetCheckPortal) {
 
 TEST_F(ServiceTest, SetProxyConfig) {
   scoped_refptr<MockDevice> mock_device =
-      new MockDevice(&mock_manager_, kDeviceName, kDeviceHwAddr, 1);
+      new MockDevice(&mock_manager_, kIfName, kHwAddr, 1);
   ON_CALL(mock_manager_, FindDeviceFromService(_))
       .WillByDefault(Return(mock_device));
 
@@ -1660,7 +1660,6 @@ INSTANTIATE_TEST_SUITE_P(
     Values(brillo::Any(std::string(kEapPasswordProperty))));
 
 TEST_F(ServiceTest, GetIPConfigRpcIdentifier) {
-  const std::string kIfName = "test_ifname";
   {
     Error error;
     EXPECT_EQ(DBusControl::NullRpcIdentifier(),
@@ -2504,7 +2503,7 @@ TEST_F(ServiceTest, DelayedDisconnectWithAdditionalConnect) {
 
 TEST_F(ServiceTest, RequestPortalDetection) {
   scoped_refptr<MockDevice> mock_device =
-      new MockDevice(&mock_manager_, kDeviceName, kDeviceHwAddr, 1);
+      new MockDevice(&mock_manager_, kIfName, kHwAddr, 1);
   ON_CALL(mock_manager_, FindDeviceFromService(_))
       .WillByDefault(Return(mock_device));
 
@@ -2634,9 +2633,9 @@ TEST_F(ServiceTest, RequestTrafficCounters) {
   patchpanel::Client::TrafficVector init_counter_arr0 = {0, 0, 0, 0};
   patchpanel::Client::TrafficVector init_counter_arr1 = {0, 0, 0, 0};
   patchpanel::Client::TrafficCounter init_counter0 =
-      CreateCounter(init_counter_arr0, source0, kDeviceName);
+      CreateCounter(init_counter_arr0, source0, kIfName);
   patchpanel::Client::TrafficCounter init_counter1 =
-      CreateCounter(init_counter_arr1, source1, kDeviceName);
+      CreateCounter(init_counter_arr1, source1, kIfName);
 
   service_->InitializeTrafficCounterSnapshot({init_counter0, init_counter1});
 
@@ -2645,9 +2644,9 @@ TEST_F(ServiceTest, RequestTrafficCounters) {
   patchpanel::Client::TrafficVector counter_arr1 = {
       .rx_bytes = 90, .tx_bytes = 87, .rx_packets = 65, .tx_packets = 43};
   patchpanel::Client::TrafficCounter counter0 =
-      CreateCounter(counter_arr0, source0, kDeviceName);
+      CreateCounter(counter_arr0, source0, kIfName);
   patchpanel::Client::TrafficCounter counter1 =
-      CreateCounter(counter_arr1, source1, kDeviceName);
+      CreateCounter(counter_arr1, source1, kIfName);
 
   std::vector<patchpanel::Client::TrafficCounter> counters{counter0, counter1};
 
@@ -2658,7 +2657,7 @@ TEST_F(ServiceTest, RequestTrafficCounters) {
   patchpanel_client->set_stored_traffic_counters(counters);
 
   scoped_refptr<MockDevice> mock_device =
-      new MockDevice(&mock_manager_, kDeviceName, "addr0", 0);
+      new MockDevice(&mock_manager_, kIfName, "addr0", 0);
   mock_device->set_selected_service_for_testing(service_);
   ON_CALL(mock_manager_, FindDeviceFromService(_))
       .WillByDefault(Return(mock_device));
@@ -2707,9 +2706,9 @@ TEST_F(ServiceTest, ResetTrafficCounters) {
   patchpanel::Client::TrafficVector init_counter_arr1 = {
       .rx_bytes = 50, .tx_bytes = 60, .rx_packets = 70, .tx_packets = 80};
   patchpanel::Client::TrafficCounter init_counter0 =
-      CreateCounter(init_counter_arr0, source0, kDeviceName);
+      CreateCounter(init_counter_arr0, source0, kIfName);
   patchpanel::Client::TrafficCounter init_counter1 =
-      CreateCounter(init_counter_arr1, source1, kDeviceName);
+      CreateCounter(init_counter_arr1, source1, kIfName);
   service_->InitializeTrafficCounterSnapshot({init_counter0, init_counter1});
 
   // Refresh traffic counters, updating the traffic counter snapshot and current
@@ -2719,9 +2718,9 @@ TEST_F(ServiceTest, ResetTrafficCounters) {
   patchpanel::Client::TrafficVector counter_arr1 = {
       .rx_bytes = 500, .tx_bytes = 600, .rx_packets = 700, .tx_packets = 800};
   patchpanel::Client::TrafficCounter counter0 =
-      CreateCounter(counter_arr0, source0, kDeviceName);
+      CreateCounter(counter_arr0, source0, kIfName);
   patchpanel::Client::TrafficCounter counter1 =
-      CreateCounter(counter_arr1, source1, kDeviceName);
+      CreateCounter(counter_arr1, source1, kIfName);
   service_->RefreshTrafficCounters({counter0, counter1});
   EXPECT_EQ(service_->traffic_counter_snapshot().size(), 2);
   EXPECT_EQ(service_->traffic_counter_snapshot()
@@ -2763,8 +2762,8 @@ TEST_F(ServiceTest, ResetTrafficCounters) {
                   .tx_bytes = 6000,
                   .rx_packets = 7000,
                   .tx_packets = 8000};
-  counter0 = CreateCounter(counter_arr0, source0, kDeviceName);
-  counter1 = CreateCounter(counter_arr1, source1, kDeviceName);
+  counter0 = CreateCounter(counter_arr0, source0, kIfName);
+  counter1 = CreateCounter(counter_arr1, source1, kIfName);
   service_->RefreshTrafficCounters({counter0, counter1});
   EXPECT_EQ(service_->traffic_counter_snapshot().size(), 2);
   EXPECT_EQ(service_->traffic_counter_snapshot()
@@ -3128,6 +3127,110 @@ TEST_F(ServiceTest, PortalDetectionResult_NoConnectivity) {
   EXPECT_EQ(kPortalDetectionStatusFailure,
             service_->portal_detection_failure_status());
   EXPECT_EQ(0, service_->portal_detection_failure_status_code());
+}
+
+TEST_F(ServiceTest, UpdateNetworkValidationWhenServiceNotConnected) {
+  SetStateField(Service::kStateIdle);
+  ON_CALL(mock_manager_, IsPortalDetectionEnabled(_))
+      .WillByDefault(Return(true));
+
+  EXPECT_FALSE(service_->IsPortalDetectionDisabled());
+  EXPECT_FALSE(service_->UpdateNetworkValidation(
+      Network::ValidationReason::kServicePropertyUpdate));
+  EXPECT_EQ(Service::kStateIdle, service_->state());
+}
+
+TEST_F(ServiceTest, UpdateNetworkValidationWhenNoAttachedNetwork) {
+  SetStateField(Service::kStateConnected);
+  ON_CALL(mock_manager_, IsPortalDetectionEnabled(_))
+      .WillByDefault(Return(true));
+
+  EXPECT_FALSE(service_->IsPortalDetectionDisabled());
+  EXPECT_FALSE(service_->UpdateNetworkValidation(
+      Network::ValidationReason::kServicePropertyUpdate));
+  EXPECT_EQ(Service::kStateConnected, service_->state());
+}
+
+TEST_F(ServiceTest, UpdateNetworkValidationWhenDisabledByTechnology) {
+  SetStateField(Service::kStateConnected);
+  ON_CALL(mock_manager_, IsPortalDetectionEnabled(_))
+      .WillByDefault(Return(false));
+  auto network =
+      std::make_unique<MockNetwork>(1, kIfName, Technology::kEthernet);
+  service_->AttachNetwork(network->AsWeakPtr());
+
+  EXPECT_CALL(*network, StartPortalDetection).Times(0);
+  EXPECT_TRUE(service_->IsPortalDetectionDisabled());
+  EXPECT_FALSE(service_->UpdateNetworkValidation(
+      Network::ValidationReason::kServicePropertyUpdate));
+  EXPECT_EQ(Service::kStateOnline, service_->state());
+}
+
+TEST_F(ServiceTest, UpdateNetworkValidationWhenDisabledByProxy) {
+  Error error;
+  service_->SetProxyConfig("proxyconfiguration", &error);
+  SetStateField(Service::kStateConnected);
+  ON_CALL(mock_manager_, IsPortalDetectionEnabled(_))
+      .WillByDefault(Return(true));
+  auto network =
+      std::make_unique<MockNetwork>(1, kIfName, Technology::kEthernet);
+  service_->AttachNetwork(network->AsWeakPtr());
+
+  EXPECT_CALL(*network, StartPortalDetection).Times(0);
+  EXPECT_TRUE(service_->IsPortalDetectionDisabled());
+  EXPECT_FALSE(service_->UpdateNetworkValidation(
+      Network::ValidationReason::kServicePropertyUpdate));
+  EXPECT_EQ(Service::kStateOnline, service_->state());
+}
+
+TEST_F(ServiceTest, UpdateNetworkValidationWhenDisabledByCheckPortal) {
+  Error error;
+  service_->SetCheckPortal("false", &error);
+  SetStateField(Service::kStateConnected);
+  ON_CALL(mock_manager_, IsPortalDetectionEnabled(_))
+      .WillByDefault(Return(true));
+  auto network =
+      std::make_unique<MockNetwork>(1, kIfName, Technology::kEthernet);
+  service_->AttachNetwork(network->AsWeakPtr());
+
+  EXPECT_CALL(*network, StartPortalDetection).Times(0);
+  EXPECT_TRUE(service_->IsPortalDetectionDisabled());
+  EXPECT_FALSE(service_->UpdateNetworkValidation(
+      Network::ValidationReason::kServicePropertyUpdate));
+  EXPECT_EQ(Service::kStateOnline, service_->state());
+}
+
+TEST_F(ServiceTest, UpdateNetworkValidationSucceeds) {
+  SetStateField(Service::kStateConnected);
+  ON_CALL(mock_manager_, IsPortalDetectionEnabled(_))
+      .WillByDefault(Return(true));
+  auto network =
+      std::make_unique<MockNetwork>(1, kIfName, Technology::kEthernet);
+  service_->AttachNetwork(network->AsWeakPtr());
+
+  EXPECT_CALL(*network, StartPortalDetection).WillOnce(Return(true));
+  EXPECT_TRUE(service_->UpdateNetworkValidation(
+      Network::ValidationReason::kServicePropertyUpdate));
+  Mock::VerifyAndClearExpectations(network.get());
+
+  EXPECT_CALL(*network, StartPortalDetection).WillOnce(Return(true));
+  EXPECT_TRUE(service_->UpdateNetworkValidation(
+      Network::ValidationReason::kServicePropertyUpdate));
+  EXPECT_EQ(Service::kStateConnected, service_->state());
+}
+
+TEST_F(ServiceTest, UpdateNetworkValidationFails) {
+  SetStateField(Service::kStateConnected);
+  ON_CALL(mock_manager_, IsPortalDetectionEnabled(_))
+      .WillByDefault(Return(true));
+  auto network =
+      std::make_unique<MockNetwork>(1, kIfName, Technology::kEthernet);
+  service_->AttachNetwork(network->AsWeakPtr());
+
+  EXPECT_CALL(*network, StartPortalDetection).WillOnce(Return(false));
+  EXPECT_FALSE(service_->UpdateNetworkValidation(
+      Network::ValidationReason::kServicePropertyUpdate));
+  EXPECT_EQ(Service::kStateNoConnectivity, service_->state());
 }
 
 }  // namespace shill

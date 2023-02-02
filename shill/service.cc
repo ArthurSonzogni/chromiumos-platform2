@@ -2667,6 +2667,41 @@ void Service::AddServiceStateTransitionTimer(const std::string& histogram_name,
   service_metrics_->timers.push_back(std::move(timer));
 }
 
+bool Service::UpdateNetworkValidation(Network::ValidationReason reason) {
+  if (!IsConnected()) {
+    LOG(INFO) << log_name() << ": " << __func__
+              << ": Service was not connected.";
+    return false;
+  }
+
+  if (!attached_network_) {
+    LOG(ERROR) << log_name() << ": " << __func__
+               << ": Service connected without a Network attached";
+    return false;
+  }
+
+  // If network validation is disabled for this technology, immediately set
+  // the service state to "Online" and stop network validation if it was
+  // running.
+  if (IsPortalDetectionDisabled()) {
+    LOG(INFO) << log_name() << ": " << __func__
+              << ": Network validation is disabled for this Service";
+    attached_network_->StopPortalDetection();
+    SetState(Service::kStateOnline);
+    return false;
+  }
+
+  // b/211000413: If network validation could not start, the network is either
+  // misconfigured (no DNS) or not provisioned correctly. In either case, assume
+  // that the network has no Internet connectivity.
+  if (!attached_network_->StartPortalDetection(reason)) {
+    SetState(Service::kStateNoConnectivity);
+    return false;
+  }
+
+  return true;
+}
+
 void Service::NetworkEventHandler::OnNetworkValidationResult(
     int interface_index, const PortalDetector::Result& result) {
   if (!service_->IsConnected()) {
