@@ -13,9 +13,7 @@
 
 namespace runtime_probe {
 
-inline constexpr char kRuntimeProbeConfigDir[] = "etc/runtime_probe";
 inline constexpr char kAvlProbeConfigName[] = "probe_config.json";
-inline constexpr char kUsrLocal[] = "usr/local";
 
 // AvlProbeConfigLoader loads probe configs for AVL verification.
 class AvlProbeConfigLoader : public ProbeConfigLoader {

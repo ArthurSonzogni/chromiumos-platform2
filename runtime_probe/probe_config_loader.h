@@ -17,6 +17,8 @@ namespace runtime_probe {
 inline constexpr char kCrosSystemCrosDebugKey[] = "cros_debug";
 inline constexpr char kCrosConfigModelNamePath[] = "/";
 inline constexpr char kCrosConfigModelNameKey[] = "name";
+inline constexpr char kRuntimeProbeConfigDir[] = "etc/runtime_probe";
+inline constexpr char kUsrLocal[] = "usr/local";
 
 enum class CrosDebugFlag {
   kDisabled = 0,
