@@ -182,21 +182,6 @@ void ParseCommandLine(int argc,
     // implemented yet. This flag is currently reserved...
     logging::SetLogPrefix("dryrun");
     brillo::SetLogFlags(brillo::GetLogFlags() | brillo::kLogHeader);
-#ifndef CRASH_SENDER_DRY_RUN_DEV
-    // TODO(b/264307614): Remove the following block once the feature is
-    // implemented.
-    //
-    //   Use of CRASH_SENDER_DRY_RUN_DEV in the codebase should be extremely
-    //   confined to avoid complication. If you are developing the dry run mode
-    //   feature, avoid using this macro and try to use the dry_run flag
-    //   instead.
-    LOG(ERROR)
-        << "Dry run mode not implemented yet. This flag is currently reserved "
-           "for development purposes only. To enable the executable with the "
-           "dry run feature, build with `CXXFLAGS=-DCRASH_SENDER_DRY_RUN_DEV "
-           "emerge-$BOARD crash-reporter`";
-    exit(EXIT_FAILURE);
-#endif  // CRASH_SENDER_DRY_RUN_DEV
   }
 }
 

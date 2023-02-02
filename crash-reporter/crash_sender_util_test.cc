@@ -42,6 +42,7 @@
 #include <brillo/key_value_store.h>
 #include <brillo/mime_utils.h>
 #include <brillo/process/process.h>
+#include <brillo/syslog_logging.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -56,6 +57,7 @@
 
 using ::testing::_;
 using ::testing::AllOf;
+using ::testing::ContainsRegex;
 using ::testing::DoAll;
 using ::testing::Eq;
 using ::testing::ExitedWithCode;
@@ -614,6 +616,21 @@ class CrashSenderUtilTest : public testing::Test {
   base::FilePath loop_meta_;
 };
 
+// Upon destruction, resets crash log path, log prefix and flags changed by the
+// dry run mode during command line parsing.
+class ScopedDryRunSettingsResetter {
+ public:
+  ScopedDryRunSettingsResetter() = default;
+  ScopedDryRunSettingsResetter(const ScopedDryRunSettingsResetter&) = delete;
+  ScopedDryRunSettingsResetter& operator=(const ScopedDryRunSettingsResetter&) =
+      delete;
+  ~ScopedDryRunSettingsResetter() {
+    logging::SetLogPrefix(nullptr);
+    brillo::SetLogFlags(brillo::GetLogFlags() & ~brillo::kLogHeader);
+    paths::ChromeCrashLog::SetDryRun(false);
+  }
+};
+
 base::FilePath* CrashSenderUtilTest::build_directory_ = nullptr;
 using CrashSenderUtilDeathTest = CrashSenderUtilTest;
 
@@ -886,25 +903,35 @@ TEST_F(CrashSenderUtilTest, ParseCommandLine_ConsentAlreadyCheckedWithDir) {
   EXPECT_STREQ(paths::ChromeCrashLog::Get(), kChromeCrashLog);
 }
 
-// After the dry run mode has been implemented, replace the following test with
-// one that tests flags and ChromeCrashLog::Get(). When CRASH_SENDER_DRY_RUN_DEV
-// is undefined, this test effectively does nothing.
-TEST_F(CrashSenderUtilDeathTest, ParseCommandLine_DryRun) {
+TEST_F(CrashSenderUtilTest, ParseCommandLine_DryRun) {
+  static constexpr char kLogMessage[] = "Some sensible message";
   const char* argv[] = {"crash_sender", "--dry_run"};
+  // Use ScopedLogSettingsResetter here so that dry run-specific settings can be
+  // restored even if the test exits for other reasons.
+  ScopedDryRunSettingsResetter scoped_log_settings_resetter;
   base::CommandLine command_line(std::size(argv), argv);
   brillo::FlagHelper::GetInstance()->set_command_line_for_testing(
       &command_line);
   CommandLineFlags flags;
-#ifndef CRASH_SENDER_DRY_RUN_DEV
-  // The log looks like the follows:
-  //   dryrun:ERROR crash_reporter_test: [crash_sender_util.cc(174)] Dry run
-  //   mode not implemented yet. This flag is currently reserved for...
-  //
-  // Since the log is also written to stderr, EXPECT_DEATH is sufficient to
-  // match the content of the log.
-  EXPECT_DEATH(ParseCommandLine(std::size(argv), argv, &flags),
-               "dryrun:.*Dry run mode not implemented yet");
-#endif  // CRASH_SENDER_DRY_RUN
+  ParseCommandLine(std::size(argv), argv, &flags);
+  brillo::ClearLog();
+  LOG(ERROR) << kLogMessage;
+  EXPECT_THAT(brillo::GetLog(),
+              ContainsRegex(base::StrCat({"dryrun:.*", kLogMessage})));
+  EXPECT_EQ(flags.max_spread_time.InSeconds(), kMaxSpreadTimeInSeconds);
+  EXPECT_TRUE(flags.crash_directory.empty());
+  EXPECT_FALSE(flags.ignore_rate_limits);
+  EXPECT_FALSE(flags.ignore_hold_off_time);
+  EXPECT_FALSE(flags.allow_dev_sending);
+  EXPECT_FALSE(flags.ignore_pause_file);
+  EXPECT_FALSE(flags.test_mode);
+  EXPECT_FALSE(flags.upload_old_reports);
+  EXPECT_FALSE(flags.force_upload_on_test_images);
+  EXPECT_FALSE(flags.consent_already_checked_by_crash_reporter);
+  EXPECT_TRUE(flags.dry_run);
+  // Test here because the setting of ChromeCrashLog is done during CLI
+  // parsing.
+  EXPECT_STREQ(paths::ChromeCrashLog::Get(), "/dev/full");
 }
 
 TEST_F(CrashSenderUtilTest, DoesPauseFileExist) {
@@ -1997,7 +2024,7 @@ TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
   const base::FilePath system_log = system_dir.Append("0.0.0.0.0.log");
   const base::FilePath system_processing =
       system_dir.Append("0.0.0.0.0.processing");
-  const char system_meta[] =
+  static constexpr char system_meta[] =
       "upload_var_collector=kernel\n"
       "payload=0.0.0.0.0.log\n"
       "exec_name=exec_foo\n"
@@ -2022,7 +2049,7 @@ TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
   const base::FilePath user_log = user_dir.Append("0.0.0.0.0.log");
   const base::FilePath user_processing =
       user_dir.Append("0.0.0.0.0.processing");
-  const char user_meta[] =
+  static constexpr char user_meta[] =
       "upload_var_collector=ec\n"
       "payload=0.0.0.0.0.log\n"
       "exec_name=exec_bar\n"
@@ -2044,7 +2071,7 @@ TEST_P(CrashSenderSendCrashesTest, SendCrashes) {
   // crash rate will be set to 2.
   const base::FilePath user_meta_file2 = user_dir.Append("1.1.1.1.1.meta");
   const base::FilePath user_log2 = user_dir.Append("1.1.1.1.1.log");
-  const char user_meta2[] =
+  static constexpr char user_meta2[] =
       "upload_var_collector=collector_baz\n"
       "payload=1.1.1.1.1.log\n"
       "exec_name=exec_baz\n"
