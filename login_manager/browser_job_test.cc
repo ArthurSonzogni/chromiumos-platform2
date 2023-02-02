@@ -309,12 +309,12 @@ TEST_F(BrowserJobTest, ShouldAddCrashLoopArgBeforeStopping) {
 
   EXPECT_FALSE(job_->ShouldStop());
   EXPECT_TRUE(job_->RunInBackground());
-  // 121 = 61 (the time time(nullptr) is returning) + 60
+  // 201 = 101 (the time utils_.time(nullptr) is returning) + 100
   // (kRestartWindowSeconds).
-  ASSERT_EQ(BrowserJob::kRestartWindowSeconds, 60)
+  ASSERT_EQ(BrowserJob::kRestartWindowSeconds, 100)
       << "Need to change expected value if kRestartWindowSeconds changes";
   ExpectArgsToContainFlag(job_->ExportArgv(),
-                          BrowserJobInterface::kCrashLoopBeforeFlag, "121");
+                          BrowserJobInterface::kCrashLoopBeforeFlag, "201");
   job_->AbortAndKillAll(base::Seconds(0));
   EXPECT_TRUE(job_->ShouldStop());
 }

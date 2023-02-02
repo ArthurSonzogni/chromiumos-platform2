@@ -53,7 +53,7 @@ const char BrowserJob::kFirstExecAfterBootFlag[] = "--first-exec-after-boot";
 //   2nd chrome start to enter guest sessions
 //   3rd chrome start to apply flags from about:flags page
 // If `kUseExtraArgsRuns` is 3 and the 3rd run is less than
-// `kRestartWindowSecond` seconds (60s) apart from 1st run, it would be
+// `kRestartWindowSecond` seconds (100s) apart from 1st run, it would be
 // considered as too crashy and flags are dropped for the 3rd run.
 // See https://crbug.com/1129951.
 const int BrowserJob::kUseExtraArgsRuns = 4;
@@ -62,7 +62,7 @@ static_assert(BrowserJob::kUseExtraArgsRuns > 1,
               "arguments could need one restart to apply them.");
 
 const int BrowserJob::kRestartTries = BrowserJob::kUseExtraArgsRuns + 2;
-const time_t BrowserJob::kRestartWindowSeconds = 60;
+const time_t BrowserJob::kRestartWindowSeconds = 100;
 
 const char BrowserJobInterface::kGuestSessionFlag[] = "--bwsi";
 
