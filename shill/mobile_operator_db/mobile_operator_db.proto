@@ -124,6 +124,13 @@ message Data {
   //    requested roaming enabled by default, update |requires_roaming|.
   repeated Filter roaming_filter = 9;
 
+  // Flag to enable tethering for a carrier. During the initial release of the
+  // tethering feature, the flag will be set to false to block tethering for
+  // all carriers, except the ones that are specifically enabled. When the
+  // tethering feature is mature, the default will be set to True, so tethering
+  // would be enabled on all carriers unless specifically disabled.
+  optional bool tethering_allowed = 10 [default = false];
+
   // ///////////////////////////////////////////////////////////////////////////
   // GSM specific properties [21 - 40]
 

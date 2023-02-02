@@ -18,6 +18,9 @@
 #include <gtest/gtest.h>
 
 #include "shill/cellular/cellular_service_provider.h"
+#include "shill/cellular/mock_cellular.h"
+#include "shill/cellular/mock_cellular_service.h"
+#include "shill/cellular/mock_modem_info.h"
 #include "shill/error.h"
 #include "shill/ethernet/mock_ethernet_provider.h"
 #include "shill/manager.h"
@@ -110,6 +113,7 @@ class TetheringManagerTest : public testing::Test {
         path_(temp_dir_.GetPath().value()),
         manager_(
             &control_interface_, &dispatcher_, &metrics_, path_, path_, path_),
+        modem_info_(&control_interface_, &manager_),
         tethering_manager_(manager_.tethering_manager()),
         wifi_provider_(new NiceMock<MockWiFiProvider>()),
         ethernet_provider_(new NiceMock<MockEthernetProvider>()),
@@ -126,6 +130,7 @@ class TetheringManagerTest : public testing::Test {
     manager_.upstart_.reset(upstart_);
     ON_CALL(manager_, cellular_service_provider())
         .WillByDefault(Return(&cellular_service_provider_));
+    ON_CALL(manager_, modem_info()).WillByDefault(Return(&modem_info_));
   }
   ~TetheringManagerTest() override = default;
 
@@ -133,6 +138,13 @@ class TetheringManagerTest : public testing::Test {
                                    const std::string& mac) {
     return new NiceMock<MockWiFi>(&manager_, ifname, mac, 1, 1,
                                   new MockWakeOnWiFi());
+  }
+
+  scoped_refptr<MockCellular> MakeCellular(const std::string& link_name,
+                                           const std::string& address,
+                                           int interface_index) {
+    return new NiceMock<MockCellular>(&manager_, link_name, address,
+                                      interface_index, "", RpcIdentifier(""));
   }
 
   Error::Type TestCreateProfile(Manager* manager, const std::string& name) {
@@ -296,6 +308,10 @@ class TetheringManagerTest : public testing::Test {
     return tethering_manager->inactive_timer_callback_;
   }
 
+  void AddServiceToCellularProvider(CellularServiceRefPtr service) {
+    cellular_service_provider_.AddService(service);
+  }
+
  protected:
   StrictMock<base::MockRepeatingCallback<void(LocalDevice::DeviceEvent,
                                               const LocalDevice*)>>
@@ -309,6 +325,7 @@ class TetheringManagerTest : public testing::Test {
   base::ScopedTempDir temp_dir_;
   std::string path_;
   MockManager manager_;
+  MockModemInfo modem_info_;
   TetheringManager* tethering_manager_;
   MockWiFiProvider* wifi_provider_;
   MockEthernetProvider* ethernet_provider_;
@@ -559,8 +576,7 @@ TEST_F(TetheringManagerTest, TetheringIsNotAllowed) {
 }
 
 TEST_F(TetheringManagerTest, CheckReadiness) {
-  StrictMock<base::MockOnceCallback<void(TetheringManager::EntitlementStatus)>>
-      cb;
+  base::MockOnceCallback<void(TetheringManager::EntitlementStatus)> cb;
   KeyValueStore config =
       GenerateFakeConfig("757365725F73736964", "user_password");
 
@@ -585,10 +601,8 @@ TEST_F(TetheringManagerTest, CheckReadiness) {
   // Fake Devices: one Ethernet Device, one Cellular Device.
   auto eth =
       new NiceMock<MockDevice>(&manager_, "eth0", "0a:0b:0c:0d:0e:0f", 1);
-  auto cell =
-      new NiceMock<MockDevice>(&manager_, "wwan0", "a0:b0:c0:d0:e0:f0", 2);
+  auto cell = MakeCellular("wwan0", "000102030405", 2);
   ON_CALL(*eth, technology()).WillByDefault(Return(Technology::kEthernet));
-  ON_CALL(*cell, technology()).WillByDefault(Return(Technology::kCellular));
   const std::vector<DeviceRefPtr> eth_devices = {eth};
   const std::vector<DeviceRefPtr> cell_devices = {cell};
   ON_CALL(manager_, FilterByTechnology(Technology::kEthernet))
@@ -605,9 +619,9 @@ TEST_F(TetheringManagerTest, CheckReadiness) {
   Mock::VerifyAndClearExpectations(&cb);
 
   // Ethernet Service is not connected.
-  auto service(new MockService(&manager_));
-  eth->set_selected_service_for_testing(service);
-  EXPECT_CALL(*service, IsConnected(_)).WillRepeatedly(Return(false));
+  auto eth_service(new MockService(&manager_));
+  eth->set_selected_service_for_testing(eth_service);
+  EXPECT_CALL(*eth_service, IsConnected(_)).WillRepeatedly(Return(false));
   tethering_manager_->CheckReadiness(cb.Get());
   EXPECT_CALL(
       cb,
@@ -616,16 +630,20 @@ TEST_F(TetheringManagerTest, CheckReadiness) {
   Mock::VerifyAndClearExpectations(&cb);
 
   // Service connected on Ethernet
-  EXPECT_CALL(*service, IsConnected(_)).WillRepeatedly(Return(true));
+  EXPECT_CALL(*eth_service, IsConnected(_)).WillRepeatedly(Return(true));
   tethering_manager_->CheckReadiness(cb.Get());
   EXPECT_CALL(cb, Run(TetheringManager::EntitlementStatus::kReady));
   DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&cb);
 
   // Cellular upstream.
+  scoped_refptr<MockCellularService> cell_service =
+      new MockCellularService(&manager_, cell);
   SetConfigUpstream(config, TechnologyName(Technology::kCellular));
   EXPECT_TRUE(FromProperties(tethering_manager_, config));
-  cell->set_selected_service_for_testing(service);
+  EXPECT_CALL(*cell_service, state())
+      .WillRepeatedly(Return(Service::kStateConnected));
+  AddServiceToCellularProvider(cell_service);
   tethering_manager_->CheckReadiness(cb.Get());
   EXPECT_CALL(cb, Run(TetheringManager::EntitlementStatus::kReady));
   DispatchPendingEvents();

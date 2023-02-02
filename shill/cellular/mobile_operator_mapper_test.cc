@@ -269,6 +269,7 @@ TEST_P(MobileOperatorMapperMainTest, InitialConditions) {
   EXPECT_TRUE(operator_info_->apn_list().empty());
   EXPECT_TRUE(operator_info_->olp_list().empty());
   EXPECT_FALSE(operator_info_->requires_roaming());
+  EXPECT_FALSE(operator_info_->tethering_allowed());
   EXPECT_EQ(0, operator_info_->mtu());
 }
 
@@ -1112,6 +1113,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
   void PopulateMNOData() {
     country_ = "us";
     requires_roaming_ = true;
+    tethering_allowed_ = true;
     mtu_ = 1400;
     mccmnc_list_ = {"200001", "200002", "200003"};
     operator_name_list_ = {{"name200001", "en"}, {"name200002", ""}};
@@ -1135,6 +1137,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
   void PopulateMVNOData() {
     country_ = "ca";
     requires_roaming_ = false;
+    tethering_allowed_ = false;
     mtu_ = 1200;
     mccmnc_list_ = {"200001", "200102"};
     operator_name_list_ = {{"name200101", "en"}, {"name200102", ""}};
@@ -1155,6 +1158,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
   // Data to be verified against the database.
   std::string country_;
   bool requires_roaming_;
+  bool tethering_allowed_;
   int32_t mtu_;
   std::set<std::string> apn_types_;
   std::vector<std::string> mccmnc_list_;
@@ -1174,6 +1178,7 @@ TEST_P(MobileOperatorMapperDataTest, MNODetailedInformation) {
 
   PopulateMNOData();
   VerifyDatabaseData();
+  EXPECT_EQ(tethering_allowed_, operator_info_->tethering_allowed());
 }
 
 TEST_P(MobileOperatorMapperDataTest, MVNOInheritsInformation) {
@@ -1187,6 +1192,7 @@ TEST_P(MobileOperatorMapperDataTest, MVNOInheritsInformation) {
 
   PopulateMNOData();
   VerifyDatabaseData();
+  EXPECT_FALSE(operator_info_->tethering_allowed());
 }
 
 TEST_P(MobileOperatorMapperDataTest, MVNOOverridesInformation) {
@@ -1201,6 +1207,7 @@ TEST_P(MobileOperatorMapperDataTest, MVNOOverridesInformation) {
 
   PopulateMVNOData();
   VerifyDatabaseData();
+  EXPECT_EQ(tethering_allowed_, operator_info_->tethering_allowed());
 }
 
 TEST_P(MobileOperatorMapperDataTest, NoUpdatesBeforeMNOMatch) {
@@ -1307,6 +1314,7 @@ TEST_P(MobileOperatorMapperDataTest, ResetClearsInformation) {
   VerifyMVNOWithUUID("uuid200201");
   PopulateMNOData();
   VerifyDatabaseData();
+  EXPECT_FALSE(operator_info_->tethering_allowed());
 
   ExpectEventCount(1);
   operator_info_->Reset();
@@ -1320,6 +1328,7 @@ TEST_P(MobileOperatorMapperDataTest, ResetClearsInformation) {
   VerifyMVNOWithUUID("uuid200101");
   PopulateMVNOData();
   VerifyDatabaseData();
+  EXPECT_FALSE(operator_info_->tethering_allowed());
 
   ExpectEventCount(1);
   operator_info_->Reset();
@@ -1332,6 +1341,7 @@ TEST_P(MobileOperatorMapperDataTest, ResetClearsInformation) {
   VerifyMNOWithUUID("uuid200001");
   PopulateMNOData();
   VerifyDatabaseData();
+  EXPECT_TRUE(operator_info_->tethering_allowed());
 }
 
 TEST_P(MobileOperatorMapperDataTest, FilteredOLP) {

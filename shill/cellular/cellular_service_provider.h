@@ -90,6 +90,7 @@ class CellularServiceProvider : public ProviderInterface {
 
  private:
   friend class CellularServiceProviderTest;
+  friend class TetheringManagerTest;
 
   CellularServiceRefPtr LoadMatchingServicesFromProfile(
       const std::string& eid,

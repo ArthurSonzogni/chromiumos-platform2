@@ -128,6 +128,8 @@ class MobileOperatorInfo {
   // Some carriers are only available while roaming. This is mainly used by
   // Chrome.
   bool requires_roaming() const;
+  // Weather the carrier allows tethering or not.
+  bool tethering_allowed() const;
   // If specified, the MTU value to be used on the network interface.
   int32_t mtu() const;
 

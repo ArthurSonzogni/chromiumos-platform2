@@ -261,4 +261,11 @@ TEST_F(MobileOperatorInfoMainTest, requires_roaming_set_on_home) {
   EXPECT_TRUE(operator_info_->requires_roaming());
 }
 
+TEST_F(MobileOperatorInfoMainTest, tethering_allowed) {
+  EXPECT_CALL(*home_, tethering_allowed()).WillOnce(Return(true));
+  EXPECT_TRUE(operator_info_->tethering_allowed());
+  EXPECT_CALL(*home_, tethering_allowed()).WillOnce(Return(false));
+  EXPECT_FALSE(operator_info_->tethering_allowed());
+}
+
 }  // namespace shill

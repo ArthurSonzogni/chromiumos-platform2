@@ -174,6 +174,10 @@ bool MobileOperatorInfo::requires_roaming() const {
          home_->RequiresRoamingOnOperator(serving_.get());
 }
 
+bool MobileOperatorInfo::tethering_allowed() const {
+  return home_->tethering_allowed();
+}
+
 int32_t MobileOperatorInfo::mtu() const {
   // Choose the smaller mtu size.
   if (serving_->mtu() != IPConfig::kUndefinedMTU &&

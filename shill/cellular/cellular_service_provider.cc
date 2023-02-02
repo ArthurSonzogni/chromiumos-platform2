@@ -4,6 +4,7 @@
 
 #include "shill/cellular/cellular_service_provider.h"
 
+#include <memory>
 #include <set>
 #include <string>
 #include <utility>
@@ -353,8 +354,27 @@ CellularService* CellularServiceProvider::GetActiveService() {
 void CellularServiceProvider::TetheringEntitlementCheck(
     base::OnceCallback<void(TetheringManager::EntitlementStatus)> callback) {
   SLOG(3) << __func__;
+  const auto cellular_service = GetActiveService();
+  if (!cellular_service || !cellular_service->cellular()) {
+    SLOG(3) << __func__ << " cellular device doesn't exist";
+    std::move(callback).Run(
+        TetheringManager::EntitlementStatus::kUpstreamNetworkNotAvailable);
+    return;
+  }
+
+  auto operator_info = cellular_service->cellular()->mobile_operator_info();
+  if (!operator_info->IsMobileNetworkOperatorKnown()) {
+    SLOG(3) << __func__ << " mobile operator not known";
+    std::move(callback).Run(
+        TetheringManager::EntitlementStatus::kUpstreamNetworkNotAvailable);
+    return;
+  }
+  if (!operator_info->tethering_allowed()) {
+    std::move(callback).Run(TetheringManager::EntitlementStatus::kNotAllowed);
+    return;
+  }
+
   // TODO(b/249151422) Check if:
-  //   - tethering is supported for the current carrier and modem,
   //   - a remote entitlement check is necessary, and send a request
   //   accordingly.
   manager_->dispatcher()->PostTask(

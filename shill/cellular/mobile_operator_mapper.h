@@ -176,6 +176,8 @@ class MobileOperatorMapper {
   // Some carriers are only available while roaming. This is mainly used by
   // Chrome.
   virtual bool requires_roaming() const;
+  // Weather the carrier allows tethering or not.
+  virtual bool tethering_allowed() const;
   // If specified, the MTU value to be used on the network interface.
   virtual int32_t mtu() const;
 
@@ -316,6 +318,7 @@ class MobileOperatorMapper {
   std::vector<MobileOperatorMapper::OnlinePortal> olp_list_;
   std::vector<mobile_operator_db::OnlinePortal> raw_olp_list_;
   bool requires_roaming_;
+  bool tethering_allowed_;
   std::vector<mobile_operator_db::Filter> roaming_filter_list_;
   int32_t mtu_;
   // These fields store the data obtained from the Update* methods.

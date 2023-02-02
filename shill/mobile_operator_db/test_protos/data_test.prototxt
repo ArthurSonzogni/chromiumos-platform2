@@ -16,6 +16,7 @@ mno {
       name: "name200002"
     }
     requires_roaming: true
+    tethering_allowed: true
     mtu : 1400
     olp {
       method: POST
@@ -61,6 +62,7 @@ mno {
         name: "name200102"
       }
       requires_roaming: false
+      tethering_allowed: false
       mtu : 1200
       olp {
         method: GET

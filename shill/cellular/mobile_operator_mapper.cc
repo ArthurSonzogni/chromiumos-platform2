@@ -108,6 +108,7 @@ MobileOperatorMapper::MobileOperatorMapper(EventDispatcher* dispatcher,
       current_mno_(nullptr),
       current_mvno_(nullptr),
       requires_roaming_(false),
+      tethering_allowed_(false),
       mtu_(IPConfig::kUndefinedMTU),
       user_olp_empty_(true),
       weak_ptr_factory_(this) {}
@@ -234,6 +235,11 @@ MobileOperatorMapper::olp_list() const {
 bool MobileOperatorMapper::requires_roaming() const {
   SLOG(3) << GetLogPrefix(__func__) << ": Result[" << requires_roaming_ << "]";
   return requires_roaming_;
+}
+
+bool MobileOperatorMapper::tethering_allowed() const {
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << tethering_allowed_ << "]";
+  return tethering_allowed_;
 }
 
 int32_t MobileOperatorMapper::mtu() const {
@@ -754,6 +760,7 @@ void MobileOperatorMapper::ClearDBInformation() {
   raw_olp_list_.clear();
   HandleOnlinePortalUpdate();
   requires_roaming_ = false;
+  tethering_allowed_ = false;
   roaming_filter_list_.clear();
   mtu_ = IPConfig::kUndefinedMTU;
 }
@@ -786,6 +793,10 @@ void MobileOperatorMapper::ReloadData(
   if (data.has_requires_roaming()) {
     requires_roaming_ = data.requires_roaming();
   }
+
+  // |tethering_allowed_| is *always* overwritten because each MNO/MVNO decides
+  // whether to allow or not allow tethering.
+  tethering_allowed_ = data.tethering_allowed();
 
   if (data.roaming_filter_size() > 0) {
     roaming_filter_list_.clear();
