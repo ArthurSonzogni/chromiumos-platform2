@@ -489,9 +489,9 @@ class AuthSession final {
                                  std::unique_ptr<KeyBlobs> key_blobs);
 
   // This function is used to reset the attempt count for a low entropy
-  // credential. Currently, this resets all low entropy credentials. In the
-  // USSv2 world, with passwords or even other auth types backed by PinWeaver,
-  // the code will need to reset specific LE credentials.
+  // credential. Currently, this resets all low entropy credentials both stored
+  // in USS and VK. In the USSv2 world, with passwords or even other auth types
+  // backed by PinWeaver, the code will need to reset specific LE credentials.
   void ResetLECredentials();
 
   // Authenticate the user with the single given auth factor. Additional

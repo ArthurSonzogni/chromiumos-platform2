@@ -712,7 +712,6 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
           obfuscated_username_, std::move(*key_blobs.get()), key_data_.label());
   if (!vk_status.ok()) {
     vault_keyset_ = nullptr;
-
     LOG(ERROR) << "Failed to load VaultKeyset and file system keyset.";
     std::move(on_done).Run(
         MakeStatus<CryptohomeMountError>(
@@ -721,20 +720,13 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
             .Wrap(std::move(vk_status).status()));
     return;
   }
-
   vault_keyset_ = std::move(vk_status).value();
 
   // Authentication is successfully completed. Reset LE Credential counter if
   // the current AutFactor is not an LECredential.
   if (!vault_keyset_->IsLECredential()) {
-    keyset_management_->ResetLECredentialsWithValidatedVK(*vault_keyset_,
-                                                          obfuscated_username_);
+    ResetLECredentials();
   }
-  // During the migration of the VaultKeysets to UserSecretStash user may have a
-  // mixed configuration of both backing stores. Reset LE credentials over
-  // UserSecretStash as well because we don't know which key backing store is
-  // active for a given piweaver node.
-  ResetLECredentials();
 
   // If there is a change in the AuthBlock type during resave operation it'll be
   // updated.
@@ -2636,10 +2628,6 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
   // Populate data fields from the USS.
   file_system_keyset_ = user_secret_stash_->GetFileSystemKeyset();
 
-  // Reset LE Credential counter if the current AutFactor is not an
-  // LECredential.
-  ResetLECredentials();
-
   CryptohomeStatus prepare_status = OkStatus<error::CryptohomeError>();
   if (auth_intent_ == AuthIntent::kWebAuthn) {
     // Even if we failed to prepare WebAuthn secret, file system keyset
@@ -2656,7 +2644,6 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
 
   // Set the credential verifier for this credential.
   AddCredentialVerifier(auth_factor_type, auth_factor_label, auth_input);
-
   if (enable_create_backup_vk_with_uss_ &&
       auth_factor_type == AuthFactorType::kPassword) {
     // Authentication with UserSecretStash just finished. Now load the decrypted
@@ -2668,13 +2655,6 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
             auth_factor_label);
     if (vk_status.ok()) {
       vault_keyset_ = std::move(vk_status).value();
-      // During the migration of the VaultKeysets to UserSecretStash user may
-      // have a mixed configuration of both backing stores. Reset LE credentials
-      // over KeysetManagement as well because we don't know which key backing
-      // store is active for a given piweaver node.
-      keyset_management_->ResetLECredentialsWithValidatedVK(
-          *vault_keyset_, obfuscated_username_);
-
     } else {
       // Don't abort the authentication if obtaining backup VaultKeyset fails.
       LOG(WARNING) << "Failed to load the backup VaultKeyset for the "
@@ -2682,17 +2662,25 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
                    << vk_status.status();
     }
   }
+
+  ResetLECredentials();
+
   ReportTimerDuration(auth_session_performance_timer.get());
   std::move(on_done).Run(std::move(prepare_status));
 }
 
 void AuthSession::ResetLECredentials() {
-  if (!user_secret_stash_) {
+  brillo::SecureBlob local_reset_seed;
+  if (vault_keyset_ && vault_keyset_->HasWrappedResetSeed()) {
+    local_reset_seed = vault_keyset_->GetResetSeed();
+  }
+
+  if (!user_secret_stash_ && local_reset_seed.empty()) {
+    LOG(ERROR)
+        << "No user secret stash or VK available to reset LE credentials.";
     return;
   }
 
-  CryptoError error;
-  // Loop through all the AuthFactors.
   for (AuthFactorMap::ValueView stored_auth_factor : auth_factor_map_) {
     const AuthFactor& auth_factor = stored_auth_factor.auth_factor();
 
@@ -2707,21 +2695,53 @@ void AuthSession::ResetLECredentials() {
       LOG(WARNING) << "PinWeaver AuthBlock State does not have le_label";
       continue;
     }
-
-    // Get the reset secret from the USS for this auth factor label.
-    std::optional<brillo::SecureBlob> reset_secret =
-        user_secret_stash_->GetResetSecretForLabel(auth_factor.label());
-    if (!reset_secret.has_value()) {
-      LOG(WARNING) << "No reset secret for auth factor with label "
-                   << auth_factor.label() << ", and cannot reset credential.";
+    // If the LECredential is already at 0 attempts, there is no need to reset
+    // it.
+    if (crypto_->GetWrongAuthAttempts(state->le_label.value()) == 0) {
       continue;
     }
+    brillo::SecureBlob reset_secret;
+    std::optional<brillo::SecureBlob> reset_secret_uss;
+    // Get the reset secret from the USS for this auth factor label.
 
-    // Reset the attempt count for the pinweaver leaf.
-    // If there is an error, warn for the error in log.
-    if (!crypto_->ResetLeCredentialEx(state->le_label.value(),
-                                      reset_secret.value(), error)) {
-      LOG(WARNING) << "Failed to reset an LE credential: " << error;
+    if (user_secret_stash_) {
+      reset_secret_uss =
+          user_secret_stash_->GetResetSecretForLabel(auth_factor.label());
+    }
+    if (!reset_secret_uss.has_value()) {
+      // If USS does not have the reset secret for the auth factor, the reset
+      // secret might still be available through VK.
+
+      LOG(INFO) << "Reset secret could not be retrieved through USS for the LE "
+                   "Credential with label "
+                << auth_factor.label()
+                << ". Will try to obtain it with the Vault Keyset reset seed.";
+      MountStatusOr<std::unique_ptr<VaultKeyset>> vk_reset_status =
+          keyset_management_->GetVaultKeyset(obfuscated_username_,
+                                             auth_factor.label());
+      if (!vk_reset_status.ok()) {
+        LOG(WARNING) << "Pin VK for the reset could not be retrieved for "
+                     << auth_factor.label() << ".";
+        continue;
+      }
+      std::unique_ptr<VaultKeyset> vk_reset =
+          std::move(vk_reset_status).value();
+      const brillo::SecureBlob& reset_salt = vk_reset->GetResetSalt();
+      if (local_reset_seed.empty() || reset_salt.empty()) {
+        LOG(ERROR)
+            << "Reset seed/salt is empty in VK , can't reset LE credential for "
+            << auth_factor.label();
+        continue;
+      }
+      reset_secret = HmacSha256(reset_salt, local_reset_seed);
+    } else {
+      reset_secret = reset_secret_uss.value();
+    }
+    CryptoError error;
+    if (!crypto_->ResetLeCredentialEx(state->le_label.value(), reset_secret,
+                                      error)) {
+      LOG(WARNING) << "Failed to reset an LE credential for "
+                   << state->le_label.value() << " with error: " << error;
     }
   }
 }
