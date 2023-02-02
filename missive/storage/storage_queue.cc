@@ -62,6 +62,10 @@ namespace reporting {
 
 namespace {
 
+// Storage queue generation id reset UMA metric name.
+constexpr char kStorageQueueGenerationIdResetUma[] =
+    "Platform.Missive.StorageQueueGenerationIdReset";
+
 // Helper function for ResourceExhaustedCase UMA upload.
 void SendResExCaseToUma(StorageQueue::ResourceExhaustedCase case_enum) {
   // The ChromeOS metrics instance.
@@ -270,6 +274,8 @@ Status StorageQueue::Init() {
       // earlier.
       if (generation_id_ <= 0) {
         LOG(ERROR) << "Unable to retrieve generation id, performing full reset";
+        analytics::Metrics::SendBoolToUMA(kStorageQueueGenerationIdResetUma,
+                                          true);
         next_sequencing_id_ = 0;
         first_sequencing_id_ = 0;
         first_unconfirmed_sequencing_id_ = std::nullopt;
