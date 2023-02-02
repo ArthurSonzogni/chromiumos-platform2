@@ -4,6 +4,8 @@
 
 #include <set>
 #include <string>
+#include <utility>
+#include <vector>
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
@@ -32,6 +34,11 @@ class MetricsUtilsTest : public ::testing::Test {
   void SendTelemetryResult(const std::set<mojom::ProbeCategoryEnum>& categories,
                            const mojom::TelemetryInfoPtr& info) {
     SendTelemetryResultToUMA(&metrics_library_, categories, info);
+  }
+
+  void SendDiagnosticResult(mojom::DiagnosticRoutineEnum routine,
+                            mojom::DiagnosticRoutineStatusEnum status) {
+    SendDiagnosticResultToUMA(&metrics_library_, routine, status);
   }
 
   testing::StrictMock<MetricsLibraryMock> metrics_library_;
@@ -243,6 +250,70 @@ TEST_F(MetricsUtilsTest, SendTelemetryResultWithANullField) {
                       CrosHealthdTelemetryResult::kError);
   auto info = mojom::TelemetryInfo::New();
   SendTelemetryResult({mojom::ProbeCategoryEnum::kBattery}, info);
+}
+
+TEST_F(MetricsUtilsTest, SendDiagnosticPassedResult) {
+  // The choice of routine is arbitrary.
+  ExpectSendEnumToUMA(metrics_name::kDiagnosticResultBatteryCapacity,
+                      CrosHealthdDiagnosticResult::kPassed);
+  SendDiagnosticResult(mojom::DiagnosticRoutineEnum::kBatteryCapacity,
+                       mojom::DiagnosticRoutineStatusEnum::kPassed);
+}
+
+TEST_F(MetricsUtilsTest, SendDiagnosticFailedResult) {
+  // The choice of routine is arbitrary.
+  ExpectSendEnumToUMA(metrics_name::kDiagnosticResultBatteryCapacity,
+                      CrosHealthdDiagnosticResult::kFailed);
+  SendDiagnosticResult(mojom::DiagnosticRoutineEnum::kBatteryCapacity,
+                       mojom::DiagnosticRoutineStatusEnum::kFailed);
+}
+
+TEST_F(MetricsUtilsTest, SendDiagnosticErrorResult) {
+  // The choice of routine is arbitrary.
+  ExpectSendEnumToUMA(metrics_name::kDiagnosticResultBatteryCapacity,
+                      CrosHealthdDiagnosticResult::kError);
+  SendDiagnosticResult(mojom::DiagnosticRoutineEnum::kBatteryCapacity,
+                       mojom::DiagnosticRoutineStatusEnum::kError);
+}
+
+TEST_F(MetricsUtilsTest, SendDiagnosticCancelledResult) {
+  // The choice of routine is arbitrary.
+  ExpectSendEnumToUMA(metrics_name::kDiagnosticResultBatteryCapacity,
+                      CrosHealthdDiagnosticResult::kCancelled);
+  SendDiagnosticResult(mojom::DiagnosticRoutineEnum::kBatteryCapacity,
+                       mojom::DiagnosticRoutineStatusEnum::kCancelled);
+}
+
+TEST_F(MetricsUtilsTest, SendDiagnosticFailedToStartResult) {
+  // The choice of routine is arbitrary.
+  ExpectSendEnumToUMA(metrics_name::kDiagnosticResultBatteryCapacity,
+                      CrosHealthdDiagnosticResult::kFailedToStart);
+  SendDiagnosticResult(mojom::DiagnosticRoutineEnum::kBatteryCapacity,
+                       mojom::DiagnosticRoutineStatusEnum::kFailedToStart);
+}
+
+TEST_F(MetricsUtilsTest, SendDiagnosticRemovedResult) {
+  // The choice of routine is arbitrary.
+  ExpectSendEnumToUMA(metrics_name::kDiagnosticResultBatteryCapacity,
+                      CrosHealthdDiagnosticResult::kRemoved);
+  SendDiagnosticResult(mojom::DiagnosticRoutineEnum::kBatteryCapacity,
+                       mojom::DiagnosticRoutineStatusEnum::kRemoved);
+}
+
+TEST_F(MetricsUtilsTest, SendDiagnosticUnsupportedResult) {
+  // The choice of routine is arbitrary.
+  ExpectSendEnumToUMA(metrics_name::kDiagnosticResultBatteryCapacity,
+                      CrosHealthdDiagnosticResult::kUnsupported);
+  SendDiagnosticResult(mojom::DiagnosticRoutineEnum::kBatteryCapacity,
+                       mojom::DiagnosticRoutineStatusEnum::kUnsupported);
+}
+
+TEST_F(MetricsUtilsTest, SendDiagnosticNotRunResult) {
+  // The choice of routine is arbitrary.
+  ExpectSendEnumToUMA(metrics_name::kDiagnosticResultBatteryCapacity,
+                      CrosHealthdDiagnosticResult::kNotRun);
+  SendDiagnosticResult(mojom::DiagnosticRoutineEnum::kBatteryCapacity,
+                       mojom::DiagnosticRoutineStatusEnum::kNotRun);
 }
 
 }  // namespace

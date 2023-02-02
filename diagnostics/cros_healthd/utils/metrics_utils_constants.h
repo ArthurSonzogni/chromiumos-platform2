@@ -55,6 +55,85 @@ inline constexpr char kTelemetryResultAudioHardware[] =
 inline constexpr char kTelemetryResultSensor[] =
     "ChromeOS.Healthd.TelemetryResult.Sensor";
 
+inline constexpr char kDiagnosticResultBatteryCapacity[] =
+    "ChromeOS.Healthd.DiagnosticResult.BatteryCapacity";
+inline constexpr char kDiagnosticResultBatteryHealth[] =
+    "ChromeOS.Healthd.DiagnosticResult.BatteryHealth";
+inline constexpr char kDiagnosticResultUrandom[] =
+    "ChromeOS.Healthd.DiagnosticResult.Urandom";
+inline constexpr char kDiagnosticResultSmartctlCheck[] =
+    "ChromeOS.Healthd.DiagnosticResult.SmartctlCheck";
+inline constexpr char kDiagnosticResultAcPower[] =
+    "ChromeOS.Healthd.DiagnosticResult.AcPower";
+inline constexpr char kDiagnosticResultCpuCache[] =
+    "ChromeOS.Healthd.DiagnosticResult.CpuCache";
+inline constexpr char kDiagnosticResultCpuStress[] =
+    "ChromeOS.Healthd.DiagnosticResult.CpuStress";
+inline constexpr char kDiagnosticResultFloatingPointAccuracy[] =
+    "ChromeOS.Healthd.DiagnosticResult.FloatingPointAccuracy";
+inline constexpr char kDiagnosticResultNvmeWearLevel[] =
+    "ChromeOS.Healthd.DiagnosticResult.NvmeWearLevel";
+inline constexpr char kDiagnosticResultNvmeSelfTest[] =
+    "ChromeOS.Healthd.DiagnosticResult.NvmeSelfTest";
+inline constexpr char kDiagnosticResultDiskRead[] =
+    "ChromeOS.Healthd.DiagnosticResult.DiskRead";
+inline constexpr char kDiagnosticResultPrimeSearch[] =
+    "ChromeOS.Healthd.DiagnosticResult.PrimeSearch";
+inline constexpr char kDiagnosticResultBatteryDischarge[] =
+    "ChromeOS.Healthd.DiagnosticResult.BatteryDischarge";
+inline constexpr char kDiagnosticResultBatteryCharge[] =
+    "ChromeOS.Healthd.DiagnosticResult.BatteryCharge";
+inline constexpr char kDiagnosticResultMemory[] =
+    "ChromeOS.Healthd.DiagnosticResult.Memory";
+inline constexpr char kDiagnosticResultLanConnectivity[] =
+    "ChromeOS.Healthd.DiagnosticResult.LanConnectivity";
+inline constexpr char kDiagnosticResultSignalStrength[] =
+    "ChromeOS.Healthd.DiagnosticResult.SignalStrength";
+inline constexpr char kDiagnosticResultGatewayCanBePinged[] =
+    "ChromeOS.Healthd.DiagnosticResult.GatewayCanBePinged";
+inline constexpr char kDiagnosticResultHasSecureWiFiConnection[] =
+    "ChromeOS.Healthd.DiagnosticResult.HasSecureWiFiConnection";
+inline constexpr char kDiagnosticResultDnsResolverPresent[] =
+    "ChromeOS.Healthd.DiagnosticResult.DnsResolverPresent";
+inline constexpr char kDiagnosticResultDnsLatency[] =
+    "ChromeOS.Healthd.DiagnosticResult.DnsLatency";
+inline constexpr char kDiagnosticResultDnsResolution[] =
+    "ChromeOS.Healthd.DiagnosticResult.DnsResolution";
+inline constexpr char kDiagnosticResultCaptivePortal[] =
+    "ChromeOS.Healthd.DiagnosticResult.CaptivePortal";
+inline constexpr char kDiagnosticResultHttpFirewall[] =
+    "ChromeOS.Healthd.DiagnosticResult.HttpFirewall";
+inline constexpr char kDiagnosticResultHttpsFirewall[] =
+    "ChromeOS.Healthd.DiagnosticResult.HttpsFirewall";
+inline constexpr char kDiagnosticResultHttpsLatency[] =
+    "ChromeOS.Healthd.DiagnosticResult.HttpsLatency";
+inline constexpr char kDiagnosticResultVideoConferencing[] =
+    "ChromeOS.Healthd.DiagnosticResult.VideoConferencing";
+inline constexpr char kDiagnosticResultArcHttp[] =
+    "ChromeOS.Healthd.DiagnosticResult.ArcHttp";
+inline constexpr char kDiagnosticResultArcPing[] =
+    "ChromeOS.Healthd.DiagnosticResult.ArcPing";
+inline constexpr char kDiagnosticResultArcDnsResolution[] =
+    "ChromeOS.Healthd.DiagnosticResult.ArcDnsResolution";
+inline constexpr char kDiagnosticResultSensitiveSensor[] =
+    "ChromeOS.Healthd.DiagnosticResult.SensitiveSensor";
+inline constexpr char kDiagnosticResultFingerprint[] =
+    "ChromeOS.Healthd.DiagnosticResult.Fingerprint";
+inline constexpr char kDiagnosticResultFingerprintAlive[] =
+    "ChromeOS.Healthd.DiagnosticResult.FingerprintAlive";
+inline constexpr char kDiagnosticResultPrivacyScreen[] =
+    "ChromeOS.Healthd.DiagnosticResult.PrivacyScreen";
+inline constexpr char kDiagnosticResultLedLitUp[] =
+    "ChromeOS.Healthd.DiagnosticResult.LedLitUp";
+inline constexpr char kDiagnosticResultSmartctlCheckWithPercentageUsed[] =
+    "ChromeOS.Healthd.DiagnosticResult.SmartctlCheckWithPercentageUsed";
+inline constexpr char kDiagnosticResultEmmcLifetime[] =
+    "ChromeOS.Healthd.DiagnosticResult.EmmcLifetime";
+inline constexpr char kDiagnosticResultAudioSetVolume[] =
+    "ChromeOS.Healthd.DiagnosticResult.AudioSetVolume";
+inline constexpr char kDiagnosticResultAudioSetGain[] =
+    "ChromeOS.Healthd.DiagnosticResult.AudioSetGain";
+
 }  // namespace metrics_name
 }  // namespace diagnostics
 

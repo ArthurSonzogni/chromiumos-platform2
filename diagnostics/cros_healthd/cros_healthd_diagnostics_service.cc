@@ -16,9 +16,11 @@
 #include <base/logging.h>
 #include <base/time/time.h>
 #include <chromeos/mojo/service_constants.h>
+#include <metrics/metrics_library.h>
 
 #include "diagnostics/cros_healthd/system/system_config.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
+#include "diagnostics/cros_healthd/utils/metrics_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 #include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
@@ -27,6 +29,9 @@ namespace diagnostics {
 namespace {
 
 namespace mojo_ipc = ::ash::cros_healthd::mojom;
+
+using OnTerminalStatusCallback =
+    base::OnceCallback<void(mojo_ipc::DiagnosticRoutineStatusEnum)>;
 
 void SetErrorRoutineUpdate(const std::string& status_message,
                            mojo_ipc::RoutineUpdate* response) {
@@ -37,6 +42,60 @@ void SetErrorRoutineUpdate(const std::string& status_message,
       mojo_ipc::RoutineUpdateUnion::NewNoninteractiveUpdate(
           std::move(noninteractive_update));
   response->progress_percent = 0;
+}
+
+// Wrap |on_terminal_status_callback| as a StatusChangedCallback that invokes
+// |on_terminal_status_callback| with the first terminal routine status it
+// receives.
+//
+// Terminal status mean these enums
+// - kPassed
+// - kFailed
+// - kError
+// - kCancelled
+// - kFailedToStart
+// - kRemoved
+// - kUnsupported
+// - kNotRun
+DiagnosticRoutine::StatusChangedCallback
+WrapOnTerminalStatusCallbackAsStatusChangedCallback(
+    OnTerminalStatusCallback on_terminal_status_callback) {
+  return base::BindRepeating(
+      [](OnTerminalStatusCallback& on_terminal_status,
+         mojo_ipc::DiagnosticRoutineStatusEnum status) {
+        switch (status) {
+          // Non-terminal status.
+          case mojo_ipc::DiagnosticRoutineStatusEnum::kUnknown:
+          case mojo_ipc::DiagnosticRoutineStatusEnum::kReady:
+          case mojo_ipc::DiagnosticRoutineStatusEnum::kRunning:
+          case mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting:
+          case mojo_ipc::DiagnosticRoutineStatusEnum::kCancelling: {
+            break;
+          }
+          // Terminal status.
+          case mojo_ipc::DiagnosticRoutineStatusEnum::kPassed:
+          case mojo_ipc::DiagnosticRoutineStatusEnum::kFailed:
+          case mojo_ipc::DiagnosticRoutineStatusEnum::kError:
+          case mojo_ipc::DiagnosticRoutineStatusEnum::kCancelled:
+          case mojo_ipc::DiagnosticRoutineStatusEnum::kFailedToStart:
+          case mojo_ipc::DiagnosticRoutineStatusEnum::kRemoved:
+          case mojo_ipc::DiagnosticRoutineStatusEnum::kUnsupported:
+          case mojo_ipc::DiagnosticRoutineStatusEnum::kNotRun: {
+            // |on_terminal_status| will be null if it has already been called.
+            if (on_terminal_status) {
+              std::move(on_terminal_status).Run(status);
+            }
+            break;
+          }
+        }
+      },
+      base::OwnedRef(std::move(on_terminal_status_callback)));
+}
+
+void SendResultToUMA(mojo_ipc::DiagnosticRoutineEnum routine,
+                     mojo_ipc::DiagnosticRoutineStatusEnum status) {
+  MetricsLibrary metrics;
+  SendDiagnosticResultToUMA(&metrics, routine, status);
 }
 
 }  // namespace
@@ -442,6 +501,8 @@ void CrosHealthdDiagnosticsService::RunRoutine(
 
   if (!available_routines_.count(routine_enum)) {
     LOG(ERROR) << routine_enum << " is not supported on this device";
+    SendResultToUMA(routine_enum,
+                    mojo_ipc::DiagnosticRoutineStatusEnum::kUnsupported);
     std::move(callback).Run(mojo_ipc::RunRoutineResponse::New(
         mojo_ipc::kFailedToStartId,
         mojo_ipc::DiagnosticRoutineStatusEnum::kUnsupported));
@@ -450,6 +511,11 @@ void CrosHealthdDiagnosticsService::RunRoutine(
 
   CHECK(next_id_ < std::numeric_limits<int32_t>::max())
       << "Maximum number of routines exceeded.";
+
+  // Send the result to UMA once the routine enters a terminal status.
+  routine->RegisterStatusChangedCallback(
+      WrapOnTerminalStatusCallbackAsStatusChangedCallback(
+          base::BindOnce(&SendResultToUMA, routine_enum)));
 
   routine->Start();
   int32_t id = next_id_;

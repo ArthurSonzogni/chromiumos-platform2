@@ -69,6 +69,121 @@ std::optional<std::string> GetMetricName(mojom::ProbeCategoryEnum category) {
   }
 }
 
+std::optional<std::string> GetMetricName(mojom::DiagnosticRoutineEnum routine) {
+  switch (routine) {
+    case mojom::DiagnosticRoutineEnum::kUnknown:
+      // No metric name for the unknown routine.
+      return std::nullopt;
+    case mojom::DiagnosticRoutineEnum::kBatteryCapacity:
+      return metrics_name::kDiagnosticResultBatteryCapacity;
+    case mojom::DiagnosticRoutineEnum::kBatteryHealth:
+      return metrics_name::kDiagnosticResultBatteryHealth;
+    case mojom::DiagnosticRoutineEnum::kUrandom:
+      return metrics_name::kDiagnosticResultUrandom;
+    case mojom::DiagnosticRoutineEnum::kSmartctlCheck:
+      return metrics_name::kDiagnosticResultSmartctlCheck;
+    case mojom::DiagnosticRoutineEnum::kAcPower:
+      return metrics_name::kDiagnosticResultAcPower;
+    case mojom::DiagnosticRoutineEnum::kCpuCache:
+      return metrics_name::kDiagnosticResultCpuCache;
+    case mojom::DiagnosticRoutineEnum::kCpuStress:
+      return metrics_name::kDiagnosticResultCpuStress;
+    case mojom::DiagnosticRoutineEnum::kFloatingPointAccuracy:
+      return metrics_name::kDiagnosticResultFloatingPointAccuracy;
+    case mojom::DiagnosticRoutineEnum::kNvmeWearLevel:
+      return metrics_name::kDiagnosticResultNvmeWearLevel;
+    case mojom::DiagnosticRoutineEnum::kNvmeSelfTest:
+      return metrics_name::kDiagnosticResultNvmeSelfTest;
+    case mojom::DiagnosticRoutineEnum::kDiskRead:
+      return metrics_name::kDiagnosticResultDiskRead;
+    case mojom::DiagnosticRoutineEnum::kPrimeSearch:
+      return metrics_name::kDiagnosticResultPrimeSearch;
+    case mojom::DiagnosticRoutineEnum::kBatteryDischarge:
+      return metrics_name::kDiagnosticResultBatteryDischarge;
+    case mojom::DiagnosticRoutineEnum::kBatteryCharge:
+      return metrics_name::kDiagnosticResultBatteryCharge;
+    case mojom::DiagnosticRoutineEnum::kMemory:
+      return metrics_name::kDiagnosticResultMemory;
+    case mojom::DiagnosticRoutineEnum::kLanConnectivity:
+      return metrics_name::kDiagnosticResultLanConnectivity;
+    case mojom::DiagnosticRoutineEnum::kSignalStrength:
+      return metrics_name::kDiagnosticResultSignalStrength;
+    case mojom::DiagnosticRoutineEnum::kGatewayCanBePinged:
+      return metrics_name::kDiagnosticResultGatewayCanBePinged;
+    case mojom::DiagnosticRoutineEnum::kHasSecureWiFiConnection:
+      return metrics_name::kDiagnosticResultHasSecureWiFiConnection;
+    case mojom::DiagnosticRoutineEnum::kDnsResolverPresent:
+      return metrics_name::kDiagnosticResultDnsResolverPresent;
+    case mojom::DiagnosticRoutineEnum::kDnsLatency:
+      return metrics_name::kDiagnosticResultDnsLatency;
+    case mojom::DiagnosticRoutineEnum::kDnsResolution:
+      return metrics_name::kDiagnosticResultDnsResolution;
+    case mojom::DiagnosticRoutineEnum::kCaptivePortal:
+      return metrics_name::kDiagnosticResultCaptivePortal;
+    case mojom::DiagnosticRoutineEnum::kHttpFirewall:
+      return metrics_name::kDiagnosticResultHttpFirewall;
+    case mojom::DiagnosticRoutineEnum::kHttpsFirewall:
+      return metrics_name::kDiagnosticResultHttpsFirewall;
+    case mojom::DiagnosticRoutineEnum::kHttpsLatency:
+      return metrics_name::kDiagnosticResultHttpsLatency;
+    case mojom::DiagnosticRoutineEnum::kVideoConferencing:
+      return metrics_name::kDiagnosticResultVideoConferencing;
+    case mojom::DiagnosticRoutineEnum::kArcHttp:
+      return metrics_name::kDiagnosticResultArcHttp;
+    case mojom::DiagnosticRoutineEnum::kArcPing:
+      return metrics_name::kDiagnosticResultArcPing;
+    case mojom::DiagnosticRoutineEnum::kArcDnsResolution:
+      return metrics_name::kDiagnosticResultArcDnsResolution;
+    case mojom::DiagnosticRoutineEnum::kSensitiveSensor:
+      return metrics_name::kDiagnosticResultSensitiveSensor;
+    case mojom::DiagnosticRoutineEnum::kFingerprint:
+      return metrics_name::kDiagnosticResultFingerprint;
+    case mojom::DiagnosticRoutineEnum::kFingerprintAlive:
+      return metrics_name::kDiagnosticResultFingerprintAlive;
+    case mojom::DiagnosticRoutineEnum::kPrivacyScreen:
+      return metrics_name::kDiagnosticResultPrivacyScreen;
+    case mojom::DiagnosticRoutineEnum::kLedLitUp:
+      return metrics_name::kDiagnosticResultLedLitUp;
+    case mojom::DiagnosticRoutineEnum::kSmartctlCheckWithPercentageUsed:
+      return metrics_name::kDiagnosticResultSmartctlCheckWithPercentageUsed;
+    case mojom::DiagnosticRoutineEnum::kEmmcLifetime:
+      return metrics_name::kDiagnosticResultEmmcLifetime;
+    case mojom::DiagnosticRoutineEnum::kAudioSetVolume:
+      return metrics_name::kDiagnosticResultAudioSetVolume;
+    case mojom::DiagnosticRoutineEnum::kAudioSetGain:
+      return metrics_name::kDiagnosticResultAudioSetGain;
+  }
+}
+
+std::optional<CrosHealthdDiagnosticResult> ConvertDiagnosticStatusToUMAEnum(
+    mojom::DiagnosticRoutineStatusEnum status) {
+  switch (status) {
+    case mojom::DiagnosticRoutineStatusEnum::kPassed:
+      return CrosHealthdDiagnosticResult::kPassed;
+    case mojom::DiagnosticRoutineStatusEnum::kFailed:
+      return CrosHealthdDiagnosticResult::kFailed;
+    case mojom::DiagnosticRoutineStatusEnum::kError:
+      return CrosHealthdDiagnosticResult::kError;
+    case mojom::DiagnosticRoutineStatusEnum::kCancelled:
+      return CrosHealthdDiagnosticResult::kCancelled;
+    case mojom::DiagnosticRoutineStatusEnum::kFailedToStart:
+      return CrosHealthdDiagnosticResult::kFailedToStart;
+    case mojom::DiagnosticRoutineStatusEnum::kRemoved:
+      return CrosHealthdDiagnosticResult::kRemoved;
+    case mojom::DiagnosticRoutineStatusEnum::kUnsupported:
+      return CrosHealthdDiagnosticResult::kUnsupported;
+    case mojom::DiagnosticRoutineStatusEnum::kNotRun:
+      return CrosHealthdDiagnosticResult::kNotRun;
+    // Non-terminal status.
+    case mojom::DiagnosticRoutineStatusEnum::kUnknown:
+    case mojom::DiagnosticRoutineStatusEnum::kReady:
+    case mojom::DiagnosticRoutineStatusEnum::kRunning:
+    case mojom::DiagnosticRoutineStatusEnum::kWaiting:
+    case mojom::DiagnosticRoutineStatusEnum::kCancelling:
+      return std::nullopt;
+  }
+}
+
 template <typename S>
 void SendOneTelemetryResultToUMA(MetricsLibraryInterface* metrics,
                                  mojom::ProbeCategoryEnum category,
@@ -199,6 +314,30 @@ void SendTelemetryResultToUMA(
         break;
       }
     }
+  }
+}
+
+void SendDiagnosticResultToUMA(MetricsLibraryInterface* metrics,
+                               mojom::DiagnosticRoutineEnum routine,
+                               mojom::DiagnosticRoutineStatusEnum status) {
+  std::optional<std::string> metrics_name = GetMetricName(routine);
+  if (!metrics_name.has_value()) {
+    return;
+  }
+
+  std::optional<CrosHealthdDiagnosticResult> result_enum =
+      ConvertDiagnosticStatusToUMAEnum(status);
+  if (!result_enum.has_value()) {
+    LOG(ERROR) << "Unable to send non-terminal status " << status << " of "
+               << routine << " to UMA.";
+    return;
+  }
+
+  bool result =
+      metrics->SendEnumToUMA(metrics_name.value(), result_enum.value());
+  if (!result) {
+    LOG(ERROR) << "Failed to send diagnostic result of " << routine << " ("
+               << status << ") to UMA.";
   }
 }
 
