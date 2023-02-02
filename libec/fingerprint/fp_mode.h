@@ -7,6 +7,7 @@
 
 #include <ostream>
 
+#include "base/types/cxx23_to_underlying.h"
 #include <brillo/brillo_export.h>
 
 namespace ec {
@@ -58,9 +59,8 @@ class BRILLO_EXPORT FpMode {
 
   uint32_t RawVal() const { return EnumToRawVal(mode_); }
 
-  // TODO(tomhughes): switch to to_utype template instead of casting
-  int EnumVal() const { return static_cast<int>(mode_); }
-  int MaxEnumVal() const { return static_cast<int>(Mode::kMaxValue); }
+  int EnumVal() const { return base::to_underlying(mode_); }
+  int MaxEnumVal() const { return base::to_underlying(Mode::kMaxValue); }
 
  private:
   Mode RawValToEnum(uint32_t mode) const;
