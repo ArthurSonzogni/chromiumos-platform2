@@ -1013,9 +1013,10 @@ bool GenerateFirstStageFstab(const base::FilePath& combined_property_file_name,
   //
   // The device name for /vendor has to match what arc_vm_client_adapter.cc
   // configures.
-  std::string firstStageFstabTemplate =
-      "/dev/block/vdb /vendor squashfs ro,noatime,nodev "
-      "wait,check,formattable,reservedsize=128M\n";
+  std::string firstStageFstabTemplate = base::StringPrintf(
+      "/dev/block/vdb /vendor %s ro,noatime,nodev "
+      "wait,check,formattable,reservedsize=128M\n",
+      USE_ARC_EROFS ? "erofs" : "squashfs");
 
   // A dedicated cache partition needs to be mounted in the first stage init
   // process. This is required for the adb remount / sync feature to work on
