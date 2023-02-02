@@ -134,6 +134,7 @@ copies.
 | [policy_utils](./policy_utils/) | Tools and related library to set or override device policies |
 | [power_manager](./power_manager/) | Userspace power management daemon and associated tools |
 | [print_tools](./print_tools/) | Various tools related to the native printing system |
+| [printscanmgr](./printscanmgr/) | ChromeOS Printing and Scanning Daemon |
 | [private_computing](./private_computing/) | Daemon to save and retrieve device active date status into and from preserved file.
 | [pwgtocanonij](./pwgtocanonij/) | CUPS filter for certain Canon printers |
 | [regions](./regions/) ||
