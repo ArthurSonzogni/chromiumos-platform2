@@ -41,6 +41,8 @@ shared_library("libipp") {
     "ipp_log.h",
     "ipp_parser.cc",
     "ipp_parser.h",
+    "parser.cc",
+    "parser.h",
     "validator.cc",
     "validator.h",
   ]
@@ -63,6 +65,7 @@ install_config("install_headers") {
     "ipp_enums.h",
     "ipp_export.h",
     "ipp_log.h",
+    "parser.h",
     "validator.h",
   ]
   install_path = "/usr/include/chromeos/libipp"
@@ -79,6 +82,7 @@ if (use.test) {
       "ipp_encoding_test.cc",
       "ipp_enums_test.cc",
       "ipp_test.cc",
+      "parser_test.cc",
       "validator_test.cc",
     ]
     configs += [ "//common-mk:test" ]

@@ -18,7 +18,7 @@
 
 namespace ipp {
 
-// Describes types of errors in a single value.
+// Describes types of validation errors in a single value.
 enum class ValidationCode {
   // The string value is empty when it is not allowed.
   kStringEmpty = 0,

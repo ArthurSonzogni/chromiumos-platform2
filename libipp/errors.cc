@@ -87,7 +87,9 @@ std::string AttrPath::AsString() const {
 }
 
 bool SimpleLog::AddValidationError(const AttrPath& path, AttrError error) {
-  entries_.emplace_back(path, error);
+  if (entries_.size() < max_entries_count_) {
+    entries_.emplace_back(path, error);
+  }
   return (entries_.size() < max_entries_count_);
 }
 

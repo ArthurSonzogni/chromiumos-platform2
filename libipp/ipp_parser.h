@@ -17,6 +17,7 @@
 #include "ipp_attribute.h"
 #include "ipp_frame.h"
 #include "ipp_log.h"
+#include "parser.h"
 
 namespace ipp {
 
@@ -25,34 +26,6 @@ class Collection;
 class Frame;
 struct RawAttribute;
 struct RawCollection;
-
-// The errors spotted by the parser. Comments next to the values describe
-// actions taken by the parser.
-enum class ParserCode : uint8_t {
-  kOK = 0,
-  kAttributeNameIsEmpty,              // the parser stopped
-  kValueMismatchTagConverted,         // the value was converted
-  kValueMismatchTagOmitted,           // the value was omitted
-  kAttributeNoValues,                 // the attribute was omitted
-  kAttributeNameConflict,             // the attribute was omitted
-  kBooleanValueOutOfRange,            // the boolean value was set to 1
-  kValueInvalidSize,                  // the value was omitted
-  kErrorWhenAddingAttribute,          // the attribute was omitted
-  kOutOfBandAttributeWithManyValues,  // additional values were ignored
-  kOutOfBandValueWithNonEmptyData,    // the data field was ignored
-  kUnexpectedEndOfFrame,              // the parser stopped
-  kGroupTagWasExpected,               // the parser stopped
-  kEmptyNameExpectedInTNV,            // the parser stopped
-  kEmptyValueExpectedInTNV,           // the parser stopped
-  kNegativeNameLengthInTNV,           // the parser stopped
-  kNegativeValueLengthInTNV,          // the parser stopped
-  kTNVWithUnexpectedValueTag,         // the parser stopped
-  kUnsupportedValueTag,               // the value was omitted
-  kUnexpectedEndOfGroup,              // the parser stopped
-  kLimitOnCollectionsLevelExceeded,   // the parser stopped
-  kLimitOnGroupsCountExceeded,        // the parser stopped
-  kErrorWhenAddingGroup               // the group was omitted
-};
 
 std::string_view ToStrView(ParserCode code);
 
