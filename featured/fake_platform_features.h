@@ -50,12 +50,19 @@ class FEATURE_EXPORT FakePlatformFeatures : public PlatformFeaturesInterface {
 
   void ShutdownBus() override;
 
+  void ListenForRefetchNeeded(
+      base::RepeatingCallback<void(void)> signal_callback,
+      base::OnceCallback<void(bool)> attached_callback) override;
+
+  void TriggerRefetchSignal();
+
  private:
   scoped_refptr<dbus::Bus> bus_;
 
   base::Lock enabled_lock_;
   std::map<std::string, bool> enabled_;
   std::map<std::string, std::map<std::string, std::string>> params_;
+  std::vector<base::RepeatingCallback<void(void)>> signal_callbacks_;
 };
 }  // namespace feature
 

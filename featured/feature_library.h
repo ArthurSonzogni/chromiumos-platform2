@@ -42,6 +42,9 @@ class FEATURE_EXPORT PlatformFeaturesInterface {
   // DO NOT CACHE the result of this call across chrome restarts, as it may
   // change -- for example, when a user logs in or out or when they apply
   // changes to chrome://flags.
+  // To determine when to refetch after a chrome restart, use
+  // ListenForRefetchNeeded(), or just re-fetch each time you use the experiment
+  // value.
   // NOTE: As of 2021-12, Chrome only retrieves finch seeds after a first reboot
   // (e.g. when logging in). So, if you need to run an experiment before this it
   // should be set up as a client-side trial.
@@ -56,6 +59,9 @@ class FEATURE_EXPORT PlatformFeaturesInterface {
   // DO NOT CACHE the result of this call across chrome restarts, as it may
   // change -- for example, when a user logs in or out or when they apply
   // changes to chrome://flags.
+  // To determine when to refetch after a chrome restart, use
+  // ListenForRefetchNeeded(), or just re-fetch each time you use the experiment
+  // value.
   // NOTE: As of 2021-12, Chrome only retrieves finch seeds after a first reboot
   // (e.g. when logging in). So, if you need to run an experiment before this it
   // should be set up as a client-side trial.
@@ -87,6 +93,9 @@ class FEATURE_EXPORT PlatformFeaturesInterface {
   // DO NOT CACHE the result of this call across chrome restarts, as it may
   // change -- for example, when a user logs in or out or when they apply
   // changes to chrome://flags.
+  // To determine when to refetch after a chrome restart, use
+  // ListenForRefetchNeeded(), or just re-fetch each time you use the experiment
+  // value.
   // NOTE: As of 2021-12, Chrome only retrieves finch seeds after a first reboot
   // (e.g. when logging in). So, if you need to run an experiment before this it
   // should be set up as a client-side trial.
@@ -100,6 +109,9 @@ class FEATURE_EXPORT PlatformFeaturesInterface {
   // DO NOT CACHE the result of this call across chrome restarts, as it may
   // change -- for example, when a user logs in or out or when they apply
   // changes to chrome://flags.
+  // To determine when to refetch after a chrome restart, use
+  // ListenForRefetchNeeded(), or just re-fetch each time you use the experiment
+  // value.
   // NOTE: As of 2021-12, Chrome only retrieves finch seeds after a first reboot
   // (e.g. when logging in). So, if you need to run an experiment before this it
   // should be set up as a client-side trial.
@@ -113,6 +125,23 @@ class FEATURE_EXPORT PlatformFeaturesInterface {
   // Shutdown the bus object, if any. Used for C API, or when destroying it and
   // the bus is no longer owned.
   virtual void ShutdownBus() = 0;
+
+  // ListenForRefetchNeeded registers |signal_callback| to run whenever it is
+  // required to refetch feature state (that is, whenever chrome restarts).
+  // In particular, in order to respect chrome://flags state, you must either
+  // listen to this signal and refetch feature state when |signal_callback| runs
+  // OR you must re-fetch each time you use the experiment value.
+  //
+  // |signal_callback| will be called in the origin thread, when the
+  // state must be re-fetched. As it's called in the origin thread,
+  // |signal_callback| can safely reference objects in the origin thread.
+  //
+  // |attached_callback| is called when the signal handler registration succeeds
+  // or fails, with a boolean indicating that the process is successfully
+  // listening or has failed to listen.
+  virtual void ListenForRefetchNeeded(
+      base::RepeatingCallback<void(void)> signal_callback,
+      base::OnceCallback<void(bool)> attached_callback) = 0;
 };
 
 class FEATURE_EXPORT PlatformFeatures : public PlatformFeaturesInterface {
@@ -138,9 +167,14 @@ class FEATURE_EXPORT PlatformFeatures : public PlatformFeaturesInterface {
 
   void ShutdownBus() override;
 
+  void ListenForRefetchNeeded(
+      base::RepeatingCallback<void(void)> signal_callback,
+      base::OnceCallback<void(bool)> attached_callback) override;
+
  protected:
   explicit PlatformFeatures(scoped_refptr<dbus::Bus> bus,
-                            dbus::ObjectProxy* proxy);
+                            dbus::ObjectProxy* chrome_proxy,
+                            dbus::ObjectProxy* feature_proxy);
 
  private:
   friend class FeatureLibraryTest;
@@ -152,7 +186,7 @@ class FEATURE_EXPORT PlatformFeatures : public PlatformFeaturesInterface {
                                  IsEnabledCallback callback,
                                  bool available);
 
-  // Callback that is invoked when proxy_->CallMethod() finishes.
+  // Callback that is invoked when chrome_proxy_->CallMethod() finishes.
   void HandleIsEnabledResponse(const VariationsFeature& feature,
                                IsEnabledCallback callback,
                                dbus::Response* response);
@@ -168,7 +202,7 @@ class FEATURE_EXPORT PlatformFeatures : public PlatformFeaturesInterface {
       GetParamsCallback callback,
       bool available);
 
-  // Callback that is invoked when proxy_->CallMethod() finishes.
+  // Callback that is invoked when chrome_proxy_->CallMethod() finishes.
   void HandleGetParamsResponse(
       const std::vector<const VariationsFeature* const>& features,
       GetParamsCallback callback,
@@ -191,8 +225,18 @@ class FEATURE_EXPORT PlatformFeatures : public PlatformFeaturesInterface {
   bool CheckFeatureIdentity(const VariationsFeature& feature)
       LOCKS_EXCLUDED(lock_);
 
+  static void OnConnectedCallback(
+      base::OnceCallback<void(bool)> attached_callback,
+      const std::string& interface,
+      const std::string& signal,
+      bool success);
+
   scoped_refptr<dbus::Bus> bus_;
-  dbus::ObjectProxy* proxy_;
+  // An object proxy used for communicating with ash-chrome.
+  dbus::ObjectProxy* chrome_proxy_;
+
+  // An object proxy used for listening to the "RefetchFeatureState" signal.
+  dbus::ObjectProxy* feature_proxy_;
 
   // Map that keeps track of seen features, to ensure a single feature is
   // only defined once. This verification is only done in builds with DCHECKs

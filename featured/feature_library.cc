@@ -6,6 +6,7 @@
 #include <utility>
 
 #include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/dbus/dbus_method_invoker.h>
@@ -15,29 +16,42 @@
 
 namespace feature {
 
+constexpr char kFeatureLibInterface[] = "org.chromium.feature_lib";
+constexpr char kFeatureLibPath[] = "/org/chromium/feature_lib";
+constexpr char kRefetchSignal[] = "RefetchFeatureState";
+
 PlatformFeatures::PlatformFeatures(scoped_refptr<dbus::Bus> bus,
-                                   dbus::ObjectProxy* proxy)
-    : bus_(bus), proxy_(proxy) {}
+                                   dbus::ObjectProxy* chrome_proxy,
+                                   dbus::ObjectProxy* feature_proxy)
+    : bus_(bus), chrome_proxy_(chrome_proxy), feature_proxy_(feature_proxy) {}
 
 std::unique_ptr<PlatformFeatures> PlatformFeatures::New(
     scoped_refptr<dbus::Bus> bus) {
-  auto* proxy = bus->GetObjectProxy(
+  auto* chrome_proxy = bus->GetObjectProxy(
       chromeos::kChromeFeaturesServiceName,
       dbus::ObjectPath(chromeos::kChromeFeaturesServicePath));
-  if (!proxy) {
+  if (!chrome_proxy) {
     LOG(ERROR) << "Failed to create object proxy for "
                << chromeos::kChromeFeaturesServiceName;
     return nullptr;
   }
 
-  return std::unique_ptr<PlatformFeatures>(new PlatformFeatures(bus, proxy));
+  auto* feature_proxy = bus->GetObjectProxy(kFeatureLibInterface,
+                                            dbus::ObjectPath(kFeatureLibPath));
+  if (!feature_proxy) {
+    LOG(ERROR) << "Failed to create object proxy for " << kFeatureLibInterface;
+    return nullptr;
+  }
+
+  return std::unique_ptr<PlatformFeatures>(
+      new PlatformFeatures(bus, chrome_proxy, feature_proxy));
 }
 
 void PlatformFeatures::IsEnabled(const VariationsFeature& feature,
                                  IsEnabledCallback callback) {
   DCHECK(CheckFeatureIdentity(feature)) << feature.name;
 
-  proxy_->WaitForServiceToBeAvailable(base::BindOnce(
+  chrome_proxy_->WaitForServiceToBeAvailable(base::BindOnce(
       &PlatformFeatures::OnWaitForServiceIsEnabled,
       weak_ptr_factory_.GetWeakPtr(), feature, std::move(callback)));
 }
@@ -50,7 +64,7 @@ bool PlatformFeatures::IsEnabledBlocking(const VariationsFeature& feature) {
   dbus::MessageWriter writer(&call);
   writer.AppendString(feature.name);
   std::unique_ptr<dbus::Response> response = brillo::dbus_utils::CallDBusMethod(
-      bus_, proxy_, &call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+      bus_, chrome_proxy_, &call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   if (!response) {
     return feature.default_state == FEATURE_ENABLED_BY_DEFAULT;
   }
@@ -79,10 +93,11 @@ void PlatformFeatures::OnWaitForServiceIsEnabled(
                         chromeos::kChromeFeaturesServiceIsFeatureEnabledMethod);
   dbus::MessageWriter writer(&call);
   writer.AppendString(feature.name);
-  proxy_->CallMethod(&call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-                     base::BindOnce(&PlatformFeatures::HandleIsEnabledResponse,
-                                    weak_ptr_factory_.GetWeakPtr(), feature,
-                                    std::move(callback)));
+  chrome_proxy_->CallMethod(
+      &call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+      base::BindOnce(&PlatformFeatures::HandleIsEnabledResponse,
+                     weak_ptr_factory_.GetWeakPtr(), feature,
+                     std::move(callback)));
 }
 
 void PlatformFeatures::HandleIsEnabledResponse(const VariationsFeature& feature,
@@ -114,7 +129,7 @@ void PlatformFeatures::GetParamsAndEnabled(
     DCHECK(CheckFeatureIdentity(*feature)) << feature->name;
   }
 
-  proxy_->WaitForServiceToBeAvailable(base::BindOnce(
+  chrome_proxy_->WaitForServiceToBeAvailable(base::BindOnce(
       &PlatformFeatures::OnWaitForServiceGetParams,
       weak_ptr_factory_.GetWeakPtr(), features, std::move(callback)));
 }
@@ -131,7 +146,7 @@ PlatformFeatures::GetParamsAndEnabledBlocking(
   dbus::MessageWriter writer(&call);
   EncodeGetParamsArgument(&writer, features);
   std::unique_ptr<dbus::Response> response = brillo::dbus_utils::CallDBusMethod(
-      bus_, proxy_, &call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+      bus_, chrome_proxy_, &call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
   return ParseGetParamsResponse(response.get(), features);
 }
 
@@ -171,10 +186,11 @@ void PlatformFeatures::OnWaitForServiceGetParams(
                         chromeos::kChromeFeaturesServiceGetFeatureParamsMethod);
   dbus::MessageWriter writer(&call);
   EncodeGetParamsArgument(&writer, features);
-  proxy_->CallMethod(&call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
-                     base::BindOnce(&PlatformFeatures::HandleGetParamsResponse,
-                                    weak_ptr_factory_.GetWeakPtr(), features,
-                                    std::move(callback)));
+  chrome_proxy_->CallMethod(
+      &call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+      base::BindOnce(&PlatformFeatures::HandleGetParamsResponse,
+                     weak_ptr_factory_.GetWeakPtr(), features,
+                     std::move(callback)));
 }
 
 void PlatformFeatures::HandleGetParamsResponse(
@@ -294,4 +310,27 @@ bool PlatformFeatures::CheckFeatureIdentity(const VariationsFeature& feature) {
 void PlatformFeatures::ShutdownBus() {
   bus_->ShutdownAndBlock();
 }
+
+void PlatformFeatures::ListenForRefetchNeeded(
+    base::RepeatingCallback<void(void)> signal_callback,
+    base::OnceCallback<void(bool)> attached_callback) {
+  feature_proxy_->ConnectToSignal(
+      kFeatureLibInterface, kRefetchSignal,
+      base::IgnoreArgs<dbus::Signal*>(signal_callback),
+      base::BindOnce(&PlatformFeatures::OnConnectedCallback,
+                     std::move(attached_callback)));
+}
+
+// static
+void PlatformFeatures::OnConnectedCallback(
+    base::OnceCallback<void(bool)> attached_callback,
+    const std::string& interface,
+    const std::string& signal,
+    bool success) {
+  if (!success) {
+    LOG(ERROR) << "Failed to connect to " << interface << "." << signal;
+  }
+  std::move(attached_callback).Run(success);
+}
+
 }  // namespace feature

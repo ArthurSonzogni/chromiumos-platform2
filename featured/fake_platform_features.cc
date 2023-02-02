@@ -92,4 +92,25 @@ void FakePlatformFeatures::ClearParams(const std::string& feature) {
 void FakePlatformFeatures::ShutdownBus() {
   bus_->ShutdownAndBlock();
 }
+
+void FakePlatformFeatures::ListenForRefetchNeeded(
+    base::RepeatingCallback<void(void)> signal_callback,
+    base::OnceCallback<void(bool)> attached_callback) {
+  base::AutoLock auto_lock(enabled_lock_);
+  signal_callbacks_.push_back(signal_callback);
+  bus_->GetOriginTaskRunner()->PostTask(
+      FROM_HERE, base::BindOnce(std::move(attached_callback), true));
+}
+
+void FakePlatformFeatures::TriggerRefetchSignal() {
+  std::vector<base::RepeatingCallback<void(void)>> callbacks;
+  {
+    base::AutoLock auto_lock(enabled_lock_);
+    callbacks = signal_callbacks_;
+  }
+  for (const auto& cb : callbacks) {
+    bus_->GetOriginTaskRunner()->PostTask(FROM_HERE, cb);
+  }
+}
+
 }  // namespace feature
