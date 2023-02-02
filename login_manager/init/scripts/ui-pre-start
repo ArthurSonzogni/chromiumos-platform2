@@ -211,14 +211,6 @@ if [ -d "${CPUSET_NONURGENT_DIR}" ]; then
   fi
 fi
 
-# Set up a folder on the stateful partition for ephemeral encrypted swap
-# files.
-USERSPACE_SWAP_DIR=/mnt/stateful_partition/unencrypted/userspace_swap.tmp/
-if [ ! -d "${USERSPACE_SWAP_DIR}" ]; then
-  mkdir -p "${USERSPACE_SWAP_DIR}"
-  chown -R chronos "${USERSPACE_SWAP_DIR}"
-fi
-
 # Set up the ui freezer cgroup. This is used during suspend to order the
 # freezing of processes to avoid FUSE causing freeze to timeout.
 if [ ! -d "${UI_FREEZER_CGROUP_DIR:-}" ]; then
