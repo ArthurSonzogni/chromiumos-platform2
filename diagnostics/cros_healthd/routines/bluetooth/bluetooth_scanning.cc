@@ -34,18 +34,20 @@ base::Value::Dict ConstructPeripheralDict(
   if (device.name.has_value())
     peripheral.Set("name", device.name.value());
   // RSSI history.
-  auto out_rssi_history = peripheral.Set("rssi_history", base::Value::List());
+  base::Value::List out_rssi_history;
   for (const auto& rssi : device.rssi_history)
-    out_rssi_history->Append(rssi);
+    out_rssi_history.Append(rssi);
+  peripheral.Set("rssi_history", std::move(out_rssi_history));
   // Bluetooth class of device (CoD).
   if (device.bluetooth_class.has_value()) {
     peripheral.Set("bluetooth_class",
                    base::NumberToString(device.bluetooth_class.value()));
   }
   // UUIDs.
-  auto out_uuids = peripheral.Set("uuids", base::Value::List());
+  base::Value::List out_uuids;
   for (const auto& uuid : device.uuids)
-    out_uuids->Append(uuid);
+    out_uuids.Append(uuid);
+  peripheral.Set("uuids", std::move(out_uuids));
   return peripheral;
 }
 
