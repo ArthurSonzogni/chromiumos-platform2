@@ -12,6 +12,7 @@
 #include <base/memory/ref_counted.h>
 #include <gmock/gmock.h>
 
+#include "shill/network/network.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
 #include "shill/technology.h"
@@ -86,6 +87,10 @@ class MockService : public Service {
               (const ServiceRefPtr&),
               (override));
   MOCK_METHOD(TetheringState, GetTethering, (), (const, override));
+  MOCK_METHOD(bool,
+              UpdateNetworkValidation,
+              (Network::ValidationReason),
+              (override));
 
   // Set a string for this Service via |store|.  Can be wired to Save() for
   // test purposes.

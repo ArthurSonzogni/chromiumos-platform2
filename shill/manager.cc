@@ -1749,15 +1749,13 @@ void Manager::SortServicesTask() {
   }
 
   if (new_logical) {
-    auto device = FindDeviceFromService(new_logical);
-    // Whenever the primary logical device is portalled (regardless of whether
-    // it changed), restart portal detection. This will reset the backoff scheme
-    // on any scan or other change that triggers a sort. See b/230030693 for
-    // additional discussion.
-    if (device && IsPrimaryConnectivityTechnology(device->technology()) &&
-        new_logical->IsPortalled()) {
-      SLOG(2) << "Restarting portal detection for the new primary device.";
-      device->UpdatePortalDetector(Network::ValidationReason::kServiceReorder);
+    // b/230030692: Whenever the primary logical Service is not in the 'online'
+    // state, ensure that network validation is rescheduled immediately whether
+    // the Service state has changed or not.
+    if (IsPrimaryConnectivityTechnology(new_logical->technology()) &&
+        !new_logical->IsOnline()) {
+      new_logical->UpdateNetworkValidation(
+          Network::ValidationReason::kServiceReorder);
     }
   }
 
@@ -2275,9 +2273,11 @@ bool Manager::SetCheckPortalList(const std::string& portal_list, Error* error) {
     return false;
   }
   props_.check_portal_list = portal_list;
-  for (const auto& device : devices_) {
-    device->UpdatePortalDetector(
-        Network::ValidationReason::kManagerPropertyUpdate);
+  for (const auto& service : services_) {
+    if (service->IsConnected()) {
+      service->UpdateNetworkValidation(
+          Network::ValidationReason::kManagerPropertyUpdate);
+    }
   }
   return true;
 }
@@ -2671,8 +2671,10 @@ void Manager::OnDeviceGeolocationInfoUpdated(const DeviceRefPtr& device) {
 
 void Manager::RecheckPortal(Error* /*error*/) {
   SLOG(2) << __func__;
-  for (const auto& device : devices_) {
-    device->UpdatePortalDetector(Network::ValidationReason::kDBusRequest);
+  for (const auto& service : services_) {
+    if (service->IsConnected()) {
+      service->UpdateNetworkValidation(Network::ValidationReason::kDBusRequest);
+    }
   }
 }
 

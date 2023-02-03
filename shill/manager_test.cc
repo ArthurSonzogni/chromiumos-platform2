@@ -2424,19 +2424,44 @@ TEST_F(ManagerTest, FindDeviceFromService) {
 #endif
 
 TEST_F(ManagerTest, SetCheckPortalList) {
-  SetMockDevices({Technology::kEthernet, Technology::kWiFi});
-  manager()->RegisterDevice(mock_devices_[0]);
-  manager()->RegisterDevice(mock_devices_[1]);
+  MockServiceRefPtr mock_service0(new NiceMock<MockService>(manager()));
+  MockServiceRefPtr mock_service1(new NiceMock<MockService>(manager()));
+  MockServiceRefPtr mock_service2(new NiceMock<MockService>(manager()));
+  manager()->RegisterService(mock_service0);
+  manager()->RegisterService(mock_service1);
+  manager()->RegisterService(mock_service2);
+  ON_CALL(*mock_service0, IsConnected(_)).WillByDefault(Return(true));
+  ON_CALL(*mock_service1, IsConnected(_)).WillByDefault(Return(true));
 
-  EXPECT_CALL(
-      *mock_devices_[0],
-      UpdatePortalDetector(Network::ValidationReason::kManagerPropertyUpdate));
-  EXPECT_CALL(
-      *mock_devices_[1],
-      UpdatePortalDetector(Network::ValidationReason::kManagerPropertyUpdate));
+  EXPECT_CALL(*mock_service0,
+              UpdateNetworkValidation(
+                  Network::ValidationReason::kManagerPropertyUpdate));
+  EXPECT_CALL(*mock_service1,
+              UpdateNetworkValidation(
+                  Network::ValidationReason::kManagerPropertyUpdate));
+  EXPECT_CALL(*mock_service2, UpdateNetworkValidation).Times(0);
 
   Error error;
   SetCheckPortalList("ethernet,cellular", &error);
+}
+
+TEST_F(ManagerTest, RecheckPortal) {
+  MockServiceRefPtr mock_service0(new NiceMock<MockService>(manager()));
+  MockServiceRefPtr mock_service1(new NiceMock<MockService>(manager()));
+  MockServiceRefPtr mock_service2(new NiceMock<MockService>(manager()));
+  manager()->RegisterService(mock_service0);
+  manager()->RegisterService(mock_service1);
+  manager()->RegisterService(mock_service2);
+  ON_CALL(*mock_service1, IsConnected(_)).WillByDefault(Return(true));
+  ON_CALL(*mock_service2, IsConnected(_)).WillByDefault(Return(true));
+
+  EXPECT_CALL(*mock_service0, UpdateNetworkValidation).Times(0);
+  EXPECT_CALL(*mock_service1,
+              UpdateNetworkValidation(Network::ValidationReason::kDBusRequest));
+  EXPECT_CALL(*mock_service2,
+              UpdateNetworkValidation(Network::ValidationReason::kDBusRequest));
+
+  manager()->RecheckPortal(nullptr);
 }
 
 TEST_F(ManagerTest, UpdateDefaultServicesDNSProxy) {
