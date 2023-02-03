@@ -342,8 +342,17 @@ void CellularServiceProvider::RemoveService(CellularServiceRefPtr service) {
   services_.erase(iter);
 }
 
+CellularService* CellularServiceProvider::GetActiveService() {
+  for (CellularServiceRefPtr& service : services_) {
+    if (service->IsActive(nullptr))
+      return service.get();
+  }
+  return nullptr;
+}
+
 void CellularServiceProvider::TetheringEntitlementCheck(
     base::OnceCallback<void(TetheringManager::EntitlementStatus)> callback) {
+  SLOG(3) << __func__;
   // TODO(b/249151422) Check if:
   //   - tethering is supported for the current carrier and modem,
   //   - a remote entitlement check is necessary, and send a request
@@ -356,6 +365,7 @@ void CellularServiceProvider::TetheringEntitlementCheck(
 void CellularServiceProvider::AcquireTetheringNetwork(
     base::OnceCallback<void(TetheringManager::SetEnabledResult, Network*)>
         callback) {
+  SLOG(3) << __func__;
   // For now assume that the main data network is always used for tethering.
   // TODO(b/249151422) Implement tethering network selection logic and supports:
   //   - switching the main data connection to a different APN for tethering,
@@ -369,25 +379,21 @@ void CellularServiceProvider::AcquireTetheringNetwork(
 void CellularServiceProvider::OnTetheringNetworkReady(
     base::OnceCallback<void(TetheringManager::SetEnabledResult, Network*)>
         callback) {
+  SLOG(3) << __func__;
   // Even when reusing the main data connection, make sure that the Network
   // object passed back to the caller is obtained at same time as when the
   // caller's callback is triggered and no sooner. This avoid returning a
   // pointer that could be invalidated by the time the callback is triggered
   // (network disconnection).
-  // TODO(b/249151422) Do not rely on the Manager to obtain the Cellular Device
-  const auto cellular_devices =
-      manager_->FilterByTechnology(Technology::kCellular);
-  if (cellular_devices.empty()) {
+  const auto cellular_service = GetActiveService();
+  if (!cellular_service || !cellular_service->cellular()) {
     std::move(callback).Run(
         TetheringManager::SetEnabledResult::kUpstreamNetworkNotAvailable,
         nullptr);
     return;
   }
 
-  // TODO(b/249151422) Use the main active Service tracked by
-  // CellularServiceProvider itself instead of jumping through the Cellular
-  // device.
-  const auto network = cellular_devices[0]->network();
+  const auto network = cellular_service->attached_network();
   if (!network || !network->IsConnected()) {
     std::move(callback).Run(
         TetheringManager::SetEnabledResult::kUpstreamNetworkNotAvailable,
@@ -401,6 +407,7 @@ void CellularServiceProvider::OnTetheringNetworkReady(
 
 void CellularServiceProvider::ReleaseTetheringNetwork(
     Network* network, base::OnceCallback<void(bool is_success)> callback) {
+  SLOG(3) << __func__;
   // Always assume for now that the tethering upstream network was the main data
   // network, i.e there is nothing to do.
   // TODO(b/249151422) Switch back to original data APN if the main data network

@@ -99,6 +99,7 @@ class CellularServiceProvider : public ProviderInterface {
   void AddService(CellularServiceRefPtr service);
   void RemoveService(CellularServiceRefPtr service);
 
+  CellularService* GetActiveService();
   void OnTetheringNetworkReady(
       base::OnceCallback<void(TetheringManager::SetEnabledResult, Network*)>
           callback);

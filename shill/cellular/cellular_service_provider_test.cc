@@ -26,6 +26,7 @@
 #include "shill/mock_profile.h"
 #include "shill/network/mock_network.h"
 #include "shill/network/network.h"
+#include "shill/service.h"
 #include "shill/store/fake_store.h"
 #include "shill/test_event_dispatcher.h"
 
@@ -506,6 +507,7 @@ TEST_F(CellularServiceProviderTest, AcquireTetheringNetwork_ReuseDataAPN) {
   CellularRefPtr device = CreateDevice("imsi1", "iccid1");
   CellularServiceRefPtr service =
       provider()->LoadServicesForDevice(device.get());
+  service->SetState(Service::kStateConnected);
   const std::vector<DeviceRefPtr> devices = {device};
   EXPECT_CALL(manager_, FilterByTechnology(Technology::kCellular))
       .WillRepeatedly(Return(devices));
@@ -523,7 +525,7 @@ TEST_F(CellularServiceProviderTest, AcquireTetheringNetwork_ReuseDataAPN) {
   EXPECT_CALL(*network, IsConnected()).WillRepeatedly(Return(true));
   EXPECT_CALL(cb,
               Run(TetheringManager::SetEnabledResult::kSuccess, network.get()));
-  device->set_network_for_testing(std::move(network));
+  service->SetAttachedNetwork(network->AsWeakPtr());
   provider()->AcquireTetheringNetwork(cb.Get());
   DispatchPendingEvents();
   Mock::VerifyAndClearExpectations(&cb);
