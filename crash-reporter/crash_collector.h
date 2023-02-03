@@ -347,14 +347,6 @@ class CrashCollector {
   // Strip any data that the user might not want sent up to the crash server.
   // |contents| is modified in-place.
   void StripSensitiveData(std::string* contents);
-  void StripMacAddresses(std::string* contents);
-  void StripEmailAddresses(std::string* contents);
-  void StripGaiaId(std::string* contents);
-  void StripLocationInformation(std::string* contents);
-  void StripIPv4Addresses(std::string* contents);
-  void StripIPv6Addresses(std::string* contents);
-  void StripSerialNumbers(std::string* contents);
-  void StripRecoveryId(std::string* contents);
 
   // This is going away once the experiment is done.
   // TODO(b/186659673): Validate daemon-store usage and remove this

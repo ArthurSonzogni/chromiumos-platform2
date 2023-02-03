@@ -847,7 +847,7 @@ TEST_F(CrashCollectorTest, StripMacAddressesBasic) {
   // Make sure that we handle the case where there's nothing before/after the
   // MAC address.
   const std::string kJustAMacOrig = "11:22:33:44:55:66";
-  const std::string kJustAMacStripped = "00:00:00:00:00:01";
+  const std::string kJustAMacStripped = "[MAC OUI=11:22:33 IFACE=1]";
   std::string just_a_mac(kJustAMacOrig);
   collector_.StripSensitiveData(&just_a_mac);
   EXPECT_EQ(kJustAMacStripped, just_a_mac);
@@ -857,34 +857,29 @@ TEST_F(CrashCollectorTest, StripMacAddressesBasic) {
   // I'm not sure that the code does ideal on these two test cases (they don't
   // look like two MAC addresses to me), but since we don't see them I think
   // it's OK to behave as shown here.
-  //
-  // The 2 crammed MAC are redacted as mac first to become
-  // "00:00:00:00:00:01:00:00:00:00:00:01"; and then it is redacted as IPv6 to
-  // "<redacted ip address>:00:00:00:01"
   const std::string kCrammedMacs1Orig = "11:22:33:44:55:66:11:22:33:44:55:66";
-  const std::string kCrammedMacs1Stripped = "<redacted ip address>:00:00:00:01";
+  const std::string kCrammedMacs1Stripped =
+      "[MAC OUI=11:22:33 IFACE=1]:[MAC OUI=11:22:33 IFACE=1]";
   std::string crammed_macs_1(kCrammedMacs1Orig);
   collector_.StripSensitiveData(&crammed_macs_1);
   EXPECT_EQ(kCrammedMacs1Stripped, crammed_macs_1);
 
-  // The 2 crammed MAC are redacted as mac first to become
-  // "00:00:00:00:00:0100:00:00:00:00:01"; and then it is redacted as IPv6 to
-  // "<redacted ip address>:00:00:01"
   const std::string kCrammedMacs2Orig = "11:22:33:44:55:6611:22:33:44:55:66";
-  const std::string kCrammedMacs2Stripped = "<redacted ip address>:00:00:01";
+  const std::string kCrammedMacs2Stripped =
+      "[MAC OUI=11:22:33 IFACE=1][MAC OUI=11:22:33 IFACE=1]";
   std::string crammed_macs_2(kCrammedMacs2Orig);
   collector_.StripSensitiveData(&crammed_macs_2);
   EXPECT_EQ(kCrammedMacs2Stripped, crammed_macs_2);
 
   // Test case-sensitiveness (we shouldn't be case-senstive).
   const std::string kCapsMacOrig = "AA:BB:CC:DD:EE:FF";
-  const std::string kCapsMacStripped = "00:00:00:00:00:01";
+  const std::string kCapsMacStripped = "[MAC OUI=aa:bb:cc IFACE=1]";
   std::string caps_mac(kCapsMacOrig);
   collector_.StripSensitiveData(&caps_mac);
   EXPECT_EQ(kCapsMacStripped, caps_mac);
 
   const std::string kLowerMacOrig = "aa:bb:cc:dd:ee:ff";
-  const std::string kLowerMacStripped = "00:00:00:00:00:01";
+  const std::string kLowerMacStripped = "[MAC OUI=aa:bb:cc IFACE=1]";
   std::string lower_mac(kLowerMacOrig);
   collector_.StripSensitiveData(&lower_mac);
   EXPECT_EQ(kLowerMacStripped, lower_mac);
@@ -904,11 +899,10 @@ TEST_F(CrashCollectorTest, StripMacAddressesBulk) {
   for (i = 0; i < 258; i++) {
     lotsa_macs_orig +=
         StringPrintf(" 11:11:11:11:%02X:%02x", (i & 0xff00) >> 8, i & 0x00ff);
-    lotsa_macs_stripped += StringPrintf(
-        " 00:00:00:00:%02X:%02x", ((i + 1) & 0xff00) >> 8, (i + 1) & 0x00ff);
+    lotsa_macs_stripped += StringPrintf(" [MAC OUI=11:11:11 IFACE=%d]", i + 1);
   }
   std::string lotsa_macs(lotsa_macs_orig);
-  collector_.StripMacAddresses(&lotsa_macs);
+  collector_.StripSensitiveData(&lotsa_macs);
   EXPECT_EQ(lotsa_macs_stripped, lotsa_macs);
 }
 
@@ -930,21 +924,25 @@ TEST_F(CrashCollectorTest, StripSensitiveDataSample) {
       " QCUSBNet Ethernet Device, 99:88:77:66:55:44\n"
       "<7>[111566.131728] PM: Entering mem sleep\n";
   const std::string kCrashWithMacsStripped =
-      "<6>[111567.195339] ata1.00: ACPI cmd ef/10:03:00:00:00:a0 (SET FEATURES)"
+      "<6>[111567.195339] ata1.00: ACPI cmd ef/[MAC OUI=10:03:00 IFACE=1] (SET "
+      "FEATURES)"
       " filtered out\n"
-      "<7>[108539.540144] wlan0: authenticate with 00:00:00:00:00:01 (try 1)\n"
-      "<7>[108539.554973] wlan0: associate with 00:00:00:00:00:01 (try 1)\n"
+      "<7>[108539.540144] wlan0: authenticate with [MAC OUI=11:22:33 IFACE=2] "
+      "(try 1)\n"
+      "<7>[108539.554973] wlan0: associate with [MAC OUI=11:22:33 IFACE=2] "
+      "(try 1)\n"
       "<6>[110136.587583] usb0: register 'QCUSBNet2k' at usb-0000:00:1d.7-2,"
-      " QCUSBNet Ethernet Device, 00:00:00:00:00:02\n"
-      "<7>[110964.314648] wlan0: deauthenticated from 00:00:00:00:00:01"
+      " QCUSBNet Ethernet Device, [MAC OUI=99:88:77 IFACE=3]\n"
+      "<7>[110964.314648] wlan0: deauthenticated from [MAC OUI=11:22:33 "
+      "IFACE=2]"
       " (Reason: 6)\n"
-      "<7>[110964.325057] phy0: Removed STA 00:00:00:00:00:01\n"
-      "<7>[110964.325115] phy0: Destroyed STA 00:00:00:00:00:01\n"
+      "<7>[110964.325057] phy0: Removed STA [MAC OUI=11:22:33 IFACE=2]\n"
+      "<7>[110964.325115] phy0: Destroyed STA [MAC OUI=11:22:33 IFACE=2]\n"
       "<6>[110969.219172] usb0: register 'QCUSBNet2k' at usb-0000:00:1d.7-2,"
-      " QCUSBNet Ethernet Device, 00:00:00:00:00:02\n"
+      " QCUSBNet Ethernet Device, [MAC OUI=99:88:77 IFACE=3]\n"
       "<7>[111566.131728] PM: Entering mem sleep\n";
   std::string crash_with_macs(kCrashWithMacsOrig);
-  collector_.StripMacAddresses(&crash_with_macs);
+  collector_.StripSensitiveData(&crash_with_macs);
   EXPECT_EQ(kCrashWithMacsStripped, crash_with_macs);
 }
 
@@ -960,7 +958,7 @@ TEST_F(CrashCollectorTest, StripEmailAddresses) {
       "pariatur. Excepteur sint occaecat:abuse@dev.reallylong,\n"
       "cupidatat non proident, sunt in culpa qui officia "
       "deserunt mollit anim id est laborum.";
-  collector_.StripEmailAddresses(&logs);
+  collector_.StripSensitiveData(&logs);
   EXPECT_EQ(0, logs.find("Lorem ipsum"));
   EXPECT_EQ(std::string::npos, logs.find("foo.bar"));
   EXPECT_EQ(std::string::npos, logs.find("secret"));
@@ -978,9 +976,9 @@ TEST_F(CrashCollectorTest, StripGaiaId) {
       "don't remove id: 1234 sample"
       "don't remove email_id: 1234";
   std::string kCrashWithoutGaiaID =
-      "remove <redacted gaia ID> sample"
+      "remove gaia_id:\"<GAIA: 1>\" sample"
       "don't remove 970787480432 sample"
-      "remove <redacted gaia ID> test1234} sample"
+      "remove {id: <GAIA: 2>, email: test1234} sample"
       "don't remove id: 1234 sample"
       "don't remove email_id: 1234";
   collector_.StripSensitiveData(&kCrashWithGaiaID);
@@ -997,31 +995,33 @@ TEST_F(CrashCollectorTest, StripLocationInformation) {
       "remove Cell ID: '234234' sample";
 
   std::string kCrashWithoutLocationInformation =
-      "remove <redacted location information> sample"
+      "remove Cell ID: '<CellID: 1>' sample"
       "stay Cell: '123' sample"
-      "remove <redacted location information> sample"
+      "remove Location area code: '<LocAC: 1>' sample"
       "stay Location area code: '123AsDF' sample"
       "stay code: 33 sample"
-      "remove <redacted location information> sample";
-  collector_.StripLocationInformation(&kCrashWithLocationInformation);
+      "remove Cell ID: '<CellID: 2>' sample";
+  collector_.StripSensitiveData(&kCrashWithLocationInformation);
   EXPECT_EQ(kCrashWithLocationInformation, kCrashWithoutLocationInformation);
 }
 
 TEST_F(CrashCollectorTest, StripIPv4Addresses) {
   std::string logs =
       "stay.1.2.3 remove.1.2.3.4."
-      "stay 255.255 255.255.255 255.255.259.255 remove 255.255.255.255 0.0.0.0 "
+      "stay 255.255 255.255.255 255.255.259.255 255.255.255.255 remove 0.0.0.0 "
       "stay 19.259.243.255 19.243.343.255 remove 19.143.29.255";
   std::string redacted_log =
-      "stay.1.2.3 remove.<redacted ip address>."
-      "stay 255.255 255.255.255 255.255.259.255 remove <redacted ip address> "
-      "<redacted ip address> "
-      "stay 19.259.243.255 19.243.343.255 remove <redacted ip address>";
+      "stay.1.2.3 remove.<IPv4: 1>."
+      "stay 255.255 255.255.255 255.255.259.255 255.255.255.255 remove "
+      "<0.0.0.0/8: 2> "
+      "stay 19.259.243.255 19.243.343.255 remove <IPv4: 3>";
   collector_.StripSensitiveData(&logs);
   EXPECT_EQ(logs, redacted_log);
 }
 
 TEST_F(CrashCollectorTest, StripIPv6Addresses) {
+  // TODO(donnadionne): address (1::) is not currently redacted
+  // because (::) is skipped as the unspecified address.
   std::string logs =
       "stay:2001:0db8:0000:0000:0000:ff00:0042: "
       "stay:0:0:0:0:0:FFFF:322.1.41.90 "
@@ -1031,12 +1031,11 @@ TEST_F(CrashCollectorTest, StripIPv6Addresses) {
       "remove:0:0:0:0:0:FFFF:222.1.41.90";
   std::string redacted_log =
       "stay:2001:0db8:0000:0000:0000:ff00:0042: "
-      "stay:0:0:0:0:0:FFFF:3<redacted ip address> "
-      "remove:<redacted ip address> "
-      "remove:<redacted ip address> "
-      "remove:<redacted ip address> <redacted ip address> "
-      "<redacted ip address> <redacted ip address> "
-      "remove:<redacted ip address>";
+      "stay:0:0:0:0:0:FFFF:3<IPv4: 1> "
+      "remove:<IPv6: 1> "
+      "remove:<IPv6: 2> "
+      "remove:<IPv6: 3> <IPv6: 4> ::1 1:: "
+      "remove:0:0:0:0:0:FFFF:<IPv4: 2>";
   collector_.StripSensitiveData(&logs);
   EXPECT_EQ(logs, redacted_log);
 }
@@ -1076,17 +1075,17 @@ TEST_F(CrashCollectorTest, StripSerialNumbers) {
       "[ 2.159587] usb 1-7: New USB device found, idVendor=2232, "
       "idProduct=1082, bcdDevice= 0.08\n"
       "[ 2.159620] usb 1-7: New USB device strings: Mfr=3, Product=1, "
-      "<redacted serial number>\n"
+      "SerialNumber=<Serial: 1>\n"
       "[ 2.159644] usb 1-7: Product: 720p HD Camera\n"
       "[ 2.159661] usb 1-7: Manufacturer: Namuga\n"
-      "[ 2.159676] usb 1-7: <redacted serial number>\n"
+      "[ 2.159676] usb 1-7: SerialNumber: <Serial: 2>\n"
       "[ 2.212541] usb 1-2.1: new high-speed USB device number 5 using "
       "xhci_hcd\n"
       "[ 2.248559] Switched to clocksource tsc\n"
       "[ 2.296473] usb 1-2.1: New USB device found, idVendor=0409, "
       "idProduct=005a, bcdDevice= 1.00\n"
       "[ 2.296506] usb 1-2.1: New USB device strings: Mfr=0, Product=0, "
-      "<redacted serial number>\n"
+      "SerialNumber=<Serial: 3>\n"
       "[ 2.297266] hub 1-2.1:1.0: USB hub found\n"
       "[ 2.297326] hub 1-2.1:1.0: 4 ports detected\n"
       "[ 2.570494] usb 1-2.1.2: new high-speed USB device number 6 using "
@@ -1094,12 +1093,12 @@ TEST_F(CrashCollectorTest, StripSerialNumbers) {
       "[ 2.670246] usb 1-2.1.2: New USB device found, idVendor=13fe, "
       "idProduct=5500, bcdDevice= 1.00\n"
       "[ 2.670286] usb 1-2.1.2: New USB device strings: Mfr=1, Product=2, "
-      "<redacted serial number>\n"
+      "SerialNumber=<Serial: 4>\n"
       "[ 2.670338] usb 1-2.1.2: Product: Patriot Memory\n"
       "[ 2.670359] usb 1-2.1.2: Manufacturer:\n"
-      "[ 2.670379] usb 1-2.1.2: <redacted serial number>\n";
+      "[ 2.670379] usb 1-2.1.2: SerialNumber: <Serial: 5>\n";
   std::string crash_with_usb_serial_numbers(kCrashWithUsbSerialNumbers);
-  collector_.StripSerialNumbers(&crash_with_usb_serial_numbers);
+  collector_.StripSensitiveData(&crash_with_usb_serial_numbers);
   EXPECT_EQ(kCrashWithUsbSerialNumbersStripped, crash_with_usb_serial_numbers);
 }
 
@@ -1116,11 +1115,11 @@ TEST_F(CrashCollectorTest, StripRecoveryId) {
       "2022-10-13T07:35:34.518810Z INFO cryptohomed[2055]: AuthSession: "
       "started with is_ephemeral_user=0 intent=decrypt user_exists=1 keys=.\n"
       "2022-10-13T07:35:34.576054Z INFO cryptohomed[2055]: "
-      "GenerateRecoveryRequestAssociatedData for recovery_id: <redacted hash>\n"
+      "GenerateRecoveryRequestAssociatedData for recovery_id: <HASH:3ecb 1>\n"
       "2022-10-13T07:35:36.060608Z INFO cryptohomed[2055]: AuthSession: "
       "decrypt authentication attempt via test-recovery factor.";
   std::string crash_with_recovery_id(kCrashWithRecoveryId);
-  collector_.StripRecoveryId(&crash_with_recovery_id);
+  collector_.StripSensitiveData(&crash_with_recovery_id);
   EXPECT_EQ(kCrashWithRecoveryIdStripped, crash_with_recovery_id);
 }
 

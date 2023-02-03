@@ -133,7 +133,11 @@ static_library("libcrash_reporter") {
   ]
   all_dependent_configs = [ ":libcrash_reporter_config" ]
   defines = shared_defines
-  libs = [ "policy" ]
+  include_dirs = [ "${sysroot}/usr/include/redaction_tool" ]
+  libs = [
+    "policy",
+    "redaction_tool",
+  ]
   deps = [ "//common-mk/external_dependencies:policy-protos" ]
 
   if (use.arcpp || use.arcvm) {

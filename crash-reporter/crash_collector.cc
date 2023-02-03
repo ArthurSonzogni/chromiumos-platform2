@@ -47,6 +47,7 @@
 #include <debugd/dbus-constants.h>
 #include <policy/device_policy_impl.h>
 #include <re2/re2.h>
+#include <redaction_tool/redaction_tool.h>
 #include <zlib.h>
 
 #include "base/files/file_path.h"
@@ -153,11 +154,6 @@ const char kCollectionErrorSignature[] = "crash_reporter-user-collection";
   OPT_NCG( WB NCG(H16 ":") "{0,6}" H16) "::") ")"
 // clang-format on
 
-const char kGaiaIdRegEx[] =
-    R"((\"?\bgaia_id\"?[=:]['\"])(\d+)(\b['\"])|(\{id: )(\d+)(, email:))";
-
-const char kLocationInformationRegEx[] =
-    R"((Cell ID: ')([0-9a-fA-F]+)(')|(Location area code: ')([0-9a-fA-F]+)('))";
 }  // namespace
 
 const char* const CrashCollector::kUnknownValue = "unknown";
@@ -793,165 +789,8 @@ std::string CrashCollector::Sanitize(const std::string& name) {
 }
 
 void CrashCollector::StripSensitiveData(std::string* contents) {
-  // At the moment, only specific data patterns are used for stripping.
-  StripMacAddresses(contents);
-  StripEmailAddresses(contents);
-  StripIPv6Addresses(contents);
-  StripIPv4Addresses(contents);
-  StripGaiaId(contents);
-  StripLocationInformation(contents);
-  StripSerialNumbers(contents);
-  StripRecoveryId(contents);
-}
-
-void CrashCollector::StripMacAddresses(std::string* contents) {
-  std::ostringstream result;
-  re2::StringPiece input(*contents);
-  std::string pre_re_str;
-  std::string re_str;
-
-  // Get rid of things that look like MAC addresses, since they could possibly
-  // give information about where someone has been.  This is strings that look
-  // like this: 11:22:33:44:55:66
-  // Complications:
-  // - Within a given log, we want to be able to tell when the same MAC
-  //   was used more than once.  Thus, we'll consistently replace the first
-  //   MAC found with 00:00:00:00:00:01, the second with ...:02, etc.
-  // - ACPI commands look like MAC addresses.  We'll specifically avoid getting
-  //   rid of those.
-  std::map<std::string, std::string> mac_map;
-
-  // This RE will find the next MAC address and can return us the data preceding
-  // the MAC and the MAC itself.
-  RE2::Options opt;
-  opt.set_dot_nl(true);
-
-  RE2 mac_re(
-      "(.*?)("
-      "[0-9a-fA-F][0-9a-fA-F]:"
-      "[0-9a-fA-F][0-9a-fA-F]:"
-      "[0-9a-fA-F][0-9a-fA-F]:"
-      "[0-9a-fA-F][0-9a-fA-F]:"
-      "[0-9a-fA-F][0-9a-fA-F]:"
-      "[0-9a-fA-F][0-9a-fA-F])",
-      opt);
-
-  // This RE will identify when the 'pre_mac_str' shows that the MAC address
-  // was really an ACPI cmd.  The full string looks like this:
-  //   ata1.00: ACPI cmd ef/10:03:00:00:00:a0 (SET FEATURES) filtered out
-  RE2 acpi_re("(?m)ACPI cmd ef/$", opt);
-
-  // Keep consuming, building up a result string as we go.
-  while (RE2::Consume(&input, mac_re, &pre_re_str, &re_str)) {
-    if (RE2::PartialMatch(pre_re_str, acpi_re)) {
-      // We really saw an ACPI command; add to result w/ no stripping.
-      result << pre_re_str << re_str;
-    } else {
-      // Found a MAC address; look up in our hash for the mapping.
-      std::string replacement_mac = mac_map[re_str];
-      if (replacement_mac == "") {
-        // It wasn't present, so build up a replacement string.
-        int mac_id = mac_map.size();
-
-        // Handle up to 2^32 unique MAC address; overkill, but doesn't hurt.
-        replacement_mac = StringPrintf(
-            "00:00:%02x:%02x:%02x:%02x", (mac_id & 0xff000000) >> 24,
-            (mac_id & 0x00ff0000) >> 16, (mac_id & 0x0000ff00) >> 8,
-            (mac_id & 0x000000ff));
-        mac_map[re_str] = replacement_mac;
-      }
-
-      // Dump the string before the MAC and the fake MAC address into result.
-      result << pre_re_str << replacement_mac;
-    }
-  }
-
-  // One last bit of data might still be in the input.
-  result << input;
-
-  // We'll just assign right back to |contents|.
-  *contents = result.str();
-}
-
-void CrashCollector::StripEmailAddresses(std::string* contents) {
-  // Simplified email-matching regex based on
-  // https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/email#Validation
-  RE2 email_re(R"(\b)"
-               R"([a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]{1,256})"
-               "@"
-               R"([a-zA-Z0-9-\.]{1,256}[^\.])"
-               R"(\b)");
-  CHECK_EQ("", email_re.error());
-
-  RE2::GlobalReplace(contents, email_re, "<redacted email address>");
-}
-
-void CrashCollector::StripGaiaId(std::string* contents) {
-  RE2 gaia_id_re(kGaiaIdRegEx);
-  // Ensure RegEx has no parsing errors and is valid.
-  CHECK_EQ("", gaia_id_re.error());
-  RE2::GlobalReplace(contents, gaia_id_re, "<redacted gaia ID>");
-}
-
-void CrashCollector::StripIPv4Addresses(std::string* contents) {
-  RE2 ipv4_re(IPV4ADDRESS);
-  // Ensure RegEx has no parsing errors and is valid.
-  CHECK_EQ("", ipv4_re.error());
-  RE2::GlobalReplace(contents, ipv4_re, "<redacted ip address>");
-}
-
-void CrashCollector::StripIPv6Addresses(std::string* contents) {
-  RE2 ipv6_re(IPV6ADDRESS);
-  // Ensure RegEx has no parsing errors and is valid.
-  CHECK_EQ("", ipv6_re.error());
-  RE2::GlobalReplace(contents, ipv6_re, "<redacted ip address>");
-}
-
-void CrashCollector::StripLocationInformation(std::string* contents) {
-  RE2 location_information_re(kLocationInformationRegEx);
-  // Ensure RegEx has no parsing errors and is valid.
-  CHECK_EQ("", location_information_re.error());
-  RE2::GlobalReplace(contents, location_information_re,
-                     "<redacted location information>");
-}
-
-void CrashCollector::StripSerialNumbers(std::string* contents) {
-  std::ostringstream result;
-  re2::StringPiece input(*contents);
-  std::string pre_re_str;
-  std::string re_str;
-  // Adapted from chromium:components/feedback/anonymizer_tool.cc
-  RE2::Options opt;
-  opt.set_dot_nl(true);
-  opt.set_case_sensitive(false);
-  RE2 serialnumber_re(R"((.*?)(\bserial\s*_?(?:number)?['"]?\s*[:=]\s*['"]?))"
-                      R"(([0-9a-zA-Z\-.:\/\\\x00-\x09\x0B-\x1F]+)(\b))",
-                      opt);
-
-  CHECK_EQ("", serialnumber_re.error());
-
-  while (RE2::Consume(&input, serialnumber_re, &pre_re_str, &re_str)) {
-    result << pre_re_str << "<redacted serial number>";
-  }
-  result << input;
-  *contents = result.str();
-}
-
-void CrashCollector::StripRecoveryId(std::string* contents) {
-  std::ostringstream result;
-  re2::StringPiece input(*contents);
-  std::string pre_re_str;
-  std::string re_str;
-
-  RE2 recovery_id_re(R"(((?s:.*)recovery_id: )([0-9a-f]*)\b)");
-
-  CHECK_EQ("", recovery_id_re.error());
-
-  while (RE2::Consume(&input, recovery_id_re, &pre_re_str, &re_str)) {
-    result << pre_re_str << "<redacted hash>";
-  }
-  result << input;
-  *contents = result.str();
+  redaction::RedactionTool redactor(nullptr);
+  *contents = redactor.Redact(*contents);
 }
 
 std::string CrashCollector::FormatDumpBasename(const std::string& exec_name,
