@@ -56,10 +56,19 @@ class FakeMetricsLibrary : public MetricsLibraryInterface {
   void SetOutputFile(const std::string& output_file) override;
 
   // Test getters
+
+  // Get all calls to the given metric.
   std::vector<int> GetCalls(const std::string& name);
+
+  // Return the number of calls to the given metric.
   size_t NumCalls(const std::string& name);
-  // Returns kInvalid if no metric was recorded.
+
+  // Get the value of the most recent call to the given metric. Returns kInvalid
+  // if no metric was recorded.
   int GetLast(const std::string& name);
+
+  // Clear all metrics stored by the FakeMetricsLibrary.
+  void Clear();
 
   static constexpr int kInvalid = std::numeric_limits<int>::min();
 

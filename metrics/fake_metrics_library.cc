@@ -96,3 +96,7 @@ int FakeMetricsLibrary::GetLast(const std::string& name) {
   }
   return calls.back();
 }
+
+void FakeMetricsLibrary::Clear() {
+  metrics_.clear();
+}

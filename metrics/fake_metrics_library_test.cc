@@ -10,6 +10,7 @@
 #include "metrics/fake_metrics_library.h"
 
 using ::testing::ElementsAre;
+using ::testing::IsEmpty;
 
 class FakeMetricsLibraryTest : public testing::Test {
  public:
@@ -124,4 +125,24 @@ TEST_F(FakeMetricsLibraryTest, SendSparseToUMA) {
   EXPECT_EQ(lib().NumCalls("metric2"), 2);
   EXPECT_EQ(lib().GetLast("metric2"), 21);
   EXPECT_THAT(lib().GetCalls("metric2"), ElementsAre(20, 21));
+}
+
+TEST_F(FakeMetricsLibraryTest, Clear) {
+  // Send an UMA, and ensure we can read it again.
+  lib().SendToUMA("metric", 1, 0, 100, 10);
+  EXPECT_EQ(lib().NumCalls("metric"), 1);
+  EXPECT_EQ(lib().GetLast("metric"), 1);
+  EXPECT_THAT(lib().GetCalls("metric"), ElementsAre(1));
+
+  // Clear out all values, and ensure we don't see old UMA calls.
+  lib().Clear();
+  EXPECT_EQ(lib().NumCalls("metric"), 0);
+  EXPECT_EQ(lib().GetLast("metric"), FakeMetricsLibrary::kInvalid);
+  EXPECT_THAT(lib().GetCalls("metric"), IsEmpty());
+
+  // We should still be able to add new metric values, though.
+  lib().SendToUMA("metric", 2, 0, 100, 10);
+  EXPECT_EQ(lib().NumCalls("metric"), 1);
+  EXPECT_EQ(lib().GetLast("metric"), 2);
+  EXPECT_THAT(lib().GetCalls("metric"), ElementsAre(2));
 }
