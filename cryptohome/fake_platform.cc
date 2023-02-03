@@ -809,7 +809,7 @@ base::UnguessableToken FakePlatform::CreateUnguessableToken() {
     low = random_engine_64_();
   } while (high == 0 && low == 0);
   std::optional<base::UnguessableToken> token =
-      base::UnguessableToken::Deserialize2(high, low);
+      base::UnguessableToken::Deserialize(high, low);
   CHECK(token.has_value());
   return *token;
 }
