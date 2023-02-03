@@ -98,7 +98,7 @@ void MemoryRoutine::Start() {
   uint32_t available_mem_kib = memory_info.value().available_memory_kib;
 
   // Ealry check and return if system doesn't have enough memory remains.
-  if (available_mem_kib <= kMemoryRoutineReservedSizeKiB) {
+  if (available_mem_kib <= kCpuMemoryRoutineReservedSizeKiB) {
     UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kFailedToStart,
                  kMemoryRoutineNotHavingEnoughAvailableMemoryMessage);
     return;
@@ -111,7 +111,7 @@ void MemoryRoutine::Start() {
   UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kRunning,
                kMemoryRoutineRunningMessage);
   context_->executor()->RunMemtester(
-      available_mem_kib - kMemoryRoutineReservedSizeKiB,
+      available_mem_kib - kCpuMemoryRoutineReservedSizeKiB,
       base::BindOnce(&MemoryRoutine::DetermineRoutineResult,
                      weak_ptr_factory_.GetWeakPtr()));
 }

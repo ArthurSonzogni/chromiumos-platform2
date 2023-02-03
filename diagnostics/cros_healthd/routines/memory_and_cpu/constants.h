@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_CONSTANTS_H_
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_CONSTANTS_H_
 
+#include <base/time/time.h>
+
 namespace diagnostics {
 
 // Different bit flags which can be encoded in the return value for memtester.
@@ -19,9 +21,17 @@ enum MemtesterErrorCodes {
   kOtherTestError = 0x04,
 };
 
+// Fleet-wide default value for the urandom routine's parameter.
+// TODO(crbug/1131609): get a better default value with some rationale behind
+// it.
+const base::TimeDelta kUrandomDefaultLength = base::Seconds(10);
+
 // Ensure the operating system is left with at least the following size to avoid
 // out of memory error.
-constexpr int kMemoryRoutineReservedSizeKiB = 500 * 1024;  // 500 MiB.
+constexpr int kCpuMemoryRoutineReservedSizeKiB = 500 * 1024;  // 500 MiB.
+
+// Default runtime for routines which stress the CPU.
+const base::TimeDelta kDefaultCpuStressRuntime = base::Minutes(1);
 
 // Status messages the memory routine can report.
 inline constexpr char kMemoryRoutineSucceededMessage[] =

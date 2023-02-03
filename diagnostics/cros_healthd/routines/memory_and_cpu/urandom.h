@@ -11,13 +11,9 @@
 #include <base/time/time.h>
 
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/constants.h"
 
 namespace diagnostics {
-
-// Fleet-wide default value for the urandom routine's parameter.
-// TODO(crbug/1131609): get a better default value with some rationale behind
-// it.
-extern const base::TimeDelta kUrandomDefaultLength;
 
 std::unique_ptr<DiagnosticRoutine> CreateUrandomRoutine(
     const std::optional<base::TimeDelta>& length_seconds);

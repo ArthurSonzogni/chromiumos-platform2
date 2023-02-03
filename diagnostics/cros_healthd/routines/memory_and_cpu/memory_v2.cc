@@ -229,9 +229,10 @@ void MemoryRoutineV2::Run(
     return;
   }
 
-  uint32_t testing_mem_kib = std::max(
-      static_cast<int64_t>(available_mem_kib) - kMemoryRoutineReservedSizeKiB,
-      static_cast<int64_t>(kMemoryRoutineMinimumRequireKiB));
+  uint32_t testing_mem_kib =
+      std::max(static_cast<int64_t>(available_mem_kib) -
+                   kCpuMemoryRoutineReservedSizeKiB,
+               static_cast<int64_t>(kMemoryRoutineMinimumRequireKiB));
 
   SetRunningState();
   context_->executor()->RunMemtesterV2(

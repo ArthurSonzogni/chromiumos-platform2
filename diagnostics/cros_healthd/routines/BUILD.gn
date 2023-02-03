@@ -102,7 +102,6 @@ source_set("libdiag_routine") {
     "nvme_wear_level/nvme_wear_level.cc",
     "privacy_screen/privacy_screen.cc",
     "sensor/sensitive_sensor.cc",
-    "shared_defaults.cc",
     "simple_routine.cc",
     "smartctl_check/smartctl_check.cc",
     "subproc_routine.cc",

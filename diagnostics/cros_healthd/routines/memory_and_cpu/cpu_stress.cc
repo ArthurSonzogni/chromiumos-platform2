@@ -10,7 +10,7 @@
 
 #include <base/strings/string_number_conversions.h>
 
-#include "diagnostics/cros_healthd/routines/shared_defaults.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/constants.h"
 #include "diagnostics/cros_healthd/routines/subproc_routine.h"
 
 namespace diagnostics {
