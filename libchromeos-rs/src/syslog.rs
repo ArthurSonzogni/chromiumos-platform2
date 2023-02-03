@@ -54,7 +54,7 @@ pub fn init_with_level(ident: String, log_to_stderr: bool, max_level: LevelFilte
 
     if log_to_stderr {
         let mut stderr_logger = StdErrLog::new();
-        stderr_logger.verbosity(max_level);
+        stderr_logger.verbosity(max_level as usize);
 
         if let Some(level) = max_level.to_level() {
             multi_log::MultiLogger::init(vec![Box::new(stderr_logger), syslog_logger], level)

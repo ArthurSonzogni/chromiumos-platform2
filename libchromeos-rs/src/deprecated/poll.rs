@@ -69,7 +69,7 @@ impl PollToken for usize {
 
 impl PollToken for u64 {
     fn as_raw_token(&self) -> u64 {
-        *self as u64
+        *self
     }
 
     fn from_raw_token(data: u64) -> Self {
