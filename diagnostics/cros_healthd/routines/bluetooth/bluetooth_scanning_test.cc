@@ -189,18 +189,19 @@ class BluetoothScanningRoutineTest : public testing::Test {
       peripheral.Set("peripheral_id", device.second.peripheral_id);
       if (device.second.name.has_value())
         peripheral.Set("name", device.second.name.value());
-      auto out_rssi_history =
-          peripheral.Set("rssi_history", base::Value::List());
+      base::Value::List out_rssi_history;
       for (const auto& rssi : device.second.rssi_history)
-        out_rssi_history->Append(rssi);
+        out_rssi_history.Append(rssi);
+      peripheral.Set("rssi_history", std::move(out_rssi_history));
       if (device.second.bluetooth_class.has_value()) {
         peripheral.Set(
             "bluetooth_class",
             base::NumberToString(device.second.bluetooth_class.value()));
       }
-      auto out_uuids = peripheral.Set("uuids", base::Value::List());
+      base::Value::List out_uuids;
       for (const auto& uuid : device.second.uuids)
-        out_uuids->Append(uuid);
+        out_uuids.Append(uuid);
+      peripheral.Set("uuids", std::move(out_uuids));
       peripherals.Append(std::move(peripheral));
     }
     base::Value::Dict output_dict;

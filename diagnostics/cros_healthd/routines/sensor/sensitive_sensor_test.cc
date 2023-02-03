@@ -68,12 +68,14 @@ class SensitiveSensorRoutineTest : public testing::Test {
                                           std::vector<std::string> channels) {
     base::Value::Dict sensor_output;
     sensor_output.Set("id", id);
-    auto* out_types = sensor_output.Set("types", base::Value::List());
+    base::Value::List out_types;
     for (const auto& type : types)
-      out_types->Append(type);
-    auto* out_channels = sensor_output.Set("channels", base::Value::List());
+      out_types.Append(type);
+    sensor_output.Set("types", std::move(out_types));
+    base::Value::List out_channels;
     for (const auto& channel : channels)
-      out_channels->Append(channel);
+      out_channels.Append(channel);
+    sensor_output.Set("channels", std::move(out_channels));
     return sensor_output;
   }
 

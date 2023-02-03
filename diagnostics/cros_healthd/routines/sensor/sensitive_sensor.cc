@@ -123,12 +123,14 @@ base::Value::Dict SensitiveSensorRoutine::SensorDetail::GetDetailValue(
     int32_t id) {
   base::Value::Dict sensor_output;
   sensor_output.Set("id", id);
-  auto* out_types = sensor_output.Set("types", base::Value::List());
+  base::Value::List out_types;
   for (const auto& type : types)
-    out_types->Append(ConverDeviceTypeToString(type));
-  auto* out_channels = sensor_output.Set("channels", base::Value::List());
+    out_types.Append(ConverDeviceTypeToString(type));
+  sensor_output.Set("types", std::move(out_types));
+  base::Value::List out_channels;
   for (const auto& channel_name : GetRequiredChannels(types))
-    out_channels->Append(channel_name);
+    out_channels.Append(channel_name);
+  sensor_output.Set("channels", std::move(out_channels));
   return sensor_output;
 }
 
