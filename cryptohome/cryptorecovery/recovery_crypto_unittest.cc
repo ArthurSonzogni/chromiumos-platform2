@@ -525,7 +525,6 @@ TEST_F(RecoveryCryptoTest, NoRecoveryId) {
   EXPECT_THAT(recovery_id, testing::IsEmpty());
   std::vector<std::string> recovery_ids_history =
       recovery_->GetLastRecoveryIds(account_id, kMaxRecoveryIdDepth);
-  // EXPECT_TRUE(recovery_ids_history.empty());
   EXPECT_THAT(recovery_ids_history, testing::IsEmpty());
 }
 
@@ -551,7 +550,7 @@ TEST_F(RecoveryCryptoTest, VerifyRecoveryIdsHistory) {
   EXPECT_EQ(recovery_id, recovery_ids_history);
 }
 
-TEST_F(RecoveryCryptoTest, RecoveryIdsHistoryShortenThanRequested) {
+TEST_F(RecoveryCryptoTest, RecoveryIdsHistoryShorterThanRequested) {
   AccountIdentifier account_id;
   account_id.set_account_id(kFakeUserId);
 
@@ -568,7 +567,7 @@ TEST_F(RecoveryCryptoTest, RecoveryIdsHistoryShortenThanRequested) {
   std::vector<std::string> recovery_ids_history =
       recovery_->GetLastRecoveryIds(account_id, kMaxRecoveryIdDepth);
   EXPECT_EQ(recovery_ids_history.size(), kRecoveryIdDepth);
-  // Reverse recovery_id_depth to simplify comparison with recovery_id
+  // Reverse recovery_id_depth to simplify comparison with recovery_id.
   std::reverse(recovery_ids_history.begin(), recovery_ids_history.end());
   EXPECT_EQ(recovery_id, recovery_ids_history);
 }
@@ -595,6 +594,8 @@ TEST_F(RecoveryCryptoTest, GenerateOnboardingMetadataFileCorrupted) {
   EXPECT_TRUE(platform_.WriteStringToFileAtomicDurable(
       GetRecoveryIdPath(account_id), kCorruptedRecoveryIdContainer,
       kKeyFilePermissions));
+  // recovery_id from a corrupted container is empty and must be re-generated.
+  EXPECT_THAT(recovery_->LoadStoredRecoveryId(account_id), testing::IsEmpty());
   EXPECT_TRUE(recovery_->GenerateRecoveryId(account_id));
   std::string new_recovery_id = recovery_->LoadStoredRecoveryId(account_id);
   recovery_->GenerateOnboardingMetadata(kFakeGaiaId, kFakeDeviceId,
