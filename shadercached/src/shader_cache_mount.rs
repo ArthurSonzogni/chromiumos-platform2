@@ -28,13 +28,12 @@ pub struct VmId {
 
 #[derive(Debug, Clone)]
 pub struct ShaderCacheMount {
-    pub mounted: bool,
     // The Steam application that we want to mount to this directory.
-    pub target_steam_app_id: SteamAppId,
+    mount_queue: HashSet<SteamAppId>,
     // Steam app ids to unmount in periodic unmount loop
-    pub unmount_queue: HashSet<SteamAppId>,
+    unmount_queue: HashSet<SteamAppId>,
     // Absolute path to bind-mount DLC contents into.
-    pub absolute_mount_destination_path: PathBuf,
+    pub mount_base_path: PathBuf,
     // Within gpu cache directory, mesa creates a nested sub directory to store
     // shader cache. |relative_mesa_cache_path| is relative to the
     // render_server's base path within crosvm's gpu cache directory
@@ -45,21 +44,25 @@ pub struct ShaderCacheMount {
 }
 
 impl ShaderCacheMount {
-    pub fn new(render_server_path: &Path, target_steam_app_id: u64) -> Result<ShaderCacheMount> {
+    pub fn new(
+        render_server_path: &Path,
+        target_steam_app_id: SteamAppId,
+    ) -> Result<ShaderCacheMount> {
         let relative_mesa_cache_path =
             get_mesa_cache_relative_path(render_server_path).map_err(to_method_err)?;
-        let absolute_mount_destination_path = render_server_path.join(&relative_mesa_cache_path);
+        let mount_base_path = render_server_path.join(&relative_mesa_cache_path);
+        let mut mount_queue = HashSet::new();
+        mount_queue.insert(target_steam_app_id);
         Ok(ShaderCacheMount {
-            target_steam_app_id,
-            mounted: false,
-            relative_mesa_cache_path,
-            absolute_mount_destination_path,
+            mount_queue,
             unmount_queue: HashSet::new(),
+            relative_mesa_cache_path,
+            mount_base_path,
             foz_blob_db_list_path: render_server_path.join(FOZ_DB_LIST_FILE),
         })
     }
 
-    pub fn add_game_to_db_list(&self, steam_app_id: SteamAppId) -> Result<()> {
+    pub fn add_game_to_db_list(&mut self, steam_app_id: SteamAppId) -> Result<()> {
         // Add game to foz_db_list so that mesa can start using the directory
         // for precompiled cache. Adding game to list must happen after the
         // directory has been created and mounted.
@@ -88,10 +91,12 @@ impl ShaderCacheMount {
 
         fs::write(&self.foz_blob_db_list_path, contents)?;
 
+        self.dequeue_mount(&steam_app_id);
+
         Ok(())
     }
 
-    pub fn remove_game_from_db_list(&self, steam_app_id: SteamAppId) -> Result<bool> {
+    pub fn remove_game_from_db_list(&mut self, steam_app_id: SteamAppId) -> Result<bool> {
         // Remove game from foz_db_list so that mesa stops using the precompiled
         // cache in it. Removing the game from list must happen before
         // unmounting and removing the directory.
@@ -125,10 +130,14 @@ impl ShaderCacheMount {
 
         fs::write(&self.foz_blob_db_list_path, write_contents)?;
 
+        if found {
+            self.enqueue_unmount(steam_app_id);
+        }
+
         Ok(found)
     }
 
-    pub fn queue_unmount_all(&mut self) -> Result<()> {
+    pub fn reset_foz_db_list(&mut self) -> Result<()> {
         if !self.foz_blob_db_list_path.exists() {
             warn!(
                 "Nothing to unmount, specified path does not exist: {:?}",
@@ -156,7 +165,7 @@ impl ShaderCacheMount {
             }
         }
 
-        for entry in fs::read_dir(&self.absolute_mount_destination_path)? {
+        for entry in fs::read_dir(&self.mount_base_path)? {
             let entry = entry?;
             if entry.path().is_dir() {
                 if let Ok(str_entry) = entry.file_name().into_string() {
@@ -175,49 +184,75 @@ impl ShaderCacheMount {
         fs::write(&self.foz_blob_db_list_path, "")?;
 
         for game in cleared_games {
-            self.queue_unmount(game)?;
+            self.enqueue_unmount(game);
         }
 
         Ok(())
     }
 
-    pub fn queue_unmount(&mut self, steam_app_id: SteamAppId) -> Result<()> {
-        // |steam_app_id_to_unmount| is iterated by background unmounter thread
-        if !self.unmount_queue.insert(steam_app_id) {
-            return Err(anyhow!("Inserting to hash set failed"));
-        }
-        Ok(())
+    fn enqueue_unmount(&mut self, steam_app_id: SteamAppId) -> bool {
+        debug!("Enqueue unmount {}: {:?}", steam_app_id, self.unmount_queue);
+        let success = self.unmount_queue.insert(steam_app_id);
+        self.mount_queue.remove(&steam_app_id);
+        success
+    }
+
+    pub fn dequeue_unmount_multi(&mut self, to_remove: &[SteamAppId]) {
+        debug!("Dequeue unmount {:?}: {:?}", to_remove, self.unmount_queue);
+        self.unmount_queue
+            .retain(|steam_app_id| !to_remove.contains(steam_app_id))
+    }
+
+    pub fn enqueue_mount(&mut self, steam_app_id: SteamAppId) -> bool {
+        debug!("Enqueue mount {}: {:?}", steam_app_id, self.mount_queue);
+        let success = self.mount_queue.insert(steam_app_id);
+        self.unmount_queue.remove(&steam_app_id);
+        success
+    }
+
+    fn dequeue_mount(&mut self, steam_app_id: &SteamAppId) -> bool {
+        debug!("Dequeue mount {}: {:?}", steam_app_id, self.mount_queue);
+        self.mount_queue.remove(steam_app_id)
+    }
+
+    pub fn clear_mount_queue(&mut self) {
+        debug!("Dequeue all mount");
+        self.mount_queue.clear()
+    }
+
+    pub fn get_unmount_queue(&self) -> &HashSet<SteamAppId> {
+        &self.unmount_queue
+    }
+
+    pub fn get_mount_queue(&self) -> &HashSet<SteamAppId> {
+        &self.mount_queue
     }
 
     pub fn get_str_absolute_mount_destination_path(
         &self,
         steam_app_id: SteamAppId,
     ) -> Result<String> {
-        match self
-            .absolute_mount_destination_path
-            .join(steam_app_id.to_string())
-            .to_str()
-        {
+        match self.mount_base_path.join(steam_app_id.to_string()).to_str() {
             Some(str) => Ok(String::from(str)),
             None => Err(anyhow!(
                 "Failed to get string path for {:?}",
-                self.absolute_mount_destination_path
+                self.mount_base_path
             )),
         }
     }
 
-    pub fn dlc_content_path(&self) -> Result<String> {
+    pub fn dlc_content_path(&self, steam_app_id: SteamAppId) -> Result<String> {
         // Generate DLC content
         let str_base = format!(
             "/run/imageloader/{}/package/root/",
-            steam_app_id_to_dlc(self.target_steam_app_id),
+            steam_app_id_to_dlc(steam_app_id),
         );
         let path = Path::new(&str_base).join(&self.relative_mesa_cache_path);
 
         if !path.exists() {
             return Err(anyhow!(
                 "No shader cache DLC for Steam app {}, expected path {:?}",
-                self.target_steam_app_id,
+                steam_app_id,
                 path.as_os_str()
             ));
         }
@@ -249,7 +284,7 @@ impl ShaderCacheMount {
                 );
                 // Retry directory creation once with permissions fix
                 add_shader_cache_group_permission(vm_id, conn).await?;
-                fs::create_dir(&self.absolute_mount_destination_path)?;
+                fs::create_dir(&self.mount_base_path)?;
                 debug!("Successfully created mount directory on retry");
             }
             let perm = fs::Permissions::from_mode(0o750);

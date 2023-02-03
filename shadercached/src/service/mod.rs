@@ -68,13 +68,7 @@ pub async fn handle_install(
             .ok_or_else(|| MethodErr::failed("Failed to get mount information"))?;
 
         // Even if current application is mounted, re-install and re-mount
-        shader_cache_mount.mounted = false;
-        shader_cache_mount.target_steam_app_id = request.steam_app_id;
-
-        debug!(
-            "Mounting application {} to {:?} on successful installation",
-            request.steam_app_id, vm_id
-        );
+        shader_cache_mount.enqueue_mount(request.steam_app_id);
     }
 
     install_shader_cache_dlc(request.steam_app_id, conn.clone())
@@ -210,7 +204,7 @@ pub async fn handle_purge(
     mount_map: ShaderCacheMountMap,
     conn: Arc<SyncConnection>,
 ) -> Result<(), MethodErr> {
-    mount_map_queue_unmount_all(mount_map.clone(), None)
+    clear_all_mounts(mount_map.clone(), None)
         .await
         .map_err(to_method_err)?;
     wait_unmount_completed(mount_map, None, None, UNMOUNTER_INTERVAL * 2)
@@ -261,20 +255,9 @@ pub async fn handle_unmount(
         // with success code.
         // (note: --wait flag probably only needed for tasts and manual
         // debugging).
-        let found = shader_cache_mount
+        shader_cache_mount
             .remove_game_from_db_list(request.steam_app_id)
             .map_err(to_method_err)?;
-        if found {
-            shader_cache_mount
-                .queue_unmount(request.steam_app_id)
-                .map_err(to_method_err)?;
-            debug!(
-                "Unmount queue for {:?}: {:?}",
-                vm_id, shader_cache_mount.unmount_queue
-            );
-        } else {
-            debug!("{:?} has not mounted {}", vm_id, request.steam_app_id);
-        }
     } else {
         return Err(MethodErr::failed("VM had never mounted shader cache"));
     }
@@ -290,15 +273,11 @@ pub fn process_unmount_queue(
     let mut errors: Vec<String> = vec![];
     let mut to_remove: Vec<SteamAppId> = vec![];
 
-    for &steam_app_id in &shader_cache_mount.unmount_queue {
+    for &steam_app_id in shader_cache_mount.get_unmount_queue() {
         debug!("Attempting to unmount {} for {:?}", steam_app_id, vm_id);
 
         let unmount_result = unmount(shader_cache_mount, steam_app_id);
         let still_mounted = unmount_result.is_err();
-
-        if steam_app_id == shader_cache_mount.target_steam_app_id {
-            shader_cache_mount.mounted = still_mounted;
-        }
 
         if let Err(e) =
             signal_mount_status(still_mounted, vm_id, steam_app_id, &unmount_result, &conn)
@@ -313,14 +292,11 @@ pub fn process_unmount_queue(
                 unmount_result.unwrap_err()
             ));
         } else {
-            debug!("Successfully unmounted {}", steam_app_id);
             to_remove.push(steam_app_id);
         }
     }
 
-    shader_cache_mount
-        .unmount_queue
-        .retain(|steam_app_id| !to_remove.contains(steam_app_id));
+    shader_cache_mount.dequeue_unmount_multi(&to_remove);
 
     if errors.is_empty() {
         return Ok(());
@@ -328,20 +304,17 @@ pub fn process_unmount_queue(
     Err(anyhow!("{:?}", errors))
 }
 
-pub async fn mount_map_queue_unmount_all(
-    mount_map: ShaderCacheMountMap,
-    vm_id: Option<VmId>,
-) -> Result<()> {
-    // Queue unmount-everything function.
+pub async fn clear_all_mounts(mount_map: ShaderCacheMountMap, vm_id: Option<VmId>) -> Result<()> {
+    // Queue unmount-everything and clear queued mounts.
     // This function is called on Purge (vm_id is None) and on Borealis exit
     // (vm_id is set).
     let mut mount_map = mount_map.write().await;
     let mut failed_unmounts: HashSet<VmId> = HashSet::new();
 
     if let Some(vm_id) = vm_id {
-        if let Some(cache_metadata) = mount_map.get_mut(&vm_id) {
-            cache_metadata.target_steam_app_id = 0;
-            if let Err(e) = cache_metadata.queue_unmount_all() {
+        if let Some(shader_cache_mount) = mount_map.get_mut(&vm_id) {
+            shader_cache_mount.clear_mount_queue();
+            if let Err(e) = shader_cache_mount.reset_foz_db_list() {
                 error!("Failed to queue unmount all for {:?}: {}", vm_id, e);
                 failed_unmounts.insert(vm_id);
             }
@@ -349,9 +322,9 @@ pub async fn mount_map_queue_unmount_all(
             failed_unmounts.insert(vm_id);
         }
     } else {
-        for (vm_id, cache_metadata) in mount_map.iter_mut() {
-            cache_metadata.target_steam_app_id = 0;
-            if let Err(e) = cache_metadata.queue_unmount_all() {
+        for (vm_id, shader_cache_mount) in mount_map.iter_mut() {
+            shader_cache_mount.clear_mount_queue();
+            if let Err(e) = shader_cache_mount.reset_foz_db_list() {
                 error!("Failed to queue unmount all for {:?}: {}", vm_id, e);
                 failed_unmounts.insert(vm_id.clone());
             }
@@ -378,7 +351,7 @@ pub async fn handle_vm_stopped(
         vm_owner_id: stopping_signal.owner_id,
     };
 
-    mount_map_queue_unmount_all(mount_map, Some(vm_id))
+    clear_all_mounts(mount_map, Some(vm_id))
         .await
         .map_err(to_method_err)?;
 
@@ -427,10 +400,11 @@ pub async fn wait_unmount_completed(
                 let path_to_check: String = if let Some(steam_app_id) = steam_app_id {
                     shader_cache_mount.get_str_absolute_mount_destination_path(steam_app_id)?
                 } else {
-                    let shader_cache_mount_str_path = shader_cache_mount
-                        .absolute_mount_destination_path
-                        .to_str()
-                        .ok_or_else(|| anyhow!("Failed to convert PathBuf to string"))?;
+                    let shader_cache_mount_str_path =
+                        shader_cache_mount
+                            .mount_base_path
+                            .to_str()
+                            .ok_or_else(|| anyhow!("Failed to convert PathBuf to string"))?;
                     String::from(shader_cache_mount_str_path)
                 };
 

@@ -244,7 +244,7 @@ pub async fn main() -> Result<()> {
     drop(dlc_service_match);
     drop(concierge_match);
 
-    mount_map_queue_unmount_all(mount_points.clone(), None).await?;
+    clear_all_mounts(mount_points.clone(), None).await?;
     wait_unmount_completed(mount_points, None, None, UNMOUNTER_INTERVAL).await?;
 
     info!("Exiting with successful cleanup!");
@@ -252,7 +252,7 @@ pub async fn main() -> Result<()> {
 }
 
 async fn attempt_unmount_all(mount_map: ShaderCacheMountMap) {
-    match mount_map_queue_unmount_all(mount_map.clone(), None).await {
+    match clear_all_mounts(mount_map.clone(), None).await {
         Ok(_) => {
             if let Err(e) = wait_unmount_completed(mount_map, None, None, UNMOUNTER_INTERVAL).await
             {

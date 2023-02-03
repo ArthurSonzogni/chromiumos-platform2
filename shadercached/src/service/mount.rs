@@ -51,7 +51,7 @@ pub fn unmount(shader_cache_mount: &ShaderCacheMount, steam_app_id: SteamAppId) 
 
 pub fn bind_mount(shader_cache_mount: &ShaderCacheMount, steam_app_id: SteamAppId) -> Result<()> {
     // Mount the shader cache DLC for the requested Steam application ID
-    let src = shader_cache_mount.dlc_content_path()?;
+    let src = shader_cache_mount.dlc_content_path(steam_app_id)?;
     // destination path has been created at handle_install, which may involve
     // requesting permissions from concierge
     let dst = shader_cache_mount.get_str_absolute_mount_destination_path(steam_app_id)?;
@@ -118,7 +118,7 @@ pub fn signal_mount_status(
 }
 
 pub async fn mount_dlc(
-    steam_app_id_to_mount: SteamAppId,
+    steam_app_id: SteamAppId,
     mount_map: ShaderCacheMountMap,
     conn: Arc<SyncConnection>,
 ) -> Result<()> {
@@ -130,21 +130,18 @@ pub async fn mount_dlc(
     let mut errors: Vec<String> = vec![];
 
     for (vm_id, shader_cache_mount) in mount_map.iter_mut() {
-        if shader_cache_mount.target_steam_app_id == steam_app_id_to_mount
-            && !shader_cache_mount.mounted
-        {
+        if shader_cache_mount.get_mount_queue().contains(&steam_app_id) {
             debug!("Mounting for {:?}", vm_id);
             let mount_result = shader_cache_mount
-                .setup_mount_destination(vm_id, steam_app_id_to_mount, conn.clone())
+                .setup_mount_destination(vm_id, steam_app_id, conn.clone())
                 .await
-                .and_then(|_| bind_mount(shader_cache_mount, steam_app_id_to_mount))
-                .and_then(|_| shader_cache_mount.add_game_to_db_list(steam_app_id_to_mount));
-            shader_cache_mount.mounted = mount_result.is_ok();
+                .and_then(|_| bind_mount(shader_cache_mount, steam_app_id))
+                .and_then(|_| shader_cache_mount.add_game_to_db_list(steam_app_id));
 
             if let Err(e) = signal_mount_status(
                 mount_result.is_ok(),
                 vm_id,
-                steam_app_id_to_mount,
+                steam_app_id,
                 &mount_result,
                 &conn,
             ) {
@@ -171,26 +168,16 @@ pub async fn unmount_dlc(
     info!("Unmounting DLC");
     // Iterate through all mount points then queue unmount for
     // |steam_app_id_to_unmount|
-    let mut errors: Vec<String> = vec![];
-
     {
         // |mount_map| with write mutex needs to go out of scope after this
         // loop so that background unmounter can take the mutex
         let mut mount_map = mount_map.write().await;
         for (vm_id, shader_cache_mount) in mount_map.iter_mut() {
-            if shader_cache_mount.target_steam_app_id == steam_app_id_to_unmount {
-                shader_cache_mount.target_steam_app_id = 0;
-            }
-            let found = shader_cache_mount.remove_game_from_db_list(steam_app_id_to_unmount)?;
-            if found {
-                debug!(
-                    "Queuing unmount {} for {:?}",
-                    steam_app_id_to_unmount, vm_id
-                );
-                if let Err(e) = shader_cache_mount.queue_unmount(steam_app_id_to_unmount) {
-                    errors.push(format!("Failed to queue unmount: {:?}\n", e));
-                }
-            }
+            debug!(
+                "Processing DLC {} unmount for VM {:?}",
+                steam_app_id_to_unmount, vm_id
+            );
+            shader_cache_mount.remove_game_from_db_list(steam_app_id_to_unmount)?;
         }
     }
 
