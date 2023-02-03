@@ -24,18 +24,13 @@ use std::io::ErrorKind;
 use std::io::Read;
 use std::io::Write;
 
-use anyhow::Context;
-use anyhow::Result;
 use libc::utsname;
 use log::debug;
 use openssl::hash::Hasher;
 use openssl::hash::MessageDigest;
 
 use crate::hibermeta::HibernateMetadata;
-use crate::hibermeta::META_FLAG_KERNEL_ENCRYPTED;
-use crate::hibermeta::META_HASH_SIZE;
 use crate::hiberutil::get_page_size;
-use crate::hiberutil::HibernateError;
 use crate::mmapbuf::MmapBuffer;
 
 /// A machine with 32GB RAM has 8M of Page Frame Numbers (PFNs).
@@ -83,21 +78,12 @@ impl<'a> ImageSplitter<'a> {
         metadata: &'a mut HibernateMetadata,
         compute_header_hash: bool,
     ) -> ImageSplitter<'a> {
-        // If the kernel is handling encryption, then it also hands back the
-        // metadata size. Otherwise, it will have to be read out of the header
-        // while the data comes through.
-        let meta_size = if (metadata.flags & META_FLAG_KERNEL_ENCRYPTED) != 0 {
-            metadata.image_meta_size
-        } else {
-            0
-        };
-
         Self {
             header_file,
             data_file,
             metadata,
             page_size: get_page_size(),
-            meta_size,
+            meta_size: 0,
             bytes_done: 0,
             hasher: Hasher::new(MessageDigest::sha256()).unwrap(),
             compute_header_hash,
@@ -239,19 +225,6 @@ impl<'a> ImageJoiner<'a> {
             header_hash: vec![],
             compute_header_hash,
         }
-    }
-
-    /// Returns the computed hash of the header region, which the caller will
-    /// compare to what's in the private metadata (once that's decrypted and
-    /// available).
-    pub fn get_header_hash(&self, hash: &mut [u8; META_HASH_SIZE]) -> Result<()> {
-        if self.header_hash.len() != META_HASH_SIZE {
-            return Err(HibernateError::HeaderIncomplete())
-                .context("The header is invalid or has not yet been read");
-        }
-
-        hash.copy_from_slice(&self.header_hash[..]);
-        Ok(())
     }
 
     /// Helper function to read contents from the header file, snarfing out the

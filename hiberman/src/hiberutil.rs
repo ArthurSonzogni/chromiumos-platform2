@@ -52,12 +52,6 @@ pub enum HibernateError {
     /// First data byte mismatch
     #[error("First data byte mismatch")]
     FirstDataByteMismatch(),
-    /// Header content hash mismatch
-    #[error("Header content hash mismatch")]
-    HeaderContentHashMismatch(),
-    /// Header incomplete
-    #[error("Header incomplete")]
-    HeaderIncomplete(),
     /// Insufficient Memory available.
     #[error("Not enough free memory and swap")]
     InsufficientMemoryAvailableError(),
@@ -127,7 +121,6 @@ pub enum HibernateError {
 #[derive(Default)]
 pub struct HibernateOptions {
     pub dry_run: bool,
-    pub no_kernel_encryption: bool,
 }
 
 /// Options taken from the command line affecting resume-init.

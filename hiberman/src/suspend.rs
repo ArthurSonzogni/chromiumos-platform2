@@ -5,7 +5,6 @@
 //! Implements hibernate suspend functionality.
 
 use std::ffi::CString;
-use std::io::Write;
 use std::mem::MaybeUninit;
 use std::time::Instant;
 
@@ -30,7 +29,6 @@ use crate::files::does_hiberfile_exist;
 use crate::files::open_metrics_file;
 use crate::files::preallocate_header_file;
 use crate::files::preallocate_hiberfile;
-use crate::files::preallocate_kernel_key_file;
 use crate::files::preallocate_log_file;
 use crate::files::preallocate_metadata_file;
 use crate::files::preallocate_metrics_file;
@@ -41,7 +39,6 @@ use crate::hiberlog::reset_log;
 use crate::hiberlog::HiberlogFile;
 use crate::hiberlog::HiberlogOut;
 use crate::hibermeta::HibernateMetadata;
-use crate::hibermeta::META_FLAG_KERNEL_ENCRYPTED;
 use crate::hibermeta::META_FLAG_VALID;
 use crate::hibermeta::META_TAG_SIZE;
 use crate::hiberutil::get_page_size;
@@ -63,7 +60,6 @@ use crate::metrics::MetricsLogger;
 use crate::snapdev::FrozenUserspaceTicket;
 use crate::snapdev::SnapshotDevice;
 use crate::snapdev::SnapshotMode;
-use crate::snapdev::UswsuspUserKey;
 use crate::splitter::ImageSplitter;
 use crate::sysfs::Swappiness;
 use crate::update_engine::is_update_engine_idle;
@@ -112,7 +108,6 @@ impl SuspendConductor {
         let should_zero = is_lvm && !files_exist;
         let header_file = preallocate_header_file(should_zero)?;
         let hiber_file = preallocate_hiberfile(should_zero)?;
-        let kernel_key_file = preallocate_kernel_key_file(should_zero)?;
         let meta_file = preallocate_metadata_file(should_zero)?;
 
         // The resume log file needs to be preallocated now before the
@@ -169,7 +164,7 @@ impl SuspendConductor {
 
         prealloc_mem(&mut self.metrics).context("Failed to preallocate memory for hibernate")?;
 
-        let result = self.suspend_system(header_file, hiber_file, meta_file, kernel_key_file);
+        let result = self.suspend_system(header_file, hiber_file, meta_file);
         // Now send any remaining logs and future logs to syslog.
         redirect_log(HiberlogOut::Syslog);
         // Replay logs first because they happened earlier.
@@ -191,46 +186,11 @@ impl SuspendConductor {
         header_file: DiskFile,
         hiber_file: DiskFile,
         meta_file: BouncedDiskFile,
-        kernel_key_file: BouncedDiskFile,
     ) -> Result<()> {
         let mut snap_dev = SnapshotDevice::new(SnapshotMode::Read)?;
         info!("Freezing userspace");
         let frozen_userspace = snap_dev.freeze_userspace()?;
-        self.snapshot_and_save(
-            header_file,
-            hiber_file,
-            meta_file,
-            kernel_key_file,
-            frozen_userspace,
-        )
-    }
-
-    /// Attempt to retrieve and save the kernel key blob on systems that support
-    /// it. Failure to get the key blob indicates a system that does not support
-    /// it, and is not treated as an error. Returns a boolean indicating whether
-    /// or not the kernel supports encrypting the hibernate image.
-    fn save_kernel_key_blob(
-        &mut self,
-        snap_dev: &mut SnapshotDevice,
-        key_file: &mut BouncedDiskFile,
-    ) -> Result<bool> {
-        let kernel_key_blob = match snap_dev.get_key_blob() {
-            Err(e) => {
-                info!("No in-kernel encryption support ({:?}), continuing", e);
-                return Ok(false);
-            }
-            Ok(k) => k,
-        };
-        let blob_bytes = kernel_key_blob.serialize();
-        let mut blob_buf = [0u8; 4096];
-        blob_buf[0..blob_bytes.len()].copy_from_slice(blob_bytes);
-        key_file.write_all(&blob_buf).context(format!(
-            "Could not write kernel key blob len {}",
-            blob_buf.len()
-        ))?;
-        // Mark that the kernel is doing encryption.
-        self.metadata.flags |= META_FLAG_KERNEL_ENCRYPTED;
-        Ok(true)
+        self.snapshot_and_save(header_file, hiber_file, meta_file, frozen_userspace)
     }
 
     /// Snapshot the system, write the result to disk, and power down. Returns
@@ -241,39 +201,17 @@ impl SuspendConductor {
         header_file: DiskFile,
         hiber_file: DiskFile,
         mut meta_file: BouncedDiskFile,
-        mut kernel_key_file: BouncedDiskFile,
         mut frozen_userspace: FrozenUserspaceTicket,
     ) -> Result<()> {
         let block_path = path_to_stateful_block()?;
         let dry_run = self.options.dry_run;
         let snap_dev = frozen_userspace.as_mut();
-        // Attempt to get the key blob from the kernel. If this was
-        // successful, the kernel is handling encryption, so we don't need
-        // to ourselves.
-        let kernel_encryption = if self.options.no_kernel_encryption {
-            false
-        } else {
-            self.save_kernel_key_blob(snap_dev, &mut kernel_key_file)?
-        };
-
-        // Attempt to get the key blob from the kernel. If this was
-        // successful, the kernel is handling encryption, so we don't need
-        // to ourselves.
-        if kernel_encryption {
-            info!("Using kernel image encryption");
-        }
 
         // This is where the suspend path and resume path fork. On success,
         // both halves of these conditions execute, just at different times.
         if snap_dev.atomic_snapshot()? {
             // Suspend path. Everything after this point is invisible to the
             // hibernated kernel.
-
-            // Send in the user key, and get out the image metadata size.
-            if kernel_encryption {
-                let user_key = UswsuspUserKey::new_from_u8_slice(&self.metadata.data_key);
-                self.metadata.image_meta_size = snap_dev.set_user_key(&user_key)?;
-            }
             self.write_image(header_file, hiber_file, snap_dev)?;
             meta_file.rewind()?;
             self.metadata.write_to_disk(&mut meta_file)?;
@@ -331,8 +269,8 @@ impl SuspendConductor {
         )?;
 
         debug!("Hibernate image is {} bytes", image_size);
-        let compute_header_hash = (self.metadata.flags & META_FLAG_KERNEL_ENCRYPTED) == 0;
         let start = Instant::now();
+        let compute_header_hash = false;
         let mut splitter = ImageSplitter::new(
             &mut header_file,
             &mut encryptor,
@@ -353,6 +291,7 @@ impl SuspendConductor {
         Ok(())
     }
 
+    /// TODO(b/267097307): Remove with ImageSplitter.
     /// Move the image in stages, first the header, then the body. This is done
     /// because when using kernel encryption, the header size won't align to a
     /// page. But we still want the main data DiskFile to use DIRECT_IO with

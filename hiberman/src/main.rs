@@ -202,11 +202,6 @@ fn hiberman_hibernate(args: &mut std::env::Args) -> std::result::Result<(), ()> 
     init_logging()?;
     let mut opts = Options::new();
     opts.optflag("h", "help", "Print this help text");
-    opts.optflag(
-        "k",
-        "no-kernel-encryption",
-        "Avoid using kernel based encryption for the hibernation image",
-    );
     opts.optflag("n", "dry-run", "Create the hibernate image, but then exit rather than shutting down. This image should only be restored with --dry-run");
     let args: Vec<String> = args.collect();
     let matches = match opts.parse(args) {
@@ -225,7 +220,6 @@ fn hiberman_hibernate(args: &mut std::env::Args) -> std::result::Result<(), ()> 
 
     let options = HibernateOptions {
         dry_run: matches.opt_present("n"),
-        no_kernel_encryption: matches.opt_present("k"),
     };
 
     if let Err(e) = hiberman::hibernate(options) {

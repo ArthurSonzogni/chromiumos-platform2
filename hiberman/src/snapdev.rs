@@ -41,6 +41,7 @@ pub struct UswsuspKeyBlob {
 }
 
 impl UswsuspKeyBlob {
+    #[allow(dead_code)]
     pub fn deserialize(bytes: &[u8]) -> Self {
         // This is safe because the structure is repr(C), packed, and made only
         // of primitives.
@@ -52,6 +53,7 @@ impl UswsuspKeyBlob {
         }
     }
 
+    #[allow(dead_code)]
     pub fn serialize(&self) -> &[u8] {
         // This is safe because the structure is repr(C), packed, and made only
         // of primitives.
@@ -120,6 +122,7 @@ const UNFREEZE: u64 = SNAPSHOT_UNFREEZE();
 const ATOMIC_RESTORE: u64 = SNAPSHOT_ATOMIC_RESTORE();
 const GET_IMAGE_SIZE: u64 = SNAPSHOT_GET_IMAGE_SIZE();
 const CREATE_IMAGE: u64 = SNAPSHOT_CREATE_IMAGE();
+#[allow(dead_code)]
 const ENABLE_ENCRYPTION: u64 = SNAPSHOT_ENABLE_ENCRYPTION();
 const SET_USER_KEY: u64 = SNAPSHOT_SET_USER_KEY();
 
@@ -229,24 +232,10 @@ impl SnapshotDevice {
         Ok(image_size)
     }
 
-    /// Get the encryption key from the kernel.
-    pub fn get_key_blob(&mut self) -> Result<UswsuspKeyBlob> {
-        let mut blob = UswsuspKeyBlob::default();
-        // The parameter may be either read or written to based on whether the
-        // snap device was opened with read or write. The API assumes both.
-        unsafe {
-            self.ioctl_with_mut_ptr(
-                ENABLE_ENCRYPTION,
-                "ENABLE_ENCRYPTION",
-                &mut blob as *mut UswsuspKeyBlob as *mut c_void,
-            )?;
-        }
-        Ok(blob)
-    }
-
     /// Hand the encryption key to the kernel. This is actually the same ioctl
     /// as the get call, but only one is successful depending on if the snapdev
     /// was opened with read or write permission.
+    #[allow(dead_code)]
     pub fn set_key_blob(&mut self, blob: &UswsuspKeyBlob) -> Result<()> {
         unsafe {
             self.ioctl_with_ptr(
@@ -289,6 +278,7 @@ impl SnapshotDevice {
     ///
     /// The caller must ensure that the actions the ioctl performs uphold
     /// Rust's memory safety guarantees.
+    #[allow(dead_code)]
     unsafe fn ioctl_with_ptr(
         &mut self,
         ioctl: c_ulong,

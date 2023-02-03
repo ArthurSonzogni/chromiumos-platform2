@@ -28,7 +28,6 @@ use crate::diskfile::BouncedDiskFile;
 use crate::diskfile::DiskFile;
 use crate::files::open_header_file;
 use crate::files::open_hiberfile;
-use crate::files::open_kernel_key_file;
 use crate::files::open_log_file;
 use crate::files::open_metafile;
 use crate::files::open_metrics_file;
@@ -39,12 +38,10 @@ use crate::hiberlog::HiberlogFile;
 use crate::hiberlog::HiberlogOut;
 use crate::hibermeta::HibernateMetadata;
 use crate::hibermeta::META_FLAG_ENCRYPTED;
-use crate::hibermeta::META_FLAG_KERNEL_ENCRYPTED;
 use crate::hibermeta::META_FLAG_RESUME_FAILED;
 use crate::hibermeta::META_FLAG_RESUME_LAUNCHED;
 use crate::hibermeta::META_FLAG_RESUME_STARTED;
 use crate::hibermeta::META_FLAG_VALID;
-use crate::hibermeta::META_HASH_SIZE;
 use crate::hiberutil::emit_upstart_event;
 use crate::hiberutil::get_page_size;
 use crate::hiberutil::lock_process_memory;
@@ -66,7 +63,6 @@ use crate::powerd::PowerdPendingResume;
 use crate::snapdev::FrozenUserspaceTicket;
 use crate::snapdev::SnapshotDevice;
 use crate::snapdev::SnapshotMode;
-use crate::snapdev::UswsuspKeyBlob;
 use crate::snapdev::UswsuspUserKey;
 use crate::splitter::ImageJoiner;
 use crate::volume::PendingStatefulMerge;
@@ -176,15 +172,8 @@ impl ResumeConductor {
         let hiber_file = open_hiberfile()?;
         let _locked_memory = lock_process_memory()?;
         let header_file = open_header_file()?;
-        let kernel_key_file = open_kernel_key_file()?;
         self.metadata = metadata;
-        self.resume_system(
-            header_file,
-            hiber_file,
-            meta_file,
-            kernel_key_file,
-            dbus_connection,
-        )
+        self.resume_system(header_file, hiber_file, meta_file, dbus_connection)
     }
 
     /// Helper function to evaluate the hibernate cookie and decide whether or
@@ -233,30 +222,12 @@ impl ResumeConductor {
         Ok(())
     }
 
-    fn load_kernel_key_blob(
-        &mut self,
-        snap_dev: &mut SnapshotDevice,
-        key_file: &mut BouncedDiskFile,
-    ) -> Result<()> {
-        let mut blob_buf = [0u8; 4096];
-        key_file
-            .read_exact(&mut blob_buf)
-            .context("Could not read kernel key blob")?;
-        let kernel_key_blob = UswsuspKeyBlob::deserialize(&blob_buf);
-        snap_dev
-            .set_key_blob(&kernel_key_blob)
-            .context("Failed to set kernel key blob")?;
-
-        Ok(())
-    }
-
     /// Inner helper function to read the resume image and launch it.
     fn resume_system(
         &mut self,
         header_file: DiskFile,
         hiber_file: DiskFile,
         meta_file: BouncedDiskFile,
-        mut kernel_key_file: BouncedDiskFile,
         dbus_connection: &mut HiberDbusConnection,
     ) -> Result<()> {
         let mut log_file = open_log_file(HiberlogFile::Resume)?;
@@ -265,11 +236,6 @@ impl ResumeConductor {
         // Start logging to the resume logger.
         redirect_log(HiberlogOut::File(Box::new(log_file)));
         let mut snap_dev = SnapshotDevice::new(SnapshotMode::Write)?;
-        if (self.metadata.flags & META_FLAG_KERNEL_ENCRYPTED) != 0 {
-            debug!("Loading kernel key blob");
-            self.load_kernel_key_blob(&mut snap_dev, &mut kernel_key_file)
-                .context("Failed to load kernel key blob")?;
-        }
 
         // With the kernel key loaded, all the TPM work is complete.
         self.emit_tpm_done_event()?;
@@ -379,12 +345,12 @@ impl ResumeConductor {
         debug!("Resume image is {} bytes", image_size);
         // Create the image joiner, which combines the header file and the data
         // file into one contiguous read stream.
-        let should_hash_header = (self.metadata.flags & META_FLAG_KERNEL_ENCRYPTED) == 0;
+        let compute_header_hash = false;
         let mut joiner = ImageJoiner::new(
             &mut header_file,
             &mut hiber_file,
             self.metadata.image_meta_size,
-            should_hash_header,
+            compute_header_hash,
         );
         self.load_header(&mut joiner, snap_dev)?;
         image_size -= self.metadata.image_meta_size;
@@ -409,13 +375,10 @@ impl ResumeConductor {
         self.key_manager.install_saved_metadata_key(metadata)?;
         metadata.load_private_data()?;
 
-        // Let the kernel fold in the user key now that it's finally available.
-        if (metadata.flags & META_FLAG_KERNEL_ENCRYPTED) != 0 {
-            let user_key = UswsuspUserKey::new_from_u8_slice(&metadata.data_key);
-            snap_dev
-                .set_user_key(&user_key)
-                .context("Failed to set user key")?;
-        }
+        let user_key = UswsuspUserKey::new_from_u8_slice(&metadata.data_key);
+        snap_dev
+            .set_user_key(&user_key)
+            .context("Failed to set user key")?;
 
         let mode = if (metadata.flags & META_FLAG_ENCRYPTED) != 0 {
             CryptoMode::Decrypt
@@ -431,8 +394,6 @@ impl ResumeConductor {
         )?;
         if (metadata.flags & META_FLAG_ENCRYPTED) != 0 {
             debug!("Image is encrypted");
-        } else if (metadata.flags & META_FLAG_KERNEL_ENCRYPTED) != 0 {
-            debug!("Kernel is handling encryption");
         }
 
         // The first data byte was already sent down. Send down a partial page
@@ -468,25 +429,6 @@ impl ResumeConductor {
         decryptor
             .check_tag(&self.metadata.data_tag)
             .context("Failed to verify image authentication tag")?;
-
-        if should_hash_header {
-            // Check the header pages hash. Ideally this would be done just
-            // after the private data was loaded, but by then we've handed a
-            // mutable borrow out to the mover source. This is fine too, as the
-            // kernel will reject writes if the page list size is different. The
-            // worst an attacker can do is move pages around to other RAM
-            // locations (the kernel ensures the pages are RAM). The check here
-            // ensures we'll never jump into anything but the original header.
-            debug!("Validating header content");
-            let mut header_hash = [0u8; META_HASH_SIZE];
-            joiner.get_header_hash(&mut header_hash)?;
-            let metadata = &mut self.metadata;
-            if metadata.header_hash != header_hash {
-                error!("Metadata header hash mismatch");
-                return Err(HibernateError::HeaderContentHashMismatch())
-                    .context("Failed to load verify resume header pages");
-            }
-        }
 
         Ok(pending_resume_call)
     }
