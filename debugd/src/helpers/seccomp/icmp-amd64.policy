@@ -53,3 +53,4 @@ setresgid: 1
 setresuid: 1
 capget: 1
 capset: 1
+setuid: 1

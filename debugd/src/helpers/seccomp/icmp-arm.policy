@@ -50,3 +50,4 @@ getcwd: 1
 setgroups32: 1
 setresgid32: 1
 setresuid32: 1
+setuid32: 1

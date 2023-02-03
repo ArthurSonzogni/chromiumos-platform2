@@ -51,3 +51,4 @@ rt_sigreturn: 1
 getcwd: 1
 capget: 1
 capset: 1
+setuid: 1
