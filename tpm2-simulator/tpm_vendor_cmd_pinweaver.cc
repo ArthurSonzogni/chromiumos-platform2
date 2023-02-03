@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <algorithm>
 #include <string>
 
 #include <base/sys_byteorder.h>
@@ -54,11 +55,12 @@ bool TpmVendorCommandPinweaver::IsVendorCommand(const std::string& command) {
 
 std::string TpmVendorCommandPinweaver::RunCommand(const std::string& command) {
   std::string command_copy = command.substr(kVendorHeaderSize);
-  void* request_buf = reinterpret_cast<void*>(command_copy.data());
-  size_t request_size = command_copy.size();
   std::string response;
   response.resize(PW_MAX_MESSAGE_SIZE);
-  void* response_buf = reinterpret_cast<void*>(response.data());
+  std::copy(command_copy.begin(), command_copy.end(), response.begin());
+  void* request_buf = reinterpret_cast<void*>(response.data());
+  size_t request_size = command_copy.size();
+  void* response_buf = request_buf;
   size_t response_size = 0;
   pinweaver_command(request_buf, request_size, response_buf, &response_size);
 
