@@ -359,13 +359,9 @@ helpers:
  * mmapbuf.rs - A helper object to create large aligned buffers (which are a
    requirement for files opened with O_DIRECT).
  * powerd.rs - Handles interactions with the ChromeOS power daemon.
- * preloader.rs - An object that can be inserted in the image pipeline that will
-   load contents from disk early and store it in memory for a spell.
  * snapdev.rs - Encapsulates ioctl interactions with /dev/snapshot.
  * splitter.rs - An object that can be inserted in the image pipeline that
    splits or merges the snapshot data into a header portion and a data portion.
-   This is used to coerce the kernel into doing its giant resume allocation
-   before preloading starts in earnest.
  * sysfs.rs - A miscellaneous file for temporarily modifying sysfs files during
    the hibernate process.
  * volume.rs - Handles volume-related operations, such as setting up

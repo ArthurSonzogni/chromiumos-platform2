@@ -4,10 +4,8 @@
 
 //! Implements hibernate resume functionality.
 
-use std::convert::TryInto;
 use std::io::Read;
 use std::io::Write;
-use std::time::Duration;
 use std::time::Instant;
 
 use anyhow::Context;
@@ -65,7 +63,6 @@ use crate::metrics::MetricsLogger;
 use crate::metrics::MetricsSample;
 use crate::mmapbuf::MmapBuffer;
 use crate::powerd::PowerdPendingResume;
-use crate::preloader::ImagePreloader;
 use crate::snapdev::FrozenUserspaceTicket;
 use crate::snapdev::SnapshotDevice;
 use crate::snapdev::SnapshotMode;
@@ -399,46 +396,10 @@ impl ResumeConductor {
         );
         self.load_header(&mut joiner, snap_dev)?;
         image_size -= self.metadata.image_meta_size;
-        let mover_source: &mut dyn Read;
+        let mover_source: &mut dyn Read = &mut joiner;
 
-        // Fire up the preloader to start loading pages off of disk right away.
-        // We preload data because disk latency tends to be the long pole in the
-        // tent, but we don't yet have the decryption keys needed to decrypt the
-        // data and feed it to the kernel. Preloading is an attempt to frontload
-        // that disk latency while the user is still authenticating (eg typing
-        // in their password).
-        let mut preloader;
-        let preload_duration;
-        if self.options.no_preloader {
-            info!("Not using preloader");
-            mover_source = &mut joiner;
-            preload_duration = Duration::ZERO;
-        } else {
-            preloader = ImagePreloader::new(
-                &mut joiner,
-                image_size
-                    .try_into()
-                    .expect("The whole image should fit in memory"),
-            );
-
-            // By now the kernel has done its own allocation for hibernate image
-            // space. We can use the remaining memory to preload from disk.
-            debug!("Preloading hibernate image");
-            let start = Instant::now();
-            let preloaded = preloader.load_into_available_memory()?;
-            preload_duration = start.elapsed();
-            log_io_duration("Preloaded image", preloaded as i64, preload_duration);
-            self.metrics_logger.metrics_send_io_sample(
-                "PreloadImage",
-                preloaded as i64,
-                preload_duration,
-            );
-            mover_source = &mut preloader;
-        }
-
-        // Now that as much data as possible has been preloaded from disk, the next
-        // step is to start decrypting it and push it to the kernel. Block waiting
-        // on the authentication key material from cryptohome.
+        // The next step is to start decrypting it and push it to the kernel.
+        // Block waiting on the authentication key material from cryptohome.
         let pending_resume_call;
         if self.options.test_keys {
             self.key_manager.use_test_keys()?;
@@ -517,7 +478,7 @@ impl ResumeConductor {
         log_io_duration("Read main image", image_size, main_move_duration);
         self.metrics_logger
             .metrics_send_io_sample("ReadMainImage", image_size, main_move_duration);
-        let total_io_duration = preload_duration + main_move_duration;
+        let total_io_duration = main_move_duration;
         log_io_duration("Read all data", total_size, total_io_duration);
         self.metrics_logger
             .metrics_send_io_sample("ReadAllData", total_size, total_io_duration);

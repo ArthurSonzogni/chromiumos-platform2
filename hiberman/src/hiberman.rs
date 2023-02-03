@@ -21,7 +21,6 @@ mod keyman;
 mod lvm;
 mod mmapbuf;
 mod powerd;
-mod preloader;
 mod resume;
 mod resume_init;
 mod snapdev;

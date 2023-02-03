@@ -363,7 +363,6 @@ fn hiberman_resume(args: &mut std::env::Args) -> std::result::Result<(), ()> {
     let mut opts = Options::new();
     opts.optflag("h", "help", "Print this help text");
     opts.optflag("n", "dry-run", "Create the hibernate image, but then exit rather than shutting down. This image should only be restored with --dry-run");
-    opts.optflag("p", "no-preloader", "Do not use the ImagePreloader");
     opts.optflag(
         "u",
         "unencrypted",
@@ -387,7 +386,6 @@ fn hiberman_resume(args: &mut std::env::Args) -> std::result::Result<(), ()> {
 
     let options = ResumeOptions {
         dry_run: matches.opt_present("n"),
-        no_preloader: matches.opt_present("p"),
         test_keys: matches.opt_present("t"),
         unencrypted: matches.opt_present("u"),
     };

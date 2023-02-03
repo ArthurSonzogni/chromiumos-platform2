@@ -147,7 +147,6 @@ pub struct ResumeOptions {
     pub dry_run: bool,
     pub unencrypted: bool,
     pub test_keys: bool,
-    pub no_preloader: bool,
 }
 
 /// Options taken from the command line affecting abort-resume.
