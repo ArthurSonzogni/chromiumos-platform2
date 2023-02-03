@@ -1317,16 +1317,11 @@ std::string Service::GetEapPassphrase(Error* error) {
 }
 
 void Service::RequestPortalDetection(Error* error) {
-  DeviceRefPtr device = manager_->FindDeviceFromService(this);
-  if (!device) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
-                          "Failed to find device from service: " + log_name());
-    return;
-  }
-  if (!device->UpdatePortalDetector(Network::ValidationReason::kDBusRequest)) {
+  LOG(INFO) << log_name() << ": " << __func__;
+  if (!UpdateNetworkValidation(Network::ValidationReason::kDBusRequest)) {
     Error::PopulateAndLog(
         FROM_HERE, error, Error::kOperationFailed,
-        "Failed to restart portal detection for service: " + log_name());
+        "Failed to restart network validation for Service " + log_name());
   }
 }
 
@@ -2087,10 +2082,10 @@ bool Service::IsPortalDetectionDisabled() const {
     return true;
   }
 
-  // We need to disable portal detection on networks with proxy config
+  // We need to disable network validation on networks with proxy config
   // (excluding "direct"), even when the network is not managed, in order for
-  // on-prem proxy server with a strict firewall that blocks portal detection to
-  // be seen as online. See b/302126338.
+  // on-prem proxy server with a strict firewall that blocks network validation
+  // to be seen as online. See b/302126338.
   if (HasProxyConfig()) {
     return true;
   }
@@ -2263,28 +2258,11 @@ bool Service::SetCheckPortal(const std::string& check_portal, Error* error) {
   if (check_portal == check_portal_) {
     return false;
   }
+  LOG(INFO) << log_name() << ": " << __func__ << ": " << check_portal_ << " -> "
+            << check_portal;
   check_portal_ = check_portal;
-  OnPortalDetectionConfigurationChange();
+  UpdateNetworkValidation(Network::ValidationReason::kServicePropertyUpdate);
   return true;
-}
-
-void Service::OnPortalDetectionConfigurationChange() {
-  if (!IsConnected()) {
-    return;
-  }
-  const DeviceRefPtr device = manager_->FindDeviceFromService(this);
-  if (!device) {
-    LOG(WARNING)
-        << log_name()
-        << ": Service is connected but associated Device was not found";
-    return;
-  }
-  // Start or restart portal detection if it should be running.
-  // Stop portal detection if it should now be disabled and ensure that the
-  // Service transitions to the "online" state now that portal detection has
-  // stopped.
-  device->UpdatePortalDetector(
-      Network::ValidationReason::kServicePropertyUpdate);
 }
 
 std::string Service::GetGuid(Error* error) {
@@ -2377,9 +2355,12 @@ bool Service::SetProxyConfig(const std::string& proxy_config, Error* error) {
     return false;
   }
   proxy_config_ = proxy_config;
-  // Force portal detection to restart if it was already running: the new
+  // Force network validation to restart if it was already running: the new
   // Proxy settings could change validation results.
-  OnPortalDetectionConfigurationChange();
+  LOG(INFO)
+      << log_name()
+      << ": Restarting network validation after proxy configuration change";
+  UpdateNetworkValidation(Network::ValidationReason::kServicePropertyUpdate);
   adaptor_->EmitStringChanged(kProxyConfigProperty, proxy_config_);
   return true;
 }

@@ -73,7 +73,6 @@ namespace {
 const char kConnectDisconnectReason[] = "RPC";
 const char kGUID[] = "guid";
 const char kIfName[] = "testdevice";
-const char kHwAddr[] = "01:02:03:0a:0b:0c";
 }  // namespace
 
 namespace shill {
@@ -1423,13 +1422,12 @@ TEST_F(ServiceTest, OnPropertyChanged) {
 }
 
 TEST_F(ServiceTest, SetCheckPortal) {
-  scoped_refptr<MockDevice> mock_device =
-      new MockDevice(&mock_manager_, kIfName, kHwAddr, 1);
-  ON_CALL(mock_manager_, FindDeviceFromService(_))
-      .WillByDefault(Return(mock_device));
+  auto network =
+      std::make_unique<MockNetwork>(1, kIfName, Technology::kEthernet);
+  service_->AttachNetwork(network->AsWeakPtr());
 
   // Ensure no other conditions for IsPortalDetectionDisabled is met.
-  EXPECT_CALL(mock_manager_, IsPortalDetectionEnabled(_))
+  EXPECT_CALL(mock_manager_, IsPortalDetectionEnabled)
       .WillRepeatedly(Return(true));
   {
     Error error;
@@ -1439,58 +1437,55 @@ TEST_F(ServiceTest, SetCheckPortal) {
   EXPECT_FALSE(service_->IsPortalDetectionDisabled());
 
   {
-    EXPECT_CALL(*mock_device,
-                UpdatePortalDetector(
-                    Network::ValidationReason::kServicePropertyUpdate));
+    EXPECT_CALL(*network, StartPortalDetection).Times(0);
     Error error;
     service_->SetCheckPortal("false", &error);
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(Service::kCheckPortalFalse, service_->check_portal_);
     EXPECT_TRUE(service_->IsPortalDetectionDisabled());
-    Mock::VerifyAndClearExpectations(mock_device.get());
+    Mock::VerifyAndClearExpectations(network.get());
   }
   {
-    EXPECT_CALL(*mock_device,
-                UpdatePortalDetector(
+    EXPECT_CALL(*network,
+                StartPortalDetection(
                     Network::ValidationReason::kServicePropertyUpdate));
     Error error;
     service_->SetCheckPortal("true", &error);
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(Service::kCheckPortalTrue, service_->check_portal_);
     EXPECT_FALSE(service_->IsPortalDetectionDisabled());
-    Mock::VerifyAndClearExpectations(mock_device.get());
+    Mock::VerifyAndClearExpectations(network.get());
   }
   {
-    EXPECT_CALL(*mock_device,
-                UpdatePortalDetector(
+    EXPECT_CALL(*network,
+                StartPortalDetection(
                     Network::ValidationReason::kServicePropertyUpdate));
     Error error;
     service_->SetCheckPortal("auto", &error);
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_EQ(Service::kCheckPortalAuto, service_->check_portal_);
     EXPECT_FALSE(service_->IsPortalDetectionDisabled());
-    Mock::VerifyAndClearExpectations(mock_device.get());
+    Mock::VerifyAndClearExpectations(network.get());
   }
   {
-    EXPECT_CALL(*mock_device, UpdatePortalDetector(_)).Times(0);
+    EXPECT_CALL(*network, StartPortalDetection).Times(0);
     Error error;
     service_->SetCheckPortal("xxx", &error);
     EXPECT_FALSE(error.IsSuccess());
     EXPECT_EQ(Error::kInvalidArguments, error.type());
     EXPECT_EQ(Service::kCheckPortalAuto, service_->check_portal_);
     EXPECT_FALSE(service_->IsPortalDetectionDisabled());
-    Mock::VerifyAndClearExpectations(mock_device.get());
+    Mock::VerifyAndClearExpectations(network.get());
   }
 }
 
 TEST_F(ServiceTest, SetProxyConfig) {
-  scoped_refptr<MockDevice> mock_device =
-      new MockDevice(&mock_manager_, kIfName, kHwAddr, 1);
-  ON_CALL(mock_manager_, FindDeviceFromService(_))
-      .WillByDefault(Return(mock_device));
+  auto network =
+      std::make_unique<MockNetwork>(1, kIfName, Technology::kEthernet);
+  service_->AttachNetwork(network->AsWeakPtr());
 
   // Ensure no other conditions for IsPortalDetectionDisabled is met.
-  EXPECT_CALL(mock_manager_, IsPortalDetectionEnabled(_))
+  EXPECT_CALL(mock_manager_, IsPortalDetectionEnabled)
       .WillRepeatedly(Return(true));
   {
     Error error;
@@ -1500,37 +1495,35 @@ TEST_F(ServiceTest, SetProxyConfig) {
   EXPECT_FALSE(service_->IsPortalDetectionDisabled());
 
   {
-    EXPECT_CALL(*mock_device,
-                UpdatePortalDetector(
-                    Network::ValidationReason::kServicePropertyUpdate));
+    EXPECT_CALL(*network, StartPortalDetection).Times(0);
     Error error;
     service_->SetProxyConfig("{\"mode\":\"auto_detect\"}", &error);
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_TRUE(service_->HasProxyConfig());
     EXPECT_TRUE(service_->IsPortalDetectionDisabled());
-    Mock::VerifyAndClearExpectations(mock_device.get());
+    Mock::VerifyAndClearExpectations(network.get());
   }
   {
-    EXPECT_CALL(*mock_device,
-                UpdatePortalDetector(
+    EXPECT_CALL(*network,
+                StartPortalDetection(
                     Network::ValidationReason::kServicePropertyUpdate));
     Error error;
     service_->SetProxyConfig("{\"mode\":\"direct\"}", &error);
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_FALSE(service_->HasProxyConfig());
     EXPECT_FALSE(service_->IsPortalDetectionDisabled());
-    Mock::VerifyAndClearExpectations(mock_device.get());
+    Mock::VerifyAndClearExpectations(network.get());
   }
   {
-    EXPECT_CALL(*mock_device,
-                UpdatePortalDetector(
+    EXPECT_CALL(*network,
+                StartPortalDetection(
                     Network::ValidationReason::kServicePropertyUpdate));
     Error error;
     service_->SetProxyConfig("", &error);
     EXPECT_TRUE(error.IsSuccess());
     EXPECT_FALSE(service_->HasProxyConfig());
     EXPECT_FALSE(service_->IsPortalDetectionDisabled());
-    Mock::VerifyAndClearExpectations(mock_device.get());
+    Mock::VerifyAndClearExpectations(network.get());
   }
 }
 
@@ -2502,20 +2495,20 @@ TEST_F(ServiceTest, DelayedDisconnectWithAdditionalConnect) {
 }
 
 TEST_F(ServiceTest, RequestPortalDetection) {
-  scoped_refptr<MockDevice> mock_device =
-      new MockDevice(&mock_manager_, kIfName, kHwAddr, 1);
-  ON_CALL(mock_manager_, FindDeviceFromService(_))
-      .WillByDefault(Return(mock_device));
-
-  EXPECT_CALL(*mock_device,
-              UpdatePortalDetector(Network::ValidationReason::kDBusRequest))
+  SetStateField(Service::kStateConnected);
+  auto network =
+      std::make_unique<MockNetwork>(1, kIfName, Technology::kEthernet);
+  service_->AttachNetwork(network->AsWeakPtr());
+  EXPECT_CALL(mock_manager_, IsPortalDetectionEnabled(_))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*network,
+              StartPortalDetection(Network::ValidationReason::kDBusRequest))
       .WillOnce(Return(true));
+  EXPECT_FALSE(service_->IsPortalDetectionDisabled());
 
   Error error;
   service_->RequestPortalDetection(&error);
   EXPECT_TRUE(error.IsSuccess());
-
-  Mock::VerifyAndClearExpectations(mock_device.get());
 }
 
 TEST_F(ServiceTest, TrafficCountersRefreshWithMultipleSources) {

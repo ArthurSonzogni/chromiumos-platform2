@@ -1091,12 +1091,6 @@ class Service : public base::RefCounted<Service> {
   // Getter for the SavedIPConfig property in D-Bus API.
   KeyValueStore GetSavedIPConfig(Error* /*error*/);
 
-  // Requests to start portal detection if the Service is connected and
-  // portal detection became enabled. Otherwise request to stop portal
-  // detection if the Service is connected and portal detection became
-  // disabled.
-  void OnPortalDetectionConfigurationChange();
-
   void InitializeServiceStateTransitionMetrics();
   void UpdateServiceStateTransitionMetrics(Service::ConnectState new_state);
 
