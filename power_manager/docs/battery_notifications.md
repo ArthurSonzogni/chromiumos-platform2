@@ -70,7 +70,8 @@ so makes the estimates slower to adjust when the load has actually changed.
 When [Adaptive Charging] is enabled, the way that time-to-full estimates are
 computed may change. Adaptive Charging may delay charging to full after reaching
 a `display_battery_percentage` of 80%. At this point, the time-to-full estimate
-will change to the current planned delay in charging plus 2 hours. The time at
+will change to the current planned delay in charging plus 2 hours when slow
+charging is disabled, or 3 hours when slow charging is enabled. The time at
 which charging will resume may be made earlier, but it will not be pushed out.
 The `adaptive_delaying_charge` field within PowerSupplyProperties indicates if
 Adaptive Charging is actively delaying charging.

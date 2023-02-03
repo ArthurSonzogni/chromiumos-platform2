@@ -43,10 +43,33 @@ Adaptive Charging settings:
 
 *   `adaptive_charging_enabled` - bool that enables/disables Adaptive Charging.
 *   `adaptive_charging_hold_percent` - Change the battery percentage at which to
-	delay charging. Default value of `80`. Valid values are within [1, 99].
+    delay charging. Default value of `80`. Valid values are within [1, 99].
 *   `adaptive_charging_min_probability` - Change the min probability that is
-	required from the prediction to delay charging.
-	Default value of `0.2`. Valid values are within [0.0, 1.0].
+    required from the prediction to delay charging. Default value of `0.2`.
+    Valid values are within [0.0, 1.0].
+
+## Slow Charging
+
+As quick charging of a lithium-ion battery is detrimental to its capacity and
+ability to retain charge over time, slowing down charging where possible is
+beneficial for long-term battery health. Slow charging is a feature implemented
+in Adaptive Charging to limit the charge current to the battery when charging
+commences after the period of delay at 80% charge.
+
+When slow charging is enabled, Adaptive Charging will delay charging at 80%
+charge up until 3 hours before the charger is expected to be unplugged. A charge
+current limit of 0.1C (i.e., 10% of the battery's design capacity per hour) will
+be set when charging commences after the delay period. If the unplug time
+prediction moves earlier while slow charging, resulting in insufficient time to
+finish charging using the limited charge current, the charge current limit will
+be removed.
+
+The charge current limit is set via the EC and is run using the command `ectool
+chargecurrentlimit <max_current_mA>` where `max_current_mA` is the maximum
+charge current that will be supplied to the battery.
+
+The slow charging feature is yet to be launched and will be rolled out gradually
+via Finch, the Chrome experimentation framework.
 
 [Adaptive Charging]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/powerd/policy/adaptive_charging.h
 [PowerManagementPolicy]: https://chromium.googlesource.com/chromiumos/platform2/system_api/+/HEAD/dbus/power_manager/policy.proto
