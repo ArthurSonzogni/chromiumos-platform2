@@ -131,7 +131,6 @@ pub enum HibernateError {
 pub struct HibernateOptions {
     pub dry_run: bool,
     pub unencrypted: bool,
-    pub test_keys: bool,
     pub no_kernel_encryption: bool,
 }
 
@@ -146,7 +145,6 @@ pub struct ResumeInitOptions {
 pub struct ResumeOptions {
     pub dry_run: bool,
     pub unencrypted: bool,
-    pub test_keys: bool,
 }
 
 /// Options taken from the command line affecting abort-resume.

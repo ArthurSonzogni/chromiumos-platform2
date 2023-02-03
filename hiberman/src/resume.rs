@@ -134,16 +134,8 @@ impl ResumeConductor {
         read_and_send_metrics();
         // Unless the test keys are being used, wait for the key material from
         // cryptohome and save the public portion for a later hibernate.
-        if !self.options.test_keys {
-            let save_result = self.save_public_key(&mut dbus_connection);
-            if let Err(e) = &save_result {
-                warn!("Failed to save public key: {:?}", e);
-            }
 
-            result.and(save_result)
-        } else {
-            result
-        }
+        result
     }
 
     /// Helper function to perform the meat of the resume action now that the
@@ -400,22 +392,15 @@ impl ResumeConductor {
 
         // The next step is to start decrypting it and push it to the kernel.
         // Block waiting on the authentication key material from cryptohome.
-        let pending_resume_call;
-        if self.options.test_keys {
-            self.key_manager.use_test_keys()?;
-            pending_resume_call = None;
-        } else {
-            // This is what blocks waiting for seed material.
-            let wait_start = Instant::now();
-            pending_resume_call = Some(self.populate_seed(dbus_connection, true)?);
-            let wait_duration = wait_start.elapsed();
-            log_duration("Got seed", wait_duration);
-            self.metrics_logger.metrics_send_duration_sample(
-                "GotSeed",
-                wait_duration,
-                SEED_WAIT_METRIC_CEILING,
-            );
-        }
+        let wait_start = Instant::now();
+        let pending_resume_call = Some(self.populate_seed(dbus_connection, true)?);
+        let wait_duration = wait_start.elapsed();
+        log_duration("Got seed", wait_duration);
+        self.metrics_logger.metrics_send_duration_sample(
+            "GotSeed",
+            wait_duration,
+            SEED_WAIT_METRIC_CEILING,
+        );
 
         // With the seed material in hand, decrypt the private data, and fire up
         // the big image decryptor.
@@ -647,17 +632,5 @@ impl ResumeConductor {
         meta_file.rewind()?;
         metadata.write_to_disk(&mut meta_file)?;
         result
-    }
-
-    /// Save the public key for future hibernate attempts.
-    fn save_public_key(&mut self, dbus_connection: &mut HiberDbusConnection) -> Result<()> {
-        info!("Fetching public key for future hibernate");
-        // Wait until the key material is available if the key is not already
-        // populated from a failed resume attempt.
-        if !self.key_manager.has_public_key() {
-            self.populate_seed(dbus_connection, false)?;
-        }
-
-        self.key_manager.save_public_key()
     }
 }

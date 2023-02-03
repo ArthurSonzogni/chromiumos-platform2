@@ -30,21 +30,11 @@ Hiberman utility allows initiating an end-to-end test.
 The device will enter the shutdown mode. To initiate the resume, the user
 has to press the Power button or use Servo/SuzyQ cable.
 
-```
-# hiberman hibernate --test-keys [-p]
-# hiberman resume --test-keys
-```
-
 ### Dry-run on a local DUT
 
 Hiberman utility allows initiating an end-to-end test using dry-run mode.
 The main difference from a standard hibernate end-to-end process, is that
 dry-run flag won't request to enter the final step (which is device shutdown).
-
-```
-# hiberman hibernate --test-keys --dry-run [-p]
-# hiberman resume --test-keys --dry-run
-```
 
 ### Reviewing the logs
 

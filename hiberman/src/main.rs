@@ -213,7 +213,6 @@ fn hiberman_hibernate(args: &mut std::env::Args) -> std::result::Result<(), ()> 
         "unencrypted",
         "Do not encrypt the hibernate image. Use only for test and debugging",
     );
-    opts.optflag("t", "test-keys", "Use test keys for debugging");
     let args: Vec<String> = args.collect();
     let matches = match opts.parse(args) {
         Ok(m) => m,
@@ -231,7 +230,6 @@ fn hiberman_hibernate(args: &mut std::env::Args) -> std::result::Result<(), ()> 
 
     let options = HibernateOptions {
         dry_run: matches.opt_present("n"),
-        test_keys: matches.opt_present("t"),
         unencrypted: matches.opt_present("u"),
         no_kernel_encryption: matches.opt_present("k"),
     };
@@ -368,7 +366,6 @@ fn hiberman_resume(args: &mut std::env::Args) -> std::result::Result<(), ()> {
         "unencrypted",
         "Do not encrypt the hibernate image. Use only for test and debugging",
     );
-    opts.optflag("t", "test-keys", "Use test keys for debugging");
     let args: Vec<String> = args.collect();
     let matches = match opts.parse(args) {
         Ok(m) => m,
@@ -386,7 +383,6 @@ fn hiberman_resume(args: &mut std::env::Args) -> std::result::Result<(), ()> {
 
     let options = ResumeOptions {
         dry_run: matches.opt_present("n"),
-        test_keys: matches.opt_present("t"),
         unencrypted: matches.opt_present("u"),
     };
 

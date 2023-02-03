@@ -6,16 +6,13 @@
 //! protect the hibernate metadata encryption key.
 
 use std::convert::TryInto;
-use std::fs::create_dir;
 use std::fs::File;
 use std::io::Read;
-use std::io::Write;
 use std::path::Path;
 
 use anyhow::Context;
 use anyhow::Result;
 use log::info;
-use log::warn;
 use openssl::derive::Deriver;
 use openssl::pkey::Id;
 use openssl::pkey::PKey;
@@ -31,9 +28,6 @@ use crate::hiberutil::HibernateError;
 
 /// Define the name where the hibernate public key is stored.
 static PUBLIC_KEY_NAME: &str = "pubkey";
-/// Define the fixed test key seed, used when a developer wants to hibernate or
-/// resume now with --test-keys.
-const TEST_KEY_MATERIAL: &[u8; META_ASYMMETRIC_KEY_SIZE] = b"TestHibernateKeyMaterial12345678";
 
 /// The HibernateKeyManager stores the public and private key pair. The public
 /// side is used to encrypt the hibernate metadata at suspend time. The private
@@ -54,18 +48,6 @@ impl HibernateKeyManager {
         }
     }
 
-    /// Use the test keys.
-    pub fn use_test_keys(&mut self) -> Result<()> {
-        warn!("Using test keys: File a bug if you see this in production");
-        // Don't clobber already loaded keys.
-        assert!(self.private_key.is_none() && self.public_key.is_none());
-
-        self.set_private_key(&TEST_KEY_MATERIAL[..])?;
-        let public_bytes = self.private_key.as_ref().unwrap().raw_public_key().unwrap();
-        self.public_key = Some(PKey::public_key_from_raw_bytes(&public_bytes, Id::X25519).unwrap());
-        Ok(())
-    }
-
     /// Create the private (and public) key based on secret seed material.
     pub fn set_private_key(&mut self, key: &[u8]) -> Result<()> {
         let private_key = PKey::private_key_from_raw_bytes(key, Id::X25519).unwrap();
@@ -76,33 +58,7 @@ impl HibernateKeyManager {
     /// Clear the private key out of the key manager so it's not floating around
     /// in memory.
     pub fn clear_private_key(&mut self) -> Result<()> {
-        self.set_private_key(&TEST_KEY_MATERIAL[..])?;
         self.private_key = None;
-        Ok(())
-    }
-
-    /// Save the public key to a ramfs file so it can be used later by the
-    /// hibernate service.
-    pub fn save_public_key(&self) -> Result<()> {
-        let private_key = self.private_key.as_ref().ok_or_else(|| {
-            HibernateError::KeyManagerError("No private key to derive public key from".to_string())
-        })?;
-
-        if !Path::new(TMPFS_DIR).exists() {
-            create_dir(TMPFS_DIR).context("Cannot create directory to save public key")?;
-        }
-
-        let key_path = Path::new(TMPFS_DIR).join(PUBLIC_KEY_NAME);
-        info!("Saving public key to {}", key_path.display());
-        let mut key_file = File::create(&key_path).context("Cannot create public key file")?;
-        let public_key = private_key.raw_public_key().unwrap();
-
-        assert!(public_key.len() == META_ASYMMETRIC_KEY_SIZE);
-
-        key_file
-            .write_all(&public_key)
-            .context("Failed to write public key")?;
-
         Ok(())
     }
 
@@ -114,8 +70,7 @@ impl HibernateKeyManager {
         // Cryptohome should have handed the hibernate key to another instance
         // of this program. If you see this message, that instance probably
         // didn't launch, or never received keys from cryptohome.
-        let mut key_file = File::open(&key_path)
-            .context("No hibernate public key. Use --test-keys to hibernate now")?;
+        let mut key_file = File::open(&key_path).context("No hibernate public key.")?;
 
         let mut public_key = [0u8; META_ASYMMETRIC_KEY_SIZE];
         let bytes_read = key_file
@@ -130,12 +85,6 @@ impl HibernateKeyManager {
 
         self.public_key = Some(PKey::public_key_from_raw_bytes(&public_key, Id::X25519).unwrap());
         Ok(())
-    }
-
-    /// Returns true if the key manager has the public key loaded (or has the
-    /// private key loaded and can therefore derive the public key).
-    pub fn has_public_key(&self) -> bool {
-        self.private_key.is_some() || self.public_key.is_some()
     }
 
     /// Generate a new metadata key by generating a random ephemeral asymmetric

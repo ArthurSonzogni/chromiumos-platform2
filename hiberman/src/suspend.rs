@@ -154,11 +154,7 @@ impl SuspendConductor {
         let mut key_manager = HibernateKeyManager::new();
         // Set up the hibernate metadata encryption keys. This was populated
         // at login time by a previous instance of this process.
-        if self.options.test_keys {
-            key_manager.use_test_keys()?;
-        } else {
-            key_manager.load_public_key()?;
-        }
+        key_manager.load_public_key()?;
 
         // Now that the public key is loaded, derive a metadata encryption key.
         key_manager.install_new_metadata_key(&mut self.metadata)?;
