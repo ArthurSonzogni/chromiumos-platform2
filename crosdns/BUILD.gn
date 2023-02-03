@@ -10,8 +10,13 @@ group("all") {
   deps = [
     ":crosdns",
     ":crosdns_proxies",
+    ":install_dbus_conf",
+    ":install_init_conf",
     ":libcrosdns_static",
   ]
+  if (use.seccomp) {
+    deps += [ ":install_seccomp_policy" ]
+  }
   if (use.test) {
     deps += [ ":run_tests" ]
   }
@@ -56,10 +61,30 @@ executable("crosdns") {
     "main.cc",
   ]
   configs += [ ":target_defaults" ]
+  install_path = "sbin"
   deps = [
     ":crosdns_adaptors",
     ":libcrosdns_static",
   ]
+}
+
+install_config("install_dbus_conf") {
+  sources = [ "dbus_permissions/org.chromium.CrosDns.conf" ]
+  install_path = "/etc/dbus-1/system.d"
+}
+
+install_config("install_init_conf") {
+  sources = [ "init/crosdns.conf" ]
+  install_path = "/etc/init"
+}
+
+if (use.seccomp) {
+  install_config("install_seccomp_policy") {
+    _arch = getenv("ARCH")
+    sources = [ "init/crosdns-seccomp-${_arch}.policy" ]
+    install_path = "/usr/share/policy"
+    outputs = [ "crosdns-seccomp.policy" ]
+  }
 }
 
 if (use.test) {
@@ -69,6 +94,7 @@ if (use.test) {
       "//common-mk:test",
       ":target_defaults",
     ]
+    run_test = true
     deps = [
       ":libcrosdns_static",
       "//common-mk/testrunner:testrunner",
