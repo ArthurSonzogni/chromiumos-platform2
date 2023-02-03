@@ -24,16 +24,19 @@
 #include "arc/vm/data_migrator/arcvm_data_migration_helper_delegate.h"
 #include "arc/vm/data_migrator/dbus_adaptors/org.chromium.ArcVmDataMigrator.h"
 
+// This is provided as macro because providing it as a function would cause the
+// line numbers emitted from FROM_HERE and logger(ERROR) to be the location of
+// the utility function and not the caller.
+#define LOG_AND_ADD_ERROR(logger, error, message)                         \
+  logger(ERROR) << message;                                               \
+  brillo::Error::AddTo((error), FROM_HERE, brillo::errors::dbus::kDomain, \
+                       DBUS_ERROR_FAILED, (message))
+
 namespace {
 
 // The mount point for the migration destinaiton.
 constexpr char kDestinationMountPoint[] = "/tmp/arcvm-data-migration-mount";
 
-void PLogAndAddDBusError(brillo::ErrorPtr* error, const std::string& message) {
-  PLOG(ERROR) << message;
-  brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
-                       DBUS_ERROR_FAILED, message);
-}
 
 class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
                     public org::chromium::ArcVmDataMigratorInterface {
@@ -96,21 +99,22 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
     // The mount point will be automatically removed when the upstart job stops
     // since it is created under /tmp where tmpfs is mounted.
     if (!base::CreateDirectory(base::FilePath(kDestinationMountPoint))) {
-      PLogAndAddDBusError(error, "Failed to create destination mount point");
+      LOG_AND_ADD_ERROR(PLOG, error,
+                        "Failed to create destination mount point");
       return false;
     }
 
     loop_device_manager_ = std::make_unique<brillo::LoopDeviceManager>();
     loop_device_ = loop_device_manager_->AttachDeviceToFile(destination_disk);
     if (!loop_device_->IsValid()) {
-      PLogAndAddDBusError(error, "Failed to attach a loop device");
+      LOG_AND_ADD_ERROR(PLOG, error, "Failed to attach a loop device");
       CleanupMount();
       return false;
     }
 
     if (mount(loop_device_->GetDevicePath().value().c_str(),
               kDestinationMountPoint, "ext4", 0, "")) {
-      PLogAndAddDBusError(error, "Failed to mount the loop device");
+      LOG_AND_ADD_ERROR(PLOG, error, "Failed to mount the loop device");
       CleanupMount();
       return false;
     }
@@ -122,7 +126,7 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
                                   source_dir, android_data_dir);
     migration_thread_ = std::make_unique<base::Thread>("migration_helper");
     if (!migration_thread_->Start()) {
-      PLogAndAddDBusError(error, "Failed to start thread for migration");
+      LOG_AND_ADD_ERROR(LOG, error, "Failed to start thread for migration");
       CleanupMount();
       return false;
     }
@@ -231,7 +235,8 @@ class Daemon : public brillo::DBusServiceDaemon {
 
 int main(int argc, char** argv) {
   base::CommandLine::Init(argc, argv);
-  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
+  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader |
+                  brillo::kLogToStderrIfTty);
 
   return Daemon().Run();
 }
