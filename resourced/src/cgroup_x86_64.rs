@@ -10,17 +10,34 @@ use std::sync::Mutex;
 use anyhow::{bail, Context, Result};
 use glob::glob;
 use libchromeos::sys::info;
-use once_cell::sync::{Lazy, OnceCell};
+use once_cell::sync::Lazy;
 
 use crate::common;
 
 #[cfg(feature = "chromeos")]
 use featured::CheckFeature; // Trait CheckFeature is for is_feature_enabled_blocking
 
+#[cfg(feature = "chromeos")]
+use once_cell::sync::OnceCell;
+
 const MEDIA_MIN_ECORE_NUM: u32 = 4;
 
 static MEDIA_DYNAMIC_CGROUP_ACTIVE: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
-static CGROUP_FEATURE_ENABLED: OnceCell<bool> = OnceCell::new();
+
+// Protects Feature access with a mutex.
+#[cfg(feature = "chromeos")]
+struct FeatureWrapper {
+    feature: Mutex<featured::Feature>,
+}
+
+// FeatureWrapper is thread safe because its content is protected by a Mutex.
+#[cfg(feature = "chromeos")]
+unsafe impl Send for FeatureWrapper {}
+#[cfg(feature = "chromeos")]
+unsafe impl Sync for FeatureWrapper {}
+
+#[cfg(feature = "chromeos")]
+static CGROUP_FEATURE: OnceCell<FeatureWrapper> = OnceCell::new();
 
 #[derive(PartialEq, Eq)]
 pub enum MediaDynamicCgroupAction {
@@ -29,21 +46,17 @@ pub enum MediaDynamicCgroupAction {
 }
 
 pub fn init() -> Result<()> {
-    if CGROUP_FEATURE_ENABLED.get().is_some() {
-        bail!("CGROUP_FEATURE_ENABLED is already initilized");
-    }
-
     #[cfg(feature = "chromeos")]
     {
         const FEATURE_MEDIA_DYNAMIC_CGROUP: &str = "CrOSLateBootMediaDynamicCgroup";
         let feature = featured::Feature::new(FEATURE_MEDIA_DYNAMIC_CGROUP, false)?;
-        let features = featured::PlatformFeatures::new()?;
-
-        if CGROUP_FEATURE_ENABLED
-            .set(features.is_feature_enabled_blocking(&feature))
+        if CGROUP_FEATURE
+            .set(FeatureWrapper {
+                feature: Mutex::new(feature),
+            })
             .is_err()
         {
-            bail!("Failed to set CGROUP_FEATURE_ENABLED");
+            bail!("Failed to set CGROUP_FEATURE");
         }
     }
 
@@ -52,9 +65,15 @@ pub fn init() -> Result<()> {
 
 fn is_dynamic_cgroup_enabled() -> Result<bool> {
     #[cfg(feature = "chromeos")]
-    match CGROUP_FEATURE_ENABLED.get() {
-        Some(value) => Ok(*value),
-        None => bail!("CGROUP_FEATURE_ENABLED is not initilized"),
+    {
+        let feature_wrapper = CGROUP_FEATURE
+            .get()
+            .context("CGROUP_FEATURE is not initialized")?;
+        if let Ok(feature) = feature_wrapper.feature.lock() {
+            Ok(featured::PlatformFeatures::new()?.is_feature_enabled_blocking(&feature))
+        } else {
+            bail!("Failed to lock CGROUP_FEATURE");
+        }
     }
 
     #[cfg(not(feature = "chromeos"))]
