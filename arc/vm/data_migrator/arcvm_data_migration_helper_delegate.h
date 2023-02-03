@@ -11,7 +11,7 @@
 
 #include <cryptohome/data_migrator/migration_helper_delegate.h>
 
-namespace arc {
+namespace arc::data_migrator {
 
 // Delegate class for cryptohome::data_migrator::MigrationHelper that implements
 // logic specific to ARCVM /data migration.
@@ -34,6 +34,6 @@ class ArcVmDataMigrationHelperDelegate
   std::string ConvertXattrName(const std::string& name) override;
 };
 
-}  // namespace arc
+}  // namespace arc::data_migrator
 
 #endif  // ARC_VM_DATA_MIGRATOR_ARCVM_DATA_MIGRATION_HELPER_DELEGATE_H_

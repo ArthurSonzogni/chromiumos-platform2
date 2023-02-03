@@ -10,7 +10,7 @@
 
 #include <gtest/gtest.h>
 
-namespace arc {
+namespace arc::data_migrator {
 
 namespace {
 
@@ -128,4 +128,4 @@ TEST_F(ArcVmDataMigrationHelperDelegateTest, ConvertXattrName) {
   EXPECT_EQ(delegate.ConvertXattrName("trusted.attr"), "trusted.attr");
 }
 
-}  // namespace arc
+}  // namespace arc::data_migrator

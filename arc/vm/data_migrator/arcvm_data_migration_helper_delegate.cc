@@ -14,7 +14,7 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 
-namespace arc {
+namespace arc::data_migrator {
 
 namespace {
 
@@ -110,4 +110,4 @@ std::string ArcVmDataMigrationHelperDelegate::ConvertXattrName(
   return name;
 }
 
-}  // namespace arc
+}  // namespace arc::data_migrator
