@@ -89,6 +89,27 @@ class IPP_EXPORT SimpleParserLog : public ParserLog {
   std::vector<Entry> critical_errors_;
 };
 
+// Parse the frame of `size` bytes saved in `buffer`. Errors detected by the
+// parser are saved to `log`. If you use SimpleParserLog as `log` you can easily
+// distinguish three cases:
+//
+// 1. When the parser completed parsing without errors then:
+//     * log.Errors().empty() == true (=> log.CriticalErrors().empty() == true).
+// 2. When the parser completed parsing with some non-critical errors then:
+//     * log.Errors().empty() == false; AND
+//     * log.CriticalErrors().empty() == true.
+// 3. When the parser spotted a critical error and stopped then:
+//     * log.Errors().empty() == false; AND
+//     * log.CriticalErrors().empty() == false.
+//
+// In case 2, the output frame may have some values or attributes missing.
+// In case 3, the output frame may cover only part of the input buffer or be
+// empty and have all basic parameters set to zeroes like after Frame()
+// constructor (it happens when nothing was parsed).
+// In all cases, the returned object is consistent and can be passed to other
+// libipp functions.
+Frame IPP_EXPORT Parse(const uint8_t* buffer, size_t size, ParserLog& log);
+
 }  // namespace ipp
 
 #endif  //  LIBIPP_PARSER_H_

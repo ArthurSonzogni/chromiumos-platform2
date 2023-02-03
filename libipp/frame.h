@@ -137,6 +137,8 @@ class IPP_EXPORT Frame {
 
   Frame(const Frame&) = delete;
   Frame& operator=(const Frame&) = delete;
+  Frame(Frame&&) = default;
+  Frame& operator=(Frame&&) = default;
 
   virtual ~Frame();
 

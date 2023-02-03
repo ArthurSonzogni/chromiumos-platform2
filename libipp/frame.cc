@@ -12,6 +12,7 @@
 #include "builder.h"
 #include "ipp_frame.h"
 #include "ipp_parser.h"
+#include "parser.h"
 
 namespace ipp {
 
@@ -72,14 +73,15 @@ Frame::Frame(const uint8_t* buffer, size_t size, ParsingResults* result) {
     }
     return;
   }
-  std::vector<Log> log;
+  std::vector<Log> log_temp;
+  SimpleParserLog log;
   FrameData frame_data;
-  Parser parser(&frame_data, &log);
+  Parser parser(&frame_data, &log_temp, log);
   const bool completed1 = parser.ReadFrameFromBuffer(buffer, buffer + size);
   const bool completed2 = parser.SaveFrameToPackage(false, this);
   if (result) {
     result->whole_buffer_was_parsed = completed1 && completed2;
-    result->errors.swap(log);
+    result->errors.swap(log_temp);
   }
   version_ = static_cast<Version>(frame_data.version_);
   operation_id_or_status_code_ = frame_data.operation_id_or_status_code_;

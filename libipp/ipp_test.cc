@@ -5,6 +5,7 @@
 #include "libipp/attribute.h"
 #include "libipp/builder.h"
 #include "libipp/frame.h"
+#include "libipp/parser.h"
 
 #include <cstdint>
 #include <string>
@@ -151,10 +152,9 @@ void CheckFrame(const BinaryContent& frame, const ipp::Frame& req) {
   EXPECT_EQ(req.GetLength(), bin_data.size());
   EXPECT_EQ(bin_data, frame.data);
   // parse the given frame and compare obtained object with the given Request
-  ipp::ParsingResults log;
-  ipp::Frame req2(bin_data.data(), bin_data.size(), &log);
-  EXPECT_TRUE(log.whole_buffer_was_parsed);
-  EXPECT_TRUE(log.errors.empty());
+  ipp::SimpleParserLog log;
+  ipp::Frame req2 = ipp::Parse(bin_data.data(), bin_data.size(), log);
+  EXPECT_TRUE(log.Errors().empty());
   for (ipp::GroupTag grp_tag : ipp::kGroupTags) {
     std::vector<const ipp::Collection*> groups1 = req.GetGroups(grp_tag);
     std::vector<ipp::Collection*> groups2 = req2.GetGroups(grp_tag);

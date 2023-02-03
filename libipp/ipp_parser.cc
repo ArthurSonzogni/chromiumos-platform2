@@ -270,6 +270,20 @@ void Parser::LogParserError(ParserCode error_code, const uint8_t* ptr) {
                       ToHexSeq(ptr, ptr + right_margin);
   }
   errors_->push_back(l);
+  static const std::set<ParserCode> kCriticalErrors = {
+      ParserCode::kAttributeNameIsEmpty,
+      ParserCode::kUnexpectedEndOfFrame,
+      ParserCode::kGroupTagWasExpected,
+      ParserCode::kEmptyNameExpectedInTNV,
+      ParserCode::kEmptyValueExpectedInTNV,
+      ParserCode::kNegativeNameLengthInTNV,
+      ParserCode::kNegativeValueLengthInTNV,
+      ParserCode::kTNVWithUnexpectedValueTag,
+      ParserCode::kUnexpectedEndOfGroup,
+      ParserCode::kLimitOnCollectionsLevelExceeded,
+      ParserCode::kLimitOnGroupsCountExceeded};
+  const bool is_critical = kCriticalErrors.count(error_code);
+  log_->AddParserError(parser_context_, error_code, is_critical);
 }
 
 void Parser::LogParserErrors(const std::vector<ParserCode>& error_codes) {
