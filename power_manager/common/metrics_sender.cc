@@ -31,9 +31,8 @@ void MetricsSenderInterface::SetInstance(MetricsSenderInterface* instance) {
   instance_ = instance;
 }
 
-MetricsSender::MetricsSender(
-    std::unique_ptr<MetricsLibraryInterface> metrics_lib)
-    : metrics_lib_(std::move(metrics_lib)) {
+MetricsSender::MetricsSender(MetricsLibraryInterface& metrics_lib)
+    : metrics_lib_(&metrics_lib) {
   MetricsSenderInterface::SetInstance(this);
 }
 

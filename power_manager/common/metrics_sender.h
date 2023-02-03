@@ -55,9 +55,14 @@ class MetricsSenderInterface {
 // actually forwards metrics to Chrome.
 class MetricsSender : public MetricsSenderInterface {
  public:
+  // Create an new MetricsSender, using the given MetricsLibrary object.
+  //
   // The c'tor and d'tor call SetInstance() to register and unregister this
   // instance.
-  explicit MetricsSender(std::unique_ptr<MetricsLibraryInterface> metrics_lib);
+  //
+  // Caller retains ownership of `metrics_lib`, which must outlive this
+  // instance.
+  explicit MetricsSender(MetricsLibraryInterface& metrics_lib);
   MetricsSender(const MetricsSender&) = delete;
   MetricsSender& operator=(const MetricsSender&) = delete;
 
@@ -72,7 +77,7 @@ class MetricsSender : public MetricsSenderInterface {
   bool SendEnumMetric(const std::string& name, int sample, int max) override;
 
  private:
-  std::unique_ptr<MetricsLibraryInterface> metrics_lib_;
+  MetricsLibraryInterface* metrics_lib_;  // Owned elsewhere.
 };
 
 // Convenience wrapper for calling SendMetric() on the currently-registered

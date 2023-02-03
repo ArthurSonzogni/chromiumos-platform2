@@ -336,8 +336,7 @@ class DaemonDelegateImpl : public DaemonDelegate {
   }
 
   std::unique_ptr<MetricsSenderInterface> CreateMetricsSender() override {
-    auto metrics_lib = std::make_unique<MetricsLibrary>();
-    return std::make_unique<MetricsSender>(std::move(metrics_lib));
+    return std::make_unique<MetricsSender>(metrics_library_);
   }
 
   std::unique_ptr<system::ChargeControllerHelperInterface>
@@ -423,6 +422,7 @@ class DaemonDelegateImpl : public DaemonDelegate {
   }
 
  private:
+  MetricsLibrary metrics_library_;
   base::FilePath read_write_prefs_dir_;
   base::FilePath read_only_prefs_dir_;
 };

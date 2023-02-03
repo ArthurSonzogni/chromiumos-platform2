@@ -46,10 +46,7 @@ namespace power_manager::metrics {
 
 class MetricsCollectorTest : public TestEnvironment {
  public:
-  MetricsCollectorTest()
-      : metrics_lib_(new StrictMock<MetricsLibraryMock>),
-        metrics_sender_(
-            std::unique_ptr<MetricsLibraryInterface>(metrics_lib_)) {
+  MetricsCollectorTest() : metrics_sender_(metrics_lib_) {
     collector_.clock_.set_current_time_for_testing(
         base::TimeTicks::FromInternalValue(1000));
     collector_.clock_.set_current_boot_time_for_testing(
@@ -141,7 +138,7 @@ class MetricsCollectorTest : public TestEnvironment {
   // will be generated.
   void ExpectMetric(
       const std::string& name, int sample, int min, int max, int buckets) {
-    EXPECT_CALL(*metrics_lib_, SendToUMA(name, sample, min, max, buckets))
+    EXPECT_CALL(metrics_lib_, SendToUMA(name, sample, min, max, buckets))
         .Times(1)
         .WillOnce(Return(true))
         .RetiresOnSaturation();
@@ -150,7 +147,7 @@ class MetricsCollectorTest : public TestEnvironment {
   // Adds a metrics library mock expectation that the specified enum
   // metric will be generated.
   void ExpectEnumMetric(const std::string& name, int sample, int max) {
-    EXPECT_CALL(*metrics_lib_, SendEnumToUMA(name, sample, max))
+    EXPECT_CALL(metrics_lib_, SendEnumToUMA(name, sample, max))
         .Times(1)
         .WillOnce(Return(true))
         .RetiresOnSaturation();
@@ -160,7 +157,7 @@ class MetricsCollectorTest : public TestEnvironment {
   void IgnoreMetric(const std::string& name) {
     if (metrics_to_test_.count(name))
       return;
-    EXPECT_CALL(*metrics_lib_, SendToUMA(name, _, _, _, _))
+    EXPECT_CALL(metrics_lib_, SendToUMA(name, _, _, _, _))
         .Times(AnyNumber())
         .WillRepeatedly(Return(true));
   }
@@ -169,7 +166,7 @@ class MetricsCollectorTest : public TestEnvironment {
   void IgnoreEnumMetric(const std::string& name) {
     if (metrics_to_test_.count(name))
       return;
-    EXPECT_CALL(*metrics_lib_, SendEnumToUMA(name, _, _))
+    EXPECT_CALL(metrics_lib_, SendEnumToUMA(name, _, _))
         .Times(AnyNumber())
         .WillRepeatedly(Return(true));
   }
@@ -206,7 +203,7 @@ class MetricsCollectorTest : public TestEnvironment {
   bool first_run_after_boot_ = false;
 
   // StrictMock turns all unexpected calls into hard failures.
-  StrictMock<MetricsLibraryMock>* metrics_lib_;  // Owned elsewhere.
+  StrictMock<MetricsLibraryMock> metrics_lib_;
   MetricsSender metrics_sender_;
 
   MetricsCollector collector_;
@@ -225,7 +222,7 @@ TEST_F(MetricsCollectorTest, BacklightLevel) {
   ASSERT_TRUE(collector_.generate_backlight_metrics_timer_.IsRunning());
   collector_.HandleScreenDimmedChange(true, base::TimeTicks::Now());
   collector_.GenerateBacklightLevelMetrics();
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 
   const int64_t kCurrentDisplayPercent = 57;
   display_backlight_controller_.set_percent(kCurrentDisplayPercent);
@@ -318,7 +315,7 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRate) {
   AdvanceTime(interval);
   collector_.HandlePowerStatusUpdate(power_status_);
 
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
   IgnoreHandlePowerStatusUpdateMetrics();
 
   // Another update before the full interval has elapsed shouldn't result in
@@ -378,7 +375,7 @@ TEST_F(MetricsCollectorTest, BatteryInfoWhenChargeStarts) {
         kBatteryCapacityMin, kBatteryCapacityMax, kDefaultBuckets);
     collector_.HandlePowerStatusUpdate(power_status_);
 
-    Mock::VerifyAndClearExpectations(metrics_lib_);
+    Mock::VerifyAndClearExpectations(&metrics_lib_);
   }
 }
 
@@ -403,7 +400,7 @@ TEST_F(MetricsCollectorTest, SessionStartOrStop) {
         round(kBatteryPercentages[i]), kMaxPercent);
     collector_.HandlePowerStatusUpdate(power_status_);
     collector_.HandleSessionStateChange(SessionState::STARTED);
-    Mock::VerifyAndClearExpectations(metrics_lib_);
+    Mock::VerifyAndClearExpectations(&metrics_lib_);
 
     ExpectEnumMetric(
         MetricsCollector::AppendPowerSourceToEnumName(
@@ -426,7 +423,7 @@ TEST_F(MetricsCollectorTest, SessionStartOrStop) {
                  kLengthOfSessionMax, kDefaultBuckets);
 
     collector_.HandleSessionStateChange(SessionState::STOPPED);
-    Mock::VerifyAndClearExpectations(metrics_lib_);
+    Mock::VerifyAndClearExpectations(&metrics_lib_);
   }
 }
 
@@ -437,7 +434,7 @@ TEST_F(MetricsCollectorTest, GenerateNumOfSessionsPerChargeMetric) {
 
   IgnoreHandlePowerStatusUpdateMetrics();
   UpdatePowerStatusLinePower(true);
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 
   // If the session is already started when going off line power, it should be
   // counted. Additional power status updates that don't describe a power source
@@ -450,7 +447,7 @@ TEST_F(MetricsCollectorTest, GenerateNumOfSessionsPerChargeMetric) {
   UpdatePowerStatusLinePower(false);
   ExpectNumOfSessionsPerChargeMetric(1);
   UpdatePowerStatusLinePower(true);
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 
   // Sessions that start while on battery power should also be counted.
   IgnoreHandleSessionStateChangeMetrics();
@@ -464,7 +461,7 @@ TEST_F(MetricsCollectorTest, GenerateNumOfSessionsPerChargeMetric) {
   collector_.HandleSessionStateChange(SessionState::STARTED);
   ExpectNumOfSessionsPerChargeMetric(3);
   UpdatePowerStatusLinePower(true);
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 
   // Check that the pref is used, so the count will persist across reboots.
   IgnoreHandlePowerStatusUpdateMetrics();
@@ -472,7 +469,7 @@ TEST_F(MetricsCollectorTest, GenerateNumOfSessionsPerChargeMetric) {
   prefs_.SetInt64(kNumSessionsOnCurrentChargePref, 5);
   ExpectNumOfSessionsPerChargeMetric(5);
   UpdatePowerStatusLinePower(true);
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 
   // Negative values in the pref should be ignored.
   prefs_.SetInt64(kNumSessionsOnCurrentChargePref, -2);
@@ -480,7 +477,7 @@ TEST_F(MetricsCollectorTest, GenerateNumOfSessionsPerChargeMetric) {
   UpdatePowerStatusLinePower(false);
   ExpectNumOfSessionsPerChargeMetric(1);
   UpdatePowerStatusLinePower(true);
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 }
 
 TEST_F(MetricsCollectorTest, SendEnumMetric) {
@@ -526,12 +523,12 @@ TEST_F(MetricsCollectorTest, PowerButtonDownMetric) {
 
   // We should ignore a button release that wasn't preceded by a press.
   collector_.HandlePowerButtonEvent(ButtonState::UP);
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 
   // Presses that are followed by additional presses should also be ignored.
   collector_.HandlePowerButtonEvent(ButtonState::DOWN);
   collector_.HandlePowerButtonEvent(ButtonState::DOWN);
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 
   // Send a regular sequence of events and check that the duration is reported.
   collector_.HandlePowerButtonEvent(ButtonState::DOWN);
@@ -607,7 +604,7 @@ TEST_F(MetricsCollectorTest, GatherDarkResumeMetrics) {
 
   // If the suspend lasts for less than an hour, the wakeups per hour should be
   // scaled up.
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
   wake_durations.clear();
 
   wake_durations.emplace_back(kWakeReason1, base::Milliseconds(359));
@@ -642,7 +639,7 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
   // We shouldn't send a sample if we haven't suspended.
   IgnoreHandlePowerStatusUpdateMetrics();
   collector_.HandlePowerStatusUpdate(power_status_);
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 
   // Ditto if the system is on AC before suspending...
   power_status_.line_power_on = true;
@@ -657,7 +654,7 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
   power_status_.line_power_on = false;
   power_status_.battery_energy = kEnergyAfterResume;
   collector_.HandlePowerStatusUpdate(power_status_);
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 
   // ... or after resuming...
   power_status_.line_power_on = false;
@@ -672,7 +669,7 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
   power_status_.line_power_on = true;
   power_status_.battery_energy = kEnergyAfterResume;
   collector_.HandlePowerStatusUpdate(power_status_);
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 
   // ... or if the battery's energy increased while the system was
   // suspended (i.e. it was temporarily connected to AC while suspended).
@@ -687,7 +684,7 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
   collector_.HandleResume(1, false);
   power_status_.battery_energy = kEnergyBeforeSuspend + 5.0;
   collector_.HandlePowerStatusUpdate(power_status_);
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 
   // The sample also shouldn't be reported if the system wasn't suspended
   // for very long.
@@ -701,7 +698,7 @@ TEST_F(MetricsCollectorTest, BatteryDischargeRateWhileSuspended) {
   collector_.HandleResume(1, false);
   power_status_.battery_energy = kEnergyAfterResume;
   collector_.HandlePowerStatusUpdate(power_status_);
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 
   // The sample should be reported if the energy decreased over a long
   // enough time.
@@ -1367,7 +1364,7 @@ TEST_F(IdleStateResidencyMetricsTest, S0ixResidencyMetricsNoResidencyFiles) {
   Init(S0ixResidencyFileType::NONE);
   SuspendAndResume();
   // |metrics_lib_| is strict mock. Unexpected method call will fail this test.
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 }
 
 // Test S0ix UMA metrics are reported when |kSmallCoreS0ixResidencyPath| exist.
@@ -1375,7 +1372,7 @@ TEST_F(IdleStateResidencyMetricsTest, SmallCorePathExist) {
   Init(S0ixResidencyFileType::SMALL_CORE);
   ExpectS2IdleResidencyRateMetricCall();
   SuspendAndResume();
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 }
 
 // Test S0ix UMA metrics are reported when |kBigCoreS0ixResidencyPath| exist.
@@ -1383,7 +1380,7 @@ TEST_F(IdleStateResidencyMetricsTest, BigCorePathExist) {
   Init(S0ixResidencyFileType::BIG_CORE);
   ExpectS2IdleResidencyRateMetricCall();
   SuspendAndResume();
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 }
 
 // Test S0ix UMA metrics are not reported when suspend to idle is not enabled.
@@ -1391,7 +1388,7 @@ TEST_F(IdleStateResidencyMetricsTest, S0ixResidencyMetricsS0ixNotEnabled) {
   Init(S0ixResidencyFileType::SMALL_CORE, false /*suspend_to_idle*/);
   SuspendAndResume();
   // |metrics_lib_| is strict mock. Unexpected method call will fail this test.
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 }
 
 // Test metrics are not reported when device suspends less than
@@ -1401,7 +1398,7 @@ TEST_F(IdleStateResidencyMetricsTest, ShortSuspend) {
   Init(S0ixResidencyFileType::SMALL_CORE);
   SuspendAndResume();
   // |metrics_lib_| is strict mock. Unexpected method call will fail this test.
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 }
 
 // Test metrics are not reported when the residency counter overflows.
@@ -1411,7 +1408,7 @@ TEST_F(IdleStateResidencyMetricsTest, ResidencyCounterOverflow) {
   Init(S0ixResidencyFileType::SMALL_CORE);
   SuspendAndResume();
   // |metrics_lib_| is strict mock. Unexpected method call will fail this test.
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 }
 
 // Test metrics are not reported when suspend time is more than max residency.
@@ -1420,7 +1417,7 @@ TEST_F(IdleStateResidencyMetricsTest, SuspendTimeMoreThanMaxResidency) {
   Init(S0ixResidencyFileType::BIG_CORE);
   SuspendAndResume();
   // |metrics_lib_| is strict Mock. Unexpected method call will fail this test.
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 }
 
 // NOTE: The testing scenario for runtime idle state residency always involves
@@ -1435,7 +1432,7 @@ TEST_F(IdleStateResidencyMetricsTest, NoS0ixFileButPC10FileExists) {
   SuspendAndResume();
   SuspendAndResume();
   // |metrics_lib_| is strict Mock. Unexpected method call will fail this test.
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 }
 
 // Test runtime metrics are not reported without PC10 residency file.
@@ -1447,7 +1444,7 @@ TEST_F(IdleStateResidencyMetricsTest, NoPC10ResidencyFile) {
   ExpectS2IdleResidencyRateMetricCall();
   SuspendAndResume();
   // |metrics_lib_| is strict Mock. Unexpected method call will fail this test.
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 }
 
 // Test runtime metrics are reported when residency files exist.
@@ -1471,7 +1468,7 @@ TEST_F(IdleStateResidencyMetricsTest, PC10ResidencyFileExists) {
   ExpectS2IdleResidencyRateMetricCall();
   SuspendAndResume();
   // |metrics_lib_| is strict Mock. Unexpected method call will fail this test.
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 }
 
 // Test runtime metrics are reported even when suspend to idle is not enabled.
@@ -1493,7 +1490,7 @@ TEST_F(IdleStateResidencyMetricsTest, NoS2IdleReporting) {
   s0ix.before_resume_ = s0ix.before_suspend_ + base::Minutes(5);
   SuspendAndResume();
   // |metrics_lib_| is strict Mock. Unexpected method call will fail this test.
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 }
 
 // Test runtime metrics are not reported when the PC10 residency counter
@@ -1514,7 +1511,7 @@ TEST_F(IdleStateResidencyMetricsTest, RuntimePC10CounterOverflow) {
   ExpectS2IdleResidencyRateMetricCall();
   SuspendAndResume();
   // |metrics_lib_| is strict Mock. Unexpected method call will fail this test.
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 }
 
 // Test runtime metrics are not reported when the S0ix residency counter
@@ -1535,7 +1532,7 @@ TEST_F(IdleStateResidencyMetricsTest, RuntimeS0ixCounterOverflow) {
   ExpectS2IdleResidencyRateMetricCall();
   SuspendAndResume();
   // |metrics_lib_| is strict Mock. Unexpected method call will fail this test.
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 }
 
 // Test runtime metrics are not reported when suspend time is less than the
@@ -1555,7 +1552,7 @@ TEST_F(IdleStateResidencyMetricsTest, RuntimeLessThanOverhead) {
   s0ix.before_suspend_ = s0ix.before_resume_ + base::Minutes(5);
   SuspendAndResume();
   // |metrics_lib_| is strict Mock. Unexpected method call will fail this test.
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 }
 
 // Test overhead is taken into account in runtime metrics.
@@ -1581,7 +1578,7 @@ TEST_F(IdleStateResidencyMetricsTest, RuntimeMoreThanOverhead) {
   ExpectRuntimeResidencyRateMetricCall(100, 50);
   SuspendAndResume();
   // |metrics_lib_| is strict Mock. Unexpected method call will fail this test.
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 }
 
 // Test runtime metrics are not reported when suspend time is more than max
@@ -1601,7 +1598,7 @@ TEST_F(IdleStateResidencyMetricsTest, RuntimeMoreThanMaxResidency) {
   s0ix.before_suspend_ = s0ix.before_resume_ + base::Minutes(5);
   SuspendAndResume();
   // |metrics_lib_| is strict Mock. Unexpected method call will fail this test.
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 }
 
 // Test runtime metrics are not reported for S0ix if PC10 residency is 0.
@@ -1624,7 +1621,7 @@ TEST_F(IdleStateResidencyMetricsTest, RuntimePC10Residency0) {
   ExpectS2IdleResidencyRateMetricCall();
   SuspendAndResume();
   // |metrics_lib_| is strict Mock. Unexpected method call will fail this test.
-  Mock::VerifyAndClearExpectations(metrics_lib_);
+  Mock::VerifyAndClearExpectations(&metrics_lib_);
 }
 
 }  // namespace power_manager::metrics
