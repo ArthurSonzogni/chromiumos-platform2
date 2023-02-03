@@ -47,12 +47,7 @@ GuestIPv6Service::ForwardMethod GetForwardMethodByDeviceType(
     case ShillClient::Device::Type::kWifi:
       return GuestIPv6Service::ForwardMethod::kMethodNDProxy;
     case ShillClient::Device::Type::kCellular:
-      // b/187462665, b/187918638: If the physical interface is a cellular
-      // modem, the network connection is expected to work as a point to point
-      // link where neighbor discovery of the remote gateway is not possible.
-      // Therefore inject RA to let guests treat the host as next hop router.
-      // TODO(taoyl): Change to kMethodRAServer
-      return GuestIPv6Service::ForwardMethod::kMethodNDProxyInjectingRA;
+      return GuestIPv6Service::ForwardMethod::kMethodRAServer;
     default:
       return GuestIPv6Service::ForwardMethod::kMethodUnknown;
   }

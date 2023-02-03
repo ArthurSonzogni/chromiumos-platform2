@@ -26,6 +26,11 @@ class GuestIPv6Service {
     kMethodUnknown,
     kMethodNDProxy,
     kMethodRAServer,
+    // b/187462665, b/187918638: If the physical interface is a cellular
+    // modem, the network connection is expected to work as a point to point
+    // link where neighbor discovery of the remote gateway is not possible.
+    // Therefore injecting RA to let guests treat the host as next hop
+    // router is needed if using NDProxy.
     kMethodNDProxyInjectingRA
   };
 
