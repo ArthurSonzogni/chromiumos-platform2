@@ -27,6 +27,7 @@
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 
+#include "metrics/fake_metrics_library.h"
 #include "power_manager/common/fake_prefs.h"
 #include "power_manager/common/metrics_constants.h"
 #include "power_manager/common/metrics_sender.h"
@@ -924,142 +925,145 @@ TEST_F(MetricsCollectorTest, LockEventMetricsBattery) {
   collector_.GenerateLockEventMetrics(LockEvent::QUICK_LOCK);
 }
 
-class AdaptiveChargingMetricsTest : public MetricsCollectorTest {
+class AdaptiveChargingMetricsTest : public TestEnvironment {
  public:
-  void SetExpectedMetrics(const std::string& state_suffix,
-                          base::TimeTicks target_time,
-                          base::TimeTicks hold_start_time,
-                          base::TimeTicks hold_end_time,
-                          base::TimeTicks charge_finished_time,
-                          base::TimeDelta time_spent_slow_charging,
-                          double display_battery_percentage) {
-    base::TimeTicks now = GetCurrentBootTime();
-    base::TimeDelta delay_time = hold_end_time - hold_start_time;
-    base::TimeDelta available_time = now - hold_start_time;
-    base::TimeDelta total_charge_time = charge_finished_time - hold_end_time;
-    base::TimeDelta charging_delay =
-        policy::AdaptiveChargingController::kFinishSlowChargingDelay;
-    std::string minutes_delta_time_suffix;
-    std::string delay_delta_time_suffix;
-    std::string type_suffix;
-    if (now >= target_time)
-      minutes_delta_time_suffix = kAdaptiveChargingEarlySuffix;
-    else
-      minutes_delta_time_suffix = kAdaptiveChargingLateSuffix;
+  AdaptiveChargingMetricsTest() : metrics_sender_(metrics_) {}
 
-    if (available_time - charging_delay >= delay_time)
-      delay_delta_time_suffix = kAdaptiveChargingEarlySuffix;
-    else
-      delay_delta_time_suffix = kAdaptiveChargingLateSuffix;
-
-    if (time_spent_slow_charging == base::TimeDelta()) {
-      type_suffix = kAdaptiveChargingTypeNormalChargingSuffix;
-    } else if (total_charge_time - time_spent_slow_charging >
-               base::Seconds(1)) {
-      type_suffix = kAdaptiveChargingTypeMixedChargingSuffix;
-    } else {
-      type_suffix = kAdaptiveChargingTypeSlowChargingSuffix;
-    }
-
-    std::string minutes_delta_name = kAdaptiveChargingMinutesDeltaName;
-    minutes_delta_name += state_suffix;
-    minutes_delta_name += minutes_delta_time_suffix;
-    std::string delay_delta_name = kAdaptiveChargingDelayDeltaName;
-    delay_delta_name += state_suffix;
-    delay_delta_name += delay_delta_time_suffix;
-
-    metrics_to_test_ = {
-        minutes_delta_name,
-        kAdaptiveChargingBatteryPercentageOnUnplugName + type_suffix,
-        kAdaptiveChargingMinutesToFullName + type_suffix,
-        kAdaptiveChargingMinutesDelayName,
-        kAdaptiveChargingMinutesAvailableName,
-        delay_delta_name,
-        kAdaptiveChargingMinutesFullOnACName + state_suffix,
-    };
-
-    ExpectMetric(
-        minutes_delta_name, (now - target_time).magnitude().InMinutes(),
-        kAdaptiveChargingDeltaMin, kAdaptiveChargingDeltaMax, kDefaultBuckets);
-    ExpectEnumMetric(
-        kAdaptiveChargingBatteryPercentageOnUnplugName + type_suffix,
-        display_battery_percentage, kMaxPercent);
-    ExpectMetric(kAdaptiveChargingMinutesToFullName + type_suffix,
-                 (charge_finished_time - hold_end_time).InMinutes(),
-                 kAdaptiveChargingMinutesToFullMin,
-                 kAdaptiveChargingMinutesToFullMax, kDefaultBuckets);
-    ExpectMetric(kAdaptiveChargingMinutesDelayName, delay_time.InMinutes(),
-                 kAdaptiveChargingMinutesMin, kAdaptiveChargingMinutesMax,
-                 kAdaptiveChargingMinutesBuckets);
-    ExpectMetric(kAdaptiveChargingMinutesAvailableName,
-                 available_time.InMinutes(), kAdaptiveChargingMinutesMin,
-                 kAdaptiveChargingMinutesMax, kAdaptiveChargingMinutesBuckets);
-    ExpectMetric(
-        delay_delta_name,
-        (available_time - charging_delay - delay_time).magnitude().InMinutes(),
-        kAdaptiveChargingDeltaMin, kAdaptiveChargingDeltaMax, kDefaultBuckets);
-    ExpectMetric(kAdaptiveChargingMinutesFullOnACName + state_suffix,
-                 (now - charge_finished_time).InMinutes(),
-                 kAdaptiveChargingMinutesMin, kAdaptiveChargingMinutesMax,
-                 kAdaptiveChargingMinutesBuckets);
+ protected:
+  void Init() {
+    collector_.clock_.set_current_time_for_testing(
+        base::TimeTicks::FromInternalValue(1000));
+    collector_.clock_.set_current_boot_time_for_testing(
+        base::TimeTicks::FromInternalValue(2000));
+    collector_.Init(&prefs_, &display_backlight_controller_,
+                    &keyboard_backlight_controller_, {},
+                    /*first_run_after_boot=*/false);
   }
 
-  void TestMetricsForState(AdaptiveChargingState state,
-                           const std::string& state_suffix) {
-    metrics_to_test_ = {
-        kAdaptiveChargingBatteryPercentageOnUnplugName,
-        kAdaptiveChargingMinutesToFullName,
-        kAdaptiveChargingMinutesDelayName,
-        kAdaptiveChargingMinutesAvailableName,
-    };
-    base::TimeTicks now = GetCurrentBootTime();
-    base::TimeTicks target_time = now - base::Minutes(60);
-    base::TimeTicks hold_start_time = target_time - base::Hours(5);
-    base::TimeTicks hold_end_time = target_time - base::Hours(3);
-    base::TimeTicks charge_finished_time = target_time - base::Minutes(50);
-    base::TimeDelta time_spent_slow_charging =
-        charge_finished_time - hold_end_time;
-    double display_battery_percentage = 100.0;
-
-    SetExpectedMetrics(state_suffix, target_time, hold_start_time,
-                       hold_end_time, charge_finished_time,
-                       time_spent_slow_charging, display_battery_percentage);
-    collector_.GenerateAdaptiveChargingUnplugMetrics(
-        state, target_time, hold_start_time, hold_end_time,
-        charge_finished_time, time_spent_slow_charging,
-        display_battery_percentage);
-
-    // Test metrics when `target_time` is in the future.
-    now = GetCurrentBootTime();
-    target_time = now + base::Minutes(60);
-    SetExpectedMetrics(state_suffix, target_time, hold_start_time,
-                       hold_end_time, charge_finished_time,
-                       time_spent_slow_charging, display_battery_percentage);
-    collector_.GenerateAdaptiveChargingUnplugMetrics(
-        state, target_time, hold_start_time, hold_end_time,
-        charge_finished_time, time_spent_slow_charging,
-        display_battery_percentage);
+  base::TimeTicks GetCurrentBootTime() {
+    return collector_.clock_.GetCurrentBootTime();
   }
+
+  FakePrefs prefs_;
+  policy::BacklightControllerStub display_backlight_controller_;
+  policy::BacklightControllerStub keyboard_backlight_controller_;
+
+  FakeMetricsLibrary metrics_;
+  MetricsSender metrics_sender_;
+  MetricsCollector collector_;
 };
 
-TEST_F(AdaptiveChargingMetricsTest, AdaptiveChargingUnplugMetrics) {
+TEST_F(AdaptiveChargingMetricsTest,
+       AdaptiveChargingUnplugMetricsInActiveState) {
   Init();
-  TestMetricsForState(AdaptiveChargingState::ACTIVE,
-                      kAdaptiveChargingStateActiveSuffix);
-  TestMetricsForState(AdaptiveChargingState::SLOWCHARGE,
-                      kAdaptiveChargingStateActiveSuffix);
-  TestMetricsForState(AdaptiveChargingState::INACTIVE,
-                      kAdaptiveChargingStateActiveSuffix);
-  TestMetricsForState(AdaptiveChargingState::HEURISTIC_DISABLED,
-                      kAdaptiveChargingStateHeuristicDisabledSuffix);
-  TestMetricsForState(AdaptiveChargingState::USER_CANCELED,
-                      kAdaptiveChargingStateUserCanceledSuffix);
-  TestMetricsForState(AdaptiveChargingState::USER_DISABLED,
-                      kAdaptiveChargingStateUserDisabledSuffix);
-  TestMetricsForState(AdaptiveChargingState::SHUTDOWN,
-                      kAdaptiveChargingStateShutdownSuffix);
-  TestMetricsForState(AdaptiveChargingState::NOT_SUPPORTED,
-                      kAdaptiveChargingStateNotSupportedSuffix);
+
+  // Generate metrics where `target_time` is in the past.
+  base::TimeTicks now = GetCurrentBootTime();
+  collector_.GenerateAdaptiveChargingUnplugMetrics(
+      AdaptiveChargingState::ACTIVE,
+      /*target_time=*/now - base::Hours(1),
+      /*hold_start_time=*/now - base::Hours(5),
+      /*hold_end_time=*/now - base::Hours(3),
+      /*charge_finished_time=*/now - base::Minutes(50),
+      /*time_spent_slow_charging=*/base::Minutes(130),
+      /*display_battery_percent=*/100.0);
+
+  // Confirm metrics.
+  struct Expected {
+    std::string name;
+    int value;
+  };
+  std::vector<Expected> expected = {
+      {"Power.AdaptiveChargingMinutesDelta.Active.Early", 60},
+      {"Power.AdaptiveChargingBatteryPercentageOnUnplug.SlowCharging", 100},
+      {"Power.AdaptiveChargingMinutesToFull.SlowCharging", 130},
+      {"Power.AdaptiveChargingMinutes.Delay", 120},
+      {"Power.AdaptiveChargingMinutes.Available", 300},
+      {"Power.AdaptiveChargingDelayDelta.Active.Early", 0},
+      {"power.AdaptiveChargingMinutesFullOnAC.Active", 50},
+  };
+  for (const Expected& expected : expected) {
+    EXPECT_EQ(metrics_.GetLast(expected.name), expected.value)
+        << "Metric " << expected.name << "has unexpected value.";
+  }
+}
+
+// Test metrics when `target_time` is in the future.
+TEST_F(AdaptiveChargingMetricsTest,
+       AdaptiveChargingUnplugMetricsTargetInFuture) {
+  Init();
+
+  // Generate metrics where `target_time` is in the future, and we switch
+  // from slow charging to fast charging mid way.
+  base::TimeTicks now = GetCurrentBootTime();
+  collector_.GenerateAdaptiveChargingUnplugMetrics(
+      AdaptiveChargingState::ACTIVE,
+      /*target_time=*/now + base::Hours(1),
+      /*hold_start_time=*/now - base::Hours(5),
+      /*hold_end_time=*/now - base::Hours(3),
+      /*charge_finished_time=*/now - base::Minutes(50),
+      /*time_spent_slow_charging=*/base::Minutes(30),
+      /*display_battery_percent=*/95.0);
+
+  // Confirm metrics.
+  struct Expected {
+    std::string name;
+    int value;
+  };
+  std::vector<Expected> expected = {
+      {"Power.AdaptiveChargingMinutesDelta.Active.Late", 60},
+      {"Power.AdaptiveChargingBatteryPercentageOnUnplug.MixedCharging", 95},
+      {"Power.AdaptiveChargingMinutesToFull.MixedCharging", 130},
+      {"Power.AdaptiveChargingMinutes.Delay", 120},
+      {"Power.AdaptiveChargingMinutes.Available", 300},
+      {"Power.AdaptiveChargingDelayDelta.Active.Early", 0},
+      {"power.AdaptiveChargingMinutesFullOnAC.Active", 50},
+  };
+  for (const Expected& expected : expected) {
+    EXPECT_EQ(metrics_.GetLast(expected.name), expected.value)
+        << "Metric " << expected.name << " has unexpected value.";
+  }
+}
+
+// Ensure metrics are recorded for every state.
+TEST_F(AdaptiveChargingMetricsTest, AdaptiveChargingUnplugMetricsAllStates) {
+  Init();
+
+  // For each state, send out metrics, and ensure we see the state-specific
+  // metric names we expected.
+  struct Test {
+    AdaptiveChargingState state;
+    std::string name;
+  };
+  for (const Test& test : std::vector<Test>{
+           Test{AdaptiveChargingState::ACTIVE, "Active"},
+           Test{AdaptiveChargingState::INACTIVE, "Active"},    // same as ACTIVE
+           Test{AdaptiveChargingState::SLOWCHARGE, "Active"},  // same as ACTIVE
+           Test{AdaptiveChargingState::HEURISTIC_DISABLED, "HeuristicDisabled"},
+           Test{AdaptiveChargingState::USER_CANCELED, "UserCanceled"},
+           Test{AdaptiveChargingState::USER_DISABLED, "UserDisabled"},
+           Test{AdaptiveChargingState::SHUTDOWN, "Shutdown"},
+           Test{AdaptiveChargingState::NOT_SUPPORTED, "NotSupported"},
+       }) {
+    metrics_.Clear();
+
+    base::TimeTicks now = GetCurrentBootTime();
+    collector_.GenerateAdaptiveChargingUnplugMetrics(
+        test.state,
+        /*target_time=*/now - base::Hours(1),
+        /*hold_start_time=*/now - base::Hours(5),
+        /*hold_end_time=*/now - base::Hours(3),
+        /*charge_finished_time=*/now - base::Minutes(50),
+        /*time_spent_slow_charging=*/base::Minutes(130),
+        /*display_battery_percent=*/100.0);
+
+    EXPECT_EQ(metrics_.NumCalls("Power.AdaptiveChargingMinutesDelta." +
+                                test.name + ".Early"),
+              1);
+    EXPECT_EQ(metrics_.NumCalls("Power.AdaptiveChargingDelayDelta." +
+                                test.name + ".Early"),
+              1);
+  }
 }
 
 class MockResidencyReader : public ResidencyReader {

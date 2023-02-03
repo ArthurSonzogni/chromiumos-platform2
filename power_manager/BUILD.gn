@@ -588,6 +588,7 @@ if (use.test) {
       ":libutil",
       ":libutil_test",
       "//common-mk/testrunner",
+      "//metrics:metrics_test_support",
     ]
   }
 }

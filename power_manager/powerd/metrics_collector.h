@@ -263,6 +263,7 @@ class MetricsCollector {
 
  private:
   friend class MetricsCollectorTest;
+  friend class AdaptiveChargingMetricsTest;
   FRIEND_TEST(MetricsCollectorTest, BacklightLevel);
   FRIEND_TEST(MetricsCollectorTest, SendMetricWithPowerSource);
   FRIEND_TEST(MetricsCollectorTest, WakeReasonToHistogramName);
