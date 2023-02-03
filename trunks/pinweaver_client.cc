@@ -1529,7 +1529,7 @@ int HandleBiometricsSelfTest(
     LOG(ERROR) << "decrypting label_seed failed!";
   }
   if (label_seed != old_label_seed) {
-    LOG(ERROR) << "Label seeds returned from the two attempts are differnet!";
+    LOG(ERROR) << "Label seeds returned from the two attempts are different!";
     return EXIT_FAILURE;
   }
 
@@ -1627,7 +1627,7 @@ int HandleBiometricsSelfTest(
     LOG(ERROR) << "decrypting label_seed failed!";
   }
   if (label_seed != old_label_seed) {
-    LOG(ERROR) << "Label seeds returned from the two attempts are differnet!";
+    LOG(ERROR) << "Label seeds returned from the two attempts are different!";
     return EXIT_FAILURE;
   }
 
