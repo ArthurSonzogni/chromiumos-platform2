@@ -537,14 +537,12 @@ void NDProxy::NotifyPacketCallbacks(int recv_ifindex,
       // Notice that since upstream never reply NA, this DAD never fails.
       // b/266514205: extent this workaround to all technologies as we are
       // observing similar behavior in some wifi APs.
-      if (IsGuestInterface(recv_ifindex)) {
-        uint8_t zerobuf[sizeof(in6_addr)] = {0};
-        // Empty source IP indicates DAD
-        if (memcmp(&ip6->ip6_src, zerobuf, sizeof(in6_addr)) == 0) {
-          const nd_neighbor_solicit* ns =
-              reinterpret_cast<const nd_neighbor_solicit*>(icmp6);
-          guest_address = &(ns->nd_ns_target);
-        }
+      uint8_t zerobuf[sizeof(in6_addr)] = {0};
+      // Empty source IP indicates DAD
+      if (memcmp(&ip6->ip6_src, zerobuf, sizeof(in6_addr)) == 0) {
+        const nd_neighbor_solicit* ns =
+            reinterpret_cast<const nd_neighbor_solicit*>(icmp6);
+        guest_address = &(ns->nd_ns_target);
       }
     }
   }
