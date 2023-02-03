@@ -208,11 +208,6 @@ fn hiberman_hibernate(args: &mut std::env::Args) -> std::result::Result<(), ()> 
         "Avoid using kernel based encryption for the hibernation image",
     );
     opts.optflag("n", "dry-run", "Create the hibernate image, but then exit rather than shutting down. This image should only be restored with --dry-run");
-    opts.optflag(
-        "u",
-        "unencrypted",
-        "Do not encrypt the hibernate image. Use only for test and debugging",
-    );
     let args: Vec<String> = args.collect();
     let matches = match opts.parse(args) {
         Ok(m) => m,
@@ -230,7 +225,6 @@ fn hiberman_hibernate(args: &mut std::env::Args) -> std::result::Result<(), ()> 
 
     let options = HibernateOptions {
         dry_run: matches.opt_present("n"),
-        unencrypted: matches.opt_present("u"),
         no_kernel_encryption: matches.opt_present("k"),
     };
 
@@ -361,11 +355,6 @@ fn hiberman_resume(args: &mut std::env::Args) -> std::result::Result<(), ()> {
     let mut opts = Options::new();
     opts.optflag("h", "help", "Print this help text");
     opts.optflag("n", "dry-run", "Create the hibernate image, but then exit rather than shutting down. This image should only be restored with --dry-run");
-    opts.optflag(
-        "u",
-        "unencrypted",
-        "Do not encrypt the hibernate image. Use only for test and debugging",
-    );
     let args: Vec<String> = args.collect();
     let matches = match opts.parse(args) {
         Ok(m) => m,
@@ -383,7 +372,6 @@ fn hiberman_resume(args: &mut std::env::Args) -> std::result::Result<(), ()> {
 
     let options = ResumeOptions {
         dry_run: matches.opt_present("n"),
-        unencrypted: matches.opt_present("u"),
     };
 
     if let Err(e) = hiberman::resume(options) {

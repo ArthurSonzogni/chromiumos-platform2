@@ -41,7 +41,6 @@ use crate::hiberlog::reset_log;
 use crate::hiberlog::HiberlogFile;
 use crate::hiberlog::HiberlogOut;
 use crate::hibermeta::HibernateMetadata;
-use crate::hibermeta::META_FLAG_ENCRYPTED;
 use crate::hibermeta::META_FLAG_KERNEL_ENCRYPTED;
 use crate::hibermeta::META_FLAG_VALID;
 use crate::hibermeta::META_TAG_SIZE;
@@ -262,7 +261,6 @@ impl SuspendConductor {
         // to ourselves.
         if kernel_encryption {
             info!("Using kernel image encryption");
-            self.options.unencrypted = true;
         }
 
         // This is where the suspend path and resume path fork. On success,
@@ -324,23 +322,13 @@ impl SuspendConductor {
     ) -> Result<()> {
         let image_size = snap_dev.get_image_size()?;
         let page_size = get_page_size();
-        let mode = if self.options.unencrypted {
-            CryptoMode::Unencrypted
-        } else {
-            CryptoMode::Encrypt
-        };
         let mut encryptor = CryptoWriter::new(
             &mut hiber_file,
             &self.metadata.data_key,
             &self.metadata.data_iv,
-            mode,
+            CryptoMode::Unencrypted,
             page_size * BUFFER_PAGES,
         )?;
-
-        if !self.options.unencrypted {
-            self.metadata.flags |= META_FLAG_ENCRYPTED;
-            debug!("Added encryption");
-        }
 
         debug!("Hibernate image is {} bytes", image_size);
         let compute_header_hash = (self.metadata.flags & META_FLAG_KERNEL_ENCRYPTED) == 0;

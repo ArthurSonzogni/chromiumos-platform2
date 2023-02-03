@@ -40,7 +40,6 @@ pub struct CryptoWriter<'a> {
 }
 
 pub enum CryptoMode {
-    Encrypt,
     Decrypt,
     Unencrypted,
 }
@@ -63,7 +62,6 @@ impl<'a> CryptoWriter<'a> {
         assert!(iv.len() == META_OCB_IV_SIZE);
 
         let openssl_mode = match mode {
-            CryptoMode::Encrypt => Mode::Encrypt,
             CryptoMode::Decrypt => Mode::Decrypt,
             // Never passed to openssl, so just pick something.
             CryptoMode::Unencrypted => Mode::Encrypt,
@@ -209,7 +207,6 @@ impl<'a> CryptoReader<'a> {
         assert!(key.len() == META_SYMMETRIC_IV_SIZE);
 
         let openssl_mode = match mode {
-            CryptoMode::Encrypt => Mode::Encrypt,
             CryptoMode::Decrypt => Mode::Decrypt,
             // Not passed to openssl, so just pick something.
             CryptoMode::Unencrypted => Mode::Encrypt,

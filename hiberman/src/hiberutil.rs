@@ -64,9 +64,6 @@ pub enum HibernateError {
     /// Invalid fiemap
     #[error("Invalid fiemap: {0}")]
     InvalidFiemapError(String),
-    /// Image unencrypted
-    #[error("Image unencrypted")]
-    ImageUnencryptedError(),
     /// Key manager error
     #[error("Key manager error: {0}")]
     KeyManagerError(String),
@@ -130,7 +127,6 @@ pub enum HibernateError {
 #[derive(Default)]
 pub struct HibernateOptions {
     pub dry_run: bool,
-    pub unencrypted: bool,
     pub no_kernel_encryption: bool,
 }
 
@@ -144,7 +140,6 @@ pub struct ResumeInitOptions {
 #[derive(Default)]
 pub struct ResumeOptions {
     pub dry_run: bool,
-    pub unencrypted: bool,
 }
 
 /// Options taken from the command line affecting abort-resume.

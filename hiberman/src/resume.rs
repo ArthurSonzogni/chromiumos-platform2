@@ -433,10 +433,6 @@ impl ResumeConductor {
             debug!("Image is encrypted");
         } else if (metadata.flags & META_FLAG_KERNEL_ENCRYPTED) != 0 {
             debug!("Kernel is handling encryption");
-        } else if !self.options.unencrypted {
-            error!("Unencrypted images are not permitted without --unencrypted");
-            return Err(HibernateError::ImageUnencryptedError())
-                .context("Detected unencrypted image without --unencrypted");
         }
 
         // The first data byte was already sent down. Send down a partial page
