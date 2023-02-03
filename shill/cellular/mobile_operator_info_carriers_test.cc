@@ -373,4 +373,83 @@ TEST_F(MobileOperatorInfoCarriersUsCellularTest, RoamOutsideTheUs) {
     }
   }
 }
+
+class MobileOperatorInfoCarriersRogersTest
+    : public MobileOperatorInfoCarriersTest {
+ public:
+  MobileOperatorInfoCarriersRogersTest()
+      : kRogersApn4G(ApnBuilder("ltemobile.apn")
+                         .IpType(kApnIpTypeV4V6)
+                         .ApnTypes({kApnTypeDefault})),
+        kRogersApn4GDun(ApnBuilder("ltedata.apn")
+                            .IpType(kApnIpTypeV4V6)
+                            .ApnTypes({kApnTypeDun})),
+        kRogersApn5G(ApnBuilder("mobile.apn")
+                         .IpType(kApnIpTypeV4V6)
+                         .ApnTypes({kApnTypeDefault})),
+        kRogersApn5GDun(ApnBuilder("data.apn")
+                            .IpType(kApnIpTypeV4V6)
+                            .ApnTypes({kApnTypeDun})),
+        kRogersMccmncs({"302720"}) {}
+
+ protected:
+  const ApnBuilder kRogersApn4G;
+  const ApnBuilder kRogersApn4GDun;
+  const ApnBuilder kRogersApn5G;
+  const ApnBuilder kRogersApn5GDun;
+
+  const std::set<string> kRogersMccmncs;
+
+  static constexpr char kRogersOperatorName[] = "Rogers";
+};
+
+TEST_F(MobileOperatorInfoCarriersRogersTest, RogersHome_RogersServing) {
+  for (const auto& home : kRogersMccmncs) {
+    operator_info_->UpdateMCCMNC(home);
+    operator_info_->UpdateServingMCCMNC(home);
+    operator_info_->UpdateGID1("FF");
+    EXPECT_EQ(operator_info_->operator_name(), kRogersOperatorName);
+    EXPECT_EQ(operator_info_->serving_operator_name(), kRogersOperatorName);
+    CheckFirstApn(kRogersApn4G);
+    CheckIfApnExists(kRogersApn4GDun);
+  }
+}
+
+TEST_F(MobileOperatorInfoCarriersRogersTest, UnknownHome_RogersServing) {
+  for (const auto& home : kRogersMccmncs) {
+    operator_info_->UpdateMCCMNC(kUnknownMccmnc);
+    operator_info_->UpdateServingMCCMNC(home);
+    operator_info_->UpdateGID1("FF");
+    EXPECT_EQ(operator_info_->operator_name(), "");
+    EXPECT_EQ(operator_info_->serving_operator_name(), kRogersOperatorName);
+    EXPECT_EQ(operator_info_->apn_list().size(), 0);
+  }
+}
+
+TEST_F(MobileOperatorInfoCarriersRogersTest, Rogers5gHome_RogersServing) {
+  for (const auto& home : kRogersMccmncs) {
+    operator_info_->UpdateMCCMNC(home);
+    operator_info_->UpdateServingMCCMNC(home);
+    // Rogers 5G has a GID1 filter
+    operator_info_->UpdateGID1("A4");
+    EXPECT_EQ(operator_info_->operator_name(), kRogersOperatorName);
+    EXPECT_EQ(operator_info_->serving_operator_name(), kRogersOperatorName);
+    CheckFirstApn(kRogersApn5G);
+    CheckIfApnExists(kRogersApn4G);
+    CheckIfApnExists(kRogersApn5GDun);
+    CheckIfApnExists(kRogersApn4GDun);
+  }
+}
+
+TEST_F(MobileOperatorInfoCarriersRogersTest, Unknown5gHome_RogersServing) {
+  for (const auto& home : kRogersMccmncs) {
+    operator_info_->UpdateMCCMNC(kUnknownMccmnc);
+    operator_info_->UpdateServingMCCMNC(home);
+    // Rogers 5G has a GID1 filter
+    operator_info_->UpdateGID1("A4");
+    EXPECT_EQ(operator_info_->operator_name(), "");
+    EXPECT_EQ(operator_info_->serving_operator_name(), kRogersOperatorName);
+    EXPECT_EQ(operator_info_->apn_list().size(), 0);
+  }
+}
 }  // namespace shill

@@ -2178,6 +2178,30 @@ mno {
     }
     mccmnc : "302720"
     mobile_apn {
+      apn_filter {
+        type : GID1
+        regex : "A4"
+      }
+      apn : "mobile.apn"
+      localized_name {
+        name : "Rogers 5G Internet"
+      }
+      ip_type: IPV4V6
+      type : DEFAULT
+    }
+    mobile_apn {
+      apn_filter {
+        type : GID1
+        regex : "A4"
+      }
+      apn : "data.apn"
+      localized_name {
+        name : "Rogers 5G Tethering"
+      }
+      ip_type: IPV4V6
+      type : DUN
+    }
+    mobile_apn {
       apn : "ltemobile.apn"
       localized_name {
         name : "Rogers Internet"
