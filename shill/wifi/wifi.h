@@ -446,8 +446,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // RPC accessor for |station_stats_|.
   KeyValueStore GetLinkStatistics(Error* error);
 
-  Uint16s GetAllScanFrequencies(Error* /* error */);
-
   bool GetScanPending(Error* /* error */);
   bool GetWakeOnWiFiSupported(Error* /* error */);
   bool SetBgscanMethod(const std::string& method, Error* error);
@@ -871,7 +869,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   uint16_t scan_interval_seconds_;
 
   NetlinkManager* netlink_manager_;
-  std::set<uint16_t> all_scan_frequencies_;
 
   bool random_mac_supported_;
   bool random_mac_enabled_;

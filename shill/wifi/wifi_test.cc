@@ -113,9 +113,6 @@ namespace shill {
 namespace {
 
 const uint16_t kNl80211FamilyId = 0x13;
-const uint16_t kRandomScanFrequency1 = 5600;
-const uint16_t kRandomScanFrequency2 = 5560;
-const uint16_t kRandomScanFrequency3 = 2422;
 const int kInterfaceIndex = 1234;
 const uint32_t kPhyIndex = 5678;
 
@@ -392,11 +389,6 @@ const uint8_t kNewWiphyNlMsg[] = {
 const uint32_t kNewWiphyNlMsg_PhyIndex = 2;
 const uint32_t kNewWiphyNlMsg_ChangedPhyIndex = 3;
 const int kNewWiphyNlMsg_Nl80211AttrWiphyOffset = 4;
-const uint16_t kNewWiphyNlMsg_UniqueFrequencies[] = {
-    2412, 2417, 2422, 2427, 2432, 2437, 2442, 2447, 2452, 2457,
-    2462, 2467, 2472, 2484, 5180, 5200, 5220, 5240, 5260, 5280,
-    5300, 5320, 5500, 5520, 5540, 5560, 5580, 5600, 5620, 5640,
-    5660, 5680, 5700, 5745, 5765, 5785, 5805, 5825};
 
 const uint32_t kScanTriggerMsgPhyIndex = 0;
 const uint8_t kActiveScanTriggerNlMsg[] = {
@@ -667,12 +659,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     wifi_->wifi_link_statistics_.reset(wifi_link_statistics_);
 
     manager_.set_power_manager(power_manager_);  // Transfers ownership.
-
-    // The following is only useful when a real |ScanSession| is used; it is
-    // ignored by |MockScanSession|.
-    wifi_->all_scan_frequencies_.insert(kRandomScanFrequency1);
-    wifi_->all_scan_frequencies_.insert(kRandomScanFrequency2);
-    wifi_->all_scan_frequencies_.insert(kRandomScanFrequency3);
 
     wake_on_wifi_ = static_cast<MockWakeOnWiFi*>(wifi_->wake_on_wifi_.get());
   }
@@ -1267,10 +1253,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   }
 
   std::vector<unsigned char> GetRandomMacMask() { return WiFi::kRandomMacMask; }
-
-  std::set<uint16_t>* GetAllScanFrequencies() {
-    return &wifi_->all_scan_frequencies_;
-  }
 
   void HandleNetlinkBroadcast(const NetlinkMessage& netlink_message) {
     wifi_->HandleNetlinkBroadcast(netlink_message);
@@ -4967,14 +4949,7 @@ TEST_F(WiFiMainTest, OnNewWiphy) {
   EXPECT_CALL(*wake_on_wifi_, OnWiphyIndexReceived(kNewWiphyNlMsg_PhyIndex));
   EXPECT_CALL(*wifi_provider(),
               RegisterDeviceToPhy(wifi(), kNewWiphyNlMsg_PhyIndex));
-  GetAllScanFrequencies()->clear();
   OnNewWiphy(new_wiphy_message);
-  EXPECT_EQ(std::size(kNewWiphyNlMsg_UniqueFrequencies),
-            GetAllScanFrequencies()->size());
-  for (uint16_t freq : kNewWiphyNlMsg_UniqueFrequencies) {
-    EXPECT_TRUE(GetAllScanFrequencies()->find(freq) !=
-                GetAllScanFrequencies()->end());
-  }
 }
 
 TEST_F(WiFiMainTest, OnNewWiphy_IndexChanged) {

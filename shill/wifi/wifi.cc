@@ -225,8 +225,6 @@ WiFi::WiFi(Manager* manager,
   // scan pending/currently scanning/no scan scheduled as a tri-state
   // kind of thing.
   HelpRegisterConstDerivedBool(store, kScanningProperty, &WiFi::GetScanPending);
-  HelpRegisterConstDerivedUint16s(store, kWifiSupportedFrequenciesProperty,
-                                  &WiFi::GetAllScanFrequencies);
   HelpRegisterDerivedUint16(store, kScanIntervalProperty,
                             &WiFi::GetScanInterval, &WiFi::SetScanInterval);
   HelpRegisterConstDerivedBool(store, kWakeOnWiFiSupportedProperty,
@@ -3436,47 +3434,6 @@ void WiFi::OnNewWiphy(const Nl80211Message& nl80211_message) {
   // This checks NL80211_ATTR_CIPHER_SUITES and pupulates
   // supported_cipher_suites_.
   ParseCipherSuites(nl80211_message);
-
-  // The attributes, for this message, are complicated.
-  // NL80211_ATTR_BANDS contains an array of bands...
-  AttributeListConstRefPtr wiphy_bands;
-  if (nl80211_message.const_attributes()->ConstGetNestedAttributeList(
-          NL80211_ATTR_WIPHY_BANDS, &wiphy_bands)) {
-    AttributeIdIterator band_iter(*wiphy_bands);
-    for (; !band_iter.AtEnd(); band_iter.Advance()) {
-      AttributeListConstRefPtr wiphy_band;
-      if (!wiphy_bands->ConstGetNestedAttributeList(band_iter.GetId(),
-                                                    &wiphy_band)) {
-        LOG(WARNING) << "WiFi band " << band_iter.GetId() << " not found";
-        continue;
-      }
-
-      // ...Each band has a FREQS attribute...
-      AttributeListConstRefPtr frequencies;
-      if (!wiphy_band->ConstGetNestedAttributeList(NL80211_BAND_ATTR_FREQS,
-                                                   &frequencies)) {
-        continue;
-      }
-
-      // ...And each FREQS attribute contains an array of information about the
-      // frequency...
-      AttributeIdIterator freq_iter(*frequencies);
-      for (; !freq_iter.AtEnd(); freq_iter.Advance()) {
-        AttributeListConstRefPtr frequency;
-        if (frequencies->ConstGetNestedAttributeList(freq_iter.GetId(),
-                                                     &frequency)) {
-          // ...Including the frequency, itself (the part we want).
-          uint32_t frequency_value = 0;
-          if (frequency->GetU32AttributeValue(NL80211_FREQUENCY_ATTR_FREQ,
-                                              &frequency_value)) {
-            SLOG(this, 7) << "Found frequency[" << freq_iter.GetId()
-                          << "] = " << frequency_value;
-            all_scan_frequencies_.insert(frequency_value);
-          }
-        }
-      }
-    }
-  }
 }
 
 void WiFi::GetRegulatory() {
@@ -3503,10 +3460,6 @@ SupplicantProcessProxyInterface* WiFi::supplicant_process_proxy() const {
 
 KeyValueStore WiFi::GetLinkStatistics(Error* /*error*/) {
   return WiFiLinkStatistics::StationStatsToWiFiDeviceKV(station_stats_);
-}
-
-Uint16s WiFi::GetAllScanFrequencies(Error* /* error */) {
-  return {begin(all_scan_frequencies_), end(all_scan_frequencies_)};
 }
 
 bool WiFi::GetScanPending(Error* /* error */) {

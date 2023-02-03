@@ -446,7 +446,6 @@ const char kWakeOnWiFiSupportedProperty[] = "WakeOnWiFiSupported";
 const char kWakeOnWiFiAllowedProperty[] = "WakeOnWiFiAllowed";
 const char kWakeOnWiFiFeaturesEnabledProperty[] = "WakeOnWiFiFeaturesEnabled";
 const char kWakeToScanPeriodSecondsProperty[] = "WakeToScanPeriodSeconds";
-const char kWifiSupportedFrequenciesProperty[] = "WiFi.SupportedFrequencies";
 
 // Profile property names.
 const char kEntriesProperty[] = "Entries";
