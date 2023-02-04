@@ -286,7 +286,7 @@ fn set_epp(root_path: &str, value: &str) -> Result<()> {
         + "/sys/devices/system/cpu/cpufreq/policy*/energy_performance_preference";
 
     for entry in glob(&pattern)? {
-        std::fs::write(&entry?, value)
+        std::fs::write(entry?, value)
             .with_context(|| format!("Failed to set EPP sysfs value to {}!", value))?;
     }
 
@@ -460,7 +460,7 @@ mod tests {
         let root = tempdir()?;
 
         let path = root.path().join(POWER_SUPPLY_PATH);
-        fs::create_dir_all(&path)?;
+        fs::create_dir_all(path)?;
 
         let provider = DirectoryPowerSourceProvider {
             root: root.path().to_path_buf(),

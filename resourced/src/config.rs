@@ -286,7 +286,7 @@ mod tests {
                 fs::create_dir_all(&ondemand_path)?;
 
                 let powersave_bias_path = ondemand_path.join("powersave-bias");
-                fs::write(&powersave_bias_path, b"340")?;
+                fs::write(powersave_bias_path, b"340")?;
 
                 let provider = DirectoryConfigProvider {
                     root: root.path().to_path_buf(),
@@ -306,7 +306,7 @@ mod tests {
                 // Now try with a sampling_rate 0 (unset)
 
                 let powersave_bias_path = ondemand_path.join("sampling-rate-ms");
-                fs::write(&powersave_bias_path, b"0")?;
+                fs::write(powersave_bias_path, b"0")?;
 
                 let actual = provider.read_power_preferences(power_source, preference)?;
 
@@ -322,7 +322,7 @@ mod tests {
                 // Now try with a sampling_rate 16
 
                 let powersave_bias_path = ondemand_path.join("sampling-rate-ms");
-                fs::write(&powersave_bias_path, b"16")?;
+                fs::write(powersave_bias_path, b"16")?;
 
                 let actual = provider.read_power_preferences(power_source, preference)?;
 

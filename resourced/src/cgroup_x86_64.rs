@@ -180,10 +180,10 @@ fn write_default_nonurgent_cpusets(root: &Path) -> Result<()> {
             std::fs::write(cpuset_path, cpusets)?;
         }
         Ok(None) => {
-            std::fs::write(cpuset_path, &get_little_cores(root)?)?;
+            std::fs::write(cpuset_path, get_little_cores(root)?)?;
         }
         Err(e) => {
-            std::fs::write(cpuset_path, &get_cpuset_all_cpus(root)?)?;
+            std::fs::write(cpuset_path, get_cpuset_all_cpus(root)?)?;
             bail!("Failed to get scheduler-tune cpuset-nonurgent, {}", e);
         }
     }
@@ -205,7 +205,7 @@ fn write_default_cpusets(root: &Path) -> Result<()> {
 
     for cpus in OTHER_CPUSET_CPUS {
         let cpus_path = root.join(cpus);
-        std::fs::write(cpus_path, &all_cpus)?;
+        std::fs::write(cpus_path, all_cpus.as_bytes())?;
     }
 
     Ok(())
