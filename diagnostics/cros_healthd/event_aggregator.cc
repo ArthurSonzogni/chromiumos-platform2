@@ -44,7 +44,6 @@ void EventAggregator::AddObserver(
       break;
     case mojom::EventCategoryEnum::kLid:
       lid_events_->AddObserver(std::move(observer));
-      NOTIMPLEMENTED();
       break;
     case mojom::EventCategoryEnum::kBluetooth:
       NOTIMPLEMENTED();
