@@ -246,6 +246,9 @@ class Service final {
   std::unique_ptr<dbus::Response> SwapVm(dbus::MethodCall* method_call);
   void NotifyVmSwapping(const VmId& vm_id);
 
+  // Handles a request to install the Pflash image associated with a VM.
+  std::unique_ptr<dbus::Response> InstallPflash(dbus::MethodCall* method_call);
+
   // Asynchronously handles a request to reclaim memory of a given VM.
   void ReclaimVmMemory(dbus::MethodCall* method_call,
                        dbus::ExportedObject::ResponseSender response_sender);

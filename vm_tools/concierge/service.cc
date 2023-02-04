@@ -83,7 +83,9 @@
 #include <vm_concierge/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/vm_guest.pb.h>
 
+#include "base/files/file.h"
 #include "base/files/scoped_file.h"
+#include "base/functional/bind_internal.h"
 #include "vm_tools/common/naming.h"
 #include "vm_tools/concierge/arc_vm.h"
 #include "vm_tools/concierge/dlc_helper.h"
@@ -162,6 +164,9 @@ constexpr char kQcowImageExtension[] = ".qcow2";
 
 // File extension for Plugin VMs disk types
 constexpr char kPluginVmImageExtension[] = ".pvm";
+
+// File extension for pflash files.
+constexpr char kPflashImageExtension[] = ".pflash";
 
 // Valid file extensions for disk images
 constexpr const char* kDiskImageExtensions[] = {kRawImageExtension,
@@ -268,6 +273,15 @@ struct VmCpuArgs {
   std::string cpu_affinity;
   std::vector<std::string> cpu_capacity;
   std::vector<std::vector<std::string>> cpu_clusters;
+};
+
+// Information about the Pflash file associated with a VM.
+struct PflashMetadata {
+  // Path where pflash should be installed.
+  base::FilePath path;
+
+  // Does |path| exist.
+  bool is_installed;
 };
 
 std::optional<VmStartImageFds> GetVmStartImageFds(
@@ -635,6 +649,24 @@ bool GetDiskPathFromName(
   }
 }
 
+// Returns information about the Pflash file associated with a VM. If there is a
+// failure in querying the information then it returns std::nullopt.
+std::optional<PflashMetadata> GetPflashMetadata(
+    const std::string& cryptohome_id, const std::string& vm_name) {
+  std::optional<base::FilePath> pflash_installation_path_result =
+      GetFilePathFromName(cryptohome_id, vm_name, STORAGE_CRYPTOHOME_ROOT,
+                          kPflashImageExtension, false /* create_parent_dir */);
+  if (!pflash_installation_path_result) {
+    return std::nullopt;
+  }
+
+  base::FilePath pflash_installation_path =
+      pflash_installation_path_result.value();
+  bool is_installed = base::PathExists(pflash_installation_path);
+  return PflashMetadata{.path = std::move(pflash_installation_path),
+                        .is_installed = is_installed};
+}
+
 bool CheckVmExists(const std::string& vm_name,
                    const std::string& cryptohome_id,
                    base::FilePath* out_path = nullptr,
@@ -904,6 +936,44 @@ VmInfo::VmType ClassifyVm(const StartVmRequest& request) {
   if (request.start_termina())
     return VmInfo::TERMINA;
   return VmInfo::UNKNOWN;
+}
+
+// Returns in order -
+// 1. An installed pflash file for the VM.
+// 2. A valid |start_vm_request_pflash_path|
+// 3. An empty file path.
+//
+// Returns an error -
+// 1. If a pflash file is installed and |start_vm_request_pflash_path| is valid.
+// 2. If there is an error in querying information about any installed pflash
+// file.
+std::optional<base::FilePath> GetInstalledOrRequestPflashPath(
+    const VmId& vm_id, const base::FilePath& start_vm_request_pflash_path) {
+  bool is_pflash_sent_in_request =
+      base::PathExists(start_vm_request_pflash_path);
+
+  std::optional<PflashMetadata> pflash_metadata =
+      GetPflashMetadata(vm_id.owner_id(), vm_id.name());
+  if (!pflash_metadata) {
+    return std::nullopt;
+  }
+
+  // If a pflash file is installed then don't accept one sent in a start
+  // request.
+  if (pflash_metadata->is_installed && is_pflash_sent_in_request) {
+    return std::nullopt;
+  }
+
+  if (pflash_metadata->is_installed) {
+    return pflash_metadata->path;
+  }
+
+  // At this point we don't have an installed pflash file, if no pflash file is
+  // sent in the request then return an empty pflash location.
+  if (!is_pflash_sent_in_request) {
+    return base::FilePath();
+  }
+  return start_vm_request_pflash_path;
 }
 
 }  // namespace
@@ -1542,6 +1612,7 @@ bool Service::Init() {
       {kGetVmLaunchAllowedMethod, &Service::GetVmLaunchAllowed},
       {kGetVmLogsMethod, &Service::GetVmLogs},
       {kSwapVmMethod, &Service::SwapVm},
+      {kInstallPflashMethod, &Service::InstallPflash},
   };
 
   using AsyncServiceMethod = void (Service::*)(
@@ -1926,6 +1997,17 @@ StartVmResponse Service::StartVm(StartVmRequest request,
     return response;
   }
 
+  std::optional<base::FilePath> pflash_result = GetInstalledOrRequestPflashPath(
+      VmId(request.owner_id(), request.name()), image_spec.pflash);
+  if (!pflash_result) {
+    LOG(ERROR) << "Failed to get pflash path";
+    response.set_failure_reason("Failed to get pflash path");
+    return response;
+  }
+  // The path can be empty if no pflash file is installed or nothing sent by the
+  // user.
+  base::FilePath pflash = pflash_result.value();
+
   const bool is_untrusted_vm =
       IsUntrustedVM(request.run_as_untrusted(), image_spec.is_trusted_image,
                     !request.kernel_params().empty(), host_kernel_version_);
@@ -2165,7 +2247,7 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   VmBuilder vm_builder;
   vm_builder.SetKernel(std::move(image_spec.kernel))
       .SetBios(std::move(image_spec.bios))
-      .SetPflash(std::move(image_spec.pflash))
+      .SetPflash(std::move(pflash))
       .SetInitrd(std::move(image_spec.initrd))
       .SetCpus(cpus)
       .AppendDisks(std::move(disks))
@@ -3577,6 +3659,20 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
     writer.AppendProtoAsArrayOfBytes(response);
 
     return dbus_response;
+  }
+
+  // Pflash may not be present for all VMs. We should only report error if it
+  // exists and we failed to delete it. The |DeleteFile| API handles the
+  // non-existing case as a success.
+  std::optional<PflashMetadata> pflash_metadata =
+      GetPflashMetadata(request.cryptohome_id(), request.vm_name());
+  if (pflash_metadata && pflash_metadata->is_installed) {
+    if (!base::DeleteFile(pflash_metadata->path)) {
+      response.set_status(DISK_STATUS_FAILED);
+      response.set_failure_reason("Pflash removal failed");
+      writer.AppendProtoAsArrayOfBytes(response);
+      return dbus_response;
+    }
   }
 
   response.set_status(DISK_STATUS_DESTROYED);
@@ -5406,6 +5502,84 @@ void Service::NotifyVmSwapping(const VmId& vm_id) {
   proto.set_name(vm_id.name());
   dbus::MessageWriter(&signal).AppendProtoAsArrayOfBytes(proto);
   exported_object_->SendSignal(&signal);
+}
+
+std::unique_ptr<dbus::Response> Service::InstallPflash(
+    dbus::MethodCall* method_call) {
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  InstallPflashRequest request;
+  InstallPflashResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    response.set_success(false);
+    response.set_failure_reason(
+        "Unable to parse InstallPflashRequest from message");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (!IsValidOwnerId(request.owner_id())) {
+    response.set_success(false);
+    response.set_failure_reason("Empty or malformed owner ID");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  if (!IsValidVmName(request.vm_name())) {
+    response.set_success(false);
+    response.set_failure_reason("Empty or malformed VM name");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  base::ScopedFD pflash_src_fd;
+  if (!reader.PopFileDescriptor(&pflash_src_fd)) {
+    response.set_success(false);
+    response.set_failure_reason("Failed to pop Pflash image fd");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  std::optional<PflashMetadata> pflash_metadata =
+      GetPflashMetadata(request.owner_id(), request.vm_name());
+  if (!pflash_metadata) {
+    response.set_success(false);
+    response.set_failure_reason("Failed to get pflash install path");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // We only allow one Pflash file to be allowed during the lifetime of a VM.
+  if (pflash_metadata->is_installed) {
+    response.set_success(false);
+    response.set_failure_reason("Pflash already installed");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  // No Pflash is installed that means we can associate the given file with the
+  // VM by copying it to a file derived from the VM's name itself.
+  base::FilePath pflash_src_path =
+      base::FilePath(kProcFileDescriptorsPath)
+          .Append(base::NumberToString(pflash_src_fd.get()));
+
+  LOG(INFO) << "Installing Pflash file for VM: " << request.vm_name()
+            << " to: " << pflash_metadata->path;
+  if (!base::CopyFile(pflash_src_path, pflash_metadata->path)) {
+    response.set_success(false);
+    response.set_failure_reason("Failed to copy pflash image");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
+
+  response.set_success(true);
+  writer.AppendProtoAsArrayOfBytes(response);
+  return dbus_response;
 }
 
 // TODO(b/244486983): separate out GPU VM cache methods out of service.cc file
