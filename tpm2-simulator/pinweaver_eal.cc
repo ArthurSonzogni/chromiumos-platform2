@@ -138,6 +138,15 @@ out:
   return rv == 1 ? 0 : -1;
 }
 
+int pinweaver_eal_aes256_ctr_custom(const void* key,
+                                    size_t key_size, /* in bytes */
+                                    const void* iv,
+                                    const void* data,
+                                    size_t size,
+                                    void* res) {
+  return pinweaver_eal_aes256_ctr(key, key_size, iv, data, size, res);
+}
+
 int pinweaver_eal_safe_memcmp(const void* s1, const void* s2, size_t len) {
   const uint8_t* us1 = reinterpret_cast<const uint8_t*>(s1);
   const uint8_t* us2 = reinterpret_cast<const uint8_t*>(s2);
