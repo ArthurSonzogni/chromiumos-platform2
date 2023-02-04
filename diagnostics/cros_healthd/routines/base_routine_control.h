@@ -25,19 +25,16 @@ namespace diagnostics {
 //
 // RaiseException should be called for runtime error, where the inherited
 // routine will provide the reason for the exception. on_exception_ is to
-// be provided in the constructor. The holder of BaseRoutineControl should
-// create the on_exception_ callback, which should satisfy these two properties
-// when called:
+// be provided in the |SetOnExceptionCallback| function. The holder of
+// BaseRoutineControl should create the on_exception_ callback, which should
+// satisfy these two properties when called:
 //    1. The RoutineControl object will be destructed
 //    2. The observers are notified of the disconnect with reason
 //
 // Example:
 //
 // class ExampleRoutineControl : public BaseRoutineControl {
-//   explicit ExampleRoutineControl(
-//       base::OnceCallback<void(uint32_t error, std::string reason)>
-//           on_exception_)
-//       : BaseRoutineControl(std::move(on_exception_)) {}
+//   explicit ExampleRoutineControl() {}
 //   ExampleRoutineControl(const ExampleRoutineControl&) = delete;
 //   ExampleRoutineControl& operator=(const ExampleRoutineControl&) = delete;
 //   ~ExampleRoutineControl() override = default;
@@ -58,7 +55,7 @@ class BaseRoutineControl : public ash::cros_healthd::mojom::RoutineControl {
   using ExceptionCallback =
       base::OnceCallback<void(uint32_t error, const std::string& reason)>;
 
-  explicit BaseRoutineControl(ExceptionCallback on_exception);
+  BaseRoutineControl();
   BaseRoutineControl(const BaseRoutineControl&) = delete;
   BaseRoutineControl& operator=(const BaseRoutineControl&) = delete;
   ~BaseRoutineControl() override;
@@ -69,6 +66,10 @@ class BaseRoutineControl : public ash::cros_healthd::mojom::RoutineControl {
   void AddObserver(
       mojo::PendingRemote<ash::cros_healthd::mojom::RoutineObserver> observer)
       final;
+
+  // Sets the |on_exception_| callback. This function must be called before any
+  // mojo message is sent/received.
+  void SetOnExceptionCallback(ExceptionCallback on_exception);
 
  protected:
   // Calls the on_exception_ callback.

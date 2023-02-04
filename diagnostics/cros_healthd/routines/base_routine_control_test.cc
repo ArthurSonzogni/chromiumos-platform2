@@ -38,7 +38,9 @@ class RoutineControlImplPeer final : public BaseRoutineControl {
   explicit RoutineControlImplPeer(
       base::OnceCallback<void(uint32_t error, const std::string& reason)>
           on_exception_)
-      : BaseRoutineControl(std::move(on_exception_)) {}
+      : BaseRoutineControl() {
+    SetOnExceptionCallback(std::move(on_exception_));
+  }
   RoutineControlImplPeer(const RoutineControlImplPeer&) = delete;
   RoutineControlImplPeer& operator=(const RoutineControlImplPeer&) = delete;
   ~RoutineControlImplPeer() override = default;

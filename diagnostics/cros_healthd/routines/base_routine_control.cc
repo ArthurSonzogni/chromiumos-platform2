@@ -16,8 +16,7 @@ namespace mojom = ash::cros_healthd::mojom;
 
 namespace diagnostics {
 
-BaseRoutineControl::BaseRoutineControl(ExceptionCallback on_exception)
-    : on_exception_(std::move(on_exception)) {
+BaseRoutineControl::BaseRoutineControl() {
   state_ = mojom::RoutineState::New();
   state_->percentage = 0;
   state_->state_union = mojom::RoutineStateUnion::NewInitialized(
@@ -27,6 +26,9 @@ BaseRoutineControl::BaseRoutineControl(ExceptionCallback on_exception)
 BaseRoutineControl::~BaseRoutineControl() = default;
 
 void BaseRoutineControl::Start() {
+  CHECK(!on_exception_.is_null())
+      << "Must call SetOnExceptionCallback before starting the routine, and "
+         "exception can only be raised once";
   // The routine should only be started once.
   if (!state_->state_union->is_initialized()) {
     LOG(ERROR) << "Routine Control is started more than once";
@@ -41,6 +43,11 @@ void BaseRoutineControl::Start() {
 void BaseRoutineControl::GetState(
     BaseRoutineControl::GetStateCallback callback) {
   std::move(callback).Run(state_.Clone());
+}
+
+void BaseRoutineControl::SetOnExceptionCallback(
+    ExceptionCallback on_exception) {
+  on_exception_ = std::move(on_exception);
 }
 
 const mojom::RoutineStatePtr& BaseRoutineControl::state() {
@@ -59,6 +66,9 @@ void BaseRoutineControl::NotifyObservers() {
 }
 
 void BaseRoutineControl::RaiseException(const std::string& reason) {
+  CHECK(!on_exception_.is_null())
+      << "Must call SetOnExceptionCallback before starting the routine, and "
+         "exception can only be raised once";
   std::move(on_exception_)
       .Run(static_cast<uint32_t>(
                mojom::RoutineControlExceptionEnum::kRuntimeError),
