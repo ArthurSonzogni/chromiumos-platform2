@@ -88,6 +88,8 @@ class TetheringManager {
   // config with default values.
   virtual void UnloadConfigFromProfile();
   static const char* TetheringStateName(const TetheringState& state);
+  // Get the current TetheringStatus dictionary.
+  KeyValueStore GetStatus();
 
  private:
   friend class TetheringManagerTest;
@@ -104,7 +106,6 @@ class TetheringManager {
   // Tethering properties get handlers.
   KeyValueStore GetCapabilities(Error* error);
   KeyValueStore GetConfig(Error* error);
-  KeyValueStore GetStatus();
   KeyValueStore GetStatus(Error* error) { return GetStatus(); }
 
   bool SetAndPersistConfig(const KeyValueStore& config, Error* error);

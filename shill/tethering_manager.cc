@@ -344,7 +344,7 @@ void TetheringManager::SetState(TetheringState state) {
   LOG(INFO) << "State changed from " << state_ << " to " << state;
   state_ = state;
 
-  manager_->TetheringStatusChanged(GetStatus());
+  manager_->TetheringStatusChanged();
 }
 
 // static
@@ -485,7 +485,7 @@ void TetheringManager::OnDownstreamDeviceEvent(LocalDevice::DeviceEvent event,
   } else if (event == LocalDevice::DeviceEvent::kPeerConnected ||
              event == LocalDevice::DeviceEvent::kPeerDisconnected) {
     if (state_ == TetheringState::kTetheringActive) {
-      manager_->TetheringStatusChanged(GetStatus());
+      manager_->TetheringStatusChanged();
     }
   }
 }

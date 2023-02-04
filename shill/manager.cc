@@ -3152,7 +3152,8 @@ bool Manager::SetLOHSConfig(const KeyValueStore& properties, Error* error) {
   return false;
 }
 
-void Manager::TetheringStatusChanged(const KeyValueStore& status) {
+void Manager::TetheringStatusChanged() {
+  auto status = tethering_manager_->GetStatus();
   adaptor_->EmitKeyValueStoreChanged(kTetheringStatusProperty, status);
 }
 

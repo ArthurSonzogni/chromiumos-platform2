@@ -147,7 +147,7 @@ class MockManager : public Manager {
               FilterByTechnology,
               (Technology tech),
               (const, override));
-  MOCK_METHOD(void, TetheringStatusChanged, (const KeyValueStore& status), ());
+  MOCK_METHOD(void, TetheringStatusChanged, (), ());
 
   // Getter and setter for a mocked device info instance.
   DeviceInfo* mock_device_info() { return mock_device_info_; }

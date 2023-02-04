@@ -646,14 +646,14 @@ TEST_F(TetheringManagerTest, StartTetheringSession) {
       .WillOnce(Return(hotspot_device_));
   EXPECT_CALL(*hotspot_device_.get(), ConfigureService(_))
       .WillOnce(Return(true));
-  EXPECT_CALL(manager_, TetheringStatusChanged(_)).Times(1);
+  EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
   SetEnabled(tethering_manager_, true);
   EXPECT_EQ(TetheringState(tethering_manager_),
             TetheringManager::TetheringState::kTetheringStarting);
 
   // On service up with device event.
   SetDownstream(tethering_manager_);
-  EXPECT_CALL(manager_, TetheringStatusChanged(_)).Times(1);
+  EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
   DownStreamDeviceEvent(tethering_manager_,
                         LocalDevice::DeviceEvent::kServiceUp,
                         hotspot_device_.get());
@@ -695,7 +695,7 @@ TEST_F(TetheringManagerTest, StopTetheringSession) {
   EXPECT_CALL(*hotspot_device_.get(), DeconfigureService())
       .WillOnce(Return(true));
   EXPECT_CALL(*wifi_provider_, DeleteLocalDevice(_)).Times(1);
-  EXPECT_CALL(manager_, TetheringStatusChanged(_)).Times(1);
+  EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
   SetEnabledVerifyResult(tethering_manager_, false,
                          TetheringManager::SetEnabledResult::kSuccess);
   CheckTetheringIdle(tethering_manager_);
@@ -710,7 +710,7 @@ TEST_F(TetheringManagerTest, DeviceEventInterfaceDisabled) {
   EXPECT_CALL(*hotspot_device_.get(), DeconfigureService())
       .WillOnce(Return(true));
   EXPECT_CALL(*wifi_provider_, DeleteLocalDevice(_)).Times(1);
-  EXPECT_CALL(manager_, TetheringStatusChanged(_)).Times(1);
+  EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
   DownStreamDeviceEvent(tethering_manager_,
                         LocalDevice::DeviceEvent::kInterfaceDisabled,
                         hotspot_device_.get());
@@ -727,7 +727,7 @@ TEST_F(TetheringManagerTest, DeviceEventServiceDown) {
   EXPECT_CALL(*hotspot_device_.get(), DeconfigureService())
       .WillOnce(Return(true));
   EXPECT_CALL(*wifi_provider_, DeleteLocalDevice(_)).Times(1);
-  EXPECT_CALL(manager_, TetheringStatusChanged(_)).Times(1);
+  EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
   DownStreamDeviceEvent(tethering_manager_,
                         LocalDevice::DeviceEvent::kServiceDown,
                         hotspot_device_.get());
@@ -763,12 +763,12 @@ TEST_F(TetheringManagerTest, DeviceEventPeerConnectedDisconnected) {
   SetEnabledVerifyResult(tethering_manager_, true,
                          TetheringManager::SetEnabledResult::kSuccess);
 
-  EXPECT_CALL(manager_, TetheringStatusChanged(_)).Times(1);
+  EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
   DownStreamDeviceEvent(tethering_manager_,
                         LocalDevice::DeviceEvent::kPeerConnected,
                         hotspot_device_.get());
 
-  EXPECT_CALL(manager_, TetheringStatusChanged(_)).Times(1);
+  EXPECT_CALL(manager_, TetheringStatusChanged()).Times(1);
   DownStreamDeviceEvent(tethering_manager_,
                         LocalDevice::DeviceEvent::kPeerDisconnected,
                         hotspot_device_.get());

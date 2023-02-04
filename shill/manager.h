@@ -538,7 +538,7 @@ class Manager {
 #endif  // DISABLE_FLOSS
 
   // Emit TetheringStatus dbus property change signal.
-  mockable void TetheringStatusChanged(const KeyValueStore& status);
+  mockable void TetheringStatusChanged();
 
  private:
   friend class ArcVpnDriverTest;
