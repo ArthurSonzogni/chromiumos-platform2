@@ -41,6 +41,7 @@ if (use.test) {
       "libbrillo",
       "libchrome",
       "libchrome-test",
+      "libmetrics",
     ]
   }
 
@@ -50,6 +51,7 @@ if (use.test) {
       "edid_test.cc",
       "fwupd_utils_test.cc",
       "memory_info_test.cc",
+      "metrics_utils_test.cc",
       "procfs_utils_test.cc",
       "resource_queue_test.cc",
       "usb_utils_test.cc",

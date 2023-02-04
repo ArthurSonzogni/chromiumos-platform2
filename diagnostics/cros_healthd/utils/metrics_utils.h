@@ -7,6 +7,8 @@
 
 #include <set>
 
+#include <metrics/metrics_library.h>
+
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
@@ -26,6 +28,7 @@ enum class CrosHealthdTelemetryResult {
 // Sends the telemetry result (e.g., success or error) to UMA for each category
 // in |requested_categories|.
 void SendTelemetryResultToUMA(
+    MetricsLibraryInterface* metrics,
     const std::set<ash::cros_healthd::mojom::ProbeCategoryEnum>&
         requested_categories,
     const ash::cros_healthd::mojom::TelemetryInfoPtr& info);

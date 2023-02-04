@@ -9,7 +9,6 @@
 #include <string>
 
 #include <base/logging.h>
-#include <metrics/metrics_library.h>
 #include <mojo/public/cpp/bindings/struct_ptr.h>
 
 #include "diagnostics/cros_healthd/utils/metrics_utils_constants.h"
@@ -71,7 +70,7 @@ std::optional<std::string> GetMetricName(mojom::ProbeCategoryEnum category) {
 }
 
 template <typename S>
-void SendOneTelemetryResultToUMA(MetricsLibrary* metrics,
+void SendOneTelemetryResultToUMA(MetricsLibraryInterface* metrics,
                                  mojom::ProbeCategoryEnum category,
                                  const mojo::StructPtr<S>& struct_ptr) {
   std::optional<std::string> metrics_name = GetMetricName(category);
@@ -96,14 +95,13 @@ void SendOneTelemetryResultToUMA(MetricsLibrary* metrics,
 }  // namespace
 
 void SendTelemetryResultToUMA(
+    MetricsLibraryInterface* metrics,
     const std::set<mojom::ProbeCategoryEnum>& requested_categories,
     const mojom::TelemetryInfoPtr& info) {
   if (info.is_null()) {
     LOG(WARNING) << "Cannot send a null telemetry result to UMA.";
     return;
   }
-
-  MetricsLibrary metrics;
 
   for (const auto category : requested_categories) {
     switch (category) {
@@ -112,92 +110,92 @@ void SendTelemetryResultToUMA(
         break;
       }
       case mojom::ProbeCategoryEnum::kBattery: {
-        SendOneTelemetryResultToUMA(&metrics, category, info->battery_result);
+        SendOneTelemetryResultToUMA(metrics, category, info->battery_result);
         break;
       }
       case mojom::ProbeCategoryEnum::kCpu: {
-        SendOneTelemetryResultToUMA(&metrics, category, info->cpu_result);
+        SendOneTelemetryResultToUMA(metrics, category, info->cpu_result);
         break;
       }
       case mojom::ProbeCategoryEnum::kNonRemovableBlockDevices: {
-        SendOneTelemetryResultToUMA(&metrics, category,
+        SendOneTelemetryResultToUMA(metrics, category,
                                     info->block_device_result);
         break;
       }
       case mojom::ProbeCategoryEnum::kTimezone: {
-        SendOneTelemetryResultToUMA(&metrics, category, info->timezone_result);
+        SendOneTelemetryResultToUMA(metrics, category, info->timezone_result);
         break;
       }
       case mojom::ProbeCategoryEnum::kMemory: {
-        SendOneTelemetryResultToUMA(&metrics, category, info->memory_result);
+        SendOneTelemetryResultToUMA(metrics, category, info->memory_result);
         break;
       }
       case mojom::ProbeCategoryEnum::kBacklight: {
-        SendOneTelemetryResultToUMA(&metrics, category, info->backlight_result);
+        SendOneTelemetryResultToUMA(metrics, category, info->backlight_result);
         break;
       }
       case mojom::ProbeCategoryEnum::kFan: {
-        SendOneTelemetryResultToUMA(&metrics, category, info->fan_result);
+        SendOneTelemetryResultToUMA(metrics, category, info->fan_result);
         break;
       }
       case mojom::ProbeCategoryEnum::kStatefulPartition: {
-        SendOneTelemetryResultToUMA(&metrics, category,
+        SendOneTelemetryResultToUMA(metrics, category,
                                     info->stateful_partition_result);
         break;
       }
       case mojom::ProbeCategoryEnum::kBluetooth: {
-        SendOneTelemetryResultToUMA(&metrics, category, info->bluetooth_result);
+        SendOneTelemetryResultToUMA(metrics, category, info->bluetooth_result);
         break;
       }
       case mojom::ProbeCategoryEnum::kSystem: {
-        SendOneTelemetryResultToUMA(&metrics, category, info->system_result);
+        SendOneTelemetryResultToUMA(metrics, category, info->system_result);
         break;
       }
       case mojom::ProbeCategoryEnum::kNetwork: {
-        SendOneTelemetryResultToUMA(&metrics, category, info->network_result);
+        SendOneTelemetryResultToUMA(metrics, category, info->network_result);
         break;
       }
       case mojom::ProbeCategoryEnum::kAudio: {
-        SendOneTelemetryResultToUMA(&metrics, category, info->audio_result);
+        SendOneTelemetryResultToUMA(metrics, category, info->audio_result);
         break;
       }
       case mojom::ProbeCategoryEnum::kBootPerformance: {
-        SendOneTelemetryResultToUMA(&metrics, category,
+        SendOneTelemetryResultToUMA(metrics, category,
                                     info->boot_performance_result);
         break;
       }
       case mojom::ProbeCategoryEnum::kBus: {
-        SendOneTelemetryResultToUMA(&metrics, category, info->bus_result);
+        SendOneTelemetryResultToUMA(metrics, category, info->bus_result);
         break;
       }
       case mojom::ProbeCategoryEnum::kTpm: {
-        SendOneTelemetryResultToUMA(&metrics, category, info->tpm_result);
+        SendOneTelemetryResultToUMA(metrics, category, info->tpm_result);
         break;
       }
       case mojom::ProbeCategoryEnum::kNetworkInterface: {
-        SendOneTelemetryResultToUMA(&metrics, category,
+        SendOneTelemetryResultToUMA(metrics, category,
                                     info->network_interface_result);
         break;
       }
       case mojom::ProbeCategoryEnum::kGraphics: {
-        SendOneTelemetryResultToUMA(&metrics, category, info->graphics_result);
+        SendOneTelemetryResultToUMA(metrics, category, info->graphics_result);
         break;
       }
       case mojom::ProbeCategoryEnum::kDisplay: {
-        SendOneTelemetryResultToUMA(&metrics, category, info->display_result);
+        SendOneTelemetryResultToUMA(metrics, category, info->display_result);
         break;
       }
       case mojom::ProbeCategoryEnum::kInput: {
-        SendOneTelemetryResultToUMA(&metrics, category, info->input_result);
+        SendOneTelemetryResultToUMA(metrics, category, info->input_result);
         break;
       }
       case mojom::ProbeCategoryEnum::kAudioHardware: {
-        SendOneTelemetryResultToUMA(&metrics, category,
+        SendOneTelemetryResultToUMA(metrics, category,
                                     info->audio_hardware_result);
         break;
       }
       case mojom::ProbeCategoryEnum::kSensor: {
-        SendOneTelemetryResultToUMA(&metrics, category, info->sensor_result);
+        SendOneTelemetryResultToUMA(metrics, category, info->sensor_result);
         break;
       }
     }

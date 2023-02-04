@@ -11,6 +11,7 @@ pkg_config("libcros_healthd_pkg_deps") {
     "iioservice_ipc",
     "libbrillo",
     "libchrome",
+    "libmetrics",
     "libmojo",
     "mojo_service_manager",
   ]
