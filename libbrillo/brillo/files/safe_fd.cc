@@ -595,7 +595,8 @@ SafeFD::Error SafeFD::Unlink(const std::string& name) {
   }
 
   if (HANDLE_EINTR(unlinkat(fd_.get(), name.c_str(), 0 /*flags*/)) != 0) {
-    PLOG(ERROR) << "Failed to unlink \"" << name << "\"";
+    // Callers can best handle whether to complain about ENOENT.
+    PLOG_IF(ERROR, errno != ENOENT) << "Failed to unlink \"" << name << "\"";
     return SafeFD::Error::kIOError;
   }
   return SafeFD::Error::kNoError;
