@@ -230,8 +230,8 @@ void DeviceDBusAdaptor::SetUsbEthernetMacAddressSource(
   SLOG(this, 2) << __func__;
 
   Error e(Error::kOperationInitiated);
-  ResultCallback callback = GetMethodReplyCallback(std::move(response));
-  device_->SetUsbEthernetMacAddressSource(source, callback);
+  device_->SetUsbEthernetMacAddressSource(
+      source, GetMethodReplyCallback(std::move(response)));
 }
 
 }  // namespace shill

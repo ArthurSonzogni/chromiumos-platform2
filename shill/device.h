@@ -232,7 +232,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
 
   // Sets MAC address source for USB Ethernet device.
   virtual void SetUsbEthernetMacAddressSource(const std::string& source,
-                                              const ResultCallback& callback);
+                                              ResultOnceCallback callback);
 
   // Renew DHCPv4 lease and invalidate the IPv6 config kept in shill.
   void ForceIPConfigUpdate();

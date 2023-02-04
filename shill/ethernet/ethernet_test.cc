@@ -174,16 +174,10 @@ class EthernetTest : public testing::Test {
     run_loop.Run();
   }
   void SetUsbEthernetMacAddressSource(const std::string& source,
-                                      const ResultCallback& callback) {
+                                      ResultOnceCallback callback) {
     base::RunLoop run_loop;
-    auto cb_wrapper = [](const base::RepeatingClosure& quit_closure,
-                         const ResultCallback& callback, const Error& error) {
-      callback.Run(error);
-      quit_closure.Run();
-    };
     ethernet_->SetUsbEthernetMacAddressSource(
-        source,
-        base::BindRepeating(cb_wrapper, run_loop.QuitClosure(), callback));
+        source, std::move(callback).Then(run_loop.QuitClosure()));
     run_loop.Run();
   }
   std::string GetUsbEthernetMacAddressSource(Error* error) {
@@ -567,7 +561,7 @@ TEST_F(EthernetTest, SetUsbEthernetMacAddressSourceInvalidArguments) {
   EXPECT_CALL(*this, ErrorCallback(ErrorEquals(Error::kInvalidArguments)));
   SetUsbEthernetMacAddressSource(
       "invalid_value",
-      base::Bind(&EthernetTest::ErrorCallback, base::Unretained(this)));
+      base::BindOnce(&EthernetTest::ErrorCallback, base::Unretained(this)));
 }
 
 TEST_F(EthernetTest, SetUsbEthernetMacAddressSourceNotSupportedForNonUsb) {
@@ -576,7 +570,7 @@ TEST_F(EthernetTest, SetUsbEthernetMacAddressSourceNotSupportedForNonUsb) {
   EXPECT_CALL(*this, ErrorCallback(ErrorEquals(Error::kIllegalOperation)));
   SetUsbEthernetMacAddressSource(
       kUsbEthernetMacAddressSourceUsbAdapterMac,
-      base::Bind(&EthernetTest::ErrorCallback, base::Unretained(this)));
+      base::BindOnce(&EthernetTest::ErrorCallback, base::Unretained(this)));
 }
 
 TEST_F(EthernetTest,
@@ -585,7 +579,7 @@ TEST_F(EthernetTest,
   EXPECT_CALL(*this, ErrorCallback(ErrorEquals(Error::kNotFound)));
   SetUsbEthernetMacAddressSource(
       kUsbEthernetMacAddressSourceDesignatedDockMac,
-      base::Bind(&EthernetTest::ErrorCallback, base::Unretained(this)));
+      base::BindOnce(&EthernetTest::ErrorCallback, base::Unretained(this)));
 }
 
 TEST_F(EthernetTest, SetUsbEthernetMacAddressSourceNetlinkError) {
@@ -608,7 +602,7 @@ TEST_F(EthernetTest, SetUsbEthernetMacAddressSourceNetlinkError) {
   EXPECT_CALL(*this, ErrorCallback(ErrorEquals(Error::kOperationFailed)));
   SetUsbEthernetMacAddressSource(
       kUsbEthernetMacAddressSourceBuiltinAdapterMac,
-      base::Bind(&EthernetTest::ErrorCallback, base::Unretained(this)));
+      base::BindOnce(&EthernetTest::ErrorCallback, base::Unretained(this)));
 
   EXPECT_EQ(hwaddr_, ethernet_->mac_address());
 }
@@ -632,7 +626,7 @@ TEST_F(EthernetTest, SetUsbEthernetMacAddressSource) {
   EXPECT_CALL(*this, ErrorCallback(ErrorEquals(Error::kSuccess)));
   SetUsbEthernetMacAddressSource(
       kUsbEthernetMacAddressSourceBuiltinAdapterMac,
-      base::Bind(&EthernetTest::ErrorCallback, base::Unretained(this)));
+      base::BindOnce(&EthernetTest::ErrorCallback, base::Unretained(this)));
 
   EXPECT_EQ(kBuiltinAdapterMacAddress, ethernet_->mac_address());
   EXPECT_EQ(GetUsbEthernetMacAddressSource(nullptr),

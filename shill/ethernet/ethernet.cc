@@ -15,6 +15,7 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <time.h>
+#include <utility>
 
 #include <base/check.h>
 #include <base/files/file_path.h>
@@ -678,14 +679,14 @@ void Ethernet::DeregisterService(EthernetServiceRefPtr service) {
 }
 
 void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,
-                                              const ResultCallback& callback) {
+                                              ResultOnceCallback callback) {
   SLOG(this, 2) << __func__ << " " << source;
 
   if (bus_type_ != kDeviceBusTypeUsb) {
     Error error;
     Error::PopulateAndLog(FROM_HERE, &error, Error::kIllegalOperation,
                           "Not allowed on non-USB devices: " + bus_type_);
-    callback.Run(error);
+    std::move(callback).Run(error);
     return;
   }
 
@@ -702,7 +703,7 @@ void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,
     Error error;
     Error::PopulateAndLog(FROM_HERE, &error, Error::kInvalidArguments,
                           "Unknown source: " + source);
-    callback.Run(error);
+    std::move(callback).Run(error);
     return;
   }
 
@@ -711,7 +712,7 @@ void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,
     Error::PopulateAndLog(
         FROM_HERE, &error, Error::kNotFound,
         "Failed to find out new MAC address for source: " + source);
-    callback.Run(error);
+    std::move(callback).Run(error);
     return;
   }
 
@@ -722,7 +723,7 @@ void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,
       adaptor()->EmitStringChanged(kUsbEthernetMacAddressSourceProperty,
                                    usb_ethernet_mac_address_source_);
     }
-    callback.Run(Error(Error::kSuccess));
+    std::move(callback).Run(Error(Error::kSuccess));
     return;
   }
 
@@ -734,7 +735,7 @@ void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,
       interface_index(), ByteString::CreateFromHexString(new_mac_address),
       base::BindOnce(&Ethernet::OnSetInterfaceMacResponse,
                      weak_ptr_factory_.GetWeakPtr(), source, new_mac_address,
-                     callback));
+                     std::move(callback)));
 }
 
 std::string Ethernet::ReadMacAddressFromFile(const base::FilePath& file_path) {
@@ -755,13 +756,13 @@ std::string Ethernet::ReadMacAddressFromFile(const base::FilePath& file_path) {
 
 void Ethernet::OnSetInterfaceMacResponse(const std::string& mac_address_source,
                                          const std::string& new_mac_address,
-                                         const ResultCallback& callback,
+                                         ResultOnceCallback callback,
                                          int32_t error) {
   if (error) {
     LOG(ERROR) << __func__ << " received response with error "
                << strerror(error);
     if (!callback.is_null()) {
-      callback.Run(Error(Error::kOperationFailed));
+      std::move(callback).Run(Error(Error::kOperationFailed));
     }
     return;
   }
@@ -774,7 +775,7 @@ void Ethernet::OnSetInterfaceMacResponse(const std::string& mac_address_source,
 
   set_mac_address(new_mac_address);
   if (!callback.is_null()) {
-    callback.Run(Error(Error::kSuccess));
+    std::move(callback).Run(Error(Error::kSuccess));
   }
 }
 
