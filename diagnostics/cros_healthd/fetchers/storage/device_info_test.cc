@@ -7,10 +7,10 @@
 
 #include <base/files/file_path.h>
 
+#include <gmock/gmock-actions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/common/statusor.h"
 #include "diagnostics/cros_healthd/fetchers/storage/device_info.h"
 #include "diagnostics/cros_healthd/fetchers/storage/mock/mock_platform.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
@@ -18,8 +18,8 @@
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
-using ::testing::Return;
+namespace mojom = ::ash::cros_healthd::mojom;
+using ::testing::ReturnPointee;
 using ::testing::StrictMock;
 
 constexpr char kFakeDevnode[] = "dev/node/path";
@@ -29,8 +29,8 @@ constexpr char kFakeSubsystemUfs[] = "block:scsi:scsi:scsi:pci";
 constexpr char kFakeSubsystemSata[] = "block:scsi:pci";
 constexpr uint64_t kFakeSize = 16 * 1024;
 constexpr uint64_t kFakeBlockSize = 512;
-constexpr mojo_ipc::StorageDevicePurpose kFakePurpose =
-    mojo_ipc::StorageDevicePurpose::kSwapDevice;
+constexpr mojom::StorageDevicePurpose kFakePurpose =
+    mojom::StorageDevicePurpose::kSwapDevice;
 
 class StorageDeviceInfoTest : public ::testing::Test {
  protected:
@@ -38,10 +38,10 @@ class StorageDeviceInfoTest : public ::testing::Test {
     auto mock_platform = std::make_unique<StrictMock<MockPlatform>>();
     EXPECT_CALL(*mock_platform,
                 GetDeviceSizeBytes(base::FilePath(kFakeDevnode)))
-        .WillOnce(Return(kFakeSize));
+        .WillOnce(ReturnPointee(&kFakeSize));
     EXPECT_CALL(*mock_platform,
                 GetDeviceBlockSizeBytes(base::FilePath(kFakeDevnode)))
-        .WillOnce(Return(kFakeBlockSize));
+        .WillOnce(ReturnPointee(&kFakeBlockSize));
     return mock_platform;
   }
 };
@@ -55,10 +55,10 @@ TEST_F(StorageDeviceInfoTest, FetchEmmcTest) {
       kFakePurpose, mock_platform.get());
   EXPECT_NE(nullptr, dev_info);
 
-  auto info_or = dev_info->FetchDeviceInfo();
-  EXPECT_TRUE(info_or.ok());
+  auto info_result = dev_info->FetchDeviceInfo();
+  EXPECT_TRUE(info_result.has_value());
 
-  auto info = std::move(info_or.value());
+  auto info = std::move(info_result.value());
   EXPECT_EQ(kFakeDevnode, info->path);
   EXPECT_EQ(kFakeSubsystemMmc, info->type);
   EXPECT_EQ(kFakeSize, info->size);
@@ -95,10 +95,10 @@ TEST_F(StorageDeviceInfoTest, FetchEmmcTestWithOldMmc) {
       kFakePurpose, mock_platform.get());
   EXPECT_NE(nullptr, dev_info);
 
-  auto info_or = dev_info->FetchDeviceInfo();
-  EXPECT_TRUE(info_or.ok());
+  auto info_result = dev_info->FetchDeviceInfo();
+  EXPECT_TRUE(info_result.has_value());
 
-  auto info = std::move(info_or.value());
+  auto info = std::move(info_result.value());
   EXPECT_EQ(kFakeDevnode, info->path);
   EXPECT_EQ(kFakeSubsystemMmc, info->type);
   EXPECT_EQ(kFakeSize, info->size);
@@ -145,10 +145,10 @@ TEST_F(StorageDeviceInfoTest, FetchNvmeTest) {
       kFakePurpose, mock_platform.get());
   EXPECT_NE(nullptr, dev_info);
 
-  auto info_or = dev_info->FetchDeviceInfo();
-  EXPECT_TRUE(info_or.ok());
+  auto info_result = dev_info->FetchDeviceInfo();
+  EXPECT_TRUE(info_result.has_value());
 
-  auto info = std::move(info_or.value());
+  auto info = std::move(info_result.value());
   EXPECT_EQ(kFakeDevnode, info->path);
   EXPECT_EQ(kFakeSubsystemNvme, info->type);
   EXPECT_EQ(kFakeSize, info->size);
@@ -188,10 +188,10 @@ TEST_F(StorageDeviceInfoTest, FetchNvmeTestWithLegacyRevision) {
       kFakePurpose, mock_platform.get());
   EXPECT_NE(nullptr, dev_info);
 
-  auto info_or = dev_info->FetchDeviceInfo();
-  EXPECT_TRUE(info_or.ok());
+  auto info_result = dev_info->FetchDeviceInfo();
+  EXPECT_TRUE(info_result.has_value());
 
-  auto info = std::move(info_or.value());
+  auto info = std::move(info_result.value());
   EXPECT_EQ(kFakeDevnode, info->path);
   EXPECT_EQ(kFakeSubsystemNvme, info->type);
   EXPECT_EQ(kFakeSize, info->size);
@@ -241,10 +241,10 @@ TEST_F(StorageDeviceInfoTest, FetchUFSTest) {
       kFakePurpose, mock_platform.get());
   EXPECT_NE(nullptr, dev_info);
 
-  auto info_or = dev_info->FetchDeviceInfo();
-  EXPECT_TRUE(info_or.ok());
+  auto info_result = dev_info->FetchDeviceInfo();
+  EXPECT_TRUE(info_result.has_value());
 
-  auto info = std::move(info_or.value());
+  auto info = std::move(info_result.value());
   EXPECT_EQ(kFakeDevnode, info->path);
   EXPECT_EQ(kFakeSubsystemUfs, info->type);
   EXPECT_EQ(kFakeSize, info->size);
@@ -288,10 +288,10 @@ TEST_F(StorageDeviceInfoTest, FetchSataTest) {
       kFakePurpose, mock_platform.get());
   EXPECT_NE(nullptr, dev_info);
 
-  auto info_or = dev_info->FetchDeviceInfo();
-  EXPECT_TRUE(info_or.ok());
+  auto info_result = dev_info->FetchDeviceInfo();
+  EXPECT_TRUE(info_result.has_value());
 
-  auto info = std::move(info_or.value());
+  auto info = std::move(info_result.value());
   EXPECT_EQ(kFakeDevnode, info->path);
   EXPECT_EQ(kFakeSubsystemSata, info->type);
   EXPECT_EQ(kFakeSize, info->size);

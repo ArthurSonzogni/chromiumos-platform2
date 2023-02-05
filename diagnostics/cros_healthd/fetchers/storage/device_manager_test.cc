@@ -25,10 +25,11 @@
 namespace diagnostics {
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 using ::testing::_;
 using ::testing::ByMove;
 using ::testing::Return;
+using ::testing::ReturnPointee;
 using ::testing::StrictMock;
 using ::testing::UnorderedElementsAre;
 
@@ -43,10 +44,10 @@ TEST(StorageDeviceManagerTest, NoRecreation) {
   const std::string kBlockClass = "block";
   const std::string kNvmeClass = "nvme";
   const std::string kEmmcClass = "mmc";
-  constexpr mojo_ipc::StorageDevicePurpose kNvmePurpose =
-      mojo_ipc::StorageDevicePurpose::kSwapDevice;
-  constexpr mojo_ipc::StorageDevicePurpose kEmmcPurpose =
-      mojo_ipc::StorageDevicePurpose::kBootDevice;
+  constexpr mojom::StorageDevicePurpose kNvmePurpose =
+      mojom::StorageDevicePurpose::kSwapDevice;
+  constexpr mojom::StorageDevicePurpose kEmmcPurpose =
+      mojom::StorageDevicePurpose::kBootDevice;
   const uint64_t kNvmeSize = 1024;
   const uint64_t kEmmcSize = 768;
   const uint64_t kBlockSize = 512;
@@ -56,13 +57,13 @@ TEST(StorageDeviceManagerTest, NoRecreation) {
 
   // TODO(dlunev) querying size shall be cached as well and allow WillOnce.
   EXPECT_CALL(*mock_platform, GetDeviceSizeBytes(kNvmeDev))
-      .WillRepeatedly(Return(kNvmeSize));
+      .WillRepeatedly(ReturnPointee(&kNvmeSize));
   EXPECT_CALL(*mock_platform, GetDeviceBlockSizeBytes(kNvmeDev))
-      .WillRepeatedly(Return(kBlockSize));
+      .WillRepeatedly(ReturnPointee(&kBlockSize));
   EXPECT_CALL(*mock_platform, GetDeviceSizeBytes(kEmmcDev))
-      .WillRepeatedly(Return(kEmmcSize));
+      .WillRepeatedly(ReturnPointee(&kEmmcSize));
   EXPECT_CALL(*mock_platform, GetDeviceBlockSizeBytes(kEmmcDev))
-      .WillRepeatedly(Return(kBlockSize));
+      .WillRepeatedly(ReturnPointee(&kBlockSize));
 
   auto mock_nvme_udev = std::make_unique<StrictMock<brillo::MockUdevDevice>>();
   auto mock_nvme_parent_udev =
@@ -124,15 +125,15 @@ TEST(StorageDeviceManagerTest, NoRecreation) {
   // Do multiple cycles. If the device info preservation is not working,
   // the WillOnce of udev mock will fail.
   for (int i = 0; i < 5; i++) {
-    auto result_or = manager.FetchDevicesInfo(kFakeRoot);
-    ASSERT_TRUE(result_or.ok()) << result_or.status().message();
-    auto& result = result_or.value();
+    auto devices_result = manager.FetchDevicesInfo(kFakeRoot);
+    ASSERT_TRUE(devices_result.has_value()) << devices_result.error()->msg;
+    auto& devices = devices_result.value();
 
-    std::vector<std::string> result_devs;
-    for (const auto& info_ptr : result) {
-      result_devs.push_back(info_ptr->path);
+    std::vector<std::string> device_infos;
+    for (const auto& info_ptr : devices) {
+      device_infos.push_back(info_ptr->path);
     }
-    EXPECT_THAT(result_devs,
+    EXPECT_THAT(device_infos,
                 UnorderedElementsAre(kNvmeDev.value(), kEmmcDev.value()));
   }
 }

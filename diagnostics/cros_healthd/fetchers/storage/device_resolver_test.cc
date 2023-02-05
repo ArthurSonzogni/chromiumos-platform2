@@ -20,10 +20,10 @@ namespace mojo_ipc = ::ash::cros_healthd::mojom;
 constexpr char kFakeRoot[] = "cros_healthd/fetchers/storage/testdata/";
 
 TEST(StorageDeviceResolverTest, GoodData) {
-  auto resolver_or =
+  auto resolver_result =
       StorageDeviceResolver::Create(base::FilePath(kFakeRoot), "mmcblk0");
-  ASSERT_TRUE(resolver_or.ok());
-  auto resolver = std::move(resolver_or).value();
+  ASSERT_TRUE(resolver_result.has_value());
+  auto resolver = std::move(resolver_result).value();
 
   EXPECT_EQ(mojo_ipc::StorageDevicePurpose::kUnknown,
             resolver->GetDevicePurpose("nvme0n1"));
@@ -34,9 +34,9 @@ TEST(StorageDeviceResolverTest, GoodData) {
 }
 
 TEST(StorageDeviceResolverTest, MissingFile) {
-  auto resolver_or = StorageDeviceResolver::Create(
+  auto resolver_result = StorageDeviceResolver::Create(
       base::FilePath("NONSENSE PATH"), "NONSENSE ROOT");
-  ASSERT_FALSE(resolver_or.ok());
+  ASSERT_FALSE(resolver_result.has_value());
 }
 
 }  // namespace

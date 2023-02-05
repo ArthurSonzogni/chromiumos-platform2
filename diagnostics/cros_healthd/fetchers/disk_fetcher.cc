@@ -8,76 +8,57 @@
 #include <vector>
 
 #include <base/notreached.h>
+#include <base/types/expected.h>
 #include <brillo/udev/udev.h>
 
-#include "diagnostics/common/status_macros.h"
-#include "diagnostics/common/statusor.h"
 #include "diagnostics/cros_healthd/fetchers/storage/device_lister.h"
 #include "diagnostics/cros_healthd/fetchers/storage/device_manager.h"
 #include "diagnostics/cros_healthd/fetchers/storage/device_resolver.h"
-#include "diagnostics/cros_healthd/utils/error_utils.h"
 
 namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
-
-mojo_ipc::ErrorType StatusCodeToMojoError(StatusCode code) {
-  switch (code) {
-    case StatusCode::kUnavailable:
-      return mojo_ipc::ErrorType::kFileReadError;
-    case StatusCode::kInvalidArgument:
-      return mojo_ipc::ErrorType::kParseError;
-    case StatusCode::kInternal:
-      return mojo_ipc::ErrorType::kSystemUtilityError;
-    default:
-      NOTREACHED() << "Unexpected error code: " << static_cast<int>(code);
-      return mojo_ipc::ErrorType::kSystemUtilityError;
-  }
-}
-
-mojo_ipc::NonRemovableBlockDeviceResultPtr StatusToProbeError(
-    const Status& status) {
-  return mojo_ipc::NonRemovableBlockDeviceResult::NewError(
-      CreateAndLogProbeError(StatusCodeToMojoError(status.code()),
-                             status.message()));
-}
+namespace mojom = ::ash::cros_healthd::mojom;
 
 }  // namespace
 
-Status DiskFetcher::InitManager() {
+mojom::ProbeErrorPtr DiskFetcher::InitManager() {
   auto udev = brillo::Udev::Create();
   if (!udev)
-    return Status(StatusCode::kInternal, "Unable to create udev interface");
+    return mojom::ProbeError::New(mojom::ErrorType::kSystemUtilityError,
+                                  "Unable to create udev interface");
 
   auto platform = std::make_unique<Platform>();
-  ASSIGN_OR_RETURN(auto resolver,
-                   StorageDeviceResolver::Create(
-                       context_->root_dir(), platform->GetRootDeviceName()));
-  manager_.reset(new StorageDeviceManager(
-      std::make_unique<StorageDeviceLister>(), std::move(resolver),
-      std::move(udev), std::move(platform)));
-
-  return Status::OkStatus();
+  if (auto resolver_result = StorageDeviceResolver::Create(
+          context_->root_dir(), platform->GetRootDeviceName());
+      resolver_result.has_value()) {
+    manager_.reset(
+        new StorageDeviceManager(std::make_unique<StorageDeviceLister>(),
+                                 std::move(resolver_result.value()),
+                                 std::move(udev), std::move(platform)));
+    return nullptr;
+  } else {
+    return std::move(resolver_result.error());
+  }
 }
 
-mojo_ipc::NonRemovableBlockDeviceResultPtr
+mojom::NonRemovableBlockDeviceResultPtr
 DiskFetcher::FetchNonRemovableBlockDevicesInfo() {
   if (!manager_) {
-    auto status = InitManager();
-    if (!status.ok())
-      return StatusToProbeError(status);
+    if (auto error = InitManager(); !error.is_null()) {
+      return mojom::NonRemovableBlockDeviceResult::NewError(std::move(error));
+    }
   }
 
-  StatusOr<std::vector<mojo_ipc::NonRemovableBlockDeviceInfoPtr>> devices_or =
-      manager_->FetchDevicesInfo(context_->root_dir());
-
-  if (devices_or.ok()) {
-    return mojo_ipc::NonRemovableBlockDeviceResult::NewBlockDeviceInfo(
-        std::move(devices_or.value()));
+  if (auto devices_result = manager_->FetchDevicesInfo(context_->root_dir());
+      devices_result.has_value()) {
+    return mojom::NonRemovableBlockDeviceResult::NewBlockDeviceInfo(
+        std::move(devices_result.value()));
+  } else {
+    return mojom::NonRemovableBlockDeviceResult::NewError(
+        std::move(devices_result.error()));
   }
-  return StatusToProbeError(devices_or.status());
 }
 
 }  // namespace diagnostics

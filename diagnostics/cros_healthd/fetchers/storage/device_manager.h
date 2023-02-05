@@ -15,11 +15,9 @@
 #include <brillo/udev/udev.h>
 #include <brillo/udev/udev_device.h>
 
-#include "diagnostics/common/statusor.h"
 #include "diagnostics/cros_healthd/fetchers/storage/device_info.h"
 #include "diagnostics/cros_healthd/fetchers/storage/device_lister.h"
 #include "diagnostics/cros_healthd/fetchers/storage/device_resolver.h"
-#include "diagnostics/cros_healthd/utils/error_utils.h"
 
 namespace diagnostics {
 
@@ -35,13 +33,15 @@ class StorageDeviceManager final {
   StorageDeviceManager& operator=(const StorageDeviceManager&) = delete;
   StorageDeviceManager& operator=(StorageDeviceManager&&) = delete;
 
-  StatusOr<
-      std::vector<ash::cros_healthd::mojom::NonRemovableBlockDeviceInfoPtr>>
+  base::expected<
+      std::vector<ash::cros_healthd::mojom::NonRemovableBlockDeviceInfoPtr>,
+      ash::cros_healthd::mojom::ProbeErrorPtr>
   FetchDevicesInfo(const base::FilePath& root);
 
  private:
   // Updates the list of present non-removable block devices;
-  Status RefreshDevices(const base::FilePath& root);
+  ash::cros_healthd::mojom::ProbeErrorPtr RefreshDevices(
+      const base::FilePath& root);
 
   // Returns a list of sysfs paths of non-removable block devices;
   std::vector<base::FilePath> ListDevicesPaths(

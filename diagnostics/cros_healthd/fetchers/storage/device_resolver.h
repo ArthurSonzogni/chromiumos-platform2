@@ -12,7 +12,6 @@
 
 #include <base/files/file_path.h>
 
-#include "diagnostics/common/statusor.h"
 #include "diagnostics/cros_healthd/fetchers/storage/platform.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
@@ -21,8 +20,9 @@ namespace diagnostics {
 // Resolves the purpose of the device.
 class StorageDeviceResolver {
  public:
-  static StatusOr<std::unique_ptr<StorageDeviceResolver>> Create(
-      const base::FilePath& rootfs, const std::string& root_device);
+  static base::expected<std::unique_ptr<StorageDeviceResolver>,
+                        ash::cros_healthd::mojom::ProbeErrorPtr>
+  Create(const base::FilePath& rootfs, const std::string& root_device);
 
   virtual ~StorageDeviceResolver() = default;
 
@@ -33,10 +33,13 @@ class StorageDeviceResolver {
   StorageDeviceResolver() = default;
 
  private:
-  static StatusOr<std::set<std::string>> GetSwapDevices(
-      const base::FilePath& rootfs);
-  static StatusOr<std::set<std::string>> ResolveDevices(
-      const base::FilePath& rootfs, const std::list<std::string>& swap_devs);
+  static base::expected<std::set<std::string>,
+                        ash::cros_healthd::mojom::ProbeErrorPtr>
+  GetSwapDevices(const base::FilePath& rootfs);
+  static base::expected<std::set<std::string>,
+                        ash::cros_healthd::mojom::ProbeErrorPtr>
+  ResolveDevices(const base::FilePath& rootfs,
+                 const std::list<std::string>& swap_devs);
 
   explicit StorageDeviceResolver(
       const std::set<std::string>& swap_backing_devices,

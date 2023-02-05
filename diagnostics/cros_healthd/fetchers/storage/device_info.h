@@ -12,9 +12,7 @@
 #include <base/files/file_path.h>
 #include <brillo/blkdev_utils/disk_iostat.h>
 
-#include "diagnostics/common/statusor.h"
 #include "diagnostics/cros_healthd/fetchers/storage/platform.h"
-#include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
@@ -33,7 +31,8 @@ class StorageDeviceInfo {
 
   // FetchDeviceInfo fills the mutable fields of Mojo's data structure
   // representing a block device.
-  StatusOr<ash::cros_healthd::mojom::NonRemovableBlockDeviceInfoPtr>
+  base::expected<ash::cros_healthd::mojom::NonRemovableBlockDeviceInfoPtr,
+                 ash::cros_healthd::mojom::ProbeErrorPtr>
   FetchDeviceInfo();
 
  private:

@@ -29,7 +29,7 @@ class DiskFetcher final : public BaseFetcher {
  private:
   std::unique_ptr<StorageDeviceManager> manager_;
 
-  Status InitManager();
+  ash::cros_healthd::mojom::ProbeErrorPtr InitManager();
 };
 
 }  // namespace diagnostics

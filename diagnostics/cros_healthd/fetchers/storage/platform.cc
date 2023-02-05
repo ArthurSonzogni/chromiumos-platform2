@@ -14,15 +14,19 @@
 #include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <base/strings/stringprintf.h>
+#include <base/types/expected.h>
 #include <base/posix/eintr_wrapper.h>
 #include <rootdev/rootdev.h>
 
-#include "diagnostics/common/statusor.h"
 #include "diagnostics/cros_healthd/fetchers/storage/platform.h"
+#include "diagnostics/cros_healthd/utils/error_utils.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 
 namespace {
+
+namespace mojom = ::ash::cros_healthd::mojom;
 
 constexpr char kDevPrefix[] = "/dev/";
 
@@ -49,48 +53,50 @@ std::string Platform::GetRootDeviceName() const {
   return dev_path.substr(std::string(kDevPrefix).length());
 }
 
-StatusOr<uint64_t> Platform::GetDeviceSizeBytes(
+base::expected<uint64_t, mojom::ProbeErrorPtr> Platform::GetDeviceSizeBytes(
     const base::FilePath& dev_path) const {
   base::ScopedFD fd(HANDLE_EINTR(
       open(dev_path.value().c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC)));
   if (!fd.is_valid()) {
-    return Status(
-        StatusCode::kInternal,
-        base::StringPrintf("Failed to open %s", dev_path.value().c_str()));
+    return base::unexpected(CreateAndLogProbeError(
+        mojom::ErrorType::kSystemUtilityError,
+        base::StringPrintf("Failed to open %s", dev_path.value().c_str())));
   }
 
   uint64_t size;
   auto ret = ioctl(fd.get(), BLKGETSIZE64, &size);
   if (ret != 0) {
-    return Status(StatusCode::kInternal,
-                  base::StringPrintf("Failed to query size of %s : %d",
-                                     dev_path.value().c_str(), ret));
+    return base::unexpected(CreateAndLogProbeError(
+        mojom::ErrorType::kSystemUtilityError,
+        base::StringPrintf("Failed to query size of %s : %d",
+                           dev_path.value().c_str(), ret)));
   }
   return size;
 }
 
-StatusOr<uint64_t> Platform::GetDeviceBlockSizeBytes(
-    const base::FilePath& dev_path) const {
+base::expected<uint64_t, mojom::ProbeErrorPtr>
+Platform::GetDeviceBlockSizeBytes(const base::FilePath& dev_path) const {
   base::ScopedFD fd(HANDLE_EINTR(
       open(dev_path.value().c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC)));
   if (!fd.is_valid()) {
-    return Status(
-        StatusCode::kInternal,
-        base::StringPrintf("Failed to open %s", dev_path.value().c_str()));
+    return base::unexpected(CreateAndLogProbeError(
+        mojom::ErrorType::kSystemUtilityError,
+        base::StringPrintf("Failed to open %s", dev_path.value().c_str())));
   }
 
   int blksize;
   auto ret = ioctl(fd.get(), BLKSSZGET, &blksize);
   if (ret != 0) {
-    return Status(StatusCode::kInternal,
-                  base::StringPrintf("Failed to query block size of %s : %d",
-                                     dev_path.value().c_str(), ret));
+    return base::unexpected(CreateAndLogProbeError(
+        mojom::ErrorType::kSystemUtilityError,
+        base::StringPrintf("Failed to query block size of %s : %d",
+                           dev_path.value().c_str(), ret)));
   }
   if (blksize <= 0) {
-    return Status(
-        StatusCode::kInternal,
+    return base::unexpected(CreateAndLogProbeError(
+        mojom::ErrorType::kSystemUtilityError,
         base::StringPrintf("Ioctl returned invalid blocksize for %s: %d",
-                           dev_path.value().c_str(), blksize));
+                           dev_path.value().c_str(), blksize)));
   }
   return static_cast<uint64_t>(blksize);
 }

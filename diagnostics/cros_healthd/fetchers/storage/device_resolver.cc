@@ -13,16 +13,14 @@
 
 #include <libmount/libmount.h>
 
-#include "diagnostics/common/status_macros.h"
-#include "diagnostics/common/statusor.h"
-#include "diagnostics/cros_healthd/fetchers/storage/platform.h"
+#include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 constexpr char kDevFsPrefix[] = "/dev/";
 constexpr char kSysBlockPath[] = "sys/block/";
@@ -38,11 +36,15 @@ int ParserErrCb(struct libmnt_table* unused, const char* filename, int line) {
 
 }  // namespace
 
-StatusOr<std::unique_ptr<StorageDeviceResolver>> StorageDeviceResolver::Create(
-    const base::FilePath& rootfs, const std::string& root_device) {
-  ASSIGN_OR_RETURN(auto devs, GetSwapDevices(rootfs));
-  return std::unique_ptr<StorageDeviceResolver>(
-      new StorageDeviceResolver(devs, root_device));
+base::expected<std::unique_ptr<StorageDeviceResolver>, mojom::ProbeErrorPtr>
+StorageDeviceResolver::Create(const base::FilePath& rootfs,
+                              const std::string& root_device) {
+  if (auto devs_result = GetSwapDevices(rootfs); devs_result.has_value()) {
+    return std::unique_ptr<StorageDeviceResolver>(
+        new StorageDeviceResolver(devs_result.value(), root_device));
+  } else {
+    return base::unexpected(devs_result.error()->Clone());
+  }
 }
 
 StorageDeviceResolver::StorageDeviceResolver(
@@ -52,8 +54,8 @@ StorageDeviceResolver::StorageDeviceResolver(
 
 // GetSwapDevices parses /proc/swaps via libmount to retrieve the list of swap
 // devices and then call into a method to find out the backing physical devices.
-StatusOr<std::set<std::string>> StorageDeviceResolver::GetSwapDevices(
-    const base::FilePath& rootfs) {
+base::expected<std::set<std::string>, mojom::ProbeErrorPtr>
+StorageDeviceResolver::GetSwapDevices(const base::FilePath& rootfs) {
   auto table = mnt_new_table();
   mnt_reset_table(table);
   mnt_table_set_parser_errcb(table, ParserErrCb);
@@ -62,8 +64,9 @@ StatusOr<std::set<std::string>> StorageDeviceResolver::GetSwapDevices(
 
   if (mnt_table_parse_swaps(table, swaps_path.value().c_str()) != 0) {
     mnt_free_table(table);
-    return Status(StatusCode::kInvalidArgument,
-                  "Invalid format of " + swaps_path.value());
+    return base::unexpected(
+        CreateAndLogProbeError(mojom::ErrorType::kParseError,
+                               "Invalid format of " + swaps_path.value()));
   }
 
   std::list<std::string> swaps;
@@ -77,15 +80,17 @@ StatusOr<std::set<std::string>> StorageDeviceResolver::GetSwapDevices(
     if (swap_dev.find(kDevFsPrefix) != 0) {
       mnt_free_iter(itr);
       mnt_free_table(table);
-      return Status(StatusCode::kUnavailable,
-                    "Unexpected swap device location: " + swap_dev);
+      return base::unexpected(CreateAndLogProbeError(
+          mojom::ErrorType::kFileReadError,
+          "Unexpected swap device location: " + swap_dev));
     }
     swap_dev = swap_dev.substr(std::string(kDevFsPrefix).length());
     if (swap_dev.find("/") != std::string::npos) {
       mnt_free_iter(itr);
       mnt_free_table(table);
-      return Status(StatusCode::kUnavailable,
-                    "Swap device name shall not contain slashes: " + swap_dev);
+      return base::unexpected(CreateAndLogProbeError(
+          mojom::ErrorType::kFileReadError,
+          "Swap device name shall not contain slashes: " + swap_dev));
     }
     swaps.push_back(swap_dev);
   }
@@ -100,8 +105,9 @@ StatusOr<std::set<std::string>> StorageDeviceResolver::GetSwapDevices(
 // For now check only for the simplest 0-indirection, or single devmapper layer
 // for encryption and print an error in case any more complicated setup is
 // observed.
-StatusOr<std::set<std::string>> StorageDeviceResolver::ResolveDevices(
-    const base::FilePath& rootfs, const std::list<std::string>& swap_devs) {
+base::expected<std::set<std::string>, mojom::ProbeErrorPtr>
+StorageDeviceResolver::ResolveDevices(const base::FilePath& rootfs,
+                                      const std::list<std::string>& swap_devs) {
   std::set<std::string> result;
   for (auto swap_dev : swap_devs) {
     auto backing_dev = swap_dev;
@@ -118,19 +124,21 @@ StatusOr<std::set<std::string>> StorageDeviceResolver::ResolveDevices(
       }
 
       if (slaves.size() == 0) {
-        return Status(StatusCode::kUnavailable,
-                      "No physical backing devices found for: " + backing_dev);
+        return base::unexpected(CreateAndLogProbeError(
+            mojom::ErrorType::kFileReadError,
+            "No physical backing devices found for: " + backing_dev));
       }
       if (slaves.size() > 1) {
-        return Status(
-            StatusCode::kUnavailable,
-            "Too many physical backing devices found for: " + backing_dev);
+        return base::unexpected(CreateAndLogProbeError(
+            mojom::ErrorType::kFileReadError,
+            "Too many physical backing devices found for: " + backing_dev));
       }
 
       backing_dev = slaves.front();
       if (backing_dev.find(kDmPrefix) == 0) {
-        return Status(StatusCode::kUnavailable,
-                      "Multiple devmapper layers found for: " + backing_dev);
+        return base::unexpected(CreateAndLogProbeError(
+            mojom::ErrorType::kFileReadError,
+            "Multiple devmapper layers found for: " + backing_dev));
       }
     }
     result.insert(backing_dev);
@@ -138,13 +146,13 @@ StatusOr<std::set<std::string>> StorageDeviceResolver::ResolveDevices(
   return result;
 }
 
-mojo_ipc::StorageDevicePurpose StorageDeviceResolver::GetDevicePurpose(
+mojom::StorageDevicePurpose StorageDeviceResolver::GetDevicePurpose(
     const std::string& dev_name) const {
   if (swap_backing_devices_.find(dev_name) != swap_backing_devices_.end())
-    return mojo_ipc::StorageDevicePurpose::kSwapDevice;
+    return mojom::StorageDevicePurpose::kSwapDevice;
   if (dev_name == root_device_)
-    return mojo_ipc::StorageDevicePurpose::kBootDevice;
-  return mojo_ipc::StorageDevicePurpose::kUnknown;
+    return mojom::StorageDevicePurpose::kBootDevice;
+  return mojom::StorageDevicePurpose::kUnknown;
 }
 
 }  // namespace diagnostics

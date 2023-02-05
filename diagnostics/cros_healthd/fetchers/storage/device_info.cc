@@ -18,20 +18,20 @@
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <base/types/expected.h>
 #include <brillo/blkdev_utils/disk_iostat.h>
 #include <brillo/blkdev_utils/ufs.h>
 
 #include "diagnostics/base/file_utils.h"
-#include "diagnostics/common/status_macros.h"
-#include "diagnostics/common/statusor.h"
 #include "diagnostics/cros_healthd/fetchers/storage/device_info_constants.h"
+#include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 
 namespace {
 
-namespace mojo_ipc = ::ash::cros_healthd::mojom;
+namespace mojom = ::ash::cros_healthd::mojom;
 
 template <typename T>
 bool ReadIntegerAndLogError(const base::FilePath& directory,
@@ -56,7 +56,7 @@ bool ReadAndTrimStringAndLogError(const base::FilePath& directory,
   return true;
 }
 
-mojo_ipc::NonRemovableBlockDeviceInfoPtr FetchDefaultImmutableBlockDeviceInfo(
+mojom::NonRemovableBlockDeviceInfoPtr FetchDefaultImmutableBlockDeviceInfo(
     const base::FilePath& dev_sys_path) {
   // This piece is for compatibility and will be replaced with a simple
   // return ""; when all the devices are covered properly.
@@ -69,17 +69,16 @@ mojo_ipc::NonRemovableBlockDeviceInfoPtr FetchDefaultImmutableBlockDeviceInfo(
     }
   }
 
-  auto block_device_info = mojo_ipc::NonRemovableBlockDeviceInfo::New();
+  auto block_device_info = mojom::NonRemovableBlockDeviceInfo::New();
   block_device_info->name = model;
-  block_device_info->vendor_id = mojo_ipc::BlockDeviceVendor::NewOther(0);
-  block_device_info->product_id = mojo_ipc::BlockDeviceProduct::NewOther(0);
-  block_device_info->revision = mojo_ipc::BlockDeviceRevision::NewOther(0);
-  block_device_info->firmware_version =
-      mojo_ipc::BlockDeviceFirmware::NewOther(0);
+  block_device_info->vendor_id = mojom::BlockDeviceVendor::NewOther(0);
+  block_device_info->product_id = mojom::BlockDeviceProduct::NewOther(0);
+  block_device_info->revision = mojom::BlockDeviceRevision::NewOther(0);
+  block_device_info->firmware_version = mojom::BlockDeviceFirmware::NewOther(0);
   return block_device_info;
 }
 
-mojo_ipc::NonRemovableBlockDeviceInfoPtr FetchEmmcImmutableBlockDeviceInfo(
+mojom::NonRemovableBlockDeviceInfoPtr FetchEmmcImmutableBlockDeviceInfo(
     const base::FilePath& dev_sys_path) {
   std::string model;
   uint32_t oem_id;
@@ -114,20 +113,19 @@ mojo_ipc::NonRemovableBlockDeviceInfoPtr FetchEmmcImmutableBlockDeviceInfo(
     }
   }
 
-  auto block_device_info = mojo_ipc::NonRemovableBlockDeviceInfo::New();
+  auto block_device_info = mojom::NonRemovableBlockDeviceInfo::New();
   block_device_info->name = model;
-  block_device_info->vendor_id =
-      mojo_ipc::BlockDeviceVendor::NewEmmcOemid(oem_id);
-  block_device_info->product_id = mojo_ipc::BlockDeviceProduct::NewEmmcPnm(pnm);
-  block_device_info->revision = mojo_ipc::BlockDeviceRevision::NewEmmcPrv(prv);
+  block_device_info->vendor_id = mojom::BlockDeviceVendor::NewEmmcOemid(oem_id);
+  block_device_info->product_id = mojom::BlockDeviceProduct::NewEmmcPnm(pnm);
+  block_device_info->revision = mojom::BlockDeviceRevision::NewEmmcPrv(prv);
   block_device_info->firmware_version =
-      mojo_ipc::BlockDeviceFirmware::NewEmmcFwrev(fwrev);
-  block_device_info->device_info = mojo_ipc::BlockDeviceInfo::NewEmmcDeviceInfo(
-      mojo_ipc::EmmcDeviceInfo::New(manfid, pnm, prv, fwrev));
+      mojom::BlockDeviceFirmware::NewEmmcFwrev(fwrev);
+  block_device_info->device_info = mojom::BlockDeviceInfo::NewEmmcDeviceInfo(
+      mojom::EmmcDeviceInfo::New(manfid, pnm, prv, fwrev));
   return block_device_info;
 }
 
-mojo_ipc::NonRemovableBlockDeviceInfoPtr FetchNvmeImmutableBlockDeviceInfo(
+mojom::NonRemovableBlockDeviceInfoPtr FetchNvmeImmutableBlockDeviceInfo(
     const base::FilePath& dev_sys_path) {
   std::string model;
   uint32_t subsystem_vendor;
@@ -181,23 +179,23 @@ mojo_ipc::NonRemovableBlockDeviceInfoPtr FetchNvmeImmutableBlockDeviceInfo(
          std::min(str_firmware_rev.length(), sizeof(uint64_t)));
   uint64_t firmware_rev = *reinterpret_cast<uint64_t*>(bytes);
 
-  auto block_device_info = mojo_ipc::NonRemovableBlockDeviceInfo::New();
+  auto block_device_info = mojom::NonRemovableBlockDeviceInfo::New();
   block_device_info->name = model;
   block_device_info->vendor_id =
-      mojo_ipc::BlockDeviceVendor::NewNvmeSubsystemVendor(subsystem_vendor);
+      mojom::BlockDeviceVendor::NewNvmeSubsystemVendor(subsystem_vendor);
   block_device_info->product_id =
-      mojo_ipc::BlockDeviceProduct::NewNvmeSubsystemDevice(subsystem_device);
+      mojom::BlockDeviceProduct::NewNvmeSubsystemDevice(subsystem_device);
   block_device_info->revision =
-      mojo_ipc::BlockDeviceRevision::NewNvmePcieRev(pcie_rev);
+      mojom::BlockDeviceRevision::NewNvmePcieRev(pcie_rev);
   block_device_info->firmware_version =
-      mojo_ipc::BlockDeviceFirmware::NewNvmeFirmwareRev(firmware_rev);
-  block_device_info->device_info = mojo_ipc::BlockDeviceInfo::NewNvmeDeviceInfo(
-      mojo_ipc::NvmeDeviceInfo::New(subsystem_vendor, subsystem_device,
-                                    pcie_rev, firmware_rev));
+      mojom::BlockDeviceFirmware::NewNvmeFirmwareRev(firmware_rev);
+  block_device_info->device_info =
+      mojom::BlockDeviceInfo::NewNvmeDeviceInfo(mojom::NvmeDeviceInfo::New(
+          subsystem_vendor, subsystem_device, pcie_rev, firmware_rev));
   return block_device_info;
 }
 
-mojo_ipc::NonRemovableBlockDeviceInfoPtr FetchUfsImmutableBlockDeviceInfo(
+mojom::NonRemovableBlockDeviceInfoPtr FetchUfsImmutableBlockDeviceInfo(
     const base::FilePath& dev_sys_path) {
   std::string model;
   if (!ReadAndTrimStringAndLogError(dev_sys_path, kUfsModelFile, &model)) {
@@ -233,26 +231,26 @@ mojo_ipc::NonRemovableBlockDeviceInfoPtr FetchUfsImmutableBlockDeviceInfo(
          std::min(str_fwrev.length(), sizeof(uint64_t)));
   uint64_t fwrev = *reinterpret_cast<uint64_t*>(bytes);
 
-  auto block_device_info = mojo_ipc::NonRemovableBlockDeviceInfo::New();
+  auto block_device_info = mojom::NonRemovableBlockDeviceInfo::New();
   block_device_info->name = model;
   block_device_info->vendor_id =
-      mojo_ipc::BlockDeviceVendor::NewJedecManfid(manfid);
-  block_device_info->product_id = mojo_ipc::BlockDeviceProduct::NewOther(0);
-  block_device_info->revision = mojo_ipc::BlockDeviceRevision::NewOther(0);
+      mojom::BlockDeviceVendor::NewJedecManfid(manfid);
+  block_device_info->product_id = mojom::BlockDeviceProduct::NewOther(0);
+  block_device_info->revision = mojom::BlockDeviceRevision::NewOther(0);
   block_device_info->firmware_version =
-      mojo_ipc::BlockDeviceFirmware::NewUfsFwrev(fwrev);
-  block_device_info->device_info = mojo_ipc::BlockDeviceInfo::NewUfsDeviceInfo(
-      mojo_ipc::UfsDeviceInfo::New(/*jedec_manfid=*/manfid, fwrev));
+      mojom::BlockDeviceFirmware::NewUfsFwrev(fwrev);
+  block_device_info->device_info = mojom::BlockDeviceInfo::NewUfsDeviceInfo(
+      mojom::UfsDeviceInfo::New(/*jedec_manfid=*/manfid, fwrev));
   return block_device_info;
 }
 
-mojo_ipc::NonRemovableBlockDeviceInfoPtr FetchImmutableBlockDeviceInfo(
+mojom::NonRemovableBlockDeviceInfoPtr FetchImmutableBlockDeviceInfo(
     const base::FilePath& dev_sys_path,
     const base::FilePath& dev_node_path,
     const std::string& subsystem,
-    mojo_ipc::StorageDevicePurpose purpose,
+    mojom::StorageDevicePurpose purpose,
     const Platform* platform) {
-  mojo_ipc::NonRemovableBlockDeviceInfoPtr block_device_info;
+  mojom::NonRemovableBlockDeviceInfoPtr block_device_info;
 
   // A particular device has a chain of subsystems it belongs to. We pass them
   // here in a colon-separated format (e.g. "block:mmc:mmc_host:pci"). We expect
@@ -281,10 +279,12 @@ mojo_ipc::NonRemovableBlockDeviceInfoPtr FetchImmutableBlockDeviceInfo(
     block_device_info->type = subsystem;
     block_device_info->purpose = purpose;
 
-    auto size_or = platform->GetDeviceSizeBytes(dev_node_path);
-    if (!size_or.ok())
+    if (auto size_result = platform->GetDeviceSizeBytes(dev_node_path);
+        size_result.has_value()) {
+      block_device_info->size = size_result.value();
+    } else {
       return nullptr;
-    block_device_info->size = size_or.value();
+    }
 
     // Fetch legacy device info.
     // Not all devices in sysfs have a serial, so ignore the return code.
@@ -314,7 +314,7 @@ mojo_ipc::NonRemovableBlockDeviceInfoPtr FetchImmutableBlockDeviceInfo(
 StorageDeviceInfo::StorageDeviceInfo(
     const base::FilePath& dev_sys_path,
     const base::FilePath& dev_node_path,
-    mojo_ipc::NonRemovableBlockDeviceInfoPtr immutable_block_device_info,
+    mojom::NonRemovableBlockDeviceInfoPtr immutable_block_device_info,
     const Platform* platform)
     : dev_sys_path_(dev_sys_path),
       dev_node_path_(dev_node_path),
@@ -326,7 +326,7 @@ std::unique_ptr<StorageDeviceInfo> StorageDeviceInfo::Create(
     const base::FilePath& dev_sys_path,
     const base::FilePath& dev_node_path,
     const std::string& subsystem,
-    mojo_ipc::StorageDevicePurpose purpose,
+    mojom::StorageDevicePurpose purpose,
     const Platform* platform) {
   auto immutable_block_device_info = FetchImmutableBlockDeviceInfo(
       dev_sys_path, dev_node_path, subsystem, purpose, platform);
@@ -337,17 +337,24 @@ std::unique_ptr<StorageDeviceInfo> StorageDeviceInfo::Create(
                             std::move(immutable_block_device_info), platform));
 }
 
-StatusOr<mojo_ipc::NonRemovableBlockDeviceInfoPtr>
+base::expected<mojom::NonRemovableBlockDeviceInfoPtr, mojom::ProbeErrorPtr>
 StorageDeviceInfo::FetchDeviceInfo() {
   auto output_info = immutable_block_device_info_.Clone();
   std::optional<brillo::DiskIoStat::Snapshot> iostat_snapshot =
       iostat_.GetSnapshot();
   if (!iostat_snapshot.has_value()) {
-    return Status(StatusCode::kUnavailable, "Failed retrieving iostat");
+    return base::unexpected(CreateAndLogProbeError(
+        mojom::ErrorType::kFileReadError, "Failed retrieving iostat"));
   }
 
-  ASSIGN_OR_RETURN(uint64_t sector_size,
-                   platform_->GetDeviceBlockSizeBytes(dev_node_path_));
+  uint64_t sector_size;
+  if (auto sector_size_result =
+          platform_->GetDeviceBlockSizeBytes(dev_node_path_);
+      sector_size_result.has_value()) {
+    sector_size = sector_size_result.value();
+  } else {
+    return base::unexpected(sector_size_result.error()->Clone());
+  }
 
   output_info->read_time_seconds_since_last_boot =
       static_cast<uint64_t>(iostat_snapshot->GetReadTime().InSeconds());
@@ -359,7 +366,7 @@ StorageDeviceInfo::FetchDeviceInfo() {
   auto discard_time = iostat_snapshot->GetDiscardTime();
   if (discard_time.has_value()) {
     output_info->discard_time_seconds_since_last_boot =
-        mojo_ipc::NullableUint64::New(
+        mojom::NullableUint64::New(
             static_cast<uint64_t>(discard_time.value().InSeconds()));
   }
 
@@ -369,7 +376,7 @@ StorageDeviceInfo::FetchDeviceInfo() {
   output_info->bytes_read_since_last_boot =
       sector_size * iostat_snapshot->GetReadSectors();
 
-  return output_info;
+  return base::ok(std::move(output_info));
 }
 
 }  // namespace diagnostics
