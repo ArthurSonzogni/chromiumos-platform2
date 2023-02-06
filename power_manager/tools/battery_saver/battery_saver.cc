@@ -38,13 +38,33 @@ using org::chromium::PowerManagerProxyInterface;
 // CLI documentation.
 constexpr base::StringPiece kUsage = R"(Usage: battery_saver <command>
 
-A tool for inspecting and updating the state of ChromeOS Battery Saver Mode.
+A tool for inspecting and updating the state of ChromeOS Battery Saver
+Mode (BSM).
 
 Commands:
   enable            Enable battery saver mode.
 
   disable           Disable battery saver mode.
+
+  status            Print the current status of BSM to stdout.
+                    On success, writes the string "enabled" or "disabled".
 )";
+
+// Fetch the current state of BSM, and print either "enabled" or "disabled"
+// to stdout.
+absl::Status PrintBsmStatus(PowerManagerProxyInterface& proxy) {
+  absl::StatusOr<BatterySaverModeState> result = GetBsmState(proxy);
+  if (!result.ok()) {
+    return result.status();
+  }
+
+  if (result->enabled()) {
+    std::cout << "enabled\n";
+  } else {
+    std::cout << "disabled\n";
+  }
+  return absl::OkStatus();
+}
 
 absl::Status RunCommand(BsmCommand command) {
   // Connect to D-Bus.
@@ -62,10 +82,34 @@ absl::Status RunCommand(BsmCommand command) {
       return SetBsmEnabled(proxy, true);
     case BsmCommand::kDisable:
       return SetBsmEnabled(proxy, false);
+    case BsmCommand::kStatus:
+      return PrintBsmStatus(proxy);
   }
 }
 
 }  // namespace
+
+absl::StatusOr<BatterySaverModeState> GetBsmState(
+    PowerManagerProxyInterface& proxy) {
+  // Send the request to powerd.
+  std::vector<uint8_t> proto_bytes;
+  brillo::ErrorPtr error;
+  proxy.GetBatterySaverModeState(&proto_bytes, &error);
+  if (error) {
+    return absl::UnknownError(base::StringPrintf(
+        "Failed to fetch current battery saver mode state: %s",
+        error->GetFirstError()->GetMessage().c_str()));
+  }
+
+  // Deserialize the state bytes.
+  std::optional<BatterySaverModeState> result =
+      DeserializeProto<BatterySaverModeState>(proto_bytes);
+  if (!result.has_value()) {
+    return absl::UnknownError("Failed to deserialize server's response.");
+  }
+
+  return result.value();
+}
 
 // Set Battery Saver Mode to the given state.
 absl::Status SetBsmEnabled(PowerManagerProxyInterface& proxy, bool enable) {
@@ -101,6 +145,9 @@ absl::StatusOr<BsmCommand> ParseCommandLine(int argc, const char* const* argv) {
   }
   if (commands[0] == "disable") {
     return BsmCommand::kDisable;
+  }
+  if (commands[0] == "status") {
+    return BsmCommand::kStatus;
   }
   return absl::InvalidArgumentError(
       base::StringPrintf("Unknown command '%s'.", commands[0].c_str()));

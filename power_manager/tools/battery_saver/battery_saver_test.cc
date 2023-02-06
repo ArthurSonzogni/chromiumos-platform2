@@ -59,6 +59,8 @@ TEST(ParseCommandLine, ValidCommands) {
             absl::StatusOr<BsmCommand>(BsmCommand::kEnable));
   EXPECT_EQ(ParseCommandLine({"disable"}),
             absl::StatusOr<BsmCommand>{BsmCommand::kDisable});
+  EXPECT_EQ(ParseCommandLine({"status"}),
+            absl::StatusOr<BsmCommand>{BsmCommand::kStatus});
 }
 
 TEST(ParseCommandLine, ExtraneousArgs) {
@@ -109,6 +111,42 @@ TEST(SetBsmEnabled, Error) {
   EXPECT_THAT(std::string(status.message()),
               testing::ContainsRegex(
                   "Failed to update battery saver mode state: dbus error"));
+}
+
+TEST(GetBsmState, Simple) {
+  org::chromium::PowerManagerProxyMock power_manager;
+
+  EXPECT_CALL(power_manager, GetBatterySaverModeState(_, _, _))
+      .WillOnce([&](std::vector<uint8_t>* vector, brillo::ErrorPtr* error,
+                    int timeout) -> bool {
+        BatterySaverModeState state;
+        state.set_enabled(true);
+        *vector = SerializeProto(state);
+        return true;
+      });
+
+  absl::StatusOr<BatterySaverModeState> result = GetBsmState(power_manager);
+  ASSERT_TRUE(result.ok());
+  EXPECT_TRUE(result->enabled());
+}
+
+TEST(GetBsmState, Error) {
+  org::chromium::PowerManagerProxyMock power_manager;
+
+  EXPECT_CALL(power_manager, GetBatterySaverModeState(_, _, _))
+      .WillOnce([&](std::vector<uint8_t>* vector, brillo::ErrorPtr* error,
+                    int timeout) -> bool {
+        *error = brillo::Error::CreateNoLog(FROM_HERE, "test_error",
+                                            "test_code", "dbus error", nullptr);
+        return false;
+      });
+
+  absl::StatusOr<BatterySaverModeState> result = GetBsmState(power_manager);
+  ASSERT_FALSE(result.ok());
+  EXPECT_THAT(
+      std::string(result.status().message()),
+      testing::ContainsRegex(
+          "Failed to fetch current battery saver mode state: dbus error"));
 }
 
 }  // namespace

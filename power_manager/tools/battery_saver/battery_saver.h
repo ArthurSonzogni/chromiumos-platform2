@@ -7,6 +7,7 @@
 
 #include <absl/status/statusor.h>
 #include <base/memory/scoped_refptr.h>
+#include <power_manager/proto_bindings/battery_saver.pb.h>
 #include <power_manager-client/power_manager/dbus-proxies.h>
 
 namespace power_manager {
@@ -25,6 +26,7 @@ int BatterySaverCli(int argc, const char* const argv[]);
 enum class BsmCommand {
   kEnable,   // "enable"
   kDisable,  // "disable"
+  kStatus,   // "status"
 };
 
 // Parse the given command line, producing a `BsmCommand` on success.
@@ -33,6 +35,10 @@ absl::StatusOr<BsmCommand> ParseCommandLine(int argc, const char* const* argv);
 // Set Battery Saver Mode to the given state.
 absl::Status SetBsmEnabled(org::chromium::PowerManagerProxyInterface& proxy,
                            bool enable);
+
+// Get the current state of BSM.
+absl::StatusOr<BatterySaverModeState> GetBsmState(
+    org::chromium::PowerManagerProxyInterface& proxy);
 
 }  // namespace power_manager
 
