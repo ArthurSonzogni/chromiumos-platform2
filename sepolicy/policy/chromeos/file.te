@@ -513,6 +513,7 @@ type cros_run_cups_proxy, file_type, cros_file_type, cros_run_file_type;
 type cros_run_daemon_store, file_type, cros_file_type, cros_run_file_type;
 type cros_run_dbus, file_type, cros_file_type, cros_run_file_type;
 type cros_run_dhcpcd, file_type, cros_file_type, cros_run_file_type;
+type cros_run_dns_proxy, file_type, cros_file_type, cros_run_file_type;
 type cros_run_frecon, file_type, cros_file_type, cros_run_file_type;
 type cros_run_fuse, file_type, cros_file_type, cros_run_file_type;
 type cros_run_hibernate, file_type, cros_file_type, cros_run_file_type;

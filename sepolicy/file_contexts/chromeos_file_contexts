@@ -439,6 +439,7 @@ has_arc(`
 /run/dbus.pid                   u:object_r:cros_dbus_pid_file:s0
 /run/dbus/system_bus_socket     u:object_r:cros_system_bus_socket:s0
 /run/dhcpcd                     u:object_r:cros_run_dhcpcd:s0
+/run/dns-proxy                  u:object_r:cros_run_dns_proxy:s0
 /run/fuse                       u:object_r:cros_run_fuse:s0
 /run/hibernate                  u:object_r:cros_run_hibernate:s0
 /run/ippusb(/.*)?               u:object_r:cros_run_ippusb:s0

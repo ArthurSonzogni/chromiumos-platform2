@@ -11,6 +11,7 @@ group("all") {
     ":install_init_config",
     ":install_seccomp_policy",
     ":libdnsproxy",
+    "//dns-proxy/tmpfiles.d",
   ]
   if (use.fuzzer) {
     deps += [
