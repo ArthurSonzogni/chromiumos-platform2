@@ -90,11 +90,16 @@ class Controller : public brillo::DBusDaemon {
   void OnShillReset(bool reset);
 
   void RunProxy(Proxy::Type type, const std::string& ifname = "");
-  void KillProxy(Proxy::Type type, const std::string& ifname = "");
-  void Kill(const ProxyProc& proc);
+  void KillProxy(Proxy::Type type,
+                 const std::string& ifname = "",
+                 bool forget = true);
+  void Kill(const ProxyProc& proc, bool forget = true);
   void OnProxyExit(pid_t pid, const siginfo_t& siginfo);
   void EvalProxyExit(const ProxyProc& proc);
   bool RestartProxy(const ProxyProc& proc);
+
+  // Callback to be triggered when there is a message from the proxy.
+  void OnProxyMessage();
 
   // Callback used to run/kill default proxy based on its dependencies.
   // |has_deps| will be true if either VPN or a single-networked guest OS is
@@ -121,6 +126,10 @@ class Controller : public brillo::DBusDaemon {
   brillo::ProcessReaper process_reaper_;
   std::set<ProxyProc> proxies_;
   std::map<ProxyProc, ProxyRestarts> restarts_;
+
+  // File descriptor to communicate to the system proxy alongside its watcher.
+  base::ScopedFD msg_receiver_fd_;
+  std::unique_ptr<base::FileDescriptorWatcher::Controller> msg_watcher_;
 
   bool shill_ready_{false};
   std::unique_ptr<shill::Client> shill_;

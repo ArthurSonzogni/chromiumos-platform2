@@ -25,6 +25,8 @@
 #include <shill/dbus-constants.h>
 #include <shill/net/rtnl_handler.h>
 
+#include "dns-proxy/ipc.pb.h"
+
 // Using directive is necessary to have the overloaded function for socket data
 // structure available.
 using patchpanel::operator<<;
@@ -107,8 +109,8 @@ std::ostream& operator<<(std::ostream& stream, Proxy::Options opt) {
   return stream;
 }
 
-Proxy::Proxy(const Proxy::Options& opts)
-    : opts_(opts), metrics_proc_type_(ProcessTypeOf(opts_.type)) {
+Proxy::Proxy(const Proxy::Options& opts, int32_t fd)
+    : opts_(opts), metrics_proc_type_(ProcessTypeOf(opts_.type)), msg_fd_(fd) {
   if (opts_.type == Type::kSystem)
     doh_config_.set_metrics(&metrics_);
 
@@ -374,6 +376,9 @@ void Proxy::Enable() {
     SetShillDNSProxyAddresses(
         patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()),
         ns_peer_ipv6_address_);
+    SendIPAddressesToController(
+        patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()),
+        ns_peer_ipv6_address_);
     // Start DNS redirection rule to exclude traffic with destination not equal
     // to the underlying name server.
     StartDnsRedirection("" /* ifname */, AF_INET);
@@ -506,6 +511,9 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
     SetShillDNSProxyAddresses(
         patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()),
         ns_peer_ipv6_address_, true /* die_on_failure */);
+    SendIPAddressesToController(
+        patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()),
+        ns_peer_ipv6_address_);
     // Start DNS redirection rule to exclude traffic with destination not equal
     // to the underlying name server.
     StartDnsRedirection("" /* ifname */, AF_INET);
@@ -741,6 +749,47 @@ void Proxy::ClearShillDNSProxyAddresses() {
   SetShillDNSProxyAddresses("" /* ipv4_address */, "" /* ipv6_address */);
 }
 
+void Proxy::SendIPAddressesToController(const std::string& ipv4_addr,
+                                        const std::string& ipv6_addr) {
+  if (opts_.type != Type::kSystem) {
+    LOG(DFATAL) << "Must be called from system proxy only";
+    return;
+  }
+
+  ProxyAddrMessage msg;
+  if (!ipv4_addr.empty() && !doh_config_.ipv4_nameservers().empty()) {
+    msg.add_addrs(ipv4_addr);
+  }
+  if (!ipv6_addr.empty() && !doh_config_.ipv6_nameservers().empty()) {
+    msg.add_addrs(ipv6_addr);
+  }
+
+  // Don't send empty proxy address unless we are trying to clear previously
+  // set address(es).
+  if (msg.addrs().empty() && (!ipv4_addr.empty() || !ipv6_addr.empty())) {
+    return;
+  }
+
+  std::string str;
+  if (!msg.SerializeToString(&str)) {
+    LOG(ERROR) << "Failed to set dns-proxy address: error serializing protobuf";
+    return;
+  }
+  ssize_t len = write(msg_fd_.get(), str.data(), str.size());
+  if (len == static_cast<ssize_t>(str.size())) {
+    return;
+  }
+  if (len < 0) {
+    PLOG(ERROR) << "Failed to set dns-proxy address";
+  } else {
+    LOG(ERROR) << "Failed to set dns-proxy address: short write";
+  }
+  // This might be caused by the file descriptor getting invalidated. Quit the
+  // process to let the controller restart the proxy. Restarting allows a new
+  // clean state.
+  Quit();
+}
+
 const std::vector<std::string>& Proxy::DoHConfig::ipv4_nameservers() {
   return ipv4_nameservers_;
 }
@@ -885,6 +934,9 @@ void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
         SetShillDNSProxyAddresses(
             patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()),
             ns_peer_ipv6_address_);
+        SendIPAddressesToController(
+            patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()),
+            ns_peer_ipv6_address_);
         StartDnsRedirection("" /* ifname */, AF_INET6);
       }
       return;
@@ -899,6 +951,8 @@ void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
       }
       if (opts_.type == Type::kSystem && device_) {
         SetShillDNSProxyAddresses(
+            patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()), "");
+        SendIPAddressesToController(
             patchpanel::IPv4AddressToString(ns_.peer_ipv4_address()), "");
         StopDnsRedirection("" /* ifname */, AF_INET6);
       }

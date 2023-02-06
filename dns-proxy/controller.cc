@@ -20,6 +20,9 @@
 #include <chromeos/scoped_minijail.h>
 #include <shill/dbus-constants.h>
 
+#include "dns-proxy/ipc.pb.h"
+#include "dns-proxy/proxy.h"
+
 namespace dns_proxy {
 namespace {
 
@@ -195,6 +198,21 @@ void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
   minijail_reset_signal_handlers(jail.get());
   minijail_run_as_init(jail.get());
 
+  // Create FDs to communicate to the proxy.
+  base::ScopedFD controller_fd, proxy_fd;
+  if (type == Proxy::Type::kSystem) {
+    int control[2];
+    if (socketpair(AF_UNIX, SOCK_SEQPACKET, 0, control) != 0) {
+      PLOG(ERROR) << "Failed to start system proxy. socketpair failed";
+      base::ThreadTaskRunnerHandle::Get()->PostTask(
+          FROM_HERE, base::BindOnce(&Controller::RunProxy,
+                                    weak_factory_.GetWeakPtr(), type, ifname));
+      return;
+    }
+    controller_fd.reset(control[0]);
+    proxy_fd.reset(control[1]);
+  }
+
   std::vector<char*> argv;
   const std::string flag_t = "--t=" + std::string(Proxy::TypeToString(type));
   argv.push_back(const_cast<char*>(progname_.c_str()));
@@ -203,6 +221,11 @@ void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
   if (!ifname.empty()) {
     flag_i += ifname;
     argv.push_back(const_cast<char*>(flag_i.c_str()));
+  }
+  if (type == Proxy::Type::kSystem && controller_fd.is_valid() &&
+      proxy_fd.is_valid()) {
+    const std::string flag_fd = "--fd=" + std::to_string(proxy_fd.get());
+    argv.push_back(const_cast<char*>(flag_fd.c_str()));
   }
   argv.push_back(nullptr);
 
@@ -227,21 +250,62 @@ void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
     return;
   }
 
+  if (type == Proxy::Type::kSystem) {
+    msg_receiver_fd_ = std::move(controller_fd);
+    msg_watcher_ = base::FileDescriptorWatcher::WatchReadable(
+        msg_receiver_fd_.get(),
+        base::BindRepeating(&Controller::OnProxyMessage,
+                            weak_factory_.GetWeakPtr()));
+  }
   proxies_.emplace(proc);
 }
 
-void Controller::KillProxy(Proxy::Type type, const std::string& ifname) {
-  auto it = proxies_.find(ProxyProc(type, ifname));
-  if (it != proxies_.end()) {
-    Kill(*it);
-    proxies_.erase(it);
-    restarts_.erase(*it);
+void Controller::OnProxyMessage() {
+  char buffer[1024];
+  ssize_t len = recvfrom(msg_receiver_fd_.get(), buffer, sizeof(buffer),
+                         MSG_DONTWAIT, nullptr, nullptr);
+  if (len < 0 && errno != EAGAIN && errno != EINTR) {
+    PLOG(ERROR) << "Read failed";
+    // Restart system proxy.
+    msg_receiver_fd_.reset();
+    msg_watcher_.reset();
+    KillProxy(Proxy::Type::kSystem, /*ifname=*/"", /*forget=*/false);
+    return;
   }
+
+  ProxyAddrMessage msg;
+  if (!msg.ParseFromArray(buffer, len)) {
+    LOG(ERROR) << "Error parsing protobuf";
+    return;
+  }
+
+  std::vector<std::string> dns_proxy_addrs(
+      std::make_move_iterator(msg.addrs().begin()),
+      std::make_move_iterator(msg.addrs().end()));
+
+  // TODO(jasongustaman): Set DNS proxy address.
 }
 
-void Controller::Kill(const ProxyProc& proc) {
+void Controller::KillProxy(Proxy::Type type,
+                           const std::string& ifname,
+                           bool forget) {
+  auto it = proxies_.find(ProxyProc(type, ifname));
+  if (it == proxies_.end()) {
+    return;
+  }
+  Kill(*it, forget);
+  if (!forget) {
+    return;
+  }
+  proxies_.erase(it);
+  restarts_.erase(*it);
+}
+
+void Controller::Kill(const ProxyProc& proc, bool forget) {
   EvalProxyExit(proc);
-  process_reaper_.ForgetChild(proc.pid);
+  if (forget) {
+    process_reaper_.ForgetChild(proc.pid);
+  }
   int rc = kill(proc.pid, SIGTERM);
   if (rc < 0 && rc != ESRCH) {
     metrics_.RecordProcessEvent(Metrics::ProcessType::kController,
@@ -336,6 +400,10 @@ void Controller::EvalProxyExit(const ProxyProc& proc) {
   }
 
   shill_->GetManagerProxy()->ClearDNSProxyAddresses(nullptr /* error */);
+
+  // Cleanup fd between the proxy and controller.
+  msg_receiver_fd_.reset();
+  msg_watcher_.reset();
 }
 
 void Controller::OnVirtualDeviceChanged(

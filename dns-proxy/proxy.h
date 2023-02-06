@@ -42,7 +42,7 @@ class Proxy : public brillo::DBusDaemon {
     std::string ifname;
   };
 
-  explicit Proxy(const Options& opts);
+  Proxy(const Options& opts, int32_t fd);
   // For testing.
   Proxy(const Options& opts,
         std::unique_ptr<patchpanel::Client> patchpanel,
@@ -183,6 +183,11 @@ class Proxy : public brillo::DBusDaemon {
 
   void ClearShillDNSProxyAddresses();
 
+  // Helper func to send the proxy IP addresses to the controller.
+  // Only valid for the system proxy.
+  void SendIPAddressesToController(const std::string& ipv4_addr,
+                                   const std::string& ipv6_addr);
+
   // Callback from RTNetlink listener, invoked when the lan interface IPv6
   // address is changed.
   void RTNLMessageHandler(const shill::RTNLMessage& msg);
@@ -276,6 +281,9 @@ class Proxy : public brillo::DBusDaemon {
 
   Metrics metrics_;
   const Metrics::ProcessType metrics_proc_type_;
+
+  // File descriptor to communicate to the controller.
+  base::ScopedFD msg_fd_;
 
   // Listens for RTMGRP_IPV6_IFADDR messages and invokes RTNLMessageHandler.
   std::unique_ptr<shill::RTNLListener> addr_listener_;

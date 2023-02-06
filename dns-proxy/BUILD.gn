@@ -47,6 +47,12 @@ pkg_config("target_defaults") {
   ]
 }
 
+proto_library("dnsproxy_ipc_protos") {
+  proto_in_dir = "."
+  proto_out_dir = "include/dns-proxy"
+  sources = [ "${proto_in_dir}/ipc.proto" ]
+}
+
 static_library("libdnsproxy") {
   sources = [
     "ares_client.cc",
@@ -59,7 +65,7 @@ static_library("libdnsproxy") {
     "session_monitor.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = []
+  deps = [ ":dnsproxy_ipc_protos" ]
 }
 
 executable("dnsproxyd") {
