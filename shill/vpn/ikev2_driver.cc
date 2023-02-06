@@ -328,18 +328,18 @@ void IKEv2Driver::ReportConnectionMetrics() {
   const auto* conn = dynamic_cast<IPsecConnection*>(ipsec_connection_.get());
   if (conn) {
     // Cipher suite for IKE.
-    metrics()->SendEnumToUMA(Metrics::kMetricVpnIkev2IkeEncryptionAlgorithm,
-                             conn->ike_encryption_algo());
-    metrics()->SendEnumToUMA(Metrics::kMetricVpnIkev2IkeIntegrityAlgorithm,
-                             conn->ike_integrity_algo());
-    metrics()->SendEnumToUMA(Metrics::kMetricVpnIkev2IkeDHGroup,
+    metrics()->SendEnumToUMA(Metrics::kMetricVpnIkeEncryptionAlgorithm,
+                             VPNType::kIKEv2, conn->ike_encryption_algo());
+    metrics()->SendEnumToUMA(Metrics::kMetricVpnIkeIntegrityAlgorithm,
+                             VPNType::kIKEv2, conn->ike_integrity_algo());
+    metrics()->SendEnumToUMA(Metrics::kMetricVpnIkeDHGroup, VPNType::kIKEv2,
                              conn->ike_dh_group());
 
     // Cipher suite for ESP.
-    metrics()->SendEnumToUMA(Metrics::kMetricVpnIkev2EspEncryptionAlgorithm,
-                             conn->esp_encryption_algo());
-    metrics()->SendEnumToUMA(Metrics::kMetricVpnIkev2EspIntegrityAlgorithm,
-                             conn->esp_integrity_algo());
+    metrics()->SendEnumToUMA(Metrics::kMetricVpnEspEncryptionAlgorithm,
+                             VPNType::kIKEv2, conn->esp_encryption_algo());
+    metrics()->SendEnumToUMA(Metrics::kMetricVpnEspIntegrityAlgorithm,
+                             VPNType::kIKEv2, conn->esp_integrity_algo());
   }
 }
 

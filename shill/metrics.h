@@ -683,24 +683,14 @@ class Metrics : public DefaultServiceObserver {
 
     kVpnIpsecEncryptionAlgorithmMax,
   };
-  static constexpr EnumMetric<FixedName> kMetricVpnIkev2IkeEncryptionAlgorithm =
+  static constexpr EnumMetric<NameByVPNType> kMetricVpnIkeEncryptionAlgorithm =
       {
-          .n = FixedName{"Network.Shill.Vpn.Ikev2.IkeEncryptionAlgorithm"},
+          .n = NameByVPNType{"IkeEncryptionAlgorithm"},
           .max = kVpnIpsecEncryptionAlgorithmMax,
       };
-  static constexpr EnumMetric<FixedName> kMetricVpnIkev2EspEncryptionAlgorithm =
+  static constexpr EnumMetric<NameByVPNType> kMetricVpnEspEncryptionAlgorithm =
       {
-          .n = FixedName{"Network.Shill.Vpn.Ikev2.EspEncryptionAlgorithm"},
-          .max = kVpnIpsecEncryptionAlgorithmMax,
-      };
-  static constexpr EnumMetric<FixedName>
-      kMetricVpnL2tpIpsecIkeEncryptionAlgorithm = {
-          .n = FixedName{"Network.Shill.Vpn.L2tpIpsec.IkeEncryptionAlgorithm"},
-          .max = kVpnIpsecEncryptionAlgorithmMax,
-      };
-  static constexpr EnumMetric<FixedName>
-      kMetricVpnL2tpIpsecEspEncryptionAlgorithm = {
-          .n = FixedName{"Network.Shill.Vpn.L2tpIpsec.EspEncryptionAlgorithm"},
+          .n = NameByVPNType{"EspEncryptionAlgorithm"},
           .max = kVpnIpsecEncryptionAlgorithmMax,
       };
 
@@ -716,26 +706,14 @@ class Metrics : public DefaultServiceObserver {
 
     kVpnIpsecIntegrityAlgorithmMax,
   };
-  static constexpr EnumMetric<FixedName> kMetricVpnIkev2IkeIntegrityAlgorithm =
-      {
-          .n = FixedName{"Network.Shill.Vpn.Ikev2.IkeIntegrityAlgorithm"},
-          .max = kVpnIpsecIntegrityAlgorithmMax,
-      };
-  static constexpr EnumMetric<FixedName> kMetricVpnIkev2EspIntegrityAlgorithm =
-      {
-          .n = FixedName{"Network.Shill.Vpn.Ikev2.EspIntegrityAlgorithm"},
-          .max = kVpnIpsecIntegrityAlgorithmMax,
-      };
-  static constexpr EnumMetric<FixedName>
-      kMetricVpnL2tpIpsecIkeIntegrityAlgorithm = {
-          .n = FixedName{"Network.Shill.Vpn.L2tpIpsec.IkeIntegrityAlgorithm"},
-          .max = kVpnIpsecIntegrityAlgorithmMax,
-      };
-  static constexpr EnumMetric<FixedName>
-      kMetricVpnL2tpIpsecEspIntegrityAlgorithm = {
-          .n = FixedName{"Network.Shill.Vpn.L2tpIpsec.EspIntegrityAlgorithm"},
-          .max = kVpnIpsecIntegrityAlgorithmMax,
-      };
+  static constexpr EnumMetric<NameByVPNType> kMetricVpnIkeIntegrityAlgorithm = {
+      .n = NameByVPNType{"IkeIntegrityAlgorithm"},
+      .max = kVpnIpsecIntegrityAlgorithmMax,
+  };
+  static constexpr EnumMetric<NameByVPNType> kMetricVpnEspIntegrityAlgorithm = {
+      .n = NameByVPNType{"EspIntegrityAlgorithm"},
+      .max = kVpnIpsecIntegrityAlgorithmMax,
+  };
 
   enum VpnIpsecDHGroup {
     kVpnIpsecDHGroupUnknown = 0,
@@ -758,12 +736,8 @@ class Metrics : public DefaultServiceObserver {
 
     kVpnIpsecDHGroupMax,
   };
-  static constexpr EnumMetric<FixedName> kMetricVpnIkev2IkeDHGroup = {
-      .n = FixedName{"Network.Shill.Vpn.Ikev2.IkeDHGroup"},
-      .max = kVpnIpsecDHGroupMax,
-  };
-  static constexpr EnumMetric<FixedName> kMetricVpnL2tpIpsecIkeDHGroup = {
-      .n = FixedName{"Network.Shill.Vpn.L2tpIpsec.IkeDHGroup"},
+  static constexpr EnumMetric<NameByVPNType> kMetricVpnIkeDHGroup = {
+      .n = NameByVPNType{"IkeDHGroup"},
       .max = kVpnIpsecDHGroupMax,
   };
 
