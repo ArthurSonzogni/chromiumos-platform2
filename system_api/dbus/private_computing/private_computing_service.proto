@@ -50,6 +50,12 @@ message ActiveStatus {
     // the statuses of the last three observation periods.
     ChurnObservationStatus period_status = 4;
   }
+
+  // The 28 bits value of churn active status for past 18 months.
+  // The left 10 bits represent the number of months since Jan. 2020.
+  // The right 18 bits represet the device churn cohort active status
+  // for the past 18 months (1 is active, 0 is not active).
+  optional int32 churn_active_status = 5;
 }
 
 message SaveStatusRequest {
