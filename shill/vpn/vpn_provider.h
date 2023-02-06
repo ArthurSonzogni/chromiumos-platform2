@@ -22,6 +22,15 @@ class Error;
 class KeyValueStore;
 class Manager;
 
+enum class VPNType {
+  kARC,
+  kIKEv2,
+  kL2TPIPsec,
+  kOpenVPN,
+  kThirdParty,  // Chrome VpnProvider Apps
+  kWireGuard,
+};
+
 class VPNProvider : public ProviderInterface {
  public:
   // Interface name of the ARC bridge.

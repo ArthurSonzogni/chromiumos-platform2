@@ -30,6 +30,7 @@
 #include "shill/mock_service.h"
 #include "shill/net/ieee80211.h"
 #include "shill/test_event_dispatcher.h"
+#include "shill/vpn/vpn_provider.h"
 #include "shill/wifi/mock_wifi_service.h"
 
 using testing::_;
@@ -142,6 +143,27 @@ TEST_F(MetricsTest, EnumMetric) {
   };
   EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.FakeEnum.Wifi", 3, 13));
   metrics_.SendEnumToUMA(metric3, Technology(Technology::kWiFi), 3);
+  Mock::VerifyAndClearExpectations(&library_);
+
+  Metrics::EnumMetric<Metrics::NameByVPNType> metric4 = {
+      .n = Metrics::NameByVPNType{"Enum"},
+      .max = 10,
+  };
+  EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Vpn.ARC.Enum", 5, 10));
+  EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Vpn.Ikev2.Enum", 4, 10));
+  EXPECT_CALL(library_,
+              SendEnumToUMA("Network.Shill.Vpn.L2tpIpsec.Enum", 3, 10));
+  EXPECT_CALL(library_, SendEnumToUMA("Network.Shill.Vpn.OpenVPN.Enum", 2, 10));
+  EXPECT_CALL(library_,
+              SendEnumToUMA("Network.Shill.Vpn.ThirdParty.Enum", 1, 10));
+  EXPECT_CALL(library_,
+              SendEnumToUMA("Network.Shill.Vpn.WireGuard.Enum", 0, 10));
+  metrics_.SendEnumToUMA(metric4, VPNType::kARC, 5);
+  metrics_.SendEnumToUMA(metric4, VPNType::kIKEv2, 4);
+  metrics_.SendEnumToUMA(metric4, VPNType::kL2TPIPsec, 3);
+  metrics_.SendEnumToUMA(metric4, VPNType::kOpenVPN, 2);
+  metrics_.SendEnumToUMA(metric4, VPNType::kThirdParty, 1);
+  metrics_.SendEnumToUMA(metric4, VPNType::kWireGuard, 0);
   Mock::VerifyAndClearExpectations(&library_);
 }
 

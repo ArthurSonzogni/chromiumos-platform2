@@ -14,6 +14,7 @@
 #include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_piece_forward.h>
@@ -31,6 +32,7 @@
 #include "shill/cellular/cellular_consts.h"
 #include "shill/connection_diagnostics.h"
 #include "shill/logging.h"
+#include "shill/vpn/vpn_provider.h"
 #include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_metrics_utils.h"
 #include "shill/wifi/wifi_service.h"
@@ -89,6 +91,26 @@ Metrics::CellularConnectResult ConvertErrorToCellularConnectResult(
   }
 }
 
+// Converts VPN types to strings used in a metric name.
+std::string VPNTypeToMetricString(VPNType type) {
+  switch (type) {
+    case VPNType::kARC:
+      return "ARC";
+    case VPNType::kIKEv2:
+      return "Ikev2";
+    case VPNType::kL2TPIPsec:
+      return "L2tpIpsec";
+    case VPNType::kOpenVPN:
+      return "OpenVPN";
+    case VPNType::kThirdParty:
+      return "ThirdParty";
+    case VPNType::kWireGuard:
+      return "WireGuard";
+  }
+  NOTREACHED();
+  return "";
+}
+
 }  // namespace
 
 Metrics::Metrics()
@@ -121,6 +143,15 @@ void Metrics::SendEnumToUMA(const EnumMetric<NameByTechnology>& metric,
   library_->SendEnumToUMA(
       GetFullMetricName(metric.n.name, tech, metric.n.location), sample,
       metric.max);
+}
+
+void Metrics::SendEnumToUMA(const EnumMetric<NameByVPNType>& metric,
+                            VPNType type,
+                            int sample) {
+  const std::string name =
+      base::StringPrintf("%s.Vpn.%s.%s", kMetricPrefix,
+                         VPNTypeToMetricString(type).c_str(), metric.n.name);
+  library_->SendEnumToUMA(name, sample, metric.max);
 }
 
 void Metrics::SendToUMA(const Metrics::HistogramMetric<FixedName>& metric,

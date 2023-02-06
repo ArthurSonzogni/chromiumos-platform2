@@ -24,6 +24,7 @@
 #include "shill/portal_detector.h"
 #include "shill/refptr_types.h"
 #include "shill/service.h"
+#include "shill/vpn/vpn_provider.h"
 #include "shill/wifi/wifi_security.h"
 
 namespace shill {
@@ -89,6 +90,15 @@ class Metrics : public DefaultServiceObserver {
     const char* name;
     // Necessary for testing.
     bool operator==(const FixedName& that) const {
+      return strncmp(name, that.name, kMaxMetricNameLen) == 0;
+    }
+  };
+
+  // Represents a UMA metric name by VPN type.
+  struct NameByVPNType {
+    const char* name;
+    // Necessary for testing.
+    bool operator==(const NameByVPNType& that) const {
       return strncmp(name, that.name, kMaxMetricNameLen) == 0;
     }
   };
@@ -1861,6 +1871,11 @@ class Metrics : public DefaultServiceObserver {
   // Technology.
   virtual void SendEnumToUMA(const EnumMetric<NameByTechnology>& metric,
                              Technology tech,
+                             int sample);
+
+  // Sends linear histogram data to UMA for a metric split by VPN type.
+  virtual void SendEnumToUMA(const EnumMetric<NameByVPNType>& metric,
+                             VPNType type,
                              int sample);
 
   // Sends logarithmic histogram data to UMA for a metric with a fixed name.
