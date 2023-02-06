@@ -1614,3 +1614,10 @@ message AuthEnrollmentProgress {
     FingerprintEnrollmentProgress fingerprint_progress = 3;
   }
 }
+
+// The message included in signal AuthScanDoneSignal
+message AuthScanDone {
+  // The result of the latest scan. Note that this doesn't represent the match
+  // result, but just whether the scan is successful.
+  AuthScanResult scan_result = 1;
+}
