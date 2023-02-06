@@ -63,6 +63,7 @@
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
 #include "shill/technology.h"
+#include "shill/tethering_manager.h"
 #include "shill/virtual_device.h"
 
 namespace shill {
@@ -108,6 +109,9 @@ const char Cellular::kQ6V5ModemManufacturerName[] = "QUALCOMM INCORPORATED";
 const char Cellular::kQ6V5DriverName[] = "qcom-q6v5-mss";
 const char Cellular::kQ6V5SysfsBasePath[] = "/sys/class/remoteproc";
 const char Cellular::kQ6V5RemoteprocPattern[] = "remoteproc*";
+const char Cellular::kTetheringTestDatabasePath[] =
+    "/usr/share/shill/tethering_experimental.pbf";
+
 // static
 std::string Cellular::GetStateString(State state) {
   switch (state) {
@@ -203,6 +207,12 @@ Cellular::Cellular(Manager* manager,
       dbus_path_str_(path.value()),
       process_manager_(ProcessManager::GetInstance()) {
   RegisterProperties();
+  // TODO(b/267804414): This database is merged with service_providers.pbf, and
+  // overrides a few carriers in it. This is used for fishfooding on carriers
+  // that require multiple PDNs.
+  if (manager->tethering_manager() && manager->tethering_manager()->allowed())
+    mobile_operator_info_->AddDatabasePath(
+        base::FilePath(kTetheringTestDatabasePath));
 
   mobile_operator_info_->Init();
 
@@ -2829,6 +2839,19 @@ void Cellular::SetSelectedServiceForTesting(CellularServiceRefPtr service) {
   SelectService(service);
 }
 
-void Cellular::TetheringAllowedUpdated(bool allowed) {}
+void Cellular::TetheringAllowedUpdated(bool allowed) {
+  // TODO(b/267804414): This database is merged with service_providers.pbf, and
+  // overrides a few carriers in it. This is used for fishfooding on carriers
+  // that require multiple PDNs.
+  mobile_operator_info_->ClearDatabasePaths();
+  mobile_operator_info_->Reset();
+  mobile_operator_info_->AddDefaultDatabasePaths();
+  if (allowed) {
+    mobile_operator_info_->AddDatabasePath(
+        base::FilePath(kTetheringTestDatabasePath));
+  }
+  mobile_operator_info_->Init();
+  ReAttach();
+}
 
 }  // namespace shill

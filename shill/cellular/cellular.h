@@ -449,6 +449,9 @@ class Cellular : public Device,
   // Modem driver name
   static const char kQ6V5DriverName[];
 
+  // Temporary database used to test tethering on carriers that require DUN APNs
+  static const char kTetheringTestDatabasePath[];
+
   // Time between stop and start of modem device
   static constexpr base::TimeDelta kModemResetTimeout = base::Seconds(1);
 
