@@ -67,6 +67,20 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
   }
 
   // org::chromium::ArcVmDataMigratorInterface overrides:
+  bool HasDataToMigrate(brillo::ErrorPtr* error,
+                        const HasDataToMigrateRequest& request,
+                        bool* response) override {
+    // We use /home/root/<hash>/android-data/data/data/ because host-side
+    // services like arc-setup creates .../android-data/data/media/0/ even when
+    // the device is already running with virtio-blk /data. The existence of
+    // .../android-data/data/data would imply that there is data to migrate.
+    const base::FilePath android_data_data_dir =
+        brillo::cryptohome::home::GetRootPath(request.username())
+            .Append("android-data/data/data");
+    *response = base::DirectoryExists(android_data_data_dir);
+    return true;
+  }
+
   bool StartMigration(brillo::ErrorPtr* error,
                       const StartMigrationRequest& request) override {
     const base::FilePath user_root_dir =

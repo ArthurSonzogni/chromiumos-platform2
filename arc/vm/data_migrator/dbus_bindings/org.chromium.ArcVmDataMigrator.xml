@@ -3,6 +3,18 @@
 <node name="/org/chromium/ArcVmDataMigrator"
       xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <interface name="org.chromium.ArcVmDataMigrator">
+    <method name="HasDataToMigrate">
+      <tp:docstring>
+        Returns whether the host-side /home/root/&lt;hash&gt;/android-data/data
+        has any meaningful data to be migrated in the ARCVM /data migration.
+        This method is not supposed to be called during the migration.
+      </tp:docstring>
+      <arg name="request" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="arc::data_migrator::HasDataToMigrateRequest"/>
+      </arg>
+      <arg name="response" type="b" direction="out"/>
+    </method>
     <method name="StartMigration">
       <tp:docstring>
         Starts ARCVM /data migration. This first mounts the ext4 disk image of
