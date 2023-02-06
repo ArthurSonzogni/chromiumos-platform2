@@ -138,8 +138,26 @@ void VPNService::OnDriverConnected(const std::string& if_name, int if_index) {
     return;
   }
 
+  auto ipv4_props = driver_->GetIPv4Properties();
+  auto ipv6_props = driver_->GetIPv6Properties();
+
+  // Report IP type metrics. All a VPN connection, we have all IP configuration
+  // when it becomes connected, so we can report the metrics here, but this is
+  // not the case for other techologies (v4 and v6 configurations can come at
+  // different time).
+  Metrics::VpnIPType ip_type = Metrics::kVpnIPTypeUnknown;
+  if (ipv4_props && ipv6_props) {
+    ip_type = Metrics::kVpnIPTypeDualStack;
+  } else if (ipv4_props) {
+    ip_type = Metrics::kVpnIPTypeIPv4Only;
+  } else if (ipv6_props) {
+    ip_type = Metrics::kVpnIPTypeIPv6Only;
+  }
+  metrics()->SendEnumToUMA(Metrics::kMetricVpnIPType, driver_->vpn_type(),
+                           ip_type);
+
   SetState(ConnectState::kStateConfiguring);
-  ConfigureDevice();
+  ConfigureDevice(std::move(ipv4_props), std::move(ipv6_props));
 }
 
 void VPNService::OnDriverFailure(ConnectFailure failure,
@@ -184,7 +202,9 @@ void VPNService::CleanupDevice() {
   device_ = nullptr;
 }
 
-void VPNService::ConfigureDevice() {
+void VPNService::ConfigureDevice(
+    std::unique_ptr<IPConfig::Properties> ipv4_props,
+    std::unique_ptr<IPConfig::Properties> ipv6_props) {
   if (!device_) {
     LOG(DFATAL) << "Device not created yet.";
     return;
@@ -192,8 +212,7 @@ void VPNService::ConfigureDevice() {
 
   device_->SetEnabled(true);
   device_->SelectService(this);
-  device_->UpdateIPConfig(driver_->GetIPv4Properties(),
-                          driver_->GetIPv6Properties());
+  device_->UpdateIPConfig(std::move(ipv4_props), std::move(ipv6_props));
 }
 
 std::string VPNService::GetStorageIdentifier() const {

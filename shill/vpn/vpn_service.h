@@ -82,6 +82,7 @@ class VPNService : public Service,
   FRIEND_TEST(VPNServiceTest, GetPhysicalTechnologyPropertyFailsIfNoCarrier);
   FRIEND_TEST(VPNServiceTest, GetPhysicalTechnologyPropertyOverWifi);
   FRIEND_TEST(VPNServiceTest, ConfigureDeviceAndCleanupDevice);
+  FRIEND_TEST(VPNServiceTest, ReportIPTypeMetrics);
   FRIEND_TEST(VPNServiceTest, ConnectFlow);
 
   static const char kAutoConnNeverConnected[];
@@ -91,7 +92,8 @@ class VPNService : public Service,
 
   // Create a VPN VirtualDevice as device_.
   bool CreateDevice(const std::string& if_name, int if_index);
-  void ConfigureDevice();
+  void ConfigureDevice(std::unique_ptr<IPConfig::Properties> ipv4_props,
+                       std::unique_ptr<IPConfig::Properties> ipv6_props);
   void CleanupDevice();
 
   // Initializes a callback that will invoke OnDriverConnectTimeout() after

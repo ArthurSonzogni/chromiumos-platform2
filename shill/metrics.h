@@ -657,6 +657,18 @@ class Metrics : public DefaultServiceObserver {
       .max = kVpnL2tpIpsecTunnelGroupUsageMax,
   };
 
+  enum VpnIPType {
+    kVpnIPTypeUnknown = 0,
+    kVpnIPTypeIPv4Only = 1,
+    kVpnIPTypeIPv6Only = 2,
+    kVpnIPTypeDualStack = 3,
+    kVpnIPTypeMax
+  };
+  static constexpr EnumMetric<NameByVPNType> kMetricVpnIPType = {
+      .n = NameByVPNType{"IPType"},
+      .max = kVpnIPTypeMax,
+  };
+
   // This enum contains the encryption algorithms we are using for IPsec now,
   // but not the complete list of algorithms which are supported by strongswan.
   // It is the same for the following enums for integrity algorithms and DH

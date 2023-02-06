@@ -371,15 +371,42 @@ TEST_F(VPNServiceTest, ConfigureDeviceAndCleanupDevice) {
   service_->device_ = device;
 
   EXPECT_CALL(*device, SetEnabled(true));
-  EXPECT_CALL(*driver_, GetIPv4Properties())
-      .WillOnce(Return(ByMove(std::make_unique<IPConfig::Properties>())));
   EXPECT_CALL(*device, UpdateIPConfig(_, _));
-  service_->ConfigureDevice();
+  service_->ConfigureDevice(std::make_unique<IPConfig::Properties>(), nullptr);
 
   EXPECT_CALL(*device, SetEnabled(false));
   EXPECT_CALL(*device, DropConnection());
   service_->CleanupDevice();
   EXPECT_FALSE(service_->device_);
+}
+
+TEST_F(VPNServiceTest, ReportIPTypeMetrics) {
+  const auto return_ip_props = []() {
+    return std::make_unique<IPConfig::Properties>();
+  };
+  const auto return_nullptr = []() { return nullptr; };
+
+  scoped_refptr<MockVirtualDevice> device = new MockVirtualDevice(
+      &manager_, kInterfaceName, kInterfaceIndex, Technology::kVPN);
+  service_->device_ = device;
+
+  EXPECT_CALL(*driver_, GetIPv4Properties()).WillOnce(return_ip_props);
+  EXPECT_CALL(*driver_, GetIPv6Properties()).WillOnce(return_nullptr);
+  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnIPType, _,
+                                      Metrics::kVpnIPTypeIPv4Only));
+  service_->OnDriverConnected(kInterfaceName, kInterfaceIndex);
+
+  EXPECT_CALL(*driver_, GetIPv4Properties()).WillOnce(return_nullptr);
+  EXPECT_CALL(*driver_, GetIPv6Properties()).WillOnce(return_ip_props);
+  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnIPType, _,
+                                      Metrics::kVpnIPTypeIPv6Only));
+  service_->OnDriverConnected(kInterfaceName, kInterfaceIndex);
+
+  EXPECT_CALL(*driver_, GetIPv4Properties()).WillOnce(return_ip_props);
+  EXPECT_CALL(*driver_, GetIPv6Properties()).WillOnce(return_ip_props);
+  EXPECT_CALL(metrics_, SendEnumToUMA(Metrics::kMetricVpnIPType, _,
+                                      Metrics::kVpnIPTypeDualStack));
+  service_->OnDriverConnected(kInterfaceName, kInterfaceIndex);
 }
 
 TEST_F(VPNServiceTest, ConnectFlow) {

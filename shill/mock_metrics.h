@@ -95,6 +95,12 @@ class MockMetrics : public Metrics {
                int),
               (override));
   MOCK_METHOD(void,
+              SendEnumToUMA,
+              (const Metrics::EnumMetric<Metrics::NameByVPNType>& metric,
+               VPNType,
+               int),
+              (override));
+  MOCK_METHOD(void,
               SendToUMA,
               (const Metrics::HistogramMetric<Metrics::FixedName>& metric, int),
               (override));
