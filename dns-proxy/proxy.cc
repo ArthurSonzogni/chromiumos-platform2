@@ -142,8 +142,10 @@ int Proxy::OnInit() {
 void Proxy::OnShutdown(int* code) {
   LOG(INFO) << "Stopping DNS proxy " << opts_ << "(" << *code << ")";
   addr_listener_.reset();
-  if (opts_.type == Type::kSystem)
+  if (opts_.type == Type::kSystem) {
     ClearShillDNSProxyAddresses();
+    ClearIPAddressesInController();
+  }
 }
 
 void Proxy::Setup() {
@@ -406,6 +408,7 @@ void Proxy::Enable() {
 void Proxy::Disable() {
   if (opts_.type == Type::kSystem && ns_fd_.is_valid()) {
     ClearShillDNSProxyAddresses();
+    ClearIPAddressesInController();
   }
   // Teardown DNS redirection rules.
   lifeline_fds_.clear();
@@ -418,6 +421,7 @@ void Proxy::Stop() {
   lifeline_fds_.clear();
   if (opts_.type == Type::kSystem) {
     ClearShillDNSProxyAddresses();
+    ClearIPAddressesInController();
   }
 }
 
@@ -788,6 +792,10 @@ void Proxy::SendIPAddressesToController(const std::string& ipv4_addr,
   // process to let the controller restart the proxy. Restarting allows a new
   // clean state.
   Quit();
+}
+
+void Proxy::ClearIPAddressesInController() {
+  SendIPAddressesToController("" /* ipv4_address */, "" /* ipv6_address */);
 }
 
 const std::vector<std::string>& Proxy::DoHConfig::ipv4_nameservers() {

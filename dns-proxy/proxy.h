@@ -180,13 +180,13 @@ class Proxy : public brillo::DBusDaemon {
       const std::string& ipv6_addr,
       bool die_on_failure = false,
       uint8_t num_retries = kMaxShillPropertyRetries);
-
   void ClearShillDNSProxyAddresses();
 
   // Helper func to send the proxy IP addresses to the controller.
   // Only valid for the system proxy.
   void SendIPAddressesToController(const std::string& ipv4_addr,
                                    const std::string& ipv6_addr);
+  void ClearIPAddressesInController();
 
   // Callback from RTNetlink listener, invoked when the lan interface IPv6
   // address is changed.

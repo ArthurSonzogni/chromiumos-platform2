@@ -8,9 +8,12 @@
 #include <sys/prctl.h>
 #include <sysexits.h>
 
+#include <utility>
 #include <vector>
 
 #include <base/check.h>
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/notreached.h>
@@ -29,13 +32,18 @@ namespace {
 constexpr base::TimeDelta kSubprocessRestartDelay = base::Milliseconds(900);
 constexpr char kSeccompPolicyPath[] =
     "/usr/share/policy/dns-proxy-seccomp.policy";
+constexpr char kResolvConfRunPath[] = "/run/dns-proxy/resolv.conf";
 
 }  // namespace
 
-Controller::Controller(const std::string& progname) : progname_(progname) {}
+Controller::Controller(const std::string& progname)
+    : progname_(progname), resolv_conf_(ResolvConf::GetInstance()) {}
 
 int Controller::OnInit() {
   LOG(INFO) << "Starting DNS Proxy service";
+
+  // Set run path for resolv.conf.
+  resolv_conf_->set_path(base::FilePath(kResolvConfRunPath));
 
   // Preserve CAP_NET_BIND_SERVICE so the child processes have the capability.
   // Without the ambient set, file capabilities need to be used.
@@ -149,6 +157,8 @@ void Controller::OnShillReady(bool success) {
     return;
   }
 
+  shill_->RegisterDefaultDeviceChangedHandler(base::BindRepeating(
+      &Controller::OnDefaultDeviceChanged, weak_factory_.GetWeakPtr()));
   shill_->RegisterDeviceRemovedHandler(base::BindRepeating(
       &Controller::OnDeviceRemoved, weak_factory_.GetWeakPtr()));
 }
@@ -283,7 +293,7 @@ void Controller::OnProxyMessage() {
       std::make_move_iterator(msg.addrs().begin()),
       std::make_move_iterator(msg.addrs().end()));
 
-  // TODO(jasongustaman): Set DNS proxy address.
+  resolv_conf_->SetDNSProxyAddresses(dns_proxy_addrs);
 }
 
 void Controller::KillProxy(Proxy::Type type,
@@ -400,6 +410,7 @@ void Controller::EvalProxyExit(const ProxyProc& proc) {
   }
 
   shill_->GetManagerProxy()->ClearDNSProxyAddresses(nullptr /* error */);
+  resolv_conf_->SetDNSProxyAddresses({});
 
   // Cleanup fd between the proxy and controller.
   msg_receiver_fd_.reset();
@@ -430,6 +441,31 @@ void Controller::VirtualDeviceAdded(const patchpanel::NetworkDevice& device) {
       device.guest_type() == patchpanel::NetworkDevice::ARCVM) {
     RunProxy(Proxy::Type::kARC, device.phys_ifname());
   }
+}
+
+void Controller::OnDefaultDeviceChanged(
+    const shill::Client::Device* const device) {
+  // Default service is either not ready yet or has just disconnected.
+  if (!device) {
+    return;
+  }
+
+  std::vector<std::string> nameservers;
+  for (const auto& ns : device->ipconfig.ipv4_dns_addresses) {
+    nameservers.push_back(ns);
+  }
+  for (const auto& ns : device->ipconfig.ipv6_dns_addresses) {
+    nameservers.push_back(ns);
+  }
+  std::vector<std::string> search_domains;
+  for (const auto& sd : device->ipconfig.ipv4_search_domains) {
+    search_domains.push_back(sd);
+  }
+  for (const auto& sd : device->ipconfig.ipv6_search_domains) {
+    search_domains.push_back(sd);
+  }
+
+  resolv_conf_->SetDNSFromLists(nameservers, search_domains);
 }
 
 void Controller::OnDeviceRemoved(const shill::Client::Device* const device) {

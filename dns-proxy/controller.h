@@ -21,6 +21,7 @@
 #include "dns-proxy/chrome_features_service_client.h"
 #include "dns-proxy/metrics.h"
 #include "dns-proxy/proxy.h"
+#include "dns-proxy/resolv_conf.h"
 
 namespace dns_proxy {
 
@@ -130,6 +131,9 @@ class Controller : public brillo::DBusDaemon {
   // File descriptor to communicate to the system proxy alongside its watcher.
   base::ScopedFD msg_receiver_fd_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> msg_watcher_;
+
+  // Helper class to update resolv.conf entries.
+  ResolvConf* resolv_conf_;
 
   bool shill_ready_{false};
   std::unique_ptr<shill::Client> shill_;
