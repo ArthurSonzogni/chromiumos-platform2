@@ -10,6 +10,8 @@
 
 #include "pkcs11/cryptoki.h"
 
+// Note: This library is not thread-safe.
+
 // Chaps-specific return values:
 #define CKR_CHAPS_SPECIFIC_FIRST (CKR_VENDOR_DEFINED + 0x47474c00)
 // Error code returned in case if the operation would block waiting

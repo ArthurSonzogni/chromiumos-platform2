@@ -17,6 +17,7 @@
 #include <base/at_exit.h>
 #include <base/check.h>
 #include <base/logging.h>
+#include <base/no_destructor.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 
@@ -29,6 +30,8 @@
 
 using std::string;
 using std::vector;
+
+namespace {
 
 static const CK_BYTE kChapsLibraryVersionMajor = 0;
 static const CK_BYTE kChapsLibraryVersionMinor = 1;
@@ -49,7 +52,9 @@ static brillo::SecureBlob* g_user_isolate = NULL;
 
 // Keeps track of all open sessions for C_CloseAllSessions(). Maps session ID to
 // slot ID.
-std::unordered_multimap<CK_SESSION_HANDLE, CK_SLOT_ID> g_open_sessions;
+static base::NoDestructor<
+    std::unordered_multimap<CK_SESSION_HANDLE, CK_SLOT_ID>>
+    g_open_sessions;
 
 // Timeout and retry delay used for repeating non-blocking calls.
 static base::TimeDelta g_retry_timeout = base::Minutes(5);
@@ -58,7 +63,7 @@ static base::TimeDelta g_retry_delay = base::Milliseconds(100);
 // Tear down helper.
 static void TearDown() {
   std::set<CK_SESSION_HANDLE> open_session_handles;
-  for (const auto& itr : g_open_sessions) {
+  for (const auto& itr : *g_open_sessions) {
     open_session_handles.insert(itr.first);
   }
   for (const auto& handle : open_session_handles) {
@@ -125,6 +130,8 @@ static CK_RV PerformNonBlocking(ChapsOperation op) {
   return result;
 }
 
+}  // namespace
+
 namespace chaps {
 
 // Helpers to support a mock proxy and isolate credential (useful in testing).
@@ -135,7 +142,7 @@ EXPORT_SPEC void EnableMockProxy(ChapsInterface* proxy,
   g_user_isolate = isolate_credential;
   g_is_using_mock = true;
   g_is_initialized = is_initialized;
-  g_open_sessions.clear();
+  g_open_sessions->clear();
 }
 
 EXPORT_SPEC void DisableMockProxy() {
@@ -447,7 +454,7 @@ EXPORT_SPEC CK_RV C_OpenSession(CK_SLOT_ID slotID,
   LOG_CK_RV_AND_RETURN_IF_ERR(result);
 
   // Keep track of the pair because the session is now open.
-  g_open_sessions.insert(
+  g_open_sessions->insert(
       std::pair<CK_SESSION_HANDLE, CK_SLOT_ID>(*phSession, slotID));
 
   VLOG(1) << __func__ << " - CKR_OK";
@@ -463,7 +470,7 @@ EXPORT_SPEC CK_RV C_CloseSession(CK_SESSION_HANDLE hSession) {
   VLOG(1) << __func__ << " - CKR_OK";
 
   // Update the records.
-  g_open_sessions.erase(hSession);
+  g_open_sessions->erase(hSession);
 
   return CKR_OK;
 }
@@ -476,7 +483,7 @@ EXPORT_SPEC CK_RV C_CloseAllSessions(CK_SLOT_ID slotID) {
   // Note that this O(n) algorithm is chosen, instead of having another reverse
   // lookup table is because usually the number of open slots and open session
   // is low, so lower memory usage is worth the extra run time.
-  for (const auto& itr : g_open_sessions) {
+  for (const auto& itr : *g_open_sessions) {
     if (itr.second != slotID) {
       continue;
     }
