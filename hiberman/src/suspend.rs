@@ -21,8 +21,6 @@ use log::warn;
 
 use crate::cookie::set_hibernate_cookie;
 use crate::cookie::HibernateCookieValue;
-use crate::crypto::CryptoMode;
-use crate::crypto::CryptoWriter;
 use crate::diskfile::BouncedDiskFile;
 use crate::diskfile::DiskFile;
 use crate::files::does_hiberfile_exist;
@@ -259,21 +257,12 @@ impl SuspendConductor {
         snap_dev: &mut SnapshotDevice,
     ) -> Result<()> {
         let image_size = snap_dev.get_image_size()?;
-        let page_size = get_page_size();
-        let mut encryptor = CryptoWriter::new(
-            &mut hiber_file,
-            &self.metadata.data_key,
-            &self.metadata.data_iv,
-            CryptoMode::Unencrypted,
-            page_size * BUFFER_PAGES,
-        )?;
-
         debug!("Hibernate image is {} bytes", image_size);
         let start = Instant::now();
         let compute_header_hash = false;
         let mut splitter = ImageSplitter::new(
             &mut header_file,
-            &mut encryptor,
+            &mut hiber_file,
             &mut self.metadata,
             compute_header_hash,
         );
@@ -282,7 +271,6 @@ impl SuspendConductor {
         log_io_duration("Wrote hibernate image", image_size, image_duration);
         self.metrics
             .metrics_send_io_sample("WriteHibernateImage", image_size, image_duration);
-        self.metadata.data_tag = encryptor.get_tag()?;
 
         assert!(self.metadata.data_tag != [0u8; META_TAG_SIZE]);
 

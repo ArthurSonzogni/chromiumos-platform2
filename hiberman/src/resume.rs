@@ -20,8 +20,6 @@ use crate::cookie::cookie_description;
 use crate::cookie::get_hibernate_cookie;
 use crate::cookie::set_hibernate_cookie;
 use crate::cookie::HibernateCookieValue;
-use crate::crypto::CryptoMode;
-use crate::crypto::CryptoReader;
 use crate::dbus::HiberDbusConnection;
 use crate::dbus::PendingResumeCall;
 use crate::diskfile::BouncedDiskFile;
@@ -37,7 +35,6 @@ use crate::hiberlog::replay_logs;
 use crate::hiberlog::HiberlogFile;
 use crate::hiberlog::HiberlogOut;
 use crate::hibermeta::HibernateMetadata;
-use crate::hibermeta::META_FLAG_ENCRYPTED;
 use crate::hibermeta::META_FLAG_RESUME_FAILED;
 use crate::hibermeta::META_FLAG_RESUME_LAUNCHED;
 use crate::hibermeta::META_FLAG_RESUME_STARTED;
@@ -346,17 +343,15 @@ impl ResumeConductor {
         // Create the image joiner, which combines the header file and the data
         // file into one contiguous read stream.
         let compute_header_hash = false;
-        let mut joiner = ImageJoiner::new(
+        let mut mover_source = ImageJoiner::new(
             &mut header_file,
             &mut hiber_file,
             self.metadata.image_meta_size,
             compute_header_hash,
         );
-        self.load_header(&mut joiner, snap_dev)?;
+        self.load_header(&mut mover_source, snap_dev)?;
         image_size -= self.metadata.image_meta_size;
-        let mover_source: &mut dyn Read = &mut joiner;
 
-        // The next step is to start decrypting it and push it to the kernel.
         // Block waiting on the authentication key material from cryptohome.
         let wait_start = Instant::now();
         let pending_resume_call = Some(self.populate_seed(dbus_connection, true)?);
@@ -369,7 +364,7 @@ impl ResumeConductor {
         );
 
         // With the seed material in hand, decrypt the private data, and fire up
-        // the big image decryptor.
+        // the big image move.
         info!("Loading private metadata");
         let metadata = &mut self.metadata;
         self.key_manager.install_saved_metadata_key(metadata)?;
@@ -380,32 +375,16 @@ impl ResumeConductor {
             .set_user_key(&user_key)
             .context("Failed to set user key")?;
 
-        let mode = if (metadata.flags & META_FLAG_ENCRYPTED) != 0 {
-            CryptoMode::Decrypt
-        } else {
-            CryptoMode::Unencrypted
-        };
-        let mut decryptor = CryptoReader::new(
-            mover_source,
-            &metadata.data_key,
-            &metadata.data_iv,
-            mode,
-            page_size * BUFFER_PAGES,
-        )?;
-        if (metadata.flags & META_FLAG_ENCRYPTED) != 0 {
-            debug!("Image is encrypted");
-        }
-
         // The first data byte was already sent down. Send down a partial page
         // Move from the image, which can read big chunks, to the snapshot dev,
         // which only writes pages.
         debug!("Sending in partial page");
-        self.read_first_partial_page(&mut decryptor, page_size, snap_dev)?;
+        self.read_first_partial_page(&mut mover_source, page_size, snap_dev)?;
         image_size -= page_size as i64;
         let main_move_start = Instant::now();
         // Fire up the big image pump into the kernel.
         let mut mover = ImageMover::new(
-            &mut decryptor,
+            &mut mover_source,
             &mut snap_dev.file,
             image_size,
             page_size * BUFFER_PAGES,
@@ -424,11 +403,6 @@ impl ResumeConductor {
         log_io_duration("Read all data", total_size, total_io_duration);
         self.metrics_logger
             .metrics_send_io_sample("ReadAllData", total_size, total_io_duration);
-
-        // Validate the image data tag.
-        decryptor
-            .check_tag(&self.metadata.data_tag)
-            .context("Failed to verify image authentication tag")?;
 
         Ok(pending_resume_call)
     }

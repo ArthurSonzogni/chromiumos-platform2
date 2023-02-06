@@ -63,7 +63,6 @@ pub const META_HASH_SIZE: usize = 32;
 
 /// Define the size of the hibernate data symmetric encryption key.
 pub const META_SYMMETRIC_KEY_SIZE: usize = 16;
-pub const META_SYMMETRIC_IV_SIZE: usize = META_SYMMETRIC_KEY_SIZE;
 pub const META_OCB_IV_SIZE: usize = 12;
 
 /// Define the reserved size of the unencrypted public area.
