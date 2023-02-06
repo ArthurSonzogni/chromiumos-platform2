@@ -19,6 +19,7 @@
 #include <google/protobuf/repeated_field.h>
 #include <re2/re2.h>
 
+#include "base/ranges/algorithm.h"
 #include "shill/cellular/mobile_operator_storage.h"
 #include "shill/ipconfig.h"
 #include "shill/logging.h"
@@ -451,12 +452,23 @@ void MobileOperatorMapper::PreprocessDatabase() {
   mccmnc_to_mnos_.clear();
   name_to_mnos_.clear();
 
-  for (const auto& database : databases_) {
-    const auto& mnos = database->mno();
+  std::set<std::string> uuids;
+  // Iterate the databases in reverse. This allows the use of duplicate uuids
+  // to override MNOs. For example, we could add a second database, which has
+  // an MNO with the same uuid as another MNO in the default database, to
+  // completely override the info in the default database.
+  for (int i = databases_.size() - 1; i >= 0; i--) {
+    const auto& mnos = databases_[i]->mno();
     for (const auto& mno : mnos) {
       // MobileNetworkOperator::data is a required field.
       DCHECK(mno.has_data());
       const auto& data = mno.data();
+      if (uuids.count(mno.data().uuid())) {
+        LOG(INFO) << "MNO skipped because uuid:" << mno.data().uuid()
+                  << " already exists";
+        continue;
+      }
+      uuids.insert(mno.data().uuid());
 
       const auto& mccmncs = data.mccmnc();
       for (const auto& mccmnc : mccmncs) {
