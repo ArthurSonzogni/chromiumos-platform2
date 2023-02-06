@@ -144,6 +144,10 @@ constexpr char kWatchdogSysPath[] = "/sys/class/watchdog/";
 constexpr char kRunningLooseChromeCrashEarlyTestFile[] =
     "running-loose-chrome-crash-early-test";
 
+// Contains the last GSC crash log ID, so we only report each GSC crash once.
+constexpr char kGscPrevCrashLogIdPath[] =
+    "/mnt/stateful_partition/unencrypted/preserve/gsc_prev_crash_log_id";
+
 // Gets a FilePath from the given path. A prefix will be added if the prefix is
 // set with SetPrefixForTesting().
 base::FilePath Get(base::StringPiece file_path);

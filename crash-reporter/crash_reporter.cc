@@ -38,6 +38,7 @@
 #include "crash-reporter/ec_collector.h"
 #include "crash-reporter/ephemeral_crash_collector.h"
 #include "crash-reporter/generic_failure_collector.h"
+#include "crash-reporter/gsc_collector.h"
 #include "crash-reporter/kernel_collector.h"
 #include "crash-reporter/kernel_warning_collector.h"
 #include "crash-reporter/missed_crash_collector.h"
@@ -115,6 +116,7 @@ int BootCollect(
     bool always_allow_feedback,
     std::shared_ptr<KernelCollector> kernel_collector,
     std::shared_ptr<ECCollector> ec_collector,
+    std::shared_ptr<GscCollector> gsc_collector,
     std::shared_ptr<BERTCollector> bert_collector,
     std::shared_ptr<UncleanShutdownCollector> unclean_shutdown_collector,
     std::shared_ptr<EphemeralCrashCollector> ephemeral_crash_collector) {
@@ -150,6 +152,8 @@ int BootCollect(
 
     /* TODO(drinkcat): Distinguish between EC crash and unclean shutdown. */
     ec_collector->Collect(use_saved_lsb);
+
+    gsc_collector->Collect(use_saved_lsb);
 
     // Invoke to collect firmware bert dump.
     bert_collector->Collect(use_saved_lsb);
@@ -614,6 +618,12 @@ int main(int argc, char* argv[]) {
       .handlers = boot_handlers,
   });
 
+  auto gsc_collector = std::make_shared<GscCollector>();
+  collectors.push_back({
+      .collector = gsc_collector,
+      .handlers = boot_handlers,
+  });
+
   auto bert_collector = std::make_shared<BERTCollector>();
   collectors.push_back({
       .collector = bert_collector,
@@ -712,8 +722,8 @@ int main(int argc, char* argv[]) {
   // it's clear that all relevant collectors have been initialized.
   if (FLAGS_boot_collect) {
     return BootCollect(always_allow_feedback, kernel_collector, ec_collector,
-                       bert_collector, unclean_shutdown_collector,
-                       ephemeral_crash_collector);
+                       gsc_collector, bert_collector,
+                       unclean_shutdown_collector, ephemeral_crash_collector);
   }
 
   if (FLAGS_clean_shutdown) {

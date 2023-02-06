@@ -62,6 +62,14 @@ This is a meta crash collector: it collects already collected ephemeral crashes
 into persistent storage. This is useful for handling crash reports in
 situations where we may not have access to persistent storage (eg. early boot).
 
+## gsc_collector
+
+This collects Google Security Chip (GSC) failures.
+
+* Uses `gsctool` to query the GSC Flash Logs for any crashes.
+* During boot, if `gsctool` Flash Log output contains a crash signature, we
+create a report.
+
 ## kernel_collector
 
 This collects kernel (and BIOS) crashes that caused the system to reboot.
