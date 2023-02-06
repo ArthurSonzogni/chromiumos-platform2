@@ -10,7 +10,6 @@ use std::time::Instant;
 
 use anyhow::Context;
 use anyhow::Result;
-use libc::loff_t;
 use libc::reboot;
 use libc::RB_POWER_OFF;
 use libchromeos::sys::syscall;
@@ -21,35 +20,21 @@ use log::warn;
 
 use crate::cookie::set_hibernate_cookie;
 use crate::cookie::HibernateCookieValue;
-use crate::diskfile::BouncedDiskFile;
-use crate::diskfile::DiskFile;
 use crate::files::does_hiberfile_exist;
 use crate::files::open_metrics_file;
-use crate::files::preallocate_header_file;
-use crate::files::preallocate_hiberfile;
 use crate::files::preallocate_log_file;
-use crate::files::preallocate_metadata_file;
 use crate::files::preallocate_metrics_file;
 use crate::files::STATEFUL_DIR;
 use crate::hiberlog::redirect_log;
 use crate::hiberlog::replay_logs;
-use crate::hiberlog::reset_log;
 use crate::hiberlog::HiberlogFile;
 use crate::hiberlog::HiberlogOut;
-use crate::hibermeta::HibernateMetadata;
-use crate::hibermeta::META_FLAG_VALID;
-use crate::hibermeta::META_TAG_SIZE;
-use crate::hiberutil::get_page_size;
 use crate::hiberutil::lock_process_memory;
 use crate::hiberutil::log_duration;
-use crate::hiberutil::log_io_duration;
 use crate::hiberutil::path_to_stateful_block;
 use crate::hiberutil::prealloc_mem;
 use crate::hiberutil::HibernateError;
 use crate::hiberutil::HibernateOptions;
-use crate::hiberutil::BUFFER_PAGES;
-use crate::imagemover::ImageMover;
-use crate::keyman::HibernateKeyManager;
 use crate::lvm::is_lvm_system;
 use crate::metrics::log_hibernate_attempt;
 use crate::metrics::read_and_send_metrics;
@@ -58,7 +43,6 @@ use crate::metrics::MetricsLogger;
 use crate::snapdev::FrozenUserspaceTicket;
 use crate::snapdev::SnapshotDevice;
 use crate::snapdev::SnapshotMode;
-use crate::splitter::ImageSplitter;
 use crate::sysfs::Swappiness;
 use crate::update_engine::is_update_engine_idle;
 use crate::volume::VolumeManager;
@@ -73,7 +57,6 @@ const LOW_DISK_FREE_THRESHOLD_PERCENT: u64 = 10;
 /// symphony of hibernation.
 pub struct SuspendConductor {
     options: HibernateOptions,
-    metadata: HibernateMetadata,
     metrics: MetricsLogger,
     volume_manager: VolumeManager,
 }
@@ -83,7 +66,6 @@ impl SuspendConductor {
     pub fn new() -> Result<Self> {
         Ok(SuspendConductor {
             options: Default::default(),
-            metadata: HibernateMetadata::new()?,
             metrics: MetricsLogger::new()?,
             volume_manager: VolumeManager::new()?,
         })
@@ -104,9 +86,6 @@ impl SuspendConductor {
         let is_lvm = is_lvm_system()?;
         let files_exist = does_hiberfile_exist();
         let should_zero = is_lvm && !files_exist;
-        let header_file = preallocate_header_file(should_zero)?;
-        let hiber_file = preallocate_hiberfile(should_zero)?;
-        let meta_file = preallocate_metadata_file(should_zero)?;
 
         // The resume log file needs to be preallocated now before the
         // snapshot is taken, though it's not used here.
@@ -151,7 +130,7 @@ impl SuspendConductor {
 
         prealloc_mem(&mut self.metrics).context("Failed to preallocate memory for hibernate")?;
 
-        let result = self.suspend_system(header_file, hiber_file, meta_file);
+        let result = self.suspend_system();
         // Now send any remaining logs and future logs to syslog.
         redirect_log(HiberlogOut::Syslog);
         // Replay logs first because they happened earlier.
@@ -167,28 +146,17 @@ impl SuspendConductor {
     /// Inner helper function to actually take the snapshot, save it to disk,
     /// and shut down. Returns upon a failure to hibernate, or after a
     /// successful hibernation has resumed.
-    fn suspend_system(
-        &mut self,
-        header_file: DiskFile,
-        hiber_file: DiskFile,
-        meta_file: BouncedDiskFile,
-    ) -> Result<()> {
+    fn suspend_system(&mut self) -> Result<()> {
         let mut snap_dev = SnapshotDevice::new(SnapshotMode::Read)?;
         info!("Freezing userspace");
         let frozen_userspace = snap_dev.freeze_userspace()?;
-        self.snapshot_and_save(header_file, hiber_file, meta_file, frozen_userspace)
+        self.snapshot_and_save(frozen_userspace)
     }
 
     /// Snapshot the system, write the result to disk, and power down. Returns
     /// upon failure to hibernate, or after a hibernated system has successfully
     /// resumed.
-    fn snapshot_and_save(
-        &mut self,
-        header_file: DiskFile,
-        hiber_file: DiskFile,
-        mut meta_file: BouncedDiskFile,
-        mut frozen_userspace: FrozenUserspaceTicket,
-    ) -> Result<()> {
+    fn snapshot_and_save(&mut self, mut frozen_userspace: FrozenUserspaceTicket) -> Result<()> {
         let block_path = path_to_stateful_block()?;
         let dry_run = self.options.dry_run;
         let snap_dev = frozen_userspace.as_mut();
@@ -227,8 +195,8 @@ impl SuspendConductor {
             // This is the resume path. First, forcefully reset the logger, which is some
             // stale partial state that the suspend path ultimately flushed and closed.
             // Keep logs in memory for now.
-            reset_log();
-            redirect_log(HiberlogOut::BufferInMemory);
+            // reset_log();
+            // redirect_log(HiberlogOut::BufferInMemory);
             info!("Resumed from hibernate");
         }
 
@@ -238,100 +206,12 @@ impl SuspendConductor {
             .context("Failed to clear hibernate cookie")
     }
 
-    /// Save the snapshot image to disk.
-    fn write_image(
-        &mut self,
-        mut header_file: DiskFile,
-        mut hiber_file: DiskFile,
-        snap_dev: &mut SnapshotDevice,
-    ) -> Result<()> {
-        let image_size = snap_dev.get_image_size()?;
-        debug!("Hibernate image is {} bytes", image_size);
-        let start = Instant::now();
-        let compute_header_hash = false;
-        let mut splitter = ImageSplitter::new(
-            &mut header_file,
-            &mut hiber_file,
-            &mut self.metadata,
-            compute_header_hash,
-        );
-        Self::move_image(snap_dev, &mut splitter, image_size)?;
-        let image_duration = start.elapsed();
-        log_io_duration("Wrote hibernate image", image_size, image_duration);
-        self.metrics
-            .metrics_send_io_sample("WriteHibernateImage", image_size, image_duration);
-
-        assert!(self.metadata.data_tag != [0u8; META_TAG_SIZE]);
-
-        self.metadata.image_size = image_size;
-        self.metadata.flags |= META_FLAG_VALID;
-        Ok(())
-    }
-
-    /// TODO(b/267097307): Remove with ImageSplitter.
-    /// Move the image in stages, first the header, then the body. This is done
-    /// because when using kernel encryption, the header size won't align to a
-    /// page. But we still want the main data DiskFile to use DIRECT_IO with
-    /// page-aligned buffers. By stopping after the header, we can ensure that
-    /// the main data I/O pumps through in page-aligned chunks.
-    fn move_image(
-        snap_dev: &mut SnapshotDevice,
-        splitter: &mut ImageSplitter,
-        image_size: loff_t,
-    ) -> Result<()> {
-        let page_size = get_page_size();
-        // If the header size is not known, move a single page so the splitter
-        // can parse the header and figure it out.
-        let meta_size = if splitter.meta_size == 0 {
-            ImageMover::new(
-                &mut snap_dev.file,
-                splitter,
-                page_size as i64,
-                page_size,
-                page_size,
-            )?
-            .move_all()
-            .context("Failed to move first page")?;
-
-            splitter.meta_size - (page_size as i64)
-        } else {
-            splitter.meta_size
-        };
-
-        assert!(splitter.meta_size != 0);
-
-        // Move the header portion. Pad the header size out to a page.
-        let mut mover = ImageMover::new(
-            &mut snap_dev.file,
-            splitter,
-            meta_size,
-            page_size,
-            page_size * BUFFER_PAGES,
-        )?;
-        mover
-            .move_all()
-            .context("Failed to write out header pages")?;
-        drop(mover);
-
-        // Now move the main image data.
-        let meta_size = splitter.meta_size;
-        let mut mover = ImageMover::new(
-            &mut snap_dev.file,
-            splitter,
-            image_size - meta_size,
-            page_size,
-            page_size * BUFFER_PAGES,
-        )?;
-        mover.pad_output_length();
-        mover.move_all().context("Failed to write out data pages")
-    }
-
     /// Clean up the hibernate files, releasing that space back to other usermode apps.
     fn delete_data_if_disk_full(&mut self, fs_stats: libc::statvfs) {
         let free_percent = fs_stats.f_bfree * 100 / fs_stats.f_blocks;
         if free_percent < LOW_DISK_FREE_THRESHOLD_PERCENT {
             debug!("Freeing hiberdata: FS is only {}% free", free_percent);
-            // TODO: Unlink hiberfile and metadata.
+            // TODO: Unlink hiberfile.
         } else {
             debug!("Not freeing hiberfile: FS is {}% free", free_percent);
         }

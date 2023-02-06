@@ -14,10 +14,7 @@ mod device_mapper;
 mod diskfile;
 mod fiemap;
 mod files;
-mod hibermeta;
 mod hiberutil;
-mod imagemover;
-mod keyman;
 mod lvm;
 mod mmapbuf;
 mod powerd;
@@ -25,7 +22,6 @@ mod resume;
 mod resume_init;
 mod snapdev;
 mod snapwatch;
-mod splitter;
 mod suspend;
 mod sysfs;
 mod update_engine;
@@ -86,8 +82,8 @@ pub fn set_snapshot_block_device<P: AsRef<Path>>(path: Option<P>) -> Result<()> 
     if let Some(path) = path {
         let mut snap_dev = SnapshotDevice::new(SnapshotMode::Read)?;
         snap_dev.set_block_device(path.as_ref())?;
-        return Ok(());
+        Ok(())
     } else {
-        return Err(HibernateError::HibernateVolumeError()).context("no device name");
+        Err(HibernateError::HibernateVolumeError()).context("no device name")
     }
 }

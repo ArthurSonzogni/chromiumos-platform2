@@ -159,7 +159,6 @@ impl Fiemap {
                 &mut param as *mut C_Fiemap as *mut c_void,
             )
         };
-
         if rc < 0 {
             return Err(HibernateError::FiemapError(libchromeos::sys::Error::last()))
                 .context("Failed to get fiemap extent count");

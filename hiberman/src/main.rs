@@ -9,7 +9,6 @@ use getopts::{self};
 use hiberman::cookie::HibernateCookieValue;
 use hiberman::metrics::log_hibernate_failure;
 use hiberman::metrics::log_resume_failure;
-use hiberman::set_snapshot_block_device;
 use hiberman::AbortResumeOptions;
 use hiberman::HibernateOptions;
 use hiberman::ResumeInitOptions;

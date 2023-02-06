@@ -4,7 +4,6 @@
 
 //! High level support for creating and opening the files used by hibernate.
 
-use std::convert::TryInto;
 use std::fs::create_dir;
 use std::fs::metadata;
 use std::fs::remove_file;
@@ -19,18 +18,14 @@ use std::path::Path;
 
 use anyhow::Context;
 use anyhow::Result;
-use log::debug;
 use log::warn;
 
 use crate::diskfile::BouncedDiskFile;
 use crate::diskfile::DiskFile;
 use crate::hiberlog::HiberlogFile;
-use crate::hiberutil::get_page_size;
-use crate::hiberutil::get_total_memory_pages;
 use crate::hiberutil::HibernateError;
 use crate::metrics::MetricsFile;
 use crate::mmapbuf::MmapBuffer;
-use crate::splitter::HIBER_HEADER_MAX_SIZE;
 
 /// Define the directory where hibernate state files are kept.
 pub const HIBERNATE_DIR: &str = "/mnt/hibernate";
@@ -43,12 +38,6 @@ pub const TMPFS_DIR: &str = "/run/hibernate/";
 /// Services outside of hiberman use this file, so don't change this name
 /// carelessly.
 const RESUME_IN_PROGRESS_FILE: &str = "resume_in_progress";
-/// Define the name of the hibernate metadata.
-const HIBER_META_NAME: &str = "metadata";
-/// Define the preallocated size of the hibernate metadata file.
-const HIBER_META_SIZE: i64 = 1024 * 1024 * 8;
-/// Define the name of the header pages file.
-const HIBER_HEADER_NAME: &str = "header";
 /// Define the name of the main hibernate image data file.
 const HIBER_DATA_NAME: &str = "hiberfile";
 /// Define the name of the resume log file.
@@ -70,12 +59,6 @@ const SUSPEND_METRICS_FILE_NAME: &str = "suspend_metrics";
 /// Define the size of the preallocated metrics file.
 const HIBER_METRICS_SIZE: i64 = 1024 * 1024 * 4;
 
-/// Preallocates the metadata file and opens it for I/O.
-pub fn preallocate_metadata_file(zero_out: bool) -> Result<BouncedDiskFile> {
-    let metadata_path = Path::new(HIBERNATE_DIR).join(HIBER_META_NAME);
-    preallocate_bounced_disk_file(metadata_path, HIBER_META_SIZE, zero_out)
-}
-
 /// Preallocate and open the suspend or resume log file.
 pub fn preallocate_log_file(log_file: HiberlogFile, zero_out: bool) -> Result<BouncedDiskFile> {
     let name = match log_file {
@@ -85,12 +68,6 @@ pub fn preallocate_log_file(log_file: HiberlogFile, zero_out: bool) -> Result<Bo
 
     let log_file_path = Path::new(HIBERNATE_DIR).join(name);
     preallocate_bounced_disk_file(log_file_path, HIBER_LOG_SIZE, zero_out)
-}
-
-/// Preallocate the header pages file.
-pub fn preallocate_header_file(zero_out: bool) -> Result<DiskFile> {
-    let path = Path::new(HIBERNATE_DIR).join(HIBER_HEADER_NAME);
-    preallocate_disk_file(path, HIBER_HEADER_MAX_SIZE, zero_out)
 }
 
 /// Preallocate the metrics file.
@@ -107,26 +84,6 @@ pub fn preallocate_metrics_file(
     preallocate_bounced_disk_file(metrics_file_path, HIBER_METRICS_SIZE, zero_out)
 }
 
-/// Preallocate the hibernate image file.
-pub fn preallocate_hiberfile(zero_out: bool) -> Result<DiskFile> {
-    let hiberfile_path = Path::new(HIBERNATE_DIR).join(HIBER_DATA_NAME);
-
-    // The maximum size of the hiberfile is half of memory, plus a little
-    // fudge for rounding. KASAN steals 1/8 of memory if it's enabled and makes
-    // it look invisible, but still needs to be saved, so multiply by 8/7 to
-    // account for the rare debug case where it's enabled.
-    let memory_mb = get_total_memory_mb();
-    let hiberfile_mb = ((memory_mb * 8 / 7) / 2) + 2;
-    debug!(
-        "System has {} MB of memory, preallocating {} MB hiberfile",
-        memory_mb, hiberfile_mb
-    );
-
-    let hiber_size = (hiberfile_mb as i64) * 1024 * 1024;
-    let hiber_file = preallocate_disk_file(hiberfile_path, hiber_size, zero_out)?;
-    Ok(hiber_file)
-}
-
 /// Open a pre-existing disk file with bounce buffer,
 /// still with read and write permissions.
 pub fn open_bounced_disk_file<P: AsRef<Path>>(path: P) -> Result<BouncedDiskFile> {
@@ -138,28 +95,10 @@ pub fn open_bounced_disk_file<P: AsRef<Path>>(path: P) -> Result<BouncedDiskFile
     BouncedDiskFile::new(&mut file, None)
 }
 
-/// Open a pre-existing header file, still with read and write permissions.
-pub fn open_header_file() -> Result<DiskFile> {
-    let path = Path::new(HIBERNATE_DIR).join(HIBER_HEADER_NAME);
-    open_disk_file(path)
-}
-
-/// Open a pre-existing hiberfile, still with read and write permissions.
-pub fn open_hiberfile() -> Result<DiskFile> {
-    let hiberfile_path = Path::new(HIBERNATE_DIR).join(HIBER_DATA_NAME);
-    open_disk_file(hiberfile_path)
-}
-
 /// Helper function to determine if the hiberfile already exists.
 pub fn does_hiberfile_exist() -> bool {
     let hiberfile_path = Path::new(HIBERNATE_DIR).join(HIBER_DATA_NAME);
     metadata(hiberfile_path).is_ok()
-}
-
-/// Open a pre-existing hiberfile, still with read and write permissions.
-pub fn open_metafile() -> Result<BouncedDiskFile> {
-    let hiberfile_path = Path::new(HIBERNATE_DIR).join(HIBER_META_NAME);
-    open_bounced_disk_file(hiberfile_path)
 }
 
 /// Check if a metrics file exists.
@@ -281,28 +220,6 @@ pub fn remove_resume_in_progress_file() {
     }
 }
 
-/// Helper function to get the total amount of physical memory on this system,
-/// in megabytes.
-fn get_total_memory_mb() -> u32 {
-    let pagesize = get_page_size() as u64;
-    let pagecount = get_total_memory_pages() as u64;
-
-    debug!("Pagesize {} pagecount {}", pagesize, pagecount);
-    let mb = pagecount * pagesize / (1024 * 1024);
-    mb.try_into().unwrap_or(u32::MAX)
-}
-
-/// Helper function used to preallocate and possibly initialize a DiskFile.
-fn preallocate_disk_file<P: AsRef<Path>>(path: P, size: i64, zero_out: bool) -> Result<DiskFile> {
-    let mut fs_file = preallocate_file(path, size)?;
-    let mut disk_file = DiskFile::new(&mut fs_file, None)?;
-    if zero_out {
-        zero_disk_file(&mut disk_file, size)?;
-    }
-
-    Ok(disk_file)
-}
-
 /// Helper function used to preallocate and possibly initialize a BouncedDiskFile.
 fn preallocate_bounced_disk_file<P: AsRef<Path>>(
     path: P,
@@ -353,14 +270,4 @@ fn preallocate_file<P: AsRef<Path>>(path: P, size: i64) -> Result<File> {
     }
 
     Ok(file)
-}
-
-/// Open a pre-existing disk file, still with read and write permissions.
-fn open_disk_file<P: AsRef<Path>>(path: P) -> Result<DiskFile> {
-    let mut file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .open(path)
-        .context("Failed to open disk file")?;
-    DiskFile::new(&mut file, None)
 }

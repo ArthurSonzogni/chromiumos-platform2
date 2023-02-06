@@ -35,39 +35,23 @@ use crate::metrics::MetricsLogger;
 use crate::metrics::MetricsSample;
 use crate::mmapbuf::MmapBuffer;
 
-/// Define the number of pages in a larger chunk used to read and write the
-/// hibernate data file.
-pub const BUFFER_PAGES: usize = 32;
-
 #[derive(Debug, ThisError)]
 pub enum HibernateError {
     /// Cookie error
     #[error("Cookie error: {0}")]
     CookieError(String),
-    /// Dbus error
-    #[error("Dbus error: {0}")]
-    DbusError(String),
     /// Failed to copy the FD for the polling context.
     #[error("Failed to fallocate the file: {0}")]
     FallocateError(libchromeos::sys::Error),
     /// Error getting the fiemap
     #[error("Error getting the fiemap: {0}")]
     FiemapError(libchromeos::sys::Error),
-    /// First data byte mismatch
-    #[error("First data byte mismatch")]
-    FirstDataByteMismatch(),
     /// Insufficient Memory available.
     #[error("Not enough free memory and swap")]
     InsufficientMemoryAvailableError(),
     /// Invalid fiemap
     #[error("Invalid fiemap: {0}")]
     InvalidFiemapError(String),
-    /// Key manager error
-    #[error("Key manager error: {0}")]
-    KeyManagerError(String),
-    /// Metadata error
-    #[error("Metadata error: {0}")]
-    MetadataError(String),
     /// Failed to send metrics
     #[error("Failed to send metrics: {0}")]
     MetricsSendFailure(String),
@@ -77,9 +61,6 @@ pub enum HibernateError {
     /// Mmap error.
     #[error("mmap error: {0}")]
     MmapError(libchromeos::sys::Error),
-    /// I/O size error
-    #[error("I/O size error: {0}")]
-    IoSizeError(String),
     /// Snapshot device error.
     #[error("Snapshot device error: {0}")]
     SnapshotError(String),
@@ -95,9 +76,6 @@ pub enum HibernateError {
     /// Failed to shut down
     #[error("Failed to shut down: {0}")]
     ShutdownError(libchromeos::sys::Error),
-    /// End of file
-    #[error("End of file")]
-    EndOfFile(),
     /// Hibernate volume error
     #[error("Hibernate volume error")]
     HibernateVolumeError(),
@@ -107,9 +85,6 @@ pub enum HibernateError {
     /// Index out of range error
     #[error("Index out of range")]
     IndexOutOfRangeError(),
-    /// Resume abort requested
-    #[error("Resume abort requested: {0}")]
-    ResumeAbortRequested(String),
     /// Device mapper error
     #[error("Device mapper error: {0}")]
     DeviceMapperError(String),

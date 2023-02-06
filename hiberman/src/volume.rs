@@ -57,6 +57,8 @@ use crate::snapwatch::DmSnapshotSpaceMonitor;
 
 /// Define the name of the hibernate logical volume.
 const HIBER_VOLUME_NAME: &str = "hibervol";
+const HIBERIMAGE_VOLUME_NAME: &str = "hiberimage";
+const HIBERINTEGRITY_VOLUME_NAME: &str = "hiberintegrity";
 /// Define the name of the thinpool logical volume.
 pub const THINPOOL_NAME: &str = "thinpool";
 
@@ -78,7 +80,13 @@ const HIBER_VOLUME_FUDGE_BYTES: i64 = 1024 * 1024 * 1024;
 const DM_SNAPSHOT_CHUNK_SIZE: usize = 8;
 
 /// Define the list of logical volumes known to not need a snapshot.
-const NO_SNAPSHOT_LVS: [&str; 3] = [THINPOOL_NAME, HIBER_VOLUME_NAME, "cryptohome-"];
+const NO_SNAPSHOT_LVS: [&str; 5] = [
+    THINPOOL_NAME,
+    HIBER_VOLUME_NAME,
+    "cryptohome-",
+    HIBERIMAGE_VOLUME_NAME,
+    HIBERINTEGRITY_VOLUME_NAME,
+];
 
 /// Define the size of a volume snapshot.
 const SNAPSHOT_SIZE: u64 = 512 * 1024 * 1024;

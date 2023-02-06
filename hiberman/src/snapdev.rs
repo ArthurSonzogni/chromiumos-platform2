@@ -4,7 +4,6 @@
 
 //! Implements snapshot device functionality.
 
-use std::convert::TryInto;
 use std::fs::metadata;
 use std::fs::File;
 use std::fs::OpenOptions;
@@ -16,7 +15,6 @@ use anyhow::Result;
 use libc::c_int;
 use libc::c_ulong;
 use libc::c_void;
-use libc::loff_t;
 use libc::{self};
 use libchromeos::sys::ioctl_io_nr;
 use libchromeos::sys::ioctl_ior_nr;
@@ -88,16 +86,6 @@ pub struct UswsuspUserKey {
     key: [u8; 32],
 }
 
-impl UswsuspUserKey {
-    pub fn new_from_u8_slice(key: &[u8]) -> Self {
-        let key_len = key.len();
-        let mut user_key = UswsuspUserKey::default();
-        user_key.key[..key_len].copy_from_slice(key);
-        user_key.key_len = key_len.try_into().expect("Silly key size");
-        user_key
-    }
-}
-
 // Define snapshot device ioctl numbers.
 const SNAPSHOT_IOC_MAGIC: u32 = '3' as u32;
 
@@ -125,11 +113,9 @@ ioctl_iowr_nr!(
 const FREEZE: u64 = SNAPSHOT_FREEZE();
 const UNFREEZE: u64 = SNAPSHOT_UNFREEZE();
 const ATOMIC_RESTORE: u64 = SNAPSHOT_ATOMIC_RESTORE();
-const GET_IMAGE_SIZE: u64 = SNAPSHOT_GET_IMAGE_SIZE();
 const CREATE_IMAGE: u64 = SNAPSHOT_CREATE_IMAGE();
 #[allow(dead_code)]
 const ENABLE_ENCRYPTION: u64 = SNAPSHOT_ENABLE_ENCRYPTION();
-const SET_USER_KEY: u64 = SNAPSHOT_SET_USER_KEY();
 const SET_BLOCK_DEVICE: u64 = SNAPSHOT_SET_BLOCK_DEVICE();
 const XFER_BLOCK_DEVICE: u64 = SNAPSHOT_XFER_BLOCK_DEVICE();
 
@@ -236,21 +222,6 @@ impl SnapshotDevice {
         unsafe { self.simple_ioctl(ATOMIC_RESTORE, "ATOMIC_RESTORE") }
     }
 
-    /// Return the size of the recently snapshotted hibernate image in bytes.
-    pub fn get_image_size(&mut self) -> Result<loff_t> {
-        let mut image_size: loff_t = 0;
-        // This is safe because the ioctl modifies an loff_t sized integer,
-        // we are passing down.
-        unsafe {
-            self.ioctl_with_mut_ptr(
-                GET_IMAGE_SIZE,
-                "GET_IMAGE_SIZE",
-                &mut image_size as *mut loff_t as *mut c_void,
-            )?;
-        }
-        Ok(image_size)
-    }
-
     /// Hand the encryption key to the kernel. This is actually the same ioctl
     /// as the get call, but only one is successful depending on if the snapdev
     /// was opened with read or write permission.
@@ -263,21 +234,6 @@ impl SnapshotDevice {
                 blob as *const UswsuspKeyBlob as *const c_void,
             )
         }
-    }
-
-    /// Set the user key for hibernate data. Returns the metadata size
-    /// from the kernel on success.
-    pub fn set_user_key(&mut self, key: &UswsuspUserKey) -> Result<i64> {
-        let mut key_copy = *key;
-        unsafe {
-            self.ioctl_with_mut_ptr(
-                SET_USER_KEY,
-                "SET_USER_KEY",
-                &mut key_copy as *mut UswsuspUserKey as *mut c_void,
-            )?;
-        }
-
-        Ok(key_copy.meta_size)
     }
 
     /// Helper function to send an ioctl with no parameter and return a result.
