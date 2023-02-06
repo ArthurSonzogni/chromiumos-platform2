@@ -234,7 +234,10 @@ void WireGuardDriver::Disconnect() {
 
 std::unique_ptr<IPConfig::Properties> WireGuardDriver::GetIPv4Properties()
     const {
-  return std::make_unique<IPConfig::Properties>(ipv4_properties_);
+  if (ipv4_properties_.address_family != IPAddress::kFamilyUnknown) {
+    return std::make_unique<IPConfig::Properties>(ipv4_properties_);
+  }
+  return nullptr;
 }
 
 std::unique_ptr<IPConfig::Properties> WireGuardDriver::GetIPv6Properties()
