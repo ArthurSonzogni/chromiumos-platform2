@@ -7,6 +7,7 @@
 
 #include "chaps/chaps.h"
 
+#include <atomic>
 #include <iterator>
 #include <set>
 #include <string>
@@ -40,11 +41,11 @@ static const CK_BYTE kChapsLibraryVersionMinor = 1;
 static chaps::ChapsInterface* g_proxy = NULL;
 
 // Set to true when using a mock proxy.
-static bool g_is_using_mock = false;
+static std::atomic<bool> g_is_using_mock = false;
 
 // Set to true when C_Initialize has been called successfully.
 // When not using a mock proxy this is synonymous with (g_proxy != NULL).
-static bool g_is_initialized = false;
+static std::atomic<bool> g_is_initialized = false;
 
 // Set to the user's isolate credential (if it exists) in C_Initialize in order
 // to provide access to the user's private slots.
