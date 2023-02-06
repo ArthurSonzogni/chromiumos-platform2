@@ -1,0 +1,23 @@
+# Copyright 2023 The ChromiumOS Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//common-mk/pkg_config.gni")
+
+pkg_config("libdaemon_pkg_deps") {
+  # NOSORT
+  pkg_deps = [
+    "dbus-1",
+    "libbrillo",
+
+    # system_api depends on protobuf(or protobuf - lite).It must appear before
+    # protobuf here or the linker flags won't be in the right order.
+    "system_api",
+    "protobuf",
+  ]
+}
+
+source_set("libdaemon") {
+  sources = [ "daemon.cc" ]
+  configs += [ ":libdaemon_pkg_deps" ]
+}
