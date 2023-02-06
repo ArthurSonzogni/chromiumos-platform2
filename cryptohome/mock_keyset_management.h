@@ -71,10 +71,6 @@ class MockKeysetManagement : public KeysetManagement {
               CleanupPerIndexTimestampFiles,
               (const std::string&),
               (override));
-  MOCK_METHOD(CryptohomeStatus,
-              ReSaveKeysetIfNeeded,
-              (const Credentials& credentials, VaultKeyset* keyset),
-              (const, override));
   MOCK_METHOD(bool,
               ShouldReSaveKeyset,
               (VaultKeyset * vault_keyset),

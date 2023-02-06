@@ -102,10 +102,6 @@ const brillo::SecureBlob kAdditionalBlob32(32, 'B');
 const brillo::SecureBlob kInitialBlob16(16, 'C');
 const brillo::SecureBlob kAdditionalBlob16(16, 'D');
 
-void GetKeysetBlob(const brillo::SecureBlob& wrapped_keyset,
-                   brillo::SecureBlob* blob) {
-  *blob = wrapped_keyset;
-}
 
 // TODO(b/233700483): Replace this with the mock auth block.
 class FallbackVaultKeyset : public VaultKeyset {
@@ -712,72 +708,6 @@ TEST_F(KeysetManagementTest, ForceRemoveKeysetFailedDelete) {
 
   VerifyKeysetPresentWithCredsAtIndex(users_[0].credentials,
                                       kInitialKeysetIndex);
-}
-
-TEST_F(KeysetManagementTest, ReSaveKeysetNoReSave) {
-  // SETUP
-
-  KeysetSetUpWithKeyData(DefaultKeyData());
-
-  MountStatusOr<std::unique_ptr<VaultKeyset>> vk0_status =
-      keyset_management_->GetValidKeyset(users_[0].credentials);
-  ASSERT_TRUE(vk0_status.ok());
-
-  // TEST
-
-  EXPECT_TRUE(keyset_management_
-                  ->ReSaveKeysetIfNeeded(users_[0].credentials,
-                                         vk0_status.value().get())
-                  .ok());
-
-  // VERIFY
-
-  MountStatusOr<std::unique_ptr<VaultKeyset>> vk0_new_status =
-      keyset_management_->GetValidKeyset(users_[0].credentials);
-
-  ASSERT_TRUE(vk0_new_status.ok());
-
-  brillo::SecureBlob lhs, rhs;
-  GetKeysetBlob(vk0_status.value()->GetWrappedKeyset(), &lhs);
-  GetKeysetBlob(vk0_new_status.value()->GetWrappedKeyset(), &rhs);
-  ASSERT_EQ(lhs.size(), rhs.size());
-  ASSERT_EQ(0, brillo::SecureMemcmp(lhs.data(), rhs.data(), lhs.size()));
-}
-
-TEST_F(KeysetManagementTest, ReSaveKeysetChapsRepopulation) {
-  // SETUP
-
-  KeysetSetUpWithKeyData(DefaultKeyData());
-
-  MountStatusOr<std::unique_ptr<VaultKeyset>> vk0_status =
-      keyset_management_->GetValidKeyset(users_[0].credentials);
-  ASSERT_TRUE(vk0_status.ok());
-
-  vk0_status.value()->ClearWrappedChapsKey();
-  EXPECT_FALSE(vk0_status.value()->HasWrappedChapsKey());
-  ASSERT_TRUE(vk0_status.value()->Save(vk0_status.value()->GetSourceFile()));
-
-  // TEST
-
-  EXPECT_TRUE(keyset_management_
-                  ->ReSaveKeysetIfNeeded(users_[0].credentials,
-                                         vk0_status.value().get())
-                  .ok());
-  EXPECT_TRUE(vk0_status.value()->HasWrappedChapsKey());
-
-  // VERIFY
-
-  MountStatusOr<std::unique_ptr<VaultKeyset>> vk0_new_status =
-      keyset_management_->GetValidKeyset(users_[0].credentials);
-  ASSERT_TRUE(vk0_new_status.ok());
-  EXPECT_TRUE(vk0_new_status.value()->HasWrappedChapsKey());
-
-  ASSERT_EQ(vk0_new_status.value()->GetChapsKey().size(),
-            vk0_status.value()->GetChapsKey().size());
-  ASSERT_EQ(0,
-            brillo::SecureMemcmp(vk0_new_status.value()->GetChapsKey().data(),
-                                 vk0_status.value()->GetChapsKey().data(),
-                                 vk0_new_status.value()->GetChapsKey().size()));
 }
 
 TEST_F(KeysetManagementTest, ReSaveOnLoadNoReSave) {

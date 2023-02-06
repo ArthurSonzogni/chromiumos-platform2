@@ -129,13 +129,6 @@ class KeysetManagement {
   // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
   virtual void CleanupPerIndexTimestampFiles(const std::string& obfuscated);
 
-  // Checks whether the keyset is up to date (e.g. has correct encryption
-  // parameters, has all required fields populated etc.) and if not, updates
-  // and resaves the keyset.
-  // Returns OkStatus if successful or no resave needed.
-  virtual CryptohomeStatus ReSaveKeysetIfNeeded(const Credentials& credentials,
-                                                VaultKeyset* keyset) const;
-
   // Check if the vault keyset needs re-encryption.
   virtual bool ShouldReSaveKeyset(VaultKeyset* vault_keyset) const;
 
@@ -246,10 +239,6 @@ class KeysetManagement {
                                     const VaultKeyset& vault_keyset_old,
                                     EncryptVkCallback encrypt_vk_callback,
                                     bool clobber);
-
-  // Resaves the given |vault_keyset| with the credentials, restoring on error.
-  CryptohomeStatus ReSaveKeyset(const Credentials& credentials,
-                                VaultKeyset* vault_keyset) const;
 
   // Implements the common functionality for resaving a keyset with restore on
   // error.

@@ -75,14 +75,6 @@ CryptohomeStatus EncryptExWrapper(const KeyBlobs& key_blobs,
   return vk->EncryptEx(key_blobs, *auth_state);
 }
 
-// Wraps VaultKeyset::Exncryptto bind to EncryptVkCallback without object
-// reference.
-CryptohomeStatus EncryptWrapper(const brillo::SecureBlob& key,
-                                const std::string& obfuscated_username,
-                                VaultKeyset* vk) {
-  return vk->Encrypt(key, obfuscated_username);
-}
-
 }  // namespace
 
 KeysetManagement::KeysetManagement(
@@ -455,15 +447,6 @@ bool KeysetManagement::ShouldReSaveKeyset(VaultKeyset* vault_keyset) const {
   return true;
 }
 
-CryptohomeStatus KeysetManagement::ReSaveKeyset(
-    const Credentials& credentials, VaultKeyset* vault_keyset) const {
-  std::string obfuscated_username = credentials.GetObfuscatedUsername();
-
-  return ReSaveKeysetImpl(*vault_keyset,
-                          base::BindOnce(&EncryptWrapper, credentials.passkey(),
-                                         obfuscated_username));
-}
-
 CryptohomeStatus KeysetManagement::ReSaveKeysetWithKeyBlobs(
     VaultKeyset& vault_keyset,
     KeyBlobs key_blobs,
@@ -515,14 +498,6 @@ CryptohomeStatus KeysetManagement::ReSaveKeysetImpl(
     }
   }
 
-  return OkStatus<CryptohomeError>();
-}
-
-CryptohomeStatus KeysetManagement::ReSaveKeysetIfNeeded(
-    const Credentials& credentials, VaultKeyset* vault_keyset) const {
-  if (ShouldReSaveKeyset(vault_keyset)) {
-    return ReSaveKeyset(credentials, vault_keyset);
-  }
   return OkStatus<CryptohomeError>();
 }
 
