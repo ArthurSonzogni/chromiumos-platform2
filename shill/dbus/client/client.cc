@@ -647,16 +647,22 @@ Client::IPConfig Client::ParseIPConfigsProperty(
       continue;
     }
 
+    auto search_domains =
+        brillo::GetVariantValueOrDefault<std::vector<std::string>>(
+            properties, kSearchDomainsProperty);
+
     if (ip_addr->family() == IPAddress::kFamilyIPv4) {
       ipconfig.ipv4_prefix_length = len;
       ipconfig.ipv4_address = addr;
       ipconfig.ipv4_gateway = gw;
       ipconfig.ipv4_dns_addresses = ns;
+      ipconfig.ipv4_search_domains = search_domains;
     } else {  // is_ipv6_type
       ipconfig.ipv6_prefix_length = len;
       ipconfig.ipv6_address = addr;
       ipconfig.ipv6_gateway = gw;
       ipconfig.ipv6_dns_addresses = ns;
+      ipconfig.ipv6_search_domains = search_domains;
     }
   }
   reset_proxy(dbus::ObjectPath());

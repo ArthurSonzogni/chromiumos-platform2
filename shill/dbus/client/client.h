@@ -35,8 +35,6 @@ class BRILLO_EXPORT Client {
   // IPConfig for a device. If the device does not have a valid ipv4/ipv6
   // config, the corresponding fields will be empty or 0.
   // TODO(jiejiang): add the following fields into this struct:
-  // - IPv4 search domains
-  // - IPv6 search domains
   // - MTU (one only per network)
   struct IPConfig {
     bool operator==(const IPConfig& that) const {
@@ -44,16 +42,19 @@ class BRILLO_EXPORT Client {
              this->ipv4_address == that.ipv4_address &&
              this->ipv4_gateway == that.ipv4_gateway &&
              this->ipv4_dns_addresses == that.ipv4_dns_addresses &&
+             this->ipv4_search_domains == that.ipv4_search_domains &&
              this->ipv6_prefix_length == that.ipv6_prefix_length &&
              this->ipv6_address == that.ipv6_address &&
              this->ipv6_gateway == that.ipv6_gateway &&
-             this->ipv6_dns_addresses == that.ipv6_dns_addresses;
+             this->ipv6_dns_addresses == that.ipv6_dns_addresses &&
+             this->ipv6_search_domains == that.ipv6_search_domains;
     }
 
     int ipv4_prefix_length{0};
     std::string ipv4_address;
     std::string ipv4_gateway;
     std::vector<std::string> ipv4_dns_addresses;
+    std::vector<std::string> ipv4_search_domains;
 
     int ipv6_prefix_length{0};
     // Note due to the limitation of shill, we will only get one IPv6 address
@@ -63,6 +64,7 @@ class BRILLO_EXPORT Client {
     std::string ipv6_address;
     std::string ipv6_gateway;
     std::vector<std::string> ipv6_dns_addresses;
+    std::vector<std::string> ipv6_search_domains;
   };
 
   // Represents a subset of properties from org.chromium.flimflam.Device.
