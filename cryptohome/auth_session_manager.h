@@ -22,6 +22,7 @@
 #include "cryptohome/platform.h"
 #include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/user_session/user_session_map.h"
+#include "cryptohome/username.h"
 #include "featured/feature_library.h"
 
 namespace cryptohome {
@@ -46,7 +47,7 @@ class AuthSessionManager {
   // Creates new auth session for account_id. AuthSessionManager owns the
   // created AuthSession and the method returns a pointer to it.
   CryptohomeStatusOr<InUseAuthSession> CreateAuthSession(
-      const std::string& account_id, uint32_t flags, AuthIntent auth_intent);
+      const Username& account_id, uint32_t flags, AuthIntent auth_intent);
 
   // Removes existing auth session with token. Returns false if there's no auth
   // session with this token.

@@ -139,7 +139,7 @@ AuthFactorVaultKeysetConverter::~AuthFactorVaultKeysetConverter() = default;
 
 std::unique_ptr<AuthFactor>
 AuthFactorVaultKeysetConverter::VaultKeysetToAuthFactor(
-    const std::string& obfuscated_username, const std::string& label) {
+    const ObfuscatedUsername& obfuscated_username, const std::string& label) {
   std::unique_ptr<VaultKeyset> vk =
       keyset_management_->GetVaultKeyset(obfuscated_username, label);
   if (!vk) {
@@ -151,7 +151,7 @@ AuthFactorVaultKeysetConverter::VaultKeysetToAuthFactor(
 
 user_data_auth::CryptohomeErrorCode
 AuthFactorVaultKeysetConverter::VaultKeysetsToAuthFactorsAndKeyLabelData(
-    const std::string& obfuscated_username,
+    const ObfuscatedUsername& obfuscated_username,
     std::vector<std::string>& migrated_labels,
     std::map<std::string, std::unique_ptr<AuthFactor>>&
         out_label_to_auth_factor,
@@ -211,7 +211,7 @@ AuthFactorVaultKeysetConverter::VaultKeysetsToAuthFactorsAndKeyLabelData(
 
 user_data_auth::CryptohomeErrorCode
 AuthFactorVaultKeysetConverter::PopulateKeyDataForVK(
-    const std::string& obfuscated_username,
+    const ObfuscatedUsername& obfuscated_username,
     const std::string& auth_factor_label,
     KeyData& out_vk_key_data) {
   std::unique_ptr<VaultKeyset> vk = keyset_management_->GetVaultKeyset(

@@ -110,8 +110,8 @@ TEST(TpmBoundToPcrTest, CreateTest) {
       .WillByDefault(ReturnValue(brillo::Blob()));
 
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/std::nullopt,
-                          /*username=*/std::string(""), kObfuscatedUsername,
+                          /*locked_to_single_user=*/std::nullopt, Username(),
+                          ObfuscatedUsername(kObfuscatedUsername),
                           /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
 
@@ -155,8 +155,8 @@ TEST(TpmBoundToPcrTest, CreateFailTpm) {
       .WillByDefault(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/std::nullopt,
-                          /*username=*/std::string(""), kObfuscatedUsername,
+                          /*locked_to_single_user=*/std::nullopt, Username(),
+                          ObfuscatedUsername(kObfuscatedUsername),
                           /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
   TpmBoundToPcrAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
@@ -172,7 +172,8 @@ TEST(TpmBoundToPcrTest, CreateFailNoUserInput) {
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   TpmBoundToPcrAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
-  AuthInput auth_input = {.obfuscated_username = kObfuscatedUsername};
+  AuthInput auth_input = {.obfuscated_username =
+                              ObfuscatedUsername(kObfuscatedUsername)};
 
   // Test.
   AuthBlockState auth_state;
@@ -215,8 +216,8 @@ TEST(TpmNotBoundToPcrTest, Success) {
   EXPECT_CALL(hwsec, GetPubkeyHash(_)).WillOnce(ReturnValue(brillo::Blob()));
 
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/std::nullopt,
-                          /*username=*/std::string(""), kObfuscatedUsername,
+                          /*locked_to_single_user=*/std::nullopt, Username(),
+                          ObfuscatedUsername(kObfuscatedUsername),
                           /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
   TpmNotBoundToPcrAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
@@ -269,8 +270,8 @@ TEST(TpmNotBoundToPcrTest, CreateFailTpm) {
       .WillByDefault(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/std::nullopt,
-                          /*username=*/std::string(""), kObfuscatedUsername,
+                          /*locked_to_single_user=*/std::nullopt, Username(),
+                          ObfuscatedUsername(kObfuscatedUsername),
                           /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
   TpmNotBoundToPcrAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
@@ -405,8 +406,8 @@ TEST(PinWeaverAuthBlockTest, CreateTest) {
 
   // Call the Create() method.
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/std::nullopt,
-                          /*username=*/std::string(""), kObfuscatedUsername,
+                          /*locked_to_single_user=*/std::nullopt, Username(),
+                          ObfuscatedUsername(kObfuscatedUsername),
                           reset_secret};
   KeyBlobs vkk_data;
 
@@ -446,8 +447,8 @@ TEST(PinWeaverAuthBlockTest, CreateFailureLeManager) {
                                      &cryptohome_keys_manager_fail);
   // Call the Create() method.
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/std::nullopt,
-                          /*username=*/std::string(""), kObfuscatedUsername,
+                          /*locked_to_single_user=*/std::nullopt, Username(),
+                          ObfuscatedUsername(kObfuscatedUsername),
                           reset_secret};
   KeyBlobs vkk_data;
   AuthBlockState auth_state;
@@ -464,8 +465,9 @@ TEST(PinWeaverAuthBlockTest, CreateFailureNoUserInput) {
   NiceMock<MockLECredentialManager> le_cred_manager;
 
   PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_keys_manager);
-  AuthInput auth_input = {.obfuscated_username = kObfuscatedUsername,
-                          .reset_secret = reset_secret};
+  AuthInput auth_input = {
+      .obfuscated_username = ObfuscatedUsername(kObfuscatedUsername),
+      .reset_secret = reset_secret};
   KeyBlobs vkk_data;
   AuthBlockState auth_state;
   EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
@@ -500,8 +502,9 @@ TEST(PinWeaverAuthBlockTest, CreateFailureNoResetSecret) {
   NiceMock<MockLECredentialManager> le_cred_manager;
 
   PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_keys_manager);
-  AuthInput auth_input = {.user_input = user_input,
-                          .obfuscated_username = kObfuscatedUsername};
+  AuthInput auth_input = {
+      .user_input = user_input,
+      .obfuscated_username = ObfuscatedUsername(kObfuscatedUsername)};
   KeyBlobs vkk_data;
   AuthBlockState auth_state;
   EXPECT_EQ(CryptoError::CE_OTHER_CRYPTO,
@@ -1333,7 +1336,7 @@ class CryptohomeRecoveryAuthBlockTest : public testing::Test {
              .encrypted_channel_priv_key =
                  cryptohome_recovery_state.encrypted_channel_priv_key,
              .channel_pub_key = cryptohome_recovery_state.channel_pub_key,
-             .obfuscated_username = kObfuscatedUsername});
+             .obfuscated_username = ObfuscatedUsername(kObfuscatedUsername)});
     cryptorecovery::CryptoRecoveryRpcRequest recovery_request;
     ASSERT_TRUE(recovery->GenerateRecoveryRequest(
         generate_recovery_request_input_param, &recovery_request,
@@ -1362,8 +1365,8 @@ class CryptohomeRecoveryAuthBlockTest : public testing::Test {
     cryptohome_recovery_auth_input.user_gaia_id = kFakeGaiaId;
     cryptohome_recovery_auth_input.device_user_id = kFakeDeviceId;
     auth_input.cryptohome_recovery_auth_input = cryptohome_recovery_auth_input;
-    auth_input.obfuscated_username = kObfuscatedUsername;
-    auth_input.username = kUsername;
+    auth_input.obfuscated_username = ObfuscatedUsername(kObfuscatedUsername);
+    auth_input.username = Username(kUsername);
     return auth_input;
   }
 
@@ -1584,8 +1587,8 @@ TEST(TpmEccAuthBlockTest, CreateTest) {
       .WillOnce(ReturnValue(brillo::Blob()));
 
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/std::nullopt,
-                          /*username=*/std::string(""), kObfuscatedUsername,
+                          /*locked_to_single_user=*/std::nullopt, Username(),
+                          ObfuscatedUsername(kObfuscatedUsername),
                           /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
 
@@ -1639,8 +1642,8 @@ TEST(TpmEccAuthBlockTest, CreateRetryTest) {
       .WillOnce(ReturnValue(brillo::Blob()));
 
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/std::nullopt,
-                          /*username=*/std::string(""), kObfuscatedUsername,
+                          /*locked_to_single_user=*/std::nullopt, Username(),
+                          ObfuscatedUsername(kObfuscatedUsername),
                           /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
 
@@ -1681,8 +1684,8 @@ TEST(TpmEccAuthBlockTest, CreateRetryFailTest) {
       .WillRepeatedly(ReturnError<TPMError>("reboot", TPMRetryAction::kReboot));
 
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/std::nullopt,
-                          /*username=*/std::string(""), kObfuscatedUsername,
+                          /*locked_to_single_user=*/std::nullopt, Username(),
+                          ObfuscatedUsername(kObfuscatedUsername),
                           /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
   TpmEccAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
@@ -1698,7 +1701,8 @@ TEST(TpmEccAuthBlockTest, CreateFailNoUserInput) {
   NiceMock<hwsec::MockCryptohomeFrontend> hwsec;
   NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   TpmEccAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
-  AuthInput auth_input = {.obfuscated_username = kObfuscatedUsername};
+  AuthInput auth_input = {.obfuscated_username =
+                              ObfuscatedUsername(kObfuscatedUsername)};
 
   // Test.
   AuthBlockState auth_state;
@@ -1744,8 +1748,8 @@ TEST(TpmEccAuthBlockTest, CreateSealToPcrFailTest) {
       .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/std::nullopt,
-                          /*username=*/std::string(""), kObfuscatedUsername,
+                          /*locked_to_single_user=*/std::nullopt, Username(),
+                          ObfuscatedUsername(kObfuscatedUsername),
                           /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
   TpmEccAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
@@ -1776,8 +1780,7 @@ TEST(TpmEccAuthBlockTest, CreateSecondSealToPcrFailTest) {
 
   AuthInput user_input = {vault_key,
                           /*locked_to_single_user=*/std::nullopt,
-                          kObfuscatedUsername,
-                          /*username=*/std::string(""),
+                          Username(kObfuscatedUsername), ObfuscatedUsername(),
                           /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
   TpmEccAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);
@@ -1804,8 +1807,8 @@ TEST(TpmEccAuthBlockTest, CreateEccAuthValueFailTest) {
       .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 
   AuthInput user_input = {vault_key,
-                          /*locked_to_single_user=*/std::nullopt,
-                          /*username=*/std::string(""), kObfuscatedUsername,
+                          /*locked_to_single_user=*/std::nullopt, Username(),
+                          ObfuscatedUsername(kObfuscatedUsername),
                           /*reset_secret=*/std::nullopt};
   KeyBlobs vkk_data;
   TpmEccAuthBlock auth_block(&hwsec, &cryptohome_keys_manager);

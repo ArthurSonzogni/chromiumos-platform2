@@ -20,6 +20,7 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
 #include "cryptohome/error/cryptohome_tpm_error.h"
 #include "cryptohome/flatbuffer_schemas/structures.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -53,9 +54,9 @@ class ChallengeCredentialsGenerateNewOperation final
   ChallengeCredentialsGenerateNewOperation(
       KeyChallengeService* key_challenge_service,
       hwsec::CryptohomeFrontend* hwsec,
-      const std::string& account_id,
+      const Username& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
-      const std::string& obfuscated_username,
+      const ObfuscatedUsername& obfuscated_username,
       CompletionCallback completion_callback);
 
   ~ChallengeCredentialsGenerateNewOperation() override;
@@ -89,9 +90,9 @@ class ChallengeCredentialsGenerateNewOperation final
   structure::SignatureChallengeInfo ConstructKeysetSignatureChallengeInfo()
       const;
 
-  const std::string account_id_;
+  const Username account_id_;
   const structure::ChallengePublicKeyInfo public_key_info_;
-  const std::string obfuscated_username_;
+  const ObfuscatedUsername obfuscated_username_;
   CompletionCallback completion_callback_;
   hwsec::CryptohomeFrontend* const hwsec_;
   brillo::Blob salt_;

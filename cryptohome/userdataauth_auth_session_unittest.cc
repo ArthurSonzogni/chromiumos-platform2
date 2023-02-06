@@ -96,11 +96,8 @@ using AuthenticateAuthFactorCallback = base::OnceCallback<void(
 using AddAuthFactorCallback =
     base::OnceCallback<void(const user_data_auth::AddAuthFactorReply&)>;
 
-constexpr char kUsername[] = "foo@example.com";
 constexpr char kPassword[] = "password";
-constexpr char kUsername2[] = "foo2@example.com";
 constexpr char kPassword2[] = "password2";
-constexpr char kUsername3[] = "foo3@example.com";
 constexpr char kPassword3[] = "password3";
 constexpr char kPasswordLabel[] = "fake-password-label";
 constexpr char kPin[] = "1234";
@@ -141,7 +138,7 @@ SerializedVaultKeyset CreateFakePinVk(const std::string& label) {
 }
 
 void MockVKToAuthFactorMapLoading(
-    const std::string& obfuscated_username,
+    const ObfuscatedUsername& obfuscated_username,
     const std::vector<SerializedVaultKeyset>& serialized_vks,
     MockKeysetManagement& keyset_management) {
   std::vector<int> key_indices;
@@ -155,7 +152,7 @@ void MockVKToAuthFactorMapLoading(
     const auto& serialized_vk = serialized_vks[index];
     EXPECT_CALL(keyset_management,
                 LoadVaultKeysetForUser(obfuscated_username, index))
-        .WillRepeatedly([=](const std::string&, int) {
+        .WillRepeatedly([=](const ObfuscatedUsername&, int) {
           auto vk = std::make_unique<VaultKeyset>();
           vk->InitializeFromSerialized(serialized_vk);
           return vk;
@@ -163,20 +160,20 @@ void MockVKToAuthFactorMapLoading(
   }
 }
 
-void MockKeysetLoadingByLabel(const std::string& obfuscated_username,
+void MockKeysetLoadingByLabel(const ObfuscatedUsername& obfuscated_username,
                               const SerializedVaultKeyset& serialized_vk,
                               MockKeysetManagement& keyset_management) {
   EXPECT_CALL(
       keyset_management,
       GetVaultKeyset(obfuscated_username, serialized_vk.key_data().label()))
-      .WillRepeatedly([=](const std::string&, const std::string&) {
+      .WillRepeatedly([=](const ObfuscatedUsername&, const std::string&) {
         auto vk = std::make_unique<VaultKeyset>();
         vk->InitializeFromSerialized(serialized_vk);
         return vk;
       });
 }
 
-void MockKeysetDerivation(const std::string& obfuscated_username,
+void MockKeysetDerivation(const ObfuscatedUsername& obfuscated_username,
                           const SerializedVaultKeyset& serialized_vk,
                           CryptoError derivation_error,
                           MockAuthBlockUtility& auth_block_utility) {
@@ -224,12 +221,13 @@ void MockKeysetCreation(MockAuthBlockUtility& auth_block_utility) {
       .RetiresOnSaturation();
 }
 
-void MockInitialKeysetAdding(const std::string& obfuscated_username,
+void MockInitialKeysetAdding(const ObfuscatedUsername& obfuscated_username,
                              const SerializedVaultKeyset& serialized_vk,
                              MockKeysetManagement& keyset_management) {
   EXPECT_CALL(keyset_management, AddInitialKeysetWithKeyBlobs(
                                      _, obfuscated_username, _, _, _, _, _))
-      .WillOnce([=](VaultKeysetIntent, const std::string&, const KeyData&,
+      .WillOnce([=](VaultKeysetIntent, const ObfuscatedUsername&,
+                    const KeyData&,
                     const std::optional<
                         SerializedVaultKeyset_SignatureChallengeInfo>&,
                     const FileSystemKeyset& file_system_keyset, KeyBlobs,
@@ -242,17 +240,17 @@ void MockInitialKeysetAdding(const std::string& obfuscated_username,
       });
 }
 
-void MockKeysetLoadingViaBlobs(const std::string& obfuscated_username,
+void MockKeysetLoadingViaBlobs(const ObfuscatedUsername& obfuscated_username,
                                const SerializedVaultKeyset& serialized_vk,
                                MockKeysetManagement& keyset_management) {
   EXPECT_CALL(keyset_management,
               GetValidKeysetWithKeyBlobs(obfuscated_username, _, _))
-      .WillOnce(
-          [=](const std::string&, KeyBlobs, const std::optional<std::string>&) {
-            auto vk = std::make_unique<VaultKeyset>();
-            vk->InitializeFromSerialized(serialized_vk);
-            return vk;
-          });
+      .WillOnce([=](const ObfuscatedUsername&, KeyBlobs,
+                    const std::optional<std::string>&) {
+        auto vk = std::make_unique<VaultKeyset>();
+        vk->InitializeFromSerialized(serialized_vk);
+        return vk;
+      });
 }
 
 void MockOwnerUser(const std::string& username, MockHomeDirs& homedirs) {
@@ -264,7 +262,7 @@ void MockOwnerUser(const std::string& username, MockHomeDirs& homedirs) {
 // for the function parameters so that (using designated initializers) the calls
 // are more readable.
 struct CredentialsParams {
-  std::string username;
+  Username username;
   std::string label;
   std::string passkey;
 };
@@ -332,6 +330,10 @@ class AuthSessionInterfaceTestBase : public ::testing::Test {
   }
 
  protected:
+  const Username kUsername{"foo@example.com"};
+  const Username kUsername2{"foo2@example.com"};
+  const Username kUsername3{"foo3@example.com"};
+
   TaskEnvironment task_environment{
       TaskEnvironment::TimeSource::MOCK_TIME,
       TaskEnvironment::ThreadPoolExecutionMode::QUEUED};
@@ -414,8 +416,7 @@ class AuthSessionInterfaceTest : public AuthSessionInterfaceTestBase {
     return req;
   }
 
-  void ExpectAuth(const std::string& username,
-                  const brillo::SecureBlob& secret) {
+  void ExpectAuth(const Username& username, const brillo::SecureBlob& secret) {
     auto vk = std::make_unique<VaultKeyset>();
     Credentials creds(username, secret);
     EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
@@ -434,7 +435,7 @@ class AuthSessionInterfaceTest : public AuthSessionInterfaceTestBase {
     const brillo::SecureBlob blob16(16, 'A');
 
     brillo::SecureBlob passkey(20, 'A');
-    Credentials credentials("Test User", passkey);
+    Credentials credentials(Username("Test User"), passkey);
 
     brillo::SecureBlob system_salt_ =
         brillo::SecureBlob(*brillo::cryptohome::home::GetSystemSalt());
@@ -448,7 +449,7 @@ class AuthSessionInterfaceTest : public AuthSessionInterfaceTestBase {
 
     EXPECT_CALL(keyset_management_, GetVaultKeyset(_, _))
         .Times(num_of_keysets)
-        .WillRepeatedly([=](const std::string& obfuscated_username,
+        .WillRepeatedly([=](const ObfuscatedUsername& obfuscated_username,
                             const std::string& key_label) {
           auto vk = std::make_unique<VaultKeyset>();
           vk->InitializeFromSerialized(serialized);
@@ -947,7 +948,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PrepareGuestVault) {
             user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
 
   // ... or regular.
-  const std::string obfuscated_username = SanitizeUserName(kUsername2);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername2);
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
       .WillRepeatedly(ReturnValue(true));
   const SerializedVaultKeyset serialized_vk =
@@ -1041,7 +1042,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
       .WillOnce(Return(false))
       .WillOnce(Return(false));
   EXPECT_CALL(*user_session, MountEphemeral(kUsername))
-      .WillOnce(Invoke([&](const std::string&) {
+      .WillOnce(Invoke([&](const Username&) {
         return MakeStatus<CryptohomeMountError>(
             fake_error_location,
             error::ErrorActionSet({error::ErrorAction::kReboot}),
@@ -1065,7 +1066,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
 
 TEST_F(AuthSessionInterfaceMockAuthTest,
        PrepareGuestVaultAfterFailedPersistent) {
-  const std::string obfuscated_username = SanitizeUserName(kUsername);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
@@ -1111,7 +1112,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
           static_cast<CryptohomeError::ErrorLocation>(1),
           std::string("FakeErrorLocation"));
   EXPECT_CALL(*user_session, MountVault(kUsername, _, _))
-      .WillOnce(Invoke([&](const std::string&, const FileSystemKeyset&,
+      .WillOnce(Invoke([&](const Username&, const FileSystemKeyset&,
                            const CryptohomeVault::Options&) {
         return MakeStatus<CryptohomeMountError>(
             fake_error_location,
@@ -1219,7 +1220,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PrepareEphemeralVault) {
             user_data_auth::CRYPTOHOME_ERROR_MOUNT_MOUNT_POINT_BUSY);
 
   // But a different regular mount succeeds.
-  const std::string obfuscated_username = SanitizeUserName(kUsername3);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername3);
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
       .WillRepeatedly(ReturnValue(true));
   const SerializedVaultKeyset serialized_vk =
@@ -1268,7 +1269,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PrepareEphemeralVault) {
 
 TEST_F(AuthSessionInterfaceMockAuthTest,
        PreparePersistentVaultAndThenGuestFail) {
-  const std::string obfuscated_username = SanitizeUserName(kUsername);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
@@ -1331,7 +1332,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
 }
 
 TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoLabel) {
-  const std::string obfuscated_username = SanitizeUserName(kUsername);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
@@ -1365,7 +1366,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoLabel) {
 }
 
 TEST_F(AuthSessionInterfaceMockAuthTest, GetHibernateSecretTest) {
-  const std::string obfuscated_username = SanitizeUserName(kUsername);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
@@ -1415,7 +1416,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, GetHibernateSecretTest) {
 
 // Test that AddAuthFactor succeeds for a freshly created user.
 TEST_F(AuthSessionInterfaceMockAuthTest, AddFactorNewUserVk) {
-  const std::string obfuscated_username = SanitizeUserName(kUsername);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
   AuthSession* const auth_session = CreateAndPrepareUserVault();
@@ -1453,7 +1454,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AddFactorNewUserVk) {
 // Test that AddAuthFactor succeeds when adding a second factor for a freshly
 // created user, but the credential verifier remains using the first credential.
 TEST_F(AuthSessionInterfaceMockAuthTest, AddSecondFactorNewUserVk) {
-  const std::string obfuscated_username = SanitizeUserName(kUsername);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
   AuthSession* const auth_session = CreateAndPrepareUserVault();
@@ -1507,7 +1508,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AddSecondFactorNewUserVk) {
 // Test that AuthenticateAuthFactor succeeds for an existing user and a
 // VautKeyset-based factor when using the correct credential.
 TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorVkSuccess) {
-  const std::string obfuscated_username = SanitizeUserName(kUsername);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
@@ -1560,7 +1561,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorVkSuccess) {
 // failed.
 TEST_F(AuthSessionInterfaceMockAuthTest,
        AuthenticateAuthFactorVkDecryptionError) {
-  const std::string obfuscated_username = SanitizeUserName(kUsername);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange. Mock VK decryption to return a failure.
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
@@ -1606,7 +1607,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
 // Test that AuthenticateAuthFactor succeeds using credential verifier based
 // lightweight authentication when `AuthIntent::kVerifyOnly` is requested.
 TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorLightweight) {
-  const std::string obfuscated_username = SanitizeUserName(kUsername);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange. Set up a fake VK without authentication mocks.
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
@@ -1663,7 +1664,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorLightweight) {
 
 // Test that AuthenticateAuthFactor fails in case the AuthSession ID is missing.
 TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoSessionId) {
-  const std::string obfuscated_username = SanitizeUserName(kUsername);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
@@ -1687,7 +1688,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoSessionId) {
 
 // Test that AuthenticateAuthFactor fails in case the AuthSession ID is invalid.
 TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorBadSessionId) {
-  const std::string obfuscated_username = SanitizeUserName(kUsername);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
@@ -1712,7 +1713,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorBadSessionId) {
 
 // Test that AuthenticateAuthFactor fails in case the AuthSession is expired.
 TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorExpiredSession) {
-  const std::string obfuscated_username = SanitizeUserName(kUsername);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
@@ -1750,7 +1751,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorExpiredSession) {
 
 // Test that AuthenticateAuthFactor fails in case the user doesn't exist.
 TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoUser) {
-  const std::string obfuscated_username = SanitizeUserName(kUsername);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
@@ -1787,7 +1788,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoUser) {
 // Test that AuthenticateAuthFactor fails in case the user has no keys (because
 // the user is just created). The AuthSession, however, stays authenticated.
 TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoKeys) {
-  const std::string obfuscated_username = SanitizeUserName(kUsername);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
@@ -1834,7 +1835,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoKeys) {
 TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorWrongVkLabel) {
   constexpr char kConfiguredKeyLabel[] = "fake-configured-label";
   constexpr char kRequestedKeyLabel[] = "fake-requested-label";
-  const std::string obfuscated_username = SanitizeUserName(kUsername);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
@@ -1876,7 +1877,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorWrongVkLabel) {
 
 // Test that AuthenticateAuthFactor fails when no AuthInput is provided.
 TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoInput) {
-  const std::string obfuscated_username = SanitizeUserName(kUsername);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
@@ -1918,7 +1919,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorNoInput) {
 // Test that AuthenticateAuthFactor fails when both |auth_factor_label| and
 // |auth_factor_labels| are specified.
 TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorLabelConflicts) {
-  const std::string obfuscated_username = SanitizeUserName(kUsername);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
@@ -1963,7 +1964,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorLabelConflicts) {
 // Test the PreparePersistentVault, when called after a successful
 // AuthenticateAuthFactor, mounts the home dir and sets up the user session.
 TEST_F(AuthSessionInterfaceMockAuthTest, PrepareVaultAfterFactorAuthVk) {
-  const std::string obfuscated_username = SanitizeUserName(kUsername);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
@@ -2034,7 +2035,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PrepareVaultAfterFactorAuthVk) {
 // Following that, second call should fail.
 TEST_F(AuthSessionInterfaceMockAuthTest,
        PrepareVaultAfterFactorAuthVkMountPointBusy) {
-  const std::string obfuscated_username = SanitizeUserName(kUsername);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
@@ -2107,7 +2108,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
 // AuthenticateAuthFactor, mounts the home dir and sets up the user session.
 // Following that, a call to prepare ephemeral mount should fail.
 TEST_F(AuthSessionInterfaceMockAuthTest, PreparePersistentVaultAndEphemeral) {
-  const std::string obfuscated_username = SanitizeUserName(kUsername);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
@@ -2177,7 +2178,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PreparePersistentVaultAndEphemeral) {
 
 // Test multi mount with two users.
 TEST_F(AuthSessionInterfaceMockAuthTest, PreparePersistentVaultMultiMount) {
-  const std::string obfuscated_username = SanitizeUserName(kUsername);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
@@ -2235,7 +2236,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PreparePersistentVaultMultiMount) {
   EXPECT_THAT(prepare_status, IsOk());
 
   // Try the second mount, it should succeed
-  const std::string obfuscated_username2 = SanitizeUserName(kUsername2);
+  const ObfuscatedUsername obfuscated_username2 = SanitizeUserName(kUsername2);
 
   // Arrange.
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username2))
@@ -2489,7 +2490,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
 // Test that RemoveAuthFactor successfully removes the VaultKeyset with the
 // given label.
 TEST_F(AuthSessionInterfaceMockAuthTest, RemoveAuthFactorVkSuccess) {
-  const std::string obfuscated_username = SanitizeUserName(kUsername);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
@@ -2553,7 +2554,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, RemoveAuthFactorVkSuccess) {
 // Test that RemoveAuthFactor returns failure from remove request with the non
 // existing label.
 TEST_F(AuthSessionInterfaceMockAuthTest, RemoveAuthFactorVkFailsLastKeyset) {
-  const std::string obfuscated_username = SanitizeUserName(kUsername);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
@@ -2610,7 +2611,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest, RemoveAuthFactorVkFailsLastKeyset) {
 // Test that RemoveAuthFactor fails to remove the only factor.
 TEST_F(AuthSessionInterfaceMockAuthTest,
        RemoveAuthFactorVkFailsNonExitingLabel) {
-  const std::string obfuscated_username = SanitizeUserName(kUsername);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
@@ -2667,7 +2668,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
 // Test that RemoveAuthFactor fails to remove the authenticated VaultKeyset.
 TEST_F(AuthSessionInterfaceMockAuthTest,
        RemoveAuthFactorVkFailsToRemoveSameVK) {
-  const std::string obfuscated_username = SanitizeUserName(kUsername);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))
@@ -2732,7 +2733,7 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
 // VautKeyset-based factor when using the correct credential, and that the
 // WebAuthn secret is prepared when `AuthIntent::kWebAuthn` is requested.
 TEST_F(AuthSessionInterfaceMockAuthTest, AuthenticateAuthFactorWebAuthnIntent) {
-  const std::string obfuscated_username = SanitizeUserName(kUsername);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(kUsername);
 
   // Arrange.
   EXPECT_CALL(keyset_management_, UserExists(obfuscated_username))

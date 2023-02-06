@@ -11,6 +11,7 @@
 #include <base/time/time.h>
 
 #include "cryptohome/platform.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -26,35 +27,36 @@ class UserOldestActivityTimestampManager {
   virtual ~UserOldestActivityTimestampManager() = default;
 
   // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
-  virtual void LoadTimestampWithLegacy(const std::string& obfuscated,
+  virtual void LoadTimestampWithLegacy(const ObfuscatedUsername& obfuscated,
                                        base::Time legacy_timestamp);
 
   // Loads timestamp from the per-user timestamp file into cache.
-  virtual void LoadTimestamp(const std::string& obfuscated);
+  virtual void LoadTimestamp(const ObfuscatedUsername& obfuscated);
 
   // Updates on per-user timestamp file and cache. Returns false if updating
   // failed.
-  virtual bool UpdateTimestamp(const std::string& obfuscated,
+  virtual bool UpdateTimestamp(const ObfuscatedUsername& obfuscated,
                                base::TimeDelta time_shift);
 
   // Remove a user from the cache.
-  virtual void RemoveUser(const std::string& obfuscated);
+  virtual void RemoveUser(const ObfuscatedUsername& obfuscated);
 
   // Returns the last activity timestamp for a user. For users without a
   // timestamp it returns a NULL time.
   virtual base::Time GetLastUserActivityTimestamp(
-      const std::string& obfuscated) const;
+      const ObfuscatedUsername& obfuscated) const;
 
  private:
   // Updates the cached timestamp.
-  void UpdateCachedTimestamp(const std::string& obfuscated,
+  void UpdateCachedTimestamp(const ObfuscatedUsername& obfuscated,
                              base::Time timestamp);
 
   // Updates per-user timestamp file. Returns false if write failed.
-  bool WriteTimestamp(const std::string& obfuscated, base::Time timestamp);
+  bool WriteTimestamp(const ObfuscatedUsername& obfuscated,
+                      base::Time timestamp);
 
   Platform* platform_;
-  std::map<std::string, base::Time> users_timestamp_lookup_;
+  std::map<ObfuscatedUsername, base::Time> users_timestamp_lookup_;
 };
 
 }  // namespace cryptohome

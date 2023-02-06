@@ -152,7 +152,8 @@ bool DiskCleanup::FreeDiskSpace() {
   return result;
 }
 
-bool DiskCleanup::FreeDiskSpaceDuringLogin(const std::string& obfuscated) {
+bool DiskCleanup::FreeDiskSpaceDuringLogin(
+    const ObfuscatedUsername& obfuscated) {
   base::ElapsedTimer total_timer;
 
   // Only runs for enterprise users.
@@ -451,7 +452,7 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
         LOG(INFO) << "Skipped deletion of the most recent device user.";
         continue;
       }
-    } else if (dir->obfuscated == owner) {
+    } else if (*dir->obfuscated == owner) {
       // We never delete the device owner.
       LOG(INFO) << "Skipped deletion of the device owner.";
       continue;
@@ -504,7 +505,7 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
 }
 
 bool DiskCleanup::FreeDiskSpaceDuringLoginInternal(
-    const std::string& logging_in) {
+    const ObfuscatedUsername& logging_in) {
   auto unmounted_homedirs = homedirs_->GetHomeDirs();
   FilterMountedHomedirs(&unmounted_homedirs);
 

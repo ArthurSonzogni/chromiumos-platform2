@@ -12,6 +12,7 @@
 
 #include "cryptohome/platform.h"
 #include "cryptohome/proto_bindings/rpc.pb.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -50,29 +51,34 @@ base::FilePath ShadowRoot();
 base::FilePath SystemSaltFile();
 base::FilePath PublicMountSaltFile();
 base::FilePath SkelDir();
-base::FilePath UserPath(const std::string& obfuscated);
-base::FilePath VaultKeysetPath(const std::string& obfuscated, int index);
-base::FilePath UserActivityPerIndexTimestampPath(const std::string& obfuscated,
-                                                 int index);
-base::FilePath UserActivityTimestampPath(const std::string& obfuscated);
-base::FilePath UserSecretStashPath(const std::string& obfuscated_username,
-                                   int slot);
-base::FilePath AuthFactorsDirPath(const std::string& obfuscated_username);
-base::FilePath AuthFactorPath(const std::string& obfuscated_username,
+base::FilePath UserPath(const ObfuscatedUsername& obfuscated);
+base::FilePath VaultKeysetPath(const ObfuscatedUsername& obfuscated, int index);
+base::FilePath UserActivityPerIndexTimestampPath(
+    const ObfuscatedUsername& obfuscated, int index);
+base::FilePath UserActivityTimestampPath(const ObfuscatedUsername& obfuscated);
+base::FilePath UserSecretStashPath(
+    const ObfuscatedUsername& obfuscated_username, int slot);
+base::FilePath AuthFactorsDirPath(
+    const ObfuscatedUsername& obfuscated_username);
+base::FilePath AuthFactorPath(const ObfuscatedUsername& obfuscated_username,
                               const std::string& auth_factor_type_string,
                               const std::string& auth_factor_label);
 
-std::string LogicalVolumePrefix(const std::string& obfuscated_username);
-std::string DmcryptVolumePrefix(const std::string& obfuscated_username);
+std::string LogicalVolumePrefix(const ObfuscatedUsername& obfuscated_username);
+std::string DmcryptVolumePrefix(const ObfuscatedUsername& obfuscated_username);
 
-base::FilePath GetEcryptfsUserVaultPath(const std::string& obfuscated_username);
-base::FilePath GetUserMountDirectory(const std::string& obfuscated_username);
+base::FilePath GetEcryptfsUserVaultPath(
+    const ObfuscatedUsername& obfuscated_username);
+base::FilePath GetUserMountDirectory(
+    const ObfuscatedUsername& obfuscated_username);
 base::FilePath GetUserTemporaryMountDirectory(
-    const std::string& obfuscated_username);
+    const ObfuscatedUsername& obfuscated_username);
 base::FilePath GetDmcryptUserCacheDirectory(
-    const std::string& obfuscated_username);
-base::FilePath GetDmcryptDataVolume(const std::string& obfuscated_username);
-base::FilePath GetDmcryptCacheVolume(const std::string& obfuscated_username);
+    const ObfuscatedUsername& obfuscated_username);
+base::FilePath GetDmcryptDataVolume(
+    const ObfuscatedUsername& obfuscated_username);
+base::FilePath GetDmcryptCacheVolume(
+    const ObfuscatedUsername& obfuscated_username);
 
 // Gets existing system salt, or creates one if it doesn't exist.
 bool GetSystemSalt(Platform* platform, brillo::SecureBlob* salt);

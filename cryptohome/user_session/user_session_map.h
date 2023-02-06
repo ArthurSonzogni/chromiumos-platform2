@@ -17,6 +17,7 @@
 
 #include "cryptohome/credential_verifier.h"
 #include "cryptohome/user_session/user_session.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -26,7 +27,7 @@ class UserSessionMap final {
  private:
   // Declared here in the beginning to allow us to reference the underlying
   // storage type when defining the iterator.
-  using Storage = std::map<std::string, std::unique_ptr<UserSession>>;
+  using Storage = std::map<Username, std::unique_ptr<UserSession>>;
 
   // Iterator template that can act as both a regular and const iterator. This
   // wraps the underlying map iterator but exposes the underlying UserSession as
@@ -35,7 +36,7 @@ class UserSessionMap final {
   template <typename UserSessionType>
   class iterator_base {
    public:
-    using value_type = std::pair<const std::string&, UserSessionType&>;
+    using value_type = std::pair<const Username&, UserSessionType&>;
     using iterator_category = std::forward_iterator_tag;
     using difference_type = Storage::difference_type;
     using pointer = value_type*;
@@ -88,7 +89,7 @@ class UserSessionMap final {
       std::map<AuthFactorType, std::unique_ptr<CredentialVerifier>> by_type;
     };
 
-    VerifierForwarder(std::string account_id, UserSessionMap* user_session_map);
+    VerifierForwarder(Username account_id, UserSessionMap* user_session_map);
     VerifierForwarder(const VerifierForwarder&) = delete;
     VerifierForwarder& operator=(const VerifierForwarder&) = delete;
     ~VerifierForwarder();
@@ -117,7 +118,7 @@ class UserSessionMap final {
 
    private:
     // The account ID this forwarder will forward to.
-    const std::string account_id_;
+    const Username account_id_;
     // The user session map this forwarder is associated with. This is used to
     // remove the forwarder from the map's internal tracking on destruction.
     UserSessionMap* user_session_map_;
@@ -142,13 +143,13 @@ class UserSessionMap final {
 
   // Adds the session for the given user. Returns false if the user already has
   // a session.
-  bool Add(const std::string& account_id, std::unique_ptr<UserSession> session);
+  bool Add(const Username& account_id, std::unique_ptr<UserSession> session);
   // Removes the session for the given user. Returns false if there was no
   // session for the user.
-  bool Remove(const std::string& account_id);
+  bool Remove(const Username& account_id);
   // Returns a session for the given user, or null if there's none.
-  UserSession* Find(const std::string& account_id);
-  const UserSession* Find(const std::string& account_id) const;
+  UserSession* Find(const Username& account_id);
+  const UserSession* Find(const Username& account_id) const;
 
  private:
   // The underlying UserSession storage.
@@ -156,8 +157,7 @@ class UserSessionMap final {
 
   // Track any live verifier forwarders. The forwarders will add themselves to
   // this map on construction and remove themselves upon destruction.
-  std::map<std::string, base::flat_set<VerifierForwarder*>>
-      verifier_forwarders_;
+  std::map<Username, base::flat_set<VerifierForwarder*>> verifier_forwarders_;
 };
 
 }  // namespace cryptohome

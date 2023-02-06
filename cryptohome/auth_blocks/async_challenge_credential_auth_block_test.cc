@@ -37,6 +37,7 @@
 #include "cryptohome/mock_key_challenge_service.h"
 #include "cryptohome/proto_bindings/key.pb.h"
 #include "cryptohome/proto_bindings/rpc.pb.h"
+#include "cryptohome/username.h"
 
 using cryptohome::error::CryptohomeTPMError;
 using cryptohome::error::ErrorAction;
@@ -125,7 +126,7 @@ class AsyncChallengeCredentialAuthBlockTest : public ::testing::Test {
   base::test::TaskEnvironment task_environment_;
 
   NiceMock<MockChallengeCredentialsHelper> challenge_credentials_helper_;
-  const std::string kFakeAccountId = "account_id";
+  const Username kFakeAccountId{"account_id"};
   std::unique_ptr<AsyncChallengeCredentialAuthBlock> auth_block_;
 
   const error::CryptohomeError::ErrorLocationPair kErrorLocationPlaceholder =
@@ -137,7 +138,7 @@ class AsyncChallengeCredentialAuthBlockTest : public ::testing::Test {
 // The AsyncChallengeCredentialAuthBlock::Create should work correctly.
 TEST_F(AsyncChallengeCredentialAuthBlockTest, Create) {
   AuthInput auth_input{
-      .obfuscated_username = "obfuscated_username",
+      .obfuscated_username = ObfuscatedUsername("obfuscated_username"),
       .challenge_credential_auth_input =
           ChallengeCredentialAuthInput{
               .public_key_spki_der =
@@ -192,7 +193,7 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, CreateCredentialsFailed) {
       });
 
   AuthInput auth_input{
-      .obfuscated_username = "obfuscated_username",
+      .obfuscated_username = ObfuscatedUsername("obfuscated_username"),
       .challenge_credential_auth_input =
           ChallengeCredentialAuthInput{
               .public_key_spki_der =
@@ -212,7 +213,7 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, CreateCredentialsFailed) {
 // multiple create.
 TEST_F(AsyncChallengeCredentialAuthBlockTest, MutipleCreateFailed) {
   AuthInput auth_input{
-      .obfuscated_username = "obfuscated_username",
+      .obfuscated_username = ObfuscatedUsername("obfuscated_username"),
       .challenge_credential_auth_input =
           ChallengeCredentialAuthInput{
               .public_key_spki_der =
@@ -296,7 +297,7 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest,
       });
 
   AuthInput auth_input{
-      .obfuscated_username = "obfuscated_username",
+      .obfuscated_username = ObfuscatedUsername("obfuscated_username"),
   };
   auth_block_->Create(auth_input, std::move(create_callback));
   run_loop.Run();
@@ -314,7 +315,7 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, CreateMissingAlgorithm) {
       });
 
   AuthInput auth_input{
-      .obfuscated_username = "obfuscated_username",
+      .obfuscated_username = ObfuscatedUsername("obfuscated_username"),
       .challenge_credential_auth_input =
           ChallengeCredentialAuthInput{
               .public_key_spki_der =
@@ -579,7 +580,7 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveNoScryptState) {
 // coverage than the fixture above.
 class AsyncChallengeCredentialAuthBlockFullTest : public ::testing::Test {
  protected:
-  const std::string kObfuscatedUsername = "obfuscated_username";
+  const ObfuscatedUsername kObfuscatedUsername{"obfuscated_username"};
   const brillo::Blob kPublicKeySpkiDer =
       brillo::BlobFromString("public_key_spki_der");
 
@@ -685,7 +686,7 @@ class AsyncChallengeCredentialAuthBlockFullTest : public ::testing::Test {
   }
 
  private:
-  const std::string kFakeAccountId = "account_id";
+  const Username kFakeAccountId{"account_id"};
   const brillo::SecureBlob kTpmProtectedSecret =
       brillo::SecureBlob("tpm_protected_secret");
   const brillo::Blob kChallengeResponse = brillo::BlobFromString("signature");

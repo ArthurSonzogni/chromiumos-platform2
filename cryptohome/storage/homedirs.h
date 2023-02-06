@@ -36,6 +36,7 @@
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
 #include "cryptohome/storage/error.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -52,12 +53,12 @@ class HomeDirs {
  public:
   // HomeDir contains lists the current user profiles.
   struct HomeDir {
-    std::string obfuscated;
+    ObfuscatedUsername obfuscated;
     bool is_mounted = false;
   };
 
-  using RemoveCallback =
-      base::RepeatingCallback<void(const std::string& obfuscated_username)>;
+  using RemoveCallback = base::RepeatingCallback<void(
+      const ObfuscatedUsername& obfuscated_username)>;
 
   HomeDirs() = default;
   // |remove_callback| is executed in Remove() to make sure LE Credentials of
@@ -82,7 +83,7 @@ class HomeDirs {
 
   // Returns whether the given user is a non-enterprise owner, or if it will
   // become such in case it signs in now.
-  bool IsOrWillBeOwner(const std::string& account_id);
+  bool IsOrWillBeOwner(const Username& account_id);
 
   // Returns whether the ephemeral users policy is enabled.
   virtual bool AreEphemeralUsersEnabled();
@@ -94,60 +95,61 @@ class HomeDirs {
   virtual bool MustRunAutomaticCleanupOnLogin();
 
   // Creates the cryptohome for the named user.
-  virtual bool Create(const std::string& username);
+  virtual bool Create(const Username& username);
 
   // Removes the cryptohome for the given obfuscated username.
-  virtual bool Remove(const std::string& obfuscated);
+  virtual bool Remove(const ObfuscatedUsername& obfuscated);
 
   // Removes the Dmcryot cache container for the named user.
-  virtual bool RemoveDmcryptCacheContainer(const std::string& username);
+  virtual bool RemoveDmcryptCacheContainer(
+      const ObfuscatedUsername& obfuscated);
 
   // Computes the size of cryptohome for the named user.
   // Return 0 if the given user is invalid of non-existent.
   // Negative values are reserved for future cases whereby we need to do some
   // form of error reporting.
   // Note that this method calculates the disk usage instead of apparent size.
-  virtual int64_t ComputeDiskUsage(const std::string& account_id);
+  virtual int64_t ComputeDiskUsage(const Username& account_id);
 
   // Returns true if a path exists for the given obfuscated username.
-  virtual bool Exists(const std::string& obfuscated_username) const;
+  virtual bool Exists(const ObfuscatedUsername& obfuscated_username) const;
 
   // Checks if a cryptohome vault exists for the given obfuscated username.
   virtual StorageStatusOr<bool> CryptohomeExists(
-      const std::string& obfuscated_username) const;
+      const ObfuscatedUsername& obfuscated_username) const;
 
   // Checks if a eCryptfs cryptohome vault exists for the given obfuscated
   // username.
   virtual bool EcryptfsCryptohomeExists(
-      const std::string& obfuscated_username) const;
+      const ObfuscatedUsername& obfuscated_username) const;
 
   // Checks if a dircrypto cryptohome vault exists for the given obfuscated
   // username.
   virtual StorageStatusOr<bool> DircryptoCryptohomeExists(
-      const std::string& obfuscated_username) const;
+      const ObfuscatedUsername& obfuscated_username) const;
 
   // Check if a dm-crypt container exists for the given obfuscated username.
   virtual bool DmcryptContainerExists(
-      const std::string& obfuscated_username,
+      const ObfuscatedUsername& obfuscated_username,
       const std::string& container_suffix) const;
 
   // Checks if a dm-crypt cryptohome vault exists for the given obfuscated
   // username.
   virtual bool DmcryptCryptohomeExists(
-      const std::string& obfuscated_username) const;
+      const ObfuscatedUsername& obfuscated_username) const;
 
   // Checks if the dm-crypt cryptohome's cache container exists for the given
   // obfuscated username.
   virtual bool DmcryptCacheContainerExists(
-      const std::string& obfuscated_username) const;
+      const ObfuscatedUsername& obfuscated_username) const;
 
   // Returns the path to the user's chaps token directory.
-  virtual base::FilePath GetChapsTokenDir(const std::string& username) const;
+  virtual base::FilePath GetChapsTokenDir(const Username& username) const;
 
   // Returns true if the cryptohome for the given obfuscated username should
   // migrate to dircrypto.
   virtual bool NeedsDircryptoMigration(
-      const std::string& obfuscated_username) const;
+      const ObfuscatedUsername& obfuscated_username) const;
 
   // Get the number of unmounted android-data directory. Each android users
   // that is not currently logged in should have exactly one android-data
@@ -173,7 +175,7 @@ class HomeDirs {
 
   // Pick the most appropriate vault type for the user.
   virtual StorageStatusOr<EncryptedContainerType> PickVaultType(
-      const std::string& obfuscated_username,
+      const ObfuscatedUsername& obfuscated_username,
       const CryptohomeVault::Options& options);
 
   virtual CryptohomeVaultFactory* GetVaultFactory() { return vault_factory_; }
@@ -184,7 +186,7 @@ class HomeDirs {
 
   // Get the type of an existing vault.
   StorageStatusOr<EncryptedContainerType> GetVaultType(
-      const std::string& obfuscated_username);
+      const ObfuscatedUsername& obfuscated_username);
 
   base::TimeDelta GetUserInactivityThresholdForRemoval();
   // Loads the device policy, either by initializing it or reloading the

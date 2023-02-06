@@ -40,7 +40,7 @@ class FingerprintAuthBlockService {
 
   // Start registers a given user to the fp_service and initiates a fingerprint
   // sensor session.
-  void Start(std::string obfuscated_username,
+  void Start(ObfuscatedUsername obfuscated_username,
              PreparedAuthFactorToken::Consumer on_done);
 
   // Verify if the fingerprint sensor is currently in a "successfully

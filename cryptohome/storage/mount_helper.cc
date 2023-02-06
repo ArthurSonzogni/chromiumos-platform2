@@ -42,20 +42,20 @@ const char kEphemeralCryptohomeRootContext[] =
 const int kDefaultEcryptfsKeySize = CRYPTOHOME_AES_KEY_BYTES;
 
 FilePath GetUserEphemeralMountDirectory(
-    const std::string& obfuscated_username) {
+    const ObfuscatedUsername& obfuscated_username) {
   return FilePath(kEphemeralCryptohomeDir)
       .Append(kEphemeralMountDir)
-      .Append(obfuscated_username);
+      .Append(*obfuscated_username);
 }
 
 FilePath GetMountedEphemeralRootHomePath(
-    const std::string& obfuscated_username) {
+    const ObfuscatedUsername& obfuscated_username) {
   return GetUserEphemeralMountDirectory(obfuscated_username)
       .Append(kRootHomeSuffix);
 }
 
 FilePath GetMountedEphemeralUserHomePath(
-    const std::string& obfuscated_username) {
+    const ObfuscatedUsername& obfuscated_username) {
   return GetUserEphemeralMountDirectory(obfuscated_username)
       .Append(kUserHomeSuffix);
 }
@@ -291,19 +291,19 @@ MountHelper::MountHelper(bool legacy_mount,
       platform_(platform) {}
 
 // static
-FilePath MountHelper::GetNewUserPath(const std::string& username) {
-  std::string sanitized = SanitizeUserName(username);
-  std::string user_dir = StringPrintf("u-%s", sanitized.c_str());
+FilePath MountHelper::GetNewUserPath(const Username& username) {
+  ObfuscatedUsername sanitized = SanitizeUserName(username);
+  std::string user_dir = StringPrintf("u-%s", sanitized->c_str());
   return FilePath("/home").Append(kDefaultSharedUser).Append(user_dir);
 }
 
 FilePath MountHelper::GetMountedUserHomePath(
-    const std::string& obfuscated_username) const {
+    const ObfuscatedUsername& obfuscated_username) const {
   return GetUserMountDirectory(obfuscated_username).Append(kUserHomeSuffix);
 }
 
 FilePath MountHelper::GetMountedRootHomePath(
-    const std::string& obfuscated_username) const {
+    const ObfuscatedUsername& obfuscated_username) const {
   return GetUserMountDirectory(obfuscated_username).Append(kRootHomeSuffix);
 }
 
@@ -358,7 +358,7 @@ bool MountHelper::EnsureMountPointPath(const FilePath& dir) const {
   return true;
 }
 
-bool MountHelper::EnsureUserMountPoints(const std::string& username) const {
+bool MountHelper::EnsureUserMountPoints(const Username& username) const {
   FilePath multi_home_user = GetUserPath(username);
   FilePath multi_home_root = GetRootPath(username);
   FilePath new_user_path = GetNewUserPath(username);
@@ -458,7 +458,7 @@ void MountHelper::CopySkeleton(const FilePath& destination) const {
 }
 
 bool MountHelper::IsFirstMountComplete(
-    const std::string& obfuscated_username) const {
+    const ObfuscatedUsername& obfuscated_username) const {
   const FilePath mount_point = GetUserMountDirectory(obfuscated_username);
   const FilePath user_home = GetMountedUserHomePath(obfuscated_username);
 
@@ -696,7 +696,7 @@ bool MountHelper::BindAndPush(const FilePath& src,
 }
 
 bool MountHelper::MountDaemonStoreDirectories(
-    const FilePath& root_home, const std::string& obfuscated_username) {
+    const FilePath& root_home, const ObfuscatedUsername& obfuscated_username) {
   // Iterate over all directories in /etc/daemon-store. This list is on rootfs,
   // so it's tamper-proof and nobody can sneak in additional directories that we
   // blindly mount. The actual mounts happen on /run/daemon-store, though.
@@ -724,7 +724,7 @@ bool MountHelper::MountDaemonStoreDirectories(
 
     // /run/daemon-store/<daemon-name>/<user_hash>
     const FilePath mount_target =
-        run_daemon_store_path.Append(obfuscated_username);
+        run_daemon_store_path.Append(*obfuscated_username);
 
     // Copy ownership from |etc_daemon_store_path| to |mount_source|. After the
     // bind operation, this guarantees that ownership for |mount_target| is the
@@ -785,8 +785,8 @@ int MountHelper::MigrateDirectory(const base::FilePath& dst,
 }
 
 bool MountHelper::MountHomesAndDaemonStores(
-    const std::string& username,
-    const std::string& obfuscated_username,
+    const Username& username,
+    const ObfuscatedUsername& obfuscated_username,
     const FilePath& user_home,
     const FilePath& root_home) {
   // Bind mount user directory as a shared bind mount.
@@ -827,7 +827,7 @@ bool MountHelper::MountHomesAndDaemonStores(
 }
 
 bool MountHelper::MountCacheSubdirectories(
-    const std::string& obfuscated_username,
+    const ObfuscatedUsername& obfuscated_username,
     const base::FilePath& data_directory) {
   FilePath cache_directory = GetDmcryptUserCacheDirectory(obfuscated_username);
 
@@ -850,10 +850,11 @@ bool MountHelper::MountCacheSubdirectories(
 
 // The eCryptfs mount is mounted from vault/ --> mount/ except in case of
 // migration where the mount point is a temporary directory.
-bool MountHelper::SetUpEcryptfsMount(const std::string& obfuscated_username,
-                                     const std::string& fek_signature,
-                                     const std::string& fnek_signature,
-                                     const FilePath& mount_point) {
+bool MountHelper::SetUpEcryptfsMount(
+    const ObfuscatedUsername& obfuscated_username,
+    const std::string& fek_signature,
+    const std::string& fnek_signature,
+    const FilePath& mount_point) {
   const FilePath vault_path = GetEcryptfsUserVaultPath(obfuscated_username);
 
   // Specify the ecryptfs options for mounting the user's cryptohome.
@@ -878,7 +879,8 @@ bool MountHelper::SetUpEcryptfsMount(const std::string& obfuscated_username,
   return true;
 }
 
-void MountHelper::SetUpDircryptoMount(const std::string& obfuscated_username) {
+void MountHelper::SetUpDircryptoMount(
+    const ObfuscatedUsername& obfuscated_username) {
   const FilePath mount_point = GetUserMountDirectory(obfuscated_username);
 
   std::ignore = CreateVaultDirectoryStructure(
@@ -887,8 +889,9 @@ void MountHelper::SetUpDircryptoMount(const std::string& obfuscated_username) {
       platform_, GetCommonSubdirectories(mount_point, bind_mount_downloads_));
 }
 
-bool MountHelper::SetUpDmcryptMount(const std::string& obfuscated_username,
-                                    const base::FilePath& data_mount_point) {
+bool MountHelper::SetUpDmcryptMount(
+    const ObfuscatedUsername& obfuscated_username,
+    const base::FilePath& data_mount_point) {
   const FilePath dmcrypt_data_volume =
       GetDmcryptDataVolume(obfuscated_username);
   const FilePath dmcrypt_cache_volume =
@@ -921,10 +924,10 @@ bool MountHelper::SetUpDmcryptMount(const std::string& obfuscated_username,
 }
 
 StorageStatus MountHelper::PerformMount(MountType mount_type,
-                                        const std::string& username,
+                                        const Username& username,
                                         const std::string& fek_signature,
                                         const std::string& fnek_signature) {
-  const std::string obfuscated_username = SanitizeUserName(username);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(username);
 
   if (!EnsureUserMountPoints(username)) {
     return StorageStatus::Make(FROM_HERE, "Error creating mountpoints",
@@ -1050,8 +1053,8 @@ StorageStatus MountHelper::PerformMount(MountType mount_type,
 // TODO(dlunev): make specific errors returned. MOUNT_ERROR_FATAL for now
 // to preserve the existing expectations..
 StorageStatus MountHelper::PerformEphemeralMount(
-    const std::string& username, const FilePath& ephemeral_loop_device) {
-  const std::string obfuscated_username = SanitizeUserName(username);
+    const Username& username, const FilePath& ephemeral_loop_device) {
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(username);
   const FilePath mount_point =
       GetUserEphemeralMountDirectory(obfuscated_username);
   LOG(ERROR) << "Directory is" << mount_point.value();

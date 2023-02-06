@@ -17,6 +17,7 @@
 
 #include "cryptohome/flatbuffer_schemas/structures.h"
 #include "cryptohome/key_challenge_service.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -116,9 +117,9 @@ class ChallengeCredentialsHelper {
   //
   // The result is reported via |callback|.
   virtual void GenerateNew(
-      const std::string& account_id,
+      const Username& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
-      const std::string& obfuscated_username,
+      const ObfuscatedUsername& obfuscated_username,
       std::unique_ptr<KeyChallengeService> key_challenge_service,
       GenerateNewCallback callback) = 0;
 
@@ -133,7 +134,7 @@ class ChallengeCredentialsHelper {
   // created via GenerateNew().
   // The result is reported via |callback|.
   virtual void Decrypt(
-      const std::string& account_id,
+      const Username& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
       const structure::SignatureChallengeInfo& keyset_challenge_info,
       std::unique_ptr<KeyChallengeService> key_challenge_service,
@@ -146,7 +147,7 @@ class ChallengeCredentialsHelper {
   //
   // The result is reported via |callback|.
   virtual void VerifyKey(
-      const std::string& account_id,
+      const Username& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
       std::unique_ptr<KeyChallengeService> key_challenge_service,
       VerifyKeyCallback callback) = 0;

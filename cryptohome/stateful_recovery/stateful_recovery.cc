@@ -22,6 +22,7 @@
 
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/platform.h"
+#include "cryptohome/username.h"
 
 using base::FilePath;
 
@@ -138,7 +139,7 @@ bool StatefulRecovery::RecoverV2() {
   if (CopyUserContents()) {
     wrote_data = true;
     // If user authenticated, check if they are the owner.
-    if (IsOwner(user_)) {
+    if (IsOwner(*user_)) {
       is_authenticated_owner = true;
     }
   }
@@ -207,7 +208,7 @@ bool StatefulRecovery::ParseFlagFile() {
     delim = contents.find("\n", pos);
     if (delim == std::string::npos)
       break;
-    user_ = contents.substr(pos, delim - pos);
+    user_ = Username(contents.substr(pos, delim - pos));
 
     pos = delim + 1;
     delim = contents.find("\n", pos);
@@ -223,11 +224,11 @@ bool StatefulRecovery::ParseFlagFile() {
   return false;
 }
 
-bool StatefulRecovery::Mount(const std::string& username,
+bool StatefulRecovery::Mount(const Username& username,
                              const std::string& passkey,
                              FilePath* out_home_path) {
   user_data_auth::MountRequest req;
-  req.mutable_account()->set_account_id(username);
+  req.mutable_account()->set_account_id(*username);
   req.mutable_authorization()->mutable_key()->set_secret(passkey);
 
   user_data_auth::MountReply reply;
@@ -242,7 +243,7 @@ bool StatefulRecovery::Mount(const std::string& username,
     return false;
   }
   LOG(INFO) << "Mount succeeded.";
-  const std::string obfuscated_username =
+  const ObfuscatedUsername obfuscated_username =
       brillo::cryptohome::home::SanitizeUserName(username);
   *out_home_path = GetUserMountDirectory(obfuscated_username);
   return true;

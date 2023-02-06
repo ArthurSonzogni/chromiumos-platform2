@@ -23,6 +23,7 @@
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 
+#include "base/no_destructor.h"
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
 #include "cryptohome/auth_blocks/auth_block_utils.h"
 #include "cryptohome/crypto.h"
@@ -36,6 +37,7 @@
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/file_system_keyset.h"
+#include "cryptohome/username.h"
 #include "cryptohome/vault_keyset_factory.h"
 
 using base::FilePath;
@@ -55,9 +57,13 @@ using cryptohome::cryptorecovery::RequestMetadata;
 using cryptohome::cryptorecovery::ResponsePayload;
 
 namespace cryptohome {
-
 namespace {
-constexpr char kObfuscatedUsername[] = "OBFUSCATED_USERNAME";
+
+const ObfuscatedUsername& GetTestObfuscatedUsername() {
+  base::NoDestructor<ObfuscatedUsername> kValue("OBFUSCATED_USERNAME");
+  return *kValue;
+}
+
 constexpr char kFakeGaiaId[] = "123456789012345678901";
 constexpr char kFakeUserDeviceId[] = "fake_user_device_id";
 
@@ -164,7 +170,7 @@ bool DoRecoveryCryptoCreateHsmPayloadAction(
   cryptorecovery::GenerateHsmPayloadRequest generate_hsm_payload_request(
       {.mediator_pub_key = mediator_pub_key,
        .onboarding_metadata = onboarding_metadata,
-       .obfuscated_username = kObfuscatedUsername});
+       .obfuscated_username = GetTestObfuscatedUsername()});
   cryptorecovery::GenerateHsmPayloadResponse generate_hsm_payload_response;
   if (!recovery_crypto->GenerateHsmPayload(generate_hsm_payload_request,
                                            &generate_hsm_payload_response)) {
@@ -267,7 +273,7 @@ bool DoRecoveryCryptoCreateRecoveryRequestAction(
            .encrypted_rsa_priv_key = rsa_priv_key,
            .encrypted_channel_priv_key = channel_priv_key,
            .channel_pub_key = channel_pub_key,
-           .obfuscated_username = kObfuscatedUsername});
+           .obfuscated_username = GetTestObfuscatedUsername()});
   brillo::SecureBlob ephemeral_pub_key;
   CryptoRecoveryRpcRequest recovery_request;
   if (!recovery_crypto->GenerateRecoveryRequest(
@@ -382,7 +388,7 @@ bool DoRecoveryCryptoDecryptAction(
           {.encrypted_channel_priv_key = channel_priv_key,
            .epoch_response = epoch_response,
            .recovery_response_proto = recovery_response_proto,
-           .obfuscated_username = kObfuscatedUsername}),
+           .obfuscated_username = GetTestObfuscatedUsername()}),
       &response_plain_text);
   if (!decrypt_result.ok()) {
     LOG(ERROR) << "Failed to decrypt response payload "
@@ -399,7 +405,7 @@ bool DoRecoveryCryptoDecryptAction(
                    extended_pcr_bound_destination_share,
                .ephemeral_pub_key = ephemeral_pub_key,
                .mediated_publisher_pub_key = response_plain_text.mediated_point,
-               .obfuscated_username = kObfuscatedUsername}),
+               .obfuscated_username = GetTestObfuscatedUsername()}),
           &mediated_recovery_key)) {
     return false;
   }
@@ -432,7 +438,7 @@ bool DoRecoveryCryptoGetFakeMediatorPublicKeyAction(
 void PersistVaultKeyset(KeysetManagement* keyset_management,
                         const KeyData& key_data,
                         std::unique_ptr<VaultKeyset> old_vault_keyset,
-                        const std::string& obfuscated_username,
+                        const ObfuscatedUsername& obfuscated_username,
                         bool enable_key_data,
                         CryptoStatus callback_error,
                         std::unique_ptr<KeyBlobs> key_blobs,
@@ -508,7 +514,7 @@ void DeriveExistingVaultKeyset(KeysetManagement* keyset_management,
                                const KeyData& key_data,
                                AuthInput& auth_input,
                                std::unique_ptr<VaultKeyset> old_vault_keyset,
-                               const std::string& obfuscated_username,
+                               const ObfuscatedUsername& obfuscated_username,
                                bool enable_key_data,
                                CryptoStatus callback_error,
                                std::unique_ptr<KeyBlobs> key_blobs) {
@@ -548,7 +554,7 @@ void DeriveExistingVaultKeyset(KeysetManagement* keyset_management,
       auth_block_type.value(), auth_input, std::move(create_callback));
 }
 
-bool DoCreateVaultKeyset(const std::string& username,
+bool DoCreateVaultKeyset(const Username& username,
                          const std::string& key_data_label,
                          const std::string& password,
                          bool enable_key_data,
@@ -556,7 +562,7 @@ bool DoCreateVaultKeyset(const std::string& username,
                          Platform* platform) {
   // Initialize all class helper functions for creating and saving a
   // VaultKeyset.
-  const std::string obfuscated_username = SanitizeUserName(username);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(username);
   hwsec::FactoryImpl hwsec_factory;
   auto hwsec = hwsec_factory.GetCryptohomeFrontend();
   auto pinweaver = hwsec_factory.GetPinWeaverFrontend();
@@ -792,8 +798,9 @@ int main(int argc, char* argv[]) {
     if (CheckMandatoryFlag("username", FLAGS_username) &&
         CheckMandatoryFlag("passkey", FLAGS_passkey)) {
       success = cryptohome::DoCreateVaultKeyset(
-          FLAGS_username, FLAGS_key_data_label, FLAGS_passkey,
-          FLAGS_enable_key_data, FLAGS_use_public_mount_salt, &platform);
+          cryptohome::Username(FLAGS_username), FLAGS_key_data_label,
+          FLAGS_passkey, FLAGS_enable_key_data, FLAGS_use_public_mount_salt,
+          &platform);
     }
   } else if (FLAGS_action == "recovery_crypto_create_hsm_payload") {
     if (CheckMandatoryFlag("rsa_priv_key_out_file",

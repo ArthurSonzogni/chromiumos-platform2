@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <string>
+#include "cryptohome/username.h"
 
 #include <biod/biod_proxy/biometrics_manager_proxy_base.h>
 
@@ -42,7 +43,7 @@ class FingerprintManager {
   FingerprintManager();
   virtual ~FingerprintManager();
 
-  const std::string& GetCurrentUser();
+  const ObfuscatedUsername& GetCurrentUser();
 
   // Returns a weak pointer to this instance. Used when creating callbacks.
   base::WeakPtr<FingerprintManager> GetWeakPtr();
@@ -62,14 +63,14 @@ class FingerprintManager {
   // 3. EndAuthSession() is called, e.g. user decides to cancel operation
   //    through UI.
   virtual void StartAuthSessionAsyncForUser(
-      const std::string& user,
+      const ObfuscatedUsername& user,
       StartSessionCallback auth_session_start_client_callback);
 
   // Tells Biometrics Daemon to end fingerprint auth session and resets all
   // states.
   virtual void EndAuthSession();
 
-  virtual bool HasAuthSessionForUser(const std::string& user);
+  virtual bool HasAuthSessionForUser(const ObfuscatedUsername& user);
 
   // Sets the callback for a fingerprint scan. Must be called after
   // StartAuthSessionAsyncForUser. |auth_scan_done_callback| will be
@@ -106,7 +107,7 @@ class FingerprintManager {
       // If auth session is still open, then we are waiting for retry, so keep
       // |current_user_|.
       if (fingerprint_manager_->state_ != State::AUTH_SESSION_OPEN)
-        fingerprint_manager_->current_user_.clear();
+        fingerprint_manager_->current_user_->clear();
     }
 
    private:
@@ -135,7 +136,7 @@ class FingerprintManager {
   // before running the client's callback.
   void SetUserAndRunClientCallback(
       StartSessionCallback auth_session_start_client_callback,
-      const std::string& user,
+      const ObfuscatedUsername& user,
       bool success);
 
   // Calculates the retry count left in the current auth session, and run
@@ -156,8 +157,8 @@ class FingerprintManager {
   ResultCallback auth_scan_done_callback_;
   SignalCallback signal_callback_;
   State state_ = State::NO_AUTH_SESSION;
-  // The obfuscated username tied to the current auth session.
-  std::string current_user_;
+  // The username tied to the current auth session.
+  ObfuscatedUsername current_user_;
   // The number of retries left in the current auth session.
   int retry_left_ = 0;
   base::WeakPtrFactory<FingerprintManager> weak_factory_;

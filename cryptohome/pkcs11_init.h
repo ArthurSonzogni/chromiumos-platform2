@@ -16,6 +16,8 @@
 #include <base/files/file_path.h>
 #include <chaps/pkcs11/cryptoki.h>
 
+#include "cryptohome/username.h"
+
 namespace cryptohome {
 
 class Pkcs11Init {
@@ -29,12 +31,12 @@ class Pkcs11Init {
   virtual void GetTpmTokenInfo(std::string* OUT_label,
                                std::string* OUT_user_pin);
 
-  virtual void GetTpmTokenInfoForUser(const std::string& username,
+  virtual void GetTpmTokenInfoForUser(const Username& username,
                                       std::string* OUT_label,
                                       std::string* OUT_user_pin);
 
   // Returns the same label as GetTpmTokenInfoForUser.
-  virtual std::string GetTpmTokenLabelForUser(const std::string& username);
+  virtual std::string GetTpmTokenLabelForUser(const Username& username);
 
   // Gets the tpm token |slot| for the given |path|.  If no slot is found,
   // returns false.

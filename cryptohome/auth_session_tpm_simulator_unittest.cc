@@ -70,8 +70,6 @@ constexpr AuthFactorStorageType kAllAuthFactorStorageTypes[] = {
     AuthFactorStorageType::kUserSecretStash,
 };
 
-constexpr char kUsername[] = "foo@example.com";
-
 constexpr char kPasswordLabel[] = "fake-password-label";
 constexpr char kPassword[] = "fake-password";
 constexpr char kNewPassword[] = "fake-new-password";
@@ -255,6 +253,8 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
 
     crypto_.Init();
   }
+
+  const Username kUsername{"foo@example.com"};
 
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};

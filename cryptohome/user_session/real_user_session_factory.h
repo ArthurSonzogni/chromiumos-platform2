@@ -27,8 +27,7 @@ class RealUserSessionFactory : public UserSessionFactory {
       KeysetManagement* keyset_management,
       UserOldestActivityTimestampManager* user_activity_timestamp_manager,
       Pkcs11TokenFactory* pkcs11_token_factory)
-      : UserSessionFactory(),
-        mount_factory_(mount_factory),
+      : mount_factory_(mount_factory),
         platform_(platform),
         homedirs_(homedirs),
         keyset_management_(keyset_management),
@@ -37,7 +36,7 @@ class RealUserSessionFactory : public UserSessionFactory {
 
   ~RealUserSessionFactory() override = default;
 
-  std::unique_ptr<UserSession> New(const std::string& username,
+  std::unique_ptr<UserSession> New(const Username& username,
                                    bool legacy_mount,
                                    bool bind_mount_downloads) override {
     return std::make_unique<RealUserSession>(

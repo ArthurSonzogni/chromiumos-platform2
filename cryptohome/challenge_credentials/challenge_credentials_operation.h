@@ -16,6 +16,7 @@
 
 #include "cryptohome/error/cryptohome_tpm_error.h"
 #include "cryptohome/flatbuffer_schemas/structures.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -82,7 +83,7 @@ class ChallengeCredentialsOperation {
   // IPC request to the service that talks to the cryptographic token with the
   // challenged key.
   void MakeKeySignatureChallenge(
-      const std::string& account_id,
+      const Username& account_id,
       const brillo::Blob& public_key_spki_der,
       const brillo::Blob& data_to_sign,
       structure::ChallengeSignatureAlgorithm signature_algorithm,

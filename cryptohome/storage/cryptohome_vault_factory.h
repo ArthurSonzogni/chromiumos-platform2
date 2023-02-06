@@ -16,6 +16,7 @@
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container_factory.h"
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -28,7 +29,7 @@ class CryptohomeVaultFactory {
   virtual ~CryptohomeVaultFactory();
 
   virtual std::unique_ptr<CryptohomeVault> Generate(
-      const std::string& obfuscated_username,
+      const ObfuscatedUsername& obfuscated_username,
       const FileSystemKeyReference& key_reference,
       EncryptedContainerType vault_type,
       bool keylocker_enabled = false);
@@ -52,7 +53,7 @@ class CryptohomeVaultFactory {
 
   virtual std::unique_ptr<EncryptedContainer> GenerateEncryptedContainer(
       EncryptedContainerType type,
-      const std::string& obfuscated_username,
+      const ObfuscatedUsername& obfuscated_username,
       const FileSystemKeyReference& key_reference,
       const std::string& container_identifier,
       const DmOptions& dm_options);

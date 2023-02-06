@@ -97,9 +97,9 @@ Mount::~Mount() {
     UnmountCryptohome();
 }
 
-StorageStatus Mount::MountEphemeralCryptohome(const std::string& username) {
+StorageStatus Mount::MountEphemeralCryptohome(const Username& username) {
   username_ = username;
-  std::string obfuscated_username = SanitizeUserName(username_);
+  ObfuscatedUsername obfuscated_username = SanitizeUserName(username_);
 
   absl::Cleanup unmount_on_exit = [this]() { UnmountCryptohome(); };
 
@@ -129,11 +129,11 @@ StorageStatus Mount::MountEphemeralCryptohome(const std::string& username) {
 }
 
 StorageStatus Mount::MountCryptohome(
-    const std::string& username,
+    const Username& username,
     const FileSystemKeyset& file_system_keyset,
     const CryptohomeVault::Options& vault_options) {
   username_ = username;
-  std::string obfuscated_username = SanitizeUserName(username_);
+  ObfuscatedUsername obfuscated_username = SanitizeUserName(username_);
 
   ASSIGN_OR_RETURN(EncryptedContainerType vault_type,
                    homedirs_->PickVaultType(obfuscated_username, vault_options),
@@ -329,7 +329,7 @@ bool Mount::MigrateEncryption(const MigrationCallback& callback,
 bool Mount::MigrateFromEcryptfs(
     const MigrationHelper::ProgressCallback& callback,
     MigrationType migration_type) {
-  std::string obfuscated_username = SanitizeUserName(username_);
+  ObfuscatedUsername obfuscated_username = SanitizeUserName(username_);
   FilePath source = GetUserTemporaryMountDirectory(obfuscated_username);
   FilePath destination = GetUserMountDirectory(obfuscated_username);
   FilePath status_files_dir = UserPath(obfuscated_username);
@@ -358,7 +358,7 @@ bool Mount::MigrateFromEcryptfs(
 bool Mount::MigrateFromDircrypto(
     const MigrationHelper::ProgressCallback& callback,
     MigrationType migration_type) {
-  std::string obfuscated_username = SanitizeUserName(username_);
+  ObfuscatedUsername obfuscated_username = SanitizeUserName(username_);
   FilePath source = GetUserMountDirectory(obfuscated_username);
   FilePath destination = GetUserTemporaryMountDirectory(obfuscated_username);
   FilePath status_files_dir = UserPath(obfuscated_username);

@@ -95,7 +95,7 @@ class DiskCleanup {
   // available during login.
   // If the available disk space is below critical_cleanup_threshold_, attempts
   // to free space until it goes up to normal_cleanup_threshold_.
-  virtual bool FreeDiskSpaceDuringLogin(const std::string& logging_in);
+  virtual bool FreeDiskSpaceDuringLogin(const ObfuscatedUsername& logging_in);
 
   // Setters for cleanup thresholds.
   virtual void set_cleanup_threshold(uint64_t cleanup_threshold) {
@@ -122,7 +122,7 @@ class DiskCleanup {
   bool FreeDiskSpaceInternal();
 
   // Actually performs disk cleanup. Called by FreeDiskSpaceDuringLogin.
-  bool FreeDiskSpaceDuringLoginInternal(const std::string& obfuscated);
+  bool FreeDiskSpaceDuringLoginInternal(const ObfuscatedUsername& obfuscated);
 
   // Removes all mounted homedirs from the vector
   void FilterMountedHomedirs(std::vector<HomeDirs::HomeDir>* homedirs);

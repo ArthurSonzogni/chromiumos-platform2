@@ -27,6 +27,9 @@ using testing::Return;
 
 // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
 TEST(UserOldestActivityTimestampManager, Legacy) {
+  const ObfuscatedUsername kUserB("b");
+  const ObfuscatedUsername kUserC("c");
+
   base::Time time_feb1;
   CHECK(base::Time::FromUTCExploded(feb1st2011_exploded, &time_feb1));
   base::Time time_mar1;
@@ -37,75 +40,78 @@ TEST(UserOldestActivityTimestampManager, Legacy) {
   NiceMock<MockPlatform> mock_platform;
   EXPECT_CALL(mock_platform, GetCurrentTime()).WillOnce(Return(time_mar1));
 
-  ASSERT_TRUE(
-      mock_platform.CreateDirectory(UserActivityTimestampPath("b").DirName()));
-  ASSERT_TRUE(
-      mock_platform.CreateDirectory(UserActivityTimestampPath("c").DirName()));
+  ASSERT_TRUE(mock_platform.CreateDirectory(
+      UserActivityTimestampPath(kUserB).DirName()));
+  ASSERT_TRUE(mock_platform.CreateDirectory(
+      UserActivityTimestampPath(kUserC).DirName()));
 
   {
     UserOldestActivityTimestampManager manager(&mock_platform);
 
-    manager.LoadTimestamp("b");
-    manager.LoadTimestamp("c");
+    manager.LoadTimestamp(kUserB);
+    manager.LoadTimestamp(kUserC);
 
     // No values yet.
-    EXPECT_THAT(manager.GetLastUserActivityTimestamp("b"), Eq(base::Time()));
-    EXPECT_THAT(manager.GetLastUserActivityTimestamp("c"), Eq(base::Time()));
+    EXPECT_THAT(manager.GetLastUserActivityTimestamp(kUserB), Eq(base::Time()));
+    EXPECT_THAT(manager.GetLastUserActivityTimestamp(kUserC), Eq(base::Time()));
 
-    manager.UpdateTimestamp("b", base::TimeDelta());
+    manager.UpdateTimestamp(kUserB, base::TimeDelta());
 
     // One set value.
-    EXPECT_THAT(manager.GetLastUserActivityTimestamp("b"), Eq(time_mar1));
-    EXPECT_THAT(manager.GetLastUserActivityTimestamp("c"), Eq(base::Time()));
+    EXPECT_THAT(manager.GetLastUserActivityTimestamp(kUserB), Eq(time_mar1));
+    EXPECT_THAT(manager.GetLastUserActivityTimestamp(kUserC), Eq(base::Time()));
   }
 
   {
     UserOldestActivityTimestampManager manager(&mock_platform);
 
-    manager.LoadTimestampWithLegacy("b", time_feb1);
-    manager.LoadTimestampWithLegacy("c", time_feb1);
+    manager.LoadTimestampWithLegacy(kUserB, time_feb1);
+    manager.LoadTimestampWithLegacy(kUserC, time_feb1);
 
     // 'b' has a newer value than legacy and thus should ignroe the legacy.
     // 'c' has no value and should get legacy.
-    EXPECT_THAT(manager.GetLastUserActivityTimestamp("b"), Eq(time_mar1));
-    EXPECT_THAT(manager.GetLastUserActivityTimestamp("c"), Eq(time_feb1));
+    EXPECT_THAT(manager.GetLastUserActivityTimestamp(kUserB), Eq(time_mar1));
+    EXPECT_THAT(manager.GetLastUserActivityTimestamp(kUserC), Eq(time_feb1));
   }
 
   {
     UserOldestActivityTimestampManager manager(&mock_platform);
 
-    manager.LoadTimestamp("b");
-    manager.LoadTimestamp("c");
+    manager.LoadTimestamp(kUserB);
+    manager.LoadTimestamp(kUserC);
 
     // Test the values are preserved.
-    EXPECT_THAT(manager.GetLastUserActivityTimestamp("b"), Eq(time_mar1));
-    EXPECT_THAT(manager.GetLastUserActivityTimestamp("c"), Eq(time_feb1));
+    EXPECT_THAT(manager.GetLastUserActivityTimestamp(kUserB), Eq(time_mar1));
+    EXPECT_THAT(manager.GetLastUserActivityTimestamp(kUserC), Eq(time_feb1));
   }
 
   {
     UserOldestActivityTimestampManager manager(&mock_platform);
 
-    manager.LoadTimestampWithLegacy("b", time_apr1);
-    manager.LoadTimestampWithLegacy("c", time_apr1);
+    manager.LoadTimestampWithLegacy(kUserB, time_apr1);
+    manager.LoadTimestampWithLegacy(kUserC, time_apr1);
 
     // Both 'b' and 'c' are older than legacy, thus should take it.
-    EXPECT_THAT(manager.GetLastUserActivityTimestamp("b"), Eq(time_apr1));
-    EXPECT_THAT(manager.GetLastUserActivityTimestamp("c"), Eq(time_apr1));
+    EXPECT_THAT(manager.GetLastUserActivityTimestamp(kUserB), Eq(time_apr1));
+    EXPECT_THAT(manager.GetLastUserActivityTimestamp(kUserC), Eq(time_apr1));
   }
 
   {
     UserOldestActivityTimestampManager manager(&mock_platform);
 
-    manager.LoadTimestamp("b");
-    manager.LoadTimestamp("c");
+    manager.LoadTimestamp(kUserB);
+    manager.LoadTimestamp(kUserC);
 
     // Test the values are preserved.
-    EXPECT_THAT(manager.GetLastUserActivityTimestamp("b"), Eq(time_apr1));
-    EXPECT_THAT(manager.GetLastUserActivityTimestamp("c"), Eq(time_apr1));
+    EXPECT_THAT(manager.GetLastUserActivityTimestamp(kUserB), Eq(time_apr1));
+    EXPECT_THAT(manager.GetLastUserActivityTimestamp(kUserC), Eq(time_apr1));
   }
 }
 
 TEST(UserOldestActivityTimestampManager, Regular) {
+  const ObfuscatedUsername kUserB("b");
+  const ObfuscatedUsername kUserC("c");
+
   base::Time time_feb1;
   CHECK(base::Time::FromUTCExploded(feb1st2011_exploded, &time_feb1));
   base::Time time_mar1;
@@ -119,48 +125,48 @@ TEST(UserOldestActivityTimestampManager, Regular) {
       .WillOnce(Return(time_mar1))
       .WillOnce(Return(time_apr1));
 
-  ASSERT_TRUE(
-      mock_platform.CreateDirectory(UserActivityTimestampPath("b").DirName()));
-  ASSERT_TRUE(
-      mock_platform.CreateDirectory(UserActivityTimestampPath("c").DirName()));
+  ASSERT_TRUE(mock_platform.CreateDirectory(
+      UserActivityTimestampPath(kUserB).DirName()));
+  ASSERT_TRUE(mock_platform.CreateDirectory(
+      UserActivityTimestampPath(kUserC).DirName()));
 
   {
     UserOldestActivityTimestampManager manager(&mock_platform);
 
-    manager.LoadTimestamp("b");
-    manager.LoadTimestamp("c");
+    manager.LoadTimestamp(kUserB);
+    manager.LoadTimestamp(kUserC);
 
     // No values yet.
-    EXPECT_THAT(manager.GetLastUserActivityTimestamp("b"), Eq(base::Time()));
-    EXPECT_THAT(manager.GetLastUserActivityTimestamp("c"), Eq(base::Time()));
+    EXPECT_THAT(manager.GetLastUserActivityTimestamp(kUserB), Eq(base::Time()));
+    EXPECT_THAT(manager.GetLastUserActivityTimestamp(kUserC), Eq(base::Time()));
   }
 
   {
     UserOldestActivityTimestampManager manager(&mock_platform);
 
-    manager.UpdateTimestamp("b", base::TimeDelta());
-    manager.UpdateTimestamp("c", base::TimeDelta());
+    manager.UpdateTimestamp(kUserB, base::TimeDelta());
+    manager.UpdateTimestamp(kUserC, base::TimeDelta());
 
     // Values are set.
-    EXPECT_THAT(manager.GetLastUserActivityTimestamp("b"), Eq(time_feb1));
-    EXPECT_THAT(manager.GetLastUserActivityTimestamp("c"), Eq(time_mar1));
+    EXPECT_THAT(manager.GetLastUserActivityTimestamp(kUserB), Eq(time_feb1));
+    EXPECT_THAT(manager.GetLastUserActivityTimestamp(kUserC), Eq(time_mar1));
   }
 
   {
     UserOldestActivityTimestampManager manager(&mock_platform);
 
-    manager.LoadTimestamp("b");
-    manager.LoadTimestamp("c");
+    manager.LoadTimestamp(kUserB);
+    manager.LoadTimestamp(kUserC);
 
     // Test the values are preserved.
-    EXPECT_THAT(manager.GetLastUserActivityTimestamp("b"), Eq(time_feb1));
-    EXPECT_THAT(manager.GetLastUserActivityTimestamp("c"), Eq(time_mar1));
+    EXPECT_THAT(manager.GetLastUserActivityTimestamp(kUserB), Eq(time_feb1));
+    EXPECT_THAT(manager.GetLastUserActivityTimestamp(kUserC), Eq(time_mar1));
 
-    manager.UpdateTimestamp("b", base::TimeDelta());
+    manager.UpdateTimestamp(kUserB, base::TimeDelta());
 
     // One value is updated.
-    EXPECT_THAT(manager.GetLastUserActivityTimestamp("b"), Eq(time_apr1));
-    EXPECT_THAT(manager.GetLastUserActivityTimestamp("c"), Eq(time_mar1));
+    EXPECT_THAT(manager.GetLastUserActivityTimestamp(kUserB), Eq(time_apr1));
+    EXPECT_THAT(manager.GetLastUserActivityTimestamp(kUserC), Eq(time_mar1));
   }
 }
 

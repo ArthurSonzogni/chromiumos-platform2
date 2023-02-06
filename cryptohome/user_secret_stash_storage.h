@@ -12,6 +12,7 @@
 
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/platform.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -28,12 +29,12 @@ class UserSecretStashStorage final {
   // `UserSecretStash::GetEncryptedContainer()`, in the given user's directory
   // in the shadow root. Returns a status on failure.
   CryptohomeStatus Persist(const brillo::Blob& uss_container_flatbuffer,
-                           const std::string& obfuscated_username);
+                           const ObfuscatedUsername& obfuscated_username);
   // Loads the serialized USS container flatbuffer (to be used with
   // `UserSecretStash::FromEncryptedContainer()`) from the given user's
   // directory in the shadow root. Returns nullopt on failure.
   CryptohomeStatusOr<brillo::Blob> LoadPersisted(
-      const std::string& obfuscated_username) const;
+      const ObfuscatedUsername& obfuscated_username) const;
 
  private:
   Platform* const platform_;

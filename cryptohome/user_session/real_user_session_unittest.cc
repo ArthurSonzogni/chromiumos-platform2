@@ -112,27 +112,27 @@ class RealUserSessionTest : public ::testing::Test {
 
     PrepareDirectoryStructure();
 
-    homedirs_->Create(kUser0);
+    homedirs_->Create(Username(kUser0));
     users_[0].user_fs_keyset = FileSystemKeyset::CreateRandom();
 
     mount_ = new NiceMock<MockMount>();
 
     ON_CALL(pkcs11_token_factory_, New(_, _, _))
-        .WillByDefault(Invoke([](const std::string& username,
-                                 const base::FilePath& token_dir,
-                                 const brillo::SecureBlob& auth_data) {
-          return std::make_unique<FakePkcs11Token>();
-        }));
+        .WillByDefault(
+            Invoke([](const Username& username, const base::FilePath& token_dir,
+                      const brillo::SecureBlob& auth_data) {
+              return std::make_unique<FakePkcs11Token>();
+            }));
 
     session_ = std::make_unique<RealUserSession>(
-        kUser0, homedirs_.get(), keyset_management_.get(),
+        Username(kUser0), homedirs_.get(), keyset_management_.get(),
         user_activity_timestamp_manager_.get(), &pkcs11_token_factory_, mount_);
   }
 
  protected:
   struct UserInfo {
-    std::string name;
-    std::string obfuscated;
+    Username name;
+    ObfuscatedUsername obfuscated;
     brillo::SecureBlob passkey;
     Credentials credentials;
     base::FilePath homedir_path;
@@ -161,11 +161,13 @@ class RealUserSessionTest : public ::testing::Test {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 
   void AddUser(const char* name, const char* password) {
-    std::string obfuscated = brillo::cryptohome::home::SanitizeUserName(name);
+    Username username(name);
+    ObfuscatedUsername obfuscated =
+        brillo::cryptohome::home::SanitizeUserName(username);
     brillo::SecureBlob passkey(password);
-    Credentials credentials(name, passkey);
+    Credentials credentials(username, passkey);
 
-    UserInfo info = {name,
+    UserInfo info = {username,
                      obfuscated,
                      passkey,
                      credentials,
@@ -304,7 +306,7 @@ TEST_F(RealUserSessionTest, EphemeralMountPolicyTest) {
     std::string name;
     bool is_enterprise;
     std::string owner;
-    std::string user;
+    Username user;
     bool ok;
     MountError expected_result;
   };
@@ -314,7 +316,7 @@ TEST_F(RealUserSessionTest, EphemeralMountPolicyTest) {
           .name = "NotEnterprise_NoOwner_UserLogin_OK",
           .is_enterprise = false,
           .owner = "",
-          .user = "some_user",
+          .user = Username("some_user"),
           .ok = false,
           .expected_result = MOUNT_ERROR_EPHEMERAL_MOUNT_BY_OWNER,
       },
@@ -322,14 +324,14 @@ TEST_F(RealUserSessionTest, EphemeralMountPolicyTest) {
           .name = "NotEnterprise_Owner_UserLogin_OK",
           .is_enterprise = false,
           .owner = "owner",
-          .user = "some_user",
+          .user = Username("some_user"),
           .ok = true,
       },
       {
           .name = "NotEnterprise_Owner_OwnerLogin_Error",
           .is_enterprise = false,
           .owner = "owner",
-          .user = "owner",
+          .user = Username("owner"),
           .ok = false,
           .expected_result = MOUNT_ERROR_EPHEMERAL_MOUNT_BY_OWNER,
       },
@@ -337,21 +339,21 @@ TEST_F(RealUserSessionTest, EphemeralMountPolicyTest) {
           .name = "Enterprise_NoOwner_UserLogin_OK",
           .is_enterprise = true,
           .owner = "",
-          .user = "some_user",
+          .user = Username("some_user"),
           .ok = true,
       },
       {
           .name = "Enterprise_Owner_UserLogin_OK",
           .is_enterprise = true,
           .owner = "owner",
-          .user = "some_user",
+          .user = Username("some_user"),
           .ok = true,
       },
       {
           .name = "Enterprise_Owner_OwnerLogin_OK",
           .is_enterprise = true,
           .owner = "owner",
-          .user = "owner",
+          .user = Username("owner"),
           .ok = true,
       },
   };
@@ -467,24 +469,24 @@ class RealUserSessionReAuthTest : public ::testing::Test {
 };
 
 TEST_F(RealUserSessionReAuthTest, VerifyUser) {
-  Credentials credentials("username", SecureBlob("password"));
-  RealUserSession session("username", nullptr, nullptr, nullptr, nullptr,
-                          nullptr);
+  Credentials credentials(Username("username"), SecureBlob("password"));
+  RealUserSession session(Username("username"), nullptr, nullptr, nullptr,
+                          nullptr, nullptr);
   session.AddCredentials(credentials);
 
   EXPECT_TRUE(session.VerifyUser(credentials.GetObfuscatedUsername()));
-  EXPECT_FALSE(session.VerifyUser("other"));
+  EXPECT_FALSE(session.VerifyUser(ObfuscatedUsername("other")));
 }
 
 TEST_F(RealUserSessionReAuthTest, VerifyCredentials) {
   KeyData key_data;
   key_data.set_label("password");
 
-  Credentials credentials_1("username", SecureBlob("password"));
+  Credentials credentials_1(Username("username"), SecureBlob("password"));
   credentials_1.set_key_data(key_data);
-  Credentials credentials_2("username", SecureBlob("password2"));
+  Credentials credentials_2(Username("username"), SecureBlob("password2"));
   credentials_2.set_key_data(key_data);
-  Credentials credentials_3("username2", SecureBlob("password2"));
+  Credentials credentials_3(Username("username2"), SecureBlob("password2"));
   credentials_3.set_key_data(key_data);
 
   {
@@ -516,12 +518,12 @@ TEST_F(RealUserSessionReAuthTest, VerifyCredentials) {
 }
 
 TEST_F(RealUserSessionReAuthTest, RemoveCredentials) {
-  Credentials credentials_1("username", SecureBlob("password"));
+  Credentials credentials_1(Username("username"), SecureBlob("password"));
   KeyData key_data1;
   key_data1.set_label("password1");
   credentials_1.set_key_data(key_data1);
 
-  Credentials credentials_2("username", SecureBlob("password2"));
+  Credentials credentials_2(Username("username"), SecureBlob("password2"));
   KeyData key_data2;
   key_data1.set_label("password2");
   credentials_2.set_key_data(key_data2);
@@ -551,8 +553,8 @@ TEST_F(RealUserSessionReAuthTest, AddAndRemoveCredentialVerifiers) {
   auto [verifier2, ptr2] = MakeTestVerifier("b2");
   auto [verifier3, ptr3] = MakeTestVerifier("c3");
 
-  RealUserSession session("username", nullptr, nullptr, nullptr, nullptr,
-                          nullptr);
+  RealUserSession session(Username("username"), nullptr, nullptr, nullptr,
+                          nullptr, nullptr);
 
   // The session should start without verifiers.
   EXPECT_THAT(session.GetCredentialVerifiers(), IsEmpty());
@@ -589,8 +591,8 @@ TEST_F(RealUserSessionReAuthTest, AddAndRemoveLabellessCredentialVerifiers) {
   auto [verifier2, ptr2] = MakeTestVerifier("b2");
   auto [verifier3, ptr3] = MakeTestVerifier("");  // label-less
 
-  RealUserSession session("username", nullptr, nullptr, nullptr, nullptr,
-                          nullptr);
+  RealUserSession session(Username("username"), nullptr, nullptr, nullptr,
+                          nullptr, nullptr);
 
   // The session should start without verifiers.
   EXPECT_THAT(session.GetCredentialVerifiers(), IsEmpty());

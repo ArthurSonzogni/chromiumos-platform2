@@ -37,7 +37,7 @@ UserSecretStashStorage::~UserSecretStashStorage() = default;
 
 CryptohomeStatus UserSecretStashStorage::Persist(
     const brillo::Blob& uss_container_flatbuffer,
-    const std::string& obfuscated_username) {
+    const ObfuscatedUsername& obfuscated_username) {
   // TODO(b:232299885): Write to the next available slot, and clean up old slots
   // when necessary.
   const base::FilePath path =
@@ -61,7 +61,7 @@ CryptohomeStatus UserSecretStashStorage::Persist(
 }
 
 CryptohomeStatusOr<brillo::Blob> UserSecretStashStorage::LoadPersisted(
-    const std::string& obfuscated_username) const {
+    const ObfuscatedUsername& obfuscated_username) const {
   // TODO(b:232299885): Read from the latest available slot.
   const base::FilePath path =
       UserSecretStashPath(obfuscated_username, kUserSecretStashDefaultSlot);

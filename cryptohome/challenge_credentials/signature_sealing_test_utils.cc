@@ -59,14 +59,14 @@ void SignatureSealedCreationMocker::SetUpSuccessfulMock() {
   const hwsec::SignatureSealedData sealed_data_to_return =
       MakeFakeSignatureSealedData(public_key_spki_der_);
   EXPECT_CALL(*mock_hwsec_, SealWithSignatureAndCurrentUser(
-                                obfuscated_username_, secret_value_,
+                                *obfuscated_username_, secret_value_,
                                 public_key_spki_der_, key_algorithms_))
       .WillOnce(ReturnValue(sealed_data_to_return));
 }
 
 void SignatureSealedCreationMocker::SetUpFailingMock() {
   EXPECT_CALL(*mock_hwsec_, SealWithSignatureAndCurrentUser(
-                                obfuscated_username_, secret_value_,
+                                *obfuscated_username_, secret_value_,
                                 public_key_spki_der_, key_algorithms_))
       .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 }

@@ -109,11 +109,11 @@ void ReplyWithStatus(base::OnceCallback<void(const ReplyType&)> on_done,
 }
 
 // Get the Account ID for an AccountIdentifier proto.
-const std::string& GetAccountId(const AccountIdentifier& id) {
+Username GetAccountId(const AccountIdentifier& id) {
   if (id.has_account_id()) {
-    return id.account_id();
+    return Username(id.account_id());
   }
-  return id.email();
+  return Username(id.email());
 }
 
 // Whether the key can be used for lightweight challenge-response authentication
@@ -783,14 +783,13 @@ bool UserDataAuth::PostTaskToMountThread(const base::Location& from_here,
   return mount_task_runner_->PostDelayedTask(from_here, std::move(task), delay);
 }
 
-bool UserDataAuth::IsMounted(const std::string& username,
-                             bool* is_ephemeral_out) {
+bool UserDataAuth::IsMounted(const Username& username, bool* is_ephemeral_out) {
   // Note: This can only run in mount_thread_
   AssertOnMountThread();
 
   bool is_mounted = false;
   bool is_ephemeral = false;
-  if (username.empty()) {
+  if (username->empty()) {
     // No username is specified, so we consider "the cryptohome" to be mounted
     // if any existing cryptohome is mounted.
     for (const auto& [unused, session] : *sessions_) {
@@ -1308,7 +1307,7 @@ void UserDataAuth::InitializeInstallAttributes() {
 }
 
 CryptohomeStatusOr<bool> UserDataAuth::GetShouldMountAsEphemeral(
-    const std::string& account_id,
+    const Username& account_id,
     bool is_ephemeral_mount_requested,
     bool has_create_request) const {
   AssertOnMountThread();
@@ -1379,7 +1378,7 @@ void UserDataAuth::BlockPkEstablishment() {
   }
 }
 
-UserSession* UserDataAuth::GetOrCreateUserSession(const std::string& username) {
+UserSession* UserDataAuth::GetOrCreateUserSession(const Username& username) {
   // This method touches the |sessions_| object so it needs to run on
   // |mount_thread_|
   AssertOnMountThread();
@@ -1401,7 +1400,7 @@ UserSession* UserDataAuth::GetOrCreateUserSession(const std::string& username) {
   return session;
 }
 
-void UserDataAuth::RemoveInactiveUserSession(const std::string& username) {
+void UserDataAuth::RemoveInactiveUserSession(const Username& username) {
   AssertOnMountThread();
 
   UserSession* session = sessions_->Find(username);
@@ -1426,7 +1425,7 @@ void UserDataAuth::MountGuest(
   bool ok = RemoveAllMounts();
   user_data_auth::MountReply reply;
   // Provide an authoritative filesystem-sanitized username.
-  reply.set_sanitized_username(SanitizeUserName(guest_user_));
+  reply.set_sanitized_username(*SanitizeUserName(guest_user_));
   if (!ok) {
     LOG(ERROR) << "Could not unmount cryptohomes for Guest use";
     ReplyWithError(
@@ -1504,7 +1503,7 @@ void UserDataAuth::DoMount(
   // At present, we only enforce non-empty email addresses.
   // In the future, we may wish to canonicalize if we don't move
   // to requiring a IdP-unique identifier.
-  const std::string& account_id = GetAccountId(request.account());
+  Username account_id = GetAccountId(request.account());
 
   // AuthSession associated with this request's auth_session_id. Can be empty
   // in case auth_session_id is not supplied.
@@ -1535,7 +1534,7 @@ void UserDataAuth::DoMount(
 
   CryptohomeStatus auth_session_status = auth_session.AuthSessionStatus();
   // Check for empty account ID
-  if (account_id.empty() && !auth_session_status.ok()) {
+  if (account_id->empty() && !auth_session_status.ok()) {
     LOG(ERROR) << "No email supplied";
     ReplyWithError(std::move(on_done), reply,
                    MakeStatus<CryptohomeError>(
@@ -1761,8 +1760,8 @@ void UserDataAuth::DoChallengeResponseMount(
     return;
   }
 
-  const std::string& account_id = GetAccountId(request.account());
-  const std::string obfuscated_username = SanitizeUserName(account_id);
+  Username account_id = GetAccountId(request.account());
+  ObfuscatedUsername obfuscated_username = SanitizeUserName(account_id);
   const KeyData key_data = request.authorization().key().data();
 
   if (!key_data.challenge_response_key_size()) {
@@ -1921,7 +1920,7 @@ void UserDataAuth::OnChallengeResponseMountCredentialsObtained(
   std::unique_ptr<structure::SignatureChallengeInfo> signature_challenge_info =
       result_val.info();
 
-  const std::string& account_id = GetAccountId(request.account());
+  Username account_id = GetAccountId(request.account());
   auto credentials = std::make_unique<Credentials>(account_id, *passkey);
   credentials->set_key_data(request.authorization().key().data());
 
@@ -1951,7 +1950,7 @@ void UserDataAuth::ContinueMountWithCredentials(
 
   // Setup a reply for use during error handling.
   user_data_auth::MountReply reply;
-  std::string obfuscated_username = credentials->GetObfuscatedUsername();
+  ObfuscatedUsername obfuscated_username = credentials->GetObfuscatedUsername();
   // This is safe even if cryptohomed restarts during a multi-mount
   // session and a new mount is added because cleanup is not forced.
   // An existing process will keep the mount alive.  On the next
@@ -1984,18 +1983,18 @@ void UserDataAuth::ContinueMountWithCredentials(
     return;
   }
 
-  std::string account_id = auth_session.AuthSessionStatus().ok()
-                               ? auth_session->username()
-                               : GetAccountId(request.account());
+  Username account_id = auth_session.AuthSessionStatus().ok()
+                            ? auth_session->username()
+                            : GetAccountId(request.account());
   // Provide an authoritative filesystem-sanitized username.
   reply.set_sanitized_username(
-      brillo::cryptohome::home::SanitizeUserName(account_id));
+      *brillo::cryptohome::home::SanitizeUserName(account_id));
 
   // Check if the guest user is mounted, if it is, we can't proceed.
   UserSession* const guest_session = sessions_->Find(guest_user_);
   bool guest_mounted = guest_session && guest_session->IsActive();
   // TODO(wad,ellyjones) Change this behavior to return failure even
-  // on a succesful unmount to tell chrome MOUNT_ERROR_NEEDS_RESTART.
+  // on a successful unmount to tell chrome MOUNT_ERROR_NEEDS_RESTART.
   if (guest_mounted && !guest_session->Unmount()) {
     LOG(ERROR) << "Could not unmount cryptohome from Guest session";
     ReplyWithError(
@@ -2033,7 +2032,7 @@ void UserDataAuth::ContinueMountWithCredentials(
       !only_self_unmounted_attempt) {
     LOG(ERROR) << "Public mount requested with other sessions active.";
     if (!request.auth_session_id().empty()) {
-      std::string obfuscated = SanitizeUserName(account_id);
+      ObfuscatedUsername obfuscated = SanitizeUserName(account_id);
       if (!homedirs_->Remove(obfuscated)) {
         LOG(ERROR) << "Failed to remove vault for kiosk user.";
       }
@@ -2175,14 +2174,14 @@ void UserDataAuth::ContinueMountWithCredentials(
   InitializePkcs11(user_session);
 
   // Step to record metrics for a user's existing VaultKeysets.
-  std::string obfuscated = SanitizeUserName(account_id);
+  ObfuscatedUsername obfuscated = SanitizeUserName(account_id);
   keyset_management_->RecordAllVaultKeysetMetrics(obfuscated);
 }
 
 MountStatusOr<std::unique_ptr<VaultKeyset>> UserDataAuth::LoadVaultKeyset(
     const Credentials& credentials, bool is_new_user) {
   AuthBlockState out_state;
-  std::string obfuscated_username = credentials.GetObfuscatedUsername();
+  ObfuscatedUsername obfuscated_username = credentials.GetObfuscatedUsername();
 
   // 1. Handle initial user case.
   if (is_new_user) {
@@ -2336,7 +2335,7 @@ MountStatus UserDataAuth::AttemptUserMount(
         .Wrap(std::move(err));
   }
 
-  const std::string obfuscated_username = credentials.GetObfuscatedUsername();
+  ObfuscatedUsername obfuscated_username = credentials.GetObfuscatedUsername();
   bool created = false;
   auto exists_or = homedirs_->CryptohomeExists(obfuscated_username);
 
@@ -2464,8 +2463,8 @@ void UserDataAuth::CheckKey(
     return;
   }
 
-  std::string account_id = GetAccountId(request.account_id());
-  if (account_id.empty()) {
+  Username account_id = GetAccountId(request.account_id());
+  if (account_id->empty()) {
     LOG(ERROR) << "CheckKeyRequest must have valid account_id.";
     std::move(on_done).Run(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
     return;
@@ -2515,7 +2514,8 @@ void UserDataAuth::CheckKey(
   Credentials credentials(account_id, SecureBlob(auth_secret));
   credentials.set_key_data(request.authorization_request().key().data());
 
-  const std::string obfuscated_username = credentials.GetObfuscatedUsername();
+  const ObfuscatedUsername obfuscated_username =
+      credentials.GetObfuscatedUsername();
 
   bool found_valid_credentials = false;
   UserSession* const session = sessions_->Find(account_id);
@@ -2597,7 +2597,7 @@ void UserDataAuth::CheckKey(
   return;
 }
 
-bool UserDataAuth::PrepareWebAuthnSecret(const std::string& account_id,
+bool UserDataAuth::PrepareWebAuthnSecret(const Username& account_id,
                                          const VaultKeyset& vk) {
   UserSession* const session = sessions_->Find(account_id);
   if (!session) {
@@ -2677,8 +2677,8 @@ void UserDataAuth::TryLightweightChallengeResponseCheckKey(
             KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
   DCHECK(challenge_credentials_helper_);
 
-  const std::string& account_id = GetAccountId(identifier);
-  const std::string obfuscated_username = SanitizeUserName(account_id);
+  const Username account_id = GetAccountId(identifier);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(account_id);
 
   std::optional<KeyData> found_session_key_data;
   for (const auto& [unused, session] : *sessions_) {
@@ -2780,8 +2780,8 @@ void UserDataAuth::DoFullChallengeResponseCheckKey(
             KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
   DCHECK(challenge_credentials_helper_);
 
-  const std::string& account_id = GetAccountId(identifier);
-  const std::string obfuscated_username = SanitizeUserName(account_id);
+  const Username account_id = GetAccountId(identifier);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(account_id);
 
   // KeyChallengeService is tasked with contacting the challenge response D-Bus
   // service that'll provide the response once we send the challenge.
@@ -2850,7 +2850,7 @@ void UserDataAuth::OnFullChallengeResponseCheckKeyDone(
 
   const auto& authorization = request.authorization_request();
   const auto& identifier = request.account_id();
-  const std::string& account_id = GetAccountId(identifier);
+  const Username account_id = GetAccountId(identifier);
 
   auto credentials = std::make_unique<Credentials>(account_id, *passkey);
   credentials->set_key_data(authorization.key().data());
@@ -2878,8 +2878,8 @@ user_data_auth::ListKeysReply UserDataAuth::ListKeys(
     return reply;
   }
 
-  const std::string& account_id = GetAccountId(request.account_id());
-  if (account_id.empty()) {
+  const Username account_id = GetAccountId(request.account_id());
+  if (account_id->empty()) {
     // ListKeysRequest must have valid account_id.
     PopulateReplyWithError(
         MakeStatus<CryptohomeError>(
@@ -2890,7 +2890,7 @@ user_data_auth::ListKeysReply UserDataAuth::ListKeys(
     return reply;
   }
 
-  const std::string obfuscated_username = SanitizeUserName(account_id);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(account_id);
   if (!homedirs_->Exists(obfuscated_username)) {
     PopulateReplyWithError(
         MakeStatus<CryptohomeError>(
@@ -2945,10 +2945,10 @@ user_data_auth::RemoveReply UserDataAuth::Remove(
     }
   }
 
-  std::string account_id = auth_session.AuthSessionStatus().ok()
-                               ? auth_session->username()
-                               : GetAccountId(request.identifier());
-  if (account_id.empty()) {
+  Username account_id = auth_session.AuthSessionStatus().ok()
+                            ? auth_session->username()
+                            : GetAccountId(request.identifier());
+  if (account_id->empty()) {
     // RemoveRequest must have valid account_id.
     PopulateReplyWithError(
         MakeStatus<CryptohomeError>(
@@ -2961,7 +2961,7 @@ user_data_auth::RemoveReply UserDataAuth::Remove(
     return reply;
   }
 
-  std::string obfuscated = SanitizeUserName(account_id);
+  ObfuscatedUsername obfuscated = SanitizeUserName(account_id);
 
   const UserSession* const session = sessions_->Find(account_id);
   if (session && session->IsActive()) {
@@ -3003,9 +3003,9 @@ UserDataAuth::ResetApplicationContainer(
     const user_data_auth::ResetApplicationContainerRequest& request) {
   AssertOnMountThread();
   user_data_auth::ResetApplicationContainerReply reply;
-  std::string account_id = GetAccountId(request.account_id());
+  Username account_id = GetAccountId(request.account_id());
 
-  if (account_id.empty() || request.application_name().empty()) {
+  if (account_id->empty() || request.application_name().empty()) {
     // RemoveRequest must have identifier or an AuthSession Id
     PopulateReplyWithError(
         MakeStatus<CryptohomeError>(
@@ -3070,8 +3070,8 @@ void UserDataAuth::StartMigrateToDircrypto(
     auth_session = in_use_auth_session.Get();
   }
 
-  std::string account_id = auth_session ? auth_session->username()
-                                        : GetAccountId(request.account_id());
+  Username account_id = auth_session ? auth_session->username()
+                                     : GetAccountId(request.account_id());
   UserSession* const session = sessions_->Find(account_id);
   if (!session) {
     LOG(ERROR) << "StartMigrateToDircrypto: Failed to get session.";
@@ -3094,7 +3094,7 @@ void UserDataAuth::StartMigrateToDircrypto(
 user_data_auth::CryptohomeErrorCode UserDataAuth::NeedsDircryptoMigration(
     const AccountIdentifier& account, bool* result) {
   AssertOnMountThread();
-  const std::string obfuscated_username =
+  ObfuscatedUsername obfuscated_username =
       SanitizeUserName(GetAccountId(account));
   if (!homedirs_->Exists(obfuscated_username)) {
     LOG(ERROR) << "Unknown user in NeedsDircryptoMigration.";
@@ -3173,13 +3173,13 @@ bool UserDataAuth::Pkcs11IsTpmTokenReady() {
 }
 
 user_data_auth::TpmTokenInfo UserDataAuth::Pkcs11GetTpmTokenInfo(
-    const std::string& username) {
+    const Username& username) {
   AssertOnOriginThread();
   user_data_auth::TpmTokenInfo result;
   std::string label, pin;
   CK_SLOT_ID slot;
   FilePath token_path;
-  if (username.empty()) {
+  if (username->empty()) {
     // We want to get the system token.
 
     // Get the label and pin for system token.
@@ -3305,8 +3305,8 @@ void UserDataAuth::StartFingerprintAuthSession(
     return;
   }
 
-  std::string account_id = GetAccountId(request.account_id());
-  if (account_id.empty()) {
+  Username account_id = GetAccountId(request.account_id());
+  if (account_id->empty()) {
     LOG(ERROR)
         << "StartFingerprintAuthSessionRequest must have vaid account_id.";
     reply.set_error(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
@@ -3323,7 +3323,7 @@ void UserDataAuth::StartFingerprintAuthSession(
     return;
   }
 
-  const std::string obfuscated_username = SanitizeUserName(account_id);
+  const ObfuscatedUsername obfuscated_username = SanitizeUserName(account_id);
   if (!homedirs_->Exists(obfuscated_username)) {
     reply.set_error(user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
     std::move(on_done).Run(reply);
@@ -3360,8 +3360,8 @@ user_data_auth::GetWebAuthnSecretReply UserDataAuth::GetWebAuthnSecret(
     return reply;
   }
 
-  std::string account_id = GetAccountId(request.account_id());
-  if (account_id.empty()) {
+  Username account_id = GetAccountId(request.account_id());
+  if (account_id->empty()) {
     LOG(ERROR) << "GetWebAuthnSecretRequest must have valid account_id.";
     reply.set_error(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
     return reply;
@@ -3393,8 +3393,8 @@ user_data_auth::GetWebAuthnSecretHashReply UserDataAuth::GetWebAuthnSecretHash(
     return reply;
   }
 
-  std::string account_id = GetAccountId(request.account_id());
-  if (account_id.empty()) {
+  Username account_id = GetAccountId(request.account_id());
+  if (account_id->empty()) {
     LOG(ERROR) << "GetWebAuthnSecretHashRequest must have valid account_id.";
     reply.set_error(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
     return reply;
@@ -3445,8 +3445,8 @@ user_data_auth::GetHibernateSecretReply UserDataAuth::GetHibernateSecret(
     return reply;
   }
 
-  std::string account_id = GetAccountId(request.account_id());
-  if (account_id.empty()) {
+  Username account_id = GetAccountId(request.account_id());
+  if (account_id->empty()) {
     LOG(ERROR) << "GetHibernateSecretRequest must have valid account_id.";
     reply.set_error(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
     return reply;
@@ -3554,7 +3554,7 @@ bool UserDataAuth::UpdateCurrentUserActivityTimestamp(int time_shift_sec) {
 
   bool success = true;
   for (const auto& [username, session] : *sessions_) {
-    const std::string obfuscated_username = SanitizeUserName(username);
+    const ObfuscatedUsername obfuscated_username = SanitizeUserName(username);
     // Inactive session is not current and ephemerals should not have ts since
     // they do not affect disk space use and do not participate in disk
     // cleaning.
@@ -3591,7 +3591,7 @@ user_data_auth::CryptohomeErrorCode
 UserDataAuth::LockToSingleUserMountUntilReboot(
     const AccountIdentifier& account_id) {
   AssertOnOriginThread();
-  const std::string obfuscated_username =
+  const ObfuscatedUsername obfuscated_username =
       SanitizeUserName(GetAccountId(account_id));
 
   homedirs_->SetLockedToSingleUser();
@@ -3609,7 +3609,7 @@ UserDataAuth::LockToSingleUserMountUntilReboot(
     return user_data_auth::CRYPTOHOME_ERROR_PCR_ALREADY_EXTENDED;
   }
 
-  if (hwsec::Status status = hwsec_->SetCurrentUser(obfuscated_username);
+  if (hwsec::Status status = hwsec_->SetCurrentUser(*obfuscated_username);
       !status.ok()) {
     LOG(ERROR)
         << "Failed to set current user for LockToSingleUserMountUntilReboot(): "
@@ -3677,7 +3677,7 @@ void UserDataAuth::StartAuthSession(
 
   CryptohomeStatusOr<InUseAuthSession> auth_session_status =
       auth_session_manager_->CreateAuthSession(
-          request.account_id().account_id(), request.flags(),
+          GetAccountId(request.account_id()), request.flags(),
           auth_intent.value());
   if (!auth_session_status.ok()) {
     ReplyWithError(
@@ -3745,7 +3745,7 @@ void UserDataAuth::StartAuthSession(
   // persistent factor data.
   if (request.intent() == user_data_auth::AUTH_INTENT_VERIFY_ONLY) {
     if (UserSession* user_session =
-            sessions_->Find(request.account_id().account_id())) {
+            sessions_->Find(GetAccountId(request.account_id()))) {
       for (const CredentialVerifier* verifier :
            user_session->GetCredentialVerifiers()) {
         if (auto proto_factor = GetAuthFactorProto(
@@ -3906,12 +3906,12 @@ CryptohomeStatusOr<InUseAuthSession> UserDataAuth::GetAuthenticatedAuthSession(
   return auth_session;
 }
 
-std::string UserDataAuth::SanitizedUserNameForSession(
+ObfuscatedUsername UserDataAuth::SanitizedUserNameForSession(
     const std::string& auth_session_id) {
   InUseAuthSession auth_session =
       auth_session_manager_->FindAuthSession(auth_session_id);
   if (!auth_session.AuthSessionStatus().ok()) {
-    return "";
+    return ObfuscatedUsername();
   }
   return auth_session->obfuscated_username();
 }
@@ -3920,7 +3920,8 @@ CryptohomeStatusOr<UserSession*> UserDataAuth::GetMountableUserSession(
     AuthSession* auth_session) {
   AssertOnMountThread();
 
-  const std::string& obfuscated_username = auth_session->obfuscated_username();
+  const ObfuscatedUsername& obfuscated_username =
+      auth_session->obfuscated_username();
 
   // Check no guest is mounted.
   UserSession* const guest_session = sessions_->Find(guest_user_);
@@ -3946,7 +3947,7 @@ CryptohomeStatusOr<UserSession*> UserDataAuth::GetMountableUserSession(
   return session;
 }
 
-void UserDataAuth::PreMountHook(const std::string& obfuscated_username) {
+void UserDataAuth::PreMountHook(const ObfuscatedUsername& obfuscated_username) {
   AssertOnMountThread();
 
   LOG(INFO) << "Started mounting for: " << obfuscated_username;
@@ -4010,7 +4011,7 @@ void UserDataAuth::PrepareGuestVault(
   LOG(INFO) << "Preparing guest vault";
   user_data_auth::PrepareGuestVaultReply reply;
   CryptohomeStatus status = PrepareGuestVaultImpl();
-  reply.set_sanitized_username(SanitizeUserName(guest_user_));
+  reply.set_sanitized_username(*SanitizeUserName(guest_user_));
   ReplyWithError(std::move(on_done), reply, status);
   return;
 }
@@ -4026,7 +4027,7 @@ void UserDataAuth::PrepareEphemeralVault(
   CryptohomeStatus status =
       PrepareEphemeralVaultImpl(request.auth_session_id());
   reply.set_sanitized_username(
-      SanitizedUserNameForSession(request.auth_session_id()));
+      *SanitizedUserNameForSession(request.auth_session_id()));
   ReplyWithError(std::move(on_done), reply, status);
 }
 
@@ -4045,14 +4046,14 @@ void UserDataAuth::PreparePersistentVault(
   CryptohomeStatus status =
       PreparePersistentVaultImpl(request.auth_session_id(), options);
 
-  const std::string obfuscated_username =
+  const ObfuscatedUsername obfuscated_username =
       SanitizedUserNameForSession(request.auth_session_id());
-  if (status.ok() && !obfuscated_username.empty()) {
+  if (status.ok() && !obfuscated_username->empty()) {
     // Send UMA with VK stats once per successful mount operation.
     keyset_management_->RecordAllVaultKeysetMetrics(obfuscated_username);
   }
   user_data_auth::PreparePersistentVaultReply reply;
-  reply.set_sanitized_username(obfuscated_username);
+  reply.set_sanitized_username(*obfuscated_username);
   ReplyWithError(std::move(on_done), reply, status);
 }
 
@@ -4070,7 +4071,7 @@ void UserDataAuth::PrepareVaultForMigration(
   CryptohomeStatus status =
       PreparePersistentVaultImpl(request.auth_session_id(), options);
   reply.set_sanitized_username(
-      SanitizedUserNameForSession(request.auth_session_id()));
+      *SanitizedUserNameForSession(request.auth_session_id()));
   ReplyWithError(std::move(on_done), reply, status);
 }
 
@@ -4093,7 +4094,7 @@ void UserDataAuth::CreatePersistentUser(
   ReportTimerDuration(kCreatePersistentUserTimer, start_time, "");
 
   reply.set_sanitized_username(
-      SanitizedUserNameForSession(request.auth_session_id()));
+      *SanitizedUserNameForSession(request.auth_session_id()));
   ReplyWithError(std::move(on_done), reply, ret);
 }
 
@@ -4233,7 +4234,7 @@ CryptohomeStatus UserDataAuth::PreparePersistentVaultImpl(
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
 
-  const std::string& obfuscated_username =
+  const ObfuscatedUsername& obfuscated_username =
       auth_session_status.value()->obfuscated_username();
   if (!homedirs_->Exists(obfuscated_username)) {
     return MakeStatus<CryptohomeError>(
@@ -4306,7 +4307,8 @@ CryptohomeStatus UserDataAuth::CreatePersistentUserImpl(
         user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
 
-  const std::string& obfuscated_username = auth_session->obfuscated_username();
+  const ObfuscatedUsername& obfuscated_username =
+      auth_session->obfuscated_username();
 
   // This checks presence of the actual encrypted vault. We fail if Create is
   // called while actual persistent vault is present.
@@ -4530,8 +4532,8 @@ void UserDataAuth::ListAuthFactors(
 
   // Check whether user exists.
   // Compute the raw and sanitized user name from the request.
-  const std::string& username = request.account_id().account_id();
-  std::string obfuscated_username = SanitizeUserName(username);
+  Username username = GetAccountId(request.account_id());
+  ObfuscatedUsername obfuscated_username = SanitizeUserName(username);
   UserSession* user_session = sessions_->Find(username);  // May be null!
   // If the user does not exist, we cannot return auth factors for it.
   bool is_persistent_user = (user_session && !user_session->IsEphemeral()) ||
@@ -4678,8 +4680,8 @@ void UserDataAuth::GetAuthFactorExtendedInfo(
   user_data_auth::GetAuthFactorExtendedInfoReply reply;
 
   // Compute the account_id and obfuscated user name from the request.
-  AccountIdentifier account_id = request.account_id();
-  std::string obfuscated_username = SanitizeUserName(GetAccountId(account_id));
+  ObfuscatedUsername obfuscated_username =
+      SanitizeUserName(GetAccountId(request.account_id()));
   user_data_auth::AuthFactor auth_factor_proto;
   if (LoadUserAuthFactorByLabel(
           auth_factor_manager_, *auth_block_utility_, obfuscated_username,
@@ -4726,7 +4728,7 @@ void UserDataAuth::GetAuthFactorExtendedInfo(
         return;
       }
       std::vector<std::string> recovery_ids = recovery->GetLastRecoveryIds(
-          account_id, request.recovery_info_request().max_depth());
+          request.account_id(), request.recovery_info_request().max_depth());
       user_data_auth::RecoveryExtendedInfoReply recovery_reply;
       for (const std::string& recovery_id : recovery_ids) {
         recovery_reply.add_recovery_ids(recovery_id);

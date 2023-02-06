@@ -24,9 +24,6 @@ using ::testing::Not;
 using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
 
-constexpr char kUsername1[] = "foo1@bar.com";
-constexpr char kUsername2[] = "foo2@bar.com";
-
 // Helper utility for making a stub verifier with a given label. Returns a
 // "unique_ptr, ptr" pair so that tests that need to hand over ownership but
 // hold on to a pointer can easily do so. Usually used as:
@@ -41,9 +38,9 @@ MakeTestVerifier(std::string label) {
   return {std::move(owned_ptr), unowned_ptr};
 }
 
-std::vector<std::pair<std::string, const UserSession*>> GetSessionItems(
+std::vector<std::pair<Username, const UserSession*>> GetSessionItems(
     const UserSessionMap& session_map) {
-  std::vector<std::pair<std::string, const UserSession*>> items;
+  std::vector<std::pair<Username, const UserSession*>> items;
   for (const auto& [account_id, session] : session_map) {
     items.emplace_back(account_id, &session);
   }
@@ -52,6 +49,11 @@ std::vector<std::pair<std::string, const UserSession*>> GetSessionItems(
 
 class UserSessionMapTest : public testing::Test {
  protected:
+  // Constants for use in testing. These are non-static because Username cannot
+  // be safely used as constexpr, but they are logically global constants.
+  const Username kUsername1{"foo1@bar.com"};
+  const Username kUsername2{"foo2@bar.com"};
+
   // Returns a const-ref to the test object. Used for testing const methods.
   const UserSessionMap& const_session_map() const { return session_map_; }
 

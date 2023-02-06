@@ -24,7 +24,7 @@ class MockPkcs11TokenFactory : public Pkcs11TokenFactory {
 
   MOCK_METHOD(std::unique_ptr<Pkcs11Token>,
               New,
-              (const std::string& username,
+              (const Username& username,
                const base::FilePath& token_dir,
                const brillo::SecureBlob& auth_data),
               (override));

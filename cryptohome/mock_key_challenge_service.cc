@@ -39,12 +39,12 @@ KeyChallengeServiceMockController::~KeyChallengeServiceMockController() =
     default;
 
 void KeyChallengeServiceMockController::ExpectSignatureChallenge(
-    const std::string& expected_username,
+    const Username& expected_username,
     const Blob& expected_public_key_spki_der,
     const Blob& expected_challenge_value,
     structure::ChallengeSignatureAlgorithm expected_signature_algorithm) {
   AccountIdentifier account_identifier;
-  account_identifier.set_account_id(expected_username);
+  account_identifier.set_account_id(*expected_username);
 
   KeyChallengeRequest challenge_request;
   challenge_request.set_challenge_type(

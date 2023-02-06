@@ -40,6 +40,7 @@
 #include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/storage/mount_helper.h"
 #include "cryptohome/storage/out_of_process_mount_helper.h"
+#include "cryptohome/username.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset.pb.h"
 
@@ -78,7 +79,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //                * Whether to ensure that the mount is ephemeral.
   //   error - The specific error condition on failure
   virtual StorageStatus MountCryptohome(
-      const std::string& username,
+      const Username& username,
       const FileSystemKeyset& file_system_keys,
       const CryptohomeVault::Options& vault_options);
 
@@ -86,7 +87,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   //
   // Parameters
   //   username - name of the user to mount
-  virtual StorageStatus MountEphemeralCryptohome(const std::string& username);
+  virtual StorageStatus MountEphemeralCryptohome(const Username& username);
 
   // Unmounts any mount at the cryptohome mount point
   virtual bool UnmountCryptohome();
@@ -208,7 +209,7 @@ class Mount : public base::RefCountedThreadSafe<Mount> {
   HomeDirs* homedirs_;
 
   // Name of the user the mount belongs to.
-  std::string username_;
+  Username username_;
 
   // Whether to mount the legacy homedir or not (see MountLegacyHome)
   bool legacy_mount_;

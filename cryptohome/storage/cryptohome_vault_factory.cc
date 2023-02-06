@@ -73,7 +73,7 @@ CryptohomeVaultFactory::~CryptohomeVaultFactory() {}
 std::unique_ptr<EncryptedContainer>
 CryptohomeVaultFactory::GenerateEncryptedContainer(
     EncryptedContainerType type,
-    const std::string& obfuscated_username,
+    const ObfuscatedUsername& obfuscated_username,
     const FileSystemKeyReference& key_reference,
     const std::string& container_identifier,
     const DmOptions& dm_options) {
@@ -136,7 +136,7 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
       break;
     case EncryptedContainerType::kEphemeral:
       config.type = EncryptedContainerType::kEphemeral;
-      config.backing_file_name = obfuscated_username;
+      config.backing_file_name = *obfuscated_username;
       break;
     case EncryptedContainerType::kEcryptfsToFscrypt:
     case EncryptedContainerType::kEcryptfsToDmcrypt:
@@ -152,7 +152,7 @@ CryptohomeVaultFactory::GenerateEncryptedContainer(
 }
 
 std::unique_ptr<CryptohomeVault> CryptohomeVaultFactory::Generate(
-    const std::string& obfuscated_username,
+    const ObfuscatedUsername& obfuscated_username,
     const FileSystemKeyReference& key_reference,
     EncryptedContainerType vault_type,
     bool keylocker_enabled) {

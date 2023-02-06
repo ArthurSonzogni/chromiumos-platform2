@@ -21,14 +21,16 @@ using testing::_;
 using testing::Return;
 
 namespace cryptohome {
-
 namespace {
+
 constexpr char kUssContainer[] = "fake_uss_container";
-constexpr char kObfuscatedUsername[] = "foo@gmail.com";
+
 }  // namespace
 
 class UserSecretStashStorageTest : public ::testing::Test {
  protected:
+  const ObfuscatedUsername kObfuscatedUsername{"foo@gmail.com"};
+
   MockPlatform platform_;
   UserSecretStashStorage uss_storage_{&platform_};
 };

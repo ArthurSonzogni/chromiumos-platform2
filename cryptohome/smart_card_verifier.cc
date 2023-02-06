@@ -58,7 +58,7 @@ void SmartCardVerifier::VerifyAsync(const AuthInput& auth_input,
     return;
   }
 
-  if (auth_input.username.empty()) {
+  if (auth_input.username->empty()) {
     LOG(ERROR) << __func__ << ": No valid username.";
     std::move(callback).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocSmartCardVerifierNoInputUser),

@@ -56,10 +56,10 @@ using testing::_;
 using testing::NiceMock;
 using testing::Return;
 
-constexpr char kUser[] = "user";
-
 class FingerprintManagerTest : public testing::Test {
  public:
+  const ObfuscatedUsername kUser{"user"};
+
   FingerprintManagerTest() {
     fingerprint_manager_ = std::make_unique<FingerprintManager>();
     fingerprint_manager_->SetProxy(&mock_biod_proxy_);
@@ -71,10 +71,10 @@ class FingerprintManagerTest : public testing::Test {
   }
 
   void AddMatchToScanResult(dbus::MessageWriter* matches_writer,
-                            const std::string& user) {
+                            const ObfuscatedUsername& user) {
     dbus::MessageWriter entry_writer(nullptr);
     matches_writer->OpenDictEntry(&entry_writer);
-    entry_writer.AppendString(user);
+    entry_writer.AppendString(*user);
     // A dumb fingerprint record path is sufficient.
     entry_writer.AppendArrayOfObjectPaths(std::vector<dbus::ObjectPath>());
     matches_writer->CloseContainer(&entry_writer);
@@ -98,7 +98,7 @@ TEST_F(FingerprintManagerTest, StartAuthSessionFail) {
       kUser,
       base::BindLambdaForTesting([this](bool success) { status_ = success; }));
   EXPECT_FALSE(status_);
-  EXPECT_TRUE(fingerprint_manager_->GetCurrentUser().empty());
+  EXPECT_TRUE(fingerprint_manager_->GetCurrentUser()->empty());
   EXPECT_TRUE(fingerprint_manager_peer_->NoAuthSession());
 }
 

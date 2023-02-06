@@ -52,6 +52,7 @@
 #include "cryptohome/user_secret_stash.h"
 #include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/user_session/user_session_map.h"
+#include "cryptohome/username.h"
 #include "cryptohome/uss_migrator.h"
 #include "cryptohome/vault_keyset.h"
 
@@ -177,9 +178,10 @@ CryptohomeStatusOr<AuthInput> UpdateAuthInputWithResetParamsFromPasswordVk(
 
 // Utility function to force-remove a keyset file for |obfuscated_username|
 // identified by |label|.
-CryptohomeStatus RemoveKeysetByLabel(KeysetManagement& keyset_management,
-                                     const std::string obfuscated_username,
-                                     const std::string label) {
+CryptohomeStatus RemoveKeysetByLabel(
+    KeysetManagement& keyset_management,
+    const ObfuscatedUsername& obfuscated_username,
+    const std::string& label) {
   std::unique_ptr<VaultKeyset> remove_vk =
       keyset_management.GetVaultKeyset(obfuscated_username, label);
   if (!remove_vk.get()) {
@@ -206,9 +208,10 @@ CryptohomeStatus RemoveKeysetByLabel(KeysetManagement& keyset_management,
 
 // Removes the backup VaultKeyset with the given label. Returns success if
 // there's no keyset found.
-CryptohomeStatus CleanUpBackupKeyset(KeysetManagement& keyset_management,
-                                     const std::string& obfuscated_username,
-                                     const std::string& label) {
+CryptohomeStatus CleanUpBackupKeyset(
+    KeysetManagement& keyset_management,
+    const ObfuscatedUsername& obfuscated_username,
+    const std::string& label) {
   std::unique_ptr<VaultKeyset> remove_vk =
       keyset_management.GetVaultKeyset(obfuscated_username, label);
   if (!remove_vk.get()) {
@@ -237,13 +240,13 @@ CryptohomeStatus CleanUpBackupKeyset(KeysetManagement& keyset_management,
 }  // namespace
 
 std::unique_ptr<AuthSession> AuthSession::Create(
-    std::string account_id,
+    Username account_id,
     unsigned int flags,
     AuthIntent intent,
     base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
     feature::PlatformFeaturesInterface* feature_lib,
     BackingApis backing_apis) {
-  std::string obfuscated_username = SanitizeUserName(account_id);
+  ObfuscatedUsername obfuscated_username = SanitizeUserName(account_id);
 
   // Try to determine if a user exists in two ways: they have a persistent
   // homedir, or they have an active mount. The latter can happen if the user is

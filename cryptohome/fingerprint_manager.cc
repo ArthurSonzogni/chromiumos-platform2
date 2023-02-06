@@ -115,12 +115,12 @@ void FingerprintManager::OnAuthScanDoneSignalConnected(
 
 void FingerprintManager::Reset() {
   state_ = State::NO_AUTH_SESSION;
-  current_user_.clear();
+  current_user_->clear();
   auth_scan_done_callback_.Reset();
   signal_callback_.Reset();
 }
 
-const std::string& FingerprintManager::GetCurrentUser() {
+const ObfuscatedUsername& FingerprintManager::GetCurrentUser() {
   return current_user_;
 }
 
@@ -165,7 +165,7 @@ void FingerprintManager::OnAuthScanDone(dbus::Signal* signal) {
   }
 
   if (std::find(result.user_ids.begin(), result.user_ids.end(),
-                current_user_) == result.user_ids.end()) {
+                *current_user_) == result.user_ids.end()) {
     VLOG(1) << "Authentication failed: not matched.";
     ProcessRetry();
     return;
@@ -226,7 +226,7 @@ void FingerprintManager::SetAuthScanDoneCallback(
 
 void FingerprintManager::SetUserAndRunClientCallback(
     StartSessionCallback auth_session_start_client_callback,
-    const std::string& user,
+    const ObfuscatedUsername& user,
     bool success) {
   // Set |current_user_| to |user| if auth session started successfully.
   if (success) {
@@ -245,7 +245,7 @@ void FingerprintManager::SetSignalCallback(SignalCallback callback) {
 }
 
 void FingerprintManager::StartAuthSessionAsyncForUser(
-    const std::string& user,
+    const ObfuscatedUsername& user,
     StartSessionCallback auth_session_start_client_callback) {
   DCHECK(base::PlatformThread::CurrentId() == mount_thread_id_);
 
@@ -279,7 +279,7 @@ void FingerprintManager::EndAuthSession() {
   Reset();
 }
 
-bool FingerprintManager::HasAuthSessionForUser(const std::string& user) {
+bool FingerprintManager::HasAuthSessionForUser(const ObfuscatedUsername& user) {
   DCHECK(base::PlatformThread::CurrentId() == mount_thread_id_);
 
   if (!proxy_ || !connected_to_auth_scan_done_signal_)

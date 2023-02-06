@@ -58,6 +58,7 @@
 #include "cryptohome/user_session/user_session.h"
 #include "cryptohome/user_session/user_session_factory.h"
 #include "cryptohome/user_session/user_session_map.h"
+#include "cryptohome/username.h"
 #include "cryptohome/uss_experiment_config_fetcher.h"
 
 namespace cryptohome {
@@ -103,16 +104,8 @@ class UserDataAuth {
   // an ephemeral manner. If nullptr is passed in for is_ephemeral_out, then it
   // won't be touched. Ephemeral mount means that the content of the mount is
   // cleared once the user logs out.
-  bool IsMounted(const std::string& username = "",
+  bool IsMounted(const Username& username = Username(),
                  bool* is_ephemeral_out = nullptr);
-
-  // Returns true if the mount that corresponds to the username is mounted,
-  // false otherwise. If that mount is ephemeral, then is_ephemeral_out is set
-  // to true, false otherwise. If nullptr is passed in for is_ephemeral_out,
-  // then it won't be touched. Ephemeral mount means that the content of the
-  // mount is cleared once the user logs out.
-  bool IsMountedForUser(const std::string& username,
-                        bool* is_ephemeral_out = nullptr);
 
   // Calling this function will unmount all mounted cryptohomes. It'll return
   // a reply without error if all mounts are cleanly unmounted.
@@ -278,8 +271,7 @@ class UserDataAuth {
   // is undefined.
   // Note that if this method fails to get the slot associated with the token,
   // then -1 will be supplied for slot.
-  user_data_auth::TpmTokenInfo Pkcs11GetTpmTokenInfo(
-      const std::string& username);
+  user_data_auth::TpmTokenInfo Pkcs11GetTpmTokenInfo(const Username& username);
 
   // Calling this method will remove PKCS#11 tokens on all mounts.
   // Note that this should only be called from mount thread.
@@ -655,13 +647,13 @@ class UserDataAuth {
 
   // Retrieve the session associated with the given user, for testing purpose
   // only.
-  UserSession* FindUserSessionForTest(const std::string& username) {
+  UserSession* FindUserSessionForTest(const Username& username) {
     return sessions_->Find(username);
   }
 
   // Associate a particular session object |session| with the username
   // |username| for testing purpose
-  bool AddUserSessionForTest(const std::string& username,
+  bool AddUserSessionForTest(const Username& username,
                              std::unique_ptr<UserSession> session) {
     return sessions_->Add(username, std::move(session));
   }
@@ -823,15 +815,15 @@ class UserDataAuth {
   // Determines whether the mount request should be ephemeral. On error, returns
   // status, otherwise, return the result (whether to mount ephemeral).
   CryptohomeStatusOr<bool> GetShouldMountAsEphemeral(
-      const std::string& account_id,
+      const Username& account_id,
       bool is_ephemeral_mount_requested,
       bool has_create_request) const;
 
   // Returns either an existing or a newly created UserSession, if not present.
-  UserSession* GetOrCreateUserSession(const std::string& username);
+  UserSession* GetOrCreateUserSession(const Username& username);
 
   // Removes an inactive user session.
-  void RemoveInactiveUserSession(const std::string& username);
+  void RemoveInactiveUserSession(const Username& username);
 
   // Calling this method will mount the home directory for guest users.
   // This is usually called by DoMount(). Note that this method is asynchronous,
@@ -1000,7 +992,8 @@ class UserDataAuth {
 
   // Returns sanitized username for an existing auth session or an empty string
   // if the session wasn't found.
-  std::string SanitizedUserNameForSession(const std::string& auth_session_id);
+  ObfuscatedUsername SanitizedUserNameForSession(
+      const std::string& auth_session_id);
 
   // Returns a reference to the user session, if the session is mountable. The
   // session is mountable if it is not already mounted, and the guest is not
@@ -1012,7 +1005,7 @@ class UserDataAuth {
   // Pre-mount hook specifies operations that need to be executed before doing
   // mount. Eventually those actions should be triggered outside of mount code.
   // Not applicable to guest user.
-  void PreMountHook(const std::string& obfuscated_username);
+  void PreMountHook(const ObfuscatedUsername& obfuscated_username);
 
   // Post-mount hook specifies operations that need to be executed after doing
   // mount. Eventually those actions should be triggered outside of mount code.
@@ -1059,8 +1052,7 @@ class UserDataAuth {
 
   // =============== WebAuthn Related Helpers ===============
 
-  bool PrepareWebAuthnSecret(const std::string& account_id,
-                             const VaultKeyset& vk);
+  bool PrepareWebAuthnSecret(const Username& account_id, const VaultKeyset& vk);
 
   // =============== USS Experiment Related Methods ===============
 
@@ -1347,7 +1339,7 @@ class UserDataAuth {
       &default_key_challenge_service_factory_;
 
   // Guest user's username.
-  std::string guest_user_;
+  Username guest_user_;
 
   // Force the use of eCryptfs. If eCryptfs is not used, then dircrypto (the
   // ext4 directory encryption) is used.

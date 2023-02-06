@@ -43,24 +43,24 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
   ~ChallengeCredentialsHelperImpl() override;
 
   // ChallengeCredentialsHelper:
-  void GenerateNew(const std::string& account_id,
+  void GenerateNew(const Username& account_id,
                    const structure::ChallengePublicKeyInfo& public_key_info,
-                   const std::string& obfuscated_username,
+                   const ObfuscatedUsername& obfuscated_username,
                    std::unique_ptr<KeyChallengeService> key_challenge_service,
                    GenerateNewCallback callback) override;
-  void Decrypt(const std::string& account_id,
+  void Decrypt(const Username& account_id,
                const structure::ChallengePublicKeyInfo& public_key_info,
                const structure::SignatureChallengeInfo& keyset_challenge_info,
                std::unique_ptr<KeyChallengeService> key_challenge_service,
                DecryptCallback callback) override;
-  void VerifyKey(const std::string& account_id,
+  void VerifyKey(const Username& account_id,
                  const structure::ChallengePublicKeyInfo& public_key_info,
                  std::unique_ptr<KeyChallengeService> key_challenge_service,
                  VerifyKeyCallback callback) override;
 
  private:
   void StartDecryptOperation(
-      const std::string& account_id,
+      const Username& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
       const structure::SignatureChallengeInfo& keyset_challenge_info,
       int attempt_number,
@@ -80,7 +80,7 @@ class ChallengeCredentialsHelperImpl final : public ChallengeCredentialsHelper {
   // associated with the operation and forwards results to the original
   // callback.
   void OnDecryptCompleted(
-      const std::string& account_id,
+      const Username& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
       const structure::SignatureChallengeInfo& keyset_challenge_info,
       int attempt_number,

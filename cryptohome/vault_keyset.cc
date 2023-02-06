@@ -1076,8 +1076,8 @@ bool VaultKeyset::GetTpmEccState(AuthBlockState* auth_state) const {
   return true;
 }
 
-CryptohomeStatus VaultKeyset::Encrypt(const SecureBlob& key,
-                                      const std::string& obfuscated_username) {
+CryptohomeStatus VaultKeyset::Encrypt(
+    const SecureBlob& key, const ObfuscatedUsername& obfuscated_username) {
   CHECK(crypto_);
 
   // This generates the reset secret for PinWeaver credentials. Doing it per
@@ -1119,7 +1119,7 @@ CryptohomeStatus VaultKeyset::Encrypt(const SecureBlob& key,
 
 CryptohomeStatus VaultKeyset::EncryptVaultKeyset(
     const SecureBlob& vault_key,
-    const std::string& obfuscated_username,
+    const ObfuscatedUsername& obfuscated_username,
     AuthBlockState* auth_state) {
   // TODO(crbug.com/1216659): Move AuthBlock instantiation to AuthFactor once it
   // is ready.
@@ -1136,7 +1136,7 @@ CryptohomeStatus VaultKeyset::EncryptVaultKeyset(
 
   AuthInput user_input = {vault_key,
                           /*locked_to_single_user*=*/std::nullopt,
-                          /*username=*/std::string(),
+                          /*username=*/Username(),
                           obfuscated_username,
                           /*reset_secret=*/std::nullopt,
                           /*reset_seed=*/std::nullopt};

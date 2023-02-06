@@ -134,7 +134,7 @@ CryptohomeStatus FingerprintAuthBlockService::Verify() {
 }
 
 void FingerprintAuthBlockService::Start(
-    std::string obfuscated_username,
+    ObfuscatedUsername obfuscated_username,
     PreparedAuthFactorToken::Consumer on_done) {
   FingerprintManager* fp_manager = fp_manager_getter_.Run();
   if (!fp_manager) {

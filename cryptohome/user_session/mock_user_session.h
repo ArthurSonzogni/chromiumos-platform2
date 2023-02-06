@@ -34,11 +34,11 @@ class MockUserSession : public UserSession {
               (override));
   MOCK_METHOD(MountStatus,
               MountVault,
-              (const std::string&,
+              (const Username&,
                const FileSystemKeyset&,
                const CryptohomeVault::Options&),
               (override));
-  MOCK_METHOD(MountStatus, MountEphemeral, (const std::string&), (override));
+  MOCK_METHOD(MountStatus, MountEphemeral, (const Username&), (override));
   MOCK_METHOD(MountStatus, MountGuest, (), (override));
   MOCK_METHOD(bool, Unmount, (), (override));
   MOCK_METHOD(base::Value, GetStatus, (), (const, override));
@@ -55,10 +55,10 @@ class MockUserSession : public UserSession {
               (),
               (override));
   MOCK_METHOD(void, AddCredentials, (const Credentials&), (override));
-  MOCK_METHOD(bool, VerifyUser, (const std::string&), (const, override));
+  MOCK_METHOD(bool, VerifyUser, (const ObfuscatedUsername&), (const, override));
   MOCK_METHOD(bool, VerifyCredentials, (const Credentials&), (const, override));
   MOCK_METHOD(Pkcs11Token*, GetPkcs11Token, (), (override));
-  MOCK_METHOD(std::string, GetUsername, (), (const, override));
+  MOCK_METHOD(Username, GetUsername, (), (const, override));
   MOCK_METHOD(void,
               PrepareWebAuthnSecret,
               (const brillo::SecureBlob&, const brillo::SecureBlob&),

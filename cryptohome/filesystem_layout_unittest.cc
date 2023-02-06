@@ -9,17 +9,14 @@
 
 namespace cryptohome {
 
-namespace {
-
-constexpr char kObfuscatedUsername[] = "fake-user";
-
-}  // namespace
-
 TEST(FileSystemLayoutTest, UserSecretStashPath) {
+  const ObfuscatedUsername kObfuscatedUsername("fake-user");
+
   EXPECT_EQ(UserSecretStashPath(kObfuscatedUsername, /*slot=*/0),
             base::FilePath("/home/.shadow/fake-user/user_secret_stash/uss.0"));
   EXPECT_EQ(
-      UserSecretStashPath(kObfuscatedUsername, /*slot=*/123),
+      UserSecretStashPath(kObfuscatedUsername,
+                          /*slot=*/123),
       base::FilePath("/home/.shadow/fake-user/user_secret_stash/uss.123"));
 }
 

@@ -78,11 +78,12 @@
 #include "cryptohome/user_secret_stash.h"
 #include "cryptohome/user_session/mock_user_session.h"
 #include "cryptohome/user_session/mock_user_session_factory.h"
+#include "cryptohome/username.h"
 
 using base::FilePath;
 using base::test::TestFuture;
 using brillo::SecureBlob;
-using brillo::cryptohome::home::kGuestUserName;
+using brillo::cryptohome::home::GetGuestUsername;
 using brillo::cryptohome::home::SanitizeUserName;
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
@@ -274,12 +275,12 @@ class UserDataAuthTestBase : public ::testing::Test {
   // user. After calling this function, |session_| is available for use.
   void SetupMount(const std::string& username) {
     EXPECT_TRUE(userdataauth_->AddUserSessionForTest(
-        username, CreateSessionAndRememberPtr()));
+        Username(username), CreateSessionAndRememberPtr()));
   }
 
   // This is a helper function that compute the obfuscated username with the
   // fake salt.
-  std::string GetObfuscatedUsername(const std::string& username) {
+  ObfuscatedUsername GetObfuscatedUsername(const Username& username) {
     return SanitizeUserName(username);
   }
 
@@ -888,7 +889,7 @@ static_assert(cryptohome::ChallengeSignatureAlgorithm_MAX == 4,
 TEST_F(UserDataAuthTest, IsMounted) {
   // By default there are no mount right after initialization
   EXPECT_FALSE(userdataauth_->IsMounted());
-  EXPECT_FALSE(userdataauth_->IsMounted("foo@gmail.com"));
+  EXPECT_FALSE(userdataauth_->IsMounted(Username("foo@gmail.com")));
 
   // Add a mount associated with foo@gmail.com
   SetupMount("foo@gmail.com");
@@ -903,24 +904,26 @@ TEST_F(UserDataAuthTest, IsMounted) {
   bool is_ephemeral = true;
   EXPECT_CALL(*session_, IsActive()).WillOnce(Return(true));
   EXPECT_CALL(*session_, IsEphemeral()).WillOnce(Return(false));
-  EXPECT_TRUE(userdataauth_->IsMounted("", &is_ephemeral));
+  EXPECT_TRUE(userdataauth_->IsMounted(Username(""), &is_ephemeral));
   EXPECT_FALSE(is_ephemeral);
 
   // Test to see if is_ephemeral works, and test the code path that specify the
   // user.
   EXPECT_CALL(*session_, IsActive()).WillOnce(Return(true));
   EXPECT_CALL(*session_, IsEphemeral()).WillOnce(Return(true));
-  EXPECT_TRUE(userdataauth_->IsMounted("foo@gmail.com", &is_ephemeral));
+  EXPECT_TRUE(
+      userdataauth_->IsMounted(Username("foo@gmail.com"), &is_ephemeral));
   EXPECT_TRUE(is_ephemeral);
 
   // Note: IsMounted will not be called in this case.
-  EXPECT_FALSE(userdataauth_->IsMounted("bar@gmail.com", &is_ephemeral));
+  EXPECT_FALSE(
+      userdataauth_->IsMounted(Username("bar@gmail.com"), &is_ephemeral));
   EXPECT_FALSE(is_ephemeral);
 }
 
 TEST_F(UserDataAuthTest, Unmount_AllDespiteFailures) {
-  constexpr char kUsername1[] = "foo@gmail.com";
-  constexpr char kUsername2[] = "bar@gmail.com";
+  const Username kUsername1("foo@gmail.com");
+  const Username kUsername2("bar@gmail.com");
 
   auto owned_session1 = std::make_unique<NiceMock<MockUserSession>>();
   auto* const session1 = owned_session1.get();
@@ -1071,8 +1074,8 @@ TEST_F(UserDataAuthTest, Pkcs11IsTpmTokenReady) {
   // When there's no mount at all, it should be true.
   EXPECT_TRUE(userdataauth_->Pkcs11IsTpmTokenReady());
 
-  constexpr char kUsername1[] = "foo@gmail.com";
-  constexpr char kUsername2[] = "bar@gmail.com";
+  const Username kUsername1("foo@gmail.com");
+  const Username kUsername2("bar@gmail.com");
 
   auto owned_session1 = std::make_unique<NiceMock<MockUserSession>>();
   auto* const session1 = owned_session1.get();
@@ -1102,12 +1105,12 @@ TEST_F(UserDataAuthTest, Pkcs11GetTpmTokenInfo) {
   user_data_auth::TpmTokenInfo info;
 
   constexpr CK_SLOT_ID kSlot = 42;
-  constexpr char kUsername1[] = "foo@gmail.com";
+  const Username kUsername1("foo@gmail.com");
 
   // Check the system token case.
   EXPECT_CALL(pkcs11_init_, GetTpmTokenSlotForPath(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(kSlot), Return(true)));
-  info = userdataauth_->Pkcs11GetTpmTokenInfo("");
+  info = userdataauth_->Pkcs11GetTpmTokenInfo(Username());
 
   EXPECT_EQ(info.label(), Pkcs11Init::kDefaultSystemLabel);
   EXPECT_EQ(info.user_pin(), Pkcs11Init::kDefaultPin);
@@ -1130,7 +1133,7 @@ TEST_F(UserDataAuthTest, Pkcs11GetTpmTokenInfo) {
   // Verify that if GetTpmTokenSlotForPath fails, we'll get -1 for slot.
   EXPECT_CALL(pkcs11_init_, GetTpmTokenSlotForPath(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(kSlot), Return(false)));
-  info = userdataauth_->Pkcs11GetTpmTokenInfo("");
+  info = userdataauth_->Pkcs11GetTpmTokenInfo(Username());
   EXPECT_EQ(info.slot(), -1);
 
   EXPECT_CALL(pkcs11_init_, GetTpmTokenSlotForPath(_, _))
@@ -1448,14 +1451,15 @@ TEST_F(UserDataAuthTest, SetMediaRWDataFileProjectInheritanceFlag) {
 }
 
 TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootValidity) {
-  constexpr char kUsername1[] = "foo@gmail.com";
+  const Username kUsername1("foo@gmail.com");
   AccountIdentifier account_id;
-  account_id.set_account_id(kUsername1);
-  const std::string kUsername1Obfuscated = GetObfuscatedUsername(kUsername1);
+  account_id.set_account_id(*kUsername1);
+  const ObfuscatedUsername kUsername1Obfuscated =
+      GetObfuscatedUsername(kUsername1);
 
   EXPECT_CALL(homedirs_, SetLockedToSingleUser()).WillOnce(Return(true));
   EXPECT_CALL(hwsec_, IsCurrentUserSet()).WillOnce(ReturnValue(false));
-  EXPECT_CALL(hwsec_, SetCurrentUser(kUsername1Obfuscated))
+  EXPECT_CALL(hwsec_, SetCurrentUser(*kUsername1Obfuscated))
       .WillOnce(ReturnOk<TPMError>());
 
   EXPECT_EQ(userdataauth_->LockToSingleUserMountUntilReboot(account_id),
@@ -1488,14 +1492,15 @@ TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootAlreadyExtended) {
 }
 
 TEST_F(UserDataAuthTest, LockToSingleUserMountUntilRebootExtendFail) {
-  constexpr char kUsername1[] = "foo@gmail.com";
+  const Username kUsername1("foo@gmail.com");
   AccountIdentifier account_id;
-  account_id.set_account_id(kUsername1);
-  const std::string kUsername1Obfuscated = GetObfuscatedUsername(kUsername1);
+  account_id.set_account_id(*kUsername1);
+  const ObfuscatedUsername kUsername1Obfuscated =
+      GetObfuscatedUsername(kUsername1);
 
   EXPECT_CALL(homedirs_, SetLockedToSingleUser()).WillOnce(Return(true));
   EXPECT_CALL(hwsec_, IsCurrentUserSet()).WillOnce(ReturnValue(false));
-  EXPECT_CALL(hwsec_, SetCurrentUser(kUsername1Obfuscated))
+  EXPECT_CALL(hwsec_, SetCurrentUser(*kUsername1Obfuscated))
       .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 
   EXPECT_EQ(userdataauth_->LockToSingleUserMountUntilReboot(account_id),
@@ -2129,7 +2134,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_EmptyMap_OpenLegacy_ShadowOnly) {
 }
 
 TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
-  constexpr char kUser[] = "foo@bar.net";
+  const Username kUser("foo@bar.net");
   // Checks that when we have a bunch of stale shadow mounts, some active
   // mounts, and no open filehandles, all inactive mounts are unmounted.
 
@@ -2166,7 +2171,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
   EXPECT_CALL(platform_, GetLoopDeviceMounts(_)).WillOnce(Return(false));
 
   user_data_auth::MountRequest mount_req;
-  mount_req.mutable_account()->set_account_id(kUser);
+  mount_req.mutable_account()->set_account_id(*kUser);
   mount_req.mutable_authorization()->mutable_key()->set_secret("key");
   mount_req.mutable_authorization()->mutable_key()->mutable_data()->set_label(
       "password");
@@ -2239,7 +2244,7 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
 
 TEST_F(UserDataAuthTest,
        CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly_FirstBoot) {
-  constexpr char kUser[] = "foo@bar.net";
+  const Username kUser("foo@bar.net");
   // Checks that when we have a bunch of stale shadow mounts, some active
   // mounts, and no open filehandles, all inactive mounts are unmounted.
 
@@ -2275,7 +2280,7 @@ TEST_F(UserDataAuthTest,
   EXPECT_CALL(platform_, GetLoopDeviceMounts(_)).WillOnce(Return(false));
 
   user_data_auth::MountRequest mount_req;
-  mount_req.mutable_account()->set_account_id(kUser);
+  mount_req.mutable_account()->set_account_id(*kUser);
   mount_req.mutable_authorization()->mutable_key()->set_secret("key");
   mount_req.mutable_authorization()->mutable_key()->mutable_data()->set_label(
       "password");
@@ -2469,8 +2474,8 @@ TEST_F(UserDataAuthTest, GetAccountDiskUsage) {
   EXPECT_EQ(0, userdataauth_->GetAccountDiskUsage(account));
 
   // Test when the user exists and home directory is not empty.
-  constexpr char kUsername1[] = "foo@gmail.com";
-  account.set_account_id(kUsername1);
+  const Username kUsername1("foo@gmail.com");
+  account.set_account_id(*kUsername1);
 
   constexpr int64_t kHomedirSize = 12345678912345;
   EXPECT_CALL(homedirs_, ComputeDiskUsage(kUsername1))
@@ -2498,7 +2503,7 @@ class UserDataAuthExTest : public UserDataAuthTest {
   ~UserDataAuthExTest() override = default;
 
   std::unique_ptr<VaultKeyset> GetNiceMockVaultKeyset(
-      const std::string& obfuscated_username,
+      const ObfuscatedUsername& obfuscated_username,
       const std::string& key_label) const {
     // Note that technically speaking this is not strictly a mock, and probably
     // closer to a stub. However, the underlying class is
@@ -2559,11 +2564,10 @@ class UserDataAuthExTest : public UserDataAuthTest {
   std::unique_ptr<user_data_auth::StartAuthSessionRequest>
       start_auth_session_req_;
 
-  static constexpr char kUser[] = "chromeos-user";
+  const Username kUser{"chromeos-user"};
   static constexpr char kKey[] = "274146c6e8886a843ddfea373e2dc71b";
 };
 
-constexpr char UserDataAuthExTest::kUser[];
 constexpr char UserDataAuthExTest::kKey[];
 
 TEST_F(UserDataAuthExTest, MountGuestValidity) {
@@ -2571,8 +2575,8 @@ TEST_F(UserDataAuthExTest, MountGuestValidity) {
 
   mount_req_->set_guest_mount(true);
 
-  EXPECT_CALL(user_session_factory_, New(kGuestUserName, _, _))
-      .WillOnce(Invoke([this](const std::string&, bool, bool) {
+  EXPECT_CALL(user_session_factory_, New(GetGuestUsername(), _, _))
+      .WillOnce(Invoke([this](const Username&, bool, bool) {
         auto session = CreateSessionAndRememberPtr();
         EXPECT_CALL(*session, MountGuest()).WillOnce(Invoke([]() {
           return OkStatus<CryptohomeMountError>();
@@ -2595,7 +2599,7 @@ TEST_F(UserDataAuthExTest, MountGuestValidity) {
   }
   EXPECT_TRUE(called);
 
-  EXPECT_NE(userdataauth_->FindUserSessionForTest(kGuestUserName), nullptr);
+  EXPECT_NE(userdataauth_->FindUserSessionForTest(GetGuestUsername()), nullptr);
 }
 
 TEST_F(UserDataAuthExTest, MountGuestMountPointBusy) {
@@ -2603,7 +2607,7 @@ TEST_F(UserDataAuthExTest, MountGuestMountPointBusy) {
 
   mount_req_->set_guest_mount(true);
 
-  SetupMount(kUser);
+  SetupMount(*kUser);
   EXPECT_CALL(*session_, IsActive()).WillOnce(Return(true));
   EXPECT_CALL(*session_, Unmount()).WillOnce(Return(false));
 
@@ -2626,7 +2630,7 @@ TEST_F(UserDataAuthExTest, MountGuestMountPointBusy) {
   }
   EXPECT_TRUE(called);
 
-  EXPECT_EQ(userdataauth_->FindUserSessionForTest(kGuestUserName), nullptr);
+  EXPECT_EQ(userdataauth_->FindUserSessionForTest(GetGuestUsername()), nullptr);
 }
 
 TEST_F(UserDataAuthExTest, MountGuestMountFailed) {
@@ -2634,8 +2638,8 @@ TEST_F(UserDataAuthExTest, MountGuestMountFailed) {
 
   mount_req_->set_guest_mount(true);
 
-  EXPECT_CALL(user_session_factory_, New(kGuestUserName, _, _))
-      .WillOnce(Invoke([this](const std::string& username, bool, bool) {
+  EXPECT_CALL(user_session_factory_, New(GetGuestUsername(), _, _))
+      .WillOnce(Invoke([this](const Username& username, bool, bool) {
         auto session = CreateSessionAndRememberPtr();
         EXPECT_CALL(*session, MountGuest()).WillOnce(Invoke([this]() {
           // |this| is captured for kErrorLocationPlaceholder.
@@ -2665,13 +2669,13 @@ TEST_F(UserDataAuthExTest, MountGuestMountFailed) {
 // there is no VaultKeyset found on disk.
 TEST_F(UserDataAuthExTest, MountFailsWithUnrecoverableVault) {
   // Setup
-  constexpr char kUser[] = "foo@bar.net";
+  const Username kUser("foo@bar.net");
   constexpr char kKey[] = "key";
   constexpr char kLabel[] = "label";
 
   InitializeUserDataAuth();
   PrepareArguments();
-  SetupMount(kUser);
+  SetupMount(*kUser);
   EXPECT_CALL(homedirs_, CryptohomeExists(_)).WillOnce(ReturnValue(true));
 
   // Test that DoMount request return CRYPTOHOME_ERROR_VAULT_UNRECOVERABLE when
@@ -2681,7 +2685,7 @@ TEST_F(UserDataAuthExTest, MountFailsWithUnrecoverableVault) {
   EXPECT_CALL(homedirs_, Remove(_)).WillOnce(Return(true));
 
   user_data_auth::MountRequest mount_req;
-  mount_req.mutable_account()->set_account_id(kUser);
+  mount_req.mutable_account()->set_account_id(*kUser);
   mount_req.mutable_authorization()->mutable_key()->set_secret(kKey);
   mount_req.mutable_authorization()->mutable_key()->mutable_data()->set_label(
       kLabel);
@@ -2706,13 +2710,13 @@ TEST_F(UserDataAuthExTest, MountFailsWithUnrecoverableVault) {
 // disk.
 TEST_F(UserDataAuthExTest, MountWithEmptyLabelFailsWithUnrecoverableVault) {
   // Setup
-  constexpr char kUser[] = "foo@bar.net";
+  const Username kUser("foo@bar.net");
   constexpr char kKey[] = "key";
   constexpr char kEmptyLabel[] = "";
 
   InitializeUserDataAuth();
   PrepareArguments();
-  SetupMount(kUser);
+  SetupMount(*kUser);
   EXPECT_CALL(homedirs_, CryptohomeExists(_)).WillOnce(ReturnValue(true));
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
 
@@ -2723,7 +2727,7 @@ TEST_F(UserDataAuthExTest, MountWithEmptyLabelFailsWithUnrecoverableVault) {
   EXPECT_CALL(homedirs_, Remove(_)).WillOnce(Return(true));
 
   user_data_auth::MountRequest mount_req;
-  mount_req.mutable_account()->set_account_id(kUser);
+  mount_req.mutable_account()->set_account_id(*kUser);
   mount_req.mutable_authorization()->mutable_key()->set_secret(kKey);
   mount_req.mutable_authorization()->mutable_key()->mutable_data()->set_label(
       kEmptyLabel);
@@ -2834,13 +2838,13 @@ TEST_F(UserDataAuthExTest, MountInvalidArgs) {
 }
 
 TEST_F(UserDataAuthExTest, MountPublicWithExistingMounts) {
-  constexpr char kUser[] = "chromeos-user";
+  const Username kUser("chromeos-user");
   constexpr char kUsername[] = "foo@gmail.com";
 
   PrepareArguments();
   SetupMount(kUsername);
 
-  mount_req_->mutable_account()->set_account_id(kUser);
+  mount_req_->mutable_account()->set_account_id(*kUser);
   mount_req_->set_public_mount(true);
 
   EXPECT_CALL(user_session_factory_, New(kUser, _, _))
@@ -2863,15 +2867,15 @@ TEST_F(UserDataAuthExTest, MountPublicWithExistingMounts) {
 }
 
 TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskey) {
-  constexpr char kUser[] = "chromeos-user";
+  const Username kUser("chromeos-user");
   PrepareArguments();
 
-  mount_req_->mutable_account()->set_account_id(kUser);
+  mount_req_->mutable_account()->set_account_id(*kUser);
   mount_req_->set_public_mount(true);
 
   EXPECT_CALL(homedirs_, Exists(_))
       .WillOnce(testing::InvokeWithoutArgs([this, kUser]() {
-        SetupMount(kUser);
+        SetupMount(*kUser);
         EXPECT_CALL(homedirs_, CryptohomeExists(_)).WillOnce(ReturnValue(true));
 
         std::vector<std::string> key_labels;
@@ -2911,15 +2915,15 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskey) {
 }
 
 TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyResave) {
-  constexpr char kUser[] = "chromeos-user";
+  const Username kUser("chromeos-user");
   PrepareArguments();
 
-  mount_req_->mutable_account()->set_account_id(kUser);
+  mount_req_->mutable_account()->set_account_id(*kUser);
   mount_req_->set_public_mount(true);
 
   EXPECT_CALL(homedirs_, Exists(_))
       .WillOnce(testing::InvokeWithoutArgs([this, kUser]() {
-        SetupMount(kUser);
+        SetupMount(*kUser);
         EXPECT_CALL(homedirs_, CryptohomeExists(_)).WillOnce(ReturnValue(true));
 
         std::vector<std::string> key_labels;
@@ -2966,16 +2970,16 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyResave) {
 }
 
 TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyWithNewUser) {
-  constexpr char kUser[] = "chromeos-user";
+  const Username kUser("chromeos-user");
 
   PrepareArguments();
 
-  mount_req_->mutable_account()->set_account_id(kUser);
+  mount_req_->mutable_account()->set_account_id(*kUser);
   mount_req_->set_public_mount(true);
   Key* add_key = mount_req_->mutable_create()->add_keys();
   add_key->mutable_data()->set_label("public_mount");
 
-  SetupMount(kUser);
+  SetupMount(*kUser);
   EXPECT_CALL(homedirs_, CryptohomeExists(_)).WillOnce(ReturnValue(false));
   EXPECT_CALL(homedirs_, Create(kUser)).WillOnce(Return(true));
 
@@ -3026,10 +3030,10 @@ TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyWithNewUser) {
 }
 
 TEST_F(UserDataAuthExTest, MountPublicUsesPublicMountPasskeyError) {
-  constexpr char kUser[] = "chromeos-user";
+  const Username kUser("chromeos-user");
   PrepareArguments();
 
-  mount_req_->mutable_account()->set_account_id(kUser);
+  mount_req_->mutable_account()->set_account_id(*kUser);
   mount_req_->set_public_mount(true);
   SecureBlob empty_blob;
   EXPECT_CALL(keyset_management_, GetPublicMountPassKey(_))
@@ -3185,12 +3189,12 @@ TEST_F(UserDataAuthExTest, StartMigrateToDircryptoWithInvalidAuthSession) {
 // below.
 TEST_F(UserDataAuthExTest, CheckKeyHomedirsCheckSuccess) {
   PrepareArguments();
-  SetupMount(kUser);
+  SetupMount(*kUser);
 
-  check_req_->mutable_account_id()->set_account_id(kUser);
+  check_req_->mutable_account_id()->set_account_id(*kUser);
   check_req_->mutable_authorization_request()->mutable_key()->set_secret(kKey);
 
-  Credentials credentials("another", brillo::SecureBlob(kKey));
+  Credentials credentials(Username("another"), brillo::SecureBlob(kKey));
   session_->AddCredentials(credentials);
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
   EXPECT_CALL(keyset_management_, GetValidKeyset(_))
@@ -3205,13 +3209,13 @@ TEST_F(UserDataAuthExTest, CheckKeyHomedirsCheckSuccess) {
 
 TEST_F(UserDataAuthExTest, CheckKeyHomedirsUnlockWebAuthnSecretSuccess) {
   PrepareArguments();
-  SetupMount(kUser);
+  SetupMount(*kUser);
 
-  check_req_->mutable_account_id()->set_account_id(kUser);
+  check_req_->mutable_account_id()->set_account_id(*kUser);
   check_req_->mutable_authorization_request()->mutable_key()->set_secret(kKey);
   check_req_->set_unlock_webauthn_secret(true);
 
-  Credentials credentials("another", brillo::SecureBlob(kKey));
+  Credentials credentials(Username("another"), brillo::SecureBlob(kKey));
   session_->AddCredentials(credentials);
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
   EXPECT_CALL(keyset_management_, GetValidKeyset(_))
@@ -3226,14 +3230,14 @@ TEST_F(UserDataAuthExTest, CheckKeyHomedirsUnlockWebAuthnSecretSuccess) {
 
 TEST_F(UserDataAuthExTest, CheckKeyHomedirsCheckFail) {
   PrepareArguments();
-  SetupMount(kUser);
+  SetupMount(*kUser);
 
-  check_req_->mutable_account_id()->set_account_id(kUser);
+  check_req_->mutable_account_id()->set_account_id(*kUser);
   check_req_->mutable_authorization_request()->mutable_key()->set_secret(kKey);
   check_req_->set_unlock_webauthn_secret(true);
 
   // Ensure failure
-  Credentials credentials("another", brillo::SecureBlob(kKey));
+  Credentials credentials(Username("another"), brillo::SecureBlob(kKey));
   session_->AddCredentials(credentials);
   EXPECT_CALL(homedirs_, Exists(_)).WillRepeatedly(Return(true));
   EXPECT_CALL(keyset_management_, GetValidKeyset(_))
@@ -3251,9 +3255,9 @@ TEST_F(UserDataAuthExTest, CheckKeyHomedirsCheckFail) {
 
 TEST_F(UserDataAuthExTest, CheckKeyMountCheckSuccess) {
   PrepareArguments();
-  SetupMount(kUser);
+  SetupMount(*kUser);
 
-  check_req_->mutable_account_id()->set_account_id(kUser);
+  check_req_->mutable_account_id()->set_account_id(*kUser);
   check_req_->mutable_authorization_request()->mutable_key()->set_secret(kKey);
 
   Credentials credentials(kUser, brillo::SecureBlob(kKey));
@@ -3271,9 +3275,9 @@ TEST_F(UserDataAuthExTest, CheckKeyMountCheckSuccess) {
 
 TEST_F(UserDataAuthExTest, CheckKeyEphemeralFailed) {
   PrepareArguments();
-  SetupMount(kUser);
+  SetupMount(*kUser);
 
-  check_req_->mutable_account_id()->set_account_id(kUser);
+  check_req_->mutable_account_id()->set_account_id(*kUser);
   check_req_->mutable_authorization_request()->mutable_key()->set_secret(kKey);
 
   EXPECT_CALL(*session_, VerifyCredentials(_)).WillOnce(Return(false));
@@ -3285,9 +3289,9 @@ TEST_F(UserDataAuthExTest, CheckKeyEphemeralFailed) {
 
 TEST_F(UserDataAuthExTest, CheckKeyMountCheckFail) {
   PrepareArguments();
-  SetupMount(kUser);
+  SetupMount(*kUser);
 
-  check_req_->mutable_account_id()->set_account_id(kUser);
+  check_req_->mutable_account_id()->set_account_id(*kUser);
   check_req_->mutable_authorization_request()->mutable_key()->set_secret(kKey);
   check_req_->set_unlock_webauthn_secret(true);
 
@@ -3332,13 +3336,13 @@ TEST_F(UserDataAuthExTest, StartFingerprintAuthSessionInvalid) {
 TEST_F(UserDataAuthExTest, StartFingerprintAuthSessionFail) {
   PrepareArguments();
   user_data_auth::StartFingerprintAuthSessionRequest req;
-  req.mutable_account_id()->set_account_id(kUser);
+  req.mutable_account_id()->set_account_id(*kUser);
 
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
 
   // Let the fingerprint auth session fail to start.
   EXPECT_CALL(fingerprint_manager_, StartAuthSessionAsyncForUser(_, _))
-      .WillOnce([](const std::string& user,
+      .WillOnce([](const ObfuscatedUsername& user,
                    base::OnceCallback<void(bool success)>
                        auth_session_start_client_callback) {
         std::move(auth_session_start_client_callback).Run(false);
@@ -3364,12 +3368,12 @@ TEST_F(UserDataAuthExTest, StartFingerprintAuthSessionFail) {
 TEST_F(UserDataAuthExTest, StartFingerprintAuthSessionSuccess) {
   PrepareArguments();
   user_data_auth::StartFingerprintAuthSessionRequest req;
-  req.mutable_account_id()->set_account_id(kUser);
+  req.mutable_account_id()->set_account_id(*kUser);
 
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
 
   EXPECT_CALL(fingerprint_manager_, StartAuthSessionAsyncForUser(_, _))
-      .WillOnce([](const std::string& user,
+      .WillOnce([](const ObfuscatedUsername& user,
                    base::OnceCallback<void(bool success)>
                        auth_session_start_client_callback) {
         std::move(auth_session_start_client_callback).Run(true);
@@ -3394,7 +3398,7 @@ TEST_F(UserDataAuthExTest, StartFingerprintAuthSessionSuccess) {
 TEST_F(UserDataAuthExTest, CheckKeyFingerprintFailRetry) {
   PrepareArguments();
 
-  check_req_->mutable_account_id()->set_account_id(kUser);
+  check_req_->mutable_account_id()->set_account_id(*kUser);
   check_req_->mutable_authorization_request()
       ->mutable_key()
       ->mutable_data()
@@ -3418,7 +3422,7 @@ TEST_F(UserDataAuthExTest, CheckKeyFingerprintFailRetry) {
 TEST_F(UserDataAuthExTest, CheckKeyFingerprintFailNoRetry) {
   PrepareArguments();
 
-  check_req_->mutable_account_id()->set_account_id(kUser);
+  check_req_->mutable_account_id()->set_account_id(*kUser);
   check_req_->mutable_authorization_request()
       ->mutable_key()
       ->mutable_data()
@@ -3442,7 +3446,7 @@ TEST_F(UserDataAuthExTest, CheckKeyFingerprintFailNoRetry) {
 TEST_F(UserDataAuthExTest, CheckKeyFingerprintWrongUser) {
   PrepareArguments();
 
-  check_req_->mutable_account_id()->set_account_id(kUser);
+  check_req_->mutable_account_id()->set_account_id(*kUser);
   check_req_->mutable_authorization_request()
       ->mutable_key()
       ->mutable_data()
@@ -3458,7 +3462,7 @@ TEST_F(UserDataAuthExTest, CheckKeyFingerprintWrongUser) {
 TEST_F(UserDataAuthExTest, CheckKeyFingerprintSuccess) {
   PrepareArguments();
 
-  check_req_->mutable_account_id()->set_account_id(kUser);
+  check_req_->mutable_account_id()->set_account_id(*kUser);
   check_req_->mutable_authorization_request()
       ->mutable_key()
       ->mutable_data()
@@ -3505,13 +3509,14 @@ TEST_F(UserDataAuthExTest, ListKeysValidity) {
   // Success case.
   EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
   EXPECT_CALL(keyset_management_, GetVaultKeysetLabels(_, _, _))
-      .WillOnce(Invoke([](const std::string& ignored, bool include_le_labels,
-                          std::vector<std::string>* output) {
-        output->clear();
-        output->push_back(ListKeysValidityTest_label1);
-        output->push_back(ListKeysValidityTest_label2);
-        return true;
-      }));
+      .WillOnce(
+          Invoke([](const ObfuscatedUsername& ignored, bool include_le_labels,
+                    std::vector<std::string>* output) {
+            output->clear();
+            output->push_back(ListKeysValidityTest_label1);
+            output->push_back(ListKeysValidityTest_label2);
+            return true;
+          }));
 
   user_data_auth::ListKeysReply reply =
       userdataauth_->ListKeys(*list_keys_req_);
@@ -3554,9 +3559,9 @@ TEST_F(UserDataAuthExTest, ListKeysInvalidArgs) {
 TEST_F(UserDataAuthExTest, RemoveValidity) {
   PrepareArguments();
 
-  constexpr char kUsername1[] = "foo@gmail.com";
+  const Username kUsername1("foo@gmail.com");
 
-  remove_homedir_req_->mutable_identifier()->set_account_id(kUsername1);
+  remove_homedir_req_->mutable_identifier()->set_account_id(*kUsername1);
 
   // Test for successful case.
   EXPECT_CALL(homedirs_, Remove(GetObfuscatedUsername(kUsername1)))
@@ -3575,8 +3580,8 @@ TEST_F(UserDataAuthExTest, RemoveValidity) {
 
 TEST_F(UserDataAuthExTest, RemoveBusyMounted) {
   PrepareArguments();
-  SetupMount(kUser);
-  remove_homedir_req_->mutable_identifier()->set_account_id(kUser);
+  SetupMount(*kUser);
+  remove_homedir_req_->mutable_identifier()->set_account_id(*kUser);
   EXPECT_CALL(*session_, IsActive()).WillOnce(Return(true));
   EXPECT_NE(
       userdataauth_->Remove(*remove_homedir_req_).error_info().primary_action(),
@@ -3613,9 +3618,9 @@ TEST_F(UserDataAuthExTest, RemoveValidityWithAuthSession) {
   PrepareArguments();
 
   // Setup
-  constexpr char kUsername1[] = "foo@gmail.com";
+  const Username kUsername1("foo@gmail.com");
 
-  start_auth_session_req_->mutable_account_id()->set_account_id(kUsername1);
+  start_auth_session_req_->mutable_account_id()->set_account_id(*kUsername1);
   TestFuture<user_data_auth::StartAuthSessionReply> auth_session_reply_future;
   userdataauth_->StartAuthSession(
       *start_auth_session_req_,
@@ -3942,7 +3947,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionReplyCheck) {
   EXPECT_CALL(keyset_management_, GetVaultKeysets(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(vk_indicies), Return(true)));
   EXPECT_CALL(keyset_management_, LoadVaultKeysetForUser(_, 0))
-      .WillOnce([key_data](const std::string&, int) {
+      .WillOnce([key_data](const ObfuscatedUsername&, int) {
         auto vk = std::make_unique<VaultKeyset>();
         vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
                      SerializedVaultKeyset::PCR_BOUND);
@@ -3989,7 +3994,7 @@ TEST_F(UserDataAuthExTest, StartAuthSessionVerifyOnlyFactors) {
   EXPECT_CALL(keyset_management_, GetVaultKeysets(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(vk_indicies), Return(true)));
   EXPECT_CALL(keyset_management_, LoadVaultKeysetForUser(_, 0))
-      .WillOnce([key_data](const std::string&, int) {
+      .WillOnce([key_data](const ObfuscatedUsername&, int) {
         auto vk = std::make_unique<VaultKeyset>();
         vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
                      SerializedVaultKeyset::PCR_BOUND);
@@ -4261,8 +4266,8 @@ TEST_F(UserDataAuthExTest,
 }
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithFactorsFromVks) {
-  static constexpr char kUser[] = "foo@example.com";
-  const std::string kObfuscatedUser = SanitizeUserName(kUser);
+  const Username kUser("foo@example.com");
+  const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
   EXPECT_CALL(keyset_management_, UserExists(_)).WillOnce(Return(true));
   EXPECT_CALL(auth_block_utility_, IsAuthFactorSupported(_, _, _))
       .WillRepeatedly(Return(false));
@@ -4276,7 +4281,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithFactorsFromVks) {
   EXPECT_CALL(keyset_management_, GetVaultKeysets(kObfuscatedUser, _))
       .WillOnce(DoAll(SetArgPointee<1>(vk_indicies), Return(true)));
   EXPECT_CALL(keyset_management_, LoadVaultKeysetForUser(kObfuscatedUser, 0))
-      .WillOnce([](const std::string&, int) {
+      .WillOnce([](const ObfuscatedUsername&, int) {
         auto vk = std::make_unique<VaultKeyset>();
         vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
                      SerializedVaultKeyset::PCR_BOUND);
@@ -4291,7 +4296,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithFactorsFromVks) {
   EXPECT_CALL(keyset_management_, LoadVaultKeysetForUser(kObfuscatedUser, 1))
       .WillOnce(Return(ByMove(nullptr)));
   EXPECT_CALL(keyset_management_, LoadVaultKeysetForUser(kObfuscatedUser, 2))
-      .WillOnce([](const std::string&, int) {
+      .WillOnce([](const ObfuscatedUsername&, int) {
         auto vk = std::make_unique<VaultKeyset>();
         vk->SetFlags(SerializedVaultKeyset::SCRYPT_WRAPPED);
         KeyData key_data;
@@ -4338,7 +4343,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithFactorsFromVks) {
       });
 
   user_data_auth::ListAuthFactorsRequest list_request;
-  list_request.mutable_account_id()->set_account_id(kUser);
+  list_request.mutable_account_id()->set_account_id(*kUser);
   TestFuture<user_data_auth::ListAuthFactorsReply> list_reply_future;
   userdataauth_->ListAuthFactors(
       list_request,
@@ -4366,8 +4371,8 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsUserExistsWithFactorsFromVks) {
 }
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
-  static constexpr char kUser[] = "foo@example.com";
-  const std::string kObfuscatedUser = SanitizeUserName(kUser);
+  const Username kUser("foo@example.com");
+  const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
   AuthFactorManager manager(&platform_);
   userdataauth_->set_auth_factor_manager_for_testing(&manager);
   SetUserSecretStashExperimentFlag(/*enabled=*/false);
@@ -4389,7 +4394,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
   // Set up standard list auth factor parameters, we'll be calling this a few
   // times during the test.
   user_data_auth::ListAuthFactorsRequest list_request;
-  list_request.mutable_account_id()->set_account_id(kUser);
+  list_request.mutable_account_id()->set_account_id(*kUser);
   TestFuture<user_data_auth::ListAuthFactorsReply> list_reply_future_1;
 
   // List all the auth factors, there should be none at the start.
@@ -4496,8 +4501,8 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUss) {
 }
 
 TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
-  static constexpr char kUser[] = "foo@example.com";
-  const std::string kObfuscatedUser = SanitizeUserName(kUser);
+  const Username kUser("foo@example.com");
+  const ObfuscatedUsername kObfuscatedUser = SanitizeUserName(kUser);
   AuthFactorManager manager(&platform_);
   userdataauth_->set_auth_factor_manager_for_testing(&manager);
   SetUserSecretStashExperimentFlag(/*enabled=*/false);
@@ -4519,7 +4524,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
   // Set up standard list auth factor parameters, we'll be calling this a few
   // times during the test.
   user_data_auth::ListAuthFactorsRequest list_request;
-  list_request.mutable_account_id()->set_account_id(kUser);
+  list_request.mutable_account_id()->set_account_id(*kUser);
   TestFuture<user_data_auth::ListAuthFactorsReply> list_reply_future_1;
 
   // List all the auth factors, there should be none at the start.
@@ -4540,7 +4545,7 @@ TEST_F(UserDataAuthExTest, ListAuthFactorsWithFactorsFromUssAndVk) {
   EXPECT_CALL(keyset_management_, GetVaultKeysets(kObfuscatedUser, _))
       .WillOnce(DoAll(SetArgPointee<1>(vk_indice), Return(true)));
   EXPECT_CALL(keyset_management_, LoadVaultKeysetForUser(kObfuscatedUser, 0))
-      .WillOnce([](const std::string&, int) {
+      .WillOnce([](const ObfuscatedUsername&, int) {
         auto vk = std::make_unique<VaultKeyset>();
         vk->SetFlags(SerializedVaultKeyset::TPM_WRAPPED |
                      SerializedVaultKeyset::PCR_BOUND);
@@ -4636,7 +4641,7 @@ TEST_F(UserDataAuthExTest, PrepareAuthFactorLegacyFingerprintSuccess) {
   EXPECT_CALL(
       auth_block_utility_,
       PrepareAuthFactorForAuth(AuthFactorType::kLegacyFingerprint, _, _))
-      .WillOnce([&](AuthFactorType, const std::string&,
+      .WillOnce([&](AuthFactorType, const ObfuscatedUsername&,
                     PreparedAuthFactorToken::Consumer callback) {
         std::move(callback).Run(std::move(token));
       });
@@ -4686,7 +4691,7 @@ TEST_F(UserDataAuthExTest, PrepareAuthFactorLegacyFingerprintFailure) {
   EXPECT_CALL(
       auth_block_utility_,
       PrepareAuthFactorForAuth(AuthFactorType::kLegacyFingerprint, _, _))
-      .WillOnce([&](AuthFactorType, const std::string&,
+      .WillOnce([&](AuthFactorType, const ObfuscatedUsername&,
                     PreparedAuthFactorToken::Consumer callback) {
         std::move(callback).Run(MakeStatus<CryptohomeError>(
             kErrorLocationPlaceholder,
@@ -4806,7 +4811,7 @@ TEST_F(UserDataAuthExTest, TerminateAuthFactorLegacyFingerprintSuccess) {
   EXPECT_CALL(
       auth_block_utility_,
       PrepareAuthFactorForAuth(AuthFactorType::kLegacyFingerprint, _, _))
-      .WillOnce([&](AuthFactorType, const std::string&,
+      .WillOnce([&](AuthFactorType, const ObfuscatedUsername&,
                     PreparedAuthFactorToken::Consumer callback) {
         std::move(callback).Run(std::move(token));
       });
@@ -4918,7 +4923,7 @@ TEST_F(UserDataAuthExTest, TerminateAuthFactorBadTypeFailure) {
 
 class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {
  public:
-  static constexpr const char* kUser = "chromeos-user";
+  const Username kUser{"chromeos-user"};
   static constexpr const char* kKeyLabel = "key";
   static constexpr const char* kKeyDelegateDBusService = "key-delegate-service";
   static constexpr const char* kSpkiDer = "fake-spki";
@@ -4929,7 +4934,7 @@ class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {
   // GMock actions that perform reply to ChallengeCredentialsHelper operations:
 
   struct ReplyToVerifyKey {
-    void operator()(const std::string& account_id,
+    void operator()(const Username& account_id,
                     const structure::ChallengePublicKeyInfo& public_key_info,
                     std::unique_ptr<KeyChallengeService> key_challenge_service,
                     ChallengeCredentialsHelper::VerifyKeyCallback callback) {
@@ -4955,7 +4960,7 @@ class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {
 
   struct ReplyToDecrypt {
     void operator()(
-        const std::string& account_id,
+        const Username& account_id,
         const structure::ChallengePublicKeyInfo& public_key_info,
         const structure::SignatureChallengeInfo& keyset_challenge_info,
         std::unique_ptr<KeyChallengeService> key_challenge_service,
@@ -4982,7 +4987,7 @@ class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {
     public_key_info_ = proto::FromProto(*key_public_info);
 
     PrepareArguments();
-    check_req_->mutable_account_id()->set_account_id(kUser);
+    check_req_->mutable_account_id()->set_account_id(*kUser);
     *check_req_->mutable_authorization_request()
          ->mutable_key()
          ->mutable_data() = key_data_;
@@ -5001,7 +5006,7 @@ class ChallengeResponseUserDataAuthExTest : public UserDataAuthExTest {
         .WillRepeatedly(
             Invoke(this, &UserDataAuthExTest::GetNiceMockVaultKeyset));
 
-    SetupMount(kUser);
+    SetupMount(*kUser);
     ON_CALL(*session_, VerifyUser(GetObfuscatedUsername(kUser)))
         .WillByDefault(Return(true));
     session_->set_key_data(key_data_);
@@ -5215,7 +5220,7 @@ class UserDataAuthApiTest : public UserDataAuthTest {
       uint32_t flags =
           user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE) {
     user_data_auth::StartAuthSessionRequest req;
-    req.mutable_account_id()->set_account_id(kUsername1);
+    req.mutable_account_id()->set_account_id(*kUsername1);
     req.set_intent(intent);
     req.set_flags(flags);
     std::optional<user_data_auth::StartAuthSessionReply> reply =
@@ -5433,8 +5438,8 @@ class UserDataAuthApiTest : public UserDataAuthTest {
   // is called.
   std::deque<Mount*> new_mounts_;
 
-  static constexpr char kUsername1[] = "foo@gmail.com";
-  static constexpr char kUsername2[] = "bar@gmail.com";
+  const Username kUsername1{"foo@gmail.com"};
+  const Username kUsername2{"bar@gmail.com"};
   static constexpr char kPassword1[] = "MyP@ssW0rd!!";
   static constexpr char kPasswordLabel[] = "Password1";
   static constexpr char kSmartCardLabel[] = "SmartCard1";
@@ -5642,7 +5647,7 @@ TEST_F(UserDataAuthApiTest, EphemeralMountFailed) {
                                           MOUNT_ERROR_FATAL, false));
   new_mounts_.push_back(mount.get());
   EXPECT_CALL(homedirs_, GetPlainOwner(_))
-      .WillRepeatedly(DoAll(SetArgPointee<0>(kUsername2), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<0>(*kUsername2), Return(true)));
 
   // Make the call to check that the result is correct.
   user_data_auth::PrepareEphemeralVaultRequest prepare_req;
@@ -5666,7 +5671,7 @@ TEST_F(UserDataAuthApiTest, VaultWithoutAuth) {
 
   // Call StartAuthSession and it should fail.
   user_data_auth::StartAuthSessionRequest req;
-  req.mutable_account_id()->set_account_id(kUsername1);
+  req.mutable_account_id()->set_account_id(*kUsername1);
   req.set_intent(user_data_auth::AuthIntent::AUTH_INTENT_DECRYPT);
   req.set_flags(user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE);
   std::optional<user_data_auth::StartAuthSessionReply> reply =

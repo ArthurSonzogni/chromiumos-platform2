@@ -51,7 +51,7 @@ constexpr int kFlatbufferAllocatorInitialSize = 4096;
 // Checks if the provided `auth_factor_label` is valid and on success returns
 // `AuthFactorPath()`.
 CryptohomeStatusOr<base::FilePath> GetAuthFactorPathFromStringType(
-    const std::string& obfuscated_username,
+    const ObfuscatedUsername& obfuscated_username,
     const std::string& auth_factor_type_string,
     const std::string& auth_factor_label) {
   if (!IsValidAuthFactorLabel(auth_factor_label)) {
@@ -70,7 +70,7 @@ CryptohomeStatusOr<base::FilePath> GetAuthFactorPathFromStringType(
 // Converts `auth_factor_type` to string and on success calls
 // `GetAuthFactorPathFromStringType()` method above.
 CryptohomeStatusOr<base::FilePath> GetAuthFactorPath(
-    const std::string& obfuscated_username,
+    const ObfuscatedUsername& obfuscated_username,
     const AuthFactorType auth_factor_type,
     const std::string& auth_factor_label) {
   const std::string type_string = AuthFactorTypeToString(auth_factor_type);
@@ -357,7 +357,8 @@ AuthFactorManager::AuthFactorManager(Platform* platform) : platform_(platform) {
 AuthFactorManager::~AuthFactorManager() = default;
 
 CryptohomeStatus AuthFactorManager::SaveAuthFactor(
-    const std::string& obfuscated_username, const AuthFactor& auth_factor) {
+    const ObfuscatedUsername& obfuscated_username,
+    const AuthFactor& auth_factor) {
   CryptohomeStatusOr<base::FilePath> file_path = GetAuthFactorPath(
       obfuscated_username, auth_factor.type(), auth_factor.label());
   if (!file_path.ok()) {
@@ -395,7 +396,7 @@ CryptohomeStatus AuthFactorManager::SaveAuthFactor(
 }
 
 CryptohomeStatusOr<std::unique_ptr<AuthFactor>>
-AuthFactorManager::LoadAuthFactor(const std::string& obfuscated_username,
+AuthFactorManager::LoadAuthFactor(const ObfuscatedUsername& obfuscated_username,
                                   AuthFactorType auth_factor_type,
                                   const std::string& auth_factor_label) {
   CryptohomeStatusOr<base::FilePath> file_path = GetAuthFactorPath(
@@ -446,7 +447,8 @@ AuthFactorManager::LoadAuthFactor(const std::string& obfuscated_username,
 }
 
 std::map<std::string, std::unique_ptr<AuthFactor>>
-AuthFactorManager::LoadAllAuthFactors(const std::string& obfuscated_username) {
+AuthFactorManager::LoadAllAuthFactors(
+    const ObfuscatedUsername& obfuscated_username) {
   std::map<std::string, std::unique_ptr<AuthFactor>> label_to_auth_factor;
   for (const auto& [label, auth_factor_type] :
        ListAuthFactors(obfuscated_username)) {
@@ -462,7 +464,7 @@ AuthFactorManager::LoadAllAuthFactors(const std::string& obfuscated_username) {
 }
 
 AuthFactorManager::LabelToTypeMap AuthFactorManager::ListAuthFactors(
-    const std::string& obfuscated_username) {
+    const ObfuscatedUsername& obfuscated_username) {
   LabelToTypeMap label_to_type_map;
 
   std::unique_ptr<FileEnumerator> file_enumerator(platform_->GetFileEnumerator(
@@ -524,7 +526,7 @@ AuthFactorManager::LabelToTypeMap AuthFactorManager::ListAuthFactors(
 }
 
 CryptohomeStatus AuthFactorManager::RemoveAuthFactor(
-    const std::string& obfuscated_username,
+    const ObfuscatedUsername& obfuscated_username,
     const AuthFactor& auth_factor,
     AuthBlockUtility* auth_block_utility) {
   CryptohomeStatusOr<base::FilePath> file_path = GetAuthFactorPath(
@@ -575,7 +577,7 @@ CryptohomeStatus AuthFactorManager::RemoveAuthFactor(
 }
 
 CryptohomeStatus AuthFactorManager::UpdateAuthFactor(
-    const std::string& obfuscated_username,
+    const ObfuscatedUsername& obfuscated_username,
     const std::string& auth_factor_label,
     AuthFactor& auth_factor,
     AuthBlockUtility* auth_block_utility) {

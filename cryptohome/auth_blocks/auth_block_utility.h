@@ -29,6 +29,7 @@
 #include "cryptohome/key_challenge_service.h"
 #include "cryptohome/key_challenge_service_factory_impl.h"
 #include "cryptohome/key_objects.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -84,14 +85,14 @@ class AuthBlockUtility {
   // authentication. Returns through the asynchronous |callback|.
   virtual void PrepareAuthFactorForAuth(
       AuthFactorType auth_factor_type,
-      const std::string& username,
+      const ObfuscatedUsername& username,
       PreparedAuthFactorToken::Consumer callback) = 0;
 
   // Given an AuthFactorType, attempt to prepare an auth factor for add.
   // Returns through the asynchronous |callback|.
   virtual void PrepareAuthFactorForAdd(
       AuthFactorType auth_factor_type,
-      const std::string& username,
+      const ObfuscatedUsername& username,
       PreparedAuthFactorToken::Consumer callback) = 0;
 
   // Creates KeyBlobs and AuthBlockState with the given type of AuthBlock for
@@ -153,7 +154,7 @@ class AuthBlockUtility {
   // This populates an AuthBlockState allocated by the caller.
   [[nodiscard]] virtual bool GetAuthBlockStateFromVaultKeyset(
       const std::string& label,
-      const std::string& obfuscated_username,
+      const ObfuscatedUsername& obfuscated_username,
       AuthBlockState& out_state) const = 0;
 
   // Reads an auth block state and update the given VaultKeyset with what it
@@ -168,7 +169,7 @@ class AuthBlockUtility {
 
   // Generates a payload for cryptohome recovery AuthFactor authentication.
   [[nodiscard]] virtual CryptoStatus GenerateRecoveryRequest(
-      const std::string& obfuscated_username,
+      const ObfuscatedUsername& obfuscated_username,
       const cryptorecovery::RequestMetadata& request_metadata,
       const brillo::Blob& epoch_response,
       const CryptohomeRecoveryAuthBlockState& state,

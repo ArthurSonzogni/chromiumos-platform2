@@ -15,6 +15,7 @@
 
 #include "cryptohome/flatbuffer_schemas/structures.h"
 #include "cryptohome/key_challenge_service.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -79,7 +80,7 @@ class KeyChallengeServiceMockController final {
   // |intercepted_response_callback_|, allowing the later call of a Simulate*()
   // method.
   void ExpectSignatureChallenge(
-      const std::string& expected_username,
+      const Username& expected_username,
       const brillo::Blob& expected_public_key_spki_der,
       const brillo::Blob& expected_challenge_value,
       structure::ChallengeSignatureAlgorithm expected_signature_algorithm);

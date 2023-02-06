@@ -86,7 +86,7 @@ ChallengeCredentialsOperation::ChallengeCredentialsOperation(
     : key_challenge_service_(key_challenge_service) {}
 
 void ChallengeCredentialsOperation::MakeKeySignatureChallenge(
-    const std::string& account_id,
+    const Username& account_id,
     const Blob& public_key_spki_der,
     const Blob& data_to_sign,
     structure::ChallengeSignatureAlgorithm signature_algorithm,
@@ -94,7 +94,7 @@ void ChallengeCredentialsOperation::MakeKeySignatureChallenge(
   DCHECK(thread_checker_.CalledOnValidThread());
 
   AccountIdentifier account_identifier;
-  account_identifier.set_account_id(account_id);
+  account_identifier.set_account_id(*account_id);
 
   KeyChallengeRequest challenge_request;
   challenge_request.set_challenge_type(

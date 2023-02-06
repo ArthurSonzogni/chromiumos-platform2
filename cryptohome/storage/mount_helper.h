@@ -24,6 +24,7 @@
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mount_stack.h"
+#include "cryptohome/username.h"
 
 using base::FilePath;
 
@@ -54,7 +55,7 @@ class MountHelperInterface {
 
   // Carries out an ephemeral mount for user |username|.
   virtual StorageStatus PerformEphemeralMount(
-      const std::string& username,
+      const Username& username,
       const base::FilePath& ephemeral_loop_device) = 0;
 
   // Unmounts the mount point.
@@ -62,7 +63,7 @@ class MountHelperInterface {
 
   // Carries out mount operations for a regular cryptohome.
   virtual StorageStatus PerformMount(MountType mount_type,
-                                     const std::string& username,
+                                     const Username& username,
                                      const std::string& fek_signature,
                                      const std::string& fnek_signature) = 0;
 };
@@ -77,44 +78,44 @@ class MountHelper : public MountHelperInterface {
 
   // Returns the temporary user path while we're migrating for
   // http://crbug.com/224291.
-  static base::FilePath GetNewUserPath(const std::string& username);
+  static base::FilePath GetNewUserPath(const Username& username);
 
   // Ensures that root and user mountpoints for the specified user are present.
   // Returns false if the mountpoints were not present and could not be created.
-  bool EnsureUserMountPoints(const std::string& username) const;
+  bool EnsureUserMountPoints(const Username& username) const;
 
   // Mounts the tracked subdirectories from a separate cache directory. This
   // is used by LVM dm-crypt cryptohomes to separate the cache directory.
   //
   // Parameters
   //   obfuscated_username - The obfuscated form of the username
-  bool MountCacheSubdirectories(const std::string& obfuscated_username,
+  bool MountCacheSubdirectories(const ObfuscatedUsername& obfuscated_username,
                                 const base::FilePath& data_directory);
 
   // Sets up the ecryptfs mount.
-  bool SetUpEcryptfsMount(const std::string& obfuscated_username,
+  bool SetUpEcryptfsMount(const ObfuscatedUsername& obfuscated_username,
                           const std::string& fek_signature,
                           const std::string& fnek_signature,
                           const FilePath& mount_type);
 
   // Sets up the dircrypto mount.
-  void SetUpDircryptoMount(const std::string& obfuscated_username);
+  void SetUpDircryptoMount(const ObfuscatedUsername& obfuscated_username);
 
   // Sets up the dm-crypt mount.
-  bool SetUpDmcryptMount(const std::string& obfuscated_username,
+  bool SetUpDmcryptMount(const ObfuscatedUsername& obfuscated_username,
                          const base::FilePath& data_mount_point);
 
   // Carries out eCryptfs/dircrypto mount(2) operations for a regular
   // cryptohome.
   StorageStatus PerformMount(MountType mount_type,
-                             const std::string& username,
+                             const Username& username,
                              const std::string& fek_signature,
                              const std::string& fnek_signature) override;
 
   // Carries out dircrypto mount(2) operations for an ephemeral cryptohome.
   // Does not clean up on failure.
   StorageStatus PerformEphemeralMount(
-      const std::string& username,
+      const Username& username,
       const base::FilePath& ephemeral_loop_device) override;
 
   // Unmounts all mount points.
@@ -138,13 +139,15 @@ class MountHelper : public MountHelperInterface {
   //
   // Parameters
   //   obfuscated_username - Obfuscated username field of the credentials.
-  FilePath GetMountedUserHomePath(const std::string& obfuscated_username) const;
+  FilePath GetMountedUserHomePath(
+      const ObfuscatedUsername& obfuscated_username) const;
 
   // Returns the mounted roothome path (e.g. /home/.shadow/.../mount/root)
   //
   // Parameters
   //   obfuscated_username - Obfuscated username field of the credentials.
-  FilePath GetMountedRootHomePath(const std::string& obfuscated_username) const;
+  FilePath GetMountedRootHomePath(
+      const ObfuscatedUsername& obfuscated_username) const;
 
   // Mounts a mount point and pushes it to the mount stack.
   // Returns true if the mount succeeds, false otherwise.
@@ -223,8 +226,8 @@ class MountHelper : public MountHelperInterface {
   // for details.
   //
   // (*) Path for a regular mount. The path is different for an ephemeral mount.
-  bool MountDaemonStoreDirectories(const FilePath& root_home,
-                                   const std::string& obfuscated_username);
+  bool MountDaemonStoreDirectories(
+      const FilePath& root_home, const ObfuscatedUsername& obfuscated_username);
 
   // Sets up bind mounts from |user_home| and |root_home| to
   //   - /home/chronos/user (see MountLegacyHome()),
@@ -235,8 +238,8 @@ class MountHelper : public MountHelperInterface {
   //     (see MountDaemonStoreDirectories()).
   // The parameters have the same meaning as in MountCryptohome resp.
   // MountEphemeralCryptohomeInner. Returns true if successful, false otherwise.
-  bool MountHomesAndDaemonStores(const std::string& username,
-                                 const std::string& obfuscated_username,
+  bool MountHomesAndDaemonStores(const Username& username,
+                                 const ObfuscatedUsername& obfuscated_username,
                                  const FilePath& user_home,
                                  const FilePath& root_home);
 
@@ -255,7 +258,8 @@ class MountHelper : public MountHelperInterface {
 
   // Returns true if we think there was at least one successful mount in
   // the past.
-  bool IsFirstMountComplete(const std::string& obfuscated_username) const;
+  bool IsFirstMountComplete(
+      const ObfuscatedUsername& obfuscated_username) const;
 
   bool legacy_mount_ = true;
   bool bind_mount_downloads_ = true;

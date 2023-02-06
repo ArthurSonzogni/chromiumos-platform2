@@ -14,6 +14,7 @@
 
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -23,18 +24,18 @@ class DiskCleanupRoutines {
   virtual ~DiskCleanupRoutines();
 
   // Remove the users Cache directory.
-  virtual bool DeleteUserCache(const std::string& obfuscated);
+  virtual bool DeleteUserCache(const ObfuscatedUsername& obfuscated);
   // Clear the users GDrive cache.
-  virtual bool DeleteUserGCache(const std::string& obfuscated);
+  virtual bool DeleteUserGCache(const ObfuscatedUsername& obfuscated);
   // Remove Dmcrypt cache.
-  virtual bool DeleteCacheVault(const std::string& obfuscated);
+  virtual bool DeleteCacheVault(const ObfuscatedUsername& obfuscated);
   // Remove the users Android cache.
-  virtual bool DeleteUserAndroidCache(const std::string& obfuscated);
+  virtual bool DeleteUserAndroidCache(const ObfuscatedUsername& obfuscated);
   // Remove the entire user profile.
-  virtual bool DeleteUserProfile(const std::string& obfuscated);
+  virtual bool DeleteUserProfile(const ObfuscatedUsername& obfuscated);
 
  private:
-  base::FilePath GetShadowDir(const std::string& obfuscated) const;
+  base::FilePath GetShadowDir(const ObfuscatedUsername& obfuscated) const;
 
   // Returns the path of the specified tracked directory (i.e. a directory which
   // we can locate even when without the key).

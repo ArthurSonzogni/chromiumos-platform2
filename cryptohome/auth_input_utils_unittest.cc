@@ -21,14 +21,11 @@ using brillo::SecureBlob;
 
 namespace cryptohome {
 
-namespace {
-constexpr char kUserName[] = "someusername";
-constexpr char kObfuscatedUsername[] = "fake-user@example.org";
-
-}  // namespace
-
 class AuthInputUtilsPlatformTest : public ::testing::Test {
  protected:
+  const Username kUserName{"someusername"};
+  const ObfuscatedUsername kObfuscatedUsername{"fake-user@example.org"};
+
   testing::NiceMock<MockPlatform> platform_;
 };
 
@@ -172,7 +169,7 @@ TEST_F(AuthInputUtilsPlatformTest, FromKioskAuthInput) {
   // Mock platform takes care of creating the salt file if needed.
   GetPublicMountSalt(&platform, &public_mount_salt);
   brillo::SecureBlob passkey;
-  Crypto::PasswordToPasskey(kUserName, public_mount_salt, &passkey);
+  Crypto::PasswordToPasskey(kUserName->c_str(), public_mount_salt, &passkey);
   user_data_auth::AuthInput proto;
   proto.mutable_kiosk_input();
 

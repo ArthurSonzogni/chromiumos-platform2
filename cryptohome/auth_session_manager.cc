@@ -58,7 +58,7 @@ AuthSessionManager::AuthSessionManager(
 }
 
 CryptohomeStatusOr<InUseAuthSession> AuthSessionManager::CreateAuthSession(
-    const std::string& account_id, uint32_t flags, AuthIntent auth_intent) {
+    const Username& account_id, uint32_t flags, AuthIntent auth_intent) {
   // The lifetime of AuthSessionManager instance will outlast AuthSession
   // which is why usage of |Unretained| is safe.
   auto on_timeout = base::BindOnce(&AuthSessionManager::ExpireAuthSession,

@@ -77,7 +77,7 @@ structure::ChallengeSignatureAlgorithm ConvertFromHwsecAlgorithm(
 ChallengeCredentialsDecryptOperation::ChallengeCredentialsDecryptOperation(
     KeyChallengeService* key_challenge_service,
     hwsec::CryptohomeFrontend* hwsec,
-    const std::string& account_id,
+    const Username& account_id,
     const structure::ChallengePublicKeyInfo& public_key_info,
     const structure::SignatureChallengeInfo& keyset_challenge_info,
     CompletionCallback completion_callback)

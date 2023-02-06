@@ -26,6 +26,7 @@
 #include "cryptohome/error/locations.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
+#include "cryptohome/username.h"
 
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::ErrorAction;
@@ -63,7 +64,7 @@ CryptoStatus AsyncChallengeCredentialAuthBlock::IsSupported(Crypto& crypto) {
 AsyncChallengeCredentialAuthBlock::AsyncChallengeCredentialAuthBlock(
     ChallengeCredentialsHelper* challenge_credentials_helper,
     std::unique_ptr<KeyChallengeService> key_challenge_service,
-    const std::string& account_id)
+    const Username& account_id)
     : AuthBlock(kSignatureChallengeProtected),
       challenge_credentials_helper_(challenge_credentials_helper),
       key_challenge_service_(std::move(key_challenge_service)),
@@ -128,7 +129,7 @@ void AsyncChallengeCredentialAuthBlock::Create(const AuthInput& auth_input,
                                  .challenge_signature_algorithms,
   };
 
-  const std::string& obfuscated_username =
+  const ObfuscatedUsername& obfuscated_username =
       auth_input.obfuscated_username.value();
 
   challenge_credentials_helper_->GenerateNew(

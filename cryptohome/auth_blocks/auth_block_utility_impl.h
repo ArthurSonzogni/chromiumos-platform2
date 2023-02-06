@@ -68,12 +68,12 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
 
   void PrepareAuthFactorForAuth(
       AuthFactorType auth_factor_type,
-      const std::string& username,
+      const ObfuscatedUsername& username,
       PreparedAuthFactorToken::Consumer callback) override;
 
   void PrepareAuthFactorForAdd(
       AuthFactorType auth_factor_type,
-      const std::string& username,
+      const ObfuscatedUsername& username,
       PreparedAuthFactorToken::Consumer callback) override;
 
   CryptoStatus CreateKeyBlobsWithAuthBlock(
@@ -113,7 +113,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
 
   bool GetAuthBlockStateFromVaultKeyset(
       const std::string& label,
-      const std::string& obfuscated_username,
+      const ObfuscatedUsername& obfuscated_username,
       AuthBlockState& out_state) const override;
 
   void AssignAuthBlockStateToVaultKeyset(
@@ -123,7 +123,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       const AuthBlockState& auth_block_state) override;
 
   CryptoStatus GenerateRecoveryRequest(
-      const std::string& obfuscated_username,
+      const ObfuscatedUsername& obfuscated_username,
       const cryptorecovery::RequestMetadata& request_metadata,
       const brillo::Blob& epoch_response,
       const CryptohomeRecoveryAuthBlockState& state,

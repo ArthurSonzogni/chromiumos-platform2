@@ -47,7 +47,7 @@ struct SaveSignalCallback {
 // argument. Useful for mocking out StartAuthSessionAsyncForUser to capture the
 // parameter.
 struct SaveStartSessionCallback {
-  void operator()(std::string username,
+  void operator()(ObfuscatedUsername username,
                   FingerprintManager::StartSessionCallback callback) {
     *captured_callback = std::move(callback);
   }
@@ -77,7 +77,7 @@ TEST_F(NullFingerprintAuthBlockServiceTest, NullVerifyFails) {
 
 TEST_F(NullFingerprintAuthBlockServiceTest, NullStartFails) {
   auto service = FingerprintAuthBlockService::MakeNullService();
-  std::string dummy_username = "dummy";
+  ObfuscatedUsername dummy_username("dummy");
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       on_done_result;
@@ -108,7 +108,7 @@ class FingerprintAuthBlockServiceTest : public BaseTestFixture {
 
   StrictMock<MockFingerprintManager> fp_manager_;
   FingerprintAuthBlockService service_;
-  std::string user_ = "dummy_user";
+  ObfuscatedUsername user_{"dummy_user"};
   user_data_auth::FingerprintScanResult result_;
 };
 
@@ -147,7 +147,7 @@ TEST_F(FingerprintAuthBlockServiceTest, StartAgainWithDifferentUserFailure) {
   // Kick off the 2nd start.
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       second_on_done_result;
-  std::string another_user = "another_name";
+  ObfuscatedUsername another_user("another_name");
   service_.Start(another_user, second_on_done_result.GetCallback());
   ASSERT_THAT(second_on_done_result.IsReady(), IsTrue());
   ASSERT_THAT(second_on_done_result.Get().status()->local_legacy_error(),

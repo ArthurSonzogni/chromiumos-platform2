@@ -24,19 +24,19 @@ class MockUserOldestActivityTimestampManager
 
   MOCK_METHOD(void,
               LoadTimestampWithLegacy,
-              (const std::string&, base::Time),
+              (const ObfuscatedUsername&, base::Time),
               (override));
 
-  MOCK_METHOD(void, LoadTimestamp, (const std::string&), (override));
+  MOCK_METHOD(void, LoadTimestamp, (const ObfuscatedUsername&), (override));
   MOCK_METHOD(bool,
               UpdateTimestamp,
-              (const std::string&, base::TimeDelta time_shift),
+              (const ObfuscatedUsername&, base::TimeDelta time_shift),
               (override));
 
-  MOCK_METHOD(void, RemoveUser, (const std::string&), (override));
+  MOCK_METHOD(void, RemoveUser, (const ObfuscatedUsername&), (override));
   MOCK_METHOD(base::Time,
               GetLastUserActivityTimestamp,
-              (const std::string&),
+              (const ObfuscatedUsername&),
               (const, override));
 };
 }  // namespace cryptohome

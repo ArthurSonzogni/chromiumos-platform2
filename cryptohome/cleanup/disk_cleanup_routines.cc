@@ -26,7 +26,8 @@ DiskCleanupRoutines::DiskCleanupRoutines(HomeDirs* homedirs, Platform* platform)
 
 DiskCleanupRoutines::~DiskCleanupRoutines() = default;
 
-bool DiskCleanupRoutines::DeleteUserCache(const std::string& obfuscated) {
+bool DiskCleanupRoutines::DeleteUserCache(
+    const ObfuscatedUsername& obfuscated) {
   FilePath user_dir = GetShadowDir(obfuscated);
 
   FilePath cache;
@@ -45,7 +46,8 @@ bool DiskCleanupRoutines::DeleteUserCache(const std::string& obfuscated) {
   return true;
 }
 
-bool DiskCleanupRoutines::DeleteUserGCache(const std::string& obfuscated) {
+bool DiskCleanupRoutines::DeleteUserGCache(
+    const ObfuscatedUsername& obfuscated) {
   FilePath user_dir = GetShadowDir(obfuscated);
 
   bool ret = true;
@@ -96,7 +98,8 @@ bool DiskCleanupRoutines::DeleteUserGCache(const std::string& obfuscated) {
   return ret;
 }
 
-bool DiskCleanupRoutines::DeleteCacheVault(const std::string& obfuscated) {
+bool DiskCleanupRoutines::DeleteCacheVault(
+    const ObfuscatedUsername& obfuscated) {
   if (!homedirs_->DmcryptCacheContainerExists(obfuscated))
     return true;
 
@@ -106,7 +109,7 @@ bool DiskCleanupRoutines::DeleteCacheVault(const std::string& obfuscated) {
 }
 
 bool DiskCleanupRoutines::DeleteUserAndroidCache(
-    const std::string& obfuscated) {
+    const ObfuscatedUsername& obfuscated) {
   FilePath user_dir = GetShadowDir(obfuscated);
 
   bool ret = true;
@@ -162,7 +165,8 @@ bool DiskCleanupRoutines::DeleteUserAndroidCache(
   return ret;
 }
 
-bool DiskCleanupRoutines::DeleteUserProfile(const std::string& obfuscated) {
+bool DiskCleanupRoutines::DeleteUserProfile(
+    const ObfuscatedUsername& obfuscated) {
   FilePath shadow_dir = GetShadowDir(obfuscated);
 
   if (!homedirs_->Remove(obfuscated)) {
@@ -174,8 +178,8 @@ bool DiskCleanupRoutines::DeleteUserProfile(const std::string& obfuscated) {
 }
 
 base::FilePath DiskCleanupRoutines::GetShadowDir(
-    const std::string& obfuscated) const {
-  return ShadowRoot().Append(obfuscated);
+    const ObfuscatedUsername& obfuscated) const {
+  return ShadowRoot().Append(*obfuscated);
 }
 
 bool DiskCleanupRoutines::GetTrackedDirectory(const FilePath& user_dir,

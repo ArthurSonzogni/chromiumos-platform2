@@ -20,6 +20,7 @@
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
+#include "cryptohome/username.h"
 #include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {
@@ -83,8 +84,9 @@ class VaultKeyset {
 
   // Encrypts the VaultKeyset fields with the KeyBlobs derived from the provided
   // |key| for the |obfuscated_username|.
-  virtual CryptohomeStatus Encrypt(const brillo::SecureBlob& key,
-                                   const std::string& obfuscated_username);
+  virtual CryptohomeStatus Encrypt(
+      const brillo::SecureBlob& key,
+      const ObfuscatedUsername& obfuscated_username);
 
   // Encrypts the VaultKeyset fields with the provided |key_blobs| based on the
   // encryption mechanisms provided by the |auth_state|.
@@ -360,9 +362,10 @@ class VaultKeyset {
   //                      the auth block.
   // Return
   //   error - The specific error code on failure.
-  CryptohomeStatus EncryptVaultKeyset(const brillo::SecureBlob& vault_key,
-                                      const std::string& obfuscated_username,
-                                      AuthBlockState* auth_block_state);
+  CryptohomeStatus EncryptVaultKeyset(
+      const brillo::SecureBlob& vault_key,
+      const ObfuscatedUsername& obfuscated_username,
+      AuthBlockState* auth_block_state);
 
   // These store run time state for the class.
   Platform* platform_;

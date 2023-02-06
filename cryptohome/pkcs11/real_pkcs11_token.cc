@@ -21,7 +21,7 @@ namespace cryptohome {
 using chaps::IsolateCredentialManager;
 
 RealPkcs11Token::RealPkcs11Token(
-    const std::string& username,
+    const Username& username,
     const base::FilePath& token_dir,
     const brillo::SecureBlob& auth_data,
     std::unique_ptr<ChapsClientFactory> chaps_client_factory)

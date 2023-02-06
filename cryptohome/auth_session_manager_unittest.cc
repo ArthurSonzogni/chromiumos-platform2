@@ -43,6 +43,8 @@ class AuthSessionManagerTest : public ::testing::Test {
   AuthSessionManagerTest& operator=(AuthSessionManagerTest&) = delete;
 
  protected:
+  const Username kUsername{"foo@example.com"};
+
   TaskEnvironment task_environment_{
       TaskEnvironment::TimeSource::MOCK_TIME,
       TaskEnvironment::ThreadPoolExecutionMode::QUEUED};
@@ -70,7 +72,7 @@ TEST_F(AuthSessionManagerTest, CreateFindRemove) {
   // Start scope for first InUseAuthSession
   {
     CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-        auth_session_manager_.CreateAuthSession("foo@example.com", 0,
+        auth_session_manager_.CreateAuthSession(kUsername, 0,
                                                 AuthIntent::kDecrypt);
     ASSERT_TRUE(auth_session_status.ok());
     AuthSession* auth_session = auth_session_status.value().Get();
@@ -97,7 +99,7 @@ TEST_F(AuthSessionManagerTest, CreateFindRemove) {
   std::string serialized_token;
   {
     CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-        auth_session_manager_.CreateAuthSession("foo@example.com", 0,
+        auth_session_manager_.CreateAuthSession(kUsername, 0,
                                                 AuthIntent::kDecrypt);
     ASSERT_TRUE(auth_session_status.ok());
     AuthSession* auth_session = auth_session_status.value().Get();
@@ -115,7 +117,7 @@ TEST_F(AuthSessionManagerTest, CreateFindRemove) {
 
 TEST_F(AuthSessionManagerTest, CreateExpire) {
   CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-      auth_session_manager_.CreateAuthSession("foo@example.com", 0,
+      auth_session_manager_.CreateAuthSession(kUsername, 0,
                                               AuthIntent::kDecrypt);
   ASSERT_TRUE(auth_session_status.ok());
   AuthSession* auth_session = auth_session_status.value().Get();
@@ -142,13 +144,13 @@ TEST_F(AuthSessionManagerTest, RemoveNonExisting) {
 TEST_F(AuthSessionManagerTest, FlagPassing) {
   // Arrange.
   CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-      auth_session_manager_.CreateAuthSession("foo@example.com", 0,
+      auth_session_manager_.CreateAuthSession(kUsername, 0,
                                               AuthIntent::kDecrypt);
   ASSERT_TRUE(auth_session_status.ok());
   AuthSession* auth_session = auth_session_status.value().Get();
   CryptohomeStatusOr<InUseAuthSession> ephemral_auth_session_status =
       auth_session_manager_.CreateAuthSession(
-          "foo@example.com", user_data_auth::AUTH_SESSION_FLAGS_EPHEMERAL_USER,
+          kUsername, user_data_auth::AUTH_SESSION_FLAGS_EPHEMERAL_USER,
           AuthIntent::kDecrypt);
   ASSERT_TRUE(ephemral_auth_session_status.ok());
   AuthSession* ephemeral_auth_session =
@@ -162,13 +164,13 @@ TEST_F(AuthSessionManagerTest, FlagPassing) {
 TEST_F(AuthSessionManagerTest, IntentPassing) {
   // Arrange.
   CryptohomeStatusOr<InUseAuthSession> decryption_auth_session_status =
-      auth_session_manager_.CreateAuthSession("foo@example.com", 0,
+      auth_session_manager_.CreateAuthSession(kUsername, 0,
                                               AuthIntent::kDecrypt);
   ASSERT_TRUE(decryption_auth_session_status.ok());
   AuthSession* decryption_auth_session =
       decryption_auth_session_status.value().Get();
   CryptohomeStatusOr<InUseAuthSession> verification_auth_session_status =
-      auth_session_manager_.CreateAuthSession("foo@example.com", 0,
+      auth_session_manager_.CreateAuthSession(kUsername, 0,
                                               AuthIntent::kVerifyOnly);
   ASSERT_TRUE(verification_auth_session_status.ok());
   AuthSession* verification_auth_session =

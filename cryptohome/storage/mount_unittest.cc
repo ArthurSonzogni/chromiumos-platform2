@@ -55,6 +55,7 @@
 #include "cryptohome/storage/mock_homedirs.h"
 #include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/storage/mount_helper.h"
+#include "cryptohome/username.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset.pb.h"
 
@@ -118,8 +119,6 @@ constexpr Attributes kAnotherDaemonAttributes{0600, 0, 0};
 
 constexpr char kDevLoopPrefix[] = "/dev/loop";
 
-constexpr char kUser[] = "someuser";
-
 MATCHER_P(DirCryptoReferenceMatcher, reference, "") {
   if (reference.reference != arg.reference) {
     return false;
@@ -130,11 +129,11 @@ MATCHER_P(DirCryptoReferenceMatcher, reference, "") {
   return true;
 }
 
-base::FilePath ChronosHashPath(const std::string& username) {
-  const std::string obfuscated_username =
+base::FilePath ChronosHashPath(const Username& username) {
+  const ObfuscatedUsername obfuscated_username =
       brillo::cryptohome::home::SanitizeUserName(username);
   return base::FilePath(kHomeChronos)
-      .Append(base::StringPrintf("u-%s", obfuscated_username.c_str()));
+      .Append(base::StringPrintf("u-%s", obfuscated_username->c_str()));
 }
 
 void PrepareDirectoryStructure(Platform* platform) {
@@ -218,10 +217,10 @@ void CheckExistanceAndPermissions(Platform* platform,
 }
 
 void CheckRootAndDaemonStoreMounts(Platform* platform,
-                                   const std::string& username,
+                                   const Username& username,
                                    const base::FilePath& vault_mount_point,
                                    bool expect_present) {
-  const std::string obfuscated_username =
+  const ObfuscatedUsername obfuscated_username =
       brillo::cryptohome::home::SanitizeUserName(username);
   const std::multimap<const base::FilePath, const base::FilePath>
       expected_root_mount_map{
@@ -233,13 +232,13 @@ void CheckRootAndDaemonStoreMounts(Platform* platform,
               vault_mount_point.Append(kRootHomeSuffix).Append(kSomeDaemon),
               base::FilePath(kRunDaemonStore)
                   .Append(kSomeDaemon)
-                  .Append(obfuscated_username),
+                  .Append(*obfuscated_username),
           },
           {
               vault_mount_point.Append(kRootHomeSuffix).Append(kAnotherDaemon),
               base::FilePath(kRunDaemonStore)
                   .Append(kAnotherDaemon)
-                  .Append(obfuscated_username),
+                  .Append(*obfuscated_username),
           },
       };
   std::multimap<const base::FilePath, const base::FilePath> root_mount_map;
@@ -270,11 +269,11 @@ void CheckRootAndDaemonStoreMounts(Platform* platform,
     // TODO(dlunev): make this directories to go away on unmount.
     ASSERT_THAT(platform->DirectoryExists(base::FilePath(kRunDaemonStore)
                                               .Append(kSomeDaemon)
-                                              .Append(obfuscated_username)),
+                                              .Append(*obfuscated_username)),
                 expect_present);
     ASSERT_THAT(platform->DirectoryExists(base::FilePath(kRunDaemonStore)
                                               .Append(kAnotherDaemon)
-                                              .Append(obfuscated_username)),
+                                              .Append(*obfuscated_username)),
                 expect_present);
     CheckExistanceAndPermissions(
         platform, brillo::cryptohome::home::GetRootPath(username), 01770,
@@ -283,7 +282,7 @@ void CheckRootAndDaemonStoreMounts(Platform* platform,
 }
 
 void CheckUserMountPoints(Platform* platform,
-                          const std::string& username,
+                          const Username& username,
                           const base::FilePath& vault_mount_point,
                           bool expect_present,
                           bool downloads_bind_mount = true) {
@@ -414,6 +413,8 @@ void CheckSkel(Platform* platform,
 // TODO(dlunev): add test ecryptfs blasts "mount".
 class PersistentSystemTest : public ::testing::Test {
  public:
+  const Username kUser{"someuser"};
+
   PersistentSystemTest() {}
 
   void SetUp() {
@@ -432,7 +433,7 @@ class PersistentSystemTest : public ::testing::Test {
 
     homedirs_ = std::make_unique<HomeDirs>(
         &platform_, std::make_unique<policy::PolicyProvider>(),
-        base::BindRepeating([](const std::string& unused) {}),
+        base::BindRepeating([](const ObfuscatedUsername& unused) {}),
         vault_factory_.get());
 
     mount_ =
@@ -447,11 +448,11 @@ class PersistentSystemTest : public ::testing::Test {
   std::unique_ptr<HomeDirs> homedirs_;
   scoped_refptr<Mount> mount_;
 
-  void VerifyFS(const std::string& username,
+  void VerifyFS(const Username& username,
                 MountType type,
                 bool expect_present,
                 bool downloads_bind_mount) {
-    const std::string obfuscated_username =
+    const ObfuscatedUsername obfuscated_username =
         brillo::cryptohome::home::SanitizeUserName(username);
     if (type == MountType::ECRYPTFS) {
       CheckEcryptfsMount(username, expect_present);
@@ -491,8 +492,8 @@ class PersistentSystemTest : public ::testing::Test {
     EXPECT_CALL(platform_, ClearUserKeyring()).WillOnce(Return(success));
   }
 
-  void MockDircryptoPolicy(const std::string& username, bool existing_dir) {
-    const std::string obfuscated_username =
+  void MockDircryptoPolicy(const Username& username, bool existing_dir) {
+    const ObfuscatedUsername obfuscated_username =
         brillo::cryptohome::home::SanitizeUserName(username);
     const base::FilePath backing_dir =
         GetUserMountDirectory(obfuscated_username);
@@ -505,11 +506,11 @@ class PersistentSystemTest : public ::testing::Test {
                                             : dircrypto::KeyState::NO_KEY));
   }
 
-  void MockDircryptoKeyringSetup(const std::string& username,
+  void MockDircryptoKeyringSetup(const Username& username,
                                  const FileSystemKeyset& keyset,
                                  bool existing_dir,
                                  bool success) {
-    const std::string obfuscated_username =
+    const ObfuscatedUsername obfuscated_username =
         brillo::cryptohome::home::SanitizeUserName(username);
     const base::FilePath backing_dir =
         GetUserMountDirectory(obfuscated_username);
@@ -527,14 +528,14 @@ class PersistentSystemTest : public ::testing::Test {
         .WillOnce(Return(success));
   }
 
-  void SetHomedir(const std::string& username) {
-    const std::string obfuscated_username =
+  void SetHomedir(const Username& username) {
+    const ObfuscatedUsername obfuscated_username =
         brillo::cryptohome::home::SanitizeUserName(username);
     ASSERT_TRUE(platform_.CreateDirectory(UserPath(obfuscated_username)));
   }
 
-  void SetDmcryptPrereqs(const std::string& username) {
-    const std::string obfuscated_username =
+  void SetDmcryptPrereqs(const Username& username) {
+    const ObfuscatedUsername obfuscated_username =
         brillo::cryptohome::home::SanitizeUserName(username);
     SetHomedir(username);
     ASSERT_TRUE(
@@ -551,8 +552,8 @@ class PersistentSystemTest : public ::testing::Test {
   }
 
  private:
-  void CheckEcryptfsMount(const std::string& username, bool expect_present) {
-    const std::string obfuscated_username =
+  void CheckEcryptfsMount(const Username& username, bool expect_present) {
+    const ObfuscatedUsername obfuscated_username =
         brillo::cryptohome::home::SanitizeUserName(username);
     const base::FilePath ecryptfs_vault =
         GetEcryptfsUserVaultPath(obfuscated_username);
@@ -576,8 +577,8 @@ class PersistentSystemTest : public ::testing::Test {
     }
   }
 
-  void CheckDircryptoMount(const std::string& username, bool expect_present) {
-    const std::string obfuscated_username =
+  void CheckDircryptoMount(const Username& username, bool expect_present) {
+    const ObfuscatedUsername obfuscated_username =
         brillo::cryptohome::home::SanitizeUserName(username);
     const base::FilePath dircrypto_mount_point =
         GetUserMountDirectory(obfuscated_username);
@@ -587,9 +588,9 @@ class PersistentSystemTest : public ::testing::Test {
     }
   }
 
-  void CheckDmcryptMount(const std::string& username, bool expect_present) {
+  void CheckDmcryptMount(const Username& username, bool expect_present) {
     const base::FilePath kDevMapperPath(kDeviceMapperDir);
-    const std::string obfuscated_username =
+    const ObfuscatedUsername obfuscated_username =
         brillo::cryptohome::home::SanitizeUserName(username);
     const std::multimap<const base::FilePath, const base::FilePath>
         expected_volume_mount_map{
@@ -643,9 +644,8 @@ class PersistentSystemTest : public ::testing::Test {
     }
   }
 
-  void CheckTrackingXattr(const std::string& username,
-                          bool downloads_bind_mount) {
-    const std::string obfuscated_username =
+  void CheckTrackingXattr(const Username& username, bool downloads_bind_mount) {
+    const ObfuscatedUsername obfuscated_username =
         brillo::cryptohome::home::SanitizeUserName(username);
     const base::FilePath mount_point =
         GetUserMountDirectory(obfuscated_username);
@@ -758,7 +758,7 @@ TEST_F(PersistentSystemTest, BindDownloads) {
   // TODO(dlunev): figure out how to properly abstract the unmount on dircrypto
   // VerifyFS(kUser, MountType::DIR_CRYPTO, /*expect_present=*/false);
 
-  const std::string obfuscated_username =
+  const ObfuscatedUsername obfuscated_username =
       brillo::cryptohome::home::SanitizeUserName(kUser);
   const base::FilePath dircrypto_mount_point =
       GetUserMountDirectory(obfuscated_username);
@@ -818,7 +818,7 @@ TEST_F(PersistentSystemTest, NoBindDownloads) {
 
   helper_downloads_mounted.UnmountAll();
 
-  const std::string obfuscated_username =
+  const ObfuscatedUsername obfuscated_username =
       brillo::cryptohome::home::SanitizeUserName(kUser);
   const base::FilePath dircrypto_mount_point =
       GetUserMountDirectory(obfuscated_username);
@@ -862,7 +862,7 @@ TEST_F(PersistentSystemTest, IsFirstMountComplete_False) {
   const base::FilePath kSkelFile{"skel_file"};
   const std::string kSkelFileContent{"skel_content"};
   const FileSystemKeyset keyset = FileSystemKeyset::CreateRandom();
-  const std::string obfuscated_username =
+  const ObfuscatedUsername obfuscated_username =
       brillo::cryptohome::home::SanitizeUserName(kUser);
 
   SetHomedir(kUser);
@@ -909,7 +909,7 @@ TEST_F(PersistentSystemTest, IsFirstMountComplete_True) {
   const base::FilePath kVaultFile{"vault_file"};
   const std::string kVaultFileContent{"vault_content"};
   const FileSystemKeyset keyset = FileSystemKeyset::CreateRandom();
-  const std::string obfuscated_username =
+  const ObfuscatedUsername obfuscated_username =
       brillo::cryptohome::home::SanitizeUserName(kUser);
 
   SetHomedir(kUser);
@@ -1150,7 +1150,7 @@ TEST_F(PersistentSystemTest, MigrateEcryptfsToFscrypt) {
   // /*expect_present=*/false, /*downloads_bind_mount=*/true);
 
   // "vault" should be gone.
-  const std::string obfuscated_username =
+  const ObfuscatedUsername obfuscated_username =
       brillo::cryptohome::home::SanitizeUserName(kUser);
   const base::FilePath ecryptfs_vault =
       GetEcryptfsUserVaultPath(obfuscated_username);
@@ -1222,7 +1222,7 @@ TEST_F(PersistentSystemTest, MigrateEcryptfsToDmcrypt) {
            /*downloads_bind_mount=*/true);
 
   // "vault" should be gone.
-  const std::string obfuscated_username =
+  const ObfuscatedUsername obfuscated_username =
       brillo::cryptohome::home::SanitizeUserName(kUser);
   const base::FilePath ecryptfs_vault =
       GetEcryptfsUserVaultPath(obfuscated_username);
@@ -1295,7 +1295,7 @@ TEST_F(PersistentSystemTest, MigrateFscryptToDmcrypt) {
            /*downloads_bind_mount=*/true);
 
   // "vault" should be gone.
-  const std::string obfuscated_username =
+  const ObfuscatedUsername obfuscated_username =
       brillo::cryptohome::home::SanitizeUserName(kUser);
   const base::FilePath ecryptfs_vault =
       GetEcryptfsUserVaultPath(obfuscated_username);
@@ -1324,6 +1324,8 @@ TEST_F(PersistentSystemTest, MigrateFscryptToDmcrypt) {
 
 class EphemeralSystemTest : public ::testing::Test {
  public:
+  const Username kUser{"someuser"};
+
   EphemeralSystemTest() {}
 
   void SetUp() {
@@ -1336,7 +1338,7 @@ class EphemeralSystemTest : public ::testing::Test {
         &platform_, std::move(container_factory));
     homedirs_ = std::make_unique<HomeDirs>(
         &platform_, std::make_unique<policy::PolicyProvider>(),
-        base::BindRepeating([](const std::string& unused) {}),
+        base::BindRepeating([](const ObfuscatedUsername& unused) {}),
         vault_factory_.get());
 
     mount_ =
@@ -1354,23 +1356,23 @@ class EphemeralSystemTest : public ::testing::Test {
   scoped_refptr<Mount> mount_;
   struct statvfs ephemeral_statvfs_;
 
-  base::FilePath EphemeralBackingFile(const std::string& username) {
-    const std::string obfuscated_username =
+  base::FilePath EphemeralBackingFile(const Username& username) {
+    const ObfuscatedUsername obfuscated_username =
         brillo::cryptohome::home::SanitizeUserName(username);
     return base::FilePath(kEphemeralCryptohomeDir)
         .Append(kSparseFileDir)
-        .Append(obfuscated_username);
+        .Append(*obfuscated_username);
   }
 
-  base::FilePath EphemeralMountPoint(const std::string& username) {
-    const std::string obfuscated_username =
+  base::FilePath EphemeralMountPoint(const Username& username) {
+    const ObfuscatedUsername obfuscated_username =
         brillo::cryptohome::home::SanitizeUserName(username);
     return base::FilePath(kEphemeralCryptohomeDir)
         .Append(kEphemeralMountDir)
-        .Append(obfuscated_username);
+        .Append(*obfuscated_username);
   }
 
-  void VerifyFS(const std::string& username, bool expect_present) {
+  void VerifyFS(const Username& username, bool expect_present) {
     CheckLoopDev(username, expect_present);
     ASSERT_NO_FATAL_FAILURE(CheckRootAndDaemonStoreMounts(
         &platform_, username, EphemeralMountPoint(username), expect_present));
@@ -1398,7 +1400,7 @@ class EphemeralSystemTest : public ::testing::Test {
   }
 
  private:
-  void CheckLoopDev(const std::string& username, bool expect_present) {
+  void CheckLoopDev(const Username& username, bool expect_present) {
     const base::FilePath ephemeral_backing_file =
         EphemeralBackingFile(username);
     const base::FilePath ephemeral_mount_point = EphemeralMountPoint(username);

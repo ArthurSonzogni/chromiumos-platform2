@@ -16,6 +16,7 @@
 #include "cryptohome/storage/encrypted_container/filesystem_key.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mount_constants.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -40,7 +41,7 @@ class CryptohomeVault {
     bool block_ecryptfs = false;
   };
   CryptohomeVault(
-      const std::string& obfuscated_username,
+      const ObfuscatedUsername& obfuscated_username,
       std::unique_ptr<EncryptedContainer> container,
       std::unique_ptr<EncryptedContainer> migrating_container,
       std::unique_ptr<EncryptedContainer> cache_container,
@@ -90,7 +91,7 @@ class CryptohomeVault {
  private:
   friend class CryptohomeVaultTest;
 
-  const std::string obfuscated_username_;
+  const ObfuscatedUsername obfuscated_username_;
 
   // Represents the active encrypted container for the vault.
   std::unique_ptr<EncryptedContainer> container_;

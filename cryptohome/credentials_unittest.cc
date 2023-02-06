@@ -28,13 +28,12 @@ const char kFakeSystemSalt[] = "01234567890123456789";
 TEST(CredentialsTest, UsernameTest) {
   char username[80];
   snprintf(username, sizeof(username), "%s%s", kFakeUser, "@gmail.com");
-  Credentials credentials(username, SecureBlob(kFakePasskey));
-  std::string full_username = credentials.username();
-  EXPECT_EQ(0, strcmp(username, full_username.c_str()));
+  Credentials credentials(Username{username}, SecureBlob(kFakePasskey));
+  EXPECT_EQ(username, *credentials.username());
 }
 
 TEST(CredentialsTest, GetObfuscatedUsernameTest) {
-  Credentials credentials(kFakeUser, SecureBlob(kFakePasskey));
+  Credentials credentials(Username{kFakeUser}, SecureBlob(kFakePasskey));
   MockPlatform platform;
 
   brillo::SecureBlob fake_salt;
@@ -43,13 +42,13 @@ TEST(CredentialsTest, GetObfuscatedUsernameTest) {
   platform.GetFake()->SetSystemSaltForLibbrillo(fake_salt);
 
   EXPECT_EQ("bb0ae3fcd181eefb861b4f0ee147a316e51d9f04",
-            credentials.GetObfuscatedUsername());
+            *credentials.GetObfuscatedUsername());
 
   platform.GetFake()->RemoveSystemSaltForLibbrillo();
 }
 
 TEST(CredentialsTest, PasskeyTest) {
-  Credentials credentials(kFakeUser, SecureBlob(kFakePasskey));
+  Credentials credentials(Username{kFakeUser}, SecureBlob(kFakePasskey));
   const SecureBlob passkey = credentials.passkey();
   EXPECT_EQ(strlen(kFakePasskey), passkey.size());
   EXPECT_EQ(0, memcmp(kFakePasskey, passkey.data(), passkey.size()));

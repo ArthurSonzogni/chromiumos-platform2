@@ -14,6 +14,7 @@
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 
 #include "cryptohome/flatbuffer_schemas/structures.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -46,7 +47,7 @@ class SignatureSealedCreationMocker final {
           key_algorithms) {
     key_algorithms_ = key_algorithms;
   }
-  void set_obfuscated_username(const std::string& obfuscated_username) {
+  void set_obfuscated_username(const ObfuscatedUsername& obfuscated_username) {
     obfuscated_username_ = obfuscated_username;
   }
   void set_secret_value(const brillo::SecureBlob& secret_value) {
@@ -64,7 +65,7 @@ class SignatureSealedCreationMocker final {
   brillo::Blob public_key_spki_der_;
   std::vector<hwsec::CryptohomeFrontend::SignatureSealingAlgorithm>
       key_algorithms_;
-  std::string obfuscated_username_;
+  ObfuscatedUsername obfuscated_username_;
   brillo::SecureBlob secret_value_;
 };
 

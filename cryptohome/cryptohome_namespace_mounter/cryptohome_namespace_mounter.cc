@@ -39,6 +39,7 @@
 #include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/storage/mount_helper.h"
 #include "cryptohome/storage/mount_utils.h"
+#include "cryptohome/username.h"
 
 #include "cryptohome/namespace_mounter_ipc.pb.h"
 
@@ -171,7 +172,8 @@ int main(int argc, char** argv) {
   if (is_ephemeral) {
     cryptohome::ReportTimerStart(cryptohome::kPerformEphemeralMountTimer);
     cryptohome::StorageStatus status = mounter.PerformEphemeralMount(
-        request.username(), base::FilePath(request.ephemeral_loop_device()));
+        cryptohome::Username(request.username()),
+        base::FilePath(request.ephemeral_loop_device()));
     error = status.ok() ? cryptohome::MOUNT_ERROR_NONE : status->error();
 
     cryptohome::ReportTimerStop(cryptohome::kPerformEphemeralMountTimer);
@@ -180,9 +182,9 @@ int main(int argc, char** argv) {
         static_cast<cryptohome::MountType>(request.type());
 
     cryptohome::ReportTimerStart(cryptohome::kPerformMountTimer);
-    cryptohome::StorageStatus status =
-        mounter.PerformMount(mount_type, request.username(),
-                             request.fek_signature(), request.fnek_signature());
+    cryptohome::StorageStatus status = mounter.PerformMount(
+        mount_type, cryptohome::Username(request.username()),
+        request.fek_signature(), request.fnek_signature());
     error = status.ok() ? cryptohome::MOUNT_ERROR_NONE : status->error();
 
     cryptohome::ReportTimerStop(cryptohome::kPerformMountTimer);

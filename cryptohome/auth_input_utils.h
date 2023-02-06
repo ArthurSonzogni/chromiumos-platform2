@@ -15,6 +15,7 @@
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/platform.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -22,8 +23,8 @@ namespace cryptohome {
 std::optional<AuthInput> CreateAuthInput(
     Platform* platform,
     const user_data_auth::AuthInput& auth_input_proto,
-    const std::string& username,
-    const std::string& obfuscated_username,
+    const Username& username,
+    const ObfuscatedUsername& obfuscated_username,
     bool locked_to_single_user,
     const std::optional<brillo::SecureBlob>&
         cryptohome_recovery_ephemeral_pub_key,

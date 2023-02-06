@@ -208,8 +208,8 @@ class KeysetManagementTest : public ::testing::Test {
   KeyBlobs key_blobs_;
   std::unique_ptr<AuthBlockState> auth_state_;
   struct UserInfo {
-    std::string name;
-    std::string obfuscated;
+    Username name;
+    ObfuscatedUsername obfuscated;
     brillo::SecureBlob passkey;
     Credentials credentials;
     base::FilePath homedir_path;
@@ -228,11 +228,13 @@ class KeysetManagementTest : public ::testing::Test {
   std::vector<UserInfo> users_;
 
   void AddUser(const char* name, const char* password) {
-    std::string obfuscated = brillo::cryptohome::home::SanitizeUserName(name);
+    Username username(name);
+    ObfuscatedUsername obfuscated =
+        brillo::cryptohome::home::SanitizeUserName(username);
     brillo::SecureBlob passkey(password);
-    Credentials credentials(name, passkey);
+    Credentials credentials(username, passkey);
 
-    UserInfo info = {name,
+    UserInfo info = {username,
                      obfuscated,
                      passkey,
                      credentials,
@@ -364,11 +366,12 @@ class KeysetManagementTest : public ::testing::Test {
     EXPECT_TRUE(vk_status.value()->HasWrappedResetSeed());
   }
 
-  void VerifyWrappedKeysetNotPresent(const std::string& obfuscated_username,
-                                     const brillo::SecureBlob& vkk_key,
-                                     const brillo::SecureBlob& vkk_iv,
-                                     const brillo::SecureBlob& chaps_iv,
-                                     const std::string& label) {
+  void VerifyWrappedKeysetNotPresent(
+      const ObfuscatedUsername& obfuscated_username,
+      const brillo::SecureBlob& vkk_key,
+      const brillo::SecureBlob& vkk_iv,
+      const brillo::SecureBlob& chaps_iv,
+      const std::string& label) {
     KeyBlobs key_blobs;
     key_blobs.vkk_key = vkk_key;
     key_blobs.vkk_iv = vkk_iv;
@@ -379,12 +382,13 @@ class KeysetManagementTest : public ::testing::Test {
     ASSERT_THAT(vk_status, NotOk());
   }
 
-  void VerifyWrappedKeysetPresentAtIndex(const std::string& obfuscated_username,
-                                         const brillo::SecureBlob& vkk_key,
-                                         const brillo::SecureBlob& vkk_iv,
-                                         const brillo::SecureBlob& chaps_iv,
-                                         const std::string& label,
-                                         int index) {
+  void VerifyWrappedKeysetPresentAtIndex(
+      const ObfuscatedUsername& obfuscated_username,
+      const brillo::SecureBlob& vkk_key,
+      const brillo::SecureBlob& vkk_iv,
+      const brillo::SecureBlob& chaps_iv,
+      const std::string& label,
+      int index) {
     KeyBlobs key_blobs;
     key_blobs.vkk_key = vkk_key;
     key_blobs.vkk_iv = vkk_iv;
@@ -891,7 +895,7 @@ TEST_F(KeysetManagementTest, RemoveLECredentials) {
 TEST_F(KeysetManagementTest, GetPublicMountPassKey) {
   // SETUP
   // Generate a valid passkey from the users id and public salt.
-  std::string account_id(kUser0);
+  Username account_id(kUser0);
 
   brillo::SecureBlob public_mount_salt;
   // Fetches or creates a salt from a saltfile. Setting the force
@@ -900,7 +904,7 @@ TEST_F(KeysetManagementTest, GetPublicMountPassKey) {
   GetPublicMountSalt(&platform_, &public_mount_salt);
 
   brillo::SecureBlob passkey;
-  Crypto::PasswordToPasskey(account_id.c_str(), public_mount_salt, &passkey);
+  Crypto::PasswordToPasskey(account_id->c_str(), public_mount_salt, &passkey);
 
   // TEST
   EXPECT_EQ(keyset_management_->GetPublicMountPassKey(account_id), passkey);
@@ -908,7 +912,7 @@ TEST_F(KeysetManagementTest, GetPublicMountPassKey) {
 
 TEST_F(KeysetManagementTest, GetPublicMountPassKeyFail) {
   // SETUP
-  std::string account_id(kUser0);
+  Username account_id(kUser0);
 
   EXPECT_CALL(platform_,
               WriteSecureBlobToFileAtomicDurable(PublicMountSaltFile(), _, _))

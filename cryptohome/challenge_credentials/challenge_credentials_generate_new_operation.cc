@@ -16,6 +16,7 @@
 
 #include "cryptohome/challenge_credentials/challenge_credentials_constants.h"
 #include "cryptohome/error/location_utils.h"
+#include "cryptohome/username.h"
 
 using brillo::Blob;
 using brillo::CombineBlobs;
@@ -81,9 +82,9 @@ ChallengeCredentialsGenerateNewOperation::
     ChallengeCredentialsGenerateNewOperation(
         KeyChallengeService* key_challenge_service,
         hwsec::CryptohomeFrontend* hwsec,
-        const std::string& account_id,
+        const Username& account_id,
         const structure::ChallengePublicKeyInfo& public_key_info,
-        const std::string& obfuscated_username,
+        const ObfuscatedUsername& obfuscated_username,
         CompletionCallback completion_callback)
     : ChallengeCredentialsOperation(key_challenge_service),
       account_id_(account_id),
@@ -224,7 +225,7 @@ TPMStatus ChallengeCredentialsGenerateNewOperation::CreateTpmProtectedSecret() {
 
   hwsec::StatusOr<hwsec::SignatureSealedData> sealed_data =
       hwsec_->SealWithSignatureAndCurrentUser(
-          obfuscated_username_, tpm_protected_secret_value.value(),
+          *obfuscated_username_, tpm_protected_secret_value.value(),
           public_key_info_.public_key_spki_der, key_sealing_algorithms);
   if (!sealed_data.ok()) {
     LOG(ERROR) << "Failed to create hardware-protected secret: "

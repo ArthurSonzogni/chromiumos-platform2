@@ -10,6 +10,7 @@
 #include <brillo/secure_blob.h>
 #include <cryptohome/proto_bindings/key.pb.h>
 
+#include "cryptohome/username.h"
 #include "cryptohome/vault_keyset.pb.h"
 
 namespace cryptohome {
@@ -19,19 +20,19 @@ namespace cryptohome {
 class Credentials final {
  public:
   Credentials();
-  Credentials(const std::string& username, const brillo::SecureBlob& passkey);
+  Credentials(const Username& username, const brillo::SecureBlob& passkey);
   Credentials(const Credentials& rhs);
   ~Credentials();
 
   Credentials& operator=(const Credentials& rhs);
 
-  // Returns the full user name as a std::string
-  std::string username() const { return username_; }
+  // Returns the full user name.
+  const Username& username() const { return username_; }
 
   // Returns the obfuscated username, used as the name of the directory
   // containing the user's stateful data (and maybe used for other reasons
   // at some point.)
-  std::string GetObfuscatedUsername() const;
+  ObfuscatedUsername GetObfuscatedUsername() const;
 
   const brillo::SecureBlob& passkey() const { return passkey_; }
 
@@ -56,7 +57,7 @@ class Credentials final {
   void set_passkey(const brillo::SecureBlob& passkey) { passkey_ = passkey; }
 
  private:
-  std::string username_;
+  Username username_;
   KeyData key_data_;
   SerializedVaultKeyset_SignatureChallengeInfo
       challenge_credentials_keyset_info_;

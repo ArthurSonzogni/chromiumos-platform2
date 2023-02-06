@@ -277,7 +277,7 @@ class CryptohomeVaultTest
   }
 
  protected:
-  const std::string obfuscated_username_;
+  const ObfuscatedUsername obfuscated_username_;
   const FileSystemKeyReference key_reference_;
   const FileSystemKey key_;
   const base::FilePath backing_dir_;

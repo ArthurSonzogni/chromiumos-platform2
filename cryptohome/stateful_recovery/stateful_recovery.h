@@ -8,12 +8,13 @@
 
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
-
 #include <brillo/dbus/dbus_method_response.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <policy/libpolicy.h>
 #include <user_data_auth-client/user_data_auth/dbus-proxies.h>
+
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -73,7 +74,7 @@ class StatefulRecovery {
   // If the mounting is successful, true is returned and out_home_path is set
   // to the home path for the home directory for the target user. Otherwise,
   // false is returned and out_home_path is unchanged.
-  bool Mount(const std::string& username,
+  bool Mount(const Username& username,
              const std::string& passkey,
              base::FilePath* out_home_path);
 
@@ -91,7 +92,7 @@ class StatefulRecovery {
   base::FilePath flag_file_;
   int timeout_ms_;
   std::string version_;
-  std::string user_;
+  Username user_;
   std::string passkey_;
 };
 

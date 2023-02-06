@@ -265,7 +265,7 @@ CryptoStatus PinWeaverAuthBlock::Create(const AuthInput& auth_input,
               hwsec::DeviceConfigSettings{
                   .current_user =
                       hwsec::DeviceConfigSettings::CurrentUserSetting{
-                          .username = auth_input.obfuscated_username.value(),
+                          .username = *auth_input.obfuscated_username.value(),
                       },
               },
       },

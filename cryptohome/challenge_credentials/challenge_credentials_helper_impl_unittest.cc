@@ -324,7 +324,7 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
   // operation methods. Then it's verified to be passed alongside challenge
   // requests made via KeyChallengeService, and to be present in the resulting
   // Credentials.
-  const std::string kUserEmail = "foo@example.com";
+  const Username kUserEmail{"foo@example.com"};
   // Fake Subject Public Key Information of the challenged cryptographic key.
   // It's supplied to the ChallengeCredentialsHelperImpl operation methods as a
   // field of both |key_data| and |keyset_challenge_info| parameters. Then it's
@@ -344,7 +344,7 @@ class ChallengeCredentialsHelperImplTestBase : public testing::Test {
   // Fake obfuscated username: It's supplied to the GenerateNew() operation.
   // Then it's verified to be passed into the
   // hwsec::CryptohomeFrontend::SealWithSignatureAndCurrentUser method.
-  const std::string kObfuscatedUsername = "obfuscated_username";
+  const ObfuscatedUsername kObfuscatedUsername{"obfuscated_username"};
   // Fake PCR restrictions.
   const std::map<uint32_t, brillo::Blob> kDefaultPcrMap{{0, {9, 9, 9}},
                                                         {10, {11, 11, 11}}};

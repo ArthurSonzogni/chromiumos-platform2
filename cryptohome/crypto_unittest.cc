@@ -212,7 +212,10 @@ TEST_F(CryptoTest, TpmStepTest) {
   GetSecureRandom(key.data(), key.size());
 
   AuthBlockState auth_block_state;
-  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state).ok());
+  ASSERT_TRUE(
+      vault_keyset
+          .EncryptVaultKeyset(key, ObfuscatedUsername(), &auth_block_state)
+          .ok());
 
   vault_keyset.SetAuthBlockState(auth_block_state);
 
@@ -290,7 +293,10 @@ TEST_F(CryptoTest, Tpm1_2_StepTest) {
   GetSecureRandom(key.data(), key.size());
 
   AuthBlockState auth_block_state;
-  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state).ok());
+  ASSERT_TRUE(
+      vault_keyset
+          .EncryptVaultKeyset(key, ObfuscatedUsername(), &auth_block_state)
+          .ok());
 
   vault_keyset.SetAuthBlockState(auth_block_state);
 
@@ -359,7 +365,10 @@ TEST_F(CryptoTest, TpmDecryptFailureTest) {
   GetSecureRandom(key.data(), key.size());
 
   AuthBlockState auth_block_state;
-  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state).ok());
+  ASSERT_TRUE(
+      vault_keyset
+          .EncryptVaultKeyset(key, ObfuscatedUsername(), &auth_block_state)
+          .ok());
 
   vault_keyset.SetAuthBlockState(auth_block_state);
 
@@ -396,7 +405,9 @@ TEST_F(CryptoTest, ScryptStepTest) {
 
     AuthBlockState auth_block_state;
     ASSERT_TRUE(
-        vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state).ok());
+        vault_keyset
+            .EncryptVaultKeyset(key, ObfuscatedUsername(), &auth_block_state)
+            .ok());
 
     vault_keyset.SetAuthBlockState(auth_block_state);
 

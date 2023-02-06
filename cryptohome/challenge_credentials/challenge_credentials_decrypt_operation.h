@@ -22,6 +22,7 @@
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
 #include "cryptohome/error/cryptohome_tpm_error.h"
 #include "cryptohome/flatbuffer_schemas/structures.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -50,7 +51,7 @@ class ChallengeCredentialsDecryptOperation final
   ChallengeCredentialsDecryptOperation(
       KeyChallengeService* key_challenge_service,
       hwsec::CryptohomeFrontend* hwsec,
-      const std::string& account_id,
+      const Username& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
       const structure::SignatureChallengeInfo& keyset_challenge_info,
       CompletionCallback completion_callback);
@@ -90,7 +91,7 @@ class ChallengeCredentialsDecryptOperation final
   void Resolve(
       TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>);
 
-  const std::string account_id_;
+  const Username account_id_;
   const structure::ChallengePublicKeyInfo public_key_info_;
   const structure::SignatureChallengeInfo keyset_challenge_info_;
   std::unique_ptr<brillo::Blob> salt_signature_;

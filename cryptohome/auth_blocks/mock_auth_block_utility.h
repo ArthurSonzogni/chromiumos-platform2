@@ -21,6 +21,7 @@
 #include "cryptohome/credentials.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -50,13 +51,13 @@ class MockAuthBlockUtility : public AuthBlockUtility {
   MOCK_METHOD(void,
               PrepareAuthFactorForAuth,
               (AuthFactorType,
-               const std::string&,
+               const ObfuscatedUsername&,
                PreparedAuthFactorToken::Consumer),
               (override));
   MOCK_METHOD(void,
               PrepareAuthFactorForAdd,
               (AuthFactorType,
-               const std::string&,
+               const ObfuscatedUsername&,
                PreparedAuthFactorToken::Consumer),
               (override));
   MOCK_METHOD(CryptoStatus,
@@ -102,7 +103,7 @@ class MockAuthBlockUtility : public AuthBlockUtility {
   MOCK_METHOD(bool,
               GetAuthBlockStateFromVaultKeyset,
               (const std::string& label,
-               const std::string& obfuscated_username,
+               const ObfuscatedUsername& obfuscated_username,
                AuthBlockState& out_state),
               (const, override));
   MOCK_METHOD(void,
@@ -115,7 +116,7 @@ class MockAuthBlockUtility : public AuthBlockUtility {
               (override));
   MOCK_METHOD(CryptoStatus,
               GenerateRecoveryRequest,
-              (const std::string& obfuscated_username,
+              (const ObfuscatedUsername& obfuscated_username,
                const cryptorecovery::RequestMetadata& request_metadata,
                const brillo::Blob& epoch_response,
                const CryptohomeRecoveryAuthBlockState& state,

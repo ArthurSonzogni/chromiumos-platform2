@@ -387,7 +387,7 @@ bool RecoveryCryptoImpl::GenerateRecoveryRequest(
                                request_param.encrypted_channel_priv_key.end()),
               .extended_pcr_bound_own_priv_key = brillo::Blob(),
               .auth_value = std::nullopt,
-              .current_user = request_param.obfuscated_username,
+              .current_user = *request_param.obfuscated_username,
               .others_pub_point = std::move(epoch_pub_point),
           });
   if (!shared_secret_point.ok()) {
@@ -519,7 +519,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
       .ec = ec_,
       .own_key_pair = std::move(destination_share_key_pair),
       .auth_value = key_auth_value.value(),
-      .current_user = request.obfuscated_username,
+      .current_user = *request.obfuscated_username,
   };
   hwsec::StatusOr<hwsec::EncryptEccPrivateKeyResponse>
       backend_response_destination_share = hwsec_backend_->EncryptEccPrivateKey(
@@ -577,7 +577,7 @@ bool RecoveryCryptoImpl::GenerateHsmPayload(
       .ec = ec_,
       .own_key_pair = std::move(channel_key_pair),
       .auth_value = std::nullopt,
-      .current_user = request.obfuscated_username,
+      .current_user = *request.obfuscated_username,
   };
   hwsec::StatusOr<hwsec::EncryptEccPrivateKeyResponse>
       backend_response_channel_priv_key = hwsec_backend_->EncryptEccPrivateKey(
@@ -758,7 +758,7 @@ bool RecoveryCryptoImpl::RecoverDestination(
           brillo::Blob(request.extended_pcr_bound_destination_share.begin(),
                        request.extended_pcr_bound_destination_share.end()),
       .auth_value = auth_value,
-      .current_user = request.obfuscated_username,
+      .current_user = *request.obfuscated_username,
       .others_pub_point = std::move(dealer_pub_point),
   };
   hwsec::StatusOr<crypto::ScopedEC_POINT> point_dh =
@@ -889,7 +889,7 @@ CryptoStatus RecoveryCryptoImpl::DecryptResponsePayload(
                        request.encrypted_channel_priv_key.end()),
       .extended_pcr_bound_own_priv_key = brillo::Blob(),
       .auth_value = std::nullopt,
-      .current_user = request.obfuscated_username,
+      .current_user = *request.obfuscated_username,
       .others_pub_point = std::move(epoch_pub_point),
   };
   hwsec::StatusOr<crypto::ScopedEC_POINT> shared_secret_point =

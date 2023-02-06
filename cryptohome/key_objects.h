@@ -13,6 +13,7 @@
 
 #include "cryptohome/cryptorecovery/cryptorecovery.pb.h"
 #include "cryptohome/flatbuffer_schemas/structures.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -59,9 +60,9 @@ struct AuthInput {
   // Whether or not the PCR is extended, this is usually false.
   std::optional<bool> locked_to_single_user;
   // The username accosiated with the running AuthSession.
-  std::string username;
+  Username username;
   // The obfuscated username.
-  std::optional<std::string> obfuscated_username;
+  std::optional<ObfuscatedUsername> obfuscated_username;
   // A generated reset secret to unlock a rate limited credential. This will be
   // used for USS.
   std::optional<brillo::SecureBlob> reset_secret;

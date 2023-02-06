@@ -32,10 +32,8 @@ using testing::Not;
 using testing::Pair;
 
 namespace cryptohome {
-
 namespace {
 
-constexpr char kObfuscatedUsername[] = "obfuscated1";
 constexpr char kSomeIdpLabel[] = "some-idp";
 constexpr char kChromeosVersion[] = "a.b.c_1_2_3";
 constexpr char kChromeVersion[] = "a.b.c.d";
@@ -69,6 +67,8 @@ std::unique_ptr<AuthFactor> CreatePasswordAuthFactor() {
 
 class AuthFactorManagerTest : public ::testing::Test {
  protected:
+  const ObfuscatedUsername kObfuscatedUsername{"obfuscated1"};
+
   MockPlatform platform_;
   AuthFactorManager auth_factor_manager_{&platform_};
 };

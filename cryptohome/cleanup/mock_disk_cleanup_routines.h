@@ -18,11 +18,14 @@ class MockDiskCleanupRoutines : public DiskCleanupRoutines {
   MockDiskCleanupRoutines();
   virtual ~MockDiskCleanupRoutines();
 
-  MOCK_METHOD(bool, DeleteUserCache, (const std::string&), (override));
-  MOCK_METHOD(bool, DeleteUserGCache, (const std::string&), (override));
-  MOCK_METHOD(bool, DeleteCacheVault, (const std::string&), (override));
-  MOCK_METHOD(bool, DeleteUserAndroidCache, (const std::string&), (override));
-  MOCK_METHOD(bool, DeleteUserProfile, (const std::string&), (override));
+  MOCK_METHOD(bool, DeleteUserCache, (const ObfuscatedUsername&), (override));
+  MOCK_METHOD(bool, DeleteUserGCache, (const ObfuscatedUsername&), (override));
+  MOCK_METHOD(bool, DeleteCacheVault, (const ObfuscatedUsername&), (override));
+  MOCK_METHOD(bool,
+              DeleteUserAndroidCache,
+              (const ObfuscatedUsername&),
+              (override));
+  MOCK_METHOD(bool, DeleteUserProfile, (const ObfuscatedUsername&), (override));
 };
 }  // namespace cryptohome
 

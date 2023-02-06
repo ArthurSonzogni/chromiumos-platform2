@@ -26,7 +26,7 @@
 namespace cryptohome {
 
 CryptohomeVault::CryptohomeVault(
-    const std::string& obfuscated_username,
+    const ObfuscatedUsername& obfuscated_username,
     std::unique_ptr<EncryptedContainer> container,
     std::unique_ptr<EncryptedContainer> migrating_container,
     std::unique_ptr<EncryptedContainer> cache_container,

@@ -19,6 +19,7 @@
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_challenge_service.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -34,7 +35,7 @@ class AsyncChallengeCredentialAuthBlock : public AuthBlock {
   AsyncChallengeCredentialAuthBlock(
       ChallengeCredentialsHelper* challenge_credentials_helper,
       std::unique_ptr<KeyChallengeService> key_challenge_service,
-      const std::string& account_id);
+      const Username& account_id);
   ~AsyncChallengeCredentialAuthBlock() = default;
 
   // This creates the KeyBlobs & AuthBlockState  from the key challenge service.
@@ -63,7 +64,7 @@ class AsyncChallengeCredentialAuthBlock : public AuthBlock {
 
   ChallengeCredentialsHelper* const challenge_credentials_helper_;
   std::unique_ptr<KeyChallengeService> key_challenge_service_;
-  const std::string account_id_;
+  const Username account_id_;
 
   base::WeakPtrFactory<AsyncChallengeCredentialAuthBlock> weak_factory_{this};
 };

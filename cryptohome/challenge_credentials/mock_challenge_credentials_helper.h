@@ -27,15 +27,15 @@ class MockChallengeCredentialsHelper : public ChallengeCredentialsHelper {
 
   MOCK_METHOD(void,
               GenerateNew,
-              (const std::string& account_id,
+              (const Username& account_id,
                const structure::ChallengePublicKeyInfo& public_key_info,
-               const std::string& obfuscated_username,
+               const ObfuscatedUsername& obfuscated_username,
                std::unique_ptr<KeyChallengeService> key_challenge_service,
                GenerateNewCallback callback),
               (override));
   MOCK_METHOD(void,
               Decrypt,
-              (const std::string& account_id,
+              (const Username& account_id,
                const structure::ChallengePublicKeyInfo& public_key_info,
                const structure::SignatureChallengeInfo& keyset_challenge_info,
                std::unique_ptr<KeyChallengeService> key_challenge_service,
@@ -43,7 +43,7 @@ class MockChallengeCredentialsHelper : public ChallengeCredentialsHelper {
               (override));
   MOCK_METHOD(void,
               VerifyKey,
-              (const std::string& account_id,
+              (const Username& account_id,
                const structure::ChallengePublicKeyInfo& public_key_info,
                std::unique_ptr<KeyChallengeService> key_challenge_service,
                VerifyKeyCallback callback),

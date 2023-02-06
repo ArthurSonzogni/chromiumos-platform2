@@ -30,6 +30,7 @@
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/proto_bindings/rpc.pb.h"
+#include "cryptohome/username.h"
 
 using cryptohome::cryptorecovery::HsmPayload;
 using cryptohome::cryptorecovery::HsmResponsePlainText;
@@ -142,7 +143,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Create(
   // Generates HSM payload that would be persisted on a chromebook.
   OnboardingMetadata onboarding_metadata;
   AccountIdentifier account_id;
-  account_id.set_email(auth_input.username);
+  account_id.set_email(*auth_input.username);
   if (!recovery->GenerateRecoveryId(account_id)) {
     LOG(ERROR) << "Unable to generate a new recovery_id";
     return MakeStatus<CryptohomeCryptoError>(
@@ -247,7 +248,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         CryptoError::CE_OTHER_CRYPTO);
   }
-  const std::string& obfuscated_username =
+  const ObfuscatedUsername& obfuscated_username =
       auth_input.obfuscated_username.value();
 
   DCHECK(auth_input.cryptohome_recovery_auth_input.has_value());

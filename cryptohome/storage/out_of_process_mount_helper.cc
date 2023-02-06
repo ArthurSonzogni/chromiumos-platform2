@@ -173,13 +173,13 @@ void OutOfProcessMountHelper::KillOutOfProcessHelperIfNecessary() {
 }
 
 StorageStatus OutOfProcessMountHelper::PerformEphemeralMount(
-    const std::string& username, const base::FilePath& ephemeral_loop_device) {
+    const Username& username, const base::FilePath& ephemeral_loop_device) {
   OutOfProcessMountRequest request;
-  request.set_username(username);
+  request.set_username(*username);
   request.set_legacy_home(legacy_home_);
   request.set_bind_mount_downloads(bind_mount_downloads_);
   request.set_mount_namespace_path(
-      username == brillo::cryptohome::home::kGuestUserName
+      username == brillo::cryptohome::home::GetGuestUsername()
           ? kUserSessionMountNamespacePath
           : "");
   request.set_type(OutOfProcessMountRequest_MountType_EPHEMERAL);
@@ -281,11 +281,11 @@ bool OutOfProcessMountHelper::TearDownExistingMount() {
 
 StorageStatus OutOfProcessMountHelper::PerformMount(
     MountType mount_type,
-    const std::string& username,
+    const Username& username,
     const std::string& fek_signature,
     const std::string& fnek_signature) {
   OutOfProcessMountRequest request;
-  request.set_username(username);
+  request.set_username(*username);
   request.set_bind_mount_downloads(bind_mount_downloads_);
   request.set_legacy_home(legacy_home_);
   request.set_mount_namespace_path(

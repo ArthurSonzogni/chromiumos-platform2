@@ -39,37 +39,40 @@ class MockKeysetManagement : public KeysetManagement {
               (override));
   MOCK_METHOD(std::unique_ptr<VaultKeyset>,
               GetVaultKeyset,
-              (const std::string&, const std::string&),
+              (const ObfuscatedUsername&, const std::string&),
               (const, override));
   MOCK_METHOD(bool,
               GetVaultKeysets,
-              (const std::string&, std::vector<int>*),
+              (const ObfuscatedUsername&, std::vector<int>*),
               (const, override));
   MOCK_METHOD(bool,
               GetVaultKeysetLabels,
-              (const std::string&, bool, std::vector<std::string>*),
+              (const ObfuscatedUsername&, bool, std::vector<std::string>*),
               (const, override));
   MOCK_METHOD(CryptohomeStatus,
               ForceRemoveKeyset,
-              (const std::string&, int),
+              (const ObfuscatedUsername&, int),
               (override));
-  MOCK_METHOD(void, RemoveLECredentials, (const std::string&), (override));
-  MOCK_METHOD(bool, UserExists, (const std::string&), (override));
+  MOCK_METHOD(void,
+              RemoveLECredentials,
+              (const ObfuscatedUsername&),
+              (override));
+  MOCK_METHOD(bool, UserExists, (const ObfuscatedUsername&), (override));
   MOCK_METHOD(std::unique_ptr<VaultKeyset>,
               LoadVaultKeysetForUser,
-              (const std::string&, int),
+              (const ObfuscatedUsername&, int),
               (const, override));
   MOCK_METHOD(brillo::SecureBlob,
               GetPublicMountPassKey,
-              (const std::string&),
+              (const Username&),
               (override));
   MOCK_METHOD(base::Time,
               GetKeysetBoundTimestamp,
-              (const std::string&),
+              (const ObfuscatedUsername&),
               (override));
   MOCK_METHOD(void,
               CleanupPerIndexTimestampFiles,
-              (const std::string&),
+              (const ObfuscatedUsername&),
               (override));
   MOCK_METHOD(bool,
               ShouldReSaveKeyset,
@@ -81,12 +84,14 @@ class MockKeysetManagement : public KeysetManagement {
               (const, override));
   MOCK_METHOD(MountStatusOr<std::unique_ptr<VaultKeyset>>,
               GetValidKeysetWithKeyBlobs,
-              (const std::string&, KeyBlobs, const std::optional<std::string>&),
+              (const ObfuscatedUsername&,
+               KeyBlobs,
+               const std::optional<std::string>&),
               (override));
   MOCK_METHOD(CryptohomeErrorCode,
               AddKeysetWithKeyBlobs,
               (const VaultKeysetIntent&,
-               const std::string&,
+               const ObfuscatedUsername&,
                const std::string&,
                const KeyData&,
                const VaultKeyset&,
@@ -98,7 +103,7 @@ class MockKeysetManagement : public KeysetManagement {
       CryptohomeStatusOr<std::unique_ptr<VaultKeyset>>,
       AddInitialKeysetWithKeyBlobs,
       (const VaultKeysetIntent& vk_intent,
-       const std::string&,
+       const ObfuscatedUsername&,
        const KeyData&,
        const std::optional<SerializedVaultKeyset_SignatureChallengeInfo>&,
        const FileSystemKeyset&,
@@ -118,7 +123,7 @@ class MockKeysetManagement : public KeysetManagement {
   MOCK_METHOD(CryptohomeErrorCode,
               UpdateKeysetWithKeyBlobs,
               (const VaultKeysetIntent&,
-               const std::string&,
+               const ObfuscatedUsername&,
                const KeyData&,
                const VaultKeyset&,
                KeyBlobs,

@@ -32,7 +32,7 @@ class RealUserSession : public UserSession {
  public:
   RealUserSession() = default;
   RealUserSession(
-      const std::string& username,
+      const Username& username,
       HomeDirs* homedirs,
       KeysetManagement* keyset_management,
       UserOldestActivityTimestampManager* user_activity_timestamp_manager,
@@ -58,11 +58,11 @@ class RealUserSession : public UserSession {
   }
 
   MountStatus MountVault(
-      const std::string& username,
+      const Username& username,
       const FileSystemKeyset& fs_keyset,
       const CryptohomeVault::Options& vault_options) override;
 
-  MountStatus MountEphemeral(const std::string& username) override;
+  MountStatus MountEphemeral(const Username& username) override;
 
   MountStatus MountGuest() override;
 
@@ -78,13 +78,13 @@ class RealUserSession : public UserSession {
 
   void AddCredentials(const Credentials& credentials) override;
 
-  bool VerifyUser(const std::string& obfuscated_username) const override;
+  bool VerifyUser(const ObfuscatedUsername& obfuscated_username) const override;
 
   bool VerifyCredentials(const Credentials& credentials) const override;
 
   Pkcs11Token* GetPkcs11Token() override { return pkcs11_token_.get(); }
 
-  std::string GetUsername() const override { return username_; }
+  Username GetUsername() const override { return username_; }
 
   void PrepareWebAuthnSecret(const brillo::SecureBlob& fek,
                              const brillo::SecureBlob& fnek) override;
@@ -107,8 +107,8 @@ class RealUserSession : public UserSession {
   // Clears the WebAuthn secret if it's not read yet.
   void ClearHibernateSecret();
 
-  const std::string username_;
-  const std::string obfuscated_username_;
+  const Username username_;
+  const ObfuscatedUsername obfuscated_username_;
 
   HomeDirs* homedirs_;
   KeysetManagement* keyset_management_;

@@ -22,6 +22,7 @@
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mock_homedirs.h"
+#include "cryptohome/username.h"
 
 using ::testing::_;
 using ::testing::DoAll;
@@ -39,8 +40,6 @@ using ::testing::StrictMock;
 namespace cryptohome {
 
 namespace {
-
-const char* kTestUser = "d5510a8dda6d743c46dadd979a61ae5603529742";
 
 NiceMock<MockFileEnumerator>* CreateMockFileEnumerator() {
   return new NiceMock<MockFileEnumerator>;
@@ -81,6 +80,9 @@ class DiskCleanupRoutinesTest
   }
 
  protected:
+  const ObfuscatedUsername kTestUser{
+      "d5510a8dda6d743c46dadd979a61ae5603529742"};
+
   // Returns true if the test is running for eCryptfs, false if for dircrypto.
   bool ShouldTestEcryptfs() const { return GetParam(); }
 

@@ -12,6 +12,7 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/pkcs11/pkcs11_token.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -19,7 +20,7 @@ class Pkcs11TokenFactory {
  public:
   virtual ~Pkcs11TokenFactory() = default;
   virtual std::unique_ptr<Pkcs11Token> New(
-      const std::string& username,
+      const Username& username,
       const base::FilePath& token_dir,
       const brillo::SecureBlob& auth_data) = 0;
 };

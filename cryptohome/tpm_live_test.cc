@@ -46,6 +46,7 @@
 #include "cryptohome/cryptorecovery/recovery_crypto.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/key_objects.h"
+#include "cryptohome/username.h"
 
 using brillo::Blob;
 using brillo::BlobFromString;
@@ -64,7 +65,7 @@ constexpr uint32_t kTpm20Family = 0x322E3000;
 
 // Performs common tests for an auth block against correct/wrong passwords.
 bool TestPasswordBasedAuthBlock(SyncAuthBlock& auth_block) {
-  constexpr char kObfuscatedUsername[] = "user";
+  const ObfuscatedUsername kObfuscatedUsername("user");
   constexpr char kPassword[] = "pass";
   constexpr char kWrongPassword[] = "wrong";
 

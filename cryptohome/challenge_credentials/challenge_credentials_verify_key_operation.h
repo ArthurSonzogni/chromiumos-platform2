@@ -14,6 +14,7 @@
 #include <libhwsec/frontend/cryptohome/frontend.h>
 
 #include "cryptohome/challenge_credentials/challenge_credentials_operation.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -42,7 +43,7 @@ class ChallengeCredentialsVerifyKeyOperation final
   ChallengeCredentialsVerifyKeyOperation(
       KeyChallengeService* key_challenge_service,
       hwsec::CryptohomeFrontend* hwsec,
-      const std::string& account_id,
+      const Username& account_id,
       const structure::ChallengePublicKeyInfo& public_key_info,
       CompletionCallback completion_callback);
 
@@ -60,7 +61,7 @@ class ChallengeCredentialsVerifyKeyOperation final
       TPMStatusOr<std::unique_ptr<brillo::Blob>> challenge_signature);
 
   hwsec::CryptohomeFrontend* const hwsec_;
-  const std::string account_id_;
+  const Username account_id_;
   const structure::ChallengePublicKeyInfo public_key_info_;
   CompletionCallback completion_callback_;
   base::WeakPtrFactory<ChallengeCredentialsVerifyKeyOperation>

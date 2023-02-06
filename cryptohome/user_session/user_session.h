@@ -21,6 +21,7 @@
 #include "cryptohome/pkcs11/pkcs11_token.h"
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/mount.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -52,12 +53,12 @@ class UserSession {
   // Mounts disk backed vault for the given username with the supplied file
   // system keyset.
   virtual MountStatus MountVault(
-      const std::string& username,
+      const Username& username,
       const FileSystemKeyset& fs_keyset,
       const CryptohomeVault::Options& vault_options) = 0;
 
   // Creates and mounts a ramdisk backed ephemeral session for the given user.
-  virtual MountStatus MountEphemeral(const std::string& username) = 0;
+  virtual MountStatus MountEphemeral(const Username& username) = 0;
 
   // Creates and mounts a ramdisk backed ephemeral session for an anonymous
   // user.
@@ -86,7 +87,8 @@ class UserSession {
   virtual void AddCredentials(const Credentials& credentials) = 0;
 
   // Checks that the session belongs to the obfuscated_user.
-  virtual bool VerifyUser(const std::string& obfuscated_username) const = 0;
+  virtual bool VerifyUser(
+      const ObfuscatedUsername& obfuscated_username) const = 0;
 
   // Verifies credentials against store re-auth state. Returns true if the
   // credentials were successfully re-authenticated against the saved re-auth
@@ -97,7 +99,7 @@ class UserSession {
   virtual Pkcs11Token* GetPkcs11Token() = 0;
 
   // Returns the name of the user associated with the session.
-  virtual std::string GetUsername() const = 0;
+  virtual Username GetUsername() const = 0;
 
   // Computes a public derivative from |fek| and |fnek| for u2fd to fetch.
   virtual void PrepareWebAuthnSecret(const brillo::SecureBlob& fek,

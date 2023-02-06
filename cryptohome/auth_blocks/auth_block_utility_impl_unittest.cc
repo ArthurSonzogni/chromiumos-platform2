@@ -65,6 +65,7 @@
 #include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_vault_keyset.h"
+#include "cryptohome/username.h"
 #include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {
@@ -92,7 +93,6 @@ using ::testing::NiceMock;
 using ::testing::NotNull;
 using ::testing::Return;
 
-constexpr char kUser[] = "Test User";
 constexpr const char* kKeyDelegateDBusService = "key-delegate-service";
 constexpr int kWorkFactor = 16384;
 constexpr int kBlockSize = 8;
@@ -150,6 +150,9 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   void OnFingerprintScanResult(user_data_auth::FingerprintScanResult result) {
     result_ = result;
   }
+
+  const Username kUser{"Test User"};
+  const ObfuscatedUsername kObfuscated{"ABCD1234"};
 
   base::test::SingleThreadTaskEnvironment task_environment_ = {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
@@ -313,7 +316,7 @@ TEST_F(AuthBlockUtilityImplTest, PreparePasswordFailure) {
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       prepare_result;
   auth_block_utility_impl_->PrepareAuthFactorForAuth(
-      AuthFactorType::kPassword, kUser, prepare_result.GetCallback());
+      AuthFactorType::kPassword, kObfuscated, prepare_result.GetCallback());
 
   EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
               Eq(user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT));
@@ -323,8 +326,8 @@ TEST_F(AuthBlockUtilityImplTest, PrepareLegacyFingerprintSuccess) {
   MakeAuthBlockUtilityImpl();
 
   // Setup.
-  EXPECT_CALL(fp_manager_, StartAuthSessionAsyncForUser(kUser, _))
-      .WillOnce([](std::string username,
+  EXPECT_CALL(fp_manager_, StartAuthSessionAsyncForUser(kObfuscated, _))
+      .WillOnce([](ObfuscatedUsername username,
                    FingerprintManager::StartSessionCallback callback) {
         std::move(callback).Run(true);
       });
@@ -334,7 +337,8 @@ TEST_F(AuthBlockUtilityImplTest, PrepareLegacyFingerprintSuccess) {
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       prepare_result;
   auth_block_utility_impl_->PrepareAuthFactorForAuth(
-      AuthFactorType::kLegacyFingerprint, kUser, prepare_result.GetCallback());
+      AuthFactorType::kLegacyFingerprint, kObfuscated,
+      prepare_result.GetCallback());
 
   // Verify.
   ASSERT_THAT(prepare_result.Get(), IsOk());
@@ -345,8 +349,8 @@ TEST_F(AuthBlockUtilityImplTest, PrepareLegacyFingerprintFailure) {
 
   // Setup.
   // Signal a failed fingerprint sensor start.
-  EXPECT_CALL(fp_manager_, StartAuthSessionAsyncForUser(kUser, _))
-      .WillOnce([](std::string username,
+  EXPECT_CALL(fp_manager_, StartAuthSessionAsyncForUser(kObfuscated, _))
+      .WillOnce([](ObfuscatedUsername username,
                    FingerprintManager::StartSessionCallback callback) {
         std::move(callback).Run(false);
       });
@@ -355,7 +359,8 @@ TEST_F(AuthBlockUtilityImplTest, PrepareLegacyFingerprintFailure) {
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       prepare_result;
   auth_block_utility_impl_->PrepareAuthFactorForAuth(
-      AuthFactorType::kLegacyFingerprint, kUser, prepare_result.GetCallback());
+      AuthFactorType::kLegacyFingerprint, kObfuscated,
+      prepare_result.GetCallback());
 
   // Verify.
   EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
@@ -367,8 +372,8 @@ TEST_F(AuthBlockUtilityImplTest, CheckSignalSuccess) {
 
   // Setup.
   // Signal a successful auth scan.
-  EXPECT_CALL(fp_manager_, StartAuthSessionAsyncForUser(kUser, _))
-      .WillOnce([](std::string username,
+  EXPECT_CALL(fp_manager_, StartAuthSessionAsyncForUser(kObfuscated, _))
+      .WillOnce([](ObfuscatedUsername username,
                    FingerprintManager::StartSessionCallback callback) {
         std::move(callback).Run(true);
       });
@@ -379,7 +384,8 @@ TEST_F(AuthBlockUtilityImplTest, CheckSignalSuccess) {
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       prepare_result;
   auth_block_utility_impl_->PrepareAuthFactorForAuth(
-      AuthFactorType::kLegacyFingerprint, kUser, prepare_result.GetCallback());
+      AuthFactorType::kLegacyFingerprint, kObfuscated,
+      prepare_result.GetCallback());
   ASSERT_THAT(prepare_result.Get(), IsOk());
 
   // Verify.
@@ -418,8 +424,8 @@ TEST_F(AuthBlockUtilityImplTest, VerifyFingerprintSuccess) {
               Eq(AuthFactorType::kLegacyFingerprint));
 
   // Signal a successful auth scan.
-  EXPECT_CALL(fp_manager_, StartAuthSessionAsyncForUser(kUser, _))
-      .WillOnce([](std::string username,
+  EXPECT_CALL(fp_manager_, StartAuthSessionAsyncForUser(kObfuscated, _))
+      .WillOnce([](ObfuscatedUsername username,
                    FingerprintManager::StartSessionCallback callback) {
         std::move(callback).Run(true);
       });
@@ -432,7 +438,8 @@ TEST_F(AuthBlockUtilityImplTest, VerifyFingerprintSuccess) {
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       prepare_result;
   auth_block_utility_impl_->PrepareAuthFactorForAuth(
-      AuthFactorType::kLegacyFingerprint, kUser, prepare_result.GetCallback());
+      AuthFactorType::kLegacyFingerprint, kObfuscated,
+      prepare_result.GetCallback());
   ASSERT_THAT(prepare_result.Get(), IsOk());
   auto token = std::move(*prepare_result.Take());
 
@@ -456,8 +463,8 @@ TEST_F(AuthBlockUtilityImplTest, VerifyFingerprintFailure) {
               Eq(AuthFactorType::kLegacyFingerprint));
 
   // Signal a failed and not retry-able auth scan.
-  EXPECT_CALL(fp_manager_, StartAuthSessionAsyncForUser(kUser, _))
-      .WillOnce([](std::string username,
+  EXPECT_CALL(fp_manager_, StartAuthSessionAsyncForUser(kObfuscated, _))
+      .WillOnce([](ObfuscatedUsername username,
                    FingerprintManager::StartSessionCallback callback) {
         std::move(callback).Run(true);
       });
@@ -471,7 +478,8 @@ TEST_F(AuthBlockUtilityImplTest, VerifyFingerprintFailure) {
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       prepare_result;
   auth_block_utility_impl_->PrepareAuthFactorForAuth(
-      AuthFactorType::kLegacyFingerprint, kUser, prepare_result.GetCallback());
+      AuthFactorType::kLegacyFingerprint, kObfuscated,
+      prepare_result.GetCallback());
   ASSERT_THAT(prepare_result.Get(), IsOk());
   auto token = std::move(*prepare_result.Take());
 
@@ -1457,7 +1465,7 @@ TEST_F(AuthBlockUtilityImplTest, CreateKeyBlobsWithAuthBlockAsyncFails) {
 
   AuthInput auth_input = {
       credentials.passkey(), std::nullopt /*locked_to_single_user*=*/,
-      credentials.GetObfuscatedUsername(), std::nullopt /*reset_secret*/};
+      credentials.username(), std::nullopt /*reset_secret*/};
 
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
       [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs,
@@ -2124,7 +2132,7 @@ class AuthBlockUtilityImplRecoveryTest : public AuthBlockUtilityImplTest {
     cryptorecovery::GenerateHsmPayloadRequest generate_hsm_payload_request(
         {.mediator_pub_key = mediator_pub_key,
          .onboarding_metadata = cryptorecovery::OnboardingMetadata{},
-         .obfuscated_username = "obfuscated_username"});
+         .obfuscated_username = ObfuscatedUsername("obfuscated_username")});
     cryptorecovery::GenerateHsmPayloadResponse generate_hsm_payload_response;
     EXPECT_TRUE(recovery->GenerateHsmPayload(generate_hsm_payload_request,
                                              &generate_hsm_payload_response));
@@ -2164,9 +2172,10 @@ class AuthBlockUtilityImplRecoveryTest : public AuthBlockUtilityImplTest {
 TEST_F(AuthBlockUtilityImplRecoveryTest, GenerateRecoveryRequestSuccess) {
   brillo::SecureBlob ephemeral_pub_key, recovery_request;
   CryptoStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
-      "obfuscated_username", cryptorecovery::RequestMetadata{},
-      epoch_response_blob_, GetAuthBlockState(), crypto_.GetRecoveryCrypto(),
-      &recovery_request, &ephemeral_pub_key);
+      ObfuscatedUsername("obfuscated_username"),
+      cryptorecovery::RequestMetadata{}, epoch_response_blob_,
+      GetAuthBlockState(), crypto_.GetRecoveryCrypto(), &recovery_request,
+      &ephemeral_pub_key);
   EXPECT_TRUE(status.ok());
   EXPECT_FALSE(ephemeral_pub_key.empty());
   EXPECT_FALSE(recovery_request.empty());
@@ -2177,9 +2186,9 @@ TEST_F(AuthBlockUtilityImplRecoveryTest, GenerateRecoveryRequestNoHsmPayload) {
   auto state = GetAuthBlockState();
   state.hsm_payload = brillo::SecureBlob();
   CryptoStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
-      "obfuscated_username", cryptorecovery::RequestMetadata{},
-      epoch_response_blob_, state, crypto_.GetRecoveryCrypto(),
-      &recovery_request, &ephemeral_pub_key);
+      ObfuscatedUsername("obfuscated_username"),
+      cryptorecovery::RequestMetadata{}, epoch_response_blob_, state,
+      crypto_.GetRecoveryCrypto(), &recovery_request, &ephemeral_pub_key);
   EXPECT_FALSE(status.ok());
 }
 
@@ -2189,9 +2198,9 @@ TEST_F(AuthBlockUtilityImplRecoveryTest,
   auto state = GetAuthBlockState();
   state.channel_pub_key = brillo::SecureBlob();
   CryptoStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
-      "obfuscated_username", cryptorecovery::RequestMetadata{},
-      epoch_response_blob_, state, crypto_.GetRecoveryCrypto(),
-      &recovery_request, &ephemeral_pub_key);
+      ObfuscatedUsername("obfuscated_username"),
+      cryptorecovery::RequestMetadata{}, epoch_response_blob_, state,
+      crypto_.GetRecoveryCrypto(), &recovery_request, &ephemeral_pub_key);
   EXPECT_FALSE(status.ok());
 }
 
@@ -2201,9 +2210,9 @@ TEST_F(AuthBlockUtilityImplRecoveryTest,
   auto state = GetAuthBlockState();
   state.encrypted_channel_priv_key = brillo::SecureBlob();
   CryptoStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
-      "obfuscated_username", cryptorecovery::RequestMetadata{},
-      epoch_response_blob_, state, crypto_.GetRecoveryCrypto(),
-      &recovery_request, &ephemeral_pub_key);
+      ObfuscatedUsername("obfuscated_username"),
+      cryptorecovery::RequestMetadata{}, epoch_response_blob_, state,
+      crypto_.GetRecoveryCrypto(), &recovery_request, &ephemeral_pub_key);
   EXPECT_FALSE(status.ok());
 }
 
@@ -2211,7 +2220,8 @@ TEST_F(AuthBlockUtilityImplRecoveryTest,
        GenerateRecoveryRequestNoEpochResponse) {
   brillo::SecureBlob ephemeral_pub_key, recovery_request;
   CryptoStatus status = auth_block_utility_impl_->GenerateRecoveryRequest(
-      "obfuscated_username", cryptorecovery::RequestMetadata{},
+      ObfuscatedUsername("obfuscated_username"),
+      cryptorecovery::RequestMetadata{},
       /*epoch_response=*/brillo::Blob(), GetAuthBlockState(),
       crypto_.GetRecoveryCrypto(), &recovery_request, &ephemeral_pub_key);
   EXPECT_FALSE(status.ok());

@@ -92,7 +92,7 @@ bool KeysetManagement::AreCredentialsValid(const Credentials& creds) {
 
 MountStatusOr<std::unique_ptr<VaultKeyset>>
 KeysetManagement::GetValidKeysetWithKeyBlobs(
-    const std::string& obfuscated_username,
+    const ObfuscatedUsername& obfuscated_username,
     KeyBlobs key_blobs,
     const std::optional<std::string>& label) {
   return GetValidKeysetImpl(obfuscated_username, label,
@@ -101,7 +101,7 @@ KeysetManagement::GetValidKeysetWithKeyBlobs(
 
 MountStatusOr<std::unique_ptr<VaultKeyset>> KeysetManagement::GetValidKeyset(
     const Credentials& credentials) {
-  std::string obfuscated_username = credentials.GetObfuscatedUsername();
+  ObfuscatedUsername obfuscated_username = credentials.GetObfuscatedUsername();
   bool locked_to_single_user =
       platform_->FileExists(base::FilePath(kLockedToSingleUserFile));
 
@@ -112,7 +112,7 @@ MountStatusOr<std::unique_ptr<VaultKeyset>> KeysetManagement::GetValidKeyset(
 }
 
 MountStatusOr<std::unique_ptr<VaultKeyset>>
-KeysetManagement::GetValidKeysetImpl(const std::string& obfuscated,
+KeysetManagement::GetValidKeysetImpl(const ObfuscatedUsername& obfuscated,
                                      const std::optional<std::string>& label,
                                      DecryptVkCallback decrypt_vk_callback) {
   std::vector<int> key_indices;
@@ -192,7 +192,7 @@ KeysetManagement::GetValidKeysetImpl(const std::string& obfuscated,
 }
 
 std::unique_ptr<VaultKeyset> KeysetManagement::GetVaultKeyset(
-    const std::string& obfuscated_username,
+    const ObfuscatedUsername& obfuscated_username,
     const std::string& key_label) const {
   if (key_label.empty())
     return nullptr;
@@ -217,7 +217,7 @@ std::unique_ptr<VaultKeyset> KeysetManagement::GetVaultKeyset(
 }
 
 // TODO(wad) Figure out how this might fit in with vault_keyset.cc
-bool KeysetManagement::GetVaultKeysets(const std::string& obfuscated,
+bool KeysetManagement::GetVaultKeysets(const ObfuscatedUsername& obfuscated,
                                        std::vector<int>* keysets) const {
   CHECK(keysets);
   base::FilePath user_dir = UserPath(obfuscated);
@@ -251,7 +251,7 @@ bool KeysetManagement::GetVaultKeysets(const std::string& obfuscated,
 }
 
 bool KeysetManagement::GetVaultKeysetLabels(
-    const std::string& obfuscated_username,
+    const ObfuscatedUsername& obfuscated_username,
     bool include_le_labels,
     std::vector<std::string>* labels) const {
   CHECK(labels);
@@ -297,7 +297,7 @@ bool KeysetManagement::GetVaultKeysetLabels(
 CryptohomeStatusOr<std::unique_ptr<VaultKeyset>>
 KeysetManagement::AddInitialKeysetWithKeyBlobs(
     const VaultKeysetIntent& vk_intent,
-    const std::string& obfuscated_username,
+    const ObfuscatedUsername& obfuscated_username,
     const KeyData& key_data,
     const std::optional<SerializedVaultKeyset_SignatureChallengeInfo>&
         challenge_credentials_keyset_info,
@@ -314,7 +314,7 @@ KeysetManagement::AddInitialKeysetWithKeyBlobs(
 CryptohomeStatusOr<std::unique_ptr<VaultKeyset>>
 KeysetManagement::AddInitialKeysetImpl(
     const VaultKeysetIntent& vk_intent,
-    const std::string& obfuscated_username,
+    const ObfuscatedUsername& obfuscated_username,
     const KeyData& key_data,
     const std::optional<SerializedVaultKeyset_SignatureChallengeInfo>&
         challenge_credentials_keyset_info,
@@ -503,7 +503,7 @@ CryptohomeStatus KeysetManagement::ReSaveKeysetImpl(
 
 CryptohomeErrorCode KeysetManagement::AddKeysetWithKeyBlobs(
     const VaultKeysetIntent& vk_intent,
-    const std::string& obfuscated_username_new,
+    const ObfuscatedUsername& obfuscated_username_new,
     const std::string& key_label,
     const KeyData& key_data_new,
     const VaultKeyset& vault_keyset_old,
@@ -520,7 +520,7 @@ CryptohomeErrorCode KeysetManagement::AddKeysetWithKeyBlobs(
 
 CryptohomeErrorCode KeysetManagement::AddKeysetImpl(
     const VaultKeysetIntent& vk_intent,
-    const std::string& obfuscated_username_new,
+    const ObfuscatedUsername& obfuscated_username_new,
     const std::string& key_label,
     const KeyData& key_data_new,
     const VaultKeyset& vault_keyset_old,
@@ -593,7 +593,7 @@ CryptohomeErrorCode KeysetManagement::AddKeysetImpl(
 
 CryptohomeErrorCode KeysetManagement::UpdateKeysetWithKeyBlobs(
     const VaultKeysetIntent& vk_intent,
-    const std::string& obfuscated_username_new,
+    const ObfuscatedUsername& obfuscated_username_new,
     const KeyData& key_data_new,
     const VaultKeyset& vault_keyset,
     KeyBlobs key_blobs,
@@ -614,7 +614,7 @@ CryptohomeErrorCode KeysetManagement::UpdateKeysetWithKeyBlobs(
 }
 
 CryptohomeStatus KeysetManagement::ForceRemoveKeyset(
-    const std::string& obfuscated, int index) {
+    const ObfuscatedUsername& obfuscated, int index) {
   // Note, external callers should check credentials.
   if (index < 0 || index >= kKeyFileMax) {
     return MakeStatus<CryptohomeError>(
@@ -661,7 +661,7 @@ CryptohomeStatus KeysetManagement::ForceRemoveKeyset(
 }
 
 std::unique_ptr<VaultKeyset> KeysetManagement::LoadVaultKeysetForUser(
-    const std::string& obfuscated_user, int index) const {
+    const ObfuscatedUsername& obfuscated_user, int index) const {
   std::unique_ptr<VaultKeyset> keyset(
       vault_keyset_factory_->New(platform_, crypto_));
   // Load the encrypted keyset
@@ -676,8 +676,8 @@ std::unique_ptr<VaultKeyset> KeysetManagement::LoadVaultKeysetForUser(
   return keyset;
 }
 
-void KeysetManagement::ResetLECredentials(const Credentials& creds,
-                                          const std::string& obfuscated) {
+void KeysetManagement::ResetLECredentials(
+    const Credentials& creds, const ObfuscatedUsername& obfuscated) {
   std::vector<int> key_indices;
   if (!GetVaultKeysets(obfuscated, &key_indices)) {
     LOG(WARNING) << "No valid keysets on disk for " << obfuscated;
@@ -699,7 +699,7 @@ void KeysetManagement::ResetLECredentials(const Credentials& creds,
 }
 
 void KeysetManagement::ResetLECredentialsWithValidatedVK(
-    const VaultKeyset& validated_vk, const std::string& obfuscated) {
+    const VaultKeyset& validated_vk, const ObfuscatedUsername& obfuscated) {
   std::vector<int> key_indices;
   if (!GetVaultKeysets(obfuscated, &key_indices)) {
     LOG(WARNING) << "No valid keysets on disk for " << obfuscated;
@@ -711,7 +711,7 @@ void KeysetManagement::ResetLECredentialsWithValidatedVK(
 
 void KeysetManagement::ResetLECredentialsInternal(
     const VaultKeyset& validated_vk,
-    const std::string& obfuscated,
+    const ObfuscatedUsername& obfuscated,
     const std::vector<int>& key_indices) {
   for (int index : key_indices) {
     std::unique_ptr<VaultKeyset> vk_reset =
@@ -735,7 +735,7 @@ void KeysetManagement::ResetLECredentialsInternal(
 }
 
 void KeysetManagement::RemoveLECredentials(
-    const std::string& obfuscated_username) {
+    const ObfuscatedUsername& obfuscated_username) {
   std::vector<int> key_indices;
   if (!GetVaultKeysets(obfuscated_username, &key_indices)) {
     LOG(WARNING) << "No valid keysets on disk for " << obfuscated_username;
@@ -763,13 +763,14 @@ void KeysetManagement::RemoveLECredentials(
   return;
 }
 
-bool KeysetManagement::UserExists(const std::string& obfuscated_username) {
+bool KeysetManagement::UserExists(
+    const ObfuscatedUsername& obfuscated_username) {
   base::FilePath user_dir = UserPath(obfuscated_username);
   return platform_->DirectoryExists(user_dir);
 }
 
 brillo::SecureBlob KeysetManagement::GetPublicMountPassKey(
-    const std::string& account_id) {
+    const Username& account_id) {
   brillo::SecureBlob public_mount_salt;
   if (!GetPublicMountSalt(platform_, &public_mount_salt)) {
     LOG(ERROR) << "Could not get or create public salt from file";
@@ -778,13 +779,13 @@ brillo::SecureBlob KeysetManagement::GetPublicMountPassKey(
     return public_mount_salt;
   }
   brillo::SecureBlob passkey;
-  Crypto::PasswordToPasskey(account_id.c_str(), public_mount_salt, &passkey);
+  Crypto::PasswordToPasskey(account_id->c_str(), public_mount_salt, &passkey);
   return passkey;
 }
 
 // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
 base::Time KeysetManagement::GetPerIndexTimestampFileData(
-    const std::string& obfuscated, int index) {
+    const ObfuscatedUsername& obfuscated, int index) {
   brillo::Blob tcontents;
   if (!platform_->ReadFile(UserActivityPerIndexTimestampPath(obfuscated, index),
                            &tcontents)) {
@@ -801,7 +802,7 @@ base::Time KeysetManagement::GetPerIndexTimestampFileData(
 
 // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
 base::Time KeysetManagement::GetKeysetBoundTimestamp(
-    const std::string& obfuscated) {
+    const ObfuscatedUsername& obfuscated) {
   base::Time timestamp = base::Time();
 
   std::vector<int> key_indices;
@@ -827,7 +828,7 @@ base::Time KeysetManagement::GetKeysetBoundTimestamp(
 }
 
 void KeysetManagement::RecordAllVaultKeysetMetrics(
-    const std::string& obfuscated) const {
+    const ObfuscatedUsername& obfuscated) const {
   VaultKeysetMetrics keyset_metrics;
   std::vector<int> key_indices;
   GetVaultKeysets(obfuscated, &key_indices);
@@ -902,7 +903,7 @@ void KeysetManagement::RecordVaultKeysetMetrics(
 
 // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
 void KeysetManagement::CleanupPerIndexTimestampFiles(
-    const std::string& obfuscated) {
+    const ObfuscatedUsername& obfuscated) {
   for (int i = 0; i < kKeyFileMax; ++i) {
     std::ignore = platform_->DeleteFileDurable(
         UserActivityPerIndexTimestampPath(obfuscated, i));

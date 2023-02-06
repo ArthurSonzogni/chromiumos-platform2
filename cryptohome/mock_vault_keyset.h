@@ -42,7 +42,7 @@ class MockVaultKeyset : public VaultKeyset {
               (override));
   MOCK_METHOD(CryptohomeStatus,
               Encrypt,
-              (const brillo::SecureBlob&, const std::string&),
+              (const brillo::SecureBlob&, const ObfuscatedUsername&),
               (override));
 
   MOCK_METHOD(CryptoStatus, DecryptEx, (const KeyBlobs&), (override));

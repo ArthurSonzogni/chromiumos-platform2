@@ -92,14 +92,14 @@ AuthInput FromSmartCardAuthInput(
 std::optional<AuthInput> FromKioskAuthInput(
     Platform* platform,
     const user_data_auth::KioskAuthInput& proto,
-    const std::string& username) {
+    const Username& username) {
   brillo::SecureBlob public_mount_salt;
   if (!GetPublicMountSalt(platform, &public_mount_salt)) {
     LOG(ERROR) << "Could not get or create public salt from file";
     return std::nullopt;
   }
   brillo::SecureBlob passkey;
-  Crypto::PasswordToPasskey(username.c_str(), public_mount_salt, &passkey);
+  Crypto::PasswordToPasskey(username->c_str(), public_mount_salt, &passkey);
   return AuthInput{
       .user_input = passkey,
   };
@@ -120,8 +120,8 @@ AuthInput FromFingerprintAuthInput(
 std::optional<AuthInput> CreateAuthInput(
     Platform* platform,
     const user_data_auth::AuthInput& auth_input_proto,
-    const std::string& username,
-    const std::string& obfuscated_username,
+    const Username& username,
+    const ObfuscatedUsername& obfuscated_username,
     bool locked_to_single_user,
     const std::optional<brillo::SecureBlob>&
         cryptohome_recovery_ephemeral_pub_key,

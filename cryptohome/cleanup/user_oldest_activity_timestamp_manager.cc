@@ -20,7 +20,7 @@ namespace cryptohome {
 namespace {
 
 base::Time GetTimestampFileData(Platform* platform,
-                                const std::string& obfuscated) {
+                                const ObfuscatedUsername& obfuscated) {
   brillo::Blob tcontents;
   if (!platform->ReadFile(UserActivityTimestampPath(obfuscated), &tcontents)) {
     return base::Time();
@@ -42,12 +42,12 @@ UserOldestActivityTimestampManager::UserOldestActivityTimestampManager(
     : platform_(platform) {}
 
 void UserOldestActivityTimestampManager::UpdateCachedTimestamp(
-    const std::string& obfuscated, base::Time timestamp) {
+    const ObfuscatedUsername& obfuscated, base::Time timestamp) {
   users_timestamp_lookup_[obfuscated] = timestamp;
 }
 
 bool UserOldestActivityTimestampManager::WriteTimestamp(
-    const std::string& obfuscated, base::Time timestamp) {
+    const ObfuscatedUsername& obfuscated, base::Time timestamp) {
   Timestamp ts_proto;
   ts_proto.set_timestamp(timestamp.ToDeltaSinceWindowsEpoch().InSeconds());
   std::string timestamp_str;
@@ -72,7 +72,7 @@ bool UserOldestActivityTimestampManager::WriteTimestamp(
 
 // public
 void UserOldestActivityTimestampManager::LoadTimestamp(
-    const std::string& obfuscated) {
+    const ObfuscatedUsername& obfuscated) {
   const base::Time ts_from_singular_file =
       GetTimestampFileData(platform_, obfuscated);
   UpdateCachedTimestamp(obfuscated, ts_from_singular_file);
@@ -80,7 +80,7 @@ void UserOldestActivityTimestampManager::LoadTimestamp(
 
 // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
 void UserOldestActivityTimestampManager::LoadTimestampWithLegacy(
-    const std::string& obfuscated, base::Time legacy_timestamp) {
+    const ObfuscatedUsername& obfuscated, base::Time legacy_timestamp) {
   LoadTimestamp(obfuscated);
   const auto current_timestamp = GetLastUserActivityTimestamp(obfuscated);
   if (legacy_timestamp <= current_timestamp) {
@@ -95,7 +95,7 @@ void UserOldestActivityTimestampManager::LoadTimestampWithLegacy(
 }
 
 bool UserOldestActivityTimestampManager::UpdateTimestamp(
-    const std::string& obfuscated, base::TimeDelta time_shift) {
+    const ObfuscatedUsername& obfuscated, base::TimeDelta time_shift) {
   base::Time timestamp = platform_->GetCurrentTime();
   if (time_shift > base::TimeDelta()) {
     timestamp -= time_shift;
@@ -111,12 +111,12 @@ bool UserOldestActivityTimestampManager::UpdateTimestamp(
 }
 
 void UserOldestActivityTimestampManager::RemoveUser(
-    const std::string& obfuscated) {
+    const ObfuscatedUsername& obfuscated) {
   users_timestamp_lookup_.erase(obfuscated);
 }
 
 base::Time UserOldestActivityTimestampManager::GetLastUserActivityTimestamp(
-    const std::string& obfuscated) const {
+    const ObfuscatedUsername& obfuscated) const {
   auto it = users_timestamp_lookup_.find(obfuscated);
 
   if (it == users_timestamp_lookup_.end()) {

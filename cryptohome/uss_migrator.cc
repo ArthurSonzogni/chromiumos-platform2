@@ -34,8 +34,7 @@ constexpr char kMigrationSecretDerivationPublicInfo[] =
 constexpr char kMigrationSecretLabel[] = "vk_to_uss_migration_secret_label";
 }  // namespace
 
-UssMigrator::UssMigrator(std::string username)
-    : username_(std::move(username)) {}
+UssMigrator::UssMigrator(Username username) : username_(std::move(username)) {}
 
 void UssMigrator::MigrateVaultKeysetToUss(
     const UserSecretStashStorage& user_secret_stash_storage,

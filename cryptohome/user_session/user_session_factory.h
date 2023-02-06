@@ -9,6 +9,7 @@
 #include <string>
 
 #include "cryptohome/user_session/user_session.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -17,7 +18,7 @@ class UserSessionFactory {
   UserSessionFactory() = default;
   virtual ~UserSessionFactory() = default;
 
-  virtual std::unique_ptr<UserSession> New(const std::string& username,
+  virtual std::unique_ptr<UserSession> New(const Username& username,
                                            bool legacy_mount,
                                            bool bind_mount_downloads) = 0;
 };

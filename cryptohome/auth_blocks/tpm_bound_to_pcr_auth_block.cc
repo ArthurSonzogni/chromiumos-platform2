@@ -32,6 +32,7 @@
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
+#include "cryptohome/username.h"
 #include "cryptohome/vault_keyset.pb.h"
 
 using cryptohome::error::CryptohomeCryptoError;
@@ -134,7 +135,7 @@ CryptoStatus TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
   brillo::SecureBlob salt =
       CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
 
-  const std::string& obfuscated_username =
+  const ObfuscatedUsername& obfuscated_username =
       user_input.obfuscated_username.value();
 
   // If the cryptohome key isn't loaded, try to load it.
@@ -192,7 +193,7 @@ CryptoStatus TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
   }
 
   hwsec::StatusOr<brillo::Blob> extended_tpm_key =
-      hwsec_->SealWithCurrentUser(obfuscated_username, *auth_value, vkk_key);
+      hwsec_->SealWithCurrentUser(*obfuscated_username, *auth_value, vkk_key);
   if (!extended_tpm_key.ok()) {
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(

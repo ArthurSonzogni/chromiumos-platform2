@@ -45,7 +45,7 @@ class UserDataAuthAdaptor
   void IsMounted(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                      user_data_auth::IsMountedReply>> response,
                  const user_data_auth::IsMountedRequest& in_request) override;
-  void DoIsMounted(const std::string username,
+  void DoIsMounted(const Username& username,
                    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                        user_data_auth::IsMountedReply>> response);
 

@@ -269,7 +269,7 @@ AuthBlockUtilityImpl::CreateCredentialVerifier(
 
 void AuthBlockUtilityImpl::PrepareAuthFactorForAuth(
     AuthFactorType auth_factor_type,
-    const std::string& username,
+    const ObfuscatedUsername& username,
     PreparedAuthFactorToken::Consumer callback) {
   switch (auth_factor_type) {
     case AuthFactorType::kLegacyFingerprint: {
@@ -309,7 +309,7 @@ void AuthBlockUtilityImpl::PrepareAuthFactorForAuth(
 
 void AuthBlockUtilityImpl::PrepareAuthFactorForAdd(
     AuthFactorType auth_factor_type,
-    const std::string& username,
+    const ObfuscatedUsername& username,
     PreparedAuthFactorToken::Consumer callback) {
   // Not implemented for now.
   CryptohomeStatus status = MakeStatus<CryptohomeError>(
@@ -708,7 +708,7 @@ bool AuthBlockUtilityImpl::IsChallengeCredentialReady(
 
 bool AuthBlockUtilityImpl::GetAuthBlockStateFromVaultKeyset(
     const std::string& label,
-    const std::string& obfuscated_username,
+    const ObfuscatedUsername& obfuscated_username,
     AuthBlockState& out_state) const {
   std::unique_ptr<VaultKeyset> vault_keyset =
       keyset_management_->GetVaultKeyset(obfuscated_username, label);
@@ -859,7 +859,7 @@ CryptoStatus AuthBlockUtilityImpl::PrepareAuthBlockForRemoval(
 }
 
 CryptoStatus AuthBlockUtilityImpl::GenerateRecoveryRequest(
-    const std::string& obfuscated_username,
+    const ObfuscatedUsername& obfuscated_username,
     const cryptorecovery::RequestMetadata& request_metadata,
     const brillo::Blob& epoch_response,
     const CryptohomeRecoveryAuthBlockState& state,

@@ -38,18 +38,18 @@ void Pkcs11Init::GetTpmTokenInfo(std::string* OUT_label,
   *OUT_user_pin = kDefaultPin;
 }
 
-void Pkcs11Init::GetTpmTokenInfoForUser(const std::string& username,
+void Pkcs11Init::GetTpmTokenInfoForUser(const Username& username,
                                         std::string* OUT_label,
                                         std::string* OUT_user_pin) {
   *OUT_label = GetTpmTokenLabelForUser(username);
   *OUT_user_pin = kDefaultPin;
 }
 
-std::string Pkcs11Init::GetTpmTokenLabelForUser(const std::string& username) {
+std::string Pkcs11Init::GetTpmTokenLabelForUser(const Username& username) {
   // Use a truncated sanitized username in the token label so a label collision
   // is extremely unlikely.
   return std::string(kDefaultUserLabelPrefix) +
-         brillo::cryptohome::home::SanitizeUserName(username).substr(0, 16);
+         brillo::cryptohome::home::SanitizeUserName(username)->substr(0, 16);
 }
 
 bool Pkcs11Init::GetTpmTokenSlotForPath(const FilePath& path,

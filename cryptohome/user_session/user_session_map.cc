@@ -17,7 +17,7 @@ namespace {
 
 // Helper function to initialize the verifier forwarder internal variant.
 std::variant<UserSession*, UserSessionMap::VerifierForwarder::VerifierStorage>
-MakeForwarderVariant(const std::string& account_id,
+MakeForwarderVariant(const Username& account_id,
                      UserSessionMap* user_session_map) {
   if (UserSession* user_session = user_session_map->Find(account_id)) {
     return user_session;
@@ -29,7 +29,7 @@ MakeForwarderVariant(const std::string& account_id,
 }  // namespace
 
 UserSessionMap::VerifierForwarder::VerifierForwarder(
-    std::string account_id, UserSessionMap* user_session_map)
+    Username account_id, UserSessionMap* user_session_map)
     : account_id_(std::move(account_id)),
       user_session_map_(user_session_map),
       forwarding_destination_(
@@ -116,7 +116,7 @@ void UserSessionMap::VerifierForwarder::Detach() {
   forwarding_destination_ = VerifierStorage();
 }
 
-bool UserSessionMap::Add(const std::string& account_id,
+bool UserSessionMap::Add(const Username& account_id,
                          std::unique_ptr<UserSession> session) {
   DCHECK(session);
   auto [storage_iter, was_inserted] =
@@ -130,7 +130,7 @@ bool UserSessionMap::Add(const std::string& account_id,
   return was_inserted;
 }
 
-bool UserSessionMap::Remove(const std::string& account_id) {
+bool UserSessionMap::Remove(const Username& account_id) {
   auto forwarder_iter = verifier_forwarders_.find(account_id);
   if (forwarder_iter != verifier_forwarders_.end()) {
     for (VerifierForwarder* forwarder : forwarder_iter->second) {
@@ -140,7 +140,7 @@ bool UserSessionMap::Remove(const std::string& account_id) {
   return storage_.erase(account_id) != 0;
 }
 
-UserSession* UserSessionMap::Find(const std::string& account_id) {
+UserSession* UserSessionMap::Find(const Username& account_id) {
   auto iter = storage_.find(account_id);
   if (iter == storage_.end()) {
     return nullptr;
@@ -148,7 +148,7 @@ UserSession* UserSessionMap::Find(const std::string& account_id) {
   return iter->second.get();
 }
 
-const UserSession* UserSessionMap::Find(const std::string& account_id) const {
+const UserSession* UserSessionMap::Find(const Username& account_id) const {
   auto iter = storage_.find(account_id);
   if (iter == storage_.end()) {
     return nullptr;

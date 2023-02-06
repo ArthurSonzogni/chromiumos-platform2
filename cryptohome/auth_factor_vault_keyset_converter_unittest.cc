@@ -117,8 +117,8 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
       label_to_auth_factor_backup_;
   std::vector<std::string> migrated_labels_;
   struct UserInfo {
-    std::string name;
-    std::string obfuscated;
+    Username name;
+    ObfuscatedUsername obfuscated;
     brillo::SecureBlob passkey;
     Credentials credentials;
     base::FilePath homedir_path;
@@ -128,12 +128,13 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
   UserInfo user;
 
   void AddUser(const char* password) {
-    std::string obfuscated =
-        brillo::cryptohome::home::SanitizeUserName(kUsername);
+    Username username(kUsername);
+    ObfuscatedUsername obfuscated =
+        brillo::cryptohome::home::SanitizeUserName(username);
     brillo::SecureBlob passkey(password);
-    Credentials credentials(kUsername, passkey);
+    Credentials credentials(username, passkey);
 
-    user = {kUsername,
+    user = {username,
             obfuscated,
             passkey,
             credentials,

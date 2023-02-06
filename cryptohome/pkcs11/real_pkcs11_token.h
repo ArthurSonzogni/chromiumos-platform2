@@ -14,6 +14,7 @@
 #include <brillo/secure_blob.h>
 
 #include "cryptohome/chaps_client_factory.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -26,13 +27,13 @@ class RealPkcs11Token final : public Pkcs11Token {
   bool IsReady() const override;
 
  private:
-  RealPkcs11Token(const std::string& username,
+  RealPkcs11Token(const Username& username,
                   const base::FilePath& token_dir,
                   const brillo::SecureBlob& auth_data,
                   std::unique_ptr<ChapsClientFactory> chaps_client_factory =
                       std::make_unique<ChapsClientFactory>());
 
-  const std::string username_;
+  const Username username_;
   const base::FilePath token_dir_;
   // Auth data is non-const for we have to reset it once used.
   brillo::SecureBlob auth_data_;

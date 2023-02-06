@@ -23,6 +23,7 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/platform.h"
+#include "cryptohome/username.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset_factory.h"
 #include "storage/file_system_keyset.h"
@@ -51,15 +52,16 @@ class KeysetManagement {
 
   // Returns a list of present keyset indices for an obfuscated username.
   // There is no guarantee the keysets are valid.
-  virtual bool GetVaultKeysets(const std::string& obfuscated,
+  virtual bool GetVaultKeysets(const ObfuscatedUsername& obfuscated,
                                std::vector<int>* keysets) const;
 
   // Outputs a list of present keysets by label for a given obfuscated username.
   // There is no guarantee the keysets are valid nor is the ordering guaranteed.
   // Returns true on success, false if no keysets are found.
-  virtual bool GetVaultKeysetLabels(const std::string& obfuscated_username,
-                                    bool include_le_labels,
-                                    std::vector<std::string>* labels) const;
+  virtual bool GetVaultKeysetLabels(
+      const ObfuscatedUsername& obfuscated_username,
+      bool include_le_labels,
+      std::vector<std::string>* labels) const;
 
   // Returns a VaultKeyset that matches the given obfuscated username and the
   // key label. If the label is empty or if no matching keyset is found, NULL
@@ -68,7 +70,7 @@ class KeysetManagement {
   // The caller DOES take ownership of the returned VaultKeyset pointer.
   // There is no guarantee the keyset is valid.
   virtual std::unique_ptr<VaultKeyset> GetVaultKeyset(
-      const std::string& obfuscated_username,
+      const ObfuscatedUsername& obfuscated_username,
       const std::string& key_label) const;
 
   // Returns true if the supplied Credentials are a valid (username, passkey)
@@ -85,10 +87,10 @@ class KeysetManagement {
   // Loads the vault keyset for the supplied obfuscated username and index.
   // Returns null on failure.
   virtual std::unique_ptr<VaultKeyset> LoadVaultKeysetForUser(
-      const std::string& obfuscated_user, int index) const;
+      const ObfuscatedUsername& obfuscated_user, int index) const;
 
   // Checks if the directory containing user keys exists.
-  virtual bool UserExists(const std::string& obfuscated_username);
+  virtual bool UserExists(const ObfuscatedUsername& obfuscated_username);
 
   // This function should be called after successful authentication.
   // Populate a value to |vault_keyset|'s reset seed if it is missing, but
@@ -101,40 +103,43 @@ class KeysetManagement {
   // The caller should check credentials if the call is user-sourced.
   // TODO(wad,ellyjones) Determine a better keyset priotization and management
   //                     scheme than just integer indices, like fingerprints.
-  virtual CryptohomeStatus ForceRemoveKeyset(const std::string& obfuscated,
-                                             int index);
+  virtual CryptohomeStatus ForceRemoveKeyset(
+      const ObfuscatedUsername& obfuscated, int index);
 
   // Attempts to reset all LE credentials associated with a username, given
   // a credential |cred|.
   void ResetLECredentials(const Credentials& creds,
-                          const std::string& obfuscated);
+                          const ObfuscatedUsername& obfuscated);
 
   // Attempts to reset all LE credentials associated with a username, given
   // validated VK |validated_vk|.
   void ResetLECredentialsWithValidatedVK(const VaultKeyset& validated_vk,
-                                         const std::string& obfuscated);
+                                         const ObfuscatedUsername& obfuscated);
 
   // Removes all LE credentials for a user with |obfuscated_username|.
-  virtual void RemoveLECredentials(const std::string& obfuscated_username);
+  virtual void RemoveLECredentials(
+      const ObfuscatedUsername& obfuscated_username);
 
   // Returns the public mount pass key derived from username.
-  virtual brillo::SecureBlob GetPublicMountPassKey(
-      const std::string& account_id);
+  virtual brillo::SecureBlob GetPublicMountPassKey(const Username& account_id);
 
   // Get timestamp from a legacy location.
   // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
-  virtual base::Time GetKeysetBoundTimestamp(const std::string& obfuscated);
+  virtual base::Time GetKeysetBoundTimestamp(
+      const ObfuscatedUsername& obfuscated);
 
   // Remove legacy location for timestamp.
   // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
-  virtual void CleanupPerIndexTimestampFiles(const std::string& obfuscated);
+  virtual void CleanupPerIndexTimestampFiles(
+      const ObfuscatedUsername& obfuscated);
 
   // Check if the vault keyset needs re-encryption.
   virtual bool ShouldReSaveKeyset(VaultKeyset* vault_keyset) const;
 
   // Record various metrics about all the VaultKeyset for a given user
   // obfuscated
-  virtual void RecordAllVaultKeysetMetrics(const std::string& obfuscated) const;
+  virtual void RecordAllVaultKeysetMetrics(
+      const ObfuscatedUsername& obfuscated) const;
 
   // ========== KeysetManagement methods with KeyBlobs ===============
 
@@ -151,7 +156,7 @@ class KeysetManagement {
   virtual CryptohomeStatusOr<std::unique_ptr<VaultKeyset>>
   AddInitialKeysetWithKeyBlobs(
       const VaultKeysetIntent& vk_intent,
-      const std::string& obfuscated_username,
+      const ObfuscatedUsername& obfuscated_username,
       const KeyData& key_data,
       const std::optional<SerializedVaultKeyset_SignatureChallengeInfo>&
           challenge_credentials_keyset_info,
@@ -165,7 +170,7 @@ class KeysetManagement {
   // Keysets are only considered when the |label| provided is non-empty
   // (b/202907485).
   virtual MountStatusOr<std::unique_ptr<VaultKeyset>>
-  GetValidKeysetWithKeyBlobs(const std::string& obfuscated_username,
+  GetValidKeysetWithKeyBlobs(const ObfuscatedUsername& obfuscated_username,
                              KeyBlobs key_blobs,
                              const std::optional<std::string>& label);
 
@@ -180,7 +185,7 @@ class KeysetManagement {
   // nothing; if there is an identically labeled key, it will overwrite it.
   virtual CryptohomeErrorCode AddKeysetWithKeyBlobs(
       const VaultKeysetIntent& vk_intent,
-      const std::string& obfuscated_username_new,
+      const ObfuscatedUsername& obfuscated_username_new,
       const std::string& key_label,
       const KeyData& key_data_new,
       const VaultKeyset& vault_keyset_old,
@@ -201,7 +206,7 @@ class KeysetManagement {
   // credentials.
   virtual CryptohomeErrorCode UpdateKeysetWithKeyBlobs(
       const VaultKeysetIntent& vk_intent,
-      const std::string& obfuscated_username_new,
+      const ObfuscatedUsername& obfuscated_username_new,
       const KeyData& key_data_new,
       const VaultKeyset& vault_keyset,
       KeyBlobs key_blobs,
@@ -214,7 +219,7 @@ class KeysetManagement {
   // with |encrypt_vk_callback| and persists to disk.
   CryptohomeStatusOr<std::unique_ptr<VaultKeyset>> AddInitialKeysetImpl(
       const VaultKeysetIntent& vk_intent,
-      const std::string& obfuscated_username,
+      const ObfuscatedUsername& obfuscated_username,
       const KeyData& key_data,
       const std::optional<SerializedVaultKeyset_SignatureChallengeInfo>&
           challenge_credentials_keyset_info,
@@ -224,7 +229,7 @@ class KeysetManagement {
   // Returns decrypted VaultKeyset for the obfuscated_username and label or
   // nullptr if none decryptable.
   MountStatusOr<std::unique_ptr<VaultKeyset>> GetValidKeysetImpl(
-      const std::string& obfuscated_username,
+      const ObfuscatedUsername& obfuscated_username,
       const std::optional<std::string>& label,
       DecryptVkCallback decrypt_vk_callback);
 
@@ -232,13 +237,14 @@ class KeysetManagement {
   // and the filesystem key from |vault_keyset_old| and persist to disk.  If
   // |clobber| is true and there are no matching, labeled keys, then it does
   // nothing; if there is an identically labeled key, it will overwrite it.
-  CryptohomeErrorCode AddKeysetImpl(const VaultKeysetIntent& vk_intent,
-                                    const std::string& obfuscated_username_new,
-                                    const std::string& key_label,
-                                    const KeyData& key_data_new,
-                                    const VaultKeyset& vault_keyset_old,
-                                    EncryptVkCallback encrypt_vk_callback,
-                                    bool clobber);
+  CryptohomeErrorCode AddKeysetImpl(
+      const VaultKeysetIntent& vk_intent,
+      const ObfuscatedUsername& obfuscated_username_new,
+      const std::string& key_label,
+      const KeyData& key_data_new,
+      const VaultKeyset& vault_keyset_old,
+      EncryptVkCallback encrypt_vk_callback,
+      bool clobber);
 
   // Implements the common functionality for resaving a keyset with restore on
   // error.
@@ -246,7 +252,7 @@ class KeysetManagement {
       VaultKeyset& vault_keyset, EncryptVkCallback encrypt_vk_callback) const;
 
   // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
-  base::Time GetPerIndexTimestampFileData(const std::string& obfuscated,
+  base::Time GetPerIndexTimestampFileData(const ObfuscatedUsername& obfuscated,
                                           int index);
 
   // Records various metrics about the VaultKeyset into the VaultKeysetMetrics
@@ -257,7 +263,7 @@ class KeysetManagement {
   // Attempts to reset all LE credentials associated with a username, given
   // a credential |cred| and |key_indices|.
   void ResetLECredentialsInternal(const VaultKeyset& vk,
-                                  const std::string& obfuscated,
+                                  const ObfuscatedUsername& obfuscated,
                                   const std::vector<int>& key_indices);
 
   Platform* platform_;

@@ -18,7 +18,7 @@ class MockFingerprintManager : public FingerprintManager {
 
   MOCK_METHOD(void,
               StartAuthSessionAsyncForUser,
-              (const std::string& user,
+              (const ObfuscatedUsername& user,
                StartSessionCallback auth_session_start_client_callback),
               (override));
 
@@ -34,7 +34,7 @@ class MockFingerprintManager : public FingerprintManager {
 
   MOCK_METHOD(bool,
               HasAuthSessionForUser,
-              (const std::string& user),
+              (const ObfuscatedUsername& user),
               (override));
 
   MOCK_METHOD(void, EndAuthSession, (), (override));

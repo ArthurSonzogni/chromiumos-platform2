@@ -21,13 +21,13 @@ class MockMount : public Mount {
   ~MockMount() override = default;
   MOCK_METHOD(StorageStatus,
               MountCryptohome,
-              (const std::string&,
+              (const Username&,
                const FileSystemKeyset&,
                const CryptohomeVault::Options&),
               (override));
   MOCK_METHOD(StorageStatus,
               MountEphemeralCryptohome,
-              (const std::string&),
+              (const Username&),
               (override));
   MOCK_METHOD(bool, UnmountCryptohome, (), (override));
   MOCK_METHOD(bool, IsMounted, (), (const, override));

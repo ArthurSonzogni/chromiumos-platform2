@@ -47,6 +47,7 @@
 #include "cryptohome/user_secret_stash.h"
 #include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/user_session/user_session_map.h"
+#include "cryptohome/username.h"
 #include "featured/feature_library.h"
 
 namespace cryptohome {
@@ -90,8 +91,8 @@ class AuthSession final {
   // These parameters do not include the underlying interfaces that AuthSession
   // depends on, which are defined below in a separate parameter struct.
   struct Params {
-    hwsec::ExplicitInit<std::string> username;
-    hwsec::ExplicitInit<std::string> obfuscated_username;
+    hwsec::ExplicitInit<Username> username;
+    hwsec::ExplicitInit<ObfuscatedUsername> obfuscated_username;
     hwsec::ExplicitInit<bool> is_ephemeral_user;
     hwsec::ExplicitInit<AuthIntent> intent;
     base::OnceCallback<void(const base::UnguessableToken&)> on_timeout;
@@ -116,7 +117,7 @@ class AuthSession final {
   // Creates new auth session for account_id. This method returns a unique_ptr
   // to the created AuthSession for the auth_session_manager to hold.
   static std::unique_ptr<AuthSession> Create(
-      std::string username,
+      Username username,
       unsigned int flags,
       AuthIntent intent,
       base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
@@ -131,9 +132,9 @@ class AuthSession final {
   ~AuthSession();
 
   // Returns the full unhashed user name.
-  const std::string& username() const { return username_; }
+  const Username& username() const { return username_; }
   // Returns the obfuscated (sanitized) user name.
-  const std::string& obfuscated_username() const {
+  const ObfuscatedUsername& obfuscated_username() const {
     return obfuscated_username_;
   }
 
@@ -579,8 +580,8 @@ class AuthSession final {
   // Prepares the WebAuthn secret using file_system_keyset.
   CryptohomeStatus PrepareWebAuthnSecret();
 
-  const std::string username_;
-  const std::string obfuscated_username_;
+  Username username_;
+  ObfuscatedUsername obfuscated_username_;
 
   // AuthSession's flag configuration.
   const bool is_ephemeral_user_;

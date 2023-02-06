@@ -20,6 +20,7 @@
 #include "cryptohome/cryptorecovery/cryptorecovery.pb.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 namespace cryptorecovery {
@@ -31,7 +32,7 @@ struct GenerateHsmPayloadRequest {
   // (OMD).
   hwsec_foundation::NoDefault<OnboardingMetadata> onboarding_metadata;
   // Used to generate PCR map.
-  hwsec_foundation::NoDefault<std::string> obfuscated_username;
+  hwsec_foundation::NoDefault<ObfuscatedUsername> obfuscated_username;
 };
 
 // RecoveryCrypto output parameters for function GenerateHsmPayload.
@@ -53,7 +54,7 @@ struct GenerateRecoveryRequestRequest {
   hwsec_foundation::NoDefault<brillo::SecureBlob> encrypted_rsa_priv_key;
   hwsec_foundation::NoDefault<brillo::SecureBlob> encrypted_channel_priv_key;
   hwsec_foundation::NoDefault<brillo::SecureBlob> channel_pub_key;
-  hwsec_foundation::NoDefault<std::string> obfuscated_username;
+  hwsec_foundation::NoDefault<ObfuscatedUsername> obfuscated_username;
 };
 
 // RecoveryCrypto input parameters for function RecoverDestination.
@@ -65,7 +66,7 @@ struct RecoverDestinationRequest {
       extended_pcr_bound_destination_share;
   hwsec_foundation::NoDefault<brillo::SecureBlob> ephemeral_pub_key;
   hwsec_foundation::NoDefault<brillo::SecureBlob> mediated_publisher_pub_key;
-  hwsec_foundation::NoDefault<std::string> obfuscated_username;
+  hwsec_foundation::NoDefault<ObfuscatedUsername> obfuscated_username;
 };
 
 // RecoveryCrypto input parameters for function DecryptResponsePayload.
@@ -73,7 +74,7 @@ struct DecryptResponsePayloadRequest {
   hwsec_foundation::NoDefault<brillo::SecureBlob> encrypted_channel_priv_key;
   CryptoRecoveryEpochResponse epoch_response;
   CryptoRecoveryRpcResponse recovery_response_proto;
-  hwsec_foundation::NoDefault<std::string> obfuscated_username;
+  hwsec_foundation::NoDefault<ObfuscatedUsername> obfuscated_username;
 };
 
 // Cryptographic operations for cryptohome recovery.

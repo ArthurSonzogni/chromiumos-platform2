@@ -15,6 +15,7 @@
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/platform.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -37,32 +38,33 @@ class AuthFactorManager final {
 
   // Serializes and persists as a file the given auth factor in the user's data
   // vault.
-  CryptohomeStatus SaveAuthFactor(const std::string& obfuscated_username,
+  CryptohomeStatus SaveAuthFactor(const ObfuscatedUsername& obfuscated_username,
                                   const AuthFactor& auth_factor);
 
   // Loads from the auth factor with the given type and label from the file in
   // the user's data vault.
   CryptohomeStatusOr<std::unique_ptr<AuthFactor>> LoadAuthFactor(
-      const std::string& obfuscated_username,
+      const ObfuscatedUsername& obfuscated_username,
       AuthFactorType auth_factor_type,
       const std::string& auth_factor_label);
 
   // Loads all configured auth factors for the given user from the disk.
   // Malformed factors are logged and skipped.
   std::map<std::string, std::unique_ptr<AuthFactor>> LoadAllAuthFactors(
-      const std::string& obfuscated_username);
+      const ObfuscatedUsername& obfuscated_username);
 
   // Loads the list of configured auth factors from the user's data vault.
-  LabelToTypeMap ListAuthFactors(const std::string& obfuscated_username);
+  LabelToTypeMap ListAuthFactors(const ObfuscatedUsername& obfuscated_username);
 
   // Removes the auth factor:
   // 1. Calls PrepareForRemoval() on the AuthBlock. A failure in
   // `PrepareForRemoval()` aborts the auth factor removal from disk.
   // 2. Removes the file containing state (AuthBlockState) of the given auth
   // factor from the user's data vault.
-  CryptohomeStatus RemoveAuthFactor(const std::string& obfuscated_username,
-                                    const AuthFactor& auth_factor,
-                                    AuthBlockUtility* auth_block_utility);
+  CryptohomeStatus RemoveAuthFactor(
+      const ObfuscatedUsername& obfuscated_username,
+      const AuthFactor& auth_factor,
+      AuthBlockUtility* auth_block_utility);
 
   // Updates the auth factor:
   // 1. Removes the auth factor with the given `auth_factor.type()` and
@@ -72,10 +74,11 @@ class AuthFactorManager final {
   // Unlike calling `RemoveAuthFactor()`+`SaveAuthFactor()`, this operation is
   // atomic, to the extent possible - it makes sure that we don't end up with no
   // auth factor available.
-  CryptohomeStatus UpdateAuthFactor(const std::string& obfuscated_username,
-                                    const std::string& auth_factor_label,
-                                    AuthFactor& auth_factor,
-                                    AuthBlockUtility* auth_block_utility);
+  CryptohomeStatus UpdateAuthFactor(
+      const ObfuscatedUsername& obfuscated_username,
+      const std::string& auth_factor_label,
+      AuthFactor& auth_factor,
+      AuthBlockUtility* auth_block_utility);
 
  private:
   // Unowned pointer that must outlive this object.

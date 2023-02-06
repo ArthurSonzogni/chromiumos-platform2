@@ -118,7 +118,7 @@ class UssMigratorTest : public ::testing::Test {
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
   std::map<std::string, std::unique_ptr<VaultKeyset>> vk_map_;
   std::unique_ptr<VaultKeyset> pin_vault_keyset_;
-  const std::string username_;
+  const Username username_;
   UssMigrator migrator_;
 };
 

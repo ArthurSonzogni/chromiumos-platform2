@@ -5,6 +5,7 @@
 #include "cryptohome/credentials.h"
 
 #include <brillo/cryptohome.h>
+#include "cryptohome/username.h"
 
 using brillo::SecureBlob;
 using brillo::cryptohome::home::SanitizeUserName;
@@ -14,7 +15,7 @@ namespace cryptohome {
 
 Credentials::Credentials() = default;
 
-Credentials::Credentials(const std::string& username, const SecureBlob& passkey)
+Credentials::Credentials(const Username& username, const SecureBlob& passkey)
     : username_(username), passkey_(passkey) {}
 
 Credentials::Credentials(const Credentials& rhs) = default;
@@ -23,7 +24,7 @@ Credentials::~Credentials() = default;
 
 Credentials& Credentials::operator=(const Credentials& rhs) = default;
 
-std::string Credentials::GetObfuscatedUsername() const {
+ObfuscatedUsername Credentials::GetObfuscatedUsername() const {
   return SanitizeUserName(username_);
 }
 

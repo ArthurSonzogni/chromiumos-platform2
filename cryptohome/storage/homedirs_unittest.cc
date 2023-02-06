@@ -32,6 +32,7 @@
 #include "cryptohome/storage/error_test_helpers.h"
 #include "cryptohome/storage/keyring/fake_keyring.h"
 #include "cryptohome/storage/mount_constants.h"
+#include "cryptohome/username.h"
 
 using ::cryptohome::storage::testing::IsError;
 using ::hwsec_foundation::error::testing::IsOk;
@@ -72,8 +73,8 @@ ACTION_P(SetEphemeralUsersEnabled, ephemeral_users_enabled) {
 }
 
 struct UserInfo {
-  std::string name;
-  std::string obfuscated;
+  Username name;
+  ObfuscatedUsername obfuscated;
   brillo::SecureBlob passkey;
   Credentials credentials;
   base::FilePath homedir_path;
@@ -122,17 +123,19 @@ class HomeDirsTest
     AddUser(kUser2, kUserPassword2);
     AddUser(kOwner, kOwnerPassword);
 
-    ASSERT_EQ(kOwner, users_[kOwnerIndex].name);
+    ASSERT_EQ(kOwner, *users_[kOwnerIndex].name);
 
     PrepareDirectoryStructure();
   }
 
   void AddUser(const char* name, const char* password) {
-    std::string obfuscated = brillo::cryptohome::home::SanitizeUserName(name);
+    Username username(name);
+    ObfuscatedUsername obfuscated =
+        brillo::cryptohome::home::SanitizeUserName(username);
     brillo::SecureBlob passkey(password);
-    Credentials credentials(name, passkey);
+    Credentials credentials(username, passkey);
 
-    UserInfo info = {name,
+    UserInfo info = {username,
                      obfuscated,
                      passkey,
                      credentials,
@@ -210,8 +213,8 @@ TEST_P(HomeDirsTest, RemoveNonOwnerCryptohomes) {
 }
 
 TEST_P(HomeDirsTest, CreateCryptohome) {
-  constexpr char kNewUserId[] = "some_new_user";
-  const std::string kHashedNewUserId =
+  const Username kNewUserId("some_new_user");
+  const ObfuscatedUsername kHashedNewUserId =
       brillo::cryptohome::home::SanitizeUserName(kNewUserId);
   const base::FilePath kNewUserPath = UserPath(kHashedNewUserId);
 
@@ -220,8 +223,8 @@ TEST_P(HomeDirsTest, CreateCryptohome) {
 }
 
 TEST_P(HomeDirsTest, RemoveCryptohome) {
-  constexpr char kNewUserId[] = "some_new_user";
-  const std::string kHashedNewUserId =
+  const Username kNewUserId("some_new_user");
+  const ObfuscatedUsername kHashedNewUserId =
       brillo::cryptohome::home::SanitizeUserName(kNewUserId);
   const base::FilePath kNewUserPath = UserPath(kHashedNewUserId);
 
@@ -284,7 +287,7 @@ TEST_P(HomeDirsTest, ComputeDiskUsageEphemeral) {
 TEST_P(HomeDirsTest, ComputeDiskUsageWithNonexistentUser) {
   // If the specified user doesn't exist, there is no directory for the user, so
   // ComputeDiskUsage should return 0.
-  const char kNonExistentUserId[] = "non_existent_user";
+  const Username kNonExistentUserId("non_existent_user");
   EXPECT_EQ(0, homedirs_->ComputeDiskUsage(kNonExistentUserId));
 }
 
@@ -386,7 +389,7 @@ TEST_P(HomeDirsTest, GetUnmountedAndroidDataCount) {
 
 TEST_P(HomeDirsTest, GetHomedirsAllMounted) {
   std::vector<bool> all_mounted(users_.size(), true);
-  std::set<std::string> hashes, got_hashes;
+  std::set<ObfuscatedUsername> hashes, got_hashes;
 
   for (int i = 0; i < users_.size(); i++) {
     hashes.insert(users_[i].obfuscated);
@@ -405,7 +408,7 @@ TEST_P(HomeDirsTest, GetHomedirsAllMounted) {
 
 TEST_P(HomeDirsTest, GetHomedirsSomeMounted) {
   std::vector<bool> some_mounted(users_.size());
-  std::set<std::string> hashes, got_hashes;
+  std::set<ObfuscatedUsername> hashes, got_hashes;
 
   for (int i = 0; i < users_.size(); i++) {
     hashes.insert(users_[i].obfuscated);
@@ -426,7 +429,7 @@ TEST_P(HomeDirsTest, GetHomedirsSomeMounted) {
 // enumeration.
 TEST_P(HomeDirsTest, GetHomedirsSomeMountedUserPathDeleted) {
   std::vector<bool> some_mounted(users_.size());
-  std::set<std::string> hashes, got_hashes;
+  std::set<ObfuscatedUsername> hashes, got_hashes;
 
   for (int i = 0; i < users_.size(); i++) {
     hashes.insert(users_[i].obfuscated);
@@ -447,15 +450,16 @@ TEST_P(HomeDirsTest, GetHomedirsSomeMountedUserPathDeleted) {
 class HomeDirsVaultTest : public ::testing::Test {
  public:
   HomeDirsVaultTest()
-      : user_({.obfuscated = "foo",
-               .homedir_path = base::FilePath(UserPath("foo"))}),
+      : user_({.obfuscated = ObfuscatedUsername("foo"),
+               .homedir_path =
+                   base::FilePath(UserPath(ObfuscatedUsername("foo")))}),
         key_reference_({.fek_sig = brillo::SecureBlob("random keyref")}) {}
   ~HomeDirsVaultTest() override = default;
 
   void ExpectLogicalVolumeStatefulPartition(
       MockPlatform* platform,
       HomeDirs* homedirs,
-      const std::string& obfuscated_username,
+      const ObfuscatedUsername& obfuscated_username,
       bool existing_cryptohome) {
     brillo::LogicalVolume lv(LogicalVolumePrefix(obfuscated_username)
                                  .append(kDmcryptDataContainerSuffix),

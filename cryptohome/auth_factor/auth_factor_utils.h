@@ -21,6 +21,7 @@
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -57,7 +58,7 @@ std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
 // corresponding AuthFactor does not exist.
 bool LoadUserAuthFactorByLabel(AuthFactorManager* manager,
                                const AuthBlockUtility& auth_block_utility,
-                               const std::string& obfuscated_username,
+                               const ObfuscatedUsername& obfuscated_username,
                                const std::string& factor_label,
                                user_data_auth::AuthFactor* out_auth_factor);
 
@@ -72,7 +73,7 @@ std::optional<AuthFactorPreparePurpose> AuthFactorPreparePurposeFromProto(
 // Given a keyset converter, factor manager, and platform, load all of the auth
 // factors for the given user into an auth factor.
 AuthFactorMap LoadAuthFactorMap(bool is_uss_migration_enabled,
-                                const std::string& obfuscated_username,
+                                const ObfuscatedUsername& obfuscated_username,
                                 Platform& platform,
                                 AuthFactorVaultKeysetConverter& converter,
                                 AuthFactorManager& manager);

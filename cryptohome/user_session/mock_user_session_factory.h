@@ -20,7 +20,7 @@ class MockUserSessionFactory : public UserSessionFactory {
 
   MOCK_METHOD(std::unique_ptr<UserSession>,
               New,
-              (const std::string&, bool, bool),
+              (const Username&, bool, bool),
               (override));
 };
 

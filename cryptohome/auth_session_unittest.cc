@@ -63,6 +63,7 @@
 #include "cryptohome/user_session/mock_user_session.h"
 #include "cryptohome/user_session/real_user_session.h"
 #include "cryptohome/user_session/user_session_map.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 namespace {
@@ -109,9 +110,6 @@ constexpr char kFakePass[] = "test_pass";
 constexpr char kFakePin[] = "123456";
 constexpr char kFakeOtherPass[] = "test_other_pass";
 constexpr char kFakeRecoverySecret[] = "test_recovery_secret";
-
-// Fake username to be used in this test suite.
-constexpr char kFakeUsername[] = "test_username";
 
 // Set to match the 5 minute timer and a 1 minute extension in AuthSession.
 constexpr int kAuthSessionExtensionDuration = 60;
@@ -218,6 +216,9 @@ class AuthSessionTest : public ::testing::Test {
   }
 
  protected:
+  // Fake username to be used in this test suite.
+  const Username kFakeUsername{"test_username"};
+
   user_data_auth::CryptohomeErrorCode AuthenticateAuthFactorVK(
       const std::string& label,
       const std::string& passkey,
@@ -273,7 +274,7 @@ class AuthSessionTest : public ::testing::Test {
 
   // Get a UserSession for the given user, creating a minimal stub one if
   // necessary.
-  UserSession* FindOrCreateUserSession(const std::string& username) {
+  UserSession* FindOrCreateUserSession(const Username& username) {
     if (UserSession* session = user_session_map_.Find(username)) {
       return session;
     }
@@ -547,7 +548,7 @@ TEST_F(AuthSessionTest, NoLightweightAuthForDecryption) {
                  std::make_unique<KeyBlobs>());
       });
   EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
-      .WillOnce([](const std::string&, KeyBlobs,
+      .WillOnce([](const ObfuscatedUsername&, KeyBlobs,
                    const std::optional<std::string>& label) {
         KeyData key_data;
         key_data.set_label(*label);
@@ -687,7 +688,7 @@ TEST_F(AuthSessionTest,
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
       .WillRepeatedly(Return(AuthBlockType::kScrypt));
   EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
-      .WillOnce([](const std::string&, KeyBlobs,
+      .WillOnce([](const ObfuscatedUsername&, KeyBlobs,
                    const std::optional<std::string>& label) {
         KeyData key_data;
         key_data.set_label(*label);
@@ -779,7 +780,7 @@ TEST_F(AuthSessionTest,
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
       .WillRepeatedly(Return(AuthBlockType::kScrypt));
   EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
-      .WillOnce([](const std::string&, KeyBlobs,
+      .WillOnce([](const ObfuscatedUsername&, KeyBlobs,
                    const std::optional<std::string>& label) {
         KeyData key_data;
         key_data.set_label(*label);
@@ -873,7 +874,7 @@ TEST_F(AuthSessionTest,
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
       .WillRepeatedly(Return(AuthBlockType::kPinWeaver));
   EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
-      .WillOnce([](const std::string&, KeyBlobs,
+      .WillOnce([](const ObfuscatedUsername&, KeyBlobs,
                    const std::optional<std::string>& label) {
         KeyData key_data;
         key_data.set_label(*label);
@@ -1002,7 +1003,7 @@ TEST_F(AuthSessionTest, AddAuthFactorNewUser) {
             return vk;
           });
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, kFakeLabel))
-      .WillOnce([](const std::string&, const std::string&) {
+      .WillOnce([](const ObfuscatedUsername&, const std::string&) {
         return CreatePasswordVaultKeyset(kFakeLabel);
       });
 
@@ -1077,7 +1078,7 @@ TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
             return vk;
           });
   EXPECT_CALL(keyset_management_, GetVaultKeyset(_, _))
-      .WillRepeatedly([](const std::string&, const std::string& label) {
+      .WillRepeatedly([](const ObfuscatedUsername&, const std::string& label) {
         return CreatePasswordVaultKeyset(label);
       });
 
@@ -1458,7 +1459,7 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorWebAuthnIntent) {
                  std::make_unique<KeyBlobs>());
       });
   EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
-      .WillOnce([](const std::string&, KeyBlobs,
+      .WillOnce([](const ObfuscatedUsername&, KeyBlobs,
                    const std::optional<std::string>& label) {
         KeyData key_data;
         key_data.set_label(*label);
@@ -1569,7 +1570,7 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
   }
 
   struct ReplyToVerifyKey {
-    void operator()(const std::string& account_id,
+    void operator()(const Username& account_id,
                     const structure::ChallengePublicKeyInfo& public_key_info,
                     std::unique_ptr<KeyChallengeService> key_challenge_service,
                     ChallengeCredentialsHelper::VerifyKeyCallback callback) {
@@ -1743,7 +1744,7 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
         });
     // Setting the expectation that backup password VaultKeyset is decrypted.
     EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
-        .WillOnce([](const std::string&, KeyBlobs,
+        .WillOnce([](const ObfuscatedUsername&, KeyBlobs,
                      const std::optional<std::string>& label) {
           KeyData key_data;
           key_data.set_label(*label);
@@ -2247,7 +2248,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
 // authenticated, in case the UserSecretStash experiment is on.
 TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
   // Setup.
-  const std::string obfuscated_username = SanitizeUserName(kFakeUsername);
+  const ObfuscatedUsername obfuscated_username =
+      SanitizeUserName(kFakeUsername);
   const brillo::SecureBlob kFakePerCredentialSecret("fake-vkk");
   // Setting the expectation that the user exists.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
@@ -2311,7 +2313,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
       });
   // Setting the expectation that backup password VaultKeyset is decrypted.
   EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
-      .WillOnce([](const std::string&, KeyBlobs,
+      .WillOnce([](const ObfuscatedUsername&, KeyBlobs,
                    const std::optional<std::string>& label) {
         KeyData key_data;
         key_data.set_label(*label);
@@ -2346,7 +2348,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
 TEST_F(AuthSessionWithUssExperimentTest,
        AuthenticatePasswordAuthFactorViaAsyncUss) {
   // Setup.
-  const std::string obfuscated_username = SanitizeUserName(kFakeUsername);
+  const ObfuscatedUsername obfuscated_username =
+      SanitizeUserName(kFakeUsername);
   const brillo::SecureBlob kFakePerCredentialSecret("fake-vkk");
   // Setting the expectation that the user exists.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
@@ -2412,7 +2415,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
       });
   // Setting the expectation that backup password VaultKeyset is decrypted.
   EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
-      .WillOnce([](const std::string&, KeyBlobs,
+      .WillOnce([](const ObfuscatedUsername&, KeyBlobs,
                    const std::optional<std::string>& label) {
         KeyData key_data;
         key_data.set_label(*label);
@@ -2447,7 +2450,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
 TEST_F(AuthSessionWithUssExperimentTest,
        AuthenticatePasswordAuthFactorViaAsyncUssFails) {
   // Setup.
-  const std::string obfuscated_username = SanitizeUserName(kFakeUsername);
+  const ObfuscatedUsername obfuscated_username =
+      SanitizeUserName(kFakeUsername);
   const brillo::SecureBlob kFakePerCredentialSecret("fake-vkk");
   // Setting the expectation that the user exists.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
@@ -2536,7 +2540,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
 // authenticated, in case the UserSecretStash experiment is on.
 TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
   // Setup.
-  const std::string obfuscated_username = SanitizeUserName(kFakeUsername);
+  const ObfuscatedUsername obfuscated_username =
+      SanitizeUserName(kFakeUsername);
   const brillo::SecureBlob kFakePerCredentialSecret("fake-vkk");
   // Setting the expectation that the user exists.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
@@ -2674,7 +2679,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddCryptohomeRecoveryAuthFactor) {
 TEST_F(AuthSessionWithUssExperimentTest,
        AuthenticateCryptohomeRecoveryAuthFactor) {
   // Setup.
-  const std::string obfuscated_username = SanitizeUserName(kFakeUsername);
+  const ObfuscatedUsername obfuscated_username =
+      SanitizeUserName(kFakeUsername);
   const brillo::SecureBlob kFakePerCredentialSecret("fake-vkk");
   // Setting the expectation that the user exists.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
@@ -2721,7 +2727,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
   // Setting the expectation that the auth block utility will generate recovery
   // request.
   EXPECT_CALL(auth_block_utility_, GenerateRecoveryRequest(_, _, _, _, _, _, _))
-      .WillOnce([](const std::string& obfuscated_username,
+      .WillOnce([](const ObfuscatedUsername& obfuscated_username,
                    const cryptorecovery::RequestMetadata& request_metadata,
                    const brillo::Blob& epoch_response,
                    const CryptohomeRecoveryAuthBlockState& state,
@@ -2799,7 +2805,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
 TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
   // Setup.
   brillo::Blob public_key_spki_der = brillo::BlobFromString("public_key");
-  const std::string obfuscated_username = SanitizeUserName(kFakeUsername);
+  const ObfuscatedUsername obfuscated_username =
+      SanitizeUserName(kFakeUsername);
   const brillo::SecureBlob kFakePerCredentialSecret("fake-vkk");
   // Setting the expectation that the user exists.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
@@ -3033,7 +3040,7 @@ TEST_F(AuthSessionWithUssExperimentTest, PrepareLegacyFingerprintAuth) {
   EXPECT_CALL(
       auth_block_utility_,
       PrepareAuthFactorForAuth(AuthFactorType::kLegacyFingerprint, _, _))
-      .WillOnce([&](AuthFactorType, const std::string&,
+      .WillOnce([&](AuthFactorType, const ObfuscatedUsername&,
                     PreparedAuthFactorToken::Consumer callback) {
         std::move(callback).Run(std::move(token));
       });
@@ -3165,7 +3172,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
   EXPECT_CALL(
       auth_block_utility_,
       PrepareAuthFactorForAuth(AuthFactorType::kLegacyFingerprint, _, _))
-      .WillOnce([&](AuthFactorType, const std::string&,
+      .WillOnce([&](AuthFactorType, const ObfuscatedUsername&,
                     PreparedAuthFactorToken::Consumer callback) {
         std::move(callback).Run(std::move(token));
       });

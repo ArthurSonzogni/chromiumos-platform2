@@ -295,7 +295,7 @@ TEST_F(VaultKeysetTest, LoadSaveTest) {
       .WillOnce(WithArg<1>(CopyFromSecureBlob(&bytes)));
 
   SecureBlob key(kPasswordKey);
-  std::string obfuscated_username(kObfuscatedUsername);
+  ObfuscatedUsername obfuscated_username(kObfuscatedUsername);
   EXPECT_TRUE(keyset.Encrypt(key, obfuscated_username).ok());
   EXPECT_TRUE(keyset.Save(FilePath(kFilePath)));
 
@@ -317,7 +317,7 @@ TEST_F(VaultKeysetTest, WriteError) {
       .WillOnce(Return(false));
 
   SecureBlob key(kPasswordKey);
-  std::string obfuscated_username(kObfuscatedUsername);
+  ObfuscatedUsername obfuscated_username(kObfuscatedUsername);
   EXPECT_TRUE(keyset.Encrypt(key, obfuscated_username).ok());
   EXPECT_FALSE(keyset.Save(FilePath(kFilePath)));
 }
@@ -333,7 +333,7 @@ TEST_F(VaultKeysetTest, AuthLockedDefault) {
   keyset.SetFlags(SerializedVaultKeyset::LE_CREDENTIAL);
 
   SecureBlob key(kPasswordKey);
-  std::string obfuscated_username(kObfuscatedUsername);
+  ObfuscatedUsername obfuscated_username(kObfuscatedUsername);
   EXPECT_TRUE(keyset.Encrypt(key, obfuscated_username).ok());
   EXPECT_FALSE(keyset.GetAuthLocked());
 }
@@ -646,7 +646,7 @@ TEST_F(VaultKeysetTest, EncryptionTest) {
   GetSecureRandom(key.data(), key.size());
 
   AuthBlockState auth_block_state;
-  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state).ok());
+  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, {}, &auth_block_state).ok());
 }
 
 TEST_F(VaultKeysetTest, DecryptionTest) {
@@ -660,7 +660,7 @@ TEST_F(VaultKeysetTest, DecryptionTest) {
   GetSecureRandom(key.data(), key.size());
 
   AuthBlockState auth_block_state;
-  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, "", &auth_block_state).ok());
+  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, {}, &auth_block_state).ok());
 
   vault_keyset.SetAuthBlockState(auth_block_state);
 
@@ -729,7 +729,7 @@ TEST_F(VaultKeysetTest, InitializeToAdd) {
   vault_keyset_copy.InitializeToAdd(vault_keyset);
 
   SecureBlob key(kPasswordKey);
-  std::string obfuscated_username(kObfuscatedUsername);
+  ObfuscatedUsername obfuscated_username(kObfuscatedUsername);
   ASSERT_TRUE(vault_keyset.Encrypt(key, obfuscated_username).ok());
 
   // Check that InitializeToAdd correctly copied vault_keyset fields
@@ -766,7 +766,7 @@ TEST_F(VaultKeysetTest, DecryptFailNotLoaded) {
   vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
   SecureBlob key(kPasswordKey);
-  std::string obfuscated_username(kObfuscatedUsername);
+  ObfuscatedUsername obfuscated_username(kObfuscatedUsername);
   ASSERT_TRUE(vault_keyset.Encrypt(key, obfuscated_username).ok());
 
   CryptoStatus status =
@@ -808,7 +808,7 @@ TEST_F(VaultKeysetTest, DecryptTPMReboot) {
 
   // Test
   SecureBlob key(kPasswordKey);
-  std::string obfuscated_username(kObfuscatedUsername);
+  ObfuscatedUsername obfuscated_username(kObfuscatedUsername);
   ASSERT_TRUE(vk.Encrypt(key, obfuscated_username).ok());
   ASSERT_TRUE(vk.Save(FilePath(kFilePath)));
 
@@ -1056,7 +1056,7 @@ TEST_F(LeCredentialsManagerTest, Encrypt) {
   EXPECT_TRUE(
       pin_vault_keyset_
           .EncryptVaultKeyset(brillo::SecureBlob(HexDecode(kHexVaultKey)),
-                              "unused", &auth_block_state)
+                              ObfuscatedUsername("unused"), &auth_block_state)
           .ok());
 
   EXPECT_TRUE(
@@ -1084,7 +1084,7 @@ TEST_F(LeCredentialsManagerTest, EncryptFail) {
   EXPECT_FALSE(
       pin_vault_keyset_
           .EncryptVaultKeyset(brillo::SecureBlob(HexDecode(kHexVaultKey)),
-                              "unused", &auth_block_state)
+                              ObfuscatedUsername("unused"), &auth_block_state)
           .ok());
 }
 
@@ -1131,7 +1131,7 @@ TEST_F(LeCredentialsManagerTest, EncryptTestReset) {
   pin_vault_keyset_.auth_locked_ = true;
 
   SecureBlob key(kPasswordKey);
-  std::string obfuscated_username(kObfuscatedUsername);
+  ObfuscatedUsername obfuscated_username(kObfuscatedUsername);
   EXPECT_TRUE(pin_vault_keyset_.Encrypt(key, obfuscated_username).ok());
   EXPECT_TRUE(pin_vault_keyset_.HasKeyData());
   EXPECT_FALSE(pin_vault_keyset_.auth_locked_);
@@ -1155,7 +1155,7 @@ TEST_F(LeCredentialsManagerTest, DecryptLocked) {
       .WillOnce(WithArg<1>(CopyFromSecureBlob(&bytes)));
 
   SecureBlob key(kPasswordKey);
-  std::string obfuscated_username(kObfuscatedUsername);
+  ObfuscatedUsername obfuscated_username(kObfuscatedUsername);
   ASSERT_TRUE(pin_vault_keyset_.Encrypt(key, obfuscated_username).ok());
   ASSERT_TRUE(pin_vault_keyset_.Save(FilePath(kFilePath)));
 
@@ -1207,8 +1207,8 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobs) {
 
   AuthInput auth_input = {brillo::SecureBlob(HexDecode(kHexVaultKey)),
                           false,
-                          "unused",
-                          "unused",
+                          Username("unused"),
+                          ObfuscatedUsername("unused"),
                           /*reset_secret*/ std::nullopt,
                           pin_vault_keyset_.reset_seed_};
   KeyBlobs key_blobs;
@@ -1240,8 +1240,8 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithBadAuthState) {
 
   AuthInput auth_input = {brillo::SecureBlob(44, 'A'),
                           false,
-                          "unused",
-                          "unused",
+                          Username("unused"),
+                          ObfuscatedUsername("unused"),
                           /*reset_secret*/ std::nullopt,
                           pin_vault_keyset_.GetResetSeed()};
   KeyBlobs key_blobs;
@@ -1265,7 +1265,8 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithNoResetSeed) {
       crypto_.le_manager(), crypto_.cryptohome_keys_manager());
 
   AuthInput auth_input = {
-      brillo::SecureBlob(44, 'A'),   false, "unused", "unused",
+      brillo::SecureBlob(44, 'A'),   false, Username("unused"),
+      ObfuscatedUsername("unused"),
       /*reset_secret*/ std::nullopt,
       /*reset_seed*/ std::nullopt};
   KeyBlobs key_blobs;

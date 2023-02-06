@@ -30,8 +30,9 @@
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mount.h"
+#include "cryptohome/username.h"
 
-using brillo::cryptohome::home::kGuestUserName;
+using brillo::cryptohome::home::GetGuestUsername;
 using brillo::cryptohome::home::SanitizeUserName;
 using cryptohome::error::CryptohomeMountError;
 using cryptohome::error::ErrorAction;
@@ -51,7 +52,7 @@ constexpr char kWebAuthnSecretHmacMessage[] = "AuthTimeWebAuthnSecret";
 constexpr char kHibernateSecretHmacMessage[] = "AuthTimeHibernateSecret";
 
 RealUserSession::RealUserSession(
-    const std::string& username,
+    const Username& username,
     HomeDirs* homedirs,
     KeysetManagement* keyset_management,
     UserOldestActivityTimestampManager* user_activity_timestamp_manager,
@@ -66,7 +67,7 @@ RealUserSession::RealUserSession(
       mount_(mount) {}
 
 MountStatus RealUserSession::MountVault(
-    const std::string& username,
+    const Username& username,
     const FileSystemKeyset& fs_keyset,
     const CryptohomeVault::Options& vault_options) {
   if (username_ != username) {
@@ -96,7 +97,7 @@ MountStatus RealUserSession::MountVault(
   return OkStatus<CryptohomeMountError>();
 }
 
-MountStatus RealUserSession::MountEphemeral(const std::string& username) {
+MountStatus RealUserSession::MountEphemeral(const Username& username) {
   if (username_ != username) {
     NOTREACHED() << "MountEphemeral username mismatch.";
   }
@@ -124,11 +125,11 @@ MountStatus RealUserSession::MountEphemeral(const std::string& username) {
 }
 
 MountStatus RealUserSession::MountGuest() {
-  if (username_ != kGuestUserName) {
+  if (username_ != GetGuestUsername()) {
     NOTREACHED() << "MountGuest username mismatch.";
   }
 
-  StorageStatus status = mount_->MountEphemeralCryptohome(kGuestUserName);
+  StorageStatus status = mount_->MountEphemeralCryptohome(username_);
   if (status.ok()) {
     return OkStatus<CryptohomeMountError>();
   }
@@ -153,15 +154,15 @@ bool RealUserSession::Unmount() {
 
 base::Value RealUserSession::GetStatus() const {
   base::Value dv(base::Value::Type::DICT);
-  std::string user = SanitizeUserName(username_);
   base::Value keysets(base::Value::Type::LIST);
   std::vector<int> key_indices;
-  if (user.length() &&
-      keyset_management_->GetVaultKeysets(user, &key_indices)) {
+  if (!obfuscated_username_->empty() &&
+      keyset_management_->GetVaultKeysets(obfuscated_username_, &key_indices)) {
     for (auto key_index : key_indices) {
       base::Value keyset_dict(base::Value::Type::DICT);
       std::unique_ptr<VaultKeyset> keyset(
-          keyset_management_->LoadVaultKeysetForUser(user, key_index));
+          keyset_management_->LoadVaultKeysetForUser(obfuscated_username_,
+                                                     key_index));
       if (keyset.get()) {
         bool tpm = keyset->GetFlags() & SerializedVaultKeyset::TPM_WRAPPED;
         bool scrypt =
@@ -275,7 +276,8 @@ void RealUserSession::AddCredentials(const Credentials& credentials) {
   }
 }
 
-bool RealUserSession::VerifyUser(const std::string& obfuscated_username) const {
+bool RealUserSession::VerifyUser(
+    const ObfuscatedUsername& obfuscated_username) const {
   return obfuscated_username_ == obfuscated_username;
 }
 

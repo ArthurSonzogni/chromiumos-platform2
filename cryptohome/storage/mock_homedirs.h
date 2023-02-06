@@ -34,27 +34,27 @@ class MockHomeDirs : public HomeDirs {
   MOCK_METHOD(bool, AreEphemeralUsersEnabled, (), (override));
   MOCK_METHOD(bool, KeylockerForStorageEncryptionEnabled, (), (override));
   MOCK_METHOD(bool, MustRunAutomaticCleanupOnLogin, (), (override));
-  MOCK_METHOD(bool, Create, (const std::string&), (override));
-  MOCK_METHOD(bool, Remove, (const std::string&), (override));
-  MOCK_METHOD(int64_t, ComputeDiskUsage, (const std::string&), (override));
-  MOCK_METHOD(bool, Exists, (const std::string&), (const, override));
+  MOCK_METHOD(bool, Create, (const Username&), (override));
+  MOCK_METHOD(bool, Remove, (const ObfuscatedUsername&), (override));
+  MOCK_METHOD(int64_t, ComputeDiskUsage, (const Username&), (override));
+  MOCK_METHOD(bool, Exists, (const ObfuscatedUsername&), (const, override));
   MOCK_METHOD(bool,
               DmcryptCacheContainerExists,
-              (const std::string&),
+              (const ObfuscatedUsername&),
               (const, override));
   MOCK_METHOD(bool,
               RemoveDmcryptCacheContainer,
-              (const std::string&),
+              (const ObfuscatedUsername&),
               (override));
   MOCK_METHOD(StorageStatusOr<bool>,
               CryptohomeExists,
-              (const std::string&),
+              (const ObfuscatedUsername&),
               (const, override));
   MOCK_METHOD(int32_t, GetUnmountedAndroidDataCount, (), (override));
 
   MOCK_METHOD(bool,
               NeedsDircryptoMigration,
-              (const std::string&),
+              (const ObfuscatedUsername&),
               (const, override));
 
   MOCK_METHOD(bool, SetLockedToSingleUser, (), (const, override));

@@ -16,6 +16,7 @@
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/user_secret_stash.h"
 #include "cryptohome/user_secret_stash_storage.h"
+#include "cryptohome/username.h"
 #include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {
@@ -27,7 +28,7 @@ inline constexpr bool ShouldMigrateToUss() {
 // and AuthFactor.
 class UssMigrator {
  public:
-  explicit UssMigrator(std::string username);
+  explicit UssMigrator(Username username);
   UssMigrator(const UssMigrator&) = delete;
   UssMigrator& operator=(const UssMigrator&) = delete;
 
@@ -59,7 +60,7 @@ class UssMigrator {
   // the given user secret stash.
   bool RemoveMigrationSecretFromUss(UserSecretStash& user_secret_stash);
 
-  std::string username_;
+  Username username_;
   std::unique_ptr<brillo::SecureBlob> migration_secret_;
 };
 

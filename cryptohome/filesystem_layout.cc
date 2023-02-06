@@ -98,18 +98,19 @@ base::FilePath SkelDir() {
   return base::FilePath(kSkelPath);
 }
 
-base::FilePath UserPath(const std::string& obfuscated) {
-  return ShadowRoot().Append(obfuscated);
+base::FilePath UserPath(const ObfuscatedUsername& obfuscated) {
+  return ShadowRoot().Append(*obfuscated);
 }
 
-base::FilePath VaultKeysetPath(const std::string& obfuscated, int index) {
+base::FilePath VaultKeysetPath(const ObfuscatedUsername& obfuscated,
+                               int index) {
   return UserPath(obfuscated)
       .Append(kKeyFile)
       .AddExtension(base::NumberToString(index));
 }
 
-base::FilePath UserSecretStashPath(const std::string& obfuscated_username,
-                                   int slot) {
+base::FilePath UserSecretStashPath(
+    const ObfuscatedUsername& obfuscated_username, int slot) {
   DCHECK_GE(slot, 0);
   return UserPath(obfuscated_username)
       .Append(kUserSecretStashDir)
@@ -117,11 +118,12 @@ base::FilePath UserSecretStashPath(const std::string& obfuscated_username,
       .AddExtension(std::to_string(slot));
 }
 
-base::FilePath AuthFactorsDirPath(const std::string& obfuscated_username) {
+base::FilePath AuthFactorsDirPath(
+    const ObfuscatedUsername& obfuscated_username) {
   return UserPath(obfuscated_username).Append(kAuthFactorsDir);
 }
 
-base::FilePath AuthFactorPath(const std::string& obfuscated_username,
+base::FilePath AuthFactorPath(const ObfuscatedUsername& obfuscated_username,
                               const std::string& auth_factor_type_string,
                               const std::string& auth_factor_label) {
   // The caller must make sure the label was sanitized.
@@ -132,50 +134,53 @@ base::FilePath AuthFactorPath(const std::string& obfuscated_username,
       .AddExtension(auth_factor_label);
 }
 
-base::FilePath UserActivityPerIndexTimestampPath(const std::string& obfuscated,
-                                                 int index) {
+base::FilePath UserActivityPerIndexTimestampPath(
+    const ObfuscatedUsername& obfuscated, int index) {
   return VaultKeysetPath(obfuscated, index).AddExtension(kTsFile);
 }
 
-base::FilePath UserActivityTimestampPath(const std::string& obfuscated) {
+base::FilePath UserActivityTimestampPath(const ObfuscatedUsername& obfuscated) {
   return UserPath(obfuscated).Append(kTsFile);
 }
 
-base::FilePath GetEcryptfsUserVaultPath(const std::string& obfuscated) {
+base::FilePath GetEcryptfsUserVaultPath(const ObfuscatedUsername& obfuscated) {
   return UserPath(obfuscated).Append(kEcryptfsVaultDir);
 }
 
-base::FilePath GetUserMountDirectory(const std::string& obfuscated_username) {
+base::FilePath GetUserMountDirectory(
+    const ObfuscatedUsername& obfuscated_username) {
   return UserPath(obfuscated_username).Append(kMountDir);
 }
 
 base::FilePath GetUserTemporaryMountDirectory(
-    const std::string& obfuscated_username) {
+    const ObfuscatedUsername& obfuscated_username) {
   return UserPath(obfuscated_username).Append(kTemporaryMountDir);
 }
 
 base::FilePath GetDmcryptUserCacheDirectory(
-    const std::string& obfuscated_username) {
+    const ObfuscatedUsername& obfuscated_username) {
   return UserPath(obfuscated_username).Append(kDmcryptCacheDir);
 }
 
-std::string LogicalVolumePrefix(const std::string& obfuscated_username) {
+std::string LogicalVolumePrefix(const ObfuscatedUsername& obfuscated_username) {
   return std::string(kLogicalVolumePrefix) + "-" +
-         obfuscated_username.substr(0, 8) + "-";
+         obfuscated_username->substr(0, 8) + "-";
 }
 
-std::string DmcryptVolumePrefix(const std::string& obfuscated_username) {
+std::string DmcryptVolumePrefix(const ObfuscatedUsername& obfuscated_username) {
   return std::string(kDmcryptVolumePrefix) + "-" +
-         obfuscated_username.substr(0, 8) + "-";
+         obfuscated_username->substr(0, 8) + "-";
 }
 
-base::FilePath GetDmcryptDataVolume(const std::string& obfuscated_username) {
+base::FilePath GetDmcryptDataVolume(
+    const ObfuscatedUsername& obfuscated_username) {
   return base::FilePath(kDeviceMapperDir)
       .Append(DmcryptVolumePrefix(obfuscated_username)
                   .append(kDmcryptDataContainerSuffix));
 }
 
-base::FilePath GetDmcryptCacheVolume(const std::string& obfuscated_username) {
+base::FilePath GetDmcryptCacheVolume(
+    const ObfuscatedUsername& obfuscated_username) {
   return base::FilePath(kDeviceMapperDir)
       .Append(DmcryptVolumePrefix(obfuscated_username)
                   .append(kDmcryptCacheContainerSuffix));

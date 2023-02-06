@@ -28,13 +28,13 @@ void UserDataAuthAdaptor::IsMounted(
       FROM_HERE,
       base::BindOnce(
           &UserDataAuthAdaptor::DoIsMounted, base::Unretained(this),
-          in_request.username(),
+          Username(in_request.username()),
           ThreadSafeDBusMethodResponse<user_data_auth::IsMountedReply>::
               MakeThreadSafe(std::move(response))));
 }
 
 void UserDataAuthAdaptor::DoIsMounted(
-    const std::string username,
+    const Username& username,
     std::unique_ptr<
         brillo::dbus_utils::DBusMethodResponse<user_data_auth::IsMountedReply>>
         response) {
@@ -986,7 +986,7 @@ void Pkcs11Adaptor::Pkcs11GetTpmTokenInfo(
     const user_data_auth::Pkcs11GetTpmTokenInfoRequest& in_request) {
   user_data_auth::Pkcs11GetTpmTokenInfoReply reply;
   *reply.mutable_token_info() =
-      service_->Pkcs11GetTpmTokenInfo(in_request.username());
+      service_->Pkcs11GetTpmTokenInfo(Username(in_request.username()));
   response->Return(reply);
 }
 

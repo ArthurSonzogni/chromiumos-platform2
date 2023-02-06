@@ -321,7 +321,7 @@ std::optional<user_data_auth::AuthFactor> GetAuthFactorProto(
 
 bool LoadUserAuthFactorByLabel(AuthFactorManager* manager,
                                const AuthBlockUtility& auth_block_utility,
-                               const std::string& obfuscated_username,
+                               const ObfuscatedUsername& obfuscated_username,
                                const std::string& factor_label,
                                user_data_auth::AuthFactor* out_auth_factor) {
   for (const auto& [label, auth_factor_type] :
@@ -363,7 +363,7 @@ std::optional<AuthFactorPreparePurpose> AuthFactorPreparePurposeFromProto(
 }
 
 AuthFactorMap LoadAuthFactorMap(bool is_uss_migration_enabled,
-                                const std::string& obfuscated_username,
+                                const ObfuscatedUsername& obfuscated_username,
                                 Platform& platform,
                                 AuthFactorVaultKeysetConverter& converter,
                                 AuthFactorManager& manager) {

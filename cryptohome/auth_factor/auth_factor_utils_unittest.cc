@@ -471,9 +471,6 @@ TEST(AuthSessionProtoUtils, AuthFactorPreparePurposeFromProto) {
 }
 
 class LoadAuthFactorMapTest : public ::testing::Test {
- public:
-  LoadAuthFactorMapTest() : kObfuscatedUsername(SanitizeUserName(kUsername)) {}
-
  protected:
   // Install mocks to set up vault keysets for testing. Expects a map of VK
   // labels to factory functions that will construct a VaultKeyset object.
@@ -504,10 +501,10 @@ class LoadAuthFactorMapTest : public ::testing::Test {
   FakePlatform platform_;
 
   // Username used for all tests.
-  static constexpr char kUsername[] = "user@testing.com";
+  const Username kUsername{"user@testing.com"};
   // Computing the obfuscated name requires the system salt from FakePlatform
   // and so this must be defined after it and not before.
-  const std::string kObfuscatedUsername;
+  const ObfuscatedUsername kObfuscatedUsername{SanitizeUserName(kUsername)};
 
   StrictMock<MockKeysetManagement> keyset_management_;
   AuthFactorVaultKeysetConverter converter_{&keyset_management_};
