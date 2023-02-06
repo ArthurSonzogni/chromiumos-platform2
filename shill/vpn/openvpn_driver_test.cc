@@ -38,6 +38,7 @@
 #include "shill/vpn/mock_openvpn_management_server.h"
 #include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/mock_vpn_provider.h"
+#include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_service.h"
 
 using testing::_;
@@ -275,6 +276,10 @@ void OpenVPNDriverTest::SetupLSBRelease() {
                             std::size(kLSBReleaseContents)));
   EXPECT_EQ(OpenVPNDriver::kLSBReleaseFile, driver_->lsb_release_file_.value());
   driver_->lsb_release_file_ = lsb_release_file_;
+}
+
+TEST_F(OpenVPNDriverTest, VPNType) {
+  EXPECT_EQ(driver_->vpn_type(), VPNType::kOpenVPN);
 }
 
 TEST_F(OpenVPNDriverTest, ConnectAsync) {

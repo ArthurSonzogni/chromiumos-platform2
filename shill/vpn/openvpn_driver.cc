@@ -30,6 +30,7 @@
 #include "shill/rpc_task.h"
 #include "shill/virtual_device.h"
 #include "shill/vpn/openvpn_management_server.h"
+#include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_service.h"
 
 namespace shill {
@@ -147,7 +148,11 @@ const VPNDriver::Property OpenVPNDriver::kProperties[] = {
 };
 
 OpenVPNDriver::OpenVPNDriver(Manager* manager, ProcessManager* process_manager)
-    : VPNDriver(manager, process_manager, kProperties, std::size(kProperties)),
+    : VPNDriver(manager,
+                process_manager,
+                VPNType::kOpenVPN,
+                kProperties,
+                std::size(kProperties)),
       management_server_(new OpenVPNManagementServer(this)),
       certificate_file_(new CertificateFile()),
       extra_certificates_file_(new CertificateFile()),

@@ -4,9 +4,12 @@
 
 #include "shill/vpn/mock_vpn_driver.h"
 
+#include "shill/vpn/vpn_provider.h"
+
 namespace shill {
 
-MockVPNDriver::MockVPNDriver() : VPNDriver(nullptr, nullptr, nullptr, 0) {}
+MockVPNDriver::MockVPNDriver()
+    : VPNDriver(nullptr, nullptr, VPNType::kIKEv2, nullptr, 0) {}
 
 MockVPNDriver::~MockVPNDriver() = default;
 

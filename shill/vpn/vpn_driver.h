@@ -18,6 +18,7 @@
 #include "shill/mockable.h"
 #include "shill/service.h"
 #include "shill/store/key_value_store.h"
+#include "shill/vpn/vpn_provider.h"
 
 namespace shill {
 
@@ -125,6 +126,7 @@ class VPNDriver {
 
   mockable std::string GetHost() const;
 
+  VPNType vpn_type() const { return vpn_type_; }
   KeyValueStore* args() { return &args_; }
   const KeyValueStore* const_args() const { return &args_; }
   const EapCredentials* eap_credentials() const {
@@ -151,6 +153,7 @@ class VPNDriver {
 
   VPNDriver(Manager* manager,
             ProcessManager* process_manager,
+            VPNType vpn_type,
             const Property* properties,
             size_t property_count,
             bool use_eap = false);
@@ -187,6 +190,7 @@ class VPNDriver {
   Manager* manager_;
   ProcessManager* process_manager_;
 
+  const VPNType vpn_type_;
   const Property* const properties_;
   const size_t property_count_;
   KeyValueStore args_;

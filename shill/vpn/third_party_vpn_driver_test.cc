@@ -22,6 +22,7 @@
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/mock_vpn_provider.h"
+#include "shill/vpn/vpn_provider.h"
 
 using testing::_;
 using testing::Mock;
@@ -49,9 +50,7 @@ class ThirdPartyVpnDriverTest : public testing::Test {
     driver_->file_io_ = &mock_file_io_;
   }
 
-  void TearDown() override {
-    driver_->file_io_ = nullptr;
-  }
+  void TearDown() override { driver_->file_io_ = nullptr; }
 
   MOCK_METHOD(void, TestCallback, (const Error&));
 
@@ -75,6 +74,10 @@ class ThirdPartyVpnDriverTest : public testing::Test {
 const char ThirdPartyVpnDriverTest::kConfigName[] = "default-1";
 const char ThirdPartyVpnDriverTest::kInterfaceName[] = "tun0";
 const int ThirdPartyVpnDriverTest::kInterfaceIndex = 123;
+
+TEST_F(ThirdPartyVpnDriverTest, VPNType) {
+  EXPECT_EQ(driver_->vpn_type(), VPNType::kThirdParty);
+}
 
 TEST_F(ThirdPartyVpnDriverTest, ConnectAndDisconnect) {
   const std::string interface = kInterfaceName;

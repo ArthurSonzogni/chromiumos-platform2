@@ -20,6 +20,7 @@
 #include "shill/manager.h"
 #include "shill/metrics.h"
 #include "shill/vpn/ipsec_connection.h"
+#include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_service.h"
 
 namespace shill {
@@ -111,6 +112,7 @@ bool IKEv2Driver::IsSupported() {
 IKEv2Driver::IKEv2Driver(Manager* manager, ProcessManager* process_manager)
     : VPNDriver(manager,
                 process_manager,
+                VPNType::kIKEv2,
                 kProperties,
                 std::size(kProperties),
                 /*use_eap=*/true) {}

@@ -31,6 +31,7 @@
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
 #include "shill/virtual_device.h"
+#include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_service.h"
 
 namespace shill {
@@ -70,7 +71,11 @@ ThirdPartyVpnDriver* ThirdPartyVpnDriver::active_client_ = nullptr;
 
 ThirdPartyVpnDriver::ThirdPartyVpnDriver(Manager* manager,
                                          ProcessManager* process_manager)
-    : VPNDriver(manager, process_manager, kProperties, std::size(kProperties)),
+    : VPNDriver(manager,
+                process_manager,
+                VPNType::kThirdParty,
+                kProperties,
+                std::size(kProperties)),
       tun_fd_(-1),
       ip_properties_set_(false),
       io_handler_factory_(IOHandlerFactory::GetInstance()),

@@ -23,6 +23,7 @@
 #include "shill/metrics.h"
 #include "shill/vpn/ipsec_connection.h"
 #include "shill/vpn/l2tp_connection.h"
+#include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_service.h"
 
 namespace shill {
@@ -180,8 +181,11 @@ const VPNDriver::Property L2TPIPsecDriver::kProperties[] = {
 
 L2TPIPsecDriver::L2TPIPsecDriver(Manager* manager,
                                  ProcessManager* process_manager)
-    : VPNDriver(manager, process_manager, kProperties, std::size(kProperties)) {
-}
+    : VPNDriver(manager,
+                process_manager,
+                VPNType::kL2TPIPsec,
+                kProperties,
+                std::size(kProperties)) {}
 
 L2TPIPsecDriver::~L2TPIPsecDriver() {}
 

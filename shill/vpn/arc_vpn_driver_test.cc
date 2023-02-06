@@ -19,6 +19,7 @@
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/mock_vpn_provider.h"
+#include "shill/vpn/vpn_provider.h"
 
 using testing::_;
 using testing::NiceMock;
@@ -81,6 +82,10 @@ class ArcVpnDriverTest : public testing::Test {
   MockVPNDriverEventHandler event_handler_;
   std::unique_ptr<ArcVpnDriver> driver_;
 };
+
+TEST_F(ArcVpnDriverTest, VPNType) {
+  EXPECT_EQ(driver_->vpn_type(), VPNType::kARC);
+}
 
 TEST_F(ArcVpnDriverTest, ConnectAsync) {
   LoadPropertiesFromStore(true);

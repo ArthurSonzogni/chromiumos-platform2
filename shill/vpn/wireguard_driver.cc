@@ -34,6 +34,7 @@
 #include "shill/process_manager.h"
 #include "shill/store/property_accessor.h"
 #include "shill/store/store_interface.h"
+#include "shill/vpn/vpn_provider.h"
 #include "shill/vpn/vpn_util.h"
 
 namespace shill {
@@ -203,7 +204,11 @@ const VPNDriver::Property WireGuardDriver::kProperties[] = {
 
 WireGuardDriver::WireGuardDriver(Manager* manager,
                                  ProcessManager* process_manager)
-    : VPNDriver(manager, process_manager, kProperties, std::size(kProperties)),
+    : VPNDriver(manager,
+                process_manager,
+                VPNType::kWireGuard,
+                kProperties,
+                std::size(kProperties)),
       vpn_util_(VPNUtil::New()) {}
 
 WireGuardDriver::~WireGuardDriver() {

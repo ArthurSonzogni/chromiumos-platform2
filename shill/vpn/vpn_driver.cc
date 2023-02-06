@@ -19,6 +19,7 @@
 #include "shill/store/property_accessor.h"
 #include "shill/store/property_store.h"
 #include "shill/store/store_interface.h"
+#include "shill/vpn/vpn_provider.h"
 
 namespace shill {
 
@@ -32,11 +33,13 @@ const char VPNDriver::kCredentialPrefix[] = "Credential.";
 
 VPNDriver::VPNDriver(Manager* manager,
                      ProcessManager* process_manager,
+                     VPNType vpn_type,
                      const Property* properties,
                      size_t property_count,
                      bool use_eap)
     : manager_(manager),
       process_manager_(process_manager),
+      vpn_type_(vpn_type),
       properties_(properties),
       property_count_(property_count) {
   for (size_t i = 0; i < property_count_; i++) {

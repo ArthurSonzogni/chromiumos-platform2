@@ -25,6 +25,7 @@
 #include "shill/test_event_dispatcher.h"
 #include "shill/vpn/fake_vpn_util.h"
 #include "shill/vpn/mock_vpn_driver.h"
+#include "shill/vpn/vpn_provider.h"
 
 namespace shill {
 
@@ -276,6 +277,10 @@ class WireGuardDriverTest : public testing::Test {
   base::OnceClosure create_kernel_link_failed_callback_;
   base::FilePath config_file_path_;
 };
+
+TEST_F(WireGuardDriverTest, VPNType) {
+  EXPECT_EQ(driver_->vpn_type(), VPNType::kWireGuard);
+}
 
 TEST_F(WireGuardDriverTest, ConnectFlowKernel) {
   InitializePropertyStore();

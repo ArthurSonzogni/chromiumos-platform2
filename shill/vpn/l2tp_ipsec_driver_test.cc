@@ -25,6 +25,7 @@
 #include "shill/vpn/l2tp_connection.h"
 #include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/vpn_connection_under_test.h"
+#include "shill/vpn/vpn_provider.h"
 
 namespace shill {
 
@@ -124,6 +125,10 @@ class L2TPIPsecDriverTest : public testing::Test {
 
   std::unique_ptr<L2TPIPsecDriverUnderTest> driver_;
 };
+
+TEST_F(L2TPIPsecDriverTest, VPNType) {
+  EXPECT_EQ(driver_->vpn_type(), VPNType::kL2TPIPsec);
+}
 
 TEST_F(L2TPIPsecDriverTest, ConnectAndDisconnect) {
   // Sets psk and password to verify metrics.

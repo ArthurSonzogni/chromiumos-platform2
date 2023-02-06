@@ -33,8 +33,11 @@ const VPNDriver::Property ArcVpnDriver::kProperties[] = {
     {kArcVpnTunnelChromeProperty, 0}};
 
 ArcVpnDriver::ArcVpnDriver(Manager* manager, ProcessManager* process_manager)
-    : VPNDriver(manager, process_manager, kProperties, std::size(kProperties)) {
-}
+    : VPNDriver(manager,
+                process_manager,
+                VPNType::kARC,
+                kProperties,
+                std::size(kProperties)) {}
 
 base::TimeDelta ArcVpnDriver::ConnectAsync(EventHandler* handler) {
   SLOG(2) << __func__;

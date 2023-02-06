@@ -23,6 +23,7 @@
 #include "shill/vpn/ipsec_connection.h"
 #include "shill/vpn/mock_vpn_driver.h"
 #include "shill/vpn/vpn_connection_under_test.h"
+#include "shill/vpn/vpn_provider.h"
 
 namespace shill {
 
@@ -109,6 +110,10 @@ class IKEv2DriverTest : public testing::Test {
 
   std::unique_ptr<IKEv2DriverUnderTest> driver_;
 };
+
+TEST_F(IKEv2DriverTest, VPNType) {
+  EXPECT_EQ(driver_->vpn_type(), VPNType::kIKEv2);
+}
 
 TEST_F(IKEv2DriverTest, ConnectAndDisconnect) {
   Error unused_error;
