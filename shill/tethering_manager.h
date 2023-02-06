@@ -94,6 +94,10 @@ class TetheringManager {
   // Get the current TetheringStatus dictionary.
   KeyValueStore GetStatus();
 
+  // DBus property getters
+  // This property is temporary and will be removed when the feature is mature.
+  bool allowed() { return allowed_; }
+
  private:
   friend class TetheringManagerTest;
   FRIEND_TEST(TetheringManagerTest, FromProperties);
