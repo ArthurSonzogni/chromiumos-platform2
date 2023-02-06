@@ -10,6 +10,7 @@ module ash.cros_healthd.mojom;
 
 import "diagnostics/mojom/public/nullable_primitives.mojom";
 import "diagnostics/mojom/public/cros_healthd_diagnostics.mojom";
+import "diagnostics/mojom/public/cros_healthd_events.mojom";
 
 // Provides the result of running a process.
 struct ExecutedProcessResult {
@@ -66,6 +67,13 @@ interface ProcessControl {
 interface AudioJackObserver {
   OnAdd();
   OnRemove();
+};
+
+// Implemented by clients who desire touchpad notifications.
+interface TouchpadObserver {
+  OnButton(TouchpadButtonEvent button_event);
+  OnTouch(TouchpadTouchEvent touch_event);
+  OnConnected(TouchpadConnectedEvent connected_event);
 };
 
 // Root-level executor interface exposed to the cros_healthd daemon. In

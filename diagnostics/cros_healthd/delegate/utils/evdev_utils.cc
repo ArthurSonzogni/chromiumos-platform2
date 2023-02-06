@@ -4,12 +4,17 @@
 
 #include "diagnostics/cros_healthd/delegate/utils/evdev_utils.h"
 
+#include <algorithm>
 #include <fcntl.h>
+#include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_enumerator.h>
 #include <base/logging.h>
+
+#include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
 
@@ -18,6 +23,31 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 
 constexpr char kDevInputPath[] = "/dev/input/";
+
+std::optional<mojom::InputTouchButton> EventCodeToInputTouchButton(
+    unsigned int code) {
+  switch (code) {
+    case BTN_LEFT:
+      return mojom::InputTouchButton::kLeft;
+    case BTN_MIDDLE:
+      return mojom::InputTouchButton::kMiddle;
+    case BTN_RIGHT:
+      return mojom::InputTouchButton::kRight;
+    default:
+      return std::nullopt;
+  }
+}
+
+mojom::NullableUint32Ptr FetchOptionalUnsignedSlotValue(const libevdev* dev,
+                                                        unsigned int slot,
+                                                        unsigned int code) {
+  int out_value;
+  if (libevdev_fetch_slot_value(dev, slot, code, &out_value) &&
+      out_value >= 0) {
+    return mojom::NullableUint32::New(out_value);
+  }
+  return nullptr;
+}
 
 }  // namespace
 
@@ -117,5 +147,81 @@ void EvdevAudioJackObserver::InitializationFail() {
 }
 
 void EvdevAudioJackObserver::ReportProperties(libevdev* dev) {}
+
+EvdevTouchpadObserver::EvdevTouchpadObserver(
+    mojo::PendingRemote<mojom::TouchpadObserver> observer)
+    : observer_(std::move(observer)) {}
+
+bool EvdevTouchpadObserver::IsTarget(libevdev* dev) {
+  // - Typical pointer devices: touchpads, tablets, mice.
+  // - Typical non-direct devices: touchpads, mice.
+  // - Check for event type EV_ABS to exclude mice, which report movement with
+  //   REL_{X,Y} instead of ABS_{X,Y}.
+  return libevdev_has_property(dev, INPUT_PROP_POINTER) &&
+         !libevdev_has_property(dev, INPUT_PROP_DIRECT) &&
+         libevdev_has_event_type(dev, EV_ABS);
+}
+
+void EvdevTouchpadObserver::FireEvent(const input_event& ev, libevdev* dev) {
+  if (ev.type == EV_SYN && ev.code == SYN_REPORT) {
+    std::vector<mojom::TouchPointInfoPtr> points;
+    int num_slot = libevdev_get_num_slots(dev);
+    for (int slot = 0; slot < num_slot; ++slot) {
+      int value_x, value_y, id;
+      if (libevdev_fetch_slot_value(dev, slot, ABS_MT_POSITION_X, &value_x) &&
+          libevdev_fetch_slot_value(dev, slot, ABS_MT_POSITION_Y, &value_y) &&
+          libevdev_fetch_slot_value(dev, slot, ABS_MT_TRACKING_ID, &id)) {
+        // A non-negative tracking id is interpreted as a contact, and the value
+        // -1 denotes an unused slot.
+        if (id >= 0 && value_x >= 0 && value_y >= 0) {
+          auto point_info = mojom::TouchPointInfo::New();
+          point_info->tracking_id = id;
+          point_info->x = value_x;
+          point_info->y = value_y;
+          point_info->pressure =
+              FetchOptionalUnsignedSlotValue(dev, slot, ABS_MT_PRESSURE);
+          point_info->touch_major =
+              FetchOptionalUnsignedSlotValue(dev, slot, ABS_MT_TOUCH_MAJOR);
+          point_info->touch_minor =
+              FetchOptionalUnsignedSlotValue(dev, slot, ABS_MT_TOUCH_MINOR);
+          points.push_back(std::move(point_info));
+        }
+      }
+    }
+
+    observer_->OnTouch(mojom::TouchpadTouchEvent::New(std::move(points)));
+  } else if (ev.type == EV_KEY) {
+    auto button = EventCodeToInputTouchButton(ev.code);
+    if (button.has_value()) {
+      bool pressed = (ev.value != 0);
+      observer_->OnButton(
+          mojom::TouchpadButtonEvent::New(button.value(), pressed));
+    }
+  }
+}
+
+void EvdevTouchpadObserver::InitializationFail() {
+  observer_.reset();
+}
+
+void EvdevTouchpadObserver::ReportProperties(libevdev* dev) {
+  auto connected_event = mojom::TouchpadConnectedEvent::New();
+  connected_event->max_x = std::max(libevdev_get_abs_maximum(dev, ABS_X), 0);
+  connected_event->max_y = std::max(libevdev_get_abs_maximum(dev, ABS_Y), 0);
+  connected_event->max_pressure =
+      std::max(libevdev_get_abs_maximum(dev, ABS_MT_PRESSURE), 0);
+  if (libevdev_has_event_type(dev, EV_KEY)) {
+    std::vector<unsigned int> codes{BTN_LEFT, BTN_MIDDLE, BTN_RIGHT};
+    for (const auto code : codes) {
+      if (libevdev_has_event_code(dev, EV_KEY, code)) {
+        auto button = EventCodeToInputTouchButton(code);
+        if (button.has_value()) {
+          connected_event->buttons.push_back(button.value());
+        }
+      }
+    }
+  }
+  observer_->OnConnected(std::move(connected_event));
+}
 
 }  // namespace diagnostics

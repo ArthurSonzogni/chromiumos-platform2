@@ -15,6 +15,7 @@
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
 
@@ -76,6 +77,22 @@ class EvdevAudioJackObserver final : public EvdevUtil::Delegate {
  private:
   EvdevUtil evdev_util_{this};
   mojo::Remote<ash::cros_healthd::mojom::AudioJackObserver> observer_;
+};
+
+class EvdevTouchpadObserver final : public EvdevUtil::Delegate {
+ public:
+  explicit EvdevTouchpadObserver(
+      mojo::PendingRemote<ash::cros_healthd::mojom::TouchpadObserver> observer);
+
+  // EvdevUtil::Delegate overrides.
+  bool IsTarget(libevdev* dev) override;
+  void FireEvent(const input_event& event, libevdev* dev) override;
+  void InitializationFail() override;
+  void ReportProperties(libevdev* dev) override;
+
+ private:
+  mojo::Remote<ash::cros_healthd::mojom::TouchpadObserver> observer_;
+  EvdevUtil evdev_util_{this};
 };
 
 }  // namespace diagnostics
