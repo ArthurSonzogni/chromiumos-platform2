@@ -81,10 +81,11 @@ collect_shutdown_umount_failure_logs() {
     # Log information about the dm-crypt device.
     echo "Device-mapper target state:"
     dmsetup info
-    # Log upstart jobs that are still running: jobs here can stop the
-    # stateful partition from getting unmounted.
+    # Log upstart jobs that are either still running or tracking active
+    # processes: jobs here can stop the stateful partition from getting
+    # unmounted.
     echo "Active Upstart jobs:"
-    initctl list | grep running
+    initctl list | grep -e process -e running
     # Log dbus services still connected to the bus, with a 1 second timeout.
     echo "Active D-Bus services:"
     dbus-send --system --dest=org.freedesktop.DBus --type=method_call \
