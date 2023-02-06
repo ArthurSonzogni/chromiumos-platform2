@@ -1102,10 +1102,6 @@ base::TimeDelta OpenVPNDriver::GetReconnectTimeout(ReconnectReason reason) {
   }
 }
 
-std::string OpenVPNDriver::GetProviderType() const {
-  return kProviderOpenVpn;
-}
-
 KeyValueStore OpenVPNDriver::GetProvider(Error* error) {
   SLOG(2) << __func__;
   KeyValueStore props = VPNDriver::GetProvider(error);

@@ -554,10 +554,6 @@ void ThirdPartyVpnDriver::Disconnect() {
   event_handler_ = nullptr;
 }
 
-std::string ThirdPartyVpnDriver::GetProviderType() const {
-  return std::string(kProviderThirdPartyVpn);
-}
-
 void ThirdPartyVpnDriver::OnDefaultPhysicalServiceEvent(
     DefaultPhysicalServiceEvent event) {
   if (!event_handler_)

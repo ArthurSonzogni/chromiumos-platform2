@@ -248,10 +248,6 @@ std::unique_ptr<IPConfig::Properties> WireGuardDriver::GetIPv6Properties()
   return nullptr;
 }
 
-std::string WireGuardDriver::GetProviderType() const {
-  return kProviderWireGuard;
-}
-
 void WireGuardDriver::OnConnectTimeout() {
   FailService(Service::kFailureConnect, "Connect timeout");
 }

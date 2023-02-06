@@ -35,7 +35,6 @@ class WireGuardDriver : public VPNDriver {
   void OnConnectTimeout() override;
   std::unique_ptr<IPConfig::Properties> GetIPv4Properties() const override;
   std::unique_ptr<IPConfig::Properties> GetIPv6Properties() const override;
-  std::string GetProviderType() const override;
 
   // These functions (including GetProvider() below) are overridden for
   // implementing the "WireGuard.Peers" property in both property store (as an

@@ -5,6 +5,7 @@
 #include "shill/vpn/vpn_provider.h"
 
 #include <algorithm>
+#include <map>
 #include <memory>
 #include <utility>
 
@@ -111,6 +112,44 @@ bool GetServiceParametersFromStorage(const StoreInterface* storage,
 }  // namespace
 
 const char VPNProvider::kArcBridgeIfName[] = "arcbr0";
+
+// static
+std::optional<VPNType> VPNProvider::VPNTypeStringToEnum(
+    const std::string& type) {
+  const std::map<std::string, VPNType> dict{
+      {kProviderArcVpn, VPNType::kARC},
+      {kProviderIKEv2, VPNType::kIKEv2},
+      {kProviderL2tpIpsec, VPNType::kL2TPIPsec},
+      {kProviderOpenVpn, VPNType::kOpenVPN},
+      {kProviderThirdPartyVpn, VPNType::kThirdParty},
+      {kProviderWireGuard, VPNType::kWireGuard},
+  };
+  const auto it = dict.find(type);
+  if (it == dict.end()) {
+    return std::nullopt;
+  }
+  return it->second;
+}
+
+// static
+std::string VPNProvider::VPNTypeEnumToString(VPNType type) {
+  switch (type) {
+    case VPNType::kARC:
+      return kProviderArcVpn;
+    case VPNType::kIKEv2:
+      return kProviderIKEv2;
+    case VPNType::kL2TPIPsec:
+      return kProviderL2tpIpsec;
+    case VPNType::kOpenVPN:
+      return kProviderOpenVpn;
+    case VPNType::kThirdParty:
+      return kProviderThirdPartyVpn;
+    case VPNType::kWireGuard:
+      return kProviderWireGuard;
+  }
+  NOTREACHED();
+  return "";
+}
 
 VPNProvider::VPNProvider(Manager* manager) : manager_(manager) {}
 
@@ -269,8 +308,13 @@ VPNServiceRefPtr VPNProvider::CreateService(const std::string& type,
 VPNServiceRefPtr VPNProvider::FindService(const std::string& type,
                                           const std::string& name,
                                           const std::string& host) const {
+  const auto vpn_type = VPNTypeStringToEnum(type);
+  if (!vpn_type) {
+    LOG(WARNING) << "Invalid VPN type " << type;
+    return nullptr;
+  }
   for (const auto& service : services_) {
-    if (type == service->driver()->GetProviderType() &&
+    if (*vpn_type == service->driver()->vpn_type() &&
         name == service->friendly_name() &&
         host == service->driver()->GetHost()) {
       return service;

@@ -53,8 +53,6 @@ class VPNServiceTest : public testing::Test {
         device_info_(&manager_) {
     Service::SetNextSerialNumberForTesting(0);
     driver_ = new MockVPNDriver();
-    EXPECT_CALL(*driver_, GetProviderType())
-        .WillRepeatedly(Return(kProviderL2tpIpsec));
     // There is at least one online service when the test service is created.
     EXPECT_CALL(manager_, IsOnline()).WillOnce(Return(true));
     service_ = new VPNService(&manager_, base::WrapUnique(driver_));
@@ -120,7 +118,7 @@ class VPNServiceTest : public testing::Test {
 };
 
 TEST_F(VPNServiceTest, LogName) {
-  EXPECT_EQ("vpn_l2tpipsec_0", service_->log_name());
+  EXPECT_EQ("vpn_ikev2_0", service_->log_name());
 }
 
 TEST_F(VPNServiceTest, ConnectAlreadyConnected) {

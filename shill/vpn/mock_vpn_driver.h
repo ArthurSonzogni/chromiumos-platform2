@@ -45,7 +45,6 @@ class MockVPNDriver : public VPNDriver {
               (override));
   MOCK_METHOD(void, UnloadCredentials, (), (override));
   MOCK_METHOD(void, InitPropertyStore, (PropertyStore*), (override));
-  MOCK_METHOD(std::string, GetProviderType, (), (const, override));
   MOCK_METHOD(std::string, GetHost, (), (const, override));
   MOCK_METHOD(void,
               OnDefaultPhysicalServiceEvent,

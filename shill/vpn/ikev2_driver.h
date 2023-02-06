@@ -33,7 +33,6 @@ class IKEv2Driver : public VPNDriver {
   void Disconnect() override;
   std::unique_ptr<IPConfig::Properties> GetIPv4Properties() const override;
   std::unique_ptr<IPConfig::Properties> GetIPv6Properties() const override;
-  std::string GetProviderType() const override;
   void OnConnectTimeout() override;
 
   // Disconnects from the VPN service before suspend or when the current default

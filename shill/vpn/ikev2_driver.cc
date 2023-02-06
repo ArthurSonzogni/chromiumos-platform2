@@ -195,10 +195,6 @@ std::unique_ptr<IPConfig::Properties> IKEv2Driver::GetIPv6Properties() const {
   return std::make_unique<IPConfig::Properties>(*ipv6_properties_);
 }
 
-std::string IKEv2Driver::GetProviderType() const {
-  return kProviderIKEv2;
-}
-
 void IKEv2Driver::OnConnectTimeout() {
   LOG(INFO) << "Connect timeout";
   if (!ipsec_connection_) {

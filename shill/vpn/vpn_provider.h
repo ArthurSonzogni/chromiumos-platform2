@@ -36,6 +36,12 @@ class VPNProvider : public ProviderInterface {
   // Interface name of the ARC bridge.
   static const char kArcBridgeIfName[];
 
+  // Maps the VPN type between strings and enums. Note that the strings are
+  // mainly used in D-Bus interface and profile storage, and we a different set
+  // of strings in metrics.
+  static std::optional<VPNType> VPNTypeStringToEnum(const std::string& type);
+  static std::string VPNTypeEnumToString(VPNType type);
+
   explicit VPNProvider(Manager* manager);
   VPNProvider(const VPNProvider&) = delete;
   VPNProvider& operator=(const VPNProvider&) = delete;

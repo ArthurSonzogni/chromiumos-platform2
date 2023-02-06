@@ -81,8 +81,8 @@ VPNService::VPNService(Manager* manager, std::unique_ptr<VPNDriver> driver)
       driver_(std::move(driver)),
       last_default_physical_service_online_(manager->IsOnline()) {
   if (driver_) {
-    log_name_ = "vpn_" + driver_->GetProviderType() + "_" +
-                base::NumberToString(serial_number());
+    log_name_ = "vpn_" + VPNProvider::VPNTypeEnumToString(driver_->vpn_type()) +
+                "_" + base::NumberToString(serial_number());
   } else {
     // |driver| may be null in tests.
     log_name_ = "vpn_" + base::NumberToString(serial_number());
@@ -187,8 +187,7 @@ bool VPNService::CreateDevice(const std::string& if_name, int if_index) {
   // Resets af first to avoid crashing shill in some cases. See
   // b/172228079#comment6.
   device_ = nullptr;
-  const bool fixed_ip_params =
-      driver_->GetProviderType() == std::string(kProviderArcVpn);
+  const bool fixed_ip_params = driver_->vpn_type() == VPNType::kARC;
   device_ = new VirtualDevice(manager(), if_name, if_index, Technology::kVPN,
                               fixed_ip_params);
   return device_ != nullptr;
@@ -304,7 +303,7 @@ void VPNService::InitDriverPropertyStore() {
 
 bool VPNService::SupportsAlwaysOnVpn() {
   // ARC VPNs are not supporting always-on VPN through Shill.
-  return driver()->GetProviderType() != kProviderArcVpn;
+  return driver()->vpn_type() != VPNType::kARC;
 }
 
 void VPNService::EnableAndRetainAutoConnect() {

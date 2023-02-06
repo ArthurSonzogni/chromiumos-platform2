@@ -287,10 +287,6 @@ std::unique_ptr<IPConfig::Properties> L2TPIPsecDriver::GetIPv6Properties()
   return nullptr;
 }
 
-std::string L2TPIPsecDriver::GetProviderType() const {
-  return kProviderL2tpIpsec;
-}
-
 void L2TPIPsecDriver::OnConnectTimeout() {
   LOG(INFO) << "Connect timeout";
   if (!ipsec_connection_) {

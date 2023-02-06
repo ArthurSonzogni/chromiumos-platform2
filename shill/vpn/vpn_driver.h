@@ -93,7 +93,6 @@ class VPNDriver {
   virtual void Disconnect() = 0;
   virtual std::unique_ptr<IPConfig::Properties> GetIPv4Properties() const = 0;
   virtual std::unique_ptr<IPConfig::Properties> GetIPv6Properties() const = 0;
-  virtual std::string GetProviderType() const = 0;
 
   // Makes the VPN driver fail because of the connection timeout. The driver
   // will clean up its internal state, and invokes OnDriverFailure to notify the

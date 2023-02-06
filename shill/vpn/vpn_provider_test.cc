@@ -246,7 +246,6 @@ TEST_F(VPNProviderTest, CreateService) {
         provider_.CreateService(type, kName, kStorageID, &error);
     ASSERT_NE(nullptr, service) << type;
     ASSERT_TRUE(service->driver()) << type;
-    EXPECT_EQ(type, service->driver()->GetProviderType());
     EXPECT_EQ(kName, GetServiceFriendlyName(service)) << type;
     EXPECT_EQ(kStorageID, service->GetStorageIdentifier()) << type;
     EXPECT_TRUE(error.IsSuccess()) << type;
@@ -270,7 +269,6 @@ TEST_F(VPNProviderTest, CreateArcService) {
   ASSERT_TRUE(service->driver());
   service->driver()->args()->Set<std::string>(kProviderHostProperty, kHost);
 
-  EXPECT_EQ(kProviderArcVpn, service->driver()->GetProviderType());
   EXPECT_EQ(kName, GetServiceFriendlyName(service));
   EXPECT_EQ(kStorageID, service->GetStorageIdentifier());
   EXPECT_TRUE(error.IsSuccess());

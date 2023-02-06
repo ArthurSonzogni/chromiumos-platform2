@@ -47,7 +47,6 @@ class OpenVPNDriver : public VPNDriver, public RpcTaskDelegate {
   void Disconnect() override;
   std::unique_ptr<IPConfig::Properties> GetIPv4Properties() const override;
   std::unique_ptr<IPConfig::Properties> GetIPv6Properties() const override;
-  std::string GetProviderType() const override;
   void OnConnectTimeout() override;
   void OnDefaultPhysicalServiceEvent(
       DefaultPhysicalServiceEvent event) override;
