@@ -471,14 +471,16 @@ Metrics::NetworkServiceError Metrics::ConnectFailureToServiceErrorEnum(
 
 void Metrics::RegisterService(const Service& service) {
   SLOG(2) << __func__;
-  LOG_IF(WARNING, base::Contains(services_metrics_, &service))
+  LOG_IF(WARNING, base::Contains(services_metrics_,
+                                 service.GetDBusObjectPathIdentifier()))
       << "Repeatedly registering " << service.log_name();
-  services_metrics_[&service] = std::make_unique<ServiceMetrics>();
+  services_metrics_[service.GetDBusObjectPathIdentifier()] =
+      std::make_unique<ServiceMetrics>();
   InitializeCommonServiceMetrics(service);
 }
 
 void Metrics::DeregisterService(const Service& service) {
-  services_metrics_.erase(&service);
+  services_metrics_.erase(service.GetDBusObjectPathIdentifier());
 }
 
 void Metrics::AddServiceStateTransitionTimer(const Service& service,
@@ -488,10 +490,9 @@ void Metrics::AddServiceStateTransitionTimer(const Service& service,
   SLOG(2) << __func__ << ": adding " << histogram_name << " for "
           << Service::ConnectStateToString(start_state) << " -> "
           << Service::ConnectStateToString(stop_state);
-  ServiceMetricsLookupMap::iterator it = services_metrics_.find(&service);
+  auto it = services_metrics_.find(service.GetDBusObjectPathIdentifier());
   if (it == services_metrics_.end()) {
-    SLOG(1) << "service not found";
-    DCHECK(false);
+    NOTREACHED() << service.log_name() << " not found";
     return;
   }
   ServiceMetrics* service_metrics = it->second.get();
@@ -549,10 +550,9 @@ void Metrics::OnDefaultPhysicalServiceChanged(const ServiceRefPtr&) {}
 
 void Metrics::NotifyServiceStateChanged(const Service& service,
                                         Service::ConnectState new_state) {
-  ServiceMetricsLookupMap::iterator it = services_metrics_.find(&service);
+  auto it = services_metrics_.find(service.GetDBusObjectPathIdentifier());
   if (it == services_metrics_.end()) {
-    SLOG(1) << "service not found";
-    DCHECK(false);
+    NOTREACHED() << service.log_name() << " not found";
     return;
   }
   ServiceMetrics* service_metrics = it->second.get();

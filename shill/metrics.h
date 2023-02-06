@@ -1907,8 +1907,6 @@ class Metrics : public DefaultServiceObserver {
     TimerReportersByState start_on_state;
     TimerReportersByState stop_on_state;
   };
-  using ServiceMetricsLookupMap =
-      std::map<const Service*, std::unique_ptr<ServiceMetrics>>;
 
   struct DeviceMetrics {
     DeviceMetrics() {}
@@ -1989,7 +1987,9 @@ class Metrics : public DefaultServiceObserver {
   // MetricsLibraryMock object instead.
   MetricsLibrary metrics_library_;
   MetricsLibraryInterface* library_;
-  ServiceMetricsLookupMap services_metrics_;
+  // Map of ServiceMetrics objects indexed by the RPC identifier of the
+  // associated services.
+  std::map<std::string, std::unique_ptr<ServiceMetrics>> services_metrics_;
   Technology last_default_technology_;
   bool was_last_online_;
   // Randomly generated 32 bytes used as a salt to pseudonymize session tags.
