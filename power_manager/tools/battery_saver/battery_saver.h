@@ -5,6 +5,8 @@
 #ifndef POWER_MANAGER_TOOLS_BATTERY_SAVER_BATTERY_SAVER_H_
 #define POWER_MANAGER_TOOLS_BATTERY_SAVER_BATTERY_SAVER_H_
 
+#include <string>
+
 #include <absl/status/statusor.h>
 #include <base/memory/scoped_refptr.h>
 #include <power_manager/proto_bindings/battery_saver.pb.h>
@@ -27,6 +29,7 @@ enum class BsmCommand {
   kEnable,   // "enable"
   kDisable,  // "disable"
   kStatus,   // "status"
+  kMonitor,  // "monitor"
 };
 
 // Parse the given command line, producing a `BsmCommand` on success.
@@ -39,6 +42,9 @@ absl::Status SetBsmEnabled(org::chromium::PowerManagerProxyInterface& proxy,
 // Get the current state of BSM.
 absl::StatusOr<BatterySaverModeState> GetBsmState(
     org::chromium::PowerManagerProxyInterface& proxy);
+
+// Convert a BatterySaverModeState proto into a string suitable for logging.
+std::string BatterySaverModeStateToString(const BatterySaverModeState& state);
 
 }  // namespace power_manager
 

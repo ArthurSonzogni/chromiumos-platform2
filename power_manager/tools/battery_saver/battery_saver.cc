@@ -16,8 +16,12 @@
 
 #include <absl/status/status.h>
 #include <absl/status/statusor.h>
+#include <absl/strings/str_format.h>
+#include <base/files/file_descriptor_watcher_posix.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
+#include <base/run_loop.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
@@ -27,6 +31,7 @@
 #include <power_manager/proto_bindings/battery_saver.pb.h>
 #include <power_manager-client/power_manager/dbus-proxies.h>
 
+#include "power_manager/tools/battery_saver/battery_saver_mode_watcher.h"
 #include "power_manager/tools/battery_saver/proto_util.h"
 
 namespace power_manager {
@@ -66,6 +71,37 @@ absl::Status PrintBsmStatus(PowerManagerProxyInterface& proxy) {
   return absl::OkStatus();
 }
 
+absl::Status MonitorBsmStatus(PowerManagerProxyInterface& proxy) {
+  std::cout << "Monitoring for battery saver mode changes.\n";
+
+  // Watch D-Bus for BSM state updates.
+  base::RunLoop loop;
+  absl::Status result = absl::OkStatus();
+  BatterySaverModeWatcher watcher(
+      proxy, base::BindRepeating(
+                 [](base::RunLoop* loop, absl::Status* result,
+                    absl::StatusOr<BatterySaverModeState> new_state) {
+                   // If an error was encountered, record it in `result` and
+                   // abort the loop.
+                   if (!new_state.ok()) {
+                     *result = absl::InternalError(absl::StrCat(
+                         "Monitoring failed: ", new_state.status().message()));
+                     loop->Quit();
+                     return;
+                   }
+
+                   // Otherwise, print the new status to stdout.
+                   std::cout << BatterySaverModeStateToString(*new_state)
+                             << "\n";
+                 },
+                 base::Unretained(&loop), base::Unretained(&result)));
+
+  // Monitor until the user aborts with Ctrl+C or an error is received.
+  loop.Run();
+
+  return result;
+}
+
 absl::Status RunCommand(BsmCommand command) {
   // Connect to D-Bus.
   dbus::Bus::Options options;
@@ -84,10 +120,21 @@ absl::Status RunCommand(BsmCommand command) {
       return SetBsmEnabled(proxy, false);
     case BsmCommand::kStatus:
       return PrintBsmStatus(proxy);
+    case BsmCommand::kMonitor:
+      return MonitorBsmStatus(proxy);
   }
 }
 
 }  // namespace
+
+// Convert a BatterySaverModeState proto into a string suitable for logging.
+std::string BatterySaverModeStateToString(const BatterySaverModeState& state) {
+  // The proto generates the MessageLite API, so the standard DebugString()
+  // methods are not available. Instead, we manually render a string.
+  return absl::StrFormat("{ enabled: %s; cause: %s }",
+                         state.enabled() ? "true" : "false",
+                         BatterySaverModeState::Cause_Name(state.cause()));
+}
 
 absl::StatusOr<BatterySaverModeState> GetBsmState(
     PowerManagerProxyInterface& proxy) {
@@ -149,12 +196,16 @@ absl::StatusOr<BsmCommand> ParseCommandLine(int argc, const char* const* argv) {
   if (commands[0] == "status") {
     return BsmCommand::kStatus;
   }
+  if (commands[0] == "monitor") {
+    return BsmCommand::kMonitor;
+  }
   return absl::InvalidArgumentError(
       base::StringPrintf("Unknown command '%s'.", commands[0].c_str()));
 }
 
 int BatterySaverCli(int argc, const char* const argv[]) {
   base::SingleThreadTaskExecutor executor(base::MessagePumpType::IO);
+  base::FileDescriptorWatcher file_descriptor_watcher(executor.task_runner());
 
   // Parse arguments.
   absl::StatusOr<BsmCommand> command = ParseCommandLine(argc, argv);

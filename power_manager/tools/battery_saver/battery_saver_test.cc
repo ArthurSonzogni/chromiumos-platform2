@@ -149,5 +149,20 @@ TEST(GetBsmState, Error) {
           "Failed to fetch current battery saver mode state: dbus error"));
 }
 
+TEST(BatterySaverModeStateToString, Basic) {
+  // Default BatterySaverModeState instance.
+  EXPECT_EQ(BatterySaverModeStateToString(BatterySaverModeState{}),
+            "{ enabled: false; cause: CAUSE_UNSPECIFIED }");
+
+  // BatterySaverModeState instance with all fields set.
+  {
+    BatterySaverModeState state;
+    state.set_enabled(true);
+    state.set_cause(BatterySaverModeState::CAUSE_USER_ENABLED);
+    EXPECT_EQ(BatterySaverModeStateToString(state),
+              "{ enabled: true; cause: CAUSE_USER_ENABLED }");
+  }
+}
+
 }  // namespace
 }  // namespace power_manager

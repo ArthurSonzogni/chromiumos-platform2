@@ -378,7 +378,10 @@ source_set("libbattery_saver_tool") {
   sources = [
     "tools/battery_saver/battery_saver.cc",
     "tools/battery_saver/battery_saver.h",
+    "tools/battery_saver/battery_saver_mode_watcher.cc",
+    "tools/battery_saver/battery_saver_mode_watcher.h",
     "tools/battery_saver/proto_util.h",
+    "tools/battery_saver/task_util.h",
   ]
   configs += [
     ":target_defaults",
@@ -623,6 +626,7 @@ if (use.test) {
 
   executable("power_manager_tools_battery_saver_test") {
     sources = [
+      "tools/battery_saver/battery_saver_mode_watcher_test.cc",
       "tools/battery_saver/battery_saver_test.cc",
       "tools/battery_saver/proto_util_test.cc",
     ]
