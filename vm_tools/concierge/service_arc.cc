@@ -54,7 +54,7 @@ constexpr char kArcVmLowMemJemallocArenasFeatureName[] =
     "CrOSLateBootArcVmLowMemJemallocArenas";
 
 // A feature name for enabling vmm swap.
-constexpr char kArcVmmSwapFeatureName[] = "CrOSArcVmmSwap";
+constexpr char kArcVmmSwapFeatureName[] = "CrOSLateBootArcVmmSwap";
 
 // A feature name for enabling AAudio MMAP support in audio HAL
 constexpr char kArcVmAAudioMMAPFeatureName[] = "CrOSLateBootArcVmAAudioMMAP";
