@@ -30,6 +30,7 @@
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
 #include "power_manager/powerd/policy/adaptive_charging_controller.h"
+#include "power_manager/powerd/policy/battery_saver_controller.h"
 #include "power_manager/powerd/policy/bluetooth_controller.h"
 #include "power_manager/powerd/policy/cellular_controller.h"
 #include "power_manager/powerd/policy/charge_controller.h"
@@ -420,6 +421,8 @@ class Daemon : public policy::AdaptiveChargingControllerInterface::Delegate,
 
   std::unique_ptr<policy::AdaptiveChargingControllerInterface>
       adaptive_charging_controller_;
+
+  power_manager::policy::BatterySaverController battery_saver_controller_;
 
   // Object that manages all operations related to timers in the ARC instance.
   std::unique_ptr<system::ArcTimerManager> arc_timer_manager_;

@@ -549,6 +549,8 @@ void Daemon::Init() {
                                  ec_helper_.get(), lid_state, tablet_mode,
                                  DisplayMode::NORMAL, prefs_.get());
 
+  battery_saver_controller_.Init(*dbus_wrapper_);
+
   const PowerSource power_source =
       power_status.line_power_on ? PowerSource::AC : PowerSource::BATTERY;
   state_controller_->Init(state_controller_delegate_.get(), prefs_.get(),
