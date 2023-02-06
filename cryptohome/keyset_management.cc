@@ -33,7 +33,6 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/storage/homedirs.h"
 #include "cryptohome/timestamp.pb.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset_factory.h"
@@ -204,13 +203,13 @@ std::unique_ptr<VaultKeyset> KeysetManagement::GetVaultKeyset(
     const std::string& obfuscated_username,
     const std::string& key_label) const {
   if (key_label.empty())
-    return NULL;
+    return nullptr;
 
   // Walk all indices to find a match.
   // We should move to label-derived suffixes to be efficient.
   std::vector<int> key_indices;
   if (!GetVaultKeysets(obfuscated_username, &key_indices)) {
-    return NULL;
+    return nullptr;
   }
   for (int index : key_indices) {
     std::unique_ptr<VaultKeyset> vk =
@@ -222,7 +221,7 @@ std::unique_ptr<VaultKeyset> KeysetManagement::GetVaultKeyset(
       return vk;
     }
   }
-  return NULL;
+  return nullptr;
 }
 
 // TODO(wad) Figure out how this might fit in with vault_keyset.cc
@@ -716,29 +715,6 @@ CryptohomeStatus KeysetManagement::ForceRemoveKeyset(
       ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
       user_data_auth::CryptohomeErrorCode::
           CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
-}
-
-bool KeysetManagement::MoveKeyset(const std::string& obfuscated,
-                                  int src,
-                                  int dst) {
-  if (src < 0 || dst < 0 || src >= kKeyFileMax || dst >= kKeyFileMax)
-    return false;
-
-  base::FilePath src_path = VaultKeysetPath(obfuscated, src);
-  base::FilePath dst_path = VaultKeysetPath(obfuscated, dst);
-  if (!platform_->FileExists(src_path))
-    return false;
-  if (platform_->FileExists(dst_path))
-    return false;
-  // Grab the destination exclusively
-  FILE* vk_file = platform_->OpenFile(dst_path, "wx");
-  if (!vk_file)
-    return false;
-  // The creation occurred so there's no reason to keep the handle.
-  platform_->CloseFile(vk_file);
-  if (!platform_->Rename(src_path, dst_path))
-    return false;
-  return true;
 }
 
 std::unique_ptr<VaultKeyset> KeysetManagement::LoadVaultKeysetForUser(

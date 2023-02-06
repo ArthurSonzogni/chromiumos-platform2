@@ -29,7 +29,6 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/auth_blocks/challenge_credential_auth_block.h"
-#include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
 #include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
@@ -41,10 +40,7 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/le_credential_manager_impl.h"
-#include "cryptohome/mock_cryptohome_key_loader.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
-#include "cryptohome/mock_keyset_management.h"
-#include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/mock_vault_keyset.h"
 #include "cryptohome/mock_vault_keyset_factory.h"
@@ -165,7 +161,7 @@ class KeysetManagementTest : public ::testing::Test {
     CHECK(temp_dir_.CreateUniqueTempDir());
   }
 
-  ~KeysetManagementTest() override {}
+  ~KeysetManagementTest() override = default;
 
   // Not copyable or movable
   KeysetManagementTest(const KeysetManagementTest&) = delete;
@@ -987,109 +983,6 @@ TEST_F(KeysetManagementTest, ForceRemoveKeysetFailedDelete) {
 
   VerifyKeysetPresentWithCredsAtIndex(users_[0].credentials,
                                       kInitialKeysetIndex);
-}
-
-// Successfully moves keyset.
-TEST_F(KeysetManagementTest, MoveKeysetSuccess) {
-  // SETUP
-
-  constexpr int kFirstMoveIndex = 17;
-  constexpr int kSecondMoveIndex = 22;
-
-  KeysetSetUpWithKeyData(DefaultKeyData());
-
-  // TEST
-
-  // Move twice to test move from the initial position and from a non-initial
-  // position.
-  ASSERT_TRUE(keyset_management_->MoveKeyset(
-      users_[0].obfuscated, kInitialKeysetIndex, kFirstMoveIndex));
-  ASSERT_TRUE(keyset_management_->MoveKeyset(
-      users_[0].obfuscated, kFirstMoveIndex, kSecondMoveIndex));
-
-  // VERIFY
-  // Move initial keyset twice, expect it to be accessible with old creds on the
-  // new index slot.
-
-  VerifyKeysetIndicies({kSecondMoveIndex});
-
-  VerifyKeysetPresentWithCredsAtIndex(users_[0].credentials, kSecondMoveIndex);
-}
-
-// Fails to move keyset.
-TEST_F(KeysetManagementTest, MoveKeysetFail) {
-  // SETUP
-
-  KeysetSetUpWithKeyData(DefaultKeyData());
-
-  brillo::SecureBlob new_passkey(kNewPasskey);
-  Credentials new_credentials(users_[0].name, new_passkey);
-  KeyData new_data;
-  new_data.set_label("some_label");
-  new_credentials.set_key_data(new_data);
-
-  MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
-      keyset_management_->GetValidKeyset(users_[0].credentials);
-  ASSERT_TRUE(vk_status.ok());
-  EXPECT_EQ(CRYPTOHOME_ERROR_NOT_SET,
-            keyset_management_->AddKeyset(VaultKeysetIntent{.backup = false},
-                                          new_credentials,
-                                          *vk_status.value().get(), false));
-  vk_status = keyset_management_->GetValidKeyset(new_credentials);
-  int index = vk_status.value()->GetLegacyIndex();
-  const std::string kInitialFile =
-      base::StringPrintf("master.%d", kInitialKeysetIndex);  // nocheck
-  const std::string kIndexPlus2File =
-      base::StringPrintf("master.%d", index + 2);  // nocheck
-  const std::string kIndexPlus3File =
-      base::StringPrintf("master.%d", index + 3);  // nocheck
-
-  // Inject open failure for the slot 2.
-  ON_CALL(platform_,
-          OpenFile(Property(&base::FilePath::value, EndsWith(kIndexPlus2File)),
-                   StrEq("wx")))
-      .WillByDefault(Return(nullptr));
-
-  // Inject rename failure for the slot 3.
-  ON_CALL(platform_,
-          Rename(Property(&base::FilePath::value, EndsWith(kInitialFile)),
-                 Property(&base::FilePath::value, EndsWith(kIndexPlus3File))))
-      .WillByDefault(Return(false));
-
-  // TEST
-
-  // Out of bound indexes
-  ASSERT_FALSE(keyset_management_->MoveKeyset(users_[0].obfuscated, -1, index));
-  ASSERT_FALSE(keyset_management_->MoveKeyset(users_[0].obfuscated,
-                                              kInitialKeysetIndex, -1));
-  ASSERT_FALSE(
-      keyset_management_->MoveKeyset(users_[0].obfuscated, kKeyFileMax, index));
-  ASSERT_FALSE(keyset_management_->MoveKeyset(
-      users_[0].obfuscated, kInitialKeysetIndex, kKeyFileMax));
-
-  // Not existing source
-  ASSERT_FALSE(keyset_management_->MoveKeyset(users_[0].obfuscated, index + 4,
-                                              index + 5));
-
-  // Destination exists
-  ASSERT_FALSE(keyset_management_->MoveKeyset(users_[0].obfuscated,
-                                              kInitialKeysetIndex, index));
-
-  // Destination file error-injected.
-  ASSERT_FALSE(keyset_management_->MoveKeyset(users_[0].obfuscated,
-                                              kInitialKeysetIndex, index + 2));
-  ASSERT_FALSE(keyset_management_->MoveKeyset(users_[0].obfuscated,
-                                              kInitialKeysetIndex, index + 3));
-
-  // VERIFY
-  // TODO(chromium:1141301, dlunev): the fact we have keyset index+3 is a bug -
-  // MoveKeyset will not cleanup created file if Rename fails. Not addressing it
-  // now durign test refactor, but will in the coming CLs.
-  VerifyKeysetIndicies({kInitialKeysetIndex, index, index + 3});
-
-  VerifyKeysetPresentWithCredsAtIndex(users_[0].credentials,
-                                      kInitialKeysetIndex);
-  VerifyKeysetPresentWithCredsAtIndex(new_credentials, index);
 }
 
 TEST_F(KeysetManagementTest, ReSaveKeysetNoReSave) {

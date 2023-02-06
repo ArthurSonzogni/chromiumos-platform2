@@ -16,7 +16,6 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
 
-#include "cryptohome/cleanup/user_oldest_activity_timestamp_manager.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_metrics.h"
@@ -24,7 +23,6 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/platform.h"
-#include "cryptohome/storage/homedirs.h"
 #include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset_factory.h"
 #include "storage/file_system_keyset.h"
@@ -126,10 +124,6 @@ class KeysetManagement {
   //                     scheme than just integer indices, like fingerprints.
   virtual CryptohomeStatus ForceRemoveKeyset(const std::string& obfuscated,
                                              int index);
-
-  // Allows a keyset to be moved to a different index assuming the index can be
-  // claimed for a given |obfuscated| username.
-  virtual bool MoveKeyset(const std::string& obfuscated, int src, int dst);
 
   // Attempts to reset all LE credentials associated with a username, given
   // a credential |cred|.

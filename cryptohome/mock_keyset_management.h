@@ -21,7 +21,6 @@
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/storage/file_system_keyset.h"
-#include "cryptohome/storage/mount.h"
 
 namespace cryptohome {
 class VaultKeyset;
@@ -65,7 +64,6 @@ class MockKeysetManagement : public KeysetManagement {
               ForceRemoveKeyset,
               (const std::string&, int),
               (override));
-  MOCK_METHOD(bool, MoveKeyset, (const std::string&, int, int), (override));
   MOCK_METHOD(void, RemoveLECredentials, (const std::string&), (override));
   MOCK_METHOD(bool, UserExists, (const std::string&), (override));
   MOCK_METHOD(std::unique_ptr<VaultKeyset>,
