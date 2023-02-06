@@ -90,32 +90,11 @@ class KeysetManagement {
   // Checks if the directory containing user keys exists.
   virtual bool UserExists(const std::string& obfuscated_username);
 
-  // Adds initial keyset for the credentials and wraps the file system keyset
-  // provided. Returns the added keyset, or an error status on failure.
-  virtual CryptohomeStatusOr<std::unique_ptr<VaultKeyset>> AddInitialKeyset(
-      const VaultKeysetIntent& vk_intent,
-      const Credentials& credentials,
-      const FileSystemKeyset& file_system_keyset);
-
   // This function should be called after successful authentication.
   // Populate a value to |vault_keyset|'s reset seed if it is missing, but
   // doesn't save. Returns true if the seed is added, returns false if there is
   // no need to add the reset seed, i.e if it already exists.
   virtual bool AddResetSeedIfMissing(VaultKeyset& vault_keyset);
-
-  // Adds a new keyset to the given |vault_keyset| and persist to
-  // disk. This function assumes the user is already authenticated and their
-  // vault keyset with the existing credentials is unwrapped which should be
-  // inputted to this function to initialize a new vault keyset. Thus,
-  // GetValidKeyset() should be called prior to this function to authenticate
-  // with the existing credentials. New keyset is updated to have the key data
-  // from |new_credentials|. If |clobber| is true and there are no matching,
-  // labeled keys, then it does nothing; if there is an identically labeled key,
-  // it will overwrite it.
-  virtual CryptohomeErrorCode AddKeyset(const VaultKeysetIntent& vk_intent,
-                                        const Credentials& new_credentials,
-                                        const VaultKeyset& vault_keyset,
-                                        bool clobber);
 
   // Removes the keyset specified by |index| from the list for the user
   // vault identified by its |obfuscated| username.

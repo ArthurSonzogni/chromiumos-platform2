@@ -49,17 +49,6 @@ class MockKeysetManagement : public KeysetManagement {
               GetVaultKeysetLabels,
               (const std::string&, bool, std::vector<std::string>*),
               (const, override));
-  MOCK_METHOD(CryptohomeStatusOr<std::unique_ptr<VaultKeyset>>,
-              AddInitialKeyset,
-              (const VaultKeysetIntent& vk_intent,
-               const Credentials&,
-               const FileSystemKeyset&),
-              (override));
-  MOCK_METHOD(
-      CryptohomeErrorCode,
-      AddKeyset,
-      (const VaultKeysetIntent&, const Credentials&, const VaultKeyset&, bool),
-      (override));
   MOCK_METHOD(CryptohomeStatus,
               ForceRemoveKeyset,
               (const std::string&, int),
