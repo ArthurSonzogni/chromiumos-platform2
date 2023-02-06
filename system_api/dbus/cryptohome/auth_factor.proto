@@ -88,7 +88,7 @@ message CryptohomeRecoveryAuthInput {
   string device_user_id = 3;
 
   // These fields are used for `AuthenticateAuthFactor`:
-  // Serialized cryptorecovery::CryptoRecoveryEpochResponse.
+  // Serialized cryptohome.cryptorecovery.CryptoRecoveryEpochResponse.
   // An epoch response received from Recovery Mediator service containing epoch
   // beacon value for Cryptohome recovery flow.
   bytes epoch_response = 4;
@@ -96,6 +96,18 @@ message CryptohomeRecoveryAuthInput {
   // A response received from Recovery Mediator service and used by Cryptohome
   // recovery flow to derive the wrapping keys.
   bytes recovery_response = 5;
+  // The ledger info from the chrome side and used by Cryptohome
+  // recovery flow to determine which ledger is used.
+  message LedgerInfo {
+    // Ledger's name.
+    string name = 1;
+    // Ledger's public key hash.
+    // TODO(b/268054784): Remove this field if hash can be calculated.
+    uint32 key_hash = 2;
+    // Ledger's public key.
+    bytes public_key = 3;
+  }
+  LedgerInfo ledger_info = 6;
 }
 
 // Kiosk AuthFactor requires no secret to be passed for derivation and
