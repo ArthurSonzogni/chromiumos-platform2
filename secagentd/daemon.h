@@ -41,11 +41,6 @@ class Daemon : public brillo::DBusDaemon {
   explicit Daemon(struct Inject);
   Daemon(bool bypass_policy_for_testing, bool bypass_enq_ok_wait_for_testing);
   ~Daemon() override = default;
-  // Starts the plugin loading process. First creates the agent plugin and
-  // waits for a successfully sent heartbeat before creating and running
-  // the remaining plugins.
-  // isEnabled: is the XDR feature flag is set?
-  void HandleXDRFeatureFlag(bool isEnabled);
 
  protected:
   int OnInit() override;
@@ -55,15 +50,23 @@ class Daemon : public brillo::DBusDaemon {
   void RunPlugins();
   // Creates plugin of the given type.
   int CreatePlugin(Types::Plugin);
-  // Return true if xdr_reporting_policy_ has changed.
-  bool XdrReportingIsEnabled();
-  // Polls the current policy for Xdr reporting every 10 minutes. Starts/stops
-  // reporting depending on the policy.
-  void PollXdrReportingIsEnabled();
+  // Refreshes the current state of finch flag and reporting policy.
+  // Polls every 10 minutes and starts/stops as necessary.
+  void PollFlags();
+  // Checks the status of the XDR feature flag and
+  // policy flag. Starts/stops reporting as necessary.
+  // isEnabled: is the XDR feature flag set?
+  void CheckXDRFlags(bool isEnabled);
+  // Sets the current policy for XDR reporting.
+  void GetXDRReportingIsEnabled();
+  // Starts the plugin loading process. First creates the agent plugin and
+  // waits for a successfully sent heartbeat before creating and running
+  // the remaining plugins.
+  void StartXDRReporting();
 
  private:
   std::unique_ptr<feature::PlatformFeaturesInterface> features_;
-  base::RepeatingTimer check_xdr_reporting_timer_;
+  base::RepeatingTimer check_flags_timer_;
   scoped_refptr<MessageSender> message_sender_;
   scoped_refptr<ProcessCacheInterface> process_cache_;
   std::unique_ptr<PluginFactoryInterface> plugin_factory_;
@@ -72,6 +75,7 @@ class Daemon : public brillo::DBusDaemon {
   std::unique_ptr<policy::PolicyProvider> policy_provider_;
   bool bypass_policy_for_testing_ = false;
   bool bypass_enq_ok_wait_for_testing_ = false;
+  bool reporting_events_ = false;
   bool xdr_reporting_policy_ = false;
   base::WeakPtrFactory<Daemon> weak_ptr_factory_;
 };

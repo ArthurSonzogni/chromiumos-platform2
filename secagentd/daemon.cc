@@ -4,6 +4,7 @@
 
 #include <unistd.h>
 
+#include <cstdlib>
 #include <iomanip>
 #include <memory>
 #include <sysexits.h>
@@ -12,7 +13,6 @@
 #include "absl/status/status.h"
 #include "attestation/proto_bindings/interface.pb.h"
 #include "attestation-client/attestation/dbus-proxies.h"
-#include "base/feature_list.h"
 #include "base/functional/callback_forward.h"
 #include "base/functional/callback_helpers.h"
 #include "base/logging.h"
@@ -91,14 +91,39 @@ int Daemon::OnInit() {
   return EX_OK;
 }
 
-void Daemon::HandleXDRFeatureFlag(bool isEnabled) {
-  if (!isEnabled) {
-    LOG(INFO) << "XDR reporting feature on this device is disabled. Exiting.";
-    QuitWithExitCode(EXIT_FAILURE);
+void Daemon::CheckXDRFlags(bool isXDREnabled) {
+  if (!isXDREnabled) {
+    LOG(INFO) << "XDR reporting feature on this device is disabled."
+                 " Not sending events.";
+  } else if (!xdr_reporting_policy_) {
+    LOG(INFO) << "XDR reporting policy is disabled. Not sending events.";
   }
+  // If either policy is false do not report.
+  if (!isXDREnabled || !xdr_reporting_policy_) {
+    if (reporting_events_) {
+      LOG(INFO) << "Stopping event reporting and quitting";
+      // Will exit and restart secagentd.
+      Quit();
+    }
+    return;
+  } else {
+    if (!reporting_events_) {
+      LOG(INFO) << "Starting event reporting";
+      // This is emitted at most once per daemon lifetime.
+      MetricsSender::GetInstance().SendEnumMetricToUMA(
+          metrics::kPolicy, metrics::Policy::kEnabled);
+      reporting_events_ = true;
+      StartXDRReporting();
+    } else {
+      return;
+    }
+  }
+}
+
+void Daemon::StartXDRReporting() {
   using CbType = base::OnceCallback<void()>;
   CbType cb_for_agent =
-      base::BindOnce(&Daemon::RunPlugins, base::Unretained(this));
+      base::BindOnce(&Daemon::RunPlugins, weak_ptr_factory_.GetWeakPtr());
   CbType cb_for_now = base::DoNothing();
   if (bypass_enq_ok_wait_for_testing_) {
     std::swap(cb_for_agent, cb_for_now);
@@ -158,28 +183,32 @@ int Daemon::CreatePlugin(PluginFactory::PluginType type) {
 }
 
 int Daemon::OnEventLoopStarted() {
-  check_xdr_reporting_timer_.Start(
+  check_flags_timer_.Start(
       FROM_HERE, base::Minutes(10),
-      base::BindRepeating(&Daemon::PollXdrReportingIsEnabled,
-                          base::Unretained(this)));
+      base::BindRepeating(&Daemon::PollFlags, weak_ptr_factory_.GetWeakPtr()));
 
   // Delay before first timer invocation so add check.
   // We emit this metric here and not inside the polled method so that we do it
   // exactly once per daemon lifetime.
   MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kPolicy,
                                                    metrics::Policy::kChecked);
-  PollXdrReportingIsEnabled();
+  PollFlags();
 
   return EX_OK;
 }
 
-bool Daemon::XdrReportingIsEnabled() {
-  bool old_policy = xdr_reporting_policy_;
+void Daemon::PollFlags() {
+  GetXDRReportingIsEnabled();
+  features_->IsEnabled(
+      kCrOSLateBootSecagentdXDRReporting,
+      base::BindOnce(&Daemon::CheckXDRFlags, weak_ptr_factory_.GetWeakPtr()));
+}
 
+void Daemon::GetXDRReportingIsEnabled() {
   // Bypasses the policy check for testing.
   if (bypass_policy_for_testing_) {
     xdr_reporting_policy_ = true;
-    return old_policy != xdr_reporting_policy_;
+    return;
   }
 
   policy_provider_->Reload();
@@ -190,29 +219,6 @@ bool Daemon::XdrReportingIsEnabled() {
   } else {
     // Default value is do not report.
     xdr_reporting_policy_ = false;
-  }
-
-  // Return true if xdr_reporting_policy_ has changed.
-  return old_policy != xdr_reporting_policy_;
-}
-
-void Daemon::PollXdrReportingIsEnabled() {
-  if (XdrReportingIsEnabled()) {
-    if (xdr_reporting_policy_) {
-      LOG(INFO) << "Starting event reporting";
-      // This is emitted at most once per daemon lifetime.
-      MetricsSender::GetInstance().SendEnumMetricToUMA(
-          metrics::kPolicy, metrics::Policy::kEnabled);
-      // Agent plugin will call back and run other plugins after agent start
-      // event is successfully sent.
-      features_->IsEnabled(kCrOSLateBootSecagentdXDRReporting,
-                           base::BindOnce(&Daemon::HandleXDRFeatureFlag,
-                                          weak_ptr_factory_.GetWeakPtr()));
-    } else {
-      LOG(INFO) << "Stopping event reporting and quitting";
-      // Will exit and restart secagentd.
-      Quit();
-    }
   }
 }
 
