@@ -102,27 +102,31 @@ std::vector<std::unique_ptr<Crtc>> GetConnectedCrtcs() {
 
     for (int index_connector = 0; index_connector < resources->count_connectors;
          ++index_connector) {
+      base::File dup_file = file.Duplicate();
+      if (!dup_file.IsValid())
+        continue;
+
       ScopedDrmModeConnectorPtr connector(drmModeGetConnector(
-          file.GetPlatformFile(), resources->connectors[index_connector]));
+          dup_file.GetPlatformFile(), resources->connectors[index_connector]));
       if (!connector || connector->encoder_id == 0)
         continue;
 
       ScopedDrmModeEncoderPtr encoder(
-          drmModeGetEncoder(file.GetPlatformFile(), connector->encoder_id));
+          drmModeGetEncoder(dup_file.GetPlatformFile(), connector->encoder_id));
       if (!encoder || encoder->crtc_id == 0)
         continue;
 
       ScopedDrmModeCrtcPtr crtc(
-          drmModeGetCrtc(file.GetPlatformFile(), encoder->crtc_id));
+          drmModeGetCrtc(dup_file.GetPlatformFile(), encoder->crtc_id));
       if (!crtc || !crtc->mode_valid || crtc->buffer_id == 0)
         continue;
 
       ScopedDrmModeFBPtr fb(
-          drmModeGetFB(file.GetPlatformFile(), crtc->buffer_id));
+          drmModeGetFB(dup_file.GetPlatformFile(), crtc->buffer_id));
 
       ScopedDrmModeFB2Ptr fb2(
-          drmModeGetFB2(file.GetPlatformFile(), crtc->buffer_id),
-          file.GetPlatformFile());
+          drmModeGetFB2(dup_file.GetPlatformFile(), crtc->buffer_id),
+          dup_file.GetPlatformFile());
 
       if (!fb && !fb2) {
         LOG(ERROR) << "getfb failed";
@@ -140,15 +144,15 @@ std::vector<std::unique_ptr<Crtc>> GetConnectedCrtcs() {
       // doesn't?
       if (fb2 && atomic_modeset) {
         ScopedDrmPlaneResPtr plane_res(
-            drmModeGetPlaneResources(file.GetPlatformFile()));
+            drmModeGetPlaneResources(dup_file.GetPlatformFile()));
         CHECK(plane_res) << " Failed to get plane resources";
-        res_crtc = std::make_unique<Crtc>(std::move(file), std::move(connector),
-                                          std::move(encoder), std::move(crtc),
-                                          std::move(fb), std::move(fb2),
-                                          std::move(plane_res));
+        res_crtc = std::make_unique<Crtc>(
+            std::move(dup_file), std::move(connector), std::move(encoder),
+            std::move(crtc), std::move(fb), std::move(fb2),
+            std::move(plane_res));
       } else {
         res_crtc = std::make_unique<Crtc>(
-            std::move(file), std::move(connector), std::move(encoder),
+            std::move(dup_file), std::move(connector), std::move(encoder),
             std::move(crtc), std::move(fb), std::move(fb2), nullptr);
       }
 
