@@ -28,14 +28,13 @@
 
 namespace shill {
 
-class NewL2TPIPsecDriverUnderTest : public L2TPIPsecDriver {
+class L2TPIPsecDriverUnderTest : public L2TPIPsecDriver {
  public:
-  NewL2TPIPsecDriverUnderTest(Manager* manager, ProcessManager* process_manager)
+  L2TPIPsecDriverUnderTest(Manager* manager, ProcessManager* process_manager)
       : L2TPIPsecDriver(manager, process_manager) {}
 
-  NewL2TPIPsecDriverUnderTest(const NewL2TPIPsecDriverUnderTest&) = delete;
-  NewL2TPIPsecDriverUnderTest& operator=(const NewL2TPIPsecDriverUnderTest&) =
-      delete;
+  L2TPIPsecDriverUnderTest(const L2TPIPsecDriverUnderTest&) = delete;
+  L2TPIPsecDriverUnderTest& operator=(const L2TPIPsecDriverUnderTest&) = delete;
 
   VPNConnectionUnderTest* ipsec_connection() const {
     return dynamic_cast<VPNConnectionUnderTest*>(ipsec_connection_.get());
@@ -77,16 +76,15 @@ namespace {
 
 using testing::_;
 
-class NewL2TPIPsecDriverTest : public testing::Test {
+class L2TPIPsecDriverTest : public testing::Test {
  public:
-  NewL2TPIPsecDriverTest() : manager_(&control_, &dispatcher_, &metrics_) {
+  L2TPIPsecDriverTest() : manager_(&control_, &dispatcher_, &metrics_) {
     ResetDriver();
   }
 
  protected:
   void ResetDriver() {
-    driver_.reset(
-        new NewL2TPIPsecDriverUnderTest(&manager_, &process_manager_));
+    driver_.reset(new L2TPIPsecDriverUnderTest(&manager_, &process_manager_));
     store_.reset(new PropertyStore());
     driver_->InitPropertyStore(store_.get());
     Error unused_error;
@@ -124,10 +122,10 @@ class NewL2TPIPsecDriverTest : public testing::Test {
   MockVPNDriverEventHandler event_handler_;
   std::unique_ptr<PropertyStore> store_;
 
-  std::unique_ptr<NewL2TPIPsecDriverUnderTest> driver_;
+  std::unique_ptr<L2TPIPsecDriverUnderTest> driver_;
 };
 
-TEST_F(NewL2TPIPsecDriverTest, ConnectAndDisconnect) {
+TEST_F(L2TPIPsecDriverTest, ConnectAndDisconnect) {
   // Sets psk and password to verify metrics.
   Error unused_error;
   store_->SetStringProperty(kL2TPIPsecPskProperty, "x", &unused_error);
@@ -168,7 +166,7 @@ TEST_F(NewL2TPIPsecDriverTest, ConnectAndDisconnect) {
   EXPECT_EQ(driver_->ipsec_connection(), nullptr);
 }
 
-TEST_F(NewL2TPIPsecDriverTest, ConnectTimeout) {
+TEST_F(L2TPIPsecDriverTest, ConnectTimeout) {
   InvokeAndVerifyConnectAsync();
 
   EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureConnect, _));
@@ -182,7 +180,7 @@ TEST_F(NewL2TPIPsecDriverTest, ConnectTimeout) {
   EXPECT_EQ(driver_->ipsec_connection(), nullptr);
 }
 
-TEST_F(NewL2TPIPsecDriverTest, ConnectingFailure) {
+TEST_F(L2TPIPsecDriverTest, ConnectingFailure) {
   InvokeAndVerifyConnectAsync();
 
   EXPECT_CALL(event_handler_, OnDriverFailure(Service::kFailureInternal, _));
@@ -195,7 +193,7 @@ TEST_F(NewL2TPIPsecDriverTest, ConnectingFailure) {
   EXPECT_EQ(driver_->ipsec_connection(), nullptr);
 }
 
-TEST_F(NewL2TPIPsecDriverTest, ConnectedFailure) {
+TEST_F(L2TPIPsecDriverTest, ConnectedFailure) {
   InvokeAndVerifyConnectAsync();
 
   // Makes it connected.
@@ -212,7 +210,7 @@ TEST_F(NewL2TPIPsecDriverTest, ConnectedFailure) {
   EXPECT_EQ(driver_->ipsec_connection(), nullptr);
 }
 
-TEST_F(NewL2TPIPsecDriverTest, DisconnectOnSuspend) {
+TEST_F(L2TPIPsecDriverTest, DisconnectOnSuspend) {
   InvokeAndVerifyConnectAsync();
 
   // Makes it connected.
@@ -224,7 +222,7 @@ TEST_F(NewL2TPIPsecDriverTest, DisconnectOnSuspend) {
   driver_->OnBeforeSuspend(base::DoNothing());
 }
 
-TEST_F(NewL2TPIPsecDriverTest, DisconnectOnDefaultPhysicalServiceDown) {
+TEST_F(L2TPIPsecDriverTest, DisconnectOnDefaultPhysicalServiceDown) {
   InvokeAndVerifyConnectAsync();
 
   // Makes it connected.
@@ -237,7 +235,7 @@ TEST_F(NewL2TPIPsecDriverTest, DisconnectOnDefaultPhysicalServiceDown) {
       VPNDriver::kDefaultPhysicalServiceDown);
 }
 
-TEST_F(NewL2TPIPsecDriverTest, DisconnectOnDefaultPhysicalServiceChanged) {
+TEST_F(L2TPIPsecDriverTest, DisconnectOnDefaultPhysicalServiceChanged) {
   InvokeAndVerifyConnectAsync();
 
   // Makes it connected.
@@ -250,7 +248,7 @@ TEST_F(NewL2TPIPsecDriverTest, DisconnectOnDefaultPhysicalServiceChanged) {
       VPNDriver::kDefaultPhysicalServiceChanged);
 }
 
-TEST_F(NewL2TPIPsecDriverTest, PropertyStoreAndConfig) {
+TEST_F(L2TPIPsecDriverTest, PropertyStoreAndConfig) {
   Error unused_error;
   const std::string kStorageId = "l2tp-ipsec-test";
 
@@ -319,7 +317,7 @@ TEST_F(NewL2TPIPsecDriverTest, PropertyStoreAndConfig) {
   EXPECT_EQ(l2tp_config->use_login_password, true);
 }
 
-TEST_F(NewL2TPIPsecDriverTest, GetProvider) {
+TEST_F(L2TPIPsecDriverTest, GetProvider) {
   Error unused_error;
   {
     KeyValueStore props;

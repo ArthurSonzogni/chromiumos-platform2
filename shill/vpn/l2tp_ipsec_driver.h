@@ -42,7 +42,7 @@ class L2TPIPsecDriver : public VPNDriver {
       DefaultPhysicalServiceEvent event) override;
 
  private:
-  friend class NewL2TPIPsecDriverUnderTest;
+  friend class L2TPIPsecDriverUnderTest;
 
   static const VPNDriver::Property kProperties[];
 
