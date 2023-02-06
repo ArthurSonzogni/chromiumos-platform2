@@ -32,8 +32,6 @@ inline constexpr char kMount[] = "Mount";
 inline constexpr char kRemove[] = "Remove";
 inline constexpr char kListKeys[] = "ListKeys";
 inline constexpr char kCheckKey[] = "CheckKey";
-inline constexpr char kAddKey[] = "AddKey";
-inline constexpr char kRemoveKey[] = "RemoveKey";
 inline constexpr char kStartFingerprintAuthSession[] =
     "StartFingerprintAuthSession";
 inline constexpr char kEndFingerprintAuthSession[] =

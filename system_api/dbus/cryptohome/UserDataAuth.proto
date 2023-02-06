@@ -415,40 +415,6 @@ message CheckKeyReply {
   CryptohomeErrorCode error = 1;
 }
 
-// Input parameters to AddKey()
-message AddKeyRequest {
-  // The owner of the new key.
-  cryptohome.AccountIdentifier account_id = 1;
-  // The authentication data of the new key.
-  cryptohome.AuthorizationRequest authorization_request = 2;
-  // The key to add.
-  cryptohome.Key key = 3;
-  // Do we delete the existing key if it already exists?
-  bool clobber_if_exists = 4;
-}
-
-// Output parameters for AddKey()
-message AddKeyReply {
-  // Indicates an error if error is not empty.
-  CryptohomeErrorCode error = 1;
-}
-
-// Input parameters to RemoveKey()
-message RemoveKeyRequest {
-  // The owner of the key to remove
-  cryptohome.AccountIdentifier account_id = 1;
-  // Authorization from the user
-  cryptohome.AuthorizationRequest authorization_request = 2;
-  // Only key.data().label() is used at present.
-  cryptohome.Key key = 3;
-}
-
-// Output parameters for RemoveKey()
-message RemoveKeyReply {
-  // Indicates an error if error is not empty.
-  CryptohomeErrorCode error = 1;
-}
-
 // StartFingerprintAuthSession sets BiometricsDaemon and the Fingerprint MCU to
 // match mode. EndFingerprintAuthSession sets them back to non-match mode.
 // A typical call sequence involves one or more other calls that actually wait
