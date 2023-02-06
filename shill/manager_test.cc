@@ -460,7 +460,7 @@ class ManagerTest : public PropertyStoreTest {
 
   bool HasService(const Manager& manager, const std::string& id) {
     for (const auto& service : manager.services_) {
-      if (id == service->GetDBusObjectPathIdentifer())
+      if (id == service->GetDBusObjectPathIdentifier())
         return true;
     }
     return false;
@@ -641,8 +641,8 @@ TEST_F(ManagerTest, ServiceRegistration) {
   MockServiceRefPtr mock_service(new NiceMock<MockService>(&manager));
   MockServiceRefPtr mock_service2(new NiceMock<MockService>(&manager));
 
-  RpcIdentifier service1_rpcid(mock_service->GetDBusObjectPathIdentifer());
-  RpcIdentifier service2_rpcid(mock_service2->GetDBusObjectPathIdentifer());
+  RpcIdentifier service1_rpcid(mock_service->GetDBusObjectPathIdentifier());
+  RpcIdentifier service2_rpcid(mock_service2->GetDBusObjectPathIdentifier());
 
   EXPECT_CALL(*mock_service, GetRpcIdentifier())
       .WillRepeatedly(ReturnRef(service1_rpcid));
@@ -706,7 +706,7 @@ TEST_F(ManagerTest, RegisterUnknownService) {
   }  // Force destruction of service1.
   MockServiceRefPtr mock_service2(new NiceMock<MockService>(&manager));
   EXPECT_CALL(*mock_service2, GetStorageIdentifier())
-      .WillRepeatedly(Return(mock_service2->GetDBusObjectPathIdentifer()));
+      .WillRepeatedly(Return(mock_service2->GetDBusObjectPathIdentifier()));
   manager.RegisterService(mock_service2);
   EXPECT_NE(mock_service2->profile(), profile);
 

@@ -32,7 +32,7 @@ const char ServiceDBusAdaptor::kPath[] = "/service/";
 ServiceDBusAdaptor::ServiceDBusAdaptor(const scoped_refptr<dbus::Bus>& bus,
                                        Service* service)
     : org::chromium::flimflam::ServiceAdaptor(this),
-      DBusAdaptor(bus, kPath + service->GetDBusObjectPathIdentifer()),
+      DBusAdaptor(bus, kPath + service->GetDBusObjectPathIdentifier()),
       service_(service) {
   // Register DBus object.
   RegisterWithDBusObject(dbus_object());

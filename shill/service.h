@@ -321,7 +321,7 @@ class Service : public base::RefCounted<Service> {
   int SourcePriority();
 
   // Returns |serial_number_| as a string for constructing a dbus object path.
-  std::string GetDBusObjectPathIdentifer() const;
+  std::string GetDBusObjectPathIdentifier() const;
 
   // Returns the RpcIdentifier for the ServiceAdaptorInterface.
   mockable const RpcIdentifier& GetRpcIdentifier() const;

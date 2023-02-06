@@ -243,7 +243,7 @@ Properties	string Address [readonly]
 		string Cellular.MEID [readonly]
 
 			(Cellular only) For CDMA modems, the Mobile
-			Equipment Identifer of the modem.
+			Equipment Identifier of the modem.
 
 		string Cellular.IMEI [readonly]
 

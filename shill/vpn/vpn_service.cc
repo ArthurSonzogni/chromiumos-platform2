@@ -390,7 +390,7 @@ void VPNService::OnDefaultPhysicalServiceChanged(
   bool default_physical_service_online =
       physical_service && physical_service->IsOnline();
   const std::string physical_service_path =
-      physical_service ? physical_service->GetDBusObjectPathIdentifer() : "";
+      physical_service ? physical_service->GetDBusObjectPathIdentifier() : "";
 
   if (!last_default_physical_service_online_ &&
       default_physical_service_online) {

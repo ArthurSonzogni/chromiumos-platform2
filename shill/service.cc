@@ -683,7 +683,7 @@ std::optional<base::TimeDelta> Service::GetTimeSinceFailed() const {
   return base::Time::Now() - failed_time_;
 }
 
-std::string Service::GetDBusObjectPathIdentifer() const {
+std::string Service::GetDBusObjectPathIdentifier() const {
   return base::NumberToString(serial_number());
 }
 

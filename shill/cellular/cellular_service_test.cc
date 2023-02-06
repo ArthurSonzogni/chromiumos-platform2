@@ -414,10 +414,10 @@ TEST_F(CellularServiceTest, LoadResetsPPPAuthFailure) {
   }
 }
 
-// The default storage_identifier_ will be {kCellular}_{kIccid}, however older
+// The default |storage_id_| will be {kCellular}_{kIccid}, however older
 // profile/storage entries may use a different identifier. This sets up an entry
 // with a matching ICCID but an arbitrary storage id and ensures that the older
-// storage_identifer_ value is set.
+// |storage_id_| value is set.
 TEST_F(CellularServiceTest, LoadFromProfileMatchingIccid) {
   std::string initial_storage_id = storage_id_;
   std::string matching_storage_id = "another-storage-id";

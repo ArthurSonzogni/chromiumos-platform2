@@ -86,7 +86,7 @@ Methods		dict GetProperties()
 			credentials are needed they are loaded from the
 			(new) active profile).
 
-			The name must match the identifer of the active
+			The name must match the identifier of the active
 			profile.  This is a safeguard against accidentally
 			removing the wrong profile.
 
