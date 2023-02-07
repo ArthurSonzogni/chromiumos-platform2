@@ -38,6 +38,8 @@ constexpr int kAnomalousProcCountNumBuckets = 30;
 // system that have attempted to execute a memfd.
 constexpr char kAttemptedMemfdExec[] = "AttemptedMemfdExec";
 
+constexpr char kLandlockEnabled[] = "ChromeOS.Sandboxing.LandlockEnabled";
+
 constexpr char kAnomalyUploadSuccess[] =
     "ChromeOS.SecurityAnomalyUploadSuccess";
 
@@ -73,6 +75,11 @@ bool SendAttemptedMemfdExecProcCountToUMA(size_t proc_count) {
           std::string(kAttemptedMemfdExec),
       base::checked_cast<int>(proc_count), kAnomalousProcCountMinBucket,
       kAnomalousProcCountMaxBucket, kAnomalousProcCountNumBuckets);
+}
+
+bool SendLandlockStatusToUMA(bool enabled) {
+  InitializeMetricsIfNecessary();
+  return metrics_library->SendBoolToUMA(kLandlockEnabled, enabled);
 }
 
 bool SendAnomalyUploadResultToUMA(bool success) {

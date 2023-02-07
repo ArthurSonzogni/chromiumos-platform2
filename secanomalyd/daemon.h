@@ -44,9 +44,14 @@ class Daemon : public brillo::DBusDaemon {
   void DoWXMountScan();
   void DoAuditLogScan();
 
-  // Discovered anomalies are reported to UMA at set intervals, dictated by
-  // |kUmaReportInterval|.
-  void ReportAnomaliesToUma();
+  // Discovered anomalies and other security related metrics are reported to UMA
+  // at set intervals, dictated by |kUmaReportInterval|.
+  void ReportUmaMetrics();
+
+  // UMA Reporting tasks are invoked by |ReportUmaMetrics()|.
+  void EmitWXMountCountUma();
+  void EmitMemfdExecProcCountUma();
+  void EmitLandlockStatusUma();
 
   // Reporting tasks have rate limiting criteria built into them for uploading
   // crash reports.
@@ -61,6 +66,10 @@ class Daemon : public brillo::DBusDaemon {
   // Used to track whether an UMA metric was emitted for the memfd execution
   // baseline metric, as we only need one emission of the metric.
   bool has_emitted_memfd_baseline_uma_ = false;
+
+  // Landlock status should only be reported once per execution of secanomalyd,
+  // as a change in the Landlock state would require a system reboot.
+  bool has_emitted_landlock_status_uma_ = false;
 
   bool generate_reports_ = false;
   bool dev_ = false;

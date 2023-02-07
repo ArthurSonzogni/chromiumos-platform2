@@ -94,7 +94,7 @@ int Daemon::OnInit() {
 
 int Daemon::OnEventLoopStarted() {
   ScanForAnomalies();
-  ReportAnomaliesToUma();
+  ReportUmaMetrics();
 
   return EX_OK;
 }
@@ -111,34 +111,18 @@ void Daemon::ScanForAnomalies() {
       kScanInterval);
 }
 
-void Daemon::ReportAnomaliesToUma() {
+void Daemon::ReportUmaMetrics() {
   if (!ShouldReport(dev_)) {
     return;
   }
 
-  VLOG(1) << "Reporting W+X mount count UMA metric";
-  if (SendWXMountCountToUMA(wx_mounts_.size())) {
-    // After successfully reporting W+X mount count, clear the map.
-    // If mounts still exist they'll be re-added on the next scan.
-    wx_mounts_.clear();
-  } else {
-    LOG(WARNING) << "Could not upload W+X mount count UMA metric";
-  }
-
-  VLOG(1) << "Reporting memfd exec process count UMA metric";
-  if (SendAttemptedMemfdExecProcCountToUMA(
-          executables_attempting_memfd_exec_.size())) {
-    // After successfully reporting process count, clear the set. If the same
-    // processes attempt memfd executions again, they will be re-added to the
-    // set.
-    executables_attempting_memfd_exec_.clear();
-  } else {
-    LOG(WARNING) << "Could not upload memfd exec process count UMA metric";
-  }
+  EmitWXMountCountUma();
+  EmitMemfdExecProcCountUma();
+  EmitLandlockStatusUma();
 
   brillo::MessageLoop::current()->PostDelayedTask(
       FROM_HERE,
-      base::BindOnce(&Daemon::ReportAnomaliesToUma, base::Unretained(this)),
+      base::BindOnce(&Daemon::ReportUmaMetrics, base::Unretained(this)),
       kUmaReportInterval);
 }
 
@@ -288,6 +272,46 @@ void Daemon::DoAuditLogScan() {
   // TODO(b/255818130): Add a function for reporting the details of any
   // discovered memfd execution events through crash reporter and invoke it
   // here.
+}
+
+void Daemon::EmitWXMountCountUma() {
+  VLOG(1) << "Reporting W+X mount count UMA metric";
+  if (SendWXMountCountToUMA(wx_mounts_.size())) {
+    // After successfully reporting W+X mount count, clear the map.
+    // If mounts still exist they'll be re-added on the next scan.
+    wx_mounts_.clear();
+  } else {
+    LOG(WARNING) << "Could not upload W+X mount count UMA metric";
+  }
+}
+
+void Daemon::EmitMemfdExecProcCountUma() {
+  VLOG(1) << "Reporting memfd exec process count UMA metric";
+  if (SendAttemptedMemfdExecProcCountToUMA(
+          executables_attempting_memfd_exec_.size())) {
+    // After successfully reporting process count, clear the set. If the same
+    // processes attempt memfd executions again, they will be re-added to the
+    // set.
+    executables_attempting_memfd_exec_.clear();
+  } else {
+    LOG(WARNING) << "Could not upload memfd exec process count UMA metric";
+  }
+}
+
+void Daemon::EmitLandlockStatusUma() {
+  if (has_emitted_landlock_status_uma_) {
+    return;
+  }
+
+  VLOG(1) << "Reporting Landlock status UMA metric";
+  // If landlock is in any other state than enabled, such as not supported or an
+  // unknown state, we consider it disabled.
+  if (!SendLandlockStatusToUMA(system_context_->GetLandlockState() ==
+                               LandlockState::kEnabled)) {
+    LOG(WARNING) << "Could not upload Landlock status UMA metric";
+  } else {
+    has_emitted_landlock_status_uma_ = true;
+  }
 }
 
 }  // namespace secanomalyd
