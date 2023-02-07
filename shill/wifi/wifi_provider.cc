@@ -250,6 +250,15 @@ void WiFiProvider::Start() {
       base::BindRepeating(&WiFiProvider::HandleNetlinkBroadcast,
                           weak_ptr_factory_while_started_.GetWeakPtr());
   netlink_manager_->AddBroadcastHandler(broadcast_handler_);
+  // Subscribe to multicast events.
+  netlink_manager_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
+                                      NetlinkManager::kEventTypeConfig);
+  netlink_manager_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
+                                      NetlinkManager::kEventTypeScan);
+  netlink_manager_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
+                                      NetlinkManager::kEventTypeRegulatory);
+  netlink_manager_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
+                                      NetlinkManager::kEventTypeMlme);
   GetPhyInfo(kAllPhys);
 }
 

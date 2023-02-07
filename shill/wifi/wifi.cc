@@ -267,16 +267,6 @@ void WiFi::Start(const EnabledStateChangedCallback& callback) {
                        &hw_info.subsystem_id);
   metrics()->NotifyWiFiAdapterStateChanged(true, hw_info);
 
-  // Subscribe to multicast events.
-  netlink_manager_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
-                                      NetlinkManager::kEventTypeConfig);
-  netlink_manager_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
-                                      NetlinkManager::kEventTypeScan);
-  netlink_manager_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
-                                      NetlinkManager::kEventTypeRegulatory);
-  netlink_manager_->SubscribeToEvents(Nl80211Message::kMessageTypeString,
-                                      NetlinkManager::kEventTypeMlme);
-
   // TODO(b/244630773): Get rid of this call altogether once phy capabilities
   // are tracked in WiFiPhy.
   GetPhyInfo();

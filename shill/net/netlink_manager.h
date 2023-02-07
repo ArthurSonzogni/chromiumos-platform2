@@ -254,8 +254,8 @@ class SHILL_EXPORT NetlinkManager {
   // Uninstall the handler for a specific netlink message.
   bool RemoveMessageHandler(const NetlinkMessage& message);
 
-  // Sign-up to receive and log multicast events of a specific type (once wifi
-  // is up).
+  // Sign-up to receive and log multicast events of a specific type. These
+  // events are processed by message handlers added with |AddBroadcastHandler|.
   virtual bool SubscribeToEvents(const std::string& family,
                                  const std::string& group);
 

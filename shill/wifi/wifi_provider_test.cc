@@ -701,6 +701,18 @@ TEST_F(WiFiProviderTest, Start) {
       netlink_manager_,
       SendNl80211Message(
           IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY), _, _, _));
+  EXPECT_CALL(netlink_manager_,
+              SubscribeToEvents(Nl80211Message::kMessageTypeString,
+                                NetlinkManager::kEventTypeConfig));
+  EXPECT_CALL(netlink_manager_,
+              SubscribeToEvents(Nl80211Message::kMessageTypeString,
+                                NetlinkManager::kEventTypeScan));
+  EXPECT_CALL(netlink_manager_,
+              SubscribeToEvents(Nl80211Message::kMessageTypeString,
+                                NetlinkManager::kEventTypeRegulatory));
+  EXPECT_CALL(netlink_manager_,
+              SubscribeToEvents(Nl80211Message::kMessageTypeString,
+                                NetlinkManager::kEventTypeMlme));
   provider_.Start();
   EXPECT_TRUE(GetServices().empty());
   EXPECT_TRUE(GetRunning());

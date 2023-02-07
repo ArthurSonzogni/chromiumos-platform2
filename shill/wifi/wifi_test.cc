@@ -1071,18 +1071,6 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   uint16_t GetScanInterval() { return wifi_->GetScanInterval(nullptr); }
   void StartWiFi(bool supplicant_present) {
     EXPECT_CALL(netlink_manager_,
-                SubscribeToEvents(Nl80211Message::kMessageTypeString,
-                                  NetlinkManager::kEventTypeConfig));
-    EXPECT_CALL(netlink_manager_,
-                SubscribeToEvents(Nl80211Message::kMessageTypeString,
-                                  NetlinkManager::kEventTypeScan));
-    EXPECT_CALL(netlink_manager_,
-                SubscribeToEvents(Nl80211Message::kMessageTypeString,
-                                  NetlinkManager::kEventTypeRegulatory));
-    EXPECT_CALL(netlink_manager_,
-                SubscribeToEvents(Nl80211Message::kMessageTypeString,
-                                  NetlinkManager::kEventTypeMlme));
-    EXPECT_CALL(netlink_manager_,
                 SendNl80211Message(
                     IsNl80211Command(kNl80211FamilyId, NL80211_CMD_GET_WIPHY),
                     _, _, _));
