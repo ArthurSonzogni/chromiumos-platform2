@@ -7,6 +7,7 @@
 #include <base/logging.h>
 
 #include "trunks/error_codes.h"
+#include "trunks/tpm_generated.h"
 
 namespace {
 

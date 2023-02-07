@@ -18,6 +18,7 @@
 #include <base/logging.h>
 
 #include "trunks/error_codes.h"
+#include "trunks/tpm_generated.h"
 
 #define IS_TPM_CC_VENDOR_CMD(c)            \
   (((c) == TPM_CC_VENDOR_SPECIFIC_MASK) || \
