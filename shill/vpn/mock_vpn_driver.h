@@ -11,12 +11,14 @@
 #include <gmock/gmock.h>
 
 #include "shill/vpn/vpn_driver.h"
+#include "shill/vpn/vpn_provider.h"
 
 namespace shill {
 
 class MockVPNDriver : public VPNDriver {
  public:
   MockVPNDriver();
+  explicit MockVPNDriver(VPNType vpn_type);
   MockVPNDriver(const MockVPNDriver&) = delete;
   MockVPNDriver& operator=(const MockVPNDriver&) = delete;
 

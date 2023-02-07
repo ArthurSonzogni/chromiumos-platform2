@@ -11,6 +11,9 @@ namespace shill {
 MockVPNDriver::MockVPNDriver()
     : VPNDriver(nullptr, nullptr, VPNType::kIKEv2, nullptr, 0) {}
 
+MockVPNDriver::MockVPNDriver(VPNType vpn_type)
+    : VPNDriver(nullptr, nullptr, vpn_type, nullptr, 0) {}
+
 MockVPNDriver::~MockVPNDriver() = default;
 
 MockVPNDriverEventHandler::MockVPNDriverEventHandler() = default;

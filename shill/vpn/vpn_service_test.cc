@@ -5,6 +5,7 @@
 #include "shill/vpn/vpn_service.h"
 
 #include <string>
+#include <vector>
 
 #include <base/memory/ptr_util.h>
 #include <chromeos/dbus/service_constants.h>
@@ -527,6 +528,50 @@ TEST_F(VPNServiceTest, ReconnectTimeout) {
   driver_event_handler->OnDriverReconnecting(kTestTimeout);
   EXPECT_CALL(*driver_, OnConnectTimeout()).Times(1);
   dispatcher_.task_environment().FastForwardBy(kTestTimeout);
+}
+
+TEST_F(VPNServiceTest, MigrateWireGuardIPv4Address) {
+  FakeStore storage;
+  constexpr char kStorageID[] = "storage-id";
+  const std::string kAddr1 = "1.2.3.4";
+  const std::string kAddr2 = "4.3.2.1";
+  using Strings = std::vector<std::string>;
+
+  storage.SetString(kStorageID, Service::kStorageType, kTypeVPN);
+
+  // We don't care about this function in this test, but another EXPECT_CALL for
+  // this function is set in  VPNServiceTest() so we cannot use ON_CALL here.
+  EXPECT_CALL(manager_, IsOnline()).WillRepeatedly(Return(true));
+
+  const auto setup_wg_and_static_addr = [&](const std::string* wg_prop_addr,
+                                            const std::string* static_addr) {
+    driver_ = new MockVPNDriver(VPNType::kWireGuard);
+    service_ = new VPNService(&manager_, base::WrapUnique(driver_));
+    service_->set_storage_id(kStorageID);
+    if (wg_prop_addr) {
+      driver_->args()->Set<Strings>(kWireGuardIPAddress, {*wg_prop_addr});
+    }
+    if (static_addr) {
+      KeyValueStore args;
+      args.Set<std::string>(kAddressProperty, *static_addr);
+      Error not_used_err;
+      service_->mutable_store()->SetKeyValueStoreProperty(
+          kStaticIPConfigProperty, args, &not_used_err);
+    }
+    service_->MigrateDeprecatedStorage(&storage);
+  };
+
+  setup_wg_and_static_addr(nullptr, &kAddr1);
+  EXPECT_EQ(driver_->args()->Get<Strings>(kWireGuardIPAddress),
+            Strings{kAddr1});
+
+  setup_wg_and_static_addr(&kAddr2, &kAddr1);
+  EXPECT_EQ(driver_->args()->Get<Strings>(kWireGuardIPAddress),
+            Strings{kAddr2});
+
+  setup_wg_and_static_addr(&kAddr2, nullptr);
+  EXPECT_EQ(driver_->args()->Get<Strings>(kWireGuardIPAddress),
+            Strings{kAddr2});
 }
 
 }  // namespace shill

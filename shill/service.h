@@ -28,6 +28,7 @@
 #include "shill/net/event_history.h"
 #include "shill/net/shill_time.h"
 #include "shill/network/network.h"
+#include "shill/network/network_config.h"
 #include "shill/refptr_types.h"
 #include "shill/static_ip_parameters.h"
 #include "shill/store/pkcs11_slot_getter.h"
@@ -783,6 +784,11 @@ class Service : public base::RefCounted<Service> {
   // Utility function that returns true if a is different from b.  When they
   // are, "decision" is populated with the boolean value of "a > b".
   static bool DecideBetween(int a, int b, bool* decision);
+
+  // Used by VPNService.
+  const NetworkConfig& static_network_config() const {
+    return static_ip_parameters_.config();
+  }
 
   // Service's user friendly name, mapped to the Service Object kNameProperty.
   // Use |log_name_| for logging to avoid logging PII.

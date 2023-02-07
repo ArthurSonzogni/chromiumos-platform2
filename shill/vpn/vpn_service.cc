@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/check_op.h>
@@ -17,6 +18,7 @@
 #include "shill/dbus/dbus_control.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
+#include "shill/network/network_config.h"
 #include "shill/profile.h"
 #include "shill/store/key_value_store.h"
 #include "shill/store/property_accessor.h"
@@ -33,6 +35,43 @@ static std::string ObjectID(const VPNService* s) {
   return s->log_name();
 }
 }  // namespace Logging
+
+namespace {
+
+// Apply the IPv4 address in |static_config| to the WireGuard.IPAddress property
+// in |driver|, if |static_config| has an IPv4 address and the
+// WireGuard.IPAddress property is empty. WireGuardDriver used to use
+// StaticIPConfig to store the local IP address but is using a specific property
+// now. This function is for migrating the profile data.
+void UpdateWireGuardDriverIPv4Address(const NetworkConfig& static_config,
+                                      VPNDriver* driver) {
+  if (driver->vpn_type() != VPNType::kWireGuard) {
+    return;
+  }
+  if (!static_config.ipv4_address_cidr) {
+    return;
+  }
+
+  IPAddress addr(IPAddress::kFamilyIPv4);
+  if (!addr.SetAddressAndPrefixFromString(*static_config.ipv4_address_cidr)) {
+    LOG(WARNING) << __func__ << ": " << *static_config.ipv4_address_cidr
+                 << " is not a valid IPv4 CIDR string";
+    return;
+  }
+
+  const auto& current_addrs =
+      driver->const_args()->Lookup<std::vector<std::string>>(
+          kWireGuardIPAddress, {});
+  if (!current_addrs.empty()) {
+    return;
+  }
+
+  const std::vector<std::string> addrs_to_set{addr.ToString()};
+  driver->args()->Set<std::vector<std::string>>(kWireGuardIPAddress,
+                                                addrs_to_set);
+}
+
+}  // namespace
 
 const char VPNService::kAutoConnNeverConnected[] = "never connected";
 const char VPNService::kAutoConnVPNAlreadyActive[] = "vpn already active";
@@ -209,9 +248,20 @@ void VPNService::MigrateDeprecatedStorage(StoreInterface* storage) {
   const std::string id = GetStorageIdentifier();
   CHECK(storage->ContainsGroup(id));
   driver_->MigrateDeprecatedStorage(storage, id);
+
+  // Can be removed after the next stepping stone version after M112.
+  UpdateWireGuardDriverIPv4Address(static_network_config(), driver_.get());
 }
 
 bool VPNService::Save(StoreInterface* storage) {
+  // Note that MigrateDeprecatedStorage() is only called after Load() in
+  // profile.cc, and the first-time configuration for a service from Chrome does
+  // not go through Load(). This code can be removed after Chrome uses the new
+  // address property to store the IPv4 address.
+  // TODO(b/262662603): Check that if IPAddress property can be automatically
+  // cleared on Save() after Chrome side is done. Otherwise we need to do this
+  // manually in MigrateDeprecatedStorage().
+  UpdateWireGuardDriverIPv4Address(static_network_config(), driver_.get());
   return Service::Save(storage) &&
          driver_->Save(storage, GetStorageIdentifier(), save_credentials());
 }
