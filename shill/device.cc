@@ -14,6 +14,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <iostream>
 #include <optional>
 #include <set>
 #include <string>
@@ -808,24 +809,18 @@ void Device::SetEnabledChecked(bool enable,
 
 void Device::SetEnabledUnchecked(bool enable,
                                  const ResultCallback& on_enable_complete) {
-  LOG(INFO) << __func__ << ": link: " << link_name() << " enable: " << enable;
+  LOG(INFO) << LoggingTag() << " SetEnabledUnchecked(" << std::boolalpha
+            << enable << ")";
   enabled_pending_ = enable;
   EnabledStateChangedCallback chained_callback = base::Bind(
       &Device::OnEnabledStateChanged, AsWeakPtr(), on_enable_complete);
   if (enable) {
     Start(chained_callback);
   } else {
-    network_->Stop();        // breaks a reference cycle
-    SelectService(nullptr);  // breaks a reference cycle
+    DropConnection();
     if (!ShouldBringNetworkInterfaceDownAfterDisabled()) {
       BringNetworkInterfaceDown();
     }
-    SLOG(this, 2) << "Device " << link_name_ << " ipconfig "
-                  << (network_->ipconfig() ? "is set," : "is not set,")
-                  << " ip6config "
-                  << (network_->ip6config() ? "is set," : "is not set,")
-                  << " selected_service_ "
-                  << (selected_service_ ? "is set." : "is not set.");
     Stop(chained_callback);
   }
 }

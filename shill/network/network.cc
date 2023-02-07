@@ -5,6 +5,7 @@
 #include "shill/network/network.h"
 
 #include <algorithm>
+#include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
@@ -208,6 +209,11 @@ void Network::Stop() {
 }
 
 void Network::StopInternal(bool is_failure, bool trigger_callback) {
+  SLOG(2) << logging_tag_
+          << ": Stopping. IPv4 configured: " << (ipconfig() ? "true" : "false")
+          << ", IPv6 configured: " << (ip6config() ? "true" : "false")
+          << ", is_failure: " << std::boolalpha << is_failure;
+
   network_validation_result_.reset();
   StopPortalDetection();
   StopConnectionDiagnostics();
