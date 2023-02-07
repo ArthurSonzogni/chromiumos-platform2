@@ -13807,6 +13807,7 @@ mno {
       mccmnc : "310240"
       mccmnc : "310260"
       mobile_apn {
+        ip_type: IPV4V6
         apn : "fast.metropcs.com"
         type : DEFAULT
       }
@@ -13830,6 +13831,7 @@ mno {
       mccmnc : "310260"
       mobile_apn {
         apn : "h2g2"
+        ip_type: IPV6
         type : DEFAULT
       }
     }
