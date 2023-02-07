@@ -97,11 +97,13 @@ const struct VariationsFeature kCrOSLateBootDlpDatabaseCleanupFeature = {
 
 DlpAdaptor::DlpAdaptor(
     std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
+    std::unique_ptr<feature::PlatformFeaturesInterface> feature_lib,
     int fanotify_perm_fd,
     int fanotify_notif_fd,
     const base::FilePath& home_path)
     : org::chromium::DlpAdaptor(this),
       dbus_object_(std::move(dbus_object)),
+      feature_lib_(std::move(feature_lib)),
       home_path_(home_path) {
   dlp_metrics_ = std::make_unique<DlpMetrics>();
   fanotify_watcher_ = std::make_unique<FanotifyWatcher>(this, fanotify_perm_fd,
@@ -403,10 +405,8 @@ void DlpAdaptor::OnDatabaseInitialized(base::OnceClosure init_callback,
   // initialized.
   // This could be disabled because for now the daemon can't traverse some
   // of the home directory folders due to inconsistent access permissions.
-  std::unique_ptr<feature::PlatformFeatures> feature_lib =
-      feature::PlatformFeatures::New(dbus_object_->GetBus());
-  if (feature_lib &&
-      feature_lib->IsEnabledBlocking(kCrOSLateBootDlpDatabaseCleanupFeature)) {
+  if (feature_lib_ &&
+      feature_lib_->IsEnabledBlocking(kCrOSLateBootDlpDatabaseCleanupFeature)) {
     base::ThreadTaskRunnerHandle::Get()->PostTaskAndReplyWithResult(
         FROM_HERE, base::BindOnce(&EnumerateFiles, home_path_),
         base::BindOnce(&DlpAdaptor::CleanupAndSetDatabase,

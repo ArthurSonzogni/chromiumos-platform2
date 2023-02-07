@@ -4,12 +4,15 @@
 
 #include "dlp/dlp_adaptor_test_helper.h"
 
+#include <utility>
+
 #include <base/files/file_util.h>
 #include <brillo/dbus/dbus_object.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/dlp/dbus-constants.h>
 #include <dbus/login_manager/dbus-constants.h>
 #include <dbus/object_path.h>
+#include <featured/fake_platform_features.h>
 #include <gtest/gtest.h>
 
 #include "dlp/dlp_adaptor.h"
@@ -54,36 +57,21 @@ DlpAdaptorTestHelper::DlpAdaptorTestHelper() {
               GetObjectProxy(login_manager::kSessionManagerServiceName, _))
       .WillRepeatedly(Return(mock_session_manager_proxy_.get()));
 
-  mock_chrome_features_service_proxy_ =
-      base::MakeRefCounted<dbus::MockObjectProxy>(
-          bus_.get(), chromeos::kChromeFeaturesServiceName,
-          dbus::ObjectPath(chromeos::kChromeFeaturesServicePath));
-  EXPECT_CALL(*bus_, GetObjectProxy(chromeos::kChromeFeaturesServiceName, _))
-      .WillRepeatedly(Return(mock_chrome_features_service_proxy_.get()));
-  EXPECT_CALL(*mock_chrome_features_service_proxy_, CallMethodAndBlock(_, _))
-      .WillRepeatedly(
-          Invoke(this, &DlpAdaptorTestHelper::ChromeFeaturesIsEnabledResponse));
-
   EXPECT_TRUE(home_dir_.CreateUniqueTempDir());
 
   base::ScopedFD fd_1, fd_2;
   EXPECT_TRUE(base::CreatePipe(&fd_1, &fd_2));
 
+  auto feature_lib = std::make_unique<feature::FakePlatformFeatures>(bus_);
+  CHECK_NE(feature_lib, nullptr);
+  feature_lib_ = feature_lib.get();
   adaptor_ = std::make_unique<DlpAdaptor>(
       std::make_unique<brillo::dbus_utils::DBusObject>(nullptr, bus_,
                                                        object_path),
-      fd_1.release(), fd_2.release(), home_dir_.GetPath());
+      std::move(feature_lib), fd_1.release(), fd_2.release(),
+      home_dir_.GetPath());
 }
 
 DlpAdaptorTestHelper::~DlpAdaptorTestHelper() = default;
-
-std::unique_ptr<dbus::Response>
-DlpAdaptorTestHelper::ChromeFeaturesIsEnabledResponse(
-    dbus::MethodCall* method_call, int timeout_ms) {
-  auto response = dbus::Response::CreateEmpty();
-  dbus::MessageWriter writer(response.get());
-  writer.AppendBool(database_cleanup_feature_enabled_);
-  return response;
-}
 
 }  // namespace dlp

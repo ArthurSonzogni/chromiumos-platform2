@@ -18,6 +18,7 @@
 #include <base/functional/callback.h>
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/file_descriptor.h>
+#include <featured/feature_library.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "dlp/dbus-proxies.h"
@@ -41,6 +42,7 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
                    public DlpDatabase::Delegate {
  public:
   DlpAdaptor(std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object,
+             std::unique_ptr<feature::PlatformFeaturesInterface> feature_lib,
              int fanotify_perm_fd,
              int fanotify_notif_fd,
              const base::FilePath& home_path);
@@ -239,6 +241,8 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   std::unique_ptr<FanotifyWatcher> fanotify_watcher_;
 
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+
+  std::unique_ptr<feature::PlatformFeaturesInterface> feature_lib_;
 
   // The root path to the watched directory.
   const base::FilePath home_path_;

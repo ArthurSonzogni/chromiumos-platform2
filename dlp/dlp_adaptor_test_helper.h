@@ -13,6 +13,7 @@
 #include <dbus/mock_bus.h>
 #include <dbus/mock_exported_object.h>
 #include <dbus/mock_object_proxy.h>
+#include <featured/fake_platform_features.h>
 
 #include "dlp/dlp_adaptor.h"
 
@@ -38,22 +39,19 @@ class DlpAdaptorTestHelper {
     return mock_session_manager_proxy_;
   }
 
+  // Whether CrOSLateBootDlpDatabaseCleanupFeature is enabled.
   void SetDatabaseCleanupFeatureEnabled(bool enabled) {
-    database_cleanup_feature_enabled_ = enabled;
+    feature_lib_->SetEnabled("CrOSLateBootDlpDatabaseCleanupFeature", enabled);
   }
 
  private:
-  std::unique_ptr<dbus::Response> ChromeFeaturesIsEnabledResponse(
-      dbus::MethodCall* method_call, int timeout_ms);
-
   scoped_refptr<dbus::MockBus> bus_;
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_;
   scoped_refptr<dbus::MockObjectProxy> mock_dlp_files_policy_service_proxy_;
   scoped_refptr<dbus::MockObjectProxy> mock_session_manager_proxy_;
-  scoped_refptr<dbus::MockObjectProxy> mock_chrome_features_service_proxy_;
 
-  // Whether CrOSLateBootDlpDatabaseCleanupFeature is enabled.
-  bool database_cleanup_feature_enabled_ = false;
+  // Owned by adaptor_
+  feature::FakePlatformFeatures* feature_lib_;
 
   base::ScopedTempDir home_dir_;
   std::unique_ptr<DlpAdaptor> adaptor_;

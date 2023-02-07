@@ -10,6 +10,7 @@
 #include <brillo/dbus/async_event_sequencer.h>
 #include <brillo/dbus/dbus_object.h>
 #include <dbus/dlp/dbus-constants.h>
+#include <featured/feature_library.h>
 
 #include "dlp/dlp_adaptor.h"
 
@@ -36,9 +37,11 @@ void DlpDaemon::RegisterDBusObjectsAsync(
       object_manager_.get(), object_manager_->GetBus(),
       org::chromium::DlpAdaptor::GetObjectPath());
   DCHECK(!adaptor_);
-  adaptor_ =
-      std::make_unique<DlpAdaptor>(std::move(dbus_object), fanotify_perm_fd_,
-                                   fanotify_notif_fd_, home_path_);
+  std::unique_ptr<feature::PlatformFeaturesInterface> feature_lib =
+      feature::PlatformFeatures::New(dbus_object->GetBus());
+  adaptor_ = std::make_unique<DlpAdaptor>(
+      std::move(dbus_object), std::move(feature_lib), fanotify_perm_fd_,
+      fanotify_notif_fd_, home_path_);
   adaptor_->InitDatabase(database_path_, base::DoNothing());
   adaptor_->RegisterAsync(
       sequencer->GetHandler("RegisterAsync() failed", true));
