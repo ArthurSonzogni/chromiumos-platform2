@@ -627,27 +627,11 @@ HELP_network_diag=''
 # shellcheck disable=SC2034
 EXEC_network_diag='/usr/bin/network_diag'
 cmd_network_diag() (
-  case " $* " in
-  *" --no-log "*)
-    debugd_shill network_diag "$@"
-    ;;
-  *)
-    # Create a mostly unique filename.  We won't care about clobbering existing
-    # files here as this is a user generated request, and we scope the filename
-    # to this specific use case.
-    local timestamp
-    timestamp="$(date +'%Y-%m-%d.%H-%M-%S')"
-    local downloads_dir="/home/user/${CROS_USER_ID_HASH}/MyFiles/Downloads"
-    local logname="network_diagnostics_${timestamp}.txt"
-    local logpath="${downloads_dir}/${logname}"
-    rm -f "${logpath}"
-    echo "Saving output to Downloads under: ${logname}"
-    debugd_shill network_diag "$@" | tee "${logpath}"
-    ;;
-  esac
+  help_network_diag
 )
 help_network_diag() (
-  debugd_shill network_diag --help
+  echo "This command is disabled pending removal."
+  echo "Please see https://issuetracker.google.com/267537630"
 )
 
 u2f_warning='
