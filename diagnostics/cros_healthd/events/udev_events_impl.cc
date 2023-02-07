@@ -135,6 +135,12 @@ void UdevEventsImpl::OnUdevEvent() {
     } else if (action == "remove") {
       OnUsbRemove(device);
     }
+  } else if (subsystem == "mmc") {
+    if (action == "add") {
+      OnSdCardAdd();
+    } else if (action == "remove") {
+      OnSdCardRemove();
+    }
   }
 }
 
@@ -216,6 +222,26 @@ void UdevEventsImpl::OnUsbRemove(
     observer->OnEvent(mojom::EventInfo::NewUsbEventInfo(info.Clone()));
   for (auto& observer : deprecated_usb_observers_)
     observer->OnRemove(info.Clone());
+}
+
+void UdevEventsImpl::AddSdCardObserver(
+    mojo::PendingRemote<mojom::EventObserver> observer) {
+  sd_card_observers_.Add(std::move(observer));
+}
+
+void UdevEventsImpl::OnSdCardAdd() {
+  mojom::SdCardEventInfo info;
+  info.state = mojom::SdCardEventInfo::State::kAdd;
+  for (auto& observer : sd_card_observers_) {
+    observer->OnEvent(mojom::EventInfo::NewSdCardEventInfo(info.Clone()));
+  }
+}
+
+void UdevEventsImpl::OnSdCardRemove() {
+  mojom::SdCardEventInfo info;
+  info.state = mojom::SdCardEventInfo::State::kRemove;
+  for (auto& observer : sd_card_observers_)
+    observer->OnEvent(mojom::EventInfo::NewSdCardEventInfo(info.Clone()));
 }
 
 }  // namespace diagnostics

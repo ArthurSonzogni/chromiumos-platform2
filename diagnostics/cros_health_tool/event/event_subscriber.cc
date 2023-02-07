@@ -77,6 +77,18 @@ std::string EnumToString(mojom::AudioJackEventInfo::State state) {
   }
 }
 
+std::string EnumToString(mojom::SdCardEventInfo::State state) {
+  switch (state) {
+    case mojom::SdCardEventInfo::State::kUnmappedEnumField:
+      LOG(FATAL) << "Got UnmappedEnumField";
+      return "UnmappedEnumField";
+    case mojom::SdCardEventInfo::State::kAdd:
+      return "Sd Card added";
+    case mojom::SdCardEventInfo::State::kRemove:
+      return "Sd Card removed";
+  }
+}
+
 void OutputUsbEventInfo(const mojom::UsbEventInfoPtr& info) {
   base::Value::Dict output;
 
@@ -109,6 +121,11 @@ void OutputLidEventInfo(const mojom::LidEventInfoPtr& info) {
 
 void OutputAudioJackEventInfo(const mojom::AudioJackEventInfoPtr& info) {
   std::cout << "Audio jack event received: " << EnumToString(info->state)
+            << std::endl;
+}
+
+void OutputSdCardEventInfo(const mojom::SdCardEventInfoPtr& info) {
+  std::cout << "SdCard event received: " << EnumToString(info->state)
             << std::endl;
 }
 
@@ -182,6 +199,9 @@ void EventSubscriber::OnEvent(const mojom::EventInfoPtr info) {
       break;
     case mojom::EventInfo::Tag::kAudioJackEventInfo:
       OutputAudioJackEventInfo(info->get_audio_jack_event_info());
+      break;
+    case mojom::EventInfo::Tag::kSdCardEventInfo:
+      OutputSdCardEventInfo(info->get_sd_card_event_info());
       break;
   }
 }

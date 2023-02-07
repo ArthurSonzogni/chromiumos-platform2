@@ -30,6 +30,10 @@ class UdevEvents {
   virtual void AddUsbObserver(
       mojo::PendingRemote<ash::cros_healthd::mojom::EventObserver>
           observer) = 0;
+  // Adds a new observer to be notified when SD Card related events occur.
+  virtual void AddSdCardObserver(
+      mojo::PendingRemote<ash::cros_healthd::mojom::EventObserver>
+          observer) = 0;
 
   // Old interfaces that are going to be deprecated.
   // Adds a new observer to be notified when thunderbolt related events occur.

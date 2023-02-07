@@ -31,6 +31,9 @@ class UdevEventsImpl final : public UdevEvents {
   void AddUsbObserver(
       mojo::PendingRemote<ash::cros_healthd::mojom::EventObserver> observer)
       override;
+  void AddSdCardObserver(
+      mojo::PendingRemote<ash::cros_healthd::mojom::EventObserver> observer)
+      override;
 
   void OnUdevEvent();
 
@@ -51,6 +54,9 @@ class UdevEventsImpl final : public UdevEvents {
 
   void OnUsbAdd(const std::unique_ptr<brillo::UdevDevice>& device);
   void OnUsbRemove(const std::unique_ptr<brillo::UdevDevice>& device);
+
+  void OnSdCardAdd();
+  void OnSdCardRemove();
 
   // Unowned pointer. Should outlive this instance.
   Context* const context_ = nullptr;
@@ -76,6 +82,12 @@ class UdevEventsImpl final : public UdevEvents {
   mojo::RemoteSet<ash::cros_healthd::mojom::EventObserver> usb_observers_;
   mojo::RemoteSet<ash::cros_healthd::mojom::CrosHealthdUsbObserver>
       deprecated_usb_observers_;
+
+  // Each observer in |sd_card_observers_| will be notified of any SD Card
+  // event. The RemoteSet manages the lifetime of the endpoints, which are
+  // automatically destroyed and removed when the pipe they are bound to is
+  // destroyed.
+  mojo::RemoteSet<ash::cros_healthd::mojom::EventObserver> sd_card_observers_;
 };
 
 }  // namespace diagnostics
