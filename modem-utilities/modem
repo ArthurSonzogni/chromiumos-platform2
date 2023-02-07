@@ -72,10 +72,12 @@ reset() {
 }
 
 status() {
+  mmcli -m any 2>/dev/null
   all_modem_status 2>/dev/null
 }
 
 status_feedback() {
+  mmcli -m any 2>/dev/null | mask_mmcli_fields
   all_modem_status 2>/dev/null | mask_modem_properties
 }
 

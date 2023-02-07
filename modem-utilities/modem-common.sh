@@ -24,11 +24,17 @@ mm1_modems() {
 # Common stuff
 #
 MASKED_PROPERTIES="DeviceIdentifier|EquipmentIdentifier|OwnNumbers|\
-ESN|MEID|IMEI|IMSI|SimIdentifier|MDN|MIN|payment_url_postdata|Eid|Iccid"
+ESN|MEID|IMEI|IMSI|SimIdentifier|MDN|MIN|payment_url_postdata|Eid|\
+Iccid|Number|SMSC|Text|Data"
 MASKED_SUBPROPERTIES="user|password|${MASKED_PROPERTIES}"
+MASKED_MMCLI_FIELDS="device id|equipment id|own|${MASKED_PROPERTIES}"
 
 mask_esim_properties() {
   sed -E "s/\<(${MASKED_PROPERTIES}): (.+)/\1: *** MASKED ***/i"
+}
+
+mask_mmcli_fields() {
+  sed -E "s/(${MASKED_MMCLI_FIELDS}): (.+)/\1: *** MASKED ***/i"
 }
 
 mask_modem_properties() {
