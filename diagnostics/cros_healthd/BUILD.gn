@@ -91,7 +91,7 @@ if (use.test) {
       "//diagnostics/cros_healthd/network:network_test",
       "//diagnostics/cros_healthd/network_diagnostics:network_diagnostics_test",
       "//diagnostics/cros_healthd/routines:routine_test",
-      "//diagnostics/cros_healthd/system:system_config_test",
+      "//diagnostics/cros_healthd/system:libcros_healthd_system_test",
       "//diagnostics/cros_healthd/utils:libcros_healthd_utils_test",
     ]
   }

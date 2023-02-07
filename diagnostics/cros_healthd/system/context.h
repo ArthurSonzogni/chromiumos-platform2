@@ -18,13 +18,13 @@
 #include <mojo/public/cpp/bindings/remote.h>
 #include <mojo/public/cpp/platform/platform_channel_endpoint.h>
 
-#include "diagnostics/common/system/powerd_adapter.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/network/network_health_adapter.h"
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter.h"
 #include "diagnostics/cros_healthd/system/libdrm_util.h"
 #include "diagnostics/cros_healthd/system/mojo_service.h"
 #include "diagnostics/cros_healthd/system/pci_util.h"
+#include "diagnostics/cros_healthd/system/powerd_adapter.h"
 #include "diagnostics/cros_healthd/system/system_config_interface.h"
 #include "diagnostics/cros_healthd/system/system_utilities.h"
 #include "diagnostics/cros_healthd/utils/resource_queue.h"

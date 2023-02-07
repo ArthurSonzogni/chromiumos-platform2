@@ -14,10 +14,10 @@
 #include <gtest/gtest.h>
 #include <mojo/core/embedder/embedder.h>
 
-#include "diagnostics/common/system/fake_powerd_adapter.h"
 #include "diagnostics/cros_healthd/routines/battery_discharge/battery_discharge.h"
 #include "diagnostics/cros_healthd/routines/battery_discharge/battery_discharge_constants.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
+#include "diagnostics/cros_healthd/system/fake_powerd_adapter.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 

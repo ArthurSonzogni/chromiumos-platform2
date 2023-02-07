@@ -2,13 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_COMMON_SYSTEM_FAKE_POWERD_ADAPTER_H_
-#define DIAGNOSTICS_COMMON_SYSTEM_FAKE_POWERD_ADAPTER_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_SYSTEM_FAKE_POWERD_ADAPTER_H_
+#define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_FAKE_POWERD_ADAPTER_H_
 
 #include <optional>
 #include <power_manager/proto_bindings/power_supply_properties.pb.h>
 
-#include "diagnostics/common/system/powerd_adapter.h"
+#include "diagnostics/cros_healthd/system/powerd_adapter.h"
 
 namespace diagnostics {
 
@@ -32,4 +32,4 @@ class FakePowerdAdapter : public PowerdAdapter {
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_COMMON_SYSTEM_FAKE_POWERD_ADAPTER_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_SYSTEM_FAKE_POWERD_ADAPTER_H_

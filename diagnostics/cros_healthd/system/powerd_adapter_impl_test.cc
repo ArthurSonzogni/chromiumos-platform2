@@ -17,8 +17,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/common/system/powerd_adapter.h"
-#include "diagnostics/common/system/powerd_adapter_impl.h"
+#include "diagnostics/cros_healthd/system/powerd_adapter.h"
+#include "diagnostics/cros_healthd/system/powerd_adapter_impl.h"
 
 using ::testing::_;
 using ::testing::SaveArg;

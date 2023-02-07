@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/common/system/powerd_adapter_impl.h"
+#include "diagnostics/cros_healthd/system/powerd_adapter_impl.h"
 
 #include <optional>
 #include <string>

@@ -15,7 +15,6 @@
 #include <brillo/udev/mock_udev_monitor.h>
 #include <chromeos/chromeos-config/libcros_config/fake_cros_config.h>
 
-#include "diagnostics/common/system/fake_powerd_adapter.h"
 #include "diagnostics/cros_healthd/executor/mock_executor.h"
 #include "diagnostics/cros_healthd/network/fake_network_health_adapter.h"
 #include "diagnostics/cros_healthd/network_diagnostics/mock_network_diagnostics_adapter.h"
@@ -23,6 +22,7 @@
 #include "diagnostics/cros_healthd/system/fake_bluetooth_event_hub.h"
 #include "diagnostics/cros_healthd/system/fake_libdrm_util.h"
 #include "diagnostics/cros_healthd/system/fake_pci_util.h"
+#include "diagnostics/cros_healthd/system/fake_powerd_adapter.h"
 #include "diagnostics/cros_healthd/system/fake_system_config.h"
 #include "diagnostics/cros_healthd/system/fake_system_utilities.h"
 #include "diagnostics/cros_healthd/system/mock_bluetooth_info_manager.h"

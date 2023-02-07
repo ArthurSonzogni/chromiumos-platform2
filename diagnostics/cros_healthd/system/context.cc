@@ -22,7 +22,6 @@
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
-#include "diagnostics/common/system/powerd_adapter_impl.h"
 #include "diagnostics/cros_healthd/network/network_health_adapter_impl.h"
 #include "diagnostics/cros_healthd/network_diagnostics/network_diagnostics_adapter_impl.h"
 #include "diagnostics/cros_healthd/system/bluetooth_event_hub.h"
@@ -30,6 +29,7 @@
 #include "diagnostics/cros_healthd/system/libdrm_util_impl.h"
 #include "diagnostics/cros_healthd/system/mojo_service_impl.h"
 #include "diagnostics/cros_healthd/system/pci_util_impl.h"
+#include "diagnostics/cros_healthd/system/powerd_adapter_impl.h"
 #include "diagnostics/cros_healthd/system/system_config.h"
 #include "diagnostics/cros_healthd/system/system_utilities_impl.h"
 #include "diagnostics/cros_healthd/utils/resource_queue.h"

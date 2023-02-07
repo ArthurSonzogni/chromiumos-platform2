@@ -14,7 +14,6 @@ pkg_config("libcommon_pkg_deps") {
 
 source_set("libcommon") {
   configs += [ ":libcommon_pkg_deps" ]
-  public_deps = [ "system:libsystem" ]
   sources = [ "mojo_utils.cc" ]
 }
 
@@ -23,7 +22,6 @@ if (use.test || use.fuzzer) {
     configs += [ ":libcommon_pkg_deps" ]
     deps = [
       ":libcommon",
-      "system:libsystem_test_utils",
       "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
     ]
     sources = [
@@ -56,7 +54,6 @@ if (use.test) {
       ":libcommon",
       ":libcommon_test_utils",
       ":mojo_testrunner",
-      "system:libsystem_test",
     ]
   }
 }

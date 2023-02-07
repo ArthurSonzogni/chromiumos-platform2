@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_COMMON_SYSTEM_POWERD_ADAPTER_H_
-#define DIAGNOSTICS_COMMON_SYSTEM_POWERD_ADAPTER_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_SYSTEM_POWERD_ADAPTER_H_
+#define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_POWERD_ADAPTER_H_
 
 #include <optional>
 
@@ -28,4 +28,4 @@ class PowerdAdapter {
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_COMMON_SYSTEM_POWERD_ADAPTER_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_SYSTEM_POWERD_ADAPTER_H_

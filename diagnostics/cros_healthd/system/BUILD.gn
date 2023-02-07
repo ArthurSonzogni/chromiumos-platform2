@@ -56,6 +56,7 @@ source_set("libcros_healthd_system") {
     "context.cc",
     "libdrm_util_impl.cc",
     "mojo_service_impl.cc",
+    "powerd_adapter_impl.cc",
     "system_config.cc",
     "system_utilities_impl.cc",
   ]
@@ -101,6 +102,7 @@ if (use.test || use.fuzzer) {
       "fake_libdrm_util.cc",
       "fake_mojo_service.cc",
       "fake_pci_util.cc",
+      "fake_powerd_adapter.cc",
       "fake_system_config.cc",
       "fake_system_utilities.cc",
       "mock_context.cc",
@@ -109,7 +111,7 @@ if (use.test || use.fuzzer) {
 }
 
 if (use.test) {
-  pkg_config("system_config_test_pkg_deps") {
+  pkg_config("libcros_healthd_system_test_pkg_deps") {
     pkg_deps = [
       "libchrome",
       "libchrome-test",
@@ -119,17 +121,19 @@ if (use.test) {
     ]
   }
 
-  source_set("system_config_test") {
+  source_set("libcros_healthd_system_test") {
     sources = [
       "bluetooth_event_hub_test.cc",
+      "powerd_adapter_impl_test.cc",
       "system_config_test.cc",
     ]
     configs += [
-      ":system_config_test_pkg_deps",
+      ":libcros_healthd_system_test_pkg_deps",
       "//common-mk:test",
     ]
     deps = [
       ":libcros_healthd_system",
+      ":libcros_healthd_system_test_utils",
       "//common-mk/testrunner:testrunner",
       "//diagnostics/base",
       "//diagnostics/common:libcommon_test_utils",
