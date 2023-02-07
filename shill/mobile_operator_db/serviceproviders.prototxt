@@ -13705,6 +13705,7 @@ mno {
         localized_name {
           name : "IOT"
         }
+        ip_type: IPV4V6
         type : DEFAULT
       }
     }
