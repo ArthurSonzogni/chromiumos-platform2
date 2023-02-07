@@ -14,6 +14,7 @@ constexpr char kChromiumNetworkDiagnosticsRoutines[] =
     "ChromiumNetworkDiagnosticsRoutines";
 constexpr char kChromiumNetworkHealth[] = "ChromiumNetworkHealth";
 constexpr char kCrosDcadService[] = "CrosDcadService";
+constexpr char kCrosHealthdAshEventReporter[] = "CrosHealthdAshEventReporter";
 constexpr char kCrosHealthdDiagnostics[] = "CrosHealthdDiagnostics";
 constexpr char kCrosHealthdEvent[] = "CrosHealthdEvent";
 constexpr char kCrosHealthdProbe[] = "CrosHealthdProbe";
