@@ -52,14 +52,15 @@ class DeleteSurroundingTextEvent : public Event {
 
 class KeySymEvent : public Event {
  public:
-  KeySymEvent(int text_input_id, int keysym)
-      : Event(text_input_id), keysym_(keysym) {}
+  KeySymEvent(int text_input_id, int keysym, uint32_t modifiers)
+      : Event(text_input_id), keysym_(keysym), modifiers_(modifiers) {}
   ~KeySymEvent() override;
   void Run() const override;
   void Print(std::ostream& stream) const override;
 
  private:
   int keysym_;
+  uint32_t modifiers_;
 };
 
 class SetPreeditRegionEvent : public Event {

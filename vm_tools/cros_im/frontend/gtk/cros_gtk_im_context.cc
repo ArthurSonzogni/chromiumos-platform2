@@ -253,6 +253,15 @@ gboolean CrosGtkIMContext::FilterKeypress(GdkEventKey* event) {
     return false;
   }
 
+  // Don't consume events with modifiers like <Ctrl>.
+  GdkDisplay* gdk_display = gdk_window_get_display(gdk_window_);
+  GdkModifierType no_text_input_mask =
+      gdk_keymap_get_modifier_mask(gdk_keymap_get_for_display(gdk_display),
+                                   GDK_MODIFIER_INTENT_NO_TEXT_INPUT);
+  if (event->state & no_text_input_mask) {
+    return false;
+  }
+
   uint32_t c = gdk_keyval_to_unicode(event->keyval);
   if (!c || g_unichar_iscntrl(c)) {
     return false;
@@ -392,6 +401,9 @@ void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
   event->time = GDK_CURRENT_TIME;
   event->keyval = keysym;
   event->is_modifier = false;
+  // TODO(timloh): Use text_input::modifiers_map to properly translate these.
+  // It seems like Chrome's bit masks for shift, caps lock, ctrl and alt all
+  // match GDK, but rarer modifier keys don't quite match.
   event->state = modifiers;
 
   // These are "deprecated and should never be used" so we leave them empty.

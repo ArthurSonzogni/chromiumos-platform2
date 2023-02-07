@@ -89,5 +89,12 @@ TEST_F(GtkKeySymEntryTest, Tab) {
   EXPECT_EQ(entry_.get_buffer()->get_text(), "t");
 }
 
+TEST_F(GtkKeySymTextViewTest, Modifiers) {
+  RunAndExpectTextChangeTo("e");
+  RunAndExpectTextChangeTo("");
+  RunAndExpectTextChangeTo("f");
+  RunAndExpectTextChangeTo("fe");
+}
+
 }  // namespace test
 }  // namespace cros_im

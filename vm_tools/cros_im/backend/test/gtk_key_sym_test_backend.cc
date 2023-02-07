@@ -106,5 +106,27 @@ BACKEND_TEST(GtkKeySymEntryTest, Tab) {
   Expect(Request::kReset);
 }
 
+// This test verifies that FilterKeypress isn't consuming events like Ctrl-A.
+// It's doesn't entirely match real-world behaviour as Chrome would currently
+// send these events as wl_keyboard::key instead of text_input::keysym, but we
+// don't have a way to fake the former and our handling for keysym events
+// generates fake key events which end up in the FilterKeypress code path
+// anyway.
+BACKEND_TEST(GtkKeySymTextViewTest, Modifiers) {
+  ExpectCreateTextInput();
+
+  constexpr uint32_t kControlMask = 4;
+
+  Expect(Request::kActivate);
+  SendKeySym(XKB_KEY_e);
+  SendKeySym(XKB_KEY_a, kControlMask);
+  Expect(Request::kReset);
+  SendKeySym(XKB_KEY_x, kControlMask);
+  SendKeySym(XKB_KEY_f);
+  SendKeySym(XKB_KEY_v, kControlMask);
+
+  Expect(Request::kDeactivate);
+}
+
 }  // namespace test
 }  // namespace cros_im

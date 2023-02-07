@@ -136,8 +136,9 @@ class BackendTest {
   }
 
   template <int text_input_id = 0>
-  void SendKeySym(int keysym) {
-    actions_.emplace(std::make_unique<KeySymEvent>(text_input_id, keysym));
+  void SendKeySym(int keysym, uint32_t modifiers = 0) {
+    actions_.emplace(
+        std::make_unique<KeySymEvent>(text_input_id, keysym, modifiers));
   }
 
   template <int text_input_id = 0>
