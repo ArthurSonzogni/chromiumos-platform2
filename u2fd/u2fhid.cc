@@ -308,7 +308,7 @@ int U2fHid::CmdPing(std::string* resp) {
 }
 
 int U2fHid::CmdLock(std::string* resp) {
-  int duration = transaction_->payload[0];
+  uint8_t duration = static_cast<uint8_t>(transaction_->payload[0]);
 
   VLOG(1) << "LOCK " << duration << "s CID:" << std::hex << transaction_->cid;
 
