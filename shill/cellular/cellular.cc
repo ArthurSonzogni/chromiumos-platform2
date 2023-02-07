@@ -752,8 +752,7 @@ void Cellular::ReAttachOnDetachComplete(const Error& error) {
   capability_->SetModemToLowPowerModeOnModemStop(true);
   if (error.IsSuccess()) {
     LOG(INFO) << LoggingTag() << ": Restarting modem for re-attach.";
-    // TODO(b/216847428): replace this with a real toggle
-    SetEnabledUnchecked(true, base::BindRepeating(LogRestartModemResult));
+    SetEnabledNonPersistent(true, base::BindRepeating(LogRestartModemResult));
   } else {
     LOG(WARNING) << LoggingTag() << ": Detaching the modem failed: " << error;
   }
