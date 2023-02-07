@@ -1441,6 +1441,12 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthFactorManagerEmptyReadInLoad = 2729,
   /* ./user_secret_stash.cc */
   kLocUSSEmptySerializedInGetContainerFromFB = 2730,
+  /* ./auth_session.cc */
+  kLocAuthSessionDeleteOldBackupFailedInUpdateWithUSS = 2731,
+  /* ./auth_session.cc */
+  kLocAuthSessionRemoveFailedInCleanUpBackupKeyset = 2732,
+  /* ./auth_session.cc */
+  kLocAuthSessionNoBackupFlagInCleanUpBackupKeyset = 2733,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2900
   //// See location_db.py for more info.

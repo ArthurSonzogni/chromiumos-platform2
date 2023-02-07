@@ -204,6 +204,36 @@ CryptohomeStatus RemoveKeysetByLabel(KeysetManagement& keyset_management,
   return OkStatus<CryptohomeError>();
 }
 
+// Removes the backup VaultKeyset with the given label. Returns success if
+// there's no keyset found.
+CryptohomeStatus CleanUpBackupKeyset(KeysetManagement& keyset_management,
+                                     const std::string& obfuscated_username,
+                                     const std::string& label) {
+  std::unique_ptr<VaultKeyset> remove_vk =
+      keyset_management.GetVaultKeyset(obfuscated_username, label);
+  if (!remove_vk.get()) {
+    return OkStatus<CryptohomeError>();
+  }
+  if (!remove_vk->IsForBackup()) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthSessionNoBackupFlagInCleanUpBackupKeyset),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  }
+
+  CryptohomeStatus status = keyset_management.ForceRemoveKeyset(
+      obfuscated_username, remove_vk->GetLegacyIndex());
+  if (!status.ok()) {
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocAuthSessionRemoveFailedInCleanUpBackupKeyset),
+               ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+               user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
+        .Wrap(std::move(status));
+  }
+  return OkStatus<CryptohomeError>();
+}
+
 }  // namespace
 
 std::unique_ptr<AuthSession> AuthSession::Create(
@@ -1449,9 +1479,9 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
     return;
   }
 
-  // Update and persist the backup VaultKeyset.
-  if (enable_create_backup_vk_with_uss_ &&
-      IsFactorTypeSupportedByBothUssAndVk(auth_factor_type)) {
+  // Update and persist the backup VaultKeyset if backup creation is enabled.
+  if (enable_create_backup_vk_with_uss_) {
+    DCHECK(IsFactorTypeSupportedByBothUssAndVk(auth_factor_type));
     user_data_auth::CryptohomeErrorCode error_code =
         static_cast<user_data_auth::CryptohomeErrorCode>(
             keyset_management_->UpdateKeysetWithKeyBlobs(
@@ -1464,6 +1494,25 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
           ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}), error_code));
       return;
     }
+  }
+  // If we cannot maintain the backup VaultKeyset (per above), we must delete
+  // it if it exists. The user might be updating the factor because the
+  // credential leaked, so it'd be a security issue to leave the backup intact.
+  if (!enable_create_backup_vk_with_uss_ &&
+      IsFactorTypeSupportedByBothUssAndVk(auth_factor_type)) {
+    CryptohomeStatus cleanup_status = CleanUpBackupKeyset(
+        *keyset_management_, obfuscated_username_, auth_factor_label);
+    if (!cleanup_status.ok()) {
+      std::move(on_done).Run(
+          MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(
+                  kLocAuthSessionDeleteOldBackupFailedInUpdateWithUSS),
+              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
+              .Wrap(std::move(cleanup_status)));
+      return;
+    }
+    LOG(INFO) << "Deleted obsolete backup VaultKeyset for "
+              << auth_factor_label;
   }
 
   // Update/persist the factor.

@@ -509,8 +509,18 @@ TEST_P(AuthSessionWithTpmSimulatorUssMigrationAgnosticTest,
         AuthenticatePasswordFactor(kPasswordLabel, kNewPassword, *auth_session),
         IsOk());
   }
-  // TODO(b:262632342): Fix the bug with leftover backup VKs and check the old
-  // password isn't accepted regardless of the final storage type.
+  // Check the old password isn't accepted even after switching back to the
+  // original storage type. Note that we don't check the new password since, due
+  // to implementation limitation, this is not guaranteed to work in the
+  // rollback scenario with USS-only factors (see b/262632342).
+  SetToInitialStorageType();
+  {
+    std::unique_ptr<AuthSession> auth_session = create_auth_session();
+    ASSERT_TRUE(auth_session);
+    EXPECT_THAT(
+        AuthenticatePasswordFactor(kPasswordLabel, kPassword, *auth_session),
+        NotOk());
+  }
 }
 
 }  // namespace
