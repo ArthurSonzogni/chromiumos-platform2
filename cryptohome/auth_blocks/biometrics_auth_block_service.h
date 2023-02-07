@@ -7,7 +7,6 @@
 
 #include <memory>
 #include <optional>
-#include <string>
 
 #include <base/callback.h>
 #include <brillo/secure_blob.h>
@@ -16,6 +15,7 @@
 #include "cryptohome/auth_blocks/biometrics_command_processor.h"
 #include "cryptohome/auth_blocks/prepare_token.h"
 #include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -42,7 +42,7 @@ class BiometricsAuthBlockService {
   // successful, enroll_signal_sender will be triggered with upcoming enrollment
   // progress signals.
   void StartEnrollSession(AuthFactorType auth_factor_type,
-                          std::string obfuscated_username,
+                          ObfuscatedUsername obfuscated_username,
                           PreparedAuthFactorToken::Consumer on_done);
 
   // CreateCredential returns the necessary data for cryptohome to
@@ -56,7 +56,7 @@ class BiometricsAuthBlockService {
   // successful, auth_signal_sender_ will be triggered with upcoming
   // authentication scan signals.
   void StartAuthenticateSession(AuthFactorType auth_factor_type,
-                                std::string obfuscated_username,
+                                ObfuscatedUsername obfuscated_username,
                                 PreparedAuthFactorToken::Consumer on_done);
 
   // MatchCredential returns the necessary data for cryptohome to
@@ -82,7 +82,7 @@ class BiometricsAuthBlockService {
 
     Token(AuthFactorType auth_factor_type,
           TokenType token_type,
-          std::string user_id);
+          ObfuscatedUsername user_id);
 
     // Attaches the token to the underlying service. Ideally we'd do this in the
     // constructor but the token is constructed when we initiate the request to
@@ -93,20 +93,37 @@ class BiometricsAuthBlockService {
 
     TokenType type() const { return token_type_; }
 
-    std::string user_id() const { return user_id_; }
+    ObfuscatedUsername user_id() const { return user_id_; }
 
    private:
     CryptohomeStatus TerminateAuthFactor() override;
 
     TokenType token_type_;
-    std::string user_id_;
+    ObfuscatedUsername user_id_;
     BiometricsAuthBlockService* service_ = nullptr;
     TerminateOnDestruction terminate_;
   };
 
+  // Depending on the result of success, this will pass either the given auth
+  // factor token, or a not-OK status to the given callback. This function is
+  // designed to be used as a callback with BiometricsCommandProcessor.
+  void CheckSessionStartResult(PreparedAuthFactorToken::Consumer on_done,
+                               bool success);
+
+  void OnEnrollScanDone(user_data_auth::AuthEnrollmentProgress signal,
+                        std::optional<brillo::Blob> nonce);
+
+  void OnAuthScanDone(user_data_auth::AuthScanDone signal, brillo::Blob nonce);
+
   std::unique_ptr<BiometricsCommandProcessor> processor_;
   // The most recent auth nonce received.
   std::optional<brillo::Blob> auth_nonce_;
+  // The token created when starting a session. This is cleared and returned to
+  // the caller when the session is started successfully.
+  std::unique_ptr<Token> pending_token_;
+  // The token for the currently active session, if there is one. This will
+  // be set to null otherwise.
+  Token* active_token_ = nullptr;
   // A callback to send cryptohome AuthEnrollmentProgress signal.
   base::RepeatingCallback<void(user_data_auth::AuthEnrollmentProgress)>
       enroll_signal_sender_;

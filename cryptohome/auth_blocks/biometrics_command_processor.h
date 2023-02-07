@@ -5,12 +5,15 @@
 #ifndef CRYPTOHOME_AUTH_BLOCKS_BIOMETRICS_COMMAND_PROCESSOR_H_
 #define CRYPTOHOME_AUTH_BLOCKS_BIOMETRICS_COMMAND_PROCESSOR_H_
 
+#include <optional>
 #include <string>
 
 #include <base/callback.h>
 #include <brillo/secure_blob.h>
+#include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -40,6 +43,28 @@ class BiometricsCommandProcessor {
       base::OnceCallback<void(CryptohomeStatusOr<OperationOutput>)>;
 
   virtual ~BiometricsCommandProcessor() = default;
+
+  // Sets the repeating callback that will be triggered whenever biod emits an
+  // EnrollScanDone event. The event will be packed into an
+  // AuthEnrollmentProgress proto and a nonce (if enrollment is done).
+  virtual void SetEnrollScanDoneCallback(
+      base::RepeatingCallback<void(user_data_auth::AuthEnrollmentProgress,
+                                   std::optional<brillo::Blob>)> on_done) = 0;
+
+  // Starts an enroll session in biod. |on_done| is triggered with whether the
+  // enroll session is started successfully.
+  virtual void StartEnrollSession(base::OnceCallback<void(bool)> on_done) = 0;
+
+  // Creates the actual biometrics credential in biod after enrollment is done.
+  // Secret values of the credential is returned and packed into an
+  // OperationOutput struct. If successful, |on_done| is triggered with the
+  // OperationOutput; otherwise it's triggered with a CryptohomeError.
+  virtual void CreateCredential(ObfuscatedUsername obfuscated_username,
+                                OperationInput payload,
+                                OperationCallback on_done) = 0;
+
+  // Ends the existing enroll session in biod.
+  virtual void EndEnrollSession() = 0;
 };
 
 }  // namespace cryptohome

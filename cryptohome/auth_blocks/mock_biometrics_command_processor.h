@@ -7,6 +7,9 @@
 
 #include "cryptohome/auth_blocks/biometrics_command_processor.h"
 
+#include <string>
+#include <optional>
+
 #include <gmock/gmock.h>
 
 namespace cryptohome {
@@ -14,6 +17,21 @@ namespace cryptohome {
 class MockBiometricsCommandProcessor : public BiometricsCommandProcessor {
  public:
   MockBiometricsCommandProcessor() = default;
+  MOCK_METHOD(
+      void,
+      SetEnrollScanDoneCallback,
+      (base::RepeatingCallback<void(user_data_auth::AuthEnrollmentProgress,
+                                    std::optional<brillo::Blob>)>),
+      (override));
+  MOCK_METHOD(void,
+              StartEnrollSession,
+              (base::OnceCallback<void(bool)>),
+              (override));
+  MOCK_METHOD(void,
+              CreateCredential,
+              (ObfuscatedUsername, OperationInput, OperationCallback),
+              (override));
+  MOCK_METHOD(void, EndEnrollSession, (), (override));
 };
 
 }  // namespace cryptohome

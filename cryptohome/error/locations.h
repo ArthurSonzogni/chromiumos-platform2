@@ -997,7 +997,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthListFailedInListKeys = 585,
   /* ./userdataauth.cc */
   kLocUserDataAuthNoIDInRemove = 586,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthInvalidAuthSessionInRemove = 587,
   /* ./userdataauth.cc */
   kLocUserDataAuthNoAccountIdWithAuthSessionInRemove = 588,
@@ -1463,6 +1463,16 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   //// This is a separator block at value 3300
   //// See location_db.py for more info.
   //////////////////////////////////////////////////
+  /* ./auth_blocks/biometrics_auth_block_service.cc */
+  kLocBiometricsServiceStartEnrollConcurrentSession = 3300,
+  /* ./auth_blocks/biometrics_auth_block_service.cc */
+  kLocBiometricsServiceCreateCredentialNoSession = 3301,
+  /* ./auth_blocks/biometrics_auth_block_service.cc */
+  kLocBiometricsServiceStartSessionFailure = 3302,
+  /* ./auth_blocks/biometrics_auth_block_service.cc */
+  kLocBiometricsServiceCheckStartConcurrentSession = 3303,
+  /* ./auth_blocks/biometrics_auth_block_service.cc */
+  kLocBiometricsServiceStartSessionNoToken = 3304,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.
