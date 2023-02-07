@@ -8,11 +8,15 @@
 #include <map>
 #include <string>
 
+#include <sys/syscall.h>
+
+#include "secanomalyd/landlock.h"
 #include "secanomalyd/mount_entry.h"
 
 SystemContext::SystemContext(SessionManagerProxyInterface* session_manager)
     : session_manager_{session_manager} {
   std::ignore = UpdateLoggedInState();
+  UpdateLandlockState();
 }
 
 void SystemContext::Refresh() {
@@ -35,6 +39,35 @@ bool SystemContext::UpdateLoggedInState() {
   logged_in_ = sessions.size() > 0;
   VLOG(1) << "logged_in_ -> " << std::boolalpha << logged_in_;
   return true;
+}
+
+void SystemContext::UpdateLandlockState() {
+  int landlock_version =
+      landlock_create_ruleset(NULL, 0, LANDLOCK_CREATE_RULESET_VERSION);
+  if (landlock_version <= 0) {
+    const int err = errno;
+    switch (err) {
+      case ENOSYS: {
+        LOG(WARNING) << "Landlock is not supported by the kernel.";
+        landlock_state_ = LandlockState::kNotSupported;
+        break;
+      }
+      case EOPNOTSUPP: {
+        LOG(WARNING)
+            << "Landlock is supported by the kernel but disabled at boot time.";
+        landlock_state_ = LandlockState::kDisabled;
+        break;
+      }
+      default: {
+        LOG(WARNING) << "Could not determine Landlock state.";
+        landlock_state_ = LandlockState::kUnknown;
+        break;
+      }
+    }
+  } else {
+    VLOG(1) << "Landlock is enabled; Version " << landlock_version;
+    landlock_state_ = LandlockState::kEnabled;
+  }
 }
 
 void SystemContext::UpdateKnownMountsState() {

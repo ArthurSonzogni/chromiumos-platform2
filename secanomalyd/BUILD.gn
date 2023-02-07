@@ -28,6 +28,10 @@ pkg_config("libsecanomaly_config") {
   pkg_deps = [ "re2" ]
 }
 
+source_set("landlock") {
+  sources = [ "landlock.c" ]
+}
+
 static_library("libsecanomaly") {
   sources = [
     "audit_log_reader.cc",
@@ -44,6 +48,7 @@ static_library("libsecanomaly") {
     ":target_defaults",
     ":libsecanomaly_config",
   ]
+  deps = [ ":landlock" ]
 }
 
 executable("secanomalyd") {
