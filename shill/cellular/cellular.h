@@ -351,6 +351,11 @@ class Cellular : public Device,
   bool IsRoamingAllowed();
   void SetApnList(const Stringmaps& apn_list);
 
+  // TODO(b/267804414): Called whenever the tethering feature flag changes
+  // value. This is a temporary function to switch mobile operator databases
+  // until b/249387693 is completed.
+  void TetheringAllowedUpdated(bool allowed);
+
   // Sets a Service for testing. When set, Cellular does not create or destroy
   // the associated Service.
   void SetServiceForTesting(CellularServiceRefPtr service);

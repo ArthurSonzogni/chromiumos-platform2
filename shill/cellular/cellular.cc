@@ -2829,4 +2829,6 @@ void Cellular::SetSelectedServiceForTesting(CellularServiceRefPtr service) {
   SelectService(service);
 }
 
+void Cellular::TetheringAllowedUpdated(bool allowed) {}
+
 }  // namespace shill

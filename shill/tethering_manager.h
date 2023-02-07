@@ -9,6 +9,7 @@
 #include <string>
 
 #include <base/cancelable_callback.h>
+#include <base/memory/weak_ptr.h>
 
 #include "shill/refptr_types.h"
 #include "shill/store/property_store.h"
@@ -115,6 +116,16 @@ class TetheringManager {
   using SetEnabledResultCallback =
       base::OnceCallback<void(SetEnabledResult result)>;
 
+  void HelpRegisterDerivedBool(PropertyStore* store,
+                               const std::string& name,
+                               bool (TetheringManager::*get)(Error* error),
+                               bool (TetheringManager::*set)(const bool&,
+                                                             Error*));
+
+  // DBUS accessors
+  bool SetAllowed(const bool& value, Error* error);
+  bool GetAllowed(Error* /*error*/) { return allowed_; }
+
   // Tethering properties get handlers.
   KeyValueStore GetCapabilities(Error* error);
   KeyValueStore GetConfig(Error* error);
@@ -164,6 +175,10 @@ class TetheringManager {
   // Convert stop reason enum to string.
   static const char* StopReasonToString(StopReason reason);
 
+  // TODO(b/267804414): Remove it after fishfood.
+  // Asynchronous function triggered when the Allowed property changes.
+  void TetheringAllowedUpdated(bool allowed);
+
   // TetheringManager is created and owned by Manager.
   Manager* manager_;
   // Tethering feature flag.
@@ -200,6 +215,8 @@ class TetheringManager {
   bool hotspot_service_up_;
   // The reason why tethering is stopped.
   StopReason stop_reason_;
+
+  base::WeakPtrFactory<TetheringManager> weak_ptr_factory_{this};
 };
 
 inline std::ostream& operator<<(std::ostream& stream,

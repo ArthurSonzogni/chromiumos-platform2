@@ -7,6 +7,7 @@
 #include <math.h>
 #include <stdint.h>
 
+#include <iostream>
 #include <set>
 #include <string>
 #include <utility>
@@ -110,7 +111,9 @@ void TetheringManager::ResetConfiguration() {
 }
 
 void TetheringManager::InitPropertyStore(PropertyStore* store) {
-  store->RegisterBool(kTetheringAllowedProperty, &allowed_);
+  HelpRegisterDerivedBool(store, kTetheringAllowedProperty,
+                          &TetheringManager::GetAllowed,
+                          &TetheringManager::SetAllowed);
   store->RegisterDerivedKeyValueStore(
       kTetheringConfigProperty,
       KeyValueStoreAccessor(new CustomAccessor<TetheringManager, KeyValueStore>(
@@ -792,6 +795,38 @@ const char* TetheringManager::StopReasonToString(StopReason reason) {
     default:
       NOTREACHED() << "Unhandled stop reason " << static_cast<int>(reason);
       return "Invalid";
+  }
+}
+
+void TetheringManager::HelpRegisterDerivedBool(
+    PropertyStore* store,
+    const std::string& name,
+    bool (TetheringManager::*get)(Error* error),
+    bool (TetheringManager::*set)(const bool&, Error*)) {
+  store->RegisterDerivedBool(
+      name,
+      BoolAccessor(new CustomAccessor<TetheringManager, bool>(this, get, set)));
+}
+
+bool TetheringManager::SetAllowed(const bool& value, Error* error) {
+  if (allowed_ == value)
+    return false;
+
+  LOG(INFO) << __func__ << " Allowed set to " << std::boolalpha << value;
+  allowed_ = value;
+  manager_->dispatcher()->PostTask(
+      FROM_HERE, base::BindRepeating(&TetheringManager::TetheringAllowedUpdated,
+                                     weak_ptr_factory_.GetWeakPtr(), allowed_));
+
+  return true;
+}
+
+void TetheringManager::TetheringAllowedUpdated(bool allowed) {
+  const auto cellular_devices =
+      manager_->FilterByTechnology(Technology::kCellular);
+  for (auto device : cellular_devices) {
+    Cellular* cellular_device = static_cast<Cellular*>(device.get());
+    cellular_device->TetheringAllowedUpdated(allowed);
   }
 }
 

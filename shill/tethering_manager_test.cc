@@ -130,6 +130,8 @@ class TetheringManagerTest : public testing::Test {
     manager_.upstart_.reset(upstart_);
     ON_CALL(manager_, cellular_service_provider())
         .WillByDefault(Return(&cellular_service_provider_));
+    cellular_profile_ = new NiceMock<MockProfile>(&manager_);
+    cellular_service_provider_.set_profile_for_testing(cellular_profile_);
     ON_CALL(manager_, modem_info()).WillByDefault(Return(&modem_info_));
   }
   ~TetheringManagerTest() override = default;
@@ -330,6 +332,7 @@ class TetheringManagerTest : public testing::Test {
   MockWiFiProvider* wifi_provider_;
   MockEthernetProvider* ethernet_provider_;
   CellularServiceProvider cellular_service_provider_{&manager_};
+  scoped_refptr<NiceMock<MockProfile>> cellular_profile_;
   MockUpstart* upstart_;
   scoped_refptr<MockHotspotDevice> hotspot_device_;
 };
@@ -640,10 +643,10 @@ TEST_F(TetheringManagerTest, CheckReadiness) {
   scoped_refptr<MockCellularService> cell_service =
       new MockCellularService(&manager_, cell);
   SetConfigUpstream(config, TechnologyName(Technology::kCellular));
-  EXPECT_TRUE(FromProperties(tethering_manager_, config));
   EXPECT_CALL(*cell_service, state())
       .WillRepeatedly(Return(Service::kStateConnected));
   AddServiceToCellularProvider(cell_service);
+  cell->set_selected_service_for_testing(cell_service);
   tethering_manager_->CheckReadiness(cb.Get());
   EXPECT_CALL(cb, Run(TetheringManager::EntitlementStatus::kReady));
   DispatchPendingEvents();
