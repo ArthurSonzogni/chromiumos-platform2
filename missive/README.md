@@ -48,8 +48,8 @@ debug builds by default by adding `USE="${USE} -cros-debug"` to
 Note that aspects of the design may have evolved since the original design docs
 were written.
 
-* [Daemon Design](go/cros-reporting-daemon)
-* [Messaging Layer](go/chrome-reporting-messaging-layer)
+* [Daemon Design](http://go/cros-reporting-daemon)
+* [Messaging Layer](http://go/chrome-reporting-messaging-layer)
 
 ## Updating From Chromium
 
