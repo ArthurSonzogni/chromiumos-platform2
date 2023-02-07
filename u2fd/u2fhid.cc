@@ -313,8 +313,7 @@ int U2fHid::CmdLock(std::string* resp) {
   VLOG(1) << "LOCK " << duration << "s CID:" << std::hex << transaction_->cid;
 
   if (duration > kMaxLockDurationSeconds) {
-    ReturnError(U2fHidError::kInvalidPar, transaction_->cid, true);
-    return -EINVAL;
+    duration = kMaxLockDurationSeconds;
   }
 
   if (!duration) {
