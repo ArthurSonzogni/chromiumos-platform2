@@ -408,6 +408,10 @@ constexpr char kRecoveryUserIdSwitch[] = "recovery_user_gaia_id";
 constexpr char kRecoveryDeviceIdSwitch[] = "recovery_device_user_id";
 constexpr char kRecoveryEpochResponseSwitch[] = "recovery_epoch_response";
 constexpr char kRecoveryResponseSwitch[] = "recovery_response";
+constexpr char kRecoveryLedgerNameSwitch[] = "recovery_ledger_name";
+constexpr char kRecoveryLedgerPublicKeyHashSwitch[] =
+    "recovery_ledger_pub_key_hash";
+constexpr char kRecoveryLedgerPublicKeySwitch[] = "recovery_ledger_pub_key";
 constexpr char kAuthIntentSwitch[] = "auth_intent";
 constexpr char kApplicationName[] = "application_name";
 }  // namespace
@@ -866,6 +870,43 @@ bool BuildAuthInput(Printer& printer,
     auth_input->mutable_cryptohome_recovery_input()->set_epoch_response(
         epoch_response);
 
+    if (!cl->HasSwitch(switches::kRecoveryLedgerNameSwitch)) {
+      printer.PrintFormattedHumanOutput("No %s switch specified\n",
+                                        switches::kRecoveryLedgerNameSwitch);
+      return false;
+    }
+    if (!cl->HasSwitch(switches::kRecoveryLedgerPublicKeyHashSwitch)) {
+      printer.PrintFormattedHumanOutput(
+          "No %s switch specified\n",
+          switches::kRecoveryLedgerPublicKeyHashSwitch);
+      return false;
+    }
+    if (!cl->HasSwitch(switches::kRecoveryLedgerPublicKeySwitch)) {
+      printer.PrintFormattedHumanOutput(
+          "No %s switch specified\n", switches::kRecoveryLedgerPublicKeySwitch);
+      return false;
+    }
+    std::string ledger_name =
+        cl->GetSwitchValueASCII(switches::kRecoveryLedgerNameSwitch);
+    auth_input->mutable_cryptohome_recovery_input()
+        ->mutable_ledger_info()
+        ->set_name(ledger_name);
+    uint32_t pub_key_hash;
+    if (!base::StringToUint(cl->GetSwitchValueASCII(
+                                switches::kRecoveryLedgerPublicKeyHashSwitch),
+                            &pub_key_hash)) {
+      printer.PrintFormattedHumanOutput(
+          "ledger_pub_key_hash value cannot be converted to int.\n");
+      return false;
+    }
+    auth_input->mutable_cryptohome_recovery_input()
+        ->mutable_ledger_info()
+        ->set_key_hash(pub_key_hash);
+    std::string pub_key =
+        cl->GetSwitchValueASCII(switches::kRecoveryLedgerPublicKeySwitch);
+    auth_input->mutable_cryptohome_recovery_input()
+        ->mutable_ledger_info()
+        ->set_public_key(pub_key);
     return true;
   } else if (cl->HasSwitch(switches::kPublicMount)) {
     auth_input->mutable_kiosk_input();
