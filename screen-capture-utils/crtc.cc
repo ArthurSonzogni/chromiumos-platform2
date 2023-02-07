@@ -102,31 +102,27 @@ std::vector<std::unique_ptr<Crtc>> GetConnectedCrtcs() {
 
     for (int index_connector = 0; index_connector < resources->count_connectors;
          ++index_connector) {
-      base::File dup_file = file.Duplicate();
-      if (!dup_file.IsValid())
-        continue;
-
       ScopedDrmModeConnectorPtr connector(drmModeGetConnector(
-          dup_file.GetPlatformFile(), resources->connectors[index_connector]));
+          file.GetPlatformFile(), resources->connectors[index_connector]));
       if (!connector || connector->encoder_id == 0)
         continue;
 
       ScopedDrmModeEncoderPtr encoder(
-          drmModeGetEncoder(dup_file.GetPlatformFile(), connector->encoder_id));
+          drmModeGetEncoder(file.GetPlatformFile(), connector->encoder_id));
       if (!encoder || encoder->crtc_id == 0)
         continue;
 
       ScopedDrmModeCrtcPtr crtc(
-          drmModeGetCrtc(dup_file.GetPlatformFile(), encoder->crtc_id));
+          drmModeGetCrtc(file.GetPlatformFile(), encoder->crtc_id));
       if (!crtc || !crtc->mode_valid || crtc->buffer_id == 0)
         continue;
 
       ScopedDrmModeFBPtr fb(
-          drmModeGetFB(dup_file.GetPlatformFile(), crtc->buffer_id));
+          drmModeGetFB(file.GetPlatformFile(), crtc->buffer_id));
 
       ScopedDrmModeFB2Ptr fb2(
-          drmModeGetFB2(dup_file.GetPlatformFile(), crtc->buffer_id),
-          dup_file.GetPlatformFile());
+          drmModeGetFB2(file.GetPlatformFile(), crtc->buffer_id),
+          file.GetPlatformFile());
 
       if (!fb && !fb2) {
         LOG(ERROR) << "getfb failed";
@@ -134,6 +130,11 @@ std::vector<std::unique_ptr<Crtc>> GetConnectedCrtcs() {
       }
 
       std::unique_ptr<Crtc> res_crtc;
+
+      // Keep around a file for next display if needed.
+      base::File file_dup = file.Duplicate();
+      if (!file_dup.IsValid())
+        continue;
 
       // Multiplane is only handled by egl_capture, so don't bother if
       // GETFB2 isn't supported. Obtain the |plane_res_| for later use.
@@ -144,18 +145,19 @@ std::vector<std::unique_ptr<Crtc>> GetConnectedCrtcs() {
       // doesn't?
       if (fb2 && atomic_modeset) {
         ScopedDrmPlaneResPtr plane_res(
-            drmModeGetPlaneResources(dup_file.GetPlatformFile()));
+            drmModeGetPlaneResources(file.GetPlatformFile()));
         CHECK(plane_res) << " Failed to get plane resources";
-        res_crtc = std::make_unique<Crtc>(
-            std::move(dup_file), std::move(connector), std::move(encoder),
-            std::move(crtc), std::move(fb), std::move(fb2),
-            std::move(plane_res));
+        res_crtc = std::make_unique<Crtc>(std::move(file), std::move(connector),
+                                          std::move(encoder), std::move(crtc),
+                                          std::move(fb), std::move(fb2),
+                                          std::move(plane_res));
       } else {
         res_crtc = std::make_unique<Crtc>(
-            std::move(dup_file), std::move(connector), std::move(encoder),
+            std::move(file), std::move(connector), std::move(encoder),
             std::move(crtc), std::move(fb), std::move(fb2), nullptr);
       }
 
+      file = std::move(file_dup);
       crtcs.emplace_back(std::move(res_crtc));
     }
   }
