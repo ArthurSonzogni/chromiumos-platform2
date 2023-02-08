@@ -16,11 +16,11 @@
 #include <google/protobuf/util/message_differencer.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/common/protobuf_test_utils.h"
 #include "diagnostics/constants/grpc_constants.h"
 #include "diagnostics/dpsl/internal/dpsl_global_context_impl.h"
 #include "diagnostics/dpsl/internal/dpsl_rpc_server_impl.h"
 #include "diagnostics/dpsl/internal/dpsl_thread_context_impl.h"
+#include "diagnostics/dpsl/internal/protobuf_test_utils.h"
 #include "diagnostics/dpsl/internal/test_dpsl_background_thread.h"
 #include "diagnostics/dpsl/public/dpsl_global_context.h"
 #include "diagnostics/dpsl/public/dpsl_rpc_handler.h"
