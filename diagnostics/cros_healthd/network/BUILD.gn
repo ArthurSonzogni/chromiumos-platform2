@@ -27,7 +27,7 @@ if (use.test) {
     ]
     deps = [
       ":libnetwork_health_adapter",
-      "//diagnostics/common:mojo_testrunner",
+      "//diagnostics/cros_healthd/utils:mojo_testrunner",
       "//diagnostics/mojom/external:network_health_mojo_bindings",
     ]
   }

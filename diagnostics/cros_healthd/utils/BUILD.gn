@@ -11,6 +11,7 @@ pkg_config("libcros_healthd_utils_pkg_deps") {
     "libbrillo",
     "libchrome",
     "libmetrics",
+    "libmojo",
     "libudev",
     "libusb-1.0",
   ]
@@ -43,6 +44,15 @@ if (use.test) {
       "libchrome-test",
       "libmetrics",
     ]
+  }
+
+  source_set("mojo_testrunner") {
+    configs += [
+      ":libcros_healthd_utils_pkg_deps",
+      "//common-mk:test",
+    ]
+    deps = [ "//common-mk/testrunner:testrunner" ]
+    sources = [ "mojo_testrunner.cc" ]
   }
 
   source_set("libcros_healthd_utils_test") {

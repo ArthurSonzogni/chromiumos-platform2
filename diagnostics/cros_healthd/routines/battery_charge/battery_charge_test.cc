@@ -12,7 +12,6 @@
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
 #include <gtest/gtest.h>
-#include <mojo/core/embedder/embedder.h>
 
 #include "diagnostics/cros_healthd/routines/battery_charge/battery_charge.h"
 #include "diagnostics/cros_healthd/routines/battery_charge/battery_charge_constants.h"

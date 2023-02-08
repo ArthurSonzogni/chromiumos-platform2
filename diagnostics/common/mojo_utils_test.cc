@@ -9,7 +9,6 @@
 
 #include <base/strings/string_piece.h>
 #include <gtest/gtest.h>
-#include <mojo/core/embedder/embedder.h>
 #include <mojo/public/cpp/system/handle.h>
 
 namespace diagnostics {

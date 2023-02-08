@@ -12,7 +12,6 @@
 #include <base/values.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <mojo/core/embedder/embedder.h>
 
 #include "diagnostics/common/mojo_utils.h"
 #include "diagnostics/cros_healthd/routines/battery_health/battery_health.h"
