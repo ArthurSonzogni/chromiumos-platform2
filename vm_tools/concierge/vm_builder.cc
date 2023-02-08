@@ -462,7 +462,7 @@ base::StringPairs VmBuilder::BuildRunParams() const {
   if (enable_gpu_) {
     std::string gpu_arg = "vulkan=";
     gpu_arg += enable_vulkan_ ? "true" : "false";
-    if (enable_virtgpu_native_context_ || enable_cross_domain_context_) {
+    if (enable_cross_domain_context_) {
       gpu_arg += ",context-types=cross-domain";
       if (enable_vulkan_) {
         gpu_arg += ":venus";
