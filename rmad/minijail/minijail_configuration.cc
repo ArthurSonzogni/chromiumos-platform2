@@ -7,6 +7,8 @@
 #include <sys/capability.h>
 #include <sys/mount.h>
 
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
 #include <libminijail.h>
 #include <scoped_minijail.h>
 
@@ -20,6 +22,18 @@ constexpr char kRmadSeccompFilterPath[] =
     "/usr/share/policy/rmad-seccomp.policy";
 constexpr char kRmadExecutorSeccompFilterPath[] =
     "/usr/share/policy/rmad-executor-seccomp.policy";
+
+// Checks to see if |file_path| exists on the device. If it does, it will be
+// bind-mounted inside |jail| at the same path it exists outside the minijail,
+// and it will not be writeable from inside |jail|.
+void BindMountIfPathExists(struct minijail* jail,
+                           const base::FilePath& file_path) {
+  if (!base::PathExists(file_path))
+    return;
+
+  const char* path_string = file_path.value().c_str();
+  minijail_bind(jail, path_string, path_string, 0);
+}
 
 }  // namespace
 
@@ -70,6 +84,9 @@ void EnterMinijail(bool set_admin_caps) {
   minijail_bind(j.get(), "/sys/class", "/sys/class", 0);
   // Required to read VPD and sensor attributes.
   minijail_bind(j.get(), "/sys/bus", "/sys/bus", 0);
+  // Required to read system properties (crossystem) on arm.
+  BindMountIfPathExists(j.get(),
+                        base::FilePath("/sys/firmware/devicetree/base"));
 
   minijail_mount_with_data(j.get(), "tmpfs", "/mnt/stateful_partition", "tmpfs",
                            0, nullptr);
