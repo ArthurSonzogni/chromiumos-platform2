@@ -27,6 +27,8 @@ namespace {
 
 constexpr char kDlpPath[] = "/usr/sbin/dlp";
 
+const char kDlpSeccompPolicy[] = "/usr/share/policy/dlp-seccomp.policy";
+
 bool RetrieveSanitizedPrimaryUsername(std::string* out_sanitized_username) {
   DCHECK(out_sanitized_username);
 
@@ -132,7 +134,9 @@ ScopedMinijail SetupMinijail(const base::FilePath& home_path,
   minijail_bind(j.get(), home_path.Append("MyFiles/Downloads").value().c_str(),
                 home_path.Append("MyFiles/Downloads").value().c_str(), 0);
 
-  // TODO(crbug.com/1184871) Apply seccomp policy.
+  // Use a seccomp filter.
+  minijail_parse_seccomp_filters(j.get(), kDlpSeccompPolicy);
+  minijail_use_seccomp_filter(j.get());
 
   for (const auto& fd : fds_to_preserve) {
     minijail_preserve_fd(j.get(), fd, fd);
