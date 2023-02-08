@@ -22,7 +22,7 @@ namespace power_manager::policy {
 // any battery saving measures, but rather manages the current state of
 // BSM and signals other components in the system about changes to the
 // BSM state.
-class BatterySaverController {
+class BatterySaverController : public system::DBusWrapper::Observer {
  public:
   BatterySaverController();
 
@@ -30,10 +30,15 @@ class BatterySaverController {
   BatterySaverController(const BatterySaverController&) = delete;
   BatterySaverController& operator=(const BatterySaverController&) = delete;
 
+  ~BatterySaverController() override;
+
   // Initialize this class instance.
   //
   // `dbus_wrapper` must outlive this class instance.
   void Init(system::DBusWrapperInterface& dbus_wrapper);
+
+  // `system::DBusWrapper::Observer` implementation
+  void OnServicePublished() override;
 
  private:
   // Handle DBus requests to get/set the state of Battery Saver Mode.

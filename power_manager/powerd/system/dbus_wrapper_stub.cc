@@ -227,6 +227,12 @@ void DBusWrapperStub::ExportMethod(
 bool DBusWrapperStub::PublishService() {
   CHECK(!service_published_) << "Service already published";
   service_published_ = true;
+
+  // Notify our observers.
+  for (DBusWrapper::Observer& observer : observers_) {
+    observer.OnServicePublished();
+  }
+
   return true;
 }
 

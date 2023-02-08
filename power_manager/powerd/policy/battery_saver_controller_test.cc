@@ -16,7 +16,10 @@ namespace {
 
 class BatterySaverControllerTest : public TestEnvironment {
  public:
-  BatterySaverControllerTest() { controller_.Init(dbus_); }
+  BatterySaverControllerTest() {
+    controller_.Init(dbus_);
+    dbus_.PublishService();
+  }
 
   // Call the `GetBatterySaverModeState` D-Bus method.
   BatterySaverModeState CallGetBatterySaverModeState() {
@@ -116,6 +119,18 @@ TEST_F(BatterySaverControllerTest, BadSetBatterySaverModeState) {
 }
 
 TEST_F(BatterySaverControllerTest, SignalSent) {
+  // Expect a signal to be sent when the controller initially starts.
+  {
+    BatterySaverModeState state;
+    EXPECT_TRUE(dbus_.GetSentSignal(/*index=*/0, kBatterySaverModeStateChanged,
+                                    &state,
+                                    /*signal_out=*/nullptr));
+    EXPECT_FALSE(state.enabled());
+    EXPECT_EQ(state.cause(), BatterySaverModeState::CAUSE_STATE_RESTORED);
+
+    dbus_.ClearSentSignals();
+  }
+
   // Enable BSM.
   {
     CallSetBatterySaverModeState(/*enabled=*/true);
@@ -126,12 +141,14 @@ TEST_F(BatterySaverControllerTest, SignalSent) {
                                     /*signal_out=*/nullptr));
     EXPECT_TRUE(state.enabled());
     EXPECT_EQ(state.cause(), BatterySaverModeState::CAUSE_USER_ENABLED);
+
+    dbus_.ClearSentSignals();
   }
 
   // Setting to the same state shouldn't send another signal.
   {
     CallSetBatterySaverModeState(/*enabled=*/true);
-    EXPECT_EQ(dbus_.num_sent_signals(), 1);
+    EXPECT_EQ(dbus_.num_sent_signals(), 0);
   }
 
   // Disable BSM again.
@@ -139,11 +156,13 @@ TEST_F(BatterySaverControllerTest, SignalSent) {
     CallSetBatterySaverModeState(/*enabled=*/false);
 
     BatterySaverModeState state;
-    EXPECT_TRUE(dbus_.GetSentSignal(/*index=*/1, kBatterySaverModeStateChanged,
+    EXPECT_TRUE(dbus_.GetSentSignal(/*index=*/0, kBatterySaverModeStateChanged,
                                     &state,
                                     /*signal_out=*/nullptr));
     EXPECT_FALSE(state.enabled());
     EXPECT_EQ(state.cause(), BatterySaverModeState::CAUSE_USER_DISABLED);
+
+    dbus_.ClearSentSignals();
   }
 }
 

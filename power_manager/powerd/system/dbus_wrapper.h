@@ -33,13 +33,16 @@ class DBusWrapperInterface {
  public:
   class Observer : public base::CheckedObserver {
    public:
+    ~Observer() override = default;
+
+    // Called when DBusWrapper has successfully published its service to D-Bus.
+    virtual void OnServicePublished() {}
+
     // Called when the ownership of a D-Bus service name changes. |old_owner| or
     // |new_owner| may be empty if the service just started or stopped.
     virtual void OnDBusNameOwnerChanged(const std::string& service_name,
                                         const std::string& old_owner,
                                         const std::string& new_owner) {}
-
-    ~Observer() override = default;
   };
 
   virtual ~DBusWrapperInterface() = default;

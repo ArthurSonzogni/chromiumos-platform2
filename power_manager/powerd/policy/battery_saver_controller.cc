@@ -12,6 +12,10 @@ namespace power_manager::policy {
 
 BatterySaverController::BatterySaverController() : weak_ptr_factory_(this) {}
 
+BatterySaverController::~BatterySaverController() {
+  dbus_wrapper_->RemoveObserver(this);
+}
+
 void BatterySaverController::Init(system::DBusWrapperInterface& dbus_wrapper) {
   dbus_wrapper_ = &dbus_wrapper;
 
@@ -23,6 +27,16 @@ void BatterySaverController::Init(system::DBusWrapperInterface& dbus_wrapper) {
       kSetBatterySaverModeState,
       base::BindRepeating(&BatterySaverController::OnSetStateCall,
                           weak_ptr_factory_.GetWeakPtr()));
+
+  // Send out a signal describing our initial state, just in case there
+  // are already clients listening.
+  dbus_wrapper_->AddObserver(this);
+}
+
+void BatterySaverController::OnServicePublished() {
+  // When we initially connect to D-Bus, send a signal about the initial
+  // BSM state.
+  SendStateChangeSignal(BatterySaverModeState::CAUSE_STATE_RESTORED);
 }
 
 void BatterySaverController::OnGetStateCall(

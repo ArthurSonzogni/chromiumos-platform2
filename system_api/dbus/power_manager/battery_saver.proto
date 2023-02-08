@@ -37,6 +37,9 @@ message BatterySaverModeState {
     // BSM was manually enabled or disabled by the user.
     CAUSE_USER_ENABLED = 1;
     CAUSE_USER_DISABLED = 2;
+
+    // BSM state has been restored from a previous session/boot.
+    CAUSE_STATE_RESTORED = 3;
   };
   optional Cause cause = 2;
 }

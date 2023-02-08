@@ -111,8 +111,19 @@ void DBusWrapper::ExportMethod(
 }
 
 bool DBusWrapper::PublishService() {
-  return bus_->RequestOwnershipAndBlock(kPowerManagerServiceName,
-                                        dbus::Bus::REQUIRE_PRIMARY);
+  // Publish the service.
+  bool success = bus_->RequestOwnershipAndBlock(kPowerManagerServiceName,
+                                                dbus::Bus::REQUIRE_PRIMARY);
+  if (!success) {
+    return false;
+  }
+
+  // Notify our observers.
+  for (DBusWrapper::Observer& observer : observers_) {
+    observer.OnServicePublished();
+  }
+
+  return true;
 }
 
 void DBusWrapper::EmitSignal(dbus::Signal* signal) {
