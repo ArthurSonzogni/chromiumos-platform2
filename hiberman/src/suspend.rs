@@ -139,17 +139,6 @@ impl SuspendConductor {
 
         // Don't allow the logfile to log as it creates a deadlock.
         log_file.set_logging(false);
-        let fs_stats = Self::get_fs_stats()?;
-        let _locked_memory = lock_process_memory()?;
-        let mut swappiness = Swappiness::new()?;
-        swappiness.set_swappiness(SUSPEND_SWAPPINESS)?;
-        let mut key_manager = HibernateKeyManager::new();
-        // Set up the hibernate metadata encryption keys. This was populated
-        // at login time by a previous instance of this process.
-        key_manager.load_public_key()?;
-
-        // Now that the public key is loaded, derive a metadata encryption key.
-        key_manager.install_new_metadata_key(&mut self.metadata)?;
 
         // Stop logging to syslog, and divert instead to a file since the
         // logging daemon's about to be frozen.
@@ -172,7 +161,6 @@ impl SuspendConductor {
         );
         // Read the metrics files and send out the samples.
         read_and_send_metrics();
-        self.delete_data_if_disk_full(fs_stats);
         result
     }
 
