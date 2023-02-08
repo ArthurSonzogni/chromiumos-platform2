@@ -59,19 +59,6 @@ do.
       </arg>
     </method>
 
-    <method name="Mount">
-      <annotation name="org.chromium.DBus.Method.Kind"
-                  value="async"/>
-      <arg name="request" type="ay" direction="in">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::MountRequest" />
-      </arg>
-      <arg name="reply" type="ay" direction="out">
-        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
-                    value="user_data_auth::MountReply" />
-      </arg>
-    </method>
-
     <method name="Remove">
       <annotation name="org.chromium.DBus.Method.Kind"
                   value="async"/>

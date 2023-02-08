@@ -38,7 +38,6 @@
 #include "cryptohome/auth_session_manager.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/cleanup/low_disk_space_handler.h"
-#include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/fingerprint_manager.h"
@@ -111,14 +110,6 @@ class UserDataAuth {
   // a reply without error if all mounts are cleanly unmounted.
   // Note: This must only be called on mount thread
   user_data_auth::UnmountReply Unmount();
-
-  // This function will attempt to mount the requested user's home directory, as
-  // specified in |request|. Once that's done, it'll call |on_done| to notify
-  // the result. Note that there's no guarantee on whether |on_done| is called
-  // before or after this function returns.
-  void DoMount(
-      user_data_auth::MountRequest request,
-      base::OnceCallback<void(const user_data_auth::MountReply&)> on_done);
 
   // Calling this method will kick start the migration to Dircrypto format (from
   // eCryptfs). |request| contains the account whose cryptohome to migrate, and
@@ -776,16 +767,6 @@ class UserDataAuth {
 
   // =============== Mount Related Utilities ===============
 
-  // Performs a single attempt to Mount a non-annonimous user.
-  MountStatus AttemptUserMount(const Credentials& credentials,
-                               const MountArgs& mount_args,
-                               UserSession* user_session);
-
-  // Performs a single attempt to Mount a non-annonimous user with AuthSession
-  MountStatus AttemptUserMount(AuthSession* auth_session,
-                               const MountArgs& mount_args,
-                               UserSession* user_session);
-
   // Filters out active mounts from |mounts|, populating |active_mounts| set.
   // If |include_busy_mount| is false, then stale mounts with open files and
   // mount points connected to children of the mount source will be treated as
@@ -812,58 +793,16 @@ class UserDataAuth {
   // Note: This must only be called on mount thread
   bool RemoveAllMounts();
 
-  // Determines whether the mount request should be ephemeral. On error, returns
-  // status, otherwise, return the result (whether to mount ephemeral).
-  CryptohomeStatusOr<bool> GetShouldMountAsEphemeral(
-      const Username& account_id,
-      bool is_ephemeral_mount_requested,
-      bool has_create_request) const;
-
   // Returns either an existing or a newly created UserSession, if not present.
   UserSession* GetOrCreateUserSession(const Username& username);
 
   // Removes an inactive user session.
   void RemoveInactiveUserSession(const Username& username);
 
-  // Calling this method will mount the home directory for guest users.
-  // This is usually called by DoMount(). Note that this method is asynchronous,
-  // and will call |on_done| exactly once to deliver the result regardless of
-  // whether the operation is successful.
-  void MountGuest(
-      base::OnceCallback<void(const user_data_auth::MountReply&)> on_done);
-
   // Performs the lazy part of the initialization that is required for
   // performing operations with challenge-response keys. Returns whether
   // succeeded.
   CryptohomeStatus InitForChallengeResponseAuth();
-
-  // This is a utility function used by DoMount(). It is called if the request
-  // mounting operation requires challenge response authentication. i.e. The key
-  // for the storage is sealed.
-  void DoChallengeResponseMount(
-      const user_data_auth::MountRequest& request,
-      const MountArgs& mount_args,
-      base::OnceCallback<void(const user_data_auth::MountReply&)> on_done);
-
-  // This is a utility function used by DoChallengeResponseMount(), and is
-  // called once we're done doing challenge response authentication.
-  void OnChallengeResponseMountCredentialsObtained(
-      const user_data_auth::MountRequest& request,
-      const MountArgs mount_args,
-      base::OnceCallback<void(const user_data_auth::MountReply&)> on_done,
-      TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
-          result);
-
-  // This is a utility function used by DoMount(). It is called either by
-  // DoMount() (when using password for authentication.), or by
-  // OnChallengeResponseMountCredentialsObtained() (when using challenge
-  // response authentication.).
-  void ContinueMountWithCredentials(
-      const user_data_auth::MountRequest& request,
-      std::unique_ptr<Credentials> credentials,
-      std::optional<base::UnguessableToken> token,
-      const MountArgs& mount_args,
-      base::OnceCallback<void(const user_data_auth::MountReply&)> on_done);
 
   // Called on Mount thread. This triggers the credentials verification steps
   // that are specific to challenge-response keys, going through
@@ -898,13 +837,6 @@ class UserDataAuth {
   void GetAuthSessionStatusImpl(
       AuthSession* auth_session,
       user_data_auth::GetAuthSessionStatusReply& reply);
-
-  // ================= Key Management Related Helper Methods ============
-
-  // This utility function loads the user vault keyset. Add the vault keyset
-  // first, if the user is a new user.
-  MountStatusOr<std::unique_ptr<VaultKeyset>> LoadVaultKeyset(
-      const Credentials& credentials, bool is_new_user);
 
   // ================ Fingerprint Auth Related Methods ==================
 
@@ -1396,6 +1328,9 @@ class UserDataAuth {
   FRIEND_TEST(UserDataAuthTest, InitializePkcs11Unmounted);
 
   friend class UserDataAuthExTest;
+  FRIEND_TEST(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly);
+  FRIEND_TEST(UserDataAuthTest,
+              CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly_FirstBoot);
   FRIEND_TEST(UserDataAuthExTest, ExtendAuthSession);
   FRIEND_TEST(UserDataAuthExTest, ExtendUnAuthenticatedAuthSessionFail);
   FRIEND_TEST(UserDataAuthExTest, CheckTimeoutTimerSetAfterAuthentication);

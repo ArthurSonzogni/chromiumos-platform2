@@ -672,6 +672,9 @@ class AuthSession final {
               AddPasswordAuthFactorViaAsyncUss);
   FRIEND_TEST(AuthSessionWithUssExperimentTest, PrepareLegacyFingerprintAuth);
   FRIEND_TEST(AuthSessionWithUssExperimentTest, RemoveAuthFactor);
+  FRIEND_TEST(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly);
+  FRIEND_TEST(UserDataAuthTest,
+              CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly_FirstBoot);
   FRIEND_TEST(UserDataAuthExTest, MountUnauthenticatedAuthSession);
   FRIEND_TEST(UserDataAuthExTest, StartAuthSession);
   FRIEND_TEST(UserDataAuthExTest, ExtendAuthSession);

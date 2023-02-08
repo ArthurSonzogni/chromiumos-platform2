@@ -22,8 +22,6 @@ namespace {
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::StatusChain;
 
-constexpr char kTestSanitizedUsername1[] = "Abcdefghijklmnop1234!@#$%^&*()";
-
 // Note that the RepeatedField field in protobuf for PossibleAction uses int,
 // thus the need to for 2 template types.
 template <typename T, typename S>
@@ -136,81 +134,6 @@ TEST_F(ErrorConverterTest, WrappedPrimaryAction) {
   EXPECT_EQ(info.possible_actions_size(), 0);
 }
 
-TEST_F(ErrorConverterTest, ReplyWithErrorPrimary) {
-  // Prepare the callback.
-  bool reply_received = false;
-  user_data_auth::MountReply received_reply;
-  auto cb = base::BindOnce(
-      [](bool* reply_received_ptr,
-         user_data_auth::MountReply* received_reply_ptr,
-         const user_data_auth::MountReply& cb_reply) {
-        ASSERT_FALSE(*reply_received_ptr);
-        *reply_received_ptr = true;
-        received_reply_ptr->CopyFrom(cb_reply);
-      },
-      base::Unretained(&reply_received), base::Unretained(&received_reply));
-
-  // Prepare the status chain.
-  StatusChain<CryptohomeError> err1 = MakeStatus<CryptohomeError>(
-      kErrorLocationForTesting2,
-      ErrorActionSet({ErrorAction::kTpmUpdateRequired}),
-      user_data_auth::CryptohomeErrorCode::
-          CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
-
-  StatusChain<CryptohomeError> err2 =
-      MakeStatus<CryptohomeError>(kErrorLocationForTesting1,
-                                  ErrorActionSet({ErrorAction::kReboot}))
-          .Wrap(std::move(err1));
-
-  // Make the call.
-  user_data_auth::MountReply passedin_reply;
-  passedin_reply.set_sanitized_username(kTestSanitizedUsername1);
-  ReplyWithError(std::move(cb), passedin_reply, err2);
-
-  // Check results.
-  ASSERT_TRUE(reply_received);
-  EXPECT_EQ(received_reply.error(),
-            user_data_auth::CryptohomeErrorCode::
-                CRYPTOHOME_ERROR_INTERNAL_ATTESTATION_ERROR);
-  ASSERT_TRUE(received_reply.has_error_info());
-  EXPECT_EQ(received_reply.sanitized_username(), kTestSanitizedUsername1);
-  EXPECT_EQ(received_reply.error_info().error_id(),
-            std::to_string(kErrorLocationForTesting1.location()) + "-" +
-                std::to_string(kErrorLocationForTesting2.location()));
-  EXPECT_EQ(received_reply.error_info().primary_action(),
-            user_data_auth::PrimaryAction::PRIMARY_TPM_UDPATE_REQUIRED);
-  EXPECT_EQ(received_reply.error_info().possible_actions_size(), 0);
-}
-
-TEST_F(ErrorConverterTest, ReplyWithErrorSuccess) {
-  // Prepare the callback.
-  bool reply_received = false;
-  user_data_auth::MountReply received_reply;
-  auto cb = base::BindOnce(
-      [](bool* reply_received_ptr,
-         user_data_auth::MountReply* received_reply_ptr,
-         const user_data_auth::MountReply& cb_reply) {
-        ASSERT_FALSE(*reply_received_ptr);
-        *reply_received_ptr = true;
-        received_reply_ptr->CopyFrom(cb_reply);
-      },
-      base::Unretained(&reply_received), base::Unretained(&received_reply));
-
-  // Prepare the status chain.
-  hwsec_foundation::status::StatusChain<CryptohomeError> err1;
-
-  // Make the call.
-  user_data_auth::MountReply passedin_reply;
-  passedin_reply.set_sanitized_username(kTestSanitizedUsername1);
-  ReplyWithError(std::move(cb), passedin_reply, err1);
-
-  // Check results.
-  ASSERT_TRUE(reply_received);
-  EXPECT_FALSE(received_reply.has_error_info());
-  EXPECT_EQ(received_reply.error(),
-            user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET);
-  EXPECT_EQ(received_reply.sanitized_username(), kTestSanitizedUsername1);
-}
 }  // namespace
 
 }  // namespace error

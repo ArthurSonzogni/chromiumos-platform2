@@ -68,33 +68,6 @@ void UserDataAuthAdaptor::DoUnmount(
   response->Return(reply);
 }
 
-void UserDataAuthAdaptor::Mount(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        user_data_auth::MountReply>> response,
-    const user_data_auth::MountRequest& in_request) {
-  service_->PostTaskToMountThread(
-      FROM_HERE,
-      base::BindOnce(
-          &UserDataAuthAdaptor::DoMount, base::Unretained(this),
-          ThreadSafeDBusMethodResponse<
-              user_data_auth::MountReply>::MakeThreadSafe(std::move(response)),
-          in_request));
-}
-
-void UserDataAuthAdaptor::DoMount(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        user_data_auth::MountReply>> response,
-    const user_data_auth::MountRequest& in_request) {
-  service_->DoMount(
-      in_request, base::BindOnce(
-                      [](std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                             user_data_auth::MountReply>> local_response,
-                         const user_data_auth::MountReply& reply) {
-                        local_response->Return(reply);
-                      },
-                      std::move(response)));
-}
-
 void UserDataAuthAdaptor::StartAuthSession(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::StartAuthSessionReply>> response,
