@@ -14,7 +14,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <metrics/metrics_library.h>
-#include <metrics/structured/structured_events.h>
+#include <metrics/structured_events.h>
 
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 

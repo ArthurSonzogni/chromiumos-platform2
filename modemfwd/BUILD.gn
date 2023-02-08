@@ -85,9 +85,9 @@ static_library("libmodemfw") {
   deps = [
     ":modemmanager_proxies",
     ":upstart_proxies",
-    "//metrics/structured:libstructuredmetrics",
     "//modemfwd//proto:modemfw-protos",
   ]
+  pkg_deps = [ "libstructuredmetrics" ]
 }
 
 executable("modemfwd") {

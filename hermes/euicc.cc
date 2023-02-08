@@ -16,7 +16,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <google-lpa/lpa/core/lpa.h>
 #include <google-lpa/lpa/data/proto/euicc_info_1.pb.h>
-#include <metrics/structured/structured_events.h>
+#include <metrics/structured_events.h>
 
 // USE_INTERNAL is set if ChromeOS is being compiled.
 #if USE_INTERNAL

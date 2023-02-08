@@ -20,7 +20,7 @@
 #include <metrics/structured/event_base.h>
 #include <metrics/structured/mock_recorder.h>
 #include <metrics/structured/recorder_singleton.h>
-#include <metrics/structured/structured_events.h>
+#include <metrics/structured_events.h>
 #include <metrics/timer_mock.h>
 
 #include "shill/mock_control.h"

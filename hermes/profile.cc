@@ -14,7 +14,7 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <chromeos/dbus/service_constants.h>
-#include <metrics/structured/structured_events.h>
+#include <metrics/structured_events.h>
 
 #include "hermes/executor.h"
 #include "hermes/hermes_common.h"

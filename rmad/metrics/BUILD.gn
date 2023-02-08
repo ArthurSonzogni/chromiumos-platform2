@@ -18,10 +18,8 @@ source_set("libmetrics") {
     "metrics_utils_impl.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [
-    "//metrics/structured:libstructuredmetrics",
-    "//rmad/utils:libutils",
-  ]
+  deps = [ "//rmad/utils:libutils" ]
+  pkg_deps = [ "libstructuredmetrics" ]
 }
 
 if (use.test) {

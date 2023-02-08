@@ -12,7 +12,7 @@
 
 #include <brillo/errors/error.h>
 #include <metrics/metrics_library.h>
-#include <metrics/structured/structured_events.h>
+#include <metrics/structured_events.h>
 #include <metrics/timer.h>
 
 namespace modemfwd {

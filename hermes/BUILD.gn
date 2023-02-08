@@ -118,8 +118,8 @@ static_library("libhermes") {
     ":hermes-protos",
     ":hermes_adaptors",
     ":modemmanager_proxies",
-    "//metrics/structured:libstructuredmetrics",
   ]
+  pkg_deps = [ "libstructuredmetrics" ]
 }
 
 executable("hermes") {

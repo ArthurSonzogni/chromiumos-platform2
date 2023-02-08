@@ -11,7 +11,7 @@
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/time/time.h>
-#include <metrics/structured/structured_events.h>
+#include <metrics/structured_events.h>
 
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_constants.h"

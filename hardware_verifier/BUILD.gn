@@ -52,10 +52,8 @@ static_library("libhardware_verifier") {
     "verifier_impl.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [
-    "//hardware_verifier/proto:hardware_verifier-protos",
-    "//metrics/structured:libstructuredmetrics",
-  ]
+  deps = [ "//hardware_verifier/proto:hardware_verifier-protos" ]
+  pkg_deps = [ "libstructuredmetrics" ]
 }
 
 executable("hardware_verifier") {

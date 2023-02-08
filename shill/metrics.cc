@@ -26,7 +26,7 @@
 #include <crypto/random.h>
 #include <crypto/sha2.h>
 #include <metrics/bootstat.h>
-#include <metrics/structured/structured_events.h>
+#include <metrics/structured_events.h>
 
 #include "shill/cellular/apn_list.h"
 #include "shill/cellular/cellular_consts.h"

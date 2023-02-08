@@ -31,7 +31,7 @@
 #include <brillo/files/file_util.h>
 #include <brillo/files/scoped_dir.h>
 #include <brillo/userdb_utils.h>
-#include <metrics/structured/structured_events.h>
+#include <metrics/structured_events.h>
 #include <openssl/sha.h>
 #include <re2/re2.h>
 #include <session_manager/dbus-proxies.h>
