@@ -871,9 +871,6 @@ TpmManagerService::RemoveOwnerDependencyTask(
     return reply;
   }
   RemoveOwnerDependencyFromLocalData(request.owner_dependency(), &local_data);
-  if (auto_clear_stored_owner_password_) {
-    ClearOwnerPasswordIfPossible(&local_data);
-  }
   if (!local_data_store_->Write(local_data)) {
     reply->set_status(STATUS_DEVICE_ERROR);
     return reply;

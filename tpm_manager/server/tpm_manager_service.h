@@ -383,9 +383,6 @@ class TpmManagerService : public TpmNvramInterface,
   std::unique_ptr<TpmNvram> default_tpm_nvram_;
   std::unique_ptr<TpmAllowlist> default_tpm_allowlist_;
 
-  // Whether to clear the stored owner password automatically upon removing all
-  // dependencies.
-  bool auto_clear_stored_owner_password_ = false;
   // Whether to perform pre-initialization (where available) if initialization
   // itself needs to wait for 'TakeOwnership' first.
   bool perform_preinit_;
