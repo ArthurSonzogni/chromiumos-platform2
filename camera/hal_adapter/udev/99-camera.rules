@@ -16,6 +16,3 @@ ATTR{name}=="cam-req-mgr", SUBSYSTEM=="video4linux", GROUP="camera"
 
 # Limit access to capture device nodes (cameras) to the camera HAL.
 ENV{ID_V4L_CAPABILITIES}==":capture:", SUBSYSTEM=="video4linux", GROUP="camera"
-
-# Limit access to v4l subdevices to the camera HAL.
-SUBSYSTEM=="video4linux", KERNEL=="v4l-subdev*", GROUP="camera"
