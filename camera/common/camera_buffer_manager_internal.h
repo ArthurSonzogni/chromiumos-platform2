@@ -9,6 +9,10 @@
 
 #include <gbm.h>
 
+#ifdef MINIGBM
+#include <minigbm/minigbm_helpers.h>
+#endif
+
 namespace cros {
 
 namespace internal {

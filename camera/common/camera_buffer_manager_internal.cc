@@ -27,6 +27,14 @@ struct gbm_device* CreateGbmDevice() {
   int32_t max_node = kMinNodeNumber + kDrmNumNodes;
   struct gbm_device* gbm = nullptr;
 
+#ifdef MINIGBM
+  gbm = minigbm_create_default_device(&fd);
+  if (gbm && fd >= 0) {
+    VLOGF(1) << "Opened gbm device with minigbm helper";
+    return gbm;
+  }
+#endif
+
   for (int i = min_node; i < max_node; i++) {
     fd = drmOpenRender(i);
     if (fd < 0) {
