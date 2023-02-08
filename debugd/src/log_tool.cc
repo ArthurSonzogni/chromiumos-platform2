@@ -287,10 +287,6 @@ const std::array kCommandLogs {
   Log{kFile, "mali_memory", "/sys/kernel/debug/mali0/gpu_memory",
     SandboxedProcess::kDefaultUser, kDebugfsGroup},
   Log{kFile, "meminfo", "/proc/meminfo"},
-  Log{kCommand, "memory_spd_info",
-    // mosys may use 'i2c-dev', which may not be loaded yet.
-    "modprobe i2c-dev 2>/dev/null && mosys -l memory spd print all 2>/dev/null",
-    kRoot, kDebugfsGroup},
   Log{kCommand, "modetest",
     "(modetest; modetest -M evdi; modetest -M udl) | "
     "/usr/libexec/debugd/helpers/modetest_helper",

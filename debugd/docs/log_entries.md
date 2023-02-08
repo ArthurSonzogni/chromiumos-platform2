@@ -333,8 +333,6 @@ Information about LVM logical volumes.
 Various memory usage statistics.  See the `/proc/meminfo` section of the
 [proc(5)] man page for an explanation of each field.
 
-## memory_spd_info
-
 ## mm-esim-status
 
 ## mm-status
