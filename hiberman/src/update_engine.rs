@@ -6,11 +6,13 @@
 
 use std::time::Duration;
 
-use anyhow::{Context as AnyhowContext, Result};
+use anyhow::Context as AnyhowContext;
+use anyhow::Result;
 use dbus::blocking::Connection;
 use log::info;
 use protobuf::Message;
-use system_api::update_engine::{Operation, StatusResult};
+use system_api::update_engine::Operation;
+use system_api::update_engine::StatusResult;
 use update_engine_dbus::client::OrgChromiumUpdateEngineInterface;
 
 /// Define the default maximum duration the update_engine proxy will wait for method
