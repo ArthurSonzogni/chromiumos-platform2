@@ -10,7 +10,6 @@
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "diagnostics/cros_health_tool/event/audio_subscriber.h"
 #include "diagnostics/cros_health_tool/event/bluetooth_subscriber.h"
 #include "diagnostics/cros_health_tool/event/network_subscriber.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
@@ -36,9 +35,6 @@ class EventSubscriber final : public ash::cros_healthd::mojom::EventObserver {
   // Subscribes to cros_healthd's network events.
   void SubscribeToNetworkEvents();
 
-  // Subscribes to cros_healthd's audio events.
-  void SubscribeToAudioEvents();
-
   // Subscribes to cros_healthd's events.
   //
   // |on_subscription_disconnect| - This will be called when the mojo connection
@@ -58,8 +54,6 @@ class EventSubscriber final : public ash::cros_healthd::mojom::EventObserver {
   std::unique_ptr<BluetoothSubscriber> bluetooth_subscriber_;
   // Used to subscribe to network events.
   std::unique_ptr<NetworkSubscriber> network_subscriber_;
-  // Used to subscribe to audio events.
-  std::unique_ptr<AudioSubscriber> audio_subscriber_;
 };
 
 }  // namespace diagnostics

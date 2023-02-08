@@ -6,7 +6,6 @@ import("//common-mk/pkg_config.gni")
 
 source_set("libevent") {
   sources = [
-    "audio_subscriber.cc",
     "bluetooth_subscriber.cc",
     "event.cc",
     "event_subscriber.cc",

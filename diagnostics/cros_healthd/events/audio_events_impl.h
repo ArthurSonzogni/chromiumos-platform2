@@ -22,6 +22,8 @@ class AudioEventsImpl final : public AudioEvents {
   AudioEventsImpl& operator=(const AudioEventsImpl&) = delete;
   ~AudioEventsImpl() = default;
 
+  void AddObserver(mojo::PendingRemote<ash::cros_healthd::mojom::EventObserver>
+                       observer) override;
   void AddObserver(
       mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdAudioObserver>
           observer) override;
@@ -35,8 +37,9 @@ class AudioEventsImpl final : public AudioEvents {
   // RemoteSet manages the lifetime of the endpoints, which are
   // automatically destroyed and removed when the pipe they are bound to is
   // destroyed.
+  mojo::RemoteSet<ash::cros_healthd::mojom::EventObserver> observers_;
   mojo::RemoteSet<ash::cros_healthd::mojom::CrosHealthdAudioObserver>
-      observers_;
+      deprecated_observers_;
 
   // Unowned pointer. Should outlive this instance.
   Context* const context_ = nullptr;

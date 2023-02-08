@@ -17,23 +17,24 @@
 
 #include "cras/dbus-proxy-mocks.h"
 #include "diagnostics/cros_healthd/events/audio_events_impl.h"
+#include "diagnostics/cros_healthd/events/mock_event_observer.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
 namespace {
 
+namespace mojom = ::ash::cros_healthd::mojom;
+
 using ::testing::_;
 using ::testing::Invoke;
 using ::testing::SaveArg;
 using ::testing::StrictMock;
 
-class MockAudioObserver
-    : public ash::cros_healthd::mojom::CrosHealthdAudioObserver {
+class MockAudioObserver : public mojom::CrosHealthdAudioObserver {
  public:
   explicit MockAudioObserver(
-      mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdAudioObserver>
-          receiver)
+      mojo::PendingReceiver<mojom::CrosHealthdAudioObserver> receiver)
       : receiver_{this /* impl */, std::move(receiver)} {
     DCHECK(receiver_.is_bound());
   }
@@ -44,7 +45,7 @@ class MockAudioObserver
   MOCK_METHOD(void, OnSevereUnderrun, (), (override));
 
  private:
-  mojo::Receiver<ash::cros_healthd::mojom::CrosHealthdAudioObserver> receiver_;
+  mojo::Receiver<mojom::CrosHealthdAudioObserver> receiver_;
 };
 
 // Tests for the AudioEventsImpl class.
@@ -64,11 +65,17 @@ class AudioEventsImplTest : public testing::Test {
 
     audio_events_impl_ = std::make_unique<AudioEventsImpl>(&mock_context_);
 
-    mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdAudioObserver>
-        observer;
-    observer_ = std::make_unique<StrictMock<MockAudioObserver>>(
+    mojo::PendingRemote<mojom::EventObserver> observer;
+    mojo::PendingReceiver<mojom::EventObserver> observer_receiver(
         observer.InitWithNewPipeAndPassReceiver());
+    observer_ = std::make_unique<StrictMock<MockEventObserver>>(
+        std::move(observer_receiver));
     audio_events_impl_->AddObserver(std::move(observer));
+
+    mojo::PendingRemote<mojom::CrosHealthdAudioObserver> deprecated_observer;
+    deprecated_observer_ = std::make_unique<StrictMock<MockAudioObserver>>(
+        deprecated_observer.InitWithNewPipeAndPassReceiver());
+    audio_events_impl_->AddObserver(std::move(deprecated_observer));
   }
 
   // Simulate signal is fired and then callback is run.
@@ -77,20 +84,34 @@ class AudioEventsImplTest : public testing::Test {
     std::move(severe_underrun_callback_).Run();
   }
 
-  MockAudioObserver* mock_observer() { return observer_.get(); }
+  void SetExpectedEvent(mojom::AudioEventInfo::State state) {
+    EXPECT_CALL(*mock_observer(), OnEvent(_))
+        .WillOnce(Invoke([=](mojom::EventInfoPtr info) {
+          EXPECT_TRUE(info->is_audio_event_info());
+          const auto& audio_event_info = info->get_audio_event_info();
+          EXPECT_EQ(audio_event_info->state, state);
+        }));
+  }
+
+  MockEventObserver* mock_observer() { return observer_.get(); }
+  MockAudioObserver* mock_deprecated_observer() {
+    return deprecated_observer_.get();
+  }
 
  private:
   base::test::TaskEnvironment task_environment_;
   MockContext mock_context_;
   std::unique_ptr<AudioEventsImpl> audio_events_impl_;
-  std::unique_ptr<StrictMock<MockAudioObserver>> observer_;
+  std::unique_ptr<StrictMock<MockEventObserver>> observer_;
+  std::unique_ptr<StrictMock<MockAudioObserver>> deprecated_observer_;
   base::OnceCallback<void()> underrun_callback_;
   base::OnceCallback<void()> severe_underrun_callback_;
 };
 
 TEST_F(AudioEventsImplTest, UnderrunEvent) {
   base::RunLoop run_loop;
-  EXPECT_CALL(*mock_observer(), OnUnderrun()).WillOnce(Invoke([&]() {
+  SetExpectedEvent(mojom::AudioEventInfo::State::kUnderrun);
+  EXPECT_CALL(*mock_deprecated_observer(), OnUnderrun()).WillOnce(Invoke([&]() {
     run_loop.Quit();
   }));
 
@@ -101,9 +122,9 @@ TEST_F(AudioEventsImplTest, UnderrunEvent) {
 
 TEST_F(AudioEventsImplTest, SevereUnderrunEvent) {
   base::RunLoop run_loop;
-  EXPECT_CALL(*mock_observer(), OnSevereUnderrun()).WillOnce(Invoke([&]() {
-    run_loop.Quit();
-  }));
+  SetExpectedEvent(mojom::AudioEventInfo::State::kSevereUnderrun);
+  EXPECT_CALL(*mock_deprecated_observer(), OnSevereUnderrun())
+      .WillOnce(Invoke([&]() { run_loop.Quit(); }));
 
   InvokeSevereUnderrunEvent();
 

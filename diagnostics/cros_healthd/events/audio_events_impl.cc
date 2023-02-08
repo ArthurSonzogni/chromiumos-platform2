@@ -14,6 +14,8 @@
 
 namespace {
 
+namespace mojom = ::ash::cros_healthd::mojom;
+
 void HandleSignalConnected(const std::string& interface,
                            const std::string& signal,
                            bool success) {
@@ -43,18 +45,30 @@ AudioEventsImpl::AudioEventsImpl(Context* context) : context_(context) {
 }
 
 void AudioEventsImpl::AddObserver(
-    mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdAudioObserver>
-        observer) {
+    mojo::PendingRemote<mojom::EventObserver> observer) {
   observers_.Add(std::move(observer));
 }
 
+void AudioEventsImpl::AddObserver(
+    mojo::PendingRemote<mojom::CrosHealthdAudioObserver> observer) {
+  deprecated_observers_.Add(std::move(observer));
+}
+
 void AudioEventsImpl::OnUnderrunSignal() {
+  mojom::AudioEventInfo info;
+  info.state = mojom::AudioEventInfo::State::kUnderrun;
   for (auto& observer : observers_)
+    observer->OnEvent(mojom::EventInfo::NewAudioEventInfo(info.Clone()));
+  for (auto& observer : deprecated_observers_)
     observer->OnUnderrun();
 }
 
 void AudioEventsImpl::OnSevereUnderrunSignal() {
+  mojom::AudioEventInfo info;
+  info.state = mojom::AudioEventInfo::State::kSevereUnderrun;
   for (auto& observer : observers_)
+    observer->OnEvent(mojom::EventInfo::NewAudioEventInfo(info.Clone()));
+  for (auto& observer : deprecated_observers_)
     observer->OnSevereUnderrun();
 }
 

@@ -105,6 +105,18 @@ std::string EnumToString(mojom::PowerEventInfo::State state) {
   }
 }
 
+std::string EnumToString(mojom::AudioEventInfo::State state) {
+  switch (state) {
+    case mojom::AudioEventInfo::State::kUnmappedEnumField:
+      LOG(FATAL) << "Got UnmappedEnumField";
+      return "UnmappedEnumField";
+    case mojom::AudioEventInfo::State::kUnderrun:
+      return "Underrun ";
+    case mojom::AudioEventInfo::State::kSevereUnderrun:
+      return "Severe underrun";
+  }
+}
+
 void OutputUsbEventInfo(const mojom::UsbEventInfoPtr& info) {
   base::Value::Dict output;
 
@@ -150,6 +162,11 @@ void OutputPowerEventInfo(const mojom::PowerEventInfoPtr& info) {
             << std::endl;
 }
 
+void OutputAudioEventInfo(const mojom::AudioEventInfoPtr& info) {
+  std::cout << "Audio event received: " << EnumToString(info->state)
+            << std::endl;
+}
+
 }  // namespace
 
 EventSubscriber::EventSubscriber() {
@@ -171,13 +188,6 @@ void EventSubscriber::SubscribeToNetworkEvents() {
   network_subscriber_ = std::make_unique<NetworkSubscriber>(
       remote.InitWithNewPipeAndPassReceiver());
   event_service_->AddNetworkObserver(std::move(remote));
-}
-
-void EventSubscriber::SubscribeToAudioEvents() {
-  mojo::PendingRemote<mojom::CrosHealthdAudioObserver> remote;
-  audio_subscriber_ = std::make_unique<AudioSubscriber>(
-      remote.InitWithNewPipeAndPassReceiver());
-  event_service_->AddAudioObserver(std::move(remote));
 }
 
 void EventSubscriber::SubscribeToEvents(
@@ -209,7 +219,7 @@ void EventSubscriber::OnEvent(const mojom::EventInfoPtr info) {
       OutputPowerEventInfo(info->get_power_event_info());
       break;
     case mojom::EventInfo::Tag::kAudioEventInfo:
-      NOTIMPLEMENTED();
+      OutputAudioEventInfo(info->get_audio_event_info());
       break;
     case mojom::EventInfo::Tag::kAudioJackEventInfo:
       OutputAudioJackEventInfo(info->get_audio_jack_event_info());

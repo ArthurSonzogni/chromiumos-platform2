@@ -9,6 +9,7 @@
 
 #include <mojo/public/cpp/bindings/pending_remote.h>
 
+#include "diagnostics/cros_healthd/events/audio_events.h"
 #include "diagnostics/cros_healthd/events/audio_jack_events.h"
 #include "diagnostics/cros_healthd/events/lid_events.h"
 #include "diagnostics/cros_healthd/events/power_events.h"
@@ -45,6 +46,11 @@ class EventAggregator final {
       mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdPowerObserver>
           observer);
 
+  // Deprecated interface. Only for backward compatibility.
+  void AddObserver(
+      mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdAudioObserver>
+          observer);
+
  private:
   // The pointer to the Context object for accessing system utilities.
   Context* const context_;
@@ -53,6 +59,7 @@ class EventAggregator final {
   std::unique_ptr<LidEvents> lid_events_;
   std::unique_ptr<AudioJackEvents> audio_jack_events_;
   std::unique_ptr<PowerEvents> power_events_;
+  std::unique_ptr<AudioEvents> audio_events_;
 };
 
 }  // namespace diagnostics
