@@ -5,7 +5,10 @@
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":printscanmgr" ]
+  deps = [
+    ":printscanmgr",
+    "//printscanmgr/dbus:dbus_config",
+  ]
   if (use.test) {
     deps += [ ":printscanmgr_test" ]
   }
