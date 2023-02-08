@@ -20,7 +20,6 @@
 #include "diagnostics/cros_healthd/cros_healthd_mojo_service.h"
 #include "diagnostics/cros_healthd/cros_healthd_routine_factory.h"
 #include "diagnostics/cros_healthd/event_aggregator.h"
-#include "diagnostics/cros_healthd/events/bluetooth_events.h"
 #include "diagnostics/cros_healthd/fetch_aggregator.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 
@@ -104,9 +103,6 @@ class CrosHealthd final
   // |event_aggregator_| is responsible for fulfulling all event requests from
   // CrosHealthdEventService.
   std::unique_ptr<EventAggregator> event_aggregator_;
-
-  // Provides support for Bluetooth-related events.
-  std::unique_ptr<BluetoothEvents> bluetooth_events_;
 
   // |diagnostics_service_| delegates routine creation to |routine_factory_|.
   std::unique_ptr<CrosHealthdRoutineFactory> routine_factory_;

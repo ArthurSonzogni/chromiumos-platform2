@@ -29,8 +29,7 @@ class BluetoothEventsImpl final : public BluetoothEvents {
   ~BluetoothEventsImpl() override;
 
   // BluetoothEvents overrides:
-  void AddObserver(mojo::PendingRemote<
-                   ash::cros_healthd::mojom::CrosHealthdBluetoothObserver>
+  void AddObserver(mojo::PendingRemote<ash::cros_healthd::mojom::EventObserver>
                        observer) override;
 
  private:
@@ -48,8 +47,7 @@ class BluetoothEventsImpl final : public BluetoothEvents {
   // The InterfacePtrSet manages the lifetime of the endpoints, which are
   // automatically destroyed and removed when the pipe they are bound to is
   // destroyed.
-  mojo::RemoteSet<ash::cros_healthd::mojom::CrosHealthdBluetoothObserver>
-      observers_;
+  mojo::RemoteSet<ash::cros_healthd::mojom::EventObserver> observers_;
   // The callback will be unregistered when the subscription is destructured.
   std::vector<base::CallbackListSubscription> event_subscriptions_;
   // Must be the last member of the class.

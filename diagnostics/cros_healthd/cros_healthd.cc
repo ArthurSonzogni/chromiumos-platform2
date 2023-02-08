@@ -21,7 +21,6 @@
 #include <mojo/public/cpp/system/invitation.h>
 
 #include "diagnostics/cros_healthd/cros_healthd_routine_factory_impl.h"
-#include "diagnostics/cros_healthd/events/bluetooth_events_impl.h"
 
 namespace diagnostics {
 
@@ -42,8 +41,6 @@ CrosHealthd::CrosHealthd(mojo::PlatformChannelEndpoint endpoint,
 
   event_aggregator_ = std::make_unique<EventAggregator>(context_.get());
 
-  bluetooth_events_ = std::make_unique<BluetoothEventsImpl>(context_.get());
-
   routine_factory_ =
       std::make_unique<CrosHealthdRoutineFactoryImpl>(context_.get());
 
@@ -51,8 +48,7 @@ CrosHealthd::CrosHealthd(mojo::PlatformChannelEndpoint endpoint,
       context_.get(), routine_factory_.get());
 
   mojo_service_ = std::make_unique<CrosHealthdMojoService>(
-      context_.get(), fetch_aggregator_.get(), event_aggregator_.get(),
-      bluetooth_events_.get());
+      context_.get(), fetch_aggregator_.get(), event_aggregator_.get());
 
   service_factory_receiver_set_.set_disconnect_handler(
       base::BindRepeating(&CrosHealthd::OnDisconnect, base::Unretained(this)));

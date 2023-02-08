@@ -117,6 +117,26 @@ std::string EnumToString(mojom::AudioEventInfo::State state) {
   }
 }
 
+std::string EnumToString(mojom::BluetoothEventInfo::State state) {
+  switch (state) {
+    case mojom::BluetoothEventInfo::State::kUnmappedEnumField:
+      LOG(FATAL) << "Got UnmappedEnumField";
+      return "UnmappedEnumField";
+    case mojom::BluetoothEventInfo::State::kAdapterAdded:
+      return "Adapter added";
+    case mojom::BluetoothEventInfo::State::kAdapterRemoved:
+      return "Adapter removed";
+    case mojom::BluetoothEventInfo::State::kAdapterPropertyChanged:
+      return "Adapter property changed";
+    case mojom::BluetoothEventInfo::State::kDeviceAdded:
+      return "Device added";
+    case mojom::BluetoothEventInfo::State::kDeviceRemoved:
+      return "Device removed";
+    case mojom::BluetoothEventInfo::State::kDevicePropertyChanged:
+      return "Device property changed";
+  }
+}
+
 void OutputUsbEventInfo(const mojom::UsbEventInfoPtr& info) {
   base::Value::Dict output;
 
@@ -167,6 +187,11 @@ void OutputAudioEventInfo(const mojom::AudioEventInfoPtr& info) {
             << std::endl;
 }
 
+void OutputBluetoothEventInfo(const mojom::BluetoothEventInfoPtr& info) {
+  std::cout << "Bluetooth event received: " << EnumToString(info->state)
+            << std::endl;
+}
+
 }  // namespace
 
 EventSubscriber::EventSubscriber() {
@@ -175,13 +200,6 @@ EventSubscriber::EventSubscriber() {
 }
 
 EventSubscriber::~EventSubscriber() = default;
-
-void EventSubscriber::SubscribeToBluetoothEvents() {
-  mojo::PendingRemote<mojom::CrosHealthdBluetoothObserver> remote;
-  bluetooth_subscriber_ = std::make_unique<BluetoothSubscriber>(
-      remote.InitWithNewPipeAndPassReceiver());
-  event_service_->AddBluetoothObserver(std::move(remote));
-}
 
 void EventSubscriber::SubscribeToNetworkEvents() {
   mojo::PendingRemote<network_health_ipc::NetworkEventsObserver> remote;
@@ -213,7 +231,7 @@ void EventSubscriber::OnEvent(const mojom::EventInfoPtr info) {
       OutputLidEventInfo(info->get_lid_event_info());
       break;
     case mojom::EventInfo::Tag::kBluetoothEventInfo:
-      NOTIMPLEMENTED();
+      OutputBluetoothEventInfo(info->get_bluetooth_event_info());
       break;
     case mojom::EventInfo::Tag::kPowerEventInfo:
       OutputPowerEventInfo(info->get_power_event_info());

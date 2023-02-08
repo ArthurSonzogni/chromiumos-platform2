@@ -13,7 +13,6 @@
 #include <mojo/public/cpp/bindings/receiver_set.h>
 
 #include "diagnostics/cros_healthd/event_aggregator.h"
-#include "diagnostics/cros_healthd/events/bluetooth_events.h"
 #include "diagnostics/cros_healthd/fetch_aggregator.h"
 #include "diagnostics/cros_healthd/utils/mojo_service_provider.h"
 #include "diagnostics/mojom/external/network_health.mojom.h"
@@ -37,8 +36,7 @@ class CrosHealthdMojoService final
   // |bluetooth_events| - BluetoothEvents implementation.
   CrosHealthdMojoService(Context* context,
                          FetchAggregator* fetch_aggregator,
-                         EventAggregator* event_aggregator,
-                         BluetoothEvents* bluetooth_events);
+                         EventAggregator* event_aggregator);
   CrosHealthdMojoService(const CrosHealthdMojoService&) = delete;
   CrosHealthdMojoService& operator=(const CrosHealthdMojoService&) = delete;
   ~CrosHealthdMojoService() override;
@@ -126,7 +124,6 @@ class CrosHealthdMojoService final
   Context* const context_ = nullptr;
   FetchAggregator* fetch_aggregator_;
   EventAggregator* event_aggregator_;
-  BluetoothEvents* const bluetooth_events_ = nullptr;
 };
 
 }  // namespace diagnostics

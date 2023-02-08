@@ -24,20 +24,17 @@ namespace network_health_mojom = ::chromeos::network_health::mojom;
 CrosHealthdMojoService::CrosHealthdMojoService(
     Context* context,
     FetchAggregator* fetch_aggregator,
-    EventAggregator* event_aggregator,
-    BluetoothEvents* bluetooth_events)
+    EventAggregator* event_aggregator)
     : probe_provider_(this),
       event_provider_(this),
       system_provider_(this),
       routine_provider_(this),
       context_(context),
       fetch_aggregator_(fetch_aggregator),
-      event_aggregator_(event_aggregator),
-      bluetooth_events_(bluetooth_events) {
+      event_aggregator_(event_aggregator) {
   DCHECK(context_);
   DCHECK(fetch_aggregator_);
   DCHECK(event_aggregator_);
-  DCHECK(bluetooth_events_);
   probe_provider_.Register(context->mojo_service()->GetServiceManager(),
                            chromeos::mojo_services::kCrosHealthdProbe);
   event_provider_.Register(context->mojo_service()->GetServiceManager(),
@@ -52,7 +49,7 @@ CrosHealthdMojoService::~CrosHealthdMojoService() = default;
 
 void CrosHealthdMojoService::AddBluetoothObserver(
     mojo::PendingRemote<mojom::CrosHealthdBluetoothObserver> observer) {
-  bluetooth_events_->AddObserver(std::move(observer));
+  LOG(FATAL) << "Deprecated cros healthd lid event API";
 }
 
 void CrosHealthdMojoService::AddLidObserver(

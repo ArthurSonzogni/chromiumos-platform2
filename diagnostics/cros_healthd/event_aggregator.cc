@@ -8,6 +8,7 @@
 #include "diagnostics/cros_healthd/event_aggregator.h"
 #include "diagnostics/cros_healthd/events/audio_events_impl.h"
 #include "diagnostics/cros_healthd/events/audio_jack_events_impl.h"
+#include "diagnostics/cros_healthd/events/bluetooth_events_impl.h"
 #include "diagnostics/cros_healthd/events/lid_events_impl.h"
 #include "diagnostics/cros_healthd/events/power_events_impl.h"
 #include "diagnostics/cros_healthd/events/udev_events_impl.h"
@@ -29,6 +30,7 @@ EventAggregator::EventAggregator(Context* context) : context_(context) {
   audio_jack_events_ = std::make_unique<AudioJackEventsImpl>(context_);
   power_events_ = std::make_unique<PowerEventsImpl>(context_);
   audio_events_ = std::make_unique<AudioEventsImpl>(context_);
+  bluetooth_events_ = std::make_unique<BluetoothEventsImpl>(context_);
 }
 
 EventAggregator::~EventAggregator() = default;
@@ -50,7 +52,7 @@ void EventAggregator::AddObserver(
       lid_events_->AddObserver(std::move(observer));
       break;
     case mojom::EventCategoryEnum::kBluetooth:
-      NOTIMPLEMENTED();
+      bluetooth_events_->AddObserver(std::move(observer));
       break;
     case mojom::EventCategoryEnum::kPower:
       power_events_->AddObserver(std::move(observer));
