@@ -22,7 +22,6 @@
 #include "diagnostics/cros_healthd/event_aggregator.h"
 #include "diagnostics/cros_healthd/events/audio_events.h"
 #include "diagnostics/cros_healthd/events/bluetooth_events.h"
-#include "diagnostics/cros_healthd/events/power_events.h"
 #include "diagnostics/cros_healthd/fetch_aggregator.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 
@@ -109,8 +108,6 @@ class CrosHealthd final
 
   // Provides support for Bluetooth-related events.
   std::unique_ptr<BluetoothEvents> bluetooth_events_;
-  // Provides support for power-related events.
-  std::unique_ptr<PowerEvents> power_events_;
   // Provides support for audio-related events.
   std::unique_ptr<AudioEvents> audio_events_;
 

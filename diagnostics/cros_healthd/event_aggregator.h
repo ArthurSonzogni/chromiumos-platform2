@@ -11,6 +11,7 @@
 
 #include "diagnostics/cros_healthd/events/audio_jack_events.h"
 #include "diagnostics/cros_healthd/events/lid_events.h"
+#include "diagnostics/cros_healthd/events/power_events.h"
 #include "diagnostics/cros_healthd/events/udev_events.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
@@ -39,6 +40,11 @@ class EventAggregator final {
       mojo::PendingRemote<
           ash::cros_healthd::mojom::CrosHealthdThunderboltObserver> observer);
 
+  // Deprecated interface. Only for backward compatibility.
+  void AddObserver(
+      mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdPowerObserver>
+          observer);
+
  private:
   // The pointer to the Context object for accessing system utilities.
   Context* const context_;
@@ -46,6 +52,7 @@ class EventAggregator final {
   std::unique_ptr<UdevEvents> udev_events_;
   std::unique_ptr<LidEvents> lid_events_;
   std::unique_ptr<AudioJackEvents> audio_jack_events_;
+  std::unique_ptr<PowerEvents> power_events_;
 };
 
 }  // namespace diagnostics

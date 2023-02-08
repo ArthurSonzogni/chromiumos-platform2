@@ -97,7 +97,8 @@ int event_main(int argc, char** argv) {
                                          mojom::EventCategoryEnum::kLid);
       break;
     case EventCategory::kPower:
-      event_subscriber.SubscribeToPowerEvents();
+      event_subscriber.SubscribeToEvents(run_loop.QuitClosure(),
+                                         mojom::EventCategoryEnum::kPower);
       break;
     case EventCategory::kBluetooth:
       event_subscriber.SubscribeToBluetoothEvents();

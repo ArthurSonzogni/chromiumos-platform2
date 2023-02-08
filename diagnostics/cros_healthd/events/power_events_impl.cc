@@ -14,6 +14,8 @@
 
 namespace {
 
+namespace mojom = ::ash::cros_healthd::mojom;
+
 // Handles the result of an attempt to connect to a D-Bus signal.
 void HandleSignalConnected(const std::string& interface,
                            const std::string& signal,
@@ -53,9 +55,13 @@ PowerEventsImpl::PowerEventsImpl(Context* context)
 }
 
 void PowerEventsImpl::AddObserver(
-    mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdPowerObserver>
-        observer) {
+    mojo::PendingRemote<mojom::EventObserver> observer) {
   observers_.Add(std::move(observer));
+}
+
+void PowerEventsImpl::AddObserver(
+    mojo::PendingRemote<mojom::CrosHealthdPowerObserver> observer) {
+  deprecated_observers_.Add(std::move(observer));
 }
 
 void PowerEventsImpl::OnPowerSupplyPollSignal(
@@ -93,7 +99,19 @@ void PowerEventsImpl::OnPowerSupplyPollSignal(
   }
 
   external_power_ac_event_ = event_type;
+  mojom::PowerEventInfo info;
   for (auto& observer : observers_) {
+    switch (event_type) {
+      case PowerEventType::kAcInserted:
+        info.state = mojom::PowerEventInfo::State::kAcInserted;
+        break;
+      case PowerEventType::kAcRemoved:
+        info.state = mojom::PowerEventInfo::State::kAcRemoved;
+        break;
+    }
+    observer->OnEvent(mojom::EventInfo::NewPowerEventInfo(info.Clone()));
+  }
+  for (auto& observer : deprecated_observers_) {
     switch (event_type) {
       case PowerEventType::kAcInserted:
         observer->OnAcInserted();
@@ -117,12 +135,20 @@ void PowerEventsImpl::OnDarkSuspendImminentSignal(
 
 void PowerEventsImpl::OnSuspendDoneSignal(
     const std::vector<uint8_t>& /* signal */) {
+  mojom::PowerEventInfo info;
+  info.state = mojom::PowerEventInfo::State::kOsResume;
   for (auto& observer : observers_)
+    observer->OnEvent(mojom::EventInfo::NewPowerEventInfo(info.Clone()));
+  for (auto& observer : deprecated_observers_)
     observer->OnOsResume();
 }
 
 void PowerEventsImpl::OnAnySuspendImminentSignal() {
+  mojom::PowerEventInfo info;
+  info.state = mojom::PowerEventInfo::State::kOsSuspend;
   for (auto& observer : observers_)
+    observer->OnEvent(mojom::EventInfo::NewPowerEventInfo(info.Clone()));
+  for (auto& observer : deprecated_observers_)
     observer->OnOsSuspend();
 }
 

@@ -27,6 +27,10 @@ class PowerEventsImpl final : public PowerEvents {
   ~PowerEventsImpl() = default;
 
   // PowerEvents overrides:
+  void AddObserver(mojo::PendingRemote<ash::cros_healthd::mojom::EventObserver>
+                       observer) override;
+
+  // Deprecated interface. Only for backward compatibility.
   void AddObserver(
       mojo::PendingRemote<ash::cros_healthd::mojom::CrosHealthdPowerObserver>
           observer) override;
@@ -60,8 +64,9 @@ class PowerEventsImpl final : public PowerEvents {
   // InterfacePtrSet manages the lifetime of the endpoints, which are
   // automatically destroyed and removed when the pipe they are bound to is
   // destroyed.
+  mojo::RemoteSet<ash::cros_healthd::mojom::EventObserver> observers_;
   mojo::RemoteSet<ash::cros_healthd::mojom::CrosHealthdPowerObserver>
-      observers_;
+      deprecated_observers_;
 
   // Unowned pointer. Should outlive this instance.
   Context* const context_ = nullptr;
