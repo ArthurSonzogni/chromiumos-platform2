@@ -63,7 +63,6 @@ LEGACYLIST = {
     "codelab",
     "cronista",
     "crosdns",
-    "crosh",
     "croslog",
     "cups_proxy",
     "disk_updater",
