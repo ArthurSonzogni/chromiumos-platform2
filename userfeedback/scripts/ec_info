@@ -8,25 +8,19 @@
 
 EC_INFO_FILE="/var/log/ec_info.txt"
 
-# Attempts to insert i2c-dev as it may not be done during init on all platforms
-if ! modprobe i2c-dev; then
-  exit 0
-fi
+(
+  # Show commands ran (for informational purposes).
+  set -x
 
-rm -f ${EC_INFO_FILE}
+  # Log versions for all known chip types.
+  for ec_type in cros_ec cros_pd cros_fp cros_scp cros_ish; do
+    ectool --name "${ec_type}" version || true
+  done
 
-for ec_type in ec pd sh; do
-  if out=$(mosys -l ${ec_type} info 2> /dev/null); then
-    # If a mosys sub-command is not available, mosys will fail with a non-zero
-    # exit code and print the help menu. Write the output only if the command
-    # succeeded.
-    echo "${out}" >> ${EC_INFO_FILE}
-  fi
-done
-
-p=0
-while out=$(mosys -l pd chip ${p} 2> /dev/null); do
-	echo "TCPC Port${p}:" >> "${EC_INFO_FILE}"
-	echo "${out}" >> "${EC_INFO_FILE}"
-	: $(( p += 1 ))
-done
+  # Log PD devices attached to each port.  This assumes no more than 4 ports, as
+  # we don't have devices with more than 4 TCPC ports at the moment.  If that
+  # changes, below will need updated.
+  for i in 0 1 2 3; do
+    ectool infopddev "${i}" || true
+  done
+) > "${EC_INFO_FILE}" 2>&1
