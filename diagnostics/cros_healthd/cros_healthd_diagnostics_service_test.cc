@@ -14,14 +14,17 @@
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
 #include <gtest/gtest.h>
+#include <mojo/public/cpp/bindings/pending_receiver.h>
 
 #include "diagnostics/cros_healthd/cros_healthd_diagnostics_service.h"
 #include "diagnostics/cros_healthd/fake_cros_healthd_routine_factory.h"
+#include "diagnostics/cros_healthd/fake_routine_service.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/system/fake_mojo_service.h"
 #include "diagnostics/cros_healthd/system/fake_system_config.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 #include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 namespace diagnostics {
@@ -145,7 +148,7 @@ class CrosHealthdDiagnosticsServiceTest : public testing::Test {
   // which tests are populated change.
   void CreateService() {
     service_ = std::make_unique<CrosHealthdDiagnosticsService>(
-        &mock_context_, &routine_factory_);
+        &mock_context_, &routine_factory_, &routine_service_);
   }
 
   CrosHealthdDiagnosticsService* service() { return service_.get(); }
@@ -192,6 +195,7 @@ class CrosHealthdDiagnosticsServiceTest : public testing::Test {
   base::test::TaskEnvironment task_environment_;
   FakeCrosHealthdRoutineFactory routine_factory_;
   MockContext mock_context_;
+  FakeRoutineService routine_service_;
   std::unique_ptr<CrosHealthdDiagnosticsService> service_;
 };
 
@@ -711,11 +715,10 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunBatteryChargeRoutine) {
 
 // Test that the memory routine can be run.
 TEST_F(CrosHealthdDiagnosticsServiceTest, RunMemoryRoutine) {
+  // Routines with adapter should immediately return a Running status once
+  // created.
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
-      mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting;
-  routine_factory()->SetNonInteractiveStatus(
-      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
-      /*output=*/"");
+      mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
 
   mojo_ipc::RunRoutineResponsePtr response;
   base::RunLoop run_loop;

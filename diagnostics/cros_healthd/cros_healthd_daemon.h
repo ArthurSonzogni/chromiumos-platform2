@@ -44,12 +44,12 @@ class CrosHealthdDaemon final : public brillo::Daemon {
   EventAggregator event_aggregator_{&context_};
   // |diagnostics_service_| delegates routine creation to |routine_factory_|.
   CrosHealthdRoutineFactoryImpl routine_factory_{&context_};
-  // Creates new diagnostic routines and controls existing diagnostic routines.
-  CrosHealthdDiagnosticsService diagnostics_service_{&context_,
-                                                     &routine_factory_};
   // Maintains the Mojo connection with cros_healthd clients.
   CrosHealthdMojoService mojo_service_{&context_, &fetch_aggregator_,
                                        &event_aggregator_};
+  // Creates new diagnostic routines and controls existing diagnostic routines.
+  CrosHealthdDiagnosticsService diagnostics_service_{
+      &context_, &routine_factory_, &mojo_service_};
 };
 
 }  // namespace diagnostics

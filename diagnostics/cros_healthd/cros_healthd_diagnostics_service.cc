@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <limits>
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
@@ -18,6 +19,8 @@
 #include <chromeos/mojo/service_constants.h>
 #include <metrics/metrics_library.h>
 
+#include "diagnostics/cros_healthd/routine_adapter.h"
+#include "diagnostics/cros_healthd/routines/diag_routine.h"
 #include "diagnostics/cros_healthd/system/system_config.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/metrics_utils.h"
@@ -113,8 +116,12 @@ void SendResultToUMA(mojo_ipc::DiagnosticRoutineEnum routine,
 }  // namespace
 
 CrosHealthdDiagnosticsService::CrosHealthdDiagnosticsService(
-    Context* context, CrosHealthdRoutineFactory* routine_factory)
-    : context_(context), routine_factory_(routine_factory) {
+    Context* context,
+    CrosHealthdRoutineFactory* routine_factory,
+    ash::cros_healthd::mojom::CrosHealthdRoutinesService* routine_service)
+    : context_(context),
+      routine_factory_(routine_factory),
+      routine_service_(routine_service) {
   DCHECK(context_);
   DCHECK(routine_factory_);
 
@@ -339,7 +346,10 @@ void CrosHealthdDiagnosticsService::RunLanConnectivityRoutine(
 
 void CrosHealthdDiagnosticsService::RunMemoryRoutine(
     RunMemoryRoutineCallback callback) {
-  RunRoutine(routine_factory_->MakeMemoryRoutine(),
+  auto memory_routine_v2 = std::make_unique<RoutineAdapter>(
+      routine_service_, mojo_ipc::RoutineArgument::NewMemory(
+                            mojo_ipc::MemoryRoutineArgument::New()));
+  RunRoutine(std::move(memory_routine_v2),
              mojo_ipc::DiagnosticRoutineEnum::kMemory, std::move(callback));
 }
 
@@ -555,7 +565,7 @@ void CrosHealthdDiagnosticsService::RunRoutine(
 
   routine->Start();
   int32_t id = next_id_;
-  DCHECK(active_routines_.find(id) == active_routines_.end());
+  CHECK(active_routines_.find(id) == active_routines_.end());
   active_routines_[id] = std::move(routine);
   ++next_id_;
 

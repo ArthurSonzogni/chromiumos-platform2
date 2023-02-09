@@ -39,6 +39,7 @@ source_set("libcros_healthd") {
     "cros_healthd_routine_factory_impl.cc",
     "event_aggregator.cc",
     "fetch_aggregator.cc",
+    "routine_adapter.cc",
     "routine_parameter_fetcher.cc",
   ]
 }
@@ -71,6 +72,7 @@ if (use.test) {
     sources = [
       "cros_healthd_diagnostics_service_test.cc",
       "fake_cros_healthd_routine_factory.cc",
+      "fake_routine_service.cc",
       "routine_parameter_fetcher_test.cc",
     ]
     configs += [ ":cros_healthd_test_pkg_deps" ]

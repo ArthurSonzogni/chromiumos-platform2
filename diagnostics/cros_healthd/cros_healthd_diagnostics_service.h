@@ -22,6 +22,7 @@
 #include "diagnostics/cros_healthd/utils/mojo_service_provider.h"
 #include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
 
@@ -29,8 +30,10 @@ namespace diagnostics {
 class CrosHealthdDiagnosticsService final
     : public ash::cros_healthd::mojom::CrosHealthdDiagnosticsService {
  public:
-  CrosHealthdDiagnosticsService(Context* context,
-                                CrosHealthdRoutineFactory* routine_factory);
+  CrosHealthdDiagnosticsService(
+      Context* context,
+      CrosHealthdRoutineFactory* routine_factory,
+      ash::cros_healthd::mojom::CrosHealthdRoutinesService* routine_service);
   CrosHealthdDiagnosticsService(const CrosHealthdDiagnosticsService&) = delete;
   CrosHealthdDiagnosticsService& operator=(
       const CrosHealthdDiagnosticsService&) = delete;
@@ -188,6 +191,8 @@ class CrosHealthdDiagnosticsService final
   // Mojo service provider to provide service to mojo service manager.
   MojoServiceProvider<ash::cros_healthd::mojom::CrosHealthdDiagnosticsService>
       provider_{this};
+
+  ash::cros_healthd::mojom::CrosHealthdRoutinesService* const routine_service_;
 
   // Must be the last class member.
   base::WeakPtrFactory<CrosHealthdDiagnosticsService> weak_ptr_factory_{this};
