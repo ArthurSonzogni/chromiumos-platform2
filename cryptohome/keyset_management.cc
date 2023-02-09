@@ -24,10 +24,13 @@
 #include <brillo/secure_blob.h>
 #include <chromeos/constants/cryptohome.h>
 #include <dbus/cryptohome/dbus-constants.h>
+#include <libhwsec-foundation/status/status_chain.h>
 
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/error/action.h"
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
@@ -65,14 +68,6 @@ CryptoStatus DecryptWrapper(const brillo::SecureBlob& key,
                             bool locked_to_single_user,
                             VaultKeyset* vk) {
   return vk->Decrypt(key, locked_to_single_user);
-}
-
-// Wraps VaultKeyset::ExncryptEx to bind to EncryptVkCallback without object
-// reference.
-CryptohomeStatus EncryptExWrapper(const KeyBlobs& key_blobs,
-                                  std::unique_ptr<AuthBlockState> auth_state,
-                                  VaultKeyset* vk) {
-  return vk->EncryptEx(key_blobs, *auth_state);
 }
 
 }  // namespace
@@ -304,22 +299,6 @@ KeysetManagement::AddInitialKeysetWithKeyBlobs(
     const FileSystemKeyset& file_system_keyset,
     KeyBlobs key_blobs,
     std::unique_ptr<AuthBlockState> auth_state) {
-  return AddInitialKeysetImpl(
-      vk_intent, obfuscated_username, key_data,
-      challenge_credentials_keyset_info, file_system_keyset,
-      base::BindOnce(&EncryptExWrapper, std::move(key_blobs),
-                     std::move(auth_state)));
-}
-
-CryptohomeStatusOr<std::unique_ptr<VaultKeyset>>
-KeysetManagement::AddInitialKeysetImpl(
-    const VaultKeysetIntent& vk_intent,
-    const ObfuscatedUsername& obfuscated_username,
-    const KeyData& key_data,
-    const std::optional<SerializedVaultKeyset_SignatureChallengeInfo>&
-        challenge_credentials_keyset_info,
-    const FileSystemKeyset& file_system_keyset,
-    EncryptVkCallback encrypt_vk_callback) {
   std::unique_ptr<VaultKeyset> vk(
       vault_keyset_factory_->New(platform_, crypto_));
   if (vk_intent.backup) {
@@ -328,7 +307,6 @@ KeysetManagement::AddInitialKeysetImpl(
   vk->SetLegacyIndex(kInitialKeysetIndex);
   vk->SetKeyData(key_data);
   vk->CreateFromFileSystemKeyset(file_system_keyset);
-
   if (key_data.type() == KeyData::KEY_TYPE_CHALLENGE_RESPONSE) {
     vk->SetFlags(vk->GetFlags() |
                  SerializedVaultKeyset::SIGNATURE_CHALLENGE_PROTECTED);
@@ -336,25 +314,17 @@ KeysetManagement::AddInitialKeysetImpl(
       vk->SetSignatureChallengeInfo(challenge_credentials_keyset_info.value());
     }
   }
+  CryptohomeStatus result = EncryptAndSaveKeyset(
+      *vk, key_blobs, *auth_state,
+      VaultKeysetPath(obfuscated_username, kInitialKeysetIndex));
 
-  CryptohomeStatus callback_result =
-      std::move(encrypt_vk_callback).Run(vk.get());
-  if (!callback_result.ok()) {
+  if (!result.ok()) {
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(
-                   kLocKeysetManagementEncryptFailedInAddInitial))
-        .Wrap(std::move(callback_result).status());
+                   kLocKeysetManagementEncryptAndSaveFailedInAddInitialKeyset))
+        .Wrap(std::move(result).status());
   }
 
-  if (!vk->Save(VaultKeysetPath(obfuscated_username, kInitialKeysetIndex))) {
-    LOG(ERROR) << "Failed to encrypt and write keyset for the new user.";
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocKeysetManagementSaveFailedInAddInitial),
-        ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
-        user_data_auth::CryptohomeErrorCode::
-            CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
-  }
   return vk;
 }
 
@@ -451,13 +421,6 @@ CryptohomeStatus KeysetManagement::ReSaveKeysetWithKeyBlobs(
     VaultKeyset& vault_keyset,
     KeyBlobs key_blobs,
     std::unique_ptr<AuthBlockState> auth_state) const {
-  return ReSaveKeysetImpl(
-      vault_keyset, base::BindOnce(&EncryptExWrapper, std::move(key_blobs),
-                                   std::move(auth_state)));
-}
-
-CryptohomeStatus KeysetManagement::ReSaveKeysetImpl(
-    VaultKeyset& vault_keyset, EncryptVkCallback encrypt_vk_callback) const {
   // Save the initial keyset so we can roll-back any changes if we
   // failed to re-save.
   VaultKeyset old_keyset = vault_keyset;
@@ -470,23 +433,15 @@ CryptohomeStatus KeysetManagement::ReSaveKeysetImpl(
     old_le_label = vault_keyset.GetLELabel();
   }
 
-  CryptohomeStatus callback_result =
-      std::move(encrypt_vk_callback).Run(&vault_keyset);
-  if (!callback_result.ok()) {
-    return MakeStatus<CryptohomeError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocKeysetManagementEncryptFailedInReSaveKeyset))
-        .Wrap(std::move(callback_result).status());
-  }
-  if (!vault_keyset.Save(vault_keyset.GetSourceFile())) {
-    LOG(ERROR) << "Failed to encrypt and write the vault_keyset.";
+  CryptohomeStatus result = EncryptAndSaveKeyset(
+      vault_keyset, key_blobs, *auth_state, vault_keyset.GetSourceFile());
+
+  if (!result.ok()) {
     vault_keyset = old_keyset;
     return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocKeysetManagementSaveFailedInReSaveKeyset),
-        ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
-        user_data_auth::CryptohomeErrorCode::
-            CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+               CRYPTOHOME_ERR_LOC(
+                   kLocKeysetManagementEncryptAndSaveFailedInReSaveKeyset))
+        .Wrap(std::move(result).status());
   }
 
   if ((vault_keyset.GetFlags() & SerializedVaultKeyset::LE_CREDENTIAL) != 0 &&
@@ -501,7 +456,7 @@ CryptohomeStatus KeysetManagement::ReSaveKeysetImpl(
   return OkStatus<CryptohomeError>();
 }
 
-CryptohomeErrorCode KeysetManagement::AddKeysetWithKeyBlobs(
+CryptohomeStatus KeysetManagement::AddKeysetWithKeyBlobs(
     const VaultKeysetIntent& vk_intent,
     const ObfuscatedUsername& obfuscated_username_new,
     const std::string& key_label,
@@ -510,22 +465,6 @@ CryptohomeErrorCode KeysetManagement::AddKeysetWithKeyBlobs(
     KeyBlobs key_blobs_new,
     std::unique_ptr<AuthBlockState> auth_state_new,
     bool clobber) {
-  return AddKeysetImpl(
-      vk_intent, obfuscated_username_new, key_label, key_data_new,
-      vault_keyset_old,
-      base::BindOnce(&EncryptExWrapper, std::move(key_blobs_new),
-                     std::move(auth_state_new)),
-      clobber);
-}
-
-CryptohomeErrorCode KeysetManagement::AddKeysetImpl(
-    const VaultKeysetIntent& vk_intent,
-    const ObfuscatedUsername& obfuscated_username_new,
-    const std::string& key_label,
-    const KeyData& key_data_new,
-    const VaultKeyset& vault_keyset_old,
-    EncryptVkCallback encrypt_vk_callback,
-    bool clobber) {
   // Before persisting, check if there is an existing labeled credential.
   std::unique_ptr<VaultKeyset> match =
       GetVaultKeyset(obfuscated_username_new, key_label);
@@ -533,7 +472,13 @@ CryptohomeErrorCode KeysetManagement::AddKeysetImpl(
   if (match.get()) {
     LOG(INFO) << "Label already exists, clobbering the existing Keyset.";
     if (!clobber) {
-      return CRYPTOHOME_ERROR_KEY_LABEL_EXISTS;
+      return MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocKeysetManagementVKDuplicateLabelAddKeysetWithKeyBlobs),
+          ErrorActionSet(
+              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+          user_data_auth::CryptohomeErrorCode::
+              CRYPTOHOME_ERROR_KEY_LABEL_EXISTS);
     }
     vk_path = match->GetSourceFile();
   }
@@ -555,7 +500,13 @@ CryptohomeErrorCode KeysetManagement::AddKeysetImpl(
     }
     if (!file_found) {
       LOG(WARNING) << "Failed to find an available keyset slot";
-      return CRYPTOHOME_ERROR_KEY_QUOTA_EXCEEDED;
+      return MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocKeysetManagementKeyQuotaExceededAddKeysetWithKeyBlobs),
+          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
+                          ErrorAction::kReboot, ErrorAction::kPowerwash}),
+          user_data_auth::CryptohomeErrorCode::
+              CRYPTOHOME_ERROR_KEY_QUOTA_EXCEEDED);
     }
   }
 
@@ -567,31 +518,25 @@ CryptohomeErrorCode KeysetManagement::AddKeysetImpl(
   keyset_to_add->InitializeToAdd(vault_keyset_old);
   keyset_to_add->SetKeyData(key_data_new);
 
-  // Repersist the VK with the new creds.
-  CryptohomeStatus status =
-      std::move(encrypt_vk_callback).Run(keyset_to_add.get());
-  if (!status.ok()) {
-    LOG(WARNING) << "Failed to encrypt the new keyset: " << status;
+  CryptohomeStatus result = EncryptAndSaveKeyset(*keyset_to_add, key_blobs_new,
+                                                 *auth_state_new, vk_path);
+
+  if (!result.ok()) {
+    LOG(ERROR) << "Failed to encrypt the new keyset";
     // If we're clobbering don't delete on error.
     if (!clobber || !match.get()) {
       platform_->DeleteFile(vk_path);
     }
-    return CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocKeysetManagementFailedEncryptAndSaveKeysetWithKeyBlobs))
+        .Wrap(std::move(result).status());
   }
 
-  CryptohomeErrorCode ret_code = CRYPTOHOME_ERROR_NOT_SET;
-  if (!keyset_to_add->Save(vk_path)) {
-    LOG(WARNING) << "Failed to write the new keyset";
-    ret_code = CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
-    // If we're clobbering don't delete on error.
-    if (!clobber || !match.get()) {
-      platform_->DeleteFile(vk_path);
-    }
-  }
-  return ret_code;
+  return CryptohomeStatus();
 }
 
-CryptohomeErrorCode KeysetManagement::UpdateKeysetWithKeyBlobs(
+CryptohomeStatus KeysetManagement::UpdateKeysetWithKeyBlobs(
     const VaultKeysetIntent& vk_intent,
     const ObfuscatedUsername& obfuscated_username_new,
     const KeyData& key_data_new,
@@ -603,7 +548,12 @@ CryptohomeErrorCode KeysetManagement::UpdateKeysetWithKeyBlobs(
       GetVaultKeyset(obfuscated_username_new, key_data_new.label());
   if (!match.get()) {
     LOG(ERROR) << "Label does not exist.";
-    return CRYPTOHOME_ERROR_AUTHORIZATION_KEY_NOT_FOUND;
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocKeysetManagementLabelNotFoundUpdateKeysetWithKeyBlobs),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_KEY_LABEL_EXISTS);
   }
 
   // We set clobber to be true as we are sure that there is an existing keyset.
@@ -942,17 +892,31 @@ bool KeysetManagement::AddResetSeedIfMissing(VaultKeyset& vault_keyset) {
   return true;
 }
 
-CryptohomeErrorCode KeysetManagement::SaveKeysetWithKeyBlobs(
+CryptohomeStatus KeysetManagement::EncryptAndSaveKeyset(
     VaultKeyset& vault_keyset,
     const KeyBlobs& key_blobs,
-    const AuthBlockState& auth_state) {
-  if (!vault_keyset.EncryptEx(key_blobs, auth_state).ok() ||
-      !vault_keyset.Save(vault_keyset.GetSourceFile())) {
-    LOG(WARNING) << "Failed to encrypt the keyset";
-    return CRYPTOHOME_ERROR_BACKING_STORE_FAILURE;
+    const AuthBlockState& auth_state,
+    const FilePath& save_path) const {
+  CryptohomeStatus result = vault_keyset.EncryptEx(key_blobs, auth_state);
+  if (!result.ok()) {
+    LOG(ERROR) << "Failed to save keyset with key blobs.";
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocKeysetManagementEncryptFailedInEncryptAndSaveKeyset))
+        .Wrap(std::move(result).status());
   }
 
-  return CRYPTOHOME_ERROR_NOT_SET;
+  if (!vault_keyset.Save(save_path)) {
+    LOG(ERROR) << "Failed to write the vault_keyset.";
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocKeysetManagementSaveFailedInEncryptAndSaveKeyset),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
+        user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  }
+  return CryptohomeStatus();
 }
 
 }  // namespace cryptohome

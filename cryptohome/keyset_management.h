@@ -16,9 +16,11 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/cryptohome/dbus-constants.h>
 
+#include "base/files/file_path.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/cryptohome_mount_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
@@ -183,7 +185,7 @@ class KeysetManagement {
   // after wrapped by |key_blobs_new| as directed by |auth_state_new|. If
   // |clobber| is true and there are no matching, labeled keys, then it does
   // nothing; if there is an identically labeled key, it will overwrite it.
-  virtual CryptohomeErrorCode AddKeysetWithKeyBlobs(
+  virtual CryptohomeStatus AddKeysetWithKeyBlobs(
       const VaultKeysetIntent& vk_intent,
       const ObfuscatedUsername& obfuscated_username_new,
       const std::string& key_label,
@@ -193,18 +195,19 @@ class KeysetManagement {
       std::unique_ptr<AuthBlockState> auth_state_new,
       bool clobber);
 
-  // Encrypts and saves a keyset with the given |key_blobs|.
-  virtual CryptohomeErrorCode SaveKeysetWithKeyBlobs(
+  // Encrypts and saves a keyset with the given |key_blobs| at |save_path|.
+  virtual CryptohomeStatus EncryptAndSaveKeyset(
       VaultKeyset& vault_keyset,
       const KeyBlobs& key_blobs,
-      const AuthBlockState& auth_state);
+      const AuthBlockState& auth_state,
+      const base::FilePath& save_path) const;
 
   // Updates an existing |vault_keyset| with the |key_data_new| from new user
   // credentials. This function assumes the user is already authenticated and
   // their |vault_keyset| with an existing credentials is unwrapped. New keyset
   // is wrapped by the |key_blobs| passed, which should be derived from the new
   // credentials.
-  virtual CryptohomeErrorCode UpdateKeysetWithKeyBlobs(
+  virtual CryptohomeStatus UpdateKeysetWithKeyBlobs(
       const VaultKeysetIntent& vk_intent,
       const ObfuscatedUsername& obfuscated_username_new,
       const KeyData& key_data_new,

@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_MOCK_KEYSET_MANAGEMENT_H_
 #define CRYPTOHOME_MOCK_KEYSET_MANAGEMENT_H_
 
+#include "base/files/file_path.h"
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/keyset_management.h"
 
 #include <map>
@@ -88,7 +90,7 @@ class MockKeysetManagement : public KeysetManagement {
                KeyBlobs,
                const std::optional<std::string>&),
               (override));
-  MOCK_METHOD(CryptohomeErrorCode,
+  MOCK_METHOD(CryptohomeStatus,
               AddKeysetWithKeyBlobs,
               (const VaultKeysetIntent&,
                const ObfuscatedUsername&,
@@ -114,13 +116,14 @@ class MockKeysetManagement : public KeysetManagement {
               AddResetSeedIfMissing,
               (VaultKeyset & vault_keyset),
               (override));
-  MOCK_METHOD(CryptohomeErrorCode,
-              SaveKeysetWithKeyBlobs,
+  MOCK_METHOD(CryptohomeStatus,
+              EncryptAndSaveKeyset,
               (VaultKeyset & vault_keyset,
                const KeyBlobs& key_blobs,
-               const AuthBlockState& auth_state),
-              (override));
-  MOCK_METHOD(CryptohomeErrorCode,
+               const AuthBlockState& auth_state,
+               const base::FilePath& save_path),
+              (const, override));
+  MOCK_METHOD(CryptohomeStatus,
               UpdateKeysetWithKeyBlobs,
               (const VaultKeysetIntent&,
                const ObfuscatedUsername&,

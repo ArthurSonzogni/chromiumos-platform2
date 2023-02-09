@@ -44,6 +44,7 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/error/converter.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
@@ -390,7 +391,7 @@ void AuthSession::SetTimeoutTimer(const base::TimeDelta& delay) {
 
 CryptohomeStatus AuthSession::ExtendTimeoutTimer(
     const base::TimeDelta extension_duration) {
-  // Check to make sure that the AuthSesion is still valid before we stop the
+  // Check to make sure that the AuthSession is still valid before we stop the
   // timer.
   if (status_ == AuthStatus::kAuthStatusTimedOut) {
     // AuthSession timed out before timeout_timer_.Stop() could be called.
@@ -554,17 +555,14 @@ CryptohomeStatus AuthSession::AddVaultKeyset(
           ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
           user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
     }
-    // TODO(b/229825202): Migrate Keyset Management and wrap the returned error.
-    user_data_auth::CryptohomeErrorCode error =
-        static_cast<user_data_auth::CryptohomeErrorCode>(
-            keyset_management_->AddKeysetWithKeyBlobs(
-                vk_backup_intent, obfuscated_username_, key_label, key_data,
-                *vault_keyset_.get(), std::move(*key_blobs.get()),
-                std::move(auth_state), true /*clobber*/));
-    if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
+    CryptohomeStatus status = keyset_management_->AddKeysetWithKeyBlobs(
+        vk_backup_intent, obfuscated_username_, key_label, key_data,
+        *vault_keyset_.get(), std::move(*key_blobs.get()),
+        std::move(auth_state), true /*clobber*/);
+    if (!status.ok()) {
       return MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(kLocAuthSessionAddFailedInAddKeyset),
-          ErrorActionSet({ErrorAction::kReboot}), error);
+                 CRYPTOHOME_ERR_LOC(kLocAuthSessionAddFailedInAddKeyset))
+          .Wrap(std::move(status).status());
     }
     LOG(INFO) << "AuthSession: added additional keyset " << key_label << ".";
   }
@@ -597,19 +595,15 @@ void AuthSession::UpdateVaultKeyset(
             .Wrap(std::move(callback_error)));
     return;
   }
-  user_data_auth::CryptohomeErrorCode error_code =
-      static_cast<user_data_auth::CryptohomeErrorCode>(
-          keyset_management_->UpdateKeysetWithKeyBlobs(
-              VaultKeysetIntent{.backup = false}, obfuscated_username_,
-              key_data, *vault_keyset_.get(), std::move(*key_blobs.get()),
-              std::move(auth_state)));
-  if (error_code != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
-    std::move(on_done).Run(MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionUpdateWithBlobFailedInUpdateKeyset),
-        ErrorActionSet(
-            {ErrorAction::kReboot, ErrorAction::kDevCheckUnexpectedState}),
-        error_code));
-    return;
+  CryptohomeStatus status = keyset_management_->UpdateKeysetWithKeyBlobs(
+      VaultKeysetIntent{.backup = false}, obfuscated_username_, key_data,
+      *vault_keyset_.get(), std::move(*key_blobs.get()), std::move(auth_state));
+  if (!status.ok()) {
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthSessionUpdateWithBlobFailedInUpdateKeyset))
+            .Wrap(std::move(status).status()));
   }
 
   // Add the new secret to the AuthSession's credential verifier. On successful
@@ -1485,17 +1479,16 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
   // Update and persist the backup VaultKeyset if backup creation is enabled.
   if (enable_create_backup_vk_with_uss_) {
     DCHECK(IsFactorTypeSupportedByBothUssAndVk(auth_factor_type));
-    user_data_auth::CryptohomeErrorCode error_code =
-        static_cast<user_data_auth::CryptohomeErrorCode>(
-            keyset_management_->UpdateKeysetWithKeyBlobs(
-                VaultKeysetIntent{.backup = true}, obfuscated_username_,
-                key_data, *vault_keyset_.get(), std::move(*key_blobs.get()),
-                std::move(auth_block_state)));
-    if (error_code != user_data_auth::CRYPTOHOME_ERROR_NOT_SET) {
-      std::move(on_done).Run(MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(kLocAuthSessionUpdateKeysetFailedInUpdateWithUSS),
-          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}), error_code));
-      return;
+    CryptohomeStatus status = keyset_management_->UpdateKeysetWithKeyBlobs(
+        VaultKeysetIntent{.backup = true}, obfuscated_username_, key_data,
+        *vault_keyset_.get(), std::move(*key_blobs.get()),
+        std::move(auth_block_state));
+    if (!status.ok()) {
+      std::move(on_done).Run(
+          MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(
+                  kLocAuthSessionUpdateKeysetFailedInUpdateWithUSS))
+              .Wrap(std::move(status).status()));
     }
   }
   // If we cannot maintain the backup VaultKeyset (per above), we must delete

@@ -684,19 +684,19 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./keyset_management.cc */
   kLocKeysetManagementSaveFailedInAddInitial = 429,
   /* ./keyset_management.cc */
-  kLocKeysetManagementEncryptFailedInReSaveKeyset = 430,
+  kLocKeysetManagementEncryptFailedInEncryptAndSaveKeyset = 430,
   /* ./keyset_management.cc */
-  kLocKeysetManagementSaveFailedInReSaveKeyset = 431,
-  /* =Obsolete= */
-  kLocKeysetManagementNoLabelInRemoveKeyset = 432,
-  /* =Obsolete= */
-  kLocKeysetManagementVKNotFoundInRemoveKeyset = 433,
-  /* =Obsolete= */
-  kLocKeysetManagementKeyNotFoundInRemoveKeyset = 434,
-  /* =Obsolete= */
-  kLocKeysetManagementBadAuthInRemoveKeyset = 435,
-  /* =Obsolete= */
-  kLocKeysetManagementRemoveFailedInRemoveKeyset = 436,
+  kLocKeysetManagementEncryptAndSaveFailedInReSaveKeyset = 431,
+  /* ./keyset_management.cc */
+  kLocKeysetManagementSaveFailedInEncryptAndSaveKeyset = 432,
+  /* ./keyset_management.cc */
+  kLocKeysetManagementVKDuplicateLabelAddKeysetWithKeyBlobs = 433,
+  /* ./keyset_management.cc */
+  kLocKeysetManagementKeyQuotaExceededAddKeysetWithKeyBlobs = 434,
+  /* ./keyset_management.cc */
+  kLocKeysetManagementFailedEncryptAndSaveKeysetWithKeyBlobs = 435,
+  /* ./keyset_management.cc */
+  kLocKeysetManagementLabelNotFoundUpdateKeysetWithKeyBlobs = 436,
   /* ./keyset_management.cc */
   kLocKeysetManagementInvalidIndexInRemoveKeyset = 437,
   /* ./keyset_management.cc */
@@ -767,8 +767,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocPinWeaverAuthBlockNoResetSecretOrResetSeedInCreate = 470,
   /* ./auth_blocks/pin_weaver_auth_block.cc */
   kLocPinWeaverAuthBlockNoUserInputInDerive = 471,
-  /* =Obsolete= */
-  kLocUserDataAuthNoAuthSessionInUpdateCredential = 472,
+  /* ./keyset_management.cc */
+  kLocKeysetManagementEncryptAndSaveFailedInAddInitialKeyset = 472,
   /* ./userdataauth.cc */
   kLocUserDataAuthSessionNotFoundInGetAuthedAS = 473,
   /* ./userdataauth.cc */

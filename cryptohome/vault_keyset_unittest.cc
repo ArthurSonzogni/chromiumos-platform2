@@ -904,6 +904,7 @@ TEST_F(VaultKeysetTest, DecryptionTestWithKeyBlobs) {
   AuthBlockState auth_state = {.state = pcr_state};
   ASSERT_TRUE(vault_keyset.EncryptEx(key_blobs, auth_state).ok());
   EXPECT_TRUE(vault_keyset.Save(FilePath(kFilePath)));
+  EXPECT_EQ(vault_keyset.GetSourceFile(), FilePath(kFilePath));
 
   SecureBlob original_data;
   ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));

@@ -36,7 +36,6 @@
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/error/converter.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
@@ -73,8 +72,8 @@ const char kKeyLegacyPrefix[] = "legacy-";
 namespace cryptohome {
 
 VaultKeyset::VaultKeyset()
-    : platform_(NULL),
-      crypto_(NULL),
+    : platform_(nullptr),
+      crypto_(nullptr),
       loaded_(false),
       encrypted_(false),
       flags_(0),
@@ -82,8 +81,6 @@ VaultKeyset::VaultKeyset()
       migrated_vk_(false),
       legacy_index_(-1),
       auth_locked_(false) {}
-
-VaultKeyset::~VaultKeyset() {}
 
 void VaultKeyset::Initialize(Platform* platform, Crypto* crypto) {
   platform_ = platform;
@@ -565,7 +562,7 @@ CryptohomeStatus VaultKeyset::WrapVaultKeysetWithAesDeprecated(
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocVaultKeysetMissingFieldInWrapAESD),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
   SecureBlob vault_blob;
@@ -574,7 +571,7 @@ CryptohomeStatus VaultKeyset::WrapVaultKeysetWithAesDeprecated(
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocVaultKeysetSerializationFailedInWrapAESD),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
 
   SecureBlob vault_cipher_text;
@@ -583,7 +580,7 @@ CryptohomeStatus VaultKeyset::WrapVaultKeysetWithAesDeprecated(
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocVaultKeysetEncryptFailedInWrapAESD),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   wrapped_keyset_ = vault_cipher_text;
   le_fek_iv_ = blobs.vkk_iv;
@@ -595,7 +592,7 @@ CryptohomeStatus VaultKeyset::WrapVaultKeysetWithAesDeprecated(
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocVaultKeysetEncryptChapsFailedInWrapAESD),
           ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-          user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+          user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
     }
     wrapped_chaps_key_ = wrapped_chaps_key;
     le_chaps_iv_ = blobs.chaps_iv;
@@ -611,7 +608,7 @@ CryptohomeStatus VaultKeyset::WrapVaultKeysetWithAesDeprecated(
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocVaultKeysetEncryptResetSeedInWrapAESD),
           ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-          user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
+          user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
     }
     wrapped_reset_seed_ = wrapped_reset_seed;
     reset_iv_ = reset_iv;
@@ -1272,6 +1269,10 @@ bool VaultKeyset::Save(const FilePath& filename) {
 
   bool ok = platform_->WriteFileAtomicDurable(filename, contents,
                                               kVaultFilePermissions);
+  if (ok) {
+    source_file_ = filename;
+  }
+
   return ok;
 }
 

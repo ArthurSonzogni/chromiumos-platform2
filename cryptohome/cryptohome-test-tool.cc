@@ -451,13 +451,13 @@ void PersistVaultKeyset(KeysetManagement* keyset_management,
   }
 
   if (old_vault_keyset) {  // Add VaultKeyset.
-    CryptohomeErrorCode error = keyset_management->AddKeysetWithKeyBlobs(
+    CryptohomeStatus status = keyset_management->AddKeysetWithKeyBlobs(
         VaultKeysetIntent{.backup = false}, obfuscated_username,
         key_data.label(), key_data, *old_vault_keyset, std::move(*key_blobs),
         std::move(auth_state),
         /*clobber=*/false);
-    if (error != CRYPTOHOME_ERROR_NOT_SET) {
-      LOG(ERROR) << "Adding Keyset failed: " << error;
+    if (!status.ok()) {
+      LOG(ERROR) << "Adding Keyset failed: " << status;
       return;
     }
     LOG(INFO) << "Added additional keyset :\"" << key_data.label() << "\".";

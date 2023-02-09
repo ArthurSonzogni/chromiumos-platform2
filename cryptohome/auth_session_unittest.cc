@@ -45,7 +45,7 @@
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/credential_verifier_test_utils.h"
 #include "cryptohome/crypto_error.h"
-#include "cryptohome/cryptohome_common.h"
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/mock_credential_verifier.h"
@@ -1099,8 +1099,8 @@ TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
   request2.mutable_auth_input()->mutable_password_input()->set_secret(
       kFakeOtherPass);
 
-  EXPECT_CALL(keyset_management_, AddKeysetWithKeyBlobs(_, _, _, _, _, _, _, _))
-      .WillOnce(Return(CRYPTOHOME_ERROR_NOT_SET));
+  EXPECT_CALL(keyset_management_,
+              AddKeysetWithKeyBlobs(_, _, _, _, _, _, _, _));
 
   // Test.
   TestFuture<CryptohomeStatus> add_future2;
@@ -1273,8 +1273,7 @@ TEST_F(AuthSessionTest, UpdateAuthFactorSucceedsForPasswordVK) {
                  std::make_unique<KeyBlobs>(),
                  std::make_unique<AuthBlockState>(auth_block_state));
       });
-  EXPECT_CALL(keyset_management_, UpdateKeysetWithKeyBlobs(_, _, _, _, _, _))
-      .WillOnce(Return(CRYPTOHOME_ERROR_NOT_SET));
+  EXPECT_CALL(keyset_management_, UpdateKeysetWithKeyBlobs(_, _, _, _, _, _));
 
   // Set a valid |vault_keyset_| to update.
   KeyData key_data;
@@ -1564,7 +1563,7 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
     SetUserSecretStashExperimentForTesting(/*enabled=*/true);
   }
 
-  ~AuthSessionWithUssExperimentTest() {
+  ~AuthSessionWithUssExperimentTest() override {
     // Reset this global variable to avoid affecting unrelated test cases.
     SetUserSecretStashExperimentForTesting(/*enabled=*/std::nullopt);
   }
@@ -1834,8 +1833,7 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
     // is not explicitly disabled by adding a USS-only factor.
     if (backup_keyset_enabled) {
       EXPECT_CALL(keyset_management_,
-                  AddKeysetWithKeyBlobs(_, _, _, _, _, _, _, _))
-          .WillOnce(Return(CRYPTOHOME_ERROR_NOT_SET));
+                  AddKeysetWithKeyBlobs(_, _, _, _, _, _, _, _));
     }
     // Calling AddAuthFactor.
     user_data_auth::AddAuthFactorRequest add_pin_request;
@@ -2216,8 +2214,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
                  std::move(auth_block_state));
       });
   // Setting the expectation that a backup VaultKeyset will be created.
-  EXPECT_CALL(keyset_management_, AddKeysetWithKeyBlobs(_, _, _, _, _, _, _, _))
-      .WillOnce(Return(CRYPTOHOME_ERROR_NOT_SET));
+  EXPECT_CALL(keyset_management_,
+              AddKeysetWithKeyBlobs(_, _, _, _, _, _, _, _));
   // Calling AddAuthFactor.
   user_data_auth::AddAuthFactorRequest add_pin_request;
   add_pin_request.set_auth_session_id(auth_session->serialized_token());
