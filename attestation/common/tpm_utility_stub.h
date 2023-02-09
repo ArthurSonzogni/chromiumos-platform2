@@ -119,8 +119,6 @@ class TpmUtilityStub : public TpmUtility {
                       AttestationDatabase::Identity* identity) override {
     return false;
   }
-
-  bool GetRsuDeviceId(std::string* device_id) override { return false; }
 };
 
 }  // namespace attestation

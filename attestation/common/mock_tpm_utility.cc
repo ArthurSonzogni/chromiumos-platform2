@@ -99,7 +99,6 @@ MockTpmUtility::MockTpmUtility() {
   ON_CALL(*this, RemoveOwnerDependency()).WillByDefault(Return(true));
   ON_CALL(*this, CreateIdentity(_, _))
       .WillByDefault(WithArgs<1>(Invoke(SetFakeIdentity)));
-  ON_CALL(*this, GetRsuDeviceId(_)).WillByDefault(Return(true));
 }
 
 MockTpmUtility::~MockTpmUtility() {}

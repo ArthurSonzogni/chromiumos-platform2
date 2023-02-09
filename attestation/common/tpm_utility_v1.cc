@@ -1503,11 +1503,6 @@ bool TpmUtilityV1::MakeIdentity(std::string* identity_public_key_der,
   return true;
 }
 
-bool TpmUtilityV1::GetRsuDeviceId(std::string* rsu_device_id) {
-  LOG(ERROR) << __func__ << ": Not implemented.";
-  return false;
-}
-
 std::string TpmUtilityV1::GetPCRValueForMode(const std::string& mode) {
   const std::string mode_digest = base::SHA1HashString(mode);
 

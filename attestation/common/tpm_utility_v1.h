@@ -91,8 +91,6 @@ class TpmUtilityV1 : public TpmUtilityCommon {
   bool CreateIdentity(KeyType key_type,
                       AttestationDatabase::Identity* identity) override;
 
-  bool GetRsuDeviceId(std::string* device_id) override;
-
  protected:
   std::string GetPCRValueForMode(const std::string& mode) override;
 

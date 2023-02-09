@@ -110,7 +110,6 @@ class MockTpmUtility : public TpmUtility {
               CreateIdentity,
               (KeyType, AttestationDatabase::Identity*),
               (override));
-  MOCK_METHOD(bool, GetRsuDeviceId, (std::string*), (override));
 };
 
 }  // namespace attestation
