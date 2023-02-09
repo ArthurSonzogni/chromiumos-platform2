@@ -15,7 +15,6 @@
 #include <base/logging.h>
 #include <base/strings/strcat.h>
 #include <brillo/dbus/dbus_object.h>
-#include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
 #include <dbus/private_computing/dbus-constants.h>
 #include <google/protobuf/message_lite.h>
