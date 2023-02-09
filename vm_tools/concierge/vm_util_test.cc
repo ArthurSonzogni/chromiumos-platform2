@@ -496,5 +496,17 @@ TEST(VMUtilTest, CreateArcVMAffinitySMP4Core) {
   EXPECT_EQ(package[0], "0,1,2,3,4");
 }
 
+TEST(VMUtilTest, CreateSharedDataParamSimple) {
+  ASSERT_EQ(CreateSharedDataParam(
+                base::FilePath("/usr/local/bin"), "usr_local_bin",
+                true /* enable_caches */, false /* ascii_casefold */,
+                true /* posix_acl */, {} /* privileged_uids */),
+            "/usr/local/bin:usr_local_bin:type=fs:cache=always:uidmap=0 655360 "
+            "5000,5000 600 50,5050 660410 1994950:gidmap=0 655360 1065,1065 "
+            "20119 1,1066 656426 3934,5000 600 50,5050 660410 "
+            "1994950:timeout=3600:rewrite-security-xattrs=true:ascii_casefold="
+            "false:writeback=true:posix_acl=true");
+}
+
 }  // namespace concierge
 }  // namespace vm_tools
