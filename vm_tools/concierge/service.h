@@ -217,6 +217,8 @@ class Service final {
 
   std::unique_ptr<dbus::Response> ListUsbDevices(dbus::MethodCall* method_call);
 
+  std::unique_ptr<dbus::Response> GetDnsSettings(dbus::MethodCall* method_call);
+
   std::unique_ptr<dbus::Response> SetVmCpuRestriction(
       dbus::MethodCall* method_call);
 

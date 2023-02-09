@@ -1521,6 +1521,7 @@ bool Service::Init() {
       {kAttachUsbDeviceMethod, &Service::AttachUsbDevice},
       {kDetachUsbDeviceMethod, &Service::DetachUsbDevice},
       {kListUsbDeviceMethod, &Service::ListUsbDevices},
+      {kGetDnsSettingsMethod, &Service::GetDnsSettings},
       {kSetVmCpuRestrictionMethod, &Service::SetVmCpuRestriction},
       {kListVmsMethod, &Service::ListVms},
       {kGetVmGpuCachePathMethod, &Service::GetVmGpuCachePath},
@@ -4335,6 +4336,19 @@ void Service::ComposeDnsResponse(dbus::MessageWriter* writer) {
     dns_settings.add_search_domains(domain);
   }
   writer->AppendProtoAsArrayOfBytes(dns_settings);
+}
+
+std::unique_ptr<dbus::Response> Service::GetDnsSettings(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received GetDnsSettings request";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageWriter writer(dbus_response.get());
+  ComposeDnsResponse(&writer);
+  return dbus_response;
 }
 
 std::unique_ptr<dbus::Response> Service::SetVmCpuRestriction(
