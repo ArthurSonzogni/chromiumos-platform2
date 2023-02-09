@@ -834,7 +834,7 @@ std::optional<std::string> AttestationService::GetEndorsementCertificate()
 void AttestationService::GetEndorsementInfoTask(
     const GetEndorsementInfoRequest& request,
     const std::shared_ptr<GetEndorsementInfoReply>& result) {
-  const auto& key_type = GetEndorsementKeyType();
+  KeyType key_type = GetEndorsementKeyType();
 
   if (key_type != KEY_TYPE_RSA && key_type != KEY_TYPE_ECC) {
     result->set_status(STATUS_INVALID_PARAMETER);
