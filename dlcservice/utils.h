@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/callback.h>
+#include <base/strings/stringprintf.h>
 #include <libimageloader/manifest.h>
 
 #include "dlcservice/boot/boot_slot.h"
@@ -32,6 +33,14 @@ extern char kRootDirectoryInsideDlcModule[];
 // Permissions for DLC files and directories.
 extern const int kDlcFilePerms;
 extern const int kDlcDirectoryPerms;
+
+// Alert Log error categories.
+extern const char kCategoryInstall[];
+extern const char kCategoryUninstall[];
+extern const char kCategoryInit[];
+extern const char kCategoryCleanup[];
+
+constexpr char kAlertComponent[] = "CoreServicesAlert";
 
 template <typename Arg>
 base::FilePath JoinPaths(Arg&& path) {
@@ -109,6 +118,12 @@ std::shared_ptr<imageloader::Manifest> GetDlcManifest(
 // Scans a directory and returns all its subdirectory names in a list.
 std::set<std::string> ScanDirectory(const base::FilePath& dir);
 
+// Create a tag that can be added to an Error log message to allow easier
+// filtering from listnr logs. Expected to be used as the first field of a log
+// message. e.g.: `LOG(ERROR) << AlertLogTag(kCategoryName) << err_msg << ....;`
+inline std::string AlertLogTag(const std::string& category) {
+  return base::StringPrintf("[%s<%s>] ", kAlertComponent, category.c_str());
+}
 }  // namespace dlcservice
 
 #endif  // DLCSERVICE_UTILS_H_

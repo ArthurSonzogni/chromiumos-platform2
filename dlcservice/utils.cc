@@ -76,6 +76,11 @@ char kRootDirectoryInsideDlcModule[] = "root";
 const int kDlcFilePerms = 0644;
 const int kDlcDirectoryPerms = 0755;
 
+const char kCategoryInstall[] = "install";
+const char kCategoryUninstall[] = "uninstall";
+const char kCategoryInit[] = "init";
+const char kCategoryCleanup[] = "cleanup";
+
 bool SplitPartitionName(std::string partition_name,
                         std::string* disk_name_out,
                         int* partition_num_out) {

@@ -14,6 +14,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/bind.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/test/mock_log.h>
 #include <brillo/file_utils.h>
 #include <crypto/sha2.h>
 #include <gmock/gmock.h>
@@ -23,6 +24,9 @@
 #include "dlcservice/utils.h"
 
 namespace dlcservice {
+
+using ::testing::_;
+using ::testing::HasSubstr;
 
 namespace {
 constexpr char kDlcRootPath[] = "/tmp/dlc/";
@@ -310,6 +314,29 @@ TEST(UtilsTest, JoinPartitionNameTest) {
   EXPECT_EQ("/dev/mmcblk0p3", JoinPartitionName("/dev/mmcblk0", 3));
   EXPECT_EQ("", JoinPartitionName("foobar", 123));
   EXPECT_EQ("", JoinPartitionName("/dev/sda", 0));
+}
+
+TEST(UtilsTest, AlertLogTagCreationTest) {
+  auto category = "test_category";
+  auto default_component = "CoreServicesAlert";
+  EXPECT_EQ(base::StringPrintf("[%s<%s>] ", default_component, category),
+            AlertLogTag(category));
+}
+
+TEST(UtilsTest, AlertLogTagLogTest) {
+  base::test::MockLog mock_log;
+  mock_log.StartCapturingLogs();
+
+  auto category = "test_category";
+  auto test_msg = "Test Error Message: ";
+  auto test_id = 10;
+  auto expected_log = base::StringPrintf(
+      "%s%s%d", AlertLogTag(category).c_str(), test_msg, test_id);
+
+  EXPECT_CALL(mock_log,
+              Log(::logging::LOGGING_ERROR, _, _, _, HasSubstr(expected_log)));
+
+  LOG(ERROR) << AlertLogTag(category) << test_msg << test_id;
 }
 
 }  // namespace dlcservice

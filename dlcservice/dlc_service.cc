@@ -52,6 +52,7 @@ DlcService::~DlcService() {
   if (periodic_install_check_id_ != MessageLoop::kTaskIdNull &&
       !brillo::MessageLoop::current()->CancelTask(periodic_install_check_id_))
     LOG(ERROR)
+        << AlertLogTag(kCategoryCleanup)
         << "Failed to cancel delayed update_engine check during cleanup.";
 }
 
@@ -103,6 +104,8 @@ bool DlcService::Install(const InstallRequest& install_request, ErrorPtr* err) {
   // Only send error metrics in here. Install success metrics is sent in
   // |DlcBase|.
   if (!result) {
+    LOG(ERROR) << AlertLogTag(kCategoryInstall)
+               << "Failed to install DLC=" << install_request.id();
     SystemState::Get()->metrics()->SendInstallResultFailure(err);
     Error::ConvertToDbusError(err);
   }
@@ -217,9 +220,11 @@ bool DlcService::InstallWithUpdateEngine(const InstallRequest& install_request,
 bool DlcService::Uninstall(const string& id, brillo::ErrorPtr* err) {
   bool result = dlc_manager_->Uninstall(id, err);
   SystemState::Get()->metrics()->SendUninstallResult(err);
-  if (!result)
+  if (!result) {
+    LOG(ERROR) << AlertLogTag(kCategoryUninstall)
+               << "Failed to uninstall DLC=" << id;
     Error::ConvertToDbusError(err);
-
+  }
   return result;
 }
 
@@ -398,7 +403,8 @@ void DlcService::OnStatusUpdateAdvancedSignal(
 void DlcService::OnStatusUpdateAdvancedSignalConnected(
     const string& interface_name, const string& signal_name, bool success) {
   if (!success) {
-    LOG(ERROR) << "Failed to connect to update_engine's StatusUpdate signal.";
+    LOG(ERROR) << AlertLogTag(kCategoryInit)
+               << "Failed to connect to update_engine's StatusUpdate signal.";
   }
 }
 

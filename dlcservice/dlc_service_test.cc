@@ -2,18 +2,21 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <memory>
 #include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/test/mock_log.h>
 #include <base/test/simple_test_clock.h>
 #include <brillo/message_loops/message_loop_utils.h>
 #include <dbus/dlcservice/dbus-constants.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
-#include <update_engine/proto_bindings/update_engine.pb.h>
+#include <gmock/gmock-matchers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <update_engine/proto_bindings/update_engine.pb.h>
 
 #include "dlcservice/dlc.h"
 #include "dlcservice/dlc_service.h"
@@ -29,10 +32,14 @@ using dlcservice::metrics::UninstallResult;
 using std::string;
 using std::vector;
 using testing::_;
+using testing::AnyNumber;
+using testing::ByMove;
 using testing::DoAll;
 using testing::ElementsAre;
+using testing::HasSubstr;
 using testing::Invoke;
 using testing::Return;
+using testing::SaveArg;
 using testing::SetArgPointee;
 using testing::StrictMock;
 using testing::WithArg;
@@ -114,6 +121,18 @@ class DlcServiceTest : public BaseTest {
   DlcServiceTest(const DlcServiceTest&) = delete;
   DlcServiceTest& operator=(const DlcServiceTest&) = delete;
 };
+
+TEST_F(DlcServiceTest, VerifySignalConnectFailureAlert) {
+  // Setup a mock logger to ensure alert is printed on a failed connect
+  base::test::MockLog mock_log;
+  mock_log.StartCapturingLogs();
+  // Logger expectation.
+  EXPECT_CALL(mock_log, Log(::logging::LOGGING_ERROR, _, _, _,
+                            HasSubstr(AlertLogTag(kCategoryInit).c_str())));
+
+  dlc_service_->OnStatusUpdateAdvancedSignalConnected("test_iface", "test_name",
+                                                      false);
+}
 
 TEST_F(DlcServiceTest, GetInstalledTest) {
   Install(kFirstDlc);
@@ -238,9 +257,18 @@ TEST_F(DlcServiceTest, UninstallFailToSetDlcActiveValueFalse) {
 }
 
 TEST_F(DlcServiceTest, UninstallInvalidDlcTest) {
+  // Setup a mock logger to ensure alert is printed on a failed uninstall
+  base::test::MockLog mock_log;
+  mock_log.StartCapturingLogs();
+
   const auto& id = "invalid-dlc-id";
   EXPECT_CALL(*mock_metrics_,
               SendUninstallResult(UninstallResult::kFailedInvalidDlc));
+  // Logger expectations.
+  EXPECT_CALL(mock_log, Log(_, _, _, _, _)).Times(AnyNumber());
+  EXPECT_CALL(mock_log,
+              Log(::logging::LOGGING_ERROR, _, _, _,
+                  HasSubstr(AlertLogTag(kCategoryUninstall).c_str())));
 
   EXPECT_FALSE(dlc_service_->Uninstall(id, &err_));
   EXPECT_EQ(err_->GetCode(), kErrorInvalidDlc);
@@ -905,6 +933,10 @@ TEST_F(DlcServiceTest, UpdateEngineFailureClearsInstalling) {
   auto mock_dlc_manager = std::make_unique<StrictMock<MockDlcManager>>();
   auto* mock_dlc_manager_ptr = mock_dlc_manager.get();
 
+  // Setup a mock logger to ensure alert is printed on a failed install
+  base::test::MockLog mock_log;
+  mock_log.StartCapturingLogs();
+
   dlc_service_->SetDlcManagerForTest(std::move(mock_dlc_manager));
 
   EXPECT_CALL(*mock_dlc_manager_ptr, Install(_, _, _))
@@ -916,6 +948,10 @@ TEST_F(DlcServiceTest, UpdateEngineFailureClearsInstalling) {
   EXPECT_CALL(*mock_dlc_manager_ptr, GetDlc(_, _)).WillOnce(Return(&dlc));
   EXPECT_CALL(*mock_update_engine_proxy_ptr_, Install(_, _, _))
       .WillOnce(Return(false));
+  // Logger expectations.
+  EXPECT_CALL(mock_log, Log(_, _, _, _, _)).Times(AnyNumber());
+  EXPECT_CALL(mock_log, Log(::logging::LOGGING_ERROR, _, _, _,
+                            HasSubstr(AlertLogTag(kCategoryInstall).c_str())));
   EXPECT_CALL(*mock_metrics_, SendInstallResult(_));
 
   StatusResult status;

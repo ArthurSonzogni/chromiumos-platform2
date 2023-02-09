@@ -91,6 +91,7 @@ class DlcService : public DlcServiceInterface {
   FRIEND_TEST(DlcServiceTest, InstallSchedulesPeriodicInstallCheck);
   FRIEND_TEST(DlcServiceTest, UpdateEngineBecomesAvailable);
   FRIEND_TEST(DlcServiceTest, InstallRaceConditionCheck);
+  FRIEND_TEST(DlcServiceTest, VerifySignalConnectFailureAlert);
 
   // Install the DLC with ID |id| through update_engine by sending a request to
   // it.
