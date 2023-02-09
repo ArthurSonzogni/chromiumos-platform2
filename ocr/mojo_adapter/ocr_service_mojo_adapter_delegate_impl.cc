@@ -15,7 +15,6 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/synchronization/waitable_event.h>
 #include <brillo/dbus/dbus_method_invoker.h>
-#include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
@@ -57,8 +56,7 @@ void DoDBusBootstrap(base::ScopedFD fd,
   brillo::ErrorPtr error;
   auto response = brillo::dbus_utils::CallMethodAndBlockWithTimeout(
       kOcrServiceDBusTimeout, ocr_service_proxy, kOcrServiceInterface,
-      kBootstrapMojoConnectionMethod, &error,
-      brillo::dbus_utils::FileDescriptor(std::move(fd)),
+      kBootstrapMojoConnectionMethod, &error, std::move(fd),
       false /* should_accept_invitation */);
 
   if (!response) {
