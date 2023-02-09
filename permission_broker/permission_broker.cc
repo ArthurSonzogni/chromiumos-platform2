@@ -111,18 +111,17 @@ bool PermissionBroker::CheckPathAccess(const std::string& in_path) {
 
 bool PermissionBroker::OpenPath(brillo::ErrorPtr* error,
                                 const std::string& in_path,
-                                brillo::dbus_utils::FileDescriptor* out_fd) {
+                                base::ScopedFD* out_fd) {
   VLOG(1) << "Received OpenPath request";
   return OpenPathImpl(error, in_path, kAllInterfacesMask, kInvalidLifelineFD,
                       /*to_detach*/ true, out_fd, /*client_id*/ nullptr);
 }
 
-bool PermissionBroker::ClaimDevicePath(
-    brillo::ErrorPtr* error,
-    const std::string& in_path,
-    uint32_t drop_privileges_mask,
-    const base::ScopedFD& in_lifeline_fd,
-    brillo::dbus_utils::FileDescriptor* out_fd) {
+bool PermissionBroker::ClaimDevicePath(brillo::ErrorPtr* error,
+                                       const std::string& in_path,
+                                       uint32_t drop_privileges_mask,
+                                       const base::ScopedFD& in_lifeline_fd,
+                                       base::ScopedFD* out_fd) {
   VLOG(1) << "Received ClaimDevicePath request";
   // Pass down a client_id to watch the lifeline of this request (i.e.
   // reattach interfaces when requester terminates).
@@ -137,7 +136,7 @@ bool PermissionBroker::OpenPathAndRegisterClient(
     const std::string& in_path,
     uint32_t drop_privileges_mask,
     const base::ScopedFD& in_lifeline_fd,
-    brillo::dbus_utils::FileDescriptor* out_fd,
+    base::ScopedFD* out_fd,
     std::string* out_client_id) {
   VLOG(1) << "Received OpenPathAndRegisterClient request on path " << in_path;
   return OpenPathImpl(error, in_path, drop_privileges_mask,
@@ -229,7 +228,7 @@ bool PermissionBroker::OpenPathImpl(brillo::ErrorPtr* error,
                                     uint32_t drop_privileges_mask,
                                     int lifeline_fd,
                                     bool to_detach,
-                                    brillo::dbus_utils::FileDescriptor* out_fd,
+                                    base::ScopedFD* out_fd,
                                     std::string* client_id) {
   Rule::Result rule_result = rule_engine_.ProcessPath(in_path);
   if (rule_result != Rule::ALLOW && rule_result != Rule::ALLOW_WITH_LOCKDOWN &&

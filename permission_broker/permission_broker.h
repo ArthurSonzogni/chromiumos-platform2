@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/scoped_file.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>
 #include <dbus/bus.h>
@@ -46,17 +47,17 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
   bool CheckPathAccess(const std::string& in_path) override;
   bool OpenPath(brillo::ErrorPtr* error,
                 const std::string& in_path,
-                brillo::dbus_utils::FileDescriptor* out_fd) override;
+                base::ScopedFD* out_fd) override;
   bool ClaimDevicePath(brillo::ErrorPtr* error,
                        const std::string& in_path,
                        uint32_t drop_privileges_mask,
                        const base::ScopedFD& in_lifeline_fd,
-                       brillo::dbus_utils::FileDescriptor* out_fd) override;
+                       base::ScopedFD* out_fd) override;
   bool OpenPathAndRegisterClient(brillo::ErrorPtr* error,
                                  const std::string& in_path,
                                  uint32_t drop_privileges_mask,
                                  const base::ScopedFD& in_lifeline_fd,
-                                 brillo::dbus_utils::FileDescriptor* out_fd,
+                                 base::ScopedFD* out_fd,
                                  std::string* out_client_id) override;
   bool DetachInterface(const std::string& client_id,
                        uint8_t iface_num) override;
@@ -99,7 +100,7 @@ class PermissionBroker : public org::chromium::PermissionBrokerAdaptor,
                     uint32_t drop_privileges_mask,
                     int lifeline_fd,
                     bool to_detach,
-                    brillo::dbus_utils::FileDescriptor* out_fd,
+                    base::ScopedFD* out_fd,
                     std::string* out_client_id);
 
   RuleEngine rule_engine_;
