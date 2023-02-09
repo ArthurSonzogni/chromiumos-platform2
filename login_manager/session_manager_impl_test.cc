@@ -1439,15 +1439,14 @@ TEST_F(SessionManagerImplTest, LoginScreenStorage_StoreEphemeral) {
   EXPECT_FALSE(error.get());
   EXPECT_FALSE(base::PathExists(GetTestLoginScreenStoragePath(kTestKey)));
 
-  brillo::dbus_utils::FileDescriptor out_value_fd;
+  base::ScopedFD out_value_fd;
   uint64_t out_value_size;
   impl_->LoginScreenStorageRetrieve(&error, kTestKey, &out_value_size,
                                     &out_value_fd);
   EXPECT_FALSE(error.get());
-  base::ScopedFD scoped_fd(out_value_fd.release());
   std::vector<uint8_t> out_value;
   EXPECT_TRUE(shared_memory_util_->ReadDataFromSharedMemory(
-      scoped_fd, out_value_size, &out_value));
+      out_value_fd, out_value_size, &out_value));
   EXPECT_EQ(out_value,
             std::vector<uint8_t>(kTestValue.begin(), kTestValue.end()));
 }
@@ -1468,15 +1467,14 @@ TEST_F(SessionManagerImplTest, LoginScreenStorage_StorePersistent) {
   EXPECT_FALSE(error.get());
   EXPECT_TRUE(base::PathExists(GetTestLoginScreenStoragePath(kTestKey)));
 
-  brillo::dbus_utils::FileDescriptor out_value_fd;
+  base::ScopedFD out_value_fd;
   uint64_t out_value_size;
   impl_->LoginScreenStorageRetrieve(&error, kTestKey, &out_value_size,
                                     &out_value_fd);
   EXPECT_FALSE(error.get());
-  base::ScopedFD scoped_fd(out_value_fd.release());
   std::vector<uint8_t> out_value;
   EXPECT_TRUE(shared_memory_util_->ReadDataFromSharedMemory(
-      scoped_fd, out_value_size, &out_value));
+      out_value_fd, out_value_size, &out_value));
   EXPECT_EQ(out_value,
             std::vector<uint8_t>(kTestValue.begin(), kTestValue.end()));
 }
@@ -1499,7 +1497,7 @@ TEST_F(SessionManagerImplTest,
       kTestValue.size(), value_fd);
   EXPECT_TRUE(error.get());
   EXPECT_FALSE(base::PathExists(GetTestLoginScreenStoragePath(kTestKey)));
-  brillo::dbus_utils::FileDescriptor out_value_fd;
+  base::ScopedFD out_value_fd;
   uint64_t out_value_size;
   impl_->LoginScreenStorageRetrieve(&error, kTestKey, &out_value_size,
                                     &out_value_fd);

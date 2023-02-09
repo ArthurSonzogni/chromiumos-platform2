@@ -838,7 +838,7 @@ bool SessionManagerImpl::LoginScreenStorageRetrieve(
     brillo::ErrorPtr* error,
     const std::string& in_key,
     uint64_t* out_value_size,
-    brillo::dbus_utils::FileDescriptor* out_value_fd) {
+    base::ScopedFD* out_value_fd) {
   base::ScopedFD value_fd;
   bool success =
       login_screen_storage_->Retrieve(error, in_key, out_value_size, &value_fd);

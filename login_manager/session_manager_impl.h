@@ -17,6 +17,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/scoped_file.h>
 #include <base/memory/ref_counted.h>
 #include <base/time/tick_clock.h>
 #include <base/time/time.h>
@@ -240,11 +241,10 @@ class SessionManagerImpl
                                const std::vector<uint8_t>& in_metadata,
                                uint64_t in_value_size,
                                const base::ScopedFD& in_value_fd) override;
-  bool LoginScreenStorageRetrieve(
-      brillo::ErrorPtr* error,
-      const std::string& in_key,
-      uint64_t* out_value_size,
-      brillo::dbus_utils::FileDescriptor* out_value_fd) override;
+  bool LoginScreenStorageRetrieve(brillo::ErrorPtr* error,
+                                  const std::string& in_key,
+                                  uint64_t* out_value_size,
+                                  base::ScopedFD* out_value_fd) override;
   bool LoginScreenStorageListKeys(brillo::ErrorPtr* error,
                                   std::vector<std::string>* out_keys) override;
   void LoginScreenStorageDelete(const std::string& in_key) override;
