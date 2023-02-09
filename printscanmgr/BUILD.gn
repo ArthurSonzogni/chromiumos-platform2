@@ -10,6 +10,8 @@ group("all") {
     "//printscanmgr/cups_uri_helper:cups_uri_helper",
     "//printscanmgr/dbus:dbus_config",
     "//printscanmgr/dbus_bindings:printscanmgr-adaptors",
+    "//printscanmgr/dbus_service:dbus_service",
+    "//printscanmgr/init:init_config",
     "//printscanmgr/seccomp:seccomp_policy",
   ]
   if (use.test) {
