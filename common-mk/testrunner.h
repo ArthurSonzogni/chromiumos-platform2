@@ -53,7 +53,6 @@ class TestRunner {
     }
 
     testing::InitGoogleTest(&argc, argv);
-    testing::GTEST_FLAG(throw_on_failure) = true;
     testing::InitGoogleMock(&argc, argv);
   }
 
