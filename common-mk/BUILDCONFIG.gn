@@ -130,8 +130,8 @@ set_default_toolchain("//common-mk/toolchain")
 
 # In Chrome OS, pkg-config is commonly and widely used.
 # It is not natively supported by GN. Instead, here a few special fields are
-# injected to the executable, shared_library and static_library targets
-# to support pkg-config.
+# injected to the executable, shared_library source_set, and static_library
+# targets to support pkg-config.
 # src_install and src_test settings are also written in the same way.
 #
 # install_path exports metadata for installing the file built by the target.
@@ -333,6 +333,13 @@ template("shared_library") {
   _generate_config_rule(target_name) {
     forward_variables_from(invoker, "*")
     target_type = "shared_library"
+  }
+}
+
+template("source_set") {
+  _generate_config_rule(target_name) {
+    forward_variables_from(invoker, "*")
+    target_type = "source_set"
   }
 }
 
