@@ -77,11 +77,16 @@ bool EvdevUtil::Initialize(const base::FilePath& path) {
 
 void EvdevUtil::OnEvdevEvent() {
   input_event ev;
-  int rc = libevdev_next_event(
-      dev_, LIBEVDEV_READ_FLAG_NORMAL | LIBEVDEV_READ_FLAG_BLOCKING, &ev);
-  if (rc == LIBEVDEV_READ_STATUS_SUCCESS) {
-    delegate_->FireEvent(ev, dev_);
-  }
+  int rc = 0;
+
+  do {
+    rc = libevdev_next_event(
+        dev_, LIBEVDEV_READ_FLAG_NORMAL | LIBEVDEV_READ_FLAG_BLOCKING, &ev);
+    if (rc == LIBEVDEV_READ_STATUS_SUCCESS) {
+      delegate_->FireEvent(ev, dev_);
+    }
+  } while (rc == LIBEVDEV_READ_STATUS_SUCCESS ||
+           rc == LIBEVDEV_READ_STATUS_SYNC);
 }
 
 EvdevAudioJackObserver::EvdevAudioJackObserver(
