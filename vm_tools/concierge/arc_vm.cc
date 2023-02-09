@@ -324,17 +324,8 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       "security-xattrs=true",
       kOemEtcSharedDir, kOemEtcSharedDirTag, oem_etc_uid_map.c_str(),
       oem_etc_gid_map.c_str());
-  const base::FilePath testharness_dir(kTestHarnessSharedDir);
-  std::string shared_testharness = CreateSharedDataParam(
-      testharness_dir, kTestHarnessSharedDirTag, true, false, true, {});
-  const base::FilePath apkcache_dir(kApkCacheSharedDir);
-  std::string shared_apkcache = CreateSharedDataParam(
-      apkcache_dir, kApkCacheSharedDirTag, true, false, true, {});
 
   const base::FilePath jemalloc_config_file(kJemallocConfigFile);
-  std::string shared_jemalloc =
-      CreateSharedDataParam(jemalloc_config_file.DirName(),
-                            kJemallocSharedDirTag, true, false, true, {});
 
   // Create a config symlink for memory-rich devices.
   int64_t sys_memory_mb = base::SysInfo::AmountOfPhysicalMemoryMB();
@@ -352,26 +343,6 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       return false;
     }
   }
-
-  std::string shared_fonts = CreateFontsSharedDataParam();
-  const base::FilePath lib_dir(kLibSharedDir);
-  std::string shared_lib =
-      CreateSharedDataParam(lib_dir, kLibSharedDirTag, true, false, true, {});
-  const base::FilePath usr_lib_dir(kUsrLibSharedDir);
-  std::string shared_usr_lib = CreateSharedDataParam(
-      usr_lib_dir, kUsrLibSharedDirTag, true, false, true, {});
-  const base::FilePath sbin_dir(kSbinSharedDir);
-  std::string shared_sbin =
-      CreateSharedDataParam(sbin_dir, kSbinSharedDirTag, true, false, true, {});
-  const base::FilePath usr_bin_dir(kUsrBinSharedDir);
-  std::string shared_usr_bin = CreateSharedDataParam(
-      usr_bin_dir, kUsrBinSharedDirTag, true, false, true, {});
-  const base::FilePath usr_local_bin_dir(kUsrLocalBinSharedDir);
-  std::string shared_usr_local_bin = CreateSharedDataParam(
-      usr_local_bin_dir, kUsrLocalBinSharedDirTag, true, false, true, {});
-  const base::FilePath usr_local_lib_dir(kUsrLocalLibSharedDir);
-  std::string shared_usr_local_lib = CreateSharedDataParam(
-      usr_local_lib_dir, kUsrLocalLibSharedDirTag, true, false, true, {});
 
   vm_builder
       // Bias tuned on 4/8G hatch devices with multivm.Lifecycle tests.
@@ -395,14 +366,35 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       // directory configuration, please consult if you really do need to add a
       // new PCI device. TODO(b/237618542): Unify these.
       .AppendSharedDir(oem_etc_shared_dir)
-      .AppendSharedDir(shared_testharness)
-      .AppendSharedDir(shared_apkcache)
-      .AppendSharedDir(shared_fonts)
-      .AppendSharedDir(shared_lib)
-      .AppendSharedDir(shared_usr_lib)
-      .AppendSharedDir(shared_sbin)
-      .AppendSharedDir(shared_usr_bin)
-      .AppendSharedDir(shared_jemalloc)
+      .AppendSharedDir(CreateSharedDataParam(
+          base::FilePath(kTestHarnessSharedDir), kTestHarnessSharedDirTag,
+          true /* enable_caches */, false /* ascii_casefold */,
+          true /* posix_acl */, {} /* privileged_uids */))
+      .AppendSharedDir(CreateSharedDataParam(
+          base::FilePath(kApkCacheSharedDir), kApkCacheSharedDirTag,
+          true /* enable_caches */, false /* ascii_casefold */,
+          true /* posix_acl */, {} /* privileged_uids */))
+      .AppendSharedDir(CreateFontsSharedDataParam())
+      .AppendSharedDir(CreateSharedDataParam(
+          base::FilePath(kLibSharedDir), kLibSharedDirTag,
+          true /* enable_caches */, false /* ascii_casefold */,
+          true /* posix_acl */, {} /* privileged_uids */))
+      .AppendSharedDir(CreateSharedDataParam(
+          base::FilePath(kUsrLibSharedDir), kUsrLibSharedDirTag,
+          true /* enable_caches */, false /* ascii_casefold */,
+          true /* posix_acl */, {} /* privileged_uids */))
+      .AppendSharedDir(CreateSharedDataParam(
+          base::FilePath(kSbinSharedDir), kSbinSharedDirTag,
+          true /* enable_caches */, false /* ascii_casefold */,
+          true /* posix_acl */, {} /* privileged_uids */))
+      .AppendSharedDir(CreateSharedDataParam(
+          base::FilePath(kUsrBinSharedDir), kUsrBinSharedDirTag,
+          true /* enable_caches */, false /* ascii_casefold */,
+          true /* posix_acl */, {} /* privileged_uids */))
+      .AppendSharedDir(CreateSharedDataParam(
+          jemalloc_config_file.DirName(), kJemallocSharedDirTag,
+          true /* enable_caches */, false /* ascii_casefold */,
+          true /* posix_acl */, {} /* privileged_uids */))
       .EnableBattery(true /* enable */)
       .EnableDelayRt(true /* enable */);
 
@@ -442,9 +434,17 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
                                  "CHROMEOS_RELEASE_TRACK", &channel_string) &&
                              base::StartsWith(channel_string, "test");
   if (is_test_image) {
+    const base::FilePath usr_local_bin_dir(kUsrLocalBinSharedDir);
     if (base::PathExists(usr_local_bin_dir)) {
-      vm_builder.AppendSharedDir(shared_usr_local_bin);
-      vm_builder.AppendSharedDir(shared_usr_local_lib);
+      vm_builder
+          .AppendSharedDir(CreateSharedDataParam(
+              usr_local_bin_dir, kUsrLocalBinSharedDirTag,
+              true /* enable_caches */, false /* ascii_casefold */,
+              true /* posix_acl */, {} /* privileged_uids */))
+          .AppendSharedDir(CreateSharedDataParam(
+              base::FilePath(kUsrLocalLibSharedDir), kUsrLocalLibSharedDirTag,
+              true /* enable_caches */, false /* ascii_casefold */,
+              true /* posix_acl */, {} /* privileged_uids */));
     } else {
       // Powerwashing etc can delete the directory from test image device.
       // We shouldn't abort ARCVM boot even under such an environment.
