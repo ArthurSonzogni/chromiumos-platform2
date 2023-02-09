@@ -12,6 +12,7 @@
 
 #include "printscanmgr/daemon/daemon.h"
 #include "printscanmgr/executor/executor.h"
+#include "printscanmgr/minijail/minijail_configuration.h"
 
 int main(int arg, char** argv) {
   brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderrIfTty);
@@ -28,8 +29,12 @@ int main(int arg, char** argv) {
   if (pid == 0) {
     CHECK_EQ(getuid(), 0) << "Executor must run as root";
 
+    printscanmgr::EnterExecutorMinijail();
+
     return printscanmgr::Executor().Run();
   }
+
+  printscanmgr::EnterDaemonMinijail();
 
   return printscanmgr::Daemon().Run();
 }

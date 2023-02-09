@@ -9,6 +9,7 @@ group("all") {
     ":printscanmgr",
     "//printscanmgr/dbus:dbus_config",
     "//printscanmgr/dbus_bindings:printscanmgr-adaptors",
+    "//printscanmgr/seccomp:seccomp_policy",
   ]
   if (use.test) {
     deps += [ ":printscanmgr_test" ]
@@ -29,6 +30,7 @@ executable("printscanmgr") {
   deps = [
     "daemon:libdaemon",
     "executor:libexecutor",
+    "minijail:libminijail",
   ]
 }
 
