@@ -30,6 +30,7 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/posix/eintr_wrapper.h>
+#include <base/ranges/algorithm.h>
 #include <base/rand_util.h>
 #include <base/run_loop.h>
 #include <base/scoped_clear_last_error.h>
@@ -757,24 +758,22 @@ bool CrashCollector::RemoveNewFile(const base::FilePath& file_name) {
       return base::DeleteFile(file_name);
     }
     case kCrashLoopSendingMode: {
-      base::FilePath base_name = file_name.BaseName();
-      for (auto it = in_memory_files_.begin(); it != in_memory_files_.end();
-           ++it) {
-        if (std::get<0>(*it) == base_name.value()) {
-          struct stat file_stat;
-          const brillo::dbus_utils::FileDescriptor& fd = std::get<1>(*it);
-          if (fstat(fd.get(), &file_stat) == 0) {
-            bytes_written_ -= file_stat.st_size;
-          }
-          // Resources for memfd_create files are automatically released once
-          // the last file descriptor is closed, and this will close what should
-          // be the last file descriptor, so we are effectively deleting the
-          // file by erasing the vector entry.
-          in_memory_files_.erase(it);
-          return true;
-        }
+      auto it = base::ranges::find(
+          in_memory_files_, file_name.BaseName().value(),
+          [](const auto& elem) { return std::get<0>(elem); });
+      if (it == in_memory_files_.end()) {
+        return false;
       }
-      return false;
+      struct stat file_stat;
+      if (fstat(std::get<1>(*it).get(), &file_stat) == 0) {
+        bytes_written_ -= file_stat.st_size;
+      }
+      // Resources for memfd_create files are automatically released once
+      // the last file descriptor is closed, and this will close what should
+      // be the last file descriptor, so we are effectively deleting the
+      // file by erasing the vector entry.
+      in_memory_files_.erase(it);
+      return true;
     }
     default:
       NOTREACHED();

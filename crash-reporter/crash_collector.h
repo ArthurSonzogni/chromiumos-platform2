@@ -23,7 +23,6 @@
 #include <base/functional/callback_forward.h>
 #include <base/time/clock.h>
 #include <base/time/time.h>
-#include <brillo/dbus/file_descriptor.h>
 #include <debugd/dbus-proxies.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <metrics/metrics_library.h>
@@ -152,7 +151,7 @@ class CrashCollector {
   // For testing, return the in-memory files generated when in
   // kCrashLoopSendingMode. Since in_memory_files_ is a move-only type, this
   // clears the in_memory_files_ member variable.
-  std::vector<std::tuple<std::string, brillo::dbus_utils::FileDescriptor>>
+  std::vector<std::tuple<std::string, base::ScopedFD>>
   get_in_memory_files_for_test() {
     return std::move(in_memory_files_);
   }
@@ -572,8 +571,7 @@ class CrashCollector {
   // If crash_loop_mode_ is true, all files are collected in here instead of
   // being written to disk. The first element of the tuple is the base filename,
   // the second is a memfd_create file descriptor with the file contents.
-  std::vector<std::tuple<std::string, brillo::dbus_utils::FileDescriptor>>
-      in_memory_files_;
+  std::vector<std::tuple<std::string, base::ScopedFD>> in_memory_files_;
 
   // Number of bytes successfully written by all calls to WriteNewFile() and
   // WriteNewCompressedFile() so far. For WriteNewCompressedFile(), the count is
