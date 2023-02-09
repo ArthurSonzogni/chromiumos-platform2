@@ -1206,6 +1206,11 @@ void Service::FinishBalloonPolicy(MemoryMargins memory_margins,
     const std::unique_ptr<BalloonPolicyInterface>& policy =
         vm->GetBalloonPolicy(memory_margins, vm_entry.first.name());
 
+    if (!policy) {
+      // Policy temporarily not available, skip this iteration.
+      continue;
+    }
+
     // Switch available memory for this VM based on the current game mode.
     bool is_in_game_mode = foreground_vm_name.has_value() &&
                            vm_entry.first.name() == foreground_vm_name;
