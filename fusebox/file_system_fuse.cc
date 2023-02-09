@@ -110,8 +110,8 @@ static void fs_readdir(fuse_req_t req,
                        size_t size,
                        off_t off,
                        struct fuse_file_info* fi) {
-  fs(req)->ReadDir(std::make_unique<DirEntryRequest>(req, fi, ino, size, off),
-                   ino, off);
+  fs(req)->ReadDir(std::make_unique<DirEntryRequest>(req, fi, size, off), ino,
+                   off);
 }
 
 static void fs_releasedir(fuse_req_t req,

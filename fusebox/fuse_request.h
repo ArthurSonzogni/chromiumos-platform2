@@ -120,59 +120,51 @@ class DirEntryRequest : public FuseRequest {
  public:
   DirEntryRequest(fuse_req_t req,
                   fuse_file_info* fi,
-                  fuse_ino_t ino,
-                  size_t size,
-                  off_t off);
-
-  // Directory ino.
-  fuse_ino_t parent() const { return parent_; }
+                  size_t buf_size,
+                  off_t dir_offset);
 
   // Entry buffer |buf_| size.
-  size_t size() const { return size_; }
+  size_t buf_size() const { return buf_size_; }
 
   // Add entry to |buf_|. Returns true if the entry was added.
-  bool AddEntry(const struct DirEntry& entry, off_t offset);
+  bool AddEntry(const struct DirEntry& entry, off_t dir_offset);
 
   // Space used in |buf_| by the added entries.
-  size_t used() const { return off_; }
+  size_t buf_used() const { return buf_offset_; }
 
   // Offset to the next entry.
-  off_t offset() const { return offset_; }
+  off_t dir_offset() const { return dir_offset_; }
 
   // Reply with the entry buffer result.
   void ReplyDone();
 
  private:
-  fuse_ino_t parent_;
-  const size_t size_;
-  off_t offset_;
+  const size_t buf_size_;  // Measured in bytes.
+  size_t buf_offset_ = 0;  // Measured in bytes.
   std::unique_ptr<char[]> buf_;
-  size_t off_ = 0;
+  // FUSE (the protocol) and libfuse (the library) does not mandate (it lets
+  // the program choose) what units the offset is measured in, other than 0
+  // means "from the beginning". This fusebox program uses "number of files".
+  off_t dir_offset_;
 };
 
-class DirEntryResponse {
+// Responds to multiple DirEntryRequests, each with the same FUSE handle.
+class DirEntryBuffer {
  public:
-  explicit DirEntryResponse(fuse_ino_t ino);
-
-  // Directory ino.
-  fuse_ino_t parent() const { return parent_; }
-
-  // Append |entry| DirEntry to the DirEntry list.
-  void Append(std::vector<struct DirEntry> entry, bool end = false);
+  DirEntryBuffer();
 
   // Append |request| to the DirEntryRequest list.
-  void Append(std::unique_ptr<DirEntryRequest> request);
+  void AppendRequest(std::unique_ptr<DirEntryRequest> request);
+
+  // Append |entry| DirEntry to the DirEntry list.
+  void AppendResponse(std::vector<struct DirEntry> entry, bool end = false);
 
   // Append errno |error| to the DirEntry list. Returns |error|.
-  int Append(int error);
+  int AppendResponse(int error);
 
  private:
-  // Called on Append() to respond to DirEntry requests.
+  // Called by AppendResponse() to respond to DirEntry requests.
   void Respond();
-
- private:
-  // Directory ino.
-  fuse_ino_t const parent_;
 
   // List of DirEntryRequest received from Kernel Fuse.
   std::vector<std::unique_ptr<DirEntryRequest>> request_;

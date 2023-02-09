@@ -102,13 +102,15 @@ void WriteRequest::ReplyWrite(size_t count) {
   replied_ = true;
 }
 
-DirEntryRequest::DirEntryRequest(
-    fuse_req_t req, fuse_file_info* fi, fuse_ino_t ino, size_t size, off_t off)
-    : FuseRequest(req, fi), parent_(ino), size_(size), offset_(off) {
-  DCHECK(size_);
+DirEntryRequest::DirEntryRequest(fuse_req_t req,
+                                 fuse_file_info* fi,
+                                 size_t buf_size,
+                                 off_t dir_offset)
+    : FuseRequest(req, fi), buf_size_(buf_size), dir_offset_(dir_offset) {
+  DCHECK(buf_size_);
 }
 
-bool DirEntryRequest::AddEntry(const struct DirEntry& entry, off_t offset) {
+bool DirEntryRequest::AddEntry(const struct DirEntry& entry, off_t dir_offset) {
   DCHECK(!replied_);
 
   const char* name = entry.name.c_str();
@@ -117,49 +119,50 @@ bool DirEntryRequest::AddEntry(const struct DirEntry& entry, off_t offset) {
   stat.st_mode = entry.mode;
 
   if (!buf_.get()) {
-    buf_ = std::make_unique<char[]>(size_);
+    buf_ = std::make_unique<char[]>(buf_size_);
     CHECK(buf_.get());
-    off_ = 0;
+    buf_offset_ = 0;
   }
 
-  char* data = buf_.get() + off_;
-  const size_t size = size_ - off_;
-  size_t used = fuse_add_direntry(req_, data, size, name, &stat, offset);
+  char* data = buf_.get() + buf_offset_;
+  const size_t size = buf_size_ - buf_offset_;
+  size_t used = fuse_add_direntry(req_, data, size, name, &stat, dir_offset);
   if (used > size)
     return false;  // no |buf_| space.
 
-  off_ += used;
-  CHECK_LE(off_, size_);
-  offset_ = offset;
+  buf_offset_ += used;
+  CHECK_LE(buf_offset_, buf_size_);
+  dir_offset_ = dir_offset;
   return true;
 }
 
 void DirEntryRequest::ReplyDone() {
   DCHECK(!replied_);
-  fuse_reply_buf(req_, buf_.get(), off_);
+  fuse_reply_buf(req_, buf_.get(), buf_offset_);
   replied_ = true;
 }
 
-DirEntryResponse::DirEntryResponse(fuse_ino_t ino) : parent_(ino) {}
+DirEntryBuffer::DirEntryBuffer() = default;
 
-void DirEntryResponse::Append(std::vector<struct DirEntry> entry, bool end) {
+void DirEntryBuffer::AppendRequest(std::unique_ptr<DirEntryRequest> request) {
+  request_.emplace_back(std::move(request));
+  Respond();
+}
+
+void DirEntryBuffer::AppendResponse(std::vector<struct DirEntry> entry,
+                                    bool end) {
   entry_.insert(entry_.end(), entry.begin(), entry.end());
   end_ = end;
   Respond();
 }
 
-void DirEntryResponse::Append(std::unique_ptr<DirEntryRequest> request) {
-  request_.emplace_back(std::move(request));
-  Respond();
-}
-
-int DirEntryResponse::Append(int error) {
+int DirEntryBuffer::AppendResponse(int error) {
   error_ = error;
   Respond();
   return error;
 }
 
-void DirEntryResponse::Respond() {
+void DirEntryBuffer::Respond() {
   constexpr size_t kFlushAddedEntries = 25;
 
   const auto process_next_request = [&](auto& request) {
@@ -171,22 +174,22 @@ void DirEntryResponse::Respond() {
       return true;
     }
 
-    off_t offset = request->offset();
-    if (offset < 0) {
+    off_t dir_offset = request->dir_offset();
+    if (dir_offset < 0) {
       request->ReplyError(EINVAL);
       return true;
     }
 
     size_t added;
-    for (added = 0; offset < entry_.size(); ++added) {
-      const off_t next = 1 + offset;
-      if (request->AddEntry(entry_[offset++], next))
+    for (added = 0; dir_offset < entry_.size(); ++added) {
+      const off_t next = 1 + dir_offset;
+      if (request->AddEntry(entry_[dir_offset++], next))
         continue;  // add next entry
       request->ReplyDone();
       return true;
     }
 
-    DCHECK_GE(offset, entry_.size());
+    DCHECK_GE(dir_offset, entry_.size());
     bool done = end_ || added >= kFlushAddedEntries;
     if (done)
       request->ReplyDone();
