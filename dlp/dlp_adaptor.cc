@@ -17,6 +17,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/location.h>
@@ -26,7 +27,6 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <brillo/dbus/dbus_object.h>
-#include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
 #include <dbus/dlp/dbus-constants.h>
 #include <featured/feature_library.h>
@@ -185,9 +185,9 @@ void DlpAdaptor::AddFile(
 }
 
 void DlpAdaptor::RequestFileAccess(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        std::vector<uint8_t>,
-        brillo::dbus_utils::FileDescriptor>> response,
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>,
+                                                           base::ScopedFD>>
+        response,
     const std::vector<uint8_t>& request_blob) {
   base::ScopedFD local_fd, remote_fd;
   if (!base::CreatePipe(&local_fd, &remote_fd, /*non_blocking=*/true)) {
@@ -240,9 +240,9 @@ void DlpAdaptor::RequestFileAccess(
 }
 
 void DlpAdaptor::ProcessRequestFileAccessWithData(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        std::vector<uint8_t>,
-        brillo::dbus_utils::FileDescriptor>> response,
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>,
+                                                           base::ScopedFD>>
+        response,
     RequestFileAccessRequest request,
     base::ScopedFD local_fd,
     base::ScopedFD remote_fd,
@@ -602,9 +602,9 @@ void DlpAdaptor::OnRequestFileAccessError(RequestFileAccessCallback callback,
 }
 
 void DlpAdaptor::ReplyOnRequestFileAccess(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        std::vector<uint8_t>,
-        brillo::dbus_utils::FileDescriptor>> response,
+    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>,
+                                                           base::ScopedFD>>
+        response,
     base::ScopedFD remote_fd,
     bool allowed,
     const std::string& error_message) {

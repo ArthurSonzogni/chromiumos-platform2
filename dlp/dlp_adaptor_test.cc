@@ -343,17 +343,14 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedAllowed) {
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsFilesTransferRestricted));
 
   // Request access to the file.
-  std::unique_ptr<brillo::dbus_utils::MockDBusMethodResponse<
-      std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>
-      response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
-          std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>(nullptr);
+  auto response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
+      std::vector<uint8_t>, base::ScopedFD>>(nullptr);
   bool allowed;
   base::ScopedFD lifeline_fd;
   base::RunLoop request_file_access_run_loop;
   response->set_return_callback(base::BindOnce(
       [](bool* allowed, base::ScopedFD* lifeline_fd, base::RunLoop* run_loop,
-         const std::vector<uint8_t>& proto_blob,
-         const brillo::dbus_utils::FileDescriptor& fd) {
+         const std::vector<uint8_t>& proto_blob, const base::ScopedFD& fd) {
         RequestFileAccessResponse response =
             ParseResponse<RequestFileAccessResponse>(proto_blob);
         *allowed = response.allowed();
@@ -415,17 +412,14 @@ TEST_F(DlpAdaptorTest, RestrictedFilesNotAddedAndRequestedAllowed) {
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsFilesTransferRestricted));
 
   // Request access to the file.
-  std::unique_ptr<brillo::dbus_utils::MockDBusMethodResponse<
-      std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>
-      response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
-          std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>(nullptr);
+  auto response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
+      std::vector<uint8_t>, base::ScopedFD>>(nullptr);
   bool allowed;
   base::ScopedFD lifeline_fd;
   base::RunLoop request_file_access_run_loop;
   response->set_return_callback(base::BindOnce(
       [](bool* allowed, base::ScopedFD* lifeline_fd, base::RunLoop* run_loop,
-         const std::vector<uint8_t>& proto_blob,
-         const brillo::dbus_utils::FileDescriptor& fd) {
+         const std::vector<uint8_t>& proto_blob, const base::ScopedFD& fd) {
         RequestFileAccessResponse response =
             ParseResponse<RequestFileAccessResponse>(proto_blob);
         *allowed = response.allowed();
@@ -480,17 +474,14 @@ TEST_F(DlpAdaptorTest, RestrictedFileNotAddedAndImmediatelyAllowed) {
       .Times(0);
 
   // Request access to the file.
-  std::unique_ptr<brillo::dbus_utils::MockDBusMethodResponse<
-      std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>
-      response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
-          std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>(nullptr);
+  auto response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
+      std::vector<uint8_t>, base::ScopedFD>>(nullptr);
   bool allowed;
   base::ScopedFD lifeline_fd;
   base::RunLoop request_file_access_run_loop;
   response->set_return_callback(base::BindOnce(
       [](bool* allowed, base::ScopedFD* lifeline_fd, base::RunLoop* run_loop,
-         const std::vector<uint8_t>& proto_blob,
-         const brillo::dbus_utils::FileDescriptor& fd) {
+         const std::vector<uint8_t>& proto_blob, const base::ScopedFD& fd) {
         RequestFileAccessResponse response =
             ParseResponse<RequestFileAccessResponse>(proto_blob);
         *allowed = response.allowed();
@@ -538,17 +529,14 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedNotAllowed) {
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsFilesTransferRestricted));
 
   // Request access to the file.
-  std::unique_ptr<brillo::dbus_utils::MockDBusMethodResponse<
-      std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>
-      response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
-          std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>(nullptr);
+  auto response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
+      std::vector<uint8_t>, base::ScopedFD>>(nullptr);
   bool allowed;
   base::ScopedFD lifeline_fd;
   base::RunLoop request_file_access_run_loop;
   response->set_return_callback(base::BindOnce(
       [](bool* allowed, base::ScopedFD* lifeline_fd, base::RunLoop* run_loop,
-         const std::vector<uint8_t>& proto_blob,
-         const brillo::dbus_utils::FileDescriptor& fd) {
+         const std::vector<uint8_t>& proto_blob, const base::ScopedFD& fd) {
         RequestFileAccessResponse response =
             ParseResponse<RequestFileAccessResponse>(proto_blob);
         *allowed = response.allowed();
@@ -600,17 +588,14 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedRequestedAndCancelledNotAllowed) {
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsFilesTransferRestricted));
 
   // Request access to the file.
-  std::unique_ptr<brillo::dbus_utils::MockDBusMethodResponse<
-      std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>
-      response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
-          std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>(nullptr);
+  auto response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
+      std::vector<uint8_t>, base::ScopedFD>>(nullptr);
   bool allowed;
   base::ScopedFD lifeline_fd;
   base::RunLoop request_file_access_run_loop;
   response->set_return_callback(base::BindOnce(
       [](bool* allowed, base::ScopedFD* lifeline_fd, base::RunLoop* run_loop,
-         const std::vector<uint8_t>& proto_blob,
-         const brillo::dbus_utils::FileDescriptor& fd) {
+         const std::vector<uint8_t>& proto_blob, const base::ScopedFD& fd) {
         RequestFileAccessResponse response =
             ParseResponse<RequestFileAccessResponse>(proto_blob);
         *allowed = response.allowed();
@@ -654,16 +639,13 @@ TEST_F(DlpAdaptorTest, RequestAllowedWithoutDatabase) {
   base::CreateTemporaryFile(&file_path);
 
   // Request access to the file.
-  std::unique_ptr<brillo::dbus_utils::MockDBusMethodResponse<
-      std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>
-      response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
-          std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>(nullptr);
+  auto response = std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
+      std::vector<uint8_t>, base::ScopedFD>>(nullptr);
   bool allowed;
   base::RunLoop request_file_access_run_loop;
   response->set_return_callback(base::BindOnce(
       [](bool* allowed, base::RunLoop* run_loop,
-         const std::vector<uint8_t>& proto_blob,
-         const brillo::dbus_utils::FileDescriptor& fd) {
+         const std::vector<uint8_t>& proto_blob, const base::ScopedFD& fd) {
         RequestFileAccessResponse response =
             ParseResponse<RequestFileAccessResponse>(proto_blob);
         *allowed = response.allowed();

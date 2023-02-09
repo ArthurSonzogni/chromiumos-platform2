@@ -17,7 +17,6 @@
 #include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
 #include <brillo/dbus/async_event_sequencer.h>
-#include <brillo/dbus/file_descriptor.h>
 #include <featured/feature_library.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
@@ -65,10 +64,11 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   void AddFile(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                    std::vector<uint8_t>>> response,
                const std::vector<uint8_t>& request_blob) override;
-  void RequestFileAccess(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-                             std::vector<uint8_t>,
-                             brillo::dbus_utils::FileDescriptor>> response,
-                         const std::vector<uint8_t>& request_blob) override;
+  void RequestFileAccess(
+      std::unique_ptr<
+          brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>,
+                                                 base::ScopedFD>> response,
+      const std::vector<uint8_t>& request_blob) override;
   void GetFilesSources(std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
                            std::vector<uint8_t>>> response,
                        const std::vector<uint8_t>& request_blob) override;
@@ -136,9 +136,9 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
 
   // Callback for RequestFileAccess after getting data from the database.
   void ProcessRequestFileAccessWithData(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          std::vector<uint8_t>,
-          brillo::dbus_utils::FileDescriptor>> response,
+      std::unique_ptr<
+          brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>,
+                                                 base::ScopedFD>> response,
       RequestFileAccessRequest request,
       base::ScopedFD local_fd,
       base::ScopedFD remote_fd,
@@ -155,9 +155,9 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   void OnRequestFileAccessError(RequestFileAccessCallback callback,
                                 brillo::Error* error);
   void ReplyOnRequestFileAccess(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          std::vector<uint8_t>,
-          brillo::dbus_utils::FileDescriptor>> response,
+      std::unique_ptr<
+          brillo::dbus_utils::DBusMethodResponse<std::vector<uint8_t>,
+                                                 base::ScopedFD>> response,
       base::ScopedFD remote_fd,
       bool allowed,
       const std::string& error_message);

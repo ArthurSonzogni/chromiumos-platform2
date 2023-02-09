@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <brillo/dbus/mock_dbus_method_response.h>
 #include <gtest/gtest.h>
@@ -55,7 +56,7 @@ DEFINE_PROTO_FUZZER(const dlp::DlpFuzzer& input) {
 
   adaptor->RequestFileAccess(
       std::make_unique<brillo::dbus_utils::MockDBusMethodResponse<
-          std::vector<uint8_t>, brillo::dbus_utils::FileDescriptor>>(nullptr),
+          std::vector<uint8_t>, base::ScopedFD>>(nullptr),
       SerializeMessageToVector(input.request_file_access_request()));
 
   adaptor->GetFilesSources(
