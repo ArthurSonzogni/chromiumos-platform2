@@ -14,6 +14,7 @@
 #include <tuple>
 #include <vector>
 
+#include <base/files/scoped_file.h>
 #include <brillo/dbus/exported_object_manager.h>
 #include <brillo/dbus/exported_property_set.h>
 #include <brillo/dbus/dbus_method_response.h>
@@ -228,12 +229,11 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
                                    bool lock_policy,
                                    bool* result,
                                    uint32_t* num_cores_disabled) override;
-  bool EvaluateProbeFunction(
-      brillo::ErrorPtr* error,
-      const std::string& probe_statement,
-      int log_level,
-      brillo::dbus_utils::FileDescriptor* outfd,
-      brillo::dbus_utils::FileDescriptor* errfd) override;
+  bool EvaluateProbeFunction(brillo::ErrorPtr* error,
+                             const std::string& probe_statement,
+                             int log_level,
+                             base::ScopedFD* outfd,
+                             base::ScopedFD* errfd) override;
   bool CollectSmartBatteryMetric(brillo::ErrorPtr* error,
                                  const std::string& metric_name,
                                  std::string* output) override;

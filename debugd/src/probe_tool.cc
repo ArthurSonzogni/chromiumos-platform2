@@ -107,12 +107,11 @@ bool CheckArgStringAndAddError(const base::Value& arg,
 
 }  // namespace
 
-bool ProbeTool::EvaluateProbeFunction(
-    brillo::ErrorPtr* error,
-    const std::string& probe_statement,
-    int log_level,
-    brillo::dbus_utils::FileDescriptor* outfd,
-    brillo::dbus_utils::FileDescriptor* errfd) {
+bool ProbeTool::EvaluateProbeFunction(brillo::ErrorPtr* error,
+                                      const std::string& probe_statement,
+                                      int log_level,
+                                      base::ScopedFD* outfd,
+                                      base::ScopedFD* errfd) {
   // Details of sandboxing for probing should be centralized in a single
   // directory. Sandboxing is mandatory when we don't allow debug features.
   auto process = CreateSandboxedProcess(error, probe_statement);

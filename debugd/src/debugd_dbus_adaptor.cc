@@ -671,8 +671,8 @@ bool DebugdDBusAdaptor::EvaluateProbeFunction(
     brillo::ErrorPtr* error,
     const std::string& probe_statement,
     int log_level,
-    brillo::dbus_utils::FileDescriptor* outfd,
-    brillo::dbus_utils::FileDescriptor* errfd) {
+    base::ScopedFD* outfd,
+    base::ScopedFD* errfd) {
   return probe_tool_->EvaluateProbeFunction(error, probe_statement, log_level,
                                             outfd, errfd);
 }

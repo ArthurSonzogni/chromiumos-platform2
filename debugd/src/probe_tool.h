@@ -9,8 +9,8 @@
 #include <string>
 #include <vector>
 
+#include <base/files/scoped_file.h>
 #include <base/values.h>
-#include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
 #include <brillo/process/process.h>
 
@@ -28,8 +28,8 @@ class ProbeTool {
   bool EvaluateProbeFunction(brillo::ErrorPtr* error,
                              const std::string& probe_statement,
                              int log_level,
-                             brillo::dbus_utils::FileDescriptor* outfd,
-                             brillo::dbus_utils::FileDescriptor* errfd);
+                             base::ScopedFD* outfd,
+                             base::ScopedFD* errfd);
 
   std::unique_ptr<brillo::Process> CreateSandboxedProcess(
       brillo::ErrorPtr* error, const std::string& probe_statement);
