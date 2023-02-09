@@ -503,9 +503,7 @@ class AttestationService : public AttestationInterface {
   AttestationDatabase_IdentityCertificate* FindOrCreateIdentityCertificate(
       int identity, ACAType aca_type, int* cert_index);
 
-  // Creates a new identity and returns its index, or -1 if it could not be
-  // created.
-  int CreateIdentity(int identity_features);
+  bool CreateIdentity(int identity_features);
 
   // Quote NVRAM data. Returns the quoted data in |quote| and |true| if
   // success, |false| otherwise.

@@ -1808,7 +1808,8 @@ void AttestationService::PrepareForEnrollment(
 
   // Create a new AIK and PCR quotes for the first identity with default
   // identity features.
-  if (CreateIdentity(kDefaultIdentityFeatures) < 0) {
+  if (!CreateIdentity(kDefaultIdentityFeatures)) {
+    LOG(ERROR) << __func__ << ": Failed to create identity.";
     std::move(callback).Run(false);
     return;
   }
@@ -1844,7 +1845,7 @@ void AttestationService::PrepareForEnrollment(
   std::move(callback).Run(true);
 }
 
-int AttestationService::CreateIdentity(int identity_features) {
+bool AttestationService::CreateIdentity(int identity_features) {
   // The identity we're creating will have the next index in identities.
   auto* database_pb = database_->GetMutableProtobuf();
   const int identity = database_pb->identities().size();
@@ -1861,7 +1862,7 @@ int AttestationService::CreateIdentity(int identity_features) {
   }
   if (!tpm_utility_->CreateIdentity(identity_key_type, &new_identity_pb)) {
     LOG(ERROR) << __func__ << " failed to make a new identity.";
-    return -1;
+    return false;
   }
   std::string identity_key_blob_for_quote =
       new_identity_pb.identity_key().identity_key_blob();
@@ -1891,12 +1892,12 @@ int AttestationService::CreateIdentity(int identity_features) {
       if (!in.second) {
         LOG(ERROR) << "Attestation: Failed to store PCR" << pcr
                    << " quote for identity " << identity << ".";
-        return -1;
+        return false;
       }
     } else {
       LOG(ERROR) << "Attestation: Failed to generate quote for PCR" << pcr
                  << ".";
-      return -1;
+      return false;
     }
   }
   TPM_SELECT_BEGIN;
@@ -1908,7 +1909,7 @@ int AttestationService::CreateIdentity(int identity_features) {
     for (const auto& data : kNvramQuoteTypeInIdentityData) {
       if (!InsertCertifiedNvramData(data, false /* must_be_present */,
                                     &new_identity_pb)) {
-        return -1;
+        return false;
       }
     }
 
@@ -1919,7 +1920,7 @@ int AttestationService::CreateIdentity(int identity_features) {
         GetEndorsementKeyType() != kEndorsementKeyTypeForEnrollmentID) {
       if (!InsertCertifiedNvramData(RSA_PUB_EK_CERT, true /* must_be_present */,
                                     &new_identity_pb)) {
-        return -1;
+        return false;
       }
     }
   });
@@ -1927,8 +1928,7 @@ int AttestationService::CreateIdentity(int identity_features) {
   TPM_SELECT_END;
 
   database_pb->add_identities()->CopyFrom(new_identity_pb);
-  // Return the index of the newly created identity.
-  return database_pb->identities().size() - 1;
+  return true;
 }
 
 bool AttestationService::QuoteNvramData(NVRAMQuoteType quote_type,
