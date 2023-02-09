@@ -53,15 +53,15 @@ constexpr char kPvtBoardIdFlags[] = "00007f80";
 constexpr char kCustomLabelPvtBoardIdFlags[] = "00003f80";
 
 struct StateHandlerArgs {
-  bool get_model_name = true;
-  bool get_ssfc = true;
+  bool get_model_name_success = true;
+  bool get_ssfc_success = true;
   bool need_update_ssfc = true;
-  bool set_ssfc = true;
-  bool set_stable_dev_secret = true;
+  bool set_ssfc_success = true;
+  bool set_stable_device_secret_success = true;
   bool flush_vpd = true;
   bool hwwp_enabled = false;
   bool reset_gbb_success = true;
-  bool board_id_read_success = true;
+  bool read_board_id_success = true;
   std::string board_id_type = kValidBoardIdType;
   std::string board_id_flags = kPvtBoardIdFlags;
   std::set<rmad::RmadComponent> probed_components = {
@@ -100,7 +100,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     auto mock_ssfc_prober = std::make_unique<NiceMock<MockSsfcProber>>();
     ON_CALL(*mock_ssfc_prober, IsSsfcRequired())
         .WillByDefault(Return(args.need_update_ssfc));
-    if (args.need_update_ssfc && args.get_ssfc) {
+    if (args.need_update_ssfc && args.get_ssfc_success) {
       ON_CALL(*mock_ssfc_prober, ProbeSsfc(_))
           .WillByDefault(DoAll(SetArgPointee<0>(kTestSsfc), Return(true)));
     } else {
@@ -116,7 +116,8 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
 
     // Mock |CbiUtils|.
     auto mock_cbi_utils = std::make_unique<NiceMock<MockCbiUtils>>();
-    ON_CALL(*mock_cbi_utils, SetSsfc(_)).WillByDefault(Return(args.set_ssfc));
+    ON_CALL(*mock_cbi_utils, SetSsfc(_))
+        .WillByDefault(Return(args.set_ssfc_success));
 
     // Mock |CmdUtils|.
     auto mock_cmd_utils = std::make_unique<NiceMock<MockCmdUtils>>();
@@ -125,7 +126,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
 
     // Mock |Cr50Utils|.
     auto mock_cr50_utils = std::make_unique<NiceMock<MockCr50Utils>>();
-    if (args.board_id_read_success) {
+    if (args.read_board_id_success) {
       ON_CALL(*mock_cr50_utils, GetBoardIdType(_))
           .WillByDefault(
               DoAll(SetArgPointee<0>(args.board_id_type), Return(true)));
@@ -151,7 +152,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     // Mock |CrosConfigUtils|.
     auto mock_cros_config_utils =
         std::make_unique<NiceMock<MockCrosConfigUtils>>();
-    if (args.get_model_name) {
+    if (args.get_model_name_success) {
       ON_CALL(*mock_cros_config_utils, GetModelName(_))
           .WillByDefault(DoAll(SetArgPointee<0>(std::string(kTestModelName)),
                                Return(true)));
@@ -176,7 +177,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     // Mock |VpdUtils|.
     auto mock_vpd_utils = std::make_unique<NiceMock<MockVpdUtils>>();
     ON_CALL(*mock_vpd_utils, SetStableDeviceSecret(_))
-        .WillByDefault(Return(args.set_stable_dev_secret));
+        .WillByDefault(Return(args.set_stable_device_secret_success));
     ON_CALL(*mock_vpd_utils, FlushOutRoVpdCache())
         .WillByDefault(Return(args.flush_vpd));
 
@@ -765,7 +766,8 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_Retry) {
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_SetStableDeviceSecretFailedBlocking) {
-  auto handler = CreateStateHandler({.set_stable_dev_secret = false});
+  auto handler =
+      CreateStateHandler({.set_stable_device_secret_success = false});
   json_store_->SetValue(kSameOwner, false);
   json_store_->SetValue(kWipeDevice, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
@@ -783,7 +785,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_GetModelNameFailedBlocking) {
-  auto handler = CreateStateHandler({.get_model_name = false});
+  auto handler = CreateStateHandler({.get_model_name_success = false});
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
@@ -844,7 +846,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_GetSsfcFailedBlocking) {
-  auto handler = CreateStateHandler({.get_ssfc = false});
+  auto handler = CreateStateHandler({.get_ssfc_success = false});
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
@@ -859,7 +861,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_SetSsfcFailedBlockingCannotWrite) {
-  auto handler = CreateStateHandler({.set_ssfc = false});
+  auto handler = CreateStateHandler({.set_ssfc_success = false});
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
@@ -876,7 +878,8 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_SetSsfcFailedBlockingWpEnabled) {
-  auto handler = CreateStateHandler({.set_ssfc = false, .hwwp_enabled = true});
+  auto handler =
+      CreateStateHandler({.set_ssfc_success = false, .hwwp_enabled = true});
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
@@ -892,7 +895,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_SetSsfcBypassed) {
-  auto handler = CreateStateHandler({.set_ssfc = false});
+  auto handler = CreateStateHandler({.set_ssfc_success = false});
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -945,7 +948,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_CannotReadBoardIdBlocking) {
-  auto handler = CreateStateHandler({.board_id_read_success = false});
+  auto handler = CreateStateHandler({.read_board_id_success = false});
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
