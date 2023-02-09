@@ -26,6 +26,7 @@
 #include <base/task/thread_pool.h>
 
 #include "rmad/constants.h"
+#include "rmad/ssfc/ssfc_prober.h"
 #include "rmad/system/power_manager_client_impl.h"
 #include "rmad/utils/calibration_utils.h"
 #include "rmad/utils/cbi_utils_impl.h"
@@ -75,6 +76,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
       working_dir_path_(kDefaultWorkingDirPath),
       should_calibrate_(false),
       sensor_integrity_(false) {
+  ssfc_prober_ = std::make_unique<SsfcProberImpl>();
   power_manager_client_ =
       std::make_unique<PowerManagerClientImpl>(GetSystemBus());
   cbi_utils_ = std::make_unique<CbiUtilsImpl>();
@@ -94,6 +96,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback,
     const base::FilePath& working_dir_path,
+    std::unique_ptr<SsfcProber> ssfc_prober,
     std::unique_ptr<PowerManagerClient> power_manager_client,
     std::unique_ptr<CbiUtils> cbi_utils,
     std::unique_ptr<CmdUtils> cmd_utils,
@@ -105,6 +108,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     std::unique_ptr<VpdUtils> vpd_utils)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(working_dir_path),
+      ssfc_prober_(std::move(ssfc_prober)),
       power_manager_client_(std::move(power_manager_client)),
       cbi_utils_(std::move(cbi_utils)),
       cmd_utils_(std::move(cmd_utils)),
@@ -264,7 +268,7 @@ void ProvisionDeviceStateHandler::InitializeCalibrationTask() {
       CheckSensorStatusIntegrity(replaced_components_need_calibration,
                                  probed_components, &calibration_map);
 
-  // Update probeable components using runtime_probe results.
+  // Update probeable components using probe results.
   for (RmadComponent component : probed_components) {
     // Ignore the components that cannot be calibrated.
     if (std::find(kComponentsNeedManualCalibration.begin(),
@@ -343,15 +347,40 @@ void ProvisionDeviceStateHandler::StopStatusTimer() {
   }
 }
 
+bool ProvisionDeviceStateHandler::GetSsfcFromCrosConfig(
+    std::optional<uint32_t>* ssfc) const {
+  if (ssfc_prober_->IsSsfcRequired()) {
+    if (uint32_t ssfc_value; ssfc_prober_->ProbeSsfc(&ssfc_value)) {
+      *ssfc = std::optional<uint32_t>{ssfc_value};
+      return true;
+    }
+    LOG(ERROR) << "Failed to probe SSFC";
+    return false;
+  }
+  *ssfc = std::nullopt;
+  return true;
+}
+
 void ProvisionDeviceStateHandler::StartProvision() {
   UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
                kProgressInit, ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
+
+  // This should be run on the main thread.
+  std::optional<uint32_t> ssfc;
+  if (!GetSsfcFromCrosConfig(&ssfc)) {
+    // TODO(chenghan): Add a new error enum for this.
+    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                 kProgressFailedBlocking,
+                 ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
+    return;
+  }
+
   task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&ProvisionDeviceStateHandler::RunProvision,
-                                base::Unretained(this)));
+                                base::Unretained(this), ssfc));
 }
 
-void ProvisionDeviceStateHandler::RunProvision() {
+void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
   // We should do all blocking items first, and then do non-blocking items.
   // In this case, once it fails, we can directly update the status to
   // FAILED_BLOCKING or FAILED_NON_BLOCKING based on the failed item.
@@ -378,18 +407,26 @@ void ProvisionDeviceStateHandler::RunProvision() {
   UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
                kProgressGetModelName);
 
-  bool need_to_update_ssfc = false;
-  uint32_t ssfc;
-  if (!ssfc_utils_->GetSsfc(model_name, &need_to_update_ssfc, &ssfc)) {
-    UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
-                 kProgressFailedBlocking,
-                 ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
-    return;
+  // Try legacy way of getting SSFC.
+  // TODO(chenghan): Remove this section once all models migrate to the new SSFC
+  //                 generation method using runtime_probe and cros_config.
+  if (!ssfc.has_value()) {
+    bool ssfc_required;
+    uint32_t ssfc_value;
+    if (!ssfc_utils_->GetSsfc(model_name, &ssfc_required, &ssfc_value)) {
+      UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                   kProgressFailedBlocking,
+                   ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
+      return;
+    }
+    if (ssfc_required) {
+      ssfc = std::optional<uint32_t>{ssfc_value};
+    }
   }
   UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
                kProgressGetSsfc);
 
-  if (need_to_update_ssfc && !cbi_utils_->SetSsfc(ssfc)) {
+  if (ssfc.has_value() && !cbi_utils_->SetSsfc(ssfc.value())) {
     if (IsHwwpDisabled()) {
       UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
                    kProgressFailedBlocking,

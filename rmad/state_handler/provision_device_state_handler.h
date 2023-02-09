@@ -8,6 +8,7 @@
 #include "rmad/state_handler/base_state_handler.h"
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <utility>
 #include <set>
@@ -17,6 +18,7 @@
 #include <base/synchronization/lock.h>
 #include <base/timer/timer.h>
 
+#include "rmad/ssfc/ssfc_prober.h"
 #include "rmad/system/power_manager_client.h"
 #include "rmad/utils/calibration_utils.h"
 #include "rmad/utils/cbi_utils.h"
@@ -42,13 +44,15 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   explicit ProvisionDeviceStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback);
-  // Used to inject |working_dir_path_|, mock |cbi_utils_|, |cmd_utils_|,
-  // |cr50_utils_|, |cros_config_utils_|, |power_manager_client_|, |ssfc_utils_|
-  // and |vpd_utils_| for testing.
+  // Used to inject |working_dir_path_|, mock |ssfc_prober_|,
+  // |power_manager_client_|, |cbi_utils_|, |cmd_utils_|, |cr50_utils_|,
+  // |cros_config_utils_|, |crossystem_utils_|, |iio_sensor_probe_utils_|,
+  // |ssfc_utils_| and |vpd_utils_| for testing.
   explicit ProvisionDeviceStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       const base::FilePath& working_dir_path,
+      std::unique_ptr<SsfcProber> ssfc_prober,
       std::unique_ptr<PowerManagerClient> power_manager_client,
       std::unique_ptr<CbiUtils> cbi_utils,
       std::unique_ptr<CmdUtils> cmd_utils,
@@ -86,8 +90,9 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   void StartStatusTimer();
   void StopStatusTimer();
 
+  bool GetSsfcFromCrosConfig(std::optional<uint32_t>* ssfc) const;
   void StartProvision();
-  void RunProvision();
+  void RunProvision(std::optional<uint32_t> ssfc);
   void UpdateStatus(ProvisionStatus::Status status,
                     double progress,
                     ProvisionStatus::Error error =
@@ -101,6 +106,7 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   base::FilePath working_dir_path_;
   ProvisionStatus status_;
 
+  std::unique_ptr<SsfcProber> ssfc_prober_;
   std::unique_ptr<PowerManagerClient> power_manager_client_;
   std::unique_ptr<CbiUtils> cbi_utils_;
   std::unique_ptr<CmdUtils> cmd_utils_;
@@ -110,6 +116,7 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   std::unique_ptr<IioSensorProbeUtils> iio_sensor_probe_utils_;
   std::unique_ptr<SsfcUtils> ssfc_utils_;
   std::unique_ptr<VpdUtils> vpd_utils_;
+
   scoped_refptr<base::SequencedTaskRunner> task_runner_;
   base::RepeatingTimer status_timer_;
   base::OneShotTimer reboot_timer_;
