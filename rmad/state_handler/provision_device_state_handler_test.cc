@@ -64,11 +64,15 @@ struct StateHandlerArgs {
   bool read_board_id_success = true;
   std::string board_id_type = kValidBoardIdType;
   std::string board_id_flags = kPvtBoardIdFlags;
-  std::set<rmad::RmadComponent> probed_components = {
-      rmad::RMAD_COMPONENT_BASE_ACCELEROMETER,
-      rmad::RMAD_COMPONENT_LID_ACCELEROMETER,
-      rmad::RMAD_COMPONENT_BASE_GYROSCOPE, rmad::RMAD_COMPONENT_LID_GYROSCOPE};
+  std::set<rmad::RmadComponent> probed_components = {};
 };
+
+constexpr rmad::RmadComponent kComponentNeedCalibration =
+    rmad::RMAD_COMPONENT_BASE_ACCELEROMETER;
+constexpr rmad::RmadComponent kComponentNeedCalibration2 =
+    rmad::RMAD_COMPONENT_LID_ACCELEROMETER;
+constexpr rmad::RmadComponent kComponentNoNeedCalibration =
+    rmad::RMAD_COMPONENT_BATTERY;
 
 }  // namespace
 
@@ -89,7 +93,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     status_history_.push_back(status);
   }
 
-  scoped_refptr<ProvisionDeviceStateHandler> CreateStateHandler(
+  scoped_refptr<ProvisionDeviceStateHandler> CreateInitializedStateHandler(
       const StateHandlerArgs& args = {}) {
     // Expect signal is always sent.
     ON_CALL(signal_sender_, SendProvisionProgressSignal(_))
@@ -186,13 +190,60 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
         base::BindRepeating(&SignalSender::SendProvisionProgressSignal,
                             base::Unretained(&signal_sender_)));
 
-    return base::MakeRefCounted<ProvisionDeviceStateHandler>(
+    auto handler = base::MakeRefCounted<ProvisionDeviceStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(),
         std::move(mock_ssfc_prober), std::move(mock_power_manager_client),
         std::move(mock_cbi_utils), std::move(mock_cmd_utils),
         std::move(mock_cr50_utils), std::move(mock_cros_config_utils),
         std::move(mock_write_protect_utils),
         std::move(mock_iio_sensor_probe_utils), std::move(mock_vpd_utils));
+    EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+    return handler;
+  }
+
+  RmadState CreateProvisionRequest(
+      ProvisionDeviceState_ProvisionChoice choice) const {
+    RmadState state;
+    state.mutable_provision_device()->set_choice(choice);
+    return state;
+  }
+
+  void ExpectTransitionReboot(
+      scoped_refptr<ProvisionDeviceStateHandler> handler) {
+    auto [error, state_case] = handler->GetNextStateCase(CreateProvisionRequest(
+        ProvisionDeviceState::RMAD_PROVISION_CHOICE_CONTINUE));
+    EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
+    EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
+    EXPECT_FALSE(reboot_called_);
+    task_environment_.FastForwardBy(ProvisionDeviceStateHandler::kRebootDelay);
+    EXPECT_TRUE(reboot_called_);
+  }
+
+  void ExpectTransitionFailedWithError(
+      scoped_refptr<ProvisionDeviceStateHandler> handler,
+      RmadErrorCode expected_error) {
+    auto [error, state_case] = handler->GetNextStateCase(CreateProvisionRequest(
+        ProvisionDeviceState::RMAD_PROVISION_CHOICE_CONTINUE));
+    EXPECT_EQ(error, expected_error);
+    EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
+  }
+
+  void ExpectTransitionSucceededAtBoot(RmadState::StateCase expected_state_case,
+                                       const StateHandlerArgs& args = {}) {
+    auto handler = CreateInitializedStateHandler(args);
+    auto [error, state_case] = handler->TryGetNextStateCaseAtBoot();
+    EXPECT_EQ(error, RMAD_ERROR_OK);
+    EXPECT_EQ(state_case, expected_state_case);
+  }
+
+  void ExpectSignal(ProvisionStatus_Status expected_status,
+                    ProvisionStatus_Error expected_error =
+                        ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN) {
+    task_environment_.FastForwardBy(
+        ProvisionDeviceStateHandler::kReportStatusInterval);
+    EXPECT_GE(status_history_.size(), 1);
+    EXPECT_EQ(status_history_.back().status(), expected_status);
+    EXPECT_EQ(status_history_.back().error(), expected_error);
   }
 
   void RunHandlerTaskRunner(
@@ -213,829 +264,546 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
   base::RunLoop run_loop_;
 };
 
-TEST_F(ProvisionDeviceStateHandlerTest, InitializeState_Success) {
-  auto handler = CreateStateHandler();
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+TEST_F(ProvisionDeviceStateHandlerTest, VerifyTestConstant) {
+  // Make sure the constants are correct.
+  EXPECT_NE(std::find(kComponentsNeedManualCalibration.begin(),
+                      kComponentsNeedManualCalibration.end(),
+                      kComponentNeedCalibration),
+            kComponentsNeedManualCalibration.end());
+  EXPECT_NE(std::find(kComponentsNeedManualCalibration.begin(),
+                      kComponentsNeedManualCalibration.end(),
+                      kComponentNeedCalibration2),
+            kComponentsNeedManualCalibration.end());
+  EXPECT_EQ(std::find(kComponentsNeedManualCalibration.begin(),
+                      kComponentsNeedManualCalibration.end(),
+                      kComponentNoNeedCalibration),
+            kComponentsNeedManualCalibration.end());
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest, InitializeState_Succeeded) {
+  auto handler = CreateInitializedStateHandler();
   handler->RunState();
   RunHandlerTaskRunner(handler);
 }
 
-TEST_F(ProvisionDeviceStateHandlerTest, Clenaup_Success) {
-  auto handler = CreateStateHandler();
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+TEST_F(ProvisionDeviceStateHandlerTest, Clenaup_Succeeded) {
+  auto handler = CreateInitializedStateHandler();
   handler->RunState();
   handler->CleanUpState();
   RunHandlerTaskRunner(handler);
 }
 
-TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_Success) {
-  auto handler = CreateStateHandler();
+TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_Succeeded) {
+  // Set up environment for different owner.
   json_store_->SetValue(kSameOwner, false);
   json_store_->SetValue(kWipeDevice, true);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  // Run the state handler.
+  auto handler = CreateInitializedStateHandler();
   handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
-
-  auto provision = std::make_unique<ProvisionDeviceState>();
-  provision->set_choice(ProvisionDeviceState::RMAD_PROVISION_CHOICE_CONTINUE);
-  RmadState state;
-  state.set_allocated_provision_device(provision.release());
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
-  task_environment_.FastForwardBy(ProvisionDeviceStateHandler::kRebootDelay);
-  EXPECT_EQ(reboot_called_, true);
-  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
-
   RunHandlerTaskRunner(handler);
+
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+
+  // A reboot is expected after provisioning succeeds.
+  ExpectTransitionReboot(handler);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest, TryGetNextStateCaseAtBoot_Failed) {
-  auto handler = CreateStateHandler();
+  // Set up environment for different owner.
   json_store_->SetValue(kSameOwner, false);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  handler->RunState();
+  json_store_->SetValue(kWipeDevice, true);
+
+  // TryGetNextStateCaseAtBoot() is called before RunState(), so we don't call
+  // RunState() here.
+  auto handler = CreateInitializedStateHandler();
+
+  // We should not transition to the next state until provisioning is completed.
   auto [error, state] = handler->TryGetNextStateCaseAtBoot();
   EXPECT_EQ(error, RMAD_ERROR_TRANSITION_FAILED);
   EXPECT_EQ(state, RmadState::StateCase::kProvisionDevice);
-
-  RunHandlerTaskRunner(handler);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
-       TryGetNextStateCaseAtBoot_NeedCalibrationSuccess) {
-  auto handler = CreateStateHandler();
+       TryGetNextStateCaseAtBoot_NeedCalibrationSucceeded) {
+  // Set up environment for different owner and all replaced components need
+  // calibration.
   json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
   json_store_->SetValue(
       kReplacedComponentNames,
-      std::vector<std::string>{
-          RmadComponent_Name(RMAD_COMPONENT_BATTERY),
-          RmadComponent_Name(RMAD_COMPONENT_BASE_ACCELEROMETER),
-          RmadComponent_Name(RMAD_COMPONENT_LID_ACCELEROMETER),
-          RmadComponent_Name(RMAD_COMPONENT_BASE_GYROSCOPE),
-          RmadComponent_Name(RMAD_COMPONENT_LID_GYROSCOPE)});
+      std::vector<std::string>{RmadComponent_Name(kComponentNeedCalibration),
+                               RmadComponent_Name(kComponentNeedCalibration2)});
+  StateHandlerArgs args = {.probed_components = {kComponentNeedCalibration,
+                                                 kComponentNeedCalibration2}};
 
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
-
-  auto provision = std::make_unique<ProvisionDeviceState>();
-  provision->set_choice(ProvisionDeviceState::RMAD_PROVISION_CHOICE_CONTINUE);
-  RmadState state;
-  state.set_allocated_provision_device(provision.release());
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
-  task_environment_.FastForwardBy(ProvisionDeviceStateHandler::kRebootDelay);
-  EXPECT_EQ(reboot_called_, true);
-  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
-
-  auto handler_after_reboot = CreateStateHandler();
-  EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
-  handler_after_reboot->RunState();
-  auto [error_try_boot, state_case_try_boot] =
-      handler_after_reboot->TryGetNextStateCaseAtBoot();
-  EXPECT_EQ(error_try_boot, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case_try_boot, RmadState::StateCase::kSetupCalibration);
-
   RunHandlerTaskRunner(handler);
-}
 
-TEST_F(ProvisionDeviceStateHandlerTest,
-       TryGetNextStateCaseAtBoot_NoNeedCalibrationSuccess) {
-  auto handler = CreateStateHandler();
-  json_store_->SetValue(kSameOwner, false);
-  json_store_->SetValue(
-      kReplacedComponentNames,
-      std::vector<std::string>{RmadComponent_Name(RMAD_COMPONENT_BATTERY)});
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
 
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+  // A reboot is expected after provisioning succeeds.
+  ExpectTransitionReboot(handler);
 
-  auto provision = std::make_unique<ProvisionDeviceState>();
-  provision->set_choice(ProvisionDeviceState::RMAD_PROVISION_CHOICE_CONTINUE);
-  RmadState state;
-  state.set_allocated_provision_device(provision.release());
+  // Successfully transition to SetupCalibration state.
+  ExpectTransitionSucceededAtBoot(RmadState::StateCase::kSetupCalibration,
+                                  args);
 
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
-  task_environment_.FastForwardBy(ProvisionDeviceStateHandler::kRebootDelay);
-  EXPECT_EQ(reboot_called_, true);
-  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
-
-  auto handler_after_reboot = CreateStateHandler();
-  EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
-  handler_after_reboot->RunState();
-  auto [error_try_boot, state_case_try_boot] =
-      handler_after_reboot->TryGetNextStateCaseAtBoot();
-  EXPECT_EQ(error_try_boot, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case_try_boot, RmadState::StateCase::kFinalize);
-
-  RunHandlerTaskRunner(handler);
-}
-
-TEST_F(ProvisionDeviceStateHandlerTest,
-       TryGetNextStateCaseAtBoot_BaseAccNotProbedComplete) {
-  auto handler = CreateStateHandler();
-  json_store_->SetValue(kSameOwner, false);
-  json_store_->SetValue(
-      kReplacedComponentNames,
-      std::vector<std::string>{
-          RmadComponent_Name(RMAD_COMPONENT_BATTERY),
-          RmadComponent_Name(RMAD_COMPONENT_BASE_ACCELEROMETER),
-          RmadComponent_Name(RMAD_COMPONENT_LID_ACCELEROMETER),
-          RmadComponent_Name(RMAD_COMPONENT_BASE_GYROSCOPE),
-          RmadComponent_Name(RMAD_COMPONENT_LID_GYROSCOPE)});
-  json_store_->SetValue(kMlbRepair, false);
-
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
-
-  auto provision = std::make_unique<ProvisionDeviceState>();
-  provision->set_choice(ProvisionDeviceState::RMAD_PROVISION_CHOICE_CONTINUE);
-  RmadState state;
-  state.set_allocated_provision_device(provision.release());
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
-  task_environment_.FastForwardBy(ProvisionDeviceStateHandler::kRebootDelay);
-  EXPECT_EQ(reboot_called_, true);
-  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
-
-  auto handler_after_reboot = CreateStateHandler(
-      {.probed_components = {RMAD_COMPONENT_LID_ACCELEROMETER,
-                             RMAD_COMPONENT_BASE_GYROSCOPE,
-                             RMAD_COMPONENT_LID_GYROSCOPE}});
-  EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
-  handler_after_reboot->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 2);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
-  auto [error_try_boot, state_case_try_boot] =
-      handler_after_reboot->TryGetNextStateCaseAtBoot();
-  EXPECT_EQ(error_try_boot, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case_try_boot, RmadState::StateCase::kSetupCalibration);
-
+  // Check calibration map. |kComponentNeedCalibration| and
+  // |kComponentNeedCalibration2| are scheduled to be calibrated.
   InstructionCalibrationStatusMap calibration_map;
-  EXPECT_EQ(GetCalibrationMap(json_store_, &calibration_map), true);
+  EXPECT_TRUE(GetCalibrationMap(json_store_, &calibration_map));
   EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
-                                RMAD_COMPONENT_BASE_ACCELEROMETER)]
-                .count(RMAD_COMPONENT_BASE_ACCELEROMETER),
-            0);
-  EXPECT_EQ(
-      calibration_map[GetCalibrationSetupInstruction(
-          RMAD_COMPONENT_LID_ACCELEROMETER)][RMAD_COMPONENT_LID_ACCELEROMETER],
-      CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
-  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
-                RMAD_COMPONENT_BASE_GYROSCOPE)][RMAD_COMPONENT_BASE_GYROSCOPE],
+                kComponentNeedCalibration)][kComponentNeedCalibration],
             CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
   EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
-                RMAD_COMPONENT_LID_GYROSCOPE)][RMAD_COMPONENT_LID_GYROSCOPE],
+                kComponentNeedCalibration2)][kComponentNeedCalibration2],
             CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
-
-  RunHandlerTaskRunner(handler);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
-       TryGetNextStateCaseAtBoot_LidAccNotProbedComplete) {
-  auto handler = CreateStateHandler();
+       TryGetNextStateCaseAtBoot_NoNeedCalibrationSucceeded) {
+  // Set up environment for different owner and no replaced components need
+  // calibration.
   json_store_->SetValue(kSameOwner, false);
-  json_store_->SetValue(
-      kReplacedComponentNames,
-      std::vector<std::string>{
-          RmadComponent_Name(RMAD_COMPONENT_BATTERY),
-          RmadComponent_Name(RMAD_COMPONENT_BASE_ACCELEROMETER),
-          RmadComponent_Name(RMAD_COMPONENT_LID_ACCELEROMETER),
-          RmadComponent_Name(RMAD_COMPONENT_BASE_GYROSCOPE),
-          RmadComponent_Name(RMAD_COMPONENT_LID_GYROSCOPE)});
+  json_store_->SetValue(kWipeDevice, true);
+  json_store_->SetValue(kReplacedComponentNames,
+                        std::vector<std::string>{
+                            RmadComponent_Name(kComponentNoNeedCalibration)});
+  StateHandlerArgs args = {.probed_components = {kComponentNoNeedCalibration}};
+
+  auto handler = CreateInitializedStateHandler(args);
+  handler->RunState();
+  RunHandlerTaskRunner(handler);
+
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+
+  // A reboot is expected after provisioning succeeds.
+  ExpectTransitionReboot(handler);
+
+  // Successfully transition to Finalize state.
+  ExpectTransitionSucceededAtBoot(RmadState::StateCase::kFinalize, args);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       TryGetNextStateCaseAtBoot_ReplacedComponentNotProbedComplete) {
+  // Set up environment for different owner and there are replaced components
+  // that need calibration, but the component is not probed and it's not an
+  // MLB replacement case.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
   json_store_->SetValue(kMlbRepair, false);
+  json_store_->SetValue(
+      kReplacedComponentNames,
+      std::vector<std::string>{RmadComponent_Name(kComponentNeedCalibration),
+                               RmadComponent_Name(kComponentNeedCalibration2)});
+  // Only |kComponentNeedCalibration| is probed.
+  StateHandlerArgs args = {.probed_components = {kComponentNeedCalibration}};
 
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
-
-  auto provision = std::make_unique<ProvisionDeviceState>();
-  provision->set_choice(ProvisionDeviceState::RMAD_PROVISION_CHOICE_CONTINUE);
-  RmadState state;
-  state.set_allocated_provision_device(provision.release());
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
-  task_environment_.FastForwardBy(ProvisionDeviceStateHandler::kRebootDelay);
-  EXPECT_EQ(reboot_called_, true);
-  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
-
-  auto handler_after_reboot = CreateStateHandler(
-      {.probed_components = {RMAD_COMPONENT_BASE_ACCELEROMETER,
-                             RMAD_COMPONENT_BASE_GYROSCOPE,
-                             RMAD_COMPONENT_LID_GYROSCOPE}});
-  EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
-  handler_after_reboot->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 2);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
-  auto [error_try_boot, state_case_try_boot] =
-      handler_after_reboot->TryGetNextStateCaseAtBoot();
-  EXPECT_EQ(error_try_boot, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case_try_boot, RmadState::StateCase::kSetupCalibration);
-
-  InstructionCalibrationStatusMap calibration_map;
-  EXPECT_EQ(GetCalibrationMap(json_store_, &calibration_map), true);
-  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
-                RMAD_COMPONENT_BASE_ACCELEROMETER)]
-                           [RMAD_COMPONENT_BASE_ACCELEROMETER],
-            CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
-  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
-                                RMAD_COMPONENT_LID_ACCELEROMETER)]
-                .count(RMAD_COMPONENT_LID_ACCELEROMETER),
-            0);
-  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
-                RMAD_COMPONENT_BASE_GYROSCOPE)][RMAD_COMPONENT_BASE_GYROSCOPE],
-            CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
-  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
-                RMAD_COMPONENT_LID_GYROSCOPE)][RMAD_COMPONENT_LID_GYROSCOPE],
-            CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
-
   RunHandlerTaskRunner(handler);
+
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+
+  // A reboot is expected after provisioning succeeds.
+  ExpectTransitionReboot(handler);
+
+  // Successfully transition to SetupCalibration state.
+  ExpectTransitionSucceededAtBoot(RmadState::StateCase::kSetupCalibration,
+                                  args);
+
+  // Check calibration map. |kComponentNeedCalibration| is scheduled to be
+  // calibrated, while |kComponentNeedCalibration2| is not.
+  InstructionCalibrationStatusMap calibration_map;
+  EXPECT_TRUE(GetCalibrationMap(json_store_, &calibration_map));
+  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
+                kComponentNeedCalibration)][kComponentNeedCalibration],
+            CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
+  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
+                                kComponentNeedCalibration2)]
+                .count(kComponentNeedCalibration2),
+            0);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
-       TryGetNextStateCaseAtBoot_BaseGyroNotProbedComplete) {
-  auto handler = CreateStateHandler();
+       TryGetNextStateCaseAtBoot_PartialNeedCalibrationSucceeded) {
+  // Set up environment for different owner and there are some replaced
+  // components that need calibration.
   json_store_->SetValue(kSameOwner, false);
-  json_store_->SetValue(
-      kReplacedComponentNames,
-      std::vector<std::string>{
-          RmadComponent_Name(RMAD_COMPONENT_BATTERY),
-          RmadComponent_Name(RMAD_COMPONENT_BASE_ACCELEROMETER),
-          RmadComponent_Name(RMAD_COMPONENT_LID_ACCELEROMETER),
-          RmadComponent_Name(RMAD_COMPONENT_BASE_GYROSCOPE),
-          RmadComponent_Name(RMAD_COMPONENT_LID_GYROSCOPE)});
+  json_store_->SetValue(kWipeDevice, true);
   json_store_->SetValue(kMlbRepair, false);
+  json_store_->SetValue(kReplacedComponentNames,
+                        std::vector<std::string>{
+                            RmadComponent_Name(kComponentNeedCalibration),
+                            RmadComponent_Name(kComponentNoNeedCalibration)});
+  StateHandlerArgs args = {.probed_components = {kComponentNeedCalibration,
+                                                 kComponentNoNeedCalibration}};
 
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+  RunHandlerTaskRunner(handler);
 
-  auto provision = std::make_unique<ProvisionDeviceState>();
-  provision->set_choice(ProvisionDeviceState::RMAD_PROVISION_CHOICE_CONTINUE);
-  RmadState state;
-  state.set_allocated_provision_device(provision.release());
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
 
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
-  task_environment_.FastForwardBy(ProvisionDeviceStateHandler::kRebootDelay);
-  EXPECT_EQ(reboot_called_, true);
-  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
+  // A reboot is expected after provisioning succeeds.
+  ExpectTransitionReboot(handler);
 
-  auto handler_after_reboot = CreateStateHandler(
-      {.probed_components = {RMAD_COMPONENT_BASE_ACCELEROMETER,
-                             RMAD_COMPONENT_LID_ACCELEROMETER,
-                             RMAD_COMPONENT_LID_GYROSCOPE}});
-  EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
-  handler_after_reboot->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 2);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
-  auto [error_try_boot, state_case_try_boot] =
-      handler_after_reboot->TryGetNextStateCaseAtBoot();
-  EXPECT_EQ(error_try_boot, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case_try_boot, RmadState::StateCase::kSetupCalibration);
+  // Successfully transition to SetupCalibration state.
+  ExpectTransitionSucceededAtBoot(RmadState::StateCase::kSetupCalibration,
+                                  args);
 
+  // Check calibration map. |kComponentNeedCalibration| is scheduled to be
+  // calibrated, while |kComponentNeedCalibration2| is not.
   InstructionCalibrationStatusMap calibration_map;
-  EXPECT_EQ(GetCalibrationMap(json_store_, &calibration_map), true);
+  EXPECT_TRUE(GetCalibrationMap(json_store_, &calibration_map));
   EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
-                RMAD_COMPONENT_BASE_ACCELEROMETER)]
-                           [RMAD_COMPONENT_BASE_ACCELEROMETER],
+                kComponentNeedCalibration)][kComponentNeedCalibration],
             CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
-  EXPECT_EQ(
-      calibration_map[GetCalibrationSetupInstruction(
-          RMAD_COMPONENT_LID_ACCELEROMETER)][RMAD_COMPONENT_LID_ACCELEROMETER],
-      CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
   EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
-                                RMAD_COMPONENT_BASE_GYROSCOPE)]
-                .count(RMAD_COMPONENT_BASE_GYROSCOPE),
+                                kComponentNeedCalibration2)]
+                .count(kComponentNeedCalibration2),
             0);
-  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
-                RMAD_COMPONENT_LID_GYROSCOPE)][RMAD_COMPONENT_LID_GYROSCOPE],
-            CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
-
-  RunHandlerTaskRunner(handler);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
-       TryGetNextStateCaseAtBoot_LidGyroNotProbedComplete) {
-  auto handler = CreateStateHandler();
-  json_store_->SetValue(kSameOwner, false);
-  json_store_->SetValue(
-      kReplacedComponentNames,
-      std::vector<std::string>{
-          RmadComponent_Name(RMAD_COMPONENT_BATTERY),
-          RmadComponent_Name(RMAD_COMPONENT_BASE_ACCELEROMETER),
-          RmadComponent_Name(RMAD_COMPONENT_LID_ACCELEROMETER),
-          RmadComponent_Name(RMAD_COMPONENT_BASE_GYROSCOPE),
-          RmadComponent_Name(RMAD_COMPONENT_LID_GYROSCOPE)});
-  json_store_->SetValue(kMlbRepair, false);
-
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
-
-  auto provision = std::make_unique<ProvisionDeviceState>();
-  provision->set_choice(ProvisionDeviceState::RMAD_PROVISION_CHOICE_CONTINUE);
-  RmadState state;
-  state.set_allocated_provision_device(provision.release());
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
-  task_environment_.FastForwardBy(ProvisionDeviceStateHandler::kRebootDelay);
-  EXPECT_EQ(reboot_called_, true);
-  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
-
-  auto handler_after_reboot = CreateStateHandler(
-      {.probed_components = {RMAD_COMPONENT_BASE_ACCELEROMETER,
-                             RMAD_COMPONENT_LID_ACCELEROMETER,
-                             RMAD_COMPONENT_BASE_GYROSCOPE}});
-  EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
-  handler_after_reboot->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 2);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
-  auto [error_try_boot, state_case_try_boot] =
-      handler_after_reboot->TryGetNextStateCaseAtBoot();
-  EXPECT_EQ(error_try_boot, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case_try_boot, RmadState::StateCase::kSetupCalibration);
-
-  InstructionCalibrationStatusMap calibration_map;
-  EXPECT_EQ(GetCalibrationMap(json_store_, &calibration_map), true);
-  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
-                RMAD_COMPONENT_BASE_ACCELEROMETER)]
-                           [RMAD_COMPONENT_BASE_ACCELEROMETER],
-            CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
-  EXPECT_EQ(
-      calibration_map[GetCalibrationSetupInstruction(
-          RMAD_COMPONENT_LID_ACCELEROMETER)][RMAD_COMPONENT_LID_ACCELEROMETER],
-      CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
-  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
-                RMAD_COMPONENT_BASE_GYROSCOPE)][RMAD_COMPONENT_BASE_GYROSCOPE],
-            CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
-  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
-                                RMAD_COMPONENT_LID_GYROSCOPE)]
-                .count(RMAD_COMPONENT_LID_GYROSCOPE),
-            0);
-
-  RunHandlerTaskRunner(handler);
-}
-
-TEST_F(ProvisionDeviceStateHandlerTest,
-       TryGetNextStateCaseAtBoot_PartialNeedCalibrationSuccess) {
-  auto handler = CreateStateHandler();
-  json_store_->SetValue(kSameOwner, false);
-  json_store_->SetValue(
-      kReplacedComponentNames,
-      std::vector<std::string>{
-          RmadComponent_Name(RMAD_COMPONENT_BATTERY),
-          RmadComponent_Name(RMAD_COMPONENT_LID_ACCELEROMETER),
-          RmadComponent_Name(RMAD_COMPONENT_BASE_GYROSCOPE)});
-
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
-
-  auto provision = std::make_unique<ProvisionDeviceState>();
-  provision->set_choice(ProvisionDeviceState::RMAD_PROVISION_CHOICE_CONTINUE);
-  RmadState state;
-  state.set_allocated_provision_device(provision.release());
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
-  task_environment_.FastForwardBy(ProvisionDeviceStateHandler::kRebootDelay);
-  EXPECT_EQ(reboot_called_, true);
-  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
-
-  auto handler_after_reboot = CreateStateHandler();
-  EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
-  handler_after_reboot->RunState();
-  auto [error_try_boot, state_case_try_boot] =
-      handler_after_reboot->TryGetNextStateCaseAtBoot();
-  EXPECT_EQ(error_try_boot, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case_try_boot, RmadState::StateCase::kSetupCalibration);
-
-  RunHandlerTaskRunner(handler);
-}
-
-TEST_F(ProvisionDeviceStateHandlerTest,
-       TryGetNextStateCaseAtBoot_KeepDevOpenSuccess) {
-  auto handler = CreateStateHandler();
+       TryGetNextStateCaseAtBoot_KeepDeviveOpenSucceeded) {
+  // Set up environment for same owner and keep user data path.
   json_store_->SetValue(kSameOwner, true);
-  json_store_->SetValue(
-      kReplacedComponentNames,
-      std::vector<std::string>{RmadComponent_Name(RMAD_COMPONENT_BATTERY)});
   json_store_->SetValue(kWipeDevice, false);
 
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  auto handler = CreateInitializedStateHandler();
   handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
-
-  auto provision = std::make_unique<ProvisionDeviceState>();
-  provision->set_choice(ProvisionDeviceState::RMAD_PROVISION_CHOICE_CONTINUE);
-  RmadState state;
-  state.set_allocated_provision_device(provision.release());
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
-  task_environment_.FastForwardBy(ProvisionDeviceStateHandler::kRebootDelay);
-  EXPECT_EQ(reboot_called_, true);
-  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
-
-  auto handler_after_reboot = CreateStateHandler();
-  EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
-  handler_after_reboot->RunState();
-  auto [error_try_boot, state_case_try_boot] =
-      handler_after_reboot->TryGetNextStateCaseAtBoot();
-  EXPECT_EQ(error_try_boot, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case_try_boot, RmadState::StateCase::kWpEnablePhysical);
-
   RunHandlerTaskRunner(handler);
+
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+
+  // A reboot is expected after provisioning succeeds.
+  ExpectTransitionReboot(handler);
+
+  // Successfully transition to WpEnablePhysical state.
+  ExpectTransitionSucceededAtBoot(RmadState::StateCase::kWpEnablePhysical);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_UnknownDestinationFailedBlocking) {
-  auto handler = CreateStateHandler();
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  // Set up environment without destination (internal error).
+  auto handler = CreateInitializedStateHandler();
   handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
-  EXPECT_EQ(status_history_.back().error(),
-            ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
-
-  auto provision = std::make_unique<ProvisionDeviceState>();
-  provision->set_choice(ProvisionDeviceState::RMAD_PROVISION_CHOICE_CONTINUE);
-  RmadState state;
-  state.set_allocated_provision_device(provision.release());
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_PROVISIONING_FAILED);
-  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
-
   RunHandlerTaskRunner(handler);
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
+
+  // Failed to transition to the next state.
+  ExpectTransitionFailedWithError(handler, RMAD_ERROR_PROVISIONING_FAILED);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_Retry) {
-  auto handler = CreateStateHandler();
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  // Set up environment without destination (internal error).
+  auto handler = CreateInitializedStateHandler();
   handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
-  EXPECT_EQ(status_history_.back().error(),
-            ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
+  RunHandlerTaskRunner(handler);
 
-  auto provision = std::make_unique<ProvisionDeviceState>();
-  provision->set_choice(ProvisionDeviceState::RMAD_PROVISION_CHOICE_RETRY);
-  RmadState state;
-  state.set_allocated_provision_device(provision.release());
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
 
+  // Failed to transition to the next state.
+  ExpectTransitionFailedWithError(handler, RMAD_ERROR_PROVISIONING_FAILED);
+
+  // Set up normal environment.
   json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
 
-  auto [error, state_case] = handler->GetNextStateCase(state);
+  // Retry.
+  auto [error, state_case] = handler->GetNextStateCase(CreateProvisionRequest(
+      ProvisionDeviceState::RMAD_PROVISION_CHOICE_RETRY));
   EXPECT_EQ(error, RMAD_ERROR_WAIT);
   EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
 
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 2);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
-  EXPECT_EQ(status_history_.back().error(),
-            ProvisionStatus::RMAD_PROVISION_ERROR_UNKNOWN);
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
 
-  RunHandlerTaskRunner(handler);
+  // A reboot is expected after provisioning succeeds.
+  ExpectTransitionReboot(handler);
+
+  // Successfully transition to Finalize state.
+  ExpectTransitionSucceededAtBoot(RmadState::StateCase::kFinalize);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_SetStableDeviceSecretFailedBlocking) {
-  auto handler =
-      CreateStateHandler({.set_stable_device_secret_success = false});
+  // Set up normal environment.
   json_store_->SetValue(kSameOwner, false);
   json_store_->SetValue(kWipeDevice, true);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
-  EXPECT_EQ(status_history_.back().error(),
-            ProvisionStatus::RMAD_PROVISION_ERROR_INTERNAL);
+  // Failed to set stable device secret.
+  StateHandlerArgs args = {.set_stable_device_secret_success = false};
 
+  auto handler = CreateInitializedStateHandler(args);
+  handler->RunState();
   RunHandlerTaskRunner(handler);
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_INTERNAL);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_GetModelNameFailedBlocking) {
-  auto handler = CreateStateHandler({.get_model_name_success = false});
+  // Set up normal environment.
   json_store_->SetValue(kSameOwner, false);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
-  EXPECT_EQ(status_history_.back().error(),
-            ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
+  json_store_->SetValue(kWipeDevice, true);
+  // Failed to get model name.
+  StateHandlerArgs args = {.get_model_name_success = false};
 
+  auto handler = CreateInitializedStateHandler(args);
+  handler->RunState();
   RunHandlerTaskRunner(handler);
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
-       GetNextStateCase_SsfcNotRequiredSuccess) {
-  auto handler = CreateStateHandler({.need_update_ssfc = false});
+       GetNextStateCase_SsfcNotRequiredSucceeded) {
+  // Set up normal environment.
   json_store_->SetValue(kSameOwner, false);
   json_store_->SetValue(kWipeDevice, true);
-  json_store_->SetValue(
-      kReplacedComponentNames,
-      std::vector<std::string>{
-          RmadComponent_Name(RMAD_COMPONENT_BATTERY),
-          RmadComponent_Name(RMAD_COMPONENT_BASE_ACCELEROMETER),
-          RmadComponent_Name(RMAD_COMPONENT_LID_ACCELEROMETER),
-          RmadComponent_Name(RMAD_COMPONENT_BASE_GYROSCOPE),
-          RmadComponent_Name(RMAD_COMPONENT_LID_GYROSCOPE)});
+  // SSFC doesn't need to be updated.
+  StateHandlerArgs args = {.need_update_ssfc = false};
 
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
-
-  auto provision = std::make_unique<ProvisionDeviceState>();
-  provision->set_choice(ProvisionDeviceState::RMAD_PROVISION_CHOICE_CONTINUE);
-  RmadState state;
-  state.set_allocated_provision_device(provision.release());
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
-  task_environment_.FastForwardBy(ProvisionDeviceStateHandler::kRebootDelay);
-  EXPECT_EQ(reboot_called_, true);
-  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
-
-  auto handler_after_reboot = CreateStateHandler();
-  EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
-  handler_after_reboot->RunState();
-  auto [error_try_boot, state_case_try_boot] =
-      handler_after_reboot->TryGetNextStateCaseAtBoot();
-  EXPECT_EQ(error_try_boot, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case_try_boot, RmadState::StateCase::kSetupCalibration);
-
   RunHandlerTaskRunner(handler);
+
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+
+  // A reboot is expected after provisioning succeeds.
+  ExpectTransitionReboot(handler);
+
+  // Successfully transition to Finalize state.
+  ExpectTransitionSucceededAtBoot(RmadState::StateCase::kFinalize, args);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_GetSsfcFailedBlocking) {
-  auto handler = CreateStateHandler({.get_ssfc_success = false});
+  // Set up normal environment.
   json_store_->SetValue(kSameOwner, false);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  json_store_->SetValue(kWipeDevice, true);
+  // Failed to get SSFC.
+  StateHandlerArgs args = {.get_ssfc_success = false};
+
+  auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
-  EXPECT_EQ(status_history_.back().error(),
-            ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
+  RunHandlerTaskRunner(handler);
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_SetSsfcFailedBlockingCannotWrite) {
-  auto handler = CreateStateHandler({.set_ssfc_success = false});
+  // Set up normal environment.
   json_store_->SetValue(kSameOwner, false);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
-  EXPECT_EQ(status_history_.back().error(),
-            ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
+  json_store_->SetValue(kWipeDevice, true);
 
+  auto handler = CreateInitializedStateHandler({.set_ssfc_success = false});
+  handler->RunState();
   RunHandlerTaskRunner(handler);
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_SetSsfcFailedBlockingWpEnabled) {
-  auto handler =
-      CreateStateHandler({.set_ssfc_success = false, .hwwp_enabled = true});
+  // Set up normal environment.
   json_store_->SetValue(kSameOwner, false);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
-  EXPECT_EQ(status_history_.back().error(),
-            ProvisionStatus::RMAD_PROVISION_ERROR_WP_ENABLED);
+  json_store_->SetValue(kWipeDevice, true);
 
+  auto handler = CreateInitializedStateHandler(
+      {.set_ssfc_success = false, .hwwp_enabled = true});
+  handler->RunState();
   RunHandlerTaskRunner(handler);
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_WP_ENABLED);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_SetSsfcBypassed) {
-  auto handler = CreateStateHandler({.set_ssfc_success = false});
+  // Set up normal environment.
   json_store_->SetValue(kSameOwner, false);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-
+  json_store_->SetValue(kWipeDevice, true);
   // Bypass setting SSFC.
   EXPECT_TRUE(brillo::TouchFile(GetTempDirPath().Append(kTestDirPath)));
 
+  auto handler = CreateInitializedStateHandler({.set_ssfc_success = false});
   handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
-
   RunHandlerTaskRunner(handler);
+
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_VpdFlushFailedBlocking) {
-  auto handler = CreateStateHandler({.flush_vpd = false});
+  // Set up normal environment.
   json_store_->SetValue(kSameOwner, false);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
-  EXPECT_EQ(status_history_.back().error(),
-            ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
+  json_store_->SetValue(kWipeDevice, true);
+  // Failed to flush VPD.
+  StateHandlerArgs args = {.flush_vpd = false};
 
+  auto handler = CreateInitializedStateHandler(args);
+  handler->RunState();
   RunHandlerTaskRunner(handler);
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_ResetGbbFlagsFailedBlocking) {
-  auto handler = CreateStateHandler({.reset_gbb_success = false});
+  // Set up normal environment.
   json_store_->SetValue(kSameOwner, false);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
-  EXPECT_EQ(status_history_.back().error(),
-            ProvisionStatus::RMAD_PROVISION_ERROR_GBB);
+  json_store_->SetValue(kWipeDevice, true);
+  // Failed to reset GBB.
+  StateHandlerArgs args = {.reset_gbb_success = false};
 
+  auto handler = CreateInitializedStateHandler(args);
+  handler->RunState();
   RunHandlerTaskRunner(handler);
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_GBB);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_CannotReadBoardIdBlocking) {
-  auto handler = CreateStateHandler({.read_board_id_success = false});
+  // Set up normal environment.
   json_store_->SetValue(kSameOwner, false);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
-  EXPECT_EQ(status_history_.back().error(),
-            ProvisionStatus::RMAD_PROVISION_ERROR_CR50);
+  json_store_->SetValue(kWipeDevice, true);
+  // Failed to read board ID.
+  StateHandlerArgs args = {.read_board_id_success = false};
 
+  auto handler = CreateInitializedStateHandler(args);
+  handler->RunState();
   RunHandlerTaskRunner(handler);
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_CR50);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_InvalidBoardIdTypeBlocking) {
-  auto handler = CreateStateHandler({.board_id_type = kInvalidBoardIdType});
+  // Set up normal environment.
   json_store_->SetValue(kSameOwner, false);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
-  EXPECT_EQ(status_history_.back().error(),
-            ProvisionStatus::RMAD_PROVISION_ERROR_CR50);
+  json_store_->SetValue(kWipeDevice, true);
+  // Invalid board ID.
+  StateHandlerArgs args = {.board_id_type = kInvalidBoardIdType};
 
+  auto handler = CreateInitializedStateHandler(args);
+  handler->RunState();
   RunHandlerTaskRunner(handler);
+
+  // Provision failed signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+               ProvisionStatus::RMAD_PROVISION_ERROR_CR50);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_InvalidBoardIdTypeBlocking_Bypass) {
-  auto handler = CreateStateHandler({.board_id_type = kInvalidBoardIdType});
+  // Set up normal environment.
   json_store_->SetValue(kSameOwner, false);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-
+  json_store_->SetValue(kWipeDevice, true);
+  // Invalid board ID.
+  StateHandlerArgs args = {.board_id_type = kInvalidBoardIdType};
   // Bypass board ID check.
   EXPECT_TRUE(brillo::TouchFile(GetTempDirPath().Append(kTestDirPath)));
 
+  auto handler = CreateInitializedStateHandler(args);
   handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
-
   RunHandlerTaskRunner(handler);
+
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+
+  // A reboot is expected after provisioning succeeds.
+  ExpectTransitionReboot(handler);
+
+  // Successfully transition to Finalize state.
+  ExpectTransitionSucceededAtBoot(RmadState::StateCase::kFinalize, args);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
-       GetNextStateCase_EmptyBoardIdType_NotCustomLabel_Success) {
-  auto handler = CreateStateHandler({.board_id_type = kEmptyBoardIdType});
+       GetNextStateCase_EmptyBoardIdType_NotCustomLabel_Succeeded) {
+  // Set up normal environment.
   json_store_->SetValue(kSameOwner, false);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+  json_store_->SetValue(kWipeDevice, true);
+  // Empty board ID.
+  StateHandlerArgs args = {.board_id_type = kEmptyBoardIdType};
 
+  auto handler = CreateInitializedStateHandler(args);
+  handler->RunState();
   RunHandlerTaskRunner(handler);
+
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+
+  // A reboot is expected after provisioning succeeds.
+  ExpectTransitionReboot(handler);
+
+  // Successfully transition to Finalize state.
+  ExpectTransitionSucceededAtBoot(RmadState::StateCase::kFinalize, args);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
-       GetNextStateCase_EmptyBoardIdType_CustomLabel_Success) {
-  auto handler =
-      CreateStateHandler({.board_id_type = kEmptyBoardIdType,
-                          .board_id_flags = kCustomLabelPvtBoardIdFlags});
+       GetNextStateCase_EmptyBoardIdType_CustomLabel_Succeeded) {
+  // Set up normal environment.
   json_store_->SetValue(kSameOwner, false);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+  json_store_->SetValue(kWipeDevice, true);
+  // Empty board ID with custom label flags.
+  StateHandlerArgs args = {.board_id_type = kEmptyBoardIdType,
+                           .board_id_flags = kCustomLabelPvtBoardIdFlags};
 
+  auto handler = CreateInitializedStateHandler(args);
+  handler->RunState();
   RunHandlerTaskRunner(handler);
+
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+
+  // A reboot is expected after provisioning succeeds.
+  ExpectTransitionReboot(handler);
+
+  // Successfully transition to Finalize state.
+  ExpectTransitionSucceededAtBoot(RmadState::StateCase::kFinalize, args);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_MissingState) {
-  auto handler = CreateStateHandler();
+  // Set up normal environment.
   json_store_->SetValue(kSameOwner, false);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  json_store_->SetValue(kWipeDevice, true);
+
+  auto handler = CreateInitializedStateHandler();
   handler->RunState();
+  RunHandlerTaskRunner(handler);
 
   // No WelcomeScreenState.
   RmadState state;
@@ -1043,26 +811,21 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_MissingState) {
   auto [error, state_case] = handler->GetNextStateCase(state);
   EXPECT_EQ(error, RMAD_ERROR_REQUEST_INVALID);
   EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
-
-  RunHandlerTaskRunner(handler);
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_MissingArgs) {
-  auto handler = CreateStateHandler();
+  // Set up normal environment.
   json_store_->SetValue(kSameOwner, false);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  json_store_->SetValue(kWipeDevice, true);
+
+  auto handler = CreateInitializedStateHandler();
   handler->RunState();
+  RunHandlerTaskRunner(handler);
 
-  auto provision = std::make_unique<ProvisionDeviceState>();
-  provision->set_choice(ProvisionDeviceState::RMAD_PROVISION_CHOICE_UNKNOWN);
-  RmadState state;
-  state.set_allocated_provision_device(provision.release());
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
+  auto [error, state_case] = handler->GetNextStateCase(CreateProvisionRequest(
+      ProvisionDeviceState::RMAD_PROVISION_CHOICE_UNKNOWN));
   EXPECT_EQ(error, RMAD_ERROR_REQUEST_ARGS_MISSING);
   EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
-
-  RunHandlerTaskRunner(handler);
 }
 
 }  // namespace rmad
