@@ -565,7 +565,7 @@ void AttestationService::InitializeTask(InitializeCompleteCallback callback) {
   } else {
     // Ignore errors. If failed this time, will be re-attempted on next boot.
     tpm_utility_->RemoveOwnerDependency();
-    std::move(callback).Run(false);
+    std::move(callback).Run(true);
   }
 }
 
