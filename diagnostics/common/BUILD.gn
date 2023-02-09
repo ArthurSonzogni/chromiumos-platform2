@@ -37,14 +37,11 @@ if (use.test) {
       "dbus_utils_test.cc",
       "mojo_utils_test.cc",
     ]
-    configs += [
-      ":libcommon_pkg_deps",
-      "//common-mk:test",
-    ]
+    configs += [ ":libcommon_pkg_deps" ]
     deps = [
       ":libcommon",
       ":libcommon_test_utils",
-      "//diagnostics/cros_healthd/utils:mojo_testrunner",
+      "//diagnostics/base:healthd_testrunner",
     ]
   }
 }

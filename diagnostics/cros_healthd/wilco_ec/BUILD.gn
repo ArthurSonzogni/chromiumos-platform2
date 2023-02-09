@@ -30,14 +30,11 @@ if (use.test) {
       "ec_service_test_utils_test.cc",
       "fake_ec_service.cc",
     ]
-    configs += [
-      ":libcros_healthd_wilco_ec_test_pkg_deps",
-      "//common-mk:test",
-    ]
+    configs += [ ":libcros_healthd_wilco_ec_test_pkg_deps" ]
     deps = [
       ":libcros_healthd_wilco_ec",
+      "//diagnostics/base:healthd_testrunner",
       "//diagnostics/common:libcommon_test_utils",
-      "//diagnostics/cros_healthd/utils:mojo_testrunner",
     ]
   }
 }

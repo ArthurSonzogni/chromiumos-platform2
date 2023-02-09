@@ -52,6 +52,22 @@ if (use.test || use.fuzzer) {
   }
 }
 
+pkg_config("healthd_testrunner_pkg_deps") {
+  pkg_deps = [
+    "libchrome",
+    "libmojo",
+  ]
+}
+
+if (use.test) {
+  source_set("healthd_testrunner") {
+    sources = [ "healthd_testrunner.cc" ]
+    configs += [ ":healthd_testrunner_pkg_deps" ]
+    public_configs = [ "//common-mk:test" ]
+    public_deps = [ "//common-mk/testrunner:testrunner" ]
+  }
+}
+
 if (use.test) {
   source_set("test") {
     sources = [
@@ -60,5 +76,6 @@ if (use.test) {
     ]
     configs += [ ":test_pkg_deps" ]
     deps = [ ":libdiagnostics_base" ]
+    public_deps = [ ":healthd_testrunner" ]
   }
 }

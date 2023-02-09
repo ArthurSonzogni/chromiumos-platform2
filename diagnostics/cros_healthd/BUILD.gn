@@ -73,15 +73,13 @@ if (use.test) {
       "fake_cros_healthd_routine_factory.cc",
       "routine_parameter_fetcher_test.cc",
     ]
-    configs += [
-      ":cros_healthd_test_pkg_deps",
-      "//common-mk:test",
-    ]
+    configs += [ ":cros_healthd_test_pkg_deps" ]
     deps = [
       ":libcros_healthd",
       "routines:libroutine_test_utils",
       "system:libcros_healthd_system_test_utils",
       "wilco_ec:libcros_healthd_wilco_ec_test",
+      "//diagnostics/base:healthd_testrunner",
       "//diagnostics/base:test",
       "//diagnostics/common:libcommon_test",
       "//diagnostics/common:libcommon_test_utils",
@@ -93,7 +91,6 @@ if (use.test) {
       "//diagnostics/cros_healthd/routines:routine_test",
       "//diagnostics/cros_healthd/system:libcros_healthd_system_test",
       "//diagnostics/cros_healthd/utils:libcros_healthd_utils_test",
-      "//diagnostics/cros_healthd/utils:mojo_testrunner",
     ]
   }
 }

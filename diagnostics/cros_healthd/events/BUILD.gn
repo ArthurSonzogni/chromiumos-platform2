@@ -55,16 +55,13 @@ if (use.test) {
       "power_events_impl_test.cc",
       "udev_events_impl_test.cc",
     ]
-    configs += [
-      ":libcros_healthd_events_test_pkg_deps",
-      "//common-mk:test",
-    ]
+    configs += [ ":libcros_healthd_events_test_pkg_deps" ]
     deps = [
       ":libcros_healthd_events",
       "//diagnostics/base",
+      "//diagnostics/base:healthd_testrunner",
       "//diagnostics/common:libcommon_test_utils",
       "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
-      "//diagnostics/cros_healthd/utils:mojo_testrunner",
       "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
     ]
   }

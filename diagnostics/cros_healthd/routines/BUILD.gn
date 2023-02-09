@@ -168,18 +168,15 @@ if (use.test) {
       "smartctl_check/smartctl_check_test.cc",
       "subproc_routine_test.cc",
     ]
-    configs += [
-      "//common-mk:test",
-      ":libroutine_test_pkg_deps",
-    ]
+    configs += [ ":libroutine_test_pkg_deps" ]
     deps = [
       ":libdiag_routine",
       ":libroutine_test_utils",
       "//diagnostics/base",
+      "//diagnostics/base:healthd_testrunner",
       "//diagnostics/common:libcommon",
       "//diagnostics/common:libcommon_test_utils",
       "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
-      "//diagnostics/cros_healthd/utils:mojo_testrunner",
     ]
   }
 }

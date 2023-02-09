@@ -105,14 +105,11 @@ if (use.test) {
       "system_fetcher_test.cc",
       "timezone_fetcher_test.cc",
     ]
-    configs += [
-      ":libcros_healthd_fetchers_test_pkg_deps",
-      "//common-mk:test",
-    ]
+    configs += [ ":libcros_healthd_fetchers_test_pkg_deps" ]
     deps = [
       ":libcros_healthd_fetchers",
-      "//common-mk/testrunner:testrunner",
       "//diagnostics/base",
+      "//diagnostics/base:healthd_testrunner",
       "//diagnostics/common:libcommon_test_utils",
       "//diagnostics/cros_healthd/fetchers/storage:storage_data_source_test",
       "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",

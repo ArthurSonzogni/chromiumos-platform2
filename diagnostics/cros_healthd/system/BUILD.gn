@@ -127,15 +127,12 @@ if (use.test) {
       "powerd_adapter_impl_test.cc",
       "system_config_test.cc",
     ]
-    configs += [
-      ":libcros_healthd_system_test_pkg_deps",
-      "//common-mk:test",
-    ]
+    configs += [ ":libcros_healthd_system_test_pkg_deps" ]
     deps = [
       ":libcros_healthd_system",
       ":libcros_healthd_system_test_utils",
-      "//common-mk/testrunner:testrunner",
       "//diagnostics/base",
+      "//diagnostics/base:healthd_testrunner",
       "//diagnostics/common:libcommon_test_utils",
     ]
   }

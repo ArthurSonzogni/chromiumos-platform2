@@ -34,14 +34,11 @@ if (use.test) {
 
   source_set("network_diagnostics_test") {
     sources = [ "network_diagnostics_adapter_impl_test.cc" ]
-    configs += [
-      ":network_diagnostics_test_pkg_deps",
-      "//common-mk:test",
-    ]
+    configs += [ ":network_diagnostics_test_pkg_deps" ]
     deps = [
       ":libnetwork_diagnostics_adapter",
       ":libnetwork_diagnostics_utils",
-      "//diagnostics/cros_healthd/utils:mojo_testrunner",
+      "//diagnostics/base:healthd_testrunner",
     ]
   }
 }
