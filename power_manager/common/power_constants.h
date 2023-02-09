@@ -112,20 +112,12 @@ extern const char kKeyboardBacklightNoAlsBrightnessPref[];
 
 // Duration in milliseconds the keyboard backlight should remain on after
 // hovering stops (on systems that support hover detection) or after the last
-// report of user activity (if kKeyboardBacklightTurnOnForUserActivityPref is
-// enabled).
+// report of user activity (otherwise).
 extern const char kKeyboardBacklightKeepOnMsPref[];
 
 // Alternate delay used in place of |kKeyboardBacklightKeepOnMsPref| while
 // fullscreen video is playing.
 extern const char kKeyboardBacklightKeepOnDuringVideoMsPref[];
-
-// If true, powerd will dynamically turn the keyboard backlight on when user
-// activity is detected and disable it after kKeyboardBacklightKeepOnMsPref.
-// This can be set on systems that lack ambient light sensors and hover
-// detection to reduce the backlight's power consumption. It has no effect if
-// kDetectHoverPref is set.
-extern const char kKeyboardBacklightTurnOnForUserActivityPref[];
 
 // Smoothing constant used to calculated smoothed ambient lux level, in the
 // range of (0.0, 1.0]. Value closer to 0.0 means smoothed_lux will respond to
