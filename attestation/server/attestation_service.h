@@ -759,9 +759,6 @@ class AttestationService : public AttestationInterface {
   // simplicity.
   bool does_support_vtpm_ek_ = USE_TPM2;
   GoogleKeys google_keys_;
-  // Default identity features for newly created identities.
-  int default_identity_features_ =
-      attestation::IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID;
   // Maps NVRAMQuoteType indices to indices into the static NVRAM data we
   // use for NVRAM quotes.
   std::map<NVRAMQuoteType, int> nvram_quote_type_to_index_data_;

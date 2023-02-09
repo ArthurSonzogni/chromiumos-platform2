@@ -9,6 +9,7 @@
 #include <iterator>
 #include <optional>
 #include <set>
+#include <sstream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -60,6 +61,10 @@ const int kNumTemporalValues = 5;
 const char kKnownBootModes[8][3] = {{0, 0, 0}, {0, 0, 1}, {0, 1, 0}, {0, 1, 1},
                                     {1, 0, 0}, {1, 0, 1}, {1, 1, 0}, {1, 1, 1}};
 const char kVerifiedBootMode[3] = {0, 0, 1};
+
+// Default identity features for newly created identities.
+constexpr int kDefaultIdentityFeatures =
+    static_cast<int>(attestation::IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID);
 
 // Context name to derive stable secret for attestation-based enterprise
 // enrollment.
@@ -322,43 +327,23 @@ std::string GetACAName(attestation::ACAType aca_type) {
       return "the default ACA";
     case attestation::TEST_ACA:
       return "the test ACA";
-    default: {
-      std::ostringstream stream;
-      stream << "ACA " << aca_type;
-      return stream.str();
-    }
+    default:
+      return "ACA " + base::NumberToString(static_cast<uint32_t>(aca_type));
   }
 }
 
 std::string GetIdentityFeaturesString(int identity_features) {
-  unsigned features_count = 0;
-  std::ostringstream stream;
-  if (identity_features == attestation::NO_IDENTITY_FEATURES) {
-    stream << "NO_IDENTITY_FEATURES";
-  } else {
-    // We don't have reflection, copy/paste and adapt these few lines when
-    // adding a new enum value.
-    if (identity_features &
-        attestation::IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) {
-      ++features_count;
-      if (stream.tellp() > 0) {
-        stream << ", ";
-      }
-      stream << "IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID";
-      identity_features &=
-          ~attestation::IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID;
-    }
-    // Print other bits which may have been forgotten above.
-    if (identity_features) {
-      features_count += 2;  // Forces plural.
-      if (stream.tellp() > 0) {
-        stream << ", ";
-      }
-      stream << "(undecoded features: " << identity_features << ")";
-    }
+  std::string feature_str;
+  switch (identity_features) {
+    case attestation::NO_IDENTITY_FEATURES:
+      return "NO_IDENTITY_FEATURES";
+    case attestation::IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID:
+      return "IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID";
+    default:
+      LOG(WARNING) << __func__
+                   << ":Unexpected feature code: " << identity_features;
+      return "(" + base::NumberToString(identity_features) + ")";
   }
-  return std::string("identity feature") + (features_count != 1 ? "s " : " ") +
-         stream.str();
 }
 
 std::string GetKeyTypeName(attestation::KeyType key_type) {
@@ -1823,7 +1808,7 @@ void AttestationService::PrepareForEnrollment(
 
   // Create a new AIK and PCR quotes for the first identity with default
   // identity features.
-  if (CreateIdentity(default_identity_features_) < 0) {
+  if (CreateIdentity(kDefaultIdentityFeatures) < 0) {
     std::move(callback).Run(false);
     return;
   }
