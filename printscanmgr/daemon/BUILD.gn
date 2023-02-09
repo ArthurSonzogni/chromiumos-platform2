@@ -9,6 +9,7 @@ pkg_config("libdaemon_pkg_deps") {
   pkg_deps = [
     "dbus-1",
     "libbrillo",
+    "libchrome",
 
     # system_api depends on protobuf(or protobuf - lite).It must appear before
     # protobuf here or the linker flags won't be in the right order.
@@ -18,6 +19,10 @@ pkg_config("libdaemon_pkg_deps") {
 }
 
 source_set("libdaemon") {
-  sources = [ "daemon.cc" ]
+  sources = [
+    "daemon.cc",
+    "dbus_adaptor.cc",
+  ]
   configs += [ ":libdaemon_pkg_deps" ]
+  deps = [ "//printscanmgr/dbus_bindings:printscanmgr-adaptors" ]
 }

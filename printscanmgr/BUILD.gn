@@ -8,6 +8,7 @@ group("all") {
   deps = [
     ":printscanmgr",
     "//printscanmgr/dbus:dbus_config",
+    "//printscanmgr/dbus_bindings:printscanmgr-adaptors",
   ]
   if (use.test) {
     deps += [ ":printscanmgr_test" ]

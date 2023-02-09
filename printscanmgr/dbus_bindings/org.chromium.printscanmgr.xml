@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+
+<node name="/org/chromium/printscanmgr"
+      xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <interface name="org.chromium.printscanmgr">
+    <method name="CupsAddAutoConfiguredPrinter">
+      <tp:docstring>
+        Add a printer that can be auto-configured to CUPS.  Immediately attempt
+        to connect.  Returns a CupsResult - see
+        src/platform2/system_api/dbus/printscanmgr/dbus-constants.h for details.
+      </tp:docstring>
+      <arg name="result" type="i" direction="out" />
+      <arg name="name" type="s" direction="in" />
+      <arg name="uri" type="s" direction="in" />
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="CupsAddManuallyConfiguredPrinter">
+      <tp:docstring>
+        Add a printer to CUPS using the passed PPD contents.  Immediately
+        attempt to connect.  Returns a CupsResult - see
+        src/platform2/system_api/dbus/printscanmgr/dbus-constants.h for details.
+      </tp:docstring>
+      <arg name="result" type="i" direction="out" />
+      <arg name="name" type="s" direction="in" />
+      <arg name="uri" type="s" direction="in" />
+      <arg name="ppd_contents" type="ay" direction="in">
+        <tp:docstring>
+          The contents of the CUPS Postscript Printer Driver for this printer.
+          This data may optionally be gzip compressed.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="CupsRemovePrinter">
+      <tp:docstring>
+        Remove a printer from CUPS.  Returns true if the printer was removed
+        successfully.
+      </tp:docstring>
+      <arg name="result" type="b" direction="out" />
+      <arg name="name" type="s" direction="in">
+        <tp:docstring>
+          The name of the printer to remove.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="CupsRetrievePpd">
+      <tp:docstring>
+        Retrieve the PPD from CUPS for a given printer.  On success, returns the
+        PPD as a vector of bytes.  On error, returns an empty vector.
+      </tp:docstring>
+      <arg name="ppd" type="ay" direction="out" />
+      <arg name="name" type="s" direction="in">
+        <tp:docstring>
+          The name of the printer to retrieve the PPD.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+    </method>
+    <method name="PrintscanDebugSetCategories">
+      <tp:docstring>
+        Collect printscan debug logs for the specified categories.
+        If no categories are specified, disable log collection
+        for all categories.
+      </tp:docstring>
+      <arg name="categories" type="u" direction="in">
+        <tp:docstring>
+          A bitwise OR of categories to enable. Acceptable values are defined
+          in the PrintscanDebugCategories flags.
+          Setting |categories| to '0' will disable additional logging.
+        </tp:docstring>
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
+  </interface>
+</node>

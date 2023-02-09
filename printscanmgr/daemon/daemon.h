@@ -5,7 +5,11 @@
 #ifndef PRINTSCANMGR_DAEMON_DAEMON_H_
 #define PRINTSCANMGR_DAEMON_DAEMON_H_
 
+#include <memory>
+
 #include <brillo/daemons/dbus_daemon.h>
+
+#include "printscanmgr/daemon/dbus_adaptor.h"
 
 namespace printscanmgr {
 
@@ -15,6 +19,13 @@ class Daemon final : public brillo::DBusServiceDaemon {
   Daemon(const Daemon&) = delete;
   Daemon& operator=(const Daemon&) = delete;
   ~Daemon() override;
+
+ protected:
+  void RegisterDBusObjectsAsync(
+      brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
+
+ private:
+  std::unique_ptr<DbusAdaptor> dbus_adaptor_;
 };
 
 }  // namespace printscanmgr

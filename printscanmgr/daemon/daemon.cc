@@ -11,4 +11,11 @@ namespace printscanmgr {
 Daemon::Daemon() : DBusServiceDaemon(kPrintscanmgrServiceName) {}
 Daemon::~Daemon() = default;
 
+void Daemon::RegisterDBusObjectsAsync(
+    brillo::dbus_utils::AsyncEventSequencer* sequencer) {
+  dbus_adaptor_ = std::make_unique<DbusAdaptor>(bus_);
+  dbus_adaptor_->RegisterAsync(
+      sequencer->GetHandler("RegisterAsync() failed.", true));
+}
+
 }  // namespace printscanmgr
