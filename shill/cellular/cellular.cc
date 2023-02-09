@@ -1566,13 +1566,13 @@ void Cellular::EstablishLink() {
 }
 
 void Cellular::DefaultLinkUp() {
-  if (state_ != State::kConnected) {
+  if (default_pdn_->link_state() == LinkState::kUp) {
     SLOG(3) << LoggingTag() << ": Default link is up.";
     return;
   }
 
-  // Connected -> Linked transition launches Network creation
-  LOG(INFO) << LoggingTag() << ": Default link is up.";
+  default_pdn_->SetLinkState(LinkState::kUp);
+  LOG(INFO) << LoggingTag() << ": Default link is up: configuring network";
 
   CHECK(capability_);
   if (!default_pdn_->Configure(
@@ -1592,16 +1592,20 @@ void Cellular::DefaultLinkUp() {
 }
 
 void Cellular::DefaultLinkDown() {
-  if (state_ == State::kLinked) {
-    LOG(INFO) << LoggingTag() << ": Default link is down, disconnecting.";
-    Disconnect(nullptr, "link is down.");
-    return;
-  }
+  LinkState old_state = default_pdn_->link_state();
+  default_pdn_->SetLinkState(LinkState::kDown);
 
-  if (state_ == State::kConnected) {
+  // LinkState::kUnknown is the initial state before the first dump
+  if (old_state == LinkState::kUnknown) {
     LOG(INFO) << LoggingTag() << ": Default link is down, bringing up.";
     rtnl_handler()->SetInterfaceFlags(
         default_pdn_->network()->interface_index(), IFF_UP, IFF_UP);
+    return;
+  }
+
+  if (old_state == LinkState::kUp) {
+    LOG(INFO) << LoggingTag() << ": Default link is down, disconnecting.";
+    Disconnect(nullptr, "link is down.");
     return;
   }
 
@@ -1610,6 +1614,7 @@ void Cellular::DefaultLinkDown() {
 
 void Cellular::DefaultLinkDeleted() {
   LOG(INFO) << LoggingTag() << ": Default link is deleted.";
+  default_pdn_->SetLinkState(LinkState::kUnknown);
 
   // If not multiplexing, this is an indication that the cellular device is gone
   // from the system. If multiplexing, just a no-op.
@@ -3114,8 +3119,9 @@ void Cellular::OnEntitlementCheckUpdated(CarrierEntitlement::Result result) {
 }
 
 void Cellular::SetDefaultPdnForTesting(const RpcIdentifier& dbus_path,
-                                       std::unique_ptr<Network> network) {
-  default_pdn_.emplace(this, dbus_path, std::move(network));
+                                       std::unique_ptr<Network> network,
+                                       LinkState link_state) {
+  default_pdn_.emplace(this, dbus_path, std::move(network), link_state);
 }
 
 Cellular::NetworkInfo::NetworkInfo(Cellular* cellular,
@@ -3132,10 +3138,12 @@ Cellular::NetworkInfo::NetworkInfo(Cellular* cellular,
 
 Cellular::NetworkInfo::NetworkInfo(Cellular* cellular,
                                    const RpcIdentifier& bearer_path,
-                                   std::unique_ptr<Network> network)
+                                   std::unique_ptr<Network> network,
+                                   LinkState link_state)
     : cellular_(cellular),
       bearer_path_(bearer_path),
-      network_(std::move(network)) {}
+      network_(std::move(network)),
+      link_state_(link_state) {}
 
 Cellular::NetworkInfo::~NetworkInfo() {
   network_->Stop();

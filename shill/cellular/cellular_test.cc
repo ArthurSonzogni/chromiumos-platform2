@@ -926,7 +926,8 @@ TEST_F(CellularTest, Disconnect) {
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
-  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network));
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kUp);
   device_->set_state_for_testing(Cellular::State::kConnected);
 
   EXPECT_CALL(*default_pdn_, Stop());
@@ -948,7 +949,8 @@ TEST_F(CellularTest, DisconnectFailure) {
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
-  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network));
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kUp);
   device_->set_state_for_testing(Cellular::State::kConnected);
 
   EXPECT_CALL(
@@ -1148,7 +1150,8 @@ TEST_F(CellularTest, StartPPPAfterEthernetUp) {
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
-  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network));
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kUp);
 
   CellularService* service(SetService());
   device_->set_state_for_testing(Cellular::State::kLinked);
@@ -1395,7 +1398,8 @@ TEST_F(CellularTest, DropConnection) {
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
-  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network));
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kUp);
   device_->set_state_for_testing(Cellular::State::kConnected);
 
   EXPECT_CALL(*default_pdn_, Stop());
@@ -1424,7 +1428,8 @@ TEST_F(CellularTest, ChangeServiceState) {
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
-  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network));
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kUp);
 
   // Without PPP, these should be handled by our selected_service().
   device_->set_state_for_testing(Cellular::State::kLinked);
@@ -1837,7 +1842,8 @@ TEST_F(CellularTest, DefaultLinkUpDHCP) {
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
-  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network));
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kDown);
   EXPECT_CALL(*default_pdn_,
               Start(Field(&Network::StartOptions::dhcp, Optional(_))));
 
@@ -1871,7 +1877,8 @@ TEST_F(CellularTest, DefaultLinkUpDHCPL850) {
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
-  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network));
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kUp);
   EXPECT_CALL(*default_pdn_,
               Start(Field(&Network::StartOptions::dhcp, Optional(_))))
       .Times(0);
@@ -1909,7 +1916,8 @@ TEST_F(CellularTest, DefaultLinkUpMultiplexDHCP) {
                                                kTestMultiplexedInterfaceName,
                                                Technology::kCellular);
   default_pdn_ = network.get();
-  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network));
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kDown);
   EXPECT_CALL(*default_pdn_,
               Start(Field(&Network::StartOptions::dhcp, Optional(_))));
 
@@ -2015,7 +2023,8 @@ TEST_F(CellularTest, DefaultLinkUpStatic) {
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
-  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network));
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kDown);
   EXPECT_CALL(*default_pdn_,
               set_link_protocol_ipv4_properties(Pointee(ipconfig_properties)));
   EXPECT_CALL(*default_pdn_,
@@ -2064,7 +2073,8 @@ TEST_F(CellularTest, DefaultLinkUpMultiplexStatic) {
                                                kTestMultiplexedInterfaceName,
                                                Technology::kCellular);
   default_pdn_ = network.get();
-  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network));
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kDown);
   EXPECT_CALL(*default_pdn_,
               set_link_protocol_ipv4_properties(Pointee(ipconfig_properties)));
   EXPECT_CALL(*default_pdn_,
@@ -2075,17 +2085,43 @@ TEST_F(CellularTest, DefaultLinkUpMultiplexStatic) {
   Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
 }
 
-TEST_F(CellularTest, DefaultLinkDownOnConnected) {
-  // If device is Connected and we receive a LinkDown() it should be treated as
-  // the initial link state reported via the dump, so the interface up request
-  // should happen
+TEST_F(CellularTest, DefaultLinkAlreadyUp) {
+  auto bearer = std::make_unique<CellularBearer>(&control_interface_,
+                                                 kTestBearerDBusPath, "");
+  bearer->set_apn_type_for_testing(ApnList::ApnType::kDefault);
+  bearer->set_data_interface_for_testing(kTestInterfaceName);
+  bearer->set_ipv4_config_method_for_testing(
+      CellularBearer::IPConfigMethod::kDHCP);
+  SetCapability3gppActiveBearer(ApnList::ApnType::kDefault, std::move(bearer));
+  device_->set_state_for_testing(Cellular::State::kLinked);
+
+  MockCellularService* service = SetMockService();
+  EXPECT_CALL(*service, SetState(_)).Times(0);
+
+  auto network = std::make_unique<MockNetwork>(
+      kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
+  default_pdn_ = network.get();
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kUp);
+  EXPECT_CALL(*default_pdn_, Start(_)).Times(0);
+
+  auto* adaptor = static_cast<DeviceMockAdaptor*>(device_->adaptor());
+  EXPECT_CALL(*adaptor, EmitStringChanged(_, _)).Times(0);
+
+  device_->DefaultLinkUp();
+
+  Mock::VerifyAndClearExpectations(service);  // before Cellular dtor
+}
+
+TEST_F(CellularTest, DefaultLinkInitiallyDown) {
   SetRegisteredWithService();
   device_->set_state_for_testing(Cellular::State::kConnected);
 
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
-  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network));
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kUnknown);
 
   EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(default_pdn_->interface_index(),
                                                IFF_UP, IFF_UP));
@@ -2095,9 +2131,7 @@ TEST_F(CellularTest, DefaultLinkDownOnConnected) {
   EXPECT_EQ(Cellular::State::kConnected, device_->state());
 }
 
-TEST_F(CellularTest, DefaultLinkDownOnLinked) {
-  // If device is Linked and we receive a LinkDown(), we should ensure the
-  // modem is disconnected.
+TEST_F(CellularTest, DefaultLinkUpToDown) {
   SetRegisteredWithService();
   device_->SetPrimaryMultiplexedInterface(kTestInterfaceName);
   device_->set_state_for_testing(Cellular::State::kLinked);
@@ -2105,7 +2139,8 @@ TEST_F(CellularTest, DefaultLinkDownOnLinked) {
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
-  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network));
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kUp);
 
   EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, _, _)).Times(0);
   EXPECT_CALL(
@@ -2125,11 +2160,30 @@ TEST_F(CellularTest, DefaultLinkDownOnLinked) {
   EXPECT_EQ(Cellular::State::kRegistered, device_->state());
 }
 
+TEST_F(CellularTest, DefaultLinkAlreadyDown) {
+  auto network = std::make_unique<MockNetwork>(
+      kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
+  default_pdn_ = network.get();
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kDown);
+
+  EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, _, _)).Times(0);
+  EXPECT_CALL(*mm1_simple_proxy_, Disconnect(_, _, _)).Times(0);
+
+  auto* adaptor = static_cast<DeviceMockAdaptor*>(device_->adaptor());
+  EXPECT_CALL(*adaptor,
+              EmitStringChanged(kPrimaryMultiplexedInterfaceProperty, _))
+      .Times(0);
+
+  device_->DefaultLinkDown();
+}
+
 TEST_F(CellularTest, DefaultLinkDeleted) {
   auto network = std::make_unique<MockNetwork>(
       kTestInterfaceIndex, kTestInterfaceName, Technology::kCellular);
   default_pdn_ = network.get();
-  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network));
+  device_->SetDefaultPdnForTesting(kTestBearerDBusPath, std::move(network),
+                                   Cellular::LinkState::kUp);
 
   MockCellularService* service = SetMockService();
   device_->SetPrimaryMultiplexedInterface(kTestInterfaceName);

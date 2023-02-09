@@ -395,8 +395,11 @@ class Cellular : public Device,
   void set_skip_establish_link_for_testing(bool on) {
     skip_establish_link_for_testing_ = on;
   }
+
+  enum class LinkState { kUnknown, kDown, kUp };
   void SetDefaultPdnForTesting(const RpcIdentifier& dbus_path,
-                               std::unique_ptr<Network> network);
+                               std::unique_ptr<Network> network,
+                               LinkState link_state);
   Network* default_pdn_for_testing() {
     return default_pdn_ ? default_pdn_->network() : nullptr;
   }
@@ -664,12 +667,15 @@ class Cellular : public Device,
     // Constructor for testing purposes only.
     explicit NetworkInfo(Cellular* cellular,
                          const RpcIdentifier& bearer_path,
-                         std::unique_ptr<Network> network);
+                         std::unique_ptr<Network> network,
+                         LinkState link_state);
     NetworkInfo(const NetworkInfo&) = delete;
     NetworkInfo& operator=(const NetworkInfo&) = delete;
     virtual ~NetworkInfo();
 
     Network* network() const { return network_.get(); }
+    LinkState link_state() const { return link_state_; }
+    void SetLinkState(LinkState link_state) { link_state_ = link_state; }
 
     bool Configure(const CellularBearer* bearer);
     void Start();
@@ -681,6 +687,7 @@ class Cellular : public Device,
     Cellular* cellular_;
     RpcIdentifier bearer_path_;
     std::unique_ptr<Network> network_;
+    LinkState link_state_ = LinkState::kUnknown;
     // Start options and IP config properties only set after a successful
     // Configure() operation.
     Network::StartOptions start_opts_;
