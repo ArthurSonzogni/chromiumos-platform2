@@ -1473,6 +1473,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocBiometricsServiceCheckStartConcurrentSession = 3303,
   /* ./auth_blocks/biometrics_auth_block_service.cc */
   kLocBiometricsServiceStartSessionNoToken = 3304,
+  /* ./auth_blocks/biometrics_auth_block_service.cc */
+  kLocBiometricsServiceStartAuthenticateConcurrentSession = 3305,
+  /* ./auth_blocks/biometrics_auth_block_service.cc */
+  kLocBiometricsServiceMatchCredentialNoSession = 3306,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.

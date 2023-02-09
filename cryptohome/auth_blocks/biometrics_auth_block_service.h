@@ -91,6 +91,12 @@ class BiometricsAuthBlockService {
     // starts, so we wait until that point to attach it.
     void AttachToService(BiometricsAuthBlockService* service);
 
+    // Detaches the token from the underlying service. Usually the token should
+    // be in charge of closing the service's session, but when the session is
+    // terminated because of other reasons, we need to detach the token from the
+    // service so it doesn't terminate it again.
+    void DetachFromService();
+
     TokenType type() const { return token_type_; }
 
     ObfuscatedUsername user_id() const { return user_id_; }
@@ -114,6 +120,21 @@ class BiometricsAuthBlockService {
                         std::optional<brillo::Blob> nonce);
 
   void OnAuthScanDone(user_data_auth::AuthScanDone signal, brillo::Blob nonce);
+
+  // As biometrics auth stack's AuthenticateSession is expected to be
+  // established once for each touch, but the cryptohome AuthSession prefers
+  // treating the AuthenticateSession as long-living, we need to restart the
+  // session after each MatchCredential. This function is designed to be used as
+  // a callback with BiometricsCommandProcessor.
+  void OnMatchCredentialResponse(OperationCallback callback,
+                                 CryptohomeStatusOr<OperationOutput> resp);
+
+  // When session is restarted after a MatchCredential, trigger the
+  // MatchCredential's callback. If session restart isn't successful, also emits
+  // a signal to indicate that the authenticate session has ended.
+  void OnSessionRestartResult(OperationCallback callback,
+                              CryptohomeStatusOr<OperationOutput> resp,
+                              bool success);
 
   std::unique_ptr<BiometricsCommandProcessor> processor_;
   // The most recent auth nonce received.

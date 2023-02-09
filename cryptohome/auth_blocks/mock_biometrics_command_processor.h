@@ -24,14 +24,28 @@ class MockBiometricsCommandProcessor : public BiometricsCommandProcessor {
                                     std::optional<brillo::Blob>)>),
       (override));
   MOCK_METHOD(void,
+              SetAuthScanDoneCallback,
+              (base::RepeatingCallback<void(user_data_auth::AuthScanDone,
+                                            brillo::Blob)>),
+              (override));
+  MOCK_METHOD(void,
               StartEnrollSession,
               (base::OnceCallback<void(bool)>),
+              (override));
+  MOCK_METHOD(void,
+              StartAuthenticateSession,
+              (ObfuscatedUsername, base::OnceCallback<void(bool)>),
               (override));
   MOCK_METHOD(void,
               CreateCredential,
               (ObfuscatedUsername, OperationInput, OperationCallback),
               (override));
+  MOCK_METHOD(void,
+              MatchCredential,
+              (OperationInput, OperationCallback),
+              (override));
   MOCK_METHOD(void, EndEnrollSession, (), (override));
+  MOCK_METHOD(void, EndAuthenticateSession, (), (override));
 };
 
 }  // namespace cryptohome

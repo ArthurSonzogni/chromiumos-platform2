@@ -9,7 +9,6 @@
 #include <utility>
 
 #include <base/callback.h>
-#include <base/notreached.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 
 #include "cryptohome/auth_blocks/biometrics_command_processor.h"
@@ -40,6 +39,8 @@ BiometricsAuthBlockService::BiometricsAuthBlockService(
   // Unretained is safe here because processor_ is owned by this.
   processor_->SetEnrollScanDoneCallback(base::BindRepeating(
       &BiometricsAuthBlockService::OnEnrollScanDone, base::Unretained(this)));
+  processor_->SetAuthScanDoneCallback(base::BindRepeating(
+      &BiometricsAuthBlockService::OnAuthScanDone, base::Unretained(this)));
 }
 
 void BiometricsAuthBlockService::StartEnrollSession(
@@ -92,16 +93,51 @@ void BiometricsAuthBlockService::StartAuthenticateSession(
     AuthFactorType auth_factor_type,
     ObfuscatedUsername obfuscated_username,
     PreparedAuthFactorToken::Consumer on_done) {
-  NOTREACHED();
+  if (active_token_ || pending_token_) {
+    CryptohomeStatus status = MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocBiometricsServiceStartAuthenticateConcurrentSession),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_BIOMETRICS_BUSY);
+    std::move(on_done).Run(std::move(status));
+    return;
+  }
+
+  // Set up a callback with the manager to check the start session result.
+  pending_token_ = std::make_unique<Token>(
+      auth_factor_type, Token::TokenType::kAuthenticate, obfuscated_username);
+  processor_->StartAuthenticateSession(
+      std::move(obfuscated_username),
+      base::BindOnce(&BiometricsAuthBlockService::CheckSessionStartResult,
+                     base::Unretained(this), std::move(on_done)));
 }
 
 void BiometricsAuthBlockService::MatchCredential(OperationInput payload,
                                                  OperationCallback on_done) {
-  NOTREACHED();
+  if (!active_token_ ||
+      active_token_->type() != Token::TokenType::kAuthenticate) {
+    std::move(on_done).Run(MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocBiometricsServiceMatchCredentialNoSession),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL));
+    return;
+  }
+
+  processor_->MatchCredential(
+      std::move(payload),
+      base::BindOnce(&BiometricsAuthBlockService::OnMatchCredentialResponse,
+                     base::Unretained(this), std::move(on_done)));
 }
 
 void BiometricsAuthBlockService::EndAuthenticateSession() {
-  NOTREACHED();
+  if (!active_token_ ||
+      active_token_->type() != Token::TokenType::kAuthenticate) {
+    return;
+  }
+
+  active_token_ = nullptr;
+  processor_->EndAuthenticateSession();
 }
 
 std::optional<brillo::Blob> BiometricsAuthBlockService::TakeNonce() {
@@ -119,6 +155,10 @@ BiometricsAuthBlockService::Token::Token(AuthFactorType auth_factor_type,
 void BiometricsAuthBlockService::Token::AttachToService(
     BiometricsAuthBlockService* service) {
   service_ = service;
+}
+
+void BiometricsAuthBlockService::Token::DetachFromService() {
+  service_ = nullptr;
 }
 
 CryptohomeStatus BiometricsAuthBlockService::Token::TerminateAuthFactor() {
@@ -184,7 +224,56 @@ void BiometricsAuthBlockService::OnEnrollScanDone(
 
 void BiometricsAuthBlockService::OnAuthScanDone(
     user_data_auth::AuthScanDone signal, brillo::Blob nonce) {
-  NOTREACHED();
+  if (!active_token_ ||
+      active_token_->type() != Token::TokenType::kAuthenticate) {
+    return;
+  }
+
+  auth_nonce_ = std::move(nonce);
+  auth_signal_sender_.Run(std::move(signal));
+}
+
+void BiometricsAuthBlockService::OnMatchCredentialResponse(
+    OperationCallback callback, CryptohomeStatusOr<OperationOutput> resp) {
+  // This means that the session is already terminated by the caller, and we
+  // just need to return the MatchCredential response.
+  if (!active_token_ ||
+      active_token_->type() != Token::TokenType::kAuthenticate) {
+    std::move(callback).Run(std::move(resp));
+    return;
+  }
+
+  // Restart the session before returning the MatchCredential, so that when the
+  // user sees the match verdict it's guaranteed that they can already perform
+  // the next touch.
+  processor_->EndAuthenticateSession();
+  processor_->StartAuthenticateSession(
+      active_token_->user_id(),
+      base::BindOnce(&BiometricsAuthBlockService::OnSessionRestartResult,
+                     base::Unretained(this), std::move(callback),
+                     std::move(resp)));
+}
+
+void BiometricsAuthBlockService::OnSessionRestartResult(
+    OperationCallback callback,
+    CryptohomeStatusOr<OperationOutput> resp,
+    bool success) {
+  // We need to check active_token_ here because if the session is already ended
+  // by the caller, we shouldn't emit any signals afterwards.
+  if (active_token_ &&
+      active_token_->type() == Token::TokenType::kAuthenticate && !success) {
+    active_token_->DetachFromService();
+    active_token_ = nullptr;
+    // If restarting session failed, Chrome will stop receiving auth scan
+    // signals. Send a signal that indicates failure to inform Chrome about
+    // this.
+    user_data_auth::AuthScanDone session_failed_signal;
+    session_failed_signal.mutable_scan_result()->set_fingerprint_result(
+        user_data_auth::FingerprintScanResult::
+            FINGERPRINT_SCAN_RESULT_FATAL_ERROR);
+    auth_signal_sender_.Run(std::move(session_failed_signal));
+  }
+  std::move(callback).Run(std::move(resp));
 }
 
 }  // namespace cryptohome
