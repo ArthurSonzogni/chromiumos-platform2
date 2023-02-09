@@ -129,7 +129,9 @@ bool DatabaseImpl::EncryptProtobuf(std::string* encrypted_output) {
     LOG(ERROR) << "Failed to serialize db.";
     return false;
   }
-  if (database_key_.empty() || sealed_database_key_.empty()) {
+  CHECK_EQ(database_key_.empty(), sealed_database_key_.empty())
+      << "Raw and sealed keys should be present in pair.";
+  if (database_key_.empty()) {
     if (!tpm_utility_->IsPCR0Valid()) {
       LOG(ERROR) << __func__ << "Invalid PCR0 value, aborting.";
       metrics_.ReportAttestationOpsStatus(

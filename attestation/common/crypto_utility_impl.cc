@@ -7,6 +7,7 @@
 #include <iterator>
 #include <limits>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <arpa/inet.h>
@@ -148,11 +149,11 @@ bool CryptoUtilityImpl::UnsealKey(const std::string& encrypted_data,
     LOG(ERROR) << __func__ << ": Failed to parse protobuf.";
     return false;
   }
-  *sealed_key = encrypted_pb.wrapped_key();
-  if (!tpm_utility_->Unseal(*sealed_key, aes_key)) {
+  if (!tpm_utility_->Unseal(encrypted_pb.wrapped_key(), aes_key)) {
     LOG(ERROR) << __func__ << ": Cannot unseal aes key.";
     return false;
   }
+  *sealed_key = encrypted_pb.wrapped_key();
   return true;
 }
 
