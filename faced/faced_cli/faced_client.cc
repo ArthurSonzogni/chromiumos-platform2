@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <absl/status/status.h>
+#include <base/files/scoped_file.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/string_piece.h>
 #include <brillo/cryptohome.h>
@@ -68,9 +69,9 @@ absl::StatusOr<FacedConnection> ConnectToFaced() {
 
   org::chromium::FaceAuthDaemonProxy proxy(connection.bus,
                                            faced::kFaceAuthDaemonName);
-  brillo::dbus_utils::FileDescriptor handle(
-      channel.TakeRemoteEndpoint().TakePlatformHandle().TakeFD());
-  if (!proxy.BootstrapMojoConnection(handle, /*error=*/nullptr)) {
+  if (!proxy.BootstrapMojoConnection(
+          channel.TakeRemoteEndpoint().TakePlatformHandle().TakeFD(),
+          /*error=*/nullptr)) {
     return absl::InternalError(
         "Could not connect to the faced system service: Failed to send handle "
         "over DBus");
