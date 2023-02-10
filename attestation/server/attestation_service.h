@@ -64,10 +64,15 @@ namespace attestation {
 // process a task after destruction). Weak pointers are used to post replies
 // back to the main thread.
 
-#if USE_GENERIC_TPM2 || USE_TI50_ONBOARD
-constexpr static KeyType kEndorsementKeyTypeForEnrollmentID = KEY_TYPE_ECC;
+// There are 3 configurations to support:
+// 1. TPM1.2 uses RSA.
+// 2. cr50 uses RSA.
+// 3. Other TPM2.0-based devices, including generic TPM2, tpm2-simulator, and
+// ti50, use ECC.
+#if USE_TPM2 && !USE_CR50_ONBOARD
+inline constexpr KeyType kEndorsementKeyTypeForEnrollmentID = KEY_TYPE_ECC;
 #else
-constexpr static KeyType kEndorsementKeyTypeForEnrollmentID = KEY_TYPE_RSA;
+inline constexpr KeyType kEndorsementKeyTypeForEnrollmentID = KEY_TYPE_RSA;
 #endif
 
 class AttestationService : public AttestationInterface {
