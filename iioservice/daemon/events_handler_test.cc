@@ -89,9 +89,6 @@ class EventsHandlerTest : public ::testing::Test,
     observers_.clear();
 
     base::RunLoop().RunUntilIdle();
-
-    // ClientData should be valid until |handler_| is destructed.
-    clients_data_.clear();
   }
 
   base::test::SingleThreadTaskEnvironment task_environment_{
@@ -102,90 +99,18 @@ class EventsHandlerTest : public ::testing::Test,
 
   EventsHandler::ScopedEventsHandler handler_ = {
       nullptr, EventsHandler::EventsHandlerDeleter};
-  std::unique_ptr<DeviceData> device_data_;
-  std::vector<ClientData> clients_data_;
   std::vector<std::unique_ptr<fakes::FakeEventsObserver>> observers_;
   mojo::ReceiverSet<cros::mojom::SensorDeviceEventsObserver> receiver_set_;
 };
 
-TEST_F(EventsHandlerTest, AddClientAndRemoveClient) {
+TEST_F(EventsHandlerTest, AddClient) {
   // No events in this test
   device_->SetPauseCallbackAtKthEvents(0, base::BindOnce([]() {}));
 
-  device_data_ = std::make_unique<DeviceData>(
-      device_.get(),
-      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::PROXIMITY});
-
-  // ClientData should be valid until |handler_| is destructed.
-  clients_data_.emplace_back(ClientData(0, device_data_.get()));
-  ClientData& client_data = clients_data_[0];
-
-  client_data.enabled_event_indices.emplace(3);  // timestamp
-
-  handler_->AddClient(&client_data, GetRemote());
-  {
-    base::RunLoop run_loop;
-    FakeObserver observer(run_loop.QuitClosure());
-    handler_->AddClient(&client_data, observer.GetRemote());
-    // Wait until |Observer| is disconnected.
-    run_loop.Run();
-  }
-  {
-    base::RunLoop run_loop;
-    handler_->RemoveClient(&client_data, run_loop.QuitClosure());
-    run_loop.Run();
-  }
-  {  // RemoveClient can be called multiple times.
-    base::RunLoop run_loop;
-    handler_->RemoveClient(&client_data, run_loop.QuitClosure());
-    run_loop.Run();
-  }
-}
-
-// Add clients with only the event with channel 3 enabled, enable all other
-// channels, and disable all channels except for event with channel 0. Enabled
-// channels are checked after each modification.
-TEST_F(EventsHandlerTest, UpdateEventsEnabled) {
-  // No events in this test
-  device_->SetPauseCallbackAtKthEvents(0, base::BindOnce([]() {}));
-
-  device_data_ = std::make_unique<DeviceData>(
-      device_.get(),
-      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::PROXIMITY});
-
-  clients_data_.emplace_back(ClientData(0, device_data_.get()));
-  ClientData& client_data = clients_data_[0];
-
-  // At least one channel enabled
-  client_data.enabled_event_indices.emplace(3);
-
-  handler_->AddClient(&client_data, GetRemote());
-
-  handler_->UpdateEventsEnabled(
-      &client_data, std::vector<int32_t>{1, 0, 2}, true,
-      base::BindOnce([](const std::vector<int32_t>& failed_indices) {
-        EXPECT_TRUE(failed_indices.empty());
-      }));
-
-  handler_->GetEventsEnabled(
-      &client_data, std::vector<int32_t>{1, 0, 2, 3},
-      base::BindOnce([](const std::vector<bool>& enabled) {
-        EXPECT_EQ(enabled.size(), 4);
-        EXPECT_TRUE(enabled[0] && enabled[1] && enabled[2] && enabled[3]);
-      }));
-
-  handler_->UpdateEventsEnabled(
-      &client_data, std::vector<int32_t>{2, 1, 3}, false,
-      base::BindOnce(
-          [](ClientData* client_data, int32_t chn_index,
-             const std::vector<int32_t>& failed_indices) {
-            EXPECT_EQ(client_data->enabled_event_indices.size(), 1);
-            EXPECT_EQ(*client_data->enabled_event_indices.begin(), chn_index);
-            EXPECT_TRUE(failed_indices.empty());
-          },
-          &client_data, 0));
-
-  handler_->RemoveClient(&client_data, base::DoNothing());
+  handler_->AddClient({3}, GetRemote());  // timestamp
+  handler_->AddClient({3}, GetRemote());  // Can be called multiple times.
+  base::RunLoop().RunUntilIdle();
+  EXPECT_EQ(receiver_set_.size(), 2);
 }
 
 // Add all clients into the event handler, and read all events. All events are
@@ -194,10 +119,6 @@ TEST_F(EventsHandlerTest, ReadEventsWithEnabledFakeIioEvents) {
   // Set the pause in the beginning to prevent reading events before all
   // clients added.
   device_->SetPauseCallbackAtKthEvents(0, base::BindOnce([]() {}));
-
-  device_data_ = std::make_unique<DeviceData>(
-      device_.get(),
-      std::set<cros::mojom::DeviceType>{cros::mojom::DeviceType::PROXIMITY});
 
   std::multiset<std::pair<int, cros::mojom::ObserverErrorType>> failures;
   for (int i = 0; i < kNumFailures; ++i) {
@@ -212,20 +133,16 @@ TEST_F(EventsHandlerTest, ReadEventsWithEnabledFakeIioEvents) {
       {0, 1},
       {0},
   };
-  clients_data_.reserve(clients.size());
 
   for (size_t i = 0; i < clients.size(); ++i) {
-    clients_data_.emplace_back(ClientData(i, device_data_.get()));
-    ClientData& client_data = clients_data_[i];
-
-    client_data.enabled_event_indices = clients[i];
-
     // The fake observer needs |max_freq| and |max_freq2| to calculate the
     // correct values of events
     auto fake_observer = std::make_unique<fakes::FakeEventsObserver>(
         device_.get(), failures, clients[i]);
 
-    handler_->AddClient(&client_data, fake_observer->GetRemote());
+    handler_->AddClient(
+        std::vector<int32_t>(clients[i].begin(), clients[i].end()),
+        fake_observer->GetRemote());
 
     observers_.emplace_back(std::move(fake_observer));
   }
@@ -239,10 +156,6 @@ TEST_F(EventsHandlerTest, ReadEventsWithEnabledFakeIioEvents) {
 
   for (const auto& observer : observers_)
     EXPECT_TRUE(observer->FinishedObserving());
-
-  // Remove clients
-  for (auto& client_data : clients_data_)
-    handler_->RemoveClient(&client_data, base::DoNothing());
 }
 
 }  // namespace

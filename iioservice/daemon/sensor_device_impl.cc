@@ -459,73 +459,6 @@ void SensorDeviceImpl::GetAllEvents(GetAllEventsCallback callback) {
   std::move(callback).Run(std::move(events));
 }
 
-void SensorDeviceImpl::SetEventsEnabled(
-    const std::vector<int32_t>& iio_event_indices,
-    bool en,
-    SetEventsEnabledCallback callback) {
-  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-
-  mojo::ReceiverId id = receiver_set_.current_receiver();
-  auto it = clients_.find(id);
-  if (it == clients_.end()) {
-    LOGF(ERROR) << "Failed to find clients with id: " << id;
-    std::move(callback).Run(iio_event_indices);
-    return;
-  }
-
-  ClientData& client = it->second;
-
-  auto it_handler = events_handlers_.find(client.device_data->iio_device_id);
-  if (it_handler != events_handlers_.end()) {
-    it_handler->second->UpdateEventsEnabled(
-        &client, std::move(iio_event_indices), en, std::move(callback));
-    return;
-  }
-
-  if (en) {
-    for (int32_t event_index : iio_event_indices)
-      client.enabled_event_indices.emplace(event_index);
-  } else {
-    for (int32_t event_index : iio_event_indices)
-      client.enabled_event_indices.erase(event_index);
-  }
-
-  std::move(callback).Run({});
-}
-
-void SensorDeviceImpl::GetEventsEnabled(
-    const std::vector<int32_t>& iio_event_indices,
-    GetEventsEnabledCallback callback) {
-  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-
-  mojo::ReceiverId id = receiver_set_.current_receiver();
-  auto it = clients_.find(id);
-  if (it == clients_.end()) {
-    LOGF(ERROR) << "Failed to find clients with id: " << id;
-    std::move(callback).Run(std::vector<bool>(iio_event_indices.size(), false));
-    return;
-  }
-
-  ClientData& client = it->second;
-
-  auto it_handler = events_handlers_.find(client.device_data->iio_device_id);
-  if (it_handler != events_handlers_.end()) {
-    it_handler->second->GetEventsEnabled(&client, std::move(iio_event_indices),
-                                         std::move(callback));
-    return;
-  }
-
-  // List of events enabled.
-  std::vector<bool> enabled;
-
-  for (int32_t event_index : iio_event_indices) {
-    enabled.push_back(
-        base::Contains(client.enabled_event_indices, event_index));
-  }
-
-  std::move(callback).Run(std::move(enabled));
-}
-
 void SensorDeviceImpl::GetEventsAttributes(
     const std::vector<int32_t>& iio_event_indices,
     const std::string& attr_name,
@@ -570,6 +503,7 @@ void SensorDeviceImpl::GetEventsAttributes(
 }
 
 void SensorDeviceImpl::StartReadingEvents(
+    const std::vector<int32_t>& iio_event_indices,
     mojo::PendingRemote<cros::mojom::SensorDeviceEventsObserver> observer) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
@@ -581,6 +515,12 @@ void SensorDeviceImpl::StartReadingEvents(
   }
 
   ClientData& client = it->second;
+
+  if (iio_event_indices.empty()) {
+    mojo::Remote<cros::mojom::SensorDeviceEventsObserver>(std::move(observer))
+        ->OnErrorOccurred(cros::mojom::ObserverErrorType::ALREADY_STARTED);
+    return;
+  }
 
   if (!base::Contains(events_handlers_, client.device_data->iio_device_id)) {
     EventsHandler::ScopedEventsHandler handler = {
@@ -601,14 +541,7 @@ void SensorDeviceImpl::StartReadingEvents(
   }
 
   events_handlers_.at(client.device_data->iio_device_id)
-      ->AddClient(&client, std::move(observer));
-}
-
-void SensorDeviceImpl::StopReadingEvents() {
-  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-
-  mojo::ReceiverId id = receiver_set_.current_receiver();
-  StopReadingEventsOnClient(id, base::DoNothing());
+      ->AddClient(iio_event_indices, std::move(observer));
 }
 
 base::WeakPtr<SensorDeviceImpl> SensorDeviceImpl::GetWeakPtr() {
@@ -634,9 +567,7 @@ void SensorDeviceImpl::OnSensorDeviceDisconnect() {
   mojo::ReceiverId id = receiver_set_.current_receiver();
 
   LOGF(INFO) << "SensorDevice disconnected. ReceiverId: " << id;
-  // Run RemoveClient(id) after removing the client from SamplesHandler and
-  // EventsHandler.
-  StopReadingEventsOnClient(id, base::DoNothing());
+  // Run RemoveClient(id) after removing the client from SamplesHandler.
   StopReadingSamplesOnClient(id,
                              base::BindOnce(&SensorDeviceImpl::RemoveClient,
                                             weak_factory_.GetWeakPtr(), id));
@@ -663,24 +594,6 @@ void SensorDeviceImpl::StopReadingSamplesOnClient(mojo::ReceiverId id,
 
   auto it_handler = samples_handlers_.find(client.device_data->iio_device_id);
   if (it_handler != samples_handlers_.end())
-    it_handler->second->RemoveClient(&client, std::move(callback));
-}
-
-void SensorDeviceImpl::StopReadingEventsOnClient(mojo::ReceiverId id,
-                                                 base::OnceClosure callback) {
-  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-
-  auto it = clients_.find(id);
-  if (it == clients_.end()) {
-    LOGF(ERROR) << "Failed to find clients with id: " << id;
-    std::move(callback).Run();
-    return;
-  }
-
-  ClientData& client = it->second;
-
-  auto it_handler = events_handlers_.find(client.device_data->iio_device_id);
-  if (it_handler != events_handlers_.end())
     it_handler->second->RemoveClient(&client, std::move(callback));
 }
 

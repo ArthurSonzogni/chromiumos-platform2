@@ -5,6 +5,7 @@
 #ifndef IIOSERVICE_DAEMON_EVENTS_HANDLER_H_
 #define IIOSERVICE_DAEMON_EVENTS_HANDLER_H_
 
+#include <map>
 #include <memory>
 #include <set>
 #include <string>
@@ -15,6 +16,7 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/single_thread_task_runner.h>
 #include <libmems/iio_device.h>
+#include <mojo/public/cpp/bindings/remote_set.h>
 
 #include "iioservice/daemon/common_types.h"
 #include "iioservice/mojo/sensor.mojom.h"
@@ -40,20 +42,9 @@ class EventsHandler {
   // It's the user's responsibility to maintain |client_data| before being
   // removed or this class being destructed.
   // |client_data.iio_device| should be the same as |iio_device_|.
-  void AddClient(ClientData* client_data,
+  void AddClient(const std::vector<int32_t>& iio_event_indices,
                  mojo::PendingRemote<cros::mojom::SensorDeviceEventsObserver>
                      events_observer);
-  void RemoveClient(ClientData* client_data, base::OnceClosure callback);
-
-  void UpdateEventsEnabled(
-      ClientData* client_data,
-      const std::vector<int32_t>& iio_event_indices,
-      bool en,
-      cros::mojom::SensorDevice::SetEventsEnabledCallback callback);
-  void GetEventsEnabled(
-      ClientData* client_data,
-      const std::vector<int32_t>& iio_event_indices,
-      cros::mojom::SensorDevice::GetEventsEnabledCallback callback);
 
  private:
   EventsHandler(scoped_refptr<base::SequencedTaskRunner> ipc_task_runner,
@@ -64,25 +55,11 @@ class EventsHandler {
                                std::string description);
 
   void AddClientOnThread(
-      ClientData* client_data,
+      const std::vector<int32_t>& iio_event_indices,
       mojo::PendingRemote<cros::mojom::SensorDeviceEventsObserver>
           events_observer);
-  void AddActiveClientOnThread(ClientData* client_data);
 
-  void RemoveClientOnThread(ClientData* client_data);
-  void RemoveActiveClientOnThread(ClientData* client_data);
-
-  void UpdateEventsEnabledOnThread(
-      ClientData* client_data,
-      const std::vector<int32_t>& iio_event_indices,
-      bool en,
-      cros::mojom::SensorDevice::SetEventsEnabledCallback callback);
-  void GetEventsEnabledOnThread(
-      ClientData* client_data,
-      const std::vector<int32_t>& iio_event_indices,
-      cros::mojom::SensorDevice::GetEventsEnabledCallback callback);
-
-  void OnEventsObserverDisconnect(ClientData* client_data);
+  void OnEventsObserverDisconnect(mojo::RemoteSetElementId id);
 
   void SetEventWatcherOnThread();
   void StopEventWatcherOnThread();
@@ -93,9 +70,8 @@ class EventsHandler {
   scoped_refptr<base::SingleThreadTaskRunner> event_task_runner_;
   libmems::IioDevice* iio_device_;
 
-  // Clients that have no enabled events.
-  std::set<ClientData*> inactive_clients_;
-  std::set<ClientData*> active_clients_;
+  mojo::RemoteSet<cros::mojom::SensorDeviceEventsObserver> events_observers_;
+  std::map<mojo::RemoteSetElementId, std::vector<int32_t>> enabled_indices_;
 
   std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
 

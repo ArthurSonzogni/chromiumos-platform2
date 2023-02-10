@@ -53,10 +53,6 @@ bool ClientData::IsSampleActive() const {
          !enabled_chn_indices.empty();
 }
 
-bool ClientData::IsEventActive() const {
-  return !enabled_event_indices.empty();
-}
-
 void ClientData::ResetTimeout() {
   consecutive_timeouts_ = 0;
 }

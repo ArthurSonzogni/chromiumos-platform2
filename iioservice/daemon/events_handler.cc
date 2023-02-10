@@ -64,15 +64,6 @@ EventsHandler::ScopedEventsHandler EventsHandler::Create(
 
 EventsHandler::~EventsHandler() {
   DCHECK(event_task_runner_->RunsTasksInCurrentSequence());
-
-  for (ClientData* client : inactive_clients_) {
-    if (client->events_observer.is_bound())
-      client->events_observer.reset();
-  }
-  for (ClientData* client : active_clients_) {
-    if (client->events_observer.is_bound())
-      client->events_observer.reset();
-  }
 }
 
 void EventsHandler::ResetWithReason(
@@ -84,51 +75,16 @@ void EventsHandler::ResetWithReason(
 }
 
 void EventsHandler::AddClient(
-    ClientData* client_data,
+    const std::vector<int32_t>& iio_event_indices,
     mojo::PendingRemote<cros::mojom::SensorDeviceEventsObserver>
         events_observer) {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
+  DCHECK(!iio_event_indices.empty());
 
   event_task_runner_->PostTask(
       FROM_HERE, base::BindOnce(&EventsHandler::AddClientOnThread,
-                                weak_factory_.GetWeakPtr(), client_data,
+                                weak_factory_.GetWeakPtr(), iio_event_indices,
                                 std::move(events_observer)));
-}
-
-void EventsHandler::RemoveClient(ClientData* client_data,
-                                 base::OnceClosure callback) {
-  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-
-  event_task_runner_->PostTaskAndReply(
-      FROM_HERE,
-      base::BindOnce(&EventsHandler::RemoveClientOnThread,
-                     weak_factory_.GetWeakPtr(), client_data),
-      std::move(callback));
-}
-
-void EventsHandler::UpdateEventsEnabled(
-    ClientData* client_data,
-    const std::vector<int32_t>& iio_event_indices,
-    bool en,
-    cros::mojom::SensorDevice::SetEventsEnabledCallback callback) {
-  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-
-  event_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&EventsHandler::UpdateEventsEnabledOnThread,
-                                weak_factory_.GetWeakPtr(), client_data,
-                                iio_event_indices, en, std::move(callback)));
-}
-
-void EventsHandler::GetEventsEnabled(
-    ClientData* client_data,
-    const std::vector<int32_t>& iio_event_indices,
-    cros::mojom::SensorDevice::GetEventsEnabledCallback callback) {
-  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-
-  event_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(&EventsHandler::GetEventsEnabledOnThread,
-                                weak_factory_.GetWeakPtr(), client_data,
-                                iio_event_indices, std::move(callback)));
 }
 
 EventsHandler::EventsHandler(
@@ -137,183 +93,43 @@ EventsHandler::EventsHandler(
     libmems::IioDevice* iio_device)
     : ipc_task_runner_(std::move(ipc_task_runner)),
       event_task_runner_(std::move(event_task_runner)),
-      iio_device_(iio_device) {}
+      iio_device_(iio_device) {
+  events_observers_.set_disconnect_handler(base::BindRepeating(
+      &EventsHandler::OnEventsObserverDisconnect, weak_factory_.GetWeakPtr()));
+}
 
 void EventsHandler::ResetWithReasonOnThread(
     cros::mojom::SensorDeviceDisconnectReason reason, std::string description) {
   DCHECK(event_task_runner_->RunsTasksInCurrentSequence());
 
-  for (ClientData* client : inactive_clients_) {
-    if (client->events_observer.is_bound()) {
-      client->events_observer.ResetWithReason(static_cast<uint32_t>(reason),
-                                              description);
-    }
-  }
-  inactive_clients_.clear();
+  // TODO(crbug/1414799): Reset with reason when mojo::RemoteSet supports it.
+  events_observers_.Clear();
+  enabled_indices_.clear();
 
-  for (ClientData* client : active_clients_) {
-    if (client->events_observer.is_bound()) {
-      client->events_observer.ResetWithReason(static_cast<uint32_t>(reason),
-                                              description);
-    }
-  }
-  active_clients_.clear();
+  StopEventWatcherOnThread();
 }
 
 void EventsHandler::AddClientOnThread(
-    ClientData* client_data,
+    const std::vector<int32_t>& iio_event_indices,
     mojo::PendingRemote<cros::mojom::SensorDeviceEventsObserver>
         events_observer) {
   DCHECK(event_task_runner_->RunsTasksInCurrentSequence());
-  DCHECK_EQ(client_data->device_data->iio_device, iio_device_);
 
-  if (base::Contains(inactive_clients_, client_data) ||
-      base::Contains(active_clients_, client_data)) {
-    LOGF(ERROR) << "Failed to AddClient: Already added";
-    mojo::Remote<cros::mojom::SensorDeviceEventsObserver>(
-        std::move(events_observer))
-        ->OnErrorOccurred(cros::mojom::ObserverErrorType::ALREADY_STARTED);
-    return;
-  }
-
-  DCHECK(!client_data->events_observer.is_bound());
-  client_data->events_observer.Bind(std::move(events_observer));
-  client_data->events_observer.set_disconnect_handler(
-      base::BindOnce(&EventsHandler::OnEventsObserverDisconnect,
-                     weak_factory_.GetWeakPtr(), client_data));
-
-  if (client_data->IsEventActive()) {
-    AddActiveClientOnThread(client_data);
-    return;
-  }
-
-  // Adding an inactive client.
-  inactive_clients_.emplace(client_data);
-
-  LOGF(ERROR) << "Added an inactive client: No enabled events.";
-  client_data->events_observer->OnErrorOccurred(
-      cros::mojom::ObserverErrorType::NO_ENABLED_CHANNELS);
-}
-
-void EventsHandler::AddActiveClientOnThread(ClientData* client_data) {
-  DCHECK(event_task_runner_->RunsTasksInCurrentSequence());
-  DCHECK(client_data->IsEventActive());
-  DCHECK(client_data->events_observer.is_bound());
-  DCHECK(!base::Contains(inactive_clients_, client_data));
-  DCHECK(!base::Contains(active_clients_, client_data));
-
-  active_clients_.emplace(client_data);
+  enabled_indices_[events_observers_.Add(std::move(events_observer))] =
+      iio_event_indices;
 
   if (!watcher_.get())
     SetEventWatcherOnThread();
 }
 
-void EventsHandler::RemoveClientOnThread(ClientData* client_data) {
+void EventsHandler::OnEventsObserverDisconnect(mojo::RemoteSetElementId id) {
   DCHECK(event_task_runner_->RunsTasksInCurrentSequence());
-  DCHECK_EQ(client_data->device_data->iio_device, iio_device_);
 
-  client_data->events_observer.reset();
+  LOGF(ERROR) << "EventsObserver disconnected. RemoteSetElementId: " << id;
 
-  auto it = inactive_clients_.find(client_data);
-  if (it != inactive_clients_.end()) {
-    inactive_clients_.erase(it);
-    return;
-  }
-
-  if (!base::Contains(active_clients_, client_data)) {
-    LOGF(ERROR) << "Failed to RemoveClient: Client not found";
-    return;
-  }
-
-  RemoveActiveClientOnThread(client_data);
-}
-
-void EventsHandler::RemoveActiveClientOnThread(ClientData* client_data) {
-  DCHECK(event_task_runner_->RunsTasksInCurrentSequence());
-  DCHECK(base::Contains(active_clients_, client_data));
-
-  active_clients_.erase(client_data);
-
-  if (active_clients_.empty())
+  enabled_indices_.erase(id);
+  if (enabled_indices_.empty())
     StopEventWatcherOnThread();
-}
-
-void EventsHandler::UpdateEventsEnabledOnThread(
-    ClientData* client_data,
-    const std::vector<int32_t>& iio_event_indices,
-    bool en,
-    cros::mojom::SensorDevice::SetEventsEnabledCallback callback) {
-  DCHECK(event_task_runner_->RunsTasksInCurrentSequence());
-  DCHECK_EQ(client_data->device_data->iio_device, iio_device_);
-
-  std::vector<int32_t> failed_indices;
-
-  if (en) {
-    for (int32_t event_index : iio_event_indices) {
-      auto event = iio_device_->GetEvent(event_index);
-      if (!event || !event->IsEnabled()) {
-        LOGF(ERROR) << "Failed to enable event with index: " << event_index;
-        failed_indices.push_back(event_index);
-        continue;
-      }
-
-      client_data->enabled_event_indices.emplace(event_index);
-    }
-  } else {
-    for (int32_t event_index : iio_event_indices)
-      client_data->enabled_event_indices.erase(event_index);
-  }
-
-  ipc_task_runner_->PostTask(
-      FROM_HERE,
-      base::BindOnce(std::move(callback), std::move(failed_indices)));
-
-  auto it = inactive_clients_.find(client_data);
-  if (it != inactive_clients_.end()) {
-    if (client_data->IsEventActive()) {
-      // The client is now active.
-      inactive_clients_.erase(it);
-      AddActiveClientOnThread(client_data);
-    }
-
-    return;
-  }
-
-  if (!base::Contains(active_clients_, client_data))
-    return;
-
-  if (client_data->IsEventActive()) {
-    // The client remains active
-    return;
-  }
-
-  RemoveActiveClientOnThread(client_data);
-  inactive_clients_.emplace(client_data);
-}
-
-void EventsHandler::GetEventsEnabledOnThread(
-    ClientData* client_data,
-    const std::vector<int32_t>& iio_event_indices,
-    cros::mojom::SensorDevice::GetEventsEnabledCallback callback) {
-  DCHECK(event_task_runner_->RunsTasksInCurrentSequence());
-  DCHECK_EQ(client_data->device_data->iio_device, iio_device_);
-
-  std::vector<bool> enabled;
-
-  for (int32_t event_index : iio_event_indices) {
-    enabled.push_back(
-        base::Contains(client_data->enabled_event_indices, event_index));
-  }
-
-  ipc_task_runner_->PostTask(
-      FROM_HERE, base::BindOnce(std::move(callback), std::move(enabled)));
-}
-
-void EventsHandler::OnEventsObserverDisconnect(ClientData* client_data) {
-  DCHECK(event_task_runner_->RunsTasksInCurrentSequence());
-
-  LOGF(ERROR) << "EventsObserver disconnected. ReceiverId: " << client_data->id;
-  RemoveClientOnThread(client_data);
 }
 
 void EventsHandler::SetEventWatcherOnThread() {
@@ -323,10 +139,8 @@ void EventsHandler::SetEventWatcherOnThread() {
   auto fd = iio_device_->GetEventFd();
   if (!fd.has_value()) {
     LOGF(ERROR) << "Failed to get fd";
-    for (ClientData* client : active_clients_) {
-      client->events_observer->OnErrorOccurred(
-          cros::mojom::ObserverErrorType::GET_FD_FAILED);
-    }
+    for (auto& observer : events_observers_)
+      observer->OnErrorOccurred(cros::mojom::ObserverErrorType::GET_FD_FAILED);
 
     return;
   }
@@ -348,10 +162,8 @@ void EventsHandler::OnEventAvailableWithoutBlocking() {
 
   auto event = iio_device_->ReadEvent();
   if (!event) {
-    for (ClientData* client : active_clients_) {
-      client->events_observer->OnErrorOccurred(
-          cros::mojom::ObserverErrorType::READ_FAILED);
-    }
+    for (auto& observer : events_observers_)
+      observer->OnErrorOccurred(cros::mojom::ObserverErrorType::READ_FAILED);
 
     return;
   }
@@ -370,11 +182,11 @@ void EventsHandler::OnEventAvailableWithoutBlocking() {
     return;
   }
 
-  for (ClientData* client : active_clients_) {
-    if (!base::Contains(client->enabled_event_indices, chn_index.value()))
+  for (auto& [id, indices] : enabled_indices_) {
+    if (!base::Contains(indices, chn_index.value()))
       continue;
 
-    client->events_observer->OnEventUpdated(iio_event.Clone());
+    events_observers_.Get(id)->OnEventUpdated(iio_event.Clone());
   }
 }
 

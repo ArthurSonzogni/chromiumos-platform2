@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Next min version: 3
+// Next min version: 4
 
 module cros.mojom;
 
@@ -170,7 +170,7 @@ struct IioEvent {
 // SensorDevice, an interface sending requests for a physical device
 // (libiio:iio_device). It is an isolated client in iioservice's point of view.
 //
-// Next method ID: 15
+// Next method ID: 16
 interface SensorDevice {
   // Sets |timeout| in milliseconds for I/O operations, mainly for reading
   // samples. Sets |timeout| as 0 to specify that no timeout should occur.
@@ -231,27 +231,20 @@ interface SensorDevice {
   // to send further requests.
   GetAllEvents@9() => (array<IioEvent> iio_events);
 
-  // Enable/Disable events, allow it to send message to the host.
-  SetEventsEnabled@10(array<int32> iio_event_indices, bool en)
-    => (array<int32> failed_indices);
-
-  // Returns an array of bool indicating if events are enabled.
-  GetEventsEnabled@11(array<int32> iio_event_indices) => (array<bool> enabled);
-
   // Gets the |attr_name| attribute of events as a group into |values| in
   // string.
   // Returns std::nullopt if the attribute in the channel cannot be read.
   GetEventsAttributes@12(array<int32> iio_event_indices, string attr_name)
     => (array<string?> values);
 
-  // Starts reading events coming from the sensor.
+  // Starts reading events coming from the sensor with iio events
+  // |iio_event_indices| enabled. This function can be called multiple times,
+  // and each SensorDeviceEventsObserver mojo pipe is independent.
   // Errors will be pushed to the observer. It's the user's responsibility to
-  // keep |observer| active while reading.
-  StartReadingEvents@13(pending_remote<SensorDeviceEventsObserver> observer);
-
-  // Stops reading events in this device. Reading can be restarted by calling
-  // |StartReadingEvents| again.
-  StopReadingEvents@14();
+  // keep |observer| active while reading. If the user wants to stop reading,
+  // simply destroy the SensorDeviceEventsObserver mojo pipe.
+  StartReadingEvents@15(array<int32> iio_event_indices,
+                        pending_remote<SensorDeviceEventsObserver> observer);
 };
 
 // One observer is created to track one specific device's samples, using

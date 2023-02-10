@@ -102,37 +102,7 @@ void EventsObserver::GetSensorDevice() {
 void EventsObserver::StartReading() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
-  sensor_device_remote_->SetEventsEnabled(
-      event_indices_, true,
-      base::BindOnce(&EventsObserver::SetEventsEnabledCallback,
-                     weak_factory_.GetWeakPtr()));
-
-  sensor_device_remote_->StartReadingEvents(GetRemote());
-}
-
-void EventsObserver::SetEventsEnabledCallback(
-    const std::vector<int32_t>& failed_indices) {
-  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-
-  for (int32_t index : failed_indices) {
-    LOGF(ERROR) << "Failed event index: " << index;
-    bool found = false;
-    for (auto it = event_indices_.begin(); it != event_indices_.end(); ++it) {
-      if (index == *it) {
-        found = true;
-        event_indices_.erase(it);
-        break;
-      }
-    }
-
-    if (!found)
-      LOGF(ERROR) << index << " not in requested indices";
-  }
-
-  if (event_indices_.empty()) {
-    LOGF(ERROR) << "No event enabled";
-    Reset();
-  }
+  sensor_device_remote_->StartReadingEvents(event_indices_, GetRemote());
 }
 
 }  // namespace iioservice

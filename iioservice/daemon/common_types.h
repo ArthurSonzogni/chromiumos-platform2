@@ -45,7 +45,6 @@ class ClientData {
                       DeviceData* device_data = nullptr);
 
   bool IsSampleActive() const;
-  bool IsEventActive() const;
 
   void ResetTimeout();
   uint32_t GetTimeout();
@@ -58,9 +57,6 @@ class ClientData {
   uint32_t timeout = 5000;  // millisecond
   uint32_t consecutive_timeouts_ = 0;
   mojo::Remote<cros::mojom::SensorDeviceSamplesObserver> samples_observer;
-
-  std::set<int32_t> enabled_event_indices;
-  mojo::Remote<cros::mojom::SensorDeviceEventsObserver> events_observer;
 };
 
 std::vector<std::string> GetGravityChannels();

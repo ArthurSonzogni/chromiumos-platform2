@@ -170,23 +170,6 @@ void SensorDeviceFusion::GetAllEvents(GetAllEventsCallback callback) {
   std::move(callback).Run({});
 }
 
-void SensorDeviceFusion::SetEventsEnabled(
-    const std::vector<int32_t>& iio_event_indices,
-    bool en,
-    SetEventsEnabledCallback callback) {
-  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-
-  std::move(callback).Run(iio_event_indices);
-}
-
-void SensorDeviceFusion::GetEventsEnabled(
-    const std::vector<int32_t>& iio_event_indices,
-    GetEventsEnabledCallback callback) {
-  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-
-  std::move(callback).Run(std::vector<bool>(iio_event_indices.size(), false));
-}
-
 void SensorDeviceFusion::GetEventsAttributes(
     const std::vector<int32_t>& iio_event_indices,
     const std::string& attr_name,
@@ -198,13 +181,8 @@ void SensorDeviceFusion::GetEventsAttributes(
 }
 
 void SensorDeviceFusion::StartReadingEvents(
+    const std::vector<int32_t>& iio_event_indices,
     mojo::PendingRemote<cros::mojom::SensorDeviceEventsObserver> observer) {
-  DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
-
-  // Do nothing.
-}
-
-void SensorDeviceFusion::StopReadingEvents() {
   DCHECK(ipc_task_runner_->RunsTasksInCurrentSequence());
 
   // Do nothing.

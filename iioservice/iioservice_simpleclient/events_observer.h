@@ -60,8 +60,6 @@ class EventsObserver final : public Observer,
 
   void StartReading();
 
-  void SetEventsEnabledCallback(const std::vector<int32_t>& failed_indices);
-
   std::vector<int> event_indices_;
 
   mojo::Receiver<cros::mojom::SensorDeviceEventsObserver> receiver_;
