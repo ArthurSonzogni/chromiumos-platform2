@@ -12,11 +12,13 @@ int main(int argc, char** argv) {
     printf("Usage: %s <system|user> <username>\n", argv[0]);
     return 1;
   }
+  brillo::cryptohome::home::Username username(argv[2]);
   base::FilePath fp;
-  if (!strcmp(argv[1], "system"))
-    fp = brillo::cryptohome::home::GetRootPath(argv[2]);
-  else
-    fp = brillo::cryptohome::home::GetUserPath(argv[2]);
+  if (!strcmp(argv[1], "system")) {
+    fp = brillo::cryptohome::home::GetRootPath(username);
+  } else {
+    fp = brillo::cryptohome::home::GetUserPath(username);
+  }
   printf("%s\n", fp.value().c_str());
   return 0;
 }
