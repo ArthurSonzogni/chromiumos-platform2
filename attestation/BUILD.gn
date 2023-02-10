@@ -402,6 +402,10 @@ if (use.test) {
       libs += [ "trunks_test" ]
     }
 
+    if (use.cr50_onboard || use.ti50_onboard) {
+      sources += [ "common/gsc_nvram_quoter_test.cc" ]
+    }
+
     if (use.tpm || use.tpm2) {
       sources += [
         "common/tpm_utility_common_test.cc",

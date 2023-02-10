@@ -24,18 +24,9 @@
 #include <libhwsec-foundation/tpm/tpm_version.h>
 #include <policy/mock_device_policy.h>
 #include <policy/mock_libpolicy.h>
-#if USE_TPM2
-#include <trunks/tpm_utility.h>
-#endif
-#if USE_TPM2
-extern "C" {
-#include <trunks/cr50_headers/virtual_nvmem.h>
-}
-#else
-#include "attestation/common/nvram_index_placeholder.h"
-#endif
 
 #include "attestation/common/mock_crypto_utility.h"
+#include "attestation/common/mock_nvram_quoter.h"
 #include "attestation/common/mock_tpm_utility.h"
 #include "attestation/pca_agent/client/fake_pca_agent_proxy.h"
 #include "attestation/server/attestation_service.h"
@@ -60,9 +51,58 @@ namespace attestation {
 
 namespace {
 
+constexpr char kFakeIdentityKeyBlob[] = "aik key blob";
 constexpr char kFakeCert[] = "fake cert";
 constexpr char kFakeCaCert[] = "fake_ca_cert";
 constexpr char kFakeCaCert2[] = "fake_ca_cert2";
+constexpr char kFakeBoardIdQuote[] = "baord id quote";
+constexpr char kFakeBoardIdQuotedData[] = "baord id quoted data";
+constexpr char kFakeSnBitsQuote[] = "sn bits quote";
+constexpr char kFakeSnBitsQuotedData[] = "sn bits quoted data";
+constexpr char kFakeRsaEkCertQuote[] = "rsa ek cert quote";
+constexpr char kFakeRsaEkCertQuotedData[] = "rsa ek cert quoted data";
+constexpr char kFakeRsuDeviceIdQuote[] = "rsu device id quote";
+constexpr char kFakeRsuDeviceIdQuotedData[] = "rsu device id quoted data";
+
+struct NvramQuoteDataForTesting {
+  NVRAMQuoteType type;
+  const char* quote;
+  const char* quoted_data;
+};
+
+class MockNvramQuoterWithFakeCertify : public MockNvramQuoter {
+ public:
+  MockNvramQuoterWithFakeCertify() {
+    ON_CALL(*this, Certify(_, _, _))
+        .WillByDefault(WithArgs<0, 2>(
+            Invoke(this, &MockNvramQuoterWithFakeCertify::FakeCertify)));
+  }
+  ~MockNvramQuoterWithFakeCertify() override = default;
+
+ private:
+  bool FakeCertify(NVRAMQuoteType type, Quote& quote) {
+    switch (type) {
+      case BOARD_ID:
+        quote.set_quote(kFakeBoardIdQuote);
+        quote.set_quoted_data(kFakeBoardIdQuotedData);
+        return true;
+      case SN_BITS:
+        quote.set_quote(kFakeSnBitsQuote);
+        quote.set_quoted_data(kFakeSnBitsQuotedData);
+        return true;
+      case RSA_PUB_EK_CERT:
+        quote.set_quote(kFakeRsaEkCertQuote);
+        quote.set_quoted_data(kFakeRsaEkCertQuotedData);
+        return true;
+      case RSU_DEVICE_ID:
+        quote.set_quote(kFakeRsuDeviceIdQuote);
+        quote.set_quoted_data(kFakeRsuDeviceIdQuotedData);
+        return true;
+      default:
+        return false;
+    }
+  }
+};
 
 TpmVersion GetTpmVersionUnderTest() {
   SET_DEFAULT_TPM_FOR_TESTING;
@@ -169,6 +209,7 @@ class AttestationServiceBaseTest : public testing::Test {
     service_->set_crypto_utility(&mock_crypto_utility_);
     service_->set_key_store(&mock_key_store_);
     service_->set_tpm_utility(&mock_tpm_utility_);
+    service_->set_nvram_quoter(&mock_nvram_quoter_);
     service_->set_hwid("fake_hwid");
     service_->set_pca_agent_proxy(&fake_pca_agent_proxy_);
     mock_policy_provider_ = new StrictMock<policy::MockPolicyProvider>();
@@ -225,19 +266,26 @@ class AttestationServiceBaseTest : public testing::Test {
     identity_data->set_features(IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID);
     identity_data->mutable_identity_key()->set_identity_public_key_der(
         "public_key");
+    identity_data->mutable_identity_key()->set_identity_key_blob(
+        kFakeIdentityKeyBlob);
     identity_data->mutable_identity_binding()
         ->set_identity_public_key_tpm_format("public_key_tpm");
     (*identity_data->mutable_pcr_quotes())[0].set_quote("pcr0");
     (*identity_data->mutable_pcr_quotes())[1].set_quote("pcr1");
-    (*identity_data->mutable_nvram_quotes())[BOARD_ID].set_quote("board_id");
-    (*identity_data->mutable_nvram_quotes())[SN_BITS].set_quote("sn_bits");
-#if USE_GENERIC_TPM2
-    (*identity_data->mutable_nvram_quotes())[RMA_BYTES].set_quote("rma_bytes");
-#endif
+    (*identity_data->mutable_nvram_quotes())[BOARD_ID].set_quote(
+        kFakeBoardIdQuote);
+    (*identity_data->mutable_nvram_quotes())[BOARD_ID].set_quoted_data(
+        kFakeBoardIdQuotedData);
+    (*identity_data->mutable_nvram_quotes())[SN_BITS].set_quote(
+        kFakeSnBitsQuote);
+    (*identity_data->mutable_nvram_quotes())[SN_BITS].set_quoted_data(
+        kFakeSnBitsQuotedData);
     if (service_->GetEndorsementKeyType() !=
         kEndorsementKeyTypeForEnrollmentID) {
       (*identity_data->mutable_nvram_quotes())[RSA_PUB_EK_CERT].set_quote(
-          "rsa_pub_ek_cert");
+          kFakeRsaEkCertQuote);
+      (*identity_data->mutable_nvram_quotes())[RSA_PUB_EK_CERT].set_quoted_data(
+          kFakeRsaEkCertQuotedData);
     }
   }
 
@@ -360,6 +408,7 @@ class AttestationServiceBaseTest : public testing::Test {
   NiceMock<MockDatabase> mock_database_;
   NiceMock<MockKeyStore> mock_key_store_;
   NiceMock<MockTpmUtility> mock_tpm_utility_;
+  StrictMock<MockNvramQuoterWithFakeCertify> mock_nvram_quoter_;
   StrictMock<policy::MockPolicyProvider>* mock_policy_provider_;  // Not Owned.
   StrictMock<policy::MockDevicePolicy> mock_device_policy_;
   StrictMock<pca_agent::client::FakePcaAgentProxy> fake_pca_agent_proxy_{
@@ -2193,14 +2242,20 @@ TEST_P(AttestationServiceTest, DeleteKeyByPrefixNoUserSuccess) {
   Run();
 }
 
-TEST_P(AttestationServiceTest, PrepareForEnrollment) {
+TEST_P(AttestationServiceTest, PrepareForEnrollmentQuoteRsa) {
   // Start with an empty database.
   mock_database_.GetMutableProtobuf()->Clear();
   // Schedule initialization again to make sure it runs after this point.
-  EXPECT_CALL(mock_tpm_utility_, GetNVDataSize(_, _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(9487), Return(true)));
-  CHECK(CallAndWait(base::BindOnce(&AttestationService::InitializeWithCallback,
-                                   base::Unretained(service_.get()))));
+  service_->set_default_endorsement_key_type(KEY_TYPE_ECC);
+  service_->set_endorsement_key_for_enrollment_id(KEY_TYPE_RSA);
+  EXPECT_CALL(mock_nvram_quoter_, GetListForIdentity())
+      .WillOnce(Return(std::vector<NVRAMQuoteType>({BOARD_ID, SN_BITS})));
+  EXPECT_CALL(mock_nvram_quoter_, Certify(BOARD_ID, _, _));
+  EXPECT_CALL(mock_nvram_quoter_, Certify(SN_BITS, _, _));
+  EXPECT_CALL(mock_nvram_quoter_, Certify(RSA_PUB_EK_CERT, _, _));
+  ASSERT_TRUE(
+      CallAndWait(base::BindOnce(&AttestationService::InitializeWithCallback,
+                                 base::Unretained(service_.get()))));
   // One identity has been created.
   EXPECT_EQ(1, mock_database_.GetProtobuf().identities().size());
   const AttestationDatabase::Identity& identity_data =
@@ -2209,29 +2264,18 @@ TEST_P(AttestationServiceTest, PrepareForEnrollment) {
   EXPECT_TRUE(identity_data.has_identity_key());
   EXPECT_EQ(1, identity_data.pcr_quotes().count(0));
   EXPECT_EQ(1, identity_data.pcr_quotes().count(1));
-  TPM_SELECT_BEGIN;
-  TPM2_SECTION({
-    EXPECT_EQ(1, identity_data.nvram_quotes().count(BOARD_ID));
-    EXPECT_EQ(1, identity_data.nvram_quotes().count(SN_BITS));
-#if USE_GENERIC_TPM2
-    EXPECT_EQ(1, identity_data.nvram_quotes().count(RMA_BYTES));
-#endif
-    EXPECT_EQ(
-        service_->GetEndorsementKeyType() != kEndorsementKeyTypeForEnrollmentID
-            ? 1
-            : 0,
-        identity_data.nvram_quotes().count(RSA_PUB_EK_CERT));
-  });
-  TPM1_SECTION({ EXPECT_TRUE(identity_data.nvram_quotes().empty()); });
-  OTHER_TPM_SECTION();
-  TPM_SELECT_END;
   EXPECT_EQ(IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID,
             identity_data.features());
+  EXPECT_EQ(1, identity_data.nvram_quotes().count(BOARD_ID));
+  EXPECT_EQ(1, identity_data.nvram_quotes().count(SN_BITS));
+  EXPECT_EQ(1, identity_data.nvram_quotes().count(RSA_PUB_EK_CERT));
+
   // Deprecated identity-related values have not been set.
   EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_key());
   EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_binding());
   EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr0_quote());
   EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr1_quote());
+
   // Verify Privacy CA-related data.
   VerifyACAData(mock_database_.GetProtobuf());
   // These deprecated fields have not been set either.
@@ -2241,31 +2285,37 @@ TEST_P(AttestationServiceTest, PrepareForEnrollment) {
                    .has_default_encrypted_endorsement_credential());
 }
 
-#if USE_TPM2
-
-// For generic TPM2, we only support ECC EK type, so the testing is not
-// applicable.
-#if !USE_GENERIC_TPM2 && !USE_TI50_ONBOARD
-
-TEST_P(AttestationServiceTest,
-       PrepareForEnrollmentCannotQuoteOptionalNvramForRsaEK) {
-  SET_TPM2_FOR_TESTING;
-  auto database_pb = mock_database_.GetMutableProtobuf();
-  // Start with an empty database to trigger PrepareForEnrollment.
-  database_pb->Clear();
-
-  // Setup the database to make GetEndorsementKeyType to return specific key
-  // type, but will still make IsPreparedForEnrollment return false.
-  database_pb->mutable_credentials()->set_endorsement_key_type(KEY_TYPE_RSA);
-  database_pb->mutable_credentials()->set_endorsement_public_key("pubkey");
-
-  EXPECT_CALL(mock_tpm_utility_, CertifyNV(_, _, _, _, _))
-      .WillRepeatedly(Return(false));
-
+TEST_P(AttestationServiceTest, PrepareForEnrollmentQuoteRsaFail) {
+  // Start with an empty database.
+  mock_database_.GetMutableProtobuf()->Clear();
   // Schedule initialization again to make sure it runs after this point.
+  service_->set_default_endorsement_key_type(KEY_TYPE_ECC);
+  service_->set_endorsement_key_for_enrollment_id(KEY_TYPE_RSA);
+  EXPECT_CALL(mock_nvram_quoter_, GetListForIdentity())
+      .WillOnce(Return(std::vector<NVRAMQuoteType>({BOARD_ID, SN_BITS})));
+  EXPECT_CALL(mock_nvram_quoter_, Certify(BOARD_ID, _, _));
+  EXPECT_CALL(mock_nvram_quoter_, Certify(SN_BITS, _, _));
+  EXPECT_CALL(mock_nvram_quoter_, Certify(RSA_PUB_EK_CERT, _, _))
+      .WillOnce(Return(false));
   CHECK(CallAndWait(base::BindOnce(&AttestationService::InitializeWithCallback,
                                    base::Unretained(service_.get()))));
+  // One identity has been created.
+  EXPECT_TRUE(mock_database_.GetProtobuf().identities().empty());
+}
 
+TEST_P(AttestationServiceTest, PrepareForEnrollmentNoQuoteRsaEccEk) {
+  // Start with an empty database.
+  mock_database_.GetMutableProtobuf()->Clear();
+  // Schedule initialization again to make sure it runs after this point.
+  service_->set_default_endorsement_key_type(KEY_TYPE_ECC);
+  service_->set_endorsement_key_for_enrollment_id(KEY_TYPE_ECC);
+  EXPECT_CALL(mock_nvram_quoter_, GetListForIdentity())
+      .WillOnce(Return(std::vector<NVRAMQuoteType>({BOARD_ID, SN_BITS})));
+  EXPECT_CALL(mock_nvram_quoter_, Certify(BOARD_ID, _, _));
+  EXPECT_CALL(mock_nvram_quoter_, Certify(SN_BITS, _, _));
+  ASSERT_TRUE(
+      CallAndWait(base::BindOnce(&AttestationService::InitializeWithCallback,
+                                 base::Unretained(service_.get()))));
   // One identity has been created.
   EXPECT_EQ(1, mock_database_.GetProtobuf().identities().size());
   const AttestationDatabase::Identity& identity_data =
@@ -2274,84 +2324,112 @@ TEST_P(AttestationServiceTest,
   EXPECT_TRUE(identity_data.has_identity_key());
   EXPECT_EQ(1, identity_data.pcr_quotes().count(0));
   EXPECT_EQ(1, identity_data.pcr_quotes().count(1));
-  EXPECT_TRUE(identity_data.nvram_quotes().empty());
   EXPECT_EQ(IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID,
             identity_data.features());
-}
+  EXPECT_EQ(1, identity_data.nvram_quotes().count(BOARD_ID));
+  EXPECT_EQ(1, identity_data.nvram_quotes().count(SN_BITS));
+  EXPECT_EQ(0, identity_data.nvram_quotes().count(RSA_PUB_EK_CERT));
 
-#endif
-
-TEST_P(AttestationServiceTest,
-       PrepareForEnrollmentCannotQuoteOptionalNvramForEccEK) {
-  SET_TPM2_FOR_TESTING;
-  auto database_pb = mock_database_.GetMutableProtobuf();
-
-  // Start with an empty database to trigger PrepareForEnrollment.
-  database_pb->Clear();
-
-  // Setup the database to make GetEndorsementKeyType to return specific key
-  // type, but will still make IsPreparedForEnrollment return false.
-  database_pb->mutable_credentials()->set_endorsement_key_type(KEY_TYPE_ECC);
-  database_pb->mutable_credentials()->set_endorsement_public_key("pubkey");
-
-  // Assume the NV indexes doesn't exist, except RSA EK cert which is required
-  // when ECC EK is enabled.
-  EXPECT_CALL(mock_tpm_utility_, GetNVDataSize(_, _))
-      .WillRepeatedly(DoAll(SetArgPointee<1>(9487), Return(true)));
-  EXPECT_CALL(mock_tpm_utility_, CertifyNV(_, _, _, _, _))
-      .WillRepeatedly(Return(false));
-  EXPECT_CALL(mock_tpm_utility_,
-              CertifyNV(trunks::kRsaEndorsementCertificateIndex, _, _, _, _))
-      .WillRepeatedly(Return(true));
-
-  // Schedule initialization again to make sure it runs after this point.
-  CHECK(CallAndWait(base::BindOnce(&AttestationService::InitializeWithCallback,
-                                   base::Unretained(service_.get()))));
-
-  // One identity has been created.
-  EXPECT_EQ(1, mock_database_.GetProtobuf().identities().size());
-  const AttestationDatabase::Identity& identity_data =
-      mock_database_.GetProtobuf().identities().Get(0);
-  EXPECT_TRUE(identity_data.has_identity_binding());
-  EXPECT_TRUE(identity_data.has_identity_key());
-  EXPECT_EQ(1, identity_data.pcr_quotes().count(0));
-  EXPECT_EQ(1, identity_data.pcr_quotes().count(1));
-  EXPECT_EQ(kEndorsementKeyTypeForEnrollmentID == KEY_TYPE_ECC ? 0 : 1,
-            identity_data.nvram_quotes().count(RSA_PUB_EK_CERT));
-  // The RSA EK cert quote is the only mandatory one, if needed.
-  EXPECT_EQ(identity_data.nvram_quotes().count(RSA_PUB_EK_CERT),
-            identity_data.nvram_quotes().size());
-  EXPECT_EQ(IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID,
-            identity_data.features());
-}
-
-TEST_P(AttestationServiceTest,
-       PrepareForEnrollmentCannotQuoteRsaEKCertForEccEK) {
-  SET_TPM2_FOR_TESTING;
-  auto database_pb = mock_database_.GetMutableProtobuf();
-
-  // Start with an empty database to trigger PrepareForEnrollment.
-  database_pb->Clear();
-
-  // Setup the database to make GetEndorsementKeyType to return specific key
-  // type, but will still make IsPreparedForEnrollment return false.
-  database_pb->mutable_credentials()->set_endorsement_key_type(KEY_TYPE_ECC);
-  database_pb->mutable_credentials()->set_endorsement_public_key("pubkey");
-
-  EXPECT_CALL(mock_tpm_utility_, CertifyNV(_, _, _, _, _))
-      .WillRepeatedly(Return(false));
-
-  // Schedule initialization again to make sure it runs after this point.
-  CHECK(CallAndWait(base::BindOnce(&AttestationService::InitializeWithCallback,
-                                   base::Unretained(service_.get()))));
-
+  // Deprecated identity-related values have not been set.
   EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_key());
   EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_binding());
   EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr0_quote());
   EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr1_quote());
+
+  // Verify Privacy CA-related data.
+  VerifyACAData(mock_database_.GetProtobuf());
+  // These deprecated fields have not been set either.
+  EXPECT_TRUE(mock_database_.GetProtobuf().has_credentials());
+  EXPECT_FALSE(mock_database_.GetProtobuf()
+                   .credentials()
+                   .has_default_encrypted_endorsement_credential());
 }
 
-#endif
+TEST_P(AttestationServiceTest, PrepareForEnrollmentNoQuoteRsaRsaEk) {
+  // Start with an empty database.
+  mock_database_.GetMutableProtobuf()->Clear();
+  // Schedule initialization again to make sure it runs after this point.
+  service_->set_default_endorsement_key_type(KEY_TYPE_RSA);
+  service_->set_endorsement_key_for_enrollment_id(KEY_TYPE_RSA);
+  EXPECT_CALL(mock_nvram_quoter_, GetListForIdentity())
+      .WillOnce(Return(std::vector<NVRAMQuoteType>({BOARD_ID, SN_BITS})));
+  EXPECT_CALL(mock_nvram_quoter_, Certify(BOARD_ID, _, _));
+  EXPECT_CALL(mock_nvram_quoter_, Certify(SN_BITS, _, _));
+  ASSERT_TRUE(
+      CallAndWait(base::BindOnce(&AttestationService::InitializeWithCallback,
+                                 base::Unretained(service_.get()))));
+  // One identity has been created.
+  EXPECT_EQ(1, mock_database_.GetProtobuf().identities().size());
+  const AttestationDatabase::Identity& identity_data =
+      mock_database_.GetProtobuf().identities().Get(0);
+  EXPECT_TRUE(identity_data.has_identity_binding());
+  EXPECT_TRUE(identity_data.has_identity_key());
+  EXPECT_EQ(1, identity_data.pcr_quotes().count(0));
+  EXPECT_EQ(1, identity_data.pcr_quotes().count(1));
+  EXPECT_EQ(IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID,
+            identity_data.features());
+  EXPECT_EQ(1, identity_data.nvram_quotes().count(BOARD_ID));
+  EXPECT_EQ(1, identity_data.nvram_quotes().count(SN_BITS));
+  EXPECT_EQ(0, identity_data.nvram_quotes().count(RSA_PUB_EK_CERT));
+
+  // Deprecated identity-related values have not been set.
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_key());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_binding());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr0_quote());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr1_quote());
+
+  // Verify Privacy CA-related data.
+  VerifyACAData(mock_database_.GetProtobuf());
+  // These deprecated fields have not been set either.
+  EXPECT_TRUE(mock_database_.GetProtobuf().has_credentials());
+  EXPECT_FALSE(mock_database_.GetProtobuf()
+                   .credentials()
+                   .has_default_encrypted_endorsement_credential());
+}
+
+TEST_P(AttestationServiceTest,
+       PrepareForEnrollmentQuoteForIdentityContinueOnFail) {
+  // Start with an empty database.
+  mock_database_.GetMutableProtobuf()->Clear();
+  // Schedule initialization again to make sure it runs after this point.
+  service_->set_default_endorsement_key_type(KEY_TYPE_ECC);
+  service_->set_endorsement_key_for_enrollment_id(KEY_TYPE_ECC);
+  EXPECT_CALL(mock_nvram_quoter_, GetListForIdentity())
+      .WillOnce(Return(std::vector<NVRAMQuoteType>({BOARD_ID, SN_BITS})));
+  EXPECT_CALL(mock_nvram_quoter_, Certify(BOARD_ID, _, _))
+      .WillOnce(Return(false));
+  EXPECT_CALL(mock_nvram_quoter_, Certify(SN_BITS, _, _))
+      .WillOnce(Return(false));
+
+  ASSERT_TRUE(
+      CallAndWait(base::BindOnce(&AttestationService::InitializeWithCallback,
+                                 base::Unretained(service_.get()))));
+  // One identity has been created.
+  EXPECT_EQ(1, mock_database_.GetProtobuf().identities().size());
+  const AttestationDatabase::Identity& identity_data =
+      mock_database_.GetProtobuf().identities().Get(0);
+  EXPECT_TRUE(identity_data.has_identity_binding());
+  EXPECT_TRUE(identity_data.has_identity_key());
+  EXPECT_EQ(1, identity_data.pcr_quotes().count(0));
+  EXPECT_EQ(1, identity_data.pcr_quotes().count(1));
+  EXPECT_EQ(IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID,
+            identity_data.features());
+  EXPECT_TRUE(identity_data.nvram_quotes().empty());
+
+  // Deprecated identity-related values have not been set.
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_key());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_identity_binding());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr0_quote());
+  EXPECT_FALSE(mock_database_.GetProtobuf().has_pcr1_quote());
+
+  // Verify Privacy CA-related data.
+  VerifyACAData(mock_database_.GetProtobuf());
+  // These deprecated fields have not been set either.
+  EXPECT_TRUE(mock_database_.GetProtobuf().has_credentials());
+  EXPECT_FALSE(mock_database_.GetProtobuf()
+                   .credentials()
+                   .has_default_encrypted_endorsement_credential());
+}
 
 TEST_P(AttestationServiceTest, PrepareForEnrollmentNoPublicKey) {
   // Start with an empty database.
@@ -2502,20 +2580,15 @@ TEST_P(AttestationServiceTest, CreateDeviceSetupCertificateRequestSuccess) {
 }
 
 TEST_P(AttestationServiceTest, CreateEnrollmentCertificateRequestSuccess) {
-  TPM_SELECT_BEGIN;
-  TPM2_SECTION({
-#if !USE_GENERIC_TPM2
-    EXPECT_CALL(mock_tpm_utility_,
-                CertifyNV(VIRTUAL_NV_INDEX_RSU_DEV_ID, _, _, _, _))
-        .WillRepeatedly(DoAll(SetArgPointee<3>("rsu_device_id_quoted_data"),
-                              SetArgPointee<4>("rsu_device_id"), Return(true)));
-#endif
-  });
-  OTHER_TPM_SECTION();
-  TPM_SELECT_END;
-
   SetUpIdentity(identity_);
   SetUpIdentityCertificate(identity_, aca_type_);
+  EXPECT_CALL(mock_nvram_quoter_, GetListForIdentity())
+      .WillOnce(Return(std::vector<NVRAMQuoteType>({BOARD_ID, SN_BITS})));
+  EXPECT_CALL(mock_nvram_quoter_, GetListForEnrollmentCertificate())
+      .WillOnce(Return(
+          std::vector<NVRAMQuoteType>({BOARD_ID, SN_BITS, RSU_DEVICE_ID})));
+  // Identity will have baord id and sn bits quotes.
+  EXPECT_CALL(mock_nvram_quoter_, Certify(RSU_DEVICE_ID, _, _));
   auto callback = [](const std::string& cert_name,
                      base::OnceClosure quit_closure,
                      const CreateCertificateRequestReply& reply) {
@@ -2525,23 +2598,18 @@ TEST_P(AttestationServiceTest, CreateEnrollmentCertificateRequestSuccess) {
     EXPECT_TRUE(pca_request.ParseFromString(reply.pca_request()));
     EXPECT_EQ(GetTpmVersionUnderTest(), pca_request.tpm_version());
     EXPECT_EQ(ENTERPRISE_ENROLLMENT_CERTIFICATE, pca_request.profile());
-    TPM_SELECT_BEGIN;
-    TPM2_SECTION({
-      EXPECT_EQ(3, pca_request.nvram_quotes().size());
-      EXPECT_EQ("board_id", pca_request.nvram_quotes().at(BOARD_ID).quote());
-      EXPECT_EQ("sn_bits", pca_request.nvram_quotes().at(SN_BITS).quote());
-#if !USE_GENERIC_TPM2
-      EXPECT_EQ("rsu_device_id",
-                pca_request.nvram_quotes().at(RSU_DEVICE_ID).quote());
-      EXPECT_EQ("rsu_device_id_quoted_data",
-                pca_request.nvram_quotes().at(RSU_DEVICE_ID).quoted_data());
-#else
-      EXPECT_EQ("rma_bytes", pca_request.nvram_quotes().at(RMA_BYTES).quote());
-#endif
-    });
-    TPM1_SECTION({ EXPECT_TRUE(pca_request.nvram_quotes().empty()); });
-    OTHER_TPM_SECTION();
-    TPM_SELECT_END;
+    EXPECT_EQ(3, pca_request.nvram_quotes().size());
+    EXPECT_EQ(kFakeBoardIdQuote,
+              pca_request.nvram_quotes().at(BOARD_ID).quote());
+    EXPECT_EQ(kFakeBoardIdQuotedData,
+              pca_request.nvram_quotes().at(BOARD_ID).quoted_data());
+    EXPECT_EQ(kFakeSnBitsQuote, pca_request.nvram_quotes().at(SN_BITS).quote());
+    EXPECT_EQ(kFakeSnBitsQuotedData,
+              pca_request.nvram_quotes().at(SN_BITS).quoted_data());
+    EXPECT_EQ(kFakeRsuDeviceIdQuote,
+              pca_request.nvram_quotes().at(RSU_DEVICE_ID).quote());
+    EXPECT_EQ(kFakeRsuDeviceIdQuotedData,
+              pca_request.nvram_quotes().at(RSU_DEVICE_ID).quoted_data());
     EXPECT_EQ(cert_name, pca_request.identity_credential());
     std::move(quit_closure).Run();
   };
@@ -2558,21 +2626,17 @@ TEST_P(AttestationServiceTest, CreateEnrollmentCertificateRequestSuccess) {
 }
 
 TEST_P(AttestationServiceTest,
-       CreateEnrollmentCertificateRequestSuccessWithUnattestedRsuDeviceId) {
-  TPM_SELECT_BEGIN;
-  TPM2_SECTION({
-#if !USE_GENERIC_TPM2
-    EXPECT_CALL(mock_tpm_utility_,
-                CertifyNV(VIRTUAL_NV_INDEX_RSU_DEV_ID, _, _, _, _))
-        .WillRepeatedly(Return(false));
-    EXPECT_CALL(mock_tpm_utility_, GetRsuDeviceId(_))
-        .WillRepeatedly(DoAll(SetArgPointee<0>("rsu_device_id"), Return(true)));
-#endif
-  });
-  OTHER_TPM_SECTION();
-  TPM_SELECT_END;
+       CreateEnrollmentCertificateRequestContinueOnQuoteFailure) {
   SetUpIdentity(identity_);
   SetUpIdentityCertificate(identity_, aca_type_);
+  EXPECT_CALL(mock_nvram_quoter_, GetListForIdentity())
+      .WillOnce(Return(std::vector<NVRAMQuoteType>({BOARD_ID, SN_BITS})));
+  EXPECT_CALL(mock_nvram_quoter_, GetListForEnrollmentCertificate())
+      .WillOnce(Return(
+          std::vector<NVRAMQuoteType>({BOARD_ID, SN_BITS, RSU_DEVICE_ID})));
+  // Identity will have baord id and sn bits quotes.
+  EXPECT_CALL(mock_nvram_quoter_, Certify(RSU_DEVICE_ID, _, _))
+      .WillOnce(Return(false));
   auto callback = [](const std::string& cert_name,
                      base::OnceClosure quit_closure,
                      const CreateCertificateRequestReply& reply) {
@@ -2582,75 +2646,14 @@ TEST_P(AttestationServiceTest,
     EXPECT_TRUE(pca_request.ParseFromString(reply.pca_request()));
     EXPECT_EQ(GetTpmVersionUnderTest(), pca_request.tpm_version());
     EXPECT_EQ(ENTERPRISE_ENROLLMENT_CERTIFICATE, pca_request.profile());
-    TPM_SELECT_BEGIN;
-    TPM2_SECTION({
-      EXPECT_EQ(USE_GENERIC_TPM2 ? 3 : 2, pca_request.nvram_quotes().size());
-      EXPECT_EQ("board_id", pca_request.nvram_quotes().at(BOARD_ID).quote());
-      EXPECT_EQ("sn_bits", pca_request.nvram_quotes().at(SN_BITS).quote());
-#if USE_GENERIC_TPM2
-      EXPECT_EQ("rma_bytes", pca_request.nvram_quotes().at(RMA_BYTES).quote());
-#endif
-      EXPECT_EQ(pca_request.nvram_quotes().end(),
-                pca_request.nvram_quotes().find(RSU_DEVICE_ID));
-    });
-    TPM1_SECTION({ EXPECT_TRUE(pca_request.nvram_quotes().empty()); });
-    OTHER_TPM_SECTION();
-    TPM_SELECT_END;
-    EXPECT_EQ(cert_name, pca_request.identity_credential());
-    std::move(quit_closure).Run();
-  };
-  CreateCertificateRequestRequest request;
-  request.set_aca_type(aca_type_);
-  request.set_certificate_profile(ENTERPRISE_ENROLLMENT_CERTIFICATE);
-  request.set_username("user");
-  request.set_request_origin("origin");
-  service_->CreateCertificateRequest(
-      request,
-      base::BindOnce(callback, GetCertificateName(identity_, aca_type_),
-                     QuitClosure()));
-  Run();
-}
-
-TEST_P(AttestationServiceTest,
-       CreateEnrollmentCertificateRequestWithoutRsuDeviceIdSuccess) {
-  TPM_SELECT_BEGIN;
-  TPM2_SECTION({
-#if !USE_GENERIC_TPM2
-    EXPECT_CALL(mock_tpm_utility_,
-                CertifyNV(VIRTUAL_NV_INDEX_RSU_DEV_ID, _, _, _, _))
-        .WillRepeatedly(Return(false));
-    EXPECT_CALL(mock_tpm_utility_, GetRsuDeviceId(_))
-        .WillRepeatedly(Return(false));
-#endif
-  });
-  OTHER_TPM_SECTION();
-  TPM_SELECT_END;
-  SetUpIdentity(identity_);
-  SetUpIdentityCertificate(identity_, aca_type_);
-  auto callback = [](const std::string& cert_name,
-                     base::OnceClosure quit_closure,
-                     const CreateCertificateRequestReply& reply) {
-    EXPECT_EQ(STATUS_SUCCESS, reply.status());
-    EXPECT_TRUE(reply.has_pca_request());
-    AttestationCertificateRequest pca_request;
-    EXPECT_TRUE(pca_request.ParseFromString(reply.pca_request()));
-    EXPECT_EQ(GetTpmVersionUnderTest(), pca_request.tpm_version());
-    EXPECT_EQ(ENTERPRISE_ENROLLMENT_CERTIFICATE, pca_request.profile());
-    TPM_SELECT_BEGIN;
-    TPM2_SECTION({
-      EXPECT_EQ(USE_GENERIC_TPM2 ? 3 : 2, pca_request.nvram_quotes().size());
-      EXPECT_EQ("board_id", pca_request.nvram_quotes().at(BOARD_ID).quote());
-      EXPECT_EQ("sn_bits", pca_request.nvram_quotes().at(SN_BITS).quote());
-#if USE_GENERIC_TPM2
-      EXPECT_EQ("rma_bytes", pca_request.nvram_quotes().at(RMA_BYTES).quote());
-#else
-      EXPECT_EQ(pca_request.nvram_quotes().find(RSU_DEVICE_ID),
-                pca_request.nvram_quotes().cend());
-#endif
-    });
-    TPM1_SECTION({ EXPECT_TRUE(pca_request.nvram_quotes().empty()); });
-    OTHER_TPM_SECTION();
-    TPM_SELECT_END;
+    EXPECT_EQ(2, pca_request.nvram_quotes().size());
+    EXPECT_EQ(kFakeBoardIdQuote,
+              pca_request.nvram_quotes().at(BOARD_ID).quote());
+    EXPECT_EQ(kFakeBoardIdQuotedData,
+              pca_request.nvram_quotes().at(BOARD_ID).quoted_data());
+    EXPECT_EQ(kFakeSnBitsQuote, pca_request.nvram_quotes().at(SN_BITS).quote());
+    EXPECT_EQ(kFakeSnBitsQuotedData,
+              pca_request.nvram_quotes().at(SN_BITS).quoted_data());
     EXPECT_EQ(cert_name, pca_request.identity_credential());
     std::move(quit_closure).Run();
   };
@@ -2691,6 +2694,8 @@ TEST_P(AttestationServiceTest, CreateVtpmEkCertificateRequestSuccess) {
   service_->set_vtpm_ek_support(true);
   SetUpIdentity(identity_);
   SetUpIdentityCertificate(identity_, aca_type_);
+  EXPECT_CALL(mock_nvram_quoter_, GetListForVtpmEkCertificate())
+      .WillOnce(Return(std::vector<NVRAMQuoteType>({SN_BITS})));
   auto callback = [](const std::string& cert_name,
                      base::OnceClosure quit_closure,
                      const CreateCertificateRequestReply& reply) {
@@ -2701,7 +2706,9 @@ TEST_P(AttestationServiceTest, CreateVtpmEkCertificateRequestSuccess) {
     EXPECT_EQ(GetTpmVersionUnderTest(), pca_request.tpm_version());
     EXPECT_EQ(ENTERPRISE_VTPM_EK_CERTIFICATE, pca_request.profile());
     EXPECT_EQ(1, pca_request.nvram_quotes().size());
-    EXPECT_EQ("sn_bits", pca_request.nvram_quotes().at(SN_BITS).quote());
+    EXPECT_EQ(kFakeSnBitsQuote, pca_request.nvram_quotes().at(SN_BITS).quote());
+    EXPECT_EQ(kFakeSnBitsQuotedData,
+              pca_request.nvram_quotes().at(SN_BITS).quoted_data());
     EXPECT_EQ(cert_name, pca_request.identity_credential());
     std::move(quit_closure).Run();
   };
@@ -2724,10 +2731,9 @@ TEST_P(AttestationServiceTest,
   SetUpIdentity(identity_);
   SetUpIdentityCertificate(identity_, aca_type_);
   RemoveNvramQuotesFromIdentity(identity_);
-  EXPECT_CALL(mock_tpm_utility_,
-              CertifyNV(VIRTUAL_NV_INDEX_SN_DATA, _, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<3>("sn_bits_data"),
-                      SetArgPointee<4>("sn_bits"), Return(true)));
+  EXPECT_CALL(mock_nvram_quoter_, GetListForVtpmEkCertificate())
+      .WillOnce(Return(std::vector<NVRAMQuoteType>({SN_BITS})));
+  EXPECT_CALL(mock_nvram_quoter_, Certify(SN_BITS, _, _));
   auto callback = [](const std::string& cert_name,
                      base::OnceClosure quit_closure,
                      const CreateCertificateRequestReply& reply) {
@@ -2738,7 +2744,9 @@ TEST_P(AttestationServiceTest,
     EXPECT_EQ(GetTpmVersionUnderTest(), pca_request.tpm_version());
     EXPECT_EQ(ENTERPRISE_VTPM_EK_CERTIFICATE, pca_request.profile());
     EXPECT_EQ(1, pca_request.nvram_quotes().size());
-    EXPECT_EQ("sn_bits", pca_request.nvram_quotes().at(SN_BITS).quote());
+    EXPECT_EQ(kFakeSnBitsQuote, pca_request.nvram_quotes().at(SN_BITS).quote());
+    EXPECT_EQ(kFakeSnBitsQuotedData,
+              pca_request.nvram_quotes().at(SN_BITS).quoted_data());
     EXPECT_EQ(cert_name, pca_request.identity_credential());
     std::move(quit_closure).Run();
   };
@@ -2761,12 +2769,6 @@ TEST_P(AttestationServiceTest,
   SetUpIdentity(identity_);
   SetUpIdentityCertificate(identity_, aca_type_);
   RemoveNvramQuotesFromIdentity(identity_);
-  EXPECT_CALL(mock_tpm_utility_,
-              CertifyNV(VIRTUAL_NV_INDEX_SN_DATA, _, _, _, _))
-      .Times(AtMost(1))
-      .WillRepeatedly(DoAll(SetArgPointee<3>("sn_bits_data"),
-                            SetArgPointee<4>("sn_bits"), Return(true)));
-
   auto callback = [](const std::string& cert_name,
                      base::OnceClosure quit_closure,
                      const CreateCertificateRequestReply& reply) {
@@ -2788,13 +2790,14 @@ TEST_P(AttestationServiceTest,
 }
 
 TEST_P(AttestationServiceTest,
-       CreateVtpmEkCertificateRequestFailureCertifyNVError) {
+       CreateVtpmEkCertificateRequestFailureFailedToQuote) {
   service_->set_vtpm_ek_support(true);
   SetUpIdentity(identity_);
   SetUpIdentityCertificate(identity_, aca_type_);
   RemoveNvramQuotesFromIdentity(identity_);
-  EXPECT_CALL(mock_tpm_utility_,
-              CertifyNV(VIRTUAL_NV_INDEX_SN_DATA, _, _, _, _))
+  EXPECT_CALL(mock_nvram_quoter_, GetListForVtpmEkCertificate())
+      .WillOnce(Return(std::vector<NVRAMQuoteType>({SN_BITS})));
+  EXPECT_CALL(mock_nvram_quoter_, Certify(SN_BITS, _, _))
       .WillOnce(Return(false));
   auto callback = [](const std::string& cert_name,
                      base::OnceClosure quit_closure,
@@ -2821,9 +2824,6 @@ TEST_P(AttestationServiceTest,
   SetUpIdentity(identity_);
   SetUpIdentityCertificate(identity_, aca_type_);
   RemoveNvramQuotesFromIdentity(identity_);
-  EXPECT_CALL(mock_tpm_utility_,
-              CertifyNV(VIRTUAL_NV_INDEX_SN_DATA, _, _, _, _))
-      .Times(0);
 
   auto callback = [](const std::string& cert_name,
                      base::OnceClosure quit_closure,
