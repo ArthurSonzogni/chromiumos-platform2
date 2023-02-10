@@ -387,8 +387,9 @@ bool GetUserHomeDirectories(
   }
 
   for (const auto& iter : sessions) {
+    brillo::cryptohome::home::ObfuscatedUsername username(iter.second);
     directories->push_back(paths::Get(
-        brillo::cryptohome::home::GetHashedUserPath(iter.second).value()));
+        brillo::cryptohome::home::GetHashedUserPath(username).value()));
   }
 
   return true;
