@@ -709,13 +709,35 @@ TEST_F(DlpAdaptorTest, GetFilesSourcesWithoutDatabase) {
   const std::string source1 = "source1";
   const std::string source2 = "source2";
 
-  // Add the files to the database.
-  AddFileAndCheck(file_path1, source1, "referrer1", /*success=*/false);
-  AddFileAndCheck(file_path2, source2, "referrer2", /*success=*/false);
+  // Add the files to the database. The addition will be pending, so success
+  // is returned.
+  AddFileAndCheck(file_path1, source1, "referrer1", /*success=*/true);
+  AddFileAndCheck(file_path2, source2, "referrer2", /*success=*/true);
 
   GetFilesSourcesResponse response = GetFilesSources({inode1, inode2});
 
   EXPECT_EQ(response.files_metadata_size(), 0u);
+
+  // Create database and add pending files.
+  base::ScopedTempDir database_directory;
+  ASSERT_TRUE(database_directory.CreateUniqueTempDir());
+  base::RunLoop run_loop;
+  GetDlpAdaptor()->InitDatabase(database_directory.GetPath(),
+                                run_loop.QuitClosure());
+  run_loop.Run();
+
+  // Check that the pending entries were added.
+  response = GetFilesSources({inode1, inode2});
+
+  ASSERT_EQ(response.files_metadata_size(), 2u);
+
+  FileMetadata file_metadata1 = response.files_metadata()[0];
+  EXPECT_EQ(file_metadata1.inode(), inode1);
+  EXPECT_EQ(file_metadata1.source_url(), source1);
+
+  FileMetadata file_metadata2 = response.files_metadata()[1];
+  EXPECT_EQ(file_metadata2.inode(), inode2);
+  EXPECT_EQ(file_metadata2.source_url(), source2);
 }
 
 TEST_F(DlpAdaptorTest, GetFilesSourcesFileDeletedDBReopenedWithCleanup) {

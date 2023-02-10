@@ -264,6 +264,10 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   // Indicated whether adding per file watch for files in the database is
   // pending creation of the database.
   bool pending_per_file_watches_ = false;
+
+  // Files that were added before database was initialized, so they need to be
+  // added once it's ready.
+  std::vector<FileEntry> pending_files_to_add_;
 };
 
 }  // namespace dlp

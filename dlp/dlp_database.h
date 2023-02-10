@@ -70,6 +70,10 @@ class DlpDatabase : public DlpDatabaseDelegate {
   void InsertFileEntry(const FileEntry& file_entry,
                        base::OnceCallback<void(bool)> callback);
 
+  // Inserts file_entries into database. Silently ignores errors.
+  void InsertFileEntries(const std::vector<FileEntry>& file_entries,
+                         base::OnceCallback<void()> callback);
+
   // Gets the file entries by inodes. Returns a map of only found entries to
   // the |callback|.
   void GetFileEntriesByInodes(

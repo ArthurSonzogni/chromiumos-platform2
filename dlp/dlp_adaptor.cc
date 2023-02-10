@@ -113,7 +113,13 @@ DlpAdaptor::DlpAdaptor(
           dbus_object_->GetBus().get(), kDlpFilesPolicyServiceName);
 }
 
-DlpAdaptor::~DlpAdaptor() = default;
+DlpAdaptor::~DlpAdaptor() {
+  if (!pending_files_to_add_.empty()) {
+    DCHECK(!db_);
+    dlp_metrics_->SendAdaptorError(
+        AdaptorError::kAddFileNotCompleteBeforeDestruction);
+  }
+}
 
 void DlpAdaptor::RegisterAsync(
     brillo::dbus_utils::AsyncEventSequencer::CompletionAction
@@ -163,11 +169,6 @@ void DlpAdaptor::AddFile(
   }
 
   LOG(INFO) << "Adding file to the database: " << request.file_path();
-  if (!db_) {
-    ReplyOnAddFile(std::move(response), "Database is not ready");
-    dlp_metrics_->SendAdaptorError(AdaptorError::kDatabaseNotReadyError);
-    return;
-  }
 
   const ino_t inode = GetInodeValue(request.file_path());
   if (!inode) {
@@ -177,6 +178,14 @@ void DlpAdaptor::AddFile(
   }
 
   FileEntry file_entry = ConvertToFileEntry(inode, request);
+
+  if (!db_) {
+    LOG(WARNING) << "Database is not ready, pending addition of the file";
+    pending_files_to_add_.push_back(file_entry);
+    ReplyOnAddFile(std::move(response), std::string());
+    dlp_metrics_->SendAdaptorError(AdaptorError::kDatabaseNotReadyError);
+    return;
+  }
 
   db_->InsertFileEntry(
       file_entry,
@@ -398,6 +407,19 @@ void DlpAdaptor::OnDatabaseInitialized(base::OnceClosure init_callback,
     LOG(ERROR) << "Cannot connect to database " << database_path;
     dlp_metrics_->SendAdaptorError(AdaptorError::kDatabaseConnectionError);
     std::move(init_callback).Run();
+    return;
+  }
+
+  if (!pending_files_to_add_.empty()) {
+    LOG(INFO) << "Inserting pending entries";
+    DlpDatabase* db_ptr = db.get();
+    std::vector<FileEntry> files_being_added;
+    files_being_added.swap(pending_files_to_add_);
+    db_ptr->InsertFileEntries(
+        files_being_added,
+        base::BindOnce(&DlpAdaptor::OnDatabaseInitialized,
+                       base::Unretained(this), std::move(init_callback),
+                       std::move(db), database_path, db_status));
     return;
   }
 

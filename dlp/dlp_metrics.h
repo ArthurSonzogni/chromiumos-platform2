@@ -103,7 +103,10 @@ enum class AdaptorError {
   kFileDescriptorDupError = 8,
   // Error while executing close on a FD.
   kFileDescriptorCloseError = 9,
-  kMaxValue = kFileDescriptorCloseError,
+  // Files were not added because DB failed to be created on time.
+  kAddFileNotCompleteBeforeDestruction = 10,
+  // For SendEnumToUMA() usage.
+  kMaxValue = kAddFileNotCompleteBeforeDestruction,
 };
 
 // Sends UMAs related to the DLP daemon.

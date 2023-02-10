@@ -95,6 +95,7 @@ class DlpDatabase::Core {
   // Implements the functionality from main class.
   int Init();
   bool InsertFileEntry(const FileEntry& file_entry);
+  void InsertFileEntries(const std::vector<FileEntry>& file_entries);
   std::map<ino64_t, FileEntry> GetFileEntriesByInodes(
       std::vector<ino64_t> inodes) const;
   bool DeleteFileEntryByInode(int64_t inode);
@@ -225,6 +226,36 @@ bool DlpDatabase::Core::InsertFileEntry(const FileEntry& file_entry) {
     return false;
   }
   return true;
+}
+
+void DlpDatabase::Core::InsertFileEntries(
+    const std::vector<FileEntry>& file_entries) {
+  if (!IsOpen()) {
+    LOG(ERROR) << "Failed to insert file entries because database is not open";
+    return;
+  }
+
+  std::string sql =
+      "INSERT INTO file_entries (inode, source_url, referrer_url) VALUES";
+  bool first = true;
+  for (const auto& file_entry : file_entries) {
+    if (!first) {
+      sql += ",";
+    }
+    sql += base::StringPrintf("(%" PRId64 ", '%s', '%s')", file_entry.inode,
+                              EscapeSQLString(file_entry.source_url).c_str(),
+                              EscapeSQLString(file_entry.referrer_url).c_str());
+    first = false;
+  }
+  sql += ";";
+
+  ExecResult result = ExecSQL(sql);
+  if (result.code != SQLITE_OK) {
+    LOG(ERROR) << "Failed to insert file entries: (" << result.code << ") "
+               << result.error_msg;
+    ForwardUMAErrorToParentThread(DatabaseError::kInsertIntoTableError);
+    return;
+  }
 }
 
 std::map<ino64_t, FileEntry> DlpDatabase::Core::GetFileEntriesByInodes(
@@ -379,6 +410,16 @@ void DlpDatabase::InsertFileEntry(const FileEntry& file_entry,
       FROM_HERE,
       base::BindOnce(&DlpDatabase::Core::InsertFileEntry,
                      base::Unretained(core_.get()), file_entry),
+      std::move(callback));
+}
+
+void DlpDatabase::InsertFileEntries(const std::vector<FileEntry>& file_entries,
+                                    base::OnceCallback<void()> callback) {
+  CHECK(!task_runner_->RunsTasksInCurrentSequence());
+  task_runner_->PostTaskAndReply(
+      FROM_HERE,
+      base::BindOnce(&DlpDatabase::Core::InsertFileEntries,
+                     base::Unretained(core_.get()), file_entries),
       std::move(callback));
 }
 
