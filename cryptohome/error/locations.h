@@ -679,9 +679,9 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocKeysetManagementNoKeysetsDecryptedInGetValidKeyset = 426,
   /* ./keyset_management.cc */
   kLocKeysetManagementDecryptFailedInGetValidKeyset = 427,
-  /* ./keyset_management.cc */
+  /* =Obsolete= */
   kLocKeysetManagementEncryptFailedInAddInitial = 428,
-  /* ./keyset_management.cc */
+  /* =Obsolete= */
   kLocKeysetManagementSaveFailedInAddInitial = 429,
   /* ./keyset_management.cc */
   kLocKeysetManagementEncryptFailedInEncryptAndSaveKeyset = 430,
@@ -1489,6 +1489,66 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocBiometricsServiceStartAuthenticateConcurrentSession = 3305,
   /* ./auth_blocks/biometrics_auth_block_service.cc */
   kLocBiometricsServiceMatchCredentialNoSession = 3306,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorCreateEcFailedInGenKey = 3307,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorNullCreatedKeyInGenKey = 3308,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorCreateEcFailedInGetKey = 3309,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorCreateBigNumsFailedInGetKey = 3310,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorGetCoordsFailedInGetKey = 3311,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorPointToBlobFailedInGetKey = 3312,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorCreateEcFailedInGetPoint = 3313,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorNullCreatedPointInGetPoint = 3314,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorKeyToBigNumFailedInGetPoint = 3315,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorSetCoordsFailedInGetPoint = 3316,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorCreateEcFailedInDecryptSecret = 3317,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorComputeSharedPointFailedInDecryptSecret = 3318,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorComputeSharedSecretFailedInDecryptSecret = 3319,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorDecryptFailedInDecryptSecret = 3320,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorParseKeyFailedInDerive = 3321,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorDecryptSecretFailedInDerive = 3322,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorCreateCredentialWrongSession = 3323,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorCreateCredentialBiodInternalError = 3324,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorMatchCredentialWrongSession = 3325,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorMatchCredentialNoRecords = 3326,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorMatchCredentialBiodInternalError = 3327,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorMatchCredentialNoMatch = 3328,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorCreateCredentialKeygenFailed = 3329,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorCreateCredentialGetKeyFailed = 3330,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorMatchCredentialKeygenFailed = 3331,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorMatchCredentialGetKeyFailed = 3332,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorCreateCredentialBiodNoResp = 3333,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorCreateCredentialDeriveSecretsFailed = 3334,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorMatchCredentialBiodNoResp = 3335,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorMatchCredentialDeriveSecretsFailed = 3336,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.

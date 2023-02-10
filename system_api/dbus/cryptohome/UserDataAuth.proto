@@ -1587,9 +1587,28 @@ message TerminateAuthFactorReply {
 // Fingerprint scan results.
 enum FingerprintScanResult {
   FINGERPRINT_SCAN_RESULT_SUCCESS = 0;
+
+  // Scan results for authentication.
   FINGERPRINT_SCAN_RESULT_RETRY = 1;
   FINGERPRINT_SCAN_RESULT_LOCKOUT = 2;
+
+  // Internal error.
   FINGERPRINT_SCAN_RESULT_FATAL_ERROR = 3;
+
+  // Scan results for enrollment.
+  // Sensor needs more data.
+  FINGERPRINT_SCAN_RESULT_PARTIAL = 4;
+  // Image doesn't contain enough details.
+  FINGERPRINT_SCAN_RESULT_INSUFFICIENT = 5;
+  // Sensor needs to be cleaned.
+  FINGERPRINT_SCAN_RESULT_SENSOR_DIRTY = 6;
+  // Not enough data collected (swipe type sensor).
+  FINGERPRINT_SCAN_RESULT_TOO_SLOW = 7;
+  // User removed finger too fast.
+  FINGERPRINT_SCAN_RESULT_TOO_FAST = 8;
+  // User didn't move finger during enrollment.
+  FINGERPRINT_SCAN_RESULT_IMMOBILE = 9;
+  FINGERPRINT_SCAN_RESULT_ENROLL_OTHER = 10;
 }
 
 // The message included in signal AuthScanResultSignal.
