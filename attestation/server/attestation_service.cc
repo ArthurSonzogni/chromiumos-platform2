@@ -33,21 +33,12 @@
 #include <openssl/objects.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
-#if USE_TPM2
-#include <trunks/tpm_utility.h>
-#endif
 extern "C" {
-#if USE_TPM2
-#include <trunks/cr50_headers/virtual_nvmem.h>
-#endif
 #include <vboot/crossystem.h>
 }
 
-#if !USE_TPM2
-#include "attestation/common/nvram_index_placeholder.h"
-#endif
-
 #include "attestation/common/database.pb.h"
+#include "attestation/common/nvram_quoter_factory.h"
 #include "attestation/common/tpm_utility_factory.h"
 #include "attestation/server/attestation_flow.h"
 #include "attestation/server/database_impl.h"
@@ -419,60 +410,6 @@ constexpr KeyRestriction GetKeyRestrictionByProfile(
 }
 
 }  // namespace
-
-// TODO(b/188319058): Move all this to hide all the branches by TPM version in
-// this file.
-// For consistency with what we have in cr50 header, use all uppercases.
-constexpr uint32_t VIRTUAL_NV_INDEX_RMA_BYTES = 0x013fff04;
-constexpr uint32_t VIRTUAL_NV_INDEX_RMA_BYTES_SIZE = 8;
-
-// Description of virtual NVRAM indices used for attestation.
-const struct {
-  NVRAMQuoteType quote_type;
-  const char* quote_name;
-  uint32_t nv_index;  // From CertifyNV().
-  uint16_t nv_size;   // From CertifyNV().
-} kNvramIndexData[] = {
-    {BOARD_ID, "BoardId", VIRTUAL_NV_INDEX_BOARD_ID,
-     VIRTUAL_NV_INDEX_BOARD_ID_SIZE},
-    {SN_BITS, "SN Bits", VIRTUAL_NV_INDEX_SN_DATA,
-     VIRTUAL_NV_INDEX_SN_DATA_SIZE},
-#if USE_TPM2
-    {RSA_PUB_EK_CERT, "RSA Public EK Certificate",
-     trunks::kRsaEndorsementCertificateIndex, 0},
-#endif
-    {RSU_DEVICE_ID, "RSU Device ID", VIRTUAL_NV_INDEX_RSU_DEV_ID,
-     VIRTUAL_NV_INDEX_RSU_DEV_ID_SIZE},
-    {RMA_BYTES, "RMA Bytes", VIRTUAL_NV_INDEX_RMA_BYTES,
-     VIRTUAL_NV_INDEX_RMA_BYTES_SIZE},
-};
-
-// Types of quotes needed to obtain a VTPM EK certificate.
-// We keep it an array for symmetry though currently we only store 1 element.
-const NVRAMQuoteType kNvramQuoteTypeForVtpmEkCertificate[] = {
-    SN_BITS,
-};
-
-#if USE_TPM2
-// TODO(b/188319058): abstract the lists of nvram quotes from attestation
-// service, so attestation service doesn't have to care about the details of
-// nvram quote type by TPM versions.
-#if USE_GENERIC_TPM2
-// Types of quotes being cached in the identity data.
-const NVRAMQuoteType kNvramQuoteTypeInIdentityData[] = {BOARD_ID, SN_BITS,
-                                                        RMA_BYTES};
-// Types of quotes needed to obtain an enrollment certificate.
-const NVRAMQuoteType kNvramQuoteTypeForEnrollmentCertificate[] = {
-    BOARD_ID, SN_BITS, RMA_BYTES};
-#else
-// Types of quotes being cached in the identity data.
-const NVRAMQuoteType kNvramQuoteTypeInIdentityData[] = {BOARD_ID, SN_BITS};
-// Types of quotes needed to obtain an enrollment certificate.
-const NVRAMQuoteType kNvramQuoteTypeForEnrollmentCertificate[] = {
-    BOARD_ID, SN_BITS, RSU_DEVICE_ID};
-#endif
-#endif
-
 using QuoteMap = google::protobuf::Map<int, Quote>;
 
 const size_t kChallengeSignatureNonceSize = 20;  // For all TPMs.
@@ -528,13 +465,13 @@ void AttestationService::InitializeTask(InitializeCompleteCallback callback) {
     CHECK(default_tpm_utility_->Initialize());
     tpm_utility_ = default_tpm_utility_.get();
   }
+  if (!nvram_quoter_) {
+    default_nvram_quoter_.reset(NvramQuoterFactory::New(*tpm_utility_));
+    nvram_quoter_ = default_nvram_quoter_.get();
+  }
   if (!crypto_utility_) {
     default_crypto_utility_.reset(new CryptoUtilityImpl(tpm_utility_));
     crypto_utility_ = default_crypto_utility_.get();
-  }
-
-  for (int i = 0; i < std::size(kNvramIndexData); ++i) {
-    nvram_quote_type_to_index_data_[kNvramIndexData[i].quote_type] = i;
   }
 
   bool existing_database;
@@ -1353,52 +1290,43 @@ bool AttestationService::CreateCertificateRequestInternal(
       identity_certificate.identity_credential());
   request_pb.set_profile(profile);
 
-  TPM_SELECT_BEGIN;
-  TPM2_SECTION({
-    if (profile == ENTERPRISE_ENROLLMENT_CERTIFICATE) {
-      const int identity = identity_certificate.identity();
-      const AttestationDatabase::Identity& identity_data =
-          database_->GetProtobuf().identities().Get(identity);
-      // Copy NVRAM quotes to include in an enrollment certificate from the
-      // identity if possible.
-      std::set<NVRAMQuoteType> not_in_identity;
-      for (const auto& quote_type : kNvramQuoteTypeForEnrollmentCertificate) {
-        const auto found = identity_data.nvram_quotes().find(quote_type);
-        if (found != identity_data.nvram_quotes().cend()) {
-          (*request_pb.mutable_nvram_quotes())[quote_type] = found->second;
-        } else {
-          not_in_identity.insert(quote_type);
-        }
-      }
-      // Data that is supposed to be in the identity but is missing won't be
-      // quoted now, as we want to drive everything from the identity.
-      for (const auto& quote_type : kNvramQuoteTypeInIdentityData) {
-        if (not_in_identity.erase(quote_type)) {
-          LOG(WARNING)
-              << "Could not find "
-              << kNvramIndexData[nvram_quote_type_to_index_data_[quote_type]]
-                     .quote_name
-              << " quote in identity " << identity
-              << " to provide in enrollment cert request.";
-        }
-      }
-      // Quote the other data now.
-      for (auto it = not_in_identity.cbegin(), end = not_in_identity.cend();
-           it != end; ++it) {
-        Quote quote;
-        if (QuoteNvramData(*it, identity_data.identity_key(), &quote)) {
-          (*request_pb.mutable_nvram_quotes())[*it] = quote;
-        } else {
-          LOG(WARNING) << "Could not provide "
-                       << kNvramIndexData[nvram_quote_type_to_index_data_[*it]]
-                              .quote_name
-                       << " quote in enrollment cert request.";
-        }
+  if (profile == ENTERPRISE_ENROLLMENT_CERTIFICATE) {
+    const int identity = identity_certificate.identity();
+    const AttestationDatabase::Identity& identity_data =
+        database_->GetProtobuf().identities().Get(identity);
+    // Copy NVRAM quotes to include in an enrollment certificate from the
+    // identity if possible.
+    std::set<NVRAMQuoteType> not_in_identity;
+    for (NVRAMQuoteType quote_type :
+         nvram_quoter_->GetListForEnrollmentCertificate()) {
+      const auto found = identity_data.nvram_quotes().find(quote_type);
+      if (found != identity_data.nvram_quotes().cend()) {
+        (*request_pb.mutable_nvram_quotes())[quote_type] = found->second;
+      } else {
+        not_in_identity.insert(quote_type);
       }
     }
-  });
-  OTHER_TPM_SECTION();
-  TPM_SELECT_END;
+    // Data that is supposed to be in the identity but is missing won't be
+    // quoted now, as we want to drive everything from the identity.
+    for (NVRAMQuoteType quote_type : nvram_quoter_->GetListForIdentity()) {
+      if (not_in_identity.erase(quote_type)) {
+        LOG(WARNING) << "Could not find quote of type " << quote_type
+                     << " in identity " << identity
+                     << " to provide in enrollment cert request.";
+      }
+    }
+    // Quote the other data now.
+    for (auto it = not_in_identity.cbegin(), end = not_in_identity.cend();
+         it != end; ++it) {
+      Quote quote;
+      if (nvram_quoter_->Certify(
+              *it, identity_data.identity_key().identity_key_blob(), quote)) {
+        (*request_pb.mutable_nvram_quotes())[*it] = quote;
+      } else {
+        LOG(WARNING) << "Could not provide quote for enrollment cert request.";
+      }
+    }
+  }
 
   if (profile == ENTERPRISE_VTPM_EK_CERTIFICATE) {
     // VTPM EK certificate requires `attested_device_id_` to be presented.
@@ -1411,22 +1339,22 @@ bool AttestationService::CreateCertificateRequestInternal(
     const int identity = identity_certificate.identity();
     const AttestationDatabase::Identity& identity_data =
         database_->GetProtobuf().identities().Get(identity);
-    for (const auto& quote_type : kNvramQuoteTypeForVtpmEkCertificate) {
+    for (NVRAMQuoteType quote_type :
+         nvram_quoter_->GetListForVtpmEkCertificate()) {
       const auto found = identity_data.nvram_quotes().find(quote_type);
       if (found != identity_data.nvram_quotes().cend()) {
         (*request_pb.mutable_nvram_quotes())[quote_type] = found->second;
         continue;
       }
       Quote quote;
-      if (QuoteNvramData(quote_type, identity_data.identity_key(), &quote)) {
+      if (nvram_quoter_->Certify(
+              quote_type, identity_data.identity_key().identity_key_blob(),
+              quote)) {
         (*request_pb.mutable_nvram_quotes())[quote_type] = quote;
         continue;
       }
       // For VTPM EK certificate, all the quotes are mandatory.
-      LOG(ERROR) << "Could not provide "
-                 << kNvramIndexData[nvram_quote_type_to_index_data_[quote_type]]
-                        .quote_name
-                 << " quote in VTPM EK cert request.";
+      LOG(ERROR) << "Could not provide quote for VTPM EK cert request.";
       return false;
     }
   }
@@ -1900,80 +1828,27 @@ bool AttestationService::CreateIdentity(int identity_features) {
       return false;
     }
   }
-  TPM_SELECT_BEGIN;
-  TPM2_SECTION({
-    // Certify device-specific NV data and insert them in the identity when
-    // we can certify them. This is an almost identical process to the PCR
-    // quotes above.
 
-    for (const auto& data : kNvramQuoteTypeInIdentityData) {
-      if (!InsertCertifiedNvramData(data, false /* must_be_present */,
-                                    &new_identity_pb)) {
-        return false;
-      }
+  for (NVRAMQuoteType data : nvram_quoter_->GetListForIdentity()) {
+    if (!InsertCertifiedNvramData(data, false /* must_be_present */,
+                                  &new_identity_pb)) {
+      return false;
     }
+  }
 
-    // Certify the RSA EK cert only when we are using non-RSA EK. In this case,
-    // we don't provide the RSA EK cert which originally is used for calculating
-    // the Enrollment ID.
-    if ((identity_features & IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) &&
-        GetEndorsementKeyType() != kEndorsementKeyTypeForEnrollmentID) {
-      if (!InsertCertifiedNvramData(RSA_PUB_EK_CERT, true /* must_be_present */,
-                                    &new_identity_pb)) {
-        return false;
-      }
+  // Certify the RSA EK cert only when we are using non-RSA EK. In this case,
+  // we don't provide the RSA EK cert which originally is used for calculating
+  // the Enrollment ID.
+  if ((identity_features & IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) &&
+      GetEndorsementKeyType() != kEndorsementKeyTypeForEnrollmentID) {
+    if (!InsertCertifiedNvramData(RSA_PUB_EK_CERT, true /* must_be_present */,
+                                  &new_identity_pb)) {
+      return false;
     }
-  });
-  OTHER_TPM_SECTION();
-  TPM_SELECT_END;
+  }
 
   database_pb->add_identities()->CopyFrom(new_identity_pb);
   return true;
-}
-
-bool AttestationService::QuoteNvramData(NVRAMQuoteType quote_type,
-                                        const IdentityKey& identity_key,
-                                        Quote* quote) {
-  TPM_SELECT_BEGIN;
-  TPM2_SECTION();
-  OTHER_TPM_SECTION({
-    LOG(WARNING) << __func__ << ": Should not be called for TPM 1.2 devices.";
-  });
-  TPM_SELECT_END;
-
-  const int id = nvram_quote_type_to_index_data_[quote_type];
-  const char* quote_name = kNvramIndexData[id].quote_name;
-  const uint32_t nv_index = kNvramIndexData[id].nv_index;
-  uint16_t nv_size = kNvramIndexData[id].nv_size;
-
-  if (!nv_size) {
-    uint16_t nv_data_size = 0;
-    if (tpm_utility_->GetNVDataSize(nv_index, &nv_data_size)) {
-      nv_size = nv_data_size;
-    } else {
-      LOG(ERROR) << "Attestation: Failed to obtain data about the "
-                 << quote_name << ".";
-    }
-  }
-
-  if (nv_size) {
-    auto identity_key_blob = identity_key.identity_key_blob();
-    std::string certified_value;
-    std::string signature;
-
-    if (tpm_utility_->CertifyNV(nv_index, nv_size, identity_key_blob,
-                                &certified_value, &signature)) {
-      quote->set_quote(signature);
-      quote->set_quoted_data(certified_value);
-      return true;
-    } else {
-      LOG(WARNING) << "Attestation: Failed to certify " << quote_name
-                   << " NV data of size " << nv_size << " at index " << std::hex
-                   << std::showbase << nv_index << ".";
-    }
-  }
-
-  return false;
 }
 
 bool AttestationService::InsertCertifiedNvramData(
@@ -1987,7 +1862,8 @@ bool AttestationService::InsertCertifiedNvramData(
   });
   TPM_SELECT_END;
   Quote quote;
-  if (!QuoteNvramData(quote_type, identity->identity_key(), &quote)) {
+  if (!nvram_quoter_->Certify(
+          quote_type, identity->identity_key().identity_key_blob(), quote)) {
     return !must_be_present;
   }
 
@@ -1996,10 +1872,8 @@ bool AttestationService::InsertCertifiedNvramData(
   if (in_bid.second) {
     return true;
   } else {
-    LOG(ERROR) << "Attestation: Failed to store "
-               << kNvramIndexData[nvram_quote_type_to_index_data_[quote_type]]
-                      .quote_name
-               << " quote for identity " << identity << ".";
+    LOG(ERROR) << "Attestation: Failed to store quote of type " << quote_type
+               << " for identity " << identity << ".";
   }
   return false;
 }

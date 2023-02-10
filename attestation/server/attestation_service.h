@@ -28,7 +28,8 @@
 
 #include "attestation/common/crypto_utility.h"
 #include "attestation/common/crypto_utility_impl.h"
-#include "attestation/common/tpm_utility_factory.h"
+#include "attestation/common/nvram_quoter.h"
+#include "attestation/common/tpm_utility.h"
 #include "attestation/pca_agent/dbus-proxies.h"
 #include "attestation/server/attestation_flow.h"
 #include "attestation/server/attestation_service_metrics.h"
@@ -173,6 +174,10 @@ class AttestationService : public AttestationInterface {
   void set_key_store(KeyStore* key_store) { key_store_ = key_store; }
 
   void set_tpm_utility(TpmUtility* tpm_utility) { tpm_utility_ = tpm_utility; }
+
+  void set_nvram_quoter(NvramQuoter* nvram_quoter) {
+    nvram_quoter_ = nvram_quoter;
+  }
 
   void set_hwid(const std::string& hwid) { hwid_ = hwid; }
 
@@ -510,12 +515,6 @@ class AttestationService : public AttestationInterface {
 
   bool CreateIdentity(int identity_features);
 
-  // Quote NVRAM data. Returns the quoted data in |quote| and |true| if
-  // success, |false| otherwise.
-  bool QuoteNvramData(NVRAMQuoteType quote_type,
-                      const IdentityKey& identity_key,
-                      Quote* quote);
-
   // Certify NVRAM data and insert it into the given |identity|. Returns false
   // if data cannot be inserted, or if |must_be_present| is true and the data
   // cannot be certified.
@@ -752,6 +751,7 @@ class AttestationService : public AttestationInterface {
   // on the |worker_thread_|. As such, should not be accessed after that thread
   // is stopped/destroyed.
   TpmUtility* tpm_utility_{nullptr};
+  NvramQuoter* nvram_quoter_{nullptr};
   std::string hwid_;
   CertRequestMap pending_cert_requests_;
   std::string system_salt_;
@@ -781,6 +781,7 @@ class AttestationService : public AttestationInterface {
   // |default_tpm_utility_| is created and destroyed on the |worker_thread_|,
   // and is not available after the thread is stopped/destroyed.
   std::unique_ptr<TpmUtility> default_tpm_utility_;
+  std::unique_ptr<NvramQuoter> default_nvram_quoter_;
 
   scoped_refptr<dbus::Bus> bus_;
   std::unique_ptr<org::chromium::PcaAgentProxyInterface>
