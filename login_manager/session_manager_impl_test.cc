@@ -115,10 +115,10 @@ using ::testing::StartsWith;
 using ::testing::StrEq;
 using ::testing::WithArg;
 
-using brillo::cryptohome::home::GetRootPath;
-using brillo::cryptohome::home::kGuestUserName;
+using brillo::cryptohome::home::GetGuestUsername;
 using brillo::cryptohome::home::SanitizeUserName;
 using brillo::cryptohome::home::SetSystemSalt;
+using brillo::cryptohome::home::Username;
 
 ACTION_TEMPLATE(MovePointee,
                 HAS_1_TEMPLATE_PARAMS(int, k),
@@ -807,7 +807,7 @@ class SessionManagerImplTest : public ::testing::Test,
   }
 
   void ExpectGuestSession() {
-    ExpectSessionBoilerplate(kGuestUserName, true /* guest */,
+    ExpectSessionBoilerplate(*GetGuestUsername(), true /* guest */,
                              false /* for_owner */);
   }
 
@@ -877,7 +877,7 @@ class SessionManagerImplTest : public ::testing::Test,
   void ExpectAndRunGuestSession() {
     ExpectGuestSession();
     brillo::ErrorPtr error;
-    EXPECT_TRUE(impl_->StartSession(&error, kGuestUserName, kNothing));
+    EXPECT_TRUE(impl_->StartSession(&error, *GetGuestUsername(), kNothing));
     EXPECT_FALSE(error.get());
     VerifyAndClearExpectations();
   }
@@ -945,7 +945,8 @@ class SessionManagerImplTest : public ::testing::Test,
 
   base::FilePath GetDeviceLocalAccountPolicyPath(
       const std::string& account_id) {
-    return device_local_accounts_dir_.Append(SanitizeUserName(account_id))
+    return device_local_accounts_dir_
+        .Append(*SanitizeUserName(Username(account_id)))
         .Append(DeviceLocalAccountManager::kPolicyDir)
         .Append(PolicyService::kChromePolicyFileName);
   }
@@ -1048,9 +1049,10 @@ class SessionManagerImplTest : public ::testing::Test,
   void ExpectSessionBoilerplate(const string& account_id_string,
                                 bool guest,
                                 bool for_owner) {
-    EXPECT_CALL(manager_, SetBrowserSessionForUser(
-                              StrEq(account_id_string),
-                              StrEq(SanitizeUserName(account_id_string))))
+    EXPECT_CALL(manager_,
+                SetBrowserSessionForUser(
+                    StrEq(account_id_string),
+                    StrEq(*SanitizeUserName(Username(account_id_string)))))
         .Times(1);
     // Expect initialization of the device policy service, return success.
     EXPECT_CALL(*device_policy_service_, UserIsOwner)
@@ -1082,9 +1084,10 @@ class SessionManagerImplTest : public ::testing::Test,
                                             bool key_gen) {
     CHECK(!(mitigating && key_gen));
 
-    EXPECT_CALL(manager_, SetBrowserSessionForUser(
-                              StrEq(account_id_string),
-                              StrEq(SanitizeUserName(account_id_string))))
+    EXPECT_CALL(manager_,
+                SetBrowserSessionForUser(
+                    StrEq(account_id_string),
+                    StrEq(*SanitizeUserName(Username(account_id_string)))))
         .Times(1);
 
     // Expect initialization of the device policy service, return success.
@@ -1949,7 +1952,8 @@ TEST_F(SessionManagerImplTest, RetrieveActiveSessions) {
     std::map<std::string, std::string> active_users =
         impl_->RetrieveActiveSessions();
     EXPECT_EQ(active_users.size(), 1);
-    EXPECT_EQ(active_users[kSaneEmail], SanitizeUserName(kSaneEmail));
+    EXPECT_EQ(active_users[kSaneEmail],
+              *SanitizeUserName(Username(kSaneEmail)));
   }
   VerifyAndClearExpectations();
 
@@ -1964,8 +1968,9 @@ TEST_F(SessionManagerImplTest, RetrieveActiveSessions) {
     std::map<std::string, std::string> active_users =
         impl_->RetrieveActiveSessions();
     EXPECT_EQ(active_users.size(), 2);
-    EXPECT_EQ(active_users[kSaneEmail], SanitizeUserName(kSaneEmail));
-    EXPECT_EQ(active_users[kEmail2], SanitizeUserName(kEmail2));
+    EXPECT_EQ(active_users[kSaneEmail],
+              *SanitizeUserName(Username(kSaneEmail)));
+    EXPECT_EQ(active_users[kEmail2], *SanitizeUserName(Username(kEmail2)));
   }
 }
 
@@ -1973,7 +1978,7 @@ TEST_F(SessionManagerImplTest, RetrievePrimarySession) {
   ExpectGuestSession();
   {
     brillo::ErrorPtr error;
-    EXPECT_TRUE(impl_->StartSession(&error, kGuestUserName, kNothing));
+    EXPECT_TRUE(impl_->StartSession(&error, *GetGuestUsername(), kNothing));
     EXPECT_FALSE(error.get());
   }
   {
@@ -1996,7 +2001,7 @@ TEST_F(SessionManagerImplTest, RetrievePrimarySession) {
     std::string sanitized_username;
     impl_->RetrievePrimarySession(&username, &sanitized_username);
     EXPECT_EQ(username, kSaneEmail);
-    EXPECT_EQ(sanitized_username, SanitizeUserName(kSaneEmail));
+    EXPECT_EQ(sanitized_username, *SanitizeUserName(Username(kSaneEmail)));
   }
   VerifyAndClearExpectations();
 
@@ -2012,7 +2017,7 @@ TEST_F(SessionManagerImplTest, RetrievePrimarySession) {
     std::string sanitized_username;
     impl_->RetrievePrimarySession(&username, &sanitized_username);
     EXPECT_EQ(username, kSaneEmail);
-    EXPECT_EQ(sanitized_username, SanitizeUserName(kSaneEmail));
+    EXPECT_EQ(sanitized_username, *SanitizeUserName(Username(kSaneEmail)));
   }
 }
 
@@ -3760,7 +3765,7 @@ TEST_F(SessionManagerImplTest, StartBrowserDataMigrationCopy) {
   ExpectAndRunStartSession(kSaneEmail);
   const std::string mode = "copy";
 
-  const std::string userhash = SanitizeUserName(kSaneEmail);
+  const std::string userhash = *SanitizeUserName(Username(kSaneEmail));
   EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, mode))
       .Times(1);
 
@@ -3772,7 +3777,7 @@ TEST_F(SessionManagerImplTest, StartBrowserDataMigrationMove) {
   ExpectAndRunStartSession(kSaneEmail);
   const std::string mode = "move";
 
-  const std::string userhash = SanitizeUserName(kSaneEmail);
+  const std::string userhash = *SanitizeUserName(Username(kSaneEmail));
   EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, mode))
       .Times(1);
 
@@ -3785,7 +3790,7 @@ TEST_F(SessionManagerImplTest, StartBrowserDataMigrationAny) {
   // Only Chrome needs to understand the values.
   const std::string mode = "any";
 
-  const std::string userhash = SanitizeUserName(kSaneEmail);
+  const std::string userhash = *SanitizeUserName(Username(kSaneEmail));
   EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, mode))
       .Times(1);
 
@@ -3796,7 +3801,7 @@ TEST_F(SessionManagerImplTest, StartBrowserDataMigrationAny) {
 TEST_F(SessionManagerImplTest, StartBrowserDataMigrationForNonLoggedInUser) {
   // If session has not been started for user,
   // |SetBrowserDataMigrationArgsForUser()| does not get called.
-  const std::string userhash = SanitizeUserName(kSaneEmail);
+  const std::string userhash = *SanitizeUserName(Username(kSaneEmail));
   const std::string mode = "copy";
   EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, mode))
       .Times(0);
@@ -3813,7 +3818,7 @@ TEST_F(SessionManagerImplTest, StartBrowserDataMigrationForNonPrimaryUser) {
   ExpectAndRunStartSession(second_user_email);
 
   // Migration should only happen for primary user.
-  const std::string userhash = SanitizeUserName(second_user_email);
+  const std::string userhash = *SanitizeUserName(Username(second_user_email));
   EXPECT_CALL(manager_, SetBrowserDataMigrationArgsForUser(userhash, mode))
       .Times(0);
 
@@ -3826,7 +3831,7 @@ TEST_F(SessionManagerImplTest, StartBrowserDataMigrationForNonPrimaryUser) {
 TEST_F(SessionManagerImplTest, StartBrowserDataBackwardMigration) {
   ExpectAndRunStartSession(kSaneEmail);
 
-  const std::string userhash = SanitizeUserName(kSaneEmail);
+  const std::string userhash = *SanitizeUserName(Username(kSaneEmail));
   EXPECT_CALL(manager_, SetBrowserDataBackwardMigrationArgsForUser(userhash))
       .Times(1);
 
@@ -3838,7 +3843,7 @@ TEST_F(SessionManagerImplTest,
        StartBrowserDataBackwardMigrationForNonLoggedInUser) {
   // If session has not been started for user,
   // |SetBrowserDataBackwardMigrationArgsForUser()| does not get called.
-  const std::string userhash = SanitizeUserName(kSaneEmail);
+  const std::string userhash = *SanitizeUserName(Username(kSaneEmail));
   EXPECT_CALL(manager_, SetBrowserDataBackwardMigrationArgsForUser(userhash))
       .Times(0);
 
@@ -3854,7 +3859,7 @@ TEST_F(SessionManagerImplTest,
   ExpectAndRunStartSession(second_user_email);
 
   // Migration should only happen for primary user.
-  const std::string userhash = SanitizeUserName(second_user_email);
+  const std::string userhash = *SanitizeUserName(Username(second_user_email));
   EXPECT_CALL(manager_, SetBrowserDataBackwardMigrationArgsForUser(userhash))
       .Times(0);
 

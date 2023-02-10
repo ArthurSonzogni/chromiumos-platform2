@@ -6,7 +6,6 @@
 
 #include <base/strings/string_util.h>
 #include <brillo/cryptohome.h>
-
 #include <login_manager/proto_bindings/policy_descriptor.pb.h>
 #include <login_manager/session_manager_impl.h>
 
@@ -79,9 +78,9 @@ bool ValidateExtensionId(const std::string& id) {
 }
 
 bool IsIncognitoAccountId(const std::string& account_id) {
-  using brillo::cryptohome::home::kGuestUserName;
+  using brillo::cryptohome::home::GetGuestUsername;
   const std::string lower_case_id(base::ToLowerASCII(account_id));
-  return lower_case_id == kGuestUserName || lower_case_id == kDemoUser;
+  return lower_case_id == *GetGuestUsername() || lower_case_id == kDemoUser;
 }
 
 bool ValidateAccountId(const std::string& account_id,

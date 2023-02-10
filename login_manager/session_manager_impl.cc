@@ -77,10 +77,10 @@
 #include "login_manager/vpd_process.h"
 
 using base::FilePath;
-using brillo::cryptohome::home::GetHashedUserPath;
+using brillo::cryptohome::home::GetGuestUsername;
 using brillo::cryptohome::home::GetUserPath;
-using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
+using brillo::cryptohome::home::Username;
 
 namespace login_manager {  // NOLINT
 
@@ -1120,7 +1120,7 @@ bool SessionManagerImpl::RestartJob(brillo::ErrorPtr* error,
   }
 
   // To set "logged-in" state for BWSI mode.
-  if (IsGuestMode(mode) && !StartSession(error, kGuestUserName, "")) {
+  if (IsGuestMode(mode) && !StartSession(error, *GetGuestUsername(), "")) {
     DCHECK(*error);
     return false;
   }
@@ -1954,7 +1954,7 @@ SessionManagerImpl::CreateUserSession(const std::string& username,
   // If the user could be the owner of the device, session_manager may need to
   // use its owner key.
   if (need_nss) {
-    nss_desc = nss_->OpenUserDB(GetUserPath(username), ns_mnt_path);
+    nss_desc = nss_->OpenUserDB(GetUserPath(Username(username)), ns_mnt_path);
   } else {
     // We're sure that the user is not the owner of the device so they don't
     // have the owner key.
@@ -1972,9 +1972,9 @@ SessionManagerImpl::CreateUserSession(const std::string& username,
     return nullptr;
   }
 
-  return std::make_unique<UserSession>(username, SanitizeUserName(username),
-                                       is_incognito, std::move(nss_desc),
-                                       std::move(user_policy));
+  return std::make_unique<UserSession>(
+      username, *SanitizeUserName(Username(username)), is_incognito,
+      std::move(nss_desc), std::move(user_policy));
 }
 
 brillo::ErrorPtr SessionManagerImpl::VerifyUnsignedPolicyStore() {

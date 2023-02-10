@@ -9,7 +9,7 @@
 
 #include "login_manager/proto_bindings/policy_descriptor.pb.h"
 
-using brillo::cryptohome::home::kGuestUserName;
+using brillo::cryptohome::home::GetGuestUsername;
 
 namespace {
 
@@ -67,8 +67,8 @@ TEST(ValidatorUtilsTest, ExtensionIdTest) {
 
 TEST(ValidatorUtilsTest, AccountIdTest) {
   std::string normalized_account_id;
-  EXPECT_TRUE(ValidateAccountId(kGuestUserName, &normalized_account_id));
-  EXPECT_EQ(kGuestUserName, normalized_account_id);
+  EXPECT_TRUE(ValidateAccountId(*GetGuestUsername(), &normalized_account_id));
+  EXPECT_EQ(*GetGuestUsername(), normalized_account_id);
   EXPECT_TRUE(ValidateAccountId("JOHN@doe.com", &normalized_account_id));
   EXPECT_EQ("john@doe.com", normalized_account_id);
   EXPECT_TRUE(ValidateAccountId(kValidAccountId, &normalized_account_id));
