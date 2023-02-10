@@ -661,13 +661,13 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocKeyChallengeServiceInvalidDBusNameInChallengeKey = 417,
   /* ./userdataauth.cc */
   kLocUserDataAuthChalCredFailedInChalRespMount = 418,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthNoSessionInTryLiteChalRespCheckKey = 419,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthNoServiceInTryLiteChalRespCheckKey = 420,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthNoKeyInfoInTryLiteChalRespCheckKey = 421,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthMultipleKeyInTryLiteChalRespCheckKey = 422,
   /* ./keyset_management.cc */
   kLocKeysetManagementGetKeysetsFailedInGetValidKeyset = 423,

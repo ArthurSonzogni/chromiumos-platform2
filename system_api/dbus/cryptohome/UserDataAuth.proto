@@ -23,8 +23,8 @@ import "key.proto";
 // Messages that's used by the actual request/reply goes below
 ///////////////////////////////////////////////////////////////////////////////
 
-// We still need the AccountIdentifier, KeyDelegate and AuthorizationRequest
-// messages from the old interface.
+// We still need the AccountIdentifier and KeyDelegate messages from the old
+// interface.
 import "rpc.proto";
 
 // Error codes do not need to be sequential per-call.
@@ -333,23 +333,6 @@ message ListKeysReply {
   // which field to use and the process on the migration, see comment in
   // CryptohomeErrorInfo.
   CryptohomeErrorInfo error_info = 3;
-}
-
-// Input parameters to CheckKey()
-message CheckKeyRequest {
-  // We only check against keys that belongs to the user identified by
-  // account_id.
-  cryptohome.AccountIdentifier account_id = 1;
-  // The authentication credentials to check against the keys
-  cryptohome.AuthorizationRequest authorization_request = 2;
-  // Whether the webauthn secret should be unlocked.
-  bool unlock_webauthn_secret = 3;
-}
-
-// Output parameters for CheckKey()
-message CheckKeyReply {
-  // Indicates an error if error is not empty.
-  CryptohomeErrorCode error = 1;
 }
 
 // StartFingerprintAuthSession sets BiometricsDaemon and the Fingerprint MCU to

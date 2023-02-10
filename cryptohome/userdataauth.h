@@ -193,15 +193,6 @@ class UserDataAuth {
       const base::RepeatingCallback<
           void(user_data_auth::FingerprintScanResult)>& callback);
 
-  // =============== Key Related Public Utilities ===============
-  // Check the key given in |request| again the currently mounted directories
-  // and other credentials. |on_done| is called once the operation is completed,
-  // and the error code is CRYPTOHOME_ERROR_NOT_SET if the key is found. Note
-  // that this method is asynchronous.
-  void CheckKey(
-      const user_data_auth::CheckKeyRequest& request,
-      base::OnceCallback<void(user_data_auth::CryptohomeErrorCode)> on_done);
-
   // List the keys stored in |homedirs_|.
   // See definition of ListKeysReply for what is returned.
   user_data_auth::ListKeysReply ListKeys(
@@ -804,31 +795,6 @@ class UserDataAuth {
   // succeeded.
   CryptohomeStatus InitForChallengeResponseAuth();
 
-  // Called on Mount thread. This triggers the credentials verification steps
-  // that are specific to challenge-response keys, going through
-  // {TryLightweightChallengeResponseCheckKeyEx(),
-  // OnLightweightChallengeResponseCheckKeyExDone()} and/or
-  // {DoFullChallengeResponseCheckKeyEx(),
-  // OnFullChallengeResponseCheckKeyExDone()}.
-  void DoChallengeResponseCheckKey(
-      const user_data_auth::CheckKeyRequest& request,
-      base::OnceCallback<void(user_data_auth::CryptohomeErrorCode)> on_done);
-  void TryLightweightChallengeResponseCheckKey(
-      const user_data_auth::CheckKeyRequest& request,
-      base::OnceCallback<void(user_data_auth::CryptohomeErrorCode)> on_done);
-  void OnLightweightChallengeResponseCheckKeyDone(
-      const user_data_auth::CheckKeyRequest& request,
-      base::OnceCallback<void(user_data_auth::CryptohomeErrorCode)> on_done,
-      TPMStatus status);
-  void DoFullChallengeResponseCheckKey(
-      const user_data_auth::CheckKeyRequest& request,
-      base::OnceCallback<void(user_data_auth::CryptohomeErrorCode)> on_done);
-  void OnFullChallengeResponseCheckKeyDone(
-      const user_data_auth::CheckKeyRequest& request,
-      base::OnceCallback<void(user_data_auth::CryptohomeErrorCode)> on_done,
-      TPMStatusOr<ChallengeCredentialsHelper::GenerateNewOrDecryptResult>
-          result);
-
   // Called on Mount Thread, initializes the challenge_credentials_helper_
   // and the key_challenge_service_factory_, and forwards these
   // arguments to AuthBlockUtility.
@@ -854,13 +820,6 @@ class UserDataAuth {
       base::OnceCallback<void(
           const user_data_auth::StartFingerprintAuthSessionReply&)> on_done,
       bool success);
-
-  // Called on Mount thread. Scheduled by CheckKey(). Callback for one
-  // fingerprint scan. Completes fingerprint CheckKey by running |on_done|.
-  void CompleteFingerprintCheckKey(
-      base::OnceCallback<void(const user_data_auth::CryptohomeErrorCode)>
-          on_done,
-      FingerprintScanStatus status);
 
   // OnFingerprintScanResult will be called on every received fingerprint
   // scan result. It will forward results to
@@ -976,10 +935,6 @@ class UserDataAuth {
   // Populates the user session key data from the auth session key data.
   void SetKeyDataForUserSession(AuthSession* auth_session,
                                 bool override_existing_data);
-
-  // =============== WebAuthn Related Helpers ===============
-
-  bool PrepareWebAuthnSecret(const Username& account_id, const VaultKeyset& vk);
 
   // =============== USS Experiment Related Methods ===============
 

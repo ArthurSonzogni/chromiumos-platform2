@@ -594,39 +594,6 @@ void UserDataAuthAdaptor::DoListKeys(
   response->Return(reply);
 }
 
-void UserDataAuthAdaptor::CheckKey(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        user_data_auth::CheckKeyReply>> response,
-    const user_data_auth::CheckKeyRequest& in_request) {
-  service_->PostTaskToMountThread(
-      FROM_HERE,
-      base::BindOnce(
-          &UserDataAuthAdaptor::DoCheckKey, base::Unretained(this),
-          ThreadSafeDBusMethodResponse<user_data_auth::CheckKeyReply>::
-              MakeThreadSafe(std::move(response)),
-          in_request));
-}
-
-void UserDataAuthAdaptor::DoCheckKey(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        user_data_auth::CheckKeyReply>> response,
-    const user_data_auth::CheckKeyRequest& in_request) {
-  service_->CheckKey(
-      in_request, base::BindOnce(&UserDataAuthAdaptor::DoCheckKeyDone,
-                                 base::Unretained(this), std::move(response)));
-}
-
-void UserDataAuthAdaptor::DoCheckKeyDone(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        user_data_auth::CheckKeyReply>> response,
-    user_data_auth::CryptohomeErrorCode status) {
-  // Note, if there's no error, then |status| is set to CRYPTOHOME_ERROR_NOT_SET
-  // to indicate that.
-  user_data_auth::CheckKeyReply reply;
-  reply.set_error(status);
-  response->Return(reply);
-}
-
 void UserDataAuthAdaptor::StartFingerprintAuthSession(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::StartFingerprintAuthSessionReply>> response,

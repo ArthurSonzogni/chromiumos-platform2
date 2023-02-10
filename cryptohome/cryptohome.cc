@@ -198,7 +198,6 @@ constexpr char kOutputFormatSwitch[] = "output-format";
 constexpr char kActionSwitch[] = "action";
 constexpr const char* kActions[] = {"unmount",
                                     "is_mounted",
-                                    "check_key_ex",
                                     "list_keys_ex",
                                     "update_key_ex",
                                     "remove",
@@ -287,7 +286,6 @@ constexpr const char* kActions[] = {"unmount",
 enum ActionEnum {
   ACTION_UNMOUNT,
   ACTION_MOUNTED,
-  ACTION_CHECK_KEY_EX,
   ACTION_LIST_KEYS_EX,
   ACTION_UPDATE_KEY_EX,
   ACTION_REMOVE,
@@ -375,7 +373,6 @@ enum ActionEnum {
 };
 constexpr char kUserSwitch[] = "user";
 constexpr char kPasswordSwitch[] = "password";
-constexpr char kFingerprintSwitch[] = "fingerprint";
 constexpr char kKeyLabelSwitch[] = "key_label";
 constexpr char kNewKeyLabelSwitch[] = "new_key_label";
 constexpr char kForceSwitch[] = "force";
@@ -394,15 +391,12 @@ constexpr char kMinimalMigration[] = "minimal_migration";
 constexpr char kPublicMount[] = "public_mount";
 constexpr char kProfileSwitch[] = "profile";
 constexpr char kIgnoreCache[] = "ignore_cache";
-constexpr char kRestoreKeyInHexSwitch[] = "restore_key_in_hex";
 constexpr char kUseDBus[] = "use_dbus";
 constexpr char kAuthSessionId[] = "auth_session_id";
 constexpr char kChallengeAlgorithm[] = "challenge_alg";
 constexpr char kChallengeSPKI[] = "challenge_spki";
 constexpr char kKeyDelegateName[] = "key_delegate_name";
-constexpr char kKeyDelegatePath[] = "key_delegate_path";
 constexpr char kExtensionDuration[] = "extension_duration";
-constexpr char kUnlockWebAuthnSecret[] = "unlock_webauthn_secret";
 constexpr char kPinSwitch[] = "pin";
 constexpr char kRecoveryMediatorPubKeySwitch[] = "recovery_mediator_pub_key";
 constexpr char kRecoveryUserIdSwitch[] = "recovery_user_gaia_id";
@@ -647,105 +641,6 @@ bool BuildStartAuthSessionRequest(
     }
     req.set_intent(intent);
   }
-  return true;
-}
-
-bool BuildAuthorization(Printer& printer,
-                        base::CommandLine* cl,
-                        org::chromium::CryptohomeMiscInterfaceProxy* proxy,
-                        bool need_credential,
-                        cryptohome::AuthorizationRequest* auth) {
-  // The default is password. If that changes we set the value again in the
-  // following if block.
-  auth->mutable_key()->mutable_data()->set_type(
-      cryptohome::KeyData::KEY_TYPE_PASSWORD);
-  if (need_credential) {
-    if (cl->HasSwitch(switches::kChallengeAlgorithm) ||
-        cl->HasSwitch(switches::kChallengeSPKI) ||
-        cl->HasSwitch(switches::kKeyDelegateName) ||
-        cl->HasSwitch(switches::kKeyDelegatePath)) {
-      // We're doing challenge response auth.
-      // Parameters for challenge response auth:
-      // --challenge_alg=<Algorithm>(,<Algorithm>)*: See
-      //   ChallengeSignatureAlgorithm in key.proto for valid values.
-      //   Example: "CHALLENGE_RSASSA_PKCS1_V1_5_SHA1".
-      // --challenge_spki=<DER Encoded SPKI Public Key in hex>
-      // --key_delegate_name=<Key Delegate DBus Service Name>
-      // --key_delegate_path=<Key Delegate DBus Object Path>
-
-      // Check that all parameters are supplied.
-      if (!(cl->HasSwitch(switches::kChallengeAlgorithm) &&
-            cl->HasSwitch(switches::kChallengeSPKI) &&
-            cl->HasSwitch(switches::kKeyDelegateName) &&
-            cl->HasSwitch(switches::kKeyDelegatePath))) {
-        printer.PrintHumanOutput(
-            "One or more of the switches for challenge response auth is "
-            "missing.\n");
-        return false;
-      }
-
-      auth->mutable_key()->mutable_data()->set_type(
-          cryptohome::KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
-
-      auto* challenge_response_key = auth->mutable_key()
-                                         ->mutable_data()
-                                         ->mutable_challenge_response_key()
-                                         ->Add();
-      const std::vector<std::string> algo_strings =
-          SplitString(cl->GetSwitchValueASCII(switches::kChallengeAlgorithm),
-                      ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-      for (const auto& algo_string : algo_strings) {
-        cryptohome::ChallengeSignatureAlgorithm challenge_alg;
-        if (!ChallengeSignatureAlgorithm_Parse(algo_string, &challenge_alg)) {
-          printer.PrintFormattedHumanOutput(
-              "Invalid challenge response algorithm \"%s\".\n",
-              algo_string.c_str());
-          return false;
-        }
-        challenge_response_key->add_signature_algorithm(challenge_alg);
-      }
-
-      std::string challenge_spki;
-      if (!base::HexStringToString(
-              cl->GetSwitchValueASCII(switches::kChallengeSPKI),
-              &challenge_spki)) {
-        printer.PrintHumanOutput(
-            "Challenge SPKI Public Key DER is not hex encoded.\n");
-        return false;
-      }
-      challenge_response_key->set_public_key_spki_der(challenge_spki);
-
-      auth->mutable_key_delegate()->set_dbus_service_name(
-          cl->GetSwitchValueASCII(switches::kKeyDelegateName));
-      auth->mutable_key_delegate()->set_dbus_object_path(
-          cl->GetSwitchValueASCII(switches::kKeyDelegatePath));
-    } else if (cl->HasSwitch(switches::kRestoreKeyInHexSwitch)) {
-      // Restore key is provided
-      brillo::SecureBlob raw_byte(
-          cl->GetSwitchValueASCII(switches::kRestoreKeyInHexSwitch));
-      if (raw_byte.to_string().length() == 0) {
-        printer.PrintHumanOutput("No hex string specified\n");
-        return false;
-      }
-      SecureBlob::HexStringToSecureBlob(raw_byte.to_string(), &raw_byte);
-      auth->mutable_key()->set_secret(raw_byte.to_string());
-    } else {
-      std::string password;
-      GetSecret(printer, proxy, cl, switches::kPasswordSwitch,
-                "Enter the password", &password);
-
-      auth->mutable_key()->set_secret(password);
-    }
-  } else {
-    auth->mutable_key()->mutable_data()->set_type(
-        cryptohome::KeyData::KEY_TYPE_KIOSK);
-  }
-
-  if (cl->HasSwitch(switches::kKeyLabelSwitch)) {
-    auth->mutable_key()->mutable_data()->set_label(
-        cl->GetSwitchValueASCII(switches::kKeyLabelSwitch));
-  }
-
   return true;
 }
 
@@ -1128,43 +1023,6 @@ int main(int argc, char** argv) {
     for (int i = 0; i < reply.labels_size(); ++i) {
       printer.PrintFormattedHumanOutput("Label: %s\n", reply.labels(i).c_str());
     }
-  } else if (!strcmp(switches::kActions[switches::ACTION_CHECK_KEY_EX],
-                     action.c_str())) {
-    user_data_auth::CheckKeyRequest req;
-    if (!BuildAccountId(printer, cl, req.mutable_account_id()))
-      return 1;
-    if (cl->HasSwitch(switches::kFingerprintSwitch)) {
-      req.mutable_authorization_request()
-          ->mutable_key()
-          ->mutable_data()
-          ->set_type(cryptohome::KeyData::KEY_TYPE_FINGERPRINT);
-    } else if (!BuildAuthorization(printer, cl, &misc_proxy,
-                                   true /* need_credential */,
-                                   req.mutable_authorization_request())) {
-      return 1;
-    }
-    if (cl->HasSwitch(switches::kUnlockWebAuthnSecret)) {
-      req.set_unlock_webauthn_secret(true);
-    }
-
-    // TODO(wad) Add a privileges cl interface
-
-    user_data_auth::CheckKeyReply reply;
-    brillo::ErrorPtr error;
-    if (!userdataauth_proxy.CheckKey(req, &reply, &error, timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "CheckKeyEx call failed: %s",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    printer.PrintReplyProtobuf(reply);
-    if (reply.error() !=
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printer.PrintHumanOutput("Key authentication failed.\n");
-      return reply.error();
-    }
-    printer.PrintHumanOutput("Key authenticated.\n");
   } else if (!strcmp(switches::kActions[switches::ACTION_REMOVE],
                      action.c_str())) {
     user_data_auth::RemoveRequest req;
