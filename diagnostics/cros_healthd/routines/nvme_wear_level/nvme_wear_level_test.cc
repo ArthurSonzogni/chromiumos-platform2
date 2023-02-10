@@ -14,7 +14,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/common/mojo_utils.h"
+#include "diagnostics/base/mojo_utils.h"
 #include "diagnostics/cros_healthd/routines/nvme_wear_level/nvme_wear_level.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"

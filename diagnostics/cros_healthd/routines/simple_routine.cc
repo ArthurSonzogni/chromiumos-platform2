@@ -14,7 +14,7 @@
 #include <base/strings/string_piece.h>
 #include <base/strings/stringprintf.h>
 
-#include "diagnostics/common/mojo_utils.h"
+#include "diagnostics/base/mojo_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {

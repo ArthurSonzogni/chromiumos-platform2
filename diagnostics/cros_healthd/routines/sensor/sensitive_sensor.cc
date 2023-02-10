@@ -19,7 +19,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 
-#include "diagnostics/common/mojo_utils.h"
+#include "diagnostics/base/mojo_utils.h"
 
 namespace diagnostics {
 namespace {

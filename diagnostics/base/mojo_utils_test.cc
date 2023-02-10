@@ -2,8 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/common/mojo_utils.h"
-
 #include <memory>
 #include <utility>
 
@@ -11,10 +9,12 @@
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/system/handle.h>
 
+#include "diagnostics/base/mojo_utils.h"
+
 namespace diagnostics {
 namespace {
 
-TEST(MojoUtilsTest, CreateMojoHandleAndRetrieveContent) {
+TEST(RoutineUtilsTest, CreateMojoHandleAndRetrieveContent) {
   const base::StringPiece content("{\"key\": \"value\"}");
 
   mojo::ScopedHandle handle =
@@ -30,7 +30,7 @@ TEST(MojoUtilsTest, CreateMojoHandleAndRetrieveContent) {
   EXPECT_EQ(content, actual);
 }
 
-TEST(MojoUtilsTest, GetReadOnlySharedMemoryRegionFromMojoInvalidHandle) {
+TEST(RoutineUtilsTest, GetReadOnlySharedMemoryRegionFromMojoInvalidHandle) {
   mojo::ScopedHandle handle;
   EXPECT_FALSE(handle.is_valid());
 
@@ -39,7 +39,7 @@ TEST(MojoUtilsTest, GetReadOnlySharedMemoryRegionFromMojoInvalidHandle) {
   EXPECT_FALSE(shm_mapping.IsValid());
 }
 
-TEST(MojoUtilsTest, CreateReadOnlySharedMemoryFromEmptyContent) {
+TEST(RoutineUtilsTest, CreateReadOnlySharedMemoryFromEmptyContent) {
   mojo::ScopedHandle handle = CreateReadOnlySharedMemoryRegionMojoHandle("");
   // Cannot create valid handle using empty content line.
   EXPECT_FALSE(handle.is_valid());

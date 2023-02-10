@@ -16,7 +16,10 @@ config("libdiagnostics_base_config") {
 
 # Provides basic utilities for all the executables under //diagnostics.
 shared_library("libdiagnostics_base") {
-  sources = [ "file_utils.cc" ]
+  sources = [
+    "file_utils.cc",
+    "mojo_utils.cc",
+  ]
   public_configs = [ ":libdiagnostics_base_config" ]
   assert_no_deps = [
     "//diagnostics/bindings/*",
@@ -32,12 +35,14 @@ shared_library("libdiagnostics_base") {
     "libbrillo",
     "libchrome",
   ]
+  public_pkg_deps = [ "libmojo" ]
 }
 
 pkg_config("test_pkg_deps") {
   pkg_deps = [
     "libchrome",
     "libchrome-test",
+    "libmojo",
   ]
 }
 
@@ -73,6 +78,7 @@ if (use.test) {
     sources = [
       "file_test_utils_test.cc",
       "file_utils_test.cc",
+      "mojo_utils_test.cc",
     ]
     configs += [ ":test_pkg_deps" ]
     deps = [ ":libdiagnostics_base" ]

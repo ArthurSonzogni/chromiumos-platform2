@@ -14,7 +14,7 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
-#include "diagnostics/common/mojo_utils.h"
+#include "diagnostics/base/mojo_utils.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 
 namespace diagnostics {

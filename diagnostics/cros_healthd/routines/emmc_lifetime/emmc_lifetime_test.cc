@@ -15,7 +15,6 @@
 #include <debugd/dbus-proxy-mocks.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/common/mojo_utils.h"
 #include "diagnostics/cros_healthd/routines/emmc_lifetime/emmc_lifetime.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/system/debugd_constants.h"

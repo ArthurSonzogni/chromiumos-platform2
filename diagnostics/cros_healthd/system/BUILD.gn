@@ -44,7 +44,6 @@ source_set("libcros_healthd_system") {
     ":libcros_healthd_system_pci_util",
     "//diagnostics:dbus-proxies",
     "//diagnostics/base",
-    "//diagnostics/common:libcommon",
     "//diagnostics/cros_healthd/executor:libcros_healthd_executor",
     "//diagnostics/cros_healthd/network:libnetwork_health_adapter",
     "//diagnostics/cros_healthd/network_diagnostics:libnetwork_diagnostics_adapter",

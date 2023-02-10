@@ -12,7 +12,7 @@
 
 #include <gtest/gtest.h>
 
-#include "diagnostics/common/mojo_utils.h"
+#include "diagnostics/base/mojo_utils.h"
 #include "diagnostics/mojom/public/nullable_primitives.mojom.h"
 
 #include <base/check.h>

@@ -51,7 +51,7 @@ source_set("libdiag_routine") {
     ":libdiag_routine_pkg_deps",
   ]
   deps = [
-    "//diagnostics/common:libcommon",
+    "//diagnostics/base",
     "//diagnostics/cros_healthd/system:libcros_healthd_system",
     "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
   ]
@@ -120,7 +120,7 @@ if (use.test) {
   source_set("libroutine_test_utils") {
     configs += [ "//common-mk:test" ]
     deps = [
-      "//diagnostics/common:libcommon",
+      "//diagnostics/base",
       "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
     ]
     sources = [ "routine_test_utils.cc" ]
@@ -177,7 +177,6 @@ if (use.test) {
       ":libroutine_test_utils",
       "//diagnostics/base",
       "//diagnostics/base:healthd_testrunner",
-      "//diagnostics/common:libcommon",
       "//diagnostics/common:libcommon_test_utils",
       "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
     ]

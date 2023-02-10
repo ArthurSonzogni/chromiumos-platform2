@@ -18,7 +18,7 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 
-#include "diagnostics/common/mojo_utils.h"
+#include "diagnostics/base/mojo_utils.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/system/bluetooth_event_hub.h"
 

@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_COMMON_MOJO_UTILS_H_
-#define DIAGNOSTICS_COMMON_MOJO_UTILS_H_
+#ifndef DIAGNOSTICS_BASE_MOJO_UTILS_H_
+#define DIAGNOSTICS_BASE_MOJO_UTILS_H_
 
 #include <base/memory/read_only_shared_memory_region.h>
 #include <base/strings/string_piece.h>
+#include <brillo/brillo_export.h>
 #include <mojo/public/cpp/system/handle.h>
 
 namespace diagnostics {
@@ -18,8 +19,8 @@ namespace diagnostics {
 // memory.
 //
 // Returns invalid |base::ReadOnlySharedMemoryMapping| if error.
-base::ReadOnlySharedMemoryMapping GetReadOnlySharedMemoryMappingFromMojoHandle(
-    mojo::ScopedHandle handle);
+BRILLO_EXPORT base::ReadOnlySharedMemoryMapping
+GetReadOnlySharedMemoryMappingFromMojoHandle(mojo::ScopedHandle handle);
 
 // Allocates buffer in shared memory, copies |content| to the buffer and
 // converts shared buffer handle into |mojo::ScopedHandle|.
@@ -27,9 +28,9 @@ base::ReadOnlySharedMemoryMapping GetReadOnlySharedMemoryMappingFromMojoHandle(
 // Allocated shared memory is read only for another process.
 //
 // Returns invalid |mojo::ScopedHandle| if error happened or |content| is empty.
-mojo::ScopedHandle CreateReadOnlySharedMemoryRegionMojoHandle(
+BRILLO_EXPORT mojo::ScopedHandle CreateReadOnlySharedMemoryRegionMojoHandle(
     base::StringPiece content);
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_COMMON_MOJO_UTILS_H_
+#endif  // DIAGNOSTICS_BASE_MOJO_UTILS_H_

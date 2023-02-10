@@ -17,7 +17,7 @@
 #include <debugd/dbus-proxies.h>
 #include <re2/re2.h>
 
-#include "diagnostics/common/mojo_utils.h"
+#include "diagnostics/base/mojo_utils.h"
 #include "diagnostics/cros_healthd/system/debugd_constants.h"
 
 namespace diagnostics {

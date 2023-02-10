@@ -87,6 +87,7 @@ if (use.test) {
       "system:libcros_healthd_system_test_utils",
       "utils:libcros_healthd_utils_test",
       "wilco_ec:libcros_healthd_wilco_ec_test",
+      "//diagnostics/base",
       "//diagnostics/base:healthd_testrunner",
       "//diagnostics/base:test",
       "//diagnostics/common:libcommon_test",

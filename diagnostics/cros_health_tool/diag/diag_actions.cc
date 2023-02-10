@@ -22,7 +22,7 @@
 #include <base/time/time.h>
 #include <mojo/service_constants.h>
 
-#include "diagnostics/common/mojo_utils.h"
+#include "diagnostics/base/mojo_utils.h"
 #include "diagnostics/cros_health_tool/diag/diag_constants.h"
 #include "diagnostics/cros_health_tool/mojo_util.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"

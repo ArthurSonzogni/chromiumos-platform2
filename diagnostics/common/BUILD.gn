@@ -12,16 +12,11 @@ pkg_config("libcommon_pkg_deps") {
   ]
 }
 
-source_set("libcommon") {
-  configs += [ ":libcommon_pkg_deps" ]
-  sources = [ "mojo_utils.cc" ]
-}
-
 if (use.test || use.fuzzer) {
   source_set("libcommon_test_utils") {
     configs += [ ":libcommon_pkg_deps" ]
     deps = [
-      ":libcommon",
+      "//diagnostics/base",
       "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
     ]
     sources = [ "mojo_type_utils.cc" ]
@@ -30,14 +25,11 @@ if (use.test || use.fuzzer) {
 
 if (use.test) {
   source_set("libcommon_test") {
-    sources = [
-      "dbus_utils_test.cc",
-      "mojo_utils_test.cc",
-    ]
+    sources = [ "dbus_utils_test.cc" ]
     configs += [ ":libcommon_pkg_deps" ]
     deps = [
-      ":libcommon",
       ":libcommon_test_utils",
+      "//diagnostics/base",
       "//diagnostics/base:healthd_testrunner",
     ]
   }

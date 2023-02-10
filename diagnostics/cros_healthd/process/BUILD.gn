@@ -11,7 +11,6 @@ pkg_config("libcros_healthd_process_pkg_deps") {
 
 source_set("libcros_healthd_process") {
   configs += [ ":libcros_healthd_process_pkg_deps" ]
-  deps = [ "//diagnostics/common:libcommon" ]
   sources = [
     "process_with_output.cc",
     "sandboxed_process.cc",

@@ -8,7 +8,7 @@
 
 #include <gtest/gtest.h>
 
-#include "diagnostics/common/mojo_utils.h"
+#include "diagnostics/base/mojo_utils.h"
 
 namespace diagnostics {
 

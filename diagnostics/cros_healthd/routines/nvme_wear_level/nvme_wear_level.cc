@@ -16,7 +16,7 @@
 #include <base/strings/string_split.h>
 #include <debugd/dbus-proxies.h>
 
-#include "diagnostics/common/mojo_utils.h"
+#include "diagnostics/base/mojo_utils.h"
 
 namespace diagnostics {
 

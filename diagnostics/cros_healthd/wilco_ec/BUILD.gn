@@ -12,7 +12,6 @@ pkg_config("libcros_healthd_wilco_ec_pkg_deps") {
 source_set("libcros_healthd_wilco_ec") {
   sources = [ "ec_service.cc" ]
   configs += [ ":libcros_healthd_wilco_ec_pkg_deps" ]
-  deps = [ "//diagnostics/common:libcommon" ]
 }
 
 if (use.test) {
