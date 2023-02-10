@@ -6,7 +6,6 @@ import("//common-mk/pkg_config.gni")
 
 pkg_config("target_defaults") {
   pkg_deps = [
-    "iioservice_ipc",
     "libbrillo",
     "libchrome",
     "libcros_config",
@@ -45,7 +44,10 @@ source_set("libutils") {
     "vpd_utils_impl.cc",
   ]
   configs += [ ":target_defaults" ]
-  deps = [ "//hardware_verifier/proto:hardware_verifier-protos" ]
+  deps = [
+    "//hardware_verifier/proto:hardware_verifier-protos",
+    "//iioservice/libiioservice_ipc:libiioservice_ipc_mojom",
+  ]
 }
 
 if (use.test) {

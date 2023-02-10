@@ -6,7 +6,6 @@ import("//common-mk/pkg_config.gni")
 
 pkg_config("target_defaults") {
   pkg_deps = [
-    "iioservice_ipc",
     "libbrillo",
     "libchrome",
     "mojo_service_manager",
@@ -42,6 +41,7 @@ source_set("libstate_handler") {
   ]
   configs += [ ":target_defaults" ]
   deps = [
+    "//iioservice/libiioservice_ipc:libiioservice_ipc_mojom",
     "//rmad/logs:liblogs",
     "//rmad/metrics:libmetrics",
     "//rmad/system:libsystem",
