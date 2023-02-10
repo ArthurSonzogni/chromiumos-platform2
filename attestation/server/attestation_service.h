@@ -76,6 +76,11 @@ inline constexpr KeyType kEndorsementKeyTypeForEnrollmentID = KEY_TYPE_ECC;
 inline constexpr KeyType kEndorsementKeyTypeForEnrollmentID = KEY_TYPE_RSA;
 #endif
 
+inline constexpr KeyType kDefaultEndorsementKeyType =
+    (USE_TPM2 ? KEY_TYPE_ECC : KEY_TYPE_RSA);
+inline constexpr KeyType kDefaultIdentityKeyType =
+    (USE_TPM2 ? KEY_TYPE_ECC : KEY_TYPE_RSA);
+
 class AttestationService : public AttestationInterface {
  public:
   using IdentityCertificateMap = google::protobuf::
@@ -185,6 +190,14 @@ class AttestationService : public AttestationInterface {
 
   void set_attested_device_id(const std::string& attested_device_id) {
     attested_device_id_ = attested_device_id;
+  }
+
+  void set_endorsement_key_for_enrollment_id(KeyType type) {
+    endorsement_key_type_for_enrollment_id_ = type;
+  }
+
+  void set_default_endorsement_key_type(KeyType type) {
+    default_endorsement_key_type_ = type;
   }
 
   void set_vtpm_ek_support(bool does_support) {
@@ -726,6 +739,10 @@ class AttestationService : public AttestationInterface {
                                                  bool is_cros_core,
                                                  const std::string& ek_cert);
 
+  // Returns `true` if the RSA EK certificate quote shall be part of identity
+  // data.
+  bool ShallQuoteRsaEkCertificate() const;
+
   base::WeakPtr<AttestationService> GetWeakPtr();
 
   FRIEND_TEST(AttestationServiceBaseTest, MigrateAttestationDatabase);
@@ -757,6 +774,11 @@ class AttestationService : public AttestationInterface {
   std::string system_salt_;
   brillo::SecureBlob* abe_data_;
   std::string attested_device_id_;
+  KeyType endorsement_key_type_for_enrollment_id_ =
+      kEndorsementKeyTypeForEnrollmentID;
+  KeyType default_endorsement_key_type_ = kDefaultEndorsementKeyType;
+  const KeyType default_identity_key_type_ = kDefaultIdentityKeyType;
+
   // If `false`, disable VTPM EK support by force. Note that not all TPM2 but
   // only GSC devices are supported while we use `USE_TPM2` in productiono for
   // simplicity.

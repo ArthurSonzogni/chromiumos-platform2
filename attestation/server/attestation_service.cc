@@ -1173,7 +1173,7 @@ bool AttestationService::CreateEnrollRequestInternal(
           enterprise_enrollment_nonce.size());
     }
 
-    if (GetEndorsementKeyType() != kEndorsementKeyTypeForEnrollmentID) {
+    if (ShallQuoteRsaEkCertificate()) {
       // Include an encrypted quote of the RSA pub EK certificate so that
       // an EID can be computed during enrollment.
 
@@ -1840,7 +1840,7 @@ bool AttestationService::CreateIdentity(int identity_features) {
   // we don't provide the RSA EK cert which originally is used for calculating
   // the Enrollment ID.
   if ((identity_features & IDENTITY_FEATURE_ENTERPRISE_ENROLLMENT_ID) &&
-      GetEndorsementKeyType() != kEndorsementKeyTypeForEnrollmentID) {
+      ShallQuoteRsaEkCertificate()) {
     if (!InsertCertifiedNvramData(RSA_PUB_EK_CERT, true /* must_be_present */,
                                   &new_identity_pb)) {
       return false;
@@ -3406,7 +3406,7 @@ std::string AttestationService::ComputeEnterpriseEnrollmentId() {
 
   std::string ek_bytes;
   if (!tpm_utility_->GetEndorsementPublicKeyBytes(
-          kEndorsementKeyTypeForEnrollmentID, &ek_bytes)) {
+          endorsement_key_type_for_enrollment_id_, &ek_bytes)) {
     LOG(ERROR) << __func__ << ": Failed to key EK bytes.";
     return "";
   }
@@ -3427,11 +3427,11 @@ KeyType AttestationService::GetEndorsementKeyType() const {
   }
 
   // We didn't generate any data yet. Use the suggested key type.
-  return tpm_utility_->GetVersion() == TPM_2_0 ? KEY_TYPE_ECC : KEY_TYPE_RSA;
+  return default_endorsement_key_type_;
 }
 
 KeyType AttestationService::GetAttestationIdentityKeyType() const {
-  return tpm_utility_->GetVersion() == TPM_2_0 ? KEY_TYPE_ECC : KEY_TYPE_RSA;
+  return default_identity_key_type_;
 }
 
 bool AttestationService::PopulateCustomerId(KeyInfo* key_info) {
@@ -3493,6 +3493,17 @@ bool AttestationService::VerifyCertificateWithSubjectPublicKeyInfo(
     LOG(WARNING) << __func__ << ": Failed to get CA public key.";
   }
   return false;
+}
+
+bool AttestationService::ShallQuoteRsaEkCertificate() const {
+  // The EK type is RSA; PCA server doesn't need the certificate to compute EID.
+  if (GetEndorsementKeyType() == KEY_TYPE_RSA) {
+    CHECK_EQ(endorsement_key_type_for_enrollment_id_, KEY_TYPE_RSA)
+        << "Attesation support don't support ECC-based EID computation with "
+           "RSA EK.";
+    return false;
+  }
+  return endorsement_key_type_for_enrollment_id_ == KEY_TYPE_RSA;
 }
 
 }  // namespace attestation

@@ -720,26 +720,12 @@ TEST_F(AttestationServiceBaseTest, GetEndorsementKeyTypeForExistingKey) {
   EXPECT_EQ(service_->GetEndorsementKeyType(), KEY_TYPE_ECC);
 }
 
-TEST_F(AttestationServiceBaseTest,
-       GetEndorsementKeyTypeForNewlyCreatedKeyInTpm2) {
-  EXPECT_CALL(mock_tpm_utility_, GetVersion()).WillRepeatedly(Return(TPM_2_0));
-  EXPECT_EQ(service_->GetEndorsementKeyType(), KEY_TYPE_ECC);
+TEST_F(AttestationServiceBaseTest, GetEndorsementKeyTypeForNewlyCreatedKey) {
+  EXPECT_EQ(service_->GetEndorsementKeyType(), kDefaultEndorsementKeyType);
 }
 
-TEST_F(AttestationServiceBaseTest,
-       GetEndorsementKeyTypeForNewlyCreatedKeyInTpm12) {
-  EXPECT_CALL(mock_tpm_utility_, GetVersion()).WillRepeatedly(Return(TPM_1_2));
-  EXPECT_EQ(service_->GetEndorsementKeyType(), KEY_TYPE_RSA);
-}
-
-TEST_F(AttestationServiceBaseTest, GetAttestationIdentityKeyTypeInTpm2) {
-  EXPECT_CALL(mock_tpm_utility_, GetVersion()).WillRepeatedly(Return(TPM_2_0));
-  EXPECT_EQ(service_->GetAttestationIdentityKeyType(), KEY_TYPE_ECC);
-}
-
-TEST_F(AttestationServiceBaseTest, GetAttestationIdentityKeyTypeInTpm12) {
-  EXPECT_CALL(mock_tpm_utility_, GetVersion()).WillRepeatedly(Return(TPM_1_2));
-  EXPECT_EQ(service_->GetAttestationIdentityKeyType(), KEY_TYPE_RSA);
+TEST_F(AttestationServiceBaseTest, GetAttestationIdentityKeyType) {
+  EXPECT_EQ(service_->GetAttestationIdentityKeyType(), kDefaultIdentityKeyType);
 }
 
 TEST_F(AttestationServiceBaseTest, GetEndorsementInfoSuccess) {
