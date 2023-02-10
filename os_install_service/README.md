@@ -32,29 +32,10 @@ To test the service manually:
 
 ## Security
 
-The service is currently run as root. This is a list of known blockers
-preventing it from running as a less-privileged user, there are
-probably more issues not yet known:
+This service is run as root due to all the privileged operations needed
+for OS installation. The [Upstart service] runs `os_install_service` in
+minijail to restrict some syscalls, and there's an [SELinux policy] to
+further restrict what the service can do.
 
-* `platform2/installer/chromeos-install` expects to run as root. If
-  not run as root, it sudos itself. This check could be removed, or
-  altered to check something more limited (e.g. test itself for the
-  `CAP_SYS_ADMIN` capability), or enabled by default but with a way to
-  turn it off manually such as by setting an env var.
-* `platform2/chromeos-common-script/share/chromeos-common.sh` has
-  something similar with the `maybe_sudo` function. `chromeos-install`
-  depends on this in a few places. Could be solved in similar ways as
-  described above.
-* `chromeos-install` needs to mount and unmount disk partitions. This
-  is possible to do with `CAP_SYS_ADMIN`, but the currently-installed
-  version (2.32) of the `mount` and `umount` utilities explicitly
-  checks uid==0. This has been fixed in newer versions so could be
-  fixed by upgrading the `sys-apps/util-linux` package.
-* `chromeos-install` installs most partitions with `dd` copies, but
-  the stateful partition is installed by creating a fresh file system
-  and then using `cp` to transfer specific directories. Many of those
-  files are owned by root, and the root directory of the destination
-  is also owned by root.
-
-See also b/185422901 for adding an selinux policy to further restrict
-the service.
+[Upstart service]: conf/os_install_service.conf
+[SELinux policy]: ../sepolicy/policy/chromeos/cros_os_install_service.te
