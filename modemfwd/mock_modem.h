@@ -23,6 +23,10 @@ class MockModem : public Modem {
   MOCK_METHOD(std::string, GetDeviceId, (), (const, override));
   MOCK_METHOD(std::string, GetEquipmentId, (), (const, override));
   MOCK_METHOD(std::string, GetCarrierId, (), (const, override));
+  MOCK_METHOD(std::string, GetPrimaryPort, (), (const, override));
+  MOCK_METHOD(int, GetHeartbeatFailures, (), (const, override));
+  MOCK_METHOD(void, ResetHeartbeatFailures, (), (override));
+  MOCK_METHOD(void, IncrementHeartbeatFailures, (), (override));
   MOCK_METHOD(std::string, GetMainFirmwareVersion, (), (const, override));
   MOCK_METHOD(std::string, GetOemFirmwareVersion, (), (const, override));
   MOCK_METHOD(std::string, GetCarrierFirmwareId, (), (const, override));

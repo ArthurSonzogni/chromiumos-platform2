@@ -4,6 +4,7 @@
 
 #include "modemfwd/daemon.h"
 
+#include <signal.h>
 #include <sysexits.h>
 
 #include <memory>
@@ -11,6 +12,7 @@
 #include <utility>
 
 #include <base/check.h>
+#include <base/containers/contains.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
@@ -21,6 +23,7 @@
 #include <base/time/time.h>
 #include <cros_config/cros_config.h>
 #include <dbus/modemfwd/dbus-constants.h>
+#include <sys/wait.h>
 
 #include "modemfwd/dlc_manager.h"
 #include "modemfwd/error.h"
@@ -43,6 +46,15 @@ constexpr base::TimeDelta kRebootCheckDelay = base::Minutes(1);
 constexpr base::TimeDelta kDlcRemovalDelay = base::Minutes(2);
 constexpr char kDisableAutoUpdatePref[] =
     "/var/lib/modemfwd/disable_auto_update";
+
+// 3 failures 20 seconds apart gives a strong signal that the modem is in a bad
+// state. These values were chosen to try and maximize the time between polls
+// to minimize power impact, without relying on too few datapoints. Furthermore
+// 60 seconds of detection + 25 seconds of modem reset (targeting FM350 stalls)
+// Will allow recovery well before the 120 second suspend timeout and shutdown.
+constexpr base::TimeDelta kHeartbeatDelay = base::Seconds(20);
+constexpr base::TimeDelta kCmdKillDelay = base::Seconds(1);
+const uint8_t kFailedHeartbeatsBeforeRecovery = 3;
 
 // Returns the modem firmware variant for the current model of the device by
 // reading the /modem/firmware-variant property of the current model via
@@ -325,6 +337,10 @@ void Daemon::OnModemCarrierIdReady(
 
   std::string equipment_id = modem->GetEquipmentId();
   std::string device_id = modem->GetDeviceId();
+
+  // Store the modem object to track its health state during its lifetime
+  modems_[device_id] = std::move(modem);
+
   ELOG(INFO) << "Modem with equipment ID \"" << equipment_id << "\""
              << " and device ID [" << device_id << "] ready to flash";
 
@@ -334,7 +350,10 @@ void Daemon::OnModemCarrierIdReady(
     return;
   }
   brillo::ErrorPtr err;
-  base::OnceClosure cb = modem_flasher_->TryFlash(modem.get(), bus_, &err);
+  StopHeartbeatTimer();
+  base::OnceClosure cb =
+      modem_flasher_->TryFlash(modems_[device_id].get(), bus_, &err);
+  StartHeartbeatTimer();
   if (!cb.is_null())
     modem_reappear_callbacks_[equipment_id] = std::move(cb);
 }
@@ -354,7 +373,9 @@ bool Daemon::ForceFlash(const std::string& device_id) {
 
   ELOG(INFO) << "Force-flashing modem with device ID [" << device_id << "]";
   brillo::ErrorPtr err;
+  StopHeartbeatTimer();
   base::OnceClosure cb = modem_flasher_->TryFlash(stub_modem.get(), bus_, &err);
+  StartHeartbeatTimer();
   // We don't know the equipment ID of this modem, and if we're force-flashing
   // then we probably already have a problem with the modem coming up, so
   // cleaning up at this point is not a problem. Run the callback now if we
@@ -377,8 +398,10 @@ bool Daemon::ForceFlashForTesting(const std::string& device_id,
              << "variant [" << variant << "], carrier_uuid [" << carrier_uuid
              << "], use_modems_fw_info [" << use_modems_fw_info << "]";
   brillo::ErrorPtr err;
+  StopHeartbeatTimer();
   base::OnceClosure cb =
       modem_flasher_->TryFlashForTesting(stub_modem.get(), variant, &err);
+  StartHeartbeatTimer();
   // We don't know the equipment ID of this modem, and if we're force-flashing
   // then we probably already have a problem with the modem coming up, so
   // cleaning up at this point is not a problem. Run the callback now if we
@@ -390,6 +413,10 @@ bool Daemon::ForceFlashForTesting(const std::string& device_id,
 
 void Daemon::CheckForWedgedModems() {
   EVLOG(1) << "Running wedged modems check...";
+
+  // Start long-running monitoring task
+  StartHeartbeatTimer();
+
   helper_directory_->ForEachHelper(
       base::BindRepeating(&Daemon::ForceFlashIfWedged, base::Unretained(this)));
 }
@@ -443,6 +470,118 @@ void Daemon::ForceFlashIfNeverAppeared(const std::string& device_id) {
   metrics_->SendCheckForWedgedModemResult(
       metrics::CheckForWedgedModemResult::kModemAbsentAfterReboot);
   ForceFlash(device_id);
+}
+
+void Daemon::StartHeartbeatTimer() {
+  // Start periodic monitoring task
+  for (auto const& modem_info : modems_)
+    modem_info.second->ResetHeartbeatFailures();
+  heartbeat_timer_.Start(FROM_HERE, kHeartbeatDelay, this,
+                         &Daemon::CheckModemIsResponsive);
+}
+
+void Daemon::StopHeartbeatTimer() {
+  // Stop periodic monitoring task
+  for (auto const& modem_info : modems_)
+    modem_info.second->ResetHeartbeatFailures();
+  heartbeat_timer_.Stop();
+}
+
+void Daemon::GetModemCheckResult(
+    const std::string& device_id,
+    base::OnceCallback<void(const std::string&, bool)> cb,
+    std::unique_ptr<brillo::Process> hb_cmd) {
+  int status = 0;
+
+  // It is necessary to refresh the PID information for the process existence
+  // to be properly determined with ProcessExists. We also use the return
+  // status to confirm a successful return code if the process was already done
+  waitpid(hb_cmd->pid(), &status, WNOHANG);
+  if (brillo::Process::ProcessExists(hb_cmd->pid())) {
+    // A SIGTERM should be sufficient to kill the process, but fall back on a
+    // SIGKILL just to be safe.
+    if (!hb_cmd->Kill(SIGTERM, kCmdKillDelay.InSeconds()) &&
+        !hb_cmd->Kill(SIGKILL, kCmdKillDelay.InSeconds())) {
+      // Should never happen
+      PLOG(ERROR) << "Failing to kill spawned process, stopping polling";
+      StopHeartbeatTimer();
+    }
+  } else if (WEXITSTATUS(status) == 0) {
+    // Modem ping completed cleanly with success
+    std::move(cb).Run(device_id, true);
+    hb_cmd->Release();
+    return;
+  }
+  // The task had to be killed or had non-zero exit code
+  std::move(cb).Run(device_id, false);
+  hb_cmd->Release();
+}
+
+void Daemon::CheckModemIsResponsive() {
+  for (auto const& modem_info : modems_) {
+    // We ignore any modems for which we haven't identified a primary port.
+    // We either don't have an ability to ping them, or an ability to recover
+    // them, so they are ignored.
+    if (modem_info.second->GetPrimaryPort().empty())
+      continue;
+
+    std::unique_ptr<brillo::Process> hb_cmd(new brillo::ProcessImpl());
+    base::OnceCallback<void(const std::string&, bool)> cb = base::BindOnce(
+        &Daemon::HandleModemCheckResult, weak_ptr_factory_.GetWeakPtr());
+
+    hb_cmd->AddArg("/usr/bin/mbimcli");
+    hb_cmd->AddArg("-d");
+    hb_cmd->AddArg("/dev/" + modem_info.second->GetPrimaryPort());
+    hb_cmd->AddArg("-p");
+    hb_cmd->AddArg("--query-device-caps");
+
+    if (!hb_cmd->Start()) {
+      LOG(ERROR) << "Failed to start ping process";
+      std::move(cb).Run(modem_info.second->GetDeviceId(), false);
+      return;
+    }
+
+    // Schedule closure task to gather ping result and time out ping process
+    // if necessary
+    base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(
+            &Daemon::GetModemCheckResult, weak_ptr_factory_.GetWeakPtr(),
+            modem_info.second->GetDeviceId(), std::move(cb), std::move(hb_cmd)),
+        kCmdKillDelay);
+  }
+}
+
+void Daemon::ResetModemWithHelper(const std::string& device_id,
+                                  ModemHelper* helper) {
+  if (!base::Contains(device_id, "pci:14c3:4d75")) {
+    LOG(WARNING) << "Not FM350, not attempting recovery";
+    return;
+  }
+
+  // Attempt recovery
+  if (helper->Reboot()) {
+    LOG(INFO) << "Reboot succeeded";
+    modems_[device_id]->ResetHeartbeatFailures();
+  } else {
+    LOG(ERROR) << "Reboot failed";
+  }
+}
+
+void Daemon::HandleModemCheckResult(const std::string& device_id,
+                                    bool check_result) {
+  if (check_result) {
+    modems_[device_id]->ResetHeartbeatFailures();
+    return;  // All good
+  }
+
+  modems_[device_id]->IncrementHeartbeatFailures();
+  if (modems_[device_id]->GetHeartbeatFailures() <
+      kFailedHeartbeatsBeforeRecovery)
+    return;
+
+  ResetModemWithHelper(device_id,
+                       helper_directory_->GetHelperForDeviceId(device_id));
 }
 
 }  // namespace modemfwd

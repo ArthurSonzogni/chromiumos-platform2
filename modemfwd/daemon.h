@@ -12,7 +12,9 @@
 
 #include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
+#include <base/timer/timer.h>
 #include <brillo/daemons/dbus_daemon.h>
+#include <brillo/process/process.h>
 #include <dbus/bus.h>
 
 #include "modemfwd/dbus_adaptors/org.chromium.Modemfwd.h"
@@ -102,6 +104,19 @@ class Daemon : public brillo::DBusServiceDaemon {
                           ModemHelper* modem_helper);
   void ForceFlashIfNeverAppeared(const std::string& device_id);
 
+  // Modem health polling
+  void StartHeartbeatTimer();
+  void StopHeartbeatTimer();
+  void CheckModemIsResponsive();
+  void GetModemCheckResult(
+      const std::string& device_id,
+      base::OnceCallback<void(const std::string&, bool)> cb,
+      std::unique_ptr<brillo::Process> hb_cmd);
+  void HandleModemCheckResult(const std::string& device_id, bool check_result);
+  void ResetModemWithHelper(const std::string& device_id, ModemHelper* helper);
+
+  base::RepeatingTimer heartbeat_timer_;
+
   base::FilePath journal_file_path_;
   base::FilePath helper_dir_path_;
   base::FilePath fw_manifest_dir_path_;
@@ -113,6 +128,7 @@ class Daemon : public brillo::DBusServiceDaemon {
   std::unique_ptr<ModemHelperDirectory> helper_directory_;
   std::unique_ptr<Metrics> metrics_;
 
+  std::map<std::string, std::unique_ptr<Modem>> modems_;
   std::unique_ptr<ModemTracker> modem_tracker_;
   std::unique_ptr<ModemFlasher> modem_flasher_;
   std::unique_ptr<NotificationManager> notification_mgr_;

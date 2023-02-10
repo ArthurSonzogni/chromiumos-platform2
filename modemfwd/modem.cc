@@ -17,10 +17,12 @@
 #include <base/strings/string_util.h>
 #include <base/unguessable_token.h>
 #include <brillo/dbus/dbus_method_invoker.h>
+#include <brillo/strings/string_utils.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/switches/modemfwd_switches.h>
 #include <dbus/modemfwd/dbus-constants.h>
 #include <ModemManager/ModemManager.h>
+#include <re2/re2.h>
 
 #include "modemfwd/logging.h"
 #include "modemfwd/modem_helper.h"
@@ -79,6 +81,49 @@ std::unique_ptr<Inhibitor> GetInhibitor(
   return std::make_unique<Inhibitor>(std::move(mm_proxy), mm_physdev_uid);
 }
 
+std::string GetModemPrimaryPort(scoped_refptr<dbus::Bus> bus,
+                                const dbus::ObjectPath& mm_object_path) {
+  const std::vector<char const*> port_re_patterns{
+      "wwan\\dmbim\\d",  // Catch wwan0mbim0
+      "cdc-wdm\\d"       // Catch cdc-wdm0
+  };
+
+  // Get the MM object backing this modem, and retrieve its Device property.
+  // This is the mm_physdev_uid we use for inhibition during updates.
+  if (!mm_object_path.IsValid()) {
+    LOG(WARNING) << __func__ << " " << mm_object_path.value() << " is invalid";
+    return "";
+  }
+
+  auto mm_device = bus->GetObjectProxy(modemmanager::kModemManager1ServiceName,
+                                       mm_object_path);
+  if (!mm_device)
+    return "";
+
+  brillo::ErrorPtr error;
+  auto resp = brillo::dbus_utils::CallMethodAndBlock(
+      mm_device, dbus::kDBusPropertiesInterface, dbus::kDBusPropertiesGet,
+      &error, std::string(modemmanager::kModemManager1ModemInterface),
+      std::string(MM_MODEM_PROPERTY_PRIMARYPORT));
+  if (!resp)
+    return "";
+
+  std::string primary_port;
+  if (!brillo::dbus_utils::ExtractMethodCallResults(resp.get(), &error,
+                                                    &primary_port)) {
+    return "";
+  }
+
+  // Confirm the primary_port takes a format we're expecting
+  const std::string combined_port_re_pattern =
+      "^(" + brillo::string_utils::Join("|", port_re_patterns) + ")";
+  LazyRE2 modem_matcher = {combined_port_re_pattern.c_str()};
+  if (!RE2::FullMatch(primary_port, *modem_matcher))
+    return "";
+
+  return primary_port;
+}
+
 }  // namespace
 
 namespace modemfwd {
@@ -89,11 +134,13 @@ class ModemImpl : public Modem {
             const std::string& equipment_id,
             const std::string& carrier_id,
             const std::string& firmware_revision,
+            const std::string& primary_port,
             std::unique_ptr<Inhibitor> inhibitor,
             ModemHelper* helper)
       : device_id_(device_id),
         equipment_id_(equipment_id),
         carrier_id_(carrier_id),
+        primary_port_(primary_port),
         inhibitor_(std::move(inhibitor)),
         helper_(helper) {
     if (!helper->GetFirmwareInfo(&installed_firmware_, firmware_revision)) {
@@ -111,6 +158,14 @@ class ModemImpl : public Modem {
   std::string GetEquipmentId() const override { return equipment_id_; }
 
   std::string GetCarrierId() const override { return carrier_id_; }
+
+  std::string GetPrimaryPort() const override { return primary_port_; }
+
+  int GetHeartbeatFailures() const override { return heartbeat_failures_; }
+
+  void ResetHeartbeatFailures() override { heartbeat_failures_ = 0; }
+
+  void IncrementHeartbeatFailures() override { heartbeat_failures_++; }
 
   std::string GetMainFirmwareVersion() const override {
     return installed_firmware_.main_version;
@@ -154,9 +209,12 @@ class ModemImpl : public Modem {
   }
 
  private:
+  int heartbeat_failures_;
+  std::string heartbeat_port_;
   std::string device_id_;
   std::string equipment_id_;
   std::string carrier_id_;
+  std::string primary_port_;
   std::unique_ptr<Inhibitor> inhibitor_;
   FirmwareInfo installed_firmware_;
   ModemHelper* helper_;
@@ -221,9 +279,12 @@ std::unique_ptr<Modem> CreateModem(
     return nullptr;
   }
 
+  std::string primary_port =
+      GetModemPrimaryPort(bus, dbus::ObjectPath(mm_object_path));
+
   return std::make_unique<ModemImpl>(device_id, equipment_id, carrier_id,
-                                     firmware_revision, std::move(inhibitor),
-                                     helper);
+                                     firmware_revision, primary_port,
+                                     std::move(inhibitor), helper);
 }
 
 // StubModem acts like a modem with a particular device ID but does not
@@ -251,6 +312,14 @@ class StubModem : public Modem {
   std::string GetEquipmentId() const override { return equipment_id_; }
 
   std::string GetCarrierId() const override { return carrier_id_; }
+
+  std::string GetPrimaryPort() const override { return primary_port_; }
+
+  int GetHeartbeatFailures() const override { return heartbeat_failures_; }
+
+  void ResetHeartbeatFailures() override { heartbeat_failures_ = 0; }
+
+  void IncrementHeartbeatFailures() override { heartbeat_failures_++; }
 
   std::string GetMainFirmwareVersion() const override {
     return installed_firmware_.main_version;
@@ -281,7 +350,10 @@ class StubModem : public Modem {
   }
 
  private:
+  int heartbeat_failures_;
+  std::string heartbeat_port_;
   std::string carrier_id_;
+  std::string primary_port_;
   std::string device_id_;
   std::string equipment_id_;
   ModemHelper* helper_;
