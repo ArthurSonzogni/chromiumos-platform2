@@ -57,7 +57,6 @@ using brillo::SecureBlob;
 using brillo::cryptohome::home::GetRootPath;
 using brillo::cryptohome::home::GetUserPath;
 using brillo::cryptohome::home::IsSanitizedUserName;
-using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
 using cryptohome::data_migrator::MigrationHelper;
 using hwsec_foundation::SecureBlobToHex;

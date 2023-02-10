@@ -71,7 +71,6 @@ using ::testing::UnorderedElementsAre;
 
 using base::test::TaskEnvironment;
 using base::test::TestFuture;
-using brillo::cryptohome::home::kGuestUserName;
 using brillo::cryptohome::home::SanitizeUserName;
 using error::CryptohomeCryptoError;
 using error::CryptohomeError;

@@ -35,17 +35,17 @@
 
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
+#include "cryptohome/namespace_mounter_ipc.pb.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mount_constants.h"
 #include "cryptohome/storage/mount_helper.h"
 #include "cryptohome/storage/mount_utils.h"
 #include "cryptohome/username.h"
 
-#include "cryptohome/namespace_mounter_ipc.pb.h"
+namespace {
 
 using base::FilePath;
-
-namespace {
+using brillo::cryptohome::home::GetGuestUsername;
 
 std::map<cryptohome::MountType, cryptohome::OutOfProcessMountRequest_MountType>
     kProtobufMountType = {
@@ -77,8 +77,8 @@ const std::vector<FilePath> kDaemonDirPaths = {
     FilePath("session_manager"), FilePath("shill"), FilePath("shill_logs")};
 
 void CleanUpGuestDaemonDirectories(cryptohome::Platform* platform) {
-  FilePath root_home_dir = brillo::cryptohome::home::GetRootPath(
-      brillo::cryptohome::home::kGuestUserName);
+  FilePath root_home_dir =
+      brillo::cryptohome::home::GetRootPath(GetGuestUsername());
   if (!platform->DirectoryExists(root_home_dir)) {
     // No previous Guest sessions have been started, do nothing.
     return;
@@ -126,7 +126,7 @@ int main(int argc, char** argv) {
   // Before performing any mounts, check whether there are any leftover
   // Guest session daemon directories in /home/root/<hashed username>/.
   // See crbug.com/1069501 for details.
-  if (request.username() == brillo::cryptohome::home::kGuestUserName) {
+  if (request.username() == *GetGuestUsername()) {
     CleanUpGuestDaemonDirectories(&platform);
   }
 
