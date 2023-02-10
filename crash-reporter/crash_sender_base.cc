@@ -238,6 +238,9 @@ std::string GetClientId() {
   return client_id;
 }
 
+ScopedProcessingFileBase::ScopedProcessingFileBase() = default;
+ScopedProcessingFileBase::~ScopedProcessingFileBase() = default;
+
 ScopedProcessingFile::ScopedProcessingFile(const base::FilePath& meta_file)
     : processing_file_(meta_file.ReplaceExtension(kProcessingExt)) {
   base::File f(processing_file_,
@@ -252,6 +255,11 @@ ScopedProcessingFile::~ScopedProcessingFile() {
     LOG(ERROR) << "Failed to remove .processing file. Crash will be deleted.";
   }
 }
+
+DummyScopedProcessingFile::DummyScopedProcessingFile(
+    const base::FilePath& meta_file) {}
+
+DummyScopedProcessingFile::~DummyScopedProcessingFile() = default;
 
 SenderBase::SenderBase(std::unique_ptr<base::Clock> clock,
                        const SenderBase::Options& options)
@@ -331,14 +339,14 @@ SenderBase::Action SenderBase::EvaluateMetaFileMinimal(
     bool allow_old_os_timestamps,
     std::string* reason,
     CrashInfo* info,
-    std::unique_ptr<ScopedProcessingFile>* processing_file) {
+    std::unique_ptr<ScopedProcessingFileBase>* processing_file) {
   if (base::PathExists(meta_file.ReplaceExtension(kProcessingExt))) {
     *reason = ".processing file already exists for: " + meta_file.value();
     RecordCrashRemoveReason(kProcessingFileExists);
     return kRemove;
   }
 
-  auto f = std::make_unique<ScopedProcessingFile>(meta_file);
+  auto f = MakeScopedProcessingFile(meta_file);
   if (processing_file) {
     // The caller wants to take care of this, so move it to their scope before
     // we return.

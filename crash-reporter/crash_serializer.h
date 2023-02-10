@@ -107,6 +107,10 @@ class Serializer : public util::SenderBase {
   // based on |max_message_size_bytes_|.
   bool WriteCoredump(int64_t crash_id, base::FilePath core_path);
 
+  // Creates a `ScopedProcessingFileBase` object.
+  std::unique_ptr<util::ScopedProcessingFileBase> MakeScopedProcessingFile(
+      const base::FilePath& meta_file) override;
+
   base::FilePath out_;
 
   // True iff we should fetch core dumps.

@@ -270,6 +270,12 @@ class Sender : public SenderBase {
   // reports.
   bool IsNetworkOnline();
 
+  // Creates a `ScopedProcessingFileBase` object based on whether we are running
+  // under the dry run mode. ".processing" file should never be created under
+  // the dry run mode but must be created under other scenarios.
+  std::unique_ptr<ScopedProcessingFileBase> MakeScopedProcessingFile(
+      const base::FilePath& meta_file) override;
+
   std::unique_ptr<MetricsLibraryInterface> metrics_lib_;
   std::unique_ptr<org::chromium::flimflam::ManagerProxyInterface> shill_proxy_;
   std::vector<std::string> proxy_servers_;

@@ -64,6 +64,7 @@ using ::testing::HasSubstr;
 using ::testing::Invoke;
 using ::testing::IsEmpty;
 using ::testing::Le;
+using ::testing::Ne;
 using ::testing::Pointee;
 using ::testing::Return;
 using ::testing::UnorderedElementsAre;
@@ -613,6 +614,29 @@ class CrashSenderUtilTest : public testing::Test {
 
 base::FilePath* CrashSenderUtilTest::build_directory_ = nullptr;
 using CrashSenderUtilDeathTest = CrashSenderUtilTest;
+
+// Death tests that require parametrizing dry run mode.
+class CrashSenderUtilDryRunParamDeathTest
+    : public CrashSenderUtilDeathTest,
+      public ::testing::WithParamInterface<bool> {
+ protected:
+  void SetUp() override {
+    dry_run_ = GetParam();
+    CrashSenderUtilDeathTest::SetUp();
+  }
+  bool dry_run_;
+};
+
+INSTANTIATE_TEST_SUITE_P(
+    CrashSenderUtilDryRunParamDeathInstantiation,
+    CrashSenderUtilDryRunParamDeathTest,
+    ::testing::Bool(),
+    [](const ::testing::TestParamInfo<
+        CrashSenderUtilDryRunParamDeathTest::ParamType>& info) {
+      std::ostringstream name;
+      name << "dry_run_" << info.param;
+      return name.str();
+    });
 
 }  // namespace
 
@@ -1229,7 +1253,7 @@ TEST_F(CrashSenderUtilTest, ChooseAction_NonForceNoHwTestSuiteRun) {
             false);
 }
 
-TEST_F(CrashSenderUtilDeathTest, ChooseActionCrash) {
+TEST_P(CrashSenderUtilDryRunParamDeathTest, ChooseActionCrash) {
   ASSERT_TRUE(SetConditions(kOfficialBuild, kSignInMode, kMetricsEnabled));
 
   const base::FilePath crash_directory =
@@ -1238,6 +1262,7 @@ TEST_F(CrashSenderUtilDeathTest, ChooseActionCrash) {
   ASSERT_TRUE(CreateTestCrashFiles(crash_directory));
 
   Sender::Options options;
+  options.dry_run = dry_run_;
   MockSender sender(true,   // success=true
                     "123",  // Response
                     std::move(metrics_lib_),
@@ -1251,8 +1276,10 @@ TEST_F(CrashSenderUtilDeathTest, ChooseActionCrash) {
   EXPECT_DEATH(sender.ChooseAction(good_meta_, &reason, &info),
                "crashing as requested");
 
-  // ChooseAction crashed so the file should remain.
-  EXPECT_TRUE(base::PathExists(good_meta_.ReplaceExtension(".processing")));
+  // Normally, ChooseAction crashed so the ".processing" file should remain. But
+  // under the dry run mode, ".processing" files should have never been created.
+  EXPECT_THAT(base::PathExists(good_meta_.ReplaceExtension(".processing")),
+              Ne(dry_run_));
 }
 
 TEST_F(CrashSenderUtilTest, ChooseActionDevMode) {
@@ -2429,7 +2456,7 @@ TEST_F(CrashSenderUtilTest, SendCrashes_Fail) {
 }
 
 // Verify behavior when SendCrashes itself crashes.
-TEST_F(CrashSenderUtilDeathTest, SendCrashes_Crash) {
+TEST_P(CrashSenderUtilDryRunParamDeathTest, SendCrashesCrash) {
   // Set up the mock session manager client.
   auto mock =
       std::make_unique<org::chromium::SessionManagerInterfaceProxyMock>();
@@ -2464,6 +2491,7 @@ TEST_F(CrashSenderUtilDeathTest, SendCrashes_Crash) {
   options.max_crash_rate = 2;
   options.sleep_function = base::BindRepeating(&FakeSleep, &sleep_times);
   options.always_write_uploads_log = true;
+  options.dry_run = dry_run_;
   MockSender sender(true,                 // success=true
                     "Too Many Requests",  // Response
                     std::move(metrics_lib_),
@@ -2473,8 +2501,10 @@ TEST_F(CrashSenderUtilDeathTest, SendCrashes_Crash) {
   sender.SetCrashDuringSendForTesting(true);
   EXPECT_DEATH(sender.SendCrashes(crashes_to_send), "crashing as requested");
 
-  // We crashed, so the ".processing" file should still exist.
-  EXPECT_TRUE(base::PathExists(system_processing));
+  // We crashed, so the ".processing" file should still exist if not under dry
+  // run mode. Under the dry run mode, the ".processing" file should never be
+  // created.
+  EXPECT_THAT(base::PathExists(system_processing), Ne(dry_run_));
 }
 
 class CrashSenderGetFatalCrashTypeTest

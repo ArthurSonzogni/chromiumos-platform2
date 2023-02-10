@@ -357,4 +357,8 @@ bool Serializer::WriteCoredump(int64_t crash_id, base::FilePath core_path) {
   return true;
 }
 
+std::unique_ptr<util::ScopedProcessingFileBase>
+Serializer::MakeScopedProcessingFile(const base::FilePath& meta_file) {
+  return std::make_unique<util::ScopedProcessingFile>(meta_file);
+}
 }  // namespace crash_serializer

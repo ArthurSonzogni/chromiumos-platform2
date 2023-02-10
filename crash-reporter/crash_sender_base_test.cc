@@ -19,6 +19,7 @@
 
 namespace util {
 namespace {
+using ::testing::_;
 using ::testing::Not;
 using ::testing::StartsWith;
 
@@ -59,10 +60,22 @@ class CrashSenderBaseForTesting : public util::SenderBase {
  public:
   CrashSenderBaseForTesting(std::unique_ptr<base::Clock> clock,
                             const Options& options)
-      : util::SenderBase(std::move(clock), options) {}
+      : util::SenderBase(std::move(clock), options) {
+    // These methods are not implemented in this test and should not
+    // be called.
+    EXPECT_CALL(*this, MakeScopedProcessingFile(_)).Times(0);
+    EXPECT_CALL(*this, RecordCrashRemoveReason(_)).Times(0);
+  }
 
-  // We don't need this implementation
-  void RecordCrashRemoveReason(CrashRemoveReason reason) {}
+ private:
+  MOCK_METHOD(std::unique_ptr<ScopedProcessingFileBase>,
+              MakeScopedProcessingFile,
+              (const base::FilePath& meta_file),
+              (override));
+  MOCK_METHOD(void,
+              RecordCrashRemoveReason,
+              (CrashRemoveReason reason),
+              (override));
 };
 
 class CrashSenderBaseTest : public testing::Test {
@@ -322,6 +335,34 @@ TEST_F(CrashSenderBaseTest, GetImageType) {
       paths::GetAt(paths::kEtcDirectory, paths::kLsbRelease),
       "CHROMEOS_RELEASE_TRACK=testimage-channel"));
   EXPECT_EQ("test", GetImageType());
+}
+
+TEST_F(CrashSenderBaseTest, ScopedProcessingFile) {
+  const base::FilePath meta_file = test_dir_.Append("meta_file.meta");
+  const base::FilePath processing_file =
+      test_dir_.Append("meta_file.processing");
+  ASSERT_TRUE(test_util::CreateFile(meta_file, ""));
+
+  ASSERT_FALSE(base::PathExists(processing_file));
+  {
+    ScopedProcessingFile processing(meta_file);
+    EXPECT_TRUE(base::PathExists(processing_file));
+  }
+  EXPECT_FALSE(base::PathExists(processing_file));
+}
+
+TEST_F(CrashSenderBaseTest, DummyScopedProcessingFile) {
+  const base::FilePath meta_file = test_dir_.Append("meta_file.meta");
+  const base::FilePath processing_file =
+      test_dir_.Append("meta_file.processing");
+  ASSERT_TRUE(test_util::CreateFile(meta_file, ""));
+
+  ASSERT_FALSE(base::PathExists(processing_file));
+  {
+    DummyScopedProcessingFile processing(meta_file);
+    EXPECT_FALSE(base::PathExists(processing_file));
+  }
+  EXPECT_FALSE(base::PathExists(processing_file));
 }
 
 }  // namespace

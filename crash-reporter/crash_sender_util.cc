@@ -484,7 +484,7 @@ SenderBase::Action Sender::ChooseAction(const base::FilePath& meta_file,
   bool allow_old_os_timestamps =
       allow_dev_sending_ || test_mode_ || upload_old_reports_;
 
-  std::unique_ptr<util::ScopedProcessingFile> f;
+  std::unique_ptr<util::ScopedProcessingFileBase> f;
   SenderBase::Action act = EvaluateMetaFileMinimal(
       meta_file, allow_old_os_timestamps, reason, info, &f);
 
@@ -547,7 +547,7 @@ void Sender::RemoveAndPickCrashFiles(const base::FilePath& crash_dir,
     CrashInfo info;
     switch (ChooseAction(meta_file, &reason, &info)) {
       case kRemove:
-        LOG(INFO) << "Removing: " << reason;
+        LOG_IF(INFO, !dry_run_) << "Removing: " << reason;
         RemoveReportFiles(meta_file);
         break;
       case kIgnore:
@@ -599,7 +599,7 @@ void Sender::SendCrashes(const std::vector<MetaFile>& crash_meta_files) {
       // This is in a scope so that RemoveReportFiles doesn't try to remove
       // the .processing file (causing a LOG(ERROR) in the ScopedProcessingFile
       // destructor).
-      ScopedProcessingFile processing(meta_file);
+      auto processing = MakeScopedProcessingFile(meta_file);
 
       // This should be checked inside of the loop, since the device can disable
       // metrics while sending crash reports with an interval up to
@@ -874,6 +874,9 @@ SenderBase::CrashRemoveReason Sender::RequestToSendCrash(
   }
 
   if (dry_run_) {
+    if (IsMock()) {
+      CHECK(!crash_during_testing_) << "crashing as requested";
+    }
     return WriteUploadLog(details, "", std::move(product_name));
   }
 
@@ -1106,6 +1109,15 @@ bool Sender::IsNetworkOnline() {
   // other values represent some other reduced (or no) level of connectivity or
   // the process of establishing a connection.
   return base::EqualsCaseInsensitiveASCII(state, "online");
+}
+
+std::unique_ptr<ScopedProcessingFileBase> Sender::MakeScopedProcessingFile(
+    const base::FilePath& meta_file) {
+  if (dry_run_) {
+    return std::make_unique<DummyScopedProcessingFile>(meta_file);
+  } else {
+    return std::make_unique<ScopedProcessingFile>(meta_file);
+  }
 }
 
 }  // namespace util
