@@ -24,10 +24,7 @@ if (use.test || use.fuzzer) {
       ":libcommon",
       "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
     ]
-    sources = [
-      "mojo_test_utils.cc",
-      "mojo_type_utils.cc",
-    ]
+    sources = [ "mojo_type_utils.cc" ]
   }
 }
 

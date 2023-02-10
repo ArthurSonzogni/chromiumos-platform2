@@ -14,7 +14,6 @@
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/remote.h>
 
-#include "diagnostics/common/mojo_utils.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/routines/sensor/sensitive_sensor.h"
 #include "diagnostics/cros_healthd/system/fake_mojo_service.h"
@@ -54,13 +53,9 @@ class SensitiveSensorRoutineTest : public testing::Test {
     EXPECT_EQ(update_.progress_percent, progress_percent);
     VerifyNonInteractiveUpdate(update_.routine_update_union, status,
                                status_message);
-    auto shm_mapping =
-        diagnostics::GetReadOnlySharedMemoryMappingFromMojoHandle(
-            std::move(update_.output));
-    ASSERT_TRUE(shm_mapping.IsValid());
-    EXPECT_EQ(output_dict, base::JSONReader::Read(std::string(
-                               shm_mapping.GetMemoryAs<const char>(),
-                               shm_mapping.mapped_size())));
+    EXPECT_EQ(output_dict, base::JSONReader::Read(
+                               GetStringFromValidReadOnlySharedMemoryMapping(
+                                   std::move(update_.output))));
   }
 
   base::Value::Dict ConstructSensorOutput(int32_t id,

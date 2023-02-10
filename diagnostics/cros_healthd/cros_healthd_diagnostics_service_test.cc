@@ -15,7 +15,6 @@
 #include <base/test/task_environment.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/common/mojo_test_utils.h"
 #include "diagnostics/cros_healthd/cros_healthd_diagnostics_service.h"
 #include "diagnostics/cros_healthd/fake_cros_healthd_routine_factory.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
@@ -1117,7 +1116,8 @@ TEST_P(DiagnosticsUpdateCommandTest, SendCommand) {
                                         /*include_output=*/true);
 
   EXPECT_EQ(update->progress_percent, kExpectedProgressPercent);
-  std::string output = GetStringFromMojoHandle(std::move(update->output));
+  std::string output =
+      GetStringFromValidReadOnlySharedMemoryMapping(std::move(update->output));
   EXPECT_EQ(output, kExpectedOutput);
   VerifyNonInteractiveUpdate(update->routine_update_union,
                              params().expected_status, kExpectedStatusMessage);

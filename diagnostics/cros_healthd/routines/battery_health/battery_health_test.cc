@@ -13,7 +13,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/common/mojo_utils.h"
 #include "diagnostics/cros_healthd/routines/battery_health/battery_health.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
@@ -185,11 +184,8 @@ TEST_F(BatteryHealthRoutineTest, GoodParameters) {
                              mojo_ipc::DiagnosticRoutineStatusEnum::kPassed,
                              kBatteryHealthRoutinePassedMessage);
 
-  auto shm_mapping = diagnostics::GetReadOnlySharedMemoryMappingFromMojoHandle(
-      std::move(update()->output));
-  ASSERT_TRUE(shm_mapping.IsValid());
-  EXPECT_EQ(std::string(shm_mapping.GetMemoryAs<const char>(),
-                        shm_mapping.mapped_size()),
+  EXPECT_EQ(GetStringFromValidReadOnlySharedMemoryMapping(
+                std::move(update()->output)),
             ConstructOutput());
 }
 

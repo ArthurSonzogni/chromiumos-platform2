@@ -15,7 +15,6 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/common/mojo_utils.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_constants.h"
 #include "diagnostics/cros_healthd/routines/bluetooth/bluetooth_scanning.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
@@ -217,13 +216,10 @@ class BluetoothScanningRoutineTest : public testing::Test {
     EXPECT_EQ(update_.progress_percent, progress_percent);
     VerifyNonInteractiveUpdate(update_.routine_update_union, status,
                                status_message);
-    auto shm_mapping =
-        diagnostics::GetReadOnlySharedMemoryMappingFromMojoHandle(
-            std::move(update_.output));
-    ASSERT_TRUE(shm_mapping.IsValid());
-    EXPECT_EQ(ConstructOutputDict(), base::JSONReader::Read(std::string(
-                                         shm_mapping.GetMemoryAs<const char>(),
-                                         shm_mapping.mapped_size())));
+    EXPECT_EQ(
+        ConstructOutputDict(),
+        base::JSONReader::Read(GetStringFromValidReadOnlySharedMemoryMapping(
+            std::move(update_.output))));
   }
 
   base::test::TaskEnvironment task_environment_{

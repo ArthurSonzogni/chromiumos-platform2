@@ -20,7 +20,6 @@
 #include <mojo/public/cpp/system/handle.h>
 
 #include "diagnostics/base/file_test_utils.h"
-#include "diagnostics/common/mojo_utils.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/routines/diag_routine.h"
 #include "diagnostics/cros_healthd/routines/memory/memory.h"
@@ -177,11 +176,8 @@ TEST_F(MemoryRoutineTest, RoutineSuccess) {
   VerifyNonInteractiveUpdate(update()->routine_update_union,
                              mojom::DiagnosticRoutineStatusEnum::kPassed,
                              kMemoryRoutineSucceededMessage);
-  auto shm_mapping = diagnostics::GetReadOnlySharedMemoryMappingFromMojoHandle(
-      std::move(update()->output));
-  ASSERT_TRUE(shm_mapping.IsValid());
-  EXPECT_EQ(std::string(shm_mapping.GetMemoryAs<const char>(),
-                        shm_mapping.mapped_size()),
+  EXPECT_EQ(GetStringFromValidReadOnlySharedMemoryMapping(
+                std::move(update()->output)),
             ConstructOutput());
 }
 

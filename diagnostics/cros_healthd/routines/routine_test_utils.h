@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include <mojo/public/cpp/system/handle.h>
+
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
@@ -26,6 +28,12 @@ void VerifyNonInteractiveUpdate(
     const ash::cros_healthd::mojom::RoutineUpdateUnionPtr& update_union,
     ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum expected_status,
     const std::string& expected_status_message);
+
+// Gets content from a valid base::ReadOnlySharedMemoryMapping of passed
+// mojo::Handle.
+// Makes an unnecessary copying of data, should be used only for testing.
+std::string GetStringFromValidReadOnlySharedMemoryMapping(
+    mojo::ScopedHandle handle);
 
 }  // namespace diagnostics
 

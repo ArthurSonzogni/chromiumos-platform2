@@ -12,7 +12,6 @@
 #include <base/values.h>
 #include <gtest/gtest.h>
 
-#include "diagnostics/common/mojo_test_utils.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/routines/simple_routine.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
@@ -107,7 +106,9 @@ TEST_F(SimpleRoutineTest, RunAndRetrieveStatusUpdate) {
 
   VerifyNonInteractiveUpdate(update()->routine_update_union, kExpectedStatus,
                              kExpectedStatusMessage);
-  EXPECT_EQ(GetStringFromMojoHandle(std::move(update()->output)), output.json);
+  EXPECT_EQ(GetStringFromValidReadOnlySharedMemoryMapping(
+                std::move(update()->output)),
+            output.json);
   EXPECT_EQ(update()->progress_percent, 100);
 }
 
@@ -122,7 +123,7 @@ TEST_F(SimpleRoutineTest, NoOutputReturned) {
 
   VerifyNonInteractiveUpdate(update()->routine_update_union, kExpectedStatus,
                              kExpectedStatusMessage);
-  EXPECT_TRUE(GetStringFromMojoHandle(std::move(update()->output)).empty());
+  EXPECT_FALSE(update()->output.is_valid());
   EXPECT_EQ(update()->progress_percent, 100);
 }
 
@@ -176,7 +177,9 @@ TEST_P(ReportProgressPercentTest, ReportProgressPercent) {
 
   VerifyNonInteractiveUpdate(update()->routine_update_union, params().status,
                              kExpectedStatusMessage);
-  EXPECT_EQ(GetStringFromMojoHandle(std::move(update()->output)), output.json);
+  EXPECT_EQ(GetStringFromValidReadOnlySharedMemoryMapping(
+                std::move(update()->output)),
+            output.json);
   EXPECT_EQ(update()->progress_percent, params().expected_progress_percent);
 }
 

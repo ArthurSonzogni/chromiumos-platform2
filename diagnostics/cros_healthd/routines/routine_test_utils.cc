@@ -4,7 +4,11 @@
 
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 
+#include <utility>
+
 #include <gtest/gtest.h>
+
+#include "diagnostics/common/mojo_utils.h"
 
 namespace diagnostics {
 
@@ -27,6 +31,16 @@ void VerifyNonInteractiveUpdate(
   const auto& noninteractive_update = update_union->get_noninteractive_update();
   EXPECT_EQ(noninteractive_update->status_message, expected_status_message);
   EXPECT_EQ(noninteractive_update->status, expected_status);
+}
+
+std::string GetStringFromValidReadOnlySharedMemoryMapping(
+    mojo::ScopedHandle handle) {
+  CHECK(handle.is_valid());
+  auto shm_mapping =
+      GetReadOnlySharedMemoryMappingFromMojoHandle(std::move(handle));
+  CHECK(shm_mapping.IsValid());
+  return std::string(shm_mapping.GetMemoryAs<const char>(),
+                     shm_mapping.mapped_size());
 }
 
 }  // namespace diagnostics
