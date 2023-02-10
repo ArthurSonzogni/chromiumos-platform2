@@ -464,13 +464,12 @@ void IPsecConnection::WriteStrongSwanConfig() {
 
   // See the following link for the format and descriptions for each field:
   // https://wiki.strongswan.org/projects/strongswan/wiki/strongswanconf
-  // TODO(b/165170125): Check if routing_table is still required.
   std::vector<std::string> lines = {
       "charon {",
       "  accept_unencrypted_mainmode_messages = yes",
       "  ignore_routing_tables = 0",
       "  install_routes = no",
-      "  routing_table = 0",
+      "  install_virtual_ip = no",  // b/263688887
       "  syslog {",
       "    daemon {",
       "      ike = 2",  // Logs some traffic selector info.

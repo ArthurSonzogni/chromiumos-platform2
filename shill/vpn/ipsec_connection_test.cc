@@ -115,7 +115,7 @@ constexpr char kExpectedStrongSwanConf[] = R"(charon {
   accept_unencrypted_mainmode_messages = yes
   ignore_routing_tables = 0
   install_routes = no
-  routing_table = 0
+  install_virtual_ip = no
   syslog {
     daemon {
       ike = 2
