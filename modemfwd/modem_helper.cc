@@ -88,7 +88,6 @@ int RunProcessInSandbox(const HelperInfo& helper_info,
                         int* child_stdout,
                         int* child_stderr) {
   pid_t pid = -1;
-  int child_stdin = -1;
   std::vector<char*> args;
 
   for (const std::string& argument : formatted_args)
@@ -98,8 +97,8 @@ int RunProcessInSandbox(const HelperInfo& helper_info,
 
   // Create sandbox and run helper.
   ScopedMinijail j = ConfigureSandbox(helper_info);
-  int ret = minijail_run_pid_pipes(j.get(), args[0], args.data(), &pid,
-                                   &child_stdin, child_stdout, child_stderr);
+  int ret = minijail_run_pid_pipes(j.get(), args[0], args.data(), &pid, nullptr,
+                                   child_stdout, child_stderr);
 
   if (ret != 0) {
     LOG(ERROR) << "Failed to run minijail: " << strerror(-ret);
@@ -130,8 +129,10 @@ bool RunHelperProcessWithLogs(const HelperInfo& helper_info,
       time.year, time.month, time.day_of_month, time.hour, time.minute,
       time.second, time.millisecond);
 
-  if (child_stdout != -1) {
-    base::File stdout_file = base::File(child_stdout);
+  base::ScopedFD scoped_stdout(child_stdout);
+  base::ScopedFD scoped_stderr(child_stderr);
+  if (scoped_stdout.is_valid()) {
+    base::File stdout_file = base::File(std::move(scoped_stdout));
     base::File dest_stdout_file =
         base::File(base::FilePath(output_log_file),
                    base::File::FLAG_CREATE | base::File::FLAG_WRITE);
@@ -163,8 +164,10 @@ bool RunHelperProcess(const HelperInfo& helper_info,
   int exit_code = RunProcessInSandbox(helper_info, formatted_args,
                                       &child_stdout, &child_stderr);
 
-  if (output && child_stdout != -1) {
-    base::File output_base_file = base::File(child_stdout);
+  base::ScopedFD scoped_stdout(child_stdout);
+  base::ScopedFD scoped_stderr(child_stderr);
+  if (output && scoped_stdout.is_valid()) {
+    base::File output_base_file = base::File(std::move(scoped_stdout));
     DCHECK(output_base_file.IsValid());
 
     const int kBufSize = 1024;
