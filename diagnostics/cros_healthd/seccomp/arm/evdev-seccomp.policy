@@ -90,3 +90,5 @@ memfd_create: 1
 eventfd2: 1
 exit_group: 1
 rt_sigreturn: 1
+clock_gettime64: 1
+umount2: 1
