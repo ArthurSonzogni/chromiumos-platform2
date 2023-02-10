@@ -113,8 +113,7 @@ class FallbackVaultKeyset : public VaultKeyset {
  protected:
   std::unique_ptr<SyncAuthBlock> GetAuthBlockForCreation() const override {
     if (IsLECredential()) {
-      return std::make_unique<PinWeaverAuthBlock>(
-          crypto_->le_manager(), crypto_->cryptohome_keys_manager());
+      return std::make_unique<PinWeaverAuthBlock>(crypto_->le_manager());
     }
 
     if (IsSignatureChallengeProtected()) {
@@ -799,8 +798,7 @@ TEST_F(KeysetManagementTest, RemoveLECredentials) {
   // Setup pin credentials.
   std::unique_ptr<AuthBlockState> auth_block_state =
       std::make_unique<AuthBlockState>();
-  auto auth_block = std::make_unique<PinWeaverAuthBlock>(
-      crypto_.le_manager(), crypto_.cryptohome_keys_manager());
+  auto auth_block = std::make_unique<PinWeaverAuthBlock>(crypto_.le_manager());
 
   AuthInput auth_input = {brillo::SecureBlob(kNewPasskey),
                           false,
@@ -903,8 +901,7 @@ TEST_F(KeysetManagementTest, ResetLECredentialsAuthLocked) {
   // Setup pin credentials.
   std::unique_ptr<AuthBlockState> auth_block_state =
       std::make_unique<AuthBlockState>();
-  auto auth_block = std::make_unique<PinWeaverAuthBlock>(
-      crypto_.le_manager(), crypto_.cryptohome_keys_manager());
+  auto auth_block = std::make_unique<PinWeaverAuthBlock>(crypto_.le_manager());
 
   AuthInput auth_input = {brillo::SecureBlob(kNewPasskey),
                           false,
@@ -983,8 +980,7 @@ TEST_F(KeysetManagementTest, ResetLECredentialsNotAuthLocked) {
   // Setup pin credentials.
   std::unique_ptr<AuthBlockState> auth_block_state =
       std::make_unique<AuthBlockState>();
-  auto auth_block = std::make_unique<PinWeaverAuthBlock>(
-      crypto_.le_manager(), crypto_.cryptohome_keys_manager());
+  auto auth_block = std::make_unique<PinWeaverAuthBlock>(crypto_.le_manager());
 
   AuthInput auth_input = {brillo::SecureBlob(kNewPasskey),
                           false,
@@ -1062,8 +1058,7 @@ TEST_F(KeysetManagementTest, ResetLECredentialsFailsWithUnValidatedKeyset) {
   // Setup pin credentials.
   std::unique_ptr<AuthBlockState> auth_block_state =
       std::make_unique<AuthBlockState>();
-  auto auth_block = std::make_unique<PinWeaverAuthBlock>(
-      crypto_.le_manager(), crypto_.cryptohome_keys_manager());
+  auto auth_block = std::make_unique<PinWeaverAuthBlock>(crypto_.le_manager());
 
   AuthInput auth_input = {brillo::SecureBlob(kNewPasskey),
                           false,

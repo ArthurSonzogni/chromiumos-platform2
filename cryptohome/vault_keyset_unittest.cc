@@ -1496,8 +1496,7 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobs) {
       FileSystemKeyset::CreateRandom());
   pin_vault_keyset_.SetLowEntropyCredential(true);
 
-  auto auth_block = std::make_unique<PinWeaverAuthBlock>(
-      crypto_.le_manager(), crypto_.cryptohome_keys_manager());
+  auto auth_block = std::make_unique<PinWeaverAuthBlock>(crypto_.le_manager());
 
   AuthInput auth_input = {brillo::SecureBlob(HexDecode(kHexVaultKey)),
                           false,
@@ -1533,8 +1532,7 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithBadAuthState) {
 
   brillo::SecureBlob reset_seed = CreateSecureRandomBlob(kAesBlockSize);
 
-  auto auth_block = std::make_unique<PinWeaverAuthBlock>(
-      crypto_.le_manager(), crypto_.cryptohome_keys_manager());
+  auto auth_block = std::make_unique<PinWeaverAuthBlock>(crypto_.le_manager());
 
   AuthInput auth_input = {brillo::SecureBlob(44, 'A'),
                           false,
@@ -1559,8 +1557,7 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithNoResetSeed) {
       FileSystemKeyset::CreateRandom());
   pin_vault_keyset_.SetLowEntropyCredential(true);
 
-  auto auth_block = std::make_unique<PinWeaverAuthBlock>(
-      crypto_.le_manager(), crypto_.cryptohome_keys_manager());
+  auto auth_block = std::make_unique<PinWeaverAuthBlock>(crypto_.le_manager());
 
   AuthInput auth_input = {
       brillo::SecureBlob(44, 'A'),   false, Username("unused"),
@@ -1591,8 +1588,7 @@ TEST_F(LeCredentialsManagerTest, DecryptWithKeyBlobs) {
 
   vk.InitializeFromSerialized(serialized);
 
-  auto auth_block = std::make_unique<PinWeaverAuthBlock>(
-      crypto_.le_manager(), crypto_.cryptohome_keys_manager());
+  auto auth_block = std::make_unique<PinWeaverAuthBlock>(crypto_.le_manager());
 
   AuthInput auth_input = {brillo::SecureBlob(HexDecode(kHexVaultKey)), false};
   KeyBlobs key_blobs;

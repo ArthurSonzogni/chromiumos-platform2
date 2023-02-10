@@ -130,10 +130,6 @@ CryptoStatus TpmAuthBlockUtils::CheckTPMReadiness(
   }
 
   if (!cryptohome_key_loader_->HasCryptohomeKey()) {
-    cryptohome_key_loader_->Init();
-  }
-
-  if (!cryptohome_key_loader_->HasCryptohomeKey()) {
     LOG(ERROR) << "Vault keyset is wrapped by the TPM, but the TPM is "
                << "unavailable.";
     ReportCryptohomeError(kDecryptAttemptButTpmNotAvailable);

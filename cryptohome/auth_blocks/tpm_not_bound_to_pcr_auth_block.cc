@@ -206,10 +206,6 @@ CryptoStatus TpmNotBoundToPcrAuthBlock::Create(const AuthInput& user_input,
   brillo::SecureBlob salt =
       CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_KEY_SALT_SIZE);
 
-  // If the cryptohome key isn't loaded, try to load it.
-  if (!cryptohome_key_loader_->HasCryptohomeKey())
-    cryptohome_key_loader_->Init();
-
   // If the key still isn't loaded, fail the operation.
   if (!cryptohome_key_loader_->HasCryptohomeKey()) {
     return MakeStatus<CryptohomeCryptoError>(

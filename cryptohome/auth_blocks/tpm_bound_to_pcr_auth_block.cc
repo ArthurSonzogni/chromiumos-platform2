@@ -138,10 +138,6 @@ CryptoStatus TpmBoundToPcrAuthBlock::Create(const AuthInput& user_input,
   const ObfuscatedUsername& obfuscated_username =
       user_input.obfuscated_username.value();
 
-  // If the cryptohome key isn't loaded, try to load it.
-  if (!cryptohome_key_loader_->HasCryptohomeKey())
-    cryptohome_key_loader_->Init();
-
   // If the key still isn't loaded, fail the operation.
   if (!cryptohome_key_loader_->HasCryptohomeKey()) {
     return MakeStatus<CryptohomeCryptoError>(

@@ -19,8 +19,7 @@ class PinWeaverAuthBlock : public SyncAuthBlock {
   // software environment.
   static CryptoStatus IsSupported(Crypto& crypto);
 
-  explicit PinWeaverAuthBlock(LECredentialManager* le_manager,
-                              CryptohomeKeysManager* cryptohome_keys_manager);
+  explicit PinWeaverAuthBlock(LECredentialManager* le_manager);
   PinWeaverAuthBlock(const PinWeaverAuthBlock&) = delete;
   PinWeaverAuthBlock& operator=(const PinWeaverAuthBlock&) = delete;
 
@@ -41,8 +40,6 @@ class PinWeaverAuthBlock : public SyncAuthBlock {
  private:
   // Handler for Low Entropy credentials.
   LECredentialManager* le_manager_;
-
-  CryptohomeKeyLoader* cryptohome_key_loader_;
 };
 
 }  // namespace cryptohome

@@ -552,8 +552,7 @@ AuthBlockUtilityImpl::GetAuthBlockWithType(
 
   switch (auth_block_type) {
     case AuthBlockType::kPinWeaver:
-      return std::make_unique<PinWeaverAuthBlock>(
-          crypto_->le_manager(), crypto_->cryptohome_keys_manager());
+      return std::make_unique<PinWeaverAuthBlock>(crypto_->le_manager());
 
     case AuthBlockType::kChallengeCredential:
       return std::make_unique<ChallengeCredentialAuthBlock>();
@@ -613,8 +612,7 @@ AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
   switch (auth_block_type) {
     case AuthBlockType::kPinWeaver:
       return std::make_unique<SyncToAsyncAuthBlockAdapter>(
-          std::make_unique<PinWeaverAuthBlock>(
-              crypto_->le_manager(), crypto_->cryptohome_keys_manager()));
+          std::make_unique<PinWeaverAuthBlock>(crypto_->le_manager()));
 
     case AuthBlockType::kChallengeCredential:
       if (IsChallengeCredentialReady(auth_input)) {
@@ -816,8 +814,8 @@ base::flat_set<AuthIntent> AuthBlockUtilityImpl::GetSupportedIntentsFromState(
     return supported_intents;
   }
 
-  PinWeaverAuthBlock pinweaver_auth_block = PinWeaverAuthBlock(
-      crypto_->le_manager(), crypto_->cryptohome_keys_manager());
+  PinWeaverAuthBlock pinweaver_auth_block =
+      PinWeaverAuthBlock(crypto_->le_manager());
   if (pinweaver_auth_block.IsLocked(state->le_label.value())) {
     supported_intents.clear();
   }

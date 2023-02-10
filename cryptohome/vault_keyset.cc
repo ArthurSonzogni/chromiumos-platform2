@@ -1183,8 +1183,7 @@ std::unique_ptr<SyncAuthBlock> VaultKeyset::GetAuthBlockForCreation() const {
       return nullptr;
     }
     ReportCreateAuthBlock(AuthBlockType::kPinWeaver);
-    return std::make_unique<PinWeaverAuthBlock>(
-        crypto_->le_manager(), crypto_->cryptohome_keys_manager());
+    return std::make_unique<PinWeaverAuthBlock>(crypto_->le_manager());
   }
 
   if (IsSignatureChallengeProtected()) {
@@ -1234,8 +1233,7 @@ std::unique_ptr<SyncAuthBlock> VaultKeyset::GetAuthBlockForDerivation() {
   ReportDeriveAuthBlock(auth_block_type);
 
   if (auth_block_type == AuthBlockType::kPinWeaver) {
-    return std::make_unique<PinWeaverAuthBlock>(
-        crypto_->le_manager(), crypto_->cryptohome_keys_manager());
+    return std::make_unique<PinWeaverAuthBlock>(crypto_->le_manager());
   } else if (auth_block_type == AuthBlockType::kChallengeCredential) {
     return std::make_unique<ChallengeCredentialAuthBlock>();
   } else if (auth_block_type == AuthBlockType::kDoubleWrappedCompat) {

@@ -180,11 +180,6 @@ CryptoStatus TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,
 
   TpmEccAuthBlockState auth_state;
 
-  // If the cryptohome key isn't loaded, try to load it.
-  if (!cryptohome_key_loader_->HasCryptohomeKey()) {
-    cryptohome_key_loader_->Init();
-  }
-
   // If the key still isn't loaded, fail the operation.
   if (!cryptohome_key_loader_->HasCryptohomeKey()) {
     LOG(ERROR) << __func__ << ": Failed to load cryptohome key.";
@@ -373,11 +368,6 @@ CryptoStatus TpmEccAuthBlock::Derive(const AuthInput& auth_input,
         ErrorActionSet(
             {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
         CryptoError::CE_OTHER_CRYPTO);
-  }
-
-  // If the cryptohome key isn't loaded, try to load it.
-  if (!cryptohome_key_loader_->HasCryptohomeKey()) {
-    cryptohome_key_loader_->Init();
   }
 
   // If the key still isn't loaded, fail the operation.

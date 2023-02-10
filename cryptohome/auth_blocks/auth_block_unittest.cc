@@ -412,7 +412,7 @@ TEST(PinWeaverAuthBlockTest, CreateTest) {
                           reset_secret};
   KeyBlobs vkk_data;
 
-  PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_keys_manager);
+  PinWeaverAuthBlock auth_block(&le_cred_manager);
   AuthBlockState auth_state;
   EXPECT_TRUE(auth_block.Create(user_input, &auth_state, &vkk_data).ok());
   EXPECT_TRUE(
@@ -437,15 +437,13 @@ TEST(PinWeaverAuthBlockTest, CreateFailureLeManager) {
   brillo::SecureBlob reset_secret(32, 'S');
 
   // Now test that the method fails if the le_cred_manager fails.
-  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager_fail;
   NiceMock<MockLECredentialManager> le_cred_manager_fail;
   ON_CALL(le_cred_manager_fail, InsertCredential(_, _, _, _, _, _, _))
       .WillByDefault(ReturnError<CryptohomeLECredError>(
           kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
           LECredError::LE_CRED_ERROR_HASH_TREE));
 
-  PinWeaverAuthBlock auth_block_fail(&le_cred_manager_fail,
-                                     &cryptohome_keys_manager_fail);
+  PinWeaverAuthBlock auth_block_fail(&le_cred_manager_fail);
   // Call the Create() method.
   AuthInput user_input = {vault_key,
                           /*locked_to_single_user=*/std::nullopt, Username(),
@@ -462,10 +460,9 @@ TEST(PinWeaverAuthBlockTest, CreateFailureLeManager) {
 TEST(PinWeaverAuthBlockTest, CreateFailureNoUserInput) {
   brillo::SecureBlob reset_secret(32, 'S');
 
-  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   NiceMock<MockLECredentialManager> le_cred_manager;
 
-  PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_keys_manager);
+  PinWeaverAuthBlock auth_block(&le_cred_manager);
   AuthInput auth_input = {
       .obfuscated_username = ObfuscatedUsername(kObfuscatedUsername),
       .reset_secret = reset_secret};
@@ -482,10 +479,9 @@ TEST(PinWeaverAuthBlockTest, CreateFailureNoObfuscated) {
   brillo::SecureBlob user_input(20, 'C');
   brillo::SecureBlob reset_secret(32, 'S');
 
-  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   NiceMock<MockLECredentialManager> le_cred_manager;
 
-  PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_keys_manager);
+  PinWeaverAuthBlock auth_block(&le_cred_manager);
   AuthInput auth_input = {.user_input = user_input,
                           .reset_secret = reset_secret};
   KeyBlobs vkk_data;
@@ -499,10 +495,9 @@ TEST(PinWeaverAuthBlockTest, CreateFailureNoObfuscated) {
 TEST(PinWeaverAuthBlockTest, CreateFailureNoResetSecret) {
   brillo::SecureBlob user_input(20, 'C');
 
-  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
   NiceMock<MockLECredentialManager> le_cred_manager;
 
-  PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_keys_manager);
+  PinWeaverAuthBlock auth_block(&le_cred_manager);
   AuthInput auth_input = {
       .user_input = user_input,
       .obfuscated_username = ObfuscatedUsername(kObfuscatedUsername)};
@@ -521,8 +516,7 @@ TEST(PinWeaverAuthBlockTest, DeriveFailureMissingLeLabel) {
   brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
 
   NiceMock<MockLECredentialManager> le_cred_manager;
-  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
-  PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_keys_manager);
+  PinWeaverAuthBlock auth_block(&le_cred_manager);
 
   // Construct the auth block state. le_label is not set.
   AuthBlockState auth_state;
@@ -546,8 +540,7 @@ TEST(PinWeaverAuthBlockTest, DeriveFailureMissingSalt) {
   brillo::SecureBlob fek_iv(kAesBlockSize, 'X');
 
   NiceMock<MockLECredentialManager> le_cred_manager;
-  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
-  PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_keys_manager);
+  PinWeaverAuthBlock auth_block(&le_cred_manager);
 
   // Construct the auth block state. salt is not set.
   AuthBlockState auth_state;
@@ -571,8 +564,7 @@ TEST(PinWeaverAuthBlockTest, DeriveFailureNoUserInput) {
   brillo::SecureBlob salt(PKCS5_SALT_LEN, 'A');
 
   NiceMock<MockLECredentialManager> le_cred_manager;
-  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
-  PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_keys_manager);
+  PinWeaverAuthBlock auth_block(&le_cred_manager);
 
   // Construct the auth block state.
   AuthBlockState auth_state;
@@ -603,8 +595,7 @@ TEST(PinWeaverAuthBlockTest, DeriveTest) {
   EXPECT_CALL(le_cred_manager, CheckCredential(_, le_secret, _, _))
       .Times(Exactly(1));
 
-  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
-  PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_keys_manager);
+  PinWeaverAuthBlock auth_block(&le_cred_manager);
 
   // Construct the vault keyset.
   SerializedVaultKeyset serialized;
@@ -648,8 +639,7 @@ TEST(PinWeaverAuthBlockTest, DeriveOptionalValuesTest) {
   EXPECT_CALL(le_cred_manager, CheckCredential(_, le_secret, _, _))
       .Times(Exactly(1));
 
-  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
-  PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_keys_manager);
+  PinWeaverAuthBlock auth_block(&le_cred_manager);
 
   // Construct the vault keyset.
   // Notice that it does not set fek_iv and le_chaps_iv;
@@ -698,9 +688,7 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialFailureTest) {
       .Times(Exactly(1));
   EXPECT_CALL(le_cred_manager, GetDelayInSeconds(_)).WillOnce(ReturnValue(0));
 
-  NiceMock<hwsec::MockCryptohomeFrontend> hwsec;
-  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
-  PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_keys_manager);
+  PinWeaverAuthBlock auth_block(&le_cred_manager);
 
   // Construct the vault keyset.
   SerializedVaultKeyset serialized;
@@ -776,8 +764,7 @@ TEST(PinWeaverAuthBlockTest, CheckCredentialNotFatalCryptoErrorTest) {
   EXPECT_CALL(le_cred_manager, GetDelayInSeconds(_))
       .WillRepeatedly(ReturnValue(0));
 
-  NiceMock<MockCryptohomeKeysManager> cryptohome_keys_manager;
-  PinWeaverAuthBlock auth_block(&le_cred_manager, &cryptohome_keys_manager);
+  PinWeaverAuthBlock auth_block(&le_cred_manager);
 
   // Construct the vault keyset.
   SerializedVaultKeyset serialized;

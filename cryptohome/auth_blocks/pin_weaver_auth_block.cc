@@ -29,7 +29,6 @@
 
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
 #include "cryptohome/crypto.h"
-#include "cryptohome/cryptohome_keys_manager.h"
 #include "cryptohome/error/action.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/location_utils.h"
@@ -129,28 +128,12 @@ CryptoStatus PinWeaverAuthBlock::IsSupported(Crypto& crypto) {
         CryptoError::CE_OTHER_CRYPTO);
   }
 
-  DCHECK(crypto.cryptohome_keys_manager());
-  if (!crypto.cryptohome_keys_manager()->GetKeyLoader(
-          CryptohomeKeyType::kRSA)) {
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocPinWeaverAuthBlockNoKeyLoaderInIsSupported),
-        ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
-        CryptoError::CE_OTHER_CRYPTO);
-  }
-
   return OkStatus<CryptohomeCryptoError>();
 }
 
-PinWeaverAuthBlock::PinWeaverAuthBlock(
-    LECredentialManager* le_manager,
-    CryptohomeKeysManager* cryptohome_keys_manager)
-    : SyncAuthBlock(kLowEntropyCredential),
-      le_manager_(le_manager),
-      cryptohome_key_loader_(
-          cryptohome_keys_manager->GetKeyLoader(CryptohomeKeyType::kRSA)) {
+PinWeaverAuthBlock::PinWeaverAuthBlock(LECredentialManager* le_manager)
+    : SyncAuthBlock(kLowEntropyCredential), le_manager_(le_manager) {
   CHECK_NE(le_manager, nullptr);
-  CHECK_NE(cryptohome_key_loader_, nullptr);
 }
 
 CryptoStatus PinWeaverAuthBlock::Create(const AuthInput& auth_input,
@@ -202,10 +185,6 @@ CryptoStatus PinWeaverAuthBlock::Create(const AuthInput& auth_input,
     reset_secret = HmacSha256(pin_auth_state.reset_salt.value(),
                               auth_input.reset_seed.value());
   }
-
-  // This may not be needed, but is retained to maintain the original logic.
-  if (!cryptohome_key_loader_->HasCryptohomeKey())
-    cryptohome_key_loader_->Init();
 
   brillo::SecureBlob le_secret(kDefaultSecretSize);
   brillo::SecureBlob kdf_skey(kDefaultSecretSize);
