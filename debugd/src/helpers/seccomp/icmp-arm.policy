@@ -52,3 +52,5 @@ setgroups32: 1
 setresgid32: 1
 setresuid32: 1
 setuid32: 1
+dup: 1
+uname: 1

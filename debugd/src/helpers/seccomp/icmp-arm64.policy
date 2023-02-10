@@ -52,3 +52,4 @@ getcwd: 1
 capget: 1
 capset: 1
 setuid: 1
+dup: 1
