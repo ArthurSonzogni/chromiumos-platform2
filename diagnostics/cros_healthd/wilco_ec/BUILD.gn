@@ -33,7 +33,6 @@ if (use.test) {
     deps = [
       ":libcros_healthd_wilco_ec",
       "//diagnostics/base:healthd_testrunner",
-      "//diagnostics/common:libcommon_test_utils",
     ]
   }
 }

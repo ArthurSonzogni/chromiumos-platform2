@@ -21,9 +21,9 @@
 #include <fwupd/dbus-proxies.h>
 
 #include "diagnostics/base/file_utils.h"
-#include "diagnostics/common/dbus_utils.h"
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher_constants.h"
+#include "diagnostics/cros_healthd/utils/dbus_utils.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/cros_healthd/utils/fwupd_utils.h"
 #include "diagnostics/cros_healthd/utils/usb_utils.h"

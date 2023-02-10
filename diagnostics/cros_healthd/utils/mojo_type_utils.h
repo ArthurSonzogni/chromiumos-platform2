@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_COMMON_MOJO_TYPE_UTILS_H_
-#define DIAGNOSTICS_COMMON_MOJO_TYPE_UTILS_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_UTILS_MOJO_TYPE_UTILS_H_
+#define DIAGNOSTICS_CROS_HEALTHD_UTILS_MOJO_TYPE_UTILS_H_
 
 #include <algorithm>
 #include <optional>
@@ -190,4 +190,4 @@ std::vector<T> Sorted(const std::vector<T>& in) {
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_COMMON_MOJO_TYPE_UTILS_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_UTILS_MOJO_TYPE_UTILS_H_

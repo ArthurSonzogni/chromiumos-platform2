@@ -23,7 +23,6 @@ shared_library("libdiagnostics_base") {
   public_configs = [ ":libdiagnostics_base_config" ]
   assert_no_deps = [
     "//diagnostics/bindings/*",
-    "//diagnostics/common/*",
     "//diagnostics/constants/*",
     "//diagnostics/cros_health_tool/*",
     "//diagnostics/cros_healthd/*",

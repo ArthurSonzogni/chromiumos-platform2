@@ -18,7 +18,7 @@
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
 #include "diagnostics/base/file_utils.h"
-#include "diagnostics/common/dbus_utils.h"
+#include "diagnostics/cros_healthd/utils/dbus_utils.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 
 namespace diagnostics {

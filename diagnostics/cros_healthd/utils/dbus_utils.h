@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef DIAGNOSTICS_COMMON_DBUS_UTILS_H_
-#define DIAGNOSTICS_COMMON_DBUS_UTILS_H_
+#ifndef DIAGNOSTICS_CROS_HEALTHD_UTILS_DBUS_UTILS_H_
+#define DIAGNOSTICS_CROS_HEALTHD_UTILS_DBUS_UTILS_H_
 
 #include <utility>
 
@@ -34,4 +34,4 @@ auto SplitDbusCallback(
 
 }  // namespace diagnostics
 
-#endif  // DIAGNOSTICS_COMMON_DBUS_UTILS_H_
+#endif  // DIAGNOSTICS_CROS_HEALTHD_UTILS_DBUS_UTILS_H_

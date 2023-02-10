@@ -59,8 +59,8 @@ if (use.test) {
       ":libcros_healthd_events",
       "//diagnostics/base",
       "//diagnostics/base:healthd_testrunner",
-      "//diagnostics/common:libcommon_test_utils",
       "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
+      "//diagnostics/cros_healthd/utils:libcros_healthd_utils_test_utils",
       "//diagnostics/mojom/public:cros_healthd_mojo_bindings",
     ]
   }

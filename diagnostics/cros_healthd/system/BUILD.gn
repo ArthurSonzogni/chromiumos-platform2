@@ -91,10 +91,10 @@ if (use.test || use.fuzzer) {
     ]
     deps = [
       ":libcros_healthd_system",
-      "//diagnostics/common:libcommon_test_utils",
       "//diagnostics/cros_healthd/fake:libfake_cros_healthd",
       "//diagnostics/cros_healthd/network:libnetwork_health_adapter_test_utils",
       "//diagnostics/cros_healthd/network_diagnostics:libnetwork_diagnostics_adapter_test_utils",
+      "//diagnostics/cros_healthd/utils:libcros_healthd_utils_test_utils",
     ]
     sources = [
       "fake_bluetooth_event_hub.cc",
@@ -132,7 +132,7 @@ if (use.test) {
       ":libcros_healthd_system_test_utils",
       "//diagnostics/base",
       "//diagnostics/base:healthd_testrunner",
-      "//diagnostics/common:libcommon_test_utils",
+      "//diagnostics/cros_healthd/utils:libcros_healthd_utils_test_utils",
     ]
   }
 }
