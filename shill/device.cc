@@ -272,7 +272,6 @@ void Device::ChangePin(const std::string& /*old_pin*/,
 }
 
 void Device::Reset(const ResultCallback& callback) {
-  SLOG(this, 2) << __func__;
   Error error;
   Error::PopulateAndLog(
       FROM_HERE, &error, Error::kNotImplemented,
