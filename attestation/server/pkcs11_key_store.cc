@@ -562,9 +562,10 @@ bool Pkcs11KeyStore::GetUserSlot(const std::string& username,
   const char kChapsDaemonName[] = "chaps";
   const char kChapsSystemToken[] = "/var/lib/chaps";
   base::FilePath token_path =
-      username.empty() ? base::FilePath(kChapsSystemToken)
-                       : brillo::cryptohome::home::GetDaemonStorePath(
-                             username, kChapsDaemonName);
+      username.empty()
+          ? base::FilePath(kChapsSystemToken)
+          : brillo::cryptohome::home::GetDaemonStorePath(
+                brillo::cryptohome::home::Username(username), kChapsDaemonName);
   CK_RV rv;
   rv = C_Initialize(nullptr);
   if (rv != CKR_OK && rv != CKR_CRYPTOKI_ALREADY_INITIALIZED) {
