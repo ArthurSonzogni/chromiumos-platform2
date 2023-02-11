@@ -18,6 +18,7 @@
 #include "cryptohome/mock_platform.h"
 
 namespace cryptohome {
+namespace {
 
 using base::FilePath;
 using std::ostringstream;
@@ -28,6 +29,12 @@ using ::testing::Return;
 using ::testing::SaveArg;
 using ::testing::SetArgPointee;
 using ::testing::StrEq;
+
+struct MountSuccessParams {
+  bool user_success;
+  bool password_success;
+  bool mount_success;
+};
 
 // StatefulRecoveryTest is a test fixture for all Stateful Recovery unit tests.
 class StatefulRecoveryTest : public ::testing::Test {
@@ -68,25 +75,70 @@ class StatefulRecoveryTest : public ::testing::Test {
   // Location of the flag_file
   const std::string flag_file_ = "mylocalflagfile";
 
-  void PrepareMountRequest(bool success) {
+  void PrepareMountRequest(MountSuccessParams success) {
     // Mount
-    {
-      EXPECT_CALL(*userdataauth_proxy_, Mount)
+
+    EXPECT_CALL(*userdataauth_proxy_, StartAuthSession)
+        .WillOnce([success](auto in_request, auto out_reply,
+                            brillo::ErrorPtr* error, int timeout_ms) {
+          if (success.user_success) {
+            out_reply->set_error(
+                user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET);
+            out_reply->set_user_exists(true);
+          } else {
+            out_reply->set_error(user_data_auth::CryptohomeErrorCode::
+                                     CRYPTOHOME_ERROR_MOUNT_FATAL);
+          }
+
+          return true;
+        });
+    if (success.user_success) {
+      EXPECT_CALL(*userdataauth_proxy_, AuthenticateAuthFactor)
           .WillOnce([success](auto in_request, auto out_reply,
                               brillo::ErrorPtr* error, int timeout_ms) {
-            if (success)
+            if (success.password_success) {
               out_reply->set_error(user_data_auth::CryptohomeErrorCode::
                                        CRYPTOHOME_ERROR_NOT_SET);
-            else
+              out_reply->set_authenticated(true);
+
+            } else {
               out_reply->set_error(user_data_auth::CryptohomeErrorCode::
-                                       CRYPTOHOME_ERROR_MOUNT_FATAL);
+                                       CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+            }
 
             return true;
           });
+      if (success.password_success) {
+        EXPECT_CALL(*userdataauth_proxy_, PreparePersistentVault)
+            .WillOnce([success](auto in_request, auto out_reply,
+                                brillo::ErrorPtr* error, int timeout_ms) {
+              if (success.mount_success) {
+                out_reply->set_error(user_data_auth::CryptohomeErrorCode::
+                                         CRYPTOHOME_ERROR_NOT_SET);
+              } else {
+                out_reply->set_error(user_data_auth::CryptohomeErrorCode::
+                                         CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+              }
+
+              return true;
+            });
+      }
+
+      // Invalidate session if created.
+      if (success.user_success) {
+        EXPECT_CALL(*userdataauth_proxy_, InvalidateAuthSession)
+            .WillOnce([](auto in_request, auto out_reply,
+                         brillo::ErrorPtr* error, int timeout_ms) {
+              out_reply->set_error(user_data_auth::CryptohomeErrorCode::
+                                       CRYPTOHOME_ERROR_NOT_SET);
+
+              return true;
+            });
+      }
     }
 
-    // UnMount
-    if (success) {
+    // UnMount.
+    if (success.mount_success) {
       EXPECT_CALL(*userdataauth_proxy_, Unmount)
           .WillRepeatedly([](auto in_request, auto out_reply,
                              brillo::ErrorPtr* error, int timeout_ms) {
@@ -174,14 +226,12 @@ TEST_F(StatefulRecoveryTest, ValidRequestV2) {
               CreateDirectory(FilePath(StatefulRecovery::kRecoverDestination)))
       .WillOnce(Return(true));
 
-  // CopyUserContents
-  auto mock_mount_response = std::make_unique<user_data_auth::MountReply>();
-
   EXPECT_CALL(*platform_,
               Copy(mount_path, FilePath(StatefulRecovery::kRecoverDestination)))
       .WillOnce(Return(true));
 
-  PrepareMountRequest(true);
+  PrepareMountRequest(MountSuccessParams{
+      .user_success = true, .password_success = true, .mount_success = true});
   ExpectGetOwner(user);
   EXPECT_CALL(*platform_, FirmwareWriteProtected()).WillOnce(Return(true));
 
@@ -229,7 +279,8 @@ TEST_F(StatefulRecoveryTest, ValidRequestV2NotOwner) {
   EXPECT_CALL(*platform_,
               Copy(mount_path, FilePath(StatefulRecovery::kRecoverDestination)))
       .WillOnce(Return(true));
-  PrepareMountRequest(true);
+  PrepareMountRequest(MountSuccessParams{
+      .user_success = true, .password_success = true, .mount_success = true});
   ExpectGetOwner("notuser");
   EXPECT_CALL(*platform_, FirmwareWriteProtected()).WillOnce(Return(true));
 
@@ -251,7 +302,9 @@ TEST_F(StatefulRecoveryTest, ValidRequestV2BadUser) {
               CreateDirectory(FilePath(StatefulRecovery::kRecoverDestination)))
       .WillOnce(Return(true));
 
-  PrepareMountRequest(false);
+  PrepareMountRequest(MountSuccessParams{.user_success = false,
+                                         .password_success = false,
+                                         .mount_success = false});
   EXPECT_CALL(*platform_, FirmwareWriteProtected()).WillOnce(Return(true));
 
   Initialize();
@@ -272,7 +325,8 @@ TEST_F(StatefulRecoveryTest, ValidRequestV2BadUserNotWriteProtected) {
               CreateDirectory(FilePath(StatefulRecovery::kRecoverDestination)))
       .WillOnce(Return(true));
 
-  PrepareMountRequest(false);
+  PrepareMountRequest(MountSuccessParams{
+      .user_success = true, .password_success = true, .mount_success = false});
   EXPECT_CALL(*platform_, FirmwareWriteProtected()).WillOnce(Return(false));
 
   // CopyPartitionInfo
@@ -317,12 +371,9 @@ TEST_F(StatefulRecoveryTest, ValidRequestV2NotOwnerNotWriteProtected) {
       .WillOnce(Return(true));
 
   // CopyUserContents
-  PrepareMountRequest(true);
-  EXPECT_CALL(*platform_,
-              Copy(mount_path, FilePath(StatefulRecovery::kRecoverDestination)))
-      .WillOnce(Return(true));
+  PrepareMountRequest(MountSuccessParams{
+      .user_success = true, .password_success = true, .mount_success = false});
 
-  ExpectGetOwner("notowner");
   EXPECT_CALL(*platform_, FirmwareWriteProtected()).WillOnce(Return(false));
 
   // CopyPartitionInfo
@@ -489,5 +540,7 @@ TEST_F(StatefulRecoveryTest, DestinationRecreateFailure) {
   EXPECT_TRUE(recovery_->Requested());
   EXPECT_FALSE(recovery_->Recover());
 }
+
+}  // namespace
 
 }  // namespace cryptohome

@@ -6,6 +6,7 @@
 
 #include "cryptohome/stateful_recovery/stateful_recovery.h"
 
+#include <brillo/secure_blob.h>
 #include <unistd.h>
 
 #include <string>
@@ -17,9 +18,11 @@
 #include <base/values.h>
 #include <brillo/syslog_logging.h>
 #include <brillo/cryptohome.h>
+#include <cryptohome/proto_bindings/auth_factor.pb.h>
 #include <policy/device_policy.h>
 #include <policy/libpolicy.h>
 
+#include "cryptohome/auth_session.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/username.h"
@@ -151,6 +154,7 @@ bool StatefulRecovery::RecoverV2() {
       // encrypted-stateful partition couldn't be extracted.
       return false;
     }
+
     wrote_data = true;
   }
 
@@ -224,28 +228,140 @@ bool StatefulRecovery::ParseFlagFile() {
   return false;
 }
 
-bool StatefulRecovery::Mount(const Username& username,
-                             const std::string& passkey,
-                             FilePath* out_home_path) {
-  user_data_auth::MountRequest req;
-  req.mutable_account()->set_account_id(*username);
-  req.mutable_authorization()->mutable_key()->set_secret(passkey);
-
-  user_data_auth::MountReply reply;
+void StatefulRecovery::InvalidateAuthSession(
+    const std::string& auth_session_id) {
+  user_data_auth::InvalidateAuthSessionRequest invalidate_session_req;
+  invalidate_session_req.set_auth_session_id(auth_session_id);
+  user_data_auth::InvalidateAuthSessionReply invalidate_session_reply;
   brillo::ErrorPtr error;
-  if (!userdataauth_proxy_->Mount(req, &reply, &error, timeout_ms_) || error) {
-    LOG(ERROR) << "Mount call failed: " << error->GetMessage();
-    return false;
+
+  if (!userdataauth_proxy_->InvalidateAuthSession(invalidate_session_req,
+                                                  &invalidate_session_reply,
+                                                  &error, timeout_ms_) ||
+      error) {
+    LOG(WARNING) << "Failed to invalidate auth session for stateful recovery: "
+                 << error->GetMessage();
   }
-  if (reply.error() !=
+  if (invalidate_session_reply.error() !=
       user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-    LOG(ERROR) << "Mount during stateful recovery failed: " << reply.error();
+    LOG(ERROR) << "InvalidateAuthSession failed during stateful recovery: "
+               << invalidate_session_reply.error();
+  }
+}
+
+bool StatefulRecovery::Mount(const Username& username,
+                             const std::string& password,
+                             FilePath* out_home_path) {
+  // Start an AuthSession first to authenticate the user and mount the user
+  // vault.
+
+  brillo::ErrorPtr error;
+  user_data_auth::StartAuthSessionRequest auth_session_req;
+  auth_session_req.mutable_account_id()->set_account_id(*username);
+  auth_session_req.set_intent(user_data_auth::AUTH_INTENT_DECRYPT);
+  auth_session_req.set_flags(
+      user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE);
+  user_data_auth::StartAuthSessionReply auth_session_reply;
+  if (!userdataauth_proxy_->StartAuthSession(
+          auth_session_req, &auth_session_reply, &error, timeout_ms_) ||
+      error) {
+    LOG(ERROR) << "Failed to start auth session for stateful recovery: "
+               << error->GetMessage();
     return false;
   }
-  LOG(INFO) << "Mount succeeded.";
-  const ObfuscatedUsername obfuscated_username =
-      brillo::cryptohome::home::SanitizeUserName(username);
-  *out_home_path = GetUserMountDirectory(obfuscated_username);
+  if (auth_session_reply.error() !=
+      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+    LOG(ERROR) << "StartAuthSession failed during stateful recovery: "
+               << auth_session_reply.error();
+    return false;
+  }
+  if (!auth_session_reply.user_exists()) {
+    LOG(ERROR) << "User for stateful recovery doesn't exist.";
+    return false;
+  }
+  LOG(INFO) << "AuthSession started for stateful recovery.";
+
+  // Parse the available factors to find the password label
+  std::string auth_factor_label;
+  for (auto auth_factor : auth_session_reply.auth_factors()) {
+    if (auth_factor.type() ==
+        user_data_auth::AuthFactorType::AUTH_FACTOR_TYPE_PASSWORD) {
+      auth_factor_label = auth_factor.label();
+    }
+  }
+
+  // Authenticate the user with the created AuthSession
+
+  // Obtain salted passkey from raw password.
+  brillo::SecureBlob salt;
+  if (!GetSystemSalt(platform_, &salt)) {
+    LOG(ERROR) << "Failed to get system salt for stateful recovery.";
+    return false;
+  }
+  brillo::SecureBlob passkey_blob;
+  Crypto::PasswordToPasskey(password.c_str(), salt, &passkey_blob);
+  std::string passkey = passkey_blob.to_string();
+
+  // Authenticate.
+  user_data_auth::AuthenticateAuthFactorRequest authenticate_req;
+  authenticate_req.set_auth_session_id(auth_session_reply.auth_session_id());
+  authenticate_req.set_auth_factor_label(auth_factor_label);
+  authenticate_req.mutable_auth_input()->mutable_password_input()->set_secret(
+      passkey);
+  user_data_auth::AuthenticateAuthFactorReply authenticate_reply;
+  if (!userdataauth_proxy_->AuthenticateAuthFactor(
+          authenticate_req, &authenticate_reply, &error, timeout_ms_) ||
+      error) {
+    LOG(ERROR) << "Failed to authenticate auth session for stateful recovery: "
+               << error->GetMessage();
+    InvalidateAuthSession(auth_session_reply.auth_session_id());
+    return false;
+  }
+  if (authenticate_reply.error() !=
+      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+    LOG(ERROR) << "AuthenticateAuthFactor failed during stateful recovery: "
+               << auth_session_reply.error();
+    InvalidateAuthSession(auth_session_reply.auth_session_id());
+    return false;
+  }
+
+  if (!authenticate_reply.authenticated()) {
+    LOG(ERROR) << "AuthenticateAuthFactor returned success but failed to "
+                  "authenticate.";
+    InvalidateAuthSession(auth_session_reply.auth_session_id());
+    return false;
+  }
+  LOG(INFO) << "AuthSession authenticated for stateful recovery.";
+
+  // Now the user is authenticated and we can attempt mounting user vault.
+
+  user_data_auth::PreparePersistentVaultRequest prepare_vault_req;
+  prepare_vault_req.set_auth_session_id(auth_session_reply.auth_session_id());
+
+  user_data_auth::PreparePersistentVaultReply prepare_vault_reply;
+  if (!userdataauth_proxy_->PreparePersistentVault(
+          prepare_vault_req, &prepare_vault_reply, &error, timeout_ms_) ||
+      error) {
+    LOG(ERROR) << "Failed to prepare persistent vault for stateful recovery: "
+               << error->GetMessage();
+    InvalidateAuthSession(auth_session_reply.auth_session_id());
+    return false;
+  }
+  if (prepare_vault_reply.error() !=
+      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+    LOG(ERROR) << "PreparePersistentVault failed during stateful recovery: "
+               << prepare_vault_reply.error();
+    InvalidateAuthSession(auth_session_reply.auth_session_id());
+    return false;
+  }
+  LOG(INFO) << "Prepared persistent vault for stateful recovery.";
+
+  // Cleanup AuthSession.
+
+  *out_home_path = GetUserMountDirectory(
+      brillo::cryptohome::home::SanitizeUserName(username));
+
+  InvalidateAuthSession(auth_session_reply.auth_session_id());
   return true;
 }
 

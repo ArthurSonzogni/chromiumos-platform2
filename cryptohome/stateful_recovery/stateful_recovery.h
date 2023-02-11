@@ -78,6 +78,10 @@ class StatefulRecovery {
              const std::string& passkey,
              base::FilePath* out_home_path);
 
+  // InvalidateAuthSession invalidates an AuthSession given by the
+  // |auth_session_id|.
+  void InvalidateAuthSession(const std::string& auth_session_id);
+
   // Unmount unmounts all cryptohome. It returns true on success and false on
   // failure.
   bool Unmount();
