@@ -4,7 +4,7 @@
 
 #include "shill/mock_portal_detector.h"
 
-#include <base/callback_helpers.h>
+#include <base/functional/callback_helpers.h>
 
 namespace shill {
 
