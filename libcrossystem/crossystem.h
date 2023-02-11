@@ -6,63 +6,40 @@
 #define LIBCROSSYSTEM_CROSSYSTEM_H_
 
 #include <cstddef>
+#include <memory>
 #include <optional>
-
 #include <string>
+#include <utility>
 
 #include <brillo/brillo_export.h>
+#include <libcrossystem/crossystem_impl.h>
+#include <libcrossystem/crossystem_vboot_interface.h>
 
 namespace crossystem {
 
-// C++ interface to access crossystem system properties.
+// C++ class to access crossystem system properties.
 class BRILLO_EXPORT Crossystem {
  public:
-  virtual ~Crossystem() = default;
+  // Default implementation uses the real crossystem (CrossystemImpl).
+  Crossystem() : Crossystem(std::make_unique<CrossystemImpl>()) {}
 
-  // Reads a system property integer.
-  //
-  // @param name The name of the target system property.
-  // @return The property value, or |std::nullopt| if error.
-  virtual std::optional<int> VbGetSystemPropertyInt(
-      const std::string& name) const = 0;
+  // Can be used to instantiate a fake implementation for testing by passing
+  // CrossystemFake.
+  explicit Crossystem(std::unique_ptr<CrossystemVbootInterface> impl)
+      : impl_(std::move(impl)) {}
 
-  // Sets a system property integer.
-  //
-  // @param name The name of the target system property.
-  // @param value The integer value to set.
-  // @return |true| if it succeeds; |false| if it fails.
-  virtual bool VbSetSystemPropertyInt(const std::string& name, int value) = 0;
+  std::optional<int> VbGetSystemPropertyInt(const std::string& name) const;
 
-  // Reads a system property string.
-  //
-  // @param name The name of the target system property.
-  // @return The property value, or |std::nullopt| if error.
-  virtual std::optional<std::string> VbGetSystemPropertyString(
-      const std::string& name) const = 0;
-
-  // Sets a system property string.
-  //
-  // @param name The name of the target system property.
-  // @param value The string value to set.
-  // @return |true| if it succeeds; |false| if it fails.
-  virtual bool VbSetSystemPropertyString(const std::string& name,
-                                         const std::string& value) = 0;
-};
-
-// The sole implementation that invokes the corresponding functions provided
-// in vboot/crossystem.h .
-class BRILLO_EXPORT CrossystemImpl : public Crossystem {
- public:
-  std::optional<int> VbGetSystemPropertyInt(
-      const std::string& name) const override;
-
-  bool VbSetSystemPropertyInt(const std::string& name, int value) override;
+  bool VbSetSystemPropertyInt(const std::string& name, int value);
 
   std::optional<std::string> VbGetSystemPropertyString(
-      const std::string& name) const override;
+      const std::string& name) const;
 
   bool VbSetSystemPropertyString(const std::string& name,
-                                 const std::string& value) override;
+                                 const std::string& value);
+
+ private:
+  std::unique_ptr<CrossystemVbootInterface> impl_;
 };
 
 }  // namespace crossystem

@@ -344,7 +344,7 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
   uint32_t seneschal_server_handle = server_proxy->handle();
   vm_info->set_seneschal_server_handle(seneschal_server_handle);
 
-  crossystem::CrossystemImpl cros_system;
+  crossystem::Crossystem cros_system;
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, seneschal_server_port);
 

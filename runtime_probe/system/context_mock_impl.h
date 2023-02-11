@@ -57,9 +57,7 @@ class ContextMockImpl : public Context {
   // Interfaces to access fake/mock objects.
   brillo::FakeCrosConfig* fake_cros_config() { return &fake_cros_config_; }
 
-  crossystem::fake::CrossystemFake* fake_crossystem() {
-    return &fake_crossystem_;
-  }
+  crossystem::Crossystem* fake_crossystem() { return &fake_crossystem_; }
 
   SyscallerMockImpl* mock_syscaller() { return &mock_syscaller_; }
 
@@ -82,7 +80,7 @@ class ContextMockImpl : public Context {
 
  private:
   brillo::FakeCrosConfig fake_cros_config_;
-  crossystem::fake::CrossystemFake fake_crossystem_;
+  crossystem::Crossystem fake_crossystem_;
   testing::StrictMock<SyscallerMockImpl> mock_syscaller_;
   testing::StrictMock<org::chromium::debugdProxyMock> mock_debugd_proxy_;
   testing::NiceMock<org::chromium::flimflam::ManagerProxyMock>

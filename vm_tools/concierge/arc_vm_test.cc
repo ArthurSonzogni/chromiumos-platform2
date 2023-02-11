@@ -22,7 +22,8 @@ constexpr int kLcdDensity = 160;
 }  // namespace
 
 TEST(ArcVmTest, NonDevModeKernelParams) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   cros_system.VbSetSystemPropertyInt("cros_debug", 0);
   StartArcVmRequest request;
   std::vector<std::string> params =
@@ -32,7 +33,8 @@ TEST(ArcVmTest, NonDevModeKernelParams) {
 }
 
 TEST(ArcVmTest, DevModeKernelParams) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   cros_system.VbSetSystemPropertyInt("cros_debug", 1);
   StartArcVmRequest request;
   std::vector<std::string> params =
@@ -42,7 +44,8 @@ TEST(ArcVmTest, DevModeKernelParams) {
 }
 
 TEST(ArcVmTest, SeneschalServerPortParam) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
@@ -52,7 +55,8 @@ TEST(ArcVmTest, SeneschalServerPortParam) {
 }
 
 TEST(ArcVmTest, EnableConsumerAutoUpdateToggleParamTrue) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_enable_consumer_auto_update_toggle(true);
@@ -63,7 +67,8 @@ TEST(ArcVmTest, EnableConsumerAutoUpdateToggleParamTrue) {
 }
 
 TEST(ArcVmTest, EnableConsumerAutoUpdateToggleParamFalse) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_enable_consumer_auto_update_toggle(false);
@@ -74,7 +79,8 @@ TEST(ArcVmTest, EnableConsumerAutoUpdateToggleParamFalse) {
 }
 
 TEST(ArcVmTest, ArcFilePickerParamTrue) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_arc_file_picker_experiment(true);
@@ -84,7 +90,8 @@ TEST(ArcVmTest, ArcFilePickerParamTrue) {
 }
 
 TEST(ArcVmTest, ArcFilePickerParamFalse) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_arc_file_picker_experiment(false);
@@ -96,7 +103,8 @@ TEST(ArcVmTest, ArcFilePickerParamFalse) {
 TEST(ArcVmTest, CustomTabsParamTrue) {
   base::test::ScopedChromeOSVersionInfo info(
       "CHROMEOS_RELEASE_TRACK=canary-channel", base::Time::Now());
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_arc_custom_tabs_experiment(true);
@@ -108,7 +116,8 @@ TEST(ArcVmTest, CustomTabsParamTrue) {
 TEST(ArcVmTest, CustomTabsParamFalse) {
   base::test::ScopedChromeOSVersionInfo info(
       "CHROMEOS_RELEASE_TRACK=canary-channel", base::Time::Now());
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_arc_custom_tabs_experiment(false);
@@ -120,7 +129,8 @@ TEST(ArcVmTest, CustomTabsParamFalse) {
 TEST(ArcVmTest, CustomTabsParamStableChannel) {
   base::test::ScopedChromeOSVersionInfo info(
       "CHROMEOS_RELEASE_TRACK=stable-channel", base::Time::Now());
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_arc_custom_tabs_experiment(true);
@@ -130,7 +140,8 @@ TEST(ArcVmTest, CustomTabsParamStableChannel) {
 }
 
 TEST(ArcVmTest, KeyboardShortcutHelperParamTrue) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_enable_keyboard_shortcut_helper_integration(true);
   std::vector<std::string> params =
@@ -140,7 +151,8 @@ TEST(ArcVmTest, KeyboardShortcutHelperParamTrue) {
 }
 
 TEST(ArcVmTest, KeyboardShortcutHelperParamFalse) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_enable_keyboard_shortcut_helper_integration(false);
   std::vector<std::string> params =
@@ -150,7 +162,8 @@ TEST(ArcVmTest, KeyboardShortcutHelperParamFalse) {
 }
 
 TEST(ArcVmTest, EnableNotificationsRefreshParamTrue) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_enable_notifications_refresh(true);
@@ -161,7 +174,8 @@ TEST(ArcVmTest, EnableNotificationsRefreshParamTrue) {
 }
 
 TEST(ArcVmTest, EnableNotificationsRefreshParamFalse) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_enable_notifications_refresh(false);
@@ -172,7 +186,8 @@ TEST(ArcVmTest, EnableNotificationsRefreshParamFalse) {
 }
 
 TEST(ArcVmTest, EnableTtsCachingParamTrue) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_enable_tts_caching(true);
@@ -182,7 +197,8 @@ TEST(ArcVmTest, EnableTtsCachingParamTrue) {
 }
 
 TEST(ArcVmTest, EnableTtsCachingParamFalse) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_enable_tts_caching(false);
@@ -192,7 +208,8 @@ TEST(ArcVmTest, EnableTtsCachingParamFalse) {
 }
 
 TEST(ArcVmTest, EnableGmscoreLmkProtectionParamTrue) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_enable_gmscore_lmk_protection(true);
   std::vector<std::string> params =
@@ -202,7 +219,8 @@ TEST(ArcVmTest, EnableGmscoreLmkProtectionParamTrue) {
 }
 
 TEST(ArcVmTest, EnableGmscoreLmkProtectionParamFalse) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_enable_gmscore_lmk_protection(false);
   std::vector<std::string> params =
@@ -212,7 +230,8 @@ TEST(ArcVmTest, EnableGmscoreLmkProtectionParamFalse) {
 }
 
 TEST(ArcVmTest, EnableVirtioBlockDataParamTrue) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_enable_virtio_blk_data(true);
   std::vector<std::string> params =
@@ -221,7 +240,8 @@ TEST(ArcVmTest, EnableVirtioBlockDataParamTrue) {
 }
 
 TEST(ArcVmTest, EnableVirtioBlockDataParamFalse) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_enable_virtio_blk_data(false);
   std::vector<std::string> params =
@@ -230,7 +250,8 @@ TEST(ArcVmTest, EnableVirtioBlockDataParamFalse) {
 }
 
 TEST(ArcVmTest, EnableBroadcastAnrPrenotifyTrue) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_enable_broadcast_anr_prenotify(true);
   std::vector<std::string> params =
@@ -240,7 +261,8 @@ TEST(ArcVmTest, EnableBroadcastAnrPrenotifyTrue) {
 }
 
 TEST(ArcVmTest, EnableBroadcastAnrPrenotifyFalse) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_enable_broadcast_anr_prenotify(false);
   std::vector<std::string> params =
@@ -250,7 +272,8 @@ TEST(ArcVmTest, EnableBroadcastAnrPrenotifyFalse) {
 }
 
 TEST(ArcVmTest, VmMemoryPSIReports) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_vm_memory_psi_period(300);
   std::vector<std::string> params =
@@ -260,7 +283,8 @@ TEST(ArcVmTest, VmMemoryPSIReports) {
 }
 
 TEST(ArcVmTest, VmMemoryPSIReportsDefault) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_vm_memory_psi_period(-1);
   std::vector<std::string> params =
@@ -272,7 +296,8 @@ TEST(ArcVmTest, VmMemoryPSIReportsDefault) {
 }
 
 TEST(ArcVmTest, DisableMediaStoreMaintenanceTrue) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_disable_media_store_maintenance(true);
@@ -283,7 +308,8 @@ TEST(ArcVmTest, DisableMediaStoreMaintenanceTrue) {
 }
 
 TEST(ArcVmTest, DisableMediaStoreMaintenanceFalse) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_disable_media_store_maintenance(false);
@@ -294,7 +320,8 @@ TEST(ArcVmTest, DisableMediaStoreMaintenanceFalse) {
 }
 
 TEST(ArcVmTest, ArcGeneratePlayAutoInstallTrue) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_arc_generate_pai(true);
@@ -304,7 +331,8 @@ TEST(ArcVmTest, ArcGeneratePlayAutoInstallTrue) {
 }
 
 TEST(ArcVmTest, ArcGeneratePlayAutoInstallFalse) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_arc_generate_pai(false);
@@ -314,7 +342,8 @@ TEST(ArcVmTest, ArcGeneratePlayAutoInstallFalse) {
 }
 
 TEST(ArcVmTest, DisableDownloadProviderTrue) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_disable_download_provider(true);
@@ -325,7 +354,8 @@ TEST(ArcVmTest, DisableDownloadProviderTrue) {
 }
 
 TEST(ArcVmTest, DisableDownloadProviderFalse) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_disable_download_provider(false);
@@ -336,7 +366,8 @@ TEST(ArcVmTest, DisableDownloadProviderFalse) {
 }
 
 TEST(ArcVmTest, GuestZramSize0) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_guest_zram_size(0);
   std::vector<std::string> params =
@@ -345,7 +376,8 @@ TEST(ArcVmTest, GuestZramSize0) {
 }
 
 TEST(ArcVmTest, GuestZramSize100) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_guest_zram_size(100);
   std::vector<std::string> params =
@@ -356,7 +388,8 @@ TEST(ArcVmTest, GuestZramSize100) {
 TEST(ArcVmTest, ChromeOsChannelStable) {
   base::test::ScopedChromeOSVersionInfo info(
       "CHROMEOS_RELEASE_TRACK=stable-channel", base::Time::Now());
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
@@ -366,7 +399,8 @@ TEST(ArcVmTest, ChromeOsChannelStable) {
 TEST(ArcVmTest, ChromeOsChannelTestImage) {
   base::test::ScopedChromeOSVersionInfo info(
       "CHROMEOS_RELEASE_TRACK=testimage-channel", base::Time::Now());
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
@@ -377,7 +411,8 @@ TEST(ArcVmTest, ChromeOsChannelTestImage) {
 TEST(ArcVmTest, ChromeOsChannelUnknown) {
   base::test::ScopedChromeOSVersionInfo info("CHROMEOS_RELEASE_TRACK=invalid",
                                              base::Time::Now());
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
@@ -385,7 +420,8 @@ TEST(ArcVmTest, ChromeOsChannelUnknown) {
 }
 
 TEST(ArcVmTest, PanelOrientation) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_panel_orientation(StartArcVmRequest::ORIENTATION_180);
   std::vector<std::string> params =
@@ -395,7 +431,8 @@ TEST(ArcVmTest, PanelOrientation) {
 }
 
 TEST(ArcVmTest, IioservicePresentParam) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
@@ -405,7 +442,8 @@ TEST(ArcVmTest, IioservicePresentParam) {
 }
 
 TEST(ArcVmTest, SwappinessNotPresentByDefault) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   std::vector<std::string> params =
       ArcVm::GetKernelParams(cros_system, request, kSeneschalServerPort);
@@ -415,7 +453,8 @@ TEST(ArcVmTest, SwappinessNotPresentByDefault) {
 }
 
 TEST(ArcVmTest, SwappinessPresentParam) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_guest_swappiness(55);
   std::vector<std::string> params =
@@ -425,7 +464,8 @@ TEST(ArcVmTest, SwappinessPresentParam) {
 }
 
 TEST(ArcVmTest, MglruReclaimIntervalDisabled) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_mglru_reclaim_interval(0);
   std::vector<std::string> params =
@@ -437,7 +477,8 @@ TEST(ArcVmTest, MglruReclaimIntervalDisabled) {
 }
 
 TEST(ArcVmTest, MglruReclaimWithoutSwappiness) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_mglru_reclaim_interval(30000);
   std::vector<std::string> params =
@@ -451,7 +492,8 @@ TEST(ArcVmTest, MglruReclaimWithoutSwappiness) {
 }
 
 TEST(ArcVmTest, MglruReclaimWithSwappiness) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_mglru_reclaim_interval(30000);
   request.set_mglru_reclaim_swappiness(100);
@@ -466,7 +508,8 @@ TEST(ArcVmTest, MglruReclaimWithSwappiness) {
 }
 
 TEST(ArcVmTest, UpdateO4CListViaA2C2Param) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   {
     request.set_update_o4c_list_via_a2c2(true);
@@ -485,7 +528,8 @@ TEST(ArcVmTest, UpdateO4CListViaA2C2Param) {
 }
 
 TEST(ArcVmTest, NativeBridgeExperimentNone) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_native_bridge_experiment(
       vm_tools::concierge::StartArcVmRequest::BINARY_TRANSLATION_TYPE_NONE);
@@ -495,7 +539,8 @@ TEST(ArcVmTest, NativeBridgeExperimentNone) {
 }
 
 TEST(ArcVmTest, NativeBridgeExperimentHoudini) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_native_bridge_experiment(
       vm_tools::concierge::StartArcVmRequest::BINARY_TRANSLATION_TYPE_HOUDINI);
@@ -506,7 +551,8 @@ TEST(ArcVmTest, NativeBridgeExperimentHoudini) {
 }
 
 TEST(ArcVmTest, NativeBridgeExperimentNdkTranslation) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_native_bridge_experiment(
       vm_tools::concierge::StartArcVmRequest::
@@ -518,7 +564,8 @@ TEST(ArcVmTest, NativeBridgeExperimentNdkTranslation) {
 }
 
 TEST(ArcVmTest, UsapProfileDefault) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_usap_profile(
       vm_tools::concierge::StartArcVmRequest::USAP_PROFILE_DEFAULT);
@@ -530,7 +577,8 @@ TEST(ArcVmTest, UsapProfileDefault) {
 }
 
 TEST(ArcVmTest, UsapProfile4G) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_usap_profile(
       vm_tools::concierge::StartArcVmRequest::USAP_PROFILE_4G);
@@ -540,7 +588,8 @@ TEST(ArcVmTest, UsapProfile4G) {
 }
 
 TEST(ArcVmTest, UsapProfile8G) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_usap_profile(
       vm_tools::concierge::StartArcVmRequest::USAP_PROFILE_8G);
@@ -550,7 +599,8 @@ TEST(ArcVmTest, UsapProfile8G) {
 }
 
 TEST(ArcVmTest, UsapProfile16G) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_usap_profile(
       vm_tools::concierge::StartArcVmRequest::USAP_PROFILE_16G);
@@ -560,7 +610,8 @@ TEST(ArcVmTest, UsapProfile16G) {
 }
 
 TEST(ArcVmTest, PlayStoreAutoUpdateDefault) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_play_store_auto_update(
@@ -574,7 +625,8 @@ TEST(ArcVmTest, PlayStoreAutoUpdateDefault) {
 }
 
 TEST(ArcVmTest, PlayStoreAutoUpdateON) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_play_store_auto_update(
@@ -585,7 +637,8 @@ TEST(ArcVmTest, PlayStoreAutoUpdateON) {
 }
 
 TEST(ArcVmTest, PlayStoreAutoUpdateOFF) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_play_store_auto_update(
@@ -596,7 +649,8 @@ TEST(ArcVmTest, PlayStoreAutoUpdateOFF) {
 }
 
 TEST(ArcVmTest, DalvikMemoryProfileDefault) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_dalvik_memory_profile(
@@ -608,7 +662,8 @@ TEST(ArcVmTest, DalvikMemoryProfileDefault) {
 }
 
 TEST(ArcVmTest, DalvikMemoryProfile4G) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_dalvik_memory_profile(
@@ -620,7 +675,8 @@ TEST(ArcVmTest, DalvikMemoryProfile4G) {
 }
 
 TEST(ArcVmTest, DalvikMemoryProfile8G) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_dalvik_memory_profile(
@@ -632,7 +688,8 @@ TEST(ArcVmTest, DalvikMemoryProfile8G) {
 }
 
 TEST(ArcVmTest, DalvikMemoryProfile16G) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_dalvik_memory_profile(
@@ -644,7 +701,8 @@ TEST(ArcVmTest, DalvikMemoryProfile16G) {
 }
 
 TEST(ArcVmTest, LcdDensity) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_lcd_density(kLcdDensity);
@@ -655,7 +713,8 @@ TEST(ArcVmTest, LcdDensity) {
 }
 
 TEST(ArcVmTest, HostOnVmTrue) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   cros_system.VbSetSystemPropertyInt("inside_vm", 1);
   StartArcVmRequest request;
   std::vector<std::string> params =
@@ -664,7 +723,8 @@ TEST(ArcVmTest, HostOnVmTrue) {
 }
 
 TEST(ArcVmTest, HostOnVmFalse) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   cros_system.VbSetSystemPropertyInt("inside_vm", 0);
   StartArcVmRequest request;
   std::vector<std::string> params =
@@ -673,7 +733,8 @@ TEST(ArcVmTest, HostOnVmFalse) {
 }
 
 TEST(ArcVmTest, UreadaheadModeReadahead) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_ureadahead_mode(
       vm_tools::concierge::StartArcVmRequest::UREADAHEAD_MODE_READAHEAD);
@@ -684,7 +745,8 @@ TEST(ArcVmTest, UreadaheadModeReadahead) {
 }
 
 TEST(ArcVmTest, UreadaheadModeGenerate) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_ureadahead_mode(
       vm_tools::concierge::StartArcVmRequest::UREADAHEAD_MODE_GENERATE);
@@ -695,7 +757,8 @@ TEST(ArcVmTest, UreadaheadModeGenerate) {
 }
 
 TEST(ArcVmTest, UreadaheadModeDisabled) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_ureadahead_mode(
       vm_tools::concierge::StartArcVmRequest::UREADAHEAD_MODE_DISABLED);
@@ -708,7 +771,8 @@ TEST(ArcVmTest, UreadaheadModeDisabled) {
 }
 
 TEST(ArcVmTest, ReadWriteEnabled) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_enable_rw(true);
   std::vector<std::string> params =
@@ -717,7 +781,8 @@ TEST(ArcVmTest, ReadWriteEnabled) {
 }
 
 TEST(ArcVmTest, ReadWriteDisabled) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_enable_rw(false);
   std::vector<std::string> params =
@@ -726,7 +791,8 @@ TEST(ArcVmTest, ReadWriteDisabled) {
 }
 
 TEST(ArcVmTest, WebViewZygoteLazyInitEnabled) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_enable_web_view_zygote_lazy_init(true);
   std::vector<std::string> params =
@@ -736,7 +802,8 @@ TEST(ArcVmTest, WebViewZygoteLazyInitEnabled) {
 }
 
 TEST(ArcVmTest, WebViewZygoteLazyInitDisabled) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   request.set_enable_web_view_zygote_lazy_init(false);
   std::vector<std::string> params =
@@ -746,7 +813,8 @@ TEST(ArcVmTest, WebViewZygoteLazyInitDisabled) {
 }
 
 TEST(ArcVmTest, PrivacyHubForChromeEnabled) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_enable_privacy_hub_for_chrome(true);
@@ -757,7 +825,8 @@ TEST(ArcVmTest, PrivacyHubForChromeEnabled) {
 }
 
 TEST(ArcVmTest, PrivacyHubForChromeDisabled) {
-  crossystem::fake::CrossystemFake cros_system;
+  crossystem::Crossystem cros_system(
+      std::make_unique<crossystem::fake::CrossystemFake>());
   StartArcVmRequest request;
   auto* mini_instance_request = request.mutable_mini_instance_request();
   mini_instance_request->set_enable_privacy_hub_for_chrome(false);

@@ -6,35 +6,25 @@
 
 #include <optional>
 
-#include <vboot/crossystem.h>
-
 namespace crossystem {
 
-std::optional<int> CrossystemImpl::VbGetSystemPropertyInt(
+std::optional<int> Crossystem::VbGetSystemPropertyInt(
     const std::string& name) const {
-  int value = ::VbGetSystemPropertyInt(name.c_str());
-  if (value == -1)
-    return std::nullopt;
-  return value;
+  return impl_->VbGetSystemPropertyInt(name);
 }
 
-bool CrossystemImpl::VbSetSystemPropertyInt(const std::string& name,
-                                            int value) {
-  return 0 == ::VbSetSystemPropertyInt(name.c_str(), value);
+bool Crossystem::VbSetSystemPropertyInt(const std::string& name, int value) {
+  return impl_->VbSetSystemPropertyInt(name, value);
 }
 
-std::optional<std::string> CrossystemImpl::VbGetSystemPropertyString(
+std::optional<std::string> Crossystem::VbGetSystemPropertyString(
     const std::string& name) const {
-  char value_buffer[VB_MAX_STRING_PROPERTY];
-  if (NULL == ::VbGetSystemPropertyString(name.c_str(), value_buffer,
-                                          sizeof(value_buffer)))
-    return std::nullopt;
-  return value_buffer;
+  return impl_->VbGetSystemPropertyString(name);
 }
 
-bool CrossystemImpl::VbSetSystemPropertyString(const std::string& name,
-                                               const std::string& value) {
-  return 0 == ::VbSetSystemPropertyString(name.c_str(), value.c_str());
+bool Crossystem::VbSetSystemPropertyString(const std::string& name,
+                                           const std::string& value) {
+  return impl_->VbSetSystemPropertyString(name, value);
 }
 
 }  // namespace crossystem

@@ -25,7 +25,10 @@ pkg_config("target_defaults_pkg_deps") {
   pkg_deps = default_pkg_deps
 }
 
-libcrossystem_sources = [ "crossystem.cc" ]
+libcrossystem_sources = [
+  "crossystem.cc",
+  "crossystem_impl.cc",
+]
 
 static_library("libcrossystem_static") {
   sources = libcrossystem_sources

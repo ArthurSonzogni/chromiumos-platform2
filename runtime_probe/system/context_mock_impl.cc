@@ -14,7 +14,8 @@
 #include <shill/dbus-proxy-mocks.h>
 
 namespace runtime_probe {
-ContextMockImpl::ContextMockImpl() {
+ContextMockImpl::ContextMockImpl()
+    : fake_crossystem_(std::make_unique<crossystem::fake::CrossystemFake>()) {
   CHECK(temp_dir_.CreateUniqueTempDir());
   root_dir_ = temp_dir_.GetPath();
 }

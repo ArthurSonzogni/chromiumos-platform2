@@ -10,7 +10,7 @@
 namespace {
 
 crossystem::Crossystem* GetDefaultInstance() {
-  static base::NoDestructor<crossystem::CrossystemImpl> instance;
+  static base::NoDestructor<crossystem::Crossystem> instance;
   return instance.get();
 }
 

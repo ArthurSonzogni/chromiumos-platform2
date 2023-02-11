@@ -63,7 +63,7 @@ class ContextImpl : public Context {
   // The object to access the ChromeOS model configuration.
   brillo::CrosConfig cros_config_;
   // The object to access crossystem system properties.
-  crossystem::CrossystemImpl crossystem_;
+  crossystem::Crossystem crossystem_;
   // The object to make syscalls.
   SyscallerImpl syscaller_;
   // The reference of the dbus connection.

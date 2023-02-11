@@ -283,15 +283,15 @@ TEST_F(CrashCommonUtilTest, IsBuildTimestampTooOldForUploads) {
 }
 
 TEST_F(CrashCommonUtilTest, GetHardwareClass) {
-  std::unique_ptr<crossystem::fake::CrossystemFake> stub_crossystem =
-      std::make_unique<crossystem::fake::CrossystemFake>();
-  auto old_instance = crossystem::ReplaceInstanceForTest(stub_crossystem.get());
+  crossystem::Crossystem stub_crossystem(
+      std::make_unique<crossystem::fake::CrossystemFake>());
+  auto old_instance = crossystem::ReplaceInstanceForTest(&stub_crossystem);
 
   // HWID file not found and failed to get the "hwid" system property.
   EXPECT_EQ("undefined", GetHardwareClass());
 
   // HWID file not found and but manage to get the "hwid" system property.
-  stub_crossystem->VbSetSystemPropertyString("hwid", "TEST_HWID_123");
+  stub_crossystem.VbSetSystemPropertyString("hwid", "TEST_HWID_123");
   EXPECT_EQ("TEST_HWID_123", GetHardwareClass());
 
   // When the HWID file exists, it should prioritize to return the file content.
@@ -304,16 +304,16 @@ TEST_F(CrashCommonUtilTest, GetHardwareClass) {
 }
 
 TEST_F(CrashCommonUtilTest, GetBootModeString) {
-  std::unique_ptr<crossystem::fake::CrossystemFake> stub_crossystem =
-      std::make_unique<crossystem::fake::CrossystemFake>();
-  auto old_instance = crossystem::ReplaceInstanceForTest(stub_crossystem.get());
+  crossystem::Crossystem stub_crossystem(
+      std::make_unique<crossystem::fake::CrossystemFake>());
+  auto old_instance = crossystem::ReplaceInstanceForTest(&stub_crossystem);
 
   EXPECT_EQ("missing-crossystem", GetBootModeString());
 
-  stub_crossystem->VbSetSystemPropertyInt("devsw_boot", 1);
+  stub_crossystem.VbSetSystemPropertyInt("devsw_boot", 1);
   EXPECT_EQ("dev", GetBootModeString());
 
-  stub_crossystem->VbSetSystemPropertyInt("devsw_boot", 123);
+  stub_crossystem.VbSetSystemPropertyInt("devsw_boot", 123);
   EXPECT_EQ("", GetBootModeString());
 
   ASSERT_TRUE(

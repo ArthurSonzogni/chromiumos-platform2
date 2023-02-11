@@ -20,7 +20,7 @@ namespace fake {
 // A fake implementation that simulates the manipulation of system properties
 // with an in-memory table.  By default, all properties are unset so getters
 // will return |std::nullopt| (or other equivalent value type).
-class BRILLO_EXPORT CrossystemFake : public Crossystem {
+class BRILLO_EXPORT CrossystemFake : public CrossystemVbootInterface {
  public:
   CrossystemFake() = default;
 
