@@ -312,7 +312,7 @@ union EventInfo {
 
 // An enumeration of event categories.
 //
-// NextMinVersion: 3, NextIndex: 9
+// NextMinVersion: 4, NextIndex: 10
 [Stable, Extensible]
 enum EventCategoryEnum {
   // This is required for backwards compatibility, should not be used.
@@ -325,4 +325,5 @@ enum EventCategoryEnum {
   kAudio = 6,
   [MinVersion=1] kAudioJack = 7,
   [MinVersion=2] kSdCard = 8,
+  [MinVersion=3] kNetwork = 9,
 };

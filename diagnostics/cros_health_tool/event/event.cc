@@ -13,6 +13,7 @@
 
 #include <base/functional/bind.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/run_loop.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
@@ -27,28 +28,17 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-enum class EventCategory {
-  kLid,
-  kPower,
-  kBluetooth,
-  kNetwork,
-  kAudio,
-  kThunderbolt,
-  kUsb,
-  kAudioJack,
-  kSdCard,
-};
-
-constexpr std::pair<const char*, EventCategory> kCategorySwitches[] = {
-    {"lid", EventCategory::kLid},
-    {"power", EventCategory::kPower},
-    {"bluetooth", EventCategory::kBluetooth},
-    {"network", EventCategory::kNetwork},
-    {"audio", EventCategory::kAudio},
-    {"thunderbolt", EventCategory::kThunderbolt},
-    {"usb", EventCategory::kUsb},
-    {"audio_jack", EventCategory::kAudioJack},
-    {"sd_card", EventCategory::kSdCard},
+constexpr std::pair<const char*, mojom::EventCategoryEnum> kCategorySwitches[] =
+    {
+        {"lid", mojom::EventCategoryEnum::kLid},
+        {"power", mojom::EventCategoryEnum::kPower},
+        {"bluetooth", mojom::EventCategoryEnum::kBluetooth},
+        {"network", mojom::EventCategoryEnum::kNetwork},
+        {"audio", mojom::EventCategoryEnum::kAudio},
+        {"thunderbolt", mojom::EventCategoryEnum::kThunderbolt},
+        {"usb", mojom::EventCategoryEnum::kUsb},
+        {"audio_jack", mojom::EventCategoryEnum::kAudioJack},
+        {"sd_card", mojom::EventCategoryEnum::kSdCard},
 };
 
 // Create a stringified list of the category names for use in help.
@@ -73,7 +63,7 @@ int event_main(int argc, char** argv) {
   brillo::FlagHelper::Init(argc, argv,
                            "event - Device event subscription tool.");
 
-  std::map<std::string, EventCategory> switch_to_category(
+  std::map<std::string, mojom::EventCategoryEnum> switch_to_category(
       std::begin(kCategorySwitches), std::end(kCategorySwitches));
 
   // Make sure at least one category is specified.
@@ -92,41 +82,23 @@ int event_main(int argc, char** argv) {
   base::RunLoop run_loop;
   EventSubscriber event_subscriber;
   switch (iterator->second) {
-    case EventCategory::kLid:
+    case mojom::EventCategoryEnum::kAudio:
+    case mojom::EventCategoryEnum::kAudioJack:
+    case mojom::EventCategoryEnum::kBluetooth:
+    case mojom::EventCategoryEnum::kLid:
+    case mojom::EventCategoryEnum::kPower:
+    case mojom::EventCategoryEnum::kSdCard:
+    case mojom::EventCategoryEnum::kThunderbolt:
+    case mojom::EventCategoryEnum::kUsb:
       event_subscriber.SubscribeToEvents(run_loop.QuitClosure(),
-                                         mojom::EventCategoryEnum::kLid);
+                                         iterator->second);
       break;
-    case EventCategory::kPower:
-      event_subscriber.SubscribeToEvents(run_loop.QuitClosure(),
-                                         mojom::EventCategoryEnum::kPower);
-      break;
-    case EventCategory::kBluetooth:
-      event_subscriber.SubscribeToEvents(run_loop.QuitClosure(),
-                                         mojom::EventCategoryEnum::kBluetooth);
-      break;
-    case EventCategory::kNetwork:
+    case mojom::EventCategoryEnum::kNetwork:
       event_subscriber.SubscribeToNetworkEvents();
       break;
-    case EventCategory::kAudio:
-      event_subscriber.SubscribeToEvents(run_loop.QuitClosure(),
-                                         mojom::EventCategoryEnum::kAudio);
-      break;
-    case EventCategory::kThunderbolt:
-      event_subscriber.SubscribeToEvents(
-          run_loop.QuitClosure(), mojom::EventCategoryEnum::kThunderbolt);
-      break;
-    case EventCategory::kUsb:
-      event_subscriber.SubscribeToEvents(run_loop.QuitClosure(),
-                                         mojom::EventCategoryEnum::kUsb);
-      break;
-    case EventCategory::kAudioJack:
-      event_subscriber.SubscribeToEvents(run_loop.QuitClosure(),
-                                         mojom::EventCategoryEnum::kAudioJack);
-      break;
-    case EventCategory::kSdCard:
-      event_subscriber.SubscribeToEvents(run_loop.QuitClosure(),
-                                         mojom::EventCategoryEnum::kSdCard);
-      break;
+    case mojom::EventCategoryEnum::kUnmappedEnumField:
+      NOTREACHED();
+      return EXIT_FAILURE;
   }
 
   std::cout << "Subscribe to " << FLAGS_category << " events successfully."
