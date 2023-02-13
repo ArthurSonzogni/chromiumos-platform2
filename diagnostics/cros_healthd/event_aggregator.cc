@@ -70,7 +70,7 @@ void EventAggregator::AddObserver(
       NOTIMPLEMENTED();
       break;
     case mojom::EventCategoryEnum::kKeyboardDiagnostic:
-      NOTIMPLEMENTED();
+      event_reporter_.AddObserver(std::move(observer));
       break;
   }
 }

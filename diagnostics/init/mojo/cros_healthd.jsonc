@@ -3,6 +3,7 @@
   {
     "identity": "u:r:cros_healthd:s0",
     "own": [
+      "CrosHealthdAshEventReporter",
       "CrosHealthdDiagnostics",
       "CrosHealthdEvent",
       "CrosHealthdProbe",
@@ -13,6 +14,7 @@
   {
     "identity": "u:r:cros_browser:s0",
     "request": [
+      "CrosHealthdAshEventReporter",
       "CrosHealthdDiagnostics",
       "CrosHealthdEvent",
       "CrosHealthdProbe",

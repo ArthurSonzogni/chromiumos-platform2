@@ -66,7 +66,6 @@ if (use.test || use.fuzzer) {
   pkg_config("libcros_healthd_system_test_utils_pkg_deps") {
     pkg_deps = [
       "dbus-1",
-      "iioservice_ipc",
       "libattestation-client",
       "libattestation-client-test",
       "libchrome",
@@ -78,9 +77,15 @@ if (use.test || use.fuzzer) {
       "libpower_manager-client-test",
       "libtpm_manager-client",
       "libtpm_manager-client-test",
-      "mojo_service_manager",
       "protobuf",
       "system_api",
+    ]
+  }
+
+  pkg_config("libcros_healthd_system_test_utils_public_pkg_deps") {
+    pkg_deps = [
+      "iioservice_ipc",
+      "mojo_service_manager",
     ]
   }
 
@@ -89,6 +94,7 @@ if (use.test || use.fuzzer) {
       ":libcros_healthd_system_test_utils_pkg_deps",
       "//common-mk:test",
     ]
+    public_configs = [ ":libcros_healthd_system_test_utils_public_pkg_deps" ]
     deps = [
       ":libcros_healthd_system",
       "//diagnostics/cros_healthd/fake:libfake_cros_healthd",

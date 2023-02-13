@@ -16,13 +16,18 @@ namespace diagnostics {
 
 class MockEventObserver : public ::ash::cros_healthd::mojom::EventObserver {
  public:
+  MockEventObserver() {}
   explicit MockEventObserver(
-      mojo::PendingReceiver<::ash::cros_healthd::mojom::EventObserver> receiver)
-      : receiver_{this /* impl */, std::move(receiver)} {
-    DCHECK(receiver_.is_bound());
+      mojo::PendingReceiver<::ash::cros_healthd::mojom::EventObserver>
+          receiver) {
+    receiver_.Bind(std::move(receiver));
   }
   MockEventObserver(const MockEventObserver&) = delete;
   MockEventObserver& operator=(const MockEventObserver&) = delete;
+
+  mojo::Receiver<::ash::cros_healthd::mojom::EventObserver>& receiver() {
+    return receiver_;
+  }
 
   MOCK_METHOD(void,
               OnEvent,
@@ -30,7 +35,7 @@ class MockEventObserver : public ::ash::cros_healthd::mojom::EventObserver {
               (override));
 
  private:
-  mojo::Receiver<::ash::cros_healthd::mojom::EventObserver> receiver_;
+  mojo::Receiver<::ash::cros_healthd::mojom::EventObserver> receiver_{this};
 };
 
 }  // namespace diagnostics

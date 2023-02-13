@@ -17,8 +17,13 @@ pkg_config("libcros_healthd_events_pkg_deps") {
   ]
 }
 
+pkg_config("libcros_healthd_events_public_pkg_deps") {
+  pkg_deps = [ "mojo_service_manager" ]
+}
+
 source_set("libcros_healthd_events") {
   configs += [ ":libcros_healthd_events_pkg_deps" ]
+  public_configs = [ ":libcros_healthd_events_public_pkg_deps" ]
   deps = [
     "//diagnostics/base",
     "//diagnostics/cros_healthd/system:libcros_healthd_system",
@@ -28,6 +33,7 @@ source_set("libcros_healthd_events") {
     "audio_events_impl.cc",
     "audio_jack_events_impl.cc",
     "bluetooth_events_impl.cc",
+    "event_reporter.cc",
     "lid_events_impl.cc",
     "power_events_impl.cc",
     "udev_events_impl.cc",
@@ -50,6 +56,7 @@ if (use.test) {
       "audio_events_impl_test.cc",
       "audio_jack_events_impl_test.cc",
       "bluetooth_events_impl_test.cc",
+      "event_repoter_test.cc",
       "lid_events_impl_test.cc",
       "power_events_impl_test.cc",
       "udev_events_impl_test.cc",
