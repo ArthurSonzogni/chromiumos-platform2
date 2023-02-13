@@ -547,17 +547,11 @@ std::optional<const std::string> CustomParametersForDev::ObtainSpecialParameter(
   }
 }
 
-std::string CreateSharedDataParam(
-    const base::FilePath& data_dir,
-    const std::string& tag,
-    bool enable_caches,
-    bool ascii_casefold,
-    bool posix_acl,
-    const std::vector<uid_t>& privileged_quota_uids) {
+std::string SharedDataParam::to_string() const {
   // TODO(b/169446394): Go back to using "never" when caching is disabled
   // once we can switch /data/media to use 9p.
   std::string result =
-      base::StrCat({data_dir.value(), ":", tag.c_str(),
+      base::StrCat({data_dir.value(), ":", tag,
                     ":type=fs:cache=", enable_caches ? "always" : "auto",
                     ":uidmap=", kAndroidUidMap, ":gidmap=", kAndroidGidMap,
                     ":timeout=", enable_caches ? "3600" : "1",
@@ -579,8 +573,12 @@ std::string CreateSharedDataParam(
 }
 
 std::string CreateFontsSharedDataParam() {
-  return CreateSharedDataParam(base::FilePath(kFontsSharedDir),
-                               kFontsSharedDirTag, true, false, true, {});
+  return SharedDataParam{.data_dir = base::FilePath(kFontsSharedDir),
+                         .tag = kFontsSharedDirTag,
+                         .enable_caches = true,
+                         .ascii_casefold = false,
+                         .posix_acl = true}
+      .to_string();
 }
 
 void ArcVmCPUTopology::CreateAffinity(void) {

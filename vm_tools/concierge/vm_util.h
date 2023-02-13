@@ -196,13 +196,17 @@ class CustomParametersForDev {
   bool initialized_{false};
 };
 
-// Creates shared data parameter for crovm.
-std::string CreateSharedDataParam(const base::FilePath& data_dir,
-                                  const std::string& tag,
-                                  bool enable_caches,
-                                  bool ascii_casefold,
-                                  bool posix_acl,
-                                  const std::vector<uid_t>& privileged_uids);
+// Shared data parameter for crosvm.
+struct SharedDataParam {
+  std::string to_string() const;
+
+  base::FilePath data_dir;
+  std::string tag;
+  bool enable_caches;
+  bool ascii_casefold;
+  bool posix_acl;
+  std::vector<uid_t> privileged_quota_uids;
+};
 
 // Creates the font-specific shared data parameter for crosvm.
 std::string CreateFontsSharedDataParam();

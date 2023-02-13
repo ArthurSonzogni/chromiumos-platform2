@@ -496,11 +496,13 @@ TEST(VMUtilTest, CreateArcVMAffinitySMP4Core) {
   EXPECT_EQ(package[0], "0,1,2,3,4");
 }
 
-TEST(VMUtilTest, CreateSharedDataParamSimple) {
-  ASSERT_EQ(CreateSharedDataParam(
-                base::FilePath("/usr/local/bin"), "usr_local_bin",
-                true /* enable_caches */, false /* ascii_casefold */,
-                true /* posix_acl */, {} /* privileged_uids */),
+TEST(VMUtilTest, SharedDataParamSimple) {
+  SharedDataParam param{.data_dir = base::FilePath("/usr/local/bin"),
+                        .tag = "usr_local_bin",
+                        .enable_caches = true,
+                        .ascii_casefold = false,
+                        .posix_acl = true};
+  ASSERT_EQ(param.to_string(),
             "/usr/local/bin:usr_local_bin:type=fs:cache=always:uidmap=0 655360 "
             "5000,5000 600 50,5050 660410 1994950:gidmap=0 655360 1065,1065 "
             "20119 1,1066 656426 3934,5000 600 50,5050 660410 "

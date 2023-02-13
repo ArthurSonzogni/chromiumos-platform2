@@ -366,35 +366,56 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       // directory configuration, please consult if you really do need to add a
       // new PCI device. TODO(b/237618542): Unify these.
       .AppendSharedDir(oem_etc_shared_dir)
-      .AppendSharedDir(CreateSharedDataParam(
-          base::FilePath(kTestHarnessSharedDir), kTestHarnessSharedDirTag,
-          true /* enable_caches */, false /* ascii_casefold */,
-          true /* posix_acl */, {} /* privileged_uids */))
-      .AppendSharedDir(CreateSharedDataParam(
-          base::FilePath(kApkCacheSharedDir), kApkCacheSharedDirTag,
-          true /* enable_caches */, false /* ascii_casefold */,
-          true /* posix_acl */, {} /* privileged_uids */))
+      .AppendSharedDir(
+          SharedDataParam{.data_dir = base::FilePath(kTestHarnessSharedDir),
+                          .tag = kTestHarnessSharedDirTag,
+                          .enable_caches = true,
+                          .ascii_casefold = false,
+                          .posix_acl = true}
+              .to_string())
+      .AppendSharedDir(
+          SharedDataParam{.data_dir = base::FilePath(kApkCacheSharedDir),
+                          .tag = kApkCacheSharedDirTag,
+                          .enable_caches = true,
+                          .ascii_casefold = false,
+                          .posix_acl = true}
+              .to_string())
       .AppendSharedDir(CreateFontsSharedDataParam())
-      .AppendSharedDir(CreateSharedDataParam(
-          base::FilePath(kLibSharedDir), kLibSharedDirTag,
-          true /* enable_caches */, false /* ascii_casefold */,
-          true /* posix_acl */, {} /* privileged_uids */))
-      .AppendSharedDir(CreateSharedDataParam(
-          base::FilePath(kUsrLibSharedDir), kUsrLibSharedDirTag,
-          true /* enable_caches */, false /* ascii_casefold */,
-          true /* posix_acl */, {} /* privileged_uids */))
-      .AppendSharedDir(CreateSharedDataParam(
-          base::FilePath(kSbinSharedDir), kSbinSharedDirTag,
-          true /* enable_caches */, false /* ascii_casefold */,
-          true /* posix_acl */, {} /* privileged_uids */))
-      .AppendSharedDir(CreateSharedDataParam(
-          base::FilePath(kUsrBinSharedDir), kUsrBinSharedDirTag,
-          true /* enable_caches */, false /* ascii_casefold */,
-          true /* posix_acl */, {} /* privileged_uids */))
-      .AppendSharedDir(CreateSharedDataParam(
-          jemalloc_config_file.DirName(), kJemallocSharedDirTag,
-          true /* enable_caches */, false /* ascii_casefold */,
-          true /* posix_acl */, {} /* privileged_uids */))
+      .AppendSharedDir(
+          SharedDataParam{.data_dir = base::FilePath(kLibSharedDir),
+                          .tag = kLibSharedDirTag,
+                          .enable_caches = true,
+                          .ascii_casefold = false,
+                          .posix_acl = true}
+              .to_string())
+      .AppendSharedDir(
+          SharedDataParam{.data_dir = base::FilePath(kUsrLibSharedDir),
+                          .tag = kUsrLibSharedDirTag,
+                          .enable_caches = true,
+                          .ascii_casefold = false,
+                          .posix_acl = true}
+              .to_string())
+      .AppendSharedDir(
+          SharedDataParam{.data_dir = base::FilePath(kSbinSharedDir),
+                          .tag = kSbinSharedDirTag,
+                          .enable_caches = true,
+                          .ascii_casefold = false,
+                          .posix_acl = true}
+              .to_string())
+      .AppendSharedDir(
+          SharedDataParam{.data_dir = base::FilePath(kUsrBinSharedDir),
+                          .tag = kUsrBinSharedDirTag,
+                          .enable_caches = true,
+                          .ascii_casefold = false,
+                          .posix_acl = true}
+              .to_string())
+      .AppendSharedDir(
+          SharedDataParam{.data_dir = jemalloc_config_file.DirName(),
+                          .tag = kJemallocSharedDirTag,
+                          .enable_caches = true,
+                          .ascii_casefold = false,
+                          .posix_acl = true}
+              .to_string())
       .EnableBattery(true /* enable */)
       .EnableDelayRt(true /* enable */);
 
@@ -437,14 +458,19 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
     const base::FilePath usr_local_bin_dir(kUsrLocalBinSharedDir);
     if (base::PathExists(usr_local_bin_dir)) {
       vm_builder
-          .AppendSharedDir(CreateSharedDataParam(
-              usr_local_bin_dir, kUsrLocalBinSharedDirTag,
-              true /* enable_caches */, false /* ascii_casefold */,
-              true /* posix_acl */, {} /* privileged_uids */))
-          .AppendSharedDir(CreateSharedDataParam(
-              base::FilePath(kUsrLocalLibSharedDir), kUsrLocalLibSharedDirTag,
-              true /* enable_caches */, false /* ascii_casefold */,
-              true /* posix_acl */, {} /* privileged_uids */));
+          .AppendSharedDir(SharedDataParam{.data_dir = usr_local_bin_dir,
+                                           .tag = kUsrLocalBinSharedDirTag,
+                                           .enable_caches = true,
+                                           .ascii_casefold = false,
+                                           .posix_acl = true}
+                               .to_string())
+          .AppendSharedDir(
+              SharedDataParam{.data_dir = base::FilePath(kUsrLocalLibSharedDir),
+                              .tag = kUsrLocalLibSharedDirTag,
+                              .enable_caches = true,
+                              .ascii_casefold = false,
+                              .posix_acl = true}
+                  .to_string());
     } else {
       // Powerwashing etc can delete the directory from test image device.
       // We shouldn't abort ARCVM boot even under such an environment.

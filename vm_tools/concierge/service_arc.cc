@@ -381,14 +381,32 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
   SendVmStartingUpSignal(vm_id, *vm_info);
 
   const std::vector<uid_t> privileged_quota_uids = {0};  // Root is privileged.
-  std::string shared_data = CreateSharedDataParam(
-      data_dir, "_data", true, false, true, privileged_quota_uids);
-  std::string shared_data_media = CreateSharedDataParam(
-      data_dir, "_data_media", false, true, true, privileged_quota_uids);
+  std::string shared_data =
+      SharedDataParam{.data_dir = data_dir,
+                      .tag = "_data",
+                      .enable_caches = true,
+                      .ascii_casefold = false,
+                      .posix_acl = true,
+                      .privileged_quota_uids = privileged_quota_uids}
+          .to_string();
+  std::string shared_data_media =
+      SharedDataParam{.data_dir = data_dir,
+                      .tag = "_data_media",
+                      .enable_caches = false,
+                      .ascii_casefold = true,
+                      .posix_acl = true,
+                      .privileged_quota_uids = privileged_quota_uids}
+          .to_string();
 
   const base::FilePath stub_dir(kStubVolumeSharedDir);
-  std::string shared_stub = CreateSharedDataParam(stub_dir, "stub", false, true,
-                                                  false, privileged_quota_uids);
+  std::string shared_stub =
+      SharedDataParam{.data_dir = stub_dir,
+                      .tag = "stub",
+                      .enable_caches = false,
+                      .ascii_casefold = true,
+                      .posix_acl = false,
+                      .privileged_quota_uids = privileged_quota_uids}
+          .to_string();
 
   // TOOD(kansho): |non_rt_cpus_num|, |rt_cpus_num| and |affinity|
   // should be passed from chrome instead of |enable_rt_vcpu|.
