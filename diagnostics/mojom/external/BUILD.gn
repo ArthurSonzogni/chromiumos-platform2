@@ -11,6 +11,15 @@ generate_mojom_bindings("cros_healthd_internal") {
   sources = [ "cros_healthd_internal.mojom" ]
 }
 
+# These mojom are part of the HealthD's public api.
+# TODO(b/268295367): Move all the mojom which are exported by the public API
+# here.
+generate_mojom_bindings("public_dependencies") {
+  mojo_root = "${platform2_root}"
+  standalone = true
+  sources = [ "input.mojom" ]
+}
+
 generate_mojom_bindings("network_diagnostics_mojo_bindings") {
   mojo_root = "${platform2_root}"
   standalone = true

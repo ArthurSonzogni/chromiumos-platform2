@@ -69,6 +69,9 @@ void EventAggregator::AddObserver(
     case mojom::EventCategoryEnum::kNetwork:
       NOTIMPLEMENTED();
       break;
+    case mojom::EventCategoryEnum::kKeyboardDiagnostic:
+      NOTIMPLEMENTED();
+      break;
   }
 }
 

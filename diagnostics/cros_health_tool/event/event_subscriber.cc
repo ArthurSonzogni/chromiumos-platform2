@@ -192,6 +192,14 @@ void OutputBluetoothEventInfo(const mojom::BluetoothEventInfoPtr& info) {
             << std::endl;
 }
 
+void OutputKeyboardDiagnosticEventInfo(
+    const ash::diagnostics::mojom::KeyboardDiagnosticEventInfoPtr& info) {
+  std::cout << "Keyboard diagnostic event received: the keybaord \""
+            << info->keyboard_info->name << "\" got "
+            << (info->tested_keys.size() + info->tested_top_row_keys.size())
+            << " key(s) pressed." << std::endl;
+}
+
 }  // namespace
 
 EventSubscriber::EventSubscriber() {
@@ -244,6 +252,10 @@ void EventSubscriber::OnEvent(const mojom::EventInfoPtr info) {
       break;
     case mojom::EventInfo::Tag::kSdCardEventInfo:
       OutputSdCardEventInfo(info->get_sd_card_event_info());
+      break;
+    case mojom::EventInfo::Tag::kKeyboardDiagnosticEventInfo:
+      OutputKeyboardDiagnosticEventInfo(
+          info->get_keyboard_diagnostic_event_info());
       break;
   }
 }
