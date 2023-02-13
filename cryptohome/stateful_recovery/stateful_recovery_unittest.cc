@@ -162,7 +162,7 @@ TEST_F(StatefulRecoveryTest, ValidRequestV2) {
   std::string passkey = "abcd1234";
   std::string flag_content = "2\n" + user + "\n" + passkey;
   std::string obfuscated_user =
-      brillo::cryptohome::home::SanitizeUserName(user);
+      *brillo::cryptohome::home::SanitizeUserName(Username(user));
   FilePath mount_path =
       FilePath("/home/.shadow/").Append(obfuscated_user).Append("mount");
   EXPECT_CALL(*platform_, ReadFileToString(FilePath(flag_file_), _))
@@ -214,7 +214,7 @@ TEST_F(StatefulRecoveryTest, ValidRequestV2NotOwner) {
   std::string passkey = "abcd1234";
   std::string flag_content = "2\n" + user + "\n" + passkey;
   std::string obfuscated_user =
-      brillo::cryptohome::home::SanitizeUserName(user);
+      *brillo::cryptohome::home::SanitizeUserName(Username(user));
   FilePath mount_path =
       FilePath("/home/.shadow/").Append(obfuscated_user).Append("mount");
   EXPECT_CALL(*platform_, ReadFileToString(FilePath(flag_file_), _))
@@ -304,7 +304,7 @@ TEST_F(StatefulRecoveryTest, ValidRequestV2NotOwnerNotWriteProtected) {
   std::string passkey = "abcd1234";
   std::string flag_content = "2\n" + user + "\n" + passkey;
   std::string obfuscated_user =
-      brillo::cryptohome::home::SanitizeUserName(user);
+      *brillo::cryptohome::home::SanitizeUserName(Username(user));
   FilePath mount_path =
       FilePath("/home/.shadow/").Append(obfuscated_user).Append("mount");
   EXPECT_CALL(*platform_, ReadFileToString(FilePath(flag_file_), _))

@@ -3619,7 +3619,7 @@ UserDataAuth::LockToSingleUserMountUntilReboot(
 
 bool UserDataAuth::OwnerUserExists() {
   AssertOnOriginThread();
-  std::string owner;
+  Username owner;
   return homedirs_->GetPlainOwner(&owner);
 }
 

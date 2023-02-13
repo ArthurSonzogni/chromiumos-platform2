@@ -182,9 +182,9 @@ base::Value RealUserSession::GetStatus() const {
   }
   dv.SetKey("keysets", std::move(keysets));
   dv.SetBoolKey("mounted", mount_->IsMounted());
-  std::string obfuscated_owner;
+  ObfuscatedUsername obfuscated_owner;
   homedirs_->GetOwner(&obfuscated_owner);
-  dv.SetStringKey("owner", obfuscated_owner);
+  dv.SetStringKey("owner", *obfuscated_owner);
   dv.SetBoolKey("enterprise", homedirs_->enterprise_owned());
 
   dv.SetStringKey("type", mount_->GetMountTypeString());

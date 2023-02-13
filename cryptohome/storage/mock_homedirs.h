@@ -18,6 +18,7 @@
 #include "cryptohome/credentials.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mount.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 class DiskCleanup;
@@ -29,8 +30,8 @@ class MockHomeDirs : public HomeDirs {
   virtual ~MockHomeDirs() = default;
 
   MOCK_METHOD(void, RemoveNonOwnerCryptohomes, (), (override));
-  MOCK_METHOD(bool, GetOwner, (std::string*), (override));
-  MOCK_METHOD(bool, GetPlainOwner, (std::string*), (override));
+  MOCK_METHOD(bool, GetOwner, (ObfuscatedUsername*), (override));
+  MOCK_METHOD(bool, GetPlainOwner, (Username*), (override));
   MOCK_METHOD(bool, AreEphemeralUsersEnabled, (), (override));
   MOCK_METHOD(bool, KeylockerForStorageEncryptionEnabled, (), (override));
   MOCK_METHOD(bool, MustRunAutomaticCleanupOnLogin, (), (override));

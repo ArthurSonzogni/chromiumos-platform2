@@ -535,7 +535,7 @@ TEST_F(DiskCleanupTest, RemoveOneProfile) {
 
   EXPECT_CALL(homedirs_, enterprise_owned()).WillRepeatedly(Return(false));
   EXPECT_CALL(homedirs_, GetOwner(_))
-      .WillRepeatedly(DoAll(SetArgPointee<0>(*GetTestHomedirs()[2].obfuscated),
+      .WillRepeatedly(DoAll(SetArgPointee<0>(GetTestHomedirs()[2].obfuscated),
                             Return(true)));
 
   EXPECT_CALL(*cleanup_routines_, DeleteUserCache(_))
@@ -565,7 +565,7 @@ TEST_F(DiskCleanupTest, KeepOwner) {
 
   EXPECT_CALL(homedirs_, enterprise_owned()).WillRepeatedly(Return(false));
   EXPECT_CALL(homedirs_, GetOwner(_))
-      .WillRepeatedly(DoAll(SetArgPointee<0>(*GetTestHomedirs()[2].obfuscated),
+      .WillRepeatedly(DoAll(SetArgPointee<0>(GetTestHomedirs()[2].obfuscated),
                             Return(true)));
 
   EXPECT_CALL(*cleanup_routines_, DeleteUserCache(_))
@@ -606,7 +606,8 @@ TEST_F(DiskCleanupTest, KeepLatest) {
 
   EXPECT_CALL(homedirs_, enterprise_owned()).WillRepeatedly(Return(true));
   EXPECT_CALL(homedirs_, GetOwner(_))
-      .WillRepeatedly(DoAll(SetArgPointee<0>("<<OWNER>>"), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<0>(ObfuscatedUsername("<<OWNER>>")),
+                            Return(true)));
 
   EXPECT_CALL(*cleanup_routines_, DeleteUserCache(_))
       .Times(GetTestHomedirs().size());

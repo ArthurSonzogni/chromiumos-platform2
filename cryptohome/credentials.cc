@@ -9,7 +9,6 @@
 
 using brillo::SecureBlob;
 using brillo::cryptohome::home::SanitizeUserName;
-using brillo::cryptohome::home::SanitizeUserNameWithSalt;
 
 namespace cryptohome {
 

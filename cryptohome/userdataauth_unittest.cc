@@ -5652,7 +5652,7 @@ TEST_F(UserDataAuthApiTest, EphemeralMountFailed) {
                                           MOUNT_ERROR_FATAL, false));
   new_mounts_.push_back(mount.get());
   EXPECT_CALL(homedirs_, GetPlainOwner(_))
-      .WillRepeatedly(DoAll(SetArgPointee<0>(*kUsername2), Return(true)));
+      .WillRepeatedly(DoAll(SetArgPointee<0>(kUsername2), Return(true)));
 
   // Make the call to check that the result is correct.
   user_data_auth::PrepareEphemeralVaultRequest prepare_req;

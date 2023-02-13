@@ -39,6 +39,7 @@
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mount_helper.h"
+#include "cryptohome/username.h"
 
 using base::FilePath;
 using brillo::SecureBlob;
@@ -197,7 +198,7 @@ bool HomeDirs::DmcryptCacheContainerExists(
 
 void HomeDirs::RemoveNonOwnerCryptohomes() {
   // If the device is not enterprise owned it should have an owner user.
-  std::string owner;
+  ObfuscatedUsername owner;
   if (!enterprise_owned_ && !GetOwner(&owner)) {
     return;
   }
@@ -207,7 +208,7 @@ void HomeDirs::RemoveNonOwnerCryptohomes() {
 
   for (const auto& dir : homedirs) {
     if (GetOwner(&owner)) {
-      if (*dir.obfuscated == owner && !enterprise_owned_) {
+      if (dir.obfuscated == owner && !enterprise_owned_) {
         continue;  // Remove them all if enterprise owned.
       }
     }
@@ -226,12 +227,11 @@ std::vector<HomeDirs::HomeDir> HomeDirs::GetHomeDirs() {
 
   for (const auto& entry : entries) {
     HomeDirs::HomeDir dir;
-
-    dir.obfuscated = ObfuscatedUsername(entry.BaseName().value());
-
-    if (!brillo::cryptohome::home::IsSanitizedUserName(dir.obfuscated))
+    FilePath basename = entry.BaseName();
+    if (!brillo::cryptohome::home::IsSanitizedUserName(basename.value())) {
       continue;
-
+    }
+    dir.obfuscated = ObfuscatedUsername(basename.value());
     ret.push_back(dir);
   }
 
@@ -421,17 +421,19 @@ StorageStatusOr<EncryptedContainerType> HomeDirs::PickVaultType(
              : ChooseVaultType();
 }
 
-bool HomeDirs::GetPlainOwner(std::string* owner) {
+bool HomeDirs::GetPlainOwner(Username* owner) {
   LoadDevicePolicy();
   if (!policy_provider_->device_policy_is_loaded())
     return false;
-  policy_provider_->GetDevicePolicy().GetOwner(owner);
+  std::string owner_str;
+  policy_provider_->GetDevicePolicy().GetOwner(&owner_str);
+  *owner = Username(owner_str);
   return true;
 }
 
-bool HomeDirs::GetOwner(std::string* owner) {
-  std::string plain_owner;
-  if (!GetPlainOwner(&plain_owner) || plain_owner.empty())
+bool HomeDirs::GetOwner(ObfuscatedUsername* owner) {
+  Username plain_owner;
+  if (!GetPlainOwner(&plain_owner) || plain_owner->empty())
     return false;
 
   *owner = SanitizeUserName(plain_owner);
@@ -439,9 +441,9 @@ bool HomeDirs::GetOwner(std::string* owner) {
 }
 
 bool HomeDirs::IsOrWillBeOwner(const Username& account_id) {
-  std::string owner;
+  Username owner;
   GetPlainOwner(&owner);
-  return !enterprise_owned_ && (owner.empty() || *account_id == owner);
+  return !enterprise_owned_ && (owner->empty() || account_id == owner);
 }
 
 bool HomeDirs::Create(const Username& username) {

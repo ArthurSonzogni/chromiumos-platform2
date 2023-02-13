@@ -21,6 +21,7 @@
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/storage/homedirs.h"
+#include "cryptohome/username.h"
 
 namespace cryptohome {
 
@@ -434,7 +435,7 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
   // For consumer devices, don't delete the device owner. Enterprise-enrolled
   // devices have no owner, so don't delete the most-recent user.
   int deleted_users_count = 0;
-  std::string owner;
+  ObfuscatedUsername owner;
   if (!homedirs_->enterprise_owned() && !homedirs_->GetOwner(&owner))
     return result;
 
@@ -452,7 +453,7 @@ bool DiskCleanup::FreeDiskSpaceInternal() {
         LOG(INFO) << "Skipped deletion of the most recent device user.";
         continue;
       }
-    } else if (*dir->obfuscated == owner) {
+    } else if (dir->obfuscated == owner) {
       // We never delete the device owner.
       LOG(INFO) << "Skipped deletion of the device owner.";
       continue;

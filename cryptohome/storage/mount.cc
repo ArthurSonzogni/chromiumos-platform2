@@ -54,8 +54,6 @@ using base::FilePath;
 using base::StringPrintf;
 using brillo::BlobToString;
 using brillo::SecureBlob;
-using brillo::cryptohome::home::GetRootPath;
-using brillo::cryptohome::home::GetUserPath;
 using brillo::cryptohome::home::IsSanitizedUserName;
 using brillo::cryptohome::home::SanitizeUserName;
 using cryptohome::data_migrator::MigrationHelper;

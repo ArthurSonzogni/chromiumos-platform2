@@ -254,7 +254,8 @@ void MockKeysetLoadingViaBlobs(const ObfuscatedUsername& obfuscated_username,
 
 void MockOwnerUser(const std::string& username, MockHomeDirs& homedirs) {
   EXPECT_CALL(homedirs, GetPlainOwner(_))
-      .WillRepeatedly(DoAll(SetArgPointee<0>(username), Return(true)));
+      .WillRepeatedly(
+          DoAll(SetArgPointee<0>(Username(username)), Return(true)));
 }
 
 // Helper to make it easy to construct quick passkey credentials. Uses a struct

@@ -18,6 +18,7 @@
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/platform.h"
+#include "cryptohome/username.h"
 
 using ::hwsec_foundation::CreateSecureRandomBlob;
 
@@ -73,11 +74,11 @@ bool GetOrCreateSalt(Platform* platform,
 }
 
 // Get the Account ID for an AccountIdentifier proto.
-std::string GetAccountId(const AccountIdentifier& id) {
+Username GetAccountId(const AccountIdentifier& id) {
   if (id.has_account_id()) {
-    return id.account_id();
+    return Username(id.account_id());
   }
-  return id.email();
+  return Username(id.email());
 }
 
 }  // namespace
@@ -195,9 +196,9 @@ bool GetPublicMountSalt(Platform* platform, brillo::SecureBlob* salt) {
 }
 
 base::FilePath GetRecoveryIdPath(const AccountIdentifier& account_id) {
-  std::string obfuscated =
+  ObfuscatedUsername obfuscated =
       brillo::cryptohome::home::SanitizeUserName(GetAccountId(account_id));
-  if (obfuscated.empty()) {
+  if (obfuscated->empty()) {
     return base::FilePath();
   }
   return brillo::cryptohome::home::GetHashedUserPath(obfuscated)

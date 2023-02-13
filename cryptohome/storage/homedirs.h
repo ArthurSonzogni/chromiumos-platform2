@@ -77,9 +77,9 @@ class HomeDirs {
   // regardless of free disk space.
   virtual void RemoveNonOwnerCryptohomes();
 
-  // Returns the owner's obfuscated username.
-  virtual bool GetOwner(std::string* owner);
-  virtual bool GetPlainOwner(std::string* owner);
+  // Returns the owner's username.
+  virtual bool GetOwner(ObfuscatedUsername* owner);
+  virtual bool GetPlainOwner(Username* owner);
 
   // Returns whether the given user is a non-enterprise owner, or if it will
   // become such in case it signs in now.

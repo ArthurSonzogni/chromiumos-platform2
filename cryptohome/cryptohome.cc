@@ -59,6 +59,7 @@
 #include "cryptohome/storage/homedirs.h"
 #include "cryptohome/storage/mount_utils.h"
 #include "cryptohome/timestamp.pb.h"
+#include "cryptohome/username.h"
 #include "cryptohome/vault_keyset.pb.h"
 #include "user_data_auth/dbus-proxies.h"
 // The dbus_adaptor and proxy include must happen after the protobuf include
@@ -459,8 +460,9 @@ bool GetAttrValue(Printer& printer,
 
 bool GetAccountId(Printer& printer,
                   const base::CommandLine* cl,
-                  std::string* user_out) {
-  *user_out = cl->GetSwitchValueASCII(switches::kUserSwitch);
+                  cryptohome::Username& user_out) {
+  user_out =
+      cryptohome::Username(cl->GetSwitchValueASCII(switches::kUserSwitch));
 
   if (user_out->length() == 0) {
     printer.PrintHumanOutput("No user specified (--user=<account_id>)\n");
@@ -585,14 +587,14 @@ bool GetProfile(Printer& printer,
   return true;
 }
 
-bool ConfirmRemove(Printer& printer, const std::string& user) {
+bool ConfirmRemove(Printer& printer, const cryptohome::Username& user) {
   printer.PrintHumanOutput(
       "!!! Are you sure you want to remove the user's cryptohome?\n");
   printer.PrintHumanOutput("!!!\n");
   printer.PrintHumanOutput(
       "!!! Re-enter the username at the prompt to remove the\n");
   printer.PrintHumanOutput("!!! cryptohome for the user.\n");
-  printer.PrintFormattedHumanOutput("Enter the username <%s>: ", user.c_str());
+  printer.PrintFormattedHumanOutput("Enter the username <%s>: ", user->c_str());
   printer.Flush();
 
   char buffer[256];
@@ -603,7 +605,7 @@ bool ConfirmRemove(Printer& printer, const std::string& user) {
   std::string verification = buffer;
   // fgets will append the newline character, remove it.
   base::TrimWhitespaceASCII(verification, base::TRIM_ALL, &verification);
-  if (user != verification) {
+  if (*user != verification) {
     printer.PrintHumanOutput("Usernames do not match.\n");
     return false;
   }
@@ -613,12 +615,12 @@ bool ConfirmRemove(Printer& printer, const std::string& user) {
 bool BuildAccountId(Printer& printer,
                     const base::CommandLine* cl,
                     cryptohome::AccountIdentifier* id) {
-  std::string account_id;
-  if (!GetAccountId(printer, cl, &account_id)) {
+  cryptohome::Username account_id;
+  if (!GetAccountId(printer, cl, account_id)) {
     printer.PrintHumanOutput("No account_id specified.\n");
     return false;
   }
-  id->set_account_id(account_id);
+  id->set_account_id(*account_id);
   return true;
 }
 
@@ -1166,9 +1168,9 @@ int main(int argc, char** argv) {
   } else if (!strcmp(switches::kActions[switches::ACTION_REMOVE],
                      action.c_str())) {
     user_data_auth::RemoveRequest req;
-    std::string account_id;
+    cryptohome::Username account_id;
 
-    if (!GetAccountId(printer, cl, &account_id)) {
+    if (!GetAccountId(printer, cl, account_id)) {
       return 1;
     }
 
@@ -1185,7 +1187,7 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-    req.mutable_identifier()->set_account_id(account_id);
+    req.mutable_identifier()->set_account_id(*account_id);
 
     user_data_auth::RemoveReply reply;
     brillo::ErrorPtr error;
@@ -1247,15 +1249,15 @@ int main(int argc, char** argv) {
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_OBFUSCATE_USER],
                      action.c_str())) {
-    std::string account_id;
+    cryptohome::Username account_id;
 
-    if (!GetAccountId(printer, cl, &account_id)) {
+    if (!GetAccountId(printer, cl, account_id)) {
       return 1;
     }
 
     if (cl->HasSwitch(switches::kUseDBus)) {
       user_data_auth::GetSanitizedUsernameRequest req;
-      req.set_username(account_id);
+      req.set_username(*account_id);
 
       user_data_auth::GetSanitizedUsernameReply reply;
       brillo::ErrorPtr error;
@@ -1278,7 +1280,7 @@ int main(int argc, char** argv) {
       std::string* salt_ptr = brillo::cryptohome::home::GetSystemSalt();
       brillo::SecureBlob system_salt = SecureBlob(*salt_ptr);
       printer.PrintFormattedHumanOutput(
-          "%s\n", SanitizeUserNameWithSalt(account_id, system_salt).c_str());
+          "%s\n", SanitizeUserNameWithSalt(account_id, system_salt)->c_str());
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_GET_SYSTEM_SALT],
                      action.c_str())) {
@@ -1307,16 +1309,16 @@ int main(int argc, char** argv) {
     printer.PrintFormattedHumanOutput("%s\n", hex_salt.c_str());
   } else if (!strcmp(switches::kActions[switches::ACTION_DUMP_KEYSET],
                      action.c_str())) {
-    std::string account_id;
+    cryptohome::Username account_id;
 
-    if (!GetAccountId(printer, cl, &account_id)) {
+    if (!GetAccountId(printer, cl, account_id)) {
       return 1;
     }
 
     FilePath vault_path =
         FilePath("/home/.shadow")
-            .Append(SanitizeUserNameWithSalt(account_id,
-                                             GetSystemSalt(&misc_proxy)))
+            .Append(*SanitizeUserNameWithSalt(account_id,
+                                              GetSystemSalt(&misc_proxy)))
             .Append(std::string(cryptohome::kKeyFile).append(".0"));
     brillo::Blob contents;
     if (!platform.ReadFile(vault_path, &contents)) {
@@ -1863,11 +1865,11 @@ int main(int argc, char** argv) {
     user_data_auth::Pkcs11TerminateReply reply;
 
     if (cl->HasSwitch(switches::kUserSwitch)) {
-      std::string account_id;
-      if (!GetAccountId(printer, cl, &account_id)) {
+      cryptohome::Username account_id;
+      if (!GetAccountId(printer, cl, account_id)) {
         return 1;
       }
-      req.set_username(account_id);
+      req.set_username(*account_id);
     }
 
     brillo::ErrorPtr error;
