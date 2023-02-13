@@ -84,6 +84,7 @@ group("all") {
     ":system_api-vm_concierge-protos",
     ":system_api-vm_disk_management-protos",
     ":system_api-vm_launch-protos",
+    ":system_api-vm_memory_management-protos",
     ":system_api-vm_permission_service-protos",
     ":system_api-vm_plugin_dispatcher-goprotos",
     ":system_api-vm_plugin_dispatcher-protos",
@@ -459,6 +460,14 @@ proto_library("system_api-vm_disk_management-protos") {
   proto_in_dir = "dbus"
   proto_out_dir = "include"
   sources = [ "${proto_in_dir}/vm_disk_management/disk_management.proto" ]
+  standalone = true
+}
+
+proto_library("system_api-vm_memory_management-protos") {
+  proto_in_dir = "non_standard_ipc"
+  proto_out_dir = "include"
+  sources =
+      [ "${proto_in_dir}/vm_memory_management/vm_memory_management.proto" ]
   standalone = true
 }
 
