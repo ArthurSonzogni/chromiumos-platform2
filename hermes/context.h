@@ -44,6 +44,7 @@ class Context {
   AdaptorFactoryInterface* adaptor_factory() { return adaptor_factory_; }
   ModemControlInterface* modem_control() { return modem_control_; }
   base::FilePath fw_path_;
+  bool dbus_ongoing_ = false;
 
  private:
   Context(const scoped_refptr<dbus::Bus>& bus,

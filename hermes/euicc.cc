@@ -85,11 +85,7 @@ void Euicc::InstallProfileFromActivationCode(
     std::string confirmation_code,
     DbusResult<dbus::ObjectPath> dbus_result) {
   LOG(INFO) << __func__;
-  if (!context_->lpa()->IsLpaIdle()) {
-    // The LPA performs background tasks even after a dbus call is returned.
-    // During this period(about 2 seconds), we must not perform any operations
-    // that could disrupt the state of the transmit queue (slot-switching,
-    // acquiring a new channel etc.).
+  if (context_->dbus_ongoing_) {
     context_->executor()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&Euicc::InstallProfileFromActivationCode,
@@ -98,6 +94,7 @@ void Euicc::InstallProfileFromActivationCode(
         kLpaRetryDelay);
     return;
   }
+  context_->dbus_ongoing_ = true;
   auto download_profile =
       base::BindOnce(&Euicc::DownloadProfile, weak_factory_.GetWeakPtr(),
                      std::move(activation_code), std::move(confirmation_code));
@@ -131,7 +128,7 @@ void Euicc::InstallPendingProfile(dbus::ObjectPath profile_path,
                                   std::string confirmation_code,
                                   DbusResult<dbus::ObjectPath> dbus_result) {
   LOG(INFO) << __func__ << " " << GetObjectPathForLog(profile_path);
-  if (!context_->lpa()->IsLpaIdle()) {
+  if (context_->dbus_ongoing_) {
     context_->executor()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&Euicc::InstallPendingProfile,
@@ -140,6 +137,7 @@ void Euicc::InstallPendingProfile(dbus::ObjectPath profile_path,
         kLpaRetryDelay);
     return;
   }
+  context_->dbus_ongoing_ = true;
   auto iter =
       find_if(profiles_.begin(), profiles_.end(),
               [&profile_path](
@@ -163,7 +161,7 @@ void Euicc::InstallPendingProfile(dbus::ObjectPath profile_path,
 void Euicc::UninstallProfile(dbus::ObjectPath profile_path,
                              DbusResult<> dbus_result) {
   LOG(INFO) << __func__ << " " << GetObjectPathForLog(profile_path);
-  if (!context_->lpa()->IsLpaIdle()) {
+  if (context_->dbus_ongoing_) {
     context_->executor()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&Euicc::UninstallProfile, weak_factory_.GetWeakPtr(),
@@ -171,6 +169,7 @@ void Euicc::UninstallProfile(dbus::ObjectPath profile_path,
         kLpaRetryDelay);
     return;
   }
+  context_->dbus_ongoing_ = true;
   const Profile* matching_profile = nullptr;
   for (auto& profile : profiles_) {
     if (profile.second->object_path() == profile_path) {
@@ -316,7 +315,7 @@ void Euicc::SendNotifications(
 void Euicc::RefreshInstalledProfiles(bool restore_slot,
                                      DbusResult<> dbus_result) {
   LOG(INFO) << __func__ << ": restore_slot=" << restore_slot;
-  if (!context_->lpa()->IsLpaIdle()) {
+  if (context_->dbus_ongoing_) {
     context_->executor()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&Euicc::RefreshInstalledProfiles,
@@ -325,6 +324,7 @@ void Euicc::RefreshInstalledProfiles(bool restore_slot,
         kLpaRetryDelay);
     return;
   }
+  context_->dbus_ongoing_ = true;
   auto get_installed_profiles = base::BindOnce(
       &Euicc::GetInstalledProfiles, weak_factory_.GetWeakPtr(), restore_slot);
   InitEuicc(InitEuiccStep::CHECK_IF_INITIALIZED,
@@ -679,16 +679,17 @@ void Euicc::EndEuiccOp(EuiccOp euicc_op,
                        DbusResult<T...> dbus_result,
                        T... object) {
   auto send_dbus_response = base::BindOnce(
-      [](EuiccOp euicc_op, const DbusResult<T...>& dbus_result,
-         const T&... object, int err) {
+      [](EuiccOp euicc_op, Context* context,
+         const DbusResult<T...>& dbus_result, const T&... object, int err) {
         PrintEuiccEventResult(err);
         dbus_result.Success(object...);
+        context->dbus_ongoing_ = false;
         ::metrics::structured::events::cellular::HermesOp()
             .SetOperation(to_underlying(euicc_op))
             .SetResult(kSuccess)
             .Record();
       },
-      euicc_op, dbus_result, object...);
+      euicc_op, this->context_, dbus_result, object...);
   context_->modem_control()->ProcessEuiccEvent({physical_slot_, EuiccStep::END},
                                                std::move(send_dbus_response));
 }
@@ -713,17 +714,19 @@ void Euicc::EndEuiccOp(EuiccOp euicc_op,
                        brillo::ErrorPtr error,
                        int error_code_for_metrics) {
   auto send_dbus_response = base::BindOnce(
-      [](const EuiccOp euicc_op, const DbusResult<T...>& dbus_result,
-         brillo::ErrorPtr error, int error_code_for_metrics,
-         int euicc_event_err) {
+      [](const EuiccOp euicc_op, Context* context,
+         const DbusResult<T...>& dbus_result, brillo::ErrorPtr error,
+         int error_code_for_metrics, int euicc_event_err) {
         PrintEuiccEventResult(euicc_event_err);
         dbus_result.Error(error);
+        context->dbus_ongoing_ = false;
         ::metrics::structured::events::cellular::HermesOp()
             .SetOperation(to_underlying(euicc_op))
             .SetResult(error_code_for_metrics)
             .Record();
       },
-      euicc_op, dbus_result, std::move(error), error_code_for_metrics);
+      euicc_op, this->context_, dbus_result, std::move(error),
+      error_code_for_metrics);
   context_->modem_control()->ProcessEuiccEvent(
       {physical_slot_, EuiccStep::END, euicc_op},
       std::move(send_dbus_response));

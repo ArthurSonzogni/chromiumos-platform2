@@ -117,7 +117,7 @@ Profile::Profile(dbus::ObjectPath object_path, const uint32_t physical_slot)
 
 void Profile::Enable(std::unique_ptr<DBusResponse<>> response) {
   LOG(INFO) << __func__ << " " << GetObjectPathForLog(object_path_);
-  if (!context_->lpa()->IsLpaIdle()) {
+  if (context_->dbus_ongoing_) {
     context_->executor()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&Profile::Enable, weak_factory_.GetWeakPtr(),
@@ -131,6 +131,7 @@ void Profile::Enable(std::unique_ptr<DBusResponse<>> response) {
                              "Cannot enable a pending Profile object");
     return;
   }
+  context_->dbus_ongoing_ = true;
   LOG(INFO) << "Enabling profile: " << GetObjectPathForLog(object_path_);
   auto enable_profile =
       base::BindOnce(&Profile::EnableProfile, weak_factory_.GetWeakPtr());
@@ -156,7 +157,7 @@ void Profile::EnableProfile(std::unique_ptr<DBusResponse<>> response) {
 
 void Profile::Disable(std::unique_ptr<DBusResponse<>> response) {
   LOG(INFO) << __func__ << " " << GetObjectPathForLog(object_path_);
-  if (!context_->lpa()->IsLpaIdle()) {
+  if (context_->dbus_ongoing_) {
     context_->executor()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&Profile::Disable, weak_factory_.GetWeakPtr(),
@@ -170,6 +171,7 @@ void Profile::Disable(std::unique_ptr<DBusResponse<>> response) {
                              "Cannot disable a pending Profile object");
     return;
   }
+  context_->dbus_ongoing_ = true;
 
   LOG(INFO) << "Disabling profile: " << GetObjectPathForLog(object_path_);
   auto disable_profile =
@@ -252,12 +254,14 @@ void Profile::FinishProfileOpCb(EuiccOp euicc_op,
         context_->modem_control()->ProcessEuiccEvent(
             {physical_slot_, EuiccStep::END},
             base::BindOnce(
-                [](std::shared_ptr<DBusResponse<>> response, int error) {
+                [](Context* context, std::shared_ptr<DBusResponse<>> response,
+                   int error) {
                   response->Return();
+                  context->dbus_ongoing_ = false;
                   LOG(INFO)
                       << "FinishProfileOpCb: completed with err = " << error;
                 },
-                response));
+                context_, response));
       });
 }
 
@@ -265,7 +269,7 @@ void Profile::Rename(std::unique_ptr<DBusResponse<>> response,
                      const std::string& nickname) {
   LOG(INFO) << __func__ << " Nickname: " << nickname << " "
             << GetObjectPathForLog(object_path_);
-  if (!context_->lpa()->IsLpaIdle()) {
+  if (context_->dbus_ongoing_) {
     context_->executor()->PostDelayedTask(
         FROM_HERE,
         base::BindOnce(&Profile::Rename, weak_factory_.GetWeakPtr(),
@@ -273,6 +277,7 @@ void Profile::Rename(std::unique_ptr<DBusResponse<>> response,
         kLpaRetryDelay);
     return;
   }
+  context_->dbus_ongoing_ = true;
   auto set_nickname =
       base::BindOnce(&Profile::SetNicknameMethod, weak_factory_.GetWeakPtr(),
                      std::move(nickname));
@@ -341,6 +346,7 @@ void Profile::SendDBusError(EuiccOp euicc_op,
   auto decoded_error = LpaErrorToBrillo(FROM_HERE, lpa_error);
   LOG(ERROR) << euicc_op << " failed: " << decoded_error;
   response->ReplyWithError(decoded_error.get());
+  context_->dbus_ongoing_ = false;
 }
 
 void Profile::SendDBusSuccess(
@@ -350,6 +356,7 @@ void Profile::SendDBusSuccess(
       .Sethome_mccmnc(GetMCCMNCAsInt())
       .Record();
   response->Return();
+  context_->dbus_ongoing_ = false;
 }
 
 template <typename T>
@@ -367,6 +374,7 @@ void Profile::RunOnSuccess(EuiccOp euicc_op,
     response->ReplyWithError(
         FROM_HERE, brillo::errors::dbus::kDomain, kErrorUnknown,
         "QMI/MBIM operation failed with code: " + std::to_string(err));
+    context_->dbus_ongoing_ = false;
     return;
   }
   std::move(cb).Run(std::move(response));
