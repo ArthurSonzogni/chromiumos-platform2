@@ -92,6 +92,7 @@ int event_main(int argc, char** argv) {
     case mojom::EventCategoryEnum::kSdCard:
     case mojom::EventCategoryEnum::kThunderbolt:
     case mojom::EventCategoryEnum::kUsb:
+    case mojom::EventCategoryEnum::kTouchpad:
       event_subscriber.SubscribeToEvents(run_loop.QuitClosure(),
                                          iterator->second);
       break;

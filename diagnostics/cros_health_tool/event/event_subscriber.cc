@@ -257,6 +257,9 @@ void EventSubscriber::OnEvent(const mojom::EventInfoPtr info) {
       OutputKeyboardDiagnosticEventInfo(
           info->get_keyboard_diagnostic_event_info());
       break;
+    case mojom::EventInfo::Tag::kTouchpadEventInfo:
+      NOTIMPLEMENTED();
+      break;
   }
 }
 

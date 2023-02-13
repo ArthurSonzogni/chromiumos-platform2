@@ -373,7 +373,7 @@ interface EventObserver {
 
 // Union of event info.
 //
-// NextMinVersion: 4, NextIndex: 10
+// NextMinVersion: 5, NextIndex: 11
 [Stable, Extensible]
 union EventInfo {
   // The default value for forward compatibility. All the unknown type will be
@@ -399,11 +399,13 @@ union EventInfo {
   // keyboard diagnostic in the Diagnostics App.
   [MinVersion=3] ash.diagnostics.mojom.KeyboardDiagnosticEventInfo
     keyboard_diagnostic_event_info@9;
+  // Touchpad event info.
+  [MinVersion=4] TouchpadEventInfo touchpad_event_info@10;
 };
 
 // An enumeration of event categories.
 //
-// NextMinVersion: 5, NextIndex: 11
+// NextMinVersion: 6, NextIndex: 12
 [Stable, Extensible]
 enum EventCategoryEnum {
   // This is required for backwards compatibility, should not be used.
@@ -418,4 +420,5 @@ enum EventCategoryEnum {
   [MinVersion=2] kSdCard = 8,
   [MinVersion=3] kNetwork = 9,
   [MinVersion=4] kKeyboardDiagnostic = 10,
+  [MinVersion=5] kTouchpad = 11,
 };
