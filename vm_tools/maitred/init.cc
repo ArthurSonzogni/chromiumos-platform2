@@ -1277,6 +1277,11 @@ bool Init::Setup() {
       }
     }
 
+    // Setup the resource limits.
+    if (!SetupResourceLimit()) {
+      return false;
+    }
+
     // Create all the symlinks
     for (const auto& sl : symlinks) {
       if (symlink(sl.source, sl.target) != 0) {
@@ -1306,11 +1311,16 @@ bool Init::Setup() {
       PLOG(ERROR) << "Failed to set controlling terminal";
       return false;
     }
-  }
 
-  // Setup the resource limits.
-  if (!SetupResourceLimit()) {
-    return false;
+    // Setup up PATH.
+    if (clearenv() != 0) {
+      PLOG(ERROR) << "Failed to clear environment";
+      return false;
+    }
+    if (setenv("PATH", kDefaultPath, 1 /*overwrite*/) != 0) {
+      PLOG(ERROR) << "Failed to set PATH";
+      return false;
+    }
   }
 
   // Create all the directories.
@@ -1319,16 +1329,6 @@ bool Init::Setup() {
       PLOG(ERROR) << "Failed to create " << dir.path;
       return false;
     }
-  }
-
-  // Setup up PATH.
-  if (clearenv() != 0) {
-    PLOG(ERROR) << "Failed to clear environment";
-    return false;
-  }
-  if (setenv("PATH", kDefaultPath, 1 /*overwrite*/) != 0) {
-    PLOG(ERROR) << "Failed to set PATH";
-    return false;
   }
 
 #if USE_VM_BOREALIS
