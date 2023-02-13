@@ -212,11 +212,21 @@ static void sl_xdg_toplevel_show_window_menu(struct wl_client* client,
       host->proxy, host_seat ? host_seat->proxy : NULL, serial, x, y);
 }  // NOLINT(whitespace/indent)
 
+static void sl_xdg_toplevel_set_app_id(struct wl_client* client,
+                                       struct wl_resource* resource,
+                                       const char* app_id) {
+  struct sl_host_xdg_toplevel* host =
+      static_cast<sl_host_xdg_toplevel*>(wl_resource_get_user_data(resource));
+  char* application_id_str = sl_xasprintf(NATIVE_WAYLAND_APPLICATION_ID_FORMAT,
+                                          host->ctx->vm_id, app_id);
+  xdg_toplevel_set_app_id(host->proxy, application_id_str);
+}
+
 static const struct xdg_toplevel_interface sl_xdg_toplevel_implementation = {
     sl_xdg_toplevel_destroy,
     ForwardRequest<xdg_toplevel_set_parent, AllowNullResource::kYes>,
     ForwardRequest<xdg_toplevel_set_title>,
-    ForwardRequest<xdg_toplevel_set_app_id>,
+    sl_xdg_toplevel_set_app_id,
     sl_xdg_toplevel_show_window_menu,
     ForwardRequest<xdg_toplevel_move, AllowNullResource::kYes>,
     ForwardRequest<xdg_toplevel_resize, AllowNullResource::kYes>,

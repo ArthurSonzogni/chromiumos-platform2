@@ -22,6 +22,9 @@
 
 #define SOMMELIER_VERSION "0.20"
 #define XDG_SHELL_VERSION 3u
+#define APPLICATION_ID_FORMAT_PREFIX "org.chromium.guest_os.%s"
+#define NATIVE_WAYLAND_APPLICATION_ID_FORMAT \
+  APPLICATION_ID_FORMAT_PREFIX ".wayland.%s"
 
 #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
 

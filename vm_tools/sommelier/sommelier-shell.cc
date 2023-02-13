@@ -10,16 +10,28 @@
 #include <wayland-client.h>
 
 struct sl_host_shell_surface {
+  struct sl_context* ctx;
   struct wl_resource* resource;
   struct wl_shell_surface* proxy;
 };
 MAP_STRUCTS(wl_shell_surface, sl_host_shell_surface);
 
 struct sl_host_shell {
+  struct sl_context* ctx;
   struct sl_shell* shell;
   struct wl_resource* resource;
   struct wl_shell* proxy;
 };
+
+static void sl_shell_surface_set_class(struct wl_client* wl_client,
+                                       struct wl_resource* wl_resource,
+                                       const char* clazz) {
+  struct sl_host_shell_surface* host = static_cast<sl_host_shell_surface*>(
+      wl_resource_get_user_data(wl_resource));
+  char* application_id_str = sl_xasprintf(NATIVE_WAYLAND_APPLICATION_ID_FORMAT,
+                                          host->ctx->vm_id, clazz);
+  wl_shell_surface_set_class(host->proxy, application_id_str);
+}
 
 static const struct wl_shell_surface_interface sl_shell_surface_implementation =
     {
@@ -33,7 +45,7 @@ static const struct wl_shell_surface_interface sl_shell_surface_implementation =
         ForwardRequest<wl_shell_surface_set_popup>,
         ForwardRequest<wl_shell_surface_set_maximized, AllowNullResource::kYes>,
         ForwardRequest<wl_shell_surface_set_title>,
-        ForwardRequest<wl_shell_surface_set_class>,
+        sl_shell_surface_set_class,
 };
 
 static void sl_shell_surface_ping(void* data,
@@ -89,6 +101,8 @@ static void sl_host_shell_get_shell_surface(
       wl_resource_get_user_data(surface_resource));
   struct sl_host_shell_surface* host_shell_surface =
       new sl_host_shell_surface();
+
+  host_shell_surface->ctx = host->ctx;
   host_shell_surface->resource =
       wl_resource_create(client, &wl_shell_surface_interface, 1, id);
   wl_resource_set_implementation(
@@ -120,6 +134,7 @@ static void sl_bind_host_shell(struct wl_client* client,
   struct sl_context* ctx = (struct sl_context*)data;
   struct sl_host_shell* host = new sl_host_shell();
   assert(host);
+  host->ctx = ctx;
   host->shell = ctx->shell;
   host->resource = wl_resource_create(client, &wl_shell_interface, 1, id);
   wl_resource_set_implementation(host->resource, &sl_shell_implementation, host,

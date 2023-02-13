@@ -12,9 +12,6 @@
 #include "aura-shell-client-protocol.h"  // NOLINT(build/include_directory)
 #include "gtk-shell-server-protocol.h"   // NOLINT(build/include_directory)
 
-#define NATIVE_WAYLAND_APPLICATION_ID_FORMAT \
-  "org.chromium.guest_os.%s.wayland.%s"
-
 struct sl_host_gtk_shell {
   struct sl_aura_shell* aura_shell;
   struct wl_resource* resource;

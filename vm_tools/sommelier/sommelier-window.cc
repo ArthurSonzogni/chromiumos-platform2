@@ -13,7 +13,6 @@
 #include "aura-shell-client-protocol.h"  // NOLINT(build/include_directory)
 #include "xdg-shell-client-protocol.h"   // NOLINT(build/include_directory)
 
-#define APPLICATION_ID_FORMAT_PREFIX "org.chromium.guest_os.%s"
 #define XID_APPLICATION_ID_FORMAT APPLICATION_ID_FORMAT_PREFIX ".xid.%d"
 #define WM_CLIENT_LEADER_APPLICATION_ID_FORMAT \
   APPLICATION_ID_FORMAT_PREFIX ".wmclientleader.%d"
