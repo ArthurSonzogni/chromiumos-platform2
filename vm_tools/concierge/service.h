@@ -275,6 +275,10 @@ class Service final {
                                  uint32_t vsock_cid,
                                  pid_t pid,
                                  std::string vm_token);
+  void HandleVmStarted(const VmId& vm_id,
+                       const vm_tools::concierge::VmInfo& vm_info,
+                       const std::string& vm_socket,
+                       vm_tools::concierge::VmStatus status);
   void SendVmStartedSignal(const VmId& vm_id,
                            const vm_tools::concierge::VmInfo& vm_info,
                            vm_tools::concierge::VmStatus status);

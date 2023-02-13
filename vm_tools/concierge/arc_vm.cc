@@ -297,10 +297,6 @@ std::unique_ptr<ArcVm> ArcVm::Create(
   return vm;
 }
 
-std::string ArcVm::GetVmSocketPath() const {
-  return runtime_dir_.GetPath().Append(kCrosvmSocket).value();
-}
-
 bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
   // Get the available network interfaces.
   network_devices_ = network_client_->NotifyArcVmStartup(vsock_cid_);

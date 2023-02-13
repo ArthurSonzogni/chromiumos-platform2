@@ -316,8 +316,6 @@ class TerminaVm final : public VmBaseImpl {
 
   void HandleSuspendImminent() override;
   void HandleSuspendDone() override;
-  // Returns the path to the VM control socket.
-  std::string GetVmSocketPath() const;
 
   // Returns the string value of the 'serial' arg passed to crosvm.
   // If |log_path_| is empty, syslog will be used.

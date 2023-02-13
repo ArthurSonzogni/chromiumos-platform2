@@ -536,7 +536,7 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
   vm_info->set_ipv4_address(vm->IPv4Address());
   vm_info->set_pid(vm->pid());
 
-  SendVmStartedSignal(vm_id, *vm_info, response.status());
+  HandleVmStarted(vm_id, *vm_info, vm->GetVmSocketPath(), response.status());
 
   vms_[vm_id] = std::move(vm);
 

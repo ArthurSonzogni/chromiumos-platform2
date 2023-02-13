@@ -161,9 +161,6 @@ class ArcVm final : public VmBaseImpl {
   void HandleSuspendImminent() override;
   void HandleSuspendDone() override;
 
-  // Returns the path to the VM control socket.
-  std::string GetVmSocketPath() const;
-
   // Starts the VM with the given kernel and root file system.
   bool Start(base::FilePath kernel, VmBuilder vm_builder);
 

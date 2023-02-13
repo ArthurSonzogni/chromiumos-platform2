@@ -2349,7 +2349,7 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   vm_info->set_pid(vm->pid());
   vm_info->set_permission_token(vm->PermissionToken());
 
-  SendVmStartedSignal(vm_id, *vm_info, response.status());
+  HandleVmStarted(vm_id, *vm_info, vm->GetVmSocketPath(), response.status());
 
   if (vm_info->storage_ballooning()) {
     AddStorageBalloonVm(vm_id);
@@ -4592,6 +4592,16 @@ void Service::NotifyCiceroneOfVmStarted(const VmId& vm_id,
           dbus::ObjectProxy::TIMEOUT_USE_DEFAULT)) {
     LOG(ERROR) << "Failed notifying cicerone of VM startup";
   }
+}
+
+void Service::HandleVmStarted(const VmId& vm_id,
+                              const vm_tools::concierge::VmInfo& vm_info,
+                              const std::string&,
+                              vm_tools::concierge::VmStatus status) {
+  // TODO(b:254164308) forward the vm started notification to the
+  // VmMemoryManagement system once it is landed
+
+  SendVmStartedSignal(vm_id, vm_info, status);
 }
 
 void Service::SendVmStartedSignal(const VmId& vm_id,

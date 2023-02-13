@@ -65,6 +65,8 @@ class VmBaseImpl : public VmInterface {
   bool ListUsbDevice(std::vector<UsbDeviceEntry>* devices) override;
   void MakeRtVcpu() override;
 
+  std::string GetVmSocketPath() const;
+
  protected:
   // Adjusts the amount of CPU the VM processes are allowed to use.
   static bool SetVmCpuRestriction(CpuRestrictionState cpu_restriction_state,
@@ -72,8 +74,6 @@ class VmBaseImpl : public VmInterface {
 
   // Starts |process_| with |args|. Returns true iff started successfully.
   bool StartProcess(base::StringPairs args);
-
-  std::string GetVmSocketPath() const;
 
   // Stops this VM
   // Returns true on success, false otherwise

@@ -264,7 +264,7 @@ StartVmResponse Service::StartPluginVm(
   response.set_success(true);
 
   NotifyCiceroneOfVmStarted(vm_id, 0 /* cid */, info.pid, std::move(vm_token));
-  SendVmStartedSignal(vm_id, *vm_info, response.status());
+  HandleVmStarted(vm_id, *vm_info, vm->GetVmSocketPath(), response.status());
 
   vms_[vm_id] = std::move(vm);
   return response;

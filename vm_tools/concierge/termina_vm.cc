@@ -237,10 +237,6 @@ std::unique_ptr<TerminaVm> TerminaVm::Create(
   return vm;
 }
 
-std::string TerminaVm::GetVmSocketPath() const {
-  return runtime_dir_.GetPath().Append(kCrosvmSocket).value();
-}
-
 std::string TerminaVm::GetCrosVmSerial(std::string hardware,
                                        std::string console_type) const {
   std::string common_params = "hardware=" + hardware;
