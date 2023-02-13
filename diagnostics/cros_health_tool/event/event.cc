@@ -40,6 +40,7 @@ constexpr std::pair<const char*, mojom::EventCategoryEnum> kCategorySwitches[] =
         {"audio_jack", mojom::EventCategoryEnum::kAudioJack},
         {"sd_card", mojom::EventCategoryEnum::kSdCard},
         {"keyboard_diagnostic", mojom::EventCategoryEnum::kKeyboardDiagnostic},
+        {"touchpad", mojom::EventCategoryEnum::kTouchpad},
 };
 
 // Create a stringified list of the category names for use in help.

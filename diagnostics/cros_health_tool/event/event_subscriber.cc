@@ -137,6 +137,20 @@ std::string EnumToString(mojom::BluetoothEventInfo::State state) {
   }
 }
 
+std::string EnumToString(mojom::InputTouchButton button) {
+  switch (button) {
+    case mojom::InputTouchButton::kUnmappedEnumField:
+      LOG(FATAL) << "Got UnmappedEnumField";
+      return "UnmappedEnumField";
+    case mojom::InputTouchButton::kLeft:
+      return "Left";
+    case mojom::InputTouchButton::kMiddle:
+      return "Middle";
+    case mojom::InputTouchButton::kRight:
+      return "Right";
+  }
+}
+
 void OutputUsbEventInfo(const mojom::UsbEventInfoPtr& info) {
   base::Value::Dict output;
 
@@ -200,6 +214,85 @@ void OutputKeyboardDiagnosticEventInfo(
             << " key(s) pressed." << std::endl;
 }
 
+void OutputTouchpadButtonEventInfo(
+    const mojom::TouchpadButtonEventPtr& button_event) {
+  base::Value::Dict output;
+  output.Set("button", EnumToString(button_event->button));
+  output.Set("pressed", button_event->pressed);
+
+  std::string json;
+  base::JSONWriter::Write(output, &json);
+  std::cout << "Touchpad button event received: " << json << std::endl;
+}
+
+void OutputTouchpadTouchEventInfo(
+    const mojom::TouchpadTouchEventPtr& touch_event) {
+  base::Value::Dict output;
+  base::Value::List touch_points;
+  for (const auto& point : touch_event->touch_points) {
+    base::Value::Dict point_dict;
+    point_dict.Set("tracking_id", static_cast<double>(point->tracking_id));
+    point_dict.Set("x", static_cast<double>(point->x));
+    point_dict.Set("y", static_cast<double>(point->y));
+    if (point->pressure) {
+      point_dict.Set("pressure", static_cast<double>(point->pressure->value));
+    }
+    if (point->touch_major) {
+      point_dict.Set("touch_major",
+                     static_cast<double>(point->touch_major->value));
+    }
+    if (point->touch_minor) {
+      point_dict.Set("touch_minor",
+                     static_cast<double>(point->touch_minor->value));
+    }
+    touch_points.Append(std::move(point_dict));
+  }
+  output.Set("touch_points", std::move(touch_points));
+
+  std::string json;
+  base::JSONWriter::WriteWithOptions(
+      output, base::JSONWriter::Options::OPTIONS_OMIT_DOUBLE_TYPE_PRESERVATION,
+      &json);
+  std::cout << "Touchpad touch event received: " << json << std::endl;
+}
+
+void OutputTouchpadConnectedEventInfo(
+    const mojom::TouchpadConnectedEventPtr& connected_event) {
+  base::Value::Dict output;
+  output.Set("max_x", static_cast<double>(connected_event->max_x));
+  output.Set("max_y", static_cast<double>(connected_event->max_y));
+  output.Set("max_pressure",
+             static_cast<double>(connected_event->max_pressure));
+
+  auto* buttons = output.Set("buttons", base::Value::List{});
+  for (const auto& button : connected_event->buttons) {
+    buttons->Append(EnumToString(button));
+  }
+
+  std::string json;
+  base::JSONWriter::WriteWithOptions(
+      output, base::JSONWriter::Options::OPTIONS_OMIT_DOUBLE_TYPE_PRESERVATION,
+      &json);
+  std::cout << "Touchpad connected event received: " << json << std::endl;
+}
+
+void OutputTouchpadEventInfo(const mojom::TouchpadEventInfoPtr& info) {
+  switch (info->which()) {
+    case mojom::TouchpadEventInfo::Tag::kDefaultType:
+      LOG(ERROR) << "Got TouchpadEventInfo::Tag::kDefaultType";
+      break;
+    case mojom::TouchpadEventInfo::Tag::kButtonEvent:
+      OutputTouchpadButtonEventInfo(info->get_button_event());
+      break;
+    case mojom::TouchpadEventInfo::Tag::kTouchEvent:
+      OutputTouchpadTouchEventInfo(info->get_touch_event());
+      break;
+    case mojom::TouchpadEventInfo::Tag::kConnectedEvent:
+      OutputTouchpadConnectedEventInfo(info->get_connected_event());
+      break;
+  }
+}
+
 }  // namespace
 
 EventSubscriber::EventSubscriber() {
@@ -258,7 +351,7 @@ void EventSubscriber::OnEvent(const mojom::EventInfoPtr info) {
           info->get_keyboard_diagnostic_event_info());
       break;
     case mojom::EventInfo::Tag::kTouchpadEventInfo:
-      NOTIMPLEMENTED();
+      OutputTouchpadEventInfo(info->get_touchpad_event_info());
       break;
   }
 }
