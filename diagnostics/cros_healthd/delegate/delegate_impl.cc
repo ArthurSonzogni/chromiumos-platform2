@@ -249,4 +249,11 @@ void DelegateImpl::MonitorAudioJack(
   new EvdevAudioJackObserver(std::move(observer));
 }
 
+void DelegateImpl::MonitorTouchpad(
+    mojo::PendingRemote<mojom::TouchpadObserver> observer) {
+  // Long-run method. The following object keeps alive until the process
+  // terminates.
+  new EvdevTouchpadObserver(std::move(observer));
+}
+
 }  // namespace diagnostics

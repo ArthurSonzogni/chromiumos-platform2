@@ -51,4 +51,10 @@ interface Delegate {
   // The request:
   // * |observer| - The observer to notify client.
   MonitorAudioJack(pending_remote<AudioJackObserver> observer);
+
+  // Monitor touchpad events.
+  //
+  // The request:
+  // * |observer| - The observer to notify client.
+  MonitorTouchpad(pending_remote<TouchpadObserver> observer);
 };

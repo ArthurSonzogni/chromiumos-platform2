@@ -31,6 +31,9 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
   void MonitorAudioJack(
       mojo::PendingRemote<ash::cros_healthd::mojom::AudioJackObserver> observer)
       override;
+  void MonitorTouchpad(
+      mojo::PendingRemote<ash::cros_healthd::mojom::TouchpadObserver> observer)
+      override;
 };
 
 }  // namespace diagnostics

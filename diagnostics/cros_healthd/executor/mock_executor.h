@@ -98,6 +98,13 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
                mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
                    process_control),
               (override));
+  MOCK_METHOD(
+      void,
+      MonitorTouchpad,
+      (mojo::PendingRemote<ash::cros_healthd::mojom::TouchpadObserver> observer,
+       mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
+           process_control),
+      (override));
 };
 
 }  // namespace diagnostics

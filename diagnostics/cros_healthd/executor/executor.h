@@ -82,6 +82,10 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
       mojo::PendingRemote<ash::cros_healthd::mojom::AudioJackObserver> observer,
       mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
           process_control_receiver) override;
+  void MonitorTouchpad(
+      mojo::PendingRemote<ash::cros_healthd::mojom::TouchpadObserver> observer,
+      mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
+          process_control_receiver) override;
 
  private:
   // Runs the given process and wait for it to die. Does not track the process

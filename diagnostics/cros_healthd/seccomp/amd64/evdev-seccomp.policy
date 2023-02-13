@@ -31,6 +31,24 @@ gettid: 1
 #   0x80084519 == EVIOCGLED(8)
 #   0x80084520 == EVIOCGBIT(0, 8)
 #   0x80084503 == EVIOCGREP
+#   0x80184540 == EVIOCGABS(ABS_X)
+#   0x80184541 == EVIOCGABS(ABS_Y)
+#   0x80184558 == EVIOCGABS(ABS_PRESSURE)
+#   0x80184559 == EVIOCGABS(ABS_DISTANCE)
+#   0x8018455a == EVIOCGABS(ABS_TILT_X)
+#   0x8018455b == EVIOCGABS(ABS_TILT_Y)
+#   0x8018455c == EVIOCGABS(ABS_TOOL_WIDTH)
+#   0x80184568 == EVIOCGABS(ABS_MISC)
+#   0x8018456f == EVIOCGABS(ABS_MT_SLOT)
+#   0x80184570 == EVIOCGABS(ABS_MT_TOUCH_MAJOR)
+#   0x80184571 == EVIOCGABS(ABS_MT_TOUCH_MINOR)
+#   0x80184574 == EVIOCGABS(ABS_MT_ORIENTATION)
+#   0x80184575 == EVIOCGABS(ABS_MT_POSITION_X)
+#   0x80184576 == EVIOCGABS(ABS_MT_POSITION_Y)
+#   0x80184577 == EVIOCGABS(ABS_MT_TOOL_TYPE)
+#   0x80184579 == EVIOCGABS(ABS_MT_TRACKING_ID)
+#   0x8018457a == EVIOCGABS(ABS_MT_PRESSURE)
+#   0x8404450a == EVIOCGMTSLOTS(1028)
 ioctl: arg1 == 0x5401 || arg1 == 0x8913 || arg1 == 0x8914 || \
        arg1 == 0x80084524 || arg1 == 0x80084509 || arg1 == 0x80084525 || \
        arg1 == 0x80084532 || arg1 == 0x80ff4506 || arg1 == 0x80084531 || \
@@ -38,7 +56,13 @@ ioctl: arg1 == 0x5401 || arg1 == 0x8913 || arg1 == 0x8914 || \
        arg1 == 0x80084502 || arg1 == 0x80104535 || arg1 == 0x8008451b || \
        arg1 == 0x80604521 || arg1 == 0x80084523 || arg1 == 0x80604518 || \
        arg1 == 0x80084522 || arg1 == 0x80084519 || arg1 == 0x80084520 || \
-       arg1 == 0x80084503
+       arg1 == 0x80084503 || arg1 == 0x80184540 || arg1 == 0x80184541 || \
+       arg1 == 0x80184558 || arg1 == 0x80184559 || arg1 == 0x8018455a || \
+       arg1 == 0x8018455b || arg1 == 0x8018455c || arg1 == 0x80184568 || \
+       arg1 == 0x8018456f || arg1 == 0x80184570 || arg1 == 0x80184571 || \
+       arg1 == 0x80184574 || arg1 == 0x80184575 || arg1 == 0x80184576 || \
+       arg1 == 0x80184577 || arg1 == 0x80184579 || arg1 == 0x8018457a || \
+       arg1 == 0x8404450a
 write: 1
 geteuid: 1
 getuid: 1
