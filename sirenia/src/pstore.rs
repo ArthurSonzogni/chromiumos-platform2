@@ -24,6 +24,7 @@ use libsirenia::linux::kmsg;
 use libsirenia::sys::get_cbmem_toc;
 use log::error;
 use log::info;
+use zerocopy::FromBytes;
 
 const RAMOOPS_UNBIND: &str = "/sys/devices/platform/ramoops.0/driver/unbind";
 const RAMOOPS_BUS_ID: &[u8] = b"ramoops.0";
@@ -141,7 +142,7 @@ impl RamoopsOffsets {
 }
 
 // See fs/pstore/ram_core.c in the kernel for the header definition.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, FromBytes)]
 #[repr(C)]
 struct RamoopsRegionHeader {
     sig: [u8; 4], // signature, eg. b"DBGC"
@@ -150,6 +151,7 @@ struct RamoopsRegionHeader {
 }
 
 // Safe because PstoreRegionHeader is plain data.
+// TODO: Remove this once crosvm has finished its migration to zerocopy::FromBytes.
 unsafe impl DataInit for RamoopsRegionHeader {}
 
 /// Copy data from the specified /sys/fs/pstore file to the emulated pstore.
