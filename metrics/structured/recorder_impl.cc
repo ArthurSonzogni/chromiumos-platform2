@@ -65,18 +65,22 @@ RecorderImpl::~RecorderImpl() = default;
 
 bool RecorderImpl::Record(const EventBase& event) {
   // Do not record if the UMA consent is opted out, except for metrics for the
-  // rmad project and usb device project.
+  // rmad project and usb projects.
   //
   // rmad metrics skip this check because, at the time of recording, the UMA
   // consent status is undetermined. These metrics will be discarded if needed
   // by the consent check in chromium, which happens when the events are read
   // from disk.
   //
-  // The same applies to usb device metrics.
+  // The same applies to usb device and error metrics.
   if (event.project_name_hash() !=
           events::rmad::ShimlessRmaReport::kProjectNameHash &&
       event.project_name_hash() !=
           events::usb_device::UsbDeviceInfo::kProjectNameHash &&
+      event.project_name_hash() !=
+          events::usb_error::HubError::kProjectNameHash &&
+      event.project_name_hash() !=
+          events::usb_error::XhciError::kProjectNameHash &&
       !metrics_library_.AreMetricsEnabled()) {
     return false;
   }

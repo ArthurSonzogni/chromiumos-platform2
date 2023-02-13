@@ -876,6 +876,69 @@
   </event>
 </project>
 
+<project name="UsbError">
+  <owner>jthies@google.com</owner>
+  <owner>chromeos-usb@google.com</owner>
+  <id>none</id>
+  <summary>
+    Project to record metrics on errors returned by notable kernel driver
+    functions.
+  </summary>
+  <event name="HubError">
+    <summary>
+      Records error uevent sent by the Hub driver.
+    </summary>
+    <metric name="ErrorCode" type="int">
+      <summary>
+        Linux kernel error code returned by function which sent the uevent.
+      </summary>
+    </metric>
+    <metric name="DeviceClass" type="int">
+      <summary>
+        The device class of the USB device which sent the uevent.
+      </summary>
+    </metric>
+    <metric name="VendorId" type="int">
+      <summary>
+        The vendor ID of the USB device which sent the uevent. This is filtered
+        through an allow list to only record vendor ID for popular devices.
+      </summary>
+    </metric>
+    <metric name="ProductId" type="int">
+      <summary>
+        The product ID of the USB device which sent the uevent. This is filtered
+        through an allow list to only record product ID for popular devices.
+      </summary>
+    </metric>
+    <metric name="DevicePath" type="raw-string">
+      <summary>
+        The device path of the usb device which sent the uevent, this value is
+        taken from the devpath file in the device's sysfs directory.
+      </summary>
+    </metric>
+    <metric name="ConnectedDuration" type="int">
+      <summary>
+        Time, in milliseconds, that the USB device has been connected.
+      </summary>
+    </metric>
+  </event>
+  <event name="XhciError">
+    <summary>
+      Records error uevent sent by the xHCI driver.
+    </summary>
+    <metric name="ErrorCode" type="int">
+      <summary>
+        Linux kernel error code returned by function which sent the uevent.
+      </summary>
+    </metric>
+    <metric name="DeviceClass" type="int">
+      <summary>
+        The device class of the kernel device which sent the error uevent.
+      </summary>
+    </metric>
+  </event>
+</project>
+
 <project name="WiFiChipset">
   <owner>druth@google.com</owner>
   <owner>matthewmwang@chromium.org</owner>
