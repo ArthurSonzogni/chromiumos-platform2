@@ -536,6 +536,38 @@ void StructuredMetricsExternalDeviceAttached(int VendorId,
       .Record();
 }
 
+void StructuredMetricsHubError(int ErrorCode,
+                               int VendorId,
+                               int ProductId,
+                               int DeviceClass,
+                               std::string UsbTreePath,
+                               int ConnectedDuration) {
+  // Limit string length.
+  int string_len_limit = 20;
+  UsbTreePath = UsbTreePath.substr(0, string_len_limit);
+
+  // TODO(b/269770946): allow popular VID/PIDs to be recorded in the HubError
+  // metric once the USB peripheral popularity study completes.
+  VendorId = 0;
+  ProductId = 0;
+
+  metrics::structured::events::usb_error::HubError()
+      .SetErrorCode(ErrorCode)
+      .SetVendorId(VendorId)
+      .SetProductId(ProductId)
+      .SetDeviceClass(DeviceClass)
+      .SetDevicePath(UsbTreePath)
+      .SetConnectedDuration(ConnectedDuration)
+      .Record();
+}
+
+void StructuredMetricsXhciError(int ErrorCode, int DeviceClass) {
+  metrics::structured::events::usb_error::XhciError()
+      .SetErrorCode(ErrorCode)
+      .SetDeviceClass(DeviceClass)
+      .Record();
+}
+
 base::FilePath GetUserDBDir() {
   // Usb_bouncer is called by udev even during early boot. If D-Bus is
   // inaccessible, it is early boot and the user hasn't logged in.
@@ -848,6 +880,14 @@ base::FilePath GetRootDevice(base::FilePath dev) {
   return root_dev;
 }
 
+base::FilePath GetInterfaceDevice(base::FilePath intf) {
+  std::string dev;
+  if (!RE2::PartialMatch(intf.value(), R"((.*\/).*)", &dev))
+    return base::FilePath();
+
+  return base::FilePath(dev);
+}
+
 bool IsExternalDevice(base::FilePath normalized_devpath) {
   std::string removable;
   if (base::ReadFileToString(normalized_devpath.Append("removable"),
@@ -1001,6 +1041,49 @@ int GetDeviceClass(base::FilePath normalized_devpath) {
     base::TrimWhitespaceASCII(intf_class, base::TRIM_ALL, &intf_class);
     if (base::HexStringToInt(intf_class, &intf_class_int)) {
       return intf_class_int;
+    }
+  }
+
+  return 0;
+}
+
+std::string GetUsbTreePath(base::FilePath normalized_devpath) {
+  std::string device_path;
+  if (base::ReadFileToString(normalized_devpath.Append("devpath"),
+                             &device_path)) {
+    base::TrimWhitespaceASCII(device_path, base::TRIM_ALL, &device_path);
+    return device_path;
+  }
+
+  return std::string();
+}
+
+int GetConnectedDuration(base::FilePath normalized_devpath) {
+  std::string connected_duration;
+  int connected_duration_int;
+  if (base::ReadFileToString(
+          normalized_devpath.Append("power/connected_duration"),
+          &connected_duration)) {
+    base::TrimWhitespaceASCII(connected_duration, base::TRIM_ALL,
+                              &connected_duration);
+    if (base::StringToInt(connected_duration, &connected_duration_int)) {
+      return connected_duration_int;
+    }
+  }
+
+  return 0;
+}
+
+int GetPciDeviceClass(base::FilePath normalized_devpath) {
+  std::string device_class;
+  int device_class_int;
+  if (base::ReadFileToString(normalized_devpath.Append("class"),
+                             &device_class)) {
+    base::TrimWhitespaceASCII(device_class, base::TRIM_ALL, &device_class);
+    if (base::HexStringToInt(device_class, &device_class_int)) {
+      // The sysfs "class" file includes class, subclass and interface
+      // information. Shifting 16 bits to return only the device class.
+      return (device_class_int >> 16);
     }
   }
 

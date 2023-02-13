@@ -11,6 +11,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <libminijail.h>
@@ -31,6 +32,7 @@ namespace {
 static constexpr char kUsageMessage[] = R"(Usage:
   cleanup - removes stale allow-list entries.
   genrules - writes the generated rules configuration and to stdout.
+  report_error - handles kernel errors reported with uevents.
   udev (add|remove) <devpath> - handles a udev device event.
   userlogin - add current entries to user allow-list.
 )";
@@ -43,6 +45,11 @@ enum class SeccompEnforcement {
 enum class ForkConfig {
   kDoubleFork,
   kDisabled,
+};
+
+enum class PrivilegeLevel {
+  kDefault,
+  kMetricsOnly,
 };
 
 class Configuration {
@@ -58,7 +65,7 @@ static constexpr char kStructuredMetricsPath[] = "/var/lib/metrics/structured";
 static constexpr char kStructuredMetricsEventsPath[] =
     "/var/lib/metrics/structured/events";
 
-void DropPrivileges(const Configuration& config) {
+void DropPrivileges(const Configuration& config, PrivilegeLevel privileges) {
   if (!CanChown()) {
     LOG(FATAL) << "This process doesn't have permission to chown.";
   }
@@ -113,9 +120,13 @@ void DropPrivileges(const Configuration& config) {
     }
   }
   std::string global_db_path("/");
+  int global_db_path_writeable = 1;
+  if (privileges == PrivilegeLevel::kMetricsOnly)
+    global_db_path_writeable = 0;
+
   global_db_path.append(usb_bouncer::kDefaultGlobalDir);
   if (minijail_bind(j.get(), global_db_path.c_str(), global_db_path.c_str(),
-                    1 /*writable*/) != 0) {
+                    global_db_path_writeable /*writable*/) != 0) {
     PLOG(FATAL) << "minijail_bind('" << global_db_path << "') failed";
   }
 
@@ -167,7 +178,7 @@ EntryManager* GetEntryManagerOrDie(const Configuration& config) {
   if (!EntryManager::CreateDefaultGlobalDB()) {
     LOG(FATAL) << "Unable to create default global DB!";
   }
-  DropPrivileges(config);
+  DropPrivileges(config, PrivilegeLevel::kDefault);
   EntryManager* entry_manager = EntryManager::GetInstance(GetRuleFromDevPath);
   if (!entry_manager) {
     LOG(FATAL) << "EntryManager::GetInstance() failed!";
@@ -222,6 +233,50 @@ int HandleGenRules(const Configuration& config,
   return EXIT_SUCCESS;
 }
 
+int HandleReportError(const Configuration& config,
+                      const std::vector<std::string>& argv) {
+  if (argv.size() != 3)
+    return EXIT_FAILURE;
+
+  int error_code;
+  std::string driver = argv[0];
+  std::string devpath = argv[1];
+  if (!base::StringToInt(argv[2], &error_code))
+    return EXIT_FAILURE;
+
+  // Drop privileges before reading from sysfs.
+  DropPrivileges(config, PrivilegeLevel::kMetricsOnly);
+
+  base::FilePath root_dir("/");
+  base::FilePath normalized_devpath = root_dir.Append("sys").Append(
+      usb_bouncer::StripLeadingPathSeparators(devpath));
+
+  if (!base::DirectoryExists(normalized_devpath))
+    return EXIT_FAILURE;
+
+  if (driver == "hub") {
+    if (base::PathExists(normalized_devpath.Append("bInterfaceClass")))
+      normalized_devpath = usb_bouncer::GetInterfaceDevice(normalized_devpath);
+
+    if (normalized_devpath.empty() ||
+        !base::PathExists(normalized_devpath.Append("bDeviceClass"))) {
+      return EXIT_FAILURE;
+    }
+
+    usb_bouncer::StructuredMetricsHubError(
+        abs(error_code), usb_bouncer::GetVendorId(normalized_devpath),
+        usb_bouncer::GetProductId(normalized_devpath),
+        usb_bouncer::GetDeviceClass(normalized_devpath),
+        usb_bouncer::GetUsbTreePath(normalized_devpath),
+        usb_bouncer::GetConnectedDuration(normalized_devpath));
+  } else if (driver == "xhci_hcd") {
+    usb_bouncer::StructuredMetricsXhciError(
+        abs(error_code), usb_bouncer::GetPciDeviceClass(normalized_devpath));
+  }
+
+  return EXIT_SUCCESS;
+}
+
 int HandleUdev(const Configuration& config,
                const std::vector<std::string>& argv) {
   if (argv.size() != 2) {
@@ -251,7 +306,7 @@ int HandleUdev(const Configuration& config,
   if (!EntryManager::CreateDefaultGlobalDB()) {
     LOG(FATAL) << "Unable to create default global DB!";
   }
-  DropPrivileges(config);
+  DropPrivileges(config, PrivilegeLevel::kDefault);
 
   // Perform sysfs reads before daemonizing to avoid races.
   const std::string& devpath = argv[1];
@@ -381,6 +436,7 @@ int main(int argc, char** argv) {
       {"authorize-all", HandleAuthorizeAll},
       {"cleanup", HandleCleanup},
       {"genrules", HandleGenRules},
+      {"report_error", HandleReportError},
       {"udev", HandleUdev},
       {"userlogin", HandleUserLogin},
       // clang-format on

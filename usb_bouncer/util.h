@@ -124,6 +124,17 @@ void StructuredMetricsExternalDeviceAttached(int VendorId,
                                              std::string ProductName,
                                              int DeviceClass);
 
+// Report structured metric on error uevents from the hub driver.
+void StructuredMetricsHubError(int ErrorCode,
+                               int VendorId,
+                               int ProductId,
+                               int DeviceClass,
+                               std::string UsbTreePath,
+                               int ConnectedDuration);
+
+// Report structured metric on error uevents from the xHCI driver.
+void StructuredMetricsXhciError(int ErrorCode, int DeviceClass);
+
 // Returns the path where the user DB should be written if there is a user
 // signed in and CrOS is unlocked. Otherwise, returns an empty path. In the
 // multi-login case, the primary user's daemon-store is used.
@@ -176,6 +187,11 @@ size_t RemoveEntriesOlderThan(base::TimeDelta cutoff, EntryMap* map);
 // E.g. .../1-2/1-2.3/1-2.3.4 is attached to the root hub, .../1-2.
 base::FilePath GetRootDevice(base::FilePath dev);
 
+// Given a USB interface path, return the path of its parent USB device.
+// If GetInterfaceDevice is unable to determine the parent USB device, it will
+// return an empty FilePath.
+base::FilePath GetInterfaceDevice(base::FilePath intf);
+
 // Given a devpath, determine if the USB device is external or internal based on
 // physical location of device (PLD) and removable property.
 bool IsExternalDevice(base::FilePath normalized_devpath);
@@ -206,6 +222,18 @@ std::string GetProductName(base::FilePath normalized_devpath);
 
 // Returns device class for a sysfs device.
 int GetDeviceClass(base::FilePath normalized_devpath);
+
+// Returns a USB device's location in the USB device tree. Here, the device
+// location is a string with the content of the USB device's devpath file
+// which includes a period-separated list of numbers with information on hubs
+// and ports between the device and host controller (Example: "1.5.3.2").
+std::string GetUsbTreePath(base::FilePath normalized_devpath);
+
+// Returns the connected duration, in milliseconds, for a sysfs device.
+int GetConnectedDuration(base::FilePath normalized_devpath);
+
+// Returns the PCI device class for a sysfs device.
+int GetPciDeviceClass(base::FilePath normalized_devpath);
 
 }  // namespace usb_bouncer
 
