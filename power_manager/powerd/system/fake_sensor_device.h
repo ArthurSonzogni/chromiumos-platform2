@@ -12,6 +12,7 @@
 
 #include <iioservice/mojo/sensor.mojom.h>
 #include <mojo/public/cpp/bindings/receiver_set.h>
+#include <mojo/public/cpp/bindings/remote_set.h>
 
 namespace power_manager::system {
 
@@ -26,7 +27,6 @@ class FakeSensorDevice : public cros::mojom::SensorDevice {
       const std::string& description = "");
 
   void ResetSamplesObserverRemote(mojo::ReceiverId id);
-  void ResetEventsObserverRemote(mojo::ReceiverId id);
 
   void SetAttribute(std::string attr_name, std::string value);
 
@@ -54,18 +54,13 @@ class FakeSensorDevice : public cros::mojom::SensorDevice {
                              const std::string& attr_name,
                              GetChannelsAttributesCallback callback) override;
   void GetAllEvents(GetAllEventsCallback callback) override;
-  void SetEventsEnabled(const std::vector<int32_t>& iio_event_indices,
-                        bool en,
-                        SetEventsEnabledCallback callback) override;
-  void GetEventsEnabled(const std::vector<int32_t>& iio_event_indices,
-                        GetEventsEnabledCallback callback) override;
   void GetEventsAttributes(const std::vector<int32_t>& iio_event_indices,
                            const std::string& attr_name,
                            GetEventsAttributesCallback callback) override;
   void StartReadingEvents(
+      const std::vector<int32_t>& iio_event_indices,
       mojo::PendingRemote<cros::mojom::SensorDeviceEventsObserver> observer)
       override;
-  void StopReadingEvents() override;
 
  protected:
   std::map<std::string, std::string> attributes_;
@@ -74,9 +69,9 @@ class FakeSensorDevice : public cros::mojom::SensorDevice {
            mojo::Remote<cros::mojom::SensorDeviceSamplesObserver>>
       samples_observers_;
 
-  std::map<mojo::ReceiverId,
-           mojo::Remote<cros::mojom::SensorDeviceEventsObserver>>
-      events_observers_;
+  mojo::RemoteSet<cros::mojom::SensorDeviceEventsObserver> events_observers_;
+  std::map<mojo::RemoteSetElementId, std::vector<int32_t>>
+      events_enabled_indices_;
 
   mojo::ReceiverSet<cros::mojom::SensorDevice> receiver_set_;
 };

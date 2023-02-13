@@ -43,13 +43,6 @@ void FakeSensorDevice::ResetSamplesObserverRemote(mojo::ReceiverId id) {
   samples_observers_.erase(it);
 }
 
-void FakeSensorDevice::ResetEventsObserverRemote(mojo::ReceiverId id) {
-  auto it = events_observers_.find(id);
-  DCHECK(it != events_observers_.end());
-
-  events_observers_.erase(it);
-}
-
 void FakeSensorDevice::OnSampleUpdated(
     const base::flat_map<int32_t, int64_t>& sample) {
   for (auto& samples_observer : samples_observers_)
@@ -58,7 +51,7 @@ void FakeSensorDevice::OnSampleUpdated(
 
 void FakeSensorDevice::OnEventUpdated(cros::mojom::IioEventPtr event) {
   for (auto& events_observer : events_observers_)
-    events_observer.second->OnEventUpdated(event.Clone());
+    events_observer->OnEventUpdated(event.Clone());
 }
 
 void FakeSensorDevice::SetAttribute(std::string attr_name, std::string value) {
@@ -133,19 +126,6 @@ void FakeSensorDevice::GetAllEvents(GetAllEventsCallback callback) {
   std::move(callback).Run({});
 }
 
-void FakeSensorDevice::SetEventsEnabled(
-    const std::vector<int32_t>& iio_event_indices,
-    bool en,
-    SetEventsEnabledCallback callback) {
-  std::move(callback).Run({});
-}
-
-void FakeSensorDevice::GetEventsEnabled(
-    const std::vector<int32_t>& iio_event_indices,
-    GetEventsEnabledCallback callback) {
-  std::move(callback).Run(std::vector<bool>(iio_event_indices.size(), false));
-}
-
 void FakeSensorDevice::GetEventsAttributes(
     const std::vector<int32_t>& iio_event_indices,
     const std::string& attr_name,
@@ -155,21 +135,10 @@ void FakeSensorDevice::GetEventsAttributes(
 }
 
 void FakeSensorDevice::StartReadingEvents(
+    const std::vector<int32_t>& iio_event_indices,
     mojo::PendingRemote<cros::mojom::SensorDeviceEventsObserver> observer) {
-  mojo::ReceiverId id = receiver_set_.current_receiver();
-  auto it = events_observers_.find(id);
-  if (it != events_observers_.end()) {
-    LOG(ERROR) << "Failed to start reading events: Already started";
-    mojo::Remote<cros::mojom::SensorDeviceEventsObserver>(std::move(observer))
-        ->OnErrorOccurred(cros::mojom::ObserverErrorType::ALREADY_STARTED);
-    return;
-  }
-
-  events_observers_[id].Bind(std::move(observer));
-}
-
-void FakeSensorDevice::StopReadingEvents() {
-  events_observers_.erase(receiver_set_.current_receiver());
+  events_enabled_indices_[events_observers_.Add(std::move(observer))] =
+      iio_event_indices;
 }
 
 }  // namespace power_manager::system
