@@ -240,6 +240,8 @@ class Service final {
   std::unique_ptr<dbus::Response> GetVmLaunchAllowed(
       dbus::MethodCall* method_call);
 
+  std::unique_ptr<dbus::Response> GetVmLogs(dbus::MethodCall* method_call);
+
   // Asynchronously handles a request to reclaim memory of a given VM.
   void ReclaimVmMemory(dbus::MethodCall* method_call,
                        dbus::ExportedObject::ResponseSender response_sender);

@@ -1376,3 +1376,16 @@ message GetVmLaunchAllowedResponse {
   // If not allowed, the reason why.
   string reason = 2;
 }
+
+message GetVmLogsRequest {
+  // The name of the VM to get logs for.
+  string name = 1;
+
+  // The owner of the vm.
+  string owner_id = 2;
+}
+
+message GetVmLogsResponse {
+  // The log for the vm.
+  string log = 1;
+}

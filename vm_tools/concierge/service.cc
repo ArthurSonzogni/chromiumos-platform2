@@ -137,6 +137,12 @@ constexpr base::TimeDelta kVmStartupDefaultTimeout = base::Seconds(60);
 // crosvm log directory name.
 constexpr char kCrosvmLogDir[] = "log";
 
+// Extension for crosvm log files
+constexpr char kCrosvmLogFileExt[] = "log";
+
+// Extension for vmlog_forwarder listener sockets.
+constexpr char kCrosvmLogSocketExt[] = "lsock";
+
 // crosvm gpu cache directory name.
 constexpr char kCrosvmGpuCacheDir[] = "gpucache";
 
@@ -734,6 +740,7 @@ KernelVersionAndMajorRevision GetKernelVersion() {
 // vm_name should always be less then kMaxVmNameLength characters long.
 base::FilePath GetVmLogPath(const std::string& owner_id,
                             const std::string& vm_name,
+                            const std::string& extension,
                             bool log_to_cryptohome = true) {
   if (!log_to_cryptohome) {
     return base::FilePath();
@@ -745,7 +752,7 @@ base::FilePath GetVmLogPath(const std::string& owner_id,
                             .Append(owner_id)
                             .Append(kCrosvmLogDir)
                             .Append(encoded_vm_name)
-                            .AddExtension(".lsock");
+                            .AddExtension(extension);
 
   base::FilePath parent_dir = path.DirName();
   if (!base::DirectoryExists(parent_dir)) {
@@ -1533,6 +1540,7 @@ bool Service::Init() {
       {kGetVmGpuCachePathMethod, &Service::GetVmGpuCachePath},
       {kAddGroupPermissionMesaMethod, &Service::AddGroupPermissionMesa},
       {kGetVmLaunchAllowedMethod, &Service::GetVmLaunchAllowed},
+      {kGetVmLogsMethod, &Service::GetVmLogs},
   };
 
   using AsyncServiceMethod = void (Service::*)(
@@ -2041,7 +2049,8 @@ StartVmResponse Service::StartVm(StartVmRequest request,
     response.set_failure_reason("VM name is too long");
     return response;
   }
-  base::FilePath log_path = GetVmLogPath(request.owner_id(), request.name());
+  base::FilePath log_path =
+      GetVmLogPath(request.owner_id(), request.name(), kCrosvmLogSocketExt);
 
   if (request.enable_vulkan() && !request.enable_gpu()) {
     LOG(ERROR) << "Vulkan enabled without GPU";
@@ -5271,6 +5280,59 @@ std::unique_ptr<dbus::Response> Service::GetVmLaunchAllowed(
 
   response.set_allowed(allowed);
   response.set_reason(reason);
+  writer.AppendProtoAsArrayOfBytes(response);
+
+  return dbus_response;
+}
+
+std::unique_ptr<dbus::Response> Service::GetVmLogs(
+    dbus::MethodCall* method_call) {
+  DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received GetVmLogs request";
+
+  std::unique_ptr<dbus::Response> dbus_response(
+      dbus::Response::FromMethodCall(method_call));
+
+  dbus::MessageReader reader(method_call);
+  dbus::MessageWriter writer(dbus_response.get());
+
+  GetVmLogsRequest request;
+  GetVmLogsResponse response;
+
+  if (!reader.PopArrayOfBytesAsProto(&request)) {
+    return dbus::ErrorResponse::FromMethodCall(
+        method_call, DBUS_ERROR_FAILED,
+        "Unable to parse GetVmLogsRequest from message");
+  }
+
+  base::FilePath log_path =
+      GetVmLogPath(request.owner_id(), request.name(), kCrosvmLogFileExt);
+
+  std::vector<base::FilePath> paths;
+  if (base::PathExists(log_path)) {
+    paths.push_back(log_path);
+
+    for (int i = 1; i <= 5; i++) {
+      base::FilePath older_log_path =
+          log_path.AddExtension(base::NumberToString(i));
+
+      if (base::PathExists(older_log_path)) {
+        paths.push_back(older_log_path);
+      } else {
+        break;
+      }
+    }
+  }
+
+  for (auto it = paths.rbegin(); it != paths.rend(); it++) {
+    std::string file_contents;
+    if (!base::ReadFileToString(*it, &file_contents)) {
+      continue;
+    }
+
+    response.mutable_log()->append(file_contents);
+  }
+
   writer.AppendProtoAsArrayOfBytes(response);
 
   return dbus_response;

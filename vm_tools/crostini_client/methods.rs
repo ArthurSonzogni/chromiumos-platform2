@@ -2524,6 +2524,28 @@ impl Methods {
         self.start_vm_infrastructure(user_id_hash)?;
         self.send_problem_report_for_plugin_vm(vm_name, user_id_hash, email, text)
     }
+
+    pub fn get_vm_logs(
+        &mut self,
+        vm_name: &str,
+        user_id_hash: &str,
+    ) -> Result<String, Box<dyn Error>> {
+        let mut request = GetVmLogsRequest::new();
+        request.owner_id = user_id_hash.to_owned();
+        request.name = vm_name.to_owned();
+
+        let response: GetVmLogsResponse = self.sync_protobus(
+            Message::new_method_call(
+                VM_CONCIERGE_SERVICE_NAME,
+                VM_CONCIERGE_SERVICE_PATH,
+                VM_CONCIERGE_INTERFACE,
+                GET_VM_LOGS_METHOD,
+            )?,
+            &request,
+        )?;
+
+        Ok(response.log)
+    }
 }
 
 fn is_stable_channel() -> bool {

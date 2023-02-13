@@ -711,29 +711,11 @@ impl<'a, 'b, 'c> Command<'a, 'b, 'c> {
         }
 
         let user_id_hash = get_user_hash(self.environ)?;
-        let encoded_name = base64::encode(self.args[0]);
-        let log_root = PathBuf::from("/run/daemon-store/crosvm")
-            .join(user_id_hash)
-            .join("log");
+        let vm_name = self.args[0];
 
-        for n in (0..6).rev() {
-            // Logs are stored in log_root/<base64name>.log, then .1, .2, etc
-            // appended as logs are rotated. Start at 5 then work our way back
-            // to the start, skipping any which don't exist.
-            let path;
-            if n == 0 {
-                path = log_root.join(format!("{}.log", encoded_name));
-            } else {
-                path = log_root.join(format!("{}.log.{}", encoded_name, n));
-            }
-            if !path.exists() {
-                continue;
-            }
+        let logs = try_command!(self.methods.get_vm_logs(vm_name, &user_id_hash));
+        print!("{}", logs);
 
-            let mut reader = File::open(&path)?;
-            println!("\n=======================\nLogs from {}", path.display());
-            copy(&mut reader, &mut stdout().lock())?;
-        }
         Ok(())
     }
 
