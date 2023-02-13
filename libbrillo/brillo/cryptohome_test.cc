@@ -25,7 +25,6 @@ TEST(Cryptohome, SanitizeUsername) {
   const ObfuscatedUsername kExpected(
       "856b54169cd5d2d6ca9a4b258ada5e3bee242829");
   EXPECT_EQ(SanitizeUserName(kUsername), kExpected);
-  EXPECT_EQ(SanitizeUserName(*kUsername), *kExpected);
 }
 
 TEST(Cryptohome, SanitizeUsernameWithSalt) {
@@ -35,7 +34,6 @@ TEST(Cryptohome, SanitizeUsernameWithSalt) {
   const ObfuscatedUsername kExpected(
       "856b54169cd5d2d6ca9a4b258ada5e3bee242829");
   EXPECT_EQ(kExpected, SanitizeUserNameWithSalt(username, salt));
-  EXPECT_EQ(*kExpected, SanitizeUserNameWithSalt(*username, salt));
 }
 
 TEST(Cryptohome, SanitizeUsernameWithSaltMixedCase) {
@@ -45,7 +43,6 @@ TEST(Cryptohome, SanitizeUsernameWithSaltMixedCase) {
   const ObfuscatedUsername kExpected(
       "856b54169cd5d2d6ca9a4b258ada5e3bee242829");
   EXPECT_EQ(kExpected, SanitizeUserNameWithSalt(username, salt));
-  EXPECT_EQ(*kExpected, SanitizeUserNameWithSalt(*username, salt));
 }
 
 TEST(Cryptohome, FakeSystemSaltLoader) {

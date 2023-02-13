@@ -21,12 +21,12 @@ namespace home {
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   FuzzedDataProvider fuzzed_data_provider(data, size);
 
-  const std::string username = fuzzed_data_provider.ConsumeRandomLengthString();
+  const Username username(fuzzed_data_provider.ConsumeRandomLengthString());
   const auto salt =
       SecureBlob(fuzzed_data_provider.ConsumeRemainingBytes<uint8_t>());
 
-  const std::string sanitized = SanitizeUserNameWithSalt(username, salt);
-  CHECK(IsSanitizedUserName(sanitized));
+  const ObfuscatedUsername sanitized(SanitizeUserNameWithSalt(username, salt));
+  CHECK(IsSanitizedUserName(*sanitized));
 
   return 0;
 }
