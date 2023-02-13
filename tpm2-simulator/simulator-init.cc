@@ -60,7 +60,7 @@ int main(int argc, char* argv[]) {
   TlclLibInit();
   TlclStartup();
   ExtendPcr0BootMode(/*developer_mode=*/1, /*recovery_mode=*/0,
-                     /*verified_firmware=*/0);
+                     /*verified_firmware=*/1);
   // Assign an arbitrary value to PCR1.
   ExtendPcr(/*pcr_index=*/1, /*extend_data=*/"PCR1");
 
