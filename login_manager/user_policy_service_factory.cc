@@ -55,9 +55,10 @@ UserPolicyServiceFactory::~UserPolicyServiceFactory() {}
 
 std::unique_ptr<PolicyService> UserPolicyServiceFactory::Create(
     const std::string& username) {
-  using brillo::cryptohome::home::GetDaemonStorePath;
+  brillo::cryptohome::home::Username typed_username(username);
   base::FilePath policy_dir(
-      GetDaemonStorePath(username, kDaemonName).Append(kPolicyDir));
+      brillo::cryptohome::home::GetDaemonStorePath(typed_username, kDaemonName)
+          .Append(kPolicyDir));
   if (!base::CreateDirectory(policy_dir)) {
     PLOG(ERROR) << "Failed to create user policy directory.";
     return nullptr;
@@ -71,10 +72,10 @@ std::unique_ptr<PolicyService> UserPolicyServiceFactory::Create(
     return nullptr;
   }
 
-  using brillo::cryptohome::home::SanitizeUserName;
-  const std::string sanitized(SanitizeUserName(username));
+  const brillo::cryptohome::home::ObfuscatedUsername sanitized(
+      brillo::cryptohome::home::SanitizeUserName(typed_username));
   const base::FilePath key_copy_file(base::StringPrintf(
-      "%s/%s/%s", kPolicyKeyCopyDir, sanitized.c_str(), kPolicyKeyCopyFile));
+      "%s/%s/%s", kPolicyKeyCopyDir, sanitized->c_str(), kPolicyKeyCopyFile));
 
   std::unique_ptr<UserPolicyService> service =
       std::make_unique<UserPolicyService>(policy_dir, std::move(key),

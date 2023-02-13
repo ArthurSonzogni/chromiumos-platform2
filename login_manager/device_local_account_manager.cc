@@ -121,7 +121,8 @@ void DeviceLocalAccountManager::PersistAllPolicy() {
 
 std::string DeviceLocalAccountManager::GetAccountKey(
     const std::string& account_id) {
-  return brillo::cryptohome::home::SanitizeUserName(account_id);
+  return *brillo::cryptohome::home::SanitizeUserName(
+      brillo::cryptohome::home::Username(account_id));
 }
 
 bool DeviceLocalAccountManager::IsValidAccountKey(const std::string& str) {

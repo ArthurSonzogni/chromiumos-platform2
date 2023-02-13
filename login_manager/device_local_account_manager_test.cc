@@ -56,7 +56,8 @@ class DeviceLocalAccountManagerTest : public ::testing::Test {
 
     fake_account_policy_path_ =
         temp_dir_.GetPath()
-            .Append(brillo::cryptohome::home::SanitizeUserName(fake_account_))
+            .Append(*brillo::cryptohome::home::SanitizeUserName(
+                brillo::cryptohome::home::Username(fake_account_)))
             .Append(DeviceLocalAccountManager::kPolicyDir)
             .Append(PolicyService::kChromePolicyFileName);
 

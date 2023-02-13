@@ -39,7 +39,8 @@ KeyGenerator::~KeyGenerator() {}
 bool KeyGenerator::Start(const string& username,
                          const std::optional<base::FilePath>& ns_path) {
   DCHECK(!generating_) << "Must call Reset() between calls to Start()!";
-  base::FilePath user_path(brillo::cryptohome::home::GetUserPath(username));
+  base::FilePath user_path(brillo::cryptohome::home::GetUserPath(
+      brillo::cryptohome::home::Username(username)));
   base::FilePath temporary_key_path(
       user_path.AppendASCII(kTemporaryKeyFilename));
   if (!base::DeleteFile(temporary_key_path)) {
