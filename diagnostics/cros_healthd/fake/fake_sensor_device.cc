@@ -78,19 +78,6 @@ void FakeSensorDevice::GetAllEvents(GetAllEventsCallback callback) {
   NOTIMPLEMENTED();
 }
 
-void FakeSensorDevice::SetEventsEnabled(
-    const std::vector<int32_t>& iio_event_indices,
-    bool en,
-    SetEventsEnabledCallback callback) {
-  NOTIMPLEMENTED();
-}
-
-void FakeSensorDevice::GetEventsEnabled(
-    const std::vector<int32_t>& iio_event_indices,
-    GetEventsEnabledCallback callback) {
-  NOTIMPLEMENTED();
-}
-
 void FakeSensorDevice::GetEventsAttributes(
     const std::vector<int32_t>& iio_event_indices,
     const std::string& attr_name,
@@ -99,11 +86,8 @@ void FakeSensorDevice::GetEventsAttributes(
 }
 
 void FakeSensorDevice::StartReadingEvents(
+    const std::vector<int32_t>& iio_event_indices,
     mojo::PendingRemote<cros::mojom::SensorDeviceEventsObserver> observer) {
-  NOTIMPLEMENTED();
-}
-
-void FakeSensorDevice::StopReadingEvents() {
   NOTIMPLEMENTED();
 }
 
