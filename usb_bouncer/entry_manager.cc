@@ -318,183 +318,24 @@ void EntryManager::ReportMetrics(const std::string& devpath,
 
   UMALogDeviceAttached(&metrics_, rule, new_entry, timing);
 
-  if (devpath.empty() || !IsExternalDevice(devpath))
+  // Device metrics not supported for empty devpath
+  if (devpath.empty())
+    return;
+
+  base::FilePath normalized_devpath =
+      root_dir_.Append("sys").Append(StripLeadingPathSeparators(devpath));
+
+  if (!IsExternalDevice(normalized_devpath))
     return;
 
   UMALogExternalDeviceAttached(&metrics_, rule, new_entry, timing,
-                               GetPortType(devpath), GetDeviceSpeed(devpath));
+                               GetPortType(normalized_devpath),
+                               GetDeviceSpeed(normalized_devpath));
 
   StructuredMetricsExternalDeviceAttached(
-      GetVendorId(devpath), GetVendorName(devpath), GetProductId(devpath),
-      GetProductName(devpath), GetDeviceClass(devpath));
-}
-
-bool EntryManager::IsExternalDevice(const std::string& devpath) {
-  base::FilePath normalized_devpath =
-      root_dir_.Append("sys").Append(StripLeadingPathSeparators(devpath));
-  normalized_devpath = GetRootDevice(normalized_devpath);
-
-  std::string removable;
-  if (base::ReadFileToString(normalized_devpath.Append("removable"),
-                             &removable)) {
-    base::TrimWhitespaceASCII(removable, base::TRIM_ALL, &removable);
-    if (removable == "removable")
-      return true;
-  }
-
-  std::string panel;
-  if (base::ReadFileToString(
-          normalized_devpath.Append("physical_location/panel"), &panel)) {
-    base::TrimWhitespaceASCII(panel, base::TRIM_ALL, &panel);
-    if (panel != "unknown")
-      return true;
-  }
-
-  return false;
-}
-
-UMAPortType EntryManager::GetPortType(const std::string& devpath) {
-  base::FilePath normalized_devpath =
-      root_dir_.Append("sys").Append(StripLeadingPathSeparators(devpath));
-  normalized_devpath = GetRootDevice(normalized_devpath);
-
-  std::string connector_uevent;
-  std::string devtype;
-  if (base::ReadFileToString(normalized_devpath.Append("port/connector/uevent"),
-                             &connector_uevent) &&
-      RE2::PartialMatch(connector_uevent, R"(DEVTYPE=(\w+))", &devtype) &&
-      devtype == "typec_port") {
-    return UMAPortType::kTypeC;
-  }
-
-  return UMAPortType::kTypeA;
-}
-
-UMADeviceSpeed EntryManager::GetDeviceSpeed(const std::string& devpath) {
-  base::FilePath normalized_devpath =
-      root_dir_.Append("sys").Append(StripLeadingPathSeparators(devpath));
-  std::string speed;
-  if (base::ReadFileToString(normalized_devpath.Append("speed"), &speed)) {
-    base::TrimWhitespaceASCII(speed, base::TRIM_ALL, &speed);
-  }
-  std::string version;
-  if (base::ReadFileToString(normalized_devpath.Append("version"), &version)) {
-    base::TrimWhitespaceASCII(version, base::TRIM_ALL, &version);
-  }
-
-  if (speed == "20000") {
-    return UMADeviceSpeed::k20000;
-  } else if (speed == "10000") {
-    return UMADeviceSpeed::k10000;
-  } else if (speed == "5000") {
-    return UMADeviceSpeed::k5000;
-  } else if (speed == "480") {
-    if (version == "2.10") {
-      return UMADeviceSpeed::k480Fallback;
-    } else {
-      return UMADeviceSpeed::k480;
-    }
-  } else if (speed == "12") {
-    return UMADeviceSpeed::k12;
-  } else if (speed == "1.5") {
-    return UMADeviceSpeed::k1_5;
-  } else {
-    return UMADeviceSpeed::kOther;
-  }
-}
-
-int EntryManager::GetVendorId(const std::string& devpath) {
-  base::FilePath normalized_devpath =
-      root_dir_.Append("sys").Append(StripLeadingPathSeparators(devpath));
-
-  std::string vendor_id;
-  int vendor_id_int;
-  if (base::ReadFileToString(normalized_devpath.Append("idVendor"),
-                             &vendor_id)) {
-    base::TrimWhitespaceASCII(vendor_id, base::TRIM_ALL, &vendor_id);
-    if (base::HexStringToInt(vendor_id, &vendor_id_int)) {
-      return vendor_id_int;
-    }
-  }
-
-  return 0;
-}
-
-std::string EntryManager::GetVendorName(const std::string& devpath) {
-  base::FilePath normalized_devpath =
-      root_dir_.Append("sys").Append(StripLeadingPathSeparators(devpath));
-
-  std::string vendor_name;
-  if (base::ReadFileToString(normalized_devpath.Append("manufacturer"),
-                             &vendor_name)) {
-    base::TrimWhitespaceASCII(vendor_name, base::TRIM_ALL, &vendor_name);
-    return vendor_name;
-  }
-
-  return std::string();
-}
-
-int EntryManager::GetProductId(const std::string& devpath) {
-  base::FilePath normalized_devpath =
-      root_dir_.Append("sys").Append(StripLeadingPathSeparators(devpath));
-
-  std::string product_id;
-  int product_id_int;
-  if (base::ReadFileToString(normalized_devpath.Append("idProduct"),
-                             &product_id)) {
-    base::TrimWhitespaceASCII(product_id, base::TRIM_ALL, &product_id);
-    if (base::HexStringToInt(product_id, &product_id_int)) {
-      return product_id_int;
-    }
-  }
-
-  return 0;
-}
-
-std::string EntryManager::GetProductName(const std::string& devpath) {
-  base::FilePath normalized_devpath =
-      root_dir_.Append("sys").Append(StripLeadingPathSeparators(devpath));
-
-  std::string product_name;
-  if (base::ReadFileToString(normalized_devpath.Append("product"),
-                             &product_name)) {
-    base::TrimWhitespaceASCII(product_name, base::TRIM_ALL, &product_name);
-    return product_name;
-  }
-
-  return std::string();
-}
-
-int EntryManager::GetDeviceClass(const std::string& devpath) {
-  base::FilePath normalized_devpath =
-      root_dir_.Append("sys").Append(StripLeadingPathSeparators(devpath));
-
-  std::string device_class;
-  int device_class_int;
-  if (base::ReadFileToString(normalized_devpath.Append("bDeviceClass"),
-                             &device_class)) {
-    base::TrimWhitespaceASCII(device_class, base::TRIM_ALL, &device_class);
-    if (base::HexStringToInt(device_class, &device_class_int) &&
-        device_class_int != 0) {
-      return device_class_int;
-    }
-  }
-
-  std::string base_name = normalized_devpath.BaseName().value();
-  base::FilePath normalized_intfpath =
-      normalized_devpath.Append(base_name.append(":1.0"));
-
-  std::string intf_class;
-  int intf_class_int;
-  if (base::ReadFileToString(normalized_intfpath.Append("bInterfaceClass"),
-                             &intf_class)) {
-    base::TrimWhitespaceASCII(intf_class, base::TRIM_ALL, &intf_class);
-    if (base::HexStringToInt(intf_class, &intf_class_int)) {
-      return intf_class_int;
-    }
-  }
-
-  return 0;
+      GetVendorId(normalized_devpath), GetVendorName(normalized_devpath),
+      GetProductId(normalized_devpath), GetProductName(normalized_devpath),
+      GetDeviceClass(normalized_devpath));
 }
 
 }  // namespace usb_bouncer

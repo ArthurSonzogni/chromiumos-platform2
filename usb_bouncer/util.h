@@ -176,6 +176,31 @@ size_t RemoveEntriesOlderThan(base::TimeDelta cutoff, EntryMap* map);
 // E.g. .../1-2/1-2.3/1-2.3.4 is attached to the root hub, .../1-2.
 base::FilePath GetRootDevice(base::FilePath dev);
 
+// Given a devpath, determine if the USB device is external or internal based on
+// physical location of device (PLD) and removable property.
+bool IsExternalDevice(base::FilePath normalized_devpath);
+
+// Returns port type for a sysfs device (i.e. USB-A, USB-C).
+UMAPortType GetPortType(base::FilePath normalized_devpath);
+
+// Returns USB device speed for a sysfs device.
+UMADeviceSpeed GetDeviceSpeed(base::FilePath normalized_devpath);
+
+// Returns vendor ID for a sysfs device.
+int GetVendorId(base::FilePath normalized_devpath);
+
+// Returns vendor name for a sysfs device.
+std::string GetVendorName(base::FilePath normalized_devpath);
+
+// Returns product ID for a sysfs device.
+int GetProductId(base::FilePath normalized_devpath);
+
+// Returns product name for a sysfs device.
+std::string GetProductName(base::FilePath normalized_devpath);
+
+// Returns device class for a sysfs device.
+int GetDeviceClass(base::FilePath normalized_devpath);
+
 }  // namespace usb_bouncer
 
 #endif  // USB_BOUNCER_UTIL_H_

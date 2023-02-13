@@ -97,22 +97,6 @@ class EntryManager {
                      UMADeviceRecognized recognized,
                      UMAEventTiming timing);
 
-  bool IsExternalDevice(const std::string& devpath);
-
-  UMAPortType GetPortType(const std::string& devpath);
-
-  UMADeviceSpeed GetDeviceSpeed(const std::string& devpath);
-
-  int GetVendorId(const std::string& devpath);
-
-  std::string GetVendorName(const std::string& devpath);
-
-  int GetProductId(const std::string& devpath);
-
-  std::string GetProductName(const std::string& devpath);
-
-  int GetDeviceClass(const std::string& devpath);
-
   // Represents whether the lock screen is being shown.
   bool user_db_read_only_;
 
