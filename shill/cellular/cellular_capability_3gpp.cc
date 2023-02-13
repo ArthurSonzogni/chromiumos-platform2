@@ -1350,6 +1350,7 @@ void CellularCapability3gpp::SetInitialEpsBearer(
   SLOG(this, 3) << __func__;
   if (!modem_3gpp_proxy_) {
     SLOG(this, 3) << __func__ << " skipping, no 3GPP proxy";
+    callback.Run(Error(Error::kWrongState));
     return;
   }
 
