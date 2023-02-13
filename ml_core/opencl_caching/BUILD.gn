@@ -9,7 +9,6 @@ group("all") {
     ":install_dbus",
     ":install_init",
     ":install_seccomp",
-    ":install_tmpfiles",
     ":opencl_cacher",
   ]
 
@@ -29,7 +28,10 @@ pkg_config("target_defaults") {
 }
 
 executable("opencl_cacher") {
-  sources = [ "main.cc" ]
+  sources = [
+    "main.cc",
+    "utils.cc",
+  ]
   configs += [ ":target_defaults" ]
   deps = [
     "//ml_core:libcros_ml_core",
@@ -41,11 +43,6 @@ executable("opencl_cacher") {
 install_config("install_init") {
   sources = [ "init/opencl-cacher.conf" ]
   install_path = "/etc/init"
-}
-
-install_config("install_tmpfiles") {
-  sources = [ "tmpfiles.d/opencl-cacher.conf" ]
-  install_path = "/usr/lib/tmpfiles.d"
 }
 
 install_config("install_dbus") {

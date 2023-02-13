@@ -6,7 +6,10 @@ import("//common-mk/mojom_bindings_generator.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [ ":libcros_ml_core" ]
+  deps = [
+    ":install_tmpfiles",
+    ":libcros_ml_core",
+  ]
   if (use.camera_feature_effects) {
     deps += [ "//ml_core/opencl_caching:all" ]
   }
@@ -27,7 +30,15 @@ pkg_config("target_defaults") {
 }
 
 shared_library("libcros_ml_core") {
-  sources = [ "effects_pipeline.cc" ]
+  sources = []
+  if (use.camera_feature_effects) {
+    sources += [ "effects_pipeline.cc" ]
+  }
   configs += [ ":target_defaults" ]
   install_path = "lib"
+}
+
+install_config("install_tmpfiles") {
+  sources = [ "tmpfiles.d/ml-core.conf" ]
+  install_path = "/usr/lib/tmpfiles.d"
 }

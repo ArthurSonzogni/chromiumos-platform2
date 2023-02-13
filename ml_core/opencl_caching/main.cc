@@ -6,16 +6,19 @@
 
 #include <base/command_line.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
 #include <base/synchronization/waitable_event.h>
 #include <brillo/syslog_logging.h>
 
 #include "ml_core/dlc/dlc_loader.h"
 #include "ml_core/effects_pipeline.h"
+#include "ml_core/opencl_caching/utils.h"
 
 namespace {
 const char kForceEnableEffectsPath[] = "/run/camera/force_enable_effects";
 base::WaitableEvent kEffectApplied;
+
 void SetEffectCallback(bool success) {
   kEffectApplied.Signal();
 }
@@ -40,8 +43,21 @@ int main(int argc, char* argv[]) {
     return EX_SOFTWARE;
   }
 
-  auto pipeline =
-      cros::EffectsPipeline::Create(dlc_loader.GetDlcRootPath(), nullptr);
+  // Ideally we would do this within EffectsPipeline::Create
+  // but we need to ensure the owner / group is "ml-core", and
+  // that creates a race if the camera stack creates the pipeline
+  // first and installs the files as arc-camera
+  cros::InstallPrebuiltCache(dlc_loader.GetDlcRootPath());
+
+  base::ScopedTempDir new_cache_dir;
+  if (!new_cache_dir.CreateUniqueTempDir()) {
+    LOG(ERROR) << "ERROR: Unable to create temporary directory.";
+    return EX_SOFTWARE;
+  }
+  base::FilePath cache_path(new_cache_dir.GetPath());
+
+  auto pipeline = cros::EffectsPipeline::Create(dlc_loader.GetDlcRootPath(),
+                                                nullptr, cache_path);
 
   if (!pipeline) {
     LOG(ERROR) << "Couldn't create pipeline, Exiting.";
@@ -59,7 +75,15 @@ int main(int argc, char* argv[]) {
   kEffectApplied.Reset();
   pipeline->SetEffect(&config, SetEffectCallback);
   kEffectApplied.Wait();
-  LOG(INFO) << "Completed in " << (base::TimeTicks::Now() - start);
+  pipeline.reset();  // Force cache files to be flushed to disk
+  LOG(INFO) << "Cache generated in " << (base::TimeTicks::Now() - start);
+
+  LOG(INFO) << "Clearing cache dir and transferring new cache files";
+  // Clear out any stale files in the cache
+  cros::ClearCacheDirectory();
+  // Update the cache dir with newly generated files
+  cros::CopyCacheFiles(cache_path, /*overwrite_files=*/true);
+  LOG(INFO) << "Cache update complete";
 
   return EX_OK;
 }

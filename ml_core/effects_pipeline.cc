@@ -12,12 +12,13 @@
 #include <base/scoped_native_library.h>
 #include <session_manager/dbus-proxies.h>
 
+#include "ml_core/opencl_caching/constants.h"
+
 namespace {
 
 using org::chromium::SessionManagerInterfaceProxy;
 
 constexpr char kLibraryName[] = "libcros_ml_core_internal.so";
-constexpr char kOpenCLCachingDir[] = "/var/lib/ml_core/opencl_cache";
 
 class EffectsPipelineImpl : public cros::EffectsPipeline {
  public:
@@ -110,8 +111,11 @@ class EffectsPipelineImpl : public cros::EffectsPipeline {
       return false;
     }
 
-    pipeline_ = create_fn_(share_context, kOpenCLCachingDir);
-    LOG(INFO) << "Pipeline created, cache_dir: " << kOpenCLCachingDir;
+    std::string cache_dir(caching_dir_override.empty()
+                              ? cros::kOpenCLCachingDir
+                              : caching_dir_override.value());
+    pipeline_ = create_fn_(share_context, cache_dir.c_str());
+    LOG(INFO) << "Pipeline created, cache_dir: " << cache_dir;
     set_rendered_image_observer_fn_(
         pipeline_, this, &EffectsPipelineImpl::RenderedImageFrameHandler);
 
