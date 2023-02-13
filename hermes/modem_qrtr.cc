@@ -488,10 +488,14 @@ void ModemQrtr::ProcessQrtrPacket(uint32_t node, uint32_t port, int size) {
                             std::move(init_done_cb_))});
       }
       if (pkt.service == QmiCmdInterface::Service::kDms) {
-        current_state_.Transition(State::kDmsStarted);
         qrtr_table_.Insert(QmiCmdInterface::Service::kDms,
                            {pkt.port, pkt.node});
         VLOG(2) << "Stored DMS metadata";
+        if (!current_state_.Transition(State::kDmsStarted)) {
+          // the modem may have crashed and recovered, leading to a new
+          // server announcement. We don't need to re-read IMEI upon crashes.
+          return;
+        }
 
         // We get imei on a best effort basis, we will initialize uim even if it
         // does not succeed.
