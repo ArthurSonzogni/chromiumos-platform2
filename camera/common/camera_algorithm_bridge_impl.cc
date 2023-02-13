@@ -6,6 +6,7 @@
 
 #include "common/camera_algorithm_bridge_impl.h"
 
+#include <asm-generic/errno.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/un.h>
@@ -108,8 +109,9 @@ int32_t CameraAlgorithmBridgeImpl::RegisterBuffer(int buffer_fd) {
                      ipc_bridge_->GetWeakPtr(), buffer_fd,
                      cros::GetFutureCallback(future)));
 
-  future->Wait();
-
+  if (!future->Wait()) {
+    return -ETIMEDOUT;
+  }
   return future->Get();
 }
 
