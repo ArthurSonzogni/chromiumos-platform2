@@ -563,7 +563,7 @@ void ChromiumCommandBuilder::AddUiFlags() {
 
   // Disable Floss if the Floss USE flag was not set.
   if (!UseFlagIsSet("floss"))
-    AddFeatureDisableOverride("Floss");
+    AddFeatureDisableOverride("FlossIsAvailable");
 
   // Allow Chrome to access GPU memory information despite /sys/kernel/debug
   // being owned by debugd. This limits the security attack surface versus
