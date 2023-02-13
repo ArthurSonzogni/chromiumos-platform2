@@ -42,14 +42,6 @@ class MockSensorDevice : public cros::mojom::SensorDevice {
               (override));
   MOCK_METHOD(void, GetAllEvents, (GetAllEventsCallback), (override));
   MOCK_METHOD(void,
-              SetEventsEnabled,
-              (const std::vector<int>&, bool, SetEventsEnabledCallback),
-              (override));
-  MOCK_METHOD(void,
-              GetEventsEnabled,
-              (const std::vector<int>&, GetEventsEnabledCallback),
-              (override));
-  MOCK_METHOD(void,
               GetEventsAttributes,
               (const std::vector<int>&,
                const std::string&,
@@ -57,9 +49,9 @@ class MockSensorDevice : public cros::mojom::SensorDevice {
               (override));
   MOCK_METHOD(void,
               StartReadingEvents,
-              (mojo::PendingRemote<cros::mojom::SensorDeviceEventsObserver>),
+              (const std::vector<int>&,
+               mojo::PendingRemote<cros::mojom::SensorDeviceEventsObserver>),
               (override));
-  MOCK_METHOD(void, StopReadingEvents, (), (override));
 };
 
 }  // namespace rmad
