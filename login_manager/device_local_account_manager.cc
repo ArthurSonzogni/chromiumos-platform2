@@ -112,6 +112,13 @@ PolicyService* DeviceLocalAccountManager::GetPolicyService(
   return entry->second.get();
 }
 
+void DeviceLocalAccountManager::PersistAllPolicy() {
+  for (const auto& kv : policy_map_) {
+    if (kv.second)
+      kv.second->PersistAllPolicy();
+  }
+}
+
 std::string DeviceLocalAccountManager::GetAccountKey(
     const std::string& account_id) {
   return brillo::cryptohome::home::SanitizeUserName(account_id);

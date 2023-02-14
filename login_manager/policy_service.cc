@@ -166,6 +166,11 @@ void PolicyService::PersistPolicy(const PolicyNamespace& ns,
                     success ? dbus_error::kNone : dbus_error::kSigEncodeFail);
 }
 
+void PolicyService::PersistAllPolicy() {
+  for (const auto& kv : policy_stores_)
+    kv.second->Persist();
+}
+
 PolicyStore* PolicyService::GetOrCreateStore(const PolicyNamespace& ns) {
   PolicyStoreMap::const_iterator iter = policy_stores_.find(ns);
   if (iter != policy_stores_.end())
@@ -190,6 +195,20 @@ void PolicyService::SetStoreForTesting(const PolicyNamespace& ns,
   policy_stores_[ns] = std::move(store);
 }
 
+void PolicyService::PostPersistKeyTask() {
+  brillo::MessageLoop::current()->PostTask(
+      FROM_HERE, base::BindOnce(&PolicyService::PersistKey,
+                                weak_ptr_factory_.GetWeakPtr()));
+}
+
+void PolicyService::PostPersistPolicyTask(const PolicyNamespace& ns,
+                                          Completion completion) {
+  brillo::MessageLoop::current()->PostTask(
+      FROM_HERE, base::BindOnce(&PolicyService::PersistPolicy,
+                                weak_ptr_factory_.GetWeakPtr(), ns,
+                                std::move(completion)));
+}
+
 bool PolicyService::StorePolicy(const PolicyNamespace& ns,
                                 const em::PolicyFetchResponse& policy,
                                 int key_flags,
@@ -197,7 +216,7 @@ bool PolicyService::StorePolicy(const PolicyNamespace& ns,
                                 Completion completion) {
   if (signature_check == SignatureCheck::kDisabled) {
     GetOrCreateStore(ns)->Set(policy);
-    PersistPolicy(ns, std::move(completion));
+    PostPersistPolicyTask(ns, std::move(completion));
     return true;
   }
 
@@ -232,7 +251,7 @@ bool PolicyService::StorePolicy(const PolicyNamespace& ns,
     }
 
     // If here, need to persist the key just loaded into memory to disk.
-    PersistKey();
+    PostPersistKeyTask();
   }
 
   // Validate signature on policy and persist to disk.
@@ -246,7 +265,7 @@ bool PolicyService::StorePolicy(const PolicyNamespace& ns,
   }
 
   GetOrCreateStore(ns)->Set(policy);
-  PersistPolicy(ns, std::move(completion));
+  PostPersistPolicyTask(ns, std::move(completion));
   return true;
 }
 

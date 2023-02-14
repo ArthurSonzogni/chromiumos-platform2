@@ -580,9 +580,11 @@ TEST_F(PolicyServiceNamespaceTest, LoadPolicyFromDisk) {
 TEST_F(PolicyServiceNamespaceTest, ListComponentIdsFromPolicyInStore) {
   EXPECT_EQ(ns2_.first, POLICY_DOMAIN_EXTENSIONS);
   StorePolicy(kPolicyValue2, ns2_);
-  EXPECT_TRUE(base::PathExists(policy_path2_));
+  EXPECT_FALSE(base::PathExists(policy_path2_));
   EXPECT_EQ(service_->ListComponentIds(POLICY_DOMAIN_EXTENSIONS),
             std::vector<std::string>({ns2_.second}));
+  // Make expectations happy.
+  fake_loop_.Run();
 }
 
 // ListComponentIds returns the expected component id(s) from policy stored on
