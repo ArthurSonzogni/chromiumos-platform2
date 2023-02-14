@@ -1307,6 +1307,24 @@ def _build_branding(config: Config):
     return result
 
 
+def _build_pvs(config: Config) -> dict:
+    """Builds the PVS configuration.
+
+    Args:
+        config: Config namedtuple
+
+    Returns:
+        PVS configuration
+    """
+    hw_design = config.hw_design
+    result = {}
+    if hw_design.program_id and hw_design.program_id.value:
+        _upsert(hw_design.program_id.value.lower(), result, "program")
+    if hw_design.id and hw_design.id.value:
+        _upsert(hw_design.id.value.lower(), result, "project")
+    return result
+
+
 def _build_proximity(config, config_files):
     """Builds the proximity sensors configuration.
 
@@ -2338,6 +2356,7 @@ def _transform_build_config(config, config_files, whitelabel):
     _upsert(_build_nnpalm(config), result, "nnpalm")
     _upsert(_build_proximity(config, config_files), result, "proximity-sensor")
     _upsert(_build_branding(config), result, "branding")
+    _upsert(_build_pvs(config), result, "pvs")
     _upsert(config.brand_config.wallpaper, result, "wallpaper")
     _upsert(config.brand_config.regulatory_label, result, "regulatory-label")
     _upsert(config.device_brand.brand_code, result, "brand-code")

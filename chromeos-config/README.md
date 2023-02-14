@@ -496,6 +496,7 @@ In the tables below,
 | oem-id | string | ```[0-9]+``` | False |  | False | Some projects store SKU ID, OEM ID and Board Revision in an EEPROM and only SKU ID can be updated in the factory and RMA flow but others should be pre-flashed in the chip level. In this case, we would like to validate whether oem-id here from the updated SKU ID matches the one in the EEPROM so we can prevent this device from being updated to another OEM's devices.  |
 | power | [power](#power) |  | False |  | False | Defines settings that control power management functions. This mostly defines power_manager preferences, but there are a few other power related settings included. For details about each power_manager preference, see - src/platform2/power_manager/common/power_constants.h/cc For examples on setting these properties (including multiline examples), see the power config example in test_data/test.yaml |
 | proximity-sensor | [proximity-sensor](#proximity_sensor) |  | False |  | False | Defines the proximity sensor settings for devices such as /dev/proximity-wifi and /dev/proximity-wifi-lte typically used for SAR. |
+| pvs | [pvs](#pvs) |  | False |  | False | Contains information needed to run PVS for this model. |
 | regulatory-label | string |  | False |  | False | Base name of the directory containing the regulatory label files to show on this device. |
 | resource | [resource](#resource) |  | False |  | False | Defines settings that configure resourced. https://chromium.googlesource.com/chromiumos/config/+/main/proto/chromiumos/config/api/software/resource_config.proto |
 | rmad | [rmad](#rmad) |  | False |  | False | ChromeOS Shimless RMA daemon configurations. |
@@ -983,6 +984,12 @@ In the tables below,
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | build-path | string |  | True |  | True | Source of the file relative to the build system. |
 | system-path | string |  | True |  | False | Installation path for the file on the system image. |
+
+### pvs
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| program | string |  | False |  | False | The program that corresponds to this model. |
+| project | string |  | False |  | False | The project that corresponds to this model. |
 
 ### resource
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |

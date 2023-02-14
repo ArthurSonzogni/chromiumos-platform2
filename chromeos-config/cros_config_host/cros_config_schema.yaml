@@ -1470,6 +1470,17 @@ properties:
                     reported in 'ro.product.model'. This often starts with
                     '{oem-name}'.
               additionalProperties: false
+            pvs:
+              type: object
+              description: Contains information needed to run PVS for this model.
+              properties:
+                program:
+                  type: string
+                  description: The program that corresponds to this model.
+                project:
+                  type: string
+                  description: The project that corresponds to this model.
+              additionalProperties: false
           additionalProperties: false
           required:
           - name
