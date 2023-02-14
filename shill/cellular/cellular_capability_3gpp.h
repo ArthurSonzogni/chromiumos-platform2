@@ -189,21 +189,18 @@ class CellularCapability3gpp {
   // Connection management
   // -------------------------------------------------------------------------
 
-  // Connects the modem to a network.
-  void Connect(ResultOnceCallback callback);
+  // Connects the modem to a network, specifying the relevant APN type
+  // associated to this connection. Only one connection of a given APN type is
+  // expected for now.
+  void Connect(ApnList::ApnType apn_type, ResultOnceCallback callback);
 
-  // Disconnects the modem from a network.
+  // Disconnects the modem from all networks.
   void Disconnect(ResultOnceCallback callback);
 
   // Returns a pointer to the current active bearer object or nullptr if no
   // active bearer exists. The returned bearer object is managed by this
   // capability object.
   CellularBearer* GetActiveBearer() const;
-
-  // Creates a key-value store with the next connection properties scheduled
-  // to be used. This method is guaranteed to not change any state as long as
-  // the APN try list has valid entries.
-  KeyValueStore SetupNextConnectProperties();
 
   const std::vector<MobileOperatorMapper::MobileAPN>& GetProfiles() const;
 
@@ -358,6 +355,13 @@ class CellularCapability3gpp {
   // CellularTest
   FRIEND_TEST(CellularTest, ModemStateChangeLostRegistration);
 
+  // Single connection attempt context
+  struct ConnectionAttemptInfo {
+    std::deque<Stringmap> apn_try_list;
+    bool simple_connect;
+    ResultOnceCallback result_callback;
+  };
+
   // SimLockStatus represents the fields in the Cellular.SIMLockStatus
   // DBUS property of the shill device.
   struct SimLockStatus {
@@ -456,13 +460,18 @@ class CellularCapability3gpp {
   // Bearer property change handlers
   void OnBearerPropertiesChanged(const KeyValueStore& properties);
 
-  // Connect helpers and callbacks
-  void CallConnect(const KeyValueStore& properties,
-                   ResultOnceCallback callback);
-  void OnConnectReply(ResultOnceCallback callback,
-                      const RpcIdentifier& bearer,
-                      const Error& error);
-  bool ConnectToNextApn(ResultOnceCallback callback);
+  // Generic connection attempt logic
+  void ConnectionAttemptComplete(ApnList::ApnType apn_type, const Error& error);
+  bool ConnectionAttemptInitialize(ApnList::ApnType apn_type,
+                                   const std::deque<Stringmap>& apn_try_list,
+                                   ResultOnceCallback result_callback);
+  KeyValueStore ConnectionAttemptNextProperties(ApnList::ApnType apn_type);
+  void ConnectionAttemptConnect(ApnList::ApnType apn_type);
+  void ConnectionAttemptOnConnectReply(ApnList::ApnType apn_type,
+                                       const RpcIdentifier& bearer,
+                                       const Error& error);
+  bool ConnectionAttemptContinue(ApnList::ApnType apn_type);
+  void ConnectionAttemptAbortAll();
 
   // Method callbacks
   void OnRegisterReply(ResultOnceCallback callback, const Error& error);
@@ -543,8 +552,10 @@ class CellularCapability3gpp {
   Stringmap serving_operator_;
   std::string desired_network_;
 
+  // Ongoing connection attempts sorted by APN type
+  std::map<ApnList::ApnType, ConnectionAttemptInfo> connection_attempts_;
+
   // Properties.
-  std::deque<Stringmap> apn_try_list_;
   std::deque<Stringmap> attach_apn_try_list_;
   // For attach APN, we don't really know if the APN is good or not, we only
   // know if ModemManager used the provided attach APN or not.

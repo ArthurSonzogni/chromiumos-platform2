@@ -1241,6 +1241,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
 
   OnConnecting();
   capability_->Connect(
+      ApnList::ApnType::kDefault,
       base::Bind(&Cellular::OnConnectReply, weak_ptr_factory_.GetWeakPtr(),
                  service->iccid(), service->is_in_user_connect()));
 

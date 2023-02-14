@@ -373,17 +373,27 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
         &CellularCapability3gppTest::FakeCallback, base::Unretained(this)));
   }
 
-  void SetApnTryList(const std::deque<Stringmap>& apn) {
-    capability_->apn_try_list_ = apn;
+  void ConnectionAttemptComplete(ApnList::ApnType apn_type,
+                                 const Error& error) {
+    return capability_->ConnectionAttemptComplete(apn_type, error);
+  }
+  bool ConnectionAttemptInitialize(ApnList::ApnType apn_type,
+                                   const std::deque<Stringmap>& apn_try_list,
+                                   ResultOnceCallback result_callback) {
+    return capability_->ConnectionAttemptInitialize(apn_type, apn_try_list,
+                                                    std::move(result_callback));
   }
 
-  KeyValueStore SetupNextConnectProperties() {
-    return capability_->SetupNextConnectProperties();
+  KeyValueStore ConnectionAttemptNextProperties(ApnList::ApnType apn_type) {
+    return capability_->ConnectionAttemptNextProperties(apn_type);
   }
-
-  void CallConnect(const KeyValueStore& properties,
-                   ResultOnceCallback callback) {
-    capability_->CallConnect(properties, std::move(callback));
+  void ConnectionAttemptConnect(ApnList::ApnType apn_type) {
+    capability_->ConnectionAttemptConnect(apn_type);
+  }
+  void ConnectionAttemptOnConnectReply(ApnList::ApnType apn_type,
+                                       const RpcIdentifier& bearer,
+                                       const Error& error) {
+    capability_->ConnectionAttemptOnConnectReply(apn_type, bearer, error);
   }
 
   void StartModem(Error* error) {
@@ -1376,144 +1386,222 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
   constexpr char kTestApn[] = "test_apn";
   constexpr char kTestUser[] = "test_user";
   constexpr char kTestPassword[] = "test_password";
-
   KeyValueStore properties;
   Stringmap apn;
   apn[kApnProperty] = kTestApn;
-  SetApnTryList({apn});
-  properties = SetupNextConnectProperties();
+
+  // Empty APN try list.
+  EXPECT_FALSE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {},
+                                           ResultOnceCallback()));
+
+  // Connection of same type already initialized.
+  EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
+                                          ResultOnceCallback()));
+  EXPECT_FALSE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
+                                           ResultOnceCallback()));
+  ConnectionAttemptComplete(ApnList::ApnType::kDefault, Error(Error::kSuccess));
+
+  // Connection with APN only.
+  EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
+                                          ResultOnceCallback()));
+  properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasNoUser());
   EXPECT_THAT(properties, HasNoPassword());
   EXPECT_THAT(properties, HasNoAllowedAuth());
   EXPECT_THAT(properties, HasNoIpType());
+  ConnectionAttemptComplete(ApnList::ApnType::kDefault, Error(Error::kSuccess));
 
+  // Connection with APN and username.
   apn[kApnUsernameProperty] = kTestUser;
-  SetApnTryList({apn});
-  properties = SetupNextConnectProperties();
+  EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
+                                          ResultOnceCallback()));
+  properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
   EXPECT_THAT(properties, HasNoPassword());
   EXPECT_THAT(properties, HasNoAllowedAuth());
   EXPECT_THAT(properties, HasNoIpType());
+  ConnectionAttemptComplete(ApnList::ApnType::kDefault, Error(Error::kSuccess));
 
+  // Connection with APN, username and password.
   apn[kApnPasswordProperty] = kTestPassword;
-  SetApnTryList({apn});
-  properties = SetupNextConnectProperties();
+  EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
+                                          ResultOnceCallback()));
+  properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
   EXPECT_THAT(properties, HasPassword(kTestPassword));
   EXPECT_THAT(properties, HasNoAllowedAuth());
   EXPECT_THAT(properties, HasNoIpType());
+  ConnectionAttemptComplete(ApnList::ApnType::kDefault, Error(Error::kSuccess));
 
+  // Connection with APN, username, password and PAP auth type.
   apn[kApnAuthenticationProperty] = kApnAuthenticationPap;
-  SetApnTryList({apn});
-  properties = SetupNextConnectProperties();
+  EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
+                                          ResultOnceCallback()));
+  properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
   EXPECT_THAT(properties, HasPassword(kTestPassword));
   EXPECT_THAT(properties, HasAllowedAuth(MM_BEARER_ALLOWED_AUTH_PAP));
   EXPECT_THAT(properties, HasNoIpType());
+  ConnectionAttemptComplete(ApnList::ApnType::kDefault, Error(Error::kSuccess));
 
+  // Connection with APN, username, password and CHAP auth type.
   apn[kApnAuthenticationProperty] = kApnAuthenticationChap;
-  SetApnTryList({apn});
-  properties = SetupNextConnectProperties();
+  EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
+                                          ResultOnceCallback()));
+  properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
   EXPECT_THAT(properties, HasPassword(kTestPassword));
   EXPECT_THAT(properties, HasAllowedAuth(MM_BEARER_ALLOWED_AUTH_CHAP));
   EXPECT_THAT(properties, HasNoIpType());
+  ConnectionAttemptComplete(ApnList::ApnType::kDefault, Error(Error::kSuccess));
 
+  // Connection with APN, username, password and unknown auth type.
   apn[kApnAuthenticationProperty] = "something";
-  SetApnTryList({apn});
-  properties = SetupNextConnectProperties();
+  EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
+                                          ResultOnceCallback()));
+  properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
   EXPECT_THAT(properties, HasPassword(kTestPassword));
   EXPECT_THAT(properties, HasNoAllowedAuth());
   EXPECT_THAT(properties, HasNoIpType());
+  ConnectionAttemptComplete(ApnList::ApnType::kDefault, Error(Error::kSuccess));
 
+  // Connection with APN, username, password and empty auth type.
   apn[kApnAuthenticationProperty] = "";
-  SetApnTryList({apn});
-  properties = SetupNextConnectProperties();
+  EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
+                                          ResultOnceCallback()));
+  properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
   EXPECT_THAT(properties, HasPassword(kTestPassword));
   EXPECT_THAT(properties, HasNoAllowedAuth());
   EXPECT_THAT(properties, HasNoIpType());
+  ConnectionAttemptComplete(ApnList::ApnType::kDefault, Error(Error::kSuccess));
 
+  // Connection with APN, username, password, empty auth type and IPv4.
   apn[kApnIpTypeProperty] = kApnIpTypeV4;
-  SetApnTryList({apn});
-  properties = SetupNextConnectProperties();
+  EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
+                                          ResultOnceCallback()));
+  properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
   EXPECT_THAT(properties, HasPassword(kTestPassword));
   EXPECT_THAT(properties, HasNoAllowedAuth());
   EXPECT_THAT(properties, HasIpType(MM_BEARER_IP_FAMILY_IPV4));
+  ConnectionAttemptComplete(ApnList::ApnType::kDefault, Error(Error::kSuccess));
 
+  // Connection with APN, username, password, empty auth type and IPv6.
   apn[kApnIpTypeProperty] = kApnIpTypeV6;
-  SetApnTryList({apn});
-  properties = SetupNextConnectProperties();
+  EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
+                                          ResultOnceCallback()));
+  properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
   EXPECT_THAT(properties, HasPassword(kTestPassword));
   EXPECT_THAT(properties, HasNoAllowedAuth());
   EXPECT_THAT(properties, HasIpType(MM_BEARER_IP_FAMILY_IPV6));
+  ConnectionAttemptComplete(ApnList::ApnType::kDefault, Error(Error::kSuccess));
 
+  // Connection with APN, username, password, empty auth type and IPv4v6.
   apn[kApnIpTypeProperty] = kApnIpTypeV4V6;
-  SetApnTryList({apn});
-  properties = SetupNextConnectProperties();
+  EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
+                                          ResultOnceCallback()));
+  properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
   EXPECT_THAT(properties, HasPassword(kTestPassword));
   EXPECT_THAT(properties, HasNoAllowedAuth());
   EXPECT_THAT(properties, HasIpType(MM_BEARER_IP_FAMILY_IPV4V6));
+  ConnectionAttemptComplete(ApnList::ApnType::kDefault, Error(Error::kSuccess));
 
   // IP type defaults to v4 if something unsupported is specified.
   apn[kApnIpTypeProperty] = "orekid";
-  SetApnTryList({apn});
-  properties = SetupNextConnectProperties();
+  EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
+                                          ResultOnceCallback()));
+  properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
   EXPECT_THAT(properties, HasPassword(kTestPassword));
   EXPECT_THAT(properties, HasNoAllowedAuth());
   EXPECT_THAT(properties, HasIpType(MM_BEARER_IP_FAMILY_IPV4));
+  ConnectionAttemptComplete(ApnList::ApnType::kDefault, Error(Error::kSuccess));
 }
 
 // Validates expected behavior of Connect function
 TEST_F(CellularCapability3gppTest, Connect) {
   mm1::MockModemSimpleProxy* modem_simple_proxy = modem_simple_proxy_.get();
   SetSimpleProxy();
-  SetApnTryList({});
-  auto callback = base::BindRepeating(&CellularCapability3gppTest::TestCallback,
-                                      base::Unretained(this));
   RpcIdentifier bearer("/foo");
 
-  // Test connect failures
-  EXPECT_CALL(*modem_simple_proxy, Connect(_, _, _))
-      .WillRepeatedly(
-          WithArg<1>([this](auto cb) { connect_callback_ = std::move(cb); }));
-  capability_->Connect(callback);
+  const char apn_name_foo[] = "foo";
+  Stringmap apn;
+  apn[kApnProperty] = apn_name_foo;
+
+  // Test connect failure
+  ResultOnceCallback callback = base::BindOnce(
+      &CellularCapability3gppTest::TestCallback, base::Unretained(this));
+  EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
+                                          std::move(callback)));
+  EXPECT_CALL(*modem_simple_proxy, Connect(_, _, _));
+  ConnectionAttemptConnect(ApnList::ApnType::kDefault);
   EXPECT_CALL(*this, TestCallback(IsFailure()));
   EXPECT_CALL(*service_, ClearLastGoodApn());
-  std::move(connect_callback_).Run(bearer, Error(Error::kOperationFailed));
+  ConnectionAttemptOnConnectReply(ApnList::ApnType::kDefault, bearer,
+                                  Error(Error::kOperationFailed));
   Mock::VerifyAndClearExpectations(this);
 
   // Test connect success
-  capability_->Connect(callback);
+  callback = base::BindOnce(&CellularCapability3gppTest::TestCallback,
+                            base::Unretained(this));
+  EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
+                                          std::move(callback)));
+  EXPECT_CALL(*modem_simple_proxy, Connect(_, _, _));
+  ConnectionAttemptConnect(ApnList::ApnType::kDefault);
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
-  std::move(connect_callback_).Run(bearer, Error(Error::kSuccess));
+  ConnectionAttemptOnConnectReply(ApnList::ApnType::kDefault, bearer,
+                                  Error(Error::kSuccess));
   Mock::VerifyAndClearExpectations(this);
 
   // Test connect failures without a service.  Make sure that shill
   // does not crash if the connect failed and there is no
   // CellularService object.  This can happen if the modem is enabled
   // and then quickly disabled.
+  callback = base::BindOnce(&CellularCapability3gppTest::TestCallback,
+                            base::Unretained(this));
+  EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
+                                          std::move(callback)));
   cellular_->SetServiceForTesting(nullptr);
   EXPECT_FALSE(capability_->cellular()->service());
-  capability_->Connect(callback);
+  EXPECT_CALL(*modem_simple_proxy, Connect(_, _, _));
+  ConnectionAttemptConnect(ApnList::ApnType::kDefault);
   EXPECT_CALL(*this, TestCallback(IsFailure()));
-  std::move(connect_callback_).Run(bearer, Error(Error::kOperationFailed));
+  ConnectionAttemptOnConnectReply(ApnList::ApnType::kDefault, bearer,
+                                  Error(Error::kOperationFailed));
+}
+
+TEST_F(CellularCapability3gppTest, ConnectAbort) {
+  mm1::MockModemSimpleProxy* modem_simple_proxy = modem_simple_proxy_.get();
+  SetSimpleProxy();
+  ResultOnceCallback callback = base::BindOnce(
+      &CellularCapability3gppTest::TestCallback, base::Unretained(this));
+  RpcIdentifier bearer("/foo");
+
+  const char apn_name_foo[] = "foo";
+  Stringmap apn;
+  apn[kApnProperty] = apn_name_foo;
+
+  EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
+                                          std::move(callback)));
+  EXPECT_CALL(*modem_simple_proxy, Connect(_, _, _));
+  ConnectionAttemptConnect(ApnList::ApnType::kDefault);
+  EXPECT_CALL(*this, TestCallback(IsFailure()));
+  ReleaseCapabilityProxies();
 }
 
 // Validates Connect iterates over APNs
@@ -1533,29 +1621,28 @@ TEST_F(CellularCapability3gppTest, ConnectApns) {
   apn2[kApnProperty] = apn_name_bar;
   Stringmap apn3;
   apn3[kApnProperty] = apn_name_empty;
-  SetApnTryList({apn1, apn2, apn3});
 
-  EXPECT_CALL(*modem_simple_proxy, Connect(HasApn(apn_name_foo), _, _))
-      .WillRepeatedly(
-          WithArg<1>([this](auto cb) { connect_callback_ = std::move(cb); }));
-  CallConnect(SetupNextConnectProperties(), std::move(callback));
+  EXPECT_TRUE(ConnectionAttemptInitialize(
+      ApnList::ApnType::kDefault, {apn1, apn2, apn3}, std::move(callback)));
+
+  EXPECT_CALL(*modem_simple_proxy, Connect(HasApn(apn_name_foo), _, _));
+  ConnectionAttemptConnect(ApnList::ApnType::kDefault);
   Mock::VerifyAndClearExpectations(modem_simple_proxy);
 
-  EXPECT_CALL(*modem_simple_proxy, Connect(HasApn(apn_name_bar), _, _))
-      .WillRepeatedly(
-          WithArg<1>([this](auto cb) { connect_callback_ = std::move(cb); }));
+  EXPECT_CALL(*modem_simple_proxy, Connect(HasApn(apn_name_bar), _, _));
   EXPECT_CALL(*service_, ClearLastGoodApn());
-  std::move(connect_callback_).Run(bearer, Error(Error::kInvalidApn));
+  ConnectionAttemptOnConnectReply(ApnList::ApnType::kDefault, bearer,
+                                  Error(Error::kInvalidApn));
 
-  EXPECT_CALL(*modem_simple_proxy, Connect(HasApn(apn_name_empty), _, _))
-      .WillRepeatedly(
-          WithArg<1>([this](auto cb) { connect_callback_ = std::move(cb); }));
+  EXPECT_CALL(*modem_simple_proxy, Connect(HasApn(apn_name_empty), _, _));
   EXPECT_CALL(*service_, ClearLastGoodApn());
-  std::move(connect_callback_).Run(bearer, Error(Error::kInvalidApn));
+  ConnectionAttemptOnConnectReply(ApnList::ApnType::kDefault, bearer,
+                                  Error(Error::kInvalidApn));
 
-  EXPECT_CALL(*service_, SetLastGoodApn(apn3)).Times(1);
+  EXPECT_CALL(*service_, SetLastGoodApn(apn3));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
-  std::move(connect_callback_).Run(bearer, Error(Error::kSuccess));
+  ConnectionAttemptOnConnectReply(ApnList::ApnType::kDefault, bearer,
+                                  Error(Error::kSuccess));
 }
 
 // Validates GetTypeString and AccessTechnologyToTechnologyFamily

@@ -19,6 +19,7 @@
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <chromeos/dbus/service_constants.h>
 #include <ModemManager/ModemManager.h>
 
@@ -568,18 +569,77 @@ void CellularCapability3gpp::Stop_Completed(ResultOnceCallback callback,
   std::move(callback).Run(error);
 }
 
-void CellularCapability3gpp::Connect(ResultOnceCallback callback) {
-  SLOG(this, 3) << __func__;
+void CellularCapability3gpp::ConnectionAttemptComplete(
+    ApnList::ApnType apn_type, const Error& error) {
+  if (connection_attempts_.count(apn_type) == 0) {
+    return;
+  }
+  ConnectionAttemptInfo* attempt = &connection_attempts_[apn_type];
+  if (!attempt->result_callback.is_null()) {
+    std::move(attempt->result_callback).Run(error);
+  }
+  connection_attempts_.erase(apn_type);
+}
+
+bool CellularCapability3gpp::ConnectionAttemptInitialize(
+    ApnList::ApnType apn_type,
+    const std::deque<Stringmap>& apn_try_list,
+    ResultOnceCallback result_callback) {
+  Error error;
+  if (connection_attempts_.count(apn_type) != 0) {
+    Error::PopulateAndLog(
+        FROM_HERE, &error, Error::kOperationFailed,
+        base::StringPrintf(
+            "Connection initialization failed: attempt (%s) already ongoing",
+            ApnList::GetApnTypeString(apn_type).c_str()));
+    if (!result_callback.is_null()) {
+      std::move(result_callback).Run(error);
+    }
+    return false;
+  }
+  if (apn_try_list.size() == 0) {
+    Error::PopulateAndLog(
+        FROM_HERE, &error, Error::kOperationFailed,
+        base::StringPrintf("Connection initialization failed: attempt (%s) "
+                           "cannot run without a valid APN try list",
+                           ApnList::GetApnTypeString(apn_type).c_str()));
+    if (!result_callback.is_null()) {
+      std::move(result_callback).Run(error);
+    }
+    return false;
+  }
+  SLOG(this, 2) << "Connection attempt (" << ApnList::GetApnTypeString(apn_type)
+                << ") initialized with " << apn_try_list.size()
+                << " APNs to try";
+  connection_attempts_[apn_type] = {apn_try_list, false,
+                                    std::move(result_callback)};
+  return true;
+}
+
+void CellularCapability3gpp::Connect(ApnList::ApnType apn_type,
+                                     ResultOnceCallback callback) {
+  SLOG(this, 3) << "Connection attempt (" << ApnList::GetApnTypeString(apn_type)
+                << ") requested";
   DCHECK(callback);
 
-  // The default APN try list is ensured to have at least the fallback
-  // empty APN
-  apn_try_list_ = cellular()->BuildDefaultApnTryList();
-  DCHECK(!apn_try_list_.empty());
+  std::deque<Stringmap> apn_try_list;
+  if (apn_type == ApnList::ApnType::kDefault) {
+    // The default APN try list is ensured to have at least the fallback
+    // empty APN
+    apn_try_list = cellular()->BuildDefaultApnTryList();
+    CHECK(!apn_try_list.empty());
+  } else if (apn_type == ApnList::ApnType::kDun) {
+    apn_try_list = cellular()->BuildTetheringApnTryList();
+  } else {
+    NOTREACHED_NORETURN();
+  }
 
-  SLOG(this, 2) << "Connection request started with " << apn_try_list_.size()
-                << " APNs to try";
-  CallConnect(SetupNextConnectProperties(), std::move(callback));
+  if (!ConnectionAttemptInitialize(apn_type, apn_try_list,
+                                   std::move(callback))) {
+    return;
+  }
+
+  ConnectionAttemptConnect(apn_type);
 }
 
 void CellularCapability3gpp::Disconnect(ResultOnceCallback callback) {
@@ -731,6 +791,11 @@ void CellularCapability3gpp::ReleaseProxies() {
   if (!proxies_initialized_)
     return;
   SLOG(this, 3) << __func__;
+
+  // Simple proxy is gone, so ensure all ongoing connection attempts
+  // are aborted and completed.
+  ConnectionAttemptAbortAll();
+
   proxies_initialized_ = false;
   modem_3gpp_proxy_.reset();
   modem_3gpp_profile_manager_proxy_.reset();
@@ -791,23 +856,34 @@ void CellularCapability3gpp::OnServiceCreated() {
   cellular()->service()->SetNetworkTechnology(GetNetworkTechnologyString());
 }
 
-KeyValueStore CellularCapability3gpp::SetupNextConnectProperties() {
-  DCHECK(!apn_try_list_.empty());
+KeyValueStore CellularCapability3gpp::ConnectionAttemptNextProperties(
+    ApnList::ApnType apn_type) {
+  CHECK_EQ(connection_attempts_.count(apn_type), 1UL);
+  ConnectionAttemptInfo* attempt = &connection_attempts_[apn_type];
+  CHECK(!attempt->apn_try_list.empty());
 
   KeyValueStore properties;
-  // Initialize roaming related properties
+  // Initialize generic properties
   properties.Set<bool>(CellularBearer::kMMAllowRoamingProperty,
                        cellular()->IsRoamingAllowed());
 
-  // Default APN type always when using the apn_try_list_
-  properties.Set<uint32_t>(CellularBearer::kMMApnTypeProperty,
-                           MM_BEARER_APN_TYPE_DEFAULT);
+  // For now only DEFAULT and TETHERING expected
+  if (apn_type == ApnList::ApnType::kDefault) {
+    properties.Set<uint32_t>(CellularBearer::kMMApnTypeProperty,
+                             MM_BEARER_APN_TYPE_DEFAULT);
+  } else if (apn_type == ApnList::ApnType::kDun) {
+    properties.Set<uint32_t>(CellularBearer::kMMApnTypeProperty,
+                             MM_BEARER_APN_TYPE_TETHERING);
+  } else {
+    NOTREACHED_NORETURN();
+  }
 
   // Initialize APN related properties from the first entry in the try list.
-  const Stringmap& apn_info = apn_try_list_.front();
+  const Stringmap& apn_info = attempt->apn_try_list.front();
   DCHECK(base::Contains(apn_info, kApnProperty));
-  LOG(INFO) << __func__ << ": Using APN '" << GetPrintableApnStringmap(apn_info)
-            << "'";
+  LOG(INFO) << "Next connection attempt ("
+            << ApnList::GetApnTypeString(apn_type) << ") will run using APN '"
+            << GetPrintableApnStringmap(apn_info) << "'";
   SetApnProperties(apn_info, &properties);
 
   return properties;
@@ -886,67 +962,119 @@ void CellularCapability3gpp::SetApnProperties(const Stringmap& apn_info,
   }
 }
 
-void CellularCapability3gpp::CallConnect(const KeyValueStore& properties,
-                                         ResultOnceCallback callback) {
-  SLOG(this, 3) << __func__;
+void CellularCapability3gpp::ConnectionAttemptConnect(
+    ApnList::ApnType apn_type) {
+  SLOG(this, 3) << "Connection attempt (" << ApnList::GetApnTypeString(apn_type)
+                << ") launched";
+
+  CHECK_EQ(connection_attempts_.count(apn_type), 1UL);
+  ConnectionAttemptInfo* attempt = &connection_attempts_[apn_type];
+
+  if (!modem_simple_proxy_) {
+    Error error;
+    Error::PopulateAndLog(FROM_HERE, &error, Error::kWrongState, "No proxy");
+    ConnectionAttemptComplete(apn_type, error);
+    return;
+  }
+
+  attempt->simple_connect = true;
   modem_simple_proxy_->Connect(
-      properties,
-      base::BindOnce(&CellularCapability3gpp::OnConnectReply,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)),
+      ConnectionAttemptNextProperties(apn_type),
+      base::BindOnce(&CellularCapability3gpp::ConnectionAttemptOnConnectReply,
+                     weak_ptr_factory_.GetWeakPtr(), apn_type),
       kTimeoutConnect.InMilliseconds());
 }
 
-void CellularCapability3gpp::OnConnectReply(ResultOnceCallback callback,
-                                            const RpcIdentifier& bearer,
-                                            const Error& error) {
-  SLOG(this, 3) << __func__ << "(" << error << ")";
-  DCHECK(callback);
-  DCHECK((!apn_try_list_.empty()));
+void CellularCapability3gpp::ConnectionAttemptOnConnectReply(
+    ApnList::ApnType apn_type,
+    const RpcIdentifier& bearer,
+    const Error& error) {
+  SLOG(this, 3) << "Connection attempt (" << ApnList::GetApnTypeString(apn_type)
+                << ") reply received (" << error << ")";
+
+  CHECK_EQ(connection_attempts_.count(apn_type), 1UL);
+  ConnectionAttemptInfo* attempt = &connection_attempts_[apn_type];
+  CHECK(!attempt->apn_try_list.empty());
+  CHECK(attempt->simple_connect);
+  attempt->simple_connect = false;
 
   CellularServiceRefPtr service = cellular()->service();
   if (!service) {
     // The service could have been deleted before our Connect() request
     // completes if the modem was enabled and then quickly disabled.
-    apn_try_list_.clear();
-    std::move(callback).Run(error);
+    ConnectionAttemptComplete(apn_type, error);
     return;
   }
 
-  cellular()->NotifyDetailedCellularConnectionResult(error,
-                                                     apn_try_list_.front());
+  // Last good APN management and connection result notifications only
+  // for the default APN
+  if (apn_type == ApnList::ApnType::kDefault) {
+    cellular()->NotifyDetailedCellularConnectionResult(
+        error, attempt->apn_try_list.front());
+    if (error.IsFailure()) {
+      service->ClearLastGoodApn();
+    } else {
+      service->SetLastGoodApn(attempt->apn_try_list.front());
+      UpdatePendingActivationState();
+    }
+  }
 
   if (error.IsFailure()) {
-    service->ClearLastGoodApn();
-    auto split_callback = base::SplitOnceCallback(std::move(callback));
-    if (!RetriableConnectError(error) ||
-        !ConnectToNextApn(std::move(split_callback.first))) {
-      apn_try_list_.clear();
-      std::move(split_callback.second).Run(error);
+    if (!RetriableConnectError(error)) {
+      ConnectionAttemptComplete(apn_type, error);
+    } else {
+      ConnectionAttemptContinue(apn_type);
     }
     return;
   }
 
-  service->SetLastGoodApn(apn_try_list_.front());
-
-  SLOG(this, 2) << "Connected bearer " << bearer.value();
-  UpdatePendingActivationState();
-  std::move(callback).Run(error);
+  SLOG(this, 2) << "Connection attempt (" << ApnList::GetApnTypeString(apn_type)
+                << ") successful: bearer " << bearer.value();
+  ConnectionAttemptComplete(apn_type, error);
 }
 
-bool CellularCapability3gpp::ConnectToNextApn(ResultOnceCallback callback) {
+bool CellularCapability3gpp::ConnectionAttemptContinue(
+    ApnList::ApnType apn_type) {
+  SLOG(this, 3) << "Connection attempt (" << ApnList::GetApnTypeString(apn_type)
+                << ") continued";
+
+  CHECK_EQ(connection_attempts_.count(apn_type), 1UL);
+  ConnectionAttemptInfo* attempt = &connection_attempts_[apn_type];
+  CHECK(!attempt->apn_try_list.empty());
+
   // Remove the APN that was just tried and failed.
-  apn_try_list_.pop_front();
+  attempt->apn_try_list.pop_front();
 
   // And stop if no more APNs to try
-  if (apn_try_list_.empty()) {
-    SLOG(this, 2) << "Connect failed, no remaining APNs to try";
+  if (attempt->apn_try_list.empty()) {
+    Error error;
+    Error::PopulateAndLog(
+        FROM_HERE, &error, Error::kOperationFailed,
+        base::StringPrintf(
+            "Connection attempt (%s) failed, no remaining APNs to try",
+            ApnList::GetApnTypeString(apn_type).c_str()));
+    ConnectionAttemptComplete(apn_type, error);
     return false;
   }
 
-  SLOG(this, 2) << "Connect failed with invalid APN, " << apn_try_list_.size()
+  SLOG(this, 1) << "Connection attempt (" << ApnList::GetApnTypeString(apn_type)
+                << ") failed with invalid APN, " << attempt->apn_try_list.size()
                 << " remaining APNs to try";
-  CallConnect(SetupNextConnectProperties(), std::move(callback));
+  ConnectionAttemptConnect(apn_type);
   return true;
+}
+
+void CellularCapability3gpp::ConnectionAttemptAbortAll() {
+  auto itr = connection_attempts_.begin();
+  while (itr != connection_attempts_.end()) {
+    ConnectionAttemptInfo* attempt = &itr->second;
+    if (attempt->simple_connect) {
+      Error error;
+      Error::PopulateAndLog(FROM_HERE, &error, Error::kWrongState, "No proxy");
+      std::move(attempt->result_callback).Run(error);
+    }
+    itr = connection_attempts_.erase(itr);
+  }
 }
 
 void CellularCapability3gpp::FillInitialEpsBearerPropertyMap(
