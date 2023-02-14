@@ -70,7 +70,9 @@ StatusOr<ChapsFrontend::CreateKeyResult> ChapsFrontendImpl::GenerateRSAKey(
     int modulus_bits,
     const brillo::Blob& public_exponent,
     const brillo::SecureBlob& auth_value,
-    AllowSoftwareGen allow_soft_gen) {
+    AllowSoftwareGen allow_soft_gen,
+    AllowDecrypt allow_decrypt,
+    AllowSign allow_sign) {
   return middleware_.CallSync<&Backend::KeyManagement::CreateKey>(
       OperationPolicySetting{
           .permission =
@@ -84,10 +86,9 @@ StatusOr<ChapsFrontend::CreateKeyResult> ChapsFrontendImpl::GenerateRSAKey(
           .lazy_expiration_time = kDefaultLazyExpirationTime,
       },
       Backend::KeyManagement::CreateKeyOptions{
-          .allow_software_gen =
-              allow_soft_gen == AllowSoftwareGen::kAllow ? true : false,
-          .allow_decrypt = true,
-          .allow_sign = true,
+          .allow_software_gen = (allow_soft_gen == AllowSoftwareGen::kAllow),
+          .allow_decrypt = (allow_decrypt == AllowDecrypt::kAllow),
+          .allow_sign = (allow_sign == AllowSign::kAllow),
           .rsa_modulus_bits = modulus_bits,
           .rsa_exponent = public_exponent,
       });
@@ -98,7 +99,10 @@ StatusOr<RSAPublicInfo> ChapsFrontendImpl::GetRSAPublicKey(Key key) {
 }
 
 StatusOr<ChapsFrontend::CreateKeyResult> ChapsFrontendImpl::GenerateECCKey(
-    int nid, const brillo::SecureBlob& auth_value) {
+    int nid,
+    const brillo::SecureBlob& auth_value,
+    AllowDecrypt allow_decrypt,
+    AllowSign allow_sign) {
   return middleware_.CallSync<&Backend::KeyManagement::CreateKey>(
       OperationPolicySetting{
           .permission =
@@ -113,8 +117,8 @@ StatusOr<ChapsFrontend::CreateKeyResult> ChapsFrontendImpl::GenerateECCKey(
       },
       KeyManagement::CreateKeyOptions{
           .allow_software_gen = false,
-          .allow_decrypt = true,
-          .allow_sign = true,
+          .allow_decrypt = (allow_decrypt == AllowDecrypt::kAllow),
+          .allow_sign = (allow_sign == AllowSign::kAllow),
           .ecc_nid = nid,
       });
 }
@@ -127,7 +131,9 @@ StatusOr<ChapsFrontend::CreateKeyResult> ChapsFrontendImpl::WrapRSAKey(
     const brillo::Blob& exponent,
     const brillo::Blob& modulus,
     const brillo::SecureBlob& prime_factor,
-    const brillo::SecureBlob& auth_value) {
+    const brillo::SecureBlob& auth_value,
+    AllowDecrypt allow_decrypt,
+    AllowSign allow_sign) {
   return middleware_.CallSync<&Backend::KeyManagement::WrapRSAKey>(
       OperationPolicySetting{
           .permission =
@@ -142,8 +148,8 @@ StatusOr<ChapsFrontend::CreateKeyResult> ChapsFrontendImpl::WrapRSAKey(
       },
       KeyManagement::CreateKeyOptions{
           .allow_software_gen = false,
-          .allow_decrypt = true,
-          .allow_sign = true,
+          .allow_decrypt = (allow_decrypt == AllowDecrypt::kAllow),
+          .allow_sign = (allow_sign == AllowSign::kAllow),
           .rsa_modulus_bits = modulus.size() * 8,
           .rsa_exponent = exponent,
       });
@@ -154,7 +160,9 @@ StatusOr<ChapsFrontend::CreateKeyResult> ChapsFrontendImpl::WrapECCKey(
     const brillo::Blob& public_point_x,
     const brillo::Blob& public_point_y,
     const brillo::SecureBlob& private_value,
-    const brillo::SecureBlob& auth_value) {
+    const brillo::SecureBlob& auth_value,
+    AllowDecrypt allow_decrypt,
+    AllowSign allow_sign) {
   return middleware_.CallSync<&Backend::KeyManagement::WrapECCKey>(
       OperationPolicySetting{
           .permission =
@@ -169,8 +177,8 @@ StatusOr<ChapsFrontend::CreateKeyResult> ChapsFrontendImpl::WrapECCKey(
       },
       KeyManagement::CreateKeyOptions{
           .allow_software_gen = false,
-          .allow_decrypt = true,
-          .allow_sign = true,
+          .allow_decrypt = (allow_decrypt == AllowDecrypt::kAllow),
+          .allow_sign = (allow_sign == AllowSign::kAllow),
           .ecc_nid = curve_nid,
       });
 }

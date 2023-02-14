@@ -40,12 +40,17 @@ class MockChapsFrontend : public MockFrontend, public ChapsFrontend {
               (int modulus_bits,
                const brillo::Blob& public_exponent,
                const brillo::SecureBlob& auth_value,
-               AllowSoftwareGen allow_soft_gen),
+               AllowSoftwareGen allow_soft_gen,
+               AllowDecrypt allow_decrypt,
+               AllowSign allow_sign),
               (override));
   MOCK_METHOD(StatusOr<RSAPublicInfo>, GetRSAPublicKey, (Key key), (override));
   MOCK_METHOD(StatusOr<CreateKeyResult>,
               GenerateECCKey,
-              (int nid, const brillo::SecureBlob& auth_value),
+              (int nid,
+               const brillo::SecureBlob& auth_value,
+               AllowDecrypt allow_decrypt,
+               AllowSign allow_sign),
               (override));
   MOCK_METHOD(StatusOr<ECCPublicInfo>, GetECCPublicKey, (Key key), (override));
   MOCK_METHOD(StatusOr<CreateKeyResult>,
@@ -53,7 +58,9 @@ class MockChapsFrontend : public MockFrontend, public ChapsFrontend {
               (const brillo::Blob& exponent,
                const brillo::Blob& modulus,
                const brillo::SecureBlob& prime_factor,
-               const brillo::SecureBlob& auth_value),
+               const brillo::SecureBlob& auth_value,
+               AllowDecrypt allow_decrypt,
+               AllowSign allow_sign),
               (override));
   MOCK_METHOD(StatusOr<CreateKeyResult>,
               WrapECCKey,
@@ -61,7 +68,9 @@ class MockChapsFrontend : public MockFrontend, public ChapsFrontend {
                const brillo::Blob& public_point_x,
                const brillo::Blob& public_point_y,
                const brillo::SecureBlob& private_value,
-               const brillo::SecureBlob& auth_value),
+               const brillo::SecureBlob& auth_value,
+               AllowDecrypt allow_decrypt,
+               AllowSign allow_sign),
               (override));
   MOCK_METHOD(StatusOr<ScopedKey>,
               LoadKey,

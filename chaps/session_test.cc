@@ -1130,10 +1130,12 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithHWSec) {
   EXPECT_CALL(hwsec_, IsRSAModulusSupported(_))
       .WillRepeatedly(ReturnOk<TPMError>());
   EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(hwsec_,
-              GenerateRSAKey(_, _, _,
-                             hwsec::ChapsFrontend::AllowSoftwareGen::kNotAllow))
-      .WillOnce([&](auto&&, auto&&, auto&&, auto&&) {
+  EXPECT_CALL(
+      hwsec_,
+      GenerateRSAKey(_, _, _, hwsec::ChapsFrontend::AllowSoftwareGen::kNotAllow,
+                     hwsec::ChapsFrontend::AllowDecrypt::kNotAllow,
+                     hwsec::ChapsFrontend::AllowSign::kAllow))
+      .WillOnce([&](auto&&, auto&&, auto&&, auto&&, auto&&, auto&&) {
         return hwsec::ChapsFrontend::CreateKeyResult{
             .key = GetTestScopedKey(),
         };
@@ -1183,8 +1185,10 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithHWSecAndAllowSoftGen) {
   EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
   EXPECT_CALL(
       hwsec_,
-      GenerateRSAKey(_, _, _, hwsec::ChapsFrontend::AllowSoftwareGen::kAllow))
-      .WillOnce([&](auto&&, auto&&, auto&&, auto&&) {
+      GenerateRSAKey(_, _, _, hwsec::ChapsFrontend::AllowSoftwareGen::kAllow,
+                     hwsec::ChapsFrontend::AllowDecrypt::kNotAllow,
+                     hwsec::ChapsFrontend::AllowSign::kAllow))
+      .WillOnce([&](auto&&, auto&&, auto&&, auto&&, auto&&, auto&&) {
         return hwsec::ChapsFrontend::CreateKeyResult{
             .key = GetTestScopedKey(),
         };
@@ -1233,8 +1237,11 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithHWsecInconsistentToken) {
   EXPECT_CALL(hwsec_, IsRSAModulusSupported(_))
       .WillRepeatedly(ReturnOk<TPMError>());
   EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(hwsec_, GenerateRSAKey(_, _, _, _))
-      .WillOnce([&](auto&&, auto&&, auto&&, auto&&) {
+  EXPECT_CALL(
+      hwsec_,
+      GenerateRSAKey(_, _, _, _, hwsec::ChapsFrontend::AllowDecrypt::kNotAllow,
+                     hwsec::ChapsFrontend::AllowSign::kAllow))
+      .WillOnce([&](auto&&, auto&&, auto&&, auto&&, auto&&, auto&&) {
         return hwsec::ChapsFrontend::CreateKeyResult{
             .key = GetTestScopedKey(),
         };
@@ -1278,7 +1285,7 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithNoHWSec) {
       .WillRepeatedly(
           ReturnError<TPMError>("Not supported", TPMRetryAction::kNoRetry));
   EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(false));
-  EXPECT_CALL(hwsec_, GenerateRSAKey(_, _, _, _)).Times(0);
+  EXPECT_CALL(hwsec_, GenerateRSAKey(_, _, _, _, _, _)).Times(0);
 
   CK_BBOOL no = CK_FALSE;
   CK_BBOOL yes = CK_TRUE;
@@ -1320,7 +1327,7 @@ TEST_F(TestSessionWithRealObject, GenerateRSAWithForceSoftware) {
   EXPECT_CALL(hwsec_, IsRSAModulusSupported(_))
       .WillRepeatedly(ReturnOk<TPMError>());
   EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(hwsec_, GenerateRSAKey(_, _, _, _)).Times(0);
+  EXPECT_CALL(hwsec_, GenerateRSAKey(_, _, _, _, _, _)).Times(0);
 
   CK_BBOOL no = CK_FALSE;
   CK_BBOOL yes = CK_TRUE;
@@ -1363,11 +1370,14 @@ TEST_F(TestSessionWithRealObject, GenerateECCWithHWSec) {
   EXPECT_CALL(hwsec_, IsECCurveSupported(_))
       .WillRepeatedly(ReturnOk<TPMError>());
   EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(hwsec_, GenerateECCKey(_, _)).WillOnce([&](auto&&, auto&&) {
-    return hwsec::ChapsFrontend::CreateKeyResult{
-        .key = GetTestScopedKey(),
-    };
-  });
+  EXPECT_CALL(hwsec_, GenerateECCKey(
+                          _, _, hwsec::ChapsFrontend::AllowDecrypt::kNotAllow,
+                          hwsec::ChapsFrontend::AllowSign::kAllow))
+      .WillOnce([&](auto&&, auto&&, auto&&, auto&&) {
+        return hwsec::ChapsFrontend::CreateKeyResult{
+            .key = GetTestScopedKey(),
+        };
+      });
   EXPECT_CALL(hwsec_, GetECCPublicKey(_))
       .WillRepeatedly(ReturnValue(GenerateECCPublicInfo()));
 
@@ -1392,11 +1402,14 @@ TEST_F(TestSessionWithRealObject, GenerateECCWithHWSecInconsistentToken) {
   EXPECT_CALL(hwsec_, IsECCurveSupported(_))
       .WillRepeatedly(ReturnOk<TPMError>());
   EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(hwsec_, GenerateECCKey(_, _)).WillOnce([&](auto&&, auto&&) {
-    return hwsec::ChapsFrontend::CreateKeyResult{
-        .key = GetTestScopedKey(),
-    };
-  });
+  EXPECT_CALL(hwsec_, GenerateECCKey(
+                          _, _, hwsec::ChapsFrontend::AllowDecrypt::kNotAllow,
+                          hwsec::ChapsFrontend::AllowSign::kAllow))
+      .WillOnce([&](auto&&, auto&&, auto&&, auto&&) {
+        return hwsec::ChapsFrontend::CreateKeyResult{
+            .key = GetTestScopedKey(),
+        };
+      });
   EXPECT_CALL(hwsec_, GetECCPublicKey(_))
       .WillRepeatedly(ReturnValue(GenerateECCPublicInfo()));
 
@@ -1475,11 +1488,14 @@ TEST_F(TestSession, EcdsaSignWithHWSec) {
   EXPECT_CALL(hwsec_, IsECCurveSupported(_))
       .WillRepeatedly(ReturnOk<TPMError>());
   EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(hwsec_, GenerateECCKey(_, _)).WillOnce([&](auto&&, auto&&) {
-    return hwsec::ChapsFrontend::CreateKeyResult{
-        .key = GetTestScopedKey(),
-    };
-  });
+  EXPECT_CALL(hwsec_, GenerateECCKey(
+                          _, _, hwsec::ChapsFrontend::AllowDecrypt::kNotAllow,
+                          hwsec::ChapsFrontend::AllowSign::kAllow))
+      .WillOnce([&](auto&&, auto&&, auto&&, auto&&) {
+        return hwsec::ChapsFrontend::CreateKeyResult{
+            .key = GetTestScopedKey(),
+        };
+      });
   EXPECT_CALL(hwsec_, GetECCPublicKey(_))
       .WillRepeatedly(ReturnValue(GenerateECCPublicInfo()));
   EXPECT_CALL(hwsec_, LoadKey(_, _)).WillRepeatedly([&](auto&&, auto&&) {
@@ -1506,8 +1522,10 @@ TEST_F(TestSessionWithRealObject, ImportRSAWithHWSec) {
   EXPECT_CALL(hwsec_, IsRSAModulusSupported(_))
       .WillRepeatedly(ReturnOk<TPMError>());
   EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(hwsec_, WrapRSAKey(_, _, _, _))
-      .WillOnce([&](auto&&, auto&&, auto&&, auto&&) {
+  EXPECT_CALL(hwsec_,
+              WrapRSAKey(_, _, _, _, hwsec::ChapsFrontend::AllowDecrypt::kAllow,
+                         hwsec::ChapsFrontend::AllowSign::kAllow))
+      .WillOnce([&](auto&&, auto&&, auto&&, auto&&, auto&&, auto&&) {
         return hwsec::ChapsFrontend::CreateKeyResult{
             .key = GetTestScopedKey(),
         };
@@ -1675,7 +1693,7 @@ TEST_F(TestSessionWithRealObject, ImportRSAWithForceSoftware) {
   EXPECT_CALL(hwsec_, IsRSAModulusSupported(_))
       .WillRepeatedly(ReturnOk<TPMError>());
   EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(hwsec_, WrapRSAKey(_, _, _, _)).Times(0);
+  EXPECT_CALL(hwsec_, WrapRSAKey(_, _, _, _, _, _)).Times(0);
 
   crypto::ScopedBIGNUM exponent(BN_new());
   CHECK(exponent);
@@ -1758,8 +1776,10 @@ TEST_F(TestSessionWithRealObject, ImportECCWithHWSec) {
   EXPECT_CALL(hwsec_, IsECCurveSupported(NID_X9_62_prime256v1))
       .WillRepeatedly(ReturnOk<TPMError>());
   EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(hwsec_, WrapECCKey(_, _, _, _, _))
-      .WillOnce([&](auto&&, auto&&, auto&&, auto&&, auto&&) {
+  EXPECT_CALL(hwsec_, WrapECCKey(_, _, _, _, _,
+                                 hwsec::ChapsFrontend::AllowDecrypt::kAllow,
+                                 hwsec::ChapsFrontend::AllowSign::kAllow))
+      .WillOnce([&](auto&&, auto&&, auto&&, auto&&, auto&&, auto&&, auto&&) {
         return hwsec::ChapsFrontend::CreateKeyResult{
             .key = GetTestScopedKey(),
         };
@@ -1871,7 +1891,7 @@ TEST_F(TestSessionWithRealObject, ImportECCWithForceSoftware) {
   EXPECT_CALL(hwsec_, IsECCurveSupported(NID_X9_62_prime256v1))
       .WillRepeatedly(ReturnOk<TPMError>());
   EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(hwsec_, WrapECCKey(_, _, _, _, _)).Times(0);
+  EXPECT_CALL(hwsec_, WrapECCKey(_, _, _, _, _, _, _)).Times(0);
 
   crypto::ScopedEC_KEY key(EC_KEY_new_by_curve_name(NID_X9_62_prime256v1));
   ASSERT_NE(key, nullptr);
@@ -1997,11 +2017,14 @@ TEST_F(TestSession, MultipleSignWithHWSec) {
   EXPECT_CALL(hwsec_, GetECCPublicKey(_))
       .WillRepeatedly(ReturnValue(GenerateECCPublicInfo()));
 
-  EXPECT_CALL(hwsec_, GenerateECCKey(_, _)).WillOnce([&](auto&&, auto&&) {
-    return hwsec::ChapsFrontend::CreateKeyResult{
-        .key = GetTestScopedKey(),
-    };
-  });
+  EXPECT_CALL(hwsec_, GenerateECCKey(
+                          _, _, hwsec::ChapsFrontend::AllowDecrypt::kNotAllow,
+                          hwsec::ChapsFrontend::AllowSign::kAllow))
+      .WillOnce([&](auto&&, auto&&, auto&&, auto&&) {
+        return hwsec::ChapsFrontend::CreateKeyResult{
+            .key = GetTestScopedKey(),
+        };
+      });
 
   const Object* pub = nullptr;
   const Object* priv = nullptr;

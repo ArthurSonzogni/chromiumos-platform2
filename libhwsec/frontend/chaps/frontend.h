@@ -42,6 +42,16 @@ class ChapsFrontend : public Frontend {
     kAllow = true,
   };
 
+  enum class AllowSign : bool {
+    kNotAllow = false,
+    kAllow = true,
+  };
+
+  enum class AllowDecrypt : bool {
+    kNotAllow = false,
+    kAllow = true,
+  };
+
   ~ChapsFrontend() override = default;
 
   // Gets the TPM family of GSC/TPM.
@@ -81,7 +91,9 @@ class ChapsFrontend : public Frontend {
       int modulus_bits,
       const brillo::Blob& public_exponent,
       const brillo::SecureBlob& auth_value,
-      AllowSoftwareGen allow_soft_gen) = 0;
+      AllowSoftwareGen allow_soft_gen,
+      AllowDecrypt allow_decrypt,
+      AllowSign allow_sign) = 0;
 
   // Retrieves the public components of an RSA key pair.
   virtual StatusOr<RSAPublicInfo> GetRSAPublicKey(Key key) = 0;
@@ -90,7 +102,10 @@ class ChapsFrontend : public Frontend {
   //   nid - the OpenSSL NID for the curve.
   //   auth_value - Authorization data which will be associated with the key.
   virtual StatusOr<CreateKeyResult> GenerateECCKey(
-      int nid, const brillo::SecureBlob& auth_value) = 0;
+      int nid,
+      const brillo::SecureBlob& auth_value,
+      AllowDecrypt allow_decrypt,
+      AllowSign allow_sign) = 0;
 
   // Retrieves the public point of ECC key pair.
   virtual StatusOr<ECCPublicInfo> GetECCPublicKey(Key key) = 0;
@@ -104,7 +119,9 @@ class ChapsFrontend : public Frontend {
       const brillo::Blob& exponent,
       const brillo::Blob& modulus,
       const brillo::SecureBlob& prime_factor,
-      const brillo::SecureBlob& auth_value) = 0;
+      const brillo::SecureBlob& auth_value,
+      AllowDecrypt allow_decrypt,
+      AllowSign allow_sign) = 0;
 
   // Wraps an ECC key pair with the hardware backed security module.
   //   curve_nid - The OpenSSL NID of the ECC curve.
@@ -118,7 +135,9 @@ class ChapsFrontend : public Frontend {
       const brillo::Blob& public_point_x,
       const brillo::Blob& public_point_y,
       const brillo::SecureBlob& private_value,
-      const brillo::SecureBlob& auth_value) = 0;
+      const brillo::SecureBlob& auth_value,
+      AllowDecrypt allow_decrypt,
+      AllowSign allow_sign) = 0;
 
   // Loads a key by blob into the hardware backed security module.
   //   key_blob - The key blob as provided by GenerateKey or WrapRSAKey.

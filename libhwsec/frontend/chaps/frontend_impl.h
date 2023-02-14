@@ -29,26 +29,31 @@ class ChapsFrontendImpl : public ChapsFrontend, public FrontendImpl {
   StatusOr<brillo::SecureBlob> GetRandomSecureBlob(size_t size) override;
   Status IsRSAModulusSupported(uint32_t modulus_bits) override;
   Status IsECCurveSupported(int nid) override;
-  StatusOr<CreateKeyResult> GenerateRSAKey(
-      int modulus_bits,
-      const brillo::Blob& public_exponent,
-      const brillo::SecureBlob& auth_value,
-      AllowSoftwareGen allow_soft_gen) override;
+  StatusOr<CreateKeyResult> GenerateRSAKey(int modulus_bits,
+                                           const brillo::Blob& public_exponent,
+                                           const brillo::SecureBlob& auth_value,
+                                           AllowSoftwareGen allow_soft_gen,
+                                           AllowDecrypt allow_decrypt,
+                                           AllowSign allow_sign) override;
   StatusOr<RSAPublicInfo> GetRSAPublicKey(Key key) override;
-  StatusOr<CreateKeyResult> GenerateECCKey(
-      int nid, const brillo::SecureBlob& auth_value) override;
+  StatusOr<CreateKeyResult> GenerateECCKey(int nid,
+                                           const brillo::SecureBlob& auth_value,
+                                           AllowDecrypt allow_decrypt,
+                                           AllowSign allow_sign) override;
   StatusOr<ECCPublicInfo> GetECCPublicKey(Key key) override;
-  StatusOr<CreateKeyResult> WrapRSAKey(
-      const brillo::Blob& exponent,
-      const brillo::Blob& modulus,
-      const brillo::SecureBlob& prime_factor,
-      const brillo::SecureBlob& auth_value) override;
-  StatusOr<CreateKeyResult> WrapECCKey(
-      int curve_nid,
-      const brillo::Blob& public_point_x,
-      const brillo::Blob& public_point_y,
-      const brillo::SecureBlob& private_value,
-      const brillo::SecureBlob& auth_value) override;
+  StatusOr<CreateKeyResult> WrapRSAKey(const brillo::Blob& exponent,
+                                       const brillo::Blob& modulus,
+                                       const brillo::SecureBlob& prime_factor,
+                                       const brillo::SecureBlob& auth_value,
+                                       AllowDecrypt allow_decrypt,
+                                       AllowSign allow_sign) override;
+  StatusOr<CreateKeyResult> WrapECCKey(int curve_nid,
+                                       const brillo::Blob& public_point_x,
+                                       const brillo::Blob& public_point_y,
+                                       const brillo::SecureBlob& private_value,
+                                       const brillo::SecureBlob& auth_value,
+                                       AllowDecrypt allow_decrypt,
+                                       AllowSign allow_sign) override;
   StatusOr<ScopedKey> LoadKey(const brillo::Blob& key_blob,
                               const brillo::SecureBlob& auth_value) override;
   StatusOr<brillo::SecureBlob> Unbind(Key key,

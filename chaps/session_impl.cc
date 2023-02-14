@@ -53,6 +53,8 @@ using std::string;
 using std::vector;
 
 using AllowSoftwareGen = hwsec::ChapsFrontend::AllowSoftwareGen;
+using AllowDecrypt = hwsec::ChapsFrontend::AllowDecrypt;
+using AllowSign = hwsec::ChapsFrontend::AllowSign;
 
 namespace chaps {
 
@@ -1710,9 +1712,19 @@ bool SessionImpl::GenerateRSAKeyPairHwsec(int modulus_bits,
           ? AllowSoftwareGen::kAllow
           : AllowSoftwareGen::kNotAllow;
 
+  AllowDecrypt allow_decrypt =
+      private_object->GetAttributeBool(CKA_DECRYPT, false)
+          ? AllowDecrypt::kAllow
+          : AllowDecrypt::kNotAllow;
+
+  AllowSign allow_sign = private_object->GetAttributeBool(CKA_SIGN, false)
+                             ? AllowSign::kAllow
+                             : AllowSign::kNotAllow;
+
   ASSIGN_OR_RETURN(
       const hwsec::ChapsFrontend::CreateKeyResult& result,
-      hwsec_->GenerateRSAKey(modulus_bits, exponent, auth_data, allow_soft_gen),
+      hwsec_->GenerateRSAKey(modulus_bits, exponent, auth_data, allow_soft_gen,
+                             allow_decrypt, allow_sign),
       _.WithStatus<TPMError>(
            "Failed to generate RSA key in GenerateRSAKeyPairHwsec")
           .LogError()
@@ -1795,12 +1807,22 @@ bool SessionImpl::GenerateECCKeyPairHwsec(const crypto::ScopedEC_KEY& key,
   brillo::SecureBlob auth_data =
       GenerateRandomSecureBlobSoftware(kDefaultAuthDataBytes);
 
-  ASSIGN_OR_RETURN(const hwsec::ChapsFrontend::CreateKeyResult& result,
-                   hwsec_->GenerateECCKey(curve_nid, auth_data),
-                   _.WithStatus<TPMError>(
-                        "Failed to generate ECC key in GenerateECCKeyPairHwsec")
-                       .LogError()
-                       .As(false));
+  AllowDecrypt allow_decrypt =
+      private_object->GetAttributeBool(CKA_DECRYPT, false)
+          ? AllowDecrypt::kAllow
+          : AllowDecrypt::kNotAllow;
+
+  AllowSign allow_sign = private_object->GetAttributeBool(CKA_SIGN, false)
+                             ? AllowSign::kAllow
+                             : AllowSign::kNotAllow;
+
+  ASSIGN_OR_RETURN(
+      const hwsec::ChapsFrontend::CreateKeyResult& result,
+      hwsec_->GenerateECCKey(curve_nid, auth_data, allow_decrypt, allow_sign),
+      _.WithStatus<TPMError>(
+           "Failed to generate ECC key in GenerateECCKeyPairHwsec")
+          .LogError()
+          .As(false));
 
   // Get public key information from HWSec
   ASSIGN_OR_RETURN(const hwsec::ECCPublicInfo& info,
@@ -2242,11 +2264,20 @@ CK_RV SessionImpl::WrapRSAPrivateKey(Object* object) {
   brillo::SecureBlob auth_data =
       GenerateRandomSecureBlobSoftware(kDefaultAuthDataBytes);
 
+  AllowDecrypt allow_decrypt = object->GetAttributeBool(CKA_DECRYPT, false)
+                                   ? AllowDecrypt::kAllow
+                                   : AllowDecrypt::kNotAllow;
+
+  AllowSign allow_sign = object->GetAttributeBool(CKA_SIGN, false)
+                             ? AllowSign::kAllow
+                             : AllowSign::kNotAllow;
+
   // TODO(menghuan): Use Software key but report and have an auto-rewrapping
   // when WrapRSAKey() fail
   ASSIGN_OR_RETURN(
       const hwsec::ChapsFrontend::CreateKeyResult& result,
-      hwsec_->WrapRSAKey(exponent, modulus, prime_blob, auth_data),
+      hwsec_->WrapRSAKey(exponent, modulus, prime_blob, auth_data,
+                         allow_decrypt, allow_sign),
       _.WithStatus<TPMError>("Failed to wrap RSA key in WrapRSAPrivateKey")
           .LogError()
           .As(CKR_FUNCTION_FAILED));
@@ -2303,9 +2334,18 @@ CK_RV SessionImpl::WrapECCPrivateKey(Object* object) {
   brillo::SecureBlob auth_data =
       GenerateRandomSecureBlobSoftware(kDefaultAuthDataBytes);
 
+  AllowDecrypt allow_decrypt = object->GetAttributeBool(CKA_DECRYPT, false)
+                                   ? AllowDecrypt::kAllow
+                                   : AllowDecrypt::kNotAllow;
+
+  AllowSign allow_sign = object->GetAttributeBool(CKA_SIGN, false)
+                             ? AllowSign::kAllow
+                             : AllowSign::kNotAllow;
+
   ASSIGN_OR_RETURN(
       const hwsec::ChapsFrontend::CreateKeyResult& result,
-      hwsec_->WrapECCKey(curve_nid, x_point, y_point, private_value, auth_data),
+      hwsec_->WrapECCKey(curve_nid, x_point, y_point, private_value, auth_data,
+                         allow_decrypt, allow_sign),
       _.WithStatus<TPMError>("Failed to wrap ECC key in WrapECCPrivateKey")
           .LogError()
           .As(CKR_FUNCTION_FAILED));
