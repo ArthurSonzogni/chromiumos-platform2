@@ -32,6 +32,12 @@ class EvdevUtil {
     virtual void ReportProperties(libevdev* dev) = 0;
   };
 
+  struct ScopedLibevdevDeleter {
+    inline void operator()(libevdev* x) const { libevdev_free(x); }
+  };
+
+  using ScopedLibevdev = std::unique_ptr<libevdev, ScopedLibevdevDeleter>;
+
   explicit EvdevUtil(Delegate* delegate);
   EvdevUtil(const EvdevUtil& oth) = delete;
   EvdevUtil(EvdevUtil&& oth) = delete;
@@ -50,7 +56,7 @@ class EvdevUtil {
   // The watcher to monitor if the |fd_| is readable.
   std::unique_ptr<base::FileDescriptorWatcher::Controller> watcher_;
   // The libevdev device object.
-  libevdev* dev_;
+  ScopedLibevdev dev_;
   // Delegate to implement dedicated behaviors for different evdev devices.
   Delegate* const delegate_;
 };

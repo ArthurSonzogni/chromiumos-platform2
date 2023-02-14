@@ -25,9 +25,7 @@ EvdevUtil::EvdevUtil(Delegate* delegate) : delegate_(delegate) {
   Initialize();
 }
 
-EvdevUtil::~EvdevUtil() {
-  libevdev_free(dev_);
-}
+EvdevUtil::~EvdevUtil() = default;
 
 void EvdevUtil::Initialize() {
   base::FileEnumerator file_enum(base::FilePath(kDevInputPath),
@@ -49,18 +47,17 @@ bool EvdevUtil::Initialize(const base::FilePath& path) {
     return false;
   }
 
-  libevdev* dev = nullptr;
-  int rc = libevdev_new_from_fd(fd.get(), &dev);
+  ScopedLibevdev dev(libevdev_new());
+  int rc = libevdev_set_fd(dev.get(), fd.get());
   if (rc < 0) {
     return false;
   }
 
-  if (!delegate_->IsTarget(dev)) {
-    libevdev_free(dev);
+  if (!delegate_->IsTarget(dev.get())) {
     return false;
   }
 
-  dev_ = dev;
+  dev_ = std::move(dev);
   fd_ = std::move(fd);
   watcher_ = base::FileDescriptorWatcher::WatchReadable(
       fd_.get(),
@@ -68,10 +65,12 @@ bool EvdevUtil::Initialize(const base::FilePath& path) {
 
   if (!watcher_) {
     LOG(ERROR) << "Fail to monitor evdev node: " << path;
+    dev_.reset();
+    fd_.reset();
     return false;
   }
 
-  delegate_->ReportProperties(dev);
+  delegate_->ReportProperties(dev_.get());
   return true;
 }
 
@@ -81,9 +80,10 @@ void EvdevUtil::OnEvdevEvent() {
 
   do {
     rc = libevdev_next_event(
-        dev_, LIBEVDEV_READ_FLAG_NORMAL | LIBEVDEV_READ_FLAG_BLOCKING, &ev);
+        dev_.get(), LIBEVDEV_READ_FLAG_NORMAL | LIBEVDEV_READ_FLAG_BLOCKING,
+        &ev);
     if (rc == LIBEVDEV_READ_STATUS_SUCCESS) {
-      delegate_->FireEvent(ev, dev_);
+      delegate_->FireEvent(ev, dev_.get());
     }
   } while (rc == LIBEVDEV_READ_STATUS_SUCCESS ||
            rc == LIBEVDEV_READ_STATUS_SYNC);
