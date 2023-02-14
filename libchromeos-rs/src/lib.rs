@@ -6,6 +6,12 @@
 pub use crosvm_base as sys;
 pub use crosvm_base::unix::panic_handler;
 
+// Exports dependencies which are locked to `crosvm_base` versions. This allows us to have a single
+// point of declaration for these, rather than N.
+pub mod sys_deps {
+    pub use zerocopy;
+}
+
 #[cfg(feature = "chromeos-module")]
 pub mod chromeos;
 

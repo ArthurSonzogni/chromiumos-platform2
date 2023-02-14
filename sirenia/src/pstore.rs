@@ -20,11 +20,12 @@ use data_model::DataInit;
 use libchromeos::sys::MappedRegion;
 use libchromeos::sys::MemoryMapping;
 use libchromeos::sys::MemoryMappingBuilder;
+use libchromeos::sys_deps::zerocopy;
+use libchromeos::sys_deps::zerocopy::FromBytes;
 use libsirenia::linux::kmsg;
 use libsirenia::sys::get_cbmem_toc;
 use log::error;
 use log::info;
-use zerocopy::FromBytes;
 
 const RAMOOPS_UNBIND: &str = "/sys/devices/platform/ramoops.0/driver/unbind";
 const RAMOOPS_BUS_ID: &[u8] = b"ramoops.0";
