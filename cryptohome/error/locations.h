@@ -609,15 +609,15 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocVaultKeysetUnwrapScryptFailedInUnwrapVK = 391,
   /* ./vault_keyset.cc */
   kLocVaultKeysetInvalidCombinationInUnwrapVK = 392,
-  /* ./vault_keyset.cc */
+  /* =Obsolete= */
   kLocVaultKeysetNoResetSeedInEncrypt = 393,
-  /* ./vault_keyset.cc */
+  /* =Obsolete= */
   kLocVaultKeysetUnknownBlockTypeInEncryptVK = 394,
-  /* ./vault_keyset.cc */
+  /* =Obsolete= */
   kLocVaultKeysetCreateFailedInEncryptVK = 395,
-  /* ./vault_keyset.cc */
+  /* =Obsolete= */
   kLocVaultKeysetWrapScryptFailedInEncryptVK = 396,
-  /* ./vault_keyset.cc */
+  /* =Obsolete= */
   kLocVaultKeysetWrapAESDFailedInEncryptVK = 397,
   /* ./challenge_credentials/challenge_credentials_operation.cc */
   kLocChalCredOperationNoResponseInOnSigResponse = 398,

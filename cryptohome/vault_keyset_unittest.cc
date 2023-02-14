@@ -95,8 +95,6 @@ constexpr char kLegacyLabel[] = "legacy-1";
 constexpr char kTempLabel[] = "tempLabel";
 
 constexpr char kFilePath[] = "foo";
-constexpr char kPasswordKey[] = "key";
-constexpr char kObfuscatedUsername[] = "foo@gmail.com";
 constexpr char kFakePasswordKey[] = "blabla";
 
 constexpr int kPasswordRounds = 5;
@@ -278,64 +276,45 @@ ACTION_P(CopyFromSecureBlob, b) {
   return true;
 }
 
-TEST_F(VaultKeysetTest, LoadSaveTest) {
-  LibScryptCompatVaultKeyset keyset;
-  keyset.Initialize(&platform_, &crypto_);
-
-  keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
-  SecureBlob bytes;
-
-  static const int kFscryptPolicyVersion = 2;
-
-  keyset.SetFSCryptPolicyVersion(kFscryptPolicyVersion);
-
-  EXPECT_CALL(platform_, WriteFileAtomicDurable(FilePath(kFilePath), _, _))
-      .WillOnce(WithArg<1>(CopyToSecureBlob(&bytes)));
-  EXPECT_CALL(platform_, ReadFile(FilePath(kFilePath), _))
-      .WillOnce(WithArg<1>(CopyFromSecureBlob(&bytes)));
-
-  SecureBlob key(kPasswordKey);
-  ObfuscatedUsername obfuscated_username(kObfuscatedUsername);
-  EXPECT_TRUE(keyset.Encrypt(key, obfuscated_username).ok());
-  EXPECT_TRUE(keyset.Save(FilePath(kFilePath)));
-
-  VaultKeyset new_keyset;
-  new_keyset.Initialize(&platform_, &crypto_);
-  EXPECT_TRUE(new_keyset.Load(FilePath(kFilePath)));
-  EXPECT_TRUE(new_keyset.Decrypt(key, false /* locked_to_single_user */).ok());
-  EXPECT_EQ(new_keyset.GetFSCryptPolicyVersion(), kFscryptPolicyVersion);
-}
-
 TEST_F(VaultKeysetTest, WriteError) {
-  LibScryptCompatVaultKeyset keyset;
-  keyset.Initialize(&platform_, &crypto_);
+  // Setup.
+  VaultKeyset vault_keyset;
+  vault_keyset.Initialize(&platform_, &crypto_);
+  vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
-  keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
-  SecureBlob bytes;
+  const auto reset_iv = CreateSecureRandomBlob(kAesBlockSize);
+  static const int kFscryptPolicyVersion = 2;
+  vault_keyset.SetResetIV(reset_iv);
+  vault_keyset.SetFSCryptPolicyVersion(kFscryptPolicyVersion);
+  vault_keyset.SetLegacyIndex(kLegacyIndex);
+  KeyBlobs key_blobs = {.vkk_key = brillo::SecureBlob(32, 'A'),
+                        .vkk_iv = brillo::SecureBlob(16, 'B'),
+                        .chaps_iv = brillo::SecureBlob(16, 'C')};
+
+  TpmBoundToPcrAuthBlockState pcr_state = {.salt = brillo::SecureBlob("salt")};
+  AuthBlockState auth_state = {.state = pcr_state};
+  ASSERT_THAT(vault_keyset.EncryptEx(key_blobs, auth_state),
+              hwsec_foundation::error::testing::IsOk());
 
   EXPECT_CALL(platform_, WriteFileAtomicDurable(FilePath(kFilePath), _, _))
       .WillOnce(Return(false));
-
-  SecureBlob key(kPasswordKey);
-  ObfuscatedUsername obfuscated_username(kObfuscatedUsername);
-  EXPECT_TRUE(keyset.Encrypt(key, obfuscated_username).ok());
-  EXPECT_FALSE(keyset.Save(FilePath(kFilePath)));
+  // Test.
+  EXPECT_FALSE(vault_keyset.Save(FilePath(kFilePath)));
 }
 
-TEST_F(VaultKeysetTest, AuthLockedDefault) {
-  LibScryptCompatVaultKeyset keyset;
-  keyset.Initialize(&platform_, &crypto_);
+TEST_F(VaultKeysetTest, ErrorSavingUnecryptedKeyset) {
+  // Setup.
+  VaultKeyset vault_keyset;
+  vault_keyset.Initialize(&platform_, &crypto_);
+  vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
-  static const int kFscryptPolicyVersion = 2;
+  // vault_keyset.encryptex is not called, therefore save should fail as soon as
+  // it is tried.
+  EXPECT_CALL(platform_, WriteFileAtomicDurable(FilePath(kFilePath), _, _))
+      .Times(0);
 
-  keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
-  keyset.SetFSCryptPolicyVersion(kFscryptPolicyVersion);
-  keyset.SetFlags(SerializedVaultKeyset::LE_CREDENTIAL);
-
-  SecureBlob key(kPasswordKey);
-  ObfuscatedUsername obfuscated_username(kObfuscatedUsername);
-  EXPECT_TRUE(keyset.Encrypt(key, obfuscated_username).ok());
-  EXPECT_FALSE(keyset.GetAuthLocked());
+  // Test.
+  EXPECT_FALSE(vault_keyset.Save(FilePath(kFilePath)));
 }
 
 TEST_F(VaultKeysetTest, GetPcrBoundAuthBlockStateTest) {
@@ -634,50 +613,6 @@ TEST_F(VaultKeysetTest, GetDoubleWrappedCompatAuthBlockState) {
   EXPECT_NE(double_wrapped_state, nullptr);
 }
 
-TEST_F(VaultKeysetTest, EncryptionTest) {
-  // Check that EncryptVaultKeyset returns something other than the bytes
-  // passed.
-
-  LibScryptCompatVaultKeyset vault_keyset;
-  vault_keyset.Initialize(&platform_, &crypto_);
-  vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
-
-  SecureBlob key(20);
-  GetSecureRandom(key.data(), key.size());
-
-  AuthBlockState auth_block_state;
-  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, {}, &auth_block_state).ok());
-}
-
-TEST_F(VaultKeysetTest, DecryptionTest) {
-  // Check that DecryptVaultKeyset returns the original keyset.
-
-  LibScryptCompatVaultKeyset vault_keyset;
-  vault_keyset.Initialize(&platform_, &crypto_);
-  vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
-
-  SecureBlob key(20);
-  GetSecureRandom(key.data(), key.size());
-
-  AuthBlockState auth_block_state;
-  ASSERT_TRUE(vault_keyset.EncryptVaultKeyset(key, {}, &auth_block_state).ok());
-
-  vault_keyset.SetAuthBlockState(auth_block_state);
-
-  SecureBlob original_data;
-  ASSERT_TRUE(vault_keyset.ToKeysBlob(&original_data));
-
-  ASSERT_TRUE(
-      vault_keyset.DecryptVaultKeyset(key, false /* locked_to_single_user */)
-          .ok());
-
-  SecureBlob new_data;
-  ASSERT_TRUE(vault_keyset.ToKeysBlob(&new_data));
-
-  EXPECT_EQ(new_data.size(), original_data.size());
-  ASSERT_TRUE(VaultKeysetTest::FindBlobInBlob(new_data, original_data));
-}
-
 TEST_F(VaultKeysetTest, GetLegacyLabelTest) {
   VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto_);
@@ -760,76 +695,6 @@ TEST_F(VaultKeysetTest, InitializeToAdd) {
   ASSERT_NE(vault_keyset_copy.GetFlags(), vault_keyset.GetFlags());
   // int legacy_index_
   ASSERT_NE(vault_keyset_copy.GetLegacyIndex(), vault_keyset.GetLegacyIndex());
-}
-
-TEST_F(VaultKeysetTest, DecryptFailNotLoaded) {
-  // Check to decrypt a VaultKeyset that hasn't been loaded yet.
-  LibScryptCompatVaultKeyset vault_keyset;
-  vault_keyset.Initialize(&platform_, &crypto_);
-  vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
-
-  SecureBlob key(kPasswordKey);
-  ObfuscatedUsername obfuscated_username(kObfuscatedUsername);
-  ASSERT_TRUE(vault_keyset.Encrypt(key, obfuscated_username).ok());
-
-  CryptoStatus status =
-      vault_keyset.Decrypt(key, false /*locked_to_single_user*/);
-  // locked_to_single_user determines whether to use the extended tmp_key,
-  // uses normal tpm_key when false with a TpmBoundToPcrAuthBlock
-  ASSERT_FALSE(status.ok());
-  ASSERT_EQ(status->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
-}
-
-TEST_F(VaultKeysetTest, DecryptTPMReboot) {
-  // Test to have Decrypt() fail because of CE_TPM_REBOOT.
-  // Setup
-  EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(hwsec_, IsSealingSupported()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(hwsec_, GetManufacturer())
-      .WillRepeatedly(ReturnValue(0x43524f53));
-  EXPECT_CALL(hwsec_, GetAuthValue(_, _))
-      .WillRepeatedly(ReturnValue(brillo::SecureBlob()));
-  EXPECT_CALL(hwsec_, SealWithCurrentUser(_, _, _))
-      .WillRepeatedly(ReturnValue(brillo::Blob()));
-  EXPECT_CALL(hwsec_, GetPubkeyHash(_))
-      .WillRepeatedly(ReturnValue(brillo::Blob()));
-  EXPECT_CALL(pinweaver_, IsEnabled()).WillRepeatedly(ReturnValue(true));
-
-  crypto_.Init();
-
-  SecureBlob bytes;
-  EXPECT_CALL(platform_, WriteFileAtomicDurable(FilePath(kFilePath), _, _))
-      .WillOnce(WithArg<1>(CopyToSecureBlob(&bytes)));
-  EXPECT_CALL(platform_, ReadFile(FilePath(kFilePath), _))
-      .WillOnce(WithArg<1>(CopyFromSecureBlob(&bytes)));
-
-  VaultKeyset vk;
-  vk.Initialize(&platform_, &crypto_);
-  vk.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
-  vk.SetFlags(SerializedVaultKeyset::TPM_WRAPPED);
-
-  // Test
-  SecureBlob key(kPasswordKey);
-  ObfuscatedUsername obfuscated_username(kObfuscatedUsername);
-  ASSERT_TRUE(vk.Encrypt(key, obfuscated_username).ok());
-  ASSERT_TRUE(vk.Save(FilePath(kFilePath)));
-
-  VaultKeyset new_keyset;
-  new_keyset.Initialize(&platform_, &crypto_);
-  EXPECT_TRUE(new_keyset.Load(FilePath(kFilePath)));
-
-  EXPECT_CALL(*cryptohome_keys_manager_.get_mock_cryptohome_key_loader(),
-              HasCryptohomeKey())
-      .WillRepeatedly(Return(false));
-
-  // DecryptVaultKeyset within Decrypt fails
-  // and passes error CryptoError::CE_TPM_REBOOT
-  // Decrypt -> DecryptVaultKeyset -> Derive
-  // -> CheckTPMReadiness -> HasCryptohomeKey(fails and error propagates up)
-  CryptoStatus status = new_keyset.Decrypt(key, false);
-  ASSERT_FALSE(status.ok());
-  ASSERT_EQ(status->local_crypto_error(), CryptoError::CE_TPM_REBOOT);
 }
 
 TEST_F(VaultKeysetTest, LibScryptBackwardCompatibility) {
@@ -1331,57 +1196,6 @@ class LeCredentialsManagerTest : public ::testing::Test {
           std::string("Testing1"));
 };
 
-TEST_F(LeCredentialsManagerTest, Encrypt) {
-  EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _, _))
-      .WillOnce(ReturnError<CryptohomeLECredError>());
-
-  pin_vault_keyset_.CreateFromFileSystemKeyset(
-      FileSystemKeyset::CreateRandom());
-  pin_vault_keyset_.SetLowEntropyCredential(true);
-
-  // This used to happen in VaultKeyset::EncryptVaultKeyset, but now happens in
-  // VaultKeyset::Encrypt and thus needs to be done manually here.
-  pin_vault_keyset_.reset_seed_ = CreateSecureRandomBlob(kAesBlockSize);
-  pin_vault_keyset_.reset_salt_ = CreateSecureRandomBlob(kAesBlockSize);
-  pin_vault_keyset_.reset_secret_ = HmacSha256(
-      pin_vault_keyset_.reset_salt_.value(), pin_vault_keyset_.reset_seed_);
-
-  AuthBlockState auth_block_state;
-  EXPECT_TRUE(
-      pin_vault_keyset_
-          .EncryptVaultKeyset(brillo::SecureBlob(HexDecode(kHexVaultKey)),
-                              ObfuscatedUsername("unused"), &auth_block_state)
-          .ok());
-
-  EXPECT_TRUE(
-      std::holds_alternative<PinWeaverAuthBlockState>(auth_block_state.state));
-}
-
-TEST_F(LeCredentialsManagerTest, EncryptFail) {
-  EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _, _))
-      .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
-          LE_CRED_ERROR_NO_FREE_LABEL));
-
-  pin_vault_keyset_.CreateFromFileSystemKeyset(
-      FileSystemKeyset::CreateRandom());
-  pin_vault_keyset_.SetLowEntropyCredential(true);
-
-  // This used to happen in VaultKeyset::EncryptVaultKeyset, but now happens in
-  // VaultKeyset::Encrypt and thus needs to be done manually here.
-  pin_vault_keyset_.reset_seed_ = CreateSecureRandomBlob(kAesBlockSize);
-  pin_vault_keyset_.reset_salt_ = CreateSecureRandomBlob(kAesBlockSize);
-  pin_vault_keyset_.reset_secret_ = HmacSha256(
-      pin_vault_keyset_.reset_salt_.value(), pin_vault_keyset_.reset_seed_);
-
-  AuthBlockState auth_block_state;
-  EXPECT_FALSE(
-      pin_vault_keyset_
-          .EncryptVaultKeyset(brillo::SecureBlob(HexDecode(kHexVaultKey)),
-                              ObfuscatedUsername("unused"), &auth_block_state)
-          .ok());
-}
-
 TEST_F(LeCredentialsManagerTest, Decrypt) {
   VaultKeyset vk;
   // vk needs its Crypto object set to be able to create the AuthBlock in the
@@ -1404,88 +1218,6 @@ TEST_F(LeCredentialsManagerTest, Decrypt) {
   EXPECT_TRUE(
       vk.DecryptVaultKeyset(brillo::SecureBlob(HexDecode(kHexVaultKey)), false)
           .ok());
-}
-
-// crbug.com/1224150: auth_locked must be set to false when an LE credential is
-// re-saved.
-TEST_F(LeCredentialsManagerTest, EncryptTestReset) {
-  EXPECT_CALL(*le_cred_manager_, InsertCredential(_, _, _, _, _, _, _))
-      .WillOnce(ReturnError<CryptohomeLECredError>());
-
-  pin_vault_keyset_.CreateFromFileSystemKeyset(
-      FileSystemKeyset::CreateRandom());
-  pin_vault_keyset_.SetLowEntropyCredential(true);
-
-  // This used to happen in VaultKeyset::EncryptVaultKeyset, but now happens in
-  // VaultKeyset::Encrypt and thus needs to be done manually here.
-  pin_vault_keyset_.reset_seed_ = CreateSecureRandomBlob(kAesBlockSize);
-  pin_vault_keyset_.reset_salt_ = CreateSecureRandomBlob(kAesBlockSize);
-  pin_vault_keyset_.reset_secret_ = HmacSha256(
-      pin_vault_keyset_.reset_salt_.value(), pin_vault_keyset_.reset_seed_);
-  pin_vault_keyset_.auth_locked_ = true;
-
-  SecureBlob key(kPasswordKey);
-  ObfuscatedUsername obfuscated_username(kObfuscatedUsername);
-  EXPECT_TRUE(pin_vault_keyset_.Encrypt(key, obfuscated_username).ok());
-  EXPECT_TRUE(pin_vault_keyset_.HasKeyData());
-  EXPECT_FALSE(pin_vault_keyset_.auth_locked_);
-
-  const SerializedVaultKeyset& serialized = pin_vault_keyset_.ToSerialized();
-  EXPECT_FALSE(serialized.key_data().policy().auth_locked());
-}
-
-TEST_F(LeCredentialsManagerTest, DecryptLocked) {
-  // Test to have LECredential fail to decrypt and be locked.
-  pin_vault_keyset_.CreateFromFileSystemKeyset(
-      FileSystemKeyset::CreateRandom());
-  pin_vault_keyset_.SetLowEntropyCredential(true);
-
-  SecureBlob bytes;
-  EXPECT_CALL(platform_, WriteFileAtomicDurable(FilePath(kFilePath), _, _))
-      .WillOnce(WithArg<1>(CopyToSecureBlob(&bytes)))
-      .WillOnce(WithArg<1>(CopyToSecureBlob(&bytes)));
-
-  EXPECT_CALL(platform_, ReadFile(FilePath(kFilePath), _))
-      .WillOnce(WithArg<1>(CopyFromSecureBlob(&bytes)));
-
-  SecureBlob key(kPasswordKey);
-  ObfuscatedUsername obfuscated_username(kObfuscatedUsername);
-  ASSERT_TRUE(pin_vault_keyset_.Encrypt(key, obfuscated_username).ok());
-  ASSERT_TRUE(pin_vault_keyset_.Save(FilePath(kFilePath)));
-
-  VaultKeyset new_keyset;
-  new_keyset.Initialize(&platform_, &crypto_);
-  EXPECT_TRUE(new_keyset.Load(FilePath(kFilePath)));
-
-  // Test
-  ASSERT_FALSE(new_keyset.GetAuthLocked());
-
-  // Have le_cred_manager inject a CryptoError::LE_CRED_ERROR_INVALID_LE_SECRET
-  // error.
-  EXPECT_CALL(*le_cred_manager_, CheckCredential(_, _, _, _))
-      .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
-          LE_CRED_ERROR_INVALID_LE_SECRET));
-  EXPECT_CALL(*le_cred_manager_, GetDelayInSeconds(_))
-      .WillOnce(ReturnValue(UINT32_MAX));
-
-  CryptoStatus status = new_keyset.Decrypt(key, false);
-  ASSERT_FALSE(status.ok());
-  ASSERT_EQ(status->local_crypto_error(), CryptoError::CE_CREDENTIAL_LOCKED);
-  ASSERT_TRUE(new_keyset.GetAuthLocked());
-
-  // Try to decrypt again.
-  // Have le_cred_manager inject a CryptoError::LE_CRED_ERROR_TOO_MANY_ATTEMPTS
-  // error.
-  EXPECT_CALL(*le_cred_manager_, CheckCredential(_, _, _, _))
-      .WillOnce(ReturnError<CryptohomeLECredError>(
-          kErrorLocationForTesting1, ErrorActionSet({ErrorAction::kFatal}),
-          LE_CRED_ERROR_TOO_MANY_ATTEMPTS));
-
-  status = new_keyset.Decrypt(key, false);
-  ASSERT_FALSE(status.ok());
-  ASSERT_EQ(status->local_crypto_error(), CryptoError::CE_TPM_DEFEND_LOCK);
-  ASSERT_TRUE(new_keyset.GetAuthLocked());
 }
 
 TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobs) {

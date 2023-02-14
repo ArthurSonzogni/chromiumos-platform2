@@ -81,12 +81,6 @@ class VaultKeyset {
   // provided |key_blobs|.
   virtual CryptoStatus DecryptEx(const KeyBlobs& key_blobs);
 
-  // Encrypts the VaultKeyset fields with the KeyBlobs derived from the provided
-  // |key| for the |obfuscated_username|.
-  virtual CryptohomeStatus Encrypt(
-      const brillo::SecureBlob& key,
-      const ObfuscatedUsername& obfuscated_username);
-
   // Encrypts the VaultKeyset fields with the provided |key_blobs| based on the
   // encryption mechanisms provided by the |auth_state|.
   virtual CryptohomeStatus EncryptEx(const KeyBlobs& key_blobs,
@@ -352,22 +346,6 @@ class VaultKeyset {
   //   error - The specific error code on failure.
   CryptoStatus DecryptVaultKeyset(const brillo::SecureBlob& vault_key,
                                   bool locked_to_single_user);
-
-  // Encrypts the vault keyset with the given passkey
-  //
-  // Parameters
-  //   vault_key - The passkey used to encrypt the keyset.
-  //   obfuscated_username - The value of username obfuscated. It's the same
-  //                         value used as the folder name where the user data
-  //                         is stored.
-  //   auth_block_state - On success, the plaintext state needed to initialize
-  //                      the auth block.
-  // Return
-  //   error - The specific error code on failure.
-  CryptohomeStatus EncryptVaultKeyset(
-      const brillo::SecureBlob& vault_key,
-      const ObfuscatedUsername& obfuscated_username,
-      AuthBlockState* auth_block_state);
 
   // These store run time state for the class.
   Platform* platform_;
