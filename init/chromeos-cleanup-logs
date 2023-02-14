@@ -8,19 +8,19 @@
 # It can also be called with "--no-periodic" directly from an init
 # script in which case it will clean up but not rotate.
 
-. /usr/share/cros/disk_utils.sh
+# This file exists on the DUT, but not outside of a chroot during repo upload.
+# shellcheck source=disk_utils.sh
+. "/usr/share/cros/disk_utils.sh"
 
 CLEANUP_PAUSED_FILE="/var/lib/cleanup_logs_paused"
 NUM_DAYS_TO_PRESERVE=7
 MAX_SUBDIR_SIZE=100   # MB
 MAX_SUBDIR_FILES=21
 # Threshold for additional histogram reporting (in 1KB blocks), 1GB in total.
-ADDITIONAL_REPORTING_THRESHOLD_BLOCKS=1048576
-SHADOW="/home/.shadow"
 ENCRYPTED_REBOOT_VAULT="/mnt/stateful_partition/reboot_vault"
 
 # Paths for the CRX cache. Shared with installer/crx-import.conf
-UNVALIDATED_CRX_CACHE="${STATEFUL}/unencrypted/import_extensions"
+UNVALIDATED_CRX_CACHE="${STATEFUL:?}/unencrypted/import_extensions"
 VALIDATED_CRX_CACHE=/var/cache/external_cache
 
 # Remove older files, keep deleting until the directory is less than 100MB
@@ -165,11 +165,14 @@ main() {
   log_rotator
 
   # Report disk usage statistics
-  METRICS_ARGS="0 1073741824 50"
-  metrics_client Platform.DiskUsageVar \
-                "$(du -sxk /var/ | awk '{print $1}')" ${METRICS_ARGS}
-  metrics_client Platform.DiskUsageChronos \
-                "$(du -sxk /home/chronos | awk '{print $1}')" ${METRICS_ARGS}
+  (
+    # Subshell to re-use $@ array.
+    set -- 0 1073741824 50
+    metrics_client Platform.DiskUsageVar \
+                  "$(du -sxk /var/ | awk '{print $1}')" "$@"
+    metrics_client Platform.DiskUsageChronos \
+                  "$(du -sxk /home/chronos | awk '{print $1}')" "$@"
+  )
 
   # Report overall stateful usage.
   metrics_client -e Platform.StatefulUsage "$(get_stateful_usage_percent)" 101
