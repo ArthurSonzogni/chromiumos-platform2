@@ -66,6 +66,7 @@ group("all") {
     ":system_api-system_proxy-protos",
     ":system_api-tpm_manager-goprotos",
     ":system_api-tpm_manager-protos",
+    ":system_api-u2f-goprotos",
     ":system_api-u2f-protos",
     ":system_api-update_engine-goprotos",
     ":system_api-update_engine-protos",
@@ -510,6 +511,12 @@ proto_library("system_api-u2f-protos") {
   proto_out_dir = "include/u2f/proto_bindings"
   sources = [ "${proto_in_dir}/u2f_interface.proto" ]
   standalone = true
+}
+
+goproto_library("system_api-u2f-goprotos") {
+  proto_in_dir = "dbus/u2f"
+  proto_out_dir = "go/src/"
+  sources = [ "${proto_in_dir}/u2f_interface.proto" ]
 }
 
 proto_library("system_api-chunneld-protos") {
