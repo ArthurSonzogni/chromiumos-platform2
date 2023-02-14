@@ -201,8 +201,8 @@ class KeyStoreTest : public testing::Test {
     base::FilePath system_path("/var/lib/chaps");
     ON_CALL(token_manager_, GetTokenPath(_, 0, _))
         .WillByDefault(DoAll(SetArgPointee<2>(system_path), Return(true)));
-    base::FilePath user_path(
-        brillo::cryptohome::home::GetDaemonStorePath(kDefaultUser, "chaps"));
+    base::FilePath user_path(brillo::cryptohome::home::GetDaemonStorePath(
+        brillo::cryptohome::home::Username(kDefaultUser), "chaps"));
     ON_CALL(token_manager_, GetTokenPath(_, 1, _))
         .WillByDefault(DoAll(SetArgPointee<2>(user_path), Return(true)));
   }
