@@ -30,7 +30,6 @@ pkg_config("target_defaults") {
 
 static_library("libscreen-capture") {
   sources = [
-    "bo_import_capture.cc",
     "crtc.cc",
     "egl_capture.cc",
     "kmsvnc_utils.cc",

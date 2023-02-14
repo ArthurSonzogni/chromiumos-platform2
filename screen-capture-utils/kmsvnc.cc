@@ -15,7 +15,6 @@
 
 #include <rfb/rfb.h>
 
-#include "screen-capture-utils/bo_import_capture.h"
 #include "screen-capture-utils/capture.h"
 #include "screen-capture-utils/crtc.h"
 #include "screen-capture-utils/egl_capture.h"
@@ -28,7 +27,6 @@ namespace {
 constexpr const char kInternalSwitch[] = "internal";
 constexpr const char kExternalSwitch[] = "external";
 constexpr const char kCrtcIdSwitch[] = "crtc-id";
-constexpr const char kMethodSwitch[] = "method";
 
 constexpr const int kFindCrtcMaxRetries = 5;
 const timespec kFindCrtcRetryInterval{0, 100000000};  // 100ms
@@ -121,12 +119,6 @@ void SignalHandler(int signum) {
   g_shutdown_requested = signum;
 }
 
-enum class CaptureMethod {
-  AUTODETECT,
-  EGL,
-  BO,
-};
-
 int VncMain() {
   ScopedPowerLock power_lock;
   auto* cmdline = base::CommandLine::ForCurrentProcess();
@@ -171,19 +163,6 @@ int VncMain() {
     return 1;
   }
 
-  CaptureMethod method = CaptureMethod::AUTODETECT;
-  if (cmdline->HasSwitch(kMethodSwitch)) {
-    std::string method_str = cmdline->GetSwitchValueASCII(kMethodSwitch);
-    if (method_str == "egl") {
-      method = CaptureMethod::EGL;
-    } else if (method_str == "bo") {
-      method = CaptureMethod::BO;
-    } else {
-      LOG(ERROR) << "Invalid --method specification";
-      return 1;
-    }
-  }
-
   uint32_t crtc_width = crtc->width();
   uint32_t crtc_height = crtc->height();
 
@@ -204,18 +183,6 @@ int VncMain() {
   CHECK_LT(vnc_width - crtc_width, 4);
   CHECK_GE(vnc_width, crtc_width);
 
-  if (method == CaptureMethod::AUTODETECT) {
-    // TODO(andrescj): is it possible to still use the EGL path even if this
-    // is nullptr? e.g., if drmModeGetFB2() fails for the CRTC but not for
-    // individual planes.
-    //
-    // Also, it might be cleaner to move this logic to Crtc.
-    if (crtc->fb2())
-      method = CaptureMethod::EGL;
-    else
-      method = CaptureMethod::BO;
-  }
-
   const rfbScreenInfoPtr server =
       rfbGetScreen(0 /*argc*/, nullptr /*argv*/, vnc_width, vnc_height,
                    8 /*bitsPerSample*/, 3 /*samplesPerPixel*/, kBytesPerPixel);
@@ -227,13 +194,8 @@ int VncMain() {
 
   std::unique_ptr<screenshot::DisplayBuffer> display_buffer;
 
-  if (method == CaptureMethod::EGL) {
-    display_buffer.reset(new screenshot::EglDisplayBuffer(
-        crtc.get(), 0, 0, crtc_width, crtc_height));
-  } else {
-    display_buffer.reset(new screenshot::GbmBoDisplayBuffer(
-        crtc.get(), 0, 0, crtc_width, crtc_height));
-  }
+  display_buffer.reset(new screenshot::EglDisplayBuffer(
+      crtc.get(), 0, 0, crtc_width, crtc_height));
 
   std::vector<char> buffer(vnc_width * vnc_height * kBytesPerPixel);
 
