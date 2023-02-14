@@ -20,6 +20,7 @@
 #include <base/functional/callback.h>
 #include <base/time/time.h>
 #include <brillo/files/safe_fd.h>
+#include <google/protobuf/map.h>
 #include <google/protobuf/repeated_field.h>
 #include <google/protobuf/timestamp.pb.h>
 #include <metrics/metrics_library.h>
@@ -29,7 +30,7 @@
 namespace usb_bouncer {
 
 using google::protobuf::Timestamp;
-using EntryMap = google::protobuf::Map<google::protobuf::string, RuleEntry>;
+using EntryMap = google::protobuf::Map<std::string, RuleEntry>;
 
 constexpr char kUsbBouncerUser[] = "usb_bouncer";
 constexpr char kUsbBouncerGroup[] = "usb_bouncer";
