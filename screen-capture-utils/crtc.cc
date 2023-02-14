@@ -95,6 +95,7 @@ std::vector<std::unique_ptr<Crtc>> GetConnectedCrtcs() {
     // Set CAP_ATOMIC so we can query all planes and plane properties.
     bool atomic_modeset =
         drmSetClientCap(file.GetPlatformFile(), DRM_CLIENT_CAP_ATOMIC, 1) == 0;
+    CHECK(atomic_modeset);
 
     ScopedDrmModeResPtr resources(drmModeGetResources(file.GetPlatformFile()));
     if (!resources)
