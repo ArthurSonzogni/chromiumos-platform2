@@ -22,6 +22,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <brillo/userdb_utils.h>
+#include <cros_config/cros_config.h>
 
 #include "chromeos/ui/util.h"
 
@@ -119,6 +120,8 @@ const char ChromiumCommandBuilder::kEnableBlinkFeaturesFlag[] =
     "enable-blink-features";
 const char ChromiumCommandBuilder::kDisableBlinkFeaturesFlag[] =
     "disable-blink-features";
+const char ChromiumCommandBuilder::kCrosConfigIdentityPath[] = "/identity";
+const char ChromiumCommandBuilder::kCrosConfigPlatformName[] = "platform-name";
 
 ChromiumCommandBuilder::ChromiumCommandBuilder() = default;
 
@@ -564,6 +567,21 @@ void ChromiumCommandBuilder::AddUiFlags() {
   // Disable Floss if the Floss USE flag was not set.
   if (!UseFlagIsSet("floss"))
     AddFeatureDisableOverride("FlossIsAvailable");
+
+  // The display controller on SC7280 uses multiple planes when the screen
+  // resolution is sufficiently wide, and we can run out of planes to display
+  // the cursor on its own plane (e.g. if a 4k display is plugged in). Thus in
+  // these cases, we default to the software cursor.
+  // TODO(b/273509565): Remove this workaround when Chrome migrates off the
+  // legacy cursor API and can properly test modesets with the cursor plane.
+  brillo::CrosConfig cros_config;
+  std::string platform_name;
+  if (cros_config.GetString(kCrosConfigIdentityPath, kCrosConfigPlatformName,
+                            &platform_name)) {
+    if (platform_name == "Herobrine") {
+      AddArg("--sw-cursor-on-wide-displays");
+    }
+  }
 
   // Allow Chrome to access GPU memory information despite /sys/kernel/debug
   // being owned by debugd. This limits the security attack surface versus

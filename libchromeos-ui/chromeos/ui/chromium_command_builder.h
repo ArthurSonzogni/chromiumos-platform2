@@ -53,6 +53,12 @@ class BRILLO_EXPORT ChromiumCommandBuilder {
   static const char kEnableBlinkFeaturesFlag[];
   static const char kDisableBlinkFeaturesFlag[];
 
+  // Cros-config path for identity.
+  static const char kCrosConfigIdentityPath[];
+
+  // Cros-config name for the platform name attribute in the identity path.
+  static const char kCrosConfigPlatformName[];
+
   ChromiumCommandBuilder();
   ChromiumCommandBuilder(const ChromiumCommandBuilder&) = delete;
   ChromiumCommandBuilder& operator=(const ChromiumCommandBuilder&) = delete;
