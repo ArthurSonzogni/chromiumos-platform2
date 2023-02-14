@@ -308,6 +308,7 @@ class WiFiService : public Service {
   void set_match_priority(uint64_t priority) { match_priority_ = priority; }
 
   Strings GetBSSIDAllowlist(Error* error);
+  Strings GetBSSIDAllowlistConst(Error* error) const;
   bool SetBSSIDAllowlist(const Strings& ssid_allowlist, Error* error);
 
  protected:

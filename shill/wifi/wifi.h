@@ -264,6 +264,12 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   mockable void EmitStationInfoRequestEvent(
       WiFiLinkStatistics::Trigger trigger);
 
+  // Sets the BSSID allowlist in WPA supplicant for the |service|. This doesn't
+  // affect the currently connected network if there is one. Any changes will
+  // take effect on the next network (re)connection.
+  mockable bool SetBSSIDAllowlist(const WiFiService* service,
+                                  const Strings& bssid_allowlist);
+
  private:
   // Result from a BSSAdded or BSSRemoved event.
   struct ScanResult {

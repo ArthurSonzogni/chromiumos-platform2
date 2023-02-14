@@ -729,6 +729,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     wifi_->SelectService(service);
   }
 
+  bool SetBSSIDAllowlist(const WiFiService* service, Strings& bssid_allowlist) {
+    return wifi_->SetBSSIDAllowlist(service, bssid_allowlist);
+  }
+
  protected:
   using MockWiFiServiceRefPtr = scoped_refptr<MockWiFiService>;
   using MockPasspointCredentialsRefPtr =
@@ -946,6 +950,9 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
   MockSupplicantInterfaceProxy* GetSupplicantInterfaceProxy() {
     MockSupplicantInterfaceProxy* proxy = GetSupplicantInterfaceProxyFromWiFi();
     return proxy ? proxy : supplicant_interface_proxy_.get();
+  }
+  MockSupplicantNetworkProxy* GetSupplicantNetworkProxy() {
+    return supplicant_network_proxy_.get();
   }
   const std::string& GetSupplicantState() { return wifi_->supplicant_state_; }
   IEEE_80211::WiFiReasonCode GetSupplicantDisconnectReason() {
@@ -5864,6 +5871,21 @@ TEST_F(WiFiMainTest, ConnectStopsNetwork) {
   MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
   InitiateConnect(service);
   Mock::VerifyAndClearExpectations(network());
+}
+
+TEST_F(WiFiMainTest, SetBSSIDAllowlist) {
+  StartWiFi();
+  RpcIdentifier kPath("/test/path");
+  MockWiFiServiceRefPtr service(SetupConnectedService(kPath, nullptr, nullptr));
+
+  KeyValueStore kv;
+  kv.Set<std::string>(WPASupplicant::kNetworkPropertyBSSIDAccept,
+                      "00:00:00:00:00:01 00:00:00:00:00:02");
+  EXPECT_CALL(*GetSupplicantNetworkProxy(), SetProperties(kv))
+      .WillOnce(Return(true));
+
+  Strings allowlist = {"00:00:00:00:00:01", "00:00:00:00:00:02"};
+  EXPECT_TRUE(SetBSSIDAllowlist(service.get(), allowlist));
 }
 
 }  // namespace shill

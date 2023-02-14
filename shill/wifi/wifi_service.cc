@@ -106,6 +106,26 @@ bool IsZero(const ByteArray& bytes) {
   return true;
 }
 
+enum class BSSIDAllowlistPolicy {
+  kNoneAllowed,
+  kAllAllowed,
+  kMatchOnlyAllowed,
+};
+
+BSSIDAllowlistPolicy GetBSSIDAllowlistPolicy(
+    const std::set<ByteArray>& allowlist) {
+  if (allowlist.size() == 0) {
+    // An empty list means nothing is restricted and everything is allowed.
+    return BSSIDAllowlistPolicy::kAllAllowed;
+  }
+  if (allowlist.size() == 1 && IsZero(*allowlist.begin())) {
+    // Special case where a single element of zeroes means don't connect to
+    // any AP.
+    return BSSIDAllowlistPolicy::kNoneAllowed;
+  }
+  return BSSIDAllowlistPolicy::kMatchOnlyAllowed;
+}
+
 }  // namespace
 
 const char WiFiService::kAnyDeviceAddress[] = "any";
@@ -687,6 +707,7 @@ bool WiFiService::Load(const StoreInterface* storage) {
   std::vector<std::string> bssid_allowlist;
   storage->GetStringList(id, kStorageBSSIDAllowlist, &bssid_allowlist);
   SetBSSIDAllowlist(bssid_allowlist, &bssid_allowlist_error);
+
   if (!bssid_allowlist_error.IsSuccess()) {
     LOG(ERROR) << "Failed to load BSSID allowlist: ["
                << base::JoinString(bssid_allowlist, ", ") << "]";
@@ -1290,6 +1311,15 @@ KeyValueStore WiFiService::GetSupplicantConfigurationParameters() const {
     default:
       break;  // No address needs filling in for other policies.
   }
+
+  // BSSID allowlist
+  Error unused_error;
+  Strings bssid_allowlist = GetBSSIDAllowlistConst(&unused_error);
+  if (!bssid_allowlist.empty()) {
+    params.Set<std::string>(WPASupplicant::kNetworkPropertyBSSIDAccept,
+                            base::JoinString(bssid_allowlist, " "));
+  }
+
   return params;
 }
 
@@ -1949,7 +1979,11 @@ bool WiFiService::CompareWithSameTechnology(const ServiceRefPtr& service,
   return false;
 }
 
-Strings WiFiService::GetBSSIDAllowlist(Error* /*error*/) {
+Strings WiFiService::GetBSSIDAllowlist(Error* error) {
+  return GetBSSIDAllowlistConst(error);
+}
+
+Strings WiFiService::GetBSSIDAllowlistConst(Error* /*error*/) const {
   Strings bssid_allowlist;
   for (const ByteArray& bssid : bssid_allowlist_) {
     bssid_allowlist.push_back(Device::MakeStringFromHardwareAddress(bssid));
@@ -1994,28 +2028,35 @@ bool WiFiService::SetBSSIDAllowlist(const Strings& bssid_allowlist,
     return false;
   }
 
+  // Update WPA supplicant as well
+  Strings strings_bssid_allowlist;
+  for (const auto& bytes : filtered_bssid_allowlist) {
+    strings_bssid_allowlist.push_back(
+        Device::MakeStringFromHardwareAddress(bytes));
+  }
+  if (wifi_ && !wifi_->SetBSSIDAllowlist(this, strings_bssid_allowlist)) {
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                          "Failed to set BSSID allowlist in WPA supplicant");
+    return false;
+  }
+
   bssid_allowlist_ = filtered_bssid_allowlist;
   return true;
 }
 
 bool WiFiService::HasConnectableEndpoints() const {
-  if (bssid_allowlist_.size() == 0) {
-    // An empty list means nothing is restricted and everything is allowed.
-    return HasEndpoints();
+  switch (GetBSSIDAllowlistPolicy(bssid_allowlist_)) {
+    case BSSIDAllowlistPolicy::kNoneAllowed:
+      return false;
+    case BSSIDAllowlistPolicy::kAllAllowed:
+      return HasEndpoints();
+    case BSSIDAllowlistPolicy::kMatchOnlyAllowed:
+      for (const auto& endpoint : endpoints_) {
+        if (base::Contains(bssid_allowlist_, endpoint->bssid())) {
+          return true;
+        }
+      }
   }
-
-  if (bssid_allowlist_.size() == 1 && IsZero(*bssid_allowlist_.begin())) {
-    // Special case where a single element of zeroes means don't connect to
-    // any AP.
-    return false;
-  }
-
-  for (const auto& endpoint : endpoints_) {
-    if (base::Contains(bssid_allowlist_, endpoint->bssid())) {
-      return true;
-    }
-  }
-
   return false;
 }
 

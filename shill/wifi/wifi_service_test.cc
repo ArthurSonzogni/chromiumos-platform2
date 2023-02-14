@@ -655,6 +655,42 @@ TEST_F(WiFiServiceTest, ConnectTaskFT) {
   }
 }
 
+TEST_F(WiFiServiceTest, ConnectTaskBSSIDAllowlist) {
+  {
+    WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityClassNone);
+    EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), _));
+    wifi_service->Connect(nullptr, "in test");
+
+    // If the BSSID allowlist didn't change, the field won't be set in the
+    // supplicant params
+    KeyValueStore params = wifi_service->GetSupplicantConfigurationParameters();
+    EXPECT_FALSE(params.Contains<std::string>(
+        WPASupplicant::kNetworkPropertyBSSIDAccept));
+  }
+
+  {
+    Error error;
+    WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityClassNone);
+
+    // The duped bssid's should get filtered out before we pass it to WPA
+    // supplicant.
+    std::vector<std::string> duped_bssid_allowlist = {
+        "00:00:00:00:00:01", "00:00:00:00:00:01", "00:00:00:00:00:02"};
+    std::vector<std::string> not_duped_bssid_allowlist = {"00:00:00:00:00:01",
+                                                          "00:00:00:00:00:02"};
+    EXPECT_CALL(*wifi(), SetBSSIDAllowlist(_, not_duped_bssid_allowlist))
+        .WillOnce(Return(true));
+    EXPECT_CALL(*wifi(), ConnectTo(wifi_service.get(), _));
+
+    EXPECT_TRUE(wifi_service->SetBSSIDAllowlist(duped_bssid_allowlist, &error));
+    wifi_service->Connect(nullptr, "in test");
+    KeyValueStore params = wifi_service->GetSupplicantConfigurationParameters();
+    EXPECT_EQ(
+        "00:00:00:00:00:01 00:00:00:00:00:02",
+        params.Get<std::string>(WPASupplicant::kNetworkPropertyBSSIDAccept));
+  }
+}
+
 TEST_F(WiFiServiceTest, SetPassphraseResetHasEverConnected) {
   WiFiServiceRefPtr wifi_service = MakeServiceWithWiFi(kSecurityClassPsk);
   const std::string kPassphrase = "abcdefgh";
@@ -2914,6 +2950,14 @@ TEST_F(WiFiServiceTest, SetBSSIDAllowlist) {
   EXPECT_TRUE(service->SetBSSIDAllowlist(zeroes_bssid_allowlist, &error));
   EXPECT_EQ(zeroes_bssid_allowlist, service->GetBSSIDAllowlist(&error));
 
+  // We should filter out dupes
+  std::vector<std::string> duped_bssid_allowlist = {
+      "00:00:00:00:00:01", "00:00:00:00:00:01", "00:00:00:00:00:02"};
+  std::vector<std::string> not_duped_bssid_allowlist = {"00:00:00:00:00:01",
+                                                        "00:00:00:00:00:02"};
+  EXPECT_TRUE(service->SetBSSIDAllowlist(duped_bssid_allowlist, &error));
+  EXPECT_EQ(not_duped_bssid_allowlist, service->GetBSSIDAllowlist(&error));
+
   // Unparsable hardware address
   std::vector<std::string> invalid_values = {"foo"};
   EXPECT_FALSE(service->SetBSSIDAllowlist(invalid_values, &error));
@@ -2923,6 +2967,11 @@ TEST_F(WiFiServiceTest, SetBSSIDAllowlist) {
   std::vector<std::string> non_zeroes_bssid_allowlist = {"00:00:00:00:00:00",
                                                          "aa:bb:cc:dd:ee:ff"};
   EXPECT_FALSE(service->SetBSSIDAllowlist(non_zeroes_bssid_allowlist, &error));
+  EXPECT_TRUE(error.type() == Error::kInvalidArguments);
+
+  // Can't have multiple zeroes
+  zeroes_bssid_allowlist = {"00:00:00:00:00:00", "00:00:00:00:00:00"};
+  EXPECT_TRUE(service->SetBSSIDAllowlist(zeroes_bssid_allowlist, &error));
   EXPECT_TRUE(error.type() == Error::kInvalidArguments);
 }
 
@@ -2943,6 +2992,7 @@ TEST_F(WiFiServiceTest, HasConnectableEndpoints) {
 
 TEST_F(WiFiServiceTest, HasNoConnectableEndpoints) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
+  EXPECT_CALL(*wifi(), SetBSSIDAllowlist(_, _)).WillRepeatedly(Return(true));
 
   WiFiEndpoint::SecurityFlags flags;
   WiFiEndpointRefPtr endpoint =
@@ -2963,6 +3013,7 @@ TEST_F(WiFiServiceTest, HasNoConnectableEndpoints) {
 
 TEST_F(WiFiServiceTest, HasAllowlistedConnectableEndpoints) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
+  EXPECT_CALL(*wifi(), SetBSSIDAllowlist(_, _)).WillRepeatedly(Return(true));
 
   WiFiEndpoint::SecurityFlags flags;
   WiFiEndpointRefPtr endpoint =

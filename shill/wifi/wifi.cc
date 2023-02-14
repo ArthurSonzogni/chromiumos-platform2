@@ -4031,4 +4031,22 @@ const WiFiPhy* WiFi::GetWiFiPhy() {
   return provider_->GetPhyAtIndex(phy_index_);
 }
 
+bool WiFi::SetBSSIDAllowlist(const WiFiService* service,
+                             const Strings& bssid_allowlist) {
+  Error unused_error;
+  RpcIdentifier network_rpcid =
+      FindNetworkRpcidForService(service, &unused_error);
+  if (network_rpcid.value().empty()) {
+    // Error is already populated.
+    return false;
+  }
+
+  KeyValueStore kv;
+  kv.Set<std::string>(WPASupplicant::kNetworkPropertyBSSIDAccept,
+                      base::JoinString(bssid_allowlist, " "));
+  std::unique_ptr<SupplicantNetworkProxyInterface> supplicant_network_proxy =
+      control_interface()->CreateSupplicantNetworkProxy(network_rpcid);
+  return supplicant_network_proxy->SetProperties(kv);
+}
+
 }  // namespace shill

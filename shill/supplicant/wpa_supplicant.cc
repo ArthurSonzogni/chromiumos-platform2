@@ -125,6 +125,7 @@ const char WPASupplicant::kNetworkModeAccessPoint[] = "ap";
 const char WPASupplicant::kNetworkModeMesh[] = "mesh";
 const char WPASupplicant::kNetworkModeP2P[] = "p2p";
 const char WPASupplicant::kNetworkPropertyBgscan[] = "bgscan";
+const char WPASupplicant::kNetworkPropertyBSSIDAccept[] = "bssid_accept";
 const char WPASupplicant::kNetworkPropertyCaPath[] = "ca_path";
 const char WPASupplicant::kNetworkPropertyDisableVHT[] = "disable_vht";
 const char WPASupplicant::kNetworkPropertyEapIdentity[] = "identity";
