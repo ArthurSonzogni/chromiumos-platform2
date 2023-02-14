@@ -5,6 +5,7 @@
 
 #include "cryptohome/auth_factor_vault_keyset_converter.h"
 
+#include <brillo/secure_blob.h>
 #include <stdint.h>
 
 #include <map>
@@ -33,6 +34,7 @@
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/filesystem_layout.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/le_credential_manager_impl.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
@@ -116,6 +118,8 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
   std::map<std::string, std::unique_ptr<AuthFactor>>
       label_to_auth_factor_backup_;
   std::vector<std::string> migrated_labels_;
+  KeyBlobs key_blobs_;
+  AuthBlockState auth_state_;
   struct UserInfo {
     Username name;
     ObfuscatedUsername obfuscated;
@@ -171,6 +175,26 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
     return key_data;
   }
 
+  void SetAuthState(const KeyData& key_data) {
+    if (key_data.has_policy() && key_data.policy().low_entropy_credential()) {
+      PinWeaverAuthBlockState pin_state = {
+          .le_label = 0xbaadf00d,
+          .salt = brillo::SecureBlob("fake salt"),
+          .chaps_iv = brillo::SecureBlob("fake chaps IV"),
+          .fek_iv = brillo::SecureBlob("fake file encryption IV"),
+          .reset_salt = brillo::SecureBlob("more fake salt"),
+      };
+      auth_state_.state = pin_state;
+    } else {
+      TpmBoundToPcrAuthBlockState pcr_state = {
+          .salt = brillo::SecureBlob("fake salt"),
+          .tpm_key = brillo::SecureBlob("fake tpm key"),
+          .extended_tpm_key = brillo::SecureBlob("fake extended tpm key")};
+
+      auth_state_.state = pcr_state;
+    }
+  }
+
   void BackupKeysetSetUpWithKeyData(const KeyData& key_data,
                                     const std::string& index) {
     VaultKeyset vk;
@@ -179,7 +203,12 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
     vk.SetKeyData(key_data);
     vk.set_backup_vk_for_testing(true);
     user.credentials.set_key_data(key_data);
-    ASSERT_TRUE(vk.Encrypt(user.passkey, user.obfuscated).ok());
+    key_blobs_.vkk_key = brillo::SecureBlob(32, 'A');
+    key_blobs_.vkk_iv = brillo::SecureBlob(16, 'B');
+    key_blobs_.chaps_iv = brillo::SecureBlob(16, 'C');
+    SetAuthState(key_data);
+
+    ASSERT_TRUE(vk.EncryptEx(key_blobs_, auth_state_).ok());
     ASSERT_TRUE(
         vk.Save(user.homedir_path.Append(kKeyFile).AddExtension(index)));
   }
@@ -192,8 +221,13 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
     vk.SetKeyData(key_data);
     vk.set_backup_vk_for_testing(true);
     vk.set_migrated_vk_for_testing(true);
-    user.credentials.set_key_data(key_data);
-    ASSERT_TRUE(vk.Encrypt(user.passkey, user.obfuscated).ok());
+    key_blobs_.vkk_key = brillo::SecureBlob(32, 'A');
+    key_blobs_.vkk_iv = brillo::SecureBlob(16, 'B');
+    key_blobs_.chaps_iv = brillo::SecureBlob(16, 'C');
+
+    SetAuthState(key_data);
+
+    ASSERT_TRUE(vk.EncryptEx(key_blobs_, auth_state_).ok());
     ASSERT_TRUE(
         vk.Save(user.homedir_path.Append(kKeyFile).AddExtension(index)));
   }
@@ -204,8 +238,13 @@ class AuthFactorVaultKeysetConverterTest : public ::testing::Test {
     vk.Initialize(&platform_, &crypto_);
     vk.CreateFromFileSystemKeyset(file_system_keyset_);
     vk.SetKeyData(key_data);
-    user.credentials.set_key_data(key_data);
-    ASSERT_TRUE(vk.Encrypt(user.passkey, user.obfuscated).ok());
+    key_blobs_.vkk_key = brillo::SecureBlob(32, 'A');
+    key_blobs_.vkk_iv = brillo::SecureBlob(16, 'B');
+    key_blobs_.chaps_iv = brillo::SecureBlob(16, 'C');
+    SetAuthState(key_data);
+    SetAuthState(key_data);
+
+    ASSERT_TRUE(vk.EncryptEx(key_blobs_, auth_state_).ok());
     ASSERT_TRUE(
         vk.Save(user.homedir_path.Append(kKeyFile).AddExtension(index)));
   }
