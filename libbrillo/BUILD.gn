@@ -36,6 +36,7 @@ group("all") {
 default_pkg_deps = [ "libchrome" ]
 pkg_config("target_defaults_pkg_deps") {
   pkg_deps = default_pkg_deps
+  defines = [ "USE_ENTERPRISE_ROLLBACK_REVEN=${use.enterprise_rollback_reven}" ]
 }
 
 config("target_defaults") {

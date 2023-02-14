@@ -468,6 +468,13 @@ bool DevicePolicyImpl::GetRollbackToTargetVersion(
   if (!proto.has_rollback_to_target_version())
     return false;
 
+  // TODO(b:273305614): Allow to enable enterprise rollback on Flex with a flag.
+  if (USE_ENTERPRISE_ROLLBACK_REVEN) {
+    LOG(INFO) << "Enterprise Rollback disabled for Flex, setting policy to "
+                 "undefined.";
+    return false;
+  }
+
   *rollback_to_target_version = proto.rollback_to_target_version();
   return true;
 }

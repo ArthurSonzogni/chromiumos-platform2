@@ -77,6 +77,9 @@ _IUSE = [
     "enable_slow_boot_notify",
     "encrypted_reboot_vault",
     "encrypted_stateful",
+    # TODO(b:262689487): Remove when all limitations of enterprise rollback in
+    # reven have been addressed.
+    "enterprise_rollback_reven",
     "factory_runtime_probe",
     "fake_drivefs_launcher",
     "feedback",

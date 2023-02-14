@@ -128,10 +128,14 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
   EXPECT_EQ("0,1626155736-", string_value);
 
   int_value = -1;
-  ASSERT_TRUE(policy.GetRollbackToTargetVersion(&int_value));
-  EXPECT_EQ(
-      enterprise_management::AutoUpdateSettingsProto::ROLLBACK_AND_POWERWASH,
-      int_value);
+  if (USE_ENTERPRISE_ROLLBACK_REVEN) {
+    ASSERT_FALSE(policy.GetRollbackToTargetVersion(&int_value));
+  } else {
+    ASSERT_TRUE(policy.GetRollbackToTargetVersion(&int_value));
+    EXPECT_EQ(
+        enterprise_management::AutoUpdateSettingsProto::ROLLBACK_AND_POWERWASH,
+        int_value);
+  }
 
   int_value = -1;
   ASSERT_TRUE(policy.GetRollbackAllowedMilestones(&int_value));
