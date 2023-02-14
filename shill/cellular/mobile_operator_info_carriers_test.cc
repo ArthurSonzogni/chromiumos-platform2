@@ -148,14 +148,13 @@ class MobileOperatorInfoCarriersTest : public Test {
         << " \napn_builder.apn():" << ApnToString(apn_builder.apn());
   }
 
-  std::string CreateRandomGid1NotInSet(std::vector<int> gid1s) {
-    std::sort(gid1s.begin(), gid1s.end());
-    int gid1 = base::RandInt(0, 0xFFFF - gid1s.size());
-    for (auto i : gid1s) {
-      if (gid1 >= i)
-        gid1++;
+  std::string CreateRandomGid1NotInSet(std::set<std::string> gid1s) {
+    while (true) {
+      int gid1 = base::RandInt(0, 0xFFFF);
+      std::string gid1_s = base::HexEncode(&gid1, 2);
+      if (gid1s.count(gid1_s) == 0)
+        return gid1_s;
     }
-    return base::HexEncode(&gid1, 2);
   }
 
   std::string CreateRandomMccmnc(std::string prefix, int len) {
@@ -218,7 +217,7 @@ TEST_F(MobileOperatorInfoCarriersAttTest, AttUsHome_AttServing) {
     EXPECT_EQ(operator_info_->operator_name(), kAttOperatorName);
     EXPECT_EQ(operator_info_->serving_operator_name(), kAttOperatorName);
     EXPECT_EQ(operator_info_->mtu(), kAttMtu);
-    operator_info_->UpdateGID1(CreateRandomGid1NotInSet({0x53FF}));
+    operator_info_->UpdateGID1(CreateRandomGid1NotInSet({"53FF"}));
     CheckFirstApn(kAttApn4G);
   }
 }
