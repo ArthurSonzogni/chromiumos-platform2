@@ -244,7 +244,7 @@ void CameraHalServerImpl::IPCBridge::OnServiceMojoChannelError() {
   main_task_runner_->PostTask(
       FROM_HERE,
       base::BindOnce(&CameraHalServerImpl::ExitOnMainThread,
-                     base::Unretained(camera_hal_server_), ECONNRESET));
+                     base::Unretained(camera_hal_server_), -ECONNRESET));
 }
 
 void CameraHalServerImpl::IPCBridge::OnPrivacySwitchStatusChanged(
@@ -318,7 +318,7 @@ int CameraHalServerImpl::LoadCameraHal() {
     if (!module) {
       LOGF(ERROR) << "Failed to get camera_module_t pointer with symbol name "
                   << HAL_MODULE_INFO_SYM_AS_STR << " from " << dll.value();
-      return ELIBBAD;
+      return -ELIBBAD;
     }
 
     camera_interfaces.emplace_back(module, cros_camera_hal);
@@ -346,7 +346,7 @@ int CameraHalServerImpl::LoadCameraHal() {
   return 0;
 }
 
-void CameraHalServerImpl::ExitOnMainThread(int exit_status) {
+void CameraHalServerImpl::ExitOnMainThread(int error) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
 
   for (auto* cros_camera_hal : cros_camera_hals_) {
@@ -368,7 +368,12 @@ void CameraHalServerImpl::ExitOnMainThread(int exit_status) {
   // handlers on Camera HALs side, we explicitly reset the CameraHalAdapter.
   camera_hal_adapter_.reset();
 
-  exit(exit_status);
+  if (errno) {
+    LOGF(ERROR) << "cros-camera terminated with error: "
+                << std::strerror(-error);
+    exit(1);
+  }
+  exit(0);
 }
 
 void CameraHalServerImpl::OnCameraActivityChange(

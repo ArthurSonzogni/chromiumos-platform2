@@ -133,7 +133,7 @@ class CameraHalServerImpl {
   // corresponding error code on failure.
   int LoadCameraHal();
 
-  void ExitOnMainThread(int exit_status);
+  void ExitOnMainThread(int error);
 
   void OnCameraActivityChange(base::WeakPtr<IPCBridge> ipc_bridge,
                               int32_t camera_id,
