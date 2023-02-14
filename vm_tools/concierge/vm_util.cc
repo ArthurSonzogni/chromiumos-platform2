@@ -35,6 +35,8 @@
 #include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
 
+#include <chromeos-config/libcros_config/cros_config.h>
+
 namespace vm_tools {
 namespace concierge {
 
@@ -61,6 +63,9 @@ constexpr int kMaxCapacity = 1024;
 
 constexpr char kUringAsyncExecutorString[] = "uring";
 constexpr char kEpollAsyncExecutorString[] = "epoll";
+
+constexpr char kSchedulerTunePath[] = "/scheduler-tune";
+constexpr char kBoostUrgentProperty[] = "boost-urgent";
 
 std::string BooleanParameter(const char* parameter, bool value) {
   std::string result = base::StrCat({parameter, value ? "true" : "false"});
@@ -624,6 +629,16 @@ void ArcVmCPUTopology::CreateAffinity(void) {
     // rate. Note that the uclamp value must be a percentage of the maximum
     // capacity (~= utilization).
     top_app_uclamp_min_ = std::min(min_cap * 100 / kMaxCapacity + 5, 100);
+  }
+  // Allow boards to override the top_app_uclamp_min by scheduler-tune/
+  // boost-urgent.
+  brillo::CrosConfig cros_config;
+  std::string boost_urgent;
+  if (cros_config.GetString(kSchedulerTunePath, kBoostUrgentProperty,
+                            &boost_urgent)) {
+    int uclamp_min;
+    if (base::StringToInt(boost_urgent, &uclamp_min))
+      top_app_uclamp_min_ = uclamp_min;
   }
 
   for (const auto& pkg : package_) {
