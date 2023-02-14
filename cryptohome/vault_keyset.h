@@ -173,6 +173,9 @@ class VaultKeyset {
   virtual bool HasFSCryptPolicyVersion() const;
   virtual int32_t GetFSCryptPolicyVersion() const;
 
+  virtual bool HasVkkIv() const;
+  virtual const brillo::SecureBlob& GetVkkIv() const;
+
   // Group 2. Fields containing wrapped data.
 
   virtual void SetWrappedKeyset(const brillo::SecureBlob& wrapped_keyset);

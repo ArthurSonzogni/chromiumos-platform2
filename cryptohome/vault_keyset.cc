@@ -1359,6 +1359,15 @@ KeyData VaultKeyset::GetKeyDataOrDefault() const {
   return KeyData();
 }
 
+bool VaultKeyset::HasVkkIv() const {
+  return vkk_iv_.has_value();
+}
+
+const brillo::SecureBlob& VaultKeyset::GetVkkIv() const {
+  DCHECK(HasVkkIv());
+  return vkk_iv_.value();
+}
+
 void VaultKeyset::SetResetIV(const brillo::SecureBlob& iv) {
   reset_iv_ = iv;
 }
