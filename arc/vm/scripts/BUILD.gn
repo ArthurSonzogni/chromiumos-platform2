@@ -23,7 +23,6 @@ install_config("install_init_scripts") {
   sources = [
     "init/arcvm-fsverity-certs.conf",
     "init/arcvm-host.conf",
-    "init/arcvm-media-sharing-services.conf",
     "init/arcvm-post-login-services.conf",
     "init/arcvm-post-vm-start-services.conf",
     "init/arcvm-pre-login-services.conf",
