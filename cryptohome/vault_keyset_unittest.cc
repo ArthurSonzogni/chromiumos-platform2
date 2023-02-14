@@ -169,7 +169,7 @@ class VaultKeysetTest : public ::testing::Test {
   VaultKeysetTest(const VaultKeysetTest&) = delete;
   VaultKeysetTest& operator=(const VaultKeysetTest&) = delete;
 
-  virtual ~VaultKeysetTest() {}
+  ~VaultKeysetTest() override = default;
 
   static bool FindBlobInBlob(const brillo::SecureBlob& haystack,
                              const brillo::SecureBlob& needle) {
@@ -715,7 +715,7 @@ TEST_F(VaultKeysetTest, InitializeToAdd) {
   // Check if InitializeToAdd correctly copies keys
   // from parameter vault keyset to underlying data structure.
 
-  LibScryptCompatVaultKeyset vault_keyset;
+  VaultKeyset vault_keyset;
   vault_keyset.Initialize(&platform_, &crypto_);
   vault_keyset.CreateFromFileSystemKeyset(FileSystemKeyset::CreateRandom());
 
@@ -724,13 +724,16 @@ TEST_F(VaultKeysetTest, InitializeToAdd) {
   vault_keyset.SetResetIV(reset_iv);
   vault_keyset.SetFSCryptPolicyVersion(kFscryptPolicyVersion);
   vault_keyset.SetLegacyIndex(kLegacyIndex);
+  KeyBlobs key_blobs = {.vkk_key = brillo::SecureBlob(32, 'A'),
+                        .vkk_iv = brillo::SecureBlob(16, 'B'),
+                        .chaps_iv = brillo::SecureBlob(16, 'C')};
 
+  TpmBoundToPcrAuthBlockState pcr_state = {.salt = brillo::SecureBlob("salt")};
+  AuthBlockState auth_state = {.state = pcr_state};
+  ASSERT_THAT(vault_keyset.EncryptEx(key_blobs, auth_state),
+              hwsec_foundation::error::testing::IsOk());
   VaultKeyset vault_keyset_copy;
   vault_keyset_copy.InitializeToAdd(vault_keyset);
-
-  SecureBlob key(kPasswordKey);
-  ObfuscatedUsername obfuscated_username(kObfuscatedUsername);
-  ASSERT_TRUE(vault_keyset.Encrypt(key, obfuscated_username).ok());
 
   // Check that InitializeToAdd correctly copied vault_keyset fields
   // i.e. fek/fnek keys, reset seed, reset IV, and FSCrypt policy version
@@ -1222,6 +1225,10 @@ TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobs) {
   EXPECT_TRUE(pin_vault_keyset_.EncryptEx(key_blobs, auth_state).ok());
   EXPECT_TRUE(pin_vault_keyset_.HasResetSalt());
   EXPECT_FALSE(pin_vault_keyset_.HasWrappedResetSeed());
+  EXPECT_FALSE(pin_vault_keyset_.GetAuthLocked());
+
+  const SerializedVaultKeyset& serialized = pin_vault_keyset_.ToSerialized();
+  EXPECT_FALSE(serialized.key_data().policy().auth_locked());
 }
 
 TEST_F(LeCredentialsManagerTest, EncryptWithKeyBlobsFailWithBadAuthState) {
