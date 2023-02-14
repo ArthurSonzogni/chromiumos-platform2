@@ -126,7 +126,7 @@ base::Value SaveAsJson(const ipp::Frame& pkg) {
     if (groups.empty())
       continue;
     if (groups.size() > 1) {
-      base::Value arr(base::Value::Type::LIST);
+      base::Value::List arr;
       for (auto g : groups)
         arr.Append(SaveAsJson(g));
       obj.Set(ToString(gt), std::move(arr));
