@@ -18,6 +18,7 @@ rt_sigprocmask: 1
 setsockopt: 1
 ugetrlimit: 1
 socket: arg0 == AF_INET || arg0 == AF_INET6
+gettid: 1
 sendto: 1
 recvmsg: 1
 execve: 1
