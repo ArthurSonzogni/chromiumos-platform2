@@ -1402,7 +1402,10 @@ void AdaptiveChargingController::StopAdaptiveCharging() {
 
   recheck_alarm_->Stop();
   charge_alarm_->Stop();
-  SetSustain(kBatterySustainDisabled, kBatterySustainDisabled);
+  if (is_sustain_set_) {
+    SetSustain(kBatterySustainDisabled, kBatterySustainDisabled);
+  }
+
   is_sustain_set_ = false;
   SetChargeLimit(kSlowChargingDisabled);
   power_supply_->ClearAdaptiveChargingChargeDelay();
