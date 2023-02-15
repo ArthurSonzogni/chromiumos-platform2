@@ -33,6 +33,7 @@
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
+#include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/fake_platform.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
@@ -1296,6 +1297,9 @@ TEST(ScyptAuthBlockTest, DeriveTest) {
 
 class CryptohomeRecoveryAuthBlockTest : public testing::Test {
  public:
+  CryptohomeRecoveryAuthBlockTest()
+      : ledger_info_(FakeRecoveryMediatorCrypto::GetLedgerInfo()) {}
+
   void SetUp() override {
     ASSERT_TRUE(FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(
         &mediator_pub_key_));
@@ -1374,6 +1378,7 @@ class CryptohomeRecoveryAuthBlockTest : public testing::Test {
   brillo::SecureBlob mediator_pub_key_;
   brillo::SecureBlob epoch_pub_key_;
   cryptorecovery::CryptoRecoveryEpochResponse epoch_response_;
+  cryptorecovery::LedgerInfo ledger_info_;
   FakePlatform platform_;
 };
 
@@ -1417,6 +1422,11 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTest) {
       brillo::SecureBlob(serialized_response_proto);
   derive_cryptohome_recovery_auth_input.epoch_response =
       brillo::SecureBlob(serialized_epoch_response);
+  derive_cryptohome_recovery_auth_input.ledger_name = ledger_info_.name;
+  derive_cryptohome_recovery_auth_input.ledger_key_hash =
+      ledger_info_.key_hash.value();
+  derive_cryptohome_recovery_auth_input.ledger_public_key =
+      ledger_info_.public_key.value();
   derive_cryptohome_recovery_auth_input.ephemeral_pub_key = ephemeral_pub_key;
   auth_input.cryptohome_recovery_auth_input =
       derive_cryptohome_recovery_auth_input;
@@ -1486,6 +1496,11 @@ TEST_F(CryptohomeRecoveryAuthBlockTest, SuccessTestWithRevocation) {
   derive_cryptohome_recovery_auth_input.epoch_response =
       brillo::SecureBlob(serialized_epoch_response);
   derive_cryptohome_recovery_auth_input.ephemeral_pub_key = ephemeral_pub_key;
+  derive_cryptohome_recovery_auth_input.ledger_name = ledger_info_.name;
+  derive_cryptohome_recovery_auth_input.ledger_key_hash =
+      ledger_info_.key_hash.value();
+  derive_cryptohome_recovery_auth_input.ledger_public_key =
+      ledger_info_.public_key.value();
   auth_input.cryptohome_recovery_auth_input =
       derive_cryptohome_recovery_auth_input;
 

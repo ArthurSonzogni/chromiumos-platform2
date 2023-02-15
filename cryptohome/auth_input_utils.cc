@@ -52,6 +52,9 @@ AuthInput FromCryptohomeRecoveryAuthInput(
       .ephemeral_pub_key =
           cryptohome_recovery_ephemeral_pub_key.value_or(SecureBlob()),
       .recovery_response = SecureBlob(proto.recovery_response()),
+      .ledger_name = proto.ledger_info().name(),
+      .ledger_key_hash = proto.ledger_info().key_hash(),
+      .ledger_public_key = SecureBlob(proto.ledger_info().public_key()),
   };
 
   return AuthInput{.cryptohome_recovery_auth_input = recovery_auth_input};

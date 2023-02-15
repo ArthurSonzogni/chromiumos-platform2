@@ -103,7 +103,8 @@ SecureBlob GenerateScalar() {
 
 class RecoveryCryptoTest : public testing::Test {
  public:
-  RecoveryCryptoTest() {
+  RecoveryCryptoTest()
+      : ledger_info_(FakeRecoveryMediatorCrypto::GetLedgerInfo()) {
     onboarding_metadata_.cryptohome_user_type = UserType::kGaiaId;
     onboarding_metadata_.cryptohome_user = kFakeGaiaId;
     onboarding_metadata_.device_user_id = kFakeDeviceId;
@@ -196,6 +197,7 @@ class RecoveryCryptoTest : public testing::Test {
   SecureBlob epoch_pub_key_;
   SecureBlob epoch_priv_key_;
   CryptoRecoveryEpochResponse epoch_response_;
+  LedgerInfo ledger_info_;
   std::unique_ptr<RecoveryCryptoImpl> recovery_;
   std::unique_ptr<FakeRecoveryMediatorCrypto> mediator_;
 };
@@ -241,7 +243,8 @@ TEST_F(RecoveryCryptoTest, RecoveryTestSuccess) {
            generate_hsm_payload_response.encrypted_channel_priv_key,
        .epoch_response = epoch_response_,
        .recovery_response_proto = response_proto,
-       .obfuscated_username = ObfuscatedUsername()});
+       .obfuscated_username = ObfuscatedUsername(),
+       .ledger_info = ledger_info_});
   HsmResponsePlainText response_plain_text;
   EXPECT_THAT(recovery_->DecryptResponsePayload(
                   decrypt_response_payload_request, &response_plain_text),
@@ -318,7 +321,8 @@ TEST_F(RecoveryCryptoTest, MediateWithInvalidEpochPublicKey) {
            generate_hsm_payload_response.encrypted_channel_priv_key,
        .epoch_response = epoch_response_,
        .recovery_response_proto = response_proto,
-       .obfuscated_username = ObfuscatedUsername()});
+       .obfuscated_username = ObfuscatedUsername(),
+       .ledger_info = ledger_info_});
   HsmResponsePlainText response_plain_text;
   auto status = recovery_->DecryptResponsePayload(
       decrypt_response_payload_request, &response_plain_text);
@@ -338,7 +342,8 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidDealerPublicKey) {
       {.encrypted_channel_priv_key = channel_priv_key,
        .epoch_response = epoch_response_,
        .recovery_response_proto = response_proto,
-       .obfuscated_username = ObfuscatedUsername()});
+       .obfuscated_username = ObfuscatedUsername(),
+       .ledger_info = ledger_info_});
   HsmResponsePlainText response_plain_text;
   ASSERT_THAT(recovery_->DecryptResponsePayload(
                   decrypt_response_payload_request, &response_plain_text),
@@ -375,7 +380,8 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidDestinationShare) {
       {.encrypted_channel_priv_key = channel_priv_key,
        .epoch_response = epoch_response_,
        .recovery_response_proto = response_proto,
-       .obfuscated_username = ObfuscatedUsername()});
+       .obfuscated_username = ObfuscatedUsername(),
+       .ledger_info = ledger_info_});
   HsmResponsePlainText response_plain_text;
   EXPECT_THAT(recovery_->DecryptResponsePayload(
                   decrypt_response_payload_request, &response_plain_text),
@@ -410,7 +416,8 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidEphemeralKey) {
       {.encrypted_channel_priv_key = channel_priv_key,
        .epoch_response = epoch_response_,
        .recovery_response_proto = response_proto,
-       .obfuscated_username = ObfuscatedUsername()});
+       .obfuscated_username = ObfuscatedUsername(),
+       .ledger_info = ledger_info_});
   HsmResponsePlainText response_plain_text;
   EXPECT_THAT(recovery_->DecryptResponsePayload(
                   decrypt_response_payload_request, &response_plain_text),
@@ -445,7 +452,8 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidMediatedPointValue) {
       {.encrypted_channel_priv_key = channel_priv_key,
        .epoch_response = epoch_response_,
        .recovery_response_proto = response_proto,
-       .obfuscated_username = ObfuscatedUsername()});
+       .obfuscated_username = ObfuscatedUsername(),
+       .ledger_info = ledger_info_});
   HsmResponsePlainText response_plain_text;
   EXPECT_THAT(recovery_->DecryptResponsePayload(
                   decrypt_response_payload_request, &response_plain_text),
@@ -482,7 +490,8 @@ TEST_F(RecoveryCryptoTest, RecoverDestinationInvalidMediatedPoint) {
       {.encrypted_channel_priv_key = channel_priv_key,
        .epoch_response = epoch_response_,
        .recovery_response_proto = response_proto,
-       .obfuscated_username = ObfuscatedUsername()});
+       .obfuscated_username = ObfuscatedUsername(),
+       .ledger_info = ledger_info_});
   HsmResponsePlainText response_plain_text;
   EXPECT_THAT(recovery_->DecryptResponsePayload(
                   decrypt_response_payload_request, &response_plain_text),
@@ -619,7 +628,8 @@ TEST_F(RecoveryCryptoTest, DecryptResponsePayloadServerError) {
       {.encrypted_channel_priv_key = channel_priv_key,
        .epoch_response = epoch_response_,
        .recovery_response_proto = response_proto,
-       .obfuscated_username = ObfuscatedUsername()});
+       .obfuscated_username = ObfuscatedUsername(),
+       .ledger_info = ledger_info_});
   HsmResponsePlainText response_plain_text;
   auto status = recovery_->DecryptResponsePayload(
       decrypt_response_payload_request, &response_plain_text);

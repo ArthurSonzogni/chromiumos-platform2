@@ -388,7 +388,8 @@ bool DoRecoveryCryptoDecryptAction(
           {.encrypted_channel_priv_key = channel_priv_key,
            .epoch_response = epoch_response,
            .recovery_response_proto = recovery_response_proto,
-           .obfuscated_username = GetTestObfuscatedUsername()}),
+           .obfuscated_username = GetTestObfuscatedUsername(),
+           .ledger_info = FakeRecoveryMediatorCrypto::GetLedgerInfo()}),
       &response_plain_text);
   if (!decrypt_result.ok()) {
     LOG(ERROR) << "Failed to decrypt response payload "

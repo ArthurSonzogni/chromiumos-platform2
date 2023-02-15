@@ -10,6 +10,7 @@
 
 #include <brillo/secure_blob.h>
 #include <chromeos/cbor/values.h>
+#include <libhwsec/structures/explicit_init.h>
 
 namespace cryptohome {
 namespace cryptorecovery {
@@ -68,6 +69,17 @@ struct LedgerSignedProof {
   std::vector<brillo::Blob> inclusion_proof;
   // Record of what was logged in the ledger.
   LoggedRecord logged_record;
+};
+
+// The ledger info from the chrome side and used by Cryptohome
+// recovery flow to determine which ledger is used.
+struct LedgerInfo {
+  // Ledger's name.
+  std::string name;
+  // Ledger's public key hash.
+  hwsec::ExplicitInit<uint32_t> key_hash;
+  // Ledger's public key.
+  hwsec::ExplicitInit<brillo::SecureBlob> public_key;
 };
 
 // `OnboardingMetadata` contains essential information that needs to be

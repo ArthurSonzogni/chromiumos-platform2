@@ -75,6 +75,7 @@ struct DecryptResponsePayloadRequest {
   CryptoRecoveryEpochResponse epoch_response;
   CryptoRecoveryRpcResponse recovery_response_proto;
   hwsec_foundation::NoDefault<ObfuscatedUsername> obfuscated_username;
+  LedgerInfo ledger_info;
 };
 
 // Cryptographic operations for cryptohome recovery.

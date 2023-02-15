@@ -27,6 +27,10 @@ class FakeRecoveryMediatorCrypto {
   // Creates instance. Returns nullptr if error occurred.
   static std::unique_ptr<FakeRecoveryMediatorCrypto> Create();
 
+  // Returns hardcoded dev ledger info that can be used to verify the payload
+  // created with MediateHsmPayload().
+  static LedgerInfo GetLedgerInfo();
+
   // Returns hardcoded fake mediator public key for encrypting mediator share.
   // Do not use this key in production!
   // Returns false if error occurred.

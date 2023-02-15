@@ -20,7 +20,8 @@ namespace cryptohome {
 // Data required for Cryptohome Recovery flow.
 // For creation of the recovery key, `mediator_pub_key` field should be set.
 // For derivation of the recovery key, `epoch_pub_key`, `ephemeral_pub_key`,
-// `recovery_response` fields should be set.
+// `recovery_response`, `ledger_name`, `ledger_key_hash`, `ledger_public_key`
+// fields should be set.
 struct CryptohomeRecoveryAuthInput {
   // Public key of the mediator for Cryptohome recovery flow.
   std::optional<brillo::SecureBlob> mediator_pub_key;
@@ -38,6 +39,15 @@ struct CryptohomeRecoveryAuthInput {
   // A response received from Recovery Mediator service and used by Cryptohome
   // recovery flow to derive the wrapping keys.
   std::optional<brillo::SecureBlob> recovery_response;
+
+  // The ledger info from the chrome side and used by Cryptohome
+  // recovery flow to determine which ledger is used:
+  // Ledger's name.
+  std::string ledger_name;
+  // Ledger's public key hash.
+  uint32_t ledger_key_hash;
+  // Ledger's public key.
+  std::optional<brillo::SecureBlob> ledger_public_key;
 };
 
 // Data required for Challenge Credential flow.

@@ -14,7 +14,8 @@ namespace cryptorecovery {
 // with the specified hash and index, relatively to the tree of the given size
 // and root hash. Requires 0 <= index < size.
 [[nodiscard]] bool VerifyInclusionProof(
-    const LedgerSignedProof& ledger_signed_proof);
+    const LedgerSignedProof& ledger_signed_proof,
+    const LedgerInfo& ledger_info);
 
 }  // namespace cryptorecovery
 }  // namespace cryptohome

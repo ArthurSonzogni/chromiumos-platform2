@@ -251,18 +251,44 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   const ObfuscatedUsername& obfuscated_username =
       auth_input.obfuscated_username.value();
 
-  DCHECK(auth_input.cryptohome_recovery_auth_input.has_value());
+  if (!auth_input.cryptohome_recovery_auth_input.has_value()) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockNoAuthInputInDerive),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
   auto cryptohome_recovery_auth_input =
       auth_input.cryptohome_recovery_auth_input.value();
-  DCHECK(cryptohome_recovery_auth_input.epoch_response.has_value());
+  if (!cryptohome_recovery_auth_input.epoch_response.has_value()) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockNoEpochResponseInDerive),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
   brillo::SecureBlob serialized_epoch_response =
       cryptohome_recovery_auth_input.epoch_response.value();
-  DCHECK(cryptohome_recovery_auth_input.ephemeral_pub_key.has_value());
+  if (!cryptohome_recovery_auth_input.ephemeral_pub_key.has_value()) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockNoEphPubKeyInDerive),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
   const brillo::SecureBlob& ephemeral_pub_key =
       cryptohome_recovery_auth_input.ephemeral_pub_key.value();
-  DCHECK(cryptohome_recovery_auth_input.recovery_response.has_value());
+  if (!cryptohome_recovery_auth_input.recovery_response.has_value()) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockNoRecoveryResponseInDerive),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
   brillo::SecureBlob serialized_response_proto =
       cryptohome_recovery_auth_input.recovery_response.value();
+  if (!cryptohome_recovery_auth_input.ledger_public_key.has_value()) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocRecoveryAuthBlockNoLedgerPubKeyInDerive),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
+  }
 
   cryptorecovery::CryptoRecoveryEpochResponse epoch_response;
   if (!epoch_response.ParseFromString(serialized_epoch_response.to_string())) {
@@ -296,7 +322,12 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
           {.encrypted_channel_priv_key = auth_state->encrypted_channel_priv_key,
            .epoch_response = epoch_response,
            .recovery_response_proto = response_proto,
-           .obfuscated_username = obfuscated_username}),
+           .obfuscated_username = obfuscated_username,
+           .ledger_info =
+               {.name = cryptohome_recovery_auth_input.ledger_name,
+                .key_hash = cryptohome_recovery_auth_input.ledger_key_hash,
+                .public_key =
+                    cryptohome_recovery_auth_input.ledger_public_key.value()}}),
       &response_plain_text);
   if (!decrypt_result.ok()) {
     return MakeStatus<CryptohomeCryptoError>(

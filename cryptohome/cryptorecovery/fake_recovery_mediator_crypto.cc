@@ -42,6 +42,14 @@ namespace cryptohome {
 namespace cryptorecovery {
 namespace {
 
+// Hard-coded development ledger info, including the public key, name and key
+// hash. It mirrors the value from the server.
+constexpr char kDevLedgerName[] = "ChromeOSLedgerOwnerPrototype";
+constexpr uint32_t kDevLedgerPublicKeyHash = 2517252912;
+constexpr char kDevLedgerPublicKey[] =
+    "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUL2cKW4wHEdyWDjjJktxkijFOKJZ8rflR-Sfb-"
+    "ToowJtLyNOBh6wj0anP4kP4llXK4HMZoJDKy9texKJl2UOog==";
+
 static const char kFakePublicLedgerEntryHex[] =
     "A46E6C6F675F656E7472795F686173685820CC1CAB36511F9D6BFFB6456F69C1711021F8CC"
     "BB57D6699496A1FFCF634B1AFD707075626C69635F74696D657374616D701A6302C7006B72"
@@ -208,6 +216,13 @@ FakeRecoveryMediatorCrypto::FakeRecoveryMediatorCrypto(EllipticCurve ec)
     : ec_(std::move(ec)) {}
 
 // static
+LedgerInfo FakeRecoveryMediatorCrypto::GetLedgerInfo() {
+  return LedgerInfo{.name = kDevLedgerName,
+                    .key_hash = kDevLedgerPublicKeyHash,
+                    .public_key = brillo::SecureBlob(kDevLedgerPublicKey)};
+}
+
+// static
 bool FakeRecoveryMediatorCrypto::GetFakeMediatorPublicKey(
     brillo::SecureBlob* mediator_pub_key) {
   if (!brillo::SecureBlob::HexStringToSecureBlob(kFakeMediatorPublicKeyHex,
@@ -273,7 +288,6 @@ bool FakeRecoveryMediatorCrypto::GetFakeEpochResponse(
                                       epoch_metadata_cbor.size());
   return true;
 }
-
 
 bool FakeRecoveryMediatorCrypto::DecryptHsmPayloadPlainText(
     const brillo::SecureBlob& mediator_priv_key,

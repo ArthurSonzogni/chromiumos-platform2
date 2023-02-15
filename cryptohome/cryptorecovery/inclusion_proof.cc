@@ -34,13 +34,6 @@ constexpr char kSigSplit[] = "\n\n";
 constexpr char kNewline[] = "\n";
 constexpr char kSigPrefix[] = "— ";
 constexpr char kSigNameSplit[] = " ";
-// Hard-coded development ledger info, including the public key, name and key
-// hash. It mirrors the value from the server.
-constexpr char kDevLedgerName[] = "ChromeOSLedgerOwnerPrototype";
-constexpr uint32_t kDevLedgerPublicKeyHash = 2517252912;
-constexpr char kDevLedgerPublicKey[] =
-    "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEUL2cKW4wHEdyWDjjJktxkijFOKJZ8rflR-Sfb-"
-    "ToowJtLyNOBh6wj0anP4kP4llXK4HMZoJDKy9texKJl2UOog==";
 
 constexpr int kLeafHashPrefix = 0;
 constexpr int kNodeHashPrefix = 1;
@@ -94,7 +87,9 @@ brillo::Blob HashChildren(const brillo::Blob& left, const brillo::Blob& right) {
   return hwsec_foundation::Sha256(brillo::CombineBlobs({prefix, left, right}));
 }
 
-bool VerifySignature(const std::string& text, const std::string& signatures) {
+bool VerifySignature(const std::string& text,
+                     const std::string& signatures,
+                     const LedgerInfo& ledger_info) {
   int num_sig = 0;
   base::StringTokenizer tokenizer(signatures, kNewline);
   tokenizer.set_options(base::StringTokenizer::RETURN_DELIMS);
@@ -146,18 +141,23 @@ bool VerifySignature(const std::string& text, const std::string& signatures) {
         reinterpret_cast<const uint8_t*>(
             signature_str.substr(0, kSignatureHashSize).c_str()),
         &key_hash);
-    // For the moment, we would only allow logging at the dev ledger.
-    // TODO(b:232747549): Add explicit methods to verify either dev or prod
-    // ledger signatures.
-    if (key_hash != kDevLedgerPublicKeyHash ||
-        signature_tokens[0] != kDevLedgerName) {
+    if (ledger_info.name.empty()) {
+      LOG(ERROR) << "Ledger name is empty.";
+      return false;
+    }
+    if (ledger_info.public_key->empty()) {
+      LOG(ERROR) << "Ledger public key is not present.";
+      return false;
+    }
+    if (signature_tokens[0] != ledger_info.name ||
+        key_hash != ledger_info.key_hash.value()) {
       LOG(ERROR) << "Unknown ledger key hash or name.";
       return false;
     }
 
     // Impoty Public key of PKIX, ASN.1 DER form to EC_KEY.
     std::string ledger_public_key_decoded;
-    if (!base::Base64UrlDecode(kDevLedgerPublicKey,
+    if (!base::Base64UrlDecode(ledger_info.public_key.value().to_string(),
                                base::Base64UrlDecodePolicy::IGNORE_PADDING,
                                &ledger_public_key_decoded)) {
       LOG(ERROR) << "Failed at decoding from url base64.";
@@ -202,7 +202,9 @@ bool VerifySignature(const std::string& text, const std::string& signatures) {
 // * the log origin is that expected.
 // The signatures on the note will include the log signature if no error is
 // returned, plus any signatures from otherVerifiers that were found.
-bool ParseCheckPoint(std::string checkpoint_note_str, Checkpoint* check_point) {
+bool ParseCheckPoint(std::string checkpoint_note_str,
+                     const LedgerInfo& ledger_info,
+                     Checkpoint* check_point) {
   std::vector<std::string> checkpoint_note_fields = brillo::string_utils::Split(
       checkpoint_note_str, kSigSplit, /*trim_whitespaces=*/false,
       /*purge_empty_strings=*/false);
@@ -211,7 +213,8 @@ bool ParseCheckPoint(std::string checkpoint_note_str, Checkpoint* check_point) {
     return false;
   }
 
-  if (!VerifySignature(checkpoint_note_fields[0], checkpoint_note_fields[1])) {
+  if (!VerifySignature(checkpoint_note_fields[0], checkpoint_note_fields[1],
+                       ledger_info)) {
     LOG(ERROR) << "Failed to verify the signature of the checkpoint note.";
     return false;
   }
@@ -283,12 +286,13 @@ bool CalculateRootHash(const brillo::Blob& leaf_hash,
 
 }  // namespace
 
-bool VerifyInclusionProof(const LedgerSignedProof& ledger_signed_proof) {
+bool VerifyInclusionProof(const LedgerSignedProof& ledger_signed_proof,
+                          const LedgerInfo& ledger_info) {
   // Parse checkpoint note.
   Checkpoint check_point;
   if (!ParseCheckPoint(
           brillo::BlobToString(ledger_signed_proof.checkpoint_note),
-          &check_point)) {
+          ledger_info, &check_point)) {
     LOG(ERROR) << "Failed to parse checkpoint note.";
     return false;
   }
