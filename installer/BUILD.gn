@@ -4,8 +4,77 @@
 
 import("//common-mk/pkg_config.gni")
 
+if (use.lvm_stateful_partition) {
+  action("chromeos_install_script") {
+    inputs = ["chromeos-install"]
+    outputs = ["${root_gen_dir}/chromeos-install"]
+
+    script = "/bin/sh"
+    args = [
+      "-c",
+      "sed '/DEFINE_boolean lvm_stateful/s:FLAGS_FALSE:FLAGS_TRUE:'" +
+          " \$S/chromeos-install > ${root_gen_dir}/chromeos-install",
+    ]
+  }
+} else {
+  copy("chromeos_install_script") {
+    sources = [ "chromeos-install" ]
+    outputs = [ "${root_gen_dir}/chromeos-install" ]
+  }
+}
+
+install_config("sbin_scripts") {
+  sources = [
+    "${root_gen_dir}/chromeos-install",
+    "chromeos-install-kernel",
+    "chromeos-postinst",
+    "chromeos-recovery",
+    "chromeos-setdevpasswd",
+    "chromeos-setgoodkernel",
+    "encrypted_import",
+  ]
+  deps = [ ":chromeos_install_script" ]
+  install_path = "sbin"
+  type = "executable"
+}
+
+action("postinst_script_symlink") {
+  deps = [ ":sbin_scripts" ]
+  script = "/bin/ln"
+  outputs = [ "${root_gen_dir}/postinst" ]
+  args = [
+    "-sf",
+    "usr/sbin/chromeos-postinst",
+    "${root_gen_dir}/postinst",
+  ]
+  install_configs = [
+    {
+      path = "/"
+    },
+  ]
+}
+
+install_config("crx_import_script") {
+  sources = [
+    "init/crx-import.sh",
+  ]
+  install_path = "/usr/share/cros/init"
+  type = "executable"
+}
+
+install_config("init_confs") {
+  sources = [ "init/*.conf" ]
+  install_path = "/etc/init"
+  glob = true
+}
+
 group("all") {
-  deps = [ ":cros_installer" ]
+  deps = [
+    ":cros_installer",
+    ":crx_import_script",
+    ":postinst_script_symlink",
+    ":sbin_scripts",
+  ]
   if (!use.cros_host) {
     deps += [ ":evwaitkey" ]
   }
@@ -14,6 +83,9 @@ group("all") {
   }
   if (use.test) {
     deps += [ ":cros_installer_test" ]
+  }
+  if (!use.systemd) {
+    deps += [ ":init_confs" ]
   }
 }
 
@@ -92,11 +164,13 @@ executable("cros_installer") {
     ":target_defaults",
   ]
   deps = [ ":libcros_installer" ]
+  install_path = "bin"
 }
 
 executable("evwaitkey") {
   sources = [ "util/evwaitkey.c" ]
   configs += [ ":target_defaults" ]
+  install_path = "sbin"
 }
 
 if (use.mtd) {
@@ -113,6 +187,7 @@ if (use.mtd) {
       ":target_defaults",
     ]
     deps = [ ":libcros_installer" ]
+    install_path = "bin"
   }
 }
 
