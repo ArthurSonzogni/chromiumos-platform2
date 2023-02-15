@@ -3534,11 +3534,8 @@ void WiFi::SetPhyState(WiFiState::PhyState new_state,
               << WiFiState::LegacyStateString(wifi_state_->GetPhyState(),
                                               wifi_state_->GetScanMethod())
               << " -> " << wifi_state_->LegacyStateString(new_state, new_method)
-              << "ensured scan: " << wifi_state_->GetEnsuredScanStateString();
+              << " ensured scan: " << wifi_state_->GetEnsuredScanStateString();
   }
-
-  if (!state_or_method_changed)
-    return;
 
   // Actually change the state.
   WiFiState::PhyState old_state = wifi_state_->GetPhyState();
@@ -3546,6 +3543,16 @@ void WiFi::SetPhyState(WiFiState::PhyState new_state,
   bool old_scan_pending = GetScanPending(nullptr);
   wifi_state_->SetPhyState(new_state, new_method);
   bool new_scan_pending = GetScanPending(nullptr);
+
+  // Always handle ensured scans on idle transitions.
+  if (new_state == WiFiState::PhyState::kIdle) {
+    HandleEnsuredScan(old_state);
+  }
+
+  // Avoid reporting metrics if nothing changed.
+  if (!state_or_method_changed)
+    return;
+
   if (old_scan_pending != new_scan_pending) {
     adaptor()->EmitBoolChanged(kScanningProperty, new_scan_pending);
   }
@@ -3553,7 +3560,6 @@ void WiFi::SetPhyState(WiFiState::PhyState new_state,
     case WiFiState::PhyState::kIdle:
       metrics()->ResetScanTimer(interface_index());
       metrics()->ResetConnectTimer(interface_index());
-      HandleEnsuredScan(old_state);
       break;
     case WiFiState::PhyState::kScanning:  // FALLTHROUGH
     case WiFiState::PhyState::kBackgroundScanning:
@@ -3588,6 +3594,20 @@ void WiFi::SetPhyState(WiFiState::PhyState new_state,
 }
 
 void WiFi::HandleEnsuredScan(WiFiState::PhyState old_phy_state) {
+  if (wifi_state_->GetEnsuredScanState() ==
+      WiFiState::EnsuredScanState::kIdle) {
+    return;
+  }
+  // If the device was disabled or the supplicant disappeared between the
+  // call to ensure the scan and this call, attempt to connect to a best service
+  // on another device.
+  if (!enabled() || !supplicant_present_) {
+    wifi_state_->SetEnsuredScanState(WiFiState::EnsuredScanState::kIdle);
+    // TODO(b/270969976): Remove the call to ConnectToBestServices when it is
+    // no longer necessary in this case.
+    manager()->ConnectToBestServices(nullptr);
+    return;
+  }
   switch (wifi_state_->GetEnsuredScanState()) {
     case WiFiState::EnsuredScanState::kWaiting:
       wifi_state_->SetEnsuredScanState(WiFiState::EnsuredScanState::kScanning);

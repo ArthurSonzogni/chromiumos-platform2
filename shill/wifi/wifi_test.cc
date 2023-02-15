@@ -712,6 +712,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     EXPECT_EQ(method, wifi_->wifi_state_->GetScanMethod());
   }
 
+  void VerifyEnsuredScanState(WiFiState::EnsuredScanState state) const {
+    EXPECT_EQ(state, wifi_->wifi_state_->GetEnsuredScanState());
+  }
+
   void PropertiesChanged(const KeyValueStore& props) {
     wifi_->PropertiesChanged(props);
   }
@@ -1272,6 +1276,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
 
   void EnsureScanAndConnectToBestService() {
     wifi_->EnsureScanAndConnectToBestService(nullptr);
+  }
+
+  void SetEnsuredScanState(WiFiState::EnsuredScanState ensured_scan_state) {
+    wifi_->wifi_state_->SetEnsuredScanState(ensured_scan_state);
   }
 
   void HandleEnsuredScan(
@@ -1907,6 +1915,7 @@ TEST_F(WiFiMainTest, EnsuredScan) {
       .Times(AnyNumber());
   ExpectScanStart(WiFiState::ScanMethod::kFull, false);
   StartWiFi();
+  VerifyEnsuredScanState(WiFiState::EnsuredScanState::kIdle);
   event_dispatcher_->DispatchPendingEvents();
 
   // Handle the initial scan from setup
@@ -1914,6 +1923,7 @@ TEST_F(WiFiMainTest, EnsuredScan) {
   ReportScanDone();
   event_dispatcher_->DispatchPendingEvents();
   VerifyScanState(WiFiState::PhyState::kIdle, WiFiState::ScanMethod::kNone);
+  VerifyEnsuredScanState(WiFiState::EnsuredScanState::kIdle);
 
   // Ensure the Scan
   ExpectScanStart(WiFiState::ScanMethod::kFull, false);
@@ -1922,12 +1932,41 @@ TEST_F(WiFiMainTest, EnsuredScan) {
 
   // Verify the ensured scan
   VerifyScanState(WiFiState::PhyState::kScanning, WiFiState::ScanMethod::kFull);
+  VerifyEnsuredScanState(WiFiState::EnsuredScanState::kScanning);
   ExpectScanStop();
   ReportScanDone();
 
   // Verify that ConnectToBestServices is called
   EXPECT_CALL(*manager(), ConnectToBestServices(_));
   event_dispatcher_->DispatchPendingEvents();
+  VerifyEnsuredScanState(WiFiState::EnsuredScanState::kIdle);
+}
+
+TEST_F(WiFiMainTest, ConnectToBestServicesDeviceDisabled) {
+  event_dispatcher_->DispatchPendingEvents();
+
+  EnsureScanAndConnectToBestService();
+
+  // Verify that ConnectToBestServices is called
+  EXPECT_CALL(*manager(), ConnectToBestServices(_));
+  event_dispatcher_->DispatchPendingEvents();
+}
+
+TEST_F(WiFiMainTest, ConnectToBestServicesNoSupplicant) {
+  // Setup Start without SupplicantProxy to ensure idle state.
+  StartWiFi(false);
+  event_dispatcher_->DispatchPendingEvents();
+
+  // Handle the initial scan from setup
+  VerifyScanState(WiFiState::PhyState::kIdle, WiFiState::ScanMethod::kNone);
+  VerifyEnsuredScanState(WiFiState::EnsuredScanState::kIdle);
+  EnsureScanAndConnectToBestService();
+  VerifyEnsuredScanState(WiFiState::EnsuredScanState::kScanning);
+  // Verify that ConnectToBestServices is called
+  EXPECT_CALL(*manager(), ConnectToBestServices(_));
+  event_dispatcher_->DispatchPendingEvents();
+  VerifyScanState(WiFiState::PhyState::kIdle, WiFiState::ScanMethod::kNone);
+  VerifyEnsuredScanState(WiFiState::EnsuredScanState::kIdle);
 }
 
 TEST_F(WiFiMainTest, QueueEnsuredScan) {
@@ -1936,24 +1975,31 @@ TEST_F(WiFiMainTest, QueueEnsuredScan) {
       .Times(AnyNumber());
   ExpectScanStart(WiFiState::ScanMethod::kFull, false);
   StartWiFi();
+  VerifyEnsuredScanState(WiFiState::EnsuredScanState::kIdle);
   event_dispatcher_->DispatchPendingEvents();
 
   // Queue the ensured scan
-  ExpectScanStart(WiFiState::ScanMethod::kFull, false);
   EnsureScanAndConnectToBestService();
-  // Handle the initial scan
+  ExpectScanStart(WiFiState::ScanMethod::kFull, false);
+  VerifyScanState(WiFiState::PhyState::kScanning, WiFiState::ScanMethod::kFull);
+  VerifyEnsuredScanState(WiFiState::EnsuredScanState::kWaiting);
+  // Handle the initial scan from setup
   ExpectScanStop();
   ReportScanDone();
   event_dispatcher_->DispatchPendingEvents();
 
   // Verify the ensured scan
   VerifyScanState(WiFiState::PhyState::kScanning, WiFiState::ScanMethod::kFull);
+  VerifyEnsuredScanState(WiFiState::EnsuredScanState::kScanning);
+  event_dispatcher_->DispatchPendingEvents();
+  // Handle the ensured scan
   ExpectScanStop();
   ReportScanDone();
 
   // Verify that ConnectToBestServices is called
   EXPECT_CALL(*manager(), ConnectToBestServices(_));
   event_dispatcher_->DispatchPendingEvents();
+  VerifyEnsuredScanState(WiFiState::EnsuredScanState::kIdle);
 }
 
 TEST_F(WiFiMainTest, QueuedEnsuredScan) {
@@ -1971,14 +2017,19 @@ TEST_F(WiFiMainTest, QueuedEnsuredScan) {
   VerifyScanState(WiFiState::PhyState::kIdle, WiFiState::ScanMethod::kNone);
 
   // Queue the ensured scan
+  SetEnsuredScanState(WiFiState::EnsuredScanState::kWaiting);
+  VerifyEnsuredScanState(WiFiState::EnsuredScanState::kWaiting);
+
+  // Ensure that an idle -> idle transition triggers a scan.
+  SetScanState(WiFiState::PhyState::kIdle, WiFiState::ScanMethod::kNone, "");
+  VerifyScanState(WiFiState::PhyState::kIdle, WiFiState::ScanMethod::kNone);
   ExpectScanStart(WiFiState::ScanMethod::kFull, false);
-  HandleEnsuredScan(WiFiState::PhyState::kScanning,
-                    WiFiState::EnsuredScanState::kWaiting,
-                    WiFiState::EnsuredScanState::kScanning);
+
   event_dispatcher_->DispatchPendingEvents();
 
   // Verify the ensured scan
   VerifyScanState(WiFiState::PhyState::kScanning, WiFiState::ScanMethod::kFull);
+  VerifyEnsuredScanState(WiFiState::EnsuredScanState::kScanning);
   ExpectScanStop();
   ReportScanDone();
 
