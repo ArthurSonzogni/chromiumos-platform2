@@ -48,7 +48,7 @@ Buffer CreateVertexBuffer(float x, float y, float width, float height) {
   const uint8_t* buffer_as_bytes =
       reinterpret_cast<const uint8_t*>(raw_buffer.data());
   Buffer buffer(kBufferSizeBytes, GL_STATIC_DRAW);
-  buffer.Set({buffer_as_bytes, kBufferSizeBytes});
+  buffer.Set({buffer_as_bytes, static_cast<size_t>(kBufferSizeBytes)});
   return buffer;
 }
 
