@@ -1298,8 +1298,8 @@ void Cellular::Disconnect(Error* error, const char* reason) {
   }
   StopPPP();
   explicit_disconnect_ = true;
-  capability_->Disconnect(base::BindOnce(&Cellular::OnDisconnectReply,
-                                         weak_ptr_factory_.GetWeakPtr()));
+  capability_->DisconnectAll(base::BindOnce(&Cellular::OnDisconnectReply,
+                                            weak_ptr_factory_.GetWeakPtr()));
 }
 
 void Cellular::OnDisconnectReply(const Error& error) {

@@ -642,7 +642,7 @@ void CellularCapability3gpp::Connect(ApnList::ApnType apn_type,
   ConnectionAttemptConnect(apn_type);
 }
 
-void CellularCapability3gpp::Disconnect(ResultOnceCallback callback) {
+void CellularCapability3gpp::DisconnectAll(ResultOnceCallback callback) {
   SLOG(this, 3) << __func__;
   if (!modem_simple_proxy_) {
     Error error;
@@ -655,6 +655,31 @@ void CellularCapability3gpp::Disconnect(ResultOnceCallback callback) {
   // If "/" is passed as the bearer path, ModemManager will disconnect all
   // bearers.
   modem_simple_proxy_->Disconnect(kRootPath, std::move(callback),
+                                  kTimeoutDisconnect.InMilliseconds());
+}
+
+void CellularCapability3gpp::Disconnect(ApnList::ApnType apn_type,
+                                        ResultOnceCallback callback) {
+  SLOG(this, 3) << __func__;
+  if (!modem_simple_proxy_) {
+    Error error;
+    Error::PopulateAndLog(FROM_HERE, &error, Error::kWrongState, "No proxy");
+    std::move(callback).Run(error);
+    return;
+  }
+
+  CellularBearer* bearer = GetActiveBearer(apn_type);
+  if (!bearer) {
+    Error error;
+    Error::PopulateAndLog(FROM_HERE, &error, Error::kWrongState,
+                          "Not connected");
+    std::move(callback).Run(error);
+    return;
+  }
+
+  SLOG(this, 2) << "Disconnect bearer (" << ApnList::GetApnTypeString(apn_type)
+                << ").";
+  modem_simple_proxy_->Disconnect(bearer->dbus_path(), std::move(callback),
                                   kTimeoutDisconnect.InMilliseconds());
 }
 

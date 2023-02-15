@@ -829,7 +829,58 @@ TEST_F(CellularCapability3gppTest, DisconnectNoProxy) {
   EXPECT_CALL(*modem_simple_proxy, Disconnect(_, _, _)).Times(0);
   ReleaseCapabilityProxies();
   EXPECT_CALL(*this, TestCallback(IsFailure()));
-  capability_->Disconnect(std::move(callback));
+  capability_->DisconnectAll(std::move(callback));
+}
+
+TEST_F(CellularCapability3gppTest, DisconnectAllBearers) {
+  mm1::MockModemSimpleProxy* modem_simple_proxy = modem_simple_proxy_.get();
+  SetSimpleProxy();
+
+  auto return_success = [](ResultOnceCallback callback) {
+    std::move(callback).Run(Error(Error::kSuccess));
+  };
+
+  ResultOnceCallback callback = base::BindOnce(
+      &CellularCapability3gppTest::TestCallback, base::Unretained(this));
+  EXPECT_CALL(
+      *modem_simple_proxy,
+      Disconnect(CellularCapability3gpp::kRootPath, _,
+                 CellularCapability3gpp::kTimeoutDisconnect.InMilliseconds()))
+      .WillOnce(WithArg<1>(Invoke(return_success)));
+
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  capability_->DisconnectAll(std::move(callback));
+}
+
+TEST_F(CellularCapability3gppTest, DisconnectSingleBearer) {
+  mm1::MockModemSimpleProxy* modem_simple_proxy = modem_simple_proxy_.get();
+  SetSimpleProxy();
+
+  RpcIdentifier default_bearer_path =
+      RpcIdentifier(base::StringPrintf("%s/0", kDefaultActiveBearerPathPrefix));
+  RpcIdentifier dun_bearer_path =
+      RpcIdentifier(base::StringPrintf("%s/1", kDunActiveBearerPathPrefix));
+  capability_->OnBearersChanged({default_bearer_path, dun_bearer_path});
+  capability_->UpdateActiveBearers();
+
+  auto return_success = [](ResultOnceCallback callback) {
+    std::move(callback).Run(Error(Error::kSuccess));
+  };
+
+  ResultOnceCallback callback = base::BindOnce(
+      &CellularCapability3gppTest::TestCallback, base::Unretained(this));
+  EXPECT_CALL(
+      *modem_simple_proxy,
+      Disconnect(dun_bearer_path, _,
+                 CellularCapability3gpp::kTimeoutDisconnect.InMilliseconds()))
+      .WillOnce(WithArg<1>(Invoke(return_success)));
+  EXPECT_CALL(*modem_simple_proxy, Disconnect(default_bearer_path, _, _))
+      .Times(0);
+  EXPECT_CALL(*modem_simple_proxy,
+              Disconnect(CellularCapability3gpp::kRootPath, _, _))
+      .Times(0);
+  EXPECT_CALL(*this, TestCallback(IsSuccess()));
+  capability_->Disconnect(ApnList::ApnType::kDun, std::move(callback));
 }
 
 TEST_F(CellularCapability3gppTest, SimLockStatusChanged) {

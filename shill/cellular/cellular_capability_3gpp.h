@@ -195,7 +195,9 @@ class CellularCapability3gpp {
   void Connect(ApnList::ApnType apn_type, ResultOnceCallback callback);
 
   // Disconnects the modem from all networks.
-  void Disconnect(ResultOnceCallback callback);
+  void DisconnectAll(ResultOnceCallback callback);
+  // Disconnects the modem from the network specified by the APN type.
+  void Disconnect(ApnList::ApnType apn_type, ResultOnceCallback callback);
 
   // Returns a pointer to the current active bearer object or nullptr if no
   // active bearer exists. The returned bearer object is managed by this
@@ -337,6 +339,7 @@ class CellularCapability3gpp {
   FRIEND_TEST(CellularCapability3gppTest, SignalPropertiesChanged);
   FRIEND_TEST(CellularCapability3gppTest, Reset);
   FRIEND_TEST(CellularCapability3gppTest, SetInitialEpsBearer);
+  FRIEND_TEST(CellularCapability3gppTest, DisconnectSingleBearer);
   FRIEND_TEST(CellularCapability3gppTest, SimLockStatusChanged);
   FRIEND_TEST(CellularCapability3gppTest, SimLockStatusToProperty);
   FRIEND_TEST(CellularCapability3gppTest, SimPathChanged);
