@@ -1635,8 +1635,7 @@ bool Cellular::SetPolicyAllowRoaming(const bool& value, Error* error) {
   manager()->UpdateDevice(this);
 
   if (service_ && service_->IsRoamingRuleViolated()) {
-    Error error;
-    Disconnect(&error, __func__);
+    Disconnect(nullptr, "policy updated: roaming rule violated");
   }
 
   return true;
@@ -1929,8 +1928,7 @@ void Cellular::OnPPPDied(pid_t pid, int exit) {
   } else {
     SetServiceFailure(PPPDaemon::ExitStatusToFailure(exit));
   }
-  Error error;
-  Disconnect(&error, __func__);
+  Disconnect(nullptr, "unexpected pppd exit");
 }
 
 bool Cellular::ModemIsEnabledButNotRegistered() {
