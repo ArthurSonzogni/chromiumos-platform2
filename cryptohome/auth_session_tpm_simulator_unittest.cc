@@ -406,6 +406,64 @@ class AuthSessionWithTpmSimulatorUssMigrationAgnosticTest
   std::unique_ptr<SetUssExperimentOverride> uss_experiment_override_;
 };
 
+// Test that it's possible to migrate PIN from VaultKeyset to UserSecretStash
+// even after the password was already migrated and recovery (a USS-only factor)
+// was added and used as well.
+TEST_F(AuthSessionWithTpmSimulatorUssMigrationTest,
+       CompleteUssMigrationAfterRecoveryMidWay) {
+  auto create_auth_session = [this]() {
+    return AuthSession::Create(kUsername,
+                               user_data_auth::AUTH_SESSION_FLAGS_NONE,
+                               AuthIntent::kDecrypt, backing_apis_);
+  };
+
+  //  Assert. Create a user with password and PIN VKs.
+  SetStorageType(AuthFactorStorageType::kVaultKeyset);
+  {
+    std::unique_ptr<AuthSession> auth_session = create_auth_session();
+    ASSERT_TRUE(auth_session);
+    EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
+    EXPECT_THAT(AddPasswordFactor(kPasswordLabel, kPassword, *auth_session),
+                IsOk());
+    EXPECT_THAT(AddPinFactor(kPinLabel, kPin, *auth_session), IsOk());
+  }
+
+  // Act. Enable USS experiment, add recovery (after using the password and
+  // hence migrating it to USS), and use recovery to update the password.
+  SetStorageType(AuthFactorStorageType::kUserSecretStash);
+  {
+    std::unique_ptr<AuthSession> auth_session = create_auth_session();
+    ASSERT_TRUE(auth_session);
+    EXPECT_THAT(
+        AuthenticatePasswordFactor(kPasswordLabel, kPassword, *auth_session),
+        IsOk());
+    EXPECT_THAT(AddRecoveryFactor(*auth_session), IsOk());
+  }
+  {
+    std::unique_ptr<AuthSession> auth_session = create_auth_session();
+    ASSERT_TRUE(auth_session);
+    EXPECT_THAT(AuthenticateRecoveryFactor(*auth_session), IsOk());
+    EXPECT_THAT(
+        UpdatePasswordFactor(kPasswordLabel, kNewPassword, *auth_session),
+        IsOk());
+  }
+
+  // Assert. Both password (already migrated to USS) and PIN (not migrated yet)
+  // still work.
+  {
+    std::unique_ptr<AuthSession> auth_session = create_auth_session();
+    ASSERT_TRUE(auth_session);
+    EXPECT_THAT(
+        AuthenticatePasswordFactor(kPasswordLabel, kNewPassword, *auth_session),
+        IsOk());
+  }
+  {
+    std::unique_ptr<AuthSession> auth_session = create_auth_session();
+    ASSERT_TRUE(auth_session);
+    EXPECT_THAT(AuthenticatePinFactor(kPinLabel, kPin, *auth_session), IsOk());
+  }
+}
+
 INSTANTIATE_TEST_SUITE_P(
     All,
     AuthSessionWithTpmSimulatorUssMigrationAgnosticTest,
