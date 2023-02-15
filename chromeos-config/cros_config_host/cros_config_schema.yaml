@@ -1396,19 +1396,33 @@ properties:
                   type: boolean
                   description: Whether the device has CBI.
                 ssfc:
-                  type: array
-                  description: Mapping of components to SSFC bitmap values.
-                  items:
-                    type: object
-                    properties:
-                      identifier:
-                        type: string
-                        description: Component name in the probe statement.
-                      value:
-                        type: integer
-                        description: SSFC bitmap value of the component.
-                        minimum: 0x0
-                        maximum: 0xFFFFFFFF
+                  type: object
+                  description: Configs to generate the SSFC value on a device.
+                  properties:
+                    mask:
+                      type: integer
+                      description: SSFC bitmap mask for bits that should be
+                                   preserved after RMA, e.g. configs that can
+                                   only be set by the factory but not the RMA
+                                   center.
+                      minimum: 0x0
+                      maximum: 0xFFFFFFFF
+                    components:
+                      type: array
+                      description: Mapping of components to SSFC bitmap values.
+                      items:
+                        type: object
+                        description: A single mapping from a component name to
+                                     an SSFC bitmap value.
+                        properties:
+                          identifier:
+                            type: string
+                            description: Component name in the probe statement.
+                          value:
+                            type: integer
+                            description: SSFC bitmap value of the component.
+                            minimum: 0x0
+                            maximum: 0xFFFFFFFF
             scheduler-tune:
               type: object
               description: ChromeOS scheduler's tunable values.

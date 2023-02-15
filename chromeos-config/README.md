@@ -1423,9 +1423,15 @@ In the tables below,
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | enabled | boolean |  | False |  | False | Whether enable Shimless RMA. |
 | has-cbi | boolean |  | False |  | False | Whether the device has CBI. |
-| ssfc | array - [ssfc](#ssfc) |  | False |  | False |  |
+| ssfc | [ssfc](#ssfc) |  | False |  | False | Configs to generate the SSFC value on a device. |
 
 ### ssfc
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| components | array - [components](#components) |  | False |  | False | A single mapping from a component name to an SSFC bitmap value. |
+| mask | integer |  | False |  | False | SSFC bitmap mask for bits that should be preserved after RMA, e.g. configs that can only be set by the factory but not the RMA center. Minimum value: 0x0. Maximum value: 0xffffffff. |
+
+### components
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | identifier | string |  | False |  | False | Component name in the probe statement. |
