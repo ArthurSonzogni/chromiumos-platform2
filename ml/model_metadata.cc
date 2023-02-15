@@ -40,6 +40,17 @@ std::map<BuiltinModelId, BuiltinModelMetadata> GetBuiltinModelMetadata() {
               "AdaptiveChargingModel",
           },
       },
+      {
+          BuiltinModelId::PONCHO_PALM_REJECTION_20230213,
+          {
+              BuiltinModelId::PONCHO_PALM_REJECTION_20230213,
+              "mlservice-model-poncho_palm_rejection-test_quantized_20230213."
+              "tflite",
+              {{"input", 0}},
+              {{"output", 23}},
+              "PonchoPalmRejectionModel",
+          },
+      },
   };
 }
 
