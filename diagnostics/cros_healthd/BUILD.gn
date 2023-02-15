@@ -76,21 +76,21 @@ if (use.test) {
     configs += [ ":cros_healthd_test_pkg_deps" ]
     deps = [
       ":libcros_healthd",
-      "events:libcros_healthd_events_test",
-      "executor/utils:test",
-      "fetchers:libcros_healthd_fetchers_test",
-      "network:network_test",
-      "network_diagnostics:network_diagnostics_test",
-      "routines:libroutine_test_utils",
-      "routines:routine_test",
-      "system:libcros_healthd_system_test",
-      "system:libcros_healthd_system_test_utils",
-      "utils:libcros_healthd_utils_test",
-      "utils:libcros_healthd_utils_test_utils",
-      "wilco_ec:libcros_healthd_wilco_ec_test",
       "//diagnostics/base",
       "//diagnostics/base:healthd_testrunner",
       "//diagnostics/base:test",
+      "//diagnostics/cros_healthd/events:libcros_healthd_events_test",
+      "//diagnostics/cros_healthd/executor/utils:test",
+      "//diagnostics/cros_healthd/fetchers:libcros_healthd_fetchers_test",
+      "//diagnostics/cros_healthd/network:network_test",
+      "//diagnostics/cros_healthd/network_diagnostics:network_diagnostics_test",
+      "//diagnostics/cros_healthd/routines:libroutine_test_utils",
+      "//diagnostics/cros_healthd/routines:routine_test",
+      "//diagnostics/cros_healthd/system:libcros_healthd_system_test",
+      "//diagnostics/cros_healthd/system:libcros_healthd_system_test_utils",
+      "//diagnostics/cros_healthd/utils:libcros_healthd_utils_test",
+      "//diagnostics/cros_healthd/utils:libcros_healthd_utils_test_utils",
+      "//diagnostics/cros_healthd/wilco_ec:libcros_healthd_wilco_ec_test",
     ]
   }
 }
