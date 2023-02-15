@@ -70,6 +70,8 @@ SandboxedProcess::SandboxedProcess(
   auto seccomp_file =
       base::FilePath(kSeccompPolicyDirectory).Append(seccomp_filename);
   sandbox_arguments_ = {
+      // Enter new pivot_root.
+      "-P", "/mnt/empty",
       // Enter a new VFS mount namespace.
       "-v",
       // Remount /proc readonly.
@@ -79,22 +81,37 @@ SandboxedProcess::SandboxedProcess(
       // Create a new UTS/hostname namespace.
       "--uts",
       // Set user.
-      "-u",
-      user,
+      "-u", user,
       // Set group. The group is assume to be the same as user.
-      "-g",
-      user,
+      "-g", user,
       // Inherit all the supplementary groups of the user specified with -u.
       "-G",
       // Restrict capabilities.
-      "-c",
-      base::StringPrintf("0x%" PRIx64, capabilities_mask),
+      "-c", base::StringPrintf("0x%" PRIx64, capabilities_mask),
       // Set seccomp policy file.
-      "-S",
-      seccomp_file.value(),
+      "-S", seccomp_file.value(),
       // Set the process’s no_new_privs bit.
       "-n",
-  };
+      // Bind mount root.
+      "-b", "/",
+      // Mount minimal nodes from /dev.
+      "-d",
+      // Bind mount /dev/log for logging.
+      "-b", "/dev/log",
+      // Create a new tmpfs filesystem for /tmp and others paths so we can mount
+      // necessary files under these paths.
+      // We should not use minijail_mount_tmp() to create /tmp when we have file
+      // to bind mount. See minijail_enter() for more details.
+      "-k", "tmpfs,/tmp,tmpfs",
+      // Mount tmpfs on /proc. Note that if whole proc is needed, `-b /proc` is
+      // still applicatibable.
+      "-k", "tmpfs,/proc,tmpfs",
+      // Mount tmpfs on /run.
+      "-k", "tmpfs,/run,tmpfs",
+      // Mount tmpfs on /sys.
+      "-k", "tmpfs,/sys,tmpfs",
+      // Mount tmpfs on /var.
+      "-k", "tmpfs,/var,tmpfs"};
 
   if ((sandbox_option & NO_ENTER_NETWORK_NAMESPACE) == 0) {
     // Enter a new network namespace.
