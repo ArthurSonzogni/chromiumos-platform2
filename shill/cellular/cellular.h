@@ -212,6 +212,7 @@ class Cellular : public Device,
 
   // Called to send detailed metrics for the last connection attempt.
   void NotifyDetailedCellularConnectionResult(const Error& error,
+                                              ApnList::ApnType apn_type,
                                               const shill::Stringmap& apn_info);
 
   // Is the underlying device in the process of activating?

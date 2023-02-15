@@ -1006,11 +1006,12 @@ void CellularCapability3gpp::ConnectionAttemptOnConnectReply(
     return;
   }
 
-  // Last good APN management and connection result notifications only
+  cellular()->NotifyDetailedCellularConnectionResult(
+      error, apn_type, attempt->apn_try_list.front());
+
+  // Last good APN management and pending activation state logic only
   // for the default APN
   if (apn_type == ApnList::ApnType::kDefault) {
-    cellular()->NotifyDetailedCellularConnectionResult(
-        error, attempt->apn_try_list.front());
     if (error.IsFailure()) {
       service->ClearLastGoodApn();
     } else {

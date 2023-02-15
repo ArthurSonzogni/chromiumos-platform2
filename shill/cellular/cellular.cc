@@ -1080,7 +1080,9 @@ void Cellular::NotifyCellularConnectionResult(const Error& error,
 }
 
 void Cellular::NotifyDetailedCellularConnectionResult(
-    const Error& error, const shill::Stringmap& apn_info) {
+    const Error& error,
+    ApnList::ApnType apn_type,
+    const shill::Stringmap& apn_info) {
   SLOG(3) << LoggingTag() << ": " << __func__ << ": Result:" << error.type();
 
   auto ipv4 = CellularBearer::IPConfigMethod::kUnknown;
@@ -1106,8 +1108,7 @@ void Cellular::NotifyDetailedCellularConnectionResult(
 
   if (capability_) {
     tech_used = capability_->GetActiveAccessTechnologies();
-    CellularBearer* bearer =
-        capability_->GetActiveBearer(ApnList::ApnType::kDefault);
+    CellularBearer* bearer = capability_->GetActiveBearer(apn_type);
     if (bearer) {
       ipv4 = bearer->ipv4_config_method();
       ipv6 = bearer->ipv6_config_method();
@@ -1228,7 +1229,7 @@ void Cellular::Connect(CellularService* service, Error* error) {
     // If using an attach APN, send detailed metrics since |kNotRegistered| is
     // a very common error when using Attach APNs.
     if (service->GetLastAttachApn())
-      NotifyDetailedCellularConnectionResult(*error,
+      NotifyDetailedCellularConnectionResult(*error, ApnList::ApnType::kDefault,
                                              *service->GetLastAttachApn());
     return;
   }
