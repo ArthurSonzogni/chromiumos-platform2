@@ -42,9 +42,13 @@ import SHILL_TEST_DEVICES
 # Make shill killable, because if it has a leak it's better to
 # restart it than to OOM-panic.
 oom score -100
-# Let the daemon crash if it grows too much.  "as" is "address space" (vm
-# size).  We expect a typical VM size of about 40MB for the daemon.
-limit as 200000000 unlimited
+# Let the daemon crash if it grows too much.  "as" is "address space" (vm size).
+# Each extra thread (i.e., except for the main one) may take 8MB (stack) + 64MB
+# (malloc arena) and currently shill may have 4 extra threads at most, so set
+# the value to ~500MB here. Note that the shill code we care about here is
+# single-threaded, but the libs that shill is using may start some threads by
+# themselves (e.g., libbase, libchaps). Also see b/268424208.
+limit as 500000000 unlimited
 
 pre-start exec /usr/share/cros/init/shill-pre-start.sh
 
