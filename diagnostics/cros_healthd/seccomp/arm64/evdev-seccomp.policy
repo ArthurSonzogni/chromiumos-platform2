@@ -104,5 +104,7 @@ setresuid: 1
 epoll_create1: 1
 memfd_create: 1
 eventfd2: 1
+socket: arg0 == AF_UNIX
+connect: 1
 exit_group: 1
 rt_sigreturn: 1

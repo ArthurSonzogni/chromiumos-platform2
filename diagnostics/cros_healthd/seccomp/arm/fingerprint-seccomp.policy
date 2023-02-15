@@ -51,4 +51,6 @@ getgid32: 1
 getegid32: 1
 clock_gettime64: 1
 send: 1
+socket: arg0 == AF_UNIX
+connect: 1
 fcntl64: 1

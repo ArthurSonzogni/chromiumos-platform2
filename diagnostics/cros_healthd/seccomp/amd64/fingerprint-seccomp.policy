@@ -45,4 +45,6 @@ eventfd2: 1
 poll: 1
 exit_group: 1
 restart_syscall: 1
+socket: arg0 == AF_UNIX
+connect: 1
 rt_sigreturn: 1

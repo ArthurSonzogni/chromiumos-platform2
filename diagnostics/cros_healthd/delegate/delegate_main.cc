@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <base/command_line.h>
+#include <base/logging.h>
 #include <brillo/daemons/daemon.h>
 #include <brillo/syslog_logging.h>
 #include <mojo/core/embedder/embedder.h>
@@ -49,8 +50,10 @@ DelegateDaemon::~DelegateDaemon() {}
 }  // namespace diagnostics
 
 int main(int argc, char* argv[]) {
-  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogToStderr);
+  brillo::InitLog(brillo::kLogToSyslog);
   base::CommandLine::Init(argc, argv);
+
+  DLOG(INFO) << "Start cros_healthd executer delegate.";
 
   mojo::core::Init();
 
