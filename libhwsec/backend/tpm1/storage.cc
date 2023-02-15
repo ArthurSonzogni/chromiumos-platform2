@@ -42,7 +42,7 @@ struct SpaceInfo {
   std::optional<Attributes> init_attributes;
   Attributes require_attributes;
   Attributes deny_attributes;
-  bool bind_to_prc0 = false;
+  bool bind_to_pcr0 = false;
   std::optional<const char*> owner_dependency;
 };
 
@@ -102,7 +102,7 @@ StatusOr<SpaceInfo> GetSpaceInfo(Space space) {
           .prepare_if_not_writable = true,
           .init_attributes = kInstallAttributesInitAttributes,
           .require_attributes = kInstallAttributesRequireAttributes,
-          .bind_to_prc0 = true,
+          .bind_to_pcr0 = true,
           .owner_dependency = tpm_manager::kTpmOwnerDependency_Nvram,
       };
     case Space::kBootlockbox:
@@ -192,7 +192,7 @@ struct DetailSpaceInfo {
   bool is_read_locked = false;
   bool is_write_locked = false;
   Attributes attributes;
-  bool bind_to_prc0 = false;
+  bool bind_to_pcr0 = false;
 };
 
 StatusOr<DetailSpaceInfo> GetDetailSpaceInfo(
@@ -218,7 +218,7 @@ StatusOr<DetailSpaceInfo> GetDetailSpaceInfo(
   for (int i = 0; i < reply.attributes().size(); ++i) {
     result.attributes[reply.attributes(i)] = true;
   }
-  result.bind_to_prc0 = (reply.policy() == tpm_manager::NVRAM_POLICY_PCR0);
+  result.bind_to_pcr0 = (reply.policy() == tpm_manager::NVRAM_POLICY_PCR0);
   return result;
 }
 
@@ -305,6 +305,10 @@ Status StorageTpm1::Prepare(Space space, uint32_t size) {
       define_request.add_attributes(
           static_cast<tpm_manager::NvramSpaceAttribute>(i));
     }
+  }
+
+  if (space_info.bind_to_pcr0) {
+    define_request.set_policy(tpm_manager::NVRAM_POLICY_PCR0);
   }
 
   tpm_manager::DefineSpaceReply define_reply;
