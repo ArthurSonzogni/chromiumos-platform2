@@ -210,20 +210,20 @@ func (m *Method) Const() bool {
 }
 
 // BaseType returns the C++ type corresponding to the type that the argument describes.
-func (a *MethodArg) BaseType(dir dbustype.Direction) (string, error) {
-	return baseTypeInternal(string(a.Type), dir, &a.Annotation)
+func (a *MethodArg) BaseType() (string, error) {
+	return baseTypeInternal(string(a.Type), &a.Annotation)
 }
 
 // InArgType returns the C++ type corresponding to the type that the argument describes
 // for an in argument.
-func (a *MethodArg) InArgType(receiver dbustype.Receiver) (string, error) {
-	return inArgTypeInternal(string(a.Type), receiver, &a.Annotation)
+func (a *MethodArg) InArgType() (string, error) {
+	return inArgTypeInternal(string(a.Type), &a.Annotation)
 }
 
 // OutArgType returns the C++ type corresponding to the type that the argument describes
 // for an out argument.
-func (a *MethodArg) OutArgType(receiver dbustype.Receiver) (string, error) {
-	return outArgTypeInternal(string(a.Type), receiver, &a.Annotation)
+func (a *MethodArg) OutArgType() (string, error) {
+	return outArgTypeInternal(string(a.Type), &a.Annotation)
 }
 
 // CallbackType returns the C++ type to be used as a callback's argument.
@@ -231,24 +231,24 @@ func (a *MethodArg) CallbackType() (string, error) {
 	// This is workaround to deal with current function layering structure.
 	// TODO(crbug.com/983008): Cleans up the implementation by moving
 	// receiver concept up to here.
-	return a.InArgType(dbustype.ReceiverAdaptor)
+	return a.InArgType()
 }
 
 // BaseType returns the C++ type corresponding to the type that the argument describes.
-func (a *SignalArg) BaseType(dir dbustype.Direction) (string, error) {
-	return baseTypeInternal(a.Type, dir, &a.Annotation)
+func (a *SignalArg) BaseType() (string, error) {
+	return baseTypeInternal(a.Type, &a.Annotation)
 }
 
 // InArgType returns the C++ type corresponding to the type that the argument describes
 // for an in argument.
-func (a *SignalArg) InArgType(receiver dbustype.Receiver) (string, error) {
-	return inArgTypeInternal(a.Type, receiver, &a.Annotation)
+func (a *SignalArg) InArgType() (string, error) {
+	return inArgTypeInternal(a.Type, &a.Annotation)
 }
 
 // OutArgType returns the C++ type corresponding to the type that the argument describes
 // for an out argument.
-func (a *SignalArg) OutArgType(receiver dbustype.Receiver) (string, error) {
-	return outArgTypeInternal(a.Type, receiver, &a.Annotation)
+func (a *SignalArg) OutArgType() (string, error) {
+	return outArgTypeInternal(a.Type, &a.Annotation)
 }
 
 // CallbackType returns the C++ type to be used as a callback's argument.
@@ -256,24 +256,24 @@ func (a *SignalArg) CallbackType() (string, error) {
 	// This is workaround to deal with current function layering structure.
 	// TODO(crbug.com/983008): Cleans up the implementation by moving
 	// receiver concept up to here.
-	return a.InArgType(dbustype.ReceiverAdaptor)
+	return a.InArgType()
 }
 
 // BaseType returns the C++ type corresponding to the type that the property describes.
-func (p *Property) BaseType(dir dbustype.Direction) (string, error) {
-	return baseTypeInternal(p.Type, dir, nil)
+func (p *Property) BaseType() (string, error) {
+	return baseTypeInternal(p.Type, nil)
 }
 
 // InArgType returns the C++ type corresponding to the type that the property describes
 // for an in argument.
-func (p *Property) InArgType(receiver dbustype.Receiver) (string, error) {
-	return inArgTypeInternal(p.Type, receiver, nil)
+func (p *Property) InArgType() (string, error) {
+	return inArgTypeInternal(p.Type, nil)
 }
 
 // OutArgType returns the C++ type corresponding to the type that the property describes
 // for an out argument.
-func (p *Property) OutArgType(receiver dbustype.Receiver) (string, error) {
-	return outArgTypeInternal(p.Type, receiver, nil)
+func (p *Property) OutArgType() (string, error) {
+	return outArgTypeInternal(p.Type, nil)
 }
 
 // VariableName returns annotation value as variable name if the property has
@@ -285,7 +285,7 @@ func (p *Property) VariableName() string {
 	return p.Name
 }
 
-func baseTypeInternal(s string, dir dbustype.Direction, a *Annotation) (string, error) {
+func baseTypeInternal(s string, a *Annotation) (string, error) {
 	// chromeos-dbus-binding supports native protobuf types.
 	if a != nil && a.Name == "org.chromium.DBus.Argument.ProtobufClass" {
 		return a.Value, nil
@@ -295,10 +295,10 @@ func baseTypeInternal(s string, dir dbustype.Direction, a *Annotation) (string, 
 	if err != nil {
 		return "", err
 	}
-	return typ.BaseType(dir), nil
+	return typ.BaseType(), nil
 }
 
-func inArgTypeInternal(s string, receiver dbustype.Receiver, a *Annotation) (string, error) {
+func inArgTypeInternal(s string, a *Annotation) (string, error) {
 	// chromeos-dbus-binding supports native protobuf types.
 	if a != nil && a.Name == "org.chromium.DBus.Argument.ProtobufClass" {
 		return fmt.Sprintf("const %s&", a.Value), nil
@@ -308,10 +308,10 @@ func inArgTypeInternal(s string, receiver dbustype.Receiver, a *Annotation) (str
 	if err != nil {
 		return "", err
 	}
-	return typ.InArgType(receiver), nil
+	return typ.InArgType(), nil
 }
 
-func outArgTypeInternal(s string, receiver dbustype.Receiver, a *Annotation) (string, error) {
+func outArgTypeInternal(s string, a *Annotation) (string, error) {
 	// chromeos-dbus-binding supports native protobuf types.
 	if a != nil && a.Name == "org.chromium.DBus.Argument.ProtobufClass" {
 		return fmt.Sprintf("%s*", a.Value), nil
@@ -321,5 +321,5 @@ func outArgTypeInternal(s string, receiver dbustype.Receiver, a *Annotation) (st
 	if err != nil {
 		return "", err
 	}
-	return typ.OutArgType(receiver), nil
+	return typ.OutArgType(), nil
 }

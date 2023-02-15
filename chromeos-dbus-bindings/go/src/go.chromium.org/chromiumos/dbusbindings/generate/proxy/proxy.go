@@ -10,7 +10,6 @@ import (
 	"strings"
 	"text/template"
 
-	"go.chromium.org/chromiumos/dbusbindings/dbustype"
 	"go.chromium.org/chromiumos/dbusbindings/generate/genutil"
 	"go.chromium.org/chromiumos/dbusbindings/introspect"
 	"go.chromium.org/chromiumos/dbusbindings/serviceconfig"
@@ -34,10 +33,10 @@ var funcMap = template.FuncMap{
 		return p.VariableName()
 	},
 	"makePropertyBaseTypeExtract": func(p *introspect.Property) (string, error) {
-		return p.BaseType(dbustype.DirectionExtract)
+		return p.BaseType()
 	},
 	"makeProxyInArgTypeProxy": func(p *introspect.Property) (string, error) {
-		return p.InArgType(dbustype.ReceiverProxy)
+		return p.InArgType()
 	},
 	"makeSignalCallbackType": makeSignalCallbackType,
 	"makeTypeName":           genutil.MakeTypeName,
@@ -72,7 +71,6 @@ const (
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/dbus/dbus_property.h>
 #include <brillo/dbus/dbus_signal_handler.h>
-#include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
 #include <dbus/bus.h>

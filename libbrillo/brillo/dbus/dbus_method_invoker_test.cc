@@ -169,9 +169,9 @@ class DBusMethodInvokerTest : public testing::Test {
   // new types.
   base::ScopedFD EchoFD(base::ScopedFD fd_in) {
     std::unique_ptr<dbus::Response> response =
-        brillo::dbus_utils::CallMethodAndBlock(
-            mock_object_proxy_.get(), kTestInterface, kTestMethod4, nullptr,
-            brillo::dbus_utils::FileDescriptor(std::move(fd_in)));
+        brillo::dbus_utils::CallMethodAndBlock(mock_object_proxy_.get(),
+                                               kTestInterface, kTestMethod4,
+                                               nullptr, std::move(fd_in));
     EXPECT_NE(nullptr, response.get());
     base::ScopedFD fd_out;
     using brillo::dbus_utils::ExtractMethodCallResults;

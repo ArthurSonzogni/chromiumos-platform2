@@ -136,12 +136,12 @@ class InterfaceProxyInterface {
   virtual ~InterfaceProxyInterface() = default;
 
   virtual bool Scan(
-      const std::vector<brillo::dbus_utils::FileDescriptor>& in_args,
+      const std::vector<base::ScopedFD>& in_args,
       brillo::ErrorPtr* error,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 
   virtual void ScanAsync(
-      const std::vector<brillo::dbus_utils::FileDescriptor>& in_args,
+      const std::vector<base::ScopedFD>& in_args,
       base::OnceCallback<void()> success_callback,
       base::OnceCallback<void(brillo::Error*)> error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
@@ -194,11 +194,11 @@ class InterfaceProxyMock : public InterfaceProxyInterface {
   InterfaceProxyMock& operator=(const InterfaceProxyMock&) = delete;
 
   MOCK_METHOD3(Scan,
-               bool(const std::vector<brillo::dbus_utils::FileDescriptor>& /*in_args*/,
+               bool(const std::vector<base::ScopedFD>& /*in_args*/,
                     brillo::ErrorPtr* /*error*/,
                     int /*timeout_ms*/));
   MOCK_METHOD4(ScanAsync,
-               void(const std::vector<brillo::dbus_utils::FileDescriptor>& /*in_args*/,
+               void(const std::vector<base::ScopedFD>& /*in_args*/,
                     base::OnceCallback<void()> /*success_callback*/,
                     base::OnceCallback<void(brillo::Error*)> /*error_callback*/,
                     int /*timeout_ms*/));
@@ -526,14 +526,14 @@ class EmptyInterfaceProxyMock : public EmptyInterfaceProxyInterface {
   MOCK_METHOD6(MethodWithInArgs,
                bool(int64_t /*in_iarg1*/,
                     const std::vector<uint8_t>& /*in_iarg2*/,
-                    const std::tuple<int32_t, brillo::dbus_utils::FileDescriptor>& /*in_iarg3*/,
+                    const std::tuple<int32_t, base::ScopedFD>& /*in_iarg3*/,
                     const RequestProto& /*in_iprotoArg*/,
                     brillo::ErrorPtr* /*error*/,
                     int /*timeout_ms*/));
   MOCK_METHOD7(MethodWithInArgsAsync,
                void(int64_t /*in_iarg1*/,
                     const std::vector<uint8_t>& /*in_iarg2*/,
-                    const std::tuple<int32_t, brillo::dbus_utils::FileDescriptor>& /*in_iarg3*/,
+                    const std::tuple<int32_t, base::ScopedFD>& /*in_iarg3*/,
                     const RequestProto& /*in_iprotoArg*/,
                     base::OnceCallback<void()> /*success_callback*/,
                     base::OnceCallback<void(brillo::Error*)> /*error_callback*/,

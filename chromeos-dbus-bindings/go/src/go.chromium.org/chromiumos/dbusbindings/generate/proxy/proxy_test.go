@@ -128,7 +128,6 @@ func TestGenerateProxies(t *testing.T) {
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/dbus/dbus_property.h>
 #include <brillo/dbus/dbus_signal_handler.h>
-#include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
 #include <dbus/bus.h>
@@ -154,12 +153,12 @@ class InterfaceProxyInterface {
   virtual ~InterfaceProxyInterface() = default;
 
   virtual bool Scan(
-      const std::vector<brillo::dbus_utils::FileDescriptor>& in_args,
+      const std::vector<base::ScopedFD>& in_args,
       brillo::ErrorPtr* error,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
 
   virtual void ScanAsync(
-      const std::vector<brillo::dbus_utils::FileDescriptor>& in_args,
+      const std::vector<base::ScopedFD>& in_args,
       base::OnceCallback<void()> success_callback,
       base::OnceCallback<void(brillo::Error*)> error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
@@ -276,7 +275,7 @@ class InterfaceProxy final : public InterfaceProxyInterface {
   PropertySet* GetProperties() { return &(*property_set_); }
 
   bool Scan(
-      const std::vector<brillo::dbus_utils::FileDescriptor>& in_args,
+      const std::vector<base::ScopedFD>& in_args,
       brillo::ErrorPtr* error,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
     auto response = brillo::dbus_utils::CallMethodAndBlockWithTimeout(
@@ -291,7 +290,7 @@ class InterfaceProxy final : public InterfaceProxyInterface {
   }
 
   void ScanAsync(
-      const std::vector<brillo::dbus_utils::FileDescriptor>& in_args,
+      const std::vector<base::ScopedFD>& in_args,
       base::OnceCallback<void()> success_callback,
       base::OnceCallback<void(brillo::Error*)> error_callback,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
@@ -658,7 +657,6 @@ func TestGenerateProxiesEmpty(t *testing.T) {
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/dbus/dbus_property.h>
 #include <brillo/dbus/dbus_signal_handler.h>
-#include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
 #include <dbus/bus.h>
@@ -766,7 +764,6 @@ func TestGenerateProxiesWithServiceName(t *testing.T) {
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/dbus/dbus_property.h>
 #include <brillo/dbus/dbus_signal_handler.h>
-#include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
 #include <dbus/bus.h>
@@ -871,7 +868,6 @@ func TestGenerateProxiesWithNodeName(t *testing.T) {
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/dbus/dbus_property.h>
 #include <brillo/dbus/dbus_signal_handler.h>
-#include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
 #include <dbus/bus.h>
@@ -1029,7 +1025,6 @@ func TestGenerateProxiesWithMethods(t *testing.T) {
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/dbus/dbus_property.h>
 #include <brillo/dbus/dbus_signal_handler.h>
-#include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
 #include <dbus/bus.h>
@@ -1057,7 +1052,7 @@ class EmptyInterfaceProxyInterface {
   virtual bool MethodWithInArgs(
       int64_t in_iarg1,
       const std::vector<uint8_t>& in_iarg2,
-      const std::tuple<int32_t, brillo::dbus_utils::FileDescriptor>& in_iarg3,
+      const std::tuple<int32_t, base::ScopedFD>& in_iarg3,
       const RequestProto& in_iprotoArg,
       brillo::ErrorPtr* error,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) = 0;
@@ -1065,7 +1060,7 @@ class EmptyInterfaceProxyInterface {
   virtual void MethodWithInArgsAsync(
       int64_t in_iarg1,
       const std::vector<uint8_t>& in_iarg2,
-      const std::tuple<int32_t, brillo::dbus_utils::FileDescriptor>& in_iarg3,
+      const std::tuple<int32_t, base::ScopedFD>& in_iarg3,
       const RequestProto& in_iprotoArg,
       base::OnceCallback<void()> success_callback,
       base::OnceCallback<void(brillo::Error*)> error_callback,
@@ -1194,7 +1189,7 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
   bool MethodWithInArgs(
       int64_t in_iarg1,
       const std::vector<uint8_t>& in_iarg2,
-      const std::tuple<int32_t, brillo::dbus_utils::FileDescriptor>& in_iarg3,
+      const std::tuple<int32_t, base::ScopedFD>& in_iarg3,
       const RequestProto& in_iprotoArg,
       brillo::ErrorPtr* error,
       int timeout_ms = dbus::ObjectProxy::TIMEOUT_USE_DEFAULT) override {
@@ -1215,7 +1210,7 @@ class EmptyInterfaceProxy final : public EmptyInterfaceProxyInterface {
   void MethodWithInArgsAsync(
       int64_t in_iarg1,
       const std::vector<uint8_t>& in_iarg2,
-      const std::tuple<int32_t, brillo::dbus_utils::FileDescriptor>& in_iarg3,
+      const std::tuple<int32_t, base::ScopedFD>& in_iarg3,
       const RequestProto& in_iprotoArg,
       base::OnceCallback<void()> success_callback,
       base::OnceCallback<void(brillo::Error*)> error_callback,
@@ -1445,7 +1440,6 @@ func TestGenerateProxiesWithSignals(t *testing.T) {
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/dbus/dbus_property.h>
 #include <brillo/dbus/dbus_signal_handler.h>
-#include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
 #include <dbus/bus.h>
@@ -1599,7 +1593,6 @@ func TestGenerateProxiesWithProperties(t *testing.T) {
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/dbus/dbus_property.h>
 #include <brillo/dbus/dbus_signal_handler.h>
-#include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
 #include <dbus/bus.h>
@@ -1772,7 +1765,6 @@ func TestGenerateProxiesWithObjectManager(t *testing.T) {
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/dbus/dbus_property.h>
 #include <brillo/dbus/dbus_signal_handler.h>
-#include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
 #include <dbus/bus.h>
@@ -2012,7 +2004,6 @@ func TestGenerateProxiesWithObjectManagerAndServiceName(t *testing.T) {
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/dbus/dbus_property.h>
 #include <brillo/dbus/dbus_signal_handler.h>
-#include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
 #include <dbus/bus.h>
@@ -2254,7 +2245,6 @@ func TestGenerateProxiesWithPropertiesAndObjectManager(t *testing.T) {
 #include <brillo/dbus/dbus_method_invoker.h>
 #include <brillo/dbus/dbus_property.h>
 #include <brillo/dbus/dbus_signal_handler.h>
-#include <brillo/dbus/file_descriptor.h>
 #include <brillo/errors/error.h>
 #include <brillo/variant_dictionary.h>
 #include <dbus/bus.h>

@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"strings"
 
-	"go.chromium.org/chromiumos/dbusbindings/dbustype"
 	"go.chromium.org/chromiumos/dbusbindings/generate/genutil"
 	"go.chromium.org/chromiumos/dbusbindings/introspect"
 )
@@ -17,7 +16,7 @@ func makeMethodRetType(method introspect.Method) (string, error) {
 	switch method.Kind() {
 	case introspect.MethodKindSimple:
 		if outputArguments := method.OutputArguments(); len(outputArguments) == 1 {
-			baseType, err := outputArguments[0].BaseType(dbustype.DirectionAppend)
+			baseType, err := outputArguments[0].BaseType()
 			if err != nil {
 				return "", err
 			}
@@ -49,7 +48,7 @@ func makeMethodParams(method introspect.Method) ([]string, error) {
 	case introspect.MethodKindAsync:
 		var outTypes []string
 		for _, arg := range outputArguments {
-			baseType, err := arg.BaseType(dbustype.DirectionAppend)
+			baseType, err := arg.BaseType()
 			if err != nil {
 				return nil, err
 			}
@@ -74,14 +73,14 @@ func makeMethodParams(method introspect.Method) ([]string, error) {
 	index := 1
 	for _, c := range []struct {
 		args        []introspect.MethodArg
-		makeArgType func(*introspect.MethodArg, dbustype.Receiver) (string, error)
+		makeArgType func(*introspect.MethodArg) (string, error)
 		prefix      string
 	}{
 		{inputArguments, (*introspect.MethodArg).InArgType, "in"},
 		{outputArguments, (*introspect.MethodArg).OutArgType, "out"},
 	} {
 		for _, arg := range c.args {
-			paramType, err := c.makeArgType(&arg, dbustype.ReceiverAdaptor)
+			paramType, err := c.makeArgType(&arg)
 			if err != nil {
 				return nil, err
 			}
@@ -132,7 +131,7 @@ func makeSignalParams(signal introspect.Signal) ([]string, error) {
 	for _, arg := range signal.Args {
 		// We are the sender for signals, so pretend we're a proxy
 		// when generating the type.
-		paramType, err := arg.InArgType(dbustype.ReceiverProxy)
+		paramType, err := arg.InArgType()
 		if err != nil {
 			return nil, err
 		}
@@ -157,7 +156,7 @@ func makeSignalArgNames(signal introspect.Signal) string {
 func makeDBusSignalParams(signal introspect.Signal) ([]string, error) {
 	var params []string
 	for _, arg := range signal.Args {
-		param, err := arg.BaseType(dbustype.DirectionAppend)
+		param, err := arg.BaseType()
 		if err != nil {
 			return nil, err
 		}

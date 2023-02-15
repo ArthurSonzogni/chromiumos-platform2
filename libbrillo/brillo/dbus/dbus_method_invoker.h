@@ -74,7 +74,6 @@
 #include <base/functional/callback_helpers.h>
 #include <brillo/dbus/dbus_param_reader.h>
 #include <brillo/dbus/dbus_param_writer.h>
-#include <brillo/dbus/file_descriptor.h>
 #include <brillo/dbus/utils.h>
 #include <brillo/errors/error.h>
 #include <brillo/errors/error_codes.h>

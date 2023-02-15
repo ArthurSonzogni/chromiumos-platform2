@@ -30,7 +30,6 @@ const (
 #include <brillo/any.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/dbus/exported_object_manager.h>
-#include <brillo/dbus/file_descriptor.h>
 #include <brillo/variant_dictionary.h>
 
 namespace fi {
@@ -81,7 +80,7 @@ class InterfaceAdaptor {
   // signal doc
   void SendBSSRemovedSignal(
       const YetAnotherProto& in_BSSDetail1,
-      const std::tuple<int32_t, brillo::dbus_utils::FileDescriptor>& in_BSSDetail2) {
+      const std::tuple<int32_t, base::ScopedFD>& in_BSSDetail2) {
     auto signal = signal_BSSRemoved_.lock();
     if (signal)
       signal->Send(in_BSSDetail1, in_BSSDetail2);
@@ -128,7 +127,7 @@ class InterfaceAdaptor {
  private:
   using SignalBSSRemovedType = brillo::dbus_utils::DBusSignal<
       YetAnotherProto /*BSSDetail1*/,
-      std::tuple<int32_t, brillo::dbus_utils::FileDescriptor> /*BSSDetail2*/>;
+      std::tuple<int32_t, base::ScopedFD> /*BSSDetail2*/>;
   std::weak_ptr<SignalBSSRemovedType> signal_BSSRemoved_;
 
   brillo::dbus_utils::ExportedProperty<brillo::VariantDictionary> capabilities_;
@@ -583,7 +582,7 @@ func TestSendSignalMethodsTmpl(t *testing.T) {
 			want: `
   // this is comment1
   void SendSig1Signal(
-      const brillo::dbus_utils::FileDescriptor& in_a1,
+      const base::ScopedFD& in_a1,
       int32_t in_2) {
     auto signal = signal_Sig1_.lock();
     if (signal)
@@ -769,7 +768,7 @@ func TestSignalDataMembersTmpl(t *testing.T) {
 				},
 			},
 			want: `  using SignalSig1Type = brillo::dbus_utils::DBusSignal<
-      brillo::dbus_utils::FileDescriptor /*a1*/,
+      base::ScopedFD /*a1*/,
       int32_t>;
   std::weak_ptr<SignalSig1Type> signal_Sig1_;
 

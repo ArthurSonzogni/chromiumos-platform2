@@ -242,7 +242,7 @@ TEST(DBusUtils, AppendAndPopFileDescriptor) {
   MessageWriter writer(message.get());
 
   // Append stdout.
-  FileDescriptor temp(base::ScopedFD(dup(1)));
+  base::ScopedFD temp(dup(1));
   AppendValueToWriter(&writer, temp);
 
   EXPECT_EQ("h", message->GetSignature());

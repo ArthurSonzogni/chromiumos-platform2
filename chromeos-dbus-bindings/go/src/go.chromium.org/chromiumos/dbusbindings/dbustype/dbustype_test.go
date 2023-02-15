@@ -43,6 +43,7 @@ func TestParseSuccesses(t *testing.T) {
 		{"q", "uint16_t"},
 		{"u", "uint32_t"},
 		{"t", "uint64_t"},
+		{"h", "base::ScopedFD"},
 		{"v", "brillo::Any"},
 
 		// Complex types.
@@ -50,9 +51,11 @@ func TestParseSuccesses(t *testing.T) {
 		{"ay", "std::vector<uint8_t>"},
 		{"aay", "std::vector<std::vector<uint8_t>>"},
 		{"ao", "std::vector<dbus::ObjectPath>"},
+		{"ah", "std::vector<base::ScopedFD>"},
 		{"a{oa{sa{sv}}}",
 			"std::map<dbus::ObjectPath, std::map<std::string, brillo::VariantDictionary>>"},
 		{"a{os}", "std::map<dbus::ObjectPath, std::string>"},
+		{"a{ih}", "std::map<int32_t, base::ScopedFD>"},
 		{"as", "std::vector<std::string>"},
 		{"a{ss}", "std::map<std::string, std::string>"},
 		{"a{sa{ss}}",
@@ -62,6 +65,7 @@ func TestParseSuccesses(t *testing.T) {
 		{"at", "std::vector<uint64_t>"},
 		{"a{iv}", "std::map<int32_t, brillo::Any>"},
 		{"(ib)", "std::tuple<int32_t, bool>"},
+		{"(ih)", "std::tuple<int32_t, base::ScopedFD>"},
 		{"(ibs)", "std::tuple<int32_t, bool, std::string>"},
 		{"((i))", "std::tuple<std::tuple<int32_t>>"},
 	}
@@ -71,13 +75,9 @@ func TestParseSuccesses(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Parse(%q) got error, want nil: %v", tc.input, err)
 		}
-		got := typ.BaseType(dbustype.DirectionExtract)
+		got := typ.BaseType()
 		if diff := cmp.Diff(got, tc.want); diff != "" {
-			t.Errorf("getting the base type of %q failed\ndirection: DirectionExtract\n(-got +want):\n%s", tc.input, diff)
-		}
-		got = typ.BaseType(dbustype.DirectionAppend)
-		if diff := cmp.Diff(got, tc.want); diff != "" {
-			t.Errorf("getting the base type of %q failed\ndirection: DirectionAppend\n(-got +want):\n%s", tc.input, diff)
+			t.Errorf("getting the base type of %q failed\n(-got +want):\n%s", tc.input, diff)
 		}
 	}
 
@@ -103,15 +103,10 @@ func TestInArgScalarTypes(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Parse(%q) got error, want nil: %v", tc, err)
 		}
-		got := typ.InArgType(dbustype.ReceiverAdaptor)
-		want := typ.BaseType(dbustype.DirectionExtract)
+		got := typ.InArgType()
+		want := typ.BaseType()
 		if got != want {
-			t.Fatalf("typ.BaseType(DirectionExtract) and typ.InArgType(ReceiverAdaptor) mismatch, typ is %q", tc)
-		}
-		got = typ.InArgType(dbustype.ReceiverProxy)
-		want = typ.BaseType(dbustype.DirectionAppend)
-		if got != want {
-			t.Fatalf("typ.BaseType(DirectionAppend) and typ.InArgType(ReceiverProxy) mismatch, typ is %q", tc)
+			t.Fatalf("typ.BaseType() and typ.InArgType() mismatch, typ is %q", tc)
 		}
 	}
 }
@@ -125,14 +120,17 @@ func TestInArgNonScalarTypes(t *testing.T) {
 	}{
 		{"o", "const dbus::ObjectPath&"},
 		{"s", "const std::string&"},
+		{"h", "const base::ScopedFD&"},
 		{"v", "const brillo::Any&"},
 		{"ab", "const std::vector<bool>&"},
 		{"ay", "const std::vector<uint8_t>&"},
 		{"aay", "const std::vector<std::vector<uint8_t>>&"},
 		{"ao", "const std::vector<dbus::ObjectPath>&"},
+		{"ah", "const std::vector<base::ScopedFD>&"},
 		{"a{oa{sa{sv}}}",
 			"const std::map<dbus::ObjectPath, std::map<std::string, brillo::VariantDictionary>>&"},
 		{"a{os}", "const std::map<dbus::ObjectPath, std::string>&"},
+		{"a{ih}", "const std::map<int32_t, base::ScopedFD>&"},
 		{"as", "const std::vector<std::string>&"},
 		{"a{ss}", "const std::map<std::string, std::string>&"},
 		{"a{sa{ss}}",
@@ -143,6 +141,7 @@ func TestInArgNonScalarTypes(t *testing.T) {
 		{"at", "const std::vector<uint64_t>&"},
 		{"a{iv}", "const std::map<int32_t, brillo::Any>&"},
 		{"(ib)", "const std::tuple<int32_t, bool>&"},
+		{"(ih)", "const std::tuple<int32_t, base::ScopedFD>&"},
 		{"(ibs)", "const std::tuple<int32_t, bool, std::string>&"},
 		{"((i))", "const std::tuple<std::tuple<int32_t>>&"},
 	}
@@ -152,13 +151,9 @@ func TestInArgNonScalarTypes(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Parse(%q) got error, want nil: %v", tc.input, err)
 		}
-		got := typ.InArgType(dbustype.ReceiverAdaptor)
+		got := typ.InArgType()
 		if diff := cmp.Diff(got, tc.want); diff != "" {
-			t.Errorf("getting the in arg type of %q failed\nreceiver: ReceiverAdaptor\n(-got +want):\n%s", tc.input, diff)
-		}
-		got = typ.InArgType(dbustype.ReceiverProxy)
-		if diff := cmp.Diff(got, tc.want); diff != "" {
-			t.Errorf("getting the in arg type of %q failed\nreceiver: ReceiverProxy\n(-got +want):\n%s", tc.input, diff)
+			t.Errorf("getting the in arg type of %q failed\n(-got +want):\n%s", tc.input, diff)
 		}
 	}
 }
@@ -175,14 +170,17 @@ func TestOutArgTypes(t *testing.T) {
 		{"t", "uint64_t*"},
 		{"o", "dbus::ObjectPath*"},
 		{"s", "std::string*"},
+		{"h", "base::ScopedFD*"},
 		{"v", "brillo::Any*"},
 		{"ab", "std::vector<bool>*"},
 		{"ay", "std::vector<uint8_t>*"},
 		{"aay", "std::vector<std::vector<uint8_t>>*"},
 		{"ao", "std::vector<dbus::ObjectPath>*"},
+		{"ah", "std::vector<base::ScopedFD>*"},
 		{"a{oa{sa{sv}}}",
 			"std::map<dbus::ObjectPath, std::map<std::string, brillo::VariantDictionary>>*"},
 		{"a{os}", "std::map<dbus::ObjectPath, std::string>*"},
+		{"a{ih}", "std::map<int32_t, base::ScopedFD>*"},
 		{"as", "std::vector<std::string>*"},
 		{"a{ss}", "std::map<std::string, std::string>*"},
 		{"a{sa{ss}}",
@@ -193,6 +191,7 @@ func TestOutArgTypes(t *testing.T) {
 		{"at", "std::vector<uint64_t>*"},
 		{"a{iv}", "std::map<int32_t, brillo::Any>*"},
 		{"(ib)", "std::tuple<int32_t, bool>*"},
+		{"(ih)", "std::tuple<int32_t, base::ScopedFD>*"},
 		{"(ibs)", "std::tuple<int32_t, bool, std::string>*"},
 		{"((i))", "std::tuple<std::tuple<int32_t>>*"},
 	}
@@ -202,92 +201,11 @@ func TestOutArgTypes(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Parse(%q) got error, want nil: %v", tc.input, err)
 		}
-		got := typ.OutArgType(dbustype.ReceiverAdaptor)
+		got := typ.OutArgType()
 		if diff := cmp.Diff(got, tc.want); diff != "" {
-			t.Errorf("getting the out arg type of %q failed\nreceiver: ReceiverAdaptor\n(-got +want):\n%s", tc.input, diff)
-		}
-		got = typ.OutArgType(dbustype.ReceiverProxy)
-		if diff := cmp.Diff(got, tc.want); diff != "" {
-			t.Errorf("getting the out arg type of %q failed\nreceiver: ReceiverProxy\n(-got +want):\n%s", tc.input, diff)
+			t.Errorf("getting the out arg type of %q failed\n(-got +want):\n%s", tc.input, diff)
 		}
 	}
 }
 
 // TODO(chromium:983008): Add tests for PropertyType.
-
-// For file descriptors type, it matters whether DirectionExtract or DirectionAppend.
-func TestFileDescriptors(t *testing.T) {
-	cases := []struct {
-		input             string
-		BaseTypeExtract   string
-		BaseTypeAppend    string
-		InArgTypeAdaptor  string
-		InArgTypeProxy    string
-		OutArgTypeAdaptor string
-		OutArgTypeProxy   string
-	}{
-		{
-			input:             "h",
-			BaseTypeExtract:   "base::ScopedFD",
-			BaseTypeAppend:    "brillo::dbus_utils::FileDescriptor",
-			InArgTypeAdaptor:  "const base::ScopedFD&",
-			InArgTypeProxy:    "const brillo::dbus_utils::FileDescriptor&",
-			OutArgTypeAdaptor: "brillo::dbus_utils::FileDescriptor*",
-			OutArgTypeProxy:   "base::ScopedFD*",
-		},
-		// Check that more involved types are correct as well.
-		{
-			input:           "ah",
-			BaseTypeExtract: "std::vector<base::ScopedFD>",
-			BaseTypeAppend:  "std::vector<brillo::dbus_utils::FileDescriptor>",
-		}, {
-			input:           "a{ih}",
-			BaseTypeExtract: "std::map<int32_t, base::ScopedFD>",
-			BaseTypeAppend:  "std::map<int32_t, brillo::dbus_utils::FileDescriptor>",
-		}, {
-			input:           "(ih)",
-			BaseTypeExtract: "std::tuple<int32_t, base::ScopedFD>",
-			BaseTypeAppend:  "std::tuple<int32_t, brillo::dbus_utils::FileDescriptor>",
-		},
-	}
-
-	for _, tc := range cases {
-		typ, err := dbustype.Parse(tc.input)
-		if err != nil {
-			t.Fatalf("Parse(%q) got error, want nil: %v", tc.input, err)
-		}
-		got := typ.BaseType(dbustype.DirectionExtract)
-		if diff := cmp.Diff(got, tc.BaseTypeExtract); diff != "" {
-			t.Errorf("getting the base type of %q failed\ndirection: DirectionExtract\n(-got +want):\n%s", tc.input, diff)
-		}
-		got = typ.BaseType(dbustype.DirectionAppend)
-		if diff := cmp.Diff(got, tc.BaseTypeAppend); diff != "" {
-			t.Errorf("getting the base type of %q failed\ndirection: DirectionAppend\n(-got +want):\n%s", tc.input, diff)
-		}
-
-		if tc.InArgTypeAdaptor != "" {
-			got = typ.InArgType(dbustype.ReceiverAdaptor)
-			if diff := cmp.Diff(got, tc.InArgTypeAdaptor); diff != "" {
-				t.Errorf("getting the in arg type of %q failed\nreceiver: ReceiverAdaptor\n(-got +want):\n%s", tc.input, diff)
-			}
-		}
-		if tc.InArgTypeProxy != "" {
-			got = typ.InArgType(dbustype.ReceiverProxy)
-			if diff := cmp.Diff(got, tc.InArgTypeProxy); diff != "" {
-				t.Errorf("getting the in arg type of %q failed\nreceiver: ReceiverProxy\n(-got +want):\n%s", tc.input, diff)
-			}
-		}
-		if tc.OutArgTypeAdaptor != "" {
-			got = typ.OutArgType(dbustype.ReceiverAdaptor)
-			if diff := cmp.Diff(got, tc.OutArgTypeAdaptor); diff != "" {
-				t.Errorf("getting the out arg type of %q failed\nreceiver: ReceiverAdaptor\n(-got +want):\n%s", tc.input, diff)
-			}
-		}
-		if tc.OutArgTypeProxy != "" {
-			got = typ.OutArgType(dbustype.ReceiverProxy)
-			if diff := cmp.Diff(got, tc.OutArgTypeProxy); diff != "" {
-				t.Errorf("getting the out arg type of %q failed\nreceiver: ReceiverProxy\n(-got +want):\n%s", tc.input, diff)
-			}
-		}
-	}
-}

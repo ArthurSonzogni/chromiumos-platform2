@@ -9,7 +9,6 @@ import (
 	"io"
 	"text/template"
 
-	"go.chromium.org/chromiumos/dbusbindings/dbustype"
 	"go.chromium.org/chromiumos/dbusbindings/generate/genutil"
 	"go.chromium.org/chromiumos/dbusbindings/introspect"
 )
@@ -36,10 +35,10 @@ var funcMap = template.FuncMap{
 		return p.VariableName()
 	},
 	"makePropertyBaseTypeExtract": func(p *introspect.Property) (string, error) {
-		return p.BaseType(dbustype.DirectionExtract)
+		return p.BaseType()
 	},
 	"makePropertyInArgTypeAdaptor": func(p *introspect.Property) (string, error) {
-		return p.InArgType(dbustype.ReceiverAdaptor)
+		return p.InArgType()
 	},
 	"makeDBusSignalParams": makeDBusSignalParams,
 	"reverse":              genutil.Reverse,
@@ -62,7 +61,6 @@ const (
 #include <brillo/any.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/dbus/exported_object_manager.h>
-#include <brillo/dbus/file_descriptor.h>
 #include <brillo/variant_dictionary.h>
 {{range $introspect := .Introspects}}{{range .Interfaces -}}
 {{$itfName := makeInterfaceName .Name -}}

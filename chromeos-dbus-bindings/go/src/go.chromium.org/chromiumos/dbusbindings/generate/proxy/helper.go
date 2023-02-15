@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"strings"
 
-	"go.chromium.org/chromiumos/dbusbindings/dbustype"
 	"go.chromium.org/chromiumos/dbusbindings/generate/genutil"
 	"go.chromium.org/chromiumos/dbusbindings/introspect"
 )
@@ -24,7 +23,7 @@ func makeMethodParams(offset int, args []introspect.MethodArg) ([]param, error) 
 		if a.Direction == "out" {
 			argType, prefix = a.OutArgType, "out"
 		}
-		t, err := argType(dbustype.ReceiverProxy)
+		t, err := argType()
 		if err != nil {
 			return nil, err
 		}
@@ -59,7 +58,7 @@ func makeMockMethodParams(args []introspect.MethodArg) ([]string, error) {
 		if a.Direction == "out" {
 			argType, prefix = a.OutArgType, "out"
 		}
-		t, err := argType(dbustype.ReceiverProxy)
+		t, err := argType()
 		if err != nil {
 			return nil, err
 		}

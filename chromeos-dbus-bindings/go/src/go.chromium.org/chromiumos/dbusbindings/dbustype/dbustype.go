@@ -43,19 +43,8 @@ type dbusType struct {
 	args []dbusType
 }
 
-// Direction is an enum to represent if you are reading the argument from a message or not.
-type Direction int
-
-const (
-	// DirectionExtract indicates that you are reading an argument from a message.
-	DirectionExtract Direction = iota
-
-	// DirectionAppend indicates that you are in other cases.
-	DirectionAppend
-)
-
 // BaseType returns the C++ type corresponding to the D-Bus type.
-func (d *dbusType) BaseType(direction Direction) string {
+func (d *dbusType) BaseType() string {
 	switch d.kind {
 	case dbusKindBoolean:
 		return "bool"
@@ -84,39 +73,21 @@ func (d *dbusType) BaseType(direction Direction) string {
 	case dbusKindVariantDict:
 		return "brillo::VariantDictionary"
 	case dbusKindFileDescriptor:
-		switch direction {
-		case DirectionExtract:
-			return "base::ScopedFD"
-		case DirectionAppend:
-			return "brillo::dbus_utils::FileDescriptor"
-		}
+		return "base::ScopedFD"
 	case dbusKindArray:
-		return fmt.Sprintf("std::vector<%s>", d.args[0].BaseType(direction))
+		return fmt.Sprintf("std::vector<%s>", d.args[0].BaseType())
 	case dbusKindDict:
-		key := d.args[0].BaseType(direction)
-		value := d.args[1].BaseType(direction)
-		return fmt.Sprintf("std::map<%s, %s>", key, value)
+		return fmt.Sprintf("std::map<%s, %s>", d.args[0].BaseType(), d.args[1].BaseType())
 	case dbusKindStruct:
 		var mems []string
 		for _, arg := range d.args {
-			mems = append(mems, arg.BaseType(direction))
+			mems = append(mems, arg.BaseType())
 		}
 		return fmt.Sprintf("std::tuple<%s>", strings.Join(mems, ", "))
 	}
 
 	return ""
 }
-
-// Receiver is an enum to represent what you are generating.
-type Receiver int
-
-const (
-	// ReceiverAdaptor indicates that you are generating an adaptor.
-	ReceiverAdaptor Receiver = iota
-
-	// ReceiverProxy indicates that you are generating a proxy.
-	ReceiverProxy
-)
 
 var scalars = []dbusKind{
 	dbusKindBoolean,
@@ -141,15 +112,8 @@ func (d *dbusType) scalar() bool {
 }
 
 // InArgType returns the C++ type corresponding to the D-Bus type for an in argument.
-func (d *dbusType) InArgType(receiver Receiver) string {
-	var direction Direction
-	switch receiver {
-	case ReceiverAdaptor:
-		direction = DirectionExtract
-	case ReceiverProxy:
-		direction = DirectionAppend
-	}
-	baseType := d.BaseType(direction)
+func (d *dbusType) InArgType() string {
+	baseType := d.BaseType()
 
 	if d.scalar() {
 		return baseType
@@ -158,16 +122,8 @@ func (d *dbusType) InArgType(receiver Receiver) string {
 }
 
 // OutArgType returns the C++ type corresponding to the D-Bus type for an out argument.
-func (d *dbusType) OutArgType(receiver Receiver) string {
-	var direction Direction
-	switch receiver {
-	case ReceiverAdaptor:
-		direction = DirectionAppend
-	case ReceiverProxy:
-		direction = DirectionExtract
-	}
-
-	return fmt.Sprintf("%s*", d.BaseType(direction))
+func (d *dbusType) OutArgType() string {
+	return fmt.Sprintf("%s*", d.BaseType())
 }
 
 // TODO(chromium:983008): define ValidPropertyType and CallbackArgType func.

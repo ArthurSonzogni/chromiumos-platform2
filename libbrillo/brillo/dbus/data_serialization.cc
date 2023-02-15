@@ -63,7 +63,7 @@ void AppendValueToWriter(dbus::MessageWriter* writer,
 }
 
 void AppendValueToWriter(dbus::MessageWriter* writer,
-                         const FileDescriptor& value) {
+                         const base::ScopedFD& value) {
   writer->AppendFileDescriptor(value.get());
 }
 

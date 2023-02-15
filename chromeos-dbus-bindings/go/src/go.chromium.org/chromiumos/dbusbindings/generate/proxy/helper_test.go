@@ -28,7 +28,7 @@ func TestMakeMethodParams(t *testing.T) {
 		}},
 		want: []param{
 			{Type: "int32_t", Name: "in_iarg1"},
-			{Type: "const brillo::dbus_utils::FileDescriptor&", Name: "in_iarg2"},
+			{Type: "const base::ScopedFD&", Name: "in_iarg2"},
 			{Type: "const dbus::ObjectPath&", Name: "in_iarg3"},
 		},
 	}, {
@@ -111,7 +111,7 @@ func TestMakeMockMethodParams(t *testing.T) {
 		}},
 		want: []string{
 			"int32_t /*in_iarg1*/",
-			"const brillo::dbus_utils::FileDescriptor& /*in_iarg2*/",
+			"const base::ScopedFD& /*in_iarg2*/",
 			"const dbus::ObjectPath& /*in_iarg3*/",
 		},
 	}, {

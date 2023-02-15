@@ -5,8 +5,9 @@
 package adaptor
 
 import (
-	"go.chromium.org/chromiumos/dbusbindings/introspect"
 	"testing"
+
+	"go.chromium.org/chromiumos/dbusbindings/introspect"
 
 	"github.com/google/go-cmp/cmp"
 )
@@ -26,7 +27,7 @@ func TestMakeMethodRetType(t *testing.T) {
 					{Name: "org.chromium.DBus.Method.Kind", Value: "simple"},
 				},
 			},
-			want: "brillo::dbus_utils::FileDescriptor",
+			want: "base::ScopedFD",
 		}, {
 			input: introspect.Method{
 				Name: "simpleMethodWithOnlyOutputArg2",
@@ -133,7 +134,7 @@ func TestMakeMethodArgs(t *testing.T) {
 					{Name: "org.chromium.DBus.Method.Kind", Value: "async"},
 				},
 			},
-			want: []string{"std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<brillo::dbus_utils::FileDescriptor, MyProtobufClass>> response"},
+			want: []string{"std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<base::ScopedFD, MyProtobufClass>> response"},
 		}, {
 			input: introspect.Method{
 				Name: "asyncMethodWithNoArg",
@@ -200,7 +201,7 @@ func TestMakeMethodArgs(t *testing.T) {
 				},
 			},
 			want: []string{
-				"const base::ScopedFD& in_x1", "const MyProtobufClass& in_2", "brillo::dbus_utils::FileDescriptor* out_x3", "MyProtobufClass* out_4",
+				"const base::ScopedFD& in_x1", "const MyProtobufClass& in_2", "base::ScopedFD* out_x3", "MyProtobufClass* out_4",
 			},
 		},
 	}
@@ -238,7 +239,7 @@ func TestMakeSignalParams(t *testing.T) {
 				},
 			},
 			want: []string{
-				"const brillo::dbus_utils::FileDescriptor& in_a1",
+				"const base::ScopedFD& in_a1",
 				"const MyProto& in_2",
 			},
 		}, {
@@ -284,7 +285,7 @@ func TestMakeDBusSignalParams(t *testing.T) {
 				},
 			},
 			want: []string{
-				"brillo::dbus_utils::FileDescriptor /*a1*/",
+				"base::ScopedFD /*a1*/",
 				"MyProto",
 			},
 		}, {
