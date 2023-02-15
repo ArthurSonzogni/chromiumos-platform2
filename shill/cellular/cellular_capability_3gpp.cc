@@ -1177,12 +1177,15 @@ void CellularCapability3gpp::UpdateServiceOLP() {
   cellular()->service()->SetOLP(olp_list[0].url, olp_list[0].method, post_data);
 }
 
-void CellularCapability3gpp::UpdateActiveBearer() {
+void CellularCapability3gpp::UpdateActiveBearers() {
   SLOG(this, 3) << __func__;
 
-  // Look for the first active bearer and use its path as the connected
-  // one. Right now, we don't allow more than one active bearer.
-  active_bearer_.reset();
+  active_bearers_.clear();
+  default_bearer_dbus_properties_proxy_.reset();
+
+  // Look for the first active bearer of each APN type and use their path as the
+  // connected ones. Right now, we don't allow more than one active bearer per
+  // APN type.
   for (const auto& path : bearer_paths_) {
     auto bearer = std::make_unique<CellularBearer>(control_interface(), path,
                                                    cellular()->dbus_service());
@@ -1191,22 +1194,52 @@ void CellularCapability3gpp::UpdateActiveBearer() {
     if (!bearer->Init())
       continue;
 
+    // Ignore if not active
     if (!bearer->connected())
       continue;
 
-    SLOG(this, 2) << "Found active bearer \"" << path.value() << "\".";
-    CHECK(!active_bearer_) << "Found more than one active bearer.";
-    active_bearer_ = std::move(bearer);
-    bearer_dbus_properties_proxy_ =
-        control_interface()->CreateDBusPropertiesProxy(
-            GetActiveBearer()->dbus_path(), GetActiveBearer()->dbus_service());
-    bearer_dbus_properties_proxy_->SetPropertiesChangedCallback(
-        base::BindRepeating(&CellularCapability3gpp::OnPropertiesChanged,
-                            base::Unretained(this)));
-  }
+    // Ignore if no explicit APN type set; shill always sets one.
+    const auto apn_types = bearer->apn_types();
+    if (apn_types.empty()) {
+      LOG(WARNING) << "Found bearer without APN type: ignoring.";
+      continue;
+    }
 
-  if (!active_bearer_)
-    SLOG(this, 2) << "No active bearer found.";
+    // A bearer may have more than one APN type in reality, but the ones
+    // brought up by shill have exactly one; either DEFAULT or TETHERING.
+    if (apn_types.size() > 1) {
+      LOG(WARNING)
+          << "Found bearer with multiple APN types: choosing the first.";
+    }
+    auto apn_type = apn_types[0];
+
+    SLOG(this, 1) << "Found active bearer \"" << path.value() << "\" ("
+                  << ApnList::GetApnTypeString(apn_type) << ")";
+
+    if (active_bearers_.count(apn_type) > 0) {
+      SLOG(this, 1) << "Found additional active bearer \"" << path.value()
+                    << "\" (" << ApnList::GetApnTypeString(apn_type)
+                    << "): ignoring";
+      continue;
+    }
+
+    SLOG(this, 1) << "Found active bearer \"" << path.value() << "\" ("
+                  << ApnList::GetApnTypeString(apn_type) << ")";
+    active_bearers_[apn_type] = std::move(bearer);
+
+    // Only monitor bearer properties in the default bearer, as it's the one
+    // always available and we want these properties to be notified of link
+    // speeds exclusively.
+    if (apn_type == ApnList::ApnType::kDefault) {
+      default_bearer_dbus_properties_proxy_ =
+          control_interface()->CreateDBusPropertiesProxy(
+              active_bearers_[apn_type]->dbus_path(),
+              active_bearers_[apn_type]->dbus_service());
+      default_bearer_dbus_properties_proxy_->SetPropertiesChangedCallback(
+          base::BindRepeating(&CellularCapability3gpp::OnPropertiesChanged,
+                              base::Unretained(this)));
+    }
+  }
 }
 
 bool CellularCapability3gpp::IsServiceActivationRequired() const {
@@ -1576,8 +1609,11 @@ bool CellularCapability3gpp::IsLocationUpdateSupported() const {
   return cellular()->mm_plugin() == kTelitMMPlugin;
 }
 
-CellularBearer* CellularCapability3gpp::GetActiveBearer() const {
-  return active_bearer_.get();
+CellularBearer* CellularCapability3gpp::GetActiveBearer(
+    ApnList::ApnType apn_type) const {
+  return (active_bearers_.count(apn_type) > 0)
+             ? active_bearers_.at(apn_type).get()
+             : nullptr;
 }
 
 const std::vector<MobileOperatorMapper::MobileAPN>&
@@ -1960,7 +1996,7 @@ void CellularCapability3gpp::OnModemStateChanged(Cellular::ModemState state) {
     // This assumes that ModemManager updates the Bearers list and the Bearer
     // properties before changing Modem state to Connected.
     SLOG(this, 2) << "Update active bearer.";
-    UpdateActiveBearer();
+    UpdateActiveBearers();
   }
 
   cellular()->OnModemStateChanged(state);

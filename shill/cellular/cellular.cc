@@ -1106,9 +1106,11 @@ void Cellular::NotifyDetailedCellularConnectionResult(
 
   if (capability_) {
     tech_used = capability_->GetActiveAccessTechnologies();
-    if (capability_->GetActiveBearer()) {
-      ipv4 = capability_->GetActiveBearer()->ipv4_config_method();
-      ipv6 = capability_->GetActiveBearer()->ipv6_config_method();
+    CellularBearer* bearer =
+        capability_->GetActiveBearer(ApnList::ApnType::kDefault);
+    if (bearer) {
+      ipv4 = bearer->ipv4_config_method();
+      ipv6 = bearer->ipv6_config_method();
     }
   }
 
@@ -1353,7 +1355,8 @@ void Cellular::EstablishLink() {
   CHECK_EQ(State::kConnected, state_);
   CHECK(capability_);
 
-  CellularBearer* bearer = capability_->GetActiveBearer();
+  CellularBearer* bearer =
+      capability_->GetActiveBearer(ApnList::ApnType::kDefault);
   if (!bearer) {
     LOG(WARNING) << LoggingTag()
                  << ": Disconnecting due to missing active bearer.";
@@ -1361,14 +1364,9 @@ void Cellular::EstablishLink() {
     return;
   }
 
-  const std::vector<ApnList::ApnType>& apn_types = bearer->apn_types();
-  if (std::find(apn_types.begin(), apn_types.end(),
-                ApnList::ApnType::kDefault) == apn_types.end()) {
-    LOG(WARNING) << LoggingTag()
-                 << ": Disconnecting due to wrong APN type in active bearer";
-    Disconnect(nullptr, "wrong APN type in active bearer");
-    return;
-  }
+  // The APN type is ensured to be one by GetActiveBearer()
+  CHECK_EQ(bearer->apn_types().size(), 1UL);
+  CHECK_EQ(bearer->apn_types()[0], ApnList::ApnType::kDefault);
 
   if (bearer->ipv4_config_method() == CellularBearer::IPConfigMethod::kPPP) {
     LOG(INFO) << LoggingTag() << ": Start PPP connection on "
@@ -1413,7 +1411,8 @@ void Cellular::LinkUp(int data_interface_index) {
   SetState(State::kLinked);
 
   CHECK(capability_);
-  CellularBearer* bearer = capability_->GetActiveBearer();
+  CellularBearer* bearer =
+      capability_->GetActiveBearer(ApnList::ApnType::kDefault);
   bool ipv6_configured = false;
 
   // Some modems use kMethodStatic and some use kMethodDHCP for IPv6 config

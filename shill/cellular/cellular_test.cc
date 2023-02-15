@@ -506,8 +506,9 @@ class CellularTest : public testing::Test {
     return static_cast<MockCellularService*>(device_->service_.get());
   }
 
-  void SetCapability3gppActiveBearer(std::unique_ptr<CellularBearer> bearer) {
-    GetCapability3gpp()->active_bearer_ = std::move(bearer);
+  void SetCapability3gppActiveBearer(ApnList::ApnType apn_type,
+                                     std::unique_ptr<CellularBearer> bearer) {
+    GetCapability3gpp()->active_bearers_[apn_type] = std::move(bearer);
   }
 
   void SetCapability3gppModemSimpleProxy() {
@@ -1727,7 +1728,7 @@ TEST_F(CellularTest, EstablishLinkFailureMismatchedDataInterface) {
   bearer->set_data_interface_for_testing("another_one");
   bearer->set_ipv4_config_method_for_testing(
       CellularBearer::IPConfigMethod::kDHCP);
-  SetCapability3gppActiveBearer(std::move(bearer));
+  SetCapability3gppActiveBearer(ApnList::ApnType::kDefault, std::move(bearer));
 
   // Ensure a different interface index with +1
   EXPECT_CALL(rtnl_handler_, GetInterfaceIndex("another_one"))
@@ -1753,7 +1754,7 @@ TEST_F(CellularTest, EstablishLinkPPP) {
   bearer->set_apn_type_for_testing(ApnList::ApnType::kDefault);
   bearer->set_ipv4_config_method_for_testing(
       CellularBearer::IPConfigMethod::kPPP);
-  SetCapability3gppActiveBearer(std::move(bearer));
+  SetCapability3gppActiveBearer(ApnList::ApnType::kDefault, std::move(bearer));
   device_->set_state_for_testing(Cellular::State::kConnected);
 
   const int kPID = 123;
@@ -1779,7 +1780,7 @@ TEST_F(CellularTest, EstablishLinkDHCP) {
   bearer->set_data_interface_for_testing(kTestInterfaceName);
   bearer->set_ipv4_config_method_for_testing(
       CellularBearer::IPConfigMethod::kDHCP);
-  SetCapability3gppActiveBearer(std::move(bearer));
+  SetCapability3gppActiveBearer(ApnList::ApnType::kDefault, std::move(bearer));
   device_->set_state_for_testing(Cellular::State::kConnected);
 
   MockCellularService* service = SetMockService();
@@ -1809,7 +1810,7 @@ TEST_F(CellularTest, LinkUpDHCP) {
   bearer->set_data_interface_for_testing(kTestInterfaceName);
   bearer->set_ipv4_config_method_for_testing(
       CellularBearer::IPConfigMethod::kDHCP);
-  SetCapability3gppActiveBearer(std::move(bearer));
+  SetCapability3gppActiveBearer(ApnList::ApnType::kDefault, std::move(bearer));
   device_->set_state_for_testing(Cellular::State::kConnected);
 
   MockCellularService* service = SetMockService();
@@ -1835,7 +1836,7 @@ TEST_F(CellularTest, EstablishLinkStatic) {
   bearer->set_data_interface_for_testing(kTestInterfaceName);
   bearer->set_ipv4_config_method_for_testing(
       CellularBearer::IPConfigMethod::kStatic);
-  SetCapability3gppActiveBearer(std::move(bearer));
+  SetCapability3gppActiveBearer(ApnList::ApnType::kDefault, std::move(bearer));
   device_->set_state_for_testing(Cellular::State::kConnected);
 
   MockCellularService* service = SetMockService();
@@ -1881,7 +1882,7 @@ TEST_F(CellularTest, LinkUpStatic) {
       CellularBearer::IPConfigMethod::kStatic);
   bearer->set_ipv4_config_properties_for_testing(
       std::make_unique<IPConfig::Properties>(ipconfig_properties));
-  SetCapability3gppActiveBearer(std::move(bearer));
+  SetCapability3gppActiveBearer(ApnList::ApnType::kDefault, std::move(bearer));
   device_->set_state_for_testing(Cellular::State::kConnected);
 
   MockCellularService* service = SetMockService();

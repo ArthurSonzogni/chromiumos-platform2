@@ -65,13 +65,15 @@ namespace {
 
 const uint32_t kAccessTechnologies =
     MM_MODEM_ACCESS_TECHNOLOGY_LTE | MM_MODEM_ACCESS_TECHNOLOGY_HSPA_PLUS;
-const char kActiveBearerPathPrefix[] = "/bearer/active";
+const char kDefaultActiveBearerPathPrefix[] = "/bearer/default/active";
+const char kDunActiveBearerPathPrefix[] = "/bearer/dun/active";
+const char kDefaultInactiveBearerPathPrefix[] = "/bearer/default/inactive";
+const char kDunInactiveBearerPathPrefix[] = "/bearer/default/inactive";
 constexpr char kDeviceId[] = "<device_id>";
 const char kEid[] = "310100000002";
 const char kIccid[] = "1234567890";
 const char kImei[] = "999911110000";
 const char kImsi[] = "310100000001";
-const char kInactiveBearerPathPrefix[] = "/bearer/inactive";
 const char kSimPathPrefix[] = "/foo/sim";
 const RpcIdentifier kSimPath1("/foo/sim/1");
 const RpcIdentifier kSimPath2("/foo/sim/2");
@@ -427,25 +429,48 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
   class TestControl : public MockControl {
    public:
     explicit TestControl(CellularCapability3gppTest* test) : test_(test) {
-      active_bearer_properties_.Set<bool>(MM_BEARER_PROPERTY_CONNECTED, true);
-      active_bearer_properties_.Set<std::string>(MM_BEARER_PROPERTY_INTERFACE,
-                                                 "/dev/fake");
+      KeyValueStore default_connect_properties;
+      default_connect_properties.Set<uint32_t>(
+          CellularBearer::kMMApnTypeProperty, MM_BEARER_APN_TYPE_DEFAULT);
+
+      KeyValueStore dun_connect_properties;
+      dun_connect_properties.Set<uint32_t>(CellularBearer::kMMApnTypeProperty,
+                                           MM_BEARER_APN_TYPE_TETHERING);
 
       KeyValueStore ip4config;
       ip4config.Set<uint32_t>("method", MM_BEARER_IP_METHOD_DHCP);
-      active_bearer_properties_.Set<KeyValueStore>(MM_BEARER_PROPERTY_IP4CONFIG,
-                                                   ip4config);
 
-      inactive_bearer_properties_.Set<bool>(MM_BEARER_PROPERTY_CONNECTED,
-                                            false);
-    }
+      // Default active bearer
+      default_active_bearer_properties_.Set<bool>(MM_BEARER_PROPERTY_CONNECTED,
+                                                  true);
+      default_active_bearer_properties_.Set<std::string>(
+          MM_BEARER_PROPERTY_INTERFACE, "fake0");
+      default_active_bearer_properties_.Set<KeyValueStore>(
+          MM_BEARER_PROPERTY_PROPERTIES, default_connect_properties);
+      default_active_bearer_properties_.Set<KeyValueStore>(
+          MM_BEARER_PROPERTY_IP4CONFIG, ip4config);
 
-    KeyValueStore* mutable_active_bearer_properties() {
-      return &active_bearer_properties_;
-    }
+      // Default inactive bearer
+      default_inactive_bearer_properties_.Set<bool>(
+          MM_BEARER_PROPERTY_CONNECTED, false);
+      default_inactive_bearer_properties_.Set<KeyValueStore>(
+          MM_BEARER_PROPERTY_PROPERTIES, default_connect_properties);
 
-    KeyValueStore* mutable_inactive_bearer_properties() {
-      return &inactive_bearer_properties_;
+      // Dun active bearer
+      dun_active_bearer_properties_.Set<bool>(MM_BEARER_PROPERTY_CONNECTED,
+                                              true);
+      dun_active_bearer_properties_.Set<std::string>(
+          MM_BEARER_PROPERTY_INTERFACE, "fake1");
+      dun_active_bearer_properties_.Set<KeyValueStore>(
+          MM_BEARER_PROPERTY_PROPERTIES, dun_connect_properties);
+      dun_active_bearer_properties_.Set<KeyValueStore>(
+          MM_BEARER_PROPERTY_IP4CONFIG, ip4config);
+
+      // Dun inactive bearer
+      dun_inactive_bearer_properties_.Set<bool>(MM_BEARER_PROPERTY_CONNECTED,
+                                                false);
+      dun_inactive_bearer_properties_.Set<KeyValueStore>(
+          MM_BEARER_PROPERTY_PROPERTIES, dun_connect_properties);
     }
 
     std::unique_ptr<mm1::ModemLocationProxyInterface>
@@ -501,14 +526,26 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
       if (path.value().find(kSimPathPrefix) != std::string::npos) {
         fake_properties->SetDictionaryForTesting(MM_DBUS_INTERFACE_SIM,
                                                  test_->GetSimProperties(path));
-      } else if (path.value().find(kActiveBearerPathPrefix) !=
+      } else if (path.value().find(kDefaultActiveBearerPathPrefix) !=
                  std::string::npos) {
         fake_properties->SetDictionaryForTesting(
-            MM_DBUS_INTERFACE_BEARER, active_bearer_properties_.properties());
-      } else if (path.value().find(kInactiveBearerPathPrefix) !=
+            MM_DBUS_INTERFACE_BEARER,
+            default_active_bearer_properties_.properties());
+      } else if (path.value().find(kDefaultInactiveBearerPathPrefix) !=
                  std::string::npos) {
         fake_properties->SetDictionaryForTesting(
-            MM_DBUS_INTERFACE_BEARER, inactive_bearer_properties_.properties());
+            MM_DBUS_INTERFACE_BEARER,
+            default_inactive_bearer_properties_.properties());
+      } else if (path.value().find(kDunActiveBearerPathPrefix) !=
+                 std::string::npos) {
+        fake_properties->SetDictionaryForTesting(
+            MM_DBUS_INTERFACE_BEARER,
+            dun_active_bearer_properties_.properties());
+      } else if (path.value().find(kDunInactiveBearerPathPrefix) !=
+                 std::string::npos) {
+        fake_properties->SetDictionaryForTesting(
+            MM_DBUS_INTERFACE_BEARER,
+            dun_inactive_bearer_properties_.properties());
       } else {
         fake_properties->SetDictionaryForTesting(
             MM_DBUS_INTERFACE_MODEM, test_->modem_properties_.properties());
@@ -527,8 +564,10 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
 
    private:
     CellularCapability3gppTest* test_;
-    KeyValueStore active_bearer_properties_;
-    KeyValueStore inactive_bearer_properties_;
+    KeyValueStore default_active_bearer_properties_;
+    KeyValueStore dun_active_bearer_properties_;
+    KeyValueStore default_inactive_bearer_properties_;
+    KeyValueStore dun_inactive_bearer_properties_;
   };
 
   EventDispatcherForTest dispatcher_;
@@ -1319,44 +1358,95 @@ TEST_F(CellularCapability3gppTest, Reset) {
   EXPECT_FALSE(capability_->resetting_);
 }
 
-TEST_F(CellularCapability3gppTest, UpdateActiveBearer) {
+TEST_F(CellularCapability3gppTest, UpdateActiveBearers) {
   // Common resources.
   const size_t kPathCount = 3;
-  RpcIdentifier active_paths[kPathCount], inactive_paths[kPathCount];
+  RpcIdentifier default_active_paths[kPathCount];
+  RpcIdentifier default_inactive_paths[kPathCount];
   for (size_t i = 0; i < kPathCount; ++i) {
-    active_paths[i] =
-        RpcIdentifier(base::StringPrintf("%s/%zu", kActiveBearerPathPrefix, i));
-    inactive_paths[i] = RpcIdentifier(
-        base::StringPrintf("%s/%zu", kInactiveBearerPathPrefix, i));
+    default_active_paths[i] = RpcIdentifier(
+        base::StringPrintf("%s/%zu", kDefaultActiveBearerPathPrefix, i));
+    default_inactive_paths[i] = RpcIdentifier(
+        base::StringPrintf("%s/%zu", kDefaultInactiveBearerPathPrefix, i));
   }
+  RpcIdentifier dun_active_path =
+      RpcIdentifier(base::StringPrintf("%s/%u", kDunActiveBearerPathPrefix, 0));
+  RpcIdentifier dun_inactive_path = RpcIdentifier(
+      base::StringPrintf("%s/%u", kDunInactiveBearerPathPrefix, 0));
 
-  EXPECT_EQ(nullptr, capability_->GetActiveBearer());
+  EXPECT_EQ(nullptr, capability_->GetActiveBearer(ApnList::ApnType::kDefault));
+  EXPECT_EQ(nullptr, capability_->GetActiveBearer(ApnList::ApnType::kDun));
+  EXPECT_EQ(nullptr, capability_->default_bearer_dbus_properties_proxy_.get());
 
-  // Check that |active_bearer_| is set correctly when an active bearer is
+  // Check that |active_bearers_| is set correctly when an active bearer is
   // returned.
-  capability_->OnBearersChanged({inactive_paths[0], inactive_paths[1],
-                                 active_paths[2], inactive_paths[1],
-                                 inactive_paths[2]});
-  capability_->UpdateActiveBearer();
-  ASSERT_NE(nullptr, capability_->GetActiveBearer());
-  EXPECT_EQ(active_paths[2], capability_->GetActiveBearer()->dbus_path());
+  capability_->OnBearersChanged(
+      {default_inactive_paths[0], default_inactive_paths[1],
+       default_active_paths[2], default_inactive_paths[1],
+       default_inactive_paths[2]});
+  capability_->UpdateActiveBearers();
+  ASSERT_NE(nullptr, capability_->GetActiveBearer(ApnList::ApnType::kDefault));
+  EXPECT_EQ(
+      default_active_paths[2],
+      capability_->GetActiveBearer(ApnList::ApnType::kDefault)->dbus_path());
+  EXPECT_EQ(nullptr, capability_->GetActiveBearer(ApnList::ApnType::kDun));
+  EXPECT_NE(nullptr, capability_->default_bearer_dbus_properties_proxy_.get());
 
-  // Check that |active_bearer_| is nullptr if no active bearers are returned.
-  capability_->OnBearersChanged({inactive_paths[0], inactive_paths[1],
-                                 inactive_paths[2], inactive_paths[1]});
-  capability_->UpdateActiveBearer();
-  EXPECT_EQ(nullptr, capability_->GetActiveBearer());
+  // Check that |active_bearers_| doesn't contain a valid entry, no active
+  // bearers are returned.
+  capability_->OnBearersChanged(
+      {default_inactive_paths[0], default_inactive_paths[1],
+       default_inactive_paths[2], default_inactive_paths[1]});
+  capability_->UpdateActiveBearers();
+  EXPECT_EQ(nullptr, capability_->GetActiveBearer(ApnList::ApnType::kDefault));
+  EXPECT_EQ(nullptr, capability_->GetActiveBearer(ApnList::ApnType::kDun));
+  EXPECT_EQ(nullptr, capability_->default_bearer_dbus_properties_proxy_.get());
 
-  // Check that returning multiple bearers causes death.
-  capability_->OnBearersChanged({active_paths[0], inactive_paths[1],
-                                 inactive_paths[2], active_paths[1],
-                                 inactive_paths[1]});
-  EXPECT_DEATH(capability_->UpdateActiveBearer(),
-               "Found more than one active bearer.");
+  // Check that returning multiple bearers of the same type doesn't crash, only
+  // the first one is returned.
+  capability_->OnBearersChanged(
+      {default_active_paths[0], default_inactive_paths[1],
+       default_inactive_paths[2], default_active_paths[1]});
+  capability_->UpdateActiveBearers();
+  ASSERT_NE(nullptr, capability_->GetActiveBearer(ApnList::ApnType::kDefault));
+  EXPECT_EQ(
+      default_active_paths[0],
+      capability_->GetActiveBearer(ApnList::ApnType::kDefault)->dbus_path());
+  EXPECT_EQ(nullptr, capability_->GetActiveBearer(ApnList::ApnType::kDun));
+  EXPECT_NE(nullptr, capability_->default_bearer_dbus_properties_proxy_.get());
 
+  // Check that returning multiple bearers of different types works.
+  capability_->OnBearersChanged(
+      {default_active_paths[0], default_inactive_paths[1],
+       default_inactive_paths[2], dun_inactive_path, dun_active_path});
+  capability_->UpdateActiveBearers();
+  ASSERT_NE(nullptr, capability_->GetActiveBearer(ApnList::ApnType::kDefault));
+  EXPECT_EQ(
+      default_active_paths[0],
+      capability_->GetActiveBearer(ApnList::ApnType::kDefault)->dbus_path());
+  ASSERT_NE(nullptr, capability_->GetActiveBearer(ApnList::ApnType::kDun));
+  EXPECT_EQ(dun_active_path,
+            capability_->GetActiveBearer(ApnList::ApnType::kDun)->dbus_path());
+  EXPECT_NE(nullptr, capability_->default_bearer_dbus_properties_proxy_.get());
+
+  // Check that returning a dun bearer without default bearer works, and that
+  // no DBus properties watcher is set in this case.
+  capability_->OnBearersChanged(
+      {default_inactive_paths[0], default_inactive_paths[1],
+       default_inactive_paths[2], dun_inactive_path, dun_active_path});
+  capability_->UpdateActiveBearers();
+  ASSERT_EQ(nullptr, capability_->GetActiveBearer(ApnList::ApnType::kDefault));
+  ASSERT_NE(nullptr, capability_->GetActiveBearer(ApnList::ApnType::kDun));
+  EXPECT_EQ(dun_active_path,
+            capability_->GetActiveBearer(ApnList::ApnType::kDun)->dbus_path());
+  EXPECT_EQ(nullptr, capability_->default_bearer_dbus_properties_proxy_.get());
+
+  // Check that empty list of bearers doesn't return any active bearer
   capability_->OnBearersChanged({});
-  capability_->UpdateActiveBearer();
-  EXPECT_EQ(nullptr, capability_->GetActiveBearer());
+  capability_->UpdateActiveBearers();
+  EXPECT_EQ(nullptr, capability_->GetActiveBearer(ApnList::ApnType::kDefault));
+  EXPECT_EQ(nullptr, capability_->GetActiveBearer(ApnList::ApnType::kDun));
+  EXPECT_EQ(nullptr, capability_->default_bearer_dbus_properties_proxy_.get());
 }
 
 TEST_F(CellularCapability3gppTest, SetInitialEpsBearer) {

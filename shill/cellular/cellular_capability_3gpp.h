@@ -200,7 +200,7 @@ class CellularCapability3gpp {
   // Returns a pointer to the current active bearer object or nullptr if no
   // active bearer exists. The returned bearer object is managed by this
   // capability object.
-  CellularBearer* GetActiveBearer() const;
+  CellularBearer* GetActiveBearer(ApnList::ApnType apn_type) const;
 
   const std::vector<MobileOperatorMapper::MobileAPN>& GetProfiles() const;
 
@@ -343,7 +343,7 @@ class CellularCapability3gpp {
   FRIEND_TEST(CellularCapability3gppTest, SimPropertiesChanged);
   FRIEND_TEST(CellularCapability3gppTest, StartModemInWrongState);
   FRIEND_TEST(CellularCapability3gppTest, StartModemWithDeferredEnableFailure);
-  FRIEND_TEST(CellularCapability3gppTest, UpdateActiveBearer);
+  FRIEND_TEST(CellularCapability3gppTest, UpdateActiveBearers);
   FRIEND_TEST(CellularCapability3gppTest, UpdateLinkSpeed);
   FRIEND_TEST(CellularCapability3gppTest, UpdatePendingActivationState);
   FRIEND_TEST(CellularCapability3gppTest, UpdateRegistrationState);
@@ -388,8 +388,8 @@ class CellularCapability3gpp {
 
   void Register(ResultOnceCallback callback);
 
-  // Updates |active_bearer_| to match the currently active bearer.
-  void UpdateActiveBearer();
+  // Updates |active_bearers_| to match the currently active bearers.
+  void UpdateActiveBearers();
 
   Stringmap ParseScanResult(const ScanResult& result);
 
@@ -533,7 +533,7 @@ class CellularCapability3gpp {
   std::unique_ptr<mm1::SimProxyInterface> sim_proxy_;
   std::unique_ptr<mm1::ModemLocationProxyInterface> modem_location_proxy_;
   std::unique_ptr<DBusPropertiesProxy> dbus_properties_proxy_;
-  std::unique_ptr<DBusPropertiesProxy> bearer_dbus_properties_proxy_;
+  std::unique_ptr<DBusPropertiesProxy> default_bearer_dbus_properties_proxy_;
 
   // Used to enrich information about the network operator in |ParseScanResult|.
   // TODO(pprabhu) Instead instantiate a local |MobileOperatorInfo| instance
@@ -563,7 +563,7 @@ class CellularCapability3gpp {
   bool resetting_ = false;
   SimLockStatus sim_lock_status_;
   SubscriptionState subscription_state_ = SubscriptionState::kUnknown;
-  std::unique_ptr<CellularBearer> active_bearer_;
+  std::map<ApnList::ApnType, std::unique_ptr<CellularBearer>> active_bearers_;
   RpcIdentifiers bearer_paths_;
   bool reset_done_ = false;
   std::vector<MobileOperatorMapper::MobileAPN> profiles_;
