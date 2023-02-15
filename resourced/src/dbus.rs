@@ -2,6 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#[cfg(feature = "vm_grpc")]
+use crate::vm_grpc::vm_grpc_util::vm_grpc_init;
+#[cfg(feature = "vm_grpc")]
+use libchromeos::sys::warn;
+
 use std::collections::HashMap;
 use std::convert::TryFrom;
 use std::path::Path;
@@ -388,6 +393,29 @@ pub async fn service_main() -> Result<()> {
             reset_fullscreen_video_timer_id: Arc::new(AtomicUsize::new(0)),
         },
     );
+
+    #[cfg(feature = "vm_grpc")]
+    {
+        let vm_started_rule = MatchRule::new_signal("org.chromium.VmConcierge", "VmStartedSignal");
+
+        // Swallow any errors related to grpc dbus messages.  Failure to initialize
+        // VM_GRPC sohuld not bring down resourced.
+        match conn.add_match(vm_started_rule.clone()).await {
+            Ok(_) => (),
+            Err(_) => warn!("Unable to set filtering of VmStarted dbus message."),
+        }
+
+        conn.start_receive(
+            vm_started_rule,
+            Box::new(|msg, _| {
+                match vm_grpc_init(&msg) {
+                    Ok(_) => (),
+                    Err(e) => warn!("Failed to initialize GRPC client/server pair. {}", e),
+                }
+                true
+            }),
+        );
+    }
 
     conn.start_receive(
         MatchRule::new_method_call(),

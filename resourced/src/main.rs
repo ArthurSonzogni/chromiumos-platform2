@@ -15,6 +15,9 @@ mod cgroup_x86_64;
 #[cfg(target_arch = "x86_64")]
 mod cpu_scaling;
 
+#[cfg(feature = "vm_grpc")]
+mod vm_grpc;
+
 use anyhow::{bail, Result};
 use libchromeos::panic_handler::install_memfd_handler;
 use libchromeos::sys::{error, info};

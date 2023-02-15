@@ -25,7 +25,7 @@ use super::proto::resourced_bridge::EmptyMessage;
 #[derive(Clone)]
 struct ResourcedCommListenerService {
     cpu_dev: DeviceCpuStatus,
-    packet_tx_freq: Arc<AtomicI64>,
+    packet_tx_interval: Arc<AtomicI64>,
 }
 
 //Server object
@@ -46,9 +46,9 @@ impl VmGrpcServer {
     ///
     /// `path`: root path relative to sysfs.
     ///
-    /// `pkt_tx_freq`: Arc<AtomicI64> that will be shared with client thread.
+    /// `pkt_tx_interval`: Arc<AtomicI64> that will be shared with client thread.
     ///             Server will modify this value based on VM request.  Client
-    ///             Will use this value to set the update frequency of host metric
+    ///             Will use this value to set the update interval of host metric
     ///             packets.  Client can also modify this value in case client detects
     ///             crash in the guest VM GRPC server.
     ///
@@ -60,7 +60,7 @@ impl VmGrpcServer {
         cid: i16,
         port: u16,
         root: &Path,
-        pkt_tx_freq: Arc<AtomicI64>,
+        pkt_tx_interval: Arc<AtomicI64>,
     ) -> Result<VmGrpcServer> {
         static SERVER_RUNNING: AtomicBool = AtomicBool::new(false);
 
@@ -74,11 +74,11 @@ impl VmGrpcServer {
 
         // This reference will be moved to the spawned thread.  Shared memory with
         // client thread.
-        let packet_tx_freq = Arc::clone(&pkt_tx_freq);
+        let packet_tx_interval = Arc::clone(&pkt_tx_interval);
 
         // Set this to default value at server start.  Server always starts at no_update
-        // state (pkt_tx_freq = -1)
-        packet_tx_freq.store(-1, Ordering::Relaxed);
+        // state (pkt_tx_interval = -1)
+        packet_tx_interval.store(-1, Ordering::Relaxed);
 
         thread::spawn(move || {
             info!("Running grpc server");
@@ -86,7 +86,7 @@ impl VmGrpcServer {
             let env = Arc::new(Environment::new(1));
             let service = create_resourced_comm_listener(ResourcedCommListenerService {
                 cpu_dev,
-                packet_tx_freq,
+                packet_tx_interval,
             });
 
             let quota = ResourceQuota::new(Some("ResourcedServerQuota")).resize_memory(1024 * 1024);
@@ -158,7 +158,7 @@ impl ResourcedCommListener for ResourcedCommListenerService {
             req.get_interval_ms().to_string()
         );
 
-        self.packet_tx_freq
+        self.packet_tx_interval
             .store(req.get_interval_ms(), Ordering::Relaxed);
         let resp = ReturnCode::default();
         let f = sink
@@ -176,7 +176,7 @@ impl ResourcedCommListener for ResourcedCommListenerService {
     ) {
         info!("==> CPU update stop request");
 
-        self.packet_tx_freq.store(-1, Ordering::Relaxed);
+        self.packet_tx_interval.store(-1, Ordering::Relaxed);
         let resp = ReturnCode::default();
         let f = sink
             .success(resp)
@@ -236,17 +236,17 @@ mod tests {
             write_mock_cpu(root.path(), cpu, 3200000, 3000000, 400000, 1000000);
         }
 
-        let pkt_tx_freq = std::sync::Arc::new(AtomicI64::new(-2));
-        let pkt_tx_freq_clone = pkt_tx_freq.clone();
-        let s = VmGrpcServer::run(32, 5555, Path::new(root.path()), pkt_tx_freq);
+        let pkt_tx_interval = std::sync::Arc::new(AtomicI64::new(-2));
+        let pkt_tx_interval_clone = pkt_tx_interval.clone();
+        let s = VmGrpcServer::run(32, 5555, Path::new(root.path()), pkt_tx_interval);
 
         // Test that server is attempted, and the Arc<i64> is set to init value of -1.
         // The internal thread likely failed since it can't bind the socket port.
-        assert_eq!(pkt_tx_freq_clone.load(Ordering::Relaxed), -1);
+        assert_eq!(pkt_tx_interval_clone.load(Ordering::Relaxed), -1);
         assert_eq!(s.is_ok(), true);
 
         // Test that second invoke fails
-        let s2 = VmGrpcServer::run(32, 5555, Path::new(root.path()), pkt_tx_freq_clone);
+        let s2 = VmGrpcServer::run(32, 5555, Path::new(root.path()), pkt_tx_interval_clone);
         assert_eq!(s2.is_err(), true);
     }
 
