@@ -604,6 +604,9 @@ bool IsLockscreenShown() {
 }
 
 std::string StripLeadingPathSeparators(const std::string& path) {
+  if (path.find_first_not_of('/') == std::string::npos)
+    return std::string();
+
   return path.substr(path.find_first_not_of('/'));
 }
 
