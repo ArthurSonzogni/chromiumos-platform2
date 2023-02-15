@@ -74,6 +74,9 @@ constexpr char kPasswordLabel[] = "fake-password-label";
 constexpr char kPassword[] = "fake-password";
 constexpr char kNewPassword[] = "fake-new-password";
 
+constexpr char kPinLabel[] = "fake-pin-label";
+constexpr char kPin[] = "1234";
+
 constexpr char kRecoveryLabel[] = "fake-recovery-label";
 constexpr char kUserGaiaId[] = "fake-gaia-id";
 constexpr char kDeviceUserId[] = "fake-device-user-id";
@@ -131,6 +134,19 @@ CryptohomeStatus AddPasswordFactor(const std::string& label,
   return RunAddAuthFactor(request, auth_session);
 }
 
+CryptohomeStatus AddPinFactor(const std::string& label,
+                              const std::string& pin,
+                              AuthSession& auth_session) {
+  user_data_auth::AddAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  user_data_auth::AuthFactor& factor = *request.mutable_auth_factor();
+  factor.set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
+  factor.set_label(label);
+  factor.mutable_pin_metadata();
+  request.mutable_auth_input()->mutable_pin_input()->set_secret(pin);
+  return RunAddAuthFactor(request, auth_session);
+}
+
 CryptohomeStatus AuthenticatePasswordFactor(const std::string& label,
                                             const std::string& password,
                                             AuthSession& auth_session) {
@@ -138,6 +154,16 @@ CryptohomeStatus AuthenticatePasswordFactor(const std::string& label,
   request.set_auth_session_id(auth_session.serialized_token());
   request.set_auth_factor_label(label);
   request.mutable_auth_input()->mutable_password_input()->set_secret(password);
+  return RunAuthenticateAuthFactor(request, auth_session);
+}
+
+CryptohomeStatus AuthenticatePinFactor(const std::string& label,
+                                       const std::string& pin,
+                                       AuthSession& auth_session) {
+  user_data_auth::AuthenticateAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_label(label);
+  request.mutable_auth_input()->mutable_pin_input()->set_secret(pin);
   return RunAuthenticateAuthFactor(request, auth_session);
 }
 
@@ -306,24 +332,9 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
                                          &user_secret_stash_storage_};
 };
 
-// Parameterized fixture for tests that should work regardless of the
-// UserSecretStash migration state, i.e. for all 4 combinations (VK/USS used
-// initially/finally).
-//
-// Note that this kind of test skips this combination: USS is enabled for new
-// users but the USS migration of the existing users is disabled.
-class AuthSessionWithTpmSimulatorUssMigrationAgnosticTest
-    : public AuthSessionWithTpmSimulatorTest,
-      public ::testing::WithParamInterface<
-          std::tuple<AuthFactorStorageType, AuthFactorStorageType>> {
+class AuthSessionWithTpmSimulatorUssMigrationTest
+    : public AuthSessionWithTpmSimulatorTest {
  protected:
-  static AuthFactorStorageType storage_type_initially() {
-    return std::get<0>(GetParam());
-  }
-  static AuthFactorStorageType storage_type_finally() {
-    return std::get<1>(GetParam());
-  }
-
   // Configures the experiment states to the desired storage type.
   void SetStorageType(AuthFactorStorageType storage_type) {
     // Decide whether to enable both of USS experiments (for new users and for
@@ -338,6 +349,87 @@ class AuthSessionWithTpmSimulatorUssMigrationAgnosticTest
 
     platform_features_.SetEnabled(kCrOSLateBootMigrateToUserSecretStash.name,
                                   enable_uss);
+  }
+
+ private:
+  std::unique_ptr<SetUssExperimentOverride> uss_experiment_override_;
+};
+
+// Test that it's possible to migrate PIN from VaultKeyset to UserSecretStash
+// even after the password was already migrated and recovery (a USS-only factor)
+// was added and used as well.
+TEST_F(AuthSessionWithTpmSimulatorUssMigrationTest,
+       CompleteUssMigrationAfterRecoveryMidWay) {
+  auto create_auth_session = [this]() {
+    return AuthSession::Create(
+        kUsername, user_data_auth::AUTH_SESSION_FLAGS_NONE,
+        AuthIntent::kDecrypt,
+        /*on_timeout=*/base::DoNothing(), &platform_features_, backing_apis_);
+  };
+
+  //  Assert. Create a user with password and PIN VKs.
+  SetStorageType(AuthFactorStorageType::kVaultKeyset);
+  {
+    std::unique_ptr<AuthSession> auth_session = create_auth_session();
+    ASSERT_TRUE(auth_session);
+    EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
+    EXPECT_THAT(AddPasswordFactor(kPasswordLabel, kPassword, *auth_session),
+                IsOk());
+    EXPECT_THAT(AddPinFactor(kPinLabel, kPin, *auth_session), IsOk());
+  }
+
+  // Act. Enable USS experiment, add recovery (after using the password and
+  // hence migrating it to USS), and use recovery to update the password.
+  SetStorageType(AuthFactorStorageType::kUserSecretStash);
+  {
+    std::unique_ptr<AuthSession> auth_session = create_auth_session();
+    ASSERT_TRUE(auth_session);
+    EXPECT_THAT(
+        AuthenticatePasswordFactor(kPasswordLabel, kPassword, *auth_session),
+        IsOk());
+    EXPECT_THAT(AddRecoveryFactor(*auth_session), IsOk());
+  }
+  {
+    std::unique_ptr<AuthSession> auth_session = create_auth_session();
+    ASSERT_TRUE(auth_session);
+    EXPECT_THAT(AuthenticateRecoveryFactor(*auth_session), IsOk());
+    EXPECT_THAT(
+        UpdatePasswordFactor(kPasswordLabel, kNewPassword, *auth_session),
+        IsOk());
+  }
+
+  // Assert. Both password (already migrated to USS) and PIN (not migrated yet)
+  // still work.
+  {
+    std::unique_ptr<AuthSession> auth_session = create_auth_session();
+    ASSERT_TRUE(auth_session);
+    EXPECT_THAT(
+        AuthenticatePasswordFactor(kPasswordLabel, kNewPassword, *auth_session),
+        IsOk());
+  }
+  {
+    std::unique_ptr<AuthSession> auth_session = create_auth_session();
+    ASSERT_TRUE(auth_session);
+    EXPECT_THAT(AuthenticatePinFactor(kPinLabel, kPin, *auth_session), IsOk());
+  }
+}
+
+// Parameterized fixture for tests that should work regardless of the
+// UserSecretStash migration state, i.e. for all 4 combinations (VK/USS used
+// initially/finally).
+//
+// Note that this kind of test skips this combination: USS is enabled for new
+// users but the USS migration of the existing users is disabled.
+class AuthSessionWithTpmSimulatorUssMigrationAgnosticTest
+    : public AuthSessionWithTpmSimulatorUssMigrationTest,
+      public ::testing::WithParamInterface<
+          std::tuple<AuthFactorStorageType, AuthFactorStorageType>> {
+ protected:
+  static AuthFactorStorageType storage_type_initially() {
+    return std::get<0>(GetParam());
+  }
+  static AuthFactorStorageType storage_type_finally() {
+    return std::get<1>(GetParam());
   }
 
   // Aliases to `SetStorageType()` that call it with the corresponding test
