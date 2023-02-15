@@ -775,14 +775,12 @@ TEST_F(CellularCapability3gppTest, TerminationActionRemovedByStopModem) {
 TEST_F(CellularCapability3gppTest, DisconnectNoProxy) {
   mm1::MockModemSimpleProxy* modem_simple_proxy = modem_simple_proxy_.get();
   SetSimpleProxy();
-  ResultCallback disconnect_callback;
-  EXPECT_CALL(
-      *modem_simple_proxy,
-      Disconnect(_, _,
-                 CellularCapability3gpp::kTimeoutDisconnect.InMilliseconds()))
-      .Times(0);
+  ResultCallback callback = base::BindRepeating(
+      &CellularCapability3gppTest::TestCallback, base::Unretained(this));
+  EXPECT_CALL(*modem_simple_proxy, Disconnect(_, _, _)).Times(0);
   ReleaseCapabilityProxies();
-  capability_->Disconnect(disconnect_callback);
+  EXPECT_CALL(*this, TestCallback(IsFailure()));
+  capability_->Disconnect(callback);
 }
 
 TEST_F(CellularCapability3gppTest, SimLockStatusChanged) {

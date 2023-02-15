@@ -583,13 +583,18 @@ void CellularCapability3gpp::Connect(const ResultCallback& callback) {
 
 void CellularCapability3gpp::Disconnect(const ResultCallback& callback) {
   SLOG(this, 3) << __func__;
-  if (modem_simple_proxy_) {
-    SLOG(this, 2) << "Disconnect all bearers.";
-    // If "/" is passed as the bearer path, ModemManager will disconnect all
-    // bearers.
-    modem_simple_proxy_->Disconnect(kRootPath, callback,
-                                    kTimeoutDisconnect.InMilliseconds());
+  if (!modem_simple_proxy_) {
+    Error error;
+    Error::PopulateAndLog(FROM_HERE, &error, Error::kWrongState, "No proxy");
+    callback.Run(error);
+    return;
   }
+
+  SLOG(this, 2) << "Disconnect all bearers.";
+  // If "/" is passed as the bearer path, ModemManager will disconnect all
+  // bearers.
+  modem_simple_proxy_->Disconnect(kRootPath, callback,
+                                  kTimeoutDisconnect.InMilliseconds());
 }
 
 void CellularCapability3gpp::CompleteActivation(Error* error) {
