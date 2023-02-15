@@ -55,6 +55,10 @@ class MockFactory : public Factory {
               GetOobeConfigFrontend,
               (),
               (override));
+  MOCK_METHOD(std::unique_ptr<LocalDataMigrationFrontend>,
+              GetLocalDataMigrationFrontend,
+              (),
+              (override));
 };
 
 }  // namespace hwsec

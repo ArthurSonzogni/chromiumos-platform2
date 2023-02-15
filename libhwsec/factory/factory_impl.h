@@ -13,6 +13,7 @@
 #include "libhwsec/frontend/chaps/frontend.h"
 #include "libhwsec/frontend/client/frontend.h"
 #include "libhwsec/frontend/cryptohome/frontend.h"
+#include "libhwsec/frontend/local_data_migration/frontend.h"
 #include "libhwsec/frontend/oobe_config/frontend.h"
 #include "libhwsec/frontend/optee-plugin/frontend.h"
 #include "libhwsec/frontend/pinweaver/frontend.h"
@@ -46,6 +47,8 @@ class HWSEC_EXPORT FactoryImpl : public Factory {
   std::unique_ptr<OpteePluginFrontend> GetOpteePluginFrontend() override;
   std::unique_ptr<BootLockboxFrontend> GetBootLockboxFrontend() override;
   std::unique_ptr<OobeConfigFrontend> GetOobeConfigFrontend() override;
+  std::unique_ptr<LocalDataMigrationFrontend> GetLocalDataMigrationFrontend()
+      override;
 
  protected:
   std::unique_ptr<MiddlewareOwner> default_middleware_;
