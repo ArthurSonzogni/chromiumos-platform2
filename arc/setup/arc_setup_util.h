@@ -256,14 +256,21 @@ bool SafeCopyFile(const base::FilePath& src_path,
                   uid_t uid = getuid(),
                   gid_t gid = getgid());
 
+// Returns whether |image_path| points to an EROFS image file.
+// Returns false if |image_path| is not an EROFS image file, or an error
+// occurred while accessing it.
+bool IsErofsImage(const base::FilePath& image_path);
+
 // Generates a file called first stage fstab at |fstab_path| which is exported
 // by crosvm to the guest via the device tree so the guest can read certain
 // files in its init's first stage.
+// |vendor_image_path| is used to check file system type of the vendor image.
 // |cache_partition| indicates the device number of the disk for the cache
 // partition to reside on. An empty string indicates that no disk is specified
 // for cache partition (i.e. cache does not have a dedicated partition).
 bool GenerateFirstStageFstab(const base::FilePath& combined_property_file_name,
                              const base::FilePath& fstab_path,
+                             const base::FilePath& vendor_image_path,
                              const std::string& cache_partition);
 
 // Filters camera profiles in |media_profile_xml| with the settings in

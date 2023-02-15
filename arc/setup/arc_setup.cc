@@ -99,6 +99,8 @@ constexpr char kAndroidMutableSource[] =
 constexpr char kAndroidRootfsDirectory[] =
     "/opt/google/containers/android/rootfs/root";
 constexpr char kArcVmPerBoardConfigPath[] = "/run/arcvm/host_generated/oem";
+constexpr char kArcVmVendorImagePath[] =
+    "/opt/google/vms/android/vendor.raw.img";
 constexpr char kApkCacheDir[] = "/mnt/stateful_partition/unencrypted/apkcache";
 constexpr char kArcBridgeSocketContext[] = "u:object_r:arc_bridge_socket:s0";
 constexpr char kArcBridgeSocketPath[] = "/run/chrome/arc_bridge.sock";
@@ -2559,7 +2561,7 @@ void ArcSetup::OnPrepareHostGeneratedDir() {
   EXIT_IF(!GenerateFirstStageFstab(
       property_files_dest_path,
       base::FilePath(kGeneratedPropertyFilesPathVm).Append("fstab"),
-      cache_partition));
+      base::FilePath(kArcVmVendorImagePath), cache_partition));
 }
 
 void ArcSetup::OnApplyPerBoardConfig() {
