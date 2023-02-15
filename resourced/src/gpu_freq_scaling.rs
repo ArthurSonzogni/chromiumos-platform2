@@ -2,6 +2,50 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use crate::gpu_freq_scaling::amd_device::{
+    amd_sustained_mode_cleanup, amd_sustained_mode_init, create_amd_device_config,
+};
+use anyhow::{bail, Result};
+use once_cell::sync::Lazy;
+use std::sync::Mutex;
+
+static VC_MODE: Lazy<Mutex<bool>> = Lazy::new(|| Mutex::new(false));
+
+pub fn disable_vc_mode() -> Result<()> {
+    match VC_MODE.lock() {
+        Ok(mut vc_mode) => {
+            if *vc_mode {
+                if let Ok(dev) = create_amd_device_config() {
+                    match amd_sustained_mode_cleanup(&dev) {
+                        Ok(_) => *vc_mode = false,
+                        Err(_) => bail!("failed to clean amd sustained mode"),
+                    }
+                }
+            }
+        }
+        Err(_) => bail!("failed to vc mutex"),
+    }
+    Ok(())
+}
+
+pub fn enable_vc_mode() -> Result<()> {
+    match VC_MODE.lock() {
+        Ok(mut vc_mode) => {
+            if !*vc_mode {
+                if let Ok(dev) = create_amd_device_config() {
+                    match amd_sustained_mode_init(&dev) {
+                        Ok(_) => *vc_mode = true,
+                        Err(_) => bail!("failed to init amd sustained mode"),
+                    }
+                    dev.set_min_frequency(1600)?;
+                }
+            }
+        }
+        Err(_) => bail!("failed to vc mutex"),
+    }
+    Ok(())
+}
+
 pub mod intel_device {
     use crate::{
         common::{self, GameMode},
@@ -313,11 +357,12 @@ pub mod amd_device {
     #![allow(dead_code)]
 
     use anyhow::{bail, Context, Result};
-    use regex::Regex;
+    use glob::glob;
+    use libchromeos::sys::{error, info};
     use std::fs;
     use std::fs::File;
     use std::io::{BufRead, BufReader};
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
 
     pub struct AmdDeviceConfig {
         /// Device path gpu mode control (auto/manual).
@@ -325,10 +370,18 @@ pub mod amd_device {
 
         /// Device path for setting system clock.
         sclk_mode_path: PathBuf,
+
+        /// Device path for setting min and max clock.
+        clk_voltage_path: PathBuf,
     }
 
     /// Device path for cpuinfo.
     const CPUINFO_PATH: &str = "/proc/cpuinfo";
+
+    // Device node to manage GPU frequency range.
+    const AMDGPU_DPM_FORCE_PERFORMANCE_LEVEL: &str = "power_dpm_force_performance_level";
+    const AMDGPU_PP_DPM_SCLK: &str = "pp_dpm_sclk";
+    const AMDGPU_PP_OD_CLK_VOLTAGE: &str = "pp_od_clk_voltage";
 
     #[derive(Clone, Copy, PartialEq)]
     enum AmdGpuMode {
@@ -344,94 +397,40 @@ pub mod amd_device {
         ///
         /// # Arguments
         ///
-        /// * `gpu_mode_path` - sysfs path for setting auto/manual control of AMD gpu.  This will typically be at _/sys/class/drm/card0/device/power_dpm_force_performance_level_.
+        /// * `gpu_mode_path` - sysfs path for setting auto/manual control of AMD gpu.
+        ///   This will typically be at
+        ///   _/sys/class/drm/card0/device/power_dpm_force_performance_level_.
         ///
-        /// * `sclk_mode_path` - sysfs path for setting system clock options of AMD gpu.  This will typically be at _/sys/class/drm/card0/device/pp_dpm_sclk_.
+        /// * `sclk_mode_path` - sysfs path for setting system clock options of AMD gpu.
+        ///   This will typically be at _/sys/class/drm/card0/device/pp_dpm_sclk_.
+        ///
+        /// * `clk_voltage_path` - sysfs path for setting system clock range of AMD gpu.
+        ///   This will typically be at _/sys/class/drm/card0/device/pp_od_clvk_voltage_.
         ///
         /// # Return
         ///
         /// New AMD device object.
-        pub fn new(gpu_mode_path: &str, sclk_mode_path: &str) -> AmdDeviceConfig {
+        pub fn new(
+            gpu_mode_path: &str,
+            sclk_mode_path: &str,
+            clk_voltage_path: &str,
+        ) -> AmdDeviceConfig {
             AmdDeviceConfig {
                 gpu_mode_path: PathBuf::from(gpu_mode_path),
                 sclk_mode_path: PathBuf::from(sclk_mode_path),
+                clk_voltage_path: PathBuf::from(clk_voltage_path),
             }
         }
 
-        /// Static function to check if device has AMU cpu.  Assumes cpuinfo is in _/proc/cpuinfo_.
+        /// Static function to check if device has a supported AMD GPU.
         ///
         /// # Return
         ///
-        /// Boolean denoting if device has AMD CPU.
-        pub fn is_amd_device() -> bool {
-            println!("amd device check");
-            let reader = File::open(PathBuf::from(CPUINFO_PATH))
-                .map(BufReader::new)
-                .context("Couldn't read cpuinfo");
-
-            match reader {
-                Ok(reader_unwrap) => AmdDeviceConfig::has_amd_tag_in_cpu_info(reader_unwrap),
-                Err(_) => false,
-            }
-        }
-
-        // Function split for unit testing
-        pub fn has_amd_tag_in_cpu_info<R: BufRead>(reader: R) -> bool {
-            // Sample cpuinfo lines:
-            // processor        : 0
-            // vendor_id        : AuthenticAMD
-            // cpu family       : 23
-            for line in reader.lines().flatten() {
-                // Only check CPU0 and fail early.
-                if line.starts_with("vendor_id") {
-                    return line.ends_with("AuthenticAMD");
-                }
-            }
-            false
-        }
-
-        /// Function checks if CPU family is supported for resourced optimizations.  Checks include:
-        ///
-        ///     * Ensure system clock options are within expected range.
-        ///     * Ensure CPU family is 3rd gen Ryzen 5 or 7 series.
-        ///
-        /// # Return
-        ///
-        /// Boolean denoting if device will benefit from manual control of sys clock range.
-        pub fn is_supported_device(&self) -> Result<bool> {
-            let reader = File::open(PathBuf::from(CPUINFO_PATH))
-                .map(BufReader::new)
-                .context("Couldn't read cpuinfo")?;
-
-            // TODO: mock out call to unit test function.
-            let (sclk_modes, _selected) = self.get_sclk_modes()?;
-            if sclk_modes.len() > 2 && (sclk_modes[1] < 600 || sclk_modes[1] > 750) {
-                bail!("Unexpected GPU frequency range.  Selected sclk should be between 600MHz-750MHz");
-            }
-
-            if self.is_supported_dev_family(reader)? {
-                return Ok(true);
-            }
-
-            Ok(false)
-        }
-
-        // Function split for unit testing.
-        pub fn is_supported_dev_family<R: BufRead>(&self, reader: R) -> Result<bool> {
-            // Limit scope to 3rd gen ryzen 5/7 series
-            // AMD devices don't advertise TDP, so we check cpu model
-            // and GPU operating ranges as gating conditions.
-            let model_re = Regex::new(r"AMD Ryzen [5|7] 3")?;
-
-            // Sample cpuinfo line:
-            // model name       : AMD Ryzen 7 3000C with Radeon Vega Graphics
-            for line in reader.lines().flatten() {
-                // Only check CPU0 and fail early.
-                if line.starts_with("model name") {
-                    return Ok(model_re.is_match(&line));
-                }
-            }
-            Ok(false)
+        /// Boolean denoting if device has a supported AMD GPU.
+        pub fn is_amd_device(&self) -> bool {
+            return Path::new(&self.gpu_mode_path).exists()
+                && Path::new(&self.sclk_mode_path).exists()
+                && Path::new(&self.clk_voltage_path).exists();
         }
 
         /// Returns array of available sclk modes and the current selection.
@@ -503,36 +502,90 @@ pub mod amd_device {
 
             if req_mode < sclk_modes.len() as u32 && req_mode != selected {
                 fs::write(&self.sclk_mode_path, req_mode.to_string())?;
-                self.set_gpu_mode(AmdGpuMode::Manual)?;
             }
             Ok(())
         }
+
+        fn set_clk_voltage_mode(&self, min: u32, max: u32) -> Result<()> {
+            let min_str = format!("s 0 {}\n", min);
+            let max_str = format!("s 1 {}\n", max);
+            // setting the minimum frequency
+            fs::write(&self.clk_voltage_path, min_str)?;
+            // setting the maximum frequency
+            fs::write(&self.clk_voltage_path, max_str)?;
+            // committing the changes
+            fs::write(&self.clk_voltage_path, "c\n")?;
+
+            Ok(())
+        }
+
+        pub fn set_min_frequency(&self, val: u32) -> Result<()> {
+            let (sclk_modes, _) = self.get_sclk_modes()?;
+
+            let min = sclk_modes[0];
+            let max = sclk_modes[sclk_modes.len() - 1];
+            if val < min {
+                error!("Invalid minimum clk voltage");
+            }
+            let min_freq = if val > max { max } else { val };
+
+            self.set_clk_voltage_mode(min_freq, max)
+        }
     }
 
-    /// Init function to setup device, perform validity check, and set GPU control to manual if applicable.
+    fn find_amd_dev_dir() -> Option<PathBuf> {
+        let entries = match glob("/sys/class/drm/card*/device/power_dpm_force_performance_level") {
+            Ok(entries) => entries,
+            Err(_) => return None,
+        };
+        for entry in entries.flatten() {
+            if let Some(dir) = entry.parent() {
+                return Some(dir.to_path_buf());
+            }
+        }
+        None
+    }
+
+    /// Function to create device
     ///
     /// # Return
     ///
-    /// An AMD Device object that can be used to interface with the device.
-    pub fn amd_sustained_mode_init() -> Result<AmdDeviceConfig> {
-        println!("Setting AMDGPU conf");
-
+    /// an AMD Device object that can be used to interface with the device.
+    pub fn create_amd_device_config() -> Result<AmdDeviceConfig> {
         // TODO: add support for multi-GPU.
-        let dev: AmdDeviceConfig = AmdDeviceConfig::new(
-            "/sys/class/drm/card0/device/power_dpm_force_performance_level",
-            "/sys/class/drm/card0/device/pp_dpm_sclk",
-        );
 
-        if let Ok(is_supported_dev) = dev.is_supported_device() {
-            if is_supported_dev {
-                println!("Setting sclk for supported AMD device");
-                dev.set_sclk_mode(1)?;
-            } else {
-                bail!("Unsupported device");
-            }
+        let amd_dev_dir = find_amd_dev_dir().context("No AMD device detected")?;
+
+        let concat_and_get_string = |file_name: &str| {
+            return amd_dev_dir.join(file_name).display().to_string();
+        };
+
+        let gpu_mode_str = concat_and_get_string(AMDGPU_DPM_FORCE_PERFORMANCE_LEVEL);
+        let sclk_mode_str = concat_and_get_string(AMDGPU_PP_DPM_SCLK);
+        let clk_voltage_str = concat_and_get_string(AMDGPU_PP_OD_CLK_VOLTAGE);
+
+        Ok(AmdDeviceConfig::new(
+            &gpu_mode_str,
+            &sclk_mode_str,
+            &clk_voltage_str,
+        ))
+    }
+
+    /// Init function to setup device, perform validity check, and set GPU
+    /// control to manual if applicable.
+    ///
+    /// # Arguments
+    ///
+    /// * `dev` - AMD Device object.
+    pub fn amd_sustained_mode_init(dev: &AmdDeviceConfig) -> Result<()> {
+        if AmdDeviceConfig::is_amd_device(dev) {
+            info!("Setting sclk for supported AMD device");
+            dev.set_gpu_mode(AmdGpuMode::Manual)?;
+            dev.set_sclk_mode(1)?;
+        } else {
+            info!("not amd device");
         }
-
-        Ok(dev)
+        Ok(())
     }
 
     /// Cleanup function to return GPU to _auto_ mode if applicable.  Will force to auto sclk regardless of initial state or intermediate changes.
@@ -540,11 +593,14 @@ pub mod amd_device {
     /// # Arguments
     ///
     /// * `dev` - AMD Device object.
-    pub fn amd_sustained_mode_cleanup(dev: &AmdDeviceConfig) {
-        match dev.set_gpu_mode(AmdGpuMode::Auto) {
-            Ok(_) => println!("GPU mode reset to `AUTO`"),
-            Err(_) => println!("Unable to set GPU mode to `AUTO`"),
+    pub fn amd_sustained_mode_cleanup(dev: &AmdDeviceConfig) -> Result<()> {
+        if AmdDeviceConfig::is_amd_device(dev) {
+            info!("Resetting GPU mode to `AUTO`");
+            dev.set_gpu_mode(AmdGpuMode::Auto)?;
+        } else {
+            info!("not amd device");
         }
+        Ok(())
     }
 }
 
@@ -704,33 +760,8 @@ mod tests {
     }
 
     #[test]
-    fn test_amd_device_true() {
-        let mock_cpuinfo = construct_poc_cpuinfo_snippet("AuthenticAMD", "dont_care");
-        assert!(AmdDeviceConfig::has_amd_tag_in_cpu_info(
-            mock_cpuinfo.as_bytes()
-        ));
-    }
-
-    #[test]
-    fn test_amd_device_false() {
-        // Incorrect vendor ID
-        let mock_cpuinfo = construct_poc_cpuinfo_snippet("GenuineIntel", "dont_care");
-        assert!(!AmdDeviceConfig::has_amd_tag_in_cpu_info(
-            mock_cpuinfo.as_bytes()
-        ));
-
-        // missing vendor ID
-        assert!(!AmdDeviceConfig::has_amd_tag_in_cpu_info(
-            "".to_string().as_bytes()
-        ));
-        assert!(!AmdDeviceConfig::has_amd_tag_in_cpu_info(
-            "processor: 0".to_string().as_bytes()
-        ));
-    }
-
-    #[test]
     fn test_amd_parse_sclk_valid() {
-        let dev: AmdDeviceConfig = AmdDeviceConfig::new("mock_file", "mock_sclk");
+        let dev: AmdDeviceConfig = AmdDeviceConfig::new("mock_file", "mock_sclk", "mock_voltage");
 
         // trailing space is intentional, reflects sysfs output.
         let mock_sclk = r#"
@@ -748,7 +779,7 @@ mod tests {
 
     #[test]
     fn test_amd_parse_sclk_invalid() {
-        let dev: AmdDeviceConfig = AmdDeviceConfig::new("mock_file", "mock_sclk");
+        let dev: AmdDeviceConfig = AmdDeviceConfig::new("mock_file", "mock_sclk", "mock_voltage");
 
         // trailing space is intentional, reflects sysfs output.
         let mock_sclk = r#"
@@ -762,46 +793,5 @@ mod tests {
         assert!(dev
             .parse_sclk("x: nonint *".to_string().as_bytes())
             .is_err());
-    }
-
-    #[test]
-    fn test_amd_device_filter_pass() {
-        let dev: AmdDeviceConfig = AmdDeviceConfig::new("mock_file", "mock_sclk");
-
-        let mock_cpuinfo = construct_poc_cpuinfo_snippet(
-            "AuthenticAMD",
-            "AMD Ryzen 7 3700C  with Radeon Vega Mobile Gfx",
-        );
-
-        assert!(dev
-            .is_supported_dev_family(mock_cpuinfo.as_bytes())
-            .unwrap());
-        assert!(dev
-            .is_supported_dev_family("model name        : AMD Ryzen 5 3700C".as_bytes())
-            .unwrap());
-    }
-
-    #[test]
-    fn test_amd_device_filter_fail() {
-        let dev: AmdDeviceConfig = AmdDeviceConfig::new("mock_file", "mock_sclk");
-
-        let mock_cpuinfo = construct_poc_cpuinfo_snippet(
-            "AuthenticAMD",
-            "AMD Ryzen 3 3700C  with Radeon Vega Mobile Gfx",
-        );
-
-        assert!(!dev
-            .is_supported_dev_family(mock_cpuinfo.as_bytes())
-            .unwrap());
-        assert!(!dev
-            .is_supported_dev_family("model name        : AMD Ryzen 5 2700C".as_bytes())
-            .unwrap());
-        assert!(!dev
-            .is_supported_dev_family("model name        : AMD Ryzen 3 3700C".as_bytes())
-            .unwrap());
-        assert!(!dev
-            .is_supported_dev_family("model name        : malformed".as_bytes())
-            .unwrap());
-        assert!(!dev.is_supported_dev_family("".as_bytes()).unwrap());
     }
 }

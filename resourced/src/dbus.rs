@@ -24,6 +24,9 @@ use dbus_tokio::connection;
 use libchromeos::sys::error;
 use log::LevelFilter;
 
+#[cfg(target_arch = "x86_64")]
+use crate::gpu_freq_scaling;
+
 use crate::common;
 use crate::config;
 use crate::memory;
@@ -47,6 +50,7 @@ struct DbusContext {
 
     // Timer ids for skipping out-of-dated timer events.
     reset_game_mode_timer_id: Arc<AtomicUsize>,
+    reset_vc_mode_timer_id: Arc<AtomicUsize>,
     reset_fullscreen_video_timer_id: Arc<AtomicUsize>,
 }
 
@@ -163,6 +167,39 @@ fn register_interface(cr: &mut Crossroads, conn: Arc<SyncConnection>) -> IfaceTo
                     }
                     Err(_) => Err(MethodErr::failed("Failed to set memory thresholds")),
                 }
+            },
+        );
+        b.method(
+            "SetVCModeWithTimeout",
+            ("timeout_sec",),
+            (),
+            move |_, context, (timeout_sec,): (u32,)| {
+                #[cfg(target_arch = "x86_64")]
+                {
+                    gpu_freq_scaling::enable_vc_mode().map_err(|e| {
+                        error!("enable_vc_mode failed: {:#}", e);
+                        MethodErr::failed("Failed to enable VC mode")
+                    })?;
+
+                    let timeout = Duration::from_secs(timeout_sec.into());
+
+                    context
+                        .reset_vc_mode_timer_id
+                        .fetch_add(1, Ordering::Relaxed);
+                    let timer_id = context.reset_vc_mode_timer_id.load(Ordering::Relaxed);
+                    let reset_vc_mode_timer_id = context.reset_vc_mode_timer_id.clone();
+
+                    tokio::spawn(async move {
+                        tokio::time::sleep(timeout).await;
+                        // If the timer id is changed, this event is canceled.
+                        if timer_id == reset_vc_mode_timer_id.load(Ordering::Relaxed)
+                            && gpu_freq_scaling::disable_vc_mode().is_err()
+                        {
+                            error!("disable_vc_mode failed");
+                        }
+                    });
+                }
+                Ok(())
             },
         );
         b.method(
@@ -391,6 +428,7 @@ pub async fn service_main() -> Result<()> {
         DbusContext {
             power_preferences_manager,
             reset_game_mode_timer_id: Arc::new(AtomicUsize::new(0)),
+            reset_vc_mode_timer_id: Arc::new(AtomicUsize::new(0)),
             reset_fullscreen_video_timer_id: Arc::new(AtomicUsize::new(0)),
         },
     );
