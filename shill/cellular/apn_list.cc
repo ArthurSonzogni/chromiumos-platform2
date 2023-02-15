@@ -77,6 +77,11 @@ void ApnList::AddApn(const MobileOperatorMapper::MobileAPN& mobile_apn,
 
   (*props)[kApnTypesProperty] = ApnList::JoinApnTypes(
       {mobile_apn.apn_types.begin(), mobile_apn.apn_types.end()});
+  // TODO(b/251512775): Chrome still uses the "attach" property in ONC. Keep
+  // the property untouched until the old UI is obsoleted.
+  if (IsAttachApn(*props))
+    (*props)[kApnAttachProperty] = kApnAttachProperty;
+
   switch (source) {
     case ApnSource::kModb:
       (*props)[kApnSourceProperty] = cellular::kApnSourceMoDb;

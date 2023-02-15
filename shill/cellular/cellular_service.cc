@@ -147,6 +147,13 @@ void LoadApn(const StoreInterface* storage,
       (*apn_info)[kApnTypesProperty] = ApnList::JoinApnTypes({kApnTypeDefault});
     }
   }
+  // TODO(b/251512775): Chrome still uses the "attach" property in ONC. The
+  // reason why kApnAttachProperty is deleted a few lines before, just to be
+  // added again, is to keep the migration logic separate from the ONC issue.
+  // The ONC might be updated before the old UI is obsoleted.
+  if (ApnList::IsAttachApn(*apn_info))
+    (*apn_info)[kApnAttachProperty] = kApnAttachProperty;
+
   LoadApnField(storage, storage_group, keytag, cellular::kApnVersionProperty,
                apn_info);
 }
@@ -830,11 +837,13 @@ Stringmap CellularService::ValidateCustomApn(const Stringmap& value,
     } else {
       // TODO(b/251512775): Chrome will keep sending the "attach" value on
       // |SetApn| until the old UI is obsoleted. Convert the attach value into
-      // |kApnTypesProperty|.
+      // |kApnTypesProperty|, and retain |kApnAttachProperty| since it's used
+      // by ONC.
       // SetApn should not contain the key |kApnTypesProperty|.
       if (GetNonEmptyField(value, kApnAttachProperty, &str)) {
         new_apn_info[kApnTypesProperty] =
             ApnList::JoinApnTypes({kApnTypeIA, kApnTypeDefault});
+        new_apn_info[kApnAttachProperty] = kApnAttachProperty;
       } else {
         new_apn_info[kApnTypesProperty] =
             ApnList::JoinApnTypes({kApnTypeDefault});

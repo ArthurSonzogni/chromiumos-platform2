@@ -498,8 +498,7 @@ TEST_F(CellularServiceTest, SaveAndLoadApn) {
   EXPECT_EQ(kUsername, resultapn[kApnUsernameProperty]);
   EXPECT_EQ(kPassword, resultapn[kApnPasswordProperty]);
   EXPECT_EQ(kAuthentication, resultapn[kApnAuthenticationProperty]);
-  // kApnAttachProperty will be converted into kApnTypesProperty
-  EXPECT_FALSE(base::Contains(resultapn, kApnAttachProperty));
+  EXPECT_TRUE(base::Contains(resultapn, kApnAttachProperty));
   EXPECT_EQ("DEFAULT,IA", resultapn[kApnTypesProperty]);
 
   // Force storing kApnAttachProperty and reset kApnTypesProperty to verify the
@@ -509,7 +508,7 @@ TEST_F(CellularServiceTest, SaveAndLoadApn) {
   EXPECT_TRUE(service_->Save(&storage_));
   EXPECT_TRUE(service_->Load(&storage_));
   resultapn = service_->GetApn(&error);
-  EXPECT_FALSE(base::Contains(resultapn, kApnAttachProperty));
+  EXPECT_TRUE(base::Contains(resultapn, kApnAttachProperty));
   EXPECT_EQ("DEFAULT,IA", resultapn[kApnTypesProperty]);
 }
 
