@@ -96,7 +96,6 @@ class AuthSession final {
     hwsec::ExplicitInit<ObfuscatedUsername> obfuscated_username;
     hwsec::ExplicitInit<bool> is_ephemeral_user;
     hwsec::ExplicitInit<AuthIntent> intent;
-    base::OnceCallback<void(const base::UnguessableToken&)> on_timeout;
     hwsec::ExplicitInit<bool> user_exists;
     AuthFactorMap auth_factor_map;
     hwsec::ExplicitInit<bool> migrate_to_user_secret_stash;
@@ -121,7 +120,6 @@ class AuthSession final {
       Username username,
       unsigned int flags,
       AuthIntent intent,
-      base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
       feature::PlatformFeaturesInterface* feature_lib,
       BackingApis backing_apis);
 
@@ -274,10 +272,16 @@ class AuthSession final {
   // Get the hibernate secret, derived from the file system keyset.
   std::unique_ptr<brillo::SecureBlob> GetHibernateSecret();
 
+  // Sets a callback to call when the AuthSession is timed out. Note that this
+  // may trigger immediately if the session is already timed out.
+  void SetOnTimeoutCallback(
+      base::OnceCallback<void(const base::UnguessableToken&)> on_timeout);
+
  private:
   // AuthSessionTimedOut is called when the session times out and cleans up
-  // credentials that may be in memory. |on_timeout_| is also called to remove
-  // this |AuthSession| reference from |UserDataAuth|.
+  // credentials that may be in memory. Be aware that this may destroy the
+  // AuthSession object if the owner of the object is using a callback to clean
+  // up the objects when they time out.
   void AuthSessionTimedOut();
 
   // Emits a debug log message with this Auth Session's initial state.
@@ -655,7 +659,6 @@ class AuthSession final {
   base::WeakPtrFactory<AuthSession> weak_factory_{this};
 
   FRIEND_TEST(AuthSessionInterfaceTest, PreparePersistentVaultNoShadowDir);
-  FRIEND_TEST(AuthSessionManagerTest, CreateExpire);
   FRIEND_TEST(AuthSessionTest, AddCredentialNewUser);
   FRIEND_TEST(AuthSessionTest, AddCredentialNewUserTwice);
   FRIEND_TEST(AuthSessionTest, AddCredentialNewEphemeralUser);
@@ -664,7 +667,6 @@ class AuthSession final {
   FRIEND_TEST(AuthSessionTest, AuthenticateExistingUserFailure);
   FRIEND_TEST(AuthSessionTest, ExtensionTest);
   FRIEND_TEST(AuthSessionTest, UssMigrationFlagCheckFailure);
-  FRIEND_TEST(AuthSessionTest, TimeoutTest);
   FRIEND_TEST(AuthSessionTest, GetCredentialRegularUser);
   FRIEND_TEST(AuthSessionTest, GetCredentialKioskUser);
   FRIEND_TEST(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss);

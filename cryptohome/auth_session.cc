@@ -27,6 +27,7 @@
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 
+#include "base/functional/callback_helpers.h"
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
@@ -252,7 +253,6 @@ std::unique_ptr<AuthSession> AuthSession::Create(
     Username account_id,
     unsigned int flags,
     AuthIntent intent,
-    base::OnceCallback<void(const base::UnguessableToken&)> on_timeout,
     feature::PlatformFeaturesInterface* feature_lib,
     BackingApis backing_apis) {
   ObfuscatedUsername obfuscated_username = SanitizeUserName(account_id);
@@ -288,14 +288,14 @@ std::unique_ptr<AuthSession> AuthSession::Create(
   }
 
   // Assumption here is that keyset_management_ will outlive this AuthSession.
-  AuthSession::Params params = {std::move(account_id),
-                                std::move(obfuscated_username),
-                                flags & AUTH_SESSION_FLAGS_EPHEMERAL_USER,
-                                intent,
-                                std::move(on_timeout),
-                                user_exists,
-                                std::move(auth_factor_map),
-                                migrate_to_user_secret_stash};
+  AuthSession::Params params = {
+      .username = std::move(account_id),
+      .obfuscated_username = std::move(obfuscated_username),
+      .is_ephemeral_user = flags & AUTH_SESSION_FLAGS_EPHEMERAL_USER,
+      .intent = intent,
+      .user_exists = user_exists,
+      .auth_factor_map = std::move(auth_factor_map),
+      .migrate_to_user_secret_stash = migrate_to_user_secret_stash};
   return std::make_unique<AuthSession>(std::move(params), backing_apis);
 }
 
@@ -305,7 +305,7 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
       is_ephemeral_user_(*params.is_ephemeral_user),
       auth_intent_(*params.intent),
       auth_session_creation_time_(base::TimeTicks::Now()),
-      on_timeout_(std::move(params.on_timeout)),
+      on_timeout_(base::DoNothing()),
       crypto_(backing_apis.crypto),
       platform_(backing_apis.platform),
       user_session_map_(backing_apis.user_session_map),
@@ -343,14 +343,6 @@ AuthSession::~AuthSession() {
                       auth_session_creation_time_, append_string);
   ReportTimerDuration(kAuthSessionAuthenticatedLifetimeTimer,
                       authenticated_time_, append_string);
-}
-
-void AuthSession::AuthSessionTimedOut() {
-  LOG(INFO) << "AuthSession: timed out.";
-  status_ = AuthStatus::kAuthStatusTimedOut;
-  authorized_intents_.clear();
-  // After this call back to |UserDataAuth|, |this| object will be deleted.
-  std::move(on_timeout_).Run(token_);
 }
 
 void AuthSession::RecordAuthSessionStart() const {
@@ -2775,6 +2767,23 @@ std::unique_ptr<brillo::SecureBlob> AuthSession::GetHibernateSecret() {
   return std::make_unique<brillo::SecureBlob>(HmacSha256(
       brillo::SecureBlob::Combine(fs_keyset.Key().fnek, fs_keyset.Key().fek),
       brillo::Blob(message.cbegin(), message.cend())));
+}
+
+void AuthSession::SetOnTimeoutCallback(
+    base::OnceCallback<void(const base::UnguessableToken&)> on_timeout) {
+  on_timeout_ = std::move(on_timeout);
+  // If the session is already timed out, trigger the callback immediately.
+  if (status_ == AuthStatus::kAuthStatusTimedOut) {
+    std::move(on_timeout_).Run(token_);
+  }
+}
+
+void AuthSession::AuthSessionTimedOut() {
+  LOG(INFO) << "AuthSession: timed out.";
+  status_ = AuthStatus::kAuthStatusTimedOut;
+  authorized_intents_.clear();
+  // After this callback, it's possible that |this| has been deleted.
+  std::move(on_timeout_).Run(token_);
 }
 
 CryptohomeStatus AuthSession::PrepareWebAuthnSecret() {

@@ -23,13 +23,16 @@
 #include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/user_session/user_session_map.h"
 
+namespace cryptohome {
+namespace {
+
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
 using hwsec_foundation::status::MakeStatus;
 using hwsec_foundation::status::OkStatus;
 
-namespace cryptohome {
+}  // namespace
 
 AuthSessionManager::AuthSessionManager(
     Crypto* crypto,
@@ -59,28 +62,40 @@ AuthSessionManager::AuthSessionManager(
 
 CryptohomeStatusOr<InUseAuthSession> AuthSessionManager::CreateAuthSession(
     const Username& account_id, uint32_t flags, AuthIntent auth_intent) {
-  // The lifetime of AuthSessionManager instance will outlast AuthSession
-  // which is why usage of |Unretained| is safe.
-  auto on_timeout = base::BindOnce(&AuthSessionManager::ExpireAuthSession,
-                                   base::Unretained(this));
   // Assumption here is that keyset_management_ will outlive this AuthSession.
   std::unique_ptr<AuthSession> auth_session = AuthSession::Create(
-      account_id, flags, auth_intent, std::move(on_timeout), feature_lib_,
+      account_id, flags, auth_intent, feature_lib_,
       {crypto_, platform_, user_session_map_, keyset_management_,
        auth_block_utility_, auth_factor_manager_, user_secret_stash_storage_});
 
-  auto token = auth_session->token();
-  if (auth_sessions_.count(token) > 0) {
+  // If somehow, through some unknown madness, we get a token collision, return
+  // an error.
+  const auto& token = auth_session->token();
+  auto iter = auth_sessions_.lower_bound(token);
+  if (iter != auth_sessions_.end() && iter->first == token) {
     LOG(ERROR) << "AuthSession token collision";
     return MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionManagerTokenCollision),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_UNUSABLE_VAULT);
   }
-
-  auth_sessions_.emplace(token, nullptr);
-  return InUseAuthSession(*this, /*is_token_active=*/true,
+  // Add an entry to the session map. Note that we're deliberately initializing
+  // things into an in-use state by only adding a blank entry in the map.
+  auth_sessions_.emplace_hint(iter, token, nullptr);
+  InUseAuthSession in_use(*this, /*is_session_active=*/true,
                           std::move(auth_session));
+
+  // Attach the expiration handler to the AuthSession. It's important that we do
+  // this after creating the map entry and in_use object because the callback
+  // may immediately fire. This should NOT immediately delete the AuthSession
+  // object although it may remove the auth_sessions_ entry we just added.
+  //
+  // Note that it is safe for use to use |Unretained| here because the manager
+  // should always outlive all of the sessions it owns.
+  in_use->SetOnTimeoutCallback(base::BindOnce(
+      &AuthSessionManager::ExpireAuthSession, base::Unretained(this)));
+
+  return in_use;
 }
 
 bool AuthSessionManager::RemoveAuthSession(
@@ -118,7 +133,7 @@ InUseAuthSession AuthSessionManager::FindAuthSession(
       AuthSession::GetTokenFromSerializedString(serialized_token);
   if (!token.has_value()) {
     LOG(ERROR) << "Unparsable AuthSession token for find";
-    return InUseAuthSession(*this, /*is_token_active=*/false, nullptr);
+    return InUseAuthSession(*this, /*is_session_active=*/false, nullptr);
   }
   return FindAuthSession(token.value());
 }

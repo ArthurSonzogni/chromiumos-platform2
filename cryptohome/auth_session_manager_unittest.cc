@@ -116,23 +116,43 @@ TEST_F(AuthSessionManagerTest, CreateFindRemove) {
 }
 
 TEST_F(AuthSessionManagerTest, CreateExpire) {
-  CryptohomeStatusOr<InUseAuthSession> auth_session_status =
-      auth_session_manager_.CreateAuthSession(kUsername, 0,
-                                              AuthIntent::kDecrypt);
-  ASSERT_TRUE(auth_session_status.ok());
-  AuthSession* auth_session = auth_session_status.value().Get();
-  ASSERT_THAT(auth_session, NotNull());
-  base::UnguessableToken token = auth_session->token();
+  base::UnguessableToken token;
 
-  InUseAuthSession in_use_auth_session =
-      auth_session_manager_.FindAuthSession(token);
-  ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
+  // Create and set up an auth session, setting it to authenticated so that it
+  // can eventually get expired.
+  {
+    CryptohomeStatusOr<InUseAuthSession> auth_session_status =
+        auth_session_manager_.CreateAuthSession(kUsername, 0,
+                                                AuthIntent::kDecrypt);
+    ASSERT_TRUE(auth_session_status.ok());
+    AuthSession* auth_session = auth_session_status.value().Get();
+    ASSERT_THAT(auth_session, NotNull());
+    token = auth_session->token();
 
-  auth_session->SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
+    InUseAuthSession in_use_auth_session =
+        auth_session_manager_.FindAuthSession(token);
+    ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
+
+    EXPECT_TRUE(auth_session->OnUserCreated().ok());
+    EXPECT_EQ(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
+  }
+
+  // Before expiration we should be able to look up the session again.
+  {
+    InUseAuthSession in_use_auth_session =
+        auth_session_manager_.FindAuthSession(token);
+    ASSERT_TRUE(in_use_auth_session.AuthSessionStatus().ok());
+  }
+
+  // This should expire the session.
   task_environment_.FastForwardUntilNoTasksRemain();
 
-  in_use_auth_session = auth_session_manager_.FindAuthSession(token);
-  ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
+  // After expiration the session should be gone.
+  {
+    InUseAuthSession in_use_auth_session =
+        auth_session_manager_.FindAuthSession(token);
+    ASSERT_FALSE(in_use_auth_session.AuthSessionStatus().ok());
+  }
 }
 
 TEST_F(AuthSessionManagerTest, RemoveNonExisting) {

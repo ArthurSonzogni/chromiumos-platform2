@@ -461,8 +461,7 @@ TEST_P(AuthSessionWithTpmSimulatorUssMigrationAgnosticTest,
   auto create_auth_session = [this]() {
     return AuthSession::Create(
         kUsername, user_data_auth::AUTH_SESSION_FLAGS_NONE,
-        AuthIntent::kDecrypt,
-        /*on_timeout=*/base::DoNothing(), &platform_features_, backing_apis_);
+        AuthIntent::kDecrypt, &platform_features_, backing_apis_);
   };
 
   // Arrange.
@@ -498,8 +497,7 @@ TEST_P(AuthSessionWithTpmSimulatorUssMigrationAgnosticTest, UpdatePassword) {
   auto create_auth_session = [this]() {
     return AuthSession::Create(
         kUsername, user_data_auth::AUTH_SESSION_FLAGS_NONE,
-        AuthIntent::kDecrypt,
-        /*on_timeout=*/base::DoNothing(), &platform_features_, backing_apis_);
+        AuthIntent::kDecrypt, &platform_features_, backing_apis_);
   };
 
   // Arrange.
@@ -556,8 +554,7 @@ TEST_P(AuthSessionWithTpmSimulatorUssMigrationAgnosticTest,
   auto create_auth_session = [this]() {
     return AuthSession::Create(
         kUsername, user_data_auth::AUTH_SESSION_FLAGS_NONE,
-        AuthIntent::kDecrypt,
-        /*on_timeout=*/base::DoNothing(), &platform_features_, backing_apis_);
+        AuthIntent::kDecrypt, &platform_features_, backing_apis_);
   };
 
   // Arrange.

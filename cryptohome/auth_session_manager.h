@@ -131,7 +131,7 @@ class InUseAuthSession {
   friend class AuthSessionManager;
 
   InUseAuthSession(AuthSessionManager& manager,
-                   bool is_token_valid,
+                   bool is_session_active,
                    std::unique_ptr<AuthSession> session);
 
   AuthSessionManager* manager_;
