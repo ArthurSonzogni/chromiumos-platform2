@@ -41,6 +41,7 @@ ioctl: arg1 == TCGETS
 kill: arg1 == SIGTERM
 lseek: 1
 lstat: 1
+madvise: arg2 == MADV_DONTNEED
 mkdirat: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
