@@ -62,14 +62,12 @@ class BluetoothInfoManager;
 // the context object is passed.
 class Context {
  public:
+  Context(mojo::PlatformChannelEndpoint executor_endpoint,
+          std::unique_ptr<brillo::UdevMonitor>&& udev_monitor,
+          base::OnceClosure shutdown_callback);
   Context(const Context&) = delete;
   Context& operator=(const Context&) = delete;
   virtual ~Context();
-
-  static std::unique_ptr<Context> Create(
-      mojo::PlatformChannelEndpoint executor_endpoint,
-      std::unique_ptr<brillo::UdevMonitor>&& udev_monitor,
-      base::OnceClosure shutdown_callback);
 
   // Creates an object for accessing |LibdrmUtil| interface.
   virtual std::unique_ptr<LibdrmUtil> CreateLibdrmUtil();
@@ -173,7 +171,7 @@ class Context {
     return memory_cpu_resource_queue_.get();
   }
 
- private:
+ protected:
   Context();
 
  private:

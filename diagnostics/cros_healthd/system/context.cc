@@ -9,6 +9,7 @@
 
 #include <attestation/proto_bindings/interface.pb.h>
 #include <attestation-client/attestation/dbus-proxies.h>
+#include <base/check.h>
 #include <base/logging.h>
 #include <base/time/default_tick_clock.h>
 #include <brillo/udev/udev.h>
@@ -60,58 +61,48 @@ mojo::PendingRemote<mojom::Executor> SendInvitationAndConnectToExecutor(
 
 Context::Context() = default;
 
-Context::~Context() = default;
-
-std::unique_ptr<Context> Context::Create(
-    mojo::PlatformChannelEndpoint executor_endpoint,
-    std::unique_ptr<brillo::UdevMonitor>&& udev_monitor,
-    base::OnceClosure shutdown_callback) {
-  std::unique_ptr<Context> context(new Context());
-
+Context::Context(mojo::PlatformChannelEndpoint executor_endpoint,
+                 std::unique_ptr<brillo::UdevMonitor>&& udev_monitor,
+                 base::OnceClosure shutdown_callback) {
   // Initiailize static member
-  context->root_dir_ = base::FilePath("/");
-  context->udev_monitor_ = std::move(udev_monitor);
+  root_dir_ = base::FilePath("/");
+  udev_monitor_ = std::move(udev_monitor);
 
   // Initialize the D-Bus connection.
-  auto dbus_bus = context->connection_.Connect();
-  if (!dbus_bus) {
-    LOG(ERROR) << "Failed to connect to the D-Bus system bus.";
-    return nullptr;
-  }
+  auto dbus_bus = connection_.Connect();
+  CHECK(dbus_bus) << "Failed to connect to the D-Bus system bus.";
 
   // Create D-Bus clients:
-  context->attestation_proxy_ =
+  attestation_proxy_ =
       std::make_unique<org::chromium::AttestationProxy>(dbus_bus);
-  context->bluez_proxy_ = std::make_unique<org::bluezProxy>(dbus_bus);
-  context->cras_proxy_ = std::make_unique<org::chromium::cras::ControlProxy>(
+  bluez_proxy_ = std::make_unique<org::bluezProxy>(dbus_bus);
+  cras_proxy_ = std::make_unique<org::chromium::cras::ControlProxy>(
       dbus_bus, cras::kCrasServiceName,
       dbus::ObjectPath(cras::kCrasServicePath));
-  context->debugd_proxy_ =
-      std::make_unique<org::chromium::debugdProxy>(dbus_bus);
-  context->fwupd_proxy_ = std::make_unique<org::freedesktop::fwupdProxy>(
+  debugd_proxy_ = std::make_unique<org::chromium::debugdProxy>(dbus_bus);
+  fwupd_proxy_ = std::make_unique<org::freedesktop::fwupdProxy>(
       dbus_bus, kFwupdServiceName);
-  context->power_manager_proxy_ =
+  power_manager_proxy_ =
       std::make_unique<org::chromium::PowerManagerProxy>(dbus_bus);
-  context->powerd_adapter_ = std::make_unique<PowerdAdapterImpl>(dbus_bus);
-  context->tpm_manager_proxy_ =
+  powerd_adapter_ = std::make_unique<PowerdAdapterImpl>(dbus_bus);
+  tpm_manager_proxy_ =
       std::make_unique<org::chromium::TpmManagerProxy>(dbus_bus);
 
   // Create the mojo clients which will be initialized after connecting with
   // chrome.
-  context->network_health_adapter_ =
-      std::make_unique<NetworkHealthAdapterImpl>();
-  context->network_diagnostics_adapter_ =
+  network_health_adapter_ = std::make_unique<NetworkHealthAdapterImpl>();
+  network_diagnostics_adapter_ =
       std::make_unique<NetworkDiagnosticsAdapterImpl>();
-  context->mojo_service_ = MojoServiceImpl::Create(
-      std::move(shutdown_callback), context->network_health_adapter_.get(),
-      context->network_diagnostics_adapter_.get());
+  mojo_service_ = MojoServiceImpl::Create(std::move(shutdown_callback),
+                                          network_health_adapter_.get(),
+                                          network_diagnostics_adapter_.get());
 
   // Connect to the root-level executor. Must after creating mojo services
   // because we need to wait the mojo broker (the service manager) being
   // connected.
-  context->executor_.Bind(
+  executor_.Bind(
       SendInvitationAndConnectToExecutor(std::move(executor_endpoint)));
-  context->executor_.set_disconnect_handler(base::BindOnce([]() {
+  executor_.set_disconnect_handler(base::BindOnce([]() {
     LOG(ERROR) << "The executor disconnected unexpectedly which should not "
                   "happen. It could have crashed.";
     // Exit immediately without any clean up because this should not happen in
@@ -121,20 +112,21 @@ std::unique_ptr<Context> Context::Create(
   }));
 
   // Create others.
-  context->cros_config_ = std::make_unique<brillo::CrosConfig>();
-  context->system_config_ = std::make_unique<SystemConfig>(
-      context->cros_config_.get(), context->debugd_proxy_.get());
-  context->system_utils_ = std::make_unique<SystemUtilitiesImpl>();
-  context->bluetooth_info_manager_ =
-      std::make_unique<BluetoothInfoManager>(context->bluez_proxy_.get());
-  context->bluetooth_event_hub_ =
-      std::make_unique<BluetoothEventHub>(context->bluez_proxy_.get());
-  context->tick_clock_ = std::make_unique<base::DefaultTickClock>();
-  context->udev_ = brillo::Udev::Create();
-  context->memory_cpu_resource_queue_ = std::make_unique<ResourceQueue>();
+  cros_config_ = std::make_unique<brillo::CrosConfig>();
 
-  return context;
+  system_config_ =
+      std::make_unique<SystemConfig>(cros_config_.get(), debugd_proxy_.get());
+  system_utils_ = std::make_unique<SystemUtilitiesImpl>();
+  bluetooth_info_manager_ =
+      std::make_unique<BluetoothInfoManager>(bluez_proxy_.get());
+  bluetooth_event_hub_ =
+      std::make_unique<BluetoothEventHub>(bluez_proxy_.get());
+  tick_clock_ = std::make_unique<base::DefaultTickClock>();
+  udev_ = brillo::Udev::Create();
+  memory_cpu_resource_queue_ = std::make_unique<ResourceQueue>();
 }
+
+Context::~Context() = default;
 
 std::unique_ptr<LibdrmUtil> Context::CreateLibdrmUtil() {
   return std::unique_ptr<LibdrmUtil>(new LibdrmUtilImpl());

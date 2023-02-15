@@ -7,7 +7,6 @@
       "CrosHealthdDiagnostics",
       "CrosHealthdEvent",
       "CrosHealthdProbe",
-      "CrosHealthdSystem",
       "CrosHealthdRoutines"
     ]
   },

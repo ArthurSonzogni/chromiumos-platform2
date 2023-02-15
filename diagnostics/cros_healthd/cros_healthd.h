@@ -6,31 +6,22 @@
 #define DIAGNOSTICS_CROS_HEALTHD_CROS_HEALTHD_H_
 
 #include <memory>
-#include <string>
 
-#include <base/files/scoped_file.h>
-#include <brillo/daemons/dbus_daemon.h>
-#include <brillo/dbus/dbus_object.h>
+#include <brillo/daemons/daemon.h>
 #include <mojo/core/embedder/scoped_ipc_support.h>
-#include <mojo/public/cpp/bindings/pending_receiver.h>
-#include <mojo/public/cpp/bindings/receiver_set.h>
 #include <mojo/public/cpp/platform/platform_channel_endpoint.h>
 
 #include "diagnostics/cros_healthd/cros_healthd_diagnostics_service.h"
 #include "diagnostics/cros_healthd/cros_healthd_mojo_service.h"
-#include "diagnostics/cros_healthd/cros_healthd_routine_factory.h"
+#include "diagnostics/cros_healthd/cros_healthd_routine_factory_impl.h"
 #include "diagnostics/cros_healthd/event_aggregator.h"
 #include "diagnostics/cros_healthd/fetch_aggregator.h"
-#include "diagnostics/mojom/public/cros_healthd.mojom.h"
+#include "diagnostics/cros_healthd/system/context.h"
 
 namespace diagnostics {
 
-class Context;
-
 // Daemon class for cros_healthd.
-class CrosHealthd final
-    : public brillo::DBusServiceDaemon,
-      public ash::cros_healthd::mojom::CrosHealthdServiceFactory {
+class CrosHealthd final : public brillo::Daemon {
  public:
   explicit CrosHealthd(mojo::PlatformChannelEndpoint endpoint,
                        std::unique_ptr<brillo::UdevMonitor>&& udev_monitor);
@@ -39,92 +30,25 @@ class CrosHealthd final
   ~CrosHealthd() override;
 
  private:
-  // brillo::DBusServiceDaemon overrides:
-  int OnInit() override;
-  void RegisterDBusObjectsAsync(
-      brillo::dbus_utils::AsyncEventSequencer* sequencer) override;
-
-  // ash::cros_healthd::mojom::CrosHealthdServiceFactory overrides:
-  void GetProbeService(
-      mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdProbeService>
-          service) override;
-  void GetDiagnosticsService(
-      mojo::PendingReceiver<
-          ash::cros_healthd::mojom::CrosHealthdDiagnosticsService> service)
-      override;
-  void GetEventService(
-      mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdEventService>
-          service) override;
-  void GetSystemService(
-      mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdSystemService>
-          service) override;
-  void SendNetworkHealthService(
-      mojo::PendingRemote<chromeos::network_health::mojom::NetworkHealthService>
-          remote) override;
-  void SendNetworkDiagnosticsRoutines(
-      mojo::PendingRemote<
-          chromeos::network_diagnostics::mojom::NetworkDiagnosticsRoutines>
-          network_diagnostics_routines) override;
-  void SendChromiumDataCollector(
-      mojo::PendingRemote<
-          ash::cros_healthd::internal::mojom::ChromiumDataCollector> remote)
-      override;
-
-  // Implementation of the "org.chromium.CrosHealthdInterface" D-Bus interface
-  // exposed by the cros_healthd daemon (see constants for the API methods at
-  // src/platform2/system_api/dbus/cros_healthd/dbus-constants.h). When
-  // |is_chrome| = false, this method will return a unique token that can be
-  // used to connect to cros_healthd via mojo. When |is_chrome| = true, the
-  // returned string has no meaning.
-  //
-  // TODO(b/204145496,b/205671927): Remove this after migration.
-  std::string BootstrapMojoConnection(const base::ScopedFD& mojo_fd,
-                                      bool is_chrome);
-
-  void ShutDownDueToMojoError(const std::string& debug_reason);
-
-  // Disconnect handler for |binding_set_|.
-  void OnDisconnect();
-
-  void GetDiagnosticsServiceInternal(
-      mojo::PendingReceiver<
-          ash::cros_healthd::mojom::CrosHealthdDiagnosticsService> service);
-
-  std::unique_ptr<mojo::core::ScopedIPCSupport> ipc_support_;
-
+  // For mojo thread initialization.
+  mojo::core::ScopedIPCSupport ipc_support_;
   // Provides access to helper objects. Used by various telemetry fetchers,
   // event implementations and diagnostic routines.
-  std::unique_ptr<Context> context_;
-
+  Context context_;
   // |fetch_aggregator_| is responsible for fulfulling all ProbeTelemetryInfo
   // requests.
-  std::unique_ptr<FetchAggregator> fetch_aggregator_;
-
+  FetchAggregator fetch_aggregator_{&context_};
   // |event_aggregator_| is responsible for fulfulling all event requests from
   // CrosHealthdEventService.
-  std::unique_ptr<EventAggregator> event_aggregator_;
-
+  EventAggregator event_aggregator_{&context_};
   // |diagnostics_service_| delegates routine creation to |routine_factory_|.
-  std::unique_ptr<CrosHealthdRoutineFactory> routine_factory_;
+  CrosHealthdRoutineFactoryImpl routine_factory_{&context_};
   // Creates new diagnostic routines and controls existing diagnostic routines.
-  std::unique_ptr<CrosHealthdDiagnosticsService> diagnostics_service_;
+  CrosHealthdDiagnosticsService diagnostics_service_{&context_,
+                                                     &routine_factory_};
   // Maintains the Mojo connection with cros_healthd clients.
-  std::unique_ptr<CrosHealthdMojoService> mojo_service_;
-  // Receiver set that connects this instance (which is an implementation of
-  // ash::cros_healthd::mojom::CrosHealthdServiceFactory) with
-  // any message pipes set up on top of received file descriptors. A new
-  // receiver is added whenever the BootstrapMojoConnection D-Bus method is
-  // called.
-  mojo::ReceiverSet<ash::cros_healthd::mojom::CrosHealthdServiceFactory, bool>
-      service_factory_receiver_set_;
-  // Mojo receiver set that connects |diagnostics_service_| with message pipes,
-  // allowing the remote ends to call our methods.
-  mojo::ReceiverSet<ash::cros_healthd::mojom::CrosHealthdDiagnosticsService>
-      diagnostics_receiver_set_;
-
-  // Connects BootstrapMojoConnection with the methods of the D-Bus
-  // object exposed by the cros_healthd daemon.
-  std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
+  CrosHealthdMojoService mojo_service_{&context_, &fetch_aggregator_,
+                                       &event_aggregator_};
 };
 
 }  // namespace diagnostics

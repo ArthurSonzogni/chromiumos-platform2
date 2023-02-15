@@ -36,10 +36,6 @@ class CrosHealthdDiagnosticsService final
       const CrosHealthdDiagnosticsService&) = delete;
   ~CrosHealthdDiagnosticsService() override;
 
-  // Registers |callback| to run when the service is ready. If the service is
-  // already ready, |callback| will be run immediately.
-  void RegisterServiceReadyCallback(base::OnceClosure callback);
-
   // ash::cros_healthd::mojom::CrosHealthdDiagnosticsService overrides:
   void GetAvailableRoutines(GetAvailableRoutinesCallback callback) override;
   void GetRoutineUpdate(
@@ -156,7 +152,6 @@ class CrosHealthdDiagnosticsService final
   // Callback for checking whether nvme-self-test is supported.
   void HandleNvmeSelfTestSupportedResponse(bool supported);
 
-  // Updates |ready_| and runs the elements of |service_ready_callbacks_|.
   // Called when this service is ready to handle CrosHealthdDiagnosticsService
   // method calls.
   void OnServiceReady();
@@ -166,9 +161,6 @@ class CrosHealthdDiagnosticsService final
   // done.
   void PopulateAvailableRoutines(base::OnceClosure completion_callback);
 
-  // Whether this service is ready to handle CrosHealthdDiagnosticsService
-  // method calls.
-  bool ready_;
   // Map from IDs to instances of diagnostics routines that have
   // been started.
   std::map<int32_t, std::unique_ptr<DiagnosticRoutine>> active_routines_;
@@ -182,12 +174,10 @@ class CrosHealthdDiagnosticsService final
   Context* const context_ = nullptr;
   // Responsible for making the routines. Unowned pointer that should outlive
   // this instance.
-  CrosHealthdRoutineFactory* routine_factory_ = nullptr;
-  // The callbacks to run when the service become ready.
-  std::vector<base::OnceClosure> service_ready_callbacks_;
+  CrosHealthdRoutineFactory* const routine_factory_ = nullptr;
   // Mojo service provider to provide service to mojo service manager.
   MojoServiceProvider<ash::cros_healthd::mojom::CrosHealthdDiagnosticsService>
-      provider_;
+      provider_{this};
 
   // Must be the last class member.
   base::WeakPtrFactory<CrosHealthdDiagnosticsService> weak_ptr_factory_{this};

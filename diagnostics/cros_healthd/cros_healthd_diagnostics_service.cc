@@ -102,7 +102,7 @@ void SendResultToUMA(mojo_ipc::DiagnosticRoutineEnum routine,
 
 CrosHealthdDiagnosticsService::CrosHealthdDiagnosticsService(
     Context* context, CrosHealthdRoutineFactory* routine_factory)
-    : context_(context), routine_factory_(routine_factory), provider_(this) {
+    : context_(context), routine_factory_(routine_factory) {
   DCHECK(context_);
   DCHECK(routine_factory_);
 
@@ -113,15 +113,6 @@ CrosHealthdDiagnosticsService::CrosHealthdDiagnosticsService(
 }
 
 CrosHealthdDiagnosticsService::~CrosHealthdDiagnosticsService() = default;
-
-void CrosHealthdDiagnosticsService::RegisterServiceReadyCallback(
-    base::OnceClosure callback) {
-  if (ready_) {
-    std::move(callback).Run();
-  } else {
-    service_ready_callbacks_.push_back(std::move(callback));
-  }
-}
 
 void CrosHealthdDiagnosticsService::GetAvailableRoutines(
     GetAvailableRoutinesCallback callback) {
@@ -536,17 +527,8 @@ void CrosHealthdDiagnosticsService::HandleNvmeSelfTestSupportedResponse(
 
 void CrosHealthdDiagnosticsService::OnServiceReady() {
   LOG(INFO) << "CrosHealthdDiagnosticsService is ready.";
-  ready_ = true;
-
   provider_.Register(context_->mojo_service()->GetServiceManager(),
                      chromeos::mojo_services::kCrosHealthdDiagnostics);
-
-  // Run all the callbacks.
-  std::vector<base::OnceClosure> callbacks;
-  callbacks.swap(service_ready_callbacks_);
-  for (size_t i = 0; i < callbacks.size(); ++i) {
-    std::move(callbacks[i]).Run();
-  }
 }
 
 void CrosHealthdDiagnosticsService::PopulateAvailableRoutines(

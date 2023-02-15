@@ -190,14 +190,6 @@ class CrosHealthdDiagnosticsServiceTest : public testing::Test {
   std::unique_ptr<CrosHealthdDiagnosticsService> service_;
 };
 
-// Test that RegisterServiceReadyCallback() run the callback.
-TEST_F(CrosHealthdDiagnosticsServiceTest, RegisterServiceReadyCallback) {
-  base::RunLoop run_loop;
-  service()->RegisterServiceReadyCallback(
-      base::BindLambdaForTesting([&]() { run_loop.Quit(); }));
-  run_loop.Run();
-}
-
 // Test that GetAvailableRoutines() returns the expected list of routines when
 // all routines are supported.
 TEST_F(CrosHealthdDiagnosticsServiceTest, GetAvailableRoutines) {

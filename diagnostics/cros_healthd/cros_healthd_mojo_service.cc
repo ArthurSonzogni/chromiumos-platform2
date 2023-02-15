@@ -25,11 +25,7 @@ CrosHealthdMojoService::CrosHealthdMojoService(
     Context* context,
     FetchAggregator* fetch_aggregator,
     EventAggregator* event_aggregator)
-    : probe_provider_(this),
-      event_provider_(this),
-      system_provider_(this),
-      routine_provider_(this),
-      context_(context),
+    : context_(context),
       fetch_aggregator_(fetch_aggregator),
       event_aggregator_(event_aggregator) {
   DCHECK(context_);
@@ -39,8 +35,6 @@ CrosHealthdMojoService::CrosHealthdMojoService(
                            chromeos::mojo_services::kCrosHealthdProbe);
   event_provider_.Register(context->mojo_service()->GetServiceManager(),
                            chromeos::mojo_services::kCrosHealthdEvent);
-  system_provider_.Register(context->mojo_service()->GetServiceManager(),
-                            chromeos::mojo_services::kCrosHealthdSystem);
   routine_provider_.Register(context->mojo_service()->GetServiceManager(),
                              chromeos::mojo_services::kCrosHealthdRoutines);
 }
@@ -112,31 +106,6 @@ void CrosHealthdMojoService::CreateRoutine(
     mojom::RoutineArgumentPtr routine_arg,
     mojo::PendingReceiver<mojom::RoutineControl> routine_receiver) {
   NOTIMPLEMENTED();
-}
-
-void CrosHealthdMojoService::GetServiceStatus(
-    GetServiceStatusCallback callback) {
-  auto response = mojom::ServiceStatus::New();
-  response->network_health_bound =
-      context_->network_health_adapter()->ServiceRemoteBound();
-  response->network_diagnostics_bound =
-      context_->network_diagnostics_adapter()->ServiceRemoteBound();
-  std::move(callback).Run(std::move(response));
-}
-
-void CrosHealthdMojoService::AddProbeReceiver(
-    mojo::PendingReceiver<mojom::CrosHealthdProbeService> receiver) {
-  probe_receiver_set_.Add(this /* impl */, std::move(receiver));
-}
-
-void CrosHealthdMojoService::AddEventReceiver(
-    mojo::PendingReceiver<mojom::CrosHealthdEventService> receiver) {
-  event_receiver_set_.Add(this /* impl */, std::move(receiver));
-}
-
-void CrosHealthdMojoService::AddSystemReceiver(
-    mojo::PendingReceiver<mojom::CrosHealthdSystemService> receiver) {
-  system_receiver_set_.Add(this /* impl */, std::move(receiver));
 }
 
 }  // namespace diagnostics

@@ -26,7 +26,6 @@ namespace diagnostics {
 class CrosHealthdMojoService final
     : public ash::cros_healthd::mojom::CrosHealthdEventService,
       public ash::cros_healthd::mojom::CrosHealthdProbeService,
-      public ash::cros_healthd::mojom::CrosHealthdSystemService,
       public ash::cros_healthd::mojom::CrosHealthdRoutinesService {
  public:
   using ProbeCategoryEnum = ::ash::cros_healthd::mojom::ProbeCategoryEnum;
@@ -81,49 +80,25 @@ class CrosHealthdMojoService final
       bool ignore_single_process_info,
       ProbeMultipleProcessInfoCallback callback) override;
 
-  // ash::cros_healthd::mojom::CrosHealthdSystemService overrides:
-  void GetServiceStatus(GetServiceStatusCallback callback) override;
-
   // ash::cros_healthd::mojom::CrosHealthdRoutinesService overrides:
   void CreateRoutine(
       ash::cros_healthd::mojom::RoutineArgumentPtr routine_arg,
       mojo::PendingReceiver<ash::cros_healthd::mojom::RoutineControl>
           routine_receiver) override;
 
-  // Adds a new binding to the internal binding sets.
-  void AddProbeReceiver(
-      mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdProbeService>
-          receiver);
-  void AddEventReceiver(
-      mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdEventService>
-          receiver);
-  void AddSystemReceiver(
-      mojo::PendingReceiver<ash::cros_healthd::mojom::CrosHealthdSystemService>
-          receiver);
-
  private:
-  // Mojo binding sets that connect |this| with message pipes, allowing the
-  // remote ends to call our methods.
-  mojo::ReceiverSet<ash::cros_healthd::mojom::CrosHealthdProbeService>
-      probe_receiver_set_;
-  mojo::ReceiverSet<ash::cros_healthd::mojom::CrosHealthdEventService>
-      event_receiver_set_;
-  mojo::ReceiverSet<ash::cros_healthd::mojom::CrosHealthdSystemService>
-      system_receiver_set_;
   // Mojo service providers to provide services to mojo service manager.
   MojoServiceProvider<ash::cros_healthd::mojom::CrosHealthdProbeService>
-      probe_provider_;
+      probe_provider_{this};
   MojoServiceProvider<ash::cros_healthd::mojom::CrosHealthdEventService>
-      event_provider_;
-  MojoServiceProvider<ash::cros_healthd::mojom::CrosHealthdSystemService>
-      system_provider_;
+      event_provider_{this};
   MojoServiceProvider<ash::cros_healthd::mojom::CrosHealthdRoutinesService>
-      routine_provider_;
+      routine_provider_{this};
 
   // Unowned. The following instances should outlive this instance.
   Context* const context_ = nullptr;
-  FetchAggregator* fetch_aggregator_;
-  EventAggregator* event_aggregator_;
+  FetchAggregator* const fetch_aggregator_ = nullptr;
+  EventAggregator* const event_aggregator_ = nullptr;
 };
 
 }  // namespace diagnostics
