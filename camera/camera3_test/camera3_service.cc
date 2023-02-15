@@ -498,6 +498,16 @@ void Camera3Service::Camera3DeviceService::StartPreviewOnServiceThread(
     cam_device_.AddOutputStream(
         HAL_PIXEL_FORMAT_YCbCr_420_888, recording_resolution.Width(),
         recording_resolution.Height(), CAMERA3_STREAM_ROTATION_0);
+    // Use recording template for preview to sync camera3_recording_test
+    // with CTS testBasicRecording. See b/269378305 for details.
+    repeating_preview_metadata_.reset(
+        clone_camera_metadata(cam_device_.ConstructDefaultRequestSettings(
+            CAMERA3_TEMPLATE_VIDEO_RECORD)));
+    if (!repeating_preview_metadata_) {
+      LOGF(ERROR) << "Failed to create preview metadata";
+      *result = -ENOMEM;
+      return;
+    }
   }
   cam_device_.AddOutputStream(
       HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED, preview_resolution.Width(),
