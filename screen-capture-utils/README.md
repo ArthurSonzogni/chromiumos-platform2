@@ -84,20 +84,21 @@ For development I typically deploy to /usr/local/ because tests expect them
 there.
 
 ```
-$ BOARD=rammus-arc-r
+$ BOARD=rammus
+$ DUT=localhost:2229
 $ setup_board --board=${BOARD}  # required only once per board.
 $ cros_workon --board=${BOARD} start screen-capture-utils
 $ emerge-${BOARD} -j 100 chromeos-base/screen-capture-utils
-$ cros deploy --root=/usr/local/ localhost:2229 chromeos-base/screen-capture-utils
-$ tast run localhost:2229 graphics.KmsvncConnect
-$ tast run localhost:2229 graphics.Smoke.platform
+$ cros deploy --root=/usr/local/ "${DUT}" chromeos-base/screen-capture-utils
+$ tast run "${DUT}" graphics.KmsvncConnect
+$ tast run "${DUT}" graphics.Smoke.platform
 ```
 
 For debugging I typically need to deploy to /usr/sbin, from inside chroot
 
 ```
-$ cros deploy localhost:2229 chromeos-base/screen-capture-utils
-$ gdb-${BOARD} --remote=localhost:2229 /usr/sbin/kmsvnc
+$ cros deploy "${DUT}" chromeos-base/screen-capture-utils
+$ gdb-${BOARD} --remote="${DUT}" /usr/sbin/kmsvnc
 ```
 
 To run unit-tests
