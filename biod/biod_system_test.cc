@@ -37,5 +37,19 @@ TEST_F(BiodSystemTest, IsHardwareWriteProtectEnabledFalse) {
   EXPECT_FALSE(biod_system.HardwareWriteProtectIsEnabled());
 }
 
+TEST_F(BiodSystemTest, IsDevModeBootFromSignedKernelTrue) {
+  MockBiodSystem biod_system;
+  EXPECT_CALL(biod_system, VbGetSystemPropertyInt("dev_boot_signed_only"))
+      .WillOnce(Return(1));
+  EXPECT_TRUE(biod_system.OnlyBootSignedKernel());
+}
+
+TEST_F(BiodSystemTest, IsDevModeBootFromSignedKernelFalse) {
+  MockBiodSystem biod_system;
+  EXPECT_CALL(biod_system, VbGetSystemPropertyInt("dev_boot_signed_only"))
+      .WillOnce(Return(0));
+  EXPECT_FALSE(biod_system.OnlyBootSignedKernel());
+}
+
 }  // namespace
 }  // namespace biod

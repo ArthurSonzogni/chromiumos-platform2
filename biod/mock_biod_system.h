@@ -14,6 +14,7 @@ namespace biod {
 class MockBiodSystem : public BiodSystem {
  public:
   MOCK_METHOD(bool, HardwareWriteProtectIsEnabled, (), (const, override));
+  MOCK_METHOD(bool, OnlyBootSignedKernel, (), (const, override));
 };
 
 }  // namespace biod

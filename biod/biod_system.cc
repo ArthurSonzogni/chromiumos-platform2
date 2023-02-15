@@ -11,12 +11,17 @@ extern "C" {
 
 namespace {
 constexpr char kHardwareWriteProtect[] = "wpsw_cur";
+constexpr char kDevBootSignedOnly[] = "dev_boot_signed_only";
 }
 
 namespace biod {
 
 bool BiodSystem::HardwareWriteProtectIsEnabled() const {
   return VbGetSystemPropertyInt(kHardwareWriteProtect) != 0;
+}
+
+bool BiodSystem::OnlyBootSignedKernel() const {
+  return VbGetSystemPropertyInt(kDevBootSignedOnly) != 0;
 }
 
 int BiodSystem::VbGetSystemPropertyInt(const std::string& name) const {

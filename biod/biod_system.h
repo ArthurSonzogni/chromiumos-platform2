@@ -18,6 +18,7 @@ class BiodSystem {
   virtual ~BiodSystem() = default;
 
   virtual bool HardwareWriteProtectIsEnabled() const;
+  virtual bool OnlyBootSignedKernel() const;
 
  protected:
   virtual int VbGetSystemPropertyInt(const std::string& name) const;
