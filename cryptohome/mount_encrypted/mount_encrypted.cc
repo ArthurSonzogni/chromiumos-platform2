@@ -51,10 +51,16 @@ constexpr char kBioCryptoInitPath[] = "/usr/bin/bio_crypto_init";
 constexpr char kBioTpmSeedSalt[] = "biod";
 constexpr char kBioTpmSeedTmpDir[] = "/run/bio_crypto_init";
 constexpr char kBioTpmSeedFile[] = "seed";
+constexpr char kHibermanPath[] = "/usr/sbin/hiberman";
+constexpr char kHibermanTpmSeedSalt[] = "hiberman";
+constexpr char kHibermanTpmSeedTmpDir[] = "/run/hiberman";
+constexpr char kHibermanTpmSeedFile[] = "tpm_seed";
 constexpr char kOldTpmOwnershipStateFile[] =
     "mnt/stateful_partition/.tpm_owned";
 static const uid_t kBiodUid = 282;
 static const gid_t kBiodGid = 282;
+static const uid_t kHibermanUid = 20184;
+static const gid_t kHibermanGid = 20184;
 
 constexpr char kNvramExport[] = "/tmp/lockbox.nvram";
 constexpr char kMountEncryptedMetricsPath[] =
@@ -199,46 +205,74 @@ void nvram_export(const brillo::SecureBlob& contents) {
   close(fd);
 }
 
-// Send a secret derived from the system key to the biometric managers, if
-// available, via a tmpfs file which will be read by bio_crypto_init.
-bool SendSecretToBiodTmpFile(const mount_encrypted::EncryptionKey& key) {
-  // If there isn't a bio-sensor, don't bother.
-  if (!base::PathExists(base::FilePath(kBioCryptoInitPath))) {
-    LOG(INFO) << "There is no biod, so skip sending TPM seed.";
-    return true;
-  }
-
-  brillo::SecureBlob tpm_seed =
-      key.GetDerivedSystemKey(std::string(kBioTpmSeedSalt));
+bool SendSecretToTmpFile(const mount_encrypted::EncryptionKey& key,
+                         const std::string& salt,
+                         const base::FilePath& tmp_dir,
+                         const std::string& filename,
+                         uid_t user_id,
+                         gid_t group_id,
+                         cryptohome::Platform* platform) {
+  brillo::SecureBlob tpm_seed = key.GetDerivedSystemKey(salt);
   if (tpm_seed.empty()) {
-    LOG(ERROR) << "TPM Seed provided is empty, not writing to tmpfs.";
+    LOG(ERROR) << "TPM Seed provided for " << filename << " is empty";
     return false;
   }
 
-  auto dirname = base::FilePath(kBioTpmSeedTmpDir);
-  if (!base::CreateDirectory(dirname)) {
-    LOG(ERROR) << "Failed to create dir for TPM seed.";
+  if (!platform->SafeCreateDirAndSetOwnershipAndPermissions(
+          tmp_dir,
+          /* mode=700 */ S_IRUSR | S_IWUSR | S_IXUSR, user_id, group_id)) {
+    PLOG(ERROR) << "Failed to CreateDir or SetOwnershipAndPermissions of "
+                << tmp_dir;
     return false;
   }
 
-  if (chown(kBioTpmSeedTmpDir, kBiodUid, kBiodGid) == -1) {
-    PLOG(ERROR) << "Failed to change ownership of biod tmpfs dir.";
+  auto file = tmp_dir.Append(filename);
+  if (!platform->WriteStringToFileAtomic(file, tpm_seed.to_string(),
+                                         /* mode=600 */ S_IRUSR | S_IWUSR)) {
+    PLOG(ERROR) << "Failed to write TPM seed to tmpfs file " << filename;
     return false;
   }
 
-  auto filename = dirname.Append(kBioTpmSeedFile);
-  if (base::WriteFile(filename, tpm_seed.char_data(), tpm_seed.size()) !=
-      tpm_seed.size()) {
-    LOG(ERROR) << "Failed to write TPM seed to tmpfs file.";
-    return false;
-  }
-
-  if (chown(filename.value().c_str(), kBiodUid, kBiodGid) == -1) {
-    PLOG(ERROR) << "Failed to change ownership of biod tmpfs file.";
+  if (!platform->SetOwnership(file, user_id, group_id, true)) {
+    PLOG(ERROR) << "Failed to change ownership/perms of tmpfs file "
+                << filename;
+    // Remove the file as it contains the tpm seed with incorrect owner.
+    PLOG_IF(ERROR, !base::DeleteFile(file)) << "Unable to remove file!";
     return false;
   }
 
   return true;
+}
+
+// Send a secret derived from the system key to the biometric managers, if
+// available, via a tmpfs file which will be read by bio_crypto_init.
+bool SendSecretToBiodTmpFile(const mount_encrypted::EncryptionKey& key,
+                             cryptohome::Platform* platform) {
+  // If there isn't a bio-sensor, don't bother.
+  if (!base::PathExists(base::FilePath(kBioCryptoInitPath))) {
+    LOG(INFO)
+        << "There is no bio_crypto_init binary, so skip sending TPM seed.";
+    return true;
+  }
+
+  return SendSecretToTmpFile(key, std::string(kBioTpmSeedSalt),
+                             base::FilePath(kBioTpmSeedTmpDir), kBioTpmSeedFile,
+                             kBiodUid, kBiodGid, platform);
+}
+
+// Send a secret derived from the system key to hiberman, if available.
+// available, via a tmpfs file which will be read by hiberman.
+bool SendSecretToHibermanTmpFile(const mount_encrypted::EncryptionKey& key,
+                                 cryptohome::Platform* platform) {
+  if (!base::PathExists(base::FilePath(kHibermanPath))) {
+    LOG(INFO) << "There is no hiberman binary, so skip sending TPM seed.";
+    return true;
+  }
+
+  return SendSecretToTmpFile(key, std::string(kHibermanTpmSeedSalt),
+                             base::FilePath(kHibermanTpmSeedTmpDir),
+                             kHibermanTpmSeedFile, kHibermanUid, kHibermanGid,
+                             platform);
 }
 
 // Originally .tpm_owned file is located in /mnt/stateful_partition. Since the
@@ -266,6 +300,7 @@ bool migrate_tpm_owership_state_file() {
 static result_code mount_encrypted_partition(
     mount_encrypted::EncryptedFs* encrypted_fs,
     const base::FilePath& rootdir,
+    cryptohome::Platform* platform,
     bool safe_mount) {
   result_code rc;
 
@@ -311,11 +346,13 @@ static result_code mount_encrypted_partition(
 
   /* Log errors during sending seed to biod, but don't stop execution. */
   if (has_chromefw()) {
-    if (!SendSecretToBiodTmpFile(key)) {
-      LOG(ERROR) << "Failed to send TPM secret to biod.";
-    }
+    LOG_IF(ERROR, !SendSecretToBiodTmpFile(key, platform))
+        << "Failed to send TPM secret to biod.";
+    LOG_IF(ERROR, !SendSecretToHibermanTmpFile(key, platform))
+        << "Failed to send TPM secret to hiberman.";
   } else {
-    LOG(ERROR) << "Failed to load system key, biod won't get a TPM seed.";
+    LOG(ERROR)
+        << "Failed to load system key, biod and hiberman won't get a TPM seed.";
   }
 
   cryptohome::FileSystemKey encryption_key;
@@ -386,7 +423,7 @@ int main(int argc, const char* argv[]) {
       return set_system_key(rootdir, args.size() >= 2 ? args[1].c_str() : NULL,
                             &platform);
     } else if (args[0] == "mount") {
-      return mount_encrypted_partition(encrypted_fs.get(), rootdir,
+      return mount_encrypted_partition(encrypted_fs.get(), rootdir, &platform,
                                        !FLAGS_unsafe);
     } else {
       print_usage(argv[0]);
@@ -395,5 +432,6 @@ int main(int argc, const char* argv[]) {
   }
 
   // default operation is mount encrypted partition.
-  return mount_encrypted_partition(encrypted_fs.get(), rootdir, !FLAGS_unsafe);
+  return mount_encrypted_partition(encrypted_fs.get(), rootdir, &platform,
+                                   !FLAGS_unsafe);
 }
