@@ -38,6 +38,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/blkdev_utils/get_backing_block_device.h>
 #include <brillo/blkdev_utils/lvm.h>
 #include <brillo/blkdev_utils/storage_device.h>
 #include <brillo/blkdev_utils/storage_utils.h>
@@ -714,16 +715,18 @@ bool ClobberState::WipeBlockDevice(const base::FilePath& device_path,
                                    bool fast) {
   const int write_block_size = 4 * 1024 * 1024;
   int64_t to_write = 0;
+
+  struct stat st;
+  if (stat(device_path.value().c_str(), &st) == -1) {
+    PLOG(ERROR) << "Unable to stat " << device_path.value();
+    return false;
+  }
+
   if (fast) {
     to_write = write_block_size;
   } else {
     // Wipe the filesystem size if we can determine it. Full partition wipe
     // takes a long time on 16G SSD or rotating media.
-    struct stat st;
-    if (stat(device_path.value().c_str(), &st) == -1) {
-      PLOG(ERROR) << "Unable to stat " << device_path.value();
-      return false;
-    }
     int64_t block_size = st.st_blksize;
     int64_t block_count;
     if (!GetBlockCount(device_path, block_size, &block_count)) {
@@ -765,11 +768,11 @@ bool ClobberState::WipeBlockDevice(const base::FilePath& device_path,
   // 512 bytes.
   const uint64_t zero_block_size = base::bits::AlignUp(
       static_cast<uint64_t>(to_write / 20), uint64_t{128 * 1024 * 1024});
-  std::string base_device;
-  int unused_partition_number;
-  GetDevicePathComponents(device_path, &base_device, &unused_partition_number);
+
+  base::FilePath base_dev =
+      brillo::GetBackingPhysicalDeviceForBlock(st.st_rdev);
   std::unique_ptr<brillo::StorageDevice> storage_device =
-      brillo::GetStorageDevice(base::FilePath(base_device));
+      brillo::GetStorageDevice(base_dev);
   while (total_written < to_write) {
     uint64_t write_size = std::min(zero_block_size, to_write - total_written);
     if (!storage_device->WipeBlkDev(device_path, total_written, write_size,
