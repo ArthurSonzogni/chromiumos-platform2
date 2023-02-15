@@ -3,6 +3,7 @@
 # Copyright 2020 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
 """Transforms config from /config/proto/api proto format to platform JSON."""
 
 # pylint: disable=too-many-lines
@@ -1431,6 +1432,7 @@ def _build_storage(hw_topology):
         component_pb2.Component.Storage.StorageType.NVME: "NVME",
         component_pb2.Component.Storage.StorageType.SATA: "SATA",
         component_pb2.Component.Storage.StorageType.UFS: "UFS",
+        component_pb2.Component.Storage.StorageType.BRIDGED_EMMC: "BRIDGED_EMMC",
     }
     result = {}
     if storage_type in storage_type_names:

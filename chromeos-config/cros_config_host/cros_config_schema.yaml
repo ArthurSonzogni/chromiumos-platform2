@@ -136,6 +136,7 @@ typeDefs:
      - NVME
      - SATA
      - UFS
+     - BRIDGED_EMMC
   ath10k-wifi-transmit-power-chain: &ath10k-wifi-transmit-power-chain
     description: "[ath10k] WiFi power chain for use with QCA ath10k drivers. Limits
       in units of 0.25 dBm. 5g band power limit applies to all 5g bands."
