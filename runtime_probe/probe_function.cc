@@ -81,10 +81,18 @@ bool PrivilegedProbeFunction::InvokeHelper(std::string* result) const {
 std::optional<base::Value> PrivilegedProbeFunction::InvokeHelperToJSON() const {
   std::string raw_output;
   if (!InvokeHelper(&raw_output)) {
+    LOG(ERROR) << "Failed to invoke helper.";
     return std::nullopt;
   }
-  VLOG(3) << "InvokeHelper raw output:\n" << raw_output;
-  return base::JSONReader::Read(raw_output);
+
+  auto json_output = base::JSONReader::Read(raw_output);
+  if (!json_output) {
+    LOG(ERROR) << "Failed to parse output into json format.";
+    VLOG(3) << "InvokeHelper raw output:\n" << raw_output;
+    return std::nullopt;
+  }
+
+  return json_output;
 }
 
 int PrivilegedProbeFunction::EvalInHelper(std::string* output) const {
@@ -100,16 +108,17 @@ int PrivilegedProbeFunction::EvalInHelper(std::string* output) const {
 PrivilegedProbeFunction::DataType PrivilegedProbeFunction::Eval() const {
   auto json_output = InvokeHelperToJSON();
   if (!json_output) {
-    LOG(ERROR) << "Failed to invoke helper (empty output).";
     return {};
   }
   if (!json_output->is_list()) {
     LOG(ERROR) << "Failed to parse json output as list.";
+    VLOG(3) << "InvokeHelper output:\n" << *json_output;
     return {};
   }
 
   DataType result = std::move(json_output->GetList());
   PostHelperEvalImpl(&result);
+  VLOG(3) << GetFunctionName() << " Eval output:\n" << result;
   return result;
 }
 
