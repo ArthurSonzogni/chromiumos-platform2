@@ -2681,6 +2681,11 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   MockVKToAuthFactorMapLoading(
       obfuscated_username, {serialized_vk, serialized_vk2}, keyset_management_);
 
+  // Creation loads every VK.
+  MockKeysetLoadingByLabel(obfuscated_username, serialized_vk,
+                           keyset_management_);
+  MockKeysetLoadingByLabel(obfuscated_username, serialized_vk2,
+                           keyset_management_);
   // AuthenticateAuthFactor loads the VK to be authenticated.
   MockKeysetLoadingByLabel(obfuscated_username, serialized_vk,
                            keyset_management_);

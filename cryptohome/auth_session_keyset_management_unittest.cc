@@ -1562,8 +1562,8 @@ TEST_F(AuthSessionTestWithKeysetManagement, AuthFactorMapUserSecretStash) {
 }
 
 // Test the scenario of adding a new factor when the authenticated factor's
-// backup VaultKeyset was corrupted. The operation fails, but it's a regression
-// test for a crash.
+// backup VaultKeyset was corrupted. The operation should succeed, but you will
+// no longer get backup VKs.
 TEST_F(AuthSessionTestWithKeysetManagement, AddFactorAfterBackupVkCorruption) {
   // Setup.
   SetUserSecretStashExperimentForTesting(/*enabled=*/true);
@@ -1613,7 +1613,10 @@ TEST_F(AuthSessionTestWithKeysetManagement, AddFactorAfterBackupVkCorruption) {
   auth_session.AddAuthFactor(add_request, add_future.GetCallback());
 
   // Verify.
-  EXPECT_THAT(add_future.Get(), NotOk());
+  EXPECT_THAT(add_future.Get(), IsOk());
+  const base::FilePath added_factor_vk_path =
+      VaultKeysetPath(SanitizeUserName(Username(kUsername)), /*index=*/1);
+  EXPECT_FALSE(platform_.FileExists(added_factor_vk_path));
 }
 
 }  // namespace cryptohome

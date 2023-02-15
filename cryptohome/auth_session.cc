@@ -87,19 +87,34 @@ constexpr base::TimeDelta kAuthSessionTimeout = base::Minutes(5);
 // Message to use when generating a secret for hibernate.
 constexpr char kHibernateSecretHmacMessage[] = "AuthTimeHibernateSecret";
 
-constexpr bool IsFactorTypeSupportedByBothUssAndVk(
-    AuthFactorType auth_factor_type) {
+// Check if a given type of AuthFactor supports Vault Keysets.
+constexpr bool IsFactorTypeSupportedByVk(AuthFactorType auth_factor_type) {
   return auth_factor_type == AuthFactorType::kPassword ||
          auth_factor_type == AuthFactorType::kPin ||
          auth_factor_type == AuthFactorType::kSmartCard ||
          auth_factor_type == AuthFactorType::kKiosk;
 }
 
-bool AreAllFactorsSupportedByBothVkAndUss(
-    const AuthFactorMap& auth_factor_map) {
+// Check if all factors are supported by Vault Keysets for the given user.
+// Support requires that every factor has a regular or backup VK, and not just
+// that every factor type supports VKs.
+bool AreAllFactorsSupportedByVk(const ObfuscatedUsername& obfuscated_username,
+                                const AuthFactorMap& auth_factor_map,
+                                KeysetManagement& keyset_management) {
+  // If there are any auth factors that don't support VK then clearly all
+  // factors don't support VK. This is technically redundant with the check
+  // below, but it saves actually having to go get the VKs if the user has
+  // factor types which can't support VKs at all.
   for (AuthFactorMap::ValueView stored_auth_factor : auth_factor_map) {
-    if (!IsFactorTypeSupportedByBothUssAndVk(
-            stored_auth_factor.auth_factor().type())) {
+    if (!IsFactorTypeSupportedByVk(stored_auth_factor.auth_factor().type())) {
+      return false;
+    }
+  }
+  // If we get here, then all the factor types support VKs. Now we need to make
+  // sure they actually have VKs.
+  for (AuthFactorMap::ValueView stored_auth_factor : auth_factor_map) {
+    if (!keyset_management.GetVaultKeyset(
+            obfuscated_username, stored_auth_factor.auth_factor().label())) {
       return false;
     }
   }
@@ -304,8 +319,8 @@ AuthSession::AuthSession(Params params, BackingApis backing_apis)
       serialized_token_(GetSerializedStringFromToken(token_).value_or("")),
       user_exists_(*params.user_exists),
       auth_factor_map_(std::move(params.auth_factor_map)),
-      enable_create_backup_vk_with_uss_(
-          AreAllFactorsSupportedByBothVkAndUss(auth_factor_map_)),
+      enable_create_backup_vk_with_uss_(AreAllFactorsSupportedByVk(
+          obfuscated_username_, auth_factor_map_, *keyset_management_)),
       migrate_to_user_secret_stash_(*params.migrate_to_user_secret_stash) {
   // Preconditions.
   DCHECK(!serialized_token_.empty());
@@ -1463,7 +1478,7 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
 
   // Update and persist the backup VaultKeyset if backup creation is enabled.
   if (enable_create_backup_vk_with_uss_) {
-    DCHECK(IsFactorTypeSupportedByBothUssAndVk(auth_factor_type));
+    DCHECK(IsFactorTypeSupportedByVk(auth_factor_type));
     CryptohomeStatus status = keyset_management_->UpdateKeysetWithKeyBlobs(
         VaultKeysetIntent{.backup = true}, obfuscated_username_, key_data,
         *vault_keyset_.get(), std::move(*key_blobs.get()),
@@ -1480,7 +1495,7 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
   // it if it exists. The user might be updating the factor because the
   // credential leaked, so it'd be a security issue to leave the backup intact.
   if (!enable_create_backup_vk_with_uss_ &&
-      IsFactorTypeSupportedByBothUssAndVk(auth_factor_type)) {
+      IsFactorTypeSupportedByVk(auth_factor_type)) {
     CryptohomeStatus cleanup_status = CleanUpBackupKeyset(
         *keyset_management_, obfuscated_username_, auth_factor_label);
     if (!cleanup_status.ok()) {
@@ -2176,7 +2191,7 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
 
   // Generate and persist the backup (or migrated) VaultKeyset. This is skipped
   // if at least one factor (including the just-added one) is USS-only.
-  if (!IsFactorTypeSupportedByBothUssAndVk(auth_factor_type)) {
+  if (!IsFactorTypeSupportedByVk(auth_factor_type)) {
     enable_create_backup_vk_with_uss_ = false;
   }
   if (enable_create_backup_vk_with_uss_) {

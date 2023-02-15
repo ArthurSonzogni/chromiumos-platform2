@@ -2259,6 +2259,15 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
   std::optional<brillo::SecureBlob> uss_main_key =
       UserSecretStash::CreateRandomMainKey();
   ASSERT_TRUE(uss_main_key.has_value());
+  // Generating the backup VK.
+  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, _))
+      .WillOnce([](const ObfuscatedUsername&, const std::string& label) {
+        KeyData key_data;
+        key_data.set_label(label);
+        auto vk = std::make_unique<VaultKeyset>();
+        vk->SetKeyData(std::move(key_data));
+        return vk;
+      });
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
   AuthFactor auth_factor(
@@ -2359,6 +2368,15 @@ TEST_F(AuthSessionWithUssExperimentTest,
   std::optional<brillo::SecureBlob> uss_main_key =
       UserSecretStash::CreateRandomMainKey();
   ASSERT_TRUE(uss_main_key.has_value());
+  // Generating the backup VK.
+  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, _))
+      .WillOnce([](const ObfuscatedUsername&, const std::string& label) {
+        KeyData key_data;
+        key_data.set_label(label);
+        auto vk = std::make_unique<VaultKeyset>();
+        vk->SetKeyData(std::move(key_data));
+        return vk;
+      });
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
   AuthFactor auth_factor(
@@ -3529,6 +3547,15 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactor) {
   }
   // Setting the expectation that the user exists.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(true));
+  // Generating the backup VK.
+  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, _))
+      .WillOnce([](const ObfuscatedUsername&, const std::string& label) {
+        KeyData key_data;
+        key_data.set_label(label);
+        auto vk = std::make_unique<VaultKeyset>();
+        vk->SetKeyData(std::move(key_data));
+        return vk;
+      });
 
   CryptohomeStatusOr<InUseAuthSession> new_auth_session_status =
       auth_session_manager_.CreateAuthSession(kFakeUsername, flags,
