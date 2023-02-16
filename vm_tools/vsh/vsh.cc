@@ -401,6 +401,10 @@ int main(int argc, char** argv) {
       LOG(ERROR) << "Exactly one of --cid or --vm_name is required";
       return EXIT_FAILURE;
     }
+    if (!FLAGS_vm_name.empty() && FLAGS_owner_id.empty()) {
+      LOG(ERROR) << "If using --vm_name, you must also specify --owner_id";
+      return EXIT_FAILURE;
+    }
     unsigned int cid;
     if (FLAGS_cid != 0) {
       cid = FLAGS_cid;
