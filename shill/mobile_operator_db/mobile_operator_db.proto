@@ -18,7 +18,7 @@ message Filter {
   enum Type {
     IMSI = 1;
     ICCID = 2;
-    SID = 3;
+    OBSOLETE_SID = 3;
     OPERATOR_NAME = 4;
     MCCMNC = 5;
     GID1 = 6;
@@ -95,7 +95,7 @@ message OnlinePortal {
     GET = 1;
     POST = 2;
   }
-  // Some OnlinePortals are only valid for a restricted set of SIDs/MCCMNCs etc.
+  // Some OnlinePortals are only valid for a restricted set of MCCMNCs, etc.
   // Use this filter to restrict when the OnlinePortal is valid.
   // The OnlinePortal is assumed to be valid if the filter is not provided.
   optional Filter olp_filter = 1;

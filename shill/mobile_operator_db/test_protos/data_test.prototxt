@@ -31,15 +31,6 @@ mno {
       url: "olp@mccmnc"
       post_data: "post_data"
     }
-    olp {
-      olp_filter {
-        type: SID
-        regex: "200345"
-      }
-      method: POST
-      url: "olp@sid"
-      post_data: "post_data"
-    }
     mccmnc: "200001"
     mccmnc: "200002"
     mccmnc: "200003"  # Used in FilteredOLP

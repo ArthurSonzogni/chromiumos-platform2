@@ -366,28 +366,6 @@ mno {
   }
 }
 
-# Test[120] MVNOSIDMatch
-mno {
-  data {
-    localized_name {
-      name: "name120001"
-    }
-    uuid: "uuid120001"
-  }
-  mvno {
-    mvno_filter {
-      type: SID
-      regex: "120002"
-    }
-    data {
-      localized_name {
-        name: "name120002"
-      }
-      uuid: "uuid120002"
-    }
-  }
-}
-
 # Test[121] MVNOAllMatch
 mno {
   data {
@@ -448,35 +426,6 @@ mno {
       }
       uuid: "uuid121006"
     }
-  }
-}
-
-# Test[122]: MNOBySID
-mno {
-  data {
-    localized_name {
-      name: "name1221"
-    }
-    uuid: "uuid1221"
-  }
-}
-
-# Test[123] MNOByMCCMNCAndSID
-mno {
-  data {
-    mccmnc: "123001"
-    localized_name {
-      name: "name123001"
-    }
-    uuid: "uuid123001"
-  }
-}
-mno {
-  data {
-    localized_name {
-      name: "name1232"
-    }
-    uuid: "uuid1232"
   }
 }
 

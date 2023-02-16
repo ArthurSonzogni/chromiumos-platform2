@@ -286,8 +286,7 @@ class MobileOperatorMapper {
   StringToMNOListMap mccmnc_to_mnos_;
   StringToMNOListMap name_to_mnos_;
 
-  // |candidates_by_operator_code| can be determined using MCCMNC. When CDMA
-  // was supported, SID could be used as well.
+  // |candidates_by_operator_code| can be determined using MCCMNC.
   enum class OperatorCodeType {
     kUnknown,
     kMCCMNC,
