@@ -5,7 +5,7 @@
 //! Implements Chrome OS specific logic such as code that depends on system_api.
 
 use std::ffi::{CString, NulError};
-use std::os::raw::{c_char, c_int, c_ulong};
+use std::os::raw::{c_char, c_int};
 use std::path::{Path, PathBuf};
 use std::str::{from_utf8, Utf8Error};
 use std::sync::{Arc, Mutex};
@@ -69,7 +69,7 @@ pub fn is_dev_mode() -> Result<bool> {
         .map(|x| x == 1)
 }
 
-const BUFFER_SIZE: usize = 128;
+const BUFFER_SIZE: u16 = 128;
 
 /// Integer properties present in crossystem.
 pub enum CrossystemIntProperty {
@@ -142,7 +142,7 @@ impl Crossystem {
     pub fn get_string_property(&self, property: CrossystemStringProperty) -> Result<String> {
         let _guard = self.mutex.lock().unwrap();
         let name = CString::new(AsRef::<str>::as_ref(&property)).unwrap();
-        let mut buffer: Vec<u8> = vec![0; BUFFER_SIZE];
+        let mut buffer: Vec<u8> = vec![0; BUFFER_SIZE as usize];
 
         // Safe because it doesn't change any system state, mutex guard provides thread safety, and
         // both name and buffer are owned.
@@ -150,7 +150,7 @@ impl Crossystem {
             VbGetSystemPropertyString(
                 name.as_ptr(),
                 buffer.as_mut_ptr() as *mut c_char,
-                BUFFER_SIZE as c_ulong,
+                BUFFER_SIZE.into(),
             )
         })?;
 
