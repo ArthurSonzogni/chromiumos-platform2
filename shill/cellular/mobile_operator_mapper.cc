@@ -264,21 +264,23 @@ void MobileOperatorMapper::UpdateIMSI(const std::string& imsi) {
     return;
   }
 
-  SLOG(1) << __func__ << ": " << imsi;
+  SLOG(1) << GetLogPrefix(__func__) << ": " << imsi;
   user_imsi_ = imsi;
 
   if (!user_mccmnc_.empty()) {
-    SLOG(2) << __func__ << ": MCCMNC=" << user_mccmnc_;
+    SLOG(2) << GetLogPrefix(__func__) << ": MCCMNC=" << user_mccmnc_;
     if (!base::StartsWith(imsi, user_mccmnc_,
                           base::CompareCase::INSENSITIVE_ASCII)) {
-      LOG(WARNING) << "MCCMNC is not a substring of the IMSI.";
+      LOG(WARNING) << GetLogPrefix(__func__)
+                   << "MCCMNC is not a substring of the IMSI.";
     }
   } else {
     // Attempt to determine the MNO from IMSI since MCCMNC is absent.
     if (!(AppendToCandidatesByMCCMNC(imsi.substr(0, kMCCMNCMinLen)) ||
           AppendToCandidatesByMCCMNC(imsi.substr(0, kMCCMNCMinLen + 1))))
-      LOG(WARNING) << "Unknown MCCMNC values [" << imsi.substr(0, kMCCMNCMinLen)
-                   << "] [" << imsi.substr(0, kMCCMNCMinLen + 1) << "].";
+      LOG(WARNING) << GetLogPrefix(__func__) << "Unknown MCCMNC values ["
+                   << imsi.substr(0, kMCCMNCMinLen) << "] ["
+                   << imsi.substr(0, kMCCMNCMinLen + 1) << "].";
 
     if (!candidates_by_operator_code_.empty()) {
       // We found some candidates using IMSI.
@@ -303,7 +305,7 @@ void MobileOperatorMapper::UpdateICCID(const std::string& iccid) {
     return;
   }
 
-  SLOG(1) << __func__ << ": " << iccid;
+  SLOG(1) << GetLogPrefix(__func__) << ": " << iccid;
   user_iccid_ = iccid;
   if (raw_apn_filters_types_.count(
           mobile_operator_db::Filter_Type::Filter_Type_ICCID))
@@ -322,12 +324,13 @@ void MobileOperatorMapper::UpdateMCCMNC(const std::string& mccmnc) {
     return;
   }
 
-  SLOG(3) << __func__ << ": " << mccmnc;
+  SLOG(3) << GetLogPrefix(__func__) << ": " << mccmnc;
   user_mccmnc_ = mccmnc;
   HandleMCCMNCUpdate();
   candidates_by_operator_code_.clear();
   if (!AppendToCandidatesByMCCMNC(mccmnc))
-    LOG(WARNING) << "Unknown MCCMNC value [" << mccmnc << "].";
+    LOG(WARNING) << GetLogPrefix(__func__) << "Unknown MCCMNC value [" << mccmnc
+                 << "].";
 
   if (raw_apn_filters_types_.count(
           mobile_operator_db::Filter_Type::Filter_Type_MCCMNC))
@@ -356,7 +359,7 @@ void MobileOperatorMapper::UpdateOperatorName(
     return;
   }
 
-  SLOG(2) << __func__ << ": " << operator_name;
+  SLOG(2) << GetLogPrefix(__func__) << ": " << operator_name;
   HandleOperatorNameUpdate();
 
   // We must update the candidates by name anyway.
@@ -368,7 +371,8 @@ void MobileOperatorMapper::UpdateOperatorName(
     // We should never have inserted an empty vector into the map.
     DCHECK(!candidates_by_name_.empty());
   } else {
-    LOG(INFO) << "Operator name [" << operator_name << "] "
+    LOG(INFO) << GetLogPrefix(__func__) << "Operator name [" << operator_name
+              << "] "
               << "(Normalized: [" << NormalizeOperatorName(operator_name)
               << "]) does not match any MNO.";
   }
@@ -389,7 +393,7 @@ void MobileOperatorMapper::UpdateGID1(const std::string& gid1) {
     return;
   }
 
-  SLOG(1) << __func__ << ": " << gid1;
+  SLOG(1) << GetLogPrefix(__func__) << ": " << gid1;
   user_gid1_ = gid1;
   HandleGID1Update();
   if (raw_apn_filters_types_.count(
@@ -414,7 +418,7 @@ void MobileOperatorMapper::UpdateOnlinePortal(const std::string& url,
     return;
   }
 
-  SLOG(3) << __func__ << ": " << url;
+  SLOG(3) << GetLogPrefix(__func__) << ": " << url;
   user_olp_empty_ = false;
   user_olp_.url = url;
   user_olp_.method = method;
@@ -454,7 +458,7 @@ void MobileOperatorMapper::Reset() {
 }
 
 void MobileOperatorMapper::PreprocessDatabase() {
-  SLOG(3) << __func__;
+  SLOG(3) << GetLogPrefix(__func__);
 
   mccmnc_to_mnos_.clear();
   name_to_mnos_.clear();
@@ -471,7 +475,8 @@ void MobileOperatorMapper::PreprocessDatabase() {
       DCHECK(mno.has_data());
       const auto& data = mno.data();
       if (uuids.count(mno.data().uuid())) {
-        LOG(INFO) << "MNO skipped because uuid:" << mno.data().uuid()
+        LOG(INFO) << GetLogPrefix(__func__)
+                  << "MNO skipped because uuid:" << mno.data().uuid()
                   << " already exists";
         continue;
       }
@@ -508,7 +513,8 @@ bool MobileOperatorMapper::AppendToCandidatesByMCCMNC(
   operator_code_type_ = OperatorCodeType::kMCCMNC;
   StringToMNOListMap::const_iterator cit = mccmnc_to_mnos_.find(mccmnc);
   if (cit == mccmnc_to_mnos_.end()) {
-    LOG(WARNING) << "Unknown MCCMNC value [" << mccmnc << "].";
+    LOG(WARNING) << GetLogPrefix(__func__) << "Unknown MCCMNC value [" << mccmnc
+                 << "].";
     return false;
   }
 
@@ -530,7 +536,7 @@ std::string MobileOperatorMapper::OperatorCodeString() const {
 }
 
 bool MobileOperatorMapper::UpdateMNO() {
-  SLOG(3) << __func__;
+  SLOG(3) << GetLogPrefix(__func__);
   const shill::mobile_operator_db::MobileNetworkOperator* candidate = nullptr;
 
   // The only way |operator_code_type_| can be |OperatorCodeType::kUnknown| is
@@ -550,8 +556,9 @@ bool MobileOperatorMapper::UpdateMNO() {
       }
       if (!found_match) {
         const std::string& operator_code = user_mccmnc_;
-        SLOG(1) << "MNO determined by " << OperatorCodeString() << " ["
-                << operator_code << "] does not match any suggested by name["
+        SLOG(1) << GetLogPrefix(__func__) << "MNO determined by "
+                << OperatorCodeString() << " [" << operator_code
+                << "] does not match any suggested by name["
                 << user_operator_name_ << "]. " << OperatorCodeString()
                 << " overrides name!";
       }
@@ -572,8 +579,8 @@ bool MobileOperatorMapper::UpdateMNO() {
     }
     if (candidate == nullptr) {
       const std::string& operator_code = user_mccmnc_;
-      SLOG(1) << "MNOs suggested by " << OperatorCodeString() << " ["
-              << operator_code
+      SLOG(1) << GetLogPrefix(__func__) << "MNOs suggested by "
+              << OperatorCodeString() << " [" << operator_code
               << "] are multiple and disjoint from those suggested "
               << "by name[" << user_operator_name_ << "].";
       candidate = PickOneFromDuplicates(candidates_by_operator_code_);
@@ -584,17 +591,18 @@ bool MobileOperatorMapper::UpdateMNO() {
     // determine an MNO in this case.
     if (operator_code_type_ == OperatorCodeType::kMCCMNC &&
         !user_mccmnc_.empty()) {
-      SLOG(1) << "A non-matching " << OperatorCodeString() << " "
+      SLOG(1) << GetLogPrefix(__func__) << "A non-matching "
+              << OperatorCodeString() << " "
               << "was reported by the user."
               << "We fail the MNO match in this case.";
     } else if (candidates_by_name_.size() == 1) {
       candidate = candidates_by_name_[0];
     } else if (candidates_by_name_.size() > 1) {
-      SLOG(1) << "Multiple MNOs suggested by name[" << user_operator_name_
-              << "], and none by MCCMNC.";
+      SLOG(1) << GetLogPrefix(__func__) << "Multiple MNOs suggested by name["
+              << user_operator_name_ << "], and none by MCCMNC.";
       candidate = PickOneFromDuplicates(candidates_by_name_);
     } else {  // candidates_by_name_.size() == 0
-      SLOG(1) << "No candidates suggested.";
+      SLOG(1) << GetLogPrefix(__func__) << "No candidates suggested.";
     }
   }
 
@@ -607,7 +615,7 @@ bool MobileOperatorMapper::UpdateMNO() {
 }
 
 bool MobileOperatorMapper::UpdateMVNO() {
-  SLOG(3) << __func__;
+  SLOG(3) << GetLogPrefix(__func__);
 
   std::vector<const shill::mobile_operator_db::MobileVirtualNetworkOperator*>
       candidate_mvnos;
@@ -658,11 +666,13 @@ MobileOperatorMapper::PickOneFromDuplicates(
 
   for (auto candidate : duplicates) {
     if (candidate->earmarked()) {
-      SLOG(2) << "Picking earmarked candidate: " << candidate->data().uuid();
+      SLOG(2) << GetLogPrefix(__func__)
+              << "Picking earmarked candidate: " << candidate->data().uuid();
       return candidate;
     }
   }
-  SLOG(2) << "No earmarked candidate found. Choosing the first.";
+  SLOG(2) << GetLogPrefix(__func__)
+          << "No earmarked candidate found. Choosing the first.";
   return duplicates[0];
 }
 
@@ -689,14 +699,16 @@ bool MobileOperatorMapper::FilterMatches(
         to_match = user_gid1_;
         break;
       default:
-        SLOG(1) << "Unknown filter type [" << filter.type() << "]";
+        SLOG(1) << GetLogPrefix(__func__) << "Unknown filter type ["
+                << filter.type() << "]";
         return false;
     }
   }
   // |to_match| can be empty if we have no *user provided* information of the
   // correct type.
   if (to_match.empty()) {
-    SLOG(2) << "Nothing to match against (filter: " << filter.regex() << ").";
+    SLOG(2) << GetLogPrefix(__func__)
+            << "Nothing to match against (filter: " << filter.regex() << ").";
     return false;
   }
 
@@ -704,7 +716,8 @@ bool MobileOperatorMapper::FilterMatches(
   if (filter.range_size()) {
     uint64_t match_value;
     if (!base::StringToUint64(to_match, &match_value)) {
-      SLOG(3) << "Need a number to match against a range (" << match_value
+      SLOG(3) << GetLogPrefix(__func__)
+              << "Need a number to match against a range (" << match_value
               << ").";
       return false;
     }
@@ -720,24 +733,28 @@ bool MobileOperatorMapper::FilterMatches(
   if (filter.has_regex()) {
     re2::RE2 filter_regex = {filter.regex()};
     if (!RE2::FullMatch(to_match, filter_regex)) {
-      SLOG(2) << "Skipping because string '" << to_match << "' is not a "
+      SLOG(2) << GetLogPrefix(__func__) << "Skipping because string '"
+              << to_match << "' is not a "
               << "match of regexp '" << filter.regex();
       return false;
     }
 
-    SLOG(2) << "Regex '" << filter.regex() << "' matches '" << to_match << "'.";
+    SLOG(2) << GetLogPrefix(__func__) << "Regex '" << filter.regex()
+            << "' matches '" << to_match << "'.";
   }
 
   if (filter.has_exclude_regex()) {
     re2::RE2 filter_regex = {filter.exclude_regex()};
     if (RE2::FullMatch(to_match, filter_regex)) {
-      SLOG(2) << "Skipping because string '" << to_match << "' is a "
+      SLOG(2) << GetLogPrefix(__func__) << "Skipping because string '"
+              << to_match << "' is a "
               << "match of exclude_regex '" << filter.exclude_regex();
       return false;
     }
 
-    SLOG(2) << "'" << to_match << "' doesn't match exclude_regex '"
-            << filter.exclude_regex() << "'.";
+    SLOG(2) << GetLogPrefix(__func__) << "'" << to_match
+            << "' doesn't match exclude_regex '" << filter.exclude_regex()
+            << "'.";
   }
 
   return true;
@@ -752,13 +769,13 @@ void MobileOperatorMapper::RefreshDBInformation() {
 
   // |data| is a required field.
   DCHECK(current_mno_->has_data());
-  SLOG(2) << "Reloading MNO data.";
+  SLOG(2) << GetLogPrefix(__func__) << "Reloading MNO data.";
   ReloadData(current_mno_->data());
 
   if (current_mvno_ != nullptr) {
     // |data| is a required field.
     DCHECK(current_mvno_->has_data());
-    SLOG(2) << "Reloading MVNO data.";
+    SLOG(2) << GetLogPrefix(__func__) << "Reloading MVNO data.";
     ReloadData(current_mvno_->data());
   }
 }
@@ -787,7 +804,7 @@ void MobileOperatorMapper::ClearDBInformation() {
 
 void MobileOperatorMapper::ReloadData(
     const shill::mobile_operator_db::Data& data) {
-  SLOG(3) << __func__;
+  SLOG(3) << GetLogPrefix(__func__);
   // |uuid_| is *always* overwritten. An MNO and MVNO should not share the
   // |uuid_|.
   CHECK(data.has_uuid());
@@ -954,7 +971,7 @@ void MobileOperatorMapper::HandleOnlinePortalUpdate() {
 }
 
 void MobileOperatorMapper::HandleAPNListUpdate() {
-  SLOG(3) << __func__;
+  SLOG(3) << GetLogPrefix(__func__);
   // Always recompute |apn_list_|. We don't expect this list to be big.
   apn_list_.clear();
   for (const auto& apn_data : raw_apn_list_) {
@@ -980,7 +997,8 @@ void MobileOperatorMapper::HandleAPNListUpdate() {
     apn.apn_types = GetApnTypes(apn_data);
     std::optional<std::string> ip_type = GetIpType(apn_data);
     if (!ip_type.has_value()) {
-      LOG(INFO) << "Unknown IP type for APN \"" << apn_data.apn() << "\"";
+      LOG(INFO) << GetLogPrefix(__func__) << "Unknown IP type for APN \""
+                << apn_data.apn() << "\"";
       continue;
     }
     apn.ip_type = ip_type.value();
@@ -991,7 +1009,7 @@ void MobileOperatorMapper::HandleAPNListUpdate() {
 }
 
 void MobileOperatorMapper::PostNotifyOperatorChanged() {
-  SLOG(3) << __func__;
+  SLOG(3) << GetLogPrefix(__func__);
   // If there was an outstanding task, it will get replaced.
   notify_operator_changed_task_.Reset(
       base::BindRepeating(&MobileOperatorMapper::NotifyOperatorChanged,
@@ -1030,11 +1048,12 @@ bool MobileOperatorMapper::RequiresRoamingOnOperator(
     bool requires_roaming = FilterMatches(filter, serving_operator->mccmnc());
     if (requires_roaming) {
       SLOG(1)
-          << __func__
+          << GetLogPrefix(__func__)
           << "Roaming is required on serving operator due to roaming filtering";
       return true;
     }
-    SLOG(2) << "Serving operator MCCMNC: " << serving_operator->mccmnc()
+    SLOG(2) << GetLogPrefix(__func__)
+            << "Serving operator MCCMNC: " << serving_operator->mccmnc()
             << " filtering regex: " << filter.regex()
             << " results, requires_roaming: " << requires_roaming;
   }

@@ -55,13 +55,13 @@ void MobileOperatorInfo::AddDefaultDatabasePaths() {
     AddDatabasePath(base::FilePath(kDefaultDatabasePath));
 }
 void MobileOperatorInfo::ClearDatabasePaths() {
-  SLOG(3) << __func__;
+  SLOG(3) << GetLogPrefix(__func__);
   home_->ClearDatabasePaths();
   serving_->ClearDatabasePaths();
 }
 
 void MobileOperatorInfo::AddDatabasePath(const base::FilePath& absolute_path) {
-  SLOG(3) << __func__;
+  SLOG(3) << GetLogPrefix(__func__);
   home_->AddDatabasePath(absolute_path);
   serving_->AddDatabasePath(absolute_path);
 }
@@ -73,7 +73,8 @@ bool MobileOperatorInfo::Init() {
   auto result_serving = serving_->Init(
       base::BindRepeating(&MobileOperatorInfo::OnServingOperatorChanged,
                           weak_ptr_factory_.GetWeakPtr()));
-  SLOG(3) << __func__ << ": Result[" << (result_home && result_serving) << "]";
+  SLOG(3) << GetLogPrefix(__func__) << ": Result["
+          << (result_home && result_serving) << "]";
   return result_home && result_serving;
 }
 
