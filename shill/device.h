@@ -333,12 +333,12 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
 
   // Each device must implement this method to do the work needed to
   // enable the device to operate for establishing network connections.
-  virtual void Start(const EnabledStateChangedCallback& callback) = 0;
+  virtual void Start(EnabledStateChangedCallback callback) = 0;
 
   // Each device must implement this method to do the work needed to
   // disable the device, i.e., clear any running state, and make the
   // device no longer capable of establishing network connections.
-  virtual void Stop(const EnabledStateChangedCallback& callback) = 0;
+  virtual void Stop(EnabledStateChangedCallback callback) = 0;
 
   // Returns true if the associated network interface should be brought down
   // after the device is disabled, or false if that should be done before the

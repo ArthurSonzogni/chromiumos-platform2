@@ -87,12 +87,12 @@ class TestDevice : public Device {
 
   ~TestDevice() override = default;
 
-  void Start(const EnabledStateChangedCallback& callback) override {
-    callback.Run(start_stop_error_);
+  void Start(EnabledStateChangedCallback callback) override {
+    std::move(callback).Run(start_stop_error_);
   }
 
-  void Stop(const EnabledStateChangedCallback& callback) override {
-    callback.Run(start_stop_error_);
+  void Stop(EnabledStateChangedCallback callback) override {
+    std::move(callback).Run(start_stop_error_);
   }
 
   MOCK_METHOD(bool,

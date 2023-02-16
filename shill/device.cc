@@ -811,16 +811,16 @@ void Device::SetEnabledUnchecked(bool enable,
   LOG(INFO) << LoggingTag() << " SetEnabledUnchecked(" << std::boolalpha
             << enable << ")";
   enabled_pending_ = enable;
-  EnabledStateChangedCallback chained_callback = base::Bind(
+  EnabledStateChangedCallback chained_callback = base::BindOnce(
       &Device::OnEnabledStateChanged, AsWeakPtr(), on_enable_complete);
   if (enable) {
-    Start(chained_callback);
+    Start(std::move(chained_callback));
   } else {
     DropConnection();
     if (!ShouldBringNetworkInterfaceDownAfterDisabled()) {
       BringNetworkInterfaceDown();
     }
-    Stop(chained_callback);
+    Stop(std::move(chained_callback));
   }
 }
 

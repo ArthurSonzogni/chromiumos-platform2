@@ -47,15 +47,15 @@ bool VirtualDevice::Save(StoreInterface* /*storage*/) {
   return true;
 }
 
-void VirtualDevice::Start(const EnabledStateChangedCallback& callback) {
+void VirtualDevice::Start(EnabledStateChangedCallback callback) {
   if (!network()->fixed_ip_params()) {
     rtnl_handler()->SetInterfaceFlags(interface_index(), IFF_UP, IFF_UP);
   }
-  callback.Run(Error(Error::kSuccess));
+  std::move(callback).Run(Error(Error::kSuccess));
 }
 
-void VirtualDevice::Stop(const EnabledStateChangedCallback& callback) {
-  callback.Run(Error(Error::kSuccess));
+void VirtualDevice::Stop(EnabledStateChangedCallback callback) {
+  std::move(callback).Run(Error(Error::kSuccess));
 }
 
 void VirtualDevice::UpdateIPConfig(

@@ -186,12 +186,12 @@ class TestDevice : public Device {
   ~TestDevice() override = default;
 
   // Device overrides
-  void Start(const EnabledStateChangedCallback& callback) override {
-    callback.Run(Error(Error::kSuccess));
+  void Start(EnabledStateChangedCallback callback) override {
+    std::move(callback).Run(Error(Error::kSuccess));
   }
 
-  void Stop(const EnabledStateChangedCallback& callback) override {
-    callback.Run(Error(Error::kSuccess));
+  void Stop(EnabledStateChangedCallback callback) override {
+    std::move(callback).Run(Error(Error::kSuccess));
   }
 
   TestNetwork* test_network() { return static_cast<TestNetwork*>(network()); }

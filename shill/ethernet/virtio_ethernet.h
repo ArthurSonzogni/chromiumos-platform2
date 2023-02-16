@@ -22,7 +22,7 @@ class VirtioEthernet : public Ethernet {
 
   ~VirtioEthernet() override;
 
-  void Start(const EnabledStateChangedCallback& callback) override;
+  void Start(EnabledStateChangedCallback callback) override;
 };
 
 }  // namespace shill

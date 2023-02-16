@@ -252,7 +252,7 @@ WiFi::~WiFi() {
   netlink_manager_->RemoveBroadcastHandler(netlink_handler_);
 }
 
-void WiFi::Start(const EnabledStateChangedCallback& callback) {
+void WiFi::Start(EnabledStateChangedCallback callback) {
   SLOG(this, 2) << "WiFi " << link_name() << " starting.";
   if (enabled()) {
     return;
@@ -276,10 +276,10 @@ void WiFi::Start(const EnabledStateChangedCallback& callback) {
     wake_on_wifi_->Start();
   }
 
-  callback.Run(Error(Error::kSuccess));
+  std::move(callback).Run(Error(Error::kSuccess));
 }
 
-void WiFi::Stop(const EnabledStateChangedCallback& callback) {
+void WiFi::Stop(EnabledStateChangedCallback callback) {
   SLOG(this, 2) << "WiFi " << link_name() << " stopping.";
   // Unlike other devices, we leave the DBus name watcher in place here, because
   // WiFi callbacks expect notifications even if the device is disabled.
@@ -334,7 +334,7 @@ void WiFi::Stop(const EnabledStateChangedCallback& callback) {
   SLOG(this, 2) << "WiFi " << link_name() << " has "
                 << endpoint_by_rpcid_.size() << " EndpointMap entries.";
 
-  callback.Run(Error(Error::kSuccess));
+  std::move(callback).Run(Error(Error::kSuccess));
 }
 
 void WiFi::Scan(Error* /*error*/, const std::string& reason) {

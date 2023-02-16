@@ -5,6 +5,7 @@
 #include "shill/ethernet/virtio_ethernet.h"
 
 #include <unistd.h>
+#include <utility>
 
 #include "shill/control_interface.h"
 #include "shill/event_dispatcher.h"
@@ -34,7 +35,7 @@ VirtioEthernet::~VirtioEthernet() {
   // Nothing to be done beyond what Ethernet dtor does.
 }
 
-void VirtioEthernet::Start(const EnabledStateChangedCallback& callback) {
+void VirtioEthernet::Start(EnabledStateChangedCallback callback) {
   // We are sometimes instantiated (by DeviceInfo) before the Linux kernel
   // has completed the setup function for the device (virtio_net:virtnet_probe).
   //
@@ -49,7 +50,7 @@ void VirtioEthernet::Start(const EnabledStateChangedCallback& callback) {
   SLOG(this, 2) << "Sleeping to let virtio initialize.";
   sleep(2);
   SLOG(this, 2) << "Starting virtio Ethernet.";
-  Ethernet::Start(callback);
+  Ethernet::Start(std::move(callback));
 }
 
 }  // namespace shill

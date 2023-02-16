@@ -393,7 +393,7 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
   void StopModem(Error* error) {
     base::RunLoop run_loop;
     capability_->StopModem(
-        base::BindRepeating(&SetErrorAndReturn, run_loop.QuitClosure(), error));
+        base::BindOnce(&SetErrorAndReturn, run_loop.QuitClosure(), error));
     run_loop.Run();
   }
 

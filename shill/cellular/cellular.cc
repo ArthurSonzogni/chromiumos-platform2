@@ -373,7 +373,7 @@ void Cellular::HelpRegisterConstDerivedString(
                 new CustomAccessor<Cellular, std::string>(this, get, nullptr)));
 }
 
-void Cellular::Start(const EnabledStateChangedCallback& callback) {
+void Cellular::Start(EnabledStateChangedCallback callback) {
   LOG(INFO) << LoggingTag() << ": " << __func__ << ": "
             << GetStateString(state_);
 
@@ -384,22 +384,22 @@ void Cellular::Start(const EnabledStateChangedCallback& callback) {
     SetState(State::kEnabled);
     LOG(WARNING) << LoggingTag() << ": " << __func__
                  << ": Skipping Start (no capability).";
-    callback.Run(Error(Error::kSuccess));
+    std::move(callback).Run(Error(Error::kSuccess));
     return;
   }
 
-  StartModem(callback);
+  StartModem(std::move(callback));
 }
 
-void Cellular::Stop(const EnabledStateChangedCallback& callback) {
+void Cellular::Stop(EnabledStateChangedCallback callback) {
   LOG(INFO) << LoggingTag() << ": " << __func__ << ": "
             << GetStateString(state_);
   DCHECK(!stop_step_.has_value()) << "Already stopping. Unexpected Stop call.";
   stop_step_ = StopSteps::kStopModem;
-  StopStep(callback, Error());
+  StopStep(std::move(callback), Error());
 }
 
-void Cellular::StopStep(const EnabledStateChangedCallback& callback,
+void Cellular::StopStep(EnabledStateChangedCallback callback,
                         const Error& error_result) {
   SLOG(1) << LoggingTag() << ": " << __func__ << ": " << GetStateString(state_);
   DCHECK(stop_step_.has_value());
@@ -408,9 +408,9 @@ void Cellular::StopStep(const EnabledStateChangedCallback& callback,
       if (capability_) {
         LOG(INFO) << LoggingTag() << ": " << __func__ << ": Calling StopModem.";
         SetState(State::kModemStopping);
-        capability_->StopModem(
-            base::BindRepeating(&Cellular::StopModemCallback,
-                                weak_ptr_factory_.GetWeakPtr(), callback));
+        capability_->StopModem(base::BindOnce(&Cellular::StopModemCallback,
+                                              weak_ptr_factory_.GetWeakPtr(),
+                                              std::move(callback)));
         return;
       }
       stop_step_ = StopSteps::kModemStopped;
@@ -446,27 +446,28 @@ void Cellular::StopStep(const EnabledStateChangedCallback& callback,
         // succeed when in a failed state.
         LOG(WARNING) << LoggingTag()
                      << ": StopModem returned an error: " << error_result;
-        callback.Run(Error());
+        std::move(callback).Run(Error());
       } else {
         if (error_result.IsFailure())
           LOG(ERROR) << LoggingTag()
                      << ": StopModem returned an error: " << error_result;
-        callback.Run(error_result);
+        std::move(callback).Run(error_result);
       }
       stop_step_.reset();
       return;
   }
 }
 
-void Cellular::StartModem(const EnabledStateChangedCallback& callback) {
+void Cellular::StartModem(EnabledStateChangedCallback callback) {
   DCHECK(capability_);
   LOG(INFO) << LoggingTag() << ": " << __func__;
   SetState(State::kModemStarting);
-  capability_->StartModem(base::BindRepeating(
-      &Cellular::StartModemCallback, weak_ptr_factory_.GetWeakPtr(), callback));
+  capability_->StartModem(base::BindOnce(&Cellular::StartModemCallback,
+                                         weak_ptr_factory_.GetWeakPtr(),
+                                         std::move(callback)));
 }
 
-void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
+void Cellular::StartModemCallback(EnabledStateChangedCallback callback,
                                   const Error& error) {
   LOG(INFO) << LoggingTag() << ": " << __func__
             << ": state=" << GetStateString(state_);
@@ -480,10 +481,10 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
       // If the ModemState property later changes to 'disabled', StartModem
       // will be called again.
       LOG(WARNING) << LoggingTag() << ": StartModem failed: " << error;
-      callback.Run(Error(Error::kSuccess));
+      std::move(callback).Run(Error(Error::kSuccess));
     } else {
       LOG(ERROR) << LoggingTag() << ": StartModem failed: " << error;
-      callback.Run(error);
+      std::move(callback).Run(error);
     }
     return;
   }
@@ -496,15 +497,15 @@ void Cellular::StartModemCallback(const EnabledStateChangedCallback& callback,
 
   metrics()->NotifyDeviceEnableFinished(interface_index());
 
-  callback.Run(Error(Error::kSuccess));
+  std::move(callback).Run(Error(Error::kSuccess));
 }
 
-void Cellular::StopModemCallback(const EnabledStateChangedCallback& callback,
+void Cellular::StopModemCallback(EnabledStateChangedCallback callback,
                                  const Error& error_result) {
   LOG(INFO) << LoggingTag() << ": " << __func__ << ": "
             << GetStateString(state_) << " Error: " << error_result;
   stop_step_ = StopSteps::kModemStopped;
-  StopStep(callback, error_result);
+  StopStep(std::move(callback), error_result);
 }
 
 void Cellular::DestroySockets() {

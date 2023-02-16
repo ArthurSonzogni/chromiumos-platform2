@@ -137,8 +137,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   ~WiFi() override;
 
-  void Start(const EnabledStateChangedCallback& callback) override;
-  void Stop(const EnabledStateChangedCallback& callback) override;
+  void Start(EnabledStateChangedCallback callback) override;
+  void Stop(EnabledStateChangedCallback callback) override;
   void Scan(Error* error, const std::string& reason) override;
   // Callback for system suspend.
   void OnBeforeSuspend(const ResultCallback& callback) override;

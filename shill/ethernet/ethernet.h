@@ -48,8 +48,8 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
 
   ~Ethernet() override;
 
-  void Start(const EnabledStateChangedCallback& callback) override;
-  void Stop(const EnabledStateChangedCallback& callback) override;
+  void Start(EnabledStateChangedCallback callback) override;
+  void Stop(EnabledStateChangedCallback callback) override;
   void LinkEvent(unsigned int flags, unsigned int change) override;
   bool Load(const StoreInterface* storage) override;
   bool Save(StoreInterface* storage) override;

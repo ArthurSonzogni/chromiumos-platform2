@@ -28,8 +28,8 @@ class MockDevice : public Device {
   ~MockDevice() override;
 
   MOCK_METHOD(void, Initialize, (), (override));
-  MOCK_METHOD(void, Start, (const EnabledStateChangedCallback&), (override));
-  MOCK_METHOD(void, Stop, (const EnabledStateChangedCallback&), (override));
+  MOCK_METHOD(void, Start, (EnabledStateChangedCallback), (override));
+  MOCK_METHOD(void, Stop, (EnabledStateChangedCallback), (override));
   MOCK_METHOD(void, SetEnabled, (bool), (override));
   MOCK_METHOD(void,
               SetEnabledChecked,

@@ -160,13 +160,13 @@ Ethernet::Ethernet(Manager* manager,
 
 Ethernet::~Ethernet() {}
 
-void Ethernet::Start(const EnabledStateChangedCallback& callback) {
+void Ethernet::Start(EnabledStateChangedCallback callback) {
   if (IsExternalPciDev(link_name())) {
     if (!DisableOffloadFeatures()) {
       LOG(ERROR) << link_name()
                  << " Interface disabled due to security reasons "
                  << "(failed to disable Offload features)";
-      callback.Run(Error(Error::kPermissionDenied));
+      std::move(callback).Run(Error(Error::kPermissionDenied));
       return;
     }
   }
@@ -178,10 +178,10 @@ void Ethernet::Start(const EnabledStateChangedCallback& callback) {
   }
   RegisterService(service_);
 
-  callback.Run(Error(Error::kSuccess));
+  std::move(callback).Run(Error(Error::kSuccess));
 }
 
-void Ethernet::Stop(const EnabledStateChangedCallback& callback) {
+void Ethernet::Stop(EnabledStateChangedCallback callback) {
   DeregisterService(service_);
   // EthernetProvider::DeregisterService will ResetEthernet() when the Service
   // being deregistered is the only Service remaining (instead of releasing the
@@ -192,7 +192,7 @@ void Ethernet::Stop(const EnabledStateChangedCallback& callback) {
   }
   StopSupplicant();
 
-  callback.Run(Error(Error::kSuccess));
+  std::move(callback).Run(Error(Error::kSuccess));
 }
 
 void Ethernet::LinkEvent(unsigned int flags, unsigned int change) {

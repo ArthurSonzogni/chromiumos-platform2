@@ -211,11 +211,11 @@ class DeviceStub : public Device {
   DeviceStub(const DeviceStub&) = delete;
   DeviceStub& operator=(const DeviceStub&) = delete;
 
-  void Start(const EnabledStateChangedCallback& callback) override {
-    callback.Run(Error(Error::kNotSupported));
+  void Start(EnabledStateChangedCallback callback) override {
+    std::move(callback).Run(Error(Error::kNotSupported));
   }
-  void Stop(const EnabledStateChangedCallback& callback) override {
-    callback.Run(Error(Error::kNotSupported));
+  void Stop(EnabledStateChangedCallback callback) override {
+    std::move(callback).Run(Error(Error::kNotSupported));
   }
   void Initialize() override {}
 };

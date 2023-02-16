@@ -375,7 +375,8 @@ class CellularTest : public testing::Test {
 
   void CallStopModemCallback(const Error& error) {
     device_->StopModemCallback(
-        base::Bind(&CellularTest::TestCallback, base::Unretained(this)), error);
+        base::BindOnce(&CellularTest::TestCallback, base::Unretained(this)),
+        error);
   }
 
   void CallSetPrimarySimProperties(const Cellular::SimProperties& properties) {

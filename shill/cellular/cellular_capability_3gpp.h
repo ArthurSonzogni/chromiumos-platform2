@@ -105,7 +105,7 @@ class CellularCapability3gpp {
   // operation advances to the next step, until either an error occurs in one of
   // them, or all the steps have been completed, at which point StartModem() is
   // finished.
-  void StartModem(const ResultCallback& callback);
+  void StartModem(ResultOnceCallback callback);
 
   // Sets a flag to be used by |StopModem| to decide if the modem will be set
   // to low power mode as the last step. By default, |StopModem| does set the
@@ -117,7 +117,7 @@ class CellularCapability3gpp {
   // `false` value, |StopModem| will not set the modem to low power mode.
   // |callback| is invoked when this completes and the result is passed to the
   // callback.
-  void StopModem(const ResultCallback& callback);
+  void StopModem(ResultOnceCallback callback);
 
   // Resets the modem.
   void Reset(const ResultCallback& callback);
@@ -371,16 +371,15 @@ class CellularCapability3gpp {
   };
 
   // Methods used in starting a modem
-  void EnableModemCompleted(const ResultCallback& callback, const Error& error);
+  void EnableModemCompleted(ResultOnceCallback callback, const Error& error);
 
   // Methods used in stopping a modem
-  void Stop_Completed(const ResultCallback& callback, const Error& error);
-  void Stop_Disable(const ResultCallback& callback);
-  void Stop_DisableCompleted(const ResultCallback& callback,
-                             const Error& error);
-  void Stop_PowerDown(const ResultCallback& callback,
+  void Stop_Completed(ResultOnceCallback callback, const Error& error);
+  void Stop_Disable(ResultOnceCallback callback);
+  void Stop_DisableCompleted(ResultOnceCallback callback, const Error& error);
+  void Stop_PowerDown(ResultOnceCallback callback,
                       const Error& stop_disable_error);
-  void Stop_PowerDownCompleted(const ResultCallback& callback,
+  void Stop_PowerDownCompleted(ResultOnceCallback callback,
                                std::unique_ptr<Error> stop_disable_error,
                                const Error& error);
 
@@ -413,7 +412,7 @@ class CellularCapability3gpp {
                                  uint32_t reason);
 
   // Profile manager signal handlers and callbacks
-  void OnProfilesListReply(const ResultCallback& callback,
+  void OnProfilesListReply(ResultOnceCallback callback,
                            const Profiles& results,
                            const Error& error);
   void OnModem3gppProfileManagerUpdatedSignal();

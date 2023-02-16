@@ -139,8 +139,8 @@ class Cellular : public Device,
   std::string GetStorageIdentifier() const override;
   bool Load(const StoreInterface* storage) override;
   bool Save(StoreInterface* storage) override;
-  void Start(const EnabledStateChangedCallback& callback) override;
-  void Stop(const EnabledStateChangedCallback& callback) override;
+  void Start(EnabledStateChangedCallback callback) override;
+  void Stop(EnabledStateChangedCallback callback) override;
   bool IsUnderlyingDeviceEnabled() const override;
   void Scan(Error* error, const std::string& /*reason*/) override;
   void RegisterOnNetwork(const std::string& network_id,
@@ -473,10 +473,10 @@ class Cellular : public Device,
   void DestroyCapability();
 
   // TODO(b/173635024): Fix order of cellular.h and .cc methods.
-  void StartModem(const EnabledStateChangedCallback& callback);
-  void StartModemCallback(const EnabledStateChangedCallback& callback,
+  void StartModem(EnabledStateChangedCallback callback);
+  void StartModemCallback(EnabledStateChangedCallback callback,
                           const Error& error);
-  void StopModemCallback(const EnabledStateChangedCallback& callback,
+  void StopModemCallback(EnabledStateChangedCallback callback,
                          const Error& error);
   void DestroySockets();
 
@@ -587,7 +587,7 @@ class Cellular : public Device,
   bool IsQ6V5Modem();
 
   // Execute the next step to Stop cellular.
-  void StopStep(const EnabledStateChangedCallback& callback,
+  void StopStep(EnabledStateChangedCallback callback,
                 const Error& error_result);
 
   // Terminate the pppd process associated with this Device, and remove the

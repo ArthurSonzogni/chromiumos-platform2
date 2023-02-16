@@ -34,8 +34,8 @@ class VirtualDevice : public Device {
   bool Load(const StoreInterface* storage) override;
   bool Save(StoreInterface* storage) override;
 
-  void Start(const EnabledStateChangedCallback& callback) override;
-  void Stop(const EnabledStateChangedCallback& callback) override;
+  void Start(EnabledStateChangedCallback callback) override;
+  void Stop(EnabledStateChangedCallback callback) override;
 
   virtual void UpdateIPConfig(
       std::unique_ptr<IPConfig::Properties> ipv4_properties,
