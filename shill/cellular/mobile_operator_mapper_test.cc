@@ -270,6 +270,7 @@ TEST_P(MobileOperatorMapperMainTest, InitialConditions) {
   EXPECT_TRUE(operator_info_->olp_list().empty());
   EXPECT_FALSE(operator_info_->requires_roaming());
   EXPECT_FALSE(operator_info_->tethering_allowed());
+  EXPECT_FALSE(operator_info_->use_dun_apn_as_default());
   EXPECT_EQ(0, operator_info_->mtu());
 }
 
@@ -1114,6 +1115,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
     country_ = "us";
     requires_roaming_ = true;
     tethering_allowed_ = true;
+    use_dun_apn_as_default_ = true;
     mtu_ = 1400;
     mccmnc_list_ = {"200001", "200002", "200003"};
     operator_name_list_ = {{"name200001", "en"}, {"name200002", ""}};
@@ -1138,6 +1140,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
     country_ = "ca";
     requires_roaming_ = false;
     tethering_allowed_ = false;
+    use_dun_apn_as_default_ = false;
     mtu_ = 1200;
     mccmnc_list_ = {"200001", "200102"};
     operator_name_list_ = {{"name200101", "en"}, {"name200102", ""}};
@@ -1159,6 +1162,7 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
   std::string country_;
   bool requires_roaming_;
   bool tethering_allowed_;
+  bool use_dun_apn_as_default_;
   int32_t mtu_;
   std::set<std::string> apn_types_;
   std::vector<std::string> mccmnc_list_;
@@ -1179,6 +1183,7 @@ TEST_P(MobileOperatorMapperDataTest, MNODetailedInformation) {
   PopulateMNOData();
   VerifyDatabaseData();
   EXPECT_EQ(tethering_allowed_, operator_info_->tethering_allowed());
+  EXPECT_EQ(use_dun_apn_as_default_, operator_info_->use_dun_apn_as_default());
 }
 
 TEST_P(MobileOperatorMapperDataTest, MVNOInheritsInformation) {
@@ -1208,6 +1213,7 @@ TEST_P(MobileOperatorMapperDataTest, MVNOOverridesInformation) {
   PopulateMVNOData();
   VerifyDatabaseData();
   EXPECT_EQ(tethering_allowed_, operator_info_->tethering_allowed());
+  EXPECT_EQ(use_dun_apn_as_default_, operator_info_->use_dun_apn_as_default());
 }
 
 TEST_P(MobileOperatorMapperDataTest, NoUpdatesBeforeMNOMatch) {
@@ -1315,6 +1321,7 @@ TEST_P(MobileOperatorMapperDataTest, ResetClearsInformation) {
   PopulateMNOData();
   VerifyDatabaseData();
   EXPECT_FALSE(operator_info_->tethering_allowed());
+  EXPECT_FALSE(operator_info_->use_dun_apn_as_default());
 
   ExpectEventCount(1);
   operator_info_->Reset();
@@ -1329,6 +1336,7 @@ TEST_P(MobileOperatorMapperDataTest, ResetClearsInformation) {
   PopulateMVNOData();
   VerifyDatabaseData();
   EXPECT_FALSE(operator_info_->tethering_allowed());
+  EXPECT_FALSE(operator_info_->use_dun_apn_as_default());
 
   ExpectEventCount(1);
   operator_info_->Reset();
@@ -1342,6 +1350,7 @@ TEST_P(MobileOperatorMapperDataTest, ResetClearsInformation) {
   PopulateMNOData();
   VerifyDatabaseData();
   EXPECT_TRUE(operator_info_->tethering_allowed());
+  EXPECT_TRUE(operator_info_->use_dun_apn_as_default());
 }
 
 TEST_P(MobileOperatorMapperDataTest, FilteredOLP) {

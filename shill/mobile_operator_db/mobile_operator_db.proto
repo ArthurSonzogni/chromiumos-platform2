@@ -131,6 +131,12 @@ message Data {
   // would be enabled on all carriers unless specifically disabled.
   optional bool tethering_allowed = 10 [default = false];
 
+  // If true, the DUN APN will be used for user and tethering data when
+  // tethering is enabled. When tethering is enabled, the DEFAULT connection
+  // will disconnect, a new connection will be established using the DUN APN,
+  // and all data will go through the DUN connection. When tethering is
+  // disabled, the user data will go though the DEFAULT APN connection.
+  optional bool use_dun_apn_as_default = 11;
   // ///////////////////////////////////////////////////////////////////////////
   // GSM specific properties [21 - 40]
 

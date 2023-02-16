@@ -133,6 +133,9 @@ class MobileOperatorInfo {
   // Weather the carrier allows tethering or not.
   bool tethering_allowed() const;
   // If specified, the MTU value to be used on the network interface.
+  // If the carrier requires all traffic to go through the DUN APN when
+  // tethering.
+  bool use_dun_apn_as_default() const;
   int32_t mtu() const;
 
   // ///////////////////////////////////////////////////////////////////////////

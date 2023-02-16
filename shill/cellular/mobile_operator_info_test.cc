@@ -268,4 +268,10 @@ TEST_F(MobileOperatorInfoMainTest, tethering_allowed) {
   EXPECT_FALSE(operator_info_->tethering_allowed());
 }
 
+TEST_F(MobileOperatorInfoMainTest, use_dun_apn_as_default) {
+  EXPECT_CALL(*home_, use_dun_apn_as_default()).WillOnce(Return(true));
+  EXPECT_TRUE(operator_info_->use_dun_apn_as_default());
+  EXPECT_CALL(*home_, use_dun_apn_as_default()).WillOnce(Return(false));
+  EXPECT_FALSE(operator_info_->use_dun_apn_as_default());
+}
 }  // namespace shill

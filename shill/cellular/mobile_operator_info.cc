@@ -178,6 +178,10 @@ bool MobileOperatorInfo::tethering_allowed() const {
   return home_->tethering_allowed();
 }
 
+bool MobileOperatorInfo::use_dun_apn_as_default() const {
+  return home_->use_dun_apn_as_default();
+}
+
 int32_t MobileOperatorInfo::mtu() const {
   // Choose the smaller mtu size.
   if (serving_->mtu() != IPConfig::kUndefinedMTU &&

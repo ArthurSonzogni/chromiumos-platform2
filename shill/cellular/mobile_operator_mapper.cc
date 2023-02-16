@@ -110,6 +110,7 @@ MobileOperatorMapper::MobileOperatorMapper(EventDispatcher* dispatcher,
       current_mvno_(nullptr),
       requires_roaming_(false),
       tethering_allowed_(false),
+      use_dun_apn_as_default_(false),
       mtu_(IPConfig::kUndefinedMTU),
       user_olp_empty_(true),
       weak_ptr_factory_(this) {}
@@ -241,6 +242,12 @@ bool MobileOperatorMapper::requires_roaming() const {
 bool MobileOperatorMapper::tethering_allowed() const {
   SLOG(3) << GetLogPrefix(__func__) << ": Result[" << tethering_allowed_ << "]";
   return tethering_allowed_;
+}
+
+bool MobileOperatorMapper::use_dun_apn_as_default() const {
+  SLOG(3) << GetLogPrefix(__func__) << ": Result[" << use_dun_apn_as_default_
+          << "]";
+  return use_dun_apn_as_default_;
 }
 
 int32_t MobileOperatorMapper::mtu() const {
@@ -773,6 +780,7 @@ void MobileOperatorMapper::ClearDBInformation() {
   HandleOnlinePortalUpdate();
   requires_roaming_ = false;
   tethering_allowed_ = false;
+  use_dun_apn_as_default_ = false;
   roaming_filter_list_.clear();
   mtu_ = IPConfig::kUndefinedMTU;
 }
@@ -809,6 +817,10 @@ void MobileOperatorMapper::ReloadData(
   // |tethering_allowed_| is *always* overwritten because each MNO/MVNO decides
   // whether to allow or not allow tethering.
   tethering_allowed_ = data.tethering_allowed();
+
+  // |use_dun_apn_as_default_| is *always* overwritten because each
+  // MNO/MVNO decides how the APN for tethering is selected.
+  use_dun_apn_as_default_ = data.use_dun_apn_as_default();
 
   if (data.roaming_filter_size() > 0) {
     roaming_filter_list_.clear();
