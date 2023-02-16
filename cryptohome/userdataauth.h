@@ -935,11 +935,6 @@ class UserDataAuth {
   // |fingerprint_scan_result_callback_|.
   void OnFingerprintScanResult(user_data_auth::FingerprintScanResult result);
 
-  // =============== Periodic Maintenance Related Methods ===============
-
-  // Does what its name suggests. Usually called by DoAutoCleanup().
-  void ResetDictionaryAttackMitigation();
-
   // =============== PKCS#11 Related Utilities ===============
 
   // This initializes the PKCS#11 for a particular mount. Note that this is

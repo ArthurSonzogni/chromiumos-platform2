@@ -25,16 +25,8 @@ StatusOr<bool> CryptohomeFrontendImpl::IsReady() {
   return middleware_.CallSync<&Backend::State::IsReady>();
 }
 
-StatusOr<bool> CryptohomeFrontendImpl::IsDAMitigationReady() {
-  return middleware_.CallSync<&Backend::DAMitigation::IsReady>();
-}
-
 StatusOr<bool> CryptohomeFrontendImpl::IsSrkRocaVulnerable() {
   return middleware_.CallSync<&Backend::Vendor::IsSrkRocaVulnerable>();
-}
-
-Status CryptohomeFrontendImpl::MitigateDACounter() {
-  return middleware_.CallSync<&Backend::DAMitigation::Mitigate>();
 }
 
 StatusOr<brillo::Blob> CryptohomeFrontendImpl::GetRsuDeviceId() {

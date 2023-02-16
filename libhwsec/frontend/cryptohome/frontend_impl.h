@@ -24,9 +24,7 @@ class CryptohomeFrontendImpl : public CryptohomeFrontend, public FrontendImpl {
 
   StatusOr<bool> IsEnabled() override;
   StatusOr<bool> IsReady() override;
-  StatusOr<bool> IsDAMitigationReady() override;
   StatusOr<bool> IsSrkRocaVulnerable() override;
-  Status MitigateDACounter() override;
   StatusOr<brillo::Blob> GetRsuDeviceId() override;
   StatusOr<absl::flat_hash_set<KeyAlgoType>> GetSupportedAlgo() override;
   StatusOr<CreateKeyResult> CreateCryptohomeKey(KeyAlgoType key_algo) override;

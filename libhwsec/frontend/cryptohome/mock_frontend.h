@@ -24,9 +24,7 @@ class MockCryptohomeFrontend : public MockFrontend, public CryptohomeFrontend {
 
   MOCK_METHOD(StatusOr<bool>, IsEnabled, (), (override));
   MOCK_METHOD(StatusOr<bool>, IsReady, (), (override));
-  MOCK_METHOD(StatusOr<bool>, IsDAMitigationReady, (), (override));
   MOCK_METHOD(StatusOr<bool>, IsSrkRocaVulnerable, (), (override));
-  MOCK_METHOD(Status, MitigateDACounter, (), (override));
   MOCK_METHOD(StatusOr<brillo::Blob>, GetRsuDeviceId, (), (override));
   MOCK_METHOD(StatusOr<absl::flat_hash_set<KeyAlgoType>>,
               GetSupportedAlgo,

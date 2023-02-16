@@ -37,14 +37,8 @@ class CryptohomeFrontend : public Frontend {
   // Is the security module ready to use or not.
   virtual StatusOr<bool> IsReady() = 0;
 
-  // Is DA counter can be mitigated or not.
-  virtual StatusOr<bool> IsDAMitigationReady() = 0;
-
   // Is the SRK ROCA vulnerable or not.
   virtual StatusOr<bool> IsSrkRocaVulnerable() = 0;
-
-  // Tries to mitigate the DA counter.
-  virtual Status MitigateDACounter() = 0;
 
   // Gets the lookup key for Remote Server Unlock.
   virtual StatusOr<brillo::Blob> GetRsuDeviceId() = 0;

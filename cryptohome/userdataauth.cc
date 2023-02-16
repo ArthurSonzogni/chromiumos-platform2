@@ -2156,7 +2156,6 @@ void UserDataAuth::ContinueMountWithCredentials(
   if (!code.ok()) {
     // Mount returned a non-OK status.
     LOG(ERROR) << "Failed to mount cryptohome, error = " << code;
-    ResetDictionaryAttackMitigation();
     ReplyWithError(std::move(on_done), reply,
                    MakeStatus<CryptohomeError>(
                        CRYPTOHOME_ERR_LOC(
@@ -2574,7 +2573,6 @@ void UserDataAuth::CheckKey(
     // TODO(wad) Should this pass along KEY_NOT_FOUND too?
     std::move(on_done).Run(
         user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED);
-    ResetDictionaryAttackMitigation();
     return;
   }
 
@@ -3637,14 +3635,6 @@ std::string UserDataAuth::GetStatusString() {
   base::JSONWriter::WriteWithOptions(dv, base::JSONWriter::OPTIONS_PRETTY_PRINT,
                                      &json);
   return json;
-}
-
-void UserDataAuth::ResetDictionaryAttackMitigation() {
-  AssertOnMountThread();
-
-  if (hwsec::Status status = hwsec_->MitigateDACounter(); !status.ok()) {
-    LOG(WARNING) << "Failed to mitigate DA counter: " << status;
-  }
 }
 
 void UserDataAuth::StartAuthSession(
