@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <cstdint>
+#include <map>
 #include <memory>
 #include <string>
 #include <utility>
@@ -25,6 +27,7 @@ LibdrmUtilImpl::LibdrmUtilImpl() {}
 LibdrmUtilImpl::~LibdrmUtilImpl() {}
 
 bool LibdrmUtilImpl::Initialize() {
+  ScopedDrmModeResPtr resource;
   // Find valid device.
   base::FileEnumerator lister(base::FilePath("/dev/dri"), false,
                               base::FileEnumerator::FILES, "card?");
@@ -35,23 +38,23 @@ bool LibdrmUtilImpl::Initialize() {
     if (!file.IsValid())
       continue;
 
-    resource_.reset(drmModeGetResources(file.GetPlatformFile()));
+    resource.reset(drmModeGetResources(file.GetPlatformFile()));
     // Usually, there is only one card with valid drm resources.
     // In Chrome side, |drm_util.cc| also uses |ioctl| to find the first card
     // with valid drm resources.
-    if (resource_) {
+    if (resource) {
       device_file_ = std::move(file);
       break;
     }
   }
 
-  if (!resource_)
+  if (!resource)
     return false;
 
   // Find connected connectors.
-  for (int i = 0; i < resource_->count_connectors; ++i) {
+  for (int i = 0; i < resource->count_connectors; ++i) {
     ScopedDrmModeConnectorPtr connector(drmModeGetConnector(
-        device_file_.GetPlatformFile(), resource_->connectors[i]));
+        device_file_.GetPlatformFile(), resource->connectors[i]));
 
     if (!connector || connector->connection == DRM_MODE_DISCONNECTED)
       continue;
@@ -60,9 +63,9 @@ bool LibdrmUtilImpl::Initialize() {
         connector->connector_type == DRM_MODE_CONNECTOR_VIRTUAL ||
         connector->connector_type == DRM_MODE_CONNECTOR_LVDS ||
         connector->connector_type == DRM_MODE_CONNECTOR_DSI) {
-      edp_connector_id_ = resource_->connectors[i];
+      edp_connector_id_ = resource->connectors[i];
     } else {
-      dp_connector_ids_.push_back(resource_->connectors[i]);
+      dp_connector_ids_.push_back(resource->connectors[i]);
     }
   }
 
@@ -269,6 +272,40 @@ bool LibdrmUtilImpl::FillEdidInfo(const uint32_t connector_id, EdidInfo* info) {
   }
 
   return false;
+}
+
+std::map<uint32_t, bool> LibdrmUtilImpl::GetHdmiConnectorStatus() {
+  std::map<uint32_t, bool> hdmi_connectors;
+  ScopedDrmModeResPtr resource;
+
+  if (!device_file_.IsValid()) {
+    LOG(ERROR) << "Invalid DRM device file";
+    return hdmi_connectors;
+  }
+
+  resource.reset(drmModeGetResources(device_file_.GetPlatformFile()));
+
+  if (!resource) {
+    LOG(ERROR) << "Error in initializing drm util resources";
+    return hdmi_connectors;
+  }
+
+  // Find HDMI connector status.
+  for (int i = 0; i < resource->count_connectors; ++i) {
+    uint32_t connector_id = resource->connectors[i];
+    ScopedDrmModeConnectorPtr connector(
+        drmModeGetConnector(device_file_.GetPlatformFile(), connector_id));
+
+    if (!connector)
+      continue;
+
+    if (connector->connector_type == DRM_MODE_CONNECTOR_HDMIA ||
+        connector->connector_type == DRM_MODE_CONNECTOR_HDMIB) {
+      hdmi_connectors.insert(
+          {connector_id, connector->connection == DRM_MODE_CONNECTED});
+    }
+  }
+  return hdmi_connectors;
 }
 
 }  // namespace diagnostics

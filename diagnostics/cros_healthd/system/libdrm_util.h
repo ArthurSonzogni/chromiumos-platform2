@@ -6,6 +6,7 @@
 #define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_LIBDRM_UTIL_H_
 
 #include <cstdint>
+#include <map>
 #include <vector>
 
 #include "diagnostics/cros_healthd/utils/edid.h"
@@ -32,6 +33,9 @@ class LibdrmUtil {
   virtual bool FillDisplayRefreshRate(const uint32_t connector_id,
                                       double* refresh_rate) = 0;
   virtual bool FillEdidInfo(const uint32_t connector_id, EdidInfo* info) = 0;
+  // Returns a map<connector_id, connection_status> that records the connection
+  // status for all HDMI connectors.
+  virtual std::map<uint32_t, bool> GetHdmiConnectorStatus() = 0;
 };
 
 }  // namespace diagnostics

@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include <map>
+#include <utility>
 #include <vector>
 
 #include "diagnostics/cros_healthd/system/fake_libdrm_util.h"
@@ -88,4 +90,12 @@ bool FakeLibdrmUtil::FillEdidInfo(const uint32_t connector_id, EdidInfo* info) {
   return true;
 }
 
+void FakeLibdrmUtil::SetHdmiConnectorStatus(
+    std::map<uint32_t, bool> hdmi_connector_status) {
+  hdmi_connector_status_ = std::move(hdmi_connector_status);
+}
+
+std::map<uint32_t, bool> FakeLibdrmUtil::GetHdmiConnectorStatus() {
+  return hdmi_connector_status_;
+}
 }  // namespace diagnostics

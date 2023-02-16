@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_SYSTEM_FAKE_LIBDRM_UTIL_H_
 #define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_FAKE_LIBDRM_UTIL_H_
 
+#include <cstdint>
+#include <map>
 #include <vector>
 
 #include "diagnostics/cros_healthd/system/libdrm_util.h"
@@ -33,15 +35,18 @@ class FakeLibdrmUtil : public LibdrmUtil {
   bool FillDisplayRefreshRate(const uint32_t connector_id,
                               double* refresh_rate) override;
   bool FillEdidInfo(const uint32_t connector_id, EdidInfo* info) override;
+  std::map<uint32_t, bool> GetHdmiConnectorStatus() override;
 
   bool& initialization_success() { return initialization_success_; }
   bool& privacy_screen_supported() { return privacy_screen_supported_; }
   bool& privacy_screen_enabled() { return privacy_screen_enabled_; }
+  void SetHdmiConnectorStatus(std::map<uint32_t, bool> hdmi_connector_status);
 
  private:
   bool initialization_success_ = true;
   bool privacy_screen_supported_ = true;
   bool privacy_screen_enabled_ = false;
+  std::map<uint32_t, bool> hdmi_connector_status_;
 };
 
 }  // namespace diagnostics

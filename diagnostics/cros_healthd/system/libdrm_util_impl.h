@@ -5,6 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_SYSTEM_LIBDRM_UTIL_IMPL_H_
 #define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_LIBDRM_UTIL_IMPL_H_
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -78,6 +79,7 @@ class LibdrmUtilImpl : public LibdrmUtil {
   bool FillDisplayRefreshRate(const uint32_t connector_id,
                               double* refresh_rate) override;
   bool FillEdidInfo(const uint32_t connector_id, EdidInfo* info) override;
+  std::map<uint32_t, bool> GetHdmiConnectorStatus() override;
 
  private:
   // This function iterates all the properties in |connector| and find the
@@ -94,7 +96,6 @@ class LibdrmUtilImpl : public LibdrmUtil {
   base::File device_file_;
   uint32_t edp_connector_id_;
   std::vector<uint32_t> dp_connector_ids_;
-  ScopedDrmModeResPtr resource_;
 };
 
 }  // namespace diagnostics
