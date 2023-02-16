@@ -250,6 +250,8 @@ char const* GetAuthBlockTypeStringVariant(AuthBlockType type) {
       return "CryptohomeRecovery";
     case AuthBlockType::kTpmEcc:
       return "TpmEcc";
+    case AuthBlockType::kFingerprint:
+      return "Fingerprint";
     case AuthBlockType::kMaxValue:
       NOTREACHED();
       return "";

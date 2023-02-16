@@ -16,6 +16,7 @@
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/auth_block_utility.h"
+#include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
@@ -172,6 +173,10 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   // Fingerprint service, used by operations that need to interact with
   // fingerprint sensors.
   std::unique_ptr<FingerprintAuthBlockService> fp_service_;
+
+  // Biometrics service, used by operations that need to interact with
+  // biometrics auth stacks.
+  std::unique_ptr<BiometricsAuthBlockService> biometrics_service_;
 };
 
 }  // namespace cryptohome

@@ -68,6 +68,10 @@ bool GetAuthBlockState(const VaultKeyset& vk, AuthBlockState& out_state) {
           << "CryptohomeRecovery is not a supported AuthBlockType for now.";
       return false;
 
+    case AuthBlockType::kFingerprint:
+      LOG(ERROR) << "Fingerprint is not a supported AuthBlockType.";
+      return false;
+
     case AuthBlockType::kMaxValue:
       LOG(ERROR) << "Unsupported AuthBlockType.";
       return false;

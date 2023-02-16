@@ -27,6 +27,7 @@
 #include "cryptohome/auth_blocks/challenge_credential_auth_block.h"
 #include "cryptohome/auth_blocks/cryptohome_recovery_auth_block.h"
 #include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"
+#include "cryptohome/auth_blocks/fingerprint_auth_block.h"
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
 #include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/auth_blocks/sync_to_async_auth_block_adapter.h"
@@ -156,9 +157,8 @@ bool AuthBlockUtilityImpl::IsAuthFactorSupported(
     case AuthFactorType::kLegacyFingerprint:
       return false;
     case AuthFactorType::kFingerprint:
-      // TODO(b/262309920): Should depend on PinWeaver enabled or not
-      // once the fingerprint auth block is implemented.
-      return false;
+      return biometrics_service_ &&
+             FingerprintAuthBlock::IsSupported(*crypto_).ok();
     case AuthFactorType::kUnspecified:
       return false;
   }
@@ -532,6 +532,14 @@ CryptoStatus AuthBlockUtilityImpl::IsAuthBlockSupported(
       return CryptohomeRecoveryAuthBlock::IsSupported(*crypto_);
     case AuthBlockType::kTpmEcc:
       return TpmEccAuthBlock::IsSupported(*crypto_);
+    case AuthBlockType::kFingerprint:
+      if (!biometrics_service_) {
+        return MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthBlockUtilFingerprintNoServiceInIsAuthBlockSupported),
+            ErrorActionSet({ErrorAction::kAuth}), CryptoError::CE_OTHER_CRYPTO);
+      }
+      return FingerprintAuthBlock::IsSupported(*crypto_);
     case AuthBlockType::kMaxValue:
       return MakeStatus<CryptohomeCryptoError>(
           CRYPTOHOME_ERR_LOC(
@@ -583,6 +591,8 @@ AuthBlockUtilityImpl::GetAuthBlockWithType(
           crypto_->GetHwsec(), crypto_->GetRecoveryCrypto(),
           crypto_->le_manager(), platform_);
 
+    // Synchronous FingerprintAuthBlock isn't supported.
+    case AuthBlockType::kFingerprint:
     case AuthBlockType::kMaxValue:
       LOG(ERROR) << "Unsupported AuthBlockType.";
 
@@ -662,6 +672,9 @@ AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
           std::make_unique<CryptohomeRecoveryAuthBlock>(
               crypto_->GetHwsec(), crypto_->GetRecoveryCrypto(),
               crypto_->le_manager(), platform_));
+
+    case AuthBlockType::kFingerprint:
+      return std::make_unique<FingerprintAuthBlock>();
 
     case AuthBlockType::kMaxValue:
       LOG(ERROR) << "Unsupported AuthBlockType.";
@@ -774,6 +787,9 @@ AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeFromState(
   } else if (const auto& state = std::get_if<CryptohomeRecoveryAuthBlockState>(
                  &auth_block_state.state)) {
     auth_block_type = AuthBlockType::kCryptohomeRecovery;
+  } else if (const auto& state = std::get_if<FingerprintAuthBlockState>(
+                 &auth_block_state.state)) {
+    auth_block_type = AuthBlockType::kFingerprint;
   }
 
   return auth_block_type;

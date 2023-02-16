@@ -25,31 +25,31 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   // Start of generated content. Do NOT modify after this line.
   /* ./user_session/real_user_session.cc */
   kLocUserSessionMountEphemeralFailed = 100,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthMountGuestMountPointBusy = 101,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthMountGuestNoGuestSession = 102,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthMountGuestSessionMountFailed = 103,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthNoEphemeralMountForOwner = 104,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthEphemeralMountWithoutCreate = 105,
   /* =Obsolete= */
   kLocUserDataAuthMountAuthSessionNotFound = 106,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthMountAuthSessionNotAuthed = 107,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthMountNoAccountID = 108,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthMountCantGetPublicMountSalt = 109,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthMountNoKeySecret = 110,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthMountCreateNoKey = 111,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthMountCreateMultipleKey = 112,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthMountCreateKeyNotSpecified = 113,
   /* ./challenge_credentials/challenge_credentials_decrypt_operation.cc */
   kLocChalCredDecryptCantStartProcessing = 114,
@@ -81,11 +81,11 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocChalCredDecryptUnsealFailed = 127,
   /* ./challenge_credentials/challenge_credentials_decrypt_operation.cc */
   kLocChalCredDecryptNoSaltSigAlgoWhileProcessingSalt = 128,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kUserDataAuthInvalidAuthBlockTypeInCreateKeyBlobs = 129,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kUserDataAuthInvalidAuthBlockTypeInDeriveKeyBlobs = 130,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kUserDataAuthNoAuthBlockStateInDeriveKeyBlobs = 131,
   /* ./auth_blocks/tpm_not_bound_to_pcr_auth_block.cc */
   kLocTpmNotBoundToPcrAuthBlockInvalidBlockStateInDerive = 132,
@@ -659,7 +659,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocKeyChallengeServiceUnknownDBusErrorInChallengeKey = 416,
   /* ./key_challenge_service_impl.cc */
   kLocKeyChallengeServiceInvalidDBusNameInChallengeKey = 417,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthChalCredFailedInChalRespMount = 418,
   /* =Obsolete= */
   kLocUserDataAuthNoSessionInTryLiteChalRespCheckKey = 419,
@@ -701,37 +701,37 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocKeysetManagementInvalidIndexInRemoveKeyset = 437,
   /* ./keyset_management.cc */
   kLocKeysetManagementDeleteFailedInRemoveKeyset = 438,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthRemoveUnrecoverableFailedInContinueMount = 439,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthCreateKeyBlobsFailedInLoadVK = 440,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthAddInitialKeysetFailedInLoadVK = 441,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthGetKeyLabelsFailedInLoadVK = 442,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthNoKeyLabelUsableInLoadVK = 443,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthSessionActiveInAttemptUserMountCred = 444,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthEphemeralFailedInAttemptUserMountCred = 445,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthCheckExistenceFailedInAttemptUserMountCred = 446,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthAccountMissingInAttemptUserMountCred = 447,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthCreateFailedInAttemptUserMountCred = 448,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthLoadVKFailedInAttemptUserMountCred = 449,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthMountVaultFailedInAttemptUserMountCred = 450,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthSessionActiveInAttemptUserMountAS = 451,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthEphemeralFailedInAttemptUserMountAS = 452,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthNotAuthedInAttemptUserMountAS = 453,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthMountVaultFailedInAttemptUserMountAS = 454,
   /* ./user_session/real_user_session.cc */
   kLocUserSessionMountFailedInMountVault = 455,
@@ -953,35 +953,35 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthMultipleKeysInInitAuthBlockUtilChalResp = 563,
   /* =Obsolete= */
   kLocUserDataAuthCreateFailedInInitAuthBlockUtilChalResp = 564,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthInitChalRespAuthFailedInDoChalRespMount = 565,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthNoChalRespKeyInfoInDoChalRespMount = 566,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthMultipleKeysInDoChalRespMount = 567,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthNoDelegateInDoChalRespMount = 568,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthNoChalRespServiceInDoChalRespMount = 569,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthAccountNotFoundInDoChalRespMount = 570,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthNoChalRespVKInDoChalRespMount = 571,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthAccountNotFoundInContinueMountWithCred = 572,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthGuestMountPointBusyInContinueMountWithCred = 573,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthCantCreateSessionInContinueMountWithCred = 574,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthPublicMountPointBusyInContinueMountWithCred = 575,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthEpheMountPointBusyInContinueMountWithCred = 576,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthNoCreateForEphemeralInContinueMountWithCred = 577,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthCredVerifyFailedInContinueMountWithCred = 578,
-  /* ./userdataauth.cc */
+  /* =Obsolete= */
   kLocUserDataAuthMountFailedInContinueMountWithCred = 579,
   /* =Obsolete= */
   kLocUserDataAuthInitChalRespFailedInAddCredentials = 580,
@@ -1449,7 +1449,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocPinWeaverAuthBlockNoPinWeaverInIsSupported = 2725,
   /* ./auth_blocks/pin_weaver_auth_block.cc */
   kLocPinWeaverAuthBlockNullLeManagerInIsSupported = 2726,
-  /* ./auth_blocks/pin_weaver_auth_block.cc */
+  /* =Obsolete= */
   kLocPinWeaverAuthBlockNoKeyLoaderInIsSupported = 2727,
   /* ./auth_session.cc */
   kLocAuthSessionNoVkInAddKeyset = 2728,
@@ -1549,6 +1549,12 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocBiometricsProcessorMatchCredentialBiodNoResp = 3335,
   /* ./auth_blocks/biometrics_command_processor_impl.cc */
   kLocBiometricsProcessorMatchCredentialDeriveSecretsFailed = 3336,
+  /* ./auth_blocks/fingerprint_auth_block.cc */
+  kLocFingerprintAuthBlockUnimplemented = 3337,
+  /* ./auth_blocks/fingerprint_auth_block.cc */
+  kLocFingerprintAuthBlockPrepareForRemovalUnimplemented = 3338,
+  /* ./auth_blocks/auth_block_utility_impl.cc */
+  kLocAuthBlockUtilFingerprintNoServiceInIsAuthBlockSupported = 3339,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.

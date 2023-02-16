@@ -21,6 +21,7 @@ enum class AuthBlockType {
   kScrypt = 5,
   kCryptohomeRecovery = 6,
   kTpmEcc = 7,
+  kFingerprint = 8,
   kMaxValue,
 };
 

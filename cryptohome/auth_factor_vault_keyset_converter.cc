@@ -93,6 +93,7 @@ AuthFactorType VaultKeysetTypeToAuthFactorType(int32_t vk_flags,
     case AuthBlockType::kChallengeCredential:
       return AuthFactorType::kSmartCard;
     case AuthBlockType::kCryptohomeRecovery:  // Never reported by a VK.
+    case AuthBlockType::kFingerprint:         // Never reported by a VK.
     case AuthBlockType::kMaxValue:
       return AuthFactorType::kUnspecified;
   }

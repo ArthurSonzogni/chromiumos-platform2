@@ -50,6 +50,12 @@ enum DerivationType : int {
   // TPM/GSC and user passkey is used to derive the wrapping keys which are
   // sealed to PCR and ECC auth value.
   kTpmBackedEcc = 7,
+  // Biometrics credentials are protected by a rate-limiting protocol between
+  // GSC and the biometrics auth stack. The auth stack is trusted to perform
+  // matching correctly and securely, but rate-limiting is guarded by GSC.
+  // Biometrics auth stack and GSC each provides half of the secret to derive
+  // the key.
+  kBiometrics = 8,
   kDerivationTypeNumBuckets  // Must be the last entry.
 };
 

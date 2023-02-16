@@ -149,6 +149,7 @@ union AuthBlockStateUnion (secure) {
   CryptohomeRecoveryAuthBlockState,
   TpmEccAuthBlockState,
   ScryptAuthBlockState,
+  FingerprintAuthBlockState,
 }
 
 table RevocationState (secure) {
