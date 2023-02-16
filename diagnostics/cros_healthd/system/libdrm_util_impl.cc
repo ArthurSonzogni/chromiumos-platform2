@@ -26,7 +26,6 @@ LibdrmUtilImpl::~LibdrmUtilImpl() {}
 
 bool LibdrmUtilImpl::Initialize() {
   // Find valid device.
-  ScopedDrmModeResPtr resource;
   base::FileEnumerator lister(base::FilePath("/dev/dri"), false,
                               base::FileEnumerator::FILES, "card?");
   for (base::FilePath path = lister.Next(); !path.empty();
@@ -36,23 +35,23 @@ bool LibdrmUtilImpl::Initialize() {
     if (!file.IsValid())
       continue;
 
-    resource.reset(drmModeGetResources(file.GetPlatformFile()));
+    resource_.reset(drmModeGetResources(file.GetPlatformFile()));
     // Usually, there is only one card with valid drm resources.
     // In Chrome side, |drm_util.cc| also uses |ioctl| to find the first card
     // with valid drm resources.
-    if (resource) {
-      device_file = std::move(file);
+    if (resource_) {
+      device_file_ = std::move(file);
       break;
     }
   }
 
-  if (!resource)
+  if (!resource_)
     return false;
 
   // Find connected connectors.
-  for (int i = 0; i < resource->count_connectors; ++i) {
+  for (int i = 0; i < resource_->count_connectors; ++i) {
     ScopedDrmModeConnectorPtr connector(drmModeGetConnector(
-        device_file.GetPlatformFile(), resource->connectors[i]));
+        device_file_.GetPlatformFile(), resource_->connectors[i]));
 
     if (!connector || connector->connection == DRM_MODE_DISCONNECTED)
       continue;
@@ -61,9 +60,9 @@ bool LibdrmUtilImpl::Initialize() {
         connector->connector_type == DRM_MODE_CONNECTOR_VIRTUAL ||
         connector->connector_type == DRM_MODE_CONNECTOR_LVDS ||
         connector->connector_type == DRM_MODE_CONNECTOR_DSI) {
-      edp_connector_id = resource->connectors[i];
+      edp_connector_id_ = resource_->connectors[i];
     } else {
-      dp_connector_ids.push_back(resource->connectors[i]);
+      dp_connector_ids_.push_back(resource_->connectors[i]);
     }
   }
 
@@ -71,18 +70,18 @@ bool LibdrmUtilImpl::Initialize() {
 }
 
 uint32_t LibdrmUtilImpl::GetEmbeddedDisplayConnectorID() {
-  return edp_connector_id;
+  return edp_connector_id_;
 }
 
 std::vector<uint32_t> LibdrmUtilImpl::GetExternalDisplayConnectorID() {
-  return dp_connector_ids;
+  return dp_connector_ids_;
 }
 
 void LibdrmUtilImpl::FillPrivacyScreenInfo(const uint32_t connector_id,
                                            bool* privacy_screen_supported,
                                            bool* privacy_screen_enabled) {
   ScopedDrmModeConnectorPtr connector(
-      drmModeGetConnector(device_file.GetPlatformFile(), connector_id));
+      drmModeGetConnector(device_file_.GetPlatformFile(), connector_id));
   if (!connector)
     return;
 
@@ -136,8 +135,8 @@ int LibdrmUtilImpl::GetDrmProperty(const ScopedDrmModeConnectorPtr& connector,
     return -1;
 
   for (int i = 0; i < connector->count_props; ++i) {
-    ScopedDrmPropertyPtr tmp(
-        drmModeGetProperty(device_file.GetPlatformFile(), connector->props[i]));
+    ScopedDrmPropertyPtr tmp(drmModeGetProperty(device_file_.GetPlatformFile(),
+                                                connector->props[i]));
     if (!tmp)
       continue;
 
@@ -152,7 +151,7 @@ int LibdrmUtilImpl::GetDrmProperty(const ScopedDrmModeConnectorPtr& connector,
 
 ScopedDrmModeCrtcPtr LibdrmUtilImpl::GetDrmCrtc(const uint32_t connector_id) {
   ScopedDrmModeConnectorPtr connector(
-      drmModeGetConnector(device_file.GetPlatformFile(), connector_id));
+      drmModeGetConnector(device_file_.GetPlatformFile(), connector_id));
   // Sometimes there is no crtc info, for example, when the device hibernate,
   // the screen is black, there is no need to render, so the encoder id is
   // invalid as 0.
@@ -160,19 +159,19 @@ ScopedDrmModeCrtcPtr LibdrmUtilImpl::GetDrmCrtc(const uint32_t connector_id) {
     return nullptr;
 
   ScopedDrmModeEncoderPtr encoder(
-      drmModeGetEncoder(device_file.GetPlatformFile(), connector->encoder_id));
+      drmModeGetEncoder(device_file_.GetPlatformFile(), connector->encoder_id));
   if (!encoder)
     return nullptr;
 
   return ScopedDrmModeCrtcPtr(
-      drmModeGetCrtc(device_file.GetPlatformFile(), encoder->crtc_id));
+      drmModeGetCrtc(device_file_.GetPlatformFile(), encoder->crtc_id));
 }
 
 bool LibdrmUtilImpl::FillDisplaySize(const uint32_t connector_id,
                                      uint32_t* width,
                                      uint32_t* height) {
   ScopedDrmModeConnectorPtr connector(
-      drmModeGetConnector(device_file.GetPlatformFile(), connector_id));
+      drmModeGetConnector(device_file_.GetPlatformFile(), connector_id));
   if (!connector)
     return false;
 
@@ -192,7 +191,7 @@ bool LibdrmUtilImpl::FillDisplayResolution(const uint32_t connector_id,
   } else {
     // Fall back to use the preferred mode info in connector.
     ScopedDrmModeConnectorPtr connector(
-        drmModeGetConnector(device_file.GetPlatformFile(), connector_id));
+        drmModeGetConnector(device_file_.GetPlatformFile(), connector_id));
     if (!connector)
       return false;
     for (int i = 0; i < connector->count_modes; ++i) {
@@ -223,7 +222,7 @@ bool LibdrmUtilImpl::FillDisplayRefreshRate(const uint32_t connector_id,
   } else {
     // Fall back to use the preferred mode info in connector.
     ScopedDrmModeConnectorPtr connector(
-        drmModeGetConnector(device_file.GetPlatformFile(), connector_id));
+        drmModeGetConnector(device_file_.GetPlatformFile(), connector_id));
     if (!connector)
       return false;
     for (int i = 0; i < connector->count_modes; ++i) {
@@ -242,7 +241,7 @@ bool LibdrmUtilImpl::FillDisplayRefreshRate(const uint32_t connector_id,
 ScopedDrmPropertyBlobPtr LibdrmUtilImpl::GetDrmPropertyBlob(
     const uint32_t connector_id, const std::string& name) {
   ScopedDrmModeConnectorPtr connector(
-      drmModeGetConnector(device_file.GetPlatformFile(), connector_id));
+      drmModeGetConnector(device_file_.GetPlatformFile(), connector_id));
   if (!connector)
     return nullptr;
 
@@ -250,7 +249,7 @@ ScopedDrmPropertyBlobPtr LibdrmUtilImpl::GetDrmPropertyBlob(
   int idx = GetDrmProperty(connector, name, &prop);
   if (idx >= 0 && prop->flags & DRM_MODE_PROP_BLOB) {
     return ScopedDrmPropertyBlobPtr(drmModeGetPropertyBlob(
-        device_file.GetPlatformFile(), connector->prop_values[idx]));
+        device_file_.GetPlatformFile(), connector->prop_values[idx]));
   }
   return nullptr;
 }

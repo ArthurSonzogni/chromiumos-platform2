@@ -91,9 +91,10 @@ class LibdrmUtilImpl : public LibdrmUtil {
   ScopedDrmPropertyBlobPtr GetDrmPropertyBlob(const uint32_t connector_id,
                                               const std::string& name);
 
-  base::File device_file;
-  uint32_t edp_connector_id;
-  std::vector<uint32_t> dp_connector_ids;
+  base::File device_file_;
+  uint32_t edp_connector_id_;
+  std::vector<uint32_t> dp_connector_ids_;
+  ScopedDrmModeResPtr resource_;
 };
 
 }  // namespace diagnostics
