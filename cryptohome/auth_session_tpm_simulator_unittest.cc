@@ -577,6 +577,10 @@ TEST_P(AuthSessionWithTpmSimulatorUssMigrationAgnosticTest,
         AuthenticatePasswordFactor(kPasswordLabel, kPassword, *auth_session),
         IsOk());
     EXPECT_THAT(AddRecoveryFactor(*auth_session), IsOk());
+    // Adding recovery factor removes the backup keyset.
+    EXPECT_EQ(nullptr,
+              keyset_management_.GetVaultKeyset(
+                  auth_session->obfuscated_username(), kPasswordLabel));
   }
 
   // Test.

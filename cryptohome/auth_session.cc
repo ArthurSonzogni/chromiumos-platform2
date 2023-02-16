@@ -249,6 +249,26 @@ CryptohomeStatus CleanUpBackupKeyset(
   return OkStatus<CryptohomeError>();
 }
 
+// Removes the backup VaultKeysets.
+CryptohomeStatus CleanUpAllBackupKeysets(
+    KeysetManagement& keyset_management,
+    const ObfuscatedUsername& obfuscated_username,
+    const AuthFactorMap& auth_factor_map) {
+  for (auto item : auth_factor_map) {
+    CryptohomeStatus status = CleanUpBackupKeyset(
+        keyset_management, obfuscated_username, item.auth_factor().label());
+    if (!status.ok()) {
+      return MakeStatus<CryptohomeError>(
+                 CRYPTOHOME_ERR_LOC(
+                     kLocAuthSessionRemoveFailedInCleanUpAllBackupKeysets),
+                 ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+                 user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
+          .Wrap(std::move(status));
+    }
+  }
+  return OkStatus<CryptohomeError>();
+}
+
 }  // namespace
 
 std::unique_ptr<AuthSession> AuthSession::Create(
@@ -2179,14 +2199,28 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
         .Wrap(std::move(status));
   }
 
-  // Generate and persist the backup (or migrated) VaultKeyset. This is skipped
-  // if at least one factor (including the just-added one) is USS-only.
+  // If a USS only factor is added backup keysets should be removed.
   if (!IsFactorTypeSupportedByVk(auth_factor_type)) {
     enable_create_backup_vk_with_uss_ = false;
+
+    CryptohomeStatus cleanup_status = CleanUpAllBackupKeysets(
+        *keyset_management_, obfuscated_username_, auth_factor_map_);
+    if (!cleanup_status.ok()) {
+      LOG(ERROR) << "Cleaning up backup keysets failed.";
+      return (MakeStatus<CryptohomeError>(
+                  CRYPTOHOME_ERR_LOC(
+                      kLocAuthSessionCleanupBackupFailedInAddauthFactor),
+                  user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
+                  .Wrap(std::move(cleanup_status).status()));
+    }
   }
+  // Generate and persist the backup (or migrated) VaultKeyset. This is
+  // skipped if at least one factor (including the just-added one) is
+  // USS-only.
   if (enable_create_backup_vk_with_uss_) {
-    // Clobbering is on by default, so if USS&AuthFactor is added for migration
-    // this will convert a regular VaultKeyset to a backup VaultKeyset.
+    // Clobbering is on by default, so if USS&AuthFactor is added for
+    // migration this will convert a regular VaultKeyset to a backup
+    // VaultKeyset.
     status = AddVaultKeyset(auth_factor_label, key_data, /*is_initial_keyset=*/
                             auth_factor_map_.empty(),
                             VaultKeysetIntent{.backup = true},
@@ -2196,12 +2230,11 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
       // informed that the adding operation is failed. However the factor is
       // added and can be used starting from the next AuthSession.
       // If MigrateVkToUss fails at this step, user still can login with
-      // that factor, and the migration of the factor is completed. But migrator
-      // will attempt to migrate that factor every time, not knowing that it has
-      // already migrated.
-      // Considering this is a very rare edge case and doesn't cause a big user
-      // facing issue we don't try to do any cleanup, because any cleanup
-      // attempts share similar risks, or worse.
+      // that factor, and the migration of the factor is completed. But
+      // migrator will attempt to migrate that factor every time, not knowing
+      // that it has already migrated. Considering this is a very rare edge
+      // case and doesn't cause a big user facing issue we don't try to do any
+      // cleanup, because any cleanup attempts share similar risks, or worse.
       LOG(ERROR) << "Failed to create VaultKeyset for a backup to new added "
                     "AuthFactor with label: "
                  << auth_factor_label;

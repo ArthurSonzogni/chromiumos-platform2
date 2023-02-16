@@ -3852,6 +3852,7 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdatePasswordAfterRecoveryAuth) {
     EXPECT_EQ(AddPasswordAuthFactor(kFakeLabel, kFakePass,
                                     /*first_factor=*/true, auth_session),
               user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
+
     // Add recovery AuthFactor.
     EXPECT_EQ(AddRecoveryAuthFactor(kRecoveryLabel, kFakeRecoverySecret,
                                     auth_session),

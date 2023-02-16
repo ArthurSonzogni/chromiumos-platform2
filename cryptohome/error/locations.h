@@ -1391,6 +1391,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocNoVkInAuthInputForMigration = 2506,
   /* ./keyset_management.cc */
   kLocKeysetManagementFailedRemoveInRemoveKeysetFile = 2507,
+  /* ./auth_session.cc */
+  kLocAuthSessionRemoveFailedInCleanUpAllBackupKeysets = 2508,
+  /* ./auth_session.cc */
+  kLocAuthSessionCleanupBackupFailedInAddauthFactor = 2509,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2700
   //// See location_db.py for more info.
