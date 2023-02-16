@@ -13,6 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/functional/bind.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/strings/stringprintf.h>
@@ -823,12 +824,10 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_MissingHandler) {
   EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   TransitionNextStateRequest request;
-  auto callback = [](const GetStateReply& reply, bool quit_daemon) {
-    FAIL() << "Unexpected call to callback";
-  };
-  EXPECT_DEATH(
-      rmad_interface.TransitionNextState(request, base::BindOnce(callback)),
-      "No registered state handler");
+  rmad_interface.TransitionNextState(request, base::DoNothing());
+  // Missing state handler of the next state detected, stay in the current
+  // state.
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 }
 
 TEST_F(RmadInterfaceImplTest, TransitionNextState_InitializeNextStateFail) {
