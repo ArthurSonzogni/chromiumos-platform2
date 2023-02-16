@@ -31,6 +31,7 @@
 #include <brillo/file_utils.h>
 #include <brillo/files/file_util.h>
 #include <brillo/files/scoped_dir.h>
+#include <brillo/key_value_store.h>
 #include <brillo/userdb_utils.h>
 #include <metrics/structured_events.h>
 #include <openssl/sha.h>
@@ -865,6 +866,22 @@ bool IsExternalDevice(base::FilePath normalized_devpath) {
   }
 
   return false;
+}
+
+bool IsFlexBoard() {
+  brillo::KeyValueStore store;
+  if (!store.Load(base::FilePath("/etc/lsb-release"))) {
+    LOG(WARNING) << "Could not read lsb-release";
+    return true;
+  }
+
+  std::string value;
+  if (!store.GetString("CHROMEOS_RELEASE_BOARD", &value)) {
+    LOG(WARNING) << "Could not determine board";
+    return true;
+  }
+
+  return value.find("reven") != std::string::npos;
 }
 
 UMAPortType GetPortType(base::FilePath normalized_devpath) {

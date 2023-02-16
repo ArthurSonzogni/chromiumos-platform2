@@ -180,6 +180,12 @@ base::FilePath GetRootDevice(base::FilePath dev);
 // physical location of device (PLD) and removable property.
 bool IsExternalDevice(base::FilePath normalized_devpath);
 
+// Determine if the board is ChromeOS Flex to exclude from metrics reporting
+// since we do not have control over firmware on ChromeOS Flex and sysfs values
+// are unexpected. Return true if the board cannot be determined to avoid
+// possibility of metrics pollution.
+bool IsFlexBoard();
+
 // Returns port type for a sysfs device (i.e. USB-A, USB-C).
 UMAPortType GetPortType(base::FilePath normalized_devpath);
 

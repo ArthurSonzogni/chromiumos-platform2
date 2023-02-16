@@ -325,7 +325,9 @@ void EntryManager::ReportMetrics(const std::string& devpath,
   base::FilePath normalized_devpath =
       root_dir_.Append("sys").Append(StripLeadingPathSeparators(devpath));
 
-  if (!IsExternalDevice(normalized_devpath))
+  // Report further metrics only for external USB devices. We cannot distinguish
+  // external devices on Flex, so exclude it from reporting further metrics.
+  if (IsFlexBoard() || !IsExternalDevice(normalized_devpath))
     return;
 
   UMALogExternalDeviceAttached(&metrics_, rule, new_entry, timing,
