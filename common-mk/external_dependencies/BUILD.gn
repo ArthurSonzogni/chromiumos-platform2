@@ -115,6 +115,7 @@ goproto_library("enterprise_management_goprotos") {
     "${proto_in_dir}/cloud_policy.proto",
     "${proto_in_dir}/device_management_backend.proto",
     "${proto_in_dir}/policy_common_definitions.proto",
+    "${proto_in_dir}/remote_commands_service.proto",
   ]
 }
 
