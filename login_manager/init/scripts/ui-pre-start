@@ -117,21 +117,23 @@ if [ ! -d "${CHROME_CPU_CGROUP_DIR}" ]; then
   # Allow featured to still modify these values
   chmod -R g+w "${CHROME_CPU_CGROUP_DIR}"
   chown -R chronos "${CHROME_CPU_CGROUP_DIR}"
+
+  # TODO(ikjn): This scheduler settings are a bit complex,
+  # Let's move these out to an another executable (c++).
+  # Tracked in b/182958867
+
+  # We only do this once when we initially create the cgroups.
+  # Apply ui and chrome foreground cgroup's uclamp.min, default 20%,
+  v=$(read_cros_config_int "/scheduler-tune" "boost-urgent" "20")
+  for knob in "${UI_CPU_CGROUP_DIR}/cpu.uclamp.min" \
+              "${CHROME_CPU_CGROUP_DIR}/cpu.uclamp.min" \
+              "${CHROME_CPU_CGROUP_DIR}/foreground/cpu.uclamp.min"; do
+    if [ -f "${knob}" ]; then
+      echo "${v}" > "${knob}"
+    fi
+  done
 fi
 
-# TODO(ikjn): This scheduler settings are a bit complex,
-# Let's move these out to an another executable (c++).
-# Tracked in b/182958867
-
-# apply ui and chrome foreground cgroup's uclamp.min, default 20%,
-v=$(read_cros_config_int "/scheduler-tune" "boost-urgent" "20")
-for knob in "${UI_CPU_CGROUP_DIR}/cpu.uclamp.min" \
-            "${CHROME_CPU_CGROUP_DIR}/cpu.uclamp.min" \
-            "${CHROME_CPU_CGROUP_DIR}/foreground/cpu.uclamp.min"; do
-  if [ -f "${knob}" ]; then
-    echo "${v}" > "${knob}"
-  fi
-done
 
 # Apply boosting values for platforms using schedtune
 SCHEDTUNE_BOOST_DIR=/sys/fs/cgroup/schedtune/chrome/urgent
