@@ -1389,6 +1389,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUpdateAuthInputResetSeedEmptyInVaultKeyset = 2505,
   /* ./auth_session.cc */
   kLocNoVkInAuthInputForMigration = 2506,
+  /* ./keyset_management.cc */
+  kLocKeysetManagementFailedRemoveInRemoveKeysetFile = 2507,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2700
   //// See location_db.py for more info.
@@ -1459,7 +1461,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionDeleteOldBackupFailedInUpdateWithUSS = 2731,
   /* ./auth_session.cc */
   kLocAuthSessionRemoveFailedInCleanUpBackupKeyset = 2732,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionNoBackupFlagInCleanUpBackupKeyset = 2733,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2900

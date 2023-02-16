@@ -215,18 +215,11 @@ CryptohomeStatus CleanUpBackupKeyset(
     const std::string& label) {
   std::unique_ptr<VaultKeyset> remove_vk =
       keyset_management.GetVaultKeyset(obfuscated_username, label);
-  if (!remove_vk.get()) {
+  if (!remove_vk.get() || !remove_vk->IsForBackup()) {
     return OkStatus<CryptohomeError>();
   }
-  if (!remove_vk->IsForBackup()) {
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionNoBackupFlagInCleanUpBackupKeyset),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
-  }
 
-  CryptohomeStatus status = keyset_management.ForceRemoveKeyset(
-      obfuscated_username, remove_vk->GetLegacyIndex());
+  CryptohomeStatus status = keyset_management.RemoveKeysetFile(*remove_vk);
   if (!status.ok()) {
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(

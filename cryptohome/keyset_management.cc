@@ -563,6 +563,21 @@ CryptohomeStatus KeysetManagement::UpdateKeysetWithKeyBlobs(
                                true /* we are updating existing keyset */);
 }
 
+CryptohomeStatus KeysetManagement::RemoveKeysetFile(
+    const VaultKeyset& remove_vk) {
+  if (!platform_->DeleteFileSecurely(remove_vk.GetSourceFile())) {
+    LOG(WARNING) << "Secure erase of VaultKeyset file is failed, deleting "
+                    "normal way.";
+    if (!platform_->DeleteFile(remove_vk.GetSourceFile()))
+      return MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(
+              kLocKeysetManagementFailedRemoveInRemoveKeysetFile),
+          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  }
+  return OkStatus<CryptohomeError>();
+}
+
 CryptohomeStatus KeysetManagement::ForceRemoveKeyset(
     const ObfuscatedUsername& obfuscated, int index) {
   // Note, external callers should check credentials.
@@ -591,23 +606,15 @@ CryptohomeStatus KeysetManagement::ForceRemoveKeyset(
           << "ForceRemoveKeyset: Failed to remove LE credential metadata.";
     }
   }
-
-  base::FilePath path = VaultKeysetPath(obfuscated, index);
-  if (platform_->DeleteFileSecurely(path)) {
-    return OkStatus<CryptohomeError>();
+  CryptohomeStatus rm_status = RemoveKeysetFile(*vk);
+  if (!rm_status.ok()) {
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocKeysetManagementDeleteFailedInRemoveKeyset),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CryptohomeErrorCode::
+            CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
-
-  // TODO(wad) Add file zeroing here or centralize with other code.
-  bool success = platform_->DeleteFile(path);
-  if (success) {
-    return OkStatus<CryptohomeError>();
-  }
-
-  return MakeStatus<CryptohomeError>(
-      CRYPTOHOME_ERR_LOC(kLocKeysetManagementDeleteFailedInRemoveKeyset),
-      ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-      user_data_auth::CryptohomeErrorCode::
-          CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  return OkStatus<CryptohomeError>();
 }
 
 std::unique_ptr<VaultKeyset> KeysetManagement::LoadVaultKeysetForUser(
