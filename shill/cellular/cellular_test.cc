@@ -1016,6 +1016,7 @@ TEST_F(CellularTest, PendingDisconnect) {
 
 TEST_F(CellularTest, ModemStateChangeValidConnected) {
   device_->set_state_for_testing(Cellular::State::kEnabled);
+  device_->set_skip_establish_link_for_testing(true);
   device_->set_modem_state_for_testing(Cellular::kModemStateConnecting);
   SetService();
   device_->OnModemStateChanged(Cellular::kModemStateConnected);
