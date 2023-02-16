@@ -56,20 +56,6 @@ namespace {
 // Prefix for the smartphone (easyunlock, smartunlock) VaultKeyset label.
 constexpr char kEasyUnlockLabelPrefix[] = "easy-unlock-";
 
-// Wraps VaultKeyset::DecryptEx to bind to DecryptVkCallback without object
-// reference.
-CryptoStatus DecryptExWrapper(const KeyBlobs& key_blobs, VaultKeyset* vk) {
-  return vk->DecryptEx(key_blobs);
-}
-
-// Wraps VaultKeyset::Decrypt to bind to DecryptVkCallback without object
-// reference.
-CryptoStatus DecryptWrapper(const brillo::SecureBlob& key,
-                            bool locked_to_single_user,
-                            VaultKeyset* vk) {
-  return vk->Decrypt(key, locked_to_single_user);
-}
-
 }  // namespace
 
 KeysetManagement::KeysetManagement(
@@ -80,36 +66,11 @@ KeysetManagement::KeysetManagement(
       crypto_(crypto),
       vault_keyset_factory_(std::move(vault_keyset_factory)) {}
 
-bool KeysetManagement::AreCredentialsValid(const Credentials& creds) {
-  MountStatusOr<std::unique_ptr<VaultKeyset>> vk = GetValidKeyset(creds);
-  return vk.ok();
-}
-
 MountStatusOr<std::unique_ptr<VaultKeyset>>
 KeysetManagement::GetValidKeysetWithKeyBlobs(
-    const ObfuscatedUsername& obfuscated_username,
+    const ObfuscatedUsername& obfuscated,
     KeyBlobs key_blobs,
     const std::optional<std::string>& label) {
-  return GetValidKeysetImpl(obfuscated_username, label,
-                            base::BindRepeating(&DecryptExWrapper, key_blobs));
-}
-
-MountStatusOr<std::unique_ptr<VaultKeyset>> KeysetManagement::GetValidKeyset(
-    const Credentials& credentials) {
-  ObfuscatedUsername obfuscated_username = credentials.GetObfuscatedUsername();
-  bool locked_to_single_user =
-      platform_->FileExists(base::FilePath(kLockedToSingleUserFile));
-
-  return GetValidKeysetImpl(
-      obfuscated_username, credentials.key_data().label(),
-      base::BindRepeating(&DecryptWrapper, credentials.passkey(),
-                          locked_to_single_user));
-}
-
-MountStatusOr<std::unique_ptr<VaultKeyset>>
-KeysetManagement::GetValidKeysetImpl(const ObfuscatedUsername& obfuscated,
-                                     const std::optional<std::string>& label,
-                                     DecryptVkCallback decrypt_vk_callback) {
   std::vector<int> key_indices;
   if (!GetVaultKeysets(obfuscated, &key_indices)) {
     LOG(WARNING) << "No valid keysets on disk for " << obfuscated;
@@ -141,7 +102,7 @@ KeysetManagement::GetValidKeysetImpl(const ObfuscatedUsername& obfuscated,
       continue;
     }
 
-    last_crypto_error = decrypt_vk_callback.Run(vk.get());
+    last_crypto_error = vk->DecryptEx(key_blobs);
     if (last_crypto_error.ok()) {
       return vk;
     }
@@ -631,28 +592,6 @@ std::unique_ptr<VaultKeyset> KeysetManagement::LoadVaultKeysetForUser(
   }
   keyset->SetLegacyIndex(index);
   return keyset;
-}
-
-void KeysetManagement::ResetLECredentials(
-    const Credentials& creds, const ObfuscatedUsername& obfuscated) {
-  std::vector<int> key_indices;
-  if (!GetVaultKeysets(obfuscated, &key_indices)) {
-    LOG(WARNING) << "No valid keysets on disk for " << obfuscated;
-    return;
-  }
-
-  // Make sure the credential can actually be used for sign-in.
-  // It is also the easiest way to get a valid keyset.
-  MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status = GetValidKeyset(creds);
-  if (!vk_status.ok()) {
-    LOG(WARNING) << "The provided credentials are incorrect or invalid"
-                    " for LE credential reset, reset skipped: "
-                 << vk_status.status();
-    return;
-  }
-
-  return ResetLECredentialsInternal(*vk_status.value(), obfuscated,
-                                    key_indices);
 }
 
 void KeysetManagement::ResetLECredentialsWithValidatedVK(

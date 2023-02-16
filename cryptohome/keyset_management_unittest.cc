@@ -328,12 +328,6 @@ class KeysetManagementTest : public ::testing::Test {
     EXPECT_THAT(indicies, ContainerEq(expected));
   }
 
-  void VerifyKeysetNotPresentWithCreds(const Credentials& creds) {
-    MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
-        keyset_management_->GetValidKeyset(creds);
-    ASSERT_THAT(vk_status, NotOk());
-  }
-
   void VerifyKeysetPresentWithDefaultKeyBlobsAtIndex(
       const ObfuscatedUsername& obfuscated_username,
       const std::string& label,
@@ -344,18 +338,6 @@ class KeysetManagementTest : public ::testing::Test {
     VerifyWrappedKeysetPresentAtIndex(
         obfuscated_username, key_blobs_.vkk_key.value(),
         key_blobs_.vkk_iv.value(), key_blobs_.chaps_iv.value(), label, index);
-  }
-
-  void VerifyKeysetPresentWithCredsAtIndexAndRevision(const Credentials& creds,
-                                                      int index,
-                                                      int revision) {
-    MountStatusOr<std::unique_ptr<VaultKeyset>> vk_status =
-        keyset_management_->GetValidKeyset(creds);
-    ASSERT_THAT(vk_status, IsOk());
-    EXPECT_EQ(vk_status.value()->GetLegacyIndex(), index);
-    EXPECT_EQ(vk_status.value()->GetKeyData().revision(), revision);
-    EXPECT_TRUE(vk_status.value()->HasWrappedChapsKey());
-    EXPECT_TRUE(vk_status.value()->HasWrappedResetSeed());
   }
 
   void VerifyWrappedKeysetNotPresent(

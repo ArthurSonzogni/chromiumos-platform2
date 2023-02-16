@@ -34,11 +34,6 @@ class MockKeysetManagement : public KeysetManagement {
  public:
   MockKeysetManagement() = default;
 
-  MOCK_METHOD(bool, AreCredentialsValid, (const Credentials&), (override));
-  MOCK_METHOD(MountStatusOr<std::unique_ptr<VaultKeyset>>,
-              GetValidKeyset,
-              (const Credentials&),
-              (override));
   MOCK_METHOD(std::unique_ptr<VaultKeyset>,
               GetVaultKeyset,
               (const ObfuscatedUsername&, const std::string&),

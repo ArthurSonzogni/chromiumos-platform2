@@ -75,17 +75,6 @@ class KeysetManagement {
       const ObfuscatedUsername& obfuscated_username,
       const std::string& key_label) const;
 
-  // Returns true if the supplied Credentials are a valid (username, passkey)
-  // pair.
-  virtual bool AreCredentialsValid(const Credentials& credentials);
-
-  // Returns decrypted with |creds| keyset, or an error status with the reasons
-  // if none decryptable with the provided |creds| found. NOTE: The LE
-  // Credential Keysets are only considered when the key label provided via
-  // |creds| is non-empty (b/202907485).
-  virtual MountStatusOr<std::unique_ptr<VaultKeyset>> GetValidKeyset(
-      const Credentials& creds);
-
   // Loads the vault keyset for the supplied obfuscated username and index.
   // Returns null on failure.
   virtual std::unique_ptr<VaultKeyset> LoadVaultKeysetForUser(
@@ -111,11 +100,6 @@ class KeysetManagement {
   // Removes only the VaultKeyset file for the given VaultKeyset object, but not
   // the metadata.
   CryptohomeStatus RemoveKeysetFile(const VaultKeyset& remove_vk);
-
-  // Attempts to reset all LE credentials associated with a username, given
-  // a credential |cred|.
-  void ResetLECredentials(const Credentials& creds,
-                          const ObfuscatedUsername& obfuscated);
 
   // Attempts to reset all LE credentials associated with a username, given
   // validated VK |validated_vk|.
@@ -183,12 +167,13 @@ class KeysetManagement {
   // Adds a new keyset to the given |vault_keyset| and persist to
   // disk. This function assumes the user is already authenticated and their
   // old vault keyset, |old_vault_keyset| is unwrapped to initialize a new vault
-  // keyset. Thus, GetValidKeyset() should be called prior to this function to
-  // authenticate with the existing credentials. New keyset is generated and the
-  // key data from |key_data_new| is added. New keyset is persisted to disk
-  // after wrapped by |key_blobs_new| as directed by |auth_state_new|. If
-  // |clobber| is true and there are no matching, labeled keys, then it does
-  // nothing; if there is an identically labeled key, it will overwrite it.
+  // keyset. Thus, GetValidKeysetWithKeyBlobs() should be called prior to this
+  // function to authenticate with the existing credentials. New keyset is
+  // generated and the key data from |key_data_new| is added. New keyset is
+  // persisted to disk after wrapped by |key_blobs_new| as directed by
+  // |auth_state_new|. If |clobber| is true and there are no matching, labeled
+  // keys, then it does nothing; if there is an identically labeled key, it will
+  // overwrite it.
   virtual CryptohomeStatus AddKeysetWithKeyBlobs(
       const VaultKeysetIntent& vk_intent,
       const ObfuscatedUsername& obfuscated_username_new,
@@ -232,13 +217,6 @@ class KeysetManagement {
           challenge_credentials_keyset_info,
       const FileSystemKeyset& file_system_keyset,
       EncryptVkCallback encrypt_vk_callback);
-
-  // Returns decrypted VaultKeyset for the obfuscated_username and label or
-  // nullptr if none decryptable.
-  MountStatusOr<std::unique_ptr<VaultKeyset>> GetValidKeysetImpl(
-      const ObfuscatedUsername& obfuscated_username,
-      const std::optional<std::string>& label,
-      DecryptVkCallback decrypt_vk_callback);
 
   // Generates a new keyset for |obfuscated_username_new| with |key_data_new|
   // and the filesystem key from |vault_keyset_old| and persist to disk.  If
