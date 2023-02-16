@@ -5,36 +5,17 @@
 #ifndef RMAD_METRICS_METRICS_UTILS_H_
 #define RMAD_METRICS_METRICS_UTILS_H_
 
-#include <map>
 #include <string>
 #include <utility>
 
 #include <base/memory/scoped_refptr.h>
+#include <base/values.h>
 
 #include "rmad/metrics/metrics_constants.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/type_conversions.h"
 
 namespace rmad {
-
-struct StateMetricsData {
- public:
-  bool operator==(const StateMetricsData& other) const;
-  base::Value ToValue() const;
-  bool FromValue(const base::Value* value);
-
-  RmadState::StateCase state_case;
-  bool is_aborted;
-  double setup_timestamp;
-  double overall_time;
-  int transition_count;
-  int get_log_count;
-  int save_log_count;
-};
-
-base::Value ConvertToValue(const StateMetricsData& data);
-
-bool ConvertFromValue(const base::Value* value, StateMetricsData* data);
 
 class MetricsUtils {
  public:
@@ -114,16 +95,6 @@ class MetricsUtils {
       scoped_refptr<JsonStore> json_store);
 
  private:
-  static bool SetStateSetupTimestamp(
-      std::map<int, StateMetricsData>* state_metrics,
-      RmadState::StateCase state_case,
-      double setup_timestamp);
-
-  static bool CalculateStateOverallTime(
-      std::map<int, StateMetricsData>* state_metrics,
-      RmadState::StateCase state_case,
-      double leave_timestamp);
-
   static base::Value::Dict RefineStateMetricsReadability(
       const base::Value::Dict& original_state_metrics);
 };

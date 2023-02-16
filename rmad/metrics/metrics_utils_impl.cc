@@ -15,6 +15,7 @@
 
 #include "rmad/constants.h"
 #include "rmad/metrics/metrics_constants.h"
+#include "rmad/metrics/state_metrics.h"
 #include "rmad/utils/json_store.h"
 
 using StructuredShimlessRmaReport =

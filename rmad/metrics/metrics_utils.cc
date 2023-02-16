@@ -4,110 +4,43 @@
 
 #include "rmad/metrics/metrics_utils.h"
 
-#include <map>
-
+#include <base/check.h>
 #include <base/json/json_string_value_serializer.h>
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
 
 #include "rmad/constants.h"
+#include "rmad/metrics/state_metrics.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/utils/json_store.h"
 
 namespace rmad {
 
-bool StateMetricsData::operator==(const StateMetricsData& other) const {
-  return state_case == other.state_case && is_aborted == other.is_aborted &&
-         setup_timestamp == other.setup_timestamp &&
-         overall_time == other.overall_time &&
-         transition_count == other.transition_count &&
-         get_log_count == other.get_log_count &&
-         save_log_count == other.save_log_count;
+namespace {
+
+// TODO(chenghan): Define this in a common header, e.g. common.h.
+const char* GetStateName(RmadState::StateCase state) {
+  auto it = kStateNames.find(state);
+  CHECK(it != kStateNames.end());
+  return it->second.data();
 }
 
-base::Value StateMetricsData::ToValue() const {
-  base::Value::Dict dict;
-  dict.Set(kStateCase, static_cast<int>(state_case));
-  dict.Set(kStateIsAborted, is_aborted);
-  dict.Set(kStateSetupTimestamp, setup_timestamp);
-  dict.Set(kStateOverallTime, overall_time);
-  dict.Set(kStateTransitionsCount, transition_count);
-  dict.Set(kStateGetLogCount, get_log_count);
-  dict.Set(kStateSaveLogCount, save_log_count);
-  return base::Value(std::move(dict));
-}
-
-bool StateMetricsData::FromValue(const base::Value* value) {
-  if (!value || !value->is_dict()) {
-    return false;
-  }
-  const base::Value::Dict& dict = value->GetDict();
-
-  if (auto state_case_it = dict.FindInt(kStateCase)) {
-    state_case = static_cast<RmadState::StateCase>(*state_case_it);
-  } else {
-    return false;
-  }
-  if (auto is_aborted_it = dict.FindBool(kStateIsAborted)) {
-    is_aborted = *is_aborted_it;
-  } else {
-    return false;
-  }
-  if (auto setup_timestamp_it = dict.FindDouble(kStateSetupTimestamp)) {
-    setup_timestamp = *setup_timestamp_it;
-  } else {
-    return false;
-  }
-  if (auto overall_time_it = dict.FindDouble(kStateOverallTime)) {
-    overall_time = *overall_time_it;
-  } else {
-    return false;
-  }
-  if (auto transition_count_it = dict.FindInt(kStateTransitionsCount)) {
-    transition_count = *transition_count_it;
-  } else {
-    return false;
-  }
-  if (auto get_log_count_it = dict.FindInt(kStateGetLogCount)) {
-    get_log_count = *get_log_count_it;
-  } else {
-    return false;
-  }
-  if (auto save_log_count_it = dict.FindInt(kStateSaveLogCount)) {
-    save_log_count = *save_log_count_it;
-  } else {
-    return false;
-  }
-
-  return true;
-}
-
-base::Value ConvertToValue(const StateMetricsData& data) {
-  return data.ToValue();
-}
-
-bool ConvertFromValue(const base::Value* value, StateMetricsData* data) {
-  if (!value || !data) {
-    return false;
-  }
-
-  return data->FromValue(value);
-}
+}  // namespace
 
 bool MetricsUtils::UpdateStateMetricsOnAbort(
     scoped_refptr<JsonStore> json_store,
     RmadState::StateCase state_case,
     double timestamp) {
-  int key = static_cast<int>(state_case);
   if (!UpdateStateMetricsOnStateTransition(
           json_store, state_case, RmadState::STATE_NOT_SET, timestamp)) {
-    LOG(ERROR) << "Failed to calculate metrics for state " << key;
+    LOG(ERROR) << "Failed to calculate metrics for state "
+               << GetStateName(state_case);
     return false;
   }
 
-  std::map<int, StateMetricsData> state_metrics;
+  StateMetricsMap state_metrics;
   GetMetricsValue(json_store, kStateMetrics, &state_metrics);
-  state_metrics[key].is_aborted = true;
+  state_metrics[state_case].is_aborted = true;
   return SetMetricsValue(json_store, kStateMetrics, state_metrics);
 }
 
@@ -116,7 +49,7 @@ bool MetricsUtils::UpdateStateMetricsOnStateTransition(
     RmadState::StateCase from,
     RmadState::StateCase to,
     double timestamp) {
-  std::map<int, StateMetricsData> state_metrics;
+  StateMetricsMap state_metrics;
   // At the beginning, we may have no data, so ignore the return value.
   GetMetricsValue(json_store, kStateMetrics, &state_metrics);
 
@@ -135,12 +68,11 @@ bool MetricsUtils::UpdateStateMetricsOnStateTransition(
   }
 
   if (from != RmadState::STATE_NOT_SET && to != RmadState::STATE_NOT_SET) {
-    int key = static_cast<int>(to);
-    state_metrics[key].transition_count++;
+    state_metrics[to].transition_count++;
   }
 
-  if (!CalculateStateOverallTime(&state_metrics, from, timestamp) ||
-      !SetStateSetupTimestamp(&state_metrics, to, timestamp)) {
+  if (!state_metrics.UpdateStateOverallTime(from, timestamp) ||
+      !state_metrics.InitializeState(to, timestamp)) {
     return false;
   }
 
@@ -149,23 +81,21 @@ bool MetricsUtils::UpdateStateMetricsOnStateTransition(
 
 bool MetricsUtils::UpdateStateMetricsOnGetLog(
     scoped_refptr<JsonStore> json_store, RmadState::StateCase state_case) {
-  int key = static_cast<int>(state_case);
-  std::map<int, StateMetricsData> state_metrics;
+  StateMetricsMap state_metrics;
   // At the beginning, we may have no data, so ignore the return value.
   GetMetricsValue(json_store, kStateMetrics, &state_metrics);
 
-  state_metrics[key].get_log_count++;
+  state_metrics[state_case].get_log_count++;
   return SetMetricsValue(json_store, kStateMetrics, state_metrics);
 }
 
 bool MetricsUtils::UpdateStateMetricsOnSaveLog(
     scoped_refptr<JsonStore> json_store, RmadState::StateCase state_case) {
-  int key = static_cast<int>(state_case);
-  std::map<int, StateMetricsData> state_metrics;
+  StateMetricsMap state_metrics;
   // At the beginning, we may have no data, so ignore the return value.
   GetMetricsValue(json_store, kStateMetrics, &state_metrics);
 
-  state_metrics[key].save_log_count++;
+  state_metrics[state_case].save_log_count++;
   return SetMetricsValue(json_store, kStateMetrics, state_metrics);
 }
 
@@ -198,55 +128,6 @@ std::string MetricsUtils::GetMetricsSummaryAsString(
   serializer.Serialize(metrics);
 
   return output;
-}
-
-bool MetricsUtils::SetStateSetupTimestamp(
-    std::map<int, StateMetricsData>* state_metrics,
-    RmadState::StateCase state_case,
-    double setup_timestamp) {
-  if (state_case == RmadState::STATE_NOT_SET) {
-    return true;
-  }
-
-  int key = static_cast<int>(state_case);
-  (*state_metrics)[key].setup_timestamp = setup_timestamp;
-  (*state_metrics)[key].state_case = state_case;
-  return true;
-}
-
-bool MetricsUtils::CalculateStateOverallTime(
-    std::map<int, StateMetricsData>* state_metrics,
-    RmadState::StateCase state_case,
-    double leave_timestamp) {
-  if (state_case == RmadState::STATE_NOT_SET) {
-    return true;
-  }
-
-  int key = static_cast<int>(state_case);
-  if (state_metrics->find(key) == state_metrics->end()) {
-    LOG(ERROR) << key << ": Failed to get state metrics to calculate.";
-    return false;
-  }
-
-  if ((*state_metrics)[key].setup_timestamp < 0.0) {
-    LOG(ERROR) << key << ": Invalid setup timestamp: "
-               << (*state_metrics)[key].setup_timestamp << " is less than 0.";
-    return false;
-  }
-
-  double time_spent_sec =
-      (state_case == kInitialStateCase)
-          ? 0
-          : leave_timestamp - (*state_metrics)[key].setup_timestamp;
-  if (time_spent_sec < 0) {
-    LOG(ERROR) << key << ": Failed to calculate time spent.";
-    return false;
-  }
-
-  (*state_metrics)[key].overall_time += time_spent_sec;
-  (*state_metrics)[key].setup_timestamp = leave_timestamp;
-
-  return true;
 }
 
 base::Value::Dict MetricsUtils::RefineStateMetricsReadability(

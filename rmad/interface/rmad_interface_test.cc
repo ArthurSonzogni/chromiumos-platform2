@@ -24,6 +24,7 @@
 #include "rmad/daemon/daemon_callback.h"
 #include "rmad/logs/logs_constants.h"
 #include "rmad/metrics/mock_metrics_utils.h"
+#include "rmad/metrics/state_metrics.h"
 #include "rmad/state_handler/mock_state_handler.h"
 #include "rmad/state_handler/state_handler_manager.h"
 #include "rmad/system/mock_power_manager_client.h"

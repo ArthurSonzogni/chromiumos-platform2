@@ -16,6 +16,7 @@ source_set("libmetrics") {
   sources = [
     "metrics_utils.cc",
     "metrics_utils_impl.cc",
+    "state_metrics.cc",
   ]
   configs += [ ":target_defaults" ]
   deps = [ "//rmad/utils:libutils" ]
@@ -24,7 +25,10 @@ source_set("libmetrics") {
 
 if (use.test) {
   source_set("libmetrics_test") {
-    sources = [ "metrics_utils_test.cc" ]
+    sources = [
+      "metrics_utils_test.cc",
+      "state_metrics_test.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
