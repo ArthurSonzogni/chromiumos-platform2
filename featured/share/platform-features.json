@@ -60,5 +60,83 @@
         "path": "/sys/devices/system/cpu/cpuidle/current_governor"
       }
     ]
+  },
+  {
+    "name": "CrOSLateBootSchedUtilHints40",
+    "commands": [
+      {
+        "name": "WriteFile",
+        "path": "/sys/fs/cgroup/cpu/ui/cpu.uclamp.min",
+        "value": "40"
+      },
+      {
+        "name": "WriteFile",
+        "path": "/sys/fs/cgroup/cpu/chrome_renderers/cpu.uclamp.min",
+        "value": "40"
+      },
+      {
+        "name": "WriteFile",
+        "path": "/sys/fs/cgroup/cpu/chrome_renderers/foreground/cpu.uclamp.min",
+        "value": "40"
+      }
+    ],
+    "support_check_commands": [
+      {
+        "name": "FileExists",
+        "path": "/sys/fs/cgroup/cpu/ui/cpu.uclamp.min"
+      }
+    ]
+  },
+  {
+    "name": "CrOSLateBootSchedUtilHints60",
+    "commands": [
+      {
+        "name": "WriteFile",
+        "path": "/sys/fs/cgroup/cpu/ui/cpu.uclamp.min",
+        "value": "60"
+      },
+      {
+        "name": "WriteFile",
+        "path": "/sys/fs/cgroup/cpu/chrome_renderers/cpu.uclamp.min",
+        "value": "60"
+      },
+      {
+        "name": "WriteFile",
+        "path": "/sys/fs/cgroup/cpu/chrome_renderers/foreground/cpu.uclamp.min",
+        "value": "60"
+      }
+    ],
+    "support_check_commands": [
+      {
+        "name": "FileExists",
+        "path": "/sys/fs/cgroup/cpu/ui/cpu.uclamp.min"
+      }
+    ]
+  },
+  {
+    "name": "CrOSLateBootSchedUtilHints80",
+    "commands": [
+      {
+        "name": "WriteFile",
+        "path": "/sys/fs/cgroup/cpu/ui/cpu.uclamp.min",
+        "value": "80"
+      },
+      {
+        "name": "WriteFile",
+        "path": "/sys/fs/cgroup/cpu/chrome_renderers/cpu.uclamp.min",
+        "value": "80"
+      },
+      {
+        "name": "WriteFile",
+        "path": "/sys/fs/cgroup/cpu/chrome_renderers/foreground/cpu.uclamp.min",
+        "value": "80"
+      }
+    ],
+    "support_check_commands": [
+      {
+        "name": "FileExists",
+        "path": "/sys/fs/cgroup/cpu/ui/cpu.uclamp.min"
+      }
+    ]
   }
 ]
