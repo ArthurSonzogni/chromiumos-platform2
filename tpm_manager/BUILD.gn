@@ -28,9 +28,9 @@ pkg_config("target_default_deps") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
-    "libtpmcrypto",
     "openssl",
   ]
+  libs = [ "hwsec" ]
   if (use.fuzzer) {
     pkg_deps += [ "protobuf" ]
   } else {
@@ -65,10 +65,7 @@ config("server_library_tpm2_config") {
 }
 
 config("server_library_tpm1_config") {
-  libs = [
-    "hwsec",
-    "tspi",
-  ]
+  libs = [ "tspi" ]
 }
 
 static_library("server_library") {
@@ -146,17 +143,10 @@ executable("tpm_managerd") {
   ]
 }
 
-config("local_data_migration_config") {
-  libs = [ "tpmcrypto" ]
-}
-
 # Local data migrator.
 executable("local_data_migration") {
   sources = [ "server/local_data_migration_main.cc" ]
-  configs += [
-    ":local_data_migration_config",
-    ":target_defaults",
-  ]
+  configs += [ ":target_defaults" ]
   deps = [ ":server_library" ]
 }
 

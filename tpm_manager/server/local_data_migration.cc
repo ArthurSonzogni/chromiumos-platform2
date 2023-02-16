@@ -12,7 +12,8 @@
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/secure_util.h>
-#include <libtpmcrypto/tpm.h>
+#include <libhwsec/frontend/local_data_migration/frontend.h>
+#include <libhwsec-foundation/status/status_chain_macros.h>
 #include <openssl/bio.h>
 #include <openssl/err.h>
 #include <openssl/evp.h>
@@ -24,6 +25,8 @@
 #include <memory>
 
 #include "tpm_manager/proto_bindings/tpm_manager.pb.h"
+
+using ::hwsec::TPMError;
 
 namespace {
 
@@ -137,10 +140,10 @@ bool Decrypt(const attestation::EncryptedData& input,
 }
 
 // Parses and decrypts |encrypted_database| into a |LegacyAttestationDatabase|.
-// |tpm| is used to unseal the wrapped key in the |encrypted_database|.
+// |hwsec| is used to unseal the wrapped key in the |encrypted_database|.
 bool DecryptAttestationDatabase(
     const brillo::SecureBlob& encrypted_database,
-    tpmcrypto::Tpm* tpm,
+    hwsec::LocalDataMigrationFrontend* hwsec,
     tpm_manager::LegacyAttestationDatabase* database) {
   attestation::EncryptedData encrypted_data;
   if (!encrypted_data.ParseFromString(encrypted_database.to_string())) {
@@ -148,12 +151,13 @@ bool DecryptAttestationDatabase(
                << ": Failed to parse data into |EncryptedData| message.";
     return false;
   }
-  brillo::SecureBlob key;
+  ASSIGN_OR_RETURN(
+      brillo::SecureBlob key,
+      hwsec->Unseal(brillo::BlobFromString(encrypted_data.wrapped_key())),
+      _.WithStatus<TPMError>("Failed to unseal the encrypting key")
+          .LogError()
+          .As(false));
 
-  if (!tpm->Unseal(brillo::SecureBlob(encrypted_data.wrapped_key()), &key)) {
-    LOG(ERROR) << __func__ << ": Failed to unseal the encrypting key.";
-    return false;
-  }
   brillo::SecureBlob decrypted_database_blob;
   if (!Decrypt(encrypted_data, key, &decrypted_database_blob)) {
     LOG(ERROR) << __func__ << ": Failed to decrypt the database blob.";
@@ -182,13 +186,13 @@ tpm_manager::AuthDelegate LegacyDelegationToAuthDelegate(
 namespace tpm_manager {
 
 bool MigrateAuthDelegate(const brillo::SecureBlob& sealed_database,
-                         tpmcrypto::Tpm* tpm,
+                         hwsec::LocalDataMigrationFrontend* hwsec,
                          tpm_manager::AuthDelegate* delegate) {
   CHECK(delegate != nullptr);
-  CHECK(tpm != nullptr);
+  CHECK(hwsec != nullptr);
 
   LegacyAttestationDatabase old_database;
-  if (!DecryptAttestationDatabase(sealed_database, tpm, &old_database)) {
+  if (!DecryptAttestationDatabase(sealed_database, hwsec, &old_database)) {
     LOG(ERROR) << __func__ << ":Failed to unseal attestation database.";
     return false;
   }
@@ -198,10 +202,10 @@ bool MigrateAuthDelegate(const brillo::SecureBlob& sealed_database,
 
 bool UnsealOwnerPasswordFromSerializedTpmStatus(
     const brillo::SecureBlob& serialized_tpm_status,
-    tpmcrypto::Tpm* tpm,
+    hwsec::LocalDataMigrationFrontend* hwsec,
     brillo::SecureBlob* owner_password) {
   CHECK(owner_password != nullptr);
-  CHECK(tpm != nullptr);
+  CHECK(hwsec != nullptr);
 
   LegacyTpmStatus tpm_status;
   if (!tpm_status.ParseFromArray(serialized_tpm_status.data(),
@@ -209,21 +213,23 @@ bool UnsealOwnerPasswordFromSerializedTpmStatus(
     LOG(ERROR) << __func__ << ": Failed to parse tpm status.";
     return false;
   }
-  if (!tpm_status.owner_password().empty() &&
-      !tpm->Unseal(brillo::SecureBlob(tpm_status.owner_password()),
-                   owner_password)) {
-    LOG(ERROR) << __func__ << ": Failed to unseal owner password.";
-    return false;
+  if (!tpm_status.owner_password().empty()) {
+    ASSIGN_OR_RETURN(
+        *owner_password,
+        hwsec->Unseal(brillo::BlobFromString(tpm_status.owner_password())),
+        _.WithStatus<TPMError>("Failed to unseal owner password")
+            .LogError()
+            .As(false));
   }
   return true;
 }
 
 bool LocalDataMigrator::MigrateAuthDelegateIfNeeded(
     const base::FilePath& database_path,
-    tpmcrypto::Tpm* tpm,
+    hwsec::LocalDataMigrationFrontend* hwsec,
     LocalData* local_data,
     bool* has_migrated) {
-  CHECK(tpm != nullptr);
+  CHECK(hwsec != nullptr);
   CHECK(local_data != nullptr);
   CHECK(has_migrated != nullptr);
 
@@ -239,7 +245,7 @@ bool LocalDataMigrator::MigrateAuthDelegateIfNeeded(
                << database_path.value();
     return false;
   }
-  if (!MigrateAuthDelegate(brillo::SecureBlob(sealed_database), tpm,
+  if (!MigrateAuthDelegate(brillo::SecureBlob(sealed_database), hwsec,
                            auth_delegate)) {
     LOG(ERROR) << __func__ << ": Failed to migrate auth delegate from "
                << database_path.value();
@@ -252,7 +258,7 @@ bool LocalDataMigrator::MigrateAuthDelegateIfNeeded(
 
 bool LocalDataMigrator::MigrateOwnerPasswordIfNeeded(
     const base::FilePath& tpm_status_path,
-    tpmcrypto::Tpm* tpm,
+    hwsec::LocalDataMigrationFrontend* hwsec,
     LocalData* local_data,
     bool* has_migrated) {
   CHECK(local_data != nullptr);
@@ -270,7 +276,7 @@ bool LocalDataMigrator::MigrateOwnerPasswordIfNeeded(
   }
   brillo::SecureBlob owner_password;
   if (!UnsealOwnerPasswordFromSerializedTpmStatus(
-          brillo::SecureBlob(serialized_tpm_status), tpm, &owner_password)) {
+          brillo::SecureBlob(serialized_tpm_status), hwsec, &owner_password)) {
     LOG(ERROR) << __func__ << ": Failed to parse tpm status from "
                << tpm_status_path.value();
     return false;

@@ -8,7 +8,7 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
-#include <libtpmcrypto/tpm.h>
+#include <libhwsec/frontend/local_data_migration/frontend.h>
 #include <stdint.h>
 
 #include <string>
@@ -32,19 +32,19 @@ namespace tpm_manager {
 
 // Unseals, parses, and then migrates delegate information from
 // |sealed_database| and stores into |delegate|.
-// Returns |true| iff the operation succeeds. Requires non-null |tpm| to unseal
-// |sealed_database| and non-null |delegate| to store the output.
+// Returns |true| iff the operation succeeds. Requires non-null |hwsec| to
+// unseal |sealed_database| and non-null |delegate| to store the output.
 bool MigrateAuthDelegate(const brillo::SecureBlob& sealed_database,
-                         tpmcrypto::Tpm* tpm,
+                         hwsec::LocalDataMigrationFrontend* hwsec,
                          AuthDelegate* delegate);
 
 // Parses a |LegacyTpmStatus| from |serialized_tpm_status| and then stores owner
 // password inside into |owner_password|. Returns |true| iff the operation
 // succeeds. Requires non-null |owner_password| to store the output and non-null
-// |tpm| to unseal the owner password.
+// |hwsec| to unseal the owner password.
 bool UnsealOwnerPasswordFromSerializedTpmStatus(
     const brillo::SecureBlob& serialized_tpm_status,
-    tpmcrypto::Tpm* tpm,
+    hwsec::LocalDataMigrationFrontend* hwsec,
     brillo::SecureBlob* owner_password);
 
 // |LocalDataMigrator| performs the high-level operations with virtualized file
@@ -55,7 +55,7 @@ class LocalDataMigrator {
   virtual ~LocalDataMigrator() = default;
 
   // Reads the sealed database from |database_path| and migrates the auth
-  // delegate into |local_data|. It uses |tpm| to perform unsealing operation.
+  // delegate into |local_data|. It uses |hwsec| to perform unsealing operation.
   // Failure of reading content from |database_path| or any error during the
   // migration casues it to return |false|. Performs no-ops and returns |true|
   // if the database doesn't have the auth delegate, |database_path| doesn't
@@ -63,7 +63,7 @@ class LocalDataMigrator {
   // |true|, |has_migrated| indicates if the legacy data has been migrated to
   // |local_data|.
   bool MigrateAuthDelegateIfNeeded(const base::FilePath& database_path,
-                                   tpmcrypto::Tpm* tpm,
+                                   hwsec::LocalDataMigrationFrontend* hwsec,
                                    LocalData* local_data,
                                    bool* has_migrated);
 
@@ -75,7 +75,7 @@ class LocalDataMigrator {
   // already. Upon returning |true|, |has_migrated| indicates if the legacy data
   // has been migrated to |local_data|.
   bool MigrateOwnerPasswordIfNeeded(const base::FilePath& tpm_status_path,
-                                    tpmcrypto::Tpm* tpm,
+                                    hwsec::LocalDataMigrationFrontend* hwsec,
                                     LocalData* local_data,
                                     bool* has_migrated);
 

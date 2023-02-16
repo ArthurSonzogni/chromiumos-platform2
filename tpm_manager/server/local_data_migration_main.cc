@@ -8,8 +8,9 @@
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <brillo/syslog_logging.h>
+#include <libhwsec/factory/factory_impl.h>
+#include <libhwsec/frontend/local_data_migration/frontend.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
-#include <libtpmcrypto/tpm.h>
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
 #include "tpm_manager/proto_bindings/tpm_manager.pb.h"
 #include "tpm_manager/server/local_data_migration.h"
@@ -89,8 +90,10 @@ int main(int argc, char* argv[]) {
 
   tpm_manager::LocalDataMigrator migrator;
   bool has_migrated;
-  std::unique_ptr<tpmcrypto::Tpm> tpm = tpmcrypto::CreateTpmInstance();
-  if (!migrator.MigrateOwnerPasswordIfNeeded(tpm_status_path, tpm.get(),
+  hwsec::FactoryImpl factory;
+  std::unique_ptr<hwsec::LocalDataMigrationFrontend> hwsec =
+      factory.GetLocalDataMigrationFrontend();
+  if (!migrator.MigrateOwnerPasswordIfNeeded(tpm_status_path, hwsec.get(),
                                              &local_data, &has_migrated)) {
     LOG(ERROR) << "Failed to migrate owner password.";
     return 1;
@@ -104,7 +107,7 @@ int main(int argc, char* argv[]) {
   // Migrates the delegate only when the owner password is absent; tpm_managerd
   // will re-create the delegate in this case.
   if (local_data.owner_password().empty() &&
-      !migrator.MigrateAuthDelegateIfNeeded(database_path, tpm.get(),
+      !migrator.MigrateAuthDelegateIfNeeded(database_path, hwsec.get(),
                                             &local_data, &has_migrated)) {
     LOG(WARNING) << "Failed to migrate owner delegate.";
   }

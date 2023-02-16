@@ -11,7 +11,8 @@
 #include <crypto/scoped_openssl_types.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <libtpmcrypto/tpm.h>
+#include <libhwsec/frontend/local_data_migration/mock_frontend.h>
+#include <libhwsec-foundation/error/testing_helper.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/sha.h>
@@ -25,6 +26,13 @@
 #include "tpm_manager/proto_bindings/tpm_manager.pb.h"
 #include "tpm_manager/server/legacy_local_data.pb.h"
 
+using ::hwsec::TPMError;
+using ::hwsec::TPMRetryAction;
+using ::hwsec_foundation::error::testing::ReturnError;
+using ::hwsec_foundation::error::testing::ReturnValue;
+using ::testing::Invoke;
+using ::testing::NiceMock;
+
 namespace {
 
 constexpr size_t kAesKeySize = 32;
@@ -34,6 +42,17 @@ constexpr char kAesKeyForTest[kAesKeySize + 1] =
     "NOOOOOOOOOOOOOOO~!!!!!!!!!!!!!!!";
 constexpr char kNonNullPointerCheckFailedRegex[] =
     R"(Check failed: ([a-z_]+ != nullptr))";
+
+// Mock the Seal/Unseal by reversing the string
+std::string SealString(const std::string& s) {
+  return std::string(s.rbegin(), s.rend());
+}
+
+brillo::SecureBlob UnsealBlob(const brillo::Blob& blob) {
+  std::string s = brillo::BlobToString(blob);
+  reverse(s.begin(), s.end());
+  return brillo::SecureBlob(s);
+}
 
 // The following few functions are simplied to minimum from
 // "attestation/common/crypto_utility_impl.cc" so we can decrypt the encrypted
@@ -103,18 +122,14 @@ brillo::SecureBlob HmacSha512(const brillo::SecureBlob& key,
 
 bool EncryptLegacyAttestationDatabase(
     const tpm_manager::LegacyAttestationDatabase& database,
-    tpmcrypto::Tpm* tpm,
     brillo::SecureBlob* serialized_encrypted_data) {
   std::string serialized_database = database.SerializeAsString();
   if (serialized_database.empty()) {
     return false;
   }
   attestation::EncryptedData encrypted_data;
-  brillo::SecureBlob wrapped_key;
-  if (!tpm->SealToPCR0(brillo::SecureBlob(std::string(kAesKeyForTest)),
-                       &wrapped_key)) {
-    return false;
-  }
+  brillo::SecureBlob wrapped_key(SealString(std::string(kAesKeyForTest)));
+
   encrypted_data.set_wrapped_key(wrapped_key.to_string());
   brillo::SecureBlob encrypted_output;
   if (!AesEncrypt(EVP_aes_256_cbc(), brillo::SecureBlob(serialized_database),
@@ -137,55 +152,6 @@ bool EncryptLegacyAttestationDatabase(
   return true;
 }
 
-// A fake implementation of |Tpm| to emulate the behavior of sealing/unsealing
-// operation by a real TPM object. The sealing and unsealing are emulated by
-// reversing the content.
-//
-// TODO(cylai): implement a mock class in |tpmcrypto| project instead so the
-// faking/mocking logic can be shared in a better way.
-class FakeTpm : public tpmcrypto::Tpm {
- public:
-  FakeTpm() = default;
-  FakeTpm(const FakeTpm&) = delete;
-  FakeTpm& operator=(const FakeTpm&) = delete;
-
-  ~FakeTpm() override = default;
-
-  bool SealToPCR0(const brillo::SecureBlob& value,
-                  brillo::SecureBlob* sealed_value) override {
-    CHECK(sealed_value);
-    return Reverse(value, sealed_value);
-  }
-
-  bool Unseal(const brillo::SecureBlob& sealed_value,
-              brillo::SecureBlob* value) override {
-    CHECK(value);
-    return !is_failure_mode_ && Reverse(sealed_value, value);
-  }
-
-  bool GetNVAttributes(uint32_t index, uint32_t* attributes) override {
-    return true;
-  }
-
-  bool NVReadNoAuth(uint32_t index,
-                    uint32_t offset,
-                    size_t size,
-                    std::string* data) override {
-    return true;
-  }
-
-  // TODO(cylai): as the TODO above, determine if gmock is a more decent
-  // choice.
-  void SetIsFailureMode(bool flag) { is_failure_mode_ = flag; }
-
- private:
-  bool Reverse(const brillo::SecureBlob& input, brillo::SecureBlob* output) {
-    output->assign(input.rbegin(), input.rend());
-    return true;
-  }
-  bool is_failure_mode_{false};
-};
-
 MATCHER_P(
     EqualsDelegate,
     d,
@@ -200,79 +166,81 @@ brillo::SecureBlob GenerateInvalidSerializedMessage() {
   return brillo::SecureBlob(128, 0);
 }
 
-std::string SealString(const std::string& s, tpmcrypto::Tpm* tpm) {
-  brillo::SecureBlob output;
-  CHECK(tpm->SealToPCR0(brillo::SecureBlob(s), &output));
-  return output.to_string();
-}
-
 }  // namespace
 
 namespace tpm_manager {
 
 TEST(LocalDataMigrationTest, MigrateAuthDelegateDecrypt) {
-  FakeTpm fake_tpm;
+  NiceMock<hwsec::MockLocalDataMigrationFrontend> hwsec;
+  EXPECT_CALL(hwsec, Unseal).WillRepeatedly(Invoke(UnsealBlob));
+
   LegacyAttestationDatabase expected_database;
   expected_database.mutable_delegate()->set_blob("blob");
   expected_database.mutable_delegate()->set_secret("secret");
   expected_database.mutable_delegate()->set_has_reset_lock_permissions(true);
   brillo::SecureBlob encrypted_database;
-  ASSERT_TRUE(EncryptLegacyAttestationDatabase(expected_database, &fake_tpm,
-                                               &encrypted_database));
+  ASSERT_TRUE(
+      EncryptLegacyAttestationDatabase(expected_database, &encrypted_database));
 
   AuthDelegate result_delegate;
   EXPECT_TRUE(
-      MigrateAuthDelegate(encrypted_database, &fake_tpm, &result_delegate));
+      MigrateAuthDelegate(encrypted_database, &hwsec, &result_delegate));
   EXPECT_THAT(result_delegate, EqualsDelegate(expected_database.delegate()));
 
-  fake_tpm.SetIsFailureMode(true);
+  EXPECT_CALL(hwsec, Unseal)
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
   EXPECT_FALSE(
-      MigrateAuthDelegate(encrypted_database, &fake_tpm, &result_delegate));
+      MigrateAuthDelegate(encrypted_database, &hwsec, &result_delegate));
 }
 
 TEST(LocalDataMigrationTest, MigrateAuthDelegateInvalidParameter) {
-  FakeTpm fake_tpm;
+  NiceMock<hwsec::MockLocalDataMigrationFrontend> hwsec;
+  EXPECT_CALL(hwsec, Unseal).WillRepeatedly(Invoke(UnsealBlob));
+
   AuthDelegate result_delegate;
 
   EXPECT_DEATH(
       MigrateAuthDelegate(brillo::SecureBlob{}, nullptr, &result_delegate),
       kNonNullPointerCheckFailedRegex);
-  EXPECT_DEATH(MigrateAuthDelegate(brillo::SecureBlob{}, &fake_tpm, nullptr),
+  EXPECT_DEATH(MigrateAuthDelegate(brillo::SecureBlob{}, &hwsec, nullptr),
                kNonNullPointerCheckFailedRegex);
 
   brillo::SecureBlob invalid_encrypted_database =
       GenerateInvalidSerializedMessage();
-  EXPECT_FALSE(MigrateAuthDelegate(invalid_encrypted_database, &fake_tpm,
+  EXPECT_FALSE(MigrateAuthDelegate(invalid_encrypted_database, &hwsec,
                                    &result_delegate));
 }
 
 TEST(LocalDataMigrationTest, UnsealOwnerPasswordFromSerializedTpmStatus) {
+  NiceMock<hwsec::MockLocalDataMigrationFrontend> hwsec;
+  EXPECT_CALL(hwsec, Unseal).WillRepeatedly(Invoke(UnsealBlob));
+
   LegacyTpmStatus expected_tpm_status;
-  FakeTpm fake_tpm;
-  expected_tpm_status.set_owner_password(
-      SealString("owner password", &fake_tpm));
+  expected_tpm_status.set_owner_password(SealString("owner password"));
   brillo::SecureBlob serialized_tpm_status(expected_tpm_status.ByteSizeLong());
   ASSERT_TRUE(expected_tpm_status.SerializeWithCachedSizesToArray(
       serialized_tpm_status.data()));
   brillo::SecureBlob owner_password;
+
   EXPECT_TRUE(UnsealOwnerPasswordFromSerializedTpmStatus(
-      serialized_tpm_status, &fake_tpm, &owner_password));
+      serialized_tpm_status, &hwsec, &owner_password));
   EXPECT_EQ(owner_password.to_string(), "owner password");
 
-  fake_tpm.SetIsFailureMode(true);
+  EXPECT_CALL(hwsec, Unseal)
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry))
+      .WillRepeatedly(Invoke(UnsealBlob));
   EXPECT_FALSE(UnsealOwnerPasswordFromSerializedTpmStatus(
-      serialized_tpm_status, &fake_tpm, &owner_password));
-  fake_tpm.SetIsFailureMode(false);
+      serialized_tpm_status, &hwsec, &owner_password));
 
   EXPECT_DEATH(UnsealOwnerPasswordFromSerializedTpmStatus(brillo::SecureBlob{},
-                                                          &fake_tpm, nullptr),
+                                                          &hwsec, nullptr),
                kNonNullPointerCheckFailedRegex);
   EXPECT_DEATH(UnsealOwnerPasswordFromSerializedTpmStatus(
                    brillo::SecureBlob{}, nullptr, &owner_password),
                kNonNullPointerCheckFailedRegex);
 
   EXPECT_FALSE(UnsealOwnerPasswordFromSerializedTpmStatus(
-      GenerateInvalidSerializedMessage(), &fake_tpm, &owner_password));
+      GenerateInvalidSerializedMessage(), &hwsec, &owner_password));
 }
 
 // A subclass of |LocalDataMigrator| with the file I/O faked with access of a
@@ -329,7 +297,9 @@ class LocalDataMigratorWithFakeFile : public LocalDataMigrator {
 };
 
 TEST(LocalDataMigratorTest, MigrateAuthDelegateIfNeeded) {
-  FakeTpm fake_tpm;
+  NiceMock<hwsec::MockLocalDataMigrationFrontend> hwsec;
+  EXPECT_CALL(hwsec, Unseal).WillRepeatedly(Invoke(UnsealBlob));
+
   LocalDataMigratorWithFakeFile migrator;
   LocalData local_data;
 
@@ -340,14 +310,14 @@ TEST(LocalDataMigratorTest, MigrateAuthDelegateIfNeeded) {
   EXPECT_DEATH(migrator.MigrateAuthDelegateIfNeeded(non_existent_path, nullptr,
                                                     &local_data, &has_migrated),
                kNonNullPointerCheckFailedRegex);
-  EXPECT_DEATH(migrator.MigrateAuthDelegateIfNeeded(
-                   non_existent_path, &fake_tpm, nullptr, &has_migrated),
+  EXPECT_DEATH(migrator.MigrateAuthDelegateIfNeeded(non_existent_path, &hwsec,
+                                                    nullptr, &has_migrated),
                kNonNullPointerCheckFailedRegex);
-  EXPECT_DEATH(migrator.MigrateAuthDelegateIfNeeded(
-                   non_existent_path, &fake_tpm, &local_data, nullptr),
+  EXPECT_DEATH(migrator.MigrateAuthDelegateIfNeeded(non_existent_path, &hwsec,
+                                                    &local_data, nullptr),
                kNonNullPointerCheckFailedRegex);
 
-  EXPECT_TRUE(migrator.MigrateAuthDelegateIfNeeded(non_existent_path, &fake_tpm,
+  EXPECT_TRUE(migrator.MigrateAuthDelegateIfNeeded(non_existent_path, &hwsec,
                                                    &local_data, &has_migrated));
   EXPECT_FALSE(has_migrated);
 
@@ -356,22 +326,23 @@ TEST(LocalDataMigratorTest, MigrateAuthDelegateIfNeeded) {
   expected_database.mutable_delegate()->set_secret("secret");
   expected_database.mutable_delegate()->set_has_reset_lock_permissions(true);
   brillo::SecureBlob encrypted_database;
-  ASSERT_TRUE(EncryptLegacyAttestationDatabase(expected_database, &fake_tpm,
-                                               &encrypted_database));
+  ASSERT_TRUE(
+      EncryptLegacyAttestationDatabase(expected_database, &encrypted_database));
   migrator.SetFakeFileContent(fake_path.value(),
                               encrypted_database.to_string());
 
-  fake_tpm.SetIsFailureMode(true);
+  EXPECT_CALL(hwsec, Unseal)
+      .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry))
+      .WillRepeatedly(Invoke(UnsealBlob));
   EXPECT_FALSE(migrator.MigrateAuthDelegateIfNeeded(
-      fake_path, &fake_tpm, &local_data, &has_migrated));
-  fake_tpm.SetIsFailureMode(false);
+      fake_path, &hwsec, &local_data, &has_migrated));
 
   migrator.SetIsFailureModeForRead(true);
   EXPECT_FALSE(migrator.MigrateAuthDelegateIfNeeded(
-      fake_path, &fake_tpm, &local_data, &has_migrated));
+      fake_path, &hwsec, &local_data, &has_migrated));
   migrator.SetIsFailureModeForRead(false);
 
-  EXPECT_TRUE(migrator.MigrateAuthDelegateIfNeeded(fake_path, &fake_tpm,
+  EXPECT_TRUE(migrator.MigrateAuthDelegateIfNeeded(fake_path, &hwsec,
                                                    &local_data, &has_migrated));
   EXPECT_TRUE(has_migrated);
   EXPECT_THAT(local_data.owner_delegate(),
@@ -381,7 +352,7 @@ TEST(LocalDataMigratorTest, MigrateAuthDelegateIfNeeded) {
   local_data.mutable_owner_delegate()->set_blob("another blob");
   local_data.mutable_owner_delegate()->set_secret("another secret");
   const LocalData local_data_before_migration_again = local_data;
-  EXPECT_TRUE(migrator.MigrateAuthDelegateIfNeeded(fake_path, &fake_tpm,
+  EXPECT_TRUE(migrator.MigrateAuthDelegateIfNeeded(fake_path, &hwsec,
                                                    &local_data, &has_migrated));
   EXPECT_FALSE(has_migrated);
   EXPECT_THAT(
@@ -390,26 +361,27 @@ TEST(LocalDataMigratorTest, MigrateAuthDelegateIfNeeded) {
 }
 
 TEST(LocalDataMigratorTest, MigrateOwnerPasswordIfNeeded) {
+  NiceMock<hwsec::MockLocalDataMigrationFrontend> hwsec;
+  EXPECT_CALL(hwsec, Unseal).WillRepeatedly(Invoke(UnsealBlob));
+
   LocalDataMigratorWithFakeFile migrator;
   LocalData local_data;
-  FakeTpm fake_tpm;
   const base::FilePath fake_path("fake path");
   const base::FilePath non_existent_path("non existent path");
   bool has_migrated;
 
-  EXPECT_DEATH(migrator.MigrateOwnerPasswordIfNeeded(
-                   non_existent_path, &fake_tpm, nullptr, &has_migrated),
+  EXPECT_DEATH(migrator.MigrateOwnerPasswordIfNeeded(non_existent_path, &hwsec,
+                                                     nullptr, &has_migrated),
                kNonNullPointerCheckFailedRegex);
-  EXPECT_DEATH(migrator.MigrateOwnerPasswordIfNeeded(
-                   non_existent_path, &fake_tpm, &local_data, nullptr),
+  EXPECT_DEATH(migrator.MigrateOwnerPasswordIfNeeded(non_existent_path, &hwsec,
+                                                     &local_data, nullptr),
                kNonNullPointerCheckFailedRegex);
   EXPECT_TRUE(migrator.MigrateOwnerPasswordIfNeeded(
-      non_existent_path, &fake_tpm, &local_data, &has_migrated));
+      non_existent_path, &hwsec, &local_data, &has_migrated));
   EXPECT_FALSE(has_migrated);
 
   LegacyTpmStatus expected_tpm_status;
-  expected_tpm_status.set_owner_password(
-      SealString("owner password", &fake_tpm));
+  expected_tpm_status.set_owner_password(SealString("owner password"));
   brillo::SecureBlob serialized_tpm_status(expected_tpm_status.ByteSizeLong());
   ASSERT_TRUE(expected_tpm_status.SerializeWithCachedSizesToArray(
       serialized_tpm_status.data()));
@@ -417,26 +389,25 @@ TEST(LocalDataMigratorTest, MigrateOwnerPasswordIfNeeded) {
   migrator.SetFakeFileContent(fake_path.value(),
                               GenerateInvalidSerializedMessage().to_string());
   EXPECT_FALSE(migrator.MigrateOwnerPasswordIfNeeded(
-      fake_path, &fake_tpm, &local_data, &has_migrated));
+      fake_path, &hwsec, &local_data, &has_migrated));
 
   migrator.SetFakeFileContent(fake_path.value(),
                               serialized_tpm_status.to_string());
   migrator.SetIsFailureModeForRead(true);
   EXPECT_FALSE(migrator.MigrateOwnerPasswordIfNeeded(
-      fake_path, &fake_tpm, &local_data, &has_migrated));
+      fake_path, &hwsec, &local_data, &has_migrated));
 
   migrator.SetIsFailureModeForRead(false);
   EXPECT_TRUE(migrator.MigrateOwnerPasswordIfNeeded(
-      fake_path, &fake_tpm, &local_data, &has_migrated));
+      fake_path, &hwsec, &local_data, &has_migrated));
   EXPECT_TRUE(has_migrated);
   EXPECT_EQ(local_data.owner_password(), "owner password");
 
   // Checks if the migration does no-ops if the data exist at both sides
-  local_data.set_owner_password(
-      SealString("another owner password", &fake_tpm));
+  local_data.set_owner_password(SealString("another owner password"));
   const LocalData local_data_before_migration_again = local_data;
   EXPECT_TRUE(migrator.MigrateOwnerPasswordIfNeeded(
-      fake_path, &fake_tpm, &local_data, &has_migrated));
+      fake_path, &hwsec, &local_data, &has_migrated));
   EXPECT_FALSE(has_migrated);
   EXPECT_EQ(local_data.owner_password(),
             local_data_before_migration_again.owner_password());
