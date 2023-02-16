@@ -152,6 +152,18 @@ std::string EnumToString(mojom::InputTouchButton button) {
   }
 }
 
+std::string EnumToString(mojom::HdmiEventInfo::State state) {
+  switch (state) {
+    case mojom::HdmiEventInfo::State::kUnmappedEnumField:
+      LOG(FATAL) << "Got UnmappedEnumField";
+      return "UnmappedEnumField";
+    case mojom::HdmiEventInfo::State::kAdd:
+      return "HDMI added";
+    case mojom::HdmiEventInfo::State::kRemove:
+      return "HDMI removed";
+  }
+}
+
 void OutputUsbEventInfo(const mojom::UsbEventInfoPtr& info) {
   base::Value::Dict output;
 
@@ -294,6 +306,11 @@ void OutputTouchpadEventInfo(const mojom::TouchpadEventInfoPtr& info) {
   }
 }
 
+void OutputHdmiEventInfo(const mojom::HdmiEventInfoPtr& info) {
+  std::cout << "Hdmi event received: " << EnumToString(info->state)
+            << std::endl;
+}
+
 }  // namespace
 
 EventSubscriber::EventSubscriber() {
@@ -361,6 +378,9 @@ void EventSubscriber::OnEvent(const mojom::EventInfoPtr info) {
       break;
     case mojom::EventInfo::Tag::kTouchpadEventInfo:
       OutputTouchpadEventInfo(info->get_touchpad_event_info());
+      break;
+    case mojom::EventInfo::Tag::kHdmiEventInfo:
+      OutputHdmiEventInfo(info->get_hdmi_event_info());
       break;
   }
 }

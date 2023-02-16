@@ -99,6 +99,13 @@ bool UdevEventsImpl::Initialize() {
     return false;
   }
 
+  libdrm_util_ = context_->CreateLibdrmUtil();
+  if (!libdrm_util_->Initialize()) {
+    LOG(ERROR) << "Failed to create libdrm util.";
+    return false;
+  }
+  hdmi_connector_status_ = libdrm_util_->GetHdmiConnectorStatus();
+
   return true;
 }
 
@@ -140,6 +147,11 @@ void UdevEventsImpl::OnUdevEvent() {
       OnSdCardAdd();
     } else if (action == "remove") {
       OnSdCardRemove();
+    }
+  } else if (subsystem == "drm" && device_type == "drm_minor") {
+    if (action == "change") {
+      auto device_type = GetString(device->GetDeviceType());
+      OnHdmiChange();
     }
   }
 }
@@ -242,6 +254,61 @@ void UdevEventsImpl::OnSdCardRemove() {
   info.state = mojom::SdCardEventInfo::State::kRemove;
   for (auto& observer : sd_card_observers_)
     observer->OnEvent(mojom::EventInfo::NewSdCardEventInfo(info.Clone()));
+}
+
+void UdevEventsImpl::AddHdmiObserver(
+    mojo::PendingRemote<mojom::EventObserver> observer) {
+  hdmi_observers_.Add(std::move(observer));
+}
+
+void UdevEventsImpl::OnHdmiChange() {
+  int remove = 0;
+  int add = 0;
+
+  std::map<uint32_t, bool> new_hdmi_connector_status =
+      libdrm_util_->GetHdmiConnectorStatus();
+  // find the difference of connector status. Note that connectors may
+  // be added or removed.
+  for (auto const& [connector_id, new_connection_status] :
+       new_hdmi_connector_status) {
+    // if a new connector is added and connected.
+    if (hdmi_connector_status_.count(connector_id) == 0 &&
+        new_connection_status) {
+      add += 1;
+      continue;
+    }
+    // if the status of a connector has been changed.
+    if (new_connection_status != hdmi_connector_status_.at(connector_id)) {
+      if (new_connection_status)
+        add += 1;
+      else
+        remove += 1;
+    }
+  }
+  for (auto const& [connector_id, old_connection_status] :
+       hdmi_connector_status_) {
+    // if an old connected connector is removed.
+    if (new_hdmi_connector_status.count(connector_id) == 0 &&
+        old_connection_status) {
+      remove += 1;
+    }
+  }
+  hdmi_connector_status_ = std::move(new_hdmi_connector_status);
+
+  for (int i = 0; i < add; i++) {
+    mojom::HdmiEventInfo info;
+    info.state = mojom::HdmiEventInfo::State::kAdd;
+    for (auto& observer : hdmi_observers_) {
+      observer->OnEvent(mojom::EventInfo::NewHdmiEventInfo(info.Clone()));
+    }
+  }
+  for (int i = 0; i < remove; i++) {
+    mojom::HdmiEventInfo info;
+    info.state = mojom::HdmiEventInfo::State::kRemove;
+    for (auto& observer : hdmi_observers_) {
+      observer->OnEvent(mojom::EventInfo::NewHdmiEventInfo(info.Clone()));
+    }
+  }
 }
 
 }  // namespace diagnostics

@@ -41,6 +41,7 @@ constexpr std::pair<const char*, mojom::EventCategoryEnum> kCategorySwitches[] =
         {"sd_card", mojom::EventCategoryEnum::kSdCard},
         {"keyboard_diagnostic", mojom::EventCategoryEnum::kKeyboardDiagnostic},
         {"touchpad", mojom::EventCategoryEnum::kTouchpad},
+        {"hdmi", mojom::EventCategoryEnum::kHdmi},
 };
 
 // Create a stringified list of the category names for use in help.
@@ -94,6 +95,7 @@ int event_main(int argc, char** argv) {
     case mojom::EventCategoryEnum::kThunderbolt:
     case mojom::EventCategoryEnum::kUsb:
     case mojom::EventCategoryEnum::kTouchpad:
+    case mojom::EventCategoryEnum::kHdmi:
       event_subscriber.SubscribeToEvents(run_loop.QuitClosure(),
                                          iterator->second);
       break;

@@ -362,6 +362,24 @@ union TouchpadEventInfo {
   TouchpadConnectedEvent connected_event@3;
 };
 
+// Hdmi event info.
+//
+// NextMinVersion: 1, NextIndex: 1
+[Stable]
+struct HdmiEventInfo {
+  [Stable, Extensible]
+  enum State {
+    // This is required for backwards compatibility, should not be used.
+    [Default] kUnmappedEnumField,
+    // Hdmi plugs in.
+    kAdd,
+    // Hdmi plugs out.
+    kRemove,
+  };
+
+  State state@0;
+};
+
 // Implemented by clients who desire events.
 //
 // NextMinVersion: 1, NextIndex: 1
@@ -373,7 +391,7 @@ interface EventObserver {
 
 // Union of event info.
 //
-// NextMinVersion: 5, NextIndex: 11
+// NextMinVersion: 6, NextIndex: 12
 [Stable, Extensible]
 union EventInfo {
   // The default value for forward compatibility. All the unknown type will be
@@ -401,11 +419,13 @@ union EventInfo {
     keyboard_diagnostic_event_info@9;
   // Touchpad event info.
   [MinVersion=4] TouchpadEventInfo touchpad_event_info@10;
+  // Sd Card event info.
+  [MinVersion=5] HdmiEventInfo hdmi_event_info@11;
 };
 
 // An enumeration of event categories.
 //
-// NextMinVersion: 6, NextIndex: 12
+// NextMinVersion: 7, NextIndex: 13
 [Stable, Extensible]
 enum EventCategoryEnum {
   // This is required for backwards compatibility, should not be used.
@@ -421,4 +441,5 @@ enum EventCategoryEnum {
   [MinVersion=3] kNetwork = 9,
   [MinVersion=4] kKeyboardDiagnostic = 10,
   [MinVersion=5] kTouchpad = 11,
+  [MinVersion=6] kHdmi = 12,
 };

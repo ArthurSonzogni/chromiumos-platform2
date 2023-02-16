@@ -5,6 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_EVENTS_UDEV_EVENTS_IMPL_H_
 #define DIAGNOSTICS_CROS_HEALTHD_EVENTS_UDEV_EVENTS_IMPL_H_
 
+#include <map>
 #include <memory>
 
 #include <base/files/file_descriptor_watcher_posix.h>
@@ -34,6 +35,9 @@ class UdevEventsImpl final : public UdevEvents {
   void AddSdCardObserver(
       mojo::PendingRemote<ash::cros_healthd::mojom::EventObserver> observer)
       override;
+  void AddHdmiObserver(
+      mojo::PendingRemote<ash::cros_healthd::mojom::EventObserver> observer)
+      override;
 
   void OnUdevEvent();
 
@@ -58,12 +62,18 @@ class UdevEventsImpl final : public UdevEvents {
   void OnSdCardAdd();
   void OnSdCardRemove();
 
+  void OnHdmiChange();
+
   // Unowned pointer. Should outlive this instance.
   Context* const context_ = nullptr;
 
   std::unique_ptr<base::FileDescriptorWatcher::Controller>
       udev_monitor_watcher_;
-
+  // Stores a reference to LibDrmUtil in order to obtain information related to
+  // HDMI and DP.
+  std::unique_ptr<LibdrmUtil> libdrm_util_;
+  // Stores the last known connection status for HDMI connectors.
+  std::map<uint32_t, bool> hdmi_connector_status_;
   // Each observer in |thunderbolt_observers_| will be notified of any
   // thunderbolt event in the
   // ash::cros_healthd::mojom::CrosHealthdThunderboltObserver interface.
@@ -88,6 +98,12 @@ class UdevEventsImpl final : public UdevEvents {
   // automatically destroyed and removed when the pipe they are bound to is
   // destroyed.
   mojo::RemoteSet<ash::cros_healthd::mojom::EventObserver> sd_card_observers_;
+
+  // Each observer in |hdmi_observers_| will be notified of any SD Card
+  // event. The RemoteSet manages the lifetime of the endpoints, which are
+  // automatically destroyed and removed when the pipe they are bound to is
+  // destroyed.
+  mojo::RemoteSet<ash::cros_healthd::mojom::EventObserver> hdmi_observers_;
 };
 
 }  // namespace diagnostics
