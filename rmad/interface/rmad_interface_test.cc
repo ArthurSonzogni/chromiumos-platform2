@@ -699,9 +699,6 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
       CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
                       std::size(kCurrentStateSetJson) - 1);
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
-  EXPECT_TRUE(MetricsUtils::UpdateStateMetricsOnStateTransition(
-      json_store, RmadState::STATE_NOT_SET, RmadState::kWelcome,
-      base::Time::Now().ToDoubleT()));
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -783,14 +780,66 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
             event2.FindDict(kDetails)->FindInt(kToStateId));
 }
 
+TEST_F(RmadInterfaceImplTest, TransitionNextStateAfterInterval) {
+  base::FilePath json_store_file_path =
+      CreateInputFile(kJsonStoreFileName, kCurrentStateNotSetJson,
+                      std::size(kCurrentStateNotSetJson) - 1);
+  auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
+  RmadInterfaceImpl rmad_interface(
+      json_store, CreateStateHandlerManager(json_store),
+      CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
+      CreateTpmManagerClient(RMAD_RO_VERIFICATION_NOT_TRIGGERED),
+      CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
+      CreateMetricsUtils(true));
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
+
+  // Set up again after a while.
+  task_environment_.FastForwardBy(kTestTransitionInterval);
+  EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
+
+  task_environment_.FastForwardBy(kTestTransitionInterval);
+
+  TransitionNextStateRequest request;
+  auto callback = [](const GetStateReply& reply, bool quit_daemon) {
+    EXPECT_EQ(RMAD_ERROR_OK, reply.error());
+    EXPECT_EQ(RmadState::kComponentsRepair, reply.state().state_case());
+    EXPECT_TRUE(reply.can_go_back());
+    EXPECT_TRUE(reply.can_abort());
+    EXPECT_FALSE(quit_daemon);
+  };
+  rmad_interface.TransitionNextState(request, base::BindOnce(callback));
+  EXPECT_EQ(RmadState::kComponentsRepair, rmad_interface.GetCurrentStateCase());
+
+  std::map<int, StateMetricsData> state_metrics;
+  EXPECT_TRUE(
+      MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
+  EXPECT_DOUBLE_EQ(
+      state_metrics[static_cast<int>(RmadState::kWelcome)].overall_time,
+      kTestTransitionInterval.InSecondsF());
+
+  // Verify that state transitions were recorded to logs.
+  base::Value logs(base::Value::Type::DICT);
+  json_store->GetValue(kLogs, &logs);
+  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  EXPECT_EQ(2, events->size());
+
+  const base::Value::Dict& event = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(RmadState::kWelcome), event.FindInt(kStateId));
+
+  const base::Value::Dict& event1 = (*events)[1].GetDict();
+  EXPECT_EQ(static_cast<int>(RmadState::kWelcome),
+            event1.FindDict(kDetails)->FindInt(kFromStateId));
+  EXPECT_EQ(static_cast<int>(RmadState::kComponentsRepair),
+            event1.FindDict(kDetails)->FindInt(kToStateId));
+}
+
 TEST_F(RmadInterfaceImplTest, TryTransitionNextState) {
   base::FilePath json_store_file_path =
       CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
                       std::size(kCurrentStateSetJson) - 1);
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
-  EXPECT_TRUE(MetricsUtils::UpdateStateMetricsOnStateTransition(
-      json_store, RmadState::STATE_NOT_SET, RmadState::kWelcome,
-      base::Time::Now().ToDoubleT()));
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -861,9 +910,6 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_GetNextStateCaseFail) {
       CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
                       std::size(kCurrentStateSetJson) - 1);
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
-  EXPECT_TRUE(MetricsUtils::UpdateStateMetricsOnStateTransition(
-      json_store, RmadState::STATE_NOT_SET, RmadState::kWelcome,
-      base::Time::Now().ToDoubleT()));
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManagerGetNextStateCaseFail(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -886,26 +932,10 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState_GetNextStateCaseFail) {
 }
 
 TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
-  base::FilePath json_store_file_path = CreateInputFile(
-      kJsonStoreFileName, kCurrentStateWithRepeatableHistoryJson,
-      std::size(kCurrentStateWithRepeatableHistoryJson) - 1);
+  base::FilePath json_store_file_path =
+      CreateInputFile(kJsonStoreFileName, kCurrentStateSetJson,
+                      std::size(kCurrentStateSetJson) - 1);
   auto json_store = base::MakeRefCounted<JsonStore>(json_store_file_path);
-  EXPECT_TRUE(MetricsUtils::UpdateStateMetricsOnStateTransition(
-      json_store, RmadState::STATE_NOT_SET, RmadState::kWelcome,
-      base::Time::Now().ToDoubleT()));
-
-  task_environment_.FastForwardBy(kTestTransitionInterval);
-
-  EXPECT_TRUE(MetricsUtils::UpdateStateMetricsOnStateTransition(
-      json_store, RmadState::kWelcome, RmadState::kComponentsRepair,
-      base::Time::Now().ToDoubleT()));
-  std::map<int, StateMetricsData> state_metrics;
-  EXPECT_TRUE(
-      MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
-  EXPECT_DOUBLE_EQ(
-      state_metrics[static_cast<int>(RmadState::kWelcome)].overall_time,
-      kTestTransitionInterval.InSecondsF());
-
   RmadInterfaceImpl rmad_interface(
       json_store, CreateStateHandlerManager(json_store),
       CreateRuntimeProbeClient(false), CreateShillClient(nullptr),
@@ -913,36 +943,63 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
       CreatePowerManagerClient(), CreateUdevUtils(), CreateCmdUtils(),
       CreateMetricsUtils(true));
   EXPECT_TRUE(rmad_interface.SetUp(base::MakeRefCounted<DaemonCallback>()));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
+
+  task_environment_.FastForwardBy(kTestTransitionInterval);
+
+  TransitionNextStateRequest request;
+  auto callback1 = [](const GetStateReply& reply, bool quit_daemon) {
+    EXPECT_EQ(RMAD_ERROR_OK, reply.error());
+    EXPECT_EQ(RmadState::kComponentsRepair, reply.state().state_case());
+    EXPECT_TRUE(reply.can_go_back());
+    EXPECT_TRUE(reply.can_abort());
+    EXPECT_FALSE(quit_daemon);
+  };
+  rmad_interface.TransitionNextState(request, base::BindOnce(callback1));
   EXPECT_EQ(RmadState::kComponentsRepair, rmad_interface.GetCurrentStateCase());
 
   task_environment_.FastForwardBy(kTestTransitionInterval);
 
-  auto callback = [](const GetStateReply& reply, bool quit_daemon) {
+  auto callback2 = [](const GetStateReply& reply, bool quit_daemon) {
     EXPECT_EQ(RMAD_ERROR_OK, reply.error());
     EXPECT_EQ(RmadState::kWelcome, reply.state().state_case());
     EXPECT_FALSE(reply.can_go_back());
     EXPECT_TRUE(reply.can_abort());
     EXPECT_FALSE(quit_daemon);
   };
-  rmad_interface.TransitionPreviousState(base::BindOnce(callback));
+  rmad_interface.TransitionPreviousState(base::BindOnce(callback2));
+  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
+
+  std::map<int, StateMetricsData> state_metrics;
   EXPECT_TRUE(
       MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
+  EXPECT_DOUBLE_EQ(
+      state_metrics[static_cast<int>(RmadState::kWelcome)].overall_time,
+      kTestTransitionInterval.InSecondsF());
   EXPECT_DOUBLE_EQ(state_metrics[static_cast<int>(RmadState::kComponentsRepair)]
                        .overall_time,
                    kTestTransitionInterval.InSecondsF());
-  EXPECT_EQ(RmadState::kWelcome, rmad_interface.GetCurrentStateCase());
 
   // Verify that state transitions were recorded to logs.
   base::Value logs(base::Value::Type::DICT);
   json_store->GetValue(kLogs, &logs);
   const base::Value::List* events = logs.GetDict().FindList(kEvents);
-  EXPECT_EQ(2, events->size());
+  EXPECT_EQ(3, events->size());
 
-  const base::Value::Dict& event = (*events)[1].GetDict();
-  EXPECT_EQ(static_cast<int>(RmadState::kComponentsRepair),
-            event.FindDict(kDetails)->FindInt(kFromStateId));
+  const base::Value::Dict& event = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(RmadState::kWelcome), event.FindInt(kStateId));
+
+  const base::Value::Dict& event1 = (*events)[1].GetDict();
   EXPECT_EQ(static_cast<int>(RmadState::kWelcome),
-            event.FindDict(kDetails)->FindInt(kToStateId));
+            event1.FindDict(kDetails)->FindInt(kFromStateId));
+  EXPECT_EQ(static_cast<int>(RmadState::kComponentsRepair),
+            event1.FindDict(kDetails)->FindInt(kToStateId));
+
+  const base::Value::Dict& event2 = (*events)[2].GetDict();
+  EXPECT_EQ(static_cast<int>(RmadState::kComponentsRepair),
+            event2.FindDict(kDetails)->FindInt(kFromStateId));
+  EXPECT_EQ(static_cast<int>(RmadState::kWelcome),
+            event2.FindDict(kDetails)->FindInt(kToStateId));
 }
 
 TEST_F(RmadInterfaceImplTest, TransitionPreviousState_NoHistory) {

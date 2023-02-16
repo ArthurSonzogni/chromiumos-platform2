@@ -120,7 +120,7 @@ bool MetricsUtils::UpdateStateMetricsOnStateTransition(
   // At the beginning, we may have no data, so ignore the return value.
   GetMetricsValue(json_store, kStateMetrics, &state_metrics);
 
-  if (to != RmadState::STATE_NOT_SET) {
+  if (from != RmadState::STATE_NOT_SET && to != RmadState::STATE_NOT_SET) {
     int key = static_cast<int>(to);
     state_metrics[key].transition_count++;
   }

@@ -140,13 +140,6 @@ bool RmadInterfaceImpl::WaitForServices() {
 bool RmadInterfaceImpl::StartFromInitialState() {
   current_state_case_ = kInitialStateCase;
   state_history_.push_back(current_state_case_);
-  if (!MetricsUtils::UpdateStateMetricsOnStateTransition(
-          json_store_, RmadState::STATE_NOT_SET, kInitialStateCase,
-          base::Time::Now().ToDoubleT())) {
-    LOG(ERROR) << "Failed to initialize timestamp for the initial state.";
-    // TODO(genechang): Send a signal to Chrome that the json store failed
-    //                  so a message can be displayed.
-  }
   if (!StoreStateHistory()) {
     LOG(ERROR) << "Could not store initial state";
     // TODO(chenghan): Send a signal to Chrome that the json store failed so
@@ -226,9 +219,15 @@ bool RmadInterfaceImpl::SetUp(scoped_refptr<DaemonCallback> daemon_callback) {
   }
 
   double current_timestamp = base::Time::Now().ToDoubleT();
+  if (!MetricsUtils::UpdateStateMetricsOnStateTransition(
+          json_store_, RmadState::STATE_NOT_SET, current_state_case_,
+          current_timestamp)) {
+    LOG(ERROR) << "Could not store setup time for the current state.";
+    return false;
+  }
   if (!MetricsUtils::SetMetricsValue(json_store_, kMetricsSetupTimestamp,
                                      current_timestamp)) {
-    LOG(ERROR) << "Could not store setup time";
+    LOG(ERROR) << "Could not store global setup time";
     return false;
   }
   if (double first_setup_time;
@@ -236,7 +235,7 @@ bool RmadInterfaceImpl::SetUp(scoped_refptr<DaemonCallback> daemon_callback) {
                                      &first_setup_time) &&
       !MetricsUtils::SetMetricsValue(json_store_, kMetricsFirstSetupTimestamp,
                                      current_timestamp)) {
-    LOG(ERROR) << "Could not store first setup time";
+    LOG(ERROR) << "Could not store global first setup time";
     return false;
   }
 
