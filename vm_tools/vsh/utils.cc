@@ -28,7 +28,7 @@ bool SendAllBytes(int sockfd, const uint8_t* buf, uint32_t buf_size) {
   uint32_t msg_size = htole32(buf_size);
 
   if (!base::WriteFileDescriptor(
-          sockfd, base::as_bytes(base::make_span(&msg_size, 1)))) {
+          sockfd, base::as_bytes(base::make_span(&msg_size, 1u)))) {
     PLOG(ERROR) << "Failed to write message size to socket";
     return false;
   }

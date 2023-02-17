@@ -88,8 +88,8 @@ bool ECCollector::Collect() {
              "\nERROR: ec_parse_panicinfo: Non-zero return value (%d).\n",
              result),
          "Raw data: ",
-         base::Base64Encode(
-             base::make_span(reinterpret_cast<uint8_t*>(data), len)),
+         base::Base64Encode(base::make_span(reinterpret_cast<uint8_t*>(data),
+                                            static_cast<size_t>(len))),
          "\n"});
   }
 

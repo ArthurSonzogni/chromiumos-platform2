@@ -131,7 +131,7 @@ void UHidDevice::FdEvent() {
 
 bool UHidDevice::WriteEvent(const struct uhid_event& ev) {
   return base::WriteFileDescriptor(fd_.get(),
-                                   base::as_bytes(base::make_span(&ev, 1)));
+                                   base::as_bytes(base::make_span(&ev, 1u)));
 }
 
 bool UHidDevice::SendReport(const std::string& report) {

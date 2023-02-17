@@ -138,11 +138,11 @@ class FakePublicKey : public hwsec::u2f::PublicKey {
   }
 
   base::span<const uint8_t> x() const override {
-    return base::make_span(data_.data() + 1, 32);
+    return base::make_span(data_.data() + 1, 32u);
   }
 
   base::span<const uint8_t> y() const override {
-    return base::make_span(data_.data() + 33, 32);
+    return base::make_span(data_.data() + 33, 32u);
   }
 
   const brillo::Blob& raw() const override { return data_; }

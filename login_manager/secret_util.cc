@@ -108,7 +108,7 @@ base::ScopedFD WriteSizeAndDataToPipe(const std::vector<uint8_t>& data) {
   base::ScopedFD write_scoped_fd(fds[1]);
 
   base::WriteFileDescriptor(write_scoped_fd.get(),
-                            base::as_bytes(base::make_span(&data_size, 1)));
+                            base::as_bytes(base::make_span(&data_size, 1u)));
   base::WriteFileDescriptor(write_scoped_fd.get(), data);
   return read_dbus_fd;
 }

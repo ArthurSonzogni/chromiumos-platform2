@@ -80,12 +80,12 @@ class PublicKeyTpm2 : public u2f::PublicKey {
 
   base::span<const uint8_t> x() const override {
     return base::make_span(data_.data() + offsetof(u2f_ec_point, x),
-                           U2F_EC_KEY_SIZE);
+                           static_cast<size_t>(U2F_EC_KEY_SIZE));
   }
 
   base::span<const uint8_t> y() const override {
     return base::make_span(data_.data() + offsetof(u2f_ec_point, y),
-                           U2F_EC_KEY_SIZE);
+                           static_cast<size_t>(U2F_EC_KEY_SIZE));
   }
 
   const brillo::Blob& raw() const override { return data_; }

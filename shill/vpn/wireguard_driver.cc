@@ -59,7 +59,7 @@ constexpr char kWireGuardKeyPairSource[] = "WireGuard.KeyPairSource";
 constexpr base::TimeDelta kConnectTimeout = base::Seconds(10);
 
 // Key length of Curve25519.
-constexpr int kWgKeyLength = 32;
+constexpr size_t kWgKeyLength = 32;
 constexpr int kWgBase64KeyLength = (((kWgKeyLength) + 2) / 3) * 4;
 
 // Properties of a peer.

@@ -301,7 +301,7 @@ std::optional<VvuProxyDeviceConfig> ReadVvuProxyDeviceConfig(
   if (!vfio_device.ReadAndCheck(
           reg.offset + device_config_location->offset_in_bar,
           base::as_writable_bytes(
-              base::make_span(&vvu_proxy_device_config, 1)))) {
+              base::make_span(&vvu_proxy_device_config, 1u)))) {
     PLOG(ERROR) << "Failed to read device config";
     return std::nullopt;
   }

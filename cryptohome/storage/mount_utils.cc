@@ -23,7 +23,7 @@
 
 namespace {
 // Size of span when writing protobuf message size to file.
-constexpr int kSpanSize = 1;
+constexpr size_t kSpanSize = 1;
 
 }  // namespace
 
