@@ -120,6 +120,20 @@ bool MetricsUtils::UpdateStateMetricsOnStateTransition(
   // At the beginning, we may have no data, so ignore the return value.
   GetMetricsValue(json_store, kStateMetrics, &state_metrics);
 
+  // Update the global setup time and first setup time if needed.
+  if (!SetMetricsValue(json_store, kMetricsSetupTimestamp, timestamp)) {
+    LOG(ERROR) << "Could not store global setup time";
+    return false;
+  }
+  if (double first_setup_time;
+      to != kInitialStateCase &&
+      !GetMetricsValue(json_store, kMetricsFirstSetupTimestamp,
+                       &first_setup_time) &&
+      !SetMetricsValue(json_store, kMetricsFirstSetupTimestamp, timestamp)) {
+    LOG(ERROR) << "Could not store global first setup time";
+    return false;
+  }
+
   if (from != RmadState::STATE_NOT_SET && to != RmadState::STATE_NOT_SET) {
     int key = static_cast<int>(to);
     state_metrics[key].transition_count++;
@@ -221,7 +235,9 @@ bool MetricsUtils::CalculateStateOverallTime(
   }
 
   double time_spent_sec =
-      leave_timestamp - (*state_metrics)[key].setup_timestamp;
+      (state_case == kInitialStateCase)
+          ? 0
+          : leave_timestamp - (*state_metrics)[key].setup_timestamp;
   if (time_spent_sec < 0) {
     LOG(ERROR) << key << ": Failed to calculate time spent.";
     return false;

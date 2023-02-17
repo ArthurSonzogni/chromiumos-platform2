@@ -30,6 +30,9 @@ inline constexpr char kTestDirPath[] = ".test";
 // Files for testing purpose.
 inline constexpr char kDisablePowerwashFilePath[] = ".disable_powerwash";
 
+// We currently treat InitialState as WelcomeState.
+inline constexpr RmadState::StateCase kInitialStateCase = RmadState::kWelcome;
+
 // JsonStore rmad_interface keys.
 // Update go/shimless-state-preservation when adding new fields.
 inline constexpr char kStateHistory[] = "state_history";

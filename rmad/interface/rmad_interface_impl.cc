@@ -37,8 +37,6 @@ namespace rmad {
 
 namespace {
 
-const RmadState::StateCase kInitialStateCase = RmadState::kWelcome;
-
 const char kCroslogCmd[] = "/usr/sbin/croslog";
 
 const char kInitctlCmd[] = "/sbin/initctl";
@@ -223,19 +221,6 @@ bool RmadInterfaceImpl::SetUp(scoped_refptr<DaemonCallback> daemon_callback) {
           json_store_, RmadState::STATE_NOT_SET, current_state_case_,
           current_timestamp)) {
     LOG(ERROR) << "Could not store setup time for the current state.";
-    return false;
-  }
-  if (!MetricsUtils::SetMetricsValue(json_store_, kMetricsSetupTimestamp,
-                                     current_timestamp)) {
-    LOG(ERROR) << "Could not store global setup time";
-    return false;
-  }
-  if (double first_setup_time;
-      !MetricsUtils::GetMetricsValue(json_store_, kMetricsFirstSetupTimestamp,
-                                     &first_setup_time) &&
-      !MetricsUtils::SetMetricsValue(json_store_, kMetricsFirstSetupTimestamp,
-                                     current_timestamp)) {
-    LOG(ERROR) << "Could not store global first setup time";
     return false;
   }
 

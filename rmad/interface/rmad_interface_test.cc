@@ -106,6 +106,7 @@ constexpr char kDeviceFileFormat[] = "/dev/sd%c1";
 constexpr char kMountSuccessDeviceId = 'e';
 
 constexpr base::TimeDelta kTestTransitionInterval = base::Seconds(1);
+constexpr base::TimeDelta kInitialStateOverallTime = base::Seconds(0);
 
 class RmadInterfaceImplTest : public testing::Test {
  public:
@@ -734,7 +735,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextState) {
       MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
   EXPECT_DOUBLE_EQ(
       state_metrics[static_cast<int>(RmadState::kWelcome)].overall_time,
-      kTestTransitionInterval.InSecondsF());
+      kInitialStateOverallTime.InSecondsF());
   EXPECT_EQ(RmadState::kComponentsRepair, rmad_interface.GetCurrentStateCase());
 
   task_environment_.FastForwardBy(kTestTransitionInterval);
@@ -817,7 +818,7 @@ TEST_F(RmadInterfaceImplTest, TransitionNextStateAfterInterval) {
       MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
   EXPECT_DOUBLE_EQ(
       state_metrics[static_cast<int>(RmadState::kWelcome)].overall_time,
-      kTestTransitionInterval.InSecondsF());
+      kInitialStateOverallTime.InSecondsF());
 
   // Verify that state transitions were recorded to logs.
   base::Value logs(base::Value::Type::DICT);
@@ -975,7 +976,7 @@ TEST_F(RmadInterfaceImplTest, TransitionPreviousState) {
       MetricsUtils::GetMetricsValue(json_store, kStateMetrics, &state_metrics));
   EXPECT_DOUBLE_EQ(
       state_metrics[static_cast<int>(RmadState::kWelcome)].overall_time,
-      kTestTransitionInterval.InSecondsF());
+      kInitialStateOverallTime.InSecondsF());
   EXPECT_DOUBLE_EQ(state_metrics[static_cast<int>(RmadState::kComponentsRepair)]
                        .overall_time,
                    kTestTransitionInterval.InSecondsF());
