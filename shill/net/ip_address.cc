@@ -148,14 +148,19 @@ std::string IPAddress::GetAddressFamilyName(Family family) {
 }
 
 // static
-IPAddress IPAddress::CreateFromPrefixString(const std::string& address_string) {
-  IPAddress ipv4_address(IPAddress::kFamilyIPv4);
-  if (ipv4_address.SetAddressAndPrefixFromString(address_string)) {
-    return ipv4_address;
+IPAddress IPAddress::CreateFromPrefixString(const std::string& address_string,
+                                            Family family) {
+  if (family != kFamilyIPv6) {
+    IPAddress ipv4_address(IPAddress::kFamilyIPv4);
+    if (ipv4_address.SetAddressAndPrefixFromString(address_string)) {
+      return ipv4_address;
+    }
   }
-  IPAddress ipv6_address(IPAddress::kFamilyIPv6);
-  if (ipv6_address.SetAddressAndPrefixFromString(address_string)) {
-    return ipv6_address;
+  if (family != kFamilyIPv4) {
+    IPAddress ipv6_address(IPAddress::kFamilyIPv6);
+    if (ipv6_address.SetAddressAndPrefixFromString(address_string)) {
+      return ipv6_address;
+    }
   }
   return IPAddress();
 }
