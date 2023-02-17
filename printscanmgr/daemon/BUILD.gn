@@ -20,9 +20,35 @@ pkg_config("libdaemon_pkg_deps") {
 
 source_set("libdaemon") {
   sources = [
+    "cups_tool.cc",
     "daemon.cc",
     "dbus_adaptor.cc",
+    "lp_tools.cc",
   ]
   configs += [ ":libdaemon_pkg_deps" ]
-  deps = [ "//printscanmgr/dbus_bindings:printscanmgr-adaptors" ]
+  deps = [
+    "//printscanmgr/daemon/utils:libdaemon_utils",
+    "//printscanmgr/dbus_bindings:printscanmgr-adaptors",
+  ]
+}
+
+if (use.test) {
+  pkg_config("libdaemon_test_pkg_deps") {
+    # NOSORT
+    pkg_deps = [
+      "libchrome",
+      "libchrome-test",
+
+      # system_api depends on protobuf(or protobuf - lite).It must appear before
+      # protobuf here or the linker flags won't be in the right order.
+      "system_api",
+      "protobuf",
+    ]
+  }
+
+  source_set("libdaemon_test") {
+    sources = [ "cups_tool_test.cc" ]
+    configs += [ ":libdaemon_test_pkg_deps" ]
+    deps = [ ":libdaemon" ]
+  }
 }

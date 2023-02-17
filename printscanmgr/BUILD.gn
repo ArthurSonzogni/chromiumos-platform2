@@ -39,6 +39,10 @@ if (use.test) {
     sources = []
     configs += [ "//common-mk:test" ]
     run_test = true
-    deps = [ "//common-mk/testrunner" ]
+    deps = [
+      "//common-mk/testrunner",
+      "//printscanmgr/daemon:libdaemon_test",
+      "//printscanmgr/daemon/utils:libdaemon_utils_test",
+    ]
   }
 }
