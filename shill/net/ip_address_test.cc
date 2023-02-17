@@ -154,27 +154,6 @@ TEST_F(IPAddressTest, IPv6) {
               ByteString(kV6Address2, sizeof(kV6Address2)));
 }
 
-TEST_F(IPAddressTest, SetAddressAndPrefixFromString) {
-  IPAddress address(IPAddress::kFamilyIPv4);
-  const std::string kString1(kV4String1);
-  const std::string kString2(kV4String2);
-  EXPECT_FALSE(address.SetAddressAndPrefixFromString(""));
-  EXPECT_FALSE(address.SetAddressAndPrefixFromString(kString1));
-  EXPECT_FALSE(address.SetAddressAndPrefixFromString(kString1 + "/"));
-  EXPECT_FALSE(address.SetAddressAndPrefixFromString(kString1 + "/10x"));
-  EXPECT_FALSE(address.SetAddressAndPrefixFromString(kString2 + "/10"));
-  EXPECT_TRUE(address.SetAddressAndPrefixFromString(kString1 + "/0"));
-  EXPECT_EQ(0, address.prefix());
-  EXPECT_TRUE(address.SetAddressAndPrefixFromString(kString1 + "/32"));
-  EXPECT_EQ(32, address.prefix());
-  EXPECT_FALSE(address.SetAddressAndPrefixFromString(kString1 + "/33"));
-  EXPECT_FALSE(address.SetAddressAndPrefixFromString(kString1 + "/-1"));
-  EXPECT_TRUE(address.SetAddressAndPrefixFromString(kString1 + "/10"));
-  EXPECT_EQ(10, address.prefix());
-  ByteString kAddress1(kV4Address1, sizeof(kV4Address1));
-  EXPECT_TRUE(kAddress1.Equals(address.address()));
-}
-
 TEST_F(IPAddressTest, CreateFromPrefixString) {
   // Makes the error message to know which string returns false in loop.
   auto error = [](const std::string& address) {
@@ -254,12 +233,9 @@ TEST_F(IPAddressTest, CreateFromPrefixString) {
 
 TEST_F(IPAddressTest, HasSameAddressAs) {
   const std::string kString1(kV4String1);
-  IPAddress address0(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(address0.SetAddressAndPrefixFromString(kString1 + "/0"));
-  IPAddress address1(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(address1.SetAddressAndPrefixFromString(kString1 + "/10"));
-  IPAddress address2(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(address2.SetAddressAndPrefixFromString(kString1 + "/0"));
+  IPAddress address0 = *IPAddress::CreateFromPrefixString(kString1 + "/0");
+  IPAddress address1 = *IPAddress::CreateFromPrefixString(kString1 + "/10");
+  IPAddress address2 = *IPAddress::CreateFromPrefixString(kString1 + "/0");
 
   EXPECT_FALSE(address0.Equals(address1));
   EXPECT_TRUE(address0.Equals(address2));

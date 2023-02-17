@@ -52,13 +52,12 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     addr2.IntoSockAddr(sockaddr_p, sizeof(sockaddr));
   }
 
-  IPAddress addr3(family);
-  addr3.SetAddressAndPrefixFromString(str);
-  if (addr3.IsValid()) {
-    addr3.GetDefaultBroadcast();
-    addr3.GetNetworkPart();
-    addr3.IntoString(&out);
-    addr3.IntoSockAddr(sockaddr_p, sizeof(sockaddr));
+  auto addr3 = IPAddress::CreateFromPrefixString(str, family);
+  if (addr3.has_value()) {
+    addr3->GetDefaultBroadcast();
+    addr3->GetNetworkPart();
+    addr3->IntoString(&out);
+    addr3->IntoSockAddr(sockaddr_p, sizeof(sockaddr));
   }
 
   IPAddress(str).IntoString(&out);

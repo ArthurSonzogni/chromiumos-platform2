@@ -186,17 +186,14 @@ bool IPAddress::SetAddressAndPrefixFromString(
   const auto address_parts = base::SplitString(
       address_string, "/", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
   if (address_parts.size() != 2) {
-    LOG(ERROR) << "Cannot split address " << address_string;
     return false;
   }
   if (!SetAddressFromString(address_parts[0])) {
-    LOG(ERROR) << "Cannot parse address string " << address_parts[0];
     return false;
   }
   size_t prefix;
   if (!base::StringToSizeT(address_parts[1], &prefix) ||
       prefix > GetMaxPrefixLength(family_)) {
-    LOG(ERROR) << "Cannot parse address prefix " << address_parts[1];
     return false;
   }
   set_prefix(prefix);

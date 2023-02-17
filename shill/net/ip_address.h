@@ -108,8 +108,6 @@ class SHILL_EXPORT IPAddress {
 
   // Parse an IP address string.
   bool SetAddressFromString(const std::string& address_string);
-  // Parse an "address/prefix" IP address and prefix pair from a string.
-  bool SetAddressAndPrefixFromString(const std::string& address_string);
   // An uninitialized IPAddress is empty and invalid when constructed.
   // Use SetAddressToDefault() to set it to the default or "all-zeroes" address.
   void SetAddressToDefault();
@@ -174,6 +172,9 @@ class SHILL_EXPORT IPAddress {
   bool operator<(const IPAddress& b) const;
 
  private:
+  // Parse an "address/prefix" IP address and prefix pair from a string.
+  bool SetAddressAndPrefixFromString(const std::string& address_string);
+
   Family family_;
   ByteString address_;
   unsigned int prefix_;
