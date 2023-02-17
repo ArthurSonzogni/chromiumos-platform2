@@ -27,7 +27,7 @@ constexpr int kMaxApduLen = 260;
 // Delay between a sim change ( for e.g. slot switches or eSIM profile enable)
 // and the next message to the modem. If this delay is insufficient, we could
 // retry after kInitRetryDelay.
-constexpr auto kSimRefreshDelay = base::Seconds(3);
+constexpr auto kSimRefreshDelay = base::Seconds(6);
 constexpr auto kInitRetryDelay = base::Seconds(10);
 constexpr uint8_t kInvalidChannel = 0;
 
