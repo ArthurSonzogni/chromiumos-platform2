@@ -8,6 +8,7 @@
 #include <string>
 
 #include <brillo/errors/error.h>
+#include <gtest/gtest_prod.h>
 
 namespace debugd {
 
@@ -27,6 +28,24 @@ class EcTypeCTool {
   bool ExitMode(brillo::ErrorPtr* error,
                 uint32_t port_num,
                 std::string* output);
+  bool DpState(brillo::ErrorPtr* error, uint32_t port_num, bool* output);
+  bool HpdState(brillo::ErrorPtr* error, uint32_t port_num, bool* output);
+
+ private:
+  friend class EcTypeCToolTest;
+  FRIEND_TEST(EcTypeCToolTest, DpStateTest);
+  FRIEND_TEST(EcTypeCToolTest, HpdStateTest);
+
+  // Internal helper functions that parse DP and HPD state. This allows the
+  // logic to be unit tested without having to mock out ectool calls.
+  bool ParseDpState(brillo::ErrorPtr* error,
+                    uint32_t port_num,
+                    const std::string& input,
+                    bool* output);
+  bool ParseHpdState(brillo::ErrorPtr* error,
+                     uint32_t port_num,
+                     const std::string& input,
+                     bool* output);
 };
 
 }  // namespace debugd

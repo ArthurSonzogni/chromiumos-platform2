@@ -248,6 +248,12 @@ class DebugdDBusAdaptor : public org::chromium::debugdAdaptor,
   bool EcTypeCExitMode(brillo::ErrorPtr* error,
                        uint32_t port_num,
                        std::string* output) override;
+  bool EcTypeCDpState(brillo::ErrorPtr* error,
+                      uint32_t port_num,
+                      bool* output) override;
+  bool EcTypeCHpdState(brillo::ErrorPtr* error,
+                       uint32_t port_num,
+                       bool* output) override;
 
   bool KernelFeatureEnable(brillo::ErrorPtr* error,
                            const std::string& name,

@@ -708,6 +708,18 @@ bool DebugdDBusAdaptor::EcTypeCExitMode(brillo::ErrorPtr* error,
   return ec_typec_tool_->ExitMode(error, port_num, output);
 }
 
+bool DebugdDBusAdaptor::EcTypeCDpState(brillo::ErrorPtr* error,
+                                       uint32_t port_num,
+                                       bool* output) {
+  return ec_typec_tool_->DpState(error, port_num, output);
+}
+
+bool DebugdDBusAdaptor::EcTypeCHpdState(brillo::ErrorPtr* error,
+                                        uint32_t port_num,
+                                        bool* output) {
+  return ec_typec_tool_->HpdState(error, port_num, output);
+}
+
 bool DebugdDBusAdaptor::KernelFeatureEnable(brillo::ErrorPtr* error,
                                             const std::string& name,
                                             bool* result,

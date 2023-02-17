@@ -1475,6 +1475,42 @@
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
+    <method name="EcTypeCDpState">
+      <tp:docstring>
+        Runs the 'ectool usbpdmuxinfo' command with pre-defined
+        sandbox options in rootfs to determine the DisplayPort(DP) state
+        for a specified port.
+      </tp:docstring>
+      <arg name="port_num" type="u" direction="in">
+        <tp:docstring>
+          The index number of the port for which the usbpdmuxinfo
+          command will be run. This wil be used in the ectool command
+          without changes.
+        </tp:docstring>
+      </arg>
+      <arg name="output" type="b" direction="out">
+        Returns whether the Type-C port is in DP mode or not.
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
+    <method name="EcTypeCHpdState">
+      <tp:docstring>
+        Runs the 'ectool gpioget' command with pre-defined
+        sandbox options in rootfs to determine the DisplayPort
+        Hot Plug Detect (HPD) GPIO state for a specified port.
+      </tp:docstring>
+      <arg name="port_num" type="u" direction="in">
+        <tp:docstring>
+          The index number of the port for which the gpioget
+          command will be run. This wil be used in the ectool command
+          without changes.
+        </tp:docstring>
+      </arg>
+      <arg name="output" type="b" direction="out">
+        Returns whether the Type-C port has the HPD GPIO set or not.
+      </arg>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
+    </method>
     <method name="KernelFeatureEnable">
       <tp:docstring>
         Execute a sequence of commands to enable a kernel feature.
