@@ -165,6 +165,11 @@ class Network {
 
   mockable bool IsConnected() const { return state_ == State::kConnected; }
 
+  // Return true if network validation result is present and state is
+  // PortalDetector::ValidationState::kInternetConnectivity, otherwise return
+  // false.
+  mockable bool HasInternetConnectivity() const;
+
   void RegisterEventHandler(EventHandler* handler);
   void UnregisterEventHandler(EventHandler* handler);
 

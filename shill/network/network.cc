@@ -947,4 +947,10 @@ bool Network::IsConnectedViaTether() const {
                 vendor_option.size()) == 0;
 }
 
+bool Network::HasInternetConnectivity() const {
+  return network_validation_result_.has_value() &&
+         network_validation_result_->GetValidationState() ==
+             PortalDetector::ValidationState::kInternetConnectivity;
+}
+
 }  // namespace shill

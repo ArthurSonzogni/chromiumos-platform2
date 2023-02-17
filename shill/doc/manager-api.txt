@@ -782,7 +782,7 @@ Properties	object ActiveProfile [readonly]
 				one of "wifi", "cellular", "ethernet"
 			string state
 				state of the tethering instance. The state could be any one of
-				"idle", "starting", "active"
+				"idle", "starting", "active" or "stopping"
 			string idle_reason
 				the reason why tethering is in idle state. Could be any one of
 				"initial_state", "client_stop", "user_exit", "inactive", "error"

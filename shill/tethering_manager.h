@@ -11,6 +11,7 @@
 #include <base/cancelable_callback.h>
 #include <base/memory/weak_ptr.h>
 
+#include "shill/network/network.h"
 #include "shill/refptr_types.h"
 #include "shill/store/property_store.h"
 #include "shill/technology.h"
@@ -37,7 +38,7 @@ class StoreInterface;
 // CellularServiceProvider and EthernetProvider classes to prepare upstream and
 // downstream technologies. It interacts with patchpanel via dbus to set up the
 // tethering network.
-class TetheringManager {
+class TetheringManager : public Network::EventHandler {
  public:
   enum class EntitlementStatus {
     kReady,
@@ -61,6 +62,7 @@ class TetheringManager {
     kTetheringIdle,
     kTetheringStarting,
     kTetheringActive,
+    kTetheringStopping,
   };
 
   // Storage group for tethering configs.
@@ -135,6 +137,30 @@ class TetheringManager {
   KeyValueStore GetConfig(Error* error);
   KeyValueStore GetStatus(Error* error) { return GetStatus(); }
 
+  // Overrides for Network::EventHandler. See the comments for
+  // Network::EventHandler for more details. TetheringManager only cares about
+  // NetworkValidationResult NetworkDestroyed and Networkstopped event.
+  void OnNetworkValidationResult(int interface_index,
+                                 const PortalDetector::Result& result) override;
+  void OnNetworkStopped(int interface_index, bool is_failure) override;
+  void OnNetworkDestroyed(int interface_index) override;
+  // TetheringManager does nothing for the below network events.
+  void OnConnectionUpdated(int interface_index) override;
+  void OnIPConfigsPropertyUpdated(int interface_index) override;
+  void OnGetDHCPLease(int interface_index) override;
+  void OnGetDHCPFailure(int interface_index) override;
+  void OnGetSLAACAddress(int interface_index) override;
+  void OnNetworkValidationStart(int interface_index) override;
+  void OnNetworkValidationStop(int interface_index) override;
+  void OnIPv4ConfiguredWithDHCPLease(int interface_index) override;
+  void OnIPv6ConfiguredWithSLAACAddress(int interface_index) override;
+  void OnNeighborReachabilityEvent(
+      int interface_index,
+      const IPAddress& ip_address,
+      patchpanel::NeighborReachabilityEventSignal::Role role,
+      patchpanel::NeighborReachabilityEventSignal::EventType event_type)
+      override;
+
   bool SetAndPersistConfig(const KeyValueStore& config, Error* error);
   // Populate the shill D-Bus parameter map |properties| with the
   // parameters contained in |this| and return true if successful.
@@ -157,12 +183,19 @@ class TetheringManager {
   // Downstream device event handler.
   void OnDownstreamDeviceEvent(LocalDevice::DeviceEvent event,
                                const LocalDevice* device);
+  // Upstream network fetch callback handler.
+  void OnUpstreamNetworkAcquired(SetEnabledResult result, Network* network);
+  // Upstream network release callback handler.
+  void OnUpstreamNetworkReleased(bool is_success);
   // Trigger callback function asynchronously to post SetTetheringEnabled dbus
   // result.
   void PostSetEnabledResult(SetEnabledResult result);
   // Check if all the tethering resources are ready. If so post the
-  // SetTetheringEnabled dbus result.
-  void CheckAndPostTetheringResult();
+  // SetTetheringEnabled(true) dbus result.
+  void CheckAndPostTetheringStartResult();
+  // Check if all the tethering resources are freed. If so post the
+  // SetTetheringEnabled(false) dbus result.
+  void CheckAndPostTetheringStopResult();
   // Prepare tethering resources to start a tethering session.
   void StartTetheringSession();
   // Stop and free tethering resources due to reason |reason|.
@@ -209,6 +242,9 @@ class TetheringManager {
   // Preferred upstream technology to use.
   Technology upstream_technology_;
 
+  // Pointer to upstream network. This pointer is valid when state_ is not
+  // kTetheringIdle.
+  Network* upstream_network_;
   // Member to hold the result callback function. This callback function gets
   // set when dbus method SetTetheringEnabled is called and runs when the async
   // method call is done.

@@ -12,6 +12,7 @@
 #include <base/memory/weak_ptr.h>
 
 #include "shill/cellular/cellular_service.h"
+#include "shill/mockable.h"
 #include "shill/provider_interface.h"
 #include "shill/refptr_types.h"
 #include "shill/tethering_manager.h"
@@ -77,7 +78,7 @@ class CellularServiceProvider : public ProviderInterface {
   // Returns the Network object to use for sharing the Cellular connection in a
   // tethering session, creating and connecting a new Network if necessary for
   // the current carrier and modem.
-  void AcquireTetheringNetwork(
+  mockable void AcquireTetheringNetwork(
       base::OnceCallback<void(TetheringManager::SetEnabledResult, Network*)>
           callback);
 
@@ -85,7 +86,7 @@ class CellularServiceProvider : public ProviderInterface {
   // obtained with AcquireTetheringNetwork() is not used for tethering anymore.
   // If that Network had been created specially for tethering, it is destroyed
   // and the underlying connection is torn down.
-  void ReleaseTetheringNetwork(
+  mockable void ReleaseTetheringNetwork(
       Network* network, base::OnceCallback<void(bool is_success)> callback);
 
  private:

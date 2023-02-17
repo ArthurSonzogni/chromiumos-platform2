@@ -976,6 +976,7 @@ const char kTetheringIdleReasonUserExit[] = "user_exit";
 const char kTetheringStateActive[] = "active";
 const char kTetheringStateIdle[] = "idle";
 const char kTetheringStateStarting[] = "starting";
+const char kTetheringStateStopping[] = "stopping";
 
 // SetTetheringEnabled result values
 const char kTetheringEnableResultFailure[] = "failure";

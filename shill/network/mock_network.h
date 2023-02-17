@@ -37,6 +37,7 @@ class MockNetwork : public Network {
   MOCK_METHOD(void, Stop, (), (override));
 
   MOCK_METHOD(bool, IsConnected, (), (const, override));
+  MOCK_METHOD(bool, HasInternetConnectivity, (), (const, override));
 
   MOCK_METHOD(void,
               set_link_protocol_ipv4_properties,

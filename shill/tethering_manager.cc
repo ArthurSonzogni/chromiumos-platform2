@@ -77,6 +77,7 @@ TetheringManager::TetheringManager(Manager* manager)
     : manager_(manager),
       allowed_(false),
       state_(TetheringState::kTetheringIdle),
+      upstream_network_(nullptr),
       hotspot_dev_(nullptr),
       hotspot_service_up_(false),
       stop_reason_(StopReason::kInitial) {
@@ -369,6 +370,8 @@ const char* TetheringManager::TetheringStateName(const TetheringState& state) {
       return kTetheringStateStarting;
     case TetheringState::kTetheringActive:
       return kTetheringStateActive;
+    case TetheringState::kTetheringStopping:
+      return kTetheringStateStopping;
     default:
       NOTREACHED() << "Unhandled tethering state " << static_cast<int>(state);
       return "Invalid";
@@ -388,7 +391,7 @@ void TetheringManager::PostSetEnabledResult(SetEnabledResult result) {
   }
 }
 
-void TetheringManager::CheckAndPostTetheringResult() {
+void TetheringManager::CheckAndPostTetheringStartResult() {
   if (!hotspot_dev_ || !hotspot_dev_->IsServiceUp()) {
     // Downstream hotspot device or service is not ready.
     if (hotspot_service_up_) {
@@ -402,11 +405,10 @@ void TetheringManager::CheckAndPostTetheringResult() {
     return;
   }
 
-  // TODO(b/235762439): Check other tethering modules.
-
-  // TODO(b/235762746) Check if Internet access has been validated on the
-  // upstream network (pending integration of PortalDetection into the Network
-  // class).
+  if (upstream_technology_ == Technology::kCellular &&
+      (!upstream_network_ || !upstream_network_->HasInternetConnectivity())) {
+    return;
+  }
 
   SetState(TetheringState::kTetheringActive);
   if (hotspot_dev_->GetStations().size() == 0) {
@@ -417,7 +419,29 @@ void TetheringManager::CheckAndPostTetheringResult() {
   PostSetEnabledResult(SetEnabledResult::kSuccess);
 }
 
+void TetheringManager::CheckAndPostTetheringStopResult() {
+  if (upstream_technology_ == Technology::kCellular &&
+      upstream_network_ != nullptr) {
+    return;
+  }
+
+  // TODO(b/235762439): Routine to check other tethering modules.
+
+  SetState(TetheringState::kTetheringIdle);
+  if (stop_reason_ == StopReason::kClientStop) {
+    PostSetEnabledResult(SetEnabledResult::kSuccess);
+  }
+}
+
 void TetheringManager::StartTetheringSession() {
+  if (state_ != TetheringState::kTetheringIdle) {
+    LOG(ERROR) << __func__ << ": tethering session is not in idle state";
+    PostSetEnabledResult(SetEnabledResult::kFailure);
+    return;
+  }
+
+  SetState(TetheringState::kTetheringStarting);
+
   if (hotspot_dev_) {
     LOG(ERROR) << "Tethering resources are not null when starting tethering "
                   "session.";
@@ -452,22 +476,33 @@ void TetheringManager::StartTetheringSession() {
     return;
   }
 
+  // Prepare the upstream network.
+  if (upstream_technology_ == Technology::kCellular) {
+    manager_->cellular_service_provider()->AcquireTetheringNetwork(
+        base::BindOnce(&TetheringManager::OnUpstreamNetworkAcquired,
+                       base::Unretained(this)));
+  }
+
   // TODO(b/235762439): Routine to enable other tethering modules.
 
   // TODO(b/235762439): Add timer to timeout the start process if resources are
   // not ready for a long time.
-
-  // TODO(b/235762746) If the upstream technology is Cellular, obtain the
-  // upstream Network with CellularServiceProvider::AcquireTetheringNetwork.
 }
 
 void TetheringManager::StopTetheringSession(StopReason reason) {
-  if (state_ == TetheringState::kTetheringIdle) {
+  if (state_ == TetheringState::kTetheringIdle ||
+      state_ == TetheringState::kTetheringStopping) {
+    if (reason == StopReason::kClientStop) {
+      LOG(ERROR) << __func__ << ": no active or starting tethering session";
+      PostSetEnabledResult(SetEnabledResult::kFailure);
+    }
     return;
   }
 
   LOG(INFO) << __func__ << ": " << StopReasonToString(reason);
+  SetState(TetheringState::kTetheringStopping);
   stop_reason_ = reason;
+  StopInactiveTimer();
 
   // Remove the downstream device if any.
   if (hotspot_dev_) {
@@ -475,11 +510,17 @@ void TetheringManager::StopTetheringSession(StopReason reason) {
     manager_->wifi_provider()->DeleteLocalDevice(hotspot_dev_);
     hotspot_dev_ = nullptr;
   }
-
   hotspot_service_up_ = false;
-  StopInactiveTimer();
+
+  if (upstream_technology_ == Technology::kCellular && upstream_network_) {
+    manager_->cellular_service_provider()->ReleaseTetheringNetwork(
+        upstream_network_,
+        base::BindOnce(&TetheringManager::OnUpstreamNetworkReleased,
+                       base::Unretained(this)));
+  }
+
   // TODO(b/235762439): Routine to disable other tethering modules.
-  SetState(TetheringState::kTetheringIdle);
+  CheckAndPostTetheringStopResult();
 }
 
 void TetheringManager::StartInactiveTimer() {
@@ -551,12 +592,45 @@ void TetheringManager::OnDownstreamDeviceEvent(LocalDevice::DeviceEvent event,
     StopTetheringSession(StopReason::kError);
   } else if (event == LocalDevice::DeviceEvent::kServiceUp) {
     hotspot_service_up_ = true;
-    CheckAndPostTetheringResult();
+    CheckAndPostTetheringStartResult();
   } else if (event == LocalDevice::DeviceEvent::kPeerConnected) {
     OnPeerAssoc();
   } else if (event == LocalDevice::DeviceEvent::kPeerDisconnected) {
     OnPeerDisassoc();
   }
+}
+
+void TetheringManager::OnUpstreamNetworkAcquired(SetEnabledResult result,
+                                                 Network* network) {
+  if (result != SetEnabledResult::kSuccess) {
+    PostSetEnabledResult(result);
+    StopTetheringSession(StopReason::kError);
+    return;
+  }
+
+  DCHECK(network);
+  DCHECK(!upstream_network_);
+  upstream_network_ = network;
+  upstream_network_->RegisterEventHandler(this);
+  CheckAndPostTetheringStartResult();
+}
+
+void TetheringManager::OnUpstreamNetworkReleased(bool is_success) {
+  if (upstream_technology_ != Technology::kCellular ||
+      upstream_network_ == nullptr) {
+    LOG(WARNING) << __func__ << ": entered in wrong state, upstream tech is "
+                 << upstream_technology_ << " upstream_network_ is "
+                 << upstream_network_;
+    return;
+  }
+
+  if (!is_success) {
+    LOG(ERROR) << __func__ << ": failed to release upstream network.";
+  }
+
+  upstream_network_->UnregisterEventHandler(this);
+  upstream_network_ = nullptr;
+  CheckAndPostTetheringStopResult();
 }
 
 void TetheringManager::SetEnabled(bool enabled,
@@ -584,23 +658,9 @@ void TetheringManager::SetEnabled(bool enabled,
   }
 
   if (enabled) {
-    if (state_ != TetheringState::kTetheringIdle) {
-      LOG(ERROR) << __func__ << ": tethering session is not in idle state";
-      PostSetEnabledResult(SetEnabledResult::kFailure);
-      return;
-    }
-
-    SetState(TetheringState::kTetheringStarting);
     StartTetheringSession();
   } else {
-    if (state_ != TetheringState::kTetheringActive) {
-      LOG(ERROR) << __func__ << ": no active tethering session";
-      PostSetEnabledResult(SetEnabledResult::kFailure);
-      return;
-    }
-
     StopTetheringSession(StopReason::kClientStop);
-    PostSetEnabledResult(SetEnabledResult::kSuccess);
   }
 }
 
@@ -829,5 +889,50 @@ void TetheringManager::TetheringAllowedUpdated(bool allowed) {
     cellular_device->TetheringAllowedUpdated(allowed);
   }
 }
+
+void TetheringManager::OnNetworkValidationResult(
+    int interface_index, const PortalDetector::Result& result) {
+  DCHECK(upstream_network_);
+  if (state_ == TetheringState::kTetheringStarting) {
+    if (!upstream_network_->HasInternetConnectivity()) {
+      // Upstream network validation failed, post result.
+      // TODO (b/273975270): Retry StartPortalDetection on failure.
+      PostSetEnabledResult(SetEnabledResult::kUpstreamNetworkNotAvailable);
+      StopTetheringSession(StopReason::kUpstreamDisconnect);
+    } else {
+      CheckAndPostTetheringStartResult();
+    }
+  }
+  // TODO(b/271322391): handle the case when tethering is active and lose
+  // Internet connection on the upstream.
+}
+
+void TetheringManager::OnNetworkStopped(int interface_index, bool is_failure) {
+  if (state_ == TetheringState::kTetheringIdle) {
+    return;
+  }
+  StopTetheringSession(StopReason::kUpstreamDisconnect);
+}
+
+void TetheringManager::OnNetworkDestroyed(int interface_index) {
+  upstream_network_ = nullptr;
+  StopTetheringSession(StopReason::kUpstreamDisconnect);
+}
+
+// Stub Network::EventHandler handlers for network events
+void TetheringManager::OnConnectionUpdated(int interface_index) {}
+void TetheringManager::OnGetDHCPLease(int interface_index) {}
+void TetheringManager::OnGetDHCPFailure(int interface_index) {}
+void TetheringManager::OnGetSLAACAddress(int interface_index) {}
+void TetheringManager::OnNetworkValidationStart(int interface_index) {}
+void TetheringManager::OnNetworkValidationStop(int interface_index) {}
+void TetheringManager::OnIPConfigsPropertyUpdated(int interface_index) {}
+void TetheringManager::OnIPv4ConfiguredWithDHCPLease(int interface_index) {}
+void TetheringManager::OnIPv6ConfiguredWithSLAACAddress(int interface_index) {}
+void TetheringManager::OnNeighborReachabilityEvent(
+    int interface_index,
+    const IPAddress& ip_address,
+    patchpanel::NeighborReachabilityEventSignal::Role role,
+    patchpanel::NeighborReachabilityEventSignal::EventType event_type) {}
 
 }  // namespace shill
