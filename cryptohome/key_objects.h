@@ -64,6 +64,11 @@ struct ChallengeCredentialAuthInput {
   std::string dbus_service_name;
 };
 
+struct FingerprintAuthInput {
+  // The secret from the biometrics auth stack bound to this AuthFactor.
+  std::optional<brillo::SecureBlob> auth_secret;
+};
+
 struct AuthInput {
   // The user input, such as password.
   std::optional<brillo::SecureBlob> user_input;
@@ -82,10 +87,14 @@ struct AuthInput {
   // reset_salt used to generate a reset secret.
   // This will be removed after full migration to USS.
   std::optional<brillo::SecureBlob> reset_salt;
+  // The PinWeaver leaf label of the rate-limiter.
+  std::optional<uint64_t> rate_limiter_label;
   // Data required for Cryptohome Recovery flow.
   std::optional<CryptohomeRecoveryAuthInput> cryptohome_recovery_auth_input;
   // Data required for Challenge Credential flow.
   std::optional<ChallengeCredentialAuthInput> challenge_credential_auth_input;
+  // Data required for Fingerprint flow.
+  std::optional<FingerprintAuthInput> fingerprint_auth_input;
 };
 
 // This struct is populated by the various authentication methods, with the
@@ -112,6 +121,8 @@ struct KeyBlobs {
   std::optional<brillo::SecureBlob> chaps_iv;
   // The reset secret used for LE credentials.
   std::optional<brillo::SecureBlob> reset_secret;
+  // The PinWeaver leaf label of the created rate-limiter.
+  std::optional<uint64_t> rate_limiter_label;
 };
 
 }  // namespace cryptohome

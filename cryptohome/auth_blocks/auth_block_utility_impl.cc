@@ -674,7 +674,16 @@ AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
               crypto_->le_manager(), platform_));
 
     case AuthBlockType::kFingerprint:
-      return std::make_unique<FingerprintAuthBlock>();
+      if (!biometrics_service_) {
+        return MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthBlockUtilFingerprintNoServiceInGetAsyncAuthBlock),
+            ErrorActionSet(
+                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+            CryptoError::CE_OTHER_CRYPTO);
+      }
+      return std::make_unique<FingerprintAuthBlock>(crypto_->le_manager(),
+                                                    biometrics_service_.get());
 
     case AuthBlockType::kMaxValue:
       LOG(ERROR) << "Unsupported AuthBlockType.";

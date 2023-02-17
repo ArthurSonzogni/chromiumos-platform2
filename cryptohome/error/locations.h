@@ -1549,12 +1549,38 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocBiometricsProcessorMatchCredentialBiodNoResp = 3335,
   /* ./auth_blocks/biometrics_command_processor_impl.cc */
   kLocBiometricsProcessorMatchCredentialDeriveSecretsFailed = 3336,
-  /* ./auth_blocks/fingerprint_auth_block.cc */
+  /* =Obsolete= */
   kLocFingerprintAuthBlockUnimplemented = 3337,
   /* ./auth_blocks/fingerprint_auth_block.cc */
   kLocFingerprintAuthBlockPrepareForRemovalUnimplemented = 3338,
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockUtilFingerprintNoServiceInIsAuthBlockSupported = 3339,
+  /* ./auth_blocks/auth_block_utility_impl.cc */
+  kLocAuthBlockUtilFingerprintNoServiceInGetAsyncAuthBlock = 3340,
+  /* ./auth_blocks/fingerprint_auth_block.cc */
+  kLocFingerprintAuthBlockHwsecReadyErrorInIsSupported = 3341,
+  /* ./auth_blocks/fingerprint_auth_block.cc */
+  kLocFingerprintAuthBlockHwsecNotReadyInIsSupported = 3342,
+  /* ./auth_blocks/fingerprint_auth_block.cc */
+  kLocFingerprintAuthBlockPinWeaverCheckFailInIsSupported = 3343,
+  /* ./auth_blocks/fingerprint_auth_block.cc */
+  kLocFingerprintAuthBlockPinWeaverNotEnabledInIsSupported = 3344,
+  /* ./auth_blocks/fingerprint_auth_block.cc */
+  kLocFingerprintAuthBlockNullLeManagerInIsSupported = 3345,
+  /* ./auth_blocks/fingerprint_auth_block.cc */
+  kLocFingerprintAuthBlockNoUsernameInCreate = 3346,
+  /* ./auth_blocks/fingerprint_auth_block.cc */
+  kLocFingerprintAuthBlockNoRateLimiterInCreate = 3347,
+  /* ./auth_blocks/fingerprint_auth_block.cc */
+  kLocFingerprintAuthBlockNoResetSecretInCreate = 3348,
+  /* ./auth_blocks/fingerprint_auth_block.cc */
+  kLocFingerprintAuthBlockNoNonceInCreate = 3349,
+  /* ./auth_blocks/fingerprint_auth_block.cc */
+  kLocFingerprintAuthBlockStartBioAuthFailedInCreate = 3350,
+  /* ./auth_blocks/fingerprint_auth_block.cc */
+  kLocFingerprintAuthBlockCreateCredentialFailedInCreate = 3351,
+  /* ./auth_blocks/fingerprint_auth_block.cc */
+  kLocFingerprintAuthBlockInsertCredentialFailedInCreate = 3352,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.

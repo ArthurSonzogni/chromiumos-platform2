@@ -1794,8 +1794,10 @@ AuthBlockType AuthSession::ResaveVaultKeysetIfNeeded(
                           .obfuscated_username = obfuscated_username_,
                           .reset_secret = std::nullopt,
                           .reset_seed = std::nullopt,
+                          .rate_limiter_label = std::nullopt,
                           .cryptohome_recovery_auth_input = std::nullopt,
-                          .challenge_credential_auth_input = std::nullopt};
+                          .challenge_credential_auth_input = std::nullopt,
+                          .fingerprint_auth_input = std::nullopt};
 
   AuthBlock::CreateCallback create_callback =
       base::BindOnce(&AuthSession::ResaveKeysetOnKeyBlobsGenerated,
