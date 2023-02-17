@@ -15,6 +15,9 @@
 
 namespace {
 
+// Maximum size of fields name and value (separately) in TNV.
+constexpr size_t kMaxSizeOfNameOrValue = std::numeric_limits<int16_t>::max();
+
 ipp::InternalType InternalTypeForUnknownAttribute(ipp::ValueTag type) {
   switch (type) {
     case ipp::ValueTag::collection:
@@ -629,10 +632,14 @@ bool Attribute::GetValue(DateTime* val, size_t index) const {
 }
 
 bool Attribute::SetValue(const std::string& val, size_t index) {
+  if (val.size() > kMaxSizeOfNameOrValue)
+    return false;
   return SaveValue(index, val);
 }
 
 bool Attribute::SetValue(const StringWithLanguage& val, size_t index) {
+  if (val.value.size() + val.language.size() + 4 > kMaxSizeOfNameOrValue)
+    return false;
   return SaveValue(index, val);
 }
 
@@ -747,8 +754,7 @@ Code Collection::CreateNewAttribute(const std::string& name,
                                     ValueTag type,
                                     Attribute*& new_attr) {
   // Check all constraints.
-  if (name.empty() ||
-      name.size() > static_cast<size_t>(std::numeric_limits<int16_t>::max())) {
+  if (name.empty() || name.size() > kMaxSizeOfNameOrValue) {
     return Code::kInvalidName;
   }
   if (attributes_index_.count(name)) {
@@ -878,6 +884,10 @@ Code Collection::AddAttr(const std::string& name,
                          ValueTag tag,
                          const std::vector<std::string>& values) {
   if (tag == ValueTag::octetString || IsString(tag)) {
+    for (const std::string& value : values) {
+      if (value.size() > kMaxSizeOfNameOrValue)
+        return Code::kValueOutOfRange;
+    }
     return AddAttributeToCollection(name, tag, values);
   }
   return IsValid(tag) ? Code::kIncompatibleType : Code::kInvalidValueTag;
@@ -887,6 +897,18 @@ Code Collection::AddAttr(const std::string& name,
                          ValueTag tag,
                          const std::vector<StringWithLanguage>& values) {
   if (tag == ValueTag::nameWithLanguage || tag == ValueTag::textWithLanguage) {
+    for (const StringWithLanguage& value : values) {
+      // nameWithLanguage and textWithLanguage values are saved as a sequence of
+      // the following fields (see section 3.9 from rfc8010):
+      // * int16_t (2 bytes) - length of the language field = L
+      // * string (L bytes) - content of the language field
+      // * int16_t (2 bytes) - length of the value field = V
+      // * string (V bytes) - content of the value field
+      // The total size (2 + L + 2 + V) cannot exceed the threshold.
+      if (value.value.size() + value.language.size() + 4 >
+          kMaxSizeOfNameOrValue)
+        return Code::kValueOutOfRange;
+    }
     return AddAttributeToCollection(name, tag, values);
   }
   return IsValid(tag) ? Code::kIncompatibleType : Code::kInvalidValueTag;

@@ -296,40 +296,28 @@ void FrameBuilder::BuildFrameFromPackage(const Frame* package) {
   frame_->data_ = package->Data();
 }
 
-bool FrameBuilder::WriteFrameToBuffer(uint8_t* ptr) {
+void FrameBuilder::WriteFrameToBuffer(uint8_t* ptr) {
   WriteUnsigned(&ptr, frame_->version_);
   WriteInteger<2>(&ptr, frame_->operation_id_or_status_code_);
   WriteInteger<4>(&ptr, frame_->request_id_);
   for (size_t i = 0; i < frame_->groups_tags_.size(); ++i) {
     // write a group to the buffer
     WriteUnsigned(&ptr, static_cast<uint8_t>(frame_->groups_tags_[i]));
-    if (!WriteTNVsToBuffer(frame_->groups_content_[i], &ptr))
-      return false;
+    WriteTNVsToBuffer(frame_->groups_content_[i], &ptr);
   }
   WriteUnsigned(&ptr, end_of_attributes_tag);
   std::copy(frame_->data_.begin(), frame_->data_.end(), ptr);
-  return true;
 }
 
-bool FrameBuilder::WriteTNVsToBuffer(const std::list<TagNameValue>& tnvs,
+void FrameBuilder::WriteTNVsToBuffer(const std::list<TagNameValue>& tnvs,
                                      uint8_t** ptr) {
   for (auto& tnv : tnvs) {
-    if (!WriteInteger<1>(ptr, tnv.tag)) {
-      LogFrameBuilderError("value-tag is out of range");
-      return false;
-    }
-    if (!WriteInteger<2>(ptr, tnv.name.size())) {
-      LogFrameBuilderError("name-length is out of range");
-      return false;
-    }
+    WriteUnsigned(ptr, tnv.tag);
+    WriteInteger(ptr, static_cast<int16_t>(tnv.name.size()));
     *ptr = std::copy(tnv.name.begin(), tnv.name.end(), *ptr);
-    if (!WriteInteger<2>(ptr, tnv.value.size())) {
-      LogFrameBuilderError("value-length is out of range");
-      return false;
-    }
+    WriteInteger(ptr, static_cast<int16_t>(tnv.value.size()));
     *ptr = std::copy(tnv.value.begin(), tnv.value.end(), *ptr);
   }
-  return true;
 }
 
 std::size_t FrameBuilder::GetFrameLength() const {

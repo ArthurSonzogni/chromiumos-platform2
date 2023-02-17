@@ -296,6 +296,75 @@ TEST(AttributeTest, CollsWrongType) {
   EXPECT_EQ(attr_const.Colls().size(), 0);
 }
 
+TEST(AttributeTest, AddAttrWithLongName) {
+  Frame frame;
+  frame.AddGroup(GroupTag::operation_attributes);
+  Collection& coll = frame.Groups(GroupTag::operation_attributes)[0];
+  Code code = coll.AddAttr(std::string(32768, 'x'), ValueTag::no_value);
+  EXPECT_EQ(code, Code::kInvalidName);
+  code = coll.AddAttr(std::string(32767, 'x'), ValueTag::no_value);
+  EXPECT_EQ(code, Code::kOK);
+}
+
+TEST(AttributeTest, AddAttrWithLongString) {
+  Frame frame;
+  frame.AddGroup(GroupTag::operation_attributes);
+  Collection& coll = frame.Groups(GroupTag::operation_attributes)[0];
+  Code code = coll.AddAttr("max_length", ValueTag::octetString,
+                           std::string(32767, 'x'));
+  EXPECT_EQ(code, Code::kOK);
+  code =
+      coll.AddAttr("too_large", ValueTag::octetString, std::string(32768, 'x'));
+  EXPECT_EQ(code, Code::kValueOutOfRange);
+  Collection::iterator it = coll.begin();
+  ASSERT_NE(it, coll.end());
+  EXPECT_EQ(it->Name(), "max_length");
+  ++it;
+  EXPECT_EQ(it, coll.end());
+}
+
+TEST(AttributeTest, SetValueLongString) {
+  Frame frame;
+  frame.AddGroup(GroupTag::operation_attributes);
+  Collection& coll = frame.Groups(GroupTag::operation_attributes)[0];
+  coll.AddAttr("test", ValueTag::nameWithoutLanguage,
+               std::vector<std::string>(2));
+  Collection::iterator it = coll.GetAttr("test");
+  ASSERT_NE(it, coll.end());
+  EXPECT_FALSE(it->SetValue(std::string(32768, 'x'), 0));
+  EXPECT_TRUE(it->SetValue(std::string(32767, 'x'), 1));
+}
+
+TEST(AttributeTest, AddAttrWithLongStringWithLanguage) {
+  Frame frame;
+  frame.AddGroup(GroupTag::operation_attributes);
+  Collection& coll = frame.Groups(GroupTag::operation_attributes)[0];
+  StringWithLanguage strlang_ok = {std::string(32763, 'x'), ""};
+  StringWithLanguage strlang_too_long = {std::string(32760, 'x'),
+                                         std::string(4, 'x')};
+  Code code =
+      coll.AddAttr("max_length", ValueTag::nameWithLanguage, strlang_ok);
+  EXPECT_EQ(code, Code::kOK);
+  code =
+      coll.AddAttr("too_large", ValueTag::nameWithLanguage, strlang_too_long);
+  EXPECT_EQ(code, Code::kValueOutOfRange);
+}
+
+TEST(AttributeTest, SetValueLongStringWithLanguage) {
+  Frame frame;
+  frame.AddGroup(GroupTag::operation_attributes);
+  Collection& coll = frame.Groups(GroupTag::operation_attributes)[0];
+  coll.AddAttr("test", ValueTag::textWithLanguage,
+               std::vector<StringWithLanguage>(2));
+  Collection::iterator it = coll.GetAttr("test");
+  ASSERT_NE(it, coll.end());
+  StringWithLanguage strlang_ok = {"", std::string(32763, 'x')};
+  StringWithLanguage strlang_too_long = {std::string(4, 'x'),
+                                         std::string(32760, 'x')};
+  EXPECT_FALSE(it->SetValue(strlang_too_long, 0));
+  EXPECT_TRUE(it->SetValue(strlang_ok, 1));
+}
+
 TEST(ToStrView, ValueTag) {
   EXPECT_EQ(ToStrView(ValueTag::keyword), "keyword");
   EXPECT_EQ(ToStrView(ValueTag::delete_attribute), "delete-attribute");

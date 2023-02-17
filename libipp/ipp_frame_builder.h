@@ -37,7 +37,7 @@ class FrameBuilder {
 
   // Write data to given buffer (use the method above to learn about required
   // size of the buffer).
-  bool WriteFrameToBuffer(uint8_t* ptr);
+  void WriteFrameToBuffer(uint8_t* ptr);
 
  private:
   // Copy/move/assign constructors/operators are forbidden.
@@ -61,7 +61,7 @@ class FrameBuilder {
                      std::vector<uint8_t>* buf);
 
   // Write data to buffer (ptr is updated, whole list is written).
-  bool WriteTNVsToBuffer(const std::list<TagNameValue>&, uint8_t** ptr);
+  void WriteTNVsToBuffer(const std::list<TagNameValue>&, uint8_t** ptr);
 
   // Internal buffer.
   FrameData* frame_;
