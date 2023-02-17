@@ -233,6 +233,7 @@ TEST_F(CheckCalibrationStateHandlerTest,
 
   auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
 
   std::unique_ptr<CheckCalibrationState> check_calibration =
       std::make_unique<CheckCalibrationState>();
@@ -321,6 +322,7 @@ TEST_F(CheckCalibrationStateHandlerTest, GetNextStateCase_SuccessSkipSensors) {
 
   auto handler = CreateStateHandler();
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+  handler->RunState();
 
   std::unique_ptr<CheckCalibrationState> check_calibration =
       std::make_unique<CheckCalibrationState>();

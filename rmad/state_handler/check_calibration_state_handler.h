@@ -24,6 +24,7 @@ class CheckCalibrationStateHandler : public BaseStateHandler {
   SET_REPEATABLE;
 
   RmadErrorCode InitializeState() override;
+  void RunState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
 
  protected:

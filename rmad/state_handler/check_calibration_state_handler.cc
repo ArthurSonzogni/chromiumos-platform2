@@ -68,21 +68,10 @@ RmadErrorCode CheckCalibrationStateHandler::InitializeState() {
 
   // We mark all components with an unexpected status as failed because it may
   // have some errors.
-  std::vector<std::pair<std::string, LogCalibrationStatus>>
-      log_component_statuses;
-  for (auto [instruction, components] : calibration_map_) {
-    for (auto [component, status] : components) {
-      if (calibration_map_.count(instruction) &&
-          calibration_map_[instruction].count(component)) {
-        if (IsInProgressStatus(status) || IsUnknownStatus(status)) {
-          status = CalibrationComponentStatus::RMAD_CALIBRATION_FAILED;
-        }
-        calibration_map_[instruction][component] = status;
-
-        if (status == CalibrationComponentStatus::RMAD_CALIBRATION_FAILED) {
-          log_component_statuses.emplace_back(RmadComponent_Name(component),
-                                              LogCalibrationStatus::kFailed);
-        }
+  for (auto& [instruction, components] : calibration_map_) {
+    for (auto& [component, status] : components) {
+      if (IsInProgressStatus(status) || IsUnknownStatus(status)) {
+        status = CalibrationComponentStatus::RMAD_CALIBRATION_FAILED;
       }
     }
   }
@@ -92,12 +81,26 @@ RmadErrorCode CheckCalibrationStateHandler::InitializeState() {
     return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
   }
 
+  state_ = ConvertDictionaryToState(calibration_map_);
+  return RMAD_ERROR_OK;
+}
+
+void CheckCalibrationStateHandler::RunState() {
+  // Log failed components.
+  std::vector<std::pair<std::string, LogCalibrationStatus>>
+      log_component_statuses;
+  for (const auto& [instruction, components] : calibration_map_) {
+    for (const auto& [component, status] : components) {
+      if (status == CalibrationComponentStatus::RMAD_CALIBRATION_FAILED) {
+        log_component_statuses.emplace_back(RmadComponent_Name(component),
+                                            LogCalibrationStatus::kFailed);
+      }
+    }
+  }
+
   if (!log_component_statuses.empty()) {
     RecordComponentCalibrationStatusToLogs(json_store_, log_component_statuses);
   }
-
-  state_ = ConvertDictionaryToState(calibration_map_);
-  return RMAD_ERROR_OK;
 }
 
 BaseStateHandler::GetNextStateCaseReply
