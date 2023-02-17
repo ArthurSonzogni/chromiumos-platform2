@@ -4984,56 +4984,12 @@ mno {
     mobile_apn {
       apn : "wap.vodafone.co.uk"
       localized_name {
-        name : "Vodafone UK Data"
+        name : "Vodafone UK"
       }
       username : "wap"
       password : "wap"
+      authentication : PAP
       ip_type : IPV4V6
-      type : DEFAULT
-    }
-    mobile_apn {
-      apn : "internet"
-      localized_name {
-        name : "Contract Internet"
-      }
-      username : "web"
-      password : "web"
-      type : DEFAULT
-    }
-    mobile_apn {
-      apn : "ppbundle.internet"
-      localized_name {
-        name : "PAYG Internet Bundle"
-      }
-      username : "web"
-      password : "web"
-      type : DEFAULT
-    }
-    mobile_apn {
-      apn : "smart"
-      localized_name {
-        name : "PAYG Internet"
-      }
-      username : "web"
-      password : "web"
-      type : DEFAULT
-    }
-    mobile_apn {
-      apn : "pp.internet"
-      localized_name {
-        name : "PAYG Internet"
-      }
-      username : "web"
-      password : "web"
-      type : DEFAULT
-    }
-    mobile_apn {
-      apn : "pp.vodafone.co.uk"
-      localized_name {
-        name : "PAYG WAP"
-      }
-      username : "web"
-      password : "web"
       type : DEFAULT
     }
   }
