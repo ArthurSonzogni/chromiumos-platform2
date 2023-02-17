@@ -35,11 +35,13 @@
 #include <re2/re2.h>
 
 #include "diagnostics/base/file_utils.h"
+#include "diagnostics/cros_healthd/delegate/constants.h"
 #include "diagnostics/cros_healthd/executor/utils/delegate_process.h"
 #include "diagnostics/cros_healthd/executor/utils/process_control.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/process/process_with_output.h"
 #include "diagnostics/cros_healthd/routines/memory/memory_constants.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 
@@ -65,6 +67,8 @@ constexpr char kLed[] = "ec_led-seccomp.policy";
 constexpr char kLidAngle[] = "ectool_motionsense_lid_angle-seccomp.policy";
 // SECCOMP policy for memtester.
 constexpr char kMemtester[] = "memtester-seccomp.policy";
+// SECCOMP policy for fetchers which only read and parse some files.
+constexpr char kReadOnlyFetchers[] = "readonly-fetchers-seccomp.policy";
 
 }  // namespace seccomp_file
 
@@ -522,6 +526,25 @@ void Executor::MonitorTouchpad(
       base::BindOnce(&Executor::RunLongRunningDelegate,
                      weak_factory_.GetWeakPtr(), std::move(controller),
                      std::move(process_control_receiver)));
+}
+
+void Executor::FetchBootPerformance(FetchBootPerformanceCallback callback) {
+  auto delegate = std::make_unique<DelegateProcess>(
+      seccomp_file::kReadOnlyFetchers,
+      /*readonly_mount_points=*/std::vector<base::FilePath>{
+          base::FilePath{path::kBiosTimes},
+          base::FilePath{path::kPreviousPowerdLog},
+          base::FilePath{path::kProcUptime},
+          base::FilePath{path::kShutdownMetrics},
+          base::FilePath{path::kUptimeLoginPromptVisible},
+      });
+
+  auto* delegate_ptr = delegate.get();
+  delegate_ptr->remote()->FetchBootPerformance(CreateOnceDelegateCallback(
+      std::move(delegate), std::move(callback),
+      mojom::BootPerformanceResult::NewError(mojom::ProbeError::New(
+          mojom::ErrorType::kSystemUtilityError, kFailToLaunchDelegate))));
+  delegate_ptr->StartAsync();
 }
 
 void Executor::RunAndWaitProcess(

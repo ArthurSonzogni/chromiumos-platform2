@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "diagnostics/cros_healthd/fetchers/boot_performance_fetcher.h"
+#include "diagnostics/cros_healthd/delegate/fetchers/boot_performance.h"
 
 #include <cctype>
 #include <string>
@@ -17,6 +17,7 @@
 #include <re2/re2.h>
 
 #include "diagnostics/base/file_utils.h"
+#include "diagnostics/cros_healthd/delegate/constants.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 
 namespace diagnostics {

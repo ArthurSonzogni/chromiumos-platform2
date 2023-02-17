@@ -232,8 +232,10 @@ bool SandboxedProcess::KillJailedProcess(int signal, uint8_t timeout) {
 // Prepares some arguments which need to be handled before use.
 void SandboxedProcess::PrepareSandboxArguments() {
   for (const base::FilePath& f : readonly_mount_points_) {
-    if (!IsPathExists(f))
+    if (!IsPathExists(f)) {
+      DLOG(INFO) << "Try to mount a file which doesn't exist: " << f;
       continue;
+    }
     sandbox_arguments_.push_back("-b");
     sandbox_arguments_.push_back(f.value());
   }

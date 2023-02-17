@@ -10,7 +10,8 @@
 #include <gtest/gtest.h>
 
 #include "diagnostics/base/file_test_utils.h"
-#include "diagnostics/cros_healthd/fetchers/boot_performance_fetcher.h"
+#include "diagnostics/cros_healthd/delegate/constants.h"
+#include "diagnostics/cros_healthd/delegate/fetchers/boot_performance.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
@@ -31,7 +32,6 @@ const char kFakeBiosTimes[] =
 // Should be 60000 - 50000 = 10000, which is 0.01 in seconds.
 const double kTpmInitializationSeconds = 0.01;
 
-const char kUptimeLoginPath[] = "/tmp/uptime-login-prompt-visible";
 const char kFakeUptimeLog[] = "7.666666666 4.32\n17.000000000 123.00";
 
 const char kFakeProcUptime[] = "100.33 126.43";
@@ -101,7 +101,7 @@ class BootPerformanceFetcherTest : public ::testing::Test {
   }
 
   void PopulateUptimeLogFile(const std::string& content = kFakeUptimeLog) {
-    const auto path = GetRootedPath(kUptimeLoginPath);
+    const auto path = GetRootedPath(path::kUptimeLoginPromptVisible);
     ASSERT_TRUE(WriteFileAndCreateParentDirs(path, content));
   }
 
@@ -162,7 +162,7 @@ TEST_F(BootPerformanceFetcherTest, TestNoBiosTimesInfo) {
 }
 
 TEST_F(BootPerformanceFetcherTest, TestNoUptimeLogInfo) {
-  ASSERT_TRUE(base::DeleteFile(GetRootedPath(kUptimeLoginPath)));
+  ASSERT_TRUE(base::DeleteFile(GetRootedPath(path::kUptimeLoginPromptVisible)));
 
   auto result = FetchBootPerformanceInfo();
   ASSERT_TRUE(result->is_error());
@@ -196,7 +196,7 @@ TEST_F(BootPerformanceFetcherTest, TestWrongBiosTimesInfo2) {
 }
 
 TEST_F(BootPerformanceFetcherTest, TestWrongUptimeLogInfo) {
-  ASSERT_TRUE(base::DeleteFile(GetRootedPath(kUptimeLoginPath)));
+  ASSERT_TRUE(base::DeleteFile(GetRootedPath(path::kUptimeLoginPromptVisible)));
   PopulateUptimeLogFile("Wrong content");
 
   auto result = FetchBootPerformanceInfo();

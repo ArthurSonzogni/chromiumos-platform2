@@ -10,6 +10,18 @@ namespace diagnostics {
 inline constexpr char kDelegateMojoChannelHandle[] =
     "delegate-mojo-channel-handle";
 
+namespace path {
+
+inline constexpr char kProcUptime[] = "/proc/uptime";
+inline constexpr char kBiosTimes[] = "/var/log/bios_times.txt";
+inline constexpr char kShutdownMetrics[] = "/var/log/metrics";
+inline constexpr char kPreviousPowerdLog[] =
+    "/var/log/power_manager/powerd.PREVIOUS";
+inline constexpr char kUptimeLoginPromptVisible[] =
+    "/tmp/uptime-login-prompt-visible";
+
+}  // namespace path
+
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_CROS_HEALTHD_DELEGATE_CONSTANTS_H_

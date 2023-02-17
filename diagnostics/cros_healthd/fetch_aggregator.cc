@@ -16,7 +16,6 @@
 #include "diagnostics/cros_healthd/fetchers/audio_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/audio_hardware_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/bluetooth_fetcher.h"
-#include "diagnostics/cros_healthd/fetchers/boot_performance_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/cpu_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/sensor_fetcher.h"
@@ -152,7 +151,8 @@ void FetchAggregator::Run(
         break;
       }
       case mojom::ProbeCategoryEnum::kBootPerformance: {
-        info->boot_performance_result = FetchBootPerformanceInfo();
+        context_->executor()->FetchBootPerformance(
+            CreateFetchCallback(&barrier, &info->boot_performance_result));
         break;
       }
       case mojom::ProbeCategoryEnum::kBus: {

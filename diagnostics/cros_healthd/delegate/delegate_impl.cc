@@ -19,6 +19,7 @@
 #include <libec/led_control_command.h>
 #include <libec/mkbp_event.h>
 
+#include "diagnostics/cros_healthd/delegate/fetchers/boot_performance.h"
 #include "diagnostics/cros_healthd/delegate/utils/evdev_utils.h"
 #include "diagnostics/cros_healthd/executor/constants.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
@@ -254,6 +255,10 @@ void DelegateImpl::MonitorTouchpad(
   // Long-run method. The following object keeps alive until the process
   // terminates.
   new EvdevTouchpadObserver(std::move(observer));
+}
+
+void DelegateImpl::FetchBootPerformance(FetchBootPerformanceCallback callback) {
+  std::move(callback).Run(FetchBootPerformanceInfo());
 }
 
 }  // namespace diagnostics
