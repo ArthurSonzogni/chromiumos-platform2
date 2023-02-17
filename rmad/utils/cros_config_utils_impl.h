@@ -40,7 +40,9 @@ class CrosConfigUtilsImpl : public CrosConfigUtils {
   bool GetBooleanWithDefault(const std::string& path,
                              const std::string& key,
                              bool default_value) const;
-  std::map<std::string, uint32_t> GetSsfc() const;
+  SsfcConfig GetSsfc() const;
+  uint32_t GetSsfcMask() const;
+  std::map<std::string, uint32_t> GetSsfcComponents() const;
 
   std::string config_file_path_;
   std::unique_ptr<brillo::CrosConfigInterface> cros_config_;

@@ -11,12 +11,17 @@
 
 namespace rmad {
 
-// Rmad config structure defined in cros_config.
+// Rmad config and SSFC config structure defined in cros_config.
 // See platform2/chromeos-config/README.md#rmad for more details.
+struct SsfcConfig {
+  uint32_t mask;
+  std::map<std::string, uint32_t> components;
+};
+
 struct RmadConfig {
   bool enabled;
   bool has_cbi;
-  std::map<std::string, uint32_t> ssfc;
+  SsfcConfig ssfc;
 };
 
 class CrosConfigUtils {
