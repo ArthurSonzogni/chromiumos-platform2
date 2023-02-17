@@ -771,7 +771,10 @@ std::string Log::GetCommandLogData() const {
     p.SandboxAs(user_, group_);
   if (access_root_mount_ns_)
     p.AllowAccessRootMountNamespace();
-  if (!p.Init())
+  // Opt-out of Minijail's default runtime environment, because the seccomp
+  // policy causes issues on jacuzzi. See b/267050115.
+  std::vector<std::string> minijail_args{"--no-default-runtime-environment"};
+  if (!p.Init(minijail_args))
     return "<not available>";
   p.AddArg(kShell);
   p.AddStringOption("-c", tailed_cmdline);
