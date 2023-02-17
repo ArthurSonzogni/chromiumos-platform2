@@ -24,6 +24,8 @@ source_set("libdaemon") {
     "daemon.cc",
     "dbus_adaptor.cc",
     "lp_tools.cc",
+    "printscan_tool.cc",
+    "upstart_tools.cc",
   ]
   configs += [ ":libdaemon_pkg_deps" ]
   deps = [
@@ -36,6 +38,7 @@ if (use.test) {
   pkg_config("libdaemon_test_pkg_deps") {
     # NOSORT
     pkg_deps = [
+      "dbus-1",
       "libchrome",
       "libchrome-test",
 
@@ -47,7 +50,11 @@ if (use.test) {
   }
 
   source_set("libdaemon_test") {
-    sources = [ "cups_tool_test.cc" ]
+    sources = [
+      "cups_tool_test.cc",
+      "printscan_tool_test.cc",
+      "upstart_tools_test.cc",
+    ]
     configs += [ ":libdaemon_test_pkg_deps" ]
     deps = [ ":libdaemon" ]
   }
