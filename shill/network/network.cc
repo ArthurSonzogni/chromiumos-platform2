@@ -144,7 +144,7 @@ void Network::Start(const Network::StartOptions& opts) {
                                                         dhcp_opts, technology_);
     dhcp_controller_->RegisterCallbacks(
         base::BindRepeating(&Network::OnIPConfigUpdatedFromDHCP, AsWeakPtr()),
-        base::BindRepeating(&Network::OnDHCPFailure, AsWeakPtr()));
+        base::BindRepeating(&Network::OnDHCPDrop, AsWeakPtr()));
     set_ipconfig(std::make_unique<IPConfig>(control_interface_, interface_name_,
                                             IPConfig::kTypeDHCP));
     dhcp_started = dhcp_controller_->RequestIP();
@@ -371,9 +371,13 @@ void Network::OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
   }
 }
 
-void Network::OnDHCPFailure() {
-  for (auto* ev : event_handlers_) {
-    ev->OnGetDHCPFailure(interface_index_);
+void Network::OnDHCPDrop(bool is_voluntary) {
+  LOG(INFO) << logging_tag_ << ": " << __func__
+            << ": is_voluntary = " << is_voluntary;
+  if (!is_voluntary) {
+    for (auto* ev : event_handlers_) {
+      ev->OnGetDHCPFailure(interface_index_);
+    }
   }
 
   // |dhcp_controller_| cannot be empty when the callback is invoked.
@@ -417,6 +421,8 @@ void Network::OnDHCPFailure() {
 
   // Fallback to IPv6 if possible.
   if (ip6config() && ip6config()->properties().HasIPAddressAndDNS()) {
+    LOG(INFO) << logging_tag_ << ": operating in IPv6-only because of "
+              << (is_voluntary ? "receiving DHCP option 108" : "DHCP failure");
     if (!connection_ || !connection_->IsIPv6()) {
       // Destroy the IPv4 connection (if exists) to clear the state in kernel at
       // first. It is possible that this function is called when we have a valid
@@ -428,6 +434,17 @@ void Network::OnDHCPFailure() {
       SetupConnection(ip6config());
     }
     return;
+  }
+
+  if (is_voluntary) {
+    if (state_ == State::kConfiguring) {
+      // DHCPv4 reports to prefer v6 only. Continue to wait for SLAAC.
+      return;
+    } else {
+      LOG(ERROR) << logging_tag_
+                 << ": DHCP option 108 received but no valid IPv6 network is "
+                    "usable. Likely a network configuration error.";
+    }
   }
 
   StopInternal(/*is_failure=*/true, /*trigger_callback=*/true);

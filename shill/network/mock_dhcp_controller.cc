@@ -23,9 +23,9 @@ MockDHCPController::MockDHCPController(ControlInterface* control_interface,
 MockDHCPController::~MockDHCPController() = default;
 
 void MockDHCPController::RegisterCallbacks(UpdateCallback update_callback,
-                                           FailureCallback failure_callback) {
+                                           DropCallback drop_callback) {
   update_callback_ = update_callback;
-  failure_callback_ = failure_callback;
+  drop_callback_ = drop_callback;
 }
 
 void MockDHCPController::TriggerUpdateCallback(
@@ -33,8 +33,8 @@ void MockDHCPController::TriggerUpdateCallback(
   update_callback_.Run(props, /*new_lease_acquired=*/true);
 }
 
-void MockDHCPController::TriggerFailureCallback() {
-  failure_callback_.Run();
+void MockDHCPController::TriggerDropCallback(bool is_voluntary) {
+  drop_callback_.Run(is_voluntary);
 }
 
 void MockDHCPController::ProcessEventSignal(

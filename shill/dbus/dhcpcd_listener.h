@@ -34,9 +34,30 @@ class DHCPCDListener final : public DHCPCDListenerInterface {
   ~DHCPCDListener() override;
 
  private:
-  static const char kDBusInterfaceName[];
-  static const char kSignalEvent[];
-  static const char kSignalStatusChanged[];
+  // dbus constants.
+  static constexpr char kDBusInterfaceName[] = "org.chromium.dhcpcd";
+  static constexpr char kSignalEvent[] = "Event";
+  static constexpr char kSignalStatusChanged[] = "StatusChanged";
+
+  // Possible status string in StatusChanged event from dhcpcd.
+  static constexpr char kStatusInit[] = "Init";
+  static constexpr char kStatusBound[] = "Bound";
+  static constexpr char kStatusRelease[] = "Release";
+  static constexpr char kStatusDiscover[] = "Discover";
+  static constexpr char kStatusRequest[] = "Request";
+  static constexpr char kStatusRenew[] = "Renew";
+  static constexpr char kStatusRebind[] = "Rebind";
+  static constexpr char kStatusArpSelf[] = "ArpSelf";
+  static constexpr char kStatusInform[] = "Inform";
+  static constexpr char kStatusReboot[] = "Reboot";
+  static constexpr char kStatusNakDefer[] = "NakDefer";
+  static constexpr char kStatusIPv6OnlyPreferred[] = "IPv6OnlyPreferred";
+  static constexpr char kStatusIgnoreInvalidOffer[] = "IgnoreInvalidOffer";
+  static constexpr char kStatusIgnoreFailedOffer[] = "IgnoreFailedOffer";
+  static constexpr char kStatusIgnoreAdditionalOffer[] =
+      "IgnoreAdditionalOffer";
+  static constexpr char kStatusIgnoreNonOffer[] = "IgnoreNonOffer";
+  static constexpr char kStatusArpGateway[] = "ArpGateway";
 
   // Redirects the function call to HandleMessage
   static DBusHandlerResult HandleMessageThunk(DBusConnection* connection,

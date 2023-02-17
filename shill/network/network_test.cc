@@ -361,7 +361,7 @@ TEST_F(NetworkTest, OnNetworkStoppedCalledOnDHCPFailure) {
               OnNetworkStopped(network_->interface_index(), true))
       .Times(1);
   ASSERT_NE(dhcp_controller_, nullptr);
-  dhcp_controller_->TriggerFailureCallback();
+  dhcp_controller_->TriggerDropCallback(/*is_voluntary=*/false);
 }
 
 TEST_F(NetworkTest, EnableARPFilteringOnStart) {
@@ -1070,7 +1070,13 @@ class NetworkStartTest : public NetworkTest {
 
   void TriggerDHCPFailureCallback() {
     ASSERT_NE(dhcp_controller_, nullptr);
-    dhcp_controller_->TriggerFailureCallback();
+    dhcp_controller_->TriggerDropCallback(/*is_voluntary=*/false);
+    dispatcher_.task_environment().RunUntilIdle();
+  }
+
+  void TriggerDHCPOption108Callback() {
+    ASSERT_NE(dhcp_controller_, nullptr);
+    dhcp_controller_->TriggerDropCallback(/*is_voluntary=*/true);
     dispatcher_.task_environment().RunUntilIdle();
   }
 
@@ -1582,6 +1588,55 @@ TEST_F(NetworkStartTest, DualStackDHCPFailureAfterDHCPConnected) {
   // TODO(b/232177767): We do not verify IPConfigs here, since currently we only
   // reset the properties in ipconfig on DHCP failure instead of removing it.
   // Consider changing this behavior in the future.
+}
+
+// When configuring if received DHCP option 108, continue to wait for SLAAC.
+TEST_F(NetworkStartTest, RFC8925) {
+  const TestOptions test_opts = {.dhcp = true, .accept_ra = true};
+  EXPECT_CALL(event_handler_, OnNetworkStopped(_, _)).Times(0);
+  EXPECT_CALL(event_handler2_, OnNetworkStopped(_, _)).Times(0);
+
+  ExpectCreateDHCPController(/*request_ip_result=*/true);
+  InvokeStart(test_opts);
+
+  EXPECT_CALL(event_handler_, OnGetDHCPFailure(_)).Times(0);
+  EXPECT_CALL(event_handler2_, OnGetDHCPFailure(_)).Times(0);
+  TriggerDHCPOption108Callback();
+  EXPECT_EQ(network_->state(), Network::State::kConfiguring);
+  TriggerSLAACUpdate();
+  EXPECT_EQ(network_->state(), Network::State::kConnected);
+}
+
+TEST_F(NetworkStartTest, RFC8925IPv6ConnectedFirst) {
+  const TestOptions test_opts = {.dhcp = true, .accept_ra = true};
+  EXPECT_CALL(event_handler_, OnNetworkStopped(_, _)).Times(0);
+  EXPECT_CALL(event_handler2_, OnNetworkStopped(_, _)).Times(0);
+
+  ExpectCreateDHCPController(/*request_ip_result=*/true);
+  InvokeStart(test_opts);
+
+  EXPECT_CALL(event_handler_, OnGetDHCPFailure(_)).Times(0);
+  EXPECT_CALL(event_handler2_, OnGetDHCPFailure(_)).Times(0);
+  TriggerSLAACUpdate();
+  TriggerDHCPOption108Callback();
+  EXPECT_EQ(network_->state(), Network::State::kConnected);
+}
+
+// Verifies the behavior on option 108 after both v4 and v6 are connected.
+TEST_F(NetworkStartTest, RFC8925Option108AfterIPv4Connected) {
+  const TestOptions test_opts = {.dhcp = true, .accept_ra = true};
+  EXPECT_CALL(event_handler_, OnNetworkStopped(_, _)).Times(0);
+  EXPECT_CALL(event_handler2_, OnNetworkStopped(_, _)).Times(0);
+
+  ExpectCreateDHCPController(/*request_ip_result=*/true);
+  InvokeStart(test_opts);
+  TriggerDHCPUpdateCallback();
+  TriggerSLAACUpdate();
+
+  // Connection should be reconfigured with IPv6. Connection should be reset.
+  ExpectCreateConnectionWithIPConfig(IPConfigType::kIPv6SLAAC);
+  EXPECT_EQ(network_->state(), Network::State::kConnected);
+  TriggerDHCPOption108Callback();
 }
 
 TEST_F(NetworkStartTest, DualStackSLAACFirst) {

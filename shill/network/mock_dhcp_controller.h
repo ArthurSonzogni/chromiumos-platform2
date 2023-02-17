@@ -5,8 +5,8 @@
 #ifndef SHILL_NETWORK_MOCK_DHCP_CONTROLLER_H_
 #define SHILL_NETWORK_MOCK_DHCP_CONTROLLER_H_
 
-#include <string>
 #include <optional>
+#include <string>
 
 #include <gmock/gmock.h>
 
@@ -25,9 +25,9 @@ class MockDHCPController : public DHCPController {
   ~MockDHCPController() override;
 
   void RegisterCallbacks(UpdateCallback update_callback,
-                         FailureCallback failure_callback) override;
+                         DropCallback drop_callback) override;
   void TriggerUpdateCallback(const IPConfig::Properties& props);
-  void TriggerFailureCallback();
+  void TriggerDropCallback(bool is_voluntary);
   void ProcessEventSignal(const std::string& reason,
                           const KeyValueStore& configuration) override;
 
@@ -41,7 +41,7 @@ class MockDHCPController : public DHCPController {
 
  private:
   UpdateCallback update_callback_;
-  FailureCallback failure_callback_;
+  DropCallback drop_callback_;
 };
 
 }  // namespace shill

@@ -393,8 +393,8 @@ class Network {
   // DHCPController::UpdateCallback.
   void OnIPConfigUpdatedFromDHCP(const IPConfig::Properties& properties,
                                  bool new_lease_acquired);
-  // Callback invoked on DHCP failures.
-  void OnDHCPFailure();
+  // Callback invoked on DHCP failures and RFC 8925 voluntary stops.
+  void OnDHCPDrop(bool is_voluntary);
 
   // Functions for IPv6.
   // Configures static IP address received from cellular bearer.

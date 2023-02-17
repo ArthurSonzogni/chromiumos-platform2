@@ -299,23 +299,23 @@ class DHCPControllerCallbackTest : public DHCPControllerTest {
     controller_->RegisterCallbacks(
         base::BindRepeating(&DHCPControllerCallbackTest::UpdateCallback,
                             base::Unretained(this)),
-        base::BindRepeating(&DHCPControllerCallbackTest::FailureCallback,
+        base::BindRepeating(&DHCPControllerCallbackTest::DropCallback,
                             base::Unretained(this)));
   }
 
   MOCK_METHOD(void, UpdateCallback, (const IPConfig::Properties&, bool));
-  MOCK_METHOD(void, FailureCallback, ());
+  MOCK_METHOD(void, DropCallback, (bool is_voluntary));
 
   void ExpectUpdateCallback(bool new_lease_acquired) {
     EXPECT_CALL(*this, UpdateCallback(_, new_lease_acquired))
         .WillOnce(SaveArg<0>(&update_properties_));
-    EXPECT_CALL(*this, FailureCallback()).Times(0);
+    EXPECT_CALL(*this, DropCallback(_)).Times(0);
     dispatcher()->task_environment().RunUntilIdle();
   }
 
   void ExpectFailureCallback() {
     EXPECT_CALL(*this, UpdateCallback(_, _)).Times(0);
-    EXPECT_CALL(*this, FailureCallback());
+    EXPECT_CALL(*this, DropCallback(/*is_voluntary=*/false));
     dispatcher()->task_environment().RunUntilIdle();
   }
 
@@ -369,7 +369,7 @@ TEST_F(DHCPControllerCallbackTest, ProcessEventSignalUnknown) {
   KeyValueStore conf;
   conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
   EXPECT_CALL(*this, UpdateCallback(_, _)).Times(0);
-  EXPECT_CALL(*this, FailureCallback()).Times(0);
+  EXPECT_CALL(*this, DropCallback(_)).Times(0);
   controller_->ProcessEventSignal("unknown", conf);
   Mock::VerifyAndClearExpectations(this);
 }
@@ -411,6 +411,23 @@ TEST_F(DHCPControllerCallbackTest, ProcessEventSignalGatewayArpNak) {
   Mock::VerifyAndClearExpectations(this);
 }
 
+TEST_F(DHCPControllerCallbackTest, ProcessStatusChangedSignalUnknown) {
+  EXPECT_CALL(*this, UpdateCallback(_, _)).Times(0);
+  EXPECT_CALL(*this, DropCallback(_)).Times(0);
+  controller_->ProcessStatusChangedSignal(
+      DHCPController::ClientStatus::kUnknown);
+  dispatcher()->task_environment().RunUntilIdle();
+}
+
+TEST_F(DHCPControllerCallbackTest,
+       ProcessStatusChangedSignalIPv6OnlyPreferred) {
+  EXPECT_CALL(*this, UpdateCallback(_, _)).Times(0);
+  EXPECT_CALL(*this, DropCallback(/*is_voluntary=*/true));
+  controller_->ProcessStatusChangedSignal(
+      DHCPController::ClientStatus::kIPv6Preferred);
+  dispatcher()->task_environment().RunUntilIdle();
+}
+
 TEST_F(DHCPControllerCallbackTest, StoppedDuringFailureCallback) {
   KeyValueStore conf;
   conf.Set<uint32_t>(DHCPv4Config::kConfigurationKeyIPAddress, 0x01020304);
@@ -418,7 +435,7 @@ TEST_F(DHCPControllerCallbackTest, StoppedDuringFailureCallback) {
   // need to ensure that no callbacks are left running inadvertently as
   // a result.
   controller_->ProcessEventSignal(DHCPController::kReasonFail, conf);
-  EXPECT_CALL(*this, FailureCallback())
+  EXPECT_CALL(*this, DropCallback(/*is_voluntary=*/false))
       .WillOnce(InvokeWithoutArgs(this, &DHCPControllerTest::StopInstance));
   dispatcher()->task_environment().RunUntilIdle();
   EXPECT_TRUE(Mock::VerifyAndClearExpectations(this));
@@ -448,7 +465,7 @@ TEST_F(DHCPControllerCallbackTest, StoppedDuringSuccessCallback) {
 TEST_F(DHCPControllerCallbackTest, ProcessAcquisitionTimeout) {
   // Do not fail on acquisition timeout (i.e. ARP gateway is active).
   SetShouldFailOnAcquisitionTimeout(false);
-  EXPECT_CALL(*this, FailureCallback()).Times(0);
+  EXPECT_CALL(*this, DropCallback(_)).Times(0);
   controller_->ProcessAcquisitionTimeout();
   dispatcher()->task_environment().RunUntilIdle();
   Mock::VerifyAndClearExpectations(this);

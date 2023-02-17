@@ -51,6 +51,9 @@ constexpr char kDHCPCDUser[] = "dhcp";
 constexpr char kDHCPCDGroup[] = "dhcp";
 constexpr char kDHCPCDPathFormatPID[] = "var/run/dhcpcd/dhcpcd-%s-4.pid";
 
+// TODO(b/175350963): Make this configurable through Chrome flag.
+constexpr bool kEnableRFC8925 = false;
+
 }  // namespace
 
 DHCPController::DHCPController(ControlInterface* control_interface,
@@ -93,9 +96,9 @@ DHCPController::~DHCPController() {
 }
 
 void DHCPController::RegisterCallbacks(UpdateCallback update_callback,
-                                       FailureCallback failure_callback) {
+                                       DropCallback drop_callback) {
   update_callback_ = update_callback;
-  failure_callback_ = failure_callback;
+  drop_callback_ = drop_callback;
 }
 
 bool DHCPController::RequestIP() {
@@ -158,7 +161,6 @@ void DHCPController::InitProxy(const std::string& service) {
 
 void DHCPController::ProcessEventSignal(const std::string& reason,
                                         const KeyValueStore& configuration) {
-  LOG(INFO) << "Event reason: " << reason;
   if (reason == kReasonFail) {
     LOG(ERROR) << "Received failure event from DHCP client.";
     NotifyFailure();
@@ -192,6 +194,17 @@ void DHCPController::ProcessEventSignal(const std::string& reason,
   // configure our network in anticipation of successful completion.
   OnIPConfigUpdated(properties, /*new_lease_acquired=*/!is_gateway_arp);
   is_gateway_arp_active_ = is_gateway_arp;
+}
+
+void DHCPController::ProcessStatusChangedSignal(ClientStatus status) {
+  if (status == ClientStatus::kIPv6Preferred) {
+    StopAcquisitionTimeout();
+    StopExpirationTimeout();
+    dispatcher_->PostTask(FROM_HERE,
+                          base::BindOnce(&DHCPController::InvokeDropCallback,
+                                         weak_ptr_factory_.GetWeakPtr(),
+                                         /*is_voluntary=*/true));
+  }
 }
 
 std::optional<base::TimeDelta> DHCPController::TimeToLeaseExpiry() {
@@ -233,9 +246,10 @@ void DHCPController::NotifyFailure() {
   StopAcquisitionTimeout();
   StopExpirationTimeout();
 
-  dispatcher_->PostTask(FROM_HERE,
-                        base::BindOnce(&DHCPController::InvokeFailureCallback,
-                                       weak_ptr_factory_.GetWeakPtr()));
+  dispatcher_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&DHCPController::InvokeDropCallback,
+                     weak_ptr_factory_.GetWeakPtr(), /*is_voluntary=*/false));
 }
 
 bool DHCPController::IsEphemeralLease() const {
@@ -366,6 +380,14 @@ std::vector<std::string> DHCPController::GetFlags() {
     flags.push_back("--unicast");  // Enable unicast ARP on renew.
   }
 
+  if (kEnableRFC8925) {
+    // Request option 108 to prefer IPv6-only. If server also supports this, no
+    // dhcp lease will be assigned and dhcpcd will notify shill with an
+    // IPv6OnlyPreferred StatusChanged event.
+    flags.push_back("-o");
+    flags.push_back("ipv6_only_preferred");
+  }
+
   return flags;
 }
 
@@ -440,9 +462,9 @@ void DHCPController::InvokeUpdateCallback(const IPConfig::Properties properties,
   }
 }
 
-void DHCPController::InvokeFailureCallback() {
-  if (!failure_callback_.is_null()) {
-    failure_callback_.Run();
+void DHCPController::InvokeDropCallback(bool is_voluntary) {
+  if (!drop_callback_.is_null()) {
+    drop_callback_.Run(is_voluntary);
   }
 }
 

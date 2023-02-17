@@ -147,7 +147,9 @@ class DeviceTest : public testing::Test {
 
   void OnIPv4ConfigUpdated() { device_->network()->OnIPv4ConfigUpdated(); }
 
-  void OnDHCPFailure() { device_->network()->OnDHCPFailure(); }
+  void OnDHCPFailure() {
+    device_->network()->OnDHCPDrop(/*is_voluntary=*/false);
+  }
 
   patchpanel::TrafficCounter CreateCounter(
       const std::valarray<uint64_t>& vals,

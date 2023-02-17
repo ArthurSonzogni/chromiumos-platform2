@@ -48,10 +48,14 @@ class DHCPController {
   // or not a DHCP lease was acquired from the server.
   using UpdateCallback = base::RepeatingCallback<void(
       const IPConfig::Properties& properties, bool new_lease_acquired)>;
-  // Called when DHCP failed.
-  using FailureCallback = base::RepeatingCallback<void()>;
+  // Called when DHCP process ended without getting a lease. |is_voluntary|
+  // indicates whether that was a voluntary stop per option 108, or because of a
+  // failure.
+  using DropCallback = base::RepeatingCallback<void(bool is_voluntary)>;
 
   enum ReleaseReason { kReleaseReasonDisconnect, kReleaseReasonStaticIP };
+
+  enum class ClientStatus { kUnknown, kIPv6Preferred };
 
   // Constants used as event type got from dhcpcd. Used only
   // internally, make them public for unit tests.
@@ -79,7 +83,7 @@ class DHCPController {
 
   // Registers callbacks for DHCP events.
   mockable void RegisterCallbacks(UpdateCallback update_callback,
-                                  FailureCallback failure_callback);
+                                  DropCallback drop_callback);
 
   // Request, renew and release IP configuration. Return true on success, false
   // otherwise. The default implementation always returns false indicating a
@@ -99,6 +103,8 @@ class DHCPController {
   // Processes an Event signal from dhcpcd.
   mockable void ProcessEventSignal(const std::string& reason,
                                    const KeyValueStore& configuration);
+  // Processes a StatusChanged signal from dhcpcd.
+  mockable void ProcessStatusChangedSignal(ClientStatus status);
 
   // Returns the time left (in seconds) till the current DHCP lease is to be
   // renewed in |time_left|. Returns nullopt if an error occurs (i.e. current
@@ -216,7 +222,7 @@ class DHCPController {
   // object in the callback.
   void InvokeUpdateCallback(const IPConfig::Properties properties,
                             bool new_lease_acquired);
-  void InvokeFailureCallback();
+  void InvokeDropCallback(bool is_failure);
 
   ControlInterface* control_interface_;
 
@@ -266,7 +272,7 @@ class DHCPController {
 
   // Callbacks registered by RegisterCallbacks().
   UpdateCallback update_callback_;
-  FailureCallback failure_callback_;
+  DropCallback drop_callback_;
 
   // Root file path, used for testing.
   base::FilePath root_;

@@ -25,10 +25,6 @@ namespace Logging {
 static auto kModuleLogScope = ScopeLogger::kDHCP;
 }  // namespace Logging
 
-const char DHCPCDListener::kDBusInterfaceName[] = "org.chromium.dhcpcd";
-const char DHCPCDListener::kSignalEvent[] = "Event";
-const char DHCPCDListener::kSignalStatusChanged[] = "StatusChanged";
-
 DHCPCDListener::DHCPCDListener(const scoped_refptr<dbus::Bus>& bus,
                                EventDispatcher* dispatcher,
                                DHCPProvider* provider)
@@ -142,6 +138,7 @@ void DHCPCDListener::EventSignal(
     }
     return;
   }
+  LOG(INFO) << "Event reason: " << reason << " on " << config->device_name();
   config->InitProxy(sender);
   KeyValueStore configuration_store =
       KeyValueStore::ConvertFromVariantDictionary(configuration);
@@ -161,7 +158,16 @@ void DHCPCDListener::StatusChangedSignal(const std::string& sender,
     }
     return;
   }
+  LOG(INFO) << "Status changed: " << status << " on " << config->device_name();
+
+  DHCPController::ClientStatus parsed_status =
+      DHCPController::ClientStatus::kUnknown;
+  if (status == kStatusIPv6OnlyPreferred) {
+    parsed_status = DHCPController::ClientStatus::kIPv6Preferred;
+  }
+
   config->InitProxy(sender);
+  config->ProcessStatusChangedSignal(parsed_status);
 }
 
 }  // namespace shill
