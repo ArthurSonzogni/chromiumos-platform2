@@ -8,6 +8,7 @@
 #include <vector>
 
 #include <brillo/secure_blob.h>
+#include <libhwsec-foundation/status/status_chain_macros.h>
 
 #include "libhwsec/backend/backend.h"
 #include "libhwsec/middleware/middleware.h"
@@ -16,6 +17,11 @@
 using hwsec_foundation::status::MakeStatus;
 
 namespace hwsec {
+
+namespace {
+// The PinWeaver protocol version where the biometrics support was first added.
+constexpr uint8_t kBiometricsPinWeaverProtocolVersion = 2;
+}  // namespace
 
 StatusOr<bool> CryptohomeFrontendImpl::IsEnabled() {
   return middleware_.CallSync<&Backend::State::IsEnabled>();
@@ -175,6 +181,12 @@ StatusOr<uint32_t> CryptohomeFrontendImpl::GetManufacturer() {
 
 StatusOr<bool> CryptohomeFrontendImpl::IsPinWeaverEnabled() {
   return middleware_.CallSync<&Backend::PinWeaver::IsEnabled>();
+}
+
+StatusOr<bool> CryptohomeFrontendImpl::IsBiometricsPinWeaverEnabled() {
+  ASSIGN_OR_RETURN(uint8_t version,
+                   middleware_.CallSync<&Backend::PinWeaver::GetVersion>());
+  return version >= kBiometricsPinWeaverProtocolVersion;
 }
 
 StatusOr<CryptohomeFrontend::StorageState>

@@ -115,6 +115,9 @@ class CryptohomeFrontend : public Frontend {
   // Is the PinWeaver enabled or not.
   virtual StatusOr<bool> IsPinWeaverEnabled() = 0;
 
+  // Is the PinWeaver biometrics support enabled or not.
+  virtual StatusOr<bool> IsBiometricsPinWeaverEnabled() = 0;
+
   // Gets the state of |space|.
   virtual StatusOr<StorageState> GetSpaceState(Space space) = 0;
 

@@ -55,6 +55,7 @@ class CryptohomeFrontendImpl : public CryptohomeFrontend, public FrontendImpl {
   StatusOr<brillo::SecureBlob> GetRandomSecureBlob(size_t size) override;
   StatusOr<uint32_t> GetManufacturer() override;
   StatusOr<bool> IsPinWeaverEnabled() override;
+  StatusOr<bool> IsBiometricsPinWeaverEnabled() override;
   StatusOr<StorageState> GetSpaceState(Space space) override;
   Status PrepareSpace(Space space, uint32_t size) override;
   StatusOr<brillo::Blob> LoadSpace(Space space) override;
