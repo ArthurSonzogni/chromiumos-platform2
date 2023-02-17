@@ -1973,13 +1973,13 @@ bool UserDataAuth::OwnerUserExists() {
 std::string UserDataAuth::GetStatusString() {
   AssertOnMountThread();
 
-  base::Value mounts(base::Value::Type::LIST);
+  base::Value::List mounts;
   for (const auto& [unused, session] : *sessions_) {
     mounts.Append(session.GetStatus());
   }
 
   base::Value dv(base::Value::Type::DICT);
-  dv.SetKey("mounts", std::move(mounts));
+  dv.SetKey("mounts", base::Value(std::move(mounts)));
   std::string json;
   base::JSONWriter::WriteWithOptions(dv, base::JSONWriter::OPTIONS_PRETTY_PRINT,
                                      &json);

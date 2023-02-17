@@ -154,7 +154,7 @@ bool RealUserSession::Unmount() {
 
 base::Value RealUserSession::GetStatus() const {
   base::Value dv(base::Value::Type::DICT);
-  base::Value keysets(base::Value::Type::LIST);
+  base::Value::List keysets;
   std::vector<int> key_indices;
   if (!obfuscated_username_->empty() &&
       keyset_management_->GetVaultKeysets(obfuscated_username_, &key_indices)) {
@@ -180,7 +180,7 @@ base::Value RealUserSession::GetStatus() const {
       keysets.Append(std::move(keyset_dict));
     }
   }
-  dv.SetKey("keysets", std::move(keysets));
+  dv.SetKey("keysets", base::Value(std::move(keysets)));
   dv.SetBoolKey("mounted", mount_->IsMounted());
   ObfuscatedUsername obfuscated_owner;
   homedirs_->GetOwner(&obfuscated_owner);

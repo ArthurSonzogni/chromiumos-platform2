@@ -127,12 +127,12 @@ struct ifflag {
 };
 
 Value flags2list(unsigned int flags) {
-  Value lv(Value::Type::LIST);
+  Value::List lv;
   for (const auto& ifflag : ifflags) {
     if (flags & ifflag.bit)
       lv.Append(ifflag.name);
   }
-  return lv;
+  return Value(std::move(lv));
 }
 
 class NetInterface {
@@ -172,8 +172,8 @@ void NetInterface::AddSignalStrength(const std::string& name, int strength) {
 void NetInterface::AddAddressTo(Value* dv, struct sockaddr* sa) {
   Value* lv = dv->FindListKey("addrs");
   if (lv == nullptr)
-    lv = dv->SetKey("addrs", Value(Value::Type::LIST));
-  lv->Append(sockaddr2str(sa));
+    lv = dv->GetDict().Set("addrs", Value::List{});
+  lv->GetList().Append(sockaddr2str(sa));
 }
 
 void NetInterface::AddAddress(struct ifaddrs* ifa) {

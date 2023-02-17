@@ -100,13 +100,13 @@ base::Value ToDict(const lvmd::LogicalVolume& lv) {
 }
 
 base::Value ToDict(const lvmd::LogicalVolumeList& lvs) {
-  auto lv_list = base::Value(base::Value::Type::LIST);
+  auto lv_list = base::Value::List();
   for (const auto& lv : lvs.logical_volume()) {
     lv_list.Append(ToDict(lv));
   }
 
   auto dict = Dict();
-  dict.SetKey(kLogicalVolumeList, std::move(lv_list));
+  dict.SetKey(kLogicalVolumeList, base::Value(std::move(lv_list)));
   return dict;
 }
 

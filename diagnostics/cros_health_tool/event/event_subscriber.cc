@@ -187,7 +187,7 @@ void OutputUsbEventInfo(const mojom::UsbEventInfoPtr& info) {
 
   auto* categories = output.Set("categories", base::Value::List{});
   for (const auto& category : info->categories) {
-    categories->Append(category);
+    categories->GetList().Append(category);
   }
 
   std::string json;
@@ -295,7 +295,7 @@ void OutputTouchpadConnectedEventInfo(
 
   auto* buttons = output.Set("buttons", base::Value::List{});
   for (const auto& button : connected_event->buttons) {
-    buttons->Append(EnumToString(button));
+    buttons->GetList().Append(EnumToString(button));
   }
 
   std::string json;
