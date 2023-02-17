@@ -10,6 +10,11 @@ group("all") {
   deps = [
     ":container-protos",
     ":dbus_code_generator",
+    ":install_config_cros_startup",
+    ":install_config_dbus_system-services",
+    ":install_config_dbus_systemd",
+    ":install_config_init",
+    ":install_seccomp_policy",
     ":kerberosd",
     ":libkerberos",
   ]
@@ -106,11 +111,39 @@ pkg_config("kerberosd_config") {
 # Kerberos daemon executable.
 executable("kerberosd") {
   sources = [ "kerberosd_main.cc" ]
+  install_path = "sbin"
   configs += [
     ":kerberosd_config",
     ":target_defaults",
   ]
   deps = [ ":libkerberos" ]
+}
+
+install_config("install_config_dbus_systemd") {
+  sources = [ "dbus/org.chromium.Kerberos.conf" ]
+  install_path = "/etc/dbus-1/system.d"
+}
+
+install_config("install_config_dbus_system-services") {
+  sources = [ "dbus/org.chromium.Kerberos.service" ]
+  install_path = "/usr/share/dbus-1/system-services"
+}
+
+install_config("install_config_init") {
+  sources = [ "init/kerberosd.conf" ]
+  install_path = "/etc/init"
+}
+
+install_config("install_seccomp_policy") {
+  arch = getenv("ARCH")
+  sources = [ "seccomp/kerberosd-seccomp-$arch.policy" ]
+  outputs = [ "kerberosd-seccomp.policy" ]
+  install_path = "/usr/share/policy"
+}
+
+install_config("install_config_cros_startup") {
+  sources = [ "setuid_restrictions/kerberosd_uid_allowlist.txt" ]
+  install_path = "/usr/share/cros/startup/process_management_policies"
 }
 
 # Unit tests.
@@ -156,6 +189,7 @@ if (use.test) {
       ":libkerberos",
       "//common-mk/testrunner",
     ]
+    run_test = true
   }
 }
 
