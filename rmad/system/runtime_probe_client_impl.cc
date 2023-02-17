@@ -56,14 +56,14 @@ template <typename T>
 void AppendComponents(rmad::RmadComponent component_type,
                       const google::protobuf::RepeatedPtrField<T>& arr,
                       bool use_customized_identifier,
-                      rmad::ComponentsWithIdentifier* component_list,
+                      rmad::ComponentsWithIdentifier* components,
                       bool (*filter_func)(const T&) = DefaultFilter<T>) {
   for (const T& component : arr) {
     if (filter_func(component)) {
-      component_list->emplace_back(component_type,
-                                   use_customized_identifier
-                                       ? rmad::GetComponentIdentifier(component)
-                                       : component.name());
+      components->emplace_back(component_type,
+                               use_customized_identifier
+                                   ? rmad::GetComponentIdentifier(component)
+                                   : component.name());
     }
   }
 }
@@ -88,7 +88,7 @@ RuntimeProbeClientImpl::~RuntimeProbeClientImpl() = default;
 bool RuntimeProbeClientImpl::ProbeCategories(
     const std::vector<RmadComponent>& categories,
     bool use_customized_identifier,
-    ComponentsWithIdentifier* component_list) {
+    ComponentsWithIdentifier* components) {
   runtime_probe::ProbeRequest request;
   if (categories.size()) {
     request.set_probe_default_category(false);
@@ -113,32 +113,29 @@ bool RuntimeProbeClientImpl::ProbeCategories(
     return false;
   }
 
-  component_list->clear();
+  components->clear();
   AppendComponents(rmad::RMAD_COMPONENT_BATTERY, reply.battery(),
-                   use_customized_identifier, component_list);
+                   use_customized_identifier, components);
   AppendComponents(rmad::RMAD_COMPONENT_STORAGE, reply.storage(),
-                   use_customized_identifier, component_list);
+                   use_customized_identifier, components);
   AppendComponents(rmad::RMAD_COMPONENT_CAMERA, reply.camera(),
-                   use_customized_identifier, component_list, IsInternalCamera);
+                   use_customized_identifier, components, IsInternalCamera);
   AppendComponents(rmad::RMAD_COMPONENT_STYLUS, reply.stylus(),
-                   use_customized_identifier, component_list);
+                   use_customized_identifier, components);
   AppendComponents(rmad::RMAD_COMPONENT_TOUCHPAD, reply.touchpad(),
-                   use_customized_identifier, component_list);
+                   use_customized_identifier, components);
   AppendComponents(rmad::RMAD_COMPONENT_TOUCHSCREEN, reply.touchscreen(),
-                   use_customized_identifier, component_list);
+                   use_customized_identifier, components);
   AppendComponents(rmad::RMAD_COMPONENT_DRAM, reply.dram(),
-                   use_customized_identifier, component_list);
+                   use_customized_identifier, components);
   AppendComponents(rmad::RMAD_COMPONENT_DISPLAY_PANEL, reply.display_panel(),
-                   use_customized_identifier, component_list);
+                   use_customized_identifier, components);
   AppendComponents(rmad::RMAD_COMPONENT_CELLULAR, reply.cellular(),
-                   use_customized_identifier, component_list,
-                   IsInternalNetwork);
+                   use_customized_identifier, components, IsInternalNetwork);
   AppendComponents(rmad::RMAD_COMPONENT_ETHERNET, reply.ethernet(),
-                   use_customized_identifier, component_list,
-                   IsInternalNetwork);
+                   use_customized_identifier, components, IsInternalNetwork);
   AppendComponents(rmad::RMAD_COMPONENT_WIRELESS, reply.wireless(),
-                   use_customized_identifier, component_list,
-                   IsInternalNetwork);
+                   use_customized_identifier, components, IsInternalNetwork);
 
   return true;
 }
