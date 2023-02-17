@@ -1892,7 +1892,7 @@ class Metrics : public DefaultServiceObserver {
   FRIEND_TEST(MetricsTest, NotifySuspendActionsCompleted_Success);
   FRIEND_TEST(MetricsTest, NotifySuspendActionsCompleted_Failure);
   FRIEND_TEST(MetricsTest, NotifySuspendActionsStarted);
-  FRIEND_TEST(WiFiMainTest, GetGeolocationObjects);
+  FRIEND_TEST(WiFiMainTest, UpdateGeolocationObjects);
 
   using TimerReporters =
       std::vector<std::unique_ptr<chromeos_metrics::TimerReporter>>;

@@ -81,6 +81,7 @@ using ::testing::ReturnNull;
 using ::testing::ReturnRef;
 using ::testing::ReturnRefOfCopy;
 using ::testing::SaveArg;
+using ::testing::SetArgPointee;
 using ::testing::StrEq;
 using ::testing::StrictMock;
 using ::testing::Test;
@@ -3860,8 +3861,7 @@ TEST_F(ManagerTest, GeoLocation) {
   EXPECT_CALL(*device, technology())
       .Times(AtLeast(1))
       .WillRepeatedly(Return(Technology::kWiFi));
-  EXPECT_CALL(*device, GetGeolocationObjects())
-      .WillOnce(Return(std::vector<GeolocationInfo>()));
+  EXPECT_CALL(*device, UpdateGeolocationObjects(_)).Times(1);
   manager()->OnDeviceGeolocationInfoUpdated(device);
   auto location_infos = manager()->GetNetworksForGeolocation();
   EXPECT_EQ(1, location_infos.size());
@@ -3874,8 +3874,7 @@ TEST_F(ManagerTest, GeoLocation) {
   EXPECT_CALL(*cellular_device, technology())
       .Times(AtLeast(1))
       .WillRepeatedly(Return(Technology::kCellular));
-  EXPECT_CALL(*cellular_device, GetGeolocationObjects())
-      .WillOnce(Return(std::vector<GeolocationInfo>()));
+  EXPECT_CALL(*cellular_device, UpdateGeolocationObjects(_)).Times(1);
   manager()->OnDeviceGeolocationInfoUpdated(cellular_device);
   location_infos = manager()->GetNetworksForGeolocation();
   EXPECT_EQ(2, location_infos.size());
@@ -3899,14 +3898,14 @@ TEST_F(ManagerTest, GeoLocation_MultipleDevicesOneTechnology) {
   // Make both devices WiFi technology and have geolocation info.
   EXPECT_CALL(*device_1, technology())
       .WillRepeatedly(Return(Technology::kWiFi));
-  EXPECT_CALL(*device_1, GetGeolocationObjects())
-      .WillOnce(Return(std::vector<GeolocationInfo>{info_1}));
+  EXPECT_CALL(*device_1, UpdateGeolocationObjects(_))
+      .WillOnce(SetArgPointee<0>(std::vector<GeolocationInfo>{info_1}));
   manager()->OnDeviceGeolocationInfoUpdated(device_1);
 
   EXPECT_CALL(*device_2, technology())
       .WillRepeatedly(Return(Technology::kWiFi));
-  EXPECT_CALL(*device_2, GetGeolocationObjects())
-      .WillOnce(Return(std::vector<GeolocationInfo>{info_2}));
+  EXPECT_CALL(*device_2, UpdateGeolocationObjects(_))
+      .WillOnce(SetArgPointee<0>(std::vector<GeolocationInfo>{info_2}));
   manager()->OnDeviceGeolocationInfoUpdated(device_2);
 
   auto location_infos = manager()->GetNetworksForGeolocation();
@@ -3925,8 +3924,7 @@ TEST_F(ManagerTest, GeoLocation_DeregisterDevice) {
   manager()->RegisterDevice(device);
 
   EXPECT_CALL(*device, technology()).WillRepeatedly(Return(Technology::kWiFi));
-  EXPECT_CALL(*device, GetGeolocationObjects())
-      .WillOnce(Return(std::vector<GeolocationInfo>()));
+  EXPECT_CALL(*device, UpdateGeolocationObjects(_)).Times(1);
   manager()->OnDeviceGeolocationInfoUpdated(device);
 
   auto location_infos = manager()->GetNetworksForGeolocation();

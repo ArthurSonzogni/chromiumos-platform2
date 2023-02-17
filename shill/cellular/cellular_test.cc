@@ -1944,7 +1944,7 @@ TEST_F(CellularTest, LinkDeleted) {
   EXPECT_FALSE(device_->selected_service());
 }
 
-TEST_F(CellularTest, GetGeolocationObjects) {
+TEST_F(CellularTest, UpdateGeolocationObjects) {
   static const Cellular::LocationInfo kGoodLocations[] = {
       {"310", "410", "DE7E", "4985F6"},
       {"001", "010", "O100", "googol"},
@@ -1966,7 +1966,7 @@ TEST_F(CellularTest, GetGeolocationObjects) {
     expected_info[kGeoCellIdProperty] = location.ci;
 
     device_->GetLocationCallback(raw_location, error);
-    objects = device_->GetGeolocationObjects();
+    device_->UpdateGeolocationObjects(&objects);
 
     ASSERT_EQ(objects.size(), 1);
     EXPECT_EQ(expected_info, objects[0]);
@@ -1979,7 +1979,7 @@ TEST_F(CellularTest, GetGeolocationObjects) {
     GeolocationInfo empty_info;
 
     device_->GetLocationCallback(raw_location, error);
-    objects = device_->GetGeolocationObjects();
+    device_->UpdateGeolocationObjects(&objects);
 
     ASSERT_EQ(objects.size(), 1);
     EXPECT_EQ(empty_info, objects[0]);

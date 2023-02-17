@@ -164,7 +164,8 @@ class Cellular : public Device,
   void OnConnected() override;
   void OnBeforeSuspend(const ResultCallback& callback) override;
   void OnAfterResume() override;
-  std::vector<GeolocationInfo> GetGeolocationObjects() const override;
+  void UpdateGeolocationObjects(
+      std::vector<GeolocationInfo>* geolocation_infos) const override;
 
   // Performs the necessary steps to bring the service to the activated state,
   // once an online payment has been done.
@@ -430,7 +431,7 @@ class Cellular : public Device,
   FRIEND_TEST(CellularTest, StartPPP);
   FRIEND_TEST(CellularTest, StartPPPAfterEthernetUp);
   FRIEND_TEST(CellularTest, StartPPPAlreadyStarted);
-  FRIEND_TEST(CellularTest, GetGeolocationObjects);
+  FRIEND_TEST(CellularTest, UpdateGeolocationObjects);
 
   // Names of properties in storage
   static const char kAllowRoaming[];

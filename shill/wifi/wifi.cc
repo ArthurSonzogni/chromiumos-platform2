@@ -2694,8 +2694,9 @@ void WiFi::DisassociateFromService(const WiFiServiceRefPtr& service) {
   RemoveNetworkForService(service.get(), &unused_error);
 }
 
-std::vector<GeolocationInfo> WiFi::GetGeolocationObjects() const {
-  std::vector<GeolocationInfo> objects;
+void WiFi::UpdateGeolocationObjects(
+    std::vector<GeolocationInfo>* geolocation_infos) const {
+  geolocation_infos->clear();
   for (const auto& endpoint_entry : endpoint_by_rpcid_) {
     GeolocationInfo geoinfo;
     const WiFiEndpointRefPtr& endpoint = endpoint_entry.second;
@@ -2705,9 +2706,8 @@ std::vector<GeolocationInfo> WiFi::GetGeolocationObjects() const {
     geoinfo[kGeoChannelProperty] = base::StringPrintf(
         "%d", Metrics::WiFiFrequencyToChannel(endpoint->frequency()));
     AddLastSeenTime(&geoinfo, endpoint->last_seen());
-    objects.push_back(geoinfo);
+    geolocation_infos->push_back(geoinfo);
   }
-  return objects;
 }
 
 void WiFi::HelpRegisterDerivedInt32(PropertyStore* store,

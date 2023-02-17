@@ -300,9 +300,8 @@ std::string Device::GetStorageIdentifier() const {
   return "device_" + mac_address_;
 }
 
-std::vector<GeolocationInfo> Device::GetGeolocationObjects() const {
-  return std::vector<GeolocationInfo>();
-}
+void Device::UpdateGeolocationObjects(
+    std::vector<GeolocationInfo>* geolocation_infos) const {}
 
 std::string Device::GetTechnologyName() const {
   return TechnologyName(technology());

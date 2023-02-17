@@ -218,8 +218,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   const WiFiEndpointConstRefPtr GetCurrentEndpoint() const;
 
   // Overridden from Device superclass
-  std::vector<GeolocationInfo> GetGeolocationObjects() const override;
-
+  void UpdateGeolocationObjects(
+      std::vector<GeolocationInfo>* geolocation_infos) const override;
   // Called by a WiFiService when it disassociates itself from this Device.
   virtual void DisassociateFromService(const WiFiServiceRefPtr& service);
 
@@ -354,7 +354,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, ScanStateHandleDisconnect);  // ScanState
   FRIEND_TEST(WiFiMainTest, ScanStateNotScanningNoUma);  // ScanState
   FRIEND_TEST(WiFiMainTest, ScanStateUma);               // wifi_state_
-  FRIEND_TEST(WiFiMainTest, Stop);          // weak_ptr_factory_while_started_
+  FRIEND_TEST(WiFiMainTest, Stop);  // weak_ptr_factory_while_started_
   FRIEND_TEST(WiFiMainTest, TimeoutPendingServiceWithEndpoints);
   FRIEND_TEST(WiFiMainTest,
               UnreliableConnectionInvokesNotifyWiFiConnectionUnreliable);

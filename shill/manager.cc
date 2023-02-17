@@ -2702,7 +2702,7 @@ Manager::GetNetworksForGeolocation() const {
 
 void Manager::OnDeviceGeolocationInfoUpdated(const DeviceRefPtr& device) {
   SLOG(2) << __func__ << " for device " << device->UniqueName();
-  device_geolocation_info_[device] = device->GetGeolocationObjects();
+  device->UpdateGeolocationObjects(&device_geolocation_info_[device]);
 }
 
 void Manager::RecheckPortal(Error* /*error*/) {

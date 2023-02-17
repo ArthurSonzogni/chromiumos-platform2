@@ -156,10 +156,11 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   const RpcIdentifier& GetRpcIdentifier() const;
   virtual std::string GetStorageIdentifier() const;
 
-  // Returns a list of Geolocation objects. Each object is multiple
+  // Update the Geolocation objects. Each object is multiple
   // key-value pairs representing one entity that can be used for
   // Geolocation.
-  virtual std::vector<GeolocationInfo> GetGeolocationObjects() const;
+  virtual void UpdateGeolocationObjects(
+      std::vector<GeolocationInfo>* geolocation_infos) const;
 
   const std::string& mac_address() const { return mac_address_; }
   const std::string& link_name() const { return link_name_; }

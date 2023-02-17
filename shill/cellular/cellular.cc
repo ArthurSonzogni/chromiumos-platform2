@@ -713,7 +713,8 @@ void Cellular::OnAfterResume() {
   Device::OnAfterResume();
 }
 
-std::vector<GeolocationInfo> Cellular::GetGeolocationObjects() const {
+void Cellular::UpdateGeolocationObjects(
+    std::vector<GeolocationInfo>* geolocation_infos) const {
   const std::string& mcc = location_info_.mcc;
   const std::string& mnc = location_info_.mnc;
   const std::string& lac = location_info_.lac;
@@ -730,8 +731,8 @@ std::vector<GeolocationInfo> Cellular::GetGeolocationObjects() const {
   }
   // Else we have either an incomplete location, no location yet,
   // or some unsupported location type, so don't return something incorrect.
-
-  return {geolocation_info};
+  geolocation_infos->clear();
+  geolocation_infos->push_back(geolocation_info);
 }
 
 void Cellular::ReAttach() {

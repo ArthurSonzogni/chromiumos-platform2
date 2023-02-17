@@ -4557,7 +4557,7 @@ struct BSS {
   const char* mode;
 };
 
-TEST_F(WiFiMainTest, GetGeolocationObjects) {
+TEST_F(WiFiMainTest, UpdateGeolocationObjects) {
   BSS bsses[] = {
       {RpcIdentifier("bssid1"), "ssid1", "00:00:00:00:00:00", 5,
        Metrics::kWiFiFrequency2412, kNetworkModeInfrastructure},
@@ -4573,7 +4573,7 @@ TEST_F(WiFiMainTest, GetGeolocationObjects) {
   for (size_t i = 0; i < std::size(bsses); ++i) {
     ReportBSS(bsses[i].bsspath, bsses[i].ssid, bsses[i].bssid,
               bsses[i].signal_strength, bsses[i].frequency, bsses[i].mode);
-    objects = wifi()->GetGeolocationObjects();
+    wifi()->UpdateGeolocationObjects(&objects);
     EXPECT_EQ(objects.size(), i + 1);
 
     GeolocationInfo expected_info;
