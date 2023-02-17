@@ -120,7 +120,7 @@ bool RmadInterfaceImpl::WaitForServices() {
   CHECK(external_utils_initialized_);
   std::string output;
   for (int i = 0; i < kWaitServicesRetries; ++i) {
-    LOG(INFO) << "Checking services";
+    DLOG(INFO) << "Checking services";
     bool all_running = true;
     for (const std::string& service : kWaitServices) {
       cmd_utils_->GetOutput({kInitctlCmd, "status", service}, &output);
@@ -251,7 +251,7 @@ bool RmadInterfaceImpl::SetUp(scoped_refptr<DaemonCallback> daemon_callback) {
         runtime_probe_client_->ProbeCategories({RMAD_COMPONENT_CELLULAR}, false,
                                                &components) &&
         components.size() > 0) {
-      LOG(INFO) << "Disabling cellular network";
+      DLOG(INFO) << "Disabling cellular network";
       CHECK(shill_client_->DisableCellular());
     }
   }
@@ -264,12 +264,12 @@ RmadErrorCode RmadInterfaceImpl::GetInitializedStateHandler(
     scoped_refptr<BaseStateHandler>* state_handler) const {
   auto handler = state_handler_manager_->GetStateHandler(state_case);
   if (!handler) {
-    LOG(INFO) << "No registered state handler for state " << state_case;
+    LOG(ERROR) << "No registered state handler for state " << state_case;
     return RMAD_ERROR_STATE_HANDLER_MISSING;
   }
   if (RmadErrorCode init_error = handler->InitializeState();
       init_error != RMAD_ERROR_OK) {
-    LOG(INFO) << "Failed to initialize current state " << state_case;
+    LOG(ERROR) << "Failed to initialize current state " << state_case;
     return init_error;
   }
   *state_handler = handler;
