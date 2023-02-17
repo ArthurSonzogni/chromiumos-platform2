@@ -186,14 +186,13 @@ class ConnectionTest : public Test {
     // Add expectations for the added routes.
     auto address_family = ipv4_properties_.address_family;
     for (const auto& prefix_cidr : included_routes) {
-      IPAddress destination_address(address_family);
+      const auto destination_address =
+          IPAddress::CreateFromPrefixString(prefix_cidr);
+      CHECK(destination_address.has_value()) << prefix_cidr;
       IPAddress source_address(address_family);  // Left as default.
-      if (!destination_address.SetAddressAndPrefixFromString(prefix_cidr)) {
-        continue;
-      }
       EXPECT_CALL(routing_table_,
                   AddRoute(connection_->interface_index_,
-                           RoutingTableEntry::Create(destination_address,
+                           RoutingTableEntry::Create(*destination_address,
                                                      source_address,
                                                      gateway_ipv4_address_)
                                .SetMetric(connection_->priority_)
@@ -619,10 +618,8 @@ TEST_F(ConnectionTest, AddNonPhysicalDeviceConfigUserTrafficOnly) {
 
   const std::string kExcludeAddress1 = "192.0.1.0/24";
   const std::string kExcludeAddress2 = "192.0.2.0/24";
-  IPAddress address1(IPAddress::kFamilyIPv4);
-  IPAddress address2(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(address1.SetAddressAndPrefixFromString(kExcludeAddress1));
-  EXPECT_TRUE(address2.SetAddressAndPrefixFromString(kExcludeAddress2));
+  IPAddress address1 = *IPAddress::CreateFromPrefixString(kExcludeAddress1);
+  IPAddress address2 = *IPAddress::CreateFromPrefixString(kExcludeAddress2);
 
   ipv4_properties_.default_route = false;
   ipv4_properties_.exclusion_list = {kExcludeAddress1, kExcludeAddress2};

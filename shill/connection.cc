@@ -116,15 +116,16 @@ bool Connection::SetupIncludedRoutes(const IPConfig::Properties& properties,
   std::vector<IPConfig::Route> included_routes =
       properties.dhcp_classless_static_routes;
   for (const auto& prefix_cidr : properties.inclusion_list) {
-    IPAddress prefix(address_family);
-    if (!prefix.SetAddressAndPrefixFromString(prefix_cidr)) {
+    const auto prefix =
+        IPAddress::CreateFromPrefixString(prefix_cidr, address_family);
+    if (!prefix.has_value()) {
       LOG(ERROR) << "Failed to parse prefix " << prefix_cidr;
       ret = false;
       continue;
     }
     IPConfig::Route route;
-    prefix.IntoString(&route.host);
-    route.prefix = prefix.prefix();
+    prefix->IntoString(&route.host);
+    route.prefix = prefix->prefix();
     route.gateway = properties.gateway;
     if (route.gateway.empty()) {
       // Gateway address with all-zeros indicates this route does not have a
@@ -183,10 +184,15 @@ bool Connection::SetupExcludedRoutes(const IPConfig::Properties& properties,
                    .SetType(RTN_THROW)
                    .SetTag(interface_index_);
   for (const auto& excluded_ip : properties.exclusion_list) {
-    if (!entry.dst.SetAddressAndPrefixFromString(excluded_ip) ||
-        !entry.dst.IsValid() ||
-        !routing_table_->AddRoute(interface_index_, entry)) {
-      LOG(ERROR) << "Unable to setup route for " << excluded_ip << ".";
+    const auto dst = IPAddress::CreateFromPrefixString(
+        excluded_ip, properties.address_family);
+    if (!dst.has_value()) {
+      LOG(ERROR) << "Excluded prefix is invalid: " << excluded_ip;
+      return false;
+    }
+    entry.dst = *dst;
+    if (!routing_table_->AddRoute(interface_index_, entry)) {
+      LOG(ERROR) << "Unable to setup route for " << excluded_ip;
       return false;
     }
   }

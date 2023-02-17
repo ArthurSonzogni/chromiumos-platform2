@@ -52,8 +52,9 @@ void UpdateWireGuardDriverIPv4Address(const NetworkConfig& static_config,
     return;
   }
 
-  IPAddress addr(IPAddress::kFamilyIPv4);
-  if (!addr.SetAddressAndPrefixFromString(*static_config.ipv4_address_cidr)) {
+  const auto addr = IPAddress::CreateFromPrefixString(
+      *static_config.ipv4_address_cidr, IPAddress::kFamilyIPv4);
+  if (!addr.has_value()) {
     LOG(WARNING) << __func__ << ": " << *static_config.ipv4_address_cidr
                  << " is not a valid IPv4 CIDR string";
     return;
@@ -66,7 +67,7 @@ void UpdateWireGuardDriverIPv4Address(const NetworkConfig& static_config,
     return;
   }
 
-  const std::vector<std::string> addrs_to_set{addr.ToString()};
+  const std::vector<std::string> addrs_to_set{addr->ToString()};
   driver->args()->Set<std::vector<std::string>>(kWireGuardIPAddress,
                                                 addrs_to_set);
 }

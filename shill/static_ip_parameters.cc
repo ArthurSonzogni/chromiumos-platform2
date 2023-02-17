@@ -90,10 +90,11 @@ KeyValueStore StaticIPParameters::NetworkConfigToKeyValues(
     const NetworkConfig& props) {
   KeyValueStore kvs;
   if (props.ipv4_address_cidr.has_value()) {
-    IPAddress addr(IPAddress::kFamilyIPv4);
-    if (addr.SetAddressAndPrefixFromString(props.ipv4_address_cidr.value())) {
-      kvs.Set<std::string>(kAddressProperty, addr.ToString());
-      kvs.Set<int32_t>(kPrefixlenProperty, addr.prefix());
+    const auto addr = IPAddress::CreateFromPrefixString(
+        props.ipv4_address_cidr.value(), IPAddress::kFamilyIPv4);
+    if (addr.has_value()) {
+      kvs.Set<std::string>(kAddressProperty, addr->ToString());
+      kvs.Set<int32_t>(kPrefixlenProperty, addr->prefix());
     } else {
       LOG(ERROR) << "props does not have a valid IPv4 address in CIDR "
                  << props.ipv4_address_cidr.value();

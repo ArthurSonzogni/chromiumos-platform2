@@ -63,8 +63,9 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
   while (route_iterator != route_strings.end()) {
     const auto& destination_as_string = *route_iterator;
     route_iterator++;
-    IPAddress destination(IPAddress::kFamilyIPv4);
-    if (!destination.SetAddressAndPrefixFromString(destination_as_string)) {
+    const auto destination = IPAddress::CreateFromPrefixString(
+        destination_as_string, IPAddress::kFamilyIPv4);
+    if (!destination.has_value()) {
       LOG(ERROR) << "In " << __func__ << ": Expected an IP address/prefix "
                  << "but got an unparsable: " << destination_as_string;
       return false;
@@ -80,7 +81,7 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
       return false;
     }
 
-    if (destination.prefix() == 0 && properties->gateway.empty()) {
+    if (destination->prefix() == 0 && properties->gateway.empty()) {
       // If a default route is provided in the classless parameters and
       // we don't already have one, apply this as the default route.
       SLOG(2) << "In " << __func__ << ": Setting default gateway to "
@@ -88,8 +89,8 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
       CHECK(gateway.IntoString(&properties->gateway));
     } else {
       IPConfig::Route route;
-      CHECK(destination.IntoString(&route.host));
-      route.prefix = destination.prefix();
+      CHECK(destination->IntoString(&route.host));
+      route.prefix = destination->prefix();
       CHECK(gateway.IntoString(&route.gateway));
       routes.push_back(route);
       SLOG(2) << "In " << __func__ << ": Adding route to to "

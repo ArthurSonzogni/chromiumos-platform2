@@ -116,11 +116,11 @@ void IPConfig::Properties::UpdateFromNetworkConfig(
   }
 
   if (network_config.ipv4_address_cidr.has_value()) {
-    IPAddress addr(IPAddress::kFamilyIPv4);
-    if (addr.SetAddressAndPrefixFromString(
-            network_config.ipv4_address_cidr.value())) {
-      address = addr.ToString();
-      subnet_prefix = addr.prefix();
+    const auto addr = IPAddress::CreateFromPrefixString(
+        network_config.ipv4_address_cidr.value(), IPAddress::kFamilyIPv4);
+    if (addr.has_value()) {
+      address = addr->ToString();
+      subnet_prefix = addr->prefix();
     } else {
       LOG(ERROR) << "ipv4_address_cidr does not have a valid value "
                  << network_config.ipv4_address_cidr.value();

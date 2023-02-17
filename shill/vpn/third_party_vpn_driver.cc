@@ -231,7 +231,6 @@ void ThirdPartyVpnDriver::ProcessIPArrayCIDR(
     std::string* error_message,
     std::string* warning_message) {
   std::vector<std::string> string_array;
-  IPAddress address(IPAddress::kFamilyIPv4);
   auto it = parameters.find(key);
   if (it != parameters.end()) {
     string_array =
@@ -240,12 +239,14 @@ void ThirdPartyVpnDriver::ProcessIPArrayCIDR(
 
     // Eliminate invalid IPs
     for (auto value = string_array.begin(); value != string_array.end();) {
-      if (!address.SetAddressAndPrefixFromString(*value)) {
+      const auto address =
+          IPAddress::CreateFromPrefixString(*value, IPAddress::kFamilyIPv4);
+      if (!address.has_value()) {
         warning_message->append(*value + " for " + key + " is invalid;");
         value = string_array.erase(value);
         continue;
       }
-      const std::string cidr_key = IPAddressFingerprint(address);
+      const std::string cidr_key = IPAddressFingerprint(*address);
       if (known_cidrs_.find(cidr_key) != known_cidrs_.end()) {
         warning_message->append("Duplicate entry for " + *value + " in " + key +
                                 " found;");
@@ -374,9 +375,12 @@ void ThirdPartyVpnDriver::SetParameters(
     // The first excluded IP is used to find the default gateway. The logic that
     // finds the default gateway does not work for default route "0.0.0.0/0".
     // Hence, this code ensures that the first IP is not default.
-    IPAddress address(ipv4_properties_->address_family);
-    address.SetAddressAndPrefixFromString(ipv4_properties_->exclusion_list[0]);
-    if (address.IsDefault() && !address.prefix()) {
+    const auto address = IPAddress::CreateFromPrefixString(
+        ipv4_properties_->exclusion_list[0], IPAddress::kFamilyIPv4);
+    if (!address.has_value()) {
+      LOG(ERROR) << "Invalid prefix string: "
+                 << ipv4_properties_->exclusion_list[0];
+    } else if (address->IsDefault() && !address->prefix()) {
       if (ipv4_properties_->exclusion_list.size() > 1) {
         swap(ipv4_properties_->exclusion_list[0],
              ipv4_properties_->exclusion_list[1]);
