@@ -20,9 +20,6 @@
 #include "cryptohome/vault_keyset.h"
 
 namespace cryptohome {
-inline constexpr bool ShouldMigrateToUss() {
-  return USE_USS_MIGRATION;
-}
 
 // This class object serves for migrating a user VaultKeyset to UserSecretStash
 // and AuthFactor.

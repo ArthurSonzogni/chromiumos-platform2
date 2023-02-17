@@ -29,6 +29,7 @@
 
 #include "base/functional/callback_helpers.h"
 #include "cryptohome/auth_blocks/auth_block.h"
+#include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_label_arity.h"
@@ -304,9 +305,8 @@ std::unique_ptr<AuthSession> AuthSession::Create(
   if (persistent_user_exists) {
     AuthFactorVaultKeysetConverter converter(backing_apis.keyset_management);
     auth_factor_map = LoadAuthFactorMap(
-        (ShouldMigrateToUss() || migrate_to_user_secret_stash),
-        obfuscated_username, *backing_apis.platform, converter,
-        *backing_apis.auth_factor_manager);
+        migrate_to_user_secret_stash, obfuscated_username,
+        *backing_apis.platform, converter, *backing_apis.auth_factor_manager);
   }
 
   // Assumption here is that keyset_management_ will outlive this AuthSession.
@@ -782,7 +782,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
 
   ReportTimerDuration(auth_session_performance_timer.get());
 
-  if ((migrate_to_user_secret_stash_ || ShouldMigrateToUss()) &&
+  if (migrate_to_user_secret_stash_ &&
       status_ == AuthStatus::kAuthStatusAuthenticated &&
       IsUserSecretStashExperimentEnabled(platform_)) {
     UssMigrator migrator(username_);
