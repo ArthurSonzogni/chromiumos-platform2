@@ -10,8 +10,9 @@ semantically correct. The model can also be used to create a canonically
 formatted version XML.
 """
 
-import xml.etree.ElementTree as ET
 import textwrap as tw
+import xml.etree.ElementTree as ET
+
 import model_util as util
 
 
@@ -131,7 +132,7 @@ class Project:
         events = tw.indent(events, "    ")
         summary = wrap(self.summary, indent="  ")
         owners = "\n".join(
-            "    <owner>{}</owner>".format(o) for o in self.owners
+            f"    <owner>{o}</owner>" for o in self.owners
         )
 
         result = tw.dedent(
@@ -221,10 +222,8 @@ class Metric:
         if self.type == "raw-string" and project.id != "none":
             util.error(
                 elem,
-                "raw-string metrics must be in a project with id type "
-                "'none', but {} has id type '{}'".format(
-                    project.name, project.id
-                ),
+                f"raw-string metrics must be in a project with id type "
+                f"'none', but {project.name} has id type '{project.id}'",
             )
 
     def __repr__(self):
