@@ -90,16 +90,17 @@ message MobileAPN {
   optional bool is_required_by_carrier_spec = 13 [default = false];
 }
 
+enum HttpMethod {
+  GET = 1;
+  POST = 2;
+}
+
 message OnlinePortal {
-  enum Method {
-    GET = 1;
-    POST = 2;
-  }
   // Some OnlinePortals are only valid for a restricted set of MCCMNCs, etc.
   // Use this filter to restrict when the OnlinePortal is valid.
   // The OnlinePortal is assumed to be valid if the filter is not provided.
   optional Filter olp_filter = 1;
-  required Method method = 2;
+  required HttpMethod method = 2;
   required string url = 3;
   optional string post_data = 4;
 }
@@ -137,6 +138,23 @@ message Data {
   // and all data will go through the DUN connection. When tethering is
   // disabled, the user data will go though the DEFAULT APN connection.
   optional bool use_dun_apn_as_default = 11;
+
+  // The url used for the mobile hotspot entitlement check using the ChromeOS
+  // open source entitlement check implementation. Only static urls are
+  // supported.
+  optional string mhs_entitlement_url = 12;
+
+  // Parameters to be included in the entitlement check message body.
+  enum EntitlementParam {
+    IMSI = 1;
+  };
+  repeated EntitlementParam mhs_entitlement_param = 13;
+
+  // The HTTP method used in the request. If any
+  // |mhs_entitlement_param| parameters are used, the request should be a POST
+  // request to be able to send the JSON message.
+  optional HttpMethod mhs_entitlement_method = 14 [default = POST];
+
   // ///////////////////////////////////////////////////////////////////////////
   // GSM specific properties [21 - 40]
 

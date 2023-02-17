@@ -16,6 +16,7 @@
 #include <base/observer_list_types.h>
 
 #include "shill/cellular/mobile_operator_mapper.h"
+
 namespace shill {
 
 class EventDispatcher;
@@ -136,6 +137,11 @@ class MobileOperatorInfo {
   // If the carrier requires all traffic to go through the DUN APN when
   // tethering.
   bool use_dun_apn_as_default() const;
+
+  // The entitlement check configuration.
+  virtual const MobileOperatorMapper::EntitlementConfig& entitlement_config()
+      const;
+  // If specified, the MTU value to be used on the network interface.
   int32_t mtu() const;
 
   // ///////////////////////////////////////////////////////////////////////////

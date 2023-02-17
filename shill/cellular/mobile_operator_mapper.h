@@ -17,6 +17,7 @@
 #include <base/observer_list.h>
 #include <google/protobuf/text_format.h>
 
+#include "shill/data_types.h"
 #include "shill/event_dispatcher.h"
 #include "shill/mobile_operator_db/mobile_operator_db.pb.h"
 
@@ -127,6 +128,17 @@ class MobileOperatorMapper {
     }
   };
 
+  // Encapsulates information about the entitlement check.
+  struct EntitlementConfig {
+    // The url used for the mobile hotspot entitlement check using the ChromeOS
+    // open source entitlement check implementation.
+    std::string url;
+    // The HTTP method used for the entitlement check http request.
+    std::string method;
+    // Parameters to be included in the entitlement check message body.
+    Stringmap params;
+  };
+
   // These functions can be called before Init to read non default database
   // file(s). Files included earlier will take precedence over later additions.
   virtual void ClearDatabasePaths();
@@ -181,7 +193,9 @@ class MobileOperatorMapper {
   // If the carrier requires all traffic to go through the DUN APN when
   // tethering.
   virtual bool use_dun_apn_as_default() const;
-  // If specified, the MTU value to be used on the network interface.
+  // The entitlement check configuration.
+  virtual const EntitlementConfig& entitlement_config();
+  // Parameters to be included in the entitlement check message body.
   virtual int32_t mtu() const;
 
   // ///////////////////////////////////////////////////////////////////////////
@@ -313,6 +327,9 @@ class MobileOperatorMapper {
   std::string mccmnc_;
   std::string gid1_;
   std::vector<std::string> mccmnc_list_;
+  EntitlementConfig entitlement_config_;
+  std::set<shill::mobile_operator_db::Data_EntitlementParam>
+      mhs_entitlement_params_;
   std::vector<MobileOperatorMapper::LocalizedName> operator_name_list_;
   bool prioritizes_db_operator_name_;
   std::vector<mobile_operator_db::MobileAPN> raw_apn_list_;

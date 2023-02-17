@@ -272,6 +272,9 @@ TEST_P(MobileOperatorMapperMainTest, InitialConditions) {
   EXPECT_FALSE(operator_info_->tethering_allowed());
   EXPECT_FALSE(operator_info_->use_dun_apn_as_default());
   EXPECT_EQ(0, operator_info_->mtu());
+  EXPECT_TRUE(operator_info_->entitlement_config().url.empty());
+  EXPECT_TRUE(operator_info_->entitlement_config().method.empty());
+  EXPECT_TRUE(operator_info_->entitlement_config().params.empty());
 }
 
 TEST_P(MobileOperatorMapperMainTest, MNOByMCCMNC) {
@@ -1091,6 +1094,32 @@ class MobileOperatorMapperDataTest : public MobileOperatorMapperMainTest {
         apn.is_required_by_carrier_spec);
   }
 
+  void VerifyNonInheritableDatabaseDataMNO(std::string imsi) {
+    EXPECT_EQ(tethering_allowed_, operator_info_->tethering_allowed());
+    EXPECT_EQ(use_dun_apn_as_default_,
+              operator_info_->use_dun_apn_as_default());
+    static const Stringmap mhs_entitlement_params = {{"imsi", imsi}};
+    EXPECT_EQ("uuid200001.com", operator_info_->entitlement_config().url);
+    EXPECT_EQ("GET", operator_info_->entitlement_config().method);
+    EXPECT_EQ(mhs_entitlement_params,
+              operator_info_->entitlement_config().params);
+  }
+
+  void VerifyNonInheritableDatabaseDataMVNO() {
+    EXPECT_EQ(tethering_allowed_, operator_info_->tethering_allowed());
+    EXPECT_EQ(use_dun_apn_as_default_,
+              operator_info_->use_dun_apn_as_default());
+    EXPECT_EQ("uuid200101.com", operator_info_->entitlement_config().url);
+    EXPECT_EQ("POST", operator_info_->entitlement_config().method);
+    EXPECT_TRUE(operator_info_->entitlement_config().params.empty());
+  }
+  void VerifyNonInheritableDatabaseDataEmptyMVNO() {
+    EXPECT_FALSE(operator_info_->tethering_allowed());
+    EXPECT_TRUE(operator_info_->entitlement_config().url.empty());
+    EXPECT_EQ("POST", operator_info_->entitlement_config().method);
+    EXPECT_TRUE(operator_info_->entitlement_config().params.empty());
+  }
+
   void VerifyNameListsMatch(
       const std::vector<MobileOperatorMapper::LocalizedName>&
           operator_name_list_lhs,
@@ -1180,10 +1209,11 @@ TEST_P(MobileOperatorMapperDataTest, MNODetailedInformation) {
   VerifyEventCount();
   VerifyMNOWithUUID("uuid200001");
 
+  std::string imsi = "123456789012345";
+  UpdateIMSI(imsi);
   PopulateMNOData();
   VerifyDatabaseData();
-  EXPECT_EQ(tethering_allowed_, operator_info_->tethering_allowed());
-  EXPECT_EQ(use_dun_apn_as_default_, operator_info_->use_dun_apn_as_default());
+  VerifyNonInheritableDatabaseDataMNO(imsi);
 }
 
 TEST_P(MobileOperatorMapperDataTest, MVNOInheritsInformation) {
@@ -1197,7 +1227,7 @@ TEST_P(MobileOperatorMapperDataTest, MVNOInheritsInformation) {
 
   PopulateMNOData();
   VerifyDatabaseData();
-  EXPECT_FALSE(operator_info_->tethering_allowed());
+  VerifyNonInheritableDatabaseDataEmptyMVNO();
 }
 
 TEST_P(MobileOperatorMapperDataTest, MVNOOverridesInformation) {
@@ -1212,8 +1242,7 @@ TEST_P(MobileOperatorMapperDataTest, MVNOOverridesInformation) {
 
   PopulateMVNOData();
   VerifyDatabaseData();
-  EXPECT_EQ(tethering_allowed_, operator_info_->tethering_allowed());
-  EXPECT_EQ(use_dun_apn_as_default_, operator_info_->use_dun_apn_as_default());
+  VerifyNonInheritableDatabaseDataMVNO();
 }
 
 TEST_P(MobileOperatorMapperDataTest, NoUpdatesBeforeMNOMatch) {
@@ -1260,6 +1289,7 @@ TEST_P(MobileOperatorMapperDataTest, UserUpdatesOverrideMVNO) {
   olp_list_.push_back({olp_url, olp_method, olp_post_data});
 
   VerifyDatabaseData();
+  VerifyNonInheritableDatabaseDataMVNO();
 }
 
 TEST_P(MobileOperatorMapperDataTest, RedundantUserUpdatesMVNO) {
@@ -1287,6 +1317,7 @@ TEST_P(MobileOperatorMapperDataTest, RedundantUserUpdatesMVNO) {
   VerifyEventCount();
   PopulateMVNOData();
   VerifyDatabaseData();
+  VerifyNonInheritableDatabaseDataMVNO();
 }
 
 TEST_P(MobileOperatorMapperDataTest, RedundantCachedUpdatesMVNO) {
@@ -1309,6 +1340,7 @@ TEST_P(MobileOperatorMapperDataTest, RedundantCachedUpdatesMVNO) {
 
   PopulateMVNOData();
   VerifyDatabaseData();
+  VerifyNonInheritableDatabaseDataMVNO();
 }
 
 TEST_P(MobileOperatorMapperDataTest, ResetClearsInformation) {
@@ -1320,8 +1352,7 @@ TEST_P(MobileOperatorMapperDataTest, ResetClearsInformation) {
   VerifyMVNOWithUUID("uuid200201");
   PopulateMNOData();
   VerifyDatabaseData();
-  EXPECT_FALSE(operator_info_->tethering_allowed());
-  EXPECT_FALSE(operator_info_->use_dun_apn_as_default());
+  VerifyNonInheritableDatabaseDataEmptyMVNO();
 
   ExpectEventCount(1);
   operator_info_->Reset();
@@ -1335,22 +1366,22 @@ TEST_P(MobileOperatorMapperDataTest, ResetClearsInformation) {
   VerifyMVNOWithUUID("uuid200101");
   PopulateMVNOData();
   VerifyDatabaseData();
-  EXPECT_FALSE(operator_info_->tethering_allowed());
-  EXPECT_FALSE(operator_info_->use_dun_apn_as_default());
+  VerifyNonInheritableDatabaseDataMVNO();
 
   ExpectEventCount(1);
   operator_info_->Reset();
   VerifyEventCount();
   VerifyNoMatch();
 
+  std::string imsi = "123456789012345";
   ExpectEventCount(1);
+  UpdateIMSI(imsi);
   UpdateMCCMNC("200001");
   VerifyEventCount();
   VerifyMNOWithUUID("uuid200001");
   PopulateMNOData();
   VerifyDatabaseData();
-  EXPECT_TRUE(operator_info_->tethering_allowed());
-  EXPECT_TRUE(operator_info_->use_dun_apn_as_default());
+  VerifyNonInheritableDatabaseDataMNO(imsi);
 }
 
 TEST_P(MobileOperatorMapperDataTest, FilteredOLP) {

@@ -270,4 +270,20 @@ TEST_F(MobileOperatorInfoMainTest, use_dun_apn_as_default) {
   EXPECT_CALL(*home_, use_dun_apn_as_default()).WillOnce(Return(false));
   EXPECT_FALSE(operator_info_->use_dun_apn_as_default());
 }
+
+TEST_F(MobileOperatorInfoMainTest, entitlement_config) {
+  MobileOperatorMapper::EntitlementConfig config;
+  std::string imsi = "12345";
+  config.url = "url.com";
+  config.params = {{"imsi", imsi}};
+  config.method = "POST";
+  EXPECT_CALL(*home_, entitlement_config())
+      .Times(3)
+      .WillRepeatedly(ReturnRef(config));
+
+  EXPECT_EQ(operator_info_->entitlement_config().url, config.url);
+  EXPECT_EQ(operator_info_->entitlement_config().params, config.params);
+  EXPECT_EQ(operator_info_->entitlement_config().method, config.method);
+}
+
 }  // namespace shill

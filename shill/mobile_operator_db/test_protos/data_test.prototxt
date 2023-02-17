@@ -18,6 +18,9 @@ mno {
     requires_roaming: true
     tethering_allowed: true
     use_dun_apn_as_default: true
+    mhs_entitlement_url: "uuid200001.com"
+    mhs_entitlement_param: IMSI
+    mhs_entitlement_method: GET
     mtu : 1400
     olp {
       method: POST
@@ -64,6 +67,7 @@ mno {
       }
       requires_roaming: false
       tethering_allowed: false
+      mhs_entitlement_url: "uuid200101.com"
       mtu : 1200
       olp {
         method: GET

@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "shill/cellular/mobile_operator_info.h"
+
 #include <algorithm>
 
 #include "shill/cellular/mobile_operator_mapper.h"
@@ -181,6 +182,11 @@ bool MobileOperatorInfo::tethering_allowed() const {
 
 bool MobileOperatorInfo::use_dun_apn_as_default() const {
   return home_->use_dun_apn_as_default();
+}
+
+const MobileOperatorMapper::EntitlementConfig&
+MobileOperatorInfo::entitlement_config() const {
+  return home_->entitlement_config();
 }
 
 int32_t MobileOperatorInfo::mtu() const {

@@ -15,14 +15,17 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <brillo/http/http_request.h>
 #include <chromeos/dbus/service_constants.h>
 #include <google/protobuf/repeated_field.h>
 #include <re2/re2.h>
 
+#include "base/notreached.h"
 #include "base/ranges/algorithm.h"
 #include "shill/cellular/mobile_operator_storage.h"
 #include "shill/ipconfig.h"
 #include "shill/logging.h"
+#include "shill/mobile_operator_db/mobile_operator_db.pb.h"
 
 namespace shill {
 
@@ -201,6 +204,35 @@ const std::vector<std::string>& MobileOperatorMapper::mccmnc_list() const {
     SLOG(3) << GetLogPrefix(__func__) << ": Result[" << pp_result.str() << "]";
   }
   return mccmnc_list_;
+}
+
+const MobileOperatorMapper::EntitlementConfig&
+MobileOperatorMapper::entitlement_config() {
+  SLOG(3) << GetLogPrefix(__func__) << ": url Result["
+          << entitlement_config_.url << "]";
+  SLOG(3) << GetLogPrefix(__func__) << ": method Result["
+          << entitlement_config_.method << "]";
+
+  entitlement_config_.params.clear();
+  for (const auto& param : mhs_entitlement_params_) {
+    switch (param) {
+      case shill::mobile_operator_db::Data_EntitlementParam::
+          Data_EntitlementParam_IMSI:
+        // TODO(b/249372202): replace with CarrierEntitlement::kImsiProperty
+        entitlement_config_.params["imsi"] = user_imsi_;
+        break;
+    }
+  }
+  if (SLOG_IS_ON(Cellular, 3)) {
+    std::stringstream pp_result;
+    for (const auto& entry : entitlement_config_.params) {
+      pp_result << entry.first << " ";
+    }
+    SLOG(3) << GetLogPrefix(__func__) << ": params Result[" << pp_result.str()
+            << "]";
+  }
+
+  return entitlement_config_;
 }
 
 const std::vector<MobileOperatorMapper::LocalizedName>&
@@ -800,6 +832,8 @@ void MobileOperatorMapper::ClearDBInformation() {
   use_dun_apn_as_default_ = false;
   roaming_filter_list_.clear();
   mtu_ = IPConfig::kUndefinedMTU;
+  entitlement_config_ = {};
+  mhs_entitlement_params_.clear();
 }
 
 void MobileOperatorMapper::ReloadData(
@@ -831,13 +865,27 @@ void MobileOperatorMapper::ReloadData(
     requires_roaming_ = data.requires_roaming();
   }
 
-  // |tethering_allowed_| is *always* overwritten because each MNO/MVNO decides
-  // whether to allow or not allow tethering.
+  // The following tethering properties are always overwritten because each
+  // MNO/MVNO decides how tethering works on their network.
   tethering_allowed_ = data.tethering_allowed();
-
-  // |use_dun_apn_as_default_| is *always* overwritten because each
-  // MNO/MVNO decides how the APN for tethering is selected.
   use_dun_apn_as_default_ = data.use_dun_apn_as_default();
+  entitlement_config_.url = data.mhs_entitlement_url();
+  switch (data.mhs_entitlement_method()) {
+    case shill::mobile_operator_db::GET:
+      entitlement_config_.method = brillo::http::request_type::kGet;
+      break;
+    case shill::mobile_operator_db::POST:
+      entitlement_config_.method = brillo::http::request_type::kPost;
+      break;
+  }
+  // mhs_entitlement_url_ = data.mhs_entitlement_url();
+  mhs_entitlement_params_.clear();
+  if (data.mhs_entitlement_param_size() > 0) {
+    for (const auto& param : data.mhs_entitlement_param()) {
+      mhs_entitlement_params_.insert(
+          static_cast<shill::mobile_operator_db::Data_EntitlementParam>(param));
+    }
+  }
 
   if (data.roaming_filter_size() > 0) {
     roaming_filter_list_.clear();
@@ -953,7 +1001,8 @@ void MobileOperatorMapper::HandleOnlinePortalUpdate() {
   for (const auto& raw_olp : raw_olp_list_) {
     if (!raw_olp.has_olp_filter() || FilterMatches(raw_olp.olp_filter())) {
       olp_list_.push_back(MobileOperatorMapper::OnlinePortal{
-          raw_olp.url(), (raw_olp.method() == raw_olp.GET) ? "GET" : "POST",
+          raw_olp.url(),
+          (raw_olp.method() == shill::mobile_operator_db::GET) ? "GET" : "POST",
           raw_olp.post_data()});
     }
   }

@@ -50,6 +50,10 @@ class MockMobileOperatorMapper : public MobileOperatorMapper {
   MOCK_METHOD(bool, requires_roaming, (), (const, override));
   MOCK_METHOD(bool, tethering_allowed, (), (const, override));
   MOCK_METHOD(bool, use_dun_apn_as_default, (), (const, override));
+  MOCK_METHOD(const MobileOperatorMapper::EntitlementConfig&,
+              entitlement_config,
+              (),
+              (override));
 
   MOCK_METHOD(void, UpdateMCCMNC, (const std::string&), (override));
   MOCK_METHOD(void, UpdateIMSI, (const std::string&), (override));
