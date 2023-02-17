@@ -177,6 +177,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // Empty because otherwise we CHECK-fail if this isn't a test image.
   const std::string kEmptyDumpDir;
 
+  int32_t signal = provider.ConsumeIntegral<int32_t>();
+
   // kNormalCrashSendMode -- This makes it much simpler to mock out the DBus
   // calls, and we're not fuzzing the crash loop logic.
   ChromeCollectorForFuzzing collector(
@@ -186,6 +188,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   collector.Initialize(false);
   collector.force_daemon_store_for_testing(use_daemon_store);
   collector.HandleCrashThroughMemfd(test_input.TakePlatformFile(), pid, uid,
-                                    exe_name, non_exe_error_key, kEmptyDumpDir);
+                                    exe_name, non_exe_error_key, kEmptyDumpDir,
+                                    signal);
   return 0;
 }

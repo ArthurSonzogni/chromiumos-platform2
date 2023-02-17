@@ -35,7 +35,8 @@ class ChromeCollector : public CrashCollector {
   bool HandleCrash(const base::FilePath& dump_file_path,
                    pid_t pid,
                    uid_t uid,
-                   const std::string& exe_name);
+                   const std::string& exe_name,
+                   int signal);
 
   // Handle a specific chrome crash through a memfd instead of a file.
   // Returns true on success.
@@ -44,7 +45,8 @@ class ChromeCollector : public CrashCollector {
                                uid_t uid,
                                const std::string& executable_name,
                                const std::string& non_exe_error_key,
-                               const std::string& dump_dir);
+                               const std::string& dump_dir,
+                               int signal);
 
   static CollectorInfo GetHandlerInfo(CrashSendingMode mode,
                                       const std::string& dump_file_path,
@@ -53,7 +55,8 @@ class ChromeCollector : public CrashCollector {
                                       uid_t uid,
                                       const std::string& executable_name,
                                       const std::string& non_exe_error_key,
-                                      const std::string& chrome_dump_dir);
+                                      const std::string& chrome_dump_dir,
+                                      int signal);
 
   void set_max_upload_bytes_for_test(int max_upload_bytes) {
     max_upload_bytes_ = max_upload_bytes;
@@ -89,7 +92,8 @@ class ChromeCollector : public CrashCollector {
                                uid_t uid,
                                const std::string& executable_name,
                                const std::string& non_exe_error_key,
-                               const std::string& dump_dir);
+                               const std::string& dump_dir,
+                               int signal);
 
   // Crashes are expected to be in a TLV-style format of:
   // <name>:<length>:<value>
@@ -180,6 +184,13 @@ class ChromeCollector : public CrashCollector {
   // would make the report larger than max_upload_bytes_. In production, this
   // is always kDefaultMaxUploadBytes.
   int max_upload_bytes_;
+
+  // Signal number of crash (if applicable). Used for computing crash severity.
+  int signal_ = -1;
+
+  bool is_lacros_crash_ = false;
+
+  CrashType crash_type_ = kExecutableCrash;
 };
 
 #endif  // CRASH_REPORTER_CHROME_COLLECTOR_H_

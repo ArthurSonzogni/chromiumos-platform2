@@ -553,7 +553,7 @@ TEST_F(ChromeCollectorTest, HandleCrash) {
     base::AutoReset<FILE*> auto_reset_file_ptr(&collector_.output_file_ptr_,
                                                output.get());
     EXPECT_TRUE(
-        collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test"));
+        collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1));
   }
   ExpectFileEquals(ChromeCollector::kSuccessMagic, log_file);
 
@@ -607,7 +607,7 @@ TEST_F(ChromeCollectorTest, HandleCrashWithEmbeddedNuls) {
     base::AutoReset<FILE*> auto_reset_file_ptr(&collector_.output_file_ptr_,
                                                output.get());
     EXPECT_TRUE(
-        collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test"));
+        collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1));
   }
   ExpectFileEquals(ChromeCollector::kSuccessMagic, log_file);
 
@@ -663,7 +663,7 @@ TEST_F(ChromeCollectorTest, HandleCrashWithWeirdFilename) {
     base::AutoReset<FILE*> auto_reset_file_ptr(&collector_.output_file_ptr_,
                                                output.get());
     EXPECT_TRUE(
-        collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test"));
+        collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1));
   }
   ExpectFileEquals(ChromeCollector::kSuccessMagic, log_file);
 
@@ -707,7 +707,8 @@ TEST_F(ChromeCollectorTest, HandleCrashWithLogsAndDriErrorStateAndDmesg) {
   SetUpCallDmesgToReturn(kSampleDmesg);
   SetUpLogsShort();
 
-  EXPECT_TRUE(collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test"));
+  EXPECT_TRUE(
+      collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1));
 
   base::FilePath output_dri_error_file;
   ExpectSampleDriErrorState(output_dri_error_file);
@@ -771,7 +772,8 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsSupplementalFilesIfDumpFileLarge) {
   SetUpLogsShort();
   // Make dmp file "too large"
   collector_.set_max_upload_bytes_for_test(1);
-  EXPECT_TRUE(collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test"));
+  EXPECT_TRUE(
+      collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1));
 
   // Supplemental files not written.
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
@@ -819,7 +821,8 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeLogFiles) {
   SetUpCallDmesgToReturn(kSampleDmesg);
   SetUpLogsLong();
   collector_.set_max_upload_bytes_for_test(1000);
-  EXPECT_TRUE(collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test"));
+  EXPECT_TRUE(
+      collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1));
 
   // Log file not written.
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
@@ -874,7 +877,8 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeDriErrorFiles) {
   SetUpCallDmesgToReturn(kSampleDmesg);
   SetUpLogsShort();
   collector_.set_max_upload_bytes_for_test(1000);
-  EXPECT_TRUE(collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test"));
+  EXPECT_TRUE(
+      collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1));
 
   // Dri Error State file not written.
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
@@ -931,7 +935,8 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeDmesgFiles) {
   SetUpCallDmesgToReturn(GetDmesgLong());
   SetUpLogsShort();
   collector_.set_max_upload_bytes_for_test(1000);
-  EXPECT_TRUE(collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test"));
+  EXPECT_TRUE(
+      collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1));
 
   // dmesg file not written.
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
@@ -985,7 +990,8 @@ TEST_F(ChromeCollectorTest, HandleCrashSkipsLargeSupplementalFiles) {
   SetUpCallDmesgToReturn(GetDmesgLong());
   SetUpLogsLong();
   collector_.set_max_upload_bytes_for_test(1000);
-  EXPECT_TRUE(collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test"));
+  EXPECT_TRUE(
+      collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1));
 
   // Dri Error State file not written.
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
@@ -1037,7 +1043,8 @@ TEST_F(ChromeCollectorTest, HandleDbusTimeouts) {
   SetUpCallDmesgToErrorOut(nullptr);
   SetUpLogsShort();
   collector_.set_max_upload_bytes_for_test(1000);
-  EXPECT_TRUE(collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test"));
+  EXPECT_TRUE(
+      collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1));
 
   EXPECT_TRUE(brillo::FindLog(
       "Error retrieving DriErrorState from debugd: Call did not return"));
@@ -1102,7 +1109,8 @@ TEST_F(ChromeCollectorTest, HandleDbusErrors) {
   SetUpCallDmesgToErrorOut(dmesg_error.get());
   SetUpLogsShort();
   collector_.set_max_upload_bytes_for_test(1000);
-  EXPECT_TRUE(collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test"));
+  EXPECT_TRUE(
+      collector_.HandleCrash(input_dump_file, 123, 456, "chrome_test", -1));
 
   EXPECT_TRUE(
       brillo::FindLog("Error retrieving DriErrorState from debugd: "
@@ -1165,7 +1173,7 @@ TEST_F(ChromeCollectorTest, HandleCrashForJavaScript) {
                           << logging::SystemErrorCodeToString(errno);
   // HandleCrashThroughMemfd will close input_fd.
   EXPECT_TRUE(collector_.HandleCrashThroughMemfd(input_fd, 123, 456, "",
-                                                 "jserror", ""));
+                                                 "jserror", "", -1));
 
   base::FilePath output_dri_error_file;
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
@@ -1232,7 +1240,7 @@ TEST_F(ChromeCollectorTest, HandleCrashForJavaScriptLacros) {
                           << logging::SystemErrorCodeToString(errno);
   // HandleCrashThroughMemfd will close input_fd.
   EXPECT_TRUE(collector_.HandleCrashThroughMemfd(input_fd, 123, 456, "",
-                                                 "jserror", ""));
+                                                 "jserror", "", -1));
 
   base::FilePath output_dri_error_file;
   EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(

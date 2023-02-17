@@ -87,7 +87,8 @@ bool ChromeCollector::HandleCrashWithDumpData(
     uid_t uid,
     const std::string& executable_name,
     const std::string& non_exe_error_key,
-    const std::string& dump_dir) {
+    const std::string& dump_dir,
+    int signal) {
   // Perform basic input validation.
   CHECK(pid >= (pid_t)0) << "--pid= must be set";
   CHECK(uid >= (uid_t)0) << "--uid= must be set";
@@ -130,6 +131,12 @@ bool ChromeCollector::HandleCrashWithDumpData(
     LOG(ERROR) << "Failed to parse Chrome's crash log";
     return false;
   }
+
+  // TODO(b/269159625): Use signal_, crash_type_, is_lacros_crash_, and
+  // shutdown-type to determine crash severity.
+  signal_ = signal;
+  is_lacros_crash_ = is_lacros_crash;
+  crash_type_ = crash_type;
 
   if (payload_path.empty()) {
     if (crash_type == kJavaScriptError) {
@@ -223,7 +230,8 @@ bool ChromeCollector::CreateNoStackJSPayload(const base::FilePath& dir,
 bool ChromeCollector::HandleCrash(const FilePath& dump_file_path,
                                   pid_t pid,
                                   uid_t uid,
-                                  const std::string& exe_name) {
+                                  const std::string& exe_name,
+                                  int signal) {
   std::string data;
   if (!base::ReadFileToString(base::FilePath(dump_file_path), &data)) {
     PLOG(ERROR) << "Can't read crash log: " << dump_file_path.value();
@@ -231,7 +239,8 @@ bool ChromeCollector::HandleCrash(const FilePath& dump_file_path,
   }
 
   return HandleCrashWithDumpData(data, pid, uid, exe_name,
-                                 "" /*non_exe_error_key*/, "" /* dump_dir */);
+                                 "" /*non_exe_error_key*/, "" /* dump_dir */,
+                                 signal);
 }
 
 bool ChromeCollector::HandleCrashThroughMemfd(
@@ -240,7 +249,8 @@ bool ChromeCollector::HandleCrashThroughMemfd(
     uid_t uid,
     const std::string& executable_name,
     const std::string& non_exe_error_key,
-    const std::string& dump_dir) {
+    const std::string& dump_dir,
+    int signal) {
   std::string data;
   if (!util::ReadMemfdToString(memfd, &data)) {
     PLOG(ERROR) << "Can't read crash log from memfd: " << memfd;
@@ -248,7 +258,7 @@ bool ChromeCollector::HandleCrashThroughMemfd(
   }
 
   return HandleCrashWithDumpData(data, pid, uid, executable_name,
-                                 non_exe_error_key, dump_dir);
+                                 non_exe_error_key, dump_dir, signal);
 }
 
 bool ChromeCollector::ParseCrashLog(const std::string& data,
@@ -617,7 +627,8 @@ CollectorInfo ChromeCollector::GetHandlerInfo(
     uid_t uid,
     const std::string& executable_name,
     const std::string& non_exe_error_key,
-    const std::string& chrome_dump_dir) {
+    const std::string& chrome_dump_dir,
+    int signal) {
   CHECK(dump_file_path.empty() || memfd == -1)
       << "--chrome= and --chrome_memfd= cannot be both set";
   if (memfd == -1) {
@@ -630,16 +641,17 @@ CollectorInfo ChromeCollector::GetHandlerInfo(
       .collector = chrome_collector,
       .handlers = {{
                        .should_handle = !dump_file_path.empty(),
-                       .cb = base::BindRepeating(
-                           &ChromeCollector::HandleCrash, chrome_collector,
-                           FilePath(dump_file_path), pid, uid, executable_name),
+                       .cb = base::BindRepeating(&ChromeCollector::HandleCrash,
+                                                 chrome_collector,
+                                                 FilePath(dump_file_path), pid,
+                                                 uid, executable_name, signal),
                    },
                    {
                        .should_handle = memfd >= 0,
                        .cb = base::BindRepeating(
                            &ChromeCollector::HandleCrashThroughMemfd,
                            chrome_collector, memfd, pid, uid, executable_name,
-                           non_exe_error_key, chrome_dump_dir),
+                           non_exe_error_key, chrome_dump_dir, signal),
                    }},
   };
 }

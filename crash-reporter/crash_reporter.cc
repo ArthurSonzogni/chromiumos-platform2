@@ -298,6 +298,8 @@ int main(int argc, char* argv[]) {
   // --chrome_memfd is used and not when --chrome is used.
   DEFINE_string(chrome, "", "Chrome crash dump file");
   DEFINE_int32(chrome_memfd, -1, "Chrome crash dump memfd");
+  DEFINE_int32(chrome_signal, -1,
+               "Chrome crash signal number (-1 if non-fatal)");
   DEFINE_string(chrome_dump_dir, "",
                 "Directory to write Chrome minidumps, used for tests only");
   DEFINE_int32(pid, -1, "PID of crashing process");
@@ -572,7 +574,8 @@ int main(int argc, char* argv[]) {
 
   collectors.push_back(ChromeCollector::GetHandlerInfo(
       crash_sending_mode, FLAGS_chrome, FLAGS_chrome_memfd, FLAGS_pid,
-      FLAGS_uid, FLAGS_exe, FLAGS_error_key, FLAGS_chrome_dump_dir));
+      FLAGS_uid, FLAGS_exe, FLAGS_error_key, FLAGS_chrome_dump_dir,
+      FLAGS_chrome_signal));
 
   collectors.push_back(KernelWarningCollector::GetHandlerInfo(
       FLAGS_weight, FLAGS_kernel_warning, FLAGS_kernel_wifi_warning,
