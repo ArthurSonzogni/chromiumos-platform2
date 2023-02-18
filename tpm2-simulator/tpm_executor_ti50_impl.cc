@@ -131,7 +131,8 @@ void TpmExecutorTi50Impl::InitializeVTPM() {
 
   process_.AddArg(kMinijail);
 
-  // Run the ti50-emulator with tpm2-simulator access.
+  // Run the ti50-emulator with tpm2-simulator access in background.
+  process_.AddArg("-i");
   process_.AddArg("-u");
   process_.AddArg("tpm2-simulator");
   process_.AddArg("-G");
