@@ -35,8 +35,8 @@ using testing::SetArgPointee;
 
 namespace {
 
-// Cr50 Vendor ID ("CROS").
-const uint32_t kVendorIdCr50 = 0x43524f53;
+// GSC Vendor ID ("CROS").
+const uint32_t kVendorIdGsc = 0x43524f53;
 
 // Returns the total number of bits set in the first |size| elements from
 // |array|.
@@ -193,9 +193,9 @@ class TpmUtilityTest : public testing::Test {
             DoAll(SetArgPointee<4>(capability_data), Return(TPM_RC_SUCCESS)));
   }
 
-  void SetCr50(bool is_cr50) {
+  void SetGsc(bool is_gsc) {
     EXPECT_CALL(mock_tpm_state_, Initialize()).WillOnce(Return(TPM_RC_SUCCESS));
-    uint32_t vendor_id = is_cr50 ? kVendorIdCr50 : 1;
+    uint32_t vendor_id = is_gsc ? kVendorIdGsc : 1;
     EXPECT_CALL(mock_tpm_state_, GetTpmProperty(TPM_PT_MANUFACTURER, _))
         .WillOnce(DoAll(SetArgPointee<1>(vendor_id), Return(true)));
   }
@@ -1592,7 +1592,7 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairSignKeySuccess) {
   TPM2B_SENSITIVE_CREATE sensitive_create;
   EXPECT_CALL(mock_tpm_state_, Initialize()).WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_tpm_state_, GetTpmProperty(TPM_PT_MANUFACTURER, _))
-      .WillOnce(DoAll(SetArgPointee<1>(kVendorIdCr50), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<1>(kVendorIdGsc), Return(true)));
   EXPECT_CALL(mock_tpm_, CreateSyncShort(kStorageRootKey, _, _, _, _, _, _, _,
                                          _, &mock_authorization_delegate_))
       .WillOnce(DoAll(SaveArg<1>(&sensitive_create), SaveArg<2>(&public_area),
@@ -1659,7 +1659,7 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairBadDelegate) {
 TEST_F(TpmUtilityTest, CreateRSAKeyPairFailure) {
   EXPECT_CALL(mock_tpm_state_, Initialize()).WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_tpm_state_, GetTpmProperty(TPM_PT_MANUFACTURER, _))
-      .WillOnce(DoAll(SetArgPointee<1>(kVendorIdCr50), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<1>(kVendorIdGsc), Return(true)));
   EXPECT_CALL(mock_tpm_, CreateSyncShort(kStorageRootKey, _, _, _, _, _, _, _,
                                          _, &mock_authorization_delegate_))
       .WillOnce(Return(TPM_RC_FAILURE));
@@ -1675,7 +1675,7 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairKeyParserFail) {
   std::string key_blob;
   EXPECT_CALL(mock_tpm_state_, Initialize()).WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_tpm_state_, GetTpmProperty(TPM_PT_MANUFACTURER, _))
-      .WillOnce(DoAll(SetArgPointee<1>(kVendorIdCr50), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<1>(kVendorIdGsc), Return(true)));
   EXPECT_CALL(mock_blob_parser_, SerializeKeyBlob(_, _, &key_blob))
       .WillOnce(Return(false));
   EXPECT_EQ(SAPI_RC_BAD_TCTI_STRUCTURE,
@@ -1690,7 +1690,7 @@ TEST_F(TpmUtilityTest, CreateRSAKeyPairCreationParserFail) {
   std::string key_blob;
   EXPECT_CALL(mock_tpm_state_, Initialize()).WillOnce(Return(TPM_RC_SUCCESS));
   EXPECT_CALL(mock_tpm_state_, GetTpmProperty(TPM_PT_MANUFACTURER, _))
-      .WillOnce(DoAll(SetArgPointee<1>(kVendorIdCr50), Return(true)));
+      .WillOnce(DoAll(SetArgPointee<1>(kVendorIdGsc), Return(true)));
   EXPECT_CALL(mock_blob_parser_, SerializeCreationBlob(_, _, _, &creation_blob))
       .WillOnce(Return(false));
   EXPECT_EQ(SAPI_RC_BAD_TCTI_STRUCTURE,
@@ -3446,47 +3446,47 @@ TEST_F(TpmUtilityTest, CreateIdentityKeyFail) {
             utility_.CreateIdentityKey(TPM_ALG_RSA, nullptr, &key_blob));
 }
 
-TEST_F(TpmUtilityTest, DeclareTpmFirmwareStableNonCr50) {
-  SetCr50(false);
+TEST_F(TpmUtilityTest, DeclareTpmFirmwareStableNonGsc) {
+  SetGsc(false);
   EXPECT_CALL(mock_transceiver_, SendCommandAndWait(_)).Times(0);
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.DeclareTpmFirmwareStable());
 }
 
-TEST_F(TpmUtilityTest, DeclareTpmFirmwareStableCr50Success) {
-  // A hand-coded kCr50SubcmdInvalidateInactiveRW command and response.
+TEST_F(TpmUtilityTest, DeclareTpmFirmwareStableGscSuccess) {
+  // A hand-coded kGscSubcmdInvalidateInactiveRW command and response.
   std::string expected_command(
       "\x80\x01"          // tag=TPM_ST_NO_SESSIONS
       "\x00\x00\x00\x0C"  // size=12
-      "\x20\x00\x00\x00"  // code=kCr50VendorCC
-      "\x00\x14",         // subcommand=kCr50SubcmdInvalidateInactiveRW
+      "\x20\x00\x00\x00"  // code=kGscVendorCC
+      "\x00\x14",         // subcommand=kGscSubcmdInvalidateInactiveRW
       12);
   std::string command_response(
       "\x80\x01"          // tag=TPM_ST_NO_SESSIONS
       "\x00\x00\x00\x0C"  // size=12
       "\x00\x00\x00\x00"  // code=TPM_RC_SUCCESS
-      "\x00\x14",         // subcommand=kCr50SubcmdInvalidateInactiveRW
+      "\x00\x14",         // subcommand=kGscSubcmdInvalidateInactiveRW
       12);
-  SetCr50(true);
+  SetGsc(true);
   EXPECT_CALL(mock_transceiver_, SendCommandAndWait(expected_command))
       .WillOnce(Return(command_response));
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.DeclareTpmFirmwareStable());
 }
 
-TEST_F(TpmUtilityTest, DeclareTpmFirmwareStableCr50Failure) {
-  // A hand-coded kCr50SubcmdInvalidateInactiveRW command and response.
+TEST_F(TpmUtilityTest, DeclareTpmFirmwareStableGscFailure) {
+  // A hand-coded kGscSubcmdInvalidateInactiveRW command and response.
   std::string expected_command(
       "\x80\x01"          // tag=TPM_ST_NO_SESSIONS
       "\x00\x00\x00\x0C"  // size=12
-      "\x20\x00\x00\x00"  // code=kCr50VendorCC
-      "\x00\x14",         // subcommand=kCr50SubcmdInvalidateInactiveRW
+      "\x20\x00\x00\x00"  // code=kGscVendorCC
+      "\x00\x14",         // subcommand=kGscSubcmdInvalidateInactiveRW
       12);
   std::string command_response(
       "\x80\x01"          // tag=TPM_ST_NO_SESSIONS
       "\x00\x00\x00\x0C"  // size=10
       "\x00\x00\x01\x01"  // code=TPM_RC_FAILURE
-      "\x00\x14",         // subcommand=kCr50SubcmdInvalidateInactiveRW
+      "\x00\x14",         // subcommand=kGscSubcmdInvalidateInactiveRW
       12);
-  SetCr50(true);
+  SetGsc(true);
   EXPECT_CALL(mock_transceiver_, SendCommandAndWait(expected_command))
       .WillOnce(Return(command_response));
   EXPECT_EQ(TPM_RC_FAILURE, utility_.DeclareTpmFirmwareStable());
@@ -3615,12 +3615,12 @@ TEST_F(TpmUtilityTest,
 }
 
 TEST_F(TpmUtilityTest, GetRsuDeviceIdDecodesCorrectly) {
-  // Hardcoded kCr50GetRmaChallenge command and response.
+  // Hardcoded kGscGetRmaChallenge command and response.
   std::string expected_command(
       "\x80\x01"          // tag=TPM_ST_NO_SESSIONS
       "\x00\x00\x00\x0c"  // size=12
-      "\x20\x00\x00\x00"  // code=kCr50VendorCC
-      "\x00\x1e",         // subcommand=kCr50GetRmaChallenge
+      "\x20\x00\x00\x00"  // code=kGscVendorCC
+      "\x00\x1e",         // subcommand=kGscGetRmaChallenge
       12);
   std::string command_response(
       "\x80\x01"          // tag=TPM_STD_NO_SESSIONS
@@ -3637,7 +3637,7 @@ TEST_F(TpmUtilityTest, GetRsuDeviceIdDecodesCorrectly) {
       "\xa3\x79\xfc\x49\x29\x27\x8a\xf1\x31\x67\x33\xf3\x89\xa9",
       32);
 
-  SetCr50(true);
+  SetGsc(true);
   EXPECT_CALL(mock_transceiver_, SendCommandAndWait(expected_command))
       .WillOnce(Return(command_response));
 
@@ -3648,7 +3648,7 @@ TEST_F(TpmUtilityTest, GetRsuDeviceIdDecodesCorrectly) {
 
 TEST_F(TpmUtilityTest, GetRsuDeviceIdCaching) {
   std::string rsu_device_id, rsu_device_id2, rsu_device_id3;
-  SetCr50(true);
+  SetGsc(true);
   // Hardcoded RMA challenges from two devices.
   std::string command_response(
       "\x80\x01"          // tag=TPM_STD_NO_SESSIONS
@@ -3683,8 +3683,8 @@ TEST_F(TpmUtilityTest, GetRsuDeviceIdCaching) {
 
 TEST_F(TpmUtilityTest,
        GetRsuDeviceIdReturnsTheSameValueForDifferentChallenges) {
-  SetCr50(true);
-  // Hardcoded RMA challanges from the same device.
+  SetGsc(true);
+  // Hardcoded RMA challenges from the same device.
   std::string command_response(
       "\x80\x01"          // tag=TPM_STD_NO_SESSIONS
       "\x00\x00\x00\x5c"  // size=92
@@ -3715,36 +3715,36 @@ TEST_F(TpmUtilityTest,
   EXPECT_EQ(rsu_device_id, rsu_device_id2);
 }
 
-TEST_F(TpmUtilityTest, ManageCCDPwdNonCr50) {
-  SetCr50(false);
+TEST_F(TpmUtilityTest, ManageCCDPwdNonGsc) {
+  SetGsc(false);
   EXPECT_CALL(mock_transceiver_, SendCommandAndWait(_)).Times(0);
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.ManageCCDPwd(true));
 }
 
-TEST_F(TpmUtilityTest, ManageCCDPwdCr50Success) {
-  // A hand-coded kCr50SubcmdManageCCDPwd command (two variants: true and false)
+TEST_F(TpmUtilityTest, ManageCCDPwdGscSuccess) {
+  // A hand-coded kGscSubcmdManageCCDPwd command (two variants: true and false)
   // and response.
   std::string expected_command_true(
       "\x80\x01"          // tag=TPM_ST_NO_SESSIONS
       "\x00\x00\x00\x0D"  // size=13
-      "\x20\x00\x00\x00"  // code=kCr50VendorCC
-      "\x00\x21"          // subcommand=kCr50SubcmdManageCCDPwd
+      "\x20\x00\x00\x00"  // code=kGscVendorCC
+      "\x00\x21"          // subcommand=kGscSubcmdManageCCDPwd
       "\x01",             // value=true
       13);
   std::string expected_command_false(
       "\x80\x01"          // tag=TPM_ST_NO_SESSIONS
       "\x00\x00\x00\x0D"  // size=13
-      "\x20\x00\x00\x00"  // code=kCr50VendorCC
-      "\x00\x21"          // subcommand=kCr50SubcmdManageCCDPwd
+      "\x20\x00\x00\x00"  // code=kGscVendorCC
+      "\x00\x21"          // subcommand=kGscSubcmdManageCCDPwd
       "\x00",             // value=false
       13);
   std::string command_response(
       "\x80\x01"          // tag=TPM_ST_NO_SESSIONS
       "\x00\x00\x00\x0C"  // size=12
       "\x00\x00\x00\x00"  // code=TPM_RC_SUCCESS
-      "\x00\x21",         // subcommand=kCr50SubcmdManageCCDPwd
+      "\x00\x21",         // subcommand=kGscSubcmdManageCCDPwd
       12);
-  SetCr50(true);
+  SetGsc(true);
   EXPECT_CALL(mock_transceiver_, SendCommandAndWait(expected_command_true))
       .WillOnce(Return(command_response));
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.ManageCCDPwd(true));
@@ -3755,46 +3755,46 @@ TEST_F(TpmUtilityTest, ManageCCDPwdCr50Success) {
 }
 
 TEST_F(TpmUtilityTest, ManageCCDPwdFailure) {
-  // A hand-coded kCr50SubcmdManageCCDPwd command and response.
+  // A hand-coded kGscSubcmdManageCCDPwd command and response.
   std::string expected_command(
       "\x80\x01"          // tag=TPM_ST_NO_SESSIONS
       "\x00\x00\x00\x0D"  // size=13
-      "\x20\x00\x00\x00"  // code=kCr50VendorCC
-      "\x00\x21"          // subcommand=kCr50SubcmdManageCCDPwd
+      "\x20\x00\x00\x00"  // code=kGscVendorCC
+      "\x00\x21"          // subcommand=kGscSubcmdManageCCDPwd
       "\x01",             // value=true
       13);
   std::string command_response(
       "\x80\x01"          // tag=TPM_ST_NO_SESSIONS
       "\x00\x00\x00\x0C"  // size=12
       "\x00\x00\x01\x01"  // code=TPM_RC_FAILURE
-      "\x00\x21",         // subcommand=kCr50SubcmdManageCCDPwd
+      "\x00\x21",         // subcommand=kGscSubcmdManageCCDPwd
       12);
-  SetCr50(true);
+  SetGsc(true);
   EXPECT_CALL(mock_transceiver_, SendCommandAndWait(expected_command))
       .WillOnce(Return(command_response));
   EXPECT_EQ(TPM_RC_FAILURE, utility_.ManageCCDPwd(true));
 }
 
-TEST_F(TpmUtilityTest, IsCr50) {
-  SetCr50(true);
-  EXPECT_TRUE(utility_.IsCr50());
+TEST_F(TpmUtilityTest, IsGsc) {
+  SetGsc(true);
+  EXPECT_TRUE(utility_.IsGsc());
 }
 
-TEST_F(TpmUtilityTest, NotCr50) {
-  SetCr50(false);
-  EXPECT_FALSE(utility_.IsCr50());
+TEST_F(TpmUtilityTest, NotGsc) {
+  SetGsc(false);
+  EXPECT_FALSE(utility_.IsGsc());
 }
 
 TEST_F(TpmUtilityTest, GetRoVerificationStatus) {
-  // A hand-coded kCr50SubcmdGetRoStatus command and response.
+  // A hand-coded kGscSubcmdGetRoStatus command and response.
   std::string command_response(
       "\x80\x01"          // tag=TPM_STD_NO_SESSIONS
       "\x00\x00\x00\x0D"  // size=13
       "\x00\x00\x00\x00"  // code=TPM_RC_SUCCESS
-      "\x00\x39"          // subcommand=kCr50SubcmdGetRoStatus
+      "\x00\x39"          // subcommand=kGscSubcmdGetRoStatus
       "\x01",             // ApRoStatus=kApRoPass
       13);
-  SetCr50(true);
+  SetGsc(true);
   EXPECT_CALL(mock_transceiver_, SendCommandAndWait(_))
       .WillOnce(Return(command_response));
   TpmUtility::ApRoStatus status;
@@ -3802,8 +3802,8 @@ TEST_F(TpmUtilityTest, GetRoVerificationStatus) {
   EXPECT_EQ(status, TpmUtility::ApRoStatus::kApRoPass);
 }
 
-TEST_F(TpmUtilityTest, GetRoVerificationStatusForNotCr50) {
-  SetCr50(false);
+TEST_F(TpmUtilityTest, GetRoVerificationStatusForNotGsc) {
+  SetGsc(false);
   TpmUtility::ApRoStatus status;
   EXPECT_EQ(TPM_RC_SUCCESS, utility_.GetRoVerificationStatus(&status));
   EXPECT_EQ(status, TpmUtility::ApRoStatus::kApRoUnsupportedNotTriggered);

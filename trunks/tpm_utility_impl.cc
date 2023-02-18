@@ -50,7 +50,7 @@ namespace {
 
 enum class VendorVariant {
   kUnknown,
-  kCr50,
+  kGsc,
   kSimulator,
   kOther,
 };
@@ -59,22 +59,22 @@ const char kPlatformPassword[] = "cros-platform";
 const size_t kMaxPasswordLength = 32;
 // The below maximum is defined in TPM 2.0 Library Spec Part 2 Section 13.1
 const uint32_t kMaxNVSpaceIndex = (1 << 24) - 1;
-// Cr50 Vendor ID ("CROS").
-const uint32_t kVendorIdCr50 = 0x43524f53;
+// GSC Vendor ID ("CROS").
+const uint32_t kVendorIdGsc = 0x43524f53;
 // Simulator Vendor ID ("SIMU").
 const uint32_t kVendorIdSimulator = 0x53494d55;
-// Command code for Cr50 vendor-specific commands,
-const uint32_t kCr50VendorCC = 0x20000000 | 0; /* Vendor Bit Set + 0 */
+// Command code for GSC vendor-specific commands,
+const uint32_t kGscVendorCC = 0x20000000 | 0; /* Vendor Bit Set + 0 */
 // Vendor-specific subcommand codes.
-const uint16_t kCr50SubcmdInvalidateInactiveRW = 20;
-const uint16_t kCr50GetRmaChallenge = 30;
-const uint16_t kCr50SubcmdManageCCDPwd = 33;
-const uint16_t kCr50SubcmdGetAlertsData = 35;
-const uint16_t kCr50SubcmdPinWeaver = 37;
-const uint16_t kCr50SubcmdU2fGenerate = 44;
-const uint16_t kCr50SubcmdU2fSign = 45;
-const uint16_t kCr50SubcmdU2fAttest = 46;
-const uint16_t kCr50SubcmdGetRoStatus = 57;
+const uint16_t kGscSubcmdInvalidateInactiveRW = 20;
+const uint16_t kGscGetRmaChallenge = 30;
+const uint16_t kGscSubcmdManageCCDPwd = 33;
+const uint16_t kGscSubcmdGetAlertsData = 35;
+const uint16_t kGscSubcmdPinWeaver = 37;
+const uint16_t kGscSubcmdU2fGenerate = 44;
+const uint16_t kGscSubcmdU2fSign = 45;
+const uint16_t kGscSubcmdU2fAttest = 46;
+const uint16_t kGscSubcmdGetRoStatus = 57;
 const uint16_t kTi50GetMetrics = 65;
 
 // Salt used exclusively for the Remote Server Unlock process due to the privacy
@@ -112,8 +112,8 @@ VendorVariant ToVendorVariant(std::optional<uint32_t> vendor_id) {
     return VendorVariant::kUnknown;
   }
   switch (*vendor_id) {
-    case kVendorIdCr50:
-      return VendorVariant::kCr50;
+    case kVendorIdGsc:
+      return VendorVariant::kGsc;
     case kVendorIdSimulator:
       return VendorVariant::kSimulator;
     default:
@@ -137,8 +137,8 @@ TPM_RC TpmUtilityImpl::U2fCommand(const std::string& tag,
                                   uint16_t subcommand,
                                   S serialize,
                                   P parse) {
-  if (!IsCr50()) {
-    LOG(WARNING) << "U2F not supported on non-Cr50 vendor variants.";
+  if (!IsGsc()) {
+    LOG(WARNING) << "U2F not supported on non-GSC vendor variants.";
     return TPM_RC_FAILURE;
   }
 
@@ -151,7 +151,7 @@ TPM_RC TpmUtilityImpl::U2fCommand(const std::string& tag,
   }
 
   std::string out;
-  rc = Cr50VendorCommand(subcommand, in, &out);
+  rc = GscVendorCommand(subcommand, in, &out);
 
   if (rc == TPM_RC_SUCCESS) {
     rc = parse(out);
@@ -393,8 +393,8 @@ TPM_RC TpmUtilityImpl::PrepareForOwnership() {
 }
 
 TPM_RC TpmUtilityImpl::InitializeOwnerForCsme() {
-  // For cr50 case, we don't have to create salting key for CSME.
-  if (IsCr50() || IsSimulator()) {
+  // For GSC case, we don't have to create salting key for CSME.
+  if (IsGsc() || IsSimulator()) {
     return TPM_RC_SUCCESS;
   }
   uint8_t protocol_version = 0;
@@ -2406,17 +2406,16 @@ TPM_RC TpmUtilityImpl::CreateIdentityKey(TPM_ALG_ID key_type,
 }
 
 TPM_RC TpmUtilityImpl::DeclareTpmFirmwareStable() {
-  if (!IsCr50()) {
+  if (!IsGsc()) {
     return TPM_RC_SUCCESS;
   }
   std::string response_payload;
-  TPM_RC rc = Cr50VendorCommand(kCr50SubcmdInvalidateInactiveRW, std::string(),
-                                &response_payload);
+  TPM_RC rc = GscVendorCommand(kGscSubcmdInvalidateInactiveRW, std::string(),
+                               &response_payload);
   if (rc == TPM_RC_SUCCESS) {
-    LOG(INFO) << "Successfully invalidated inactive Cr50 RW";
+    LOG(INFO) << "Successfully invalidated inactive GSC RW";
   } else {
-    LOG(WARNING) << "Invalidating inactive Cr50 RW failed: 0x" << std::hex
-                 << rc;
+    LOG(WARNING) << "Invalidating inactive GSC RW failed: 0x" << std::hex << rc;
   }
   return rc;
 }
@@ -2481,13 +2480,13 @@ TPM_RC TpmUtilityImpl::GetPublicRSAEndorsementKeyModulus(std::string* ekm) {
 }
 
 TPM_RC TpmUtilityImpl::ManageCCDPwd(bool allow_pwd) {
-  if (!IsCr50()) {
+  if (!IsGsc()) {
     return TPM_RC_SUCCESS;
   }
   std::string command_payload(1, allow_pwd ? 1 : 0);
   std::string response_payload;
-  return Cr50VendorCommand(kCr50SubcmdManageCCDPwd, command_payload,
-                           &response_payload);
+  return GscVendorCommand(kGscSubcmdManageCCDPwd, command_payload,
+                          &response_payload);
 }
 
 TPM_RC TpmUtilityImpl::SetKnownOwnerPassword(
@@ -2868,12 +2867,12 @@ TPM_RC TpmUtilityImpl::DoesPersistentKeyExist(TPMI_DH_PERSISTENT key_handle,
 TPM_RC TpmUtilityImpl::GetAlertsData(TpmAlertsData* alerts) {
   memset(alerts, 0, sizeof(TpmAlertsData));
 
-  if (!IsCr50()) {
+  if (!IsGsc()) {
     alerts->chip_family = kFamilyUndefined;
     return TPM_RC_SUCCESS;
   }
   std::string out;
-  TPM_RC rc = Cr50VendorCommand(kCr50SubcmdGetAlertsData, std::string(), &out);
+  TPM_RC rc = GscVendorCommand(kGscSubcmdGetAlertsData, std::string(), &out);
   if (rc != TPM_RC_SUCCESS) {
     LOG(WARNING) << "Unable to read alerts data: 0x" << std::hex << rc;
     return rc;
@@ -3205,7 +3204,7 @@ TPM_RC TpmUtilityImpl::U2fGenerate(
     brillo::Blob* public_key,
     brillo::Blob* key_handle) {
   return U2fCommand(
-      __func__, kCr50SubcmdU2fGenerate,
+      __func__, kGscSubcmdU2fGenerate,
       [version, app_id, user_secret, consume, up_required,
        auth_time_secret_hash](std::string* in) -> TPM_RC {
         return Serialize_u2f_generate_t(version, app_id, user_secret, consume,
@@ -3229,7 +3228,7 @@ TPM_RC TpmUtilityImpl::U2fSign(
     brillo::Blob* sig_r,
     brillo::Blob* sig_s) {
   return U2fCommand(
-      __func__, kCr50SubcmdU2fSign,
+      __func__, kGscSubcmdU2fSign,
       [version, app_id, user_secret, auth_time_secret, hash_to_sign, check_only,
        consume, up_required, key_handle](std::string* in) -> TPM_RC {
         return Serialize_u2f_sign_t(version, app_id, user_secret,
@@ -3250,7 +3249,7 @@ TPM_RC TpmUtilityImpl::U2fAttest(const brillo::SecureBlob& user_secret,
                                  brillo::Blob* sig_r,
                                  brillo::Blob* sig_s) {
   return U2fCommand(
-      __func__, kCr50SubcmdU2fAttest,
+      __func__, kGscSubcmdU2fAttest,
       [user_secret, format, data](std::string* in) -> TPM_RC {
         return Serialize_u2f_attest_t(user_secret, format, data, in);
       },
@@ -3279,9 +3278,9 @@ void TpmUtilityImpl::CacheVendorId() {
   vendor_id_ = vendor_id;
 }
 
-bool TpmUtilityImpl::IsCr50() {
+bool TpmUtilityImpl::IsGsc() {
   CacheVendorId();
-  return vendor_id_.has_value() && *vendor_id_ == kVendorIdCr50;
+  return vendor_id_.has_value() && *vendor_id_ == kVendorIdGsc;
 }
 
 bool TpmUtilityImpl::IsSimulator() {
@@ -3293,7 +3292,7 @@ std::string TpmUtilityImpl::SendCommandAndWait(const std::string& command) {
   return factory_.GetTpm()->get_transceiver()->SendCommandAndWait(command);
 }
 
-TPM_RC TpmUtilityImpl::SerializeCommand_Cr50Vendor(
+TPM_RC TpmUtilityImpl::SerializeCommand_GscVendor(
     uint16_t subcommand,
     const std::string& command_payload,
     std::string* serialized_command) {
@@ -3302,7 +3301,7 @@ TPM_RC TpmUtilityImpl::SerializeCommand_Cr50Vendor(
   UINT32 command_size = 12 + command_payload.size();
   Serialize_TPMI_ST_COMMAND_TAG(TPM_ST_NO_SESSIONS, serialized_command);
   Serialize_UINT32(command_size, serialized_command);
-  Serialize_TPM_CC(kCr50VendorCC, serialized_command);
+  Serialize_TPM_CC(kGscVendorCC, serialized_command);
   Serialize_UINT16(subcommand, serialized_command);
   serialized_command->append(command_payload);
   VLOG(2) << "Command: "
@@ -3313,15 +3312,15 @@ TPM_RC TpmUtilityImpl::SerializeCommand_Cr50Vendor(
   // in practice always succeed. Let's at least check the resulting command
   // size to make sure all fields were indeed serialized in.
   if (serialized_command->size() != command_size) {
-    LOG(ERROR) << "Bad cr50 vendor command size: expected = " << command_size
+    LOG(ERROR) << "Bad GSC vendor command size: expected = " << command_size
                << ", actual = " << serialized_command->size();
     return TPM_RC_INSUFFICIENT;
   }
   return TPM_RC_SUCCESS;
 }
 
-TPM_RC TpmUtilityImpl::ParseResponse_Cr50Vendor(const std::string& response,
-                                                std::string* response_payload) {
+TPM_RC TpmUtilityImpl::ParseResponse_GscVendor(const std::string& response,
+                                               std::string* response_payload) {
   VLOG(3) << __func__;
   VLOG(2) << "Response: " << base::HexEncode(response.data(), response.size());
   response_payload->assign(response);
@@ -3332,7 +3331,7 @@ TPM_RC TpmUtilityImpl::ParseResponse_Cr50Vendor(const std::string& response,
     return rc;
   }
   if (tag != TPM_ST_NO_SESSIONS) {
-    LOG(ERROR) << "Bad cr50 vendor response tag: 0x" << std::hex << tag;
+    LOG(ERROR) << "Bad GSC vendor response tag: 0x" << std::hex << tag;
     return TPM_RC_AUTH_CONTEXT;
   }
 
@@ -3342,7 +3341,7 @@ TPM_RC TpmUtilityImpl::ParseResponse_Cr50Vendor(const std::string& response,
     return rc;
   }
   if (response_size != response.size()) {
-    LOG(ERROR) << "Bad cr50 vendor response size: expected = " << response_size
+    LOG(ERROR) << "Bad GSC vendor response size: expected = " << response_size
                << ", actual = " << response.size();
     return TPM_RC_SIZE;
   }
@@ -3362,18 +3361,17 @@ TPM_RC TpmUtilityImpl::ParseResponse_Cr50Vendor(const std::string& response,
   return response_code;
 }
 
-TPM_RC TpmUtilityImpl::Cr50VendorCommand(uint16_t subcommand,
-                                         const std::string& command_payload,
-                                         std::string* response_payload) {
+TPM_RC TpmUtilityImpl::GscVendorCommand(uint16_t subcommand,
+                                        const std::string& command_payload,
+                                        std::string* response_payload) {
   VLOG(1) << __func__ << "(subcommand: " << subcommand << ")";
   std::string command;
-  TPM_RC rc =
-      SerializeCommand_Cr50Vendor(subcommand, command_payload, &command);
+  TPM_RC rc = SerializeCommand_GscVendor(subcommand, command_payload, &command);
   if (rc != TPM_RC_SUCCESS) {
     return rc;
   }
   std::string response = SendCommandAndWait(command);
-  rc = ParseResponse_Cr50Vendor(response, response_payload);
+  rc = ParseResponse_GscVendor(response, response_payload);
   return rc;
 }
 
@@ -3393,9 +3391,9 @@ TPM_RC TpmUtilityImpl::PinWeaverCommand(const std::string& tag,
   CacheVendorId();
   const VendorVariant vendor_variant = ToVendorVariant(vendor_id_);
   switch (vendor_variant) {
-    case VendorVariant::kCr50:
+    case VendorVariant::kGsc:
     case VendorVariant::kSimulator:
-      rc = Cr50VendorCommand(kCr50SubcmdPinWeaver, in, &out);
+      rc = GscVendorCommand(kGscSubcmdPinWeaver, in, &out);
       break;
     case VendorVariant::kOther:
       rc = PinWeaverCsmeCommand(in, &out);
@@ -3518,7 +3516,7 @@ int base32_decode(uint8_t* dest,
 }
 
 TPM_RC TpmUtilityImpl::GetRsuDeviceIdInternal(std::string* device_id) {
-  if (!IsCr50()) {
+  if (!IsGsc()) {
     return TPM_RC_FAILURE;
   }
   struct __packed rma_challenge {
@@ -3530,7 +3528,7 @@ TPM_RC TpmUtilityImpl::GetRsuDeviceIdInternal(std::string* device_id) {
   uint8_t* cptr = reinterpret_cast<uint8_t*>(&c);
 
   std::string res;
-  TPM_RC result = Cr50VendorCommand(kCr50GetRmaChallenge, std::string(), &res);
+  TPM_RC result = GscVendorCommand(kGscGetRmaChallenge, std::string(), &res);
   if (result != TPM_RC_SUCCESS) {
     return result;
   }
@@ -3553,15 +3551,14 @@ TPM_RC TpmUtilityImpl::GetRsuDeviceId(std::string* device_id) {
 }
 
 TPM_RC TpmUtilityImpl::GetRoVerificationStatus(ApRoStatus* status) {
-  if (!IsCr50()) {
+  if (!IsGsc()) {
     *status = ApRoStatus::kApRoUnsupportedNotTriggered;
     return TPM_RC_SUCCESS;
   }
   std::string res;
-  TPM_RC result =
-      Cr50VendorCommand(kCr50SubcmdGetRoStatus, std::string(), &res);
+  TPM_RC result = GscVendorCommand(kGscSubcmdGetRoStatus, std::string(), &res);
   if (result != TPM_RC_SUCCESS) {
-    LOG(ERROR) << __func__ << ": Cr50VendorCommand failed";
+    LOG(ERROR) << __func__ << ": GscVendorCommand failed";
     return result;
   }
   if (res.size() < 1) {
@@ -3593,8 +3590,8 @@ TpmUtilityImpl::GetPinwWeaverBackendType() {
   if (PinWeaverIsSupported(0, &protocol_version) != TPM_RC_SUCCESS) {
     pinweaver_backend_type_ = PinWeaverBackendType::kNotSupported;
   } else {
-    pinweaver_backend_type_ = (IsCr50() || IsSimulator())
-                                  ? PinWeaverBackendType::kCr50
+    pinweaver_backend_type_ = (IsGsc() || IsSimulator())
+                                  ? PinWeaverBackendType::kGsc
                                   : PinWeaverBackendType::kCsme;
   }
   return pinweaver_backend_type_;
@@ -3626,7 +3623,7 @@ TPM_RC TpmUtilityImpl::GetTi50Stats(uint32_t* fs_init_time,
   CHECK(aprov_time);
   CHECK(aprov_status);
   std::string res;
-  TPM_RC result = Cr50VendorCommand(kTi50GetMetrics, std::string(), &res);
+  TPM_RC result = GscVendorCommand(kTi50GetMetrics, std::string(), &res);
   if (result != TPM_RC_SUCCESS)
     return result;
 

@@ -34,7 +34,7 @@ constexpr char kUpdate[] = "update";
 constexpr char kU2fCert[] = "u2f_cert";
 constexpr char kVerbose[] = "verbose";
 
-// Maximum image update block size expected by Cr50.
+// Maximum image update block size expected by GSC.
 // Equals to SIGNED_TRANSFER_SIZE in src/platform/ec/chip/g/update_fw.h
 static const uint32_t kTransferSize = 1024;
 
@@ -69,7 +69,7 @@ struct TpmCmdHeader {
 
 // TPMv2 Spec mandates that vendor-specific command codes have bit 29 set,
 // while bits 15-0 indicate the command. All other bits should be zero. We
-// define one of those 16-bit command values for Cr50 purposes, and use the
+// define one of those 16-bit command values for GSC purposes, and use the
 // subcommand_code in struct TpmCmdHeader to further distinguish the desired
 // operation.
 #define TPM_CC_VENDOR_BIT 0x20000000
@@ -81,7 +81,7 @@ struct TpmCmdHeader {
 #define CR50_EXTENSION_COMMAND 0xbaccd00a
 #define CR50_EXTENSION_FW_UPGRADE 4
 
-// Cr50 vendor-specific subcommand codes. 16 bits available.
+// GSC vendor-specific subcommand codes. 16 bits available.
 enum vendor_cmd_cc {
   VENDOR_CC_POST_RESET = 7,
   VENDOR_CC_GET_LOCK = 16,
@@ -241,7 +241,7 @@ struct UpdatePduHeader {
 };
 
 //
-// Cr50 image header.
+// GSC image header.
 //
 // Based on SignedHeader defined in src/platform/ec/chip/g/signed_header.h
 //
@@ -378,7 +378,7 @@ static bool ImageIsNewer(const EssentialHeader& header,
 }
 
 //
-// Updates RO or RW section of the Cr50 image on the device.
+// Updates RO or RW section of the GSC image on the device.
 // A section is updated only if it's newer than the one currently on the
 // device, or if |force| is set to true.
 //
@@ -441,9 +441,9 @@ static bool TransferSection(TrunksDBusProxy* proxy,
 }
 
 //
-// Updates the Cr50 image on the device. |update_image| contains the entire
-// new Cr50 image.
-// Each of the Cr50 sections is updated only if it's newer than the one
+// Updates the GSC image on the device. |update_image| contains the entire
+// new GSC image.
+// Each of the GSC sections is updated only if it's newer than the one
 // currently on the device, or if |force| is set to true. Otherwise the
 // session is skipped. The information about the section offsets and current
 // versions is taken from the response to the connection request |rpdu| received
@@ -461,7 +461,7 @@ static int TransferImage(TrunksDBusProxy* proxy,
   int index;
 
   //
-  // The cr50 will not accept lower addresses after higher addresses for 60
+  // The GSC will not accept lower addresses after higher addresses for 60
   // seconds. Decide what section needs to be transferred first.
   //
 
@@ -483,7 +483,7 @@ static int TransferImage(TrunksDBusProxy* proxy,
 
 enum UpdateStatus { UpdateSuccess = 0, UpdateError = 1, UpdateCancelled = 2 };
 
-// Updathe the Cr50 image on the device.
+// Update the GSC image on the device.
 static UpdateStatus HandleUpdate(TrunksDBusProxy* proxy,
                                  base::CommandLine* cl) {
   if (cl->GetArgs().size() != 1) {
@@ -504,7 +504,7 @@ static UpdateStatus HandleUpdate(TrunksDBusProxy* proxy,
     return UpdateError;
   }
 
-  // Cr50 images with RW versoin below 0.0.19 process updates differently,
+  // Cr50 images with RW version below 0.0.19 process updates differently,
   // and as such require special treatment.
   bool running_pre_19 = rpdu.shv[1].minor < 19 && rpdu.shv[1].major == 0 &&
                         rpdu.shv[1].epoch == 0;
@@ -521,7 +521,7 @@ static UpdateStatus HandleUpdate(TrunksDBusProxy* proxy,
     return UpdateError;
   }
 
-  // Positive rv indicates that some sections were transferred and a Cr50
+  // Positive rv indicates that some sections were transferred and a GSC
   // reboot is required. RW Cr50 versions below 0.0.19 require a posted reset
   // to switch to the new image.
   if (rv > 0 && running_pre_19) {

@@ -88,13 +88,13 @@ std::function<bool(const Status&)> RetryActionIs(TPMRetryAction action) {
 using BackendU2fTpm2Test = BackendTpm2TestBase;
 
 TEST_F(BackendU2fTpm2Test, IsEnabledCr50) {
-  EXPECT_CALL(proxy_->GetMockTpmUtility(), IsCr50).WillOnce(Return(true));
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), IsGsc).WillOnce(Return(true));
 
   EXPECT_THAT(backend_->GetU2fTpm2().IsEnabled(), IsOkAndHolds(true));
 }
 
 TEST_F(BackendU2fTpm2Test, IsEnabledOthers) {
-  EXPECT_CALL(proxy_->GetMockTpmUtility(), IsCr50).WillOnce(Return(false));
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), IsGsc).WillOnce(Return(false));
 
   EXPECT_THAT(backend_->GetU2fTpm2().IsEnabled(), IsOkAndHolds(false));
 }

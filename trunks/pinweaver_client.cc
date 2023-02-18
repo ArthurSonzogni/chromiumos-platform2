@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 // pinweaver_client is a command line tool for executing PinWeaver vendor
-// specific commands to Cr50.
+// specific commands to GSC.
 
 #include <base/check.h>
 #include <base/command_line.h>
@@ -1657,7 +1657,7 @@ int main(int argc, char** argv) {
   const auto& command = args[0];
 
   if (command == "help") {
-    puts("Pinweaver Client: A command line tool to invoke PinWeaver on Cr50.");
+    puts("Pinweaver Client: A command line tool to invoke PinWeaver on GSC.");
     PrintUsage();
     return EXIT_SUCCESS;
   }

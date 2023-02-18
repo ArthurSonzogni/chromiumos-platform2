@@ -190,7 +190,7 @@ Status VendorTpm2::DeclareTpmFirmwareStable() {
 StatusOr<VendorTpm2::RwVersion> VendorTpm2::GetRwVersion() {
   // TODO(b/257335815): Add Ti50 case here after its tpm_version is separated
   // from Cr50.
-  if (!context_.GetTpmUtility().IsCr50()) {
+  if (!context_.GetTpmUtility().IsGsc()) {
     return MakeStatus<TPMError>("Not supported on non-GSC devices",
                                 TPMRetryAction::kNoRetry);
   }

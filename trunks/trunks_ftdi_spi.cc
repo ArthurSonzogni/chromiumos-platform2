@@ -75,7 +75,7 @@ void TrunksFtdiSpi::StartTransaction(bool read_write,
   SpiFrameHeader header;
 
   usleep(10000);  // give it 10 ms. TODO(vbendeb): remove this once
-                  // cr50 SPS TPM driver performance is fixed.
+                  // GSC SPS TPM driver performance is fixed.
 
   // The first byte of the frame header encodes the transaction type (read or
   // write) and size (set to lenth - 1).

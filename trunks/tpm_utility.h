@@ -622,7 +622,7 @@ class TRUNKS_EXPORT TpmUtility {
   //       working toward the root in index order.
   //   |le_secret| is the low entropy secret that is limited by the delay
   //       schedule.
-  //   |he_secret| is the high entropy secret that is protected by Cr50 and
+  //   |he_secret| is the high entropy secret that is protected by GSC and
   //       returned on successful authentication.
   //   |reset_secret| is the high entropy secret used to reset the attempt
   //       counters and authenticate without following the delay schedule.
@@ -693,9 +693,9 @@ class TRUNKS_EXPORT TpmUtility {
   //   returns VENDOR_RC_SUCCESS
   //   |result_code| is set to EC_SUCCESS (0).
   //   |root_hash| is set to the updated root hash of the tree.
-  //   |he_secret| is the high entropy secret that is protected by Cr50 and
+  //   |he_secret| is the high entropy secret that is protected by GSC and
   //       returned on successful authentication.
-  //   |reset_secret| is the reset secret that is protected by Cr50 and
+  //   |reset_secret| is the reset secret that is protected by GSC and
   //       returned on successful authentication.
   //   |cred_metadata_out| is set to the updated wrapped leaf data.
   //   |mac_out| is set to the updated HMAC used in the Merkle tree
@@ -922,7 +922,7 @@ class TRUNKS_EXPORT TpmUtility {
   //   |server_nonce| is the nonce used for establish the session key used for
   //       encrypting the returned HEC.
   //   |encrypted_high_entropy_secret| is the high entropy secret that is
-  //       protected by Cr50 and returned on successful authentication. It
+  //       protected by GSC and returned on successful authentication. It
   //       is encrypted with the session key derived from the client nonce,
   //       server nonce, and Pk of that auth channel.
   //   |iv| is the IV used for the AES-CTR encryption of the HEC.
@@ -1050,8 +1050,8 @@ class TRUNKS_EXPORT TpmUtility {
 
   virtual TPM_RC GetRoVerificationStatus(ApRoStatus* status) = 0;
 
-  // Returns true for TPMs running Cr50.
-  virtual bool IsCr50() = 0;
+  // Returns true for TPMs running GSC.
+  virtual bool IsGsc() = 0;
 
   // Send an arbitrary command to the TPM and wait for the response.
   // Returns the response packet.

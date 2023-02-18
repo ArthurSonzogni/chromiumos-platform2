@@ -105,7 +105,7 @@ StatusOr<bool> U2fTpm2::IsEnabled() {
 
   // TODO(b/257335815): Add Ti50 case here after its tpm_version is separated
   // from Cr50.
-  enabled_ = context_.GetTpmUtility().IsCr50();
+  enabled_ = context_.GetTpmUtility().IsGsc();
 
   return *enabled_;
 }

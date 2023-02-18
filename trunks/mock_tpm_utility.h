@@ -378,7 +378,7 @@ class MockTpmUtility : public TpmUtility {
                       brillo::Blob*));
   MOCK_METHOD1(GetRsuDeviceId, TPM_RC(std::string*));
   MOCK_METHOD1(GetRoVerificationStatus, TPM_RC(ApRoStatus*));
-  MOCK_METHOD(bool, IsCr50, (), (override));
+  MOCK_METHOD(bool, IsGsc, (), (override));
   MOCK_METHOD(std::string,
               SendCommandAndWait,
               (const std::string& command),

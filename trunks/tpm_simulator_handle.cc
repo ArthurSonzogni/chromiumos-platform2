@@ -40,7 +40,7 @@ void ExtendPcr(unsigned int pcr_index, const std::string& extend_data) {
   }
 }
 
-// According to the specified boot mode, extends PCR0 as cr50 does.
+// According to the specified boot mode, extends PCR0 as GSC does.
 // It should only be called once after the PCR0 value is set to all 0s
 // (e.g. running Startup with Clear). Calling it twice without resetting the PCR
 // will leave the TPM in an unknown boot mode.

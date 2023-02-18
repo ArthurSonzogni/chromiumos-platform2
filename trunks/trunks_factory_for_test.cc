@@ -743,7 +743,7 @@ class TpmUtilityForwarder : public TpmUtility {
     return target_->GetRoVerificationStatus(status);
   }
 
-  bool IsCr50() override { return target_->IsCr50(); }
+  bool IsGsc() override { return target_->IsGsc(); }
 
   std::string SendCommandAndWait(const std::string& command) override {
     return target_->SendCommandAndWait(command);

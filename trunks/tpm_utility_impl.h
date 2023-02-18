@@ -379,7 +379,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   TPM_RC GetRsuDeviceId(std::string* device_id) override;
   TPM_RC GetRoVerificationStatus(ApRoStatus* status) override;
 
-  bool IsCr50() override;
+  bool IsGsc() override;
 
   std::string SendCommandAndWait(const std::string& command) override;
 
@@ -403,7 +403,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   enum class PinWeaverBackendType {
     kUnknown,
     kNotSupported,
-    kCr50,
+    kGsc,
     kCsme,
   };
   PinWeaverBackendType pinweaver_backend_type_ = PinWeaverBackendType::kUnknown;
@@ -412,7 +412,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   // initialize the necessary TPM resources for pinweaver-csme. Returns
   // `TPM_RC_SUCCESS` if the operations succeed; otherwise, return
   // `TPM_RC_FAILURE`. If the pinweaver is supported natively by GCS (e.g.,
-  // cr50), performs no-ops and return `TPM_RC_SUCCESS`.
+  // cr50, ti50), performs no-ops and return `TPM_RC_SUCCESS`.
   TPM_RC InitializeOwnerForCsme();
 
   // This methods sets the well-known owner authorization and creates SRK and
@@ -534,7 +534,7 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   TPM_RC TpmBasicInit(std::unique_ptr<TpmState>* tpm_state);
 
   // Return true if the TPM supports padding-only scheme for Sign.
-  bool SupportsPaddingOnlySigningScheme() { return IsCr50() || IsSimulator(); }
+  bool SupportsPaddingOnlySigningScheme() { return IsGsc() || IsSimulator(); }
 
   // Queries Vendor ID as reported in TPM_PT_MANUFACTURER property and caches it
   // in `vendor_id_`.
@@ -543,38 +543,38 @@ class TRUNKS_EXPORT TpmUtilityImpl : public TpmUtility {
   // Returns true for TPMs running on simulator.
   bool IsSimulator();
 
-  // Sends vendor command in cr50 format, built from subcommand and already
+  // Sends vendor command in GSC format, built from subcommand and already
   // serialized |command_payload|.
   // Returns the result of the command. Fills the |response_payload|,
   // if successful.
-  TPM_RC Cr50VendorCommand(uint16_t subcommand,
-                           const std::string& command_payload,
-                           std::string* response_payload);
+  TPM_RC GscVendorCommand(uint16_t subcommand,
+                          const std::string& command_payload,
+                          std::string* response_payload);
 
-  // Helper function for serializing cr50 vendor command called from
-  // Cr50VendorCommand(). Builds the ready-to-send |serialized_command|
+  // Helper function for serializing GSC vendor command called from
+  // GscVendorCommand(). Builds the ready-to-send |serialized_command|
   // including the standard header, the |subcommand| code, and the
   // subcommand-specific |command_payload|.
   // Returns the result of serializing the command.
-  TPM_RC SerializeCommand_Cr50Vendor(uint16_t subcommand,
-                                     const std::string& command_payload,
-                                     std::string* serialized_command);
+  TPM_RC SerializeCommand_GscVendor(uint16_t subcommand,
+                                    const std::string& command_payload,
+                                    std::string* serialized_command);
 
-  // Helper function for parsing the response to cr50 vendor command,
-  // called from Cr50VendorCommand(). Takes the |response| received from
+  // Helper function for parsing the response to GSC vendor command,
+  // called from GscVendorCommand(). Takes the |response| received from
   // the TPM, parses and ensures the correctness of the header, and
   // extracts the subcommand-specific |response_payload| (kept serialized
   // as received from the TPM).
   // If deserialization failed, returns an error. If the header is correctly
   // parsed, returns the error code received from the TPM.
-  TPM_RC ParseResponse_Cr50Vendor(const std::string& response,
-                                  std::string* response_payload);
+  TPM_RC ParseResponse_GscVendor(const std::string& response,
+                                 std::string* response_payload);
 
   // Helper function for PinWeaver vendor specific commands.
   template <typename S, typename P>
   TPM_RC PinWeaverCommand(const std::string& tag, S serialize, P parse);
 
-  // Obrains RSU device id from Cr50.
+  // Obrains RSU device id from GSC.
   TPM_RC GetRsuDeviceIdInternal(std::string* device_id);
 
   // Sends pinweaver command to CSME instead of GSC.

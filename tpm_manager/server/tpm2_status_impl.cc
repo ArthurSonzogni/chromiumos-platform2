@@ -279,7 +279,7 @@ bool Tpm2StatusImpl::SupportPinweaver() {
 
 GscVersion Tpm2StatusImpl::GetGscVersion() {
   // The Cr50 & Ti50 have the same vendor & manufacturer name.
-  if (trunks_tpm_utility_->IsCr50()) {
+  if (trunks_tpm_utility_->IsGsc()) {
     uint64_t level = trunks_tpm_state_->GetSpecificationLevel();
     uint64_t revision = trunks_tpm_state_->GetSpecificationRevision();
     uint64_t spec_level = (level << 32) | revision;
