@@ -325,8 +325,8 @@ bool RecordUnqualifiedComponentsToLogs(
     bool is_compliant,
     const std::string& unqualified_components) {
   base::Value::Dict details;
-  details.Set(kLogUnqualifiedComponents, unqualified_components);
   details.Set(kLogIsCompliant, is_compliant);
+  details.Set(kLogUnqualifiedComponents, unqualified_components);
 
   return AddEventToJson(json_store, RmadState::kWelcome, LogEventType::kData,
                         std::move(details));

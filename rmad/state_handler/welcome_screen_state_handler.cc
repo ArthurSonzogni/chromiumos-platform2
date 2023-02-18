@@ -6,11 +6,13 @@
 #include "rmad/state_handler/welcome_screen_state_handler.h"
 
 #include <memory>
+#include <string>
 #include <utility>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <base/strings/string_util.h>
 #include <base/threading/sequenced_task_runner_handle.h>
 
 #include "rmad/system/hardware_verifier_client_impl.h"
@@ -72,8 +74,13 @@ void WelcomeScreenStateHandler::RunHardwareVerifier() const {
   HardwareVerificationResult result;
   if (hardware_verifier_client_->GetHardwareVerificationResult(&result)) {
     daemon_callback_->GetHardwareVerificationSignalCallback().Run(result);
+    // TODO(chenghan): A better way of doing this is to change |error_str| into
+    //                 a list of error strings for each component, so we can
+    //                 decide the separator later.
+    std::string single_line_error_str;
+    base::ReplaceChars(result.error_str(), "\n", ", ", &single_line_error_str);
     RecordUnqualifiedComponentsToLogs(json_store_, result.is_compliant(),
-                                      result.error_str());
+                                      single_line_error_str);
   } else {
     LOG(ERROR) << "Failed to get hardware verification result";
   }
