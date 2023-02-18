@@ -2674,7 +2674,7 @@ std::map<std::string, std::vector<GeolocationInfo>>
 Manager::GetNetworksForGeolocation() const {
   std::map<std::string, std::vector<GeolocationInfo>> geolocation_infos;
   for (const auto& entry : device_geolocation_info_) {
-    const DeviceRefPtr& device = entry.first;
+    const DeviceConstRefPtr& device = entry.first;
     const std::vector<GeolocationInfo>& device_info = entry.second;
     std::vector<GeolocationInfo>* network_geolocation_info = nullptr;
     if (device->technology() == Technology::kWiFi) {

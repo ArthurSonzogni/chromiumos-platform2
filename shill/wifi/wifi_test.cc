@@ -806,7 +806,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
         .WillRepeatedly(Return(service));
     ON_CALL(*service, GetEndpointCount()).WillByDefault(Return(1));
     ReportBSS(path, ssid, bssid, signal_strength, frequency,
-              kNetworkModeInfrastructure);
+              kNetworkModeInfrastructure, 0);
     if (service_ptr) {
       *service_ptr = service;
     }
@@ -826,7 +826,7 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     EXPECT_CALL(wifi_provider_, FindServiceForEndpoint(EndpointMatch(endpoint)))
         .WillRepeatedly(Return(service));
     ReportBSS(path, ssid, bssid, signal_strength, frequency,
-              kNetworkModeInfrastructure);
+              kNetworkModeInfrastructure, 0);
     if (endpoint_ptr) {
       *endpoint_ptr = endpoint;
     }
@@ -970,14 +970,16 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
                                     const std::string& bssid,
                                     int16_t signal_strength,
                                     uint16_t frequency,
-                                    const char* mode);
+                                    const char* mode,
+                                    uint32_t age);
   void RemoveBSS(const RpcIdentifier& bss_path);
   void ReportBSS(const RpcIdentifier& bss_path,
                  const std::string& ssid,
                  const std::string& bssid,
                  int16_t signal_strength,
                  uint16_t frequency,
-                 const char* mode);
+                 const char* mode,
+                 uint32_t age);
   void ReportBSSWithIEs(const RpcIdentifier& bss_path,
                         const std::string& ssid,
                         const std::string& bssid,
@@ -1416,7 +1418,8 @@ KeyValueStore WiFiObjectTest::CreateBSSProperties(const std::string& ssid,
                                                   const std::string& bssid,
                                                   int16_t signal_strength,
                                                   uint16_t frequency,
-                                                  const char* mode) {
+                                                  const char* mode,
+                                                  uint32_t age) {
   KeyValueStore bss_properties;
   bss_properties.Set<std::vector<uint8_t>>(
       "SSID", std::vector<uint8_t>(ssid.begin(), ssid.end()));
@@ -1431,6 +1434,7 @@ KeyValueStore WiFiObjectTest::CreateBSSProperties(const std::string& ssid,
                               signal_strength);
   bss_properties.Set<uint16_t>(WPASupplicant::kBSSPropertyFrequency, frequency);
   bss_properties.Set<std::string>(WPASupplicant::kBSSPropertyMode, mode);
+  bss_properties.Set<uint32_t>(WPASupplicant::kBSSPropertyAge, age);
 
   return bss_properties;
 }
@@ -1440,10 +1444,11 @@ void WiFiObjectTest::ReportBSS(const RpcIdentifier& bss_path,
                                const std::string& bssid,
                                int16_t signal_strength,
                                uint16_t frequency,
-                               const char* mode) {
+                               const char* mode,
+                               uint32_t age) {
   wifi_->BSSAddedTask(
       bss_path,
-      CreateBSSProperties(ssid, bssid, signal_strength, frequency, mode));
+      CreateBSSProperties(ssid, bssid, signal_strength, frequency, mode, age));
 }
 
 void WiFiObjectTest::ReportBSSWithIEs(const RpcIdentifier& bss_path,
@@ -1454,7 +1459,7 @@ void WiFiObjectTest::ReportBSSWithIEs(const RpcIdentifier& bss_path,
                                       const char* mode,
                                       const std::vector<uint8_t>& ies) {
   KeyValueStore properties =
-      CreateBSSProperties(ssid, bssid, signal_strength, frequency, mode);
+      CreateBSSProperties(ssid, bssid, signal_strength, frequency, mode, 0);
   properties.Set<std::vector<uint8_t>>(WPASupplicant::kBSSPropertyIEs, ies);
   wifi_->BSSAddedTask(bss_path, properties);
 }
@@ -1849,16 +1854,16 @@ TEST_F(WiFiMainTest, ScanResults) {
   StartWiFi();
   // Ad-hoc networks will be dropped.
   ReportBSS(RpcIdentifier("bss0"), "ssid0", "00:00:00:00:00:00", 0, 0,
-            kNetworkModeAdHoc);
+            kNetworkModeAdHoc, 0);
   ReportBSS(RpcIdentifier("bss1"), "ssid1", "00:00:00:00:00:01", 1, 0,
-            kNetworkModeInfrastructure);
+            kNetworkModeInfrastructure, 0);
   ReportBSS(RpcIdentifier("bss2"), "ssid2", "00:00:00:00:00:02", 2, 0,
-            kNetworkModeInfrastructure);
+            kNetworkModeInfrastructure, 0);
   ReportBSS(RpcIdentifier("bss3"), "ssid3", "00:00:00:00:00:03", 3, 0,
-            kNetworkModeInfrastructure);
+            kNetworkModeInfrastructure, 0);
   const uint16_t frequency = 2412;
   ReportBSS(RpcIdentifier("bss4"), "ssid4", "00:00:00:00:00:04", 4, frequency,
-            kNetworkModeAdHoc);
+            kNetworkModeAdHoc, 0);
 
   const WiFi::EndpointMap& endpoints_by_rpcid = GetEndpointMap();
   EXPECT_EQ(3, endpoints_by_rpcid.size());
@@ -1877,9 +1882,9 @@ TEST_F(WiFiMainTest, ScanCompleted) {
   EXPECT_CALL(*wifi_provider(), OnEndpointAdded(EndpointMatch(ap0))).Times(1);
   EXPECT_CALL(*wifi_provider(), OnEndpointAdded(EndpointMatch(ap1))).Times(1);
   ReportBSS(RpcIdentifier("bss0"), ap0->ssid_string(), ap0->bssid_string(), 0,
-            0, kNetworkModeInfrastructure);
+            0, kNetworkModeInfrastructure, 0);
   ReportBSS(RpcIdentifier("bss1"), ap1->ssid_string(), ap1->bssid_string(), 0,
-            0, kNetworkModeInfrastructure);
+            0, kNetworkModeInfrastructure, 0);
   manager()->set_suppress_autoconnect(true);
   ReportScanDone();
   EXPECT_FALSE(manager()->suppress_autoconnect());
@@ -1889,11 +1894,11 @@ TEST_F(WiFiMainTest, ScanCompleted) {
 
   // BSSes with SSIDs that start with nullptr should be filtered.
   ReportBSS(RpcIdentifier("bss2"), std::string(1, 0), "00:00:00:00:00:02", 3, 0,
-            kNetworkModeInfrastructure);
+            kNetworkModeInfrastructure, 0);
 
   // BSSes with empty SSIDs should be filtered.
   ReportBSS(RpcIdentifier("bss2"), std::string(), "00:00:00:00:00:02", 3, 0,
-            kNetworkModeInfrastructure);
+            kNetworkModeInfrastructure, 0);
 }
 
 TEST_F(WiFiMainTest, EnsuredScan) {
@@ -3560,7 +3565,7 @@ TEST_F(WiFiMainTest, BSSAddedCreatesBSSProxy) {
   EXPECT_CALL(*control_interface(), CreateSupplicantBSSProxy(_, _));
   StartWiFi();
   ReportBSS(RpcIdentifier("bss0"), "ssid0", "00:00:00:00:00:00", 0, 0,
-            kNetworkModeInfrastructure);
+            kNetworkModeInfrastructure, 0);
 }
 
 TEST_F(WiFiMainTest, BSSRemovedDestroysBSSProxy) {
@@ -4553,34 +4558,73 @@ struct BSS {
   int16_t signal_strength;
   uint16_t frequency;
   const char* mode;
+  uint32_t age;
 };
 
 TEST_F(WiFiMainTest, UpdateGeolocationObjects) {
   BSS bsses[] = {
       {RpcIdentifier("bssid1"), "ssid1", "00:00:00:00:00:00", 5,
-       Metrics::kWiFiFrequency2412, kNetworkModeInfrastructure},
+       Metrics::kWiFiFrequency2412, kNetworkModeInfrastructure, 0},
       {RpcIdentifier("bssid2"), "ssid2", "01:00:00:00:00:00", 30,
-       Metrics::kWiFiFrequency5170, kNetworkModeInfrastructure},
+       Metrics::kWiFiFrequency5170, kNetworkModeInfrastructure,
+       WiFi::kWiFiGeolocationInfoExpiration.InSeconds() + 1},
       // Same SSID but different BSSID is an additional geolocation object.
       {RpcIdentifier("bssid3"), "ssid1", "02:00:00:00:00:00", 100, 0,
-       kNetworkModeInfrastructure}};
+       kNetworkModeInfrastructure, 0}};
   StartWiFi();
-  std::vector<GeolocationInfo> objects;
-  EXPECT_EQ(objects.size(), 0);
+  auto objects = &(manager()->device_geolocation_info_[wifi()]);
+  EXPECT_EQ(objects->size(), 0);
 
   for (size_t i = 0; i < std::size(bsses); ++i) {
     ReportBSS(bsses[i].bsspath, bsses[i].ssid, bsses[i].bssid,
-              bsses[i].signal_strength, bsses[i].frequency, bsses[i].mode);
-    wifi()->UpdateGeolocationObjects(&objects);
-    EXPECT_EQ(objects.size(), i + 1);
-
-    GeolocationInfo expected_info;
-    expected_info[kGeoMacAddressProperty] = bsses[i].bssid;
-    expected_info[kGeoSignalStrengthProperty] =
-        base::StringPrintf("%d", bsses[i].signal_strength);
-    expected_info[kGeoChannelProperty] = base::StringPrintf(
-        "%d", Metrics::WiFiFrequencyToChannel(bsses[i].frequency));
-    EXPECT_EQ(expected_info, objects[i]);
+              bsses[i].signal_strength, bsses[i].frequency, bsses[i].mode,
+              bsses[i].age);
+    wifi()->UpdateGeolocationObjects(objects);
+    EXPECT_EQ(objects->size(), i + 1);
+    EXPECT_EQ((*objects)[i][kGeoMacAddressProperty], bsses[i].bssid);
+    EXPECT_EQ((*objects)[i][kGeoSignalStrengthProperty],
+              base::StringPrintf("%d", bsses[i].signal_strength));
+    EXPECT_EQ((*objects)[i][kGeoChannelProperty],
+              base::StringPrintf(
+                  "%d", Metrics::WiFiFrequencyToChannel(bsses[i].frequency)));
+  }
+  // Update the geolocation cache using new scan results
+  for (size_t i = 0; i < std::size(bsses); ++i) {
+    RemoveBSS(bsses[i].bsspath);
+  }
+  //  bsses_in_scan are the BSSes reported in the latest scan result
+  BSS bsses_in_scan[] = {
+      {RpcIdentifier("bssid1"), "ssid1", "00:00:00:00:00:00", 6,
+       Metrics::kWiFiFrequency2412, kNetworkModeInfrastructure, 0},
+      {RpcIdentifier("bssid4"), "ssid4", "03:00:00:00:00:00", 100,
+       Metrics::kWiFiFrequency5170, kNetworkModeInfrastructure, 0}};
+  for (size_t i = 0; i < std::size(bsses_in_scan); ++i) {
+    ReportBSS(bsses_in_scan[i].bsspath, bsses_in_scan[i].ssid,
+              bsses_in_scan[i].bssid, bsses_in_scan[i].signal_strength,
+              bsses_in_scan[i].frequency, bsses_in_scan[i].mode,
+              bsses_in_scan[i].age);
+  }
+  //  bsses_after_update are the BSSes remained in the geolocation cache after
+  //  the update using the latest scan result, where
+  // 1. bssid1 is in the latest scan result, it replaces the one in the
+  // current geolocation cache
+  // 2. bssid2 is not shown in the latest scan result and has reached
+  // expiration, so it is evicted from the geolocation cache
+  // 3. bssid3 is not shown in the latest scan result but has not reached
+  // expiration yet, so it is put back to the geolocation cache
+  // 4. bssid4 is a new BSS discovered in the latest scan, it is inserted
+  // into the geolocation cache
+  BSS bsses_after_update[] = {bsses_in_scan[0], bsses_in_scan[1], bsses[2]};
+  wifi()->UpdateGeolocationObjects(objects);
+  EXPECT_EQ(objects->size(), std::size(bsses_after_update));
+  for (size_t i = 0; i < std::size(bsses_after_update); ++i) {
+    EXPECT_EQ((*objects)[i][kGeoMacAddressProperty],
+              bsses_after_update[i].bssid);
+    EXPECT_EQ((*objects)[i][kGeoSignalStrengthProperty],
+              base::StringPrintf("%d", bsses_after_update[i].signal_strength));
+    EXPECT_EQ((*objects)[i][kGeoChannelProperty],
+              base::StringPrintf(
+                  "%d", Metrics::WiFiFrequencyToChannel(bsses[i].frequency)));
   }
 }
 
@@ -5151,14 +5195,14 @@ TEST_F(WiFiMainTest, PendingScanEvents) {
   StartWiFi();
   BSSAdded(RpcIdentifier("bss0"),
            CreateBSSProperties("ssid0", "00:00:00:00:00:00", 0, 0,
-                               kNetworkModeInfrastructure));
+                               kNetworkModeInfrastructure, 0));
   BSSAdded(RpcIdentifier("bss1"),
            CreateBSSProperties("ssid1", "00:00:00:00:00:01", 0, 0,
-                               kNetworkModeInfrastructure));
+                               kNetworkModeInfrastructure, 0));
   BSSRemoved(RpcIdentifier("bss0"));
   BSSAdded(RpcIdentifier("bss2"),
            CreateBSSProperties("ssid2", "00:00:00:00:00:02", 0, 0,
-                               kNetworkModeInfrastructure));
+                               kNetworkModeInfrastructure, 0));
 
   WiFiEndpointRefPtr ap0 = MakeEndpoint("ssid0", "00:00:00:00:00:00");
   WiFiEndpointRefPtr ap1 = MakeEndpoint("ssid1", "00:00:00:00:00:01");
@@ -5538,9 +5582,9 @@ TEST_F(WiFiMainTest, InterworkingSelectSimpleMatch) {
   WiFiEndpointRefPtr ap1 = MakeEndpoint("ssid1", "00:00:00:00:00:01");
   RpcIdentifier bss0_path("bss0"), bss1_path("bss1");
   ReportBSS(bss0_path, ap0->ssid_string(), ap0->bssid_string(), 0, 0,
-            kNetworkModeInfrastructure);
+            kNetworkModeInfrastructure, 0);
   ReportBSS(bss1_path, ap1->ssid_string(), ap1->bssid_string(), 0, 0,
-            kNetworkModeInfrastructure);
+            kNetworkModeInfrastructure, 0);
   ReportScanDone();
 
   // No credentials added, we must ignore false matches.
@@ -5595,9 +5639,9 @@ TEST_F(WiFiMainTest, InterworkingSelectMultipleMatches) {
   WiFiEndpointRefPtr ap1 = MakeEndpoint("ssid1", "00:00:00:00:00:01");
   RpcIdentifier bss0_path("bss0"), bss1_path("bss1");
   ReportBSS(bss0_path, ap0->ssid_string(), ap0->bssid_string(), 0, 0,
-            kNetworkModeInfrastructure);
+            kNetworkModeInfrastructure, 0);
   ReportBSS(bss1_path, ap1->ssid_string(), ap1->bssid_string(), 0, 0,
-            kNetworkModeInfrastructure);
+            kNetworkModeInfrastructure, 0);
   ReportScanDone();
 
   // Interworking select will find two matches and report them to the provider.

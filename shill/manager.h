@@ -606,6 +606,7 @@ class Manager {
   FRIEND_TEST(VPNProviderTest, SetDefaultRoutingPolicy);
   FRIEND_TEST(WiFiServiceTest, ConnectTaskFT);
   FRIEND_TEST(WiFiMainTest, ScanAllowRoam);
+  FRIEND_TEST(WiFiMainTest, UpdateGeolocationObjects);
   FRIEND_TEST(DaemonTaskTest, SupplicantAppearsAfterStop);
 
   void AutoConnect();
@@ -886,7 +887,8 @@ class Manager {
 
   // Stores the most recent copy of geolocation information for each
   // device the manager is keeping track of.
-  std::map<DeviceRefPtr, std::vector<GeolocationInfo>> device_geolocation_info_;
+  std::map<DeviceConstRefPtr, std::vector<GeolocationInfo>>
+      device_geolocation_info_;
 
   // Stores the state of the highest ranked connected service.
   std::string connection_state_;

@@ -2265,12 +2265,7 @@ void WiFi::ScanFailedTask() {
 }
 
 void WiFi::UpdateScanStateAfterScanDone() {
-  if (wifi_state_->GetScanMethod() == WiFiState::ScanMethod::kFull) {
-    // Only notify the Manager on completion of full scans, since the manager
-    // will replace any cached geolocation info with the BSSes we have right
-    // now.
-    manager()->OnDeviceGeolocationInfoUpdated(this);
-  }
+  manager()->OnDeviceGeolocationInfoUpdated(this);
   if (wifi_state_->GetPhyState() == WiFiState::PhyState::kBackgroundScanning) {
     // Going directly to kScanIdle (instead of to kScanFoundNothing) inhibits
     // some UMA reporting in SetPhyState.  That's desired -- we don't want
@@ -2696,7 +2691,12 @@ void WiFi::DisassociateFromService(const WiFiServiceRefPtr& service) {
 
 void WiFi::UpdateGeolocationObjects(
     std::vector<GeolocationInfo>* geolocation_infos) const {
-  geolocation_infos->clear();
+  // Move all the geolocation objects from geolocation_infos to
+  // geolocation_infos_copy. After this move, geolocation_infos is empty, and
+  // all the geolocation objects are in geolocation_infos_copy
+  std::vector<GeolocationInfo> geolocation_infos_copy =
+      std::move(*geolocation_infos);
+  // Update the geolocation cache using the current WiFi scan results
   for (const auto& endpoint_entry : endpoint_by_rpcid_) {
     GeolocationInfo geoinfo;
     const WiFiEndpointRefPtr& endpoint = endpoint_entry.second;
@@ -2706,7 +2706,23 @@ void WiFi::UpdateGeolocationObjects(
     geoinfo[kGeoChannelProperty] = base::StringPrintf(
         "%d", Metrics::WiFiFrequencyToChannel(endpoint->frequency()));
     AddLastSeenTime(&geoinfo, endpoint->last_seen());
-    geolocation_infos->push_back(geoinfo);
+    geolocation_infos->emplace_back(geoinfo);
+  }
+  // If a BSS is not in the latest scan result, we put it back to the
+  // geolocation cache if it is not expired yet
+  for (auto& geoinfo : geolocation_infos_copy) {
+    if (IsGeolocationInfoOlderThan(geoinfo, kWiFiGeolocationInfoExpiration)) {
+      continue;
+    }
+    std::vector<GeolocationInfo>::iterator it;
+    for (it = geolocation_infos->begin();
+         it != geolocation_infos->end() &&
+         (*it)[kGeoMacAddressProperty] != geoinfo[kGeoMacAddressProperty];
+         it++) {
+    }
+    if (it == geolocation_infos->end()) {
+      geolocation_infos->emplace_back(geoinfo);
+    }
   }
 }
 

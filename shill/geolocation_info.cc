@@ -19,6 +19,11 @@ namespace {
 // objects. It should not be exported outside of shill.
 constexpr char kLastSeenKey[] = "lastSeen";
 
+base::TimeDelta LastSeenToAge(int64_t last_seen) {
+  return base::TimeTicks::Now() -
+         (base::TimeTicks() + base::Seconds(last_seen));
+}
+
 }  // namespace
 
 namespace shill {
@@ -45,13 +50,22 @@ GeolocationInfo PrepareGeolocationInfoForExport(const GeolocationInfo& info) {
 
   // Calculate the age based on the current time. We have to
   // reconstitute last_seen into a TimeTicks so we can get a TimeDelta.
-  base::TimeDelta age =
-      base::TimeTicks::Now() - (base::TimeTicks() + base::Seconds(last_seen));
+  base::TimeDelta age = LastSeenToAge(last_seen);
 
   GeolocationInfo new_info(info);
   new_info.erase(kLastSeenKey);
   new_info[kGeoAgeProperty] = base::StringPrintf("%" PRId64, age.InSeconds());
   return new_info;
+}
+
+bool IsGeolocationInfoOlderThan(const GeolocationInfo& geoinfo,
+                                base::TimeDelta expiration) {
+  int64_t last_seen;
+  auto it = geoinfo.find(kLastSeenKey);
+  if (it == geoinfo.end() || !base::StringToInt64(it->second, &last_seen)) {
+    return true;
+  }
+  return LastSeenToAge(last_seen) > expiration;
 }
 
 }  // namespace shill

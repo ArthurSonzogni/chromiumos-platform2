@@ -358,6 +358,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   FRIEND_TEST(WiFiMainTest, TimeoutPendingServiceWithEndpoints);
   FRIEND_TEST(WiFiMainTest,
               UnreliableConnectionInvokesNotifyWiFiConnectionUnreliable);
+  FRIEND_TEST(WiFiMainTest,
+              UpdateGeolocationObjects);  // kWiFiGeolocationInfoExpiration
   FRIEND_TEST(WiFiPropertyTest, BgscanMethodProperty);  // bgscan_method_
   // interworking_select_enabled_ and need_interworking_select_
   FRIEND_TEST(WiFiPropertyTest, PasspointInterworkingProperty);
@@ -419,6 +421,11 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   // 9.4.2.25.2.
   static constexpr uint32_t kWEP40CipherCode = 0x000FAC01;
   static constexpr uint32_t kWEP104CipherCode = 0x000FAC05;
+
+  // WiFi geolocation information older than kWiFiGeolocationInfoExpiration will
+  // be evicted when updating the geolocation cache
+  static constexpr base::TimeDelta kWiFiGeolocationInfoExpiration =
+      base::Minutes(20);
 
   void GetPhyInfo();
   std::string AppendBgscan(WiFiService* service,

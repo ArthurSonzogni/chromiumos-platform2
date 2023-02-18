@@ -21,6 +21,9 @@ using GeolocationInfo = std::map<std::string, std::string>;
 void AddLastSeenTime(GeolocationInfo* info, const base::TimeTicks& time);
 GeolocationInfo PrepareGeolocationInfoForExport(const GeolocationInfo& info);
 
+bool IsGeolocationInfoOlderThan(const GeolocationInfo& geoinfo,
+                                base::TimeDelta expiration);
+
 }  // namespace shill
 
 #endif  // SHILL_GEOLOCATION_INFO_H_
