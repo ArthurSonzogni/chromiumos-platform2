@@ -61,8 +61,8 @@ class SandboxedProcessTest : public testing::Test {
     EXPECT_CALL(process, BrilloProcessAddArg(_))
         .WillRepeatedly(Invoke([&](const std::string& arg) {
           // These are minijail flags with string argument.
-          const std::set<std::string> kMinijailStringArgFlags{
-              "-u", "-g", "-c", "-S", "-b", "-P", "-k"};
+          const std::set<std::string> kMinijailStringArgFlags{"-u", "-g", "-c",
+                                                              "-S", "-b"};
           if (!has_minijail_bin_) {
             EXPECT_EQ(arg, kMinijailBinary);
             has_minijail_bin_ = true;
@@ -116,7 +116,6 @@ TEST_F(SandboxedProcessTest, Default) {
   EXPECT_EQ(cmd_, expected_cmd);
   EXPECT_EQ(minijail_args_set_,
             (std::set<std::vector<std::string>>{
-                {"-P", "/mnt/empty"},
                 {"-v"},
                 {"-r"},
                 {"-l"},
@@ -132,14 +131,6 @@ TEST_F(SandboxedProcessTest, Default) {
                 {"-n"},
                 {"-b", kTestReadOnlyFile},
                 {"-b", kTestWritableFileMountFlag},
-                {"-b", "/"},
-                {"-b", "/dev/log"},
-                {"-d"},
-                {"-k", "tmpfs,/tmp,tmpfs"},
-                {"-k", "tmpfs,/proc,tmpfs"},
-                {"-k", "tmpfs,/run,tmpfs"},
-                {"-k", "tmpfs,/sys,tmpfs"},
-                {"-k", "tmpfs,/var,tmpfs"},
             }));
 }
 
@@ -162,7 +153,6 @@ TEST_F(SandboxedProcessTest, NoNetworkNamespace) {
   EXPECT_EQ(cmd_, expected_cmd);
   EXPECT_EQ(minijail_args_set_,
             (std::set<std::vector<std::string>>{
-                {"-P", "/mnt/empty"},
                 {"-v"},
                 {"-r"},
                 {"-l"},
@@ -177,14 +167,6 @@ TEST_F(SandboxedProcessTest, NoNetworkNamespace) {
                 {"-n"},
                 {"-b", kTestReadOnlyFile},
                 {"-b", kTestWritableFileMountFlag},
-                {"-b", "/"},
-                {"-b", "/dev/log"},
-                {"-d"},
-                {"-k", "tmpfs,/tmp,tmpfs"},
-                {"-k", "tmpfs,/proc,tmpfs"},
-                {"-k", "tmpfs,/run,tmpfs"},
-                {"-k", "tmpfs,/sys,tmpfs"},
-                {"-k", "tmpfs,/var,tmpfs"},
             }));
 }
 
