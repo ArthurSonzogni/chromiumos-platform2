@@ -73,8 +73,6 @@ table FingerprintAuthBlockState (secure) {
   // The label of the LE hash tree leaf which stores a high entropy gsc_secret,
   // protected by auth_pin.
   gsc_secret_label:ulong = null (id: 1, optional);
-  // The salt used to derive the file encryption key.
-  salt:[ubyte] (id: 2);
 }
 
 table ChallengeCredentialAuthBlockState (secure) {
