@@ -25,7 +25,7 @@ make -C ../ tests
 stat project_test
 stat generated_header.h
 make -C ../ clean
-((stat project_test && false) || true) 2>&1
+( ( stat project_test && false ) || true ) 2>&1
 stat .dont_delete_on_clean
 popd
 rm foo/.dont_delete_on_clean
@@ -35,11 +35,11 @@ log "PASSED"
 log "TEST: out of dir, out=pwd"
 mkdir -p foo
 pushd foo
-make -C ../ all OUT=$PWD
-make -C ../ tests OUT=$PWD
+make -C ../ all OUT="${PWD}"
+make -C ../ tests OUT="${PWD}"
 stat project_test
-make -C ../ clean OUT=$PWD
-((stat project_test && false) || true) 2>&1
+make -C ../ clean OUT="${PWD}"
+( ( stat project_test && false ) || true ) 2>&1
 stat .dont_delete_on_clean
 popd
 rm foo/.dont_delete_on_clean
@@ -49,12 +49,12 @@ log "PASSED"
 log "TEST: out of dir, out=src/build-opt"
 mkdir -p foo
 pushd foo
-make -C ../ all OUT=$PWD/../build-opt
+make -C ../ all OUT="${PWD}/../build-opt"
 ls ../build-opt
-make -C ../ tests OUT=$PWD/../build-opt
-make -C ../ clean OUT=$PWD/../build-opt
-((stat ../build-opt/project_test && false) || true) 2>&1
-((stat ../build-opt && false) || true) 2>&1
+make -C ../ tests OUT="${PWD}/../build-opt"
+make -C ../ clean OUT="${PWD}/../build-opt"
+( ( stat ../build-opt/project_test && false ) || true ) 2>&1
+( ( stat ../build-opt && false ) || true ) 2>&1
 popd
 rmdir foo
 log "PASSED"
@@ -69,7 +69,7 @@ stat project_test
 stat component/subcomponent/libsubcomponent.so
 make -C ../ tests
 make -C ../ clean
-((stat project_test && false) || true) 2>&1
+( ( stat project_test && false ) || true ) 2>&1
 stat .dont_delete_on_clean
 popd
 rm foo/.dont_delete_on_clean
@@ -81,7 +81,7 @@ make all
 make tests
 stat project_test
 make clean
-((stat project_test && false) || true) 2>&1
+( ( stat project_test && false ) || true ) 2>&1
 log "PASSED"
 
 log "TEST: in dir, qemu (no mounts)"
@@ -89,7 +89,7 @@ make all
 make tests USE_QEMU=1
 stat project_test
 make clean USE_QEMU=1
-((stat project_test && false) || true) 2>&1
+( ( stat project_test && false ) || true ) 2>&1
 log "PASSED"
 
 log "TEST: in dir, target"
@@ -97,7 +97,7 @@ make 'CXX_BINARY(project_test)'
 stat project_test
 make tests
 make clean
-((stat project_test && false) || true) 2>&1
+( ( stat project_test && false ) || true ) 2>&1
 log "PASSED"
 
 log "TEST: in dir, targets"
@@ -107,8 +107,8 @@ stat project_test
 stat component/libcomponent.so
 make tests
 make clean
-((stat project_test && false) || true) 2>&1
-((stat component/libcomponent.so && false) || true) 2>&1
+( ( stat project_test && false ) || true ) 2>&1
+( ( stat component/libcomponent.so && false ) || true ) 2>&1
 log "PASSED"
 
 log "TEST: non-existent automatic target"
