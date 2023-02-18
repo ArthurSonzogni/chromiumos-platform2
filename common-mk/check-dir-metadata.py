@@ -121,7 +121,6 @@ LEGACYLIST = {
     "secure-wipe",
     "sepolicy",
     "sirenia",
-    "smogcheck",
     "spaced",
     "st_flash",
     "storage_info",

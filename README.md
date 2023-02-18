@@ -153,7 +153,6 @@ copies.
 | [sirenia](./sirenia/) | Minimalistic init written in Rust |
 | [smbfs](./smbfs/) | FUSE-based filesystem for accessing Samba / Windows networking shares |
 | [smbprovider](./smbprovider/) | Daemon for connecting Samba / Windows networking shares to the Files.app |
-| [smogcheck](./smogcheck/) | Developer library for working with raw I2C devices |
 | [spaced](./spaced/) | Disk space information daemon |
 | [st_flash](./st_flash/) ||
 | [storage_info](./storage_info/) | Helper shell functions for retrieving disk information) |
