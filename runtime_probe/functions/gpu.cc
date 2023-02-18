@@ -57,7 +57,7 @@ bool GpuFunction::IsDGPUDeviceByGBMLibrary(
   ::GbmDeviceInfo info;
   int ret = GbmDetectDeviceInfoPath(0, drm_nodes[0].value().c_str(), &info);
   if (ret) {
-    LOG(ERROR) << "Cannot get gbm info from drm node" << drm_nodes[0]
+    LOG(ERROR) << "Cannot get gbm info from drm node " << drm_nodes[0]
                << ", return " << ret;
     return true;
   }

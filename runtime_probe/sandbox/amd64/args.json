@@ -89,6 +89,7 @@
   },
   "gpu": {
     "binds": [
+      "/dev/dri",
       "/sys/bus/pci/devices/",
       "/sys/devices/pci0000:00/"
     ],
