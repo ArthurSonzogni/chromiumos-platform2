@@ -294,8 +294,20 @@ TEST_F(Tpm2StatusTest, NotSupportPinweaver) {
 
 TEST_F(Tpm2StatusTest, GetGscVersionCr50) {
   EXPECT_CALL(mock_tpm_utility_, IsCr50).WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_tpm_state_, GetSpecificationLevel).WillRepeatedly(Return(0));
+  EXPECT_CALL(mock_tpm_state_, GetSpecificationRevision)
+      .WillRepeatedly(Return(116));
 
   EXPECT_EQ(tpm_status_->GetGscVersion(), GscVersion::GSC_VERSION_CR50);
+}
+
+TEST_F(Tpm2StatusTest, GetGscVersionTi50) {
+  EXPECT_CALL(mock_tpm_utility_, IsCr50).WillRepeatedly(Return(true));
+  EXPECT_CALL(mock_tpm_state_, GetSpecificationLevel).WillRepeatedly(Return(0));
+  EXPECT_CALL(mock_tpm_state_, GetSpecificationRevision)
+      .WillRepeatedly(Return(162));
+
+  EXPECT_EQ(tpm_status_->GetGscVersion(), GscVersion::GSC_VERSION_TI50);
 }
 
 TEST_F(Tpm2StatusTest, GetGscVersionNotGsc) {
