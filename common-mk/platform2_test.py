@@ -15,6 +15,7 @@ import ctypes
 import ctypes.util
 import errno
 import os
+from pathlib import Path
 import pwd
 import re
 import signal
@@ -119,7 +120,6 @@ class Platform2Test(object):
     _BIND_MOUNT_PATHS = (
         "dev/pts",
         "dev/shm",
-        "proc",
         "mnt/host/source",
         "sys",
     )
@@ -383,6 +383,19 @@ class Platform2Test(object):
         Removes mounts/files copied during pre-test.
         """
 
+    def _remount_ro(self, path: str) -> None:
+        """Helper to remount a path as read-only.
+
+        The kernel doesn't allow specifying ro when creating the bind mount, so
+        add a helper to remount it with the ro flag.
+        """
+        osutils.Mount(
+            None,
+            path,
+            None,
+            osutils.MS_REMOUNT | osutils.MS_BIND | osutils.MS_RDONLY,
+        )
+
     def SetupDev(self):
         """Initialize a pseudo /dev directory.
 
@@ -432,6 +445,61 @@ class Platform2Test(object):
             # Mount subpaths.
             os.mkdir(os.path.join(path, "shm"), 0o1777)
 
+    def SetupProc(self, tempdir: Path) -> None:
+        """Initialize a reduced /proc directory.
+
+        We want to expose process info, but not host config settings.
+        """
+        # Mount the new proc to a tempdir before we move it to the final place.
+        # This allows us to bind mount paths from the real /proc when we're
+        # using --sysroot=/.
+        osutils.Mount(
+            "/proc",
+            tempdir,
+            None,
+            osutils.MS_BIND,
+        )
+        DISABLE_SUBDIRS = (
+            "acpi",
+            "asound",
+            "bus",
+            "driver",
+            "dynamic_debug",
+            "fs",
+        )
+        empty_dir = os.path.join(self.sysroot, "mnt", "empty")
+        for d in DISABLE_SUBDIRS:
+            d = tempdir / d
+            if d.is_dir():
+                osutils.Mount(
+                    empty_dir, d, None, osutils.MS_BIND | osutils.MS_RDONLY
+                )
+
+        # Setup some sysctl paths.  Have to be careful to only expose stable
+        # entries that are long term stable ABI, and only read-only.
+        sysctl = tempdir / "sys"
+        osutils.Mount(
+            "sysctl",
+            sysctl,
+            "tmpfs",
+            osutils.MS_NOSUID | osutils.MS_NODEV | osutils.MS_NOEXEC,
+            "mode=0755,size=1M",
+        )
+        d = sysctl / "kernel" / "random"
+        osutils.SafeMakedirs(d)
+        osutils.Mount("/proc/sys/kernel/random", d, None, osutils.MS_BIND)
+        self._remount_ro(d)
+        self._remount_ro(sysctl)
+
+        d = os.path.join(self.sysroot, "proc")
+        osutils.SafeMakedirs(d)
+        osutils.Mount(
+            tempdir,
+            d,
+            None,
+            osutils.MS_MOVE,
+        )
+
     def run(self):
         """Runs the test in a proper environment (e.g. qemu)."""
 
@@ -448,10 +516,25 @@ class Platform2Test(object):
             self.SetupDev()
         bind_mount_paths += self._BIND_MOUNT_PATHS
 
+        # Make sure /mnt/empty is always empty, and remains empty.
+        mnt_empty = os.path.join(self.sysroot, "mnt/empty")
+        osutils.SafeMakedirs(mnt_empty)
+        osutils.Mount(
+            "empty-dir",
+            mnt_empty,
+            "tmpfs",
+            osutils.MS_RDONLY,
+            "mode=0755,size=1K",
+        )
+
         for mount in bind_mount_paths:
             path = os.path.join(self.sysroot, mount)
             osutils.SafeMakedirs(path)
             osutils.Mount("/" + mount, path, "none", osutils.MS_BIND)
+
+        with tempfile.TemporaryDirectory() as tempdir_obj:
+            tempdir = Path(tempdir_obj)
+            self.SetupProc(tempdir)
 
         # Make sure /run/lock is usable.  But not the real lock path since tests
         # shouldn't be touching real state.
