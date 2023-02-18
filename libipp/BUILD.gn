@@ -21,6 +21,8 @@ group("all") {
 shared_library("libipp") {
   sources = [
     "attribute.h",
+    "builder.cc",
+    "builder.h",
     "colls_view.h",
     "errors.cc",
     "errors.h",
@@ -53,6 +55,7 @@ install_config("install_pkgconfig") {
 install_config("install_headers") {
   sources = [
     "attribute.h",
+    "builder.h",
     "colls_view.h",
     "errors.h",
     "frame.h",

@@ -141,14 +141,17 @@ class IPP_EXPORT Frame {
   virtual ~Frame();
 
   // Return the size of the binary representation of the frame in bytes.
+  // DEPRECATED: Use functions from builder.h instead.
   size_t GetLength() const;
   // Save the binary representation of the frame to the given buffer. Use
   // GetLength() method before calling this method to make sure that the given
   // buffer is large enough. The method returns the number of bytes written to
   // `buffer` or 0 when `buffer_length` is smaller than binary representation of
   // the frame.
+  // DEPRECATED: Use functions from builder.h instead.
   size_t SaveToBuffer(uint8_t* buffer, size_t buffer_length) const;
   // Return the binary representation of the frame as a vector.
+  // DEPRECATED: Use functions from builder.h instead.
   std::vector<uint8_t> SaveToBuffer() const;
 
   // Access IPP version number.

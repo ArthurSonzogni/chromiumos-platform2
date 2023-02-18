@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "libipp/attribute.h"
+#include "libipp/builder.h"
 #include "libipp/frame.h"
 
 #include <cstdint>
@@ -146,7 +147,7 @@ void CompareCollections(const ipp::Collection* c1, const ipp::Collection* c2) {
 // checks if given frame is a binary representation of given Request/Response
 void CheckFrame(const BinaryContent& frame, const ipp::Frame& req) {
   // build output frame from Request and compare with the given frame
-  std::vector<uint8_t> bin_data = req.SaveToBuffer();
+  std::vector<uint8_t> bin_data = BuildBinaryFrame(req);
   EXPECT_EQ(req.GetLength(), bin_data.size());
   EXPECT_EQ(bin_data, frame.data);
   // parse the given frame and compare obtained object with the given Request
