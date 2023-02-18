@@ -8,11 +8,14 @@ rseq: 1
 access: 1
 arch_prctl: 1
 brk: 1
+clock_getres: 1
+clock_gettime: 1
 close: 1
 exit: 1
 exit_group: 1
 fstatfs: 1
 gettid: 1
+gettimeofday: 1
 # ioctl: arg1 == 0xc014ec00 /* CROS_EC_DEV_IOCXCMD */ ||
 #        arg1 == 0x5401 /* TCGETS */
 ioctl: arg1 == 0xc014ec00 || arg1 == 0x5401

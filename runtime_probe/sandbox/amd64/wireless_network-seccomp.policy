@@ -9,6 +9,7 @@ access: 1
 arch_prctl: 1
 brk: 1
 clock_getres: 1
+clock_gettime: 1
 close: 1
 connect: 1
 exit: 1
@@ -23,6 +24,7 @@ getresgid: 1
 getresuid: 1
 getsockname: 1
 gettid: 1
+gettimeofday: 1
 lseek: 1
 lstat: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE

@@ -31,3 +31,6 @@ set_tid_address: 1
 write: 1
 getpid: 1
 futex: 1
+clock_getres: 1
+clock_gettime: 1
+gettimeofday: 1

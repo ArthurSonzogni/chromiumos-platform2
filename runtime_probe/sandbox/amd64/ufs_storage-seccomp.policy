@@ -29,6 +29,9 @@ exit_group: 1
 restart_syscall: 1
 exit: 1
 rt_sigreturn: 1
+clock_getres: 1
+clock_gettime: 1
+gettimeofday: 1
 
 # For brillo::kLogToStderrIfTty. isatty(0) calls ioctl(0, TCGETS, *).
 ioctl: arg0 == 0 && arg1 == TCGETS

@@ -8,12 +8,15 @@ rseq: 1
 access: 1
 arch_prctl: 1
 brk: 1
+clock_getres: 1
+clock_gettime: 1
 close: 1
 exit: 1
 exit_group: 1
 fstatfs: 1
 getdents64: 1
 gettid: 1
+gettimeofday: 1
 # ioctl: arg1 == /* DRM_IOCTL_MODE_GETRESOURCES */ ||
 #        arg1 == /* DRM_IOCTL_AMDGPU_INFO or DRM_IOCTL_SIS_FB_FREE */ ||
 #        arg1 == /* DRM_IOCTL_VERSION */
