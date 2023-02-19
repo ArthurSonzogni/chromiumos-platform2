@@ -10,8 +10,8 @@
 #include <string>
 #include <vector>
 
+#include "frame.h"
 #include "ipp_frame.h"
-#include "ipp_log.h"
 
 namespace ipp {
 
@@ -44,20 +44,6 @@ class FrameBuilder {
   FrameBuilder(FrameBuilder&&) = delete;
   FrameBuilder& operator=(const FrameBuilder&) = delete;
   FrameBuilder& operator=(FrameBuilder&&) = delete;
-
-  // Main functions for building a frame.
-  void SaveGroup(const Collection* coll, std::list<TagNameValue>* data_chunks);
-  void SaveCollection(const Collection* coll,
-                      std::list<TagNameValue>* data_chunks);
-
-  // Helpers for converting individual values to binary form.
-  void SaveAttrValue(const Attribute* attr,
-                     size_t index,
-                     uint8_t* tag,
-                     std::vector<uint8_t>* buf);
-
-  // Write data to buffer (ptr is updated, whole list is written).
-  void WriteTNVsToBuffer(const std::list<TagNameValue>&, uint8_t** ptr);
 
   // Internal buffer.
   FrameData* frame_;

@@ -105,12 +105,11 @@ void SaveRangeOfInteger(const ipp::RangeOfInteger& v,
   WriteInteger<4>(&ptr, v.max_value);
 }
 
-}  //  namespace
-
-void FrameBuilder::SaveAttrValue(const Attribute* attr,
-                                 size_t index,
-                                 uint8_t* tag,
-                                 std::vector<uint8_t>* buf) {
+// Helpers for converting individual values to binary form.
+void SaveAttrValue(const Attribute* attr,
+                   size_t index,
+                   uint8_t* tag,
+                   std::vector<uint8_t>* buf) {
   *tag = static_cast<uint8_t>(attr->Tag());
   switch (attr->Tag()) {
     case ValueTag::boolean: {
@@ -180,8 +179,8 @@ void FrameBuilder::SaveAttrValue(const Attribute* attr,
   }
 }
 
-void FrameBuilder::SaveCollection(const Collection* coll,
-                                  std::list<TagNameValue>* data_chunks) {
+void SaveCollection(const Collection* coll,
+                    std::list<TagNameValue>* data_chunks) {
   // get list of all attributes
   std::vector<const Attribute*> attrs = coll->GetAllAttributes();
   // save the attributes
@@ -214,8 +213,7 @@ void FrameBuilder::SaveCollection(const Collection* coll,
   }
 }
 
-void FrameBuilder::SaveGroup(const Collection* coll,
-                             std::list<TagNameValue>* data_chunks) {
+void SaveGroup(const Collection* coll, std::list<TagNameValue>* data_chunks) {
   // get list of all attributes
   std::vector<const Attribute*> attrs = coll->GetAllAttributes();
   // save the attributes
@@ -246,6 +244,19 @@ void FrameBuilder::SaveGroup(const Collection* coll,
   }
 }
 
+// Write data to buffer (ptr is updated, whole list is written).
+void WriteTNVsToBuffer(const std::list<TagNameValue>& tnvs, uint8_t** ptr) {
+  for (auto& tnv : tnvs) {
+    WriteUnsigned<1>(ptr, tnv.tag);
+    WriteInteger<2>(ptr, static_cast<int16_t>(tnv.name.size()));
+    *ptr = std::copy(tnv.name.begin(), tnv.name.end(), *ptr);
+    WriteInteger<2>(ptr, static_cast<int16_t>(tnv.value.size()));
+    *ptr = std::copy(tnv.value.begin(), tnv.value.end(), *ptr);
+  }
+}
+
+}  //  namespace
+
 void FrameBuilder::BuildFrameFromPackage(const Frame* package) {
   frame_->groups_tags_.clear();
   frame_->groups_content_.clear();
@@ -271,17 +282,6 @@ void FrameBuilder::WriteFrameToBuffer(uint8_t* ptr) {
   }
   WriteUnsigned<1>(&ptr, end_of_attributes_tag);
   std::copy(frame_->data_.begin(), frame_->data_.end(), ptr);
-}
-
-void FrameBuilder::WriteTNVsToBuffer(const std::list<TagNameValue>& tnvs,
-                                     uint8_t** ptr) {
-  for (auto& tnv : tnvs) {
-    WriteUnsigned<1>(ptr, tnv.tag);
-    WriteInteger<2>(ptr, static_cast<int16_t>(tnv.name.size()));
-    *ptr = std::copy(tnv.name.begin(), tnv.name.end(), *ptr);
-    WriteInteger<2>(ptr, static_cast<int16_t>(tnv.value.size()));
-    *ptr = std::copy(tnv.value.begin(), tnv.value.end(), *ptr);
-  }
 }
 
 std::size_t FrameBuilder::GetFrameLength() const {
