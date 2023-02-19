@@ -502,6 +502,25 @@ class Platform2Test(object):
             osutils.MS_MOVE,
         )
 
+    def SetupSys(self) -> None:
+        """Initialize a reduced /sys directory.
+
+        We want to expose generic config, but not host config settings.
+        """
+        DISABLE_SUBDIRS = (
+            "firmware",
+            "hypervisor",
+            "module",
+            "power",
+        )
+        empty_dir = os.path.join(self.sysroot, "mnt/empty")
+        for d in DISABLE_SUBDIRS:
+            d = os.path.join(self.sysroot, "sys", d)
+            if os.path.isdir(d):
+                osutils.Mount(
+                    empty_dir, d, "none", osutils.MS_BIND | osutils.MS_RDONLY
+                )
+
     def run(self):
         """Runs the test in a proper environment (e.g. qemu)."""
 
@@ -541,6 +560,8 @@ class Platform2Test(object):
         with tempfile.TemporaryDirectory() as tempdir_obj:
             tempdir = Path(tempdir_obj)
             self.SetupProc(tempdir)
+
+        self.SetupSys()
 
         # Make sure /run/lock is usable.  But not the real lock path since tests
         # shouldn't be touching real state.
