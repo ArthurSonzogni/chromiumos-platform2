@@ -117,12 +117,12 @@ ENV_PASSTHRU_REGEX_LIST = list(
 class Platform2Test(object):
     """Framework for running platform2 tests"""
 
-    _BIND_MOUNT_PATHS = (
+    _BIND_RW_MOUNT_PATHS = (
         "dev/pts",
         "dev/shm",
-        "mnt/host/source",
         "sys",
     )
+    _BIND_RO_MOUNT_PATHS = ("mnt/host/source",)
 
     def __init__(
         self,
@@ -514,7 +514,9 @@ class Platform2Test(object):
             bind_mount_paths += ["dev"]
         else:
             self.SetupDev()
-        bind_mount_paths += self._BIND_MOUNT_PATHS
+        bind_mount_paths += (
+            self._BIND_RW_MOUNT_PATHS + self._BIND_RO_MOUNT_PATHS
+        )
 
         # Make sure /mnt/empty is always empty, and remains empty.
         mnt_empty = os.path.join(self.sysroot, "mnt/empty")
@@ -531,6 +533,15 @@ class Platform2Test(object):
             path = os.path.join(self.sysroot, mount)
             osutils.SafeMakedirs(path)
             osutils.Mount("/" + mount, path, "none", osutils.MS_BIND)
+            if mount in self._BIND_RO_MOUNT_PATHS:
+                # The kernel doesn't allow specifying ro when creating the bind
+                # mount, so remount it now with the ro flag.
+                osutils.Mount(
+                    "/" + mount,
+                    path,
+                    "none",
+                    osutils.MS_REMOUNT | osutils.MS_BIND | osutils.MS_RDONLY,
+                )
 
         with tempfile.TemporaryDirectory() as tempdir_obj:
             tempdir = Path(tempdir_obj)
