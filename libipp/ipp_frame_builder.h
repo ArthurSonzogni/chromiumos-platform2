@@ -25,8 +25,7 @@ class FrameBuilder {
   // Constructor, both parameters must not be nullptr. |frame| is used as
   // internal buffer to store intermediate form of data to send. All spotted
   // issues are logged to |log| (by push_back()).
-  FrameBuilder(FrameData* frame, std::vector<Log>* log)
-      : frame_(frame), errors_(log) {}
+  FrameBuilder(FrameData* frame, std::vector<Log>* log) : frame_(frame) {}
 
   // Build a content of the frame from the given object.
   void BuildFrameFromPackage(const Frame* package);
@@ -46,9 +45,6 @@ class FrameBuilder {
   FrameBuilder& operator=(const FrameBuilder&) = delete;
   FrameBuilder& operator=(FrameBuilder&&) = delete;
 
-  // Method for adding entries to the log.
-  void LogFrameBuilderError(const std::string& message);
-
   // Main functions for building a frame.
   void SaveGroup(const Collection* coll, std::list<TagNameValue>* data_chunks);
   void SaveCollection(const Collection* coll,
@@ -65,9 +61,6 @@ class FrameBuilder {
 
   // Internal buffer.
   FrameData* frame_;
-
-  // Internal log: all errors & warnings are logged here.
-  std::vector<Log>* errors_;
 };
 
 }  // namespace ipp

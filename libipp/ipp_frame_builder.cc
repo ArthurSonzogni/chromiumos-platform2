@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <limits>
 #include <list>
 #include <string>
 #include <string_view>
@@ -20,153 +21,127 @@ namespace ipp {
 
 namespace {
 
-// Saves 1-,2- or 4-bytes integer to buf using two's-complement binary encoding.
-// The "buf" parameter is always resized to BytesCount. Returns false when
-// given integer is out of range. In this case 0 is saved to buf.
-template <size_t BytesCount>
-bool SaveInteger(int v, std::vector<uint8_t>* buf) {
-  buf->resize(BytesCount);
+// Saves boolean to buf.
+void SaveBoolean(bool v, std::vector<uint8_t>* buf) {
+  buf->resize(1);
+  *(buf->data()) = v ? 1 : 0;
+}
+
+// Saves 4-bytes integer to buf using two's-complement binary encoding.
+void SaveInt32(int32_t v, std::vector<uint8_t>* buf) {
+  buf->resize(4);
   uint8_t* ptr = buf->data();
-  if (!WriteInteger<BytesCount>(&ptr, v)) {
-    buf->clear();
-    buf->resize(BytesCount, 0);
-    return false;
-  }
-  return true;
+  WriteInteger<4>(&ptr, v);
 }
 
 // Saves simple string to buf, buf is resized accordingly.
-void SaveOctetString(const std::string& s, std::vector<uint8_t>* buf) {
-  buf->assign(s.begin(), s.end());
-}
+// If `s` is too long, the written content is silently truncated.
+// The length of values of this type is verified when they are passed to a
+// Frame object, so the truncation here should never occur.
 void SaveOctetString(std::string_view s, std::vector<uint8_t>* buf) {
-  buf->assign(s.begin(), s.end());
+  static constexpr size_t max_size = std::numeric_limits<int16_t>::max();
+  const size_t value_size = std::min(s.size(), max_size);
+  buf->resize(value_size);
+  std::copy_n(s.begin(), value_size, buf->begin());
 }
 
 // Writes textWithLanguage/nameWithLanguage (see [rfc8010]) to buf, which is
-// resized accordingly. Returns false if given string(s) is too long. In this
-// case an empty string is saved to the buffer.
-bool SaveStringWithLanguage(const ipp::StringWithLanguage& s,
+// resized accordingly.
+// If `s` is too long, the written content is silently truncated.
+// The length of values of this type is verified when they are passed to a
+// Frame object, so the truncation here should never occur.
+void SaveStringWithLanguage(const ipp::StringWithLanguage& s,
                             std::vector<uint8_t>* buf) {
-  buf->clear();
-  buf->resize(4 + s.value.size() + s.language.size());
+  // StringWithLanguage is used to save nameWithLanguage and textWithLanguage
+  // values. They are saved as a sequence of the following fields (see section
+  // 3.9 from rfc8010):
+  // * int16_t (2 bytes) - length of the language field = L
+  // * string (L bytes) - content of the language field
+  // * int16_t (2 bytes) - length of the value field = V
+  // * string (V bytes) - content of the value field
+  // The total size (2 + L + 2 + V) cannot exceed the threshold.
+  static constexpr size_t max_size = std::numeric_limits<int16_t>::max();
+  const size_t lang_size = std::min(s.language.size(), max_size - 4);
+  const size_t value_size = std::min(s.value.size(), max_size - 4 - lang_size);
+  buf->resize(4 + lang_size + value_size);
   uint8_t* ptr = buf->data();
-  if (!WriteInteger<2>(&ptr, s.language.size())) {
-    std::vector<uint8_t> empty_buffer(4, 0);
-    buf->swap(empty_buffer);
-    return false;
-  }
-  ptr = std::copy(s.language.begin(), s.language.end(), ptr);
-  if (!WriteInteger<2>(&ptr, s.value.size())) {
-    std::vector<uint8_t> empty_buffer(4, 0);
-    buf->swap(empty_buffer);
-    return false;
-  }
-  std::copy(s.value.begin(), s.value.end(), ptr);
-  return true;
+  WriteInteger<2>(&ptr, static_cast<int16_t>(lang_size));
+  ptr = std::copy_n(s.language.begin(), lang_size, ptr);
+  WriteInteger<2>(&ptr, static_cast<int16_t>(value_size));
+  std::copy_n(s.value.begin(), value_size, ptr);
 }
 
-// Saves dateTime (see [rfc8010]) to buf, which is resized accordingly. Returns
-// false when the given dateTime is incorrect; in this case |buf| is set to
-// 2000/1/1 00:00:00 +00:00.
-bool SaveDateTime(const ipp::DateTime& v, std::vector<uint8_t>* buf) {
+// Saves dateTime (see [rfc8010,rfc2579]) to buf, which is resized accordingly.
+void SaveDateTime(const ipp::DateTime& v, std::vector<uint8_t>* buf) {
   buf->resize(11);
   uint8_t* ptr = buf->data();
-  if (WriteInteger<2>(&ptr, v.year) && WriteInteger<1>(&ptr, v.month) &&
-      WriteInteger<1>(&ptr, v.day) && WriteInteger<1>(&ptr, v.hour) &&
-      WriteInteger<1>(&ptr, v.minutes) && WriteInteger<1>(&ptr, v.seconds) &&
-      WriteInteger<1>(&ptr, v.deci_seconds) &&
-      WriteInteger<1>(&ptr, v.UTC_direction) &&
-      WriteInteger<1>(&ptr, v.UTC_hours) &&
-      WriteInteger<1>(&ptr, v.UTC_minutes))
-    return true;
-  buf->clear();
-  buf->resize(11, 0);
-  ptr = buf->data();
-  WriteInteger<int16_t>(&ptr, 2000);
-  (*buf)[8] = '+';
-  return false;
+  WriteUnsigned<2>(&ptr, v.year);
+  WriteUnsigned<1>(&ptr, v.month);
+  WriteUnsigned<1>(&ptr, v.day);
+  WriteUnsigned<1>(&ptr, v.hour);
+  WriteUnsigned<1>(&ptr, v.minutes);
+  WriteUnsigned<1>(&ptr, v.seconds);
+  WriteUnsigned<1>(&ptr, v.deci_seconds);
+  WriteUnsigned<1>(&ptr, v.UTC_direction);
+  WriteUnsigned<1>(&ptr, v.UTC_hours);
+  WriteUnsigned<1>(&ptr, v.UTC_minutes);
 }
 
 // Writes resolution (see [rfc8010]) to buf, which is resized accordingly.
-// Returns false when given value is incorrect; in this case |buf| is set to
-// 256x256dpi.
-bool SaveResolution(const ipp::Resolution& v, std::vector<uint8_t>* buf) {
+void SaveResolution(const ipp::Resolution& v, std::vector<uint8_t>* buf) {
   buf->resize(9);
   uint8_t* ptr = buf->data();
-  if (WriteInteger<4>(&ptr, v.xres) && WriteInteger<4>(&ptr, v.yres) &&
-      (v.units == ipp::Resolution::kDotsPerCentimeter ||
-       v.units == ipp::Resolution::kDotsPerInch)) {
-    WriteInteger<int8_t>(&ptr, v.units);
-    return true;
-  }
-  buf->clear();
-  // set to 256x256 dpi
-  buf->resize(9, 0);
-  (*buf)[2] = (*buf)[6] = 1;
-  (*buf)[8] = ipp::Resolution::kDotsPerInch;
-  return false;
+  WriteInteger<4>(&ptr, v.xres);
+  WriteInteger<4>(&ptr, v.yres);
+  WriteInteger<1>(&ptr, static_cast<int8_t>(v.units));
 }
 
 // Writes rangeOfInteger (see [rfc8010]) to buf, which is resized accordingly.
-// Returns false when given value is incorrect; in this case |buf| is set to 0.
-bool SaveRangeOfInteger(const ipp::RangeOfInteger& v,
+void SaveRangeOfInteger(const ipp::RangeOfInteger& v,
                         std::vector<uint8_t>* buf) {
   buf->resize(8);
   uint8_t* ptr = buf->data();
-  if (WriteInteger<4>(&ptr, v.min_value) && WriteInteger<4>(&ptr, v.max_value))
-    return true;
-  buf->clear();
-  buf->resize(8, 0);
-  return false;
+  WriteInteger<4>(&ptr, v.min_value);
+  WriteInteger<4>(&ptr, v.max_value);
 }
 
 }  //  namespace
-
-void FrameBuilder::LogFrameBuilderError(const std::string& message) {
-  Log l;
-  l.message = "Error when building frame: " + message + ".";
-  errors_->push_back(l);
-}
 
 void FrameBuilder::SaveAttrValue(const Attribute* attr,
                                  size_t index,
                                  uint8_t* tag,
                                  std::vector<uint8_t>* buf) {
   *tag = static_cast<uint8_t>(attr->Tag());
-  bool result = true;
   switch (attr->Tag()) {
     case ValueTag::boolean: {
       int v = 0;
       attr->GetValue(&v, index);
-      if (v != 0)
-        v = 1;
-      result = SaveInteger<1>(v, buf);
+      SaveBoolean((v != 0), buf);
       break;
     }
     case ValueTag::integer:
     case ValueTag::enum_: {
       int v = 0;
       attr->GetValue(&v, index);
-      result = SaveInteger<4>(v, buf);
+      SaveInt32(v, buf);
       break;
     }
     case ValueTag::dateTime: {
       DateTime v;
       attr->GetValue(&v, index);
-      result = SaveDateTime(v, buf);
+      SaveDateTime(v, buf);
       break;
     }
     case ValueTag::resolution: {
       Resolution v;
       attr->GetValue(&v, index);
-      result = SaveResolution(v, buf);
+      SaveResolution(v, buf);
       break;
     }
     case ValueTag::rangeOfInteger: {
       RangeOfInteger v;
       attr->GetValue(&v, index);
-      result = SaveRangeOfInteger(v, buf);
+      SaveRangeOfInteger(v, buf);
       break;
     }
     case ValueTag::textWithLanguage: {
@@ -174,46 +149,35 @@ void FrameBuilder::SaveAttrValue(const Attribute* attr,
       attr->GetValue(&s, index);
       if (s.language.empty()) {
         *tag = static_cast<uint8_t>(ValueTag::textWithoutLanguage);
-        SaveOctetString(s, buf);
+        SaveOctetString(s.value, buf);
       } else {
-        result = SaveStringWithLanguage(s, buf);
+        SaveStringWithLanguage(s, buf);
       }
-    } break;
+      break;
+    }
     case ValueTag::nameWithLanguage: {
       StringWithLanguage s;
       attr->GetValue(&s, index);
       if (s.language.empty()) {
         *tag = static_cast<uint8_t>(ValueTag::nameWithoutLanguage);
-        SaveOctetString(s, buf);
+        SaveOctetString(s.value, buf);
       } else {
-        result = SaveStringWithLanguage(s, buf);
+        SaveStringWithLanguage(s, buf);
       }
-    } break;
-    case ValueTag::octetString:
-    case ValueTag::textWithoutLanguage:
-    case ValueTag::nameWithoutLanguage:
-    case ValueTag::keyword:
-    case ValueTag::uri:
-    case ValueTag::uriScheme:
-    case ValueTag::charset:
-    case ValueTag::naturalLanguage:
-    case ValueTag::mimeMediaType: {
-      std::string s = "";
-      attr->GetValue(&s, index);
-      SaveOctetString(s, buf);
       break;
     }
     default:
-      LogFrameBuilderError(
-          "Internal error: cannot recognize value type of the attribute " +
-          std::string(attr->Name()));
-      buf->clear();
+      if (IsString(attr->Tag()) || attr->Tag() == ValueTag::octetString) {
+        std::string s = "";
+        attr->GetValue(&s, index);
+        SaveOctetString(s, buf);
+      } else {
+        // attr->Tag() must be out-of-band or unsupported value.
+        // Both of these should be handled earlier.
+        buf->clear();
+      }
       break;
   }
-  if (!result)
-    LogFrameBuilderError("Incorrect value of the attribute " +
-                         std::string(attr->Name()) +
-                         ". Default value was written instead");
 }
 
 void FrameBuilder::SaveCollection(const Collection* coll,
@@ -297,25 +261,25 @@ void FrameBuilder::BuildFrameFromPackage(const Frame* package) {
 }
 
 void FrameBuilder::WriteFrameToBuffer(uint8_t* ptr) {
-  WriteUnsigned(&ptr, frame_->version_);
+  WriteUnsigned<2>(&ptr, frame_->version_);
   WriteInteger<2>(&ptr, frame_->operation_id_or_status_code_);
   WriteInteger<4>(&ptr, frame_->request_id_);
   for (size_t i = 0; i < frame_->groups_tags_.size(); ++i) {
     // write a group to the buffer
-    WriteUnsigned(&ptr, static_cast<uint8_t>(frame_->groups_tags_[i]));
+    WriteUnsigned<1>(&ptr, static_cast<uint8_t>(frame_->groups_tags_[i]));
     WriteTNVsToBuffer(frame_->groups_content_[i], &ptr);
   }
-  WriteUnsigned(&ptr, end_of_attributes_tag);
+  WriteUnsigned<1>(&ptr, end_of_attributes_tag);
   std::copy(frame_->data_.begin(), frame_->data_.end(), ptr);
 }
 
 void FrameBuilder::WriteTNVsToBuffer(const std::list<TagNameValue>& tnvs,
                                      uint8_t** ptr) {
   for (auto& tnv : tnvs) {
-    WriteUnsigned(ptr, tnv.tag);
-    WriteInteger(ptr, static_cast<int16_t>(tnv.name.size()));
+    WriteUnsigned<1>(ptr, tnv.tag);
+    WriteInteger<2>(ptr, static_cast<int16_t>(tnv.name.size()));
     *ptr = std::copy(tnv.name.begin(), tnv.name.end(), *ptr);
-    WriteInteger(ptr, static_cast<int16_t>(tnv.value.size()));
+    WriteInteger<2>(ptr, static_cast<int16_t>(tnv.value.size()));
     *ptr = std::copy(tnv.value.begin(), tnv.value.end(), *ptr);
   }
 }
