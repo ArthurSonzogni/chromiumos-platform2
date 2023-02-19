@@ -120,9 +120,11 @@ class Platform2Test(object):
     _BIND_RW_MOUNT_PATHS = (
         "dev/pts",
         "dev/shm",
-        "sys",
     )
-    _BIND_RO_MOUNT_PATHS = ("mnt/host/source",)
+    _BIND_RO_MOUNT_PATHS = (
+        "sys",
+        "mnt/host/source",
+    )
 
     def __init__(
         self,
@@ -534,14 +536,7 @@ class Platform2Test(object):
             osutils.SafeMakedirs(path)
             osutils.Mount("/" + mount, path, "none", osutils.MS_BIND)
             if mount in self._BIND_RO_MOUNT_PATHS:
-                # The kernel doesn't allow specifying ro when creating the bind
-                # mount, so remount it now with the ro flag.
-                osutils.Mount(
-                    "/" + mount,
-                    path,
-                    "none",
-                    osutils.MS_REMOUNT | osutils.MS_BIND | osutils.MS_RDONLY,
-                )
+                self._remount_ro(path)
 
         with tempfile.TemporaryDirectory() as tempdir_obj:
             tempdir = Path(tempdir_obj)
