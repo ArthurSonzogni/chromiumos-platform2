@@ -90,6 +90,7 @@
 #include "vm_tools/concierge/arc_vm.h"
 #include "vm_tools/concierge/dlc_helper.h"
 #include "vm_tools/concierge/future.h"
+#include "vm_tools/concierge/if_method_exists.h"
 #include "vm_tools/concierge/plugin_vm.h"
 #include "vm_tools/concierge/plugin_vm_helper.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"
@@ -2370,6 +2371,59 @@ int64_t Service::GetVmMemoryMiB(const StartVmRequest& request) {
   return ::vm_tools::concierge::GetVmMemoryMiB();
 }
 
+// Typical check based on the name of protocol buffer fields. Our business logic
+// usually means that VM name is stored in field called name and owner_id stored
+// in owner_id.
+template <class _RequestProto, class _ResponseProto>
+bool ValidateVmNameAndOwner(const _RequestProto& request,
+                            _ResponseProto& response,
+                            bool empty_vm_name_allowed = false) {
+  auto set_failure_reason = [&](const char* reason) {
+    if constexpr (kHasFailureReason<_ResponseProto>) {
+      response.set_failure_reason(reason);
+    } else if constexpr (kHasReason<_ResponseProto>) {
+      response.set_reason(reason);
+    } else {
+    }
+  };
+
+  if constexpr (kHasOwnerId<_RequestProto>) {
+    if (!IsValidOwnerId(request.owner_id())) {
+      LOG(ERROR) << "Empty or malformed owner ID";
+      set_failure_reason("Empty or malformed owner ID");
+      return false;
+    }
+  }
+
+  if constexpr (kHasCryptohomeId<_RequestProto>) {
+    if (!IsValidOwnerId(request.cryptohome_id())) {
+      LOG(ERROR) << "Empty or malformed owner ID";
+      set_failure_reason("Empty or malformed owner ID");
+      return false;
+    }
+  }
+
+  if constexpr (kHasName<_RequestProto>) {
+    if (!IsValidVmName(request.name())) {
+      LOG(ERROR) << "Empty or malformed VM name";
+      set_failure_reason("Empty or malformed VM name");
+      return false;
+    }
+  }
+
+  if constexpr (kHasVmName<_RequestProto>) {
+    if (request.vm_name().empty() && empty_vm_name_allowed) {
+      // Allow empty VM name, for ListVmDisks
+    } else if (!IsValidVmName(request.vm_name())) {
+      LOG(ERROR) << "Empty or malformed VM name";
+      set_failure_reason("Empty or malformed VM name");
+      return false;
+    }
+  }
+
+  return true;
+}
+
 std::unique_ptr<dbus::Response> Service::StopVm(dbus::MethodCall* method_call) {
   LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
@@ -2391,16 +2445,7 @@ std::unique_ptr<dbus::Response> Service::StopVm(dbus::MethodCall* method_call) {
     return dbus_response;
   }
 
-  if (!IsValidOwnerId(request.owner_id())) {
-    LOG(ERROR) << "Empty or malformed owner ID";
-    response.set_failure_reason("Empty or malformed owner ID");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  if (!IsValidVmName(request.name())) {
-    LOG(ERROR) << "Empty or malformed VM name";
-    response.set_failure_reason("Empty or malformed VM name");
+  if (!ValidateVmNameAndOwner(request, response)) {
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -2554,16 +2599,7 @@ std::unique_ptr<dbus::Response> Service::SuspendVm(
     return dbus_response;
   }
 
-  if (!IsValidOwnerId(request.owner_id())) {
-    LOG(ERROR) << "Empty or malformed owner ID";
-    response.set_failure_reason("Empty or malformed owner ID");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  if (!IsValidVmName(request.name())) {
-    LOG(ERROR) << "Empty or malformed VM name";
-    response.set_failure_reason("Empty or malformed VM name");
+  if (!ValidateVmNameAndOwner(request, response)) {
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -2618,16 +2654,7 @@ std::unique_ptr<dbus::Response> Service::ResumeVm(
     return dbus_response;
   }
 
-  if (!IsValidOwnerId(request.owner_id())) {
-    LOG(ERROR) << "Empty or malformed owner ID";
-    response.set_failure_reason("Empty or malformed owner ID");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  if (!IsValidVmName(request.name())) {
-    LOG(ERROR) << "Empty or malformed VM name";
-    response.set_failure_reason("Empty or malformed VM name");
+  if (!ValidateVmNameAndOwner(request, response)) {
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -2691,16 +2718,7 @@ std::unique_ptr<dbus::Response> Service::GetVmInfo(
     return dbus_response;
   }
 
-  if (!IsValidOwnerId(request.owner_id())) {
-    LOG(ERROR) << "Empty or malformed owner ID";
-
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  if (!IsValidVmName(request.name())) {
-    LOG(ERROR) << "Empty or malformed VM name";
-
+  if (!ValidateVmNameAndOwner(request, response)) {
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -2755,18 +2773,7 @@ std::unique_ptr<dbus::Response> Service::GetVmEnterpriseReportingInfo(
     return dbus_response;
   }
 
-  if (!IsValidOwnerId(request.owner_id())) {
-    const std::string error_message = "Empty or malformed owner ID";
-    LOG(ERROR) << error_message;
-    response.set_failure_reason(error_message);
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  if (!IsValidVmName(request.vm_name())) {
-    const std::string error_message = "Empty or malformed VM name";
-    LOG(ERROR) << error_message;
-    response.set_failure_reason(error_message);
+  if (!ValidateVmNameAndOwner(request, response)) {
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -2825,8 +2832,7 @@ std::unique_ptr<dbus::Response> Service::ArcVmCompleteBoot(
     return dbus_response;
   }
 
-  if (!IsValidOwnerId(request.owner_id())) {
-    LOG(ERROR) << "Empty or malformed owner ID";
+  if (!ValidateVmNameAndOwner(request, response)) {
     response.set_result(ArcVmCompleteBootResult::BAD_REQUEST);
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
@@ -2908,16 +2914,7 @@ std::unique_ptr<dbus::Response> Service::AdjustVm(
     return dbus_response;
   }
 
-  if (!IsValidOwnerId(request.owner_id())) {
-    LOG(ERROR) << "Empty or malformed owner ID";
-    response.set_failure_reason("Empty or malformed owner ID");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  if (!IsValidVmName(request.name())) {
-    LOG(ERROR) << "Empty or malformed VM name";
-    response.set_failure_reason("Empty or malformed VM name");
+  if (!ValidateVmNameAndOwner(request, response)) {
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -3176,20 +3173,8 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
     return dbus_response;
   }
 
-  if (!IsValidOwnerId(request.cryptohome_id())) {
-    LOG(ERROR) << "Empty or malformed owner ID";
+  if (!ValidateVmNameAndOwner(request, response)) {
     response.set_status(DISK_STATUS_FAILED);
-    response.set_failure_reason("Empty or malformed owner ID");
-
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  if (!IsValidVmName(request.vm_name())) {
-    LOG(ERROR) << "Empty or malformed VM name";
-    response.set_status(DISK_STATUS_FAILED);
-    response.set_failure_reason("Empty or malformed VM name");
-
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -3501,20 +3486,8 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
     return dbus_response;
   }
 
-  if (!IsValidOwnerId(request.cryptohome_id())) {
-    LOG(ERROR) << "Empty or malformed owner ID";
+  if (!ValidateVmNameAndOwner(request, response)) {
     response.set_status(DISK_STATUS_FAILED);
-    response.set_failure_reason("Empty or malformed owner ID");
-
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  if (!IsValidVmName(request.vm_name())) {
-    LOG(ERROR) << "Empty or malformed VM name";
-    response.set_status(DISK_STATUS_FAILED);
-    response.set_failure_reason("Empty or malformed VM name");
-
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -3648,18 +3621,8 @@ std::unique_ptr<dbus::Response> Service::ResizeDiskImage(
     return dbus_response;
   }
 
-  if (!IsValidOwnerId(request.cryptohome_id())) {
-    LOG(ERROR) << "Empty or malformed owner ID";
+  if (!ValidateVmNameAndOwner(request, response)) {
     response.set_status(DISK_STATUS_FAILED);
-    response.set_failure_reason("Empty or malformed owner ID");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  if (!IsValidVmName(request.vm_name())) {
-    LOG(ERROR) << "Empty or malformed VM name";
-    response.set_status(DISK_STATUS_FAILED);
-    response.set_failure_reason("Empty or malformed VM name");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -3806,16 +3769,8 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
     return dbus_response;
   }
 
-  if (!IsValidOwnerId(request.cryptohome_id())) {
-    LOG(ERROR) << "Empty or malformed owner ID";
-    response.set_failure_reason("Empty or malformed owner ID");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  if (!IsValidVmName(request.vm_name())) {
-    LOG(ERROR) << "Empty or malformed VM name";
-    response.set_failure_reason("Empty or malformed VM name");
+  if (!ValidateVmNameAndOwner(request, response)) {
+    response.set_status(DISK_STATUS_FAILED);
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -3935,16 +3890,7 @@ std::unique_ptr<dbus::Response> Service::ImportDiskImage(
     return dbus_response;
   }
 
-  if (!IsValidOwnerId(request.cryptohome_id())) {
-    LOG(ERROR) << "Empty or malformed owner ID";
-    response.set_failure_reason("Empty or malformed owner ID");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  if (!IsValidVmName(request.vm_name())) {
-    LOG(ERROR) << "Empty or malformed VM name";
-    response.set_failure_reason("Empty or malformed VM name");
+  if (!ValidateVmNameAndOwner(request, response)) {
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -4171,11 +4117,9 @@ std::unique_ptr<dbus::Response> Service::ListVmDisks(
     return dbus_response;
   }
 
-  if (!IsValidOwnerId(request.cryptohome_id())) {
-    LOG(ERROR) << "Empty or malformed owner ID";
+  if (!ValidateVmNameAndOwner(request, response,
+                              true /* Empty VmName allowed*/)) {
     response.set_success(false);
-    response.set_failure_reason("Empty or malformed owner ID");
-
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -4217,14 +4161,7 @@ std::unique_ptr<dbus::Response> Service::GetContainerSshKeys(
     return dbus_response;
   }
 
-  if (!IsValidOwnerId(request.cryptohome_id())) {
-    LOG(ERROR) << "Empty or malformed owner ID";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  if (!IsValidVmName(request.vm_name())) {
-    LOG(ERROR) << "Empty or malformed VM name";
+  if (!ValidateVmNameAndOwner(request, response)) {
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -4282,16 +4219,7 @@ std::unique_ptr<dbus::Response> Service::AttachUsbDevice(
     return dbus_response;
   }
 
-  if (!IsValidOwnerId(request.owner_id())) {
-    LOG(ERROR) << "Empty or malformed owner ID";
-    response.set_reason("Empty or malformed owner ID");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  if (!IsValidVmName(request.vm_name())) {
-    LOG(ERROR) << "Empty or malformed VM name";
-    response.set_reason("Empty or malformed VM name");
+  if (!ValidateVmNameAndOwner(request, response)) {
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -4370,16 +4298,7 @@ std::unique_ptr<dbus::Response> Service::DetachUsbDevice(
     return dbus_response;
   }
 
-  if (!IsValidOwnerId(request.owner_id())) {
-    LOG(ERROR) << "Empty or malformed owner ID";
-    response.set_reason("Empty or malformed owner ID");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  if (!IsValidVmName(request.vm_name())) {
-    LOG(ERROR) << "Empty or malformed VM name";
-    response.set_reason("Empty or malformed VM name");
+  if (!ValidateVmNameAndOwner(request, response)) {
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -4432,14 +4351,7 @@ std::unique_ptr<dbus::Response> Service::ListUsbDevices(
     return dbus_response;
   }
 
-  if (!IsValidOwnerId(request.owner_id())) {
-    LOG(ERROR) << "Empty or malformed owner ID";
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  if (!IsValidVmName(request.vm_name())) {
-    LOG(ERROR) << "Empty or malformed VM name";
+  if (!ValidateVmNameAndOwner(request, response)) {
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -4555,15 +4467,14 @@ std::unique_ptr<dbus::Response> Service::ListVms(
   response.set_success(false);
 
   if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << "Unable to parse ListVmsRequest from message";
-    response.set_failure_reason("Unable to parse ListVmsRequest from message");
+    LOG(ERROR) << "Unable to parse ListVmsRequest request from message";
+    response.set_failure_reason(
+        "Unable to parse ListVmsRequest request from message");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
 
-  if (!IsValidOwnerId(request.owner_id())) {
-    LOG(ERROR) << "Empty or malformed owner ID";
-    response.set_failure_reason("Empty or malformed owner ID");
+  if (!ValidateVmNameAndOwner(request, response)) {
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -4634,18 +4545,7 @@ void Service::ReclaimVmMemory(
     return;
   }
 
-  if (!IsValidOwnerId(request.owner_id())) {
-    LOG(ERROR) << "Empty or malformed owner ID";
-    response.set_failure_reason("Empty or malformed owner ID");
-    dbus::MessageWriter writer(dbus_response.get());
-    writer.AppendProtoAsArrayOfBytes(response);
-    std::move(response_sender).Run(std::move(dbus_response));
-    return;
-  }
-
-  if (!IsValidVmName(request.name())) {
-    LOG(ERROR) << "Empty or malformed VM name";
-    response.set_failure_reason("Empty or malformed VM name");
+  if (!ValidateVmNameAndOwner(request, response)) {
     dbus::MessageWriter writer(dbus_response.get());
     writer.AppendProtoAsArrayOfBytes(response);
     std::move(response_sender).Run(std::move(dbus_response));
@@ -5277,14 +5177,11 @@ std::unique_ptr<dbus::Response> Service::AddGroupPermissionMesa(
         "Unable to parse AddGroupPermissionMesaRequest from message");
   }
 
-  if (!IsValidOwnerId(request.owner_id())) {
-    return dbus::ErrorResponse::FromMethodCall(method_call, DBUS_ERROR_FAILED,
-                                               "Empty or malformed owner ID");
-  }
-
-  if (!IsValidVmName(request.name())) {
-    return dbus::ErrorResponse::FromMethodCall(method_call, DBUS_ERROR_FAILED,
-                                               "Empty or malformed VM name");
+  if (!ValidateVmNameAndOwner(request,
+                              request /* in place of a response proto */)) {
+    return dbus::ErrorResponse::FromMethodCall(
+        method_call, DBUS_ERROR_FAILED,
+        "Empty or malformed owner ID / VM name");
   }
 
   base::FilePath cache_path =
@@ -5351,14 +5248,10 @@ std::unique_ptr<dbus::Response> Service::GetVmLogs(
         "Unable to parse GetVmLogsRequest from message");
   }
 
-  if (!IsValidOwnerId(request.owner_id())) {
-    return dbus::ErrorResponse::FromMethodCall(method_call, DBUS_ERROR_FAILED,
-                                               "Empty or malformed owner ID");
-  }
-
-  if (!IsValidVmName(request.name())) {
-    return dbus::ErrorResponse::FromMethodCall(method_call, DBUS_ERROR_FAILED,
-                                               "Empty or malformed VM name");
+  if (!ValidateVmNameAndOwner(request, response)) {
+    return dbus::ErrorResponse::FromMethodCall(
+        method_call, DBUS_ERROR_FAILED,
+        "Empty or malformed owner ID / VM name");
   }
 
   base::FilePath log_path =
@@ -5411,18 +5304,8 @@ std::unique_ptr<dbus::Response> Service::SwapVm(dbus::MethodCall* method_call) {
         "Unable to parse SwapVmRequest from message");
   }
 
-  if (!IsValidOwnerId(request.owner_id())) {
-    LOG(ERROR) << "Empty or malformed owner ID";
+  if (!ValidateVmNameAndOwner(request, response)) {
     response.set_success(false);
-    response.set_failure_reason("Empty or malformed owner ID");
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  if (!IsValidVmName(request.name())) {
-    LOG(ERROR) << "Empty or malformed VM name";
-    response.set_success(false);
-    response.set_failure_reason("Empty or malformed VM name");
     writer.AppendProtoAsArrayOfBytes(response);
     return dbus_response;
   }
@@ -5562,14 +5445,10 @@ std::unique_ptr<dbus::Response> Service::GetVmGpuCachePath(
         "Unable to parse GetGpuCachePathForVmRequest from message");
   }
 
-  if (!IsValidOwnerId(request.owner_id())) {
-    return dbus::ErrorResponse::FromMethodCall(method_call, DBUS_ERROR_FAILED,
-                                               "Empty or malformed owner ID");
-  }
-
-  if (!IsValidVmName(request.name())) {
-    return dbus::ErrorResponse::FromMethodCall(method_call, DBUS_ERROR_FAILED,
-                                               "Empty or malformed VM name");
+  if (!ValidateVmNameAndOwner(request, response)) {
+    return dbus::ErrorResponse::FromMethodCall(
+        method_call, DBUS_ERROR_FAILED,
+        "Empty or malformed owner ID / VM name");
   }
 
   base::FilePath path =

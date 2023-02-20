@@ -360,6 +360,7 @@ if (use.test) {
       "../concierge/balloon_policy_test.cc",
       "../concierge/dlc_helper_test.cc",
       "../concierge/future_test.cc",
+      "../concierge/if_method_exists_test.cc",
       "../concierge/mglru_util_test.cc",
       "../concierge/mock_crosvm_control.cc",
       "../concierge/power_manager_client_test.cc",
