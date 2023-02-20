@@ -79,22 +79,17 @@ SandboxedProcess::SandboxedProcess(
       // Create a new UTS/hostname namespace.
       "--uts",
       // Set user.
-      "-u",
-      user,
+      "-u", user,
       // Set group. The group is assume to be the same as user.
-      "-g",
-      user,
+      "-g", user,
       // Inherit all the supplementary groups of the user specified with -u.
       "-G",
       // Restrict capabilities.
-      "-c",
-      base::StringPrintf("0x%" PRIx64, capabilities_mask),
+      "-c", base::StringPrintf("0x%" PRIx64, capabilities_mask),
       // Set seccomp policy file.
-      "-S",
-      seccomp_file.value(),
+      "-S", seccomp_file.value(),
       // Set the process’s no_new_privs bit.
-      "-n",
-  };
+      "-n"};
 
   if ((sandbox_option & NO_ENTER_NETWORK_NAMESPACE) == 0) {
     // Enter a new network namespace.
