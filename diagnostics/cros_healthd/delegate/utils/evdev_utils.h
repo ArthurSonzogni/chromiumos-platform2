@@ -7,6 +7,7 @@
 
 #include <libevdev/libevdev.h>
 #include <memory>
+#include <string>
 
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path.h>
@@ -28,7 +29,8 @@ class EvdevUtil {
     // Deal with the events and report to the caller through observer.
     virtual void FireEvent(const input_event& event, libevdev* dev) = 0;
     // Initialization fail. Delegate should reset the observer.
-    virtual void InitializationFail() = 0;
+    virtual void InitializationFail(uint32_t custom_reason,
+                                    const std::string& description) = 0;
     // Collect properties here and report to the caller through observer.
     virtual void ReportProperties(libevdev* dev) = 0;
   };
@@ -71,7 +73,8 @@ class EvdevAudioJackObserver final : public EvdevUtil::Delegate {
   // EvdevUtil::Delegate overrides.
   bool IsTarget(libevdev* dev) override;
   void FireEvent(const input_event& event, libevdev* dev) override;
-  void InitializationFail() override;
+  void InitializationFail(uint32_t custom_reason,
+                          const std::string& description) override;
   void ReportProperties(libevdev* dev) override;
 
  private:
@@ -87,7 +90,8 @@ class EvdevTouchpadObserver final : public EvdevUtil::Delegate {
   // EvdevUtil::Delegate overrides.
   bool IsTarget(libevdev* dev) override;
   void FireEvent(const input_event& event, libevdev* dev) override;
-  void InitializationFail() override;
+  void InitializationFail(uint32_t custom_reason,
+                          const std::string& description) override;
   void ReportProperties(libevdev* dev) override;
 
  private:

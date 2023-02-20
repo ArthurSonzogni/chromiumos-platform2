@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_EVENTS_AUDIO_JACK_EVENTS_IMPL_H_
 #define DIAGNOSTICS_CROS_HEALTHD_EVENTS_AUDIO_JACK_EVENTS_IMPL_H_
 
+#include <string>
+
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote_set.h>
@@ -36,7 +38,7 @@ class AudioJackEventsImpl final
  private:
   void StartMonitor();
   void StopMonitor(mojo::RemoteSetElementId id);
-  void CleanUp();
+  void CleanUp(uint32_t custom_reason, const std::string& description);
 
   // The observer of audio jack events.
   mojo::Receiver<ash::cros_healthd::mojom::AudioJackObserver> receiver_;

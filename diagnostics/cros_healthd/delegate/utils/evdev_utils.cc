@@ -68,7 +68,8 @@ void EvdevUtil::Initialize() {
   }
 
   LOG(ERROR) << "EvdevUtil can't find target, initialization fail";
-  delegate_->InitializationFail();
+  delegate_->InitializationFail(/*custom_reason = */ 0,
+                                "EvdevUtil can't find target.");
 }
 
 bool EvdevUtil::Initialize(const base::FilePath& path) {
@@ -142,8 +143,9 @@ void EvdevAudioJackObserver::FireEvent(const input_event& ev, libevdev* dev) {
   }
 }
 
-void EvdevAudioJackObserver::InitializationFail() {
-  observer_.reset();
+void EvdevAudioJackObserver::InitializationFail(
+    uint32_t custom_reason, const std::string& description) {
+  observer_.ResetWithReason(custom_reason, description);
 }
 
 void EvdevAudioJackObserver::ReportProperties(libevdev* dev) {}
@@ -200,8 +202,9 @@ void EvdevTouchpadObserver::FireEvent(const input_event& ev, libevdev* dev) {
   }
 }
 
-void EvdevTouchpadObserver::InitializationFail() {
-  observer_.reset();
+void EvdevTouchpadObserver::InitializationFail(uint32_t custom_reason,
+                                               const std::string& description) {
+  observer_.ResetWithReason(custom_reason, description);
 }
 
 void EvdevTouchpadObserver::ReportProperties(libevdev* dev) {

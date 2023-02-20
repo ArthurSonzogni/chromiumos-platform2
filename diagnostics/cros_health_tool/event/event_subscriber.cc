@@ -315,9 +315,14 @@ void EventSubscriber::SubscribeToEvents(
     mojom::EventCategoryEnum category) {
   event_service_->AddEventObserver(category,
                                    receiver_.BindNewPipeAndPassRemote());
-  receiver_.set_disconnect_handler(
-      base::BindOnce([]() {
-        LOG(ERROR) << "The event observer has disconnected unexpectedly.";
+  receiver_.set_disconnect_with_reason_handler(
+      base::BindOnce([](uint32_t custom_reason,
+                        const std::string& description) {
+        if (!description.empty()) {
+          LOG(ERROR) << description;
+        } else {
+          LOG(ERROR) << "The event observer has disconnected unexpectedly.";
+        }
       }).Then(std::move(on_subscription_disconnect)));
 }
 

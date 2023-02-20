@@ -53,7 +53,7 @@ void AudioJackEventsImpl::StartMonitor() {
     context_->executor()->MonitorAudioJack(
         receiver_.BindNewPipeAndPassRemote(),
         process_control_.BindNewPipeAndPassReceiver());
-    receiver_.set_disconnect_handler(
+    receiver_.set_disconnect_with_reason_handler(
         base::BindOnce(&AudioJackEventsImpl::CleanUp, base::Unretained(this)));
   }
 }
@@ -65,8 +65,9 @@ void AudioJackEventsImpl::StopMonitor(mojo::RemoteSetElementId id) {
   }
 }
 
-void AudioJackEventsImpl::CleanUp() {
-  observers_.Clear();
+void AudioJackEventsImpl::CleanUp(uint32_t custom_reason,
+                                  const std::string& description) {
+  observers_.ClearWithReason(custom_reason, description);
 }
 
 }  // namespace diagnostics
