@@ -618,6 +618,34 @@ void Port::ReportPortMetrics(Metrics* metrics) {
   return;
 }
 
+bool Port::GetDpEntryState(DpSuccessMetric& result) {
+  bool hpd;
+  if (!ec_util_->HpdState(port_num_, &hpd))
+    return false;
+
+  bool dp;
+  if (!ec_util_->DpState(port_num_, &dp))
+    return false;
+
+  if (dp) {
+    if (hpd)
+      result = DpSuccessMetric::kSuccessHpd;
+    else
+      result = DpSuccessMetric::kSuccessNoHpd;
+  } else {
+    result = DpSuccessMetric::kFail;
+  }
+
+  return true;
+}
+
+void Port::ReportDpMetric(Metrics* metrics) {
+  DpSuccessMetric result;
+  if (!GetDpEntryState(result))
+    return;
+  metrics->ReportDpSuccess(result);
+}
+
 void Port::ReportMetrics(Metrics* metrics, bool mode_entry_supported) {
   if (!metrics)
     return;
@@ -626,6 +654,8 @@ void Port::ReportMetrics(Metrics* metrics, bool mode_entry_supported) {
   ReportCableMetrics(metrics);
   if (mode_entry_supported)
     ReportPortMetrics(metrics);
+  if (CanEnterDPAltMode(nullptr))
+    ReportDpMetric(metrics);
 }
 
 void Port::EnqueueMetricsTask(Metrics* metrics, bool mode_entry_supported) {

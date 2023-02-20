@@ -181,7 +181,9 @@ class Port {
   void CancelMetricsTask();
 
  private:
+  friend class MetricsTest;
   friend class PortTest;
+  FRIEND_TEST(MetricsTest, CheckDpSuccessMetric);
   FRIEND_TEST(PortTest, BasicAdd);
   FRIEND_TEST(PortTest, DPAltModeEntryCheckTrue);
   FRIEND_TEST(PortTest, DPAltModeEntryCheckFalseWithDPSID);
@@ -263,6 +265,17 @@ class Port {
 
   // Reports port level metrics.
   void ReportPortMetrics(Metrics* metrics);
+
+  // Function which provides the DpSuccess metric for the port.
+  // This function is separated from the ReportDpMetric wrapper
+  // to facilitate unit testing (since we don't need a Metrics object
+  // pointer)
+  bool GetDpEntryState(DpSuccessMetric& result);
+
+  // Reports whether DP alt mode was successfully entered on a system.
+  // NOTE: This only generates a valid metric on AMD systems (other systems
+  // don't use HPD GPIO signalling from the EC).
+  void ReportDpMetric(Metrics* metrics);
 
   // Reports all metrics.
   virtual void ReportMetrics(Metrics* metrics, bool mode_entry_supported);

@@ -10,9 +10,13 @@
 #include <base/strings/stringprintf.h>
 #include <gtest/gtest.h>
 
+#include "typecd/mock_ec_util.h"
 #include "typecd/mock_port.h"
 #include "typecd/test_constants.h"
 #include "typecd/test_utils.h"
+
+using ::testing::_;
+using ::testing::DoAll;
 
 namespace typecd {
 
@@ -441,6 +445,58 @@ TEST_F(MetricsTest, CheckPowerSourceLocationNoChoice) {
   port_manager->port_num_previously_sink = 0;
   EXPECT_EQ(PowerSourceLocationMetric::kUserHasNoChoice,
             port_manager->GetPowerSourceLocationMetric(1));
+}
+
+// Checks the behaviour of the DP Success metric reporting
+// logic for a variety of use cases:
+// - System doesn't return a valid HPD
+// - System does return a valid HPD:
+//   + DP = 0, HPD = 0
+//   + DP = 1, HPD = 0
+//   + DP = 1, HPD = 1
+TEST_F(MetricsTest, CheckDpSuccessMetric) {
+  auto ec_util = std::make_unique<MockECUtil>();
+  EXPECT_CALL(*ec_util, HpdState(0, _))
+      .Times(1)
+      .WillOnce(testing::Return(false));
+
+  auto port = std::make_unique<MockPort>(base::FilePath("port0"), 0);
+  port->SetECUtil(ec_util.get());
+
+  DpSuccessMetric result;
+  EXPECT_FALSE(port->GetDpEntryState(result));
+
+  bool hpd = false;
+  bool dp = false;
+
+  ec_util = std::make_unique<MockECUtil>();
+  EXPECT_CALL(*ec_util, HpdState(0, _))
+      .WillOnce(DoAll(testing::SetArgPointee<1>(hpd), testing::Return(true)));
+  EXPECT_CALL(*ec_util, DpState(0, _))
+      .WillOnce(DoAll(testing::SetArgPointee<1>(dp), testing::Return(true)));
+  port->SetECUtil(ec_util.get());
+  ASSERT_TRUE(port->GetDpEntryState(result));
+  EXPECT_EQ(DpSuccessMetric::kFail, result);
+
+  dp = true;
+  ec_util = std::make_unique<MockECUtil>();
+  EXPECT_CALL(*ec_util, HpdState(0, _))
+      .WillOnce(DoAll(testing::SetArgPointee<1>(hpd), testing::Return(true)));
+  EXPECT_CALL(*ec_util, DpState(0, _))
+      .WillOnce(DoAll(testing::SetArgPointee<1>(dp), testing::Return(true)));
+  port->SetECUtil(ec_util.get());
+  ASSERT_TRUE(port->GetDpEntryState(result));
+  EXPECT_EQ(DpSuccessMetric::kSuccessNoHpd, result);
+
+  hpd = true;
+  ec_util = std::make_unique<MockECUtil>();
+  EXPECT_CALL(*ec_util, HpdState(0, _))
+      .WillOnce(DoAll(testing::SetArgPointee<1>(hpd), testing::Return(true)));
+  EXPECT_CALL(*ec_util, DpState(0, _))
+      .WillOnce(DoAll(testing::SetArgPointee<1>(dp), testing::Return(true)));
+  port->SetECUtil(ec_util.get());
+  ASSERT_TRUE(port->GetDpEntryState(result));
+  EXPECT_EQ(DpSuccessMetric::kSuccessHpd, result);
 }
 
 }  // namespace typecd
