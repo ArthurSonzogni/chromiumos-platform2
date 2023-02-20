@@ -13,6 +13,8 @@ MOUNT_FLAGS="MS_NOSUID|MS_NODEV|MS_NOEXEC"
 # Start virtual-file-provider with /mnt as FUSE mount point in the
 # minijail namespace.
 # --profile=minimalistic-mountns Use minimalistic-mountns profile.
+# --no-fs-restrictions Disable Landlock in order to perform mount in the
+#                      minimalistic-mountns profile.
 # -e    Enter a new network namespace.
 # -p -I Enter a new PID namespace and run the process as init (pid=1).
 # -l    Enter a new IPC namespace.
@@ -25,7 +27,7 @@ MOUNT_FLAGS="MS_NOSUID|MS_NODEV|MS_NOEXEC"
 # -f    Assign freeze cgroup as
 #       /sys/fs/cgroup/freezer/virtual-file-provider/cgroup.procs
 exec minijail0 \
-     --profile=minimalistic-mountns \
+     --profile=minimalistic-mountns --no-fs-restrictions \
      -e \
      -p -I \
      -l \
