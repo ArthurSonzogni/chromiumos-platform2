@@ -50,6 +50,12 @@ send: 1
 #   0x80184579 == EVIOCGABS(ABS_MT_TRACKING_ID)
 #   0x8018457a == EVIOCGABS(ABS_MT_PRESSURE)
 #   0x8404450a == EVIOCGMTSLOTS(1028)
+#   0x8018455b == EVIOCGABS(ABS_TILT_Y)
+#   0x80184577 == EVIOCGABS(ABS_MT_TOOL_TYPE)
+#   0x8018457b == EVIOCGABS(ABS_MT_DISTANCE)
+#   0x8018455a == EVIOCGABS(ABS_TILT_X)
+#   0x80184574 == EVIOCGABS(ABS_MT_ORIENTATION)
+#   0x80184568 == EVIOCGABS(ABS_MISC)
 ioctl: arg1 == 0x5401 || arg1 == 0x8913 || arg1 == 0x8914 || \
        arg1 == 0x80604518 || arg1 == 0x80ff4508 || arg1 == 0x80044525 || \
        arg1 == 0x80044531 || arg1 == 0x80104535 || arg1 == 0x80044524 || \
@@ -61,7 +67,9 @@ ioctl: arg1 == 0x5401 || arg1 == 0x8913 || arg1 == 0x8914 || \
        arg1 == 0x80184558 || arg1 == 0x80184559 || arg1 == 0x8018455c || \
        arg1 == 0x8018456f || arg1 == 0x80184570 || arg1 == 0x80184571 || \
        arg1 == 0x80184575 || arg1 == 0x80184576 || arg1 == 0x80184579 || \
-       arg1 == 0x8018457a || arg1 == 0x8404450a
+       arg1 == 0x8018457a || arg1 == 0x8404450a || arg1 == 0x8018455b || \
+       arg1 == 0x80184577 || arg1 == 0x8018457b || arg1 == 0x8018455a || \
+       arg1 == 0x80184574 || arg1 == 0x80184568
 recvmsg: 1
 rt_sigprocmask: 1
 epoll_ctl: 1
