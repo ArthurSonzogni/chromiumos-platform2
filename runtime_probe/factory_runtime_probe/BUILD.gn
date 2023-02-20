@@ -23,7 +23,7 @@ pkg_config("target_defaults") {
 executable("factory_runtime_probe") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
-  install_path = "bin"
+  install_path = "/usr/local/bin"
   assert_no_deps = [ "//runtime_probe/system:context_production" ]
   deps = [
     "//runtime_probe:lib",
