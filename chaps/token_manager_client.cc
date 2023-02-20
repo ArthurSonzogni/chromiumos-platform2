@@ -7,6 +7,7 @@
 #include <base/logging.h>
 #include <brillo/secure_blob.h>
 
+#include "chaps/chaps.h"
 #include "chaps/chaps_proxy.h"
 #include "chaps/chaps_utility.h"
 
@@ -17,7 +18,7 @@ using std::vector;
 
 namespace chaps {
 
-TokenManagerClient::TokenManagerClient() {}
+TokenManagerClient::TokenManagerClient(ThreadingMode mode) : mode_(mode) {}
 
 TokenManagerClient::~TokenManagerClient() {}
 
@@ -105,9 +106,7 @@ bool TokenManagerClient::GetTokenPath(const SecureBlob& isolate_credential,
 
 bool TokenManagerClient::Connect() {
   if (!proxy_)
-    proxy_ =
-        ChapsProxyImpl::Create(/*shadow_at_exit=*/false,
-                               chaps::ThreadingMode::kStandaloneWorkerThread);
+    proxy_ = ChapsProxyImpl::Create(/*shadow_at_exit=*/false, mode_);
   return proxy_.get() != nullptr;
 }
 

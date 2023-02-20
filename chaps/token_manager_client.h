@@ -9,8 +9,9 @@
 #include <string>
 #include <vector>
 
-#include "brillo/secure_blob.h"
-#include "chaps/chaps.h"
+#include <brillo/secure_blob.h>
+
+#include "chaps/threading_mode.h"
 #include "chaps/token_manager_interface.h"
 #include "pkcs11/cryptoki.h"
 
@@ -29,9 +30,13 @@ class ChapsProxyImpl;
 //                    &slot_id);
 // Users of this class must instantiate AtExitManager, as the class relies on
 // its presence.
+//
+// The default threading mode will create a standalone work thread, to prevent
+// the extra thread, please use ThreadingMode::kCurrentThread.
 class EXPORT_SPEC TokenManagerClient : public TokenManagerInterface {
  public:
-  TokenManagerClient();
+  explicit TokenManagerClient(
+      ThreadingMode mode = ThreadingMode::kStandaloneWorkerThread);
   TokenManagerClient(const TokenManagerClient&) = delete;
   TokenManagerClient& operator=(const TokenManagerClient&) = delete;
 
@@ -59,6 +64,7 @@ class EXPORT_SPEC TokenManagerClient : public TokenManagerInterface {
                             std::vector<std::string>* results);
 
  private:
+  ThreadingMode mode_;
   std::unique_ptr<ChapsProxyImpl> proxy_;
 
   // Attempts to connect to the Chaps daemon. Returns true on success.
