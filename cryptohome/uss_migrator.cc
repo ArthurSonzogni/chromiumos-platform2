@@ -14,6 +14,7 @@
 #include <libhwsec-foundation/crypto/hmac.h>
 #include <libhwsec-foundation/crypto/sha.h>
 
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/storage/file_system_keyset.h"
 #include "cryptohome/user_secret_stash.h"
