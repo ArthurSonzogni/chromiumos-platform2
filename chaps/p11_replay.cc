@@ -59,7 +59,10 @@ typedef enum {
 
 // Initializes the library and finds an appropriate slot.
 CK_SLOT_ID Initialize() {
-  CK_RV result = C_Initialize(NULL);
+  CK_C_INITIALIZE_ARGS args{
+      .flags = CKF_LIBRARY_CANT_CREATE_OS_THREADS,
+  };
+  CK_RV result = C_Initialize(&args);
   LOG(INFO) << "C_Initialize: " << chaps::CK_RVToString(result);
   if (result != CKR_OK)
     exit(-1);
