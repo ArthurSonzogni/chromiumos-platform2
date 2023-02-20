@@ -75,8 +75,8 @@ class EvdevAudioJackObserver final : public EvdevUtil::Delegate {
   void ReportProperties(libevdev* dev) override;
 
  private:
-  EvdevUtil evdev_util_{this};
   mojo::Remote<ash::cros_healthd::mojom::AudioJackObserver> observer_;
+  EvdevUtil evdev_util_{this};
 };
 
 class EvdevTouchpadObserver final : public EvdevUtil::Delegate {
