@@ -49,8 +49,8 @@ int main(int argc, char* argv[]) {
   }
 
   auto config = cros::EffectsConfig();
-  config.segmentation_gpu_api = cros::mojom::GpuApi::kOpenCL;
-  config.relighting_gpu_api = cros::mojom::GpuApi::kOpenCL;
+  config.segmentation_gpu_api = cros::GpuApi::kOpenCL;
+  config.relighting_gpu_api = cros::GpuApi::kOpenCL;
 
   base::TimeTicks start = base::TimeTicks::Now();
   LOG(INFO) << "Loading graph to build OpenCL Cache";

@@ -12,6 +12,7 @@ group("all") {
     ":install_tmpfiles",
     ":opencl_cacher",
   ]
+
   if (use.test) {
     deps += []
   }
@@ -31,7 +32,6 @@ executable("opencl_cacher") {
   sources = [ "main.cc" ]
   configs += [ ":target_defaults" ]
   deps = [
-    "//ml_core:effects_pipeline_mojom",
     "//ml_core:libcros_ml_core",
     "//ml_core/dlc:dlc_client",
   ]

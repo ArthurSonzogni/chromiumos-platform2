@@ -20,6 +20,7 @@
 #include <base/thread_annotations.h>
 
 #include "camera/mojo/cros_camera_service.mojom.h"
+#include "camera/mojo/effects/effects_pipeline.mojom.h"
 #include "common/camera_hal3_helpers.h"
 #include "common/vendor_tag_manager.h"
 #include "cros-camera/camera_mojo_channel_manager_token.h"
@@ -27,7 +28,6 @@
 #include "cros-camera/export.h"
 #include "gpu/gpu_resources.h"
 #include "ml_core/effects_pipeline.h"
-#include "ml_core/mojo/effects_pipeline.mojom.h"
 
 namespace cros {
 

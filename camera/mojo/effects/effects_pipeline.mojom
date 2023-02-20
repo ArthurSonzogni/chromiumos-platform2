@@ -28,13 +28,6 @@ enum GpuApi {
   kAny = 2,
 };
 
-// Indicates the state of requesting a switch effect.
-[Extensible]
-enum SetEffectResult {
-  [Default] kOk = 0,
-  kError = 1,
-};
-
 // Defines which level of blur to apply with the background blur effect.
 [Extensible]
 enum BlurLevel {

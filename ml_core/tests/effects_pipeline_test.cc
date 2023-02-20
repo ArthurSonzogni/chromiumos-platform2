@@ -9,6 +9,7 @@
 
 #include <base/command_line.h>
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/values.h>
 #include <gtest/gtest.h>
@@ -37,14 +38,13 @@ class EffectsPipelineTest : public ::testing::Test {
 
   std::unique_ptr<cros::EffectsPipeline> pipeline_;
 
-  cros::EffectsConfig config_{
-      .relight_enabled = false,
-      .blur_enabled = false,
-      .replace_enabled = false,
-      .blur_level = cros::mojom::BlurLevel::kHeavy,
-      .segmentation_gpu_api = cros::mojom::GpuApi::kOpenCL,
-      .relighting_gpu_api = cros::mojom::GpuApi::kOpenCL,
-      .graph_max_frames_in_flight = 2};
+  cros::EffectsConfig config_{.relight_enabled = false,
+                              .blur_enabled = false,
+                              .replace_enabled = false,
+                              .blur_level = cros::BlurLevel::kHeavy,
+                              .segmentation_gpu_api = cros::GpuApi::kOpenCL,
+                              .relighting_gpu_api = cros::GpuApi::kOpenCL,
+                              .graph_max_frames_in_flight = 2};
 };
 
 void SetEffectCallback(bool success) {

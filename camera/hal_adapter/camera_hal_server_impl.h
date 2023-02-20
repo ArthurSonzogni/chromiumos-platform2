@@ -21,10 +21,10 @@
 #include <mojo/public/cpp/bindings/remote.h>
 
 #include "camera/mojo/cros_camera_service.mojom.h"
+#include "camera/mojo/effects/effects_pipeline.mojom.h"
 #include "cros-camera/cros_camera_hal.h"
 #include "gpu/gpu_resources.h"
 #include "hal_adapter/camera_hal_adapter.h"
-#include "ml_core/mojo/effects_pipeline.mojom.h"
 
 namespace cros {
 

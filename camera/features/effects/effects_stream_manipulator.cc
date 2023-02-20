@@ -26,13 +26,13 @@
 #include <base/no_destructor.h>
 #include <base/time/time.h>
 
+#include "camera/mojo/effects/effects_pipeline.mojom.h"
 #include "common/camera_hal3_helpers.h"
 #include "common/stream_manipulator.h"
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metadata_utils.h"
 #include "gpu/egl/egl_fence.h"
 #include "gpu/gles/texture_2d.h"
-#include "ml_core/mojo/effects_pipeline.mojom.h"
 
 namespace cros {
 
@@ -431,15 +431,15 @@ void EffectsStreamManipulator::OnOptionsUpdated(
   std::string blur_level;
   if (GetStringFromKey(json_values, kBlurLevelKey, &blur_level)) {
     if (blur_level == "lowest") {
-      new_config.blur_level = mojom::BlurLevel::kLowest;
+      new_config.blur_level = BlurLevel::kLowest;
     } else if (blur_level == "light") {
-      new_config.blur_level = mojom::BlurLevel::kLight;
+      new_config.blur_level = BlurLevel::kLight;
     } else if (blur_level == "medium") {
-      new_config.blur_level = mojom::BlurLevel::kMedium;
+      new_config.blur_level = BlurLevel::kMedium;
     } else if (blur_level == "heavy") {
-      new_config.blur_level = mojom::BlurLevel::kHeavy;
+      new_config.blur_level = BlurLevel::kHeavy;
     } else if (blur_level == "maximum") {
-      new_config.blur_level = mojom::BlurLevel::kMaximum;
+      new_config.blur_level = BlurLevel::kMaximum;
     } else {
       LOGF(WARNING) << "Unknown Blur Level: " << blur_level;
       return;
@@ -450,14 +450,14 @@ void EffectsStreamManipulator::OnOptionsUpdated(
   std::string gpu_api;
   if (GetStringFromKey(json_values, kGpuApiKey, &gpu_api)) {
     if (gpu_api == "opengl") {
-      new_config.segmentation_gpu_api = mojom::GpuApi::kOpenGL;
-      new_config.relighting_gpu_api = mojom::GpuApi::kOpenGL;
+      new_config.segmentation_gpu_api = GpuApi::kOpenGL;
+      new_config.relighting_gpu_api = GpuApi::kOpenGL;
     } else if (gpu_api == "opencl") {
-      new_config.segmentation_gpu_api = mojom::GpuApi::kOpenCL;
-      new_config.relighting_gpu_api = mojom::GpuApi::kOpenCL;
+      new_config.segmentation_gpu_api = GpuApi::kOpenCL;
+      new_config.relighting_gpu_api = GpuApi::kOpenCL;
     } else if (gpu_api == "any") {
-      new_config.segmentation_gpu_api = mojom::GpuApi::kAny;
-      new_config.relighting_gpu_api = mojom::GpuApi::kAny;
+      new_config.segmentation_gpu_api = GpuApi::kAny;
+      new_config.relighting_gpu_api = GpuApi::kAny;
     } else {
       LOGF(WARNING) << "Unknown GPU API: " << gpu_api;
       return;
@@ -469,11 +469,11 @@ void EffectsStreamManipulator::OnOptionsUpdated(
   if (GetStringFromKey(json_values, kRelightingGpuApiKey,
                        &relighting_gpu_api)) {
     if (relighting_gpu_api == "opengl") {
-      new_config.relighting_gpu_api = mojom::GpuApi::kOpenGL;
+      new_config.relighting_gpu_api = GpuApi::kOpenGL;
     } else if (relighting_gpu_api == "opencl") {
-      new_config.relighting_gpu_api = mojom::GpuApi::kOpenCL;
+      new_config.relighting_gpu_api = GpuApi::kOpenCL;
     } else if (relighting_gpu_api == "any") {
-      new_config.relighting_gpu_api = mojom::GpuApi::kAny;
+      new_config.relighting_gpu_api = GpuApi::kAny;
     } else {
       LOGF(WARNING) << "Unknown Relighting GPU API: " << gpu_api;
       return;

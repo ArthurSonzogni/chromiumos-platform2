@@ -8,10 +8,10 @@ module cros.mojom;
 
 import "iioservice/mojo/cros_sensor_service.mojom";
 import "camera/mojo/camera_common.mojom";
+import "camera/mojo/effects/effects_pipeline.mojom";
 import "camera/mojo/gpu/jpeg_encode_accelerator.mojom";
 import "camera/mojo/gpu/mjpeg_decode_accelerator.mojom";
 import "camera/mojo/unguessable_token.mojom";
-import "ml_core/mojo/effects_pipeline.mojom";
 
 // CameraClientType indicates the type of a CameraHalClient.
 // It should be kept in sync with the ChromeOSCameraClientType enum in
@@ -53,6 +53,13 @@ enum CameraAutoFramingState{
 
   // Auto framing is enabled and set to multi people mode.
   ON_MULTI = 2,
+};
+
+// Indicates the state of requesting a switch effect.
+[Extensible]
+enum SetEffectResult {
+  [Default] kOk = 0,
+  kError = 1,
 };
 
 // The CrOS camera HAL v3 Mojo dispatcher.  The dispatcher acts as a proxy and

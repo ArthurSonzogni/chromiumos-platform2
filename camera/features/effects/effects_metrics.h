@@ -10,6 +10,7 @@
 #include <memory>
 #include <vector>
 
+#include <base/containers/flat_set.h>
 #include <base/task/thread_pool.h>
 #include <base/time/time.h>
 

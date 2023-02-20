@@ -6,6 +6,7 @@
 #include <stdlib.h>
 
 #include <base/files/file_util.h>
+#include <base/logging.h>
 #include <base/values.h>
 #include <gtest/gtest.h>
 

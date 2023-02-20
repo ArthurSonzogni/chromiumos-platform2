@@ -6,10 +6,10 @@ import("//common-mk/mojom_bindings_generator.gni")
 import("//common-mk/pkg_config.gni")
 
 group("all") {
-  deps = [
-    ":libcros_ml_core",
-    "//ml_core/opencl_caching:all",
-  ]
+  deps = [ ":libcros_ml_core" ]
+  if (use.camera_feature_effects) {
+    deps += [ "//ml_core/opencl_caching:all" ]
+  }
   if (use.test) {
     deps += []
   }
@@ -26,16 +26,8 @@ pkg_config("target_defaults") {
   ]
 }
 
-generate_mojom_bindings("effects_pipeline_mojom") {
-  sources = [ "//ml_core/mojo/effects_pipeline.mojom" ]
-  mojo_root = "${platform2_root}"
-  use_pic = true
-  standalone = true
-}
-
 shared_library("libcros_ml_core") {
   sources = [ "effects_pipeline.cc" ]
   configs += [ ":target_defaults" ]
-  public_deps = [ ":effects_pipeline_mojom" ]
   install_path = "lib"
 }

@@ -3,10 +3,10 @@
 // found in the LICENSE file.
 
 #include "camera/common/stream_manipulator.h"
+#include "camera/mojo/effects/effects_pipeline.mojom.h"
 #include "cros-camera/camera_buffer_utils.h"
 #include "features/effects/effects_stream_manipulator.h"
 #include "ml_core/dlc/dlc_loader.h"
-#include "ml_core/mojo/effects_pipeline.mojom.h"
 #include "ml_core/tests/test_utilities.h"
 
 #include <base/command_line.h>

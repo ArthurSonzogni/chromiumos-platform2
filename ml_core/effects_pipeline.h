@@ -16,8 +16,7 @@
 #include <GLES2/gl2ext.h>
 
 #include <base/files/file_path.h>
-
-#include "bindings/effects_pipeline_bindings.h"
+#include <ml_core/effects_pipeline_bindings.h>
 
 namespace cros {
 

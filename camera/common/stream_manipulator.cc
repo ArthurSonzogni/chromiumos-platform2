@@ -108,8 +108,9 @@ EffectsConfig StreamManipulator::RuntimeOptions::GetEffectsConfig() {
       .relight_enabled = effects_config_->relight_enabled,
       .blur_enabled = effects_config_->blur_enabled,
       .replace_enabled = effects_config_->replace_enabled,
-      .blur_level = effects_config_->blur_level,
-      .segmentation_gpu_api = effects_config_->segmentation_gpu_api,
+      .blur_level = static_cast<BlurLevel>(effects_config_->blur_level),
+      .segmentation_gpu_api =
+          static_cast<GpuApi>(effects_config_->segmentation_gpu_api),
       .graph_max_frames_in_flight = effects_config_->graph_max_frames_in_flight,
   };
 }
