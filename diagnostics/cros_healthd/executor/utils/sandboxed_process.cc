@@ -86,6 +86,8 @@ SandboxedProcess::SandboxedProcess(
   auto seccomp_file =
       base::FilePath(kSeccompPolicyDirectory).Append(seccomp_filename);
   sandbox_arguments_ = {
+      // Enter new pivot_root.
+      "-P", "/mnt/empty",
       // Enter a new VFS mount namespace.
       "-v",
       // Remount /proc readonly.
@@ -103,7 +105,27 @@ SandboxedProcess::SandboxedProcess(
       // Restrict capabilities.
       "-c", base::StringPrintf("0x%" PRIx64, capabilities_mask),
       // Set the process’s no_new_privs bit.
-      "-n"};
+      "-n",
+      // Bind mount root.
+      "-b", "/",
+      // Mount minimal nodes from /dev.
+      "-d",
+      // Bind mount /dev/log for logging.
+      "-b", "/dev/log",
+      // Create a new tmpfs filesystem for /tmp and others paths so we can mount
+      // necessary files under these paths.
+      // We should not use minijail_mount_tmp() to create /tmp when we have file
+      // to bind mount. See minijail_enter() for more details.
+      "-k", "tmpfs,/tmp,tmpfs",
+      // Mount tmpfs on /proc. Note that if whole proc is needed, `-b /proc` is
+      // still applicatibable.
+      "-k", "tmpfs,/proc,tmpfs",
+      // Mount tmpfs on /run.
+      "-k", "tmpfs,/run,tmpfs",
+      // Mount tmpfs on /sys.
+      "-k", "tmpfs,/sys,tmpfs",
+      // Mount tmpfs on /var.
+      "-k", "tmpfs,/var,tmpfs"};
 
   if constexpr (GENERATE_STRACE_LOG_MODE) {
     sandbox_arguments_.push_back("--no-default-runtime-environment");

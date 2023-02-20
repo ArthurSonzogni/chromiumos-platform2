@@ -218,31 +218,20 @@ void EnterHealthdMinijail() {
 void EnterExecutorMinijail() {
   ScopedMinijail j(minijail_new());
 
-  // Create a minimalistic mount namespace with just the bare minimum required.
   minijail_namespace_vfs(j.get());
-  minijail_mount_tmp(j.get());
-  if (minijail_enter_pivot_root(j.get(), "/mnt/empty"))
-    LOG(FATAL) << "minijail_enter_pivot_root() failed";
-
-  minijail_bind(j.get(), "/", "/", 0);
-
-  if (minijail_mount_with_data(j.get(), "none", "/proc", "proc",
-                               MS_NOSUID | MS_NOEXEC | MS_NODEV, nullptr)) {
-    LOG(FATAL) << "minijail_mount_with_data(\"/proc\") failed";
-  }
-
-  if (minijail_mount_with_data(j.get(), "tmpfs", "/run", "tmpfs",
-                               MS_NOSUID | MS_NOEXEC | MS_NODEV, nullptr)) {
-    LOG(FATAL) << "minijail_mount_with_data(\"/run\") failed";
-  }
-
-  if (minijail_mount_with_data(j.get(), "/dev", "/dev", "bind",
-                               MS_BIND | MS_REC, nullptr)) {
-    LOG(FATAL) << "minijail_mount_with_data(\"/dev\") failed";
-  }
-
-  minijail_mount_with_data(j.get(), "tmpfs", "/sys", "tmpfs", 0, "");
-  BindMountIfPathExists(j.get(), base::FilePath("/sys/firmware/efi"));
+  PCHECK(0 == minijail_enter_pivot_root(j.get(), "/mnt/empty"));
+  PCHECK(0 == minijail_bind(j.get(), "/", "/", /*writeable=*/0));
+  PCHECK(0 == minijail_bind(j.get(), "/sys", "/sys", /*writeable=*/0));
+  // Bind /tmp because we need some data under it, and they may not be created
+  // at boot so we need to mount the whole directory.
+  // Set it to writeable because minijail requires creating tmp files under /tmp
+  // if `-d` applied. We need it to create nested minijail.
+  PCHECK(0 == minijail_bind(j.get(), "/tmp", "/tmp", /*writeable=*/1));
+  PCHECK(0 == minijail_bind(j.get(), "/var", "/var", /*writeable=*/0));
+  PCHECK(0 == minijail_mount(j.get(), "none", "/proc", "proc", /*flags=*/0));
+  PCHECK(0 == minijail_mount(j.get(), "tmpfs", "/run", "tmpfs", /*flags=*/0));
+  PCHECK(0 == minijail_mount(j.get(), "/dev", "/dev", "bind",
+                             /*flags=*/MS_BIND | MS_REC));
 
   minijail_enter(j.get());
 }
