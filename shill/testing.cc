@@ -27,7 +27,7 @@ void SetEnabledSync(Device* device, bool enable, bool persist, Error* error) {
   base::RunLoop run_loop;
   device->SetEnabledChecked(
       enable, persist,
-      base::BindRepeating(&SetErrorAndReturn, run_loop.QuitClosure(), error));
+      base::BindOnce(&SetErrorAndReturn, run_loop.QuitClosure(), error));
   run_loop.Run();
 }
 

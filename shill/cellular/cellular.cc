@@ -691,13 +691,13 @@ void Cellular::OnConnected() {
   }
 }
 
-void Cellular::OnBeforeSuspend(const ResultCallback& callback) {
+void Cellular::OnBeforeSuspend(ResultOnceCallback callback) {
   LOG(INFO) << LoggingTag() << ": " << __func__;
   Error error;
   StopPPP();
   if (capability_)
     capability_->SetModemToLowPowerModeOnModemStop(true);
-  SetEnabledNonPersistent(false, callback);
+  SetEnabledNonPersistent(false, std::move(callback));
 }
 
 void Cellular::OnAfterResume() {
@@ -705,7 +705,7 @@ void Cellular::OnAfterResume() {
   if (enabled_persistent()) {
     LOG(INFO) << LoggingTag() << ": Restarting modem after resume.";
     // TODO(b/216847428): replace this with a real toggle
-    SetEnabledUnchecked(true, base::BindRepeating(LogRestartModemResult));
+    SetEnabledUnchecked(true, base::BindOnce(LogRestartModemResult));
   }
 
   // TODO(quiche): Consider if this should be conditional. If, e.g.,
@@ -746,9 +746,9 @@ void Cellular::ReAttach() {
 
   capability_->SetModemToLowPowerModeOnModemStop(false);
   Error error;
-  SetEnabledNonPersistent(
-      false, base::BindRepeating(&Cellular::ReAttachOnDetachComplete,
-                                 weak_ptr_factory_.GetWeakPtr()));
+  SetEnabledNonPersistent(false,
+                          base::BindOnce(&Cellular::ReAttachOnDetachComplete,
+                                         weak_ptr_factory_.GetWeakPtr()));
 }
 
 void Cellular::ReAttachOnDetachComplete(const Error& error) {
@@ -757,7 +757,7 @@ void Cellular::ReAttachOnDetachComplete(const Error& error) {
   capability_->SetModemToLowPowerModeOnModemStop(true);
   if (error.IsSuccess()) {
     LOG(INFO) << LoggingTag() << ": Restarting modem for re-attach.";
-    SetEnabledNonPersistent(true, base::BindRepeating(LogRestartModemResult));
+    SetEnabledNonPersistent(true, base::BindOnce(LogRestartModemResult));
   } else {
     LOG(WARNING) << LoggingTag() << ": Detaching the modem failed: " << error;
   }
@@ -1691,8 +1691,8 @@ void Cellular::SetSimPresent(bool sim_present) {
 
 void Cellular::StartTermination() {
   SLOG(2) << LoggingTag() << ": " << __func__;
-  OnBeforeSuspend(base::Bind(&Cellular::OnTerminationCompleted,
-                             weak_ptr_factory_.GetWeakPtr()));
+  OnBeforeSuspend(base::BindOnce(&Cellular::OnTerminationCompleted,
+                                 weak_ptr_factory_.GetWeakPtr()));
 }
 
 void Cellular::OnTerminationCompleted(const Error& error) {

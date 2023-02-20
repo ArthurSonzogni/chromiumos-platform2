@@ -332,18 +332,18 @@ bool Device::Save(StoreInterface* storage) {
   return true;
 }
 
-void Device::OnBeforeSuspend(const ResultCallback& callback) {
+void Device::OnBeforeSuspend(ResultOnceCallback callback) {
   // Nothing to be done in the general case, so immediately report success.
-  callback.Run(Error(Error::kSuccess));
+  std::move(callback).Run(Error(Error::kSuccess));
 }
 
 void Device::OnAfterResume() {
   ForceIPConfigUpdate();
 }
 
-void Device::OnDarkResume(const ResultCallback& callback) {
+void Device::OnDarkResume(ResultOnceCallback callback) {
   // Nothing to be done in the general case, so immediately report success.
-  callback.Run(Error(Error::kSuccess));
+  std::move(callback).Run(Error(Error::kSuccess));
 }
 
 void Device::DropConnection() {
@@ -705,7 +705,7 @@ bool Device::IsUnderlyingDeviceEnabled() const {
 }
 
 // callback
-void Device::OnEnabledStateChanged(const ResultCallback& callback,
+void Device::OnEnabledStateChanged(ResultOnceCallback callback,
                                    const Error& error) {
   LOG(INFO) << __func__ << " (target: " << enabled_pending_ << ","
             << " success: " << error.IsSuccess() << ")"
@@ -720,7 +720,7 @@ void Device::OnEnabledStateChanged(const ResultCallback& callback,
   }
 
   if (!callback.is_null())
-    callback.Run(error);
+    std::move(callback).Run(error);
 }
 
 void Device::UpdateEnabledState() {
@@ -742,24 +742,23 @@ void Device::SetEnabled(bool enable) {
   SetEnabledChecked(enable, false, base::DoNothing());
 }
 
-void Device::SetEnabledNonPersistent(bool enable,
-                                     const ResultCallback& callback) {
+void Device::SetEnabledNonPersistent(bool enable, ResultOnceCallback callback) {
   SLOG(this, 1) << __func__ << "(" << enable << ")";
-  SetEnabledChecked(enable, false, callback);
+  SetEnabledChecked(enable, false, std::move(callback));
 }
 
-void Device::SetEnabledPersistent(bool enable, const ResultCallback& callback) {
+void Device::SetEnabledPersistent(bool enable, ResultOnceCallback callback) {
   SLOG(this, 1) << __func__ << "(" << enable << ")";
-  SetEnabledChecked(enable, true, callback);
+  SetEnabledChecked(enable, true, std::move(callback));
 }
 
 void Device::SetEnabledChecked(bool enable,
                                bool persist,
-                               const ResultCallback& callback) {
+                               ResultOnceCallback callback) {
   LOG(INFO) << __func__ << ": Device " << link_name_ << " "
             << (enable ? "starting" : "stopping");
   if (enable && manager_->IsTechnologyProhibited(technology())) {
-    callback.Run(
+    std::move(callback).Run(
         Error(Error::kPermissionDenied,
               "The " + GetTechnologyName() + " technology is prohibited"));
     return;
@@ -774,7 +773,7 @@ void Device::SetEnabledChecked(bool enable,
           FROM_HERE, &err, Error::kOperationFailed,
           enable ? "Cannot enable while the device is disabling."
                  : "Cannot disable while the device is enabling.");
-      callback.Run(err);
+      std::move(callback).Run(err);
       return;
     }
     LOG(INFO) << "Already in desired enable state.";
@@ -786,7 +785,7 @@ void Device::SetEnabledChecked(bool enable,
     }
 
     if (!callback.is_null())
-      callback.Run(Error(Error::kSuccess));
+      std::move(callback).Run(Error(Error::kSuccess));
     return;
   }
 
@@ -794,7 +793,7 @@ void Device::SetEnabledChecked(bool enable,
     Error err;
     Error::PopulateAndLog(FROM_HERE, &err, Error::kInProgress,
                           "Enable operation already in progress");
-    callback.Run(err);
+    std::move(callback).Run(err);
     return;
   }
 
@@ -803,16 +802,17 @@ void Device::SetEnabledChecked(bool enable,
     manager_->UpdateDevice(this);
   }
 
-  SetEnabledUnchecked(enable, callback);
+  SetEnabledUnchecked(enable, std::move(callback));
 }
 
 void Device::SetEnabledUnchecked(bool enable,
-                                 const ResultCallback& on_enable_complete) {
+                                 ResultOnceCallback on_enable_complete) {
   LOG(INFO) << LoggingTag() << " SetEnabledUnchecked(" << std::boolalpha
             << enable << ")";
   enabled_pending_ = enable;
-  EnabledStateChangedCallback chained_callback = base::BindOnce(
-      &Device::OnEnabledStateChanged, AsWeakPtr(), on_enable_complete);
+  EnabledStateChangedCallback chained_callback =
+      base::BindOnce(&Device::OnEnabledStateChanged, AsWeakPtr(),
+                     std::move(on_enable_complete));
   if (enable) {
     Start(std::move(chained_callback));
   } else {

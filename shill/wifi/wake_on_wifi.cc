@@ -1096,7 +1096,7 @@ void WakeOnWiFi::OnConnectedAndReachable(
     SLOG(2) << "Not in dark resume";
     return;
   }
-  BeforeSuspendActions(true, time_to_next_lease_renewal, base::Closure());
+  BeforeSuspendActions(true, time_to_next_lease_renewal, base::DoNothing());
 }
 
 void WakeOnWiFi::ReportConnectedToServiceAfterWake(bool is_connected,

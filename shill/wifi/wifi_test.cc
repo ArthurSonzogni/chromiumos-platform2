@@ -1079,14 +1079,12 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     wifi_->OnAfterResume();
   }
   void OnBeforeSuspend() {
-    ResultCallback callback(
-        base::Bind(&WiFiObjectTest::SuspendCallback, base::Unretained(this)));
-    wifi_->OnBeforeSuspend(callback);
+    wifi_->OnBeforeSuspend(base::BindOnce(&WiFiObjectTest::SuspendCallback,
+                                          base::Unretained(this)));
   }
   void OnDarkResume() {
-    ResultCallback callback(
-        base::Bind(&WiFiObjectTest::SuspendCallback, base::Unretained(this)));
-    wifi_->OnDarkResume(callback);
+    wifi_->OnDarkResume(base::BindOnce(&WiFiObjectTest::SuspendCallback,
+                                       base::Unretained(this)));
   }
   void RemoveSupplicantNetworks() { wifi_->RemoveSupplicantNetworks(); }
   void InitiateScan() { wifi_->InitiateScan(); }

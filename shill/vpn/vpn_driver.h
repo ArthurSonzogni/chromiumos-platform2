@@ -119,7 +119,7 @@ class VPNDriver {
   virtual void UnloadCredentials();
 
   // Power management events.
-  virtual void OnBeforeSuspend(const ResultCallback& callback);
+  virtual void OnBeforeSuspend(ResultOnceCallback callback);
   virtual void OnAfterResume();
   virtual void OnDefaultPhysicalServiceEvent(DefaultPhysicalServiceEvent event);
 

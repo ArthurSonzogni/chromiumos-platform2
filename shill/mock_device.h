@@ -33,7 +33,7 @@ class MockDevice : public Device {
   MOCK_METHOD(void, SetEnabled, (bool), (override));
   MOCK_METHOD(void,
               SetEnabledChecked,
-              (bool, bool, const ResultCallback&),
+              (bool, bool, ResultOnceCallback),
               (override));
   MOCK_METHOD(void, Scan, (Error*, const std::string&), (override));
   MOCK_METHOD(bool, Load, (const StoreInterface*), (override));
@@ -44,8 +44,8 @@ class MockDevice : public Device {
               (const ServiceRefPtr&),
               (const, override));
   MOCK_METHOD(Technology, technology, (), (const, override));
-  MOCK_METHOD(void, OnBeforeSuspend, (const ResultCallback&), (override));
-  MOCK_METHOD(void, OnDarkResume, (const ResultCallback&), (override));
+  MOCK_METHOD(void, OnBeforeSuspend, (ResultOnceCallback), (override));
+  MOCK_METHOD(void, OnDarkResume, (ResultOnceCallback), (override));
   MOCK_METHOD(void, OnAfterResume, (), (override));
   MOCK_METHOD(void,
               UpdateGeolocationObjects,

@@ -162,7 +162,7 @@ class Cellular : public Device,
   void SetServiceFailure(Service::ConnectFailure failure_state) override;
   void SetServiceFailureSilent(Service::ConnectFailure failure_state) override;
   void OnConnected() override;
-  void OnBeforeSuspend(const ResultCallback& callback) override;
+  void OnBeforeSuspend(ResultOnceCallback callback) override;
   void OnAfterResume() override;
   void UpdateGeolocationObjects(
       std::vector<GeolocationInfo>* geolocation_infos) const override;

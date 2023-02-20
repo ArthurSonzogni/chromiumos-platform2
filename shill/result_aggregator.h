@@ -49,9 +49,9 @@ class EventDispatcher;
 //     LOG(ERROR) << "Failed!"
 //     return;
 //   }
-//   ResultCallback aggregator_callback(
-//       Bind(&ResultAggregator::ReportResult, result_aggregator));
-//   devices_[0]->OnBeforeSuspend(aggregator_callback);
+//   ResultOnceCallback aggregator_callback(
+//       BindOnce(&ResultAggregator::ReportResult, result_aggregator));
+//   devices_[0]->OnBeforeSuspend(std::move(aggregator_callback));
 // }
 //
 // If |condition| is true and the function returns without passing the

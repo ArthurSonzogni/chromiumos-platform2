@@ -36,7 +36,7 @@ class L2TPIPsecDriver : public VPNDriver {
   // Disconnects from the VPN service before suspend or when the current default
   // physical service becomes unavailable. The reconnection behavior relies on
   // whether the user sets "Automatically connect to this network".
-  void OnBeforeSuspend(const ResultCallback& callback) override;
+  void OnBeforeSuspend(ResultOnceCallback callback) override;
   void OnDefaultPhysicalServiceEvent(
       DefaultPhysicalServiceEvent event) override;
 

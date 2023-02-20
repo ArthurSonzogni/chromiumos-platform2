@@ -6,6 +6,7 @@
 
 #include <sys/socket.h>
 #include <linux/if.h>  // NOLINT - Needs typedefs from sys/socket.h.
+#include <utility>
 
 #include <base/run_loop.h>
 #include <base/task/single_thread_task_executor.h>
@@ -44,11 +45,11 @@ class VirtualDeviceTest : public testing::Test {
   void SetUp() override { device_->rtnl_handler_ = &rtnl_handler_; }
 
  protected:
-  static void OnEnabledStateChanged(const base::RepeatingClosure& quit_closure,
+  static void OnEnabledStateChanged(base::OnceClosure quit_closure,
                                     Error* to_return,
                                     const Error& error) {
     to_return->CopyFrom(error);
-    quit_closure.Run();
+    std::move(quit_closure).Run();
   }
 
   base::SingleThreadTaskExecutor task_executor_{base::MessagePumpType::IO};
@@ -85,8 +86,8 @@ TEST_F(VirtualDeviceTest, Start) {
   EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(_, IFF_UP, IFF_UP));
 
   base::RunLoop run_loop;
-  device_->Start(base::BindRepeating(&VirtualDeviceTest::OnEnabledStateChanged,
-                                     run_loop.QuitClosure(), &error));
+  device_->Start(base::BindOnce(&VirtualDeviceTest::OnEnabledStateChanged,
+                                run_loop.QuitClosure(), &error));
   run_loop.Run();
 
   EXPECT_TRUE(error.IsSuccess());
@@ -96,8 +97,8 @@ TEST_F(VirtualDeviceTest, Stop) {
   Error error;
 
   base::RunLoop run_loop;
-  device_->Stop(base::BindRepeating(&VirtualDeviceTest::OnEnabledStateChanged,
-                                    run_loop.QuitClosure(), &error));
+  device_->Stop(base::BindOnce(&VirtualDeviceTest::OnEnabledStateChanged,
+                               run_loop.QuitClosure(), &error));
   run_loop.Run();
 
   EXPECT_TRUE(error.IsSuccess());

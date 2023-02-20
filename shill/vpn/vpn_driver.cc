@@ -5,6 +5,7 @@
 #include "shill/vpn/vpn_driver.h"
 
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/check.h>
@@ -310,9 +311,9 @@ KeyValueStore VPNDriver::GetProvider(Error* error) {
   return provider_properties;
 }
 
-void VPNDriver::OnBeforeSuspend(const ResultCallback& callback) {
+void VPNDriver::OnBeforeSuspend(ResultOnceCallback callback) {
   // Nothing to be done in the general case, so immediately report success.
-  callback.Run(Error(Error::kSuccess));
+  std::move(callback).Run(Error(Error::kSuccess));
 }
 
 void VPNDriver::OnAfterResume() {}

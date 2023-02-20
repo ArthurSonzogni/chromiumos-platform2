@@ -303,12 +303,12 @@ void L2TPIPsecDriver::OnConnectTimeout() {
   NotifyServiceOfFailure(Service::kFailureConnect);
 }
 
-void L2TPIPsecDriver::OnBeforeSuspend(const ResultCallback& callback) {
+void L2TPIPsecDriver::OnBeforeSuspend(ResultOnceCallback callback) {
   if (ipsec_connection_ && ipsec_connection_->IsConnectingOrConnected()) {
     ipsec_connection_->Disconnect();
     NotifyServiceOfFailure(Service::kFailureDisconnect);
   }
-  callback.Run(Error(Error::kSuccess));
+  std::move(callback).Run(Error(Error::kSuccess));
 }
 
 void L2TPIPsecDriver::OnDefaultPhysicalServiceEvent(

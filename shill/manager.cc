@@ -1167,9 +1167,10 @@ void Manager::SetEnabledStateForTechnology(const std::string& technology_name,
     if (device->technology() != id)
       continue;
 
-    ResultCallback aggregator_callback(
-        base::Bind(&ResultAggregator::ReportResult, result_aggregator));
-    device->SetEnabledChecked(enabled_state, persist, aggregator_callback);
+    ResultOnceCallback aggregator_callback(
+        base::BindOnce(&ResultAggregator::ReportResult, result_aggregator));
+    device->SetEnabledChecked(enabled_state, persist,
+                              std::move(aggregator_callback));
   }
 }
 
@@ -1632,14 +1633,12 @@ void Manager::OnSuspendImminent() {
                      weak_factory_.GetWeakPtr()),
       dispatcher_, kTerminationActionsTimeout));
   for (const auto& service : services_) {
-    ResultCallback aggregator_callback(
-        base::Bind(&ResultAggregator::ReportResult, result_aggregator));
-    service->OnBeforeSuspend(aggregator_callback);
+    service->OnBeforeSuspend(
+        base::BindOnce(&ResultAggregator::ReportResult, result_aggregator));
   }
   for (const auto& device : devices_) {
-    ResultCallback aggregator_callback(
-        base::Bind(&ResultAggregator::ReportResult, result_aggregator));
-    device->OnBeforeSuspend(aggregator_callback);
+    device->OnBeforeSuspend(
+        base::BindOnce(&ResultAggregator::ReportResult, result_aggregator));
   }
 }
 
@@ -1669,9 +1668,8 @@ void Manager::OnDarkSuspendImminent() {
                      weak_factory_.GetWeakPtr()),
       dispatcher_, kTerminationActionsTimeout));
   for (const auto& device : devices_) {
-    ResultCallback aggregator_callback(
-        base::Bind(&ResultAggregator::ReportResult, result_aggregator));
-    device->OnDarkResume(aggregator_callback);
+    device->OnDarkResume(
+        base::BindOnce(&ResultAggregator::ReportResult, result_aggregator));
   }
 }
 

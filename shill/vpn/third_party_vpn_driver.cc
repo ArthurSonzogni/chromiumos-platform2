@@ -593,7 +593,7 @@ void ThirdPartyVpnDriver::OnDefaultPhysicalServiceEvent(
   adaptor_interface_->EmitPlatformMessage(static_cast<uint32_t>(message));
 }
 
-void ThirdPartyVpnDriver::OnBeforeSuspend(const ResultCallback& callback) {
+void ThirdPartyVpnDriver::OnBeforeSuspend(ResultOnceCallback callback) {
   if (event_handler_ && reconnect_supported_) {
     // FIXME: Currently the VPN app receives this message at the same time
     // as the resume message, even if shill adds a delay to hold off the
@@ -601,7 +601,7 @@ void ThirdPartyVpnDriver::OnBeforeSuspend(const ResultCallback& callback) {
     adaptor_interface_->EmitPlatformMessage(
         static_cast<uint32_t>(PlatformMessage::kSuspend));
   }
-  callback.Run(Error(Error::kSuccess));
+  std::move(callback).Run(Error(Error::kSuccess));
 }
 
 void ThirdPartyVpnDriver::OnAfterResume() {

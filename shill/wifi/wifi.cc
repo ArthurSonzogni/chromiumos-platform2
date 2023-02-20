@@ -2752,9 +2752,9 @@ void WiFi::HelpRegisterConstDerivedUint16s(PropertyStore* store,
       Uint16sAccessor(new CustomAccessor<WiFi, Uint16s>(this, get, nullptr)));
 }
 
-void WiFi::OnBeforeSuspend(const ResultCallback& callback) {
+void WiFi::OnBeforeSuspend(ResultOnceCallback callback) {
   if (!enabled()) {
-    callback.Run(Error(Error::kSuccess));
+    std::move(callback).Run(Error(Error::kSuccess));
     return;
   }
   LOG(INFO) << __func__ << ": "
@@ -2762,12 +2762,12 @@ void WiFi::OnBeforeSuspend(const ResultCallback& callback) {
   StopScanTimer();
   supplicant_process_proxy()->ExpectDisconnect();
   if (!wake_on_wifi_) {
-    callback.Run(Error(Error::kSuccess));
+    std::move(callback).Run(Error(Error::kSuccess));
     return;
   }
   wake_on_wifi_->OnBeforeSuspend(
       IsConnectedToCurrentService(),
-      provider_->GetSsidsConfiguredForAutoConnect(), callback,
+      provider_->GetSsidsConfiguredForAutoConnect(), std::move(callback),
       base::BindOnce(&Device::ForceIPConfigUpdate,
                      weak_ptr_factory_while_started_.GetWeakPtr()),
       base::BindOnce(&WiFi::RemoveSupplicantNetworks,
@@ -2775,21 +2775,21 @@ void WiFi::OnBeforeSuspend(const ResultCallback& callback) {
       network()->TimeToNextDHCPLeaseRenewal());
 }
 
-void WiFi::OnDarkResume(const ResultCallback& callback) {
+void WiFi::OnDarkResume(ResultOnceCallback callback) {
   if (!enabled()) {
-    callback.Run(Error(Error::kSuccess));
+    std::move(callback).Run(Error(Error::kSuccess));
     return;
   }
   LOG(INFO) << __func__ << ": "
             << (IsConnectedToCurrentService() ? "connected" : "not connected");
   StopScanTimer();
   if (!wake_on_wifi_) {
-    callback.Run(Error(Error::kSuccess));
+    std::move(callback).Run(Error(Error::kSuccess));
     return;
   }
   wake_on_wifi_->OnDarkResume(
       IsConnectedToCurrentService(),
-      provider_->GetSsidsConfiguredForAutoConnect(), callback,
+      provider_->GetSsidsConfiguredForAutoConnect(), std::move(callback),
       base::BindOnce(&Device::ForceIPConfigUpdate,
                      weak_ptr_factory_while_started_.GetWeakPtr()),
       base::BindOnce(&WiFi::InitiateScanInDarkResume,

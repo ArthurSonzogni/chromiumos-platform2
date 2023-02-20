@@ -147,14 +147,14 @@ bool DeviceDBusAdaptor::ClearProperty(brillo::ErrorPtr* error,
 
 void DeviceDBusAdaptor::Enable(DBusMethodResponsePtr<> response) {
   SLOG(this, 2) << __func__;
-  ResultCallback callback = GetMethodReplyCallback(std::move(response));
-  device_->SetEnabledPersistent(true, callback);
+  device_->SetEnabledPersistent(true,
+                                GetMethodReplyCallback(std::move(response)));
 }
 
 void DeviceDBusAdaptor::Disable(DBusMethodResponsePtr<> response) {
   SLOG(this, 2) << __func__ << ": Device " << device_->UniqueName();
-  ResultCallback callback = GetMethodReplyCallback(std::move(response));
-  device_->SetEnabledPersistent(false, callback);
+  device_->SetEnabledPersistent(false,
+                                GetMethodReplyCallback(std::move(response)));
 }
 
 void DeviceDBusAdaptor::Register(DBusMethodResponsePtr<> response,

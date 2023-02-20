@@ -567,7 +567,7 @@ class Service : public base::RefCounted<Service> {
   //
   // The default implementation invokes the |callback| immediately, since
   // there is nothing to be done in the general case.
-  virtual void OnBeforeSuspend(const ResultCallback& callback);
+  virtual void OnBeforeSuspend(ResultOnceCallback callback);
 
   // Called by the manager once after a resume.
   virtual void OnAfterResume();

@@ -212,12 +212,12 @@ void IKEv2Driver::OnConnectTimeout() {
 }
 
 // TODO(b/210064468): Check if charon can handle these events.
-void IKEv2Driver::OnBeforeSuspend(const ResultCallback& callback) {
+void IKEv2Driver::OnBeforeSuspend(ResultOnceCallback callback) {
   if (ipsec_connection_ && ipsec_connection_->IsConnectingOrConnected()) {
     ipsec_connection_->Disconnect();
     NotifyServiceOfFailure(Service::kFailureDisconnect);
   }
-  callback.Run(Error(Error::kSuccess));
+  std::move(callback).Run(Error(Error::kSuccess));
 }
 
 // TODO(b/210064468): Check if charon can handle these events.

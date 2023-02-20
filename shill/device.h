@@ -72,24 +72,24 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   //
   // TODO(quiche): Replace both of the next two methods with calls to
   // SetEnabledChecked.
-  void SetEnabledNonPersistent(bool enable, const ResultCallback& callback);
+  void SetEnabledNonPersistent(bool enable, ResultOnceCallback callback);
   // Enable or disable the device, and save the setting in the profile.
   // The setting is persisted before the enable or disable operation
   // starts, so that even if it fails, the user's intent is still recorded
   // for the next time shill restarts.
-  void SetEnabledPersistent(bool enable, const ResultCallback& callback);
+  void SetEnabledPersistent(bool enable, ResultOnceCallback callback);
   // Enable or disable the Device, depending on |enable|.
   // Save the new setting to the profile, if |persist| is true.
   // Report synchronous errors using |error|, and asynchronous completion
   // with |callback|.
   mockable void SetEnabledChecked(bool enable,
                                   bool persist,
-                                  const ResultCallback& callback);
+                                  ResultOnceCallback callback);
   // Similar to SetEnabledChecked, but without coherence checking, and
   // without saving the new value of |enable| to the profile. If you
   // are rational (i.e. not Cellular), you should use
   // SetEnabledChecked instead.
-  void SetEnabledUnchecked(bool enable, const ResultCallback& callback);
+  void SetEnabledUnchecked(bool enable, ResultOnceCallback callback);
 
   // Returns true if the underlying device reports that it is already enabled.
   // Used when the device is registered with the Manager, so that shill can
@@ -207,7 +207,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   //
   // The default implementation invokes the |callback| immediately, since
   // there is nothing to be done in the general case.
-  virtual void OnBeforeSuspend(const ResultCallback& callback);
+  virtual void OnBeforeSuspend(ResultOnceCallback callback);
 
   // Resume event handler. Called by Manager as the system resumes.
   // The base class implementation takes care of renewing a DHCP lease
@@ -224,7 +224,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   //
   // The default implementation invokes the |callback| immediately, since
   // there is nothing to be done in the general case.
-  virtual void OnDarkResume(const ResultCallback& callback);
+  virtual void OnDarkResume(ResultOnceCallback callback);
 
   // Sets MAC address source for USB Ethernet device.
   virtual void SetUsbEthernetMacAddressSource(const std::string& source,
@@ -348,8 +348,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // The EnabledStateChangedCallback that gets passed to the device's
   // Start() and Stop() methods is bound to this method. |callback|
   // is the callback that was passed to SetEnabled().
-  void OnEnabledStateChanged(const ResultCallback& callback,
-                             const Error& error);
+  void OnEnabledStateChanged(ResultOnceCallback callback, const Error& error);
 
   // Update the device state to the pending state.
   void UpdateEnabledState();

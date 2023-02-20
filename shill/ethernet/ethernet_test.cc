@@ -162,15 +162,15 @@ class EthernetTest : public testing::Test {
     EXPECT_CALL(ethernet_provider_, RegisterService(Eq(mock_service_)));
     EXPECT_CALL(rtnl_handler_, SetInterfaceFlags(ifindex_, IFF_UP, IFF_UP));
     base::RunLoop run_loop;
-    ethernet_->Start(base::BindRepeating(&EthernetTest::OnEnabledStateChanged,
-                                         run_loop.QuitClosure()));
+    ethernet_->Start(base::BindOnce(&EthernetTest::OnEnabledStateChanged,
+                                    run_loop.QuitClosure()));
     run_loop.Run();
   }
   void StopEthernet() {
     EXPECT_CALL(ethernet_provider_, DeregisterService(Eq(mock_service_)));
     base::RunLoop run_loop;
-    ethernet_->Stop(base::BindRepeating(&EthernetTest::OnEnabledStateChanged,
-                                        run_loop.QuitClosure()));
+    ethernet_->Stop(base::BindOnce(&EthernetTest::OnEnabledStateChanged,
+                                   run_loop.QuitClosure()));
     run_loop.Run();
   }
   void SetUsbEthernetMacAddressSource(const std::string& source,
@@ -265,9 +265,9 @@ class EthernetTest : public testing::Test {
   MockEthernetProvider ethernet_provider_;
 
  private:
-  static void OnEnabledStateChanged(const base::RepeatingClosure& quit_closure,
+  static void OnEnabledStateChanged(base::OnceClosure quit_closure,
                                     const Error& error) {
-    quit_closure.Run();
+    std::move(quit_closure).Run();
   }
 };
 

@@ -537,12 +537,12 @@ bool ManagerTest::ServiceOrderIs(ServiceRefPtr svc0, ServiceRefPtr svc1) {
           svc1.get() == manager()->services_[1].get());
 }
 
-void ReturnPermissionDenied(const ResultCallback& callback) {
-  callback.Run(Error(Error::kPermissionDenied));
+void ReturnPermissionDenied(ResultOnceCallback callback) {
+  std::move(callback).Run(Error(Error::kPermissionDenied));
 }
 
-void ReturnSuccess(const ResultCallback& callback) {
-  callback.Run(Error(Error::kSuccess));
+void ReturnSuccess(ResultOnceCallback callback) {
+  std::move(callback).Run(Error(Error::kSuccess));
 }
 
 TEST_F(ManagerTest, Contains) {
