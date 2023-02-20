@@ -26,6 +26,7 @@ dup2: 1
 getpid: 1
 lseek: 1
 fcntl: 1
+ioperm: 1
 iopl: 1
 stat: 1
 
