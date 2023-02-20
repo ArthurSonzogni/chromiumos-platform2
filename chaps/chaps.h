@@ -5,9 +5,6 @@
 #ifndef CHAPS_CHAPS_H_
 #define CHAPS_CHAPS_H_
 
-#include <map>
-#include <vector>
-
 #include "pkcs11/cryptoki.h"
 
 // Note: This library is not thread-safe.

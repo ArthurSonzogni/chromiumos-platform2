@@ -170,6 +170,9 @@ EXPORT_SPEC void SetRetryTimeParameters(uint32_t timeout_ms,
 EXPORT_SPEC CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   if (g_is_initialized)
     return CKR_CRYPTOKI_ALREADY_INITIALIZED;
+
+  chaps::ThreadingMode mode = chaps::ThreadingMode::kStandaloneWorkerThread;
+
   // Validate args (if any).
   if (pInitArgs) {
     CK_C_INITIALIZE_ARGS_PTR args =
@@ -188,10 +191,19 @@ EXPORT_SPEC CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
     if (((args->flags & CKF_OS_LOCKING_OK) == 0) && args->CreateMutex) {
       LOG_CK_RV_AND_RETURN(CKR_CANT_LOCK);
     }
+
+    if (args->flags & CKF_LIBRARY_CANT_CREATE_OS_THREADS) {
+      if (args->CreateMutex) {
+        // We cannot do lock without extra OS threads.
+        LOG_CK_RV_AND_RETURN(CKR_CANT_LOCK);
+      }
+
+      mode = chaps::ThreadingMode::kCurrentThread;
+    }
   }
   // If we're not using a mock proxy instance we need to create one.
   if (!g_is_using_mock) {
-    auto proxy = chaps::ChapsProxyImpl::Create(true /* shadow_at_exit */);
+    auto proxy = chaps::ChapsProxyImpl::Create(/*shadow_at_exit=*/true, mode);
     if (!proxy)
       LOG_CK_RV_AND_RETURN(CKR_GENERAL_ERROR);
     g_proxy = proxy.release();

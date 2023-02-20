@@ -25,7 +25,8 @@ using std::vector;
 namespace chaps {
 
 static chaps::ChapsInterface* CreateChapsInstance() {
-  auto proxy = ChapsProxyImpl::Create(false /* shadow_at_exit */);
+  auto proxy = ChapsProxyImpl::Create(/*shadow_at_exit=*/false,
+                                      chaps::ThreadingMode::kCurrentThread);
   if (!proxy)
     return nullptr;
   return proxy.release();

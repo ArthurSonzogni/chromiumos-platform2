@@ -46,7 +46,8 @@ void PrintHelp() {
 }
 
 int Ping() {
-  auto proxy = chaps::ChapsProxyImpl::Create(false /* shadow_at_exit */);
+  auto proxy = chaps::ChapsProxyImpl::Create(
+      /*shadow_at_exit=*/false, chaps::ThreadingMode::kCurrentThread);
   if (!proxy)
     return -1;
   vector<uint64_t> slot_list;
@@ -89,7 +90,8 @@ int UnloadToken(const string& path) {
 
 // Sets the logging level.
 int SetLogLevel(int level) {
-  auto proxy = chaps::ChapsProxyImpl::Create(false /* shadow_at_exit */);
+  auto proxy = chaps::ChapsProxyImpl::Create(
+      /*shadow_at_exit=*/false, chaps::ThreadingMode::kCurrentThread);
   if (!proxy) {
     LOG(ERROR) << "Set log level failed.";
     return -1;
@@ -99,7 +101,8 @@ int SetLogLevel(int level) {
 }
 
 int ListTokens() {
-  auto proxy = chaps::ChapsProxyImpl::Create(false /* shadow_at_exit */);
+  auto proxy = chaps::ChapsProxyImpl::Create(
+      /*shadow_at_exit=*/false, chaps::ThreadingMode::kCurrentThread);
   if (!proxy)
     return -1;
   vector<uint64_t> slot_list;

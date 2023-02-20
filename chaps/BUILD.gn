@@ -182,6 +182,7 @@ install_config("install_client_headers") {
     "chaps_interface.h",
     "chaps_proxy_mock.h",
     "isolate.h",
+    "threading_mode.h",
     "token_manager_client.h",
     "token_manager_client_mock.h",
     "token_manager_interface.h",
