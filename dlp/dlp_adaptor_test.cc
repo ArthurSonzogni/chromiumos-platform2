@@ -181,8 +181,16 @@ class DlpAdaptorTest : public ::testing::Test {
     dbus::MessageWriter writer(response.get());
 
     IsFilesTransferRestrictedResponse response_proto;
-    *response_proto.mutable_restricted_files() = {restricted_files_.begin(),
-                                                  restricted_files_.end()};
+    for (const auto& [file_metadata, restriction_level] : files_restrictions_) {
+      FileRestriction* file_restriction =
+          response_proto.add_files_restrictions();
+      *file_restriction->mutable_file_metadata() = file_metadata;
+      file_restriction->set_restriction_level(restriction_level);
+      if (restriction_level == RestrictionLevel::LEVEL_BLOCK ||
+          restriction_level == RestrictionLevel::LEVEL_WARN_CANCEL) {
+        *response_proto.add_restricted_files() = file_metadata;
+      }
+    }
 
     writer.AppendProtoAsArrayOfBytes(response_proto);
     std::move(*response_callback).Run(response.get());
@@ -238,7 +246,7 @@ class DlpAdaptorTest : public ::testing::Test {
 
  protected:
   bool is_file_policy_restricted_;
-  std::vector<FileMetadata> restricted_files_;
+  std::vector<std::pair<FileMetadata, RestrictionLevel>> files_restrictions_;
 
   DlpAdaptorTestHelper helper_;
 };
@@ -523,7 +531,8 @@ TEST_F(DlpAdaptorTest, RestrictedFileAddedAndRequestedNotAllowed) {
   // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
   FileMetadata file_metadata;
   file_metadata.set_path(file_path.value());
-  restricted_files_.push_back(std::move(file_metadata));
+  files_restrictions_.push_back(
+      {std::move(file_metadata), RestrictionLevel::LEVEL_BLOCK});
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
               DoCallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsFilesTransferRestricted));
@@ -887,7 +896,30 @@ TEST_F(DlpAdaptorTest, SetDlpFilesPolicy) {
   EXPECT_FALSE(response.has_error_message());
 }
 
-TEST_F(DlpAdaptorTest, CheckFilesTransfer) {
+class DlpAdaptorCheckFilesTransferTest
+    : public DlpAdaptorTest,
+      public ::testing::WithParamInterface<RestrictionLevel> {
+ public:
+  DlpAdaptorCheckFilesTransferTest(const DlpAdaptorCheckFilesTransferTest&) =
+      delete;
+  DlpAdaptorCheckFilesTransferTest& operator=(
+      const DlpAdaptorCheckFilesTransferTest&) = delete;
+
+ protected:
+  DlpAdaptorCheckFilesTransferTest() = default;
+  ~DlpAdaptorCheckFilesTransferTest() override = default;
+};
+
+INSTANTIATE_TEST_SUITE_P(DlpAdaptor,
+                         DlpAdaptorCheckFilesTransferTest,
+                         ::testing::Values(RestrictionLevel::LEVEL_UNSPECIFIED,
+                                           RestrictionLevel::LEVEL_ALLOW,
+                                           RestrictionLevel::LEVEL_REPORT,
+                                           RestrictionLevel::LEVEL_WARN_PROCEED,
+                                           RestrictionLevel::LEVEL_WARN_CANCEL,
+                                           RestrictionLevel::LEVEL_BLOCK));
+
+TEST_P(DlpAdaptorCheckFilesTransferTest, Run) {
   // Create database.
   base::ScopedTempDir database_directory;
   ASSERT_TRUE(database_directory.CreateUniqueTempDir());
@@ -910,10 +942,14 @@ TEST_F(DlpAdaptorTest, CheckFilesTransfer) {
   AddFileAndCheck(file_path2, source2, "referrer2", /*success=*/true);
 
   // Setup callback for DlpFilesPolicyService::IsFilesTransferRestricted()
-  restricted_files_.clear();
+  files_restrictions_.clear();
   FileMetadata file1_metadata;
   file1_metadata.set_path(file_path1.value());
-  restricted_files_.push_back(std::move(file1_metadata));
+  FileMetadata file2_metadata;
+  file2_metadata.set_path(file_path2.value());
+  files_restrictions_.push_back(
+      {std::move(file1_metadata), RestrictionLevel::LEVEL_BLOCK});
+  files_restrictions_.push_back({std::move(file2_metadata), GetParam()});
   EXPECT_CALL(*GetMockDlpFilesPolicyServiceProxy(),
               DoCallMethodWithErrorCallback(_, _, _, _))
       .WillOnce(Invoke(this, &DlpAdaptorTest::StubIsFilesTransferRestricted));
@@ -942,7 +978,13 @@ TEST_F(DlpAdaptorTest, CheckFilesTransfer) {
           {file_path1.value(), file_path2.value()}, "destination"));
   check_files_transfer_run_loop.Run();
 
-  EXPECT_EQ(restricted_files_paths.size(), 1u);
+  if (GetParam() == RestrictionLevel::LEVEL_BLOCK ||
+      GetParam() == RestrictionLevel::LEVEL_WARN_CANCEL) {
+    EXPECT_EQ(restricted_files_paths.size(), 2u);
+  } else {
+    EXPECT_EQ(restricted_files_paths.size(), 1u);
+    EXPECT_EQ(restricted_files_paths[0], file_path1.value());
+  }
 }
 
 }  // namespace dlp

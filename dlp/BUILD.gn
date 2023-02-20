@@ -71,6 +71,7 @@ static_library("libdlp_static") {
     "dlp_daemon.cc",
     "dlp_database.cc",
     "dlp_metrics.cc",
+    "dlp_requests_cache.cc",
     "fanotify_reader_thread.cc",
     "fanotify_watcher.cc",
     "kernel_version_tools.cc",
@@ -130,6 +131,7 @@ if (use.test) {
       "dlp_adaptor_test.cc",
       "dlp_adaptor_test_helper.cc",
       "dlp_adaptor_test_helper.h",
+      "dlp_requests_cache_test.cc",
 
       # TODO(crbug.com/1223082) Rewrite fanotify_watcher tests to use mocked
       # fanotify as they are flaky otherwise.

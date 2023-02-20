@@ -88,6 +88,30 @@ std::set<std::pair<base::FilePath, ino64_t>> EnumerateFiles(
   return files;
 }
 
+// Checks whether the list of the rules is exactly the same.
+bool SameRules(const std::vector<DlpFilesRule> rules1,
+               const std::vector<DlpFilesRule> rules2) {
+  if (rules1.size() != rules2.size()) {
+    return false;
+  }
+  for (int i = 0; i < rules1.size(); ++i) {
+    if (SerializeProto(rules1[i]) != SerializeProto(rules2[i])) {
+      return false;
+    }
+  }
+  return true;
+}
+
+// Whether the cached level should be re-checked.
+bool RequiresCheck(RestrictionLevel level) {
+  return level == LEVEL_UNSPECIFIED || level == LEVEL_WARN_CANCEL;
+}
+
+// If the action is permanently blocked by the current policy.
+bool IsAlwaysBlocked(RestrictionLevel level) {
+  return level == LEVEL_BLOCK;
+}
+
 }  // namespace
 
 const struct VariationsFeature kCrOSLateBootDlpDatabaseCleanupFeature = {
@@ -142,8 +166,15 @@ std::vector<uint8_t> DlpAdaptor::SetDlpFilesPolicy(
     return SerializeProto(response);
   }
 
-  policy_rules_ =
+  auto new_rules =
       std::vector<DlpFilesRule>(request.rules().begin(), request.rules().end());
+
+  // No update is needed.
+  if (SameRules(policy_rules_, new_rules)) {
+    return SerializeProto(response);
+  }
+  requests_cache_.ResetCache();
+  policy_rules_.swap(new_rules);
 
   if (!policy_rules_.empty()) {
     EnsureFanotifyWatcherStarted();
@@ -266,6 +297,23 @@ void DlpAdaptor::ProcessRequestFileAccessWithData(
       // Skip file if it's not DLP-protected as access to it is always allowed.
       continue;
     }
+    RestrictionLevel cached_level = requests_cache_.Get(
+        inode_n, file_path,
+        request.has_destination_url() ? request.destination_url() : "",
+        request.has_destination_component() ? request.destination_component()
+                                            : DlpComponent::UNKNOWN_COMPONENT);
+    // Reply immediately is a file is always blocked.
+    if (IsAlwaysBlocked(cached_level)) {
+      ReplyOnRequestFileAccess(std::move(response), std::move(remote_fd),
+                               /*allowed=*/false,
+                               /*error_message=*/std::string());
+      return;
+    }
+    // Was previously allowed, no need to check again.
+    if (!RequiresCheck(cached_level)) {
+      continue;
+    }
+
     inodes.push_back(inode_n);
 
     FileMetadata* file_metadata = matching_request.add_transferred_files();
@@ -293,11 +341,16 @@ void DlpAdaptor::ProcessRequestFileAccessWithData(
 
   matching_request.set_file_action(FileAction::TRANSFER);
 
+  auto cache_callback =
+      base::BindOnce(&DlpRequestsCache::CacheResult,
+                     base::Unretained(&requests_cache_), matching_request);
+
   dlp_files_policy_service_->IsFilesTransferRestrictedAsync(
       SerializeProto(matching_request),
       base::BindOnce(&DlpAdaptor::OnRequestFileAccess, base::Unretained(this),
                      std::move(inodes), request.process_id(),
-                     std::move(local_fd), std::move(callbacks.first)),
+                     std::move(local_fd), std::move(callbacks.first),
+                     std::move(cache_callback)),
       base::BindOnce(&DlpAdaptor::OnRequestFileAccessError,
                      base::Unretained(this), std::move(callbacks.second)),
       /*timeout_ms=*/base::Minutes(5).InMilliseconds());
@@ -594,6 +647,7 @@ void DlpAdaptor::OnRequestFileAccess(
     int pid,
     base::ScopedFD local_fd,
     RequestFileAccessCallback callback,
+    base::OnceCallback<void(IsFilesTransferRestrictedResponse)> cache_callback,
     const std::vector<uint8_t>& response_blob) {
   IsFilesTransferRestrictedResponse response;
   std::string parse_error = ParseProto(FROM_HERE, &response, response_blob);
@@ -605,6 +659,9 @@ void DlpAdaptor::OnRequestFileAccess(
         /*allowed=*/false, parse_error);
     return;
   }
+
+  // Cache the response.
+  std::move(cache_callback).Run(response);
 
   if (response.restricted_files().empty()) {
     int lifeline_fd = AddLifelineFd(local_fd.get());
@@ -672,7 +729,8 @@ void DlpAdaptor::ProcessCheckFilesTransferWithData(
   CheckFilesTransferResponse response_proto;
 
   IsFilesTransferRestrictedRequest matching_request;
-  base::flat_set<std::string> transferred_files;
+  base::flat_set<std::string> files_to_check;
+  std::vector<std::string> already_restricted;
   for (const auto& file_path : request.files_paths()) {
     const ino_t file_inode = GetInodeValue(file_path);
     auto it = file_entries.find(file_inode);
@@ -681,7 +739,21 @@ void DlpAdaptor::ProcessCheckFilesTransferWithData(
       continue;
     }
 
-    transferred_files.insert(file_path);
+    RestrictionLevel cached_level = requests_cache_.Get(
+        file_inode, file_path,
+        request.has_destination_url() ? request.destination_url() : "",
+        request.has_destination_component() ? request.destination_component()
+                                            : DlpComponent::UNKNOWN_COMPONENT);
+    // The file is always blocked.
+    if (IsAlwaysBlocked(cached_level)) {
+      already_restricted.push_back(file_path);
+    }
+    // Was previously allowed/blocked, no need to check again.
+    if (!RequiresCheck(cached_level)) {
+      continue;
+    }
+
+    files_to_check.insert(file_path);
 
     FileMetadata* file_metadata = matching_request.add_transferred_files();
     file_metadata->set_inode(file_inode);
@@ -689,8 +761,10 @@ void DlpAdaptor::ProcessCheckFilesTransferWithData(
     file_metadata->set_path(file_path);
   }
 
-  if (transferred_files.empty()) {
-    response->Return(SerializeProto(response_proto));
+  if (files_to_check.empty()) {
+    ReplyOnCheckFilesTransfer(std::move(response),
+                              std::move(already_restricted),
+                              /*error_message=*/std::string());
     return;
   }
 
@@ -705,19 +779,26 @@ void DlpAdaptor::ProcessCheckFilesTransferWithData(
       base::BindOnce(&DlpAdaptor::ReplyOnCheckFilesTransfer,
                      base::Unretained(this), std::move(response)));
 
+  auto cache_callback =
+      base::BindOnce(&DlpRequestsCache::CacheResult,
+                     base::Unretained(&requests_cache_), matching_request);
+
   dlp_files_policy_service_->IsFilesTransferRestrictedAsync(
       SerializeProto(matching_request),
       base::BindOnce(&DlpAdaptor::OnIsFilesTransferRestricted,
-                     base::Unretained(this), std::move(transferred_files),
-                     std::move(callbacks.first)),
+                     base::Unretained(this), std::move(files_to_check),
+                     std::move(already_restricted), std::move(callbacks.first),
+                     std::move(cache_callback)),
       base::BindOnce(&DlpAdaptor::OnIsFilesTransferRestrictedError,
                      base::Unretained(this), std::move(callbacks.second)),
       /*timeout_ms=*/base::Minutes(5).InMilliseconds());
 }
 
 void DlpAdaptor::OnIsFilesTransferRestricted(
-    base::flat_set<std::string> transferred_files,
+    base::flat_set<std::string> checked_files,
+    std::vector<std::string> restricted_files,
     CheckFilesTransferCallback callback,
+    base::OnceCallback<void(IsFilesTransferRestrictedResponse)> cache_callback,
     const std::vector<uint8_t>& response_blob) {
   IsFilesTransferRestrictedResponse response;
   std::string parse_error = ParseProto(FROM_HERE, &response, response_blob);
@@ -729,9 +810,11 @@ void DlpAdaptor::OnIsFilesTransferRestricted(
     return;
   }
 
-  std::vector<std::string> restricted_files;
+  // Cache the response.
+  std::move(cache_callback).Run(response);
+
   for (const auto& file : *response.mutable_restricted_files()) {
-    DCHECK(base::Contains(transferred_files, file.path()));
+    DCHECK(base::Contains(checked_files, file.path()));
     restricted_files.push_back(file.path());
   }
 
@@ -854,7 +937,7 @@ void DlpAdaptor::OnDatabaseCleaned(std::unique_ptr<DlpDatabase> db,
                                    bool success) {
   if (success) {
     db_.swap(db);
-    LOG(INFO) << "Database is initalized";
+    LOG(INFO) << "Database is initialized";
     // If fanotify watcher is already started, we need to add watches for all
     // files from the database.
     if (pending_per_file_watches_) {

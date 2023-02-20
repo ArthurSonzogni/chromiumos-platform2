@@ -23,6 +23,7 @@
 #include "dlp/dbus-proxies.h"
 #include "dlp/dlp_database.h"
 #include "dlp/dlp_metrics.h"
+#include "dlp/dlp_requests_cache.h"
 #include "dlp/fanotify_watcher.h"
 #include "dlp/org.chromium.Dlp.h"
 #include "dlp/proto_bindings/dlp_service.pb.h"
@@ -147,11 +148,14 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   using RequestFileAccessCallback =
       base::OnceCallback<void(bool, const std::string&)>;
   // Callbacks on IsFilesTransferRestricted D-Bus request for RequestFileAccess.
-  void OnRequestFileAccess(std::vector<uint64_t> inodes,
-                           int pid,
-                           base::ScopedFD local_fd,
-                           RequestFileAccessCallback callback,
-                           const std::vector<uint8_t>& response_blob);
+  void OnRequestFileAccess(
+      std::vector<uint64_t> inodes,
+      int pid,
+      base::ScopedFD local_fd,
+      RequestFileAccessCallback callback,
+      base::OnceCallback<void(IsFilesTransferRestrictedResponse)>
+          cache_callback,
+      const std::vector<uint8_t>& response_blob);
   void OnRequestFileAccessError(RequestFileAccessCallback callback,
                                 brillo::Error* error);
   void ReplyOnRequestFileAccess(
@@ -185,7 +189,10 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   // Callback on IsFilesTransferRestricted D-Bus request for CheckFilesTransfer.
   void OnIsFilesTransferRestricted(
       base::flat_set<std::string> transferred_files,
+      std::vector<std::string> restricted_files,
       CheckFilesTransferCallback callback,
+      base::OnceCallback<void(IsFilesTransferRestrictedResponse)>
+          cache_callback,
       const std::vector<uint8_t>& response_blob);
   void OnIsFilesTransferRestrictedError(CheckFilesTransferCallback callback,
                                         brillo::Error* error);
@@ -243,6 +250,9 @@ class DlpAdaptor : public org::chromium::DlpAdaptor,
   std::unique_ptr<brillo::dbus_utils::DBusObject> dbus_object_;
 
   std::unique_ptr<feature::PlatformFeaturesInterface> feature_lib_;
+
+  // Cache of IsFilesTransferRestricted replies from Chrome.
+  DlpRequestsCache requests_cache_;
 
   // The root path to the watched directory.
   const base::FilePath home_path_;
