@@ -22,7 +22,6 @@
 #include <utility>
 #include <vector>
 
-#include "cryptohome/cryptohome_common.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
@@ -558,9 +557,18 @@ UserSecretStash::FromEncryptedContainer(const brillo::Blob& flatbuffer,
         .Wrap(std::move(status));
   }
 
+  CryptohomeStatusOr<UserMetadata> user_metadata = GetUserMetadata(flatbuffer);
+  if (!user_metadata.ok()) {
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocUSSGetUserMetadataFailedInFromEncContainer))
+        .Wrap(std::move(user_metadata).status());
+  }
+
   CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> result =
       FromEncryptedPayload(ciphertext, iv, gcm_tag, wrapped_key_blocks,
-                           created_on_os_version, main_key);
+                           created_on_os_version, user_metadata.value(),
+                           main_key);
   if (!result.ok()) {
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(kLocUSSFromPayloadFailedInFromEncContainer))
@@ -577,6 +585,7 @@ UserSecretStash::FromEncryptedPayload(
     const brillo::Blob& gcm_tag,
     const std::map<std::string, WrappedKeyBlock>& wrapped_key_blocks,
     const std::string& created_on_os_version,
+    const UserMetadata& user_metadata,
     const brillo::SecureBlob& main_key) {
   brillo::SecureBlob serialized_uss_payload;
   if (!AesGcmDecrypt(brillo::SecureBlob(ciphertext), /*ad=*/std::nullopt,
@@ -625,6 +634,7 @@ UserSecretStash::FromEncryptedPayload(
       new UserSecretStash(file_system_keyset_status.value(), reset_secrets));
   stash->wrapped_key_blocks_ = wrapped_key_blocks;
   stash->created_on_os_version_ = created_on_os_version;
+  stash->user_metadata_ = user_metadata;
   return stash;
 }
 
@@ -649,6 +659,14 @@ UserSecretStash::FromEncryptedContainerWithWrappingKey(
         .Wrap(std::move(status));
   }
 
+  CryptohomeStatusOr<UserMetadata> user_metadata = GetUserMetadata(flatbuffer);
+  if (!user_metadata.ok()) {
+    return MakeStatus<CryptohomeError>(
+               CRYPTOHOME_ERR_LOC(
+                   kLocUSSGetUserMetadataFailedInFromEncContainerWrappingKey))
+        .Wrap(std::move(user_metadata).status());
+  }
+
   CryptohomeStatusOr<brillo::SecureBlob> main_key_optional =
       UnwrapMainKeyFromBlocks(wrapped_key_blocks, wrapping_id, wrapping_key);
   if (!main_key_optional.ok()) {
@@ -661,7 +679,8 @@ UserSecretStash::FromEncryptedContainerWithWrappingKey(
 
   CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> stash =
       FromEncryptedPayload(ciphertext, iv, gcm_tag, wrapped_key_blocks,
-                           created_on_os_version, main_key_optional.value());
+                           created_on_os_version, user_metadata.value(),
+                           main_key_optional.value());
   if (!stash.ok()) {
     // Note: the error is already logged.
     return MakeStatus<CryptohomeError>(
@@ -669,6 +688,7 @@ UserSecretStash::FromEncryptedContainerWithWrappingKey(
                    kLocUSSFromPayloadFailedInFromEncContainerWithWK))
         .Wrap(std::move(stash).status());
   }
+
   *main_key = main_key_optional.value();
   return std::move(stash).value();
 }
@@ -676,6 +696,21 @@ UserSecretStash::FromEncryptedContainerWithWrappingKey(
 // static
 brillo::SecureBlob UserSecretStash::CreateRandomMainKey() {
   return CreateSecureRandomBlob(kAesGcm256KeySize);
+}
+
+// static
+CryptohomeStatusOr<UserMetadata> UserSecretStash::GetUserMetadata(
+    const brillo::Blob& flatbuffer) {
+  std::optional<UserSecretStashContainer> deserialized =
+      UserSecretStashContainer::Deserialize(flatbuffer);
+  if (!deserialized.has_value()) {
+    LOG(ERROR) << "Failed to deserialize UserSecretStashContainer";
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(kLocUSSDeserializeFailedInGeUserMetadata),
+        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+  }
+  return deserialized.value().user_metadata;
 }
 
 const FileSystemKeyset& UserSecretStash::GetFileSystemKeyset() const {
@@ -850,6 +885,7 @@ CryptohomeStatusOr<brillo::Blob> UserSecretStash::GetEncryptedContainer(
       .iv = brillo::Blob(iv.begin(), iv.end()),
       .gcm_tag = brillo::Blob(tag.begin(), tag.end()),
       .created_on_os_version = created_on_os_version_,
+      .user_metadata = user_metadata_,
   };
   // Note: It can happen that the USS container is created with empty
   // |wrapped_key_blocks_| - they may be added later, when the user registers
@@ -876,6 +912,18 @@ CryptohomeStatusOr<brillo::Blob> UserSecretStash::GetEncryptedContainer(
         user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
   }
   return serialized_contaner.value();
+}
+
+std::optional<uint64_t> UserSecretStash::GetFingerprintRateLimiterId() {
+  return user_metadata_.fingerprint_rate_limiter_id;
+}
+
+bool UserSecretStash::InitializeFingerprintRateLimiterId(uint64_t id) {
+  if (user_metadata_.fingerprint_rate_limiter_id.has_value()) {
+    return false;
+  }
+  user_metadata_.fingerprint_rate_limiter_id = id;
+  return true;
 }
 
 UserSecretStash::UserSecretStash(

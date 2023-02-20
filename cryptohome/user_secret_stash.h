@@ -13,7 +13,6 @@
 #include <optional>
 #include <string>
 
-#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
 #include "cryptohome/storage/file_system_keyset.h"
@@ -124,6 +123,12 @@ class UserSecretStash {
                                         const brillo::SecureBlob& wrapping_key,
                                         brillo::SecureBlob* main_key);
 
+  // Parse UserMetadata from the container flatbuffer. This would allow direct
+  // access of UserMetadata before the USS container is decrypted and
+  // the struct UserSecretStash is loaded into the memory.
+  static CryptohomeStatusOr<UserMetadata> GetUserMetadata(
+      const brillo::Blob& flatbuffer);
+
   // Randomly generates a USS Main Key. This is intended to be used when
   // creating a fresh USS via |CreateRandom()|.
   static brillo::SecureBlob CreateRandomMainKey();
@@ -152,6 +157,12 @@ class UserSecretStash {
   // true otherwise.
   // TODO(b/238897234): Move this to RemoveWrappedMainKey.
   bool RemoveResetSecretForLabel(const std::string& label);
+
+  std::optional<uint64_t> GetFingerprintRateLimiterId();
+
+  // Overwrite an existing id is prohibited. Returns if the initialization
+  // succeeds.
+  [[nodiscard]] bool InitializeFingerprintRateLimiterId(uint64_t id);
 
   // The OS version on which this particular user secret stash was originally
   // created. The format is the one of the CHROMEOS_RELEASE_VERSION field in
@@ -199,6 +210,7 @@ class UserSecretStash {
       const brillo::Blob& gcm_tag,
       const std::map<std::string, WrappedKeyBlock>& wrapped_key_blocks,
       const std::string& created_on_os_version,
+      const UserMetadata& user_metadata,
       const brillo::SecureBlob& main_key);
 
   UserSecretStash(
@@ -220,6 +232,8 @@ class UserSecretStash {
   std::string created_on_os_version_;
   // The reset secrets corresponding to each auth factor, by label.
   std::map<std::string, brillo::SecureBlob> reset_secrets_;
+  // user metadata
+  UserMetadata user_metadata_;
 };
 
 }  // namespace cryptohome

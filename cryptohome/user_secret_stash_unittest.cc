@@ -300,6 +300,52 @@ TEST_F(UserSecretStashTest, EncryptAndDecryptUSSViaWrappedKey) {
   EXPECT_EQ(unwrapped_main_key, kMainKey);
 }
 
+TEST_F(UserSecretStashTest, EncryptAndDecryptUSSWithUserMetadata) {
+  uint64_t fake_fp_rlimiter_id = 123;
+  ASSERT_TRUE(stash_->InitializeFingerprintRateLimiterId(fake_fp_rlimiter_id));
+
+  CryptohomeStatusOr<brillo::Blob> uss_container =
+      stash_->GetEncryptedContainer(kMainKey);
+  ASSERT_TRUE(uss_container.ok());
+
+  CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> stash2 =
+      UserSecretStash::FromEncryptedContainer(uss_container.value(), kMainKey);
+  ASSERT_TRUE(stash2.ok());
+
+  EXPECT_THAT(stash_->GetFileSystemKeyset(),
+              FileSystemKeysetEquals(stash2.value()->GetFileSystemKeyset()));
+  EXPECT_EQ(stash2.value()->GetFingerprintRateLimiterId(), fake_fp_rlimiter_id);
+}
+
+TEST_F(UserSecretStashTest, ReadUserMetadataFromEncryptedUSS) {
+  uint64_t fake_fp_rlimiter_id = 123;
+  ASSERT_TRUE(stash_->InitializeFingerprintRateLimiterId(fake_fp_rlimiter_id));
+
+  CryptohomeStatusOr<brillo::Blob> uss_container =
+      stash_->GetEncryptedContainer(kMainKey);
+  ASSERT_TRUE(uss_container.ok());
+  CryptohomeStatusOr<UserMetadata> user_metadata =
+      UserSecretStash::GetUserMetadata(uss_container.value());
+  ASSERT_TRUE(user_metadata.ok());
+
+  EXPECT_EQ(user_metadata.value().fingerprint_rate_limiter_id,
+            fake_fp_rlimiter_id);
+}
+
+TEST_F(UserSecretStashTest, EncryptAndDecryptUSSWithNoFingerprintRateLimiter) {
+  CryptohomeStatusOr<brillo::Blob> uss_container =
+      stash_->GetEncryptedContainer(kMainKey);
+  ASSERT_TRUE(uss_container.ok());
+
+  CryptohomeStatusOr<std::unique_ptr<UserSecretStash>> stash2 =
+      UserSecretStash::FromEncryptedContainer(uss_container.value(), kMainKey);
+  ASSERT_TRUE(stash2.ok());
+
+  EXPECT_THAT(stash_->GetFileSystemKeyset(),
+              FileSystemKeysetEquals(stash2.value()->GetFileSystemKeyset()));
+  EXPECT_EQ(stash2.value()->GetFingerprintRateLimiterId(), std::nullopt);
+}
+
 // Test the USS experiment state is off by default, but can be toggled in tests.
 TEST_F(UserSecretStashTest, ExperimentState) {
   // The experiment is off by default.
@@ -419,6 +465,21 @@ TEST_F(UserSecretStashTest, RemoveResetSecretForLabel) {
   EXPECT_EQ(reset_secret2, stash_->GetResetSecretForLabel("label2").value());
   // Reset secret for label1 can be inserted again.
   EXPECT_TRUE(stash_->SetResetSecretForLabel("label1", reset_secret1));
+}
+
+TEST_F(UserSecretStashTest, GetInitializeFingerprintRateLimiterId) {
+  uint64_t fake_id = 123;
+  // stash_ is freshly prepared, so it does not have
+  // the fingerprint rate limter id.
+  ASSERT_EQ(stash_->GetFingerprintRateLimiterId(), std::nullopt);
+
+  // Set the id for the first time should succeed.
+  ASSERT_TRUE(stash_->InitializeFingerprintRateLimiterId(fake_id));
+  ASSERT_EQ(stash_->GetFingerprintRateLimiterId(), fake_id);
+
+  // Set the id for the 2nd time should fail.
+  ASSERT_FALSE(stash_->InitializeFingerprintRateLimiterId(0));
+  ASSERT_EQ(stash_->GetFingerprintRateLimiterId(), fake_id);
 }
 
 // Fixture that helps to read/manipulate the USS flatbuffer's internals using

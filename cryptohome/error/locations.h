@@ -1603,6 +1603,12 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionLabelLookupUnimplemented = 3523,
   /* ./userdataauth.cc */
   kLocUserDataMalformedRequestInAuthAuthFactor = 3524,
+  /* ./user_secret_stash.cc */
+  kLocUSSDeserializeFailedInGeUserMetadata = 3525,
+  /* ./user_secret_stash.cc */
+  kLocUSSGetUserMetadataFailedInFromEncContainer = 3526,
+  /* ./user_secret_stash.cc */
+  kLocUSSGetUserMetadataFailedInFromEncContainerWrappingKey = 3527,
   // End of generated content.
 };
 // The enum value should not exceed 65535, otherwise we need to adjust the way
