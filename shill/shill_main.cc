@@ -37,8 +37,6 @@ const char kDevicesBlocked[] = "devices-blocked";
 const char kDevicesAllowed[] = "devices-allowed";
 // Ignore Ethernet-like devices that don't have any driver information.
 const char kIgnoreUnknownEthernet[] = "ignore-unknown-ethernet";
-// Technologies to enable for portal check at startup.
-const char kPortalList[] = "portal-list";
 // When in passive mode, Shill will not manage any devices by default.
 // Remote service can instruct Shill to manage/unmanage devices through
 // org.chromium.flimflam.Manager's ClaimInterface/ReleaseInterface APIs.
@@ -66,8 +64,6 @@ const char kHelpMessage[] =
     "      -1 = SLOG(..., 1), -2 = SLOG(..., 2), etc.\n"
     "  --log-scopes=\"*scope1+scope2\".\n"
     "    Scopes to enable for SLOG()-based logging.\n"
-    "  --portal-list=technology1,technology2\n"
-    "    Specify technologies to perform portal detection on at startup.\n"
     "  --passive-mode\n"
     "    Do not manage any devices by default\n"
     "  --default-technology-order=technology1,technology2\n"
@@ -162,11 +158,6 @@ int main(int argc, char** argv) {
 
   settings.ignore_unknown_ethernet =
       cl->HasSwitch(switches::kIgnoreUnknownEthernet);
-
-  if (cl->HasSwitch(switches::kPortalList)) {
-    settings.use_portal_list = true;
-    settings.portal_list = cl->GetSwitchValueASCII(switches::kPortalList);
-  }
 
   settings.passive_mode = cl->HasSwitch(switches::kPassiveMode);
 

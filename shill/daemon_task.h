@@ -36,17 +36,11 @@ class DaemonTask {
  public:
   // Run-time settings retrieved from command line.
   struct Settings {
-    Settings()
-        : ignore_unknown_ethernet(false),
-          passive_mode(false),
-          use_portal_list(false) {}
     std::string default_technology_order;
     std::vector<std::string> devices_blocked;
     std::vector<std::string> devices_allowed;
-    bool ignore_unknown_ethernet;
-    bool passive_mode;
-    std::string portal_list;
-    bool use_portal_list;
+    bool ignore_unknown_ethernet = false;
+    bool passive_mode = false;
   };
 
   DaemonTask(const Settings& settings, Config* config);

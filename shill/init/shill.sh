@@ -41,12 +41,6 @@ if [ -n "${SHILL_PASSIVE_MODE}" ]; then
   set -- "$@" --passive-mode
 fi
 
-# If OOBE has not completed (i.e. EULA not agreed to), do not run
-# portal checks
-if [ ! -f /home/chronos/.oobe_completed ]; then
-  set -- "$@" --portal-list=
-fi
-
 # Run shill as shill user/group in a minijail:
 #   -G so shill programs can inherit supplementary groups.
 #   -n to run shill with no_new_privs.

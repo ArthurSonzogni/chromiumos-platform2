@@ -182,7 +182,6 @@ Manager::Manager(ControlInterface* control_interface,
 #if !defined(DISABLE_FLOSS)
       bluetooth_manager_(new BluetoothManager(control_interface)),
 #endif  // DISABLE_FLOSS
-      use_startup_portal_list_(false),
       device_status_check_task_(
           base::Bind(&Manager::DeviceStatusCheckTask, base::Unretained(this))),
       pending_traffic_counter_request_(false),
@@ -1017,11 +1016,6 @@ bool Manager::IsTechnologyInList(const std::string& technology_list,
 
 bool Manager::IsPortalDetectionEnabled(Technology tech) {
   return IsTechnologyInList(GetCheckPortalList(nullptr), tech);
-}
-
-void Manager::SetStartupPortalList(const std::string& portal_list) {
-  startup_portal_list_ = portal_list;
-  use_startup_portal_list_ = true;
 }
 
 bool Manager::IsProfileBefore(const ProfileRefPtr& a,
@@ -2321,12 +2315,10 @@ RpcIdentifier Manager::GetActiveProfileRpcIdentifier(Error* /*error*/) {
 }
 
 std::string Manager::GetCheckPortalList(Error* /*error*/) {
-  return use_startup_portal_list_ ? startup_portal_list_
-                                  : props_.check_portal_list;
+  return props_.check_portal_list;
 }
 
 bool Manager::SetCheckPortalList(const std::string& portal_list, Error* error) {
-  use_startup_portal_list_ = false;
   if (props_.check_portal_list == portal_list) {
     return false;
   }

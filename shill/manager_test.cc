@@ -3045,25 +3045,16 @@ TEST_F(ManagerTest, RefreshConnectionState) {
   RefreshConnectionState();
 }
 
-TEST_F(ManagerTest, StartupPortalList) {
-  // Simulate loading value from the default profile.
+TEST_F(ManagerTest, SetCheckPortalListProp) {
+  // Simulate loading value from the default profile and check what we
+  // read back.
   const std::string kProfileValue("wifi,vpn");
   manager()->props_.check_portal_list = kProfileValue;
 
   EXPECT_EQ(kProfileValue, manager()->GetCheckPortalList(nullptr));
+  EXPECT_EQ(kProfileValue, manager()->props_.check_portal_list);
   EXPECT_TRUE(manager()->IsPortalDetectionEnabled(Technology::kWiFi));
   EXPECT_FALSE(manager()->IsPortalDetectionEnabled(Technology::kCellular));
-
-  const std::string kStartupValue("cellular,ethernet");
-  manager()->SetStartupPortalList(kStartupValue);
-  // Ensure profile value is not overwritten, so when we save the default
-  // profile, the correct value will still be written.
-  EXPECT_EQ(kProfileValue, manager()->props_.check_portal_list);
-
-  // However we should read back a different list.
-  EXPECT_EQ(kStartupValue, manager()->GetCheckPortalList(nullptr));
-  EXPECT_FALSE(manager()->IsPortalDetectionEnabled(Technology::kWiFi));
-  EXPECT_TRUE(manager()->IsPortalDetectionEnabled(Technology::kCellular));
 
   const std::string kRuntimeValue("ppp");
   // Setting a runtime value over the control API should overwrite both

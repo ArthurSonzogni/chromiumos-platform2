@@ -326,11 +326,6 @@ class Manager {
                                     const ResultCallback& callback);
   // Return whether a technology is marked as enabled for portal detection.
   virtual bool IsPortalDetectionEnabled(Technology tech);
-  // Set the start-up value for the portal detection list.  This list will
-  // be used until a value set explicitly over the control API.  Until
-  // then, we ignore but do not overwrite whatever value is stored in the
-  // profile.
-  virtual void SetStartupPortalList(const std::string& portal_list);
 
   // Returns true if profile |a| has been pushed on the Manager's
   // |profiles_| stack before profile |b|.
@@ -597,8 +592,8 @@ class Manager {
   FRIEND_TEST(ManagerTest, RunTerminationActions);
   FRIEND_TEST(ManagerTest, ServiceRegistration);
   FRIEND_TEST(ManagerTest, SetAlwaysOnVpnPackage);
+  FRIEND_TEST(ManagerTest, SetCheckPortalListProp);
   FRIEND_TEST(ManagerTest, SortServicesWithConnection);
-  FRIEND_TEST(ManagerTest, StartupPortalList);
   FRIEND_TEST(ManagerTest, SetDNSProxyAddresses);
   FRIEND_TEST(ManagerTest, TetheringLoadAndUnloadConfiguration);
   FRIEND_TEST(ServiceTest, IsAutoConnectable);
@@ -847,13 +842,6 @@ class Manager {
   // This is the last Service RPC Identifier for which we emitted a
   // "DefaultService" signal for.
   RpcIdentifier default_service_rpc_identifier_;
-
-  // Manager can be optionally configured with a list of technologies to
-  // do portal detection on at startup.  We need to keep track of that list
-  // as well as a flag that tells us whether we should continue using it
-  // instead of the configured portal list.
-  std::string startup_portal_list_;
-  bool use_startup_portal_list_;
 
   // Properties to be get/set via PropertyStore calls.
   ManagerProperties props_;
