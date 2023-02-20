@@ -1188,38 +1188,38 @@ def _build_health_routines(health_config, hw_topo):
     Returns:
         health routines configuration.
     """
-    if not health_config.HasField("routines"):
-        return None
 
-    routines = health_config.routines
     result = {}
 
-    if routines.HasField("battery_health"):
-        battery_health_result = {}
-        _upsert(
-            routines.battery_health.percent_battery_wear_allowed,
-            battery_health_result,
-            "percent-battery-wear-allowed",
-        )
-        _upsert(battery_health_result, result, "battery-health")
-    if routines.HasField("nvme_wear_level"):
-        nvme_wear_level_result = {}
-        _upsert(
-            routines.nvme_wear_level.wear_level_threshold,
-            nvme_wear_level_result,
-            "wear-level-threshold",
-        )
-        _upsert(nvme_wear_level_result, result, "nvme-wear-level")
+    if health_config.HasField("routines"):
+        routines = health_config.routines
+        if routines.HasField("battery_health"):
+            battery_health_result = {}
+            _upsert(
+                routines.battery_health.percent_battery_wear_allowed,
+                battery_health_result,
+                "percent-battery-wear-allowed",
+            )
+            _upsert(battery_health_result, result, "battery-health")
+        if routines.HasField("nvme_wear_level"):
+            nvme_wear_level_result = {}
+            _upsert(
+                routines.nvme_wear_level.wear_level_threshold,
+                nvme_wear_level_result,
+                "wear-level-threshold",
+            )
+            _upsert(nvme_wear_level_result, result, "nvme-wear-level")
 
-    fingerprint = hw_topo.fingerprint.hardware_feature.fingerprint
-    if fingerprint.HasField("fingerprint_diag"):
-        _upsert(
-            _build_health_routines_fingerprint_diag(
-                fingerprint.fingerprint_diag
-            ),
-            result,
-            "fingerprint-diag",
-        )
+    if hw_topo.HasField("fingerprint"):
+        fingerprint = hw_topo.fingerprint.hardware_feature.fingerprint
+        if fingerprint.HasField("fingerprint_diag"):
+            _upsert(
+                _build_health_routines_fingerprint_diag(
+                    fingerprint.fingerprint_diag
+                ),
+                result,
+                "fingerprint-diag",
+            )
 
     return result
 
