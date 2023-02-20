@@ -80,6 +80,9 @@ A `Port` can be detailed as follows:
   (sysfs path info)                    Partner                   Cable
 ```
 
+NOTE: In order to retrieve DisplayPort status (Hotplug Detect, Mux state) from the EC to synthesize a metric, `Port` also holds
+a pointer to the `ECUtil` class (it is set by `PortManager` immediately after `Port` creation).
+
 ##### Partner
 
 This class represents a device/peripheral connected to a `Port`. There can only be 1 partner for each `Port`. Each `Partner` has

@@ -115,6 +115,8 @@ class Port {
   }
   bool GetActiveStateOnModeEntry() { return user_active_on_mode_entry_; }
 
+  void SetECUtil(ECUtil* ec_util) { ec_util_ = ec_util; }
+
   // Returns the current data role for the port.
   virtual DataRole GetDataRole();
 
@@ -288,6 +290,8 @@ class Port {
 
   // Cancelable callback for metrics reporting.
   base::CancelableOnceClosure report_metrics_callback_;
+
+  ECUtil* ec_util_;
 };
 
 }  // namespace typecd

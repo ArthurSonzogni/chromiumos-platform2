@@ -64,6 +64,7 @@ void PortManager::OnPortAddedOrRemoved(const base::FilePath& path,
 
     auto new_port = std::make_unique<Port>(path, port_num);
     new_port->SetSupportsUSB4(supports_usb4_);
+    new_port->SetECUtil(ec_util_);
     ports_.emplace(port_num, std::move(new_port));
   } else {
     if (it == ports_.end()) {
