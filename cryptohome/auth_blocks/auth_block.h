@@ -9,7 +9,7 @@
 
 #include <base/functional/callback.h>
 
-#include "cryptohome/error/cryptohome_crypto_error.h"
+#include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/vault_keyset.h"
@@ -31,7 +31,7 @@ class AuthBlock {
   // |error| will be an ok status. On failure, error will be populated,
   // and should not rely on the value of key_blobs and auth_block_state.
   using CreateCallback = base::OnceCallback<void(
-      CryptoStatus error,
+      CryptohomeStatus error,
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_block_state)>;
 
@@ -48,7 +48,7 @@ class AuthBlock {
   // KeyBlobs and |error| will be an ok status. On failure, error will be
   // populated, and should not rely on the value of key_blobs.
   using DeriveCallback = base::OnceCallback<void(
-      CryptoStatus error, std::unique_ptr<KeyBlobs> key_blobs)>;
+      CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs)>;
 
   // This is implemented by concrete auth methods to map the user secret
   // input/credentials into a key.
@@ -63,7 +63,7 @@ class AuthBlock {
 
   // This is implemented by concrete auth factor methods which need to execute
   // additional steps before removal of the AuthFactor from disk.
-  virtual CryptoStatus PrepareForRemoval(const AuthBlockState& state) {
+  virtual CryptohomeStatus PrepareForRemoval(const AuthBlockState& state) {
     // By default, do nothing. Subclasses can provide custom behavior.
     return hwsec_foundation::status::OkStatus<error::CryptohomeCryptoError>();
   }
@@ -102,9 +102,9 @@ class SyncAuthBlock {
 
   // This is implemented by concrete auth factor methods which need to execute
   // additional steps before removal of the AuthFactor from disk.
-  virtual CryptoStatus PrepareForRemoval(const AuthBlockState& state) {
+  virtual CryptohomeStatus PrepareForRemoval(const AuthBlockState& state) {
     // By default, do nothing. Subclasses can provide custom behavior.
-    return hwsec_foundation::status::OkStatus<error::CryptohomeCryptoError>();
+    return hwsec_foundation::status::OkStatus<error::CryptohomeError>();
   }
 
   DerivationType derivation_type() const { return derivation_type_; }

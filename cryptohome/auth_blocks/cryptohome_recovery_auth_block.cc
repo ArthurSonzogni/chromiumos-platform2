@@ -376,7 +376,7 @@ CryptoStatus CryptohomeRecoveryAuthBlock::Derive(const AuthInput& auth_input,
   return OkStatus<CryptohomeCryptoError>();
 }
 
-CryptoStatus CryptohomeRecoveryAuthBlock::PrepareForRemoval(
+CryptohomeStatus CryptohomeRecoveryAuthBlock::PrepareForRemoval(
     const AuthBlockState& state) {
   CryptoStatus crypto_err = PrepareForRemovalInternal(state);
   if (!crypto_err.ok()) {

@@ -384,7 +384,7 @@ void AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlockAsync(
   AuthBlock* auth_block_ptr = auth_block->get();
   auto managed_callback = base::BindOnce(
       [](std::unique_ptr<AuthBlock> owned_auth_block,
-         AuthBlock::CreateCallback callback, CryptoStatus error,
+         AuthBlock::CreateCallback callback, CryptohomeStatus error,
          std::unique_ptr<KeyBlobs> key_blobs,
          std::unique_ptr<AuthBlockState> auth_block_state) {
         std::move(callback).Run(std::move(error), std::move(key_blobs),
@@ -479,7 +479,7 @@ void AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlockAsync(
   AuthBlock* auth_block_ptr = auth_block->get();
   auto managed_callback = base::BindOnce(
       [](std::unique_ptr<AuthBlock> owned_auth_block,
-         AuthBlock::DeriveCallback callback, CryptoStatus error,
+         AuthBlock::DeriveCallback callback, CryptohomeStatus error,
          std::unique_ptr<KeyBlobs> key_blobs) {
         std::move(callback).Run(std::move(error), std::move(key_blobs));
       },
@@ -825,7 +825,7 @@ base::flat_set<AuthIntent> AuthBlockUtilityImpl::GetSupportedIntentsFromState(
   return supported_intents;
 }
 
-CryptoStatus AuthBlockUtilityImpl::PrepareAuthBlockForRemoval(
+CryptohomeStatus AuthBlockUtilityImpl::PrepareAuthBlockForRemoval(
     const AuthBlockState& auth_block_state) {
   AuthBlockType auth_block_type = GetAuthBlockTypeFromState(auth_block_state);
   if (auth_block_type == AuthBlockType::kMaxValue) {
@@ -841,7 +841,7 @@ CryptoStatus AuthBlockUtilityImpl::PrepareAuthBlockForRemoval(
   // removal of the AuthBlock needed. Because of this, auth_input
   // can be an empty input.
   if (auth_block_type == AuthBlockType::kChallengeCredential) {
-    return OkStatus<CryptohomeCryptoError>();
+    return OkStatus<CryptohomeError>();
   }
 
   AuthInput auth_input;

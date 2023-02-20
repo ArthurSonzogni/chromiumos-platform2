@@ -29,6 +29,9 @@ bool ContainsActionInStack(
 
 // Instantiate for common types.
 template bool ContainsActionInStack(
+    const hwsec_foundation::status::StatusChain<CryptohomeError>& error,
+    const ErrorAction action);
+template bool ContainsActionInStack(
     const hwsec_foundation::status::StatusChain<CryptohomeCryptoError>& error,
     const ErrorAction action);
 template bool ContainsActionInStack(const hwsec_foundation::status::StatusChain<

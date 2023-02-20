@@ -452,7 +452,7 @@ void AuthSession::CreateAndPersistVaultKeyset(
     AuthInput auth_input,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done,
-    CryptoStatus callback_error,
+    CryptohomeStatus callback_error,
     std::unique_ptr<KeyBlobs> key_blobs,
     std::unique_ptr<AuthBlockState> auth_state) {
   // callback_error, key_blobs and auth_state are returned by
@@ -578,7 +578,7 @@ void AuthSession::UpdateVaultKeyset(
     const AuthInput& auth_input,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done,
-    CryptoStatus callback_error,
+    CryptohomeStatus callback_error,
     std::unique_ptr<KeyBlobs> key_blobs,
     std::unique_ptr<AuthBlockState> auth_state) {
   if (!callback_error.ok() || key_blobs == nullptr || auth_state == nullptr) {
@@ -674,7 +674,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
     const AuthFactorMetadata& metadata,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done,
-    CryptoStatus status,
+    CryptohomeStatus status,
     std::unique_ptr<KeyBlobs> key_blobs) {
   if (!status.ok() || !key_blobs) {
     // For LE credentials, if deriving the key blobs failed due to too many
@@ -1383,7 +1383,7 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
     const AuthInput& auth_input,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done,
-    CryptoStatus callback_error,
+    CryptohomeStatus callback_error,
     std::unique_ptr<KeyBlobs> key_blobs,
     std::unique_ptr<AuthBlockState> auth_block_state) {
   user_data_auth::UpdateAuthFactorReply reply;
@@ -1809,7 +1809,7 @@ AuthBlockType AuthSession::ResaveVaultKeysetIfNeeded(
 
 void AuthSession::ResaveKeysetOnKeyBlobsGenerated(
     VaultKeyset updated_vault_keyset,
-    CryptoStatus error,
+    CryptohomeStatus error,
     std::unique_ptr<KeyBlobs> key_blobs,
     std::unique_ptr<AuthBlockState> auth_block_state) {
   if (!error.ok() || key_blobs == nullptr || auth_block_state == nullptr) {
@@ -1999,7 +1999,7 @@ void AuthSession::PersistAuthFactorToUserSecretStash(
     const KeyData& key_data,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done,
-    CryptoStatus callback_error,
+    CryptohomeStatus callback_error,
     std::unique_ptr<KeyBlobs> key_blobs,
     std::unique_ptr<AuthBlockState> auth_block_state) {
   CryptohomeStatus status = PersistAuthFactorToUserSecretStashImpl(
@@ -2020,7 +2020,7 @@ void AuthSession::PersistAuthFactorToUserSecretStashOnMigration(
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done,
     CryptohomeStatus pre_migration_status,
-    CryptoStatus callback_error,
+    CryptohomeStatus callback_error,
     std::unique_ptr<KeyBlobs> key_blobs,
     std::unique_ptr<AuthBlockState> auth_block_state) {
   // During the migration existing VaultKeyset should be recreated with the
@@ -2083,7 +2083,7 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
     const AuthInput& auth_input,
     const KeyData& key_data,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
-    CryptoStatus callback_error,
+    CryptohomeStatus callback_error,
     std::unique_ptr<KeyBlobs> key_blobs,
     std::unique_ptr<AuthBlockState> auth_block_state) {
   // Check the status of the callback error, to see if the key blob creation was
@@ -2564,7 +2564,7 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
     const AuthInput& auth_input,
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done,
-    CryptoStatus callback_error,
+    CryptohomeStatus callback_error,
     std::unique_ptr<KeyBlobs> key_blobs) {
   // Check the status of the callback error, to see if the key blob derivation
   // was actually successful.

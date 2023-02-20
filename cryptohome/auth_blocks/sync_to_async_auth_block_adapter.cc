@@ -46,7 +46,7 @@ void SyncToAsyncAuthBlockAdapter::Derive(const AuthInput& user_input,
                           std::move(key_blobs));
 }
 
-CryptoStatus SyncToAsyncAuthBlockAdapter::PrepareForRemoval(
+CryptohomeStatus SyncToAsyncAuthBlockAdapter::PrepareForRemoval(
     const AuthBlockState& state) {
   return delegate_->PrepareForRemoval(state);
 }

@@ -45,6 +45,7 @@
 #include "cryptohome/crypto_error.h"
 #include "cryptohome/cryptorecovery/recovery_crypto.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
+#include "cryptohome/error/utilities.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/username.h"
 
@@ -72,7 +73,7 @@ bool TestPasswordBasedAuthBlock(SyncAuthBlock& auth_block) {
   // Create auth block state.
   AuthBlockState auth_block_state;
   KeyBlobs key_blobs;
-  CryptoStatus creation_status =
+  CryptohomeStatus creation_status =
       auth_block.Create(AuthInput{.user_input = SecureBlob(kPassword),
                                   .obfuscated_username = kObfuscatedUsername},
                         &auth_block_state, &key_blobs);
@@ -87,7 +88,7 @@ bool TestPasswordBasedAuthBlock(SyncAuthBlock& auth_block) {
 
   // Check derivation using the correct password.
   KeyBlobs derived_key_blobs;
-  CryptoStatus derivation_status =
+  CryptohomeStatus derivation_status =
       auth_block.Derive(AuthInput{.user_input = SecureBlob(kPassword),
                                   .obfuscated_username = kObfuscatedUsername},
                         auth_block_state, &derived_key_blobs);
@@ -116,10 +117,10 @@ bool TestPasswordBasedAuthBlock(SyncAuthBlock& auth_block) {
     LOG(ERROR) << "Derivation succeeded despite wrong password";
     return false;
   }
-  if (derivation_status->local_crypto_error() != CryptoError::CE_TPM_CRYPTO) {
-    LOG(ERROR) << "Derivation with wrong password returned wrong error: "
-               << derivation_status->local_crypto_error() << ", expected "
-               << CryptoError::CE_TPM_CRYPTO;
+  if (!error::ContainsActionInStack(derivation_status.err_status(),
+                                    error::ErrorAction::kIncorrectAuth)) {
+    LOG(ERROR) << "Derivation with wrong password returned wrong action: "
+               << derivation_status.status();
     return false;
   }
 

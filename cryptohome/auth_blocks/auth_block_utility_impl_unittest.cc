@@ -52,6 +52,7 @@
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_impl.h"
+#include "cryptohome/error/utilities.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/fingerprint_manager.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
@@ -73,6 +74,7 @@ namespace {
 
 using ::base::test::TestFuture;
 using ::brillo::cryptohome::home::SanitizeUserName;
+using ::cryptohome::error::ContainsActionInStack;
 using ::cryptohome::error::CryptohomeCryptoError;
 using ::cryptohome::error::CryptohomeLECredError;
 using ::hwsec::TPMErrorBase;
@@ -1202,7 +1204,7 @@ TEST_F(AuthBlockUtilityImplTest, SyncToAsyncAdapterCreate) {
   MakeAuthBlockUtilityImpl();
 
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
-      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs,
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
           std::unique_ptr<AuthBlockState> auth_state) {
         // Evaluate results of KeyBlobs and AuthBlockState returned by callback.
         EXPECT_TRUE(error.ok());
@@ -1257,7 +1259,7 @@ TEST_F(AuthBlockUtilityImplTest, SyncToAsyncAdapterDerive) {
 
   // Test.
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
-      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs) {
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs) {
         // Evaluate results of KeyBlobs returned by callback.
         EXPECT_TRUE(error.ok());
         EXPECT_NE(blobs->vkk_key, std::nullopt);
@@ -1298,7 +1300,7 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialCreate) {
       &challenge_credentials_helper_, &key_challenge_service_factory_);
 
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
-      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs,
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
           std::unique_ptr<AuthBlockState> auth_state) {
         // Evaluate results of KeyBlobs and AuthBlockState returned by callback.
         EXPECT_TRUE(error.ok());
@@ -1430,7 +1432,7 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialDerive) {
       &challenge_credentials_helper_, &key_challenge_service_factory_);
   // Test.
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
-      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs) {
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs) {
         ASSERT_TRUE(error.ok());
         EXPECT_EQ(derived_key, blobs->vkk_key);
         EXPECT_EQ(derived_chaps_key, blobs->scrypt_chaps_key);
@@ -1451,7 +1453,7 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialDerive) {
 }
 
 // Test that CreateKeyBlobsWithAuthBlockAsync fails, callback
-// returns CE_OTHER_CRYPTO and nullptrs for AuthBlockState and
+// returns kDevCheckUnexpectedState and nullptrs for AuthBlockState and
 // KeyBlobs.
 TEST_F(AuthBlockUtilityImplTest, CreateKeyBlobsWithAuthBlockAsyncFails) {
   // Setup test inputs and the mock expectations.
@@ -1468,10 +1470,11 @@ TEST_F(AuthBlockUtilityImplTest, CreateKeyBlobsWithAuthBlockAsyncFails) {
       credentials.username(), std::nullopt /*reset_secret*/};
 
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
-      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs,
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
           std::unique_ptr<AuthBlockState> auth_state) {
         // Evaluate results of KeyBlobs and AuthBlockState returned by callback.
-        EXPECT_EQ(error->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
+        EXPECT_TRUE(ContainsActionInStack(
+            error.err_status(), error::ErrorAction::kDevCheckUnexpectedState));
         EXPECT_EQ(blobs, nullptr);
         EXPECT_EQ(auth_state, nullptr);
       });

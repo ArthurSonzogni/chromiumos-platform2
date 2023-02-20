@@ -32,7 +32,7 @@ class SyncToAsyncAuthBlockAdapter : public AuthBlock {
 
   // Calls the AuthBlock::PrepareForRemoval() on delegate_. AuthBlockState
   // must be the one returned from Create().
-  CryptoStatus PrepareForRemoval(const AuthBlockState& state) override;
+  CryptohomeStatus PrepareForRemoval(const AuthBlockState& state) override;
 
  private:
   // The synchronous auth block to be called.

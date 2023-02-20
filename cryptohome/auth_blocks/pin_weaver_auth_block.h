@@ -33,7 +33,7 @@ class PinWeaverAuthBlock : public SyncAuthBlock {
 
   // Removing the underlying Pinweaver leaf node before the AuthFactor is
   // removed.
-  CryptoStatus PrepareForRemoval(const AuthBlockState& state) override;
+  CryptohomeStatus PrepareForRemoval(const AuthBlockState& state) override;
 
   bool IsLocked(uint64_t label);
 

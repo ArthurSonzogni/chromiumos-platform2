@@ -32,6 +32,7 @@
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/challenge_credentials/signature_sealing_test_utils.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
+#include "cryptohome/error/utilities.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/mock_key_challenge_service.h"
@@ -39,6 +40,7 @@
 #include "cryptohome/proto_bindings/rpc.pb.h"
 #include "cryptohome/username.h"
 
+using cryptohome::error::ContainsActionInStack;
 using cryptohome::error::CryptohomeTPMError;
 using cryptohome::error::ErrorAction;
 using cryptohome::error::ErrorActionSet;
@@ -66,7 +68,7 @@ MATCHER_P(ChallengeAlgorithmIs, algorithm, "") {
 
 void VerifyCreateCallback(base::RunLoop* run_loop,
                           AuthInput* auth_input,
-                          CryptoStatus error,
+                          CryptohomeStatus error,
                           std::unique_ptr<KeyBlobs> blobs,
                           std::unique_ptr<AuthBlockState> auth_state) {
   ASSERT_TRUE(error.ok());
@@ -186,9 +188,10 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, CreateCredentialsFailed) {
 
   base::RunLoop run_loop;
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
-      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs,
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
           std::unique_ptr<AuthBlockState> auth_state) {
-        EXPECT_EQ(error->local_crypto_error(), CryptoError::CE_TPM_CRYPTO);
+        EXPECT_TRUE(ContainsActionInStack(error.err_status(),
+                                          ErrorAction::kIncorrectAuth));
         run_loop.Quit();
       });
 
@@ -247,10 +250,11 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, MutipleCreateFailed) {
 
   base::RunLoop run_loop2;
   AuthBlock::CreateCallback create_callback2 = base::BindLambdaForTesting(
-      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs,
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
           std::unique_ptr<AuthBlockState> auth_state) {
         // The second create would failed.
-        EXPECT_EQ(error->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
+        EXPECT_TRUE(ContainsActionInStack(
+            error.err_status(), ErrorAction::kDevCheckUnexpectedState));
         run_loop2.Quit();
       });
 
@@ -264,9 +268,10 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, MutipleCreateFailed) {
 TEST_F(AsyncChallengeCredentialAuthBlockTest, CreateMissingObfuscatedUsername) {
   base::RunLoop run_loop;
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
-      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs,
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
           std::unique_ptr<AuthBlockState> auth_state) {
-        EXPECT_EQ(error->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
+        EXPECT_TRUE(ContainsActionInStack(
+            error.err_status(), ErrorAction::kDevCheckUnexpectedState));
         run_loop.Quit();
       });
 
@@ -290,9 +295,10 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest,
        CreateMissingChallengeCredentialAuthInput) {
   base::RunLoop run_loop;
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
-      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs,
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
           std::unique_ptr<AuthBlockState> auth_state) {
-        EXPECT_EQ(error->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
+        EXPECT_TRUE(ContainsActionInStack(
+            error.err_status(), ErrorAction::kDevCheckUnexpectedState));
         run_loop.Quit();
       });
 
@@ -308,9 +314,10 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest,
 TEST_F(AsyncChallengeCredentialAuthBlockTest, CreateMissingAlgorithm) {
   base::RunLoop run_loop;
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
-      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs,
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
           std::unique_ptr<AuthBlockState> auth_state) {
-        EXPECT_EQ(error->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
+        EXPECT_TRUE(ContainsActionInStack(
+            error.err_status(), ErrorAction::kDevCheckUnexpectedState));
         run_loop.Quit();
       });
 
@@ -404,7 +411,7 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, Derive) {
 
   base::RunLoop run_loop;
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
-      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs) {
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs) {
         ASSERT_TRUE(error.ok());
         EXPECT_EQ(derived_key, blobs->vkk_key);
         EXPECT_EQ(derived_chaps_key, blobs->scrypt_chaps_key);
@@ -453,8 +460,9 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveFailed) {
 
   base::RunLoop run_loop;
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
-      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs) {
-        EXPECT_EQ(error->local_crypto_error(), CryptoError::CE_TPM_CRYPTO);
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs) {
+        EXPECT_TRUE(ContainsActionInStack(error.err_status(),
+                                          ErrorAction::kIncorrectAuth));
         run_loop.Quit();
       });
 
@@ -468,8 +476,9 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveFailed) {
 TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveMissingAlgorithms) {
   base::RunLoop run_loop;
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
-      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs) {
-        EXPECT_EQ(error->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs) {
+        EXPECT_TRUE(ContainsActionInStack(
+            error.err_status(), ErrorAction::kDevCheckUnexpectedState));
         run_loop.Quit();
       });
 
@@ -485,8 +494,9 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveMissingAlgorithms) {
 TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveNoState) {
   base::RunLoop run_loop;
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
-      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs) {
-        EXPECT_EQ(error->local_crypto_error(), CryptoError::CE_OTHER_FATAL);
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs) {
+        EXPECT_TRUE(ContainsActionInStack(
+            error.err_status(), ErrorAction::kDevCheckUnexpectedState));
         run_loop.Quit();
       });
 
@@ -509,8 +519,9 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveNoState) {
 TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveNoKeysetInfo) {
   base::RunLoop run_loop;
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
-      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs) {
-        EXPECT_EQ(error->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs) {
+        EXPECT_TRUE(ContainsActionInStack(
+            error.err_status(), ErrorAction::kDevCheckUnexpectedState));
         run_loop.Quit();
       });
 
@@ -536,8 +547,9 @@ TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveNoKeysetInfo) {
 TEST_F(AsyncChallengeCredentialAuthBlockTest, DeriveNoScryptState) {
   base::RunLoop run_loop;
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
-      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs) {
-        EXPECT_EQ(error->local_crypto_error(), CryptoError::CE_OTHER_CRYPTO);
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs) {
+        EXPECT_TRUE(
+            ContainsActionInStack(error.err_status(), ErrorAction::kAuth));
         run_loop.Quit();
       });
 
@@ -646,17 +658,17 @@ class AsyncChallengeCredentialAuthBlockFullTest : public ::testing::Test {
         });
   }
 
-  CryptoStatus RunCreate(
+  CryptohomeStatus RunCreate(
       const AuthInput& auth_input,
       std::unique_ptr<KeyBlobs>& out_key_blobs,
       std::unique_ptr<AuthBlockState>& out_auth_block_state) {
     DCHECK(auth_block_);
     base::RunLoop run_loop;
-    CryptoStatus got_error;
+    CryptohomeStatus got_error;
     auth_block_->Create(
         auth_input,
         base::BindLambdaForTesting(
-            [&](CryptoStatus error, std::unique_ptr<KeyBlobs> key_blobs,
+            [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs,
                 std::unique_ptr<AuthBlockState> auth_block_state) {
               got_error = std::move(error);
               out_key_blobs = std::move(key_blobs);
@@ -667,16 +679,16 @@ class AsyncChallengeCredentialAuthBlockFullTest : public ::testing::Test {
     return got_error;
   }
 
-  CryptoStatus RunDerive(const AuthInput& auth_input,
-                         const AuthBlockState& auth_block_state,
-                         std::unique_ptr<KeyBlobs>& out_key_blobs) {
+  CryptohomeStatus RunDerive(const AuthInput& auth_input,
+                             const AuthBlockState& auth_block_state,
+                             std::unique_ptr<KeyBlobs>& out_key_blobs) {
     DCHECK(auth_block_);
     base::RunLoop run_loop;
-    CryptoStatus got_error;
+    CryptohomeStatus got_error;
     auth_block_->Derive(
         auth_input, auth_block_state,
         base::BindLambdaForTesting(
-            [&](CryptoStatus error, std::unique_ptr<KeyBlobs> key_blobs) {
+            [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs) {
               got_error = std::move(error);
               out_key_blobs = std::move(key_blobs);
               run_loop.Quit();

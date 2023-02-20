@@ -62,7 +62,7 @@ using ::testing::Return;
 using base::test::TaskEnvironment;
 using base::test::TestFuture;
 using brillo::cryptohome::home::SanitizeUserName;
-using cryptohome::error::CryptohomeCryptoError;
+using cryptohome::error::CryptohomeError;
 using hwsec_foundation::error::testing::IsOk;
 using hwsec_foundation::error::testing::NotOk;
 using hwsec_foundation::error::testing::ReturnValue;
@@ -259,7 +259,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
                       const AuthInput& auth_input,
                       AuthBlock::CreateCallback create_callback) {
           std::move(create_callback)
-              .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
+              .Run(OkStatus<CryptohomeError>(), std::move(key_blobs),
                    std::move(auth_block_state));
           return true;
         });
@@ -292,7 +292,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
                                 const AuthBlockState& auth_state,
                                 AuthBlock::DeriveCallback derive_callback) {
           std::move(derive_callback)
-              .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs2));
+              .Run(OkStatus<CryptohomeError>(), std::move(key_blobs2));
           return true;
         });
     auto key_blobs = std::make_unique<KeyBlobs>(kKeyBlobs);
@@ -306,7 +306,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
                             const AuthInput& auth_input,
                             AuthBlock::CreateCallback create_callback) {
           std::move(create_callback)
-              .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
+              .Run(OkStatus<CryptohomeError>(), std::move(key_blobs),
                    std::move(auth_block_state));
           return true;
         });
@@ -474,7 +474,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   auth_block_utility_.CreateKeyBlobsWithAuthBlockAsync(
       AuthBlockType::kTpmEcc, auth_input,
       base::BindLambdaForTesting(
-          [&](CryptoStatus error, std::unique_ptr<KeyBlobs> key_blobs,
+          [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs,
               std::unique_ptr<AuthBlockState> auth_block_state) {
             ASSERT_THAT(error, IsOk());
             FallbackVaultKeyset vk;
@@ -963,7 +963,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
                     AuthBlock::CreateCallback create_callback) {
         std::move(create_callback)
-            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
+            .Run(OkStatus<CryptohomeError>(), std::move(key_blobs),
                  std::move(auth_block_state));
         return true;
       });
@@ -992,7 +992,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
                     AuthBlock::CreateCallback create_callback) {
         std::move(create_callback)
-            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs2),
+            .Run(OkStatus<CryptohomeError>(), std::move(key_blobs2),
                  std::move(auth_block_state2));
         return true;
       });
@@ -1039,7 +1039,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
                               const AuthBlockState& auth_state,
                               AuthBlock::DeriveCallback derive_callback) {
         std::move(derive_callback)
-            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs3));
+            .Run(OkStatus<CryptohomeError>(), std::move(key_blobs3));
         return true;
       });
 
@@ -1099,7 +1099,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
                     AuthBlock::CreateCallback create_callback) {
         std::move(create_callback)
-            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
+            .Run(OkStatus<CryptohomeError>(), std::move(key_blobs),
                  std::move(auth_block_state));
         return true;
       });
@@ -1154,7 +1154,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
                               const AuthBlockState& auth_state,
                               AuthBlock::DeriveCallback derive_callback) {
         std::move(derive_callback)
-            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs2));
+            .Run(OkStatus<CryptohomeError>(), std::move(key_blobs2));
         return true;
       });
 

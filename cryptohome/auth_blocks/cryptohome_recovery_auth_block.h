@@ -55,7 +55,7 @@ class CryptohomeRecoveryAuthBlock : public SyncAuthBlock {
                       const AuthBlockState& state,
                       KeyBlobs* key_blobs) override;
 
-  CryptoStatus PrepareForRemoval(const AuthBlockState& state) override;
+  CryptohomeStatus PrepareForRemoval(const AuthBlockState& state) override;
 
  private:
   CryptoStatus PrepareForRemovalInternal(const AuthBlockState& state);

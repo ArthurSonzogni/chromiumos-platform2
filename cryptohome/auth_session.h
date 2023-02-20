@@ -335,7 +335,7 @@ class AuthSession final {
   // doesn't block authentication operations.
   void ResaveKeysetOnKeyBlobsGenerated(
       VaultKeyset updated_vault_keyset,
-      CryptoStatus error,
+      CryptohomeStatus error,
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_block_state);
 
@@ -357,7 +357,7 @@ class AuthSession final {
                                    std::unique_ptr<AuthSessionPerformanceTimer>
                                        auth_session_performance_timer,
                                    StatusCallback on_done,
-                                   CryptoStatus callback_error,
+                                   CryptohomeStatus callback_error,
                                    std::unique_ptr<KeyBlobs> key_blobs,
                                    std::unique_ptr<AuthBlockState> auth_state);
 
@@ -372,7 +372,7 @@ class AuthSession final {
                          std::unique_ptr<AuthSessionPerformanceTimer>
                              auth_session_performance_timer,
                          StatusCallback on_done,
-                         CryptoStatus callback_error,
+                         CryptohomeStatus callback_error,
                          std::unique_ptr<KeyBlobs> key_blobs,
                          std::unique_ptr<AuthBlockState> auth_state);
 
@@ -389,7 +389,7 @@ class AuthSession final {
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,
       StatusCallback on_done,
-      CryptoStatus callback_error,
+      CryptohomeStatus callback_error,
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_block_state);
 
@@ -406,7 +406,7 @@ class AuthSession final {
           auth_session_performance_timer,
       StatusCallback on_done,
       CryptohomeStatus pre_migration_status,
-      CryptoStatus callback_error,
+      CryptohomeStatus callback_error,
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_block_state);
 
@@ -420,7 +420,7 @@ class AuthSession final {
       const KeyData& key_data,
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,
-      CryptoStatus callback_error,
+      CryptohomeStatus callback_error,
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_block_state);
 
@@ -489,7 +489,7 @@ class AuthSession final {
                                  std::unique_ptr<AuthSessionPerformanceTimer>
                                      auth_session_performance_timer,
                                  StatusCallback on_done,
-                                 CryptoStatus callback_error,
+                                 CryptohomeStatus callback_error,
                                  std::unique_ptr<KeyBlobs> key_blobs);
 
   // This function is used to reset the attempt count for a low entropy
@@ -542,7 +542,7 @@ class AuthSession final {
                                 std::unique_ptr<AuthSessionPerformanceTimer>
                                     auth_session_performance_timer,
                                 StatusCallback on_done,
-                                CryptoStatus error,
+                                CryptohomeStatus error,
                                 std::unique_ptr<KeyBlobs> key_blobs);
 
   // Updates, wraps and resaves |vault_keyset_| and restores on failure.
@@ -572,7 +572,7 @@ class AuthSession final {
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,
       StatusCallback on_done,
-      CryptoStatus callback_error,
+      CryptohomeStatus callback_error,
       std::unique_ptr<KeyBlobs> key_blobs,
       std::unique_ptr<AuthBlockState> auth_block_state);
 

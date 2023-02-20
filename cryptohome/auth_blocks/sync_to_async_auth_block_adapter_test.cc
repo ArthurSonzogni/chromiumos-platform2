@@ -61,7 +61,7 @@ TEST_F(AsyncScryptAuthBlockTest, CreateTest) {
 
   base::RunLoop run_loop;
   AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
-      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> blobs,
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
           std::unique_ptr<AuthBlockState> auth_state) {
         EXPECT_TRUE(error.ok());
 
@@ -198,7 +198,7 @@ TEST_F(AsyncScryptAuthBlockTest, DeriveTest) {
 
   base::RunLoop run_loop;
   AuthBlock::DeriveCallback derive_callback = base::BindLambdaForTesting(
-      [&](CryptoStatus error, std::unique_ptr<KeyBlobs> key_out_data) {
+      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_out_data) {
         EXPECT_TRUE(error.ok());
         EXPECT_EQ(derived_key, key_out_data->vkk_key);
         EXPECT_EQ(derived_chaps_key, key_out_data->scrypt_chaps_key);

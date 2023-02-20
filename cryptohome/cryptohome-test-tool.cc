@@ -441,7 +441,7 @@ void PersistVaultKeyset(KeysetManagement* keyset_management,
                         std::unique_ptr<VaultKeyset> old_vault_keyset,
                         const ObfuscatedUsername& obfuscated_username,
                         bool enable_key_data,
-                        CryptoStatus callback_error,
+                        CryptohomeStatus callback_error,
                         std::unique_ptr<KeyBlobs> key_blobs,
                         std::unique_ptr<AuthBlockState> auth_state) {
   // callback_error, key_blobs and auth_state are returned by
@@ -517,7 +517,7 @@ void DeriveExistingVaultKeyset(KeysetManagement* keyset_management,
                                std::unique_ptr<VaultKeyset> old_vault_keyset,
                                const ObfuscatedUsername& obfuscated_username,
                                bool enable_key_data,
-                               CryptoStatus callback_error,
+                               CryptohomeStatus callback_error,
                                std::unique_ptr<KeyBlobs> key_blobs) {
   if (!callback_error.ok() || key_blobs == nullptr) {
     LOG(ERROR) << "KeyBlobs derivation failed before adding keyset.";

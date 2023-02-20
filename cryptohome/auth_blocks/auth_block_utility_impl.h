@@ -119,7 +119,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   void AssignAuthBlockStateToVaultKeyset(
       const AuthBlockState& state, VaultKeyset& vault_keyset) const override;
 
-  CryptoStatus PrepareAuthBlockForRemoval(
+  CryptohomeStatus PrepareAuthBlockForRemoval(
       const AuthBlockState& auth_block_state) override;
 
   CryptoStatus GenerateRecoveryRequest(

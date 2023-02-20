@@ -539,9 +539,8 @@ CryptohomeStatus AuthFactorManager::RemoveAuthFactor(
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
 
-  CryptoStatus crypto_status =
-      auth_factor.PrepareForRemoval(auth_block_utility);
-  if (!crypto_status.ok()) {
+  CryptohomeStatus status = auth_factor.PrepareForRemoval(auth_block_utility);
+  if (!status.ok()) {
     LOG(WARNING) << "Failed to prepare for removal for auth factor "
                  << auth_factor.label() << " of type "
                  << AuthFactorTypeToString(auth_factor.type()) << " for "
@@ -550,7 +549,7 @@ CryptohomeStatus AuthFactorManager::RemoveAuthFactor(
                CRYPTOHOME_ERR_LOC(
                    kLocAuthFactorManagerPrepareForRemovalFailedInRemove),
                ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
-        .Wrap(std::move(crypto_status));
+        .Wrap(std::move(status));
   }
 
   // Remove the file.
@@ -611,9 +610,9 @@ CryptohomeStatus AuthFactorManager::UpdateAuthFactor(
 
   // 3. The old auth factor state was removed from disk. Call
   // `PrepareForRemoval()` to complete the removal.
-  CryptoStatus crypto_status =
+  CryptohomeStatus status =
       existing_auth_factor.value()->PrepareForRemoval(auth_block_utility);
-  if (!crypto_status.ok()) {
+  if (!status.ok()) {
     LOG(WARNING) << "PrepareForRemoval failed for auth factor "
                  << auth_factor.label() << " of type "
                  << AuthFactorTypeToString(auth_factor.type()) << " for "
@@ -622,7 +621,7 @@ CryptohomeStatus AuthFactorManager::UpdateAuthFactor(
                CRYPTOHOME_ERR_LOC(
                    kLocAuthFactorManagerPrepareForRemovalFailedInUpdate),
                user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT)
-        .Wrap(std::move(crypto_status));
+        .Wrap(std::move(status));
   }
 
   return OkStatus<CryptohomeError>();

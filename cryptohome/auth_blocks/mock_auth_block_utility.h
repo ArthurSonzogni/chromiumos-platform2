@@ -110,7 +110,7 @@ class MockAuthBlockUtility : public AuthBlockUtility {
               AssignAuthBlockStateToVaultKeyset,
               (const AuthBlockState& state, VaultKeyset& vault_keyset),
               (const, override));
-  MOCK_METHOD(CryptoStatus,
+  MOCK_METHOD(CryptohomeStatus,
               PrepareAuthBlockForRemoval,
               (const AuthBlockState& auth_block_state),
               (override));
