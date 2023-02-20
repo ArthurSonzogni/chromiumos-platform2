@@ -57,12 +57,6 @@ class SHILL_EXPORT Sockets {
                       const struct sockaddr* addr,
                       socklen_t addrlen) const;
 
-  // errno
-  virtual int Error() const;
-
-  // errno
-  virtual std::string ErrorString() const;
-
   // getsockname
   virtual int GetSockName(int sockfd,
                           struct sockaddr* addr,
@@ -111,9 +105,6 @@ class SHILL_EXPORT Sockets {
 
   // setsockopt(SO_RCVBUFFORCE)
   virtual int SetReceiveBuffer(int sockfd, int size) const;
-
-  // shutdown
-  virtual int ShutDown(int sockfd, int how) const;
 
   // socket
   virtual int Socket(int domain, int type, int protocol) const;

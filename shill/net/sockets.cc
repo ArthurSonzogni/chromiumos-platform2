@@ -13,7 +13,6 @@
 #include <unistd.h>
 
 #include <base/check_op.h>
-#include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
 
 namespace shill {
@@ -73,14 +72,6 @@ int Sockets::Connect(int sockfd,
                      const struct sockaddr* addr,
                      socklen_t addrlen) const {
   return HANDLE_EINTR(connect(sockfd, addr, addrlen));
-}
-
-int Sockets::Error() const {
-  return errno;
-}
-
-std::string Sockets::ErrorString() const {
-  return std::string(strerror(Error()));
 }
 
 int Sockets::GetSockName(int sockfd,
@@ -147,10 +138,6 @@ int Sockets::SetNonBlocking(int sockfd) const {
 int Sockets::SetReceiveBuffer(int sockfd, int size) const {
   // Note: kernel will set buffer to 2*size to allow for struct skbuff overhead
   return setsockopt(sockfd, SOL_SOCKET, SO_RCVBUFFORCE, &size, sizeof(size));
-}
-
-int Sockets::ShutDown(int sockfd, int how) const {
-  return HANDLE_EINTR(shutdown(sockfd, how));
 }
 
 int Sockets::Socket(int domain, int type, int protocol) const {

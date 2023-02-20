@@ -541,7 +541,7 @@ bool Ethernet::DisableOffloadFeatures() {
   struct ifreq interface_command;
   memset(&interface_command, 0, sizeof(interface_command));
 
-  LOG(INFO) << "Disabling offloading features for " << link_name();
+  LOG(INFO) << LoggingTag() << ": Disabling offloading features";
   // Prepare and send a ETHTOOL_GSSET_INFO(ETH_SS_FEATURES) command to
   // get number of features.
   struct {
@@ -555,8 +555,14 @@ bool Ethernet::DisableOffloadFeatures() {
   sset_info->sset_mask = 1ULL << ETH_SS_FEATURES;
   interface_command.ifr_data = sset_info;
   bool res = RunEthtoolCmd(&interface_command);
-  if (!res || !sset_info->sset_mask || !sset_info_buf.num_features) {
-    PLOG(ERROR) << "ETHTOOL_GSSET_INFO(ETH_SS_FEATURES) failed ";
+  if (!res) {
+    PLOG(ERROR) << LoggingTag()
+                << ": ETHTOOL_GSSET_INFO(ETH_SS_FEATURES) failed.";
+    return false;
+  }
+  if (!sset_info->sset_mask || !sset_info_buf.num_features) {
+    LOG(ERROR) << LoggingTag()
+               << ": ETHTOOL_GSSET_INFO(ETH_SS_FEATURES) failed.";
     return false;
   }
 
@@ -578,8 +584,8 @@ bool Ethernet::DisableOffloadFeatures() {
   gstrings->len = num_features;
   interface_command.ifr_data = gstrings;
   if (!RunEthtoolCmd(&interface_command)) {
-    PLOG(ERROR) << "ETHTOOL_GSTRINGS(ETH_SS_FEATURES) failed "
-                << sockets_->ErrorString();
+    PLOG(ERROR) << LoggingTag()
+                << ": ETHTOOL_GSTRINGS(ETH_SS_FEATURES) failed.";
     return false;
   }
 
@@ -600,7 +606,7 @@ bool Ethernet::DisableOffloadFeatures() {
   gfeatures->size = num_feature_blocks;
   interface_command.ifr_data = gfeatures;
   if (!RunEthtoolCmd(&interface_command)) {
-    PLOG(ERROR) << "ETHTOOL_GFEATURES command failed: ";
+    PLOG(ERROR) << LoggingTag() << ": ETHTOOL_GFEATURES command failed.";
     return false;
   }
 
@@ -647,7 +653,7 @@ bool Ethernet::DisableOffloadFeatures() {
     }
     sfeatures->features[block_num].valid |= feature_mask;
     sfeatures->features[block_num].requested &= ~feature_mask;
-    LOG(INFO) << link_name() << ": Disabling [" << i << "] " << feature;
+    LOG(INFO) << LoggingTag() << ": Disabling [" << i << "] " << feature;
   }
 
   for (const auto& feature : features_to_disable)
@@ -655,10 +661,10 @@ bool Ethernet::DisableOffloadFeatures() {
 
   interface_command.ifr_data = sfeatures;
   if (!RunEthtoolCmd(&interface_command)) {
-    PLOG(ERROR) << "Failed to disable offloading features: ";
+    PLOG(ERROR) << "Failed to disable offloading features.";
     return false;
   }
-  LOG(INFO) << link_name() << ": Disabled offloading features successfully";
+  LOG(INFO) << LoggingTag() << ": Disabled offloading features successfully";
 
   return ret;
 }
@@ -822,7 +828,7 @@ std::string Ethernet::GetPermanentMacAddressFromKernel() {
   ifr.ifr_data = perm_addr;
 
   if (!RunEthtoolCmd(&ifr)) {
-    PLOG(WARNING) << "Failed to read permanent MAC address";
+    PLOG(WARNING) << "Failed to read permanent MAC address.";
     return std::string();
   }
 
@@ -892,7 +898,6 @@ void Ethernet::UpdateLinkSpeed() {
 bool Ethernet::RunEthtoolCmd(ifreq* interface_command) {
   int sock = sockets_->Socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_IP);
   if (sock < 0) {
-    PLOG(ERROR) << "Failed to allocate socket ";
     return false;
   }
   ScopedSocketCloser socket_closer(sockets_.get(), sock);

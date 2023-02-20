@@ -38,7 +38,6 @@ class MockSockets : public Sockets {
               Connect,
               (int, const struct sockaddr*, socklen_t),
               (const, override));
-  MOCK_METHOD(int, Error, (), (const, override));
   MOCK_METHOD(int,
               GetSockName,
               (int, struct sockaddr*, socklen_t*),
@@ -65,7 +64,6 @@ class MockSockets : public Sockets {
       (const, override));
   MOCK_METHOD(int, SetNonBlocking, (int), (const, override));
   MOCK_METHOD(int, SetReceiveBuffer, (int, int), (const, override));
-  MOCK_METHOD(int, ShutDown, (int, int), (const, override));
   MOCK_METHOD(int, Socket, (int, int, int), (const, override));
 };
 
