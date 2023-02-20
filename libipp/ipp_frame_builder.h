@@ -7,7 +7,6 @@
 
 #include <cstdint>
 #include <list>
-#include <string>
 #include <vector>
 
 #include "frame.h"
@@ -15,39 +14,27 @@
 
 namespace ipp {
 
+struct GroupAsTNVs {
+  GroupTag tag;
+  std::list<TagNameValue> content;
+};
+
 // forward declarations
-class Attribute;
-class Collection;
 class Frame;
 
-class FrameBuilder {
- public:
-  // Constructor, both parameters must not be nullptr. |frame| is used as
-  // internal buffer to store intermediate form of data to send. All spotted
-  // issues are logged to |log| (by push_back()).
-  FrameBuilder(FrameData* frame, std::vector<Log>* log) : frame_(frame) {}
+// Build a content of the frame from the given object.
+std::vector<GroupAsTNVs> PreprocessFrame(const Frame& frame);
 
-  // Build a content of the frame from the given object.
-  void BuildFrameFromPackage(const Frame* package);
+// Returns the current frame size in bytes. Call it after
+// BuildFrameFromPackage(...) to get the size of the output buffer.
+std::size_t GetFrameLength(const Frame& frame,
+                           const std::vector<GroupAsTNVs>& tnvs);
 
-  // Returns the current frame size in bytes. Call it after
-  // BuildFrameFromPackage(...) to get the size of the output buffer.
-  std::size_t GetFrameLength() const;
-
-  // Write data to given buffer (use the method above to learn about required
-  // size of the buffer).
-  void WriteFrameToBuffer(uint8_t* ptr);
-
- private:
-  // Copy/move/assign constructors/operators are forbidden.
-  FrameBuilder(const FrameBuilder&) = delete;
-  FrameBuilder(FrameBuilder&&) = delete;
-  FrameBuilder& operator=(const FrameBuilder&) = delete;
-  FrameBuilder& operator=(FrameBuilder&&) = delete;
-
-  // Internal buffer.
-  FrameData* frame_;
-};
+// Write data to given buffer (use the method above to learn about required
+// size of the buffer).
+void WriteFrameToBuffer(const Frame& frame,
+                        const std::vector<GroupAsTNVs>& tnvs,
+                        uint8_t* ptr);
 
 }  // namespace ipp
 

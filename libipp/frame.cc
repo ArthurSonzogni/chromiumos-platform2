@@ -9,8 +9,8 @@
 #include <utility>
 #include <vector>
 
+#include "builder.h"
 #include "ipp_frame.h"
-#include "ipp_frame_builder.h"
 #include "ipp_parser.h"
 
 namespace ipp {
@@ -26,21 +26,6 @@ void SetCharsetAndLanguageAttributes(Frame* frame) {
   grp->AddAttr("attributes-natural-language", ValueTag::naturalLanguage,
                "en-us");
 }
-
-struct Converter {
-  std::vector<Log> log;
-  FrameData frame_data;
-  FrameBuilder builder{&frame_data, &log};
-  Converter(Version version,
-            uint16_t operation_id_or_status_code,
-            int32_t request_id,
-            const Frame* package) {
-    frame_data.version_ = static_cast<uint16_t>(version);
-    frame_data.operation_id_or_status_code_ = operation_id_or_status_code;
-    frame_data.request_id_ = request_id;
-    builder.BuildFrameFromPackage(package);
-  }
-};
 
 }  // namespace
 
@@ -132,30 +117,15 @@ Frame::~Frame() {
 }
 
 size_t Frame::GetLength() const {
-  std::vector<Log> log;
-  FrameData frame_data;
-  FrameBuilder builder(&frame_data, &log);
-  builder.BuildFrameFromPackage(this);
-  return builder.GetFrameLength();
+  return CalculateLengthOfBinaryFrame(*this);
 }
 
 size_t Frame::SaveToBuffer(uint8_t* buffer, size_t buffer_length) const {
-  Converter converter(version_, operation_id_or_status_code_, request_id_,
-                      this);
-  const size_t length = converter.builder.GetFrameLength();
-  if (length > buffer_length) {
-    return 0;
-  }
-  converter.builder.WriteFrameToBuffer(buffer);
-  return length;
+  return BuildBinaryFrame(*this, buffer, buffer_length);
 }
 
 std::vector<uint8_t> Frame::SaveToBuffer() const {
-  Converter converter(version_, operation_id_or_status_code_, request_id_,
-                      this);
-  std::vector<uint8_t> out(converter.builder.GetFrameLength());
-  converter.builder.WriteFrameToBuffer(out.data());
-  return out;
+  return BuildBinaryFrame(*this);
 }
 
 Version Frame::VersionNumber() const {

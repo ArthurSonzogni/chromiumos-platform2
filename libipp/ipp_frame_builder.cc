@@ -257,47 +257,48 @@ void WriteTNVsToBuffer(const std::list<TagNameValue>& tnvs, uint8_t** ptr) {
 
 }  //  namespace
 
-void FrameBuilder::BuildFrameFromPackage(const Frame* package) {
-  frame_->groups_tags_.clear();
-  frame_->groups_content_.clear();
+std::vector<GroupAsTNVs> PreprocessFrame(const Frame& frame) {
+  std::vector<GroupAsTNVs> groups_tnvs;
   // save frame data
   std::vector<std::pair<GroupTag, const Collection*>> groups =
-      package->GetGroups();
+      frame.GetGroups();
   for (std::pair<GroupTag, const Collection*> grp : groups) {
-    frame_->groups_tags_.push_back(grp.first);
-    frame_->groups_content_.resize(frame_->groups_tags_.size());
-    SaveGroup(grp.second, &(frame_->groups_content_.back()));
+    groups_tnvs.emplace_back(GroupAsTNVs{.tag = grp.first});
+    SaveGroup(grp.second, &(groups_tnvs.back().content));
   }
-  frame_->data_ = package->Data();
+  return groups_tnvs;
 }
 
-void FrameBuilder::WriteFrameToBuffer(uint8_t* ptr) {
-  WriteUnsigned<2>(&ptr, frame_->version_);
-  WriteInteger<2>(&ptr, frame_->operation_id_or_status_code_);
-  WriteInteger<4>(&ptr, frame_->request_id_);
-  for (size_t i = 0; i < frame_->groups_tags_.size(); ++i) {
+void WriteFrameToBuffer(const Frame& frame,
+                        const std::vector<GroupAsTNVs>& groups,
+                        uint8_t* ptr) {
+  WriteUnsigned<2>(&ptr, static_cast<uint16_t>(frame.VersionNumber()));
+  WriteInteger<2>(&ptr, frame.OperationIdOrStatusCode());
+  WriteInteger<4>(&ptr, frame.RequestId());
+  for (size_t i = 0; i < groups.size(); ++i) {
     // write a group to the buffer
-    WriteUnsigned<1>(&ptr, static_cast<uint8_t>(frame_->groups_tags_[i]));
-    WriteTNVsToBuffer(frame_->groups_content_[i], &ptr);
+    WriteUnsigned<1>(&ptr, static_cast<uint8_t>(groups[i].tag));
+    WriteTNVsToBuffer(groups[i].content, &ptr);
   }
   WriteUnsigned<1>(&ptr, end_of_attributes_tag);
-  std::copy(frame_->data_.begin(), frame_->data_.end(), ptr);
+  std::copy(frame.Data().begin(), frame.Data().end(), ptr);
 }
 
-std::size_t FrameBuilder::GetFrameLength() const {
+std::size_t GetFrameLength(const Frame& frame,
+                           const std::vector<GroupAsTNVs>& groups) {
   // Header has always 8 bytes (ipp_version + operation_id/status + request_id).
   size_t length = 8;
   // The header is followed by a list of groups.
-  for (const auto& tnvs : frame_->groups_content_) {
+  for (const GroupAsTNVs& grp : groups) {
     // Each group starts with 1-byte group-tag ...
     length += 1;
     // ... and consists of list of tag-name-value.
-    for (const auto& tnv : tnvs)
+    for (const auto& tnv : grp.content)
       // Tag + name_size + name + value_size + value.
       length += (1 + 2 + tnv.name.size() + 2 + tnv.value.size());
   }
   // end-of-attributes-tag + blob_with_data.
-  length += 1 + frame_->data_.size();
+  length += 1 + frame.Data().size();
   return length;
 }
 
