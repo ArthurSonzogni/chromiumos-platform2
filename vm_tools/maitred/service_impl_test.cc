@@ -43,7 +43,8 @@ class ServiceTest : public ::testing::Test {
   ServiceImpl service_impl_;
 };
 
-ServiceTest::ServiceTest() : service_impl_(nullptr) {}
+ServiceTest::ServiceTest()
+    : service_impl_(/*init=*/nullptr, /*maitred_is_pid1=*/true) {}
 
 }  // namespace
 

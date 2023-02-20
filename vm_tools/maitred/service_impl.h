@@ -24,7 +24,7 @@ namespace maitred {
 // Actually implements the maitred service.
 class ServiceImpl final : public vm_tools::Maitred::Service {
  public:
-  explicit ServiceImpl(std::unique_ptr<Init> init);
+  explicit ServiceImpl(std::unique_ptr<Init> init, bool maitred_is_pid1);
   ServiceImpl(const ServiceImpl&) = delete;
   ServiceImpl& operator=(const ServiceImpl&) = delete;
 
@@ -131,6 +131,8 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
       vm_tools::UpdateStorageBalloonResponse* response) override;
 
  private:
+  bool maitred_is_pid1_;
+
   std::unique_ptr<vm_tools::maitred::Init> init_;
 
   // Callback used for shutting down the gRPC server.  Called when handling a

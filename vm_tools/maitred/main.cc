@@ -260,7 +260,8 @@ int main(int argc, char** argv) {
       base::StringPrintf("vsock:%u:%u", VMADDR_CID_ANY, vm_tools::kMaitredPort),
       grpc::InsecureServerCredentials());
 
-  vm_tools::maitred::ServiceImpl maitred_service(std::move(init));
+  vm_tools::maitred::ServiceImpl maitred_service(std::move(init),
+                                                 maitred_is_pid1);
   if (!maitred_service.Init()) {
     LOG(FATAL) << "Failed to initialize maitred service";
   }

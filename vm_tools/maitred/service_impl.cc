@@ -223,8 +223,10 @@ bool PrefixPath(const char* env_name, std::string new_val) {
 
 }  // namespace
 
-ServiceImpl::ServiceImpl(std::unique_ptr<vm_tools::maitred::Init> init)
-    : init_(std::move(init)),
+ServiceImpl::ServiceImpl(std::unique_ptr<vm_tools::maitred::Init> init,
+                         bool maitred_is_pid1)
+    : maitred_is_pid1_(maitred_is_pid1),
+      init_(std::move(init)),
       lxd_env_({{"LXD_DIR", "/mnt/stateful/lxd"},
                 {"LXD_CONF", "/mnt/stateful/lxd_conf"}}),
       localtime_file_path_(kLocaltimePath),
@@ -381,7 +383,7 @@ grpc::Status ServiceImpl::Shutdown(grpc::ServerContext* ctx,
                                    EmptyMessage* response) {
   LOG(INFO) << "Received shutdown request";
 
-  if (!init_) {
+  if (!maitred_is_pid1_) {
     return grpc::Status(grpc::FAILED_PRECONDITION, "not running as init");
   }
 
@@ -464,6 +466,13 @@ grpc::Status ServiceImpl::Mount(grpc::ServerContext* ctx,
                                 const MountRequest* request,
                                 MountResponse* response) {
   LOG(INFO) << "Received mount request";
+
+  // TODO(b/272384619): concierge shouldn't send requests to mount the tools
+  // image. The code to do it should be removed once the relevant termina uprev
+  // passes. Then, this workaround can be removed.
+  if (request->target() == "/opt/google/cros-containers") {
+    return grpc::Status::OK;
+  }
 
   const base::FilePath target_path = base::FilePath(request->target());
   if (request->create_target()) {
@@ -946,6 +955,15 @@ grpc::Status ServiceImpl::Mount9P(grpc::ServerContext* ctx,
     response->set_error(errno);
     PLOG(ERROR) << "Unable to connect to server";
     return grpc::Status(grpc::INTERNAL, "unable to connect to server");
+  }
+
+  const base::FilePath target_path = base::FilePath(request->target());
+  // Create a mount point if it doesn't exist.
+  if (!brillo::MkdirRecursively(target_path, 0755).is_valid()) {
+    PLOG(ERROR) << "Failed to create " << request->target();
+    return grpc::Status(grpc::INTERNAL,
+                        base::StringPrintf("failed to create a directory: %s",
+                                           request->target().c_str()));
   }
 
   // Do the mount.
