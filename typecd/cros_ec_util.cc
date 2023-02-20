@@ -94,4 +94,24 @@ bool CrosECUtil::ExitMode(int port) {
   return false;
 }
 
+bool CrosECUtil::DpState(int port, bool* entered) {
+  if (!entered) {
+    LOG(ERROR) << "Invalid pointer provided for DpState.";
+    return false;
+  }
+
+  brillo::ErrorPtr error;
+  return debugd_proxy_->EcTypeCDpState(port, entered, &error);
+}
+
+bool CrosECUtil::HpdState(int port, bool* hpd) {
+  if (!hpd) {
+    LOG(ERROR) << "Invalid pointer provided for HpdState.";
+    return false;
+  }
+
+  brillo::ErrorPtr error;
+  return debugd_proxy_->EcTypeCHpdState(port, hpd, &error);
+}
+
 }  // namespace typecd

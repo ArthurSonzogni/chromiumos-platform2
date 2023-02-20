@@ -16,6 +16,8 @@ class MockECUtil : public ECUtil {
   MOCK_METHOD(bool, ModeEntrySupported, (), (override));
   MOCK_METHOD(bool, EnterMode, (int, TypeCMode), (override));
   MOCK_METHOD(bool, ExitMode, (int), (override));
+  MOCK_METHOD(bool, DpState, (int, bool*), (override));
+  MOCK_METHOD(bool, HpdState, (int, bool*), (override));
 };
 
 }  // namespace typecd
