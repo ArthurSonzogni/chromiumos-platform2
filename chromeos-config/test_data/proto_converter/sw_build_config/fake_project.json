@@ -219,7 +219,26 @@
         "regulatory-label": "fake_regulatory_label",
         "rmad": {
           "enabled": true,
-          "has-cbi": true
+          "has-cbi": true,
+          "ssfc": {
+            "component-type-configs": [
+              {
+                "component-type": "component_1",
+                "default-value": 0,
+                "probeable-components": [
+                  {
+                    "identifier": "identifier_1",
+                    "value": 1
+                  },
+                  {
+                    "identifier": "identifier_2",
+                    "value": 2
+                  }
+                ]
+              }
+            ],
+            "mask": 4026531840
+          }
         },
         "scheduler-tune": {
           "boost-urgent": 20,
@@ -654,7 +673,7 @@
           "disable-dark-resume": "0",
           "internal-backlight-no-als-ac-brightness": "80.5",
           "internal-backlight-no-als-battery-brightness": "63.4",
-          "set-cellular-regulatory-domain-mapping": "MIC 4\nCE 4\nISED 2",
+          "set-cellular-regulatory-domain-mapping": "ISED 2\nCE 4\nMIC 4",
           "set-cellular-transmit-power-for-activity-proximity": "1",
           "set-cellular-transmit-power-for-proximity": "1",
           "set-cellular-transmit-power-for-tablet-mode": "1",

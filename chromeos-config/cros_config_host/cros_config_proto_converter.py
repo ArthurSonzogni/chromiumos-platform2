@@ -1245,6 +1245,86 @@ def _build_health(config: Config):
     return result
 
 
+def _build_ssfc_probeable_components(component_type_config):
+    """Builds the probeable SSFC component list.
+
+    Args:
+        component_type_config: RMA SSFC Component Type Config namedtuple
+
+    Returns:
+        List of SSFC components.
+    """
+    if not component_type_config.probeable_components:
+        return None
+
+    probeable_components = component_type_config.probeable_components
+    result = []
+
+    for component in probeable_components:
+        result.append(
+            {
+                "identifier": component.identifier,
+                "value": component.value,
+            }
+        )
+
+    return result
+
+
+def _build_ssfc_component_type_configs(ssfc_config):
+    """Builds the SSFC config list of each component type.
+
+    Args:
+        ssfc_config: RMA SSFC Config namedtuple
+
+    Returns:
+        List of SSFC configs.
+    """
+    if not ssfc_config.component_type_configs:
+        return None
+
+    component_type_configs = ssfc_config.component_type_configs
+    result = []
+
+    for component_type_config in component_type_configs:
+        result.append(
+            {
+                "component-type": component_type_config.component_type,
+                "default-value": component_type_config.default_value,
+                "probeable-components": _build_ssfc_probeable_components(
+                    component_type_config
+                ),
+            }
+        )
+
+    return result
+
+
+def _build_ssfc_config(rma_config):
+    """Builds the SSFC configuration.
+
+    Args:
+        rma_config: RMA Config namedtuple
+
+    Returns:
+        SSFC configuration.
+    """
+    if not rma_config.HasField("ssfc_config"):
+        return None
+
+    ssfc_config = rma_config.ssfc_config
+    result = {}
+
+    _upsert(ssfc_config.mask, result, "mask")
+    _upsert(
+        _build_ssfc_component_type_configs(ssfc_config),
+        result,
+        "component-type-configs",
+    )
+
+    return result
+
+
 def _build_rma(config: Config):
     """Builds the RMA configuration.
 
@@ -1264,6 +1344,7 @@ def _build_rma(config: Config):
     result = {}
     _upsert(rma_config.enabled, result, "enabled")
     _upsert(rma_config.has_cbi, result, "has-cbi")
+    _upsert(_build_ssfc_config(rma_config), result, "ssfc")
     return result
 
 
