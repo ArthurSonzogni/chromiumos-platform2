@@ -118,6 +118,15 @@ enum class PowerSourceLocationMetric {
   kMaxValue = kRightSwitched,
 };
 
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+enum class DpSuccessMetric {
+  kSuccessHpd = 0,
+  kSuccessNoHpd = 1,
+  kFail = 2,
+  kMaxValue = kFail,
+};
+
 // A class for collecting UMA metrics.
 class Metrics {
  public:
@@ -132,6 +141,7 @@ class Metrics {
   void ReportWrongCableError(WrongConfigurationMetric value);
   void ReportPartnerLocation(PartnerLocationMetric location);
   void ReportPowerSourceLocation(PowerSourceLocationMetric location);
+  void ReportDpSuccess(DpSuccessMetric val);
 
  private:
   MetricsLibrary metrics_library_;

@@ -14,6 +14,7 @@ constexpr char kWrongConfigurationMetricName[] =
 constexpr char kPartnerLocationMetricName[] = "ChromeOS.TypeC.PartnerLocation";
 constexpr char kPowerSourceLocationMetricName[] =
     "ChromeOS.TypeC.PowerSourceLocation";
+constexpr char kDpSuccessMetricName[] = "ChromeOS.TypeC.DpSuccess";
 }  // namespace
 
 namespace typecd {
@@ -52,6 +53,13 @@ void Metrics::ReportPowerSourceLocation(PowerSourceLocationMetric location) {
     LOG(WARNING)
         << "Failed to send power source location sample to UMA, location: "
         << static_cast<int>(location);
+  }
+}
+
+void Metrics::ReportDpSuccess(DpSuccessMetric val) {
+  if (!metrics_library_.SendEnumToUMA(kDpSuccessMetricName, val)) {
+    LOG(WARNING) << "Failed to send DP success sample to UMA, val: "
+                 << static_cast<int>(val);
   }
 }
 
