@@ -70,7 +70,6 @@ LEGACYLIST = {
     "dns-proxy",
     "easy-unlock",
     "featured",
-    "fitpicker",
     "foomatic_shell",
     "glib-bridge",
     "goldfishd",

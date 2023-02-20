@@ -2,6 +2,7 @@
 # Copyright 2017 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
 """Linter for various README.md files."""
 
 import difflib
@@ -115,7 +116,6 @@ def CheckSubdirs():
         "attestation",  # TODO(b/262375413)
         "avtest_label_detect",
         "cros-disks",  # TODO(b/262376624)
-        "fitpicker",
         "image-burner",
         "init",
         "libchromeos-ui",
