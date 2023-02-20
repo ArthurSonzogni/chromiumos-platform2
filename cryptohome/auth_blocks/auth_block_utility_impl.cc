@@ -45,6 +45,7 @@
 #include "cryptohome/cryptorecovery/recovery_crypto_util.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/utilities.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
@@ -52,6 +53,7 @@
 #include "cryptohome/smart_card_verifier.h"
 #include "cryptohome/vault_keyset.h"
 
+using cryptohome::error::ContainsActionInStack;
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::ErrorAction;
@@ -427,7 +429,7 @@ CryptoStatus AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlock(
   // When the pin is entered wrong and AuthBlock fails to derive the KeyBlobs
   // it doesn't make it into the VaultKeyset::Decrypt(); so auth_lock should
   // be set here.
-  if (error->local_crypto_error() == CryptoError::CE_CREDENTIAL_LOCKED) {
+  if (ContainsActionInStack(error, error::ErrorAction::kLeLockedOut)) {
     // Get the corresponding encrypted vault keyset for the user and the label
     // to set the auth_locked.
     std::unique_ptr<VaultKeyset> vk = keyset_management_->GetVaultKeyset(

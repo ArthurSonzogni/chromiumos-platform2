@@ -28,6 +28,19 @@ namespace {
 std::optional<user_data_auth::PrimaryAction> ErrorActionToPrimaryAction(
     ErrorAction err) {
   switch (err) {
+    // Explicitly lists out all error actions to return nullopt instead of using
+    // the default case, such that compile errors are emitted when a new entry
+    // is introduced in the enum but not added here.
+    case ErrorAction::kNull:
+    case ErrorAction::kRetry:
+    case ErrorAction::kReboot:
+    case ErrorAction::kAuth:
+    case ErrorAction::kDeleteVault:
+    case ErrorAction::kPowerwash:
+    case ErrorAction::kDevCheckUnexpectedState:
+    case ErrorAction::kFatal:
+      return std::nullopt;
+    // Primary actions:
     case ErrorAction::kCreateRequired:
       return user_data_auth::PrimaryAction::PRIMARY_CREATE_REQUIRED;
     case ErrorAction::kNotifyOldEncryption:
@@ -43,14 +56,28 @@ std::optional<user_data_auth::PrimaryAction> ErrorActionToPrimaryAction(
       return user_data_auth::PrimaryAction::PRIMARY_TPM_LOCKOUT;
     case ErrorAction::kIncorrectAuth:
       return user_data_auth::PrimaryAction::PRIMARY_INCORRECT_AUTH;
-    default:
-      return std::nullopt;
+    case ErrorAction::kLeLockedOut:
+      return user_data_auth::PrimaryAction::PRIMARY_LE_LOCKED_OUT;
   }
 }
 
 std::optional<user_data_auth::PossibleAction> ErrorActionToPossibleAction(
     ErrorAction err) {
   switch (err) {
+    // Explicitly lists out all error actions to return nullopt instead of using
+    // the default case, such that compile errors are emitted when a new entry
+    // is introduced in the enum but not added here.
+    case ErrorAction::kNull:
+    case ErrorAction::kCreateRequired:
+    case ErrorAction::kNotifyOldEncryption:
+    case ErrorAction::kResumePreviousMigration:
+    case ErrorAction::kTpmUpdateRequired:
+    case ErrorAction::kTpmNeedsReboot:
+    case ErrorAction::kTpmLockout:
+    case ErrorAction::kIncorrectAuth:
+    case ErrorAction::kLeLockedOut:
+      return std::nullopt;
+    // Possible actions:
     case ErrorAction::kRetry:
       return user_data_auth::PossibleAction::POSSIBLY_RETRY;
     case ErrorAction::kReboot:
@@ -66,8 +93,6 @@ std::optional<user_data_auth::PossibleAction> ErrorActionToPossibleAction(
           POSSIBLY_DEV_CHECK_UNEXPECTED_STATE;
     case ErrorAction::kFatal:
       return user_data_auth::PossibleAction::POSSIBLY_FATAL;
-    default:
-      return std::nullopt;
   }
 }
 

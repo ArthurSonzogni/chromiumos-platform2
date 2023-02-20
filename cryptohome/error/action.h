@@ -28,6 +28,7 @@ enum class ErrorAction {
   kTpmNeedsReboot,
   kTpmLockout,
   kIncorrectAuth,
+  kLeLockedOut,
 
   // The entries below are generic possible resolution to an issue. See
   // PossibleAction enum in system_api/dbus/cryptohome/UserDataAuth.proto for
@@ -38,7 +39,7 @@ enum class ErrorAction {
   kDeleteVault,
   kPowerwash,
   kDevCheckUnexpectedState,
-  kFatal
+  kFatal,
 };
 
 using ErrorActionSet = std::set<ErrorAction>;

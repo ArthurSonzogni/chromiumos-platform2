@@ -147,6 +147,12 @@ enum PrimaryAction {
   // Note that it is a special case, see CryptohomeErrorInfo's
   // probable_action field for more info.
   PRIMARY_INCORRECT_AUTH = 8;
+
+  // PRIMARY_LE_LOCKED_OUT indicates that authentication is attempted towards a
+  // locked out LE credential. Therefore, the caller should try another
+  // authentication methods that reset the LE credential, or wait until the LE
+  // credential is available.
+  PRIMARY_LE_LOCKED_OUT = 9;
 }
 
 // PossibleAction is used to indicate that cryptohomed believies some actions

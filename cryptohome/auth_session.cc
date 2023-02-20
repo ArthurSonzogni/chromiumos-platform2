@@ -47,6 +47,7 @@
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/utilities.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/signature_sealing/structures_proto.h"
@@ -62,6 +63,7 @@ namespace cryptohome {
 namespace {
 
 using brillo::cryptohome::home::SanitizeUserName;
+using cryptohome::error::ContainsActionInStack;
 using cryptohome::error::CryptohomeCryptoError;
 using cryptohome::error::CryptohomeError;
 using cryptohome::error::CryptohomeMountError;
@@ -682,7 +684,7 @@ void AuthSession::LoadVaultKeysetAndFsKeys(
     // it doesn't make it into the VaultKeyset::Decrypt(); so auth_lock should
     // be set here.
     if (!status.ok() &&
-        status->local_crypto_error() == CryptoError::CE_CREDENTIAL_LOCKED) {
+        ContainsActionInStack(status, error::ErrorAction::kLeLockedOut)) {
       // Get the corresponding encrypted vault keyset for the user and the label
       // to set the auth_locked.
       std::unique_ptr<VaultKeyset> vk = keyset_management_->GetVaultKeyset(

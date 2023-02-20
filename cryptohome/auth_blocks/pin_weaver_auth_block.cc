@@ -336,14 +336,15 @@ CryptoStatus PinWeaverAuthBlock::Derive(const AuthInput& auth_input,
       &key_blobs->reset_secret.value());
 
   if (!ret.ok()) {
-    // Replace the error with CE_CREDENTIAL_LOCKED if it is caused by invalid LE
-    // secret and locked.
+    // Include the kLeLockedOut action if it is caused by invalid LE secret and
+    // locked.
     if (ret->local_lecred_error() == LE_CRED_ERROR_INVALID_LE_SECRET &&
         IsLocked(auth_state->le_label.value())) {
       return MakeStatus<CryptohomeCryptoError>(
                  CRYPTOHOME_ERR_LOC(
                      kLocPinWeaverAuthBlockCheckCredLockedInDerive),
-                 ErrorActionSet({ErrorAction::kAuth}),
+                 ErrorActionSet(
+                     {ErrorAction::kAuth, ErrorAction::kLeLockedOut}),
                  CryptoError::CE_CREDENTIAL_LOCKED)
           .Wrap(std::move(ret));
     }
