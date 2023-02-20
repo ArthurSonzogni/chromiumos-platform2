@@ -22,6 +22,22 @@
 
 namespace diagnostics {
 
+// This flag is for development only. Setting it to `1` disables the seccomp
+// policy and generates the strace log at /tmp/delegate_strace.log.
+// Note that the unit tests will fail if it is on to prevent landing it
+// accidentally.
+// After trigger the process, the following commands can be used to generate the
+// secommp policy:
+/*
+DUT={Your DUT}
+scp $DUT:/tmp/delegate_strace.log /tmp/delegate_strace.log
+# Try to remove all the minijail syscalls
+sed -i '0,/prctl(0x26/d' /tmp/delegate_strace.log
+~/chromiumos/src/platform/minijail/tools/generate_seccomp_policy.py \
+  /tmp/delegate_strace.log
+*/
+#define GENERATE_STRACE_LOG_MODE 0
+
 namespace {
 
 uint32_t FetchJailedProcessPid(uint32_t parent_pid) {
@@ -86,10 +102,16 @@ SandboxedProcess::SandboxedProcess(
       "-G",
       // Restrict capabilities.
       "-c", base::StringPrintf("0x%" PRIx64, capabilities_mask),
-      // Set seccomp policy file.
-      "-S", seccomp_file.value(),
       // Set the process’s no_new_privs bit.
       "-n"};
+
+  if constexpr (GENERATE_STRACE_LOG_MODE) {
+    sandbox_arguments_.push_back("--no-default-runtime-environment");
+  } else {
+    // Set seccomp policy file.
+    sandbox_arguments_.push_back("-S");
+    sandbox_arguments_.push_back(seccomp_file.value());
+  }
 
   if ((sandbox_option & NO_ENTER_NETWORK_NAMESPACE) == 0) {
     // Enter a new network namespace.
@@ -118,6 +140,18 @@ void SandboxedProcess::AddArg(const std::string& arg) {
 
 bool SandboxedProcess::Start() {
   PrepareSandboxArguments();
+
+  if constexpr (GENERATE_STRACE_LOG_MODE) {
+    LOG(ERROR) << "Executer is in GENERATE_STRACE_LOG_MODE. Seccomp policy is "
+                  "skipped.";
+    BrilloProcessAddArg("/usr/local/bin/strace");
+    BrilloProcessAddArg("-f");
+    BrilloProcessAddArg("-X");
+    BrilloProcessAddArg("verbose");
+    BrilloProcessAddArg("-o");
+    BrilloProcessAddArg("/tmp/delegate_strace.log");
+    BrilloProcessAddArg("--");
+  }
 
   BrilloProcessAddArg(kMinijailBinary);
   for (const std::string& arg : sandbox_arguments_) {
@@ -197,5 +231,7 @@ bool SandboxedProcess::BrilloProcessStart() {
 bool SandboxedProcess::IsPathExists(const base::FilePath& path) const {
   return base::PathExists(path);
 }
+
+#undef GENERATE_STRACE_LOG_MODE
 
 }  // namespace diagnostics
