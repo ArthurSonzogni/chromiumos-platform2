@@ -166,6 +166,13 @@ def GetParser():
         help="Comma delimited file extensions to check. "
         "(default: %(default)s)",
     )
+    parser.add_argument(
+        "--no-format",
+        dest="format",
+        default=True,
+        action="store_false",
+        help="Disable formatting checks (use `cros format`).",
+    )
     parser.add_argument("files", nargs="*", help="Files to run lint.")
     return parser
 
@@ -1009,11 +1016,12 @@ def GetGnPath():
     return os.path.join(chromite_root, "chroot", "usr", "bin", "gn")
 
 
-def CheckGnFile(gnfile):
+def CheckGnFile(gnfile, check_format: bool = False):
     """Check |gnfile| for common mistakes.
 
     Args:
         gnfile: A string representing the filename of the GN file.
+        check_format: Whether to check file formatting.
 
     Returns:
         List of detected LintResult.
@@ -1022,7 +1030,8 @@ def CheckGnFile(gnfile):
         # The file has been deleted.
         return
     issues = []
-    issues += CheckFormat(gnfile)
+    if check_format:
+        issues += CheckFormat(gnfile)
     # Parse the gnlint flags in the file.
     with open(gnfile) as fp:
         data = fp.read()
@@ -1085,7 +1094,7 @@ def main(argv):
     num_files = 0
     for gnfile in FilterPaths(opts.files, extensions):
         logging.debug("Checking %s", gnfile)
-        issues = CheckGnFile(gnfile)
+        issues = CheckGnFile(gnfile, opts.format)
         if issues:
             logging.error("**** %s: found %i issue(s)", gnfile, len(issues))
             for issue in issues:

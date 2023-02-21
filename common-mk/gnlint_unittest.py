@@ -12,6 +12,7 @@ import unittest
 
 import gnlint
 
+
 # Find chromite!
 sys.path.insert(
     0,
@@ -22,6 +23,7 @@ sys.path.insert(
 from chromite.lib import commandline
 from chromite.lib import cros_test_lib
 from chromite.lib import osutils
+
 
 # pylint: enable=wrong-import-position
 
@@ -154,7 +156,7 @@ class FilesystemUtilityTests(cros_test_lib.MockTempDirTestCase):
         gnfile = self.tempdir / "asdf.gn"
         osutils.WriteFile(gnfile, content)
         self.assertExists(gnlint.GetGnPath())
-        ret = gnlint.CheckGnFile(gnfile)
+        ret = gnlint.CheckGnFile(gnfile, True)
         self.assertEqual(len(ret), 1)
 
     def testFilterPaths(self):
