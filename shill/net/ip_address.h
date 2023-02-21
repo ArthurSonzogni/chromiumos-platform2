@@ -7,6 +7,7 @@
 
 #include <netinet/in.h>
 
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -86,9 +87,10 @@ class SHILL_EXPORT IPAddress {
   // Returns an IPAddress that has the IP address and prefix specified by
   // |address_string|. IP address format should be CIDR (e.g.
   // "192.144.30.54/32"). If |family| is specified, |address_string| will only
-  // be parsed for that |family|. An invalid IPAddress will returned on failure.
-  static IPAddress CreateFromPrefixString(const std::string& address_string,
-                                          Family family = kFamilyUnknown);
+  // be parsed for that |family|. std::nullopt will be returned on failure. Note
+  // that on success, the returned IPAddress object is guaranteed to be valid.
+  static std::optional<IPAddress> CreateFromPrefixString(
+      const std::string& address_string, Family family = kFamilyUnknown);
 
   // Getters and Setters
   Family family() const { return family_; }

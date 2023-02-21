@@ -20,6 +20,7 @@
 #include <base/json/json_reader.h>
 #include <base/json/json_writer.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
@@ -646,7 +647,13 @@ bool WireGuardDriver::PopulateIPProperties() {
     std::vector<std::string> allowed_ip_list = base::SplitString(
         allowed_ips_str, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
     for (const auto& allowed_ip : allowed_ip_list) {
-      switch ((IPAddress::CreateFromPrefixString(allowed_ip)).family()) {
+      const auto prefix = IPAddress::CreateFromPrefixString(allowed_ip);
+      if (!prefix.has_value()) {
+        LOG(ERROR) << "Failed to parse AllowedIP: the input string is "
+                   << allowed_ip;
+        return false;
+      }
+      switch (prefix->family()) {
         case IPAddress::kFamilyIPv4:
           ipv4_properties_.inclusion_list.push_back(allowed_ip);
           break;
@@ -654,8 +661,7 @@ bool WireGuardDriver::PopulateIPProperties() {
           ipv6_properties_.inclusion_list.push_back(allowed_ip);
           break;
         default:
-          LOG(ERROR) << "Failed to parse AllowedIP: the input string is "
-                     << allowed_ip;
+          NOTREACHED();
           return false;
       }
     }

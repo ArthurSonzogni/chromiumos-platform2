@@ -664,11 +664,11 @@ bool OpenVPNDriver::ParseIPv6RouteOption(const std::string& key,
       GetRouteOptionEntry(kOpenVPNRouteIPv6NetworkPrefix, key, routes);
   if (route) {
     auto addr = IPAddress::CreateFromPrefixString(value);
-    if (!addr.IsValid()) {
+    if (!addr.has_value()) {
       return false;
     }
-    route->host = addr.ToString();
-    route->prefix = addr.prefix();
+    route->host = addr->ToString();
+    route->prefix = addr->prefix();
     return true;
   }
   route = GetRouteOptionEntry(kOpenVPNRouteIPv6GatewayPrefix, key, routes);

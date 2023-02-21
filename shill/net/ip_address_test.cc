@@ -188,16 +188,18 @@ TEST_F(IPAddressTest, CreateFromPrefixString) {
   ByteString kIPv4Address(kV4Address1, sizeof(kV4Address1));
   for (int prefix = 0; prefix < 33; prefix++) {
     const std::string input = kIPv4String + "/" + std::to_string(prefix);
-    IPAddress addr = IPAddress::CreateFromPrefixString(input);
-    EXPECT_EQ(IPAddress::kFamilyIPv4, addr.family()) << error(input);
-    EXPECT_EQ(prefix, addr.prefix()) << error(input);
-    EXPECT_TRUE(kIPv4Address.Equals(addr.address())) << error(input);
+    auto addr = IPAddress::CreateFromPrefixString(input);
+    ASSERT_TRUE(addr.has_value()) << error(input);
+    EXPECT_TRUE(addr->IsValid()) << error(input);
+    EXPECT_EQ(IPAddress::kFamilyIPv4, addr->family()) << error(input);
+    EXPECT_EQ(prefix, addr->prefix()) << error(input);
+    EXPECT_TRUE(kIPv4Address.Equals(addr->address())) << error(input);
 
     // Specifying correct |family| should also work.
     addr = IPAddress::CreateFromPrefixString(input, IPAddress::kFamilyIPv4);
-    EXPECT_TRUE(addr.IsValid());
+    EXPECT_TRUE(addr.has_value());
     addr = IPAddress::CreateFromPrefixString(input, IPAddress::kFamilyIPv6);
-    EXPECT_FALSE(addr.IsValid());
+    EXPECT_FALSE(addr.has_value());
   }
   // Checks if CreateFromPrefixString() returns false by invalid strings for
   // IPv4.
@@ -209,10 +211,8 @@ TEST_F(IPAddressTest, CreateFromPrefixString) {
                                                        kIPv4String + "/33",
                                                        kIPv4String + "/-1"};
   for (const auto& input : ipv4_invalid_cases) {
-    IPAddress addr = IPAddress::CreateFromPrefixString(input);
-    EXPECT_EQ(IPAddress::kFamilyUnknown, addr.family()) << error(input);
-    EXPECT_EQ(0, addr.prefix()) << error(input);
-    EXPECT_TRUE(addr.address().IsZero()) << error(input);
+    const auto addr = IPAddress::CreateFromPrefixString(input);
+    EXPECT_FALSE(addr.has_value()) << error(input);
   }
 
   // Tests for strings like IPv6
@@ -223,16 +223,18 @@ TEST_F(IPAddressTest, CreateFromPrefixString) {
   ByteString kIPv6Address(kV6Address1, sizeof(kV6Address1));
   for (int prefix = 0; prefix < 129; prefix++) {
     const std::string input = kIPv6String + "/" + std::to_string(prefix);
-    IPAddress addr = IPAddress::CreateFromPrefixString(input);
-    EXPECT_EQ(IPAddress::kFamilyIPv6, addr.family()) << error(input);
-    EXPECT_EQ(prefix, addr.prefix()) << error(input);
-    EXPECT_TRUE(kIPv6Address.Equals(addr.address())) << error(input);
+    auto addr = IPAddress::CreateFromPrefixString(input);
+    ASSERT_TRUE(addr.has_value()) << error(input);
+    EXPECT_TRUE(addr->IsValid()) << error(input);
+    EXPECT_EQ(IPAddress::kFamilyIPv6, addr->family()) << error(input);
+    EXPECT_EQ(prefix, addr->prefix()) << error(input);
+    EXPECT_TRUE(kIPv6Address.Equals(addr->address())) << error(input);
 
     // Specifying correct |family| should also work.
     addr = IPAddress::CreateFromPrefixString(input, IPAddress::kFamilyIPv6);
-    EXPECT_TRUE(addr.IsValid());
+    EXPECT_TRUE(addr.has_value());
     addr = IPAddress::CreateFromPrefixString(input, IPAddress::kFamilyIPv4);
-    EXPECT_FALSE(addr.IsValid());
+    EXPECT_FALSE(addr.has_value());
   }
   // Checks if CreateFromPrefixString() returns false by invalid strings for
   // IPv6.
@@ -245,10 +247,8 @@ TEST_F(IPAddressTest, CreateFromPrefixString) {
       kIPv6String + "/129",
       kIPv6String + "/-1"};
   for (const auto& input : ipv6_invalid_cases) {
-    IPAddress addr = IPAddress::CreateFromPrefixString(input);
-    EXPECT_EQ(IPAddress::kFamilyUnknown, addr.family()) << error(input);
-    EXPECT_EQ(0, addr.prefix()) << error(input);
-    EXPECT_TRUE(addr.address().IsZero()) << error(input);
+    const auto addr = IPAddress::CreateFromPrefixString(input);
+    EXPECT_FALSE(addr.has_value()) << error(input);
   }
 }
 

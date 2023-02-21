@@ -7,6 +7,7 @@
 #include <arpa/inet.h>
 
 #include <limits>
+#include <optional>
 
 #include <base/check.h>
 #include <base/check_op.h>
@@ -148,8 +149,8 @@ std::string IPAddress::GetAddressFamilyName(Family family) {
 }
 
 // static
-IPAddress IPAddress::CreateFromPrefixString(const std::string& address_string,
-                                            Family family) {
+std::optional<IPAddress> IPAddress::CreateFromPrefixString(
+    const std::string& address_string, Family family) {
   if (family != kFamilyIPv6) {
     IPAddress ipv4_address(IPAddress::kFamilyIPv4);
     if (ipv4_address.SetAddressAndPrefixFromString(address_string)) {
@@ -162,7 +163,7 @@ IPAddress IPAddress::CreateFromPrefixString(const std::string& address_string,
       return ipv6_address;
     }
   }
-  return IPAddress();
+  return std::nullopt;
 }
 
 bool IPAddress::SetAddressFromString(const std::string& address_string) {
