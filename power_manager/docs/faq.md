@@ -57,25 +57,16 @@ are changed or when Chrome is restarted, for instance.
 
 ### powerd preferences
 
-powerd's default preferences are stored either in [chromeos-config] or on the
-read-only partition in `/usr/share/power_manager` and
-`/usr/share/power_manager/board_specific`. These preferences can be overridden
-by identically-named files on the stateful partition in
-`/var/lib/power_manager`. In most cases, preference changes won't take effect
-until the powerd process is restarted.
+At a high level, the powerd prefs system allows values to be read from
+[chromeos-config] or from the read-only partition at `/usr/share/power_manager`.
+Powerd has many more features, and these are explored in detail in the
+[prefs](./prefs.md) documentation.
 
-To revert to the normal behavior, remove the files that you just created from
-`/var/lib/power_manager` and restart the powerd job again.
-
-For preferences configured in multiple sources, the order of preference is as
-follows:
-
-*   `/var/lib/power_manager`
-*   [chromeos-config]
-*   `/usr/share/power_manager/board_specific`
-*   `/usr/share/power_manager`
-
-To temporarily change prefs in an autotest, use [PowerPrefChanger].
+For testing and debugging, it an be useful to override pref values. This can be
+done by writing files onto the read-write partition at `/var/lib/power_manager`.
+See the example of setting the [`use_lid` preference](
+#How-do-I-prevent-a-system-from-going-to-sleep) above, or see the
+[prefs](./prefs.md) documentation for more detail.
 
 ### Changing powerd timeouts
 
@@ -101,7 +92,6 @@ usage.
 
 [Keep Awake extension]: https://chrome.google.com/webstore/detail/keep-awake-extension/bijihlabcfdnabacffofojgmehjdielb
 [chrome.power API]: https://developer.chrome.com/extensions/power
-[PowerPrefChanger]: https://chromium.googlesource.com/chromiumos/third_party/autotest/+/HEAD/client/cros/power/power_utils.py
 [suspend.proto]: https://chromium.googlesource.com/chromiumos/platform2/system_api/+/HEAD/dbus/power_manager/suspend.proto
 [suspend_delay_sample]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/power_manager/tools/suspend_delay_sample.cc
 [chromeos-config]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/chromeos-config/
