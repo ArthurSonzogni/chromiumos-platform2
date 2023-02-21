@@ -151,7 +151,9 @@ TpmLiveTest::TpmLiveTest()
     : hwsec_factory_(std::make_unique<hwsec::FactoryImpl>()),
       hwsec_(hwsec_factory_->GetCryptohomeFrontend()),
       recovery_crypto_(hwsec_factory_->GetRecoveryCryptoFrontend()),
-      cryptohome_keys_manager_(hwsec_.get(), &platform_) {}
+      cryptohome_keys_manager_(hwsec_.get(), &platform_) {
+  cryptohome_keys_manager_.Init();
+}
 
 bool TpmLiveTest::RunLiveTests() {
   if (!TpmEccAuthBlockTest()) {
