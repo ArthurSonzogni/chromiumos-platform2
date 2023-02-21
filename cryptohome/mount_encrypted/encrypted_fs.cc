@@ -128,8 +128,11 @@ std::string GetMountOpts() {
   uint64_t commit_interval = 600;
 
   if (base::ReadFileToString(base::FilePath(kProcDirtyExpirePath),
-                             &dirty_expire) &&
-      base::StringToUint64(dirty_expire, &dirty_expire_centisecs)) {
+                             &dirty_expire)) {
+    base::TrimWhitespaceASCII(dirty_expire, base::TRIM_ALL, &dirty_expire);
+    if (!base::StringToUint64(dirty_expire, &dirty_expire_centisecs)) {
+      LOG(INFO) << "Failed to parse contents of " << dirty_expire;
+    }
     LOG(INFO) << "Using vm.dirty_expire_centisecs/100 as the commit interval";
 
     // Keep commit interval as 5 seconds (default for ext4) for smaller
