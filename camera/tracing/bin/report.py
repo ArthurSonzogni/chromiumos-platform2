@@ -6,12 +6,9 @@
 
 """Implementation of the `report` subcommand."""
 
-import hashlib
-import json
 import logging
 import os
 import re
-import stat
 import subprocess
 from typing import Optional
 
@@ -22,83 +19,29 @@ from cros_camera_tracing import utils
 class TraceProcessorEnv:
     """Runtime environment for Perfetto trace processor."""
 
-    # Use the same trace processor binary as Tast for compatibility.
-    TRACE_PROCESSOR_METAFILE = (
-        "src/platform/tast-tests/src/chromiumos/tast/local/tracing/data/"
-        "trace_processor_shell-amd64.external"
-    )
-
-    # Local directory for caching trace processor binary.
-    CACHE_DIR = ".cache"
-
     # Local directory hosting the camera metrics definitions.
     METRICS_DIR = "metrics"
 
+    # Path to the built-in trace processors.
+    TRACE_PROCESSOR_IN_SDK = "/usr/bin/trace_processor_shell"
+    TRACE_PROCESSOR_ON_DUT = "/usr/local/bin/trace_processor_shell"
+
     def __init__(self, trace_processor_path: Optional[str]):
-        self.trace_processor_path = trace_processor_path or ""
+        self.trace_processor_path = None
+        if trace_processor_path:
+            self.trace_processor_path = trace_processor_path
+        elif utils.is_inside_chroot():
+            self.trace_processor_path = TraceProcessorEnv.TRACE_PROCESSOR_IN_SDK
+        elif utils.is_on_dut():
+            self.trace_processor_path = TraceProcessorEnv.TRACE_PROCESSOR_ON_DUT
+        if self.trace_processor_path is None or not os.path.exists(
+            self.trace_processor_path
+        ):
+            raise RuntimeError("Unable to locate trace processor")
+
         self.metrics_dir = os.path.realpath(
             os.path.join(os.path.dirname(__file__), "..", self.METRICS_DIR)
         )
-        self.cache_dir = os.path.realpath(
-            os.path.join(os.path.dirname(__file__), "..", self.CACHE_DIR)
-        )
-
-    def _set_up_cache_dir(self):
-        try:
-            os.makedirs(self.cache_dir)
-        except FileExistsError:
-            pass
-
-    def _set_up_trace_processor(self):
-        if self.trace_processor_path is not None and os.path.exists(
-            self.trace_processor_path
-        ):
-            return
-
-        # TODO: Set up trace processor on DUT automatically based on the
-        # processor architecture.
-        if not utils.is_inside_chroot():
-            raise RuntimeError(
-                "Trace processor binary must be specified using "
-                "--trace_processor_path when running on DUT or outside of CrOS "
-                "SDK chroot"
-            )
-
-        # Extract the metadata for the trace processor used by Tast tests.
-        metadata = None
-        with open(utils.get_repo_file_path(self.TRACE_PROCESSOR_METAFILE)) as f:
-            metadata = json.load(f)
-
-        self.trace_processor_path = os.path.join(
-            self.cache_dir, os.path.basename(metadata["url"])
-        )
-
-        # Verify the integrity of the cached trace processor. Re-download if
-        # needed.
-        if os.path.exists(self.trace_processor_path):
-            m = hashlib.sha256()
-            with open(self.trace_processor_path, "rb") as f:
-                m.update(f.read())
-            if m.hexdigest() != metadata["sha256sum"]:
-                logging.warning(
-                    "Removing corrupted trace processor cache: %s",
-                    self.trace_processor_path,
-                )
-                os.remove(self.trace_processor_path)
-
-        # Download the trace processor and set the exec bit.
-        if not os.path.exists(self.trace_processor_path):
-            subprocess.run(
-                ["gsutil", "cp", metadata["url"], self.trace_processor_path],
-                check=True,
-            )
-            os.chmod(self.trace_processor_path, stat.S_IRWXU)
-
-    def set_up(self):
-        """Sets up the dependencies."""
-
-        self._set_up_cache_dir()
-        self._set_up_trace_processor()
 
     def run(self, args):
         """Runs the trace processor."""
@@ -183,8 +126,8 @@ def set_up_subcommand_parser(subparsers):
         default=None,
         help=(
             "Path to the Perfetto trace_processor binary; if not specified, "
-            "will fetch and use the trace processor in the local cache dir "
-            "(default=%(default)s)"
+            "will use the built-in trace processor inside the SDK or on the "
+            "DUT (default=%(default)s)"
         ),
     )
     report_parser.add_argument(
@@ -219,6 +162,5 @@ def execute_subcommand(args):
         env.list_metrics()
 
     if args.metrics:
-        env.set_up()
         logging.info("Using trace processor: %s", env.trace_processor_path)
         env.run(args)
