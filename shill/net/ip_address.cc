@@ -149,6 +149,26 @@ std::string IPAddress::GetAddressFamilyName(Family family) {
 }
 
 // static
+std::optional<IPAddress> IPAddress::CreateFromStringAndPrefix(
+    const std::string& address_string, unsigned int prefix, Family family) {
+  if (family != kFamilyIPv6) {
+    IPAddress ipv4_address(IPAddress::kFamilyIPv4);
+    if (ipv4_address.SetAddressFromString(address_string)) {
+      ipv4_address.set_prefix(prefix);
+      return ipv4_address;
+    }
+  }
+  if (family != kFamilyIPv4) {
+    IPAddress ipv6_address(IPAddress::kFamilyIPv6);
+    if (ipv6_address.SetAddressFromString(address_string)) {
+      ipv6_address.set_prefix(prefix);
+      return ipv6_address;
+    }
+  }
+  return std::nullopt;
+}
+
+// static
 std::optional<IPAddress> IPAddress::CreateFromPrefixString(
     const std::string& address_string, Family family) {
   if (family != kFamilyIPv6) {

@@ -84,11 +84,26 @@ class SHILL_EXPORT IPAddress {
   // Returns the name of an address family.
   static std::string GetAddressFamilyName(Family family);
 
-  // Returns an IPAddress that has the IP address and prefix specified by
-  // |address_string|. IP address format should be CIDR (e.g.
-  // "192.144.30.54/32"). If |family| is specified, |address_string| will only
-  // be parsed for that |family|. std::nullopt will be returned on failure. Note
-  // that on success, the returned IPAddress object is guaranteed to be valid.
+  // Tries parsing |address_string| as an IP address ands return an IPAddress
+  // object on success. The input can be either IPv4 or IPv6 address. If
+  // |family| is specified, |address_string| will only be parsed for that
+  // |family|. The prefix of the returned IPAddress object will be set to 0.
+  // Note that on success, the returned IPAddress object is guaranteed to be
+  // valid.
+  static std::optional<IPAddress> CreateFromString(
+      const std::string& address_string, Family family = kFamilyUnknown) {
+    return CreateFromStringAndPrefix(address_string, 0, family);
+  }
+
+  // Similar to CreateFromString(), but also set |prefix|.
+  static std::optional<IPAddress> CreateFromStringAndPrefix(
+      const std::string& address_string,
+      unsigned int prefix,
+      Family family = kFamilyUnknown);
+
+  // Similar to CreateFromString(), but accepts a prefix string in the CIDR
+  // format (e.g., "10.0.0.1/16"). Note that on success, the returned IPAddress
+  // object is guaranteed to be valid.
   static std::optional<IPAddress> CreateFromPrefixString(
       const std::string& address_string, Family family = kFamilyUnknown);
 

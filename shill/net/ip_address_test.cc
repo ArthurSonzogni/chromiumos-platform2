@@ -9,11 +9,14 @@
 #include <utility>
 #include <vector>
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "shill/net/byte_string.h"
 #include "shill/net/ip_address.h"
 
+using testing::Eq;
+using testing::Optional;
 using testing::Test;
 
 namespace shill {
@@ -30,6 +33,17 @@ const unsigned char kV6Address1[] = {0xfe, 0x80, 0x00, 0x00, 0x00, 0x00,
 const char kV6String2[] = "1980:0:1000:1b02:1aa9:5ff:7ebf";
 const unsigned char kV6Address2[] = {0x19, 0x80, 0x00, 0x00, 0x10, 0x00, 0x1b,
                                      0x02, 0x1a, 0xa9, 0x05, 0xff, 0x7e, 0xbf};
+
+IPAddress::Family FlipFamily(IPAddress::Family f) {
+  switch (f) {
+    case IPAddress::kFamilyIPv4:
+      return IPAddress::kFamilyIPv6;
+    case IPAddress::kFamilyIPv6:
+      return IPAddress::kFamilyIPv4;
+    default:
+      return IPAddress::kFamilyUnknown;
+  }
+}
 }  // namespace
 
 class IPAddressTest : public Test {
@@ -57,6 +71,14 @@ class IPAddressTest : public Test {
 
     IPAddress good_addr_from_string(good_string);
     EXPECT_EQ(family, good_addr_from_string.family());
+
+    EXPECT_THAT(IPAddress::CreateFromString(good_string), Optional(good_addr));
+    EXPECT_THAT(IPAddress::CreateFromString(good_string, family),
+                Optional(good_addr));
+    EXPECT_THAT(IPAddress::CreateFromStringAndPrefix(good_string, 0, family),
+                Optional(good_addr));
+    EXPECT_EQ(IPAddress::CreateFromString(good_string, FlipFamily(family)),
+              std::nullopt);
 
     IPAddress bad_addr(family);
     EXPECT_FALSE(bad_addr.SetAddressFromString(bad_string));
@@ -421,6 +443,11 @@ TEST_P(IPAddressNetworkPartMappingTest, TestNetworkPartMapping) {
   EXPECT_TRUE(
       expected_broadcast.SetAddressFromString(GetParam().expected_broadcast));
   EXPECT_TRUE(expected_broadcast.Equals(address.GetDefaultBroadcast()));
+
+  const auto address2 = IPAddress::CreateFromStringAndPrefix(GetParam().address,
+                                                             GetParam().prefix);
+  ASSERT_TRUE(address2.has_value());
+  EXPECT_EQ(*address2, address);
 }
 
 INSTANTIATE_TEST_SUITE_P(
