@@ -62,6 +62,7 @@ config("target_defaults") {
   defines = [
     "OS_CHROMEOS",
     "USE_ARCVM=${use.arcvm}",
+    "USE_ARC_EROFS=${use.arc_erofs}",
     "USE_HOUDINI=${use.houdini}",
     "USE_HOUDINI64=${use.houdini64}",
     "USE_LVM_STATEFUL_PARTITION=${use.lvm_stateful_partition}",
