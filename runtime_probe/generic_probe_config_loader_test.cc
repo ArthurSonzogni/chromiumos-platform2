@@ -19,7 +19,7 @@ namespace runtime_probe {
 namespace {
 
 constexpr char kConfigName[] = "probe_config.json";
-constexpr char kConfigHash[] = "0B6621DE5CDB0F805E614F19CAA6C38104F1F178";
+constexpr char kConfigHash[] = "14127A36F3A2509343AF7F19387537F608B07EE1";
 
 base::FilePath GetTestDataPath() {
   char* src_env = std::getenv("SRC");
@@ -69,9 +69,8 @@ TEST_F(GenericProbeConfigLoaderTest, Load_CrosDebugEnabled) {
   GenericProbeConfigLoader probe_config_loader{rel_file_path};
   const auto probe_config = probe_config_loader.Load();
   EXPECT_TRUE(probe_config);
-  EXPECT_EQ(probe_config->path, abs_file_path);
-  EXPECT_FALSE(probe_config->config.GetDict().empty());
-  EXPECT_EQ(probe_config->sha1_hash, kConfigHash);
+  EXPECT_EQ(probe_config->path(), abs_file_path);
+  EXPECT_EQ(probe_config->checksum(), kConfigHash);
 }
 
 }  // namespace runtime_probe

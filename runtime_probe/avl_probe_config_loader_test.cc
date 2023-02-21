@@ -69,7 +69,7 @@ TEST_F(AvlProbeConfigLoaderTest, Load_RootfsWhenCrosDebugDisabled) {
   constexpr char kModelName[] = "ModelFoo";
   SetCrosDebug(CrosDebugFlag::kDisabled);
   SetModelName(kModelName);
-  constexpr char kConfigAHash[] = "0B6621DE5CDB0F805E614F19CAA6C38104F1F178";
+  constexpr char kConfigAHash[] = "14127A36F3A2509343AF7F19387537F608B07EE1";
   const base::FilePath rootfs_config_path = root_dir()
                                                 .Append(kRuntimeProbeConfigDir)
                                                 .Append(kModelName)
@@ -90,16 +90,15 @@ TEST_F(AvlProbeConfigLoaderTest, Load_RootfsWhenCrosDebugDisabled) {
 
   const auto probe_config = probe_config_loader_.Load();
   EXPECT_TRUE(probe_config);
-  EXPECT_EQ(probe_config->path, rootfs_config_path);
-  EXPECT_FALSE(probe_config->config.GetDict().empty());
-  EXPECT_EQ(probe_config->sha1_hash, kConfigAHash);
+  EXPECT_EQ(probe_config->path(), rootfs_config_path);
+  EXPECT_EQ(probe_config->checksum(), kConfigAHash);
 }
 
 TEST_F(AvlProbeConfigLoaderTest, Load_StatefulPartitionWhenCrosDebugEnabled) {
   constexpr char kModelName[] = "ModelFoo";
   SetCrosDebug(CrosDebugFlag::kEnabled);
   SetModelName(kModelName);
-  constexpr char kConfigBHash[] = "BC65881109108FB248B76554378AC493CD4D5C6D";
+  constexpr char kConfigBHash[] = "ED446A6BAEBDCBA00C0A3EA9CE4EE67EA037FA94";
   const base::FilePath rootfs_config_path = root_dir()
                                                 .Append(kRuntimeProbeConfigDir)
                                                 .Append(kModelName)
@@ -120,16 +119,15 @@ TEST_F(AvlProbeConfigLoaderTest, Load_StatefulPartitionWhenCrosDebugEnabled) {
 
   const auto probe_config = probe_config_loader_.Load();
   EXPECT_TRUE(probe_config);
-  EXPECT_EQ(probe_config->path, stateful_partition_config_path);
-  EXPECT_FALSE(probe_config->config.GetDict().empty());
-  EXPECT_EQ(probe_config->sha1_hash, kConfigBHash);
+  EXPECT_EQ(probe_config->path(), stateful_partition_config_path);
+  EXPECT_EQ(probe_config->checksum(), kConfigBHash);
 }
 
 TEST_F(AvlProbeConfigLoaderTest, Load_RootfsWhenCrosDebugEnabled) {
   constexpr char kModelName[] = "ModelFoo";
   SetCrosDebug(CrosDebugFlag::kEnabled);
   SetModelName(kModelName);
-  constexpr char kConfigAHash[] = "0B6621DE5CDB0F805E614F19CAA6C38104F1F178";
+  constexpr char kConfigAHash[] = "14127A36F3A2509343AF7F19387537F608B07EE1";
   const base::FilePath rootfs_config_path = root_dir()
                                                 .Append(kRuntimeProbeConfigDir)
                                                 .Append(kModelName)
@@ -140,9 +138,8 @@ TEST_F(AvlProbeConfigLoaderTest, Load_RootfsWhenCrosDebugEnabled) {
 
   const auto probe_config = probe_config_loader_.Load();
   EXPECT_TRUE(probe_config);
-  EXPECT_EQ(probe_config->path, rootfs_config_path);
-  EXPECT_FALSE(probe_config->config.GetDict().empty());
-  EXPECT_EQ(probe_config->sha1_hash, kConfigAHash);
+  EXPECT_EQ(probe_config->path(), rootfs_config_path);
+  EXPECT_EQ(probe_config->checksum(), kConfigAHash);
 }
 
 TEST_F(AvlProbeConfigLoaderTest, Load_MissingFileFailed) {

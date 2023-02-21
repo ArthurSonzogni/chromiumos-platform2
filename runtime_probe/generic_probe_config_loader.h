@@ -21,7 +21,7 @@ class GenericProbeConfigLoader : public ProbeConfigLoader {
 
   // Loads probe config from the given path.  This method only works when
   // cros_debug is enabled.
-  std::optional<ProbeConfigData> Load() const override;
+  std::optional<ProbeConfig> Load() const override;
 
  private:
   base::FilePath path_;

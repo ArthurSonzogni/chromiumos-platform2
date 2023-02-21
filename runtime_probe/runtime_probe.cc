@@ -94,21 +94,15 @@ int RunningInCli(const std::string& config_file_path, bool to_stdout) {
     config_loader = std::make_unique<runtime_probe::GenericProbeConfigLoader>(
         base::FilePath{config_file_path});
   }
-  const auto probe_config_data = config_loader->Load();
-  if (!probe_config_data) {
+
+  auto probe_config = config_loader->Load();
+  if (!probe_config) {
     LOG(ERROR) << "Failed to load probe config";
     return ExitStatus::kFailedToLoadProbeConfig;
   }
 
-  LOG(INFO) << "Load probe config from: " << probe_config_data->path
-            << " (checksum: " << probe_config_data->sha1_hash << ")";
-
-  auto probe_config =
-      runtime_probe::ProbeConfig::FromValue(probe_config_data->config);
-  if (!probe_config) {
-    LOG(ERROR) << "Failed to parse from argument from ProbeConfig";
-    return ExitStatus::kFailToParseProbeArgFromConfig;
-  }
+  LOG(INFO) << "Load probe config from: " << probe_config->path()
+            << " (checksum: " << probe_config->checksum() << ")";
 
   const auto probe_result = probe_config->Eval();
   if (to_stdout) {

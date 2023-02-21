@@ -7,9 +7,11 @@
 
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/values.h>
 #include <gtest/gtest.h>
 
@@ -29,7 +31,13 @@ class ProbeConfig {
   //   }
 
  public:
-  static std::unique_ptr<ProbeConfig> FromValue(const base::Value& dv);
+  // Factory method that creates the probe config from the given file path.
+  // Return |std::nullopt| if loading fails.
+  static std::optional<ProbeConfig> FromFile(const base::FilePath& file_path);
+
+  // Factory method that creates the probe config from the given dictionary.
+  // Return |std::nullopt| if loading fails.
+  static std::optional<ProbeConfig> FromValue(const base::Value& dv);
 
   // Evaluates the probe config.
   //
@@ -51,14 +59,25 @@ class ProbeConfig {
   // This is the same as calling `this->eval({keys of category_})`.
   base::Value Eval() const;
 
+  // Gets the component category with given name or return nullptr on failure.
   ComponentCategory* GetComponentCategory(
       const std::string& category_name) const;
 
+  // Checksum of the probe config text in SHA1 hash.
+  const std::string& checksum() const { return checksum_; }
+
+  // Path to the probe config file.
+  const base::FilePath& path() const { return path_; }
+
  private:
-  // Must call `FromValue()` to create an instance.
+  // Private constructor used by factory methods only.
   ProbeConfig() = default;
 
   std::map<std::string, std::unique_ptr<ComponentCategory>> category_;
+
+  std::string checksum_;
+
+  base::FilePath path_;
 
   FRIEND_TEST(ProbeConfigTest, LoadConfig);
 };

@@ -82,7 +82,6 @@ if (use.test) {
       "daemon_test.cc",
       "field_converter_test.cc",
       "generic_probe_config_loader_test.cc",
-      "probe_config_loader_test.cc",
       "probe_config_test.cc",
       "probe_function_argument_test.cc",
       "probe_result_checker_test.cc",

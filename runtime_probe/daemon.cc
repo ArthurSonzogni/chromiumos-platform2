@@ -52,20 +52,9 @@ void Daemon::ProbeCategories(Daemon::DBusCallback<ProbeResult> cb,
   ProbeResult reply;
 
   AvlProbeConfigLoader config_loader;
-  const auto probe_config_data = config_loader.Load();
-  if (!probe_config_data) {
-    reply.set_error(RUNTIME_PROBE_ERROR_PROBE_CONFIG_INVALID);
-    cb->Return(reply);
-    return Quit();
-  }
-  LOG(INFO) << "Load probe config from: " << probe_config_data->path
-            << " (checksum: " << probe_config_data->sha1_hash << ")";
-
-  reply.set_probe_config_checksum(probe_config_data->sha1_hash);
-
-  const auto probe_config = ProbeConfig::FromValue(probe_config_data->config);
+  const auto probe_config = config_loader.Load();
   if (!probe_config) {
-    reply.set_error(RUNTIME_PROBE_ERROR_PROBE_CONFIG_INCOMPLETE_PROBE_FUNCTION);
+    reply.set_error(RUNTIME_PROBE_ERROR_PROBE_CONFIG_INVALID);
     cb->Return(reply);
     return Quit();
   }
@@ -113,18 +102,9 @@ void Daemon::GetKnownComponents(
   GetKnownComponentsResult reply;
 
   AvlProbeConfigLoader config_loader;
-  const auto probe_config_data = config_loader.Load();
-  if (!probe_config_data) {
-    reply.set_error(RUNTIME_PROBE_ERROR_PROBE_CONFIG_INVALID);
-    cb->Return(reply);
-    return Quit();
-  }
-  LOG(INFO) << "Load probe config from: " << probe_config_data->path
-            << " (checksum: " << probe_config_data->sha1_hash << ")";
-
-  const auto probe_config = ProbeConfig::FromValue(probe_config_data->config);
+  const auto probe_config = config_loader.Load();
   if (!probe_config) {
-    reply.set_error(RUNTIME_PROBE_ERROR_PROBE_CONFIG_INCOMPLETE_PROBE_FUNCTION);
+    reply.set_error(RUNTIME_PROBE_ERROR_PROBE_CONFIG_INVALID);
     cb->Return(reply);
     return Quit();
   }
@@ -148,20 +128,9 @@ void Daemon::ProbeSsfcComponents(
   ProbeSsfcComponentsResponse reply;
 
   SsfcProbeConfigLoader config_loader;
-  const auto probe_config_data = config_loader.Load();
-  if (!probe_config_data) {
-    reply.set_error(RUNTIME_PROBE_ERROR_PROBE_CONFIG_INVALID);
-    cb->Return(reply);
-    return Quit();
-  }
-  LOG(INFO) << "Load SSFC probe config from: " << probe_config_data->path
-            << " (checksum: " << probe_config_data->sha1_hash << ")";
-
-  reply.set_probe_config_checksum(probe_config_data->sha1_hash);
-
-  const auto probe_config = ProbeConfig::FromValue(probe_config_data->config);
+  const auto probe_config = config_loader.Load();
   if (!probe_config) {
-    reply.set_error(RUNTIME_PROBE_ERROR_PROBE_CONFIG_INCOMPLETE_PROBE_FUNCTION);
+    reply.set_error(RUNTIME_PROBE_ERROR_PROBE_CONFIG_INVALID);
     cb->Return(reply);
     return Quit();
   }

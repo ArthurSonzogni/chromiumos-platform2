@@ -5,11 +5,12 @@
 #ifndef RUNTIME_PROBE_SSFC_PROBE_CONFIG_LOADER_H_
 #define RUNTIME_PROBE_SSFC_PROBE_CONFIG_LOADER_H_
 
-#include "runtime_probe/probe_config_loader.h"
-
+#include <optional>
 #include <vector>
 
 #include <base/files/file_path.h>
+
+#include "runtime_probe/probe_config_loader.h"
 
 namespace runtime_probe {
 
@@ -22,8 +23,8 @@ class SsfcProbeConfigLoader : public ProbeConfigLoader {
   SsfcProbeConfigLoader() = default;
 
   // Load probe config from AVL config paths. The function will return
-  // std::nullopt when loading fails.
-  std::optional<ProbeConfigData> Load() const override;
+  // |std::nullopt| when loading fails.
+  std::optional<ProbeConfig> Load() const override;
 
  private:
   // Return default paths for SSFC probe configs.  When cros_debug is disabled,
