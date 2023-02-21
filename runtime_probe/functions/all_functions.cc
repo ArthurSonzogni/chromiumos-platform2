@@ -4,8 +4,6 @@
 
 // TODO(stimim): auto generate this file.
 
-#define _RUNTIME_PROBE_GENERATE_PROBE_FUNCTIONS
-
 #include "runtime_probe/probe_function.h"
 
 #include "runtime_probe/functions/ap_i2c.h"
@@ -36,51 +34,33 @@
 
 namespace runtime_probe {
 
-namespace {
-
-// CallByValue returns the copy of the input value.
-template <typename T>
-T CallByValue(T value) {
-  return value;
-}
-
-// ConstructRegisteredFunctionTable returns a map mapping function name to
-// factory function for each ProbeFunctionType.
-template <typename... ProbeFunctionType>
-auto ConstructRegisteredFunctionTable() {
-  // Enforce arguments passed to the constructor of std::map to be pass-by-value
-  // to prevent ODR-used variables.
-  return std::map<std::string_view, ProbeFunction::FactoryFunctionType>{
-      {CallByValue(ProbeFunctionType::function_name),
-       CallByValue(CreateProbeFunction<ProbeFunctionType>)}...};
-}
-
-}  // namespace
+using AllFunctions = ProbeFunctions<ApI2cFunction,
+                                    AtaStorageFunction,
+                                    AudioCodecFunction,
+                                    CellularNetworkFunction,
+                                    EcI2cFunction,
+                                    EdidFunction,
+                                    EthernetNetworkFunction,
+                                    GenericBattery,
+                                    GenericCameraFunction,
+                                    GenericNetworkFunction,
+                                    GenericStorageFunction,
+                                    GpuFunction,
+                                    InputDeviceFunction,
+                                    MemoryFunction,
+                                    MipiCameraFunction,
+                                    MmcStorageFunction,
+                                    NvmeStorageFunction,
+                                    SequenceFunction,
+                                    ShellFunction,
+                                    SysfsFunction,
+                                    TcpcFunction,
+                                    UfsStorageFunction,
+                                    UsbCameraFunction,
+                                    VPDCached,
+                                    WirelessNetworkFunction>;
 
 auto ProbeFunction::registered_functions_ =
-    ConstructRegisteredFunctionTable<ApI2cFunction,
-                                     AtaStorageFunction,
-                                     AudioCodecFunction,
-                                     CellularNetworkFunction,
-                                     EcI2cFunction,
-                                     EdidFunction,
-                                     EthernetNetworkFunction,
-                                     GenericBattery,
-                                     GenericCameraFunction,
-                                     GenericNetworkFunction,
-                                     GenericStorageFunction,
-                                     GpuFunction,
-                                     InputDeviceFunction,
-                                     MemoryFunction,
-                                     MipiCameraFunction,
-                                     MmcStorageFunction,
-                                     NvmeStorageFunction,
-                                     SequenceFunction,
-                                     ShellFunction,
-                                     SysfsFunction,
-                                     TcpcFunction,
-                                     UfsStorageFunction,
-                                     UsbCameraFunction,
-                                     VPDCached,
-                                     WirelessNetworkFunction>();
+    AllFunctions::ConstructRegisteredFunctionTable();
+
 }  // namespace runtime_probe

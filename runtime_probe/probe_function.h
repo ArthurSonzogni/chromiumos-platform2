@@ -107,8 +107,11 @@ class ProbeFunction {
   using FactoryFunctionType =
       std::function<std::unique_ptr<ProbeFunction>(const base::Value&)>;
 
+  using RegisteredFunctionTableType =
+      std::map<std::string_view, FactoryFunctionType>;
+
   // Mapping from |function_name| to FromKwargsValue() of each derived classes.
-  static std::map<std::string_view, FactoryFunctionType> registered_functions_;
+  static RegisteredFunctionTableType registered_functions_;
 
   virtual ~ProbeFunction() = default;
 
@@ -137,6 +140,9 @@ class PrivilegedProbeFunction : public ProbeFunction {
   // For each |PrivilegedProbeFunction|, please modify `sandbox/args.json` and
   // `sandbox/${ARCH}/${function_name}-seccomp.policy`.
  public:
+  PrivilegedProbeFunction() = delete;
+  PrivilegedProbeFunction(const PrivilegedProbeFunction&) = delete;
+
   // ProbeFunction overrides.
   DataType Eval() const final;
   int EvalInHelper(std::string* output) const final;
@@ -149,8 +155,6 @@ class PrivilegedProbeFunction : public ProbeFunction {
   }
 
  protected:
-  PrivilegedProbeFunction() = delete;
-  PrivilegedProbeFunction(const PrivilegedProbeFunction&) = delete;
   explicit PrivilegedProbeFunction(base::Value&& raw_value);
 
   // Serializes this probe function and passes it to helper. The output of the
@@ -174,6 +178,21 @@ class PrivilegedProbeFunction : public ProbeFunction {
 
   // The value to describe this probe function.
   base::Value raw_value_;
+};
+
+template <typename T>
+inline constexpr auto is_probe_function_v = std::is_base_of_v<ProbeFunction, T>;
+
+template <typename... Ts>
+class ProbeFunctions {
+  static_assert((is_probe_function_v<Ts> && ...),
+                "ProbeFunctionType must be a subclass of ProbeFunction");
+
+ public:
+  static ProbeFunction::RegisteredFunctionTableType
+  ConstructRegisteredFunctionTable() {
+    return {{Ts::function_name, CreateProbeFunction<Ts>}...};
+  }
 };
 
 #define NAME_PROBE_FUNCTION(name)                       \
