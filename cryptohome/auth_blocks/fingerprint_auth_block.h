@@ -34,12 +34,19 @@ class FingerprintAuthBlock : public AuthBlock {
   CryptohomeStatus PrepareForRemoval(const AuthBlockState& state) override;
 
  private:
+  // Creates a rate-limiter PinWeaver leaf and returns the label of the created
+  // leaf.
+  CryptoStatusOr<uint64_t> CreateRateLimiter(
+      const ObfuscatedUsername& obfuscated_username,
+      const brillo::SecureBlob& reset_secret);
+
   // Continue creating the KeyBlobs after receiving CreateCredential reply. This
   // is used as the callback of BiometricsAuthBlockService::CreateCredential.
   void ContinueCreate(
       CreateCallback callback,
       const ObfuscatedUsername& obfuscated_username,
       const brillo::SecureBlob& reset_secret,
+      std::optional<uint64_t> created_label,
       CryptohomeStatusOr<BiometricsAuthBlockService::OperationOutput> output);
 
   LECredentialManager* le_manager_;
