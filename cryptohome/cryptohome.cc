@@ -405,6 +405,9 @@ constexpr char kRecoveryLedgerPublicKeyHashSwitch[] =
 constexpr char kRecoveryLedgerPublicKeySwitch[] = "recovery_ledger_pub_key";
 constexpr char kAuthIntentSwitch[] = "auth_intent";
 constexpr char kApplicationName[] = "application_name";
+constexpr char kDeviceSetupCertId[] = "device_setup_cert_id";
+constexpr char kDeviceSetupCertContentBinding[] =
+    "device_setup_cert_content_binding";
 }  // namespace
 }  // namespace switches
 
@@ -569,6 +572,8 @@ bool GetProfile(Printer& printer,
     *profile = attestation::CertificateProfile::JETSTREAM_CERTIFICATE;
   } else if (profile_str == "soft_bind") {
     *profile = attestation::CertificateProfile::SOFT_BIND_CERTIFICATE;
+  } else if (profile_str == "device_setup") {
+    *profile = attestation::CertificateProfile::DEVICE_SETUP_CERTIFICATE;
   } else {
     printer.PrintFormattedHumanOutput("Unknown certificate profile: %s.\n",
                                       profile_str.c_str());
@@ -1924,6 +1929,28 @@ int main(int argc, char** argv) {
     req.set_username("");
     req.set_request_origin("");
     req.set_aca_type(pca_type);
+
+    if (profile == attestation::CertificateProfile::DEVICE_SETUP_CERTIFICATE) {
+      if (!cl->HasSwitch(switches::kDeviceSetupCertId)) {
+        printer.PrintFormattedHumanOutput(
+            "DEVICE_SETUP_CERTIFICATE requires device_setup_cert_id to be "
+            "provided.\n");
+        return 1;
+      }
+
+      if (!cl->HasSwitch(switches::kDeviceSetupCertContentBinding)) {
+        printer.PrintFormattedHumanOutput(
+            "DEVICE_SETUP_CERTIFICATE requires "
+            "device_setup_cert_content_binding to be provided.\n");
+        return 1;
+      }
+
+      req.mutable_device_setup_certificate_request_metadata()->set_id(
+          cl->GetSwitchValueASCII(switches::kDeviceSetupCertId));
+      req.mutable_device_setup_certificate_request_metadata()
+          ->set_content_binding(cl->GetSwitchValueASCII(
+              switches::kDeviceSetupCertContentBinding));
+    }
 
     brillo::ErrorPtr error;
     if (!attestation_proxy.CreateCertificateRequest(req, &reply, &error,
