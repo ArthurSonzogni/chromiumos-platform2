@@ -4,6 +4,8 @@
 
 #include <memory>
 #include <string>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 #include <base/check.h>
@@ -14,14 +16,13 @@
 
 #include "libhwsec-foundation/utility/synchronized.h"
 
-namespace hwsec_foundation {
-namespace utility {
+namespace hwsec_foundation::utility {
 
 namespace {
 
 class ThreadUnsafeCounter {
  public:
-  ThreadUnsafeCounter() {}
+  ThreadUnsafeCounter() = default;
 
   void Update(int n) {
     int old = value_;
@@ -51,45 +52,46 @@ class ThreadUnsafeCounter {
   int updated_times_ = 0;
 };
 
+template <class T>
+struct IsSynchronized : std::false_type {};
+template <class T>
+struct IsSynchronized<Synchronized<T>> : std::true_type {};
+template <class T>
+struct IsSynchronized<MaybeSynchronized<T>> : std::true_type {};
+
+template <typename Counter>
 class UpdateCounterThread : public base::PlatformThread::Delegate {
  public:
-  UpdateCounterThread(Synchronized<ThreadUnsafeCounter>* counter, int times)
+  UpdateCounterThread(Counter* counter, int times)
       : counter_(counter), times_(times) {}
-  UpdateCounterThread(ThreadUnsafeCounter* counter, int times)
-      : raw_counter_(counter), times_(times) {}
 
   UpdateCounterThread(const UpdateCounterThread&) = delete;
   UpdateCounterThread& operator=(const UpdateCounterThread&) = delete;
 
-  ~UpdateCounterThread() {}
+  ~UpdateCounterThread() override = default;
 
-  void ThreadMain() {
-    if (counter_) {
+  void ThreadMain() override {
+    if constexpr (IsSynchronized<Counter>::value) {
       counter_->Lock()->Update(times_);
-    } else if (raw_counter_) {
-      raw_counter_->Update(times_);
+    } else {
+      counter_->Update(times_);
     }
   }
 
  private:
-  Synchronized<ThreadUnsafeCounter>* counter_ = nullptr;
-  ThreadUnsafeCounter* raw_counter_ = nullptr;
+  Counter* counter_ = nullptr;
   int times_;
 };
 
+template <typename Counter>
 struct ThreadInfo {
   base::PlatformThreadHandle handle;
-  std::unique_ptr<UpdateCounterThread> thread;
+  std::unique_ptr<UpdateCounterThread<Counter>> thread;
 };
 
 }  // namespace
 
-class SynchronizedUtilityTest : public testing::Test {
- public:
-  ~SynchronizedUtilityTest() override = default;
-
-  void SetUp() override {}
-};
+using SynchronizedUtilityTest = testing::Test;
 
 TEST_F(SynchronizedUtilityTest, Trivial) {
   Synchronized<std::string> str("Hello");
@@ -101,7 +103,8 @@ TEST_F(SynchronizedUtilityTest, Trivial) {
 }
 
 TEST_F(SynchronizedUtilityTest, ThreadSafeAccess) {
-  Synchronized<ThreadUnsafeCounter> counter;
+  using Counter = Synchronized<ThreadUnsafeCounter>;
+  Counter counter;
 
   for (int i = 0; i < 10; i++) {
     counter.Lock()->Update(1000);
@@ -110,9 +113,10 @@ TEST_F(SynchronizedUtilityTest, ThreadSafeAccess) {
 
   counter.Lock()->Reset();
 
-  std::vector<ThreadInfo> thread_infos(10);
+  std::vector<ThreadInfo<Counter>> thread_infos(10);
   for (int i = 0; i < 10; i++) {
-    thread_infos[i].thread.reset(new UpdateCounterThread(&counter, 1000));
+    thread_infos[i].thread =
+        std::make_unique<UpdateCounterThread<Counter>>(&counter, 1000);
     base::PlatformThread::Create(0, thread_infos[i].thread.get(),
                                  &thread_infos[i].handle);
   }
@@ -124,11 +128,13 @@ TEST_F(SynchronizedUtilityTest, ThreadSafeAccess) {
 }
 
 TEST_F(SynchronizedUtilityTest, ThreadSafeCriticalSection) {
-  Synchronized<ThreadUnsafeCounter> counter;
+  using Counter = Synchronized<ThreadUnsafeCounter>;
+  Counter counter;
 
-  std::vector<ThreadInfo> thread_infos(10);
+  std::vector<ThreadInfo<Counter>> thread_infos(10);
   for (int i = 0; i < 10; i++) {
-    thread_infos[i].thread.reset(new UpdateCounterThread(&counter, 1000));
+    thread_infos[i].thread =
+        std::make_unique<UpdateCounterThread<Counter>>(&counter, 1000);
     base::PlatformThread::Create(0, thread_infos[i].thread.get(),
                                  &thread_infos[i].handle);
   }
@@ -148,6 +154,99 @@ TEST_F(SynchronizedUtilityTest, ThreadSafeCriticalSection) {
   EXPECT_TRUE(success);
 }
 
+using MaybeSynchronizedUtilityTest = testing::Test;
+
+TEST_F(MaybeSynchronizedUtilityTest, Trivial) {
+  MaybeSynchronized<std::string> str("Hello");
+  str.synchronize();
+
+  EXPECT_EQ(str.Lock()->length(), 5);
+
+  str.Lock()->push_back('!');
+  EXPECT_EQ(str.Lock()->length(), 6);
+}
+
+TEST_F(MaybeSynchronizedUtilityTest, ThreadSafeAccess) {
+  using Counter = MaybeSynchronized<ThreadUnsafeCounter>;
+  Counter counter;
+  counter.synchronize();
+
+  for (int i = 0; i < 10; i++) {
+    counter.Lock()->Update(1000);
+  }
+  int single_thread_result = counter.Lock()->value();
+
+  counter.Lock()->Reset();
+
+  std::vector<ThreadInfo<Counter>> thread_infos(10);
+  for (int i = 0; i < 10; i++) {
+    thread_infos[i].thread =
+        std::make_unique<UpdateCounterThread<Counter>>(&counter, 1000);
+    base::PlatformThread::Create(0, thread_infos[i].thread.get(),
+                                 &thread_infos[i].handle);
+  }
+  for (auto& thread_info : thread_infos) {
+    base::PlatformThread::Join(thread_info.handle);
+  }
+
+  EXPECT_EQ(single_thread_result, counter.Lock()->value());
+}
+
+TEST_F(MaybeSynchronizedUtilityTest, ThreadSafeCriticalSection) {
+  using Counter = MaybeSynchronized<ThreadUnsafeCounter>;
+  Counter counter;
+  counter.synchronize();
+
+  std::vector<ThreadInfo<Counter>> thread_infos(10);
+  for (int i = 0; i < 10; i++) {
+    thread_infos[i].thread =
+        std::make_unique<UpdateCounterThread<Counter>>(&counter, 1000);
+    base::PlatformThread::Create(0, thread_infos[i].thread.get(),
+                                 &thread_infos[i].handle);
+  }
+
+  bool success;
+  {
+    auto handle = counter.Lock();
+    int updated_times = handle->updated_times();
+    handle->Update(100);
+    success = (updated_times + 100 == handle->updated_times());
+  }
+
+  for (auto& thread_info : thread_infos) {
+    base::PlatformThread::Join(thread_info.handle);
+  }
+
+  EXPECT_TRUE(success);
+}
+
+TEST_F(MaybeSynchronizedUtilityTest, ThreadSafeAccessLate) {
+  using Counter = MaybeSynchronized<ThreadUnsafeCounter>;
+  Counter counter;
+
+  for (int i = 0; i < 10; i++) {
+    counter.Lock()->Update(1000);
+  }
+  int single_thread_result = counter.Lock()->value();
+
+  counter.Lock()->Reset();
+
+  counter.synchronize();
+
+  std::vector<ThreadInfo<Counter>> thread_infos(10);
+  for (int i = 0; i < 10; i++) {
+    thread_infos[i].thread =
+        std::make_unique<UpdateCounterThread<Counter>>(&counter, 1000);
+    base::PlatformThread::Create(0, thread_infos[i].thread.get(),
+                                 &thread_infos[i].handle);
+  }
+  for (auto& thread_info : thread_infos) {
+    base::PlatformThread::Join(thread_info.handle);
+  }
+
+  EXPECT_EQ(single_thread_result, counter.Lock()->value());
+}
+
 class SynchronizedUtilityRaceConditionTest : public testing::Test {
  public:
   ~SynchronizedUtilityRaceConditionTest() override = default;
@@ -162,7 +261,8 @@ class SynchronizedUtilityRaceConditionTest : public testing::Test {
 };
 
 TEST_F(SynchronizedUtilityRaceConditionTest, ThreadUnsafeAccess) {
-  ThreadUnsafeCounter counter;
+  using Counter = ThreadUnsafeCounter;
+  Counter counter;
 
   for (int i = 0; i < 10; i++) {
     counter.Update(1000);
@@ -171,9 +271,10 @@ TEST_F(SynchronizedUtilityRaceConditionTest, ThreadUnsafeAccess) {
 
   counter.Reset();
 
-  std::vector<ThreadInfo> thread_infos(10);
+  std::vector<ThreadInfo<Counter>> thread_infos(10);
   for (int i = 0; i < 10; i++) {
-    thread_infos[i].thread.reset(new UpdateCounterThread(&counter, 1000));
+    thread_infos[i].thread =
+        std::make_unique<UpdateCounterThread<Counter>>(&counter, 1000);
     base::PlatformThread::Create(0, thread_infos[i].thread.get(),
                                  &thread_infos[i].handle);
   }
@@ -187,11 +288,13 @@ TEST_F(SynchronizedUtilityRaceConditionTest, ThreadUnsafeAccess) {
 }
 
 TEST_F(SynchronizedUtilityRaceConditionTest, ThreadUnsafeCriticalSection) {
-  ThreadUnsafeCounter counter;
+  using Counter = ThreadUnsafeCounter;
+  Counter counter;
 
-  std::vector<ThreadInfo> thread_infos(10);
+  std::vector<ThreadInfo<Counter>> thread_infos(10);
   for (int i = 0; i < 10; i++) {
-    thread_infos[i].thread.reset(new UpdateCounterThread(&counter, 1000));
+    thread_infos[i].thread =
+        std::make_unique<UpdateCounterThread<Counter>>(&counter, 1000);
     base::PlatformThread::Create(0, thread_infos[i].thread.get(),
                                  &thread_infos[i].handle);
   }
@@ -207,5 +310,58 @@ TEST_F(SynchronizedUtilityRaceConditionTest, ThreadUnsafeCriticalSection) {
   EXPECT_FALSE(success);
 }
 
-}  // namespace utility
-}  // namespace hwsec_foundation
+TEST_F(SynchronizedUtilityRaceConditionTest,
+       MaybeSynchronizedThreadUnsafeAccess) {
+  using Counter = MaybeSynchronized<ThreadUnsafeCounter>;
+  Counter counter;
+
+  for (int i = 0; i < 10; i++) {
+    counter.Lock()->Update(1000);
+  }
+  int single_thread_result = counter.Lock()->value();
+
+  counter.Lock()->Reset();
+
+  std::vector<ThreadInfo<Counter>> thread_infos(10);
+  for (int i = 0; i < 10; i++) {
+    thread_infos[i].thread =
+        std::make_unique<UpdateCounterThread<Counter>>(&counter, 1000);
+    base::PlatformThread::Create(0, thread_infos[i].thread.get(),
+                                 &thread_infos[i].handle);
+  }
+  for (auto& thread_info : thread_infos) {
+    base::PlatformThread::Join(thread_info.handle);
+  }
+
+  EXPECT_NE(single_thread_result, counter.Lock()->value());
+}
+
+TEST_F(SynchronizedUtilityRaceConditionTest,
+       MaybeSynchronizedThreadUnsafeCriticalSection) {
+  using Counter = MaybeSynchronized<ThreadUnsafeCounter>;
+  Counter counter;
+
+  std::vector<ThreadInfo<Counter>> thread_infos(10);
+  for (int i = 0; i < 10; i++) {
+    thread_infos[i].thread =
+        std::make_unique<UpdateCounterThread<Counter>>(&counter, 1000);
+    base::PlatformThread::Create(0, thread_infos[i].thread.get(),
+                                 &thread_infos[i].handle);
+  }
+
+  bool success;
+  {
+    auto handle = counter.Lock();
+    int updated_times = handle->updated_times();
+    handle->Update(100);
+    success = (updated_times + 100 == handle->updated_times());
+  }
+
+  for (auto& thread_info : thread_infos) {
+    base::PlatformThread::Join(thread_info.handle);
+  }
+
+  EXPECT_FALSE(success);
+}
+
+}  // namespace hwsec_foundation::utility
