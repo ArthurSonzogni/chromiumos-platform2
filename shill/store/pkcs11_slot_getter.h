@@ -13,6 +13,7 @@
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
+#include <chaps/threading_mode.h>
 #include <chaps/token_manager_client.h>
 
 #include <shill/store/pkcs11_util.h>
@@ -77,7 +78,8 @@ class Pkcs11SlotGetter {
   std::string user_hash_;
 
   // The default token manager client for accessing chapsd's Pkcs#11 interface
-  chaps::TokenManagerClient default_chaps_client_;
+  chaps::TokenManagerClient default_chaps_client_{
+      chaps::ThreadingMode::kCurrentThread};
 
   // The actual token manager client used by this class, usually set to
   // default_chaps_client_, but can be overridden for testing.

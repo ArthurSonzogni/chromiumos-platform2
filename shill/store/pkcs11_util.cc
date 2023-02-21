@@ -16,7 +16,10 @@
 namespace shill::pkcs11 {
 
 ScopedSession::ScopedSession(CK_SLOT_ID slot) {
-  CK_RV rv = C_Initialize(nullptr);
+  CK_C_INITIALIZE_ARGS args{
+      .flags = CKF_LIBRARY_CANT_CREATE_OS_THREADS,
+  };
+  CK_RV rv = C_Initialize(&args);
   if (rv != CKR_OK && rv != CKR_CRYPTOKI_ALREADY_INITIALIZED) {
     // This may be normal in a test environment.
     LOG(INFO) << "PKCS #11 is not available. C_Initialize rv: " << rv;
