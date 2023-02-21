@@ -51,7 +51,7 @@ void EnableCrosEcDeviceEvent(enum ec_device_event event, bool enable) {
     return;
   }
 
-  if (set_cmd.IsEnabled(event) == enable) {
+  if (set_cmd.IsEnabled(event) != enable) {
     LOG(ERROR) << "Failed to " << (enable ? "enable" : "disable")
                << " CrOS EC device event for " << event;
     return;
