@@ -363,6 +363,8 @@ void CellularServiceProvider::TetheringEntitlementCheck(
   }
 
   auto operator_info = cellular_service->cellular()->mobile_operator_info();
+  // TODO(b/270210498): remove the check for |IsMobileNetworkOperatorKnown|
+  // when tethering is allowed by default.
   if (!operator_info->IsMobileNetworkOperatorKnown()) {
     SLOG(3) << __func__ << " mobile operator not known";
     std::move(callback).Run(
