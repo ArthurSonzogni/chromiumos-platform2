@@ -213,7 +213,7 @@ TEST_F(BluetoothPowerRoutineTest, FailedVerifyPoweredDbus) {
                                             ConstructResult(true, false)));
 }
 
-// Test that the BluetoothPowerRoutine returns a kFailed status when it fails to
+// Test that the BluetoothPowerRoutine returns a kError status when it fails to
 // change powered.
 TEST_F(BluetoothPowerRoutineTest, FailedChangePoweredOff) {
   InSequence s;
@@ -225,7 +225,7 @@ TEST_F(BluetoothPowerRoutineTest, FailedChangePoweredOff) {
                        /*is_success=*/false);
 
   routine_->Start();
-  CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,
+  CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
                      kBluetoothRoutineFailedChangePowered);
 }
 

@@ -283,7 +283,7 @@ TEST_F(BluetoothScanningRoutineTest, RoutineSuccessNoDevices) {
                      kBluetoothRoutinePassedMessage);
 }
 
-// Test that the BluetoothScanningRoutine returns a kFailed status when it
+// Test that the BluetoothScanningRoutine returns a kError status when it
 // fails to power on the adapter.
 TEST_F(BluetoothScanningRoutineTest, FailedPowerOnAdapter) {
   InSequence s;
@@ -293,11 +293,11 @@ TEST_F(BluetoothScanningRoutineTest, FailedPowerOnAdapter) {
   SetEnsurePoweredOnCall(/*current_powered=*/false, /*is_success=*/false);
 
   routine_->Start();
-  CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,
+  CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
                      kBluetoothRoutineFailedChangePowered);
 }
 
-// Test that the BluetoothScanningRoutine returns a kFailed status when it
+// Test that the BluetoothScanningRoutine returns a kError status when it
 // fails to start discovery.
 TEST_F(BluetoothScanningRoutineTest, FailedStartDiscovery) {
   InSequence s;
@@ -313,7 +313,7 @@ TEST_F(BluetoothScanningRoutineTest, FailedStartDiscovery) {
           })));
 
   routine_->Start();
-  CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,
+  CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
                      kBluetoothRoutineFailedSwitchDiscovery);
 }
 
@@ -341,7 +341,7 @@ TEST_F(BluetoothScanningRoutineTest, FailedStopDiscovery) {
   CheckRoutineUpdate(60, mojom::DiagnosticRoutineStatusEnum::kRunning,
                      kBluetoothRoutineRunningMessage);
   task_environment_.FastForwardBy(kDefaultBluetoothScanningRuntime);
-  CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,
+  CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
                      kBluetoothRoutineFailedSwitchDiscovery);
 }
 

@@ -143,7 +143,7 @@ void BluetoothDiscoveryRoutine::RunNextStep() {
 
 void BluetoothDiscoveryRoutine::HandleAdapterPoweredOn(bool is_success) {
   if (!is_success) {
-    SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kFailed,
+    SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                      kBluetoothRoutineFailedChangePowered);
     return;
   }
@@ -170,7 +170,7 @@ void BluetoothDiscoveryRoutine::HandleAdapterDiscoveryError(
     LOG(ERROR) << "Failed to change discovering status, error message: "
                << error->GetMessage();
   }
-  SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kFailed,
+  SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                    kBluetoothRoutineFailedSwitchDiscovery);
 }
 

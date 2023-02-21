@@ -218,7 +218,7 @@ void BluetoothPairingRoutine::RunNextStep() {
 
 void BluetoothPairingRoutine::HandleAdapterPoweredOn(bool is_success) {
   if (!is_success) {
-    SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kFailed,
+    SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                      kBluetoothRoutineFailedChangePowered);
     return;
   }
@@ -316,7 +316,7 @@ void BluetoothPairingRoutine::HandleError(brillo::Error* error) {
   switch (step_) {
     case TestStep::kScanTargetDevice:
     case TestStep::kStopDiscovery:
-      SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kFailed,
+      SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                        kBluetoothRoutineFailedSwitchDiscovery);
       break;
     case TestStep::kCheckCurrentDevices:

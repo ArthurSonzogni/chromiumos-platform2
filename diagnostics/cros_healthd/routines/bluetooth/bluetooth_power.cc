@@ -122,7 +122,7 @@ void BluetoothPowerRoutine::RunNextStep() {
 
 void BluetoothPowerRoutine::HandleAdapterPoweredChanged(bool is_success) {
   if (!is_success) {
-    SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kFailed,
+    SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                      kBluetoothRoutineFailedChangePowered);
     return;
   }

@@ -18,14 +18,14 @@ inline constexpr char kBluetoothRoutinePassedMessage[] =
 // Common failure message of all Bluetooth routines.
 inline constexpr char kBluetoothRoutineFailedDiscoveryMode[] =
     "Bluetooth routine is not supported when adapter is in discovery mode.";
-inline constexpr char kBluetoothRoutineFailedChangePowered[] =
-    "Bluetooth routine failed to change adapter powered status.";
-inline constexpr char kBluetoothRoutineFailedSwitchDiscovery[] =
-    "Bluetooth routine failed to switch adapter discovery mode.";
 
 // Common error message of all Bluetooth routines.
 inline constexpr char kBluetoothRoutineFailedGetAdapter[] =
     "Bluetooth routine failed to get main adapter.";
+inline constexpr char kBluetoothRoutineFailedChangePowered[] =
+    "Bluetooth routine failed to change adapter powered status.";
+inline constexpr char kBluetoothRoutineFailedSwitchDiscovery[] =
+    "Bluetooth routine failed to switch adapter discovery mode.";
 inline constexpr char kBluetoothRoutineUnexpectedFlow[] =
     "Unexpected Bluetooth diagnostic flow.";
 

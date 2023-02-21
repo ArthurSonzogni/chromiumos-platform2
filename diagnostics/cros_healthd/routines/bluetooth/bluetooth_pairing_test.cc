@@ -336,7 +336,7 @@ TEST_F(BluetoothPairingRoutineTest, RoutineSuccessOnlyConnect) {
                      kBluetoothRoutinePassedMessage, ConstructOutputDict());
 }
 
-// Test that the BluetoothPairingRoutine returns a kFailed status when it fails
+// Test that the BluetoothPairingRoutine returns a kError status when it fails
 // to power on the adapter.
 TEST_F(BluetoothPairingRoutineTest, FailedPowerOnAdapter) {
   InSequence s;
@@ -346,7 +346,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedPowerOnAdapter) {
   SetEnsurePoweredOnCall(/*current_powered=*/false, /*is_success=*/false);
 
   routine_->Start();
-  CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,
+  CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
                      kBluetoothRoutineFailedChangePowered);
 }
 
@@ -407,7 +407,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedPeripheralAlreadyPaired) {
                      "The target peripheral is already paired.");
 }
 
-// Test that the BluetoothPairingRoutine returns a kFailed status when it fails
+// Test that the BluetoothPairingRoutine returns a kError status when it fails
 // to start discovery.
 TEST_F(BluetoothPairingRoutineTest, FailedStartDiscovery) {
   InSequence s;
@@ -424,7 +424,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedStartDiscovery) {
   SetStopDiscoveryCall(/*is_success=*/false);
 
   routine_->Start();
-  CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,
+  CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
                      kBluetoothRoutineFailedSwitchDiscovery);
 }
 
@@ -660,7 +660,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedRemovePairedPeripheral) {
                      ConstructOutputDict());
 }
 
-// Test that the BluetoothPairingRoutine returns a kFailed status when it fails
+// Test that the BluetoothPairingRoutine returns a kError status when it fails
 // to stop discovery.
 TEST_F(BluetoothPairingRoutineTest, FailedStopDiscovery) {
   InSequence s;
@@ -687,7 +687,7 @@ TEST_F(BluetoothPairingRoutineTest, FailedStopDiscovery) {
   SetStopDiscoveryCall(/*is_success=*/false);
 
   routine_->Start();
-  CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kFailed,
+  CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
                      kBluetoothRoutineFailedSwitchDiscovery,
                      ConstructOutputDict());
 }
