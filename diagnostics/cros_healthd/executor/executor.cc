@@ -120,38 +120,22 @@ constexpr uint32_t kMsrAccessAllowList[] = {
     cpu_msr::kIA32TmeCapability, cpu_msr::kIA32TmeActivate,
     cpu_msr::kIA32FeatureControl, cpu_msr::kVmCr};
 
-// Path to the UEFI SecureBoot file. This file can be read by root only.
-// It's one of EFI globally defined variables (EFI_GLOBAL_VARIABLE, fixed UUID
-// 8be4df61-93ca-11d2-aa0d-00e098032b8c)
-// See also:
-// https://uefi.org/sites/default/files/resources/UEFI_Spec_2_9_2021_03_18.pdf
-constexpr char kUEFISecureBootVarPath[] =
-    "/sys/firmware/efi/efivars/SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c";
-// Path to the UEFI platform size file.
-constexpr char kUEFIPlatformSizeFile[] = "/sys/firmware/efi/fw_platform_size";
-
 // Error message when failing to launch delegate.
 constexpr char kFailToLaunchDelegate[] = "Failed to launch delegate";
 
-// Reads file and reply the result to a callback. Will reply empty string if
-// cannot read the file.
-void ReadRawFileAndReplyCallback(
-    const base::FilePath& file,
-    base::OnceCallback<void(const std::string&)> callback) {
-  std::string content = "";
-  LOG_IF(ERROR, !base::ReadFileToString(file, &content))
-      << "Failed to read file: " << file;
-  std::move(callback).Run(content);
-}
-
-// Same as above but also trim the string.
-void ReadTrimFileAndReplyCallback(
-    const base::FilePath& file,
-    base::OnceCallback<void(const std::string&)> callback) {
-  std::string content = "";
-  LOG_IF(ERROR, !ReadAndTrimString(file, &content))
-      << "Failed to read or trim file: " << file;
-  std::move(callback).Run(content);
+base::FilePath FileEnumToFilePath(mojom::Executor::File file_enum) {
+  switch (file_enum) {
+    // Path to the UEFI SecureBoot file. This file can be read by root only.
+    // It's one of EFI globally defined variables (EFI_GLOBAL_VARIABLE, fixed
+    // UUID 8be4df61-93ca-11d2-aa0d-00e098032b8c) See also:
+    // https://uefi.org/sites/default/files/resources/UEFI_Spec_2_9_2021_03_18.pdf
+    case mojom::Executor::File::kUEFISecureBootVariable:
+      return base::FilePath{
+          "/sys/firmware/efi/efivars/"
+          "SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c"};
+    case mojom::Executor::File::kUEFIPlatformSize:
+      return base::FilePath{"/sys/firmware/efi/fw_platform_size"};
+  }
 }
 
 // A helper to create a delegate callback which only run once and reply the
@@ -193,6 +177,17 @@ Executor::Executor(
       receiver_{this /* impl */, std::move(receiver)},
       process_reaper_(process_reaper) {
   receiver_.set_disconnect_handler(std::move(on_disconnect));
+}
+
+void Executor::ReadFile(File file_enum, ReadFileCallback callback) {
+  base::FilePath file = FileEnumToFilePath(file_enum);
+  std::string content = "";
+  if (!base::ReadFileToString(file, &content)) {
+    PLOG(ERROR) << "Failed to read file " << file;
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+  std::move(callback).Run(content);
 }
 
 void Executor::GetFanSpeed(GetFanSpeedCallback callback) {
@@ -386,18 +381,6 @@ void Executor::ReadMsr(const uint32_t msr_reg,
     return;
   }
   std::move(callback).Run(mojom::NullableUint64::New(val));
-}
-
-void Executor::GetUEFISecureBootContent(
-    GetUEFISecureBootContentCallback callback) {
-  ReadRawFileAndReplyCallback(base::FilePath(kUEFISecureBootVarPath),
-                              std::move(callback));
-}
-
-void Executor::GetUEFIPlatformSizeContent(
-    GetUEFIPlatformSizeContentCallback callback) {
-  ReadTrimFileAndReplyCallback(base::FilePath{kUEFIPlatformSizeFile},
-                               std::move(callback));
 }
 
 void Executor::GetLidAngle(GetLidAngleCallback callback) {

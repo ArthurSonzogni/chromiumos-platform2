@@ -15,6 +15,7 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
 
@@ -52,9 +53,9 @@ class State {
 
   bool FetchOsInfo();
 
-  void HandleSecureBootResponse(const std::string& content);
+  void HandleSecureBootResponse(const std::optional<std::string>& content);
 
-  void HandleEfiPlatformSize(const std::string& context);
+  void HandleEfiPlatformSize(const std::optional<std::string>& context);
 
   // Sets the error to be reported.
   void SetError(mojom::ErrorType type, const std::string& message);
@@ -254,21 +255,26 @@ bool IsUEFISecureBoot(const std::string& content) {
   }
 }
 
-void State::HandleSecureBootResponse(const std::string& content) {
+void State::HandleSecureBootResponse(
+    const std::optional<std::string>& content) {
   DCHECK_EQ(info_->os_info->boot_mode, mojom::BootMode::kCrosEfi);
-  if (IsUEFISecureBoot(content))
+  if (content && IsUEFISecureBoot(content.value()))
     info_->os_info->boot_mode = mojom::BootMode::kCrosEfiSecure;
 }
 
-void State::HandleEfiPlatformSize(const std::string& content) {
-  if (content == "64") {
+void State::HandleEfiPlatformSize(const std::optional<std::string>& content) {
+  if (!content)
+    return;
+  std::string content_trimmed;
+  base::TrimWhitespaceASCII(content.value(), base::TRIM_ALL, &content_trimmed);
+  if (content_trimmed == "64") {
     info_->os_info->efi_platform_size = mojom::OsInfo::EfiPlatformSize::k64;
-  } else if (content == "32") {
+  } else if (content_trimmed == "32") {
     info_->os_info->efi_platform_size = mojom::OsInfo::EfiPlatformSize::k32;
   } else {
     info_->os_info->efi_platform_size =
         mojom::OsInfo::EfiPlatformSize::kUnknown;
-    LOG(ERROR) << "Got unknown efi platform size: " << content;
+    LOG(ERROR) << "Got unknown efi platform size: " << content_trimmed;
   }
 }
 
@@ -303,10 +309,12 @@ void State::Fetch(Context* context, FetchSystemInfoCallback callback) {
 
   // `base::Unretained` is safe because `state` is hold by CallbackBarrier.
   if (state_ptr->info_->os_info->boot_mode == mojom::BootMode::kCrosEfi) {
-    state_ptr->context_->executor()->GetUEFISecureBootContent(
+    state_ptr->context_->executor()->ReadFile(
+        mojom::Executor::File::kUEFISecureBootVariable,
         barrier.Depend(base::BindOnce(&State::HandleSecureBootResponse,
                                       base::Unretained(state_ptr))));
-    state_ptr->context_->executor()->GetUEFIPlatformSizeContent(
+    state_ptr->context_->executor()->ReadFile(
+        mojom::Executor::File::kUEFIPlatformSize,
         barrier.Depend(base::BindOnce(&State::HandleEfiPlatformSize,
                                       base::Unretained(state_ptr))));
   }

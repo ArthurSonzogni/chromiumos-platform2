@@ -181,22 +181,12 @@ class SystemUtilsTest : public BaseFileTest {
     SetMockFile(kFilePathProcCmdline, proc_cmd);
   }
 
-  void SetUEFISecureBootResponse(const std::string& content) {
+  void SetMockExecutorReadFile(mojom::Executor::File file_enum,
+                               const std::string& content) {
     // Set the mock executor response.
-    EXPECT_CALL(*mock_executor(), GetUEFISecureBootContent(_))
-        .WillOnce(WithArg<0>(Invoke(
-            [content](
-                mojom::Executor::GetUEFISecureBootContentCallback callback) {
-              std::move(callback).Run(content);
-            })));
-  }
-
-  void SetUEFIPlatformSizeResponse(const std::string& content) {
-    // Set the mock executor response.
-    EXPECT_CALL(*mock_executor(), GetUEFIPlatformSizeContent(_))
-        .WillOnce(WithArg<0>(Invoke(
-            [content](
-                mojom::Executor::GetUEFIPlatformSizeContentCallback callback) {
+    EXPECT_CALL(*mock_executor(), ReadFile(file_enum, _))
+        .WillOnce(WithArg<1>(
+            Invoke([content](mojom::Executor::ReadFileCallback callback) {
               std::move(callback).Run(content);
             })));
   }
@@ -374,8 +364,9 @@ TEST_F(SystemUtilsTest, TestBootMode) {
 
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfi;
   // Use string constructor to prevent string truncation from null bytes.
-  SetUEFISecureBootResponse(std::string("\x00\x00\x00\x00\x00", 5));
-  SetUEFIPlatformSizeResponse("");
+  SetMockExecutorReadFile(mojom::Executor::File::kUEFISecureBootVariable,
+                          std::string("\x00\x00\x00\x00\x00", 5));
+  SetMockExecutorReadFile(mojom::Executor::File::kUEFIPlatformSize, "");
   SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
 
@@ -389,16 +380,17 @@ TEST_F(SystemUtilsTest, TestBootMode) {
 
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfiSecure;
   // Use string constructor to prevent string truncation from null bytes.
-  SetUEFISecureBootResponse(std::string("\x00\x00\x00\x00\x01", 5));
-  SetUEFIPlatformSizeResponse("");
+  SetMockExecutorReadFile(mojom::Executor::File::kUEFISecureBootVariable,
+                          std::string("\x00\x00\x00\x00\x01", 5));
+  SetMockExecutorReadFile(mojom::Executor::File::kUEFIPlatformSize, "");
   SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
 
   // Test that the executor fails to read UEFISecureBoot file content and
   // returns kCrosEfi as default value
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfi;
-  SetUEFISecureBootResponse("");
-  SetUEFIPlatformSizeResponse("");
+  SetMockExecutorReadFile(mojom::Executor::File::kUEFISecureBootVariable, "");
+  SetMockExecutorReadFile(mojom::Executor::File::kUEFIPlatformSize, "");
   SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
 }
@@ -407,22 +399,25 @@ TEST_F(SystemUtilsTest, TestEfiPlatformSize) {
   expected_system_info_->os_info->boot_mode = mojom::BootMode::kCrosEfi;
   expected_system_info_->os_info->efi_platform_size =
       mojom::OsInfo::EfiPlatformSize::kUnknown;
-  SetUEFIPlatformSizeResponse("");
-  SetUEFISecureBootResponse(std::string("\x00\x00\x00\x00\x00", 5));
+  SetMockExecutorReadFile(mojom::Executor::File::kUEFIPlatformSize, "");
+  SetMockExecutorReadFile(mojom::Executor::File::kUEFISecureBootVariable,
+                          std::string("\x00\x00\x00\x00\x00", 5));
   SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
 
   expected_system_info_->os_info->efi_platform_size =
       mojom::OsInfo::EfiPlatformSize::k64;
-  SetUEFIPlatformSizeResponse("64");
-  SetUEFISecureBootResponse(std::string("\x00\x00\x00\x00\x00", 5));
+  SetMockExecutorReadFile(mojom::Executor::File::kUEFIPlatformSize, "64");
+  SetMockExecutorReadFile(mojom::Executor::File::kUEFISecureBootVariable,
+                          std::string("\x00\x00\x00\x00\x00", 5));
   SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
 
   expected_system_info_->os_info->efi_platform_size =
       mojom::OsInfo::EfiPlatformSize::k32;
-  SetUEFIPlatformSizeResponse("32");
-  SetUEFISecureBootResponse(std::string("\x00\x00\x00\x00\x00", 5));
+  SetMockExecutorReadFile(mojom::Executor::File::kUEFIPlatformSize, "32");
+  SetMockExecutorReadFile(mojom::Executor::File::kUEFISecureBootVariable,
+                          std::string("\x00\x00\x00\x00\x00", 5));
   SetSystemInfo(expected_system_info_);
   ExpectFetchSystemInfo();
 }

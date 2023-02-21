@@ -43,6 +43,7 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
   Executor& operator=(const Executor&) = delete;
 
   // ash::cros_healthd::mojom::Executor overrides:
+  void ReadFile(File file_enum, ReadFileCallback callback) override;
   void GetFanSpeed(GetFanSpeedCallback callback) override;
   void GetInterfaces(GetInterfacesCallback callback) override;
   void GetLink(const std::string& interface_name,
@@ -63,10 +64,6 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
   void ReadMsr(const uint32_t msr_reg,
                uint32_t cpu_index,
                ReadMsrCallback callback) override;
-  void GetUEFISecureBootContent(
-      GetUEFISecureBootContentCallback callback) override;
-  void GetUEFIPlatformSizeContent(
-      GetUEFIPlatformSizeContentCallback callback) override;
   void GetLidAngle(GetLidAngleCallback callback) override;
   void GetFingerprintFrame(
       ash::cros_healthd::mojom::FingerprintCaptureType type,

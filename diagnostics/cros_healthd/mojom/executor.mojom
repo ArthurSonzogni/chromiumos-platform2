@@ -86,6 +86,13 @@ interface TouchscreenObserver {
 // Root-level executor interface exposed to the cros_healthd daemon. In
 // production, this is implemented by the Executor daemon.
 interface Executor {
+  // Reads file. Returns the content or null if failed.
+  enum File {
+    kUEFISecureBootVariable,
+    kUEFIPlatformSize,
+  };
+  ReadFile(File file_enum) => (string? content);
+
   // Obtains fan speed by running ectool and returns the result.
   //
   // The response:
@@ -159,12 +166,6 @@ interface Executor {
   // The response:
   // * |contents| - contains the value of 64-bit MSR register value.
   ReadMsr(uint32 msr_reg, uint32 cpu_index) => (NullableUint64? value);
-
-  // Get UEFI Secure Boot variable file content
-  GetUEFISecureBootContent() => (string contents);
-
-  // Get UEFI platform size variable file content
-  GetUEFIPlatformSizeContent() => (string contents);
 
   // Obtains lid angle by running ectool and returns the result.
   //
