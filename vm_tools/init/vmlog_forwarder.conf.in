@@ -13,6 +13,9 @@ start on @dependent_start_services@
 stop on @dependent_stop_services@
 respawn
 
+# VMlog-forwarder is a restartable daemon.
+oom score -100
+
 pre-start script
   # Ensure the kernel module is loaded.
   modprobe -q vhost-vsock
