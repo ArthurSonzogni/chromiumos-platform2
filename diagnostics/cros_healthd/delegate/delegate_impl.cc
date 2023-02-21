@@ -261,4 +261,11 @@ void DelegateImpl::FetchBootPerformance(FetchBootPerformanceCallback callback) {
   std::move(callback).Run(FetchBootPerformanceInfo());
 }
 
+void DelegateImpl::MonitorTouchscreen(
+    mojo::PendingRemote<mojom::TouchscreenObserver> observer) {
+  // Long-run method. The following object keeps alive until the process
+  // terminates.
+  new EvdevTouchscreenObserver(std::move(observer));
+}
+
 }  // namespace diagnostics

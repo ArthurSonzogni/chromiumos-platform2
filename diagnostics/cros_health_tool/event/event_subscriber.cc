@@ -238,27 +238,31 @@ void OutputTouchpadButtonEventInfo(
   std::cout << "Touchpad button event received: " << json << std::endl;
 }
 
+base::Value::Dict TouchPointInfoToDict(const mojom::TouchPointInfoPtr& point) {
+  base::Value::Dict point_dict;
+  point_dict.Set("tracking_id", static_cast<double>(point->tracking_id));
+  point_dict.Set("x", static_cast<double>(point->x));
+  point_dict.Set("y", static_cast<double>(point->y));
+  if (point->pressure) {
+    point_dict.Set("pressure", static_cast<double>(point->pressure->value));
+  }
+  if (point->touch_major) {
+    point_dict.Set("touch_major",
+                   static_cast<double>(point->touch_major->value));
+  }
+  if (point->touch_minor) {
+    point_dict.Set("touch_minor",
+                   static_cast<double>(point->touch_minor->value));
+  }
+  return point_dict;
+}
+
 void OutputTouchpadTouchEventInfo(
     const mojom::TouchpadTouchEventPtr& touch_event) {
   base::Value::Dict output;
   base::Value::List touch_points;
   for (const auto& point : touch_event->touch_points) {
-    base::Value::Dict point_dict;
-    point_dict.Set("tracking_id", static_cast<double>(point->tracking_id));
-    point_dict.Set("x", static_cast<double>(point->x));
-    point_dict.Set("y", static_cast<double>(point->y));
-    if (point->pressure) {
-      point_dict.Set("pressure", static_cast<double>(point->pressure->value));
-    }
-    if (point->touch_major) {
-      point_dict.Set("touch_major",
-                     static_cast<double>(point->touch_major->value));
-    }
-    if (point->touch_minor) {
-      point_dict.Set("touch_minor",
-                     static_cast<double>(point->touch_minor->value));
-    }
-    touch_points.Append(std::move(point_dict));
+    touch_points.Append(TouchPointInfoToDict(point));
   }
   output.Set("touch_points", std::move(touch_points));
 
@@ -302,6 +306,51 @@ void OutputTouchpadEventInfo(const mojom::TouchpadEventInfoPtr& info) {
       break;
     case mojom::TouchpadEventInfo::Tag::kConnectedEvent:
       OutputTouchpadConnectedEventInfo(info->get_connected_event());
+      break;
+  }
+}
+
+void OutputTouchscreenTouchEventInfo(
+    const mojom::TouchscreenTouchEventPtr& touch_event) {
+  base::Value::Dict output;
+  base::Value::List touch_points;
+  for (const auto& point : touch_event->touch_points) {
+    touch_points.Append(TouchPointInfoToDict(point));
+  }
+  output.Set("touch_points", std::move(touch_points));
+
+  std::string json;
+  base::JSONWriter::WriteWithOptions(
+      output, base::JSONWriter::Options::OPTIONS_OMIT_DOUBLE_TYPE_PRESERVATION,
+      &json);
+  std::cout << "Touchscreen touch event received: " << json << std::endl;
+}
+
+void OutputTouchscreenConnectedEventInfo(
+    const mojom::TouchscreenConnectedEventPtr& connected_event) {
+  base::Value::Dict output;
+  output.Set("max_x", static_cast<double>(connected_event->max_x));
+  output.Set("max_y", static_cast<double>(connected_event->max_y));
+  output.Set("max_pressure",
+             static_cast<double>(connected_event->max_pressure));
+
+  std::string json;
+  base::JSONWriter::WriteWithOptions(
+      output, base::JSONWriter::Options::OPTIONS_OMIT_DOUBLE_TYPE_PRESERVATION,
+      &json);
+  std::cout << "Touchscreen connected event received: " << json << std::endl;
+}
+
+void OutputTouchscreenEventInfo(const mojom::TouchscreenEventInfoPtr& info) {
+  switch (info->which()) {
+    case mojom::TouchscreenEventInfo::Tag::kDefaultType:
+      LOG(ERROR) << "Got TouchscreenEventInfo::Tag::kDefaultType";
+      break;
+    case mojom::TouchscreenEventInfo::Tag::kTouchEvent:
+      OutputTouchscreenTouchEventInfo(info->get_touch_event());
+      break;
+    case mojom::TouchscreenEventInfo::Tag::kConnectedEvent:
+      OutputTouchscreenConnectedEventInfo(info->get_connected_event());
       break;
   }
 }
@@ -381,6 +430,9 @@ void EventSubscriber::OnEvent(const mojom::EventInfoPtr info) {
       break;
     case mojom::EventInfo::Tag::kHdmiEventInfo:
       OutputHdmiEventInfo(info->get_hdmi_event_info());
+      break;
+    case mojom::EventInfo::Tag::kTouchscreenEventInfo:
+      OutputTouchscreenEventInfo(info->get_touchscreen_event_info());
       break;
   }
 }

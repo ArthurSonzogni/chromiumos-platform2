@@ -109,6 +109,13 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
               FetchBootPerformance,
               (FetchBootPerformanceCallback),
               (override));
+  MOCK_METHOD(void,
+              MonitorTouchscreen,
+              (mojo::PendingRemote<
+                   ash::cros_healthd::mojom::TouchscreenObserver> observer,
+               mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
+                   process_control),
+              (override));
 };
 
 }  // namespace diagnostics

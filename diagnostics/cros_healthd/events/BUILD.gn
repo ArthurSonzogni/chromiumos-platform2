@@ -37,6 +37,7 @@ source_set("libcros_healthd_events") {
     "lid_events_impl.cc",
     "power_events_impl.cc",
     "touchpad_events_impl.cc",
+    "touchscreen_events_impl.cc",
     "udev_events_impl.cc",
   ]
 }
@@ -61,6 +62,7 @@ if (use.test) {
       "lid_events_impl_test.cc",
       "power_events_impl_test.cc",
       "touchpad_events_impl_test.cc",
+      "touchscreen_events_impl_test.cc",
       "udev_events_impl_test.cc",
     ]
     configs += [ ":libcros_healthd_events_test_pkg_deps" ]

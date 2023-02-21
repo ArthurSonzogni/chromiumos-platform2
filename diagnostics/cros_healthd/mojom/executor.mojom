@@ -77,6 +77,12 @@ interface TouchpadObserver {
   OnConnected(TouchpadConnectedEvent connected_event);
 };
 
+// Implemented by clients who desire touchscreen notifications.
+interface TouchscreenObserver {
+  OnTouch(TouchscreenTouchEvent touch_event);
+  OnConnected(TouchscreenConnectedEvent connected_event);
+};
+
 // Root-level executor interface exposed to the cros_healthd daemon. In
 // production, this is implemented by the Executor daemon.
 interface Executor {
@@ -230,4 +236,12 @@ interface Executor {
 
   // Fetch boot performance info.
   FetchBootPerformance() => (BootPerformanceResult result);
+
+  // Monitor touchscreen events.
+  //
+  // The request:
+  // * |observer| - The observer to notify client.
+  // * |process_control| - Used to stop the monitor process.
+  MonitorTouchscreen(pending_remote<TouchscreenObserver> observer,
+                     pending_receiver<ProcessControl> process_control);
 };

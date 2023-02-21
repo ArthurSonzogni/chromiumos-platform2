@@ -61,4 +61,10 @@ interface Delegate {
 
   // Fetch boot performance info.
   FetchBootPerformance() => (BootPerformanceResult result);
+
+  // Monitor touchscreen events.
+  //
+  // The request:
+  // * |observer| - The observer to notify client.
+  MonitorTouchscreen(pending_remote<TouchscreenObserver> observer);
 };

@@ -380,6 +380,42 @@ struct HdmiEventInfo {
   State state@0;
 };
 
+// Emitted when new touch points are updated.
+//
+// NextMinVersion: 1, NextIndex: 1
+[Stable]
+struct TouchscreenTouchEvent {
+  // The touch points reported by the touchscreen.
+  array<TouchPointInfo> touch_points@0;
+};
+
+// Emitted once the observer get connected to the touchscreen events. This will be
+// the first event from the touchscreen.
+//
+// NextMinVersion: 1, NextIndex: 3
+[Stable]
+struct TouchscreenConnectedEvent {
+  // The maximum possible x position of touch points.
+  uint32 max_x@0;
+  // The maximum possible y position of touch points.
+  uint32 max_y@1;
+  // The maximum possible pressure of touch points, or 0 if pressure is not
+  // supported.
+  uint32 max_pressure@2;
+};
+
+// Union of Touchscreen events.
+//
+// NextMinVersion: 1, NextIndex: 3
+[Stable, Extensible]
+union TouchscreenEventInfo {
+  // The default value for forward compatibility. All the unknown type will be
+  // mapped to this.
+  [Default] uint8 default_type@0;
+  TouchscreenTouchEvent touch_event@1;
+  TouchscreenConnectedEvent connected_event@2;
+};
+
 // Implemented by clients who desire events.
 //
 // NextMinVersion: 1, NextIndex: 1
@@ -391,7 +427,7 @@ interface EventObserver {
 
 // Union of event info.
 //
-// NextMinVersion: 6, NextIndex: 12
+// NextMinVersion: 7, NextIndex: 13
 [Stable, Extensible]
 union EventInfo {
   // The default value for forward compatibility. All the unknown type will be
@@ -421,11 +457,13 @@ union EventInfo {
   [MinVersion=4] TouchpadEventInfo touchpad_event_info@10;
   // HDMI event info.
   [MinVersion=5] HdmiEventInfo hdmi_event_info@11;
+  // Touchscreen event info.
+  [MinVersion=6] TouchscreenEventInfo touchscreen_event_info@12;
 };
 
 // An enumeration of event categories.
 //
-// NextMinVersion: 7, NextIndex: 13
+// NextMinVersion: 8, NextIndex: 14
 [Stable, Extensible]
 enum EventCategoryEnum {
   // This is required for backwards compatibility, should not be used.
@@ -442,4 +480,5 @@ enum EventCategoryEnum {
   [MinVersion=4] kKeyboardDiagnostic = 10,
   [MinVersion=5] kTouchpad = 11,
   [MinVersion=6] kHdmi = 12,
+  [MinVersion=7] kTouchscreen = 13,
 };

@@ -12,6 +12,7 @@
 #include "diagnostics/cros_healthd/events/lid_events_impl.h"
 #include "diagnostics/cros_healthd/events/power_events_impl.h"
 #include "diagnostics/cros_healthd/events/touchpad_events_impl.h"
+#include "diagnostics/cros_healthd/events/touchscreen_events_impl.h"
 #include "diagnostics/cros_healthd/events/udev_events_impl.h"
 
 namespace diagnostics {
@@ -33,6 +34,7 @@ EventAggregator::EventAggregator(Context* context) : context_(context) {
   audio_events_ = std::make_unique<AudioEventsImpl>(context_);
   bluetooth_events_ = std::make_unique<BluetoothEventsImpl>(context_);
   touchpad_events_ = std::make_unique<TouchpadEventsImpl>(context_);
+  touchscreen_events_ = std::make_unique<TouchscreenEventsImpl>(context_);
 }
 
 EventAggregator::~EventAggregator() = default;
@@ -79,6 +81,9 @@ void EventAggregator::AddObserver(
       break;
     case mojom::EventCategoryEnum::kHdmi:
       udev_events_->AddHdmiObserver(std::move(observer));
+      break;
+    case mojom::EventCategoryEnum::kTouchscreen:
+      touchscreen_events_->AddObserver(std::move(observer));
       break;
   }
 }

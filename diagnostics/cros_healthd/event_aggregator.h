@@ -16,6 +16,7 @@
 #include "diagnostics/cros_healthd/events/lid_events.h"
 #include "diagnostics/cros_healthd/events/power_events.h"
 #include "diagnostics/cros_healthd/events/touchpad_events.h"
+#include "diagnostics/cros_healthd/events/touchscreen_events.h"
 #include "diagnostics/cros_healthd/events/udev_events.h"
 #include "diagnostics/cros_healthd/system/context.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
@@ -65,6 +66,7 @@ class EventAggregator final {
   std::unique_ptr<AudioEvents> audio_events_;
   std::unique_ptr<BluetoothEvents> bluetooth_events_;
   std::unique_ptr<TouchpadEvents> touchpad_events_;
+  std::unique_ptr<TouchscreenEvents> touchscreen_events_;
   EventReporter event_reporter_{context_};
 };
 

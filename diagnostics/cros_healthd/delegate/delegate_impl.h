@@ -35,6 +35,9 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
       mojo::PendingRemote<ash::cros_healthd::mojom::TouchpadObserver> observer)
       override;
   void FetchBootPerformance(FetchBootPerformanceCallback callback) override;
+  void MonitorTouchscreen(
+      mojo::PendingRemote<ash::cros_healthd::mojom::TouchscreenObserver>
+          observer) override;
 };
 
 }  // namespace diagnostics

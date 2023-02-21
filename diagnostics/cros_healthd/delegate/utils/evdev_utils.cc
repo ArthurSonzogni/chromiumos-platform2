@@ -49,6 +49,38 @@ mojom::NullableUint32Ptr FetchOptionalUnsignedSlotValue(const libevdev* dev,
   return nullptr;
 }
 
+std::vector<mojom::TouchPointInfoPtr> FetchTouchPoints(const libevdev* dev) {
+  int num_slot = libevdev_get_num_slots(dev);
+  if (num_slot < 0) {
+    LOG(ERROR) << "The evdev device does not provide any slots.";
+    return {};
+  }
+  std::vector<mojom::TouchPointInfoPtr> points;
+  for (int slot = 0; slot < num_slot; ++slot) {
+    int value_x, value_y, id;
+    if (libevdev_fetch_slot_value(dev, slot, ABS_MT_POSITION_X, &value_x) &&
+        libevdev_fetch_slot_value(dev, slot, ABS_MT_POSITION_Y, &value_y) &&
+        libevdev_fetch_slot_value(dev, slot, ABS_MT_TRACKING_ID, &id)) {
+      // A non-negative tracking id is interpreted as a contact, and the value
+      // -1 denotes an unused slot.
+      if (id >= 0 && value_x >= 0 && value_y >= 0) {
+        auto point_info = mojom::TouchPointInfo::New();
+        point_info->tracking_id = id;
+        point_info->x = value_x;
+        point_info->y = value_y;
+        point_info->pressure =
+            FetchOptionalUnsignedSlotValue(dev, slot, ABS_MT_PRESSURE);
+        point_info->touch_major =
+            FetchOptionalUnsignedSlotValue(dev, slot, ABS_MT_TOUCH_MAJOR);
+        point_info->touch_minor =
+            FetchOptionalUnsignedSlotValue(dev, slot, ABS_MT_TOUCH_MINOR);
+        points.push_back(std::move(point_info));
+      }
+    }
+  }
+  return points;
+}
+
 }  // namespace
 
 EvdevUtil::EvdevUtil(Delegate* delegate) : delegate_(delegate) {
@@ -166,32 +198,7 @@ bool EvdevTouchpadObserver::IsTarget(libevdev* dev) {
 
 void EvdevTouchpadObserver::FireEvent(const input_event& ev, libevdev* dev) {
   if (ev.type == EV_SYN && ev.code == SYN_REPORT) {
-    std::vector<mojom::TouchPointInfoPtr> points;
-    int num_slot = libevdev_get_num_slots(dev);
-    for (int slot = 0; slot < num_slot; ++slot) {
-      int value_x, value_y, id;
-      if (libevdev_fetch_slot_value(dev, slot, ABS_MT_POSITION_X, &value_x) &&
-          libevdev_fetch_slot_value(dev, slot, ABS_MT_POSITION_Y, &value_y) &&
-          libevdev_fetch_slot_value(dev, slot, ABS_MT_TRACKING_ID, &id)) {
-        // A non-negative tracking id is interpreted as a contact, and the value
-        // -1 denotes an unused slot.
-        if (id >= 0 && value_x >= 0 && value_y >= 0) {
-          auto point_info = mojom::TouchPointInfo::New();
-          point_info->tracking_id = id;
-          point_info->x = value_x;
-          point_info->y = value_y;
-          point_info->pressure =
-              FetchOptionalUnsignedSlotValue(dev, slot, ABS_MT_PRESSURE);
-          point_info->touch_major =
-              FetchOptionalUnsignedSlotValue(dev, slot, ABS_MT_TOUCH_MAJOR);
-          point_info->touch_minor =
-              FetchOptionalUnsignedSlotValue(dev, slot, ABS_MT_TOUCH_MINOR);
-          points.push_back(std::move(point_info));
-        }
-      }
-    }
-
-    observer_->OnTouch(mojom::TouchpadTouchEvent::New(std::move(points)));
+    observer_->OnTouch(mojom::TouchpadTouchEvent::New(FetchTouchPoints(dev)));
   } else if (ev.type == EV_KEY) {
     auto button = EventCodeToInputTouchButton(ev.code);
     if (button.has_value()) {
@@ -224,6 +231,40 @@ void EvdevTouchpadObserver::ReportProperties(libevdev* dev) {
       }
     }
   }
+  observer_->OnConnected(std::move(connected_event));
+}
+
+EvdevTouchscreenObserver::EvdevTouchscreenObserver(
+    mojo::PendingRemote<mojom::TouchscreenObserver> observer)
+    : observer_(std::move(observer)) {}
+
+bool EvdevTouchscreenObserver::IsTarget(libevdev* dev) {
+  // - Typical non-pointer devices: touchscreens.
+  // - Typical direct devices: touchscreens, drawing tablets.
+  // - Use ABS_MT_TRACKING_ID to filter out stylus.
+  return !libevdev_has_property(dev, INPUT_PROP_POINTER) &&
+         libevdev_has_property(dev, INPUT_PROP_DIRECT) &&
+         libevdev_has_event_code(dev, EV_ABS, ABS_MT_TRACKING_ID);
+}
+
+void EvdevTouchscreenObserver::FireEvent(const input_event& ev, libevdev* dev) {
+  if (ev.type == EV_SYN && ev.code == SYN_REPORT) {
+    observer_->OnTouch(
+        mojom::TouchscreenTouchEvent::New(FetchTouchPoints(dev)));
+  }
+}
+
+void EvdevTouchscreenObserver::InitializationFail(
+    uint32_t custom_reason, const std::string& description) {
+  observer_.ResetWithReason(custom_reason, description);
+}
+
+void EvdevTouchscreenObserver::ReportProperties(libevdev* dev) {
+  auto connected_event = mojom::TouchscreenConnectedEvent::New();
+  connected_event->max_x = std::max(libevdev_get_abs_maximum(dev, ABS_X), 0);
+  connected_event->max_y = std::max(libevdev_get_abs_maximum(dev, ABS_Y), 0);
+  connected_event->max_pressure =
+      std::max(libevdev_get_abs_maximum(dev, ABS_MT_PRESSURE), 0);
   observer_->OnConnected(std::move(connected_event));
 }
 
