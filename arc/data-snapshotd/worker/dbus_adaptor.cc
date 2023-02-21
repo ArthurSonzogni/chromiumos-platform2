@@ -102,8 +102,9 @@ bool DBusAdaptor::TakeSnapshot(const std::string& account_id,
     return false;
   }
 
-  std::string userhash = brillo::cryptohome::home::SanitizeUserNameWithSalt(
-      account_id, brillo::SecureBlob(system_salt_));
+  std::string userhash = *brillo::cryptohome::home::SanitizeUserNameWithSalt(
+      brillo::cryptohome::home::Username(account_id),
+      brillo::SecureBlob(system_salt_));
   auto user_dir = home_root_directory_.Append(userhash);
   if (!base::DirectoryExists(user_dir)) {
     LOG(ERROR) << "The user directory does not exist " << user_dir.value();
@@ -172,8 +173,9 @@ bool DBusAdaptor::TakeSnapshot(const std::string& account_id,
 void DBusAdaptor::LoadSnapshot(const std::string& account_id,
                                bool* success,
                                bool* last) {
-  std::string userhash = brillo::cryptohome::home::SanitizeUserNameWithSalt(
-      account_id, brillo::SecureBlob(system_salt_));
+  std::string userhash = *brillo::cryptohome::home::SanitizeUserNameWithSalt(
+      brillo::cryptohome::home::Username(account_id),
+      brillo::SecureBlob(system_salt_));
   if (!base::DirectoryExists(home_root_directory_.Append(userhash))) {
     LOG(ERROR) << "User directory does not exist for user " << account_id;
     *success = false;

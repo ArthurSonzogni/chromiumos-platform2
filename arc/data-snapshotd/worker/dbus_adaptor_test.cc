@@ -100,8 +100,9 @@ class DBusAdaptorTest : public testing::Test {
     return root_tempdir_.GetPath().Append(kRandomDir);
   }
   std::string hash(const std::string& account_id) const {
-    return brillo::cryptohome::home::SanitizeUserNameWithSalt(
-        account_id, brillo::SecureBlob(salt_));
+    return *brillo::cryptohome::home::SanitizeUserNameWithSalt(
+        brillo::cryptohome::home::Username(account_id),
+        brillo::SecureBlob(salt_));
   }
   base::FilePath user_directory() const { return user_directory_; }
 
