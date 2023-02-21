@@ -74,18 +74,27 @@ class EffectsStreamManipulator : public StreamManipulator {
                         uint32_t height);
 
  private:
+  struct StreamContext {
+    // The original stream requested by the client.
+    camera3_stream_t* original_stream = nullptr;
+
+    // The stream that will be set in place of |original_stream| in capture
+    // requests.
+    std::unique_ptr<camera3_stream_t> effect_stream;
+  };
+
   void OnOptionsUpdated(const base::Value::Dict& json_values);
 
   void SetEffect(EffectsConfig new_config);
   bool SetupGlThread();
+  bool RenderEffect(Camera3StreamBuffer& result_buffer, int64_t timestamp);
   bool EnsureImages(buffer_handle_t buffer_handle);
   bool NV12ToRGBA();
   void RGBAToNV12(GLuint texture, uint32_t width, uint32_t height);
   void CreatePipeline(const base::FilePath& dlc_root_path);
   std::optional<int64_t> TryGetSensorTimestamp(Camera3CaptureDescriptor* desc);
-  std::optional<Camera3StreamBuffer> SelectEffectsBuffer(
-      Camera3CaptureDescriptor& result);
   void UploadAndResetMetricsData();
+  void ResetState();
 
   ReloadableConfigFile config_;
   RuntimeOptions* runtime_options_;
@@ -102,6 +111,10 @@ class EffectsStreamManipulator : public StreamManipulator {
   std::unique_ptr<EffectsPipeline> pipeline_
       GUARDED_BY_CONTEXT(sequence_checker_);
 
+  std::vector<std::unique_ptr<StreamContext>> stream_contexts_
+      GUARDED_BY(stream_contexts_lock_);
+  base::Lock stream_contexts_lock_;
+
   // Buffer for input frame converted into RGBA.
   ScopedBufferHandle input_buffer_rgba_ GUARDED_BY_CONTEXT(gl_thread_checker_);
 
@@ -116,7 +129,6 @@ class EffectsStreamManipulator : public StreamManipulator {
   std::unique_ptr<GpuImageProcessor> image_processor_
       GUARDED_BY_CONTEXT(gl_thread_checker_);
 
-  int64_t timestamp_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;
   int64_t last_timestamp_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;
 
   CameraThread gl_thread_;

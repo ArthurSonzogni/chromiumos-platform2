@@ -142,6 +142,7 @@ EffectsStreamManipulator::~EffectsStreamManipulator() {
   // behaviour to be synchronous in this situation.
   UploadAndResetMetricsData();
   gl_thread_.Stop();
+  ResetState();
 }
 
 bool EffectsStreamManipulator::Initialize(
@@ -154,7 +155,51 @@ bool EffectsStreamManipulator::Initialize(
 bool EffectsStreamManipulator::ConfigureStreams(
     Camera3StreamConfiguration* stream_config) {
   UploadAndResetMetricsData();
+  ResetState();
+
+  base::AutoLock lock(stream_contexts_lock_);
+  base::span<camera3_stream_t* const> client_requested_streams =
+      stream_config->GetStreams();
+  std::vector<camera3_stream_t*> modified_streams;
+  for (auto* s : client_requested_streams) {
+    if (s->stream_type != CAMERA3_STREAM_OUTPUT) {
+      // Only output buffers are supported.
+      modified_streams.push_back(s);
+      continue;
+    }
+
+    if (s->format == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
+        s->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED ||
+        s->format == HAL_PIXEL_FORMAT_BLOB) {
+      if (s->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED &&
+          (s->usage & GRALLOC_USAGE_HW_CAMERA_ZSL) ==
+              GRALLOC_USAGE_HW_CAMERA_ZSL) {
+        // Ignore ZSL streams.
+        modified_streams.push_back(s);
+        continue;
+      }
+
+      if (s->format == HAL_PIXEL_FORMAT_BLOB) {
+        // TODO(skyostil): Support BLOB streams.
+        modified_streams.push_back(s);
+        continue;
+      }
+
+      auto context = std::make_unique<StreamContext>();
+      context->original_stream = s;
+      context->effect_stream = std::make_unique<camera3_stream_t>(*s);
+      context->effect_stream->format = HAL_PIXEL_FORMAT_YCbCr_420_888;
+      stream_contexts_.emplace_back(std::move(context));
+      modified_streams.push_back(s);
+    }
+  }
+  stream_config->SetStreams(modified_streams);
   return true;
+}
+
+void EffectsStreamManipulator::ResetState() {
+  base::AutoLock lock(stream_contexts_lock_);
+  stream_contexts_.clear();
 }
 
 bool EffectsStreamManipulator::OnConfiguredStreams(
@@ -180,53 +225,11 @@ std::optional<int64_t> EffectsStreamManipulator::TryGetSensorTimestamp(
                                : std::nullopt;
 }
 
-std::optional<Camera3StreamBuffer>
-EffectsStreamManipulator::SelectEffectsBuffer(
-    Camera3CaptureDescriptor& result) {
-  // This removes all the output buffers in the capture result and picks one
-  // buffer suitable for effects processing. This works only if there's only one
-  // output buffer in the capture result.
-  std::vector<Camera3StreamBuffer> output_buffers =
-      result.AcquireOutputBuffers();
-  Camera3StreamBuffer* ret = nullptr;
-
-  for (auto& b : output_buffers) {
-    const auto* s = b.stream();
-    if (s->stream_type != CAMERA3_STREAM_OUTPUT) {
-      continue;
-    }
-
-    if (s->format == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
-        s->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
-      if (s->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED &&
-          (s->usage & GRALLOC_USAGE_HW_CAMERA_ZSL) ==
-              GRALLOC_USAGE_HW_CAMERA_ZSL) {
-        // Ignore ZSL streams.
-        continue;
-      }
-
-      // TODO(b/244518466) Figure out how to handle many streams
-      // Currently selecting the widest stream to process as it satisfies
-      // the most initial VC situations. Want to expand this to handle
-      // many streams
-      if (!ret || s->width >= ret->stream()->width) {
-        ret = &b;
-      }
-    }
-  }
-
-  if (!ret) {
-    result.SetOutputBuffers(std::move(output_buffers));
-    return std::nullopt;
-  }
-  return std::make_optional(std::move(*ret));
-}
-
 bool EffectsStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  auto processing_time_start = base::TimeTicks::Now();
 
+  auto processing_time_start = base::TimeTicks::Now();
   if (!process_thread_) {
     process_thread_ = base::ThreadTaskRunnerHandle::Get();
     config_.SetCallback(base::BindRepeating(
@@ -257,24 +260,69 @@ bool EffectsStreamManipulator::ProcessCaptureResult(
   if (!last_set_effect_config_.HasEnabledEffects())
     return true;
 
-  std::optional<Camera3StreamBuffer> result_buffer =
-      SelectEffectsBuffer(result);
-  if (!result_buffer.has_value())
-    return true;
-
-  if (result_buffer->status() != CAMERA3_BUFFER_STATUS_OK) {
-    LOGF(ERROR) << "EffectsStreamManipulator received buffer with "
-                   "error in result "
-                << result.frame_number();
-    return false;
+  auto timestamp = TryGetSensorTimestamp(&result);
+  if (!timestamp.has_value()) {
+    timestamp = last_timestamp_;
   }
 
-  if (!result_buffer->WaitOnAndClearReleaseFence(kSyncWaitTimeoutMs)) {
+  base::AutoLock lock(stream_contexts_lock_);
+  for (auto& result_buffer : result.AcquireOutputBuffers()) {
+    StreamContext* stream_context = nullptr;
+    for (auto& s : stream_contexts_) {
+      if (s->original_stream == result_buffer.stream()) {
+        stream_context = s.get();
+        break;
+      }
+    }
+    if (!stream_context) {
+      // Not a stream we care about, so just pass it through.
+      result.AppendOutputBuffer(std::move(result_buffer));
+      continue;
+    }
+
+    if (result_buffer.status() != CAMERA3_BUFFER_STATUS_OK) {
+      LOGF(ERROR) << "EffectsStreamManipulator received failed buffer: "
+                  << result.frame_number();
+      return false;
+    }
+
+    if (!RenderEffect(result_buffer, *timestamp)) {
+      continue;
+    }
+    result.AppendOutputBuffer(std::move(result_buffer));
+  }
+
+  auto frame_processed_time = base::TimeTicks::Now();
+  // If we've recorded at least one frame
+  if (last_processed_frame_timestamp_ != base::TimeTicks()) {
+    metrics_.RecordFrameProcessingInterval(
+        last_set_effect_config_,
+        frame_processed_time - last_processed_frame_timestamp_);
+  }
+  last_processed_frame_timestamp_ = frame_processed_time;
+  metrics_.RecordFrameProcessingLatency(
+      last_set_effect_config_, frame_processed_time - processing_time_start);
+  if (metrics_uploader_->TimeSinceLastUpload() >
+      kMaximumMetricsSessionDuration) {
+    UploadAndResetMetricsData();
+  }
+
+  if (VLOG_IS_ON(1)) {
+    LogAverageLatency(base::TimeTicks::Now() - processing_time_start);
+  }
+  return true;
+}
+
+bool EffectsStreamManipulator::RenderEffect(Camera3StreamBuffer& result_buffer,
+                                            int64_t timestamp) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  DCHECK(result_buffer.status() == CAMERA3_BUFFER_STATUS_OK);
+  if (!result_buffer.WaitOnAndClearReleaseFence(kSyncWaitTimeoutMs)) {
     LOGF(ERROR) << "Timed out waiting for input buffer";
     return false;
   }
 
-  buffer_handle_t buffer_handle = *result_buffer->buffer();
+  buffer_handle_t buffer_handle = *result_buffer.buffer();
 
   auto manager = CameraBufferManager::GetInstance();
   if (manager->Register(buffer_handle) != 0) {
@@ -310,19 +358,14 @@ bool EffectsStreamManipulator::ProcessCaptureResult(
     return false;
   }
 
-  auto timestamp = TryGetSensorTimestamp(&result);
-  timestamp_ = timestamp.has_value() ? *timestamp : timestamp_ + 1;
+  // Mediapipe requires timestamps to be strictly increasing for a given
+  // pipeline. If we receive non-monotonic timestamps or render the pipeline for
+  // multiple streams in parallel, make sure the same timestamp isn't repeated.
+  timestamp = std::max(timestamp, last_timestamp_ + 1);
+  last_timestamp_ = timestamp;
 
-  if (timestamp_ <= last_timestamp_) {
-    uint64_t timestamp_offset = last_timestamp_ + 1 - timestamp_;
-    timestamp_ += timestamp_offset;
-    LOGF(INFO) << "Found out of order timestamp."
-                  "Increasing timestamp to "
-               << timestamp_;
-  }
-  last_timestamp_ = timestamp_;
   frame_status_ = absl::OkStatus();
-  pipeline_->ProcessFrame(timestamp_, input_image_rgba_.texture().handle(),
+  pipeline_->ProcessFrame(timestamp, input_image_rgba_.texture().handle(),
                           input_image_rgba_.texture().width(),
                           input_image_rgba_.texture().height());
   pipeline_->Wait();
@@ -330,29 +373,7 @@ bool EffectsStreamManipulator::ProcessCaptureResult(
     LOG(ERROR) << frame_status_.message();
     return false;
   }
-
-  auto frame_processed_time = base::TimeTicks::Now();
-  // If we've recorded at least one frame
-  if (last_processed_frame_timestamp_ != base::TimeTicks()) {
-    metrics_.RecordFrameProcessingInterval(
-        last_set_effect_config_,
-        frame_processed_time - last_processed_frame_timestamp_);
-  }
-  last_processed_frame_timestamp_ = frame_processed_time;
-  metrics_.RecordFrameProcessingLatency(
-      last_set_effect_config_, frame_processed_time - processing_time_start);
-  if (metrics_uploader_->TimeSinceLastUpload() >
-      kMaximumMetricsSessionDuration) {
-    UploadAndResetMetricsData();
-  }
-
-  result_buffer->mutable_raw_buffer().status = CAMERA3_BUFFER_STATUS_OK;
-  result.AppendOutputBuffer(std::move(result_buffer.value()));
-
-  if (VLOG_IS_ON(1)) {
-    LogAverageLatency(base::TimeTicks::Now() - processing_time_start);
-  }
-
+  result_buffer.mutable_raw_buffer().status = CAMERA3_BUFFER_STATUS_OK;
   return true;
 }
 
