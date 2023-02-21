@@ -44,8 +44,8 @@ class HdrNetStreamManipulator : public StreamManipulator {
   ~HdrNetStreamManipulator() override;
 
   // Implementations of StreamManipulator.  These methods are trampolines and
-  // all the actual tasks are carried out and sequenced on the |gpu_thread_|
-  // with the internal implementations below.
+  // all the actual tasks are carried out and sequenced on the sequenced task
+  // runner of |hdrnet_gpu_resources_| with the internal implementations below.
   bool Initialize(const camera_metadata_t* static_info,
                   StreamManipulator::Callbacks callbacks) override;
   bool ConfigureStreams(Camera3StreamConfiguration* stream_config) override;
@@ -152,15 +152,17 @@ class HdrNetStreamManipulator : public StreamManipulator {
   HdrNetRequestBufferInfo* GetBufferInfoWithPendingBlobStream(
       int frame_number, const camera3_stream_t* blob_stream);
 
+  void InitializeGpuResourcesOnRootGpuThread();
+
   // Internal implementations of StreamManipulator.  All these methods are
-  // sequenced on the |gpu_thread_|.
+  // sequenced on the sequenced task runner of |hdrnet_gpu_resources_|.
   bool InitializeOnGpuThread(const camera_metadata_t* static_info,
                              StreamManipulator::Callbacks callbacks);
   bool ConfigureStreamsOnGpuThread(Camera3StreamConfiguration* stream_config);
   bool OnConfiguredStreamsOnGpuThread(
       Camera3StreamConfiguration* stream_config);
   bool ProcessCaptureRequestOnGpuThread(Camera3CaptureDescriptor* request);
-  bool ProcessCaptureResultOnGpuThread(Camera3CaptureDescriptor* result);
+  bool ProcessCaptureResultOnGpuThread(Camera3CaptureDescriptor result);
   bool NotifyOnGpuThread(camera3_notify_msg_t* msg);
   bool FlushOnGpuThread();
 
@@ -203,7 +205,8 @@ class HdrNetStreamManipulator : public StreamManipulator {
   void OnOptionsUpdated(const base::Value::Dict& json_values);
   void UploadMetrics();
 
-  GpuResources* gpu_resources_;
+  GpuResources* root_gpu_resources_ = nullptr;
+  GpuResources* hdrnet_gpu_resources_ = nullptr;
   HdrNetProcessor::Factory hdrnet_processor_factory_;
   ReloadableConfigFile config_;
   HdrNetConfig::Options options_;

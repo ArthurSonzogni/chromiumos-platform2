@@ -333,40 +333,47 @@ Texture2D HdrNetProcessorDeviceAdapterIpu6::CreateGainLutTexture(
   //
   // [1]:
   // https://developer.android.com/reference/android/hardware/camera2/CaptureRequest#TONEMAP_CURVE
-  int lut_index = 0;
-  float x0 = 0.0, y0 = 1.0;
-  for (int i = 0; i < num_curve_points_; ++i) {
-    int idx = i * 2;
-    float x1 = tonemap_curve[idx], y1 = tonemap_curve[idx + 1];
-    if (inverse) {
-      x1 = x1 * y1;  // x-axis is the value with gain applied.
+  {
+    TRACE_HDRNET_DEBUG_EVENT("Interpolate");
+    int lut_index = 0;
+    float x0 = 0.0, y0 = 1.0;
+    for (int i = 0; i < num_curve_points_; ++i) {
+      int idx = i * 2;
+      float x1 = tonemap_curve[idx], y1 = tonemap_curve[idx + 1];
+      if (inverse) {
+        x1 = x1 * y1;  // x-axis is the value with gain applied.
+      }
+      const int scaled_x1 = x1 * static_cast<float>(num_curve_points_);
+      for (; lut_index <= scaled_x1 && lut_index < num_curve_points_;
+           ++lut_index) {
+        gtm_lut_buffer_[lut_index] =
+            interpolate(static_cast<float>(lut_index) /
+                            static_cast<float>(num_curve_points_),
+                        x0, y0, x1, y1);
+        DVLOGF(3) << base::StringPrintf("(%5d, %1.10f, %d)", lut_index,
+                                        gtm_lut_buffer_[lut_index], inverse);
+      }
+      x0 = x1;
+      y0 = y1;
     }
-    const int scaled_x1 = x1 * static_cast<float>(num_curve_points_);
-    for (; lut_index <= scaled_x1 && lut_index < num_curve_points_;
-         ++lut_index) {
+    for (; lut_index < num_curve_points_; ++lut_index) {
       gtm_lut_buffer_[lut_index] = interpolate(
           static_cast<float>(lut_index) / static_cast<float>(num_curve_points_),
-          x0, y0, x1, y1);
+          x0, y0, 1.0, 1.0);
       DVLOGF(3) << base::StringPrintf("(%5d, %1.10f, %d)", lut_index,
                                       gtm_lut_buffer_[lut_index], inverse);
     }
-    x0 = x1;
-    y0 = y1;
-  }
-  for (; lut_index < num_curve_points_; ++lut_index) {
-    gtm_lut_buffer_[lut_index] = interpolate(
-        static_cast<float>(lut_index) / static_cast<float>(num_curve_points_),
-        x0, y0, 1.0, 1.0);
-    DVLOGF(3) << base::StringPrintf("(%5d, %1.10f, %d)", lut_index,
-                                    gtm_lut_buffer_[lut_index], inverse);
   }
 
-  Texture2D lut_texture(GL_R16F, num_curve_points_, 1);
-  CHECK(lut_texture.IsValid());
-  lut_texture.Bind();
-  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, num_curve_points_, 1, GL_RED,
-                  GL_FLOAT, gtm_lut_buffer_.data());
-  return lut_texture;
+  {
+    TRACE_HDRNET_DEBUG_EVENT("UploadTexture");
+    Texture2D lut_texture(GL_R16F, num_curve_points_, 1);
+    CHECK(lut_texture.IsValid());
+    lut_texture.Bind();
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, num_curve_points_, 1, GL_RED,
+                    GL_FLOAT, gtm_lut_buffer_.data());
+    return lut_texture;
+  }
 }
 
 bool HdrNetProcessorDeviceAdapterIpu6::CreateCoeffPredictionImage(

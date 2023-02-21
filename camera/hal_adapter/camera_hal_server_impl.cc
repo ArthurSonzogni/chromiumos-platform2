@@ -40,6 +40,7 @@
 #include "cros-camera/future.h"
 #include "cros-camera/utils/camera_config.h"
 #include "features/feature_profile.h"
+#include "gpu/gpu_resources.h"
 #include "hal_adapter/camera_hal_test_adapter.h"
 #include "hal_adapter/camera_trace_event.h"
 
@@ -60,12 +61,13 @@ void CameraHalServerImpl::Start() {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
 
   if (GpuResources::IsSupported()) {
-    gpu_resources_ = std::make_unique<GpuResources>();
-    if (!gpu_resources_->Initialize()) {
-      LOGF(ERROR) << "Failed to initialize GPU resources";
-      gpu_resources_ = nullptr;
+    root_gpu_resources_ = std::make_unique<GpuResources>(
+        GpuResourcesOptions{.name = "RootGpuResources"});
+    if (!root_gpu_resources_->Initialize()) {
+      LOGF(ERROR) << "Failed to initialize root GPU resources";
+      root_gpu_resources_ = nullptr;
     }
-    DCHECK(gpu_resources_);
+    DCHECK(root_gpu_resources_);
   }
 
   int result = LoadCameraHal();
@@ -338,7 +340,7 @@ int CameraHalServerImpl::LoadCameraHal() {
 
   LOGF(INFO) << "Running camera HAL adapter on " << getpid();
 
-  if (!camera_hal_adapter_->Start(gpu_resources_.get())) {
+  if (!camera_hal_adapter_->Start(root_gpu_resources_.get())) {
     LOGF(ERROR) << "Failed to start camera HAL adapter";
     return -ENODEV;
   }

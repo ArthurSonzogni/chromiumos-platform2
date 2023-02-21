@@ -21,6 +21,7 @@
 
 #include "common/camera_hal3_helpers.h"
 #include "common/still_capture_processor_impl.h"
+#include "common/stream_manipulator.h"
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metadata_utils.h"
 #include "cros-camera/common.h"
@@ -55,15 +56,41 @@ constexpr char kDenoiserSpatialStrength[] = "spatial_strength";
 // mode. We'll need to have more buffers if we run the burst denoising mode.
 constexpr int kMaxDenoiserBurstLength = 1;
 
-class HdrnetResourceCache : public GpuResources::CacheContainer {
+// Used for caching the persistent HDRnet GpuResources instance across camera
+// sessions in the root GpuResources instance.
+class CachedHdrNetGpuResources : public GpuResources::CacheContainer {
  public:
-  constexpr static char kHdrnetResourceCacheId[] = "hdrnet";
+  constexpr static char kCachedHdrNetGpuResourcesId[] =
+      "hdrnet.hdrnet_gpu_resources";
+
+  CachedHdrNetGpuResources() = default;
+  ~CachedHdrNetGpuResources() override = default;
+
+  GpuResources* GetHdrNetGpuResources() const {
+    return hdrnet_gpu_resources_.get();
+  }
+
+  void CreateHdrNetGpuResources(GpuResources* root_gpu_resources) {
+    hdrnet_gpu_resources_ = std::make_unique<GpuResources>(GpuResourcesOptions{
+        .name = "HdrNetGpuResources", .shared_resources = root_gpu_resources});
+    CHECK(hdrnet_gpu_resources_->Initialize());
+  }
+
+ private:
+  std::unique_ptr<GpuResources> hdrnet_gpu_resources_;
+};
+
+// Used for caching the pipeline resources across camera sessions in the
+// persistent HDRnet GpuResources instance.
+class CachedPipelineResources : public GpuResources::CacheContainer {
+ public:
+  constexpr static char kCachedPipelineResourcesId[] = "hdrnet.cached_pipeline";
   constexpr static size_t kMaxCacheSize = 5;
 
-  HdrnetResourceCache()
+  CachedPipelineResources()
       : processors_(kMaxCacheSize), denoisers_(kMaxCacheSize) {}
 
-  ~HdrnetResourceCache() override = default;
+  ~CachedPipelineResources() override = default;
 
   // HDRnet processor is stateless. Its internal buffers are initialized
   // according to the input image size. We can cache, share and reuse the HDRnet
@@ -193,12 +220,12 @@ void HdrNetStreamManipulator::HdrNetRequestBufferInfo::Invalidate() {
 //
 
 HdrNetStreamManipulator::HdrNetStreamManipulator(
-    GpuResources* gpu_resources,
+    GpuResources* root_gpu_resources,
     base::FilePath config_file_path,
     std::unique_ptr<StillCaptureProcessor> still_capture_processor,
     HdrNetProcessor::Factory hdrnet_processor_factory,
     HdrNetConfig::Options* options)
-    : gpu_resources_(gpu_resources),
+    : root_gpu_resources_(root_gpu_resources),
       hdrnet_processor_factory_(
           !hdrnet_processor_factory.is_null()
               ? std::move(hdrnet_processor_factory)
@@ -209,7 +236,13 @@ HdrNetStreamManipulator::HdrNetStreamManipulator(
       still_capture_processor_(std::move(still_capture_processor)),
       camera_metrics_(CameraMetrics::New()),
       metadata_logger_({.dump_path = base::FilePath(kMetadataDumpPath)}) {
-  DCHECK(gpu_resources_);
+  DCHECK(root_gpu_resources_);
+  root_gpu_resources_->PostGpuTaskSync(
+      FROM_HERE,
+      base::BindOnce(
+          &HdrNetStreamManipulator::InitializeGpuResourcesOnRootGpuThread,
+          base::Unretained(this)));
+  CHECK_NE(hdrnet_gpu_resources_, nullptr);
 
   if (!config_.IsValid()) {
     if (options) {
@@ -225,10 +258,7 @@ HdrNetStreamManipulator::HdrNetStreamManipulator(
 }
 
 HdrNetStreamManipulator::~HdrNetStreamManipulator() {
-  if (!gpu_resources_) {
-    return;
-  }
-  gpu_resources_->PostGpuTaskSync(
+  hdrnet_gpu_resources_->PostGpuTaskSync(
       FROM_HERE, base::BindOnce(&HdrNetStreamManipulator::ResetStateOnGpuThread,
                                 base::Unretained(this)));
 }
@@ -236,10 +266,10 @@ HdrNetStreamManipulator::~HdrNetStreamManipulator() {
 bool HdrNetStreamManipulator::Initialize(
     const camera_metadata_t* static_info,
     StreamManipulator::Callbacks callbacks) {
-  DCHECK(gpu_resources_);
+  DCHECK(hdrnet_gpu_resources_);
 
   bool ret;
-  gpu_resources_->PostGpuTaskSync(
+  hdrnet_gpu_resources_->PostGpuTaskSync(
       FROM_HERE,
       base::BindOnce(&HdrNetStreamManipulator::InitializeOnGpuThread,
                      base::Unretained(this), base::Unretained(static_info),
@@ -250,10 +280,10 @@ bool HdrNetStreamManipulator::Initialize(
 
 bool HdrNetStreamManipulator::ConfigureStreams(
     Camera3StreamConfiguration* stream_config) {
-  DCHECK(gpu_resources_);
+  DCHECK(hdrnet_gpu_resources_);
 
   bool ret;
-  gpu_resources_->PostGpuTaskSync(
+  hdrnet_gpu_resources_->PostGpuTaskSync(
       FROM_HERE,
       base::BindOnce(&HdrNetStreamManipulator::ConfigureStreamsOnGpuThread,
                      base::Unretained(this), base::Unretained(stream_config)),
@@ -263,10 +293,10 @@ bool HdrNetStreamManipulator::ConfigureStreams(
 
 bool HdrNetStreamManipulator::OnConfiguredStreams(
     Camera3StreamConfiguration* stream_config) {
-  DCHECK(gpu_resources_);
+  DCHECK(hdrnet_gpu_resources_);
 
   bool ret;
-  gpu_resources_->PostGpuTaskSync(
+  hdrnet_gpu_resources_->PostGpuTaskSync(
       FROM_HERE,
       base::BindOnce(&HdrNetStreamManipulator::OnConfiguredStreamsOnGpuThread,
                      base::Unretained(this), base::Unretained(stream_config)),
@@ -281,10 +311,10 @@ bool HdrNetStreamManipulator::ConstructDefaultRequestSettings(
 
 bool HdrNetStreamManipulator::ProcessCaptureRequest(
     Camera3CaptureDescriptor* request) {
-  DCHECK(gpu_resources_);
+  DCHECK(hdrnet_gpu_resources_);
 
   bool ret;
-  gpu_resources_->PostGpuTaskSync(
+  hdrnet_gpu_resources_->PostGpuTaskSync(
       FROM_HERE,
       base::BindOnce(&HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread,
                      base::Unretained(this), base::Unretained(request)),
@@ -294,23 +324,20 @@ bool HdrNetStreamManipulator::ProcessCaptureRequest(
 
 bool HdrNetStreamManipulator::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
-  DCHECK(gpu_resources_);
+  DCHECK(hdrnet_gpu_resources_);
 
-  bool ret;
-  gpu_resources_->PostGpuTaskSync(
+  hdrnet_gpu_resources_->PostGpuTask(
       FROM_HERE,
       base::BindOnce(&HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread,
-                     base::Unretained(this), base::Unretained(&result)),
-      &ret);
-  callbacks_.result_callback.Run(std::move(result));
-  return ret;
+                     base::Unretained(this), std::move(result)));
+  return true;
 }
 
 void HdrNetStreamManipulator::Notify(camera3_notify_msg_t msg) {
-  DCHECK(gpu_resources_);
+  DCHECK(hdrnet_gpu_resources_);
 
   bool ret;
-  gpu_resources_->PostGpuTaskSync(
+  hdrnet_gpu_resources_->PostGpuTaskSync(
       FROM_HERE,
       base::BindOnce(&HdrNetStreamManipulator::NotifyOnGpuThread,
                      base::Unretained(this), base::Unretained(&msg)),
@@ -319,10 +346,10 @@ void HdrNetStreamManipulator::Notify(camera3_notify_msg_t msg) {
 }
 
 bool HdrNetStreamManipulator::Flush() {
-  DCHECK(gpu_resources_);
+  DCHECK(hdrnet_gpu_resources_);
 
   bool ret;
-  gpu_resources_->PostGpuTaskSync(
+  hdrnet_gpu_resources_->PostGpuTaskSync(
       FROM_HERE,
       base::BindOnce(&HdrNetStreamManipulator::FlushOnGpuThread,
                      base::Unretained(this)),
@@ -358,10 +385,31 @@ HdrNetStreamManipulator::GetBufferInfoWithPendingBlobStream(
   return nullptr;
 }
 
+void HdrNetStreamManipulator::InitializeGpuResourcesOnRootGpuThread() {
+  DCHECK(root_gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
+
+  CachedHdrNetGpuResources* cache =
+      root_gpu_resources_->GetCache<CachedHdrNetGpuResources>(
+          CachedHdrNetGpuResources::kCachedHdrNetGpuResourcesId);
+  if (!cache) {
+    root_gpu_resources_->SetCache(
+        CachedHdrNetGpuResources::kCachedHdrNetGpuResourcesId,
+        std::make_unique<CachedHdrNetGpuResources>());
+    cache = root_gpu_resources_->GetCache<CachedHdrNetGpuResources>(
+        CachedHdrNetGpuResources::kCachedHdrNetGpuResourcesId);
+  }
+  CHECK(cache);
+
+  if (!cache->GetHdrNetGpuResources()) {
+    cache->CreateHdrNetGpuResources(root_gpu_resources_);
+  }
+  hdrnet_gpu_resources_ = cache->GetHdrNetGpuResources();
+}
+
 bool HdrNetStreamManipulator::InitializeOnGpuThread(
     const camera_metadata_t* static_info,
     StreamManipulator::Callbacks callbacks) {
-  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
+  DCHECK(hdrnet_gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   TRACE_HDRNET();
 
   static_info_.acquire(clone_camera_metadata(static_info));
@@ -371,7 +419,7 @@ bool HdrNetStreamManipulator::InitializeOnGpuThread(
 
 bool HdrNetStreamManipulator::ConfigureStreamsOnGpuThread(
     Camera3StreamConfiguration* stream_config) {
-  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
+  DCHECK(hdrnet_gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   TRACE_HDRNET([&](perfetto::EventContext ctx) {
     stream_config->PopulateEventAnnotation(ctx);
   });
@@ -491,7 +539,7 @@ bool HdrNetStreamManipulator::ConfigureStreamsOnGpuThread(
 
 bool HdrNetStreamManipulator::OnConfiguredStreamsOnGpuThread(
     Camera3StreamConfiguration* stream_config) {
-  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
+  DCHECK(hdrnet_gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   TRACE_HDRNET([&](perfetto::EventContext ctx) {
     stream_config->PopulateEventAnnotation(ctx);
   });
@@ -552,7 +600,7 @@ bool HdrNetStreamManipulator::OnConfiguredStreamsOnGpuThread(
 
 bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
     Camera3CaptureDescriptor* request) {
-  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
+  DCHECK(hdrnet_gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   TRACE_HDRNET("frame_number", request->frame_number());
 
   if (VLOG_IS_ON(2)) {
@@ -694,37 +742,41 @@ bool HdrNetStreamManipulator::ProcessCaptureRequestOnGpuThread(
 }
 
 bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
-    Camera3CaptureDescriptor* result) {
-  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
-  TRACE_HDRNET("frame_number", result->frame_number());
+    Camera3CaptureDescriptor result) {
+  DCHECK(hdrnet_gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
+  TRACE_HDRNET("frame_number", result.frame_number());
 
   if (VLOG_IS_ON(2)) {
-    VLOGFID(2, result->frame_number()) << "Got result:";
-    if (result->has_input_buffer()) {
-      VLOGF(2) << "\t" << GetDebugString(result->GetInputBuffer()->stream());
+    VLOGFID(2, result.frame_number()) << "Got result:";
+    if (result.has_input_buffer()) {
+      VLOGF(2) << "\t" << GetDebugString(result.GetInputBuffer()->stream());
     }
-    for (const auto& hal_result_buffer : result->GetOutputBuffers()) {
+    for (const auto& hal_result_buffer : result.GetOutputBuffers()) {
       VLOGF(2) << "\t" << GetDebugString(hal_result_buffer.stream());
     }
   }
 
-  if (result->has_metadata()) {
+  auto submit_result_task =
+      StreamManipulator::MakeScopedCaptureResultCallbackRunner(
+          callbacks_.result_callback, result);
+
+  if (result.has_metadata()) {
     if (options_.hdrnet_enable) {
       // Result metadata may come before the buffers due to partial results.
       for (const auto& context : hdrnet_stream_context_) {
         // TODO(jcliang): Update the LUT textures once and share it with all
         // processors.
-        context->processor->ProcessResultMetadata(result);
+        context->processor->ProcessResultMetadata(&result);
       }
     }
   }
 
-  if (result->num_output_buffers() == 0) {
+  if (result.num_output_buffers() == 0) {
     return true;
   }
 
   std::vector<Camera3StreamBuffer> hdrnet_buffer_to_process =
-      ExtractHdrNetBuffersToProcess(*result);
+      ExtractHdrNetBuffersToProcess(result);
 
   base::ScopedClosureRunner clean_up(base::BindOnce(
       [](Camera3CaptureDescriptor* result,
@@ -757,20 +809,20 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
           }
         }
       },
-      base::Unretained(result), std::ref(request_buffer_info_)));
+      base::Unretained(&result), std::ref(request_buffer_info_)));
 
   if (hdrnet_buffer_to_process.empty()) {
     return true;
   }
 
   HdrNetBufferInfoList& pending_request_buffers =
-      request_buffer_info_[result->frame_number()];
+      request_buffer_info_[result.frame_number()];
 
   // Process each HDRnet buffer in this capture result and produce the client
   // requested output buffers associated with each HDRnet buffer.
   for (auto& hdrnet_buffer : hdrnet_buffer_to_process) {
     TRACE_HDRNET_EVENT("HdrNetStreamManipulator::ProcessHdrnetBuffer",
-                       "frame_number", result->frame_number(), "width",
+                       "frame_number", result.frame_number(), "width",
                        hdrnet_buffer.stream()->width, "height",
                        hdrnet_buffer.stream()->height, "format",
                        hdrnet_buffer.stream()->format);
@@ -831,24 +883,24 @@ bool HdrNetStreamManipulator::ProcessCaptureResultOnGpuThread(
 
     // Run the HDRNet pipeline and write to the buffers.
     HdrNetConfig::Options processor_config =
-        PrepareProcessorConfig(result, *request_buffer_info);
+        PrepareProcessorConfig(&result, *request_buffer_info);
     const SharedImage& image =
         options_.denoiser_enable
             ? stream_context->denoiser_intermediate
             : stream_context->shared_images[request_buffer_info->buffer_index];
     request_buffer_info->release_fence = stream_context->processor->Run(
-        result->frame_number(), processor_config, image,
+        result.frame_number(), processor_config, image,
         base::ScopedFD(hdrnet_buffer.take_release_fence()), buffers_to_render,
         &hdrnet_metrics_);
 
-    OnBuffersRendered(*result, stream_context, &(*request_buffer_info));
+    OnBuffersRendered(result, stream_context, &(*request_buffer_info));
   }
 
   return true;
 }
 
 bool HdrNetStreamManipulator::NotifyOnGpuThread(camera3_notify_msg_t* msg) {
-  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
+  DCHECK(hdrnet_gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   TRACE_HDRNET();
   // Free up buffers in case of error.
 
@@ -908,7 +960,7 @@ bool HdrNetStreamManipulator::NotifyOnGpuThread(camera3_notify_msg_t* msg) {
 }
 
 bool HdrNetStreamManipulator::FlushOnGpuThread() {
-  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
+  DCHECK(hdrnet_gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   TRACE_HDRNET();
 
   return true;
@@ -1064,7 +1116,7 @@ void HdrNetStreamManipulator::OnBuffersRendered(
 }
 
 bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
-  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
+  DCHECK(hdrnet_gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   TRACE_HDRNET();
 
   std::vector<Size> all_output_sizes;
@@ -1073,13 +1125,15 @@ bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
                                   context->hdrnet_stream->height);
   }
 
-  HdrnetResourceCache* cache = gpu_resources_->GetCache<HdrnetResourceCache>(
-      HdrnetResourceCache::kHdrnetResourceCacheId);
+  CachedPipelineResources* cache =
+      hdrnet_gpu_resources_->GetCache<CachedPipelineResources>(
+          CachedPipelineResources::kCachedPipelineResourcesId);
   if (!cache) {
-    gpu_resources_->SetCache(HdrnetResourceCache::kHdrnetResourceCacheId,
-                             std::make_unique<HdrnetResourceCache>());
-    cache = gpu_resources_->GetCache<HdrnetResourceCache>(
-        HdrnetResourceCache::kHdrnetResourceCacheId);
+    hdrnet_gpu_resources_->SetCache(
+        CachedPipelineResources::kCachedPipelineResourcesId,
+        std::make_unique<CachedPipelineResources>());
+    cache = hdrnet_gpu_resources_->GetCache<CachedPipelineResources>(
+        CachedPipelineResources::kCachedPipelineResourcesId);
   }
   CHECK(cache);
 
@@ -1102,15 +1156,15 @@ bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
       if (!context->processor) {
         cache->PutProcessor(
             stream_size,
-            hdrnet_processor_factory_.Run(locked_static_info,
-                                          gpu_resources_->gpu_task_runner()));
+            hdrnet_processor_factory_.Run(
+                locked_static_info, hdrnet_gpu_resources_->gpu_task_runner()));
         context->processor = cache->GetProcessor(stream_size);
         if (!context->processor) {
           LOGF(ERROR) << "Failed to initialize HDRnet processor";
           ++hdrnet_metrics_.errors[HdrnetError::kInitializationError];
           return false;
         }
-        context->processor->Initialize(gpu_resources_, stream_size,
+        context->processor->Initialize(hdrnet_gpu_resources_, stream_size,
                                        viable_output_sizes);
       }
     }
@@ -1200,7 +1254,7 @@ bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
 }
 
 void HdrNetStreamManipulator::ResetStateOnGpuThread() {
-  DCHECK(gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
+  DCHECK(hdrnet_gpu_resources_->gpu_task_runner()->BelongsToCurrentThread());
   TRACE_HDRNET();
 
   still_capture_processor_->Reset();

@@ -155,7 +155,7 @@ class CameraHalServerImpl {
   // cameraserver process.
   std::unique_ptr<CameraHalAdapter> camera_hal_adapter_;
 
-  std::unique_ptr<GpuResources> gpu_resources_;
+  std::unique_ptr<GpuResources> root_gpu_resources_;
 
   THREAD_CHECKER(thread_checker_);
 };
