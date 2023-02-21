@@ -47,6 +47,7 @@ constexpr char kReservedBlocksGID[] = "20119";
 constexpr char kQuotaOpt[] = "quota";
 constexpr char kQuotaProjectOpt[] = "project";
 constexpr char kDumpe2fsStatefulLog[] = "run/dumpe2fs_stateful.log";
+constexpr char kDirtyExpireCentisecs[] = "proc/sys/vm/dirty_expire_centisecs";
 
 constexpr char kHiberman[] = "usr/sbin/hiberman";
 constexpr char kHiberResumeInitLog[] = "run/hibernate/hiber-resume-init.log";
@@ -80,16 +81,20 @@ std::string AppendPartition(std::string device, std::string partition) {
   return device + partition;
 }
 
-uint64_t GetDirtyExpireCentisecs() {
+uint64_t GetDirtyExpireCentisecs(const base::FilePath& root) {
   std::string dirty_expire;
-  uint64_t dirty_expire_centisecs;
-  if (base::ReadFileToString(
-          base::FilePath("/proc/sys/vm/dirty_expire_centisecs"),
-          &dirty_expire) &&
-      base::StringToUint64(dirty_expire, &dirty_expire_centisecs)) {
-    return dirty_expire_centisecs;
+  uint64_t dirty_expire_centisecs = 0;
+  base::FilePath centisecs_path = root.Append(kDirtyExpireCentisecs);
+  if (!base::ReadFileToString(centisecs_path, &dirty_expire)) {
+    PLOG(WARNING) << "Failed to read " << centisecs_path.value();
+    return 0;
   }
-  return 0;
+
+  base::TrimWhitespaceASCII(dirty_expire, base::TRIM_ALL, &dirty_expire);
+  if (!base::StringToUint64(dirty_expire, &dirty_expire_centisecs)) {
+    PLOG(WARNING) << "Failed to parse contents of " << centisecs_path.value();
+  }
+  return dirty_expire_centisecs;
 }
 
 // TODO(asavery): Use ext2fs library directly instead since we only use
@@ -346,15 +351,18 @@ void StatefulMount::MountStateful() {
         image_vars.FindStringKey("PARTITION_NUM_STATE");
     const std::string* fs_form_state =
         image_vars.FindStringKey("FS_FORMAT_STATE");
-    int dirty_expire_centisecs;
-    int commit_interval;
     state_dev_ = base::FilePath(
         AppendPartition(root_dev_type_.value(), *part_num_state));
     if (fs_form_state->compare("ext4") == 0) {
-      dirty_expire_centisecs = GetDirtyExpireCentisecs();
-      commit_interval = dirty_expire_centisecs / 100;
-      stateful_mount_opts = "commit=" + std::to_string(commit_interval);
-      stateful_mount_opts.append(",discard");
+      int dirty_expire_centisecs = GetDirtyExpireCentisecs(root_);
+      int commit_interval = dirty_expire_centisecs / 100;
+      if (commit_interval != 0) {
+        stateful_mount_opts = "commit=" + std::to_string(commit_interval);
+        stateful_mount_opts.append(",discard");
+      } else {
+        LOG(INFO) << "Using default value for commit interval";
+        stateful_mount_opts = "discard";
+      }
     }
 
     std::optional<bool> lvm_stateful = flags_.lvm_stateful;
