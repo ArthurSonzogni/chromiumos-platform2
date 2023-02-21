@@ -1,4 +1,4 @@
- # resourced::VM_GRPC - GRPC support for select ChromeOS boards
+# resourced::VM_GRPC - GRPC support for select ChromeOS boards
 
 This module adds select GRPC API support to resourced.  The GRPCs are used to call the guest VM over VSOCK on projects: hades/draco/agah. For detailed design of the GRPC's, visit internal site: [go/resourced-grpcs](http://go/resourced-grpcs)
 

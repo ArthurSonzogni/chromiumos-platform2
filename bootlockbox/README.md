@@ -1,2 +1,3 @@
 # Bootlockbox
-This directory contains source code and documentation for the bootlockbox daemon.
+
+This directory is for the bootlockbox daemon.

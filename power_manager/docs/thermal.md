@@ -1,4 +1,4 @@
- # Chrome OS Power Manager Thermal Event
+# Chrome OS Power Manager Thermal Event
 
 powerd monitors thermal devices (e.g. fan speed, cpu throttling state) in sysfs
 to approximately determine the thermal state of the entire device (Chromebook)
