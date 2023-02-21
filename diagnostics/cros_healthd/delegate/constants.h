@@ -20,6 +20,9 @@ inline constexpr char kPreviousPowerdLog[] =
 inline constexpr char kUptimeLoginPromptVisible[] =
     "/tmp/uptime-login-prompt-visible";
 
+// The path to the fingerprint device node.
+inline constexpr char kCrosFpDevice[] = "/dev/cros_fp";
+
 }  // namespace path
 
 }  // namespace diagnostics

@@ -19,9 +19,9 @@
 #include <libec/led_control_command.h>
 #include <libec/mkbp_event.h>
 
+#include "diagnostics/cros_healthd/delegate/constants.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/boot_performance.h"
 #include "diagnostics/cros_healthd/delegate/utils/evdev_utils.h"
-#include "diagnostics/cros_healthd/executor/constants.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 
 namespace {
@@ -87,7 +87,7 @@ DelegateImpl::~DelegateImpl() {}
 void DelegateImpl::GetFingerprintFrame(mojom::FingerprintCaptureType type,
                                        GetFingerprintFrameCallback callback) {
   auto result = mojom::FingerprintFrameResult::New();
-  auto cros_fd = base::ScopedFD(open(fingerprint::kCrosFpPath, O_RDWR));
+  auto cros_fd = base::ScopedFD(open(path::kCrosFpDevice, O_RDWR));
 
   ec::FpInfoCommand info;
   if (!info.Run(cros_fd.get())) {
@@ -170,7 +170,7 @@ void DelegateImpl::GetFingerprintFrame(mojom::FingerprintCaptureType type,
 
 void DelegateImpl::GetFingerprintInfo(GetFingerprintInfoCallback callback) {
   auto result = mojom::FingerprintInfoResult::New();
-  auto cros_fd = base::ScopedFD(open(fingerprint::kCrosFpPath, O_RDWR));
+  auto cros_fd = base::ScopedFD(open(path::kCrosFpDevice, O_RDWR));
 
   ec::GetVersionCommand version;
   if (!version.Run(cros_fd.get())) {
