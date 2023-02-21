@@ -24,7 +24,7 @@
 #include <dbus/object_path.h>
 #include <dbus/object_proxy.h>
 #include <seneschal/proto_bindings/seneschal_service.pb.h>
-#include <vm_concierge/proto_bindings/concierge_service.pb.h>
+#include <vm_concierge/concierge_service.pb.h>
 
 using std::string;
 

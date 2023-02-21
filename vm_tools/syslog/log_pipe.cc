@@ -28,7 +28,7 @@
 #include <dbus/bus.h>
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
-#include <vm_concierge/proto_bindings/concierge_service.pb.h>
+#include <vm_concierge/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/vm_host.grpc.pb.h>
 
 #include "vm_tools/common/naming.h"

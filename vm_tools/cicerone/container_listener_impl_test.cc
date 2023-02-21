@@ -15,7 +15,7 @@
 #include <grpcpp/grpcpp.h>
 #include <gtest/gtest.h>
 #include <chromeos/dbus/service_constants.h>
-#include <vm_applications/proto_bindings/apps.pb.h>
+#include <vm_applications/apps.pb.h>
 #include <vm_protos/proto_bindings/container_host.grpc.pb.h>
 #include <vm_protos/proto_bindings/container_host.pb.h>
 

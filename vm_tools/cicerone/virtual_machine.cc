@@ -19,7 +19,7 @@
 #include <base/strings/stringprintf.h>
 #include <google/protobuf/repeated_field.h>
 #include <grpcpp/grpcpp.h>
-#include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
+#include <vm_cicerone/cicerone_service.pb.h>
 #include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
 #include <chromeos/constants/vm_tools.h>
 

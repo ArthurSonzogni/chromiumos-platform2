@@ -13,7 +13,7 @@
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/message.h>
 #include <gtest/gtest.h>
-#include <vm_concierge/proto_bindings/concierge_service.pb.h>
+#include <vm_concierge/concierge_service.pb.h>
 
 #include "vm_tools/syslog/log_pipe.h"
 

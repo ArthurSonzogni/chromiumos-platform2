@@ -12,8 +12,8 @@
 #include <string>
 #include <vector>
 
-#include <vm_applications/proto_bindings/apps.pb.h>
-#include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
+#include <vm_applications/apps.pb.h>
+#include <vm_cicerone/cicerone_service.pb.h>
 #include <vm_protos/proto_bindings/container_guest.grpc.pb.h>
 #include <vm_protos/proto_bindings/tremplin.grpc.pb.h>
 

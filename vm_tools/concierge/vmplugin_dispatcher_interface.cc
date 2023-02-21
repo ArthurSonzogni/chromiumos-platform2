@@ -18,7 +18,7 @@
 #include <dbus/object_proxy.h>
 #include <dbus/scoped_dbus_error.h>
 
-#include <vm_plugin_dispatcher/proto_bindings/vm_plugin_dispatcher.pb.h>
+#include <vm_plugin_dispatcher/vm_plugin_dispatcher.pb.h>
 
 #include "vm_tools/concierge/plugin_vm_config.h"
 #include "vm_tools/concierge/vmplugin_dispatcher_interface.h"

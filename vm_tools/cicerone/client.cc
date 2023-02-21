@@ -38,7 +38,7 @@
 #include <dbus/message.h>
 #include <dbus/object_path.h>
 #include <dbus/object_proxy.h>
-#include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
+#include <vm_cicerone/cicerone_service.pb.h>
 
 using std::string;
 

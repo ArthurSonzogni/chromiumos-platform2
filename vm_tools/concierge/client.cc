@@ -43,7 +43,7 @@
 #include <dbus/message.h>
 #include <dbus/object_path.h>
 #include <dbus/object_proxy.h>
-#include <vm_concierge/proto_bindings/concierge_service.pb.h>
+#include <vm_concierge/concierge_service.pb.h>
 #include <vboot/crossystem.h>
 
 #include "vm_tools/common/naming.h"

@@ -14,8 +14,8 @@
 #include <dbus/message.h>
 #include <dbus/object_proxy.h>
 #include <dbus/scoped_dbus_error.h>
-#include <vm_concierge/proto_bindings/concierge_service.pb.h>
-#include <vm_launch/proto_bindings/launch.pb.h>
+#include <vm_concierge/concierge_service.pb.h>
+#include <vm_launch/launch.pb.h>
 
 #include "vm_tools/common/vm_id.h"
 

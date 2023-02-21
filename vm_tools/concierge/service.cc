@@ -79,8 +79,8 @@
 #include <dbus/vm_concierge/dbus-constants.h>
 #include <manatee/dbus-proxies.h>
 #include <vboot/crossystem.h>
-#include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
-#include <vm_concierge/proto_bindings/concierge_service.pb.h>
+#include <vm_cicerone/cicerone_service.pb.h>
+#include <vm_concierge/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/vm_guest.pb.h>
 
 #include "base/files/scoped_file.h"

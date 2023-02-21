@@ -17,8 +17,8 @@
 #include <base/logging.h>
 #include <base/strings/string_util.h>
 #include <base/threading/thread_task_runner_handle.h>
-#include <vm_applications/proto_bindings/apps.pb.h>
-#include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
+#include <vm_applications/apps.pb.h>
+#include <vm_cicerone/cicerone_service.pb.h>
 #include <vm_protos/proto_bindings/container_host.pb.h>
 #include <re2/re2.h>
 

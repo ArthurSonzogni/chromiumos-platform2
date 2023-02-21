@@ -36,7 +36,7 @@
 #include <grpcpp/grpcpp.h>
 #include <chromeos/constants/vm_tools.h>
 #include <sys/epoll.h>
-#include <vm_concierge/proto_bindings/concierge_service.pb.h>
+#include <vm_concierge/concierge_service.pb.h>
 
 #include "vm_tools/concierge/future.h"
 #include "vm_tools/concierge/sibling_vms.h"

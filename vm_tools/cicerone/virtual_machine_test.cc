@@ -8,7 +8,7 @@
 #include <base/logging.h>
 #include <gtest/gtest.h>
 
-#include <vm_cicerone/proto_bindings/cicerone_service.pb.h>
+#include <vm_cicerone/cicerone_service.pb.h>
 #include "vm_tools/cicerone/virtual_machine.h"
 
 namespace vm_tools {

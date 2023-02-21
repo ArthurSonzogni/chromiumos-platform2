@@ -25,7 +25,7 @@
 #include <manatee/dbus-proxies.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 #include <spaced/proto_bindings/spaced.pb.h>
-#include <vm_concierge/proto_bindings/concierge_service.pb.h>
+#include <vm_concierge/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
 
 #include "vm_tools/common/vm_id.h"

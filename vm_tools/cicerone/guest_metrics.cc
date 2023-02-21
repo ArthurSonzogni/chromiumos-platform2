@@ -15,7 +15,7 @@
 #include <dbus/exported_object.h>
 #include <dbus/object_proxy.h>
 #include <dbus/vm_concierge/dbus-constants.h>
-#include <vm_concierge/proto_bindings/concierge_service.pb.h>
+#include <vm_concierge/concierge_service.pb.h>
 
 namespace vm_tools {
 namespace cicerone {

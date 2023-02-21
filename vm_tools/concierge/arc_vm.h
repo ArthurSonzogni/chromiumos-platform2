@@ -21,7 +21,7 @@
 #include <base/threading/thread.h>
 #include <chromeos/patchpanel/mac_address_generator.h>
 #include <libcrossystem/crossystem.h>
-#include <vm_concierge/proto_bindings/concierge_service.pb.h>
+#include <vm_concierge/concierge_service.pb.h>
 
 #include "vm_tools/concierge/seneschal_server_proxy.h"
 #include "vm_tools/concierge/vm_base_impl.h"

@@ -353,59 +353,80 @@ proto_library("system_api-smbprovider-protos") {
 }
 
 proto_library("system_api-vm_cicerone-protos") {
-  proto_in_dir = "dbus/vm_cicerone"
-  proto_out_dir = "include/vm_cicerone/proto_bindings"
-  sources = [ "${proto_in_dir}/cicerone_service.proto" ]
+  proto_in_dir = "dbus"
+  proto_out_dir = "include"
+  sources = [ "${proto_in_dir}/vm_cicerone/cicerone_service.proto" ]
   standalone = true
 }
 
 goproto_library("system_api-vm_cicerone-goprotos") {
-  proto_in_dir = "dbus/vm_cicerone"
+  proto_in_dir = "dbus"
   proto_out_dir = "go/src/"
-  sources = [ "${proto_in_dir}/cicerone_service.proto" ]
+  sources = [ "${proto_in_dir}/vm_cicerone/cicerone_service.proto" ]
 }
 
 proto_library("system_api-vm_concierge-protos") {
-  proto_in_dir = "dbus/vm_concierge"
-  proto_out_dir = "include/vm_concierge/proto_bindings"
-  proto_lib_dirs = [ "dbus" ]
-  sources = [ "${proto_in_dir}/concierge_service.proto" ]
+  proto_in_dir = "dbus"
+  proto_out_dir = "include"
+  sources = [ "${proto_in_dir}/vm_concierge/concierge_service.proto" ]
   deps = [ ":system_api-arc-protos" ]
   standalone = true
 }
 
 goproto_library("system_api-vm_concierge-goprotos") {
-  proto_in_dir = "dbus/vm_concierge"
+  proto_in_dir = "dbus"
   proto_out_dir = "go/src/"
-  proto_lib_dirs = [ "dbus" ]
-  sources = [ "${proto_in_dir}/concierge_service.proto" ]
+  sources = [ "${proto_in_dir}/vm_concierge/concierge_service.proto" ]
 }
 
 proto_library("system_api-vm_applications-protos") {
-  proto_in_dir = "dbus/vm_applications"
-  proto_out_dir = "include/vm_applications/proto_bindings"
-  sources = [ "${proto_in_dir}/apps.proto" ]
+  proto_in_dir = "dbus"
+  proto_out_dir = "include"
+  sources = [ "${proto_in_dir}/vm_applications/apps.proto" ]
   standalone = true
 }
 
 proto_library("system_api-vm_sk_forwarding-protos") {
-  proto_in_dir = "dbus/vm_sk_forwarding"
-  proto_out_dir = "include/vm_sk_forwarding/proto_bindings"
-  sources = [ "${proto_in_dir}/sk_forwarding.proto" ]
+  proto_in_dir = "dbus"
+  proto_out_dir = "include"
+  sources = [ "${proto_in_dir}/vm_sk_forwarding/sk_forwarding.proto" ]
   standalone = true
 }
 
 proto_library("system_api-vm_launch-protos") {
-  proto_in_dir = "dbus/vm_launch"
-  proto_out_dir = "include/vm_launch/proto_bindings"
-  sources = [ "${proto_in_dir}/launch.proto" ]
+  proto_in_dir = "dbus"
+  proto_out_dir = "include"
+  sources = [ "${proto_in_dir}/vm_launch/launch.proto" ]
   standalone = true
 }
 
 proto_library("system_api-vm_disk_management-protos") {
-  proto_in_dir = "dbus/vm_disk_management"
-  proto_out_dir = "include/vm_disk_management/proto_bindings"
-  sources = [ "${proto_in_dir}/disk_management.proto" ]
+  proto_in_dir = "dbus"
+  proto_out_dir = "include"
+  sources = [ "${proto_in_dir}/vm_disk_management/disk_management.proto" ]
+  standalone = true
+}
+
+proto_library("system_api-vm_plugin_dispatcher-protos") {
+  proto_in_dir = "dbus"
+  proto_out_dir = "include"
+  sources =
+      [ "${proto_in_dir}/vm_plugin_dispatcher/vm_plugin_dispatcher.proto" ]
+  standalone = true
+}
+
+goproto_library("system_api-vm_plugin_dispatcher-goprotos") {
+  proto_in_dir = "dbus"
+  proto_out_dir = "go/src/"
+  sources =
+      [ "${proto_in_dir}/vm_plugin_dispatcher/vm_plugin_dispatcher.proto" ]
+}
+
+proto_library("system_api-vm_permission_service-protos") {
+  proto_in_dir = "dbus"
+  proto_out_dir = "include"
+  sources =
+      [ "${proto_in_dir}/vm_permission_service/vm_permission_service.proto" ]
   standalone = true
 }
 
@@ -498,19 +519,6 @@ goproto_library("system_api-update_engine-goprotos") {
   sources = [ "${proto_in_dir}/update_engine.proto" ]
 }
 
-proto_library("system_api-vm_plugin_dispatcher-protos") {
-  proto_in_dir = "dbus/vm_plugin_dispatcher"
-  proto_out_dir = "include/vm_plugin_dispatcher/proto_bindings"
-  sources = [ "${proto_in_dir}/vm_plugin_dispatcher.proto" ]
-  standalone = true
-}
-
-goproto_library("system_api-vm_plugin_dispatcher-goprotos") {
-  proto_in_dir = "dbus/vm_plugin_dispatcher"
-  proto_out_dir = "go/src/"
-  sources = [ "${proto_in_dir}/vm_plugin_dispatcher.proto" ]
-}
-
 proto_library("system_api-u2f-protos") {
   proto_in_dir = "dbus/u2f"
   proto_out_dir = "include/u2f/proto_bindings"
@@ -567,13 +575,6 @@ proto_library("system_api-system_proxy-protos") {
   proto_in_dir = "dbus/system_proxy"
   proto_out_dir = "include/system_proxy/proto_bindings"
   sources = [ "${proto_in_dir}/system_proxy_service.proto" ]
-  standalone = true
-}
-
-proto_library("system_api-vm_permission_service-protos") {
-  proto_in_dir = "dbus/vm_permission_service"
-  proto_out_dir = "include/vm_permission_service/proto_bindings"
-  sources = [ "${proto_in_dir}/vm_permission_service.proto" ]
   standalone = true
 }
 

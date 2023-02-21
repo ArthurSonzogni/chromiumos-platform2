@@ -13,7 +13,7 @@
 #include <base/task/sequenced_task_runner.h>
 #include <base/time/time.h>
 #include <grpcpp/grpcpp.h>
-#include <vm_applications/proto_bindings/apps.pb.h>
+#include <vm_applications/apps.pb.h>
 #include <vm_protos/proto_bindings/tremplin.grpc.pb.h>
 
 namespace vm_tools {

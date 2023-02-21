@@ -15,7 +15,7 @@
 #include <dbus/object_proxy.h>
 #include <dbus/scoped_dbus_error.h>
 
-#include <vm_permission_service/proto_bindings/vm_permission_service.pb.h>
+#include <vm_permission_service/vm_permission_service.pb.h>
 
 #include "vm_tools/concierge/vm_permission_interface.h"
 

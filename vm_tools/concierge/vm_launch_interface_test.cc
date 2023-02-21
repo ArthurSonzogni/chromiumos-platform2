@@ -14,8 +14,8 @@
 #include <dbus/vm_launch/dbus-constants.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <vm_concierge/proto_bindings/concierge_service.pb.h>
-#include <vm_launch/proto_bindings/launch.pb.h>
+#include <vm_concierge/concierge_service.pb.h>
+#include <vm_launch/launch.pb.h>
 
 namespace vm_tools {
 namespace concierge {
