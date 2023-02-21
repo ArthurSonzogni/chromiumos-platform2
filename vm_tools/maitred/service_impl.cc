@@ -62,8 +62,6 @@ namespace {
 constexpr char kInterfaceName[] = "eth0";
 constexpr char kLoopbackName[] = "lo";
 
-constexpr char kHostIpPath[] = "/run/host_ip";
-
 const std::vector<string> kDefaultNameservers = {
     "8.8.8.8", "8.8.4.4", "2001:4860:4860::8888", "2001:4860:4860::8844"};
 constexpr char kResolvConfOptions[] =
@@ -375,21 +373,6 @@ grpc::Status ServiceImpl::ConfigureNetwork(grpc::ServerContext* ctx,
   LOG(INFO) << "Set default IPv4 gateway for interface " << kInterfaceName
             << " to " << gateway_str;
 
-  // Write the host IP address to a file for LXD containers to use.
-  base::FilePath host_ip_path(kHostIpPath);
-  size_t gateway_str_len = gateway_str.size();
-  if (base::WriteFile(host_ip_path, gateway_str.c_str(), gateway_str_len) !=
-      gateway_str_len) {
-    LOG(ERROR) << "Failed to write host IPv4 address to file";
-    return grpc::Status(grpc::INTERNAL, "failed to write host IPv4 address");
-  }
-
-  if (!base::SetPosixFilePermissions(host_ip_path, 0644)) {
-    LOG(ERROR) << "Failed to set host IPv4 address file permissions";
-    return grpc::Status(grpc::INTERNAL,
-                        "failed to set host IPv4 address permissions");
-  }
-
   return grpc::Status::OK;
 }
 
@@ -589,15 +572,6 @@ grpc::Status ServiceImpl::ConfigureContainerGuest(
     vm_tools::EmptyMessage* response) {
   LOG(INFO) << "Received ConfigureContainerGuest request";
   Init::ProcessLaunchInfo launch_info;
-
-  // Tell garcon what the host ip is.
-  unlink(vm_tools::kGarconHostIpFile);
-  if (symlink(kHostIpPath, vm_tools::kGarconHostIpFile) != 0) {
-    return grpc::Status(
-        grpc::INTERNAL,
-        string("failed to link host ip where garcon expects it: ") +
-            strerror(errno));
-  }
 
   // Tell garcon what the token is.
   base::FilePath token_path{vm_tools::kGarconContainerTokenFile};

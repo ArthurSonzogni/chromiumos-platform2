@@ -7,10 +7,6 @@
 
 namespace vm_tools {
 
-// Path to the file that garcon will check to determine the ip address of the
-// host.
-constexpr char kGarconHostIpFile[] = "/dev/.host_ip";
-
 // Path to the file that garcon will check to get the container token.
 constexpr char kGarconContainerTokenFile[] = "/dev/.container_token";
 
