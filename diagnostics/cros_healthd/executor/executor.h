@@ -45,6 +45,9 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
   // ash::cros_healthd::mojom::Executor overrides:
   void ReadFile(File file_enum, ReadFileCallback callback) override;
   void GetFanSpeed(GetFanSpeedCallback callback) override;
+  void RunIw(IwCommand cmd,
+             const std::string& interface_name,
+             RunIwCallback callback) override;
   void GetInterfaces(GetInterfacesCallback callback) override;
   void GetLink(const std::string& interface_name,
                GetLinkCallback callback) override;

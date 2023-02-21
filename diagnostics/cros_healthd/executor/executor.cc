@@ -204,6 +204,57 @@ void Executor::GetFanSpeed(GetFanSpeedCallback callback) {
                     /*combine_stdout_and_stderr=*/false);
 }
 
+void Executor::RunIw(IwCommand cmd,
+                     const std::string& interface_name,
+                     RunIwCallback callback) {
+  // Sanitize against interface_name.
+  if (cmd == IwCommand::kDev) {
+    if (interface_name != "") {
+      auto result = mojom::ExecutedProcessResult::New();
+      result->err = "Dev subcommand doesn't take interface name.";
+      LOG(ERROR) << result->err;
+      result->return_code = EXIT_FAILURE;
+      std::move(callback).Run(std::move(result));
+      return;
+    }
+  } else {
+    if (!IsValidWirelessInterfaceName(interface_name)) {
+      auto result = mojom::ExecutedProcessResult::New();
+      result->err = "Illegal interface name: " + interface_name;
+      LOG(ERROR) << result->err;
+      result->return_code = EXIT_FAILURE;
+      std::move(callback).Run(std::move(result));
+      return;
+    }
+  }
+
+  std::vector<std::string> command;
+  switch (cmd) {
+    case IwCommand::kDev:
+      command = {path::kIwBinary, "dev"};
+      break;
+    case IwCommand::kLink:
+      command = {path::kIwBinary, interface_name, "link"};
+      break;
+    case IwCommand::kInfo:
+      command = {path::kIwBinary, interface_name, "info"};
+      break;
+    case IwCommand::kScanDump:
+      command = {path::kIwBinary, interface_name, "scan", "dump"};
+      break;
+  }
+
+  auto process = std::make_unique<SandboxedProcess>(
+      command, seccomp_file::kIw, kCrosHealthdSandboxUser, kNullCapability,
+      /*readonly_mount_points=*/
+      std::vector<base::FilePath>{},
+      /*writable_mount_points=*/
+      std::vector<base::FilePath>{}, NO_ENTER_NETWORK_NAMESPACE);
+
+  RunAndWaitProcess(std::move(process), std::move(callback),
+                    /*combine_stdout_and_stderr=*/false);
+}
+
 void Executor::GetInterfaces(GetInterfacesCallback callback) {
   std::vector<std::string> command = {path::kIwBinary, kIwInterfaceCommand};
   auto process = std::make_unique<SandboxedProcess>(

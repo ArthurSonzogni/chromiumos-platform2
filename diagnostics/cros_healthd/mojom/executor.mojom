@@ -99,6 +99,15 @@ interface Executor {
   // * |result| - contains information received from running the tool.
   GetFanSpeed() => (ExecutedProcessResult result);
 
+  // Runs the `iw` command and returns the result.
+  enum IwCommand {
+    kDev, // interface_name is not used for this subcommand.
+    kLink,
+    kInfo,
+    kScanDump,
+  };
+  RunIw(IwCommand cmd, string interface_name) => (ExecutedProcessResult result);
+
   // Obtains wireless interface by running "iw dev" and returns the result.
   //
   // The response:
