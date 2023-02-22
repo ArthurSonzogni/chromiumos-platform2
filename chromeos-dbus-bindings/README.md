@@ -92,6 +92,16 @@ This type mapping is also recursive, i.e. an argument of
 type `a{s(io)}` will be mapped to
 `std::map<std::string, std::tuple<int32_t, dbus::ObjectPath>>`.
 
+For protocol buffers, add an annotation `ay` (array of bytes) with
+`org.chromium.DBus.Argument.ProtobufClass`, like:
+
+```
+  <arg name="response" type="ay">
+    <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+       value="vm_tools::concierge::DiskImageStatusResponse" />
+  </arg>
+```
+
 ## Method generation
 
 Suppose you have a service with the following XML specification:
