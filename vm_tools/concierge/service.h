@@ -54,7 +54,6 @@ namespace vm_tools {
 namespace concierge {
 
 class DlcHelper;
-class VmLaunchInterface;
 
 // Used to represent kernel version.
 using KernelVersionAndMajorRevision = std::pair<int, int>;
@@ -408,20 +407,6 @@ class Service final {
   // is not enabled, returns kCpuPercentUnlimited.
   int GetCpuQuota();
 
-  // Sets wayland server in |vm_builder| based on -
-  // |request_wayland_server| - The wayland server sent by the client in the
-  // request.
-  // |vm_id| - ID for the Vm.
-  // |classification| - type of Vm.
-  //
-  // Returns true if it's able to compute and set wayland server successfully
-  // in |vm_builder|. Else returns false and sets |error|.
-  bool SetWaylandServer(const std::string& request_wayland_server,
-                        const VmId& vm_id,
-                        VmInfo::VmType classification,
-                        VmBuilder& vm_builder,
-                        std::string& error);
-
   // Handles StatefulDiskSpaceUpdate from spaced.
   void OnStatefulDiskSpaceUpdate(const spaced::StatefulDiskSpaceUpdate& update);
 
@@ -485,9 +470,6 @@ class Service final {
 
   // The dlcservice helper D-Bus client.
   std::unique_ptr<DlcHelper> dlcservice_client_;
-
-  // Helper object for VM Launch auxiliary requests.
-  std::unique_ptr<VmLaunchInterface> vm_launch_interface_;
 
   // The StartupListener service.
   StartupListenerImpl startup_listener_;

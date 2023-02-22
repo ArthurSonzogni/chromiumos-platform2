@@ -58,6 +58,7 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 #include <base/memory/ref_counted.h>
+#include <base/notreached.h>
 #include <base/process/launch.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -81,6 +82,7 @@
 #include <dbus/vm_concierge/dbus-constants.h>
 #include <manatee/dbus-proxies.h>
 #include <vboot/crossystem.h>
+#include <vm_applications/apps.pb.h>
 #include <vm_cicerone/cicerone_service.pb.h>
 #include <vm_concierge/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/vm_guest.pb.h>
@@ -97,9 +99,9 @@
 #include "vm_tools/concierge/ssh_keys.h"
 #include "vm_tools/concierge/termina_vm.h"
 #include "vm_tools/concierge/vm_builder.h"
-#include "vm_tools/concierge/vm_launch_interface.h"
 #include "vm_tools/concierge/vm_permission_interface.h"
 #include "vm_tools/concierge/vm_util.h"
+#include "vm_tools/concierge/vm_wl_interface.h"
 #include "vm_tools/concierge/vmplugin_dispatcher_interface.h"
 
 using std::string;
@@ -1495,7 +1497,6 @@ bool Service::Init() {
       base::FilePath(kL1TFFilePath), base::FilePath(kMDSFilePath));
 
   dlcservice_client_ = std::make_unique<DlcHelper>(bus_);
-  vm_launch_interface_ = std::make_unique<VmLaunchInterface>(bus_);
 
   using ServiceMethod =
       std::unique_ptr<dbus::Response> (Service::*)(dbus::MethodCall*);
@@ -2186,14 +2187,35 @@ StartVmResponse Service::StartVm(StartVmRequest request,
                           .writable = request.writable_rootfs()});
   }
 
-  std::string wayland_error;
-  if (!SetWaylandServer(request.vm().wayland_server(), vm_id, classification,
-                        vm_builder, wayland_error)) {
+  // TODO(b/271760729): Bru doesn't have a type in the VmInfo::VmType. Rather
+  // than decode one to the other like below, we should use apps::VmType
+  // universally.
+  apps::VmType wayland_server_type = apps::UNKNOWN;
+  switch (classification) {
+    case VmInfo::TERMINA:
+      wayland_server_type = apps::TERMINA;
+      break;
+    case VmInfo::ARC_VM:
+    case VmInfo::PLUGIN_VM:
+      NOTREACHED();
+      break;
+    case VmInfo::BOREALIS:
+      wayland_server_type = apps::BOREALIS;
+      break;
+    default:
+      wayland_server_type = apps::UNKNOWN;
+      break;
+  }
+  VmWlInterface::Result wl_result =
+      VmWlInterface::CreateWaylandServer(bus_, vm_id, wayland_server_type);
+  if (!wl_result.has_value()) {
     response.set_failure_reason("Unable to start a wayland server: " +
-                                wayland_error);
+                                wl_result.error());
     LOG(ERROR) << response.failure_reason();
     return response;
   }
+  std::unique_ptr<ScopedWlSocket> socket = std::move(wl_result).value();
+  vm_builder.SetWaylandSocket(socket->GetPath().value());
 
   // Group the CPUs by their physical package ID to determine CPU cluster
   // layout.
@@ -2208,7 +2230,8 @@ StartVmResponse Service::StartVm(StartVmRequest request,
       std::move(runtime_dir), vm_memory_id, std::move(log_path),
       std::move(stateful_device), std::move(stateful_size),
       GetVmMemoryMiB(request), features, vm_permission_service_proxy_, bus_,
-      vm_id, classification, std::move(vm_builder), &dbus_thread_);
+      vm_id, classification, std::move(vm_builder), &dbus_thread_,
+      std::move(socket));
   if (!vm) {
     LOG(ERROR) << "Unable to start VM";
 
@@ -5452,35 +5475,6 @@ int Service::GetCpuQuota() {
     return kCpuPercentUnlimited;
   }
   return std::min(100, std::max(1, quota));
-}
-
-bool Service::SetWaylandServer(const std::string& request_wayland_server,
-                               const VmId& vm_id,
-                               VmInfo::VmType classification,
-                               VmBuilder& vm_builder,
-                               std::string& error) {
-  if (!request_wayland_server.empty()) {
-    vm_builder.SetWaylandSocket(request_wayland_server);
-    return true;
-  }
-
-  std::string get_wayland_socket_error;
-  std::string computed_wayland_server =
-      vm_launch_interface_->GetWaylandSocketForVm(vm_id, classification, error);
-  if (computed_wayland_server.empty()) {
-    // Prevent certain VMs from running without a secure server.
-    //
-    // TODO(b/212636975): All VMs should use this, not just special ones.
-    if (classification == VmInfo::BOREALIS ||
-        classification == VmInfo::TERMINA) {
-      return false;
-    } else {
-      LOG(WARNING) << "Using default wayland server: "
-                   << get_wayland_socket_error;
-    }
-  }
-  vm_builder.SetWaylandSocket(std::move(computed_wayland_server));
-  return true;
 }
 
 void Service::AddStorageBalloonVm(VmId vm_id) {

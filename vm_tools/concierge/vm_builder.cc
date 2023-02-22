@@ -23,8 +23,6 @@ namespace concierge {
 namespace {
 // Path to the default wayland socket.
 constexpr char kWaylandSocket[] = "/run/chrome/wayland-0";
-constexpr char kValidWaylandSocketRegex[] =
-    "/run/wayland/concierge/[^/]+/wayland-0";
 
 constexpr char kVirglRenderServerPath[] = "/usr/libexec/virgl_render_server";
 constexpr char kVvuProxySocketPathFormat[] = "/run/crosvm-vvu%02d.sock";
@@ -407,9 +405,6 @@ base::StringPairs VmBuilder::BuildRunParams() const {
   if (!vm_socket_path_.empty())
     args.emplace_back("--socket", vm_socket_path_);
 
-  // Validate the wayland socket, see b/237754226 for details
-  if (!HasValidWaylandSockets())
-    return {};
   for (const auto& w : wayland_sockets_)
     args.emplace_back("--wayland-sock", w);
 
@@ -795,32 +790,6 @@ bool VmBuilder::AddGpuSiblingCmd(
       cmds->sibling_cmd_args.end(),
       {"--vhost-user-gpu",
        BuildVvuSocketPath(vvu_device_info.proxy_socket_index)});
-  return true;
-}
-
-namespace {
-const char* g_valid_wayland_regex = nullptr;
-}
-
-void VmBuilder::SetValidWaylandRegexForTesting(char* regex) {
-  g_valid_wayland_regex = regex;
-}
-
-bool VmBuilder::HasValidWaylandSockets() const {
-  if (wayland_sockets_.empty())
-    return true;
-  if (!g_valid_wayland_regex) {
-    g_valid_wayland_regex = kValidWaylandSocketRegex;
-  }
-  // The "primary" wayland socket must be either the default socket, or of the
-  // form "/run/wayland/concierge/<something>/wayland-0".
-  if (wayland_sockets_.front() != kWaylandSocket) {
-    std::vector<std::string> primary_wayland_path_components =
-        base::FilePath().GetComponents();
-    RE2 re(g_valid_wayland_regex);
-    if (!re.FullMatch(wayland_sockets_.front(), re))
-      return false;
-  }
   return true;
 }
 

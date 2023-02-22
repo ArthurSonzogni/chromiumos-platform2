@@ -38,6 +38,8 @@
 namespace vm_tools {
 namespace concierge {
 
+class ScopedWlSocket;
+
 // The CPU cgroup where all the Termina main crosvm process should belong to.
 constexpr char kTerminaVcpuCpuCgroup[] = "/sys/fs/cgroup/cpu/termina-vcpus";
 
@@ -131,7 +133,8 @@ class TerminaVm final : public VmBaseImpl {
       VmId id,
       VmInfo::VmType classification,
       VmBuilder vm_builder,
-      base::Thread* dbus_thread);
+      base::Thread* dbus_thread,
+      std::unique_ptr<ScopedWlSocket> socket);
   ~TerminaVm() override;
 
   // Configures the network interfaces inside the VM.  Returns true iff
@@ -297,7 +300,8 @@ class TerminaVm final : public VmBaseImpl {
             scoped_refptr<dbus::Bus> bus,
             VmId id,
             VmInfo::VmType classification,
-            base::Thread* dbus_thread);
+            base::Thread* dbus_thread,
+            std::unique_ptr<ScopedWlSocket> socket);
 
   // Constructor for testing only.
   TerminaVm(std::unique_ptr<patchpanel::Subnet> subnet,
@@ -418,6 +422,12 @@ class TerminaVm final : public VmBaseImpl {
   // Auxiliary state associated with a Termina VM if it's started as a sibling
   // VM.
   std::optional<SiblingState> sibling_state_;
+
+  // Handle to the wayland socket used by this VM. This object cleans up the
+  // server/socket in its destructor.
+  //
+  // TODO(b/237960042): this should be in vm_base once all VMs use it.
+  std::unique_ptr<ScopedWlSocket> socket_;
 };
 
 }  // namespace concierge

@@ -45,6 +45,7 @@
 #include "vm_tools/concierge/vm_builder.h"
 #include "vm_tools/concierge/vm_permission_interface.h"
 #include "vm_tools/concierge/vm_util.h"
+#include "vm_tools/concierge/vm_wl_interface.h"
 
 using std::string;
 
@@ -150,7 +151,8 @@ TerminaVm::TerminaVm(
     scoped_refptr<dbus::Bus> bus,
     VmId id,
     VmInfo::VmType classification,
-    base::Thread* dbus_thread)
+    base::Thread* dbus_thread,
+    std::unique_ptr<ScopedWlSocket> socket)
     : VmBaseImpl(std::move(network_client),
                  vsock_cid,
                  std::move(seneschal_server_proxy),
@@ -169,7 +171,8 @@ TerminaVm::TerminaVm(
       classification_(classification),
       manatee_client_(
           std::make_unique<org::chromium::ManaTEEInterfaceProxy>(bus_)),
-      dbus_thread_(dbus_thread) {}
+      dbus_thread_(dbus_thread),
+      socket_(std::move(socket)) {}
 
 // For testing.
 TerminaVm::TerminaVm(
@@ -223,13 +226,14 @@ std::unique_ptr<TerminaVm> TerminaVm::Create(
     VmId id,
     VmInfo::VmType classification,
     VmBuilder vm_builder,
-    base::Thread* dbus_thread) {
+    base::Thread* dbus_thread,
+    std::unique_ptr<ScopedWlSocket> socket) {
   auto vm = base::WrapUnique(new TerminaVm(
       vsock_cid, std::move(network_client), std::move(seneschal_server_proxy),
       std::move(runtime_dir), vm_memory_id, std::move(log_path),
       std::move(stateful_device), std::move(stateful_size), mem_mib, features,
       vm_permission_service_proxy, std::move(bus), std::move(id),
-      classification, dbus_thread));
+      classification, dbus_thread, std::move(socket)));
 
   if (!vm->Start(std::move(vm_builder)))
     vm.reset();

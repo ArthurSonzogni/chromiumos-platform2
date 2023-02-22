@@ -7,58 +7,11 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
-namespace vm_tools {
-namespace concierge {
-namespace {
-class VmBuilderTest : public ::testing::Test {};
+namespace vm_tools::concierge {
 
-}  // namespace
-
-TEST_F(VmBuilderTest, DefaultValuesSucceeds) {
+TEST(VmBuilderTest, DefaultValuesSucceeds) {
   VmBuilder builder;
   EXPECT_FALSE(builder.BuildVmArgs().empty());
 }
 
-TEST_F(VmBuilderTest, WaylandSocketIsValid) {
-  // Concierge will only accept the default socket, or a socket at a path
-  // specified by go/secure-vm-ids.
-  EXPECT_FALSE(VmBuilder().SetWaylandSocket().BuildVmArgs().empty());
-  EXPECT_FALSE(VmBuilder().SetWaylandSocket("").BuildVmArgs().empty());
-  EXPECT_FALSE(VmBuilder()
-                   .SetWaylandSocket("/run/chrome/wayland-0")
-                   .BuildVmArgs()
-                   .empty());
-  EXPECT_FALSE(VmBuilder()
-                   .SetWaylandSocket("/run/wayland/concierge/test/wayland-0")
-                   .BuildVmArgs()
-                   .empty());
-
-  // Any variation of the path is disallowed
-  EXPECT_TRUE(VmBuilder()
-                  .SetWaylandSocket("./run/wayland/concierge/test/wayland-0")
-                  .BuildVmArgs()
-                  .empty());
-  EXPECT_TRUE(VmBuilder()
-                  .SetWaylandSocket("/var/wayland/concierge/test/wayland-0")
-                  .BuildVmArgs()
-                  .empty());
-  EXPECT_TRUE(VmBuilder()
-                  .SetWaylandSocket("/run/chrome/concierge/test/wayland-0")
-                  .BuildVmArgs()
-                  .empty());
-  EXPECT_TRUE(VmBuilder()
-                  .SetWaylandSocket("/run/wayland/cicerone/test/wayland-0")
-                  .BuildVmArgs()
-                  .empty());
-  EXPECT_TRUE(VmBuilder()
-                  .SetWaylandSocket("/run/wayland/concierge/wayland-0")
-                  .BuildVmArgs()
-                  .empty());
-  EXPECT_TRUE(VmBuilder()
-                  .SetWaylandSocket("/run/wayland/concierge/test/wayland-1")
-                  .BuildVmArgs()
-                  .empty());
-}
-
-}  // namespace concierge
-}  // namespace vm_tools
+}  // namespace vm_tools::concierge

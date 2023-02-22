@@ -165,9 +165,9 @@ static_library("libconcierge") {
     "../concierge/untrusted_vm_utils.cc",
     "../concierge/vm_base_impl.cc",
     "../concierge/vm_builder.cc",
-    "../concierge/vm_launch_interface.cc",
     "../concierge/vm_permission_interface.cc",
     "../concierge/vm_util.cc",
+    "../concierge/vm_wl_interface.cc",
     "../concierge/vmplugin_dispatcher_interface.cc",
     "../concierge/vsock_cid_pool.cc",
   ]
@@ -371,8 +371,8 @@ if (use.test) {
       "../concierge/termina_vm_test.cc",
       "../concierge/untrusted_vm_utils_test.cc",
       "../concierge/vm_builder_test.cc",
-      "../concierge/vm_launch_interface_test.cc",
       "../concierge/vm_util_test.cc",
+      "../concierge/vm_wl_interface_test.cc",
     ]
     configs += [
       "//common-mk:test",
