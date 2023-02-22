@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/fetchers/network_interface_fetcher.h"
 
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
@@ -12,6 +13,7 @@
 #include <base/check.h>
 #include <base/check_op.h>
 #include <base/files/file_enumerator.h>
+#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
@@ -21,6 +23,8 @@
 #include <re2/re2.h>
 
 #include "diagnostics/base/file_utils.h"
+#include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 
 namespace diagnostics {
@@ -56,12 +60,49 @@ bool GetDoubleValueWithUnit(const std::string& buffer,
   return false;
 }
 
-}  // namespace
+class State {
+ public:
+  State();
+  State(const State&) = delete;
+  State& operator=(const State&) = delete;
+  ~State();
+
+  void HandleInterfaceName(Context* context,
+                           base::ScopedClosureRunner on_complete,
+                           mojom::ExecutedProcessResultPtr result);
+
+  void HandleLink(Context* context,
+                  base::ScopedClosureRunner on_complete,
+                  mojom::ExecutedProcessResultPtr result);
+
+  void HandleInfo(mojom::ExecutedProcessResultPtr result);
+
+  void HandleScanDump(mojom::ExecutedProcessResultPtr result);
+
+  void HandleResult(FetchNetworkInterfaceInfoCallback callback, bool success);
+
+  void CreateErrorToSendBack(mojom::ErrorType error_type,
+                             const std::string& message);
+
+ private:
+  mojom::WirelessInterfaceInfoPtr wireless_info_;
+  mojom::ProbeErrorPtr error_;
+};
+
+State::State() {
+  wireless_info_ = mojom::WirelessInterfaceInfo::New();
+}
+
+State::~State() = default;
+
+void State::CreateErrorToSendBack(mojom::ErrorType error_type,
+                                  const std::string& message) {
+  error_ = CreateAndLogProbeError(error_type, message);
+}
 
 // This function handles the callback from executor()->GetScanDump. It will
 // extract data of tx power from "iw <interface> scan dump" command.
-void NetworkInterfaceFetcher::HandleScanDump(
-    mojom::ExecutedProcessResultPtr result) {
+void State::HandleScanDump(mojom::ExecutedProcessResultPtr result) {
   DCHECK(wireless_info_);
   DCHECK(wireless_info_->wireless_link_info);
   std::string err = result->err;
@@ -95,13 +136,11 @@ void NetworkInterfaceFetcher::HandleScanDump(
       break;
     }
   }
-  CreateResultToSendBack();
 }
 
 // This function handles the callback from executor()->GetInfo. It will
 // extract data of tx power from "iw <interface> info" command.
-void NetworkInterfaceFetcher::HandleInfoAndExecuteGetScanDump(
-    mojom::ExecutedProcessResultPtr result) {
+void State::HandleInfo(mojom::ExecutedProcessResultPtr result) {
   DCHECK(wireless_info_);
   DCHECK(wireless_info_->wireless_link_info);
   std::string err = result->err;
@@ -136,17 +175,14 @@ void NetworkInterfaceFetcher::HandleInfoAndExecuteGetScanDump(
                           std::string(__func__) + ": output parse error.");
     return;
   }
-  context_->executor()->GetScanDump(
-      wireless_info_->interface_name,
-      base::BindOnce(&NetworkInterfaceFetcher::HandleScanDump,
-                     weak_factory_.GetWeakPtr()));
 }
 
 // This function handles the callback from executor()->GetLink. It will
 // extract data of access point, bit rates, signal level from
 // "iw <interface> link" command.
-void NetworkInterfaceFetcher::HandleLinkAndExecuteIwExecuteGetInfo(
-    mojom::ExecutedProcessResultPtr result) {
+void State::HandleLink(Context* context,
+                       base::ScopedClosureRunner on_complete,
+                       mojom::ExecutedProcessResultPtr result) {
   DCHECK(wireless_info_);
   std::string err = result->err;
   int32_t return_code = result->return_code;
@@ -161,10 +197,10 @@ void NetworkInterfaceFetcher::HandleLinkAndExecuteIwExecuteGetInfo(
   std::string output = result->out;
   // if device is not connected, return without link information.
   if (RE2::FullMatch(output, kLinkNoConnectionRegex, &regex_result)) {
-    CreateResultToSendBack();
     return;
   }
-  auto link_info = mojom::WirelessLinkInfo::New();
+  wireless_info_->wireless_link_info = mojom::WirelessLinkInfo::New();
+  auto& link_info = wireless_info_->wireless_link_info;
   std::vector<std::string> lines = base::SplitString(
       output, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
 
@@ -224,17 +260,24 @@ void NetworkInterfaceFetcher::HandleLinkAndExecuteIwExecuteGetInfo(
                           std::string(__func__) + ": output parse error.");
     return;
   }
-  wireless_info_->wireless_link_info = std::move(link_info);
-  context_->executor()->GetInfo(
-      wireless_info_->interface_name,
-      base::BindOnce(&NetworkInterfaceFetcher::HandleInfoAndExecuteGetScanDump,
-                     weak_factory_.GetWeakPtr()));
+
+  CallbackBarrier barrier{/*on_success=*/on_complete.Release(),
+                          /*on_error=*/base::DoNothing()};
+  context->executor()->RunIw(mojom::Executor::IwCommand::kInfo,
+                             wireless_info_->interface_name,
+                             barrier.Depend(base::BindOnce(
+                                 &State::HandleInfo, base::Unretained(this))));
+  context->executor()->RunIw(
+      mojom::Executor::IwCommand::kScanDump, wireless_info_->interface_name,
+      barrier.Depend(
+          base::BindOnce(&State::HandleScanDump, base::Unretained(this))));
 }
 
 // This function handles the callback from executor()->GetInterfaces. It will
 // extract all the wireless interfacees from "iw dev" command.
-void NetworkInterfaceFetcher::HandleInterfaceNameAndExecuteGetLink(
-    mojom::ExecutedProcessResultPtr result) {
+void State::HandleInterfaceName(Context* context,
+                                base::ScopedClosureRunner on_complete,
+                                mojom::ExecutedProcessResultPtr result) {
   std::string err = result->err;
   int32_t return_code = result->return_code;
   if (!err.empty() || return_code != EXIT_SUCCESS) {
@@ -261,6 +304,7 @@ void NetworkInterfaceFetcher::HandleInterfaceNameAndExecuteGetLink(
   if (!interface_found) {
     CreateErrorToSendBack(mojom::ErrorType::kServiceUnavailable,
                           "No wireless adapter found on the system.");
+    return;
   }
 
   if (wireless_info_.is_null()) {
@@ -271,7 +315,7 @@ void NetworkInterfaceFetcher::HandleInterfaceNameAndExecuteGetLink(
   std::string file_contents;
   wireless_info_->power_management_on = false;
   if (ReadAndTrimString(
-          context_->root_dir().Append(kRelativeWirelessPowerSchemePath),
+          context->root_dir().Append(kRelativeWirelessPowerSchemePath),
           &file_contents)) {
     uint power_scheme;
     if (!base::StringToUint(file_contents, &power_scheme)) {
@@ -285,56 +329,45 @@ void NetworkInterfaceFetcher::HandleInterfaceNameAndExecuteGetLink(
     }
   }
 
-  // Wireless device found. Get link information for the device.
-  context_->executor()->GetLink(
-      wireless_info_->interface_name,
-      base::BindOnce(
-          &NetworkInterfaceFetcher::HandleLinkAndExecuteIwExecuteGetInfo,
-          weak_factory_.GetWeakPtr()));
+  context->executor()->RunIw(
+      mojom::Executor::IwCommand::kLink, wireless_info_->interface_name,
+      base::BindOnce(&State::HandleLink, base::Unretained(this), context,
+                     std::move(on_complete)));
 }
 
-void NetworkInterfaceFetcher::CreateResultToSendBack(void) {
-  DCHECK(wireless_info_);
+void State::HandleResult(FetchNetworkInterfaceInfoCallback callback,
+                         bool success) {
+  if (!success) {
+    error_ = CreateAndLogProbeError(mojom::ErrorType::kServiceUnavailable,
+                                    "Some mojo callbacks were not called");
+  }
+  if (error_) {
+    std::move(callback).Run(
+        mojom::NetworkInterfaceResult::NewError(std::move(error_)));
+    return;
+  }
   std::vector<mojom::NetworkInterfaceInfoPtr> infos;
-  auto info = mojom::NetworkInterfaceInfo::NewWirelessInterfaceInfo(
-      std::move(wireless_info_));
-  infos.push_back(std::move(info));
-  SendBackResult(
+  infos.push_back(mojom::NetworkInterfaceInfo::NewWirelessInterfaceInfo(
+      std::move(wireless_info_)));
+  std::move(callback).Run(
       mojom::NetworkInterfaceResult::NewNetworkInterfaceInfo(std::move(infos)));
 }
 
-void NetworkInterfaceFetcher::SendBackResult(
-    mojom::NetworkInterfaceResultPtr result) {
-  // Invalid all weak ptrs to prevent other callbacks to be run.
-  weak_factory_.InvalidateWeakPtrs();
-  if (pending_callbacks_.empty())
-    return;
-  for (size_t i = 1; i < pending_callbacks_.size(); ++i) {
-    std::move(pending_callbacks_[i]).Run(result.Clone());
-  }
-  std::move(pending_callbacks_[0]).Run(std::move(result));
-  pending_callbacks_.clear();
-}
+}  // namespace
 
-void NetworkInterfaceFetcher::CreateErrorToSendBack(
-    mojom::ErrorType error_type, const std::string& message) {
-  SendBackResult(mojom::NetworkInterfaceResult::NewError(
-      CreateAndLogProbeError(error_type, message)));
-}
+// Fetch network interface information.
+void FetchNetworkInterfaceInfo(Context* context,
+                               FetchNetworkInterfaceInfoCallback callback) {
+  auto state = std::make_unique<State>();
+  State* state_ptr = state.get();
+  CallbackBarrier barrier{base::BindOnce(&State::HandleResult, std::move(state),
+                                         std::move(callback))};
 
-void NetworkInterfaceFetcher::FetchWirelessInterfaceInfo(void) {
-  context_->executor()->GetInterfaces(base::BindOnce(
-      &NetworkInterfaceFetcher::HandleInterfaceNameAndExecuteGetLink,
-      weak_factory_.GetWeakPtr()));
-}
-
-// Fetch network interface infomation.
-void NetworkInterfaceFetcher::FetchNetworkInterfaceInfo(
-    FetchNetworkInterfaceInfoCallback callback) {
-  pending_callbacks_.push_back(std::move(callback));
-  if (pending_callbacks_.size() > 1)
-    return;
-  FetchWirelessInterfaceInfo();
+  context->executor()->RunIw(
+      mojom::Executor::IwCommand::kDev, "",
+      base::BindOnce(
+          &State::HandleInterfaceName, base::Unretained(state_ptr), context,
+          base::ScopedClosureRunner(barrier.CreateDependencyClosure())));
 }
 
 }  // namespace diagnostics

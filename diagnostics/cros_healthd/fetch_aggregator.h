@@ -16,7 +16,6 @@
 #include "diagnostics/cros_healthd/fetchers/input_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/memory_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/network_fetcher.h"
-#include "diagnostics/cros_healthd/fetchers/network_interface_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/stateful_partition_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/timezone_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/tpm_fetcher.h"
@@ -56,7 +55,6 @@ class FetchAggregator final {
   StatefulPartitionFetcher stateful_partition_fetcher_;
   TimezoneFetcher timezone_fetcher_;
   TpmFetcher tpm_fetcher_;
-  NetworkInterfaceFetcher network_interface_fetcher_;
 
   // The pointer to the Context object for accessing system utilities.
   Context* const context_;

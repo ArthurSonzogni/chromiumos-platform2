@@ -30,6 +30,7 @@ namespace diagnostics {
 namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
+using IwCommand = mojom::Executor::IwCommand;
 using ::testing::_;
 using ::testing::Invoke;
 using ::testing::Return;
@@ -83,88 +84,60 @@ class NetworkInterfaceFetcherTest : public ::testing::Test {
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
         root_dir().Append(kRelativeWirelessPowerSchemePath),
         kFakePowerSchemeContent));
+    MockIw(IwCommand::kDev, "", EXIT_SUCCESS, kFakeGetInterfacesOutput);
+    MockIw(IwCommand::kLink, kExpectedInterfaceName, EXIT_SUCCESS,
+           kFakeGetLinkOutput);
+    MockIw(IwCommand::kInfo, kExpectedInterfaceName, EXIT_SUCCESS,
+           kFakeGetInfoOutput);
+    MockIw(IwCommand::kScanDump, kExpectedInterfaceName, EXIT_SUCCESS,
+           kFakeGetScanDumpOutput);
   }
 
   const base::FilePath& root_dir() { return mock_context_.root_dir(); }
 
   MockExecutor* mock_executor() { return mock_context_.mock_executor(); }
 
-  mojom::NetworkInterfaceResultPtr FetchNetworkInterfaceInfo() {
+  mojom::NetworkInterfaceResultPtr FetchNetworkInterfaceInfoSync() {
     base::RunLoop run_loop;
     mojom::NetworkInterfaceResultPtr result;
-    network_interface_fetcher_.FetchNetworkInterfaceInfo(
+    FetchNetworkInterfaceInfo(
+        &mock_context_,
         base::BindOnce(&OnGetNetworkInterfaceResponse, &result));
     run_loop.RunUntilIdle();
     return result;
   }
 
-  // Set the mock executor response for GetInterfaces.
-  void MockGetInterfaces(const int32_t return_code, const std::string& output) {
-    EXPECT_CALL(*mock_executor(), GetInterfaces(_))
-        .WillOnce(WithArg<0>(
-            Invoke([return_code,
-                    output](mojom::Executor::GetInterfacesCallback callback) {
-              mojom::ExecutedProcessResult result;
-              result.return_code = return_code;
-              result.out = output;
-              std::move(callback).Run(result.Clone());
+  void MockIw(IwCommand cmd,
+              const std::string& interface_name,
+              const int32_t return_code,
+              const std::string& output) {
+    EXPECT_CALL(*mock_context_.mock_executor(), RunIw(cmd, interface_name, _))
+        .WillRepeatedly(WithArg<2>(Invoke(
+            [return_code, output](mojom::Executor::RunIwCallback callback) {
+              auto result = mojom::ExecutedProcessResult::New();
+              result->return_code = return_code;
+              result->out = output;
+              std::move(callback).Run(std::move(result));
             })));
-  }
-
-  // Set the mock executor response for GetLink.
-  void MockGetLink(const int32_t return_code, const std::string& output) {
-    EXPECT_CALL(*mock_executor(), GetLink(_, _))
-        .WillOnce(Invoke(
-            [return_code, output](const std::string& interface_name,
-                                  mojom::Executor::GetLinkCallback callback) {
-              mojom::ExecutedProcessResult result;
-              result.return_code = return_code;
-              result.out = output;
-              std::move(callback).Run(result.Clone());
-            }));
-  }
-
-  // Set the mock executor response for GetInfo.
-  void MockGetInfo(const int32_t return_code, const std::string& output) {
-    EXPECT_CALL(*mock_executor(), GetInfo(_, _))
-        .WillOnce(Invoke(
-            [return_code, output](const std::string& interface_name,
-                                  mojom::Executor::GetInfoCallback callback) {
-              mojom::ExecutedProcessResult result;
-              result.return_code = return_code;
-              result.out = output;
-              std::move(callback).Run(result.Clone());
-            }));
-  }
-
-  // Set the mock executor response for GetScanDump.
-  void MockGetScanDump(const int32_t return_code, const std::string& output) {
-    EXPECT_CALL(*mock_executor(), GetScanDump(_, _))
-        .WillOnce(Invoke([return_code, output](
-                             const std::string& interface_name,
-                             mojom::Executor::GetScanDumpCallback callback) {
-          mojom::ExecutedProcessResult result;
-          result.return_code = return_code;
-          result.out = output;
-          std::move(callback).Run(result.Clone());
-        }));
   }
 
  private:
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
   MockContext mock_context_;
-  NetworkInterfaceFetcher network_interface_fetcher_{&mock_context_};
 };
 
 // Test TestFetchNetworkInterfaceInfo matching with expected result.
 TEST_F(NetworkInterfaceFetcherTest, TestFetchNetworkInterfaceInfo) {
-  MockGetInterfaces(EXIT_SUCCESS, kFakeGetInterfacesOutput);
-  MockGetLink(EXIT_SUCCESS, kFakeGetLinkOutput);
-  MockGetInfo(EXIT_SUCCESS, kFakeGetInfoOutput);
-  MockGetScanDump(EXIT_SUCCESS, kFakeGetScanDumpOutput);
+  MockIw(IwCommand::kDev, "", EXIT_SUCCESS, kFakeGetInterfacesOutput);
+  MockIw(IwCommand::kLink, kExpectedInterfaceName, EXIT_SUCCESS,
+         kFakeGetLinkOutput);
+  MockIw(IwCommand::kInfo, kExpectedInterfaceName, EXIT_SUCCESS,
+         kFakeGetInfoOutput);
+  MockIw(IwCommand::kScanDump, kExpectedInterfaceName, EXIT_SUCCESS,
+         kFakeGetScanDumpOutput);
 
-  auto result = FetchNetworkInterfaceInfo();
+  auto result = FetchNetworkInterfaceInfoSync();
 
   ASSERT_TRUE(result->is_network_interface_info());
   const auto& network_infos = result->get_network_interface_info();
@@ -193,42 +166,39 @@ TEST_F(NetworkInterfaceFetcherTest, TestFetchNetworkInterfaceInfo) {
 
 // Test case: GetInterfaces return failure.
 TEST_F(NetworkInterfaceFetcherTest, TestGetInterfacesReturnFailure) {
-  MockGetInterfaces(EXIT_FAILURE, "Something wrong!!!");
+  MockIw(IwCommand::kDev, "", EXIT_FAILURE, "Something wrong!!!");
 
-  auto result = FetchNetworkInterfaceInfo();
+  auto result = FetchNetworkInterfaceInfoSync();
   ASSERT_TRUE(result->is_error());
   EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kSystemUtilityError);
 }
 
 // Test case: GetLink return failure.
 TEST_F(NetworkInterfaceFetcherTest, TestGetLinkReturnFailure) {
-  MockGetInterfaces(EXIT_SUCCESS, kFakeGetInterfacesOutput);
-  MockGetLink(EXIT_FAILURE, "Something wrong!!!");
+  MockIw(IwCommand::kLink, kExpectedInterfaceName, EXIT_FAILURE,
+         "Something wrong!!!");
 
-  auto result = FetchNetworkInterfaceInfo();
+  auto result = FetchNetworkInterfaceInfoSync();
   ASSERT_TRUE(result->is_error());
   EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kSystemUtilityError);
 }
 
 // Test case: GetInfo return failure.
 TEST_F(NetworkInterfaceFetcherTest, TestGetInfoReturnFailure) {
-  MockGetInterfaces(EXIT_SUCCESS, kFakeGetInterfacesOutput);
-  MockGetLink(EXIT_SUCCESS, kFakeGetLinkOutput);
-  MockGetInfo(EXIT_FAILURE, "Something wrong!!!");
+  MockIw(IwCommand::kInfo, kExpectedInterfaceName, EXIT_FAILURE,
+         "Something wrong!!!");
 
-  auto result = FetchNetworkInterfaceInfo();
+  auto result = FetchNetworkInterfaceInfoSync();
   ASSERT_TRUE(result->is_error());
   EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kSystemUtilityError);
 }
 
 // Test case: GetScanDump return failure.
 TEST_F(NetworkInterfaceFetcherTest, TestGetScanDumpReturnFailure) {
-  MockGetInterfaces(EXIT_SUCCESS, kFakeGetInterfacesOutput);
-  MockGetLink(EXIT_SUCCESS, kFakeGetLinkOutput);
-  MockGetInfo(EXIT_SUCCESS, kFakeGetInfoOutput);
-  MockGetScanDump(EXIT_FAILURE, "Something wrong!!!");
+  MockIw(IwCommand::kScanDump, kExpectedInterfaceName, EXIT_FAILURE,
+         "Something wrong!!!");
 
-  auto result = FetchNetworkInterfaceInfo();
+  auto result = FetchNetworkInterfaceInfoSync();
   ASSERT_TRUE(result->is_error());
   EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kSystemUtilityError);
 }
@@ -236,10 +206,10 @@ TEST_F(NetworkInterfaceFetcherTest, TestGetScanDumpReturnFailure) {
 // Test case: wireless device not connected to an access point. Expecting only
 // non-link data is available.
 TEST_F(NetworkInterfaceFetcherTest, TestWirelessNotConnected) {
-  MockGetInterfaces(EXIT_SUCCESS, kFakeGetInterfacesOutput);
-  MockGetLink(EXIT_SUCCESS, kFakeGetLinkDeviceNotConnectedOutput);
+  MockIw(IwCommand::kLink, kExpectedInterfaceName, EXIT_SUCCESS,
+         kFakeGetLinkDeviceNotConnectedOutput);
 
-  auto result = FetchNetworkInterfaceInfo();
+  auto result = FetchNetworkInterfaceInfoSync();
   ASSERT_TRUE(result->is_network_interface_info());
   const auto& network_infos = result->get_network_interface_info();
   const auto& network_info = network_infos.at(0);
@@ -259,9 +229,10 @@ TEST_F(NetworkInterfaceFetcherTest, TestWirelessNotConnected) {
 
 // Test case: wireless adapter not found.
 TEST_F(NetworkInterfaceFetcherTest, TestNoWirelessAdapterFound) {
-  MockGetInterfaces(EXIT_SUCCESS, kFakeGetInterfacesNoWirelessAdapterOutput);
+  MockIw(IwCommand::kDev, "", EXIT_SUCCESS,
+         kFakeGetInterfacesNoWirelessAdapterOutput);
 
-  auto result = FetchNetworkInterfaceInfo();
+  auto result = FetchNetworkInterfaceInfoSync();
   ASSERT_TRUE(result->is_error());
   EXPECT_EQ(result->get_error()->type, mojom::ErrorType::kServiceUnavailable);
 }
@@ -270,12 +241,8 @@ TEST_F(NetworkInterfaceFetcherTest, TestNoWirelessAdapterFound) {
 TEST_F(NetworkInterfaceFetcherTest, TestMissingPowerSchemeFile) {
   ASSERT_TRUE(
       base::DeleteFile(root_dir().Append(kRelativeWirelessPowerSchemePath)));
-  MockGetInterfaces(EXIT_SUCCESS, kFakeGetInterfacesOutput);
-  MockGetLink(EXIT_SUCCESS, kFakeGetLinkOutput);
-  MockGetInfo(EXIT_SUCCESS, kFakeGetInfoOutput);
-  MockGetScanDump(EXIT_SUCCESS, kFakeGetScanDumpOutput);
 
-  auto result = FetchNetworkInterfaceInfo();
+  auto result = FetchNetworkInterfaceInfoSync();
   ASSERT_TRUE(result->is_network_interface_info());
   const auto& network_infos = result->get_network_interface_info();
   const auto& network_info = network_infos.at(0);

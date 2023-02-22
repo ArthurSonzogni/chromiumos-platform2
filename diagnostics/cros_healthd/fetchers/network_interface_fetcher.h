@@ -11,50 +11,20 @@
 #include <string>
 #include <vector>
 
-#include "diagnostics/cros_healthd/fetchers/base_fetcher.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
 
 namespace diagnostics {
 
+class Context;
+
 constexpr char kRelativeWirelessPowerSchemePath[] =
     "sys/module/iwlmvm/parameters/power_scheme";
 
-class NetworkInterfaceFetcher final : public BaseFetcher {
- public:
-  using FetchNetworkInterfaceInfoCallback = base::OnceCallback<void(
-      ash::cros_healthd::mojom::NetworkInterfaceResultPtr)>;
-
-  using BaseFetcher::BaseFetcher;
-  void FetchNetworkInterfaceInfo(FetchNetworkInterfaceInfoCallback callback);
-
- private:
-  void CreateResultToSendBack(void);
-
-  void CreateErrorToSendBack(ash::cros_healthd::mojom::ErrorType error_type,
-                             const std::string& message);
-
-  void SendBackResult(
-      ash::cros_healthd::mojom::NetworkInterfaceResultPtr result);
-
-  void FetchWirelessInterfaceInfo(void);
-
-  void HandleInterfaceNameAndExecuteGetLink(
-      ash::cros_healthd::mojom::ExecutedProcessResultPtr result);
-
-  void HandleLinkAndExecuteIwExecuteGetInfo(
-      ash::cros_healthd::mojom::ExecutedProcessResultPtr result);
-
-  void HandleInfoAndExecuteGetScanDump(
-      ash::cros_healthd::mojom::ExecutedProcessResultPtr result);
-
-  void HandleScanDump(
-      ash::cros_healthd::mojom::ExecutedProcessResultPtr result);
-
-  ash::cros_healthd::mojom::WirelessInterfaceInfoPtr wireless_info_;
-  std::vector<FetchNetworkInterfaceInfoCallback> pending_callbacks_;
-  base::WeakPtrFactory<NetworkInterfaceFetcher> weak_factory_{this};
-};
+using FetchNetworkInterfaceInfoCallback = base::OnceCallback<void(
+    ash::cros_healthd::mojom::NetworkInterfaceResultPtr)>;
+void FetchNetworkInterfaceInfo(Context* context,
+                               FetchNetworkInterfaceInfoCallback callback);
 
 }  // namespace diagnostics
 

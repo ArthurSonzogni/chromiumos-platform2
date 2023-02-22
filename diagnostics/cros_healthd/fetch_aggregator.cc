@@ -18,6 +18,7 @@
 #include "diagnostics/cros_healthd/fetchers/bluetooth_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/bus_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/cpu_fetcher.h"
+#include "diagnostics/cros_healthd/fetchers/network_interface_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/sensor_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/system_fetcher.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
@@ -63,7 +64,6 @@ FetchAggregator::FetchAggregator(Context* context)
       stateful_partition_fetcher_(context),
       timezone_fetcher_(context),
       tpm_fetcher_(context),
-      network_interface_fetcher_(context),
       context_(context) {}
 
 FetchAggregator::~FetchAggregator() = default;
@@ -166,7 +166,8 @@ void FetchAggregator::Run(
         break;
       }
       case mojom::ProbeCategoryEnum::kNetworkInterface: {
-        network_interface_fetcher_.FetchNetworkInterfaceInfo(
+        FetchNetworkInterfaceInfo(
+            context_,
             CreateFetchCallback(&barrier, &info->network_interface_result));
         break;
       }
