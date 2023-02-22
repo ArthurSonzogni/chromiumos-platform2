@@ -58,6 +58,9 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
   void MonitorPowerButton(
       mojo::PendingRemote<ash::cros_healthd::mojom::PowerButtonObserver>
           observer) override;
+  void RunPrimeSearch(uint32_t duration_sec,
+                      uint64_t max_num,
+                      RunPrimeSearchCallback callback) override;
 };
 
 }  // namespace diagnostics

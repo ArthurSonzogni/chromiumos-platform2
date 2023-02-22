@@ -89,6 +89,8 @@ constexpr char kLed[] = "ec_led-seccomp.policy";
 constexpr char kLidAngle[] = "ec_lid_angle-seccomp.policy";
 // SECCOMP policy for memtester.
 constexpr char kMemtester[] = "memtester-seccomp.policy";
+// SECCOMP policy for prime search.
+constexpr char kPrimeSearch[] = "prime_search-seccomp.policy";
 // SECCOMP policy for fetchers which only read and parse some files.
 constexpr char kReadOnlyFetchers[] = "readonly-fetchers-seccomp.policy";
 // SECCOMP policy for psr related routines.
@@ -808,6 +810,30 @@ void Executor::MonitorPowerButton(
       std::vector<base::FilePath>{});
 
   delegate->remote()->MonitorPowerButton(std::move(observer));
+  auto controller =
+      std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
+
+  base::SequencedTaskRunnerHandle::Get()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&Executor::RunLongRunningDelegate,
+                     weak_factory_.GetWeakPtr(), std::move(controller),
+                     std::move(process_control_receiver)));
+}
+
+void Executor::RunPrimeSearch(
+    uint32_t duration_sec,
+    uint64_t max_num,
+    mojo::PendingReceiver<mojom::ProcessControl> process_control_receiver,
+    RunPrimeSearchCallback callback) {
+  auto delegate = std::make_unique<DelegateProcess>(
+      seccomp_file::kPrimeSearch, kCrosHealthdSandboxUser, kNullCapability,
+      /*readonly_mount_points=*/
+      std::vector<base::FilePath>{},
+      /*writable_mount_points=*/
+      std::vector<base::FilePath>{});
+  delegate->remote()->RunPrimeSearch(
+      duration_sec, max_num,
+      mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback), false));
   auto controller =
       std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
 

@@ -407,4 +407,18 @@ interface Executor {
   // * |process_control| - Used to stop the monitor process.
   MonitorPowerButton(pending_remote<PowerButtonObserver> observer,
                      pending_receiver<ProcessControl> process_control);
+
+  // Run a prime search routine.
+  //
+  // The request:
+  // * |duration_sec| - The number of seconds this routine can run.
+  // * |max_num| - The maximum number under which all prime number should be
+  //               found.
+  // * |process_control| - Used to run and collect status about the running
+  //                       process.
+  //
+  // The response:
+  // * |result| - Whether the routine has passed successfully.
+  RunPrimeSearch(uint32 duration_sec, uint64 max_num,
+                  pending_receiver<ProcessControl> process_control) => (bool passed);
 };

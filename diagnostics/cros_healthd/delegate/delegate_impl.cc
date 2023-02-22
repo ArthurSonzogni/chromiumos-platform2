@@ -4,7 +4,9 @@
 
 #include "diagnostics/cros_healthd/delegate/delegate_impl.h"
 
+#include <algorithm>
 #include <array>
+#include <cstdint>
 #include <fcntl.h>
 #include <memory>
 #include <utility>
@@ -31,6 +33,7 @@
 #include "diagnostics/cros_healthd/delegate/constants.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/boot_performance.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/display_fetcher.h"
+#include "diagnostics/cros_healthd/delegate/routines/prime_number_search.h"
 #include "diagnostics/cros_healthd/delegate/utils/display_utils.h"
 #include "diagnostics/cros_healthd/delegate/utils/evdev_utils.h"
 #include "diagnostics/cros_healthd/delegate/utils/psr_cmd.h"
@@ -482,6 +485,27 @@ void DelegateImpl::MonitorPowerButton(
   // Long-run method. The following object keeps alive until the process
   // terminates.
   new EvdevUtil(std::move(delegate));
+}
+
+void DelegateImpl::RunPrimeSearch(uint32_t duration_sec,
+                                  uint64_t max_num,
+                                  RunPrimeSearchCallback callback) {
+  base::TimeTicks end_time =
+      base::TimeTicks::Now() + base::Seconds(duration_sec);
+  max_num = std::clamp(max_num, static_cast<uint64_t>(2),
+                       PrimeNumberSearchDelegate::kMaxPrimeNumber);
+
+  auto prime_number_search =
+      std::make_unique<diagnostics::PrimeNumberSearchDelegate>(max_num);
+
+  while (base::TimeTicks::Now() < end_time) {
+    if (!prime_number_search->Run()) {
+      std::move(callback).Run(false);
+      return;
+    }
+  }
+
+  std::move(callback).Run(true);
 }
 
 }  // namespace diagnostics

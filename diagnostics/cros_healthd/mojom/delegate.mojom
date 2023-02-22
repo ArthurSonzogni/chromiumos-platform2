@@ -131,4 +131,15 @@ interface Delegate {
   // The request:
   // * |observer| - The observer to notify client.
   MonitorPowerButton(pending_remote<PowerButtonObserver> observer);
+
+  // Run a prime search routine.
+  //
+  // The request:
+  // * |duration_sec| - The number of seconds this routine can run.
+  // * |max_num| - The maximum number under which all prime number should be
+  //               found.
+  //
+  // The response:
+  // * |passed| - Whether the routine has passed.
+  RunPrimeSearch(uint32 duration_sec, uint64 max_num) => (bool passed);
 };
