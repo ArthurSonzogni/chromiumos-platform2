@@ -1,72 +1,81 @@
-# ChromeOS DLC Developer Guide
+# DLC Developer Guide
+
+A guide on how to get up and running with a DownLoadable Content (DLC).
+
+[go/dlc-framework] to see if DLC is right the right use case. (If you already
+know enough about DLCs and is a clear solution for you, please jump right in)
 
 ## Introduction
 
-This guide describes how to use ChromeOS DLC (Downloadable Content).
-DLC allows ChromeOS developers to ship a feature (e.g. a ChromeOS package) to
-stateful partition as packages and provides a way to download it at runtime
-onto the device. If you‘re looking for detailed information about how to do
-this, you’re in the right place.
+DLC allows ChromeOS developers to ship a feature (e.g. a ebuild/package) to
+stateful partition as packages (ebuilds) and provides a way to download at
+runtime.
 
-### ChromeOS DLC vs ChromeOS package (ebuild)
+*   **Development** Developers should follow [Development Steps].
+*   **Location** Most packages usually install to the root filesystem.
+    DLCs are downloaded at runtime to the stateful partition and only install
+    verifiable data (metadata) into the root filesystem.
+*   **Install/Update** Packages installed into the root filesystem will always
+    be installed and updated with ChromeOS. DLCs can be installed on demand and
+    are updated atomically with ChromeOS only if installed. All DLC
+    installations are handled by [dlcservice].
+*   **Payloads/Artifacts** The DLC infrastructure automatically handles
+    all packaging, hosting, and serving of DLC payloads.
 
-ChromeOS DLC is an extension of the ChromeOS package (ebuild).
+## Development Steps
 
-*   **Development** Similar to creating a package, creating a DLC requires
-    creating an ebuild file ([Create a DLC]). Modifying a DLC requires upreving
-    the ebuild like when modifying a ChromeOS package.
-*   **Location** A Package is usually located in the root filesystem partition.
-    A DLC is downloaded at runtime and located in the stateful partition.
-*   **Install/Update** Packages can not be updated or installed independently
-    and can only be updated via Autoupdate (as part of the root filesystem
-    partition). A DLC can be installed independently. Installation of a
-    DLC is handled by a daemon service ([dlcservice]) which takes D-Bus method
-    calls (Install, Uninstall, etc.).
-*   **Update payload/artifacts** All the package updates are embedded in a
-    monolithic payload (a.k.a root filesystem partition) and are downloadable
-    from Omaha. Each DLC has its own update (or install) payload and
-    is downloadable from Omaha. ChromeOS infrastructure automatically handles
-    packaging and serving of DLC payloads.
-
-### Organization and Content
-
-The workflow of a DLC developer involves following few tasks:
+The steps for developing a DLC involves the following:
 
 * [Create a DLC]
-* [Write platform code to request DLC]
-* [Install a DLC for dev/test]
-* [Write tests for a DLC]
+* [Building a DLC locally]
+* [Enabling a DLC]
+* [Install/Uninstall a DLC]
+* [Write tests dependant on a DLC]
 
-## Create a DLC
+### Create a DLC
 
-Introducing a DLC into ChromeOS involves adding an ebuild. The ebuild
-file should inherit [dlc.eclass]. Within the ebuild file the following
-variables should be set:
+A DLC involves adding a portage package (ebuild). The package file should
+inherit [dlc.eclass].<br>
+(Note: modifying a DLC requires upreving the package)
 
-Required:
-*   ` DLC_PREALLOC_BLOCKS` - The storage space (in the unit of number of blocks,
-    block size is 4 KB) the system reserves for a copy of the DLC image.
-    Note that on device we reserve 2 copies of the image so the actual
-    space consumption doubles. It is necessary to set this value more than the
-    minimum required at the launch time to accommodate future size growth
-    (recommendation is 130% of the DLC size).
+__See an example DLC:__ [scaled-dlc ebuild]
 
-Optional (Add these only if you know exactly what you are doing otherwise do not
-add them):
-*    `DLC_ID` - Unique ID. Format of an ID has a few restrictions:
+Within the package, must include the `src_install` function to install the DLC
+content using a special path prefix set by `$(dlc_add_path )`. This means, that
+before installing any DLC files, you have to add the dlc prefix path to
+`into, insinto` and `exeinto` using `$(dlc_add_path your_path)`. Always call
+`dlc_src_install` at the end of your `src_install` function to pack the DLC.
+
+The following variables must/can be set:
+
+#### Required:
+
+*   `DLC_PREALLOC_BLOCKS` - The number of blocks to reserve for A/B copies of a
+    DLC. Each block is 4KiB. It is necessary to set this value more than the
+    minimum required to accommodate future size growth (recommendation is 130%
+    of the DLC size).<br>
+    (Note: This is the required number of blocks should be calculated *AFTER*
+    contents of a DLC is compressed. TODO(kimjae): Create tool here to ease
+    calculation.)
+*   `DLC_SCALED` - All new DLCs should be scaled. In the future this value will
+    be on by default. __Please set this to `true`.__
+
+#### Optional (Please skip over these or read if curious):
+
+*   `DLC_ID` - The unique ID, requirements:
      *    It should not be empty.
      *    It should only contain alphanumeric characters (a-zA-Z0-9) and `-`
           (dash).
      *    The first letter cannot be dash.
      *    No underscore.
      *    It has a maximum length of 40 characters.
+     (Note: Should almost never be manually set, unless the intent is to create
+     a multi-package DLC, which is not recommended)
     (Default is `${PN}`)
-    (check out [imageloader_impl.cc] for the actual implementation).
-*   `DLC_PACKAGE` - Its format restrictions are the same as `DLC_ID`. Note:
-    This variable is here to help enable multiple packages support for DLC in
-    the future (allow downloading selectively a set of packages within one
-    DLC). When multiple packages are supported, each package should have a
-    unique name among all packages in a DLC.
+*   `DLC_DESCRIPTION` - Human reable description of the package.
+    Override iff the default `${DESCRIPTION}` is not enough to describe purpose.
+    (Default is `${DESCRIPTION}`)
+*   `DLC_PACKAGE` - *deprecated*, do not use.
     (Default is `package`)
 *   `DLC_NAME` - Name of the DLC.
     It is for description/info purpose only.
@@ -74,9 +83,10 @@ add them):
 *   `DLC_VERSION` - Version of the DLC.
     It is for description/info purpose only.
     (Default is `${PVR}`)
-*   `DLC_PRELOAD` - Preloading DLC.
-    When set to true, the DLC will be preloaded during startup of dlcservice
-    for test images.
+*   `DLC_PRELOAD` - Preload the DLC.
+    When set to true, the DLC will be preloaded (pre-installed) for test images.
+    Should only be set if tast/tauto tests run for features depending on the
+    DLC.
     (Default is false)
 *   `DLC_ENABLED` - Override being a DLC.
     When set to false, `$(dlc_add_path)` will not modify the path and everything
@@ -84,122 +94,101 @@ add them):
     use of the same ebuild file to create a DLC under special conditions (i.e.
     Make a package a DLC for certain boards or install in rootfs for others).
     (Default is true)
-*   `DLC_USED_BY` - Defines who is the user of this DLC. This is
-    primarily used by DLCs that have visibility and privacy issues among users
-    on a device, and setting this flag allows us to properly do a ref-count of
-    the users of this DLC and show proper UI/confirmations to address these
-    issues. Acceptable values are "user" and "system".
-    (Default is "system")
-*   `DLC_DAYS_TO_PURGE` - Defines how many days after a DLC has been uninstalled
-    (and the last reference count from it was removed) it needs to be purged
-    from the disk completely.
-    (Default is 5 days)
 
-Within the build file, the implementation should include at least the
-`src_install` function. Within `src_install`, all the DLC content should be
-installed using the special path prefix set by `$(dlc_add_path )`. This means,
-that before installing any DLC files, you have to add the dlc prefix path to
-`into, insinto` and `exeinto` using `$(dlc_add_path your_path)`. Finally call
-`dlc_src_install` at the end of your `src_install` function.
+### Building a DLC locally
 
-See an example of a DLC ebuild: [sample-dlc]
+Installing a DLC on a device is similar to installing a portage package
+(ebuild):
 
-### Multi-ebuild DLC
+*   Emerge the package: `emerge-${BOARD} <DLC_ID>`
+*   Pack the DLC and deploy over to the device:
+    `cros deploy ${IP} <DLC_ID>`
 
-Some applications may require to have artifacts of multiple ebuilds in one
-DLC. This basically means one DLC that is built by multiple ebuilds. This is
-possible following these instructions:
-*   Choose one of the ebuilds as the main ebuild (e.g. `X-main-app`) and the
-    other ones be secondary. Normally you want this ebuild be the root of the
-    dependency tree to all secondary ebuilds in this DLC. (This is not a strict
-    requirement, but makes it easier to follow.)
-*   Define a unique ID and assign it to `DLC_ID` in all ebuilds (main and
-    secondaries) that are part of this DLC. (Don't use the default `DLC_ID`,
-    which is basically the ebuild name.)
-*   Do the same for `DLC_PACKAGE` if and only if you are setting your own
-    value for this flag. (It is recommended not to change the default value of
-    `DLC_PACKAGE`.)
-*   Define any other `DLC_*` flag in the main ebuild if you have to and omit
-    them from secondary ebuilds.
-*   Use `$(dlc_add_path)` as normal in all these ebuilds.
-*   Only call `dlc_src_install` in the main ebuild (`X-main-app`) and omit it
-    from secondary ebuilds.
+### Enabling a DLC
 
-This basically puts the files of all these ebuilds under umbrella of one DLC.
+Once your ready to enable your DLC, you can target enabling the DLC package
+selectively behind your own USE flags or at the top level [target-chromium-os]
+package to be enabled across all ChromeOS devices behind the main `dlc` USE
+flag.
 
-If you have DLC packages that get pulled into different boards with no
-intersection, then they potentially can have the same DLC ID. For example, if
-you have multiple ebuilds for an application, one per architecture, all those
-ebuilds can have the same DLC ID. This means your app only deals with one DLC ID
-irrespective of the system architecture.
+Note: if you need to enable a DLC selectively per board, you must do so using
+your own USE flag.
 
-## Write platform code to request DLC
+### Install/Uninstall a DLC
 
-A DLC is downloaded (from Omaha server) and installed at runtime by dlcservice.
-No feature should rely on the existence of a DLC and thus needs to request
-(install) the DLC from dlcservice before using the DLC. Once a DLC is
-installed, dlcservice keeps it available and mounted. The DLC will remain
-mounted as long as the device or UI does not restart.
+Permitted ash chrome or system daemons that can access D-Bus can call dlcservice
+APIs to install/uninstall a DLC.
 
-Chrome (and other system daemons that can access D-Bus) calls the dlcservice API
-to install/uninstall a DLC. For calling the dlcservice API inside Chrome,
-use [system_api] to send API calls. For calling dlcservice API outside of
-Chrome, use generated D-Bus bindings.
+*   For calling the dlcservice API inside ash chrome, use [dlcservice_client].
+*   For calling dlcservice API outside of ash chrome, use generated D-Bus
+    bindings.
 
-If your daemon uses minijail, you will have to:
+A DLC is downloaded and installed at runtime by dlcservice and will return a
+root mount path for the DLC when installed.<br>
+__This root mount path should \*\*NEVER\*\* be hardcoded/cached/persisted across
+reboots.__
+
+This warrants always requesting to install the DLC before use at all times. The
+DLC will remain mounted as long as the device or UI (ash chrome) does not
+restart. It is completely up to dlcservice to return any type of root mount
+paths in the future, but the root will always be suffixed at `/run/imageloader`.
+
+If your service/daemon uses minijail, you will have to:
 *   Bind mount `/run/imageloader/` by passing the parameter
     `-b /run/imageloader/` to minijail.
 *   Set the parameters `-v -Kslave` to allow propagation of the mount namespace
     of the mounted DLC image to your service.
-*   Depending on your current Seccomp filters, you might have to add some
-    permissions to it. See [sandboxing].
+*   Depending on your seccomp filters, you might have to include additional
+    permissions. Please refer to [sandboxing].
 
 On a locally built test build|image, calling dlcservice API does not download
-the DLC (no DLC is being served). You need to
-[Install a DLC for dev/test] before calling dlcservice API.
+the DLC (no DLC is being served), unless the DLC is preloaded using
+[Preload a DLC]. For local development, please follow [Building a DLC].
 
-## Install a DLC for dev/test
+### Write tests dependant on a DLC
 
-Installing a ChromeOS DLC on a device is similar to installing a ChromeOS
-package:
+In order to test a DLC dependant feature, the optional variable field
+`DLC_PRELOAD` needs to be set to true while the integration/tast tests invoke
+installing the DLC. This will allow tests to seamlessly install the DLC on test
+images.
 
-*   Build the DLC: `emerge-${BOARD} chromeos-base/demo-dlc`
-*   Build DLC image and copy the DLC to device:
-    `cros deploy ${IP} chromeos-base/demo-dlc`
-
-## Write tests for a DLC
-
-In order to test a DLC, the optional variable field `DLC_PRELOAD` should be set
-to true while the integration/tast tests invoke installing the DLC.
+There is ongoing effort to tie DLC provisioning into the ChromeOS test run as
+part of OS provisioning. Also, there are gRPC services that tast/tauto tests can
+directly invoke to provision a DLC - there however isn't a client that nicely
+wraps all of this for the test writer at the moment.
 
 ## Frequently Asked Questions
 
 ### How do I set up the DLC download server (upload artifacts, manage releases, etc.)?
 
-All you need is to add a DLC and our infrastructure will automatically build
-and release the DLC.
+You don't, our infrastructure will handle all this for you.
 
 ### Can I release my DLC at my own schedule?
 
-No. Since the release is automatic, no one can release a DLC out of band and
-each version of a DLC image is tied to the version of the OS image.
+This is fundamentally not possible with DLCs, just as developers are tied to
+release process, DLCs are too.
+
+Note: in the case of scaled DLCs, all release builds can install the DLC OTA,
+while legacy DLCs are strictly tied to releases that go live.
 
 ### How do I update my DLC?
 
-Modifying a ChromeOS DLC is the same as modifying a ChromeOS package (ebuild).
+Modifying a DLC is the same as modifying a portage package (ebuild).
 A DLC is updated at the same time the device itself is updated.
 
-[dlcservice]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/dlcservice
-[Enable DLC for your board]: #Enable-DLC-for-your-board
+Note: in the case of scaled DLCs, it will not update with the OS at the moment.
+
+[Development Steps]: #Development-Steps
 [Create a DLC]: #Create-a-DLC
-[Write platform code to request DLC]: #Write-platform-code-to-request-DLC
-[Install a DLC for dev/test]: #install-a-dlc-for-dev_test
-[Write tests for a DLC]: #Write-tests-for-a-DLC
+[Building a DLC locally]: #Building-a-DLC-locally
+[Enabling a DLC]: #Enabling-a-DLC
+[Install/Uninstall a DLC]: #Install_Uninstall-a-DLC
+
+[go/dlc-framework]: https://go/dlc-framework
+[dlcservice]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/dlcservice
 [dlc.eclass]: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/eclass/dlc.eclass
 [sandboxing]: https://chromium.googlesource.com/chromiumos/docs/+/HEAD/sandboxing.md
-[system_api]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/system_api
-[imageloader_impl.cc]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/imageloader/imageloader_impl.cc
-[tast]: go/tast
-[tast-deps]: go/tast-deps
-[sample-dlc]: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/chromeos-base/sample-dlc/sample-dlc-1.0.0.ebuild
 [overlay-eve make.defaults]: https://chromium.googlesource.com/chromiumos/overlays/board-overlays/+/HEAD/overlay-eve/profiles/base/make.defaults
+[dlcservice_client]: https://chromium.googlesource.com/chromium/src/+/main/chromeos/ash/components/dbus/dlcservice/dlcservice_client.h
+[scaled-dlc ebuild]: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/bb1a2bb68f01e70f1ce8bc1b3c6ba9954c73fcda/chromeos-base/scaled-dlc/scaled-dlc-1.0.0.ebuild
+[target-chromium-os]: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/1664a910b9e7548221063c108f15eacea142c697/virtual/target-chromium-os/target-chromium-os-9999.ebuild
