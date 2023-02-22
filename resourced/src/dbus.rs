@@ -400,7 +400,7 @@ pub async fn service_main() -> Result<()> {
 
         // Swallow any errors related to grpc dbus messages.  Failure to initialize
         // VM_GRPC sohuld not bring down resourced.
-        match conn.add_match(vm_started_rule.clone()).await {
+        match conn.add_match_no_cb(&vm_started_rule.match_str()).await {
             Ok(_) => (),
             Err(_) => warn!("Unable to set filtering of VmStarted dbus message."),
         }
