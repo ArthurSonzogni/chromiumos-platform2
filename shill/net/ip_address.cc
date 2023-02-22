@@ -277,7 +277,7 @@ IPAddress IPAddress::GetNetworkPart() const {
   return address;
 }
 
-IPAddress IPAddress::GetDefaultBroadcast() {
+IPAddress IPAddress::GetDefaultBroadcast() const {
   ByteString broadcast_bytes(
       GetAddressMaskFromPrefix(family(), prefix()).address());
   broadcast_bytes.BitwiseInvert();

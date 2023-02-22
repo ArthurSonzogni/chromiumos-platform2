@@ -157,7 +157,7 @@ class SHILL_EXPORT IPAddress {
 
   // Return the default broadcast address for the IP address, by setting
   // all of the host-part bits to 1.
-  IPAddress GetDefaultBroadcast();
+  IPAddress GetDefaultBroadcast() const;
 
   // Tests whether this IPAddress is able to directly access the address
   // |b| without an intervening gateway.  It tests whether the network
