@@ -107,12 +107,6 @@ constexpr char kGetFanRpmCommand[] = "pwmgetfanrpm";
 constexpr char kMotionSenseCommand[] = "motionsense";
 constexpr char kLidAngleCommand[] = "lid_angle";
 
-// The iw command used to collect different wireless data.
-constexpr char kIwInterfaceCommand[] = "dev";
-constexpr char kIwInfoCommand[] = "info";
-constexpr char kIwLinkCommand[] = "link";
-constexpr char kIwScanCommand[] = "scan";
-constexpr char kIwDumpCommand[] = "dump";
 // wireless interface name start with "wl" or "ml" and end it with a number. All
 // characters are in lowercase.  Max length is 16 characters.
 constexpr auto kWirelessInterfaceRegex = R"(([wm]l[a-z][a-z0-9]{1,12}[0-9]))";
@@ -250,91 +244,6 @@ void Executor::RunIw(IwCommand cmd,
       command, seccomp_file::kIw, kCrosHealthdSandboxUser, kNullCapability,
       /*readonly_mount_points=*/
       std::vector<base::FilePath>{},
-      /*writable_mount_points=*/
-      std::vector<base::FilePath>{}, NO_ENTER_NETWORK_NAMESPACE);
-
-  RunAndWaitProcess(std::move(process), std::move(callback),
-                    /*combine_stdout_and_stderr=*/false);
-}
-
-void Executor::GetInterfaces(GetInterfacesCallback callback) {
-  std::vector<std::string> command = {path::kIwBinary, kIwInterfaceCommand};
-  auto process = std::make_unique<SandboxedProcess>(
-      command, seccomp_file::kIw, kCrosHealthdSandboxUser, kNullCapability,
-      /*readonly_mount_points=*/
-      std::vector<base::FilePath>{base::FilePath(path::kIwBinary)},
-      /*writable_mount_points=*/
-      std::vector<base::FilePath>{}, NO_ENTER_NETWORK_NAMESPACE);
-
-  RunAndWaitProcess(std::move(process), std::move(callback),
-                    /*combine_stdout_and_stderr=*/false);
-}
-
-void Executor::GetLink(const std::string& interface_name,
-                       GetLinkCallback callback) {
-  // Sanitize against interface_name.
-  if (!IsValidWirelessInterfaceName(interface_name)) {
-    auto result = mojom::ExecutedProcessResult::New();
-    result->err = "Illegal interface name: " + interface_name;
-    result->return_code = EXIT_FAILURE;
-    std::move(callback).Run(std::move(result));
-    return;
-  }
-
-  std::vector<std::string> command = {path::kIwBinary, interface_name,
-                                      kIwLinkCommand};
-  auto process = std::make_unique<SandboxedProcess>(
-      command, seccomp_file::kIw, kCrosHealthdSandboxUser, kNullCapability,
-      /*readonly_mount_points=*/
-      std::vector<base::FilePath>{base::FilePath(path::kIwBinary)},
-      /*writable_mount_points=*/
-      std::vector<base::FilePath>{}, NO_ENTER_NETWORK_NAMESPACE);
-
-  RunAndWaitProcess(std::move(process), std::move(callback),
-                    /*combine_stdout_and_stderr=*/false);
-}
-
-void Executor::GetInfo(const std::string& interface_name,
-                       GetInfoCallback callback) {
-  // Sanitize against interface_name.
-  if (!IsValidWirelessInterfaceName(interface_name)) {
-    auto result = mojom::ExecutedProcessResult::New();
-    result->err = "Illegal interface name: " + interface_name;
-    result->return_code = EXIT_FAILURE;
-    std::move(callback).Run(std::move(result));
-    return;
-  }
-
-  std::vector<std::string> command = {path::kIwBinary, interface_name,
-                                      kIwInfoCommand};
-  auto process = std::make_unique<SandboxedProcess>(
-      command, seccomp_file::kIw, kCrosHealthdSandboxUser, kNullCapability,
-      /*readonly_mount_points=*/
-      std::vector<base::FilePath>{base::FilePath(path::kIwBinary)},
-      /*writable_mount_points=*/
-      std::vector<base::FilePath>{}, NO_ENTER_NETWORK_NAMESPACE);
-
-  RunAndWaitProcess(std::move(process), std::move(callback),
-                    /*combine_stdout_and_stderr=*/false);
-}
-
-void Executor::GetScanDump(const std::string& interface_name,
-                           GetScanDumpCallback callback) {
-  // Sanitize against interface_name.
-  if (!IsValidWirelessInterfaceName(interface_name)) {
-    auto result = mojom::ExecutedProcessResult::New();
-    result->err = "Illegal interface name: " + interface_name;
-    result->return_code = EXIT_FAILURE;
-    std::move(callback).Run(std::move(result));
-    return;
-  }
-
-  std::vector<std::string> command = {path::kIwBinary, interface_name,
-                                      kIwScanCommand, kIwDumpCommand};
-  auto process = std::make_unique<SandboxedProcess>(
-      command, seccomp_file::kIw, kCrosHealthdSandboxUser, kNullCapability,
-      /*readonly_mount_points=*/
-      std::vector<base::FilePath>{base::FilePath(path::kIwBinary)},
       /*writable_mount_points=*/
       std::vector<base::FilePath>{}, NO_ENTER_NETWORK_NAMESPACE);
 

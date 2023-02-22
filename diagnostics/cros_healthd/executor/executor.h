@@ -48,13 +48,6 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
   void RunIw(IwCommand cmd,
              const std::string& interface_name,
              RunIwCallback callback) override;
-  void GetInterfaces(GetInterfacesCallback callback) override;
-  void GetLink(const std::string& interface_name,
-               GetLinkCallback callback) override;
-  void GetInfo(const std::string& interface_name,
-               GetInfoCallback callback) override;
-  void GetScanDump(const std::string& interface_name,
-                   GetScanDumpCallback callback) override;
   void RunMemtester(uint32_t test_mem_kib,
                     RunMemtesterCallback callback) override;
   void RunMemtesterV2(

@@ -31,19 +31,6 @@ class MockExecutor final : public ash::cros_healthd::mojom::Executor {
               RunIw,
               (IwCommand, const std::string&, RunIwCallback),
               (override));
-  MOCK_METHOD(void, GetInterfaces, (GetInterfacesCallback), (override));
-  MOCK_METHOD(void,
-              GetLink,
-              (const std::string& interface_name, GetLinkCallback),
-              (override));
-  MOCK_METHOD(void,
-              GetInfo,
-              (const std::string& interface_name, GetInfoCallback),
-              (override));
-  MOCK_METHOD(void,
-              GetScanDump,
-              (const std::string& interface_name, GetScanDumpCallback),
-              (override));
   MOCK_METHOD(void,
               RunMemtester,
               (uint32_t test_mem_kib, RunMemtesterCallback),
