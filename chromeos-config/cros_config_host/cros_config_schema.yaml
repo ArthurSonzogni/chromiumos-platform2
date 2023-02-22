@@ -590,6 +590,17 @@ properties:
                     - flags
                     additionalProperties: false
               additionalProperties: false
+            dgpu:
+              type: object
+              description: Contains details about the model's dgpu implementation.
+              properties:
+                has-dgpu:
+                  description: Whether the model has discrete GPU.
+                  type: boolean
+                dgpu-type:
+                  description: type of dGPU.
+                  type: string
+              additionalProperties: false
             hwid-override:
               type: string
               description: |
@@ -1107,6 +1118,14 @@ properties:
                 attach-apn-required:
                   description: Try to explicitly setup an attach APN when
                     registering to the LTE network.
+                  type: boolean
+              additionalProperties: false
+            uwb:
+              type: object
+              description: Contains details about the model's uwb implementation.
+              properties:
+                has-uwb:
+                  description: Whether the model has UWB equipped.
                   type: boolean
               additionalProperties: false
             cross-device:

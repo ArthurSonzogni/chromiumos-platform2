@@ -479,6 +479,7 @@ In the tables below,
 | cross-device | [cross-device](#cross_device) |  | False |  | False | Contains properties to configure cross-device features between ChromeOS devices and other devices, such as Instant Tethering and Smart Lock. |
 | demo-mode | [demo-mode](#demo_mode) |  | False |  | False | Properties related to the ChromeOS Demo Mode, defining the user experience when the device is used in retail. |
 | detachable-base | [detachable-base](#detachable_base) |  | False |  | False | Contains the configuration for the hammerd which is used to update the detachable base firmware. |
+| dgpu | [dgpu](#dgpu) |  | False |  | False | Contains details about the model's dgpu implementation. |
 | displays | array - [displays](#displays) |  | False |  | False | Additional display properties beyond what is available thru standards such as EDID.  The display matches based on the libdrm connector type. |
 | efi | [efi](#efi) |  | False |  | False | Contains settings related to EFI firmware. |
 | fingerprint | [fingerprint](#fingerprint) |  | False |  | False | Contains details about the model's fingerprint implementation. |
@@ -506,6 +507,7 @@ In the tables below,
 | touch | [touch](#touch) |  | False |  | False |  |
 | typecd | [typecd](#typecd) |  | False |  | False | Configurable parameters for the Chrome OS Type C daemon. |
 | ui | [ui](#ui) |  | False |  | False |  |
+| uwb | [uwb](#uwb) |  | False |  | False | Contains details about the model's uwb implementation. |
 | wallpaper | string |  | False |  | False | Base filename of the default wallpaper to show on this device. |
 | wifi | [wifi](#wifi) |  | False |  | False | Sets limits on maximum WiFi transmit power for tablet and non-tablet device configurations. This config must contain properties for ath10k driver, rtw88 driver, rtw89 driver, mtk driver, or intel driver. Note that configs for the intel driver are delivered as encoded wifi sar hex files. |
 
@@ -717,6 +719,12 @@ In the tables below,
 | destination | string |  | False |  | True | Installation path for the file on the system image. |
 | source | string |  | False |  | True | Source of the file relative to the build system ${FILESDIR} |
 | symlink | string |  | False |  | True | Symlink file that will be installed pointing to the destination. |
+
+### dgpu
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| dgpu-type | string |  | False |  | False | type of dGPU. |
+| has-dgpu | boolean |  | False |  | False | Whether the model has discrete GPU. |
 
 ### displays
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
@@ -1508,6 +1516,11 @@ In the tables below,
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
 | region | string |  | False |  | False |  |
 | side | string |  | False |  | False |  |
+
+### uwb
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| has-uwb | boolean |  | False |  | False | Whether the model has UWB equipped. |
 
 ### wifi
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
