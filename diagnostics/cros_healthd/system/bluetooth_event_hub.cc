@@ -8,17 +8,21 @@
 
 namespace diagnostics {
 
-BluetoothEventHub::BluetoothEventHub(org::bluezProxy* bluetooth_proxy) {
-  if (bluetooth_proxy) {
-    bluetooth_proxy->SetAdapter1AddedCallback(base::BindRepeating(
-        &BluetoothEventHub::OnAdapterAdded, weak_ptr_factory_.GetWeakPtr()));
-    bluetooth_proxy->SetAdapter1RemovedCallback(base::BindRepeating(
-        &BluetoothEventHub::OnAdapterRemoved, weak_ptr_factory_.GetWeakPtr()));
-    bluetooth_proxy->SetDevice1AddedCallback(base::BindRepeating(
-        &BluetoothEventHub::OnDeviceAdded, weak_ptr_factory_.GetWeakPtr()));
-    bluetooth_proxy->SetDevice1RemovedCallback(base::BindRepeating(
-        &BluetoothEventHub::OnDeviceRemoved, weak_ptr_factory_.GetWeakPtr()));
-  }
+BluetoothEventHub::BluetoothEventHub(org::bluezProxy* bluez_proxy) {
+  UpdateProxy(bluez_proxy);
+}
+
+void BluetoothEventHub::UpdateProxy(org::bluezProxy* bluez_proxy) {
+  if (!bluez_proxy)
+    return;
+  bluez_proxy->SetAdapter1AddedCallback(base::BindRepeating(
+      &BluetoothEventHub::OnAdapterAdded, weak_ptr_factory_.GetWeakPtr()));
+  bluez_proxy->SetAdapter1RemovedCallback(base::BindRepeating(
+      &BluetoothEventHub::OnAdapterRemoved, weak_ptr_factory_.GetWeakPtr()));
+  bluez_proxy->SetDevice1AddedCallback(base::BindRepeating(
+      &BluetoothEventHub::OnDeviceAdded, weak_ptr_factory_.GetWeakPtr()));
+  bluez_proxy->SetDevice1RemovedCallback(base::BindRepeating(
+      &BluetoothEventHub::OnDeviceRemoved, weak_ptr_factory_.GetWeakPtr()));
 }
 
 base::CallbackListSubscription BluetoothEventHub::SubscribeAdapterAdded(

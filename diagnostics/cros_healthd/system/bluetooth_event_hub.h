@@ -33,10 +33,14 @@ using OnBluetoothDevicePropertyChangedCallback =
 // Interface for subscribing Bluetooth events.
 class BluetoothEventHub {
  public:
-  explicit BluetoothEventHub(org::bluezProxy* bluetooth_proxy = nullptr);
+  explicit BluetoothEventHub(org::bluezProxy* bluez_proxy = nullptr);
   BluetoothEventHub(const BluetoothEventHub&) = delete;
   BluetoothEventHub& operator=(const BluetoothEventHub&) = delete;
   ~BluetoothEventHub() = default;
+
+  // TODO(b/270471793): To bootstrap proxy, we update proxy by the following
+  // method, which should be removed after Bluez issue is fixed.
+  void UpdateProxy(org::bluezProxy* bluez_proxy);
 
   base::CallbackListSubscription SubscribeAdapterAdded(
       OnBluetoothAdapterAddedCallback callback);

@@ -13,6 +13,7 @@
 #include <dbus/object_path.h>
 
 #include "diagnostics/cros_healthd/system/bluetooth_info_manager.h"
+#include "diagnostics/cros_healthd/utils/error_utils.h"
 #include "diagnostics/dbus_bindings/bluetooth/dbus-proxies.h"
 
 namespace diagnostics {
@@ -140,6 +141,10 @@ void ParseDevicesInfo(
 
 mojom::BluetoothResultPtr FetchBluetoothInfo(Context* context) {
   const auto bluetooth_info_manager = context->bluetooth_info_manager();
+  if (!bluetooth_info_manager) {
+    return mojom::BluetoothResult::NewError(CreateAndLogProbeError(
+        mojom::ErrorType::kServiceUnavailable, "Bluez proxy is not ready"));
+  }
   std::vector<mojom::BluetoothAdapterInfoPtr> adapter_infos;
 
   // Map from the adapter's ObjectPath to the service allow list.
