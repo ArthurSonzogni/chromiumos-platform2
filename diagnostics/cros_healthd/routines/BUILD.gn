@@ -88,6 +88,7 @@ source_set("libdiag_routine") {
     "memory_and_cpu/memory.cc",
     "memory_and_cpu/memory_v2.cc",
     "memory_and_cpu/prime_search.cc",
+    "memory_and_cpu/prime_search_v2.cc",
     "memory_and_cpu/urandom.cc",
     "network/captive_portal.cc",
     "network/dns_latency.cc",

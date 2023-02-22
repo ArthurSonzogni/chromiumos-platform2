@@ -47,7 +47,7 @@ interface CrosHealthdRoutinesService {
 
 // Possible routines the RoutineControl API can create.
 //
-// NextMinVersion: 7, NextIndex: 7
+// NextMinVersion: 8, NextIndex: 8
 [Extensible]
 union RoutineArgument {
   // Default field is required by extensible unions for backward compatibility.
@@ -65,6 +65,8 @@ union RoutineArgument {
   [MinVersion=5] DiskReadRoutineArgument disk_read@5;
   // Arguments to create a cpu cache routine.
   [MinVersion=6] CpuCacheRoutineArgument cpu_cache@6;
+  // Arguments to create a prime search routine.
+  [MinVersion=7] PrimeSearchRoutineArgument prime_search@7;
 };
 
 // This routine checks whether there is any memory problem by
@@ -124,6 +126,16 @@ struct DiskReadRoutineArgument {
 // NextMinVersion: 1, NextIndex: 1
 struct CpuCacheRoutineArgument {
   // |exec_duration| determines how long the stressapptest binary will run. If
+  // the provided value is null, default to running for 1 minute. The duration
+  // is rounded to the nearest seconds towards zero (see behaviour of
+  // std::trunc()).
+  ash.cros_healthd.external.mojo_base.mojom.TimeDelta? exec_duration@0;
+};
+
+// This routine checks whether there is any cpu problem by repeatedly
+// calculating prime numbers.
+struct PrimeSearchRoutineArgument {
+  // |exec_duration| determines how long the prime search test will run. If
   // the provided value is null, default to running for 1 minute. The duration
   // is rounded to the nearest seconds towards zero (see behaviour of
   // std::trunc()).
@@ -220,6 +232,7 @@ union RoutineDetail {
   UfsLifetimeRoutineDetail ufs_lifetime;
   DiskReadRoutineDetail disk_read;
   CpuCacheRoutineDetail cpu_cache;
+  PrimeSearchRoutineDetail prime_search;
 };
 
 // Details regarding memory routine.
@@ -270,6 +283,12 @@ struct DiskReadRoutineDetail {
 //
 // NextMinVersion: 1, NextIndex: 0
 struct CpuCacheRoutineDetail {
+};
+
+// Details regarding prime search routine.
+//
+// NextMinVersion: 1, NextIndex: 0
+struct PrimeSearchRoutineDetail {
 };
 
 // Enumeration of each possible memtester test item.

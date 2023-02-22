@@ -10,6 +10,7 @@
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_cache_v2.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/cpu_stress_v2.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/memory_v2.h"
+#include "diagnostics/cros_healthd/routines/memory_and_cpu/prime_search_v2.h"
 #include "diagnostics/cros_healthd/routines/storage/disk_read_v2.h"
 #include "diagnostics/cros_healthd/routines/storage/ufs_lifetime.h"
 #include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
@@ -29,6 +30,11 @@ void RoutineService::CreateRoutine(
     mojom::RoutineArgumentPtr routine_arg,
     mojo::PendingReceiver<mojom::RoutineControl> routine_receiver) {
   switch (routine_arg->which()) {
+    case mojom::RoutineArgument::Tag::kPrimeSearch:
+      AddRoutine(std::make_unique<PrimeSearchRoutineV2>(
+                     context_, routine_arg->get_prime_search()),
+                 std::move(routine_receiver));
+      break;
     case mojom::RoutineArgument::Tag::kMemory:
       AddRoutine(std::make_unique<MemoryRoutineV2>(context_,
                                                    routine_arg->get_memory()),

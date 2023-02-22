@@ -168,6 +168,7 @@ mojom::SupportStatusPtr GroundTruth::GetRoutineSupportStatus(
     case mojom::RoutineArgument::Tag::kAudioDriver:
     case mojom::RoutineArgument::Tag::kCpuStress:
     case mojom::RoutineArgument::Tag::kCpuCache:
+    case mojom::RoutineArgument::Tag::kPrimeSearch:
       return mojom::SupportStatus::NewSupported(mojom::Supported::New());
     // Need to be determined by boxster/cros_config.
     case mojom::RoutineArgument::Tag::kUfsLifetime: {

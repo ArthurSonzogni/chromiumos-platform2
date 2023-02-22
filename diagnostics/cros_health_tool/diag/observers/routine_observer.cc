@@ -97,6 +97,7 @@ void RoutineObserver::OnRoutineStateChange(
         case mojom::RoutineDetail::Tag::kCpuStress:
         case mojom::RoutineDetail::Tag::kDiskRead:
         case mojom::RoutineDetail::Tag::kCpuCache:
+        case mojom::RoutineDetail::Tag::kPrimeSearch:
           break;
         case mojom::RoutineDetail::Tag::kMemory:
           PrintOutput(ParseMemoryDetail(finished_state->detail->get_memory()));
