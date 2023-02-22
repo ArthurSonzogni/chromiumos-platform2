@@ -5090,6 +5090,21 @@ mno {
 
 mno {
   data {
+    uuid : "ae80de97-a7cb-474a-9a46-828d30123e86"
+    country : "gb"
+    localized_name {
+      name : "Sky UK"
+    }
+    mccmnc : "23457"
+    mobile_apn {
+      apn : "mobile.sky"
+      type : DEFAULT
+    }
+  }
+}
+
+mno {
+  data {
     uuid : "0cc5676d-4872-4afe-966a-e1a756e4c6d6"
     country : "gh"
     localized_name {
