@@ -40,7 +40,6 @@ namespace {
 // The mount point for the migration destinaiton.
 constexpr char kDestinationMountPoint[] = "/tmp/arcvm-data-migration-mount";
 
-
 class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
                     public org::chromium::ArcVmDataMigratorInterface {
  public:
@@ -81,7 +80,8 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
     // the device is already running with virtio-blk /data. The existence of
     // .../android-data/data/data would imply that there is data to migrate.
     const base::FilePath android_data_data_dir =
-        brillo::cryptohome::home::GetRootPath(request.username())
+        brillo::cryptohome::home::GetRootPath(
+            brillo::cryptohome::home::Username(request.username()))
             .Append("android-data/data/data");
     *response = base::DirectoryExists(android_data_data_dir);
     return true;
@@ -89,8 +89,9 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
 
   bool StartMigration(brillo::ErrorPtr* error,
                       const StartMigrationRequest& request) override {
+    const brillo::cryptohome::home::Username username(request.username());
     const base::FilePath user_root_dir =
-        brillo::cryptohome::home::GetRootPath(request.username());
+        brillo::cryptohome::home::GetRootPath(username);
     const base::FilePath android_data_dir =
         user_root_dir.Append("android-data");
     const base::FilePath source_dir = android_data_dir.Append("data");
@@ -106,7 +107,7 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
       }
       case LVM_DEVICE: {
         const std::string user_hash =
-            brillo::cryptohome::home::SanitizeUserName(request.username());
+            *brillo::cryptohome::home::SanitizeUserName(username);
         // The volume path is constructed using
         // cryptohome::DmcryptVolumePrefix().
         destination_disk = base::FilePath(base::StringPrintf(
