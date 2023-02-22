@@ -82,6 +82,7 @@ install_and_check_seccomp_policy("diagnostics_seccomp") {
     "cros_healthd/seccomp/${_arch}/hciconfig-seccomp.policy",
     "cros_healthd/seccomp/${_arch}/iw-seccomp.policy",
     "cros_healthd/seccomp/${_arch}/memtester-seccomp.policy",
+    "cros_healthd/seccomp/${_arch}/prime_search-seccomp.policy",
     "cros_healthd/seccomp/${_arch}/readonly-fetchers-seccomp.policy",
     "cros_healthd/seccomp/${_arch}/stressapptest-seccomp.policy",
     "init/${_arch}/cros_healthd-seccomp.policy",
