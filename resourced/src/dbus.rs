@@ -4,7 +4,7 @@
 
 use std::collections::HashMap;
 use std::convert::TryFrom;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -81,7 +81,7 @@ fn set_game_mode_and_tune_swappiness(
     conn: Arc<SyncConnection>,
 ) -> Result<()> {
     if let Some(common::TuneSwappiness { swappiness }) =
-        common::set_game_mode(power_preferences_manager, mode)?
+        common::set_game_mode(power_preferences_manager, mode, PathBuf::from("/"))?
     {
         const SWAPPINESS_PATH: &str = "/proc/sys/vm/swappiness";
         if swappiness != common::read_file_to_u64(SWAPPINESS_PATH)? as u32 {

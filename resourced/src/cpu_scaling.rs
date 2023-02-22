@@ -5,6 +5,9 @@ use anyhow::{bail, Result};
 use glob::glob;
 use libchromeos::sys::info;
 use regex::Regex;
+use std::fs::File;
+use std::io::BufRead;
+use std::io::BufReader;
 use std::path::{Path, PathBuf};
 use std::str;
 
@@ -17,12 +20,12 @@ const DEVICE_POWER_LIMIT_PATH: &str = "sys/class/powercap/intel-rapl:0";
 const DEVICE_CPUFREQ_PATH: &str = "sys/devices/system/cpu/cpufreq";
 
 /// The threshold divsor for the minimum difference between min and max freq
-const CPU_DIFF_THRESHOLD_DIVISOR: i32 = 5;
+const CPU_DIFF_THRESHOLD_DIVISOR: i32 = 4;
 
 /// Utility class for controlling device CPU parameters.
 /// To be used by resourced-nvpd communication and game mode power steering.
 /// resourced-nvpd APIs documented in [`go/resourced-grpcs`](http://go/resourced-grpcs)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, Ord, PartialEq, PartialOrd)]
 pub struct DeviceCpuStatus {
     power_limit_0_current_path: PathBuf,
     power_limit_0_max: u64,
@@ -34,6 +37,7 @@ pub struct DeviceCpuStatus {
     cpu_min_freq_path_pattern: String,
     cpu_max_freq_default: u64,
     cpu_min_freq_default: u64,
+    cpuinfo_min_freq_default: u64,
     // TODO: store static CpuInfo at object creation.  Only update current_freq at runtime.
     //cpu_info: Vec<CpuStaticInfo>
 }
@@ -44,6 +48,29 @@ pub struct CpuStaticInfo {
     pub base_freq_khz: i64,
     pub min_freq_khz: i64,
     pub max_freq_khz: i64,
+}
+// TODO(syedfaaiz) : make workflow more efficient by separating cpudev object.
+pub fn double_min_freq(root: &Path) -> Result<()> {
+    let cpu_dev = DeviceCpuStatus::new(root.to_path_buf())?;
+    cpu_dev.set_all_min_cpu_freq(cpu_dev.get_min_freq_default()? * 2)
+}
+// TODO(syedfaaiz) : make workflow more efficient by separating cpudev object.
+pub fn set_min_cpu_freq(root: &Path) -> Result<()> {
+    let cpu_dev = DeviceCpuStatus::new(root.to_path_buf())?;
+    cpu_dev.set_all_min_cpu_freq(cpu_dev.get_min_freq_default()?)
+}
+pub fn intel_i7_or_above(root: &Path) -> Result<bool> {
+    let cpuinfo = r"model name\s+:.+Intel.+ i(\d+)-.+";
+    let exp = Regex::new(cpuinfo)?;
+    let path = root.join("proc/cpuinfo");
+    let file = File::open(path)?;
+    let reader = BufReader::new(file);
+    for line in reader.lines() {
+        if let Some(result) = exp.captures(&line?) {
+            return Ok(result[1].to_string().parse::<i32>()? >= 7);
+        }
+    }
+    Ok(false)
 }
 
 #[allow(dead_code)]
@@ -119,6 +146,17 @@ impl DeviceCpuStatus {
         Ok(self.energy_max)
     }
 
+    /// Getter for `cpuinfo_min_freq_default` (default min freq).
+    ///
+    /// Return the cpuinfo_min_freq_default value on supported device.
+    ///
+    /// # Return
+    ///
+    /// u64 representring minimum cpu frequency
+    pub fn get_min_freq_default(&self) -> Result<u64> {
+        Ok(self.cpuinfo_min_freq_default)
+    }
+
     /// Setter for `scaling_max_freq` (per-core max clock).
     ///
     /// Sets the frequency ceiling for all cores.
@@ -136,7 +174,7 @@ impl DeviceCpuStatus {
     pub fn set_all_max_cpu_freq(&self, val_max: u64) -> Result<()> {
         let threshold = (self.cpu_max_freq_default - self.cpu_min_freq_default)
             / (CPU_DIFF_THRESHOLD_DIVISOR as u64);
-        info!("Setting All CPU max freq");
+        info!("Setting All CPU max freq to {:?}", val_max);
         let cpus: Result<Vec<_>, _> = glob(&self.cpu_max_freq_path_pattern)?.collect();
         let cpus = cpus?;
         for curr_cpu in cpus {
@@ -169,7 +207,7 @@ impl DeviceCpuStatus {
     pub fn set_all_min_cpu_freq(&self, val_min: u64) -> Result<()> {
         let threshold = (self.cpu_max_freq_default - self.cpu_min_freq_default)
             / (CPU_DIFF_THRESHOLD_DIVISOR as u64);
-        info!("Setting All CPU min freq");
+        info!("Setting All CPU min freq to {:?}", val_min);
         let cpus: Result<Vec<_>, _> = glob(&self.cpu_min_freq_path_pattern)?.collect();
         let cpus = cpus?;
 
@@ -186,10 +224,10 @@ impl DeviceCpuStatus {
         Ok(())
     }
 
-    /// Reset all cores to system default max frequency.
+    /// Reset all cores to system default min/max frequency.
     ///
     /// Resets device to system default max frequency.  If system isn't reset after modification,
-    /// max CPU freq will be locked/throttled until next reboot.
+    /// min/max CPU freq will be locked/throttled until next reboot.
     ///
     /// # Return
     ///
@@ -318,6 +356,12 @@ impl DeviceCpuStatus {
             .join("policy*/scaling_min_freq");
         let cpu_min_freq_path_pattern = cpu_min_freq_path.to_str().unwrap_or_default();
         let cpu_0_min_path = PathBuf::from(str::replace(cpu_min_freq_path_pattern, "*", "0"));
+        let cpuinfo_min_freq_path = root
+            .join(DEVICE_CPUFREQ_PATH)
+            .join("policy*/cpuinfo_min_freq");
+        let cpuinfo_min_freq_path_pattern = cpuinfo_min_freq_path.to_str().unwrap_or_default();
+        let cpuinfo_0_min_path =
+            PathBuf::from(str::replace(cpuinfo_min_freq_path_pattern, "*", "0"));
         // always latch baseline min, since local min may have already been modified.
         if power_limit_0_current_path.exists()
             && power_limit_0_max_path.exists()
@@ -327,6 +371,7 @@ impl DeviceCpuStatus {
             && energy_max_path.exists()
             && cpu_0_max_path.exists()
             && cpu_0_min_path.exists()
+            && cpuinfo_0_min_path.exists()
             && CPU_DIFF_THRESHOLD_DIVISOR > 0
         {
             info!("All sysfs file paths found");
@@ -342,6 +387,7 @@ impl DeviceCpuStatus {
                 // Todo: Change to vector for ADL heterogeneous cores.
                 cpu_max_freq_default: common::read_file_to_u64(cpu_0_max_path)?,
                 cpu_min_freq_default: common::read_file_to_u64(cpu_0_min_path)?,
+                cpuinfo_min_freq_default: common::read_file_to_u64(cpuinfo_0_min_path)?,
             })
         } else {
             info!(
@@ -377,6 +423,10 @@ impl DeviceCpuStatus {
             info!(
                 "cpu_min_freq_default_path_pattern.exists() {} (only pattern 0 checked)",
                 cpu_min_freq_path.exists()
+            );
+            info!(
+                "cpuinfo_0_min_path.exists() {} (only pattern 0 checked)",
+                cpuinfo_0_min_path.exists()
             );
             info!(
                 "CPU_DIFF_THRESHOLD_DIVISOR == 0 {}",
@@ -500,6 +550,35 @@ mod tests {
 
         mock_cpu_dev.set_all_max_cpu_freq(2800000)?;
         assert_eq!(get_cpu0_freq_min(root.path()), 1000000);
+
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_intel_i7_func() -> anyhow::Result<()> {
+        let root = tempdir()?;
+        let path = root.path().join("proc");
+
+        std::fs::create_dir_all(path.clone())?;
+        std::fs::File::create(path.join("cpuinfo"))?;
+
+        std::fs::write(
+            path.join("cpuinfo"),
+            "model name	: Intel(R) Core(TM) i7-4700HQ CPU @ 2.40GHz",
+        )?;
+        assert!(intel_i7_or_above(Path::new(root.path()))?);
+
+        std::fs::write(
+            path.join("cpuinfo"),
+            "model name	: Intel(R) Core(TM) i5-4400HQ CPU @ 2.20GHz",
+        )?;
+        assert!(!intel_i7_or_above(Path::new(root.path()))?);
+
+        std::fs::write(
+            path.join("cpuinfo"),
+            "model name: AMD Ryzen Threadripper PRO 3995WX 64-Cores",
+        )?;
+        assert!(!intel_i7_or_above(Path::new(root.path()))?);
 
         Ok(())
     }

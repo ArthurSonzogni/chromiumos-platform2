@@ -17,6 +17,9 @@ KERNEL=="intel-rapl:0", ACTION=="add", ATTR{constraint_0_max_power_uw}!="", \
 KERNEL=="cpu*", SUBSYSTEM=="cpu", ACTION=="add", \
   RUN+="/bin/chown resourced:resourced $sys$devpath/cpufreq/scaling_governor"
 
+KERNEL=="cpu*", SUBSYSTEM=="cpu", ACTION=="add", \
+  RUN+="/bin/chown resourced:resourced $sys$devpath/cpufreq/scaling_min_freq"
+
 DRIVERS=="amdgpu", ACTION=="add", TEST=="pp_od_clk_voltage", \
   RUN+="/bin/chown resourced:resourced $sys$devpath/pp_od_clk_voltage"
 

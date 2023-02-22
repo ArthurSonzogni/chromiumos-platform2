@@ -689,14 +689,17 @@ mod tests {
     fn test_intel_dynamic_gpu_adjust() {
         const POLLING_DELAY_MS: u64 = 4;
         const OP_LATCH_DELAY_MS: u64 = POLLING_DELAY_MS + 1;
-
-        let power_manager = MockPowerPreferencesManager {};
-        assert!(common::get_game_mode().unwrap() == common::GameMode::Off);
-        common::set_game_mode(&power_manager, common::GameMode::Borealis).unwrap();
-        assert!(common::get_game_mode().unwrap() == common::GameMode::Borealis);
-
         let tmp_root = tempdir().unwrap();
         let root = tmp_root.path();
+        let power_manager = MockPowerPreferencesManager {};
+        assert!(common::get_game_mode().unwrap() == common::GameMode::Off);
+        common::set_game_mode(
+            &power_manager,
+            common::GameMode::Borealis,
+            root.to_path_buf(),
+        )
+        .unwrap();
+        assert!(common::get_game_mode().unwrap() == common::GameMode::Borealis);
 
         setup_mock_intel_gpu_dev_dirs(root);
         setup_mock_intel_gpu_files(root);
@@ -753,7 +756,7 @@ mod tests {
         assert!(get_intel_gpu_boost(root) == 800);
 
         // Check frequency reset on game mode off
-        common::set_game_mode(&power_manager, common::GameMode::Off).unwrap();
+        common::set_game_mode(&power_manager, common::GameMode::Off, root.to_path_buf()).unwrap();
         thread::sleep(Duration::from_millis(OP_LATCH_DELAY_MS));
         assert!(get_intel_gpu_max(root) == 1000);
         assert!(get_intel_gpu_boost(root) == 1000);

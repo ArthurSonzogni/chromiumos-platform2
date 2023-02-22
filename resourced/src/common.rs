@@ -5,14 +5,19 @@
 use std::convert::TryFrom;
 use std::fs::File;
 use std::io::{BufRead, BufReader};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
 use anyhow::{bail, Context, Result};
 use libchromeos::sys::{error, warn};
 use once_cell::sync::Lazy;
 
+use crate::config;
 use crate::power;
+use crate::power::PowerSourceProvider;
+
+#[cfg(target_arch = "x86_64")]
+use crate::cpu_scaling::{double_min_freq, intel_i7_or_above, set_min_cpu_freq};
 
 #[cfg(target_arch = "x86_64")]
 use crate::gpu_freq_scaling::intel_device;
@@ -71,6 +76,7 @@ pub struct TuneSwappiness {
 pub fn set_game_mode(
     power_preference_manager: &dyn power::PowerPreferencesManager,
     mode: GameMode,
+    root: PathBuf,
 ) -> Result<Option<TuneSwappiness>> {
     let old_mode = match GAME_MODE.lock() {
         Ok(mut data) => {
@@ -91,24 +97,50 @@ pub fn set_game_mode(
 
     const TUNED_SWAPPINESS_VALUE: u32 = 30;
     const DEFAULT_SWAPPINESS_VALUE: u32 = 60;
-
+    #[cfg(target_arch = "x86_64")]
     if old_mode != GameMode::Borealis && mode == GameMode::Borealis {
-        #[cfg(target_arch = "x86_64")]
         match intel_device::run_active_gpu_tuning(GPU_TUNING_POLLING_INTERVAL_MS) {
             Ok(_) => log::info!("Active GPU tuning running."),
             Err(e) => log::warn!("Active GPU tuning not set. {:?}", e),
         }
 
-        Ok(Some(TuneSwappiness {
+        let power_manager = power::new_directory_power_preferences_manager(Path::new(&root));
+
+        match intel_i7_or_above(Path::new(&root)) {
+            Ok(res) => {
+                if res
+                    && power_manager.power_source_provider.get_power_source()?
+                        == config::PowerSourceType::AC
+                    && double_min_freq(Path::new(&root)).is_err()
+                {
+                    warn! {"Failed to double scaling min freq"};
+                }
+            }
+            Err(_) => {
+                warn! {"Failed to check if device is Intel i7 or above"};
+            }
+        }
+        return Ok(Some(TuneSwappiness {
             swappiness: TUNED_SWAPPINESS_VALUE,
-        }))
+        }));
     } else if old_mode == GameMode::Borealis && mode != GameMode::Borealis {
-        Ok(Some(TuneSwappiness {
+        match intel_i7_or_above(Path::new(&root)) {
+            Ok(res) => {
+                if res {
+                    if set_min_cpu_freq(Path::new(&root)).is_err() {
+                        warn! {"Failed to set cpu min back to default values"};
+                    }
+                }
+            }
+            Err(_) => {
+                warn! {"Failed to check if device is Intel i7 or above"};
+            }
+        }
+        return Ok(Some(TuneSwappiness {
             swappiness: DEFAULT_SWAPPINESS_VALUE,
-        }))
-    } else {
-        Ok(None)
+        }));
     }
+    Ok(None)
 }
 
 pub fn get_game_mode() -> Result<GameMode> {
@@ -333,6 +365,7 @@ fn set_gt_boost_freq_mhz_impl(root: &Path, mode: RTCAudioActive) -> Result<()> {
 #[cfg(test)]
 mod tests {
     use crate::test_utils::tests::MockPowerPreferencesManager;
+    use crate::test_utils::tests::{setup_mock_cpu_dev_dirs, setup_mock_cpu_files};
 
     use super::*;
     use std::fs;
@@ -389,12 +422,15 @@ mod tests {
 
     #[test]
     fn test_get_set_game_mode() {
+        let tmp_root = tempdir().unwrap();
+        let root = tmp_root.path();
+        setup_mock_cpu_dev_dirs(root).unwrap();
+        setup_mock_cpu_files(root).unwrap();
         let power_manager = MockPowerPreferencesManager {};
-
         assert_eq!(get_game_mode().unwrap(), GameMode::Off);
-        set_game_mode(&power_manager, GameMode::Borealis).unwrap();
+        set_game_mode(&power_manager, GameMode::Borealis, root.to_path_buf()).unwrap();
         assert_eq!(get_game_mode().unwrap(), GameMode::Borealis);
-        set_game_mode(&power_manager, GameMode::Arc).unwrap();
+        set_game_mode(&power_manager, GameMode::Arc, root.to_path_buf()).unwrap();
         assert_eq!(get_game_mode().unwrap(), GameMode::Arc);
     }
 
