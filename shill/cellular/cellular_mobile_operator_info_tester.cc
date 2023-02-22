@@ -10,6 +10,8 @@
 #include <base/files/file_util.h>
 #include <brillo/flag_helper.h>
 
+#include "shill/cellular/apn_list.h"
+#include "shill/cellular/cellular_helpers.h"
 #include "shill/cellular/mobile_operator_info.h"
 #include "shill/event_dispatcher.h"
 #include "shill/logging.h"
@@ -89,19 +91,32 @@ int main(int argc, char* argv[]) {
 
   mobile_operator_info->IsServingMobileNetworkOperatorKnown();
 
-  // The following lines will print to cout because ScopeLogger is set to
-  // level 5.
-  std::cout << "\nMobileOperatorInfo values:"
-            << "\n";
-  mobile_operator_info->uuid();
-  mobile_operator_info->operator_name();
-  mobile_operator_info->country();
-  mobile_operator_info->mccmnc();
-  mobile_operator_info->serving_mccmnc();
-  mobile_operator_info->serving_uuid();
-  mobile_operator_info->serving_operator_name();
-  mobile_operator_info->requires_roaming();
-  mobile_operator_info->apn_list();
-  mobile_operator_info->IsMobileNetworkOperatorKnown();
+  // Print a small summary that can be copy pasted into a CL message
+  std::stringstream report;
+  report << "\ncellular_mobile_operator_info_tester report:\n";
+  report << "uuid: " << mobile_operator_info->uuid() << "\n";
+  report << "operator_name: " << mobile_operator_info->operator_name() << "\n";
+  report << "country: " << mobile_operator_info->country() << "\n";
+  report << "mccmnc: " << mobile_operator_info->mccmnc() << "\n";
+  report << "serving_mccmnc: " << mobile_operator_info->serving_mccmnc()
+         << "\n";
+  report << "serving_uuid: " << mobile_operator_info->serving_uuid() << "\n";
+  report << "serving_operator_name: "
+         << mobile_operator_info->serving_operator_name() << "\n";
+  report << "requires_roaming: " << std::boolalpha
+         << mobile_operator_info->requires_roaming() << "\n";
+  report << "IsMobileNetworkOperatorKnown: " << std::boolalpha
+         << mobile_operator_info->IsMobileNetworkOperatorKnown() << "\n";
+  report << "IsServingMobileNetworkOperatorKnown: " << std::boolalpha
+         << mobile_operator_info->IsServingMobileNetworkOperatorKnown() << "\n";
+
+  shill::ApnList apn_list(/* merge_similar_apns */ false);
+  apn_list.AddApns(mobile_operator_info->apn_list(),
+                   shill::ApnList::ApnSource::kModb);
+  for (const auto& it : apn_list.GetList()) {
+    report << "APN: " << shill::GetPrintableApnStringmap(it) << "\n";
+  }
+
+  std::cout << report.str();
   return 0;
 }
