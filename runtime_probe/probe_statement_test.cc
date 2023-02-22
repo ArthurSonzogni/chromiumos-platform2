@@ -37,8 +37,8 @@ TEST(ProbeStatementTest, TestEval) {
 
   probe_statement.expect_ = ProbeResultChecker::FromValue(*expect);
 
-  // Set up |eval_|
-  auto mock_eval = std::make_unique<MockProbeFunction>();
+  // Set up |probe_function_|
+  auto mock_probe_function = std::make_unique<MockProbeFunction>();
 
   base::Value good_result(base::Value::Type::DICT);
   good_result.SetStringKey("expected_field", "expected");
@@ -57,11 +57,11 @@ TEST(ProbeStatementTest, TestEval) {
   ProbeFunction::DataType val_b;
   val_b.Append(std::move(good_result2));
 
-  EXPECT_CALL(*mock_eval, Eval())
+  EXPECT_CALL(*mock_probe_function, Eval())
       .WillOnce(::testing::Return(::testing::ByMove(std::move(val_a))))
       .WillOnce(::testing::Return(::testing::ByMove(std::move(val_b))));
 
-  probe_statement.eval_ = std::move(mock_eval);
+  probe_statement.probe_function_ = std::move(mock_probe_function);
 
   // Test twice, both invocations should only return |good_result|.
   for (auto i = 0; i < 2; i++) {

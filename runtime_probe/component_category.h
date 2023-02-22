@@ -26,15 +26,29 @@ class ComponentCategory {
   //   ...
   // }
  public:
-  virtual ~ComponentCategory() = default;
-
+  // Factory method that creates the component category from the given
+  // dictionary.
+  // Return |nullptr| if loading fails.
   static std::unique_ptr<ComponentCategory> FromValue(
       const std::string& category_name, const base::Value& dv);
+
+  virtual ~ComponentCategory() = default;
 
   // Evaluates this category and return a base::Value::List.
   virtual base::Value::List Eval() const;
 
+  // Gets all component names of this category.
   std::vector<std::string> GetComponentNames() const;
+
+  // Returns an iterator to the first component.
+  auto begin() { return component_.begin(); }
+  auto begin() const { return component_.begin(); }
+  auto cbegin() const { return component_.cbegin(); }
+
+  // Returns an iterator following the last component.
+  auto end() { return component_.end(); }
+  auto end() const { return component_.end(); }
+  auto cend() const { return component_.cend(); }
 
   // Set |probe_statement| with the component name |component_name| for testing.
   void SetComponentForTesting(std::string component_name,

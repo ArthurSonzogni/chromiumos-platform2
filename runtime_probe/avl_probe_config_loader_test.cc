@@ -151,4 +151,21 @@ TEST_F(AvlProbeConfigLoaderTest, Load_MissingFileFailed) {
   EXPECT_FALSE(probe_config);
 }
 
+TEST_F(AvlProbeConfigLoaderTest, Load_NotAllowedProbeFunctionsFailed) {
+  constexpr char kModelName[] = "ModelFoo";
+  SetCrosDebug(CrosDebugFlag::kDisabled);
+  SetModelName(kModelName);
+  const base::FilePath rootfs_config_path = root_dir()
+                                                .Append(kRuntimeProbeConfigDir)
+                                                .Append(kModelName)
+                                                .Append(kAvlProbeConfigName);
+
+  // Copy invalid probe config (SSFC) to rootfs.
+  CreateDirectoryAndCopyFile(testdata_root_.Append("probe_config_ssfc.json"),
+                             rootfs_config_path);
+
+  const auto probe_config = probe_config_loader_.Load();
+  EXPECT_FALSE(probe_config);
+}
+
 }  // namespace runtime_probe

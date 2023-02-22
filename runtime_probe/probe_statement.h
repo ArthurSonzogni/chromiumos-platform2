@@ -55,7 +55,7 @@ class ProbeStatement {
   // Evaluate the probe statement.
   //
   // The process can be break into following steps:
-  // - Call probe function |eval_|
+  // - Call probe function |probe_function_|
   // - Filter results by |key_|  (if |key_| is not empty)
   // - Transform and check results by |expect_|  (if |expect_| is not empty)
   // - Return final results that passed |expect_| check.
@@ -67,12 +67,15 @@ class ProbeStatement {
     return std::nullopt;
   }
 
+  // Gets pointer to the probe function or nullptr on failure.
+  const ProbeFunction* probe_function() const { return probe_function_.get(); }
+
  protected:
   ProbeStatement() = default;
 
  private:
   std::string component_name_;
-  std::unique_ptr<ProbeFunction> eval_;
+  std::unique_ptr<ProbeFunction> probe_function_;
   std::set<std::string> key_;
   std::unique_ptr<ProbeResultChecker> expect_;
   std::optional<base::Value> information_;

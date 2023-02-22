@@ -70,6 +70,16 @@ class ProbeConfig {
   // Path to the probe config file.
   const base::FilePath& path() const { return path_; }
 
+  // Returns an iterator to the first category.
+  auto begin() { return category_.begin(); }
+  auto begin() const { return category_.begin(); }
+  auto cbegin() const { return category_.cbegin(); }
+
+  // Returns an iterator following the last category.
+  auto end() { return category_.end(); }
+  auto end() const { return category_.end(); }
+  auto cend() const { return category_.cend(); }
+
   // Set |category| with the category name |category_name| for testing.
   void SetCategoryForTesting(std::string category_name,
                              std::unique_ptr<ComponentCategory> category) {

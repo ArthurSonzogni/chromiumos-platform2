@@ -53,7 +53,7 @@ std::unique_ptr<ProbeStatement> ProbeStatement::FromValue(
   }
   std::unique_ptr<ProbeStatement> instance{new ProbeStatement()};
   instance->component_name_ = component_name;
-  instance->eval_ = std::move(function);
+  instance->probe_function_ = std::move(function);
 
   // Parse optional field "keys"
   const auto* keys_value = dict.FindList("keys");
@@ -98,7 +98,7 @@ std::unique_ptr<ProbeStatement> ProbeStatement::FromValue(
 }
 
 ProbeFunction::DataType ProbeStatement::Eval() const {
-  auto results = eval_->Eval();
+  auto results = probe_function_->Eval();
 
   if (!key_.empty()) {
     std::for_each(results.begin(), results.end(),

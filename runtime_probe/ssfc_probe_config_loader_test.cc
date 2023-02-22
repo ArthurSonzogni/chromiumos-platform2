@@ -67,7 +67,7 @@ TEST_F(SsfcProbeConfigLoaderTest, Load_RootfsWhenCrosDebugDisabled) {
   constexpr char kModelName[] = "ModelFoo";
   SetCrosDebug(CrosDebugFlag::kDisabled);
   SetModelName(kModelName);
-  constexpr char kConfigAHash[] = "14127A36F3A2509343AF7F19387537F608B07EE1";
+  constexpr char kConfigAHash[] = "77DCF20DC22837B9E90D162C0D3A4DB1B16BFEDB";
   const base::FilePath rootfs_config_path = root_dir()
                                                 .Append(kRuntimeProbeConfigDir)
                                                 .Append(kModelName)
@@ -80,10 +80,10 @@ TEST_F(SsfcProbeConfigLoaderTest, Load_RootfsWhenCrosDebugDisabled) {
           .Append(kSsfcProbeConfigName);
 
   // Copy config_a to rootfs.
-  CreateDirectoryAndCopyFile(testdata_root_.Append("probe_config.json"),
+  CreateDirectoryAndCopyFile(testdata_root_.Append("probe_config_ssfc.json"),
                              rootfs_config_path);
   // Copy config_b to stateful partition.
-  CreateDirectoryAndCopyFile(testdata_root_.Append("probe_config_b.json"),
+  CreateDirectoryAndCopyFile(testdata_root_.Append("probe_config_ssfc_b.json"),
                              stateful_partition_config_path);
 
   const auto probe_config = probe_config_loader_.Load();
@@ -96,7 +96,7 @@ TEST_F(SsfcProbeConfigLoaderTest, Load_StatefulPartitionWhenCrosDebugEnabled) {
   constexpr char kModelName[] = "ModelFoo";
   SetCrosDebug(CrosDebugFlag::kEnabled);
   SetModelName(kModelName);
-  constexpr char kConfigBHash[] = "ED446A6BAEBDCBA00C0A3EA9CE4EE67EA037FA94";
+  constexpr char kConfigBHash[] = "2B99CBEA041B0C0B273893116A6204C04E0F9D0D";
   const base::FilePath rootfs_config_path = root_dir()
                                                 .Append(kRuntimeProbeConfigDir)
                                                 .Append(kModelName)
@@ -109,10 +109,10 @@ TEST_F(SsfcProbeConfigLoaderTest, Load_StatefulPartitionWhenCrosDebugEnabled) {
           .Append(kSsfcProbeConfigName);
 
   // Copy config_a to rootfs.
-  CreateDirectoryAndCopyFile(testdata_root_.Append("probe_config.json"),
+  CreateDirectoryAndCopyFile(testdata_root_.Append("probe_config_ssfc.json"),
                              rootfs_config_path);
   // Copy config_b to stateful partition.
-  CreateDirectoryAndCopyFile(testdata_root_.Append("probe_config_b.json"),
+  CreateDirectoryAndCopyFile(testdata_root_.Append("probe_config_ssfc_b.json"),
                              stateful_partition_config_path);
 
   const auto probe_config = probe_config_loader_.Load();
@@ -125,13 +125,13 @@ TEST_F(SsfcProbeConfigLoaderTest, Load_RootfsWhenCrosDebugEnabled) {
   constexpr char kModelName[] = "ModelFoo";
   SetCrosDebug(CrosDebugFlag::kEnabled);
   SetModelName(kModelName);
-  constexpr char kConfigAHash[] = "14127A36F3A2509343AF7F19387537F608B07EE1";
+  constexpr char kConfigAHash[] = "77DCF20DC22837B9E90D162C0D3A4DB1B16BFEDB";
   const base::FilePath rootfs_config_path = root_dir()
                                                 .Append(kRuntimeProbeConfigDir)
                                                 .Append(kModelName)
                                                 .Append(kSsfcProbeConfigName);
   // Copy config_a to rootfs. No configs under stateful partition.
-  CreateDirectoryAndCopyFile(testdata_root_.Append("probe_config.json"),
+  CreateDirectoryAndCopyFile(testdata_root_.Append("probe_config_ssfc.json"),
                              rootfs_config_path);
 
   const auto probe_config = probe_config_loader_.Load();
@@ -144,6 +144,23 @@ TEST_F(SsfcProbeConfigLoaderTest, Load_MissingFileFailed) {
   constexpr char kModelName[] = "ModelFoo";
   SetCrosDebug(CrosDebugFlag::kDisabled);
   SetModelName(kModelName);
+
+  const auto probe_config = probe_config_loader_.Load();
+  EXPECT_FALSE(probe_config);
+}
+
+TEST_F(SsfcProbeConfigLoaderTest, Load_NotAllowedProbeFunctionsFailed) {
+  constexpr char kModelName[] = "ModelFoo";
+  SetCrosDebug(CrosDebugFlag::kDisabled);
+  SetModelName(kModelName);
+  const base::FilePath rootfs_config_path = root_dir()
+                                                .Append(kRuntimeProbeConfigDir)
+                                                .Append(kModelName)
+                                                .Append(kSsfcProbeConfigName);
+
+  // Copy invalid probe config (AVL) to rootfs.
+  CreateDirectoryAndCopyFile(testdata_root_.Append("probe_config.json"),
+                             rootfs_config_path);
 
   const auto probe_config = probe_config_loader_.Load();
   EXPECT_FALSE(probe_config);

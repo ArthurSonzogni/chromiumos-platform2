@@ -98,10 +98,10 @@ TEST_F(ProbeConfigTest, LoadConfig) {
   EXPECT_EQ(probe_statement->key_.size(), 0);
   EXPECT_NE(probe_statement->expect_, nullptr);
   EXPECT_EQ(probe_statement->information_->DictSize(), 0);
-  EXPECT_NE(probe_statement->eval_, nullptr);
+  EXPECT_NE(probe_statement->probe_function_, nullptr);
 
   const SysfsFunction* probe_function =
-      dynamic_cast<SysfsFunction*>(probe_statement->eval_.get());
+      dynamic_cast<SysfsFunction*>(probe_statement->probe_function_.get());
 
   EXPECT_NE(probe_function, nullptr);
 }

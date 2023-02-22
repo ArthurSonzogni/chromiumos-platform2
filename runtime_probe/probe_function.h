@@ -5,6 +5,7 @@
 #ifndef RUNTIME_PROBE_PROBE_FUNCTION_H_
 #define RUNTIME_PROBE_PROBE_FUNCTION_H_
 
+#include <array>
 #include <functional>
 #include <map>
 #include <memory>
@@ -120,7 +121,6 @@ class ProbeFunction {
   ProbeFunction(const ProbeFunction&) = delete;
   explicit ProbeFunction(base::Value&& raw_value);
 
- protected:
   // Implement this method to provide the probing. The output should be a list
   // of base::Value.
   virtual DataType EvalImpl() const = 0;
@@ -180,15 +180,23 @@ class PrivilegedProbeFunction : public ProbeFunction {
   base::Value raw_value_;
 };
 
+// Tells if T is a subclass of ProbeFunction.
 template <typename T>
 inline constexpr auto is_probe_function_v = std::is_base_of_v<ProbeFunction, T>;
 
+// Represents a list of ProbeFunction.
 template <typename... Ts>
 class ProbeFunctions {
   static_assert((is_probe_function_v<Ts> && ...),
-                "ProbeFunctionType must be a subclass of ProbeFunction");
+                "Ts must be a subclass of ProbeFunction");
 
  public:
+  // Gets an array of all function names.
+  static constexpr std::array<const char*, sizeof...(Ts)> GetFunctionNames() {
+    return {Ts::function_name...};
+  }
+
+  // Constructs a table mapping function name to its factory method.
   static ProbeFunction::RegisteredFunctionTableType
   ConstructRegisteredFunctionTable() {
     return {{Ts::function_name, CreateProbeFunction<Ts>}...};
