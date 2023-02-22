@@ -105,9 +105,9 @@ struct UsbEventInfo {
   enum State {
     // This is required for backwards compatibility, should not be used.
     [Default] kUnmappedEnumField = 0,
-    // Usb plugs in.
+    // USB plugs in.
     kAdd = 1,
-    // Usb unplugs.
+    // USB unplugs.
     kRemove = 2,
   };
 
@@ -362,7 +362,7 @@ union TouchpadEventInfo {
   TouchpadConnectedEvent connected_event@3;
 };
 
-// Hdmi event info.
+// HDMI event info.
 //
 // NextMinVersion: 1, NextIndex: 1
 [Stable]
@@ -397,7 +397,7 @@ union EventInfo {
   // The default value for forward compatibility. All the unknown type will be
   // mapped to this.
   [Default] uint8 default_type@0;
-  // Usb event info.
+  // USB event info.
   UsbEventInfo usb_event_info@1;
   // Thunderbolt event info.
   ThunderboltEventInfo thunderbolt_event_info@2;
@@ -411,7 +411,7 @@ union EventInfo {
   AudioEventInfo audio_event_info@6;
   // Audio jack event info.
   [MinVersion=1] AudioJackEventInfo audio_jack_event_info@7;
-  // Sd Card event info.
+  // SD Card event info.
   [MinVersion=2] SdCardEventInfo sd_card_event_info@8;
   // Keyboard diagnostics event info. It is fired when users completed a
   // keyboard diagnostic in the Diagnostics App.
@@ -419,7 +419,7 @@ union EventInfo {
     keyboard_diagnostic_event_info@9;
   // Touchpad event info.
   [MinVersion=4] TouchpadEventInfo touchpad_event_info@10;
-  // Sd Card event info.
+  // HDMI event info.
   [MinVersion=5] HdmiEventInfo hdmi_event_info@11;
 };
 
