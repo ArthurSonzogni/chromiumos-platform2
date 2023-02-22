@@ -61,113 +61,77 @@ void EnterHealthdMinijail() {
 
   // Create a new tmpfs filesystem for /run and mount necessary files.
   minijail_mount_with_data(jail.get(), "tmpfs", "/run", "tmpfs", 0, "");
-  minijail_bind(jail.get(), "/run/dbus", "/run/dbus",
-                0);  // Shared socket file for talking to the D-Bus daemon.
-  minijail_bind(jail.get(), "/run/mojo", "/run/mojo",
-                0);  // The socket file for the mojo service manager.
+  // Shared socket file for talking to the D-Bus daemon.
+  minijail_bind(jail.get(), "/run/dbus", "/run/dbus", 0);
+  // The socket file for the mojo service manager.
+  minijail_bind(jail.get(), "/run/mojo", "/run/mojo", 0);
+  // Needed for access to chromeos-config.
   minijail_bind(jail.get(), "/run/chromeos-config/v1",
-                "/run/chromeos-config/v1",
-                0);  // Needed for access to chromeos-config.
-  minijail_bind(jail.get(), "/run/udev", "/run/udev",
-                0);  // Needed for udev events.
+                "/run/chromeos-config/v1", 0);
+  // Needed for udev events.
+  minijail_bind(jail.get(), "/run/udev", "/run/udev", 0);
 
   // Create a new tmpfs filesystem for /sys and mount necessary files.
+  // Some sysfs paths don't exist on every device, so test for their existence
+  // and bind-mount them if they do exist.
   minijail_mount_with_data(jail.get(), "tmpfs", "/sys", "tmpfs", 0, "");
-  minijail_bind(jail.get(), "/sys/block", "/sys/block",
-                0);  // Files related to the system's block devices.
-  minijail_bind(jail.get(), "/sys/devices", "/sys/devices",
-                0);  // Needed to get the names of the block device dev nodes.
-  minijail_bind(
-      jail.get(), "/sys/devices/system/cpu", "/sys/devices/system/cpu",
-      0);  // Used by the stressapptest diagnostic. TODO: Do we need this?
-  // The following sysfs paths don't exist on every device, so test for their
-  // existence and bind-mount them if they do exist.
-  BindMountIfPathExists(
-      jail.get(),
-      base::FilePath("/sys/class/backlight"));  // Files related to the system's
-                                                // backlights.
-  BindMountIfPathExists(
-      jail.get(),
-      base::FilePath("/sys/class/chromeos"));  // Files related to ChromeOS
-                                               // hardware devices.
-
-  BindMountIfPathExists(
-      jail.get(),
-      base::FilePath("/sys/class/hwmon"));  // Files related to ChromeOS
-                                            // hardware monitors.
-
-  BindMountIfPathExists(
-      jail.get(),
-      base::FilePath("/sys/class/power_supply"));  // Files related to the
-                                                   // system's power supplies.
-  BindMountIfPathExists(
-      jail.get(),
-      base::FilePath("/sys/firmware/vpd/ro"));  // Files with R/O cached VPD.
-
-  BindMountIfPathExists(
-      jail.get(),
-      base::FilePath("/sys/firmware/vpd/rw"));  // Files with R/W cached VPD.
-
-  BindMountIfPathExists(
-      jail.get(),
-      base::FilePath("/sys/class/dmi/id"));  // Files related to the
-                                             // system's DMI information.
-
+  // Files related to the system's block devices.
+  minijail_bind(jail.get(), "/sys/block", "/sys/block", 0);
+  // Needed to get the names of the block device dev nodes.
+  minijail_bind(jail.get(), "/sys/devices", "/sys/devices", 0);
+  // Used by the stressapptest diagnostic. TODO: Do we need this?
+  minijail_bind(jail.get(), "/sys/devices/system/cpu",
+                "/sys/devices/system/cpu", 0);
+  // Files related to the system's backlights.
+  BindMountIfPathExists(jail.get(), base::FilePath("/sys/class/backlight"));
+  // Files related to ChromeOS hardware devices.
+  BindMountIfPathExists(jail.get(), base::FilePath("/sys/class/chromeos"));
+  // Files related to ChromeOS hardware monitors.
+  BindMountIfPathExists(jail.get(), base::FilePath("/sys/class/hwmon"));
+  // Files related to the system's power supplies.
+  BindMountIfPathExists(jail.get(), base::FilePath("/sys/class/power_supply"));
+  // Files with R/O cached VPD.
+  BindMountIfPathExists(jail.get(), base::FilePath("/sys/firmware/vpd/ro"));
+  // Files with R/W cached VPD.
+  BindMountIfPathExists(jail.get(), base::FilePath("/sys/firmware/vpd/rw"));
+  // Files related to the system's DMI information.
+  BindMountIfPathExists(jail.get(), base::FilePath("/sys/class/dmi/id"));
   // Files with Arm device tree compatible string info.
   BindMountIfPathExists(
       jail.get(), base::FilePath("/sys/firmware/devicetree/base/compatible"));
-
-  BindMountIfPathExists(
-      jail.get(),
-      base::FilePath("/sys/bus/pci"));  // Files related to the
-                                        // PCI information.
-
-  BindMountIfPathExists(
-      jail.get(),
-      base::FilePath("/sys/bus/usb"));  // Files related to the
-                                        // USB information.
-  BindMountIfPathExists(
-      jail.get(),
-      base::FilePath("/sys/kernel/mm/mktme"));  // Files related to the
-                                                // MKTME data.
-  BindMountIfPathExists(
-      jail.get(),
-      base::FilePath("/sys/bus/thunderbolt"));  // Files related to the
-                                                // Thunderbolt information.
-
-  BindMountIfPathExists(
-      jail.get(),
-      base::FilePath(
-          "/sys/class/sound"));  // Files related to the audio information.
-
+  // Files related to the PCI information.
+  BindMountIfPathExists(jail.get(), base::FilePath("/sys/bus/pci"));
+  // Files related to the USB information.
+  BindMountIfPathExists(jail.get(), base::FilePath("/sys/bus/usb"));
+  // Files related to the MKTME data.
+  BindMountIfPathExists(jail.get(), base::FilePath("/sys/kernel/mm/mktme"));
+  // Files related to the Thunderbolt information.
+  BindMountIfPathExists(jail.get(), base::FilePath("/sys/bus/thunderbolt"));
+  // Files related to the audio information.
+  BindMountIfPathExists(jail.get(), base::FilePath("/sys/class/sound"));
   // Files related to the SoC ID information.
   BindMountIfPathExists(jail.get(),
                         base::FilePath("/sys/bus/soc/devices/soc0/soc_id"));
   BindMountIfPathExists(jail.get(),
                         base::FilePath("/sys/bus/soc/devices/soc1/soc_id"));
-
-  BindMountIfPathExists(
-      jail.get(),
-      base::FilePath("/sys/dev"));  // Files related to the device information.
-
-  BindMountIfPathExists(
-      jail.get(),
-      base::FilePath("/sys/class/tpm/tpm0/did_vid"));  // TPM did_vid file.
-
-  BindMountIfPathExists(
-      jail.get(),
-      base::FilePath(
-          "/sys/module/iwlmvm/parameters"));  // Files related to the
-                                              // wireless information.
+  // Files related to the device information.
+  BindMountIfPathExists(jail.get(), base::FilePath("/sys/dev"));
+  // TPM did_vid file.
+  BindMountIfPathExists(jail.get(),
+                        base::FilePath("/sys/class/tpm/tpm0/did_vid"));
+  // Files related to the wireless information.
+  BindMountIfPathExists(jail.get(),
+                        base::FilePath("/sys/module/iwlmvm/parameters"));
 
   // Create a new tmpfs filesystem for /var and mount necessary files.
   minijail_mount_with_data(jail.get(), "tmpfs", "/var", "tmpfs", 0, "");
   // For metrics library.
   minijail_bind(jail.get(), "/var/lib/metrics", "/var/lib/metrics", 1);
-  minijail_bind(jail.get(), "/var/lib/timezone", "/var/lib/timezone",
-                0);  // Symlink for reading the timezone file.
+  // Symlink for reading the timezone file.
+  minijail_bind(jail.get(), "/var/lib/timezone", "/var/lib/timezone", 0);
+  // Diagnostics can create test files in this directory.
   minijail_bind(jail.get(), "/var/cache/diagnostics", "/var/cache/diagnostics",
-                1);  // Diagnostics can create test files in this directory.
+                1);
   // Symlink for reading the boot up info.
   BindMountIfPathExists(jail.get(), base::FilePath("/var/log/bios_times.txt"));
   // There might be no shutdown info, so we only bind mount it when the files
@@ -187,15 +151,15 @@ void EnterHealthdMinijail() {
                         base::FilePath("/tmp/uptime-login-prompt-visible"));
 
   // Bind-mount other necessary files.
-  minijail_bind(
-      jail.get(), "/dev/shm", "/dev/shm",
-      1);  // Allows creation of shared memory files that are used to set up
-           // mojo::ScopedHandles which can be returned by GetRoutineUpdate.
+  //
+  // Allows creation of shared memory files that are used to set up
+  // mojo::ScopedHandles which can be returned by GetRoutineUpdate.
+  minijail_bind(jail.get(), "/dev/shm", "/dev/shm", 1);
+  // Needed by the StatefulPartition probe.
   minijail_bind(jail.get(), "/mnt/stateful_partition",
-                "/mnt/stateful_partition",
-                0);  // Needed by the StatefulPartition probe.
-  minijail_bind(jail.get(), "/usr/share/zoneinfo", "/usr/share/zoneinfo",
-                0);  // Directory holding timezone files.
+                "/mnt/stateful_partition", 0);
+  // Directory holding timezone files.
+  minijail_bind(jail.get(), "/usr/share/zoneinfo", "/usr/share/zoneinfo", 0);
 
   // Run as the cros_healthd user and group. Inherit supplementary groups to
   // allow cros_healthd access to disk files.
