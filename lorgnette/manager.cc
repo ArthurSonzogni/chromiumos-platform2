@@ -474,6 +474,7 @@ std::vector<uint8_t> Manager::StartScan(
   {
     base::AutoLock auto_lock(active_scans_lock_);
     active_scans_.emplace(uuid, std::move(scan_state));
+    LOG(INFO) << __func__ << ": Started tracking active scan " << uuid;
   }
 
   if (!activity_callback_.is_null())
@@ -502,10 +503,12 @@ void Manager::GetNextImage(
   }
 
   std::string uuid = request.scan_uuid();
+  LOG(INFO) << __func__ << ": Starting GetNextImage for " << uuid;
   ScanJobState* scan_state;
   {
     base::AutoLock auto_lock(active_scans_lock_);
     if (!base::Contains(active_scans_, uuid)) {
+      LOG(ERROR) << __func__ << ": No active scan found for " << uuid;
       response.set_failure_reason("No scan job with UUID " + uuid + " found");
       method_response->Return(impl::SerializeProto(response));
       return;
@@ -513,6 +516,7 @@ void Manager::GetNextImage(
     scan_state = &active_scans_[uuid];
 
     if (scan_state->in_use) {
+      LOG(ERROR) << __func__ << ": Active scan already in use for " << uuid;
       response.set_failure_reason("Scan job with UUID " + uuid +
                                   " is currently busy");
       method_response->Return(impl::SerializeProto(response));
@@ -532,6 +536,8 @@ void Manager::GetNextImage(
           if (state.cancelled) {
             manager->SendCancelledSignal(uuid);
             manager->active_scans_.erase(uuid);
+            LOG(INFO) << __func__ << ": Stopped tracking cancelled scan "
+                      << uuid;
           } else {
             state.in_use = false;
           }
@@ -548,6 +554,8 @@ void Manager::GetNextImage(
     return;
   }
 
+  LOG(INFO) << __func__ << ": Finished prep to save next scanner image for "
+            << uuid;
   response.set_success(true);
   response.set_scan_failure_mode(SCAN_FAILURE_MODE_NO_FAILURE);
   method_response->Return(impl::SerializeProto(response));
@@ -567,9 +575,11 @@ std::vector<uint8_t> Manager::CancelScan(
     return impl::SerializeProto(response);
   }
   std::string uuid = request.scan_uuid();
+  LOG(INFO) << __func__ << ": cancel requested for " << uuid;
   {
     base::AutoLock auto_lock(active_scans_lock_);
     if (!base::Contains(active_scans_, uuid)) {
+      LOG(WARNING) << __func__ << ": No active scan found for " << uuid;
       response.set_success(false);
       response.set_failure_reason("No scan job with UUID " + uuid + " found");
       return impl::SerializeProto(response);
@@ -577,6 +587,7 @@ std::vector<uint8_t> Manager::CancelScan(
 
     ScanJobState& scan_state = active_scans_[uuid];
     if (scan_state.cancelled) {
+      LOG(INFO) << __func__ << ": Already cancelled scan " << uuid;
       response.set_success(false);
       response.set_failure_reason("Job has already been cancelled");
       return impl::SerializeProto(response);
@@ -588,6 +599,7 @@ std::vector<uint8_t> Manager::CancelScan(
       // the device is actively being used.
       brillo::ErrorPtr error;
       if (!scan_state.device->CancelScan(&error)) {
+        LOG(ERROR) << __func__ << ": Failed to cancel scan " << uuid;
         response.set_success(false);
         response.set_failure_reason("Failed to cancel scan: " +
                                     SerializeError(error));
@@ -596,10 +608,12 @@ std::vector<uint8_t> Manager::CancelScan(
       // When the job that is actively using the device finishes, it will erase
       // the job, freeing the device for use by other scans.
       scan_state.cancelled = true;
+      LOG(INFO) << __func__ << ": Cancelled active scan " << uuid;
     } else {
       // If we're not actively using the device, just delete the scan job.
       SendCancelledSignal(uuid);
       active_scans_.erase(uuid);
+      LOG(INFO) << __func__ << ": Stopped tracking cancelled scan " << uuid;
     }
   }
 
@@ -767,6 +781,8 @@ void Manager::GetNextImageInternal(const std::string& uuid,
   ScanFailureMode failure_mode(SCAN_FAILURE_MODE_UNKNOWN);
   ScanState result =
       RunScanLoop(&error, &failure_mode, scan_state, std::move(out_file), uuid);
+  LOG(INFO) << __func__ << ": Scanner page read loop for " << uuid
+            << " ended with status " << ScanState_Name(result);
   switch (result) {
     case SCAN_STATE_PAGE_COMPLETED:
       // Do nothing.
@@ -776,6 +792,7 @@ void Manager::GetNextImageInternal(const std::string& uuid,
       {
         base::AutoLock auto_lock(active_scans_lock_);
         active_scans_.erase(uuid);
+        LOG(INFO) << __func__ << ": Stopped tracking cancelled scan " << uuid;
       }
       return;
     default:
@@ -787,6 +804,7 @@ void Manager::GetNextImageInternal(const std::string& uuid,
       {
         base::AutoLock auto_lock(active_scans_lock_);
         active_scans_.erase(uuid);
+        LOG(INFO) << __func__ << ": Stopped tracking failed scan " << uuid;
       }
       return;
   }
@@ -804,6 +822,8 @@ void Manager::GetNextImageInternal(const std::string& uuid,
     // lets us know if we've run out of pages so that we can signal scan
     // completion.
     status = scan_state->device->StartScan(&error);
+    LOG(INFO) << __func__ << ": Start of next page scan returned status "
+              << sane_strstatus(status);
   }
 
   bool scan_complete =
@@ -821,11 +841,12 @@ void Manager::GetNextImageInternal(const std::string& uuid,
     ReportScanSucceeded(scan_state->device_name);
     SendStatusSignal(uuid, SCAN_STATE_COMPLETED, scan_state->current_page, 100,
                      false);
-    LOG(INFO) << __func__ << ": completed image scan and conversion.";
+    LOG(INFO) << __func__ << ": Completed image scan and conversion.";
 
     {
       base::AutoLock auto_lock(active_scans_lock_);
       active_scans_.erase(uuid);
+      LOG(INFO) << __func__ << ": Stopped tracking completed scan " << uuid;
     }
 
     return;
@@ -836,6 +857,7 @@ void Manager::GetNextImageInternal(const std::string& uuid,
     {
       base::AutoLock auto_lock(active_scans_lock_);
       active_scans_.erase(uuid);
+      LOG(INFO) << __func__ << ": Stopped tracking cancelled scan " << uuid;
     }
     return;
   } else if (status != SANE_STATUS_GOOD) {
@@ -849,6 +871,7 @@ void Manager::GetNextImageInternal(const std::string& uuid,
     {
       base::AutoLock auto_lock(active_scans_lock_);
       active_scans_.erase(uuid);
+      LOG(INFO) << __func__ << ": Stopped tracking failed scan " << uuid;
     }
     return;
   }
@@ -875,7 +898,7 @@ ScanState Manager::RunScanLoop(brillo::ErrorPtr* error,
   brillo::ErrorPtr resolution_error;
   std::optional<int> resolution = device->GetScanResolution(&resolution_error);
   if (!resolution.has_value()) {
-    LOG(WARNING) << "Failed to get scan resolution: "
+    LOG(WARNING) << __func__ << ": Failed to get scan resolution: "
                  << SerializeError(resolution_error);
   }
 
@@ -939,7 +962,7 @@ ScanState Manager::RunScanLoop(brillo::ErrorPtr* error,
     } else if (result == SANE_STATUS_EOF) {
       break;
     } else if (result == SANE_STATUS_CANCELLED) {
-      LOG(INFO) << "Scan job has been cancelled.";
+      LOG(INFO) << __func__ << ": Scan job has been cancelled.";
       return SCAN_STATE_CANCELLED;
     } else {
       brillo::Error::AddToPrintf(
