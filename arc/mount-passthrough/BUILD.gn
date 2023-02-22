@@ -8,6 +8,7 @@ group("all") {
   deps = [
     ":install_bin",
     ":mount-passthrough",
+    ":mount-passthrough-jailed",
   ]
 }
 
@@ -20,6 +21,10 @@ pkg_config("mount-passthrough_config") {
   ]
 }
 
+pkg_config("mount-passthrough_jailed_config") {
+  pkg_deps = [ "libchrome" ]
+}
+
 executable("mount-passthrough") {
   sources = [ "mount-passthrough.cc" ]
   defines = [ "USE_ARCPP=${use.arcpp}" ]
@@ -27,8 +32,15 @@ executable("mount-passthrough") {
   install_path = "bin"
 }
 
+executable("mount-passthrough-jailed") {
+  sources = [ "mount-passthrough-jailed.cc" ]
+  defines = [ "USE_ARCPP=${use.arcpp}" ]
+  configs += [ ":mount-passthrough_jailed_config" ]
+  install_path = "bin"
+}
+
 install_config("install_bin") {
-  sources = [ "mount-passthrough-jailed" ]
+  sources = [ "mount-passthrough-jailed.sh" ]
   install_path = "/usr/bin"
   type = "executable"
 }
