@@ -90,6 +90,8 @@ class ProcessCacheTestFixture : public ::testing::Test {
   static constexpr uint64_t kPidTrickyComm = 8934;
   static constexpr uint64_t kPidThermalProcess = 9843;
   static constexpr uint64_t kPidChildOfThermalProcess = 9024;
+  static constexpr uint64_t kPidRecoverDutProcess = 9168;
+  static constexpr uint64_t kPidChildOfRecoverDutProcess = 9114;
 
   void CreateFakeFs(const base::FilePath& root) {
     const base::FilePath proc_dir = root.Append("proc");
@@ -210,7 +212,29 @@ class ProcessCacheTestFixture : public ::testing::Test {
                            "50F831392FF81",
              .mnt_ns_symlink = base::FilePath("mnt:[4026532856]"),
              .expected_proto = pb::Process(),
+         }},
+        {kPidRecoverDutProcess,
+         {
+             .procstat =
+                 "24498 (recover_duts) T 5038 24498 5038 34816 24639 "
+                 "1077936128 118 234 0 0 0 0 0 0 20 0 1 0 0 2654208 226 "
+                 "18446744073709551615 94131781091328 94131781165952 "
+                 "140735961348096 0 0 0 0 0 65538 1 0 0 17 0 0 0 0 0 0 "
+                 "94131781178368 94131781178848 94131798298624 140735961351745 "
+                 "140735961351798 140735961351798 140735961354187 0",
+             .starttime_ns = 0,
+             .cmdline = std::string(
+                 "/bin/sh\0/usr/local/libexec/recover-duts/recover_duts", 52),
+             .exe_path = root.Append("bin_sh"),
+             .exe_contents = "This is the shell binary",
+             // echo -ne "This is the shell binary" | sha256sum
+             // 9DF8B99E5B9F67AAD3F2382F7633BDE35EE032881F7FFE4037550F831392FF81
+             .exe_sha256 = "9DF8B99E5B9F67AAD3F2382F7633BDE35EE032881F7FFE40375"
+                           "50F831392FF81",
+             .mnt_ns_symlink = base::FilePath("mnt:[4026531840]"),
+             .expected_proto = pb::Process(),
          }}};
+
     // ParseFromString unfortunately doesn't work with Lite protos.
     mock_procfs_[kPidInit].expected_proto.set_canonical_pid(kPidInit);
     mock_procfs_[kPidInit].expected_proto.set_commandline("'/sbin/init'");
@@ -245,6 +269,45 @@ class ProcessCacheTestFixture : public ::testing::Test {
         mock_procfs_[kPidTrickyComm].exe_sha256);
 
     mock_spawns_ = {
+        {kPidChildOfRecoverDutProcess,
+         {.process_start =
+              {.task_info =
+                   {.pid = kPidChildOfRecoverDutProcess,
+                    .ppid = kPidRecoverDutProcess,
+                    .start_time = 5029384029,
+                    .parent_start_time =
+                        mock_procfs_[kPidRecoverDutProcess].starttime_ns,
+                    .commandline =
+                        "/bin/sh\0/usr/local/libexec/recover-duts/recover_duts",
+                    .commandline_len = 52,
+                    .uid = 0,
+                    .gid = 0},
+               .image_info =
+                   {
+                       .pathname = "bin_sh",
+                       .mnt_ns = 4026531840,
+                       .inode_device_id = 0,
+                       .inode = 0,
+                       .uid = 0,
+                       .gid = 0,
+                       .mode = 0100755,
+                   },
+               .spawn_namespace =
+                   {
+                       .cgroup_ns = 4026532932,
+                       .pid_ns = 4026532856,
+                       .user_ns = 4026531837,
+                       .uts_ns = 4026532858,
+                       .mnt_ns = 4026532857,
+                       .net_ns = 4026532859,
+                       .ipc_ns = 4026533674,
+                   }},
+          .exe_contents = "This is the recover dut binary",
+          // # echo -ne "This is the recover dut binary" | sha256sum -
+          // 370EF140032B15E038FC673568221074D40153DB7EF61297B63276107714A6B8
+          .exe_sha256 = "370EF140032B15E038FC673568221074D40153DB7EF61297B63276"
+                        "107714A6B8",
+          .expected_proto = pb::Process()}},
         {kPidChildOfThermalProcess,
          {.process_start =
               {.task_info =
@@ -495,6 +558,40 @@ TEST_F(ProcessCacheTestFixture,
   process_cache_->InitializeFilter(true);
   const bpf::cros_process_start& process_start =
       mock_spawns_[kPidChildOfThermalProcess].process_start;
+  process_cache_->PutFromBpfExec(process_start);
+  auto hierarchy = process_cache_->GetProcessHierarchy(
+      process_start.task_info.pid, process_start.task_info.start_time, 3);
+  EXPECT_GE(hierarchy.size(), 2);
+  cros_xdr::reporting::XdrProcessEvent process_event;
+  process_event.mutable_process_terminate()->set_allocated_process(
+      hierarchy[0].release());
+  process_event.mutable_process_terminate()->set_allocated_parent_process(
+      hierarchy[1].release());
+  EXPECT_TRUE(process_cache_->IsEventFiltered(process_event));
+}
+
+TEST_F(ProcessCacheTestFixture, RecoverDutsChildrenExecEventsAreFiltered) {
+  // underscorify the filter paths.
+  process_cache_->InitializeFilter(true);
+  const bpf::cros_process_start& process_start =
+      mock_spawns_[kPidChildOfRecoverDutProcess].process_start;
+  process_cache_->PutFromBpfExec(process_start);
+  auto hierarchy = process_cache_->GetProcessHierarchy(
+      process_start.task_info.pid, process_start.task_info.start_time, 3);
+  EXPECT_GE(hierarchy.size(), 2);
+  cros_xdr::reporting::XdrProcessEvent process_event;
+  process_event.mutable_process_exec()->set_allocated_spawn_process(
+      hierarchy[0].release());
+  process_event.mutable_process_exec()->set_allocated_process(
+      hierarchy[1].release());
+  EXPECT_TRUE(process_cache_->IsEventFiltered(process_event));
+}
+
+TEST_F(ProcessCacheTestFixture, RecoverDutsChildrenTerminateEventsAreFiltered) {
+  // underscorify the filter paths.
+  process_cache_->InitializeFilter(true);
+  const bpf::cros_process_start& process_start =
+      mock_spawns_[kPidChildOfRecoverDutProcess].process_start;
   process_cache_->PutFromBpfExec(process_start);
   auto hierarchy = process_cache_->GetProcessHierarchy(
       process_start.task_info.pid, process_start.task_info.start_time, 3);

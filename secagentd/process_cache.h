@@ -47,9 +47,9 @@ class ProcessCacheInterface
       const cros_xdr::reporting::XdrProcessEvent& event) = 0;
 
   // Initializes the event filter for use.
-  // underscorify is used for unit testing purposes.
-  // the fake root in the unit test uses underscores for denoting
-  // subdirectories rather than creating real subdirectories.
+  // underscorify is used for testing and is defaulted to false. The fake root
+  // in the unit test uses underscores for subdirectories rather than creating
+  // real ones.
   virtual void InitializeFilter(bool underscorify = false) = 0;
 };
 

@@ -511,21 +511,22 @@ ProcessCache::MakeFromProcfs(const ProcessCache::InternalProcessKeyType& key) {
 
 bool ProcessCache::IsEventFiltered(
     const cros_xdr::reporting::XdrProcessEvent& event) {
-  const cros_xdr::reporting::Process* p = nullptr;
-  const cros_xdr::reporting::Process* pp = nullptr;
+  const cros_xdr::reporting::Process* process = nullptr;
+  const cros_xdr::reporting::Process* parent_process = nullptr;
   if (event.has_process_exec()) {
-    pp = event.process_exec().has_process() ? &event.process_exec().process()
-                                            : nullptr;
-    p = event.process_exec().has_spawn_process()
-            ? &event.process_exec().spawn_process()
-            : nullptr;
+    parent_process = event.process_exec().has_process()
+                         ? &event.process_exec().process()
+                         : nullptr;
+    process = event.process_exec().has_spawn_process()
+                  ? &event.process_exec().spawn_process()
+                  : nullptr;
   } else if (event.has_process_terminate()) {
-    pp = event.process_terminate().has_parent_process()
-             ? &event.process_terminate().parent_process()
-             : nullptr;
-    p = event.process_terminate().has_process()
-            ? &event.process_terminate().process()
-            : nullptr;
+    parent_process = event.process_terminate().has_parent_process()
+                         ? &event.process_terminate().parent_process()
+                         : nullptr;
+    process = event.process_terminate().has_process()
+                  ? &event.process_terminate().process()
+                  : nullptr;
   }
   const auto& parent_filter = filter_rules_parent_;
   const auto& image_filter = filter_rules_process_;
@@ -550,10 +551,11 @@ bool ProcessCache::IsEventFiltered(
     return false;
   };
 
-  if (pp && should_filter(*pp, parent_filter, "parent_process")) {
+  if (parent_process &&
+      should_filter(*parent_process, parent_filter, "parent_process")) {
     return true;
   }
-  if (p && should_filter(*p, image_filter, "process")) {
+  if (process && should_filter(*process, image_filter, "process")) {
     return true;
   }
 
@@ -561,12 +563,10 @@ bool ProcessCache::IsEventFiltered(
 }
 
 void ProcessCache::InitializeFilter(bool underscorify) {
-  // image path names are adjusted by root_path_
-  // this is needed for unit tests to work.
-  // also for testing they need to be underscorified for the unit
-  // test framework to function correctly.
+  // Image pathnames are adjusted by root_path_ for testing. Also they need
+  // to be underscorified for the unit test framework to function correctly.
 
-  // since shell scripts just look at commandline they don't need to
+  // Since shell scripts just look at commandline they don't need to
   // be underscorified or adjusted by root_path_ for testing.
 
   std::vector<InternalFilterRule> parent_filter_seeds = {
@@ -574,7 +574,11 @@ void ProcessCache::InitializeFilter(bool underscorify) {
       // TODO(b:267391331): make temp logger into a real application.
       {
           .image_pathname = "bin/sh",
-          .commandline = {"'/bin/sh' '/usr/share/cros/init/temp_logger.sh'"},
+          .commandline =
+              {"'/bin/sh' '/usr/share/cros/init/temp_logger.sh'",
+               "'/bin/sh' '/usr/local/libexec/recover-duts/recover_duts'",
+               "'/bin/sh' "
+               "'/usr/local/libexec/recover-duts/hooks/check_ethernet.hook'"},
       }};
 
   std::vector<InternalFilterRule> process_filter_seeds = {
@@ -603,18 +607,29 @@ void ProcessCache::InitializeFilter(bool underscorify) {
                    << " error:" << result.status();
         continue;
       }
+
       v.first.emplace(std::make_pair(result.value(), std::move(k)));
     }
   }
   LOG(INFO) << "Process filter rules created:";
   for (const auto& key : filter_rules_parent_) {
     LOG(INFO) << "PARENT: SHA256:" << key.first
-              << " command:" << key.second.image_pathname;
+              << " pathname:" << key.second.image_pathname;
+    if (!key.second.commandline.empty())
+      LOG(INFO) << "Commands:";
+    for (auto commandline : key.second.commandline) {
+      LOG(INFO) << commandline;
+    }
   }
 
   for (const auto& key : filter_rules_process_) {
     LOG(INFO) << "PROCESS: SHA256:" << key.first
-              << " command:" << key.second.image_pathname;
+              << " pathname:" << key.second.image_pathname;
+    if (!key.second.commandline.empty())
+      LOG(INFO) << "Commands:";
+    for (auto commandline : key.second.commandline) {
+      LOG(INFO) << commandline;
+    }
   }
 }
 }  // namespace secagentd
