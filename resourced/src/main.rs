@@ -8,6 +8,7 @@ mod dbus;
 mod gpu_freq_scaling;
 mod memory;
 mod power;
+mod psi;
 
 #[cfg(target_arch = "x86_64")]
 mod cgroup_x86_64;

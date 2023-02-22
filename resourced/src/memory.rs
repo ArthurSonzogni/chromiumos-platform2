@@ -398,6 +398,7 @@ pub enum PressureLevelArcvm {
     Foreground = 3,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct PressureStatus {
     pub chrome_level: PressureLevelChrome,
     pub chrome_reclaim_target_kb: u64,
