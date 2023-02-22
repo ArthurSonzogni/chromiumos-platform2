@@ -81,8 +81,7 @@ class State {
 
   void HandleResult(FetchNetworkInterfaceInfoCallback callback, bool success);
 
-  void CreateErrorToSendBack(mojom::ErrorType error_type,
-                             const std::string& message);
+  bool CheckIwResult(const mojom::ExecutedProcessResultPtr& result);
 
  private:
   mojom::WirelessInterfaceInfoPtr wireless_info_;
@@ -95,9 +94,18 @@ State::State() {
 
 State::~State() = default;
 
-void State::CreateErrorToSendBack(mojom::ErrorType error_type,
-                                  const std::string& message) {
-  error_ = CreateAndLogProbeError(error_type, message);
+bool State::CheckIwResult(const mojom::ExecutedProcessResultPtr& result) {
+  // TODO(chungsheng): Revisit `&& result->err.empty()`. This raise error if
+  // stderr is not empty even if return code is 0. Not sure if it is necessary
+  // but it was added without comment in the original CL so leave it unchanged.
+  if (result->return_code == EXIT_SUCCESS && result->err.empty()) {
+    return true;
+  }
+  error_ = CreateAndLogProbeError(
+      mojom::ErrorType::kSystemUtilityError,
+      "Failed to run iw command, error code: " +
+          base::NumberToString(result->return_code) + ", " + result->err);
+  return false;
 }
 
 // This function handles the callback from executor()->GetScanDump. It will
@@ -105,14 +113,7 @@ void State::CreateErrorToSendBack(mojom::ErrorType error_type,
 void State::HandleScanDump(mojom::ExecutedProcessResultPtr result) {
   DCHECK(wireless_info_);
   DCHECK(wireless_info_->wireless_link_info);
-  std::string err = result->err;
-  int32_t return_code = result->return_code;
-  if (!err.empty() || return_code != EXIT_SUCCESS) {
-    LOG(ERROR) << "executor()->GetScanDump failed with error code: "
-               << return_code;
-    CreateErrorToSendBack(mojom::ErrorType::kSystemUtilityError,
-                          "executor()->GetScanDump failed with error code: " +
-                              base::NumberToString(return_code));
+  if (!CheckIwResult(result)) {
     return;
   }
   std::string output = result->out;
@@ -143,13 +144,7 @@ void State::HandleScanDump(mojom::ExecutedProcessResultPtr result) {
 void State::HandleInfo(mojom::ExecutedProcessResultPtr result) {
   DCHECK(wireless_info_);
   DCHECK(wireless_info_->wireless_link_info);
-  std::string err = result->err;
-  int32_t return_code = result->return_code;
-  if (!err.empty() || return_code != EXIT_SUCCESS) {
-    LOG(ERROR) << "executor()->GetInfo failed with error code: " << return_code;
-    CreateErrorToSendBack(mojom::ErrorType::kSystemUtilityError,
-                          "executor()->GetInfo failed with error code: " +
-                              base::NumberToString(return_code));
+  if (!CheckIwResult(result)) {
     return;
   }
   std::string output = result->out;
@@ -171,8 +166,9 @@ void State::HandleInfo(mojom::ExecutedProcessResultPtr result) {
   }
 
   if (!tx_power_found) {
-    CreateErrorToSendBack(mojom::ErrorType::kParseError,
-                          std::string(__func__) + ": output parse error.");
+    error_ =
+        CreateAndLogProbeError(mojom::ErrorType::kParseError,
+                               std::string(__func__) + ": txpower not found.");
     return;
   }
 }
@@ -184,13 +180,7 @@ void State::HandleLink(Context* context,
                        base::ScopedClosureRunner on_complete,
                        mojom::ExecutedProcessResultPtr result) {
   DCHECK(wireless_info_);
-  std::string err = result->err;
-  int32_t return_code = result->return_code;
-  if (!err.empty() || return_code != EXIT_SUCCESS) {
-    LOG(ERROR) << "executor()->GetLink failed with error code: " << return_code;
-    CreateErrorToSendBack(mojom::ErrorType::kSystemUtilityError,
-                          "executor()->GetLink failed with error code: " +
-                              base::NumberToString(return_code));
+  if (!CheckIwResult(result)) {
     return;
   }
   std::string regex_result;
@@ -199,6 +189,7 @@ void State::HandleLink(Context* context,
   if (RE2::FullMatch(output, kLinkNoConnectionRegex, &regex_result)) {
     return;
   }
+
   wireless_info_->wireless_link_info = mojom::WirelessLinkInfo::New();
   auto& link_info = wireless_info_->wireless_link_info;
   std::vector<std::string> lines = base::SplitString(
@@ -206,13 +197,13 @@ void State::HandleLink(Context* context,
 
   // Extract the first line.
   std::string first_line = lines[0];
-  bool access_point_found = false;
   if (!RE2::FullMatch(first_line, kAccessPointRegex, &regex_result)) {
-    CreateErrorToSendBack(mojom::ErrorType::kParseError,
-                          std::string(__func__) + ": output parse error.");
+    error_ = CreateAndLogProbeError(
+        mojom::ErrorType::kParseError,
+        std::string(__func__) + ": access point not found.");
+    return;
   }
   link_info->access_point_address_str = regex_result;
-  access_point_found = true;
 
   // Erase the the first line of the vector so StringPairs can be used.
   lines.erase(lines.begin());
@@ -221,8 +212,9 @@ void State::HandleLink(Context* context,
   std::string output_left = base::JoinString(lines, "\n");
   base::StringPairs keyVals;
   if (!base::SplitStringIntoKeyValuePairs(output_left, ':', '\n', &keyVals)) {
-    CreateErrorToSendBack(mojom::ErrorType::kParseError,
-                          std::string(__func__) + ": output parse error.");
+    error_ = CreateAndLogProbeError(
+        mojom::ErrorType::kParseError,
+        std::string(__func__) + ": cannot create key value pairs.");
     return;
   }
   bool rx_bitrate_found = false;
@@ -254,10 +246,22 @@ void State::HandleLink(Context* context,
     }
   }
 
-  if (!access_point_found || !signal_found || !rx_bitrate_found ||
-      !tx_bitrate_found) {
-    CreateErrorToSendBack(mojom::ErrorType::kParseError,
-                          std::string(__func__) + ": output parse error.");
+  if (!signal_found) {
+    error_ =
+        CreateAndLogProbeError(mojom::ErrorType::kParseError,
+                               std::string(__func__) + ": signal not found.");
+    return;
+  }
+  if (!rx_bitrate_found) {
+    error_ = CreateAndLogProbeError(
+        mojom::ErrorType::kParseError,
+        std::string(__func__) + ": rx bitrate not found.");
+    return;
+  }
+  if (!tx_bitrate_found) {
+    error_ = CreateAndLogProbeError(
+        mojom::ErrorType::kParseError,
+        std::string(__func__) + ": tx bitrate not found.");
     return;
   }
 
@@ -278,14 +282,7 @@ void State::HandleLink(Context* context,
 void State::HandleInterfaceName(Context* context,
                                 base::ScopedClosureRunner on_complete,
                                 mojom::ExecutedProcessResultPtr result) {
-  std::string err = result->err;
-  int32_t return_code = result->return_code;
-  if (!err.empty() || return_code != EXIT_SUCCESS) {
-    LOG(ERROR) << "executor()->GetInterfaces failed with error code: "
-               << return_code;
-    CreateErrorToSendBack(mojom::ErrorType::kSystemUtilityError,
-                          "executor()->GetInterfaces failed with error code: " +
-                              base::NumberToString(return_code));
+  if (!CheckIwResult(result)) {
     return;
   }
   std::string regex_result;
@@ -302,8 +299,8 @@ void State::HandleInterfaceName(Context* context,
   }
 
   if (!interface_found) {
-    CreateErrorToSendBack(mojom::ErrorType::kServiceUnavailable,
-                          "No wireless adapter found on the system.");
+    error_ = CreateAndLogProbeError(mojom::ErrorType::kServiceUnavailable,
+                                    "No wireless adapter found on the system.");
     return;
   }
 
@@ -319,7 +316,7 @@ void State::HandleInterfaceName(Context* context,
           &file_contents)) {
     uint power_scheme;
     if (!base::StringToUint(file_contents, &power_scheme)) {
-      CreateErrorToSendBack(
+      error_ = CreateAndLogProbeError(
           mojom::ErrorType::kParseError,
           "Failed to convert power scheme to integer: " + file_contents);
       return;
