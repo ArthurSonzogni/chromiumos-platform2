@@ -559,7 +559,8 @@ struct ArcPaths {
     base::FilePath android_data_old;
 
     if (IsChromeOSUserAvailable(mode)) {
-      std::string chromeos_user = config.GetStringOrDie("CHROMEOS_USER");
+      brillo::cryptohome::home::Username chromeos_user(
+          config.GetStringOrDie("CHROMEOS_USER"));
       root_path = brillo::cryptohome::home::GetRootPath(chromeos_user);
       user_path = brillo::cryptohome::home::GetUserPath(chromeos_user);
 
