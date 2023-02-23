@@ -14,6 +14,7 @@
 #include "cros-camera/camera_buffer_utils.h"
 #include "cros-camera/device_config.h"
 #include "cros-camera/future.h"
+#include "gpu/egl/egl_context.h"
 #include "gpu/tracing.h"
 
 namespace cros {
@@ -26,7 +27,9 @@ const char* kGpuResourceDenyList[] = {
 
 }  // namespace
 
-GpuResources::GpuResources() : gpu_thread_("GpuResourcesThread") {
+GpuResources::GpuResources(const GpuResourcesOptions& options)
+    : gpu_thread_(options.name + "Thread"),
+      shared_resources_(options.shared_resources) {
   CHECK(gpu_thread_.Start());
 }
 
@@ -66,7 +69,11 @@ void GpuResources::InitializeOnGpuThread(base::OnceCallback<void(bool)> cb) {
   TRACE_GPU();
 
   if (!egl_context_) {
-    egl_context_ = EglContext::GetSurfacelessContext();
+    EglContextOptions options;
+    if (shared_resources_) {
+      options.share_context = shared_resources_->egl_context();
+    }
+    egl_context_ = EglContext::GetSurfacelessContext(options);
     if (!egl_context_->IsValid()) {
       LOGF(ERROR) << "Failed to create EGL context";
       std::move(cb).Run(false);
@@ -87,16 +94,6 @@ void GpuResources::InitializeOnGpuThread(base::OnceCallback<void(bool)> cb) {
   }
 
   std::move(cb).Run(true);
-}
-
-GpuResources::CacheContainer* GpuResources::GetCache(const std::string id) {
-  DCHECK(gpu_thread_.IsCurrentThread());
-  TRACE_GPU();
-
-  if (cache_.count(id) == 1) {
-    return cache_.at(id).get();
-  }
-  return nullptr;
 }
 
 void GpuResources::SetCache(

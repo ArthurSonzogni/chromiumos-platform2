@@ -1073,13 +1073,13 @@ bool HdrNetStreamManipulator::SetUpPipelineOnGpuThread() {
                                   context->hdrnet_stream->height);
   }
 
-  HdrnetResourceCache* cache = reinterpret_cast<HdrnetResourceCache*>(
-      gpu_resources_->GetCache(HdrnetResourceCache::kHdrnetResourceCacheId));
+  HdrnetResourceCache* cache = gpu_resources_->GetCache<HdrnetResourceCache>(
+      HdrnetResourceCache::kHdrnetResourceCacheId);
   if (!cache) {
     gpu_resources_->SetCache(HdrnetResourceCache::kHdrnetResourceCacheId,
                              std::make_unique<HdrnetResourceCache>());
-    cache = reinterpret_cast<HdrnetResourceCache*>(
-        gpu_resources_->GetCache(HdrnetResourceCache::kHdrnetResourceCacheId));
+    cache = gpu_resources_->GetCache<HdrnetResourceCache>(
+        HdrnetResourceCache::kHdrnetResourceCacheId);
   }
   CHECK(cache);
 

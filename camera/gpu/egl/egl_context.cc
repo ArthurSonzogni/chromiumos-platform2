@@ -16,25 +16,37 @@
 namespace cros {
 
 // static
-std::unique_ptr<EglContext> EglContext::GetSurfacelessContext() {
+std::unique_ptr<EglContext> EglContext::GetSurfacelessContext(
+    const EglContextOptions& options) {
   EGLDisplay egl_display = GetInitializedEglDisplay();
   if (egl_display == EGL_NO_DISPLAY) {
     LOGF(ERROR) << "Failed to create EGL display";
     return std::make_unique<EglContext>();
   }
   // This will leak |egl_display|, but it should be okay.
-  return std::make_unique<EglContext>(egl_display);
+  return std::make_unique<EglContext>(egl_display, options);
 }
 
-EglContext::EglContext(EGLDisplay display) : display_(display) {
+EglContext::EglContext(EGLDisplay display, const EglContextOptions& options)
+    : display_(display) {
   // Bind API.
   eglBindAPI(EGL_OPENGL_ES_API);
 
   EGLConfig config = EGL_NO_CONFIG_KHR;
-  std::vector<EGLint> context_attribs = {
-      EGL_CONTEXT_MAJOR_VERSION, 3, EGL_CONTEXT_MINOR_VERSION, 1, EGL_NONE,
-  };
+
   EGLContext share_context = EGL_NO_CONTEXT;
+  if (options.share_context) {
+    share_context = options.share_context->Get();
+  }
+
+  std::vector<EGLint> context_attribs = {
+      EGL_CONTEXT_MAJOR_VERSION,
+      options.context_major_version,
+      EGL_CONTEXT_MINOR_VERSION,
+      options.context_minor_version,
+      EGL_NONE,
+  };
+
   context_ =
       eglCreateContext(display_, config, share_context, context_attribs.data());
 }

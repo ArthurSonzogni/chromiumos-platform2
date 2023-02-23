@@ -25,8 +25,23 @@
 #include "gpu/egl/egl_context.h"
 #include "gpu/image_processor.h"
 #include "gpu/shared_image.h"
+// The tracing macros from perfetto_sdk and libchrome clashes when building
+// some test packages.
+//
+// TODO(jcliang): Enable the trace event once b/244257898 is fixed.
+// #include "gpu/tracing.h"
 
 namespace cros {
+
+class GpuResources;
+
+struct GpuResourcesOptions {
+  // The name of the GpuResources instance.
+  std::string name = "GpuResources";
+
+  // The GpuResources instance to share resources with.
+  GpuResources* shared_resources = nullptr;
+};
 
 // GpuResources holds the resources required to perform GPU operations. A
 // GpuResources instance manages a GPU thread and the context running on the
@@ -53,7 +68,8 @@ class CROS_CAMERA_EXPORT GpuResources {
     virtual ~CacheContainer() = default;
   };
 
-  GpuResources();
+  explicit GpuResources(
+      const GpuResourcesOptions& options = GpuResourcesOptions());
   ~GpuResources();
 
   // Disallow copy, assign and move since there should be only one instance of
@@ -88,10 +104,26 @@ class CROS_CAMERA_EXPORT GpuResources {
     return gpu_thread_.task_runner();
   }
 
+  const EglContext* egl_context() const { return egl_context_.get(); }
+
   // All the methods below need to run on |gpu_thread_|.
 
   // Gets and sets a cache entry keyed by |id|.
-  CacheContainer* GetCache(const std::string id);
+  template <typename T>
+  T* GetCache(const std::string id) {
+    DCHECK(gpu_thread_.IsCurrentThread());
+    // The tracing macros from perfetto_sdk and libchrome clashes when building
+    // some test packages.
+    //
+    // TODO(jcliang): Enable the trace event once b/244257898 is fixed.
+    // TRACE_GPU();
+
+    if (cache_.count(id) == 1) {
+      return reinterpret_cast<T*>(cache_.at(id).get());
+    }
+    return nullptr;
+  }
+
   void SetCache(const std::string id,
                 std::unique_ptr<CacheContainer> container);
   void ClearCache(const std::string id);
@@ -111,6 +143,8 @@ class CROS_CAMERA_EXPORT GpuResources {
   void InitializeOnGpuThread(base::OnceCallback<void(bool)> cb);
 
   CameraThread gpu_thread_;
+
+  GpuResources* shared_resources_ = nullptr;
 
   // Access to the following members must be sequenced on |gpu_thread_|.
   std::unique_ptr<EglContext> egl_context_;
