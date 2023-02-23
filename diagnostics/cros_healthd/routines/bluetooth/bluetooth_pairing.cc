@@ -308,6 +308,18 @@ void BluetoothPairingRoutine::OnDevicePropertyChanged(
       }
       SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kFailed,
                        kBluetoothRoutineFailedFinishPairing);
+    } else if (step_ == TestStep::kPairTargetDevice) {
+      // TODO(b/270523273): Remove paired changed event observation here.
+      // The success callback of PairAsync might not be invoked but the device
+      // will be actually paired and we will receive paired changed event. Add a
+      // workaround to handle this case here.
+      if (target_device_->paired()) {
+        step_ = TestStep::kMonitorPairedEvent;
+        RunNextStep();
+        return;
+      }
+      SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kFailed,
+                       kBluetoothRoutineFailedFinishPairing);
     }
   }
 }
