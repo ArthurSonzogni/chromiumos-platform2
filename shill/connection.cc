@@ -242,14 +242,15 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
     return;
   }
 
-  IPAddress peer(properties.address_family);
-  if (!properties.peer_address.empty() &&
-      !peer.SetAddressFromString(properties.peer_address)) {
-    LOG(ERROR) << "Peer address " << properties.peer_address << " is invalid";
-    return;
-  }
-  bool is_p2p = peer.IsValid();
-  if (is_p2p) {
+  bool is_p2p = false;
+  if (!properties.peer_address.empty()) {
+    const auto peer = IPAddress::CreateFromString(properties.peer_address,
+                                                  properties.address_family);
+    if (!peer.has_value()) {
+      LOG(ERROR) << "Peer address " << properties.peer_address << " is invalid";
+      return;
+    }
+
     // For a PPP connection:
     // 1) Never set a peer (point-to-point) address, because the kernel
     //    will create an implicit routing rule in RT_TABLE_MAIN rather
@@ -260,7 +261,7 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
     //    have an effect on a point-to-point link.  So `ip route show table 1`
     //    will just say something like:
     //        default dev ppp0 metric 10
-    peer.SetAddressToDefault();
+    is_p2p = true;
     gateway.SetAddressToDefault();
   }
 
@@ -286,11 +287,10 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
               << " interface_name=" << interface_name_
               << " local=" << local.ToString()
               << " broadcast=" << broadcast.ToString()
-              << " peer=" << peer.ToString()
               << " gateway=" << gateway.ToString();
 
     rtnl_handler_->AddInterfaceAddress(interface_index_, local, broadcast,
-                                       peer);
+                                       IPAddress(properties.address_family));
     added_addresses_[local.family()] = local;
 
     SetMTU(properties.mtu);
@@ -319,7 +319,7 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
                                          IPAddress::kFamilyIPv6, 0, table_id_);
   }
 
-  if (!SetupIncludedRoutes(properties, /*ignore_gateway =*/is_p2p)) {
+  if (!SetupIncludedRoutes(properties, /*ignore_gateway=*/is_p2p)) {
     LOG(WARNING) << "Failed to set up additional routes";
   }
 
