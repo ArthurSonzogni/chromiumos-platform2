@@ -48,6 +48,7 @@ gettid: 1
 #   0x80184577 == EVIOCGABS(ABS_MT_TOOL_TYPE)
 #   0x80184579 == EVIOCGABS(ABS_MT_TRACKING_ID)
 #   0x8018457a == EVIOCGABS(ABS_MT_PRESSURE)
+#   0x8018457b == EVIOCGABS(ABS_MT_DISTANCE)
 #   0x8404450a == EVIOCGMTSLOTS(1028)
 ioctl: arg1 == 0x5401 || arg1 == 0x8913 || arg1 == 0x8914 || \
        arg1 == 0x80084524 || arg1 == 0x80084509 || arg1 == 0x80084525 || \
@@ -62,7 +63,7 @@ ioctl: arg1 == 0x5401 || arg1 == 0x8913 || arg1 == 0x8914 || \
        arg1 == 0x8018456f || arg1 == 0x80184570 || arg1 == 0x80184571 || \
        arg1 == 0x80184574 || arg1 == 0x80184575 || arg1 == 0x80184576 || \
        arg1 == 0x80184577 || arg1 == 0x80184579 || arg1 == 0x8018457a || \
-       arg1 == 0x8404450a
+       arg1 == 0x8404450a || arg1 == 0x8018457b
 write: 1
 geteuid: 1
 getuid: 1
