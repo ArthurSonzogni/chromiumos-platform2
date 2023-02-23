@@ -12,6 +12,8 @@
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 
+#include "vm_tools/garcon/host_notifier.h"
+
 namespace vm_tools {
 namespace garcon {
 
@@ -19,10 +21,12 @@ class ScreenSaverDBusService {
  public:
   ~ScreenSaverDBusService() = default;
 
-  static std::unique_ptr<ScreenSaverDBusService> Create();
+  static std::unique_ptr<ScreenSaverDBusService> Create(
+      vm_tools::garcon::HostNotifier* host_notifier);
 
  private:
-  ScreenSaverDBusService();
+  explicit ScreenSaverDBusService(
+      vm_tools::garcon::HostNotifier* host_notifier);
   ScreenSaverDBusService(const ScreenSaverDBusService&) = delete;
   ScreenSaverDBusService& operator=(const ScreenSaverDBusService&) = delete;
 
@@ -38,6 +42,8 @@ class ScreenSaverDBusService {
 
   // The cookie used to reply to inhibit. Incremented by 1 each time.
   uint32_t cookie_counter_ = 1;
+
+  vm_tools::garcon::HostNotifier* host_notifier_ = nullptr;
 };
 
 }  // namespace garcon

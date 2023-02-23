@@ -12,6 +12,8 @@
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
 
+#include "vm_tools/garcon/host_notifier.h"
+
 namespace vm_tools {
 namespace garcon {
 
@@ -19,10 +21,12 @@ class FileChooserDBusService {
  public:
   ~FileChooserDBusService() = default;
 
-  static std::unique_ptr<FileChooserDBusService> Create();
+  static std::unique_ptr<FileChooserDBusService> Create(
+      vm_tools::garcon::HostNotifier* host_notifier);
 
  private:
-  FileChooserDBusService();
+  explicit FileChooserDBusService(
+      vm_tools::garcon::HostNotifier* host_notifier);
   FileChooserDBusService(const FileChooserDBusService&) = delete;
   FileChooserDBusService& operator=(const FileChooserDBusService&) = delete;
 
@@ -37,6 +41,7 @@ class FileChooserDBusService {
 
   scoped_refptr<dbus::Bus> bus_;
   dbus::ExportedObject* exported_object_ = nullptr;  // Owned by |bus_|.
+  vm_tools::garcon::HostNotifier* host_notifier_ = nullptr;
 };
 
 }  // namespace garcon

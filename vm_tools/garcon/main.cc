@@ -14,7 +14,10 @@
 
 #include <memory>
 #include <string>
-#include "base/strings/string_split.h"
+
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/strings/string_split.h>
 
 // syslog.h and base/logging.h both try to #define LOG_INFO and LOG_WARNING.
 // We need to #undef at least these two before including base/logging.h.  The
@@ -51,6 +54,7 @@ const int kSyslogCritical = LOG_CRIT;
 #include <base/files/scoped_file.h>
 
 #include "google/protobuf/util/json_util.h"
+#include "vm_tools/common/paths.h"
 #include "vm_tools/common/spawn_util.h"
 #include "vm_tools/garcon/file_chooser_dbus_service.h"
 #include "vm_tools/garcon/host_notifier.h"
@@ -86,6 +90,7 @@ constexpr char kSftpServer[] = "/usr/lib/openssh/sftp-server";
 constexpr char kMetricsSwitch[] = "metrics";
 constexpr uint32_t kVsockPortStart = 10000;
 constexpr uint32_t kVsockPortEnd = 20000;
+constexpr int kSecurityTokenLength = 36;
 
 constexpr uid_t kCrostiniDefaultUid = 1000;
 
@@ -236,6 +241,7 @@ void CreatePackageKitProxy(
 
 void CreateDBusServices(
     base::WaitableEvent* event,
+    vm_tools::garcon::HostNotifier* host_notifier,
     std::unique_ptr<vm_tools::garcon::ScreenSaverDBusService>*
         screensaver_proxy_ptr,
     std::unique_ptr<vm_tools::garcon::FileChooserDBusService>*
@@ -243,8 +249,10 @@ void CreateDBusServices(
   // We don't want to receive SIGTERM on this thread.
   BlockSigterm();
 
-  *screensaver_proxy_ptr = vm_tools::garcon::ScreenSaverDBusService::Create();
-  *file_chooser_proxy_ptr = vm_tools::garcon::FileChooserDBusService::Create();
+  *screensaver_proxy_ptr =
+      vm_tools::garcon::ScreenSaverDBusService::Create(host_notifier);
+  *file_chooser_proxy_ptr =
+      vm_tools::garcon::FileChooserDBusService::Create(host_notifier);
   event->Signal();
 }
 
@@ -290,7 +298,19 @@ void PrintUsage() {
             << "  --allow_any_user: allow running as non-default uid\n";
 }
 
-int HandleDiskArgs(std::vector<std::string> args) {
+std::string GetSecurityToken() {
+  char token[kSecurityTokenLength + 1];
+  base::FilePath security_token_path(vm_tools::kGarconContainerTokenFile);
+  int num_read = base::ReadFile(security_token_path, token, sizeof(token) - 1);
+  if (num_read <= 0) {
+    return "";
+  }
+  token[num_read] = '\0';
+  return std::string(token);
+}
+
+int HandleDiskArgs(std::vector<std::string> args,
+                   vm_tools::garcon::HostNotifier* host_notifier) {
   std::string output;
   if (args.empty()) {
     LOG(ERROR) << "Missing arguments in --disk mode";
@@ -301,7 +321,7 @@ int HandleDiskArgs(std::vector<std::string> args) {
   options.always_print_primitive_fields = true;
   if (args.at(0) == kGetDiskInfoArg) {
     vm_tools::container::GetDiskInfoResponse response;
-    vm_tools::garcon::HostNotifier::GetDiskInfo(&response);
+    host_notifier->GetDiskInfo(&response);
     // Error code 4 is for invalid requests; those that have incomplete meta
     // data, don't originate from Borealis or are made when Chrome infra isn't
     // set up. To support unorthodox workflows, we return basic information,
@@ -331,7 +351,7 @@ int HandleDiskArgs(std::vector<std::string> args) {
   if (args.at(0) == kRequestSpaceArg) {
     vm_tools::container::RequestSpaceResponse response;
     if (arg_conversion) {
-      vm_tools::garcon::HostNotifier::RequestSpace(space_arg, &response);
+      host_notifier->RequestSpace(space_arg, &response);
     } else {
       LOG(WARNING) << "Couldn't parse requested_bytes (expected Uint64)";
       PrintUsage();
@@ -347,7 +367,7 @@ int HandleDiskArgs(std::vector<std::string> args) {
   if (args.at(0) == kReleaseSpaceArg) {
     vm_tools::container::ReleaseSpaceResponse response;
     if (arg_conversion) {
-      vm_tools::garcon::HostNotifier::ReleaseSpace(space_arg, &response);
+      host_notifier->ReleaseSpace(space_arg, &response);
     } else {
       LOG(WARNING) << "Couldn't parse bytes_to_release (expected Uint64)";
       PrintUsage();
@@ -365,7 +385,8 @@ int HandleDiskArgs(std::vector<std::string> args) {
   return -1;
 }
 
-int HandleMetricsArgs(std::vector<std::string> args) {
+int HandleMetricsArgs(std::vector<std::string> args,
+                      vm_tools::garcon::HostNotifier* host_notifier) {
   vm_tools::container::ReportMetricsRequest request;
   if (args.empty()) {
     LOG(ERROR) << "Missing arguments in --metrics mode";
@@ -396,8 +417,7 @@ int HandleMetricsArgs(std::vector<std::string> args) {
   }
 
   vm_tools::container::ReportMetricsResponse response;
-  if (!vm_tools::garcon::HostNotifier::ReportMetrics(std::move(request),
-                                                     &response)) {
+  if (!host_notifier->ReportMetrics(std::move(request), &response)) {
     LOG(ERROR) << "ReportMetrics RPC to host failed";
     // Distinguish this error from other errors as it's reasonable
     // to retry the request if this error happens.
@@ -413,7 +433,8 @@ int HandleMetricsArgs(std::vector<std::string> args) {
   return 0;
 }
 
-int HandleShaderCacheArgs(base::CommandLine* cl) {
+int HandleShaderCacheArgs(base::CommandLine* cl,
+                          vm_tools::garcon::HostNotifier* host_notifier) {
   uint64_t app_id = 0;
   std::string app_id_string = cl->GetSwitchValueNative(kShaderAppIDSwitch);
   if (app_id_string.empty()) {
@@ -453,7 +474,7 @@ int HandleShaderCacheArgs(base::CommandLine* cl) {
     if (cl->HasSwitch(kShaderWaitSwitch)) {
       LOG(INFO) << "Waiting for all operations to complete";
     }
-    success = vm_tools::garcon::HostNotifier::InstallShaderCache(
+    success = host_notifier->InstallShaderCache(
         app_id, cl->HasSwitch(kShaderMountSwitch),
         cl->HasSwitch(kShaderWaitSwitch));
 
@@ -464,7 +485,7 @@ int HandleShaderCacheArgs(base::CommandLine* cl) {
     if (cl->HasSwitch(kShaderWaitSwitch)) {
       LOG(INFO) << "Waiting for all operations to complete";
     }
-    success = vm_tools::garcon::HostNotifier::UnmountShaderCache(
+    success = host_notifier->UnmountShaderCache(
         app_id, cl->HasSwitch(kShaderWaitSwitch));
 
   } else if (cl->HasSwitch(kShaderUninstallSwitch)) {
@@ -482,7 +503,7 @@ int HandleShaderCacheArgs(base::CommandLine* cl) {
     }
     LOG(INFO) << "Unmounting and uninstalling shader cache for "
               << app_id_string;
-    success = vm_tools::garcon::HostNotifier::UninstallShaderCache(app_id);
+    success = host_notifier->UninstallShaderCache(app_id);
   } else {
     LOG(ERROR) << "No command specified, specify one of --"
                << kShaderInstallSwitch << ", --" << kShaderUnmountSwitch
@@ -513,6 +534,19 @@ int main(int argc, char** argv) {
     return -1;
   }
 
+  std::string token = GetSecurityToken();
+  if (token.empty()) {
+    LOG(ERROR) << "Failed to read the security token.";
+    return -1;
+  }
+
+  std::unique_ptr<vm_tools::garcon::HostNotifier> host_notifier =
+      vm_tools::garcon::HostNotifier::Create(token);
+  if (!host_notifier) {
+    LOG(ERROR) << "Failure setting up the HostNotifier";
+    return -1;
+  }
+
   if (clientMode) {
     if (cl->HasSwitch(kUrlSwitch)) {
       std::vector<std::string> args = cl->GetArgs();
@@ -524,14 +558,14 @@ int main(int argc, char** argv) {
       // All arguments are URLs, send them to the host to be opened. The host
       // will do its own verification for validity of the URLs.
       for (const auto& arg : args) {
-        if (!vm_tools::garcon::HostNotifier::OpenUrlInHost(arg)) {
+        if (!host_notifier->OpenUrlInHost(arg)) {
           return -1;
         }
       }
       return 0;
     } else if (cl->HasSwitch(kTerminalSwitch)) {
       std::vector<std::string> args = cl->GetArgs();
-      if (vm_tools::garcon::HostNotifier::OpenTerminal(std::move(args)))
+      if (host_notifier->OpenTerminal(std::move(args)))
         return 0;
       else
         return -1;
@@ -542,8 +576,7 @@ int main(int argc, char** argv) {
       std::string extensions =
           cl->GetSwitchValueNative(kSelectFileExtensionsSwitch);
       std::vector<std::string> files;
-      if (vm_tools::garcon::HostNotifier::SelectFile(type, title, path,
-                                                     extensions, &files)) {
+      if (host_notifier->SelectFile(type, title, path, extensions, &files)) {
         for (const auto& file : files) {
           std::cout << file << std::endl;
         }
@@ -552,11 +585,11 @@ int main(int argc, char** argv) {
         return -1;
       }
     } else if (cl->HasSwitch(kDiskSwitch)) {
-      return HandleDiskArgs(cl->GetArgs());
+      return HandleDiskArgs(cl->GetArgs(), host_notifier.get());
     } else if (cl->HasSwitch(kMetricsSwitch)) {
-      return HandleMetricsArgs(cl->GetArgs());
+      return HandleMetricsArgs(cl->GetArgs(), host_notifier.get());
     } else if (cl->HasSwitch(kShaderSwitch)) {
-      return HandleShaderCacheArgs(cl);
+      return HandleShaderCacheArgs(cl, host_notifier.get());
     }
     LOG(ERROR) << "Missing client switch for client mode.";
     PrintUsage();
@@ -626,13 +659,6 @@ int main(int argc, char** argv) {
   // mime type changes.
   base::RunLoop run_loop;
 
-  std::unique_ptr<vm_tools::garcon::HostNotifier> host_notifier =
-      vm_tools::garcon::HostNotifier::Create(run_loop.QuitClosure());
-  if (!host_notifier) {
-    LOG(ERROR) << "Failure setting up the HostNotifier";
-    return -1;
-  }
-
   base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                             base::WaitableEvent::InitialState::NOT_SIGNALED);
 
@@ -658,7 +684,8 @@ int main(int argc, char** argv) {
   std::unique_ptr<vm_tools::garcon::FileChooserDBusService> file_chooser;
   ret = dbus_thread.task_runner()->PostTask(
       FROM_HERE,
-      base::BindOnce(&CreateDBusServices, &event, &screensaver, &file_chooser));
+      base::BindOnce(&CreateDBusServices, &event, host_notifier.get(),
+                     &screensaver, &file_chooser));
   if (!ret) {
     LOG(ERROR) << "Failed to post D-Bus server creation to D-Bus thread";
     return -1;
@@ -715,8 +742,9 @@ int main(int argc, char** argv) {
     return -1;
   }
 
-  if (!host_notifier->Init(static_cast<uint32_t>(vsock_listen_port), sftp_port,
-                           pk_proxy.get())) {
+  if (!host_notifier->InitServer(run_loop.QuitClosure(),
+                                 static_cast<uint32_t>(vsock_listen_port),
+                                 sftp_port, pk_proxy.get())) {
     LOG(ERROR) << "Failed to set up host notifier";
     return -1;
   }

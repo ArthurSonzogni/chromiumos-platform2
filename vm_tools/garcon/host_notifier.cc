@@ -35,14 +35,12 @@
 #include <vm_protos/proto_bindings/common.pb.h>
 #include <vm_protos/proto_bindings/container_host.pb.h>
 
-#include "vm_tools/common/paths.h"
 #include "vm_tools/garcon/desktop_file.h"
 #include "vm_tools/garcon/host_notifier.h"
 #include "vm_tools/garcon/mime_types_parser.h"
 
 namespace {
 
-constexpr int kSecurityTokenLength = 36;
 // File extension for desktop files.
 constexpr char kDesktopFileExtension[] = ".desktop";
 // Directory where the MIME types file is stored for watching with inotify.
@@ -60,19 +58,6 @@ constexpr char kUrlSchemeDelimiter[] = "://";
 // Periodic interval for checking free disk space.
 constexpr base::TimeDelta kDiskSpaceCheckInterval = base::Minutes(2);
 constexpr int64_t kDiskSpaceCheckThreshold = 1 * 1024 * 1024 * 1024;  // 1GiB
-
-std::string GetSecurityToken() {
-  char token[kSecurityTokenLength + 1];
-  base::FilePath security_token_path(vm_tools::kGarconContainerTokenFile);
-  int num_read = base::ReadFile(security_token_path, token, sizeof(token) - 1);
-  if (num_read <= 0) {
-    LOG(ERROR) << "Failed reading the container token from: "
-               << security_token_path.MaybeAsASCII();
-    return "";
-  }
-  token[num_read] = '\0';
-  return std::string(token);
-}
 
 void SendInstallStatusToHost(
     vm_tools::container::ContainerListener::Stub* stub,
@@ -120,25 +105,15 @@ namespace vm_tools {
 namespace garcon {
 
 // static
-std::unique_ptr<HostNotifier> HostNotifier::Create(
-    base::OnceClosure shutdown_closure) {
-  return base::WrapUnique(new HostNotifier(std::move(shutdown_closure)));
+std::unique_ptr<HostNotifier> HostNotifier::Create(const std::string& token) {
+  return base::WrapUnique(new HostNotifier(token));
 }
 
 // static
 bool HostNotifier::OpenUrlInHost(const std::string& url) {
-  std::string token = GetSecurityToken();
-  if (token.empty()) {
-    return false;
-  }
-  std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
-  stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
-      grpc::CreateChannel(base::StringPrintf("vsock:%d:%u", VMADDR_CID_HOST,
-                                             vm_tools::kGarconPort),
-                          grpc::InsecureChannelCredentials()));
   grpc::ClientContext ctx;
   vm_tools::container::OpenUrlRequest url_request;
-  url_request.set_token(token);
+  url_request.set_token(token_);
   url_request.set_url(url);
   // If url has no scheme, but matches a local file, then convert to file://.
   auto front = url.find(kUrlSchemeDelimiter);
@@ -150,7 +125,7 @@ bool HostNotifier::OpenUrlInHost(const std::string& url) {
     }
   }
   vm_tools::EmptyMessage empty;
-  grpc::Status status = stub->OpenUrl(&ctx, url_request, &empty);
+  grpc::Status status = stub_->OpenUrl(&ctx, url_request, &empty);
   if (!status.ok()) {
     LOG(WARNING) << "Failed to request host system to open url \"" << url
                  << "\" error: " << status.error_message();
@@ -160,25 +135,16 @@ bool HostNotifier::OpenUrlInHost(const std::string& url) {
 }
 
 bool HostNotifier::OpenTerminal(std::vector<std::string> args) {
-  std::string token = GetSecurityToken();
-  if (token.empty()) {
-    return false;
-  }
-  std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
-  stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
-      grpc::CreateChannel(base::StringPrintf("vsock:%d:%u", VMADDR_CID_HOST,
-                                             vm_tools::kGarconPort),
-                          grpc::InsecureChannelCredentials()));
   grpc::ClientContext ctx;
   vm_tools::container::OpenTerminalRequest terminal_request;
   std::copy(std::make_move_iterator(args.begin()),
             std::make_move_iterator(args.end()),
             google::protobuf::RepeatedFieldBackInserter(
                 terminal_request.mutable_params()));
-  terminal_request.set_token(token);
+  terminal_request.set_token(token_);
 
   vm_tools::EmptyMessage empty;
-  grpc::Status status = stub->OpenTerminal(&ctx, terminal_request, &empty);
+  grpc::Status status = stub_->OpenTerminal(&ctx, terminal_request, &empty);
   if (!status.ok()) {
     LOG(WARNING) << "Failed request to open terminal, error: "
                  << status.error_message();
@@ -192,18 +158,9 @@ bool HostNotifier::SelectFile(const std::string& type,
                               const std::string& default_path,
                               const std::string& allowed_extensions,
                               std::vector<std::string>* files) {
-  std::string token = GetSecurityToken();
-  if (token.empty()) {
-    return false;
-  }
-  std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
-  stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
-      grpc::CreateChannel(base::StringPrintf("vsock:%d:%u", VMADDR_CID_HOST,
-                                             vm_tools::kGarconPort),
-                          grpc::InsecureChannelCredentials()));
   grpc::ClientContext ctx;
   vm_tools::container::SelectFileRequest select_file_request;
-  select_file_request.set_token(token);
+  select_file_request.set_token(token_);
   select_file_request.set_type(type);
   select_file_request.set_title(title);
   select_file_request.set_default_path(default_path);
@@ -211,7 +168,7 @@ bool HostNotifier::SelectFile(const std::string& type,
 
   vm_tools::container::SelectFileResponse select_file_response;
   grpc::Status status =
-      stub->SelectFile(&ctx, select_file_request, &select_file_response);
+      stub_->SelectFile(&ctx, select_file_request, &select_file_response);
   if (!status.ok()) {
     LOG(WARNING) << "Failed request to select file, error: "
                  << status.error_message();
@@ -227,20 +184,10 @@ bool HostNotifier::SelectFile(const std::string& type,
 
 bool HostNotifier::GetDiskInfo(
     vm_tools::container::GetDiskInfoResponse* response) {
-  std::string token = GetSecurityToken();
-  if (token.empty()) {
-    return false;
-  }
-  std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
-  stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
-      grpc::CreateChannel(base::StringPrintf("vsock:%d:%u", VMADDR_CID_HOST,
-                                             vm_tools::kGarconPort),
-                          grpc::InsecureChannelCredentials()));
-
   grpc::ClientContext ctx;
   vm_tools::container::GetDiskInfoRequest request;
-  request.set_token(token);
-  grpc::Status status = stub->GetDiskInfo(&ctx, request, response);
+  request.set_token(token_);
+  grpc::Status status = stub_->GetDiskInfo(&ctx, request, response);
   if (!status.ok()) {
     LOG(WARNING) << "Failed to get disk info: " << status.error_message();
     return false;
@@ -251,21 +198,11 @@ bool HostNotifier::GetDiskInfo(
 bool HostNotifier::RequestSpace(
     uint64_t space_requested,
     vm_tools::container::RequestSpaceResponse* response) {
-  std::string token = GetSecurityToken();
-  if (token.empty()) {
-    return false;
-  }
-  std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
-  stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
-      grpc::CreateChannel(base::StringPrintf("vsock:%d:%u", VMADDR_CID_HOST,
-                                             vm_tools::kGarconPort),
-                          grpc::InsecureChannelCredentials()));
-
   grpc::ClientContext ctx;
   vm_tools::container::RequestSpaceRequest request;
-  request.set_token(token);
+  request.set_token(token_);
   request.set_space_requested(space_requested);
-  grpc::Status status = stub->RequestSpace(&ctx, request, response);
+  grpc::Status status = stub_->RequestSpace(&ctx, request, response);
   if (!status.ok()) {
     LOG(WARNING) << "Failed to expand the disk: " << status.error_message();
     return false;
@@ -276,22 +213,17 @@ bool HostNotifier::RequestSpace(
 bool HostNotifier::InstallShaderCache(uint64_t steam_app_id,
                                       bool mount,
                                       bool wait) {
-  std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
-  stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
-      grpc::CreateChannel(base::StringPrintf("vsock:%d:%u", VMADDR_CID_HOST,
-                                             vm_tools::kGarconPort),
-                          grpc::InsecureChannelCredentials()));
   grpc::ClientContext ctx;
 
   vm_tools::container::InstallShaderCacheRequest request;
   EmptyMessage response;
-  request.set_token(GetSecurityToken());
+  request.set_token(token_);
   request.set_steam_app_id(steam_app_id);
   request.set_mount(mount);
   request.set_wait(wait);
 
   // Request Cicerone to download and install shader cache
-  grpc::Status status = stub->InstallShaderCache(&ctx, request, &response);
+  grpc::Status status = stub_->InstallShaderCache(&ctx, request, &response);
 
   if (!status.ok()) {
     if (mount) {
@@ -312,19 +244,14 @@ bool HostNotifier::InstallShaderCache(uint64_t steam_app_id,
 }
 
 bool HostNotifier::UninstallShaderCache(uint64_t steam_app_id) {
-  std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
-  stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
-      grpc::CreateChannel(base::StringPrintf("vsock:%d:%u", VMADDR_CID_HOST,
-                                             vm_tools::kGarconPort),
-                          grpc::InsecureChannelCredentials()));
   grpc::ClientContext ctx;
 
   vm_tools::container::UninstallShaderCacheRequest request;
   EmptyMessage response;
-  request.set_token(GetSecurityToken());
+  request.set_token(token_);
   request.set_steam_app_id(steam_app_id);
 
-  grpc::Status status = stub->UninstallShaderCache(&ctx, request, &response);
+  grpc::Status status = stub_->UninstallShaderCache(&ctx, request, &response);
   if (!status.ok()) {
     LOG(ERROR) << "Failed to unmount and uninstall shader cache: "
                << status.error_message();
@@ -334,20 +261,15 @@ bool HostNotifier::UninstallShaderCache(uint64_t steam_app_id) {
 }
 
 bool HostNotifier::UnmountShaderCache(uint64_t steam_app_id, bool wait) {
-  std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
-  stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
-      grpc::CreateChannel(base::StringPrintf("vsock:%d:%u", VMADDR_CID_HOST,
-                                             vm_tools::kGarconPort),
-                          grpc::InsecureChannelCredentials()));
   grpc::ClientContext ctx;
 
   vm_tools::container::UnmountShaderCacheRequest request;
   EmptyMessage response;
-  request.set_token(GetSecurityToken());
+  request.set_token(token_);
   request.set_steam_app_id(steam_app_id);
   request.set_wait(wait);
 
-  grpc::Status status = stub->UnmountShaderCache(&ctx, request, &response);
+  grpc::Status status = stub_->UnmountShaderCache(&ctx, request, &response);
   if (!status.ok()) {
     LOG(ERROR) << "Failed to queue unmount shader cache: "
                << status.error_message();
@@ -359,21 +281,11 @@ bool HostNotifier::UnmountShaderCache(uint64_t steam_app_id, bool wait) {
 bool HostNotifier::ReleaseSpace(
     uint64_t space_to_release,
     vm_tools::container::ReleaseSpaceResponse* response) {
-  std::string token = GetSecurityToken();
-  if (token.empty()) {
-    return false;
-  }
-  std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
-  stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
-      grpc::CreateChannel(base::StringPrintf("vsock:%d:%u", VMADDR_CID_HOST,
-                                             vm_tools::kGarconPort),
-                          grpc::InsecureChannelCredentials()));
-
   grpc::ClientContext ctx;
   vm_tools::container::ReleaseSpaceRequest request;
-  request.set_token(token);
+  request.set_token(token_);
   request.set_space_to_release(space_to_release);
-  grpc::Status status = stub->ReleaseSpace(&ctx, request, response);
+  grpc::Status status = stub_->ReleaseSpace(&ctx, request, response);
   if (!status.ok()) {
     LOG(WARNING) << "Failed to shrink the disk: " << status.error_message();
     return false;
@@ -384,19 +296,9 @@ bool HostNotifier::ReleaseSpace(
 bool HostNotifier::ReportMetrics(
     vm_tools::container::ReportMetricsRequest request,
     vm_tools::container::ReportMetricsResponse* response) {
-  std::string token = GetSecurityToken();
-  if (token.empty()) {
-    return false;
-  }
-  std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
-  stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
-      grpc::CreateChannel(base::StringPrintf("vsock:%d:%u", VMADDR_CID_HOST,
-                                             vm_tools::kGarconPort),
-                          grpc::InsecureChannelCredentials()));
-
   grpc::ClientContext ctx;
-  request.set_token(token);
-  grpc::Status status = stub->ReportMetrics(&ctx, request, response);
+  request.set_token(token_);
+  grpc::Status status = stub_->ReportMetrics(&ctx, request, response);
   if (!status.ok()) {
     LOG(WARNING) << "Failed to report metrics: " << status.error_message();
     return false;
@@ -406,20 +308,10 @@ bool HostNotifier::ReportMetrics(
 
 bool HostNotifier::InhibitScreensaver(
     vm_tools::container::InhibitScreensaverInfo info) {
-  std::string token = GetSecurityToken();
-  if (token.empty()) {
-    return false;
-  }
-  std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
-  stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
-      grpc::CreateChannel(base::StringPrintf("vsock:%d:%u", VMADDR_CID_HOST,
-                                             vm_tools::kGarconPort),
-                          grpc::InsecureChannelCredentials()));
-
   grpc::ClientContext ctx;
-  info.set_token(token);
+  info.set_token(token_);
   vm_tools::EmptyMessage empty;
-  grpc::Status status = stub->InhibitScreensaver(&ctx, info, &empty);
+  grpc::Status status = stub_->InhibitScreensaver(&ctx, info, &empty);
   if (!status.ok()) {
     LOG(WARNING) << "Failed to inhibit screensaver: " << status.error_message();
     return false;
@@ -429,20 +321,10 @@ bool HostNotifier::InhibitScreensaver(
 
 bool HostNotifier::UninhibitScreensaver(
     vm_tools::container::UninhibitScreensaverInfo info) {
-  std::string token = GetSecurityToken();
-  if (token.empty()) {
-    return false;
-  }
   vm_tools::EmptyMessage empty;
-  std::unique_ptr<vm_tools::container::ContainerListener::Stub> stub;
-  stub = std::make_unique<vm_tools::container::ContainerListener::Stub>(
-      grpc::CreateChannel(base::StringPrintf("vsock:%d:%u", VMADDR_CID_HOST,
-                                             vm_tools::kGarconPort),
-                          grpc::InsecureChannelCredentials()));
-
   grpc::ClientContext ctx;
-  info.set_token(token);
-  grpc::Status status = stub->UninhibitScreensaver(&ctx, info, &empty);
+  info.set_token(token_);
+  grpc::Status status = stub_->UninhibitScreensaver(&ctx, info, &empty);
   if (!status.ok()) {
     LOG(WARNING) << "Failed to uninhibit screensaver: "
                  << status.error_message();
@@ -451,11 +333,13 @@ bool HostNotifier::UninhibitScreensaver(
   return true;
 }
 
-HostNotifier::HostNotifier(base::OnceClosure shutdown_closure)
-    : update_app_list_posted_(false),
+HostNotifier::HostNotifier(const std::string& token)
+    : token_(token),
+      update_app_list_posted_(false),
       send_app_list_to_host_in_progress_(false),
-      update_mime_types_posted_(false),
-      shutdown_closure_(std::move(shutdown_closure)) {}
+      update_mime_types_posted_(false) {
+  SetUpContainerListenerStub();
+}
 
 HostNotifier::~HostNotifier() = default;
 
@@ -593,18 +477,15 @@ void HostNotifier::RemoveAnsiblePlaybookApplication() {
   ansible_playbook_application_.reset();
 }
 
-bool HostNotifier::Init(uint32_t garcon_port,
-                        uint32_t sftp_port,
-                        PackageKitProxy* package_kit_proxy) {
+bool HostNotifier::InitServer(base::OnceClosure shutdown_closure,
+                              uint32_t garcon_port,
+                              uint32_t sftp_port,
+                              PackageKitProxy* package_kit_proxy) {
   CHECK(package_kit_proxy);
   package_kit_proxy_ = package_kit_proxy;
+  shutdown_closure_ = std::move(shutdown_closure);
   task_runner_ = base::ThreadTaskRunnerHandle::Get();
-  token_ = GetSecurityToken();
-  if (token_.empty()) {
-    return false;
-  }
   sftp_vsock_port_ = sftp_port;
-  SetUpContainerListenerStub();
   if (!NotifyHostGarconIsReady(garcon_port, sftp_port)) {
     return false;
   }

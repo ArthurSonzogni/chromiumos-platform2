@@ -37,11 +37,14 @@ void HandleSynchronousDBusMethodCall(
 namespace vm_tools {
 namespace garcon {
 
-FileChooserDBusService::FileChooserDBusService() = default;
+FileChooserDBusService::FileChooserDBusService(
+    vm_tools::garcon::HostNotifier* host_notifier)
+    : host_notifier_(host_notifier) {}
 
 // static
-std::unique_ptr<FileChooserDBusService> FileChooserDBusService::Create() {
-  auto service = base::WrapUnique(new FileChooserDBusService());
+std::unique_ptr<FileChooserDBusService> FileChooserDBusService::Create(
+    vm_tools::garcon::HostNotifier* host_notifier) {
+  auto service = base::WrapUnique(new FileChooserDBusService(host_notifier));
 
   if (!service->Init())
     return nullptr;
@@ -138,8 +141,8 @@ std::unique_ptr<dbus::Response> FileChooserDBusService::SelectFile(
       dbus::Response::FromMethodCall(method_call));
   dbus::MessageWriter writer(dbus_response.get());
 
-  if (!vm_tools::garcon::HostNotifier::SelectFile(type, title, default_path,
-                                                  allowed_extensions, &files)) {
+  if (!host_notifier_->SelectFile(type, title, default_path, allowed_extensions,
+                                  &files)) {
     writer.AppendUint32(1);  // error
     return dbus_response;
   }

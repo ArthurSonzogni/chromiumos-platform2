@@ -37,11 +37,14 @@ void HandleSynchronousDBusMethodCall(
 namespace vm_tools {
 namespace garcon {
 
-ScreenSaverDBusService::ScreenSaverDBusService() {}
+ScreenSaverDBusService::ScreenSaverDBusService(
+    vm_tools::garcon::HostNotifier* host_notifier)
+    : host_notifier_(host_notifier) {}
 
 // static
-std::unique_ptr<ScreenSaverDBusService> ScreenSaverDBusService::Create() {
-  auto service = base::WrapUnique(new ScreenSaverDBusService());
+std::unique_ptr<ScreenSaverDBusService> ScreenSaverDBusService::Create(
+    vm_tools::garcon::HostNotifier* host_notifier) {
+  auto service = base::WrapUnique(new ScreenSaverDBusService(host_notifier));
 
   if (!service->Init())
     return nullptr;
@@ -85,7 +88,7 @@ std::unique_ptr<dbus::Response> ScreenSaverDBusService::Inhibit(
   info.set_client(client);
   info.set_reason(reason);
   info.set_cookie(cookie);
-  if (!HostNotifier::InhibitScreensaver(std::move(info))) {
+  if (!host_notifier_->InhibitScreensaver(std::move(info))) {
     LOG(ERROR) << "Failed to inhibit screensaver";
   }
 
@@ -103,7 +106,7 @@ std::unique_ptr<dbus::Response> ScreenSaverDBusService::Uninhibit(
 
   vm_tools::container::UninhibitScreensaverInfo info;
   info.set_cookie(cookie);
-  if (!HostNotifier::UninhibitScreensaver(std::move(info))) {
+  if (!host_notifier_->UninhibitScreensaver(std::move(info))) {
     LOG(ERROR) << "Failed to uninhibit screensaver";
   }
 

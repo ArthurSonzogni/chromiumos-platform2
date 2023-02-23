@@ -33,71 +33,69 @@ class HostNotifier : public PackageKitProxy::PackageKitObserver,
  public:
   // Creates and inits the HostNotifier for running on the current sequence.
   // Returns null if there was any failure.
-  static std::unique_ptr<HostNotifier> Create(
-      base::OnceClosure shutdown_closure);
+  static std::unique_ptr<HostNotifier> Create(const std::string& token);
 
   // Sends a gRPC call to the host to notify it to open the specified URL with
   // the web browser. Returns true on success, false otherwise.
-  static bool OpenUrlInHost(const std::string& url);
+  bool OpenUrlInHost(const std::string& url);
 
   // Sends a gRPC call to the host to notify it to open a terminal window that
   // is connected to this container. |args| will be executed as a program in
   // the terminal if any are passed.
-  static bool OpenTerminal(std::vector<std::string> args);
+  bool OpenTerminal(std::vector<std::string> args);
 
   // Sends a gRPC call to the host to request a SelectFile dialog be shown.
-  static bool SelectFile(const std::string& type,
-                         const std::string& title,
-                         const std::string& default_path,
-                         const std::string& allowed_extensions,
-                         std::vector<std::string>* files);
+  bool SelectFile(const std::string& type,
+                  const std::string& title,
+                  const std::string& default_path,
+                  const std::string& allowed_extensions,
+                  std::vector<std::string>* files);
 
   // Sends a gRPC call to the host to request information about what space is
   // available on the VM disk and how much it could be expanded by.
-  static bool GetDiskInfo(vm_tools::container::GetDiskInfoResponse* response);
+  bool GetDiskInfo(vm_tools::container::GetDiskInfoResponse* response);
 
   // Sends a gRPC call to the host to request that the disk be expanded by
   // |space_requested| bytes. Will return the number of bytes that the disk was
   // expanded by or an error.
-  static bool RequestSpace(uint64_t space_requested,
-                           vm_tools::container::RequestSpaceResponse* response);
+  bool RequestSpace(uint64_t space_requested,
+                    vm_tools::container::RequestSpaceResponse* response);
 
   // Sends a gRPC call to the host to notify it that it can shrink the disk by
   // |space_to_release| bytes. Will return the number of bytes the disk was
   // shrunk by or an error.
-  static bool ReleaseSpace(uint64_t space_to_release,
-                           vm_tools::container::ReleaseSpaceResponse* response);
+  bool ReleaseSpace(uint64_t space_to_release,
+                    vm_tools::container::ReleaseSpaceResponse* response);
 
   // Sends a gRPC call to the host to report metrics.
-  static bool ReportMetrics(
-      vm_tools::container::ReportMetricsRequest request,
-      vm_tools::container::ReportMetricsResponse* response);
+  bool ReportMetrics(vm_tools::container::ReportMetricsRequest request,
+                     vm_tools::container::ReportMetricsResponse* response);
 
   // Install Shader Cache DLC and optionally mount it
-  static bool InstallShaderCache(uint64_t steam_app_id, bool mount, bool wait);
+  bool InstallShaderCache(uint64_t steam_app_id, bool mount, bool wait);
 
   // Unmount and uninstall shader cache DLC
-  static bool UninstallShaderCache(uint64_t steam_app_id);
+  bool UninstallShaderCache(uint64_t steam_app_id);
 
   // Unmount shader cache DLC
-  static bool UnmountShaderCache(uint64_t steam_app_id, bool wait);
+  bool UnmountShaderCache(uint64_t steam_app_id, bool wait);
 
   // Sends a gRPC call to the host to request that sleep be inhibited.
-  static bool InhibitScreensaver(
-      vm_tools::container::InhibitScreensaverInfo info);
+  bool InhibitScreensaver(vm_tools::container::InhibitScreensaverInfo info);
 
   // Sends a gRPC call to the host to request that sleep be uninhibited.
-  static bool UninhibitScreensaver(
-      vm_tools::container::UninhibitScreensaverInfo info);
+  bool UninhibitScreensaver(vm_tools::container::UninhibitScreensaverInfo info);
 
   ~HostNotifier() override;
 
   // Notifies the host that garcon is ready. This will send the initial update
   // for the application list and also establish a watcher for any updates to
   // the list of installed applications. Returns false if there was any failure.
-  bool Init(uint32_t garcon_port,
-            uint32_t sftp_port,
-            PackageKitProxy* package_kit_proxy);
+  // Not required when used as a client.
+  bool InitServer(base::OnceClosure shutdown_closure,
+                  uint32_t garcon_port,
+                  uint32_t sftp_port,
+                  PackageKitProxy* package_kit_proxy);
 
   // vm_tools::garcon::PackageKitObserver overrides.
   void OnInstallCompletion(const std::string& command_uuid,
@@ -146,7 +144,7 @@ class HostNotifier : public PackageKitProxy::PackageKitObserver,
     int num_package_id_queries_completed = 0;
   };
 
-  explicit HostNotifier(base::OnceClosure shutdown_closure);
+  explicit HostNotifier(const std::string& token);
   HostNotifier(const HostNotifier&) = delete;
   HostNotifier& operator=(const HostNotifier&) = delete;
 
