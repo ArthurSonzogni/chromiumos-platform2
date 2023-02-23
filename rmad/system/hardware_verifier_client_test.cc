@@ -5,6 +5,8 @@
 #include "rmad/system/hardware_verifier_client_impl.h"
 
 #include <memory>
+#include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
@@ -16,7 +18,6 @@
 #include <google/protobuf/text_format.h>
 #include <gtest/gtest.h>
 #include <hardware_verifier/hardware_verifier.pb.h>
-#include <rmad/proto_bindings/rmad.pb.h>
 #include <runtime_probe/proto_bindings/runtime_probe.pb.h>
 
 #include "rmad/constants.h"
@@ -27,7 +28,7 @@ using testing::StrictMock;
 
 namespace {
 
-const char kVerifyComponentsReplyCompliant[] = R"(
+constexpr char kVerifyComponentsReplyCompliant[] = R"(
   error: ERROR_OK
   hw_verification_report: {
     is_compliant: true
@@ -46,7 +47,7 @@ const char kVerifyComponentsReplyCompliant[] = R"(
   }
 )";
 
-const char kVerifyComponentsReplyNotCompliant[] = R"(
+constexpr char kVerifyComponentsReplyNotCompliant[] = R"(
   error: ERROR_OK
   hw_verification_report: {
     is_compliant: false
@@ -90,15 +91,12 @@ const char kVerifyComponentsReplyNotCompliant[] = R"(
   }
 )";
 
-const char kVerifyComponentsErrorStrNotCompliant[] =
-    R"(Unqualified battery: battery_ABC_abc
-Unqualified camera: camera_000a_000b
-Unqualified dram: unknown_component
-)";
+constexpr std::array<const char*, 3> kVerifyComponentsErrorStrings = {
+    "Unqualified battery: battery_ABC_abc",
+    "Unqualified camera: camera_000a_000b",
+    "Unqualified dram: unknown_component"};
 
-const char kVerifyComponentsReplyError[] = R"(
-  error: ERROR_OTHER_ERROR
-)";
+constexpr char kVerifyComponentsReplyError[] = "error: ERROR_OTHER_ERROR";
 
 }  // namespace
 
@@ -145,11 +143,12 @@ TEST_F(HardwareVerifierClientTest, GetHardwareVerificationResult_Compliant) {
         return hardware_verifier_response;
       });
 
-  HardwareVerificationResult result;
-  EXPECT_TRUE(
-      hardware_verifier_client_->GetHardwareVerificationResult(&result));
-  EXPECT_EQ(result.is_compliant(), true);
-  EXPECT_EQ(result.error_str(), "");
+  bool is_compliant;
+  std::vector<std::string> error_strings;
+  EXPECT_TRUE(hardware_verifier_client_->GetHardwareVerificationResult(
+      &is_compliant, &error_strings));
+  EXPECT_TRUE(is_compliant);
+  EXPECT_EQ(error_strings.size(), 0);
 }
 
 TEST_F(HardwareVerifierClientTest, GetHardwareVerificationResult_NotCompliant) {
@@ -165,11 +164,15 @@ TEST_F(HardwareVerifierClientTest, GetHardwareVerificationResult_NotCompliant) {
         return hardware_verifier_response;
       });
 
-  HardwareVerificationResult result;
-  EXPECT_TRUE(
-      hardware_verifier_client_->GetHardwareVerificationResult(&result));
-  EXPECT_EQ(result.is_compliant(), false);
-  EXPECT_EQ(result.error_str(), kVerifyComponentsErrorStrNotCompliant);
+  bool is_compliant;
+  std::vector<std::string> error_strings;
+  EXPECT_TRUE(hardware_verifier_client_->GetHardwareVerificationResult(
+      &is_compliant, &error_strings));
+  EXPECT_FALSE(is_compliant);
+  EXPECT_EQ(error_strings.size(), 3);
+  for (int i = 0; i < 3; ++i) {
+    EXPECT_EQ(error_strings[i], kVerifyComponentsErrorStrings[i]);
+  }
 }
 
 TEST_F(HardwareVerifierClientTest,
@@ -178,9 +181,10 @@ TEST_F(HardwareVerifierClientTest,
       .WillOnce(
           [](dbus::MethodCall*, int) { return dbus::Response::CreateEmpty(); });
 
-  HardwareVerificationResult result;
-  EXPECT_FALSE(
-      hardware_verifier_client_->GetHardwareVerificationResult(&result));
+  bool is_compliant;
+  std::vector<std::string> error_strings;
+  EXPECT_FALSE(hardware_verifier_client_->GetHardwareVerificationResult(
+      &is_compliant, &error_strings));
 }
 
 TEST_F(HardwareVerifierClientTest,
@@ -197,9 +201,10 @@ TEST_F(HardwareVerifierClientTest,
         return hardware_verifier_response;
       });
 
-  HardwareVerificationResult result;
-  EXPECT_FALSE(
-      hardware_verifier_client_->GetHardwareVerificationResult(&result));
+  bool is_compliant;
+  std::vector<std::string> error_strings;
+  EXPECT_FALSE(hardware_verifier_client_->GetHardwareVerificationResult(
+      &is_compliant, &error_strings));
 }
 
 }  // namespace rmad

@@ -5,6 +5,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_util.h>
 #include <base/memory/scoped_refptr.h>
@@ -25,6 +26,9 @@ using testing::NiceMock;
 using testing::Return;
 using testing::StrictMock;
 
+constexpr char kUnqualifiedDramErrorStr[] = "Unqualified dram: dram_1234";
+constexpr char kUnqualifiedBatteryErrorStr[] =
+    "Unqualified battery: battery_5678";
 constexpr char kVerificationFailedErrorStr[] =
     "Unqualified dram: dram_1234\nUnqualified battery: battery_5678";
 constexpr char kVerificationFailedErrorLogStr[] =
@@ -48,14 +52,15 @@ class WelcomeScreenStateHandlerTest : public StateHandlerTest {
     // Mock |HardwareVerifierClient|.
     auto mock_hardware_verifier_client =
         std::make_unique<NiceMock<MockHardwareVerifierClient>>();
-    ON_CALL(*mock_hardware_verifier_client, GetHardwareVerificationResult(_))
+    ON_CALL(*mock_hardware_verifier_client, GetHardwareVerificationResult(_, _))
         .WillByDefault(
-            [hw_verification_request_success,
-             hw_verification_result](HardwareVerificationResult* result) {
+            [hw_verification_request_success, hw_verification_result](
+                bool* is_compliant, std::vector<std::string>* error_strings) {
               if (hw_verification_request_success) {
-                result->set_is_compliant(hw_verification_result);
+                *is_compliant = hw_verification_result;
                 if (!hw_verification_result) {
-                  result->set_error_str(kVerificationFailedErrorStr);
+                  *error_strings = {kUnqualifiedDramErrorStr,
+                                    kUnqualifiedBatteryErrorStr};
                 }
               }
               return hw_verification_request_success;

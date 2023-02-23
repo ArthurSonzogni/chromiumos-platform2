@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
@@ -17,6 +18,13 @@
 
 #include "rmad/system/hardware_verifier_client_impl.h"
 #include "rmad/utils/dbus_utils.h"
+
+namespace {
+
+constexpr char kNewlineSeparator[] = "\n";
+constexpr char kCommaSeparator[] = ", ";
+
+}  // namespace
 
 namespace rmad {
 
@@ -71,16 +79,19 @@ WelcomeScreenStateHandler::GetNextStateCase(const RmadState& state) {
 }
 
 void WelcomeScreenStateHandler::RunHardwareVerifier() const {
-  HardwareVerificationResult result;
-  if (hardware_verifier_client_->GetHardwareVerificationResult(&result)) {
+  bool is_compliant;
+  std::vector<std::string> error_strings;
+  if (hardware_verifier_client_->GetHardwareVerificationResult(
+          &is_compliant, &error_strings)) {
+    // Use multi-line error string for UX.
+    HardwareVerificationResult result;
+    result.set_is_compliant(is_compliant);
+    result.set_error_str(base::JoinString(error_strings, kNewlineSeparator));
     daemon_callback_->GetHardwareVerificationSignalCallback().Run(result);
-    // TODO(chenghan): A better way of doing this is to change |error_str| into
-    //                 a list of error strings for each component, so we can
-    //                 decide the separator later.
-    std::string single_line_error_str;
-    base::ReplaceChars(result.error_str(), "\n", ", ", &single_line_error_str);
-    RecordUnqualifiedComponentsToLogs(json_store_, result.is_compliant(),
-                                      single_line_error_str);
+    // Use single-line error string for logs.
+    RecordUnqualifiedComponentsToLogs(
+        json_store_, is_compliant,
+        base::JoinString(error_strings, kCommaSeparator));
   } else {
     LOG(ERROR) << "Failed to get hardware verification result";
   }

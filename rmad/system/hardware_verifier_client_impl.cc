@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
@@ -15,7 +16,6 @@
 #include <dbus/object_proxy.h>
 #include <dbus/hardware_verifier/dbus-constants.h>
 #include <hardware_verifier/hardware_verifier.pb.h>
-#include <rmad/proto_bindings/rmad.pb.h>
 
 #include "rmad/utils/component_utils.h"
 
@@ -29,7 +29,7 @@ HardwareVerifierClientImpl::HardwareVerifierClientImpl(
 }
 
 bool HardwareVerifierClientImpl::GetHardwareVerificationResult(
-    HardwareVerificationResult* result) const {
+    bool* is_compliant, std::vector<std::string>* error_strings) const {
   dbus::MethodCall method_call(
       hardware_verifier::kHardwareVerifierInterfaceName,
       hardware_verifier::kVerifyComponentsMethod);
@@ -54,23 +54,22 @@ bool HardwareVerifierClientImpl::GetHardwareVerificationResult(
 
   const hardware_verifier::HwVerificationReport& report =
       reply.hw_verification_report();
-  result->set_is_compliant(report.is_compliant());
-  std::string error_str;
+  *is_compliant = report.is_compliant();
+  error_strings->clear();
   for (int i = 0; i < report.found_component_infos_size(); ++i) {
     const hardware_verifier::ComponentInfo& info =
         report.found_component_infos(i);
     if (info.qualification_status() == hardware_verifier::UNQUALIFIED ||
         info.qualification_status() == hardware_verifier::REJECTED ||
         info.qualification_status() == hardware_verifier::NO_MATCH) {
-      error_str += base::StringPrintf(
-          "Unqualified %s: %s\n",
+      error_strings->emplace_back(base::StringPrintf(
+          "Unqualified %s: %s",
           runtime_probe::ProbeRequest_SupportCategory_Name(
               info.component_category())
               .c_str(),
-          GetComponentFieldsIdentifier(info.component_fields()).c_str());
+          GetComponentFieldsIdentifier(info.component_fields()).c_str()));
     }
   }
-  result->set_error_str(error_str);
   return true;
 }
 

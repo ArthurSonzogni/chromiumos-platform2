@@ -7,9 +7,11 @@
 
 #include "rmad/system/hardware_verifier_client.h"
 
+#include <string>
+#include <vector>
+
 #include <base/memory/scoped_refptr.h>
 #include <dbus/bus.h>
-#include <rmad/proto_bindings/rmad.pb.h>
 
 namespace rmad {
 
@@ -24,7 +26,8 @@ class HardwareVerifierClientImpl : public HardwareVerifierClient {
 
   // TODO(chenghan): Use async call as hardware verification can take a while.
   bool GetHardwareVerificationResult(
-      HardwareVerificationResult* result) const override;
+      bool* is_compliant,
+      std::vector<std::string>* error_strings) const override;
 
  private:
   // Owned by external D-Bus bus.

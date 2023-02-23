@@ -7,6 +7,9 @@
 
 #include "rmad/system/hardware_verifier_client.h"
 
+#include <string>
+#include <vector>
+
 #include <gmock/gmock.h>
 
 namespace rmad {
@@ -18,7 +21,7 @@ class MockHardwareVerifierClient : public HardwareVerifierClient {
 
   MOCK_METHOD(bool,
               GetHardwareVerificationResult,
-              (HardwareVerificationResult*),
+              (bool*, std::vector<std::string>*),
               (const, override));
 };
 

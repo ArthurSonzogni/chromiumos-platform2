@@ -5,7 +5,8 @@
 #ifndef RMAD_SYSTEM_HARDWARE_VERIFIER_CLIENT_H_
 #define RMAD_SYSTEM_HARDWARE_VERIFIER_CLIENT_H_
 
-#include <rmad/proto_bindings/rmad.pb.h>
+#include <string>
+#include <vector>
 
 namespace rmad {
 
@@ -15,7 +16,7 @@ class HardwareVerifierClient {
   virtual ~HardwareVerifierClient() = default;
 
   virtual bool GetHardwareVerificationResult(
-      HardwareVerificationResult* result) const = 0;
+      bool* is_compliant, std::vector<std::string>* error_strings) const = 0;
 };
 
 }  // namespace rmad
