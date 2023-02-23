@@ -183,6 +183,7 @@ Note: in the case of scaled DLCs, it will not update with the OS at the moment.
 [Building a DLC locally]: #Building-a-DLC-locally
 [Enabling a DLC]: #Enabling-a-DLC
 [Install/Uninstall a DLC]: #Install_Uninstall-a-DLC
+[Write tests dependant on a DLC]: #Write-tests-dependant-on-a-DLC
 
 [go/dlc-framework]: https://go/dlc-framework
 [dlcservice]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/dlcservice
