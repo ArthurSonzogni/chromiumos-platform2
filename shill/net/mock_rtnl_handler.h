@@ -36,7 +36,7 @@ class MockRTNLHandler : public RTNLHandler {
               (override));
   MOCK_METHOD(bool,
               AddInterfaceAddress,
-              (int, const IPAddress&, const IPAddress&, const IPAddress&),
+              (int, const IPAddress&, const IPAddress&),
               (override));
   MOCK_METHOD(bool,
               RemoveInterfaceAddress,

@@ -405,10 +405,8 @@ bool RTNLHandler::AddressRequest(int interface_index,
                                  RTNLMessage::Mode mode,
                                  int flags,
                                  const IPAddress& local,
-                                 const IPAddress& broadcast,
-                                 const IPAddress& peer) {
+                                 const IPAddress& broadcast) {
   CHECK(local.family() == broadcast.family());
-  CHECK(local.family() == peer.family());
 
   auto msg = std::make_unique<RTNLMessage>(RTNLMessage::kTypeAddress, mode,
                                            NLM_F_REQUEST | flags, 0, 0,
@@ -420,27 +418,22 @@ bool RTNLHandler::AddressRequest(int interface_index,
   if (!broadcast.IsDefault()) {
     msg->SetAttribute(IFA_BROADCAST, broadcast.address());
   }
-  if (!peer.IsDefault()) {
-    msg->SetAttribute(IFA_ADDRESS, peer.address());
-  }
 
   return SendMessage(std::move(msg), nullptr);
 }
 
 bool RTNLHandler::AddInterfaceAddress(int interface_index,
                                       const IPAddress& local,
-                                      const IPAddress& broadcast,
-                                      const IPAddress& peer) {
+                                      const IPAddress& broadcast) {
   return AddressRequest(interface_index, RTNLMessage::kModeAdd,
                         NLM_F_CREATE | NLM_F_EXCL | NLM_F_ECHO, local,
-                        broadcast, peer);
+                        broadcast);
 }
 
 bool RTNLHandler::RemoveInterfaceAddress(int interface_index,
                                          const IPAddress& local) {
   return AddressRequest(interface_index, RTNLMessage::kModeDelete, NLM_F_ECHO,
-                        local, IPAddress(local.family()),
-                        IPAddress(local.family()));
+                        local, IPAddress(local.family()));
 }
 
 bool RTNLHandler::RemoveInterface(int interface_index) {

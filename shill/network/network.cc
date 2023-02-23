@@ -465,8 +465,7 @@ void Network::ConfigureStaticIPv6Address() {
   }
   local.set_prefix(ipv6_static_properties_->subnet_prefix);
   rtnl_handler_->AddInterfaceAddress(interface_index_, local,
-                                     local.GetDefaultBroadcast(),
-                                     IPAddress(IPAddress::kFamilyIPv6));
+                                     local.GetDefaultBroadcast());
 }
 
 void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {

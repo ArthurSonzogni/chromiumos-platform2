@@ -99,8 +99,7 @@ class SHILL_EXPORT RTNLHandler {
   // 'interface_index'.
   virtual bool AddInterfaceAddress(int interface_index,
                                    const IPAddress& local,
-                                   const IPAddress& gateway,
-                                   const IPAddress& peer);
+                                   const IPAddress& broadcast);
 
   // Remove address from a network interface that has a kernel index of
   // 'interface_index'.
@@ -179,8 +178,7 @@ class SHILL_EXPORT RTNLHandler {
                       RTNLMessage::Mode mode,
                       int flags,
                       const IPAddress& local,
-                      const IPAddress& gateway,
-                      const IPAddress& peer);
+                      const IPAddress& broadcast);
 
   // Send a formatted RTNL message.  Associates an error mask -- a list
   // of errors that are expected and should not trigger log messages by

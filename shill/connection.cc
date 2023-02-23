@@ -289,8 +289,7 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
               << " broadcast=" << broadcast.ToString()
               << " gateway=" << gateway.ToString();
 
-    rtnl_handler_->AddInterfaceAddress(interface_index_, local, broadcast,
-                                       IPAddress(properties.address_family));
+    rtnl_handler_->AddInterfaceAddress(interface_index_, local, broadcast);
     added_addresses_[local.family()] = local;
 
     SetMTU(properties.mtu);
