@@ -79,16 +79,30 @@ class CellularBearer {
   const std::string& apn() const { return apn_; }
   const std::vector<ApnList::ApnType>& apn_types() const { return apn_types_; }
 
- private:
-  friend class CellularBearerTest;
-  FRIEND_TEST(CellularTest, EstablishLinkDHCP);
-  FRIEND_TEST(CellularTest, EstablishLinkPPP);
-  FRIEND_TEST(CellularTest, EstablishLinkStatic);
-  FRIEND_TEST(CellularTest, EstablishLinkFailureNoBearer);
-  FRIEND_TEST(CellularTest, EstablishLinkFailureMismatchedDataInterface);
-  FRIEND_TEST(CellularTest, LinkUpDHCP);
-  FRIEND_TEST(CellularTest, LinkUpStatic);
+  // Setters for unit tests.
+  void set_connected_for_testing(bool connected) { connected_ = connected; }
+  void set_data_interface_for_testing(const std::string& data_interface) {
+    data_interface_ = data_interface;
+  }
+  void set_ipv4_config_method_for_testing(IPConfigMethod ipv4_config_method) {
+    ipv4_config_method_ = ipv4_config_method;
+  }
+  void set_ipv4_config_properties_for_testing(
+      std::unique_ptr<IPConfig::Properties> ipv4_config_properties) {
+    ipv4_config_properties_ = std::move(ipv4_config_properties);
+  }
+  void set_ipv6_config_method_for_testing(IPConfigMethod ipv6_config_method) {
+    ipv6_config_method_ = ipv6_config_method;
+  }
+  void set_ipv6_config_properties_for_testing(
+      std::unique_ptr<IPConfig::Properties> ipv6_config_properties) {
+    ipv6_config_properties_ = std::move(ipv6_config_properties);
+  }
+  void set_apn_type_for_testing(ApnList::ApnType apn_type) {
+    apn_types_.push_back(apn_type);
+  }
 
+ private:
   // Gets the IP configuration method and properties from |properties|.
   // |address_family| specifies the IP address family of the configuration.
   // |ipconfig_method| and |ipconfig_properties| are used to return the IP
@@ -105,29 +119,6 @@ class CellularBearer {
   // Updates bearer properties by fetching the current properties of the
   // corresponding bearer object exposed by ModemManager over DBus.
   void UpdateProperties();
-
-  // Setters for unit tests.
-  void set_connected(bool connected) { connected_ = connected; }
-  void set_data_interface(const std::string& data_interface) {
-    data_interface_ = data_interface;
-  }
-  void set_ipv4_config_method(IPConfigMethod ipv4_config_method) {
-    ipv4_config_method_ = ipv4_config_method;
-  }
-  void set_ipv4_config_properties(
-      std::unique_ptr<IPConfig::Properties> ipv4_config_properties) {
-    ipv4_config_properties_ = std::move(ipv4_config_properties);
-  }
-  void set_ipv6_config_method(IPConfigMethod ipv6_config_method) {
-    ipv6_config_method_ = ipv6_config_method;
-  }
-  void set_ipv6_config_properties(
-      std::unique_ptr<IPConfig::Properties> ipv6_config_properties) {
-    ipv6_config_properties_ = std::move(ipv6_config_properties);
-  }
-  void set_apn_type(ApnList::ApnType apn_type) {
-    apn_types_.push_back(apn_type);
-  }
 
   ControlInterface* control_interface_;
   RpcIdentifier dbus_path_;
