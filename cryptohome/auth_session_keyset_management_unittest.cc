@@ -809,7 +809,6 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSEnabledRemovesBackupVKs) {
 
   AuthSession auth_session(
       {.username = Username(kUsername),
-       .obfuscated_username = SanitizeUserName(Username(kUsername)),
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
@@ -860,7 +859,6 @@ TEST_F(AuthSessionTestWithKeysetManagement, USSEnabledUpdateBackupVKs) {
 
   AuthSession auth_session(
       {.username = Username(kUsername),
-       .obfuscated_username = SanitizeUserName(Username(kUsername)),
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),
@@ -1065,7 +1063,6 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   backing_apis.auth_block_utility = &mock_auth_block_utility_;
   AuthSession auth_session(
       {.username = Username(kUsername),
-       .obfuscated_username = SanitizeUserName(Username(kUsername)),
        .is_ephemeral_user = false,
        .intent = AuthIntent::kDecrypt,
        .timeout_timer = std::make_unique<base::WallClockTimer>(),

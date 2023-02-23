@@ -292,7 +292,6 @@ std::unique_ptr<AuthSession> AuthSession::Create(
   // Assumption here is that keyset_management_ will outlive this AuthSession.
   AuthSession::Params params = {
       .username = std::move(account_id),
-      .obfuscated_username = std::move(obfuscated_username),
       .is_ephemeral_user = flags & AUTH_SESSION_FLAGS_EPHEMERAL_USER,
       .intent = intent,
       .timeout_timer = std::make_unique<base::WallClockTimer>(),

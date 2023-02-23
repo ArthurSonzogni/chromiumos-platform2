@@ -93,7 +93,6 @@ class AuthSession final {
   // depends on, which are defined below in a separate parameter struct.
   struct Params {
     hwsec::ExplicitInit<Username> username;
-    hwsec::ExplicitInit<ObfuscatedUsername> obfuscated_username;
     hwsec::ExplicitInit<bool> is_ephemeral_user;
     hwsec::ExplicitInit<AuthIntent> intent;
     std::unique_ptr<base::WallClockTimer> timeout_timer;
