@@ -114,6 +114,8 @@ if [ ! -d "${CHROME_CPU_CGROUP_DIR}" ]; then
   mkdir -p "${CHROME_CPU_CGROUP_DIR}/foreground"
   mkdir -p "${CHROME_CPU_CGROUP_DIR}/background"
   echo "10" > "${CHROME_CPU_CGROUP_DIR}/background/cpu.shares"
+  # Allow featured to still modify these values
+  chmod -R g+w "${CHROME_CPU_CGROUP_DIR}"
   chown -R chronos "${CHROME_CPU_CGROUP_DIR}"
 fi
 
