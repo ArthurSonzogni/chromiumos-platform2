@@ -363,8 +363,7 @@ TEST_F(AuthSessionWithTpmSimulatorUssMigrationTest,
   auto create_auth_session = [this]() {
     return AuthSession::Create(
         kUsername, user_data_auth::AUTH_SESSION_FLAGS_NONE,
-        AuthIntent::kDecrypt,
-        /*on_timeout=*/base::DoNothing(), &platform_features_, backing_apis_);
+        AuthIntent::kDecrypt, &platform_features_, backing_apis_);
   };
 
   //  Assert. Create a user with password and PIN VKs.
