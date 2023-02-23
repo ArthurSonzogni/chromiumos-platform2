@@ -3,7 +3,7 @@
 # found in the LICENSE file.
 
 import("//common-mk/generate-dbus-proxies.gni")
-import("//common-mk/install_seccomp_policy.gni")
+import("//diagnostics/cros_healthd/seccomp/check_seccomp.gni")
 
 group("all") {
   deps = [
@@ -70,7 +70,7 @@ generate_dbus_proxies("fwupd-proxies") {
   mock_output_file = "include/fwupd/dbus-proxy-mocks.h"
 }
 
-install_seccomp_policy("diagnostics_seccomp") {
+install_and_check_seccomp_policy("diagnostics_seccomp") {
   _arch = getenv("ARCH")
   sources = [
     "cros_healthd/seccomp/${_arch}/ec_led-seccomp.policy",
