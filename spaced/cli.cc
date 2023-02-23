@@ -15,6 +15,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_descriptor_watcher_posix.h>
 #include <base/run_loop.h>
+#include <base/strings/stringprintf.h>
 #include <base/threading/thread.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
@@ -34,10 +35,25 @@ std::ostream& operator<<(std::ostream& out, const Size size) {
   if (i < 0)
     return out << "error (" << i << ")";
 
-  if (human_readable_sizes)
-    return out << i << " bytes (" << (i >> 20) << " MiB)";
+  out << i;
 
-  return out << i;
+  if (!human_readable_sizes)
+    return out;
+
+  out << " bytes";
+
+  if (i < 1024)
+    return out;
+
+  double d = static_cast<double>(i) / 1024;
+  const char* unit = "KMGT";
+  while (d >= 1024 && *unit != '\0') {
+    d /= 1024;
+    unit++;
+  }
+
+  const int precision = d < 10 ? 2 : d < 100 ? 1 : 0;
+  return out << base::StringPrintf(" (%.*f %c)", precision, d, *unit);
 }
 
 class NumPunct : public std::numpunct<char> {
