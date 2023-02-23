@@ -573,11 +573,17 @@ grpc::Status ServiceImpl::ConfigureContainerGuest(
   LOG(INFO) << "Received ConfigureContainerGuest request";
   Init::ProcessLaunchInfo launch_info;
 
+  base::ScopedFD token_fd(
+      HANDLE_EINTR(open(vm_tools::kGarconContainerTokenFile,
+                        O_CREAT | O_WRONLY | O_TRUNC | O_CLOEXEC, 0644)));
+  if (!token_fd.is_valid()) {
+    return grpc::Status(grpc::INTERNAL,
+                        "failed to open container token for writing");
+  }
+
   // Tell garcon what the token is.
-  base::FilePath token_path{vm_tools::kGarconContainerTokenFile};
-  if (base::WriteFile(token_path, request->container_token().c_str(),
-                      request->container_token().size()) !=
-      request->container_token().size()) {
+  if (!base::WriteFileDescriptor(token_fd.get(),
+                                 request->container_token().c_str())) {
     return grpc::Status(grpc::INTERNAL,
                         "failed to write container token to file");
   }
