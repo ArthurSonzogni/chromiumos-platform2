@@ -545,7 +545,8 @@ TEST(DatapathTest, Stop) {
   datapath.Stop();
 }
 
-TEST(DatapathTest, AddTAP) {
+// TODO(b/270606885): Migrate to VM tests or mock out TAP interfaces.
+TEST(DatapathTest, DISABLED_AddTAP) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
   FakeSystem system;
@@ -563,7 +564,8 @@ TEST(DatapathTest, AddTAP) {
   EXPECT_EQ(system.ioctl_reqs, expected);
 }
 
-TEST(DatapathTest, AddTAPWithOwner) {
+// TODO(b/270606885): Migrate to VM tests or mock out TAP interfaces.
+TEST(DatapathTest, DISABLED_AddTAPWithOwner) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
   FakeSystem system;
@@ -581,7 +583,8 @@ TEST(DatapathTest, AddTAPWithOwner) {
   EXPECT_EQ(system.ioctl_reqs, expected);
 }
 
-TEST(DatapathTest, AddTAPNoAddrs) {
+// TODO(b/270606885): Migrate to VM tests or mock out TAP interfaces.
+TEST(DatapathTest, DISABLED_AddTAPNoAddrs) {
   auto runner = new MockProcessRunner();
   auto firewall = new MockFirewall();
   FakeSystem system;
