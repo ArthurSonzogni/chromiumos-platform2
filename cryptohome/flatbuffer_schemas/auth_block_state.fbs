@@ -69,7 +69,7 @@ table FingerprintAuthBlockState (secure) {
   // fingerprint is enrolled, and is part of biod's authentication response.
   // Useful in identify the right FingerprintAuthBlockState for key derivation
   // when there are multiple fingerprint auth factors.
-  template_id:[byte] (id: 0);
+  template_id:string (id: 0);
   // The label of the LE hash tree leaf which stores a high entropy gsc_secret,
   // protected by auth_pin.
   gsc_secret_label:ulong = null (id: 1, optional);
