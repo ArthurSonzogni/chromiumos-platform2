@@ -39,6 +39,9 @@ constexpr char kKernelPath[] = "/opt/google/vms/android/vmlinux";
 // Path to the VM rootfs image file.
 constexpr char kRootfsPath[] = "/opt/google/vms/android/system.raw.img";
 
+// Path to the VM ramdisk file.
+constexpr char kRamdiskPath[] = "/opt/google/vms/android/ramdisk.img";
+
 // Path to the VM fstab file.
 constexpr char kFstabPath[] = "/run/arcvm/host_generated/fstab";
 
@@ -452,7 +455,6 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
       .AppendKernelParam(base::JoinString(params, " "))
       .AppendCustomParam("--vcpu-cgroup-path",
                          base::FilePath(kArcvmVcpuCpuCgroup).value())
-      .AppendCustomParam("--android-fstab", kFstabPath)
       .AppendCustomParam(
           "--pstore",
           base::StringPrintf("path=%s,size=%" PRId64,
@@ -463,6 +465,12 @@ StartVmResponse Service::StartArcVm(StartArcVmRequest request,
       .EnableSmt(false /* enable */)
       .EnablePerVmCoreScheduling(request.use_per_vm_core_scheduling())
       .SetWaylandSocket(request.vm().wayland_server());
+
+  if (USE_ARCVM_GKI) {
+    vm_builder.AppendCustomParam("--initrd", kRamdiskPath);
+  } else {
+    vm_builder.AppendCustomParam("--android-fstab", kFstabPath);
+  }
 
   if (request.enable_rt_vcpu()) {
     vm_builder.AppendCustomParam("--rt-cpus", topology.RTCPUMask());

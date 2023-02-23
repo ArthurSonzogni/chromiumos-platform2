@@ -199,6 +199,7 @@ static_library("libconcierge") {
     "vboot_host",
     "vm_protos",
   ]
+  defines = [ "USE_ARCVM_GKI=${use.arcvm_gki}" ]
 
   # TODO(crbug.com/1082873): Remove after fixing usage of deprecated
   # declarations.
