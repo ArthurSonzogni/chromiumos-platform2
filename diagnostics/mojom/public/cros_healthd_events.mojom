@@ -389,8 +389,8 @@ struct TouchscreenTouchEvent {
   array<TouchPointInfo> touch_points@0;
 };
 
-// Emitted once the observer get connected to the touchscreen events. This will be
-// the first event from the touchscreen.
+// Emitted once the observer get connected to the touchscreen events. This will
+// be the first event from the touchscreen.
 //
 // NextMinVersion: 1, NextIndex: 3
 [Stable]
