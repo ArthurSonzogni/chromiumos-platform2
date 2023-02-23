@@ -336,10 +336,12 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
   }
 
   void SetSignalProxy() {
+    capability_->proxies_initialized_ = true;
     capability_->modem_signal_proxy_ = std::move(modem_signal_proxy_);
   }
 
   void SetSimpleProxy() {
+    capability_->proxies_initialized_ = true;
     capability_->modem_simple_proxy_ = std::move(modem_simple_proxy_);
   }
 
@@ -352,6 +354,7 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
   }
 
   void ReleaseCapabilityProxies() {
+    EXPECT_EQ(true, capability_->proxies_initialized_);
     capability_->ReleaseProxies();
     EXPECT_EQ(nullptr, capability_->modem_3gpp_proxy_);
     EXPECT_EQ(nullptr, capability_->modem_3gpp_profile_manager_proxy_);
@@ -770,9 +773,11 @@ TEST_F(CellularCapability3gppTest, TerminationActionRemovedByStopModem) {
 }
 
 TEST_F(CellularCapability3gppTest, DisconnectNoProxy) {
+  mm1::MockModemSimpleProxy* modem_simple_proxy = modem_simple_proxy_.get();
+  SetSimpleProxy();
   ResultCallback disconnect_callback;
   EXPECT_CALL(
-      *modem_simple_proxy_,
+      *modem_simple_proxy,
       Disconnect(_, _,
                  CellularCapability3gpp::kTimeoutDisconnect.InMilliseconds()))
       .Times(0);
