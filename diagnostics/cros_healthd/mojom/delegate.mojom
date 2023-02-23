@@ -67,4 +67,10 @@ interface Delegate {
   // The request:
   // * |observer| - The observer to notify client.
   MonitorTouchscreen(pending_remote<TouchscreenObserver> observer);
+
+  // Monitor stylus garage events.
+  //
+  // The request:
+  // * |observer| - The observer to notify client.
+  MonitorStylusGarage(pending_remote<StylusGarageObserver> observer);
 };

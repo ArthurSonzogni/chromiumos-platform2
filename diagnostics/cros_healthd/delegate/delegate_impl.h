@@ -38,6 +38,9 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
   void MonitorTouchscreen(
       mojo::PendingRemote<ash::cros_healthd::mojom::TouchscreenObserver>
           observer) override;
+  void MonitorStylusGarage(
+      mojo::PendingRemote<ash::cros_healthd::mojom::StylusGarageObserver>
+          observer) override;
 };
 
 }  // namespace diagnostics

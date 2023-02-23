@@ -164,6 +164,18 @@ std::string EnumToString(mojom::HdmiEventInfo::State state) {
   }
 }
 
+std::string EnumToString(mojom::StylusGarageEventInfo::State state) {
+  switch (state) {
+    case mojom::StylusGarageEventInfo::State::kUnmappedEnumField:
+      LOG(FATAL) << "Got UnmappedEnumField";
+      return "UnmappedEnumField";
+    case mojom::StylusGarageEventInfo::State::kInsert:
+      return "Insert";
+    case mojom::StylusGarageEventInfo::State::kRemove:
+      return "Remove";
+  }
+}
+
 void OutputUsbEventInfo(const mojom::UsbEventInfoPtr& info) {
   base::Value::Dict output;
 
@@ -360,6 +372,11 @@ void OutputHdmiEventInfo(const mojom::HdmiEventInfoPtr& info) {
             << std::endl;
 }
 
+void OutputStylusGarageEventInfo(const mojom::StylusGarageEventInfoPtr& info) {
+  std::cout << "Stylus garage event received: " << EnumToString(info->state)
+            << std::endl;
+}
+
 }  // namespace
 
 EventSubscriber::EventSubscriber() {
@@ -433,6 +450,9 @@ void EventSubscriber::OnEvent(const mojom::EventInfoPtr info) {
       break;
     case mojom::EventInfo::Tag::kTouchscreenEventInfo:
       OutputTouchscreenEventInfo(info->get_touchscreen_event_info());
+      break;
+    case mojom::EventInfo::Tag::kStylusGarageEventInfo:
+      OutputStylusGarageEventInfo(info->get_stylus_garage_event_info());
       break;
   }
 }

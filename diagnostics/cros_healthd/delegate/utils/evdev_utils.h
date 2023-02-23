@@ -117,6 +117,24 @@ class EvdevTouchscreenObserver final : public EvdevUtil::Delegate {
   EvdevUtil evdev_util_{this};
 };
 
+class EvdevStylusGarageObserver final : public EvdevUtil::Delegate {
+ public:
+  explicit EvdevStylusGarageObserver(
+      mojo::PendingRemote<ash::cros_healthd::mojom::StylusGarageObserver>
+          observer);
+
+  // EvdevUtil::Delegate overrides.
+  bool IsTarget(libevdev* dev) override;
+  void FireEvent(const input_event& event, libevdev* dev) override;
+  void InitializationFail(uint32_t custom_reason,
+                          const std::string& description) override;
+  void ReportProperties(libevdev* dev) override;
+
+ private:
+  mojo::Remote<ash::cros_healthd::mojom::StylusGarageObserver> observer_;
+  EvdevUtil evdev_util_{this};
+};
+
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_CROS_HEALTHD_DELEGATE_UTILS_EVDEV_UTILS_H_

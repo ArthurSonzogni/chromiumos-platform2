@@ -268,4 +268,34 @@ void EvdevTouchscreenObserver::ReportProperties(libevdev* dev) {
   observer_->OnConnected(std::move(connected_event));
 }
 
+EvdevStylusGarageObserver::EvdevStylusGarageObserver(
+    mojo::PendingRemote<mojom::StylusGarageObserver> observer)
+    : observer_(std::move(observer)) {}
+
+bool EvdevStylusGarageObserver::IsTarget(libevdev* dev) {
+  return libevdev_has_event_code(dev, EV_SW, SW_PEN_INSERTED);
+}
+
+void EvdevStylusGarageObserver::FireEvent(const input_event& ev,
+                                          libevdev* dev) {
+  if (ev.type != EV_SW) {
+    return;
+  }
+
+  if (ev.code == SW_PEN_INSERTED) {
+    if (ev.value == 1) {
+      observer_->OnInsert();
+    } else {
+      observer_->OnRemove();
+    }
+  }
+}
+
+void EvdevStylusGarageObserver::InitializationFail(
+    uint32_t custom_reason, const std::string& description) {
+  observer_.ResetWithReason(custom_reason, description);
+}
+
+void EvdevStylusGarageObserver::ReportProperties(libevdev* dev) {}
+
 }  // namespace diagnostics

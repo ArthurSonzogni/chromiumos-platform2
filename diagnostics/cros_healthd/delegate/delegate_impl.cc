@@ -268,4 +268,11 @@ void DelegateImpl::MonitorTouchscreen(
   new EvdevTouchscreenObserver(std::move(observer));
 }
 
+void DelegateImpl::MonitorStylusGarage(
+    mojo::PendingRemote<mojom::StylusGarageObserver> observer) {
+  // Long-run method. The following object keeps alive until the process
+  // terminates.
+  new EvdevStylusGarageObserver(std::move(observer));
+}
+
 }  // namespace diagnostics

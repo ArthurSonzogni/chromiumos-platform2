@@ -514,6 +514,26 @@ void Executor::MonitorTouchscreen(
                      std::move(process_control_receiver)));
 }
 
+void Executor::MonitorStylusGarage(
+    mojo::PendingRemote<mojom::StylusGarageObserver> observer,
+    mojo::PendingReceiver<mojom::ProcessControl> process_control_receiver) {
+  auto delegate = std::make_unique<DelegateProcess>(
+      seccomp_file::kEvdev, user::kEvdev, kNullCapability,
+      /*readonly_mount_points=*/
+      std::vector<base::FilePath>{base::FilePath{"/dev/input"}},
+      /*writable_mount_points=*/
+      std::vector<base::FilePath>{});
+
+  delegate->remote()->MonitorStylusGarage(std::move(observer));
+  auto controller = std::make_unique<ProcessControl>(std::move(delegate));
+
+  base::SequencedTaskRunnerHandle::Get()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&Executor::RunLongRunningDelegate,
+                     weak_factory_.GetWeakPtr(), std::move(controller),
+                     std::move(process_control_receiver)));
+}
+
 void Executor::RunAndWaitProcess(
     std::unique_ptr<brillo::Process> process,
     base::OnceCallback<void(mojom::ExecutedProcessResultPtr)> callback,
