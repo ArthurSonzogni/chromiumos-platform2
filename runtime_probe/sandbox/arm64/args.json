@@ -123,6 +123,7 @@
       "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
       "-k",
       "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M"
-    ]
+    ],
+    "user": "arc-camera"
   }
 }
