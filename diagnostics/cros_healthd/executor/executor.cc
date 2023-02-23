@@ -137,6 +137,8 @@ base::FilePath FileEnumToFilePath(mojom::Executor::File file_enum) {
           "SecureBoot-8be4df61-93ca-11d2-aa0d-00e098032b8c"};
     case mojom::Executor::File::kUEFIPlatformSize:
       return base::FilePath{"/sys/firmware/efi/fw_platform_size"};
+    case mojom::Executor::File::kWirelessPowerScheme:
+      return base::FilePath{"/sys/module/iwlmvm/parameters/power_scheme"};
   }
 }
 

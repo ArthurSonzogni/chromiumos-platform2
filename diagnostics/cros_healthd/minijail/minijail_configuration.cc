@@ -119,9 +119,6 @@ void EnterHealthdMinijail() {
   // TPM did_vid file.
   BindMountIfPathExists(jail.get(),
                         base::FilePath("/sys/class/tpm/tpm0/did_vid"));
-  // Files related to the wireless information.
-  BindMountIfPathExists(jail.get(),
-                        base::FilePath("/sys/module/iwlmvm/parameters"));
 
   // Create a new tmpfs filesystem for /var and mount necessary files.
   minijail_mount_with_data(jail.get(), "tmpfs", "/var", "tmpfs", 0, "");

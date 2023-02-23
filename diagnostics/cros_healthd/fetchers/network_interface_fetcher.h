@@ -18,9 +18,6 @@ namespace diagnostics {
 
 class Context;
 
-constexpr char kRelativeWirelessPowerSchemePath[] =
-    "sys/module/iwlmvm/parameters/power_scheme";
-
 using FetchNetworkInterfaceInfoCallback = base::OnceCallback<void(
     ash::cros_healthd::mojom::NetworkInterfaceResultPtr)>;
 void FetchNetworkInterfaceInfo(Context* context,

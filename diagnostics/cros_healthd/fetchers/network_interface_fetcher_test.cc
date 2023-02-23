@@ -6,6 +6,7 @@
 
 #include <cstdint>
 #include <cstdlib>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -32,6 +33,7 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 using IwCommand = mojom::Executor::IwCommand;
 using ::testing::_;
+using ::testing::AnyNumber;
 using ::testing::Invoke;
 using ::testing::Return;
 using ::testing::WithArg;
@@ -81,9 +83,7 @@ class NetworkInterfaceFetcherTest : public ::testing::Test {
   NetworkInterfaceFetcherTest() = default;
 
   void SetUp() override {
-    ASSERT_TRUE(WriteFileAndCreateParentDirs(
-        root_dir().Append(kRelativeWirelessPowerSchemePath),
-        kFakePowerSchemeContent));
+    MockReadPowerSchema(kFakePowerSchemeContent);
     MockIw(IwCommand::kDev, "", EXIT_SUCCESS, kFakeGetInterfacesOutput);
     MockIw(IwCommand::kLink, kExpectedInterfaceName, EXIT_SUCCESS,
            kFakeGetLinkOutput);
@@ -118,6 +118,15 @@ class NetworkInterfaceFetcherTest : public ::testing::Test {
               result->return_code = return_code;
               result->out = output;
               std::move(callback).Run(std::move(result));
+            })));
+  }
+
+  void MockReadPowerSchema(const std::optional<std::string>& content) {
+    EXPECT_CALL(*mock_context_.mock_executor(),
+                ReadFile(mojom::Executor::File::kWirelessPowerScheme, _))
+        .WillRepeatedly(
+            WithArg<1>(Invoke([=](mojom::Executor::ReadFileCallback callback) {
+              std::move(callback).Run(std::move(content));
             })));
   }
 
@@ -239,8 +248,7 @@ TEST_F(NetworkInterfaceFetcherTest, TestNoWirelessAdapterFound) {
 
 // Test case: missing /sys/module/iwlmvm/parameters/power_scheme file.
 TEST_F(NetworkInterfaceFetcherTest, TestMissingPowerSchemeFile) {
-  ASSERT_TRUE(
-      base::DeleteFile(root_dir().Append(kRelativeWirelessPowerSchemePath)));
+  MockReadPowerSchema(std::nullopt);
 
   auto result = FetchNetworkInterfaceInfoSync();
   ASSERT_TRUE(result->is_network_interface_info());

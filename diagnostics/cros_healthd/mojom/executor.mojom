@@ -90,6 +90,7 @@ interface Executor {
   enum File {
     kUEFISecureBootVariable,
     kUEFIPlatformSize,
+    kWirelessPowerScheme,
   };
   ReadFile(File file_enum) => (string? content);
 

@@ -79,6 +79,8 @@ class State {
 
   void HandleScanDump(mojom::ExecutedProcessResultPtr result);
 
+  void HandlePowerSchema(const std::optional<std::string>& content);
+
   void HandleResult(FetchNetworkInterfaceInfoCallback callback, bool success);
 
   bool CheckIwResult(const mojom::ExecutedProcessResultPtr& result);
@@ -309,27 +311,28 @@ void State::HandleInterfaceName(Context* context,
   }
   wireless_info_->interface_name = interface_name;
 
-  std::string file_contents;
-  wireless_info_->power_management_on = false;
-  if (ReadAndTrimString(
-          context->root_dir().Append(kRelativeWirelessPowerSchemePath),
-          &file_contents)) {
-    uint power_scheme;
-    if (!base::StringToUint(file_contents, &power_scheme)) {
-      error_ = CreateAndLogProbeError(
-          mojom::ErrorType::kParseError,
-          "Failed to convert power scheme to integer: " + file_contents);
-      return;
-    }
-    if ((power_scheme == 2) || (power_scheme == 3)) {
-      wireless_info_->power_management_on = true;
-    }
-  }
-
   context->executor()->RunIw(
       mojom::Executor::IwCommand::kLink, wireless_info_->interface_name,
       base::BindOnce(&State::HandleLink, base::Unretained(this), context,
                      std::move(on_complete)));
+}
+
+void State::HandlePowerSchema(const std::optional<std::string>& content) {
+  if (!content) {
+    return;
+  }
+  std::string content_trimmed;
+  base::TrimWhitespaceASCII(content.value(), base::TRIM_ALL, &content_trimmed);
+
+  uint power_scheme;
+  if (!base::StringToUint(content_trimmed, &power_scheme)) {
+    error_ = CreateAndLogProbeError(
+        mojom::ErrorType::kParseError,
+        "Failed to convert power scheme to integer: " + content_trimmed);
+    return;
+  }
+  wireless_info_->power_management_on =
+      (power_scheme == 2) || (power_scheme == 3);
 }
 
 void State::HandleResult(FetchNetworkInterfaceInfoCallback callback,
@@ -365,6 +368,10 @@ void FetchNetworkInterfaceInfo(Context* context,
       base::BindOnce(
           &State::HandleInterfaceName, base::Unretained(state_ptr), context,
           base::ScopedClosureRunner(barrier.CreateDependencyClosure())));
+  context->executor()->ReadFile(
+      mojom::Executor::File::kWirelessPowerScheme,
+      barrier.Depend(base::BindOnce(&State::HandlePowerSchema,
+                                    base::Unretained(state_ptr))));
 }
 
 }  // namespace diagnostics
