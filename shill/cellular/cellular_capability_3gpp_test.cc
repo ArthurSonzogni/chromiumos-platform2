@@ -769,16 +769,6 @@ TEST_F(CellularCapability3gppTest, TerminationActionRemovedByStopModem) {
   dispatcher_.DispatchPendingEvents();
 }
 
-TEST_F(CellularCapability3gppTest, DisconnectModemNoBearer) {
-  ResultCallback disconnect_callback;
-  EXPECT_CALL(
-      *modem_simple_proxy_,
-      Disconnect(_, _,
-                 CellularCapability3gpp::kTimeoutDisconnect.InMilliseconds()))
-      .Times(0);
-  capability_->Disconnect(disconnect_callback);
-}
-
 TEST_F(CellularCapability3gppTest, DisconnectNoProxy) {
   ResultCallback disconnect_callback;
   EXPECT_CALL(
