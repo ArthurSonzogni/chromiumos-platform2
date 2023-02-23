@@ -536,8 +536,21 @@ int main(int argc, char** argv) {
 
   std::string token = GetSecurityToken();
   if (token.empty()) {
-    LOG(ERROR) << "Failed to read the security token.";
-    return -1;
+    if (clientMode) {
+      LOG(ERROR) << "Failed to read the security token.";
+      return -1;
+    } else {
+      LOG(WARNING) << "Failed to read the security token, retrying.";
+      base::TimeTicks start = base::TimeTicks::Now();
+      while (token.empty()) {
+        if (base::TimeTicks::Now() - start > base::Minutes(1)) {
+          LOG(ERROR) << "Timed out waiting for security token.";
+          return -1;
+        }
+        base::PlatformThread::Sleep(base::Milliseconds(100));
+        token = GetSecurityToken();
+      }
+    }
   }
 
   std::unique_ptr<vm_tools::garcon::HostNotifier> host_notifier =
