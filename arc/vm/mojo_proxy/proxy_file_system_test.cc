@@ -127,20 +127,8 @@ class ProxyFileSystemTest : public testing::Test,
 };
 
 // On ARM devices, unit tests run without necessary capabilities in QEMU.
-#if defined(ARCH_CPU_ARM_FAMILY)
-#define MAYBE_RegularFileReadTest DISABLED_RegularFileReadTest
-#define MAYBE_RegularFileWriteTest DISABLED_RegularFileWriteTest
-#define MAYBE_RegularFileReadWriteTest DISABLED_RegularFileReadWriteTest
-#define MAYBE_RegularFileTruncateAndStatTest \
-  DISABLED_RegularFileTruncateAndStatTest
-#else
-#define MAYBE_RegularFileReadTest RegularFileReadTest
-#define MAYBE_RegularFileWriteTest RegularFileWriteTest
-#define MAYBE_RegularFileReadWriteTest RegularFileReadWriteTest
-#define MAYBE_RegularFileTruncateAndStatTest RegularFileTruncateAndStatTest
-#endif
-
-TEST_F(ProxyFileSystemTest, MAYBE_RegularFileReadTest) {
+// TODO(b/270608749): Migrate to VM tests.
+TEST_F(ProxyFileSystemTest, DISABLED_RegularFileReadTest) {
   data_ = kTestData;
 
   base::ScopedFD fd = file_system_->RegisterHandle(kHandle, O_RDONLY);
@@ -159,7 +147,9 @@ TEST_F(ProxyFileSystemTest, MAYBE_RegularFileReadTest) {
   close_was_called_.Wait();
 }
 
-TEST_F(ProxyFileSystemTest, MAYBE_RegularFileWriteTest) {
+// On ARM devices, unit tests run without necessary capabilities in QEMU.
+// TODO(b/270608749): Migrate to VM tests.
+TEST_F(ProxyFileSystemTest, DISABLED_RegularFileWriteTest) {
   base::ScopedFD fd = file_system_->RegisterHandle(kHandle, O_WRONLY);
   ASSERT_EQ(10, HANDLE_EINTR(write(fd.get(), kTestData, 10)));
   ASSERT_EQ(10, HANDLE_EINTR(write(fd.get(), kTestData + 10, 10)));
@@ -171,7 +161,9 @@ TEST_F(ProxyFileSystemTest, MAYBE_RegularFileWriteTest) {
   close_was_called_.Wait();
 }
 
-TEST_F(ProxyFileSystemTest, MAYBE_RegularFileReadWriteTest) {
+// On ARM devices, unit tests run without necessary capabilities in QEMU.
+// TODO(b/270608749): Migrate to VM tests.
+TEST_F(ProxyFileSystemTest, DISABLED_RegularFileReadWriteTest) {
   base::ScopedFD fd = file_system_->RegisterHandle(kHandle, O_RDWR);
   ASSERT_EQ(26, HANDLE_EINTR(pwrite(fd.get(), kTestData, 26, 0)));
   EXPECT_EQ(kTestData, data_);
@@ -185,7 +177,9 @@ TEST_F(ProxyFileSystemTest, MAYBE_RegularFileReadWriteTest) {
   close_was_called_.Wait();
 }
 
-TEST_F(ProxyFileSystemTest, MAYBE_RegularFileTruncateAndStatTest) {
+// On ARM devices, unit tests run without necessary capabilities in QEMU.
+// TODO(b/270608749): Migrate to VM tests.
+TEST_F(ProxyFileSystemTest, DISABLED_RegularFileTruncateAndStatTest) {
   constexpr int64_t kLength = 5;
   base::ScopedFD fd = file_system_->RegisterHandle(kHandle, O_RDWR);
   EXPECT_EQ(0, HANDLE_EINTR(ftruncate(fd.get(), kLength)));
