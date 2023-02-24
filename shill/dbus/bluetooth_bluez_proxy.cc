@@ -43,6 +43,7 @@ BluetoothBlueZProxy::BluetoothBlueZProxy(const scoped_refptr<dbus::Bus>& bus,
 bool BluetoothBlueZProxy::GetAdapterPowered(bool* powered) const {
   if (!init_complete_) {
     LOG(ERROR) << __func__ << ": BT BlueZ adapter is not ready";
+    return false;
   }
   if (!bluez_proxy_->GetProperties()->GetAndBlock(
           &bluez_proxy_->GetProperties()->powered)) {
