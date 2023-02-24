@@ -1,8 +1,0 @@
-bslot=@BSLOT@
-include_dir=@INCLUDE_DIR@
-
-Name: libtpmcrypto
-Description: Crypto with TPM sealed keys
-Version: ${bslot}
-CFlags: -I${include_dir}
-Libs: -ltpmcrypto
