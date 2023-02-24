@@ -15,6 +15,7 @@
 #include <base/functional/callback.h>
 #include <base/memory/ref_counted.h>
 #include <base/time/time.h>
+#include <base/timer/timer.h>
 #include <brillo/asynchronous_signal_handler.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/bus.h>
@@ -248,6 +249,11 @@ class SessionManagerService
   // the 'SessionManagerLivenessCheck' feature.
   void OnLivenessCheckEnabled(std::optional<bool> enabled);
 
+  // Called on timeout for the SIGABRT by AbortBrowserForHang().
+  void OnAbortTimedOut();
+  // Called on timeout for the SIGKILL by AbortBrowserForHang().
+  void OnSigkillTimedOut();
+
   std::unique_ptr<BrowserJobInterface> browser_;
   std::optional<base::FilePath> chrome_mount_ns_path_;
   base::TimeTicks last_browser_restart_time_;
@@ -288,6 +294,19 @@ class SessionManagerService
 
   // Holds pointers to nss_, key_gen_, this. Shares system_, login_metrics_.
   std::unique_ptr<SessionManagerInterface> impl_;
+
+  // Aborting flow triggered by AbortBrowserForHang is as follows:
+  // First, send SIGABRT to the browser process.
+  //   - If the browser is terminated expectedly, HandleExit is called.
+  //     The aborting is completed here.
+  // If the browser is not terminated on timeout, send SIGKILL to all chrome
+  // processes.
+  //   - If the browser is terminated expectedly, HandleExit is called.
+  //     The aborting is completed here.
+  // If it still timed out, unfortunately, there's nothing we can do. Leaving
+  // the log message.
+  // This |abort_timer_| is to handle the time out for HandleExit waiting.
+  base::OneShotTimer abort_timer_;
 
   brillo::AsynchronousSignalHandler signal_handler_;
   std::unique_ptr<ChildExitDispatcher> child_exit_dispatcher_;

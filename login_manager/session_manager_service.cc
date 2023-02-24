@@ -292,6 +292,7 @@ void SessionManagerService::ScheduleShutdown() {
 }
 
 void SessionManagerService::RunBrowser() {
+  DCHECK(!abort_timer_.IsRunning());
   browser_->RunInBackground();
   // Call |ClearBrowserDataMigrationArgs()| and
   // |ClearBrowserDataBackwardMigrationArgs()| here to ensure that the migration
@@ -320,9 +321,37 @@ void SessionManagerService::RunBrowser() {
 }
 
 void SessionManagerService::AbortBrowserForHang() {
+  if (abort_timer_.IsRunning()) {
+    LOG(WARNING) << "Aborting the browser is in progress.";
+    return;
+  }
+
   LOG(INFO) << "Browser did not respond to DBus liveness check.";
   WriteBrowserPidFile(aborted_browser_pid_path_);
-  browser_->AbortAndKillAll(GetKillTimeout());
+  browser_->Kill(SIGABRT, "Browser aborted");
+  // Set a timer to trigger SIGKILL on timeout.
+  // In common case, we expect HandleExit will run the post-process of the
+  // termination of SIGABRT above before this timer, and it will be cancelled
+  // in HandleExit.
+  abort_timer_.Start(FROM_HERE, GetKillTimeout(),
+                     base::BindOnce(&SessionManagerService::OnAbortTimedOut,
+                                    base::Unretained(this)));
+}
+
+void SessionManagerService::OnAbortTimedOut() {
+  // The browser process is not terminated yet by the SIGABRT.
+  // Send SIGKILL to all the Chrome processes as a last resort.
+  browser_->KillEverything(SIGKILL, "Timed out on aborting");
+  abort_timer_.Start(FROM_HERE, base::Seconds(1),
+                     base::BindOnce(&SessionManagerService::OnSigkillTimedOut,
+                                    base::Unretained(this)));
+}
+
+void SessionManagerService::OnSigkillTimedOut() {
+  pid_t pid = browser_->CurrentPid();
+  // Timer should be cancelled on browser process termination.
+  DCHECK_GE(pid, 0);
+  LOG(ERROR) << "Browser process " << pid << "'s group still not gone ";
 }
 
 void SessionManagerService::SetBrowserTestArgs(
@@ -397,6 +426,8 @@ bool SessionManagerService::HandleExit(const siginfo_t& status) {
   if (!IsBrowser(status.si_pid))
     return false;
 
+  // The browser process is terminated. Stop the aborting process.
+  abort_timer_.Stop();
   LOG(INFO) << "Browser process " << status.si_pid << " exited with "
             << GetExitDescription(status);
 
