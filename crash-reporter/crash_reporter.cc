@@ -159,6 +159,8 @@ int BootCollect(
   // Copy lsb-release and os-release into system crash spool.  Done after
   // collecting so that boot-time collected crashes will be associated with the
   // previous boot.
+  // TODO(b/270434087): Handle kernel crashes that happen *before* this data is
+  // saved.
   unclean_shutdown_collector->SaveVersionData();
 
   // Presence of this files unblocks powerd from performing lid-closed action

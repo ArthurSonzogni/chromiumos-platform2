@@ -417,12 +417,21 @@ CrashCollector::CrashCollector(const std::string& collector_name,
                      kNormalCrashSendMode,
                      tag) {}
 
+CrashCollector::CrashCollector(const std::string& collector_name,
+                               bool use_saved_lsb,
+                               const std::string& tag)
+    : CrashCollector(collector_name,
+                     kUseNormalCrashDirectorySelectionMethod,
+                     kNormalCrashSendMode,
+                     tag,
+                     use_saved_lsb) {}
+
 CrashCollector::CrashCollector(
     const std::string& collector_name,
     CrashDirectorySelectionMethod crash_directory_selection_method,
     CrashSendingMode crash_sending_mode,
-    const std::string& tag)
-
+    const std::string& tag,
+    bool use_saved_lsb)
     : collector_name_(collector_name),
       lsb_release_(FilePath(paths::kEtcDirectory).Append(paths::kLsbRelease)),
       system_crash_path_(paths::kSystemCrashDirectory),
@@ -436,7 +445,8 @@ CrashCollector::CrashCollector(
       force_daemon_store_(std::nullopt),
       is_finished_(false),
       bytes_written_(0),
-      tag_(tag) {
+      tag_(tag),
+      use_saved_lsb_(use_saved_lsb) {
   AddCrashMetaUploadData(kCollectorNameKey, collector_name);
   if (crash_sending_mode_ == kCrashLoopSendingMode) {
     AddCrashMetaUploadData(constants::kCrashLoopModeKey, "true");
@@ -1425,8 +1435,10 @@ void CrashCollector::AddCrashMetaUploadText(const std::string& key,
 }
 
 std::string CrashCollector::GetLsbReleaseValue(const std::string& key) const {
-  std::vector<base::FilePath> directories = {crash_reporter_state_path_,
-                                             lsb_release_.DirName()};
+  std::vector<base::FilePath> directories = {lsb_release_.DirName()};
+  if (use_saved_lsb_) {
+    directories.insert(directories.begin(), crash_reporter_state_path_);
+  }
 
   std::string value;
   if (util::GetCachedKeyValue(lsb_release_.BaseName(), key, directories,
@@ -1545,6 +1557,7 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
 
   const std::string milestone = GetOsMilestone();
   const std::string description = GetOsDescription();
+  // TODO(b/270434087): Use timestamp of old lsb-release?
   base::Time os_timestamp = util::GetOsTimestamp();
   std::string os_timestamp_str;
   if (!os_timestamp.is_null()) {

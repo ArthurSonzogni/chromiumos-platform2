@@ -1531,6 +1531,7 @@ struct MetaDataTest {
   std::string test_case_name;
   bool test_in_prog = false;
   bool add_variations = false;
+  bool use_saved_lsb = false;
   std::string exec_name = "kernel";
   std::optional<bool> enterprise_enrolled = false;
   std::string expected_meta;
@@ -1600,9 +1601,8 @@ TEST_P(CrashCollectorParameterizedTest, MetaData) {
 
   const char kMetaFileBasename[] = "generated.meta";
   FilePath meta_file = test_dir_.Append(kMetaFileBasename);
+
   FilePath lsb_release = paths::Get("/etc/lsb-release");
-  FilePath payload_file = test_dir_.Append(kPayloadName);
-  std::string contents;
   collector_.set_lsb_release_for_test(lsb_release);
   const char kLsbContents[] =
       "CHROMEOS_RELEASE_BOARD=lumpy\n"
@@ -1614,12 +1614,31 @@ TEST_P(CrashCollectorParameterizedTest, MetaData) {
   ASSERT_TRUE(test_util::CreateFile(lsb_release, kLsbContents));
   const base::Time kFakeOsTime = GetOsTimeForTest();
   ASSERT_TRUE(base::TouchFile(lsb_release, kFakeOsTime, kFakeOsTime));
+
+  FilePath saved_lsb_dir = paths::Get(paths::kCrashReporterStateDirectory);
+  collector_.set_reporter_state_directory_for_test(saved_lsb_dir);
+
+  const char kSavedLsbContents[] =
+      "CHROMEOS_RELEASE_BOARD=lumpy\n"
+      "CHROMEOS_RELEASE_VERSION=12345.0.2015_01_26_0853\n"
+      "CHROMEOS_RELEASE_NAME=Chromium OS\n"
+      "CHROMEOS_RELEASE_CHROME_MILESTONE=81\n"
+      "CHROMEOS_RELEASE_TRACK=beta-channel\n"
+      "CHROMEOS_RELEASE_DESCRIPTION=12345.0.2015_01_26_0853 (Test Build - foo)";
+  base::FilePath saved_lsb = saved_lsb_dir.Append("lsb-release");
+  ASSERT_TRUE(test_util::CreateFile(saved_lsb, kSavedLsbContents));
+  ASSERT_TRUE(base::TouchFile(saved_lsb, kFakeOsTime, kFakeOsTime));
+
   const char kPayload[] = "foo";
+  FilePath payload_file = test_dir_.Append(kPayloadName);
   ASSERT_TRUE(test_util::CreateFile(payload_file, kPayload));
+
   collector_.AddCrashMetaData("foo", "bar");
   collector_.AddCrashMetaData("weird  key#@!", "weird\nvalue");
+
   // Empty key should be ignored and not added.
   collector_.AddCrashMetaData("", "empty_key_val");
+
   std::unique_ptr<base::SimpleTestClock> test_clock =
       std::make_unique<base::SimpleTestClock>();
   test_clock->SetNow(base::Time::UnixEpoch() + base::Milliseconds(kFakeNow));
@@ -1637,7 +1656,11 @@ TEST_P(CrashCollectorParameterizedTest, MetaData) {
         .WillOnce(Return(*test_case.enterprise_enrolled));
   }
   collector_.set_device_policy_for_test(std::move(test_device_policy));
+
+  collector_.set_use_saved_lsb_for_test(test_case.use_saved_lsb);
   collector_.FinishCrash(meta_file, test_case.exec_name, kPayloadName);
+
+  std::string contents;
   EXPECT_TRUE(base::ReadFileToString(meta_file, &contents));
   EXPECT_EQ(test_case.expected_meta, contents);
   EXPECT_EQ(test_case.expected_meta.size(), collector_.get_bytes_written());
@@ -1660,6 +1683,32 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       "ver=6727.0.2015_01_26_0853\n"
       "upload_var_lsb-release=6727.0.2015_01_26_0853 (Test Build - foo)\n"
       "upload_var_cros_milestone=82\n"
+      "os_millis=%" PRId64
+      "\n"
+      "upload_var_osName=%s\n"
+      "upload_var_osVersion=%s\n"
+      "payload=%s\n"
+      "done=1\n",
+      kFakeNow, (kOsTimestamp - base::Time::UnixEpoch()).InMilliseconds(),
+      CrashCollectorParameterizedTest::kKernelName,
+      CrashCollectorParameterizedTest::kKernelVersion,
+      CrashCollectorParameterizedTest::kPayloadName);
+
+  MetaDataTest base_saved_lsb;
+  base_saved_lsb.use_saved_lsb = true;
+  base_saved_lsb.test_case_name = "BaseUseSavedLsb";
+  base_saved_lsb.expected_meta = StringPrintf(
+      "upload_var_collector=mock\n"
+      "foo=bar\n"
+      "weird__key___=weird\\nvalue\n"
+      "upload_var_channel=beta\n"
+      "upload_var_is-enterprise-enrolled=false\n"
+      "upload_var_reportTimeMillis=%" PRId64
+      "\n"
+      "exec_name=kernel\n"
+      "ver=12345.0.2015_01_26_0853\n"
+      "upload_var_lsb-release=12345.0.2015_01_26_0853 (Test Build - foo)\n"
+      "upload_var_cros_milestone=81\n"
       "os_millis=%" PRId64
       "\n"
       "upload_var_osName=%s\n"
@@ -1804,8 +1853,9 @@ std::vector<MetaDataTest> GenerateMetaDataTests() {
       CrashCollectorParameterizedTest::kKernelVersion,
       CrashCollectorParameterizedTest::kPayloadName);
 
-  return {base,         test_in_progress,    variations,
-          no_exec_name, enterprise_enrolled, device_policy_not_loaded};
+  return {
+      base,         base_saved_lsb,      test_in_progress,        variations,
+      no_exec_name, enterprise_enrolled, device_policy_not_loaded};
 }
 
 INSTANTIATE_TEST_SUITE_P(CrashCollectorInstantiation,

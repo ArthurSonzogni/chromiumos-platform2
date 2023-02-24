@@ -86,11 +86,17 @@ class CrashCollector {
   explicit CrashCollector(const std::string& collector_name,
                           const std::string& tag = "");
 
+  explicit CrashCollector(const std::string& collector_name,
+                          bool use_saved_lsb,
+                          const std::string& tag = "");
+
   explicit CrashCollector(
       const std::string& collector_name,
       CrashDirectorySelectionMethod crash_directory_selection_method,
       CrashSendingMode crash_sending_mode,
-      const std::string& tag = "");
+      const std::string& tag = "",
+      bool use_saved_lsb = false);
+
   CrashCollector(const CrashCollector&) = delete;
   CrashCollector& operator=(const CrashCollector&) = delete;
 
@@ -164,6 +170,10 @@ class CrashCollector {
   // key-value pairs, exactly as it will be written to the .meta file). For
   // testing purposes.
   std::string get_extra_metadata_for_test() const { return extra_metadata_; }
+
+  void set_use_saved_lsb_for_test(bool use_saved_lsb) {
+    use_saved_lsb_ = use_saved_lsb;
+  }
 
   // Initialize the crash collector for detection of crashes, given a
   // metrics collection enabled oracle.
@@ -460,6 +470,8 @@ class CrashCollector {
   void AddCrashMetaUploadText(const std::string& key, const std::string& path);
 
   // Gets the corresponding value for |key| from the lsb-release file.
+  // If |use_saved_lsb_| is true, prefer the lsb-release saved in
+  // crash_reporter_state_path_.
   std::string GetLsbReleaseValue(const std::string& key) const;
 
   // Returns the OS version written to the metadata file.
@@ -613,6 +625,9 @@ class CrashCollector {
 
   // Is this an early-boot crash collection?
   bool early_ = false;
+
+  // Prefer the lsb-release saved in crash_reporter_state_path_?
+  bool use_saved_lsb_ = false;
 };
 
 // Information to invoke a specific call on a collector.

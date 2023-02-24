@@ -75,7 +75,7 @@ static LazyRE2 kBasicCheckRe = {"\n(<\\d+>)?\\[\\s*(\\d+\\.\\d+)\\]"};
 }  // namespace
 
 KernelCollector::KernelCollector()
-    : CrashCollector("kernel"),
+    : CrashCollector("kernel", /*use_saved_lsb=*/true),
       is_enabled_(false),
       eventlog_path_(kEventLogPath),
       dump_path_(kDumpPath),
