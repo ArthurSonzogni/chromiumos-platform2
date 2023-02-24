@@ -1351,7 +1351,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   //////////////////////////////////////////////////
   /* =Obsolete= */
   kLocAuthSessionManagerCreateFailed = 2300,
-  /* ./auth_session_manager.cc */
+  /* =Obsolete= */
   kLocAuthSessionManagerTokenCollision = 2301,
   /* =Obsolete= */
   kLocAuthSessionCreateInitializedFail = 2302,

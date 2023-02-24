@@ -40,14 +40,20 @@ class AuthSessionManager {
       AuthBlockUtility* auth_block_utility,
       AuthFactorManager* auth_factor_manager,
       UserSecretStashStorage* user_secret_stash_storage);
-  ~AuthSessionManager() = default;
+
   AuthSessionManager(AuthSessionManager&) = delete;
   AuthSessionManager& operator=(AuthSessionManager&) = delete;
+
+  ~AuthSessionManager() = default;
 
   // Creates new auth session for account_id. AuthSessionManager owns the
   // created AuthSession and the method returns a pointer to it.
   CryptohomeStatusOr<InUseAuthSession> CreateAuthSession(
       const Username& account_id, uint32_t flags, AuthIntent auth_intent);
+
+  // Adds a pre-existing auth session to the manager, which will take ownership
+  // over the session.
+  InUseAuthSession AddAuthSession(std::unique_ptr<AuthSession> auth_session);
 
   // Removes existing auth session with token. Returns false if there's no auth
   // session with this token.

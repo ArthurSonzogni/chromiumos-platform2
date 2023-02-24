@@ -67,18 +67,17 @@ CryptohomeStatusOr<InUseAuthSession> AuthSessionManager::CreateAuthSession(
       account_id, flags, auth_intent, feature_lib_,
       {crypto_, platform_, user_session_map_, keyset_management_,
        auth_block_utility_, auth_factor_manager_, user_secret_stash_storage_});
+  return AddAuthSession(std::move(auth_session));
+}
 
-  // If somehow, through some unknown madness, we get a token collision, return
-  // an error.
+InUseAuthSession AuthSessionManager::AddAuthSession(
+    std::unique_ptr<AuthSession> auth_session) {
+  // We should never, ever, be able to get a token collision.
   const auto& token = auth_session->token();
   auto iter = auth_sessions_.lower_bound(token);
-  if (iter != auth_sessions_.end() && iter->first == token) {
-    LOG(ERROR) << "AuthSession token collision";
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionManagerTokenCollision),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_UNUSABLE_VAULT);
-  }
+  DCHECK(iter == auth_sessions_.end() || iter->first != token)
+      << "AuthSession token collision";
+
   // Add an entry to the session map. Note that we're deliberately initializing
   // things into an in-use state by only adding a blank entry in the map.
   auth_sessions_.emplace_hint(iter, token, nullptr);
