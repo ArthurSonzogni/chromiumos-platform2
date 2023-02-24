@@ -110,8 +110,7 @@ class Connection {
                            bool ignore_gateway);
   // Ensure the destination subnets specified in |properties.exclusion_list|
   // will not be served by this connection.
-  bool SetupExcludedRoutes(const IPConfig::Properties& properties,
-                           const IPAddress& gateway);
+  bool SetupExcludedRoutes(const IPConfig::Properties& properties);
   void SetMTU(int32_t mtu);
 
   // Flush and (re)create routing policy rules for the connection.

@@ -171,8 +171,7 @@ bool Connection::SetupIncludedRoutes(const IPConfig::Properties& properties,
   return ret;
 }
 
-bool Connection::SetupExcludedRoutes(const IPConfig::Properties& properties,
-                                     const IPAddress& gateway) {
+bool Connection::SetupExcludedRoutes(const IPConfig::Properties& properties) {
   // If this connection has its own dedicated routing table, exclusion
   // is as simple as adding an RTN_THROW entry for each item on the list.
   // Traffic that matches the RTN_THROW entry will cause the kernel to
@@ -297,7 +296,7 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
     SetMTU(properties.mtu);
   }
 
-  if (!SetupExcludedRoutes(properties, gateway)) {
+  if (!SetupExcludedRoutes(properties)) {
     return;
   }
 
