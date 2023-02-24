@@ -161,7 +161,7 @@ class NetworkInTest : public Network {
               (override));
   MOCK_METHOD(std::unique_ptr<ConnectionDiagnostics>,
               CreateConnectionDiagnostics,
-              (),
+              (const Connection&),
               (override));
 };
 
@@ -205,6 +205,11 @@ class NetworkTest : public ::testing::Test {
           dhcp_controller_ = controller.get();
           return controller;
         }));
+  }
+
+  void SetNetworkStateToConnected() {
+    network_->set_state_for_testing(Network::State::kConnected);
+    network_->set_connection_for_testing(std::make_unique<MockConnection>());
   }
 
  protected:
@@ -432,8 +437,7 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
 
   const std::string ipv4_addr = "192.168.1.1";
   const std::string ipv6_addr = "fe80::1aa9:5ff:abcd:1234";
-
-  network_->set_state_for_testing(Network::State::kConnected);
+  SetNetworkStateToConnected();
   network_->set_ipconfig(
       std::make_unique<IPConfig>(&control_interface_, kTestIfname));
   network_->set_ip6config(
@@ -550,7 +554,7 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
   network_->set_ipconfig(
       std::make_unique<IPConfig>(&control_interface_, kTestIfname));
   network_->ipconfig()->UpdateProperties(ipv4_props);
-  network_->set_state_for_testing(Network::State::kConnected);
+  SetNetworkStateToConnected();
   network_->OnNeighborReachabilityEvent(signal1);
   network_->OnNeighborReachabilityEvent(signal2);
   EXPECT_TRUE(network_->ipv4_gateway_found());
@@ -579,7 +583,7 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
   network_->set_ip6config(
       std::make_unique<IPConfig>(&control_interface_, kTestIfname));
   network_->ip6config()->UpdateProperties(ipv6_props);
-  network_->set_state_for_testing(Network::State::kConnected);
+  SetNetworkStateToConnected();
   network_->OnNeighborReachabilityEvent(signal1);
   network_->OnNeighborReachabilityEvent(signal2);
   EXPECT_FALSE(network_->ipv4_gateway_found());
@@ -603,7 +607,7 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
       std::make_unique<IPConfig>(&control_interface_, kTestIfname));
   network_->ipconfig()->UpdateProperties(ipv4_props);
   network_->ip6config()->UpdateProperties(ipv6_props);
-  network_->set_state_for_testing(Network::State::kConnected);
+  SetNetworkStateToConnected();
   network_->OnNeighborReachabilityEvent(signal1);
   network_->OnNeighborReachabilityEvent(signal2);
   EXPECT_FALSE(network_->ipv4_gateway_found());
@@ -645,7 +649,7 @@ TEST_F(NetworkTest, PortalDetectionNotConnected) {
 }
 
 TEST_F(NetworkTest, PortalDetectionNoReset) {
-  network_->set_state_for_testing(Network::State::kConnected);
+  SetNetworkStateToConnected();
   MockPortalDetector* portal_detector = new MockPortalDetector();
   EXPECT_CALL(*network_, CreatePortalDetector()).WillOnce([portal_detector]() {
     return std::unique_ptr<MockPortalDetector>(portal_detector);
@@ -662,7 +666,7 @@ TEST_F(NetworkTest, PortalDetectionNoReset) {
 }
 
 TEST_F(NetworkTest, PortalDetectionNoResetAndAlreadyRunning) {
-  network_->set_state_for_testing(Network::State::kConnected);
+  SetNetworkStateToConnected();
   MockPortalDetector* portal_detector = new MockPortalDetector();
   network_->set_portal_detector_for_testing(portal_detector);
   EXPECT_CALL(*portal_detector, Start(_, _, _, _, _)).Times(0);
@@ -675,7 +679,7 @@ TEST_F(NetworkTest, PortalDetectionNoResetAndAlreadyRunning) {
 }
 
 TEST_F(NetworkTest, PortalDetectionWithReset) {
-  network_->set_state_for_testing(Network::State::kConnected);
+  SetNetworkStateToConnected();
   MockPortalDetector* portal_detector = new MockPortalDetector();
   EXPECT_CALL(*network_, CreatePortalDetector()).WillOnce([portal_detector]() {
     return std::unique_ptr<MockPortalDetector>(portal_detector);
@@ -690,7 +694,7 @@ TEST_F(NetworkTest, PortalDetectionWithReset) {
 }
 
 TEST_F(NetworkTest, PortalDetectionStartFailure) {
-  network_->set_state_for_testing(Network::State::kConnected);
+  SetNetworkStateToConnected();
   MockPortalDetector* portal_detector = new MockPortalDetector();
   EXPECT_CALL(*network_, CreatePortalDetector()).WillOnce([portal_detector]() {
     return std::unique_ptr<MockPortalDetector>(portal_detector);
@@ -705,7 +709,7 @@ TEST_F(NetworkTest, PortalDetectionStartFailure) {
 }
 
 TEST_F(NetworkTest, PortalDetectionStartSuccess) {
-  network_->set_state_for_testing(Network::State::kConnected);
+  SetNetworkStateToConnected();
   MockPortalDetector* portal_detector = new MockPortalDetector();
   EXPECT_CALL(*network_, CreatePortalDetector()).WillOnce([portal_detector]() {
     return std::unique_ptr<MockPortalDetector>(portal_detector);
@@ -723,7 +727,7 @@ TEST_F(NetworkTest, PortalDetectionStartSuccess) {
 }
 
 TEST_F(NetworkTest, PortalDetectionStartStop) {
-  network_->set_state_for_testing(Network::State::kConnected);
+  SetNetworkStateToConnected();
   MockPortalDetector* portal_detector = new MockPortalDetector();
   EXPECT_CALL(*network_, CreatePortalDetector()).WillOnce([portal_detector]() {
     return std::unique_ptr<MockPortalDetector>(portal_detector);
@@ -751,7 +755,7 @@ TEST_F(NetworkTest, PortalDetectionStartStop) {
 }
 
 TEST_F(NetworkTest, PortalDetectionRestartFailure) {
-  network_->set_state_for_testing(Network::State::kConnected);
+  SetNetworkStateToConnected();
   MockPortalDetector* portal_detector = new MockPortalDetector();
   EXPECT_CALL(*network_, CreatePortalDetector()).WillOnce([portal_detector]() {
     return std::unique_ptr<MockPortalDetector>(portal_detector);
@@ -783,7 +787,7 @@ TEST_F(NetworkTest, PortalDetectionRestartFailure) {
 }
 
 TEST_F(NetworkTest, PortalDetectionRestartSuccess) {
-  network_->set_state_for_testing(Network::State::kConnected);
+  SetNetworkStateToConnected();
   MockPortalDetector* portal_detector = new MockPortalDetector();
   EXPECT_CALL(*network_, CreatePortalDetector()).WillOnce([portal_detector]() {
     return std::unique_ptr<MockPortalDetector>(portal_detector);
@@ -832,7 +836,7 @@ TEST_F(NetworkTest, PortalDetectionResultAfterDisconnection) {
 
 TEST_F(NetworkTest, PortalDetectionResult_PartialConnectivity) {
   EXPECT_FALSE(network_->network_validation_result().has_value());
-  network_->set_state_for_testing(Network::State::kConnected);
+  SetNetworkStateToConnected();
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kSuccess;
@@ -842,9 +846,10 @@ TEST_F(NetworkTest, PortalDetectionResult_PartialConnectivity) {
             result.GetValidationState());
   MockConnectionDiagnostics* conn_diag = new MockConnectionDiagnostics();
 
-  EXPECT_CALL(*network_, CreateConnectionDiagnostics()).WillOnce([conn_diag]() {
-    return std::unique_ptr<MockConnectionDiagnostics>(conn_diag);
-  });
+  EXPECT_CALL(*network_, CreateConnectionDiagnostics(_))
+      .WillOnce([conn_diag](const Connection&) {
+        return std::unique_ptr<MockConnectionDiagnostics>(conn_diag);
+      });
   EXPECT_CALL(event_handler_,
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler2_,
@@ -859,7 +864,7 @@ TEST_F(NetworkTest, PortalDetectionResult_PartialConnectivity) {
 
 TEST_F(NetworkTest, PortalDetectionResult_NoConnectivity) {
   EXPECT_FALSE(network_->network_validation_result().has_value());
-  network_->set_state_for_testing(Network::State::kConnected);
+  SetNetworkStateToConnected();
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kConnection,
   result.http_status = PortalDetector::Status::kFailure;
@@ -869,9 +874,10 @@ TEST_F(NetworkTest, PortalDetectionResult_NoConnectivity) {
             result.GetValidationState());
   MockConnectionDiagnostics* conn_diag = new MockConnectionDiagnostics();
 
-  EXPECT_CALL(*network_, CreateConnectionDiagnostics()).WillOnce([conn_diag]() {
-    return std::unique_ptr<MockConnectionDiagnostics>(conn_diag);
-  });
+  EXPECT_CALL(*network_, CreateConnectionDiagnostics(_))
+      .WillOnce([conn_diag](const Connection&) {
+        return std::unique_ptr<MockConnectionDiagnostics>(conn_diag);
+      });
   EXPECT_CALL(event_handler_,
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler2_,
@@ -886,7 +892,7 @@ TEST_F(NetworkTest, PortalDetectionResult_NoConnectivity) {
 
 TEST_F(NetworkTest, PortalDetectionResult_InternetConnectivity) {
   EXPECT_FALSE(network_->network_validation_result().has_value());
-  network_->set_state_for_testing(Network::State::kConnected);
+  SetNetworkStateToConnected();
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kSuccess;
@@ -895,7 +901,7 @@ TEST_F(NetworkTest, PortalDetectionResult_InternetConnectivity) {
   EXPECT_EQ(PortalDetector::ValidationState::kInternetConnectivity,
             result.GetValidationState());
 
-  EXPECT_CALL(*network_, CreateConnectionDiagnostics()).Times(0);
+  EXPECT_CALL(*network_, CreateConnectionDiagnostics(_)).Times(0);
   EXPECT_CALL(event_handler_,
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler2_,
@@ -910,7 +916,7 @@ TEST_F(NetworkTest, PortalDetectionResult_InternetConnectivity) {
 
 TEST_F(NetworkTest, PortalDetectionResult_PortalRedirect) {
   EXPECT_FALSE(network_->network_validation_result().has_value());
-  network_->set_state_for_testing(Network::State::kConnected);
+  SetNetworkStateToConnected();
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kRedirect;
@@ -920,7 +926,7 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalRedirect) {
   EXPECT_EQ(PortalDetector::ValidationState::kPortalRedirect,
             result.GetValidationState());
 
-  EXPECT_CALL(*network_, CreateConnectionDiagnostics()).Times(0);
+  EXPECT_CALL(*network_, CreateConnectionDiagnostics(_)).Times(0);
   EXPECT_CALL(event_handler_,
               OnNetworkValidationResult(network_->interface_index(), _));
   EXPECT_CALL(event_handler2_,
@@ -935,7 +941,7 @@ TEST_F(NetworkTest, PortalDetectionResult_PortalRedirect) {
 
 TEST_F(NetworkTest, PortalDetectionResult_ClearAfterStop) {
   EXPECT_FALSE(network_->network_validation_result().has_value());
-  network_->set_state_for_testing(Network::State::kConnected);
+  SetNetworkStateToConnected();
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kContent,
   result.http_status = PortalDetector::Status::kSuccess;

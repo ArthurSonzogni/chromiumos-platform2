@@ -779,13 +779,6 @@ IPAddress Network::local() const {
   return connection_->local();
 }
 
-IPAddress Network::gateway() const {
-  if (!connection_) {
-    return {};
-  }
-  return connection_->gateway();
-}
-
 bool Network::StartPortalDetection(bool reset) {
   if (!IsConnected()) {
     LOG(INFO) << logging_tag_
@@ -905,7 +898,8 @@ void Network::StartConnectionDiagnostics() {
               << ": Not connected, cannot start connection diagnostics";
     return;
   }
-  connection_diagnostics_ = CreateConnectionDiagnostics();
+  DCHECK(connection_ != nullptr);
+  connection_diagnostics_ = CreateConnectionDiagnostics(*connection_);
   if (!connection_diagnostics_->Start(probing_configuration_.portal_http_url)) {
     connection_diagnostics_.reset();
     LOG(WARNING) << logging_tag_ << ": Failed to start connection diagnostics";
@@ -919,10 +913,12 @@ void Network::StopConnectionDiagnostics() {
   connection_diagnostics_.reset();
 }
 
-std::unique_ptr<ConnectionDiagnostics> Network::CreateConnectionDiagnostics() {
+std::unique_ptr<ConnectionDiagnostics> Network::CreateConnectionDiagnostics(
+    const Connection& connection) {
   return std::make_unique<ConnectionDiagnostics>(
-      interface_name(), interface_index(), local(), gateway(), dns_servers(),
-      dispatcher_, metrics_, base::DoNothing());
+      interface_name(), interface_index(), connection.local(),
+      connection.gateway(), connection.dns_servers(), dispatcher_, metrics_,
+      base::DoNothing());
 }
 
 bool Network::IsConnectedViaTether() const {

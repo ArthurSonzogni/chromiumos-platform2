@@ -30,12 +30,6 @@ class MockConnection : public Connection {
   MOCK_METHOD(void, SetPriority, (uint32_t, bool), (override));
   MOCK_METHOD(void, SetUseDNS, (bool), (override));
   MOCK_METHOD(const std::string&, interface_name, (), (const, override));
-  MOCK_METHOD(const std::vector<std::string>&,
-              dns_servers,
-              (),
-              (const, override));
-  MOCK_METHOD(const IPAddress&, local, (), (const, override));
-  MOCK_METHOD(const IPAddress&, gateway, (), (const, override));
   MOCK_METHOD(void,
               UpdateDNSServers,
               (const std::vector<std::string>&),

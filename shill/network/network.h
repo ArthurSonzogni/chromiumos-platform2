@@ -282,7 +282,6 @@ class Network {
   // is dual-stack, and default (empty) values if the Network is not connected.
   mockable std::vector<std::string> dns_servers() const;
   mockable IPAddress local() const;
-  IPAddress gateway() const;
 
   // TODO(b/232177767): This group of getters and setters are only exposed for
   // the purpose of refactor. New code outside Device should not use these.
@@ -372,7 +371,8 @@ class Network {
   // Constructs and returns a ConnectionDiagnostics instance. Isolate
   // this function only for unit tests, so that we can inject a mock
   // ConnectionDiagnostics object easily.
-  mockable std::unique_ptr<ConnectionDiagnostics> CreateConnectionDiagnostics();
+  mockable std::unique_ptr<ConnectionDiagnostics> CreateConnectionDiagnostics(
+      const Connection& connection);
 
   // Shuts down and clears all the running state of this network. If
   // |trigger_callback| is true and the Network is started, OnNetworkStopped()
