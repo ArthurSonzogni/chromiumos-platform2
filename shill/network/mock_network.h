@@ -67,7 +67,7 @@ class MockNetwork : public Network {
   MOCK_METHOD(void, SetUseDNS, (bool), (override));
 
   MOCK_METHOD(std::vector<std::string>, dns_servers, (), (const, override));
-  MOCK_METHOD(IPAddress, local, (), (const, override));
+  MOCK_METHOD(const IPAddress*, local, (), (const, override));
   MOCK_METHOD(void,
               OnNeighborReachabilityEvent,
               (const patchpanel::NeighborReachabilityEventSignal& signal));

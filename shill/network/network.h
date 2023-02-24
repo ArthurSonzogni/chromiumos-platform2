@@ -281,7 +281,7 @@ class Network {
   // Properties of the current IP config. Returns IPv4 properties if the Network
   // is dual-stack, and default (empty) values if the Network is not connected.
   mockable std::vector<std::string> dns_servers() const;
-  mockable IPAddress local() const;
+  mockable const IPAddress* local() const;
 
   // TODO(b/232177767): This group of getters and setters are only exposed for
   // the purpose of refactor. New code outside Device should not use these.

@@ -772,11 +772,11 @@ std::vector<std::string> Network::dns_servers() const {
   return connection_->dns_servers();
 }
 
-IPAddress Network::local() const {
+const IPAddress* Network::local() const {
   if (!connection_) {
-    return {};
+    return nullptr;
   }
-  return connection_->local();
+  return &connection_->local();
 }
 
 bool Network::StartPortalDetection(bool reset) {
@@ -791,9 +791,10 @@ bool Network::StartPortalDetection(bool reset) {
     return true;
   }
 
+  DCHECK(connection_ != nullptr);
   portal_detector_ = CreatePortalDetector();
-  if (!portal_detector_->Start(interface_name_, local(), dns_servers(),
-                               logging_tag_)) {
+  if (!portal_detector_->Start(interface_name_, connection_->local(),
+                               connection_->dns_servers(), logging_tag_)) {
     LOG(ERROR) << logging_tag_ << ": Portal detection failed to start.";
     portal_detector_.reset();
     return false;
@@ -813,8 +814,9 @@ bool Network::RestartPortalDetection() {
     return false;
   }
 
-  if (!portal_detector_->Restart(interface_name_, local(), dns_servers(),
-                                 logging_tag_)) {
+  DCHECK(connection_ != nullptr);
+  if (!portal_detector_->Restart(interface_name_, connection_->local(),
+                                 connection_->dns_servers(), logging_tag_)) {
     LOG(ERROR) << logging_tag_ << ": Portal detection failed to restart.";
     StopPortalDetection();
     return false;

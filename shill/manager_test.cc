@@ -470,14 +470,14 @@ class ManagerTest : public PropertyStoreTest {
   }
 
   NiceMock<MockNetwork>* CreateMockNetwork(MockDevice* mock_device) {
-    const IPAddress ip_addr = IPAddress("1.2.3.4");
+    static const IPAddress ip_addr = *IPAddress::CreateFromString("1.2.3.4");
     const std::vector<std::string> kDNSServers;
     auto mock_network = std::make_unique<NiceMock<MockNetwork>>(
         mock_device->interface_index(), mock_device->link_name(),
         mock_device->technology());
     auto* mock_network_ptr = mock_network.get();
     EXPECT_CALL(*mock_network, IsConnected()).WillRepeatedly(Return(true));
-    EXPECT_CALL(*mock_network, local()).WillRepeatedly(Return(ip_addr));
+    EXPECT_CALL(*mock_network, local()).WillRepeatedly(Return(&ip_addr));
     EXPECT_CALL(*mock_network, dns_servers())
         .WillRepeatedly(Return(kDNSServers));
     mock_device->set_network_for_testing(std::move(mock_network));

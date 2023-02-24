@@ -3111,7 +3111,12 @@ void Manager::StartConnectivityTest(const DeviceRefPtr& device) {
                   .insert(std::make_pair(device->link_name(),
                                          std::move(portal_detector)))
                   .first;
-  if (!iter->second->Start(device->link_name(), device->network()->local(),
+  const IPAddress* local_addr = device->network()->local();
+  if (!local_addr) {
+    LOG(DFATAL) << device->LoggingTag() << ": Does not have a valid address";
+    return;
+  }
+  if (!iter->second->Start(device->link_name(), *local_addr,
                            device->network()->dns_servers(),
                            device->LoggingTag())) {
     LOG(WARNING) << device->LoggingTag()
