@@ -386,14 +386,14 @@ TEST_F(LECredentialManagerImplUnitTest, LockedOutSecret) {
   LECredStatus status =
       le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret);
   EXPECT_EQ(LE_CRED_ERROR_TOO_MANY_ATTEMPTS, status->local_lecred_error());
-  EXPECT_TRUE(ContainsActionInStack(status, error::ErrorAction::kTpmLockout));
+  EXPECT_TRUE(ContainsActionInStack(status, error::ErrorAction::kLeLockedOut));
 
   // Check once more to ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the
   // right metadata is stored.
   status =
       le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret);
   EXPECT_EQ(LE_CRED_ERROR_TOO_MANY_ATTEMPTS, status->local_lecred_error());
-  EXPECT_TRUE(ContainsActionInStack(status, error::ErrorAction::kTpmLockout));
+  EXPECT_TRUE(ContainsActionInStack(status, error::ErrorAction::kLeLockedOut));
 }
 
 // Verify getting locked out due to too many attempts for biometrics
@@ -408,7 +408,7 @@ TEST_F(LECredentialManagerImplUnitTest, BiometricsLockedOutRateLimiter) {
   EXPECT_EQ(LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
             reply.status()->local_lecred_error());
   EXPECT_TRUE(
-      ContainsActionInStack(reply.status(), error::ErrorAction::kTpmLockout));
+      ContainsActionInStack(reply.status(), error::ErrorAction::kLeLockedOut));
 
   // Check once more to ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the
   // right metadata is stored.
@@ -416,7 +416,7 @@ TEST_F(LECredentialManagerImplUnitTest, BiometricsLockedOutRateLimiter) {
   EXPECT_EQ(LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
             reply.status()->local_lecred_error());
   EXPECT_TRUE(
-      ContainsActionInStack(reply.status(), error::ErrorAction::kTpmLockout));
+      ContainsActionInStack(reply.status(), error::ErrorAction::kLeLockedOut));
 }
 
 // Insert a label. Then ensure that a CheckCredential on another non-existent

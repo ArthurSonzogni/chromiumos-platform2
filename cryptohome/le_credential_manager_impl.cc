@@ -724,7 +724,7 @@ LECredStatus LECredentialManagerImpl::ConvertTpmError(
       // Too many attempts.
       return MakeStatus<CryptohomeLECredError>(
           CRYPTOHOME_ERR_LOC(kLocLECredManTooManyAttemptsInConvertTpmError),
-          ErrorActionSet({ErrorAction::kTpmLockout}), conv_err);
+          ErrorActionSet({ErrorAction::kLeLockedOut}), conv_err);
     case LE_CRED_ERROR_PCR_NOT_MATCH:
       // In usual operation, we don't expect PCR to be incorrect, so
       // kDevCheckUnexpectedState is specified. If the PCR is incorrect, a
