@@ -4032,10 +4032,9 @@ const WiFiPhy* WiFi::GetWiFiPhy() {
 }
 
 bool WiFi::SetBSSIDAllowlist(const WiFiService* service,
-                             const Strings& bssid_allowlist) {
-  Error unused_error;
-  RpcIdentifier network_rpcid =
-      FindNetworkRpcidForService(service, &unused_error);
+                             const Strings& bssid_allowlist,
+                             Error* error) {
+  RpcIdentifier network_rpcid = FindNetworkRpcidForService(service, error);
   if (network_rpcid.value().empty()) {
     // Error is already populated.
     return false;
@@ -4046,7 +4045,18 @@ bool WiFi::SetBSSIDAllowlist(const WiFiService* service,
                       base::JoinString(bssid_allowlist, " "));
   std::unique_ptr<SupplicantNetworkProxyInterface> supplicant_network_proxy =
       control_interface()->CreateSupplicantNetworkProxy(network_rpcid);
-  return supplicant_network_proxy->SetProperties(kv);
+  if (!supplicant_network_proxy->SetProperties(kv)) {
+    const auto error_message = base::StringPrintf(
+        "WiFi %s cannot set BSSID allowlist for service %s: "
+        "DBus operation failed for rpcid %s.",
+        link_name().c_str(), service->log_name().c_str(),
+        network_rpcid.value().c_str());
+    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+                          error_message);
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace shill
