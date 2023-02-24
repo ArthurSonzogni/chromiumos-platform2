@@ -96,6 +96,12 @@ ln -sf ui."$(date --utc +%Y%m%d-%H%M%S)" "${UI_LOG_DIR}/${UI_LOG_FILE:-}"
 
 mkdir -p "${CONTAINER_ROOT_DIR:-}"
 
+# Create support directory for Chrome to write its support files and give
+# ownership to Chronos since only interaction will be done by it.
+SUPPORT_DIR="/var/spool/support"
+mkdir -p "${SUPPORT_DIR}"
+chown -R chronos "${SUPPORT_DIR}"
+
 # Create a top-level cpu cgroup for ui tasks.  This will be used to share cpu
 # resources with tasks not managed by the UI.  Android will be placed in a
 # parallel cgroup allowing priority to be given to one or the other depending
