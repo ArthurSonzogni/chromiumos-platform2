@@ -52,6 +52,8 @@ const QuirksMap& GetQuirksMap() {
       {{"04f2", "b615"}, kQuirkInfrared},
       // Rapoo C260 Webcam (b/245461023)
       {{"0c45", "636b"}, kQuirkPreferLargePreviewResolution},
+      // Sunplus Innovation Technology Inc. USB2.0 UVC HD Webcam (b/269094788)
+      {{"1bcf", "2cb5"}, kQuirkRestartOnTimeout},
   });
   return *kQuirksMap;
 }
