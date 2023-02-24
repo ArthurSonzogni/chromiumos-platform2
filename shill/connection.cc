@@ -181,13 +181,13 @@ bool Connection::SetupExcludedRoutes(const IPConfig::Properties& properties) {
                    .SetType(RTN_THROW)
                    .SetTag(interface_index_);
   for (const auto& excluded_ip : properties.exclusion_list) {
-    const auto dst = IPAddress::CreateFromPrefixString(
-        excluded_ip, properties.address_family);
+    auto dst = IPAddress::CreateFromPrefixString(excluded_ip,
+                                                 properties.address_family);
     if (!dst.has_value()) {
       LOG(ERROR) << "Excluded prefix is invalid: " << excluded_ip;
       return false;
     }
-    entry.dst = *dst;
+    entry.dst = std::move(*dst);
     if (!routing_table_->AddRoute(interface_index_, entry)) {
       LOG(ERROR) << "Unable to setup route for " << excluded_ip;
       return false;
@@ -201,23 +201,25 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
 
   allowed_dsts_.clear();
   for (const auto& route : properties.dhcp_classless_static_routes) {
-    IPAddress dst(properties.address_family);
-    if (!dst.SetAddressFromString(route.host)) {
+    const auto dst =
+        IPAddress::CreateFromStringAndPrefix(route.host, route.prefix);
+    if (!dst.has_value()) {
       LOG(ERROR) << "Failed to parse static route address " << route.host;
       continue;
     }
-    dst.set_prefix(route.prefix);
-    allowed_dsts_.push_back(dst);
+    allowed_dsts_.push_back(*dst);
   }
 
   use_if_addrs_ =
       properties.use_if_addrs || IsPrimaryConnectivityTechnology(technology_);
 
-  IPAddress gateway(properties.address_family);
-  if (!properties.gateway.empty() &&
-      !gateway.SetAddressFromString(properties.gateway)) {
-    LOG(ERROR) << "Gateway address " << properties.gateway << " is invalid";
-    return;
+  std::optional<IPAddress> gateway;
+  if (!properties.gateway.empty()) {
+    gateway = IPAddress::CreateFromString(properties.gateway);
+    if (!gateway.has_value()) {
+      LOG(ERROR) << "Gateway address " << properties.gateway << " is invalid";
+      return;
+    }
   }
 
   IPAddress local(properties.address_family);
@@ -260,7 +262,10 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
     //    will just say something like:
     //        default dev ppp0 metric 10
     is_p2p = true;
-    gateway.SetAddressToDefault();
+    // Reset |gateway| to default, so that the default route will be installed
+    // by the code below.
+    gateway = IPAddress(properties.address_family);
+    gateway->SetAddressToDefault();
   }
 
   // Skip address configuration if the address is from SLAAC. Note that IPv6 VPN
@@ -282,8 +287,8 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
     LOG(INFO) << __func__ << ": Installing with parameters:"
               << " interface_name=" << interface_name_
               << " local=" << local.ToString()
-              << " broadcast=" << broadcast.ToString()
-              << " gateway=" << gateway.ToString();
+              << " broadcast=" << broadcast.ToString() << " gateway="
+              << (gateway.has_value() ? gateway->ToString() : "<empty>");
 
     rtnl_handler_->AddInterfaceAddress(interface_index_, local, broadcast);
     added_addresses_.insert_or_assign(local.family(), local);
@@ -301,12 +306,13 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
 
   // For VPNs IPv6 overlay shill has to create default route by itself.
   // For physical networks with RAs it is done by kernel.
-  if (gateway.IsValid() && properties.default_route &&
-      gateway.family() == IPAddress::kFamilyIPv4) {
-    routing_table_->SetDefaultRoute(interface_index_, gateway, table_id_);
-  } else if (properties.method == kTypeVPN && properties.default_route &&
-             gateway.IsValid() && gateway.family() == IPAddress::kFamilyIPv6) {
-    routing_table_->SetDefaultRoute(interface_index_, gateway, table_id_);
+  if (gateway.has_value() && properties.default_route) {
+    const bool is_ipv4 = gateway->family() == IPAddress::kFamilyIPv4;
+    const bool is_vpn_ipv6 = properties.method == kTypeVPN &&
+                             gateway->family() == IPAddress::kFamilyIPv6;
+    if (is_ipv4 || is_vpn_ipv6) {
+      routing_table_->SetDefaultRoute(interface_index_, *gateway, table_id_);
+    }
   }
 
   if (properties.blackhole_ipv6) {
@@ -336,7 +342,11 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
   PushDNSConfig();
 
   local_ = local;
-  gateway_ = gateway;
+  if (gateway.has_value()) {
+    gateway_ = *gateway;
+  } else {
+    gateway_ = IPAddress(properties.address_family);
+  }
 }
 
 void Connection::UpdateRoutingPolicy(
@@ -510,32 +520,32 @@ void Connection::PushDNSConfig() {
   resolver_->SetDNSFromLists(dns_servers_, domain_search);
 }
 
-bool Connection::FixGatewayReachability(const IPAddress& local,
-                                        const IPAddress& gateway) {
-  SLOG(2) << __func__ << " local " << local.ToString() << ", gateway "
-          << gateway.ToString();
-
-  if (!gateway.IsValid()) {
+bool Connection::FixGatewayReachability(
+    const IPAddress& local, const std::optional<IPAddress>& gateway) {
+  if (!gateway.has_value()) {
     LOG(WARNING) << "No gateway address was provided for this connection.";
     return false;
   }
 
+  SLOG(2) << __func__ << " local " << local.ToString() << ", gateway "
+          << gateway->ToString();
+
   // The prefix check will usually fail on IPv6 because IPv6 gateways
   // typically use link-local addresses.
-  if (local.CanReachAddress(gateway) ||
+  if (local.CanReachAddress(*gateway) ||
       local.family() == IPAddress::kFamilyIPv6) {
     return true;
   }
 
-  LOG(WARNING) << "Gateway " << gateway.ToString()
+  LOG(WARNING) << "Gateway " << gateway->ToString()
                << " is unreachable from local address/prefix "
                << local.ToString() << "/" << local.prefix();
   LOG(WARNING) << "Mitigating this by creating a link route to the gateway.";
 
-  IPAddress gateway_with_max_prefix(gateway);
+  IPAddress gateway_with_max_prefix(*gateway);
   gateway_with_max_prefix.set_prefix(
       IPAddress::GetMaxPrefixLength(gateway_with_max_prefix.family()));
-  IPAddress default_address(gateway.family());
+  IPAddress default_address(gateway->family());
   auto entry = RoutingTableEntry::Create(gateway_with_max_prefix,
                                          default_address, default_address)
                    .SetScope(RT_SCOPE_LINK)

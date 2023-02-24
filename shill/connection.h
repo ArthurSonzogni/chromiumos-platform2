@@ -99,9 +99,12 @@ class Connection {
   friend class ConnectionTest;
 
   // Create a link route to the gateway when the gateway is in a separate
-  // subnet. This can work if the host LAN and gateway LAN are bridged
-  // together, but is not a recommended network configuration.
-  bool FixGatewayReachability(const IPAddress& local, const IPAddress& gateway);
+  // subnet. This can work if the host LAN and gateway LAN are bridged together,
+  // but is not a recommended network configuration. Return true if |gateway| is
+  // reachable or the function successfully installed the route, and false if
+  // |gateway| does not exist or the installation failed.
+  bool FixGatewayReachability(const IPAddress& local,
+                              const std::optional<IPAddress>& gateway);
   // Allow for the routes specified in |properties.routes| to be served by this
   // connection.
   bool SetupIncludedRoutes(const IPConfig::Properties& properties,

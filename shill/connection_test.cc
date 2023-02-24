@@ -151,7 +151,7 @@ class ConnectionTest : public Test {
   }
 
   bool FixGatewayReachability(const IPAddress& local,
-                              const IPAddress& gateway) {
+                              const std::optional<IPAddress>& gateway) {
     return connection_->FixGatewayReachability(local, gateway);
   }
 
@@ -977,16 +977,14 @@ TEST_F(ConnectionTest, FixGatewayReachability) {
   ASSERT_TRUE(local.SetAddressFromString(kLocal));
   const int kPrefix = 24;
   local.set_prefix(kPrefix);
-  IPAddress gateway(IPAddress::kFamilyIPv4);
 
   // Should fail because no gateway is set
-  EXPECT_FALSE(FixGatewayReachability(local, gateway));
+  EXPECT_FALSE(FixGatewayReachability(local, std::nullopt));
   EXPECT_EQ(kPrefix, local.prefix());
-  EXPECT_FALSE(gateway.IsValid());
 
   // Should succeed because with the given prefix, this gateway is reachable.
   static const char kReachableGateway[] = "10.242.2.14";
-  ASSERT_TRUE(gateway.SetAddressFromString(kReachableGateway));
+  IPAddress gateway = *IPAddress::CreateFromString(kReachableGateway);
   IPAddress gateway_backup(gateway);
   EXPECT_TRUE(FixGatewayReachability(local, gateway));
   // Prefix should remain unchanged.
@@ -996,7 +994,7 @@ TEST_F(ConnectionTest, FixGatewayReachability) {
 
   // Should succeed because we created a link route to the gateway.
   static const char kRemoteGateway[] = "10.242.3.14";
-  ASSERT_TRUE(gateway.SetAddressFromString(kRemoteGateway));
+  gateway = *IPAddress::CreateFromString(kRemoteGateway);
   gateway_backup = gateway;
   gateway_backup.SetAddressToDefault();
   EXPECT_CALL(routing_table_,
