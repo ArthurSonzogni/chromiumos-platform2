@@ -97,6 +97,13 @@ These are the APIs that AuthSession supports:
     - *Note*: - By default this AuthSession is valid for 5 minutes from the time the
       session reaches an Authenticated State. ExtendAuthSession can be called to extend
       the session or StartAuthSession to start over.
+    - *Note*: - Running parallel operations on the same AuthSession auth_session_id is
+       prohibited. This means that in order to run any dbus call on the session, you
+       must wait for the previous call to finish.
+    - *Note*: - However, while there are no restrictions on operations for AuthSessions
+       with different auth_session_id’s, there is also no guarantee of synchronized user
+       state for AuthSessions with the same user. This is a current grey area for
+       cryptohome.
 2. **InvalidateAuthSession** - This call is used to invalidate an AuthSession
 once the need for one no longer exists.
     - *Input*: auth_session_id - AuthSession to invalidate.
