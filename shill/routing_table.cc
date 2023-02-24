@@ -500,7 +500,7 @@ void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
     // The kernel sends one of these messages pretty much every time it
     // connects to another IPv6 host.  The only interesting message is the
     // one containing the default gateway.
-    if (!entry.dst.IsDefault() || !entry.gateway.IsValid())
+    if (!entry.dst.IsDefault())
       return;
   } else if (entry.protocol != RTPROT_BOOT) {
     // Responses to route queries come back with a protocol of
