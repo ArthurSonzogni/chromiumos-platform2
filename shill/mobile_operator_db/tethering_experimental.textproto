@@ -187,3 +187,26 @@ mno {
     }
   }
 }
+
+mno {
+  data {
+    uuid : "29312b25-e5c7-47cc-b83c-32f9a10437d3"
+    country : "es"
+    localized_name {
+      name : "Movistar (Telefónica) - Hotspot"
+    }
+    mccmnc : "21405"
+    mccmnc : "21407"
+    tethering_allowed: true
+    mobile_apn {
+      apn : "telefonica.es"
+      localized_name {
+        name : "Telefónica"
+      }
+      username : "telefonica"
+      password : "telefonica"
+      type : DEFAULT
+      type : DUN
+    }
+  }
+}
