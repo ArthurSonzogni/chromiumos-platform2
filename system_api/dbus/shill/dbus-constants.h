@@ -26,7 +26,6 @@ const char kClearPropertyFunction[] = "ClearProperty";
 // Manager function names.
 const char kConfigureServiceFunction[] = "ConfigureService";
 const char kConfigureServiceForProfileFunction[] = "ConfigureServiceForProfile";
-const char kConnectToBestServicesFunction[] = "ConnectToBestServices";
 const char kScanAndConnectToBestServicesFunction[] =
     "ScanAndConnectToBestServices";
 const char kCreateConnectivityReportFunction[] = "CreateConnectivityReport";

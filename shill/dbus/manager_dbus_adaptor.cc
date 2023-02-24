@@ -388,15 +388,6 @@ bool ManagerDBusAdaptor::ScanAndConnectToBestServices(brillo::ErrorPtr* error) {
   return !e.ToChromeosError(error);
 }
 
-// TODO(b:206907629): Remove the D-Bus method when chrome is not calling it
-// anymore.
-bool ManagerDBusAdaptor::ConnectToBestServices(brillo::ErrorPtr* error) {
-  SLOG(this, 2) << __func__;
-  Error e;
-  manager_->ConnectToBestServices(&e);
-  return !e.ToChromeosError(error);
-}
-
 bool ManagerDBusAdaptor::CreateConnectivityReport(brillo::ErrorPtr* error) {
   SLOG(this, 2) << __func__;
   Error e;

@@ -102,7 +102,6 @@
 		        <arg type="a{sv}" direction="out"/>
 		</method>
 		<method name="ScanAndConnectToBestServices"/>
-		<method name="ConnectToBestServices"/>
 		<method name="CreateConnectivityReport"/>
 		<method name="ClaimInterface">
 			<arg name="claimer_name" type="s" direction="in"/>
