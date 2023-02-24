@@ -43,6 +43,7 @@ source_set("libutils") {
     "sys_utils_impl.cc",
     "type_conversions.cc",
     "vpd_utils_impl.cc",
+    "write_protect_utils_impl.cc",
   ]
   configs += [ ":target_defaults" ]
   deps = [ "//hardware_verifier/proto:hardware_verifier-protos" ]
@@ -76,6 +77,7 @@ if (use.test) {
       "sys_utils_test.cc",
       "type_conversions_test.cc",
       "vpd_utils_test.cc",
+      "write_protect_utils_test.cc",
     ]
     configs += [
       "//common-mk:test",
