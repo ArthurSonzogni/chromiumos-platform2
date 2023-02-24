@@ -102,17 +102,10 @@ void StreamManipulator::RuntimeOptions::SetEffectsConfig(
   effects_config_ = std::move(config);
 }
 
-EffectsConfig StreamManipulator::RuntimeOptions::GetEffectsConfig() {
+mojom::EffectsConfigPtr StreamManipulator::RuntimeOptions::GetEffectsConfig() {
   base::AutoLock lock(lock_);
-  return EffectsConfig{
-      .relight_enabled = effects_config_->relight_enabled,
-      .blur_enabled = effects_config_->blur_enabled,
-      .replace_enabled = effects_config_->replace_enabled,
-      .blur_level = static_cast<BlurLevel>(effects_config_->blur_level),
-      .segmentation_gpu_api =
-          static_cast<GpuApi>(effects_config_->segmentation_gpu_api),
-      .graph_max_frames_in_flight = effects_config_->graph_max_frames_in_flight,
-  };
+  // Return a copy.
+  return effects_config_->Clone();
 }
 
 base::FilePath StreamManipulator::RuntimeOptions::GetDlcRootPath() {

@@ -179,11 +179,10 @@ StreamManipulatorManager::StreamManipulatorManager(
 
 #if USE_CAMERA_FEATURE_EFFECTS
   if (feature_profile.IsEnabled(FeatureProfile::FeatureType::kEffects)) {
-    stream_manipulators_.emplace_back(
-        std::make_unique<EffectsStreamManipulator>(
-            feature_profile.GetConfigFilePath(
-                FeatureProfile::FeatureType::kEffects),
-            runtime_options));
+    stream_manipulators_.emplace_back(EffectsStreamManipulator::Create(
+        feature_profile.GetConfigFilePath(
+            FeatureProfile::FeatureType::kEffects),
+        runtime_options));
     LOGF(INFO) << "EffectsStreamManipulator enabled";
   }
 #endif

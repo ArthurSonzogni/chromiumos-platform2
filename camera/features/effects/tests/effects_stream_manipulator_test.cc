@@ -228,7 +228,7 @@ TEST_F(EffectsStreamManipulatorTest, OverrideConfigFileToSetBackgroundReplace) {
       base::FilePath(EffectsStreamManipulator::kOverrideEffectsConfigFile),
       "{ \"replace_enabled\": true }"));
 
-  stream_manipulator_ = std::make_unique<EffectsStreamManipulator>(
+  stream_manipulator_ = EffectsStreamManipulator::Create(
       config_path_, &runtime_options_, SetEffectCallback);
   stream_manipulator_->Initialize(
       nullptr,
@@ -252,7 +252,7 @@ TEST_F(EffectsStreamManipulatorTest,
        ConfigFileConfiguresEffectsOnInitialisation) {
   ASSERT_TRUE(base::WriteFile(config_path_, "{ \"blur_enabled\": true }"));
 
-  stream_manipulator_ = std::make_unique<EffectsStreamManipulator>(
+  stream_manipulator_ = EffectsStreamManipulator::Create(
       config_path_, &runtime_options_, SetEffectCallback);
   stream_manipulator_->Initialize(
       nullptr,
@@ -276,7 +276,7 @@ TEST_F(EffectsStreamManipulatorTest, ReplaceEffectAppliedUsingEnableFlag) {
   config->replace_enabled = true;
   runtime_options_.SetEffectsConfig(std::move(config));
 
-  stream_manipulator_ = std::make_unique<EffectsStreamManipulator>(
+  stream_manipulator_ = EffectsStreamManipulator::Create(
       config_path_, &runtime_options_, SetEffectCallback);
   stream_manipulator_->Initialize(
       nullptr,
@@ -302,7 +302,7 @@ TEST_F(EffectsStreamManipulatorTest, BlurEffectWithExtraBlurLevel) {
   config->blur_level = mojom::BlurLevel::kMaximum;
   runtime_options_.SetEffectsConfig(std::move(config));
 
-  stream_manipulator_ = std::make_unique<EffectsStreamManipulator>(
+  stream_manipulator_ = EffectsStreamManipulator::Create(
       config_path_, &runtime_options_, SetEffectCallback);
   stream_manipulator_->Initialize(
       nullptr,
@@ -327,7 +327,7 @@ TEST_F(EffectsStreamManipulatorTest, RelightEffectAppliedUsingEnableFlag) {
   config->relight_enabled = true;
   runtime_options_.SetEffectsConfig(std::move(config));
 
-  stream_manipulator_ = std::make_unique<EffectsStreamManipulator>(
+  stream_manipulator_ = EffectsStreamManipulator::Create(
       config_path_, &runtime_options_, SetEffectCallback);
   stream_manipulator_->Initialize(
       nullptr,
@@ -348,7 +348,7 @@ TEST_F(EffectsStreamManipulatorTest, RelightEffectAppliedUsingEnableFlag) {
 }
 
 TEST_F(EffectsStreamManipulatorTest, NoneEffectApplied) {
-  stream_manipulator_ = std::make_unique<EffectsStreamManipulator>(
+  stream_manipulator_ = EffectsStreamManipulator::Create(
       config_path_, &runtime_options_, SetEffectCallback);
   stream_manipulator_->Initialize(
       nullptr,
@@ -372,7 +372,7 @@ TEST_F(EffectsStreamManipulatorTest, RotateThroughEffectsUsingOverrideFile) {
       "{ \"blur_enabled\": false, \"relight_enabled\": false, "
       "\"replace_enabled\": false }"));
 
-  stream_manipulator_ = std::make_unique<EffectsStreamManipulator>(
+  stream_manipulator_ = EffectsStreamManipulator::Create(
       config_path_, &runtime_options_, SetEffectCallback);
   stream_manipulator_->Initialize(
       nullptr,
@@ -407,7 +407,7 @@ TEST_F(EffectsStreamManipulatorTest, RotateThroughEffectsUsingOverrideFile) {
 
 TEST_F(EffectsStreamManipulatorTest,
        RotateThroughEffectsWhileProcessingFrames) {
-  stream_manipulator_ = std::make_unique<EffectsStreamManipulator>(
+  stream_manipulator_ = EffectsStreamManipulator::Create(
       config_path_, &runtime_options_, SetEffectCallback);
   stream_manipulator_->Initialize(
       nullptr,

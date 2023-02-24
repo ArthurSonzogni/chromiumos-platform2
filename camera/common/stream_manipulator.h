@@ -27,7 +27,6 @@
 #include "cros-camera/cros_camera_hal.h"
 #include "cros-camera/export.h"
 #include "gpu/gpu_resources.h"
-#include "ml_core/effects_pipeline.h"
 
 namespace cros {
 
@@ -64,7 +63,7 @@ class CROS_CAMERA_EXPORT StreamManipulator {
     void SetAutoFramingState(mojom::CameraAutoFramingState state);
     void SetSWPrivacySwitchState(mojom::CameraPrivacySwitchState state);
     void SetEffectsConfig(mojom::EffectsConfigPtr config);
-    EffectsConfig GetEffectsConfig();
+    mojom::EffectsConfigPtr GetEffectsConfig();
     base::FilePath GetDlcRootPath();
     void SetDlcRootPath(const base::FilePath& path);
 

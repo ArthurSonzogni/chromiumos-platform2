@@ -18,21 +18,33 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
+#include <base/containers/flat_set.h>
 #include <base/containers/stack_container.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/callback_helpers.h>
 #include <base/no_destructor.h>
+#include <base/threading/thread_checker.h>
 #include <base/time/time.h>
+#include <base/values.h>
+
+#undef Status
+#include <absl/status/status.h>
 
 #include "camera/mojo/effects/effects_pipeline.mojom.h"
 #include "common/camera_hal3_helpers.h"
+#include "common/reloadable_config_file.h"
 #include "common/stream_manipulator.h"
 #include "cros-camera/camera_buffer_manager.h"
 #include "cros-camera/camera_metadata_utils.h"
+#include "features/effects/effects_metrics.h"
 #include "gpu/egl/egl_fence.h"
 #include "gpu/gles/texture_2d.h"
+#include "gpu/image_processor.h"
+#include "gpu/shared_image.h"
+#include "ml_core/effects_pipeline.h"
 
 namespace cros {
 
@@ -93,9 +105,127 @@ class RenderedImageObserver : public ProcessedFrameObserver {
       frame_processed_callback_;
 };
 
+EffectsConfig ConvertMojoConfig(cros::mojom::EffectsConfigPtr effects_config) {
+  return EffectsConfig{
+      .relight_enabled = effects_config->relight_enabled,
+      .blur_enabled = effects_config->blur_enabled,
+      .replace_enabled = effects_config->replace_enabled,
+      .blur_level = static_cast<cros::BlurLevel>(effects_config->blur_level),
+      .segmentation_gpu_api =
+          static_cast<cros::GpuApi>(effects_config->segmentation_gpu_api),
+      .graph_max_frames_in_flight = effects_config->graph_max_frames_in_flight,
+  };
+}
+
 }  // namespace
 
-EffectsStreamManipulator::EffectsStreamManipulator(
+class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
+ public:
+  // callback used to signal that an effect has taken effect.
+  // Once the callback is fired it is guaranteed that all subsequent
+  // frames will have the effect applied.
+  // TODO(b:263440749): update callback type
+  explicit EffectsStreamManipulatorImpl(base::FilePath config_file_path,
+                                        RuntimeOptions* runtime_options,
+                                        void (*callback)(bool) = nullptr);
+  ~EffectsStreamManipulatorImpl() override;
+
+  // Implementations of StreamManipulator.
+  bool Initialize(const camera_metadata_t* static_info,
+                  StreamManipulator::Callbacks callbacks) override;
+  bool ConfigureStreams(Camera3StreamConfiguration* stream_config) override;
+  bool OnConfiguredStreams(Camera3StreamConfiguration* stream_config) override;
+  bool ConstructDefaultRequestSettings(
+      android::CameraMetadata* default_request_settings, int type) override;
+  bool ProcessCaptureRequest(Camera3CaptureDescriptor* request) override;
+  bool ProcessCaptureResult(Camera3CaptureDescriptor result) override;
+  void Notify(camera3_notify_msg_t msg) override;
+  bool Flush() override;
+  void OnFrameProcessed(int64_t timestamp,
+                        GLuint texture,
+                        uint32_t width,
+                        uint32_t height);
+
+ private:
+  struct StreamContext {
+    // The original stream requested by the client.
+    camera3_stream_t* original_stream = nullptr;
+
+    // The stream that will be set in place of |original_stream| in capture
+    // requests.
+    std::unique_ptr<camera3_stream_t> effect_stream;
+  };
+
+  void OnOptionsUpdated(const base::Value::Dict& json_values);
+
+  void SetEffect(EffectsConfig new_config);
+  bool SetupGlThread();
+  bool RenderEffect(Camera3StreamBuffer& result_buffer, int64_t timestamp);
+  bool EnsureImages(buffer_handle_t buffer_handle);
+  bool NV12ToRGBA();
+  void RGBAToNV12(GLuint texture, uint32_t width, uint32_t height);
+  void CreatePipeline(const base::FilePath& dlc_root_path);
+  std::optional<int64_t> TryGetSensorTimestamp(Camera3CaptureDescriptor* desc);
+  void UploadAndResetMetricsData();
+  void ResetState();
+
+  ReloadableConfigFile config_;
+  RuntimeOptions* runtime_options_;
+  StreamManipulator::Callbacks callbacks_;
+
+  EffectsConfig active_runtime_effects_config_
+      GUARDED_BY_CONTEXT(sequence_checker_) = EffectsConfig();
+  // Config state. last_set_effect_ can be different to
+  // active_runtime_effects_config_ when the effect is set
+  // via the ReloadableConfig mechanism.
+  EffectsConfig last_set_effect_config_ GUARDED_BY_CONTEXT(sequence_checker_) =
+      EffectsConfig();
+
+  std::unique_ptr<EffectsPipeline> pipeline_
+      GUARDED_BY_CONTEXT(sequence_checker_);
+
+  std::vector<std::unique_ptr<StreamContext>> stream_contexts_
+      GUARDED_BY(stream_contexts_lock_);
+  base::Lock stream_contexts_lock_;
+
+  // Buffer for input frame converted into RGBA.
+  ScopedBufferHandle input_buffer_rgba_ GUARDED_BY_CONTEXT(gl_thread_checker_);
+
+  // SharedImage for |input_buffer_rgba|.
+  SharedImage input_image_rgba_ GUARDED_BY_CONTEXT(gl_thread_checker_);
+
+  SharedImage input_image_yuv_ GUARDED_BY_CONTEXT(gl_thread_checker_);
+  absl::Status frame_status_ = absl::OkStatus();
+
+  std::unique_ptr<EglContext> egl_context_
+      GUARDED_BY_CONTEXT(gl_thread_checker_);
+  std::unique_ptr<GpuImageProcessor> image_processor_
+      GUARDED_BY_CONTEXT(gl_thread_checker_);
+
+  int64_t last_timestamp_ GUARDED_BY_CONTEXT(sequence_checker_) = 0;
+
+  CameraThread gl_thread_;
+  scoped_refptr<base::SingleThreadTaskRunner> process_thread_;
+
+  void (*set_effect_callback_)(bool);
+
+  SEQUENCE_CHECKER(sequence_checker_);
+  THREAD_CHECKER(gl_thread_checker_);
+
+  EffectsMetricsData metrics_;
+  std::unique_ptr<EffectsMetricsUploader> metrics_uploader_;
+  base::TimeTicks last_processed_frame_timestamp_;
+};
+
+std::unique_ptr<EffectsStreamManipulator> EffectsStreamManipulator::Create(
+    base::FilePath config_file_path,
+    RuntimeOptions* runtime_options,
+    void (*callback)(bool)) {
+  return std::make_unique<EffectsStreamManipulatorImpl>(
+      config_file_path, runtime_options, callback);
+}
+
+EffectsStreamManipulatorImpl::EffectsStreamManipulatorImpl(
     base::FilePath config_file_path,
     RuntimeOptions* runtime_options,
     void (*callback)(bool))
@@ -123,7 +253,7 @@ EffectsStreamManipulator::EffectsStreamManipulator(
   bool ret;
   gl_thread_.PostTaskSync(
       FROM_HERE,
-      base::BindOnce(&EffectsStreamManipulator::SetupGlThread,
+      base::BindOnce(&EffectsStreamManipulatorImpl::SetupGlThread,
                      base::Unretained(this)),
       &ret);
   if (!ret) {
@@ -135,7 +265,7 @@ EffectsStreamManipulator::EffectsStreamManipulator(
   }
 }
 
-EffectsStreamManipulator::~EffectsStreamManipulator() {
+EffectsStreamManipulatorImpl::~EffectsStreamManipulatorImpl() {
   // UploadAndResetMetricsData currently posts a task to the gl_thread task
   // runner (see constructor above). If we change that, we need to ensure the
   // upload task is complete before the destructor exits, or change the
@@ -145,14 +275,14 @@ EffectsStreamManipulator::~EffectsStreamManipulator() {
   ResetState();
 }
 
-bool EffectsStreamManipulator::Initialize(
+bool EffectsStreamManipulatorImpl::Initialize(
     const camera_metadata_t* static_info,
     StreamManipulator::Callbacks callbacks) {
   callbacks_ = std::move(callbacks);
   return true;
 }
 
-bool EffectsStreamManipulator::ConfigureStreams(
+bool EffectsStreamManipulatorImpl::ConfigureStreams(
     Camera3StreamConfiguration* stream_config) {
   UploadAndResetMetricsData();
   ResetState();
@@ -197,27 +327,27 @@ bool EffectsStreamManipulator::ConfigureStreams(
   return true;
 }
 
-void EffectsStreamManipulator::ResetState() {
+void EffectsStreamManipulatorImpl::ResetState() {
   base::AutoLock lock(stream_contexts_lock_);
   stream_contexts_.clear();
 }
 
-bool EffectsStreamManipulator::OnConfiguredStreams(
+bool EffectsStreamManipulatorImpl::OnConfiguredStreams(
     Camera3StreamConfiguration* stream_config) {
   return true;
 }
 
-bool EffectsStreamManipulator::ConstructDefaultRequestSettings(
+bool EffectsStreamManipulatorImpl::ConstructDefaultRequestSettings(
     android::CameraMetadata* default_request_settings, int type) {
   return true;
 }
 
-bool EffectsStreamManipulator::ProcessCaptureRequest(
+bool EffectsStreamManipulatorImpl::ProcessCaptureRequest(
     Camera3CaptureDescriptor* request) {
   return true;
 }
 
-std::optional<int64_t> EffectsStreamManipulator::TryGetSensorTimestamp(
+std::optional<int64_t> EffectsStreamManipulatorImpl::TryGetSensorTimestamp(
     Camera3CaptureDescriptor* desc) {
   base::span<const int64_t> timestamp =
       desc->GetMetadata<int64_t>(ANDROID_SENSOR_TIMESTAMP);
@@ -225,15 +355,16 @@ std::optional<int64_t> EffectsStreamManipulator::TryGetSensorTimestamp(
                                : std::nullopt;
 }
 
-bool EffectsStreamManipulator::ProcessCaptureResult(
+bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   auto processing_time_start = base::TimeTicks::Now();
   if (!process_thread_) {
     process_thread_ = base::ThreadTaskRunnerHandle::Get();
-    config_.SetCallback(base::BindRepeating(
-        &EffectsStreamManipulator::OnOptionsUpdated, base::Unretained(this)));
+    config_.SetCallback(
+        base::BindRepeating(&EffectsStreamManipulatorImpl::OnOptionsUpdated,
+                            base::Unretained(this)));
   }
 
   base::ScopedClosureRunner callback_action =
@@ -251,7 +382,7 @@ bool EffectsStreamManipulator::ProcessCaptureResult(
   if (!pipeline_)
     return true;
 
-  auto new_config = runtime_options_->GetEffectsConfig();
+  auto new_config = ConvertMojoConfig(runtime_options_->GetEffectsConfig());
   if (active_runtime_effects_config_ != new_config) {
     active_runtime_effects_config_ = new_config;
     SetEffect(new_config);
@@ -313,8 +444,8 @@ bool EffectsStreamManipulator::ProcessCaptureResult(
   return true;
 }
 
-bool EffectsStreamManipulator::RenderEffect(Camera3StreamBuffer& result_buffer,
-                                            int64_t timestamp) {
+bool EffectsStreamManipulatorImpl::RenderEffect(
+    Camera3StreamBuffer& result_buffer, int64_t timestamp) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   DCHECK(result_buffer.status() == CAMERA3_BUFFER_STATUS_OK);
   if (!result_buffer.WaitOnAndClearReleaseFence(kSyncWaitTimeoutMs)) {
@@ -341,7 +472,7 @@ bool EffectsStreamManipulator::RenderEffect(Camera3StreamBuffer& result_buffer,
 
   gl_thread_.PostTaskSync(
       FROM_HERE,
-      base::BindOnce(&EffectsStreamManipulator::EnsureImages,
+      base::BindOnce(&EffectsStreamManipulatorImpl::EnsureImages,
                      base::Unretained(this), buffer_handle),
       &ret);
   if (!ret) {
@@ -349,10 +480,11 @@ bool EffectsStreamManipulator::RenderEffect(Camera3StreamBuffer& result_buffer,
     return false;
   }
 
-  gl_thread_.PostTaskSync(FROM_HERE,
-                          base::BindOnce(&EffectsStreamManipulator::NV12ToRGBA,
-                                         base::Unretained(this)),
-                          &ret);
+  gl_thread_.PostTaskSync(
+      FROM_HERE,
+      base::BindOnce(&EffectsStreamManipulatorImpl::NV12ToRGBA,
+                     base::Unretained(this)),
+      &ret);
   if (!ret) {
     LOGF(ERROR) << "Failed to convert from YUV to RGB";
     return false;
@@ -377,25 +509,25 @@ bool EffectsStreamManipulator::RenderEffect(Camera3StreamBuffer& result_buffer,
   return true;
 }
 
-void EffectsStreamManipulator::Notify(camera3_notify_msg_t msg) {
+void EffectsStreamManipulatorImpl::Notify(camera3_notify_msg_t msg) {
   callbacks_.notify_callback.Run(std::move(msg));
 }
 
-bool EffectsStreamManipulator::Flush() {
+bool EffectsStreamManipulatorImpl::Flush() {
   return true;
 }
 
-void EffectsStreamManipulator::OnFrameProcessed(int64_t timestamp,
-                                                GLuint texture,
-                                                uint32_t width,
-                                                uint32_t height) {
+void EffectsStreamManipulatorImpl::OnFrameProcessed(int64_t timestamp,
+                                                    GLuint texture,
+                                                    uint32_t width,
+                                                    uint32_t height) {
   gl_thread_.PostTaskSync(
       FROM_HERE,
-      base::BindOnce(&EffectsStreamManipulator::RGBAToNV12,
+      base::BindOnce(&EffectsStreamManipulatorImpl::RGBAToNV12,
                      base::Unretained(this), texture, width, height));
 }
 
-void EffectsStreamManipulator::OnOptionsUpdated(
+void EffectsStreamManipulatorImpl::OnOptionsUpdated(
     const base::Value::Dict& json_values) {
   if (!pipeline_) {
     LOGF(WARNING) << "OnOptionsUpdated called, but pipeline not ready.";
@@ -482,11 +614,11 @@ void EffectsStreamManipulator::OnOptionsUpdated(
   }
 
   process_thread_->PostTask(
-      FROM_HERE, base::BindOnce(&EffectsStreamManipulator::SetEffect,
+      FROM_HERE, base::BindOnce(&EffectsStreamManipulatorImpl::SetEffect,
                                 base::Unretained(this), std::move(new_config)));
 }
 
-void EffectsStreamManipulator::SetEffect(EffectsConfig new_config) {
+void EffectsStreamManipulatorImpl::SetEffect(EffectsConfig new_config) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (pipeline_) {
     pipeline_->SetEffect(&new_config, set_effect_callback_);
@@ -503,7 +635,7 @@ void EffectsStreamManipulator::SetEffect(EffectsConfig new_config) {
   }
 }
 
-bool EffectsStreamManipulator::SetupGlThread() {
+bool EffectsStreamManipulatorImpl::SetupGlThread() {
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
   if (!egl_context_) {
     egl_context_ = EglContext::GetSurfacelessContext();
@@ -526,7 +658,7 @@ bool EffectsStreamManipulator::SetupGlThread() {
   return true;
 }
 
-bool EffectsStreamManipulator::EnsureImages(buffer_handle_t buffer_handle) {
+bool EffectsStreamManipulatorImpl::EnsureImages(buffer_handle_t buffer_handle) {
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
 
   uint32_t target_width = CameraBufferManager::GetWidth(buffer_handle);
@@ -552,7 +684,7 @@ bool EffectsStreamManipulator::EnsureImages(buffer_handle_t buffer_handle) {
   return true;
 }
 
-bool EffectsStreamManipulator::NV12ToRGBA() {
+bool EffectsStreamManipulatorImpl::NV12ToRGBA() {
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
 
   bool conv_result = image_processor_->NV12ToRGBA(input_image_yuv_.y_texture(),
@@ -562,9 +694,9 @@ bool EffectsStreamManipulator::NV12ToRGBA() {
   return conv_result;
 }
 
-void EffectsStreamManipulator::RGBAToNV12(GLuint texture,
-                                          uint32_t width,
-                                          uint32_t height) {
+void EffectsStreamManipulatorImpl::RGBAToNV12(GLuint texture,
+                                              uint32_t width,
+                                              uint32_t height) {
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
 
   Texture2D texture_2d(texture, kRGBAFormat, width, height);
@@ -580,15 +712,15 @@ void EffectsStreamManipulator::RGBAToNV12(GLuint texture,
   }
 }
 
-void EffectsStreamManipulator::CreatePipeline(
+void EffectsStreamManipulatorImpl::CreatePipeline(
     const base::FilePath& dlc_root_path) {
   pipeline_ = EffectsPipeline::Create(dlc_root_path, egl_context_->Get());
   pipeline_->SetRenderedImageObserver(std::make_unique<RenderedImageObserver>(
-      base::BindRepeating(&EffectsStreamManipulator::OnFrameProcessed,
+      base::BindRepeating(&EffectsStreamManipulatorImpl::OnFrameProcessed,
                           base::Unretained(this))));
 }
 
-void EffectsStreamManipulator::UploadAndResetMetricsData() {
+void EffectsStreamManipulatorImpl::UploadAndResetMetricsData() {
   EffectsMetricsData metrics_copy(metrics_);
   metrics_ = EffectsMetricsData();
   metrics_uploader_->UploadMetricsData(std::move(metrics_copy));
