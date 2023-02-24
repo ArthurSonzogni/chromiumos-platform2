@@ -14,7 +14,7 @@
 
 namespace diagnostics {
 
-ProcessControl::ProcessControl(std::unique_ptr<brillo::Process> process)
+ProcessControl::ProcessControl(std::unique_ptr<SandboxedProcess> process)
     : process_(std::move(process)) {
   CHECK(!process_->pid()) << "The process has already started.";
 }

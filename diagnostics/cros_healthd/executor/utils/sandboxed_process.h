@@ -9,6 +9,7 @@
 #include <vector>
 
 #include <base/files/file_path.h>
+#include <base/time/time.h>
 #include <brillo/process/process.h>
 
 namespace diagnostics {
@@ -64,6 +65,14 @@ class SandboxedProcess : public brillo::ProcessImpl {
 
   // Overrides brillo::ProcessImpl.
   bool Start() override;
+  bool Kill(int signal, int timeout) override;
+  void Reset(pid_t new_pid) override;
+
+  // First try to use SIGTERM to kill jailed process to prevent minijail from
+  // printing error message about child receiving SIGKILL. This method may block
+  // for a few seconds. Returns the exit status of minijail process or -1 on
+  // error.
+  int KillAndWaitSandboxProcess();
 
  protected:
   SandboxedProcess();
@@ -81,10 +90,9 @@ class SandboxedProcess : public brillo::ProcessImpl {
   // Checks if a file exist. For mocking.
   virtual bool IsPathExists(const base::FilePath& path) const;
 
-  // If we send SIGKILL to minijail first, it will become zombie because the
-  // mojo socket is still there. Killing the jailed process first will make sure
-  // we release the socket resources.
-  bool KillJailedProcess(int signal, uint8_t timeout);
+  // Kill the jailed process and wait for the minijail process. Return the exit
+  // status of the minijail process on success, or -1 on error or timeout.
+  int KillJailedProcess(int signal, base::TimeDelta timeout);
 
   // The arguments of minijail.
   std::vector<std::string> sandbox_arguments_;

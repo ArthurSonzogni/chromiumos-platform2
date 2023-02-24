@@ -23,6 +23,7 @@
 #include <mojo/public/cpp/bindings/unique_receiver_set.h>
 
 #include "diagnostics/cros_healthd/executor/constants.h"
+#include "diagnostics/cros_healthd/executor/utils/sandboxed_process.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/process/process_with_output.h"
 #include "diagnostics/mojom/public/nullable_primitives.mojom.h"
@@ -97,20 +98,20 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
   // started. If cancelling is required, RunLongRunningProcess() should be used
   // instead.
   void RunAndWaitProcess(
-      std::unique_ptr<brillo::Process> process,
+      std::unique_ptr<SandboxedProcess> process,
       base::OnceCallback<
           void(ash::cros_healthd::mojom::ExecutedProcessResultPtr)> callback,
       bool combine_stdout_and_stderr);
   void OnRunAndWaitProcessFinished(
       base::OnceCallback<
           void(ash::cros_healthd::mojom::ExecutedProcessResultPtr)> callback,
-      std::unique_ptr<brillo::Process> process,
+      std::unique_ptr<SandboxedProcess> process,
       const siginfo_t& siginfo);
   // (DEPRECATED: Use RunLongRunningProcess() instead) Like RunAndWaitprocess()
   // above, but tracks the process internally so that it can be cancelled if
   // necessary.
   void RunTrackedBinary(
-      std::unique_ptr<brillo::Process> process,
+      std::unique_ptr<SandboxedProcess> process,
       base::OnceCallback<
           void(ash::cros_healthd::mojom::ExecutedProcessResultPtr)> callback,
       const std::string& binary_path);
@@ -127,7 +128,7 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
       mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver);
   // Runs a long running process and uses process control to track binary.
   void RunLongRunningProcess(
-      std::unique_ptr<brillo::Process> process,
+      std::unique_ptr<SandboxedProcess> process,
       mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver,
       bool combine_stdout_and_stderr);
 
@@ -143,7 +144,7 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
 
   // Tracks running processes owned by the executor. Used to kill processes if
   // requested.
-  std::map<std::string, std::unique_ptr<brillo::Process>> tracked_processes_;
+  std::map<std::string, std::unique_ptr<SandboxedProcess>> tracked_processes_;
 
   // Used to hold the child process and receiver. So the remote can reset the
   // mojo connection to terminate the child process.

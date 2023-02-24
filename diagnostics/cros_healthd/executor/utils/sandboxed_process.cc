@@ -6,6 +6,7 @@
 
 #include <inttypes.h>
 #include <signal.h>
+#include <sys/types.h>
 #include <sys/wait.h>
 
 #include <string>
@@ -17,6 +18,8 @@
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <base/time/time.h>
+#include <brillo/process/process.h>
 
 #include "diagnostics/base/file_utils.h"
 
@@ -65,14 +68,7 @@ uint32_t FetchJailedProcessPid(uint32_t parent_pid) {
 
 SandboxedProcess::SandboxedProcess() = default;
 
-SandboxedProcess::~SandboxedProcess() {
-  const uint8_t timeout = 3;
-  // Send SIGTERM first to prevent minijail show the warning message of SIGKILL.
-  if (KillJailedProcess(SIGTERM, timeout)) {
-    return;
-  }
-  KillJailedProcess(SIGKILL, timeout);
-}
+SandboxedProcess::~SandboxedProcess() = default;
 
 SandboxedProcess::SandboxedProcess(
     const std::vector<std::string>& command,
@@ -186,21 +182,51 @@ bool SandboxedProcess::Start() {
   return BrilloProcessStart();
 }
 
-bool SandboxedProcess::KillJailedProcess(int signal, uint8_t timeout) {
-  if (pid() == 0) {
-    // Passing pid == 0 to kill is committing suicide.  Check specifically.
-    LOG(ERROR) << "Process not running";
-    return false;
-  }
+bool SandboxedProcess::Kill(int signal, int timeout) {
+  LOG(ERROR)
+      << "You should not call |Kill| function in Sandbox Process which might "
+         "generate zombie process. Use |KillAndWaitSandboxProcess| instead.";
+  return brillo::ProcessImpl::Kill(signal, timeout);
+}
 
+void SandboxedProcess::Reset(pid_t new_pid) {
+  if (pid() != 0) {
+    KillAndWaitSandboxProcess();
+  }
+  brillo::ProcessImpl::Reset(new_pid);
+}
+
+int SandboxedProcess::KillAndWaitSandboxProcess() {
+  if (pid() == 0) {
+    LOG(ERROR) << "Try to kill a SandboxedProcess which is not tracking any "
+                  "running process";
+    // No process is running and there is nothing to be killed.
+    return -1;
+  }
+  constexpr base::TimeDelta timeout = base::Seconds(3);
+  // Send SIGTERM first to prevent minijail show the warning message of SIGKILL.
+  int return_code = KillJailedProcess(SIGTERM, timeout);
+  if (pid() == 0) {
+    return return_code;
+  }
+  return KillJailedProcess(SIGKILL, timeout);
+}
+
+int SandboxedProcess::KillJailedProcess(int signal, base::TimeDelta timeout) {
+  CHECK(pid() != 0) << "No process is currently running";
+  // If we send SIGKILL to minijail first, it will become zombie because the
+  // mojo socket is still there. Killing the jailed process first will make sure
+  // we release the socket resources.
   uint32_t jailed_process_pid = 0;
   base::TimeTicks start_signal = base::TimeTicks::Now();
   do {
     if (jailed_process_pid == 0) {
       jailed_process_pid = FetchJailedProcessPid(pid());
+      // If jailed_process_pid is 0, the jailed process could be not started yet
+      // or had terminated. So we need to retry for the first case.
       if (jailed_process_pid != 0 && kill(jailed_process_pid, signal) < 0) {
         PLOG(ERROR) << "Unable to send signal to " << jailed_process_pid;
-        return false;
+        return -1;
       }
     }
 
@@ -209,10 +235,10 @@ bool SandboxedProcess::KillJailedProcess(int signal, uint8_t timeout) {
     if (w < 0) {
       if (errno == ECHILD) {
         UpdatePid(0);
-        return true;
+        return status;
       }
       PLOG(ERROR) << "Waitpid returned " << w;
-      return false;
+      return -1;
     }
 
     // In normal case, the first |w| we receive is the pid of jailed process. We
@@ -221,12 +247,14 @@ bool SandboxedProcess::KillJailedProcess(int signal, uint8_t timeout) {
     // process again.
     if (w == pid()) {
       UpdatePid(0);
-      return true;
+      return status;
     }
     usleep(100);
-  } while ((base::TimeTicks::Now() - start_signal).InSecondsF() <= timeout);
+  } while ((base::TimeTicks::Now() - start_signal) <= timeout);
 
-  return false;
+  LOG(ERROR) << "Failed to kill jail process by signal within "
+             << timeout.InSeconds() << " seconds";
+  return -1;
 }
 
 // Prepares some arguments which need to be handled before use.

@@ -12,9 +12,9 @@
 #include <vector>
 
 #include <base/functional/callback_forward.h>
-#include <brillo/process/process.h>
 #include <brillo/process/process_reaper.h>
 
+#include "diagnostics/cros_healthd/executor/utils/sandboxed_process.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 
 namespace diagnostics {
@@ -27,7 +27,7 @@ namespace diagnostics {
 // lifecycle of child process.
 class ProcessControl : public ash::cros_healthd::mojom::ProcessControl {
  public:
-  explicit ProcessControl(std::unique_ptr<brillo::Process> process);
+  explicit ProcessControl(std::unique_ptr<SandboxedProcess> process);
   ProcessControl(const ProcessControl&) = delete;
   ProcessControl& operator=(const ProcessControl&) = delete;
   ~ProcessControl() override;
@@ -50,7 +50,7 @@ class ProcessControl : public ash::cros_healthd::mojom::ProcessControl {
   // Helper function to cast a file descriptor into mojo::ScopedHandle.
   mojo::ScopedHandle GetMojoScopedHandle(int file_no);
 
-  std::unique_ptr<brillo::Process> process_;
+  std::unique_ptr<SandboxedProcess> process_;
   // The return code of the process.
   int return_code_ = -1;
   // Queue for storing pending callbacks before the process has finished
