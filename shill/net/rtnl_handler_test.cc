@@ -16,7 +16,7 @@
 #include <sys/ioctl.h>
 
 #include <base/functional/bind.h>
-#include <base/run_loop.h>
+#include <base/test/test_future.h>
 #include <base/test/task_environment.h>
 
 #include "shill/mock_log.h"
@@ -536,21 +536,15 @@ TEST_F(RTNLHandlerTest, SetInterfaceMac) {
   SetRequestSequence(kSequenceNumber);
   EXPECT_CALL(*sockets_, Send(kTestSocket, _, _, 0)).WillOnce(ReturnArg<2>());
 
-  base::RunLoop run_loop;
+  base::test::TestFuture<int32_t> error_future;
 
   RTNLHandler::GetInstance()->SetInterfaceMac(
       3, ByteString::CreateFromHexString("abcdef123456"),
-      base::BindOnce(
-          [](base::OnceClosure callback, int32_t expected_error,
-             int32_t error) {
-            EXPECT_EQ(expected_error, error);
-            std::move(callback).Run();
-          },
-          run_loop.QuitClosure(), kErrorNumber));
+      error_future.GetCallback());
 
   ReturnError(kSequenceNumber, kErrorNumber);
 
-  run_loop.Run();
+  EXPECT_EQ(error_future.Get(), kErrorNumber);
 
   StopRTNLHandler();
 }
@@ -570,17 +564,10 @@ TEST_F(RTNLHandlerTest, AddInterfaceTest) {
         return len;
       });
 
-  base::RunLoop run_loop;
+  base::test::TestFuture<int32_t> error_future;
 
-  RTNLHandler::GetInstance()->AddInterface(
-      kIfName, kIfType, ByteString{},
-      base::BindOnce(
-          [](base::OnceClosure callback, int32_t expected_error,
-             int32_t error) {
-            EXPECT_EQ(expected_error, error);
-            std::move(callback).Run();
-          },
-          run_loop.QuitClosure(), kErrorNumber));
+  RTNLHandler::GetInstance()->AddInterface(kIfName, kIfType, ByteString{},
+                                           error_future.GetCallback());
 
   RTNLMessage sent_msg;
   sent_msg.Decode(msg_bytes.GetConstData(), msg_bytes.GetLength());
@@ -592,7 +579,7 @@ TEST_F(RTNLHandlerTest, AddInterfaceTest) {
 
   ReturnError(kSequenceNumber, kErrorNumber);
 
-  run_loop.Run();
+  EXPECT_EQ(error_future.Get(), kErrorNumber);
 
   StopRTNLHandler();
 }

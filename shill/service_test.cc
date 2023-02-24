@@ -13,8 +13,8 @@
 
 #include <base/functional/bind.h>
 #include <base/memory/scoped_refptr.h>
-#include <base/run_loop.h>
 #include <base/test/bind.h>
+#include <base/test/test_future.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
@@ -222,13 +222,10 @@ class ServiceTest : public PropertyStoreTest {
 
   std::optional<base::TimeDelta> GetTimeSinceFailed() {
     // Wait 1 MS before calling GetTimeSinceFailed.
-    base::RunLoop run_loop;
+    base::test::TestFuture<void> future;
     base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
-        FROM_HERE,
-        base::Bind([](base::Closure quit_closure) { quit_closure.Run(); },
-                   run_loop.QuitClosure()),
-        base::Milliseconds(1));
-    run_loop.Run();
+        FROM_HERE, future.GetCallback(), base::Milliseconds(1));
+    EXPECT_TRUE(future.Wait());
     return service_->GetTimeSinceFailed();
   }
 
