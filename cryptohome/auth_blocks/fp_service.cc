@@ -121,13 +121,13 @@ CryptohomeStatus FingerprintAuthBlockService::Verify() {
     case FingerprintScanStatus::FAILED_RETRY_ALLOWED:
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocFpServiceCheckResultFailedYesRetry),
-          ErrorActionSet({ErrorAction::kRetry}),
+          ErrorActionSet({ErrorAction::kIncorrectAuth}),
           user_data_auth::CryptohomeErrorCode::
               CRYPTOHOME_ERROR_FINGERPRINT_RETRY_REQUIRED);
     case FingerprintScanStatus::FAILED_RETRY_NOT_ALLOWED:
       return MakeStatus<CryptohomeError>(
           CRYPTOHOME_ERR_LOC(kLocFpServiceCheckResultFailedNoRetry),
-          ErrorActionSet({ErrorAction::kAuth}),
+          ErrorActionSet({ErrorAction::kLeLockedOut, ErrorAction::kAuth}),
           user_data_auth::CryptohomeErrorCode::
               CRYPTOHOME_ERROR_FINGERPRINT_DENIED);
   }

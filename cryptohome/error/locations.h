@@ -1587,6 +1587,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocFingerprintAuthBlockCreateRateLimiterFailedInCreate = 3352,
   /* ./auth_blocks/fingerprint_auth_block.cc */
   kLocFingerprintAuthBlockInsertCredentialFailedInCreate = 3353,
+  /* ./auth_blocks/biometrics_command_processor_impl.cc */
+  kLocBiometricsProcessorMatchCredentialUnexpectedScanResult = 3354,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.
