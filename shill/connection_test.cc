@@ -107,6 +107,12 @@ MATCHER_P(IsLinkRouteTo, dst, "") {
          arg.scope == RT_SCOPE_LINK;
 }
 
+IPAddress CreateAndUnwrapIPAddress(const std::string& addr_str) {
+  const auto ret = IPAddress::CreateFromString(addr_str);
+  CHECK(ret.has_value()) << addr_str << "is not a valid IP";
+  return *ret;
+}
+
 }  // namespace
 
 class ConnectionTest : public Test {
@@ -114,12 +120,12 @@ class ConnectionTest : public Test {
   ConnectionTest()
       : manager_(&control_, nullptr, nullptr),
         connection_(nullptr),
-        local_address_(IPAddress::kFamilyIPv4),
-        broadcast_address_(IPAddress::kFamilyIPv4),
-        gateway_ipv4_address_(IPAddress::kFamilyIPv4),
-        gateway_ipv6_address_(IPAddress::kFamilyIPv6),
+        local_address_(CreateAndUnwrapIPAddress(kIPAddress0)),
+        broadcast_address_(CreateAndUnwrapIPAddress(kBroadcastAddress0)),
+        gateway_ipv4_address_(CreateAndUnwrapIPAddress(kGatewayAddress0)),
+        gateway_ipv6_address_(CreateAndUnwrapIPAddress(kIPv6GatewayAddress)),
         default_address_(IPAddress::kFamilyIPv4),
-        local_ipv6_address_(IPAddress::kFamilyIPv6) {}
+        local_ipv6_address_(CreateAndUnwrapIPAddress(kIPv6Address)) {}
 
   void SetUp() override {
     ipv4_properties_.address = kIPAddress0;
@@ -134,13 +140,6 @@ class ConnectionTest : public Test {
     ipv6_properties_.gateway = kIPv6GatewayAddress;
     ipv6_properties_.dns_servers = {kIPv6NameServer0, kIPv6NameServer1};
     ipv6_properties_.address_family = IPAddress::kFamilyIPv6;
-
-    EXPECT_TRUE(local_address_.SetAddressFromString(kIPAddress0));
-    EXPECT_TRUE(broadcast_address_.SetAddressFromString(kBroadcastAddress0));
-    EXPECT_TRUE(gateway_ipv4_address_.SetAddressFromString(kGatewayAddress0));
-    EXPECT_TRUE(
-        gateway_ipv6_address_.SetAddressFromString(kIPv6GatewayAddress));
-    EXPECT_TRUE(local_ipv6_address_.SetAddressFromString(kIPv6Address));
   }
 
   void TearDown() override {
@@ -210,14 +209,12 @@ class ConnectionTest : public Test {
     // Add expectations for the added routes.
     auto address_family = ipv4_properties_.address_family;
     for (const auto& route : routes) {
-      IPAddress destination_address(address_family);
-      IPAddress source_address(address_family);  // Left as default.
-      IPAddress gateway_address(address_family);
-      if (!destination_address.SetAddressFromString(route.host) ||
-          !gateway_address.SetAddressFromString(route.gateway)) {
-        continue;
-      }
+      IPAddress destination_address = CreateAndUnwrapIPAddress(route.host);
       destination_address.set_prefix(route.prefix);
+
+      IPAddress source_address(address_family);  // Left as default.
+      IPAddress gateway_address = CreateAndUnwrapIPAddress(route.gateway);
+
       EXPECT_CALL(
           routing_table_,
           AddRoute(connection_->interface_index_,
@@ -367,12 +364,12 @@ class ConnectionTest : public Test {
   std::unique_ptr<Connection> connection_;
   IPConfig::Properties ipv4_properties_;
   IPConfig::Properties ipv6_properties_;
-  IPAddress local_address_;
-  IPAddress broadcast_address_;
-  IPAddress gateway_ipv4_address_;
-  IPAddress gateway_ipv6_address_;
-  IPAddress default_address_;
-  IPAddress local_ipv6_address_;
+  const IPAddress local_address_;
+  const IPAddress broadcast_address_;
+  const IPAddress gateway_ipv4_address_;
+  const IPAddress gateway_ipv6_address_;
+  const IPAddress default_address_;
+  const IPAddress local_ipv6_address_;
   std::vector<IPAddress> dhcp_classless_static_route_dsts_;
   StrictMock<MockResolver> resolver_;
   StrictMock<MockRoutingTable> routing_table_;
@@ -717,8 +714,7 @@ TEST_F(ConnectionTest, AddConfigWithPeer) {
   connection_ = CreateConnection(device);
 
   const std::string kPeerAddress("192.168.1.222");
-  IPAddress peer_address(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(peer_address.SetAddressFromString(kPeerAddress));
+  IPAddress peer_address = CreateAndUnwrapIPAddress(kPeerAddress);
   ipv4_properties_.peer_address = kPeerAddress;
   ipv4_properties_.gateway = std::string();
   EXPECT_CALL(rtnl_handler_,
@@ -749,8 +745,7 @@ TEST_F(ConnectionTest, AddConfigWithBrokenNetmask) {
 
   // Connection should add a link route which will allow the
   // gateway to be reachable.
-  IPAddress gateway_address(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(gateway_address.SetAddressFromString(kGatewayAddress0));
+  IPAddress gateway_address = CreateAndUnwrapIPAddress(kGatewayAddress0);
   EXPECT_CALL(routing_table_, AddRoute(device->interface_index(),
                                        IsLinkRouteTo(gateway_address)))
       .WillOnce(Return(true));
@@ -973,8 +968,7 @@ TEST_F(ConnectionTest, FixGatewayReachability) {
   connection_ = CreateConnection(device);
 
   static const char kLocal[] = "10.242.2.13";
-  IPAddress local(IPAddress::kFamilyIPv4);
-  ASSERT_TRUE(local.SetAddressFromString(kLocal));
+  IPAddress local = CreateAndUnwrapIPAddress(kLocal);
   const int kPrefix = 24;
   local.set_prefix(kPrefix);
 

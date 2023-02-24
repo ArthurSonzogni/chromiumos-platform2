@@ -139,30 +139,31 @@ bool Connection::SetupIncludedRoutes(const IPConfig::Properties& properties,
                   << " Destination: " << route.host
                   << " Prefix: " << route.prefix
                   << " Gateway: " << route.gateway;
-    IPAddress destination_address(address_family);
-    IPAddress source_address(address_family);  // Left as default.
-    IPAddress gateway_address(address_family);
-    if (!destination_address.SetAddressFromString(route.host)) {
+    const auto dst = IPAddress::CreateFromStringAndPrefix(
+        route.host, route.prefix, address_family);
+    if (!dst.has_value()) {
       LOG(ERROR) << "Failed to parse host " << route.host;
       ret = false;
       continue;
     }
-    if (!gateway_address.SetAddressFromString(route.gateway)) {
+
+    auto gateway = IPAddress::CreateFromString(route.gateway, address_family);
+    if (!gateway.has_value()) {
       LOG(ERROR) << "Failed to parse gateway " << route.gateway;
       ret = false;
       continue;
     }
     if (ignore_gateway) {
-      gateway_address.SetAddressToDefault();
+      gateway->SetAddressToDefault();
     }
-    destination_address.set_prefix(route.prefix);
-    if (!routing_table_->AddRoute(
-            interface_index_,
-            RoutingTableEntry::Create(destination_address, source_address,
-                                      gateway_address)
-                .SetMetric(priority_)
-                .SetTable(table_id_)
-                .SetTag(interface_index_))) {
+
+    IPAddress src(address_family);  // Left as default.
+
+    if (!routing_table_->AddRoute(interface_index_,
+                                  RoutingTableEntry::Create(*dst, src, *gateway)
+                                      .SetMetric(priority_)
+                                      .SetTable(table_id_)
+                                      .SetTag(interface_index_))) {
       ret = false;
     }
   }
@@ -222,24 +223,28 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
     }
   }
 
-  IPAddress local(properties.address_family);
-  if (!local.SetAddressFromString(properties.address)) {
+  const auto local = IPAddress::CreateFromStringAndPrefix(
+      properties.address, properties.subnet_prefix, properties.address_family);
+  if (!local.has_value()) {
     LOG(ERROR) << "Local address " << properties.address << " is invalid";
     return;
   }
-  local.set_prefix(properties.subnet_prefix);
 
-  IPAddress broadcast(properties.address_family);
+  std::optional<IPAddress> broadcast;
   if (properties.broadcast_address.empty()) {
-    if (local.family() == IPAddress::kFamilyIPv4 &&
+    if (local->family() == IPAddress::kFamilyIPv4 &&
         properties.peer_address.empty()) {
       LOG(WARNING) << "Broadcast address is not set.  Using default.";
-      broadcast = local.GetDefaultBroadcast();
+      broadcast = local->GetDefaultBroadcast();
     }
-  } else if (!broadcast.SetAddressFromString(properties.broadcast_address)) {
-    LOG(ERROR) << "Broadcast address " << properties.broadcast_address
-               << " is invalid";
-    return;
+  } else {
+    broadcast = IPAddress::CreateFromString(properties.broadcast_address,
+                                            properties.address_family);
+    if (!broadcast.has_value()) {
+      LOG(ERROR) << "Broadcast address " << properties.broadcast_address
+                 << " is invalid";
+      return;
+    }
   }
 
   bool is_p2p = false;
@@ -272,7 +277,7 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
   // uses kTypeVPN as method, so kTypeIPv6 is always SLAAC.
   const bool skip_ip_configuration = properties.method == kTypeIPv6;
   if (!fixed_ip_params_ && !skip_ip_configuration) {
-    if (const auto it = added_addresses_.find(local.family());
+    if (const auto it = added_addresses_.find(local->family());
         it != added_addresses_.end() && it->second != local) {
       // The address has changed for this interface.  We need to flush
       // everything and start over.
@@ -286,12 +291,15 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
 
     LOG(INFO) << __func__ << ": Installing with parameters:"
               << " interface_name=" << interface_name_
-              << " local=" << local.ToString()
-              << " broadcast=" << broadcast.ToString() << " gateway="
+              << " local=" << local->ToString() << " broadcast="
+              << (broadcast.has_value() ? broadcast->ToString() : "<empty>")
+              << " gateway="
               << (gateway.has_value() ? gateway->ToString() : "<empty>");
 
-    rtnl_handler_->AddInterfaceAddress(interface_index_, local, broadcast);
-    added_addresses_.insert_or_assign(local.family(), local);
+    rtnl_handler_->AddInterfaceAddress(
+        interface_index_, *local,
+        broadcast.has_value() ? *broadcast : IPAddress(local->family()));
+    added_addresses_.insert_or_assign(local->family(), *local);
 
     SetMTU(properties.mtu);
   }
@@ -300,7 +308,7 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
     return;
   }
 
-  if (!is_p2p && !FixGatewayReachability(local, gateway)) {
+  if (!is_p2p && !FixGatewayReachability(*local, gateway)) {
     LOG(WARNING) << "Expect limited network connectivity.";
   }
 
@@ -341,7 +349,7 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
 
   PushDNSConfig();
 
-  local_ = local;
+  local_ = *local;
   if (gateway.has_value()) {
     gateway_ = *gateway;
   } else {
