@@ -857,7 +857,8 @@ bool RoutingTable::ParseRoutingPolicyMessage(const RTNLMessage& message,
 }
 
 bool RoutingTable::HandleRoutingPolicyMessage(const RTNLMessage& message) {
-  RoutingPolicyEntry entry;
+  // Family will be set to the real value in ParseRoutingPolicyMessage().
+  RoutingPolicyEntry entry(IPAddress::kFamilyIPv4);
 
   if (!ParseRoutingPolicyMessage(message, &entry)) {
     return false;

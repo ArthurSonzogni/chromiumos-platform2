@@ -14,31 +14,24 @@ bool operator==(const fib_rule_uid_range& a, const fib_rule_uid_range& b) {
 
 namespace shill {
 
-RoutingPolicyEntry::RoutingPolicyEntry()
-    : family(IPAddress::kFamilyUnknown),
-      priority(1),
-      table(RT_TABLE_MAIN),
-      invert_rule(false) {}
+RoutingPolicyEntry::RoutingPolicyEntry(IPAddress::Family family)
+    : family(family), dst(family), src(family) {}
 
 // static
 RoutingPolicyEntry RoutingPolicyEntry::Create(IPAddress::Family family_in) {
-  RoutingPolicyEntry entry;
-  entry.family = family_in;
-  return entry;
+  return RoutingPolicyEntry(family_in);
 }
 
 // static
 RoutingPolicyEntry RoutingPolicyEntry::CreateFromSrc(IPAddress src_in) {
-  RoutingPolicyEntry entry;
-  entry.family = src_in.family();
+  RoutingPolicyEntry entry(src_in.family());
   entry.src = std::move(src_in);
   return entry;
 }
 
 // static
 RoutingPolicyEntry RoutingPolicyEntry::CreateFromDst(IPAddress dst_in) {
-  RoutingPolicyEntry entry;
-  entry.family = dst_in.family();
+  RoutingPolicyEntry entry(dst_in.family());
   entry.dst = std::move(dst_in);
   return entry;
 }

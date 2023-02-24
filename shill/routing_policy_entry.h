@@ -28,7 +28,7 @@ struct RoutingPolicyEntry {
     }
   };
 
-  RoutingPolicyEntry();
+  explicit RoutingPolicyEntry(IPAddress::Family family);
 
   static RoutingPolicyEntry Create(IPAddress::Family family_in);
   static RoutingPolicyEntry CreateFromSrc(IPAddress src_in);
@@ -53,8 +53,8 @@ struct RoutingPolicyEntry {
   bool operator==(const RoutingPolicyEntry& b) const;
 
   IPAddress::Family family;
-  uint32_t priority;
-  uint32_t table;
+  uint32_t priority = 1;
+  uint32_t table = RT_TABLE_MAIN;
 
   IPAddress dst;
   IPAddress src;
@@ -64,7 +64,7 @@ struct RoutingPolicyEntry {
   std::optional<std::string> iif_name;
   std::optional<std::string> oif_name;
 
-  bool invert_rule;
+  bool invert_rule = false;
 };
 
 }  // namespace shill
