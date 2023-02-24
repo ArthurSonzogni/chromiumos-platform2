@@ -1427,22 +1427,38 @@ properties:
                                    center.
                       minimum: 0x0
                       maximum: 0xFFFFFFFF
-                    components:
+                    component-type-configs:
                       type: array
-                      description: Mapping of components to SSFC bitmap values.
                       items:
+                        description: Configs for each component type.
                         type: object
-                        description: A single mapping from a component name to
-                                     an SSFC bitmap value.
                         properties:
-                          identifier:
+                          component-type:
                             type: string
-                            description: Component name in the probe statement.
-                          value:
+                            description: Component type, e.g. gyroscope.
+                          default-value:
                             type: integer
-                            description: SSFC bitmap value of the component.
+                            description: Default SSFC value if none of the
+                                         component in |probed_componentns| is
+                                         probed.
                             minimum: 0x0
                             maximum: 0xFFFFFFFF
+                          probeable-components:
+                            type: array
+                            items:
+                              description: Mapping of probeable components to
+                                           SSFC values.
+                              type: object
+                              properties:
+                                identifier:
+                                  type: string
+                                  description: Component name in the probe
+                                               statement, e.g. gyroscope_1.
+                                value:
+                                  type: integer
+                                  description: SSFC value of the component.
+                                  minimum: 0x0
+                                  maximum: 0xFFFFFFFF
             scheduler-tune:
               type: object
               description: ChromeOS scheduler's tunable values.

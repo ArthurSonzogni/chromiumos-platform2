@@ -1443,14 +1443,21 @@ In the tables below,
 ### ssfc
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
-| components | array - [components](#components) |  | False |  | False | A single mapping from a component name to an SSFC bitmap value. |
+| component-type-configs | array - [component-type-configs](#component_type_configs) |  | False |  | False | Configs for each component type. |
 | mask | integer |  | False |  | False | SSFC bitmap mask for bits that should be preserved after RMA, e.g. configs that can only be set by the factory but not the RMA center. Minimum value: 0x0. Maximum value: 0xffffffff. |
 
-### components
+### component-type-configs
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
 | --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
-| identifier | string |  | False |  | False | Component name in the probe statement. |
-| value | integer |  | False |  | False | SSFC bitmap value of the component. Minimum value: 0x0. Maximum value: 0xffffffff. |
+| component-type | string |  | False |  | False | Component type, e.g. gyroscope. |
+| default-value | integer |  | False |  | False | Default SSFC value if none of the component in |probed_componentns| is probed. Minimum value: 0x0. Maximum value: 0xffffffff. |
+| probeable-components | array - [probeable-components](#probeable_components) |  | False |  | False | Mapping of probeable components to SSFC values. |
+
+### probeable-components
+| Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
+| --------- | ------ | --------- | -------- | ----------- | ---------- | ----------- |
+| identifier | string |  | False |  | False | Component name in the probe statement, e.g. gyroscope_1. |
+| value | integer |  | False |  | False | SSFC value of the component. Minimum value: 0x0. Maximum value: 0xffffffff. |
 
 ### scheduler-tune
 | Attribute | Type   | RegEx     | Required | Oneof Group | Build-only | Description |
