@@ -87,5 +87,14 @@ TEST_F(CrossystemTest, IsHardwareWriteProtectEnabledPropertyDoesNotExist) {
   EXPECT_DEATH(crossystem_->HardwareWriteProtectIsEnabled(), kCheckFailedRegex);
 }
 
+TEST_F(CrossystemTest, GetHardwareID) {
+  fake_->VbSetSystemPropertyString(Crossystem::kHardwareId, "abc123");
+  EXPECT_EQ(crossystem_->GetHardwareID(), "abc123");
+}
+
+TEST_F(CrossystemTest, GetHardwareIDNotSet) {
+  EXPECT_DEATH(crossystem_->GetHardwareID(), kCheckFailedRegex);
+}
+
 }  // namespace
 }  // namespace crossystem

@@ -59,9 +59,15 @@ class BRILLO_EXPORT Crossystem {
   /// @return true if hardware write protect is enabled; false otherwise.
   bool HardwareWriteProtectIsEnabled() const;
 
+  /// Get hardware ID.
+  ///
+  /// @return hardware ID string
+  std::string GetHardwareID() const;
+
   // Use the helper methods (e.g., HardwareProtectIsEnabled()) rather than
   // using these constants directly.
   BRILLO_PRIVATE static constexpr char kHardwareWriteProtect[] = "wpsw_cur";
+  BRILLO_PRIVATE static constexpr char kHardwareId[] = "hwid";
 
  private:
   std::unique_ptr<CrossystemVbootInterface> impl_;

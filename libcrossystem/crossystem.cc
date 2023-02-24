@@ -48,4 +48,10 @@ bool Crossystem::HardwareWriteProtectIsEnabled() const {
   return *ret;
 }
 
+std::string Crossystem::GetHardwareID() const {
+  std::optional<std::string> ret = VbGetSystemPropertyString(kHardwareId);
+  CHECK(ret.has_value());
+  return *ret;
+}
+
 }  // namespace crossystem
