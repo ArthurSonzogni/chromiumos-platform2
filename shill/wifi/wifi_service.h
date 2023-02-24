@@ -105,7 +105,6 @@ class WiFiService : public Service {
 
   mockable void AddEndpoint(const WiFiEndpointConstRefPtr& endpoint);
   mockable void RemoveEndpoint(const WiFiEndpointConstRefPtr& endpoint);
-  mockable int GetEndpointCount() const { return endpoints_.size(); }
 
   // Called to update the identity of the currently connected endpoint.
   // To indicate that there is no currently connect endpoint, call with
@@ -167,7 +166,9 @@ class WiFiService : public Service {
   void SetIsRekeyInProgress(bool is_rekey_in_progress);
   bool is_rekey_in_progress() const { return is_rekey_in_progress_; }
   mockable bool HasEndpoints() const { return !endpoints_.empty(); }
-  bool HasConnectableEndpoints() const;
+  mockable bool HasBSSIDConnectableEndpoints() const;
+  mockable int GetBSSIDConnectableEndpointCount() const;
+  bool IsBSSIDConnectable(const WiFiEndpointConstRefPtr& endpoint) const;
   bool IsVisible() const override;
   bool IsSecurityMatch(WiFiSecurity::Mode mode) const;
   bool IsSecurityMatch(const std::string& security_class) const;

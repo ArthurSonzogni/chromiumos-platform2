@@ -613,10 +613,10 @@ bool WiFiService::IsLoadableFrom(const StoreInterface& storage) const {
 }
 
 bool WiFiService::IsVisible() const {
-  // WiFi Services should be displayed only if they are in range (have
-  // endpoints that have shown up in a scan) or if the service is actively
-  // being connected.
-  return HasEndpoints() || IsConnected() || IsConnecting();
+  // WiFi Services should be displayed only if they are in range of endpoints
+  // that have shown up in a scan and whose BSSID are allowlisted, or if the
+  // service is actively being connected.
+  return HasBSSIDConnectableEndpoints() || IsConnected() || IsConnecting();
 }
 
 bool WiFiService::Load(const StoreInterface* storage) {
@@ -1376,17 +1376,21 @@ RpcIdentifier WiFiService::GetDeviceRpcId(Error* error) const {
 // avoid disruption upon making a bad Connect decision, we rule out
 // incompatible Services here.
 bool WiFiService::IsWPA3Connectable() const {
-  if (!wifi_)
+  if (!wifi_) {
     return false;
+  }
 
-  if (wifi_->SupportsWPA3())
+  if (wifi_->SupportsWPA3()) {
     return true;
+  }
 
   // PSK property means WPA2 compatibility. If any endpoint supports WPA2/3
   // transitional, then we assume the network will be connectable.
-  for (const auto& endpoint : endpoints_)
-    if (endpoint->has_psk_property())
+  for (const auto& endpoint : endpoints_) {
+    if (endpoint->has_psk_property() && IsBSSIDConnectable(endpoint)) {
       return true;
+    }
+  }
 
   return false;
 }
@@ -2044,20 +2048,42 @@ bool WiFiService::SetBSSIDAllowlist(const Strings& bssid_allowlist,
   return true;
 }
 
-bool WiFiService::HasConnectableEndpoints() const {
+int WiFiService::GetBSSIDConnectableEndpointCount() const {
+  switch (GetBSSIDAllowlistPolicy(bssid_allowlist_)) {
+    case BSSIDAllowlistPolicy::kNoneAllowed:
+      return 0;
+    case BSSIDAllowlistPolicy::kAllAllowed:
+      return endpoints_.size();
+    case BSSIDAllowlistPolicy::kMatchOnlyAllowed:
+      int connectable_endpoints = 0;
+      for (const auto& endpoint : endpoints_) {
+        if (IsBSSIDConnectable(endpoint)) {
+          connectable_endpoints++;
+        }
+      }
+      return connectable_endpoints;
+  }
+}
+
+bool WiFiService::HasBSSIDConnectableEndpoints() const {
+  for (const auto& endpoint : endpoints_) {
+    if (IsBSSIDConnectable(endpoint)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+bool WiFiService::IsBSSIDConnectable(
+    const WiFiEndpointConstRefPtr& endpoint) const {
   switch (GetBSSIDAllowlistPolicy(bssid_allowlist_)) {
     case BSSIDAllowlistPolicy::kNoneAllowed:
       return false;
     case BSSIDAllowlistPolicy::kAllAllowed:
-      return HasEndpoints();
+      return true;
     case BSSIDAllowlistPolicy::kMatchOnlyAllowed:
-      for (const auto& endpoint : endpoints_) {
-        if (base::Contains(bssid_allowlist_, endpoint->bssid())) {
-          return true;
-        }
-      }
+      return base::Contains(bssid_allowlist_, endpoint->bssid());
   }
-  return false;
 }
 
 }  // namespace shill

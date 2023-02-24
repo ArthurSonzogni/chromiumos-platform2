@@ -870,9 +870,9 @@ std::string WiFi::AppendBgscan(WiFiService* service,
     // If multiple APs are detected for this SSID, configure the default method
     // with pre-set parameters. Otherwise, use extended scan intervals.
     method = kDefaultBgscanMethod;
-    if (service->GetEndpointCount() <= 1) {
-      SLOG(2) << "Background scan intervals extended -- single "
-              << "Endpoint for Service.";
+    if (service->GetBSSIDConnectableEndpointCount() <= 1) {
+      SLOG(2) << "Background scan intervals extended -- single connectable "
+              << "endpoint for Service.";
       short_interval = kSingleEndpointBgscanShortIntervalSeconds;
       scan_interval = kSingleEndpointBgscanIntervalSeconds;
     }
@@ -2016,7 +2016,7 @@ void WiFi::BSSRemovedTask(const RpcIdentifier& path) {
   Error unused_error;
   RemoveNetworkForService(service.get(), &unused_error);
 
-  bool disconnect_service = !service->HasEndpoints() &&
+  bool disconnect_service = !service->HasBSSIDConnectableEndpoints() &&
                             (service->IsConnecting() || service->IsConnected());
 
   if (disconnect_service) {

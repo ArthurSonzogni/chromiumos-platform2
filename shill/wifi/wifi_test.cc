@@ -813,7 +813,8 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
         MakeMockServiceWithSSID(endpoint->ssid(), endpoint->security_mode());
     EXPECT_CALL(wifi_provider_, FindServiceForEndpoint(EndpointMatch(endpoint)))
         .WillRepeatedly(Return(service));
-    ON_CALL(*service, GetEndpointCount()).WillByDefault(Return(1));
+    ON_CALL(*service, GetBSSIDConnectableEndpointCount())
+        .WillByDefault(Return(1));
     ReportBSS(path, ssid, bssid, signal_strength, frequency,
               kNetworkModeInfrastructure, 0);
     if (service_ptr) {
@@ -3522,7 +3523,8 @@ TEST_F(WiFiMainTest, AppendBgscan) {
     // 1 endpoint, default bgscan method -- background scan frequency very
     // reduced.
     KeyValueStore params;
-    EXPECT_CALL(*service, GetEndpointCount()).WillOnce(Return(1));
+    EXPECT_CALL(*service, GetBSSIDConnectableEndpointCount())
+        .WillOnce(Return(1));
     AppendBgscan(service.get(), &params);
     Mock::VerifyAndClearExpectations(service.get());
     std::string config_string;
@@ -3540,7 +3542,8 @@ TEST_F(WiFiMainTest, AppendBgscan) {
   {
     // 2 endpoints, default bgscan method -- background scan frequency reduced.
     KeyValueStore params;
-    EXPECT_CALL(*service, GetEndpointCount()).WillOnce(Return(2));
+    EXPECT_CALL(*service, GetBSSIDConnectableEndpointCount())
+        .WillOnce(Return(2));
     AppendBgscan(service.get(), &params);
     Mock::VerifyAndClearExpectations(service.get());
     std::string config_string;
@@ -3559,7 +3562,7 @@ TEST_F(WiFiMainTest, AppendBgscan) {
     // Explicit bgscan method -- regular background scan frequency.
     EXPECT_TRUE(SetBgscanMethod(WPASupplicant::kNetworkBgscanMethodSimple));
     KeyValueStore params;
-    EXPECT_CALL(*service, GetEndpointCount()).Times(0);
+    EXPECT_CALL(*service, GetBSSIDConnectableEndpointCount()).Times(0);
     AppendBgscan(service.get(), &params);
     Mock::VerifyAndClearExpectations(service.get());
     EXPECT_TRUE(
@@ -3576,7 +3579,7 @@ TEST_F(WiFiMainTest, AppendBgscan) {
     // No scan method, simply returns without appending properties
     EXPECT_TRUE(SetBgscanMethod(WPASupplicant::kNetworkBgscanMethodNone));
     KeyValueStore params;
-    EXPECT_CALL(*service, GetEndpointCount()).Times(0);
+    EXPECT_CALL(*service, GetBSSIDConnectableEndpointCount()).Times(0);
     AppendBgscan(service.get(), &params);
     Mock::VerifyAndClearExpectations(service.get());
     std::string config_string;

@@ -1411,7 +1411,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
   EXPECT_CALL(adaptor,
               EmitUint16Changed(kWifiPhyMode, Metrics::kWiFiNetworkPhyMode11b));
   service->AddEndpoint(ok_endpoint);
-  EXPECT_EQ(1, service->GetEndpointCount());
+  EXPECT_EQ(1, service->GetBSSIDConnectableEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Endpoint with stronger signal updates values.
@@ -1425,7 +1425,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
   // However, both endpoints are 11b.
   EXPECT_CALL(adaptor, EmitUint16Changed(kWifiPhyMode, _)).Times(0);
   service->AddEndpoint(good_endpoint);
-  EXPECT_EQ(2, service->GetEndpointCount());
+  EXPECT_EQ(2, service->GetBSSIDConnectableEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Endpoint with lower signal does not change values.
@@ -1436,7 +1436,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
       .Times(0);
   EXPECT_CALL(adaptor, EmitUint16Changed(kWifiPhyMode, _)).Times(0);
   service->AddEndpoint(bad_endpoint);
-  EXPECT_EQ(3, service->GetEndpointCount());
+  EXPECT_EQ(3, service->GetBSSIDConnectableEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Removing non-optimal endpoint does not change values.
@@ -1447,7 +1447,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
       .Times(0);
   EXPECT_CALL(adaptor, EmitUint16Changed(kWifiPhyMode, _)).Times(0);
   service->RemoveEndpoint(bad_endpoint);
-  EXPECT_EQ(2, service->GetEndpointCount());
+  EXPECT_EQ(2, service->GetBSSIDConnectableEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Removing optimal endpoint updates values.
@@ -1460,7 +1460,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
   // However, both endpoints are 11b.
   EXPECT_CALL(adaptor, EmitUint16Changed(kWifiPhyMode, _)).Times(0);
   service->RemoveEndpoint(good_endpoint);
-  EXPECT_EQ(1, service->GetEndpointCount());
+  EXPECT_EQ(1, service->GetBSSIDConnectableEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Removing last endpoint updates values (and doesn't crash).
@@ -1471,7 +1471,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Floating) {
   EXPECT_CALL(adaptor, EmitUint16Changed(kWifiPhyMode,
                                          Metrics::kWiFiNetworkPhyModeUndef));
   service->RemoveEndpoint(ok_endpoint);
-  EXPECT_EQ(0, service->GetEndpointCount());
+  EXPECT_EQ(0, service->GetBSSIDConnectableEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
 }
 
@@ -1482,7 +1482,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Connected) {
   EXPECT_CALL(adaptor, EmitBoolChanged(_, _)).Times(AnyNumber());
   service->AddEndpoint(bad_endpoint);
   service->AddEndpoint(ok_endpoint);
-  EXPECT_EQ(2, service->GetEndpointCount());
+  EXPECT_EQ(2, service->GetBSSIDConnectableEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Setting current endpoint forces adoption of its values, even if it
@@ -1504,7 +1504,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, Connected) {
   EXPECT_CALL(adaptor, EmitIntChanged(kWifiSignalStrengthRssiProperty, _))
       .Times(0);
   service->AddEndpoint(good_endpoint);
-  EXPECT_EQ(3, service->GetEndpointCount());
+  EXPECT_EQ(3, service->GetBSSIDConnectableEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Removing a better endpoint doesn't matter, when current endpoint is set.
@@ -1545,7 +1545,7 @@ TEST_F(WiFiServiceUpdateFromEndpointsTest, EndpointModified) {
   EXPECT_CALL(adaptor, EmitBoolChanged(_, _)).Times(AnyNumber());
   service->AddEndpoint(ok_endpoint);
   service->AddEndpoint(good_endpoint);
-  EXPECT_EQ(2, service->GetEndpointCount());
+  EXPECT_EQ(2, service->GetBSSIDConnectableEndpointCount());
   Mock::VerifyAndClearExpectations(&adaptor);
 
   // Updating sub-optimal Endpoint doesn't update Service.
@@ -2975,63 +2975,78 @@ TEST_F(WiFiServiceTest, SetBSSIDAllowlist) {
   EXPECT_TRUE(error.type() == Error::kInvalidArguments);
 }
 
-TEST_F(WiFiServiceTest, HasConnectableEndpoints) {
+TEST_F(WiFiServiceTest, BSSIDConnectableEndpoints) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
 
   // No endpoints and no allowlist still means nothing is connectable
-  EXPECT_FALSE(service->HasConnectableEndpoints());
+  EXPECT_EQ(0, service->GetBSSIDConnectableEndpointCount());
+  EXPECT_FALSE(service->HasBSSIDConnectableEndpoints());
 
   // By default, an endpoint is potentially connectable
   WiFiEndpoint::SecurityFlags flags;
-  WiFiEndpointRefPtr endpoint =
-      MakeEndpoint(/*ssid=*/"a", "00:00:00:00:00:01", /*frequency=*/0,
-                   /*signal_dbm=*/0, flags);
+  WiFiEndpointRefPtr endpoint = MakeEndpoint(
+      "a", "00:00:00:00:00:01", /*frequency=*/0, /*signal_dbm=*/0, flags);
   service->AddEndpoint(endpoint);
-  EXPECT_TRUE(service->HasConnectableEndpoints());
+  EXPECT_EQ(1, service->GetBSSIDConnectableEndpointCount());
+  EXPECT_TRUE(service->HasBSSIDConnectableEndpoints());
 }
 
-TEST_F(WiFiServiceTest, HasNoConnectableEndpoints) {
+TEST_F(WiFiServiceTest, NoBSSIDConnectableEndpoints) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
   EXPECT_CALL(*wifi(), SetBSSIDAllowlist(_, _)).WillRepeatedly(Return(true));
 
   WiFiEndpoint::SecurityFlags flags;
-  WiFiEndpointRefPtr endpoint =
-      MakeEndpoint(/*ssid=*/"a", "aa:bb:cc:dd:ee:ff", /*frequency=*/0,
-                   /*signal_dbm=*/0, flags);
+  WiFiEndpointRefPtr endpoint = MakeEndpoint(
+      "a", "aa:bb:cc:dd:ee:ff", /*frequency=*/0, /*signal_dbm=*/0, flags);
   service->AddEndpoint(endpoint);
-  EXPECT_TRUE(service->HasConnectableEndpoints());
+
+  EXPECT_EQ(1, service->GetBSSIDConnectableEndpointCount());
+  EXPECT_TRUE(service->HasBSSIDConnectableEndpoints());
+  EXPECT_TRUE(service->IsBSSIDConnectable(endpoint));
 
   std::vector<std::string> bssid_allowlist = {"00:00:00:00:00:00"};
   Error error;
   EXPECT_TRUE(service->SetBSSIDAllowlist(bssid_allowlist, &error));
-  EXPECT_FALSE(service->HasConnectableEndpoints());
+  EXPECT_EQ(0, service->GetBSSIDConnectableEndpointCount());
+  EXPECT_FALSE(service->HasBSSIDConnectableEndpoints());
+  EXPECT_FALSE(service->IsBSSIDConnectable(endpoint));
 
   bssid_allowlist = {"00:00:00:00:00:01"};
   EXPECT_TRUE(service->SetBSSIDAllowlist(bssid_allowlist, &error));
-  EXPECT_FALSE(service->HasConnectableEndpoints());
+  EXPECT_EQ(0, service->GetBSSIDConnectableEndpointCount());
+  EXPECT_FALSE(service->HasBSSIDConnectableEndpoints());
+  EXPECT_FALSE(service->IsBSSIDConnectable(endpoint));
 }
 
-TEST_F(WiFiServiceTest, HasAllowlistedConnectableEndpoints) {
+TEST_F(WiFiServiceTest, AllowlistedBSSIDConnectableEndpoints) {
   WiFiServiceRefPtr service = MakeSimpleService(kSecurityClassNone);
   EXPECT_CALL(*wifi(), SetBSSIDAllowlist(_, _)).WillRepeatedly(Return(true));
 
   WiFiEndpoint::SecurityFlags flags;
-  WiFiEndpointRefPtr endpoint =
-      MakeEndpoint(/*ssid=*/"a", "aa:bb:cc:dd:ee:ff", /*frequency=*/0,
-                   /*signal_dbm=*/0, flags);
+  WiFiEndpointRefPtr endpoint = MakeEndpoint(
+      "a", "aa:bb:cc:dd:ee:ff", /*frequency=*/0, /*signal_dbm=*/0, flags);
   service->AddEndpoint(endpoint);
-  EXPECT_TRUE(service->HasConnectableEndpoints());
+
+  EXPECT_EQ(1, service->GetBSSIDConnectableEndpointCount());
+  EXPECT_TRUE(service->HasBSSIDConnectableEndpoints());
+  EXPECT_TRUE(service->IsBSSIDConnectable(endpoint));
 
   // Allowlist matches endpoints
   std::vector<std::string> bssid_allowlist = {"aa:bb:cc:dd:ee:ff"};
   Error error;
   EXPECT_TRUE(service->SetBSSIDAllowlist(bssid_allowlist, &error));
-  EXPECT_TRUE(service->HasConnectableEndpoints());
+
+  EXPECT_EQ(1, service->GetBSSIDConnectableEndpointCount());
+  EXPECT_TRUE(service->HasBSSIDConnectableEndpoints());
+  EXPECT_TRUE(service->IsBSSIDConnectable(endpoint));
 
   // Extra allowlisted BSSIDs don't affect anything
   bssid_allowlist = {"00:00:00:00:00:01", "aa:bb:cc:dd:ee:ff"};
   EXPECT_TRUE(service->SetBSSIDAllowlist(bssid_allowlist, &error));
-  EXPECT_TRUE(service->HasConnectableEndpoints());
+
+  EXPECT_EQ(1, service->GetBSSIDConnectableEndpointCount());
+  EXPECT_TRUE(service->HasBSSIDConnectableEndpoints());
+  EXPECT_TRUE(service->IsBSSIDConnectable(endpoint));
 }
 
 }  // namespace shill

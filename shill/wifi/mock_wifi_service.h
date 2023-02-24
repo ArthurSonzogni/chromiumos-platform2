@@ -5,11 +5,13 @@
 #ifndef SHILL_WIFI_MOCK_WIFI_SERVICE_H_
 #define SHILL_WIFI_MOCK_WIFI_SERVICE_H_
 
+#include <set>
 #include <string>
 #include <vector>
 
 #include <gmock/gmock.h>
 
+#include "shill/wifi/wifi_endpoint.h"
 #include "shill/wifi/wifi_service.h"
 
 namespace shill {
@@ -61,8 +63,9 @@ class MockWiFiService : public WiFiService {
   MOCK_METHOD(bool, IsActive, (Error*), (const, override));
   MOCK_METHOD(bool, IsConnected, (Error*), (const, override));
   MOCK_METHOD(bool, IsConnecting, (), (const, override));
-  MOCK_METHOD(int, GetEndpointCount, (), (const, override));
   MOCK_METHOD(bool, HasEndpoints, (), (const, override));
+  MOCK_METHOD(bool, HasBSSIDConnectableEndpoints, (), (const, override));
+  MOCK_METHOD(int, GetBSSIDConnectableEndpointCount, (), (const, override));
   MOCK_METHOD(bool, IsRemembered, (), (const, override));
   MOCK_METHOD(void, ResetWiFi, (), (override));
   MOCK_METHOD(KeyValueStore,

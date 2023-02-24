@@ -3392,31 +3392,31 @@ TEST_F(ManagerTest, ConnectToMostSecureWiFi) {
   EXPECT_CALL(*wifi_service_wpa2wpa3_8021x, Connect(_, _)).Times(1);
   EXPECT_CALL(*wifi_service_wpa3_8021x, Connect(_, _)).Times(1);
 
-  ON_CALL(*wifi_service_open, HasEndpoints())
+  ON_CALL(*wifi_service_open, HasBSSIDConnectableEndpoints())
       .WillByDefault(testing::Return(true));
-  ON_CALL(*wifi_service_wep, HasEndpoints())
+  ON_CALL(*wifi_service_wep, HasBSSIDConnectableEndpoints())
       .WillByDefault(testing::Return(true));
-  ON_CALL(*wifi_service_wpa_psk, HasEndpoints())
+  ON_CALL(*wifi_service_wpa_psk, HasBSSIDConnectableEndpoints())
       .WillByDefault(testing::Return(true));
-  ON_CALL(*wifi_service_wep_8021x, HasEndpoints())
+  ON_CALL(*wifi_service_wep_8021x, HasBSSIDConnectableEndpoints())
       .WillByDefault(testing::Return(true));
-  ON_CALL(*wifi_service_wpa_8021x, HasEndpoints())
+  ON_CALL(*wifi_service_wpa_8021x, HasBSSIDConnectableEndpoints())
       .WillByDefault(testing::Return(true));
-  ON_CALL(*wifi_service_wpawpa2_psk, HasEndpoints())
+  ON_CALL(*wifi_service_wpawpa2_psk, HasBSSIDConnectableEndpoints())
       .WillByDefault(testing::Return(true));
-  ON_CALL(*wifi_service_wpa2_psk, HasEndpoints())
+  ON_CALL(*wifi_service_wpa2_psk, HasBSSIDConnectableEndpoints())
       .WillByDefault(testing::Return(true));
-  ON_CALL(*wifi_service_wpa2wpa3_psk, HasEndpoints())
+  ON_CALL(*wifi_service_wpa2wpa3_psk, HasBSSIDConnectableEndpoints())
       .WillByDefault(testing::Return(true));
-  ON_CALL(*wifi_service_wpa3_sae, HasEndpoints())
+  ON_CALL(*wifi_service_wpa3_sae, HasBSSIDConnectableEndpoints())
       .WillByDefault(testing::Return(true));
-  ON_CALL(*wifi_service_wpawpa2_8021x, HasEndpoints())
+  ON_CALL(*wifi_service_wpawpa2_8021x, HasBSSIDConnectableEndpoints())
       .WillByDefault(testing::Return(true));
-  ON_CALL(*wifi_service_wpa2_8021x, HasEndpoints())
+  ON_CALL(*wifi_service_wpa2_8021x, HasBSSIDConnectableEndpoints())
       .WillByDefault(testing::Return(true));
-  ON_CALL(*wifi_service_wpa2wpa3_8021x, HasEndpoints())
+  ON_CALL(*wifi_service_wpa2wpa3_8021x, HasBSSIDConnectableEndpoints())
       .WillByDefault(testing::Return(true));
-  ON_CALL(*wifi_service_wpa3_8021x, HasEndpoints())
+  ON_CALL(*wifi_service_wpa3_8021x, HasBSSIDConnectableEndpoints())
       .WillByDefault(testing::Return(true));
 
   manager()->RegisterService(wifi_service_open);
