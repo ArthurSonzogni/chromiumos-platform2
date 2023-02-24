@@ -96,5 +96,24 @@ TEST_F(CrossystemTest, GetHardwareIDNotSet) {
   EXPECT_DEATH(crossystem_->GetHardwareID(), kCheckFailedRegex);
 }
 
+TEST_F(CrossystemTest, OnlyBootSignedKernelTrue) {
+  fake_->VbSetSystemPropertyInt(Crossystem::kDevBootSignedOnly, 1);
+  EXPECT_TRUE(crossystem_->OnlyBootSignedKernel());
+}
+
+TEST_F(CrossystemTest, OnlyBootSignedKernelFalse) {
+  fake_->VbSetSystemPropertyInt(Crossystem::kDevBootSignedOnly, 0);
+  EXPECT_FALSE(crossystem_->OnlyBootSignedKernel());
+}
+
+TEST_F(CrossystemTest, OnlyBootSignedKernelNotBoolean) {
+  fake_->VbSetSystemPropertyInt(Crossystem::kDevBootSignedOnly, -1);
+  EXPECT_DEATH(crossystem_->OnlyBootSignedKernel(), kCheckFailedRegex);
+}
+
+TEST_F(CrossystemTest, OnlyBootSignedKernelPropertyDoesNotExist) {
+  EXPECT_DEATH(crossystem_->OnlyBootSignedKernel(), kCheckFailedRegex);
+}
+
 }  // namespace
 }  // namespace crossystem

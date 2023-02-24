@@ -54,4 +54,10 @@ std::string Crossystem::GetHardwareID() const {
   return *ret;
 }
 
+bool Crossystem::OnlyBootSignedKernel() const {
+  std::optional<bool> ret = GetSystemPropertyBool(kDevBootSignedOnly);
+  CHECK(ret.has_value());
+  return *ret;
+}
+
 }  // namespace crossystem

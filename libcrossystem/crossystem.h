@@ -64,10 +64,20 @@ class BRILLO_EXPORT Crossystem {
   /// @return hardware ID string
   std::string GetHardwareID() const;
 
+  /// Check if system is configured to only boot from a signed kernel.
+  ///
+  /// @note Crashes if the underlying status is not set or set to an invalid
+  /// value.
+  ///
+  /// @return true if only signed kernels will boot; false otherwise.
+  bool OnlyBootSignedKernel() const;
+
   // Use the helper methods (e.g., HardwareProtectIsEnabled()) rather than
   // using these constants directly.
   BRILLO_PRIVATE static constexpr char kHardwareWriteProtect[] = "wpsw_cur";
   BRILLO_PRIVATE static constexpr char kHardwareId[] = "hwid";
+  BRILLO_PRIVATE static constexpr char kDevBootSignedOnly[] =
+      "dev_boot_signed_only";
 
  private:
   std::unique_ptr<CrossystemVbootInterface> impl_;
