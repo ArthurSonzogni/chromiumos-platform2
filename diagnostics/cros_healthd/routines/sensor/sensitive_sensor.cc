@@ -319,7 +319,9 @@ void SensitiveSensorRoutine::OnSampleUpdated(
 
 void SensitiveSensorRoutine::OnErrorOccurred(
     cros::mojom::ObserverErrorType type) {
-  LOG(ERROR) << "Observer error occurred while reading sample: " << type;
+  const auto& sensor_id = observer_receiver_set_.current_context();
+  LOG(ERROR) << "Observer error occurred while reading sample: " << type
+             << ", sensor id: " << sensor_id;
   SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
                    kSensitiveSensorRoutineFailedUnexpectedlyMessage);
 }
