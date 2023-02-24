@@ -17,6 +17,7 @@
 #include <base/time/tick_clock.h>
 #include <base/time/time.h>
 
+#include "diagnostics/cros_healthd/executor/utils/scoped_process_control.h"
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
 #include "diagnostics/cros_healthd/routines/base_routine_control.h"
 #include "diagnostics/cros_healthd/system/context.h"
@@ -47,7 +48,7 @@ class MemoryRoutineV2 final : public BaseRoutineControl {
   void DetermineRoutineResult();
 
   // Accepts a return code and store it inside a class variable.
-  void GetReturnCode(int return_code);
+  void HandleGetReturnCode(int return_code);
 
   // Update the percentage progress of the routine.
   void UpdatePercentage();
@@ -67,8 +68,9 @@ class MemoryRoutineV2 final : public BaseRoutineControl {
   // Once the memory resource is finished (when memtester finish running), run
   // this callback to notify the resource queue of resource availability.
   base::ScopedClosureRunner notify_resource_queue_finished_;
-  // A remote to manage lifetime of the memtester process.
-  mojo::Remote<ash::cros_healthd::mojom::ProcessControl> process_control_;
+  // A scoped version of process control that manages the lifetime of the
+  // memtester process.
+  ScopedProcessControl scoped_process_control_;
   // The return code of memtester process.
   int memtester_return_code_;
   // A file descriptor that points to memtester stdout to allow for real time

@@ -14,8 +14,9 @@
 
 namespace diagnostics {
 
-ProcessControl::ProcessControl(std::unique_ptr<SandboxedProcess> process)
-    : process_(std::move(process)) {
+ProcessControl::ProcessControl(std::unique_ptr<SandboxedProcess> process,
+                               brillo::ProcessReaper* process_reaper)
+    : process_(std::move(process)), process_reaper_(process_reaper) {
   CHECK(!process_->pid()) << "The process has already started.";
 }
 
@@ -25,9 +26,9 @@ void ProcessControl::RedirectOutputToMemory(bool combine_stdout_and_stderr) {
   process_->RedirectOutputToMemory(combine_stdout_and_stderr);
 }
 
-void ProcessControl::StartAndWait(brillo::ProcessReaper* process_reaper) {
+void ProcessControl::StartAndWait() {
   process_->Start();
-  process_reaper->WatchForChild(
+  process_reaper_->WatchForChild(
       FROM_HERE, process_->pid(),
       base::BindOnce(&ProcessControl::SetProcessFinished,
                      weak_factory_.GetWeakPtr()));
@@ -40,7 +41,7 @@ void ProcessControl::SetProcessFinished(const siginfo_t& siginfo) {
   std::vector<GetReturnCodeCallback> return_code_callbacks;
   return_code_callbacks.swap(get_return_code_callback_queue_);
   for (size_t i = 0; i < return_code_callbacks.size(); ++i) {
-    std::move(return_code_callbacks[i]).Run(return_code_);
+    std::move(return_code_callbacks[i]).Run(return_code_.value());
   }
 }
 
@@ -53,11 +54,29 @@ void ProcessControl::GetStderr(GetStderrCallback callback) {
 }
 
 void ProcessControl::GetReturnCode(GetReturnCodeCallback callback) {
-  if (return_code_ == -1) {
+  if (!return_code_.has_value()) {
     get_return_code_callback_queue_.push_back(std::move(callback));
     return;
   }
-  std::move(callback).Run(return_code_);
+  std::move(callback).Run(return_code_.value());
+}
+
+void ProcessControl::Kill() {
+  // If the process is already dead, no need to kill again.
+  if (return_code_.has_value()) {
+    return;
+  }
+  process_reaper_->ForgetChild(process_->pid());
+  return_code_ = process_->KillAndWaitSandboxProcess();
+  if (return_code_ == -1) {
+    LOG(ERROR) << "Unsuccessful call to kill.";
+  }
+
+  std::vector<GetReturnCodeCallback> return_code_callbacks;
+  return_code_callbacks.swap(get_return_code_callback_queue_);
+  for (size_t i = 0; i < return_code_callbacks.size(); ++i) {
+    std::move(return_code_callbacks[i]).Run(return_code_.value());
+  }
 }
 
 mojo::ScopedHandle ProcessControl::GetMojoScopedHandle(int file_no) {

@@ -62,6 +62,8 @@ interface ProcessControl {
   // Get the return code of the process. This method will return after the
   // process has finished.
   GetReturnCode() => (int32 return_code);
+  // Kill the process.
+  Kill();
 };
 
 // Implemented by clients who desire audio jack notifications.

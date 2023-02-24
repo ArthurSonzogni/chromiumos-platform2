@@ -27,6 +27,7 @@ class FakeProcessControl : public ash::cros_healthd::mojom::ProcessControl {
   void GetStdout(GetStdoutCallback callback) override;
   void GetStderr(GetStderrCallback callback) override;
   void GetReturnCode(GetReturnCodeCallback callback) override;
+  void Kill() override;
 
   // Setters for the FakeProcessControlAttributes
   void SetStdoutFileContent(const std::string& stdout_content);

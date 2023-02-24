@@ -16,6 +16,7 @@
 #include <base/time/time.h>
 #include <re2/re2.h>
 
+#include "diagnostics/cros_healthd/executor/utils/scoped_process_control.h"
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/constants.h"
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
 #include "diagnostics/cros_healthd/utils/memory_info.h"
@@ -225,8 +226,6 @@ void MemoryRoutineV2::OnStart() {
 
 void MemoryRoutineV2::Run(
     base::ScopedClosureRunner notify_resource_queue_finished) {
-  notify_resource_queue_finished_ = std::move(notify_resource_queue_finished);
-
   auto memory_info = MemoryInfo::ParseFrom(context_->root_dir());
   if (!memory_info.has_value()) {
     RaiseException("Memory info not found");
@@ -250,7 +249,9 @@ void MemoryRoutineV2::Run(
 
   SetRunningState();
   context_->executor()->RunMemtesterV2(
-      testing_mem_kib, process_control_.BindNewPipeAndPassReceiver());
+      testing_mem_kib, scoped_process_control_.BindNewPipeAndPassReceiver());
+  scoped_process_control_.AddOnTerminateCallback(
+      std::move(notify_resource_queue_finished));
 
   CallbackBarrier barrier{
       base::BindOnce(&MemoryRoutineV2::DetermineRoutineResult,
@@ -259,16 +260,15 @@ void MemoryRoutineV2::Run(
                      weak_ptr_factory_.GetWeakPtr(),
                      "Error in calling memtester")};
 
-  process_control_->GetStdout(barrier.Depend(base::BindOnce(
+  scoped_process_control_->GetStdout(barrier.Depend(base::BindOnce(
       &MemoryRoutineV2::SetUpStdout, weak_ptr_factory_.GetWeakPtr())));
 
-  process_control_->GetReturnCode(barrier.Depend(base::BindOnce(
-      &MemoryRoutineV2::GetReturnCode, weak_ptr_factory_.GetWeakPtr())));
+  scoped_process_control_->GetReturnCode(barrier.Depend(base::BindOnce(
+      &MemoryRoutineV2::HandleGetReturnCode, weak_ptr_factory_.GetWeakPtr())));
 }
 
-void MemoryRoutineV2::GetReturnCode(int return_code) {
+void MemoryRoutineV2::HandleGetReturnCode(int return_code) {
   memtester_return_code_ = return_code;
-  notify_resource_queue_finished_.RunAndReset();
 }
 
 void MemoryRoutineV2::ReadNewMemtesterResult() {
@@ -433,7 +433,7 @@ mojom::MemoryRoutineDetailPtr MemoryRoutineV2::ParseMemtesterResult() {
 }
 
 void MemoryRoutineV2::DetermineRoutineResult() {
-  process_control_.reset();
+  scoped_process_control_.Reset();
 
   // A return code of 1 may be given in two scenarios. Both scenarios should
   // raise an exception:

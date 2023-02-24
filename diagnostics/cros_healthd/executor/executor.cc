@@ -447,7 +447,8 @@ void Executor::MonitorAudioJack(
       std::vector<base::FilePath>{});
 
   delegate->remote()->MonitorAudioJack(std::move(observer));
-  auto controller = std::make_unique<ProcessControl>(std::move(delegate));
+  auto controller =
+      std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
 
   base::SequencedTaskRunnerHandle::Get()->PostTask(
       FROM_HERE,
@@ -467,7 +468,8 @@ void Executor::MonitorTouchpad(
       std::vector<base::FilePath>{});
 
   delegate->remote()->MonitorTouchpad(std::move(observer));
-  auto controller = std::make_unique<ProcessControl>(std::move(delegate));
+  auto controller =
+      std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
 
   base::SequencedTaskRunnerHandle::Get()->PostTask(
       FROM_HERE,
@@ -506,7 +508,8 @@ void Executor::MonitorTouchscreen(
       std::vector<base::FilePath>{});
 
   delegate->remote()->MonitorTouchscreen(std::move(observer));
-  auto controller = std::make_unique<ProcessControl>(std::move(delegate));
+  auto controller =
+      std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
 
   base::SequencedTaskRunnerHandle::Get()->PostTask(
       FROM_HERE,
@@ -526,7 +529,8 @@ void Executor::MonitorStylusGarage(
       std::vector<base::FilePath>{});
 
   delegate->remote()->MonitorStylusGarage(std::move(observer));
-  auto controller = std::make_unique<ProcessControl>(std::move(delegate));
+  auto controller =
+      std::make_unique<ProcessControl>(std::move(delegate), process_reaper_);
 
   base::SequencedTaskRunnerHandle::Get()->PostTask(
       FROM_HERE,
@@ -600,17 +604,18 @@ void Executor::RunLongRunningProcess(
     std::unique_ptr<SandboxedProcess> process,
     mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver,
     bool combine_stdout_and_stderr) {
-  auto controller = std::make_unique<ProcessControl>(std::move(process));
+  auto controller =
+      std::make_unique<ProcessControl>(std::move(process), process_reaper_);
 
   controller->RedirectOutputToMemory(combine_stdout_and_stderr);
-  controller->StartAndWait(process_reaper_);
+  controller->StartAndWait();
   process_control_set_.Add(std::move(controller), std::move(receiver));
 }
 
 void Executor::RunLongRunningDelegate(
     std::unique_ptr<ProcessControl> process_control,
     mojo::PendingReceiver<mojom::ProcessControl> receiver) {
-  process_control->StartAndWait(process_reaper_);
+  process_control->StartAndWait();
   process_control_set_.Add(std::move(process_control), std::move(receiver));
 }
 

@@ -18,6 +18,7 @@ source_set("utils") {
     "delegate_process.cc",
     "process_control.cc",
     "sandboxed_process.cc",
+    "scoped_process_control.cc",
   ]
   configs += [ ":pkg_deps" ]
   deps = [

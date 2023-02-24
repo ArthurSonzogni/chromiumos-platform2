@@ -63,6 +63,8 @@ void FakeProcessControl::SetReturnCode(int return_code) {
   return_code_ = return_code;
 }
 
+void FakeProcessControl::Kill() {}
+
 void FakeProcessControl::BindReceiver(
     mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver) {
   receiver_.Bind(std::move(receiver));
