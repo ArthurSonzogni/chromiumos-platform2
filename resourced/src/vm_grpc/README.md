@@ -1,15 +1,28 @@
 # resourced::VM_GRPC - GRPC support for select ChromeOS boards
 
-This module adds select GRPC API support to resourced.  The GRPCs are used to call the guest VM over VSOCK on projects: hades/draco/agah. For detailed design of the GRPC's, visit internal site: [go/resourced-grpcs](http://go/resourced-grpcs)
+This module adds select GRPC API support to resourced.  The GRPCs are used to call the guest VM over VSOCK on projects: hades/draco/agah. For detailed design of the GRPC's, visit internal site: [go/resourced-grpcs](http://go/resourced-grpcs).  The standard `grpcio` rust crate does not support GRPC over vsock.  `grpcio-sys` crate is patched to support vsock over GRPC (ebuild pending).
 
-## Usage
+## Usage and Installation
 
 VM_GRPC is disabled on resourced build by default.  To enable it, build resourced with the feature enabled:
 ```bash
-cargo build --features vm_grpc
+(inside chroot) platform2/resourced$ cargo build --features vm_grpc
 ```
 
-The standard `grpcio` rust crate doesn't not support GRPC over vsock.  For enabling vsock support, this [patch](https://chromium-review.googlesource.com/c/chromiumos/overlays/chromiumos-overlay/+/3966266/3/dev-rust/grpcio-sys/files/002-grpc-vsock-support.patch) has to be applied to the `grpcio-sys`.
+Once the target is built, manually copy over `resourced` to DUT.
+* Copy resourced to DUT into a directory with exec permission
+```bash
+(inside chroot) platform2/resourced$ scp target/debug/resourced $DUT://usr/local/sbin
+```
+* Stop any existing resourced daemon and run resourced with GRPC support
+```bash
+(on DUT shell)$ sudo stop resourced
+(on DUT shell) /usr/local/sbin$ ./resourced
+```
+* Start Borealis VM or send a dbus `VmStartedSignal` message to start up resourced GRPC server/client pair
+```bash
+(on DUT shell)$ dbus-send --system --type=signal /org/chromium/VmConcierge org.chromium.VmConcierge.VmStartedSignal
+```
 
 # Proto
 The proto directory contains `resource_bridge.proto`, which defines all the interfaces and GRPC API calls supported by the server.  It also has definitions of client calls the host side resourced can make.  The other files in the directory are auto generated, can can be created using the `protoc_grpcio` crate and a `build.rs` script that contains:
@@ -26,5 +39,4 @@ protoc_grpcio::compile_grpc_protos(
 # Known Issues
 
 * ebuild support is for this feature is pending.
-* `grpcio-sys` vsock is manually patched (instructions above), to be integrated into build system.
-* `grpcio-sys` uses `libstdc++.so.6`, which isn't available on ChromeOS.  Can be bypassed by copying over `libstdc++.so.6` from build system to `$DUT://usr/lib64/`
+* `grpcio-sys` uses `libstdc++.so.6`, which isn't available on ChromeOS.  Can be temporarily bypassed by copying over `libstdc++.so.6` from build system to `$DUT://usr/lib64/`.
