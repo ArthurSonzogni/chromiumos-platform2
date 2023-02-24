@@ -4,8 +4,13 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# unit test for storage_info
+# Dash does not support arrays, so this script uses name composition instead.
+# This would cause false positives from cros lint for unused names, so the
+# warning is disabled here:
+# shellcheck disable=SC2034
 
+# unit test for storage_info
+# shellcheck source=../share/storage-info-common.sh
 . share/storage-info-common.sh
 
 TEST_COUNT=10
@@ -61,7 +66,7 @@ VERSION_10="F88110B"
 RESULT_10="MATCH"
 
 get_is_ssd_ignorelist_result() {
-  if is_ssd_ignorelist $1 $2; then
+  if is_ssd_ignorelist "$1" "$2"; then
     echo "MATCH"
   else
     echo "NOT_MATCH"
@@ -69,14 +74,15 @@ get_is_ssd_ignorelist_result() {
 }
 
 
-for i in $(seq 1 $TEST_COUNT); do
+for i in $(seq 1 "${TEST_COUNT}"); do
   # use eval for variable indirection
-  eval MODEL=\$MODEL_$i
-  eval VERSION=\$VERSION_$i
-  eval RESULT=\$RESULT_$i
-  if [ ! "$(get_is_ssd_ignorelist_result $MODEL $VERSION)" = "$RESULT" ]; then
+  MODEL=$(expand_var "MODEL_${i}")
+  VERSION=$(expand_var "VERSION_${i}")
+  RESULT=$(expand_var "RESULT_${i}")
+  ACTUAL_RESULT=$(get_is_ssd_ignorelist_result "${MODEL}" "${VERSION}")
+  if [ "${ACTUAL_RESULT}" != "${RESULT}" ]; then
     printf '\033[31m[FAILED]\033[0m'
-    echo " result for $MODEL $VERSION is not $RESULT"
+    echo " result for ${MODEL} ${VERSION} is not ${RESULT}"
     exit 1
   fi
 done

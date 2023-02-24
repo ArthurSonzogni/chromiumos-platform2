@@ -8,6 +8,12 @@
 # chrome://system page. It will run once on startup to dump output to the file
 # /var/log/storage_info.txt which will be read later by debugd when the user
 # opens the chrome://system page.
+
+# Dash does not support arrays, so this script uses name composition instead.
+# This would cause false positives from cros lint for unused names, so the
+# warning is disabled here:
+# shellcheck disable=SC2034
+
 . /usr/share/misc/chromeos-common.sh
 
 # This match SanDisk SSD U100/i100 with any size with version *.xx.* when x < 54
