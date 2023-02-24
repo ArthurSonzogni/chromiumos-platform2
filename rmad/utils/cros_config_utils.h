@@ -11,11 +11,17 @@
 
 namespace rmad {
 
-// Rmad config and SSFC config structure defined in cros_config.
+// Rmad config and SSFC config structures defined in cros_config.
 // See platform2/chromeos-config/README.md#rmad for more details.
+struct SsfcComponentTypeConfig {
+  std::string component_type;
+  uint32_t default_value;
+  std::map<std::string, uint32_t> probeable_components;
+};
+
 struct SsfcConfig {
   uint32_t mask;
-  std::map<std::string, uint32_t> components;
+  std::vector<SsfcComponentTypeConfig> component_type_configs;
 };
 
 struct RmadConfig {

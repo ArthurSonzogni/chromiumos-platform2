@@ -42,7 +42,10 @@ class CrosConfigUtilsImpl : public CrosConfigUtils {
                              bool default_value) const;
   SsfcConfig GetSsfc() const;
   uint32_t GetSsfcMask() const;
-  std::map<std::string, uint32_t> GetSsfcComponents() const;
+  std::vector<SsfcComponentTypeConfig> GetSsfcComponentTypeConfigs() const;
+  bool GetSsfcComponentTypeConfig(
+      const std::string& path,
+      SsfcComponentTypeConfig* component_type_config) const;
 
   std::string config_file_path_;
   std::unique_ptr<brillo::CrosConfigInterface> cros_config_;

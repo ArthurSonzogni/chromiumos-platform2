@@ -49,10 +49,16 @@ constexpr char kCrosRmadHasCbiKey[] = "has-cbi";
 // cros_config rmad/ssfc path.
 constexpr char kCrosRmadSsfcPath[] = "/rmad/ssfc";
 constexpr char kCrosRmadSsfcMaskKey[] = "mask";
-constexpr char kCrosRmadSsfcComponentsPath[] = "/rmad/ssfc/components";
-constexpr char kCrosRmadSsfcComponentsIdentifierKey[] = "identifier";
-constexpr char kCrosRmadSsfcComponentsValueKey[] = "value";
-constexpr int kMaxSsfcComponentsNum = 1024;
+constexpr char kCrosRmadSsfcComponentTypeConfigsPath[] =
+    "/rmad/ssfc/component-type-configs";
+constexpr char kCrosRmadSsfcComponentTypeKey[] = "component-type";
+constexpr char kCrosRmadSsfcDefaultValueKey[] = "default-value";
+constexpr char kCrosRmadSsfcProbeableComponentsRelPath[] =
+    "probeable-components";
+constexpr char kCrosRmadSsfcIdentifierKey[] = "identifier";
+constexpr char kCrosRmadSsfcValueKey[] = "value";
+constexpr int kMaxSsfcComponentTypeNum = 32;
+constexpr int kMaxSsfcProbeableComponentNum = 1024;
 
 constexpr char kTrueStr[] = "true";
 
@@ -217,12 +223,15 @@ bool CrosConfigUtilsImpl::GetBooleanWithDefault(const std::string& path,
 SsfcConfig CrosConfigUtilsImpl::GetSsfc() const {
   SsfcConfig ssfc;
   ssfc.mask = GetSsfcMask();
-  ssfc.components = GetSsfcComponents();
+  ssfc.component_type_configs = GetSsfcComponentTypeConfigs();
   // SSFC config integrity check. No component should set the bits in the mask.
-  for (const auto& [identifier, value] : ssfc.components) {
-    if (value & ssfc.mask) {
-      LOG(WARNING) << "Component " << identifier << " has SSFC value " << value
-                   << "which conflicts with SSFC mask " << ssfc.mask;
+  for (const auto& component_type_config : ssfc.component_type_configs) {
+    for (const auto& [identifier, value] :
+         component_type_config.probeable_components) {
+      if (value & ssfc.mask) {
+        LOG(WARNING) << "Component " << identifier << " has SSFC value "
+                     << value << "which conflicts with SSFC mask " << ssfc.mask;
+      }
     }
   }
   return ssfc;
@@ -239,24 +248,51 @@ uint32_t CrosConfigUtilsImpl::GetSsfcMask() const {
   return 0;
 }
 
-std::map<std::string, uint32_t> CrosConfigUtilsImpl::GetSsfcComponents() const {
-  std::map<std::string, uint32_t> components;
-  for (int i = 0; i < kMaxSsfcComponentsNum; ++i) {
+std::vector<SsfcComponentTypeConfig>
+CrosConfigUtilsImpl::GetSsfcComponentTypeConfigs() const {
+  std::vector<SsfcComponentTypeConfig> component_type_configs;
+  for (int i = 0; i < kMaxSsfcComponentTypeNum; ++i) {
     const std::string path =
-        base::StringPrintf("%s/%d", kCrosRmadSsfcComponentsPath, i);
-    std::string identifier, value_str;
-    uint32_t value;
-    if (cros_config_->GetString(path, kCrosRmadSsfcComponentsIdentifierKey,
-                                &identifier) &&
-        cros_config_->GetString(path, kCrosRmadSsfcComponentsValueKey,
-                                &value_str) &&
-        base::StringToUint(value_str, &value)) {
-      components[identifier] = value;
+        base::StringPrintf("%s/%d", kCrosRmadSsfcComponentTypeConfigsPath, i);
+    SsfcComponentTypeConfig component_type_config;
+    if (GetSsfcComponentTypeConfig(path, &component_type_config)) {
+      component_type_configs.emplace_back(std::move(component_type_config));
     } else {
       break;
     }
   }
-  return components;
+  return component_type_configs;
+}
+
+bool CrosConfigUtilsImpl::GetSsfcComponentTypeConfig(
+    const std::string& path,
+    SsfcComponentTypeConfig* component_type_config) const {
+  SsfcComponentTypeConfig config;
+  std::string default_value_str;
+  if (cros_config_->GetString(path, kCrosRmadSsfcComponentTypeKey,
+                              &config.component_type) &&
+      cros_config_->GetString(path, kCrosRmadSsfcDefaultValueKey,
+                              &default_value_str) &&
+      base::StringToUint(default_value_str, &config.default_value)) {
+    for (int i = 0; i < kMaxSsfcProbeableComponentNum; ++i) {
+      const std::string component_path = base::StringPrintf(
+          "%s/%s/%d", path.c_str(), kCrosRmadSsfcProbeableComponentsRelPath, i);
+      std::string identifier, value_str;
+      uint32_t value;
+      if (cros_config_->GetString(component_path, kCrosRmadSsfcIdentifierKey,
+                                  &identifier) &&
+          cros_config_->GetString(component_path, kCrosRmadSsfcValueKey,
+                                  &value_str) &&
+          base::StringToUint(value_str, &value)) {
+        config.probeable_components[identifier] = value;
+      } else {
+        break;
+      }
+    }
+    *component_type_config = config;
+    return true;
+  }
+  return false;
 }
 
 }  // namespace rmad

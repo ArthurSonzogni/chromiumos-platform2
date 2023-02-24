@@ -47,15 +47,22 @@ constexpr char kTrueStr[] = "true";
 // cros_config rmad/ssfc path.
 constexpr char kCrosRmadSsfcPath[] = "/rmad/ssfc";
 constexpr char kCrosRmadSsfcMaskKey[] = "mask";
-constexpr char kCrosRmadSsfcComponentsPath[] = "/rmad/ssfc/components";
-constexpr char kCrosRmadSsfcComponentsIdentifierKey[] = "identifier";
-constexpr char kCrosRmadSsfcComponentsValueKey[] = "value";
+constexpr char kCrosRmadSsfcComponentTypeConfigsPath[] =
+    "/rmad/ssfc/component-type-configs";
+constexpr char kCrosRmadSsfcComponentTypeKey[] = "component-type";
+constexpr char kCrosRmadSsfcDefaultValueKey[] = "default-value";
+constexpr char kCrosRmadSsfcProbeableComponentsRelPath[] =
+    "probeable-components";
+constexpr char kCrosRmadSsfcIdentifierKey[] = "identifier";
+constexpr char kCrosRmadSsfcValueKey[] = "value";
 
-constexpr uint32_t kSsfcMask = 0x1;
+constexpr uint32_t kSsfcMask = 0x8;
+constexpr char kSsfcComponentType[] = "TestComponentType";
+constexpr uint32_t kSsfcDefaultValue = 0x4;
 constexpr char kSsfcIdentifier1[] = "TestComponent_1";
-constexpr uint32_t kSsfcValue1 = 1;
+constexpr uint32_t kSsfcValue1 = 0x1;
 constexpr char kSsfcIdentifier2[] = "TestComponent_2";
-constexpr uint32_t kSsfcValue2 = 2;
+constexpr uint32_t kSsfcValue2 = 0x2;
 
 // cros_config config.json file.
 constexpr char kJsonStoreFileName[] = "json_store_file";
@@ -180,17 +187,33 @@ class CrosConfigUtilsImplTest : public testing::Test {
                                   kCrosRmadSsfcMaskKey,
                                   base::NumberToString(kSsfcMask));
       fake_cros_config->SetString(
-          base::StringPrintf("%s/%d", kCrosRmadSsfcComponentsPath, 0),
-          kCrosRmadSsfcComponentsIdentifierKey, kSsfcIdentifier1);
+          base::StringPrintf("%s/0", kCrosRmadSsfcComponentTypeConfigsPath),
+          kCrosRmadSsfcComponentTypeKey, kSsfcComponentType);
       fake_cros_config->SetString(
-          base::StringPrintf("%s/%d", kCrosRmadSsfcComponentsPath, 0),
-          kCrosRmadSsfcComponentsValueKey, base::NumberToString(kSsfcValue1));
+          base::StringPrintf("%s/0", kCrosRmadSsfcComponentTypeConfigsPath),
+          kCrosRmadSsfcDefaultValueKey,
+          base::NumberToString(kSsfcDefaultValue));
+
       fake_cros_config->SetString(
-          base::StringPrintf("%s/%d", kCrosRmadSsfcComponentsPath, 1),
-          kCrosRmadSsfcComponentsIdentifierKey, kSsfcIdentifier2);
+          base::StringPrintf("%s/0/%s/%d",
+                             kCrosRmadSsfcComponentTypeConfigsPath,
+                             kCrosRmadSsfcProbeableComponentsRelPath, 0),
+          kCrosRmadSsfcIdentifierKey, kSsfcIdentifier1);
       fake_cros_config->SetString(
-          base::StringPrintf("%s/%d", kCrosRmadSsfcComponentsPath, 1),
-          kCrosRmadSsfcComponentsValueKey, base::NumberToString(kSsfcValue2));
+          base::StringPrintf("%s/0/%s/%d",
+                             kCrosRmadSsfcComponentTypeConfigsPath,
+                             kCrosRmadSsfcProbeableComponentsRelPath, 0),
+          kCrosRmadSsfcValueKey, base::NumberToString(kSsfcValue1));
+      fake_cros_config->SetString(
+          base::StringPrintf("%s/0/%s/%d",
+                             kCrosRmadSsfcComponentTypeConfigsPath,
+                             kCrosRmadSsfcProbeableComponentsRelPath, 1),
+          kCrosRmadSsfcIdentifierKey, kSsfcIdentifier2);
+      fake_cros_config->SetString(
+          base::StringPrintf("%s/0/%s/%d",
+                             kCrosRmadSsfcComponentTypeConfigsPath,
+                             kCrosRmadSsfcProbeableComponentsRelPath, 1),
+          kCrosRmadSsfcValueKey, base::NumberToString(kSsfcValue2));
     }
 
     return std::make_unique<CrosConfigUtilsImpl>(
@@ -211,9 +234,17 @@ TEST_F(CrosConfigUtilsImplTest, GetRmadConfig_Enabled) {
   EXPECT_TRUE(config.enabled);
   EXPECT_TRUE(config.has_cbi);
   EXPECT_EQ(config.ssfc.mask, kSsfcMask);
-  EXPECT_EQ(config.ssfc.components.size(), 2);
-  EXPECT_EQ(config.ssfc.components[kSsfcIdentifier1], kSsfcValue1);
-  EXPECT_EQ(config.ssfc.components[kSsfcIdentifier2], kSsfcValue2);
+
+  const auto& component_type_configs = config.ssfc.component_type_configs;
+  EXPECT_EQ(component_type_configs.size(), 1);
+  EXPECT_EQ(component_type_configs[0].component_type, kSsfcComponentType);
+  EXPECT_EQ(component_type_configs[0].default_value, kSsfcDefaultValue);
+
+  const auto& probeable_components =
+      component_type_configs[0].probeable_components;
+  EXPECT_EQ(probeable_components.size(), 2);
+  EXPECT_EQ(probeable_components.at(kSsfcIdentifier1), kSsfcValue1);
+  EXPECT_EQ(probeable_components.at(kSsfcIdentifier2), kSsfcValue2);
 }
 
 TEST_F(CrosConfigUtilsImplTest, GetRmadConfig_Disabled) {
@@ -224,7 +255,7 @@ TEST_F(CrosConfigUtilsImplTest, GetRmadConfig_Disabled) {
   EXPECT_FALSE(config.enabled);
   EXPECT_FALSE(config.has_cbi);
   EXPECT_EQ(config.ssfc.mask, 0);
-  EXPECT_EQ(config.ssfc.components.size(), 0);
+  EXPECT_EQ(config.ssfc.component_type_configs.size(), 0);
 }
 
 TEST_F(CrosConfigUtilsImplTest, GetModelName_Success) {
