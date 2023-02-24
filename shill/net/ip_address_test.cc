@@ -72,6 +72,10 @@ class IPAddressTest : public Test {
     IPAddress good_addr_from_string(good_string);
     EXPECT_EQ(family, good_addr_from_string.family());
 
+    EXPECT_THAT(IPAddress::CreateFromByteString(family, good_bytes),
+                Optional(good_addr));
+    EXPECT_THAT(IPAddress::CreateFromByteString(FlipFamily(family), good_bytes),
+                std::nullopt);
     EXPECT_THAT(IPAddress::CreateFromString(good_string), Optional(good_addr));
     EXPECT_THAT(IPAddress::CreateFromString(good_string, family),
                 Optional(good_addr));
@@ -89,6 +93,8 @@ class IPAddressTest : public Test {
     IPAddress bad_addr_from_bytes(family, bad_bytes);
     EXPECT_EQ(family, bad_addr_from_bytes.family());
     EXPECT_FALSE(bad_addr_from_bytes.IsValid());
+
+    EXPECT_EQ(IPAddress::CreateFromByteString(family, bad_bytes), std::nullopt);
 
     IPAddress bad_addr_from_string(bad_string);
     EXPECT_EQ(IPAddress::kFamilyUnknown, bad_addr_from_string.family());

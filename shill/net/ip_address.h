@@ -84,6 +84,17 @@ class SHILL_EXPORT IPAddress {
   // Returns the name of an address family.
   static std::string GetAddressFamilyName(Family family);
 
+  // Creates an IPAddress from a ByteString. Length will be verified for
+  // |family|.
+  static std::optional<IPAddress> CreateFromByteString(
+      Family family, const ByteString& address) {
+    return CreateFromByteStringAndPrefix(family, address, 0);
+  }
+
+  // Similar to CreateFromByteString(), but also set |prefix|.
+  static std::optional<IPAddress> CreateFromByteStringAndPrefix(
+      Family family, const ByteString& address, unsigned int prefix);
+
   // Tries parsing |address_string| as an IP address ands return an IPAddress
   // object on success. The input can be either IPv4 or IPv6 address. If
   // |family| is specified, |address_string| will only be parsed for that

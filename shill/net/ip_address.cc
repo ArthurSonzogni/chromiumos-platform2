@@ -149,6 +149,16 @@ std::string IPAddress::GetAddressFamilyName(Family family) {
 }
 
 // static
+std::optional<IPAddress> IPAddress::CreateFromByteStringAndPrefix(
+    Family family, const ByteString& address, unsigned int prefix) {
+  IPAddress ret(family, address, prefix);
+  if (!ret.IsValid()) {
+    return std::nullopt;
+  }
+  return ret;
+}
+
+// static
 std::optional<IPAddress> IPAddress::CreateFromStringAndPrefix(
     const std::string& address_string, unsigned int prefix, Family family) {
   if (family != kFamilyIPv6) {
