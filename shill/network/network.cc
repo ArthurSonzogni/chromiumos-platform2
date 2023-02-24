@@ -500,7 +500,7 @@ void Network::OnIPv6AddressChanged() {
   }
   properties.subnet_prefix = primary_address.prefix();
 
-  RoutingTableEntry default_route;
+  RoutingTableEntry default_route(IPAddress::kFamilyIPv6);
   if (routing_table_->GetDefaultRouteFromKernel(interface_index_,
                                                 &default_route)) {
     if (!default_route.gateway.IntoString(&properties.gateway)) {

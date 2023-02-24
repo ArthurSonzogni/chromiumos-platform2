@@ -458,13 +458,14 @@ bool RoutingTable::RemoveRouteFromKernelTable(int interface_index,
 }
 
 void RoutingTable::RouteMsgHandler(const RTNLMessage& message) {
-  int interface_index;
-  RoutingTableEntry entry;
-
   if (HandleRoutingPolicyMessage(message)) {
     return;
   }
 
+  int interface_index;
+  // Initialize it to IPv4, will be set to the real value in
+  // ParseRoutingTableMessage().
+  RoutingTableEntry entry(IPAddress::kFamilyIPv4);
   if (!ParseRoutingTableMessage(message, &interface_index, &entry)) {
     return;
   }

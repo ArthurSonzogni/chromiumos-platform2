@@ -5,6 +5,8 @@
 #ifndef SHILL_ROUTING_TABLE_ENTRY_H_
 #define SHILL_ROUTING_TABLE_ENTRY_H_
 
+#include <linux/rtnetlink.h>
+
 #include <iostream>
 
 #include "shill/net/ip_address.h"
@@ -13,9 +15,12 @@ namespace shill {
 
 // Represents a single entry in a routing table.
 struct RoutingTableEntry {
-  static const int kDefaultTag;
+  static constexpr int kDefaultTag = -1;
 
-  RoutingTableEntry();
+  explicit RoutingTableEntry(IPAddress::Family family);
+  RoutingTableEntry(const IPAddress& dst_in,
+                    const IPAddress& src_in,
+                    const IPAddress& gateway_in);
 
   static RoutingTableEntry Create(IPAddress::Family family);
   static RoutingTableEntry Create(const IPAddress& dst_in,
@@ -33,15 +38,15 @@ struct RoutingTableEntry {
   IPAddress dst;
   IPAddress src;
   IPAddress gateway;
-  uint32_t metric;
-  unsigned char scope;
-  uint32_t table;
-  unsigned char type;
-  unsigned char protocol;
+  uint32_t metric = 0;
+  unsigned char scope = RT_SCOPE_UNIVERSE;
+  uint32_t table = RT_TABLE_MAIN;
+  unsigned char type = RTN_UNICAST;
+  unsigned char protocol = RTPROT_BOOT;
 
   // Connections use their interface index as the tag when adding routes, so
   // that as they are destroyed, they can remove all their dependent routes.
-  int tag;
+  int tag = kDefaultTag;
 };
 
 // Print out an entry in a format similar to that of ip route.

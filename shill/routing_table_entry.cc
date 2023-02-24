@@ -4,39 +4,30 @@
 
 #include "shill/routing_table_entry.h"
 
-#include <linux/rtnetlink.h>
-
 #include <string>
 
 #include <base/strings/stringprintf.h>
 
 namespace shill {
 
-// static
-const int RoutingTableEntry::kDefaultTag = -1;
+RoutingTableEntry::RoutingTableEntry(IPAddress::Family family)
+    : dst(family), src(family), gateway(family) {}
 
-RoutingTableEntry::RoutingTableEntry()
-    : metric(0),
-      scope(RT_SCOPE_UNIVERSE),
-      table(RT_TABLE_MAIN),
-      type(RTN_UNICAST),
-      protocol(RTPROT_BOOT),
-      tag(kDefaultTag) {}
+RoutingTableEntry::RoutingTableEntry(const IPAddress& dst_in,
+                                     const IPAddress& src_in,
+                                     const IPAddress& gateway_in)
+    : dst(dst_in), src(src_in), gateway(gateway_in) {}
 
 // static
 RoutingTableEntry RoutingTableEntry::Create(IPAddress::Family family) {
-  return Create(IPAddress(family), IPAddress(family), IPAddress(family));
+  return RoutingTableEntry(family);
 }
 
 // static
 RoutingTableEntry RoutingTableEntry::Create(const IPAddress& dst_in,
                                             const IPAddress& src_in,
                                             const IPAddress& gateway_in) {
-  RoutingTableEntry entry;
-  entry.dst = dst_in;
-  entry.src = src_in;
-  entry.gateway = gateway_in;
-  return entry;
+  return RoutingTableEntry(dst_in, src_in, gateway_in);
 }
 
 RoutingTableEntry& RoutingTableEntry::SetMetric(uint32_t metric_in) {

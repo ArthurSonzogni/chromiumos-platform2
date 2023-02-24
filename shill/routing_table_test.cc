@@ -468,7 +468,7 @@ TEST_F(RoutingTableTest, LowestMetricDefault) {
   SendRouteEntry(RTNLMessage::kModeAdd, kTestDeviceIndex0, entry);
 
   // Find a matching entry.
-  RoutingTableEntry test_entry;
+  RoutingTableEntry test_entry(IPAddress::kFamilyIPv4);
   EXPECT_TRUE(routing_table_->GetDefaultRoute(
       kTestDeviceIndex0, IPAddress::kFamilyIPv4, &test_entry));
   entry.metric = 1;
