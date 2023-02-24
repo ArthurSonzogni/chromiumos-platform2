@@ -1,4 +1,4 @@
-// Copyright 2017 The ChromiumOS Authors.
+// Copyright 2017 The ChromiumOS Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -3050,6 +3050,8 @@ static void sl_sd_notify(const char* state) {
   memset(&addr, 0, sizeof(addr));
   addr.sun_family = AF_UNIX;
   strncpy(addr.sun_path, socket_name, sizeof(addr.sun_path));
+  // ensure path is null-terminated
+  addr.sun_path[sizeof(addr.sun_path) - 1] = '\0';
 
   memset(&iovec, 0, sizeof(iovec));
   // iovec is just going to be used to send data as part of a const msghdr.
