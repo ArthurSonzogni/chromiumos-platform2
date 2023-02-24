@@ -1612,6 +1612,7 @@ void CrashCollector::FinishCrash(const FilePath& meta_path,
   }
 
   // Record report created metric in UMA.
+  // TODO(b/270732207): Remove deadlock risk.
   metrics_lib_->SendCrosEventToUMA(kReportCountEnum);
 
   if (crash_sending_mode_ == kCrashLoopSendingMode) {
