@@ -719,14 +719,19 @@ TEST_F(AuthSessionInterfaceTest, GetAuthSessionStatus) {
   EXPECT_THAT(auth_session_status, IsOk());
   AuthSession* auth_session = auth_session_status.value().Get();
 
-  // Test 1.
-  auth_session->SetStatus(AuthStatus::kAuthStatusFurtherFactorRequired);
+  // First verify that auth is required is the status.
   GetAuthSessionStatusImpl(auth_session, reply);
   ASSERT_THAT(reply.status(),
               Eq(user_data_auth::AUTH_SESSION_STATUS_FURTHER_FACTOR_REQUIRED));
 
-  // Test 2.
-  auth_session->SetStatus(AuthStatus::kAuthStatusTimedOut);
+  // Then create the user which should authenticate the session.
+  ASSERT_TRUE(auth_session->OnUserCreated().ok());
+  GetAuthSessionStatusImpl(auth_session, reply);
+  ASSERT_THAT(reply.status(),
+              Eq(user_data_auth::AUTH_SESSION_STATUS_AUTHENTICATED));
+
+  // Finally move time forward to time out the session.
+  task_environment.FastForwardBy(auth_session->GetRemainingTime() * 2);
   GetAuthSessionStatusImpl(auth_session, reply);
   ASSERT_THAT(reply.status(),
               Eq(user_data_auth::AUTH_SESSION_STATUS_INVALID_AUTH_SESSION));

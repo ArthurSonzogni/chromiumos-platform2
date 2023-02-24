@@ -263,9 +263,6 @@ class AuthSession final {
   CryptohomeStatus ExtendTimeoutTimer(
       const base::TimeDelta kAuthSessionExtension);
 
-  // Set status for testing only.
-  void SetStatus(const AuthStatus status) { status_ = status; }
-
   // Get the time remaining for this AuthSession's life.
   base::TimeDelta GetRemainingTime() const;
 
