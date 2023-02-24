@@ -143,7 +143,8 @@ If your service/daemon uses minijail, you will have to:
 
 On a locally built test build|image, calling dlcservice API does not download
 the DLC (no DLC is being served), unless the DLC is preloaded using
-[Preload a DLC]. For local development, please follow [Building a DLC].
+[Write tests dependant on a DLC]. For local development, please follow
+[Building a DLC locally].
 
 ### Write tests dependant on a DLC
 
@@ -185,7 +186,7 @@ Note: in the case of scaled DLCs, it will not update with the OS at the moment.
 [Install/Uninstall a DLC]: #Install_Uninstall-a-DLC
 [Write tests dependant on a DLC]: #Write-tests-dependant-on-a-DLC
 
-[go/dlc-framework]: https://go/dlc-framework
+[go/dlc-framework]: http://go/dlc-framework
 [dlcservice]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/dlcservice
 [dlc.eclass]: https://chromium.googlesource.com/chromiumos/overlays/chromiumos-overlay/+/HEAD/eclass/dlc.eclass
 [sandboxing]: https://chromium.googlesource.com/chromiumos/docs/+/HEAD/sandboxing.md
