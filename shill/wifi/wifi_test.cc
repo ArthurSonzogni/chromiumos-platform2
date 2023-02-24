@@ -729,8 +729,10 @@ class WiFiObjectTest : public ::testing::TestWithParam<std::string> {
     wifi_->SelectService(service);
   }
 
-  bool SetBSSIDAllowlist(const WiFiService* service, Strings& bssid_allowlist) {
-    return wifi_->SetBSSIDAllowlist(service, bssid_allowlist);
+  bool SetBSSIDAllowlist(const WiFiService* service,
+                         Strings& bssid_allowlist,
+                         Error* error) {
+    return wifi_->SetBSSIDAllowlist(service, bssid_allowlist, error);
   }
 
  protected:
@@ -5877,7 +5879,8 @@ TEST_F(WiFiMainTest, ConnectStopsNetwork) {
   Mock::VerifyAndClearExpectations(network());
 }
 
-TEST_F(WiFiMainTest, SetBSSIDAllowlist) {
+TEST_F(WiFiMainTest, SetBSSIDAllowlistSuccess) {
+  Error error;
   StartWiFi();
   RpcIdentifier kPath("/test/path");
   MockWiFiServiceRefPtr service(SetupConnectedService(kPath, nullptr, nullptr));
@@ -5889,7 +5892,35 @@ TEST_F(WiFiMainTest, SetBSSIDAllowlist) {
       .WillOnce(Return(true));
 
   Strings allowlist = {"00:00:00:00:00:01", "00:00:00:00:00:02"};
-  EXPECT_TRUE(SetBSSIDAllowlist(service.get(), allowlist));
+  EXPECT_TRUE(SetBSSIDAllowlist(service.get(), allowlist, &error));
+  EXPECT_TRUE(error.IsSuccess());
+}
+
+TEST_F(WiFiMainTest, SetBSSIDAllowlistFail) {
+  Error error;
+  StartWiFi();
+  RpcIdentifier kPath("/test/path");
+  MockWiFiServiceRefPtr service(SetupConnectedService(kPath, nullptr, nullptr));
+
+  KeyValueStore kv;
+  kv.Set<std::string>(WPASupplicant::kNetworkPropertyBSSIDAccept,
+                      "00:00:00:00:00:01 00:00:00:00:00:02");
+  EXPECT_CALL(*GetSupplicantNetworkProxy(), SetProperties(kv))
+      .WillOnce(Return(false));
+
+  Strings allowlist = {"00:00:00:00:00:01", "00:00:00:00:00:02"};
+  EXPECT_FALSE(SetBSSIDAllowlist(service.get(), allowlist, &error));
+  EXPECT_EQ(error.type(), Error::kOperationFailed);
+}
+
+TEST_F(WiFiMainTest, SetBSSIDAllowlistNotFound) {
+  Error error;
+  StartWiFi();
+  MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
+
+  Strings allowlist;
+  EXPECT_FALSE(SetBSSIDAllowlist(service.get(), allowlist, &error));
+  EXPECT_EQ(error.type(), Error::kNotFound);
 }
 
 }  // namespace shill

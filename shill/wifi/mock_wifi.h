@@ -60,7 +60,9 @@ class MockWiFi : public WiFi {
               (override));
   MOCK_METHOD(bool,
               SetBSSIDAllowlist,
-              (const WiFiService* service, const Strings& bssid_allowlist),
+              (const WiFiService* service,
+               const Strings& bssid_allowlist,
+               Error* error),
               (override));
 };
 
