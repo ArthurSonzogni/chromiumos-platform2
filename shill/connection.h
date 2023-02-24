@@ -149,8 +149,8 @@ class Connection {
   // Connection implementation only supports adding at most one IPv4 and one
   // IPv6 address.
   std::map<IPAddress::Family, IPAddress> added_addresses_;
-  // All global addresseses on the link (IPv4 address from link protocol, or
-  // from DHCPv4, or from static IPv4 configuration; and IPv6 address from SLAAC
+  // All global addresses on the link (IPv4 address from link protocol, or from
+  // DHCPv4, or from static IPv4 configuration; and IPv6 address from SLAAC
   // and/or from link protocol). Cached from Network and is only used for
   // setting up routing policy rules.
   std::vector<IPAddress> addresses_for_routing_policy_;

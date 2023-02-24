@@ -96,10 +96,8 @@ Connection::~Connection() {
   routing_table_->FlushRoutes(interface_index_);
   routing_table_->FlushRoutesWithTag(interface_index_);
   if (!fixed_ip_params_) {
-    for (const auto& kv : added_addresses_) {
-      if (kv.second.IsValid()) {
-        rtnl_handler_->RemoveInterfaceAddress(interface_index_, kv.second);
-      }
+    for (const auto& [family, addr] : added_addresses_) {
+      rtnl_handler_->RemoveInterfaceAddress(interface_index_, addr);
     }
   }
   routing_table_->FlushRules(interface_index_);
@@ -269,9 +267,8 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
   // uses kTypeVPN as method, so kTypeIPv6 is always SLAAC.
   const bool skip_ip_configuration = properties.method == kTypeIPv6;
   if (!fixed_ip_params_ && !skip_ip_configuration) {
-    if (added_addresses_.count(local.family()) > 0 &&
-        added_addresses_[local.family()].IsValid() &&
-        added_addresses_[local.family()] != local) {
+    if (const auto it = added_addresses_.find(local.family());
+        it != added_addresses_.end() && it->second != local) {
       // The address has changed for this interface.  We need to flush
       // everything and start over.
       LOG(INFO) << __func__ << ": Flushing old addresses and routes.";
@@ -279,8 +276,7 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
       // managed by the kernel so this will not cause any problem now. Revisit
       // this part later.
       routing_table_->FlushRoutesWithTag(interface_index_);
-      rtnl_handler_->RemoveInterfaceAddress(interface_index_,
-                                            added_addresses_[local.family()]);
+      rtnl_handler_->RemoveInterfaceAddress(interface_index_, it->second);
     }
 
     LOG(INFO) << __func__ << ": Installing with parameters:"
@@ -290,7 +286,7 @@ void Connection::UpdateFromIPConfig(const IPConfig::Properties& properties) {
               << " gateway=" << gateway.ToString();
 
     rtnl_handler_->AddInterfaceAddress(interface_index_, local, broadcast);
-    added_addresses_[local.family()] = local;
+    added_addresses_.insert_or_assign(local.family(), local);
 
     SetMTU(properties.mtu);
   }
