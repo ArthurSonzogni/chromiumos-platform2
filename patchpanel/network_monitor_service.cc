@@ -56,7 +56,10 @@ std::string NUDStateToString(uint16_t state) {
 bool IsIPv6LinkLocalAddress(const shill::IPAddress& addr) {
   if (addr.family() != shill::IPAddress::kFamilyIPv6)
     return false;
-  return shill::IPAddress("fe80::", 64).CanReachAddress(addr);
+  const auto link_local_prefix = shill::IPAddress::CreateFromStringAndPrefix(
+      "fe80::", 64, shill::IPAddress::kFamilyIPv6);
+  DCHECK(link_local_prefix.has_value());
+  return link_local_prefix->CanReachAddress(addr);
 }
 
 // We cannot set the state of an address to NUD_PROBE when the kernel doesn't
@@ -111,40 +114,42 @@ void NeighborLinkMonitor::AddWatchingEntries(
     const std::string& addr,
     const std::string& gateway,
     const std::vector<std::string>& dns_addrs) {
-  shill::IPAddress gateway_addr(gateway);
-  if (!gateway_addr.IsValid()) {
+  if (auto gateway_addr = shill::IPAddress::CreateFromString(gateway);
+      gateway_addr.has_value()) {
+    UpdateWatchingEntry(std::move(*gateway_addr), NeighborRole::kGateway);
+  } else {
     LOG(ERROR) << "Gateway address " << gateway << " is not valid";
     return;
   }
-  UpdateWatchingEntry(gateway_addr, NeighborRole::kGateway);
 
   if (prefix_length < 0) {
     LOG(ERROR) << "Invalid prefix length " << prefix_length;
     return;
   }
-  shill::IPAddress local_addr(addr, static_cast<uint32_t>(prefix_length));
-  if (!local_addr.IsValid()) {
-    LOG(ERROR) << "Local address " << local_addr << " is not valid";
+  const auto local_addr = shill::IPAddress::CreateFromStringAndPrefix(
+      addr, static_cast<uint32_t>(prefix_length));
+  if (!local_addr.has_value()) {
+    LOG(ERROR) << "Local address " << addr << " is not valid";
     return;
   }
 
   int watching_dns_num = 0;
   int skipped_dns_num = 0;
   for (const auto& dns : dns_addrs) {
-    shill::IPAddress dns_addr(dns);
-    if (!dns_addr.IsValid()) {
+    const auto dns_addr = shill::IPAddress::CreateFromString(dns);
+    if (!dns_addr.has_value()) {
       LOG(ERROR) << "DNS server address is not valid";
       return;
     }
-    if (!local_addr.CanReachAddress(dns_addr) &&
-        !IsIPv6LinkLocalAddress(dns_addr)) {
+    if (!local_addr->CanReachAddress(*dns_addr) &&
+        !IsIPv6LinkLocalAddress(*dns_addr)) {
       skipped_dns_num++;
       continue;
     }
     watching_dns_num++;
-    UpdateWatchingEntry(dns_addr, NeighborRole::kDNSServer);
+    UpdateWatchingEntry(*dns_addr, NeighborRole::kDNSServer);
   }
-  LOG(INFO) << shill::IPAddress::GetAddressFamilyName(local_addr.family())
+  LOG(INFO) << shill::IPAddress::GetAddressFamilyName(local_addr->family())
             << " watching entries added on " << ifname_
             << ": skipped_dns_num=" << skipped_dns_num
             << " ,watching_dns_num=" << watching_dns_num;
@@ -292,15 +297,16 @@ void NeighborLinkMonitor::OnNeighborMessage(const shill::RTNLMessage& msg) {
   if (msg.interface_index() != ifindex_)
     return;
 
-  auto family = msg.family();
-  shill::ByteString dst = msg.GetAttribute(NDA_DST);
-  shill::IPAddress addr(family, dst);
-  if (!addr.IsValid()) {
-    LOG(WARNING) << "Got neighbor message with invalid addr " << addr;
+  const auto family = msg.family();
+  const shill::ByteString dst = msg.GetAttribute(NDA_DST);
+  const auto addr = shill::IPAddress::CreateFromByteString(family, dst);
+  if (!addr.has_value()) {
+    LOG(ERROR) << "Got neighbor message with invalid addr which length is "
+               << dst.GetLength();
     return;
   }
 
-  auto it = watching_entries_.find(addr);
+  auto it = watching_entries_.find(*addr);
   if (it == watching_entries_.end())
     return;
 

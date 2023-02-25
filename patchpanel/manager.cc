@@ -1233,11 +1233,6 @@ void Manager::OnNeighborReachabilityEvent(
     const shill::IPAddress& ip_addr,
     NeighborLinkMonitor::NeighborRole role,
     NeighborReachabilityEventSignal::EventType event_type) {
-  if (!ip_addr.IsValid()) {
-    LOG(DFATAL) << "ip_addr is not valid";
-    return;
-  }
-
   using SignalProto = NeighborReachabilityEventSignal;
   SignalProto proto;
   proto.set_ifindex(ifindex);

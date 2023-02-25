@@ -5,6 +5,8 @@
 #include "patchpanel/network_monitor_service.h"
 
 #include <memory>
+#include <set>
+
 #include <linux/rtnetlink.h>
 
 #include <base/strings/strcat.h>
@@ -47,8 +49,12 @@ MATCHER_P(IsNeighborProbeMessage, address, "") {
         arg->HasAttribute(NDA_DST)))
     return false;
 
-  shill::IPAddress msg_address(arg->family(), arg->GetAttribute(NDA_DST));
-  return msg_address == shill::IPAddress(address);
+  const auto msg_address = shill::IPAddress::CreateFromByteString(
+      arg->family(), arg->GetAttribute(NDA_DST));
+  CHECK(msg_address.has_value());
+  const auto expected_address = shill::IPAddress::CreateFromString(address);
+  CHECK(expected_address.has_value());
+  return msg_address == expected_address;
 }
 
 // Helper class for testing. Similar to mock class but only allowed one
@@ -174,10 +180,11 @@ class NeighborLinkMonitorTest : public testing::Test {
                                         uint16_t nud_state) {
     ASSERT_NE(registered_listener_, nullptr);
 
-    shill::IPAddress addr(address);
+    const auto addr = shill::IPAddress::CreateFromString(address);
+    CHECK(addr.has_value());
     shill::RTNLMessage msg(shill::RTNLMessage::kTypeNeighbor, mode, 0, 0, 0,
-                           kTestInterfaceIndex, addr.family());
-    msg.SetAttribute(NDA_DST, addr.address());
+                           kTestInterfaceIndex, addr->family());
+    msg.SetAttribute(NDA_DST, addr->address());
     if (mode == shill::RTNLMessage::kModeAdd) {
       msg.set_neighbor_status(
           shill::RTNLMessage::NeighborStatus(nud_state, 0, 0));
