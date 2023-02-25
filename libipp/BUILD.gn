@@ -36,8 +36,6 @@ shared_library("libipp") {
     "ipp_enums.h",
     "ipp_export.h",
     "ipp_frame.h",
-    "ipp_frame_builder.cc",
-    "ipp_frame_builder.h",
     "ipp_log.h",
     "ipp_parser.cc",
     "ipp_parser.h",
