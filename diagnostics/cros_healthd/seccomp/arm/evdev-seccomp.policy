@@ -56,6 +56,8 @@ send: 1
 #   0x8018455a == EVIOCGABS(ABS_TILT_X)
 #   0x80184574 == EVIOCGABS(ABS_MT_ORIENTATION)
 #   0x80184568 == EVIOCGABS(ABS_MISC)
+#   0x8018457c == EVIOCGABS(ABS_MT_TOOL_X)
+#   0x8018457d == EVIOCGABS(ABS_MT_TOOL_Y)
 ioctl: arg1 == 0x5401 || arg1 == 0x8913 || arg1 == 0x8914 || \
        arg1 == 0x80604518 || arg1 == 0x80ff4508 || arg1 == 0x80044525 || \
        arg1 == 0x80044531 || arg1 == 0x80104535 || arg1 == 0x80044524 || \
@@ -69,7 +71,8 @@ ioctl: arg1 == 0x5401 || arg1 == 0x8913 || arg1 == 0x8914 || \
        arg1 == 0x80184575 || arg1 == 0x80184576 || arg1 == 0x80184579 || \
        arg1 == 0x8018457a || arg1 == 0x8404450a || arg1 == 0x8018455b || \
        arg1 == 0x80184577 || arg1 == 0x8018457b || arg1 == 0x8018455a || \
-       arg1 == 0x80184574 || arg1 == 0x80184568
+       arg1 == 0x80184574 || arg1 == 0x80184568 || arg1 == 0x8018457c || \
+       arg1 == 0x8018457d
 recvmsg: 1
 rt_sigprocmask: 1
 epoll_ctl: 1

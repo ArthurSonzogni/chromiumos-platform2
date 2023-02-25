@@ -56,6 +56,9 @@ sendto: 1
 #   0x80184577 == EVIOCGABS(ABS_MT_TOOL_TYPE)
 #   0x80184574 == EVIOCGABS(ABS_MT_ORIENTATION)
 #   0x80184568 == EVIOCGABS(ABS_MISC)
+#   0x8018457b == EVIOCGABS(ABS_MT_DISTANCE)
+#   0x8018457c == EVIOCGABS(ABS_MT_TOOL_X)
+#   0x8018457d == EVIOCGABS(ABS_MT_TOOL_Y)
 ioctl: arg1 == 0x5401 || arg1 == 0x8913 || arg1 == 0x8914 || \
        arg1 == 0x80604518 || arg1 == 0x80084509 || arg1 == 0x80084519 || \
        arg1 == 0x80ff4506 || arg1 == 0x80ff4507 || arg1 == 0x80084525 || \
@@ -69,7 +72,8 @@ ioctl: arg1 == 0x5401 || arg1 == 0x8913 || arg1 == 0x8914 || \
        arg1 == 0x80184571 || arg1 == 0x8404450a || arg1 == 0x80184558 || \
        arg1 == 0x80184579 || arg1 == 0x80084503 || arg1 == 0x80184577 || \
        arg1 == 0x80184568 || arg1 == 0x8018455a || arg1 == 0x8018455b || \
-       arg1 == 0x80184574
+       arg1 == 0x80184574 || arg1 == 0x8018457b || arg1 == 0x8018457c || \
+       arg1 == 0x8018457d
 recvmsg: 1
 rt_sigprocmask: 1
 brk: 1
