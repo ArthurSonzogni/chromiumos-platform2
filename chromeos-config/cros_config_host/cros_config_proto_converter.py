@@ -841,10 +841,7 @@ def _build_ash_flags(config: Config) -> dict:
         _add_flag("has-internal-stylus")
 
     fp_loc = hw_features.fingerprint.location
-    if (
-        fp_loc
-        and fp_loc != topology_pb2.HardwareFeatures.Fingerprint.NOT_PRESENT
-    ):
+    if hw_features.fingerprint.present:
         loc_name = topology_pb2.HardwareFeatures.Fingerprint.Location.Name(
             fp_loc
         )
@@ -1551,7 +1548,7 @@ def _build_fingerprint(hw_topology):
 
     fp = hw_topology.fingerprint.hardware_feature.fingerprint
     result = {}
-    if fp.location != topology_pb2.HardwareFeatures.Fingerprint.NOT_PRESENT:
+    if fp.present:
         location = fp.Location.DESCRIPTOR.values_by_number[fp.location].name
     else:
         location = "none"
