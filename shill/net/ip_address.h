@@ -28,16 +28,7 @@ class SHILL_EXPORT IPAddress {
   static const char kFamilyNameIPv4[];
   static const char kFamilyNameIPv6[];
 
-  IPAddress();
-
   explicit IPAddress(Family family);
-  IPAddress(Family family, const ByteString& address);
-  IPAddress(Family family, const ByteString& address, unsigned int prefix);
-
-  // Constructs an IPAddress object given a standard string representation of an
-  // IP address (e.g. "192.144.30.54").
-  explicit IPAddress(const std::string& ip_string);
-  IPAddress(const std::string& ip_string, unsigned int prefix);
 
   // Constructs an IPAddress object from a sockaddr_in or sockaddr_in6
   // structure, depending on the family specified in |address_struct|.  |size|
@@ -131,8 +122,6 @@ class SHILL_EXPORT IPAddress {
            GetLength() == GetAddressLength(family_);
   }
 
-  // Parse an IP address string.
-  bool SetAddressFromString(const std::string& address_string);
   // An uninitialized IPAddress is empty and invalid when constructed.
   // Use SetAddressToDefault() to set it to the default or "all-zeroes" address.
   void SetAddressToDefault();
@@ -197,6 +186,10 @@ class SHILL_EXPORT IPAddress {
   bool operator<(const IPAddress& b) const;
 
  private:
+  IPAddress(Family family, const ByteString& address);
+  IPAddress(Family family, const ByteString& address, unsigned int prefix);
+  // Parse an IP address string.
+  bool SetAddressFromString(const std::string& address_string);
   // Parse an "address/prefix" IP address and prefix pair from a string.
   bool SetAddressAndPrefixFromString(const std::string& address_string);
 

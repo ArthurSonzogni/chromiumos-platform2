@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -53,9 +54,10 @@ class IPAddressTest : public Test {
                    const ByteString& good_bytes,
                    const std::string& bad_string,
                    const ByteString& bad_bytes) {
-    IPAddress good_addr(family);
+    auto optional_result = IPAddress::CreateFromString(good_string, family);
+    ASSERT_TRUE(optional_result.has_value());
+    const IPAddress& good_addr = *optional_result;
 
-    EXPECT_TRUE(good_addr.SetAddressFromString(good_string));
     EXPECT_EQ(IPAddress::GetAddressLength(family), good_addr.GetLength());
     EXPECT_EQ(family, good_addr.family());
     EXPECT_FALSE(good_addr.IsDefault());
@@ -66,17 +68,10 @@ class IPAddressTest : public Test {
     EXPECT_TRUE(good_addr.IntoString(&address_string));
     EXPECT_EQ(good_string, address_string);
 
-    IPAddress good_addr_from_bytes(family, good_bytes);
-    EXPECT_TRUE(good_addr.Equals(good_addr_from_bytes));
-
-    IPAddress good_addr_from_string(good_string);
-    EXPECT_EQ(family, good_addr_from_string.family());
-
     EXPECT_THAT(IPAddress::CreateFromByteString(family, good_bytes),
                 Optional(good_addr));
     EXPECT_THAT(IPAddress::CreateFromByteString(FlipFamily(family), good_bytes),
                 std::nullopt);
-    EXPECT_THAT(IPAddress::CreateFromString(good_string), Optional(good_addr));
     EXPECT_THAT(IPAddress::CreateFromString(good_string, family),
                 Optional(good_addr));
     EXPECT_THAT(IPAddress::CreateFromStringAndPrefix(good_string, 0, family),
@@ -84,23 +79,9 @@ class IPAddressTest : public Test {
     EXPECT_EQ(IPAddress::CreateFromString(good_string, FlipFamily(family)),
               std::nullopt);
 
-    IPAddress bad_addr(family);
-    EXPECT_FALSE(bad_addr.SetAddressFromString(bad_string));
-    EXPECT_FALSE(good_addr.Equals(bad_addr));
-
-    EXPECT_FALSE(bad_addr.IsValid());
-
-    IPAddress bad_addr_from_bytes(family, bad_bytes);
-    EXPECT_EQ(family, bad_addr_from_bytes.family());
-    EXPECT_FALSE(bad_addr_from_bytes.IsValid());
-
+    EXPECT_EQ(IPAddress::CreateFromString(bad_string), std::nullopt);
+    EXPECT_EQ(IPAddress::CreateFromString(bad_string, family), std::nullopt);
     EXPECT_EQ(IPAddress::CreateFromByteString(family, bad_bytes), std::nullopt);
-
-    IPAddress bad_addr_from_string(bad_string);
-    EXPECT_EQ(IPAddress::kFamilyUnknown, bad_addr_from_string.family());
-
-    EXPECT_FALSE(bad_addr.Equals(bad_addr_from_bytes));
-    EXPECT_FALSE(bad_addr.IntoString(&address_string));
 
     sockaddr_storage storage = {};
     auto addr = reinterpret_cast<sockaddr*>(&storage);
@@ -272,11 +253,9 @@ TEST_F(IPAddressTest, HasSameAddressAs) {
 }
 
 TEST_F(IPAddressTest, InvalidAddress) {
-  EXPECT_EQ("<unknown>", IPAddress().ToString());
   EXPECT_EQ("<unknown>", IPAddress(0).ToString());
   EXPECT_EQ("<unknown>", IPAddress(IPAddress::kFamilyIPv4).ToString());
   EXPECT_EQ("<unknown>", IPAddress(IPAddress::kFamilyIPv6).ToString());
-  EXPECT_EQ("<unknown>", IPAddress("notanaddress").ToString());
 }
 
 struct PrefixMapping {
@@ -298,10 +277,10 @@ class IPAddressPrefixMappingTest
 TEST_P(IPAddressPrefixMappingTest, TestPrefixMapping) {
   IPAddress address =
       IPAddress::GetAddressMaskFromPrefix(GetParam().family, GetParam().prefix);
-  IPAddress expected_address(GetParam().family);
-  EXPECT_TRUE(
-      expected_address.SetAddressFromString(GetParam().expected_address));
-  EXPECT_TRUE(expected_address.Equals(address));
+  const auto expected_address = IPAddress::CreateFromString(
+      GetParam().expected_address, GetParam().family);
+  ASSERT_TRUE(expected_address.has_value());
+  EXPECT_EQ(*expected_address, address);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -368,16 +347,23 @@ class IPAddressBitOperationMappingTest
     : public testing::TestWithParam<BitOperationMapping> {};
 
 TEST_P(IPAddressBitOperationMappingTest, TestBitOperationMapping) {
-  IPAddress address_a(GetParam().family);
-  EXPECT_TRUE(address_a.SetAddressFromString(GetParam().address_a));
-  IPAddress address_b(GetParam().family);
-  EXPECT_TRUE(address_b.SetAddressFromString(GetParam().address_b));
-  IPAddress expected_anded(GetParam().family);
-  EXPECT_TRUE(expected_anded.SetAddressFromString(GetParam().expected_anded));
-  EXPECT_TRUE(expected_anded.Equals(address_a.MaskWith(address_b)));
-  IPAddress expected_orred(GetParam().family);
-  EXPECT_TRUE(expected_orred.SetAddressFromString(GetParam().expected_orred));
-  EXPECT_TRUE(expected_orred.Equals(address_a.MergeWith(address_b)));
+  const auto address_a =
+      IPAddress::CreateFromString(GetParam().address_a, GetParam().family);
+  ASSERT_TRUE(address_a.has_value());
+
+  const auto address_b =
+      IPAddress::CreateFromString(GetParam().address_b, GetParam().family);
+  ASSERT_TRUE(address_b.has_value());
+
+  const auto expected_anded =
+      IPAddress::CreateFromString(GetParam().expected_anded, GetParam().family);
+  ASSERT_TRUE(expected_anded.has_value());
+  EXPECT_EQ(*expected_anded, address_a->MaskWith(*address_b));
+
+  const auto expected_orred =
+      IPAddress::CreateFromString(GetParam().expected_orred, GetParam().family);
+  ASSERT_TRUE(expected_orred.has_value());
+  EXPECT_EQ(*expected_orred, address_a->MergeWith(*address_b));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -437,23 +423,23 @@ class IPAddressNetworkPartMappingTest
     : public testing::TestWithParam<NetworkPartMapping> {};
 
 TEST_P(IPAddressNetworkPartMappingTest, TestNetworkPartMapping) {
-  IPAddress address(GetParam().family);
-  EXPECT_TRUE(address.SetAddressFromString(GetParam().address));
-  IPAddress expected_network(GetParam().family);
-  EXPECT_TRUE(
-      expected_network.SetAddressFromString(GetParam().expected_network));
-  address.set_prefix(GetParam().prefix);
-  expected_network.set_prefix(GetParam().prefix);
-  EXPECT_TRUE(expected_network.Equals(address.GetNetworkPart()));
-  IPAddress expected_broadcast(GetParam().family);
-  EXPECT_TRUE(
-      expected_broadcast.SetAddressFromString(GetParam().expected_broadcast));
-  EXPECT_TRUE(expected_broadcast.Equals(address.GetDefaultBroadcast()));
+  const auto address = IPAddress::CreateFromStringAndPrefix(
+      GetParam().address, GetParam().prefix, GetParam().family);
+  ASSERT_TRUE(address.has_value());
+  const auto expected_network = IPAddress::CreateFromStringAndPrefix(
+      GetParam().expected_network, GetParam().prefix, GetParam().family);
+  ASSERT_TRUE(expected_network.has_value());
+  EXPECT_EQ(*expected_network, address->GetNetworkPart());
+
+  const auto expected_broadcast = IPAddress::CreateFromString(
+      GetParam().expected_broadcast, GetParam().family);
+  ASSERT_TRUE(expected_broadcast.has_value());
+  EXPECT_EQ(*expected_broadcast, address->GetDefaultBroadcast());
 
   const auto address2 = IPAddress::CreateFromStringAndPrefix(GetParam().address,
                                                              GetParam().prefix);
   ASSERT_TRUE(address2.has_value());
-  EXPECT_EQ(*address2, address);
+  EXPECT_EQ(*address2, *address);
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -534,11 +520,13 @@ class IPAddressCanReachAddressMappingTest
     : public testing::TestWithParam<CanReachAddressMapping> {};
 
 TEST_P(IPAddressCanReachAddressMappingTest, TestCanReachAddressMapping) {
-  IPAddress address_a(GetParam().address_a, GetParam().prefix_a);
-  EXPECT_TRUE(address_a.IsValid());
-  IPAddress address_b(GetParam().address_b, GetParam().prefix_b);
-  EXPECT_TRUE(address_b.IsValid());
-  EXPECT_EQ(GetParam().expected_result, address_a.CanReachAddress(address_b));
+  const auto address_a = IPAddress::CreateFromStringAndPrefix(
+      GetParam().address_a, GetParam().prefix_a);
+  ASSERT_TRUE(address_a.has_value());
+  const auto address_b = IPAddress::CreateFromStringAndPrefix(
+      GetParam().address_b, GetParam().prefix_b);
+  ASSERT_TRUE(address_b.has_value());
+  EXPECT_EQ(GetParam().expected_result, address_a->CanReachAddress(*address_b));
 }
 
 INSTANTIATE_TEST_SUITE_P(
@@ -556,20 +544,30 @@ INSTANTIATE_TEST_SUITE_P(
 
 namespace {
 
+IPAddress CreateAndUnwrapIPAddress(const std::string& addr_str) {
+  const auto ret = IPAddress::CreateFromString(addr_str);
+  CHECK(ret.has_value()) << addr_str << "is not a valid IP";
+  return *ret;
+}
+
 // The order which these addresses are declared is important.  They
 // should be listed in ascending order.
 const IPAddress kIPv4OrderedAddresses[] = {
-    IPAddress("127.0.0.1"),    IPAddress("192.168.1.1"),
-    IPAddress("192.168.1.32"), IPAddress("192.168.2.1"),
-    IPAddress("192.168.2.32"), IPAddress("255.255.255.255")};
+    CreateAndUnwrapIPAddress("127.0.0.1"),
+    CreateAndUnwrapIPAddress("192.168.1.1"),
+    CreateAndUnwrapIPAddress("192.168.1.32"),
+    CreateAndUnwrapIPAddress("192.168.2.1"),
+    CreateAndUnwrapIPAddress("192.168.2.32"),
+    CreateAndUnwrapIPAddress("255.255.255.255")};
 
-const IPAddress kIPv6OrderedAddresses[] = {IPAddress("::1"),
-                                           IPAddress("2401:fa00:480:c6::30"),
-                                           IPAddress("2401:fa00:480:c6::1:10"),
-                                           IPAddress("2401:fa00:480:f6::6"),
-                                           IPAddress("2401:fa01:480:f6::1"),
-                                           IPAddress("fe80:1000::"),
-                                           IPAddress("ff02::1")};
+const IPAddress kIPv6OrderedAddresses[] = {
+    CreateAndUnwrapIPAddress("::1"),
+    CreateAndUnwrapIPAddress("2401:fa00:480:c6::30"),
+    CreateAndUnwrapIPAddress("2401:fa00:480:c6::1:10"),
+    CreateAndUnwrapIPAddress("2401:fa00:480:f6::6"),
+    CreateAndUnwrapIPAddress("2401:fa01:480:f6::1"),
+    CreateAndUnwrapIPAddress("fe80:1000::"),
+    CreateAndUnwrapIPAddress("ff02::1")};
 
 }  // namespace
 
@@ -634,8 +632,8 @@ INSTANTIATE_TEST_SUITE_P(
         testing::Range<size_t>(0, std::size(kIPv6OrderedAddresses) - 1)));
 
 TEST(IPAddressMoveTest, MoveConstructor) {
-  const IPAddress const_address(kV4String1);
-  IPAddress source_address(kV4String1);
+  const IPAddress const_address = CreateAndUnwrapIPAddress(kV4String1);
+  IPAddress source_address = CreateAndUnwrapIPAddress(kV4String1);
   EXPECT_EQ(const_address, source_address);
 
   const IPAddress dest_address(std::move(source_address));
@@ -645,9 +643,9 @@ TEST(IPAddressMoveTest, MoveConstructor) {
 }
 
 TEST(IPAddressMoveTest, MoveAssignmentOperator) {
-  const IPAddress const_address(kV4String1);
-  IPAddress source_address(kV4String1);
-  IPAddress dest_address(kV4String2);
+  const IPAddress const_address = CreateAndUnwrapIPAddress(kV4String1);
+  IPAddress source_address = CreateAndUnwrapIPAddress(kV4String1);
+  IPAddress dest_address(IPAddress::kFamilyIPv4);
 
   EXPECT_EQ(const_address, source_address);
   EXPECT_FALSE(const_address.Equals(dest_address));

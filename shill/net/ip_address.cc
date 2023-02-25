@@ -29,8 +29,6 @@ const char IPAddress::kFamilyNameIPv4[] = "IPv4";
 // static
 const char IPAddress::kFamilyNameIPv6[] = "IPv6";
 
-IPAddress::IPAddress() : IPAddress(IPAddress::kFamilyUnknown) {}
-
 IPAddress::IPAddress(Family family) : family_(family), prefix_(0) {}
 
 IPAddress::IPAddress(Family family, const ByteString& address)
@@ -40,19 +38,6 @@ IPAddress::IPAddress(Family family,
                      const ByteString& address,
                      unsigned int prefix)
     : family_(family), address_(address), prefix_(prefix) {}
-
-IPAddress::IPAddress(const std::string& ip_string, unsigned int prefix)
-    : prefix_(prefix) {
-  family_ = IPAddress::kFamilyIPv4;
-  if (!SetAddressFromString(ip_string)) {
-    family_ = IPAddress::kFamilyIPv6;
-    if (!SetAddressFromString(ip_string)) {
-      family_ = IPAddress::kFamilyUnknown;
-    }
-  }
-}
-
-IPAddress::IPAddress(const std::string& ip_string) : IPAddress(ip_string, 0) {}
 
 IPAddress::IPAddress(const sockaddr* address_struct, size_t size)
     : family_(kFamilyUnknown), prefix_(0) {
