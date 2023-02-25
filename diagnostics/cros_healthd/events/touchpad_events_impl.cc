@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/events/touchpad_events_impl.h"
 
+#include <string>
 #include <utility>
 
 #include <base/bind.h>
@@ -33,7 +34,7 @@ void TouchpadEventsImpl::AddObserver(
     context_->executor()->MonitorTouchpad(
         receiver_.BindNewPipeAndPassRemote(),
         process_control_.BindNewPipeAndPassReceiver());
-    receiver_.set_disconnect_handler(
+    receiver_.set_disconnect_with_reason_handler(
         base::BindOnce(&TouchpadEventsImpl::CleanUp, base::Unretained(this)));
   } else {
     if (cached_connected_event_) {
@@ -72,8 +73,9 @@ void TouchpadEventsImpl::StopMonitor(mojo::RemoteSetElementId id) {
   }
 }
 
-void TouchpadEventsImpl::CleanUp() {
-  observers_.Clear();
+void TouchpadEventsImpl::CleanUp(uint32_t custom_reason,
+                                 const std::string& description) {
+  observers_.ClearWithReason(custom_reason, description);
   cached_connected_event_.reset();
 }
 

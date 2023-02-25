@@ -5,6 +5,8 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_EVENTS_TOUCHPAD_EVENTS_IMPL_H_
 #define DIAGNOSTICS_CROS_HEALTHD_EVENTS_TOUCHPAD_EVENTS_IMPL_H_
 
+#include <string>
+
 #include <mojo/public/cpp/bindings/pending_remote.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 #include <mojo/public/cpp/bindings/remote_set.h>
@@ -39,7 +41,7 @@ class TouchpadEventsImpl final
 
  private:
   void StopMonitor(mojo::RemoteSetElementId id);
-  void CleanUp();
+  void CleanUp(uint32_t custom_reason, const std::string& description);
 
   // A cached connected event. This event will be emitted to newly added
   // observers if the monitor process has been running.
