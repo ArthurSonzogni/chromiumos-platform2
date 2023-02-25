@@ -22,7 +22,6 @@ class Error;
 // Convenient typedefs for some commonly used callbacks.
 using ResultCallback = base::Callback<void(const Error&)>;
 using ResultOnceCallback = base::OnceCallback<void(const Error&)>;
-using ResultBoolCallback = base::Callback<void(const Error&, bool)>;
 using ResultVariantDictionariesCallback =
     base::Callback<void(const Error&, const VariantDictionaries&)>;
 using ResultVariantDictionariesOnceCallback =
@@ -32,14 +31,10 @@ using KeyValueStoreCallback =
     base::OnceCallback<void(const KeyValueStore&, const Error&)>;
 using KeyValueStoresCallback =
     base::OnceCallback<void(const std::vector<KeyValueStore>&, const Error&)>;
-using KeyValueStoresOnceCallback =
-    base::OnceCallback<void(const std::vector<KeyValueStore>&, const Error&)>;
 using RpcIdentifierCallback =
     base::OnceCallback<void(const RpcIdentifier&, const Error&)>;
 using StringCallback =
     base::OnceCallback<void(const std::string&, const Error&)>;
-using ActivationStateSignalCallback =
-    base::RepeatingCallback<void(uint32_t, uint32_t, const KeyValueStore&)>;
 using ResultStringmapsCallback =
     base::OnceCallback<void(const Stringmaps&, const Error&)>;
 using BrilloAnyCallback = base::OnceCallback<void(
