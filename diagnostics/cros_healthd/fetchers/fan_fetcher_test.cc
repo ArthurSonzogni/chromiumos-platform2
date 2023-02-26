@@ -143,8 +143,9 @@ TEST_F(FanUtilsTest, FanStalled) {
           WithArg<0>(Invoke([](mojom::Executor::GetFanSpeedCallback callback) {
             mojom::ExecutedProcessResult result;
             result.return_code = EXIT_SUCCESS;
-            result.out = base::StringPrintf("Fan 0 stalled!\nFan 1 RPM: %u\n",
-                                            kSecondFanSpeedRpm);
+            result.out = base::StringPrintf(
+                "Fan 0 stalled (RPM: 65534)\nFan 1 RPM: %u\n",
+                kSecondFanSpeedRpm);
             std::move(callback).Run(result.Clone());
           })));
 

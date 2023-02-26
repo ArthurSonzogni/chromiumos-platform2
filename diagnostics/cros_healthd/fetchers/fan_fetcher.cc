@@ -30,7 +30,7 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-constexpr auto kFanStalledRegex = R"(Fan \d+ stalled!)";
+constexpr auto kFanStalledRegex = R"(Fan \d+ stalled \(RPM: 65534\))";
 constexpr auto kFanSpeedRegex = R"(Fan \d+ RPM: (\d+))";
 
 }  // namespace
