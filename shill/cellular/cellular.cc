@@ -1267,8 +1267,8 @@ void Cellular::OnConnectReply(std::string iccid,
 void Cellular::OnEnabled() {
   SLOG(1) << LoggingTag() << ": " << __func__;
   manager()->AddTerminationAction(
-      link_name(),
-      base::Bind(&Cellular::StartTermination, weak_ptr_factory_.GetWeakPtr()));
+      link_name(), base::BindOnce(&Cellular::StartTermination,
+                                  weak_ptr_factory_.GetWeakPtr()));
   if (!enabled() && !enabled_pending()) {
     LOG(WARNING) << LoggingTag() << ": OnEnabled called while not enabling, "
                  << "setting enabled.";

@@ -2802,9 +2802,9 @@ TEST_F(ManagerTest, Suspend) {
 
 TEST_F(ManagerTest, AddTerminationAction) {
   EXPECT_TRUE(GetTerminationActions()->IsEmpty());
-  manager()->AddTerminationAction("action1", base::Closure());
+  manager()->AddTerminationAction("action1", base::DoNothing());
   EXPECT_FALSE(GetTerminationActions()->IsEmpty());
-  manager()->AddTerminationAction("action2", base::Closure());
+  manager()->AddTerminationAction("action2", base::DoNothing());
 }
 
 TEST_F(ManagerTest, RemoveTerminationAction) {
@@ -2816,9 +2816,9 @@ TEST_F(ManagerTest, RemoveTerminationAction) {
   manager()->RemoveTerminationAction("unknown");
 
   // Fill hook table with two items.
-  manager()->AddTerminationAction(kKey1, base::Closure());
+  manager()->AddTerminationAction(kKey1, base::DoNothing());
   EXPECT_FALSE(GetTerminationActions()->IsEmpty());
-  manager()->AddTerminationAction(kKey2, base::Closure());
+  manager()->AddTerminationAction(kKey2, base::DoNothing());
 
   // Removing an action that ends up with a non-empty hook table.
   manager()->RemoveTerminationAction(kKey1);
@@ -2835,15 +2835,15 @@ TEST_F(ManagerTest, RunTerminationActions) {
 
   EXPECT_CALL(test_action, Done(_));
   manager()->RunTerminationActions(
-      base::Bind(&TerminationActionTest::Done, test_action.AsWeakPtr()));
+      base::BindOnce(&TerminationActionTest::Done, test_action.AsWeakPtr()));
 
   manager()->AddTerminationAction(
       TerminationActionTest::kActionName,
-      base::Bind(&TerminationActionTest::Action, test_action.AsWeakPtr()));
+      base::BindOnce(&TerminationActionTest::Action, test_action.AsWeakPtr()));
   test_action.set_manager(manager());
   EXPECT_CALL(test_action, Done(_));
   manager()->RunTerminationActions(
-      base::Bind(&TerminationActionTest::Done, test_action.AsWeakPtr()));
+      base::BindOnce(&TerminationActionTest::Done, test_action.AsWeakPtr()));
 }
 
 TEST_F(ManagerTest, OnSuspendImminentDevicesPresent) {

@@ -704,7 +704,7 @@ TEST_F(CellularCapability3gppTest, TerminationAction) {
   EXPECT_FALSE(manager_.termination_actions_.IsEmpty());
 
   // Running the termination action should disable the modem.
-  manager_.RunTerminationActions(base::Bind(
+  manager_.RunTerminationActions(base::BindOnce(
       &CellularCapability3gppTest::TestCallback, base::Unretained(this)));
   dispatcher_.DispatchPendingEvents();
   // Here we mimic the modem state change from ModemManager. When the modem is
@@ -716,7 +716,7 @@ TEST_F(CellularCapability3gppTest, TerminationAction) {
   EXPECT_TRUE(manager_.termination_actions_.IsEmpty());
 
   // No termination action should be called here.
-  manager_.RunTerminationActions(base::Bind(
+  manager_.RunTerminationActions(base::BindOnce(
       &CellularCapability3gppTest::TestCallback, base::Unretained(this)));
   dispatcher_.DispatchPendingEvents();
 }
@@ -767,7 +767,7 @@ TEST_F(CellularCapability3gppTest, TerminationActionRemovedByStopModem) {
   EXPECT_TRUE(manager_.termination_actions_.IsEmpty());
 
   // No termination action should be called here.
-  manager_.RunTerminationActions(base::Bind(
+  manager_.RunTerminationActions(base::BindOnce(
       &CellularCapability3gppTest::TestCallback, base::Unretained(this)));
   dispatcher_.DispatchPendingEvents();
 }

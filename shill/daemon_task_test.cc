@@ -185,8 +185,8 @@ TEST_F(DaemonTaskTest, QuitWithTerminationAction) {
   EXPECT_CALL(*this, BreakTerminationLoop()).Times(1);
 
   manager_->AddTerminationAction(
-      "daemon test",
-      base::Bind(&DaemonTaskTest::TerminationAction, base::Unretained(this)));
+      "daemon test", base::BindOnce(&DaemonTaskTest::TerminationAction,
+                                    base::Unretained(this)));
 
   // Run Daemon::Quit() after the daemon starts running.
   dispatcher_->PostTask(

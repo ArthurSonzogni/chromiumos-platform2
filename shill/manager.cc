@@ -1519,8 +1519,8 @@ void Manager::LoadProperties(const scoped_refptr<DefaultProfile>& profile) {
 }
 
 void Manager::AddTerminationAction(const std::string& name,
-                                   const base::Closure& start) {
-  termination_actions_.Add(name, start);
+                                   base::OnceClosure start) {
+  termination_actions_.Add(name, std::move(start));
 }
 
 void Manager::TerminationActionComplete(const std::string& name) {
@@ -1533,17 +1533,18 @@ void Manager::RemoveTerminationAction(const std::string& name) {
   termination_actions_.Remove(name);
 }
 
-void Manager::RunTerminationActions(const ResultCallback& done_callback) {
+void Manager::RunTerminationActions(ResultOnceCallback done_callback) {
   LOG(INFO) << "Running termination actions.";
-  termination_actions_.Run(kTerminationActionsTimeout, done_callback);
+  termination_actions_.Run(kTerminationActionsTimeout,
+                           std::move(done_callback));
 }
 
 bool Manager::RunTerminationActionsAndNotifyMetrics(
-    const ResultCallback& done_callback) {
+    ResultOnceCallback done_callback) {
   if (termination_actions_.IsEmpty())
     return false;
 
-  RunTerminationActions(done_callback);
+  RunTerminationActions(std::move(done_callback));
   return true;
 }
 

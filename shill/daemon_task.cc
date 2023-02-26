@@ -59,7 +59,7 @@ void DaemonTask::ApplySettings() {
 
 bool DaemonTask::Quit(base::OnceClosure completion_callback) {
   SLOG(1) << "Starting termination actions.";
-  if (manager_->RunTerminationActionsAndNotifyMetrics(base::Bind(
+  if (manager_->RunTerminationActionsAndNotifyMetrics(base::BindOnce(
           &DaemonTask::TerminationActionsCompleted, base::Unretained(this)))) {
     SLOG(1) << "Will wait for termination actions to complete";
     termination_completed_callback_ = std::move(completion_callback);

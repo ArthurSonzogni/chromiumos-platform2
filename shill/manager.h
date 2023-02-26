@@ -416,8 +416,7 @@ class Manager {
   // will be replaced.  |start| will be called when RunTerminationActions() is
   // called.  When an action completed, TerminationActionComplete() must be
   // called.
-  void AddTerminationAction(const std::string& name,
-                            const base::Closure& start);
+  void AddTerminationAction(const std::string& name, base::OnceClosure start);
 
   // Users call this function to report the completion of an action |name|.
   // This function should be called once for each action.
@@ -434,8 +433,7 @@ class Manager {
   // Error::kOperationTimeout.
   //
   // Returns true, if termination actions were run.
-  bool RunTerminationActionsAndNotifyMetrics(
-      const ResultCallback& done_callback);
+  bool RunTerminationActionsAndNotifyMetrics(ResultOnceCallback done_callback);
 
   // Add/remove observers to subscribe to default Service notifications.
   void AddDefaultServiceObserver(DefaultServiceObserver* observer);
@@ -725,7 +723,7 @@ class Manager {
   // |kTerminationActionsTimeoutMilliseconds|, |done_callback| is called with a
   // value of Error::kSuccess.  Otherwise, it is called with
   // Error::kOperationTimeout.
-  void RunTerminationActions(const ResultCallback& done_callback);
+  void RunTerminationActions(ResultOnceCallback done_callback);
 
   // Called when the system is about to be suspended.  Each call will be
   // followed by a call to OnSuspendDone().
