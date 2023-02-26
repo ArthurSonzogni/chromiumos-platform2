@@ -130,8 +130,6 @@ class FrameCapturer {
   // Run starts a capture session with the given |id| and |format|. Fires
   // |callback| with the number of frames captured or the error status if an
   // error is encountered.
-  // TODO(b/168769598): Change |callback| to base::OnceCallback once
-  // cros::GetFutureCallback() returns base::OnceCallback.
   void RunAsync(int id,
                 cros_cam_format_info_t format,
                 base::OnceCallback<void(int)> callback) {

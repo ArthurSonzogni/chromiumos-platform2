@@ -130,12 +130,12 @@ void FutureCallback(scoped_refptr<Future<T>> future, T ret) {
 }
 
 template <typename T>
-base::Callback<void(T)> GetFutureCallback(
+base::OnceCallback<void(T)> GetFutureCallback(
     const scoped_refptr<Future<T>>& future) {
-  return base::Bind(&FutureCallback<T>, future);
+  return base::BindOnce(&FutureCallback<T>, future);
 }
 
-CROS_CAMERA_EXPORT base::Callback<void()> GetFutureCallback(
+CROS_CAMERA_EXPORT base::OnceCallback<void()> GetFutureCallback(
     const scoped_refptr<Future<void>>& future);
 
 }  // namespace cros

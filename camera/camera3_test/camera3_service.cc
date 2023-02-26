@@ -652,10 +652,10 @@ void Camera3Service::Camera3DeviceService::StopFaceDetectionOnServiceThread() {
 }
 
 void Camera3Service::Camera3DeviceService::TakeStillCaptureOnServiceThread(
-    const camera_metadata_t* metadata, base::Callback<void()> cb) {
+    const camera_metadata_t* metadata, base::OnceCallback<void()> cb) {
   DCHECK(service_thread_.IsCurrentThread());
   still_capture_metadata_ = metadata;
-  still_capture_cb_ = cb;
+  still_capture_cb_ = std::move(cb);
 }
 
 void Camera3Service::Camera3DeviceService::StartRecordingOnServiceThread(
@@ -770,7 +770,7 @@ void Camera3Service::Camera3DeviceService::
   VLOGF(1) << "  Settings " << request->settings;
   if (still_capture_metadata_) {
     still_capture_metadata_ = nullptr;
-    still_capture_cb_.Run();
+    std::move(still_capture_cb_).Run();
   } else if (!recording_metadata_ && !still_capture_metadata_ &&
              oneshot_preview_metadata_.get()) {
     oneshot_preview_metadata_.reset(nullptr);

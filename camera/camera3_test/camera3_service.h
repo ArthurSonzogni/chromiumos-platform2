@@ -237,7 +237,7 @@ class Camera3Service::Camera3DeviceService {
   void StopFaceDetectionOnServiceThread();
 
   void TakeStillCaptureOnServiceThread(const camera_metadata_t* metadata,
-                                       base::Callback<void()> cb);
+                                       base::OnceCallback<void()> cb);
 
   void StartRecordingOnServiceThread(const camera_metadata_t* metadata,
                                      base::OnceCallback<void(int)> cb);
@@ -297,7 +297,7 @@ class Camera3Service::Camera3DeviceService {
   // Metadata for still capture requests
   const camera_metadata_t* still_capture_metadata_ = nullptr;
 
-  base::Callback<void()> still_capture_cb_;
+  base::OnceCallback<void()> still_capture_cb_;
 
   // Metadata for recording requests
   const camera_metadata_t* recording_metadata_ = nullptr;
