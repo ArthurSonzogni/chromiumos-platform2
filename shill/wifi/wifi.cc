@@ -437,8 +437,8 @@ void WiFi::AddPendingScanResult(const RpcIdentifier& path,
 
   if (!pending_scan_results_) {
     pending_scan_results_.reset(new PendingScanResults(
-        base::Bind(&WiFi::PendingScanResultsHandler,
-                   weak_ptr_factory_while_started_.GetWeakPtr())));
+        base::BindOnce(&WiFi::PendingScanResultsHandler,
+                       weak_ptr_factory_while_started_.GetWeakPtr())));
     dispatcher()->PostTask(FROM_HERE,
                            pending_scan_results_->callback.callback());
   }

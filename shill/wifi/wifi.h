@@ -81,6 +81,7 @@
 #include <memory>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/cancelable_callback.h>
@@ -278,8 +279,8 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   struct PendingScanResults {
     PendingScanResults() : is_complete(false) {}
-    explicit PendingScanResults(const base::Closure& process_results_callback)
-        : is_complete(false), callback(process_results_callback) {}
+    explicit PendingScanResults(base::OnceClosure process_results_callback)
+        : is_complete(false), callback(std::move(process_results_callback)) {}
 
     // List of pending scan results to process.
     std::vector<ScanResult> results;
@@ -288,7 +289,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
     bool is_complete;
 
     // Cancelable closure used to process the scan results.
-    base::CancelableClosure callback;
+    base::CancelableOnceClosure callback;
   };
 
   // Result of a match between an access point and a set of credentials.
