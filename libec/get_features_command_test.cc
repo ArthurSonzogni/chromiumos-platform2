@@ -49,6 +49,19 @@ TEST_F(GetFeaturesCommandTest, IsFeatureSupported) {
       mock_command.IsFeatureSupported(ec_feature_code::EC_FEATURE_SCP));
 }
 
+TEST_F(GetFeaturesCommandTest, IsFeatureSupported_TwoFeatures) {
+  MockGetFeaturesCommand mock_command;
+  struct ec_response_get_features response {};
+  response.flags[0] = EC_FEATURE_MASK_0(ec_feature_code::EC_FEATURE_FLASH) |
+                      EC_FEATURE_MASK_0(ec_feature_code::EC_FEATURE_LED);
+
+  EXPECT_CALL(mock_command, Resp).WillRepeatedly(Return(&response));
+
+  EXPECT_TRUE(
+      mock_command.IsFeatureSupported(ec_feature_code::EC_FEATURE_FLASH));
+  EXPECT_TRUE(mock_command.IsFeatureSupported(ec_feature_code::EC_FEATURE_LED));
+}
+
 TEST_F(GetFeaturesCommandTest, IsFeatureSupported_FeaturesEqualMod32) {
   MockGetFeaturesCommand mock_command;
   struct ec_response_get_features response {};

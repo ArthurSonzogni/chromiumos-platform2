@@ -9,10 +9,10 @@ namespace ec {
 GetFeaturesCommand::GetFeaturesCommand() : EcCommand(EC_CMD_GET_FEATURES) {}
 
 bool GetFeaturesCommand::IsFeatureSupported(enum ec_feature_code code) const {
-  if (code < 32 && EC_FEATURE_MASK_0(code) == Resp()->flags[0]) {
+  if (code < 32 && (EC_FEATURE_MASK_0(code) & Resp()->flags[0])) {
     return true;
   }
-  if (code >= 32 && (EC_FEATURE_MASK_1(code) == Resp()->flags[1])) {
+  if (code >= 32 && (EC_FEATURE_MASK_1(code) & Resp()->flags[1])) {
     return true;
   }
   return false;
