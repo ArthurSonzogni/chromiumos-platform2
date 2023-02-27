@@ -85,10 +85,10 @@ std::string DBusAdaptor::SanitizePathElement(const std::string& object_path) {
   return sanitized_path;
 }
 
-ResultCallback DBusAdaptor::GetMethodReplyCallback(
+ResultOnceCallback DBusAdaptor::GetMethodReplyCallback(
     DBusMethodResponsePtr<> response) {
-  return base::Bind(&DBusAdaptor::MethodReplyCallback,
-                    weak_factory_.GetWeakPtr(), base::Passed(&response));
+  return base::BindOnce(&DBusAdaptor::MethodReplyCallback,
+                        weak_factory_.GetWeakPtr(), std::move(response));
 }
 
 void DBusAdaptor::MethodReplyCallback(DBusMethodResponsePtr<> response,

@@ -217,9 +217,9 @@ void ManagerDBusAdaptor::SetNetworkThrottlingStatus(
     uint32_t upload_rate_kbits,
     uint32_t download_rate_kbits) {
   SLOG(this, 2) << __func__ << ": " << enabled;
-  ResultCallback callback = GetMethodReplyCallback(std::move(response));
-  manager_->SetNetworkThrottlingStatus(callback, enabled, upload_rate_kbits,
-                                       download_rate_kbits);
+  manager_->SetNetworkThrottlingStatus(
+      GetMethodReplyCallback(std::move(response)), enabled, upload_rate_kbits,
+      download_rate_kbits);
   return;
 }
 
@@ -227,20 +227,20 @@ void ManagerDBusAdaptor::EnableTechnology(DBusMethodResponsePtr<> response,
                                           const std::string& technology_name) {
   SLOG(this, 2) << __func__ << ": " << technology_name;
   Error e(Error::kOperationInitiated);
-  ResultCallback callback = GetMethodReplyCallback(std::move(response));
   const bool kPersistentSave = true;
-  manager_->SetEnabledStateForTechnology(technology_name, true, kPersistentSave,
-                                         callback);
+  manager_->SetEnabledStateForTechnology(
+      technology_name, true, kPersistentSave,
+      GetMethodReplyCallback(std::move(response)));
 }
 
 void ManagerDBusAdaptor::DisableTechnology(DBusMethodResponsePtr<> response,
                                            const std::string& technology_name) {
   SLOG(this, 2) << __func__ << ": " << technology_name;
   Error e(Error::kOperationInitiated);
-  ResultCallback callback = GetMethodReplyCallback(std::move(response));
   const bool kPersistentSave = true;
-  manager_->SetEnabledStateForTechnology(technology_name, false,
-                                         kPersistentSave, callback);
+  manager_->SetEnabledStateForTechnology(
+      technology_name, false, kPersistentSave,
+      GetMethodReplyCallback(std::move(response)));
 }
 
 // Called, e.g., to get WiFiService handle for a hidden SSID.

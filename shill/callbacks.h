@@ -20,7 +20,6 @@ namespace shill {
 
 class Error;
 // Convenient typedefs for some commonly used callbacks.
-using ResultCallback = base::Callback<void(const Error&)>;
 using ResultOnceCallback = base::OnceCallback<void(const Error&)>;
 using ResultVariantDictionariesCallback =
     base::Callback<void(const Error&, const VariantDictionaries&)>;

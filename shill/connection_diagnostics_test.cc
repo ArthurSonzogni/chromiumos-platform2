@@ -159,25 +159,19 @@ class ConnectionDiagnosticsTest : public Test {
  protected:
   class CallbackTarget {
    public:
-    CallbackTarget()
-        : result_callback_(base::Bind(&CallbackTarget::ResultCallback,
-                                      base::Unretained(this))) {}
+    CallbackTarget() {}
 
     MOCK_METHOD(void,
                 ResultCallback,
                 (const std::string&,
                  const std::vector<ConnectionDiagnostics::Event>&));
 
-    base::Callback<void(const std::string&,
-                        const std::vector<ConnectionDiagnostics::Event>&)>&
+    base::OnceCallback<void(const std::string&,
+                            const std::vector<ConnectionDiagnostics::Event>&)>
     result_callback() {
-      return result_callback_;
+      return base::BindOnce(&CallbackTarget::ResultCallback,
+                            base::Unretained(this));
     }
-
-   private:
-    base::Callback<void(const std::string&,
-                        const std::vector<ConnectionDiagnostics::Event>&)>
-        result_callback_;
   };
 
   CallbackTarget& callback_target() { return callback_target_; }

@@ -98,7 +98,7 @@ class ConnectionDiagnostics {
   // detected (if any), and list of events (e.g. routing table
   // lookup, DNS resolution) performed during the diagnostics.
   using ResultCallback =
-      base::Callback<void(const std::string&, const std::vector<Event>&)>;
+      base::OnceCallback<void(const std::string&, const std::vector<Event>&)>;
 
   // TODO(b/229309479) Remove obsolete descriptions.
   // Metrics::NotifyConnectionDiagnosticsIssue depends on these kIssue strings.
@@ -129,7 +129,7 @@ class ConnectionDiagnostics {
                         const std::vector<std::string>& dns_list,
                         EventDispatcher* dispatcher,
                         Metrics* metrics,
-                        const ResultCallback& result_callback);
+                        ResultCallback result_callback);
   ConnectionDiagnostics(const ConnectionDiagnostics&) = delete;
   ConnectionDiagnostics& operator=(const ConnectionDiagnostics&) = delete;
 

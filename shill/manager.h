@@ -323,7 +323,7 @@ class Manager {
   void SetEnabledStateForTechnology(const std::string& technology_name,
                                     bool enabled_state,
                                     bool persist,
-                                    const ResultCallback& callback);
+                                    ResultOnceCallback callback);
   // Return whether a technology is marked as enabled for portal detection.
   virtual bool IsPortalDetectionEnabled(Technology tech);
 
@@ -464,7 +464,7 @@ class Manager {
 
   RpcIdentifiers EnumerateDevices(Error* error);
 
-  bool SetNetworkThrottlingStatus(const ResultCallback& callback,
+  bool SetNetworkThrottlingStatus(ResultOnceCallback callback,
                                   bool enabled,
                                   uint32_t upload_rate_kbits,
                                   uint32_t download_rate_kbits);

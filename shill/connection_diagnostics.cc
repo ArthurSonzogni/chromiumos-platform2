@@ -4,6 +4,8 @@
 
 #include "shill/connection_diagnostics.h"
 
+#include <utility>
+
 #include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
@@ -103,7 +105,7 @@ ConnectionDiagnostics::ConnectionDiagnostics(
     const std::vector<std::string>& dns_list,
     EventDispatcher* dispatcher,
     Metrics* metrics,
-    const ResultCallback& result_callback)
+    ResultCallback result_callback)
     : dispatcher_(dispatcher),
       metrics_(metrics),
       iface_name_(iface_name),
@@ -114,7 +116,7 @@ ConnectionDiagnostics::ConnectionDiagnostics(
       icmp_session_(new IcmpSession(dispatcher_)),
       num_dns_attempts_(0),
       running_(false),
-      result_callback_(result_callback),
+      result_callback_(std::move(result_callback)),
       weak_ptr_factory_(this) {
   dns_client_.reset(new DnsClient(
       ip_address.family(), iface_name, DnsClient::kDnsTimeoutMilliseconds,
@@ -196,7 +198,7 @@ void ConnectionDiagnostics::ReportResultAndStop(const std::string& issue) {
   }
   LOG(INFO) << iface_name_ << ": Connection diagnostics result: " << issue;
   if (!result_callback_.is_null()) {
-    result_callback_.Run(issue, diagnostic_events_);
+    std::move(result_callback_).Run(issue, diagnostic_events_);
   }
   Stop();
 }

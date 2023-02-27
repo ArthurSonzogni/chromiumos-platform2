@@ -1128,18 +1128,18 @@ void Manager::SetProfileForService(const ServiceRefPtr& to_set,
 void Manager::SetEnabledStateForTechnology(const std::string& technology_name,
                                            bool enabled_state,
                                            bool persist,
-                                           const ResultCallback& callback) {
+                                           ResultOnceCallback callback) {
   Error error;
   Technology id = TechnologyFromName(technology_name);
   if (id == Technology::kUnknown) {
     error.Populate(Error::kInvalidArguments, "Unknown technology");
-    callback.Run(error);
+    std::move(callback).Run(error);
     return;
   }
   if (enabled_state && IsTechnologyProhibited(id)) {
     error.Populate(Error::kPermissionDenied,
                    "The " + technology_name + " technology is prohibited");
-    callback.Run(error);
+    std::move(callback).Run(error);
     return;
   }
 
@@ -1152,11 +1152,12 @@ void Manager::SetEnabledStateForTechnology(const std::string& technology_name,
     if (!enabled_state) {
       vpn_provider()->DisconnectAll();
     }
-    callback.Run(error);
+    std::move(callback).Run(error);
     return;
   }
 
-  auto result_aggregator(base::MakeRefCounted<ResultAggregator>(callback));
+  auto result_aggregator(
+      base::MakeRefCounted<ResultAggregator>(std::move(callback)));
   for (auto& device : devices_) {
     if (device->technology() != id)
       continue;
@@ -1235,8 +1236,7 @@ void Manager::RegisterDevice(const DeviceRefPtr& to_manage) {
   if (network_throttling_enabled_ &&
       IsPrimaryConnectivityTechnology(to_manage->technology())) {
     if (devices_.size() == 1) {
-      ResultCallback fake;
-      throttler_->ThrottleInterfaces(fake, upload_rate_kbits_,
+      throttler_->ThrottleInterfaces(base::DoNothing(), upload_rate_kbits_,
                                      download_rate_kbits_);
     } else {
       // Apply any existing network bandwidth throttling.
@@ -1359,11 +1359,11 @@ bool Manager::SetProhibitedTechnologies(
   }
   SLOG(1) << __func__ << ": " << prohibited_technologies;
   for (const auto& technology : technology_vector) {
-    ResultCallback result_callback(base::Bind(
+    ResultOnceCallback result_callback(base::BindOnce(
         &Manager::OnTechnologyProhibited, base::Unretained(this), technology));
     const bool kPersistentSave = false;
     SetEnabledStateForTechnology(TechnologyName(technology), false,
-                                 kPersistentSave, result_callback);
+                                 kPersistentSave, std::move(result_callback));
   }
   props_.prohibited_technologies = prohibited_technologies;
 
@@ -3055,7 +3055,7 @@ bool Manager::RemovePasspointCredentials(const std::string& profile_rpcid,
   return true;
 }
 
-bool Manager::SetNetworkThrottlingStatus(const ResultCallback& callback,
+bool Manager::SetNetworkThrottlingStatus(ResultOnceCallback callback,
                                          bool enabled,
                                          uint32_t upload_rate_kbits,
                                          uint32_t download_rate_kbits) {
@@ -3074,10 +3074,10 @@ bool Manager::SetNetworkThrottlingStatus(const ResultCallback& callback,
 
     LOG(INFO) << "Asked for upload rate (kbits/s) : " << upload_rate_kbits_
               << " download rate (kbits/s) : " << download_rate_kbits_;
-    result = throttler_->ThrottleInterfaces(callback, upload_rate_kbits_,
-                                            download_rate_kbits_);
+    result = throttler_->ThrottleInterfaces(
+        std::move(callback), upload_rate_kbits_, download_rate_kbits_);
   } else {
-    result = throttler_->DisableThrottlingOnAllInterfaces(callback);
+    result = throttler_->DisableThrottlingOnAllInterfaces(std::move(callback));
   }
   return result;
 }

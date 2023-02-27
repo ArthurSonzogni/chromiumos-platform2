@@ -606,12 +606,13 @@ TEST_F(ManagerTest, ManagerCallsThrottlerCorrectly) {
 
   int ulrate = 1024;
   int dlrate = 2048;
-  ResultCallback fake;
 
   EXPECT_CALL(*throttler_, ThrottleInterfaces(_, ulrate, dlrate));
-  manager()->SetNetworkThrottlingStatus(fake, true, ulrate, dlrate);
+  manager()->SetNetworkThrottlingStatus(base::DoNothing(), true, ulrate,
+                                        dlrate);
   EXPECT_CALL(*throttler_, DisableThrottlingOnAllInterfaces(_));
-  manager()->SetNetworkThrottlingStatus(fake, false, ulrate, dlrate);
+  manager()->SetNetworkThrottlingStatus(base::DoNothing(), false, ulrate,
+                                        dlrate);
 }
 
 TEST_F(ManagerTest, DeviceRegistrationAndStart) {
@@ -3081,9 +3082,9 @@ TEST_F(ManagerTest, IsTechnologyAutoConnectDisabled) {
 
 TEST_F(ManagerTest, SetEnabledStateForTechnologyPersistentCheck) {
   DisableTechnologyReplyHandler disable_technology_reply_handler;
-  ResultCallback disable_technology_callback(
-      base::Bind(&DisableTechnologyReplyHandler::ReportResult,
-                 disable_technology_reply_handler.AsWeakPtr()));
+  auto disable_technology_callback =
+      base::BindRepeating(&DisableTechnologyReplyHandler::ReportResult,
+                          disable_technology_reply_handler.AsWeakPtr());
   EXPECT_CALL(disable_technology_reply_handler, ReportResult(_)).Times(2);
   ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
@@ -3102,9 +3103,9 @@ TEST_F(ManagerTest, SetEnabledStateForTechnologyPersistentCheck) {
 
 TEST_F(ManagerTest, SetEnabledStateForTechnology) {
   DisableTechnologyReplyHandler disable_technology_reply_handler;
-  ResultCallback disable_technology_callback(
-      base::Bind(&DisableTechnologyReplyHandler::ReportResult,
-                 disable_technology_reply_handler.AsWeakPtr()));
+  auto disable_technology_callback =
+      base::BindRepeating(&DisableTechnologyReplyHandler::ReportResult,
+                          disable_technology_reply_handler.AsWeakPtr());
 
   SetMockDevices(
       {Technology::kEthernet, Technology::kCellular, Technology::kWiFi});
@@ -3165,9 +3166,9 @@ TEST_F(ManagerTest, SetEnabledStateForTechnology) {
 
 TEST_F(ManagerTest, SetEnabledStatePropagatesError) {
   DisableTechnologyReplyHandler disable_technology_reply_handler;
-  ResultCallback disable_technology_callback(
-      base::Bind(&DisableTechnologyReplyHandler::ReportResult,
-                 disable_technology_reply_handler.AsWeakPtr()));
+  auto disable_technology_callback =
+      base::BindRepeating(&DisableTechnologyReplyHandler::ReportResult,
+                          disable_technology_reply_handler.AsWeakPtr());
   ON_CALL(*mock_devices_[0], technology())
       .WillByDefault(Return(Technology::kEthernet));
   ON_CALL(*mock_devices_[1], technology())
@@ -4034,9 +4035,9 @@ TEST_F(ManagerTest, IsTechnologyProhibited) {
 
   // Calls to enable a non-prohibited technology should succeed.
   DisableTechnologyReplyHandler technology_reply_handler;
-  ResultCallback enable_technology_callback(
-      base::Bind(&DisableTechnologyReplyHandler::ReportResult,
-                 technology_reply_handler.AsWeakPtr()));
+  auto enable_technology_callback =
+      base::BindRepeating(&DisableTechnologyReplyHandler::ReportResult,
+                          technology_reply_handler.AsWeakPtr());
   EXPECT_CALL(*mock_devices_[2], SetEnabledChecked(true, true, _))
       .WillOnce(WithArg<2>(Invoke(ReturnSuccess)));
   EXPECT_CALL(*mock_devices_[5], SetEnabledChecked(true, true, _))

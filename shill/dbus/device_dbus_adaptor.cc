@@ -160,8 +160,8 @@ void DeviceDBusAdaptor::Disable(DBusMethodResponsePtr<> response) {
 void DeviceDBusAdaptor::Register(DBusMethodResponsePtr<> response,
                                  const std::string& network_id) {
   SLOG(this, 2) << __func__ << ": " << network_id;
-  ResultCallback callback = GetMethodReplyCallback(std::move(response));
-  device_->RegisterOnNetwork(network_id, callback);
+  device_->RegisterOnNetwork(network_id,
+                             GetMethodReplyCallback(std::move(response)));
 }
 
 void DeviceDBusAdaptor::RequirePin(DBusMethodResponsePtr<> response,
@@ -169,16 +169,15 @@ void DeviceDBusAdaptor::RequirePin(DBusMethodResponsePtr<> response,
                                    bool require) {
   SLOG(this, 2) << __func__;
 
-  ResultCallback callback = GetMethodReplyCallback(std::move(response));
-  device_->RequirePin(pin, require, callback);
+  device_->RequirePin(pin, require,
+                      GetMethodReplyCallback(std::move(response)));
 }
 
 void DeviceDBusAdaptor::EnterPin(DBusMethodResponsePtr<> response,
                                  const std::string& pin) {
   SLOG(this, 2) << __func__;
 
-  ResultCallback callback = GetMethodReplyCallback(std::move(response));
-  device_->EnterPin(pin, callback);
+  device_->EnterPin(pin, GetMethodReplyCallback(std::move(response)));
 }
 
 void DeviceDBusAdaptor::UnblockPin(DBusMethodResponsePtr<> response,
@@ -186,8 +185,8 @@ void DeviceDBusAdaptor::UnblockPin(DBusMethodResponsePtr<> response,
                                    const std::string& pin) {
   SLOG(this, 2) << __func__;
 
-  ResultCallback callback = GetMethodReplyCallback(std::move(response));
-  device_->UnblockPin(unblock_code, pin, callback);
+  device_->UnblockPin(unblock_code, pin,
+                      GetMethodReplyCallback(std::move(response)));
 }
 
 void DeviceDBusAdaptor::ChangePin(DBusMethodResponsePtr<> response,
@@ -196,16 +195,15 @@ void DeviceDBusAdaptor::ChangePin(DBusMethodResponsePtr<> response,
   SLOG(this, 2) << __func__;
 
   Error e(Error::kOperationInitiated);
-  ResultCallback callback = GetMethodReplyCallback(std::move(response));
-  device_->ChangePin(old_pin, new_pin, callback);
+  device_->ChangePin(old_pin, new_pin,
+                     GetMethodReplyCallback(std::move(response)));
 }
 
 void DeviceDBusAdaptor::Reset(DBusMethodResponsePtr<> response) {
   SLOG(this, 2) << __func__;
 
   Error e(Error::kOperationInitiated);
-  ResultCallback callback = GetMethodReplyCallback(std::move(response));
-  device_->Reset(callback);
+  device_->Reset(GetMethodReplyCallback(std::move(response)));
 }
 
 bool DeviceDBusAdaptor::RequestRoam(brillo::ErrorPtr* error,

@@ -76,8 +76,8 @@ TEST_F(ThrottlerTest, ThrottleCallsTCExpectedTimesAndSetsState) {
   EXPECT_CALL(mock_file_io_, SetFdNonBlocking(_))
       .Times(interfaces.size())
       .WillRepeatedly(Return(false));
-  const ResultCallback callback;
-  throttler_.ThrottleInterfaces(callback, kThrottleRate, kThrottleRate);
+  throttler_.ThrottleInterfaces(base::DoNothing(), kThrottleRate,
+                                kThrottleRate);
   throttler_.OnProcessExited(0);
   throttler_.OnProcessExited(0);
   EXPECT_TRUE(throttler_.desired_throttling_enabled_);
@@ -123,8 +123,7 @@ TEST_F(ThrottlerTest, DisablingThrottleClearsState) {
   EXPECT_CALL(mock_file_io_, SetFdNonBlocking(_))
       .Times(interfaces.size())
       .WillRepeatedly(Return(false));
-  const ResultCallback callback;
-  throttler_.DisableThrottlingOnAllInterfaces(callback);
+  throttler_.DisableThrottlingOnAllInterfaces(base::DoNothing());
   throttler_.OnProcessExited(0);
   EXPECT_FALSE(throttler_.desired_throttling_enabled_);
   EXPECT_EQ(throttler_.desired_upload_rate_kbits_, 0);
@@ -151,8 +150,7 @@ TEST_F(ThrottlerTest, DisablingThrottleWhenNoThrottleExists) {
   EXPECT_CALL(mock_file_io_, SetFdNonBlocking(_))
       .Times(interfaces.size())
       .WillRepeatedly(Return(false));
-  const ResultCallback callback;
-  throttler_.DisableThrottlingOnAllInterfaces(callback);
+  throttler_.DisableThrottlingOnAllInterfaces(base::DoNothing());
   throttler_.OnProcessExited(1);
   EXPECT_FALSE(throttler_.desired_throttling_enabled_);
   EXPECT_EQ(throttler_.desired_upload_rate_kbits_, 0);
