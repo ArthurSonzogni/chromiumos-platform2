@@ -69,29 +69,6 @@ class UserDataAuthAdaptor
                       user_data_auth::ListKeysReply>> response,
                   const user_data_auth::ListKeysRequest& in_request);
 
-  void StartFingerprintAuthSession(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::StartFingerprintAuthSessionReply>> response,
-      const user_data_auth::StartFingerprintAuthSessionRequest& in_request)
-      override;
-  void DoStartFingerprintAuthSession(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::StartFingerprintAuthSessionReply>> response,
-      const user_data_auth::StartFingerprintAuthSessionRequest& in_request);
-  void DoStartFingerprintAuthSessionDone(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::StartFingerprintAuthSessionReply>> response,
-      const user_data_auth::StartFingerprintAuthSessionReply& reply);
-
-  void EndFingerprintAuthSession(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::EndFingerprintAuthSessionReply>> response,
-      const user_data_auth::EndFingerprintAuthSessionRequest& in_request)
-      override;
-  void DoEndFingerprintAuthSession(
-      std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-          user_data_auth::EndFingerprintAuthSessionReply>> response);
-
   void GetWebAuthnSecret(
       std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
           user_data_auth::GetWebAuthnSecretReply>> response,

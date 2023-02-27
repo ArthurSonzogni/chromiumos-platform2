@@ -335,45 +335,25 @@ message ListKeysReply {
   CryptohomeErrorInfo error_info = 3;
 }
 
-// StartFingerprintAuthSession sets BiometricsDaemon and the Fingerprint MCU to
-// match mode. EndFingerprintAuthSession sets them back to non-match mode.
-// A typical call sequence involves one or more other calls that actually wait
-// for fingerprint scan result, between StartFingerprintAuthSession and
-// EndFingerprintAuthSession.
-//
-// Example 1: successful fingerprint match at first attempt.
-// --> StartFingerprintAuthSession
-// --> CheckKey(KEY_TYPE_FINGERPRINT), fingerprint scan success
-// --> EndFingerprintAuthSession
-//
-// Example 2: successful fingerprint match at third attempt.
-// --> StartFingerprintAuthSession
-// --> CheckKey(KEY_TYPE_FINGERPRINT), fingerprint scan no match
-// --> CheckKey(KEY_TYPE_FINGERPRINT), fingerprint scan no match
-// --> CheckKey(KEY_TYPE_FINGERPRINT), fingerprint scan success
-// --> EndFingerprintAuthSession
-//
-// Example 3: client chooses to cancel before success.
-// --> StartFingerprintAuthSession
-// --> CheckKey(KEY_TYPE_FINGERPRINT), fingerprint scan no match
-// --> CheckKey(KEY_TYPE_FINGERPRINT), fingerprint scan no match
-// --> EndFingerprintAuthSession
-
+// Deprecated.
 // Input parameters to StartFingerprintAuthSession()
 message StartFingerprintAuthSessionRequest {
   // This represents the "single user" that we are will be fingerprint for.
   cryptohome.AccountIdentifier account_id = 1;
 }
 
+// Deprecated.
 // Output parameters for StartFingerprintAuthSession()
 message StartFingerprintAuthSessionReply {
   // Indicates an error if |error| is not empty.
   CryptohomeErrorCode error = 1;
 }
 
+// Deprecated.
 // Input parameters to EndFingerprintAuthSession()
 message EndFingerprintAuthSessionRequest {}
 
+// Deprecated.
 // Output parameters for EndFingerprintAuthSession()
 message EndFingerprintAuthSessionReply {
   // Indicates an error if |error| is not empty.

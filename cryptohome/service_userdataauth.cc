@@ -594,58 +594,6 @@ void UserDataAuthAdaptor::DoListKeys(
   response->Return(reply);
 }
 
-void UserDataAuthAdaptor::StartFingerprintAuthSession(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        user_data_auth::StartFingerprintAuthSessionReply>> response,
-    const user_data_auth::StartFingerprintAuthSessionRequest& in_request) {
-  service_->PostTaskToMountThread(
-      FROM_HERE,
-      base::BindOnce(&UserDataAuthAdaptor::DoStartFingerprintAuthSession,
-                     base::Unretained(this),
-                     ThreadSafeDBusMethodResponse<
-                         user_data_auth::StartFingerprintAuthSessionReply>::
-                         MakeThreadSafe(std::move(response)),
-                     in_request));
-}
-
-void UserDataAuthAdaptor::DoStartFingerprintAuthSession(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        user_data_auth::StartFingerprintAuthSessionReply>> response,
-    const user_data_auth::StartFingerprintAuthSessionRequest& in_request) {
-  service_->StartFingerprintAuthSession(
-      in_request,
-      base::BindOnce(&UserDataAuthAdaptor::DoStartFingerprintAuthSessionDone,
-                     base::Unretained(this), std::move(response)));
-}
-
-void UserDataAuthAdaptor::DoStartFingerprintAuthSessionDone(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        user_data_auth::StartFingerprintAuthSessionReply>> response,
-    const user_data_auth::StartFingerprintAuthSessionReply& reply) {
-  response->Return(reply);
-}
-
-void UserDataAuthAdaptor::EndFingerprintAuthSession(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        user_data_auth::EndFingerprintAuthSessionReply>> response,
-    const user_data_auth::EndFingerprintAuthSessionRequest& /*in_request*/) {
-  service_->PostTaskToMountThread(
-      FROM_HERE,
-      base::BindOnce(&UserDataAuthAdaptor::DoEndFingerprintAuthSession,
-                     base::Unretained(this),
-                     ThreadSafeDBusMethodResponse<
-                         user_data_auth::EndFingerprintAuthSessionReply>::
-                         MakeThreadSafe(std::move(response))));
-}
-
-void UserDataAuthAdaptor::DoEndFingerprintAuthSession(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        user_data_auth::EndFingerprintAuthSessionReply>> response) {
-  user_data_auth::EndFingerprintAuthSessionReply reply;
-  reply.set_error(service_->EndFingerprintAuthSession());
-  response->Return(reply);
-}
-
 void UserDataAuthAdaptor::GetWebAuthnSecret(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::GetWebAuthnSecretReply>> response,

@@ -1396,42 +1396,6 @@ TEST_F(UserDataAuthTestNotInitialized, GetCurrentSpaceForArcProjectId) {
             userdataauth_->GetCurrentSpaceForArcProjectId(kProjectId));
 }
 
-TEST_F(UserDataAuthTestNotInitialized,
-       StartFingerprintAuthSessionFailNoManager) {
-  constexpr char kUsername[] = "foo@gmail.com";
-
-  // Setup.
-  // Undo the injection of a mock manager. This turns on the logic in
-  // `UserDataAuth` that attempts to create the manager - which fails in this
-  // test.
-  userdataauth_->set_fingerprint_manager(nullptr);
-  InitializeUserDataAuth();
-
-  // Test.
-  user_data_auth::StartFingerprintAuthSessionRequest req;
-  req.mutable_account_id()->set_account_id(kUsername);
-  TestFuture<user_data_auth::StartFingerprintAuthSessionReply> reply_future;
-  userdataauth_->StartFingerprintAuthSession(
-      req, reply_future.GetCallback<
-               const user_data_auth::StartFingerprintAuthSessionReply&>());
-
-  // Verify.
-  EXPECT_EQ(reply_future.Get().error(),
-            user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
-}
-
-TEST_F(UserDataAuthTestNotInitialized, EndFingerprintAuthSessionFailNoManager) {
-  // Undo the injection of a mock manager. This turns on the logic in
-  // `UserDataAuth` that attempts to create the manager - which fails in this
-  // test.
-  userdataauth_->set_fingerprint_manager(nullptr);
-
-  InitializeUserDataAuth();
-
-  EXPECT_EQ(userdataauth_->EndFingerprintAuthSession(),
-            user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
-}
-
 TEST_F(UserDataAuthTest, SetMediaRWDataFileProjectId) {
   constexpr int kProjectId = 1001;
   constexpr int kFd = 1234;
@@ -2717,89 +2681,6 @@ TEST_F(UserDataAuthExTest, StartMigrateToDircryptoWithInvalidAuthSession) {
             base::Unretained(&called_ctr)));
   }
   EXPECT_EQ(called_ctr, 1);
-}
-
-TEST_F(UserDataAuthExTest, StartFingerprintAuthSessionInvalid) {
-  PrepareArguments();
-  // No account_id, request is invalid.
-  user_data_auth::StartFingerprintAuthSessionRequest req;
-
-  bool called = false;
-  {
-    userdataauth_->StartFingerprintAuthSession(
-        req,
-        base::BindOnce(
-            [](bool* called_ptr,
-               const user_data_auth::StartFingerprintAuthSessionReply& reply) {
-              EXPECT_EQ(reply.error(),
-                        user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
-              *called_ptr = true;
-            },
-            base::Unretained(&called)));
-  }
-  EXPECT_TRUE(called);
-}
-
-TEST_F(UserDataAuthExTest, StartFingerprintAuthSessionFail) {
-  PrepareArguments();
-  user_data_auth::StartFingerprintAuthSessionRequest req;
-  req.mutable_account_id()->set_account_id(*kUser);
-
-  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
-
-  // Let the fingerprint auth session fail to start.
-  EXPECT_CALL(fingerprint_manager_, StartAuthSessionAsyncForUser(_, _))
-      .WillOnce([](const ObfuscatedUsername& user,
-                   base::OnceCallback<void(bool success)>
-                       auth_session_start_client_callback) {
-        std::move(auth_session_start_client_callback).Run(false);
-      });
-
-  bool called = false;
-  {
-    userdataauth_->StartFingerprintAuthSession(
-        req,
-        base::BindOnce(
-            [](bool* called_ptr,
-               const user_data_auth::StartFingerprintAuthSessionReply& reply) {
-              EXPECT_EQ(reply.error(),
-                        user_data_auth::CryptohomeErrorCode::
-                            CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL);
-              *called_ptr = true;
-            },
-            base::Unretained(&called)));
-  }
-  EXPECT_TRUE(called);
-}
-
-TEST_F(UserDataAuthExTest, StartFingerprintAuthSessionSuccess) {
-  PrepareArguments();
-  user_data_auth::StartFingerprintAuthSessionRequest req;
-  req.mutable_account_id()->set_account_id(*kUser);
-
-  EXPECT_CALL(homedirs_, Exists(_)).WillOnce(Return(true));
-
-  EXPECT_CALL(fingerprint_manager_, StartAuthSessionAsyncForUser(_, _))
-      .WillOnce([](const ObfuscatedUsername& user,
-                   base::OnceCallback<void(bool success)>
-                       auth_session_start_client_callback) {
-        std::move(auth_session_start_client_callback).Run(true);
-      });
-
-  bool called = false;
-  {
-    userdataauth_->StartFingerprintAuthSession(
-        req,
-        base::BindOnce(
-            [](bool* called_ptr,
-               const user_data_auth::StartFingerprintAuthSessionReply& reply) {
-              EXPECT_EQ(reply.error(),
-                        user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-              *called_ptr = true;
-            },
-            base::Unretained(&called)));
-  }
-  EXPECT_TRUE(called);
 }
 
 constexpr char ListKeysValidityTest_label1[] = "Label 1";

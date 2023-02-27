@@ -264,8 +264,6 @@ constexpr const char* kActions[] = {"unmount",
                                     "lock_to_single_user_mount_until_reboot",
                                     "get_rsu_device_id",
                                     "check_health",
-                                    "start_fingerprint_auth_session",
-                                    "end_fingerprint_auth_session",
                                     "start_auth_session",
                                     "invalidate_auth_session",
                                     "extend_auth_session",
@@ -352,8 +350,6 @@ enum ActionEnum {
   ACTION_LOCK_TO_SINGLE_USER_MOUNT_UNTIL_REBOOT,
   ACTION_GET_RSU_DEVICE_ID,
   ACTION_CHECK_HEALTH,
-  ACTION_START_FINGERPRINT_AUTH_SESSION,
-  ACTION_END_FINGERPRINT_AUTH_SESSION,
   ACTION_START_AUTH_SESSION,
   ACTION_INVALIDATE_AUTH_SESSION,
   ACTION_EXTEND_AUTH_SESSION,
@@ -961,46 +957,8 @@ int main(int argc, char** argv) {
 
   cryptohome::Platform platform;
 
-  if (!strcmp(
-          switches::kActions[switches::ACTION_START_FINGERPRINT_AUTH_SESSION],
-          action.c_str())) {
-    user_data_auth::StartFingerprintAuthSessionRequest req;
-    if (!BuildAccountId(printer, cl, req.mutable_account_id()))
-      return 1;
-
-    user_data_auth::StartFingerprintAuthSessionReply reply;
-    brillo::ErrorPtr error;
-    if (!userdataauth_proxy.StartFingerprintAuthSession(req, &reply, &error,
-                                                        timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "StartFingerprintAuthSession call failed: %s",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    printer.PrintReplyProtobuf(reply);
-    if (reply.error() !=
-        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
-      printer.PrintHumanOutput("Fingerprint auth session failed to start.\n");
-      return reply.error();
-    }
-  } else if (!strcmp(switches::kActions
-                         [switches::ACTION_END_FINGERPRINT_AUTH_SESSION],
-                     action.c_str())) {
-    user_data_auth::EndFingerprintAuthSessionRequest req;
-    user_data_auth::EndFingerprintAuthSessionReply reply;
-    brillo::ErrorPtr error;
-    if (!userdataauth_proxy.EndFingerprintAuthSession(req, &reply, &error,
-                                                      timeout_ms) ||
-        error) {
-      printer.PrintFormattedHumanOutput(
-          "EndFingerprintAuthSession call failed: %s",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-    // EndFingerprintAuthSession always succeeds.
-  } else if (!strcmp(switches::kActions[switches::ACTION_LIST_KEYS_EX],
-                     action.c_str())) {
+  if (!strcmp(switches::kActions[switches::ACTION_LIST_KEYS_EX],
+              action.c_str())) {
     user_data_auth::ListKeysRequest req;
     if (!BuildAccountId(printer, cl, req.mutable_account_id()))
       return 1;

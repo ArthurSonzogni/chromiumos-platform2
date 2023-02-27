@@ -304,17 +304,7 @@ class UserDataAuth {
     return enterprise_owned_;
   }
 
-  // ============= Fingerprint Auth Related Public Methods ==============
-
-  // Start fingerprint auth session asynchronously for the user specified in
-  // |request|, and call |on_done|.
-  void StartFingerprintAuthSession(
-      const user_data_auth::StartFingerprintAuthSessionRequest& request,
-      base::OnceCallback<void(
-          const user_data_auth::StartFingerprintAuthSessionReply&)> on_done);
-
-  // End the current fingerprint auth session.
-  user_data_auth::CryptohomeErrorCode EndFingerprintAuthSession();
+  // ============= WebAuthn Related Public Methods ==============
 
   // TODO(b/184393647): This api is not currently used because secret
   // enforcement in the WebAuthn flow haven't been implemented yet. After
@@ -813,13 +803,6 @@ class UserDataAuth {
   // Called on Mount thread. The returns a pointer to the fingerprint manager,
   // or null if it has not been created.
   FingerprintManager* GetFingerprintManager() const;
-
-  // Called on Mount thread when fingerprint auth session starts or fails to
-  // start.
-  void OnFingerprintStartAuthSessionResp(
-      base::OnceCallback<void(
-          const user_data_auth::StartFingerprintAuthSessionReply&)> on_done,
-      bool success);
 
   // OnFingerprintScanResult will be called on every received fingerprint
   // scan result. It will forward results to
