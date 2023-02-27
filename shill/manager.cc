@@ -165,6 +165,7 @@ Manager::Manager(ControlInterface* control_interface,
     : dispatcher_(dispatcher),
       control_interface_(control_interface),
       metrics_(metrics),
+      power_opt_(new PowerOpt(this)),
       run_path_(run_directory),
       storage_path_(storage_directory),
       user_storage_path_(user_storage_directory),
@@ -303,6 +304,7 @@ Manager::~Manager() {
     }
   }
   devices_.clear();
+  delete power_opt_;
 }
 
 void Manager::RegisterAsync(

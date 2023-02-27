@@ -835,6 +835,17 @@ void Metrics::NotifyDetailedCellularConnectionResult(
   event.Record();
 }
 
+void Metrics::NotifyCellularPowerOptimization(
+    const CellularPowerOptimizationInfo& power_opt_info) {
+  LOG(INFO) << __func__ << ": power optimization reason:  "
+            << static_cast<int>(power_opt_info.reason);
+  metrics::structured::events::cellular::PowerOptimization()
+      .Setpower_state(static_cast<int>(power_opt_info.new_power_state))
+      .Setreason(static_cast<int>(power_opt_info.reason))
+      .Setsince_last_online_hours(power_opt_info.since_last_online_hours)
+      .Record();
+}
+
 void Metrics::NotifyCellularEntitlementCheckResult(
     Metrics::CellularEntitlementCheck result) {
   SendEnumToUMA(kMetricCellularEntitlementCheck, result);

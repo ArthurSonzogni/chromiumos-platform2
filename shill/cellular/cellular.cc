@@ -1092,6 +1092,8 @@ void Cellular::CreateServices() {
 
   // Ensure operator properties are updated.
   OnOperatorChanged();
+  if (service_ && manager()->power_opt())
+    manager()->power_opt()->AddOptInfoForNewService(service_->iccid());
 }
 
 void Cellular::DestroyAllServices() {
@@ -3270,6 +3272,10 @@ void Cellular::SetProviderRequiresRoaming(bool provider_requires_roaming) {
 
 bool Cellular::IsRoamingAllowed() {
   return service_ && service_->IsRoamingAllowed();
+}
+
+PowerOpt* Cellular::power_opt() {
+  return manager()->power_opt();
 }
 
 void Cellular::SetApnList(const Stringmaps& apn_list) {

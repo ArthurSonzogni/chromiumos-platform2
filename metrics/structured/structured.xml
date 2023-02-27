@@ -728,6 +728,29 @@
       </summary>
     </metric>
   </event>
+
+  <event name="PowerOptimization">
+    <summary>
+      The event is submit when an power optimization action is performed.
+    </summary>
+    <metric name="power_state" type="int">
+      <summary>
+        Indicates the new modem power state.
+      </summary>
+    </metric>
+    <metric name="reason" type="int">
+      <summary>
+        Indicates the reason of setting the new power state.
+      </summary>
+    </metric>
+    <metric name="since_last_online_hours" type="int">
+      <summary>
+        Indicates hours passed since last online before this
+        power optimization action.
+      </summary>
+    </metric>
+  </event>
+
 </project>
 
 <project name="RollbackEnterprise">

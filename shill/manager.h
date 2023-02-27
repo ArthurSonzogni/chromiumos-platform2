@@ -24,6 +24,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <metrics/timer.h>
 
+#include "shill/cellular/power_opt.h"
 #include "shill/default_service_observer.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
@@ -61,6 +62,7 @@ class Resolver;
 class Throttler;
 class VPNProvider;
 class WiFiProvider;
+class PowerOpt;
 
 // Helper class for storing in memory the set of shill Manager DBUS R or RW
 // DBus properties.
@@ -464,6 +466,7 @@ class Manager {
   ControlInterface* control_interface() const { return control_interface_; }
   EventDispatcher* dispatcher() const { return dispatcher_; }
   Metrics* metrics() const { return metrics_; }
+  PowerOpt* power_opt() const { return power_opt_; }
   SupplicantManager* supplicant_manager() const {
     return supplicant_manager_.get();
   }
@@ -773,6 +776,7 @@ class Manager {
   EventDispatcher* dispatcher_;
   ControlInterface* control_interface_;
   Metrics* metrics_;
+  PowerOpt* power_opt_;
 
   const base::FilePath run_path_;
   const base::FilePath storage_path_;

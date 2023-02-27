@@ -23,6 +23,7 @@
 #include "shill/cellular/cellular_bearer.h"
 #include "shill/cellular/dbus_objectmanager_proxy_interface.h"
 #include "shill/cellular/mobile_operator_info.h"
+#include "shill/cellular/power_opt.h"
 #include "shill/device.h"
 #include "shill/device_id.h"
 #include "shill/event_dispatcher.h"
@@ -41,6 +42,7 @@ class NetlinkSockDiag;
 class ProcessManager;
 class RTNLListener;
 class RTNLMessage;
+class PowerOpt;
 
 class Cellular : public Device,
                  public RpcTaskDelegate,
@@ -346,6 +348,7 @@ class Cellular : public Device,
   MobileOperatorInfo* mobile_operator_info() const {
     return mobile_operator_info_.get();
   }
+  PowerOpt* power_opt();
   State state() const { return state_; }
   ModemState modem_state() const { return modem_state_; }
   bool allow_roaming_property() const { return allow_roaming_; }

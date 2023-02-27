@@ -1768,6 +1768,25 @@ class Metrics {
     uint32_t subscription_error_seen;
   };
 
+  struct CellularPowerOptimizationInfo {
+    enum class PowerState {
+      kUnknown = 0,
+      kOn = 1,
+      kLow = 2,
+      kOff = 3,
+    };
+    enum class CellularPowerOptimizationReason {
+      kNoSerivceGeneral = 0,
+      kNoServiceInvalidApn = 1,
+      kNoServiceNoSubscription = 2,
+      kNoServiceAdminRestrition = 3,
+      kNoServiceLongNotOnline = 4,
+    };
+    PowerState new_power_state;
+    CellularPowerOptimizationReason reason;
+    uint32_t since_last_online_hours;
+  };
+
   // Notifies this object of the resulting status of a cellular connection
   virtual void NotifyCellularConnectionResult(
       Error::Type error, DetailedCellularConnectionResult::APNType apn_type);
@@ -1775,6 +1794,10 @@ class Metrics {
   // Notifies this object of the resulting status of a cellular connection
   virtual void NotifyDetailedCellularConnectionResult(
       const DetailedCellularConnectionResult& result);
+
+  // Notifies modem power optimization performed
+  virtual void NotifyCellularPowerOptimization(
+      const CellularPowerOptimizationInfo& power_opt_info);
 
   // Sends linear histogram data to UMA.
   virtual bool SendEnumToUMA(const std::string& name, int sample, int max);

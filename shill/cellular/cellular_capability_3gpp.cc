@@ -32,6 +32,7 @@
 #include "shill/cellular/cellular_service.h"
 #include "shill/cellular/mobile_operator_info.h"
 #include "shill/cellular/pending_activation_store.h"
+#include "shill/cellular/power_opt.h"
 #include "shill/cellular/verizon_subscription_state.h"
 #include "shill/control_interface.h"
 #include "shill/data_types.h"
@@ -488,6 +489,9 @@ void CellularCapability3gpp::EnableModemCompleted(ResultCallback callback,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback));
   modem_3gpp_profile_manager_proxy_->List(std::move(cb),
                                           kTimeoutDefault.InMilliseconds());
+  if (cellular()->service())
+    cellular()->power_opt()->UpdatePowerState(cellular()->service()->iccid(),
+                                              PowerOpt::PowerState::kOn);
 }
 
 void CellularCapability3gpp::SetModemToLowPowerModeOnModemStop(
@@ -555,6 +559,9 @@ void CellularCapability3gpp::Stop_PowerDown(ResultCallback callback,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback),
                      stop_disabled_error),
       kTimeoutSetPowerState.InMilliseconds());
+  if (cellular()->service())
+    cellular()->power_opt()->UpdatePowerState(cellular()->service()->iccid(),
+                                              PowerOpt::PowerState::kLow);
 }
 
 // Note: if we were in the middle of powering down the modem when the
@@ -1109,6 +1116,11 @@ bool CellularCapability3gpp::ConnectionAttemptContinue(
             "Connection attempt (%s) failed, no remaining APNs to try",
             ApnList::GetApnTypeString(apn_type).c_str()));
     ConnectionAttemptComplete(apn_type, error);
+
+    if (cellular()->service()) {
+      cellular()->power_opt()->NotifyConnectionFailInvalidApn(
+          cellular()->service()->iccid());
+    }
     return false;
   }
 
@@ -2317,6 +2329,11 @@ void CellularCapability3gpp::On3gppRegistrationChanged(
       !try_next_attach_apn_callback_.IsCancelled()) {
     SLOG(this, 2) << "Modem is registered. Cancelling next attach APN try.";
     try_next_attach_apn_callback_.Cancel();
+  }
+
+  if (IsRegisteredState(state) && cellular()->service()) {
+    cellular()->power_opt()->NotifyRegistrationSuccess(
+        cellular()->service()->iccid());
   }
 
   // While the modem is connected, if the state changed from a registered state

@@ -32,6 +32,7 @@
 #include <metrics/bootstat.h>
 #include <metrics/timer.h>
 
+#include "shill/cellular/power_opt.h"
 #include "shill/dbus/dbus_control.h"
 #include "shill/eap_credentials.h"
 #include "shill/error.h"
@@ -369,6 +370,16 @@ void Service::Connect(Error* error, const char* reason) {
   // the first connection attempt.
   if (last_manual_connect_attempt_.ToDeltaSinceWindowsEpoch().is_zero())
     SetLastManualConnectAttemptProperty(base::Time::Now());
+
+  // The device has never been online. If the time since last manual connect
+  // attempt exceeds threshold, disable modem.
+  if (last_online_.ToDeltaSinceWindowsEpoch().is_zero()) {
+    manager_->power_opt()->UpdateDurationSinceLastOnline(
+        last_manual_connect_attempt_, is_in_user_connect());
+  } else {
+    manager_->power_opt()->UpdateDurationSinceLastOnline(last_online_,
+                                                         is_in_user_connect());
+  }
 
   if (!connectable()) {
     Error::PopulateAndLog(
