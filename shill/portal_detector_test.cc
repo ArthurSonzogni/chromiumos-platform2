@@ -44,7 +44,7 @@ const std::vector<std::string> kFallbackHttpsUrls{
     "http://url1.com/gen204",
     "http://url2.com/gen204",
 };
-const IPAddress kIpAddress = IPAddress("1.2.3.4");
+const IPAddress kIpAddress = *IPAddress::CreateFromString("1.2.3.4");
 const char kDNSServer0[] = "8.8.8.8";
 const char kDNSServer1[] = "8.8.4.4";
 const char* const kDNSServers[] = {kDNSServer0, kDNSServer1};

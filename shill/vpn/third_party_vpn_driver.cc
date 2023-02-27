@@ -177,8 +177,9 @@ void ThirdPartyVpnDriver::ProcessIp(
   // TODO(kaliamoorthi): Add IPV6 support.
   auto it = parameters.find(key);
   if (it != parameters.end()) {
-    if (IPAddress(parameters.at(key)).family() == IPAddress::kFamilyIPv4) {
-      *target = parameters.at(key);
+    const std::string& ip = it->second;
+    if (IPAddress::CreateFromString(ip, IPAddress::kFamilyIPv4).has_value()) {
+      *target = ip;
     } else {
       error_message->append(key).append(" is not a valid IP;");
     }
@@ -204,7 +205,9 @@ void ThirdPartyVpnDriver::ProcessIPArray(
 
     // Eliminate invalid IPs
     for (auto value = string_array.begin(); value != string_array.end();) {
-      if (IPAddress(*value).family() != IPAddress::kFamilyIPv4) {
+      const auto addr =
+          IPAddress::CreateFromString(*value, IPAddress::kFamilyIPv4);
+      if (!addr.has_value()) {
         warning_message->append(*value + " for " + key + " is invalid;");
         value = string_array.erase(value);
       } else {

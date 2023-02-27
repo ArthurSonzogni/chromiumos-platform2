@@ -1426,8 +1426,13 @@ void Cellular::LinkUp(int data_interface_index) {
     const auto& ipv6_props = *bearer->ipv6_config_properties();
     // Only apply static config if the address is link local. This is a
     // workaround for b/230336493.
-    IPAddress link_local_mask("fe80::", 10);
-    if (link_local_mask.CanReachAddress(IPAddress(ipv6_props.address))) {
+    const auto link_local_mask =
+        IPAddress::CreateFromStringAndPrefix("fe80::", 10);
+    CHECK(link_local_mask.has_value());
+    const auto local = IPAddress::CreateFromString(ipv6_props.address);
+    if (!local.has_value()) {
+      LOG(ERROR) << "IPv6 address is not valid: " << ipv6_props.address;
+    } else if (link_local_mask->CanReachAddress(*local)) {
       network()->set_ipv6_static_properties(
           std::make_unique<IPConfig::Properties>(ipv6_props));
     }

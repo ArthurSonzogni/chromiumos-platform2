@@ -159,9 +159,9 @@ class DnsClientTest : public Test {
 
     // Make sure that the address value is correct as held in the DnsClient.
     ASSERT_TRUE(dns_client_->address_.IsValid());
-    IPAddress ipaddr(dns_client_->address_.family());
-    ASSERT_TRUE(ipaddr.SetAddressFromString(kResult));
-    EXPECT_TRUE(ipaddr.Equals(dns_client_->address_));
+    const auto ipaddr = IPAddress::CreateFromString(kResult);
+    CHECK(ipaddr.has_value());
+    EXPECT_TRUE(ipaddr->Equals(dns_client_->address_));
 
     // Make sure the callback gets called with a success result, and save
     // the callback address argument in |address_result_|.
@@ -170,7 +170,7 @@ class DnsClientTest : public Test {
     CallCompletion();
 
     // Make sure the address was successfully passed to the callback.
-    EXPECT_TRUE(ipaddr.Equals(address_result_));
+    EXPECT_TRUE(ipaddr->Equals(address_result_));
     EXPECT_TRUE(dns_client_->address_.IsDefault());
   }
 

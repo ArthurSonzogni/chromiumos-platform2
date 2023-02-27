@@ -3235,7 +3235,8 @@ TEST_F(WiFiMainTest,
 
   const std::string kGatewayIPAddressString = "192.168.1.1";
   SetupConnectionAndIPConfig(kGatewayIPAddressString);
-  const IPAddress kGatewayIPAddress(kGatewayIPAddressString);
+  const auto kGatewayIPAddress =
+      *IPAddress::CreateFromString(kGatewayIPAddressString);
 
   // Sets up Service.
   MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
@@ -3802,8 +3803,9 @@ TEST_F(WiFiMainTest, LinkMonitorFailure) {
 
   const std::string kGatewayIPAddressString = "192.168.1.1";
   SetupConnectionAndIPConfig(kGatewayIPAddressString);
-  const IPAddress kGatewayIPAddress(kGatewayIPAddressString);
-  const IPAddress kAnotherIPAddress("1.2.3.4");
+  const auto kGatewayIPAddress =
+      *IPAddress::CreateFromString(kGatewayIPAddressString);
+  const auto kAnotherIPAddress = *IPAddress::CreateFromString("1.2.3.4");
 
   // Sets up Service.
   MockWiFiServiceRefPtr service = MakeMockService(WiFiSecurity::kNone);
@@ -3865,7 +3867,7 @@ TEST_F(WiFiMainTest, LinkStatusOnLinkMonitorFailure) {
   // Make the object ready to respond to link monitor failures.
   constexpr auto kGatewayIPAddressString = "192.168.0.1";
   SetupConnectionAndIPConfig(kGatewayIPAddressString);
-  const IPAddress kGatewayIPAddress("192.168.0.1");
+  const auto kGatewayIPAddress = *IPAddress::CreateFromString("192.168.0.1");
   OnNeighborReachabilityEvent(kGatewayIPAddress, kGateway, kReachable);
 
   time_t current_time = 1000;

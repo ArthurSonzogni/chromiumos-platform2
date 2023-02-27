@@ -51,12 +51,6 @@ const uint8_t kIcmpEchoReplyDifferentEchoID[] = {0x00, 0x00, 0xea, 0xff,
 
 }  // namespace
 
-MATCHER_P(IsIPAddress, address, "") {
-  // IPAddress objects don't support the "==" operator as per style, so we need
-  // a custom matcher.
-  return address.Equals(arg);
-}
-
 class IcmpSessionTest : public Test {
  public:
   IcmpSessionTest() : icmp_session_(&dispatcher_) {}
@@ -85,7 +79,7 @@ class IcmpSessionTest : public Test {
 
   void StartAndVerify(const IPAddress& destination, int interface_index) {
     EXPECT_CALL(*icmp_, IsStarted());
-    EXPECT_CALL(*icmp_, Start(IsIPAddress(destination), interface_index))
+    EXPECT_CALL(*icmp_, Start(destination, interface_index))
         .WillOnce(Return(true));
     icmp_->destination_ = destination;
     EXPECT_CALL(io_handler_factory_,
@@ -189,17 +183,16 @@ TEST_F(IcmpSessionTest, Constructor) {
 }
 
 TEST_F(IcmpSessionTest, StartWhileAlreadyStarted) {
-  IPAddress ipv4_destination(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(ipv4_destination.SetAddressFromString(kIPAddress));
-  StartAndVerify(ipv4_destination, kInterfaceIndex);
+  const auto ipv4_destination = IPAddress::CreateFromString(kIPAddress);
+  CHECK(ipv4_destination.has_value());
+  StartAndVerify(*ipv4_destination, kInterfaceIndex);
 
   // Since an ICMP session is already started, we should fail to start it again.
-  EXPECT_CALL(*icmp_, Start(IsIPAddress(ipv4_destination), kInterfaceIndex))
-      .Times(0);
+  EXPECT_CALL(*icmp_, Start(*ipv4_destination, kInterfaceIndex)).Times(0);
   EXPECT_CALL(io_handler_factory_, CreateIOInputHandler(_, _, _)).Times(0);
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, _)).Times(0);
   EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, base::TimeDelta())).Times(0);
-  EXPECT_FALSE(Start(ipv4_destination, kInterfaceIndex));
+  EXPECT_FALSE(Start(*ipv4_destination, kInterfaceIndex));
 }
 
 TEST_F(IcmpSessionTest, StopWhileNotStarted) {
@@ -232,9 +225,9 @@ TEST_F(IcmpSessionTest, SessionSuccess) {
   };
 
   // Initiate session.
-  IPAddress ipv4_destination(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(ipv4_destination.SetAddressFromString(kIPAddress));
-  StartAndVerify(ipv4_destination, kInterfaceIndex);
+  const auto ipv4_destination = IPAddress::CreateFromString(kIPAddress);
+  CHECK(ipv4_destination.has_value());
+  StartAndVerify(*ipv4_destination, kInterfaceIndex);
 
   // Send the first echo request.
   testing_clock_.Advance(kSentTime1 - now);
@@ -338,9 +331,9 @@ TEST_F(IcmpSessionTest, SessionSuccess) {
 
 TEST_F(IcmpSessionTest, ICMPv6) {
   // Initiate session.
-  IPAddress ipv6_destination(IPAddress::kFamilyIPv6);
-  EXPECT_TRUE(ipv6_destination.SetAddressFromString(kIP6Address));
-  StartAndVerify(ipv6_destination, kInterfaceIndex);
+  const auto ipv6_destination = IPAddress::CreateFromString(kIP6Address);
+  CHECK(ipv6_destination.has_value());
+  StartAndVerify(*ipv6_destination, kInterfaceIndex);
 
   // Send an echo request.
   SetCurrentSequenceNumber(kIcmpEchoReply1_SeqNum);
@@ -384,9 +377,9 @@ TEST_F(IcmpSessionTest, SessionTimeoutOrInterrupted) {
   };
 
   // Initiate session.
-  IPAddress ipv4_destination(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(ipv4_destination.SetAddressFromString(kIPAddress));
-  StartAndVerify(ipv4_destination, kInterfaceIndex);
+  const auto ipv4_destination = IPAddress::CreateFromString(kIPAddress);
+  CHECK(ipv4_destination.has_value());
+  StartAndVerify(*ipv4_destination, kInterfaceIndex);
 
   // Send the first echo request successfully.
   testing_clock_.Advance(kSentTime1 - now);
@@ -448,9 +441,9 @@ TEST_F(IcmpSessionTest, SessionTimeoutOrInterrupted) {
 
 TEST_F(IcmpSessionTest, DoNotReportResultsOnStop) {
   // Initiate session.
-  IPAddress ipv4_destination(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(ipv4_destination.SetAddressFromString(kIPAddress));
-  StartAndVerify(ipv4_destination, kInterfaceIndex);
+  const auto ipv4_destination = IPAddress::CreateFromString(kIPAddress);
+  CHECK(ipv4_destination.has_value());
+  StartAndVerify(*ipv4_destination, kInterfaceIndex);
 
   // Session interrupted manually by calling Stop(), so do not report results.
   EXPECT_CALL(*this, ResultCallback(_)).Times(0);

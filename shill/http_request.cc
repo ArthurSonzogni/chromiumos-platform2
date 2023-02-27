@@ -99,12 +99,10 @@ HttpRequest::Result HttpRequest::Start(
   server_path_ = url.path();
   transport_->SetDefaultTimeout(kRequestTimeout);
 
-  IPAddress addr(ip_family_);
-
   request_success_callback_ = std::move(request_success_callback);
   request_error_callback_ = std::move(request_error_callback);
 
-  if (addr.SetAddressFromString(server_hostname_)) {
+  if (IPAddress::CreateFromString(server_hostname_, ip_family_).has_value()) {
     StartRequest();
   } else {
     SLOG(this, 3) << "Looking up host: " << server_hostname_;

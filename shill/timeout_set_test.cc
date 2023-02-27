@@ -54,10 +54,10 @@ struct TestData {
 template <>
 struct TestData<IPAddress> {
   TestData() {
-    data.push_back(IPAddress("1.1.1.1"));
-    data.push_back(IPAddress("2.2.2.2"));
-    data.push_back(IPAddress("3.3.3.3"));
-    data.push_back(IPAddress("4.4.4.4"));
+    data.push_back(*IPAddress::CreateFromString("1.1.1.1"));
+    data.push_back(*IPAddress::CreateFromString("2.2.2.2"));
+    data.push_back(*IPAddress::CreateFromString("3.3.3.3"));
+    data.push_back(*IPAddress::CreateFromString("4.4.4.4"));
   }
 
   std::vector<IPAddress> data;

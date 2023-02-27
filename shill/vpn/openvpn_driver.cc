@@ -397,14 +397,15 @@ std::unique_ptr<IPConfig::Properties> OpenVPNDriver::CreateIPProperties(
         base::StringPrintf("%s/%d", peer.c_str(), max_prefix));
   } else if (properties->subnet_prefix != max_prefix) {
     // --topology subnet will set ifconfig_netmask instead
-    IPAddress network_addr(properties->address);
-    if (network_addr.family() != properties->address_family) {
+    const auto network_addr = IPAddress::CreateFromStringAndPrefix(
+        properties->address, properties->subnet_prefix,
+        properties->address_family);
+    if (!network_addr.has_value()) {
       LOG(WARNING) << "Error obtaining network address for "
                    << properties->address;
     } else {
-      network_addr.set_prefix(properties->subnet_prefix);
       const std::string prefix = base::StringPrintf(
-          "%s/%d", network_addr.GetNetworkPart().ToString().c_str(),
+          "%s/%d", network_addr->GetNetworkPart().ToString().c_str(),
           properties->subnet_prefix);
       properties->inclusion_list.push_back(prefix);
     }

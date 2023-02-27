@@ -716,8 +716,9 @@ TEST_F(EthernetTest, RunEthtoolCmd) {
 TEST_F(EthernetTest, ReachabilityEvent_Online) {
   using NeighborSignal = patchpanel::NeighborReachabilityEventSignal;
 
-  const IPAddress ipv4_addr("192.168.1.1");
-  const IPAddress ipv6_addr("fe80::1aa9:5ff:abcd:1234");
+  const auto ipv4_addr = *IPAddress::CreateFromString("192.168.1.1");
+  const auto ipv6_addr =
+      *IPAddress::CreateFromString("fe80::1aa9:5ff:abcd:1234");
   auto network =
       std::make_unique<MockNetwork>(1, "eth0", Technology::kEthernet);
   auto network_p = network.get();
@@ -761,8 +762,9 @@ TEST_F(EthernetTest, ReachabilityEvent_Online) {
 TEST_F(EthernetTest, ReachabilityEvent_NotOnline) {
   using NeighborSignal = patchpanel::NeighborReachabilityEventSignal;
 
-  const IPAddress ipv4_addr("192.168.1.1");
-  const IPAddress ipv6_addr("fe80::1aa9:5ff:abcd:1234");
+  const auto ipv4_addr = *IPAddress::CreateFromString("192.168.1.1");
+  const auto ipv6_addr =
+      *IPAddress::CreateFromString("fe80::1aa9:5ff:abcd:1234");
   auto network =
       std::make_unique<MockNetwork>(1, "eth0", Technology::kEthernet);
   auto network_p = network.get();
@@ -809,8 +811,9 @@ TEST_F(EthernetTest, ReachabilityEvent_NotOnline) {
 TEST_F(EthernetTest, ReachabilityEvent_DNSServers) {
   using NeighborSignal = patchpanel::NeighborReachabilityEventSignal;
 
-  const IPAddress ipv4_addr("192.168.1.1");
-  const IPAddress ipv6_addr("fe80::1aa9:5ff:abcd:1234");
+  const auto ipv4_addr = *IPAddress::CreateFromString("192.168.1.1");
+  const auto ipv6_addr =
+      *IPAddress::CreateFromString("fe80::1aa9:5ff:abcd:1234");
   auto network =
       std::make_unique<MockNetwork>(1, "eth0", Technology::kEthernet);
   auto network_p = network.get();

@@ -60,14 +60,12 @@ bool Resolver::Emit() {
 
   std::vector<std::string> lines;
   for (const auto& server : name_servers) {
-    IPAddress addr(server);
-    std::string canonical_ip;
-    if (addr.family() != IPAddress::kFamilyUnknown &&
-        addr.IntoString(&canonical_ip)) {
-      lines.push_back("nameserver " + canonical_ip);
-    } else {
+    const auto addr = IPAddress::CreateFromString(server);
+    if (!addr.has_value()) {
       LOG(WARNING) << "Malformed nameserver IP: " << server;
+      continue;
     }
+    lines.push_back("nameserver " + addr->ToString());
   }
 
   std::vector<std::string> filtered_domain_search_list;

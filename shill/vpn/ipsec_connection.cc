@@ -985,13 +985,13 @@ void IPsecConnection::ParseLocalVirtualIPs(
   // at first.
   for (const auto& part : base::SplitString(
            matched_part, " ", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL)) {
-    IPAddress addr(part);
-    if (!addr.IsValid()) {
+    const auto addr = IPAddress::CreateFromString(part);
+    if (!addr.has_value()) {
       ClearVirtualIPs();
       LOG(ERROR) << "Failed to parse the virtual IPs, the line is " << line;
       return;
     }
-    if (addr.family() == IPAddress::kFamilyIPv4) {
+    if (addr->family() == IPAddress::kFamilyIPv4) {
       if (local_virtual_ipv4_ != "") {
         ClearVirtualIPs();
         LOG(ERROR)
@@ -1001,8 +1001,7 @@ void IPsecConnection::ParseLocalVirtualIPs(
         return;
       }
       local_virtual_ipv4_ = part;
-    }
-    if (addr.family() == IPAddress::kFamilyIPv6) {
+    } else if (addr->family() == IPAddress::kFamilyIPv6) {
       if (local_virtual_ipv6_ != "") {
         ClearVirtualIPs();
         LOG(ERROR)

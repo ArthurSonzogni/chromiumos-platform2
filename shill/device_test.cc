@@ -763,7 +763,7 @@ TEST_F(DevicePortalDetectionTest, PortalDetectionStartIPv6) {
 
 TEST_F(DevicePortalDetectionTest, PortalRetryAfterDetectionFailure) {
   const int kFailureStatusCode = 204;
-  const auto ip_addr = IPAddress("1.2.3.4");
+  const auto ip_addr = *IPAddress::CreateFromString("1.2.3.4");
   const std::vector<std::string> dns_list = {"8.8.8.8", "8.8.4.4"};
   PortalDetector::Result result;
   result.http_phase = PortalDetector::Phase::kConnection,

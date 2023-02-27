@@ -59,8 +59,8 @@ const char kServerAddress[] = "10.1.1.1";
 }  // namespace
 
 MATCHER_P(IsIPAddress, address, "") {
-  IPAddress ip_address(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(ip_address.SetAddressFromString(address));
+  const auto ip_address = IPAddress::CreateFromString(address);
+  CHECK(ip_address.has_value());
   return ip_address.Equals(arg);
 }
 
@@ -290,9 +290,9 @@ TEST_F(HttpRequestTest, TextRequestSuccess) {
 
   ExpectStop();
   EXPECT_EQ(HttpRequest::kResultInProgress, StartRequest(kTextURL));
-  IPAddress addr(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(addr.SetAddressFromString(kServerAddress));
-  GetDNSResultSuccess(addr);
+  const auto addr = IPAddress::CreateFromString(kServerAddress);
+  CHECK(addr.has_value());
+  GetDNSResultSuccess(*addr);
   ExpectReset();
 }
 

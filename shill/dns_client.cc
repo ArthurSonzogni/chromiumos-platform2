@@ -240,10 +240,13 @@ void DnsClient::ReceiveDnsReply(int status, struct hostent* hostent) {
       static_cast<size_t>(hostent->h_length) ==
           IPAddress::GetAddressLength(address_.family()) &&
       hostent->h_addr_list != nullptr && hostent->h_addr_list[0] != nullptr) {
-    address_ = IPAddress(
+    auto tmp_addr = IPAddress::CreateFromByteString(
         address_.family(),
         ByteString(reinterpret_cast<unsigned char*>(hostent->h_addr_list[0]),
                    hostent->h_length));
+    // Validity has been checked in the if-condition above.
+    DCHECK(tmp_addr.has_value());
+    address_ = std::move(*tmp_addr);
   } else {
     switch (status) {
       case ARES_ENODATA:

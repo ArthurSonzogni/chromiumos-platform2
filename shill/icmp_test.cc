@@ -71,10 +71,10 @@ class IcmpTest : public Test {
         .WillOnce(Return(fd));
     EXPECT_CALL(*sockets_, SetNonBlocking(fd)).WillOnce(Return(0));
 
-    IPAddress ipv4_destination(IPAddress::kFamilyIPv4);
-    EXPECT_TRUE(ipv4_destination.SetAddressFromString(kIPAddress));
+    const auto ipv4_destination = IPAddress::CreateFromString(kIPAddress);
+    CHECK(ipv4_destination.has_value());
 
-    bool start_status = icmp_.Start(ipv4_destination, kInterfaceIndex);
+    bool start_status = icmp_.Start(*ipv4_destination, kInterfaceIndex);
     EXPECT_TRUE(start_status);
     EXPECT_EQ(fd, icmp_.socket_);
     EXPECT_TRUE(icmp_.IsStarted());
@@ -108,10 +108,10 @@ TEST_F(IcmpTest, SocketOpenFail) {
   EXPECT_CALL(*sockets_, Socket(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMP))
       .WillOnce(Return(-1));
 
-  IPAddress ipv4_destination(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(ipv4_destination.SetAddressFromString(kIPAddress));
+  const auto ipv4_destination = IPAddress::CreateFromString(kIPAddress);
+  CHECK(ipv4_destination.has_value());
 
-  EXPECT_FALSE(icmp_.Start(ipv4_destination, kInterfaceIndex));
+  EXPECT_FALSE(icmp_.Start(*ipv4_destination, kInterfaceIndex));
   EXPECT_FALSE(icmp_.IsStarted());
 }
 
@@ -125,9 +125,9 @@ TEST_F(IcmpTest, SocketNonBlockingFail) {
   EXPECT_CALL(*sockets_, SetNonBlocking(kSocketFD)).WillOnce(Return(-1));
   EXPECT_CALL(*sockets_, Close(kSocketFD));
 
-  IPAddress ipv4_destination(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(ipv4_destination.SetAddressFromString(kIPAddress));
-  EXPECT_FALSE(icmp_.Start(ipv4_destination, kInterfaceIndex));
+  const auto ipv4_destination = IPAddress::CreateFromString(kIPAddress);
+  CHECK(ipv4_destination.has_value());
+  EXPECT_FALSE(icmp_.Start(*ipv4_destination, kInterfaceIndex));
   EXPECT_FALSE(icmp_.IsStarted());
 }
 
@@ -155,8 +155,8 @@ TEST_F(IcmpTest, TransmitEchoRequest) {
   EXPECT_FALSE(icmp_.TransmitEchoRequest(1, 1));
   StartIcmp();
 
-  IPAddress ipv4_destination(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(ipv4_destination.SetAddressFromString(kIPAddress));
+  const auto ipv4_destination = IPAddress::CreateFromString(kIPAddress);
+  CHECK(ipv4_destination.has_value());
 
   struct icmphdr icmp_header;
   memset(&icmp_header, 0, sizeof(icmp_header));
@@ -166,9 +166,10 @@ TEST_F(IcmpTest, TransmitEchoRequest) {
   icmp_header.un.echo.sequence = 1;
   icmp_header.checksum = ComputeIcmpChecksum(icmp_header, sizeof(icmp_header));
 
-  EXPECT_CALL(*sockets_,
-              SendTo(kSocketFD, IsIcmpHeader(icmp_header), sizeof(icmp_header),
-                     0, IsSocketAddress(ipv4_destination), sizeof(sockaddr_in)))
+  EXPECT_CALL(
+      *sockets_,
+      SendTo(kSocketFD, IsIcmpHeader(icmp_header), sizeof(icmp_header), 0,
+             IsSocketAddress(*ipv4_destination), sizeof(sockaddr_in)))
       .WillOnce(Return(-1))
       .WillOnce(Return(0))
       .WillOnce(Return(sizeof(icmp_header) - 1))

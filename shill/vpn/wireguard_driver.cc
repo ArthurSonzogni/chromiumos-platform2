@@ -604,7 +604,13 @@ bool WireGuardDriver::PopulateIPProperties() {
   std::vector<std::string> ipv6_address_list;
 
   for (const auto& ip_address : ip_address_list) {
-    switch (IPAddress(ip_address).family()) {
+    const auto ip = IPAddress::CreateFromString(ip_address);
+    if (!ip.has_value()) {
+      LOG(ERROR) << "Address format is wrong: the input string is "
+                 << ip_address;
+      return false;
+    }
+    switch (ip->family()) {
       case IPAddress::kFamilyIPv4:
         ipv4_address_list.push_back(ip_address);
         break;
@@ -612,9 +618,7 @@ bool WireGuardDriver::PopulateIPProperties() {
         ipv6_address_list.push_back(ip_address);
         break;
       default:
-        LOG(ERROR) << "Address format is wrong: the input string is "
-                   << ip_address;
-        return false;
+        NOTREACHED();
     }
   }
   if (ipv4_address_list.size() > 1) {

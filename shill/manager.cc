@@ -2976,7 +2976,7 @@ bool Manager::SetDNSProxyDOHProviders(const KeyValueStore& providers,
     for (const auto& ns :
          base::SplitString(nameservers.TryGet<std::string>(""), ",",
                            base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL)) {
-      if (!IPAddress(ns).IsValid()) {
+      if (!IPAddress::CreateFromString(ns).has_value()) {
         Error::PopulateAndLog(FROM_HERE, error, Error::kInvalidArguments,
                               "Invalid address: " + ns);
         return false;
