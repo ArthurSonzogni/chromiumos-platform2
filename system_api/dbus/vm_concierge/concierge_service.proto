@@ -1431,3 +1431,26 @@ message VmSwappingSignal {
   // The owner of the VM.
   string owner_id = 2;
 }
+
+// Installs Pflash associated with VM |vm_name| owned by |owner_id|. Requires
+// the sender to also send an fd to a Pflash file.
+//
+// Fails if installing the pflash didn't succeed or a pflash file was already
+// installed before.
+message InstallPflashRequest {
+  // The name of the VM.
+  string vm_name = 1;
+
+  // The owner of the VM.
+  string owner_id = 2;
+}
+
+// The response of the |InstallPflashRequest|.
+message InstallPflashResponse {
+  // Whether the request succeeded or not.
+  bool success = 1;
+
+  // The reason for failure for not being able to install the Pflash. Only
+  // valid when |success| is false.
+  string failure_reason = 2;
+}
