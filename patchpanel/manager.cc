@@ -12,6 +12,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#include <algorithm>
 #include <utility>
 
 #include <base/check.h>
@@ -59,12 +60,21 @@ void HandleSynchronousDBusMethodCall(
   std::move(response_sender).Run(std::move(response));
 }
 
-void FillSubnetProto(const Subnet& virtual_subnet,
+// TODO(b/239559602) Introduce better types for IPv4 addr and IPv4 CIDR.
+// Fills a protobuf IPv4Subnet object with the IPv4 address |base_addr| in
+// network order and the prefix length |prefix_length|.
+void FillSubnetProto(const uint32_t base_addr,
+                     int prefix_length,
                      patchpanel::IPv4Subnet* output) {
-  uint32_t base_addr = virtual_subnet.BaseAddress();
   output->set_addr(&base_addr, sizeof(base_addr));
   output->set_base_addr(base_addr);
-  output->set_prefix_len(static_cast<uint32_t>(virtual_subnet.PrefixLength()));
+  output->set_prefix_len(static_cast<uint32_t>(prefix_length));
+}
+
+void FillSubnetProto(const Subnet& virtual_subnet,
+                     patchpanel::IPv4Subnet* output) {
+  FillSubnetProto(virtual_subnet.BaseAddress(), virtual_subnet.PrefixLength(),
+                  output);
 }
 
 void FillDeviceProto(const Device& virtual_device,
@@ -76,6 +86,17 @@ void FillDeviceProto(const Device& virtual_device,
   output->set_guest_ifname(virtual_device.guest_ifname());
   output->set_ipv4_addr(virtual_device.config().guest_ipv4_addr());
   output->set_host_ipv4_addr(virtual_device.config().host_ipv4_addr());
+}
+
+void FillDownstreamNetworkProto(
+    const DownstreamNetworkInfo& downstream_network_info,
+    patchpanel::DownstreamNetwork* output) {
+  output->set_downstream_ifname(downstream_network_info.downstream_ifname);
+  output->set_ipv4_gateway_addr(&downstream_network_info.ipv4_addr,
+                                sizeof(downstream_network_info.ipv4_addr));
+  FillSubnetProto(downstream_network_info.ipv4_base_addr,
+                  downstream_network_info.ipv4_prefix_length,
+                  output->mutable_ipv4_subnet());
 }
 
 void FillDeviceDnsProxyProto(
@@ -1355,10 +1376,23 @@ std::unique_ptr<dbus::Response> Manager::OnDownstreamNetworkInfo(
     return dbus_response;
   }
 
-  // TODO(b/239559602) Implement DownstreamNetworkInfo.
-  // TODO(b/239559602) Check a DownstreamNetwork exists for |downstream_ifname|.
-  // TODO(b/239559602) Copy IPv4 config into |downstream_network|.
+  const auto& downstream_ifname = request.downstream_ifname();
+  auto match_by_downstream_ifname = [&downstream_ifname](const auto& kv) {
+    return kv.second.downstream_ifname == downstream_ifname;
+  };
+  auto it =
+      std::find_if(downstream_networks_.begin(), downstream_networks_.end(),
+                   match_by_downstream_ifname);
+  if (it == downstream_networks_.end()) {
+    LOG(ERROR) << kDownstreamNetworkInfoMethod
+               << ": no DownstreamNetwork for interface " << downstream_ifname;
+    response.set_success(false);
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
 
+  // TODO(b/239559602) Get and copy clients' information into |output|.
+  FillDownstreamNetworkProto(it->second, response.mutable_downstream_network());
   RecordDbusEvent(metrics_, DbusUmaEvent::kDownstreamNetworkInfoSuccess);
   response.set_success(true);
   writer.AppendProtoAsArrayOfBytes(response);
