@@ -6,7 +6,9 @@
 #include <sysexits.h>
 
 #include <memory>
+#include <optional>
 #include <string>
+#include <variant>
 
 #include <attestation/proto_bindings/attestation_ca.pb.h>
 #include <attestation/proto_bindings/interface.pb.h>
@@ -26,11 +28,22 @@
 #include "attestation/common/crypto_utility_impl.h"
 #include "attestation/common/print_interface_proto.h"
 
-namespace {
-constexpr base::TimeDelta kDefaultTimeout = base::Minutes(2);
-}  // namespace
-
 namespace attestation {
+
+namespace {
+
+// The Daemon class works well as a client loop as well.
+using ClientLoopBase = brillo::Daemon;
+
+// Certificate profile specific request data. Loosely corresponds to `oneof`
+// the proto fields at `GetCertificateRequest::metadata` in
+// `dbus/attestation/interface.proto`. `CertProfileSpecificData` itself is
+// equivalent to a type-safe tagged union type that can represent any of the
+// types inside the `std::variant`.
+using CertProfileSpecificData =
+    std::variant<DeviceSetupCertificateRequestMetadata>;
+
+constexpr base::TimeDelta kDefaultTimeout = base::Minutes(2);
 
 const char kGetFeaturesCommand[] = "features";
 const char kCreateCommand[] = "create";
@@ -57,6 +70,9 @@ const char kGetCertCommand[] = "get_cert";
 const char kSignChallengeCommand[] = "sign_challenge";
 const char kGetEnrollmentId[] = "get_enrollment_id";
 const char kGetCertifiedNvIndex[] = "get_certified_nv_index";
+const char kDeviceSetupCertId[] = "device_setup_cert_id";
+const char kDeviceSetupCertContentBinding[] =
+    "device_setup_cert_content_binding";
 const char kUsage[] = R"(
 Usage: attestation_client <command> [<args>]
 Commands:
@@ -115,10 +131,14 @@ Commands:
   create_cert_request [--attestation-server=default|test]
         [--profile=<profile>] [--user=<user>] [--origin=<origin>]
         [--key-type={rsa|ecc}] [--output=<output_file>]
+        [--device_setup_cert_id=<An id for the cert; usually device id>]
+        [--device_setup_cert_content_binding=<A unique string, e.g. timestamp>]
       Creates certificate request to CA for |user|, using provided certificate
-        |profile| and |origin|, and stores it to |output_file|.
-        Possible |profile| values: user, machine, enrollment, content, cpsi,
-        cast, gfsc. Default is user.
+      |profile| and |origin|, and stores it to |output_file|.
+      Possible |profile| values: user, machine, enrollment, content, cpsi, cast,
+      gfsc, device_setup. Default is user.
+      |device_setup_cert_id| and |device_setup_cert_content_binding| are
+      required if |profile| is "device_setup".
   finish_cert_request [--attestation-server=default|test] [--user=<user>]
           [--label=<label>] --input=<input_file>
       Finishes certificate request for |user| using the CA response from
@@ -126,11 +146,15 @@ Commands:
   get_cert [--attestation-server=default|test] [--profile=<profile>]
         [--label=<label>] [--user=<user>] [--origin=<origin>]
         [--output=<output_file>] [--key-type={rsa|ecc}] [--forced]
+        [--device_setup_cert_id=<An id for the cert; usually device id>]
+        [--device_setup_cert_content_binding=<A unique string, e.g. timestamp>]
       Creates certificate request to CA for |user|, using provided certificate
       |profile| and |origin|, and sends to the specified CA, then stores it
       with the specified |label|.
       Possible |profile| values: user, machine, enrollment, content, cpsi,
-      cast, gfsc. Default is user.
+      cast, gfsc, device_setup. Default is user.
+      |device_setup_cert_id| and |device_setup_cert_content_binding| are
+      required if |profile| is "device_setup".
   sign_challenge [--enterprise [--va_server=default|test]] [--user=<user>]
           [--label=<label>] [--domain=<domain>] [--device_id=<device_id>]
           [--spkac] --input=<input_file> [--output=<output_file>]
@@ -151,6 +175,27 @@ Commands:
       Returns a copy of the specified NV index, certified by the specified
       key, eg "attest-ent-machine".
 )";
+
+// Reads parameters and `command_line` and optionally returns
+// `CertProfileSpecificData` for `DEVICE_SETUP_CERTIFICATE`. Returns an empty
+// optional if `command_line` does not contain the flags required for
+// constructing `CertProfileSpecificData`.
+std::optional<CertProfileSpecificData> CreateDeviceSetupProfileSpecificData(
+    const base::CommandLine* command_line) {
+  if (!command_line->HasSwitch(kDeviceSetupCertId)) {
+    return std::nullopt;
+  }
+
+  if (!command_line->HasSwitch(kDeviceSetupCertContentBinding)) {
+    return std::nullopt;
+  }
+
+  DeviceSetupCertificateRequestMetadata metadata;
+  metadata.set_id(command_line->GetSwitchValueASCII(kDeviceSetupCertId));
+  metadata.set_content_binding(
+      command_line->GetSwitchValueASCII(kDeviceSetupCertContentBinding));
+  return std::make_optional(CertProfileSpecificData(metadata));
+}
 
 std::optional<CertificateProfile> ToCertificateProfile(
     const std::string& profile) {
@@ -182,11 +227,13 @@ std::optional<CertificateProfile> ToCertificateProfile(
   if (profile == "vtpm_ek" || profile == "vtpm") {
     return ENTERPRISE_VTPM_EK_CERTIFICATE;
   }
+  if (profile == "device_setup") {
+    return DEVICE_SETUP_CERTIFICATE;
+  }
   return std::nullopt;
 }
 
-// The Daemon class works well as a client loop as well.
-using ClientLoopBase = brillo::Daemon;
+}  // namespace
 
 class ClientLoop : public ClientLoopBase {
  public:
@@ -442,10 +489,20 @@ class ClientLoop : public ClientLoopBase {
       if (!profile.has_value()) {
         return EX_USAGE;
       }
-      task = base::BindOnce(
-          &ClientLoop::CallCreateCertRequest, weak_factory_.GetWeakPtr(),
-          aca_type, *profile, command_line->GetSwitchValueASCII("user"),
-          command_line->GetSwitchValueASCII("origin"), key_type);
+
+      std::optional<CertProfileSpecificData> profile_specific_data;
+      if (profile == DEVICE_SETUP_CERTIFICATE) {
+        profile_specific_data =
+            CreateDeviceSetupProfileSpecificData(command_line);
+        if (!profile_specific_data) {
+          return EX_USAGE;
+        }
+      }
+      task = base::BindOnce(&ClientLoop::CallCreateCertRequest,
+                            weak_factory_.GetWeakPtr(), aca_type, *profile,
+                            command_line->GetSwitchValueASCII("user"),
+                            command_line->GetSwitchValueASCII("origin"),
+                            key_type, profile_specific_data);
     } else if (args.front() == kFinishCertRequestCommand) {
       if (!command_line->HasSwitch("input")) {
         return EX_USAGE;
@@ -478,12 +535,22 @@ class ClientLoop : public ClientLoopBase {
       }
       bool forced = command_line->HasSwitch("forced");
       bool shall_trigger_enrollment = command_line->HasSwitch("enroll");
-      task = base::BindOnce(&ClientLoop::CallGetCert,
-                            weak_factory_.GetWeakPtr(), aca_type, *profile,
-                            command_line->GetSwitchValueASCII("label"),
-                            command_line->GetSwitchValueASCII("user"),
-                            command_line->GetSwitchValueASCII("origin"),
-                            key_type, forced, shall_trigger_enrollment);
+
+      std::optional<CertProfileSpecificData> profile_specific_data;
+      if (profile == DEVICE_SETUP_CERTIFICATE) {
+        profile_specific_data =
+            CreateDeviceSetupProfileSpecificData(command_line);
+        if (!profile_specific_data) {
+          return EX_USAGE;
+        }
+      }
+
+      task = base::BindOnce(
+          &ClientLoop::CallGetCert, weak_factory_.GetWeakPtr(), aca_type,
+          *profile, command_line->GetSwitchValueASCII("label"),
+          command_line->GetSwitchValueASCII("user"),
+          command_line->GetSwitchValueASCII("origin"), key_type, forced,
+          shall_trigger_enrollment, profile_specific_data);
     } else if (args.front() == kSignChallengeCommand) {
       if (!command_line->HasSwitch("input")) {
         return EX_USAGE;
@@ -965,17 +1032,34 @@ class ClientLoop : public ClientLoopBase {
         kDefaultTimeout.InMilliseconds());
   }
 
-  void CallCreateCertRequest(ACAType aca_type,
-                             CertificateProfile profile,
-                             const std::string& username,
-                             const std::string& origin,
-                             KeyType key_type) {
+  void CallCreateCertRequest(
+      ACAType aca_type,
+      CertificateProfile profile,
+      const std::string& username,
+      const std::string& origin,
+      KeyType key_type,
+      const std::optional<CertProfileSpecificData>& profile_specific_data) {
     CreateCertificateRequestRequest request;
     request.set_aca_type(aca_type);
     request.set_certificate_profile(profile);
     request.set_username(username);
     request.set_request_origin(origin);
     request.set_key_type(key_type);
+
+    if (profile == DEVICE_SETUP_CERTIFICATE) {
+      if (profile_specific_data &&
+          std::holds_alternative<DeviceSetupCertificateRequestMetadata>(
+              profile_specific_data.value())) {
+        const DeviceSetupCertificateRequestMetadata& metadata =
+            std::get<DeviceSetupCertificateRequestMetadata>(
+                profile_specific_data.value());
+        request.mutable_device_setup_certificate_request_metadata()->set_id(
+            metadata.id());
+        request.mutable_device_setup_certificate_request_metadata()
+            ->set_content_binding(metadata.content_binding());
+      }
+    }
+
     attestation_->CreateCertificateRequestAsync(
         request,
         base::BindOnce(&ClientLoop::OnCreateCertRequestComplete,
@@ -1010,14 +1094,16 @@ class ClientLoop : public ClientLoopBase {
         kDefaultTimeout.InMilliseconds());
   }
 
-  void CallGetCert(ACAType aca_type,
-                   CertificateProfile profile,
-                   const std::string& label,
-                   const std::string& username,
-                   const std::string& origin,
-                   KeyType key_type,
-                   bool forced,
-                   bool shall_trigger_enrollment) {
+  void CallGetCert(
+      ACAType aca_type,
+      CertificateProfile profile,
+      const std::string& label,
+      const std::string& username,
+      const std::string& origin,
+      KeyType key_type,
+      bool forced,
+      bool shall_trigger_enrollment,
+      const std::optional<CertProfileSpecificData>& profile_specific_data) {
     GetCertificateRequest request;
     request.set_aca_type(aca_type);
     request.set_certificate_profile(profile);
@@ -1027,6 +1113,21 @@ class ClientLoop : public ClientLoopBase {
     request.set_key_type(key_type);
     request.set_forced(forced);
     request.set_shall_trigger_enrollment(shall_trigger_enrollment);
+
+    if (profile == DEVICE_SETUP_CERTIFICATE) {
+      if (profile_specific_data &&
+          std::holds_alternative<DeviceSetupCertificateRequestMetadata>(
+              profile_specific_data.value())) {
+        const DeviceSetupCertificateRequestMetadata& metadata =
+            std::get<DeviceSetupCertificateRequestMetadata>(
+                profile_specific_data.value());
+        request.mutable_device_setup_certificate_request_metadata()->set_id(
+            metadata.id());
+        request.mutable_device_setup_certificate_request_metadata()
+            ->set_content_binding(metadata.content_binding());
+      }
+    }
+
     attestation_->GetCertificateAsync(
         request,
         base::BindOnce(&ClientLoop::PrintReplyAndQuit<GetCertificateReply>,
