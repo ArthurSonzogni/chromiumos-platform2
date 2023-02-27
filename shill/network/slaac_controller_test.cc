@@ -104,12 +104,10 @@ TEST_F(SLAACControllerTest, IPv6DnsServerAddressesChanged) {
   EXPECT_EQ(0, dns_server_addresses_out.size());
 
   // Setup IPv6 dns server addresses.
-  IPAddress ipv6_address1(IPAddress::kFamilyIPv6);
-  IPAddress ipv6_address2(IPAddress::kFamilyIPv6);
-  EXPECT_TRUE(ipv6_address1.SetAddressFromString(kTestIPAddress1));
-  EXPECT_TRUE(ipv6_address2.SetAddressFromString(kTestIPAddress2));
-  std::vector<IPAddress> dns_server_addresses_in = {ipv6_address1,
-                                                    ipv6_address2};
+  std::vector<IPAddress> dns_server_addresses_in = {
+      *IPAddress::CreateFromString(kTestIPAddress1),
+      *IPAddress::CreateFromString(kTestIPAddress2),
+  };
 
   // Infinite lifetime
   const uint32_t kInfiniteLifetime = 0xffffffff;
@@ -157,8 +155,7 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
   // Contains no addresses.
   EXPECT_EQ(slaac_controller_.GetAddresses(), std::vector<IPAddress>{});
 
-  IPAddress ipv4_address(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(ipv4_address.SetAddressFromString(kTestIPAddress0));
+  const auto ipv4_address = *IPAddress::CreateFromString(kTestIPAddress0);
   auto message = BuildAddressMessage(RTNLMessage::kModeAdd, ipv4_address, 0, 0);
 
   EXPECT_CALL(*this, UpdateCallback(SLAACController::UpdateType::kAddress))
@@ -168,8 +165,7 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
   SendRTNLMessage(*message);
   EXPECT_EQ(slaac_controller_.GetAddresses(), std::vector<IPAddress>{});
 
-  IPAddress ipv6_address1(IPAddress::kFamilyIPv6);
-  EXPECT_TRUE(ipv6_address1.SetAddressFromString(kTestIPAddress1));
+  const auto ipv6_address1 = *IPAddress::CreateFromString(kTestIPAddress1);
   message = BuildAddressMessage(RTNLMessage::kModeAdd, ipv6_address1, 0,
                                 RT_SCOPE_LINK);
 
@@ -177,8 +173,7 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
   SendRTNLMessage(*message);
   EXPECT_EQ(slaac_controller_.GetAddresses(), std::vector<IPAddress>{});
 
-  IPAddress ipv6_address2(IPAddress::kFamilyIPv6);
-  EXPECT_TRUE(ipv6_address2.SetAddressFromString(kTestIPAddress2));
+  const auto ipv6_address2 = *IPAddress::CreateFromString(kTestIPAddress2);
   message = BuildAddressMessage(RTNLMessage::kModeAdd, ipv6_address2,
                                 IFA_F_TEMPORARY, RT_SCOPE_UNIVERSE);
 
@@ -189,8 +184,7 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
   EXPECT_EQ(slaac_controller_.GetAddresses(),
             std::vector<IPAddress>{ipv6_address2});
 
-  IPAddress ipv6_address3(IPAddress::kFamilyIPv6);
-  EXPECT_TRUE(ipv6_address3.SetAddressFromString(kTestIPAddress3));
+  const auto ipv6_address3 = *IPAddress::CreateFromString(kTestIPAddress3);
   message = BuildAddressMessage(RTNLMessage::kModeAdd, ipv6_address3, 0,
                                 RT_SCOPE_UNIVERSE);
 
@@ -202,8 +196,7 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
   EXPECT_EQ(slaac_controller_.GetAddresses(),
             std::vector<IPAddress>({ipv6_address2, ipv6_address3}));
 
-  IPAddress ipv6_address4(IPAddress::kFamilyIPv6);
-  EXPECT_TRUE(ipv6_address4.SetAddressFromString(kTestIPAddress4));
+  const auto ipv6_address4 = *IPAddress::CreateFromString(kTestIPAddress4);
   message = BuildAddressMessage(RTNLMessage::kModeAdd, ipv6_address4,
                                 IFA_F_TEMPORARY | IFA_F_DEPRECATED,
                                 RT_SCOPE_UNIVERSE);
@@ -217,8 +210,7 @@ TEST_F(SLAACControllerTest, IPv6AddressChanged) {
       slaac_controller_.GetAddresses(),
       std::vector<IPAddress>({ipv6_address2, ipv6_address3, ipv6_address4}));
 
-  IPAddress ipv6_address7(IPAddress::kFamilyIPv6);
-  EXPECT_TRUE(ipv6_address7.SetAddressFromString(kTestIPAddress7));
+  const auto ipv6_address7 = *IPAddress::CreateFromString(kTestIPAddress7);
   message = BuildAddressMessage(RTNLMessage::kModeAdd, ipv6_address7,
                                 IFA_F_TEMPORARY, RT_SCOPE_UNIVERSE);
 

@@ -457,15 +457,16 @@ void Network::ConfigureStaticIPv6Address() {
   if (!ipv6_static_properties_ || ipv6_static_properties_->address.empty()) {
     return;
   }
-  IPAddress local(IPAddress::kFamilyIPv6);
-  if (!local.SetAddressFromString(ipv6_static_properties_->address)) {
+  const auto local = IPAddress::CreateFromStringAndPrefix(
+      ipv6_static_properties_->address, ipv6_static_properties_->subnet_prefix,
+      IPAddress::kFamilyIPv6);
+  if (!local.has_value()) {
     LOG(ERROR) << logging_tag_ << ": Local address "
                << ipv6_static_properties_->address << " is invalid";
     return;
   }
-  local.set_prefix(ipv6_static_properties_->subnet_prefix);
-  rtnl_handler_->AddInterfaceAddress(interface_index_, local,
-                                     local.GetDefaultBroadcast());
+  rtnl_handler_->AddInterfaceAddress(interface_index_, *local,
+                                     local->GetDefaultBroadcast());
 }
 
 void Network::OnUpdateFromSLAAC(SLAACController::UpdateType update_type) {
@@ -672,15 +673,25 @@ std::vector<IPAddress> Network::GetAddresses() const {
   if (slaac_controller_) {
     result = slaac_controller_->GetAddresses();
   }
+
+  const auto insert_addr = [&result](const std::string& addr_str, int prefix) {
+    auto addr = IPAddress::CreateFromStringAndPrefix(addr_str, prefix);
+    if (!addr.has_value()) {
+      LOG(ERROR) << "Invalid IP address: " << addr_str << "/" << prefix;
+      return;
+    }
+    result.push_back(std::move(*addr));
+  };
+
   if (link_protocol_ipv6_properties_ &&
       link_protocol_ipv6_properties_->subnet_prefix > 0) {
-    result.emplace_back(link_protocol_ipv6_properties_->address,
-                        link_protocol_ipv6_properties_->subnet_prefix);
+    insert_addr(link_protocol_ipv6_properties_->address,
+                link_protocol_ipv6_properties_->subnet_prefix);
   }
 
   if (ipconfig() && ipconfig()->properties().subnet_prefix > 0) {
-    result.emplace_back(ipconfig()->properties().address,
-                        ipconfig()->properties().subnet_prefix);
+    insert_addr(ipconfig()->properties().address,
+                ipconfig()->properties().subnet_prefix);
   }
   // link_protocol_ipv4_properties_ should already be reflected in ipconfig_
   return result;
@@ -690,8 +701,8 @@ void Network::OnNeighborReachabilityEvent(
     const patchpanel::NeighborReachabilityEventSignal& signal) {
   using SignalProto = patchpanel::NeighborReachabilityEventSignal;
 
-  IPAddress ip_address(signal.ip_addr());
-  if (!ip_address.IsValid()) {
+  const auto ip_address = IPAddress::CreateFromString(signal.ip_addr());
+  if (!ip_address.has_value()) {
     LOG(ERROR) << logging_tag_ << ": " << __func__ << ": invalid IP address "
                << signal.ip_addr();
     return;
@@ -708,8 +719,8 @@ void Network::OnNeighborReachabilityEvent(
   }
 
   if (signal.type() == SignalProto::FAILED) {
-    metrics_->NotifyNeighborLinkMonitorFailure(technology_, ip_address.family(),
-                                               signal.role());
+    metrics_->NotifyNeighborLinkMonitorFailure(
+        technology_, ip_address->family(), signal.role());
   }
 
   if (state_ == State::kIdle) {
@@ -728,10 +739,10 @@ void Network::OnNeighborReachabilityEvent(
       signal.role() == SignalProto::GATEWAY_AND_DNS_SERVER) {
     IPConfig* ipconfig;
     bool* gateway_found;
-    if (ip_address.family() == IPAddress::kFamilyIPv4) {
+    if (ip_address->family() == IPAddress::kFamilyIPv4) {
       ipconfig = ipconfig_.get();
       gateway_found = &ipv4_gateway_found_;
-    } else if (ip_address.family() == IPAddress::kFamilyIPv6) {
+    } else if (ip_address->family() == IPAddress::kFamilyIPv6) {
       ipconfig = ip6config_.get();
       gateway_found = &ipv6_gateway_found_;
     } else {
@@ -743,7 +754,7 @@ void Network::OnNeighborReachabilityEvent(
     // would not emit reachability event for the correct connection yet.
     if (!ipconfig) {
       LOG(INFO) << logging_tag_ << ": " << __func__ << ": "
-                << IPAddress::GetAddressFamilyName(ip_address.family())
+                << IPAddress::GetAddressFamilyName(ip_address->family())
                 << " not configured, ignoring neighbor reachability event "
                 << signal;
       return;
@@ -760,8 +771,8 @@ void Network::OnNeighborReachabilityEvent(
   }
 
   for (auto* ev : event_handlers_) {
-    ev->OnNeighborReachabilityEvent(interface_index_, ip_address, signal.role(),
-                                    signal.type());
+    ev->OnNeighborReachabilityEvent(interface_index_, *ip_address,
+                                    signal.role(), signal.type());
   }
 }
 

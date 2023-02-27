@@ -115,8 +115,8 @@ class MockConnectionDiagnostics : public ConnectionDiagnostics {
   MockConnectionDiagnostics()
       : ConnectionDiagnostics(kTestIfname,
                               kTestIfindex,
-                              IPAddress(kIPv4DHCPAddress),
-                              IPAddress(kIPv4DHCPGateway),
+                              *IPAddress::CreateFromString(kIPv4DHCPAddress),
+                              *IPAddress::CreateFromString(kIPv4DHCPGateway),
                               {kIPv4DHCPNameServer},
                               nullptr,
                               nullptr,
@@ -435,35 +435,37 @@ TEST_F(NetworkTest, DHCPRenewWithoutController) {
 TEST_F(NetworkTest, NeighborReachabilityEvents) {
   using NeighborSignal = patchpanel::NeighborReachabilityEventSignal;
 
-  const std::string ipv4_addr = "192.168.1.1";
-  const std::string ipv6_addr = "fe80::1aa9:5ff:abcd:1234";
+  const std::string ipv4_addr_str = "192.168.1.1";
+  const std::string ipv6_addr_str = "fe80::1aa9:5ff:abcd:1234";
+  const IPAddress ipv4_addr = *IPAddress::CreateFromString(ipv4_addr_str);
+  const IPAddress ipv6_addr = *IPAddress::CreateFromString(ipv6_addr_str);
   SetNetworkStateToConnected();
   network_->set_ipconfig(
       std::make_unique<IPConfig>(&control_interface_, kTestIfname));
   network_->set_ip6config(
       std::make_unique<IPConfig>(&control_interface_, kTestIfname));
   IPConfig::Properties ipv4_props;
-  ipv4_props.gateway = ipv4_addr;
+  ipv4_props.gateway = ipv4_addr_str;
   network_->ipconfig()->UpdateProperties(ipv4_props);
   IPConfig::Properties ipv6_props;
-  ipv6_props.gateway = ipv6_addr;
+  ipv6_props.gateway = ipv6_addr_str;
   network_->ip6config()->UpdateProperties(ipv6_props);
 
-  // Connected network with IPv4 configured, rechability event matching the IPv4
-  // gateway.
+  // Connected network with IPv4 configured, reachability event matching the
+  // IPv4 gateway.
   EXPECT_CALL(event_handler_,
-              OnNeighborReachabilityEvent(
-                  network_->interface_index(), IPAddress(ipv4_addr),
-                  NeighborSignal::GATEWAY, NeighborSignal::REACHABLE))
+              OnNeighborReachabilityEvent(network_->interface_index(),
+                                          ipv4_addr, NeighborSignal::GATEWAY,
+                                          NeighborSignal::REACHABLE))
       .Times(1);
   EXPECT_CALL(event_handler2_,
-              OnNeighborReachabilityEvent(
-                  network_->interface_index(), IPAddress(ipv4_addr),
-                  NeighborSignal::GATEWAY, NeighborSignal::REACHABLE))
+              OnNeighborReachabilityEvent(network_->interface_index(),
+                                          ipv4_addr, NeighborSignal::GATEWAY,
+                                          NeighborSignal::REACHABLE))
       .Times(1);
   NeighborSignal signal1;
   signal1.set_ifindex(1);
-  signal1.set_ip_addr(ipv4_addr);
+  signal1.set_ip_addr(ipv4_addr_str);
   signal1.set_role(NeighborSignal::GATEWAY);
   signal1.set_type(NeighborSignal::REACHABLE);
   network_->OnNeighborReachabilityEvent(signal1);
@@ -472,23 +474,21 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
   Mock::VerifyAndClearExpectations(&event_handler_);
   Mock::VerifyAndClearExpectations(&event_handler2_);
 
-  // Connected network with IPv6 configured, rechability event matching the IPv6
-  // gateway.
-  EXPECT_CALL(
-      event_handler_,
-      OnNeighborReachabilityEvent(
-          network_->interface_index(), IPAddress(ipv6_addr),
-          NeighborSignal::GATEWAY_AND_DNS_SERVER, NeighborSignal::REACHABLE))
+  // Connected network with IPv6 configured, reachability event matching the
+  // IPv6 gateway.
+  EXPECT_CALL(event_handler_, OnNeighborReachabilityEvent(
+                                  network_->interface_index(), ipv6_addr,
+                                  NeighborSignal::GATEWAY_AND_DNS_SERVER,
+                                  NeighborSignal::REACHABLE))
       .Times(1);
-  EXPECT_CALL(
-      event_handler2_,
-      OnNeighborReachabilityEvent(
-          network_->interface_index(), IPAddress(ipv6_addr),
-          NeighborSignal::GATEWAY_AND_DNS_SERVER, NeighborSignal::REACHABLE))
+  EXPECT_CALL(event_handler2_, OnNeighborReachabilityEvent(
+                                   network_->interface_index(), ipv6_addr,
+                                   NeighborSignal::GATEWAY_AND_DNS_SERVER,
+                                   NeighborSignal::REACHABLE))
       .Times(1);
   NeighborSignal signal2;
   signal2.set_ifindex(1);
-  signal2.set_ip_addr(ipv6_addr);
+  signal2.set_ip_addr(ipv6_addr_str);
   signal2.set_role(NeighborSignal::GATEWAY_AND_DNS_SERVER);
   signal2.set_type(NeighborSignal::REACHABLE);
   network_->OnNeighborReachabilityEvent(signal2);
@@ -542,14 +542,14 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
 
   // Connected and IPv4 configured, IPv6 reachability signals are ignored.
   EXPECT_CALL(event_handler_,
-              OnNeighborReachabilityEvent(
-                  network_->interface_index(), IPAddress(ipv4_addr),
-                  NeighborSignal::GATEWAY, NeighborSignal::REACHABLE))
+              OnNeighborReachabilityEvent(network_->interface_index(),
+                                          ipv4_addr, NeighborSignal::GATEWAY,
+                                          NeighborSignal::REACHABLE))
       .Times(1);
   EXPECT_CALL(event_handler2_,
-              OnNeighborReachabilityEvent(
-                  network_->interface_index(), IPAddress(ipv4_addr),
-                  NeighborSignal::GATEWAY, NeighborSignal::REACHABLE))
+              OnNeighborReachabilityEvent(network_->interface_index(),
+                                          ipv4_addr, NeighborSignal::GATEWAY,
+                                          NeighborSignal::REACHABLE))
       .Times(1);
   network_->set_ipconfig(
       std::make_unique<IPConfig>(&control_interface_, kTestIfname));
@@ -562,20 +562,18 @@ TEST_F(NetworkTest, NeighborReachabilityEvents) {
   Mock::VerifyAndClearExpectations(&event_handler_);
   Mock::VerifyAndClearExpectations(&event_handler2_);
 
-  // Disconnected, reonnected and IPv6 configured, IPv4 reachability signals are
-  // ignored.
+  // Disconnected, reconnected and IPv6 configured, IPv4 reachability signals
+  // are ignored.
   ExpectCreateDHCPController(true);
-  EXPECT_CALL(
-      event_handler_,
-      OnNeighborReachabilityEvent(
-          network_->interface_index(), IPAddress(ipv6_addr),
-          NeighborSignal::GATEWAY_AND_DNS_SERVER, NeighborSignal::REACHABLE))
+  EXPECT_CALL(event_handler_, OnNeighborReachabilityEvent(
+                                  network_->interface_index(), ipv6_addr,
+                                  NeighborSignal::GATEWAY_AND_DNS_SERVER,
+                                  NeighborSignal::REACHABLE))
       .Times(1);
-  EXPECT_CALL(
-      event_handler2_,
-      OnNeighborReachabilityEvent(
-          network_->interface_index(), IPAddress(ipv6_addr),
-          NeighborSignal::GATEWAY_AND_DNS_SERVER, NeighborSignal::REACHABLE))
+  EXPECT_CALL(event_handler2_, OnNeighborReachabilityEvent(
+                                   network_->interface_index(), ipv6_addr,
+                                   NeighborSignal::GATEWAY_AND_DNS_SERVER,
+                                   NeighborSignal::REACHABLE))
       .Times(1);
   network_->Stop();
   network_->Start(Network::StartOptions{.dhcp = DHCPProvider::Options{},
@@ -1082,17 +1080,19 @@ class NetworkStartTest : public NetworkTest {
   }
 
   void TriggerSLAACUpdate() {
-    TriggerSLAACNameServersUpdate({IPAddress(kIPv6SLAACNameserver)});
+    TriggerSLAACNameServersUpdate(
+        {*IPAddress::CreateFromString(kIPv6SLAACNameserver)});
     TriggerSLAACAddressUpdate();
   }
 
   void TriggerSLAACAddressUpdate() {
     EXPECT_CALL(routing_table_, GetDefaultRouteFromKernel(kTestIfindex, _))
         .WillRepeatedly(WithArg<1>([](RoutingTableEntry* entry) {
-          entry->gateway = IPAddress(kIPv6SLAACGateway);
+          entry->gateway = *IPAddress::CreateFromString(kIPv6SLAACGateway);
           return true;
         }));
-    static IPAddress addr(kIPv6SLAACAddress, kIPv6SLAACPrefix);
+    static IPAddress addr = *IPAddress::CreateFromStringAndPrefix(
+        kIPv6SLAACAddress, kIPv6SLAACPrefix);
     EXPECT_CALL(*slaac_controller_, GetAddresses())
         .WillRepeatedly(Return(std::vector<IPAddress>{addr}));
     slaac_controller_->TriggerCallback(SLAACController::UpdateType::kAddress);
@@ -1415,7 +1415,7 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACAddressChangeEvent) {
   ON_CALL(*connection_, IsIPv6()).WillByDefault(Return(true));
 
   // Changing the address should trigger the connection update.
-  IPAddress new_addr("fe80::1aa9:5ff:abcd:1234");
+  IPAddress new_addr = *IPAddress::CreateFromString("fe80::1aa9:5ff:abcd:1234");
   EXPECT_CALL(*slaac_controller_, GetAddresses())
       .WillRepeatedly(Return(std::vector<IPAddress>{new_addr}));
   EXPECT_CALL(event_handler_, OnConnectionUpdated(network_->interface_index()));
@@ -1462,7 +1462,8 @@ TEST_F(NetworkStartTest, IPv6OnlySLAACDNSServerChangeEvent) {
   TriggerSLAACAddressUpdate();
   EXPECT_EQ(network_->state(), Network::State::kConfiguring);
 
-  const IPAddress dns_server(kIPv6SLAACNameserver);
+  const IPAddress dns_server =
+      *IPAddress::CreateFromString(kIPv6SLAACNameserver);
 
   // A valid DNS should bring the network up.
   ExpectCreateConnectionWithIPConfig(IPConfigType::kIPv6SLAAC);

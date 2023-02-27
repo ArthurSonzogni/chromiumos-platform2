@@ -74,8 +74,9 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
     CHECK(route_iterator != route_strings.end());
     const auto& gateway_as_string = *route_iterator;
     route_iterator++;
-    IPAddress gateway(IPAddress::kFamilyIPv4);
-    if (!gateway.SetAddressFromString(gateway_as_string)) {
+    const auto gateway =
+        IPAddress::CreateFromString(gateway_as_string, IPAddress::kFamilyIPv4);
+    if (!gateway.has_value()) {
       LOG(ERROR) << "In " << __func__ << ": Expected a router IP address "
                  << "but got an unparsable: " << gateway_as_string;
       return false;
@@ -86,12 +87,12 @@ bool DHCPv4Config::ParseClasslessStaticRoutes(
       // we don't already have one, apply this as the default route.
       SLOG(2) << "In " << __func__ << ": Setting default gateway to "
               << gateway_as_string;
-      CHECK(gateway.IntoString(&properties->gateway));
+      CHECK(gateway->IntoString(&properties->gateway));
     } else {
       IPConfig::Route route;
       CHECK(destination->IntoString(&route.host));
       route.prefix = destination->prefix();
-      CHECK(gateway.IntoString(&route.gateway));
+      CHECK(gateway->IntoString(&route.gateway));
       routes.push_back(route);
       SLOG(2) << "In " << __func__ << ": Adding route to to "
               << destination_as_string << " via " << gateway_as_string;

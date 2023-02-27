@@ -71,28 +71,35 @@ void SLAACController::AddressMsgHandler(const RTNLMessage& msg) {
   if (msg.interface_index() != interface_index_) {
     return;
   }
-  const RTNLMessage::AddressStatus& status = msg.address_status();
-  IPAddress address(msg.family(),
-                    msg.HasAttribute(IFA_LOCAL) ? msg.GetAttribute(IFA_LOCAL)
-                                                : msg.GetAttribute(IFA_ADDRESS),
-                    status.prefix_len);
 
-  if (address.family() != IPAddress::kFamilyIPv6 ||
+  const RTNLMessage::AddressStatus& status = msg.address_status();
+  if (msg.family() != IPAddress::kFamilyIPv6 ||
       status.scope != RT_SCOPE_UNIVERSE || (status.flags & IFA_F_PERMANENT)) {
     // SLAACController only monitors IPv6 global address that is not PERMANENT.
+    return;
+  }
+
+  const auto addr_bytes = msg.HasAttribute(IFA_LOCAL)
+                              ? msg.GetAttribute(IFA_LOCAL)
+                              : msg.GetAttribute(IFA_ADDRESS);
+  const auto address = IPAddress::CreateFromByteStringAndPrefix(
+      msg.family(), addr_bytes, status.prefix_len);
+  if (!address.has_value()) {
+    LOG(ERROR) << "Failed to create IPAddress: length="
+               << addr_bytes.GetLength();
     return;
   }
 
   std::vector<AddressData>::iterator iter;
   for (iter = slaac_addresses_.begin(); iter != slaac_addresses_.end();
        ++iter) {
-    if (address.Equals(iter->address)) {
+    if (*address == iter->address) {
       break;
     }
   }
   if (iter != slaac_addresses_.end()) {
     if (msg.mode() == RTNLMessage::kModeDelete) {
-      LOG(INFO) << "RTNL cache: Delete address " << address.ToString()
+      LOG(INFO) << "RTNL cache: Delete address " << address->ToString()
                 << " for interface " << interface_index_;
       slaac_addresses_.erase(iter);
     } else {
@@ -101,14 +108,14 @@ void SLAACController::AddressMsgHandler(const RTNLMessage& msg) {
     }
   } else {
     if (msg.mode() == RTNLMessage::kModeAdd) {
-      LOG(INFO) << "RTNL cache: Add address " << address.ToString()
+      LOG(INFO) << "RTNL cache: Add address " << address->ToString()
                 << " for interface " << interface_index_;
       slaac_addresses_.insert(
           slaac_addresses_.begin(),
-          AddressData(std::move(address), status.flags, status.scope));
+          AddressData(std::move(*address), status.flags, status.scope));
     } else if (msg.mode() == RTNLMessage::kModeDelete) {
       LOG(WARNING) << "RTNL cache: Deleting non-cached address "
-                   << address.ToString() << " for interface "
+                   << address->ToString() << " for interface "
                    << interface_index_;
     }
   }
