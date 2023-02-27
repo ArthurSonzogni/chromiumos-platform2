@@ -561,6 +561,17 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
         return false;
       }
 
+      // Wait for partitions to be re-read after calling UpdatePartitionTable
+      // otherwise the mount call in ESPPostInstall races with udevd.
+      int settle_result = RunCommand({"udevadm", "settle", "--timeout=10"});
+      if (settle_result < 0) {
+        LOG(INFO) << "Failed to run udevadm settle --timeout=10. "
+                  << "Returned value is " << settle_result << ". "
+                  << "Continuing with the post install process because a "
+                     "failure here does not necessarily prevent the post "
+                     "install from succeeding.";
+      }
+
       // For Chromebook firmware (`BiosType::kSecure`) the new partition has now
       // been marked bootable (for most devices, see Note below) and a reboot
       // will boot into it. Thus, it's important that any future errors in this
