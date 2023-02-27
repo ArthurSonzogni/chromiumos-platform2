@@ -835,5 +835,16 @@ TEST(ArcVmTest, PrivacyHubForChromeDisabled) {
   EXPECT_TRUE(
       base::Contains(params, "androidboot.enable_privacy_hub_for_chrome=0"));
 }
+
+TEST(ArcVmTest, GetOemEtcSharedDataParam) {
+  EXPECT_EQ(
+      GetOemEtcSharedDataParam(299 /* uid */,
+                               // gid is usually 299 but use a different value
+                               // from UID for ease of testing.
+                               300 /* gid */),
+      "/run/arcvm/host_generated/oem/etc"
+      ":oem_etc:type=fs:cache=always:uidmap=0 299 1, 5000 600 50:gidmap=0 300 "
+      "1, 5000 600 50:timeout=3600:rewrite-security-xattrs=true");
+}
 }  // namespace concierge
 }  // namespace vm_tools

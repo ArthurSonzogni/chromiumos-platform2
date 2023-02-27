@@ -232,6 +232,19 @@ std::string GetChromeOsChannelFromLsbRelease() {
 
 }  // namespace
 
+std::string GetOemEtcSharedDataParam(uid_t euid, gid_t egid) {
+  std::string oem_etc_uid_map =
+      base::StringPrintf(kOemEtcUgidMapTemplate, euid);
+  std::string oem_etc_gid_map =
+      base::StringPrintf(kOemEtcUgidMapTemplate, egid);
+  std::string oem_etc_shared_dir = base::StringPrintf(
+      "%s:%s:type=fs:cache=always:uidmap=%s:gidmap=%s:timeout=3600:rewrite-"
+      "security-xattrs=true",
+      kOemEtcSharedDir, kOemEtcSharedDirTag, oem_etc_uid_map.c_str(),
+      oem_etc_gid_map.c_str());
+  return oem_etc_shared_dir;
+}
+
 ArcVm::ArcVm(int32_t vsock_cid,
              std::unique_ptr<patchpanel::Client> network_client,
              std::unique_ptr<SeneschalServerProxy> seneschal_server_proxy,
@@ -315,16 +328,6 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
     vm_builder.EnableVideoEncoder(true /* enable */);
   }
 
-  std::string oem_etc_uid_map =
-      base::StringPrintf(kOemEtcUgidMapTemplate, geteuid());
-  std::string oem_etc_gid_map =
-      base::StringPrintf(kOemEtcUgidMapTemplate, getegid());
-  std::string oem_etc_shared_dir = base::StringPrintf(
-      "%s:%s:type=fs:cache=always:uidmap=%s:gidmap=%s:timeout=3600:rewrite-"
-      "security-xattrs=true",
-      kOemEtcSharedDir, kOemEtcSharedDirTag, oem_etc_uid_map.c_str(),
-      oem_etc_gid_map.c_str());
-
   const base::FilePath jemalloc_config_file(kJemallocConfigFile);
 
   // Create a config symlink for memory-rich devices.
@@ -365,7 +368,7 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       // Each shared directory is a new PCI device, before adding a new shared
       // directory configuration, please consult if you really do need to add a
       // new PCI device. TODO(b/237618542): Unify these.
-      .AppendSharedDir(oem_etc_shared_dir)
+      .AppendSharedDir(GetOemEtcSharedDataParam(geteuid(), getegid()))
       .AppendSharedDir(
           SharedDataParam{.data_dir = base::FilePath(kTestHarnessSharedDir),
                           .tag = kTestHarnessSharedDirTag,

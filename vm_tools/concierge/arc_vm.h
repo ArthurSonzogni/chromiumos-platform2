@@ -60,6 +60,9 @@ struct ArcVmFeatures {
   bool vmm_swap_enabled;
 };
 
+// Obtain virtiofs shared dir command-line parameter string for oem directory.
+std::string GetOemEtcSharedDataParam(uid_t euid, gid_t egid);
+
 // Represents a single instance of a running termina VM.
 class ArcVm final : public VmBaseImpl {
  public:
