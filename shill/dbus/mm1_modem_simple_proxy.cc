@@ -48,14 +48,17 @@ void ModemSimpleProxy::Connect(const KeyValueStore& properties,
 }
 
 void ModemSimpleProxy::Disconnect(const RpcIdentifier& bearer,
-                                  const ResultCallback& callback,
+                                  ResultOnceCallback callback,
                                   int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << bearer.value();
+  auto split_callback = base::SplitOnceCallback(std::move(callback));
   proxy_->DisconnectAsync(dbus::ObjectPath(bearer),
                           base::BindOnce(&ModemSimpleProxy::OnDisconnectSuccess,
-                                         weak_factory_.GetWeakPtr(), callback),
+                                         weak_factory_.GetWeakPtr(),
+                                         std::move(split_callback.first)),
                           base::BindOnce(&ModemSimpleProxy::OnDisconnectFailure,
-                                         weak_factory_.GetWeakPtr(), callback),
+                                         weak_factory_.GetWeakPtr(),
+                                         std::move(split_callback.second)),
                           timeout);
 }
 
@@ -73,17 +76,17 @@ void ModemSimpleProxy::OnConnectFailure(RpcIdentifierCallback callback,
   std::move(callback).Run(RpcIdentifier(""), error);
 }
 
-void ModemSimpleProxy::OnDisconnectSuccess(const ResultCallback& callback) {
+void ModemSimpleProxy::OnDisconnectSuccess(ResultOnceCallback callback) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
-  callback.Run(Error());
+  std::move(callback).Run(Error());
 }
 
-void ModemSimpleProxy::OnDisconnectFailure(const ResultCallback& callback,
+void ModemSimpleProxy::OnDisconnectFailure(ResultOnceCallback callback,
                                            brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromMM1ChromeosDBusError(dbus_error, &error);
-  callback.Run(error);
+  std::move(callback).Run(error);
 }
 
 }  // namespace mm1

@@ -20,17 +20,16 @@ class SimProxyInterface {
  public:
   virtual ~SimProxyInterface() = default;
 
-  virtual void SendPin(const std::string& pin,
-                       const ResultCallback& callback) = 0;
+  virtual void SendPin(const std::string& pin, ResultOnceCallback callback) = 0;
   virtual void SendPuk(const std::string& puk,
                        const std::string& pin,
-                       const ResultCallback& callback) = 0;
+                       ResultOnceCallback callback) = 0;
   virtual void EnablePin(const std::string& pin,
                          const bool enabled,
-                         const ResultCallback& callback) = 0;
+                         ResultOnceCallback callback) = 0;
   virtual void ChangePin(const std::string& old_pin,
                          const std::string& new_pin,
-                         const ResultCallback& callback) = 0;
+                         ResultOnceCallback callback) = 0;
 };
 
 }  // namespace mm1

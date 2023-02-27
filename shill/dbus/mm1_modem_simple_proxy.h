@@ -32,7 +32,7 @@ class ModemSimpleProxy : public ModemSimpleProxyInterface {
                RpcIdentifierCallback callback,
                int timeout) override;
   void Disconnect(const RpcIdentifier& bearer,
-                  const ResultCallback& callback,
+                  ResultOnceCallback callback,
                   int timeout) override;
 
  private:
@@ -42,8 +42,8 @@ class ModemSimpleProxy : public ModemSimpleProxyInterface {
   void OnConnectFailure(RpcIdentifierCallback callback, brillo::Error* error);
 
   // Callbacks for Disconnect async call.
-  void OnDisconnectSuccess(const ResultCallback& callback);
-  void OnDisconnectFailure(const ResultCallback& callbac,
+  void OnDisconnectSuccess(ResultOnceCallback callback);
+  void OnDisconnectFailure(ResultOnceCallback callback,
                            brillo::Error* dbus_error);
 
   std::unique_ptr<org::freedesktop::ModemManager1::Modem::SimpleProxy> proxy_;

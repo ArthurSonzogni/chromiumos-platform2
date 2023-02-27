@@ -30,15 +30,15 @@ class ModemModem3gppProxy : public ModemModem3gppProxyInterface {
   ~ModemModem3gppProxy() override;
   // Inherited methods from ModemModem3gppProxyInterface.
   void Register(const std::string& operator_id,
-                const ResultCallback& callback) override;
+                ResultOnceCallback callback) override;
   void Scan(KeyValueStoresCallback callback) override;
   void SetInitialEpsBearerSettings(const KeyValueStore& properties,
-                                   const ResultCallback& callback) override;
+                                   ResultOnceCallback callback) override;
 
  private:
   // Callbacks for Register async call.
-  void OnRegisterSuccess(const ResultCallback& callback);
-  void OnRegisterFailure(const ResultCallback& callback,
+  void OnRegisterSuccess(ResultOnceCallback callback);
+  void OnRegisterFailure(ResultOnceCallback callback,
                          brillo::Error* dbus_error);
 
   // Callbacks for Scan async call.
@@ -48,8 +48,8 @@ class ModemModem3gppProxy : public ModemModem3gppProxyInterface {
                      brillo::Error* dbus_error);
 
   // Callbacks for SetInitialEpsBearerSettings async call.
-  void OnSetInitialEpsBearerSettingsSuccess(const ResultCallback& callback);
-  void OnSetInitialEpsBearerSettingsFailure(const ResultCallback& callback,
+  void OnSetInitialEpsBearerSettingsSuccess(ResultOnceCallback callback);
+  void OnSetInitialEpsBearerSettingsFailure(ResultOnceCallback callback,
                                             brillo::Error* dbus_error);
 
   std::unique_ptr<org::freedesktop::ModemManager1::Modem::Modem3gppProxy>

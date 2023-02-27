@@ -25,7 +25,7 @@ class ModemSignalProxyInterface {
 
   virtual void Setup(const int rate,
                      Error* error,
-                     const ResultCallback& callback,
+                     ResultOnceCallback callback,
                      int timeout) = 0;
 };
 

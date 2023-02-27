@@ -451,14 +451,15 @@ void CellularCapability3gpp::EnableModemCompleted(ResultOnceCallback callback,
   if (IsLocationUpdateSupported()) {
     SetupLocation(MM_MODEM_LOCATION_SOURCE_3GPP_LAC_CI,
                   /*signal_location=*/false,
-                  base::Bind(&CellularCapability3gpp::OnSetupLocationReply,
-                             weak_ptr_factory_.GetWeakPtr()));
+                  base::BindOnce(&CellularCapability3gpp::OnSetupLocationReply,
+                                 weak_ptr_factory_.GetWeakPtr()));
   }
 
-  ResultCallback setup_signal_callback =
-      base::Bind(&CellularCapability3gpp::OnSetupSignalReply,
-                 weak_ptr_factory_.GetWeakPtr());
-  SetupSignal(kSignalQualityUpdateRateSeconds, setup_signal_callback);
+  ResultOnceCallback setup_signal_callback =
+      base::BindOnce(&CellularCapability3gpp::OnSetupSignalReply,
+                     weak_ptr_factory_.GetWeakPtr());
+  SetupSignal(kSignalQualityUpdateRateSeconds,
+              std::move(setup_signal_callback));
 
   // Try to get profiles list from the modem, and then call the callback
   // to complete the enabling process.
@@ -567,7 +568,7 @@ void CellularCapability3gpp::Stop_Completed(ResultOnceCallback callback,
   std::move(callback).Run(error);
 }
 
-void CellularCapability3gpp::Connect(const ResultCallback& callback) {
+void CellularCapability3gpp::Connect(ResultOnceCallback callback) {
   SLOG(this, 3) << __func__;
   DCHECK(callback);
 
@@ -578,22 +579,22 @@ void CellularCapability3gpp::Connect(const ResultCallback& callback) {
 
   SLOG(this, 2) << "Connection request started with " << apn_try_list_.size()
                 << " APNs to try";
-  CallConnect(SetupNextConnectProperties(), callback);
+  CallConnect(SetupNextConnectProperties(), std::move(callback));
 }
 
-void CellularCapability3gpp::Disconnect(const ResultCallback& callback) {
+void CellularCapability3gpp::Disconnect(ResultOnceCallback callback) {
   SLOG(this, 3) << __func__;
   if (!modem_simple_proxy_) {
     Error error;
     Error::PopulateAndLog(FROM_HERE, &error, Error::kWrongState, "No proxy");
-    callback.Run(error);
+    std::move(callback).Run(error);
     return;
   }
 
   SLOG(this, 2) << "Disconnect all bearers.";
   // If "/" is passed as the bearer path, ModemManager will disconnect all
   // bearers.
-  modem_simple_proxy_->Disconnect(kRootPath, callback,
+  modem_simple_proxy_->Disconnect(kRootPath, std::move(callback),
                                   kTimeoutDisconnect.InMilliseconds());
 }
 
@@ -886,16 +887,16 @@ void CellularCapability3gpp::SetApnProperties(const Stringmap& apn_info,
 }
 
 void CellularCapability3gpp::CallConnect(const KeyValueStore& properties,
-                                         const ResultCallback& callback) {
+                                         ResultOnceCallback callback) {
   SLOG(this, 3) << __func__;
   modem_simple_proxy_->Connect(
       properties,
-      base::Bind(&CellularCapability3gpp::OnConnectReply,
-                 weak_ptr_factory_.GetWeakPtr(), callback),
+      base::BindOnce(&CellularCapability3gpp::OnConnectReply,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)),
       kTimeoutConnect.InMilliseconds());
 }
 
-void CellularCapability3gpp::OnConnectReply(const ResultCallback& callback,
+void CellularCapability3gpp::OnConnectReply(ResultOnceCallback callback,
                                             const RpcIdentifier& bearer,
                                             const Error& error) {
   SLOG(this, 3) << __func__ << "(" << error << ")";
@@ -907,7 +908,7 @@ void CellularCapability3gpp::OnConnectReply(const ResultCallback& callback,
     // The service could have been deleted before our Connect() request
     // completes if the modem was enabled and then quickly disabled.
     apn_try_list_.clear();
-    callback.Run(error);
+    std::move(callback).Run(error);
     return;
   }
 
@@ -916,9 +917,11 @@ void CellularCapability3gpp::OnConnectReply(const ResultCallback& callback,
 
   if (error.IsFailure()) {
     service->ClearLastGoodApn();
-    if (!RetriableConnectError(error) || !ConnectToNextApn(callback)) {
+    auto split_callback = base::SplitOnceCallback(std::move(callback));
+    if (!RetriableConnectError(error) ||
+        !ConnectToNextApn(std::move(split_callback.first))) {
       apn_try_list_.clear();
-      callback.Run(error);
+      std::move(split_callback.second).Run(error);
     }
     return;
   }
@@ -927,10 +930,10 @@ void CellularCapability3gpp::OnConnectReply(const ResultCallback& callback,
 
   SLOG(this, 2) << "Connected bearer " << bearer.value();
   UpdatePendingActivationState();
-  callback.Run(error);
+  std::move(callback).Run(error);
 }
 
-bool CellularCapability3gpp::ConnectToNextApn(const ResultCallback& callback) {
+bool CellularCapability3gpp::ConnectToNextApn(ResultOnceCallback callback) {
   // Remove the APN that was just tried and failed.
   apn_try_list_.pop_front();
 
@@ -942,7 +945,7 @@ bool CellularCapability3gpp::ConnectToNextApn(const ResultCallback& callback) {
 
   SLOG(this, 2) << "Connect failed with invalid APN, " << apn_try_list_.size()
                 << " remaining APNs to try";
-  CallConnect(SetupNextConnectProperties(), callback);
+  CallConnect(SetupNextConnectProperties(), std::move(callback));
   return true;
 }
 
@@ -1124,33 +1127,33 @@ bool CellularCapability3gpp::IsMdnValid() const {
 }
 
 // always called from an async context
-void CellularCapability3gpp::Register(const ResultCallback& callback) {
+void CellularCapability3gpp::Register(ResultOnceCallback callback) {
   SLOG(this, 3) << __func__ << " \"" << cellular()->selected_network() << "\"";
   CHECK(!callback.is_null());
   modem_3gpp_proxy_->Register(
       cellular()->selected_network(),
-      base::BindRepeating(&CellularCapability3gpp::OnRegisterReply,
-                          weak_ptr_factory_.GetWeakPtr(), callback));
+      base::BindOnce(&CellularCapability3gpp::OnRegisterReply,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
 void CellularCapability3gpp::RegisterOnNetwork(const std::string& network_id,
-                                               const ResultCallback& callback) {
+                                               ResultOnceCallback callback) {
   SLOG(this, 3) << __func__ << "(" << network_id << ")";
   desired_network_ = network_id;
   modem_3gpp_proxy_->Register(
       network_id,
-      base::BindRepeating(&CellularCapability3gpp::OnRegisterReply,
-                          weak_ptr_factory_.GetWeakPtr(), callback));
+      base::BindOnce(&CellularCapability3gpp::OnRegisterReply,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
-void CellularCapability3gpp::OnRegisterReply(const ResultCallback& callback,
+void CellularCapability3gpp::OnRegisterReply(ResultOnceCallback callback,
                                              const Error& error) {
   SLOG(this, 3) << __func__ << "(" << error << ")";
 
   if (error.IsSuccess()) {
     cellular()->SetSelectedNetwork(desired_network_);
     desired_network_.clear();
-    callback.Run(error);
+    std::move(callback).Run(error);
     return;
   }
   // If registration on the desired network failed,
@@ -1159,10 +1162,10 @@ void CellularCapability3gpp::OnRegisterReply(const ResultCallback& callback,
     desired_network_.clear();
     cellular()->SetSelectedNetwork(std::string());
     LOG(INFO) << "Couldn't register on selected network, trying home network";
-    Register(callback);
+    Register(std::move(callback));
     return;
   }
-  callback.Run(error);
+  std::move(callback).Run(error);
 }
 
 bool CellularCapability3gpp::IsRegistered() const {
@@ -1181,55 +1184,56 @@ void CellularCapability3gpp::SetUnregistered(bool searching) {
 
 void CellularCapability3gpp::RequirePin(const std::string& pin,
                                         bool require,
-                                        const ResultCallback& callback) {
-  sim_proxy_->EnablePin(pin, require, callback);
+                                        ResultOnceCallback callback) {
+  sim_proxy_->EnablePin(pin, require, std::move(callback));
 }
 
 void CellularCapability3gpp::EnterPin(const std::string& pin,
-                                      const ResultCallback& callback) {
+                                      ResultOnceCallback callback) {
   SLOG(this, 3) << __func__;
-  sim_proxy_->SendPin(pin, callback);
+  sim_proxy_->SendPin(pin, std::move(callback));
 }
 
 void CellularCapability3gpp::UnblockPin(const std::string& unblock_code,
                                         const std::string& pin,
-                                        const ResultCallback& callback) {
-  sim_proxy_->SendPuk(unblock_code, pin, callback);
+                                        ResultOnceCallback callback) {
+  sim_proxy_->SendPuk(unblock_code, pin, std::move(callback));
 }
 
 void CellularCapability3gpp::ChangePin(const std::string& old_pin,
                                        const std::string& new_pin,
-                                       const ResultCallback& callback) {
-  sim_proxy_->ChangePin(old_pin, new_pin, callback);
+                                       ResultOnceCallback callback) {
+  sim_proxy_->ChangePin(old_pin, new_pin, std::move(callback));
 }
 
-void CellularCapability3gpp::Reset(const ResultCallback& callback) {
+void CellularCapability3gpp::Reset(ResultOnceCallback callback) {
   SLOG(this, 3) << __func__;
   if (resetting_) {
     Error error;
     Error::PopulateAndLog(FROM_HERE, &error, Error::kInProgress,
                           "Already resetting");
-    callback.Run(error);
+    std::move(callback).Run(error);
     return;
   }
   if (!modem_proxy_) {
     Error error;
     Error::PopulateAndLog(FROM_HERE, &error, Error::kWrongState, "No proxy");
-    callback.Run(error);
+    std::move(callback).Run(error);
     return;
   }
   resetting_ = true;
-  ResultCallback cb = base::Bind(&CellularCapability3gpp::OnResetReply,
-                                 weak_ptr_factory_.GetWeakPtr(), callback);
-  modem_proxy_->Reset(cb, kTimeoutReset.InMilliseconds());
+  ResultOnceCallback cb =
+      base::BindOnce(&CellularCapability3gpp::OnResetReply,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback));
+  modem_proxy_->Reset(std::move(cb), kTimeoutReset.InMilliseconds());
 }
 
-void CellularCapability3gpp::OnResetReply(const ResultCallback& callback,
+void CellularCapability3gpp::OnResetReply(ResultOnceCallback callback,
                                           const Error& error) {
   SLOG(this, 3) << __func__;
   resetting_ = false;
   if (!callback.is_null())
-    callback.Run(error);
+    std::move(callback).Run(error);
 }
 
 void CellularCapability3gpp::Scan(base::OnceClosure started_callback,
@@ -1331,23 +1335,22 @@ Stringmap CellularCapability3gpp::ParseScanResult(const ScanResult& result) {
 }
 
 void CellularCapability3gpp::SetInitialEpsBearer(
-    const KeyValueStore& properties,
-    const ResultCallback& callback) {
+    const KeyValueStore& properties, ResultOnceCallback callback) {
   SLOG(this, 3) << __func__;
   if (!modem_3gpp_proxy_) {
     SLOG(this, 3) << __func__ << " skipping, no 3GPP proxy";
-    callback.Run(Error(Error::kWrongState));
+    std::move(callback).Run(Error(Error::kWrongState));
     return;
   }
 
   modem_3gpp_proxy_->SetInitialEpsBearerSettings(
       properties,
-      base::BindRepeating(&CellularCapability3gpp::OnSetInitialEpsBearerReply,
-                          weak_ptr_factory_.GetWeakPtr(), callback));
+      base::BindOnce(&CellularCapability3gpp::OnSetInitialEpsBearerReply,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
 void CellularCapability3gpp::OnSetInitialEpsBearerReply(
-    const ResultCallback& callback, const Error& error) {
+    ResultOnceCallback callback, const Error& error) {
   SLOG(this, 3) << __func__;
 
   CellularServiceRefPtr service = cellular()->service();
@@ -1357,7 +1360,7 @@ void CellularCapability3gpp::OnSetInitialEpsBearerReply(
     last_attach_apn_.clear();
     if (service)
       service->ClearLastAttachApn();
-    callback.Run(error);
+    std::move(callback).Run(error);
     return;
   }
 
@@ -1367,27 +1370,28 @@ void CellularCapability3gpp::OnSetInitialEpsBearerReply(
     // and then quickly disabled.
     SLOG(this, 2) << __func__ << ": Cellular service does not exist.";
     last_attach_apn_.clear();
-    callback.Run(Error(Error::kNotFound));
+    std::move(callback).Run(Error(Error::kNotFound));
     return;
   }
 
   service->SetLastAttachApn(last_attach_apn_);
-  callback.Run(Error(Error::kSuccess));
+  std::move(callback).Run(Error(Error::kSuccess));
 }
 
 void CellularCapability3gpp::SetupLocation(uint32_t sources,
                                            bool signal_location,
-                                           const ResultCallback& callback) {
+                                           ResultOnceCallback callback) {
   Error error;
-  modem_location_proxy_->Setup(sources, signal_location, &error, callback,
+  modem_location_proxy_->Setup(sources, signal_location, &error,
+                               std::move(callback),
                                kTimeoutSetupLocation.InMilliseconds());
 }
 
 void CellularCapability3gpp::SetupSignal(uint32_t rate,
-                                         const ResultCallback& callback) {
+                                         ResultOnceCallback callback) {
   SLOG(this, 3) << __func__;
   Error error;
-  modem_signal_proxy_->Setup(rate, &error, callback,
+  modem_signal_proxy_->Setup(rate, &error, std::move(callback),
                              kTimeoutSetupSignal.InMilliseconds());
 }
 
@@ -1783,7 +1787,7 @@ void CellularCapability3gpp::SetPrimarySimSlot(size_t slot) {
     return;
   }
   modem_proxy_->SetPrimarySimSlot(
-      slot_id, base::Bind([](const Error& error) {
+      slot_id, base::BindOnce([](const Error& error) {
         if (error.IsFailure()) {
           LOG(ERROR) << "Error Setting Primary SIM slot: " << error;
         } else {
@@ -2305,10 +2309,10 @@ void CellularCapability3gpp::RequestSimProperties(size_t slot,
   DBusPropertiesProxy* sim_properties_proxy_ptr = sim_properties_proxy.get();
   sim_properties_proxy_ptr->GetAllAsync(
       MM_DBUS_INTERFACE_SIM,
-      base::Bind(&CellularCapability3gpp::OnGetSimProperties,
-                 weak_ptr_factory_.GetWeakPtr(), slot, sim_path,
-                 base::Passed(&sim_properties_proxy)),
-      base::Bind([](const Error& error) {
+      base::BindOnce(&CellularCapability3gpp::OnGetSimProperties,
+                     weak_ptr_factory_.GetWeakPtr(), slot, sim_path,
+                     std::move(sim_properties_proxy)),
+      base::BindOnce([](const Error& error) {
         LOG(ERROR) << "Error fetching SIM properties: " << error;
       }));
 }

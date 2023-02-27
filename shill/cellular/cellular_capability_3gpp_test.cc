@@ -382,8 +382,8 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
   }
 
   void CallConnect(const KeyValueStore& properties,
-                   const ResultCallback& callback) {
-    capability_->CallConnect(properties, callback);
+                   ResultOnceCallback callback) {
+    capability_->CallConnect(properties, std::move(callback));
   }
 
   void StartModem(Error* error) {
@@ -775,12 +775,12 @@ TEST_F(CellularCapability3gppTest, TerminationActionRemovedByStopModem) {
 TEST_F(CellularCapability3gppTest, DisconnectNoProxy) {
   mm1::MockModemSimpleProxy* modem_simple_proxy = modem_simple_proxy_.get();
   SetSimpleProxy();
-  ResultCallback callback = base::BindRepeating(
+  ResultOnceCallback callback = base::BindOnce(
       &CellularCapability3gppTest::TestCallback, base::Unretained(this));
   EXPECT_CALL(*modem_simple_proxy, Disconnect(_, _, _)).Times(0);
   ReleaseCapabilityProxies();
   EXPECT_CALL(*this, TestCallback(IsFailure()));
-  capability_->Disconnect(callback);
+  capability_->Disconnect(std::move(callback));
 }
 
 TEST_F(CellularCapability3gppTest, SimLockStatusChanged) {
@@ -1353,13 +1353,14 @@ TEST_F(CellularCapability3gppTest, SetInitialEpsBearer) {
   constexpr char kTestApn[] = "test_apn";
   KeyValueStore properties;
   Error error;
-  ResultCallback callback = base::Bind(
+  ResultOnceCallback callback = base::BindOnce(
       &CellularCapability3gppTest::TestCallback, base::Unretained(this));
 
-  ResultCallback set_callback;
+  ResultOnceCallback set_callback;
   EXPECT_CALL(*modem_3gpp_proxy_, SetInitialEpsBearerSettings(_, _))
       .Times(1)
-      .WillOnce(SaveArg<1>(&set_callback));
+      .WillOnce(WithArg<1>(
+          [&](ResultOnceCallback cb) { set_callback = std::move(cb); }));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   properties.Set<std::string>(CellularBearer::kMMApnProperty, kTestApn);
 
@@ -1367,7 +1368,7 @@ TEST_F(CellularCapability3gppTest, SetInitialEpsBearer) {
 
   InitProxies();
   capability_->SetInitialEpsBearer(properties, std::move(callback));
-  set_callback.Run(Error(Error::kSuccess));
+  std::move(set_callback).Run(Error(Error::kSuccess));
 }
 
 // Validates FillConnectPropertyMap
@@ -1484,8 +1485,8 @@ TEST_F(CellularCapability3gppTest, Connect) {
   mm1::MockModemSimpleProxy* modem_simple_proxy = modem_simple_proxy_.get();
   SetSimpleProxy();
   SetApnTryList({});
-  ResultCallback callback = base::Bind(
-      &CellularCapability3gppTest::TestCallback, base::Unretained(this));
+  auto callback = base::BindRepeating(&CellularCapability3gppTest::TestCallback,
+                                      base::Unretained(this));
   RpcIdentifier bearer("/foo");
 
   // Test connect failures
@@ -1519,7 +1520,7 @@ TEST_F(CellularCapability3gppTest, Connect) {
 TEST_F(CellularCapability3gppTest, ConnectApns) {
   mm1::MockModemSimpleProxy* modem_simple_proxy = modem_simple_proxy_.get();
   SetSimpleProxy();
-  ResultCallback callback = base::BindRepeating(
+  ResultOnceCallback callback = base::BindOnce(
       &CellularCapability3gppTest::TestCallback, base::Unretained(this));
   RpcIdentifier bearer("/bearer0");
 
@@ -1537,7 +1538,7 @@ TEST_F(CellularCapability3gppTest, ConnectApns) {
   EXPECT_CALL(*modem_simple_proxy, Connect(HasApn(apn_name_foo), _, _))
       .WillRepeatedly(
           WithArg<1>([this](auto cb) { connect_callback_ = std::move(cb); }));
-  CallConnect(SetupNextConnectProperties(), callback);
+  CallConnect(SetupNextConnectProperties(), std::move(callback));
   Mock::VerifyAndClearExpectations(modem_simple_proxy);
 
   EXPECT_CALL(*modem_simple_proxy, Connect(HasApn(apn_name_bar), _, _))

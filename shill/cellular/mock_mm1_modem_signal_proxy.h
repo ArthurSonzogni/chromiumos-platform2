@@ -24,7 +24,7 @@ class MockModemSignalProxy : public ModemSignalProxyInterface {
 
   MOCK_METHOD(void,
               Setup,
-              (const int, Error*, const ResultCallback&, int),
+              (const int, Error*, ResultOnceCallback, int),
               (override));
 };
 

@@ -24,12 +24,12 @@ class MockModemModem3gppProxy : public ModemModem3gppProxyInterface {
 
   MOCK_METHOD(void,
               Register,
-              (const std::string&, const ResultCallback&),
+              (const std::string&, ResultOnceCallback),
               (override));
   MOCK_METHOD(void, Scan, (KeyValueStoresCallback), (override));
   MOCK_METHOD(void,
               SetInitialEpsBearerSettings,
-              (const KeyValueStore&, const ResultCallback&),
+              (const KeyValueStore&, ResultOnceCallback),
               (override));
 };
 

@@ -34,15 +34,18 @@ ModemLocationProxy::~ModemLocationProxy() = default;
 void ModemLocationProxy::Setup(uint32_t sources,
                                bool signal_location,
                                Error* error,
-                               const ResultCallback& callback,
+                               ResultOnceCallback callback,
                                int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2)
       << __func__ << ": " << sources << ", " << signal_location;
+  auto split_callback = base::SplitOnceCallback(std::move(callback));
   proxy_->SetupAsync(sources, signal_location,
                      base::BindOnce(&ModemLocationProxy::OnSetupSuccess,
-                                    weak_factory_.GetWeakPtr(), callback),
+                                    weak_factory_.GetWeakPtr(),
+                                    std::move(split_callback.first)),
                      base::BindOnce(&ModemLocationProxy::OnSetupFailure,
-                                    weak_factory_.GetWeakPtr(), callback),
+                                    weak_factory_.GetWeakPtr(),
+                                    std::move(split_callback.second)),
                      timeout);
 }
 
@@ -61,17 +64,17 @@ void ModemLocationProxy::GetLocation(Error* error,
       timeout);
 }
 
-void ModemLocationProxy::OnSetupSuccess(const ResultCallback& callback) {
+void ModemLocationProxy::OnSetupSuccess(ResultOnceCallback callback) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
-  callback.Run(Error());
+  std::move(callback).Run(Error());
 }
 
-void ModemLocationProxy::OnSetupFailure(const ResultCallback& callback,
+void ModemLocationProxy::OnSetupFailure(ResultOnceCallback callback,
                                         brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromMM1ChromeosDBusError(dbus_error, &error);
-  callback.Run(error);
+  std::move(callback).Run(error);
 }
 
 void ModemLocationProxy::OnGetLocationSuccess(

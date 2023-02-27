@@ -102,19 +102,18 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // The default implementation sets |error| to kNotSupported.
   virtual void Scan(Error* error, const std::string& reason);
   virtual void RegisterOnNetwork(const std::string& network_id,
-                                 const ResultCallback& callback);
+                                 ResultOnceCallback callback);
   virtual void RequirePin(const std::string& pin,
                           bool require,
-                          const ResultCallback& callback);
-  virtual void EnterPin(const std::string& pin,
-                        const ResultCallback& callback);
+                          ResultOnceCallback callback);
+  virtual void EnterPin(const std::string& pin, ResultOnceCallback callback);
   virtual void UnblockPin(const std::string& unblock_code,
                           const std::string& pin,
-                          const ResultCallback& callback);
+                          ResultOnceCallback callback);
   virtual void ChangePin(const std::string& old_pin,
                          const std::string& new_pin,
-                         const ResultCallback& callback);
-  virtual void Reset(const ResultCallback& callback);
+                         ResultOnceCallback callback);
+  virtual void Reset(ResultOnceCallback callback);
 
   // Returns true if the selected service on the device (if any) is connected.
   // Returns false if there is no selected service, or if the selected service

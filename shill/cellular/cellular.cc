@@ -551,76 +551,75 @@ void Cellular::Scan(Error* error, const std::string& /*reason*/) {
 }
 
 void Cellular::RegisterOnNetwork(const std::string& network_id,
-                                 const ResultCallback& callback) {
+                                 ResultOnceCallback callback) {
   if (!capability_) {
-    callback.Run(Error(Error::Type::kOperationFailed));
+    std::move(callback).Run(Error(Error::Type::kOperationFailed));
     return;
   }
-  capability_->RegisterOnNetwork(network_id, callback);
+  capability_->RegisterOnNetwork(network_id, std::move(callback));
 }
 
 void Cellular::RequirePin(const std::string& pin,
                           bool require,
-                          const ResultCallback& callback) {
+                          ResultOnceCallback callback) {
   SLOG(2) << LoggingTag() << ": " << __func__ << ": " << require;
   if (!capability_) {
-    callback.Run(Error(Error::Type::kOperationFailed));
+    std::move(callback).Run(Error(Error::Type::kOperationFailed));
     return;
   }
-  capability_->RequirePin(pin, require, callback);
+  capability_->RequirePin(pin, require, std::move(callback));
 }
 
-void Cellular::EnterPin(const std::string& pin,
-                        const ResultCallback& callback) {
+void Cellular::EnterPin(const std::string& pin, ResultOnceCallback callback) {
   SLOG(2) << LoggingTag() << ": " << __func__;
   if (!capability_) {
-    callback.Run(Error(Error::Type::kOperationFailed));
+    std::move(callback).Run(Error(Error::Type::kOperationFailed));
     return;
   }
-  capability_->EnterPin(pin, callback);
+  capability_->EnterPin(pin, std::move(callback));
 }
 
 void Cellular::UnblockPin(const std::string& unblock_code,
                           const std::string& pin,
-                          const ResultCallback& callback) {
+                          ResultOnceCallback callback) {
   SLOG(2) << LoggingTag() << ": " << __func__;
   if (!capability_) {
-    callback.Run(Error(Error::Type::kOperationFailed));
+    std::move(callback).Run(Error(Error::Type::kOperationFailed));
     return;
   }
-  capability_->UnblockPin(unblock_code, pin, callback);
+  capability_->UnblockPin(unblock_code, pin, std::move(callback));
 }
 
 void Cellular::ChangePin(const std::string& old_pin,
                          const std::string& new_pin,
-                         const ResultCallback& callback) {
+                         ResultOnceCallback callback) {
   SLOG(2) << LoggingTag() << ": " << __func__;
   if (!capability_) {
-    callback.Run(Error(Error::Type::kOperationFailed));
+    std::move(callback).Run(Error(Error::Type::kOperationFailed));
     return;
   }
-  capability_->ChangePin(old_pin, new_pin, callback);
+  capability_->ChangePin(old_pin, new_pin, std::move(callback));
 }
 
-void Cellular::Reset(const ResultCallback& callback) {
+void Cellular::Reset(ResultOnceCallback callback) {
   SLOG(2) << LoggingTag() << ": " << __func__;
 
   // Qualcomm q6v5 modems on trogdor do not support reset using qmi messages.
   // As per QC the only way to reset the modem is to use the sysfs interface.
   if (IsQ6V5Modem()) {
     if (!ResetQ6V5Modem()) {
-      callback.Run(Error(Error::Type::kOperationFailed));
+      std::move(callback).Run(Error(Error::Type::kOperationFailed));
     } else {
-      callback.Run(Error(Error::Type::kSuccess));
+      std::move(callback).Run(Error(Error::Type::kSuccess));
     }
     return;
   }
 
   if (!capability_) {
-    callback.Run(Error(Error::Type::kOperationFailed));
+    std::move(callback).Run(Error(Error::Type::kOperationFailed));
     return;
   }
-  capability_->Reset(callback);
+  capability_->Reset(std::move(callback));
 }
 
 void Cellular::DropConnection() {
@@ -1295,9 +1294,8 @@ void Cellular::Disconnect(Error* error, const char* reason) {
   }
   StopPPP();
   explicit_disconnect_ = true;
-  ResultCallback cb =
-      base::Bind(&Cellular::OnDisconnectReply, weak_ptr_factory_.GetWeakPtr());
-  capability_->Disconnect(cb);
+  capability_->Disconnect(base::BindOnce(&Cellular::OnDisconnectReply,
+                                         weak_ptr_factory_.GetWeakPtr()));
 }
 
 void Cellular::OnDisconnectReply(const Error& error) {

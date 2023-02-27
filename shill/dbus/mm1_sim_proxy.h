@@ -28,22 +28,22 @@ class SimProxy : public SimProxyInterface {
   ~SimProxy() override;
 
   // Inherited methods from SimProxyInterface.
-  void SendPin(const std::string& pin, const ResultCallback& callback) override;
+  void SendPin(const std::string& pin, ResultOnceCallback callback) override;
   void SendPuk(const std::string& puk,
                const std::string& pin,
-               const ResultCallback& callback) override;
+               ResultOnceCallback callback) override;
   void EnablePin(const std::string& pin,
                  const bool enabled,
-                 const ResultCallback& callback) override;
+                 ResultOnceCallback callback) override;
   void ChangePin(const std::string& old_pin,
                  const std::string& new_pin,
-                 const ResultCallback& callback) override;
+                 ResultOnceCallback callback) override;
 
  private:
   // Callbacks for async method calls.
-  void OnOperationSuccess(const ResultCallback& callback,
+  void OnOperationSuccess(ResultOnceCallback callback,
                           const std::string& operation);
-  void OnOperationFailure(const ResultCallback& callback,
+  void OnOperationFailure(ResultOnceCallback callback,
                           const std::string& operation,
                           brillo::Error* dbus_error);
 

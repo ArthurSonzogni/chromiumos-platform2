@@ -254,16 +254,16 @@ class CellularTest : public testing::Test {
     std::move(callback).Run(RpcIdentifier(), Error(Error::kNotOnHomeNetwork));
   }
   void InvokeDisconnect(const RpcIdentifier& bearer,
-                        const ResultCallback& callback,
+                        ResultOnceCallback callback,
                         int timeout) {
     if (!callback.is_null())
-      callback.Run(Error());
+      std::move(callback).Run(Error());
   }
   void InvokeDisconnectFail(const RpcIdentifier& bearer,
-                            const ResultCallback& callback,
+                            ResultOnceCallback callback,
                             int timeout) {
     if (!callback.is_null())
-      callback.Run(Error(Error::kOperationFailed));
+      std::move(callback).Run(Error(Error::kOperationFailed));
   }
   void InvokeList(ResultVariantDictionariesOnceCallback callback, int timeout) {
     std::move(callback).Run(VariantDictionaries(), Error());

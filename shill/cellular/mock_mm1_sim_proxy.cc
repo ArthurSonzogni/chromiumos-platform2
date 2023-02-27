@@ -16,16 +16,16 @@ namespace mm1 {
 MockSimProxy::MockSimProxy() {
   ON_CALL(*this, SendPin(_, _))
       .WillByDefault(
-          WithArgs<1>(Invoke(ReturnOperationFailed<ResultCallback>)));
+          WithArgs<1>(Invoke(ReturnOperationFailed<ResultOnceCallback>)));
   ON_CALL(*this, SendPuk(_, _, _))
       .WillByDefault(
-          WithArgs<2>(Invoke(ReturnOperationFailed<ResultCallback>)));
+          WithArgs<2>(Invoke(ReturnOperationFailed<ResultOnceCallback>)));
   ON_CALL(*this, EnablePin(_, _, _))
       .WillByDefault(
-          WithArgs<2>(Invoke(ReturnOperationFailed<ResultCallback>)));
+          WithArgs<2>(Invoke(ReturnOperationFailed<ResultOnceCallback>)));
   ON_CALL(*this, ChangePin(_, _, _))
       .WillByDefault(
-          WithArgs<2>(Invoke(ReturnOperationFailed<ResultCallback>)));
+          WithArgs<2>(Invoke(ReturnOperationFailed<ResultOnceCallback>)));
 }
 
 MockSimProxy::~MockSimProxy() = default;

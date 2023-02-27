@@ -147,19 +147,18 @@ class Cellular : public Device,
   bool IsUnderlyingDeviceEnabled() const override;
   void Scan(Error* error, const std::string& /*reason*/) override;
   void RegisterOnNetwork(const std::string& network_id,
-                         const ResultCallback& callback) override;
+                         ResultOnceCallback callback) override;
   void RequirePin(const std::string& pin,
                   bool require,
-                  const ResultCallback& callback) override;
-  void EnterPin(const std::string& pin,
-                const ResultCallback& callback) override;
+                  ResultOnceCallback callback) override;
+  void EnterPin(const std::string& pin, ResultOnceCallback callback) override;
   void UnblockPin(const std::string& unblock_code,
                   const std::string& pin,
-                  const ResultCallback& callback) override;
+                  ResultOnceCallback callback) override;
   void ChangePin(const std::string& old_pin,
                  const std::string& new_pin,
-                 const ResultCallback& callback) override;
-  void Reset(const ResultCallback& callback) override;
+                 ResultOnceCallback callback) override;
+  void Reset(ResultOnceCallback callback) override;
   void DropConnection() override;
   void SetServiceState(Service::ConnectState state) override;
   void SetServiceFailure(Service::ConnectFailure failure_state) override;

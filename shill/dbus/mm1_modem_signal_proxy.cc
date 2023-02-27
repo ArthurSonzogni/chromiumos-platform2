@@ -4,6 +4,8 @@
 
 #include "shill/dbus/mm1_modem_signal_proxy.h"
 
+#include <utility>
+
 #include "shill/cellular/cellular_error.h"
 #include "shill/logging.h"
 
@@ -30,28 +32,31 @@ ModemSignalProxy::~ModemSignalProxy() = default;
 
 void ModemSignalProxy::Setup(const int rate,
                              Error* /*error*/,
-                             const ResultCallback& callback,
+                             ResultOnceCallback callback,
                              int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << rate;
+  auto split_callback = base::SplitOnceCallback(std::move(callback));
   proxy_->SetupAsync(rate,
                      base::BindOnce(&ModemSignalProxy::OnSetupSuccess,
-                                    weak_factory_.GetWeakPtr(), callback),
+                                    weak_factory_.GetWeakPtr(),
+                                    std::move(split_callback.first)),
                      base::BindOnce(&ModemSignalProxy::OnSetupFailure,
-                                    weak_factory_.GetWeakPtr(), callback),
+                                    weak_factory_.GetWeakPtr(),
+                                    std::move(split_callback.second)),
                      timeout);
 }
 
-void ModemSignalProxy::OnSetupSuccess(const ResultCallback& callback) {
+void ModemSignalProxy::OnSetupSuccess(ResultOnceCallback callback) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
-  callback.Run(Error());
+  std::move(callback).Run(Error());
 }
 
-void ModemSignalProxy::OnSetupFailure(const ResultCallback& callback,
+void ModemSignalProxy::OnSetupFailure(ResultOnceCallback callback,
                                       brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromMM1ChromeosDBusError(dbus_error, &error);
-  callback.Run(error);
+  std::move(callback).Run(error);
 }
 
 }  // namespace mm1

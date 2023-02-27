@@ -19,7 +19,7 @@ namespace mm1 {
 MockModemModem3gppProxy::MockModemModem3gppProxy() {
   ON_CALL(*this, Register(_, _))
       .WillByDefault(
-          WithArgs<1>(Invoke(ReturnOperationFailed<ResultCallback>)));
+          WithArgs<1>(Invoke(ReturnOperationFailed<ResultOnceCallback>)));
   ON_CALL(*this, Scan(_))
       .WillByDefault(WithArgs<0>(Invoke([](KeyValueStoresCallback callback) {
         std::move(callback).Run(std::vector<KeyValueStore>(),

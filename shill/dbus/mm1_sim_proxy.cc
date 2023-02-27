@@ -4,6 +4,8 @@
 
 #include "shill/dbus/mm1_sim_proxy.h"
 
+#include <utility>
+
 #include "shill/cellular/cellular_error.h"
 #include "shill/logging.h"
 
@@ -34,73 +36,77 @@ SimProxy::SimProxy(const scoped_refptr<dbus::Bus>& bus,
 
 SimProxy::~SimProxy() = default;
 
-void SimProxy::SendPin(const std::string& pin, const ResultCallback& callback) {
+void SimProxy::SendPin(const std::string& pin, ResultOnceCallback callback) {
   // pin is intentionally not logged.
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
+  auto split_callback = base::SplitOnceCallback(std::move(callback));
   proxy_->SendPinAsync(
       pin,
       base::BindOnce(&SimProxy::OnOperationSuccess, weak_factory_.GetWeakPtr(),
-                     callback, __func__),
+                     std::move(split_callback.first), __func__),
       base::BindOnce(&SimProxy::OnOperationFailure, weak_factory_.GetWeakPtr(),
-                     callback, __func__),
+                     std::move(split_callback.second), __func__),
       kSendPinTimeout.InMilliseconds());
 }
 
 void SimProxy::SendPuk(const std::string& puk,
                        const std::string& pin,
-                       const ResultCallback& callback) {
+                       ResultOnceCallback callback) {
   // pin and puk are intentionally not logged.
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
+  auto split_callback = base::SplitOnceCallback(std::move(callback));
   proxy_->SendPukAsync(
       puk, pin,
       base::BindOnce(&SimProxy::OnOperationSuccess, weak_factory_.GetWeakPtr(),
-                     callback, __func__),
+                     std::move(split_callback.first), __func__),
       base::BindOnce(&SimProxy::OnOperationFailure, weak_factory_.GetWeakPtr(),
-                     callback, __func__),
+                     std::move(split_callback.second), __func__),
       kSendPukTimeout.InMilliseconds());
 }
 
 void SimProxy::EnablePin(const std::string& pin,
                          const bool enabled,
-                         const ResultCallback& callback) {
+                         ResultOnceCallback callback) {
   // pin is intentionally not logged.
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << enabled;
+  auto split_callback = base::SplitOnceCallback(std::move(callback));
   proxy_->EnablePinAsync(
       pin, enabled,
       base::BindOnce(&SimProxy::OnOperationSuccess, weak_factory_.GetWeakPtr(),
-                     callback, __func__),
+                     std::move(split_callback.first), __func__),
       base::BindOnce(&SimProxy::OnOperationFailure, weak_factory_.GetWeakPtr(),
-                     callback, __func__),
+                     std::move(split_callback.second), __func__),
       kDefaultTimeout.InMilliseconds());
 }
 
 void SimProxy::ChangePin(const std::string& old_pin,
                          const std::string& new_pin,
-                         const ResultCallback& callback) {
+                         ResultOnceCallback callback) {
   // old_pin and new_pin are intentionally not logged.
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
+  auto split_callback = base::SplitOnceCallback(std::move(callback));
   proxy_->ChangePinAsync(
       old_pin, new_pin,
       base::BindOnce(&SimProxy::OnOperationSuccess, weak_factory_.GetWeakPtr(),
-                     callback, __func__),
+                     std::move(split_callback.first), __func__),
       base::BindOnce(&SimProxy::OnOperationFailure, weak_factory_.GetWeakPtr(),
-                     callback, __func__),
+                     std::move(split_callback.second), __func__),
       kDefaultTimeout.InMilliseconds());
 }
 
-void SimProxy::OnOperationSuccess(const ResultCallback& callback,
+void SimProxy::OnOperationSuccess(ResultOnceCallback callback,
                                   const std::string& operation) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << operation;
-  callback.Run(Error());
+  std::move(callback).Run(Error());
 }
 
-void SimProxy::OnOperationFailure(const ResultCallback& callback,
+void SimProxy::OnOperationFailure(ResultOnceCallback callback,
                                   const std::string& operation,
                                   brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << operation;
   Error error;
   CellularError::FromMM1ChromeosDBusError(dbus_error, &error);
-  callback.Run(error);
+  std::move(callback).Run(error);
 }
 
 }  // namespace mm1

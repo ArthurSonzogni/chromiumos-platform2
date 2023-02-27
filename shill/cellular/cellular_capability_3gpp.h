@@ -120,7 +120,7 @@ class CellularCapability3gpp {
   void StopModem(ResultOnceCallback callback);
 
   // Resets the modem.
-  void Reset(const ResultCallback& callback);
+  void Reset(ResultOnceCallback callback);
 
   // -------------------------------------------------------------------------
   // Activation
@@ -158,11 +158,11 @@ class CellularCapability3gpp {
   // bearer used at registration, particularly the 'Attach' APN settings.
   // specified by |properties|.
   void SetInitialEpsBearer(const KeyValueStore& properties,
-                           const ResultCallback& callback);
+                           ResultOnceCallback callback);
 
   // Registers on a network with |network_id|.
   void RegisterOnNetwork(const std::string& network_id,
-                         const ResultCallback& callback);
+                         ResultOnceCallback callback);
 
   // Returns true if the modem is registered on a network, which can be a home
   // or roaming network. It is possible that we cannot determine whether it is
@@ -190,10 +190,10 @@ class CellularCapability3gpp {
   // -------------------------------------------------------------------------
 
   // Connects the modem to a network.
-  void Connect(const ResultCallback& callback);
+  void Connect(ResultOnceCallback callback);
 
   // Disconnects the modem from a network.
-  void Disconnect(const ResultCallback& callback);
+  void Disconnect(ResultOnceCallback callback);
 
   // Returns a pointer to the current active bearer object or nullptr if no
   // active bearer exists. The returned bearer object is managed by this
@@ -213,18 +213,17 @@ class CellularCapability3gpp {
 
   void RequirePin(const std::string& pin,
                   bool require,
-                  const ResultCallback& callback);
+                  ResultOnceCallback callback);
 
-  void EnterPin(const std::string& pin,
-                const ResultCallback& callback);
+  void EnterPin(const std::string& pin, ResultOnceCallback callback);
 
   void UnblockPin(const std::string& unblock_code,
                   const std::string& pin,
-                  const ResultCallback& callback);
+                  ResultOnceCallback callback);
 
   void ChangePin(const std::string& old_pin,
                  const std::string& new_pin,
-                 const ResultCallback& callback);
+                 ResultOnceCallback callback);
 
   // Returns a KeyValueStore with kSIMLock* properties set if available, or
   // an empty KeyValueStore if not.
@@ -240,7 +239,7 @@ class CellularCapability3gpp {
 
   void SetupLocation(uint32_t sources,
                      bool signal_location,
-                     const ResultCallback& callback);
+                     ResultOnceCallback callback);
 
   void GetLocation(StringCallback callback);
 
@@ -250,7 +249,7 @@ class CellularCapability3gpp {
   // Signal reporting
   // -------------------------------------------------------------------------
 
-  void SetupSignal(uint32_t rate, const ResultCallback& callback);
+  void SetupSignal(uint32_t rate, ResultOnceCallback callback);
 
   // Used to encapsulate bounds for rssi/rsrp
   struct SignalQualityBounds {
@@ -383,7 +382,7 @@ class CellularCapability3gpp {
                                std::unique_ptr<Error> stop_disable_error,
                                const Error& error);
 
-  void Register(const ResultCallback& callback);
+  void Register(ResultOnceCallback callback);
 
   // Updates |active_bearer_| to match the currently active bearer.
   void UpdateActiveBearer();
@@ -459,15 +458,15 @@ class CellularCapability3gpp {
 
   // Connect helpers and callbacks
   void CallConnect(const KeyValueStore& properties,
-                   const ResultCallback& callback);
-  void OnConnectReply(const ResultCallback& callback,
+                   ResultOnceCallback callback);
+  void OnConnectReply(ResultOnceCallback callback,
                       const RpcIdentifier& bearer,
                       const Error& error);
-  bool ConnectToNextApn(const ResultCallback& callback);
+  bool ConnectToNextApn(ResultOnceCallback callback);
 
   // Method callbacks
-  void OnRegisterReply(const ResultCallback& callback, const Error& error);
-  void OnResetReply(const ResultCallback& callback, const Error& error);
+  void OnRegisterReply(ResultOnceCallback callback, const Error& error);
+  void OnResetReply(ResultOnceCallback callback, const Error& error);
   void OnScanReply(ResultStringmapsCallback callback,
                    const ScanResults& results,
                    const Error& error);
@@ -476,7 +475,7 @@ class CellularCapability3gpp {
                           const std::map<uint32_t, brillo::Any>& results,
                           const Error& error);
   void OnSetupSignalReply(const Error& error);
-  void OnSetInitialEpsBearerReply(const ResultCallback& callback,
+  void OnSetInitialEpsBearerReply(ResultOnceCallback callback,
                                   const Error& error);
 
   // Returns the normalized version of |mdn| by keeping only digits in |mdn|
