@@ -226,9 +226,12 @@ Cellular::Cellular(Manager* manager,
   // TODO(b/267804414): This database is merged with service_providers.pbf, and
   // overrides a few carriers in it. This is used for fishfooding on carriers
   // that require multiple PDNs.
-  if (manager->tethering_manager() && manager->tethering_manager()->allowed())
+  if (manager->tethering_manager() && manager->tethering_manager()->allowed() &&
+      !base::PathExists(
+          base::FilePath(MobileOperatorInfo::kExclusiveOverrideDatabasePath))) {
     mobile_operator_info_->AddDatabasePath(
         base::FilePath(kTetheringTestDatabasePath));
+  }
 
   mobile_operator_info_->Init();
 
@@ -2890,7 +2893,8 @@ void Cellular::TetheringAllowedUpdated(bool allowed) {
   mobile_operator_info_->ClearDatabasePaths();
   mobile_operator_info_->Reset();
   mobile_operator_info_->AddDefaultDatabasePaths();
-  if (allowed) {
+  if (allowed && !base::PathExists(base::FilePath(
+                     MobileOperatorInfo::kExclusiveOverrideDatabasePath))) {
     mobile_operator_info_->AddDatabasePath(
         base::FilePath(kTetheringTestDatabasePath));
   }

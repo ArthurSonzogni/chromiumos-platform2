@@ -163,12 +163,13 @@ class MobileOperatorInfo {
   virtual void UpdateServingOperatorName(const std::string& operator_name);
   void UpdateGID1(const std::string& gid1);
 
+  static const char kExclusiveOverrideDatabasePath[];
+
  protected:
   // ///////////////////////////////////////////////////////////////////////////
   // Static variables.
   // Default databases to load.
   static const char kDefaultDatabasePath[];
-  static const char kExclusiveOverrideDatabasePath[];
 
   // For testing
   explicit MobileOperatorInfo(EventDispatcher* dispatcher,
