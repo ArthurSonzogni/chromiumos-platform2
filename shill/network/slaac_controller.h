@@ -61,7 +61,6 @@ class SLAACController {
   // The data struct to store IP address received from RTNL together with its
   // flags and scope information.
   struct AddressData {
-    AddressData() : address(IPAddress::kFamilyUnknown), flags(0), scope(0) {}
     AddressData(const IPAddress& address_in,
                 unsigned char flags_in,
                 unsigned char scope_in)
