@@ -22,7 +22,10 @@ pkg_config("mount-passthrough_config") {
 }
 
 pkg_config("mount-passthrough_jailed_config") {
-  pkg_deps = [ "libchrome" ]
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
 }
 
 executable("mount-passthrough") {
@@ -33,7 +36,10 @@ executable("mount-passthrough") {
 }
 
 executable("mount-passthrough-jailed") {
-  sources = [ "mount-passthrough-jailed.cc" ]
+  sources = [
+    "mount-passthrough-jailed.cc",
+    "mount-passthrough-util.cc",
+  ]
   defines = [ "USE_ARCPP=${use.arcpp}" ]
   configs += [ ":mount-passthrough_jailed_config" ]
   install_path = "bin"

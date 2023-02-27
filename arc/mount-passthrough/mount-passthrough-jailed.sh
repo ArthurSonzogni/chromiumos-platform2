@@ -5,32 +5,18 @@
 
 # Runs mount-passthrough with minijail0 as chronos.
 
-# This isn't the exact copy that will be used in production, but it's better
-# than pointing shellcheck at /dev/null.
-# shellcheck source=../../../scripts/lib/shflags/shflags
-. /usr/share/misc/shflags
-
-# Define command line flags.
-DEFINE_string source "" "Source path of FUSE mount (required)"
-DEFINE_string dest "" "Target path of FUSE mount (required)"
-DEFINE_string fuse_umask "" \
-  "Umask to set filesystem permissions in FUSE (required)"
-DEFINE_string fuse_uid "" "UID set as file owner in FUSE (required)"
-DEFINE_string fuse_gid "" "GID set as file group in FUSE (required)"
-DEFINE_string android_app_access_type "full" "Access type of Android apps"
-DEFINE_boolean use_default_selinux_context "${FLAGS_FALSE}" \
-  "Use default \"fuse\" SELinux context"
-DEFINE_boolean enter_concierge_namespace "${FLAGS_FALSE}" \
-  "Enter concierge namespace"
-# This is larger than the default value 1024 because this process handles many
-# open files. See b/30236190 for more context.
-DEFINE_integer max_number_of_open_fds 8192 "Max number of open fds"
-
-FLAGS_HELP="Usage: $0 [flags]"
-
 main() {
-  FLAGS "$@" || exit 1
-  eval set -- "${FLAGS_ARGV}"
+  local FLAGS_TRUE=0
+  local FLAGS_FALSE=1
+  local FLAGS_source="$1"
+  local FLAGS_dest="$2"
+  local FLAGS_fuse_umask="$3"
+  local FLAGS_fuse_uid="$4"
+  local FLAGS_fuse_gid="$5"
+  local FLAGS_android_app_access_type="$6"
+  local FLAGS_use_default_selinux_context="$7"
+  local FLAGS_enter_concierge_namespace="$8"
+  local FLAGS_max_number_of_open_fds="$9"
 
   set -e
 
