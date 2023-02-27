@@ -21,8 +21,7 @@
 namespace {
 
 constexpr char kFirmwareGlobSuffix[] = "_*.bin";
-constexpr char kUpdateDisableFile[] = "/opt/google/biod/fw/.disable_fp_updater";
-constexpr char kUpdateDisableFileAlt[] =
+constexpr char kUpdateDisableFile[] =
     "/mnt/stateful_partition/.disable_fp_updater";
 
 }  // namespace
@@ -41,14 +40,7 @@ bool UpdateDisallowed(const BiodSystem& system) {
   // and Developer Mode can boot from unsigned kernel (it's a bit stronger check
   // than developer mode only).
   if (!system.OnlyBootSignedKernel() &&
-      base::PathExists(base::FilePath(kUpdateDisableFileAlt))) {
-    return true;
-  }
-
-  // Disable updates when /opt/google/biod/fw/.disable_fp_updater exists.
-  // To create this file rootfs verification must be disabled.
-  // TODO(b/269718617) Drop support for disabling FP updater using this path.
-  if (base::PathExists(base::FilePath(kUpdateDisableFile))) {
+      base::PathExists(base::FilePath(kUpdateDisableFile))) {
     return true;
   }
 

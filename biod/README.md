@@ -114,13 +114,7 @@ whether the version of the firmware is semantically "newer"; it's strictly
 checking for an exact version match.
 
 To disable the automatic update, you can create the `.disable_fp_updater` file
-in the firmware directory (requires disabled rootfs verification):
-
-```bash
-(dut) $ touch /opt/google/biod/fw/.disable_fp_updater
-```
-
-or in the stateful partition:
+in the stateful partition:
 
 ```bash
 (dut) $ touch /mnt/stateful_partition/.disable_fp_updater
