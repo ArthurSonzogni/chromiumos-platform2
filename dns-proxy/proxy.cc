@@ -864,7 +864,12 @@ void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
   switch (msg.mode()) {
     case shill::RTNLMessage::kModeAdd: {
       std::string peer_ipv6_addr;
-      msg.GetIfaAddress().IntoString(&peer_ipv6_addr);
+      if (const auto tmp_addr = msg.GetIfaAddress(); tmp_addr.has_value()) {
+        peer_ipv6_addr = tmp_addr->ToString();
+      } else {
+        LOG(ERROR) << "IFA_ADDRESS in RTNL message is invalid";
+        return;
+      }
       if (ns_peer_ipv6_address_ == peer_ipv6_addr) {
         return;
       }

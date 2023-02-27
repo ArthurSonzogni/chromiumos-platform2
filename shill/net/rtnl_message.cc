@@ -4,7 +4,7 @@
 
 #include "shill/net/rtnl_message.h"
 
-#include <net/if.h>  // NB: order matters; this conflicts with <linux/if.h>
+#include <net/if.h>     // NB: order matters; this conflicts with <linux/if.h>
 #include <arpa/inet.h>  // NOLINT(build/include_alpha)
 #include <linux/fib_rules.h>
 #include <linux/if_addr.h>
@@ -723,8 +723,10 @@ bool RTNLMessage::ParseRdnssOption(const uint8_t* data,
   // Parse the DNS server addresses.
   std::vector<IPAddress> dns_server_addresses;
   while (length > 0) {
-    dns_server_addresses.push_back(
-        IPAddress(IPAddress::kFamilyIPv6, ByteString(data, addr_length)));
+    auto addr = IPAddress::CreateFromByteString(IPAddress::kFamilyIPv6,
+                                                ByteString(data, addr_length));
+    DCHECK(addr.has_value());
+    dns_server_addresses.push_back(std::move(*addr));
     length -= addr_length;
     data += addr_length;
   }
@@ -943,25 +945,27 @@ std::string RTNLMessage::GetIflaIfname() const {
   return GetStringAttribute(IFLA_IFNAME);
 }
 
-IPAddress RTNLMessage::GetIfaAddress() const {
-  return IPAddress(family_, GetAttribute(IFA_ADDRESS),
-                   address_status_.prefix_len);
+std::optional<IPAddress> RTNLMessage::GetIfaAddress() const {
+  return IPAddress::CreateFromByteStringAndPrefix(
+      family_, GetAttribute(IFA_ADDRESS), address_status_.prefix_len);
 }
 
 uint32_t RTNLMessage::GetRtaTable() const {
   return GetUint32Attribute(RTA_TABLE);
 }
 
-IPAddress RTNLMessage::GetRtaDst() const {
-  return IPAddress(family_, GetAttribute(RTA_DST), route_status_.dst_prefix);
+std::optional<IPAddress> RTNLMessage::GetRtaDst() const {
+  return IPAddress::CreateFromByteStringAndPrefix(
+      family_, GetAttribute(RTA_DST), route_status_.dst_prefix);
 }
 
-IPAddress RTNLMessage::GetRtaSrc() const {
-  return IPAddress(family_, GetAttribute(RTA_SRC), route_status_.src_prefix);
+std::optional<IPAddress> RTNLMessage::GetRtaSrc() const {
+  return IPAddress::CreateFromByteStringAndPrefix(
+      family_, GetAttribute(RTA_SRC), route_status_.src_prefix);
 }
 
-IPAddress RTNLMessage::GetRtaGateway() const {
-  return IPAddress(family_, GetAttribute(RTA_GATEWAY));
+std::optional<IPAddress> RTNLMessage::GetRtaGateway() const {
+  return IPAddress::CreateFromByteString(family_, GetAttribute(RTA_GATEWAY));
 }
 
 uint32_t RTNLMessage::GetRtaOif() const {
@@ -988,12 +992,14 @@ std::string RTNLMessage::GetFraIifname() const {
   return GetStringAttribute(FRA_IIFNAME);
 }
 
-IPAddress RTNLMessage::GetFraSrc() const {
-  return IPAddress(family_, GetAttribute(FRA_SRC), route_status_.src_prefix);
+std::optional<IPAddress> RTNLMessage::GetFraSrc() const {
+  return IPAddress::CreateFromByteStringAndPrefix(
+      family_, GetAttribute(FRA_SRC), route_status_.src_prefix);
 }
 
-IPAddress RTNLMessage::GetFraDst() const {
-  return IPAddress(family_, GetAttribute(FRA_DST), route_status_.dst_prefix);
+std::optional<IPAddress> RTNLMessage::GetFraDst() const {
+  return IPAddress::CreateFromByteStringAndPrefix(
+      family_, GetAttribute(FRA_DST), route_status_.dst_prefix);
 }
 
 uint32_t RTNLMessage::GetFraFwmark() const {
@@ -1084,26 +1090,28 @@ std::string RTNLMessage::ToString() const {
         details += " kind " + link_status_.kind.value();
       break;
     case RTNLMessage::kTypeAddress:
-      details = base::StringPrintf(
-          "%s/%d if %s[%d] flags %s scope %d",
-          GetIfaAddress().ToString().c_str(), address_status_.prefix_len,
-          IndexToName(interface_index_).c_str(), interface_index_,
-          address_status_.flags
-              ? PrintFlags(address_status_.flags, kIfaFlags).c_str()
-              : "0",
-          address_status_.scope);
+      if (const auto addr = GetIfaAddress(); addr.has_value()) {
+        details = base::StringPrintf(
+            "%s/%d if %s[%d] flags %s scope %d", addr->ToString().c_str(),
+            address_status_.prefix_len, IndexToName(interface_index_).c_str(),
+            interface_index_,
+            address_status_.flags
+                ? PrintFlags(address_status_.flags, kIfaFlags).c_str()
+                : "0",
+            address_status_.scope);
+      } else {
+        LOG(ERROR) << "RTNL address message does not have a valid IFA_ADDRESS";
+      }
       break;
     case RTNLMessage::kTypeRoute:
-      if (HasAttribute(RTA_SRC))
-        details +=
-            base::StringPrintf("src %s/%d ", GetRtaSrc().ToString().c_str(),
-                               route_status_.src_prefix);
-      if (HasAttribute(RTA_DST))
-        details +=
-            base::StringPrintf("dst %s/%d ", GetRtaDst().ToString().c_str(),
-                               route_status_.dst_prefix);
-      if (HasAttribute(RTA_GATEWAY))
-        details += "via " + GetRtaGateway().ToString() + " ";
+      if (const auto addr = GetRtaSrc(); addr.has_value())
+        details += base::StringPrintf("src %s/%d ", addr->ToString().c_str(),
+                                      route_status_.src_prefix);
+      if (const auto addr = GetRtaDst(); addr.has_value())
+        details += base::StringPrintf("dst %s/%d ", addr->ToString().c_str(),
+                                      route_status_.dst_prefix);
+      if (const auto addr = GetRtaGateway(); addr.has_value())
+        details += "via " + addr->ToString() + " ";
       if (HasAttribute(RTA_OIF))
         details += base::StringPrintf("if %s[%d] ", GetRtaOifname().c_str(),
                                       GetRtaOif());
@@ -1120,14 +1128,12 @@ std::string RTNLMessage::ToString() const {
         details += "iif " + GetFraIifname() + " ";
       if (HasAttribute(FRA_OIFNAME))
         details += "oif " + GetFraOifname() = " ";
-      if (HasAttribute(FRA_SRC))
-        details +=
-            base::StringPrintf("src %s/%d ", GetFraSrc().ToString().c_str(),
-                               route_status_.src_prefix);
-      if (HasAttribute(FRA_DST))
-        details +=
-            base::StringPrintf("dst %s/%d ", GetFraDst().ToString().c_str(),
-                               route_status_.dst_prefix);
+      if (const auto addr = GetFraSrc(); addr.has_value())
+        details += base::StringPrintf("src %s/%d ", addr->ToString().c_str(),
+                                      route_status_.src_prefix);
+      if (const auto addr = GetFraDst(); addr.has_value())
+        details += base::StringPrintf("dst %s/%d ", addr->ToString().c_str(),
+                                      route_status_.dst_prefix);
       if (HasAttribute(FRA_FWMARK))
         details += base::StringPrintf("fwmark 0x%X/0x%X ", GetFraFwmark(),
                                       GetFraFwmask());

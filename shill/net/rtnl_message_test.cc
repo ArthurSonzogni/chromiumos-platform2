@@ -13,11 +13,13 @@
 #include <string>
 
 #include <gtest/gtest.h>
+#include <gmock/gmock.h>
 #include <re2/re2.h>
 
 #include "shill/net/byte_string.h"
 #include "shill/net/ip_address.h"
 
+using testing::Optional;
 using testing::Test;
 
 namespace shill {
@@ -427,6 +429,12 @@ const unsigned char kRuleMessage4[] = {
     0x0,  0x1,  0x0, 0x0, 0x0,  0x0, 0x8, 0x0,  0xf,  0x0,  0xff,
     0x0,  0x0,  0x0, 0x8, 0x0,  0xe, 0x0, 0xff, 0xff, 0xff, 0xff};
 
+IPAddress CreateIPAddressUnwrap(const std::string& addr_str) {
+  const auto ret = IPAddress::CreateFromString(addr_str);
+  CHECK(ret.has_value()) << addr_str << "is not a valid IP";
+  return *ret;
+}
+
 }  // namespace
 
 class RTNLMessageTest : public Test {
@@ -494,20 +502,17 @@ class RTNLMessageTest : public Test {
 
     EXPECT_TRUE(msg.HasAttribute(IFA_ADDRESS));
     EXPECT_EQ(address.GetLength(), msg.GetAttribute(IFA_ADDRESS).GetLength());
-    EXPECT_TRUE(IPAddress(address.family(), msg.GetAttribute(IFA_ADDRESS),
-                          status.prefix_len)
-                    .Equals(address));
-    EXPECT_TRUE(msg.GetIfaAddress().IsValid());
-    EXPECT_TRUE(msg.GetIfaAddress().Equals(address));
+    EXPECT_EQ(msg.GetIfaAddress(), address);
+    EXPECT_THAT(msg.GetIfaAddress(), Optional(address));
   }
 
   void TestParseRoute(const ByteString& packet,
                       RTNLMessage::Mode /*mode*/,
                       IPAddress::Family family,
                       int interface_index,
-                      const IPAddress& dst,
-                      const IPAddress& src,
-                      const IPAddress& gateway,
+                      std::optional<IPAddress> dst,
+                      std::optional<IPAddress> src,
+                      std::optional<IPAddress> gateway,
                       unsigned char table,
                       int protocol,
                       unsigned char scope,
@@ -526,27 +531,28 @@ class RTNLMessageTest : public Test {
     EXPECT_EQ(scope, status.scope);
     EXPECT_EQ(type, status.type);
 
-    if (!dst.IsDefault()) {
+    if (dst.has_value()) {
       EXPECT_TRUE(msg.HasAttribute(RTA_DST));
-      EXPECT_TRUE(
-          IPAddress(family, msg.GetAttribute(RTA_DST), status.dst_prefix)
-              .Equals(dst));
-      EXPECT_TRUE(msg.GetRtaDst().Equals(dst));
+      EXPECT_EQ(IPAddress::CreateFromByteStringAndPrefix(
+                    family, msg.GetAttribute(RTA_DST), status.dst_prefix),
+                dst);
+      EXPECT_EQ(msg.GetRtaDst(), dst);
     }
 
-    if (!src.IsDefault()) {
+    if (src.has_value()) {
       EXPECT_TRUE(msg.HasAttribute(RTA_SRC));
-      EXPECT_TRUE(
-          IPAddress(family, msg.GetAttribute(RTA_SRC), status.src_prefix)
-              .Equals(src));
-      EXPECT_TRUE(msg.GetRtaSrc().Equals(src));
+      EXPECT_EQ(IPAddress::CreateFromByteStringAndPrefix(
+                    family, msg.GetAttribute(RTA_SRC), status.src_prefix),
+                src);
+      EXPECT_EQ(msg.GetRtaSrc(), src);
     }
 
-    if (!gateway.IsDefault()) {
+    if (gateway.has_value()) {
       EXPECT_TRUE(msg.HasAttribute(RTA_GATEWAY));
-      EXPECT_TRUE(
-          IPAddress(family, msg.GetAttribute(RTA_GATEWAY)).Equals(gateway));
-      EXPECT_TRUE(msg.GetRtaGateway().Equals(gateway));
+      EXPECT_EQ(IPAddress::CreateFromByteString(family,
+                                                msg.GetAttribute(RTA_GATEWAY)),
+                gateway);
+      EXPECT_EQ(msg.GetRtaGateway(), gateway);
     }
 
     if (interface_index >= 0) {
@@ -599,16 +605,12 @@ class RTNLMessageTest : public Test {
 
     if (!dst.IsDefault()) {
       EXPECT_TRUE(msg.HasAttribute(FRA_DST));
-      EXPECT_TRUE(
-          IPAddress(family, msg.GetAttribute(FRA_DST), status.dst_prefix)
-              .Equals(dst));
+      EXPECT_EQ(msg.GetFraDst(), dst);
     }
 
     if (!src.IsDefault()) {
       EXPECT_TRUE(msg.HasAttribute(FRA_SRC));
-      EXPECT_TRUE(
-          IPAddress(family, msg.GetAttribute(FRA_SRC), status.src_prefix)
-              .Equals(src));
+      EXPECT_EQ(msg.GetFraSrc(), src);
     }
 
     EXPECT_TRUE(msg.HasAttribute(FRA_PRIORITY));
@@ -752,9 +754,7 @@ TEST_F(RTNLMessageTest, DelLinkEth0) {
 }
 
 TEST_F(RTNLMessageTest, NewAddrIPv4) {
-  IPAddress addr(IPAddress::kFamilyIPv4);
-
-  EXPECT_TRUE(addr.SetAddressFromString(kNewAddrIPV4Address));
+  IPAddress addr = CreateIPAddressUnwrap(kNewAddrIPV4Address);
   addr.set_prefix(kNewAddrIPV4AddressPrefix);
   TestParseAddress(ByteString(kNewAddrIPV4, sizeof(kNewAddrIPV4)),
                    RTNLMessage::kModeAdd, kNewAddrIPV4InterfaceIndex, addr,
@@ -762,9 +762,7 @@ TEST_F(RTNLMessageTest, NewAddrIPv4) {
 }
 
 TEST_F(RTNLMessageTest, DelAddrIPv6) {
-  IPAddress addr(IPAddress::kFamilyIPv6);
-
-  EXPECT_TRUE(addr.SetAddressFromString(kDelAddrIPV6Address));
+  IPAddress addr = CreateIPAddressUnwrap(kDelAddrIPV6Address);
   addr.set_prefix(kDelAddrIPV6AddressPrefix);
   TestParseAddress(ByteString(kDelAddrIPV6, sizeof(kDelAddrIPV6)),
                    RTNLMessage::kModeDelete, kDelAddrIPV6InterfaceIndex, addr,
@@ -772,36 +770,25 @@ TEST_F(RTNLMessageTest, DelAddrIPv6) {
 }
 
 TEST_F(RTNLMessageTest, DelRouteIPv6) {
-  IPAddress dst(IPAddress::kFamilyIPv6);
-  IPAddress src(IPAddress::kFamilyIPv6);
-  IPAddress gateway(IPAddress::kFamilyIPv6);
-
-  EXPECT_TRUE(dst.SetAddressFromString(kDelRouteIPV6Address));
+  IPAddress dst = CreateIPAddressUnwrap(kDelRouteIPV6Address);
   dst.set_prefix(kDelRouteIPV6Prefix);
-  src.SetAddressToDefault();
-  EXPECT_TRUE(gateway.SetAddressFromString(kDelRouteIPV6Address));
+  IPAddress gateway = CreateIPAddressUnwrap(kDelRouteIPV6Address);
 
   TestParseRoute(ByteString(kDelRouteIPV6, sizeof(kDelRouteIPV6)),
                  RTNLMessage::kModeDelete, IPAddress::kFamilyIPv6,
-                 kDelRouteIPV6InterfaceIndex, dst, src, gateway, RT_TABLE_MAIN,
-                 RTPROT_UNSPEC, RT_SCOPE_UNIVERSE, RTN_UNICAST,
-                 kDelRouteIPV6Metric);
+                 kDelRouteIPV6InterfaceIndex, dst, /*src=*/std::nullopt,
+                 gateway, RT_TABLE_MAIN, RTPROT_UNSPEC, RT_SCOPE_UNIVERSE,
+                 RTN_UNICAST, kDelRouteIPV6Metric);
 }
 
 TEST_F(RTNLMessageTest, AddRouteIPv4) {
-  IPAddress dst(IPAddress::kFamilyIPv4);
-  IPAddress src(IPAddress::kFamilyIPv4);
-  IPAddress gateway(IPAddress::kFamilyIPv4);
-
-  dst.SetAddressToDefault();
-  src.SetAddressToDefault();
-  EXPECT_TRUE(gateway.SetAddressFromString(kAddRouteIPV4Address));
+  IPAddress gateway = CreateIPAddressUnwrap(kAddRouteIPV4Address);
 
   TestParseRoute(ByteString(kAddRouteIPV4, sizeof(kAddRouteIPV4)),
                  RTNLMessage::kModeAdd, IPAddress::kFamilyIPv4,
-                 kAddRouteIPV4InterfaceIndex, dst, src, gateway, RT_TABLE_MAIN,
-                 RTPROT_BOOT, RT_SCOPE_UNIVERSE, RTN_UNICAST,
-                 kAddRouteIPV4Metric);
+                 kAddRouteIPV4InterfaceIndex, /*dst=*/std::nullopt,
+                 /*src=*/std::nullopt, gateway, RT_TABLE_MAIN, RTPROT_BOOT,
+                 RT_SCOPE_UNIVERSE, RTN_UNICAST, kAddRouteIPV4Metric);
 }
 
 TEST_F(RTNLMessageTest, NewRdnssOption) {
@@ -821,20 +808,21 @@ TEST_F(RTNLMessageTest, ParseRuleEvents) {
     size_t length;
     std::string iif;
     std::string oif;
-    IPAddress src;
-    IPAddress dst;
+    std::optional<IPAddress> src;
+    std::optional<IPAddress> dst;
     uint32_t fwmark;
     uint32_t fwmask;
     uint32_t table;
     uint32_t priority;
   } test_cases[] = {
       {kRuleMessage1, sizeof(kRuleMessage1), "", "",
-       IPAddress("100.87.84.110", 24), IPAddress(), 0, 0, 1002, 10},
-      {kRuleMessage2, sizeof(kRuleMessage2), "eth0", "", IPAddress(),
-       IPAddress(), 0, 0, 1002, 10},
-      {kRuleMessage3, sizeof(kRuleMessage3), "", "", IPAddress(), IPAddress(),
+       IPAddress::CreateFromStringAndPrefix("100.87.84.110", 24), std::nullopt,
+       0, 0, 1002, 10},
+      {kRuleMessage2, sizeof(kRuleMessage2), "eth0", "", std::nullopt,
+       std::nullopt, 0, 0, 1002, 10},
+      {kRuleMessage3, sizeof(kRuleMessage3), "", "", std::nullopt, std::nullopt,
        0x1234, 0xffff, 1002, 8},
-      {kRuleMessage4, sizeof(kRuleMessage4), "", "", IPAddress(), IPAddress(),
+      {kRuleMessage4, sizeof(kRuleMessage4), "", "", std::nullopt, std::nullopt,
        0, 0, 255, 0},
   };
   for (const auto& tt : test_cases) {
@@ -842,8 +830,8 @@ TEST_F(RTNLMessageTest, ParseRuleEvents) {
     EXPECT_TRUE(msg.Decode(tt.payload, tt.length));
     EXPECT_EQ(tt.iif, msg.GetFraIifname());
     EXPECT_EQ(tt.oif, msg.GetFraOifname());
-    EXPECT_EQ(tt.src.ToString(), msg.GetFraSrc().ToString());
-    EXPECT_EQ(tt.dst.ToString(), msg.GetFraDst().ToString());
+    EXPECT_EQ(tt.src, msg.GetFraSrc());
+    EXPECT_EQ(tt.dst, msg.GetFraDst());
     EXPECT_EQ(tt.fwmark, msg.GetFraFwmark());
     EXPECT_EQ(tt.fwmask, msg.GetFraFwmask());
     EXPECT_EQ(tt.table, msg.GetFraTable());
@@ -879,11 +867,10 @@ TEST_F(RTNLMessageTest, EncodeRouteAdd) {
                   IPAddress::kFamilyIPv4);
   IPAddress dst(IPAddress::kFamilyIPv4);
   IPAddress src(IPAddress::kFamilyIPv4);
-  IPAddress gateway(IPAddress::kFamilyIPv4);
-
   dst.SetAddressToDefault();
   src.SetAddressToDefault();
-  EXPECT_TRUE(gateway.SetAddressFromString("192.168.0.1"));
+
+  IPAddress gateway = CreateIPAddressUnwrap("192.168.0.1");
 
   msg.set_route_status(RTNLMessage::RouteStatus(
       0, 0, RT_TABLE_MAIN, RTPROT_BOOT, RT_SCOPE_UNIVERSE, RTN_UNICAST, 0));
@@ -901,11 +888,9 @@ TEST_F(RTNLMessageTest, EncodeRouteAdd) {
 TEST_F(RTNLMessageTest, EncodeRuleAdd) {
   RTNLMessage msg(RTNLMessage::kTypeRule, RTNLMessage::kModeAdd, 0, 1, 2, 0,
                   IPAddress::kFamilyIPv4);
-  IPAddress dst(IPAddress::kFamilyIPv4);
-  IPAddress src(IPAddress::kFamilyIPv4);
 
-  EXPECT_TRUE(dst.SetAddressFromString("192.168.1.0"));
-  EXPECT_TRUE(src.SetAddressFromString("192.168.2.0"));
+  IPAddress dst = CreateIPAddressUnwrap("192.168.1.0");
+  IPAddress src = CreateIPAddressUnwrap("192.168.2.0");
 
   msg.set_route_status(
       RTNLMessage::RouteStatus(dst.prefix(), src.prefix(), RT_TABLE_MAIN,

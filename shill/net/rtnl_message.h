@@ -225,18 +225,18 @@ class SHILL_EXPORT RTNLMessage {
   std::string GetIflaIfname() const;
   // Returns the IFA_ADDRESS attribute as a shill::IPAddress. This should only
   // be used for RTNLMessages of type kTypeAddress.
-  IPAddress GetIfaAddress() const;
+  std::optional<IPAddress> GetIfaAddress() const;
   // Returns the routing table id of RTNLMessages with type kTypeRoute.
   uint32_t GetRtaTable() const;
   // Returns the RTA_DST attribute as a shill::IPAddress for RTNLMessages of
   // type kTypeRoute.
-  IPAddress GetRtaDst() const;
+  std::optional<IPAddress> GetRtaDst() const;
   // Returns the RTA_SRC attribute as a shill::IPAddress for RTNLMessages of
   // type kTypeRoute.
-  IPAddress GetRtaSrc() const;
+  std::optional<IPAddress> GetRtaSrc() const;
   // Returns the RTA_GATEWAY attribute as a shill::IPAddress for RTNLMessages of
   // type kTypeRoute.
-  IPAddress GetRtaGateway() const;
+  std::optional<IPAddress> GetRtaGateway() const;
   // Returns the RTA_OIF output interface attribute as an interface index
   // name for RTNLMessages of type kTypeRoute.
   uint32_t GetRtaOif() const;
@@ -259,10 +259,10 @@ class SHILL_EXPORT RTNLMessage {
   uint32_t GetFraPriority() const;
   // Returns the FRA_SRC attribute as a shill::IPAddress for RTNLMessages of
   // type kTypeRule.
-  IPAddress GetFraSrc() const;
+  std::optional<IPAddress> GetFraSrc() const;
   // Returns the FRA_DST attribute as a shill::IPAddress for RTNLMessages of
   // type kTypeRule.
-  IPAddress GetFraDst() const;
+  std::optional<IPAddress> GetFraDst() const;
 
   // Sets the IFLA_INFO_KIND attribute which is nested in IFLA_LINKINFO (and
   // thus it is hard to be set via SetAttribute() directly). This attribute will
