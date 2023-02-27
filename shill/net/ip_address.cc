@@ -39,23 +39,6 @@ IPAddress::IPAddress(Family family,
                      unsigned int prefix)
     : family_(family), address_(address), prefix_(prefix) {}
 
-IPAddress::IPAddress(const sockaddr* address_struct, size_t size)
-    : family_(kFamilyUnknown), prefix_(0) {
-  if (address_struct->sa_family == kFamilyIPv4 && size >= sizeof(sockaddr_in)) {
-    family_ = address_struct->sa_family;
-    auto sin = reinterpret_cast<const sockaddr_in*>(address_struct);
-    // Preserve network byte order of s_addr.
-    auto bytes = reinterpret_cast<const uint8_t*>(&sin->sin_addr.s_addr);
-    address_ = ByteString(bytes, sizeof(sin->sin_addr.s_addr));
-  } else if (address_struct->sa_family == kFamilyIPv6 &&
-             size >= sizeof(sockaddr_in6)) {
-    family_ = address_struct->sa_family;
-    auto sin6 = reinterpret_cast<const sockaddr_in6*>(address_struct);
-    address_ =
-        ByteString(sin6->sin6_addr.s6_addr, sizeof(sin6->sin6_addr.s6_addr));
-  }
-}
-
 IPAddress::~IPAddress() = default;
 
 // static
@@ -236,23 +219,6 @@ std::string IPAddress::ToString() const {
   std::string out = "<unknown>";
   IntoString(&out);
   return out;
-}
-
-bool IPAddress::IntoSockAddr(sockaddr* address_struct, size_t size) const {
-  if (!IsValid()) {
-    return false;
-  }
-  if (family_ == kFamilyIPv4 && size >= sizeof(sockaddr_in)) {
-    auto sin = reinterpret_cast<sockaddr_in*>(address_struct);
-    memcpy(&sin->sin_addr.s_addr, GetConstData(), GetLength());
-  } else if (family_ == kFamilyIPv6 && size >= sizeof(sockaddr_in6)) {
-    auto sin6 = reinterpret_cast<sockaddr_in6*>(address_struct);
-    memcpy(&sin6->sin6_addr.s6_addr, GetConstData(), GetLength());
-  } else {
-    return false;
-  }
-  address_struct->sa_family = family_;
-  return true;
 }
 
 bool IPAddress::Equals(const IPAddress& b) const {

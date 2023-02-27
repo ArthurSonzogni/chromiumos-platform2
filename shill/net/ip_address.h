@@ -30,11 +30,6 @@ class SHILL_EXPORT IPAddress {
 
   explicit IPAddress(Family family);
 
-  // Constructs an IPAddress object from a sockaddr_in or sockaddr_in6
-  // structure, depending on the family specified in |address_struct|.  |size|
-  // specifies the actual size of the structure backing |address_struct|.
-  IPAddress(const sockaddr* address_struct, size_t size);
-
   ~IPAddress();
 
   IPAddress(const IPAddress& b) = default;
@@ -137,13 +132,6 @@ class SHILL_EXPORT IPAddress {
     os << address.ToString();
     return os;
   }
-
-  // Populates the address and family portion of a sockaddr_in or
-  // sockaddr_in6 structure, depending on the IPAddress family.  Returns true
-  // if the specified |size| is large enough to accommodate the address family,
-  // and a valid address and family are written to the structure.  Otherwise,
-  // false is returned and the memory at |address_struct| is unmodified.
-  bool IntoSockAddr(sockaddr* address_struct, size_t size) const;
 
   // Returns whether |b| has the same family, address and prefix as |this|.
   bool Equals(const IPAddress& b) const;

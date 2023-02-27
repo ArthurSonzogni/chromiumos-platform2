@@ -33,15 +33,12 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   std::string str(bytes.begin(), bytes.end());
 
   std::string out;
-  struct sockaddr_storage sockaddr;
-  struct sockaddr* sockaddr_p = reinterpret_cast<struct sockaddr*>(&sockaddr);
 
   auto addr1 = IPAddress::CreateFromByteString(family, bytestring);
   if (addr1->IsValid()) {
     addr1->GetDefaultBroadcast();
     addr1->GetNetworkPart();
     addr1->IntoString(&out);
-    addr1->IntoSockAddr(sockaddr_p, sizeof(sockaddr));
   }
 
   auto addr2 = IPAddress::CreateFromString(str);
@@ -49,7 +46,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     addr2->GetDefaultBroadcast();
     addr2->GetNetworkPart();
     addr2->IntoString(&out);
-    addr2->IntoSockAddr(sockaddr_p, sizeof(sockaddr));
   }
 
   auto addr3 = IPAddress::CreateFromPrefixString(str, family);
@@ -57,7 +53,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
     addr3->GetDefaultBroadcast();
     addr3->GetNetworkPart();
     addr3->IntoString(&out);
-    addr3->IntoSockAddr(sockaddr_p, sizeof(sockaddr));
   }
 
   IPAddress::GetPrefixLengthFromMask(IPAddress::kFamilyIPv4, str);

@@ -82,37 +82,6 @@ class IPAddressTest : public Test {
     EXPECT_EQ(IPAddress::CreateFromString(bad_string), std::nullopt);
     EXPECT_EQ(IPAddress::CreateFromString(bad_string, family), std::nullopt);
     EXPECT_EQ(IPAddress::CreateFromByteString(family, bad_bytes), std::nullopt);
-
-    sockaddr_storage storage = {};
-    auto addr = reinterpret_cast<sockaddr*>(&storage);
-    addr->sa_family = family;
-    ssize_t addr_size;
-    if (family == IPAddress::kFamilyIPv6) {
-      auto sin6 = reinterpret_cast<sockaddr_in6*>(addr);
-      inet_pton(AF_INET6, good_string.c_str(), &sin6->sin6_addr.s6_addr);
-      addr_size = sizeof(sockaddr_in6);
-    } else {
-      auto sin = reinterpret_cast<sockaddr_in*>(addr);
-      inet_pton(AF_INET, good_string.c_str(), &sin->sin_addr.s_addr);
-      addr_size = sizeof(sockaddr_in);
-    }
-    IPAddress from_short_sockaddr(addr, addr_size - 1);
-    EXPECT_FALSE(from_short_sockaddr.IsValid());
-    IPAddress from_sockaddr(addr, addr_size);
-    EXPECT_TRUE(from_sockaddr.IsValid());
-    EXPECT_EQ(family, from_sockaddr.family());
-    EXPECT_TRUE(from_sockaddr.IntoString(&address_string));
-    EXPECT_EQ(good_string, address_string);
-
-    sockaddr_storage storage_empty = {};
-    sockaddr_storage storage2 = {};
-    auto addr2 = reinterpret_cast<sockaddr*>(&storage2);
-    EXPECT_FALSE(from_short_sockaddr.IntoSockAddr(addr2, addr_size));
-    EXPECT_EQ(0, memcmp(&storage2, &storage_empty, sizeof(storage2)));
-    EXPECT_FALSE(from_sockaddr.IntoSockAddr(addr2, addr_size - 1));
-    EXPECT_EQ(0, memcmp(&storage2, &storage_empty, sizeof(storage2)));
-    EXPECT_TRUE(from_sockaddr.IntoSockAddr(addr2, addr_size));
-    EXPECT_EQ(0, memcmp(&storage2, &storage, sizeof(storage2)));
   }
 };
 
