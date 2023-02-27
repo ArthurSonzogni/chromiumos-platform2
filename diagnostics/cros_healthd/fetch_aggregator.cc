@@ -9,9 +9,11 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <metrics/metrics_library.h>
+#include <mojo/public/cpp/bindings/callback_helpers.h>
 
 #include "diagnostics/cros_healthd/fetchers/audio_fetcher.h"
 #include "diagnostics/cros_healthd/fetchers/audio_hardware_fetcher.h"
@@ -31,19 +33,26 @@ namespace {
 namespace mojom = ::ash::cros_healthd::mojom;
 
 // Creates a callback which assigns the result to |target| and adds it to the
-// dependencies of barrier. The callers must make sure that |target| is valid
-// until the callback is called.
+// dependencies of barrier. If the created callback is destructed without being
+// called, an error will be assigned to |target|. The callers must make sure
+// that |target| is valid until the callback is called.
 template <typename T>
 base::OnceCallback<void(T)> CreateFetchCallback(CallbackBarrier* barrier,
                                                 T* target) {
-  return barrier->Depend(base::BindOnce(
-      [](T* target, T result) { *target = std::move(result); }, target));
+  return mojo::WrapCallbackWithDefaultInvokeIfNotRun(
+      barrier->Depend(base::BindOnce(
+          [](T* target, T result) { *target = std::move(result); }, target)),
+      T::Struct::NewError(
+          mojom::ProbeError::New(mojom::ErrorType::kServiceUnavailable,
+                                 "The fetch callback was dropped")));
 }
 
 void OnFinish(
     std::set<mojom::ProbeCategoryEnum> categories,
     mojom::CrosHealthdProbeService::ProbeTelemetryInfoCallback callback,
-    std::unique_ptr<mojom::TelemetryInfoPtr> result) {
+    std::unique_ptr<mojom::TelemetryInfoPtr> result,
+    bool all_callbacks_called) {
+  CHECK(all_callbacks_called);
   MetricsLibrary metrics;
   SendTelemetryResultToUMA(&metrics, categories, *result);
   std::move(callback).Run(std::move(*result));
@@ -79,14 +88,10 @@ void FetchAggregator::Run(
   auto result =
       std::make_unique<mojom::TelemetryInfoPtr>(mojom::TelemetryInfo::New());
   mojom::TelemetryInfo* info = result->get();
-  // Let the on_success callback take the |result| so it remains valid until all
+  // Let the on_finish callback take the |result| so it remains valid until all
   // the async fetch completes.
-  auto on_success = base::BindOnce(&OnFinish, category_set, std::move(callback),
-                                   std::move(result));
-  CallbackBarrier barrier{
-      std::move(on_success), /*on_error=*/base::BindOnce([]() {
-        LOG(ERROR) << "Some async fetchers didn't call the callback.";
-      })};
+  CallbackBarrier barrier{base::BindOnce(
+      &OnFinish, category_set, std::move(callback), std::move(result))};
 
   for (const auto category : category_set) {
     switch (category) {
