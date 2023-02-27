@@ -115,22 +115,6 @@ bool ParseRoutingTableMessage(const RTNLMessage& message,
     message.GetAttribute(RTA_PRIORITY).ConvertToCPUUInt32(&metric);
   }
 
-  IPAddress default_addr(message.family());
-  default_addr.SetAddressToDefault();
-
-  ByteString dst_bytes(default_addr.address());
-  if (message.HasAttribute(RTA_DST)) {
-    dst_bytes = message.GetAttribute(RTA_DST);
-  }
-  ByteString src_bytes(default_addr.address());
-  if (message.HasAttribute(RTA_SRC)) {
-    src_bytes = message.GetAttribute(RTA_SRC);
-  }
-  ByteString gateway_bytes(default_addr.address());
-  if (message.HasAttribute(RTA_GATEWAY)) {
-    gateway_bytes = message.GetAttribute(RTA_GATEWAY);
-  }
-
   // The rtmsg structure [0] has a table id field that is only a single
   // byte. Prior to Linux v2.6, routing table IDs were of type u8. v2.6 changed
   // this so that table IDs were u32s, but the uapi here couldn't
@@ -148,9 +132,23 @@ bool ParseRoutingTableMessage(const RTNLMessage& message,
         << "Received RT_TABLE_COMPAT, but message has no RTA_TABLE attribute";
   }
 
-  entry->dst = IPAddress(message.family(), dst_bytes, route_status.dst_prefix);
-  entry->src = IPAddress(message.family(), src_bytes, route_status.src_prefix);
-  entry->gateway = IPAddress(message.family(), gateway_bytes);
+  IPAddress default_addr(message.family());
+  default_addr.SetAddressToDefault();
+  if (auto addr = message.GetRtaDst(); addr.has_value()) {
+    entry->dst = std::move(*addr);
+  } else {
+    entry->dst = default_addr;
+  }
+  if (auto addr = message.GetRtaSrc(); addr.has_value()) {
+    entry->src = std::move(*addr);
+  } else {
+    entry->src = default_addr;
+  }
+  if (auto addr = message.GetRtaGateway(); addr.has_value()) {
+    entry->gateway = std::move(*addr);
+  } else {
+    entry->gateway = default_addr;
+  }
   entry->table = table;
   entry->metric = metric;
   entry->scope = route_status.scope;
@@ -838,20 +836,12 @@ bool RoutingTable::ParseRoutingPolicyMessage(const RTNLMessage& message,
         message.GetAttribute(FRA_OIFNAME).GetConstData()));
   }
 
-  IPAddress default_addr(message.family());
-  default_addr.SetAddressToDefault();
-
-  ByteString dst_bytes(default_addr.address());
-  if (message.HasAttribute(FRA_DST)) {
-    dst_bytes = message.GetAttribute(FRA_DST);
+  if (auto tmp_dst = message.GetFraDst(); tmp_dst.has_value()) {
+    entry->dst = std::move(*tmp_dst);
   }
-  ByteString src_bytes(default_addr.address());
-  if (message.HasAttribute(FRA_SRC)) {
-    src_bytes = message.GetAttribute(FRA_SRC);
+  if (auto tmp_src = message.GetFraSrc(); tmp_src.has_value()) {
+    entry->src = std::move(*tmp_src);
   }
-
-  entry->dst = IPAddress(message.family(), dst_bytes, route_status.dst_prefix);
-  entry->src = IPAddress(message.family(), src_bytes, route_status.src_prefix);
 
   return true;
 }

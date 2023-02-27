@@ -170,17 +170,11 @@ MATCHER_P4(IsRoutingPacket, mode, index, entry, flags, "") {
          entry.table == RoutingTable::GetInterfaceTableId(index) &&
          status.protocol == RTPROT_BOOT && status.scope == entry.scope &&
          status.type == RTN_UNICAST && arg->HasAttribute(RTA_DST) &&
-         IPAddress(arg->family(), arg->GetAttribute(RTA_DST), status.dst_prefix)
-             .Equals(entry.dst) &&
+         arg->GetRtaDst() == entry.dst &&
          ((!arg->HasAttribute(RTA_SRC) && entry.src.IsDefault()) ||
-          (arg->HasAttribute(RTA_SRC) &&
-           IPAddress(arg->family(), arg->GetAttribute(RTA_SRC),
-                     status.src_prefix)
-               .Equals(entry.src))) &&
+          arg->GetRtaSrc() == entry.src) &&
          ((!arg->HasAttribute(RTA_GATEWAY) && entry.gateway.IsDefault()) ||
-          (arg->HasAttribute(RTA_GATEWAY) &&
-           IPAddress(arg->family(), arg->GetAttribute(RTA_GATEWAY))
-               .Equals(entry.gateway))) &&
+          arg->GetRtaGateway() == entry.gateway) &&
          arg->GetAttribute(RTA_OIF).ConvertToCPUUInt32(&oif) && oif == index &&
          arg->GetAttribute(RTA_PRIORITY).ConvertToCPUUInt32(&priority) &&
          priority == entry.metric;
@@ -249,8 +243,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   IPAddress default_address(IPAddress::kFamilyIPv4);
   default_address.SetAddressToDefault();
 
-  IPAddress gateway_address0(IPAddress::kFamilyIPv4);
-  gateway_address0.SetAddressFromString(kTestNetAddress0);
+  const auto gateway_address0 = *IPAddress::CreateFromString(kTestNetAddress0);
 
   int metric = 10;
 
@@ -290,8 +283,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
   test_entry = (*tables)[kTestDeviceIndex1][0];
   EXPECT_EQ(entry1, test_entry);
 
-  IPAddress gateway_address1(IPAddress::kFamilyIPv4);
-  gateway_address1.SetAddressFromString(kTestNetAddress1);
+  const auto gateway_address1 = *IPAddress::CreateFromString(kTestNetAddress1);
 
   auto entry2 =
       RoutingTableEntry::Create(default_address, default_address,
@@ -351,8 +343,7 @@ TEST_F(RoutingTableTest, RouteAddDelete) {
       kTestDeviceIndex1, IPAddress::kFamilyIPv4, &test_entry));
 
   // Add a route to a gateway address.
-  IPAddress gateway_address(IPAddress::kFamilyIPv4);
-  EXPECT_TRUE(gateway_address.SetAddressFromString(kTestNetAddress0));
+  const auto gateway_address = *IPAddress::CreateFromString(kTestNetAddress0);
 
   RoutingTableEntry entry4(entry1);
   entry4.SetMetric(RoutingTable::kShillDefaultRouteMetric);
@@ -449,8 +440,7 @@ TEST_F(RoutingTableTest, LowestMetricDefault) {
   IPAddress default_address(IPAddress::kFamilyIPv4);
   default_address.SetAddressToDefault();
 
-  IPAddress gateway_address0(IPAddress::kFamilyIPv4);
-  gateway_address0.SetAddressFromString(kTestNetAddress0);
+  const auto gateway_address0 = *IPAddress::CreateFromString(kTestNetAddress0);
 
   auto entry =
       RoutingTableEntry::Create(default_address, default_address,
@@ -482,8 +472,7 @@ TEST_F(RoutingTableTest, IPv6StatelessAutoconfiguration) {
   IPAddress default_address(IPAddress::kFamilyIPv6);
   default_address.SetAddressToDefault();
 
-  IPAddress gateway_address(IPAddress::kFamilyIPv6);
-  gateway_address.SetAddressFromString(kTestV6NetAddress0);
+  const auto gateway_address = *IPAddress::CreateFromString(kTestV6NetAddress0);
 
   auto entry0 =
       RoutingTableEntry::Create(default_address, default_address,
@@ -512,8 +501,8 @@ TEST_F(RoutingTableTest, IPv6StatelessAutoconfiguration) {
   // host.  shill should ignore these because they are frequent, and
   // not worth tracking.
 
-  IPAddress non_default_address(IPAddress::kFamilyIPv6);
-  non_default_address.SetAddressFromString(kTestV6NetAddress1);
+  const auto non_default_address =
+      *IPAddress::CreateFromString(kTestV6NetAddress1);
 
   auto entry2 =
       RoutingTableEntry::Create(non_default_address, default_address,
@@ -538,9 +527,7 @@ MATCHER_P2(IsRoutingQuery, destination, index, "") {
          arg->family() == destination.family() &&
          arg->flags() == NLM_F_REQUEST && status.table == 0 &&
          status.protocol == 0 && status.scope == 0 && status.type == 0 &&
-         arg->HasAttribute(RTA_DST) &&
-         IPAddress(arg->family(), arg->GetAttribute(RTA_DST), status.dst_prefix)
-             .Equals(destination) &&
+         arg->HasAttribute(RTA_DST) && arg->GetRtaDst() == destination &&
          !arg->HasAttribute(RTA_SRC) && !arg->HasAttribute(RTA_GATEWAY) &&
          arg->GetAttribute(RTA_OIF).ConvertToCPUUInt32(&oif) && oif == index &&
          !arg->HasAttribute(RTA_PRIORITY);
@@ -549,9 +536,8 @@ MATCHER_P2(IsRoutingQuery, destination, index, "") {
 }
 
 TEST_F(RoutingTableTest, RequestHostRoute) {
-  IPAddress destination_address(IPAddress::kFamilyIPv4);
-  destination_address.SetAddressFromString(kTestRemoteAddress4);
-  destination_address.set_prefix(24);
+  const auto destination_address =
+      *IPAddress::CreateFromStringAndPrefix(kTestRemoteAddress4, 24);
 
   EXPECT_CALL(
       rtnl_handler_,
@@ -561,11 +547,11 @@ TEST_F(RoutingTableTest, RequestHostRoute) {
   EXPECT_TRUE(routing_table_->RequestRouteToHost(
       destination_address, kTestDeviceIndex0, base::DoNothing()));
 
-  IPAddress gateway_address(IPAddress::kFamilyIPv4);
-  gateway_address.SetAddressFromString(kTestGatewayAddress4);
+  const auto gateway_address =
+      *IPAddress::CreateFromString(kTestGatewayAddress4);
 
-  IPAddress local_address(IPAddress::kFamilyIPv4);
-  local_address.SetAddressFromString(kTestDeviceNetAddress4);
+  const auto local_address =
+      *IPAddress::CreateFromPrefixString(kTestDeviceNetAddress4);
 
   const int kMetric = 10;
   auto entry =
@@ -576,9 +562,8 @@ TEST_F(RoutingTableTest, RequestHostRoute) {
 }
 
 TEST_F(RoutingTableTest, RequestHostRouteWithoutGateway) {
-  IPAddress destination_address(IPAddress::kFamilyIPv4);
-  destination_address.SetAddressFromString(kTestRemoteAddress4);
-  destination_address.set_prefix(24);
+  const auto destination_address =
+      *IPAddress::CreateFromStringAndPrefix(kTestRemoteAddress4, 24);
 
   EXPECT_CALL(
       rtnl_handler_,
@@ -591,8 +576,8 @@ TEST_F(RoutingTableTest, RequestHostRouteWithoutGateway) {
   // Don't specify a gateway address.
   IPAddress gateway_address(IPAddress::kFamilyIPv4);
 
-  IPAddress local_address(IPAddress::kFamilyIPv4);
-  local_address.SetAddressFromString(kTestDeviceNetAddress4);
+  const auto local_address =
+      *IPAddress::CreateFromPrefixString(kTestDeviceNetAddress4);
 
   const int kMetric = 10;
   auto entry = RoutingTableEntry::Create(destination_address, local_address,
@@ -607,8 +592,8 @@ TEST_F(RoutingTableTest, RequestHostRouteWithoutGateway) {
 }
 
 TEST_F(RoutingTableTest, RequestHostRouteBadSequence) {
-  IPAddress destination_address(IPAddress::kFamilyIPv4);
-  destination_address.SetAddressFromString(kTestRemoteAddress4);
+  const auto destination_address =
+      *IPAddress::CreateFromString(kTestRemoteAddress4);
   QueryCallbackTarget target;
   EXPECT_CALL(target, MockedTarget(_, _)).Times(0);
   EXPECT_CALL(rtnl_handler_, DoSendMessage(_, _))
@@ -644,8 +629,8 @@ TEST_F(RoutingTableTest, RequestHostRouteWithCallback) {
   EXPECT_TRUE(routing_table_->RequestRouteToHost(destination_address, -1,
                                                  target.mocked_callback()));
 
-  IPAddress gateway_address(IPAddress::kFamilyIPv4);
-  gateway_address.SetAddressFromString(kTestGatewayAddress4);
+  const auto gateway_address =
+      *IPAddress::CreateFromString(kTestGatewayAddress4);
 
   const int kMetric = 10;
   auto entry = RoutingTableEntry::Create(destination_address,
@@ -680,8 +665,8 @@ TEST_F(RoutingTableTest, RequestHostRouteWithoutGatewayWithCallback) {
 }
 
 TEST_F(RoutingTableTest, CancelQueryCallback) {
-  IPAddress destination_address(IPAddress::kFamilyIPv4);
-  destination_address.SetAddressFromString(kTestRemoteAddress4);
+  const auto destination_address =
+      *IPAddress::CreateFromString(kTestRemoteAddress4);
   auto target = std::make_unique<QueryCallbackTarget>();
   EXPECT_CALL(rtnl_handler_, DoSendMessage(_, _))
       .WillOnce(
@@ -713,11 +698,9 @@ TEST_F(RoutingTableTest, CreateBlackholeRoute) {
 }
 
 TEST_F(RoutingTableTest, CreateLinkRoute) {
-  IPAddress local_address(IPAddress::kFamilyIPv4);
-  ASSERT_TRUE(local_address.SetAddressFromString(kTestNetAddress0));
-  local_address.set_prefix(kTestRemotePrefix4);
-  IPAddress remote_address(IPAddress::kFamilyIPv4);
-  ASSERT_TRUE(remote_address.SetAddressFromString(kTestNetAddress1));
+  const auto local_address = *IPAddress::CreateFromStringAndPrefix(
+      kTestNetAddress0, kTestRemotePrefix4);
+  auto remote_address = *IPAddress::CreateFromString(kTestNetAddress1);
   IPAddress default_address(IPAddress::kFamilyIPv4);
   IPAddress remote_address_with_prefix(remote_address);
   remote_address_with_prefix.set_prefix(
@@ -737,7 +720,7 @@ TEST_F(RoutingTableTest, CreateLinkRoute) {
       kTestDeviceIndex0, local_address, remote_address,
       RoutingTable::GetInterfaceTableId(kTestDeviceIndex0)));
 
-  ASSERT_TRUE(remote_address.SetAddressFromString(kTestRemoteAddress4));
+  remote_address = *IPAddress::CreateFromString(kTestRemoteAddress4);
   EXPECT_FALSE(routing_table_->CreateLinkRoute(
       kTestDeviceIndex0, local_address, remote_address,
       RoutingTable::GetInterfaceTableId(kTestDeviceIndex0)));

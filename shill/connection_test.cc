@@ -159,7 +159,7 @@ class ConnectionTest : public Test {
   void SetLocal(const IPAddress& local) { connection_->local_ = local; }
 
   std::vector<IPAddress> GetAddresses() {
-    return std::vector<IPAddress>{IPAddress(kIPAddress0)};
+    return std::vector<IPAddress>{*IPAddress::CreateFromString(kIPAddress0)};
   }
 
   scoped_refptr<MockDevice> CreateDevice(Technology technology) {
@@ -874,9 +874,10 @@ TEST_F(ConnectionTest, HasOtherAddress) {
   // Config with a different address should cause address and route flush.
   EXPECT_CALL(routing_table_, FlushRoutesWithTag(device->interface_index()));
   EXPECT_CALL(rtnl_handler_,
-              AddInterfaceAddress(device->interface_index(),
-                                  IsIPAddress(IPAddress(kIPAddress1), kPrefix0),
-                                  IsIPAddress(broadcast_address_, 0)));
+              AddInterfaceAddress(
+                  device->interface_index(),
+                  *IPAddress::CreateFromStringAndPrefix(kIPAddress1, kPrefix0),
+                  IsIPAddress(broadcast_address_, 0)));
   EXPECT_CALL(rtnl_handler_,
               RemoveInterfaceAddress(device->interface_index(),
                                      IsIPAddress(local_address_, kPrefix0)));
@@ -890,10 +891,10 @@ TEST_F(ConnectionTest, HasOtherAddress) {
   connection_->UpdateFromIPConfig(ipv4_properties_);
 
   // Destruct cleanup.
-  EXPECT_CALL(
-      rtnl_handler_,
-      RemoveInterfaceAddress(device->interface_index(),
-                             IsIPAddress(IPAddress(kIPAddress1), kPrefix0)));
+  EXPECT_CALL(rtnl_handler_,
+              RemoveInterfaceAddress(device->interface_index(),
+                                     *IPAddress::CreateFromStringAndPrefix(
+                                         kIPAddress1, kPrefix0)));
 }
 
 TEST_F(ConnectionTest, UpdateDNSServers) {

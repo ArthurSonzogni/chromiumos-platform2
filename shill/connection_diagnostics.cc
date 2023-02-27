@@ -239,8 +239,8 @@ void ConnectionDiagnostics::PingDNSServers() {
     // attempting to ping the other DNS servers rather than failing. We only
     // need to successfully ping a single DNS server to decide whether or not
     // DNS servers can be reached.
-    IPAddress dns_server_ip_addr(dns_list_[i]);
-    if (dns_server_ip_addr.family() == IPAddress::kFamilyUnknown) {
+    const auto dns_server_ip_addr = IPAddress::CreateFromString(dns_list_[i]);
+    if (!dns_server_ip_addr.has_value()) {
       LOG(ERROR) << iface_name_
                  << ": could not parse DNS server IP address from string";
       ++num_invalid_dns_server_addr;
@@ -253,18 +253,18 @@ void ConnectionDiagnostics::PingDNSServers() {
       continue;
 
     if (!session_iter->second->Start(
-            dns_server_ip_addr, iface_index_,
+            *dns_server_ip_addr, iface_index_,
             base::BindOnce(&ConnectionDiagnostics::OnPingDNSServerComplete,
                            weak_ptr_factory_.GetWeakPtr(), i))) {
       LOG(ERROR) << iface_name_ << "Failed to initiate ping for DNS server at "
-                 << dns_server_ip_addr.ToString();
+                 << dns_server_ip_addr->ToString();
       ++num_failed_icmp_session_start;
       id_to_pending_dns_server_icmp_session_.erase(i);
       continue;
     }
 
     SLOG(2) << __func__ << ": pinging DNS server at "
-            << dns_server_ip_addr.ToString();
+            << dns_server_ip_addr->ToString();
   }
 
   if (id_to_pending_dns_server_icmp_session_.empty()) {

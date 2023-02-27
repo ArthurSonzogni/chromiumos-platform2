@@ -31,6 +31,8 @@ using testing::ReturnRefOfCopy;
 using testing::SetArgPointee;
 using testing::Test;
 
+namespace shill {
+
 namespace {
 constexpr const char kInterfaceName[] = "int0";
 constexpr const int kInterfaceIndex = 4;
@@ -42,22 +44,19 @@ const std::vector<std::string> kIPv6DnsList{
     "2001:4860:4860::8844",
 };
 constexpr const char kHttpUrl[] = "http://www.gstatic.com/generate_204";
-const shill::IPAddress kIPv4DeviceAddress("100.200.43.22");
-const shill::IPAddress kIPv6DeviceAddress("2001:db8::3333:4444:5555");
-const shill::IPAddress kIPv4ServerAddress("8.8.8.8");
-const shill::IPAddress kIPv6ServerAddress("fe80::1aa9:5ff:7ebf:14c5");
-const shill::IPAddress kIPv4GatewayAddress("192.168.1.1");
-const shill::IPAddress kIPv6GatewayAddress("fee2::11b2:53f:13be:125e");
-const shill::IPAddress kIPv4ZeroAddress("0.0.0.0");
+const auto kIPv4DeviceAddress = *IPAddress::CreateFromString("100.200.43.22");
+const auto kIPv6DeviceAddress =
+    *IPAddress::CreateFromString("2001:db8::3333:4444:5555");
+const auto kIPv4ServerAddress = *IPAddress::CreateFromString("8.8.8.8");
+const auto kIPv6ServerAddress =
+    *IPAddress::CreateFromString("fe80::1aa9:5ff:7ebf:14c5");
+const auto kIPv4GatewayAddress = *IPAddress::CreateFromString("192.168.1.1");
+const auto kIPv6GatewayAddress =
+    *IPAddress::CreateFromString("fee2::11b2:53f:13be:125e");
+const auto kIPv4ZeroAddress = *IPAddress::CreateFromString("0.0.0.0");
 const std::vector<base::TimeDelta> kEmptyResult;
 const std::vector<base::TimeDelta> kNonEmptyResult{base::Milliseconds(10)};
 }  // namespace
-
-namespace shill {
-
-MATCHER_P(IsSameIPAddress, ip_addr, "") {
-  return arg.Equals(ip_addr);
-}
 
 MATCHER_P(IsEventList, expected_events, "") {
   // Match on type, phase, and result, but not message.
@@ -297,8 +296,7 @@ class ConnectionDiagnosticsTest : public Test {
                                   const IPAddress& address) {
     AddExpectedEvent(ping_event_type, ConnectionDiagnostics::kPhaseStart,
                      ConnectionDiagnostics::kResultSuccess);
-    EXPECT_CALL(*icmp_session_, Start(IsSameIPAddress(address), _, _))
-        .WillOnce(Return(true));
+    EXPECT_CALL(*icmp_session_, Start(address, _, _)).WillOnce(Return(true));
     connection_diagnostics_.PingHost(address);
   }
 
@@ -306,8 +304,7 @@ class ConnectionDiagnosticsTest : public Test {
                                   const IPAddress& address) {
     AddExpectedEvent(ping_event_type, ConnectionDiagnostics::kPhaseStart,
                      ConnectionDiagnostics::kResultFailure);
-    EXPECT_CALL(*icmp_session_, Start(IsSameIPAddress(address), _, _))
-        .WillOnce(Return(false));
+    EXPECT_CALL(*icmp_session_, Start(address, _, _)).WillOnce(Return(false));
     EXPECT_CALL(metrics_, NotifyConnectionDiagnosticsIssue(
                               ConnectionDiagnostics::kIssueInternalError));
     EXPECT_CALL(callback_target(),
@@ -370,10 +367,10 @@ class ConnectionDiagnosticsTest : public Test {
           std::make_unique<NiceMock<MockIcmpSession>>(&dispatcher_);
 
       EXPECT_CALL(*dns_server_icmp_session_0,
-                  Start(IsSameIPAddress(IPAddress(kDNSServer0)), _, _))
+                  Start(*IPAddress::CreateFromString(kDNSServer0), _, _))
           .WillOnce(Return(is_success));
       EXPECT_CALL(*dns_server_icmp_session_1,
-                  Start(IsSameIPAddress(IPAddress(kDNSServer1)), _, _))
+                  Start(*IPAddress::CreateFromString(kDNSServer1), _, _))
           .WillOnce(Return(is_success));
 
       connection_diagnostics_.id_to_pending_dns_server_icmp_session_.clear();
