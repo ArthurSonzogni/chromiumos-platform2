@@ -150,7 +150,7 @@ Then, run the following commands in guest to launch `vshd`.
 ```
 
 [Tast]: https://chromium.googlesource.com/chromiumos/platform/tast/+/HEAD/README.md
-[`vm_concierge`]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/vm_tools/concierge
+[`vm_concierge`]: /vm_tools/concierge
 [vsock]: https://www.man7.org/linux/man-pages/man7/vsock.7.html
 [termina]: https://chromium.googlesource.com/chromiumos/overlays/board-overlays/+/main/project-termina/
-[dlc]: https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/dlcservice/README.md
+[dlc]: /dlcservice/README.md

@@ -4,7 +4,7 @@ Hardware Verifier is a command line tool that checks if the device is
 compliant.  The program obtains the hardware
 [probe result](https://chromium.googlesource.com/chromiumos/platform/factory/+/HEAD/py/probe/README.md#output-format)
 from the
-[Rumtime Probe](https://chromium.googlesource.com/chromiumos/platform2/+/HEAD/runtime_probe/README.md)
+[Runtime Probe](/runtime_probe/README.md)
 and compares it with the hardware verification spec.  The hardware
 verification spec is generated from the DLM (Device Lifecycle Management) and
 the AVL (Approved Vendor List) services and contains both the qualification
