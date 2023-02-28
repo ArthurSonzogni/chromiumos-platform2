@@ -159,8 +159,7 @@ bool ExpandPropertyContents(const std::string& content,
                             std::string* expanded_content,
                             bool filter_non_ro_props,
                             ExtraProps extra_props,
-                            bool debuggable,
-                            const std::string& partition_name) {
+                            bool debuggable) {
   const std::vector<std::string> lines = base::SplitString(
       content, "\n", base::WhitespaceHandling::KEEP_WHITESPACE,
       base::SplitResult::SPLIT_WANT_ALL);
@@ -312,8 +311,7 @@ bool ExpandPropertyFile(const base::FilePath& input,
                         scoped_refptr<::dbus::Bus> bus,
                         bool append,
                         ExtraProps extra_props,
-                        bool debuggable,
-                        const std::string& partition_name) {
+                        bool debuggable) {
   std::string content;
   std::string expanded;
   if (!base::ReadFileToString(input, &content)) {
@@ -322,7 +320,7 @@ bool ExpandPropertyFile(const base::FilePath& input,
   }
   if (!ExpandPropertyContents(content, config, bus, &expanded,
                               /*filter_non_ro_props=*/append, extra_props,
-                              debuggable, partition_name)) {
+                              debuggable)) {
     return false;
   }
   if (append && base::PathExists(output)) {
@@ -564,7 +562,7 @@ bool ExpandPropertyContentsForTesting(const std::string& content,
                                       std::string* expanded_content) {
   return ExpandPropertyContents(content, config, nullptr, expanded_content,
                                 /*filter_non_ro_props=*/true, ExtraProps::kNone,
-                                debuggable, std::string());
+                                debuggable);
 }
 
 bool TruncateAndroidPropertyForTesting(const std::string& line,
@@ -576,8 +574,7 @@ bool ExpandPropertyFileForTesting(const base::FilePath& input,
                                   const base::FilePath& output,
                                   brillo::CrosConfigInterface* config) {
   return ExpandPropertyFile(input, output, config, nullptr, /*append=*/false,
-                            ExtraProps::kNone,
-                            /*debuggable=*/false, std::string());
+                            ExtraProps::kNone, /*debuggable=*/false);
 }
 
 bool ExpandPropertyFiles(const base::FilePath& source_path,
@@ -606,28 +603,26 @@ bool ExpandPropertyFiles(const base::FilePath& source_path,
        // system/core/init/property_service.cpp.
        // Note: Our vendor image doesn't have /vendor/default.prop although
        // PropertyLoadBootDefaults() tries to open it.
-       {std::tuple<const char*, bool, const char*, ExtraProps>{
-            "default.prop", true, "", ExtraProps::kNone},
-        {"build.prop", false, "", ExtraProps::kNone},
-        {"system_ext_build.prop", true, "system_ext.", ExtraProps::kNone},
-        {"vendor_build.prop", false, "vendor.", soc_props_type},
-        {"odm_build.prop", true, "odm.", ExtraProps::kNone},
-        {"product_build.prop", true, "product.",
+       {std::tuple<const char*, bool, ExtraProps>{"default.prop", true,
+                                                  ExtraProps::kNone},
+        {"build.prop", false, ExtraProps::kNone},
+        {"system_ext_build.prop", true, ExtraProps::kNone},
+        {"vendor_build.prop", false, soc_props_type},
+        {"odm_build.prop", true, ExtraProps::kNone},
+        {"product_build.prop", true,
          hw_oemcrypto_support ? ExtraProps::kCdm : ExtraProps::kNone}}) {
     const char* file = std::get<0>(tuple);
     const bool is_optional = std::get<1>(tuple);
-    // Search for ro.<partition_name>product.cpu.abilist* properties.
-    const char* partition_name = std::get<2>(tuple);
-    const ExtraProps extra_props = std::get<3>(tuple);
+    const ExtraProps extra_props = std::get<2>(tuple);
 
     const base::FilePath source_file = source_path.Append(file);
     if (is_optional && !base::PathExists(source_file))
       continue;
 
-    if (!ExpandPropertyFile(
-            source_file, single_file ? dest_path : dest_path.Append(file),
-            &config, bus,
-            /*append=*/single_file, extra_props, debuggable, partition_name)) {
+    if (!ExpandPropertyFile(source_file,
+                            single_file ? dest_path : dest_path.Append(file),
+                            &config, bus,
+                            /*append=*/single_file, extra_props, debuggable)) {
       LOG(ERROR) << "Failed to expand " << source_file;
       return false;
     }
