@@ -2154,12 +2154,13 @@ TEST_F(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly) {
           reply_future.Get().auth_session_id());
   ASSERT_TRUE(auth_session_id.has_value());
 
+  // Get the session into an authenticated state by treating it as if we just
+  // freshly created the user.
   {
     InUseAuthSession auth_session =
         userdataauth_->auth_session_manager_->FindAuthSession(
             auth_session_id.value());
     ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
-
     EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
   }
 
@@ -2282,12 +2283,13 @@ TEST_F(UserDataAuthTest,
           reply_future.Get().auth_session_id());
   ASSERT_TRUE(auth_session_id.has_value());
 
+  // Get the session into an authenticated state by treating it as if we just
+  // freshly created the user.
   {
     InUseAuthSession auth_session =
         userdataauth_->auth_session_manager_->FindAuthSession(
             auth_session_id.value());
     ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
-
     EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
   }
 
@@ -2578,14 +2580,14 @@ TEST_F(UserDataAuthExTest,
           auth_session_reply_future.Get().auth_session_id());
   ASSERT_TRUE(auth_session_id.has_value());
 
+  // Get the session into an authenticated state by treating it as if we just
+  // freshly created the user.
   {
     InUseAuthSession auth_session =
         userdataauth_->auth_session_manager_->FindAuthSession(
             auth_session_id.value());
-    ASSERT_TRUE(auth_session.AuthSessionStatus().ok());
-
-    // Migration only happens for authenticated auth session.
-    auth_session->SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
+    ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
+    EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
   }
 
   user_data_auth::StartMigrateToDircryptoRequest request;
@@ -2934,14 +2936,14 @@ TEST_F(UserDataAuthExTest, ExtendAuthSession) {
           auth_session_reply_future.Get().auth_session_id());
   EXPECT_TRUE(auth_session_id.has_value());
 
+  // Get the session into an authenticated state by treating it as if we just
+  // freshly created the user.
   {
     InUseAuthSession auth_session =
         userdataauth_->auth_session_manager_->FindAuthSession(
             auth_session_id.value());
-    ASSERT_TRUE(auth_session.AuthSessionStatus().ok());
-
-    // Extension only happens for authenticated auth session.
-    auth_session->SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
+    ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
+    EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
   }
 
   // Test.
@@ -3034,16 +3036,16 @@ TEST_F(UserDataAuthExTest, CheckTimeoutTimerSetAfterAuthentication) {
   InUseAuthSession auth_session =
       userdataauth_->auth_session_manager_->FindAuthSession(
           auth_session_id.value());
-  ASSERT_TRUE(auth_session.AuthSessionStatus().ok());
+  ASSERT_THAT(auth_session.AuthSessionStatus(), IsOk());
 
   // Timer is not set before authentication.
-  EXPECT_FALSE(auth_session->timeout_timer_->IsRunning());
+  EXPECT_TRUE(auth_session->GetRemainingTime().is_max());
 
   // Extension only happens for authenticated auth session.
-  auth_session->SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
+  EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
 
   // Test timer is correctly set after authentication.
-  EXPECT_TRUE(auth_session->timeout_timer_->IsRunning());
+  EXPECT_FALSE(auth_session->GetRemainingTime().is_max());
 }
 
 TEST_F(UserDataAuthExTest, StartAuthSessionReplyCheck) {

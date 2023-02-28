@@ -169,9 +169,14 @@ class AuthSession final {
   // Returns the map from the label to the auth factor.
   const AuthFactorMap& auth_factor_map() const { return auth_factor_map_; }
 
-  // Indicates if the session has a User Secret Stash configured.
+  // Indicates if the session has a User Secret Stash enabled.
   bool has_user_secret_stash() const {
     return user_secret_stash_ && user_secret_stash_main_key_;
+  }
+
+  // Indicates if the session has migration to User Secret Stash enabled.
+  bool has_migrate_to_user_secret_stash() const {
+    return has_user_secret_stash() && migrate_to_user_secret_stash_;
   }
 
   // Indicates if there is a reset_secret in session's User Secret Stash for
@@ -656,31 +661,6 @@ class AuthSession final {
 
   // Should be the last member.
   base::WeakPtrFactory<AuthSession> weak_factory_{this};
-
-  FRIEND_TEST(AuthSessionInterfaceTest, PreparePersistentVaultNoShadowDir);
-  FRIEND_TEST(AuthSessionTest, AddCredentialNewUser);
-  FRIEND_TEST(AuthSessionTest, AddCredentialNewUserTwice);
-  FRIEND_TEST(AuthSessionTest, AddCredentialNewEphemeralUser);
-  FRIEND_TEST(AuthSessionTest, AuthenticateExistingUser);
-  FRIEND_TEST(AuthSessionTest, AuthenticateWithPIN);
-  FRIEND_TEST(AuthSessionTest, AuthenticateExistingUserFailure);
-  FRIEND_TEST(AuthSessionTest, UssMigrationFlagCheckFailure);
-  FRIEND_TEST(AuthSessionTest, GetCredentialRegularUser);
-  FRIEND_TEST(AuthSessionTest, GetCredentialKioskUser);
-  FRIEND_TEST(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss);
-  FRIEND_TEST(AuthSessionWithUssExperimentTest,
-              AddPasswordAuthFactorViaAsyncUss);
-  FRIEND_TEST(AuthSessionWithUssExperimentTest, PrepareLegacyFingerprintAuth);
-  FRIEND_TEST(AuthSessionWithUssExperimentTest, RemoveAuthFactor);
-  FRIEND_TEST(UserDataAuthTest, CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly);
-  FRIEND_TEST(UserDataAuthTest,
-              CleanUpStale_FilledMap_NoOpenFiles_ShadowOnly_FirstBoot);
-  FRIEND_TEST(UserDataAuthExTest, MountUnauthenticatedAuthSession);
-  FRIEND_TEST(UserDataAuthExTest, StartAuthSession);
-  FRIEND_TEST(UserDataAuthExTest, ExtendAuthSession);
-  FRIEND_TEST(UserDataAuthExTest, CheckTimeoutTimerSetAfterAuthentication);
-  FRIEND_TEST(UserDataAuthExTest,
-              StartMigrateToDircryptoWithAuthenticatedAuthSession);
 };
 
 }  // namespace cryptohome

@@ -467,7 +467,7 @@ TEST_F(AuthSessionTest, UssMigrationFlagCheckFailure) {
 
   // Verify.
   ASSERT_THAT(auth_session, NotNull());
-  EXPECT_FALSE(auth_session->migrate_to_user_secret_stash_);
+  EXPECT_FALSE(auth_session->has_migrate_to_user_secret_stash());
 }
 
 TEST_F(AuthSessionTest, SerializedStringFromNullToken) {

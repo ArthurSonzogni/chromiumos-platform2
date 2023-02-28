@@ -540,8 +540,6 @@ TEST_F(AuthSessionInterfaceTest,
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
 }
 
-}  // namespace
-
 // Test to check if PreparePersistentVaultImpl will succeed if user is not
 // created.
 TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultNoShadowDir) {
@@ -552,7 +550,10 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultNoShadowDir) {
                                                  AuthIntent::kDecrypt);
     EXPECT_THAT(auth_session_status, IsOk());
     AuthSession* auth_session = auth_session_status.value().Get();
-    auth_session->SetAuthSessionAsAuthenticated(kAuthorizedIntentsForFullAuth);
+
+    // Say that the user was created and the session is authenticated, without
+    // actually creating the user.
+    EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
     serialized_token = auth_session->serialized_token();
   }
 
@@ -566,8 +567,6 @@ TEST_F(AuthSessionInterfaceTest, PreparePersistentVaultNoShadowDir) {
   ASSERT_EQ(status->local_legacy_error(),
             user_data_auth::CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND);
 }
-
-namespace {
 
 // Test CreatePersistentUserImpl with invalid auth_session.
 TEST_F(AuthSessionInterfaceTest, CreatePersistentUserInvalidAuthSession) {

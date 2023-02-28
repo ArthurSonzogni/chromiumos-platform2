@@ -2749,7 +2749,16 @@ void AuthSession::ResetLECredentials() {
 }
 
 base::TimeDelta AuthSession::GetRemainingTime() const {
-  DCHECK(timeout_timer_->IsRunning());
+  // If the session is already timed out, return zero (no remaining time).
+  if (status_ == AuthStatus::kAuthStatusTimedOut) {
+    return base::TimeDelta();
+  }
+  // Otherwise, if the timer isn't running yet, return infinity.
+  if (!timeout_timer_->IsRunning()) {
+    return base::TimeDelta::Max();
+  }
+  // Finally, if we get here the timer is still running. Return however much
+  // time is remaining before it fires, clamped to zero.
   auto time_left = timeout_timer_->desired_run_time() - base::Time::Now();
   return time_left.is_negative() ? base::TimeDelta() : time_left;
 }
