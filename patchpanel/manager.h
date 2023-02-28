@@ -214,12 +214,14 @@ class Manager final : public brillo::DBusDaemon {
   // Checks the validaty of a CreateTetheredNetwork or CreatedLocalOnlyNetwork
   // DBus request.
   bool ValidateDownstreamNetworkRequest(const DownstreamNetworkInfo& info);
-  // Creates a downstream L3 network for CreateTetheredNetwork or
-  // CreatedLocalOnlyNetwork on the network interface specified by |info|.
-  // If successful, |client_fd| is monitored and triggers the teardown of the
-  // network setup when closed.
-  patchpanel::DownstreamNetworkResult CreateDownstreamNetwork(
-      base::ScopedFD client_fd, const DownstreamNetworkInfo& info);
+  // Parse a DownstreamNetworkInfo object and a file descriptor from |reader|
+  // using |parser| and creates a downstream L3 network for
+  // CreateTetheredNetwork or CreatedLocalOnlyNetwork on the network interface
+  // specified by the request. If successful, |client_fd| is monitored and
+  // triggers the teardown of the network setup when closed.
+  patchpanel::DownstreamNetworkResult OnDownstreamNetworkRequest(
+      dbus::MessageReader* reader,
+      bool (*parser)(dbus::MessageReader*, DownstreamNetworkInfo*));
 
   // Disable and re-enable IPv6 inside a namespace.
   void RestartIPv6(const std::string& netns_name);

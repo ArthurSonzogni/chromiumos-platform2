@@ -118,6 +118,36 @@ void FillDeviceDnsProxyProto(
   }
 }
 
+bool ParseTetheredNetworkRequest(dbus::MessageReader* reader,
+                                 DownstreamNetworkInfo* info) {
+  patchpanel::TetheredNetworkRequest request;
+  if (!reader->PopArrayOfBytesAsProto(&request)) {
+    return false;
+  }
+  info->topology = DownstreamNetworkTopology::kTethering;
+  // TODO(b/239559602) Enable IPv6 tethering according to upstream technology.
+  info->ipv6_mode = DownstreamNetworkIPv6Mode::kDisabled;
+  info->upstream_ifname = request.upstream_ifname();
+  info->downstream_ifname = request.ifname();
+  // TODO(b/239559602) Copy IPv4 configuration if any.
+  return true;
+}
+
+bool ParseLocalOnlyNetworkRequest(dbus::MessageReader* reader,
+                                  DownstreamNetworkInfo* info) {
+  patchpanel::LocalOnlyNetworkRequest request;
+  if (!reader->PopArrayOfBytesAsProto(&request)) {
+    return false;
+  }
+  info->topology = DownstreamNetworkTopology::kLocalOnly;
+  // TODO(b/239559602) Enable IPv6 LocalOnlyNetwork with RAServer
+  info->ipv6_mode = DownstreamNetworkIPv6Mode::kDisabled;
+  info->downstream_ifname = request.ifname();
+  // TODO(b/239559602) Copy IPv4 configuration if any.
+  // TODO(b/239559602) Copy IPv6 configuration if any.
+  return true;
+}
+
 void RecordDbusEvent(std::unique_ptr<MetricsLibraryInterface>& metrics,
                      DbusUmaEvent event) {
   metrics->SendEnumToUMA(kDbusUmaEventMetrics, event);
@@ -1267,40 +1297,13 @@ std::unique_ptr<dbus::Response> Manager::OnCreateTetheredNetwork(
   dbus::MessageReader reader(method_call);
   dbus::MessageWriter writer(dbus_response.get());
 
-  patchpanel::TetheredNetworkRequest request;
-  patchpanel::TetheredNetworkResponse response;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << kCreateTetheredNetworkMethod
-               << ": Unable to parse TetheredNetworkRequest";
-    response.set_response_code(
-        patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT);
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  base::ScopedFD client_fd;
-  reader.PopFileDescriptor(&client_fd);
-  if (!client_fd.is_valid()) {
-    LOG(ERROR) << kCreateTetheredNetworkMethod << ": Invalid file descriptor";
-    response.set_response_code(
-        patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT);
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  DownstreamNetworkInfo info = {};
-  info.topology = DownstreamNetworkTopology::kTethering;
-  // TODO(b/239559602) Enable IPv6 tethering according to upstream technology.
-  info.ipv6_mode = DownstreamNetworkIPv6Mode::kDisabled;
-  info.upstream_ifname = request.upstream_ifname();
-  info.downstream_ifname = request.ifname();
-  // TODO(b/239559602) Copy IPv4 configuration.
-
-  auto response_code = CreateDownstreamNetwork(std::move(client_fd), info);
+  auto response_code =
+      OnDownstreamNetworkRequest(&reader, &ParseTetheredNetworkRequest);
   if (response_code == patchpanel::DownstreamNetworkResult::SUCCESS) {
     RecordDbusEvent(metrics_, DbusUmaEvent::kCreateTetheredNetworkSuccess);
   }
+
+  patchpanel::TetheredNetworkResponse response;
   response.set_response_code(response_code);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
@@ -1316,40 +1319,13 @@ std::unique_ptr<dbus::Response> Manager::OnCreateLocalOnlyNetwork(
   dbus::MessageReader reader(method_call);
   dbus::MessageWriter writer(dbus_response.get());
 
-  patchpanel::LocalOnlyNetworkRequest request;
-  patchpanel::LocalOnlyNetworkResponse response;
-
-  if (!reader.PopArrayOfBytesAsProto(&request)) {
-    LOG(ERROR) << kCreateLocalOnlyNetworkMethod
-               << ": Unable to parse LocalOnlyNetworkRequest";
-    response.set_response_code(
-        patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT);
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  base::ScopedFD client_fd;
-  reader.PopFileDescriptor(&client_fd);
-  if (!client_fd.is_valid()) {
-    LOG(ERROR) << kCreateLocalOnlyNetworkMethod << ": Invalid file descriptor";
-    response.set_response_code(
-        patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT);
-    writer.AppendProtoAsArrayOfBytes(response);
-    return dbus_response;
-  }
-
-  DownstreamNetworkInfo info = {};
-  info.topology = DownstreamNetworkTopology::kLocalOnly;
-  // TODO(b/239559602) Enable IPv6 LocalOnlyNetwork with RAServer
-  info.ipv6_mode = DownstreamNetworkIPv6Mode::kDisabled;
-  info.downstream_ifname = request.ifname();
-  // TODO(b/239559602) Copy IPv4 configuration.
-  // TODO(b/239559602) Copy IPv6 configuration.
-
-  auto response_code = CreateDownstreamNetwork(std::move(client_fd), info);
+  auto response_code =
+      OnDownstreamNetworkRequest(&reader, &ParseLocalOnlyNetworkRequest);
   if (response_code == patchpanel::DownstreamNetworkResult::SUCCESS) {
     RecordDbusEvent(metrics_, DbusUmaEvent::kCreateLocalOnlyNetworkSuccess);
   }
+
+  patchpanel::LocalOnlyNetworkResponse response;
   response.set_response_code(response_code);
   writer.AppendProtoAsArrayOfBytes(response);
   return dbus_response;
@@ -1679,8 +1655,22 @@ bool Manager::ValidateDownstreamNetworkRequest(
   return true;
 }
 
-patchpanel::DownstreamNetworkResult Manager::CreateDownstreamNetwork(
-    base::ScopedFD client_fd, const DownstreamNetworkInfo& info) {
+patchpanel::DownstreamNetworkResult Manager::OnDownstreamNetworkRequest(
+    dbus::MessageReader* reader,
+    bool (*parser)(dbus::MessageReader*, DownstreamNetworkInfo*)) {
+  DownstreamNetworkInfo info = {};
+  if (!parser(reader, &info)) {
+    LOG(ERROR) << __func__ << ": Unable to parse request";
+    return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
+  }
+
+  base::ScopedFD client_fd;
+  reader->PopFileDescriptor(&client_fd);
+  if (!client_fd.is_valid()) {
+    LOG(ERROR) << __func__ << ": Invalid client file descriptor";
+    return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
+  }
+
   if (!ValidateDownstreamNetworkRequest(info)) {
     return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
   }
