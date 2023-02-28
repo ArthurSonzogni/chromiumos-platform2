@@ -19,8 +19,9 @@ will connect back to `chunneld`.
 
 ## vm_concierge
 
-`vm_concierge` is a system daemon that runs in Chrome OS userspace and is
-responsible for managing the lifetime of all VMs.  It exposes a [D-Bus
+[`vm_concierge`](concierge/README.md) is a system daemon that runs in Chrome OS
+userspace and is responsible for managing the lifetime of all VMs.  It exposes a
+[D-Bus
 API](https://chromium.googlesource.com/chromiumos/platform/system_api/+/HEAD/dbus/vm_concierge/)
 for starting and stopping VMs.
 
