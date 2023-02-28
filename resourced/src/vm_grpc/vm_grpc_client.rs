@@ -117,7 +117,7 @@ impl VmGrpcClient {
 
         let mut consecutive_fail = 0;
         let mut last_charging_status = self.batt_dev.is_charging()?;
-        let mut sleep_time_ms = self.default_sleep_time_ms;
+        let mut sleep_time_ms: u64;
 
         let mut msg_time_ms: i64 = DEFAULT_MESSAGE_TIME_MS;
 
@@ -145,7 +145,7 @@ impl VmGrpcClient {
                 }
 
                 // ~5s of retries in AC mode before declaring connection dropped
-                if consecutive_fail > (5 * 1000 / packet_tx_interval_buf) as i64 {
+                if consecutive_fail > 5 * 1000 / packet_tx_interval_buf {
                     warn!("Could not send CPU updates for 5 sec. Guest connection likely dropped");
                     warn!("Stopping new updates and reseting CPU freq.");
 
@@ -222,14 +222,7 @@ impl VmGrpcClient {
         futures_executor::block_on(ch.wait_for_connected(Duration::from_secs(1)));
         let c_state_after = ch.check_connectivity_state(true);
 
-        match c_state_after {
-            grpcio::ConnectivityState::GRPC_CHANNEL_READY => {
-                return true;
-            }
-            _ => {
-                return false;
-            }
-        }
+        matches!(c_state_after, grpcio::ConnectivityState::GRPC_CHANNEL_READY)
     }
 
     fn wait_for_connection(&self, poll_increment_s: u64, timeout_s: u64) -> bool {
@@ -355,11 +348,11 @@ mod tests {
         let s = VmGrpcClient::run(32, 5555, Path::new(root.path()), pkt_tx_interval);
 
         // Test that client attempted to send vm_init.
-        assert_eq!(s.is_ok(), true);
+        assert!(s.is_ok());
 
         // Test that second invoke fails
         let s2 = VmGrpcClient::run(32, 5555, Path::new(root.path()), pkt_tx_interval_clone);
-        assert_eq!(s2.is_err(), true);
+        assert!(s2.is_err());
     }
 
     /// Base path for power_limit relative to rootdir.

@@ -30,9 +30,9 @@ struct ResourcedCommListenerService {
 
 //Server object
 pub(crate) struct VmGrpcServer {
-    cid: i16,
-    port: u16,
-    running: bool,
+    _cid: i16,
+    _port: u16,
+    _running: bool,
 }
 
 impl VmGrpcServer {
@@ -120,27 +120,30 @@ impl VmGrpcServer {
         });
 
         Ok(VmGrpcServer {
-            cid,
-            port,
-            running: true,
+            _cid: cid,
+            _port: port,
+            _running: true,
         })
     }
 
     //Print out server status (if already running).
-    pub fn get_server_status(&self) -> bool {
-        if self.running {
-            info!("Server is running on cid={}, port={}", self.cid, self.port);
+    pub fn _get_server_status(&self) -> bool {
+        if self._running {
+            info!(
+                "Server is running on cid={}, port={}",
+                self._cid, self._port
+            );
         } else {
             info!("Server is stopped");
         }
 
-        self.running
+        self._running
     }
 
     // Exit internal server thread.
     // TODO: implementation.
-    pub fn stop(mut self) -> Result<()> {
-        self.running = false;
+    pub fn _stop(mut self) -> Result<()> {
+        self._running = false;
         info!("TODO: vm_exit implementation");
         Ok(())
     }
@@ -243,11 +246,11 @@ mod tests {
         // Test that server is attempted, and the Arc<i64> is set to init value of -1.
         // The internal thread likely failed since it can't bind the socket port.
         assert_eq!(pkt_tx_interval_clone.load(Ordering::Relaxed), -1);
-        assert_eq!(s.is_ok(), true);
+        assert!(s.is_ok());
 
         // Test that second invoke fails
         let s2 = VmGrpcServer::run(32, 5555, Path::new(root.path()), pkt_tx_interval_clone);
-        assert_eq!(s2.is_err(), true);
+        assert!(s2.is_err());
     }
 
     /// Base path for power_limit relative to rootdir.

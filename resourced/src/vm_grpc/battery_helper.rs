@@ -5,7 +5,10 @@
 use crate::common;
 use crate::vm_grpc::proto::resourced_bridge::BatteryData_DNotifierPowerState;
 use anyhow::{bail, Result};
-use std::{fs, path::PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 const DEVICE_BATTERY_PATH: &str = "sys/class/power_supply/BAT0";
 
@@ -17,8 +20,8 @@ pub struct DeviceBatteryStatus {
 
 #[allow(dead_code)]
 impl DeviceBatteryStatus {
-    fn get_sysfs_val(&self, path_buf: &PathBuf) -> Result<u64> {
-        Ok(common::read_file_to_u64(path_buf.as_path())? as u64)
+    fn get_sysfs_val(&self, path_buf: &Path) -> Result<u64> {
+        common::read_file_to_u64(path_buf)
     }
 
     fn get_sysfs_string(&self, path_buf: &PathBuf) -> Result<String> {
@@ -103,7 +106,7 @@ mod tests {
 
     fn write_mock_battery(root: &Path, status: &str, charge_now: u64, charge_full: u64) {
         let batt_path = root.join(super::DEVICE_BATTERY_PATH);
-        std::fs::write(batt_path.join("status"), status.to_string()).unwrap();
+        std::fs::write(batt_path.join("status"), status).unwrap();
         std::fs::write(batt_path.join("charge_now"), charge_now.to_string()).unwrap();
         std::fs::write(batt_path.join("charge_full"), charge_full.to_string()).unwrap();
     }
@@ -139,7 +142,7 @@ mod tests {
 
         // Test 100% Full
         let mock_batt = mock_batt.unwrap();
-        assert_eq!(mock_batt.is_charging().unwrap(), true);
+        assert!(mock_batt.is_charging().unwrap());
         assert_eq!(
             DeviceBatteryStatus::get_notifier_level(mock_batt.get_percent().unwrap()).unwrap(),
             BatteryData_DNotifierPowerState::DNOTIFIER_POWER_STATE_D1
@@ -147,7 +150,7 @@ mod tests {
 
         // Test 80% Discharging
         write_mock_battery(root.path(), "Discharging", 82, 100);
-        assert_eq!(mock_batt.is_charging().unwrap(), false);
+        assert!(!mock_batt.is_charging().unwrap());
         assert_eq!(mock_batt.get_percent().unwrap(), 82f32);
 
         assert_eq!(
@@ -157,6 +160,6 @@ mod tests {
 
         //Test div by 0
         write_mock_battery(root.path(), "Discharging", 82, 0);
-        assert_eq!(mock_batt.get_percent().is_err(), true);
+        assert!(mock_batt.get_percent().is_err());
     }
 }

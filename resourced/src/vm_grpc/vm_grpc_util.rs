@@ -26,15 +26,17 @@ const CID_ANY: i16 = -1;
 
 #[cfg(feature = "vm_grpc")]
 pub(crate) fn vm_grpc_init(msg: &Message) -> Result<()> {
+    use std::sync::Arc;
+
     info!("VmStartedSignal RX => {:?}", msg);
     // TODO: parse msg and retrieve CID. (using hardcoded default temporarily).
 
     let root = Path::new("/");
-    let pkt_tx_interval = std::sync::Arc::new(AtomicI64::new(-1));
+    let pkt_tx_interval = Arc::new(AtomicI64::new(-1));
     let pkt_tx_interval_clone = pkt_tx_interval.clone();
 
     let _server = VmGrpcServer::run(CID_ANY, RESOURCED_GRPC_SERVER_PORT, root, pkt_tx_interval)?;
-    let _client = VmGrpcClient::run(
+    VmGrpcClient::run(
         DEFAULT_GUEST_VM_CID,
         GUEST_VM_GRPC_SERVER_PORT,
         root,
