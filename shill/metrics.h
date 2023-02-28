@@ -821,6 +821,13 @@ class Metrics : public DefaultServiceObserver {
     kUserInitiatedConnectionFailureReasonTooManySTAs = 15,
     kUserInitiatedConnectionFailureReasonMax
   };
+  static constexpr EnumMetric<FixedName>
+      kMetricWifiUserInitiatedConnectionFailureReason = {
+          .n =
+              FixedName{
+                  "Network.Shill.WiFi.UserInitiatedConnectionFailureReason"},
+          .max = kUserInitiatedConnectionFailureReasonMax,
+      };
 
   // Device presence.
   enum DevicePresenceStatus {
@@ -1225,10 +1232,6 @@ class Metrics : public DefaultServiceObserver {
       .max = 7000,
       .num_buckets = 100,
   };
-
-  // The reason of failed user-initiated wifi connection attempt.
-  static constexpr char kMetricWifiUserInitiatedConnectionFailureReason[] =
-      "Network.Shill.WiFi.UserInitiatedConnectionFailureReason";
 
   // Number of attempts made to connect to supplicant before success (max ==
   // failure).

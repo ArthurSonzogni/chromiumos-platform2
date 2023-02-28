@@ -1429,6 +1429,17 @@ TEST_F(MetricsTest, BTProfileConnectionStateIntegerValues) {
   EXPECT_EQ(Metrics::kBTProfileConnectionStateActive, 4);
 }
 
+TEST_F(MetricsTest, NotifyUserInitiatedConnectionFailureReason) {
+  EXPECT_CALL(
+      library_,
+      SendEnumToUMA(
+          Metrics::kMetricWifiUserInitiatedConnectionFailureReason.n.name,
+          Metrics::kUserInitiatedConnectionFailureReasonBadPassphrase,
+          Metrics::kUserInitiatedConnectionFailureReasonMax));
+  metrics_.NotifyUserInitiatedConnectionFailureReason(
+      Service::kFailureBadPassphrase);
+}
+
 #ifndef NDEBUG
 
 // We don't need the extra thread inside EventDispatcherForTest, using

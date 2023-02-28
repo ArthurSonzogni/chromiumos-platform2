@@ -1149,7 +1149,7 @@ void Metrics::NotifyUserInitiatedConnectionFailureReason(
       reason = kUserInitiatedConnectionFailureReasonUnknown;
       break;
   }
-  SendEnumToUMA(kMetricWifiUserInitiatedConnectionResult, reason);
+  SendEnumToUMA(kMetricWifiUserInitiatedConnectionFailureReason, reason);
 }
 
 bool Metrics::SendEnumToUMA(const std::string& name, int sample, int max) {
