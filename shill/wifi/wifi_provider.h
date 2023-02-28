@@ -12,6 +12,8 @@
 #include <vector>
 
 #include <base/memory/weak_ptr.h>
+#include <base/observer_list.h>
+#include <base/observer_list_types.h>
 
 #include "shill/data_types.h"
 #include "shill/mockable.h"
@@ -66,6 +68,18 @@ class WiFiProvider : public ProviderInterface {
     WiFiEndpointRefPtr endpoint;
     // Priority of the network computed during the match.
     MatchPriority priority;
+  };
+
+  // Observer that helps to follow the changes on the set of Passpoint
+  // credentials.
+  class PasspointCredentialsObserver : public base::CheckedObserver {
+   public:
+    // Called when a set of Passpoint credentials was added.
+    virtual void OnPasspointCredentialsAdded(
+        const PasspointCredentialsRefPtr& creds) = 0;
+    // Called when a set of Passpoint credentials was removed.
+    virtual void OnPasspointCredentialsRemoved(
+        const PasspointCredentialsRefPtr& creds) = 0;
   };
 
   explicit WiFiProvider(Manager* manager);
@@ -168,6 +182,14 @@ class WiFiProvider : public ProviderInterface {
   // connectable endpoint using Passpoint credentials.
   virtual void OnPasspointCredentialsMatches(
       const std::vector<PasspointMatch>& matches);
+
+  // Add an observer to follow the changes on Passpoint credentials.
+  virtual void AddPasspointCredentialsObserver(
+      PasspointCredentialsObserver* observer);
+
+  // Remove an observer from the Passpoint credentials observer list.
+  virtual void RemovePasspointCredentialsObserver(
+      PasspointCredentialsObserver* observer);
 
   // Return the WiFiPhy object at phy_index. Returns a nulltr if there is no
   // WiFiPhy at phy_index.
@@ -288,6 +310,7 @@ class WiFiProvider : public ProviderInterface {
   std::vector<WiFiServiceRefPtr> services_;
   EndpointServiceMap service_by_endpoint_;
   PasspointCredentialsMap credentials_by_id_;
+  base::ObserverList<PasspointCredentialsObserver> credentials_observers_;
   base::WeakPtrFactory<WiFiProvider> weak_ptr_factory_while_started_;
   std::map<uint32_t, std::unique_ptr<WiFiPhy>> wifi_phys_;
   shill::NetlinkManager::NetlinkMessageHandler broadcast_handler_;

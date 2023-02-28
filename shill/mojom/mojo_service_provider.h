@@ -72,6 +72,10 @@ class MojoServiceProvider
   mojo::ReceiverSet<chromeos::connectivity::mojom::PasspointService>
       service_receiver_set_;
 
+  // Used to register the Passpoint service as an observer of Passpoint
+  // credentials events.
+  Manager* manager_;
+
   // Must be the last class member.
   base::WeakPtrFactory<MojoServiceProvider> weak_ptr_factory_{this};
 };

@@ -14,7 +14,9 @@
 #include <mojo/public/cpp/bindings/enum_utils.h>
 #include <mojo_service_manager/lib/mojom/service_manager.mojom.h>
 
+#include "shill/manager.h"
 #include "shill/mojom/mojo_passpoint_service.h"
+#include "shill/wifi/wifi_provider.h"
 
 namespace shill {
 
@@ -22,11 +24,15 @@ namespace shill {
 constexpr base::TimeDelta kReconnectDelay = base::Seconds(1);
 
 MojoServiceProvider::MojoServiceProvider(Manager* manager)
-    : ipc_thread_("Mojo IPC"), passpoint_service_(manager) {}
+    : ipc_thread_("Mojo IPC"), passpoint_service_(manager), manager_(manager) {}
 
 MojoServiceProvider::~MojoServiceProvider() = default;
 
 void MojoServiceProvider::Start() {
+  WiFiProvider* provider = manager_->wifi_provider();
+  CHECK(provider);
+  provider->AddPasspointCredentialsObserver(&passpoint_service_);
+
   // TODO(b/266150324): investigate if we really need a separate IO thread.
   ipc_thread_.StartWithOptions(
       base::Thread::Options(base::MessagePumpType::IO, 0));
@@ -42,6 +48,10 @@ void MojoServiceProvider::Start() {
 }
 
 void MojoServiceProvider::Stop() {
+  WiFiProvider* provider = manager_->wifi_provider();
+  CHECK(provider);
+  provider->RemovePasspointCredentialsObserver(&passpoint_service_);
+
   if (ipc_thread_.IsRunning()) {
     ipc_support_.reset();
     ipc_thread_.Stop();

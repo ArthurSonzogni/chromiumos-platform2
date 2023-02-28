@@ -758,6 +758,14 @@ void WiFiProvider::AddCredentials(
     const PasspointCredentialsRefPtr& credentials) {
   credentials_by_id_[credentials->id()] = credentials;
 
+  // Notify the observers a set of credentials was added.
+  // It is done before pushing it to the wifi device as at this point, the set
+  // of credentials is logically added to the list but supplicant might no be
+  // ready to accept the configuration yet.
+  for (PasspointCredentialsObserver& observer : credentials_observers_) {
+    observer.OnPasspointCredentialsAdded(credentials);
+  }
+
   DeviceRefPtr device =
       manager_->GetEnabledDeviceWithTechnology(Technology::kWiFi);
   if (!device) {
@@ -874,6 +882,11 @@ bool WiFiProvider::RemoveCredentials(
     const PasspointCredentialsRefPtr& credentials) {
   credentials_by_id_.erase(credentials->id());
 
+  // Notify the observers a set of credentials was removed.
+  for (PasspointCredentialsObserver& observer : credentials_observers_) {
+    observer.OnPasspointCredentialsRemoved(credentials);
+  }
+
   DeviceRefPtr device =
       manager_->GetEnabledDeviceWithTechnology(Technology::kWiFi);
   if (!device) {
@@ -965,6 +978,16 @@ void WiFiProvider::OnPasspointCredentialsMatches(
       manager_->MoveServiceToProfile(service, match.credentials->profile());
     }
   }
+}
+
+void WiFiProvider::AddPasspointCredentialsObserver(
+    PasspointCredentialsObserver* observer) {
+  credentials_observers_.AddObserver(observer);
+}
+
+void WiFiProvider::RemovePasspointCredentialsObserver(
+    PasspointCredentialsObserver* observer) {
+  credentials_observers_.RemoveObserver(observer);
 }
 
 void WiFiProvider::GetPhyInfo(uint32_t phy_index) {
