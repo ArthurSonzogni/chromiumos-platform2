@@ -40,7 +40,7 @@ class KernelCollector : public CrashCollector {
 
   // Collect any preserved kernel crash dump. Returns true if there was
   // a dump (even if there were problems storing the dump), false otherwise.
-  bool Collect();
+  bool Collect(bool use_saved_lsb);
 
   // Set the architecture of the crash dumps we are looking at.
   void set_arch(kernel_util::ArchKind arch) { arch_ = arch; }

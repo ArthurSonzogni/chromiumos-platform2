@@ -51,6 +51,7 @@ class KernelCollectorTest : public ::testing::Test {
   }
   const FilePath& test_crash_directory() const { return test_crash_directory_; }
   const FilePath& bootstatus_file() const { return test_bootstatus_; }
+  const FilePath& temp_dir() const { return scoped_temp_dir_.GetPath(); }
 
   KernelCollectorMock collector_;
 
@@ -331,13 +332,13 @@ TEST_F(KernelCollectorTest, EnableOK) {
 }
 
 TEST_F(KernelCollectorTest, CollectPreservedFileMissing) {
-  ASSERT_FALSE(collector_.Collect());
+  ASSERT_FALSE(collector_.Collect(/*use_saved_lsb=*/true));
   ASSERT_FALSE(FindLog("Stored kcrash to "));
 }
 
 TEST_F(KernelCollectorTest, CollectBadDirectory) {
   ASSERT_TRUE(test_util::CreateFile(kcrash_file(), "====1.1\nsomething"));
-  ASSERT_TRUE(collector_.Collect());
+  ASSERT_TRUE(collector_.Collect(/*use_saved_lsb=*/true));
   ASSERT_TRUE(FindLog("Unable to create crash directory"))
       << "Did not find expected error string in log: {\n"
       << GetLog() << "}";
@@ -410,7 +411,7 @@ TEST_F(KernelCollectorTest, CollectOK) {
       bios_log_file(),
       "BIOS Messages"
       "\n\ncoreboot-dc417eb Tue Nov 2 bootblock starting...\n"));
-  ASSERT_TRUE(collector_.Collect());
+  ASSERT_TRUE(collector_.Collect(/*use_saved_lsb=*/true));
   ASSERT_TRUE(FindLog("(handling)"));
   static const char kNamePrefix[] = "Stored kcrash to ";
   std::string log = brillo::GetLog();
@@ -487,7 +488,7 @@ TEST_F(KernelCollectorTest, LastRebootWasNoCError) {
 
 void KernelCollectorTest::WatchdogOKHelper(const FilePath& path) {
   SetUpSuccessfulWatchdog(path);
-  ASSERT_TRUE(collector_.Collect());
+  ASSERT_TRUE(collector_.Collect(/*use_saved_lsb=*/true));
   ASSERT_TRUE(FindLog("(handling)"));
   ASSERT_TRUE(FindLog("kernel-(WATCHDOG)-I can haz"));
 }
@@ -499,7 +500,7 @@ TEST_F(KernelCollectorTest, BiosCrashArmOK) {
       bios_log_file(),
       "PANIC in EL3 at x30 = 0x00003698"
       "\n\ncoreboot-dc417eb Tue Nov 2 bootblock starting...\n"));
-  ASSERT_TRUE(collector_.Collect());
+  ASSERT_TRUE(collector_.Collect(/*use_saved_lsb=*/true));
   ASSERT_TRUE(FindLog("(handling)"));
   ASSERT_TRUE(FindLog("bios-(PANIC)-0x00003698"));
 }
@@ -510,7 +511,7 @@ TEST_F(KernelCollectorTest, Watchdog0BootstatusInvalidNotInteger) {
   SetUpWatchdog0BootstatusInvalidNotInteger(console_ramoops_file());
   // No crash will be collected, since the `bootstatus` file doesn't
   // contain a valid integer.
-  ASSERT_FALSE(collector_.Collect());
+  ASSERT_FALSE(collector_.Collect(/*use_saved_lsb=*/true));
   ASSERT_TRUE(FindLog("Invalid bootstatus string"));
 }
 
@@ -520,7 +521,7 @@ TEST_F(KernelCollectorTest, Watchdog0BootstatusInvalidUnknownInteger) {
   SetUpWatchdog0BootstatusUnknownInteger(console_ramoops_file());
   // Collect a crash since the watchdog appears to have caused a reset,
   // we just don't know the reason why (yet).
-  ASSERT_TRUE(collector_.Collect());
+  ASSERT_TRUE(collector_.Collect(/*use_saved_lsb=*/true));
   ASSERT_TRUE(FindLog("unknown boot status value"));
   ASSERT_TRUE(FindLog(signature.c_str()));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
@@ -531,7 +532,7 @@ TEST_F(KernelCollectorTest, Watchdog0BootstatusCardReset) {
   const std::string signature = "kernel-(WATCHDOG)-";
 
   SetUpWatchdog0BootstatusCardReset(console_ramoops_file());
-  ASSERT_TRUE(collector_.Collect());
+  ASSERT_TRUE(collector_.Collect(/*use_saved_lsb=*/true));
   ASSERT_TRUE(FindLog("(handling)"));
   ASSERT_TRUE(FindLog(signature.c_str()));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
@@ -542,7 +543,7 @@ TEST_F(KernelCollectorTest, Watchdog0BootstatusCardResetFanFault) {
   const std::string signature = "kernel-(FANFAULT)-(WATCHDOG)-";
 
   SetUpWatchdog0BootstatusCardResetFanFault(console_ramoops_file());
-  ASSERT_TRUE(collector_.Collect());
+  ASSERT_TRUE(collector_.Collect(/*use_saved_lsb=*/true));
   ASSERT_TRUE(FindLog("(handling)"));
   ASSERT_TRUE(FindLog(signature.c_str()));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
@@ -553,7 +554,7 @@ TEST_F(KernelCollectorTest, Watchdog0BootstatusNoResetFwHwReset) {
   const std::string signature = "kernel-(WATCHDOG)-";
 
   SetUpWatchdog0BootstatusNoResetFwHwReset(console_ramoops_file());
-  ASSERT_TRUE(collector_.Collect());
+  ASSERT_TRUE(collector_.Collect(/*use_saved_lsb=*/true));
   ASSERT_TRUE(FindLog("(handling)"));
   ASSERT_TRUE(FindLog(signature.c_str()));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
@@ -572,7 +573,7 @@ void KernelCollectorTest::WatchdogOnlyLastBootHelper(const FilePath& path) {
   char next[] = "115 | 2016-03-24 15:24:27 | System boot | 0";
   SetUpSuccessfulWatchdog(path);
   ASSERT_TRUE(test_util::CreateFile(eventlog_file(), next));
-  ASSERT_FALSE(collector_.Collect());
+  ASSERT_FALSE(collector_.Collect(/*use_saved_lsb=*/true));
 }
 
 TEST_F(KernelCollectorTest, WatchdogOnlyLastBoot) {
@@ -582,3 +583,49 @@ TEST_F(KernelCollectorTest, WatchdogOnlyLastBoot) {
 TEST_F(KernelCollectorTest, WatchdogOnlyLastBootOld) {
   WatchdogOnlyLastBootHelper(console_ramoops_file_old());
 }
+
+class KernelCollectorSavedLsbTest : public KernelCollectorTest,
+                                    public ::testing::WithParamInterface<bool> {
+};
+
+TEST_P(KernelCollectorSavedLsbTest, UsesSavedLsb) {
+  FilePath lsb_release = temp_dir().Append("lsb-release");
+  collector_.set_lsb_release_for_test(lsb_release);
+  const char kLsbContents[] =
+      "CHROMEOS_RELEASE_BOARD=lumpy\n"
+      "CHROMEOS_RELEASE_VERSION=6727.0.2015_01_26_0853\n"
+      "CHROMEOS_RELEASE_NAME=Chromium OS\n"
+      "CHROMEOS_RELEASE_CHROME_MILESTONE=82\n"
+      "CHROMEOS_RELEASE_TRACK=testimage-channel\n"
+      "CHROMEOS_RELEASE_DESCRIPTION=6727.0.2015_01_26_0853 (Test Build - foo)";
+  ASSERT_TRUE(test_util::CreateFile(lsb_release, kLsbContents));
+
+  FilePath saved_lsb_dir = temp_dir().Append("crash-reporter-state");
+  ASSERT_TRUE(base::CreateDirectory(saved_lsb_dir));
+  collector_.set_reporter_state_directory_for_test(saved_lsb_dir);
+
+  const char kSavedLsbContents[] =
+      "CHROMEOS_RELEASE_BOARD=lumpy\n"
+      "CHROMEOS_RELEASE_VERSION=12345.0.2015_01_26_0853\n"
+      "CHROMEOS_RELEASE_NAME=Chromium OS\n"
+      "CHROMEOS_RELEASE_CHROME_MILESTONE=81\n"
+      "CHROMEOS_RELEASE_TRACK=beta-channel\n"
+      "CHROMEOS_RELEASE_DESCRIPTION=12345.0.2015_01_26_0853 (Test Build - foo)";
+  base::FilePath saved_lsb = saved_lsb_dir.Append("lsb-release");
+  ASSERT_TRUE(test_util::CreateFile(saved_lsb, kSavedLsbContents));
+
+  SetUpSuccessfulCollect();
+  ASSERT_TRUE(collector_.Collect(/*use_saved_lsb=*/GetParam()));
+
+  if (GetParam()) {
+    EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+        test_crash_directory(), "*.meta", "ver=12345.0.2015_01_26_0853\n"));
+  } else {
+    EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+        test_crash_directory(), "*.meta", "ver=6727.0.2015_01_26_0853\n"));
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(KernelCollectorSavedLsbTest,
+                         KernelCollectorSavedLsbTest,
+                         testing::Bool());

@@ -79,13 +79,13 @@ class BERTCollectorTest : public ::testing::Test {
 };
 
 TEST_F(BERTCollectorTest, TestNoBERTData) {
-  ASSERT_FALSE(collector_.Collect());
+  ASSERT_FALSE(collector_.Collect(/*use_saved_lsb=*/true));
   EXPECT_EQ(collector_.get_bytes_written(), 0);
 }
 
 TEST_F(BERTCollectorTest, TestBadBERTData) {
   PrepareBertDataTest(false);
-  ASSERT_FALSE(collector_.Collect());
+  ASSERT_FALSE(collector_.Collect(/*use_saved_lsb=*/true));
   ASSERT_TRUE(FindLog("(handling)"));
   ASSERT_TRUE(FindLog("Bad data in BERT table"));
   EXPECT_EQ(collector_.get_bytes_written(), 0);
@@ -94,10 +94,56 @@ TEST_F(BERTCollectorTest, TestBadBERTData) {
 TEST_F(BERTCollectorTest, TestGoodBERTData) {
   PrepareBertDataTest(true);
   logging::SetMinLogLevel(-3);
-  ASSERT_TRUE(collector_.Collect());
+  ASSERT_TRUE(collector_.Collect(/*use_saved_lsb=*/true));
   ASSERT_TRUE(FindLog("(handling)"));
   ASSERT_TRUE(FindLog("Stored BERT dump"));
   EXPECT_GT(collector_.get_bytes_written(), 0);
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
       test_dir_, "bert_error.*.meta", "upload_var_collector=bert"));
 }
+
+class BERTCollectorSavedLsbTest : public BERTCollectorTest,
+                                  public ::testing::WithParamInterface<bool> {};
+
+TEST_P(BERTCollectorSavedLsbTest, UsesSavedLsb) {
+  FilePath lsb_release = scoped_temp_dir_.GetPath().Append("lsb-release");
+  collector_.set_lsb_release_for_test(lsb_release);
+  const char kLsbContents[] =
+      "CHROMEOS_RELEASE_BOARD=lumpy\n"
+      "CHROMEOS_RELEASE_VERSION=6727.0.2015_01_26_0853\n"
+      "CHROMEOS_RELEASE_NAME=Chromium OS\n"
+      "CHROMEOS_RELEASE_CHROME_MILESTONE=82\n"
+      "CHROMEOS_RELEASE_TRACK=testimage-channel\n"
+      "CHROMEOS_RELEASE_DESCRIPTION=6727.0.2015_01_26_0853 (Test Build - foo)";
+  ASSERT_TRUE(test_util::CreateFile(lsb_release, kLsbContents));
+
+  FilePath saved_lsb_dir =
+      scoped_temp_dir_.GetPath().Append("crash-reporter-state");
+  ASSERT_TRUE(base::CreateDirectory(saved_lsb_dir));
+  collector_.set_reporter_state_directory_for_test(saved_lsb_dir);
+
+  const char kSavedLsbContents[] =
+      "CHROMEOS_RELEASE_BOARD=lumpy\n"
+      "CHROMEOS_RELEASE_VERSION=12345.0.2015_01_26_0853\n"
+      "CHROMEOS_RELEASE_NAME=Chromium OS\n"
+      "CHROMEOS_RELEASE_CHROME_MILESTONE=81\n"
+      "CHROMEOS_RELEASE_TRACK=beta-channel\n"
+      "CHROMEOS_RELEASE_DESCRIPTION=12345.0.2015_01_26_0853 (Test Build - foo)";
+  base::FilePath saved_lsb = saved_lsb_dir.Append("lsb-release");
+  ASSERT_TRUE(test_util::CreateFile(saved_lsb, kSavedLsbContents));
+
+  PrepareBertDataTest(true);
+  ASSERT_TRUE(collector_.Collect(/*use_saved_lsb=*/GetParam()));
+
+  if (GetParam()) {
+    EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+        scoped_temp_dir_.GetPath(), "*.meta", "ver=12345.0.2015_01_26_0853\n"));
+  } else {
+    EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+        scoped_temp_dir_.GetPath(), "*.meta", "ver=6727.0.2015_01_26_0853\n"));
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(BERTCollectorSavedLsbTest,
+                         BERTCollectorSavedLsbTest,
+                         testing::Bool());

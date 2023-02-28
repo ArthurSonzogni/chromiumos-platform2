@@ -71,23 +71,71 @@ class ECCollectorTest : public ::testing::Test {
 
 TEST_F(ECCollectorTest, TestNoCrash) {
   PreparePanicInfo(false, false);
-  ASSERT_FALSE(collector_.Collect());
+  ASSERT_FALSE(collector_.Collect(/*use_saved_lsb=*/true));
   EXPECT_EQ(collector_.get_bytes_written(), 0);
 }
 
 TEST_F(ECCollectorTest, TestStale) {
   PreparePanicInfo(true, true);
-  ASSERT_FALSE(collector_.Collect());
+  ASSERT_FALSE(collector_.Collect(/*use_saved_lsb=*/true));
   ASSERT_TRUE(FindLog("Stale EC crash"));
   EXPECT_EQ(collector_.get_bytes_written(), 0);
 }
 
 TEST_F(ECCollectorTest, TestGood) {
   PreparePanicInfo(true, false);
-  ASSERT_TRUE(collector_.Collect());
+  ASSERT_TRUE(collector_.Collect(/*use_saved_lsb=*/true));
   ASSERT_TRUE(FindLog("(handling)"));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
       temp_dir_generator_.GetPath(), "embedded_controller.*.meta",
       "upload_var_collector=ec"));
   /* TODO(drinkcat): Test crash file content */
 }
+
+class ECCollectorSavedLsbTest : public ECCollectorTest,
+                                public ::testing::WithParamInterface<bool> {};
+
+TEST_P(ECCollectorSavedLsbTest, UsesSavedLsb) {
+  FilePath lsb_release = temp_dir_generator_.GetPath().Append("lsb-release");
+  collector_.set_lsb_release_for_test(lsb_release);
+  const char kLsbContents[] =
+      "CHROMEOS_RELEASE_BOARD=lumpy\n"
+      "CHROMEOS_RELEASE_VERSION=6727.0.2015_01_26_0853\n"
+      "CHROMEOS_RELEASE_NAME=Chromium OS\n"
+      "CHROMEOS_RELEASE_CHROME_MILESTONE=82\n"
+      "CHROMEOS_RELEASE_TRACK=testimage-channel\n"
+      "CHROMEOS_RELEASE_DESCRIPTION=6727.0.2015_01_26_0853 (Test Build - foo)";
+  ASSERT_TRUE(test_util::CreateFile(lsb_release, kLsbContents));
+
+  FilePath saved_lsb_dir =
+      temp_dir_generator_.GetPath().Append("crash-reporter-state");
+  ASSERT_TRUE(base::CreateDirectory(saved_lsb_dir));
+  collector_.set_reporter_state_directory_for_test(saved_lsb_dir);
+
+  const char kSavedLsbContents[] =
+      "CHROMEOS_RELEASE_BOARD=lumpy\n"
+      "CHROMEOS_RELEASE_VERSION=12345.0.2015_01_26_0853\n"
+      "CHROMEOS_RELEASE_NAME=Chromium OS\n"
+      "CHROMEOS_RELEASE_CHROME_MILESTONE=81\n"
+      "CHROMEOS_RELEASE_TRACK=beta-channel\n"
+      "CHROMEOS_RELEASE_DESCRIPTION=12345.0.2015_01_26_0853 (Test Build - foo)";
+  base::FilePath saved_lsb = saved_lsb_dir.Append("lsb-release");
+  ASSERT_TRUE(test_util::CreateFile(saved_lsb, kSavedLsbContents));
+
+  PreparePanicInfo(true, false);
+  ASSERT_TRUE(collector_.Collect(/*use_saved_lsb=*/GetParam()));
+
+  if (GetParam()) {
+    EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+        temp_dir_generator_.GetPath(), "*.meta",
+        "ver=12345.0.2015_01_26_0853\n"));
+  } else {
+    EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+        temp_dir_generator_.GetPath(), "*.meta",
+        "ver=6727.0.2015_01_26_0853\n"));
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(ECCollectorSavedLsbTest,
+                         ECCollectorSavedLsbTest,
+                         testing::Bool());

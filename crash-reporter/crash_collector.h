@@ -86,16 +86,11 @@ class CrashCollector {
   explicit CrashCollector(const std::string& collector_name,
                           const std::string& tag = "");
 
-  explicit CrashCollector(const std::string& collector_name,
-                          bool use_saved_lsb,
-                          const std::string& tag = "");
-
   explicit CrashCollector(
       const std::string& collector_name,
       CrashDirectorySelectionMethod crash_directory_selection_method,
       CrashSendingMode crash_sending_mode,
-      const std::string& tag = "",
-      bool use_saved_lsb = false);
+      const std::string& tag = "");
 
   CrashCollector(const CrashCollector&) = delete;
   CrashCollector& operator=(const CrashCollector&) = delete;
@@ -171,9 +166,7 @@ class CrashCollector {
   // testing purposes.
   std::string get_extra_metadata_for_test() const { return extra_metadata_; }
 
-  void set_use_saved_lsb_for_test(bool use_saved_lsb) {
-    use_saved_lsb_ = use_saved_lsb;
-  }
+  void SetUseSavedLsb(bool use_saved_lsb) { use_saved_lsb_ = use_saved_lsb; }
 
   // Initialize the crash collector for detection of crashes, given a
   // metrics collection enabled oracle.

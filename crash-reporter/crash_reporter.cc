@@ -123,17 +123,41 @@ int BootCollect(
   LOG(INFO) << "Running boot collector";
 
   if (always_allow_feedback || util::IsBootFeedbackAllowed(&s_metrics_lib)) {
+    was_unclean_shutdown = unclean_shutdown_collector->Collect();
+
+    // If there is an EC/BERT/Kernel crash and the unclean shutdown collector
+    // detects an unclean shutdown, then either:
+    //   1. The crash was after the boot collector ran, so the saved lsb-release
+    //      will be accurate to what was running at the time of the crash.
+    //   2. The unclean shutdown was *unrelated* (e.g. battery died), and then
+    //      the crash occurred before the boot collector ran on the next boot.
+    //      Ideally, this case would use /etc/lsb-release: if there was an
+    //      update pending when the battery died the crash would be on the new
+    //      version. TODO(b/270434087): Address this rarer case, which is not as
+    //      easy to distinguish.
+    //
+    // On the other hand, if there is such a crash and the unclean shutdown
+    // collector does *not* detect an unclean shutdown, then the crash must have
+    // occurred in the prior boot *before* boot collector would have run, so
+    // the saved lsb-release may not be accurate. Use the version in /etc/
+    // instead, since that is more likely to be correct (we won't have applied
+    // an update earlier in boot than the boot collector ran, but we *may* have
+    // applied an update on the clean shutdown before the crash).
+    //
+    // See b/270434087 for an instance of reporting incorrect versions without
+    // this logic.
+    bool use_saved_lsb = was_unclean_shutdown;
+
     /* TODO(drinkcat): Distinguish between EC crash and unclean shutdown. */
-    ec_collector->Collect();
+    ec_collector->Collect(use_saved_lsb);
 
     // Invoke to collect firmware bert dump.
-    bert_collector->Collect();
+    bert_collector->Collect(use_saved_lsb);
 
     kernel_collector->Enable();
     if (kernel_collector->is_enabled()) {
-      was_kernel_crash = kernel_collector->Collect();
+      was_kernel_crash = kernel_collector->Collect(use_saved_lsb);
     }
-    was_unclean_shutdown = unclean_shutdown_collector->Collect();
 
     // Touch a file to notify the metrics daemon that a kernel
     // crash has been detected so that it can log the time since

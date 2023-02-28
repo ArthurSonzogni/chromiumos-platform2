@@ -30,12 +30,13 @@ const char kECExecName[] = "embedded-controller";
 }  // namespace
 
 ECCollector::ECCollector()
-    : CrashCollector("ec", /*use_saved_lsb=*/true),
-      debugfs_path_(kECDebugFSPath) {}
+    : CrashCollector("ec"), debugfs_path_(kECDebugFSPath) {}
 
 ECCollector::~ECCollector() {}
 
-bool ECCollector::Collect() {
+bool ECCollector::Collect(bool use_saved_lsb) {
+  SetUseSavedLsb(use_saved_lsb);
+
   char data[1024];
   int len;
   FilePath panicinfo_path = debugfs_path_.Append(kECPanicInfo);

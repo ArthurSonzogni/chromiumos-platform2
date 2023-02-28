@@ -32,7 +32,7 @@ class ECCollector : public CrashCollector {
 
   // Collect any preserved EC panicinfo. Returns true if there was
   // a dump (even if there were problems storing the dump), false otherwise.
-  bool Collect();
+  bool Collect(bool use_saved_lsb);
 
  private:
   friend class ECCollectorTest;

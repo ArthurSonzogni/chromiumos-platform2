@@ -417,21 +417,11 @@ CrashCollector::CrashCollector(const std::string& collector_name,
                      kNormalCrashSendMode,
                      tag) {}
 
-CrashCollector::CrashCollector(const std::string& collector_name,
-                               bool use_saved_lsb,
-                               const std::string& tag)
-    : CrashCollector(collector_name,
-                     kUseNormalCrashDirectorySelectionMethod,
-                     kNormalCrashSendMode,
-                     tag,
-                     use_saved_lsb) {}
-
 CrashCollector::CrashCollector(
     const std::string& collector_name,
     CrashDirectorySelectionMethod crash_directory_selection_method,
     CrashSendingMode crash_sending_mode,
-    const std::string& tag,
-    bool use_saved_lsb)
+    const std::string& tag)
     : collector_name_(collector_name),
       lsb_release_(FilePath(paths::kEtcDirectory).Append(paths::kLsbRelease)),
       system_crash_path_(paths::kSystemCrashDirectory),
@@ -445,8 +435,7 @@ CrashCollector::CrashCollector(
       force_daemon_store_(std::nullopt),
       is_finished_(false),
       bytes_written_(0),
-      tag_(tag),
-      use_saved_lsb_(use_saved_lsb) {
+      tag_(tag) {
   AddCrashMetaUploadData(kCollectorNameKey, collector_name);
   if (crash_sending_mode_ == kCrashLoopSendingMode) {
     AddCrashMetaUploadData(constants::kCrashLoopModeKey, "true");

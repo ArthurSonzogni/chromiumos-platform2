@@ -1657,7 +1657,7 @@ TEST_P(CrashCollectorParameterizedTest, MetaData) {
   }
   collector_.set_device_policy_for_test(std::move(test_device_policy));
 
-  collector_.set_use_saved_lsb_for_test(test_case.use_saved_lsb);
+  collector_.SetUseSavedLsb(test_case.use_saved_lsb);
   collector_.FinishCrash(meta_file, test_case.exec_name, kPayloadName);
 
   std::string contents;

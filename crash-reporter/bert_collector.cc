@@ -69,12 +69,13 @@ bool BertRead(const FilePath& bert_table_path,
 }  // namespace
 
 BERTCollector::BERTCollector()
-    : CrashCollector("bert", /*use_saved_lsb=*/true),
-      acpitable_path_(kACPITablePath) {}
+    : CrashCollector("bert"), acpitable_path_(kACPITablePath) {}
 
 BERTCollector::~BERTCollector() {}
 
-bool BERTCollector::Collect() {
+bool BERTCollector::Collect(bool use_saved_lsb) {
+  SetUseSavedLsb(use_saved_lsb);
+
   FilePath root_crash_directory;
 
   const FilePath bert_table_path = acpitable_path_.Append(kBertTable);

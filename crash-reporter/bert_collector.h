@@ -48,7 +48,7 @@ class BERTCollector : public CrashCollector {
   ~BERTCollector() override;
 
   // Collect Bert dump.
-  bool Collect();
+  bool Collect(bool use_saved_lsb);
 
  private:
   friend class BERTCollectorTest;

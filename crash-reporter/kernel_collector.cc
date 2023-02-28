@@ -75,7 +75,7 @@ static LazyRE2 kBasicCheckRe = {"\n(<\\d+>)?\\[\\s*(\\d+\\.\\d+)\\]"};
 }  // namespace
 
 KernelCollector::KernelCollector()
-    : CrashCollector("kernel", /*use_saved_lsb=*/true),
+    : CrashCollector("kernel"),
       is_enabled_(false),
       eventlog_path_(kEventLogPath),
       dump_path_(kDumpPath),
@@ -459,7 +459,8 @@ bool KernelCollector::Enable() {
   return true;
 }
 
-bool KernelCollector::Collect() {
+bool KernelCollector::Collect(bool use_saved_lsb) {
+  SetUseSavedLsb(use_saved_lsb);
   bool found_efi_crash = CollectEfiCrash();
   return (CollectRamoopsCrash() || found_efi_crash);
 }
