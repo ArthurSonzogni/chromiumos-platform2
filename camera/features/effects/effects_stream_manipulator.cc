@@ -28,6 +28,7 @@
 #include <base/no_destructor.h>
 #include <base/threading/thread_checker.h>
 #include <base/time/time.h>
+#include <base/timer/timer.h>
 #include <base/values.h>
 
 #undef Status
@@ -52,6 +53,20 @@ namespace {
 const int kSyncWaitTimeoutMs = 8;
 const base::TimeDelta kMaximumMetricsSessionDuration = base::Seconds(3600);
 
+constexpr char kEffectKey[] = "effect";
+constexpr char kBlurLevelKey[] = "blur_level";
+constexpr char kGpuApiKey[] = "gpu_api";
+constexpr char kRelightingGpuApiKey[] = "relighting_gpu_api";
+constexpr char kBlurEnabled[] = "blur_enabled";
+constexpr char kReplaceEnabled[] = "replace_enabled";
+constexpr char kRelightEnabled[] = "relight_enabled";
+
+constexpr uint32_t kRGBAFormat = HAL_PIXEL_FORMAT_RGBX_8888;
+constexpr uint32_t kBufferUsage = GRALLOC_USAGE_HW_TEXTURE;
+
+const base::FilePath kEffectsRunningMarker("/run/camera/effects_running");
+const base::TimeDelta kEffectsRunningMarkerLifetime = base::Seconds(10);
+
 bool GetStringFromKey(const base::Value::Dict& obj,
                       const std::string& key,
                       std::string* value) {
@@ -75,16 +90,31 @@ void LogAverageLatency(base::TimeDelta latency) {
   latencies->push_back(latency.InMillisecondsF());
 }
 
-constexpr char kEffectKey[] = "effect";
-constexpr char kBlurLevelKey[] = "blur_level";
-constexpr char kGpuApiKey[] = "gpu_api";
-constexpr char kRelightingGpuApiKey[] = "relighting_gpu_api";
-constexpr char kBlurEnabled[] = "blur_enabled";
-constexpr char kReplaceEnabled[] = "replace_enabled";
-constexpr char kRelightEnabled[] = "relight_enabled";
+void DeleteEffectsMarkerFile() {
+  if (!base::PathExists(kEffectsRunningMarker))
+    return;
 
-constexpr uint32_t kRGBAFormat = HAL_PIXEL_FORMAT_RGBX_8888;
-constexpr uint32_t kBufferUsage = GRALLOC_USAGE_HW_TEXTURE;
+  if (!base::DeleteFile(kEffectsRunningMarker)) {
+    LOG(WARNING) << "Couldn't delete effects marker file";
+  }
+}
+
+// Creates a file that indicates an attempt to start
+// the effects pipeline has been made. If this causes the
+// camera stack to crash, the file will be left there
+// and the opencl-cacher-failsafe upstart job will
+// clear the cache. Returns a timer object that will delete
+// the marker file after the duration defined in kEffectsRunningMarkerLifetime
+std::unique_ptr<base::OneShotTimer> CreateEffectsMarkerFile() {
+  if (!base::WriteFile(kEffectsRunningMarker, "")) {
+    LOG(WARNING) << "Couldn't create effects marker file";
+    return nullptr;
+  }
+  auto timer = std::make_unique<base::OneShotTimer>();
+  timer->Start(FROM_HERE, kEffectsRunningMarkerLifetime,
+               base::BindOnce(&DeleteEffectsMarkerFile));
+  return timer;
+}
 
 class RenderedImageObserver : public ProcessedFrameObserver {
  public:
@@ -215,6 +245,8 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
   EffectsMetricsData metrics_;
   std::unique_ptr<EffectsMetricsUploader> metrics_uploader_;
   base::TimeTicks last_processed_frame_timestamp_;
+
+  std::unique_ptr<base::OneShotTimer> marker_file_timer_;
 };
 
 std::unique_ptr<EffectsStreamManipulator> EffectsStreamManipulator::Create(
@@ -260,12 +292,18 @@ EffectsStreamManipulatorImpl::EffectsStreamManipulatorImpl(
     LOGF(ERROR) << "Failed to start GL thread. Turning off feature by default";
   }
 
+  // Clear out any stale marker file that may exist. It will get recreated
+  // once CreatePipeline is called.
+  DeleteEffectsMarkerFile();
+
   if (!runtime_options_->GetDlcRootPath().empty()) {
     CreatePipeline(base::FilePath(runtime_options_->GetDlcRootPath()));
   }
 }
 
 EffectsStreamManipulatorImpl::~EffectsStreamManipulatorImpl() {
+  DeleteEffectsMarkerFile();
+
   // UploadAndResetMetricsData currently posts a task to the gl_thread task
   // runner (see constructor above). If we change that, we need to ensure the
   // upload task is complete before the destructor exits, or change the
@@ -714,6 +752,8 @@ void EffectsStreamManipulatorImpl::RGBAToNV12(GLuint texture,
 
 void EffectsStreamManipulatorImpl::CreatePipeline(
     const base::FilePath& dlc_root_path) {
+  marker_file_timer_ = CreateEffectsMarkerFile();
+
   pipeline_ = EffectsPipeline::Create(dlc_root_path, egl_context_->Get());
   pipeline_->SetRenderedImageObserver(std::make_unique<RenderedImageObserver>(
       base::BindRepeating(&EffectsStreamManipulatorImpl::OnFrameProcessed,
