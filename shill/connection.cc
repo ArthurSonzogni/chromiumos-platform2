@@ -382,19 +382,17 @@ void Connection::UpdateRoutingPolicy() {
     // selection. Sending traffic there before all other rules for physical
     // interfaces (but after any VPN rules) ensures that physical interface
     // rules are not inadvertently too aggressive.
-    auto main_table_rule =
-        RoutingPolicyEntry::CreateFromSrc(IPAddress(IPAddress::kFamilyIPv4))
-            .SetPriority(priority_ - 1)
-            .SetTable(RT_TABLE_MAIN);
+    auto main_table_rule = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
+                               .SetPriority(priority_ - 1)
+                               .SetTable(RT_TABLE_MAIN);
     routing_table_->AddRule(interface_index_, main_table_rule);
     routing_table_->AddRule(interface_index_, main_table_rule.FlipFamily());
     // Add a default routing rule to use the primary interface if there is
     // nothing better.
     // TODO(crbug.com/999589) Remove this rule.
-    auto catch_all_rule =
-        RoutingPolicyEntry::CreateFromSrc(IPAddress(IPAddress::kFamilyIPv4))
-            .SetTable(table_id_)
-            .SetPriority(kCatchallPriority);
+    auto catch_all_rule = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
+                              .SetTable(table_id_)
+                              .SetPriority(kCatchallPriority);
     routing_table_->AddRule(interface_index_, catch_all_rule);
     routing_table_->AddRule(interface_index_, catch_all_rule.FlipFamily());
   }
@@ -435,11 +433,10 @@ void Connection::AllowTrafficThrough(uint32_t table_id,
 
   // Add output interface rule for all interfaces, such that SO_BINDTODEVICE can
   // be used without explicitly binding the socket.
-  auto oif_rule =
-      RoutingPolicyEntry::CreateFromSrc(IPAddress(IPAddress::kFamilyIPv4))
-          .SetTable(table_id)
-          .SetPriority(base_priority)
-          .SetOif(interface_name_);
+  auto oif_rule = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
+                      .SetTable(table_id)
+                      .SetPriority(base_priority)
+                      .SetOif(interface_name_);
   routing_table_->AddRule(interface_index_, oif_rule);
   if (no_ipv6) {
     oif_rule.SetUid(shill_uid);
@@ -461,11 +458,10 @@ void Connection::AllowTrafficThrough(uint32_t table_id,
       }
       routing_table_->AddRule(interface_index_, if_addr_rule);
     }
-    auto iif_rule =
-        RoutingPolicyEntry::CreateFromSrc(IPAddress(IPAddress::kFamilyIPv4))
-            .SetTable(table_id)
-            .SetPriority(base_priority)
-            .SetIif(interface_name_);
+    auto iif_rule = RoutingPolicyEntry::Create(IPAddress::kFamilyIPv4)
+                        .SetTable(table_id)
+                        .SetPriority(base_priority)
+                        .SetIif(interface_name_);
     routing_table_->AddRule(interface_index_, iif_rule);
     if (no_ipv6) {
       iif_rule.SetUid(shill_uid);
