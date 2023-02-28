@@ -60,7 +60,7 @@ class ParserLog {
 
 // Simple implementation of the ParserLog interface. It just saves the first
 // `max_entries_count` (see the constructor) parser errors.
-class IPP_EXPORT SimpleParserLog : public ParserLog {
+class LIBIPP_EXPORT SimpleParserLog : public ParserLog {
  public:
   struct Entry {
     AttrPath path;
@@ -108,7 +108,7 @@ class IPP_EXPORT SimpleParserLog : public ParserLog {
 // constructor (it happens when nothing was parsed).
 // In all cases, the returned object is consistent and can be passed to other
 // libipp functions.
-Frame IPP_EXPORT Parse(const uint8_t* buffer, size_t size, ParserLog& log);
+Frame LIBIPP_EXPORT Parse(const uint8_t* buffer, size_t size, ParserLog& log);
 
 }  // namespace ipp
 

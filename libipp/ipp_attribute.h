@@ -143,19 +143,19 @@ struct DateTime {
 
 // Functions converting basic types to string. For enums it returns empty
 // string if given value is not defined.
-IPP_EXPORT std::string_view ToStrView(ValueTag tag);
-IPP_EXPORT std::string ToString(bool value);
-IPP_EXPORT std::string ToString(int value);
-IPP_EXPORT std::string ToString(const Resolution& value);
-IPP_EXPORT std::string ToString(const RangeOfInteger& value);
-IPP_EXPORT std::string ToString(const DateTime& value);
-IPP_EXPORT std::string ToString(const StringWithLanguage& value);
+LIBIPP_EXPORT std::string_view ToStrView(ValueTag tag);
+LIBIPP_EXPORT std::string ToString(bool value);
+LIBIPP_EXPORT std::string ToString(int value);
+LIBIPP_EXPORT std::string ToString(const Resolution& value);
+LIBIPP_EXPORT std::string ToString(const RangeOfInteger& value);
+LIBIPP_EXPORT std::string ToString(const DateTime& value);
+LIBIPP_EXPORT std::string ToString(const StringWithLanguage& value);
 
 // Functions extracting basic types from string.
 // Returns false <=> given pointer is nullptr or given string does not
 // represent a correct value.
-IPP_EXPORT bool FromString(const std::string& str, bool* value);
-IPP_EXPORT bool FromString(const std::string& str, int* value);
+LIBIPP_EXPORT bool FromString(const std::string& str, bool* value);
+LIBIPP_EXPORT bool FromString(const std::string& str, int* value);
 
 // Basic values are stored in attributes as variables of the following types:
 enum InternalType : uint8_t {
@@ -188,7 +188,7 @@ struct AttrDef {
 //
 // Attributes inside the collection are always in the same order they were added
 // to it. They will also appear in the same order in the resultant frame.
-class IPP_EXPORT Collection {
+class LIBIPP_EXPORT Collection {
  public:
   class const_iterator;
   class iterator {
@@ -413,7 +413,7 @@ class IPP_EXPORT Collection {
 };
 
 // Base class representing Attribute, contains general API for Attribute.
-class IPP_EXPORT Attribute {
+class LIBIPP_EXPORT Attribute {
  public:
   Attribute(const Attribute&) = delete;
   Attribute(Attribute&&) = delete;

@@ -83,7 +83,7 @@ class Attribute;
 // pointers to Collection or Attribute returned by methods of this class
 // point to internal objects. These objects are always owned by their Frame
 // object and their lifetime does not exceed the lifetime of their owner.
-class IPP_EXPORT Frame {
+class LIBIPP_EXPORT Frame {
  public:
   // Constructor. Create an empty frame with all basic parameters set to 0.
   Frame();

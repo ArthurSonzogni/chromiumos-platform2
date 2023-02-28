@@ -5,7 +5,7 @@
 #ifndef LIBIPP_IPP_EXPORT_H_
 #define LIBIPP_IPP_EXPORT_H_
 
-#define IPP_EXPORT __attribute__((__visibility__("default")))
-#define IPP_PRIVATE __attribute__((__visibility__("hidden")))
+#define LIBIPP_EXPORT __attribute__((__visibility__("default")))
+#define LIBIPP_PRIVATE __attribute__((__visibility__("hidden")))
 
 #endif  //  LIBIPP_IPP_EXPORT_H_

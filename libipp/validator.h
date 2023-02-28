@@ -46,7 +46,7 @@ class ErrorsLog;
 // no errors were detected.
 // For string types only the basic features are validated, there is no UTF-8
 // parsing or type-specific parsing like URL or MIME types.
-bool IPP_EXPORT Validate(const Frame& frame, ErrorsLog& log);
+bool LIBIPP_EXPORT Validate(const Frame& frame, ErrorsLog& log);
 
 }  // namespace ipp
 

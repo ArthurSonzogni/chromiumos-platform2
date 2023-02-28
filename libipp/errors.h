@@ -49,7 +49,7 @@ enum class ValidationCode {
 };
 
 // Represents information about invalid value or name of an attribute.
-class IPP_EXPORT AttrError {
+class LIBIPP_EXPORT AttrError {
  public:
   // `errors` contains validation errors of an attribute's name.
   explicit AttrError(std::set<ValidationCode>&& errors)
@@ -73,7 +73,7 @@ class IPP_EXPORT AttrError {
 };
 
 // Describes location of the attribute in the frame and the attribute's name.
-class IPP_EXPORT AttrPath {
+class LIBIPP_EXPORT AttrPath {
  public:
   struct Segment {
     uint16_t collection_index;
@@ -115,7 +115,7 @@ class ErrorsLog {
 
 // Simple implementation of the ErrorsLog interface. It just saves the first
 // `max_entries_count` (see the constructor) errors in the frame.
-class IPP_EXPORT SimpleLog : public ErrorsLog {
+class LIBIPP_EXPORT SimpleLog : public ErrorsLog {
  public:
   struct Entry {
     AttrPath path;
