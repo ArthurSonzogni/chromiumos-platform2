@@ -36,6 +36,7 @@ executable("cros_effects_sm_tests") {
   deps = [
     "//camera/common:base",
     "//camera/common:stream_manipulator",
+    "//camera/common/test_support",
     "//camera/features/effects",
     "//ml_core/dlc:dlc_client",
   ]

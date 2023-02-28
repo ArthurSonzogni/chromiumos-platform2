@@ -15,6 +15,8 @@
 
 namespace cros {
 
+class StillCaptureProcessor;
+
 class EffectsStreamManipulator : public StreamManipulator {
  public:
   // TODO(b:242631540) Find permanent location for this file
@@ -24,6 +26,7 @@ class EffectsStreamManipulator : public StreamManipulator {
   static std::unique_ptr<EffectsStreamManipulator> Create(
       base::FilePath config_file_path,
       RuntimeOptions* runtime_options,
+      std::unique_ptr<StillCaptureProcessor> still_capture_processor,
       void (*callback)(bool) = nullptr);
 };
 

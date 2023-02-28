@@ -179,10 +179,14 @@ StreamManipulatorManager::StreamManipulatorManager(
 
 #if USE_CAMERA_FEATURE_EFFECTS
   if (feature_profile.IsEnabled(FeatureProfile::FeatureType::kEffects)) {
+    std::unique_ptr<JpegCompressor> jpeg_compressor =
+        JpegCompressor::GetInstance(CameraMojoChannelManager::GetInstance());
+    std::unique_ptr<StillCaptureProcessor> still_capture_processor =
+        std::make_unique<StillCaptureProcessorImpl>(std::move(jpeg_compressor));
     stream_manipulators_.emplace_back(EffectsStreamManipulator::Create(
         feature_profile.GetConfigFilePath(
             FeatureProfile::FeatureType::kEffects),
-        runtime_options));
+        runtime_options, std::move(still_capture_processor)));
     LOGF(INFO) << "EffectsStreamManipulator enabled";
   }
 #endif

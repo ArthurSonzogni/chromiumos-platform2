@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "camera/common/stream_manipulator.h"
+#include "camera/common/test_support/fake_still_capture_processor.h"
 #include "camera/mojo/effects/effects_pipeline.mojom.h"
 #include "cros-camera/camera_buffer_utils.h"
 #include "features/effects/effects_stream_manipulator.h"
@@ -40,9 +41,7 @@ const int kNumFrames = 5;
 
 base::FilePath dlc_path;
 
-namespace cros {
-
-namespace effects_tests {
+namespace cros::tests {
 
 std::atomic<bool> effect_set_success = false;
 std::unique_ptr<base::RunLoop> loop;
@@ -229,7 +228,8 @@ TEST_F(EffectsStreamManipulatorTest, OverrideConfigFileToSetBackgroundReplace) {
       "{ \"replace_enabled\": true }"));
 
   stream_manipulator_ = EffectsStreamManipulator::Create(
-      config_path_, &runtime_options_, SetEffectCallback);
+      config_path_, &runtime_options_,
+      std::make_unique<FakeStillCaptureProcessor>(), SetEffectCallback);
   stream_manipulator_->Initialize(
       nullptr,
       StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
@@ -253,7 +253,8 @@ TEST_F(EffectsStreamManipulatorTest,
   ASSERT_TRUE(base::WriteFile(config_path_, "{ \"blur_enabled\": true }"));
 
   stream_manipulator_ = EffectsStreamManipulator::Create(
-      config_path_, &runtime_options_, SetEffectCallback);
+      config_path_, &runtime_options_,
+      std::make_unique<FakeStillCaptureProcessor>(), SetEffectCallback);
   stream_manipulator_->Initialize(
       nullptr,
       StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
@@ -277,7 +278,8 @@ TEST_F(EffectsStreamManipulatorTest, ReplaceEffectAppliedUsingEnableFlag) {
   runtime_options_.SetEffectsConfig(std::move(config));
 
   stream_manipulator_ = EffectsStreamManipulator::Create(
-      config_path_, &runtime_options_, SetEffectCallback);
+      config_path_, &runtime_options_,
+      std::make_unique<FakeStillCaptureProcessor>(), SetEffectCallback);
   stream_manipulator_->Initialize(
       nullptr,
       StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
@@ -303,7 +305,8 @@ TEST_F(EffectsStreamManipulatorTest, BlurEffectWithExtraBlurLevel) {
   runtime_options_.SetEffectsConfig(std::move(config));
 
   stream_manipulator_ = EffectsStreamManipulator::Create(
-      config_path_, &runtime_options_, SetEffectCallback);
+      config_path_, &runtime_options_,
+      std::make_unique<FakeStillCaptureProcessor>(), SetEffectCallback);
   stream_manipulator_->Initialize(
       nullptr,
       StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
@@ -328,7 +331,8 @@ TEST_F(EffectsStreamManipulatorTest, RelightEffectAppliedUsingEnableFlag) {
   runtime_options_.SetEffectsConfig(std::move(config));
 
   stream_manipulator_ = EffectsStreamManipulator::Create(
-      config_path_, &runtime_options_, SetEffectCallback);
+      config_path_, &runtime_options_,
+      std::make_unique<FakeStillCaptureProcessor>(), SetEffectCallback);
   stream_manipulator_->Initialize(
       nullptr,
       StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
@@ -349,7 +353,8 @@ TEST_F(EffectsStreamManipulatorTest, RelightEffectAppliedUsingEnableFlag) {
 
 TEST_F(EffectsStreamManipulatorTest, NoneEffectApplied) {
   stream_manipulator_ = EffectsStreamManipulator::Create(
-      config_path_, &runtime_options_, SetEffectCallback);
+      config_path_, &runtime_options_,
+      std::make_unique<FakeStillCaptureProcessor>(), SetEffectCallback);
   stream_manipulator_->Initialize(
       nullptr,
       StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
@@ -373,7 +378,8 @@ TEST_F(EffectsStreamManipulatorTest, RotateThroughEffectsUsingOverrideFile) {
       "\"replace_enabled\": false }"));
 
   stream_manipulator_ = EffectsStreamManipulator::Create(
-      config_path_, &runtime_options_, SetEffectCallback);
+      config_path_, &runtime_options_,
+      std::make_unique<FakeStillCaptureProcessor>(), SetEffectCallback);
   stream_manipulator_->Initialize(
       nullptr,
       StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
@@ -408,7 +414,8 @@ TEST_F(EffectsStreamManipulatorTest, RotateThroughEffectsUsingOverrideFile) {
 TEST_F(EffectsStreamManipulatorTest,
        RotateThroughEffectsWhileProcessingFrames) {
   stream_manipulator_ = EffectsStreamManipulator::Create(
-      config_path_, &runtime_options_, SetEffectCallback);
+      config_path_, &runtime_options_,
+      std::make_unique<FakeStillCaptureProcessor>(), SetEffectCallback);
   stream_manipulator_->Initialize(
       nullptr,
       StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
@@ -458,9 +465,7 @@ TEST_F(EffectsStreamManipulatorTest,
   EXPECT_TRUE(CompareFrames(ref_buffer, output_buffer_));
 }
 
-}  // namespace effects_tests
-
-}  // namespace cros
+}  // namespace cros::tests
 
 int main(int argc, char** argv) {
   base::CommandLine::Init(argc, argv);
