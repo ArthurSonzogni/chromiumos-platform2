@@ -69,39 +69,47 @@ namespace {
 
 // Returns candidate AuthBlock types that can be used for the specified factor.
 // The list is ordered from the most preferred options towards the least ones.
+// Historically, we have more than 1 auth blocks suitable for password.
+// But for more recent auth factors, there is either one exact dedicated auth
+// block, or no auth block at all.
 std::vector<AuthBlockType> GetAuthBlockPriorityListForCreation(
-    bool is_le_credential, bool is_recovery, bool is_challenge_credential) {
-  DCHECK_LE(is_le_credential + is_recovery + is_challenge_credential, 1);
-
-  if (is_le_credential) {
-    return {AuthBlockType::kPinWeaver};
+    const AuthFactorType& auth_factor_type) {
+  switch (auth_factor_type) {
+    case AuthFactorType::kPassword: {
+      std::vector<AuthBlockType> password_types = {
+          // `kTpmEcc` comes first as the fastest auth block.
+          AuthBlockType::kTpmEcc,
+          // `kTpmBoundToPcr` and `kTpmNotBoundToPcr` are fallbacks when
+          // hardware
+          // doesn't support ECC. `kTpmBoundToPcr` comes first of the two, as
+          // binding to PCR is preferred (but it's unavailable on some old
+          // devices).
+          AuthBlockType::kTpmBoundToPcr,
+          AuthBlockType::kTpmNotBoundToPcr,
+      };
+      if (USE_TPM_INSECURE_FALLBACK) {
+        // On boards that allow this, use `kScrypt` as the last fallback option
+        // when TPM is unavailable. On other boards, we don't list it as a
+        // candidate, in order to let the error chain (that's taken from the
+        // last candidate on failure) contain relevant information about TPM
+        // error.
+        password_types.push_back(AuthBlockType::kScrypt);
+      }
+      return password_types;
+    }
+    case AuthFactorType::kPin:
+      return {AuthBlockType::kPinWeaver};
+    case AuthFactorType::kSmartCard:
+      return {AuthBlockType::kChallengeCredential};
+    case AuthFactorType::kCryptohomeRecovery:
+      return {AuthBlockType::kCryptohomeRecovery};
+    case AuthFactorType::kFingerprint:
+      return {AuthBlockType::kFingerprint};
+    case AuthFactorType::kLegacyFingerprint:
+    case AuthFactorType::kKiosk:
+    case AuthFactorType::kUnspecified:
+      return {};
   }
-
-  if (is_recovery) {
-    return {AuthBlockType::kCryptohomeRecovery};
-  }
-
-  if (is_challenge_credential) {
-    return {AuthBlockType::kChallengeCredential};
-  }
-
-  std::vector<AuthBlockType> password_types = {
-      // `kTpmEcc` comes first as the fastest auth block.
-      AuthBlockType::kTpmEcc,
-      // `kTpmBoundToPcr` and `kTpmNotBoundToPcr` are fallbacks when hardware
-      // doesn't support ECC. `kTpmBoundToPcr` comes first of the two, as
-      // binding to PCR is preferred (but it's unavailable on some old devices).
-      AuthBlockType::kTpmBoundToPcr,
-      AuthBlockType::kTpmNotBoundToPcr,
-  };
-  if (USE_TPM_INSECURE_FALLBACK) {
-    // On boards that allow this, use `kScrypt` as the last fallback option when
-    // TPM is unavailable. On other boards, we don't list it as a candidate, in
-    // order to let the error chain (that's taken from the last candidate on
-    // failure) contain relevant information about TPM error.
-    password_types.push_back(AuthBlockType::kScrypt);
-  }
-  return password_types;
 }
 
 }  // namespace
@@ -489,14 +497,10 @@ void AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlockAsync(
 }
 
 CryptoStatusOr<AuthBlockType> AuthBlockUtilityImpl::GetAuthBlockTypeForCreation(
-    const bool is_le_credential,
-    const bool is_recovery,
-    const bool is_challenge_credential) const {
-  DCHECK_LE(is_le_credential + is_recovery + is_challenge_credential, 1);
-
+    const AuthFactorType& auth_factor_type) const {
   CryptoStatus status;
-  for (AuthBlockType candidate_type : GetAuthBlockPriorityListForCreation(
-           is_le_credential, is_recovery, is_challenge_credential)) {
+  for (AuthBlockType candidate_type :
+       GetAuthBlockPriorityListForCreation(auth_factor_type)) {
     status = IsAuthBlockSupported(candidate_type);
     if (status.ok()) {
       return candidate_type;

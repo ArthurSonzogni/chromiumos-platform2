@@ -205,7 +205,7 @@ void MockKeysetDerivation(const ObfuscatedUsername& obfuscated_username,
 
 void MockKeysetCreation(MockAuthBlockUtility& auth_block_utility) {
   // Return an arbitrary auth block type from the mock.
-  EXPECT_CALL(auth_block_utility, GetAuthBlockTypeForCreation(_, _, _))
+  EXPECT_CALL(auth_block_utility, GetAuthBlockTypeForCreation(_))
       .WillOnce(ReturnValue(AuthBlockType::kTpmEcc))
       .RetiresOnSaturation();
 

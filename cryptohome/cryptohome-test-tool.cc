@@ -26,6 +26,7 @@
 #include "base/no_destructor.h"
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
 #include "cryptohome/auth_blocks/auth_block_utils.h"
+#include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptorecovery/fake_recovery_mediator_crypto.h"
 #include "cryptohome/cryptorecovery/recovery_crypto_hsm_cbor_serialization.h"
@@ -539,8 +540,7 @@ void DeriveExistingVaultKeyset(KeysetManagement* keyset_management,
 
   CryptoStatusOr<AuthBlockType> auth_block_type =
       auth_block_utility->GetAuthBlockTypeForCreation(
-          /*is_le_credential=*/false, /*is_recovery=*/false,
-          /*is_challenge_credential=*/false);
+          AuthFactorType::kPassword);
   if (!auth_block_type.ok()) {
     LOG(ERROR) << "Cannot determinte AuthBlockType of requested VaultKeyset.";
     return;
@@ -624,8 +624,7 @@ bool DoCreateVaultKeyset(const Username& username,
   if (!existing_vault_keyset) {  // Add Initial VaultKeyset case.
     CryptoStatusOr<AuthBlockType> auth_block_type =
         auth_block_utility.GetAuthBlockTypeForCreation(
-            /*is_le_credential=*/false, /*is_recovery=*/false,
-            /*is_challenge_credential=*/false);
+            AuthFactorType::kPassword);
     if (!auth_block_type.ok()) {
       LOG(ERROR) << "Cannot determinte AuthBlockType of requested VaultKeyset.";
       return false;

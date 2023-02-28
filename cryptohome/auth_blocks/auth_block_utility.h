@@ -138,9 +138,7 @@ class AuthBlockUtility {
   // AuthBlock::Create() based on the specified credential type, |tpm_| and
   //  |crypto_| status. If there's no suitable AuthBlock, returns an error.
   virtual CryptoStatusOr<AuthBlockType> GetAuthBlockTypeForCreation(
-      const bool is_le_credential,
-      const bool is_recovery,
-      const bool is_challenge_credential) const = 0;
+      const AuthFactorType& auth_factor_type) const = 0;
 
   // This function returns the AuthBlock type based on AutBlockState.
   virtual AuthBlockType GetAuthBlockTypeFromState(

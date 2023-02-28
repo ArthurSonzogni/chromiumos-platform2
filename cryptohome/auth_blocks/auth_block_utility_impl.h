@@ -102,9 +102,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       AuthBlock::DeriveCallback derive_callback) override;
 
   CryptoStatusOr<AuthBlockType> GetAuthBlockTypeForCreation(
-      const bool is_le_credential,
-      const bool is_recovery,
-      const bool is_challenge_credential) const override;
+      const AuthFactorType& auth_factor_type) const override;
 
   AuthBlockType GetAuthBlockTypeFromState(
       const AuthBlockState& state) const override;

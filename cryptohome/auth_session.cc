@@ -1288,13 +1288,9 @@ void AuthSession::UpdateAuthFactor(
     return;
   }
 
-  bool is_le_credential = auth_factor_type == AuthFactorType::kPin;
-  bool is_recovery = auth_factor_type == AuthFactorType::kCryptohomeRecovery;
   // Determine the auth block type to use.
   CryptoStatusOr<AuthBlockType> auth_block_type =
-      auth_block_utility_->GetAuthBlockTypeForCreation(
-          is_le_credential, is_recovery,
-          /*is_challenge_credential=*/false);
+      auth_block_utility_->GetAuthBlockTypeForCreation(auth_factor_type);
   if (!auth_block_type.ok()) {
     std::move(on_done).Run(
         MakeStatus<CryptohomeError>(
@@ -1332,7 +1328,8 @@ void AuthSession::UpdateAuthFactor(
   // which is not going to be used.
   user_data_auth::CryptohomeErrorCode error = converter_.AuthFactorToKeyData(
       auth_factor_label, auth_factor_type, auth_factor_metadata, key_data);
-  if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET && !is_recovery) {
+  if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET &&
+      auth_factor_type != AuthFactorType::kCryptohomeRecovery) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionConverterFailsInUpdateFactorViaVK),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}), error));
@@ -1768,21 +1765,19 @@ AuthBlockType AuthSession::ResaveVaultKeysetIfNeeded(
 
   // KeyBlobs needs to be re-created since there maybe a change in the
   // AuthBlock type with the change in TPM state. Don't abort on failure.
-  // Only password and pin type credentials are evaluated for resave. Therefore
-  // we don't need the asynchronous KeyBlob creation.
+  // Only password and pin type credentials are evaluated for resave.
+  if (vault_keyset_->IsLECredential()) {
+    LOG(ERROR) << "Pinweaver AuthBlock is not supported for resave operation, "
+                  "can't resave keyset.";
+    return auth_block_type;
+  }
   CryptoStatusOr<AuthBlockType> out_auth_block_type =
       auth_block_utility_->GetAuthBlockTypeForCreation(
-          vault_keyset_->IsLECredential(), /*is_recovery=*/false,
-          /*is_challenge_credential*/ false);
+          AuthFactorType::kPassword);
   if (!out_auth_block_type.ok()) {
     LOG(ERROR)
         << "Error in creating obtaining AuthBlockType, can't resave keyset: "
         << out_auth_block_type.status();
-    return auth_block_type;
-  }
-  if (out_auth_block_type.value() == AuthBlockType::kPinWeaver) {
-    LOG(ERROR) << "Pinweaver AuthBlock is not supported for resave operation, "
-                  "can't resave keyset.";
     return auth_block_type;
   }
 
@@ -2367,12 +2362,8 @@ void AuthSession::AddAuthFactorImpl(
     std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
     StatusCallback on_done) {
   // Determine the auth block type to use.
-  bool is_le_credential = auth_factor_type == AuthFactorType::kPin;
-  bool is_recovery = auth_factor_type == AuthFactorType::kCryptohomeRecovery;
-  bool is_challenge_credential = auth_factor_type == AuthFactorType::kSmartCard;
   CryptoStatusOr<AuthBlockType> auth_block_type =
-      auth_block_utility_->GetAuthBlockTypeForCreation(
-          is_le_credential, is_recovery, is_challenge_credential);
+      auth_block_utility_->GetAuthBlockTypeForCreation(auth_factor_type);
 
   if (!auth_block_type.ok()) {
     std::move(on_done).Run(
@@ -2390,7 +2381,8 @@ void AuthSession::AddAuthFactorImpl(
   KeyData key_data;
   user_data_auth::CryptohomeErrorCode error = converter_.AuthFactorToKeyData(
       auth_factor_label, auth_factor_type, auth_factor_metadata, key_data);
-  if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET && !is_recovery) {
+  if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET &&
+      auth_factor_type != AuthFactorType::kCryptohomeRecovery) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionVKConverterFailsInAddAuthFactor),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}), error));

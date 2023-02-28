@@ -45,6 +45,7 @@
 #include "cryptohome/auth_blocks/tpm_ecc_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
+#include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/challenge_credentials/mock_challenge_credentials_helper.h"
 #include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
@@ -1760,8 +1761,7 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
   EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(false));
   CryptoStatusOr<AuthBlockType> type_without_tpm =
       auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-          /*is_le_credential =*/false, /*is_recovery=*/false,
-          /*is_challenge_credential =*/false);
+          AuthFactorType::kPassword);
   if (USE_TPM_INSECURE_FALLBACK) {
     EXPECT_THAT(type_without_tpm, IsOkAndHolds(AuthBlockType::kScrypt));
   } else {
@@ -1778,8 +1778,7 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
   credentials.set_key_data(key_data);
   ON_CALL(hwsec_, IsPinWeaverEnabled()).WillByDefault(ReturnValue(true));
   EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  /*is_le_credential =*/true, /*is_recovery=*/false,
-                  /*is_challenge_credential =*/false),
+                  AuthFactorType::kPin),
               IsOkAndHolds(AuthBlockType::kPinWeaver));
 
   // Test for kChallengeResponse
@@ -1787,8 +1786,7 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
   key_data2.set_type(KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
   credentials.set_key_data(key_data2);
   EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  /*is_le_credential =*/false, /*is_recovery=*/false,
-                  /*is_challenge_credential =*/true),
+                  AuthFactorType::kSmartCard),
               IsOkAndHolds(AuthBlockType::kChallengeCredential));
 
   // credentials.key_data type shouldn't be challenge credential any more.
@@ -1797,15 +1795,13 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
 
   // Test for kTpmEcc
   EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  /*is_le_credential =*/false, /*is_recovery=*/false,
-                  /*is_challenge_credential =*/false),
+                  AuthFactorType::kPassword),
               IsOkAndHolds(AuthBlockType::kTpmEcc));
 
   // Test for kTpmNotBoundToPcr (No TPM or no TPM2.0)
   EXPECT_CALL(hwsec_, IsSealingSupported()).WillRepeatedly(ReturnValue(false));
   EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  /*is_le_credential =*/false, /*is_recovery=*/false,
-                  /*is_challenge_credential =*/false),
+                  AuthFactorType::kPassword),
               IsOkAndHolds(AuthBlockType::kTpmNotBoundToPcr));
 
   // Test for kTpmBoundToPcr (TPM2.0 but no support for ECC key)
@@ -1816,14 +1812,12 @@ TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
       .WillRepeatedly(
           Return(cryptohome_keys_manager_.get_mock_cryptohome_key_loader()));
   EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  /*is_le_credential =*/false, /*is_recovery=*/false,
-                  /*is_challenge_credential =*/false),
+                  AuthFactorType::kPassword),
               IsOkAndHolds(AuthBlockType::kTpmBoundToPcr));
 
   // Test for kCryptohomeRecovery
   EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  /*is_le_credential =*/false, /*is_recovery=*/true,
-                  /*is_challenge_credential =*/false),
+                  AuthFactorType::kCryptohomeRecovery),
               IsOkAndHolds(AuthBlockType::kCryptohomeRecovery));
 }
 

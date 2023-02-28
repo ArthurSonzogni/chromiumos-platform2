@@ -246,7 +246,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
   void AddFactorWithMockAuthBlockUtility(AuthSession& auth_session,
                                          const std::string& label,
                                          const std::string& secret) {
-    EXPECT_CALL(mock_auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _))
+    EXPECT_CALL(mock_auth_block_utility_, GetAuthBlockTypeForCreation(_))
         .WillOnce(ReturnValue(AuthBlockType::kTpmEcc));
     auto key_blobs = std::make_unique<KeyBlobs>(kKeyBlobs);
     auto auth_block_state = std::make_unique<AuthBlockState>();
@@ -939,7 +939,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   EXPECT_TRUE(auth_session->OnUserCreated().ok());
   EXPECT_EQ(auth_session->status(), AuthStatus::kAuthStatusAuthenticated);
 
-  EXPECT_CALL(mock_auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _))
+  EXPECT_CALL(mock_auth_block_utility_, GetAuthBlockTypeForCreation(_))
       .WillRepeatedly(ReturnValue(AuthBlockType::kTpmEcc));
 
   // Add an initial factor to USS and backup VK and update password.
@@ -1076,7 +1076,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   EXPECT_TRUE(auth_session.OnUserCreated().ok());
   EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
 
-  EXPECT_CALL(mock_auth_block_utility_, GetAuthBlockTypeForCreation(_, _, _))
+  EXPECT_CALL(mock_auth_block_utility_, GetAuthBlockTypeForCreation(_))
       .WillOnce(ReturnValue(AuthBlockType::kTpmEcc));
 
   auto key_blobs = std::make_unique<KeyBlobs>();
