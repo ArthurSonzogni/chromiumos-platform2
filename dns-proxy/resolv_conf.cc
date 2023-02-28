@@ -4,6 +4,7 @@
 
 #include "dns-proxy/resolv_conf.h"
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -24,8 +25,23 @@ ResolvConf::~ResolvConf() = default;
 bool ResolvConf::SetDNSFromLists(
     const std::vector<std::string>& name_servers,
     const std::vector<std::string>& domain_search_list) {
-  name_servers_ = name_servers;
-  domain_search_list_ = domain_search_list;
+  name_servers_.clear();
+  domain_search_list_.clear();
+  std::set<std::string> name_server_set;
+  std::set<std::string> domain_search_set;
+  // Avoid duplicated entry, but keep the order.
+  for (const auto& name_server : name_servers) {
+    if (!base::Contains(name_server_set, name_server)) {
+      name_servers_.push_back(name_server);
+      name_server_set.insert(name_server);
+    }
+  }
+  for (const auto& domain_search : domain_search_list) {
+    if (!base::Contains(domain_search_set, domain_search)) {
+      domain_search_list_.push_back(domain_search);
+      domain_search_set.insert(domain_search);
+    }
+  }
   return Emit();
 }
 
