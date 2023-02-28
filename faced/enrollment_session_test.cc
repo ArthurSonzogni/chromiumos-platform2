@@ -48,7 +48,7 @@ using ::chromeos::faceauth::mojom::SessionError;
 using ::brillo::cryptohome::home::SanitizeUserName;
 
 std::string SampleUserHash() {
-  return SanitizeUserName(kUserName);
+  return *SanitizeUserName(::brillo::cryptohome::home::Username(kUserName));
 }
 
 absl::BitGen bitgen;

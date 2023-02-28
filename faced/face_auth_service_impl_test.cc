@@ -64,7 +64,7 @@ using ::chromeos::faceauth::mojom::SessionInfo;
 using ::brillo::cryptohome::home::SanitizeUserName;
 
 std::string SampleUserHash() {
-  return SanitizeUserName(kUserName);
+  return *SanitizeUserName(::brillo::cryptohome::home::Username(kUserName));
 }
 
 // Create an EnrollmentStorage object backed by a temporary directory.

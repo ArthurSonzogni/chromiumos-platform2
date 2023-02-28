@@ -186,8 +186,10 @@ Enroller::Enroller(mojo::Remote<FaceAuthenticationService>& service,
 
 void Enroller::Run(base::StringPiece user) {
   service_->CreateEnrollmentSession(
-      EnrollmentSessionConfig::New(SanitizeUserName(std::string(user)),
-                                   /*accessibility=*/false),
+      EnrollmentSessionConfig::New(
+          *SanitizeUserName(
+              ::brillo::cryptohome::home::Username(std::string(user))),
+          /*accessibility=*/false),
       session_remote_.BindNewPipeAndPassReceiver(),
       receiver_.BindNewPipeAndPassRemote(),
       base::BindOnce(
