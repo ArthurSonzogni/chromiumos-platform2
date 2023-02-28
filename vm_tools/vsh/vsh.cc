@@ -230,8 +230,14 @@ bool ListenForVshd(dbus::ObjectProxy* cicerone_proxy,
   };
   const int num_pollfds = std::size(pollfds);
 
-  if (HANDLE_EINTR(poll(pollfds, num_pollfds, 5000)) < 0) {
-    PLOG(ERROR) << "Failed to poll";
+  // Keep polling until we get a POLLIN. Previously we would timeout after 5
+  // seconds and treat it as a success.
+  if (HANDLE_EINTR(poll(pollfds, num_pollfds, 5000)) <= 0) {
+    if (!(pollfds[0].revents & POLLIN)) {
+      LOG(ERROR) << "Poll timed out after waiting 5 seconds.";
+    } else {
+      PLOG(ERROR) << "Failed to poll";
+    }
     return false;
   }
 
