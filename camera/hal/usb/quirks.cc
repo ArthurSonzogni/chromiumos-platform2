@@ -32,6 +32,8 @@ const QuirksMap& GetQuirksMap() {
       {{"05e3", "f11a"}, kQuirkReportLeastFpsRanges},
       // Logitech Tap HDMI Capture (b/146590270)
       {{"046d", "0876"}, kQuirkRestartOnTimeout},
+      // Magewell USB Capture HDMI (b/262885305)
+      {{"2935", "0006"}, kQuirkRestartOnTimeout},
       // IPEVO Ziggi-HD Plus
       {{"1778", "0225"}, kQuirkDisableFrameRateSetting},
       // Chicony CNFFH37 (b/158957477)
