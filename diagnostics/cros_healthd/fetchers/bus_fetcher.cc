@@ -47,9 +47,13 @@ bool HexToUInt(base::StringPiece in, T* out) {
 const auto& HexToU8 = HexToUInt<uint8_t>;
 const auto& HexToU16 = HexToUInt<uint16_t>;
 
-bool HexToNullableUint16(base::StringPiece in, mojom::NullableUint16Ptr* out) {
+bool HexToNullableUint16WithZeroHandling(base::StringPiece in,
+                                         mojom::NullableUint16Ptr* out) {
   uint16_t raw;
   if (!HexToU16(in, &raw))
+    return false;
+  // Subsystem device and subsystem vendor is 0x0000 when it is not available.
+  if (raw == 0)
     return false;
   *out = mojom::NullableUint16::New(raw);
   return true;
@@ -82,9 +86,9 @@ mojom::PciBusInfoPtr FetchPciInfo(const base::FilePath& path) {
       !ReadInteger(path, kFilePciDevice, &HexToU16, &info->device_id) ||
       !ReadInteger(path, kFilePciVendor, &HexToU16, &info->vendor_id))
     return nullptr;
-  ReadInteger(path, kFilePciSubVendor, &HexToNullableUint16,
+  ReadInteger(path, kFilePciSubVendor, &HexToNullableUint16WithZeroHandling,
               &info->sub_vendor_id);
-  ReadInteger(path, kFilePciSubDevice, &HexToNullableUint16,
+  ReadInteger(path, kFilePciSubDevice, &HexToNullableUint16WithZeroHandling,
               &info->sub_device_id);
   info->class_id = GET_PCI_CLASS(class_raw);
   info->subclass_id = GET_PCI_SUBCLASS(class_raw);

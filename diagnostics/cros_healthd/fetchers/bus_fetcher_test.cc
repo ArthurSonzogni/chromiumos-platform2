@@ -456,5 +456,15 @@ TEST_F(BusFetcherTest, TestFetchSysfsPathsBusDeviceMapUsb) {
             GetPathUnderRoot({kFakePathUsbDevices, "1-0"}));
 }
 
+TEST_F(BusFetcherTest, TestFetchWithoutSubInfo) {
+  auto& ptr = AddExpectedPciDevice();
+  ptr->bus_info->get_pci_bus_info()->sub_vendor_id = nullptr;
+  ptr->bus_info->get_pci_bus_info()->sub_device_id = nullptr;
+  SetExpectedBusDevices();
+  SetFile({kFakePathPciDevices, "0000:00:00.0", kFilePciSubVendor}, "0x0000");
+  SetFile({kFakePathPciDevices, "0000:00:00.0", kFilePciSubDevice}, "0x0000");
+  CheckBusDevices();
+}
+
 }  // namespace
 }  // namespace diagnostics
