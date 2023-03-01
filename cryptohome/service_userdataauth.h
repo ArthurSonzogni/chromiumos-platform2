@@ -340,6 +340,11 @@ class UserDataAuthAdaptor
   void FingerprintScanResultCallback(
       user_data_auth::FingerprintScanResult result);
 
+  // This is called by UserDataAuth for processing an emitted signal from
+  // a prepared AuthFactor. All we do here is send the signal.
+  void PrepareAuthFactorProgressCallback(
+      user_data_auth::PrepareAuthFactorProgress signal);
+
  private:
   brillo::dbus_utils::DBusObject* dbus_object_;
 

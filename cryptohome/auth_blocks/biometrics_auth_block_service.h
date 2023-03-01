@@ -19,6 +19,8 @@
 
 namespace cryptohome {
 
+constexpr char CrosFpAuthStackManagerRelativePath[] = "/CrosFpAuthStackManager";
+
 // BiometricsAuthBlockService is in charge of managing biometrics sessions
 // and handling biometrics commands.
 class BiometricsAuthBlockService {
@@ -37,6 +39,15 @@ class BiometricsAuthBlockService {
   BiometricsAuthBlockService& operator=(const BiometricsAuthBlockService&) =
       delete;
   ~BiometricsAuthBlockService() = default;
+
+  // Create a null getter that always return a null BiometricsAuthBlockService
+  // pointer. This is mostly useful in tests that don't need to do any
+  // biometrics operations and just want a placeholder when constructing
+  // AuthBlockUtility.
+  static base::RepeatingCallback<BiometricsAuthBlockService*()> NullGetter() {
+    return base::BindRepeating(
+        []() -> BiometricsAuthBlockService* { return nullptr; });
+  }
 
   // StartEnrollSession initiates a biometrics enrollment session. If
   // successful, enroll_signal_sender will be triggered with upcoming enrollment

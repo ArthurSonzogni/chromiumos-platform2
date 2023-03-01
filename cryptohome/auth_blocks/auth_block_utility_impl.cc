@@ -118,11 +118,13 @@ AuthBlockUtilityImpl::AuthBlockUtilityImpl(
     KeysetManagement* keyset_management,
     Crypto* crypto,
     Platform* platform,
-    std::unique_ptr<FingerprintAuthBlockService> fp_service)
+    std::unique_ptr<FingerprintAuthBlockService> fp_service,
+    base::RepeatingCallback<BiometricsAuthBlockService*()> bio_service_getter)
     : keyset_management_(keyset_management),
       crypto_(crypto),
       platform_(platform),
-      fp_service_(std::move(fp_service)) {
+      fp_service_(std::move(fp_service)),
+      bio_service_getter_(bio_service_getter) {
   DCHECK(keyset_management);
   DCHECK(crypto_);
   DCHECK(platform_);
@@ -164,9 +166,10 @@ bool AuthBlockUtilityImpl::IsAuthFactorSupported(
       return AsyncChallengeCredentialAuthBlock::IsSupported(*crypto_).ok();
     case AuthFactorType::kLegacyFingerprint:
       return false;
-    case AuthFactorType::kFingerprint:
-      return biometrics_service_ &&
+    case AuthFactorType::kFingerprint: {
+      return bio_service_getter_.Run() &&
              FingerprintAuthBlock::IsSupported(*crypto_).ok();
+    }
     case AuthFactorType::kUnspecified:
       return false;
   }
@@ -533,7 +536,7 @@ CryptoStatus AuthBlockUtilityImpl::IsAuthBlockSupported(
     case AuthBlockType::kTpmEcc:
       return TpmEccAuthBlock::IsSupported(*crypto_);
     case AuthBlockType::kFingerprint:
-      if (!biometrics_service_) {
+      if (!bio_service_getter_.Run()) {
         return MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
                 kLocAuthBlockUtilFingerprintNoServiceInIsAuthBlockSupported),
@@ -665,8 +668,9 @@ AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
               crypto_->GetHwsec(), crypto_->GetRecoveryCrypto(),
               crypto_->le_manager(), platform_));
 
-    case AuthBlockType::kFingerprint:
-      if (!biometrics_service_) {
+    case AuthBlockType::kFingerprint: {
+      BiometricsAuthBlockService* bio_service = bio_service_getter_.Run();
+      if (!bio_service) {
         return MakeStatus<CryptohomeCryptoError>(
             CRYPTOHOME_ERR_LOC(
                 kLocAuthBlockUtilFingerprintNoServiceInGetAsyncAuthBlock),
@@ -675,7 +679,8 @@ AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
             CryptoError::CE_OTHER_CRYPTO);
       }
       return std::make_unique<FingerprintAuthBlock>(crypto_->le_manager(),
-                                                    biometrics_service_.get());
+                                                    bio_service);
+    }
   }
   return MakeStatus<CryptohomeCryptoError>(
       CRYPTOHOME_ERR_LOC(

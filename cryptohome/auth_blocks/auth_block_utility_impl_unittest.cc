@@ -145,7 +145,8 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   void MakeAuthBlockUtilityImpl() {
     auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
         keyset_management_.get(), &crypto_, &platform_,
-        MakeFingerprintAuthBlockService());
+        MakeFingerprintAuthBlockService(),
+        BiometricsAuthBlockService::NullGetter());
   }
 
  protected:
@@ -1482,7 +1483,8 @@ TEST_F(AuthBlockUtilityImplTest, DeriveAuthBlockStateFromVaultKeysetTest) {
   // Insert MockKeysetManagement into AuthBlockUtility
   auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
       &keyset_management, &crypto_, &platform_,
-      MakeFingerprintAuthBlockService());
+      MakeFingerprintAuthBlockService(),
+      BiometricsAuthBlockService::NullGetter());
   // Test
   AuthBlockState out_state;
   EXPECT_CALL(keyset_management, GetVaultKeyset(_, _))

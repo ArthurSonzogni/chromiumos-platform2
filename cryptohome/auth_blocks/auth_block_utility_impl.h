@@ -43,7 +43,9 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   AuthBlockUtilityImpl(KeysetManagement* keyset_management,
                        Crypto* crypto,
                        Platform* platform,
-                       std::unique_ptr<FingerprintAuthBlockService> fp_service);
+                       std::unique_ptr<FingerprintAuthBlockService> fp_service,
+                       base::RepeatingCallback<BiometricsAuthBlockService*()>
+                           bio_service_getter);
 
   AuthBlockUtilityImpl(const AuthBlockUtilityImpl&) = delete;
   AuthBlockUtilityImpl& operator=(const AuthBlockUtilityImpl&) = delete;
@@ -172,9 +174,9 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   // fingerprint sensors.
   std::unique_ptr<FingerprintAuthBlockService> fp_service_;
 
-  // Biometrics service, used by operations that need to interact with
-  // biometrics auth stacks.
-  std::unique_ptr<BiometricsAuthBlockService> biometrics_service_;
+  // Biometrics service getter. This is because AuthBlockUtility is created pre
+  // dbus initialization and biometrics service can only be created after that.
+  base::RepeatingCallback<BiometricsAuthBlockService*()> bio_service_getter_;
 };
 
 }  // namespace cryptohome

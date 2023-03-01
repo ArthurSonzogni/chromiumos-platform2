@@ -23,6 +23,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <biod/biod_proxy/auth_stack_manager_proxy_base.h>
 #include <bootlockbox/boot_lockbox_client.h>
 #include <brillo/cryptohome.h>
 #include <chaps/isolate.h>
@@ -38,6 +39,7 @@
 #include <metrics/timer.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility_impl.h"
+#include "cryptohome/auth_blocks/biometrics_command_processor_impl.h"
 #include "cryptohome/auth_blocks/fp_service.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
@@ -329,7 +331,9 @@ bool UserDataAuth::Initialize() {
             base::BindRepeating(&UserDataAuth::GetFingerprintManager,
                                 base::Unretained(this)),
             base::BindRepeating(&UserDataAuth::OnFingerprintScanResult,
-                                base::Unretained(this))));
+                                base::Unretained(this))),
+        base::BindRepeating(&UserDataAuth::GetBiometricsService,
+                            base::Unretained(this)));
     auth_block_utility_ = default_auth_block_utility_.get();
   }
 
@@ -530,6 +534,10 @@ bool UserDataAuth::PostDBusInitialize() {
                         base::BindOnce(&UserDataAuth::CreateFingerprintManager,
                                        base::Unretained(this)));
 
+  PostTaskToMountThread(FROM_HERE,
+                        base::BindOnce(&UserDataAuth::CreateBiometricsService,
+                                       base::Unretained(this)));
+
   PostTaskToMountThread(
       FROM_HERE,
       base::BindOnce(&UserDataAuth::InitializeChallengeCredentialsHelper,
@@ -603,6 +611,66 @@ void UserDataAuth::OnFingerprintScanResult(
   if (fingerprint_scan_result_callback_) {
     fingerprint_scan_result_callback_.Run(result);
   }
+}
+
+void UserDataAuth::CreateBiometricsService() {
+  AssertOnMountThread();
+  if (!biometrics_service_) {
+    if (!default_biometrics_service_) {
+      // This will return nullptr if connection to the biod service failed.
+      auto bio_proxy = biod::AuthStackManagerProxyBase::Create(
+          mount_thread_bus_,
+          dbus::ObjectPath(std::string(biod::kBiodServicePath)
+                               .append(CrosFpAuthStackManagerRelativePath)));
+      if (bio_proxy) {
+        auto bio_processor = std::make_unique<BiometricsCommandProcessorImpl>(
+            std::move(bio_proxy));
+        default_biometrics_service_ =
+            std::make_unique<BiometricsAuthBlockService>(
+                std::move(bio_processor),
+                base::BindRepeating(&UserDataAuth::OnFingerprintEnrollProgress,
+                                    base::Unretained(this)),
+                base::BindRepeating(&UserDataAuth::OnFingerprintAuthProgress,
+                                    base::Unretained(this)));
+      }
+    }
+    biometrics_service_ = default_biometrics_service_.get();
+  }
+}
+
+BiometricsAuthBlockService* UserDataAuth::GetBiometricsService() const {
+  AssertOnMountThread();
+  return biometrics_service_;
+}
+
+void UserDataAuth::OnFingerprintEnrollProgress(
+    user_data_auth::AuthEnrollmentProgress result) {
+  AssertOnMountThread();
+  if (!prepare_auth_factor_progress_callback_) {
+    return;
+  }
+  user_data_auth::PrepareAuthFactorProgress progress;
+  user_data_auth::PrepareAuthFactorForAddProgress add_progress;
+  add_progress.set_auth_factor_type(
+      user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
+  *add_progress.mutable_biometrics_progress() = result;
+  progress.set_purpose(user_data_auth::PURPOSE_ADD_AUTH_FACTOR);
+  *progress.mutable_add_progress() = add_progress;
+}
+
+void UserDataAuth::OnFingerprintAuthProgress(
+    user_data_auth::AuthScanDone result) {
+  AssertOnMountThread();
+  if (!prepare_auth_factor_progress_callback_) {
+    return;
+  }
+  user_data_auth::PrepareAuthFactorProgress progress;
+  user_data_auth::PrepareAuthFactorForAuthProgress auth_progress;
+  auth_progress.set_auth_factor_type(
+      user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
+  *auth_progress.mutable_biometrics_progress() = result;
+  progress.set_purpose(user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
+  *progress.mutable_auth_progress() = auth_progress;
 }
 
 void UserDataAuth::OnOwnershipTakenSignal() {
@@ -1104,6 +1172,12 @@ void UserDataAuth::SetFingerprintScanResultCallback(
     const base::RepeatingCallback<void(user_data_auth::FingerprintScanResult)>&
         callback) {
   fingerprint_scan_result_callback_ = callback;
+}
+
+void UserDataAuth::SetPrepareAuthFactorProgressCallback(
+    const base::RepeatingCallback<
+        void(user_data_auth::PrepareAuthFactorProgress)>& callback) {
+  prepare_auth_factor_progress_callback_ = callback;
 }
 
 void UserDataAuth::OwnershipCallback(bool status, bool took_ownership) {

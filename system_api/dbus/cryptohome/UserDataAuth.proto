@@ -1557,3 +1557,30 @@ message AuthScanDone {
   // result, but just whether the scan is successful.
   AuthScanResult scan_result = 1;
 }
+
+// The message included in PrepareAuthFactorProgress when the purpose is add.
+message PrepareAuthFactorForAddProgress {
+  AuthFactorType auth_factor_type = 1;
+  oneof progress {
+    // The progress of biometrics auth factors, e.g., FingerprintAuthFactor.
+    AuthEnrollmentProgress biometrics_progress = 2;
+  }
+}
+
+// The message included in PrepareAuthFactorProgress when the purpose is auth.
+message PrepareAuthFactorForAuthProgress {
+  AuthFactorType auth_factor_type = 1;
+  oneof progress {
+    // The progress of biometrics auth factors, e.g., FingerprintAuthFactor.
+    AuthScanDone biometrics_progress = 2;
+  }
+}
+
+// The message included in signal PrepareAuthFactorProgressSignal.
+message PrepareAuthFactorProgress {
+  AuthFactorPreparePurpose purpose = 1;
+  oneof progress {
+    PrepareAuthFactorForAddProgress add_progress = 2;
+    PrepareAuthFactorForAuthProgress auth_progress = 3;
+  }
+}

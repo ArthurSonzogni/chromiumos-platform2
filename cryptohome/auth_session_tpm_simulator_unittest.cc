@@ -316,7 +316,8 @@ class AuthSessionWithTpmSimulatorTest : public ::testing::Test {
                                       std::make_unique<VaultKeysetFactory>()};
   AuthBlockUtilityImpl auth_block_utility_{
       &keyset_management_, &crypto_, &platform_,
-      FingerprintAuthBlockService::MakeNullService()};
+      FingerprintAuthBlockService::MakeNullService(),
+      BiometricsAuthBlockService::NullGetter()};
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};
   scoped_refptr<NiceMock<dbus::MockBus>> dbus_bus_ =

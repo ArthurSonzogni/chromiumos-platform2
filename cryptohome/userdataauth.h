@@ -33,6 +33,7 @@
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
 #include "cryptohome/auth_blocks/auth_block_utility.h"
+#include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
 #include "cryptohome/auth_factor/auth_factor_manager.h"
 #include "cryptohome/auth_session.h"
 #include "cryptohome/auth_session_manager.h"
@@ -192,6 +193,12 @@ class UserDataAuth {
   void SetFingerprintScanResultCallback(
       const base::RepeatingCallback<
           void(user_data_auth::FingerprintScanResult)>& callback);
+
+  // Set the PrepareAuthFactorProgress callback. This is usually called by the
+  // DBus adaptor.
+  void SetPrepareAuthFactorProgressCallback(
+      const base::RepeatingCallback<
+          void(user_data_auth::PrepareAuthFactorProgress)>& callback);
 
   // List the keys stored in |homedirs_|.
   // See definition of ListKeysReply for what is returned.
@@ -809,6 +816,25 @@ class UserDataAuth {
   // |fingerprint_scan_result_callback_|.
   void OnFingerprintScanResult(user_data_auth::FingerprintScanResult result);
 
+  // OnFingerprintEnrollProgress will be called on every received
+  // AuthEnrollmentProgress. It will forward results to
+  // |prepare_auth_factor_progress_callback_|.
+  void OnFingerprintEnrollProgress(
+      user_data_auth::AuthEnrollmentProgress result);
+
+  // OnFingerprintAuthProgress will be called on every received
+  // AuthScanDone. It will forward results to
+  // |prepare_auth_factor_progress_callback_|.
+  void OnFingerprintAuthProgress(user_data_auth::AuthScanDone result);
+
+  // Called on Mount thread. This creates a biometrics service that connects
+  // to the biometrics daemon and connect to signals.
+  void CreateBiometricsService();
+
+  // Called on Mount thread. The returns a pointer to the biometrics service,
+  // or null if it has not been created.
+  BiometricsAuthBlockService* GetBiometricsService() const;
+
   // =============== PKCS#11 Related Utilities ===============
 
   // This initializes the PKCS#11 for a particular mount. Note that this is
@@ -1037,6 +1063,13 @@ class UserDataAuth {
   // can be overridden for testing.
   FingerprintManager* fingerprint_manager_;
 
+  // The default Biometrics Service object for biometrics authentication.
+  std::unique_ptr<BiometricsAuthBlockService> default_biometrics_service_;
+
+  // The actual Biometrics Service object that is used by this class, but
+  // can be overridden for testing.
+  BiometricsAuthBlockService* biometrics_service_;
+
   // This is set to true iff OwnershipCallback has run.
   bool ownership_callback_has_run_;
 
@@ -1105,6 +1138,10 @@ class UserDataAuth {
   // The repeating callback to send FingerprintScanResult signal.
   base::RepeatingCallback<void(user_data_auth::FingerprintScanResult)>
       fingerprint_scan_result_callback_;
+
+  // The repeating callback to send PrepareAuthFactorProgress signal.
+  base::RepeatingCallback<void(user_data_auth::PrepareAuthFactorProgress)>
+      prepare_auth_factor_progress_callback_;
 
   // The object used to instantiate AuthBlocks.
   std::unique_ptr<AuthBlockUtility> default_auth_block_utility_;

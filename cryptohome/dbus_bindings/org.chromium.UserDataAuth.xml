@@ -496,6 +496,17 @@ do.
                     value="user_data_auth::AuthScanResult" />
       </arg>
     </signal>
+
+    <!-- PrepareAuthFactorProgress: Emitted when AuthFactor preparation has
+         a new progress. -->
+    <signal name="PrepareAuthFactorProgress">
+      <annotation name="org.chromium.DBus.Method.Kind"
+                  value="async"/>
+      <arg name="status" type="ay" direction="in">
+        <annotation name="org.chromium.DBus.Argument.ProtobufClass"
+                    value="user_data_auth::PrepareAuthFactorProgress" />
+      </arg>
+    </signal>
   </interface>
 
   <interface name="org.chromium.ArcQuota">

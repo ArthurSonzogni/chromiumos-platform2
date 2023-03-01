@@ -776,6 +776,11 @@ void UserDataAuthAdaptor::FingerprintScanResultCallback(
   SendAuthScanResultSignal(signal_payload);
 }
 
+void UserDataAuthAdaptor::PrepareAuthFactorProgressCallback(
+    user_data_auth::PrepareAuthFactorProgress signal) {
+  SendPrepareAuthFactorProgressSignal(signal);
+}
+
 void ArcQuotaAdaptor::GetArcDiskFeatures(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::GetArcDiskFeaturesReply>> response,

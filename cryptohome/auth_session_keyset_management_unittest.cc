@@ -428,7 +428,8 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
                                       CreateMockVaultKeysetFactory()};
   AuthBlockUtilityImpl auth_block_utility_{
       &keyset_management_, &crypto_, &platform_,
-      FingerprintAuthBlockService::MakeNullService()};
+      FingerprintAuthBlockService::MakeNullService(),
+      BiometricsAuthBlockService::NullGetter()};
   NiceMock<MockAuthBlockUtility> mock_auth_block_utility_;
   AuthFactorManager auth_factor_manager_{&platform_};
   UserSecretStashStorage user_secret_stash_storage_{&platform_};

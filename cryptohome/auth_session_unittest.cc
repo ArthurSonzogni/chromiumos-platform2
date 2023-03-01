@@ -957,7 +957,8 @@ TEST_F(AuthSessionTest, AddAuthFactorNewUser) {
   // We need to use a real AuthBlockUtilityImpl for this test.
   AuthBlockUtilityImpl real_auth_block_utility(
       &keyset_management_, &crypto_, &platform_,
-      FingerprintAuthBlockService::MakeNullService());
+      FingerprintAuthBlockService::MakeNullService(),
+      BiometricsAuthBlockService::NullGetter());
   auto test_backing_apis = backing_apis_;
   test_backing_apis.auth_block_utility = &real_auth_block_utility;
 

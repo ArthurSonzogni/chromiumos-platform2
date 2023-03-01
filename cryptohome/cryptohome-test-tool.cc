@@ -577,8 +577,9 @@ bool DoCreateVaultKeyset(const Username& username,
   crypto.Init();
   KeysetManagement keyset_management(platform, &crypto,
                                      std::make_unique<VaultKeysetFactory>());
-  AuthBlockUtilityImpl auth_block_utility(&keyset_management, &crypto, platform,
-                                          /*fp_service=*/nullptr);
+  AuthBlockUtilityImpl auth_block_utility(
+      &keyset_management, &crypto, platform,
+      /*fp_service=*/nullptr, BiometricsAuthBlockService::NullGetter());
 
   // Manipulate or drop fields as necessary from KeyData.
   KeyData key_data;
