@@ -86,8 +86,14 @@ mojom::MemtesterTestItemEnum SubtestNameToEnum(
   } else if (subtest_name == "WalkingZeroes") {
     return mojom::MemtesterTestItemEnum::kWalkingZeroes;
   } else if (subtest_name == "8-bitWrites") {
+    // This test is enabled at compile time and should not be executed by the
+    // Chrome OS memtester binary.
+    LOG(WARNING) << "Unexpected subtest name in memtester: " << subtest_name;
     return mojom::MemtesterTestItemEnum::k8BitWrites;
   } else if (subtest_name == "16-bitWrites") {
+    // This test is enabled at compile time and should not be executed by the
+    // Chrome OS memtester binary.
+    LOG(WARNING) << "Unexpected subtest name in memtester: " << subtest_name;
     return mojom::MemtesterTestItemEnum::k16BitWrites;
   }
   LOG(ERROR) << "Unknown subtest name: " << subtest_name;
@@ -147,7 +153,11 @@ SubtestProgressInfo SubtestEnumToProgressInfo(
       return {87, 6, 64};
     case mojom::MemtesterTestItemEnum::kWalkingZeroes:
       return {93, 7, 64};
-    default:
+    case mojom::MemtesterTestItemEnum::k8BitWrites:
+    case mojom::MemtesterTestItemEnum::k16BitWrites:
+      return {100, 0, std::nullopt};
+    case mojom::MemtesterTestItemEnum::kUnmappedEnumField:
+    case mojom::MemtesterTestItemEnum::kUnknown:
       LOG(ERROR) << "Unexpected subtest enum for progress information: "
                  << subtest_enum;
       return {0, 0, std::nullopt};
@@ -186,7 +196,11 @@ SubtestProgressInfo SubtestEnumToProgressInfo(
       return {81, 9, 128};
     case mojom::MemtesterTestItemEnum::kWalkingZeroes:
       return {90, 10, 128};
-    default:
+    case mojom::MemtesterTestItemEnum::k8BitWrites:
+    case mojom::MemtesterTestItemEnum::k16BitWrites:
+      return {100, 0, std::nullopt};
+    case mojom::MemtesterTestItemEnum::kUnmappedEnumField:
+    case mojom::MemtesterTestItemEnum::kUnknown:
       LOG(ERROR) << "Unexpected subtest enum for progress information: "
                  << subtest_enum;
       return {0, 0, std::nullopt};
