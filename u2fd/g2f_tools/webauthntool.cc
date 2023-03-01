@@ -262,7 +262,7 @@ void IsUvpaa(dbus::ObjectProxy* proxy) {
       SendRequest<u2f::IsUvpaaRequest, u2f::IsUvpaaResponse>(
           proxy, u2f::kU2FIsUvpaa, u2f::IsUvpaaRequest());
 
-  if (resp.available()) {
+  if (!resp.not_ready()) {
     LOG(INFO) << "User verifying platform authenticator is available.";
   } else {
     LOG(INFO) << "User verifying platform authenticator is NOT available.";

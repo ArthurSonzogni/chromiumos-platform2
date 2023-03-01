@@ -1090,44 +1090,28 @@ void WebAuthnHandler::IsUvpaa(
   IsUvpaaResponse response;
 
   if (!Initialized()) {
-    LOG(WARNING) << "IsUvpaa called but WebAuthnHandler not initialized. Maybe "
-                    "U2F is on.";
-    response.set_available(false);
-    method_response->Return(response);
-    return;
-  }
-
-  if (!auth_time_secret_hash_) {
-    LOG(ERROR) << "No auth-time secret hash. MakeCredential will fail, so "
-                  "reporting IsUVPAA=false.";
-    response.set_available(false);
+    LOG(WARNING) << "IsUvpaa: WebAuthnHandler not initialized.";
+    response.set_not_ready(true);
     method_response->Return(response);
     return;
   }
 
   std::optional<std::string> account_id = user_state_->GetUser();
   if (!account_id) {
-    LOG(ERROR) << "IsUvpaa called but no user.";
-    response.set_available(false);
+    LOG(WARNING) << "IsUvpaa: No user.";
+    response.set_not_ready(true);
     method_response->Return(response);
     return;
   }
 
-  if (HasPin(*account_id)) {
-    response.set_available(true);
+  if (!auth_time_secret_hash_) {
+    LOG(WARNING) << "IsUvpaa: No auth-time secret hash.";
+    response.set_not_ready(true);
     method_response->Return(response);
     return;
   }
 
-  std::optional<std::string> sanitized_user = user_state_->GetSanitizedUser();
-  DCHECK(sanitized_user);
-  if (HasFingerprint(*sanitized_user)) {
-    response.set_available(true);
-    method_response->Return(response);
-    return;
-  }
-
-  response.set_available(false);
+  response.set_not_ready(false);
   method_response->Return(response);
 }
 
