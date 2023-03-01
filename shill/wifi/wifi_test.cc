@@ -559,10 +559,11 @@ TEST_F(WiFiPropertyTest, BgscanMethodProperty) {
 }
 
 TEST_F(WiFiPropertyTest, PasspointInterworkingProperty) {
-  EXPECT_FALSE(device_->interworking_select_enabled_);
+  Error unused_error;
+  device_->mutable_store()->SetBoolProperty(
+      kPasspointInterworkingSelectEnabledProperty, false, &unused_error);
 
   bool enabled;
-  Error unused_error;
   EXPECT_TRUE(device_->store().GetBoolProperty(
       kPasspointInterworkingSelectEnabledProperty, &enabled, &unused_error));
   EXPECT_FALSE(enabled);
