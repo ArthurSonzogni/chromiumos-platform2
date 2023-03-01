@@ -50,22 +50,24 @@ def ParseSeccompAndReturnParseError(arch, filename):
                     f'{filename}:{idx + 1}: error: cannot split by ":"\n{line}'
                 )
                 continue
-            if tokens[0] in seccomp:
+            syscall = tokens[0].strip()
+            if syscall in seccomp:
                 parse_error += (
-                    f'{filename}:{idx + 1}: error: duplicated syscall"\n{line}'
+                    f'{filename}:{idx + 1}: error: duplicated syscalls"\n{line}'
                 )
                 parse_error += (
-                    f"{filename}:{seccomp[tokens[0]].line_number}: "
-                    f'first defined here"\n{seccomp[tokens[0]].line}'
+                    f"{filename}:{seccomp[syscall].line_number}: "
+                    f'first defined here"\n{seccomp[syscall].line}'
                 )
                 continue
-            seccomp[tokens[0]] = SeccompLine(idx + 1, line, tokens[1])
+            seccomp[syscall] = SeccompLine(idx + 1, line, tokens[1].strip())
         if line_buffer:
-            parse_error += f'{filename}: unexpected termination "\\"'
+            parse_error += f'{filename}: unexpected termination "\\"\n'
 
+    missing_syscalls = ""
     for syscall in REQUIRED_SYSCALL[arch]:
         if syscall not in seccomp:
-            parse_error += f"{filename}:missing required seccomp: {syscall}"
+            missing_syscalls += f"{syscall}: 1\n"
             continue
         if seccomp[syscall].value != "1":
             parse_error += (
@@ -74,6 +76,11 @@ def ParseSeccompAndReturnParseError(arch, filename):
                 f"{seccomp[syscall].line}"
             )
             continue
+    if missing_syscalls:
+        parse_error += (
+            f"{filename}: missing following required syscall:\n"
+            f"{missing_syscalls}"
+        )
 
     for syscall in DENIED_SYSCALL[arch]:
         if syscall in seccomp:
