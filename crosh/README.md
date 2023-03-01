@@ -1,6 +1,6 @@
-[TOC]
-
 # Crosh -- The ChromiumOS shell
+
+[TOC]
 
 This is the homepage/documentation for the crosh, the ChromiumOS shell.
 If you're on a CrOS devices right now, you should be able to launch crosh
