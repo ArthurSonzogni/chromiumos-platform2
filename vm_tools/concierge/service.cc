@@ -151,9 +151,9 @@ constexpr char kCrosvmGpuCacheDir[] = "gpucache";
 // Path to system boot_id file.
 constexpr char kBootIdFile[] = "/proc/sys/kernel/random/boot_id";
 
-// Extended attribute indicating that user has picked a disk size and it should
-// not be resized.
-constexpr char kDiskImageUserChosenSizeXattr[] =
+// Extended attribute indicating that user has picked a size for a non-sparse
+// disk image and it should not be resized.
+constexpr char kDiskImagePreallocatedWithUserChosenSizeXattr[] =
     "user.crostini.user_chosen_size";
 
 // File extension for raw disk types
@@ -710,20 +710,21 @@ uint64_t CalculateDesiredDiskSize(base::FilePath disk_location,
   return std::max(disk_size, kMinimumDiskSize);
 }
 
-// Returns true if the disk size was specified by the user and should not be
-// automatically resized.
-bool IsDiskUserChosenSize(std::string disk_path) {
-  return getxattr(disk_path.c_str(), kDiskImageUserChosenSizeXattr, NULL, 0) >=
-         0;
+// Returns true if the disk should not be automatically resized because it is
+// not sparse and its size was specified by the user.
+bool IsDiskPreallocatedWithUserChosenSize(const std::string& disk_path) {
+  return getxattr(disk_path.c_str(),
+                  kDiskImagePreallocatedWithUserChosenSizeXattr, NULL, 0) >= 0;
 }
 
-// Mark a disk with an xattr indicating its size has been chosen by the user.
-bool SetUserChosenSizeAttr(const base::ScopedFD& fd) {
+// Mark a non-sparse disk with an xattr indicating its size has been chosen by
+// the user.
+bool SetPreallocatedWithUserChosenSizeAttr(const base::ScopedFD& fd) {
   // The xattr value doesn't matter, only its existence.
   // Store something human-readable for debugging.
   constexpr char val[] = "1";
-  return fsetxattr(fd.get(), kDiskImageUserChosenSizeXattr, val, sizeof(val),
-                   0) == 0;
+  return fsetxattr(fd.get(), kDiskImagePreallocatedWithUserChosenSizeXattr, val,
+                   sizeof(val), 0) == 0;
 }
 
 void FormatDiskImageStatus(const DiskImageOperation* op,
@@ -1415,7 +1416,8 @@ bool Service::ListVmDisksInLocation(const string& cryptohome_id,
     image->set_min_size(min_size);
     image->set_available_space(available_space);
     image->set_image_type(image_type);
-    image->set_user_chosen_size(IsDiskUserChosenSize(path.value()));
+    image->set_user_chosen_size(
+        IsDiskPreallocatedWithUserChosenSize(path.value()));
     image->set_path(path.value());
   }
 
@@ -2077,7 +2079,7 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   for (const auto& d : request.disks()) {
     Disk disk{.path = base::FilePath(d.path()),
               .writable = d.writable(),
-              .sparse = !IsDiskUserChosenSize(d.path())};
+              .sparse = !IsDiskPreallocatedWithUserChosenSize(d.path())};
 
     failure_reason = ConvertToFdBasedPath(
         root_fd, &disk.path, disk.writable ? O_RDWR : O_RDONLY, owned_fds);
@@ -3276,7 +3278,28 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
     return dbus_response;
   }
 
-  bool is_sparse = request.disk_size() == 0;
+  // Set up the disk image as a sparse file when
+  //   1) |allocation_type| is DISK_ALLOCATION_TYPE_SPARSE, or
+  //   2) |allocation_type| is DISK_ALLOCATION_TYPE_AUTO (the default value) and
+  //      |disk_size| is 0.
+  // The latter case exists to preserve the old behaviors for existing callers.
+  if (request.allocation_type() ==
+      DiskImageAllocationType::DISK_ALLOCATION_TYPE_AUTO) {
+    LOG(WARNING) << "Disk allocation type is unspecified (or specified as "
+                    "auto). Whether to create a sparse disk image will be "
+                    "automatically determined using the requested disk size.";
+  }
+  bool is_sparse = request.allocation_type() ==
+                       DiskImageAllocationType::DISK_ALLOCATION_TYPE_SPARSE ||
+                   (request.allocation_type() ==
+                        DiskImageAllocationType::DISK_ALLOCATION_TYPE_AUTO &&
+                    request.disk_size() == 0);
+  if (!is_sparse && request.disk_size() == 0) {
+    response.set_failure_reason(
+        "Request is invalid, disk size must be non-zero for non-sparse disks");
+    writer.AppendProtoAsArrayOfBytes(response);
+    return dbus_response;
+  }
   if (!is_sparse && request.storage_ballooning()) {
     response.set_failure_reason(
         "Request is invalid, storage ballooning is only available for sparse "
@@ -3322,14 +3345,21 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
               << " with current size " << current_size << " and usage "
               << current_usage;
 
-    // Automatically extend existing disk images if disk_size was not specified
-    // (unless storage ballooning is being used).
+    // Automatically extend existing sparse disk images if |disk_size| is
+    // unspecified or 0 (unless storage ballooning is being used).
     if (is_sparse && !request.storage_ballooning()) {
-      // If the user.crostini.user_chosen_size xattr exists, don't resize the
-      // disk. (The value stored in the xattr is ignored; only its existence
-      // matters.)
-      if (IsDiskUserChosenSize(disk_path.value())) {
-        LOG(INFO) << "Disk image has " << kDiskImageUserChosenSizeXattr
+      if (request.disk_size() != 0) {
+        // TODO(b/232176243): Think about cases where a non-zero |disk_size| is
+        // specified for an existing sparse disk image.
+        LOG(INFO) << "Ignoring specified disk size for existing sparse image. "
+                     "Automatic resizing is enabled only when the disk size is "
+                     "unspecified or specified to be 0";
+      } else if (IsDiskPreallocatedWithUserChosenSize(disk_path.value())) {
+        // If the user.crostini.user_chosen_size xattr exists, don't resize the
+        // disk. (The value stored in the xattr is ignored; only its existence
+        // matters.)
+        LOG(INFO) << "Disk image has "
+                  << kDiskImagePreallocatedWithUserChosenSizeXattr
                   << " xattr - keeping existing size " << current_size;
       } else {
         uint64_t disk_size = CalculateDesiredDiskSize(disk_path, current_usage);
@@ -3434,10 +3464,9 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
       return dbus_response;
     }
 
-    if (request.disk_size() != 0) {
-      LOG(INFO)
-          << "Disk size specified in request; creating user-chosen-size image";
-      if (!SetUserChosenSizeAttr(fd)) {
+    if (!is_sparse) {
+      LOG(INFO) << "Creating user-chosen-size raw disk image";
+      if (!SetPreallocatedWithUserChosenSizeAttr(fd)) {
         PLOG(ERROR) << "Failed to set user_chosen_size xattr";
         unlink(disk_path.value().c_str());
         response.set_status(DISK_STATUS_FAILED);
@@ -3831,7 +3860,7 @@ void Service::FinishResize(const std::string& owner_id,
   }
 
   // This disk now has a user-chosen size by virtue of being resized.
-  if (!SetUserChosenSizeAttr(fd)) {
+  if (!SetPreallocatedWithUserChosenSizeAttr(fd)) {
     LOG(ERROR) << "Failed to set user-chosen size xattr";
     *failure_reason = "Failed to set user-chosen size xattr";
     *status = DISK_STATUS_FAILED;
