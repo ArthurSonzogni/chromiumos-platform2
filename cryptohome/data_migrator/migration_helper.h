@@ -9,6 +9,9 @@
 #include <memory>
 #include <string>
 
+#include <sys/stat.h>
+
+#include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <base/functional/callback.h>
 #include <base/logging.h>
@@ -117,18 +120,18 @@ class BRILLO_EXPORT MigrationHelper {
   // Parameters
   //   child - relative path under the base path to migrate.
   bool MigrateDir(const base::FilePath& child,
-                  const FileEnumerator::FileInfo& info);
+                  const base::stat_wrapper_t& stat);
   // Creates a new link |to_base_path_|/|child| which has the same attributes
   // and target as |from_base_path_|/|child|.  If the target points to an
   // absolute path under |from_base_path_|, it is rewritten to point to the
   // same relative path under |to_base_path_|.
   bool MigrateLink(const base::FilePath& child,
-                   const FileEnumerator::FileInfo& info);
+                   const base::stat_wrapper_t& stat);
   // Copies data from |from_base_path_|/|child| to |to_base_path_|/|child|.
   bool MigrateFile(const base::FilePath& child,
-                   const FileEnumerator::FileInfo& info);
+                   const base::stat_wrapper_t& stat);
   bool CopyAttributes(const base::FilePath& child,
-                      const FileEnumerator::FileInfo& info);
+                      const base::stat_wrapper_t& stat);
   bool FixTimes(const base::FilePath& child);
   // Remove the temporary xattrs used to store atime and mtime if they exist.
   bool RemoveTimeXattrsIfPresent(const base::FilePath& child);

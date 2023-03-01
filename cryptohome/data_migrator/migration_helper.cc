@@ -126,7 +126,7 @@ struct MigrationHelper::Job {
   Job() = default;
   ~Job() = default;
   base::FilePath child;
-  FileEnumerator::FileInfo info;
+  base::stat_wrapper_t stat;
 };
 
 // WorkerPool manages jobs and job threads.
@@ -392,8 +392,7 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
   // while the job threads migrate files and symlinks.
   bool success =
       worker_pool_->Start(num_job_threads_, max_job_list_size_) &&
-      MigrateDir(base::FilePath(base::FilePath::kCurrentDirectory),
-                 FileEnumerator::FileInfo(from_base_path_, from_stat));
+      MigrateDir(base::FilePath(base::FilePath::kCurrentDirectory), from_stat);
   // No matter if successful or not, always join the job threads.
   if (!worker_pool_->Join())
     success = false;
@@ -484,7 +483,7 @@ void MigrationHelper::ReportStatus() {
 }
 
 bool MigrationHelper::MigrateDir(const base::FilePath& child,
-                                 const FileEnumerator::FileInfo& info) {
+                                 const base::stat_wrapper_t& stat) {
   if (is_cancelled_.IsSet()) {
     return false;
   }
@@ -503,7 +502,7 @@ bool MigrationHelper::MigrateDir(const base::FilePath& child,
                                     FailureLocationType::kDest);
     return false;
   }
-  if (!CopyAttributes(child, info))
+  if (!CopyAttributes(child, stat))
     return false;
 
   // Dummy child count increment to protect this directory while reading.
@@ -516,9 +515,9 @@ bool MigrationHelper::MigrateDir(const base::FilePath& child,
   for (base::FilePath entry = enumerator->Next(); !entry.empty();
        entry = enumerator->Next()) {
     const base::FilePath& new_child = child.Append(entry.BaseName());
-    base::stat_wrapper_t stat = enumerator->GetInfo().stat();
+    base::stat_wrapper_t entry_stat = enumerator->GetInfo().stat();
     if (!delegate_->ShouldMigrateFile(new_child) ||
-        !delegate_->ConvertFileMetadata(&stat)) {
+        !delegate_->ConvertFileMetadata(&entry_stat)) {
       // Delete paths which should be skipped
       if (!platform_->DeletePathRecursively(entry)) {
         PLOG(ERROR) << "Failed to delete " << entry.value();
@@ -529,18 +528,16 @@ bool MigrationHelper::MigrateDir(const base::FilePath& child,
       continue;
     }
 
-    FileEnumerator::FileInfo entry_info(from_base_path_.Append(new_child),
-                                        stat);
     IncrementChildCount(child);
-    if (S_ISDIR(stat.st_mode)) {
+    if (S_ISDIR(entry_stat.st_mode)) {
       // Directory.
-      if (!MigrateDir(new_child, entry_info))
+      if (!MigrateDir(new_child, entry_stat))
         return false;
-      IncrementMigratedBytes(entry_info.GetSize());
+      IncrementMigratedBytes(entry_stat.st_size);
     } else {
       Job job;
       job.child = new_child;
-      job.info = entry_info;
+      job.stat = entry_stat;
       if (!worker_pool_->PushJob(job))
         return false;
     }
@@ -551,7 +548,7 @@ bool MigrationHelper::MigrateDir(const base::FilePath& child,
 }
 
 bool MigrationHelper::MigrateLink(const base::FilePath& child,
-                                  const FileEnumerator::FileInfo& info) {
+                                  const base::stat_wrapper_t& stat) {
   const base::FilePath source = from_base_path_.Append(child);
   const base::FilePath new_path = to_base_path_.Append(child);
   base::FilePath target;
@@ -580,12 +577,12 @@ bool MigrationHelper::MigrateLink(const base::FilePath& child,
     return false;
   }
 
-  if (!CopyAttributes(child, info))
+  if (!CopyAttributes(child, stat))
     return false;
   // We don't need to modify the source file, so we can safely set times here
   // directly instead of storing them in xattrs first.
-  if (!platform_->SetFileTimes(new_path, info.stat().st_atim,
-                               info.stat().st_mtim, false /* follow_links */)) {
+  if (!platform_->SetFileTimes(new_path, stat.st_atim, stat.st_mtim,
+                               false /* follow_links */)) {
     PLOG(ERROR) << "Failed to set mtime for " << new_path.value();
     RecordFileErrorWithCurrentErrno(kMigrationFailedAtSetAttribute, child,
                                     FailureLocationType::kDest);
@@ -597,7 +594,7 @@ bool MigrationHelper::MigrateLink(const base::FilePath& child,
 }
 
 bool MigrationHelper::MigrateFile(const base::FilePath& child,
-                                  const FileEnumerator::FileInfo& info) {
+                                  const base::stat_wrapper_t& stat) {
   const base::FilePath& from_child = from_base_path_.Append(child);
   const base::FilePath& to_child = to_base_path_.Append(child);
   base::File from_file;
@@ -664,7 +661,7 @@ bool MigrationHelper::MigrateFile(const base::FilePath& child,
     }
   }
 
-  if (!CopyAttributes(child, info))
+  if (!CopyAttributes(child, stat))
     return false;
 
   while (from_length > 0) {
@@ -728,13 +725,11 @@ bool MigrationHelper::MigrateFile(const base::FilePath& child,
 }
 
 bool MigrationHelper::CopyAttributes(const base::FilePath& child,
-                                     const FileEnumerator::FileInfo& info) {
+                                     const base::stat_wrapper_t& stat) {
   const base::FilePath from = from_base_path_.Append(child);
   const base::FilePath to = to_base_path_.Append(child);
 
-  uid_t user_id = info.stat().st_uid;
-  gid_t group_id = info.stat().st_gid;
-  if (!platform_->SetOwnership(to, user_id, group_id,
+  if (!platform_->SetOwnership(to, stat.st_uid, stat.st_gid,
                                false /* follow_links */)) {
     RecordFileErrorWithCurrentErrno(kMigrationFailedAtSetAttribute, child,
                                     FailureLocationType::kDest);
@@ -744,7 +739,7 @@ bool MigrationHelper::CopyAttributes(const base::FilePath& child,
   if (!CopyExtendedAttributes(child))
     return false;
 
-  mode_t mode = info.stat().st_mode;
+  mode_t mode = stat.st_mode;
 
   // We don't need to modify the source file, so no special timestamp handling
   // needed.  Permissions and flags are also not supported on symlinks in linux.
@@ -759,8 +754,8 @@ bool MigrationHelper::CopyAttributes(const base::FilePath& child,
   // Store mtime/atime to xattr if it's not done already. This should be after
   // copying the other xattrs since this might cause ENOSPC error, in which case
   // we proceed with the migration without copying mtime/atime.
-  const auto& mtime = info.stat().st_mtim;
-  const auto& atime = info.stat().st_atim;
+  const auto& mtime = stat.st_mtim;
+  const auto& atime = stat.st_atim;
   if (!SetExtendedAttributeIfNotPresent(child, delegate_->GetMtimeXattrName(),
                                         reinterpret_cast<const char*>(&mtime),
                                         sizeof(mtime))) {
@@ -965,14 +960,14 @@ void MigrationHelper::RecordFileErrorWithCurrentErrno(
 }
 
 bool MigrationHelper::ProcessJob(const Job& job) {
-  if (S_ISLNK(job.info.stat().st_mode)) {
+  if (S_ISLNK(job.stat.st_mode)) {
     // Symlink
-    if (!MigrateLink(job.child, job.info))
+    if (!MigrateLink(job.child, job.stat))
       return false;
-    IncrementMigratedBytes(job.info.GetSize());
-  } else if (S_ISREG(job.info.stat().st_mode)) {
+    IncrementMigratedBytes(job.stat.st_size);
+  } else if (S_ISREG(job.stat.st_mode)) {
     // File
-    if (!MigrateFile(job.child, job.info))
+    if (!MigrateFile(job.child, job.stat))
       return false;
   } else {
     LOG(ERROR) << "Unknown file type: " << job.child.value();
