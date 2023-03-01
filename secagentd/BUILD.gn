@@ -70,10 +70,12 @@ static_library("libsecagent") {
     "factories.cc",
     "message_sender.cc",
     "metrics_sender.cc",
+    "policies_features_broker.cc",
     "process_bpf_skeleton.cc",
     "process_cache.cc",
     "process_plugin.cc",
   ]
+  libs = [ "policy" ]
   configs += [ ":target_defaults" ]
   deps = [
     ":bpf_process",
@@ -83,7 +85,6 @@ static_library("libsecagent") {
 
 executable("secagentd") {
   sources = [ "main.cc" ]
-  libs = [ "policy" ]
   configs += [ ":target_defaults" ]
   deps = [ ":libsecagent" ]
 }
@@ -121,6 +122,7 @@ if (use.test) {
       "test/bpf_skeleton_factory_tests.cc",
       "test/message_sender_test.cc",
       "test/metrics_sender_test.cc",
+      "test/policies_features_broker_test.cc",
       "test/process_cache_test.cc",
       "test/process_plugin_test.cc",
     ]
@@ -134,6 +136,7 @@ if (use.test) {
       ":libsecagent",
       "proto:security_xdr_events_proto",
       "//common-mk/testrunner",
+      "//featured:libfake_platform_features",
     ]
   }
 }

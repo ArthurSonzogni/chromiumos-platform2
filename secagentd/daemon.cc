@@ -7,40 +7,35 @@
 #include <cstdlib>
 #include <iomanip>
 #include <memory>
+#include <string>
 #include <sysexits.h>
 #include <utility>
 
 #include "absl/status/status.h"
 #include "attestation/proto_bindings/interface.pb.h"
 #include "attestation-client/attestation/dbus-proxies.h"
+#include "base/functional/bind.h"
 #include "base/functional/callback_forward.h"
 #include "base/functional/callback_helpers.h"
 #include "base/logging.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/task/thread_pool/thread_pool_instance.h"
-#include "base/time/time.h"
 #include "brillo/daemons/dbus_daemon.h"
-#include "featured/c_feature_library.h"
-#include "featured/feature_library.h"
 #include "missive/client/missive_client.h"
-#include "policy/device_policy.h"
-#include "policy/libpolicy.h"
 #include "secagentd/daemon.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/metrics_sender.h"
 #include "secagentd/plugins.h"
+#include "secagentd/policies_features_broker.h"
 #include "secagentd/process_cache.h"
 
 namespace secagentd {
-static const struct VariationsFeature kCrOSLateBootSecagentdXDRReporting = {
-    .name = "CrOSLateBootSecagentdXDRReporting",
-    .default_state = FEATURE_ENABLED_BY_DEFAULT};
 
 Daemon::Daemon(struct Inject injected) : weak_ptr_factory_(this) {
   plugin_factory_ = std::move(injected.plugin_factory_);
   message_sender_ = std::move(injected.message_sender_);
   process_cache_ = std::move(injected.process_cache_);
-  policy_provider_ = std::move(injected.policy_provider_);
+  policies_features_broker_ = std::move(injected.policies_features_broker_);
 }
 
 Daemon::Daemon(bool bypass_policy_for_testing,
@@ -55,11 +50,6 @@ int Daemon::OnInit() {
   int rv = brillo::DBusDaemon::OnInit();
   if (rv != EX_OK) {
     return rv;
-  }
-
-  // Finch feature interface which allows us to run experiments.
-  if (features_ == nullptr) {
-    features_ = feature::PlatformFeatures::New(bus_);
   }
 
   if (plugin_factory_ == nullptr) {
@@ -86,40 +76,47 @@ int Daemon::OnInit() {
     process_cache_->InitializeFilter();
   }
 
-  if (policy_provider_ == nullptr) {
-    policy_provider_ = std::make_unique<policy::PolicyProvider>();
+  if (policies_features_broker_ == nullptr) {
+    policies_features_broker_ = base::MakeRefCounted<PoliciesFeaturesBroker>(
+        std::make_unique<policy::PolicyProvider>(),
+        feature::PlatformFeatures::New(bus_),
+        base::BindRepeating(&Daemon::CheckPolicyAndFeature,
+                            weak_ptr_factory_.GetWeakPtr()));
   }
 
   return EX_OK;
 }
 
-void Daemon::CheckXDRFlags(bool isXDREnabled) {
-  if (!isXDREnabled) {
-    LOG(INFO) << "XDR reporting feature on this device is disabled."
-                 " Not sending events.";
-  } else if (!xdr_reporting_policy_) {
-    LOG(INFO) << "XDR reporting policy is disabled. Not sending events.";
-  }
+void Daemon::CheckPolicyAndFeature() {
+  static bool first_visit = true;
+  bool xdr_reporting_policy =
+      policies_features_broker_->GetDeviceReportXDREventsPolicy() ||
+      bypass_policy_for_testing_;
+  bool xdr_reporting_feature = policies_features_broker_->GetFeature(
+      PoliciesFeaturesBroker::Feature::kCrOSLateBootSecagentdXDRReporting);
   // If either policy is false do not report.
-  if (!isXDREnabled || !xdr_reporting_policy_) {
-    if (reporting_events_) {
-      LOG(INFO) << "Stopping event reporting and quitting";
-      // Will exit and restart secagentd.
-      Quit();
-    }
-    return;
-  } else {
-    if (!reporting_events_) {
-      LOG(INFO) << "Starting event reporting";
-      // This is emitted at most once per daemon lifetime.
-      MetricsSender::GetInstance().SendEnumMetricToUMA(
-          metrics::kPolicy, metrics::Policy::kEnabled);
-      reporting_events_ = true;
-      StartXDRReporting();
-    } else {
-      return;
-    }
+  if (reporting_events_ && !(xdr_reporting_feature && xdr_reporting_policy)) {
+    LOG(INFO) << "Stopping event reporting and quitting. Policy: "
+              << std::to_string(xdr_reporting_policy)
+              << " Feature: " << std::to_string(xdr_reporting_feature);
+    // Will exit and restart secagentd.
+    Quit();
+  } else if (!reporting_events_ &&
+             (xdr_reporting_feature && xdr_reporting_policy)) {
+    LOG(INFO) << "Starting event reporting";
+    // This is emitted at most once per daemon lifetime.
+    MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kPolicy,
+                                                     metrics::Policy::kEnabled);
+    reporting_events_ = true;
+    StartXDRReporting();
+  } else if (first_visit) {
+    LOG(INFO) << "Not reporting yet.";
+    LOG(INFO) << "DeviceReportXDREventsPolicy: " << xdr_reporting_policy
+              << (bypass_policy_for_testing_ ? " (set by flag)" : "");
+    LOG(INFO) << "CrOSLateBootSecagentdXDRReporting: " << xdr_reporting_feature;
   }
+  // Else do nothing until the next poll.
+  first_visit = false;
 }
 
 void Daemon::StartXDRReporting() {
@@ -185,43 +182,14 @@ int Daemon::CreatePlugin(PluginFactory::PluginType type) {
 }
 
 int Daemon::OnEventLoopStarted() {
-  check_flags_timer_.Start(
-      FROM_HERE, base::Minutes(10),
-      base::BindRepeating(&Daemon::PollFlags, weak_ptr_factory_.GetWeakPtr()));
-
-  // Delay before first timer invocation so add check.
   // We emit this metric here and not inside the polled method so that we do it
   // exactly once per daemon lifetime.
   MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kPolicy,
                                                    metrics::Policy::kChecked);
-  PollFlags();
+  // This will post a task to run CheckPolicyAndFeature.
+  policies_features_broker_->StartAndBlockForSync();
 
   return EX_OK;
-}
-
-void Daemon::PollFlags() {
-  GetXDRReportingIsEnabled();
-  features_->IsEnabled(
-      kCrOSLateBootSecagentdXDRReporting,
-      base::BindOnce(&Daemon::CheckXDRFlags, weak_ptr_factory_.GetWeakPtr()));
-}
-
-void Daemon::GetXDRReportingIsEnabled() {
-  // Bypasses the policy check for testing.
-  if (bypass_policy_for_testing_) {
-    xdr_reporting_policy_ = true;
-    return;
-  }
-
-  policy_provider_->Reload();
-  if (policy_provider_->device_policy_is_loaded()) {
-    xdr_reporting_policy_ =
-        policy_provider_->GetDevicePolicy().GetDeviceReportXDREvents().value_or(
-            false);
-  } else {
-    // Default value is do not report.
-    xdr_reporting_policy_ = false;
-  }
 }
 
 void Daemon::OnShutdown(int* exit_code) {

@@ -10,12 +10,10 @@
 #include <vector>
 
 #include "base/memory/scoped_refptr.h"
-#include "base/timer/timer.h"
 #include "brillo/daemons/dbus_daemon.h"
-#include "featured/feature_library.h"
-#include "policy/libpolicy.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/plugins.h"
+#include "secagentd/policies_features_broker.h"
 #include "secagentd/process_cache.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 
@@ -31,9 +29,9 @@ namespace secagentd {
 class Daemon : public brillo::DBusDaemon {
   struct Inject {
     std::unique_ptr<PluginFactoryInterface> plugin_factory_;
-    std::unique_ptr<policy::PolicyProvider> policy_provider_;
     scoped_refptr<MessageSender> message_sender_;
     scoped_refptr<ProcessCacheInterface> process_cache_;
+    scoped_refptr<PoliciesFeaturesBroker> policies_features_broker_;
   };
 
  public:
@@ -53,33 +51,24 @@ class Daemon : public brillo::DBusDaemon {
   void RunPlugins();
   // Creates plugin of the given type.
   int CreatePlugin(Types::Plugin);
-  // Refreshes the current state of finch flag and reporting policy.
-  // Polls every 10 minutes and starts/stops as necessary.
-  void PollFlags();
-  // Checks the status of the XDR feature flag and
-  // policy flag. Starts/stops reporting as necessary.
-  // isEnabled: is the XDR feature flag set?
-  void CheckXDRFlags(bool isEnabled);
-  // Sets the current policy for XDR reporting.
-  void GetXDRReportingIsEnabled();
+  // Checks the status of the XDR feature flag and policy flag. Starts/stops
+  // reporting as necessary.
+  void CheckPolicyAndFeature();
   // Starts the plugin loading process. First creates the agent plugin and
   // waits for a successfully sent heartbeat before creating and running
   // the remaining plugins.
   void StartXDRReporting();
 
  private:
-  std::unique_ptr<feature::PlatformFeaturesInterface> features_;
-  base::RepeatingTimer check_flags_timer_;
   scoped_refptr<MessageSender> message_sender_;
   scoped_refptr<ProcessCacheInterface> process_cache_;
+  scoped_refptr<PoliciesFeaturesBroker> policies_features_broker_;
   std::unique_ptr<PluginFactoryInterface> plugin_factory_;
   std::vector<std::unique_ptr<PluginInterface>> plugins_;
   std::unique_ptr<PluginInterface> agent_plugin_;
-  std::unique_ptr<policy::PolicyProvider> policy_provider_;
   bool bypass_policy_for_testing_ = false;
   bool bypass_enq_ok_wait_for_testing_ = false;
   bool reporting_events_ = false;
-  bool xdr_reporting_policy_ = false;
   uint32_t set_heartbeat_period_s_for_testing_ = 300;
   base::WeakPtrFactory<Daemon> weak_ptr_factory_;
 };
