@@ -59,9 +59,6 @@ const char kLivenessPingResponseTimeMetric[] =
 
 const char kLivenessPingResultMetric[] = "ChromeOS.Liveness.PingResult";
 
-const char kLivenessBrowserStateMetric[] =
-    "ChromeOS.Liveness.BrowserStateAtTimeout";
-
 }  // namespace
 
 // static
@@ -203,11 +200,6 @@ void LoginMetrics::SendLivenessPingResponseTime(base::TimeDelta response_time) {
 
 void LoginMetrics::SendLivenessPingResult(bool success) {
   metrics_lib_.SendBoolToUMA(kLivenessPingResultMetric, success);
-}
-
-void LoginMetrics::RecordStateForLivenessTimeout(
-    BrowserState state_at_timeout) {
-  metrics_lib_.SendEnumToUMA(kLivenessBrowserStateMetric, state_at_timeout);
 }
 
 void LoginMetrics::ReportCrosEvent(const std::string& event) {

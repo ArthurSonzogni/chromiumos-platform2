@@ -34,7 +34,6 @@ class MockMetrics : public LoginMetrics {
   MOCK_METHOD(void, SendSessionExitType, (SessionExitType), (override));
   MOCK_METHOD(void, SendBrowserShutdownTime, (base::TimeDelta), (override));
   MOCK_METHOD(void, SendLivenessPingResult, (bool success), (override));
-  MOCK_METHOD(void, RecordStateForLivenessTimeout, (BrowserState), (override));
   MOCK_METHOD(void, SendArcBugReportBackupTime, (base::TimeDelta), (override));
 };
 

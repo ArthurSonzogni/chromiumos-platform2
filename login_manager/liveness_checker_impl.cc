@@ -297,10 +297,6 @@ void LivenessCheckerImpl::RequestKernelTraces() {
 
 void LivenessCheckerImpl::RecordStateForTimeout() {
   LoginMetrics::BrowserState state = GetBrowserState();
-  if (metrics_ != nullptr) {
-    metrics_->RecordStateForLivenessTimeout(state);
-  }
-
   if (state == LoginMetrics::BrowserState::kSleeping ||
       state == LoginMetrics::BrowserState::kUninterruptibleWait ||
       state == LoginMetrics::BrowserState::kTracedOrStopped) {

@@ -107,9 +107,6 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendOutstandingPing) {
   EXPECT_CALL(*manager_.get(), AbortBrowserForHang()).Times(1);
   EXPECT_CALL(*manager_.get(), GetBrowserPid())
       .WillRepeatedly(Return(std::nullopt));
-  EXPECT_CALL(*metrics_, RecordStateForLivenessTimeout(
-                             LoginMetrics::BrowserState::kErrorGettingState))
-      .Times(1);
   checker_->CheckAndSendLivenessPing(TimeDelta());
   fake_loop_.Run();  // Runs until the message loop is empty.
 }
@@ -124,9 +121,6 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPing) {
   EXPECT_CALL(*manager_.get(), AbortBrowserForHang()).Times(1);
   EXPECT_CALL(*manager_.get(), GetBrowserPid())
       .WillRepeatedly(Return(std::nullopt));
-  EXPECT_CALL(*metrics_, RecordStateForLivenessTimeout(
-                             LoginMetrics::BrowserState::kErrorGettingState))
-      .Times(1);
   checker_->CheckAndSendLivenessPing(TimeDelta());
   fake_loop_.Run();  // Runs until the message loop is empty.
 }
@@ -149,9 +143,6 @@ TEST_F(LivenessCheckerImplTest, CheckAndSendAckedThenOutstandingPingNeutered) {
   // But we still record the UMA.
   EXPECT_CALL(*manager_.get(), GetBrowserPid())
       .WillRepeatedly(Return(std::nullopt));
-  EXPECT_CALL(*metrics_, RecordStateForLivenessTimeout(
-                             LoginMetrics::BrowserState::kErrorGettingState))
-      .Times(1);
   checker_->CheckAndSendLivenessPing(base::Seconds(1));
   fake_loop_.Run();  // Runs until the message loop is empty.
 }
@@ -219,9 +210,6 @@ TEST_P(LivenessCheckerImplParamTest, BrowserStatusToUMA) {
   ExpectUnAckedLivenessPing();
   EXPECT_CALL(*manager_.get(), AbortBrowserForHang()).Times(1);
   EXPECT_CALL(*manager_.get(), GetBrowserPid()).WillRepeatedly(Return(123));
-  EXPECT_CALL(*metrics_,
-              RecordStateForLivenessTimeout(GetParam().expected_state))
-      .Times(1);
   checker_->CheckAndSendLivenessPing(TimeDelta());
   fake_loop_.Run();  // Runs until the message loop is empty.
 

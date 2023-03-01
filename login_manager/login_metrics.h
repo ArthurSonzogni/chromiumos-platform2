@@ -190,10 +190,6 @@ class LoginMetrics {
   // Submits to UMA the liveness ping result.
   virtual void SendLivenessPingResult(bool success);
 
-  // Submits to UMA the state of the browser when the liveness check times out
-  // (that is, when it sends an abort if enable_aborting_ is true).
-  virtual void RecordStateForLivenessTimeout(BrowserState state_at_timeout);
-
   // CrOS events are translated to an enum and reported to the generic
   // "Platform.CrOSEvent" enum histogram. The |event| string must be registered
   // in metrics/metrics_library.cc:kCrosEventNames.
