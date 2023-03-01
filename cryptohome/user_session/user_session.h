@@ -82,18 +82,9 @@ class UserSession {
   // Returns the hibernate secret.
   virtual std::unique_ptr<brillo::SecureBlob> GetHibernateSecret() = 0;
 
-  // Adds credentials the current session can be re-authenticated with.
-  // Logs warning in case anything went wrong in setting up new re-auth state.
-  virtual void AddCredentials(const Credentials& credentials) = 0;
-
   // Checks that the session belongs to the obfuscated_user.
   virtual bool VerifyUser(
       const ObfuscatedUsername& obfuscated_username) const = 0;
-
-  // Verifies credentials against store re-auth state. Returns true if the
-  // credentials were successfully re-authenticated against the saved re-auth
-  // state.
-  virtual bool VerifyCredentials(const Credentials& credentials) const = 0;
 
   // Returns PKCS11 token associated with the session.
   virtual Pkcs11Token* GetPkcs11Token() = 0;
@@ -112,10 +103,6 @@ class UserSession {
   // These functions are used to read and write credential state stored in the
   // user session. They are implemented directly as non-virtual functions
   // because it doesn't make sense to implement them differently, even in tests.
-
-  // Returns or sets key_data of the current session credentials.
-  const KeyData& key_data() const { return key_data_; }
-  void set_key_data(KeyData key_data) { key_data_ = std::move(key_data); }
 
   // Credential Verifiers (labeled vs labelless)
   // UserSessions can have any number of verifiers associated with them.
@@ -155,8 +142,7 @@ class UserSession {
   void RemoveCredentialVerifier(AuthFactorType type);
 
  private:
-  // Storage for KeyData and CredentialVerifiers associated with the session.
-  KeyData key_data_;
+  // Storage for CredentialVerifiers associated with the session.
   std::map<std::string, std::unique_ptr<CredentialVerifier>>
       label_to_credential_verifier_;
   std::map<AuthFactorType, std::unique_ptr<CredentialVerifier>>

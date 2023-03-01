@@ -86,7 +86,6 @@ class RealUserSessionTest : public ::testing::Test {
  public:
   RealUserSessionTest()
       : crypto_(&hwsec_, &pinweaver_, &cryptohome_keys_manager_, nullptr) {}
-  ~RealUserSessionTest() override {}
 
   // Not copyable or movable
   RealUserSessionTest(const RealUserSessionTest&) = delete;
@@ -214,7 +213,6 @@ TEST_F(RealUserSessionTest, MountVaultOk) {
 
   // Set the credentials with |users_[0].credentials| so that
   // |obfuscated_username_| is explicitly set during the Unmount test.
-  session_->AddCredentials(users_[0].credentials);
   FileSystemKeyset fs_keyset = users_[0].user_fs_keyset;
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
@@ -254,7 +252,6 @@ TEST_F(RealUserSessionTest, MountVaultOk) {
 
   // Set the credentials with |users_[0].credentials| so that
   // |obfuscated_username_| is explicitly set during the Unmount test.
-  session_->AddCredentials(users_[0].credentials);
   EXPECT_CALL(*mount_,
               MountCryptohome(users_[0].name, _, VaultOptionsEqual(options)))
       .WillOnce(ReturnOk<StorageError>());
@@ -281,7 +278,6 @@ TEST_F(RealUserSessionTest, MountVaultOk) {
   // SETUP
   // Set the credentials with |users_[0].credentials| so that
   // |obfuscated_username_| is explicitly set during the Unmount test.
-  session_->AddCredentials(users_[0].credentials);
   EXPECT_CALL(*mount_, IsNonEphemeralMounted()).WillOnce(Return(true));
   EXPECT_CALL(platform_, GetCurrentTime()).WillOnce(Return(kTs3));
   EXPECT_CALL(*mount_, UnmountCryptohome()).WillOnce(Return(true));
@@ -472,80 +468,9 @@ TEST_F(RealUserSessionReAuthTest, VerifyUser) {
   Credentials credentials(Username("username"), SecureBlob("password"));
   RealUserSession session(Username("username"), nullptr, nullptr, nullptr,
                           nullptr, nullptr);
-  session.AddCredentials(credentials);
 
   EXPECT_TRUE(session.VerifyUser(credentials.GetObfuscatedUsername()));
   EXPECT_FALSE(session.VerifyUser(ObfuscatedUsername("other")));
-}
-
-TEST_F(RealUserSessionReAuthTest, VerifyCredentials) {
-  KeyData key_data;
-  key_data.set_label("password");
-
-  Credentials credentials_1(Username("username"), SecureBlob("password"));
-  credentials_1.set_key_data(key_data);
-  Credentials credentials_2(Username("username"), SecureBlob("password2"));
-  credentials_2.set_key_data(key_data);
-  Credentials credentials_3(Username("username2"), SecureBlob("password2"));
-  credentials_3.set_key_data(key_data);
-
-  {
-    RealUserSession session(credentials_1.username(), nullptr, nullptr, nullptr,
-                            nullptr, nullptr);
-    session.AddCredentials(credentials_1);
-    EXPECT_TRUE(session.VerifyCredentials(credentials_1));
-    EXPECT_FALSE(session.VerifyCredentials(credentials_2));
-    EXPECT_FALSE(session.VerifyCredentials(credentials_3));
-  }
-
-  {
-    RealUserSession session(credentials_2.username(), nullptr, nullptr, nullptr,
-                            nullptr, nullptr);
-    session.AddCredentials(credentials_2);
-    EXPECT_FALSE(session.VerifyCredentials(credentials_1));
-    EXPECT_TRUE(session.VerifyCredentials(credentials_2));
-    EXPECT_FALSE(session.VerifyCredentials(credentials_3));
-  }
-
-  {
-    RealUserSession session(credentials_3.username(), nullptr, nullptr, nullptr,
-                            nullptr, nullptr);
-    session.AddCredentials(credentials_3);
-    EXPECT_FALSE(session.VerifyCredentials(credentials_1));
-    EXPECT_FALSE(session.VerifyCredentials(credentials_2));
-    EXPECT_TRUE(session.VerifyCredentials(credentials_3));
-  }
-}
-
-TEST_F(RealUserSessionReAuthTest, RemoveCredentials) {
-  Credentials credentials_1(Username("username"), SecureBlob("password"));
-  KeyData key_data1;
-  key_data1.set_label("password1");
-  credentials_1.set_key_data(key_data1);
-
-  Credentials credentials_2(Username("username"), SecureBlob("password2"));
-  KeyData key_data2;
-  key_data1.set_label("password2");
-  credentials_2.set_key_data(key_data2);
-
-  {
-    RealUserSession session(credentials_1.username(), nullptr, nullptr, nullptr,
-                            nullptr, nullptr);
-    session.AddCredentials(credentials_1);
-    EXPECT_TRUE(session.VerifyCredentials(credentials_1));
-    EXPECT_FALSE(session.VerifyCredentials(credentials_2));
-
-    // Removing another label that is not the same as this session was set
-    // with.
-    session.RemoveCredentialVerifier(credentials_2.key_data().label());
-    // Verification should still work.
-    EXPECT_TRUE(session.VerifyCredentials(credentials_1));
-
-    // Removing the credential label set in this user session.
-    session.RemoveCredentialVerifier(credentials_1.key_data().label());
-    // Verification should not work.
-    EXPECT_FALSE(session.VerifyCredentials(credentials_1));
-  }
 }
 
 TEST_F(RealUserSessionReAuthTest, AddAndRemoveCredentialVerifiers) {

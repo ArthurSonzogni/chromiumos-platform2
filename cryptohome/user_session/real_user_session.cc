@@ -258,56 +258,9 @@ std::unique_ptr<brillo::SecureBlob> RealUserSession::GetHibernateSecret() {
   return std::move(hibernate_secret_);
 }
 
-void RealUserSession::AddCredentials(const Credentials& credentials) {
-  if (obfuscated_username_ != credentials.GetObfuscatedUsername()) {
-    NOTREACHED() << "AddCredentials username mismatch.";
-    return;
-  }
-
-  set_key_data(credentials.key_data());
-
-  // Create a matching passkey-based verifier for the key data.
-  auto verifier =
-      ScryptVerifier::Create(key_data().label(), credentials.passkey());
-  if (verifier) {
-    AddCredentialVerifier(std::move(verifier));
-  } else {
-    LOG(WARNING) << "CredentialVerifier could not be set";
-  }
-}
-
 bool RealUserSession::VerifyUser(
     const ObfuscatedUsername& obfuscated_username) const {
   return obfuscated_username_ == obfuscated_username;
-}
-
-bool RealUserSession::VerifyCredentials(const Credentials& credentials) const {
-  ReportTimerStart(kSessionUnlockTimer);
-
-  if (!VerifyUser(credentials.GetObfuscatedUsername())) {
-    return false;
-  }
-
-  // If the incoming credentials have no label, the want to use the verifier
-  // that's associated with key_data_ (found by using the key_data_ label).
-  // Otherwise, use the one specified by the credentials.
-  const std::string& label_to_use = credentials.key_data().label().empty()
-                                        ? key_data().label()
-                                        : credentials.key_data().label();
-  const CredentialVerifier* verifier = FindCredentialVerifier(label_to_use);
-  if (!verifier) {
-    LOG(ERROR) << "Attempt to verify credentials with no verifier set";
-    return false;
-  }
-
-  // Try testing the secret now.
-  bool status = verifier->Verify(
-      {.user_input = credentials.passkey(),
-       .obfuscated_username = credentials.GetObfuscatedUsername()});
-
-  ReportTimerStop(kSessionUnlockTimer);
-
-  return status;
 }
 
 bool RealUserSession::ResetApplicationContainer(

@@ -73,11 +73,6 @@ std::vector<const CredentialVerifier*> UserSession::GetCredentialVerifiers()
 void UserSession::RemoveCredentialVerifier(const std::string& key_label) {
   // Remove the matching credential verifier, if it exists.
   label_to_credential_verifier_.erase(key_label);
-
-  // Also clear the KeyData, if it matches the given label.
-  if (key_data_.label() == key_label) {
-    key_data_.Clear();
-  }
 }
 
 void UserSession::RemoveCredentialVerifier(AuthFactorType type) {

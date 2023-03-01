@@ -76,11 +76,7 @@ class RealUserSession : public UserSession {
 
   std::unique_ptr<brillo::SecureBlob> GetHibernateSecret() override;
 
-  void AddCredentials(const Credentials& credentials) override;
-
   bool VerifyUser(const ObfuscatedUsername& obfuscated_username) const override;
-
-  bool VerifyCredentials(const Credentials& credentials) const override;
 
   Pkcs11Token* GetPkcs11Token() override { return pkcs11_token_.get(); }
 

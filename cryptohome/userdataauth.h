@@ -900,25 +900,6 @@ class UserDataAuth {
 
   CryptohomeStatus CreatePersistentUserImpl(const std::string& auth_session_id);
 
-  // OnAddAuthFactorFinished when AuthSession::AddAuthFactor is finished. The
-  // function will set AuthFactor in user_session for user to do unlock. The
-  // credential verifier will not be overridden if it is already set once.
-  void OnAddAuthFactorFinished(AuthSession* auth_session,
-                               StatusCallback on_done,
-                               CryptohomeStatus status);
-
-  // OnUpdateAuthFactorFinished is called when AuthSession::UpdateAuthFactors is
-  // finished. The function will set AuthFactor in user_session for user to do
-  // unlock. The credential verifier will be overridden if it is already set
-  // once.
-  void OnUpdateAuthFactorFinished(AuthSession* auth_session,
-                                  StatusCallback on_done,
-                                  CryptohomeStatus status);
-
-  // Populates the user session key data from the auth session key data.
-  void SetKeyDataForUserSession(AuthSession* auth_session,
-                                bool override_existing_data);
-
   // =============== USS Experiment Related Methods ===============
 
   // Called on Mount thread. This creates a dbus proxy for flimflam::Manager

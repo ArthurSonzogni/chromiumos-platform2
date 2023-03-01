@@ -16,6 +16,7 @@
 #include <base/test/test_future.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
+#include <gmock/gmock-matchers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
@@ -256,22 +257,6 @@ void MockOwnerUser(const std::string& username, MockHomeDirs& homedirs) {
   EXPECT_CALL(homedirs, GetPlainOwner(_))
       .WillRepeatedly(
           DoAll(SetArgPointee<0>(Username(username)), Return(true)));
-}
-
-// Helper to make it easy to construct quick passkey credentials. Uses a struct
-// for the function parameters so that (using designated initializers) the calls
-// are more readable.
-struct CredentialsParams {
-  Username username;
-  std::string label;
-  std::string passkey;
-};
-Credentials MakePasskeyCredentails(CredentialsParams params) {
-  Credentials creds(params.username, brillo::SecureBlob(params.passkey));
-  KeyData key_data;
-  key_data.set_label(params.label);
-  creds.set_key_data(std::move(key_data));
-  return creds;
 }
 
 }  // namespace
@@ -1451,9 +1436,12 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AddFactorNewUserVk) {
   ASSERT_TRUE(found_user_session);
   EXPECT_TRUE(found_user_session->IsActive());
   // Check the user session has a verifier for the given password.
-  Credentials credentials = MakePasskeyCredentails(
-      {.username = kUsername, .label = kPasswordLabel, .passkey = kPassword});
-  EXPECT_TRUE(found_user_session->VerifyCredentials(credentials));
+  const CredentialVerifier* verifier =
+      found_user_session->FindCredentialVerifier(kPasswordLabel);
+  ASSERT_THAT(verifier, NotNull());
+  AuthInput auth_input = {.user_input = brillo::SecureBlob(kPassword),
+                          .obfuscated_username = obfuscated_username};
+  EXPECT_TRUE(verifier->Verify(auth_input));
 }
 
 // Test that AddAuthFactor succeeds when adding a second factor for a freshly
@@ -1505,9 +1493,12 @@ TEST_F(AuthSessionInterfaceMockAuthTest, AddSecondFactorNewUserVk) {
   ASSERT_TRUE(found_user_session);
   EXPECT_TRUE(found_user_session->IsActive());
   // Check the user session has a verifier for the first keyset's password.
-  Credentials credentials = MakePasskeyCredentails(
-      {.username = kUsername, .label = kPasswordLabel, .passkey = kPassword});
-  EXPECT_TRUE(found_user_session->VerifyCredentials(credentials));
+  const CredentialVerifier* verifier =
+      found_user_session->FindCredentialVerifier(kPasswordLabel);
+  ASSERT_THAT(verifier, NotNull());
+  AuthInput auth_input = {.user_input = brillo::SecureBlob(kPassword),
+                          .obfuscated_username = obfuscated_username};
+  EXPECT_TRUE(verifier->Verify(auth_input));
 }
 
 // Test that AuthenticateAuthFactor succeeds for an existing user and a
@@ -2030,9 +2021,12 @@ TEST_F(AuthSessionInterfaceMockAuthTest, PrepareVaultAfterFactorAuthVk) {
   ASSERT_TRUE(found_user_session);
   EXPECT_TRUE(found_user_session->IsActive());
   // Check the user session has a verifier for the given password.
-  Credentials credentials = MakePasskeyCredentails(
-      {.username = kUsername, .label = kPasswordLabel, .passkey = kPassword});
-  EXPECT_TRUE(found_user_session->VerifyCredentials(credentials));
+  const CredentialVerifier* verifier =
+      found_user_session->FindCredentialVerifier(kPasswordLabel);
+  ASSERT_THAT(verifier, NotNull());
+  AuthInput auth_input = {.user_input = brillo::SecureBlob(kPassword),
+                          .obfuscated_username = obfuscated_username};
+  EXPECT_TRUE(verifier->Verify(auth_input));
 }
 
 // Test the PreparePersistentVault, when called after a successful
@@ -2323,10 +2317,12 @@ TEST_F(AuthSessionInterfaceMockAuthTest,
   // Assert.
   EXPECT_EQ(reply.error(), user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   // Check the user session has a verifier for the given password.
-  EXPECT_THAT(found_user_session->GetCredentialVerifiers(), Not(IsEmpty()));
-  Credentials credentials = MakePasskeyCredentails(
-      {.username = kUsername, .label = kPasswordLabel, .passkey = kPassword});
-  EXPECT_TRUE(found_user_session->VerifyCredentials(credentials));
+  const CredentialVerifier* verifier =
+      found_user_session->FindCredentialVerifier(kPasswordLabel);
+  ASSERT_THAT(verifier, NotNull());
+  AuthInput auth_input = {.user_input = brillo::SecureBlob(kPassword),
+                          .obfuscated_username = SanitizeUserName(kUsername)};
+  EXPECT_TRUE(verifier->Verify(auth_input));
   EXPECT_THAT(
       auth_session->authorized_intents(),
       UnorderedElementsAre(AuthIntent::kDecrypt, AuthIntent::kVerifyOnly));

@@ -2100,64 +2100,6 @@ void UserDataAuth::StartAuthSession(
   ReplyWithError(std::move(on_done), reply, OkStatus<CryptohomeError>());
 }
 
-void UserDataAuth::SetKeyDataForUserSession(AuthSession* auth_session,
-                                            bool override_existing_data) {
-  DCHECK(auth_session);
-
-  UserSession* const session = sessions_->Find(auth_session->username());
-  // Ensure valid session.
-  if (!session) {
-    LOG(WARNING) << "SetCredential failed as user session does not exist";
-    return;
-  }
-
-  // Check the user is already mounted.
-  if (!session->IsActive()) {
-    LOG(WARNING) << "SetCredential failed as user session is not active.";
-    return;
-  }
-
-  // Check if both UserSession and AuthSession match.
-  if (session->IsEphemeral() != auth_session->ephemeral_user()) {
-    LOG(WARNING) << "SetCredential failed as user session does not match "
-                    "auth_session ephemeral status user: "
-                 << auth_session->obfuscated_username();
-    return;
-  }
-
-  // Ensure AuthSession is authenticated.
-  if (auth_session->status() != AuthStatus::kAuthStatusAuthenticated) {
-    LOG(WARNING) << "SetCredential failed as auth session is not authenticated "
-                    "for user: "
-                 << auth_session->obfuscated_username();
-    return;
-  }
-
-  if (!session->HasCredentialVerifier() || override_existing_data) {
-    session->set_key_data(auth_session->current_key_data());
-  }
-}
-
-void UserDataAuth::OnAddAuthFactorFinished(AuthSession* auth_session,
-                                           StatusCallback on_done,
-                                           CryptohomeStatus status) {
-  if (status.ok()) {
-    SetKeyDataForUserSession(auth_session,
-                             /*override_existing_data=*/false);
-  }
-  std::move(on_done).Run(std::move(status));
-}
-
-void UserDataAuth::OnUpdateAuthFactorFinished(AuthSession* auth_session,
-                                              StatusCallback on_done,
-                                              CryptohomeStatus status) {
-  if (status.ok()) {
-    SetKeyDataForUserSession(auth_session,
-                             /*override_existing_data=*/true);
-  }
-  std::move(on_done).Run(std::move(status));
-}
-
 void UserDataAuth::InvalidateAuthSession(
     user_data_auth::InvalidateAuthSessionRequest request,
     base::OnceCallback<void(const user_data_auth::InvalidateAuthSessionReply&)>
@@ -2609,9 +2551,6 @@ CryptohomeStatus UserDataAuth::PreparePersistentVaultImpl(
                    kLocUserDataAuthMountFailedInPreparePersistentVault))
         .Wrap(std::move(mount_status).status());
   }
-
-  SetKeyDataForUserSession(auth_session_status.value().Get(),
-                           /*override_existing_data=*/false);
   return OkStatus<CryptohomeError>();
 }
 
@@ -2738,13 +2677,10 @@ void UserDataAuth::AddAuthFactor(
   // Populate the request auth factor with accurate sysinfo.
   PopulateAuthFactorProtoWithSysinfo(*request.mutable_auth_factor());
 
-  StatusCallback on_add_auth_factor_finished = base::BindOnce(
-      &UserDataAuth::OnAddAuthFactorFinished, base::Unretained(this),
-      auth_session_status.value().Get(),
+  auth_session_status.value()->AddAuthFactor(
+      request,
       base::BindOnce(&ReplyWithStatus<user_data_auth::AddAuthFactorReply>,
                      std::move(on_done)));
-  auth_session_status.value()->AddAuthFactor(
-      request, std::move(on_add_auth_factor_finished));
 }
 
 void UserDataAuth::AuthenticateAuthFactor(
@@ -2823,14 +2759,10 @@ void UserDataAuth::UpdateAuthFactor(
 
   // Populate the request auth factor with accurate sysinfo.
   PopulateAuthFactorProtoWithSysinfo(*request.mutable_auth_factor());
-
-  StatusCallback on_update_auth_factor_finished = base::BindOnce(
-      &UserDataAuth::OnUpdateAuthFactorFinished, base::Unretained(this),
-      auth_session_status.value().Get(),
+  auth_session_status.value()->UpdateAuthFactor(
+      request,
       base::BindOnce(&ReplyWithStatus<user_data_auth::UpdateAuthFactorReply>,
                      std::move(on_done)));
-  auth_session_status.value()->UpdateAuthFactor(
-      request, std::move(on_update_auth_factor_finished));
 }
 
 void UserDataAuth::RemoveAuthFactor(
