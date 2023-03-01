@@ -8,7 +8,7 @@
 #include <optional>
 #include <utility>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/test/repeating_test_future.h>
 #include <base/task/sequenced_task_runner.h>

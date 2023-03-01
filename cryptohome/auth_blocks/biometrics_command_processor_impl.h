@@ -11,7 +11,7 @@
 #include <optional>
 #include <string>
 
-#include <base/callback.h>
+#include <base/functional/callback.h>
 #include <biod/biod_proxy/auth_stack_manager_proxy_base.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/secure_blob.h>
