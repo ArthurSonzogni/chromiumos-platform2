@@ -141,6 +141,7 @@ _IUSE = [
     "prjquota",
     "profiling",
     "protected_av1",
+    "proto_force_optimize_speed",
     "qualcomm_camx",
     "qrtr",
     "report_requisition",
