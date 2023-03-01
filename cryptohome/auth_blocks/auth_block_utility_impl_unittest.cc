@@ -39,6 +39,7 @@
 #include "cryptohome/auth_blocks/challenge_credential_auth_block.h"
 #include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"
 #include "cryptohome/auth_blocks/fp_service.h"
+#include "cryptohome/auth_blocks/mock_biometrics_command_processor.h"
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
 #include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_bound_to_pcr_auth_block.h"
@@ -146,13 +147,22 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
     auth_block_utility_impl_ = std::make_unique<AuthBlockUtilityImpl>(
         keyset_management_.get(), &crypto_, &platform_,
         MakeFingerprintAuthBlockService(),
-        BiometricsAuthBlockService::NullGetter());
+        base::BindRepeating(&AuthBlockUtilityImplTest::GetBioService,
+                            base::Unretained(this)));
   }
 
  protected:
   FingerprintManager* GetFingerprintManager() { return &fp_manager_; }
   void OnFingerprintScanResult(user_data_auth::FingerprintScanResult result) {
     result_ = result;
+  }
+  BiometricsAuthBlockService* GetBioService() { return bio_service_.get(); }
+
+  void SetupBiometricsService() {
+    auto mock_processor = std::make_unique<MockBiometricsCommandProcessor>();
+    bio_service_ = std::make_unique<BiometricsAuthBlockService>(
+        std::move(mock_processor), /*enroll_signal_sender=*/base::DoNothing(),
+        /*auth_signal_sender=*/base::DoNothing());
   }
 
   const Username kUser{"Test User"};
@@ -176,6 +186,7 @@ class AuthBlockUtilityImplTest : public ::testing::Test {
   NiceMock<MockKeyChallengeServiceFactory> key_challenge_service_factory_;
   NiceMock<MockChallengeCredentialsHelper> challenge_credentials_helper_;
   user_data_auth::FingerprintScanResult result_;
+  std::unique_ptr<BiometricsAuthBlockService> bio_service_;
   std::unique_ptr<AuthBlockUtilityImpl> auth_block_utility_impl_;
 };
 
@@ -260,6 +271,37 @@ TEST_F(AuthBlockUtilityImplTest, GetSupportedAuthFactors) {
   EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
       AuthFactorType::kLegacyFingerprint,
       AuthFactorStorageType::kUserSecretStash, {}));
+
+  EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kFingerprint, AuthFactorStorageType::kVaultKeyset, {}));
+  EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kFingerprint, AuthFactorStorageType::kUserSecretStash,
+      {}));
+
+  EXPECT_CALL(hwsec_, IsBiometricsPinWeaverEnabled())
+      .WillOnce(ReturnValue(true));
+  crypto_.set_le_manager_for_testing(
+      std::make_unique<MockLECredentialManager>());
+  EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kFingerprint, AuthFactorStorageType::kVaultKeyset, {}));
+  EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kFingerprint, AuthFactorStorageType::kUserSecretStash,
+      {}));
+
+  SetupBiometricsService();
+  EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kFingerprint, AuthFactorStorageType::kVaultKeyset, {}));
+  EXPECT_TRUE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kFingerprint, AuthFactorStorageType::kUserSecretStash,
+      {}));
+
+  EXPECT_CALL(hwsec_, IsBiometricsPinWeaverEnabled())
+      .WillOnce(ReturnValue(false));
+  EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kFingerprint, AuthFactorStorageType::kVaultKeyset, {}));
+  EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
+      AuthFactorType::kFingerprint, AuthFactorStorageType::kUserSecretStash,
+      {}));
 
   EXPECT_FALSE(auth_block_utility_impl_->IsAuthFactorSupported(
       AuthFactorType::kUnspecified, AuthFactorStorageType::kVaultKeyset, {}));

@@ -167,7 +167,9 @@ bool AuthBlockUtilityImpl::IsAuthFactorSupported(
     case AuthFactorType::kLegacyFingerprint:
       return false;
     case AuthFactorType::kFingerprint: {
-      return bio_service_getter_.Run() &&
+      return (auth_factor_storage_type ==
+              AuthFactorStorageType::kUserSecretStash) &&
+             bio_service_getter_.Run() &&
              FingerprintAuthBlock::IsSupported(*crypto_).ok();
     }
     case AuthFactorType::kUnspecified:
