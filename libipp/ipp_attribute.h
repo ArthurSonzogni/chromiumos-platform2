@@ -104,6 +104,14 @@ struct StringWithLanguage {
   explicit StringWithLanguage(std::string&& value) : value(value) {}
   operator std::string() const { return value; }
 };
+inline bool operator==(const StringWithLanguage& v1,
+                       const StringWithLanguage& v2) {
+  return (v1.language == v2.language) && (v1.value == v2.value);
+}
+inline bool operator!=(const StringWithLanguage& v1,
+                       const StringWithLanguage& v2) {
+  return !(v1 == v2);
+}
 
 // Represents resolution type from [rfc8010].
 struct Resolution {
@@ -117,6 +125,12 @@ struct Resolution {
   Resolution(int32_t size1, int32_t size2, Units units = Units::kDotsPerInch)
       : xres(size1), yres(size2), units(units) {}
 };
+inline bool operator==(const Resolution& v1, const Resolution& v2) {
+  return (v1.xres == v2.xres) && (v1.yres == v2.yres) && (v1.units == v2.units);
+}
+inline bool operator!=(const Resolution& v1, const Resolution& v2) {
+  return !(v1 == v2);
+}
 
 // Represents rangeOfInteger type from [rfc8010].
 struct RangeOfInteger {
@@ -126,6 +140,12 @@ struct RangeOfInteger {
   RangeOfInteger(int32_t min_value, int32_t max_value)
       : min_value(min_value), max_value(max_value) {}
 };
+inline bool operator==(const RangeOfInteger& v1, const RangeOfInteger& v2) {
+  return (v1.min_value == v2.min_value) && (v1.max_value == v2.max_value);
+}
+inline bool operator!=(const RangeOfInteger& v1, const RangeOfInteger& v2) {
+  return !(v1 == v2);
+}
 
 // Represents dateTime type from [rfc8010,rfc2579].
 struct DateTime {
@@ -140,6 +160,16 @@ struct DateTime {
   uint8_t UTC_hours = 0;        // 0..13
   uint8_t UTC_minutes = 0;      // 0..59
 };
+inline bool operator==(const DateTime& v1, const DateTime& v2) {
+  return (v1.year == v2.year) && (v1.month == v2.month) && (v1.day == v2.day) &&
+         (v1.hour == v2.hour) && (v1.minutes == v2.minutes) &&
+         (v1.seconds == v2.seconds) && (v1.deci_seconds == v2.deci_seconds) &&
+         (v1.UTC_direction == v2.UTC_direction) &&
+         (v1.UTC_hours == v2.UTC_hours) && (v1.UTC_minutes == v2.UTC_minutes);
+}
+inline bool operator!=(const DateTime& v1, const DateTime& v2) {
+  return !(v1 == v2);
+}
 
 // Functions converting basic types to string. For enums it returns empty
 // string if given value is not defined.
@@ -436,6 +466,7 @@ class LIBIPP_EXPORT Attribute {
   // When (IsOutOfBand(Tag()) or `new_size` equals 0 this method does nothing.
   void Resize(size_t new_size);
 
+  // DEPRECATED. Use GetValues() instead.
   // Retrieves a value from an attribute, returns true for success and
   // false if the index is out of range or the value cannot be converted
   // to given variable (in this case, the given variable is not modified).
@@ -449,6 +480,7 @@ class LIBIPP_EXPORT Attribute {
   bool GetValue(RangeOfInteger* val, size_t index = 0) const;
   bool GetValue(DateTime* val, size_t index = 0) const;
 
+  // DEPRECATED. Use SetValues() instead.
   // Stores a value in given attribute's element. If given index is out of
   // range, the underlying container is resized.
   // Returns true for success and false if given value cannot be converted
@@ -461,6 +493,36 @@ class LIBIPP_EXPORT Attribute {
   bool SetValue(const Resolution& val, size_t index = 0);
   bool SetValue(const RangeOfInteger& val, size_t index = 0);
   bool SetValue(const DateTime& val, size_t index = 0);
+
+  // Retrieves values from the attribute. They are copied to the given vector.
+  // Possible errors:
+  //  * kIncompatibleType
+  Code GetValues(std::vector<bool>& values) const;
+  Code GetValues(std::vector<int32_t>& values) const;
+  Code GetValues(std::vector<std::string>& values) const;
+  Code GetValues(std::vector<StringWithLanguage>& values) const;
+  Code GetValues(std::vector<DateTime>& values) const;
+  Code GetValues(std::vector<Resolution>& values) const;
+  Code GetValues(std::vector<RangeOfInteger>& values) const;
+
+  // Set new values for the attribute. Previous values are discarded.
+  // Possible errors:
+  //  * kIncompatibleType
+  //  * kValueOutOfRange
+  Code SetValues(bool value);
+  Code SetValues(int32_t value);
+  Code SetValues(const std::string& value);
+  Code SetValues(const StringWithLanguage& value);
+  Code SetValues(DateTime value);
+  Code SetValues(Resolution value);
+  Code SetValues(RangeOfInteger value);
+  Code SetValues(const std::vector<bool>& values);
+  Code SetValues(const std::vector<int32_t>& values);
+  Code SetValues(const std::vector<std::string>& values);
+  Code SetValues(const std::vector<StringWithLanguage>& values);
+  Code SetValues(const std::vector<DateTime>& values);
+  Code SetValues(const std::vector<Resolution>& values);
+  Code SetValues(const std::vector<RangeOfInteger>& values);
 
   // Provides access to Collection objects. You can iterate over them in the
   // following ways:

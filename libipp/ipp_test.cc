@@ -15,27 +15,6 @@
 
 // This file contains unit test based on examples from [rfc8010].
 
-namespace ipp {
-
-static bool operator==(const ipp::Resolution& a, const ipp::Resolution& b) {
-  return (a.xres == b.xres && a.yres == b.yres && a.units == b.units);
-}
-
-static bool operator==(const ipp::RangeOfInteger& a,
-                       const ipp::RangeOfInteger& b) {
-  return (a.min_value == b.min_value && a.max_value == b.max_value);
-}
-
-static bool operator==(const ipp::DateTime& a, const ipp::DateTime& b) {
-  return (a.UTC_direction == b.UTC_direction && a.UTC_hours == b.UTC_hours &&
-          a.UTC_minutes == b.UTC_minutes && a.day == b.day &&
-          a.hour == b.hour && a.deci_seconds == b.deci_seconds &&
-          a.minutes == b.minutes && a.month == b.month &&
-          a.seconds == b.seconds && a.year == b.year);
-}
-
-}  // namespace ipp
-
 namespace {
 
 uint32_t TwosComplementEncoding(int value) {

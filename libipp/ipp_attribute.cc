@@ -666,6 +666,163 @@ CollectionsView Attribute::Colls() {
   return CollectionsView(*ReadValuePtr<std::vector<Collection*>>(&values_));
 }
 
+Code Attribute::GetValues(std::vector<bool>& values) const {
+  if (def_.ipp_type != ValueTag::boolean)
+    return Code::kIncompatibleType;
+  const std::vector<int32_t>* vints =
+      ReadValueConstPtr<std::vector<int32_t>>(&values_);
+  values.assign(vints->begin(), vints->end());
+  return Code::kOK;
+}
+
+Code Attribute::GetValues(std::vector<int32_t>& values) const {
+  if (!IsInteger(def_.ipp_type))
+    return Code::kIncompatibleType;
+  values = *ReadValueConstPtr<std::vector<int32_t>>(&values_);
+  return Code::kOK;
+}
+
+Code Attribute::GetValues(std::vector<std::string>& values) const {
+  if (!IsString(def_.ipp_type) && def_.ipp_type != ValueTag::octetString)
+    return Code::kIncompatibleType;
+  values = *ReadValueConstPtr<std::vector<std::string>>(&values_);
+  return Code::kOK;
+}
+
+Code Attribute::GetValues(std::vector<StringWithLanguage>& values) const {
+  if (def_.ipp_type != ValueTag::nameWithLanguage &&
+      def_.ipp_type != ValueTag::textWithLanguage) {
+    return Code::kIncompatibleType;
+  }
+  values = *ReadValueConstPtr<std::vector<StringWithLanguage>>(&values_);
+  return Code::kOK;
+}
+
+Code Attribute::GetValues(std::vector<DateTime>& values) const {
+  if (def_.ipp_type != ValueTag::dateTime)
+    return Code::kIncompatibleType;
+  values = *ReadValueConstPtr<std::vector<DateTime>>(&values_);
+  return Code::kOK;
+}
+
+Code Attribute::GetValues(std::vector<Resolution>& values) const {
+  if (def_.ipp_type != ValueTag::resolution)
+    return Code::kIncompatibleType;
+  values = *ReadValueConstPtr<std::vector<Resolution>>(&values_);
+  return Code::kOK;
+}
+
+Code Attribute::GetValues(std::vector<RangeOfInteger>& values) const {
+  if (def_.ipp_type != ValueTag::rangeOfInteger)
+    return Code::kIncompatibleType;
+  values = *ReadValueConstPtr<std::vector<RangeOfInteger>>(&values_);
+  return Code::kOK;
+}
+
+Code Attribute::SetValues(bool value) {
+  return SetValues(std::vector<bool>{value});
+}
+
+Code Attribute::SetValues(int32_t value) {
+  return SetValues(std::vector<int32_t>{value});
+}
+
+Code Attribute::SetValues(const std::string& value) {
+  return SetValues(std::vector<std::string>{value});
+}
+
+Code Attribute::SetValues(const StringWithLanguage& value) {
+  return SetValues(std::vector<StringWithLanguage>{value});
+}
+
+Code Attribute::SetValues(DateTime value) {
+  return SetValues(std::vector<DateTime>{value});
+}
+
+Code Attribute::SetValues(Resolution value) {
+  return SetValues(std::vector<Resolution>{value});
+}
+
+Code Attribute::SetValues(RangeOfInteger value) {
+  return SetValues(std::vector<RangeOfInteger>{value});
+}
+
+Code Attribute::SetValues(const std::vector<bool>& values) {
+  if (def_.ipp_type != ValueTag::boolean)
+    return Code::kIncompatibleType;
+  std::vector<int32_t>* vints = ReadValuePtr<std::vector<int32_t>>(&values_);
+  vints->assign(values.begin(), values.end());
+  return Code::kOK;
+}
+
+Code Attribute::SetValues(const std::vector<int32_t>& values) {
+  switch (def_.ipp_type) {
+    case ValueTag::boolean:
+      for (int32_t v : values)
+        if (v < 0 || v > 1)
+          return Code::kValueOutOfRange;
+      [[fallthrough]];
+    case ValueTag::enum_:
+    case ValueTag::integer:
+      *ReadValuePtr<std::vector<int32_t>>(&values_) = values;
+      return Code::kOK;
+    default:
+      return Code::kIncompatibleType;
+  }
+}
+
+Code Attribute::SetValues(const std::vector<std::string>& values) {
+  if (!IsString(def_.ipp_type) && def_.ipp_type != ValueTag::octetString)
+    return Code::kIncompatibleType;
+  for (const std::string& v : values) {
+    if (v.size() > kMaxSizeOfNameOrValue)
+      return Code::kValueOutOfRange;
+  }
+  *ReadValuePtr<std::vector<std::string>>(&values_) = values;
+  return Code::kOK;
+}
+
+Code Attribute::SetValues(const std::vector<StringWithLanguage>& values) {
+  if (def_.ipp_type != ValueTag::nameWithLanguage &&
+      def_.ipp_type != ValueTag::textWithLanguage) {
+    return Code::kIncompatibleType;
+  }
+  for (const StringWithLanguage& v : values) {
+    // nameWithLanguage and textWithLanguage values are saved as a sequence of
+    // the following fields (see section 3.9 from rfc8010):
+    // * int16_t (2 bytes) - length of the language field = L
+    // * string (L bytes) - content of the language field
+    // * int16_t (2 bytes) - length of the value field = V
+    // * string (V bytes) - content of the value field
+    // The total size (2 + L + 2 + V) cannot exceed the threshold.
+    if (v.value.size() + v.language.size() + 4 > kMaxSizeOfNameOrValue)
+      return Code::kValueOutOfRange;
+  }
+  *ReadValuePtr<std::vector<StringWithLanguage>>(&values_) = values;
+  return Code::kOK;
+}
+
+Code Attribute::SetValues(const std::vector<DateTime>& values) {
+  if (def_.ipp_type != ValueTag::dateTime)
+    return Code::kIncompatibleType;
+  *ReadValuePtr<std::vector<DateTime>>(&values_) = values;
+  return Code::kOK;
+}
+
+Code Attribute::SetValues(const std::vector<Resolution>& values) {
+  if (def_.ipp_type != ValueTag::resolution)
+    return Code::kIncompatibleType;
+  *ReadValuePtr<std::vector<Resolution>>(&values_) = values;
+  return Code::kOK;
+}
+
+Code Attribute::SetValues(const std::vector<RangeOfInteger>& values) {
+  if (def_.ipp_type != ValueTag::rangeOfInteger)
+    return Code::kIncompatibleType;
+  *ReadValuePtr<std::vector<RangeOfInteger>>(&values_) = values;
+  return Code::kOK;
+}
+
 ConstCollectionsView Attribute::Colls() const {
   if (Tag() != ValueTag::collection || Size() == 0) {
     return ConstCollectionsView(EmptyVectorOfColls());
