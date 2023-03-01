@@ -1261,7 +1261,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocFpServiceStartConcurrentSession = 717,
   /* =Obsolete= */
   kLocFpServiceScanCouldNotGetFpManager = 718,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* =Obsolete= */
   kLocAuthBlockUtilUnimplementedPrepareForAdd = 719,
   /* ./userdataauth.cc */
   kLocUserDataAuthFactorExtendedInfoTypeFailure = 720,
@@ -1589,6 +1589,10 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocFingerprintAuthBlockInsertCredentialFailedInCreate = 3353,
   /* ./auth_blocks/biometrics_command_processor_impl.cc */
   kLocBiometricsProcessorMatchCredentialUnexpectedScanResult = 3354,
+  /* ./auth_blocks/auth_block_utility_impl.cc */
+  kLocAuthBlockUtilPrepareForAuthFingerprintNoService = 3355,
+  /* ./auth_blocks/auth_block_utility_impl.cc */
+  kLocAuthBlockUtilPrepareForAddInvalidAuthFactorType = 3356,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.
