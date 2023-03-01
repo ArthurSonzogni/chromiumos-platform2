@@ -28,7 +28,7 @@ constexpr char kSwapEnableFile[] = "/var/lib/swap/swap_enabled";
 // This script holds the bulk of the real logic.
 constexpr char kSwapHelperScriptFile[] = "/usr/share/cros/init/swap.sh";
 constexpr char kZramDeviceFile[] = "/dev/zram0";
-constexpr char kZramSysfsFile[] = "/sys/block/zram0";
+constexpr char kZramSysfsDir[] = "/sys/block/zram0";
 
 constexpr base::TimeDelta kMaxIdleAge = base::Days(30);
 constexpr uint64_t kMinFilelistDefaultValueKB = 1000000;
@@ -123,7 +123,7 @@ absl::StatusOr<bool> SwapTool::IsZramSwapOn() {
       swaps, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   // Skip the first line which is header. Swap is turned on if swaps_lines
   // contains entry with zram0 keyword.
-  for (uint8_t i = 1; i < swaps_lines.size(); i++) {
+  for (size_t i = 1; i < swaps_lines.size(); i++) {
     if (swaps_lines[i].find("zram0") != std::string::npos)
       return true;
   }
@@ -227,7 +227,7 @@ absl::Status SwapTool::EnableZramSwapping() {
   constexpr base::TimeDelta kRetryDelayUs = base::Milliseconds(100);
   absl::Status status = absl::OkStatus();
 
-  for (uint8_t i = 0; i < kMaxEnableTries; i++) {
+  for (size_t i = 0; i < kMaxEnableTries; i++) {
     status = RunProcessHelper({"/sbin/swapon", kZramDeviceFile});
     if (status.ok())
       return status;
@@ -311,7 +311,7 @@ absl::Status SwapTool::SwapStop() {
   // be reconfigured on the fly.  Reset it so we can changes its params.
   // If there was a backing device being used, it will be automatically
   // removed because after it's created it was removed with deferred remove.
-  return WriteFile(base::FilePath("/sys/block/zram0/reset"), absl::StrCat(1));
+  return WriteFile(base::FilePath("/sys/block/zram0/reset"), "1");
 }
 
 std::string SwapTool::SwapEnable(int32_t size, bool change_now) const {
@@ -391,13 +391,14 @@ std::string SwapTool::SwapZramEnableWriteback(uint32_t size_mb) const {
 }
 
 std::string SwapTool::SwapZramSetWritebackLimit(uint32_t num_pages) const {
-  base::FilePath enable_file(
-      absl::StrCat(kZramSysfsFile, "writeback_limit_enable"));
+  base::FilePath enable_file =
+      base::FilePath(kZramSysfsDir).Append("writeback_limit_enable");
   std::string msg;
   if (!WriteValueToFile(enable_file, "1", msg))
     return msg;
 
-  base::FilePath filepath(absl::StrCat(kZramSysfsFile, "writeback_limit"));
+  base::FilePath filepath =
+      base::FilePath(kZramSysfsDir).Append("writeback_limit");
   std::string pages_str = std::to_string(num_pages);
 
   // We ignore the return value of WriteValueToFile because |msg|
@@ -413,7 +414,7 @@ std::string SwapTool::SwapZramMarkIdle(uint32_t age_seconds) const {
     return base::StringPrintf("ERROR: Invalid age: %d", age_seconds);
   }
 
-  base::FilePath filepath(absl::StrCat(kZramSysfsFile, "idle"));
+  base::FilePath filepath = base::FilePath(kZramSysfsDir).Append("idle");
   std::string age_str = std::to_string(age.InSeconds());
   std::string msg;
 
@@ -424,7 +425,7 @@ std::string SwapTool::SwapZramMarkIdle(uint32_t age_seconds) const {
 }
 
 std::string SwapTool::InitiateSwapZramWriteback(uint32_t mode) const {
-  base::FilePath filepath(absl::StrCat(kZramSysfsFile, "writeback"));
+  base::FilePath filepath = base::FilePath(kZramSysfsDir).Append("writeback");
   std::string mode_str;
   if (mode == WRITEBACK_IDLE) {
     mode_str = "idle";
