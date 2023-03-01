@@ -6,10 +6,12 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
-    ":install_bin",
     ":mount-passthrough",
     ":mount-passthrough-jailed",
   ]
+  if (use.test) {
+    deps += [ ":mount-passthrough-util_test" ]
+  }
 }
 
 pkg_config("mount-passthrough_config") {
@@ -45,8 +47,17 @@ executable("mount-passthrough-jailed") {
   install_path = "bin"
 }
 
-install_config("install_bin") {
-  sources = [ "mount-passthrough-jailed.sh" ]
-  install_path = "/usr/bin"
-  type = "executable"
+if (use.test) {
+  executable("mount-passthrough-util_test") {
+    sources = [
+      "mount-passthrough-util.cc",
+      "mount-passthrough-util_test.cc",
+    ]
+    configs += [
+      "//common-mk:test",
+      ":mount-passthrough_jailed_config",
+    ]
+    deps = [ "//common-mk/testrunner:testrunner" ]
+    run_test = true
+  }
 }

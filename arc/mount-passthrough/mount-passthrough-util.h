@@ -6,8 +6,9 @@
 #define ARC_MOUNT_PASSTHROUGH_MOUNT_PASSTHROUGH_UTIL_H_
 
 #include <string>
+#include <vector>
 
-namespace util {
+namespace arc {
 
 // Parsed command line flags.
 struct CommandLineFlags {
@@ -30,6 +31,11 @@ void ParseCommandLine(int argc,
                       const char* const* argv,
                       CommandLineFlags* flags);
 
-}  // namespace util
+// Creates the command line args used for invoking `mount-passthrough` via
+// `minijail0` including `minijail0` itself.
+std::vector<std::string> CreateMinijailCommandLineArgs(
+    const CommandLineFlags& flags);
+
+}  // namespace arc
 
 #endif  // ARC_MOUNT_PASSTHROUGH_MOUNT_PASSTHROUGH_UTIL_H_

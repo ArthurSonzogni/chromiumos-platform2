@@ -10,41 +10,21 @@
 #include <unistd.h>
 
 #include <base/logging.h>
-#include <base/strings/string_number_conversions.h>
 
 #include "arc/mount-passthrough/mount-passthrough-util.h"
 
-namespace {
-// TODO(satorux): Remove this when the shell script is removed.
-constexpr char kShellScriptPath[] = "/usr/bin/mount-passthrough-jailed.sh";
-}  // namespace
-
 int main(int argc, char* argv[]) {
-  util::CommandLineFlags flags;
-  util::ParseCommandLine(argc, argv, &flags);
+  arc::CommandLineFlags flags;
+  arc::ParseCommandLine(argc, argv, &flags);
 
-  std::vector<const char*> script_argv;
-  script_argv.resize(11);
-  // Explicitly use indices rather than push_back() as the indices are
-  // used in the shell script as positional parameters.
-  script_argv[0] = kShellScriptPath;
-  script_argv[1] = flags.source.c_str();
-  script_argv[2] = flags.dest.c_str();
-  script_argv[3] = flags.fuse_umask.c_str();
-  const std::string fuse_uid = base::NumberToString(flags.fuse_uid);
-  script_argv[4] = fuse_uid.c_str();
-  const std::string fuse_gid = base::NumberToString(flags.fuse_gid);
-  script_argv[5] = fuse_gid.c_str();
-  script_argv[6] = flags.android_app_access_type.c_str();
-  // Counterintuitively, "0" is true in shell script.
-  script_argv[7] = flags.use_default_selinux_context ? "0" : "1";
-  script_argv[8] = flags.enter_concierge_namespace ? "0" : "1";
-  const std::string max_number_of_open_fds =
-      base::NumberToString(flags.max_number_of_open_fds);
-  script_argv[9] = max_number_of_open_fds.c_str();
-  script_argv[10] = nullptr;  // argv should be terminated with nullptr.
+  auto minijail_args = arc::CreateMinijailCommandLineArgs(flags);
+  std::vector<const char*> minijail_argv;
+  for (const auto& arg : minijail_args) {
+    minijail_argv.push_back(arg.c_str());
+  }
+  minijail_argv.push_back(nullptr);  // argv should be terminated with nullptr.
 
-  execv(script_argv[0], const_cast<char* const*>(script_argv.data()));
-  PLOG(ERROR) << "execve failed with " << script_argv[0];
+  execv(minijail_argv[0], const_cast<char* const*>(minijail_argv.data()));
+  PLOG(ERROR) << "execve failed with " << minijail_argv[0];
   return EXIT_FAILURE;  // execve() failed.
 }
