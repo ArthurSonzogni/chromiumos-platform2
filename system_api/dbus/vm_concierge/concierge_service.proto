@@ -11,6 +11,19 @@ option go_package = "chromiumos/system_api/vm_concierge_proto";
 
 import "arc/arc.proto";
 
+// Read me before adding new messages.
+//
+// Most of the response protocol buffers define `success` and `failure_reason`
+// fields to propagate success status, as opposed to using the D-Bus error
+// message mechanisms. Please keep code base consistent.
+//
+// When using the API, unfortunately some of them don't follow this scheme,
+// please read the specification for error response
+// vm_tools/dbus_bindings/org.chromium.VmConcierge.xml
+//
+// Request protocol buffers define vm_name and owner_id, be consistent,
+// verification is done based on the field name in service.cc.
+
 // Specification of the key components of a VM.
 //
 // TODO(crbug/1121046): This spec may be insufficient for DLC, consider
