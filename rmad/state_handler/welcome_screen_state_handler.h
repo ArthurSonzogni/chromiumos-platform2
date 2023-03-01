@@ -28,7 +28,7 @@ class WelcomeScreenStateHandler : public BaseStateHandler {
       std::unique_ptr<HardwareVerifierClient> hardware_verifier_client);
 
   ASSIGN_STATE(RmadState::StateCase::kWelcome);
-  SET_UNREPEATABLE;
+  SET_REPEATABLE;
 
   RmadErrorCode InitializeState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
