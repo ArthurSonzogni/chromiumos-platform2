@@ -76,26 +76,23 @@ bool SwapManagementDBusAdaptor::MGLRUSetEnable(brillo::ErrorPtr* error,
   return *out_result;
 }
 
-std::string SwapManagementDBusAdaptor::SwapEnable(int32_t size,
-                                                  bool change_now) {
+bool SwapManagementDBusAdaptor::SwapSetSize(brillo::ErrorPtr* error,
+                                            uint32_t size) {
   ResetShutdownTimer();
-  return swap_tool_->SwapEnable(size, change_now);
-}
+  absl::Status status = swap_tool_->SwapSetSize(size);
+  if (!status.ok()) {
+    brillo::Error::AddTo(error, FROM_HERE, brillo::errors::dbus::kDomain,
+                         "org.chromium.SwapManagement.error.SwapSetSize",
+                         status.ToString());
+    return false;
+  }
 
-std::string SwapManagementDBusAdaptor::SwapDisable(bool change_now) {
-  ResetShutdownTimer();
-  return swap_tool_->SwapDisable(change_now);
+  return true;
 }
 
 std::string SwapManagementDBusAdaptor::SwapStatus() {
   ResetShutdownTimer();
   return swap_tool_->SwapStatus();
-}
-
-std::string SwapManagementDBusAdaptor::SwapSetParameter(
-    const std::string& parameter_name, uint32_t parameter_value) {
-  ResetShutdownTimer();
-  return swap_tool_->SwapSetParameter(parameter_name, parameter_value);
 }
 
 std::string SwapManagementDBusAdaptor::SwapZramEnableWriteback(

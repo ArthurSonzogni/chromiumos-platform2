@@ -25,12 +25,8 @@ class SwapTool {
 
   absl::Status SwapStart();
   absl::Status SwapStop();
-  std::string SwapEnable(int32_t size, bool change_now) const;
-  std::string SwapDisable(bool change_now) const;
-  std::string SwapStartStop(bool on) const;
-  std::string SwapStatus() const;
-  std::string SwapSetParameter(const std::string& parameter_name,
-                               uint32_t parameter_value) const;
+  absl::Status SwapSetSize(uint32_t size);
+  std::string SwapStatus();
 
   // Zram writeback configuration.
   std::string SwapZramEnableWriteback(uint32_t size_mb) const;
@@ -52,6 +48,7 @@ class SwapTool {
                                                    size_t max_size);
   virtual absl::Status ReadFileToString(const base::FilePath& path,
                                         std::string* contents);
+  virtual absl::Status DeleteFile(const base::FilePath& path);
 
  private:
   absl::StatusOr<bool> IsZramSwapOn();

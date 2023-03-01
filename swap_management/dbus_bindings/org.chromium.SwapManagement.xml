@@ -21,36 +21,23 @@
       </tp:docstring>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
-    <method name="SwapEnable">
+    <method name="SwapSetSize">
       <tp:docstring>
-        Enable swap file usage via config files.
+        Set zram size in swap file. Change can be applied after SwapRestart or reboot.
       </tp:docstring>
-      <arg name="status" type="s" direction="out">
-        Free-form text reporting status.
-      </arg>
-      <arg name="size" type="i" direction="in">
+      <arg name="size" type="u" direction="in">
         <tp:docstring>
-          Size (in MiB) for the swap file.
+          Size (in MiB) for the swap file. 0 means using default size.
         </tp:docstring>
       </arg>
-      <arg name="change_now" type="b" direction="in">
-        <tp:docstring>
-          Whether to enable immediately, or wait until next reboot.
-        </tp:docstring>
-      </arg>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
-    <method name="SwapDisable">
+    <method name="SwapStatus">
       <tp:docstring>
-        Disable swap file usage via config files.
+        Show current swap status.
       </tp:docstring>
       <arg name="status" type="s" direction="out">
         Free-form text reporting status.
-      </arg>
-      <arg name="change_now" type="b" direction="in">
-        <tp:docstring>
-          Whether to disable immediately, or wait until next reboot.
-        </tp:docstring>
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
@@ -65,34 +52,6 @@
         </tp:docstring>
       </arg>
       <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
-    </method>
-    <method name="SwapStatus">
-      <tp:docstring>
-        Show current swap status.
-      </tp:docstring>
-      <arg name="status" type="s" direction="out">
-        Free-form text reporting status.
-      </arg>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
-    </method>
-    <method name="SwapSetParameter">
-      <tp:docstring>
-        Persistently change the value of various parameters.
-      </tp:docstring>
-      <arg name="status" type="s" direction="out">
-        Free-form text reporting status.
-      </arg>
-      <arg name="command_name" type="s" direction="in">
-        <tp:docstring>
-          The name of the swap subcommand, usually set_something.
-        </tp:docstring>
-      </arg>
-      <arg name="value" type="u" direction="in">
-        <tp:docstring>
-          The unsigned integer value that some parameter is set to.
-        </tp:docstring>
-      </arg>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
     </method>
     <method name="SwapZramEnableWriteback">
       <tp:docstring>

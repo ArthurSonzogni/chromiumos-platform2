@@ -7,12 +7,10 @@
 
 #include <limits>
 
-#include <absl/strings/numbers.h>
-#include <absl/strings/str_cat.h>
+#include <base/files/dir_reader_posix.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/posix/safe_strerror.h>
-#include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
@@ -24,7 +22,7 @@ namespace swap_management {
 
 namespace {
 
-constexpr char kSwapEnableFile[] = "/var/lib/swap/swap_enabled";
+constexpr char kSwapSizeFile[] = "/var/lib/swap/swap_size";
 // This script holds the bulk of the real logic.
 constexpr char kSwapHelperScriptFile[] = "/usr/share/cros/init/swap.sh";
 constexpr char kZramDeviceFile[] = "/dev/zram0";
@@ -92,7 +90,7 @@ absl::Status SwapTool::RunProcessHelper(
 absl::Status SwapTool::WriteFile(const base::FilePath& path,
                                  const std::string& data) {
   if (!base::WriteFile(path, data))
-    return ErrnoToStatus(errno, absl::StrCat("Failed to write ", path.value()));
+    return ErrnoToStatus(errno, "Failed to write " + path.value());
 
   return absl::OkStatus();
 }
@@ -101,7 +99,7 @@ absl::Status SwapTool::ReadFileToStringWithMaxSize(const base::FilePath& path,
                                                    std::string* contents,
                                                    size_t max_size) {
   if (!base::ReadFileToStringWithMaxSize(path, contents, max_size))
-    return ErrnoToStatus(errno, absl::StrCat("Failed to read ", path.value()));
+    return ErrnoToStatus(errno, "Failed to read " + path.value());
 
   return absl::OkStatus();
 }
@@ -110,6 +108,13 @@ absl::Status SwapTool::ReadFileToString(const base::FilePath& path,
                                         std::string* contents) {
   return ReadFileToStringWithMaxSize(path, contents,
                                      std::numeric_limits<size_t>::max());
+}
+
+absl::Status SwapTool::DeleteFile(const base::FilePath& path) {
+  if (!base::DeleteFile(path))
+    return ErrnoToStatus(errno, "Failed to delete " + path.value());
+
+  return absl::OkStatus();
 }
 
 // Check if swap is already turned on.
@@ -150,8 +155,8 @@ absl::StatusOr<uint64_t> SwapTool::GetMemTotal() {
 
       uint64_t res = 0;
       if (!absl::SimpleAtoi(buf, &res))
-        return absl::OutOfRangeError(absl::StrCat(
-            "Failed to convert ", buf, " to 64-bit unsigned integer."));
+        return absl::OutOfRangeError("Failed to convert " + buf +
+                                     " to 64-bit unsigned integer.");
       return res;
     }
   }
@@ -166,10 +171,10 @@ absl::Status SwapTool::SetDefaultLowMemoryMargin(uint64_t mem_total) {
   uint64_t critical_margin = (mem_total / 1024) * 0.052;
   // Calculate moderate margin in MiB, which is 40% free. Ignore the decimal.
   uint64_t moderate_margin = (mem_total / 1024) * 0.4;
-  std::string buf = absl::StrCat(critical_margin, " ", moderate_margin);
   // Write into margin special file.
-  return WriteFile(base::FilePath("/sys/kernel/mm/chromeos-low_mem/margin"),
-                   buf);
+  return WriteFile(
+      base::FilePath("/sys/kernel/mm/chromeos-low_mem/margin"),
+      std::to_string(critical_margin) + " " + std::to_string(moderate_margin));
 }
 
 // Initialize MM tunnables.
@@ -179,20 +184,20 @@ absl::Status SwapTool::InitializeMMTunables(uint64_t mem_total) {
     return status;
 
   return WriteFile(base::FilePath("/proc/sys/vm/min_filelist_kbytes"),
-                   absl::StrCat(kMinFilelistDefaultValueKB));
+                   std::to_string(kMinFilelistDefaultValueKB));
 }
 
 // Return zram (compressed ram disk) size in byte for swap.
-// kSwapEnableFile contains the zram size in MiB.
-// Empty or missing kSwapEnableFile means use default size, which is
+// kSwapSizeFile contains the zram size in MiB.
+// Empty or missing kSwapSizeFile means use default size, which is
 // mem_total
 // * 2.
 // 0 means do not enable zram.
 absl::StatusOr<uint64_t> SwapTool::GetZramSize(uint64_t mem_total) {
-  // For security, only read first few bytes of kSwapEnableFile.
+  // For security, only read first few bytes of kSwapSizeFile.
   std::string buf;
   absl::Status status =
-      ReadFileToStringWithMaxSize(base::FilePath(kSwapEnableFile), &buf, 5);
+      ReadFileToStringWithMaxSize(base::FilePath(kSwapSizeFile), &buf, 5);
   // If the file doesn't exist we use default zram size, other errors we must
   // propagate back.
   if (!status.ok() && !absl::IsNotFound(status))
@@ -208,13 +213,14 @@ absl::StatusOr<uint64_t> SwapTool::GetZramSize(uint64_t mem_total) {
 
   uint64_t requested_size_mib = 0;
   if (!absl::SimpleAtoi(buf, &requested_size_mib))
-    return absl::OutOfRangeError(absl::StrCat("Failed to convert ",
-                                              requested_size_mib,
-                                              " to 64-bit unsigned integer."));
+    return absl::OutOfRangeError("Failed to convert " +
+                                 std::to_string(requested_size_mib) +
+                                 " to 64-bit unsigned integer.");
 
   if (requested_size_mib == 0)
-    return absl::InvalidArgumentError(absl::StrCat(
-        "Swap is not turned on since ", kSwapEnableFile, " contains 0."));
+    return absl::InvalidArgumentError("Swap is not turned on since " +
+                                      std::string(kSwapSizeFile) +
+                                      " contains 0.");
 
   return requested_size_mib * 1024 * 1024;
 }
@@ -238,9 +244,9 @@ absl::Status SwapTool::EnableZramSwapping() {
     base::PlatformThread::Sleep(kRetryDelayUs);
   }
 
-  return absl::AbortedError(absl::StrCat(
-      "swapon ", kZramDeviceFile, " failed after ", kMaxEnableTries, " tries",
-      " last error: ", status.ToString()));
+  return absl::AbortedError("swapon " + std::string(kZramDeviceFile) +
+                            " failed after " + std::to_string(kMaxEnableTries) +
+                            " tries" + " last error: " + status.ToString());
 }
 
 absl::Status SwapTool::SwapStart() {
@@ -274,7 +280,7 @@ absl::Status SwapTool::SwapStart() {
   // Set zram disksize.
   LOG(INFO) << "setting zram size to " << *size_byte << " bytes";
   status = WriteFile(base::FilePath("/sys/block/zram0/disksize"),
-                     absl::StrCat(*size_byte));
+                     std::to_string(*size_byte));
   if (!status.ok())
     return status;
 
@@ -314,63 +320,64 @@ absl::Status SwapTool::SwapStop() {
   return WriteFile(base::FilePath("/sys/block/zram0/reset"), "1");
 }
 
-std::string SwapTool::SwapEnable(int32_t size, bool change_now) const {
-  int result;
-  std::string output;
+// Set zram disksize in MiB.
+// If `size` equals 0, set zram disksize to the default value.
+absl::Status SwapTool::SwapSetSize(uint32_t size) {
+  // Remove kSwapSizeFile so SwapStart will use default size for zram.
+  if (size == 0)
+    return DeleteFile(base::FilePath(kSwapSizeFile));
 
-  output = RunSwapHelper({"enable", std::to_string(size)}, &result);
+  if (size < 100 || size > 20000)
+    return absl::InvalidArgumentError("Size is not between 100 and 20000 MiB.");
 
-  if (result != EXIT_SUCCESS)
-    return output;
-
-  if (change_now)
-    output = SwapStartStop(true);
-
-  return output;
+  return WriteFile(base::FilePath(kSwapSizeFile), std::to_string(size));
 }
 
-std::string SwapTool::SwapDisable(bool change_now) const {
-  int result;
-  std::string output;
+std::string SwapTool::SwapStatus() {
+  std::stringstream output;
+  std::string tmp;
 
-  output = RunSwapHelper({"disable"}, &result);
+  // Show general swap info first.
+  if (ReadFileToString(base::FilePath("/proc/swaps"), &tmp).ok())
+    output << tmp;
 
-  if (result != EXIT_SUCCESS)
-    return output;
+  // Show tunables.
+  if (ReadFileToString(base::FilePath("/sys/kernel/mm/chromeos-low_mem/margin"),
+                       &tmp)
+          .ok())
+    output << "low-memory margin (MiB): " + tmp;
+  if (ReadFileToString(base::FilePath("/proc/sys/vm/min_filelist_kbytes"), &tmp)
+          .ok())
+    output << "min_filelist_kbytes (KiB): " + tmp;
+  if (ReadFileToString(
+          base::FilePath("/sys/kernel/mm/chromeos-low_mem/ram_vs_swap_weight"),
+          &tmp)
+          .ok())
+    output << "ram_vs_swap_weight: " + tmp;
+  if (ReadFileToString(base::FilePath("/proc/sys/vm/extra_free_kbytes"), &tmp)
+          .ok())
+    output << "extra_free_kbytes (KiB): " + tmp;
 
-  if (change_now)
-    output = SwapStartStop(true);
+  // Show top entries in kZramSysfsDir for zram setting.
+  base::DirReaderPosix dir_reader(kZramSysfsDir);
+  if (dir_reader.IsValid()) {
+    output << "\ntop-level entries in " + std::string(kZramSysfsDir) + ":\n";
 
-  return output;
-}
+    base::FilePath zram_sysfs(kZramSysfsDir);
+    while (dir_reader.Next()) {
+      std::string name = dir_reader.name();
 
-std::string SwapTool::SwapStartStop(bool on) const {
-  int result;
-  std::string output;
+      if (ReadFileToString(zram_sysfs.Append(name), &tmp).ok() &&
+          !tmp.empty()) {
+        std::vector<std::string> lines = base::SplitString(
+            tmp, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+        for (auto& line : lines)
+          output << name + ": " + line + "\n";
+      }
+    }
+  }
 
-  output = RunSwapHelper({"stop"}, &result);
-
-  if (result != EXIT_SUCCESS)
-    return output;
-
-  if (on)
-    output = RunSwapHelper({"start"}, &result);
-
-  return output;
-}
-
-std::string SwapTool::SwapStatus() const {
-  int result;
-  return RunSwapHelper({"status"}, &result);
-}
-
-std::string SwapTool::SwapSetParameter(const std::string& parameter_name,
-                                       uint32_t parameter_value) const {
-  int result;
-
-  return RunSwapHelper(
-      {"set_parameter", parameter_name, std::to_string(parameter_value)},
-      &result);
+  return output.str();
 }
 
 // Zram writeback configuration.
