@@ -81,13 +81,6 @@ TEST_F(BackendKeyManagementTpm1Test, GetPersistentKey) {
   const uint32_t kFakeSrkAuthUsage = 0x9876;
   const uint32_t kFakeSrkUsagePolicy = 0x1283;
 
-  tpm_manager::GetTpmNonsensitiveStatusReply reply;
-  reply.set_status(TpmManagerStatus::STATUS_SUCCESS);
-  reply.set_is_owned(true);
-  EXPECT_CALL(proxy_->GetMock().tpm_manager,
-              GetTpmNonsensitiveStatus(_, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
-
   EXPECT_CALL(
       proxy_->GetMock().overalls,
       Ospi_Context_LoadKeyByUUID(kDefaultContext, TSS_PS_TYPE_SYSTEM, _, _))

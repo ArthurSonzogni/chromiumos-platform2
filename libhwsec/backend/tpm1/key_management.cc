@@ -767,13 +767,6 @@ StatusOr<uint32_t> KeyManagementTpm1::GetSrk() {
     return srk_cache_->value();
   }
 
-  ASSIGN_OR_RETURN(bool is_ready, backend_.GetStateTpm1().IsReady(),
-                   _.WithStatus<TPMError>("Failed to get the ready state"));
-
-  if (!is_ready) {
-    return MakeStatus<TPMError>("TPM is not ready", TPMRetryAction::kNoRetry);
-  }
-
   ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
 
   overalls::Overalls& overalls = backend_.GetOverall().overalls;
