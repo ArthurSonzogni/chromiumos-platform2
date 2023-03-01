@@ -2,8 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_PROCESS_MANAGER_H_
-#define SHILL_PROCESS_MANAGER_H_
+#ifndef SHILL_NET_PROCESS_MANAGER_H_
+#define SHILL_NET_PROCESS_MANAGER_H_
 
 #include <sys/types.h>  // for rlim_t
 
@@ -28,9 +28,11 @@
 #include <brillo/process/process_reaper.h>
 #include <libminijail.h>
 
+#include "shill/net/shill_export.h"
+
 namespace shill {
 
-struct std_file_descriptors {
+struct SHILL_EXPORT std_file_descriptors {
   int* stdin_fd;
   int* stdout_fd;
   int* stderr_fd;
@@ -39,13 +41,13 @@ struct std_file_descriptors {
 // The ProcessManager is a singleton providing process creation and
 // asynchronous process termination. Need to initialize it once with
 // Init method call.
-class ProcessManager {
+class SHILL_EXPORT ProcessManager {
  public:
   using ExitCallback = base::OnceCallback<void(int exit_status)>;
   using ExitWithStdoutCallback =
       base::OnceCallback<void(int exit_status, const std::string& stdout_str)>;
 
-  struct MinijailOptions {
+  struct SHILL_EXPORT MinijailOptions {
     // Program will run as |user| and |group|.
     std::string user;
     std::string group;
@@ -264,4 +266,4 @@ class ProcessManager {
 
 }  // namespace shill
 
-#endif  // SHILL_PROCESS_MANAGER_H_
+#endif  // SHILL_NET_PROCESS_MANAGER_H_

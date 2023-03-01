@@ -19,7 +19,7 @@
 
 #include "shill/mock_adaptors.h"
 #include "shill/mock_control.h"
-#include "shill/mock_process_manager.h"
+#include "shill/net/mock_process_manager.h"
 #include "shill/test_event_dispatcher.h"
 
 using testing::_;

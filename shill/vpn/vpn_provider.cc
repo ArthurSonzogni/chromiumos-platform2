@@ -17,7 +17,7 @@
 #include "shill/error.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
-#include "shill/process_manager.h"
+#include "shill/net/process_manager.h"
 #include "shill/profile.h"
 #include "shill/routing_policy_entry.h"
 #include "shill/store/store_interface.h"

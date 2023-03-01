@@ -15,7 +15,7 @@
 #include "shill/file_io.h"
 #include "shill/manager.h"
 #include "shill/net/io_handler.h"
-#include "shill/process_manager.h"
+#include "shill/net/process_manager.h"
 
 namespace shill {
 

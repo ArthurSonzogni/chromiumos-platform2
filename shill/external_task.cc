@@ -18,7 +18,7 @@
 #include <base/logging.h>
 
 #include "shill/error.h"
-#include "shill/process_manager.h"
+#include "shill/net/process_manager.h"
 
 namespace shill {
 

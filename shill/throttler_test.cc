@@ -8,8 +8,8 @@
 #include "shill/mock_file_io.h"
 #include "shill/mock_log.h"
 #include "shill/mock_manager.h"
-#include "shill/mock_process_manager.h"
 #include "shill/net/mock_io_handler_factory.h"
+#include "shill/net/mock_process_manager.h"
 #include "shill/test_event_dispatcher.h"
 #include "shill/testing.h"
 

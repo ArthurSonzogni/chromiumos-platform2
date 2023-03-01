@@ -8,7 +8,7 @@
 #include <base/logging.h>
 
 #include "shill/event_dispatcher.h"
-#include "shill/process_manager.h"
+#include "shill/net/process_manager.h"
 #include "shill/vpn/ipsec_connection.h"
 
 namespace shill {

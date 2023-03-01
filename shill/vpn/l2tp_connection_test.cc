@@ -24,7 +24,7 @@
 #include "shill/mock_device_info.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_process_manager.h"
+#include "shill/net/mock_process_manager.h"
 #include "shill/ppp_daemon.h"
 #include "shill/rpc_task.h"
 #include "shill/test_event_dispatcher.h"

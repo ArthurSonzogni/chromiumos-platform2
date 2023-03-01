@@ -21,9 +21,9 @@
 #include "shill/net/ndisc.h"
 #include "shill/net/netlink_manager.h"
 #include "shill/net/nl80211_message.h"
+#include "shill/net/process_manager.h"
 #include "shill/net/rtnl_handler.h"
 #include "shill/network/dhcp_provider.h"
-#include "shill/process_manager.h"
 #include "shill/routing_table.h"
 #include "shill/shill_config.h"
 

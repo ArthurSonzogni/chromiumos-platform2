@@ -14,7 +14,7 @@
 
 #include "shill/logging.h"
 #include "shill/net/io_handler_factory.h"
-#include "shill/process_manager.h"
+#include "shill/net/process_manager.h"
 #include "shill/throttler.h"
 
 namespace shill {

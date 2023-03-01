@@ -2,10 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#ifndef SHILL_MOCK_PROCESS_MANAGER_H_
-#define SHILL_MOCK_PROCESS_MANAGER_H_
+#ifndef SHILL_NET_MOCK_PROCESS_MANAGER_H_
+#define SHILL_NET_MOCK_PROCESS_MANAGER_H_
 
-#include "shill/process_manager.h"
+#include "shill/net/process_manager.h"
 
 #include <map>
 #include <string>
@@ -93,4 +93,4 @@ MATCHER_P(MinijailOptionsMatchCloseNonstdFDs, close_nonstd_fds, "") {
 
 }  // namespace shill
 
-#endif  // SHILL_MOCK_PROCESS_MANAGER_H_
+#endif  // SHILL_NET_MOCK_PROCESS_MANAGER_H_

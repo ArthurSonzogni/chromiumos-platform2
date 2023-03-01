@@ -18,7 +18,7 @@
 #include "shill/external_task.h"
 #include "shill/ipconfig.h"
 #include "shill/mock_control.h"
-#include "shill/mock_process_manager.h"
+#include "shill/net/mock_process_manager.h"
 #include "shill/ppp_daemon.h"
 #include "shill/rpc_task.h"
 #include "shill/service.h"

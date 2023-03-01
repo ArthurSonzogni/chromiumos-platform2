@@ -16,7 +16,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/version.h>
 
-#include "shill/process_manager.h"
+#include "shill/net/process_manager.h"
 
 namespace shill {
 

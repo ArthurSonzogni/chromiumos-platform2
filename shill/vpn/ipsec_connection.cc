@@ -29,7 +29,7 @@
 #include <re2/re2.h>
 
 #include "shill/metrics.h"
-#include "shill/process_manager.h"
+#include "shill/net/process_manager.h"
 #include "shill/vpn/vpn_util.h"
 
 namespace shill {

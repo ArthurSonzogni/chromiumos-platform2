@@ -16,7 +16,7 @@
 #include "shill/mock_control.h"
 #include "shill/mock_manager.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_process_manager.h"
+#include "shill/net/mock_process_manager.h"
 #include "shill/store/fake_store.h"
 #include "shill/test_event_dispatcher.h"
 

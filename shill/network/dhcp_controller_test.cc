@@ -20,7 +20,7 @@
 #include "shill/logging.h"
 #include "shill/mock_log.h"
 #include "shill/mock_metrics.h"
-#include "shill/mock_process_manager.h"
+#include "shill/net/mock_process_manager.h"
 #include "shill/net/mock_time.h"
 #include "shill/network/dhcpv4_config.h"
 #include "shill/network/mock_dhcp_provider.h"

@@ -20,7 +20,7 @@
 #include "shill/device_info.h"
 #include "shill/metrics.h"
 #include "shill/mockable.h"
-#include "shill/process_manager.h"
+#include "shill/net/process_manager.h"
 #include "shill/service.h"
 #include "shill/vpn/vpn_connection.h"
 #include "shill/vpn/vpn_util.h"

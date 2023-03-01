@@ -31,7 +31,11 @@ pkg_config("target_defaults") {
     "-Werror",
     "-Wno-unused-parameter",
   ]
-  pkg_deps = [ "libchrome" ]
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+    "libminijail",
+  ]
 }
 
 write_deps("libshill-net_deps") {
@@ -62,6 +66,7 @@ net_sources = [
   "netlink_socket.cc",
   "nl80211_attribute.cc",
   "nl80211_message.cc",
+  "process_manager.cc",
   "rtnl_handler.cc",
   "rtnl_listener.cc",
   "rtnl_message.cc",
@@ -114,6 +119,15 @@ if (use.fuzzer) {
 }
 
 if (use.test) {
+  source_set("net_test_support") {
+    sources = [ "mock_process_manager.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":target_defaults",
+    ]
+    public_deps = [ ":libshill-net" ]
+  }
+
   pkg_config("shill_net_test_config") {
     pkg_deps = [
       "libchrome-test",
@@ -135,6 +149,7 @@ if (use.test) {
       "netlink_socket_test.cc",
       "nl80211_attribute_test.cc",
       "nl80211_message_test.cc",
+      "process_manager_test.cc",
       "rtnl_handler_test.cc",
       "rtnl_listener_test.cc",
       "rtnl_message_test.cc",
@@ -142,6 +157,7 @@ if (use.test) {
     ]
     configs += [
       "//common-mk:test",
+      ":target_defaults",
       ":shill_net_test_config",
     ]
     deps = [

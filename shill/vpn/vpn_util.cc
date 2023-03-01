@@ -18,7 +18,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/stringprintf.h>
 
-#include "shill/process_manager.h"
+#include "shill/net/process_manager.h"
 
 namespace shill {
 
