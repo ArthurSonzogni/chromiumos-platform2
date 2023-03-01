@@ -127,7 +127,7 @@ bool BERTCollector::Collect() {
 
   // Create meta file with bert dump info and finish up.
   FinishCrash(GetCrashPath(root_crash_directory, dump_basename, "meta"),
-              kBertErrorName, bert_crash_path.value());
+              kBertErrorName, bert_crash_path.BaseName().value());
 
   VLOG(3) << "Stored BERT dump to " << bert_crash_path.value();
 
