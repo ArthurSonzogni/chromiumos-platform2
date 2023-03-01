@@ -38,6 +38,18 @@ constexpr char kRuntimeDir[] = "/run/vm";
 // Only allow hex digits in the cryptohome id.
 constexpr char kValidCryptoHomeCharacters[] = "abcdefABCDEF0123456789";
 
+// File extension for pflash files.
+constexpr char kPflashImageExtension[] = ".pflash";
+
+// Information about the Pflash file associated with a VM.
+struct PflashMetadata {
+  // Path where pflash should be installed.
+  base::FilePath path;
+
+  // Does |path| exist.
+  bool is_installed;
+};
+
 // Gets the path to the file given the name, user id, location, and extension.
 std::optional<base::FilePath> GetFilePathFromName(
     const std::string& cryptohome_id,
@@ -64,6 +76,23 @@ bool IsValidVmName(const std::string& vm_name);
 void SendDbusResponse(dbus::ExportedObject::ResponseSender response_sender,
                       dbus::MethodCall* method_call,
                       const vm_tools::concierge::StartVmResponse& response);
+
+// Returns information about the Pflash file associated with a VM. If there is a
+// failure in querying the information then it returns std::nullopt.
+std::optional<PflashMetadata> GetPflashMetadata(
+    const std::string& cryptohome_id, const std::string& vm_name);
+
+// Returns in order -
+// 1. An installed pflash file for the VM.
+// 2. A valid |start_vm_request_pflash_path|
+// 3. An empty file path.
+//
+// Returns an error -
+// 1. If a pflash file is installed and |start_vm_request_pflash_path| is valid.
+// 2. If there is an error in querying information about any installed pflash
+// file.
+std::optional<base::FilePath> GetInstalledOrRequestPflashPath(
+    const VmId& vm_id, const base::FilePath& start_vm_request_pflash_path);
 
 template <class StartXXRequest,
           int64_t (Service::*GetVmMemory)(const StartXXRequest&),

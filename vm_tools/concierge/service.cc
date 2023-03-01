@@ -165,9 +165,6 @@ constexpr char kQcowImageExtension[] = ".qcow2";
 // File extension for Plugin VMs disk types
 constexpr char kPluginVmImageExtension[] = ".pvm";
 
-// File extension for pflash files.
-constexpr char kPflashImageExtension[] = ".pflash";
-
 // Valid file extensions for disk images
 constexpr const char* kDiskImageExtensions[] = {kRawImageExtension,
                                                 kQcowImageExtension, nullptr};
@@ -273,15 +270,6 @@ struct VmCpuArgs {
   std::string cpu_affinity;
   std::vector<std::string> cpu_capacity;
   std::vector<std::vector<std::string>> cpu_clusters;
-};
-
-// Information about the Pflash file associated with a VM.
-struct PflashMetadata {
-  // Path where pflash should be installed.
-  base::FilePath path;
-
-  // Does |path| exist.
-  bool is_installed;
 };
 
 std::optional<VmStartImageFds> GetVmStartImageFds(
@@ -649,24 +637,6 @@ bool GetDiskPathFromName(
   }
 }
 
-// Returns information about the Pflash file associated with a VM. If there is a
-// failure in querying the information then it returns std::nullopt.
-std::optional<PflashMetadata> GetPflashMetadata(
-    const std::string& cryptohome_id, const std::string& vm_name) {
-  std::optional<base::FilePath> pflash_installation_path_result =
-      GetFilePathFromName(cryptohome_id, vm_name, STORAGE_CRYPTOHOME_ROOT,
-                          kPflashImageExtension, false /* create_parent_dir */);
-  if (!pflash_installation_path_result) {
-    return std::nullopt;
-  }
-
-  base::FilePath pflash_installation_path =
-      pflash_installation_path_result.value();
-  bool is_installed = base::PathExists(pflash_installation_path);
-  return PflashMetadata{.path = std::move(pflash_installation_path),
-                        .is_installed = is_installed};
-}
-
 bool CheckVmExists(const std::string& vm_name,
                    const std::string& cryptohome_id,
                    base::FilePath* out_path = nullptr,
@@ -937,44 +907,6 @@ VmInfo::VmType ClassifyVm(const StartVmRequest& request) {
   if (request.start_termina())
     return VmInfo::TERMINA;
   return VmInfo::UNKNOWN;
-}
-
-// Returns in order -
-// 1. An installed pflash file for the VM.
-// 2. A valid |start_vm_request_pflash_path|
-// 3. An empty file path.
-//
-// Returns an error -
-// 1. If a pflash file is installed and |start_vm_request_pflash_path| is valid.
-// 2. If there is an error in querying information about any installed pflash
-// file.
-std::optional<base::FilePath> GetInstalledOrRequestPflashPath(
-    const VmId& vm_id, const base::FilePath& start_vm_request_pflash_path) {
-  bool is_pflash_sent_in_request =
-      base::PathExists(start_vm_request_pflash_path);
-
-  std::optional<PflashMetadata> pflash_metadata =
-      GetPflashMetadata(vm_id.owner_id(), vm_id.name());
-  if (!pflash_metadata) {
-    return std::nullopt;
-  }
-
-  // If a pflash file is installed then don't accept one sent in a start
-  // request.
-  if (pflash_metadata->is_installed && is_pflash_sent_in_request) {
-    return std::nullopt;
-  }
-
-  if (pflash_metadata->is_installed) {
-    return pflash_metadata->path;
-  }
-
-  // At this point we don't have an installed pflash file, if no pflash file is
-  // sent in the request then return an empty pflash location.
-  if (!is_pflash_sent_in_request) {
-    return base::FilePath();
-  }
-  return start_vm_request_pflash_path;
 }
 
 }  // namespace
