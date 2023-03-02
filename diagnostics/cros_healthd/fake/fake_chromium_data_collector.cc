@@ -42,4 +42,9 @@ void FakeChromiumDataCollector::SetPrivacyScreenState(
   std::move(callback).Run(privacy_screen_request_processed_.value());
 }
 
+void FakeChromiumDataCollector::SetAudioOutputMute(
+    bool mute_on, SetAudioOutputMuteCallback callback) {
+  std::move(callback).Run(audio_output_mute_request_result_);
+}
+
 }  // namespace diagnostics
