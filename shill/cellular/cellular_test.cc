@@ -1022,7 +1022,11 @@ TEST_F(CellularTest, ModemStateChangeValidConnected) {
   device_->set_modem_state_for_testing(Cellular::kModemStateConnecting);
   SetService();
   device_->OnModemStateChanged(Cellular::kModemStateConnected);
-  EXPECT_EQ(Cellular::State::kConnected, device_->state());
+  // A change of the modem state only won't make the shill cellular object
+  // transition to the connected state. The first transition to Connected
+  // will exclusively happen once the connection attempt is finished and
+  // reported as successful.
+  EXPECT_NE(Cellular::State::kConnected, device_->state());
 }
 
 TEST_F(CellularTest, ModemStateChangeLostRegistration) {

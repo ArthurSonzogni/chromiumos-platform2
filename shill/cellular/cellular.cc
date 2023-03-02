@@ -1615,8 +1615,9 @@ void Cellular::OnModemStateChanged(ModemState new_state) {
       OnConnecting();
       break;
     case kModemStateConnected:
-      if (old_modem_state == kModemStateConnecting)
-        OnConnected();
+      // Even if the modem state transitions from Connecting to Connected here
+      // we don't report the cellular object as Connected yet; we require the
+      // actual connection attempt operation to finish.
       break;
   }
 }

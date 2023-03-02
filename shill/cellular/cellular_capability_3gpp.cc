@@ -1054,6 +1054,8 @@ void CellularCapability3gpp::ConnectionAttemptOnConnectReply(
     return;
   }
 
+  UpdateActiveBearers();
+
   SLOG(this, 2) << "Connection attempt (" << ApnList::GetApnTypeString(apn_type)
                 << ") successful: bearer " << bearer.value();
   ConnectionAttemptComplete(apn_type, error);
@@ -2014,14 +2016,6 @@ void CellularCapability3gpp::OnMdnChanged(const std::string& mdn) {
 
 void CellularCapability3gpp::OnModemStateChanged(Cellular::ModemState state) {
   SLOG(this, 1) << __func__ << ": " << Cellular::GetModemStateString(state);
-
-  if (state == Cellular::kModemStateConnected) {
-    // This assumes that ModemManager updates the Bearers list and the Bearer
-    // properties before changing Modem state to Connected.
-    SLOG(this, 2) << "Update active bearer.";
-    UpdateActiveBearers();
-  }
-
   cellular()->OnModemStateChanged(state);
 }
 
