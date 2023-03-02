@@ -661,9 +661,9 @@ void AuthSession::AuthenticateViaVaultKeysetAndMigrateToUss(
   }
 
   // Determine the auth block type to use.
-  AuthBlockType auth_block_type =
+  std::optional<AuthBlockType> auth_block_type =
       auth_block_utility_->GetAuthBlockTypeFromState(auth_state);
-  if (auth_block_type == AuthBlockType::kMaxValue) {
+  if (!auth_block_type) {
     LOG(ERROR) << "Failed to determine auth block type from auth block state";
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionInvalidBlockTypeInAuthViaVaultKey),
@@ -673,17 +673,17 @@ void AuthSession::AuthenticateViaVaultKeysetAndMigrateToUss(
   }
 
   // Parameterize the AuthSession performance timer by AuthBlockType
-  auth_session_performance_timer->auth_block_type = auth_block_type;
+  auth_session_performance_timer->auth_block_type = *auth_block_type;
 
   // Derive KeyBlobs from the existing VaultKeyset, using GetValidKeyset
   // as a callback that loads |vault_keyset_| and resaves if needed.
   AuthBlock::DeriveCallback derive_callback = base::BindOnce(
       &AuthSession::LoadVaultKeysetAndFsKeys, weak_factory_.GetWeakPtr(),
-      request_auth_factor_type, auth_input, auth_block_type, metadata,
+      request_auth_factor_type, auth_input, *auth_block_type, metadata,
       std::move(auth_session_performance_timer), std::move(on_done));
 
   auth_block_utility_->DeriveKeyBlobsWithAuthBlockAsync(
-      auth_block_type, auth_input, auth_state, std::move(derive_callback));
+      *auth_block_type, auth_input, auth_state, std::move(derive_callback));
 }
 
 void AuthSession::LoadVaultKeysetAndFsKeys(
@@ -2507,10 +2507,10 @@ void AuthSession::AuthenticateViaUserSecretStash(
   // Determine the auth block type to use.
   // TODO(b/223207622): This step is the same for both USS and VaultKeyset other
   // than how the AuthBlock state is obtained, they can be merged.
-  AuthBlockType auth_block_type =
+  std::optional<AuthBlockType> auth_block_type =
       auth_block_utility_->GetAuthBlockTypeFromState(
           auth_factor.auth_block_state());
-  if (auth_block_type == AuthBlockType::kMaxValue) {
+  if (!auth_block_type) {
     LOG(ERROR) << "Failed to determine auth block type for the loaded factor "
                   "with label "
                << auth_factor.label();
@@ -2522,7 +2522,7 @@ void AuthSession::AuthenticateViaUserSecretStash(
   }
 
   // Parameterize timer by AuthBlockType.
-  auth_session_performance_timer->auth_block_type = auth_block_type;
+  auth_session_performance_timer->auth_block_type = *auth_block_type;
 
   // Derive the keyset and then use USS to complete the authentication.
   auto derive_callback = base::BindOnce(
@@ -2530,7 +2530,7 @@ void AuthSession::AuthenticateViaUserSecretStash(
       auth_factor.type(), auth_factor_label, auth_input,
       std::move(auth_session_performance_timer), std::move(on_done));
   auth_block_utility_->DeriveKeyBlobsWithAuthBlockAsync(
-      auth_block_type, auth_input, auth_factor.auth_block_state(),
+      *auth_block_type, auth_input, auth_factor.auth_block_state(),
       std::move(derive_callback));
 }
 

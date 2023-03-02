@@ -128,12 +128,10 @@ enum TimerType {
 struct AuthSessionPerformanceTimer {
   TimerType type;
   base::TimeTicks start_time;
-  AuthBlockType auth_block_type;
+  std::optional<AuthBlockType> auth_block_type;
 
   explicit AuthSessionPerformanceTimer(TimerType init_type)
-      : type(init_type),
-        start_time(base::TimeTicks::Now()),
-        auth_block_type(AuthBlockType::kMaxValue) {}
+      : type(init_type), start_time(base::TimeTicks::Now()) {}
   AuthSessionPerformanceTimer(TimerType init_type,
                               AuthBlockType init_auth_block_type)
       : type(init_type),

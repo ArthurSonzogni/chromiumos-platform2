@@ -71,10 +71,6 @@ bool GetAuthBlockState(const VaultKeyset& vk, AuthBlockState& out_state) {
     case AuthBlockType::kFingerprint:
       LOG(ERROR) << "Fingerprint is not a supported AuthBlockType.";
       return false;
-
-    case AuthBlockType::kMaxValue:
-      LOG(ERROR) << "Unsupported AuthBlockType.";
-      return false;
   }
   LOG(ERROR) << "Invalid auth block type state";
   return false;

@@ -22,8 +22,10 @@ enum class AuthBlockType {
   kCryptohomeRecovery = 6,
   kTpmEcc = 7,
   kFingerprint = 8,
-  kMaxValue,
 };
+
+// The highest auth block type enum value.
+inline constexpr auto kAuthBlockTypeMaxValue = AuthBlockType::kFingerprint;
 
 }  // namespace cryptohome
 

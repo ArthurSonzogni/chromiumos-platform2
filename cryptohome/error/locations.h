@@ -157,7 +157,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthBlockUtilNoChalInGetAsyncAuthBlockWithType = 165,
   /* =Obsolete= */
   kLocAuthBlockUtilCHUnsupportedInGetAsyncAuthBlockWithType = 166,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* =Obsolete= */
   kLocAuthBlockUtilMaxValueUnsupportedInGetAsyncAuthBlockWithType = 167,
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockUtilUnknownUnsupportedInGetAsyncAuthBlockWithType = 168,
@@ -1435,7 +1435,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocRecoveryAuthBlockHwsecNoCryptoInIsSupported = 2716,
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockUtilNoSupportedInGetAuthBlockWithType = 2717,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* =Obsolete= */
   kLocAuthBlockUtilMaxValueUnsupportedInIsAuthBlockSupported = 2718,
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockUtilNotSupportedInGetAuthBlockWithType = 2719,

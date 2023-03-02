@@ -13,6 +13,8 @@
 #include <metrics/metrics_library.h>
 #include <metrics/timer.h>
 
+#include "cryptohome/auth_blocks/auth_block_type.h"
+
 namespace cryptohome {
 
 namespace {
@@ -252,9 +254,6 @@ char const* GetAuthBlockTypeStringVariant(AuthBlockType type) {
       return "TpmEcc";
     case AuthBlockType::kFingerprint:
       return "Fingerprint";
-    case AuthBlockType::kMaxValue:
-      NOTREACHED();
-      return "";
   }
 }
 
@@ -338,16 +337,13 @@ void ReportTimerDuration(
   TimerType timer_type = auth_session_performance_timer->type;
   DCHECK_LT(timer_type, kNumTimerTypes);
 
-  // Parameterize metric by AuthBlockType if needed.
-  // kMaxValue is an invalid value, showing that
-  // timer_type doesn't need to be parameterized.
-  AuthBlockType auth_block_type =
-      auth_session_performance_timer->auth_block_type;
+  // Compute the name, parameterizing by AuthBlockType if needed.
   std::string metric_name = kTimerHistogramParams[timer_type].metric_name;
-  if (auth_block_type != AuthBlockType::kMaxValue) {
-    std::string block_type =
-        base::StrCat({".", GetAuthBlockTypeStringVariant(auth_block_type)});
-    metric_name.append(block_type);
+  if (auth_session_performance_timer->auth_block_type) {
+    base::StrAppend(
+        &metric_name,
+        {".", GetAuthBlockTypeStringVariant(
+                  *auth_session_performance_timer->auth_block_type)});
   }
 
   auto duration =
@@ -730,7 +726,7 @@ void ReportCreateAuthBlock(AuthBlockType type) {
   }
   g_metrics->SendEnumToUMA(kCreateAuthBlockTypeHistogram,
                            static_cast<int>(type),
-                           static_cast<int>(AuthBlockType::kMaxValue));
+                           static_cast<int>(kAuthBlockTypeMaxValue) + 1);
 }
 
 void ReportDeriveAuthBlock(AuthBlockType type) {
@@ -739,7 +735,7 @@ void ReportDeriveAuthBlock(AuthBlockType type) {
   }
   g_metrics->SendEnumToUMA(kDeriveAuthBlockTypeHistogram,
                            static_cast<int>(type),
-                           static_cast<int>(AuthBlockType::kMaxValue));
+                           static_cast<int>(kAuthBlockTypeMaxValue) + 1);
 }
 
 void ReportUsageOfLegacyCodePath(const LegacyCodePathLocation location,

@@ -76,7 +76,7 @@ AuthFactorType VaultKeysetTypeToAuthFactorType(int32_t vk_flags,
   }
 
   // Convert the VK flags to a block type and then that to a factor type.
-  AuthBlockType auth_block_type = AuthBlockType::kMaxValue;
+  AuthBlockType auth_block_type;
   if (!FlagsToAuthBlockType(vk_flags, auth_block_type)) {
     LOG(ERROR) << "Failed to get the AuthBlock type for AuthFactor convertion.";
     return AuthFactorType::kUnspecified;
@@ -94,7 +94,6 @@ AuthFactorType VaultKeysetTypeToAuthFactorType(int32_t vk_flags,
       return AuthFactorType::kSmartCard;
     case AuthBlockType::kCryptohomeRecovery:  // Never reported by a VK.
     case AuthBlockType::kFingerprint:         // Never reported by a VK.
-    case AuthBlockType::kMaxValue:
       return AuthFactorType::kUnspecified;
   }
 }

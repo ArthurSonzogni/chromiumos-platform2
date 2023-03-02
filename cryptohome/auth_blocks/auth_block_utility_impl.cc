@@ -407,8 +407,6 @@ CryptoStatus AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlock(
     const Credentials& credentials,
     const AuthBlockState& auth_state,
     KeyBlobs& out_key_blobs) const {
-  DCHECK_NE(auth_block_type, AuthBlockType::kMaxValue);
-
   AuthInput auth_input = {credentials.passkey(),
                           /*locked_to_single_user=*/std::nullopt};
 
@@ -466,8 +464,6 @@ void AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlockAsync(
     const AuthInput& auth_input,
     const AuthBlockState& auth_state,
     AuthBlock::DeriveCallback derive_callback) {
-  DCHECK_NE(auth_block_type, AuthBlockType::kMaxValue);
-
   CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
       GetAsyncAuthBlockWithType(auth_block_type, auth_input);
   if (!auth_block.ok()) {
@@ -544,13 +540,6 @@ CryptoStatus AuthBlockUtilityImpl::IsAuthBlockSupported(
             ErrorActionSet({ErrorAction::kAuth}), CryptoError::CE_OTHER_CRYPTO);
       }
       return FingerprintAuthBlock::IsSupported(*crypto_);
-    case AuthBlockType::kMaxValue:
-      return MakeStatus<CryptohomeCryptoError>(
-          CRYPTOHOME_ERR_LOC(
-              kLocAuthBlockUtilMaxValueUnsupportedInIsAuthBlockSupported),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
-          CryptoError::CE_OTHER_CRYPTO);
   }
 }
 
@@ -597,7 +586,6 @@ AuthBlockUtilityImpl::GetAuthBlockWithType(
 
     // Synchronous FingerprintAuthBlock isn't supported.
     case AuthBlockType::kFingerprint:
-    case AuthBlockType::kMaxValue:
       LOG(ERROR) << "Unsupported AuthBlockType.";
 
       return MakeStatus<CryptohomeCryptoError>(
@@ -688,15 +676,6 @@ AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
       }
       return std::make_unique<FingerprintAuthBlock>(crypto_->le_manager(),
                                                     biometrics_service_.get());
-
-    case AuthBlockType::kMaxValue:
-      LOG(ERROR) << "Unsupported AuthBlockType.";
-      return MakeStatus<CryptohomeCryptoError>(
-          CRYPTOHOME_ERR_LOC(
-              kLocAuthBlockUtilMaxValueUnsupportedInGetAsyncAuthBlockWithType),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
-          CryptoError::CE_OTHER_CRYPTO);
   }
   return MakeStatus<CryptohomeCryptoError>(
       CRYPTOHOME_ERR_LOC(
@@ -776,9 +755,9 @@ void AuthBlockUtilityImpl::AssignAuthBlockStateToVaultKeyset(
   }
 }
 
-AuthBlockType AuthBlockUtilityImpl::GetAuthBlockTypeFromState(
+std::optional<AuthBlockType> AuthBlockUtilityImpl::GetAuthBlockTypeFromState(
     const AuthBlockState& auth_block_state) const {
-  AuthBlockType auth_block_type = AuthBlockType::kMaxValue;
+  std::optional<AuthBlockType> auth_block_type;
   if (const auto* state = std::get_if<TpmNotBoundToPcrAuthBlockState>(
           &auth_block_state.state)) {
     auth_block_type = AuthBlockType::kTpmNotBoundToPcr;
@@ -814,11 +793,18 @@ base::flat_set<AuthIntent> AuthBlockUtilityImpl::GetSupportedIntentsFromState(
   base::flat_set<AuthIntent> supported_intents = {
       AuthIntent::kDecrypt, AuthIntent::kVerifyOnly, AuthIntent::kWebAuthn};
 
-  AuthBlockType auth_block_type = GetAuthBlockTypeFromState(auth_block_state);
+  std::optional<AuthBlockType> auth_block_type =
+      GetAuthBlockTypeFromState(auth_block_state);
+
+  // Invalid block types support nothing.
+  if (!auth_block_type) {
+    supported_intents.clear();
+    return supported_intents;
+  }
 
   // Non-Pinweaver based AuthFactors are assumed to support all AuthIntents by
   // default.
-  if (auth_block_type != AuthBlockType::kPinWeaver) {
+  if (*auth_block_type != AuthBlockType::kPinWeaver) {
     return supported_intents;
   }
 
@@ -856,8 +842,9 @@ base::flat_set<AuthIntent> AuthBlockUtilityImpl::GetSupportedIntentsFromState(
 
 CryptohomeStatus AuthBlockUtilityImpl::PrepareAuthBlockForRemoval(
     const AuthBlockState& auth_block_state) {
-  AuthBlockType auth_block_type = GetAuthBlockTypeFromState(auth_block_state);
-  if (auth_block_type == AuthBlockType::kMaxValue) {
+  std::optional<AuthBlockType> auth_block_type =
+      GetAuthBlockTypeFromState(auth_block_state);
+  if (!auth_block_type) {
     LOG(ERROR) << "Unsupported auth factor type.";
     return MakeStatus<CryptohomeCryptoError>(
         CRYPTOHOME_ERR_LOC(
@@ -875,7 +862,7 @@ CryptohomeStatus AuthBlockUtilityImpl::PrepareAuthBlockForRemoval(
 
   AuthInput auth_input;
   CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
-      GetAsyncAuthBlockWithType(auth_block_type, auth_input);
+      GetAsyncAuthBlockWithType(*auth_block_type, auth_input);
   if (!auth_block.ok()) {
     LOG(ERROR) << "Failed to retrieve auth block.";
     return MakeStatus<CryptohomeCryptoError>(

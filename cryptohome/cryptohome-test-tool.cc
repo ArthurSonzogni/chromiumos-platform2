@@ -642,9 +642,9 @@ bool DoCreateVaultKeyset(const Username& username,
       return false;
     }
     // Determine the auth block type to use.
-    AuthBlockType auth_block_type =
+    std::optional<AuthBlockType> auth_block_type =
         auth_block_utility.GetAuthBlockTypeFromState(auth_state);
-    if (auth_block_type == AuthBlockType::kMaxValue) {
+    if (!auth_block_type) {
       LOG(ERROR) << "Failed to determine auth block type from auth block state";
       return false;
     }
@@ -658,7 +658,7 @@ bool DoCreateVaultKeyset(const Username& username,
         obfuscated_username, enable_key_data);
 
     auth_block_utility.DeriveKeyBlobsWithAuthBlockAsync(
-        auth_block_type, auth_input, auth_state, std::move(derive_callback));
+        *auth_block_type, auth_input, auth_state, std::move(derive_callback));
   }
 
   return true;

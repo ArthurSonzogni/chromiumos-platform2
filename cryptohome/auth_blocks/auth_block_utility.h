@@ -141,7 +141,7 @@ class AuthBlockUtility {
       const AuthFactorType& auth_factor_type) const = 0;
 
   // This function returns the AuthBlock type based on AutBlockState.
-  virtual AuthBlockType GetAuthBlockTypeFromState(
+  virtual std::optional<AuthBlockType> GetAuthBlockTypeFromState(
       const AuthBlockState& state) const = 0;
 
   // Returns the set of supported AuthIntents, determined from the PinWeaver

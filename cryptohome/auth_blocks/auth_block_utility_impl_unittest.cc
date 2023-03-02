@@ -1453,56 +1453,6 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialDerive) {
       std::move(derive_callback));
 }
 
-// Test that CreateKeyBlobsWithAuthBlockAsync fails, callback
-// returns kDevCheckUnexpectedState and nullptrs for AuthBlockState and
-// KeyBlobs.
-TEST_F(AuthBlockUtilityImplTest, CreateKeyBlobsWithAuthBlockAsyncFails) {
-  // Setup test inputs and the mock expectations.
-  brillo::SecureBlob passkey(20, 'A');
-  Credentials credentials(kUser, passkey);
-
-  brillo::SecureBlob scrypt_derived_key;
-  crypto_.Init();
-
-  MakeAuthBlockUtilityImpl();
-
-  AuthInput auth_input = {
-      credentials.passkey(), std::nullopt /*locked_to_single_user*=*/,
-      credentials.username(), std::nullopt /*reset_secret*/};
-
-  AuthBlock::CreateCallback create_callback = base::BindLambdaForTesting(
-      [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> blobs,
-          std::unique_ptr<AuthBlockState> auth_state) {
-        // Evaluate results of KeyBlobs and AuthBlockState returned by callback.
-        EXPECT_TRUE(ContainsActionInStack(
-            error.err_status(), error::ErrorAction::kDevCheckUnexpectedState));
-        EXPECT_EQ(blobs, nullptr);
-        EXPECT_EQ(auth_state, nullptr);
-      });
-
-  // Test.
-  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
-      AuthBlockType::kMaxValue, auth_input, std::move(create_callback));
-}
-
-TEST_F(AuthBlockUtilityImplTest, CreateKeyBlobsWithAuthBlockWrongTypeFails) {
-  // Setup mock expectations and test inputs for low entropy AuthBlock.
-  brillo::SecureBlob passkey(20, 'A');
-  Credentials credentials(kUser, passkey);
-
-  MakeAuthBlockUtilityImpl();
-
-  // Test
-  KeyBlobs out_key_blobs;
-  AuthBlockState out_state;
-  EXPECT_EQ(
-      CryptoError::CE_OTHER_CRYPTO,
-      auth_block_utility_impl_
-          ->CreateKeyBlobsWithAuthBlock(AuthBlockType::kMaxValue, credentials,
-                                        std::nullopt, out_state, out_key_blobs)
-          ->local_crypto_error());
-}
-
 // Test that GetAuthBlockStateFromVaultKeyset() gives correct AuthblockState
 // for each AuthBlock type.
 TEST_F(AuthBlockUtilityImplTest, DeriveAuthBlockStateFromVaultKeysetTest) {

@@ -92,7 +92,7 @@ class MockAuthBlockUtility : public AuthBlockUtility {
               GetAuthBlockTypeForCreation,
               (const AuthFactorType&),
               (const, override));
-  MOCK_METHOD(AuthBlockType,
+  MOCK_METHOD(std::optional<AuthBlockType>,
               GetAuthBlockTypeFromState,
               (const AuthBlockState& auth_state),
               (const, override));

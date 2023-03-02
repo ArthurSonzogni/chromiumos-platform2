@@ -1122,7 +1122,7 @@ std::unique_ptr<SyncAuthBlock> VaultKeyset::GetAuthBlockForCreation() const {
 }
 
 std::unique_ptr<SyncAuthBlock> VaultKeyset::GetAuthBlockForDerivation() {
-  AuthBlockType auth_block_type = AuthBlockType::kMaxValue;
+  AuthBlockType auth_block_type;
   if (!FlagsToAuthBlockType(flags_, auth_block_type)) {
     LOG(WARNING) << "Failed to get the AuthBlock type for key derivation";
     return nullptr;

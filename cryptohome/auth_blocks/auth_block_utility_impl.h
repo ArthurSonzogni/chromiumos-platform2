@@ -104,7 +104,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
   CryptoStatusOr<AuthBlockType> GetAuthBlockTypeForCreation(
       const AuthFactorType& auth_factor_type) const override;
 
-  AuthBlockType GetAuthBlockTypeFromState(
+  std::optional<AuthBlockType> GetAuthBlockTypeFromState(
       const AuthBlockState& state) const override;
 
   base::flat_set<AuthIntent> GetSupportedIntentsFromState(
