@@ -147,8 +147,12 @@ TEST_F(UserSecretStashTest, GetEncryptedUSS) {
       CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH);
   brillo::SecureBlob reset_secret2 =
       CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH);
+  brillo::SecureBlob reset_secret3 =
+      CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH);
   ASSERT_TRUE(stash_->SetResetSecretForLabel("label1", reset_secret1));
   ASSERT_TRUE(stash_->SetResetSecretForLabel("label2", reset_secret2));
+  ASSERT_TRUE(stash_->SetRateLimiterResetSecret(AuthFactorType::kFingerprint,
+                                                reset_secret3));
 
   CryptohomeStatusOr<brillo::Blob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
@@ -159,10 +163,13 @@ TEST_F(UserSecretStashTest, GetEncryptedUSS) {
       FindBlobInBlob(*uss_container, stash_->GetFileSystemKeyset().Key().fek));
   EXPECT_FALSE(FindBlobInBlob(*uss_container, reset_secret1));
   EXPECT_FALSE(FindBlobInBlob(*uss_container, reset_secret2));
+  EXPECT_FALSE(FindBlobInBlob(*uss_container, reset_secret3));
 }
 
 TEST_F(UserSecretStashTest, EncryptAndDecryptUSS) {
   ASSERT_TRUE(stash_->SetResetSecretForLabel("label1", {0xAA, 0xBB}));
+  ASSERT_TRUE(stash_->SetRateLimiterResetSecret(AuthFactorType::kFingerprint,
+                                                {0xCC, 0xDD}));
 
   CryptohomeStatusOr<brillo::Blob> uss_container =
       stash_->GetEncryptedContainer(kMainKey);
@@ -176,6 +183,11 @@ TEST_F(UserSecretStashTest, EncryptAndDecryptUSS) {
               FileSystemKeysetEquals(stash2.value()->GetFileSystemKeyset()));
   EXPECT_EQ(stash_->GetResetSecretForLabel("label1").value(),
             stash2.value()->GetResetSecretForLabel("label1").value());
+  EXPECT_EQ(
+      stash_->GetRateLimiterResetSecret(AuthFactorType::kFingerprint).value(),
+      stash2.value()
+          ->GetRateLimiterResetSecret(AuthFactorType::kFingerprint)
+          .value());
 }
 
 // Test that deserialization fails on an empty blob. Normally this never occurs,
@@ -448,6 +460,25 @@ TEST_F(UserSecretStashTest, DoubleInsertResetSecret) {
   EXPECT_FALSE(stash_->SetResetSecretForLabel("label1", reset_secret3));
 
   EXPECT_EQ(reset_secret1, stash_->GetResetSecretForLabel("label1").value());
+}
+
+// Test that SetRateLimiterResetSecret does not overwrite if a reset secret
+// already exists.
+TEST_F(UserSecretStashTest, DoubleInsertRateLimiterResetSecret) {
+  brillo::SecureBlob reset_secret1 = {0xAA, 0xBB, 0xCC};
+  brillo::SecureBlob reset_secret2 = {0xDD, 0xEE, 0x11};
+  brillo::SecureBlob reset_secret3 = {0x22, 0x33, 0x44};
+
+  EXPECT_TRUE(stash_->SetRateLimiterResetSecret(AuthFactorType::kFingerprint,
+                                                reset_secret1));
+  EXPECT_TRUE(
+      stash_->SetRateLimiterResetSecret(AuthFactorType::kPin, reset_secret2));
+  EXPECT_FALSE(stash_->SetRateLimiterResetSecret(AuthFactorType::kFingerprint,
+                                                 reset_secret3));
+
+  EXPECT_EQ(
+      reset_secret1,
+      stash_->GetRateLimiterResetSecret(AuthFactorType::kFingerprint).value());
 }
 
 // Test that RemoveResetSecretForLabel successfully removes the reset secret,

@@ -8,6 +8,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/memory/ptr_util.h>
 #include <base/notreached.h>
 #include <base/system/sys_info.h>
 #include <brillo/secure_blob.h>
@@ -22,6 +23,7 @@
 #include <utility>
 #include <vector>
 
+#include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
@@ -629,9 +631,35 @@ UserSecretStash::FromEncryptedPayload(
     }
   }
 
-  // Note: make_unique() wouldn't work due to the constructor being private.
-  std::unique_ptr<UserSecretStash> stash(
-      new UserSecretStash(file_system_keyset_status.value(), reset_secrets));
+  std::map<AuthFactorType, brillo::SecureBlob> rate_limiter_reset_secrets;
+  for (const TypeToResetSecretMapping& item :
+       uss_payload.value().rate_limiter_reset_secrets) {
+    if (!item.auth_factor_type.has_value()) {
+      LOG(ERROR)
+          << "UserSecretStashPayload contains reset secret with missing type.";
+      continue;
+    }
+    if (*item.auth_factor_type >=
+        static_cast<unsigned int>(AuthFactorType::kUnspecified)) {
+      LOG(ERROR)
+          << "UserSecretStashPayload contains reset secret for invalid type: "
+          << *item.auth_factor_type << ".";
+      continue;
+    }
+    AuthFactorType auth_factor_type =
+        static_cast<AuthFactorType>(*item.auth_factor_type);
+    auto insertion_status = rate_limiter_reset_secrets.insert(
+        {auth_factor_type, item.reset_secret});
+    if (!insertion_status.second) {
+      LOG(ERROR) << "UserSecretStashPayload contains multiple reset secrets "
+                    "for type: "
+                 << AuthFactorTypeToString(auth_factor_type) << ".";
+    }
+  }
+
+  auto stash = base::WrapUnique(new UserSecretStash(
+      std::move(file_system_keyset_status).value(), std::move(reset_secrets),
+      std::move(rate_limiter_reset_secrets)));
   stash->wrapped_key_blocks_ = wrapped_key_blocks;
   stash->created_on_os_version_ = created_on_os_version;
   stash->user_metadata_ = user_metadata;
@@ -739,6 +767,22 @@ bool UserSecretStash::RemoveResetSecretForLabel(const std::string& label) {
   }
   reset_secrets_.erase(iter);
   return true;
+}
+
+std::optional<brillo::SecureBlob> UserSecretStash::GetRateLimiterResetSecret(
+    AuthFactorType auth_factor_type) const {
+  const auto iter = rate_limiter_reset_secrets_.find(auth_factor_type);
+  if (iter == rate_limiter_reset_secrets_.end()) {
+    return std::nullopt;
+  }
+  return iter->second;
+}
+
+bool UserSecretStash::SetRateLimiterResetSecret(
+    AuthFactorType auth_factor_type, const brillo::SecureBlob& secret) {
+  const auto result =
+      rate_limiter_reset_secrets_.insert({auth_factor_type, secret});
+  return result.second;
 }
 
 const std::string& UserSecretStash::GetCreatedOnOsVersion() const {
@@ -858,6 +902,17 @@ CryptohomeStatusOr<brillo::Blob> UserSecretStash::GetEncryptedContainer(
     });
   }
 
+  // Note: It can happen that the USS container is created with empty
+  // |rate_limiter_reset_secrets_| if no PinWeaver credentials are present yet.
+  for (const auto& item : rate_limiter_reset_secrets_) {
+    AuthFactorType auth_factor_type = item.first;
+    const brillo::SecureBlob& reset_secret = item.second;
+    payload.rate_limiter_reset_secrets.push_back(TypeToResetSecretMapping{
+        .auth_factor_type = static_cast<unsigned int>(auth_factor_type),
+        .reset_secret = reset_secret,
+    });
+  }
+
   std::optional<brillo::SecureBlob> serialized_payload = payload.Serialize();
   if (!serialized_payload.has_value()) {
     LOG(ERROR) << "Failed to serialize UserSecretStashPayload";
@@ -927,9 +982,12 @@ bool UserSecretStash::InitializeFingerprintRateLimiterId(uint64_t id) {
 }
 
 UserSecretStash::UserSecretStash(
-    const FileSystemKeyset& file_system_keyset,
-    const std::map<std::string, brillo::SecureBlob>& reset_secrets)
-    : file_system_keyset_(file_system_keyset), reset_secrets_(reset_secrets) {}
+    FileSystemKeyset file_system_keyset,
+    std::map<std::string, brillo::SecureBlob> reset_secrets,
+    std::map<AuthFactorType, brillo::SecureBlob> rate_limiter_reset_secrets)
+    : file_system_keyset_(std::move(file_system_keyset)),
+      reset_secrets_(std::move(reset_secrets)),
+      rate_limiter_reset_secrets_(std::move(rate_limiter_reset_secrets)) {}
 
 UserSecretStash::UserSecretStash(const FileSystemKeyset& file_system_keyset)
     : file_system_keyset_(file_system_keyset) {}

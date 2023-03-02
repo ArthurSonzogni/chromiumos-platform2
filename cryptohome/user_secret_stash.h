@@ -13,6 +13,7 @@
 #include <optional>
 #include <string>
 
+#include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/flatbuffer_schemas/user_secret_stash_container.h"
 #include "cryptohome/storage/file_system_keyset.h"
@@ -158,6 +159,16 @@ class UserSecretStash {
   // TODO(b/238897234): Move this to RemoveWrappedMainKey.
   bool RemoveResetSecretForLabel(const std::string& label);
 
+  // This gets the reset secret for the rate limiter of the |auth_factor_type|.
+  std::optional<brillo::SecureBlob> GetRateLimiterResetSecret(
+      AuthFactorType auth_factor_type) const;
+
+  // This sets the reset secret for the rate limiter of the |auth_factor_type|.
+  // This does not overwrite an existing reset secret. It returns if the
+  // insertion succeeded.
+  [[nodiscard]] bool SetRateLimiterResetSecret(
+      AuthFactorType auth_factor_type, const brillo::SecureBlob& secret);
+
   std::optional<uint64_t> GetFingerprintRateLimiterId();
 
   // Overwrite an existing id is prohibited. Returns if the initialization
@@ -214,8 +225,9 @@ class UserSecretStash {
       const brillo::SecureBlob& main_key);
 
   UserSecretStash(
-      const FileSystemKeyset& file_system_keyset,
-      const std::map<std::string, brillo::SecureBlob>& reset_secrets);
+      FileSystemKeyset file_system_keyset,
+      std::map<std::string, brillo::SecureBlob> reset_secrets,
+      std::map<AuthFactorType, brillo::SecureBlob> rate_limiter_reset_secrets);
 
   explicit UserSecretStash(const FileSystemKeyset& file_system_keyset);
 
@@ -232,6 +244,8 @@ class UserSecretStash {
   std::string created_on_os_version_;
   // The reset secrets corresponding to each auth factor, by label.
   std::map<std::string, brillo::SecureBlob> reset_secrets_;
+  // The reset secrets corresponding to each auth factor type's rate limiter.
+  std::map<AuthFactorType, brillo::SecureBlob> rate_limiter_reset_secrets_;
   // user metadata
   UserMetadata user_metadata_;
 };
