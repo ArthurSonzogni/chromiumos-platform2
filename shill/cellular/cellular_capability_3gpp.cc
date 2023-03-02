@@ -1239,9 +1239,6 @@ void CellularCapability3gpp::UpdateActiveBearers() {
     }
     auto apn_type = apn_types[0];
 
-    SLOG(this, 1) << "Found active bearer \"" << path.value() << "\" ("
-                  << ApnList::GetApnTypeString(apn_type) << ")";
-
     if (active_bearers_.count(apn_type) > 0) {
       SLOG(this, 1) << "Found additional active bearer \"" << path.value()
                     << "\" (" << ApnList::GetApnTypeString(apn_type)
