@@ -211,6 +211,11 @@ void CameraPrivacySwitchMonitor::RunDequeueEventsLoop() {
         struct v4l2_event ev = {};
         if (HANDLE_EINTR(ioctl(fds[i].fd, VIDIOC_DQEVENT, &ev)) < 0) {
           PLOGF(ERROR) << "Failed to dequeue event from device";
+          // Unsubscribe camera if it is not unsubscribed for unknown reasons.
+          // This issue was observed on Whiterun devices. Ref: b/269989471
+          if (errno == ENODEV) {
+            Unsubscribe(camera_ids[i]);
+          }
           continue;
         }
 
