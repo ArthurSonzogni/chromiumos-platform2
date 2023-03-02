@@ -10,6 +10,8 @@
 #include <base/logging.h>
 #include <base/strings/string_number_conversions.h>
 
+#include "base/files/file.h"
+#include "base/files/file_path.h"
 #include "vm_tools/common/naming.h"
 
 namespace vm_tools {
@@ -20,7 +22,8 @@ std::optional<base::FilePath> GetFilePathFromName(
     const std::string& vm_name,
     StorageLocation storage_location,
     const std::string& extension,
-    bool create_parent_dir) {
+    bool create_parent_dir,
+    base::FilePath storage_dir) {
   if (!IsValidOwnerId(cryptohome_id)) {
     LOG(ERROR) << "Invalid cryptohome_id specified";
     return std::nullopt;
@@ -28,7 +31,6 @@ std::optional<base::FilePath> GetFilePathFromName(
   // Encode the given disk name to ensure it only has valid characters.
   std::string encoded_name = GetEncodedName(vm_name);
 
-  base::FilePath storage_dir = base::FilePath(kCryptohomeRoot);
   switch (storage_location) {
     case STORAGE_CRYPTOHOME_ROOT: {
       storage_dir = storage_dir.Append(kCrosvmDir);
@@ -126,10 +128,13 @@ void SendDbusResponse(dbus::ExportedObject::ResponseSender response_sender,
 }
 
 std::optional<PflashMetadata> GetPflashMetadata(
-    const std::string& cryptohome_id, const std::string& vm_name) {
+    const std::string& cryptohome_id,
+    const std::string& vm_name,
+    base::FilePath storage_dir) {
   std::optional<base::FilePath> pflash_installation_path_result =
       GetFilePathFromName(cryptohome_id, vm_name, STORAGE_CRYPTOHOME_ROOT,
-                          kPflashImageExtension, false /* create_parent_dir */);
+                          kPflashImageExtension, false /* create_parent_dir */,
+                          storage_dir);
   if (!pflash_installation_path_result) {
     return std::nullopt;
   }

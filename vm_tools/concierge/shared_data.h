@@ -56,7 +56,8 @@ std::optional<base::FilePath> GetFilePathFromName(
     const std::string& vm_name,
     StorageLocation storage_location,
     const std::string& extension,
-    bool create_parent_dir);
+    bool create_parent_dir,
+    base::FilePath storage_dir = base::FilePath(kCryptohomeRoot));
 
 bool GetPluginDirectory(const base::FilePath& prefix,
                         const std::string& extension,
@@ -80,7 +81,9 @@ void SendDbusResponse(dbus::ExportedObject::ResponseSender response_sender,
 // Returns information about the Pflash file associated with a VM. If there is a
 // failure in querying the information then it returns std::nullopt.
 std::optional<PflashMetadata> GetPflashMetadata(
-    const std::string& cryptohome_id, const std::string& vm_name);
+    const std::string& cryptohome_id,
+    const std::string& vm_name,
+    base::FilePath storage_dir = base::FilePath(kCryptohomeRoot));
 
 // Returns in order -
 // 1. An installed pflash file for the VM.
