@@ -439,6 +439,20 @@ TEST(AuthFactorUtilsTest, NeedsResetSecret) {
                 "All types of AuthFactorType are not all included here");
 }
 
+// Test `NeedsRateLimiter()` to return correct value.
+TEST(AuthFactorUtilsTest, NeedsRateLimiter) {
+  EXPECT_TRUE(NeedsRateLimiter(AuthFactorType::kFingerprint));
+  EXPECT_FALSE(NeedsRateLimiter(AuthFactorType::kPassword));
+  EXPECT_FALSE(NeedsRateLimiter(AuthFactorType::kPin));
+  EXPECT_FALSE(NeedsRateLimiter(AuthFactorType::kKiosk));
+  EXPECT_FALSE(NeedsRateLimiter(AuthFactorType::kCryptohomeRecovery));
+  EXPECT_FALSE(NeedsRateLimiter(AuthFactorType::kSmartCard));
+  EXPECT_FALSE(NeedsRateLimiter(AuthFactorType::kLegacyFingerprint));
+  EXPECT_FALSE(NeedsRateLimiter(AuthFactorType::kUnspecified));
+  static_assert(static_cast<int>(AuthFactorType::kUnspecified) == 7,
+                "All types of AuthFactorType are not all included here");
+}
+
 TEST(AuthFactorUtilsTest, GetAuthFactorLabelArity) {
   EXPECT_EQ(AuthFactorLabelArity::kSingle,
             GetAuthFactorLabelArity(AuthFactorType::kPassword));

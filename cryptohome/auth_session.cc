@@ -1424,21 +1424,6 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
     return;
   }
 
-  // Derive the credential secret for the USS from the key blobs.
-  std::optional<brillo::SecureBlob> uss_credential_secret =
-      key_blobs->DeriveUssCredentialSecret();
-  if (!uss_credential_secret.has_value()) {
-    LOG(ERROR) << "AuthSession: Failed to derive credential secret for "
-                  "updated auth factor.";
-    // TODO(b/229834676): Migrate USS and wrap the error.
-    std::move(on_done).Run(MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionDeriveUSSSecretFailedInUpdateViaUSS),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kRetry,
-                        ErrorAction::kDeleteVault}),
-        user_data_auth::CRYPTOHOME_UPDATE_CREDENTIALS_FAILED));
-    return;
-  }
-
   // Create the auth factor by combining the metadata with the auth block
   // state.
   auto auth_factor =
@@ -1458,8 +1443,7 @@ void AuthSession::UpdateAuthFactorViaUserSecretStash(
     return;
   }
 
-  status = AddAuthFactorToUssInMemory(*auth_factor, auth_input,
-                                      uss_credential_secret.value());
+  status = AddAuthFactorToUssInMemory(*auth_factor, *key_blobs);
   if (!status.ok()) {
     LOG(ERROR)
         << "AuthSession: Failed to add updated auth factor secret to USS.";
@@ -1903,32 +1887,58 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
-  if (!NeedsResetSecret(auth_factor_type)) {
-    // The factor is not resettable, so no extra data needed to be filled.
+
+  // Types which need rate-limiters are exclusive with those which need
+  // per-label reset secrets.
+  if (NeedsRateLimiter(auth_factor_type) && user_secret_stash_) {
+    // Currently fingerprint is the only auth factor type using rate limiter, so
+    // the interface isn't designed to be generic. We'll make it generic to any
+    // auth factor types in the future.
+    std::optional<uint64_t> rate_limiter_label =
+        user_secret_stash_->GetFingerprintRateLimiterId();
+    // No existing rate-limiter, AuthBlock::Create will have to create one.
+    if (!rate_limiter_label.has_value()) {
+      return std::move(auth_input.value());
+    }
+    std::optional<brillo::SecureBlob> reset_secret =
+        user_secret_stash_->GetRateLimiterResetSecret(auth_factor_type);
+    if (!reset_secret.has_value()) {
+      LOG(ERROR) << "Found rate-limiter with no reset secret.";
+      return MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocRateLimiterNoResetSecretInAuthInputForAdd),
+          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+    }
+    auth_input->rate_limiter_label = rate_limiter_label;
+    auth_input->reset_secret = reset_secret;
     return std::move(auth_input.value());
   }
 
-  if (user_secret_stash_ && !enable_create_backup_vk_with_uss_) {
-    // When using USS, every resettable factor gets a unique reset secret.
-    // When USS is not backed up by VaultKeysets this secret needs to be
-    // generated independently.
-    LOG(INFO) << "Adding random reset secret for UserSecretStash.";
-    auth_input->reset_secret =
-        CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH);
-    return std::move(auth_input.value());
+  if (NeedsResetSecret(auth_factor_type)) {
+    if (user_secret_stash_ && !enable_create_backup_vk_with_uss_) {
+      // When using USS, every resettable factor gets a unique reset secret.
+      // When USS is not backed up by VaultKeysets this secret needs to be
+      // generated independently.
+      LOG(INFO) << "Adding random reset secret for UserSecretStash.";
+      auth_input->reset_secret =
+          CreateSecureRandomBlob(CRYPTOHOME_RESET_SECRET_LENGTH);
+      return std::move(auth_input.value());
+    }
+
+    // When using VaultKeyset, reset is implemented via a seed that's shared
+    // among all of the user's VKs. Hence copy it from the previously loaded VK.
+    if (!vault_keyset_) {
+      return MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocNoVkInAuthInputForAdd),
+          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
+    }
+
+    return UpdateAuthInputWithResetParamsFromPasswordVk(auth_input.value(),
+                                                        *vault_keyset_);
   }
 
-  // When using VaultKeyset, reset is implemented via a seed that's shared
-  // among all of the user's VKs. Hence copy it from the previously loaded VK.
-  if (!vault_keyset_) {
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocNoVkInAuthInputForAdd),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
-        user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE);
-  }
-
-  return UpdateAuthInputWithResetParamsFromPasswordVk(auth_input.value(),
-                                                      *vault_keyset_);
+  return std::move(auth_input.value());
 }
 
 CredentialVerifier* AuthSession::AddCredentialVerifier(
@@ -2122,28 +2132,13 @@ CryptohomeStatus AuthSession::PersistAuthFactorToUserSecretStashImpl(
         .Wrap(std::move(callback_error));
   }
 
-  // Derive the credential secret for the USS from the key blobs.
-  std::optional<brillo::SecureBlob> uss_credential_secret =
-      key_blobs->DeriveUssCredentialSecret();
-  if (!uss_credential_secret.has_value()) {
-    LOG(ERROR)
-        << "Failed to derive credential secret for auth factor with label: "
-        << auth_factor_label;
-    // TODO(b/229834676): Migrate USS and wrap the error.
-    return MakeStatus<CryptohomeError>(
-        CRYPTOHOME_ERR_LOC(kLocAuthSessionDeriveUSSSecretFailedInPersistToUSS),
-        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kRetry,
-                        ErrorAction::kDeleteVault}),
-        user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
-  }
-
   // Create the auth factor by combining the metadata with the auth block state.
   auto auth_factor =
       std::make_unique<AuthFactor>(auth_factor_type, auth_factor_label,
                                    auth_factor_metadata, *auth_block_state);
 
-  CryptohomeStatus status = AddAuthFactorToUssInMemory(
-      *auth_factor, auth_input, uss_credential_secret.value());
+  CryptohomeStatus status =
+      AddAuthFactorToUssInMemory(*auth_factor, *key_blobs);
   if (!status.ok()) {
     return MakeStatus<CryptohomeError>(
                CRYPTOHOME_ERR_LOC(kLocAuthSessionAddToUssFailedInPersistToUSS),
@@ -2276,14 +2271,27 @@ void AuthSession::CompleteVerifyOnlyAuthentication(StatusCallback on_done,
 }
 
 CryptohomeStatus AuthSession::AddAuthFactorToUssInMemory(
-    AuthFactor& auth_factor,
-    const AuthInput& auth_input,
-    const brillo::SecureBlob& uss_credential_secret) {
+    AuthFactor& auth_factor, const KeyBlobs& key_blobs) {
+  // Derive the credential secret for the USS from the key blobs.
+  std::optional<brillo::SecureBlob> uss_credential_secret =
+      key_blobs.DeriveUssCredentialSecret();
+  if (!uss_credential_secret.has_value()) {
+    LOG(ERROR) << "AuthSession: Failed to derive credential secret for "
+                  "updated auth factor.";
+    // TODO(b/229834676): Migrate USS and wrap the error.
+    return MakeStatus<CryptohomeError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthSessionDeriveUSSSecretFailedInAddSecretToUSS),
+        ErrorActionSet({ErrorAction::kReboot, ErrorAction::kRetry,
+                        ErrorAction::kDeleteVault}),
+        user_data_auth::CRYPTOHOME_UPDATE_CREDENTIALS_FAILED);
+  }
+
   // This wraps the USS Main Key with the credential secret. The wrapping_id
   // field is defined equal to the factor's label.
   CryptohomeStatus status = user_secret_stash_->AddWrappedMainKey(
       user_secret_stash_main_key_.value(),
-      /*wrapping_id=*/auth_factor.label(), uss_credential_secret);
+      /*wrapping_id=*/auth_factor.label(), uss_credential_secret.value());
   if (!status.ok()) {
     LOG(ERROR) << "AuthSession: Failed to add created auth factor into user "
                   "secret stash.";
@@ -2294,9 +2302,43 @@ CryptohomeStatus AuthSession::AddAuthFactorToUssInMemory(
         .Wrap(std::move(status));
   }
 
-  if (auth_input.reset_secret.has_value() &&
-      !user_secret_stash_->SetResetSecretForLabel(
-          auth_factor.label(), auth_input.reset_secret.value())) {
+  // Types which need rate-limiters are exclusive with those which need
+  // per-label reset secrets.
+  if (NeedsRateLimiter(auth_factor.type()) &&
+      key_blobs.rate_limiter_label.has_value()) {
+    // A reset secret must come with the rate-limiter.
+    if (!key_blobs.reset_secret.has_value()) {
+      return MakeStatus<CryptohomeError>(
+                 CRYPTOHOME_ERR_LOC(
+                     kLocNewRateLimiterWithNoSecretInAddSecretToUSS),
+                 user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
+          .Wrap(std::move(status));
+    }
+    // Note that both setters don't allow overwrite, so if we run into a
+    // situation where one write succeeded where another failed, the state will
+    // be unrecoverable.
+    //
+    // Currently fingerprint is the only auth factor type using rate limiter, so
+    // the interface isn't designed to be generic. We'll make it generic to any
+    // auth factor types in the future.
+    if (!user_secret_stash_->InitializeFingerprintRateLimiterId(
+            key_blobs.rate_limiter_label.value())) {
+      return MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocAddRateLimiterLabelFailedInAddSecretToUSS),
+          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
+    }
+    if (!user_secret_stash_->SetRateLimiterResetSecret(
+            auth_factor.type(), key_blobs.reset_secret.value())) {
+      return MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocAddRateLimiterSecretFailedInAddSecretToUSS),
+          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
+    }
+  } else if (NeedsResetSecret(auth_factor.type()) &&
+             key_blobs.reset_secret.has_value() &&
+             !user_secret_stash_->SetResetSecretForLabel(
+                 auth_factor.label(), key_blobs.reset_secret.value())) {
     LOG(ERROR) << "AuthSession: Failed to insert reset secret for auth factor.";
     // TODO(b/229834676): Migrate USS and wrap the error.
     return MakeStatus<CryptohomeError>(
@@ -2415,7 +2457,8 @@ void AuthSession::AddAuthFactorImpl(
   user_data_auth::CryptohomeErrorCode error = converter_.AuthFactorToKeyData(
       auth_factor_label, auth_factor_type, auth_factor_metadata, key_data);
   if (error != user_data_auth::CRYPTOHOME_ERROR_NOT_SET &&
-      auth_factor_type != AuthFactorType::kCryptohomeRecovery) {
+      auth_factor_type != AuthFactorType::kCryptohomeRecovery &&
+      auth_factor_type != AuthFactorType::kFingerprint) {
     std::move(on_done).Run(MakeStatus<CryptohomeError>(
         CRYPTOHOME_ERR_LOC(kLocAuthSessionVKConverterFailsInAddAuthFactor),
         ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}), error));

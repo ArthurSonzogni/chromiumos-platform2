@@ -434,10 +434,8 @@ class AuthSession final {
                                         CryptohomeStatus error);
 
   // Add the new factor into the USS in-memory.
-  CryptohomeStatus AddAuthFactorToUssInMemory(
-      AuthFactor& auth_factor,
-      const AuthInput& auth_input,
-      const brillo::SecureBlob& uss_credential_secret);
+  CryptohomeStatus AddAuthFactorToUssInMemory(AuthFactor& auth_factor,
+                                              const KeyBlobs& key_blobs);
 
   // Implements the AddauthFactor by adding the credential backing store either
   // with AuthFactor & UsersecretStash or VaultKeyset.

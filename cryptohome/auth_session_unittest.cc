@@ -1935,6 +1935,7 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
           auto key_blobs = std::make_unique<KeyBlobs>();
           key_blobs->vkk_key =
               GetFakeDerivedSecret(auth_input.user_input.value());
+          key_blobs->reset_secret = auth_input.reset_secret;
           auto auth_block_state = std::make_unique<AuthBlockState>();
           auth_block_state->state = PinWeaverAuthBlockState();
           std::move(create_callback)
@@ -4262,6 +4263,155 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordVkToKioskUss) {
   EXPECT_THAT(auth_factor.type(), Eq(AuthFactorType::kKiosk));
   EXPECT_THAT(auth_factor.metadata().metadata,
               VariantWith<KioskAuthFactorMetadata>(_));
+}
+
+// Test adding two fingerprint auth factors to the newly created user.
+// The first attempt should create a rate-limiter and the second should reuse
+// it.
+TEST_F(AuthSessionWithUssExperimentTest, AddFingerprint) {
+  const uint64_t kFakeRateLimiterLabel = 100;
+  // Setup.
+  AuthSession auth_session(
+      {.username = kFakeUsername,
+       .is_ephemeral_user = false,
+       .intent = AuthIntent::kDecrypt,
+       .timeout_timer = std::make_unique<base::WallClockTimer>(),
+       .user_exists = false,
+       .auth_factor_map = AuthFactorMap(),
+       .migrate_to_user_secret_stash = false},
+      backing_apis_);
+
+  // Creating the user.
+  EXPECT_TRUE(auth_session.OnUserCreated().ok());
+  EXPECT_TRUE(auth_session.has_user_secret_stash());
+  // Add the first fingerprint, when no rate-limiters exist.
+  // Setting the expectation that the auth block utility will create key blobs.
+  EXPECT_CALL(auth_block_utility_,
+              GetAuthBlockTypeForCreation(AuthFactorType::kFingerprint))
+      .WillRepeatedly(ReturnValue(AuthBlockType::kFingerprint));
+  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(
+                                       AuthBlockType::kFingerprint, _, _))
+      .WillOnce([&](AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    AuthBlock::CreateCallback create_callback) {
+        // During the first create, rate-limiter should be empty.
+        EXPECT_FALSE(auth_input.rate_limiter_label.has_value());
+        EXPECT_FALSE(auth_input.reset_secret.has_value());
+        // Make an arbitrary auth block state type that can be used in this
+        // test.
+        auto key_blobs = std::make_unique<KeyBlobs>();
+        key_blobs->vkk_key = brillo::SecureBlob("fake vkk key");
+        key_blobs->rate_limiter_label = kFakeRateLimiterLabel;
+        key_blobs->reset_secret = brillo::SecureBlob("reset secret");
+        auto auth_block_state = std::make_unique<AuthBlockState>();
+        auth_block_state->state = FingerprintAuthBlockState();
+        std::move(create_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
+                 std::move(auth_block_state));
+      });
+  // Calling AddAuthFactor.
+  user_data_auth::AddAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.mutable_auth_factor()->set_type(
+      user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
+  request.mutable_auth_factor()->set_label(kFakeLabel);
+  request.mutable_auth_factor()->mutable_fingerprint_metadata();
+  request.mutable_auth_input()->mutable_fingerprint_input();
+
+  // Test and Verify.
+  TestFuture<CryptohomeStatus> add_future;
+  auth_session.AddAuthFactor(request, add_future.GetCallback());
+
+  // Verify.
+  ASSERT_TRUE(add_future.IsReady());
+  EXPECT_THAT(add_future.Get(), IsOk());
+
+  // Add the second fingerprint, when the fingerprint rate-limiter already
+  // exists.
+  // Setting the expectation that the auth block utility will create key blobs.
+  EXPECT_CALL(auth_block_utility_,
+              GetAuthBlockTypeForCreation(AuthFactorType::kFingerprint))
+      .WillRepeatedly(ReturnValue(AuthBlockType::kFingerprint));
+  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(
+                                       AuthBlockType::kFingerprint, _, _))
+      .WillOnce([&](AuthBlockType auth_block_type, const AuthInput& auth_input,
+                    AuthBlock::CreateCallback create_callback) {
+        // During the second create, rate-limiter should already exist.
+        ASSERT_TRUE(auth_input.rate_limiter_label.has_value());
+        EXPECT_EQ(auth_input.rate_limiter_label.value(), kFakeRateLimiterLabel);
+        ASSERT_TRUE(auth_input.reset_secret.has_value());
+        EXPECT_EQ(auth_input.reset_secret.value(),
+                  brillo::SecureBlob("reset secret"));
+        // Make an arbitrary auth block state type that can be used in this
+        // test.
+        auto key_blobs = std::make_unique<KeyBlobs>();
+        key_blobs->vkk_key = brillo::SecureBlob("fake vkk key 2");
+        auto auth_block_state = std::make_unique<AuthBlockState>();
+        auth_block_state->state = FingerprintAuthBlockState();
+        std::move(create_callback)
+            .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
+                 std::move(auth_block_state));
+      });
+  // Calling AddAuthFactor.
+  user_data_auth::AddAuthFactorRequest add_fp_request;
+  add_fp_request.set_auth_session_id(auth_session.serialized_token());
+  add_fp_request.mutable_auth_factor()->set_type(
+      user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
+  add_fp_request.mutable_auth_factor()->set_label(kFakeOtherLabel);
+  add_fp_request.mutable_auth_factor()->mutable_fingerprint_metadata();
+  add_fp_request.mutable_auth_input()->mutable_fingerprint_input();
+  // Test and Verify.
+  TestFuture<CryptohomeStatus> add_fp_future;
+  auth_session.AddAuthFactor(add_fp_request, add_fp_future.GetCallback());
+
+  // Verify.
+  ASSERT_THAT(add_fp_future.Get(), IsOk());
+  std::map<std::string, AuthFactorType> stored_factors =
+      auth_factor_manager_.ListAuthFactors(SanitizeUserName(kFakeUsername));
+  EXPECT_THAT(stored_factors,
+              ElementsAre(Pair(kFakeLabel, AuthFactorType::kFingerprint),
+                          Pair(kFakeOtherLabel, AuthFactorType::kFingerprint)));
+}
+
+// Test that PrepareAuthFactor succeeds for fingerprint with the purpose of add.
+TEST_F(AuthSessionWithUssExperimentTest, PrepareFingerprintAdd) {
+  // Create an AuthSession and add a mock for a successful auth block prepare.
+  auto auth_session = std::make_unique<AuthSession>(
+      AuthSession::Params{
+          .username = kFakeUsername,
+          .is_ephemeral_user = false,
+          .intent = AuthIntent::kVerifyOnly,
+          .timeout_timer = std::make_unique<base::WallClockTimer>(),
+          .user_exists = true,
+          .auth_factor_map = AuthFactorMap(),
+          .migrate_to_user_secret_stash = false},
+      backing_apis_);
+  TrackedPreparedAuthFactorToken::WasCalled token_was_called;
+  auto token = std::make_unique<TrackedPreparedAuthFactorToken>(
+      AuthFactorType::kLegacyFingerprint, OkStatus<CryptohomeError>(),
+      &token_was_called);
+  EXPECT_CALL(auth_block_utility_,
+              IsPrepareAuthFactorRequired(AuthFactorType::kFingerprint))
+      .WillOnce(Return(true));
+  EXPECT_CALL(auth_block_utility_,
+              PrepareAuthFactorForAdd(AuthFactorType::kFingerprint, _, _))
+      .WillOnce([&](AuthFactorType, const ObfuscatedUsername&,
+                    PreparedAuthFactorToken::Consumer callback) {
+        std::move(callback).Run(std::move(token));
+      });
+
+  // Test.
+  TestFuture<CryptohomeStatus> prepare_future;
+  user_data_auth::PrepareAuthFactorRequest request;
+  request.set_auth_session_id(auth_session->serialized_token());
+  request.set_auth_factor_type(user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
+  request.set_purpose(user_data_auth::PURPOSE_ADD_AUTH_FACTOR);
+  auth_session->PrepareAuthFactor(request, prepare_future.GetCallback());
+  auth_session.reset();
+
+  // Verify.
+  ASSERT_THAT(prepare_future.Get(), IsOk());
+  EXPECT_TRUE(token_was_called.terminate);
+  EXPECT_TRUE(token_was_called.destructor);
 }
 
 }  // namespace cryptohome

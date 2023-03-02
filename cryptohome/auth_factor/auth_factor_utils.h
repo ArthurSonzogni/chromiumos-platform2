@@ -66,6 +66,9 @@ bool LoadUserAuthFactorByLabel(AuthFactorManager* manager,
 // needs a reset secret.
 bool NeedsResetSecret(AuthFactorType auth_factor_type);
 
+// This returns if a given |auth_factor_type| is PinWeaver rate-limiter backed.
+bool NeedsRateLimiter(AuthFactorType auth_factor_type);
+
 // Converts to AuthFactorPreparePurpose from the proto enum.
 std::optional<AuthFactorPreparePurpose> AuthFactorPreparePurposeFromProto(
     user_data_auth::AuthFactorPreparePurpose purpose);

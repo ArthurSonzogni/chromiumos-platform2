@@ -499,7 +499,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionVKUnsupportedInAddAuthFactor = 336,
   /* =Obsolete= */
   kLocAuthSessionCreateKeyBlobsFailedInAddViaUSS = 337,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionDeriveUSSSecretFailedInPersistToUSS = 338,
   /* ./auth_session.cc */
   kLocAuthSessionAddMainKeyFailedInAddSecretToUSS = 339,
@@ -1109,7 +1109,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionNullParamInUpdateViaUSS = 641,
   /* ./auth_session.cc */
   kLocAuthSessionCreateFailedInUpdateViaUSS = 642,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionDeriveUSSSecretFailedInUpdateViaUSS = 643,
   /* ./auth_session.cc */
   kLocAuthSessionRemoveFromUSSFailedInUpdateViaUSS = 644,
@@ -1593,6 +1593,16 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthBlockUtilPrepareForAuthFingerprintNoService = 3355,
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockUtilPrepareForAddInvalidAuthFactorType = 3356,
+  /* ./auth_session.cc */
+  kLocRateLimiterNoResetSecretInAuthInputForAdd = 3357,
+  /* ./auth_session.cc */
+  kLocAuthSessionDeriveUSSSecretFailedInAddSecretToUSS = 3358,
+  /* ./auth_session.cc */
+  kLocNewRateLimiterWithNoSecretInAddSecretToUSS = 3359,
+  /* ./auth_session.cc */
+  kLocAddRateLimiterLabelFailedInAddSecretToUSS = 3360,
+  /* ./auth_session.cc */
+  kLocAddRateLimiterSecretFailedInAddSecretToUSS = 3361,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.

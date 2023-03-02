@@ -350,6 +350,10 @@ bool NeedsResetSecret(AuthFactorType auth_factor_type) {
   return auth_factor_type == AuthFactorType::kPin;
 }
 
+bool NeedsRateLimiter(AuthFactorType auth_factor_type) {
+  return auth_factor_type == AuthFactorType::kFingerprint;
+}
+
 std::optional<AuthFactorPreparePurpose> AuthFactorPreparePurposeFromProto(
     user_data_auth::AuthFactorPreparePurpose purpose) {
   switch (purpose) {
