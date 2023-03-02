@@ -28,7 +28,6 @@ fstatfs64: 1
 rt_sigaction: 1
 brk: 1
 sysinfo: 1
-execve: 1
 access: 1
 ARM_set_tls: 1
 set_tid_address: 1

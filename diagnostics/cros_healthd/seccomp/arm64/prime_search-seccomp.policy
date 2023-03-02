@@ -31,7 +31,6 @@ gettid: 1
 brk: 1
 rt_sigprocmask: 1
 rt_sigaction: 1
-execve: 1
 faccessat: 1
 set_tid_address: 1
 set_robust_list: 1

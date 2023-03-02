@@ -32,7 +32,6 @@ read: 1
 gettid: 1
 brk: 1
 pread64: 1
-execve: 1
 access: 1
 arch_prctl: 1
 set_tid_address: 1
