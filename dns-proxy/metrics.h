@@ -5,6 +5,8 @@
 #ifndef DNS_PROXY_METRICS_H_
 #define DNS_PROXY_METRICS_H_
 
+#include <sys/socket.h>
+
 #include <utility>
 #include <vector>
 
@@ -194,6 +196,9 @@ class Metrics {
   void RecordQueryResolveDuration(QueryType type,
                                   int64_t ms,
                                   bool success = true);
+  void RecordProbeResult(sa_family_t family,
+                         int num_attempts,
+                         QueryError error);
 
  private:
   MetricsLibrary metrics_;
