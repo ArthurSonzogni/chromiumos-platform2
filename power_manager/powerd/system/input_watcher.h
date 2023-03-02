@@ -125,9 +125,6 @@ class InputWatcher : public InputWatcherInterface,
   // clears the vector.
   void SendQueuedEvents();
 
-  // Notifies observers about |event| if came from a lid switch or power button.
-  void NotifyObserversAboutEvent(const input_event& event);
-
   base::FilePath dev_input_path_;
   base::FilePath sys_class_input_path_;
 
