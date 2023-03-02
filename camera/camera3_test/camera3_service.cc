@@ -235,7 +235,7 @@ int Camera3Service::Camera3DeviceService::Initialize() {
     LOGF(ERROR) << "Failed to start thread";
     return -EINVAL;
   }
-  cam_device_.RegisterResultMetadataOutputBufferCallback(base::Bind(
+  cam_device_.RegisterResultMetadataOutputBufferCallback(base::BindRepeating(
       &Camera3Service::Camera3DeviceService::ProcessResultMetadataOutputBuffers,
       base::Unretained(this)));
   repeating_preview_metadata_.reset(clone_camera_metadata(

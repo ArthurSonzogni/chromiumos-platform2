@@ -41,14 +41,16 @@ class Camera3Device {
   // Destroy the device.
   void Destroy();
 
-  typedef base::Callback<void(const camera3_capture_result* result)>
+  typedef base::RepeatingCallback<void(const camera3_capture_result* result)>
       ProcessCaptureResultCallback;
-  typedef base::Callback<void(const camera3_notify_msg* msg)> NotifyCallback;
-  typedef base::Callback<void(uint32_t frame_number,
-                              ScopedCameraMetadata metadata,
-                              std::vector<cros::ScopedBufferHandle> buffers)>
+  typedef base::RepeatingCallback<void(const camera3_notify_msg* msg)>
+      NotifyCallback;
+  typedef base::RepeatingCallback<void(
+      uint32_t frame_number,
+      ScopedCameraMetadata metadata,
+      std::vector<cros::ScopedBufferHandle> buffers)>
       ProcessResultMetadataOutputBuffersCallback;
-  typedef base::Callback<void(
+  typedef base::RepeatingCallback<void(
       std::vector<ScopedCameraMetadata>* partial_metadata)>
       ProcessPartialMetadataCallback;
 

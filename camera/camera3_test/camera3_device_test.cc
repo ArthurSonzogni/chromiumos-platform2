@@ -705,10 +705,10 @@ std::set<uint8_t> Camera3Device::StaticInfo::GetAvailableRotateAndCropModes()
 void Camera3DeviceFixture::SetUp() {
   ASSERT_EQ(0, cam_device_.Initialize(&cam_module_))
       << "Camera device initialization fails";
-  cam_device_.RegisterResultMetadataOutputBufferCallback(
-      base::Bind(&Camera3DeviceFixture::ProcessResultMetadataOutputBuffers,
-                 base::Unretained(this)));
-  cam_device_.RegisterPartialMetadataCallback(base::Bind(
+  cam_device_.RegisterResultMetadataOutputBufferCallback(base::BindRepeating(
+      &Camera3DeviceFixture::ProcessResultMetadataOutputBuffers,
+      base::Unretained(this)));
+  cam_device_.RegisterPartialMetadataCallback(base::BindRepeating(
       &Camera3DeviceFixture::ProcessPartialMetadata, base::Unretained(this)));
 }
 
@@ -1128,7 +1128,7 @@ class Camera3AlgoSandboxIPCErrorTest
 
 void Camera3AlgoSandboxIPCErrorTest::SetUp() {
   Camera3DeviceFixture::SetUp();
-  cam_device_.RegisterNotifyCallback(base::Bind(
+  cam_device_.RegisterNotifyCallback(base::BindRepeating(
       &Camera3AlgoSandboxIPCErrorTest::Notify, base::Unretained(this)));
   sem_init(&ipc_error_sem_, 0, 0);
 }

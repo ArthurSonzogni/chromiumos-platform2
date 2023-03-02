@@ -671,10 +671,10 @@ const int32_t Camera3FlushRequestsTest::kNumberOfConfiguredStreams = 1;
 
 void Camera3FlushRequestsTest::SetUp() {
   Camera3FrameFixture::SetUp();
-  cam_device_.RegisterProcessCaptureResultCallback(base::Bind(
+  cam_device_.RegisterProcessCaptureResultCallback(base::BindRepeating(
       &Camera3FlushRequestsTest::ProcessCaptureResult, base::Unretained(this)));
-  cam_device_.RegisterNotifyCallback(
-      base::Bind(&Camera3FlushRequestsTest::Notify, base::Unretained(this)));
+  cam_device_.RegisterNotifyCallback(base::BindRepeating(
+      &Camera3FlushRequestsTest::Notify, base::Unretained(this)));
   sem_init(&flush_result_sem_, 0, 0);
 }
 
@@ -1241,8 +1241,8 @@ class Camera3ResultTimestampsTest
 
 void Camera3ResultTimestampsTest::SetUp() {
   Camera3FrameFixture::SetUp();
-  cam_device_.RegisterNotifyCallback(
-      base::Bind(&Camera3ResultTimestampsTest::Notify, base::Unretained(this)));
+  cam_device_.RegisterNotifyCallback(base::BindRepeating(
+      &Camera3ResultTimestampsTest::Notify, base::Unretained(this)));
 }
 
 void Camera3ResultTimestampsTest::Notify(const camera3_notify_msg* msg) {
@@ -1335,10 +1335,10 @@ const int32_t Camera3InvalidBufferTest::kNumberOfConfiguredStreams = 1;
 
 void Camera3InvalidBufferTest::SetUp() {
   Camera3FrameFixture::SetUp();
-  cam_device_.RegisterProcessCaptureResultCallback(base::Bind(
+  cam_device_.RegisterProcessCaptureResultCallback(base::BindRepeating(
       &Camera3InvalidBufferTest::ProcessCaptureResult, base::Unretained(this)));
-  cam_device_.RegisterNotifyCallback(
-      base::Bind(&Camera3InvalidBufferTest::Notify, base::Unretained(this)));
+  cam_device_.RegisterNotifyCallback(base::BindRepeating(
+      &Camera3InvalidBufferTest::Notify, base::Unretained(this)));
   sem_init(&capture_result_sem_, 0, 0);
 }
 
