@@ -631,7 +631,7 @@ class Service : public base::RefCounted<Service> {
   // Requests traffic counters from patchpanel and returns the result in
   // |callback|.
   mockable void RequestTrafficCounters(
-      Error* error, ResultVariantDictionariesCallback callback);
+      ResultVariantDictionariesCallback callback);
   // Resets traffic counters for |this|.
   mockable void ResetTrafficCounters(Error* error);
 

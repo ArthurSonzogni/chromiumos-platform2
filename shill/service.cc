@@ -1469,21 +1469,27 @@ void Service::RequestTrafficCountersCallback(
 }
 
 void Service::RequestTrafficCounters(
-    Error* error, ResultVariantDictionariesCallback callback) {
+    ResultVariantDictionariesCallback callback) {
   DeviceRefPtr device = manager_->FindDeviceFromService(this);
   if (!device) {
+    Error error;
     Error::PopulateAndLog(
-        FROM_HERE, error, Error::kOperationFailed,
+        FROM_HERE, &error, Error::kOperationFailed,
         "Failed to find device from service: " + GetRpcIdentifier().value());
+    std::move(callback).Run(error, std::vector<brillo::VariantDictionary>());
     return;
   }
+
   std::set<std::string> devices{device->link_name()};
   patchpanel::Client* client = manager_->patchpanel_client();
   if (!client) {
-    Error::PopulateAndLog(FROM_HERE, error, Error::kOperationFailed,
+    Error error;
+    Error::PopulateAndLog(FROM_HERE, &error, Error::kOperationFailed,
                           "Failed to get patchpanel client");
+    std::move(callback).Run(error, std::vector<brillo::VariantDictionary>());
     return;
   }
+
   client->GetTrafficCounters(
       devices,
       base::BindOnce(&Service::RequestTrafficCountersCallback,

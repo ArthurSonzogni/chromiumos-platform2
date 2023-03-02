@@ -2535,10 +2535,8 @@ TEST_F(ServiceTest, RequestTrafficCounters) {
   expected_traffic_counters.push_back(chrome_dict);
   expected_traffic_counters.push_back(user_dict);
 
-  Error error;
   bool successfully_requested_traffic_counters = false;
   service_->RequestTrafficCounters(
-      &error,
       base::BindOnce(
           [](bool* success,
              std::vector<brillo::VariantDictionary> expected_traffic_counters,
