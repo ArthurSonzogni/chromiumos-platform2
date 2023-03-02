@@ -95,6 +95,8 @@ install_and_check_seccomp_policy("diagnostics_seccomp") {
       "init/${_arch}/wilco_dtc_supportd-seccomp.policy",
     ]
   }
+  required_syscalls = []
+  denied_syscalls = []
 }
 
 install_config("install_dbus_config") {
