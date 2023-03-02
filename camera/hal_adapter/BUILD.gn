@@ -13,7 +13,7 @@ group("all") {
     ":install_dbus_cros_camera_conf",
   ]
 
-  if (use.cheets && !use.arc_camera1) {
+  if (use.cheets) {
     deps += [ ":install_init_camera_rc" ]
   }
 }
@@ -81,7 +81,7 @@ install_seccomp_policy("install_cros_camera_policy") {
   install_path = "/usr/share/policy"
 }
 
-if (use.cheets && !use.arc_camera1) {
+if (use.cheets) {
   install_config("install_init_camera_rc") {
     sources = [ "init/init.camera.rc" ]
     install_path = "/build/rootfs/opt/google/containers/android/vendor/etc/init"

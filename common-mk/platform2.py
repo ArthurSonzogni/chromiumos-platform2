@@ -33,7 +33,6 @@ _IUSE = [
     "android_vm_rvc",
     "android_vm_tm",
     "arc_adb_sideloading",
-    "arc_camera1",
     "arc_erofs",
     "arc_hw_oemcrypto",
     "arcpp",
