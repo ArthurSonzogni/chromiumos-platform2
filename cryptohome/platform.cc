@@ -474,6 +474,7 @@ int64_t Platform::GetQuotaCurrentSpaceForUid(const base::FilePath& device,
   struct dqblk dq = {};
   if (quotactl(QCMD(Q_GETQUOTA, USRQUOTA), device.value().c_str(), user_id,
                reinterpret_cast<char*>(&dq)) != 0) {
+    PLOG(ERROR) << "quotactl failed for user " << user_id;
     return -1;
   }
   return dq.dqb_curspace;
