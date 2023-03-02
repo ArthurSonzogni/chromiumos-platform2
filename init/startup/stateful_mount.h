@@ -15,7 +15,6 @@
 #include <brillo/blkdev_utils/lvm.h>
 #include <metrics/bootstat.h>
 
-#include "init/crossystem.h"
 #include "init/startup/flags.h"
 #include "init/startup/platform_impl.h"
 

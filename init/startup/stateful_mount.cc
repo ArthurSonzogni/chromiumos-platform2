@@ -32,8 +32,6 @@
 #include <metrics/bootstat.h>
 #include <rootdev/rootdev.h>
 
-#include "init/crossystem.h"
-#include "init/crossystem_impl.h"
 #include "init/startup/constants.h"
 #include "init/startup/flags.h"
 #include "init/startup/platform_impl.h"

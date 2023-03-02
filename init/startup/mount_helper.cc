@@ -17,8 +17,6 @@
 #include <brillo/process/process.h>
 
 #include "init/clobber_state.h"
-#include "init/crossystem.h"
-#include "init/crossystem_impl.h"
 #include "init/startup/flags.h"
 #include "init/startup/mount_helper.h"
 #include "init/startup/platform_impl.h"
