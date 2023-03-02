@@ -46,7 +46,6 @@ const Info kInfos[Error::kNumErrors] = {
     {kErrorResultNotRegistered, "Not registered"},
     {kErrorResultNotSupported, "Not supported"},
     {kErrorResultOperationAborted, "Operation aborted"},
-    {kErrorResultOperationInitiated, "Operation initiated"},
     {kErrorResultOperationTimeout, "Operation timeout"},
     {kErrorResultPassphraseRequired, "Passphrase required"},
     {kErrorResultPermissionDenied, "Permission denied"},

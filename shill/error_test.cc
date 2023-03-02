@@ -116,8 +116,6 @@ TEST(ErrorTest, GetDBusResult) {
             Error::GetDBusResult(Error::kNotSupported));
   EXPECT_EQ(kErrorResultOperationAborted,
             Error::GetDBusResult(Error::kOperationAborted));
-  EXPECT_EQ(kErrorResultOperationInitiated,
-            Error::GetDBusResult(Error::kOperationInitiated));
   EXPECT_EQ(kErrorResultOperationTimeout,
             Error::GetDBusResult(Error::kOperationTimeout));
   EXPECT_EQ(kErrorResultPassphraseRequired,

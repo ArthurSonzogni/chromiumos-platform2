@@ -226,7 +226,6 @@ void ManagerDBusAdaptor::SetNetworkThrottlingStatus(
 void ManagerDBusAdaptor::EnableTechnology(DBusMethodResponsePtr<> response,
                                           const std::string& technology_name) {
   SLOG(this, 2) << __func__ << ": " << technology_name;
-  Error e(Error::kOperationInitiated);
   const bool kPersistentSave = true;
   manager_->SetEnabledStateForTechnology(
       technology_name, true, kPersistentSave,
@@ -236,7 +235,6 @@ void ManagerDBusAdaptor::EnableTechnology(DBusMethodResponsePtr<> response,
 void ManagerDBusAdaptor::DisableTechnology(DBusMethodResponsePtr<> response,
                                            const std::string& technology_name) {
   SLOG(this, 2) << __func__ << ": " << technology_name;
-  Error e(Error::kOperationInitiated);
   const bool kPersistentSave = true;
   manager_->SetEnabledStateForTechnology(
       technology_name, false, kPersistentSave,

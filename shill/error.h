@@ -41,7 +41,6 @@ class Error {
     kNotRegistered,
     kNotSupported,
     kOperationAborted,
-    kOperationInitiated,
     kOperationTimeout,
     kPassphraseRequired,
     kPermissionDenied,
@@ -92,8 +91,7 @@ class Error {
   const std::string& message() const { return message_; }
 
   bool IsSuccess() const { return type_ == kSuccess; }
-  bool IsFailure() const { return !IsSuccess() && !IsOngoing(); }
-  bool IsOngoing() const { return type_ == kOperationInitiated; }
+  bool IsFailure() const { return !IsSuccess(); }
 
   static std::string GetDBusResult(Type type);
   static std::string GetDefaultMessage(Type type);

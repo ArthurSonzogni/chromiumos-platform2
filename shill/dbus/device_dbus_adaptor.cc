@@ -194,7 +194,6 @@ void DeviceDBusAdaptor::ChangePin(DBusMethodResponsePtr<> response,
                                   const std::string& new_pin) {
   SLOG(this, 2) << __func__;
 
-  Error e(Error::kOperationInitiated);
   device_->ChangePin(old_pin, new_pin,
                      GetMethodReplyCallback(std::move(response)));
 }
@@ -202,7 +201,6 @@ void DeviceDBusAdaptor::ChangePin(DBusMethodResponsePtr<> response,
 void DeviceDBusAdaptor::Reset(DBusMethodResponsePtr<> response) {
   SLOG(this, 2) << __func__;
 
-  Error e(Error::kOperationInitiated);
   device_->Reset(GetMethodReplyCallback(std::move(response)));
 }
 
@@ -218,7 +216,6 @@ void DeviceDBusAdaptor::SetUsbEthernetMacAddressSource(
     DBusMethodResponsePtr<> response, const std::string& source) {
   SLOG(this, 2) << __func__;
 
-  Error e(Error::kOperationInitiated);
   device_->SetUsbEthernetMacAddressSource(
       source, GetMethodReplyCallback(std::move(response)));
 }

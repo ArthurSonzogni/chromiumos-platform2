@@ -367,7 +367,6 @@ TEST_F(DeviceTest, SetEnabledNonPersistent) {
   EXPECT_TRUE(device_->enabled_pending_);
 
   // Enable while already enabled.
-  error.Populate(Error::kOperationInitiated);
   device_->enabled_persistent_ = false;
   device_->enabled_pending_ = true;
   device_->enabled_ = true;
@@ -378,7 +377,6 @@ TEST_F(DeviceTest, SetEnabledNonPersistent) {
   EXPECT_TRUE(error.IsSuccess());
 
   // Enable while enabled but disabling.
-  error.Populate(Error::kOperationInitiated);
   device_->enabled_pending_ = false;
   SetEnabledSync(device_.get(), true, false, &error);
   EXPECT_FALSE(device_->enabled_persistent_);
@@ -387,7 +385,6 @@ TEST_F(DeviceTest, SetEnabledNonPersistent) {
   EXPECT_TRUE(error.IsSuccess());
 
   // Disable while already disabled.
-  error.Populate(Error::kOperationInitiated);
   device_->enabled_ = false;
   SetEnabledSync(device_.get(), false, false, &error);
   EXPECT_FALSE(device_->enabled_persistent_);
@@ -396,7 +393,6 @@ TEST_F(DeviceTest, SetEnabledNonPersistent) {
   EXPECT_TRUE(error.IsSuccess());
 
   // Disable while already enabling.
-  error.Populate(Error::kOperationInitiated);
   device_->enabled_pending_ = true;
   SetEnabledSync(device_.get(), false, false, &error);
   EXPECT_FALSE(device_->enabled_persistent_);
@@ -415,7 +411,6 @@ TEST_F(DeviceTest, SetEnabledPersistent) {
   EXPECT_TRUE(device_->enabled_pending_);
 
   // Enable while already enabled (but not persisted).
-  error.Populate(Error::kOperationInitiated);
   device_->enabled_persistent_ = false;
   device_->enabled_pending_ = true;
   device_->enabled_ = true;
@@ -426,7 +421,6 @@ TEST_F(DeviceTest, SetEnabledPersistent) {
   EXPECT_TRUE(error.IsSuccess());
 
   // Enable while enabled but disabling.
-  error.Populate(Error::kOperationInitiated);
   device_->enabled_pending_ = false;
   SetEnabledSync(device_.get(), true, true, &error);
   EXPECT_TRUE(device_->enabled_persistent_);
@@ -435,7 +429,6 @@ TEST_F(DeviceTest, SetEnabledPersistent) {
   EXPECT_EQ(Error::kOperationFailed, error.type());
 
   // Disable while already disabled (persisted).
-  error.Populate(Error::kOperationInitiated);
   device_->enabled_ = false;
   SetEnabledSync(device_.get(), false, true, &error);
   EXPECT_FALSE(device_->enabled_persistent_);
@@ -444,7 +437,6 @@ TEST_F(DeviceTest, SetEnabledPersistent) {
   EXPECT_TRUE(error.IsSuccess());
 
   // Disable while already enabling.
-  error.Populate(Error::kOperationInitiated);
   device_->enabled_pending_ = true;
   SetEnabledSync(device_.get(), false, true, &error);
   EXPECT_FALSE(device_->enabled_persistent_);

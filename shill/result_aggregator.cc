@@ -44,7 +44,6 @@ ResultAggregator::~ResultAggregator() {
 
 void ResultAggregator::ReportResult(const Error& error) {
   LOG(INFO) << "Error type " << error << " reported";
-  CHECK(!error.IsOngoing());  // We want the final result.
   got_result_ = true;
   if (error_.IsSuccess()) {  // Only copy first |error|.
     error_.CopyFrom(error);
