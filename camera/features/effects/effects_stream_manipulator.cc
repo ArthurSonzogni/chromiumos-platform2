@@ -136,13 +136,14 @@ class RenderedImageObserver : public ProcessedFrameObserver {
 };
 
 EffectsConfig ConvertMojoConfig(cros::mojom::EffectsConfigPtr effects_config) {
+  // Note: We don't copy over the GPU api fields here, since we have no
+  //       need to control them from Chrome at this stage. It will use
+  //       the default from effects_pipeline_types.h
   return EffectsConfig{
       .relight_enabled = effects_config->relight_enabled,
       .blur_enabled = effects_config->blur_enabled,
       .replace_enabled = effects_config->replace_enabled,
       .blur_level = static_cast<cros::BlurLevel>(effects_config->blur_level),
-      .segmentation_gpu_api =
-          static_cast<cros::GpuApi>(effects_config->segmentation_gpu_api),
       .graph_max_frames_in_flight = effects_config->graph_max_frames_in_flight,
   };
 }
