@@ -593,8 +593,8 @@ Client::IPConfig Client::ParseIPConfigsProperty(
       continue;
     }
 
-    const IPAddress ip_addr(addr);
-    if (ip_addr.family() == IPAddress::kFamilyUnknown) {
+    const auto ip_addr = IPAddress::CreateFromString(addr);
+    if (!ip_addr.has_value()) {
       LOG(WARNING) << "Invalid address [" << addr << "] in IPConfig ["
                    << path.value() << "] on device [" << device_path << "]";
       continue;
@@ -617,7 +617,8 @@ Client::IPConfig Client::ParseIPConfigsProperty(
                    << device_path << "]";
       continue;
     }
-    if ((ip_addr.family() == IPAddress::kFamilyIPv4 && len > 32) || len > 128) {
+    if ((ip_addr->family() == IPAddress::kFamilyIPv4 && len > 32) ||
+        len > 128) {
       LOG(WARNING) << "Invalid property [" << kPrefixlenProperty
                    << "] in IPConfig [" << path.value() << "] on device ["
                    << device_path << "]";
@@ -627,11 +628,11 @@ Client::IPConfig Client::ParseIPConfigsProperty(
     // While multiple IPv6 addresses are valid, we expect shill to provide at
     // most one for now.
     // TODO(garrick): Support multiple IPv6 configurations.
-    if ((ip_addr.family() == IPAddress::kFamilyIPv4 &&
+    if ((ip_addr->family() == IPAddress::kFamilyIPv4 &&
          !ipconfig.ipv4_address.empty()) ||
-        (ip_addr.family() == IPAddress::kFamilyIPv6 &&
+        (ip_addr->family() == IPAddress::kFamilyIPv6 &&
          !ipconfig.ipv6_address.empty())) {
-      LOG(WARNING) << "Duplicate [" << ip_addr.family() << "] IPConfig found"
+      LOG(WARNING) << "Duplicate [" << ip_addr->family() << "] IPConfig found"
                    << " on device [" << device_path << "]";
       continue;
     }
@@ -646,7 +647,7 @@ Client::IPConfig Client::ParseIPConfigsProperty(
       continue;
     }
 
-    if (ip_addr.family() == IPAddress::kFamilyIPv4) {
+    if (ip_addr->family() == IPAddress::kFamilyIPv4) {
       ipconfig.ipv4_prefix_length = len;
       ipconfig.ipv4_address = addr;
       ipconfig.ipv4_gateway = gw;
