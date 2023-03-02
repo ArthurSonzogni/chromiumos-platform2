@@ -2285,7 +2285,7 @@ TEST_F(CellularTest, BuildApnTryListSetApn) {
   EXPECT_EQ(attach_apn_try_list[1], apn_modem);
   EXPECT_EQ(attach_apn_try_list[2], attach_empty_apn);
 
-  // Verify that a required MODB APN blocks any User APNs.
+  // Verify that a required MODB APN blocks any Custom APNs.
   Stringmap apn_required(
       {{kApnProperty, "apn_required"},
        {kApnTypesProperty, ApnList::JoinApnTypes({kApnTypeIA})},
@@ -2313,7 +2313,7 @@ TEST_F(CellularTest, BuildApnTryListSetApn) {
   EXPECT_EQ(default_apn_try_list[3], default_empty_apn);
 }
 
-TEST_F(CellularTest, BuildApnTryListSetUserApnList) {
+TEST_F(CellularTest, BuildApnTryListSetCustomApnList) {
   // The default and attach try list always have an additional empty APN
   // fallback added automatically
   Stringmap default_empty_apn =
@@ -2347,10 +2347,10 @@ TEST_F(CellularTest, BuildApnTryListSetUserApnList) {
   EXPECT_EQ(default_apn_try_list[1], apn_modb);
   EXPECT_EQ(default_apn_try_list[2], default_empty_apn);
 
-  // Check that when an empty UserAPnList is used, the APNs from the modb and
+  // Check that when an empty CustomApnList is used, the APNs from the modb and
   // modem are included, as well as the empty APN fallback
   CellularService* service = SetService();
-  service->set_user_apn_list_for_testing(Stringmaps());
+  service->set_custom_apn_list_for_testing(Stringmaps());
   default_apn_try_list = device_->BuildDefaultApnTryList();
   attach_apn_try_list = device_->BuildAttachApnTryList();
   ASSERT_EQ(attach_apn_try_list.size(), 2);
@@ -2361,7 +2361,7 @@ TEST_F(CellularTest, BuildApnTryListSetUserApnList) {
   EXPECT_EQ(default_apn_try_list[1], apn_modb);
   EXPECT_EQ(default_apn_try_list[2], default_empty_apn);
 
-  // Set UserApnList
+  // Set CustomApnList
   Stringmap apnP({{kApnProperty, "apnP"},
                   {kApnTypesProperty, ApnList::JoinApnTypes({kApnTypeIA})},
                   {kApnSourceProperty, kApnSourceUi}});
@@ -2376,7 +2376,7 @@ TEST_F(CellularTest, BuildApnTryListSetUserApnList) {
                   {kApnTypesProperty, ApnList::JoinApnTypes({kApnTypeDefault})},
                   {kApnSourceProperty, kApnSourceAdmin}});
   Stringmaps custom_list = {apnP, apnQ, apnR, apnS};
-  service->set_user_apn_list_for_testing(custom_list);
+  service->set_custom_apn_list_for_testing(custom_list);
   default_apn_try_list = device_->BuildDefaultApnTryList();
   attach_apn_try_list = device_->BuildAttachApnTryList();
   ASSERT_EQ(default_apn_try_list.size(), 3);
@@ -2387,7 +2387,7 @@ TEST_F(CellularTest, BuildApnTryListSetUserApnList) {
   EXPECT_EQ(default_apn_try_list[1], apnR);
   EXPECT_EQ(default_apn_try_list[2], apnS);
 
-  // Verify that a required MODB APN blocks any User APNs.
+  // Verify that a required MODB APN blocks any Custom APNs.
   Stringmap apn_required(
       {{kApnProperty, "apn_required"},
        {kApnTypesProperty, ApnList::JoinApnTypes({kApnTypeIA})},
@@ -2403,7 +2403,7 @@ TEST_F(CellularTest, BuildApnTryListSetUserApnList) {
   ASSERT_EQ(attach_apn_try_list.size(), 1);
   // Modem APNs are not excluded
   EXPECT_EQ(attach_apn_try_list[0], apn_required);
-  // UserApnList has exclusive priority if no required APNs exist.
+  // CustomApnList has exclusive priority if no required APNs exist.
   ASSERT_EQ(default_apn_try_list.size(), 3);
   EXPECT_EQ(default_apn_try_list[0], apnQ);
   EXPECT_EQ(default_apn_try_list[1], apnR);

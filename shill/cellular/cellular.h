@@ -257,8 +257,8 @@ class Cellular : public Device,
   void OnProfilesChanged();
 
   // Returns a list of APNs of type |apn_type| to try. The logic when using
-  // SetApn and SetUserApnList(APN UI revamp) differs. When using
-  // |SetUserApnList| and the user has set at least 1 APN , only custom APNs
+  // SetApn and SetCustomApnList(APN UI revamp) differs. When using
+  // |SetCustomApnList| and the user has set at least 1 APN , only custom APNs
   // will be included in the list, otherwise the logic is the same as |SetApn|.
   // The APNs returned when using |SetApn| are in the following order:
   // - the APN, if any, that was set by the user(for SetApn only)

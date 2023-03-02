@@ -106,8 +106,8 @@ class CellularService : public Service {
   const std::string& ppp_username() const { return ppp_username_; }
   const std::string& ppp_password() const { return ppp_password_; }
 
-  const std::optional<Stringmaps>& user_apn_list() const {
-    return user_apn_list_;
+  const std::optional<Stringmaps>& custom_apn_list() const {
+    return custom_apn_list_;
   }
 
   Stringmap* GetUserSpecifiedApn();
@@ -128,7 +128,7 @@ class CellularService : public Service {
   static const char kStoragePPPUsername[];
   static const char kStoragePPPPassword[];
   static const char kStorageSimCardId[];
-  static const char kStorageUserApnList[];
+  static const char kStorageCustomApnList[];
   static const char kStorageAllowRoaming[];
 
   // Used to copy the value of Device.AllowRoaming by service_provider for
@@ -141,8 +141,8 @@ class CellularService : public Service {
   void set_apn_info_for_testing(const Stringmap& apn_info) {
     apn_info_ = apn_info;
   }
-  void set_user_apn_list_for_testing(const Stringmaps& user_apn_list) {
-    user_apn_list_ = user_apn_list;
+  void set_custom_apn_list_for_testing(const Stringmaps& custom_apn_list) {
+    custom_apn_list_ = custom_apn_list;
   }
 
  protected:
@@ -222,8 +222,8 @@ class CellularService : public Service {
   bool SetAllowRoaming(const bool& value, Error* error);
   bool GetAllowRoaming(Error* /*error*/);
   Stringmap ValidateCustomApn(const Stringmap& value, bool using_apn_revamp_ui);
-  Stringmaps GetUserApnList(Error* error);
-  bool SetUserApnList(const Stringmaps& value, Error* error);
+  Stringmaps GetCustomApnList(Error* error);
+  bool SetCustomApnList(const Stringmaps& value, Error* error);
 
   // The IMSI for the SIM. This is saved in the Profile and emitted as a
   // property so that it is available for non primary SIM Profiles.
@@ -246,7 +246,7 @@ class CellularService : public Service {
   Stringmap olp_;
   std::string usage_url_;
   Stringmap apn_info_;
-  std::optional<Stringmaps> user_apn_list_;
+  std::optional<Stringmaps> custom_apn_list_;
   Stringmap last_good_apn_info_;
   // Stores the attach APN used for the initial EPS settings
   Stringmap last_attach_apn_info_;

@@ -179,7 +179,10 @@ const char kCellularLastGoodApnProperty[] = "Cellular.LastGoodAPN";
 const char kCellularLastAttachApnProperty[] = "Cellular.LastAttachAPN";
 const char kCellularPPPPasswordProperty[] = "Cellular.PPP.Password";
 const char kCellularPPPUsernameProperty[] = "Cellular.PPP.Username";
+// TODO(b/271332404): Remove kCellularUserApnListProperty when is no longer used
+// in Chrome.
 const char kCellularUserApnListProperty[] = "Cellular.UserAPNList";
+const char kCellularCustomApnListProperty[] = "Cellular.CustomAPNList";
 const char kNetworkTechnologyProperty[] = "Cellular.NetworkTechnology";
 const char kOutOfCreditsProperty[] = "Cellular.OutOfCredits";
 const char kPaymentPortalProperty[] = "Cellular.Olp";

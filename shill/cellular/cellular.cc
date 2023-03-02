@@ -1100,7 +1100,7 @@ void Cellular::NotifyDetailedCellularConnectionResult(
   if (service_) {
     roaming_state = service_->roaming_state();
     iccid_len = service_->iccid().length();
-    use_apn_revamp_ui = service_->user_apn_list().has_value();
+    use_apn_revamp_ui = service_->custom_apn_list().has_value();
     // If EID is not empty, report as eSIM else report as pSIM
     if (!service_->eid().empty())
       sim_type = kSimTypeEsim;
@@ -2307,14 +2307,14 @@ std::deque<Stringmap> Cellular::BuildApnTryList(
   std::vector<const Stringmap*> custom_apns_info;
   const Stringmap* custom_apn_info = nullptr;
   const Stringmap* last_good_apn_info = nullptr;
-  const Stringmaps* user_apn_list = nullptr;
+  const Stringmaps* custom_apn_list = nullptr;
   // Add custom APNs(from UI or Admin)
   if (!modb_required_apn_exists && service_) {
-    if (service_->user_apn_list().has_value()) {
-      user_apn_list = &service_->user_apn_list().value();
-      for (const auto& user_apn : *user_apn_list) {
-        if (ApnList::IsApnType(user_apn, apn_type))
-          custom_apns_info.emplace_back(&user_apn);
+    if (service_->custom_apn_list().has_value()) {
+      custom_apn_list = &service_->custom_apn_list().value();
+      for (const auto& custom_apn : *custom_apn_list) {
+        if (ApnList::IsApnType(custom_apn, apn_type))
+          custom_apns_info.emplace_back(&custom_apn);
       }
     } else if (service_->GetUserSpecifiedApn() &&
                ApnList::IsApnType(*service_->GetUserSpecifiedApn(), apn_type)) {
@@ -2323,15 +2323,15 @@ std::deque<Stringmap> Cellular::BuildApnTryList(
     }
 
     last_good_apn_info = service_->GetLastGoodApn();
-    for (auto user_apn : custom_apns_info) {
-      apn_try_list.push_back(*user_apn);
+    for (auto custom_apn : custom_apns_info) {
+      apn_try_list.push_back(*custom_apn);
       if (!base::Contains(apn_try_list.back(), kApnSourceProperty))
         apn_try_list.back()[kApnSourceProperty] = kApnSourceUi;
 
       SLOG(3) << LoggingTag() << ": " << __func__
               << ": Adding User Specified APN: "
               << GetPrintableApnStringmap(apn_try_list.back());
-      if (user_apn_list ||
+      if (custom_apn_list ||
           (last_good_apn_info &&
            CompareApns(*last_good_apn_info, apn_try_list.back()))) {
         add_last_good_apn = false;
@@ -2340,7 +2340,7 @@ std::deque<Stringmap> Cellular::BuildApnTryList(
   }
   // With the revamp APN UI, if the user has entered an APN in the UI, only
   // customs APNs are used. Return early.
-  if (user_apn_list && user_apn_list->size() > 0) {
+  if (custom_apn_list && custom_apn_list->size() > 0) {
     ValidateApnTryList(apn_try_list);
     return apn_try_list;
   }
@@ -2368,7 +2368,7 @@ std::deque<Stringmap> Cellular::BuildApnTryList(
       continue;
     // Updating the origin of the custom APN is only needed for the old UI,
     // since the APN UI revamp will include the correct APN source.
-    if (!user_apn_list && custom_apn_info &&
+    if (!custom_apn_list && custom_apn_info &&
         CompareApns(*custom_apn_info, apn) &&
         base::Contains(apn, kApnSourceProperty)) {
       // If |custom_apn_info| is not null, it is located at the first position
@@ -2751,7 +2751,7 @@ void Cellular::UpdateHomeProvider() {
   // On the new APN UI revamp, modem and modb APNs are not shown to
   // the user and the behavior of modem APNs should not be altered.
   bool merge_similar_apns =
-      !(service_ && service_->user_apn_list().has_value());
+      !(service_ && service_->custom_apn_list().has_value());
   ApnList apn_list(merge_similar_apns);
   // TODO(b:180004055): remove this when we have captive portal checks that
   // mark APNs as bad and can skip the null APN for data connections

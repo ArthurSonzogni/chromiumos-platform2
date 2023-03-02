@@ -2206,7 +2206,7 @@ void CellularCapability3gpp::OnProfilesChanged(const Profiles& profiles) {
   }
 
   if (!cellular()->mobile_operator_info()->IsMobileNetworkOperatorKnown()) {
-    // If the carrier is not in shill's db, shill should use the user APN or
+    // If the carrier is not in shill's db, shill should use the custom APN or
     // at least clear the attach APN, so the modem can clear any previous value
     // and try to attach on its own.
     SLOG(this, 2) << "Mobile operator not yet identified. Posted deferred "
