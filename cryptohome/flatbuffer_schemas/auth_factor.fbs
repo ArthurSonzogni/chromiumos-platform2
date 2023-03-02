@@ -37,13 +37,17 @@ table SerializedSmartCardMetadata {
   public_key_spki_der:[ubyte] (id: 0);
 }
 
+// Metadata for a `Fingerprint` auth factor.
+table SerializedFingerprintMetadata {}
+
 // Union that holds auth factor's metadata.
 union SerializedAuthFactorMetadata {
   SerializedPasswordMetadata,
   SerializedPinMetadata,
   SerializedCryptohomeRecoveryMetadata,
   SerializedKioskMetadata,
-  SerializedSmartCardMetadata
+  SerializedSmartCardMetadata,
+  SerializedFingerprintMetadata
 }
 
 // Container that stores information about auth factor to be persisted on disk.

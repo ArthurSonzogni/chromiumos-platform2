@@ -143,6 +143,13 @@ flatbuffers::Offset<SerializedSmartCardMetadata> SerializeMetadataToOffset(
   return metadata_builder.Finish();
 }
 
+flatbuffers::Offset<SerializedFingerprintMetadata> SerializeMetadataToOffset(
+    const FingerprintAuthFactorMetadata& fingerprint_metadata,
+    flatbuffers::FlatBufferBuilder* builder) {
+  SerializedFingerprintMetadataBuilder metadata_builder(*builder);
+  return metadata_builder.Finish();
+}
+
 // Serializes the factor-specific metadata into the given flatbuffer builder.
 // Returns the flatbuffer offset, to be used for building the outer table.
 //
@@ -174,6 +181,12 @@ flatbuffers::Offset<void> SerializeMetadataToOffset(
                  std::get_if<KioskAuthFactorMetadata>(&metadata.metadata)) {
     *metadata_type = SerializedAuthFactorMetadata::SerializedKioskMetadata;
     return SerializeMetadataToOffset(*kiosk_metadata, builder).Union();
+  } else if (const auto* fingerprint_metadata =
+                 std::get_if<FingerprintAuthFactorMetadata>(
+                     &metadata.metadata)) {
+    *metadata_type =
+        SerializedAuthFactorMetadata::SerializedFingerprintMetadata;
+    return SerializeMetadataToOffset(*fingerprint_metadata, builder).Union();
   }
   LOG(ERROR) << "Missing or unexpected auth factor metadata: "
              << metadata.metadata.index();
@@ -272,6 +285,14 @@ bool ConvertKioskMetadataFromFlatbuffer(
   return true;
 }
 
+bool ConvertFingerprintMetadataFromFlatbuffer(
+    const SerializedFingerprintMetadata& flatbuffer_table,
+    AuthFactorMetadata* metadata) {
+  // There's no metadata currently.
+  metadata->metadata = FingerprintAuthFactorMetadata();
+  return true;
+}
+
 bool ParseAuthFactorFlatbuffer(const Blob& flatbuffer,
                                AuthBlockState* auth_block_state,
                                AuthFactorMetadata* metadata) {
@@ -338,6 +359,15 @@ bool ParseAuthFactorFlatbuffer(const Blob& flatbuffer,
                  auth_factor_table->metadata_as_SerializedKioskMetadata()) {
     if (!ConvertKioskMetadataFromFlatbuffer(*kiosk_metadata, metadata)) {
       LOG(ERROR) << "Failed to convert SerializedAuthFactor kiosk metadata";
+      return false;
+    }
+  } else if (const SerializedFingerprintMetadata* fingerprint_metadata =
+                 auth_factor_table
+                     ->metadata_as_SerializedFingerprintMetadata()) {
+    if (!ConvertFingerprintMetadataFromFlatbuffer(*fingerprint_metadata,
+                                                  metadata)) {
+      LOG(ERROR)
+          << "Failed to convert SerializedAuthFactor fingerprint metadata";
       return false;
     }
   } else {
