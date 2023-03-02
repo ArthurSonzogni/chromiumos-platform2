@@ -159,6 +159,7 @@ static_library("libconcierge") {
     "../concierge/service.cc",
     "../concierge/service_arc.cc",
     "../concierge/service_plugin.cc",
+    "../concierge/shadercached_helper.cc",
     "../concierge/shared_data.cc",
     "../concierge/shill_client.cc",
     "../concierge/sibling_vms.cc",
