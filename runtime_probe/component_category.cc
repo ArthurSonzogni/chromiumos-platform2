@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "runtime_probe/component_category.h"
+
 #include <memory>
 #include <utility>
 
@@ -9,7 +11,7 @@
 #include <base/values.h>
 #include <brillo/map_utils.h>
 
-#include "runtime_probe/component_category.h"
+#include "runtime_probe/probe_statement.h"
 
 namespace runtime_probe {
 

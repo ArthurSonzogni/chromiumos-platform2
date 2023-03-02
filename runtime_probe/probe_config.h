@@ -9,6 +9,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
@@ -68,6 +69,12 @@ class ProbeConfig {
 
   // Path to the probe config file.
   const base::FilePath& path() const { return path_; }
+
+  // Set |category| with the category name |category_name| for testing.
+  void SetCategoryForTesting(std::string category_name,
+                             std::unique_ptr<ComponentCategory> category) {
+    category_[category_name] = std::move(category);
+  }
 
  private:
   // Private constructor used by factory methods only.
