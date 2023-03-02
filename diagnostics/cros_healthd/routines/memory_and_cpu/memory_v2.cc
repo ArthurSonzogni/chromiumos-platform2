@@ -280,7 +280,7 @@ void MemoryRoutineV2::ReadNewMemtesterResult() {
       return;
     }
     offset += read_len;
-    output.append(buf, 0, read_len);
+    output.append(buf, read_len);
   }
 
   // Append a new std::vector<std::string> for each line, and
