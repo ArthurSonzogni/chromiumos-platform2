@@ -205,37 +205,6 @@ class KeysetManagement {
       std::unique_ptr<AuthBlockState> auth_state);
 
  private:
-  // Adds initial keyset for obfuscated username with |file_system_keyset|. Adds
-  // the key data given by |key_data| and challenge credentials info given by
-  // |challenge_credentials_keyset_info| to the created keyset. Wraps keyset
-  // with |encrypt_vk_callback| and persists to disk.
-  CryptohomeStatusOr<std::unique_ptr<VaultKeyset>> AddInitialKeysetImpl(
-      const VaultKeysetIntent& vk_intent,
-      const ObfuscatedUsername& obfuscated_username,
-      const KeyData& key_data,
-      const std::optional<SerializedVaultKeyset_SignatureChallengeInfo>&
-          challenge_credentials_keyset_info,
-      const FileSystemKeyset& file_system_keyset,
-      EncryptVkCallback encrypt_vk_callback);
-
-  // Generates a new keyset for |obfuscated_username_new| with |key_data_new|
-  // and the filesystem key from |vault_keyset_old| and persist to disk.  If
-  // |clobber| is true and there are no matching, labeled keys, then it does
-  // nothing; if there is an identically labeled key, it will overwrite it.
-  CryptohomeErrorCode AddKeysetImpl(
-      const VaultKeysetIntent& vk_intent,
-      const ObfuscatedUsername& obfuscated_username_new,
-      const std::string& key_label,
-      const KeyData& key_data_new,
-      const VaultKeyset& vault_keyset_old,
-      EncryptVkCallback encrypt_vk_callback,
-      bool clobber);
-
-  // Implements the common functionality for resaving a keyset with restore on
-  // error.
-  CryptohomeStatus ReSaveKeysetImpl(
-      VaultKeyset& vault_keyset, EncryptVkCallback encrypt_vk_callback) const;
-
   // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
   base::Time GetPerIndexTimestampFileData(const ObfuscatedUsername& obfuscated,
                                           int index);
