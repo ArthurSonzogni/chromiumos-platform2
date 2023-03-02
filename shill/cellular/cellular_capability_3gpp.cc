@@ -376,7 +376,7 @@ void CellularCapability3gpp::InitProxies() {
       control_interface()->CreateMM1ModemModem3gppProfileManagerProxy(
           cellular()->dbus_path(), cellular()->dbus_service());
 
-  modem_3gpp_profile_manager_proxy_->SetUpdatedCallback(base::Bind(
+  modem_3gpp_profile_manager_proxy_->SetUpdatedCallback(base::BindRepeating(
       &CellularCapability3gpp::OnModem3gppProfileManagerUpdatedSignal,
       weak_ptr_factory_.GetWeakPtr()));
 
@@ -397,7 +397,7 @@ void CellularCapability3gpp::InitProxies() {
 
   dbus_properties_proxy_ = control_interface()->CreateDBusPropertiesProxy(
       cellular()->dbus_path(), cellular()->dbus_service());
-  dbus_properties_proxy_->SetPropertiesChangedCallback(base::Bind(
+  dbus_properties_proxy_->SetPropertiesChangedCallback(base::BindRepeating(
       &CellularCapability3gpp::OnPropertiesChanged, base::Unretained(this)));
 
   // |sim_proxy_| is created when |sim_path_| is known.
@@ -2295,7 +2295,7 @@ void CellularCapability3gpp::On3gppRegistrationChanged(
           Metrics::kCellular3GPPRegistrationDelayedDropPosted);
     }
     SLOG(this, 2) << "Posted deferred registration state update";
-    registration_dropped_update_callback_.Reset(base::Bind(
+    registration_dropped_update_callback_.Reset(base::BindOnce(
         &CellularCapability3gpp::Handle3gppRegistrationChange,
         weak_ptr_factory_.GetWeakPtr(), state, operator_code, operator_name));
     cellular()->dispatcher()->PostDelayedTask(

@@ -285,7 +285,7 @@ class MobileOperatorMapper {
   // Owned by MobileOperatorMapper, may be created externally.
   std::vector<base::FilePath> database_paths_;
 
-  base::CancelableClosure notify_operator_changed_task_;
+  base::CancelableOnceClosure notify_operator_changed_task_;
 
   std::vector<const mobile_operator_db::MobileOperatorDB*> databases_;
   StringToMNOListMap mccmnc_to_mnos_;

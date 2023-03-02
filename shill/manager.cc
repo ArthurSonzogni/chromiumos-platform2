@@ -182,8 +182,6 @@ Manager::Manager(ControlInterface* control_interface,
 #if !defined(DISABLE_FLOSS)
       bluetooth_manager_(new BluetoothManager(control_interface)),
 #endif  // DISABLE_FLOSS
-      device_status_check_task_(
-          base::Bind(&Manager::DeviceStatusCheckTask, base::Unretained(this))),
       pending_traffic_counter_request_(false),
       termination_actions_(dispatcher),
       is_wake_on_lan_enabled_(true),
@@ -317,9 +315,11 @@ void Manager::Start() {
   power_manager_.reset(new PowerManager(control_interface_));
   power_manager_->Start(
       kTerminationActionsTimeout,
-      base::Bind(&Manager::OnSuspendImminent, weak_factory_.GetWeakPtr()),
-      base::Bind(&Manager::OnSuspendDone, weak_factory_.GetWeakPtr()),
-      base::Bind(&Manager::OnDarkSuspendImminent, weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&Manager::OnSuspendImminent,
+                          weak_factory_.GetWeakPtr()),
+      base::BindRepeating(&Manager::OnSuspendDone, weak_factory_.GetWeakPtr()),
+      base::BindRepeating(&Manager::OnDarkSuspendImminent,
+                          weak_factory_.GetWeakPtr()));
   upstart_.reset(new Upstart(control_interface_));
 #if !defined(DISABLE_FLOSS)
   if (!bluetooth_manager_->Start()) {
@@ -346,6 +346,8 @@ void Manager::Start() {
   InitializePatchpanelClient();
 
   // Start task for checking connection status.
+  device_status_check_task_.Reset(base::BindOnce(
+      &Manager::DeviceStatusCheckTask, weak_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE, device_status_check_task_.callback(),
                                kDeviceStatusCheckInterval);
 }
@@ -1743,7 +1745,7 @@ void Manager::SortServices() {
   // Defer this work to the event loop.
   if (sort_services_task_.IsCancelled()) {
     sort_services_task_.Reset(
-        base::Bind(&Manager::SortServicesTask, weak_factory_.GetWeakPtr()));
+        base::BindOnce(&Manager::SortServicesTask, weak_factory_.GetWeakPtr()));
     dispatcher_->PostTask(FROM_HERE, sort_services_task_.callback());
   }
 }
@@ -1903,7 +1905,7 @@ void Manager::ApplyAlwaysOnVpn(const ServiceRefPtr& physical_service) {
       std::min(always_on_vpn_connect_attempts_, kAlwaysOnVpnBackoffMaxShift);
   base::TimeDelta delay = (1 << shifter) * kAlwaysOnVpnBackoffDelay;
   always_on_vpn_connect_task_.Reset(
-      base::Bind(&Manager::ConnectAlwaysOnVpn, base::Unretained(this)));
+      base::BindOnce(&Manager::ConnectAlwaysOnVpn, base::Unretained(this)));
   dispatcher_->PostDelayedTask(FROM_HERE,
                                always_on_vpn_connect_task_.callback(), delay);
 
@@ -1990,6 +1992,8 @@ void Manager::DeviceStatusCheckTask() {
 
   DevicePresenceStatusCheck();
 
+  device_status_check_task_.Reset(base::BindOnce(
+      &Manager::DeviceStatusCheckTask, weak_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE, device_status_check_task_.callback(),
                                kDeviceStatusCheckInterval);
 }
@@ -2791,7 +2795,7 @@ void Manager::InitializePatchpanelClient() {
   patchpanel_client_ = patchpanel::Client::New();
   if (!patchpanel_client_) {
     LOG(ERROR) << "Failed to connect to patchpanel client";
-    init_patchpanel_client_task_.Reset(base::Bind(
+    init_patchpanel_client_task_.Reset(base::BindOnce(
         &Manager::InitializePatchpanelClient, weak_factory_.GetWeakPtr()));
     dispatcher_->PostDelayedTask(FROM_HERE,
                                  init_patchpanel_client_task_.callback(),
@@ -2803,7 +2807,7 @@ void Manager::InitializePatchpanelClient() {
   device_info_.OnPatchpanelClientReady();
 
   // Start task for refreshing traffic counters.
-  refresh_traffic_counter_task_.Reset(base::Bind(
+  refresh_traffic_counter_task_.Reset(base::BindOnce(
       &Manager::RefreshAllTrafficCountersTask, weak_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE,
                                refresh_traffic_counter_task_.callback(),
@@ -2833,7 +2837,7 @@ void Manager::RefreshAllTrafficCountersCallback(
 
 void Manager::RefreshAllTrafficCountersTask() {
   SLOG(2) << __func__;
-  refresh_traffic_counter_task_.Reset(base::Bind(
+  refresh_traffic_counter_task_.Reset(base::BindOnce(
       &Manager::RefreshAllTrafficCountersTask, weak_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE,
                                refresh_traffic_counter_task_.callback(),

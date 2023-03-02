@@ -83,8 +83,8 @@ bool CellularBearer::Init() {
     return false;
   }
 
-  dbus_properties_proxy_->SetPropertiesChangedCallback(
-      base::Bind(&CellularBearer::OnPropertiesChanged, base::Unretained(this)));
+  dbus_properties_proxy_->SetPropertiesChangedCallback(base::BindRepeating(
+      &CellularBearer::OnPropertiesChanged, base::Unretained(this)));
   UpdateProperties();
   return true;
 }

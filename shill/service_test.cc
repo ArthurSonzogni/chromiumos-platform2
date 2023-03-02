@@ -199,7 +199,7 @@ class ServiceTest : public PropertyStoreTest {
     return service_->SetAutoConnectFull(connect, error);
   }
 
-  const base::CancelableClosure& GetPendingConnectTask() {
+  const base::CancelableOnceClosure& GetPendingConnectTask() {
     return service_->pending_connect_task_;
   }
 
@@ -2539,7 +2539,7 @@ TEST_F(ServiceTest, RequestTrafficCounters) {
   bool successfully_requested_traffic_counters = false;
   service_->RequestTrafficCounters(
       &error,
-      base::Bind(
+      base::BindOnce(
           [](bool* success,
              std::vector<brillo::VariantDictionary> expected_traffic_counters,
              const Error& error,

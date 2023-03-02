@@ -286,7 +286,7 @@ class DeviceInfo {
   std::set<int> delayed_devices_;
 
   // Maintain a callback for the periodic link statistics poll task.
-  base::CancelableClosure request_link_statistics_callback_;
+  base::CancelableOnceClosure request_link_statistics_callback_;
 
   // Maintain the list of callbacks awaiting link ready event.
   // Used by VPNServices for tunnel (through calling CreateTunnel with

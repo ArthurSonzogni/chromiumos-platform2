@@ -371,7 +371,7 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
   }
 
   void SetMockRegistrationDroppedUpdateCallback() {
-    capability_->registration_dropped_update_callback_.Reset(base::Bind(
+    capability_->registration_dropped_update_callback_.Reset(base::BindOnce(
         &CellularCapability3gppTest::FakeCallback, base::Unretained(this)));
   }
 

@@ -254,7 +254,8 @@ bool Throttler::StartTCForCommands(const std::vector<std::string>& commands) {
   }
   tc_stdin_handler_.reset(io_handler_factory_->CreateIOReadyHandler(
       tc_stdin_, IOHandler::kModeOutput,
-      Bind(&Throttler::WriteTCCommands, weak_factory_.GetWeakPtr())));
+      base::BindRepeating(&Throttler::WriteTCCommands,
+                          weak_factory_.GetWeakPtr())));
   return true;
 }
 

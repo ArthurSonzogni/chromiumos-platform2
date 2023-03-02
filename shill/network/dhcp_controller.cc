@@ -372,8 +372,8 @@ std::vector<std::string> DHCPController::GetFlags() {
 void DHCPController::StartAcquisitionTimeout() {
   CHECK(lease_expiration_callback_.IsCancelled());
   lease_acquisition_timeout_callback_.Reset(
-      Bind(&DHCPController::ProcessAcquisitionTimeout,
-           weak_ptr_factory_.GetWeakPtr()));
+      base::BindOnce(&DHCPController::ProcessAcquisitionTimeout,
+                     weak_ptr_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE,
                                lease_acquisition_timeout_callback_.callback(),
                                lease_acquisition_timeout_);

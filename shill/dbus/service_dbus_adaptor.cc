@@ -225,14 +225,14 @@ void ServiceDBusAdaptor::RequestTrafficCounters(
   SLOG(this, 2) << __func__;
 
   Error e(Error::kOperationInitiated);
-  ResultVariantDictionariesCallback callback =
-      base::Bind(&ServiceDBusAdaptor::VariantDictionariesMethodReplyCallback,
-                 weak_factory_.GetWeakPtr(), base::Passed(&response));
-  service_->RequestTrafficCounters(&e, callback);
+  auto [cb1, cb2] = base::SplitOnceCallback(base::BindOnce(
+      &ServiceDBusAdaptor::VariantDictionariesMethodReplyCallback,
+      weak_factory_.GetWeakPtr(), std::move(response)));
+  service_->RequestTrafficCounters(&e, std::move(cb1));
   // Invoke response if command is completed synchronously (either success or
   // failure).
   if (!e.IsOngoing()) {
-    callback.Run(e, std::vector<brillo::VariantDictionary>());
+    std::move(cb2).Run(e, std::vector<brillo::VariantDictionary>());
   }
 }
 

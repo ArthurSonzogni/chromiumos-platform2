@@ -631,7 +631,7 @@ class Service : public base::RefCounted<Service> {
   // Requests traffic counters from patchpanel and returns the result in
   // |callback|.
   mockable void RequestTrafficCounters(
-      Error* error, const ResultVariantDictionariesCallback& callback);
+      Error* error, ResultVariantDictionariesCallback callback);
   // Resets traffic counters for |this|.
   mockable void ResetTrafficCounters(Error* error);
 
@@ -961,7 +961,7 @@ class Service : public base::RefCounted<Service> {
   // Refreshes and processes the traffic counters using |counters| and returns
   // the result through |callback|.
   void RequestTrafficCountersCallback(
-      const ResultVariantDictionariesCallback& callback,
+      ResultVariantDictionariesCallback callback,
       const std::vector<patchpanel::TrafficCounter>& counters);
 
   // Invokes |static_ipconfig_changed_callback_| to notify the listener of the
@@ -999,7 +999,7 @@ class Service : public base::RefCounted<Service> {
   // attempted while disconnecting. In the case that a distinct Connect
   // invocation occurs between disconnect completion and the invocation of this
   // task, this will be canceled to avoid spurious Connect errors.
-  base::CancelableClosure pending_connect_task_;
+  base::CancelableOnceClosure pending_connect_task_;
 
   std::string check_portal_;
   bool connectable_;
@@ -1038,7 +1038,7 @@ class Service : public base::RefCounted<Service> {
   EventHistory disconnects_;  // Connection drops.
   EventHistory misconnects_;  // Failures to connect.
 
-  base::CancelableClosure reenable_auto_connect_task_;
+  base::CancelableOnceClosure reenable_auto_connect_task_;
   base::TimeDelta auto_connect_cooldown_;
 
   ProfileRefPtr profile_;

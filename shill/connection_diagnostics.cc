@@ -254,8 +254,8 @@ void ConnectionDiagnostics::PingDNSServers() {
 
     if (!session_iter->second->Start(
             dns_server_ip_addr, iface_index_,
-            base::Bind(&ConnectionDiagnostics::OnPingDNSServerComplete,
-                       weak_ptr_factory_.GetWeakPtr(), i))) {
+            base::BindOnce(&ConnectionDiagnostics::OnPingDNSServerComplete,
+                           weak_ptr_factory_.GetWeakPtr(), i))) {
       LOG(ERROR) << iface_name_ << "Failed to initiate ping for DNS server at "
                  << dns_server_ip_addr.ToString();
       ++num_failed_icmp_session_start;
@@ -288,8 +288,9 @@ void ConnectionDiagnostics::PingHost(const IPAddress& address) {
       address.Equals(gateway_) ? kTypePingGateway : kTypePingTargetServer;
   if (!icmp_session_->Start(
           address, iface_index_,
-          base::Bind(&ConnectionDiagnostics::OnPingHostComplete,
-                     weak_ptr_factory_.GetWeakPtr(), event_type, address))) {
+          base::BindOnce(&ConnectionDiagnostics::OnPingHostComplete,
+                         weak_ptr_factory_.GetWeakPtr(), event_type,
+                         address))) {
     LOG(ERROR) << iface_name_ << ": failed to start ICMP session with "
                << address.ToString();
     AddEventWithMessage(

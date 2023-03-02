@@ -822,6 +822,8 @@ void Cellular::PollLocationTask() {
 
   PollLocation();
 
+  poll_location_task_.Reset(base::BindOnce(&Cellular::PollLocationTask,
+                                           weak_ptr_factory_.GetWeakPtr()));
   dispatcher()->PostDelayedTask(FROM_HERE, poll_location_task_.callback(),
                                 kPollLocationInterval);
 }
@@ -1245,8 +1247,8 @@ void Cellular::Connect(CellularService* service, Error* error) {
   OnConnecting();
   capability_->Connect(
       ApnList::ApnType::kDefault,
-      base::Bind(&Cellular::OnConnectReply, weak_ptr_factory_.GetWeakPtr(),
-                 service->iccid(), service->is_in_user_connect()));
+      base::BindOnce(&Cellular::OnConnectReply, weak_ptr_factory_.GetWeakPtr(),
+                     service->iccid(), service->is_in_user_connect()));
 
   metrics()->NotifyDeviceConnectStarted(interface_index());
 }
@@ -1960,8 +1962,8 @@ void Cellular::SetPendingConnect(const std::string& iccid) {
   // Pending connect requests may fail, e.g. a SIM slot change may fail or
   // registration may fail for an inactive eSIM profile. Set a timeout to
   // cancel the pending connect and inform the UI.
-  connect_cancel_callback_.Reset(base::Bind(&Cellular::ConnectToPendingCancel,
-                                            weak_ptr_factory_.GetWeakPtr()));
+  connect_cancel_callback_.Reset(base::BindOnce(
+      &Cellular::ConnectToPendingCancel, weak_ptr_factory_.GetWeakPtr()));
   dispatcher()->PostDelayedTask(FROM_HERE, connect_cancel_callback_.callback(),
                                 kPendingConnectCancel);
 }
@@ -2010,7 +2012,7 @@ void Cellular::ConnectToPending() {
 
   SLOG(1) << LoggingTag() << ": " << __func__ << ": " << connect_pending_iccid_;
   connect_cancel_callback_.Cancel();
-  connect_pending_callback_.Reset(base::Bind(
+  connect_pending_callback_.Reset(base::BindOnce(
       &Cellular::ConnectToPendingAfterDelay, weak_ptr_factory_.GetWeakPtr()));
   dispatcher()->PostDelayedTask(FROM_HERE, connect_pending_callback_.callback(),
                                 kPendingConnectDelay);
@@ -2603,10 +2605,10 @@ void Cellular::StartLocationPolling() {
   CHECK(poll_location_task_.IsCancelled());
   SLOG(2) << LoggingTag() << ": " << __func__
           << ": Starting location polling tasks.";
-  poll_location_task_.Reset(
-      base::Bind(&Cellular::PollLocationTask, weak_ptr_factory_.GetWeakPtr()));
 
   // Schedule an immediate task
+  poll_location_task_.Reset(base::BindOnce(&Cellular::PollLocationTask,
+                                           weak_ptr_factory_.GetWeakPtr()));
   dispatcher()->PostTask(FROM_HERE, poll_location_task_.callback());
 }
 
@@ -2651,7 +2653,7 @@ void Cellular::SetScanning(bool scanning) {
     return;
 
   SLOG(2) << LoggingTag() << ": " << __func__ << ": Delaying clear";
-  scanning_clear_callback_.Reset(base::Bind(
+  scanning_clear_callback_.Reset(base::BindOnce(
       &Cellular::SetScanningProperty, weak_ptr_factory_.GetWeakPtr(), false));
   dispatcher()->PostDelayedTask(FROM_HERE, scanning_clear_callback_.callback(),
                                 kModemResetTimeout);

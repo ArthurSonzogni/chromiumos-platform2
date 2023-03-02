@@ -137,9 +137,9 @@ void DaemonTask::Start() {
   // for WiFi.
   if (netlink_manager_) {
     netlink_manager_->Init();
-    uint16_t nl80211_family_id =
-        netlink_manager_->GetFamily(Nl80211Message::kMessageTypeString,
-                                    base::Bind(&Nl80211Message::CreateMessage));
+    uint16_t nl80211_family_id = netlink_manager_->GetFamily(
+        Nl80211Message::kMessageTypeString,
+        base::BindRepeating(&Nl80211Message::CreateMessage));
     if (nl80211_family_id == NetlinkMessage::kIllegalMessageType) {
       LOG(FATAL) << "Didn't get a legal message type for 'nl80211' messages.";
     }

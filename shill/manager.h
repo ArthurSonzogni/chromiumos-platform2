@@ -820,7 +820,7 @@ class Manager {
   // Count of always-on VPN service connection attempts since the last reset.
   uint32_t always_on_vpn_connect_attempts_;
   // Task to connect always-on VPN service.
-  base::CancelableClosure always_on_vpn_connect_task_;
+  base::CancelableOnceClosure always_on_vpn_connect_task_;
   // Map of technologies to Provider instances.  These pointers are owned
   // by the respective scoped_reptr objects that are held over the lifetime
   // of the Manager object.
@@ -845,16 +845,16 @@ class Manager {
   ManagerProperties props_;
   PropertyStore store_;
 
-  base::CancelableClosure sort_services_task_;
+  base::CancelableOnceClosure sort_services_task_;
 
   // Task for periodically checking various device status.
-  base::CancelableClosure device_status_check_task_;
+  base::CancelableOnceClosure device_status_check_task_;
 
   // Task for initializing patchpanel connection.
-  base::CancelableClosure init_patchpanel_client_task_;
+  base::CancelableOnceClosure init_patchpanel_client_task_;
 
   // Task for periodically refreshing traffic counters.
-  base::CancelableClosure refresh_traffic_counter_task_;
+  base::CancelableOnceClosure refresh_traffic_counter_task_;
 
   // Whether we're currently waiting on a traffic counter fetch from patchpanel.
   bool pending_traffic_counter_request_;

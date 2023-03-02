@@ -663,7 +663,7 @@ class Cellular : public Device,
   uint32_t max_multiplexed_bearers_ = 1;
   bool scanning_ = false;
   bool polling_location_ = false;
-  base::CancelableClosure poll_location_task_;
+  base::CancelableOnceClosure poll_location_task_;
 
   std::string selected_network_;
   Stringmaps found_networks_;
@@ -728,15 +728,15 @@ class Cellular : public Device,
 
   // Used to keep scanning=true while the Modem is restarting.
   // TODO(b/177588333): Make Modem and/or the MM dbus API more robust.
-  base::CancelableClosure scanning_clear_callback_;
+  base::CancelableOnceClosure scanning_clear_callback_;
 
   // If a Connect request occurs while the Modem is busy, do not connect
   // immediately, instead set |connect_pending_iccid_|. The connect will occur
   // after a delay once Scanning is set to false.
   std::string connect_pending_iccid_;
-  base::CancelableClosure connect_pending_callback_;
+  base::CancelableOnceClosure connect_pending_callback_;
   // Used to cancel a pending connect while waiting for Modem registration.
-  base::CancelableClosure connect_cancel_callback_;
+  base::CancelableOnceClosure connect_cancel_callback_;
 
   // Legacy device storage identifier, used for removing legacy entry.
   std::string legacy_storage_id_;

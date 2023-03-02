@@ -269,7 +269,7 @@ void DeviceInfo::Start() {
                        base::BindRepeating(&DeviceInfo::LinkMsgHandler,
                                            base::Unretained(this))));
   rtnl_handler_->RequestDump(RTNLHandler::kRequestLink);
-  request_link_statistics_callback_.Reset(base::Bind(
+  request_link_statistics_callback_.Reset(base::BindOnce(
       &DeviceInfo::RequestLinkStatistics, weak_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE,
                                request_link_statistics_callback_.callback(),
@@ -1256,6 +1256,8 @@ void DeviceInfo::RetrieveLinkStatistics(int interface_index,
 
 void DeviceInfo::RequestLinkStatistics() {
   rtnl_handler_->RequestDump(RTNLHandler::kRequestLink);
+  request_link_statistics_callback_.Reset(base::BindOnce(
+      &DeviceInfo::RequestLinkStatistics, weak_factory_.GetWeakPtr()));
   dispatcher_->PostDelayedTask(FROM_HERE,
                                request_link_statistics_callback_.callback(),
                                kRequestLinkStatisticsInterval);
@@ -1326,8 +1328,8 @@ void DeviceInfo::OnWiFiInterfaceInfoReceived(const Nl80211Message& msg) {
 #if !defined(DISABLE_WAKE_ON_WIFI)
   auto wake_on_wifi = std::make_unique<WakeOnWiFi>(
       netlink_manager_, dispatcher_, metrics_,
-      base::Bind(&DeviceInfo::RecordDarkResumeWakeReason,
-                 weak_factory_.GetWeakPtr()));
+      base::BindRepeating(&DeviceInfo::RecordDarkResumeWakeReason,
+                          weak_factory_.GetWeakPtr()));
 #else
   auto wake_on_wifi = std::unique_ptr<WakeOnWiFi>(nullptr);
 #endif  // DISABLE_WAKE_ON_WIFI

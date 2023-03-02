@@ -582,7 +582,7 @@ class CellularCapability3gpp {
   // Sometimes flaky cellular network causes the 3GPP registration state to
   // rapidly change from registered --> searching and back. Delay such updates
   // a little to smooth over temporary registration loss.
-  base::CancelableClosure registration_dropped_update_callback_;
+  base::CancelableOnceClosure registration_dropped_update_callback_;
   base::TimeDelta registration_dropped_update_timeout_ =
       kTimeoutRegistrationDroppedUpdate;
 

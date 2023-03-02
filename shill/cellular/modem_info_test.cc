@@ -49,8 +49,8 @@ class ControlForTest : public MockControl {
   std::unique_ptr<DBusObjectManagerProxyInterface> CreateProxyDelegate(
       const RpcIdentifier& path,
       const std::string& service,
-      const base::Closure& service_appeared_callback,
-      const base::Closure& service_vanished_callback) {
+      const base::RepeatingClosure& service_appeared_callback,
+      const base::RepeatingClosure& service_vanished_callback) {
     service_appeared_callback_ = service_appeared_callback;
     service_vanished_callback_ = service_vanished_callback;
     DCHECK(mock_proxy_);
@@ -67,8 +67,8 @@ class ControlForTest : public MockControl {
   std::unique_ptr<MockDBusObjectManagerProxy> mock_proxy_;
   MockDBusObjectManagerProxy* weak_mock_proxy_;
 
-  base::Closure service_appeared_callback_;
-  base::Closure service_vanished_callback_;
+  base::RepeatingClosure service_appeared_callback_;
+  base::RepeatingClosure service_vanished_callback_;
 };
 
 class ModemInfoForTest : public ModemInfo {

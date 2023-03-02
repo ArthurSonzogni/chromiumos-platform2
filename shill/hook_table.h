@@ -17,13 +17,13 @@
 // Usage example.  Add an action to a hook table like this:
 //
 //   HookTable hook_table_(&event_dispatcher);
-//   Closure start_callback = Bind(&MyService::Disconnect, &my_service);
-//   hook_table_.Add("MyService", start_callback);
+//   OnceClosure start_callback = BindOnce(&MyService::Disconnect, &my_service);
+//   hook_table_.Add("MyService", std::move(start_callback));
 //
 // The code that catches an event runs the actions of the hook table like this:
 //
-//   ResultCallback done_callback = Bind(Manager::OnDisconnect, &manager);
-//   hook_table_.Run(kTimeout, done_callback);
+//   ResultCallback done_callback = BindOnce(Manager::OnDisconnect, &manager);
+//   hook_table_.Run(kTimeout, std::move(done_callback));
 //
 // When |my_service| has completed its disconnect process,
 // Manager::OnDisconnect() gets called with Error::kSuccess.  If |my_service|

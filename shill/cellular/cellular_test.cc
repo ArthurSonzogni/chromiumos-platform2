@@ -369,7 +369,8 @@ class CellularTest : public testing::Test {
 
   void CallStartModemCallback(const Error& error) {
     device_->StartModemCallback(
-        base::Bind(&CellularTest::TestCallback, base::Unretained(this)), error);
+        base::BindOnce(&CellularTest::TestCallback, base::Unretained(this)),
+        error);
     dispatcher_.DispatchPendingEvents();
   }
 

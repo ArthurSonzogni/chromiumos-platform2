@@ -44,7 +44,7 @@ class EventDispatcher;
 //
 // void Manager::Foo() {
 //   auto result_aggregator(base::MakeRefCounted<ResultAggregator>(
-//       Bind(&Manager::Func, AsWeakPtr()), dispatcher_, 1000));
+//       BindOnce(&Manager::Func, AsWeakPtr()), dispatcher_, 1000));
 //   if (condition) {
 //     LOG(ERROR) << "Failed!"
 //     return;

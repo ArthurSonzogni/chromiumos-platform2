@@ -22,7 +22,7 @@ class Error;
 // Convenient typedefs for some commonly used callbacks.
 using ResultOnceCallback = base::OnceCallback<void(const Error&)>;
 using ResultVariantDictionariesCallback =
-    base::Callback<void(const Error&, const VariantDictionaries&)>;
+    base::OnceCallback<void(const Error&, const VariantDictionaries&)>;
 using ResultVariantDictionariesOnceCallback =
     base::OnceCallback<void(const VariantDictionaries&, const Error&)>;
 using EnabledStateChangedCallback = base::OnceCallback<void(const Error&)>;

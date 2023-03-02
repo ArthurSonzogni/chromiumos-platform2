@@ -191,8 +191,8 @@ Service::Service(Manager* manager, Technology technology)
       has_ever_connected_(false),
       disconnects_(kMaxDisconnectEventHistory),
       misconnects_(kMaxMisconnectEventHistory),
-      store_(PropertyStore::PropertyChangeCallback(base::Bind(
-          &Service::OnPropertyChanged, weak_ptr_factory_.GetWeakPtr()))),
+      store_(base::BindRepeating(&Service::OnPropertyChanged,
+                                 weak_ptr_factory_.GetWeakPtr())),
       serial_number_(next_serial_number_++),
       adaptor_(manager->control_interface()->CreateServiceAdaptor(this)),
       manager_(manager),
@@ -370,8 +370,8 @@ void Service::Connect(Error* error, const char* reason) {
     // SetState will re-trigger a connection after this disconnection has
     // completed.
     pending_connect_task_.Reset(
-        base::Bind(&Service::Connect, weak_ptr_factory_.GetWeakPtr(),
-                   base::Owned(new Error()), "Triggering delayed Connect"));
+        base::BindOnce(&Service::Connect, weak_ptr_factory_.GetWeakPtr(),
+                       base::Owned(new Error()), "Triggering delayed Connect"));
     return;
   }
 
@@ -638,7 +638,7 @@ void Service::ThrottleFutureAutoConnects() {
   if (!auto_connect_cooldown_.is_zero()) {
     LOG(INFO) << "Throttling future autoconnects to " << log_name()
               << ". Next autoconnect in " << auto_connect_cooldown_;
-    reenable_auto_connect_task_.Reset(base::Bind(
+    reenable_auto_connect_task_.Reset(base::BindOnce(
         &Service::ReEnableAutoConnectTask, weak_ptr_factory_.GetWeakPtr()));
     dispatcher()->PostDelayedTask(FROM_HERE,
                                   reenable_auto_connect_task_.callback(),
@@ -1452,7 +1452,7 @@ void Service::RefreshTrafficCounters(
 }
 
 void Service::RequestTrafficCountersCallback(
-    const ResultVariantDictionariesCallback& callback,
+    ResultVariantDictionariesCallback callback,
     const std::vector<patchpanel::TrafficCounter>& counters) {
   RefreshTrafficCounters(counters);
   std::vector<brillo::VariantDictionary> traffic_counters;
@@ -1465,11 +1465,11 @@ void Service::RequestTrafficCountersCallback(
     dict.emplace("tx_bytes", counters[TrafficCounterVals::kTxBytes]);
     traffic_counters.push_back(std::move(dict));
   }
-  callback.Run(Error(Error::kSuccess), std::move(traffic_counters));
+  std::move(callback).Run(Error(Error::kSuccess), std::move(traffic_counters));
 }
 
 void Service::RequestTrafficCounters(
-    Error* error, const ResultVariantDictionariesCallback& callback) {
+    Error* error, ResultVariantDictionariesCallback callback) {
   DeviceRefPtr device = manager_->FindDeviceFromService(this);
   if (!device) {
     Error::PopulateAndLog(
@@ -1485,8 +1485,9 @@ void Service::RequestTrafficCounters(
     return;
   }
   client->GetTrafficCounters(
-      devices, BindOnce(&Service::RequestTrafficCountersCallback,
-                        weak_ptr_factory_.GetWeakPtr(), callback));
+      devices,
+      base::BindOnce(&Service::RequestTrafficCountersCallback,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
 void Service::ResetTrafficCounters(Error* /*error*/) {

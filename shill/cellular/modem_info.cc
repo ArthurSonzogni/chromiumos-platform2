@@ -69,9 +69,9 @@ std::unique_ptr<DBusObjectManagerProxyInterface> ModemInfo::CreateProxy() {
                               weak_ptr_factory_.GetWeakPtr()),
           base::BindRepeating(&ModemInfo::OnVanished,
                               weak_ptr_factory_.GetWeakPtr()));
-  proxy->set_interfaces_added_callback(Bind(&ModemInfo::OnInterfacesAddedSignal,
-                                            weak_ptr_factory_.GetWeakPtr()));
-  proxy->set_interfaces_removed_callback(Bind(
+  proxy->set_interfaces_added_callback(base::BindRepeating(
+      &ModemInfo::OnInterfacesAddedSignal, weak_ptr_factory_.GetWeakPtr()));
+  proxy->set_interfaces_removed_callback(base::BindRepeating(
       &ModemInfo::OnInterfacesRemovedSignal, weak_ptr_factory_.GetWeakPtr()));
   return proxy;
 }
@@ -89,8 +89,8 @@ void ModemInfo::Connect() {
   SLOG(1) << __func__;
   service_connected_ = true;
   CHECK(proxy_);
-  proxy_->GetManagedObjects(Bind(&ModemInfo::OnGetManagedObjectsReply,
-                                 weak_ptr_factory_.GetWeakPtr()));
+  proxy_->GetManagedObjects(base::BindOnce(&ModemInfo::OnGetManagedObjectsReply,
+                                           weak_ptr_factory_.GetWeakPtr()));
 }
 
 void ModemInfo::Disconnect() {

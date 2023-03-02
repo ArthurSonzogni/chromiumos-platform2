@@ -68,8 +68,10 @@ bool IcmpSession::Start(const IPAddress& destination,
   }
   echo_reply_handler_.reset(io_handler_factory_->CreateIOInputHandler(
       icmp_->socket(),
-      Bind(&IcmpSession::OnEchoReplyReceived, weak_ptr_factory_.GetWeakPtr()),
-      Bind(&IcmpSession::OnEchoReplyError, weak_ptr_factory_.GetWeakPtr())));
+      base::BindRepeating(&IcmpSession::OnEchoReplyReceived,
+                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindRepeating(&IcmpSession::OnEchoReplyError,
+                          weak_ptr_factory_.GetWeakPtr())));
   result_callback_ = std::move(result_callback);
   timeout_callback_.Reset(BindOnce(&IcmpSession::ReportResultAndStopSession,
                                    weak_ptr_factory_.GetWeakPtr()));
@@ -77,8 +79,9 @@ bool IcmpSession::Start(const IPAddress& destination,
                                kTimeout);
   seq_num_to_sent_recv_time_.clear();
   received_echo_reply_seq_numbers_.clear();
-  dispatcher_->PostTask(FROM_HERE, Bind(&IcmpSession::TransmitEchoRequestTask,
-                                        weak_ptr_factory_.GetWeakPtr()));
+  dispatcher_->PostTask(FROM_HERE,
+                        base::BindOnce(&IcmpSession::TransmitEchoRequestTask,
+                                       weak_ptr_factory_.GetWeakPtr()));
 
   return true;
 }
@@ -145,10 +148,11 @@ void IcmpSession::TransmitEchoRequestTask() {
   // requests are sent.
 
   if (seq_num_to_sent_recv_time_.size() != kTotalNumEchoRequests) {
-    dispatcher_->PostDelayedTask(FROM_HERE,
-                                 Bind(&IcmpSession::TransmitEchoRequestTask,
-                                      weak_ptr_factory_.GetWeakPtr()),
-                                 kEchoRequestInterval);
+    dispatcher_->PostDelayedTask(
+        FROM_HERE,
+        base::BindOnce(&IcmpSession::TransmitEchoRequestTask,
+                       weak_ptr_factory_.GetWeakPtr()),
+        kEchoRequestInterval);
   }
 }
 
