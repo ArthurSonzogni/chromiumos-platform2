@@ -66,26 +66,28 @@ class GenericFailureCollectorTest : public ::testing::Test {
 
 TEST_F(GenericFailureCollectorTest, CollectOKMain) {
   // Collector produces a crash report.
-  ASSERT_TRUE(test_util::CreateFile(test_path_,
-                                    "generic failure for testing purposes\n"));
+  const char kLogContents[] = "generic failure for testing purposes\n";
+  ASSERT_TRUE(test_util::CreateFile(test_path_, kLogContents));
   EXPECT_TRUE(collector_.Collect("generic-failure"));
   EXPECT_FALSE(IsDirectoryEmpty(test_failure_directory_));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_failure_directory_, "generic_failure.*.meta",
+      std::string("sig=") + kLogContents));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-      test_failure_directory_, "generic_failure.*.meta", NULL));
-  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-      test_failure_directory_, "generic_failure.*.log", NULL));
+      test_failure_directory_, "generic_failure.*.log", nullptr));
 }
 
 TEST_F(GenericFailureCollectorTest, SuspendExecName) {
   // Check that the suspend-failure exec name is used
-  ASSERT_TRUE(test_util::CreateFile(test_path_,
-                                    "suspend failure for testing purposes\n"));
+  const char kLogContents[] = "suspend failure for testing purposes\n";
+  ASSERT_TRUE(test_util::CreateFile(test_path_, kLogContents));
   EXPECT_TRUE(collector_.Collect(GenericFailureCollector::kSuspendFailure));
   EXPECT_FALSE(IsDirectoryEmpty(test_failure_directory_));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_failure_directory_, "suspend_failure.*.meta",
+      std::string("sig=") + kLogContents));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-      test_failure_directory_, "suspend_failure.*.meta", NULL));
-  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-      test_failure_directory_, "suspend_failure.*.log", NULL));
+      test_failure_directory_, "suspend_failure.*.log", nullptr));
 }
 
 TEST_F(GenericFailureCollectorTest, FailureReportDoesNotExist) {
@@ -116,7 +118,7 @@ TEST_F(GenericFailureCollectorTest, CollectOKMainServiceFailure) {
       test_failure_directory_, "service_failure_crash_crash.*.meta",
       &meta_path));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-      test_failure_directory_, "service_failure_crash_crash.*.log", NULL));
+      test_failure_directory_, "service_failure_crash_crash.*.log", nullptr));
 
   std::string contents;
   ASSERT_TRUE(base::ReadFileToString(meta_path, &contents));
@@ -140,7 +142,7 @@ TEST_F(GenericFailureCollectorTest, CollectOKPreStart) {
       test_failure_directory_, "service_failure_crash_crash.*.meta",
       &meta_path));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-      test_failure_directory_, "service_failure_crash_crash.*.log", NULL));
+      test_failure_directory_, "service_failure_crash_crash.*.log", nullptr));
 
   std::string contents;
   ASSERT_TRUE(base::ReadFileToString(meta_path, &contents));

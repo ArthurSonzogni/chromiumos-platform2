@@ -9,6 +9,7 @@
 #include <gtest/gtest.h>
 
 #include "crash-reporter/ec_collector.h"
+#include "crash-reporter/test_util.h"
 
 using base::FilePath;
 using brillo::FindLog;
@@ -85,5 +86,8 @@ TEST_F(ECCollectorTest, TestGood) {
   PreparePanicInfo(true, false);
   ASSERT_TRUE(collector_.Collect());
   ASSERT_TRUE(FindLog("(handling)"));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      temp_dir_generator_.GetPath(), "embedded_controller.*.meta",
+      "upload_var_collector=ec"));
   /* TODO(drinkcat): Test crash file content */
 }

@@ -10,14 +10,20 @@
 
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/files/file_util.h>
+#include <base/files/scoped_temp_dir.h>
 #include <brillo/syslog_logging.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "crash-reporter/test_util.h"
+
 using brillo::ClearLog;
 using brillo::FindLog;
 using brillo::GetLog;
+using ::testing::EndsWith;
 using ::testing::HasSubstr;
+using ::testing::Return;
 
 namespace {
 
@@ -65,6 +71,13 @@ class MockArcppCxxCollector : public ArcppCxxCollector {
   explicit MockArcppCxxCollector(ContextPtr context)
       : ArcppCxxCollector(std::move(context)) {}
   MOCK_METHOD(void, SetUpDBus, (), (override));
+  MOCK_METHOD(ErrorType,
+              ConvertCoreToMinidump,
+              (pid_t pid,
+               const base::FilePath&,
+               const base::FilePath&,
+               const base::FilePath&),
+              (override));
 };
 
 class Test : public ::testing::Test {
@@ -166,12 +179,22 @@ class ArcppCxxCollectorTest : public Test {
   };
 
   MockContext* context_;  // Owned by collector.
+  base::FilePath test_dir_;
+  base::FilePath crash_dir_;
+  base::ScopedTempDir scoped_temp_dir_;
 
  private:
   void SetUp() override {
     context_ = new MockContext;
     collector_ = std::make_unique<MockArcppCxxCollector>(
         ArcppCxxCollector::ContextPtr(context_));
+
+    ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
+    test_dir_ = scoped_temp_dir_.GetPath();
+    crash_dir_ = test_dir_.Append("crash_dir");
+    ASSERT_TRUE(base::CreateDirectory(crash_dir_));
+    collector_->set_crash_directory_for_test(crash_dir_);
+
     Initialize();
   }
 };
@@ -304,6 +327,30 @@ TEST_F(ArcContextTest, GetArcPid) {
 
   pid_t pid;
   EXPECT_FALSE(collector_->context().GetArcPid(&pid));
+}
+
+TEST_F(ArcppCxxCollectorTest, WritesMeta) {
+  context_->SetArcPid(100);
+  context_->AddProcess(100, "arc", "init", "/sbin", "/sbin/init", k32BitAuxv);
+  context_->AddProcess(123, "arc", "arc_service", "/sbin", "/sbin/arc_service",
+                       k32BitAuxv);
+
+  EXPECT_CALL(
+      *collector_,
+      ConvertCoreToMinidump(123, base::FilePath("/tmp/crash_reporter/123"),
+                            Property(&base::FilePath::value, EndsWith("core")),
+                            Property(&base::FilePath::value, EndsWith("dmp"))))
+      .WillOnce(Return(CrashCollector::kErrorNone));
+
+  UserCollectorBase::CrashAttributes attrs;
+  attrs.pid = 123;
+  attrs.signal = 2;
+  attrs.uid = 0;
+  attrs.gid = 0;
+  attrs.exec_name = "arc_service";
+  EXPECT_TRUE(collector_->HandleCrash(attrs, nullptr));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      crash_dir_, "arc_service.*.123.meta", "exec_name=arc_service"));
 }
 
 TEST_F(ArcContextTest, GetPidNamespace) {

@@ -68,8 +68,9 @@ TEST(MountFailureCollectorTest, TestStatefulMountFailure) {
   EXPECT_TRUE(collector.Collect(true /* is_mount_failure */));
 
   // Check report collection.
-  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-      tmp_dir.GetPath(), "mount_failure_stateful.*.meta", NULL));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      tmp_dir.GetPath(), "mount_failure_stateful.*.meta",
+      "sig=mount_failure_stateful"));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
       tmp_dir.GetPath(), "mount_failure_stateful.*.log", &report_path));
 
@@ -144,8 +145,9 @@ TEST(MountFailureCollectorTest, TestCryptohomeMountFailure) {
   EXPECT_TRUE(collector.Collect(true /* is_mount_failure */));
 
   // Check report collection.
-  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-      tmp_dir.GetPath(), "mount_failure_cryptohome.*.meta", NULL));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      tmp_dir.GetPath(), "mount_failure_cryptohome.*.meta",
+      "sig=mount_failure_cryptohome"));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
       tmp_dir.GetPath(), "mount_failure_cryptohome.*.log", &report_path));
 
@@ -166,8 +168,9 @@ TEST(MountFailureCollectorTest, TestCryptohomeUmountFailure) {
   EXPECT_TRUE(collector.Collect(false /* is_mount_failure */));
 
   // Check report collection.
-  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-      tmp_dir.GetPath(), "umount_failure_cryptohome.*.meta", NULL));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      tmp_dir.GetPath(), "umount_failure_cryptohome.*.meta",
+      "sig=umount_failure_cryptohome"));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
       tmp_dir.GetPath(), "umount_failure_cryptohome.*.log", &report_path));
 

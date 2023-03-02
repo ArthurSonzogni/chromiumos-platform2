@@ -71,7 +71,7 @@ class BERTCollectorTest : public ::testing::Test {
 
     collector_.Initialize(false);
     ASSERT_TRUE(scoped_temp_dir_.CreateUniqueTempDir());
-    FilePath test_dir_ = scoped_temp_dir_.GetPath();
+    test_dir_ = scoped_temp_dir_.GetPath();
 
     collector_.set_crash_directory_for_test(test_dir_);
     collector_.acpitable_path_ = test_dir_.Append(kACPITableDirectory);
@@ -98,4 +98,6 @@ TEST_F(BERTCollectorTest, TestGoodBERTData) {
   ASSERT_TRUE(FindLog("(handling)"));
   ASSERT_TRUE(FindLog("Stored BERT dump"));
   EXPECT_GT(collector_.get_bytes_written(), 0);
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_dir_, "bert_error.*.meta", "upload_var_collector=bert"));
 }

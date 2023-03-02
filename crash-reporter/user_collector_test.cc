@@ -315,6 +315,8 @@ TEST_F(UserCollectorTest, HandleNonChromeCrashWithConsent) {
   attrs.exec_name = "ignored";
   EXPECT_TRUE(collector_.HandleCrash(attrs, "chromeos-wm"));
   if (!VmSupport::Get()) {
+    EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+        crash_dir_, "chromeos_wm.*.meta", "exec_name=chromeos-wm"));
     EXPECT_TRUE(
         FindLog("Received crash notification for chromeos-wm[5] sig 2"));
   }
@@ -351,6 +353,8 @@ TEST_F(UserCollectorTest, HandleNonChromeCrashWithConsentAndSigsysNoSyscall) {
   // Should succeed even without /proc/[pid]/syscall
   EXPECT_TRUE(collector_.HandleCrash(attrs, "chromeos-wm"));
   if (!VmSupport::Get()) {
+    EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+        crash_dir_, "chromeos_wm.*.meta", "exec_name=chromeos-wm"));
     EXPECT_TRUE(
         FindLog("Received crash notification for chromeos-wm[5] sig 31"));
   }
@@ -371,6 +375,8 @@ TEST_F(UserCollectorTest, HandleChromeCrashWithConsent) {
   attrs.gid = 1000;
   attrs.exec_name = "ignored";
   EXPECT_TRUE(collector_.HandleCrash(attrs, "chrome"));
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
+      crash_dir_, "chrome.*.meta", nullptr));
   if (!VmSupport::Get()) {
     EXPECT_TRUE(FindLog("Received crash notification for chrome[5] sig 2"));
     EXPECT_TRUE(FindLog(kChromeIgnoreMsg));
@@ -392,6 +398,8 @@ TEST_F(UserCollectorTest, HandleSuppliedChromeCrashWithConsent) {
   attrs.gid = 1000;
   attrs.exec_name = "chrome";
   EXPECT_TRUE(collector_.HandleCrash(attrs, nullptr));
+  EXPECT_FALSE(test_util::DirectoryHasFileWithPattern(
+      crash_dir_, "chrome.*.meta", nullptr));
   if (!VmSupport::Get()) {
     EXPECT_TRUE(
         FindLog("Received crash notification for supplied_chrome[5] sig 2"));

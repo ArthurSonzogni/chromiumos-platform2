@@ -136,8 +136,9 @@ TEST_F(SELinuxViolationCollectorTest, CollectOKWithComm) {
       test_util::CreateFile(test_path_, TestSELinuxViolationMessageWithComm));
   EXPECT_TRUE(collector_.Collect(100));
   EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
-  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-      test_crash_directory_, "selinux_violation_init.*.meta", nullptr));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_, "selinux_violation_init.*.meta",
+      "sig=sssss-selinux-init"));
 
   FilePath file_path;
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
@@ -153,8 +154,9 @@ TEST_F(SELinuxViolationCollectorTest, CollectOKWithPid) {
       test_util::CreateFile(test_path_, TestSELinuxViolationMessageWithPid));
   EXPECT_TRUE(collector_.Collect(100));
   EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
-  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-      test_crash_directory_, "selinux_violation.*.1234.meta", nullptr));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_, "selinux_violation.*.1234.meta",
+      "sig=sssss-selinux-init"));
 
   FilePath file_path;
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
@@ -170,8 +172,9 @@ TEST_F(SELinuxViolationCollectorTest, CollectOKWithPidAndComm) {
                                     TestSELinuxViolationMessageWithPidAndComm));
   EXPECT_TRUE(collector_.Collect(100));
   EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
-  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-      test_crash_directory_, "selinux_violation_init.*.1234.meta", nullptr));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_, "selinux_violation_init.*.1234.meta",
+      "sig=sssss-selinux-init"));
 
   FilePath file_path;
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
@@ -188,9 +191,9 @@ TEST_F(SELinuxViolationCollectorTest, CollectWithInvalidComm) {
       test_path_, TestSELinuxViolationMessageWithInvalidComm));
   EXPECT_TRUE(collector_.Collect(100));
   EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
-  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
       test_crash_directory_, "selinux_violation____etc_passwd____.*.meta",
-      nullptr));
+      "sig=sssss-selinux-init"));
 
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
       test_crash_directory_, "selinux_violation____etc_passwd____.*.log",
@@ -207,8 +210,9 @@ TEST_F(SELinuxViolationCollectorTest, CollectWithLongComm) {
       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
       "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
-  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-      test_crash_directory_, "selinux_violation_" + as + ".*.meta", nullptr));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_, "selinux_violation_" + as + ".*.meta",
+      "sig=sssss-selinux-init"));
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
       test_crash_directory_, "selinux_violation_" + as + ".*.log", nullptr));
 }
@@ -220,9 +224,9 @@ TEST_F(SELinuxViolationCollectorTest, CollectWithNonTerminatedComm) {
   EXPECT_TRUE(collector_.Collect(100));
   EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
 
-  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
       test_crash_directory_, "selinux_violation_aaaa_AT_context1__.*.meta",
-      nullptr));
+      "sig=sssss-selinux-init"));
 
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
       test_crash_directory_, "selinux_violation_aaaa_AT_context1__.*.log",
@@ -234,8 +238,9 @@ TEST_F(SELinuxViolationCollectorTest, CollectSample) {
   ASSERT_TRUE(test_util::CreateFile(test_path_, TestSELinuxViolationMessage));
   EXPECT_TRUE(collector_.Collect(100));
   EXPECT_FALSE(IsDirectoryEmpty(test_crash_directory_));
-  EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
-      test_crash_directory_, "selinux_violation.*.meta", nullptr));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      test_crash_directory_, "selinux_violation.*.meta",
+      "sig=sssss-selinux-init"));
   FilePath file_path;
   EXPECT_TRUE(test_util::DirectoryHasFileWithPattern(
       test_crash_directory_, "selinux_violation.*.log", &file_path));
