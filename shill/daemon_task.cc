@@ -40,8 +40,7 @@ DaemonTask::DaemonTask(const Settings& settings, Config* config)
       routing_table_(nullptr),
       dhcp_provider_(nullptr),
       netlink_manager_(nullptr),
-      process_manager_(nullptr) {
-}
+      process_manager_(nullptr) {}
 
 DaemonTask::~DaemonTask() = default;
 
@@ -131,7 +130,7 @@ void DaemonTask::Start() {
                        RTMGRP_ND_USEROPT);
   routing_table_->Start();
   dhcp_provider_->Init(control_.get(), dispatcher_.get(), metrics_.get());
-  process_manager_->Init(dispatcher_.get());
+  process_manager_->Init();
   // Note that NetlinkManager initialization is not necessarily
   // WiFi-specific. It just happens that we currently only use NetlinkManager
   // for WiFi.

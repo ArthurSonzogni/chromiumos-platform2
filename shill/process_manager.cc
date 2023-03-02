@@ -22,9 +22,9 @@
 #include <base/posix/eintr_wrapper.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 
-#include "shill/event_dispatcher.h"
 #include "shill/logging.h"
 
 namespace shill {
@@ -70,13 +70,12 @@ ProcessManager* ProcessManager::GetInstance() {
   return g_process_manager.Pointer();
 }
 
-void ProcessManager::Init(EventDispatcher* dispatcher) {
+void ProcessManager::Init() {
   SLOG(2) << __func__;
   CHECK(!async_signal_handler_);
   async_signal_handler_.reset(new brillo::AsynchronousSignalHandler());
   async_signal_handler_->Init();
   process_reaper_.Register(async_signal_handler_.get());
-  dispatcher_ = dispatcher;
   minijail_ = brillo::Minijail::GetInstance();
 }
 
@@ -493,8 +492,8 @@ bool ProcessManager::TerminateProcess(pid_t pid, bool kill_signal) {
   auto termination_callback = std::make_unique<TerminationTimeoutCallback>(
       base::BindOnce(&ProcessManager::ProcessTerminationTimeoutHandler,
                      weak_factory_.GetWeakPtr(), pid, kill_signal));
-  dispatcher_->PostDelayedTask(FROM_HERE, termination_callback->callback(),
-                               kTerminationTimeout);
+  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+      FROM_HERE, termination_callback->callback(), kTerminationTimeout);
   pending_termination_processes_[pid] = std::move(termination_callback);
   return true;
 }

@@ -129,7 +129,7 @@ TEST_F(DaemonTaskTest, StartStop) {
                                    RTMGRP_IPV6_ROUTE | RTMGRP_ND_USEROPT));
   Expectation routing_table_started = EXPECT_CALL(routing_table_, Start());
   EXPECT_CALL(dhcp_provider_, Init(_, _, _));
-  EXPECT_CALL(process_manager_, Init(_));
+  EXPECT_CALL(process_manager_, Init());
   EXPECT_CALL(netlink_manager_, Init());
   const uint16_t kNl80211MessageType = 42;  // Arbitrary.
   EXPECT_CALL(netlink_manager_,

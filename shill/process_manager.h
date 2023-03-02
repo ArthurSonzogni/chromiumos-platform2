@@ -36,8 +36,6 @@ struct std_file_descriptors {
   int* stderr_fd;
 };
 
-class EventDispatcher;
-
 // The ProcessManager is a singleton providing process creation and
 // asynchronous process termination. Need to initialize it once with
 // Init method call.
@@ -74,7 +72,7 @@ class ProcessManager {
   static ProcessManager* GetInstance();
 
   // Register async signal handler and setup process reaper.
-  virtual void Init(EventDispatcher* dispatcher);
+  virtual void Init();
 
   // Call on shutdown to release async_signal_handler_.
   virtual void Stop();
@@ -252,7 +250,6 @@ class ProcessManager {
   std::unique_ptr<brillo::AsynchronousSignalHandler> async_signal_handler_;
   brillo::ProcessReaper process_reaper_;
 
-  EventDispatcher* dispatcher_;
   brillo::Minijail* minijail_;
 
   // Processes to watch for the caller.

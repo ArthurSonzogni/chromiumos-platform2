@@ -24,7 +24,7 @@ class MockProcessManager : public ProcessManager {
 
   ~MockProcessManager() override;
 
-  MOCK_METHOD(void, Init, (EventDispatcher*), (override));
+  MOCK_METHOD(void, Init, (), (override));
   MOCK_METHOD(void, Stop, (), (override));
   MOCK_METHOD(pid_t,
               StartProcess,

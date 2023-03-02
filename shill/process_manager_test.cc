@@ -16,11 +16,10 @@
 #include <base/functional/bind.h>
 #include <base/rand_util.h>
 #include <base/test/bind.h>
+#include <base/test/task_environment.h>
 #include <brillo/minijail/mock_minijail.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-
-#include "shill/test_event_dispatcher.h"
 
 using testing::_;
 using testing::DoAll;
@@ -35,10 +34,7 @@ class ProcessManagerTest : public testing::Test {
  public:
   ProcessManagerTest() : process_manager_(ProcessManager::GetInstance()) {}
 
-  void SetUp() override {
-    process_manager_->dispatcher_ = &dispatcher_;
-    process_manager_->minijail_ = &minijail_;
-  }
+  void SetUp() override { process_manager_->minijail_ = &minijail_; }
 
   void TearDown() override {
     process_manager_->watched_processes_.clear();
@@ -78,7 +74,7 @@ class ProcessManagerTest : public testing::Test {
     process_manager_->ProcessTerminationTimeoutHandler(pid, kill_signal);
   }
 
-  void ForwardDispatcher() { dispatcher_.task_environment().RunUntilIdle(); }
+  void RunUntilIdle() { task_environment_.RunUntilIdle(); }
 
  protected:
   class CallbackObserver {
@@ -98,7 +94,11 @@ class ProcessManagerTest : public testing::Test {
     base::OnceClosure termination_timeout_callback_;
   };
 
-  EventDispatcherForTest dispatcher_;
+  // Should be the first member to be initialized first and destroyed last.
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME,
+      base::test::TaskEnvironment::MainThreadType::IO};
+
   brillo::MockMinijail minijail_;
   ProcessManager* process_manager_;
 };
@@ -344,7 +344,7 @@ TEST_F(ProcessManagerTest, StartProcessWithMinijailWithStdout) {
     const std::string str = std::string(length, c);
     CHECK(base::WriteFileDescriptor(process_side_stdout_fd.get(), str));
     expected_stdout.append(str);
-    ForwardDispatcher();
+    RunUntilIdle();
   };
 
   write_to_pipe();
@@ -358,7 +358,7 @@ TEST_F(ProcessManagerTest, StartProcessWithMinijailWithStdout) {
 
   write_to_pipe();
   process_side_stdout_fd.reset();
-  ForwardDispatcher();
+  RunUntilIdle();
 
   EXPECT_TRUE(actual_exit_status.has_value());
   EXPECT_EQ(actual_exit_status.value(), kExpectedExitStatus);
