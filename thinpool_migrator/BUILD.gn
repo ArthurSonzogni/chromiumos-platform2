@@ -9,6 +9,7 @@ group("all") {
     ":install_headers",
     ":libthinpool_migrator",
     ":libthinpool_migrator_pc",
+    ":thinpool_migrator",
   ]
 
   if (use.test) {
@@ -39,6 +40,13 @@ shared_library("libthinpool_migrator") {
   ]
   configs += [ ":target_defaults" ]
   install_path = "lib"
+}
+
+executable("thinpool_migrator") {
+  sources = [ "main.cc" ]
+  configs += [ ":target_defaults" ]
+  install_path = "sbin"
+  deps = [ ":libthinpool_migrator" ]
 }
 
 install_config("install_headers") {

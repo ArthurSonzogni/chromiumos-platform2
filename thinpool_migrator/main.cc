@@ -1,0 +1,56 @@
+// Copyright 2023 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
+#include "thinpool_migrator/thinpool_migrator.h"
+
+#include <fcntl.h>
+#include <linux/fs.h>
+#include <sys/ioctl.h>
+
+#include <base/files/file_path.h>
+#include <base/files/file_util.h>
+#include <base/logging.h>
+#include <base/posix/eintr_wrapper.h>
+#include <brillo/flag_helper.h>
+#include <brillo/syslog_logging.h>
+
+std::optional<uint64_t> GetBlkSize(const base::FilePath& device) {
+  DCHECK(device.IsAbsolute()) << "device=" << device;
+
+  uint64_t size;
+  base::ScopedFD fd(
+      HANDLE_EINTR(open(device.value().c_str(), O_RDONLY | O_CLOEXEC)));
+  if (!fd.is_valid()) {
+    PLOG(ERROR) << "open " << device.value();
+    return std::nullopt;
+  }
+  if (ioctl(fd.get(), BLKGETSIZE64, &size)) {
+    PLOG(ERROR) << "ioctl(BLKGETSIZE64): " << device.value();
+    return std::nullopt;
+  }
+  return size;
+}
+
+int main(int argc, char** argv) {
+  DEFINE_string(device, "", "Path of the device to run the migration tool on");
+  DEFINE_bool(dry_run, false, "Perform dry-run for migration");
+
+  const base::CommandLine* cl = base::CommandLine::ForCurrentProcess();
+  if (cl->GetArgs().size() < 2 || cl->GetArgs().size() > 3) {
+    LOG(ERROR) << "Usage: thinpool_migrator --device=<block device> "
+                  "[--dry_run]";
+    return EXIT_FAILURE;
+  }
+
+  std::optional<uint64_t> size = GetBlkSize(base::FilePath(FLAGS_device));
+  if (!size) {
+    LOG(ERROR) << "Failed to get device size for " << FLAGS_device;
+    return 1;
+  }
+
+  thinpool_migrator::ThinpoolMigrator migrator(
+      base::FilePath(FLAGS_device), *size,
+      std::make_unique<brillo::DeviceMapper>());
+  return migrator.Migrate(FLAGS_dry_run) ? EXIT_SUCCESS : EXIT_FAILURE;
+}
