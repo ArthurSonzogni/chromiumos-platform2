@@ -171,6 +171,11 @@ bool DiskCleanup::FreeDiskSpaceDuringLogin(
 
   auto free_space = AmountOfFreeDiskSpace();
 
+  if (free_space) {
+    auto free_space_mib = free_space.value() / 1024 / 1024;
+    ReportLoginDiskCleanupAvailableSpace(free_space_mib);
+  }
+
   switch (GetFreeDiskSpaceState(free_space)) {
     case DiskCleanup::FreeSpaceState::kAboveTarget:
     case DiskCleanup::FreeSpaceState::kAboveThreshold:

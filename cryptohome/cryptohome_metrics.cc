@@ -71,6 +71,8 @@ constexpr char kCryptohomeLoginDiskCleanupProgressHistogram[] =
     "Cryptohome.LoginDiskCleanupProgress";
 constexpr char kCryptohomeLoginDiskCleanupResultHistogram[] =
     "Cryptohome.LoginDiskCleanupResult";
+constexpr char kCryptohomeLoginDiskCleanupAvailableSpaceHistogram[] =
+    "Cryptohome.LoginDiskCleanupAvailableSpace";
 constexpr char kCryptohomeLEResultHistogramPrefix[] = "Cryptohome.LECredential";
 constexpr char kCryptohomeLESyncOutcomeHistogramSuffix[] = ".SyncOutcome";
 constexpr char kCryptohomeLELogReplyEntryCountHistogram[] =
@@ -566,6 +568,15 @@ void ReportLoginDiskCleanupResult(DiskCleanupResult result) {
   g_metrics->SendEnumToUMA(kCryptohomeLoginDiskCleanupResultHistogram,
                            static_cast<int>(result),
                            static_cast<int>(DiskCleanupResult::kNumBuckets));
+}
+
+void ReportLoginDiskCleanupAvailableSpace(int64_t space) {
+  if (!g_metrics) {
+    return;
+  }
+  constexpr int kMin = 0, kMax = 10000, kNumBuckets = 50;
+  g_metrics->SendToUMA(kCryptohomeLoginDiskCleanupAvailableSpaceHistogram,
+                       space, kMin, kMax, kNumBuckets);
 }
 
 void ReportNumUserHomeDirectories(int num_users) {

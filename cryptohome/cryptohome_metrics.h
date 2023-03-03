@@ -506,6 +506,10 @@ void ReportLoginDiskCleanupProgress(LoginDiskCleanupProgress progress);
 // "Cryptohome.LoginDiskCleanupResult" enum histogram.
 void ReportLoginDiskCleanupResult(DiskCleanupResult result);
 
+// Report the amount of free space available during login to the
+// "Cryptohome.LoginDiskCleanupAvailableSpace" enum histogram.
+void ReportLoginDiskCleanupAvailableSpace(int64_t space);
+
 // The |type| value is reported to the "Cryptohome.HomedirEncryptionType" enum
 // histogram.
 void ReportHomedirEncryptionType(HomedirEncryptionType type);
