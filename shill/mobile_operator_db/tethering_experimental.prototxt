@@ -57,38 +57,28 @@ mno {
     mccmnc: "311882"
     mccmnc: "312250"
     tethering_allowed: true
-  }
-  mvno {
-    # Tmobile requires a specific APN for GID1==544D
-    mvno_filter {
-      type: GID1
-      regex: "544D"
-    }
-    data {
-      uuid: "7a644059-2111-47cb-9206-85da42907be9"
-      mobile_apn {
-        apn: "pcweb.tmobile.com"
-        is_required_by_carrier_spec: true
-        ip_type: IPV4V6
-        type: DEFAULT
-        type: DUN
+    mobile_apn {
+      # Tmobile requires a specific APN for GID1==544D
+      apn_filter {
+        type: GID1
+        regex: "544D"
       }
+      apn: "pcweb.tmobile.com"
+      is_required_by_carrier_spec: true
+      ip_type: IPV4V6
+      type: DEFAULT
+      type: DUN
     }
-  }
-  mvno {
-    # Tmobile allows any APN for GID1!=544D
-    mvno_filter {
-      type: GID1
-      exclude_regex: "544D"
-    }
-    data {
-      uuid: "7a644059-2111-47cb-9206-85da42907be9"
-      mobile_apn {
-        apn: "fast.t-mobile.com"
-        ip_type: IPV4V6
-        type: DEFAULT
-        type: DUN
+    mobile_apn {
+      # Tmobile allows any APN for GID1!=544D
+      apn_filter {
+        type: GID1
+        exclude_regex: "544D"
       }
+      apn: "fast.t-mobile.com"
+      ip_type: IPV4V6
+      type: DEFAULT
+      type: DUN
     }
   }
 }
