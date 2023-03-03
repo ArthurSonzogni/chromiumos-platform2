@@ -42,5 +42,17 @@
         </tp:docstring>
       </arg>
     </method>
+    <method name="SetPortsUsingDisplays">
+      <tp:docstring>
+        Sets value in typecd to track which ports are currently driving
+        displays.
+      </tp:docstring>
+      <arg name="enabled" type="au" direction="in">
+        <tp:docstring>
+          List of ports that have a display connected, either directly or
+          through a dock.
+        </tp:docstring>
+      </arg>
+    </method>
   </interface>
 </node>

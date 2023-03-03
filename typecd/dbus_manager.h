@@ -5,6 +5,8 @@
 #ifndef TYPECD_DBUS_MANAGER_H_
 #define TYPECD_DBUS_MANAGER_H_
 
+#include <vector>
+
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/errors/error.h>
 #include <dbus/typecd/dbus-constants.h>
@@ -28,6 +30,8 @@ class DBusManager : public org::chromium::typecdAdaptor,
   virtual void NotifyCableWarning(CableWarningType type);
 
   bool SetPeripheralDataAccess(brillo::ErrorPtr* err, bool enabled) override;
+  bool SetPortsUsingDisplays(brillo::ErrorPtr* err,
+                             const std::vector<uint32_t>& port_nums) override;
 
   void SetFeaturesClient(ChromeFeaturesServiceClient* client) {
     features_client_ = client;

@@ -35,4 +35,17 @@ bool DBusManager::SetPeripheralDataAccess(brillo::ErrorPtr* err, bool enabled) {
   return true;
 }
 
+bool DBusManager::SetPortsUsingDisplays(
+    brillo::ErrorPtr* err, const std::vector<uint32_t>& port_nums) {
+  if (!port_mgr_) {
+    LOG(ERROR) << "PortManager not available for DBusManager";
+    brillo::Error::AddTo(err, FROM_HERE, "Typecd", "no_port_manager",
+                         "Typecd DBusManager failed port_mgr_ check");
+    return false;
+  }
+
+  port_mgr_->SetPortsUsingDisplays(port_nums);
+  return true;
+}
+
 }  // namespace typecd
