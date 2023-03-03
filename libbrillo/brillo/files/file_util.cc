@@ -8,10 +8,13 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include <iterator>
 #include <utility>
+#include <vector>
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <brillo/syslog_logging.h>
 
@@ -69,7 +72,134 @@ SafeFD::SafeFDResult OpenOrRemake(SafeFD* parent,
   return std::make_pair(std::move(child), err);
 }
 
+bool AllAreSeparators(const std::string& input) {
+  for (auto it : input) {
+    if (!base::FilePath::IsSeparator(it))
+      return false;
+  }
+
+  return true;
+}
+
+base::FilePath MakeAbsolute(const base::FilePath& path) {
+  // realpath isn't used here because it resolves symlinks.
+  if (path.IsAbsolute()) {
+    return path;
+  }
+
+  // The root path is used as a fallback in the case GetCurrentDirectory fails
+  // which in theory should never happen.
+  base::FilePath working_dir("/");
+  base::GetCurrentDirectory(&working_dir);
+  return working_dir.Append(path);
+}
+
+bool DeleteInternal(const base::FilePath& path, bool deep) {
+  const auto abs_path = SimplifyPath(MakeAbsolute(path));
+
+  // Delete operations using SafeFD are applied to the parent directory.
+  const auto parent = abs_path.DirName();
+  // Handle the case path doesn't have a parent and the CWD is returned.
+  if (!parent.IsParent(abs_path)) {
+    return false;
+  }
+  SafeFD fd;
+  SafeFD::Error err;
+  std::tie(fd, err) = SafeFD::Root().first.OpenExistingDir(parent);
+  if (!fd.is_valid()) {
+    if (err == SafeFD::Error::kDoesNotExist) {
+      return true;
+    }
+    LOG(ERROR) << "Failed to open " << parent;
+    return false;
+  }
+
+  return DeletePath(&fd, abs_path.BaseName().value(), deep);
+}
+
 }  // namespace
+
+base::FilePath SimplifyPath(const base::FilePath& path) {
+  std::vector<std::string> components;
+  if (path.empty()) {
+    return path;
+  }
+
+  base::FilePath current;
+  base::FilePath base;
+
+  size_t reserve = 0;
+  size_t parent_dir = 0;
+  // Capture path components.
+  for (current = path; current != current.DirName();
+       current = current.DirName()) {
+    base = current.BaseName();
+
+    // Skip path separators and "."
+    if (AllAreSeparators(base.value()) ||
+        base.value() == base::FilePath::kCurrentDirectory) {
+      continue;
+    }
+
+    // Count parent directory operators.
+    if (base.value() == base::FilePath::kParentDirectory) {
+      ++parent_dir;
+      continue;
+    }
+
+    // Skip path components negated by parent directory operators.
+    if (parent_dir > 0) {
+      --parent_dir;
+      continue;
+    }
+
+    components.push_back(base.value());
+    reserve += components.back().size();
+  }
+
+  // Handle relative paths
+  base = current.BaseName();
+  if (base.value() == base::FilePath::kCurrentDirectory ||
+      base.value().empty()) {
+    for (size_t x = 0; x < parent_dir; ++x) {
+      components.push_back(base::FilePath::kParentDirectory);
+      reserve += components.back().size();
+    }
+    // Handle absolute paths
+  } else if (base.value() == "/") {
+    if (components.empty()) {
+      return base::FilePath("/");
+    }
+    // Use an empty string since the path separator will still be added.
+    components.push_back("");
+    reserve += components.back().size();
+    // This shouldn't happen unless the code is being used on Windows.
+  } else {
+    CHECK(false) << "Got unexpected path base";
+  }
+
+  // Count separators
+  reserve += components.size() - 1;
+  // JoinString isn't used because it doesn't accept reverse iterators.
+  std::string result;
+  result.reserve(reserve);
+
+  auto riter = components.rbegin();
+  DCHECK(riter != components.rend());
+
+  result.append(riter->data(), riter->size());
+  ++riter;
+
+  for (; riter != components.rend(); ++riter) {
+    result.append("/", 1);
+    result.append(riter->data(), riter->size());
+  }
+
+  // Check that we pre-allocated correctly.
+  DCHECK_EQ(reserve, result.size());
+
+  return base::FilePath(result);
+}
 
 SafeFD::Error IsValidFilename(const std::string& filename) {
   if (filename == "." || filename == ".." ||
@@ -107,6 +237,25 @@ SafeFD::SafeFDResult OpenOrRemakeFile(SafeFD* parent,
                                       int flags) {
   return OpenOrRemake(parent, name, FSObjectType::RegularFile, permissions, uid,
                       gid, flags);
+}
+
+bool DeletePath(SafeFD* parent, const std::string& name, bool deep) {
+  // Assume it is a directory and if that fails, try as a file.
+  SafeFD::Error err = parent->Rmdir(name, deep /* recursive */);
+  if (!SafeFD::IsError(err) || err == SafeFD::Error::kDoesNotExist ||
+      errno == ENOENT) {
+    return true;
+  }
+  err = parent->Unlink(name);
+  return !SafeFD::IsError(err);
+}
+
+bool DeleteFile(const base::FilePath& path) {
+  return DeleteInternal(path, false /* deep */);
+}
+
+bool DeletePathRecursively(const base::FilePath& path) {
+  return DeleteInternal(path, true /* deep */);
 }
 
 }  // namespace brillo

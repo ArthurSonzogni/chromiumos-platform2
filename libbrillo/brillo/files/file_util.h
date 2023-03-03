@@ -15,6 +15,11 @@
 
 namespace brillo {
 
+// Remove extra separators and any "." or ".." components.
+// This does not access the filesystem. Relative paths may still have leading
+// ".." components.
+BRILLO_EXPORT base::FilePath SimplifyPath(const base::FilePath& path);
+
 SafeFD::Error IsValidFilename(const std::string& filename);
 
 // Obtain the canonical path of the file descriptor or base::FilePath() on
@@ -58,6 +63,44 @@ BRILLO_EXPORT SafeFD::SafeFDResult OpenOrRemakeFile(
     uid_t uid = getuid(),
     gid_t gid = getgid(),
     int flags = O_RDWR | O_CLOEXEC);
+
+// Deletes the given file or a directory. If |deep| is true this includes
+// subdirectories and their contents, but if |deep| is false and the path is a
+// non-empty directory, this will fail.
+//
+// Returns true if successful, false otherwise. It is considered successful
+// to attempt to delete a path that does not exist.
+BRILLO_EXPORT bool DeletePath(SafeFD* parent,
+                              const std::string& name,
+                              bool deep);
+
+// Prefer DeletePath if using SafeFD to avoid ToCToU issues.
+//
+// This is meant to be a drop-in replacement for libchrome's DeleteFile,
+// but with SafeFD used to avoid symlink issues.
+//
+// Deletes the given path, whether it's a file or a directory.
+// If it's a directory, it will fail if the directory isn't empty.
+//
+// Returns true if successful, false otherwise. It is considered successful to
+// attempt to delete a file that does not exist.
+BRILLO_EXPORT bool DeleteFile(const base::FilePath& path);
+
+// Prefer DeletePath if using SafeFD to avoid ToCToU issues.
+//
+// This is meant to be a drop-in replacement for libchrome's
+// DeletePathRecursively, but with SafeFD used to avoid symlink issues.
+//
+// Deletes the given path, whether it's a file or a directory.
+// If it's a directory, it's perfectly happy to delete all the
+// directory's contents, including subdirectories and their contents.
+//
+// Returns true if successful, false otherwise. It is considered successful
+// to attempt to delete a file that does not exist.
+//
+// if |path| is a symbolic link, this deletes only the symlink. (even if the
+// symlink points to a non-existent file)
+BRILLO_EXPORT bool DeletePathRecursively(const base::FilePath& path);
 
 }  // namespace brillo
 
