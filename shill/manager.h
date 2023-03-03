@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -218,12 +219,9 @@ class Manager {
   // policy-provided networks are configured.
   void ScanAndConnectToBestServices(Error* error);
 
-  // Connects to the highest priority service for each available technology.
-  // Note: ConnectToBestServices should only be called from
-  // ScanAndConnectToBestServices.
-  // All other calls should be considered deprecated.  This method should be
-  // removed eventually (b:206907629).
-  virtual void ConnectToBestServices(Error* error);
+  // For WiFi services, connect to the "best" service available,  as determined
+  // by sorting all services independent of their current state.
+  mockable void ConnectToBestWiFiService();
 
   // Method to create connectivity report for connected services.
   void CreateConnectivityReport(Error* error);
@@ -563,7 +561,7 @@ class Manager {
   FRIEND_TEST(ManagerTest, ClaimBlockedDevice);
   FRIEND_TEST(ManagerTest, ClaimDeviceWithoutClaimer);
   FRIEND_TEST(ManagerTest, ConnectedTechnologies);
-  FRIEND_TEST(ManagerTest, ConnectToBestServices);
+  FRIEND_TEST(ManagerTest, ScanAndConnectToBestServices);
   FRIEND_TEST(ManagerTest, CreateConnectivityReport);
   FRIEND_TEST(ManagerTest, DefaultTechnology);
   FRIEND_TEST(ManagerTest, DefaultServiceStateChange);
@@ -712,9 +710,10 @@ class Manager {
                                     const KeyValueStore& args,
                                     Error* error);
 
-  // For each technology present, connect to the "best" service available,
-  // as determined by sorting all services independent of their current state.
-  void ConnectToBestServicesTask();
+  // For either WiFi or all other technologies available, connect to the "best"
+  // service available, as determined by sorting all services independent of
+  // their current state.
+  void ConnectToBestServicesForTechnologies(bool is_wifi);
 
   void UpdateDefaultServices(const ServiceRefPtr& logical_service,
                              const ServiceRefPtr& physical_service);

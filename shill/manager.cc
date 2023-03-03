@@ -2087,23 +2087,24 @@ void Manager::AutoConnect() {
 }
 
 void Manager::ScanAndConnectToBestServices(Error* error) {
-  DeviceRefPtr device = GetEnabledDeviceWithTechnology(Technology::kWiFi);
-  if (device) {
+  DeviceRefPtr wifi = GetEnabledDeviceWithTechnology(Technology::kWiFi);
+  if (wifi) {
     LOG(INFO) << "ScanAndConnectToBestServices: ensure scan";
-    static_cast<WiFi*>(device.get())->EnsureScanAndConnectToBestService(error);
-    return;
+    static_cast<WiFi*>(wifi.get())->EnsureScanAndConnectToBestService(error);
+  } else {
+    LOG(INFO) << "ScanAndConnectToBestServices: no WiFi device available";
   }
-  LOG(INFO) << "ScanAndConnectToBestServices: no WiFi device available";
-  ConnectToBestServices(error);
+  dispatcher_->PostTask(
+      FROM_HERE,
+      base::BindOnce(&Manager::ConnectToBestServicesForTechnologies,
+                     weak_factory_.GetWeakPtr(), /* is_wifi */ false));
 }
 
-void Manager::ConnectToBestServices(Error* /*error*/) {
-  dispatcher_->PostTask(FROM_HERE,
-                        base::BindOnce(&Manager::ConnectToBestServicesTask,
-                                       weak_factory_.GetWeakPtr()));
+void Manager::ConnectToBestWiFiService() {
+  ConnectToBestServicesForTechnologies(/* is_wifi */ true);
 }
 
-void Manager::ConnectToBestServicesTask() {
+void Manager::ConnectToBestServicesForTechnologies(bool is_wifi) {
   std::vector<ServiceRefPtr> services_copy = services_;
   constexpr bool kCompareConnectivityState = false;
   sort(services_copy.begin(), services_copy.end(),
@@ -2121,6 +2122,9 @@ void Manager::ConnectToBestServicesTask() {
       continue;
     }
     Technology technology = service->technology();
+    if (is_wifi != (technology == Technology::kWiFi)) {
+      continue;
+    }
     if (!IsPrimaryConnectivityTechnology(technology) && !IsConnected()) {
       // Non-primary services need some other service connected first.
       continue;
@@ -2147,7 +2151,7 @@ void Manager::ConnectToBestServicesTask() {
   }
 
   if (SLOG_IS_ON(Manager, 4)) {
-    SLOG(4) << "Sorted service list for ConnectToBestServicesTask: ";
+    SLOG(4) << "Sorted service list for ConnectToBestServicesForTechnologies: ";
     for (size_t i = 0; i < services_copy.size(); ++i) {
       ServiceRefPtr service = services_copy[i];
       const char* compare_reason = nullptr;

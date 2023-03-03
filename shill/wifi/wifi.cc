@@ -3583,9 +3583,6 @@ void WiFi::HandleEnsuredScan(WiFiState::PhyState old_phy_state) {
   // on another device.
   if (!enabled() || !supplicant_present_) {
     wifi_state_->SetEnsuredScanState(WiFiState::EnsuredScanState::kIdle);
-    // TODO(b/270969976): Remove the call to ConnectToBestServices when it is
-    // no longer necessary in this case.
-    manager()->ConnectToBestServices(nullptr);
     return;
   }
   switch (wifi_state_->GetEnsuredScanState()) {
@@ -3604,9 +3601,7 @@ void WiFi::HandleEnsuredScan(WiFiState::PhyState old_phy_state) {
         case WiFiState::PhyState::kBackgroundScanning:
         case WiFiState::PhyState::kFoundNothing:
           wifi_state_->SetEnsuredScanState(WiFiState::EnsuredScanState::kIdle);
-          // This connects to best services in the event loop, allowing
-          // SetPhyState to complete before proceeding.
-          manager()->ConnectToBestServices(nullptr);
+          manager()->ConnectToBestWiFiService();
           break;
         case WiFiState::PhyState::kTransitionToConnecting:
         case WiFiState::PhyState::kConnecting:

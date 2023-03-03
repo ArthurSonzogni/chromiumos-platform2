@@ -141,6 +141,7 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void Start(EnabledStateChangedCallback callback) override;
   void Stop(EnabledStateChangedCallback callback) override;
   void Scan(Error* error, const std::string& reason) override;
+  void EnsureScanAndConnectToBestService(Error* error);
   // Callback for system suspend.
   void OnBeforeSuspend(ResultOnceCallback callback) override;
   // Callback for dark resume.
@@ -250,9 +251,6 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
 
   // Removes a set of Passpoint credentials from WPA supplicant.
   bool RemoveCred(const PasspointCredentialsRefPtr& credentials);
-
-  // Ensures a scan, then calls the manager's ConnectToBestServices method.
-  void EnsureScanAndConnectToBestService(Error* error);
 
   // Process old_rtnl_link_stats64 information
   void OnReceivedRtnlLinkStatistics(const old_rtnl_link_stats64& stats);

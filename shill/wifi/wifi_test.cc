@@ -1948,22 +1948,23 @@ TEST_F(WiFiMainTest, EnsuredScan) {
   ReportScanDone();
 
   // Verify that ConnectToBestServices is called
-  EXPECT_CALL(*manager(), ConnectToBestServices(_));
+  EXPECT_CALL(*manager(), ConnectToBestWiFiService());
   event_dispatcher_->DispatchPendingEvents();
   VerifyEnsuredScanState(WiFiState::EnsuredScanState::kIdle);
 }
 
-TEST_F(WiFiMainTest, ConnectToBestServicesDeviceDisabled) {
+TEST_F(WiFiMainTest, ConnectToBestWiFiServiceDeviceDisabled) {
   event_dispatcher_->DispatchPendingEvents();
 
   EnsureScanAndConnectToBestService();
 
-  // Verify that ConnectToBestServices is called
-  EXPECT_CALL(*manager(), ConnectToBestServices(_));
+  // Verify that ConnectToBestWiFiService is not called
+  EXPECT_CALL(*manager(), ConnectToBestWiFiService()).Times(0);
   event_dispatcher_->DispatchPendingEvents();
+  VerifyEnsuredScanState(WiFiState::EnsuredScanState::kIdle);
 }
 
-TEST_F(WiFiMainTest, ConnectToBestServicesNoSupplicant) {
+TEST_F(WiFiMainTest, ConnectToBestWiFiServiceNoSupplicant) {
   // Setup Start without SupplicantProxy to ensure idle state.
   StartWiFi(false);
   event_dispatcher_->DispatchPendingEvents();
@@ -1973,8 +1974,8 @@ TEST_F(WiFiMainTest, ConnectToBestServicesNoSupplicant) {
   VerifyEnsuredScanState(WiFiState::EnsuredScanState::kIdle);
   EnsureScanAndConnectToBestService();
   VerifyEnsuredScanState(WiFiState::EnsuredScanState::kScanning);
-  // Verify that ConnectToBestServices is called
-  EXPECT_CALL(*manager(), ConnectToBestServices(_));
+  // Verify that ConnectToBestWiFiService is not called
+  EXPECT_CALL(*manager(), ConnectToBestWiFiService()).Times(0);
   event_dispatcher_->DispatchPendingEvents();
   VerifyScanState(WiFiState::PhyState::kIdle, WiFiState::ScanMethod::kNone);
   VerifyEnsuredScanState(WiFiState::EnsuredScanState::kIdle);
@@ -2007,8 +2008,8 @@ TEST_F(WiFiMainTest, QueueEnsuredScan) {
   ExpectScanStop();
   ReportScanDone();
 
-  // Verify that ConnectToBestServices is called
-  EXPECT_CALL(*manager(), ConnectToBestServices(_));
+  // Verify that ConnectToBestWiFiService is called
+  EXPECT_CALL(*manager(), ConnectToBestWiFiService());
   event_dispatcher_->DispatchPendingEvents();
   VerifyEnsuredScanState(WiFiState::EnsuredScanState::kIdle);
 }
@@ -2044,8 +2045,8 @@ TEST_F(WiFiMainTest, QueuedEnsuredScan) {
   ExpectScanStop();
   ReportScanDone();
 
-  // Verify that ConnectToBestServices is called
-  EXPECT_CALL(*manager(), ConnectToBestServices(_));
+  // Verify that ConnectToBestWiFiService is called
+  EXPECT_CALL(*manager(), ConnectToBestWiFiService());
   event_dispatcher_->DispatchPendingEvents();
 }
 
@@ -2062,8 +2063,8 @@ TEST_F(WiFiMainTest, QueuedEnsuredScanBackgroundScanFinished) {
   ReportScanDone();
   event_dispatcher_->DispatchPendingEvents();
 
-  // Verify that ConnectToBestServices is called
-  EXPECT_CALL(*manager(), ConnectToBestServices(_));
+  // Verify that ConnectToBestWiFiService is called
+  EXPECT_CALL(*manager(), ConnectToBestWiFiService());
   // Simulate an idle radio coming from a background scan when a scan had been
   // queued
   HandleEnsuredScan(WiFiState::PhyState::kBackgroundScanning,
@@ -2086,8 +2087,8 @@ TEST_F(WiFiMainTest, QueuedEnsuredScanFoundNothing) {
   ReportScanDone();
   event_dispatcher_->DispatchPendingEvents();
 
-  // Verify that ConnectToBestServices is called
-  EXPECT_CALL(*manager(), ConnectToBestServices(_));
+  // Verify that ConnectToBestWiFiService is called
+  EXPECT_CALL(*manager(), ConnectToBestWiFiService());
   // Simulate a scan completing with nothing found when a scan had been queued
   HandleEnsuredScan(WiFiState::PhyState::kFoundNothing,
                     WiFiState::EnsuredScanState::kScanning,
@@ -2123,8 +2124,8 @@ TEST_F(WiFiMainTest, QueuedEnsuredScanInterruptedByConnect) {
   ExpectScanStop();
   ReportScanDone();
 
-  // Verify that ConnectToBestServices is called
-  EXPECT_CALL(*manager(), ConnectToBestServices(_));
+  // Verify that ConnectToBestWiFiService is called
+  EXPECT_CALL(*manager(), ConnectToBestWiFiService());
   event_dispatcher_->DispatchPendingEvents();
 }
 
@@ -2155,8 +2156,8 @@ TEST_F(WiFiMainTest, QueuedEnsuredScanInterruptedByConnecting) {
   ExpectScanStop();
   ReportScanDone();
 
-  // Verify that ConnectToBestServices is called
-  EXPECT_CALL(*manager(), ConnectToBestServices(_));
+  // Verify that ConnectToBestWiFiService is called
+  EXPECT_CALL(*manager(), ConnectToBestWiFiService());
   event_dispatcher_->DispatchPendingEvents();
 }
 
@@ -2187,8 +2188,8 @@ TEST_F(WiFiMainTest, QueuedEnsuredScanInterruptedByTransitionToConnecting) {
   ExpectScanStop();
   ReportScanDone();
 
-  // Verify that ConnectToBestServices is called
-  EXPECT_CALL(*manager(), ConnectToBestServices(_));
+  // Verify that ConnectToBestWiFiService is called
+  EXPECT_CALL(*manager(), ConnectToBestWiFiService());
   event_dispatcher_->DispatchPendingEvents();
 }
 
@@ -2219,8 +2220,8 @@ TEST_F(WiFiMainTest, QueuedEnsuredScanInterruptedByUnexpectedIdleState) {
   ExpectScanStop();
   ReportScanDone();
 
-  // Verify that ConnectToBestServices is called
-  EXPECT_CALL(*manager(), ConnectToBestServices(_));
+  // Verify that ConnectToBestWiFiService is called
+  EXPECT_CALL(*manager(), ConnectToBestWiFiService());
   event_dispatcher_->DispatchPendingEvents();
 }
 

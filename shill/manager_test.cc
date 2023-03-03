@@ -58,6 +58,7 @@
 #include "shill/upstart/mock_upstart.h"
 #include "shill/vpn/mock_vpn_service.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
+#include "shill/wifi/mock_wifi.h"
 #include "shill/wifi/mock_wifi_provider.h"
 #include "shill/wifi/mock_wifi_service.h"
 #include "shill/wifi/wifi_service.h"
@@ -3313,8 +3314,12 @@ TEST_F(ManagerTest, EnumerateServices) {
 }
 
 TEST_F(ManagerTest, ConnectToMostSecureWiFi) {
-  WiFiRefPtr wifi(new WiFi(manager(), "wifi", "", 0, 0,
-                           std::make_unique<MockWakeOnWiFi>()));
+  auto* wifi_device =
+      new NiceMock<MockWiFi>(manager(), "wifi", "", 0, 0, new MockWakeOnWiFi());
+  wifi_device->enabled_ = true;
+  manager()->RegisterDevice(wifi_device);
+
+  WiFiRefPtr wifi = wifi_device;
 
   MockWiFiServiceRefPtr wifi_service_open =
       CreateWiFiService(wifi, kSecurityClassNone, WiFiSecurity::kNone,
@@ -3392,6 +3397,9 @@ TEST_F(ManagerTest, ConnectToMostSecureWiFi) {
   EXPECT_CALL(*wifi_service_wpa2wpa3_8021x, Connect(_, _)).Times(1);
   EXPECT_CALL(*wifi_service_wpa3_8021x, Connect(_, _)).Times(1);
 
+  ON_CALL(*wifi_device, Scan(_, _))
+      .WillByDefault(
+          InvokeWithoutArgs(manager(), &Manager::ConnectToBestWiFiService));
   ON_CALL(*wifi_service_open, HasBSSIDConnectableEndpoints())
       .WillByDefault(testing::Return(true));
   ON_CALL(*wifi_service_wep, HasBSSIDConnectableEndpoints())
@@ -3421,15 +3429,16 @@ TEST_F(ManagerTest, ConnectToMostSecureWiFi) {
 
   manager()->RegisterService(wifi_service_open);
   manager()->RegisterService(wifi_service_wep);
-  manager()->ConnectToBestServices(nullptr);
+  manager()->ScanAndConnectToBestServices(nullptr);
+  dispatcher()->DispatchPendingEvents();
   dispatcher()->DispatchPendingEvents();
 
   manager()->RegisterService(wifi_service_wpa_psk);
-  manager()->ConnectToBestServices(nullptr);
+  manager()->ScanAndConnectToBestServices(nullptr);
   dispatcher()->DispatchPendingEvents();
 
   manager()->RegisterService(wifi_service_wep_8021x);
-  manager()->ConnectToBestServices(nullptr);
+  manager()->ScanAndConnectToBestServices(nullptr);
   dispatcher()->DispatchPendingEvents();
   // wifi_service_wep_8021x and wifi_service_wpa_8021x have the same
   // Service::SecurityLevel(), deregister wifi_service_wep_8021x first so that
@@ -3439,45 +3448,45 @@ TEST_F(ManagerTest, ConnectToMostSecureWiFi) {
   manager()->DeregisterService(wifi_service_wep_8021x);
 
   manager()->RegisterService(wifi_service_wpa_8021x);
-  manager()->ConnectToBestServices(nullptr);
+  manager()->ScanAndConnectToBestServices(nullptr);
   dispatcher()->DispatchPendingEvents();
 
   manager()->RegisterService(wifi_service_wpawpa2_psk);
-  manager()->ConnectToBestServices(nullptr);
+  manager()->ScanAndConnectToBestServices(nullptr);
   dispatcher()->DispatchPendingEvents();
   manager()->DeregisterService(wifi_service_wpawpa2_psk);
 
   manager()->RegisterService(wifi_service_wpa2_psk);
-  manager()->ConnectToBestServices(nullptr);
+  manager()->ScanAndConnectToBestServices(nullptr);
   dispatcher()->DispatchPendingEvents();
   manager()->DeregisterService(wifi_service_wpa2_psk);
 
   manager()->RegisterService(wifi_service_wpa2wpa3_psk);
-  manager()->ConnectToBestServices(nullptr);
+  manager()->ScanAndConnectToBestServices(nullptr);
   dispatcher()->DispatchPendingEvents();
   manager()->DeregisterService(wifi_service_wpa2wpa3_psk);
 
   manager()->RegisterService(wifi_service_wpa3_sae);
-  manager()->ConnectToBestServices(nullptr);
+  manager()->ScanAndConnectToBestServices(nullptr);
   dispatcher()->DispatchPendingEvents();
 
   manager()->RegisterService(wifi_service_wpawpa2_8021x);
-  manager()->ConnectToBestServices(nullptr);
+  manager()->ScanAndConnectToBestServices(nullptr);
   dispatcher()->DispatchPendingEvents();
   manager()->DeregisterService(wifi_service_wpawpa2_8021x);
 
   manager()->RegisterService(wifi_service_wpa2_8021x);
-  manager()->ConnectToBestServices(nullptr);
+  manager()->ScanAndConnectToBestServices(nullptr);
   dispatcher()->DispatchPendingEvents();
   manager()->DeregisterService(wifi_service_wpa2_8021x);
 
   manager()->RegisterService(wifi_service_wpa2wpa3_8021x);
-  manager()->ConnectToBestServices(nullptr);
+  manager()->ScanAndConnectToBestServices(nullptr);
   dispatcher()->DispatchPendingEvents();
   manager()->DeregisterService(wifi_service_wpa2wpa3_8021x);
 
   manager()->RegisterService(wifi_service_wpa3_8021x);
-  manager()->ConnectToBestServices(nullptr);
+  manager()->ScanAndConnectToBestServices(nullptr);
   dispatcher()->DispatchPendingEvents();
 }
 
@@ -3546,7 +3555,7 @@ TEST_F(ManagerTest, ConnectToBestServices) {
   EXPECT_CALL(*cellular_service1, Connect(_, _)).Times(0);  // Is connected.
   EXPECT_CALL(*vpn_service, Connect(_, _)).Times(0);        // Not autoconnect.
 
-  manager()->ConnectToBestServices(nullptr);
+  manager()->ScanAndConnectToBestServices(nullptr);
   dispatcher()->DispatchPendingEvents();
 
   // After this operation, since the Connect calls above are mocked and

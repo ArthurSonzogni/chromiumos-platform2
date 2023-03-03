@@ -139,7 +139,7 @@ class MockManager : public Manager {
               FindDeviceFromService,
               (const ServiceRefPtr&),
               (const, override));
-  MOCK_METHOD(void, ConnectToBestServices, (Error*), (override));
+  MOCK_METHOD(void, ConnectToBestWiFiService, (), (override));
   MOCK_METHOD((const std::string&), dhcp_hostname, (), (const, override));
   MOCK_METHOD(const ManagerProperties&, GetProperties, (), (const, override));
   MOCK_METHOD(std::vector<DeviceRefPtr>,
