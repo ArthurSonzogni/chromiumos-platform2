@@ -22,7 +22,11 @@ use std::fs::create_dir;
 use std::fs::read_dir;
 use std::fs::read_link;
 use std::fs::remove_file;
+use std::fs::File;
 use std::fs::OpenOptions;
+use std::io::BufRead;
+use std::io::BufReader;
+use std::io::IoSlice;
 use std::io::Write;
 use std::os::unix::ffi::OsStrExt;
 use std::path::Path;
@@ -51,6 +55,7 @@ use crate::lvm::get_active_lvs;
 use crate::lvm::get_vg_name;
 use crate::lvm::lv_exists;
 use crate::lvm::lv_path;
+use crate::lvm::lv_remove;
 use crate::lvm::thicken_thin_volume;
 use crate::lvm::ActivatedLogicalVolume;
 use crate::snapwatch::DmSnapshotSpaceMonitor;
@@ -103,6 +108,12 @@ const UNENCRYPTED_SNAPSHOT_SIZE: u64 = SIZE_1G;
 /// complete.
 const MERGE_TIMEOUT_MS: u32 = 20 * 60 * 1000;
 
+/// AES-GCM uses a fixed 12 byte IV. The other 12 bytes are auth tag.
+const AES_GCM_INTEGRITY_BYTES_PER_BLOCK: u64 = 12 + 12;
+
+/// Logical disk sector size (512 bytes).
+const SECTOR_SIZE: u64 = 512;
+
 /// The pending stateful merge is an object that when dropped will ask the
 /// volume manager to merge the stateful snapshots.
 pub struct PendingStatefulMerge<'a> {
@@ -139,12 +150,21 @@ enum ThinpoolMode {
     ReadWrite,
 }
 
+enum HibernateVolume {
+    Integrity,
+    Image,
+}
+
 pub struct VolumeManager {
     vg_name: String,
     hibervol: Option<ActiveMount>,
 }
 
 impl VolumeManager {
+    pub const HIBERIMAGE: &str = "hiberimage";
+    const HIBERIMAGE_INTEGRITY: &str = "hiberimage_integrity";
+    const HIBERINTEGRITY: &str = "hiberintegrity";
+
     /// Create a new VolumeManager.
     pub fn new() -> Result<Self> {
         let partition1 = stateful_block_partition_one()?;
@@ -193,6 +213,34 @@ impl VolumeManager {
                 "",
                 false,
             )?);
+        }
+
+        Ok(())
+    }
+
+    pub fn setup_hiberimage(&self, key: &str, format_integrity_dev: bool) -> Result<()> {
+        self.create_or_activate_lv(Self::HIBERIMAGE, HibernateVolume::Image)?;
+        self.create_or_activate_lv(Self::HIBERINTEGRITY, HibernateVolume::Integrity)?;
+
+        self.create_hiberintegrity_dm_dev(key)
+            .context(format!("Failed to create '{}' DM device", Self::HIBERINTEGRITY))?;
+        self.create_hiberimage_integrity_dm_dev(format_integrity_dev)
+            .context(format!("Failed to create '{}' DM device", Self::HIBERIMAGE_INTEGRITY))?;
+        self.create_hiberimage_dm_dev(key)
+            .context(format!("Failed to create '{}' DM device", Self::HIBERIMAGE))
+    }
+
+    pub fn teardown_hiberimage(&self) -> Result<()> {
+        for dev in [Self::HIBERIMAGE, Self::HIBERIMAGE_INTEGRITY, Self::HIBERINTEGRITY] {
+            if DeviceMapper::device_exists(dev) {
+                DeviceMapper::remove_device(dev)?;
+            }
+        }
+
+        for lv in [Self::HIBERIMAGE, Self::HIBERINTEGRITY] {
+            if lv_exists(&self.vg_name, lv)? {
+                lv_remove(&self.vg_name, lv)?;
+            }
         }
 
         Ok(())
@@ -337,7 +385,7 @@ impl VolumeManager {
         name: &str,
         chunk_size: usize,
     ) -> Result<()> {
-        let size_sectors = Self::get_blockdev_size(&origin)?;
+        let size_sectors = get_blockdev_size(Path::new(&origin))? / SECTOR_SIZE;
         let origin_string = origin.as_ref().to_string_lossy();
         let snapshot_string = snapshot.as_ref().to_string_lossy();
         let origin_table = format!("0 {} snapshot-origin {}", size_sectors, &origin_string);
@@ -354,20 +402,6 @@ impl VolumeManager {
             .context(format!("Cannot setup dm-snapshot for {}", name))?;
 
         Ok(())
-    }
-
-    /// Get the size of the block device at the given path, in sectors.
-    /// Note: We could save the external process by opening the device and
-    /// using the BLKGETSIZE64 ioctl instead.
-    fn get_blockdev_size<P: AsRef<OsStr>>(path: P) -> Result<u64> {
-        let output =
-            checked_command_output(Command::new("/sbin/blockdev").arg("--getsz").arg(path))
-                .context("Failed to get block device size")?;
-        let size_str = String::from_utf8_lossy(&output.stdout);
-        size_str
-            .trim()
-            .parse()
-            .context("Failed to parse blockdev size")
     }
 
     /// Create monitor threads for each dm-snapshot set up by hiberman that
@@ -523,6 +557,158 @@ impl VolumeManager {
 
         Ok(files)
     }
+
+    /// Get the desired size of a given hibernate volume type.
+    fn get_volume_size(volume_type: HibernateVolume) -> u64 {
+        let ram_size = get_ram_size();
+        let num_pages = ram_size / get_page_size() as u64;
+
+        match volume_type {
+            HibernateVolume::Image => ram_size,
+
+            HibernateVolume::Integrity => {
+                // Eight 512 byte sectors are required for the superblock and eight
+                // padding sectors.
+                let initial_size = (8 + 8) * SECTOR_SIZE;
+
+                roundup_mutiple(initial_size + num_pages * AES_GCM_INTEGRITY_BYTES_PER_BLOCK,
+                                SIZE_1M)
+            },
+        }
+    }
+
+    /// Create a logical volume if it doesn't exist yet, otherwise activate it
+    /// (if needed).
+    fn create_or_activate_lv(&self, name: &str, volume_type: HibernateVolume) -> Result<()> {
+        if lv_exists(&self.vg_name, name)? {
+            info!("Activating '{}' volume", Self::HIBERIMAGE);
+
+            activate_lv(&self.vg_name, name)?;
+        } else {
+            let size = Self::get_volume_size(volume_type);
+
+            create_thin_volume(&self.vg_name, size, name)
+                .context(format!("Failed to create thin volume '{name}'"))?;
+        }
+
+        Ok(())
+    }
+
+    /// Create the dm-crypt device 'hiberintegrity' for dm-integrity data (on top
+    /// of the logical volume with the same name).
+    fn create_hiberintegrity_dm_dev(&self, key: &str) -> Result<()> {
+        let backing_dev = lv_path(&self.vg_name, Self::HIBERINTEGRITY);
+        let backing_dev_nr_sectors = get_blockdev_size(&backing_dev)? / SECTOR_SIZE;
+
+        let table = format!("0 {backing_dev_nr_sectors} crypt capi:ctr(aes)-plain64 {key} \
+                             0 {} 0 4 no_read_workqueue no_write_workqueue \
+                             sector_size:{SIZE_4K} iv_large_sectors",
+                            backing_dev.display());
+
+        DeviceMapper::create_device(Self::HIBERINTEGRITY, &table)
+    }
+
+    /// Create the dm-integrity device 'hiberimage_hiberintegrity' (on top of
+    /// the logical volume 'hiberimage').
+    fn create_hiberimage_integrity_dm_dev(&self, format_device: bool) -> Result<()> {
+        let backing_dev = lv_path(&self.vg_name, Self::HIBERIMAGE);
+        let backing_dev_nr_sectors = get_blockdev_size(&backing_dev)? / SECTOR_SIZE;
+        let meta_data_dev = DeviceMapper::device_path(Self::HIBERINTEGRITY);
+
+        if format_device {
+            // Inititialize the first blocks of the integrity device with
+            // zeroes to tell the kernel to format it. The exact number of
+            // blocks that needs to be zeroed isn't well documented, 1MB
+            // should be more than enough.
+            zero_init_blockdev(Path::new(&meta_data_dev), SIZE_1M)
+                .context(format!("zero initialization of {} failed",
+                                 meta_data_dev.display()))?;
+        }
+
+        let table = format!("0 {backing_dev_nr_sectors} integrity {} 0 \
+                             {AES_GCM_INTEGRITY_BYTES_PER_BLOCK} D 2 block_size:{SIZE_4K} \
+                             meta_device:{}", backing_dev.display(), meta_data_dev.display());
+
+        DeviceMapper::create_device(Self::HIBERIMAGE_INTEGRITY, &table)
+    }
+
+    /// Create the dm-crypt device 'hiberimage' for the hibernation image (on top of the
+    /// dm-integrity device 'hiberimage_integrity'.
+    fn create_hiberimage_dm_dev(&self, key: &str) -> Result<()> {
+        let backing_dev = DeviceMapper::device_path(Self::HIBERIMAGE_INTEGRITY);
+        let backing_dev_nr_sectors = get_blockdev_size(&backing_dev)? / SECTOR_SIZE;
+
+        let table = format!("0 {backing_dev_nr_sectors} crypt capi:gcm(aes)-random {key} \
+                             0 {} 0 5 allow_discards no_read_workqueue \
+                             no_write_workqueue sector_size:{SIZE_4K} \
+                             integrity:{AES_GCM_INTEGRITY_BYTES_PER_BLOCK}:aead",
+                            backing_dev.display());
+
+        DeviceMapper::create_device(Self::HIBERIMAGE, &table)
+    }
+}
+
+fn roundup_mutiple(val: u64, alignment: u64) -> u64 {
+    ((val + alignment - 1) / alignment) * alignment
+}
+
+fn get_ram_size() -> u64 {
+    let f = File::open("/proc/meminfo").unwrap();
+    let reader = BufReader::new(f);
+
+    for l in reader.lines() {
+        let l = l.unwrap();
+        if l.starts_with("MemTotal:") {
+            let size_kb = l.split_whitespace().nth(1).unwrap().parse::<u64>().unwrap();
+            return size_kb * 1024;
+        }
+    }
+
+    panic!("Could not determine RAM size");
+}
+
+fn get_blockdev_size(path: &Path) -> Result<u64> {
+    let args = vec![
+        String::from("--getsz"),
+        path.to_string_lossy().to_string(),
+    ];
+
+    // TODO: use BLKGETSIZE ioctl to get the block size
+    let out = checked_command_output(Command::new("/sbin/blockdev")
+                                     .args(args))
+        .context(format!("Failed to get size of '{}'",
+                         path.to_string_lossy()))?;
+
+    let sectors = String::from_utf8_lossy(&out.stdout).trim().parse::<u64>()?;
+    Ok(sectors * SECTOR_SIZE)
+}
+
+fn zero_init_blockdev(path: &Path, num_bytes: u64) -> Result<()> {
+    let mut f = OpenOptions::new()
+        .write(true)
+        .open(path)?;
+
+    let mut bytes_left = num_bytes;
+    let zeroes_4k = [0_u8; SIZE_4K as usize];
+
+    while bytes_left > 0 {
+        let mut data = vec![];
+
+        // add full 4k blocks to the vector
+        for _ in 0..(bytes_left / SIZE_4K) {
+            data.push(IoSlice::new(&zeroes_4k));
+        }
+
+        if bytes_left % SIZE_4K != 0 {
+            let remaining_bytes = &zeroes_4k[0..(bytes_left % SIZE_4K) as usize];
+            data.push(IoSlice::new(&remaining_bytes));
+        }
+
+        let bytes_written = f.write_vectored(&data)?;
+        bytes_left -= bytes_written as u64;
+    }
+
+    Ok(())
 }
 
 /// Object that tracks the lifetime of a mount, which is potentially unmounted
