@@ -29,7 +29,7 @@ RealWakeupTimer::RealWakeupTimer(std::unique_ptr<SimpleAlarmTimer> timer)
     : timer_(std::move(timer)) {}
 
 void RealWakeupTimer::Start(base::TimeDelta delay,
-                            base::Closure on_complete,
+                            base::RepeatingClosure on_complete,
                             const base::Location& location) {
   timer_->Start(location, delay, std::move(on_complete));
 }
@@ -47,7 +47,7 @@ void RealWakeupTimer::Stop() {
 }
 
 void TestWakeupTimer::Start(base::TimeDelta delay,
-                            base::Closure on_complete,
+                            base::RepeatingClosure on_complete,
                             const base::Location& location) {
   timer_.Start(location, delay, std::move(on_complete));
 }

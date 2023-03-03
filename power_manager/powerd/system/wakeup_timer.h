@@ -28,7 +28,7 @@ class WakeupTimer {
   // Cancels any existing timer.
   virtual void Start(
       base::TimeDelta delay,
-      base::Closure on_complete,
+      base::RepeatingClosure on_complete,
       const base::Location& location = base::Location::Current()) = 0;
 
   // Returns true if a timer is currently running.
@@ -59,7 +59,7 @@ class RealWakeupTimer : public WakeupTimer {
   // |WakeupTimer| implementation.
   void Start(
       base::TimeDelta delay,
-      base::Closure on_complete,
+      base::RepeatingClosure on_complete,
       const base::Location& location = base::Location::Current()) override;
   bool IsRunning() const override;
   void Reset() override;
@@ -82,7 +82,7 @@ class TestWakeupTimer : public WakeupTimer {
   // |WakeupTimer| implementation.
   void Start(
       base::TimeDelta delay,
-      base::Closure on_complete,
+      base::RepeatingClosure on_complete,
       const base::Location& location = base::Location::Current()) override;
   bool IsRunning() const override;
   void Reset() override;
