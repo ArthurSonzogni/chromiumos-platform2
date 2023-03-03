@@ -195,7 +195,7 @@ message IsPlatformAuthenticatorInitializedResponse {
 message IsUvpaaRequest {}
 
 message IsUvpaaResponse {
-  reserved 1;  // bool available = 1 [deprecated = true];
+  bool available = 1 [deprecated = true];
   // Before this field was introduced, IsUvpaa is always assumed to be true in
   // Chrome. To preserve backward compatibility, the simplest way is to
   // introduce this response field which default value (not_ready = false)
