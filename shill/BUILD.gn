@@ -627,6 +627,7 @@ if (use.test) {
   }
 
   executable("shill_unittest") {
+    run_test = true
     sources = [
       "cellular/apn_list_test.cc",
       "cellular/cellular_bearer_test.cc",

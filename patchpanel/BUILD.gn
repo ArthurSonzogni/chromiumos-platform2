@@ -237,6 +237,7 @@ if (use.test) {
   }
 
   executable("patchpanel_testrunner") {
+    run_test = true
     sources = [
       "address_manager_test.cc",
       "arc_service_test.cc",
