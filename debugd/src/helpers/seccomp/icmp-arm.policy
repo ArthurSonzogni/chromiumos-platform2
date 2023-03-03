@@ -54,3 +54,5 @@ setresuid32: 1
 setuid32: 1
 dup: 1
 uname: 1
+clock_gettime: 1
+sigreturn: 1
