@@ -4,6 +4,7 @@
 
 #include "diagnostics/cros_healthd/executor/utils/fake_process_control.h"
 
+#include <csignal>
 #include <string>
 #include <utility>
 
@@ -12,6 +13,7 @@
 #include <base/files/file.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/functional/callback_forward.h>
 #include <mojo/public/cpp/system/handle.h>
 
 namespace diagnostics {
@@ -27,6 +29,8 @@ FakeProcessControl::FakeProcessControl() {
   base::FilePath stderr_filepath;
   stderr_fd_ = base::CreateAndOpenFdForTemporaryFileInDir(temp_dir_.GetPath(),
                                                           &stderr_filepath);
+  return_code_ = -1;
+  is_connected_ = false;
 }
 
 void FakeProcessControl::GetStdout(GetStdoutCallback callback) {
@@ -40,7 +44,11 @@ void FakeProcessControl::GetStderr(GetStderrCallback callback) {
 }
 
 void FakeProcessControl::GetReturnCode(GetReturnCodeCallback callback) {
-  std::move(callback).Run(return_code_);
+  if (return_code_ != -1) {
+    std::move(callback).Run(return_code_);
+    return;
+  }
+  get_return_code_callbacks_.push_back(std::move(callback));
 }
 
 void FakeProcessControl::SetStdoutFileContent(
@@ -60,14 +68,37 @@ void FakeProcessControl::SetStderrFileContent(
 }
 
 void FakeProcessControl::SetReturnCode(int return_code) {
+  CHECK_NE(return_code, -1);
   return_code_ = return_code;
+  std::vector<GetReturnCodeCallback> get_return_code_callbacks;
+  get_return_code_callbacks.swap(get_return_code_callbacks_);
+  for (size_t i = 0; i < get_return_code_callbacks.size(); ++i) {
+    std::move(get_return_code_callbacks[i]).Run(return_code);
+  }
 }
 
-void FakeProcessControl::Kill() {}
+void FakeProcessControl::Kill() {
+  if (return_code_ == -1) {
+    // The return code if the program is killed by SIGTERM.
+    SetReturnCode(143);
+  }
+}
 
 void FakeProcessControl::BindReceiver(
     mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver) {
   receiver_.Bind(std::move(receiver));
+  is_connected_ = true;
+  receiver_.set_disconnect_handler(base::BindOnce(
+      [](bool* is_connected) { *is_connected = false; }, &is_connected_));
+}
+
+bool FakeProcessControl::IsConnected() {
+  return is_connected_;
+}
+
+mojo::Receiver<ash::cros_healthd::mojom::ProcessControl>&
+FakeProcessControl::receiver() {
+  return receiver_;
 }
 
 }  // namespace diagnostics

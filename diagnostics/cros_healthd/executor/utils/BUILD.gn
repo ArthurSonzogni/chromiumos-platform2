@@ -40,6 +40,7 @@ if (use.test) {
     sources = [
       "fake_process_control.cc",
       "sandboxed_process_test.cc",
+      "scoped_process_control_test.cc",
     ]
     configs += [
       ":pkg_deps",

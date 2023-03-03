@@ -6,10 +6,12 @@
 #define DIAGNOSTICS_CROS_HEALTHD_EXECUTOR_UTILS_FAKE_PROCESS_CONTROL_H_
 
 #include <string>
+#include <vector>
 
 #include <base/files/file.h>
 #include <base/files/platform_file.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/functional/callback_forward.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
 #include "diagnostics/cros_healthd/mojom/executor.mojom.h"
@@ -38,6 +40,15 @@ class FakeProcessControl : public ash::cros_healthd::mojom::ProcessControl {
   void BindReceiver(
       mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl> receiver);
 
+  // Returns the underlying receiver.
+  mojo::Receiver<ash::cros_healthd::mojom::ProcessControl>& receiver();
+
+  // Returns whether the receiver is currently connected to a remote.
+  bool IsConnected();
+
+  // Returns the return code.
+  int return_code() { return return_code_; }
+
  private:
   // The return code of the process.
   int return_code_;
@@ -47,7 +58,11 @@ class FakeProcessControl : public ash::cros_healthd::mojom::ProcessControl {
   base::ScopedPlatformFile stderr_fd_;
   // The temporary directory which files are stored in.
   base::ScopedTempDir temp_dir_;
-
+  // A vector that stores all the callbacks to be run once a return code is set.
+  std::vector<GetReturnCodeCallback> get_return_code_callbacks_;
+  // A boolean to keep track of whether a remote is currently connected to the
+  // receiver.
+  bool is_connected_;
   // The mojo receiver FakeProcessControl binds to.
   mojo::Receiver<ash::cros_healthd::mojom::ProcessControl> receiver_{this};
 };
