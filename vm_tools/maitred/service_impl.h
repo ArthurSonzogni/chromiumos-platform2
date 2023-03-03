@@ -13,6 +13,8 @@
 #include "base/files/file_path.h"
 #include <base/functional/callback.h>
 #include "brillo/storage_balloon.h"
+#include <dbus/bus.h>
+#include <dbus/object_proxy.h>
 #include <grpcpp/grpcpp.h>
 #include <vm_protos/proto_bindings/vm_guest.grpc.pb.h>
 
@@ -31,7 +33,7 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
   ~ServiceImpl() override = default;
 
   // Initializes ServiceImpl for first use.
-  bool Init();
+  bool Init(scoped_refptr<base::SequencedTaskRunner> dbus_task_runner);
 
   void set_shutdown_cb(base::OnceCallback<bool(void)> cb) {
     shutdown_cb_ = std::move(cb);
@@ -166,6 +168,9 @@ class ServiceImpl final : public vm_tools::Maitred::Service {
   base::FilePath zoneinfo_file_path_;
 
   std::unique_ptr<brillo::StorageBalloon> balloon_;
+
+  scoped_refptr<dbus::Bus> bus_;
+  dbus::ObjectProxy* logind_service_proxy_;
 };
 
 }  // namespace maitred

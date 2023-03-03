@@ -254,6 +254,13 @@ int main(int argc, char** argv) {
     }
   }
 
+  base::Thread dbus_thread{"D-Bus Thread"};
+  if (!dbus_thread.StartWithOptions(
+          base::Thread::Options(base::MessagePumpType::IO, 0))) {
+    LOG(ERROR) << "Failed starting the D-Bus thread";
+    return -1;
+  }
+
   // Build the server.
   grpc::ServerBuilder builder;
   builder.AddListeningPort(
@@ -262,7 +269,7 @@ int main(int argc, char** argv) {
 
   vm_tools::maitred::ServiceImpl maitred_service(std::move(init),
                                                  maitred_is_pid1);
-  if (!maitred_service.Init()) {
+  if (!maitred_service.Init(dbus_thread.task_runner())) {
     LOG(FATAL) << "Failed to initialize maitred service";
   }
   builder.RegisterService(&maitred_service);
@@ -323,9 +330,10 @@ int main(int argc, char** argv) {
   // The following call will return once the server has been stopped.
   server->Wait();
 
-  LOG(INFO) << "Shutting down system NOW";
-
-  reboot(RB_AUTOBOOT);
+  if (maitred_is_pid1) {
+    LOG(INFO) << "Shutting down system NOW";
+    reboot(RB_AUTOBOOT);
+  }
 
   return 0;
 }

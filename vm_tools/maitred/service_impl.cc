@@ -48,7 +48,10 @@
 #include <base/strings/stringprintf.h>
 #include <base/synchronization/lock.h>
 #include <base/system/sys_info.h>
+#include <brillo/dbus/dbus_proxy_util.h>
 #include <brillo/file_utils.h>
+#include <dbus/message.h>
+#include <dbus/object_path.h>
 
 #include "vm_tools/common/paths.h"
 
@@ -77,6 +80,10 @@ constexpr char kLocaltimePath[] = "/etc/localtime";
 constexpr char kZoneInfoPath[] = "/usr/share/zoneinfo";
 
 constexpr int64_t kGiB = 1024 * 1024 * 1024;
+
+constexpr char kLogindManagerInterface[] = "org.freedesktop.login1.Manager";
+constexpr char kLogindServicePath[] = "/org/freedesktop/login1";
+constexpr char kLogindServiceName[] = "org.freedesktop.login1";
 
 // Convert a 32-bit int in network byte order into a printable string.
 string AddressToString(uint32_t address) {
@@ -232,7 +239,45 @@ ServiceImpl::ServiceImpl(std::unique_ptr<vm_tools::maitred::Init> init,
       localtime_file_path_(kLocaltimePath),
       zoneinfo_file_path_(kZoneInfoPath) {}
 
-bool ServiceImpl::Init() {
+bool ServiceImpl::Init(
+    scoped_refptr<base::SequencedTaskRunner> dbus_task_runner) {
+  if (!maitred_is_pid1_) {
+    dbus::Bus::Options opts;
+    opts.bus_type = dbus::Bus::SYSTEM;
+    opts.dbus_task_runner = dbus_task_runner;
+    bus_ = new dbus::Bus(std::move(opts));
+    base::WaitableEvent event(base::WaitableEvent::ResetPolicy::AUTOMATIC,
+                              base::WaitableEvent::InitialState::NOT_SIGNALED);
+    bool success;
+    bool ret = dbus_task_runner->PostTask(
+        FROM_HERE, base::BindOnce(
+                       [](scoped_refptr<dbus::Bus> bus,
+                          base::WaitableEvent* event, bool* success) {
+                         if (!bus->Connect()) {
+                           *success = false;
+                         }
+                         *success = true;
+                         event->Signal();
+                       },
+                       bus_, &event, &success));
+    if (!ret) {
+      LOG(ERROR) << "Failed to schedule D-Bus connection";
+      return false;
+    }
+    event.Wait();
+    if (!success) {
+      LOG(ERROR) << "Failed to connect to system bus";
+      return false;
+    }
+
+    logind_service_proxy_ = bus_->GetObjectProxy(
+        kLogindServiceName, dbus::ObjectPath(kLogindServicePath));
+    if (!logind_service_proxy_) {
+      LOG(ERROR) << "Failed to get dbus proxy for " << kLogindServiceName;
+      return false;
+    }
+  }
+
   string error;
 
   return WriteResolvConf(kDefaultNameservers, {}, &error);
@@ -383,13 +428,23 @@ grpc::Status ServiceImpl::Shutdown(grpc::ServerContext* ctx,
                                    EmptyMessage* response) {
   LOG(INFO) << "Received shutdown request";
 
-  if (!maitred_is_pid1_) {
-    return grpc::Status(grpc::FAILED_PRECONDITION, "not running as init");
+  if (maitred_is_pid1_) {
+    init_->Shutdown();
+    std::move(shutdown_cb_).Run();
+    return grpc::Status::OK;
   }
 
-  init_->Shutdown();
-
-  std::move(shutdown_cb_).Run();
+  // When running as a service, ask logind to shut down the system.
+  dbus::MethodCall method_call(kLogindManagerInterface, "PowerOff");
+  dbus::MessageWriter writer(&method_call);
+  writer.AppendBool(false);  // interactive = false
+  auto dbus_response = brillo::dbus_utils::CallDBusMethod(
+      bus_, logind_service_proxy_, &method_call,
+      dbus::ObjectProxy::TIMEOUT_USE_DEFAULT);
+  if (!dbus_response) {
+    return grpc::Status(grpc::INTERNAL,
+                        "failed to send power off request to logind");
+  }
 
   return grpc::Status::OK;
 }
