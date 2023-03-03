@@ -33,3 +33,6 @@ socket: arg0 == AF_UNIX
 connect: 1
 exit_group: 1
 getrandom: 1
+clock_getres: 1
+clock_gettime: 1
+gettimeofday: 1

@@ -48,3 +48,6 @@ restart_syscall: 1
 socket: arg0 == AF_UNIX
 connect: 1
 rt_sigreturn: 1
+clock_getres: 1
+clock_gettime: 1
+gettimeofday: 1

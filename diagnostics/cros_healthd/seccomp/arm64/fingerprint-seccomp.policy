@@ -3,3 +3,7 @@
 # found in the LICENSE file.
 
 # Currently not support.
+
+clock_getres: 1
+clock_gettime: 1
+gettimeofday: 1

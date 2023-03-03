@@ -48,3 +48,6 @@ restart_syscall: 1
 exit: 1
 rt_sigreturn: 1
 fstatfs: 1
+clock_getres: 1
+clock_gettime: 1
+gettimeofday: 1

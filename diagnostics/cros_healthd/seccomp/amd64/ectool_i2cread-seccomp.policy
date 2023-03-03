@@ -86,3 +86,5 @@ prlimit64: 1
 setgroups: 1
 setresgid: 1
 setresuid: 1
+clock_gettime: 1
+gettimeofday: 1

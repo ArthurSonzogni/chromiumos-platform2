@@ -16,3 +16,8 @@ restart_syscall: 1
 rt_sigreturn: 1
 statx: 1
 write: 1
+clock_getres: 1
+clock_getres_time64: 1
+clock_gettime: 1
+clock_gettime64: 1
+gettimeofday: 1

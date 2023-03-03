@@ -20,3 +20,6 @@ uname: 1
 write: 1
 sched_getattr: 1
 sched_setattr: 1
+clock_getres: 1
+clock_gettime: 1
+gettimeofday: 1

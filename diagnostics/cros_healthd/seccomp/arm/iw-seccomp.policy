@@ -42,3 +42,6 @@ exit: 1
 rt_sigreturn: 1
 statx: 1
 fstatat64: 1
+clock_getres: 1
+clock_getres_time64: 1
+gettimeofday: 1

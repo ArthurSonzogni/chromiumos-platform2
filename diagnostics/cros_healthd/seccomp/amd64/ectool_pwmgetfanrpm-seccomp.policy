@@ -45,3 +45,6 @@ arch_prctl: 1
 set_tid_address: 1
 prlimit64: 1
 uname: 1
+clock_getres: 1
+clock_gettime: 1
+gettimeofday: 1
