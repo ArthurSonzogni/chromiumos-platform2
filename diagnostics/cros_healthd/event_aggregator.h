@@ -20,6 +20,7 @@
 #include "diagnostics/cros_healthd/events/touchscreen_events.h"
 #include "diagnostics/cros_healthd/events/udev_events.h"
 #include "diagnostics/cros_healthd/system/context.h"
+#include "diagnostics/mojom/public/cros_healthd.mojom.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
 
 namespace diagnostics {
@@ -35,6 +36,10 @@ class EventAggregator final {
   void AddObserver(
       ash::cros_healthd::mojom::EventCategoryEnum category,
       mojo::PendingRemote<ash::cros_healthd::mojom::EventObserver> observer);
+
+  void IsEventSupported(ash::cros_healthd::mojom::EventCategoryEnum category,
+                        ash::cros_healthd::mojom::CrosHealthdEventService::
+                            IsEventSupportedCallback callback);
 
   // Deprecated interface. Only for backward compatibility.
   void AddObserver(

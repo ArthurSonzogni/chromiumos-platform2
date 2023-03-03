@@ -15,6 +15,7 @@
 #include "diagnostics/cros_healthd/events/touchpad_events_impl.h"
 #include "diagnostics/cros_healthd/events/touchscreen_events_impl.h"
 #include "diagnostics/cros_healthd/events/udev_events_impl.h"
+#include "diagnostics/mojom/public/cros_healthd_exception.mojom.h"
 
 namespace diagnostics {
 
@@ -91,6 +92,14 @@ void EventAggregator::AddObserver(
       stylus_garage_events_->AddObserver(std::move(observer));
       break;
   }
+}
+
+void EventAggregator::IsEventSupported(
+    mojom::EventCategoryEnum category,
+    mojom::CrosHealthdEventService::IsEventSupportedCallback callback) {
+  // TODO(b/271514913): Implement the real logic of this method. For now, we
+  // just assume that all the events are available.
+  std::move(callback).Run(nullptr);
 }
 
 void EventAggregator::AddObserver(

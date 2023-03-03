@@ -74,6 +74,8 @@ class CrosHealthdMojoService final
       ash::cros_healthd::mojom::EventCategoryEnum category,
       mojo::PendingRemote<ash::cros_healthd::mojom::EventObserver> observer)
       override;
+  void IsEventSupported(ash::cros_healthd::mojom::EventCategoryEnum category,
+                        IsEventSupportedCallback callback) override;
 
   // ash::cros_healthd::mojom::CrosHealthdProbeService overrides:
   void ProbeProcessInfo(uint32_t process_id,

@@ -86,6 +86,11 @@ void CrosHealthdMojoService::AddEventObserver(
   event_aggregator_->AddObserver(category, std::move(observer));
 }
 
+void CrosHealthdMojoService::IsEventSupported(
+    mojom::EventCategoryEnum category, IsEventSupportedCallback callback) {
+  event_aggregator_->IsEventSupported(category, std::move(callback));
+}
+
 void CrosHealthdMojoService::ProbeProcessInfo(
     uint32_t process_id, ProbeProcessInfoCallback callback) {
   ProcessFetcher(context_).FetchProcessInfo(static_cast<pid_t>(process_id),

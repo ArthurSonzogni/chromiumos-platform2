@@ -15,6 +15,7 @@ import "diagnostics/mojom/external/network_diagnostics.mojom";
 import "diagnostics/mojom/external/network_health.mojom";
 import "diagnostics/mojom/public/cros_healthd_diagnostics.mojom";
 import "diagnostics/mojom/public/cros_healthd_events.mojom";
+import "diagnostics/mojom/public/cros_healthd_exception.mojom";
 import "diagnostics/mojom/public/cros_healthd_probe.mojom";
 import "diagnostics/mojom/public/nullable_primitives.mojom";
 import "diagnostics/mojom/public/wilco_ec.mojom";
@@ -740,7 +741,7 @@ interface CrosHealthdDiagnosticsService {
 
 // Event interface exposed by the cros_healthd daemon.
 //
-// NextMinVersion: 3, NextIndex: 8
+// NextMinVersion: 4, NextIndex: 9
 [Stable]
 interface CrosHealthdEventService {
   // Adds an observer to be notified on Bluetooth events. The caller can remove
@@ -806,6 +807,21 @@ interface CrosHealthdEventService {
   [MinVersion=2] AddEventObserver@7(
       EventCategoryEnum category,
       pending_remote<EventObserver> observer);
+
+  // Checks whether an event is supported. It does the same supportability check
+  // as in `AddEventObserver()` and returns immediately after the check.
+  //
+  // The request:
+  // * |category| - Event category to check.
+  //
+  // The response:
+  // * |exception|
+  //   * null - The event is supported.
+  //   * kNotSupported - The event is not supported on this device.
+  //   * kUnexpected - An unexpected exception happens so we don't know if the
+  //     event is supported or not.
+  [MinVersion=3] IsEventSupported@8(
+      EventCategoryEnum category) => (Exception? exception);
 };
 
 // Probe interface exposed by the cros_healthd daemon.
