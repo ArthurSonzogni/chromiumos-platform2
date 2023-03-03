@@ -17,6 +17,10 @@
 
 namespace minios {
 
+const char kCategoryInit[] = "init";
+const char kCategoryReboot[] = "reboot";
+const char kCategoryUpdate[] = "update";
+
 std::tuple<bool, std::string> ReadFileContentWithinRange(
     const base::FilePath& file_path,
     int64_t start_offset,

@@ -13,6 +13,7 @@
 #include "minios/process_manager.h"
 #include "minios/recovery_installer.h"
 #include "minios/state_reporter_interface.h"
+#include "minios/utils.h"
 
 namespace minios {
 
@@ -33,7 +34,7 @@ int MiniOs::Run() {
   LOG(INFO) << "Starting miniOS.";
 
   if (!screens_controller_.Init()) {
-    LOG(ERROR) << "Screens init failed. Exiting.";
+    LOG(ERROR) << AlertLogTag(kCategoryInit) << "Screens init failed. Exiting.";
     return 1;
   }
 

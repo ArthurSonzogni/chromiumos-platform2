@@ -11,13 +11,14 @@
 
 #include <base/memory/weak_ptr.h>
 #include <update_engine/proto_bindings/update_engine.pb.h>
+// NOLINTNEXTLINE(build/include_alpha)
 #include <update_engine/dbus-proxies.h>
 
 namespace minios {
 
 class UpdateEngineProxy {
  public:
-  UpdateEngineProxy(
+  explicit UpdateEngineProxy(
       std::unique_ptr<org::chromium::UpdateEngineInterfaceProxyInterface> proxy)
       : update_engine_proxy_(std::move(proxy)),
         delegate_(nullptr),
@@ -46,7 +47,9 @@ class UpdateEngineProxy {
   virtual bool StartUpdate();
 
  private:
-  // Called on receiving update engine's  'Status Update` signal.
+  FRIEND_TEST(UpdateEngineProxyTest, AlertOnRebootFailure);
+
+  // Called on receiving update engine's 'Status Update` signal.
   void OnStatusUpdateAdvancedSignal(
       const update_engine::StatusResult& status_result);
   // Called on connecting to update engine's  'Status Update` signal.

@@ -96,6 +96,7 @@ if (use.test) {
     pkg_deps = [
       "libbrillo-test",
       "libchrome-test",
+      "libupdate_engine-client-test",
     ]
   }
   executable("minios_test") {
@@ -116,6 +117,7 @@ if (use.test) {
       "screens/screen_network_test.cc",
       "screens/screen_permission_test.cc",
       "screens/screen_welcome_test.cc",
+      "update_engine_proxy_test.cc",
       "utils_test.cc",
     ]
     configs += [

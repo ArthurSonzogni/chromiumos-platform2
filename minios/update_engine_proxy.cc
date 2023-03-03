@@ -7,6 +7,8 @@
 #include <base/logging.h>
 #include <brillo/message_loops/message_loop.h>
 
+#include "minios/utils.h"
+
 namespace minios {
 
 namespace {
@@ -53,7 +55,8 @@ void UpdateEngineProxy::TriggerReboot() {
 void UpdateEngineProxy::Reboot() {
   brillo::ErrorPtr error;
   if (!update_engine_proxy_->RebootIfNeeded(&error)) {
-    LOG(ERROR) << "Could not reboot. ErrorCode=" << error->GetCode()
+    LOG(ERROR) << AlertLogTag(kCategoryReboot)
+               << "Could not reboot. ErrorCode=" << error->GetCode()
                << " ErrorMessage=" << error->GetMessage();
   }
 }
@@ -69,7 +72,8 @@ bool UpdateEngineProxy::StartUpdate() {
   update_flags->set_non_interactive(false);
 
   if (!update_engine_proxy_.get()->Update(update_params, &error)) {
-    LOG(ERROR) << "Could not initiate forced update. "
+    LOG(ERROR) << AlertLogTag(kCategoryUpdate)
+               << "Could not initiate forced update. "
                << "ErrorCode=" << error->GetCode()
                << " ErrorMessage=" << error->GetMessage();
     return false;

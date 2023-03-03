@@ -41,7 +41,8 @@ ScreenController::ScreenController(
 
 bool ScreenController::Init() {
   if (!draw_utils_ || !draw_utils_->Init()) {
-    LOG(ERROR) << "Screen drawing utility not available. Cannot continue.";
+    LOG(ERROR) << AlertLogTag(kCategoryInit)
+               << "Screen drawing utility not available. Cannot continue.";
     return false;
   }
   update_engine_proxy_->Init();
@@ -325,9 +326,7 @@ void ScreenController::StartRecovery(const std::string& ssid,
         FROM_HERE,
         base::BindOnce(base::IgnoreResult(&ScreenController::MoveForward),
                        base::Unretained(this), nullptr));
-  }
-
-  if (!result) {
+  } else {
     LOG(ERROR) << "StartRecovery failed. Reason: " << error->GetMessage();
 
     if (dbus_recovery_state_.value() != State::ERROR)

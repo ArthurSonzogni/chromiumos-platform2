@@ -6,6 +6,7 @@
 
 #include <utility>
 
+#include <base/test/mock_log.h>
 #include <brillo/message_loops/fake_message_loop.h>
 #include <gtest/gtest.h>
 
@@ -17,8 +18,10 @@
 #include "minios/mock_state_reporter_interface.h"
 #include "minios/mock_update_engine_proxy.h"
 #include "minios/screen_controller.h"
+#include "minios/utils.h"
 
 using testing::_;
+using testing::HasSubstr;
 using ::testing::NiceMock;
 
 namespace minios {
@@ -31,7 +34,7 @@ class ScreenControllerTest : public ::testing::Test {
   }
 
  protected:
-  std::shared_ptr<DrawInterface> draw_interface_ =
+  std::shared_ptr<MockDrawInterface> draw_interface_ =
       std::make_shared<NiceMock<MockDrawInterface>>();
   std::shared_ptr<MockUpdateEngineProxy> mock_update_engine_proxy_ =
       std::make_shared<NiceMock<MockUpdateEngineProxy>>();
@@ -46,6 +49,20 @@ class ScreenControllerTest : public ::testing::Test {
   base::SimpleTestClock clock_;
   brillo::FakeMessageLoop loop_{&clock_};
 };
+
+TEST_F(ScreenControllerTest, VerifyInitFailueNoDrawUtil) {
+  // Setup a mock logger to ensure alert is printed on a failed connect.
+  base::test::MockLog mock_log;
+  mock_log.StartCapturingLogs();
+
+  EXPECT_CALL(*draw_interface_, Init()).WillOnce(testing::Return(false));
+
+  // Logger expectation.
+  EXPECT_CALL(mock_log, Log(::logging::LOGGING_ERROR, _, _, _,
+                            HasSubstr(AlertLogTag(kCategoryInit).c_str())));
+
+  EXPECT_FALSE(screen_controller_.Init());
+}
 
 TEST_F(ScreenControllerTest, OnForward) {
   EXPECT_CALL(mock_screen_, GetType())

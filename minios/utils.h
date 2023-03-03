@@ -14,6 +14,11 @@
 
 namespace minios {
 
+// Alert Log error categories.
+extern const char kCategoryInit[];
+extern const char kCategoryReboot[];
+extern const char kCategoryUpdate[];
+
 // Reads the content of `file_path` from `start_offset` to `end_offset` with
 // maximum characters per line being `max_columns` at max. If the file ends
 // before reading all bytes between `start_offset` and `end_offset` it will
@@ -53,6 +58,13 @@ bool GetCrosRegionData(ProcessManagerInterface* process_manager,
 std::string GetKeyboardLayout(ProcessManagerInterface* process_manager);
 
 bool TriggerShutdown();
+
+// Create a tag that can be added to an Error log message to allow easier
+// filtering from listnr logs. Expected to be used as the first field of a log
+// message. e.g.: `LOG(ERROR) << AlertLogTag(kCategoryName) << err_msg << ....;`
+inline std::string AlertLogTag(const std::string& category) {
+  return base::StringPrintf("[CoreServicesAlert<%s>] ", category.c_str());
+}
 
 }  // namespace minios
 

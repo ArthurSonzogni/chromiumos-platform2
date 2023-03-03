@@ -4,6 +4,7 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/test/mock_log.h>
 #include <gtest/gtest.h>
 
 #include "minios/mock_process_manager.h"
@@ -12,6 +13,9 @@
 using testing::_;
 
 namespace minios {
+
+using ::testing::_;
+using ::testing::HasSubstr;
 
 class UtilTest : public ::testing::Test {
  public:
@@ -140,6 +144,29 @@ TEST_F(UtilTest, GetKeyboardLayout) {
       .WillOnce(testing::DoAll(testing::SetArgPointee<2>("xkb:en::eng"),
                                testing::Return(true)));
   EXPECT_EQ(GetKeyboardLayout(&mock_process_manager_), "en");
+}
+
+TEST(UtilsTest, AlertLogTagCreationTest) {
+  auto category = "test_category";
+  auto default_component = "CoreServicesAlert";
+  EXPECT_EQ(base::StringPrintf("[%s<%s>] ", default_component, category),
+            AlertLogTag(category));
+}
+
+TEST(UtilsTest, AlertLogTagLogTest) {
+  base::test::MockLog mock_log;
+  mock_log.StartCapturingLogs();
+
+  auto category = "test_category";
+  auto test_msg = "Test Error Message: ";
+  auto test_id = 10;
+  auto expected_log = base::StringPrintf(
+      "%s%s%d", AlertLogTag(category).c_str(), test_msg, test_id);
+
+  EXPECT_CALL(mock_log,
+              Log(::logging::LOGGING_ERROR, _, _, _, HasSubstr(expected_log)));
+
+  LOG(ERROR) << AlertLogTag(category) << test_msg << test_id;
 }
 
 }  // namespace minios
