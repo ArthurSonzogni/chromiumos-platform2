@@ -1584,13 +1584,14 @@ void Datapath::StartVpnRouting(const std::string& vpn_ifname) {
   }
 
   // All traffic with the VPN routing tag are explicitly accepted in the filter
-  // table. This prevents the VPN lockdown chain to reject that traffic when VPN
-  // lockdown is enabled.
-  if (!ModifyIptables(IpFamily::Dual, "filter",
-                      {"-A", kVpnAcceptChain, "-m", "mark", "--mark",
-                       routing_mark.value().ToString() + "/" +
-                           kFwmarkRoutingMask.ToString(),
-                       "-j", "ACCEPT", "-w"})) {
+  // table for traffic sent to the VPN interface (b/269431032). This prevents
+  // the VPN lockdown chain to reject that traffic when VPN lockdown is enabled.
+  if (!ModifyIptables(
+          IpFamily::Dual, "filter",
+          {"-A", kVpnAcceptChain, "-o", vpn_ifname, "-m", "mark", "--mark",
+           routing_mark.value().ToString() + "/" +
+               kFwmarkRoutingMask.ToString(),
+           "-j", "ACCEPT", "-w"})) {
     LOG(ERROR) << "Failed to set filter rule for accepting VPN marked traffic";
   }
 }

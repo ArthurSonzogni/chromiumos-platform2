@@ -998,7 +998,7 @@ TEST(DatapathTest, StartStopVpnRouting_ArcVpn) {
                   "nat -A OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
                   "redirect_dns -w");
   Verify_iptables(*runner, Dual,
-                  "filter -A vpn_accept -m mark "
+                  "filter -A vpn_accept -o arcbr0 -m mark "
                   "--mark 0x03ed0000/0xffff0000 -j ACCEPT -w");
 
   // Teardown
@@ -1053,7 +1053,7 @@ TEST(DatapathTest, StartStopVpnRouting_HostVpn) {
                   "nat -A OUTPUT -m mark ! --mark 0x00008000/0x0000c000 -j "
                   "redirect_dns -w");
   Verify_iptables(*runner, Dual,
-                  "filter -A vpn_accept -m mark "
+                  "filter -A vpn_accept -o tun0 -m mark "
                   "--mark 0x03ed0000/0xffff0000 -j ACCEPT -w");
   // Teardown
   Verify_iptables(*runner, Dual,
