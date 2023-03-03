@@ -15,8 +15,6 @@ source_set("libdaemon_utils") {
   sources = [
     "constants.cc",
     "helper_utils.cc",
-    "process_with_output.cc",
-    "sandboxed_process.cc",
   ]
   configs += [ ":libdaemon_utils_pkg_deps" ]
 }

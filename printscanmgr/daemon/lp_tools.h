@@ -10,21 +10,21 @@
 
 #include <base/files/file_path.h>
 
-#include "printscanmgr/daemon/utils/process_with_output.h"
-
 namespace printscanmgr {
 
 class LpTools {
  public:
+  // Return code for a process which did not start successfully.
+  static constexpr int kRunError = -1;
+
   virtual ~LpTools() = default;
 
   // Runs lpadmin with the provided |arg_list| and |std_input|.
-  virtual int Lpadmin(const ProcessWithOutput::ArgList& arg_list,
-                      bool inherit_usergroups = false,
+  virtual int Lpadmin(const std::vector<std::string>& arg_list,
                       const std::vector<uint8_t>* std_input = nullptr) = 0;
 
   // Runs lpstat with the provided |arg_list| and |std_input|.
-  virtual int Lpstat(const ProcessWithOutput::ArgList& arg_list,
+  virtual int Lpstat(const std::vector<std::string>& arg_list,
                      std::string* output) = 0;
 
   // Runs cupstestppd with |ppd_content| and returns the exit code.
@@ -36,14 +36,10 @@ class LpTools {
   virtual const base::FilePath& GetCupsPpdDir() const = 0;
 
   // Returns the exit code for the executed process.
-  virtual int RunAsUser(const std::string& user,
-                        const std::string& group,
-                        const std::string& command,
-                        const std::string& seccomp_policy,
-                        const ProcessWithOutput::ArgList& arg_list,
-                        const std::vector<uint8_t>* std_input = nullptr,
-                        bool inherit_usergroups = false,
-                        std::string* out = nullptr) const = 0;
+  virtual int RunCommand(const std::string& command,
+                         const std::vector<std::string>& arg_list,
+                         const std::vector<uint8_t>* std_input = nullptr,
+                         std::string* out = nullptr) const = 0;
 
   // Change ownership of a file.  Return 0 on success, -1 on error.
   virtual int Chown(const std::string& path,
@@ -51,32 +47,23 @@ class LpTools {
                     gid_t group) const = 0;
 };
 
+// Production implementation of the LpTools interface.
 class LpToolsImpl : public LpTools {
  public:
   ~LpToolsImpl() override = default;
 
-  int Lpadmin(const ProcessWithOutput::ArgList& arg_list,
-              bool inherit_usergroups = false,
+  // LpTools overrides:
+  int Lpadmin(const std::vector<std::string>& arg_list,
               const std::vector<uint8_t>* std_input = nullptr) override;
-
-  int Lpstat(const ProcessWithOutput::ArgList& arg_list,
+  int Lpstat(const std::vector<std::string>& arg_list,
              std::string* output) override;
-
   int CupsTestPpd(const std::vector<uint8_t>& ppd_content) const override;
-
   int CupsUriHelper(const std::string& uri) const override;
-
   const base::FilePath& GetCupsPpdDir() const override;
-
-  int RunAsUser(const std::string& user,
-                const std::string& group,
-                const std::string& command,
-                const std::string& seccomp_policy,
-                const ProcessWithOutput::ArgList& arg_list,
-                const std::vector<uint8_t>* std_input = nullptr,
-                bool inherit_usergroups = false,
-                std::string* out = nullptr) const override;
-
+  int RunCommand(const std::string& command,
+                 const std::vector<std::string>& arg_list,
+                 const std::vector<uint8_t>* std_input = nullptr,
+                 std::string* out = nullptr) const override;
   int Chown(const std::string& path, uid_t owner, gid_t group) const override;
 };
 

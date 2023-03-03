@@ -13,6 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
+#include <brillo/process/process.h>
 
 #include "printscanmgr/daemon/utils/helper_utils.h"
 
@@ -21,45 +22,18 @@ namespace printscanmgr {
 namespace {
 
 constexpr char kLpadminCommand[] = "/usr/sbin/lpadmin";
-constexpr char kLpadminSeccompPolicy[] =
-    "/usr/share/policy/lpadmin-seccomp.policy";
 constexpr char kLpstatCommand[] = "/usr/bin/lpstat";
-constexpr char kLpstatSeccompPolicy[] =
-    "/usr/share/policy/lpstat-seccomp.policy";
 constexpr char kTestPPDCommand[] = "/usr/bin/cupstestppd";
-constexpr char kTestPPDSeccompPolicy[] =
-    "/usr/share/policy/cupstestppd-seccomp.policy";
 constexpr char kUriHelperBasename[] = "cups_uri_helper";
-constexpr char kUriHelperSeccompPolicy[] =
-    "/usr/share/policy/cups-uri-helper.policy";
-
-constexpr char kLpadminUser[] = "lpadmin";
-constexpr char kLpadminGroup[] = "lpadmin";
-constexpr char kLpGroup[] = "lp";
 
 }  // namespace
 
-// Returns the exit code for the executed process.
-int LpToolsImpl::RunAsUser(const std::string& user,
-                           const std::string& group,
-                           const std::string& command,
-                           const std::string& seccomp_policy,
-                           const ProcessWithOutput::ArgList& arg_list,
-                           const std::vector<uint8_t>* std_input,
-                           bool inherit_usergroups,
-                           std::string* out) const {
-  ProcessWithOutput process;
-  process.set_separate_stderr(true);
-  process.SandboxAs(user, group);
-
-  if (!seccomp_policy.empty())
-    process.SetSeccompFilterPolicyFile(seccomp_policy);
-
-  if (inherit_usergroups)
-    process.InheritUsergroups();
-
-  if (!process.Init())
-    return ProcessWithOutput::kRunError;
+int LpToolsImpl::RunCommand(const std::string& command,
+                            const std::vector<std::string>& arg_list,
+                            const std::vector<uint8_t>* std_input,
+                            std::string* out) const {
+  brillo::ProcessImpl process;
+  process.RedirectOutputToMemory(/*combine=*/false);
 
   process.AddArg(command);
   for (const std::string& arg : arg_list) {
@@ -68,7 +42,7 @@ int LpToolsImpl::RunAsUser(const std::string& user,
 
   // Starts a process, writes data from the buffer to its standard input and
   // waits for the process to finish.
-  int result = ProcessWithOutput::kRunError;
+  int result = kRunError;
   process.RedirectUsingPipe(STDIN_FILENO, true);
   if (process.Start()) {
     // Ignore SIGPIPE.
@@ -99,15 +73,13 @@ int LpToolsImpl::RunAsUser(const std::string& user,
       process.Kill(SIGKILL, 0);
     }
     result = process.Wait();
-    if (out && !process.GetOutput(out)) {
-      PLOG(ERROR) << "Failed to get process output";
-      return 1;
+    if (out) {
+      *out = process.GetOutputString(STDOUT_FILENO);
     }
   }
 
   if (result != 0) {
-    std::string error_msg;
-    process.GetError(&error_msg);
+    std::string error_msg = process.GetOutputString(STDERR_FILENO);
     LOG(ERROR) << "Child process exited with status " << result;
     LOG(ERROR) << "stderr was: " << error_msg;
   }
@@ -116,29 +88,23 @@ int LpToolsImpl::RunAsUser(const std::string& user,
 }
 
 // Runs lpadmin with the provided |arg_list| and |std_input|.
-int LpToolsImpl::Lpadmin(const ProcessWithOutput::ArgList& arg_list,
-                         bool inherit_usergroups,
+int LpToolsImpl::Lpadmin(const std::vector<std::string>& arg_list,
                          const std::vector<uint8_t>* std_input) {
   // Run in lp group so we can read and write /run/cups/cups.sock.
-  return RunAsUser(kLpadminUser, kLpGroup, kLpadminCommand,
-                   kLpadminSeccompPolicy, arg_list, std_input,
-                   inherit_usergroups);
+  return RunCommand(kLpadminCommand, arg_list, std_input);
 }
 
 // Runs lpstat with the provided |arg_list| and |std_input|.
-int LpToolsImpl::Lpstat(const ProcessWithOutput::ArgList& arg_list,
+int LpToolsImpl::Lpstat(const std::vector<std::string>& arg_list,
                         std::string* output) {
   // Run in lp group so we can read and write /run/cups/cups.sock.
-  return RunAsUser(kLpadminUser, kLpGroup, kLpstatCommand, kLpstatSeccompPolicy,
-                   arg_list,
-                   /*std_input=*/nullptr,
-                   /*inherit_usergroups=*/false, output);
+  return RunCommand(kLpstatCommand, arg_list, /*std_input=*/nullptr, output);
 }
 
 int LpToolsImpl::CupsTestPpd(const std::vector<uint8_t>& ppd_content) const {
-  return RunAsUser(
-      kLpadminUser, kLpadminGroup, kTestPPDCommand, kTestPPDSeccompPolicy,
-      {"-W", "translations", "-W", "constraints", "-"}, &ppd_content);
+  return RunCommand(kTestPPDCommand,
+                    {"-W", "translations", "-W", "constraints", "-"},
+                    &ppd_content);
 }
 
 int LpToolsImpl::CupsUriHelper(const std::string& uri) const {
@@ -148,10 +114,8 @@ int LpToolsImpl::CupsUriHelper(const std::string& uri) const {
     return 127;  // Shell exit code for command not found.
   }
 
-  ProcessWithOutput::ArgList args = {uri};
-  return RunAsUser(SandboxedProcess::kDefaultUser,
-                   SandboxedProcess::kDefaultGroup, helper_path,
-                   kUriHelperSeccompPolicy, args);
+  std::vector<std::string> args = {uri};
+  return RunCommand(helper_path, args);
 }
 
 const base::FilePath& LpToolsImpl::GetCupsPpdDir() const {

@@ -26,8 +26,6 @@
 #include <chromeos/dbus/printscanmgr/dbus-constants.h>
 
 #include "printscanmgr/daemon/utils/constants.h"
-#include "printscanmgr/daemon/utils/process_with_output.h"
-#include "printscanmgr/daemon/utils/sandboxed_process.h"
 
 namespace printscanmgr {
 
@@ -49,8 +47,7 @@ startxref
 constexpr char kGzipCommand[] = "/bin/gzip";
 constexpr char kFoomaticCommand[] = "/usr/bin/foomatic-rip";
 
-constexpr char kLpadminUser[] = "lpadmin";
-constexpr char kLpadminGroup[] = "lpadmin";
+constexpr char kPrintscanmgrUser[] = "printscanmgr";
 
 constexpr base::StringPiece kLpstatInterfaceLinePrefix("Interface: ");
 
@@ -69,8 +66,7 @@ int TestPPD(const LpTools& lp_tools, const std::vector<uint8_t>& ppd_data) {
   std::vector<uint8_t> ppd_content = ppd_data;
   if (ppd_content[0] == 0x1f && ppd_content[1] == 0x8b) {  // gzip header
     std::string out;
-    int ret = lp_tools.RunAsUser(kLpadminUser, kLpadminGroup, kGzipCommand, "",
-                                 {"-cfd"}, &ppd_content, false, &out);
+    int ret = lp_tools.RunCommand(kGzipCommand, {"-cfd"}, &ppd_content, &out);
     if (ret || out.empty()) {
       LOG(ERROR) << "gzip failed";
       return ret ? ret : 1;
@@ -95,7 +91,7 @@ int TestPPD(const LpTools& lp_tools, const std::vector<uint8_t>& ppd_data) {
       return 1;
     }
     if (lp_tools.Chown(tmp.GetPath().MaybeAsASCII(),
-                       getpwnam(kLpadminUser)->pw_uid, -1)) {
+                       getpwnam(kPrintscanmgrUser)->pw_uid, -1)) {
       PLOG(ERROR) << "Could not set directory ownership ("
                   << tmp.GetPath().MaybeAsASCII() << ")";
       return 1;
@@ -106,8 +102,8 @@ int TestPPD(const LpTools& lp_tools, const std::vector<uint8_t>& ppd_data) {
     env->SetVar("PPD", ppd_file.MaybeAsASCII());
     const std::vector<uint8_t> kPdf(std::begin(kPdfContent),
                                     std::end(kPdfContent));
-    ret = lp_tools.RunAsUser(
-        kLpadminUser, kLpadminGroup, kFoomaticCommand, "",
+    ret = lp_tools.RunCommand(
+        kFoomaticCommand,
         {"1" /*jobID*/, "chronos" /*user*/, "Untitled" /*title*/,
          "1" /*copies*/, "" /*options*/},
         &kPdf);
@@ -186,11 +182,9 @@ int32_t CupsTool::AddAutoConfiguredPrinter(const std::string& name,
     return CupsResult::CUPS_FATAL;
   }
 
-  const bool is_ippusb =
-      base::StartsWith(uri, "ippusb://", base::CompareCase::INSENSITIVE_ASCII);
   LOG(INFO) << "Adding auto-configured printer " << name << " at " << uri;
-  const int result = lp_tools_->Lpadmin(
-      {"-v", uri, "-p", name, "-m", "everywhere", "-E"}, is_ippusb);
+  const int result =
+      lp_tools_->Lpadmin({"-v", uri, "-p", name, "-m", "everywhere", "-E"});
   return LpadminReturnCodeToCupsResult(result, /*autoconf=*/true);
 }
 
@@ -215,7 +209,7 @@ int32_t CupsTool::AddManuallyConfiguredPrinter(
 
   LOG(INFO) << "Adding manual printer " << name << " at " << uri;
   const int result = lp_tools_->Lpadmin(
-      {"-v", uri, "-p", name, "-P", "-", "-E"}, false, &ppd_contents);
+      {"-v", uri, "-p", name, "-P", "-", "-E"}, &ppd_contents);
   return LpadminReturnCodeToCupsResult(result, /*autoconf=*/false);
 }
 

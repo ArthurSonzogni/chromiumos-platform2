@@ -3,7 +3,9 @@
 // found in the LICENSE file.
 
 #include <algorithm>
+#include <string>
 #include <utility>
+#include <vector>
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
@@ -52,15 +54,14 @@ class FakeLpTools : public LpTools {
  public:
   FakeLpTools() { CHECK(ppd_dir_.CreateUniqueTempDir()); }
 
-  int Lpadmin(const ProcessWithOutput::ArgList& arg_list,
-              bool inherit_usergroups,
+  int Lpadmin(const std::vector<std::string>& arg_list,
               const std::vector<uint8_t>* std_input) override {
     return lpadmin_result_;
   }
 
   // Return 1 if lpstat_output_ is empty, else populate output (if non-null) and
   // return 0.
-  int Lpstat(const ProcessWithOutput::ArgList& arg_list,
+  int Lpstat(const std::vector<std::string>& arg_list,
              std::string* output) override {
     if (lpstat_output_.empty()) {
       return 1;
@@ -81,15 +82,11 @@ class FakeLpTools : public LpTools {
     return urihelper_result_;
   }
 
-  int RunAsUser(const std::string& user,
-                const std::string& group,
-                const std::string& command,
-                const std::string& seccomp_policy,
-                const ProcessWithOutput::ArgList& arg_list,
-                const std::vector<uint8_t>* std_input = nullptr,
-                bool inherit_usergroups = false,
-                std::string* out = nullptr) const override {
-    return runasuser_result_;
+  int RunCommand(const std::string& command,
+                 const std::vector<std::string>& arg_list,
+                 const std::vector<uint8_t>* std_input = nullptr,
+                 std::string* out = nullptr) const override {
+    return runcommand_result_;
   }
 
   const base::FilePath& GetCupsPpdDir() const override {
@@ -109,13 +106,13 @@ class FakeLpTools : public LpTools {
 
   void SetCupsUriHelperResult(int result) { urihelper_result_ = result; }
 
-  void SetRunAsUserResult(int result) { runasuser_result_ = result; }
+  void SetRunCommandResult(int result) { runcommand_result_ = result; }
 
   void SetChownResult(int result) { chown_result_ = result; }
 
   void SetLpadminResult(int result) { lpadmin_result_ = result; }
 
-  // Create some valid output for lpstat based on printerName
+  // Create some valid output for lpstat based on `printerName`.
   void CreateValidLpstatOutput(const std::string& printerName) {
     const std::string lpstatOutput = base::StringPrintf(
         R"(printer %s is idle.
@@ -150,7 +147,7 @@ class FakeLpTools : public LpTools {
   base::ScopedTempDir ppd_dir_;
   int cupstestppd_result_{0};
   int urihelper_result_{0};
-  int runasuser_result_{0};
+  int runcommand_result_{0};
   int chown_result_{0};
   int lpadmin_result_{0};
 };
@@ -554,7 +551,7 @@ TEST(CupsToolTest, FoomaticPPD) {
             std::back_inserter(foomatic_ppd));
 
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
-  lptools->SetRunAsUserResult(0);
+  lptools->SetRunCommandResult(0);
   lptools->SetChownResult(0);
 
   CupsTool cups;
@@ -573,7 +570,7 @@ TEST(CupsToolTest, FoomaticError) {
             std::back_inserter(foomatic_ppd));
 
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
-  lptools->SetRunAsUserResult(0);
+  lptools->SetRunCommandResult(0);
   lptools->SetChownResult(-1);
 
   CupsTool cups;
