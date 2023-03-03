@@ -6,6 +6,7 @@
 #include "sommelier-tracing.h"    // NOLINT(build/include_directory)
 #include "sommelier-transform.h"  // NOLINT(build/include_directory)
 #include "sommelier-xshape.h"     // NOLINT(build/include_directory)
+#include "xcb/xcb-shim.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -16,6 +17,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <memory>
 #include <string>
 #include <string.h>
 #include <sys/file.h>
@@ -935,8 +937,8 @@ void sl_create_window(struct sl_context* ctx,
   sl_window* window = new sl_window(ctx, id, x, y, width, height, border_width);
   uint32_t values[1];
   values[0] = XCB_EVENT_MASK_PROPERTY_CHANGE | XCB_EVENT_MASK_FOCUS_CHANGE;
-  xcb_change_window_attributes(ctx->connection, window->id, XCB_CW_EVENT_MASK,
-                               values);
+  xcb()->change_window_attributes(ctx->connection, window->id,
+                                  XCB_CW_EVENT_MASK, values);
 
   // Also enable shape events for this window to come in if the xshape
   // flag has been enabled
@@ -2869,6 +2871,8 @@ static void sl_connect(struct sl_context* ctx) {
   xcb_shape_query_version_reply_t* xshape_query_version_reply;
   const xcb_query_extension_reply_t* composite_extension;
   unsigned i;
+
+  set_xcb_shim(new XcbShim());
 
   ctx->connection = xcb_connect_to_fd(ctx->wm_fd, NULL);
   assert(!xcb_connection_has_error(ctx->connection));

@@ -4,19 +4,24 @@
 
 #include <ctype.h>
 #include <iostream>
+#include <memory>
 #include <string>
+#include <vector>
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <sys/socket.h>
 #include <wayland-client.h>
+#include <wayland-server-core.h>
 #include <wayland-util.h>
+#include <xcb/xproto.h>
 
-#include "sommelier.h"  // NOLINT(build/include_directory)
+#include "sommelier.h"                       // NOLINT(build/include_directory)
 #include "virtualization/wayland_channel.h"  // NOLINT(build/include_directory)
+#include "xcb/mock-xcb-shim.h"
 
-#include "aura-shell-client-protocol.h"      // NOLINT(build/include_directory)
-#include "xdg-shell-client-protocol.h"       // NOLINT(build/include_directory)
+#include "aura-shell-client-protocol.h"  // NOLINT(build/include_directory)
+#include "xdg-shell-client-protocol.h"   // NOLINT(build/include_directory)
 
 // Help gtest print Wayland message streams on expectation failure.
 //
@@ -70,6 +75,7 @@ using ::testing::PrintToString;
 using ::testing::Return;
 using ::testing::SetArgPointee;
 
+// Mock of Sommelier's Wayland connection to the host compositor.
 class MockWaylandChannel : public WaylandChannel {
  public:
   MockWaylandChannel() {}
@@ -146,6 +152,73 @@ MATCHER_P(AnyMessageContainsString,
   return data_as_str.find(str) != std::string::npos;
 }
 
+// Create a Wayland client and connect it to Sommelier's Wayland server.
+//
+// Sets up an actual Wayland client which connects over a Unix socket,
+// and can make Wayland requests in the same way as a regular client.
+// However, it has no event loop so doesn't process events.
+class FakeWaylandClient {
+ public:
+  explicit FakeWaylandClient(struct sl_context* ctx) {
+    // Create a socket pair for libwayland-server and libwayland-client
+    // to communicate over.
+    int rv = socketpair(AF_UNIX, SOCK_STREAM | SOCK_CLOEXEC, 0, sv);
+    errno_assert(!rv);
+    // wl_client takes ownership of its file descriptor
+    client = wl_client_create(ctx->host_display, sv[0]);
+    errno_assert(!!client);
+    sl_set_display_implementation(ctx, client);
+    client_display = wl_display_connect_to_fd(sv[1]);
+    EXPECT_NE(client_display, nullptr);
+
+    client_registry = wl_display_get_registry(client_display);
+    compositor = static_cast<wl_compositor*>(wl_registry_bind(
+        client_registry, GlobalName(ctx, &wl_compositor_interface),
+        &wl_compositor_interface, WL_COMPOSITOR_CREATE_SURFACE_SINCE_VERSION));
+    wl_display_flush(client_display);
+  }
+
+  ~FakeWaylandClient() {
+    wl_display_disconnect(client_display);
+    client_display = nullptr;
+    wl_client_destroy(client);
+    client = nullptr;
+  }
+
+  // Create a surface and return its ID
+  uint32_t CreateSurface() {
+    struct wl_surface* surface = wl_compositor_create_surface(compositor);
+    wl_display_flush(client_display);
+    return wl_proxy_get_id(reinterpret_cast<wl_proxy*>(surface));
+  }
+
+  // Represents the client from the server's (Sommelier's) end.
+  struct wl_client* client = nullptr;
+
+ protected:
+  // Find the "name" of Sommelier's global for a particular interface,
+  // so our fake client can bind to it. This is cheating (normally
+  // these names would come from wl_registry.global events) but
+  // easier than setting up a proper event loop for this fake client.
+  uint32_t GlobalName(struct sl_context* ctx,
+                      const struct wl_interface* for_interface) {
+    struct sl_global* global;
+    wl_list_for_each(global, &ctx->globals, link) {
+      if (global->interface == for_interface) {
+        return global->name;
+      }
+    }
+    assert(false);
+  }
+
+  int sv[2];
+
+  // Represents the server (Sommelier) from the client end.
+  struct wl_display* client_display = nullptr;
+  struct wl_registry* client_registry = nullptr;
+  struct wl_compositor* compositor = nullptr;
+};
+
 // Fixture for tests which exercise only Wayland functionality.
 class WaylandTest : public ::testing::Test {
  public:
@@ -198,11 +271,11 @@ class WaylandTest : public ::testing::Test {
     ctx.display = wl_display_connect_to_fd(ctx.virtwl_display_fd);
     wl_registry* registry = wl_display_get_registry(ctx.display);
 
-    sl_compositor_init_context(&ctx, registry, 0, kMinHostWlCompositorVersion);
+    // Fake the host compositor advertising globals.
+    uint32_t id = 0;
+    sl_registry_handler(&ctx, registry, id++, "wl_compositor",
+                        kMinHostWlCompositorVersion);
     EXPECT_NE(ctx.compositor, nullptr);
-
-    // Fake the Wayland server advertising globals.
-    uint32_t id = 1;
     sl_registry_handler(&ctx, registry, id++, "xdg_wm_base",
                         XDG_WM_BASE_GET_XDG_SURFACE_SINCE_VERSION);
     sl_registry_handler(&ctx, registry, id++, "zaura_shell",
@@ -219,15 +292,50 @@ class X11Test : public WaylandTest {
   void InitContext() override {
     WaylandTest::InitContext();
     ctx.xwayland = 1;
+
+    // Create a fake screen with somewhat plausible values.
+    // Some of these are not realistic because they refer to things not present
+    // in the mocked X environment (such as specifying a root window with ID 0).
+    ctx.screen = static_cast<xcb_screen_t*>(malloc(sizeof(xcb_screen_t)));
+    ctx.screen->root = 0x0;
+    ctx.screen->default_colormap = 0x0;
+    ctx.screen->white_pixel = 0x00ffffff;
+    ctx.screen->black_pixel = 0x00000000;
+    ctx.screen->current_input_masks = 0x005a0000;
+    ctx.screen->width_in_pixels = 1920;
+    ctx.screen->height_in_pixels = 1080;
+    ctx.screen->width_in_millimeters = 508;
+    ctx.screen->height_in_millimeters = 285;
+    ctx.screen->min_installed_maps = 1;
+    ctx.screen->max_installed_maps = 1;
+    ctx.screen->root_visual = 0x0;
+    ctx.screen->backing_stores = 0x01;
+    ctx.screen->save_unders = 0;
+    ctx.screen->root_depth = 24;
+    ctx.screen->allowed_depths_len = 0;
   }
 
   void Connect() override {
+    set_xcb_shim(&xcb);
     WaylandTest::Connect();
-    ctx.connection = xcb_connect(NULL, NULL);
+
+    // Pretend Xwayland has connected to Sommelier as a Wayland client.
+    xwayland = std::make_unique<FakeWaylandClient>(&ctx);
+    ctx.client = xwayland->client;
+
+    // TODO(cpelling): mock out more of xcb so this isn't needed
+    ctx.connection = xcb_connect(nullptr, nullptr);
+  }
+
+  ~X11Test() override { set_xcb_shim(nullptr); }
+
+  uint32_t GenerateId() {
+    static uint32_t id = 0;
+    return ++id;
   }
 
   virtual sl_window* CreateWindowWithoutRole() {
-    xcb_window_t window_id = 1;
+    xcb_window_t window_id = GenerateId();
     sl_create_window(&ctx, window_id, 0, 0, 800, 600, 0);
     sl_window* window = sl_lookup_window(&ctx, window_id);
     EXPECT_NE(window, nullptr);
@@ -236,29 +344,52 @@ class X11Test : public WaylandTest {
 
   virtual sl_window* CreateToplevelWindow() {
     sl_window* window = CreateWindowWithoutRole();
-    wl_surface* surface =
-        wl_compositor_create_surface(ctx.compositor->internal);
-    window->host_surface_id =
-        wl_proxy_get_id(reinterpret_cast<wl_proxy*>(surface));
 
-    window->xdg_surface =
-        xdg_wm_base_get_xdg_surface(ctx.xdg_shell->internal, surface);
-    window->xdg_toplevel = xdg_surface_get_toplevel(window->xdg_surface);
+    // Pretend we created a frame window too
+    window->frame_id = GenerateId();
 
-    window->aura_surface =
-        zaura_shell_get_aura_surface(ctx.aura_shell->internal, surface);
+    window->host_surface_id = xwayland->CreateSurface();
+    sl_window_update(window);
+    Pump();
     return window;
   }
+
+ protected:
+  NiceMock<MockXcbShim> xcb;
+  std::unique_ptr<FakeWaylandClient> xwayland;
 };
 
 namespace {
 uint32_t XdgToplevelId(sl_window* window) {
+  assert(window->xdg_toplevel);
   return wl_proxy_get_id(reinterpret_cast<wl_proxy*>(window->xdg_toplevel));
 }
 
 uint32_t AuraSurfaceId(sl_window* window) {
+  assert(window->aura_surface);
   return wl_proxy_get_id(reinterpret_cast<wl_proxy*>(window->aura_surface));
 }
+
+// This family of functions retrieves Sommelier's listeners for events received
+// from the host, so we can call them directly in the test rather than
+// (a) exporting the actual functions (which are typically static), or (b)
+// creating a fake host compositor to dispatch events via libwayland
+// (unnecessarily complicated).
+const xdg_surface_listener* HostEventHandler(struct xdg_surface* xdg_surface) {
+  const void* listener =
+      wl_proxy_get_listener(reinterpret_cast<wl_proxy*>(xdg_surface));
+  EXPECT_NE(listener, nullptr);
+  return static_cast<const xdg_surface_listener*>(listener);
+}
+
+const xdg_toplevel_listener* HostEventHandler(
+    struct xdg_toplevel* xdg_toplevel) {
+  const void* listener =
+      wl_proxy_get_listener(reinterpret_cast<wl_proxy*>(xdg_toplevel));
+  EXPECT_NE(listener, nullptr);
+  return static_cast<const xdg_toplevel_listener*>(listener);
+}
+
 }  // namespace
 
 TEST_F(WaylandTest, CanCommitToEmptySurface) {
@@ -675,7 +806,59 @@ TEST_F(X11Test, IconifySuppressesUnmaximize) {
       .Times(1);
   Pump();
 }
-#endif
+#endif  // BLACK_SCREEN_FIX
+
+// Matcher for the value_list argument of an X11 ConfigureWindow request,
+// which is a const void* pointing to an int array whose size is implied by
+// the flags argument.
+MATCHER_P(ValueListMatches, expected, "") {
+  const int* value_ptr = static_cast<const int*>(arg);
+  std::vector<int> values;
+  for (std::vector<int>::size_type i = 0; i < expected.size(); i++) {
+    values.push_back(value_ptr[i]);
+  }
+  *result_listener << PrintToString(values);
+  return values == expected;
+}
+
+TEST_F(X11Test, XdgToplevelConfigureTriggersX11ConfigureWindow) {
+  // Arrange
+  sl_window* window = CreateToplevelWindow();
+  window->managed = 1;     // pretend window is mapped
+  window->size_flags = 0;  // no hinted position or size
+  const int width = 1024;
+  const int height = 768;
+
+  // Assert: Set up expectations for Sommelier to send appropriate X11 requests.
+  int x = (ctx.screen->width_in_pixels - width) / 2;
+  int y = (ctx.screen->height_in_pixels - height) / 2;
+  EXPECT_CALL(xcb, configure_window(
+                       testing::_, window->frame_id,
+                       XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
+                           XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT |
+                           XCB_CONFIG_WINDOW_BORDER_WIDTH,
+                       ValueListMatches(std::vector({x, y, width, height, 0}))))
+      .Times(1);
+  EXPECT_CALL(xcb, configure_window(
+                       testing::_, window->id,
+                       XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
+                           XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT |
+                           XCB_CONFIG_WINDOW_BORDER_WIDTH,
+                       ValueListMatches(std::vector({0, 0, width, height, 0}))))
+      .Times(1);
+
+  // Act: Pretend the host compositor sends us some xdg configure events.
+  wl_array states;
+  wl_array_init(&states);
+  uint32_t* state =
+      static_cast<uint32_t*>(wl_array_add(&states, sizeof(uint32_t)));
+  *state = XDG_TOPLEVEL_STATE_ACTIVATED;
+
+  HostEventHandler(window->xdg_toplevel)
+      ->configure(nullptr, window->xdg_toplevel, width, height, &states);
+  HostEventHandler(window->xdg_surface)
+      ->configure(nullptr, window->xdg_surface, 123 /* serial */);
+}
 
 }  // namespace sommelier
 }  // namespace vm_tools

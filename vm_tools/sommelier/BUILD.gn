@@ -112,6 +112,7 @@ static_library("libsommelier") {
     "sommelier.cc",
     "virtualization/virtgpu_channel.cc",
     "virtualization/virtwl_channel.cc",
+    "xcb/xcb-shim.cc",
   ]
   include_dirs = []
   defines = sommelier_defines

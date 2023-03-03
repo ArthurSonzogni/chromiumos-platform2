@@ -144,6 +144,7 @@ libsommelier = static_library('sommelier',
     'sommelier-window.cc',
     'virtualization/virtwl_channel.cc',
     'virtualization/virtgpu_channel.cc',
+    'xcb/xcb-shim.cc',
   ] + wl_outs + tracing_sources + gamepad_sources,
   dependencies: [
     meson.get_compiler('cpp').find_library('m'),

@@ -9,6 +9,7 @@
 #include "sommelier.h"            // NOLINT(build/include_directory)
 #include "sommelier-tracing.h"    // NOLINT(build/include_directory)
 #include "sommelier-transform.h"  // NOLINT(build/include_directory)
+#include "xcb/xcb-shim.h"
 
 #include "aura-shell-client-protocol.h"  // NOLINT(build/include_directory)
 #include "xdg-shell-client-protocol.h"   // NOLINT(build/include_directory)
@@ -61,8 +62,9 @@ void sl_configure_window(struct sl_window* window) {
     int y = window->y;
     int i = 0;
 
-    xcb_configure_window(window->ctx->connection, window->frame_id,
-                         window->next_config.mask, window->next_config.values);
+    xcb()->configure_window(window->ctx->connection, window->frame_id,
+                            window->next_config.mask,
+                            window->next_config.values);
 
     if (window->next_config.mask & XCB_CONFIG_WINDOW_X)
       x = window->next_config.values[i++];
@@ -82,7 +84,7 @@ void sl_configure_window(struct sl_window* window) {
     values[2] = window->width;
     values[3] = window->height;
     values[4] = window->border_width;
-    xcb_configure_window(
+    xcb()->configure_window(
         window->ctx->connection, window->id,
         XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y | XCB_CONFIG_WINDOW_WIDTH |
             XCB_CONFIG_WINDOW_HEIGHT | XCB_CONFIG_WINDOW_BORDER_WIDTH,
@@ -96,10 +98,10 @@ void sl_configure_window(struct sl_window* window) {
   }
 
   if (window->managed) {
-    xcb_change_property(window->ctx->connection, XCB_PROP_MODE_REPLACE,
-                        window->id, window->ctx->atoms[ATOM_NET_WM_STATE].value,
-                        XCB_ATOM_ATOM, 32, window->next_config.states_length,
-                        window->next_config.states);
+    xcb()->change_property(
+        window->ctx->connection, XCB_PROP_MODE_REPLACE, window->id,
+        window->ctx->atoms[ATOM_NET_WM_STATE].value, XCB_ATOM_ATOM, 32,
+        window->next_config.states_length, window->next_config.states);
   }
 
   window->pending_config = window->next_config;
@@ -123,9 +125,9 @@ void sl_send_configure_notify(struct sl_window* window) {
   event.override_redirect = 0;
   event.pad1 = 0;
 
-  xcb_send_event(window->ctx->connection, 0, window->id,
-                 XCB_EVENT_MASK_STRUCTURE_NOTIFY,
-                 reinterpret_cast<char*>(&event));
+  xcb()->send_event(window->ctx->connection, 0, window->id,
+                    XCB_EVENT_MASK_STRUCTURE_NOTIFY,
+                    reinterpret_cast<char*>(&event));
 }
 
 int sl_process_pending_configure_acks(struct sl_window* window,
