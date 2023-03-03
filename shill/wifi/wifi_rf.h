@@ -26,10 +26,9 @@ constexpr char kUnconfiguredRegDomain[] = "97";
 // and frequency.
 enum class WiFiBand {
   kUnknownBand,
-  kLowBand,        // 2.4GHz band (2401MHz - 2495MHz, channel 1 - 14)
-  kHighBand,       // 5GHz band (5150MHz - 5895MHz, channel 32 - 177)
-  kUltraHighBand,  // 6GHz band (5945MHz - 7125MHz, channel 1 - 233)
-  kAllBands,       // All 3 bands
+  kLowBand,   // 2.4GHz band (2401MHz - 2495MHz, channel 1 - 14)
+  kHighBand,  // 5GHz band (5150MHz - 5895MHz, channel 32 - 177)
+  kAllBands,  // All 2 bands
 };
 
 std::string WiFiBandName(WiFiBand band);

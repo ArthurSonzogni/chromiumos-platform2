@@ -619,9 +619,8 @@ Properties	object ActiveProfile [readonly]
 			string ssid
 				the hex-encoded tethering SSID name to be advertised
 			string band
-				the local only hotspot band preference. This should be one of
-				“2.4GHz”, “5GHz”, or “6GHz”. If absent, the band will be picked by
-				Shill.
+				the local only hotspot band preference. This should be either
+                                “2.4GHz” or “5GHz”. If absent, the band will be picked by Shill.
 			string security
 				the tethering security to be used. This should be "wpa2"
 			string passphrase
@@ -780,8 +779,8 @@ Properties	object ActiveProfile [readonly]
 				downstream only)
 			string band
 				the tethering band preference (WiFi downstream only)
-				this should be one of “2.4GHz”, “5GHz”, or “6GHz”. If absent,
-				the band will be picked by Shill.
+				this should be either “2.4GHz” or “5GHz”. If absent, the band will
+                                be picked by Shill.
 			string security
 				the tethering security to be used (WiFi downstream only)
 				this should be one of "wpa2", "wpa3", "wpa2+wpa3"

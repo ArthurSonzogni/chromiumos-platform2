@@ -14,8 +14,6 @@ std::string WiFiBandName(WiFiBand band) {
       return kBand2GHz;
     case WiFiBand::kHighBand:
       return kBand5GHz;
-    case WiFiBand::kUltraHighBand:
-      return kBand6GHz;
     case WiFiBand::kAllBands:
       return kBandAll;
     case WiFiBand::kUnknownBand:
@@ -29,8 +27,6 @@ WiFiBand WiFiBandFromName(const std::string& name) {
     return WiFiBand::kLowBand;
   } else if (name == kBand5GHz) {
     return WiFiBand::kHighBand;
-  } else if (name == kBand6GHz) {
-    return WiFiBand::kUltraHighBand;
   } else if (name == kBandAll) {
     return WiFiBand::kAllBands;
   } else {

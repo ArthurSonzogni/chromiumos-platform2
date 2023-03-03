@@ -685,7 +685,6 @@ const char kSecurityWpa3Enterprise[] = "wpa3-ent";
 // WiFi Band options.
 const char kBand2GHz[] = "2.4GHz";
 const char kBand5GHz[] = "5GHz";
-const char kBand6GHz[] = "6GHz";
 const char kBandAll[] = "all-bands";
 const char kBandUnknown[] = "unknown";
 
