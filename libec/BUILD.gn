@@ -39,6 +39,7 @@ libec_sources = [
   "ec_usb_endpoint.cc",
   "fingerprint/fp_context_command.cc",
   "fingerprint/fp_context_command_factory.cc",
+  "fingerprint/fp_encryption_status_command.cc",
   "fingerprint/fp_frame_command.cc",
   "fingerprint/fp_info_command.cc",
   "fingerprint/fp_mode.cc",
@@ -124,6 +125,7 @@ install_config("install_fingerprint_headers") {
   sources = [
     "fingerprint/fp_context_command.h",
     "fingerprint/fp_context_command_factory.h",
+    "fingerprint/fp_encryption_status_command.h",
     "fingerprint/fp_frame_command.h",
     "fingerprint/fp_info_command.h",
     "fingerprint/fp_mode.h",
@@ -158,6 +160,7 @@ if (use.test) {
       "ec_usb_endpoint_test.cc",
       "fingerprint/fp_context_command_factory_test.cc",
       "fingerprint/fp_context_command_test.cc",
+      "fingerprint/fp_encryption_status_command_test.cc",
       "fingerprint/fp_frame_command_test.cc",
       "fingerprint/fp_info_command_test.cc",
       "fingerprint/fp_mode_command_test.cc",
