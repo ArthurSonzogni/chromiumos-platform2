@@ -5,16 +5,18 @@
 #include "swap_management/swap_tool.h"
 #include "swap_management/swap_tool_status.h"
 
-#include <limits>
+#include <cinttypes>
+#include <utility>
 
 #include <base/files/dir_reader_posix.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/posix/safe_strerror.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
+#include <base/strings/stringprintf.h>
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
-#include <brillo/process/process.h>
 #include <brillo/errors/error_codes.h>
 #include <chromeos/dbus/swap_management/dbus-constants.h>
 
@@ -23,30 +25,21 @@ namespace swap_management {
 namespace {
 
 constexpr char kSwapSizeFile[] = "/var/lib/swap/swap_size";
-// This script holds the bulk of the real logic.
-constexpr char kSwapHelperScriptFile[] = "/usr/share/cros/init/swap.sh";
 constexpr char kZramDeviceFile[] = "/dev/zram0";
 constexpr char kZramSysfsDir[] = "/sys/block/zram0";
+constexpr char kZramWritebackName[] = "zram-writeback";
+constexpr char kZramIntegrityName[] = "zram-integrity";
+constexpr char kZramWritebackIntegrityMount[] = "/run/zram-integrity";
+constexpr char kZramBackingDevice[] = "/sys/block/zram0/backing_dev";
+constexpr char kStatefulPartitionDir[] =
+    "/mnt/stateful_partition/unencrypted/userspace_swap.tmp";
+constexpr uint32_t kMiB = 1048576;
+// AES-GCM uses a fixed 12 byte IV. The other 12 bytes are auth tag.
+constexpr size_t kDmIntegrityBytesPerBlock = 24;
 
 constexpr base::TimeDelta kMaxIdleAge = base::Days(30);
 constexpr uint64_t kMinFilelistDefaultValueKB = 1000000;
 
-// TODO(b/218519699): Remove in deshell process.
-std::string RunSwapHelper(std::vector<std::string> commands, int* result) {
-  brillo::ProcessImpl process;
-
-  process.AddArg(kSwapHelperScriptFile);
-  for (auto& com : commands)
-    process.AddArg(com);
-
-  process.RedirectOutputToMemory(true);
-
-  *result = process.Run();
-
-  return process.GetOutputString(STDOUT_FILENO);
-}
-
-// TODO(b/218519699): Remove in deshell process.
 bool WriteValueToFile(const base::FilePath& file,
                       const std::string& val,
                       std::string& msg) {
@@ -62,65 +55,117 @@ bool WriteValueToFile(const base::FilePath& file,
   return true;
 }
 
+// Round up multiple will round the first argument |number| up to the next
+// multiple of the second argument |alignment|.
+uint64_t RoundupMultiple(uint64_t number, uint64_t alignment) {
+  return ((number + (alignment - 1)) / alignment) * alignment;
+}
+
 }  // namespace
 
-// Helper function to run binary.
-// On success, log stdout and return absl::OkStatus()
-// On failure, return corresponding absl error based on errno and append stderr.
-absl::Status SwapTool::RunProcessHelper(
-    const std::vector<std::string>& commands) {
-  if (commands.empty())
-    return absl::InvalidArgumentError("Empty input for RunProcessHelper.");
-
-  brillo::ProcessImpl process;
-  for (auto& com : commands)
-    process.AddArg(com);
-
-  process.RedirectOutputToMemory(true);
-
-  if (process.Run() != EXIT_SUCCESS)
-    return ErrnoToStatus(errno, process.GetOutputString(STDOUT_FILENO));
-
-  std::string out = process.GetOutputString(STDOUT_FILENO);
-  if (!out.empty())
-    LOG(INFO) << commands[0] << ": " << out;
-  return absl::OkStatus();
+absl::StatusOr<std::unique_ptr<LoopDev>> LoopDev::Create(
+    const std::string& path) {
+  return Create(path, false, 0);
 }
 
-absl::Status SwapTool::WriteFile(const base::FilePath& path,
-                                 const std::string& data) {
-  if (!base::WriteFile(path, data))
-    return ErrnoToStatus(errno, "Failed to write " + path.value());
+absl::StatusOr<std::unique_ptr<LoopDev>> LoopDev::Create(
+    const std::string& path, bool direct_io, uint32_t sector_size) {
+  std::vector<std::string> command({"/sbin/losetup", "--show"});
+  if (direct_io)
+    command.push_back("--direct-io=on");
+  if (sector_size != 0)
+    command.push_back("--sector-size=" + std::to_string(sector_size));
+  command.push_back("-f");
+  command.push_back(path);
 
-  return absl::OkStatus();
+  std::string loop_dev_path;
+  absl::Status status =
+      SwapToolUtil::Get()->RunProcessHelper(command, &loop_dev_path);
+  if (!status.ok())
+    return status;
+  base::TrimWhitespaceASCII(loop_dev_path, base::TRIM_ALL, &loop_dev_path);
+
+  return std::unique_ptr<LoopDev>(new LoopDev(loop_dev_path));
 }
 
-absl::Status SwapTool::ReadFileToStringWithMaxSize(const base::FilePath& path,
-                                                   std::string* contents,
-                                                   size_t max_size) {
-  if (!base::ReadFileToStringWithMaxSize(path, contents, max_size))
-    return ErrnoToStatus(errno, "Failed to read " + path.value());
+LoopDev::~LoopDev() {
+  absl::Status status = absl::OkStatus();
 
-  return absl::OkStatus();
+  if (!path_.empty()) {
+    status =
+        SwapToolUtil::Get()->RunProcessHelper({"/sbin/losetup", "-d", path_});
+    LOG_IF(ERROR, !status.ok()) << status;
+    path_.clear();
+  }
 }
 
-absl::Status SwapTool::ReadFileToString(const base::FilePath& path,
-                                        std::string* contents) {
-  return ReadFileToStringWithMaxSize(path, contents,
-                                     std::numeric_limits<size_t>::max());
+std::string LoopDev::GetPath() {
+  return path_;
 }
 
-absl::Status SwapTool::DeleteFile(const base::FilePath& path) {
-  if (!base::DeleteFile(path))
-    return ErrnoToStatus(errno, "Failed to delete " + path.value());
+absl::StatusOr<std::unique_ptr<DmDev>> DmDev::Create(
+    const std::string& name, const std::string& table_fmt) {
+  absl::Status status = absl::OkStatus();
 
-  return absl::OkStatus();
+  status = SwapToolUtil::Get()->RunProcessHelper(
+      {"/sbin/dmsetup", "create", name, "--table", table_fmt});
+  if (!status.ok())
+    return status;
+
+  std::unique_ptr<DmDev> dm_dev = std::unique_ptr<DmDev>(new DmDev(name));
+
+  status = dm_dev->Wait();
+  if (!status.ok())
+    return status;
+
+  return std::move(dm_dev);
+}
+
+DmDev::~DmDev() {
+  absl::Status status = absl::OkStatus();
+
+  if (!name_.empty()) {
+    status = SwapToolUtil::Get()->RunProcessHelper(
+        {"/sbin/dmsetup", "remove", "--deferred", name_});
+    LOG_IF(ERROR, !status.ok()) << status;
+    name_.clear();
+  }
+}
+
+// Wait for up to 5 seconds for a dm device to become available,
+// if it doesn't then return failed status. This is needed because dm devices
+// may take a few seconds to become visible at /dev/mapper after the table is
+// switched.
+absl::Status DmDev::Wait() {
+  constexpr base::TimeDelta kMaxWaitTime = base::Seconds(5);
+  constexpr base::TimeDelta kRetryDelay = base::Milliseconds(100);
+  std::string path = GetPath();
+
+  base::Time startTime = base::Time::Now();
+  while (true) {
+    if (base::Time::Now() - startTime > kMaxWaitTime)
+      return absl::UnavailableError(
+          path + " is not available after " +
+          std::to_string(kMaxWaitTime.InMilliseconds()) + " ms.");
+
+    if (SwapToolUtil::Get()
+            ->PathExists(base::FilePath("/dev/mapper/").Append(name_))
+            .ok())
+      return absl::OkStatus();
+
+    base::PlatformThread::Sleep(kRetryDelay);
+  }
+}
+
+std::string DmDev::GetPath() {
+  return "/dev/mapper/" + name_;
 }
 
 // Check if swap is already turned on.
 absl::StatusOr<bool> SwapTool::IsZramSwapOn() {
   std::string swaps;
-  absl::Status status = ReadFileToString(base::FilePath("/proc/swaps"), &swaps);
+  absl::Status status = SwapToolUtil::Get()->ReadFileToString(
+      base::FilePath("/proc/swaps"), &swaps);
   if (!status.ok())
     return status;
 
@@ -140,8 +185,8 @@ absl::StatusOr<bool> SwapTool::IsZramSwapOn() {
 // MemTotal is KiB.
 absl::StatusOr<uint64_t> SwapTool::GetMemTotal() {
   std::string mem_info;
-  absl::Status status =
-      ReadFileToString(base::FilePath("/proc/meminfo"), &mem_info);
+  absl::Status status = SwapToolUtil::Get()->ReadFileToString(
+      base::FilePath("/proc/meminfo"), &mem_info);
   if (!status.ok())
     return status;
 
@@ -172,7 +217,7 @@ absl::Status SwapTool::SetDefaultLowMemoryMargin(uint64_t mem_total) {
   // Calculate moderate margin in MiB, which is 40% free. Ignore the decimal.
   uint64_t moderate_margin = (mem_total / 1024) * 0.4;
   // Write into margin special file.
-  return WriteFile(
+  return SwapToolUtil::Get()->WriteFile(
       base::FilePath("/sys/kernel/mm/chromeos-low_mem/margin"),
       std::to_string(critical_margin) + " " + std::to_string(moderate_margin));
 }
@@ -183,8 +228,9 @@ absl::Status SwapTool::InitializeMMTunables(uint64_t mem_total) {
   if (!status.ok())
     return status;
 
-  return WriteFile(base::FilePath("/proc/sys/vm/min_filelist_kbytes"),
-                   std::to_string(kMinFilelistDefaultValueKB));
+  return SwapToolUtil::Get()->WriteFile(
+      base::FilePath("/proc/sys/vm/min_filelist_kbytes"),
+      std::to_string(kMinFilelistDefaultValueKB));
 }
 
 // Return zram (compressed ram disk) size in byte for swap.
@@ -196,8 +242,8 @@ absl::Status SwapTool::InitializeMMTunables(uint64_t mem_total) {
 absl::StatusOr<uint64_t> SwapTool::GetZramSize(uint64_t mem_total) {
   // For security, only read first few bytes of kSwapSizeFile.
   std::string buf;
-  absl::Status status =
-      ReadFileToStringWithMaxSize(base::FilePath(kSwapSizeFile), &buf, 5);
+  absl::Status status = SwapToolUtil::Get()->ReadFileToStringWithMaxSize(
+      base::FilePath(kSwapSizeFile), &buf, 5);
   // If the file doesn't exist we use default zram size, other errors we must
   // propagate back.
   if (!status.ok() && !absl::IsNotFound(status))
@@ -234,7 +280,8 @@ absl::Status SwapTool::EnableZramSwapping() {
   absl::Status status = absl::OkStatus();
 
   for (size_t i = 0; i < kMaxEnableTries; i++) {
-    status = RunProcessHelper({"/sbin/swapon", kZramDeviceFile});
+    status = SwapToolUtil::Get()->RunProcessHelper(
+        {"/sbin/swapon", kZramDeviceFile});
     if (status.ok())
       return status;
 
@@ -247,6 +294,194 @@ absl::Status SwapTool::EnableZramSwapping() {
   return absl::AbortedError("swapon " + std::string(kZramDeviceFile) +
                             " failed after " + std::to_string(kMaxEnableTries) +
                             " tries" + " last error: " + status.ToString());
+}
+
+// If we're unable to setup writeback just make sure we clean up any
+// mounts.
+// Devices are cleanup while class instances are released.
+// Errors happenes during cleanup will be logged.
+void SwapTool::CleanupWriteback() {
+  absl::Status status = absl::OkStatus();
+
+  status = SwapToolUtil::Get()->Umount(kZramWritebackIntegrityMount);
+  LOG_IF(ERROR, !status.ok()) << status;
+
+  status = SwapToolUtil::Get()->DeleteFile(
+      base::FilePath(kZramWritebackIntegrityMount));
+  LOG_IF(ERROR, !status.ok()) << status;
+}
+
+// Check if zram writeback can be used on the system.
+absl::Status SwapTool::ZramWritebackPrerequisiteCheck(uint32_t size) {
+  absl::Status status = absl::OkStatus();
+
+  // Don't allow |size| less than 128MiB or more than 6GiB to be configured.
+  constexpr uint32_t kZramWritebackMinSize = 128;
+  constexpr uint32_t kZramWritebackMaxSize = 6144;
+  if (size < kZramWritebackMinSize || size > kZramWritebackMaxSize)
+    return absl::InvalidArgumentError("Invalid size specified.");
+
+  // kZramBackingDevice must contains none, no writeback is setup before.
+  std::string backing_dev;
+  status = SwapToolUtil::Get()->ReadFileToString(
+      base::FilePath(kZramBackingDevice), &backing_dev);
+  if (!status.ok())
+    return status;
+  base::TrimWhitespaceASCII(backing_dev, base::TRIM_ALL, &backing_dev);
+  if (backing_dev != "none")
+    return absl::AlreadyExistsError(
+        "Zram already has a backing device assigned.");
+
+  // kZramWritebackIntegrityMount must not be mounted.
+  // rmdir(2) will return -EBUSY if the target is mounted.
+  // DeleteFile returns absl::OkStatus() if the target does not exist.
+  status = SwapToolUtil::Get()->DeleteFile(
+      base::FilePath(kZramWritebackIntegrityMount));
+
+  return status;
+}
+
+absl::Status SwapTool::GetZramWritebackInfo(uint32_t size) {
+  absl::Status status = absl::OkStatus();
+
+  // Read stateful partition file system statistics using statfs.
+  // f_blocks is total data blocks in file system.
+  // f_bfree is free blocks in file system.
+  // f_bsize is the optimal transfer block size.
+  absl::StatusOr<struct statfs> stateful_statfs =
+      SwapToolUtil::Get()->GetStatfs(kStatefulPartitionDir);
+  if (!stateful_statfs.ok())
+    return stateful_statfs.status();
+
+  // Never allow swapping to disk when the overall free diskspace is less
+  // than 15% of the overall capacity.
+  constexpr int kMinFreeStatefulPct = 15;
+  uint64_t stateful_free_pct =
+      100 * (*stateful_statfs).f_bfree / (*stateful_statfs).f_blocks;
+  if (stateful_free_pct < kMinFreeStatefulPct)
+    return absl::ResourceExhaustedError(
+        "zram writeback cannot be enabled free disk space" +
+        std::to_string(stateful_free_pct) + "% is less than the minimum 15%");
+
+  stateful_block_size_ = (*stateful_statfs).f_bsize;
+  wb_nr_blocks_ = size * kMiB / stateful_block_size_;
+  uint64_t wb_pct_of_stateful =
+      wb_nr_blocks_ * 100 / (*stateful_statfs).f_bfree;
+
+  // Only allow 15% of the free diskspace for swap writeback by maximum.
+  if (wb_pct_of_stateful > kMinFreeStatefulPct) {
+    uint64_t old_size = size;
+    wb_nr_blocks_ = kMinFreeStatefulPct * (*stateful_statfs).f_bfree / 100;
+    size = wb_nr_blocks_ * stateful_block_size_ / kMiB;
+    LOG(WARNING) << "zram writeback, requested size of " << old_size << " is "
+                 << wb_pct_of_stateful
+                 << "% of the free disk space. Size will be reduced to " << size
+                 << "MiB";
+  }
+
+  wb_size_bytes_ = RoundupMultiple(size * kMiB, stateful_block_size_);
+  // Because we rounded up writeback_size bytes recalculate the number of blocks
+  // used.
+  wb_nr_blocks_ = wb_size_bytes_ / stateful_block_size_;
+
+  return absl::OkStatus();
+}
+
+absl::Status SwapTool::CreateDmDevicesAndEnableWriteback() {
+  absl::Status status = absl::OkStatus();
+
+  // Create the actual writeback space on the stateful partition.
+  constexpr char kZramWritebackBackFileName[] = "zram_writeback.swap";
+  ScopedFilePath scoped_filepath(
+      base::FilePath(kStatefulPartitionDir).Append(kZramWritebackBackFileName));
+  status = SwapToolUtil::Get()->WriteFile(scoped_filepath.get(), std::string());
+  if (!status.ok())
+    return status;
+  status =
+      SwapToolUtil::Get()->Fallocate(scoped_filepath.get(), wb_size_bytes_);
+  if (!status.ok())
+    return status;
+
+  // Eight 512 byte sectors are required for the superblock and eight padding
+  // sectors.
+  constexpr size_t kInitialSize = 16 * 512;
+  size_t integrity_size_bytes = RoundupMultiple(
+      wb_nr_blocks_ * kDmIntegrityBytesPerBlock + kInitialSize, kMiB);
+
+  // Create writeback loop device.
+  // See drivers/block/loop.c:230
+  // We support direct I/O only if lo_offset is aligned with the
+  // logical I/O size of backing device, and the logical block
+  // size of loop is bigger than the backing device's and the loop
+  // needn't transform transfer.
+  auto writeback_loop = LoopDev::Create(scoped_filepath.get().value(), true,
+                                        stateful_block_size_);
+  if (!writeback_loop.ok())
+    return writeback_loop.status();
+  std::string writeback_loop_path = (*writeback_loop)->GetPath();
+
+  // Create and mount ramfs for integrity loop device back file.
+  status = SwapToolUtil::Get()->CreateDirectory(
+      base::FilePath(kZramWritebackIntegrityMount));
+  if (!status.ok())
+    return status;
+  status = SwapToolUtil::Get()->SetPosixFilePermissions(
+      base::FilePath(kZramWritebackIntegrityMount), 0700);
+  if (!status.ok())
+    return status;
+  status =
+      SwapToolUtil::Get()->Mount("none", kZramWritebackIntegrityMount, "ramfs",
+                                 0, "noexec,nosuid,noatime,mode=0700");
+  if (!status.ok())
+    return status;
+
+  // Create integrity loop device.
+  constexpr char kZramIntegrityBackFileName[] = "zram_integrity.swap";
+  scoped_filepath = ScopedFilePath(base::FilePath(kZramWritebackIntegrityMount)
+                                       .Append(kZramIntegrityBackFileName));
+  status = SwapToolUtil::Get()->WriteFile(scoped_filepath.get(),
+                                          std::string(integrity_size_bytes, 0));
+  if (!status.ok())
+    return status;
+
+  auto integrity_loop = LoopDev::Create(scoped_filepath.get().value());
+  if (!integrity_loop.ok())
+    return integrity_loop.status();
+  std::string integrity_loop_path = (*integrity_loop)->GetPath();
+
+  // Create a dm-integrity device to use with dm-crypt.
+  // For the table format, refer to
+  // https://wiki.gentoo.org/wiki/Device-mapper#Integrity
+  std::string table_fmt = base::StringPrintf(
+      "0 %" PRId64 " integrity %s 0 %zu D 2 block_size:%" PRId64
+      " meta_device:%s",
+      wb_size_bytes_ / 512, writeback_loop_path.c_str(),
+      kDmIntegrityBytesPerBlock, stateful_block_size_,
+      integrity_loop_path.c_str());
+  auto integrity_dm = DmDev::Create(kZramIntegrityName, table_fmt);
+  if (!integrity_dm.ok())
+    return integrity_dm.status();
+
+  // Create a dm-crypt device for writeback.
+  absl::StatusOr<std::string> rand_hex32 =
+      SwapToolUtil::Get()->GenerateRandHex(32);
+  if (!rand_hex32.ok())
+    return rand_hex32.status();
+
+  table_fmt = base::StringPrintf(
+      "0 %" PRId64
+      " crypt capi:gcm(aes)-random %s 0 /dev/mapper/%s 0 4 allow_discards "
+      "submit_from_crypt_cpus sector_size:%" PRId64 " integrity:%zu:aead",
+      wb_size_bytes_ / 512, (*rand_hex32).c_str(), kZramIntegrityName,
+      stateful_block_size_, kDmIntegrityBytesPerBlock);
+
+  auto writeback_dm = DmDev::Create(kZramWritebackName, table_fmt);
+  if (!writeback_dm.ok())
+    return writeback_dm.status();
+
+  // Set up dm-crypt device as the zram writeback backing device.
+  return SwapToolUtil::Get()->WriteFile(base::FilePath(kZramBackingDevice),
+                                        (*writeback_dm)->GetPath());
 }
 
 absl::Status SwapTool::SwapStart() {
@@ -274,18 +509,19 @@ absl::Status SwapTool::SwapStart() {
     return size_byte.status();
 
   // Load zram module. Ignore failure (it could be compiled in the kernel).
-  if (!RunProcessHelper({"/sbin/modprobe", "zram"}).ok())
+  if (!SwapToolUtil::Get()->RunProcessHelper({"/sbin/modprobe", "zram"}).ok())
     LOG(WARNING) << "modprobe zram failed (compiled?)";
 
   // Set zram disksize.
   LOG(INFO) << "setting zram size to " << *size_byte << " bytes";
-  status = WriteFile(base::FilePath("/sys/block/zram0/disksize"),
-                     std::to_string(*size_byte));
+  status = SwapToolUtil::Get()->WriteFile(
+      base::FilePath("/sys/block/zram0/disksize"), std::to_string(*size_byte));
   if (!status.ok())
     return status;
 
   // Set swap area.
-  status = RunProcessHelper({"/sbin/mkswap", kZramDeviceFile});
+  status =
+      SwapToolUtil::Get()->RunProcessHelper({"/sbin/mkswap", kZramDeviceFile});
   if (!status.ok())
     return status;
 
@@ -308,8 +544,8 @@ absl::Status SwapTool::SwapStop() {
   // At this point we already know swap is on, with the only swap device
   // /dev/zram0 we have, anyway we turn off /dev/zram0, regardless what
   // /proc/swaps shows.
-  absl::Status status =
-      RunProcessHelper({"/sbin/swapoff", "-v", kZramDeviceFile});
+  absl::Status status = SwapToolUtil::Get()->RunProcessHelper(
+      {"/sbin/swapoff", "-v", kZramDeviceFile});
   if (!status.ok())
     return status;
 
@@ -317,7 +553,8 @@ absl::Status SwapTool::SwapStop() {
   // be reconfigured on the fly.  Reset it so we can changes its params.
   // If there was a backing device being used, it will be automatically
   // removed because after it's created it was removed with deferred remove.
-  return WriteFile(base::FilePath("/sys/block/zram0/reset"), "1");
+  return SwapToolUtil::Get()->WriteFile(
+      base::FilePath("/sys/block/zram0/reset"), "1");
 }
 
 // Set zram disksize in MiB.
@@ -325,12 +562,13 @@ absl::Status SwapTool::SwapStop() {
 absl::Status SwapTool::SwapSetSize(uint32_t size) {
   // Remove kSwapSizeFile so SwapStart will use default size for zram.
   if (size == 0)
-    return DeleteFile(base::FilePath(kSwapSizeFile));
+    return SwapToolUtil::Get()->DeleteFile(base::FilePath(kSwapSizeFile));
 
   if (size < 100 || size > 20000)
     return absl::InvalidArgumentError("Size is not between 100 and 20000 MiB.");
 
-  return WriteFile(base::FilePath(kSwapSizeFile), std::to_string(size));
+  return SwapToolUtil::Get()->WriteFile(base::FilePath(kSwapSizeFile),
+                                        std::to_string(size));
 }
 
 std::string SwapTool::SwapStatus() {
@@ -338,23 +576,32 @@ std::string SwapTool::SwapStatus() {
   std::string tmp;
 
   // Show general swap info first.
-  if (ReadFileToString(base::FilePath("/proc/swaps"), &tmp).ok())
+  if (SwapToolUtil::Get()
+          ->ReadFileToString(base::FilePath("/proc/swaps"), &tmp)
+          .ok())
     output << tmp;
 
   // Show tunables.
-  if (ReadFileToString(base::FilePath("/sys/kernel/mm/chromeos-low_mem/margin"),
-                       &tmp)
+  if (SwapToolUtil::Get()
+          ->ReadFileToString(
+              base::FilePath("/sys/kernel/mm/chromeos-low_mem/margin"), &tmp)
           .ok())
     output << "low-memory margin (MiB): " + tmp;
-  if (ReadFileToString(base::FilePath("/proc/sys/vm/min_filelist_kbytes"), &tmp)
+  if (SwapToolUtil::Get()
+          ->ReadFileToString(base::FilePath("/proc/sys/vm/min_filelist_kbytes"),
+                             &tmp)
           .ok())
     output << "min_filelist_kbytes (KiB): " + tmp;
-  if (ReadFileToString(
-          base::FilePath("/sys/kernel/mm/chromeos-low_mem/ram_vs_swap_weight"),
-          &tmp)
+  if (SwapToolUtil::Get()
+          ->ReadFileToString(
+              base::FilePath(
+                  "/sys/kernel/mm/chromeos-low_mem/ram_vs_swap_weight"),
+              &tmp)
           .ok())
     output << "ram_vs_swap_weight: " + tmp;
-  if (ReadFileToString(base::FilePath("/proc/sys/vm/extra_free_kbytes"), &tmp)
+  if (SwapToolUtil::Get()
+          ->ReadFileToString(base::FilePath("/proc/sys/vm/extra_free_kbytes"),
+                             &tmp)
           .ok())
     output << "extra_free_kbytes (KiB): " + tmp;
 
@@ -367,7 +614,9 @@ std::string SwapTool::SwapStatus() {
     while (dir_reader.Next()) {
       std::string name = dir_reader.name();
 
-      if (ReadFileToString(zram_sysfs.Append(name), &tmp).ok() &&
+      if (SwapToolUtil::Get()
+              ->ReadFileToString(zram_sysfs.Append(name), &tmp)
+              .ok() &&
           !tmp.empty()) {
         std::vector<std::string> lines = base::SplitString(
             tmp, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
@@ -380,21 +629,27 @@ std::string SwapTool::SwapStatus() {
   return output.str();
 }
 
-// Zram writeback configuration.
-std::string SwapTool::SwapZramEnableWriteback(uint32_t size_mb) const {
-  int result;
+absl::Status SwapTool::SwapZramEnableWriteback(uint32_t size) {
+  absl::Status status = absl::OkStatus();
 
-  // For now throw out values > 32gb.
-  constexpr int kMaxSizeMb = 32 * 1024;
-  if (size_mb == 0 || size_mb >= kMaxSizeMb)
-    return "ERROR: Invalid size specified.";
+  status = ZramWritebackPrerequisiteCheck(size);
+  if (!status.ok())
+    return status;
 
-  std::string res = RunSwapHelper(
-      {"enable_zram_writeback", std::to_string(size_mb)}, &result);
-  if (result && res.empty())
-    res = "unknown error";
+  status = GetZramWritebackInfo(size);
+  if (!status.ok())
+    return status;
 
-  return std::string(result ? "ERROR: " : "SUCCESS: ") + res;
+  status = CreateDmDevicesAndEnableWriteback();
+  if (!status.ok()) {
+    CleanupWriteback();
+    return status;
+  }
+
+  LOG(INFO) << "Enabled writeback with size " +
+                   std::to_string(wb_size_bytes_ / kMiB) + "MiB";
+
+  return absl::OkStatus();
 }
 
 std::string SwapTool::SwapZramSetWritebackLimit(uint32_t num_pages) const {

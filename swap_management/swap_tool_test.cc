@@ -5,6 +5,7 @@
 #include "swap_management/swap_tool.h"
 
 #include <limits>
+#include <utility>
 
 #include <absl/random/random.h>
 #include <absl/strings/str_cat.h>
@@ -16,9 +17,9 @@ using testing::DoAll;
 using testing::ElementsAre;
 using testing::Return;
 using testing::SetArgPointee;
+using testing::StrictMock;
 
 namespace swap_management {
-
 namespace {
 const char kSwapsNoZram[] =
     "Filename                               "
@@ -71,12 +72,19 @@ const char kZramDisksize8G[] = "16679780352";
 const char kChromeosLowMemMargin8G[] = "413 3181";
 }  // namespace
 
-class MockSwapTool : public swap_management::SwapTool {
+class MockSwapToolUtil : public swap_management::SwapToolUtil {
  public:
-  MockSwapTool() : SwapTool() {}
+  MockSwapToolUtil() = default;
+  MockSwapToolUtil& operator=(const MockSwapToolUtil&) = delete;
+  MockSwapToolUtil(const MockSwapToolUtil&) = delete;
+
   MOCK_METHOD(absl::Status,
               RunProcessHelper,
               (const std::vector<std::string>& commands),
+              (override));
+  MOCK_METHOD(absl::Status,
+              RunProcessHelper,
+              (const std::vector<std::string>& commands, std::string* output),
               (override));
   MOCK_METHOD(absl::Status,
               WriteFile,
@@ -96,204 +104,355 @@ class MockSwapTool : public swap_management::SwapTool {
               DeleteFile,
               (const base::FilePath& path),
               (override));
+  MOCK_METHOD(absl::Status,
+              PathExists,
+              (const base::FilePath& path),
+              (override));
+  MOCK_METHOD(absl::Status,
+              Fallocate,
+              (const base::FilePath& path, size_t size),
+              (override));
+  MOCK_METHOD(absl::Status,
+              CreateDirectory,
+              (const base::FilePath& path),
+              (override));
+  MOCK_METHOD(absl::Status,
+              SetPosixFilePermissions,
+              (const base::FilePath& path, int mode),
+              (override));
+  MOCK_METHOD(absl::Status,
+              Mount,
+              (const std::string& source,
+               const std::string& target,
+               const std::string& fs_type,
+               uint64_t mount_flags,
+               const std::string& data),
+              (override));
+  MOCK_METHOD(absl::Status, Umount, (const std::string& target), (override));
+  MOCK_METHOD(absl::StatusOr<struct statfs>,
+              GetStatfs,
+              (const std::string& path),
+              (override));
+  MOCK_METHOD(absl::StatusOr<std::string>,
+              GenerateRandHex,
+              (size_t size),
+              (override));
 };
 
-TEST(SwapToolTest, SwapIsAlreadyOnOrOff) {
-  MockSwapTool swap_tool;
+class SwapToolTest : public ::testing::Test {
+ public:
+  void SetUp() override {
+    swap_tool_ = std::make_unique<SwapTool>();
+    // Init SwapToolUtil and then replace with mocked one.
+    SwapToolUtil::OverrideForTesting(&mock_util_);
+  }
 
-  EXPECT_CALL(swap_tool, ReadFileToString(base::FilePath("/proc/swaps"), _))
+ protected:
+  std::unique_ptr<SwapTool> swap_tool_;
+  MockSwapToolUtil mock_util_;
+};
+
+TEST_F(SwapToolTest, SwapIsAlreadyOnOrOff) {
+  EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/swaps"), _))
       .WillOnce(DoAll(SetArgPointee<1>(
                           absl::StrCat(kSwapsNoZram,
                                        "/dev/zram0                             "
                                        " partition       16288844        "
                                        "0               -2\n")),
                       Return(absl::OkStatus())));
-  EXPECT_THAT(swap_tool.SwapStart(), absl::OkStatus());
+  EXPECT_THAT(swap_tool_->SwapStart(), absl::OkStatus());
 
-  EXPECT_CALL(swap_tool, ReadFileToString(base::FilePath("/proc/swaps"), _))
+  EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/swaps"), _))
       .WillOnce(DoAll(
           SetArgPointee<1>(absl::StrCat(kSwapsNoZram,
                                         "/zram0                              "
                                         "partition       16288844        "
                                         "0               -2\n")),
           Return(absl::OkStatus())));
-  EXPECT_THAT(swap_tool.SwapStart(), absl::OkStatus());
+  EXPECT_THAT(swap_tool_->SwapStart(), absl::OkStatus());
 
-  EXPECT_CALL(swap_tool, ReadFileToString(base::FilePath("/proc/swaps"), _))
+  EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/swaps"), _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kSwapsNoZram), Return(absl::OkStatus())));
-  EXPECT_THAT(swap_tool.SwapStop(), absl::OkStatus());
+  EXPECT_THAT(swap_tool_->SwapStop(), absl::OkStatus());
 }
 
-TEST(SwapToolTest, SwapStartWithoutSwapEnabled) {
-  MockSwapTool swap_tool;
-
+TEST_F(SwapToolTest, SwapStartWithoutSwapEnabled) {
   // IsZramSwapOn
-  EXPECT_CALL(swap_tool, ReadFileToString(base::FilePath("/proc/swaps"), _))
+  EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/swaps"), _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kSwapsNoZram), Return(absl::OkStatus())));
   // GetMemTotal
-  EXPECT_CALL(swap_tool, ReadFileToString(base::FilePath("/proc/meminfo"), _))
+  EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/meminfo"), _))
       .WillOnce(DoAll(SetArgPointee<1>(kMeminfoMemTotal8G),
                       Return(absl::OkStatus())));
   // InitializeMMTunables
   EXPECT_CALL(
-      swap_tool,
+      mock_util_,
       WriteFile(base::FilePath("/sys/kernel/mm/chromeos-low_mem/margin"),
                 kChromeosLowMemMargin8G))
       .WillOnce(Return(absl::OkStatus()));
   EXPECT_CALL(
-      swap_tool,
+      mock_util_,
       WriteFile(base::FilePath("/proc/sys/vm/min_filelist_kbytes"), "1000000"))
       .WillOnce(Return(absl::OkStatus()));
   // GetZramSize
-  EXPECT_CALL(swap_tool, ReadFileToStringWithMaxSize(
-                             base::FilePath("/var/lib/swap/swap_size"), _, _))
+  EXPECT_CALL(mock_util_, ReadFileToStringWithMaxSize(
+                              base::FilePath("/var/lib/swap/swap_size"), _, _))
       .WillOnce(Return(
           absl::NotFoundError("Failed to read /var/lib/swap/swap_size")));
-  EXPECT_CALL(swap_tool,
+  EXPECT_CALL(mock_util_,
               RunProcessHelper(ElementsAre("/sbin/modprobe", "zram")))
       .WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(swap_tool, WriteFile(base::FilePath("/sys/block/zram0/disksize"),
-                                   kZramDisksize8G))
+  EXPECT_CALL(mock_util_, WriteFile(base::FilePath("/sys/block/zram0/disksize"),
+                                    kZramDisksize8G))
       .WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(swap_tool,
+  EXPECT_CALL(mock_util_,
               RunProcessHelper(ElementsAre("/sbin/mkswap", "/dev/zram0")))
       .WillOnce(Return(absl::OkStatus()));
   // EnableZramSwapping
-  EXPECT_CALL(swap_tool,
+  EXPECT_CALL(mock_util_,
               RunProcessHelper(ElementsAre("/sbin/swapon", "/dev/zram0")))
       .WillOnce(Return(absl::OkStatus()));
 
-  EXPECT_THAT(swap_tool.SwapStart(), absl::OkStatus());
+  EXPECT_THAT(swap_tool_->SwapStart(), absl::OkStatus());
 }
 
-TEST(SwapToolTest, SwapStartButSwapIsDisabled) {
-  MockSwapTool swap_tool;
-
+TEST_F(SwapToolTest, SwapStartButSwapIsDisabled) {
   // IsZramSwapOn
-  EXPECT_CALL(swap_tool, ReadFileToString(base::FilePath("/proc/swaps"), _))
+  EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/swaps"), _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kSwapsNoZram), Return(absl::OkStatus())));
   // GetMemTotal
-  EXPECT_CALL(swap_tool, ReadFileToString(base::FilePath("/proc/meminfo"), _))
+  EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/meminfo"), _))
       .WillOnce(DoAll(SetArgPointee<1>(kMeminfoMemTotal8G),
                       Return(absl::OkStatus())));
   // InitializeMMTunables
   EXPECT_CALL(
-      swap_tool,
+      mock_util_,
       WriteFile(base::FilePath("/sys/kernel/mm/chromeos-low_mem/margin"),
                 kChromeosLowMemMargin8G))
       .WillOnce(Return(absl::OkStatus()));
   EXPECT_CALL(
-      swap_tool,
+      mock_util_,
       WriteFile(base::FilePath("/proc/sys/vm/min_filelist_kbytes"), "1000000"))
       .WillOnce(Return(absl::OkStatus()));
   // GetZramSize
-  EXPECT_CALL(swap_tool, ReadFileToStringWithMaxSize(
-                             base::FilePath("/var/lib/swap/swap_size"), _, _))
+  EXPECT_CALL(mock_util_, ReadFileToStringWithMaxSize(
+                              base::FilePath("/var/lib/swap/swap_size"), _, _))
       .WillOnce(DoAll(SetArgPointee<1>("0"), Return(absl::OkStatus())));
 
-  absl::Status status = swap_tool.SwapStart();
+  absl::Status status = swap_tool_->SwapStart();
   EXPECT_TRUE(absl::IsInvalidArgument(status));
   EXPECT_EQ(status.ToString(),
             "INVALID_ARGUMENT: Swap is not turned on since "
             "/var/lib/swap/swap_size contains 0.");
 }
 
-TEST(SwapToolTest, SwapStartWithEmptySwapZramSize) {
-  MockSwapTool swap_tool;
-
+TEST_F(SwapToolTest, SwapStartWithEmptySwapZramSize) {
   // IsZramSwapOn
-  EXPECT_CALL(swap_tool, ReadFileToString(base::FilePath("/proc/swaps"), _))
+  EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/swaps"), _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kSwapsNoZram), Return(absl::OkStatus())));
   // GetMemTotal
-  EXPECT_CALL(swap_tool, ReadFileToString(base::FilePath("/proc/meminfo"), _))
+  EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/meminfo"), _))
       .WillOnce(DoAll(SetArgPointee<1>(kMeminfoMemTotal8G),
                       Return(absl::OkStatus())));
   // InitializeMMTunables
   EXPECT_CALL(
-      swap_tool,
+      mock_util_,
       WriteFile(base::FilePath("/sys/kernel/mm/chromeos-low_mem/margin"),
                 kChromeosLowMemMargin8G))
       .WillOnce(Return(absl::OkStatus()));
   EXPECT_CALL(
-      swap_tool,
+      mock_util_,
       WriteFile(base::FilePath("/proc/sys/vm/min_filelist_kbytes"), "1000000"))
       .WillOnce(Return(absl::OkStatus()));
   // GetZramSize
-  EXPECT_CALL(swap_tool, ReadFileToStringWithMaxSize(
-                             base::FilePath("/var/lib/swap/swap_size"), _, _))
+  EXPECT_CALL(mock_util_, ReadFileToStringWithMaxSize(
+                              base::FilePath("/var/lib/swap/swap_size"), _, _))
       .WillOnce(DoAll(SetArgPointee<1>(""), Return(absl::OkStatus())));
-  EXPECT_CALL(swap_tool,
+  EXPECT_CALL(mock_util_,
               RunProcessHelper(ElementsAre("/sbin/modprobe", "zram")))
       .WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(swap_tool, WriteFile(base::FilePath("/sys/block/zram0/disksize"),
-                                   kZramDisksize8G))
+  EXPECT_CALL(mock_util_, WriteFile(base::FilePath("/sys/block/zram0/disksize"),
+                                    kZramDisksize8G))
       .WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(swap_tool,
+  EXPECT_CALL(mock_util_,
               RunProcessHelper(ElementsAre("/sbin/mkswap", "/dev/zram0")))
       .WillOnce(Return(absl::OkStatus()));
   // EnableZramSwapping
-  EXPECT_CALL(swap_tool,
+  EXPECT_CALL(mock_util_,
               RunProcessHelper(ElementsAre("/sbin/swapon", "/dev/zram0")))
       .WillOnce(Return(absl::OkStatus()));
 
-  EXPECT_THAT(swap_tool.SwapStart(), absl::OkStatus());
+  EXPECT_THAT(swap_tool_->SwapStart(), absl::OkStatus());
 }
 
-TEST(SwapToolTest, SwapStop) {
-  MockSwapTool swap_tool;
-
+TEST_F(SwapToolTest, SwapStop) {
   // IsZramSwapOn
-  EXPECT_CALL(swap_tool, ReadFileToString(base::FilePath("/proc/swaps"), _))
+  EXPECT_CALL(mock_util_, ReadFileToString(base::FilePath("/proc/swaps"), _))
       .WillOnce(DoAll(
           SetArgPointee<1>(absl::StrCat(std::string(kSwapsNoZram),
                                         "/zram0                              "
                                         "partition       16288844        "
                                         "0               -2\n")),
           Return(absl::OkStatus())));
-  EXPECT_CALL(swap_tool, RunProcessHelper(
-                             ElementsAre("/sbin/swapoff", "-v", "/dev/zram0")))
+  EXPECT_CALL(mock_util_, RunProcessHelper(
+                              ElementsAre("/sbin/swapoff", "-v", "/dev/zram0")))
       .WillOnce(Return(absl::OkStatus()));
-  EXPECT_CALL(swap_tool, WriteFile(base::FilePath("/sys/block/zram0/reset"),
-                                   std::to_string(1)))
+  EXPECT_CALL(mock_util_, WriteFile(base::FilePath("/sys/block/zram0/reset"),
+                                    std::to_string(1)))
       .WillOnce(Return(absl::OkStatus()));
 
-  EXPECT_THAT(swap_tool.SwapStop(), absl::OkStatus());
+  EXPECT_THAT(swap_tool_->SwapStop(), absl::OkStatus());
 }
 
-TEST(SwapToolTest, SwapSetSize) {
-  MockSwapTool swap_tool;
-
+TEST_F(SwapToolTest, SwapSetSize) {
   // If size is 0.
-  EXPECT_CALL(swap_tool, DeleteFile(base::FilePath("/var/lib/swap/swap_size")))
+  EXPECT_CALL(mock_util_, DeleteFile(base::FilePath("/var/lib/swap/swap_size")))
       .WillOnce(Return(absl::OkStatus()));
-  EXPECT_THAT(swap_tool.SwapSetSize(0), absl::OkStatus());
+  EXPECT_THAT(swap_tool_->SwapSetSize(0), absl::OkStatus());
 
   // If size is larger than 20000.
   absl::BitGen gen;
   uint32_t size = absl::uniform_int_distribution<uint32_t>(
       20001, std::numeric_limits<uint32_t>::max())(gen);
-  absl::Status status = swap_tool.SwapSetSize(size);
+  absl::Status status = swap_tool_->SwapSetSize(size);
   EXPECT_TRUE(absl::IsInvalidArgument(status));
   EXPECT_EQ(status.ToString(),
             "INVALID_ARGUMENT: Size is not between 100 and 20000 MiB.");
 
   // If size is smaller than 100, but not 0.
   size = absl::uniform_int_distribution<uint32_t>(1, 99)(gen);
-  status = swap_tool.SwapSetSize(size);
+  status = swap_tool_->SwapSetSize(size);
   EXPECT_TRUE(absl::IsInvalidArgument(status));
   EXPECT_EQ(status.ToString(),
             "INVALID_ARGUMENT: Size is not between 100 and 20000 MiB.");
 
   // If size is between 100 and 20000.
   size = absl::uniform_int_distribution<uint32_t>(100, 20000)(gen);
-  EXPECT_CALL(swap_tool, WriteFile(base::FilePath("/var/lib/swap/swap_size"),
-                                   absl::StrCat(size)))
+  EXPECT_CALL(mock_util_, WriteFile(base::FilePath("/var/lib/swap/swap_size"),
+                                    absl::StrCat(size)))
       .WillOnce(Return(absl::OkStatus()));
-  EXPECT_THAT(swap_tool.SwapSetSize(size), absl::OkStatus());
+  EXPECT_THAT(swap_tool_->SwapSetSize(size), absl::OkStatus());
+}
+
+TEST_F(SwapToolTest, SwapZramEnableWriteback) {
+  // ZramWritebackPrerequisiteCheck
+  EXPECT_CALL(
+      mock_util_,
+      ReadFileToString(base::FilePath("/sys/block/zram0/backing_dev"), _))
+      .WillOnce(DoAll(SetArgPointee<1>("none\n"), Return(absl::OkStatus())));
+  EXPECT_CALL(mock_util_, DeleteFile(base::FilePath("/run/zram-integrity")))
+      .WillOnce(Return(absl::OkStatus()));
+
+  // GetZramWritebackInfo
+  struct statfs sf = {
+      .f_bsize = 4096,
+      .f_blocks = 2038647,
+      .f_bfree = 1159962,
+  };
+  EXPECT_CALL(
+      mock_util_,
+      GetStatfs("/mnt/stateful_partition/unencrypted/userspace_swap.tmp"))
+      .WillOnce(Return(std::move(sf)));
+
+  // CreateDmDevicesAndEnableWriteback
+  EXPECT_CALL(
+      mock_util_,
+      WriteFile(base::FilePath("/mnt/stateful_partition/unencrypted/"
+                               "userspace_swap.tmp/zram_writeback.swap"),
+                std::string()))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(
+      mock_util_,
+      Fallocate(base::FilePath("/mnt/stateful_partition/unencrypted/"
+                               "userspace_swap.tmp/zram_writeback.swap"),
+                134217728))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(
+      mock_util_,
+      RunProcessHelper(ElementsAre("/sbin/losetup", "--show", "--direct-io=on",
+                                   "--sector-size=4096", "-f",
+                                   "/mnt/stateful_partition/unencrypted/"
+                                   "userspace_swap.tmp/zram_writeback.swap"),
+                       _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>("/dev/loop10\n"), Return(absl::OkStatus())));
+  EXPECT_CALL(mock_util_,
+              CreateDirectory(base::FilePath("/run/zram-integrity")))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(mock_util_, SetPosixFilePermissions(
+                              base::FilePath("/run/zram-integrity"), 0700))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(mock_util_, Mount("none", "/run/zram-integrity", "ramfs", 0,
+                                "noexec,nosuid,noatime,mode=0700"))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(
+      mock_util_,
+      WriteFile(base::FilePath("/run/zram-integrity/zram_integrity.swap"),
+                std::string(1048576, 0)))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(
+      mock_util_,
+      RunProcessHelper(ElementsAre("/sbin/losetup", "--show", "-f",
+                                   "/run/zram-integrity/zram_integrity.swap"),
+                       _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>("/dev/loop11\n"), Return(absl::OkStatus())));
+
+  EXPECT_CALL(mock_util_,
+              RunProcessHelper(ElementsAre(
+                  "/sbin/dmsetup", "create", "zram-integrity", "--table",
+                  "0 262144 integrity /dev/loop10 0 24 D 2 block_size:4096 "
+                  "meta_device:/dev/loop11")))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(mock_util_,
+              PathExists(base::FilePath("/dev/mapper/zram-integrity")))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(mock_util_, GenerateRandHex(32))
+      .WillOnce(Return(std::move(
+          "31EDB364E004FA99CFDBA21D726284A810421F7466F892ED2306DB7FB917084E")));
+  EXPECT_CALL(mock_util_,
+              RunProcessHelper(ElementsAre(
+                  "/sbin/dmsetup", "create", "zram-writeback", "--table",
+                  "0 262144 crypt capi:gcm(aes)-random "
+                  "31EDB364E004FA99CFDBA21D726284A810421F7466F892ED2306DB7FB917"
+                  "084E 0 /dev/mapper/zram-integrity 0 4 allow_discards "
+                  "submit_from_crypt_cpus sector_size:4096 integrity:24:aead")))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(mock_util_,
+              PathExists(base::FilePath("/dev/mapper/zram-writeback")))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(mock_util_,
+              WriteFile(base::FilePath("/sys/block/zram0/backing_dev"),
+                        "/dev/mapper/zram-writeback"))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(mock_util_, DeleteFile(base::FilePath(
+                              "/mnt/stateful_partition/unencrypted/"
+                              "userspace_swap.tmp/zram_writeback.swap")))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(
+      mock_util_,
+      DeleteFile(base::FilePath("/run/zram-integrity/zram_integrity.swap")))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(mock_util_, RunProcessHelper(ElementsAre("/sbin/losetup", "-d",
+                                                       "/dev/loop10")))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(mock_util_, RunProcessHelper(ElementsAre("/sbin/losetup", "-d",
+                                                       "/dev/loop11")))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(mock_util_,
+              RunProcessHelper(ElementsAre("/sbin/dmsetup", "remove",
+                                           "--deferred", "zram-writeback")))
+      .WillOnce(Return(absl::OkStatus()));
+  EXPECT_CALL(mock_util_,
+              RunProcessHelper(ElementsAre("/sbin/dmsetup", "remove",
+                                           "--deferred", "zram-integrity")))
+      .WillOnce(Return(absl::OkStatus()));
+
+  EXPECT_THAT(swap_tool_->SwapZramEnableWriteback(128), absl::OkStatus());
 }
 
 }  // namespace swap_management

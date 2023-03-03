@@ -57,14 +57,13 @@
       <tp:docstring>
         Enable writeback of zram swapped pages.
       </tp:docstring>
-      <arg name="result" type="s" direction="out" />
-      <arg name="size_mb" type="u" direction="in">
+      <arg name="size" type="u" direction="in">
         <tp:docstring>
           The size in MiB of the zram writeback device to use. Valid values
-          are (0MiB, 32000MiB].
+          are [128MiB, 6144MiB].
         </tp:docstring>
       </arg>
-      <annotation name="org.chromium.DBus.Method.Kind" value="simple"/>
+      <annotation name="org.chromium.DBus.Method.Kind" value="normal"/>
     </method>
     <method name="SwapZramMarkIdle">
       <tp:docstring>

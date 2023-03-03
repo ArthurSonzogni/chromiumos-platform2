@@ -5,6 +5,9 @@
 #ifndef SWAP_MANAGEMENT_SWAP_TOOL_H_
 #define SWAP_MANAGEMENT_SWAP_TOOL_H_
 
+#include "swap_management/swap_tool_util.h"
+
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -15,13 +18,53 @@
 
 namespace swap_management {
 
+class LoopDev {
+ public:
+  ~LoopDev();
+
+  static absl::StatusOr<std::unique_ptr<LoopDev>> Create(
+      const std::string& path);
+  static absl::StatusOr<std::unique_ptr<LoopDev>> Create(
+      const std::string& path, bool direct_io, uint32_t sector_size);
+
+  std::string GetPath();
+
+ private:
+  LoopDev() = delete;
+  explicit LoopDev(std::string path) : path_(path) {}
+  LoopDev(const LoopDev&) = delete;
+  LoopDev& operator=(const LoopDev&) = delete;
+
+  std::string path_;
+};
+
+class DmDev {
+ public:
+  ~DmDev();
+
+  static absl::StatusOr<std::unique_ptr<DmDev>> Create(
+      const std::string& name, const std::string& table_fmt);
+
+  std::string GetPath();
+
+ private:
+  DmDev() = delete;
+  explicit DmDev(std::string name) : name_(name) {}
+  DmDev(const DmDev&) = delete;
+  DmDev& operator=(const DmDev&) = delete;
+
+  std::string name_;
+
+  absl::Status Wait();
+};
+
 class SwapTool {
  public:
   SwapTool() = default;
   SwapTool(const SwapTool&) = delete;
   SwapTool& operator=(const SwapTool&) = delete;
 
-  virtual ~SwapTool() = default;
+  ~SwapTool() = default;
 
   absl::Status SwapStart();
   absl::Status SwapStop();
@@ -29,26 +72,13 @@ class SwapTool {
   std::string SwapStatus();
 
   // Zram writeback configuration.
-  std::string SwapZramEnableWriteback(uint32_t size_mb) const;
+  absl::Status SwapZramEnableWriteback(uint32_t size_mb);
   std::string SwapZramSetWritebackLimit(uint32_t num_pages) const;
   std::string SwapZramMarkIdle(uint32_t age_seconds) const;
   std::string InitiateSwapZramWriteback(uint32_t mode) const;
 
   // MGLRU configuration.
   bool MGLRUSetEnable(brillo::ErrorPtr* error, bool enable) const;
-
-  // virtual and protected for testing
- protected:
-  virtual absl::Status RunProcessHelper(
-      const std::vector<std::string>& commands);
-  virtual absl::Status WriteFile(const base::FilePath& path,
-                                 const std::string& data);
-  virtual absl::Status ReadFileToStringWithMaxSize(const base::FilePath& path,
-                                                   std::string* contents,
-                                                   size_t max_size);
-  virtual absl::Status ReadFileToString(const base::FilePath& path,
-                                        std::string* contents);
-  virtual absl::Status DeleteFile(const base::FilePath& path);
 
  private:
   absl::StatusOr<bool> IsZramSwapOn();
@@ -57,6 +87,15 @@ class SwapTool {
   absl::Status InitializeMMTunables(uint64_t mem_total);
   absl::StatusOr<uint64_t> GetZramSize(uint64_t mem_total);
   absl::Status EnableZramSwapping();
+
+  uint64_t wb_size_bytes_ = 0;
+  uint64_t wb_nr_blocks_ = 0;
+  uint64_t stateful_block_size_ = 0;
+
+  void CleanupWriteback();
+  absl::Status ZramWritebackPrerequisiteCheck(uint32_t size);
+  absl::Status GetZramWritebackInfo(uint32_t size);
+  absl::Status CreateDmDevicesAndEnableWriteback();
 };
 
 }  // namespace swap_management

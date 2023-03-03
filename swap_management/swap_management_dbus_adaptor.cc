@@ -95,10 +95,18 @@ std::string SwapManagementDBusAdaptor::SwapStatus() {
   return swap_tool_->SwapStatus();
 }
 
-std::string SwapManagementDBusAdaptor::SwapZramEnableWriteback(
-    uint32_t size_mb) {
+bool SwapManagementDBusAdaptor::SwapZramEnableWriteback(brillo::ErrorPtr* error,
+                                                        uint32_t size_mb) {
   ResetShutdownTimer();
-  return swap_tool_->SwapZramEnableWriteback(size_mb);
+  absl::Status status = swap_tool_->SwapZramEnableWriteback(size_mb);
+  if (!status.ok()) {
+    brillo::Error::AddTo(
+        error, FROM_HERE, brillo::errors::dbus::kDomain,
+        "org.chromium.SwapManagement.error.SwapZramEnableWriteback",
+        status.ToString());
+    return false;
+  }
+  return true;
 }
 
 std::string SwapManagementDBusAdaptor::SwapZramMarkIdle(uint32_t age) {

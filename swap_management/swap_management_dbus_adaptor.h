@@ -39,7 +39,8 @@ class SwapManagementDBusAdaptor
                       bool enable,
                       bool* out_result) override;
   std::string SwapStatus() override;
-  std::string SwapZramEnableWriteback(uint32_t size_mb) override;
+  bool SwapZramEnableWriteback(brillo::ErrorPtr* error,
+                               uint32_t size_mb) override;
   std::string SwapZramMarkIdle(uint32_t age) override;
   std::string SwapZramSetWritebackLimit(uint32_t limit) override;
   std::string InitiateSwapZramWriteback(uint32_t mode) override;
