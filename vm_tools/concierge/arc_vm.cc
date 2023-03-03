@@ -355,10 +355,13 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       .AddExtraWaylandSocket("/run/arcvm/mojo/mojo-proxy.sock,name=mojo")
       .SetSyslogTag(base::StringPrintf("ARCVM(%u)", vsock_cid_))
       .EnableGpu(true /* enable */)
-      .AppendAudioDevice(VmBuilder::AudioDeviceType::kVirtio,
-                         "capture=true,backend=cras,client_type=arcvm,"
-                         "socket_type=unified,num_input_devices=3,"
-                         "num_output_devices=4")
+      .AppendAudioDevice(
+          VmBuilder::AudioDeviceType::kVirtio,
+          "capture=true,backend=cras,client_type=arcvm,"
+          "socket_type=unified,num_input_devices=3,"
+          "num_output_devices=4,"
+          "output_device_config=[[],[],[],[stream_type=pro_audio]],"
+          "input_device_config=[[],[],[stream_type=pro_audio]]")
       // Second Virtio sound device for the aaudio path.
       // Remove this device once audioHAL switch all streams to the first
       // device.
