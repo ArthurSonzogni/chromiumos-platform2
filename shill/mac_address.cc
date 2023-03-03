@@ -24,15 +24,13 @@ bool MACAddress::IsExpired(base::Time now) const {
 
 bool MACAddress::Load(const StoreInterface* storage, const std::string& id) {
   std::string mac_str;
-  if (storage->GetString(id, kStorageMACAddress, &mac_str)) {
-    if (!Set(mac_str)) {
-      return false;
-    }
-    uint64_t expiration_time;
-    if (storage->GetUint64(id, kStorageMACAddressExpiry, &expiration_time)) {
-      expiration_time_ = base::Time::FromDeltaSinceWindowsEpoch(
-          base::Microseconds(expiration_time));
-    }
+  if (!storage->GetString(id, kStorageMACAddress, &mac_str) || !Set(mac_str)) {
+    return false;
+  }
+  uint64_t expiration_time;
+  if (storage->GetUint64(id, kStorageMACAddressExpiry, &expiration_time)) {
+    expiration_time_ = base::Time::FromDeltaSinceWindowsEpoch(
+        base::Microseconds(expiration_time));
   }
   return true;
 }

@@ -8,14 +8,20 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "base/rand_util.h"
+#include "shill/store/fake_store.h"
+
 using testing::Test;
 
 namespace shill {
 
 class MACAddressTest : public Test {
  public:
-  MACAddressTest() = default;
+  MACAddressTest() : storage_id_("device_1234") {}
   ~MACAddressTest() override = default;
+
+ protected:
+  std::string storage_id_;
 };
 
 TEST_F(MACAddressTest, SetClear) {
@@ -58,6 +64,42 @@ TEST_F(MACAddressTest, AddressExpire) {
   EXPECT_FALSE(addr.IsExpired(start_time + base::Seconds(9)));
   EXPECT_FALSE(addr.IsExpired(start_time + base::Seconds(10)));
   EXPECT_TRUE(addr.IsExpired(start_time + base::Seconds(11)));
+}
+
+TEST_F(MACAddressTest, LoadSave_Unset) {
+  FakeStore storage;
+  MACAddress mac_addr;
+
+  // Verify behaviour for an unset value.
+  EXPECT_FALSE(mac_addr.Save(&storage, storage_id_));
+  EXPECT_FALSE(mac_addr.Load(&storage, storage_id_));
+  EXPECT_FALSE(mac_addr.is_set());
+}
+
+TEST_F(MACAddressTest, LoadSave_Valid) {
+  FakeStore storage;
+  MACAddress mac_addr, addr;
+
+  // Verification for a valid value.
+  mac_addr.Randomize();
+  EXPECT_TRUE(mac_addr.Save(&storage, storage_id_));
+  EXPECT_TRUE(addr.Load(&storage, storage_id_));
+  EXPECT_TRUE(addr.is_set());
+  EXPECT_EQ(addr, mac_addr);
+}
+
+TEST_F(MACAddressTest, LoadSave_Expiring) {
+  FakeStore storage;
+  MACAddress mac_addr, addr;
+
+  // Verification for an expiring value.
+  mac_addr.Randomize();
+  mac_addr.set_expiration_time(base::Time::Now() +
+                               base::Seconds(base::RandInt(0, 1000)));
+  EXPECT_TRUE(mac_addr.Save(&storage, storage_id_));
+  EXPECT_TRUE(addr.Load(&storage, storage_id_));
+  EXPECT_TRUE(addr.is_set());
+  EXPECT_EQ(addr, mac_addr);
 }
 
 }  // namespace shill
