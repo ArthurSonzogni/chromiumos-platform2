@@ -155,7 +155,8 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
                          uint32_t width,
                          uint32_t height,
                          const std::vector<uint32_t>& strides,
-                         const std::vector<uint32_t>& offsets);
+                         const std::vector<uint32_t>& offsets,
+                         uint64_t modifier);
 
   int32_t Close();
 
@@ -195,7 +196,8 @@ class CameraDeviceAdapter : public camera3_callback_ops_t {
                                uint32_t width,
                                uint32_t height,
                                const std::vector<uint32_t>& strides,
-                               const std::vector<uint32_t>& offsets);
+                               const std::vector<uint32_t>& offsets,
+                               uint64_t modifier);
   int32_t RegisterBufferLocked(mojom::CameraBufferHandlePtr buffer);
 
   // NOTE: All the fds in |result| (e.g. fences and buffer handles) will be

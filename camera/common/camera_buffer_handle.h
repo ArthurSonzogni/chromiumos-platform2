@@ -8,6 +8,7 @@
 #define CAMERA_COMMON_CAMERA_BUFFER_HANDLE_H_
 
 #include <cutils/native_handle.h>
+#include <drm_fourcc.h>
 
 #include "cros-camera/common.h"
 
@@ -47,6 +48,8 @@ typedef struct camera_buffer_handle {
   // For passing the buffer handle in camera3_stream_buffer_t to the HAL since
   // it requires a buffer_handle_t*.
   buffer_handle_t self = reinterpret_cast<buffer_handle_t>(this);
+  // The modifier of the buffer.
+  uint64_t modifier = DRM_FORMAT_MOD_INVALID;
 
   camera_buffer_handle() {
     for (auto& fd : fds) {
