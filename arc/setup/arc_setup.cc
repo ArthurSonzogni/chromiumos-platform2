@@ -1893,6 +1893,9 @@ void ArcSetup::MountSharedAndroidDirectories() {
   // Remount the mount point of original data directory as non-executable.
   EXIT_IF(!arc_mounter_->Remount(data_directory,
                                  MS_NOSUID | MS_NODEV | MS_NOEXEC, "seclabel"));
+  // Remount the mount point of shared data directory as non-executable.
+  EXIT_IF(!arc_mounter_->Remount(shared_data_directory,
+                                 MS_NOSUID | MS_NODEV | MS_NOEXEC, "seclabel"));
 
   const std::string demo_session_apps =
       config_.GetStringOrDie("DEMO_SESSION_APPS_PATH");
