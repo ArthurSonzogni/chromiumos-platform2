@@ -59,10 +59,6 @@ class MockKeysetManagement : public KeysetManagement {
               LoadVaultKeysetForUser,
               (const ObfuscatedUsername&, int),
               (const, override));
-  MOCK_METHOD(brillo::SecureBlob,
-              GetPublicMountPassKey,
-              (const Username&),
-              (override));
   MOCK_METHOD(base::Time,
               GetKeysetBoundTimestamp,
               (const ObfuscatedUsername&),

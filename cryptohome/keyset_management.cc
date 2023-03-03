@@ -665,20 +665,6 @@ bool KeysetManagement::UserExists(
   return platform_->DirectoryExists(user_dir);
 }
 
-brillo::SecureBlob KeysetManagement::GetPublicMountPassKey(
-    const Username& account_id) {
-  brillo::SecureBlob public_mount_salt;
-  if (!GetPublicMountSalt(platform_, &public_mount_salt)) {
-    LOG(ERROR) << "Could not get or create public salt from file";
-    // Ensure that it is empty so that caller can confirm there was an error.
-    public_mount_salt.clear();
-    return public_mount_salt;
-  }
-  brillo::SecureBlob passkey;
-  Crypto::PasswordToPasskey(account_id->c_str(), public_mount_salt, &passkey);
-  return passkey;
-}
-
 // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
 base::Time KeysetManagement::GetPerIndexTimestampFileData(
     const ObfuscatedUsername& obfuscated, int index) {

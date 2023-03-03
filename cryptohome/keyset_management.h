@@ -110,9 +110,6 @@ class KeysetManagement {
   virtual void RemoveLECredentials(
       const ObfuscatedUsername& obfuscated_username);
 
-  // Returns the public mount pass key derived from username.
-  virtual brillo::SecureBlob GetPublicMountPassKey(const Username& account_id);
-
   // Get timestamp from a legacy location.
   // TODO(b/205759690, dlunev): can be removed after a stepping stone release.
   virtual base::Time GetKeysetBoundTimestamp(

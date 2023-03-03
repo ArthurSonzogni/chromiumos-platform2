@@ -178,12 +178,6 @@ class UserDataAuthTestBase : public ::testing::Test {
     userdataauth_->set_challenge_credentials_helper(
         &challenge_credentials_helper_);
     userdataauth_->set_user_session_factory(&user_session_factory_);
-
-    // It doesnt matter what key it returns for the purposes of the
-    // UserDataAuth test.
-    ON_CALL(keyset_management_, GetPublicMountPassKey(_))
-        .WillByDefault(
-            Return(CreateSecureRandomBlob(CRYPTOHOME_DEFAULT_SALT_LENGTH)));
   }
 
   void SetupDefaultUserDataAuth() {

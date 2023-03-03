@@ -829,38 +829,6 @@ TEST_F(KeysetManagementTest, RemoveLECredentials) {
   ASSERT_THAT(vk_status, IsOk());
 }
 
-TEST_F(KeysetManagementTest, GetPublicMountPassKey) {
-  // SETUP
-  // Generate a valid passkey from the users id and public salt.
-  Username account_id(kUser0);
-
-  brillo::SecureBlob public_mount_salt;
-  // Fetches or creates a salt from a saltfile. Setting the force
-  // parameter to false only creates a new saltfile if one doesn't
-  // already exist.
-  GetPublicMountSalt(&platform_, &public_mount_salt);
-
-  brillo::SecureBlob passkey;
-  Crypto::PasswordToPasskey(account_id->c_str(), public_mount_salt, &passkey);
-
-  // TEST
-  EXPECT_EQ(keyset_management_->GetPublicMountPassKey(account_id), passkey);
-}
-
-TEST_F(KeysetManagementTest, GetPublicMountPassKeyFail) {
-  // SETUP
-  Username account_id(kUser0);
-
-  EXPECT_CALL(platform_,
-              WriteSecureBlobToFileAtomicDurable(PublicMountSaltFile(), _, _))
-      .WillOnce(Return(false));
-
-  // Compare the SecureBlob with an empty and non-empty SecureBlob.
-  brillo::SecureBlob public_mount_passkey =
-      keyset_management_->GetPublicMountPassKey(account_id);
-  EXPECT_TRUE(public_mount_passkey.empty());
-}
-
 // Test to verify that AuthLocked is set in VK, and then can be reset
 // with a prevalidated VK.
 TEST_F(KeysetManagementTest, ResetLECredentialsAuthLocked) {
