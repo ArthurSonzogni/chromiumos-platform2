@@ -198,13 +198,13 @@ TEST_F(ValidatorTest, InvalidRangeOfInteger) {
 }
 
 TEST_F(ValidatorTest, InvalidCollection) {
-  std::vector<Collection*> colls(3);
-  ASSERT_EQ(Code::kOK, grp_->AddAttr("colls", colls));
-  Collection* coll2;
-  ASSERT_EQ(Code::kOK, colls[1]->AddAttr("coll2", coll2));
-  EXPECT_EQ(Code::kOK, colls[0]->AddAttr("good-attr", true));
+  CollsView colls;
+  ASSERT_EQ(Code::kOK, grp_->AddAttr("colls", 3, colls));
+  CollsView::iterator coll2;
+  ASSERT_EQ(Code::kOK, colls[1].AddAttr("coll2", coll2));
+  EXPECT_EQ(Code::kOK, colls[0].AddAttr("good-attr", true));
   EXPECT_EQ(Code::kOK, coll2->AddAttr("bad attr", ValueTag::not_settable));
-  EXPECT_EQ(Code::kOK, colls[2]->AddAttr("-also bad", ValueTag::enum_, 123));
+  EXPECT_EQ(Code::kOK, colls[2].AddAttr("-also bad", ValueTag::enum_, 123));
 
   EXPECT_FALSE(Validate(frame_, log_));
   ASSERT_EQ(log_.Entries().size(), 2);

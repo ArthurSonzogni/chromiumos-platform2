@@ -187,31 +187,29 @@ void SaveAttrValue(const Attribute* attr,
 
 void SaveCollection(const Collection* coll,
                     std::list<TagNameValue>* data_chunks) {
-  // get list of all attributes
-  std::vector<const Attribute*> attrs = coll->GetAllAttributes();
   // save the attributes
-  for (const Attribute* attr : attrs) {
+  for (const Attribute& attr : *coll) {
     TagNameValue tnv;
     tnv.tag = memberAttrName_value_tag;
     tnv.name.clear();
-    SaveOctetString(attr->Name(), &tnv.value);
+    SaveOctetString(attr.Name(), &tnv.value);
     data_chunks->push_back(tnv);
-    if (IsOutOfBand(attr->Tag())) {
-      tnv.tag = static_cast<uint8_t>(attr->Tag());
+    if (IsOutOfBand(attr.Tag())) {
+      tnv.tag = static_cast<uint8_t>(attr.Tag());
       tnv.value.clear();
       data_chunks->push_back(tnv);
     } else {
       // standard values (one or more)
-      for (size_t val_index = 0; val_index < attr->Size(); ++val_index) {
-        if (attr->Tag() == ValueTag::collection) {
+      for (size_t val_index = 0; val_index < attr.Size(); ++val_index) {
+        if (attr.Tag() == ValueTag::collection) {
           tnv.tag = begCollection_value_tag;
           tnv.value.clear();
           data_chunks->push_back(tnv);
-          SaveCollection(attr->GetCollection(val_index), data_chunks);
+          SaveCollection(attr.GetCollection(val_index), data_chunks);
           tnv.tag = endCollection_value_tag;
           tnv.value.clear();
         } else {
-          SaveAttrValue(attr, val_index, &tnv.tag, &tnv.value);
+          SaveAttrValue(&attr, val_index, &tnv.tag, &tnv.value);
         }
         data_chunks->push_back(tnv);
       }
@@ -220,29 +218,27 @@ void SaveCollection(const Collection* coll,
 }
 
 void SaveGroup(const Collection* coll, std::list<TagNameValue>* data_chunks) {
-  // get list of all attributes
-  std::vector<const Attribute*> attrs = coll->GetAllAttributes();
   // save the attributes
-  for (const Attribute* attr : attrs) {
+  for (const Attribute& attr : *coll) {
     TagNameValue tnv;
-    SaveOctetString(attr->Name(), &tnv.name);
-    if (IsOutOfBand(attr->Tag())) {
-      tnv.tag = static_cast<uint8_t>(attr->Tag());
+    SaveOctetString(attr.Name(), &tnv.name);
+    if (IsOutOfBand(attr.Tag())) {
+      tnv.tag = static_cast<uint8_t>(attr.Tag());
       tnv.value.clear();
       data_chunks->push_back(tnv);
       continue;
     }
-    for (size_t val_index = 0; val_index < attr->Size(); ++val_index) {
-      if (attr->Tag() == ValueTag::collection) {
+    for (size_t val_index = 0; val_index < attr.Size(); ++val_index) {
+      if (attr.Tag() == ValueTag::collection) {
         tnv.tag = begCollection_value_tag;
         tnv.value.clear();
         data_chunks->push_back(tnv);
-        SaveCollection(attr->GetCollection(val_index), data_chunks);
+        SaveCollection(attr.GetCollection(val_index), data_chunks);
         tnv.tag = endCollection_value_tag;
         tnv.name.clear();
         tnv.value.clear();
       } else {
-        SaveAttrValue(attr, val_index, &tnv.tag, &tnv.value);
+        SaveAttrValue(&attr, val_index, &tnv.tag, &tnv.value);
       }
       data_chunks->push_back(tnv);
       tnv.name.clear();

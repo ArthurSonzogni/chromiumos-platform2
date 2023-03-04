@@ -35,13 +35,13 @@ TEST(Frame, Constructor2) {
     auto groups = frame.Groups(gt);
     if (gt == GroupTag::operation_attributes) {
       ASSERT_EQ(groups.size(), 1);
-      auto att = groups[0].GetAttribute("attributes-charset");
-      ASSERT_NE(att, nullptr);
+      auto att = groups[0].GetAttr("attributes-charset");
+      ASSERT_NE(att, groups[0].end());
       std::string value;
       ASSERT_TRUE(att->GetValue(&value));
       EXPECT_EQ(value, "utf-8");
-      att = groups[0].GetAttribute("attributes-natural-language");
-      ASSERT_NE(att, nullptr);
+      att = groups[0].GetAttr("attributes-natural-language");
+      ASSERT_NE(att, groups[0].end());
       ASSERT_TRUE(att->GetValue(&value));
       EXPECT_EQ(value, "en-us");
     } else {
@@ -71,17 +71,17 @@ TEST(Frame, Constructor3) {
     auto groups = frame.Groups(gt);
     if (gt == GroupTag::operation_attributes) {
       ASSERT_EQ(groups.size(), 1);
-      auto att = groups[0].GetAttribute("attributes-charset");
-      ASSERT_NE(att, nullptr);
+      auto att = groups[0].GetAttr("attributes-charset");
+      ASSERT_NE(att, groups[0].end());
       std::string value;
       ASSERT_TRUE(att->GetValue(&value));
       EXPECT_EQ(value, "utf-8");
-      att = groups[0].GetAttribute("attributes-natural-language");
-      ASSERT_NE(att, nullptr);
+      att = groups[0].GetAttr("attributes-natural-language");
+      ASSERT_NE(att, groups[0].end());
       ASSERT_TRUE(att->GetValue(&value));
       EXPECT_EQ(value, "en-us");
-      att = groups[0].GetAttribute("status-message");
-      ASSERT_NE(att, nullptr);
+      att = groups[0].GetAttr("status-message");
+      ASSERT_NE(att, groups[0].end());
       ASSERT_TRUE(att->GetValue(&value));
       EXPECT_EQ(value, "client-error-gone");
     } else {

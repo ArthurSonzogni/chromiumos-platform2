@@ -737,8 +737,7 @@ void Parser::DecodeCollection(RawCollection* raw_coll, Collection* coll) {
   for (RawAttribute& raw_attr : raw_coll->attributes) {
     // Tries to match the attribute to existing one by name.
     parser_context_.Back().attribute_name = raw_attr.name;
-    Attribute* attr = coll->GetAttribute(raw_attr.name);
-    if (attr != nullptr) {
+    if (coll->GetAttr(raw_attr.name) != coll->end()) {
       // The attribute exists.
       LogParserErrors({ParserCode::kAttributeNameConflict});
       continue;
@@ -782,12 +781,12 @@ void Parser::DecodeCollection(RawCollection* raw_coll, Collection* coll) {
           errors.push_back(ParserCode::kValueMismatchTagOmitted);
         }
       }
-      std::vector<Collection*> colls(raw_colls.size());
-      Code err = coll->AddAttr(raw_attr.name, colls);
+      CollsView colls;
+      Code err = coll->AddAttr(raw_attr.name, raw_colls.size(), colls);
       if (err == Code::kOK) {
         for (size_t i = 0; i < colls.size(); ++i) {
           ContextPathGuard path_update(&parser_context_, i);
-          DecodeCollection(raw_colls[i], colls[i]);
+          DecodeCollection(raw_colls[i], &colls[i]);
         }
       } else {
         errors.push_back(ParserCode::kErrorWhenAddingAttribute);

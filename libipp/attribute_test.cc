@@ -29,16 +29,16 @@ class CollectionTest : public testing::Test {
 TEST_F(CollectionTest, AddAttrOutOfBand) {
   auto err = coll_->AddAttr("test", ValueTag::not_settable);
   EXPECT_EQ(err, Code::kOK);
-  auto attr = coll_->GetAttribute("test");
-  ASSERT_NE(attr, nullptr);
+  auto attr = coll_->GetAttr("test");
+  ASSERT_NE(attr, coll_->end());
   EXPECT_EQ(attr->Tag(), ValueTag::not_settable);
 }
 
 TEST_F(CollectionTest, AddAttrEnumAsInt) {
   auto err = coll_->AddAttr("test-enum", ValueTag::enum_, 1234);
   EXPECT_EQ(err, Code::kOK);
-  auto attr = coll_->GetAttribute("test-enum");
-  ASSERT_NE(attr, nullptr);
+  auto attr = coll_->GetAttr("test-enum");
+  ASSERT_NE(attr, coll_->end());
   EXPECT_EQ(attr->Tag(), ValueTag::enum_);
   int value;
   ASSERT_TRUE(attr->GetValue(&value));
@@ -48,8 +48,8 @@ TEST_F(CollectionTest, AddAttrEnumAsInt) {
 TEST_F(CollectionTest, AddAttrString) {
   auto err = coll_->AddAttr("abc123", ValueTag::mimeMediaType, "abc&123 DEF");
   EXPECT_EQ(err, Code::kOK);
-  auto attr = coll_->GetAttribute("abc123");
-  ASSERT_NE(attr, nullptr);
+  auto attr = coll_->GetAttr("abc123");
+  ASSERT_NE(attr, coll_->end());
   EXPECT_EQ(attr->Tag(), ValueTag::mimeMediaType);
   std::string value;
   ASSERT_TRUE(attr->GetValue(&value));
@@ -62,8 +62,8 @@ TEST_F(CollectionTest, AddAttrStringWithLanguage) {
   sl.value = "str value";
   auto err = coll_->AddAttr("lang", ValueTag::textWithLanguage, sl);
   EXPECT_EQ(err, Code::kOK);
-  auto attr = coll_->GetAttribute("lang");
-  ASSERT_NE(attr, nullptr);
+  auto attr = coll_->GetAttr("lang");
+  ASSERT_NE(attr, coll_->end());
   EXPECT_EQ(attr->Tag(), ValueTag::textWithLanguage);
   StringWithLanguage value;
   ASSERT_TRUE(attr->GetValue(&value));
@@ -74,8 +74,8 @@ TEST_F(CollectionTest, AddAttrStringWithLanguage) {
 TEST_F(CollectionTest, AddAttrBool) {
   auto err = coll_->AddAttr("test", true);
   EXPECT_EQ(err, Code::kOK);
-  auto attr = coll_->GetAttribute("test");
-  ASSERT_NE(attr, nullptr);
+  auto attr = coll_->GetAttr("test");
+  ASSERT_NE(attr, coll_->end());
   EXPECT_EQ(attr->Tag(), ValueTag::boolean);
   int value;
   ASSERT_TRUE(attr->GetValue(&value));
@@ -85,8 +85,8 @@ TEST_F(CollectionTest, AddAttrBool) {
 TEST_F(CollectionTest, AddAttrInteger) {
   auto err = coll_->AddAttr("test", -1234567890);
   EXPECT_EQ(err, Code::kOK);
-  auto attr = coll_->GetAttribute("test");
-  ASSERT_NE(attr, nullptr);
+  auto attr = coll_->GetAttr("test");
+  ASSERT_NE(attr, coll_->end());
   EXPECT_EQ(attr->Tag(), ValueTag::integer);
   int32_t value;
   ASSERT_TRUE(attr->GetValue(&value));
@@ -105,8 +105,8 @@ TEST_F(CollectionTest, AddAttrDateTime) {
   dt.UTC_minutes = 44;
   auto err = coll_->AddAttr("test", dt);
   EXPECT_EQ(err, Code::kOK);
-  auto attr = coll_->GetAttribute("test");
-  ASSERT_NE(attr, nullptr);
+  auto attr = coll_->GetAttr("test");
+  ASSERT_NE(attr, coll_->end());
   EXPECT_EQ(attr->Tag(), ValueTag::dateTime);
   DateTime value;
   ASSERT_TRUE(attr->GetValue(&value));
@@ -126,8 +126,8 @@ TEST_F(CollectionTest, AddAttrResolution) {
   Resolution res(123, 456, Resolution::Units::kDotsPerInch);
   auto err = coll_->AddAttr("test", res);
   EXPECT_EQ(err, Code::kOK);
-  auto attr = coll_->GetAttribute("test");
-  ASSERT_NE(attr, nullptr);
+  auto attr = coll_->GetAttr("test");
+  ASSERT_NE(attr, coll_->end());
   EXPECT_EQ(attr->Tag(), ValueTag::resolution);
   Resolution value;
   ASSERT_TRUE(attr->GetValue(&value));
@@ -140,8 +140,8 @@ TEST_F(CollectionTest, AddAttrRangeOfInteger) {
   RangeOfInteger roi(-123, 456);
   auto err = coll_->AddAttr("test", roi);
   EXPECT_EQ(err, Code::kOK);
-  auto attr = coll_->GetAttribute("test");
-  ASSERT_NE(attr, nullptr);
+  auto attr = coll_->GetAttr("test");
+  ASSERT_NE(attr, coll_->end());
   EXPECT_EQ(attr->Tag(), ValueTag::rangeOfInteger);
   RangeOfInteger value;
   ASSERT_TRUE(attr->GetValue(&value));
@@ -153,8 +153,8 @@ TEST_F(CollectionTest, AddAttrCollection) {
   CollsView::iterator attr_coll;
   auto err = coll_->AddAttr("test", attr_coll);
   EXPECT_EQ(err, Code::kOK);
-  auto attr = coll_->GetAttribute("test");
-  ASSERT_NE(attr, nullptr);
+  auto attr = coll_->GetAttr("test");
+  ASSERT_NE(attr, coll_->end());
   EXPECT_EQ(attr->Tag(), ValueTag::collection);
   EXPECT_EQ(attr->Colls().begin(), attr_coll);
 }
@@ -185,7 +185,7 @@ TEST_F(CollectionTest, AddAttrNameConflict) {
 TEST_F(CollectionTest, AddAttrValueOutOfRange) {
   auto err = coll_->AddAttr("aaa", ValueTag::boolean, -1);
   EXPECT_EQ(err, Code::kValueOutOfRange);
-  EXPECT_EQ(coll_->GetAttribute("aaa"), nullptr);
+  EXPECT_EQ(coll_->GetAttr("aaa"), coll_->end());
 }
 
 TEST_F(CollectionTest, AddAttrInvalidValueTag) {
@@ -199,13 +199,18 @@ TEST_F(CollectionTest, AttributesOrder) {
   EXPECT_EQ(coll_->AddAttr("a5", 1234), Code::kOK);
   EXPECT_EQ(coll_->AddAttr("a4", ValueTag::no_value), Code::kOK);
   EXPECT_EQ(coll_->AddAttr("a2", ValueTag::uri, "abcde"), Code::kOK);
-  auto attrs = coll_->GetAllAttributes();
-  ASSERT_EQ(attrs.size(), 5);
-  EXPECT_EQ(attrs[0]->Name(), "a3");
-  EXPECT_EQ(attrs[1]->Name(), "a1");
-  EXPECT_EQ(attrs[2]->Name(), "a5");
-  EXPECT_EQ(attrs[3]->Name(), "a4");
-  EXPECT_EQ(attrs[4]->Name(), "a2");
+  Collection::const_iterator attr = coll_->cbegin();
+  EXPECT_EQ(attr->Name(), "a3");
+  ++attr;
+  EXPECT_EQ(attr->Name(), "a1");
+  ++attr;
+  EXPECT_EQ(attr->Name(), "a5");
+  ++attr;
+  EXPECT_EQ(attr->Name(), "a4");
+  ++attr;
+  EXPECT_EQ(attr->Name(), "a2");
+  ++attr;
+  EXPECT_EQ(attr, coll_->cend());
 }
 
 TEST_F(CollectionTest, GetAttrFail) {
@@ -307,7 +312,7 @@ class AttributeTest : public testing::Test {
 
 TEST_F(AttributeTest, CollsWrongType) {
   coll_->AddAttr("out-of-band", ValueTag::not_settable);
-  Attribute& attr = *coll_->GetAttribute("out-of-band");
+  Attribute& attr = *coll_->GetAttr("out-of-band");
   EXPECT_TRUE(attr.Colls().empty());
   EXPECT_EQ(attr.Colls().size(), 0);
   const Attribute& attr_const = attr;

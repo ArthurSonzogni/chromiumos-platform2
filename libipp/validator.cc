@@ -408,10 +408,9 @@ ValidationResult ValidateCollections(
   ValidationResult result;
   for (size_t icoll = 0; icoll < colls.size(); ++icoll) {
     const Collection* coll = colls[icoll];
-    std::vector<const Attribute*> attrs = coll->GetAllAttributes();
-    for (const Attribute* attr : attrs) {
-      path.PushBack(icoll, attr->Name());
-      result = result && ValidateAttribute(attr, log, path);
+    for (const Attribute& attr : *coll) {
+      path.PushBack(icoll, attr.Name());
+      result = result && ValidateAttribute(&attr, log, path);
       path.PopBack();
       if (!result.keep_going)
         return result;
@@ -522,10 +521,9 @@ bool Validate(const Frame& frame, ValidatorLog& log) {
     size_t coll_index = 0;
     for (const Collection& coll : frame.Groups(group_tag)) {
       AttrPath path(group_tag);
-      std::vector<const Attribute*> attrs = coll.GetAllAttributes();
-      for (const Attribute* attr : attrs) {
-        path.PushBack(coll_index, attr->Name());
-        result = result && ValidateAttribute(attr, log, path);
+      for (const Attribute& attr : coll) {
+        path.PushBack(coll_index, attr.Name());
+        result = result && ValidateAttribute(&attr, log, path);
         path.PopBack();
         if (!result.keep_going)
           return result.no_errors;

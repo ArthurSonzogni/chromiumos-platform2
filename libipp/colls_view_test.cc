@@ -46,15 +46,15 @@ TEST(CollsViewTest, AttributeColls) {
   Frame frame = Frame(Operation::Cancel_Job);
   CollsView::iterator coll =
       frame.Groups(GroupTag::operation_attributes).begin();
-  std::vector<Collection*> attr_colls(4, nullptr);
-  Code result = coll->AddAttr("test", attr_colls);
+  CollsView attr_colls;
+  Code result = coll->AddAttr("test", 4, attr_colls);
   ASSERT_EQ(result, Code::kOK);
-  Attribute* attr = coll->GetAttribute("test");
-  ASSERT_TRUE(attr);
+  Collection::iterator attr = coll->GetAttr("test");
+  ASSERT_NE(attr, coll->end());
   size_t index = 0;
   for (Collection& subcoll : attr->Colls()) {
-    EXPECT_EQ(attr_colls[index], &subcoll);
-    EXPECT_EQ(attr_colls[index], &attr->Colls()[index]);
+    EXPECT_EQ(&attr_colls[index], &subcoll);
+    EXPECT_EQ(&attr_colls[index], &attr->Colls()[index]);
     ++index;
   }
 }
@@ -63,15 +63,16 @@ TEST(CollsViewTest, AttributeCollsConst) {
   Frame frame = Frame(Operation::Cancel_Job);
   CollsView::iterator coll =
       frame.Groups(GroupTag::operation_attributes).begin();
-  std::vector<Collection*> attr_colls(4, nullptr);
-  Code result = coll->AddAttr("test", attr_colls);
+  CollsView attr_colls;
+  Code result = coll->AddAttr("test", 4, attr_colls);
   ASSERT_EQ(result, Code::kOK);
-  const Attribute* attr = coll->GetAttribute("test");
-  ASSERT_TRUE(attr);
+  CollsView::const_iterator coll2 = CollsView::const_iterator(coll);
+  Collection::const_iterator attr = coll2->GetAttr("test");
+  ASSERT_NE(attr, coll->end());
   size_t index = 0;
   for (const Collection& subcoll : attr->Colls()) {
-    EXPECT_EQ(attr_colls[index], &subcoll);
-    EXPECT_EQ(attr_colls[index], &attr->Colls()[index]);
+    EXPECT_EQ(&attr_colls[index], &subcoll);
+    EXPECT_EQ(&attr_colls[index], &attr->Colls()[index]);
     ++index;
   }
 }

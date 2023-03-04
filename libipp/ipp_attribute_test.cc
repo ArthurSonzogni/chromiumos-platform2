@@ -15,8 +15,9 @@ namespace ipp {
 
 namespace {
 
-void TestNewAttribute(Attribute* attr, std::string_view name, ValueTag tag) {
-  EXPECT_TRUE(attr != nullptr);
+void TestNewAttribute(Collection::iterator attr,
+                      std::string_view name,
+                      ValueTag tag) {
   EXPECT_EQ(attr->Name(), name);
   EXPECT_EQ(attr->Tag(), tag);
   // default state after creation
@@ -31,7 +32,8 @@ TEST(attribute, UnknownValueAttribute) {
   Collection coll;
   EXPECT_EQ(Code::kOK, coll.AddAttr("abc", ValueTag::nameWithLanguage,
                                     StringWithLanguage("val")));
-  Attribute* attr = coll.GetAttribute("abc");
+  Collection::iterator attr = coll.GetAttr("abc");
+  ASSERT_NE(attr, coll.end());
   TestNewAttribute(attr, "abc", ValueTag::nameWithLanguage);
   StringWithLanguage sl;
   ASSERT_TRUE(attr->GetValue(&sl));
@@ -41,10 +43,11 @@ TEST(attribute, UnknownValueAttribute) {
 
 TEST(attribute, UnknownCollectionAttribute) {
   Collection coll;
-  Collection* new_coll = nullptr;
+  CollsView::iterator new_coll;
   EXPECT_EQ(Code::kOK, coll.AddAttr("abcd", new_coll));
-  EXPECT_TRUE(new_coll);
-  Attribute* attr = coll.GetAttribute("abcd");
+  Collection::iterator attr = coll.GetAttr("abcd");
+  ASSERT_NE(attr, coll.end());
+  EXPECT_EQ(attr->Colls().begin(), new_coll);
   TestNewAttribute(attr, "abcd", ValueTag::collection);
   EXPECT_NE(attr->GetCollection(), nullptr);
   EXPECT_EQ(attr->GetCollection(1), nullptr);
@@ -52,7 +55,7 @@ TEST(attribute, UnknownCollectionAttribute) {
   EXPECT_NE(attr->GetCollection(), nullptr);
   EXPECT_NE(attr->GetCollection(2), nullptr);
   EXPECT_EQ(attr->GetCollection(3), nullptr);
-  const Attribute* attr_const = attr;
+  Collection::const_iterator attr_const = Collection::const_iterator(attr);
   EXPECT_NE(attr_const->GetCollection(), nullptr);
   EXPECT_NE(attr_const->GetCollection(2), nullptr);
   EXPECT_EQ(attr_const->GetCollection(3), nullptr);

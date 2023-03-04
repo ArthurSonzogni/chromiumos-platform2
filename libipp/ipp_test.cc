@@ -60,24 +60,24 @@ struct BinaryContent {
 
 // function comparing if two collections have the same content
 void CompareCollections(const ipp::Collection& c1, const ipp::Collection& c2) {
-  std::vector<const ipp::Attribute*> a1 = c1.GetAllAttributes();
-  std::vector<const ipp::Attribute*> a2 = c2.GetAllAttributes();
-  ASSERT_EQ(a1.size(), a2.size());
-  for (size_t i = 0; i < a1.size(); ++i) {
-    EXPECT_EQ(a1[i]->Name(), a2[i]->Name());
-    EXPECT_EQ(a1[i]->Tag(), a2[i]->Tag());
-    ASSERT_EQ(a1[i]->Size(), a2[i]->Size());
-    for (size_t j = 0; j < a1[i]->Size(); ++j) {
+  ipp::Collection::const_iterator a1 = c1.begin();
+  ipp::Collection::const_iterator a2 = c2.begin();
+  for (; a1 != c1.end(); ++a1, ++a2) {
+    ASSERT_NE(a2, c2.end());
+    EXPECT_EQ(a1->Name(), a2->Name());
+    EXPECT_EQ(a1->Tag(), a2->Tag());
+    ASSERT_EQ(a1->Size(), a2->Size());
+    for (size_t j = 0; j < a1->Size(); ++j) {
       std::string s1, s2;
       ipp::DateTime d1, d2;
       ipp::Resolution r1, r2;
       ipp::RangeOfInteger i1, i2;
       ipp::StringWithLanguage l1, l2;
-      switch (a1[i]->Tag()) {
+      switch (a1->Tag()) {
         case ipp::ValueTag::textWithLanguage:
         case ipp::ValueTag::nameWithLanguage:
-          a1[i]->GetValue(&l1, j);
-          a2[i]->GetValue(&l2, j);
+          a1->GetValue(&l1, j);
+          a2->GetValue(&l2, j);
           EXPECT_EQ(l1.value, l2.value);
           EXPECT_EQ(l1.language, l2.language);
           break;
@@ -93,27 +93,27 @@ void CompareCollections(const ipp::Collection& c1, const ipp::Collection& c2) {
         case ipp::ValueTag::mimeMediaType:
         case ipp::ValueTag::nameWithoutLanguage:
         case ipp::ValueTag::textWithoutLanguage:
-          a1[i]->GetValue(&s1, j);
-          a2[i]->GetValue(&s2, j);
+          a1->GetValue(&s1, j);
+          a2->GetValue(&s2, j);
           EXPECT_EQ(s1, s2);
           break;
         case ipp::ValueTag::dateTime:
-          a1[i]->GetValue(&d1, j);
-          a2[i]->GetValue(&d2, j);
+          a1->GetValue(&d1, j);
+          a2->GetValue(&d2, j);
           EXPECT_EQ(d1, d2);
           break;
         case ipp::ValueTag::resolution:
-          a1[i]->GetValue(&r1, j);
-          a2[i]->GetValue(&r2, j);
+          a1->GetValue(&r1, j);
+          a2->GetValue(&r2, j);
           EXPECT_EQ(r1, r2);
           break;
         case ipp::ValueTag::rangeOfInteger:
-          a1[i]->GetValue(&i1, j);
-          a2[i]->GetValue(&i2, j);
+          a1->GetValue(&i1, j);
+          a2->GetValue(&i2, j);
           EXPECT_EQ(i1, i2);
           break;
         case ipp::ValueTag::collection:
-          CompareCollections(a1[i]->Colls()[j], a2[i]->Colls()[j]);
+          CompareCollections(a1->Colls()[j], a2->Colls()[j]);
           break;
         default:
           // This is unexpected. All Out-of-Band values have size == 0.
@@ -122,6 +122,7 @@ void CompareCollections(const ipp::Collection& c1, const ipp::Collection& c2) {
       }
     }
   }
+  EXPECT_EQ(a2, c2.end());
 }
 
 // checks if given frame is a binary representation of given Request/Response
@@ -623,9 +624,9 @@ TEST(rfc8010, example7) {
   grp->AddAttr("printer-uri", ipp::ValueTag::uri,
                "ipp://printer.example.com/ipp/print/pinetree");
   ASSERT_EQ(r.AddGroup(ipp::GroupTag::job_attributes, grp), ipp::Code::kOK);
-  ipp::Collection* coll;
+  ipp::CollsView::iterator coll;
   ASSERT_EQ(grp->AddAttr("media-col", coll), ipp::Code::kOK);
-  ipp::Collection* coll2;
+  ipp::CollsView::iterator coll2;
   ASSERT_EQ(coll->AddAttr("media-size", coll2), ipp::Code::kOK);
   coll->AddAttr("media-type", ipp::ValueTag::keyword, "stationery");
   coll2->AddAttr("x-dimension", 21000);

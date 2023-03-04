@@ -870,36 +870,6 @@ Collection::const_iterator Collection::GetAttr(std::string_view name) const {
   return const_iterator(it2);
 }
 
-Attribute* Collection::GetAttribute(AttrName an) {
-  std::string_view name = ToStrView(an);
-  auto it = attributes_index_.find(name);
-  if (it != attributes_index_.end())
-    return attributes_[it->second].get();
-  return nullptr;
-}
-
-const Attribute* Collection::GetAttribute(AttrName an) const {
-  std::string_view name = ToStrView(an);
-  auto it = attributes_index_.find(name);
-  if (it != attributes_index_.end())
-    return attributes_[it->second].get();
-  return nullptr;
-}
-
-Attribute* Collection::GetAttribute(const std::string& name) {
-  auto it = attributes_index_.find(name);
-  if (it != attributes_index_.end())
-    return attributes_[it->second].get();
-  return nullptr;
-}
-
-const Attribute* Collection::GetAttribute(const std::string& name) const {
-  auto it = attributes_index_.find(name);
-  if (it != attributes_index_.end())
-    return attributes_[it->second].get();
-  return nullptr;
-}
-
 Code Collection::CreateNewAttribute(const std::string& name,
                                     ValueTag type,
                                     Attribute*& new_attr) {
@@ -1116,34 +1086,6 @@ Code Collection::AddAttr(const std::string& name,
   return AddAttributeToCollection(name, ValueTag::rangeOfInteger, values);
 }
 
-Code Collection::AddAttr(const std::string& name, Collection*& value) {
-  std::vector<Collection*> values(1);
-  Code err = AddAttr(name, values);
-  if (err == Code::kOK) {
-    value = values.front();
-  }
-  return err;
-}
-
-Code Collection::AddAttr(const std::string& name,
-                         std::vector<Collection*>& values) {
-  if (values.empty()) {
-    return Code::kValueOutOfRange;
-  }
-  // Create the attribute and retrieve the pointers.
-  Attribute* attr = nullptr;
-  if (Code result = CreateNewAttribute(name, ValueTag::collection, attr);
-      result != Code::kOK) {
-    return result;
-  }
-  attr->Resize(values.size());
-  for (size_t i = 0; i < values.size(); ++i) {
-    values[i] = attr->GetCollection(i);
-  }
-
-  return Code::kOK;
-}
-
 Code Collection::AddAttr(const std::string& name, CollsView::iterator& coll) {
   CollsView colls;
   Code code = AddAttr(name, 1, colls);
@@ -1168,22 +1110,6 @@ Code Collection::AddAttr(const std::string& name,
 
   colls = attr->Colls();
   return Code::kOK;
-}
-
-std::vector<Attribute*> Collection::GetAllAttributes() {
-  std::vector<Attribute*> v;
-  v.reserve(attributes_.size());
-  for (std::unique_ptr<Attribute>& attr : attributes_)
-    v.push_back(attr.get());
-  return v;
-}
-
-std::vector<const Attribute*> Collection::GetAllAttributes() const {
-  std::vector<const Attribute*> v;
-  v.reserve(attributes_.size());
-  for (const std::unique_ptr<Attribute>& attr : attributes_)
-    v.push_back(attr.get());
-  return v;
 }
 
 // Saves |value| at position |index|. Proper conversion is applied when needed.
