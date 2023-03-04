@@ -184,15 +184,14 @@ CollectionsView Frame::Groups(GroupTag tag) {
   if (IsValid(tag)) {
     return CollectionsView(groups_by_tag_[static_cast<size_t>(tag)]);
   }
-  // groups_by_tag_[0] is always empty, since IsValid(0) == false.
-  return CollectionsView(groups_by_tag_[0]);
+  return CollectionsView();
 }
 
 ConstCollectionsView Frame::Groups(GroupTag tag) const {
   if (IsValid(tag)) {
     return ConstCollectionsView(groups_by_tag_[static_cast<size_t>(tag)]);
   }
-  return ConstCollectionsView(groups_by_tag_[0]);
+  return ConstCollectionsView();
 }
 
 std::vector<std::pair<GroupTag, Collection*>> Frame::GetGroups() {

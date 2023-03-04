@@ -23,6 +23,7 @@ shared_library("libipp") {
     "attribute.h",
     "builder.cc",
     "builder.h",
+    "colls_view.cc",
     "colls_view.h",
     "errors.cc",
     "errors.h",

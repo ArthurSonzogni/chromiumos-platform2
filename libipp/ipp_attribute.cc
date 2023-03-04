@@ -394,12 +394,6 @@ bool SaveValueTyped(void*& values,
   return true;
 }
 
-// Returns a reference to an empty vector that is always valid.
-std::vector<Collection*>& EmptyVectorOfColls() {
-  static std::vector<Collection*> empty_vector;
-  return empty_vector;
-}
-
 }  // end of namespace
 
 std::string_view ToStrView(ValueTag tag) {
@@ -661,7 +655,7 @@ bool Attribute::SetValue(const DateTime& val, size_t index) {
 
 CollectionsView Attribute::Colls() {
   if (Tag() != ValueTag::collection || Size() == 0) {
-    return CollectionsView(EmptyVectorOfColls());
+    return CollectionsView();
   }
   return CollectionsView(*ReadValuePtr<std::vector<Collection*>>(&values_));
 }
@@ -825,7 +819,7 @@ Code Attribute::SetValues(const std::vector<RangeOfInteger>& values) {
 
 ConstCollectionsView Attribute::Colls() const {
   if (Tag() != ValueTag::collection || Size() == 0) {
-    return ConstCollectionsView(EmptyVectorOfColls());
+    return ConstCollectionsView();
   }
   return ConstCollectionsView(
       *ReadValueConstPtr<std::vector<Collection*>>(&values_));

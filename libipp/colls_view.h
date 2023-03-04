@@ -99,47 +99,64 @@ class CollectionsView {
     std::vector<Collection*>::const_iterator iter_;
   };
 
+  // Default constructor returns always empty range.
+  CollectionsView();
   CollectionsView(const CollectionsView& cv) = default;
-  iterator begin() { return iterator(colls_.begin()); }
-  iterator end() { return iterator(colls_.end()); }
-  const_iterator cbegin() const { return const_iterator(colls_.cbegin()); }
-  const_iterator cend() const { return const_iterator(colls_.cend()); }
+  CollectionsView& operator=(const CollectionsView& cv) {
+    colls_ = cv.colls_;
+    return *this;
+  }
+  iterator begin() { return iterator(colls_->begin()); }
+  iterator end() { return iterator(colls_->end()); }
+  const_iterator cbegin() const { return const_iterator(colls_->cbegin()); }
+  const_iterator cend() const { return const_iterator(colls_->cend()); }
   const_iterator begin() const { return cbegin(); }
   const_iterator end() const { return cend(); }
-  size_t size() const { return colls_.size(); }
-  bool empty() const { return colls_.empty(); }
-  Collection& operator[](size_t index) { return *colls_[index]; }
-  const Collection& operator[](size_t index) const { return *colls_[index]; }
+  size_t size() const { return colls_->size(); }
+  bool empty() const { return colls_->empty(); }
+  Collection& operator[](size_t index) { return *(*colls_)[index]; }
+  const Collection& operator[](size_t index) const { return *(*colls_)[index]; }
 
  private:
   friend class Attribute;
   friend class ConstCollectionsView;
   friend class Frame;
-  explicit CollectionsView(std::vector<Collection*>& colls) : colls_(colls) {}
-  std::vector<Collection*>& colls_;
+  explicit CollectionsView(std::vector<Collection*>& colls) : colls_(&colls) {}
+  std::vector<Collection*>* colls_;
 };
 
 // Const version of CollectionsView.
 class ConstCollectionsView {
  public:
   using const_iterator = CollectionsView::const_iterator;
+
+  // Default constructor returns always empty range.
+  ConstCollectionsView();
   ConstCollectionsView(const ConstCollectionsView& cv) = default;
   explicit ConstCollectionsView(const CollectionsView& cv)
       : colls_(cv.colls_) {}
-  const_iterator cbegin() const { return const_iterator(colls_.cbegin()); }
-  const_iterator cend() const { return const_iterator(colls_.cend()); }
+  ConstCollectionsView& operator=(const ConstCollectionsView& cv) {
+    colls_ = cv.colls_;
+    return *this;
+  }
+  ConstCollectionsView& operator=(const CollectionsView& cv) {
+    colls_ = cv.colls_;
+    return *this;
+  }
+  const_iterator cbegin() const { return const_iterator(colls_->cbegin()); }
+  const_iterator cend() const { return const_iterator(colls_->cend()); }
   const_iterator begin() const { return cbegin(); }
   const_iterator end() const { return cend(); }
-  size_t size() const { return colls_.size(); }
-  bool empty() const { return colls_.empty(); }
-  const Collection& operator[](size_t index) const { return *colls_[index]; }
+  size_t size() const { return colls_->size(); }
+  bool empty() const { return colls_->empty(); }
+  const Collection& operator[](size_t index) const { return *(*colls_)[index]; }
 
  private:
   friend class Attribute;
   friend class Frame;
   explicit ConstCollectionsView(const std::vector<Collection*>& colls)
-      : colls_(colls) {}
-  const std::vector<Collection*>& colls_;
+      : colls_(&colls) {}
+  const std::vector<Collection*>* colls_;
 };
 
 }  // namespace ipp
