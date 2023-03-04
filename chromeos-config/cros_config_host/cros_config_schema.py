@@ -3,6 +3,7 @@
 # Copyright 2017 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
 """Transforms and validates cros config from source YAML to target JSON"""
 
 from __future__ import print_function
@@ -68,7 +69,7 @@ def MergeDictionaries(primary, overlay):
         overlay_value = overlay[overlay_key]
         if not overlay_key in primary:
             primary[overlay_key] = overlay_value
-        elif isinstance(overlay_value, collections.Mapping):
+        elif isinstance(overlay_value, collections.abc.Mapping):
             MergeDictionaries(primary[overlay_key], overlay_value)
         elif isinstance(overlay_value, list):
             primary[overlay_key].extend(overlay_value)
@@ -165,7 +166,7 @@ def _SetTemplateVars(template_input, template_vars):
     """
     to_add = {}
     for key, val in template_input.items():
-        if isinstance(val, collections.Mapping):
+        if isinstance(val, collections.abc.Mapping):
             _SetTemplateVars(val, template_vars)
         elif not isinstance(val, list):
             to_add[key] = val
@@ -233,12 +234,12 @@ def _ApplyTemplateVars(template_input, template_vars):
     lists = []
     for key in template_input.keys():
         val = template_input[key]
-        if isinstance(val, collections.Mapping):
+        if isinstance(val, collections.abc.Mapping):
             maps.append(val)
         elif isinstance(val, list):
             index = 0
             for list_val in val:
-                if isinstance(list_val, collections.Mapping):
+                if isinstance(list_val, collections.abc.Mapping):
                     lists.append(list_val)
                 elif isinstance(list_val, six.string_types):
                     val[index] = _GetVarTemplateValue(
@@ -273,11 +274,11 @@ def _DeleteTemplateOnlyVars(template_input):
     to_delete = []
     for key in template_input.keys():
         val = template_input[key]
-        if isinstance(val, collections.Mapping):
+        if isinstance(val, collections.abc.Mapping):
             _DeleteTemplateOnlyVars(val)
         elif isinstance(val, list):
             for v in val:
-                if isinstance(v, collections.Mapping):
+                if isinstance(v, collections.abc.Mapping):
                     _DeleteTemplateOnlyVars(v)
         elif key.startswith("$"):
             to_delete.append(key)
