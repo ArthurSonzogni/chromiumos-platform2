@@ -58,6 +58,8 @@ FakePlatformFeatures::GetParamsAndEnabledBlocking(
       if (params_it != params_.end()) {
         cur.params = params_it->second;
       }
+    } else if (enabled_it == enabled_.end()) {
+      cur.enabled = (feature->default_state == FEATURE_ENABLED_BY_DEFAULT);
     }
 
     out[feature->name] = cur;
