@@ -1145,6 +1145,33 @@ Code Collection::AddAttr(const std::string& name,
   return Code::kOK;
 }
 
+Code Collection::AddAttr(const std::string& name,
+                         CollectionsView::iterator& coll) {
+  CollectionsView colls;
+  Code code = AddAttr(name, 1, colls);
+  if (code == Code::kOK)
+    coll = colls.begin();
+  return code;
+}
+
+Code Collection::AddAttr(const std::string& name,
+                         size_t size,
+                         CollectionsView& colls) {
+  if (size == 0) {
+    return Code::kValueOutOfRange;
+  }
+  // Create the attribute and retrieve the pointers.
+  Attribute* attr = nullptr;
+  if (Code result = CreateNewAttribute(name, ValueTag::collection, attr);
+      result != Code::kOK) {
+    return result;
+  }
+  attr->Resize(size);
+
+  colls = attr->Colls();
+  return Code::kOK;
+}
+
 std::vector<Attribute*> Collection::GetAllAttributes() {
   std::vector<Attribute*> v;
   v.reserve(attributes_.size());

@@ -8,6 +8,8 @@
 #include <iterator>
 #include <vector>
 
+#include "ipp_export.h"
+
 namespace ipp {
 
 class Attribute;
@@ -19,7 +21,7 @@ class Frame;
 // provides const and non-const access to underlying Collections with
 // bidirectional iterators, operator[], as well as, methods size() and empty().
 //
-class CollectionsView {
+class LIBIPP_EXPORT CollectionsView {
  public:
   class const_iterator;
   class iterator {
@@ -126,7 +128,7 @@ class CollectionsView {
 };
 
 // Const version of CollectionsView.
-class ConstCollectionsView {
+class LIBIPP_EXPORT ConstCollectionsView {
  public:
   using const_iterator = CollectionsView::const_iterator;
 

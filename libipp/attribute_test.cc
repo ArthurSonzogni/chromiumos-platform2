@@ -150,14 +150,24 @@ TEST_F(CollectionTest, AddAttrRangeOfInteger) {
 }
 
 TEST_F(CollectionTest, AddAttrCollection) {
-  Collection* attr_coll;
+  CollectionsView::iterator attr_coll;
   auto err = coll_->AddAttr("test", attr_coll);
   EXPECT_EQ(err, Code::kOK);
-  EXPECT_NE(attr_coll, nullptr);
   auto attr = coll_->GetAttribute("test");
   ASSERT_NE(attr, nullptr);
   EXPECT_EQ(attr->Tag(), ValueTag::collection);
-  EXPECT_EQ(attr->GetCollection(), attr_coll);
+  EXPECT_EQ(attr->Colls().begin(), attr_coll);
+}
+
+TEST_F(CollectionTest, AddAttrCollections) {
+  CollectionsView colls;
+  Code err = coll_->AddAttr("test", 3, colls);
+  EXPECT_EQ(err, Code::kOK);
+  EXPECT_EQ(colls.size(), 3);
+  Collection::iterator attr = coll_->GetAttr("test");
+  ASSERT_NE(attr, coll_->end());
+  EXPECT_EQ(attr->Tag(), ValueTag::collection);
+  EXPECT_EQ(attr->Colls().begin(), colls.begin());
 }
 
 TEST_F(CollectionTest, AddAttrInvalidName) {
