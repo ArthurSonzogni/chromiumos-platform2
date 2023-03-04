@@ -476,8 +476,8 @@ bool Parser::SaveFrameToPackage(bool log_unknown_values, Frame* package) {
     GroupTag gn = frame_->groups_tags_[i];
     parser_context_ = AttrPath(gn);
     parser_context_.PushBack(package->Groups(gn).size(), "");
-    Collection* coll = nullptr;
-    Code err = package->AddGroup(gn, &coll);
+    CollsView::iterator coll;
+    Code err = package->AddGroup(gn, coll);
     if (err != Code::kOK) {
       LogParserError(ParserCode::kErrorWhenAddingGroup);
       continue;
@@ -489,7 +489,7 @@ bool Parser::SaveFrameToPackage(bool log_unknown_values, Frame* package) {
             " This is critical error, parsing was cancelled.";
       return false;
     }
-    DecodeCollection(&raw_coll, coll);
+    DecodeCollection(&raw_coll, &*coll);
   }
   package->SetData(std::move(frame_->data_));
   return true;

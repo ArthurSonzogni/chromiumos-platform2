@@ -519,17 +519,18 @@ bool Validate(const Frame& frame, ValidatorLog& log) {
   if (!result.keep_going)
     return result.no_errors;
   for (GroupTag group_tag : kGroupTags) {
-    std::vector<const Collection*> groups = frame.GetGroups(group_tag);
-    for (size_t index = 0; index < groups.size(); ++index) {
+    size_t coll_index = 0;
+    for (const Collection& coll : frame.Groups(group_tag)) {
       AttrPath path(group_tag);
-      std::vector<const Attribute*> attrs = groups[index]->GetAllAttributes();
+      std::vector<const Attribute*> attrs = coll.GetAllAttributes();
       for (const Attribute* attr : attrs) {
-        path.PushBack(index, attr->Name());
+        path.PushBack(coll_index, attr->Name());
         result = result && ValidateAttribute(attr, log, path);
         path.PopBack();
         if (!result.keep_going)
           return result.no_errors;
       }
+      ++coll_index;
     }
   }
   return result.no_errors;

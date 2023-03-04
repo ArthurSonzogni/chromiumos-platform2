@@ -71,11 +71,6 @@ constexpr std::array<GroupTag, 14> kGroupTags{
 // This parameters defines maximum number of attribute groups in single package.
 constexpr size_t kMaxCountOfAttributeGroups = 20 * 1024;
 
-struct ParsingResults {
-  std::vector<Log> errors;
-  bool whole_buffer_was_parsed;  // false <=> the parsing was not completed
-};
-
 class Collection;
 class Attribute;
 
@@ -115,46 +110,12 @@ class LIBIPP_EXPORT Frame {
                  Version version_number = Version::_1_1,
                  int32_t request_id = 1,
                  bool set_localization_en_us_and_status_message = true);
-  // Constructor. Parse the frame of `size` bytes saved in `buffer`. If the
-  // parameter `log` is not nullptr, it is overwritten with the list of errors
-  // detected by the parser. The constructed object is always valid. In the
-  // worst case scenario (nothing was parsed), the constructed object is empty
-  // and has all basic parameters set to zeroes like after Frame() constructor.
-  // In case of parsing errors, some groups or attributes from the input buffer
-  // may be omitted. You should examine the ParsingResults structure to make
-  // sure that the whole input frame was parsed.
-  Frame(const uint8_t* buffer, size_t size, ParsingResults* log = nullptr);
-  // These two constructors are deprecated. Use the constructors defined above.
-  // TODO(b/249157310): remove these from the codebase.
-  Frame(Version version_number,
-        Operation operation_id,
-        int32_t request_id = 1,
-        bool set_charset = true);
-  Frame(Version version_number,
-        Status status_code,
-        int32_t request_id = 1,
-        bool set_charset = true);
 
   Frame(const Frame&) = delete;
   Frame& operator=(const Frame&) = delete;
   Frame(Frame&&) = default;
   Frame& operator=(Frame&&) = default;
-
   virtual ~Frame();
-
-  // Return the size of the binary representation of the frame in bytes.
-  // DEPRECATED: Use functions from builder.h instead.
-  size_t GetLength() const;
-  // Save the binary representation of the frame to the given buffer. Use
-  // GetLength() method before calling this method to make sure that the given
-  // buffer is large enough. The method returns the number of bytes written to
-  // `buffer` or 0 when `buffer_length` is smaller than binary representation of
-  // the frame.
-  // DEPRECATED: Use functions from builder.h instead.
-  size_t SaveToBuffer(uint8_t* buffer, size_t buffer_length) const;
-  // Return the binary representation of the frame as a vector.
-  // DEPRECATED: Use functions from builder.h instead.
-  std::vector<uint8_t> SaveToBuffer() const;
 
   // Access IPP version number.
   Version& VersionNumber();
@@ -198,22 +159,6 @@ class LIBIPP_EXPORT Frame {
   std::vector<std::pair<GroupTag, Collection*>> GetGroups();
   std::vector<std::pair<GroupTag, const Collection*>> GetGroups() const;
 
-  // DEPRECATED. Use Groups(tag) instead (see above).
-  // Return all groups of attributes in the frame with given Group Tag. The
-  // returned vector never contains nullptr values. If the given GroupTag is
-  // invalid or there is no groups with given `tag` in the frame an empty vector
-  // is returned.
-  std::vector<Collection*> GetGroups(GroupTag tag);
-  std::vector<const Collection*> GetGroups(GroupTag tag) const;
-
-  // DEPRECATED. Use Groups(tag)[index] instead (see above).
-  // Return a group of attributes with given Group Tag at position `index`.
-  // The position is always the same as in the corresponding vector returned
-  // by the GetGroups() method. Returns nullptr if the frame does not have such
-  // group of attributes (i.e.: `tag` is invalid or `index` is out of range).
-  Collection* GetGroup(GroupTag tag, size_t index = 0);
-  const Collection* GetGroup(GroupTag tag, size_t index = 0) const;
-
   // Add a new group of attributes to the frame. The iterator to the new group
   // is saved in `new_group`. The returned iterator is valid in the range
   // returned by Groups(tag).
@@ -223,16 +168,6 @@ class LIBIPP_EXPORT Frame {
   //  * Code::kTooManyGroups
   // If the returned value != Code::kOK then `new_group` is not modified.
   Code AddGroup(GroupTag tag, CollsView::iterator& new_group);
-
-  // DEPRECATED. Use AddGroup(tag, CollsView::iterator&) instead.
-  // Add a new group of attributes to the frame. The pointer to the new group
-  // (Collection*) is saved in `new_group` if `new_group` != nullptr.
-  // The returned value is one of the following:
-  //  * Code::kOK
-  //  * Code::kInvalidGroupTag
-  //  * Code::kTooManyGroups
-  // If the returned value != Code::kOK then `new_group` is not modified.
-  Code AddGroup(GroupTag tag, Collection** new_group = nullptr);
 
  private:
   Version version_;

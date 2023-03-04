@@ -17,13 +17,13 @@ namespace {
 
 class CollectionTest : public testing::Test {
  public:
-  CollectionTest() : frame_(Version::_1_1, Operation::Print_Job, 1) {
-    frame_.AddGroup(GroupTag::operation_attributes, &coll_);
+  CollectionTest() : frame_(Operation::Print_Job, Version::_1_1, 1) {
+    frame_.AddGroup(GroupTag::operation_attributes, coll_);
   }
 
  protected:
   Frame frame_;
-  Collection* coll_;
+  CollsView::iterator coll_;
 };
 
 TEST_F(CollectionTest, AddAttrOutOfBand) {
@@ -214,7 +214,8 @@ TEST_F(CollectionTest, GetAttrFail) {
   Collection::const_iterator itc =
       static_cast<Collection::const_iterator>(coll_->GetAttr("abc"));
   EXPECT_EQ(itc, coll_->end());
-  const Collection* coll_const = coll_;
+  CollsView::const_iterator coll_const =
+      static_cast<CollsView::const_iterator>(coll_);
   EXPECT_EQ(coll_const->GetAttr("abc"), coll_->end());
 }
 
@@ -240,7 +241,8 @@ TEST_F(CollectionTest, GetAttrSuccessConst) {
 TEST_F(CollectionTest, IteratorsForEmptyCollection) {
   EXPECT_EQ(coll_->begin(), coll_->end());
   EXPECT_EQ(coll_->cbegin(), coll_->cend());
-  const Collection* coll_const = coll_;
+  CollsView::const_iterator coll_const =
+      static_cast<CollsView::const_iterator>(coll_);
   EXPECT_EQ(coll_const->begin(), coll_const->end());
 }
 
@@ -296,10 +298,7 @@ TEST_F(CollectionTest, IteratorTraits) {
 
 class AttributeTest : public testing::Test {
  public:
-  AttributeTest() {
-    frame_.AddGroup(GroupTag::operation_attributes);
-    coll_ = frame_.Groups(GroupTag::operation_attributes).begin();
-  }
+  AttributeTest() { frame_.AddGroup(GroupTag::operation_attributes, coll_); }
 
  protected:
   Frame frame_;

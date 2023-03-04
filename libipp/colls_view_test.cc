@@ -44,7 +44,8 @@ TEST(CollsViewTest, FrameGroupsConst) {
 
 TEST(CollsViewTest, AttributeColls) {
   Frame frame = Frame(Operation::Cancel_Job);
-  Collection* coll = frame.GetGroup(GroupTag::operation_attributes);
+  CollsView::iterator coll =
+      frame.Groups(GroupTag::operation_attributes).begin();
   std::vector<Collection*> attr_colls(4, nullptr);
   Code result = coll->AddAttr("test", attr_colls);
   ASSERT_EQ(result, Code::kOK);
@@ -60,7 +61,8 @@ TEST(CollsViewTest, AttributeColls) {
 
 TEST(CollsViewTest, AttributeCollsConst) {
   Frame frame = Frame(Operation::Cancel_Job);
-  Collection* coll = frame.GetGroup(GroupTag::operation_attributes);
+  CollsView::iterator coll =
+      frame.Groups(GroupTag::operation_attributes).begin();
   std::vector<Collection*> attr_colls(4, nullptr);
   Code result = coll->AddAttr("test", attr_colls);
   ASSERT_EQ(result, Code::kOK);
@@ -76,22 +78,24 @@ TEST(CollsViewTest, AttributeCollsConst) {
 
 TEST(CollsViewTest, FrameGroupsReverseIteration) {
   Frame frame = Frame(Operation::Cancel_Job);
-  Collection* colls[3];
-  frame.AddGroup(GroupTag::job_attributes, &colls[0]);
-  frame.AddGroup(GroupTag::job_attributes, &colls[1]);
-  frame.AddGroup(GroupTag::job_attributes, &colls[2]);
+  CollsView::iterator last_coll;
+  frame.AddGroup(GroupTag::job_attributes, last_coll);
+  frame.AddGroup(GroupTag::job_attributes, last_coll);
+  frame.AddGroup(GroupTag::job_attributes, last_coll);
   CollsView::iterator it = frame.Groups(GroupTag::job_attributes).end();
   CollsView::const_iterator itc;
   itc = it;
-  int index = 3;
+  ++last_coll;
+  EXPECT_EQ(last_coll, it);
+  size_t index = 3;
   while (it != frame.Groups(GroupTag::job_attributes).begin()) {
     --index;
     EXPECT_TRUE(it == itc);
     EXPECT_TRUE(itc == it);
     EXPECT_FALSE(it != itc);
     EXPECT_FALSE(itc != it);
-    EXPECT_EQ(colls[index], &*(--it));
-    EXPECT_EQ(colls[index], &*(--itc));
+    EXPECT_EQ(&frame.Groups(GroupTag::job_attributes)[index], &*(--it));
+    EXPECT_EQ(&frame.Groups(GroupTag::job_attributes)[index], &*(--itc));
   }
   EXPECT_EQ(index, 0);
   EXPECT_EQ(itc, frame.Groups(GroupTag::job_attributes).cbegin());
@@ -99,17 +103,19 @@ TEST(CollsViewTest, FrameGroupsReverseIteration) {
 
 TEST(CollsViewTest, FrameGroupsReverseIterationConst) {
   Frame frame = Frame(Operation::Cancel_Job);
-  Collection* colls[3];
-  frame.AddGroup(GroupTag::job_attributes, &colls[0]);
-  frame.AddGroup(GroupTag::job_attributes, &colls[1]);
-  frame.AddGroup(GroupTag::job_attributes, &colls[2]);
+  CollsView::iterator last_coll;
+  frame.AddGroup(GroupTag::job_attributes, last_coll);
+  frame.AddGroup(GroupTag::job_attributes, last_coll);
+  frame.AddGroup(GroupTag::job_attributes, last_coll);
   const Frame& frame2 = frame;
   ConstCollsView::const_iterator itc =
       frame2.Groups(GroupTag::job_attributes).end();
+  ++last_coll;
+  EXPECT_EQ(last_coll, itc);
   int index = 3;
   while (itc != frame.Groups(GroupTag::job_attributes).begin()) {
     --index;
-    EXPECT_EQ(colls[index], &*(--itc));
+    EXPECT_EQ(&frame.Groups(GroupTag::job_attributes)[index], &*(--itc));
   }
   EXPECT_EQ(index, 0);
   EXPECT_EQ(itc, frame.Groups(GroupTag::job_attributes).cbegin());

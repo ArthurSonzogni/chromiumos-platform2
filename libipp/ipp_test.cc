@@ -59,9 +59,9 @@ struct BinaryContent {
 };
 
 // function comparing if two collections have the same content
-void CompareCollections(const ipp::Collection* c1, const ipp::Collection* c2) {
-  std::vector<const ipp::Attribute*> a1 = c1->GetAllAttributes();
-  std::vector<const ipp::Attribute*> a2 = c2->GetAllAttributes();
+void CompareCollections(const ipp::Collection& c1, const ipp::Collection& c2) {
+  std::vector<const ipp::Attribute*> a1 = c1.GetAllAttributes();
+  std::vector<const ipp::Attribute*> a2 = c2.GetAllAttributes();
   ASSERT_EQ(a1.size(), a2.size());
   for (size_t i = 0; i < a1.size(); ++i) {
     EXPECT_EQ(a1[i]->Name(), a2[i]->Name());
@@ -113,7 +113,7 @@ void CompareCollections(const ipp::Collection* c1, const ipp::Collection* c2) {
           EXPECT_EQ(i1, i2);
           break;
         case ipp::ValueTag::collection:
-          CompareCollections(a1[i]->GetCollection(j), a2[i]->GetCollection(j));
+          CompareCollections(a1[i]->Colls()[j], a2[i]->Colls()[j]);
           break;
         default:
           // This is unexpected. All Out-of-Band values have size == 0.
@@ -128,15 +128,15 @@ void CompareCollections(const ipp::Collection* c1, const ipp::Collection* c2) {
 void CheckFrame(const BinaryContent& frame, const ipp::Frame& req) {
   // build output frame from Request and compare with the given frame
   std::vector<uint8_t> bin_data = BuildBinaryFrame(req);
-  EXPECT_EQ(req.GetLength(), bin_data.size());
+  EXPECT_EQ(CalculateLengthOfBinaryFrame(req), bin_data.size());
   EXPECT_EQ(bin_data, frame.data);
   // parse the given frame and compare obtained object with the given Request
   ipp::SimpleParserLog log;
   ipp::Frame req2 = ipp::Parse(bin_data.data(), bin_data.size(), log);
   EXPECT_TRUE(log.Errors().empty());
   for (ipp::GroupTag grp_tag : ipp::kGroupTags) {
-    std::vector<const ipp::Collection*> groups1 = req.GetGroups(grp_tag);
-    std::vector<ipp::Collection*> groups2 = req2.GetGroups(grp_tag);
+    ipp::ConstCollsView groups1 = req.Groups(grp_tag);
+    ipp::CollsView groups2 = req2.Groups(grp_tag);
     ASSERT_EQ(groups1.size(), groups2.size());
     for (size_t i = 0; i < groups1.size(); ++i) {
       CompareCollections(groups1[i], groups2[i]);
@@ -206,12 +206,12 @@ TEST(rfc8010, example1) {
   c.s("%!PDF...");                // <PDF Document>       data
 
   ipp::Frame r(ipp::Operation::Print_Job);
-  auto grp = r.GetGroup(ipp::GroupTag::operation_attributes);
+  auto grp = r.Groups(ipp::GroupTag::operation_attributes).begin();
   grp->AddAttr("printer-uri", ipp::ValueTag::uri,
                "ipp://printer.example.com/ipp/print/pinetree");
   grp->AddAttr("job-name", ipp::ValueTag::nameWithoutLanguage, "foobar");
   grp->AddAttr("ipp-attribute-fidelity", true);
-  EXPECT_EQ(r.AddGroup(ipp::GroupTag::job_attributes, &grp), ipp::Code::kOK);
+  EXPECT_EQ(r.AddGroup(ipp::GroupTag::job_attributes, grp), ipp::Code::kOK);
   grp->AddAttr("copies", 20);
   grp->AddAttr("sides", ipp::ValueTag::keyword, "two-sided-long-edge");
   const std::string payload = "%!PDF...";
@@ -273,8 +273,8 @@ TEST(rfc8010, example2) {
                                             // attributes-tag
 
   ipp::Frame r(ipp::Status::successful_ok);
-  ipp::Collection* grp;
-  ASSERT_EQ(r.AddGroup(ipp::GroupTag::job_attributes, &grp), ipp::Code::kOK);
+  ipp::CollsView::iterator grp;
+  ASSERT_EQ(r.AddGroup(ipp::GroupTag::job_attributes, grp), ipp::Code::kOK);
   grp->AddAttr("job-id", 147);
   grp->AddAttr("job-uri", ipp::ValueTag::uri,
                "ipp://printer.example.com/ipp/print/pinetree/147");
@@ -337,8 +337,8 @@ TEST(rfc8010, example3) {
                       // tag
 
   ipp::Frame r(ipp::Status::client_error_attributes_or_values_not_supported);
-  ipp::Collection* grp;
-  ASSERT_EQ(r.AddGroup(ipp::GroupTag::unsupported_attributes, &grp),
+  ipp::CollsView::iterator grp;
+  ASSERT_EQ(r.AddGroup(ipp::GroupTag::unsupported_attributes, grp),
             ipp::Code::kOK);
   grp->AddAttr("copies", ipp::ValueTag::integer, 20);
   grp->AddAttr("sides", ipp::ValueTag::unsupported);
@@ -417,12 +417,12 @@ TEST(rfc8010, example4) {
                      // attributes-tag
 
   ipp::Frame r(ipp::Status::successful_ok_ignored_or_substituted_attributes);
-  ipp::Collection* grp;
-  ASSERT_EQ(r.AddGroup(ipp::GroupTag::unsupported_attributes, &grp),
+  ipp::CollsView::iterator grp;
+  ASSERT_EQ(r.AddGroup(ipp::GroupTag::unsupported_attributes, grp),
             ipp::Code::kOK);
   grp->AddAttr("copies", ipp::ValueTag::integer, 20);
   grp->AddAttr("sides", ipp::ValueTag::unsupported);
-  ASSERT_EQ(r.AddGroup(ipp::GroupTag::job_attributes, &grp), ipp::Code::kOK);
+  ASSERT_EQ(r.AddGroup(ipp::GroupTag::job_attributes, grp), ipp::Code::kOK);
   grp->AddAttr("job-id", 147);
   grp->AddAttr("job-uri", ipp::ValueTag::uri,
                "ipp://printer.example.com/ipp/print/pinetree/147");
@@ -484,12 +484,12 @@ TEST(rfc8010, example5) {
                                      // attributes-tag
 
   ipp::Frame r(ipp::Operation::Print_URI);
-  auto grp = r.GetGroup(ipp::GroupTag::operation_attributes);
+  auto grp = r.Groups(ipp::GroupTag::operation_attributes).begin();
   grp->AddAttr("printer-uri", ipp::ValueTag::uri,
                "ipp://printer.example.com/ipp/print/pinetree");
   grp->AddAttr("document-uri", ipp::ValueTag::uri, "ftp://foo.example.com/foo");
   grp->AddAttr("job-name", ipp::ValueTag::nameWithoutLanguage, "foobar");
-  ASSERT_EQ(r.AddGroup(ipp::GroupTag::job_attributes, &grp), ipp::Code::kOK);
+  ASSERT_EQ(r.AddGroup(ipp::GroupTag::job_attributes, grp), ipp::Code::kOK);
   grp->AddAttr("copies", 1);
 
   CheckFrame(c, r);
@@ -528,7 +528,7 @@ TEST(rfc8010, example6) {
                 // attributes-tag
 
   ipp::Frame r(ipp::Operation::Create_Job);
-  auto grp = r.GetGroup(ipp::GroupTag::operation_attributes);
+  auto grp = r.Groups(ipp::GroupTag::operation_attributes).begin();
   grp->AddAttr("printer-uri", ipp::ValueTag::uri,
                "ipp://printer.example.com/ipp/print/pinetree");
 
@@ -619,10 +619,10 @@ TEST(rfc8010, example7) {
                        // attributes-tag
 
   ipp::Frame r(ipp::Operation::Create_Job);
-  auto grp = r.GetGroup(ipp::GroupTag::operation_attributes);
+  auto grp = r.Groups(ipp::GroupTag::operation_attributes).begin();
   grp->AddAttr("printer-uri", ipp::ValueTag::uri,
                "ipp://printer.example.com/ipp/print/pinetree");
-  ASSERT_EQ(r.AddGroup(ipp::GroupTag::job_attributes, &grp), ipp::Code::kOK);
+  ASSERT_EQ(r.AddGroup(ipp::GroupTag::job_attributes, grp), ipp::Code::kOK);
   ipp::Collection* coll;
   ASSERT_EQ(grp->AddAttr("media-col", coll), ipp::Code::kOK);
   ipp::Collection* coll2;
@@ -685,7 +685,7 @@ TEST(rfc8010, example8) {
                                 // attributes-tag
 
   ipp::Frame r(ipp::Operation::Get_Jobs, ipp::Version::_1_1, 123);
-  auto grp = r.GetGroup(ipp::GroupTag::operation_attributes);
+  auto grp = r.Groups(ipp::GroupTag::operation_attributes).begin();
   grp->AddAttr("printer-uri", ipp::ValueTag::uri,
                "ipp://printer.example.com/ipp/print/pinetree");
   grp->AddAttr("limit", 50);
@@ -760,13 +760,13 @@ TEST(rfc8010, example9) {
   c.u1(0x03u);                 // end-of-attributes       end-of-attributes-tag
 
   ipp::Frame r(ipp::Status::successful_ok, ipp::Version::_1_1, 123);
-  ipp::Collection* grp;
-  ASSERT_EQ(r.AddGroup(ipp::GroupTag::job_attributes, &grp), ipp::Code::kOK);
+  ipp::CollsView::iterator grp;
+  ASSERT_EQ(r.AddGroup(ipp::GroupTag::job_attributes, grp), ipp::Code::kOK);
   grp->AddAttr("job-id", 147);
   grp->AddAttr("job-name", ipp::ValueTag::nameWithLanguage,
                ipp::StringWithLanguage("fou", "fr-ca"));
-  ASSERT_EQ(r.AddGroup(ipp::GroupTag::job_attributes, &grp), ipp::Code::kOK);
-  ASSERT_EQ(r.AddGroup(ipp::GroupTag::job_attributes, &grp), ipp::Code::kOK);
+  ASSERT_EQ(r.AddGroup(ipp::GroupTag::job_attributes, grp), ipp::Code::kOK);
+  ASSERT_EQ(r.AddGroup(ipp::GroupTag::job_attributes, grp), ipp::Code::kOK);
   grp->AddAttr("job-id", 149);
   grp->AddAttr("job-name", ipp::ValueTag::nameWithLanguage,
                ipp::StringWithLanguage("isch guet", "de-CH"));

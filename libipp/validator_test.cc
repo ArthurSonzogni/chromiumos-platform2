@@ -16,13 +16,11 @@ namespace ipp {
 namespace {
 
 class ValidatorTest : public testing::Test {
- public:
-  void SetUp() override { ASSERT_TRUE(grp_); }
-
  protected:
   SimpleValidatorLog log_;
   Frame frame_ = Frame(Operation::Activate_Printer);
-  Collection* grp_ = frame_.GetGroup(GroupTag::operation_attributes);
+  CollsView::iterator grp_ =
+      frame_.Groups(GroupTag::operation_attributes).begin();
 };
 
 TEST_F(ValidatorTest, NoErrors) {
