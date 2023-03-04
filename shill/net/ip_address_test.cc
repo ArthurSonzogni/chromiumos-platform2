@@ -512,20 +512,6 @@ struct MinPrefixLengthMapping {
   size_t expected_min_prefix;
 };
 
-class IPAddressMinPrefixLengthMappingTest
-    : public testing::TestWithParam<MinPrefixLengthMapping> {};
-
-INSTANTIATE_TEST_SUITE_P(
-    IPAddressMinPrefixLengthMappingTestRun,
-    IPAddressMinPrefixLengthMappingTest,
-    ::testing::Values(
-        MinPrefixLengthMapping(IPAddress::kFamilyIPv6, "fe80::", 128),
-        MinPrefixLengthMapping(IPAddress::kFamilyIPv4, "255.255.255.255", 32),
-        MinPrefixLengthMapping(IPAddress::kFamilyIPv4, "224.0.0.0", 32),
-        MinPrefixLengthMapping(IPAddress::kFamilyIPv4, "192.168.0.0", 24),
-        MinPrefixLengthMapping(IPAddress::kFamilyIPv4, "172.16.0.0", 16),
-        MinPrefixLengthMapping(IPAddress::kFamilyIPv4, "10.10.10.10", 8)));
-
 struct CanReachAddressMapping {
   CanReachAddressMapping(const std::string& address_a_in,
                          size_t prefix_a_in,
