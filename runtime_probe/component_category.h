@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/values.h>
@@ -34,6 +35,12 @@ class ComponentCategory {
   virtual base::Value::List Eval() const;
 
   std::vector<std::string> GetComponentNames() const;
+
+  // Set |probe_statement| with the component name |component_name| for testing.
+  void SetComponentForTesting(std::string component_name,
+                              std::unique_ptr<ProbeStatement> probe_statement) {
+    component_[component_name] = std::move(probe_statement);
+  }
 
  private:
   std::string category_name_;

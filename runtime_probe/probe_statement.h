@@ -47,6 +47,8 @@ class ProbeStatement {
   // be called.  The results will be filtered / processed by "keys" and "expect"
   // rules.  See ProbeStatement::Eval() for more details.
  public:
+  virtual ~ProbeStatement() = default;
+
   static std::unique_ptr<ProbeStatement> FromValue(std::string component_name,
                                                    const base::Value& dv);
 
@@ -57,17 +59,18 @@ class ProbeStatement {
   // - Filter results by |key_|  (if |key_| is not empty)
   // - Transform and check results by |expect_|  (if |expect_| is not empty)
   // - Return final results that passed |expect_| check.
-  ProbeFunction::DataType Eval() const;
+  virtual ProbeFunction::DataType Eval() const;
 
-  std::optional<base::Value> GetInformation() const {
+  virtual std::optional<base::Value> GetInformation() const {
     if (information_)
       return information_->Clone();
     return std::nullopt;
   }
 
- private:
+ protected:
   ProbeStatement() = default;
 
+ private:
   std::string component_name_;
   std::unique_ptr<ProbeFunction> eval_;
   std::set<std::string> key_;

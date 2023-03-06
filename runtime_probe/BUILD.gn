@@ -79,6 +79,7 @@ if (use.test) {
   executable("unittest_runner") {
     sources = [
       "avl_probe_config_loader_test.cc",
+      "component_category_test.cc",
       "daemon_test.cc",
       "field_converter_test.cc",
       "generic_probe_config_loader_test.cc",
