@@ -19,7 +19,6 @@
 #include <dbus/cryptohome/dbus-constants.h>
 #include <gmock/gmock.h>
 
-#include "cryptohome/credentials.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/storage/file_system_keyset.h"

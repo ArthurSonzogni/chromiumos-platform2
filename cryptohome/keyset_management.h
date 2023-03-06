@@ -17,7 +17,6 @@
 #include <dbus/cryptohome/dbus-constants.h>
 
 #include "base/files/file_path.h"
-#include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/cryptohome_error.h"
@@ -211,19 +210,9 @@ class KeysetManagement {
   void RecordVaultKeysetMetrics(const VaultKeyset& vk,
                                 VaultKeysetMetrics& keyset_metrics) const;
 
-  // Attempts to reset all LE credentials associated with a username, given
-  // a credential |cred| and |key_indices|.
-  void ResetLECredentialsInternal(const VaultKeyset& vk,
-                                  const ObfuscatedUsername& obfuscated,
-                                  const std::vector<int>& key_indices);
-
   Platform* platform_;
   Crypto* crypto_;
   std::unique_ptr<VaultKeysetFactory> vault_keyset_factory_;
-
-  FRIEND_TEST(KeysetManagementTest, ReSaveOnLoadNoReSave);
-  FRIEND_TEST(KeysetManagementTest, ReSaveOnLoadTestRegularCreds);
-  FRIEND_TEST(KeysetManagementTest, ReSaveOnLoadTestLeCreds);
 };
 
 }  // namespace cryptohome

@@ -26,7 +26,6 @@
 #include <dbus/cryptohome/dbus-constants.h>
 #include <libhwsec-foundation/status/status_chain.h>
 
-#include "cryptohome/credentials.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/action.h"
@@ -172,7 +171,6 @@ std::unique_ptr<VaultKeyset> KeysetManagement::GetVaultKeyset(
   return nullptr;
 }
 
-// TODO(wad) Figure out how this might fit in with vault_keyset.cc
 bool KeysetManagement::GetVaultKeysets(const ObfuscatedUsername& obfuscated,
                                        std::vector<int>* keysets) const {
   CHECK(keysets);
@@ -602,13 +600,6 @@ void KeysetManagement::ResetLECredentialsWithValidatedVK(
     return;
   }
 
-  return ResetLECredentialsInternal(validated_vk, obfuscated, key_indices);
-}
-
-void KeysetManagement::ResetLECredentialsInternal(
-    const VaultKeyset& validated_vk,
-    const ObfuscatedUsername& obfuscated,
-    const std::vector<int>& key_indices) {
   for (int index : key_indices) {
     std::unique_ptr<VaultKeyset> vk_reset =
         LoadVaultKeysetForUser(obfuscated, index);
