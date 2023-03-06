@@ -1,4 +1,2 @@
-alemate@chromium.org
-hungte@chromium.org
-marcochen@chromium.org
-omrilio@chromium.org
+# platform2/regions is maintained by ChromeOS factory team.
+include chromiumos/platform/factory:/OWNERS
