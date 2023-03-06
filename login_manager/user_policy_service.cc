@@ -79,11 +79,11 @@ bool UserPolicyService::Store(const PolicyNamespace& ns,
     // Also clear the key.
     if (key()->IsPopulated()) {
       key()->ClobberCompromisedKey(std::vector<uint8_t>());
-      PostPersistKeyTask();
+      PersistKey();
     }
 
     GetOrCreateStore(ns)->Set(policy);
-    PostPersistPolicyTask(ns, std::move(completion));
+    PersistPolicy(ns, std::move(completion));
     return true;
   }
 

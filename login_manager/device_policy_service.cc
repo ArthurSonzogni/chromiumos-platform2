@@ -164,8 +164,8 @@ bool DevicePolicyService::ValidateAndStoreOwnerKey(
   // TODO(cmasone): Remove this as well once the browser can tolerate it:
   // http://crbug.com/472132
   if (StoreOwnerProperties(current_user, signing_key.get())) {
-    PostPersistKeyTask();
-    PostPersistPolicyTask(MakeChromePolicyNamespace(), Completion());
+    PersistKey();
+    PersistPolicy(MakeChromePolicyNamespace(), Completion());
   } else {
     LOG(WARNING) << "Could not immediately store owner properties in policy";
   }
@@ -213,7 +213,7 @@ bool DevicePolicyService::Initialize() {
     key_success = key()->PopulateFromBuffer(
         StringToBlob(GetChromeStore()->Get().new_public_key()));
     if (key_success)
-      PostPersistKeyTask();
+      PersistKey();
   }
 
   ReportPolicyFileMetrics(key_success, policy_success);
@@ -225,15 +225,23 @@ bool DevicePolicyService::Store(const PolicyNamespace& ns,
                                 int key_flags,
                                 SignatureCheck signature_check,
                                 Completion completion) {
-  bool result = PolicyService::Store(ns, policy_blob, key_flags,
-                                     signature_check, std::move(completion));
-
-  if (result && ns == MakeChromePolicyNamespace()) {
+  if (ns == MakeChromePolicyNamespace()) {
     // Flush the settings cache, the next read will decode the new settings.
+    // This has to be done before Store operation is started because Store()
+    // persists the policy and triggers notification to SessionManagerImpl.
+    // The later gets the new settings to pass to DeviceLocalAccount and at
+    // that point the old settings_ have to be reset.
+    //
+    // The oprations leading to notification to SessionManagerImpl are
+    // synchronous, so when PolicyService::Store finishes, the new settings_
+    // are already populated. Which makes it safe against possible requests
+    // to GetSettings() that could come from other places.
+    // TODO(b/274098828): Come up with a better way to handle the settings_
+    // object so that its state change is cleaner.
     settings_.reset();
   }
-
-  return result;
+  return PolicyService::Store(ns, policy_blob, key_flags, signature_check,
+                              std::move(completion));
 }
 
 void DevicePolicyService::ReportPolicyFileMetrics(bool key_success,

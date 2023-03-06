@@ -607,17 +607,6 @@ void SessionManagerImpl::Finalize() {
   // having been run (http://crbug.com/638774, http://crbug.com/725734).
   dbus_service_.reset();
 
-  device_policy_->PersistAllPolicy();
-  for (const auto& kv : user_sessions_) {
-    if (kv.second)
-      kv.second->policy_service->PersistAllPolicy();
-  }
-
-  // Before persisting policies check if `device_local_account_manager_` was
-  // initialized. Note that if `Initialize()` fails it won't be initialized.
-  if (device_local_account_manager_)
-    device_local_account_manager_->PersistAllPolicy();
-
   // We want to stop all running containers and VMs.  Containers and VMs are
   // per-session and cannot persist across sessions.
   android_container_->RequestJobExit(
