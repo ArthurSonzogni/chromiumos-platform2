@@ -67,6 +67,26 @@ std::ostream& operator<<(std::ostream& stream,
   return stream;
 }
 
+// Prepares a pair of ScopedFDs corresponding to the write end (pair first
+// element) and read end (pair second lemenet) of a Linux pipe and appends the
+// read end to the given |writer| to send to patchpanel. The client must keep
+// the read end alive until the DBus request is successfully sent. The client
+// must keep the write end alive until the setup requested from patchpanel is
+// not necessary anymore.
+std::pair<base::ScopedFD, base::ScopedFD> CommitLifelineFd(
+    dbus::MessageWriter* writer) {
+  int pipe_fds[2] = {-1, -1};
+  if (pipe2(pipe_fds, O_CLOEXEC) < 0) {
+    PLOG(ERROR) << "Failed to create a pair of fds with pipe2()";
+    return {};
+  }
+  // MessageWriter::AppendFileDescriptor duplicates the fd, so the original read
+  // fd is given back to the caller using ScopedFD to make sure the it is
+  // eventually closed.
+  writer->AppendFileDescriptor(pipe_fds[1]);
+  return {base::ScopedFD(pipe_fds[0]), base::ScopedFD(pipe_fds[1])};
+}
+
 void OnGetTrafficCountersDBusResponse(
     Client::GetTrafficCountersCallback callback,
     dbus::Response* dbus_response) {
@@ -686,16 +706,12 @@ ClientImpl::ConnectNamespace(pid_t pid,
   }
 
   // Prepare an fd pair and append one fd directly after the serialized request.
-  int pipe_fds[2] = {-1, -1};
-  if (pipe2(pipe_fds, O_CLOEXEC) < 0) {
-    PLOG(ERROR) << "Failed to create a pair of fds with pipe2()";
+  auto [fd_local, fd_remote] = CommitLifelineFd(&writer);
+  if (!fd_local.is_valid()) {
+    LOG(ERROR)
+        << "Cannot send ConnectNamespace message to patchpanel: no lifeline fd";
     return {};
   }
-  base::ScopedFD fd_local(pipe_fds[0]);
-  // MessageWriter::AppendFileDescriptor duplicates the fd, so use ScopedFD to
-  // make sure the original fd is closed eventually.
-  base::ScopedFD fd_remote(pipe_fds[1]);
-  writer.AppendFileDescriptor(pipe_fds[1]);
 
   std::unique_ptr<dbus::Response> dbus_response =
       brillo::dbus_utils::CallDBusMethod(
@@ -862,17 +878,12 @@ base::ScopedFD ClientImpl::RedirectDns(
   }
 
   // Prepare an fd pair and append one fd directly after the serialized request.
-  int pipe_fds[2] = {-1, -1};
-  if (pipe2(pipe_fds, O_CLOEXEC) < 0) {
-    PLOG(ERROR) << "Failed to create a pair of fds with pipe2() of request "
-                << request;
+  auto [fd_local, fd_remote] = CommitLifelineFd(&writer);
+  if (!fd_local.is_valid()) {
+    LOG(ERROR) << "Cannot send SetDnsRedirectionRuleRequest message to "
+                  "patchpanel: no lifeline fd";
     return {};
   }
-  base::ScopedFD fd_local(pipe_fds[0]);
-  // MessageWriter::AppendFileDescriptor duplicates the fd, so use ScopedFD to
-  // make sure the original fd is closed eventually.
-  base::ScopedFD fd_remote(pipe_fds[1]);
-  writer.AppendFileDescriptor(pipe_fds[1]);
 
   std::unique_ptr<dbus::Response> dbus_response =
       brillo::dbus_utils::CallDBusMethod(
@@ -895,7 +906,7 @@ base::ScopedFD ClientImpl::RedirectDns(
     LOG(ERROR) << "SetDnsRedirectionRuleRequest failed " << request;
     return {};
   }
-  return fd_local;
+  return std::move(fd_local);
 }
 
 std::vector<NetworkDevice> ClientImpl::GetDevices() {
@@ -977,16 +988,12 @@ bool ClientImpl::CreateTetheredNetwork(
   }
 
   // Prepare an fd pair and append one fd directly after the serialized request.
-  int pipe_fds[2] = {-1, -1};
-  if (pipe2(pipe_fds, O_CLOEXEC) < 0) {
-    PLOG(ERROR) << kCreateTetheredNetworkMethod << ": pipe2() failed";
+  auto [fd_local, fd_remote] = CommitLifelineFd(&writer);
+  if (!fd_local.is_valid()) {
+    LOG(ERROR) << kCreateTetheredNetworkMethod
+               << ": Cannot create lifeline fds";
     return false;
   }
-  base::ScopedFD fd_local(pipe_fds[0]);
-  // MessageWriter::AppendFileDescriptor duplicates the fd, so use ScopedFD to
-  // make sure the original fd is closed eventually.
-  base::ScopedFD fd_remote(pipe_fds[1]);
-  writer.AppendFileDescriptor(pipe_fds[1]);
 
   proxy_->CallMethod(&method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
                      base::BindOnce(&OnTetheredNetworkResponse,
@@ -1011,16 +1018,12 @@ bool ClientImpl::CreateLocalOnlyNetwork(
   }
 
   // Prepare an fd pair and append one fd directly after the serialized request.
-  int pipe_fds[2] = {-1, -1};
-  if (pipe2(pipe_fds, O_CLOEXEC) < 0) {
-    PLOG(ERROR) << kCreateLocalOnlyNetworkMethod << ": pipe2() failed";
+  auto [fd_local, fd_remote] = CommitLifelineFd(&writer);
+  if (!fd_local.is_valid()) {
+    LOG(ERROR) << kCreateLocalOnlyNetworkMethod
+               << ": Cannot create lifeline fds";
     return false;
   }
-  base::ScopedFD fd_local(pipe_fds[0]);
-  // MessageWriter::AppendFileDescriptor duplicates the fd, so use ScopedFD to
-  // make sure the original fd is closed eventually.
-  base::ScopedFD fd_remote(pipe_fds[1]);
-  writer.AppendFileDescriptor(pipe_fds[1]);
 
   proxy_->CallMethod(&method_call, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
                      base::BindOnce(&OnLocalOnlyNetworkResponse,
