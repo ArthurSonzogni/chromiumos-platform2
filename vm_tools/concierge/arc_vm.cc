@@ -362,12 +362,6 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
           "num_output_devices=4,"
           "output_device_config=[[],[],[],[stream_type=pro_audio]],"
           "input_device_config=[[],[],[stream_type=pro_audio]]")
-      // Second Virtio sound device for the aaudio path.
-      // Remove this device once audioHAL switch all streams to the first
-      // device.
-      .AppendAudioDevice(VmBuilder::AudioDeviceType::kVirtio,
-                         "capture=true,backend=cras,client_type=arcvm,"
-                         "socket_type=unified")
       // Each shared directory is a new PCI device, before adding a new shared
       // directory configuration, please consult if you really do need to add a
       // new PCI device. TODO(b/237618542): Unify these.
