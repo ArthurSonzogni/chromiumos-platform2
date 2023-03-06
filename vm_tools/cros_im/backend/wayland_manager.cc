@@ -4,6 +4,7 @@
 
 #include "backend/wayland_manager.h"
 
+#include <algorithm>
 #include <cassert>
 #include <cstdio>
 #include <cstring>
@@ -19,7 +20,6 @@ namespace {
 
 constexpr int kWlSeatVersion = 1;
 constexpr int kTextInputManagerVersion = 1;
-constexpr int kTextInputExtensionVersion = 4;
 constexpr int kTextInputX11Version = 1;
 
 WaylandManager* g_instance = nullptr;
@@ -43,6 +43,9 @@ constexpr wl_registry_listener kRegistryListener = {
 };
 
 }  // namespace
+
+const int WaylandManager::kTextInputExtensionMinVersion;
+const int WaylandManager::kTextInputExtensionMaxVersion;
 
 void WaylandManager::CreateInstance(wl_display* display) {
   if (g_instance) {
@@ -145,10 +148,12 @@ void WaylandManager::OnGlobal(wl_registry* registry,
     text_input_manager_id_ = name;
   } else if (strcmp(interface, "zcr_text_input_extension_v1") == 0) {
     assert(!text_input_extension_);
-    assert(version >= kTextInputExtensionVersion);
+    assert(version >= kTextInputExtensionMinVersion);
+    text_input_extension_version_ =
+        std::min(static_cast<int>(version), kTextInputExtensionMaxVersion);
     text_input_extension_ = reinterpret_cast<zcr_text_input_extension_v1*>(
         wl_registry_bind(registry, name, &zcr_text_input_extension_v1_interface,
-                         kTextInputExtensionVersion));
+                         text_input_extension_version_));
     text_input_extension_id_ = name;
   } else if (strcmp(interface, "zcr_text_input_x11_v1") == 0) {
     assert(!text_input_x11_);

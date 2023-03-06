@@ -139,6 +139,12 @@ void zcr_extended_text_input_v1_destroy(
   GetExtendedTextInputs().at(extended_text_input->id).reset();
 }
 
+void zcr_extended_text_input_v1_set_surrounding_text_support(
+    zcr_extended_text_input_v1* extended_text_input, uint32_t support) {
+  HandleRequest(cros_im::test::SetSurroundingTextSupportRequest(
+      extended_text_input->id, support));
+}
+
 void zcr_text_input_x11_v1_activate(zcr_text_input_x11_v1* text_input_x11,
                                     zwp_text_input_v1* text_input,
                                     wl_seat*,

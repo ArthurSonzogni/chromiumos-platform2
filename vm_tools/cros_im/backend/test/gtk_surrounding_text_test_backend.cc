@@ -4,6 +4,8 @@
 
 #include "backend/test/backend_test.h"
 
+#ifdef DISABLE_SURROUNDING
+
 namespace cros_im {
 namespace test {
 
@@ -156,3 +158,5 @@ BACKEND_TEST(GtkDeleteSurroundingTextTest, NonAscii) {
 
 }  // namespace test
 }  // namespace cros_im
+
+#endif  // DISABLE_SURROUNDING

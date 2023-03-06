@@ -65,6 +65,7 @@ const zcr_extended_text_input_v1_listener
         .clear_grammar_fragments = DoNothingExtended,
         .add_grammar_fragment = DoNothingExtended,
         .set_autocorrect_range = DoNothingExtended,
+        .set_virtual_keyboard_occluded_bounds = DoNothingExtended,
 };
 
 IMContextBackend::IMContextBackend(Observer* observer) : observer_(observer) {
@@ -157,6 +158,16 @@ void IMContextBackend::SetCursorLocation(int x, int y, int width, int height) {
   if (!text_input_)
     return;
   zwp_text_input_v1_set_cursor_rectangle(text_input_, x, y, width, height);
+}
+
+void IMContextBackend::SetSupportsSurrounding(bool is_supported) {
+  if (!text_input_)
+    return;
+  if (WaylandManager::Get()->GetTextInputExtensionVersion() <
+      ZCR_EXTENDED_TEXT_INPUT_V1_SET_SURROUNDING_TEXT_SUPPORT_SINCE_VERSION)
+    return;
+  zcr_extended_text_input_v1_set_surrounding_text_support(extended_text_input_,
+                                                          is_supported);
 }
 
 void IMContextBackend::MaybeInitialize() {

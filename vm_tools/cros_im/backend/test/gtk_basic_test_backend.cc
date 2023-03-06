@@ -18,6 +18,8 @@ BACKEND_TEST(GtkBasicTest, TextViewShownImmediately) {
   Expect(Request::kSetCursorRectangle);
   ExpectSetSurroundingText("", 0, 0);
   Expect(Request::kActivate);
+  ExpectSetSurroundingTextSupport(
+      ZCR_EXTENDED_TEXT_INPUT_V1_SURROUNDING_TEXT_SUPPORT_UNSUPPORTED);
   ExpectSetContentType(3, 0);
   Expect(Request::kShowInputPanel);
 
@@ -34,6 +36,8 @@ BACKEND_TEST(GtkBasicTest, SwitchFocus) {
   Expect<0>(Request::kSetCursorRectangle);
   ExpectSetSurroundingText<0>("", 0, 0);
   Expect<0>(Request::kActivate);
+  ExpectSetSurroundingTextSupport<0>(
+      ZCR_EXTENDED_TEXT_INPUT_V1_SURROUNDING_TEXT_SUPPORT_UNSUPPORTED);
   ExpectSetContentType<0>(3, 0);
   Expect<0>(Request::kShowInputPanel);
   ExpectSetSurroundingText<0>("", 0, 0);
@@ -49,6 +53,8 @@ BACKEND_TEST(GtkBasicTest, SwitchFocus) {
   Expect<0>(Request::kDeactivate);
 
   Expect<1>(Request::kActivate);
+  ExpectSetSurroundingTextSupport<1>(
+      ZCR_EXTENDED_TEXT_INPUT_V1_SURROUNDING_TEXT_SUPPORT_UNSUPPORTED);
   ExpectSetContentType<1>(3, 0);
   Expect<1>(Request::kShowInputPanel);
   ExpectSetSurroundingText<1>("", 0, 0);

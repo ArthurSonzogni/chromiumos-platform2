@@ -37,6 +37,8 @@ std::string RequestTypeToString(Request::RequestType type) {
       return "set_cursor_rectangle()";
     case Request::kExtensionDestroy:
       return "extension_destroy()";
+    case Request::kSetSurroundingTextSupport:
+      return "set_surrounding_text_support()";
   }
   return "[invalid request]";
 }
@@ -117,5 +119,32 @@ void SetSurroundingTextRequest::Print(std::ostream& stream) const {
   stream << "set_surrounding_text(text = " << text_ << ", cursor = " << cursor_
          << ", anchor = " << anchor_ << ")";
 }
+
+SetSurroundingTextSupportRequest::SetSurroundingTextSupportRequest(
+    int text_input_id, uint32_t support)
+    : Request(text_input_id, Request::kSetSurroundingTextSupport),
+      support_(support) {}
+
+SetSurroundingTextSupportRequest::~SetSurroundingTextSupportRequest() = default;
+
+bool SetSurroundingTextSupportRequest::RequestMatches(
+    const Request& actual) const {
+  if (!Request::RequestMatches(actual))
+    return false;
+  const SetSurroundingTextSupportRequest* other =
+      dynamic_cast<const SetSurroundingTextSupportRequest*>(&actual);
+  if (!other) {
+    FAILED() << "SetSurroundingTextSupport request was not of type "
+                "SetSurroundingTextSupportRequest";
+    return false;
+  }
+
+  return support_ == other->support_;
+}
+
+void SetSurroundingTextSupportRequest::Print(std::ostream& stream) const {
+  stream << "set_surrounding_supported(" << support_ << ")";
+}
+
 }  // namespace test
 }  // namespace cros_im

@@ -113,6 +113,7 @@ class BackendTest {
     Ignore<text_input_id>(Request::kHideInputPanel);
     Ignore<text_input_id>(Request::kDestroy);
     Ignore<text_input_id>(Request::kExtensionDestroy);
+    Ignore<text_input_id>(Request::kSetSurroundingTextSupport);
   }
 
   template <int text_input_id = 0>
@@ -125,8 +126,16 @@ class BackendTest {
   void ExpectSetSurroundingText(const std::string& text,
                                 uint32_t cursor,
                                 uint32_t anchor) {
+#ifndef DISABLE_SURROUNDING
     actions_.emplace(std::make_unique<SetSurroundingTextRequest>(
         text_input_id, text, cursor, anchor));
+#endif
+  }
+
+  template <int text_input_id = 0>
+  void ExpectSetSurroundingTextSupport(bool is_supported_) {
+    actions_.emplace(std::make_unique<SetSurroundingTextSupportRequest>(
+        text_input_id, is_supported_));
   }
 
   template <int text_input_id = 0>

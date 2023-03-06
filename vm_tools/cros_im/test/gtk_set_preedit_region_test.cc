@@ -4,6 +4,8 @@
 
 #include "test/gtk_test_base.h"
 
+#ifdef DISABLE_SURROUNDING
+
 namespace cros_im {
 namespace test {
 
@@ -95,3 +97,5 @@ TEST_F(GtkSetPreeditRegionTest, Invalid) {
 
 }  // namespace test
 }  // namespace cros_im
+
+#endif  // DISABLE_SURROUNDING

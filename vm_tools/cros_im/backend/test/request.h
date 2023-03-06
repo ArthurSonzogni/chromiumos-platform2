@@ -8,6 +8,8 @@
 #include <iostream>
 #include <string>
 
+#include "backend/text_input_enums.h"
+
 namespace cros_im {
 namespace test {
 
@@ -29,6 +31,7 @@ class Request {
     kSetCursorRectangle,
     // Requests on a text_input_extension object
     kExtensionDestroy,
+    kSetSurroundingTextSupport,
   };
 
   Request(int text_input_id, RequestType type)
@@ -71,6 +74,17 @@ class SetSurroundingTextRequest : public Request {
   std::string text_;
   uint32_t cursor_;
   uint32_t anchor_;
+};
+
+class SetSurroundingTextSupportRequest : public Request {
+ public:
+  SetSurroundingTextSupportRequest(int text_input_id, uint32_t support);
+  ~SetSurroundingTextSupportRequest() override;
+  bool RequestMatches(const Request& actual) const override;
+  void Print(std::ostream& stream) const override;
+
+ private:
+  uint32_t support_;
 };
 
 }  // namespace test

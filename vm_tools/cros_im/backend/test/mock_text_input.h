@@ -135,6 +135,13 @@ struct zcr_extended_text_input_v1_listener {
                                 struct zcr_extended_text_input_v1*,
                                 uint32_t start,
                                 uint32_t end);
+  void (*set_virtual_keyboard_occluded_bounds)(
+      void* data,
+      struct zcr_extended_text_input_v1*,
+      int32_t x,
+      int32_t y,
+      int32_t width,
+      int32_t height);
 };
 
 void zcr_extended_text_input_v1_add_listener(
@@ -142,7 +149,14 @@ void zcr_extended_text_input_v1_add_listener(
     const zcr_extended_text_input_v1_listener*,
     void* listener_data);
 
+#define ZCR_EXTENDED_TEXT_INPUT_V1_SET_SURROUNDING_TEXT_SUPPORT_SINCE_VERSION 9
+
 void zcr_extended_text_input_v1_destroy(zcr_extended_text_input_v1*);
+
+// |support| is a enum of type
+// |zcr_extended_text_input_v1_surrounding_text_support|.
+void zcr_extended_text_input_v1_set_surrounding_text_support(
+    zcr_extended_text_input_v1*, uint32_t support);
 
 // Mocks for zcr_text_input_x11_v1
 

@@ -60,6 +60,8 @@ gtk_sources = backend_sources + [
   'frontend/gtk/x11.h',
 ]
 
+gtk_args = ['-DDISABLE_SURROUNDING']
+
 libim_cros_gtk = shared_library('im_cros_gtk',
   sources: gtk_sources + wl_outs,
   dependencies: [
@@ -67,6 +69,7 @@ libim_cros_gtk = shared_library('im_cros_gtk',
     dependency('gtk+-3.0'),
     dependency('wayland-client'),
   ],
+  cpp_args: gtk_args,
 )
 
 qt_other_sources = [
@@ -124,7 +127,7 @@ libim_test_cros_gtk = shared_library('im_test_cros_gtk',
     meson.get_compiler('cpp').find_library('m'),
     dependency('gtk+-3.0'),
   ],
-  cpp_args: '-DTEST_BACKEND',
+  cpp_args: ['-DTEST_BACKEND'] + gtk_args,
 )
 
 test_sources = [

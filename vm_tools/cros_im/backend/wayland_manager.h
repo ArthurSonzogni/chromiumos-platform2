@@ -25,6 +25,15 @@ namespace cros_im {
 // new one (for X11 app support).
 class WaylandManager {
  public:
+  // Created zcr_extended_text_input_v1 objects have a version in the range
+  // [min, max] (inclusive). On creation, the caller should provide a listener
+  // that supports the max version, and check GetTextInputExtensionVersion()
+  // before making requests from above the min version.
+  // The min version should be at most the version supported by Exo/sommelier
+  // at the time of the last branch, and it is safe to have this lag behind.
+  static const int kTextInputExtensionMinVersion = 4;
+  static const int kTextInputExtensionMaxVersion = 9;
+
   static void CreateInstance(wl_display* display);
   // Returns whether we were successfully able to make a connection.
   static bool CreateX11Instance(const char* display_name);
@@ -54,6 +63,7 @@ class WaylandManager {
   // Once initialized, these are not expected to change.
   wl_seat* GetSeat() { return wl_seat_; }
   zcr_text_input_x11_v1* GetTextInputX11() { return text_input_x11_; }
+  int GetTextInputExtensionVersion() { return text_input_extension_version_; }
 
   // Callbacks for wayland global events.
   void OnGlobal(wl_registry* registry,
@@ -87,6 +97,8 @@ class WaylandManager {
   // For X11 app support
   zcr_text_input_x11_v1* text_input_x11_ = nullptr;
   uint32_t text_input_x11_id_ = 0;
+
+  int text_input_extension_version_ = 0;
 };
 
 }  // namespace cros_im

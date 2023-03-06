@@ -73,6 +73,7 @@ class IMContextBackend {
   void SetSurrounding(const char* text, int cursor_index);
   void SetContentType(ContentType content_type);
   void SetCursorLocation(int x, int y, int width, int height);
+  void SetSupportsSurrounding(bool is_supported);
 
  private:
   // We usually initialize in the constructor, but if the Wayland connection

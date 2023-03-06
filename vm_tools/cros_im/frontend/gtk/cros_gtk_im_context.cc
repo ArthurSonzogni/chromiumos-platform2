@@ -350,6 +350,9 @@ void CrosGtkIMContext::BackendObserver::SetPreedit(
 
 void CrosGtkIMContext::BackendObserver::SetPreeditRegion(
     int start_offset, int length, const std::vector<PreeditStyle>& styles) {
+#ifdef DISABLE_SURROUNDING
+  return;
+#else
   std::optional<std::string> text =
       DeleteSurroundingTextImpl(start_offset, length);
   if (!text.has_value())
@@ -361,6 +364,7 @@ void CrosGtkIMContext::BackendObserver::SetPreeditRegion(
 
   g_signal_emit_by_name(context_, "preedit-start");
   g_signal_emit_by_name(context_, "preedit-changed");
+#endif
 }
 
 void CrosGtkIMContext::BackendObserver::Commit(const std::string& text) {
@@ -376,7 +380,9 @@ void CrosGtkIMContext::BackendObserver::Commit(const std::string& text) {
 
 void CrosGtkIMContext::BackendObserver::DeleteSurroundingText(int start_offset,
                                                               int length) {
+#ifndef DISABLE_SURROUNDING
   DeleteSurroundingTextImpl(start_offset, length);
+#endif
 }
 
 void CrosGtkIMContext::BackendObserver::KeySym(uint32_t keysym,
@@ -510,6 +516,18 @@ void CrosGtkIMContext::Activate() {
 
   pending_activation_ = false;
 
+#ifdef DISABLE_SURROUNDING
+  // This request takes effect when we call SetContentType.
+  // TODO(b/232048095): Set this to true for input fields where we can retrieve
+  // surrounding text and selection.
+  backend_->SetSupportsSurrounding(false);
+#else
+  // Apps should be calling set_cursor_location on focus, which would result in
+  // us updating surrounding text, but to support apps that don't do that we
+  // also explicitly update surrounding text here.
+  UpdateSurrounding();
+#endif
+
   GtkInputHints gtk_hints = GTK_INPUT_HINT_NONE;
   GtkInputPurpose gtk_purpose = GTK_INPUT_PURPOSE_FREE_FORM;
   g_object_get(this, "input-hints", &gtk_hints, "input-purpose", &gtk_purpose,
@@ -518,20 +536,23 @@ void CrosGtkIMContext::Activate() {
 
   if (!(gtk_hints & GTK_INPUT_HINT_INHIBIT_OSK))
     backend_->ShowInputPanel();
-
-  // Apps should be calling set_cursor_location on focus, which would result in
-  // us updating surrounding text, but to support apps that don't do that we
-  // also explicitly update surrounding text here.
-  UpdateSurrounding();
 }
 
 bool CrosGtkIMContext::RetrieveSurrounding() {
+#ifdef DISABLE_SURROUNDING
+  return false;
+#else
+  // TODO(b/232048095#comment8, b/252966041): Replace this with something that
+  // supports selection. Failing to report selection means the IME may try and
+  // do auto-corrections on key events when text is selected, rather than
+  // replacing the selected text with the pressed key.
   gboolean result = false;
   // SetSurrounding() gets called when this succeeds.
   g_signal_emit_by_name(this, "retrieve-surrounding", &result);
   if (!result)
     g_warning("Failed to retrieve surrounding text.");
   return result;
+#endif
 }
 
 void CrosGtkIMContext::UpdateSurrounding() {
