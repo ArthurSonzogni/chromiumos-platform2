@@ -5402,6 +5402,16 @@ std::unique_ptr<dbus::Response> Service::GetVmLogs(
         "Unable to parse GetVmLogsRequest from message");
   }
 
+  if (!IsValidOwnerId(request.owner_id())) {
+    return dbus::ErrorResponse::FromMethodCall(method_call, DBUS_ERROR_FAILED,
+                                               "Empty or malformed owner ID");
+  }
+
+  if (!IsValidVmName(request.name())) {
+    return dbus::ErrorResponse::FromMethodCall(method_call, DBUS_ERROR_FAILED,
+                                               "Empty or malformed VM name");
+  }
+
   base::FilePath log_path =
       GetVmLogPath(request.owner_id(), request.name(), kCrosvmLogFileExt);
 
