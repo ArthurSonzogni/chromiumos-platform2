@@ -1784,75 +1784,212 @@ TEST_F(AuthBlockUtilityImplTest, DeriveAuthBlockStateFromVaultKeysetTest) {
   EXPECT_EQ(tpm_ecc_state->auth_value_rounds.value(), 5);
 }
 
-TEST_F(AuthBlockUtilityImplTest, MatchAuthBlockForCreation) {
-  brillo::SecureBlob passkey(20, 'A');
-  Credentials credentials(kUser, passkey);
+TEST_F(AuthBlockUtilityImplTest, GetAuthBlockTypeForCreationNoTPM) {
   crypto_.Init();
   MakeAuthBlockUtilityImpl();
 
-  // Test for kScrypt
-  EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(false));
-  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(false));
-  CryptoStatusOr<AuthBlockType> type_without_tpm =
-      auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-          AuthFactorType::kPassword);
+  // Setup: no TPM.
+  ON_CALL(hwsec_, IsEnabled()).WillByDefault(ReturnValue(false));
+  ON_CALL(hwsec_, IsReady()).WillByDefault(ReturnValue(false));
+
+  // Password and Kiosk auth factor maps to Scrypt Auth Block.
   if (USE_TPM_INSECURE_FALLBACK) {
-    EXPECT_THAT(type_without_tpm, IsOkAndHolds(AuthBlockType::kScrypt));
+    EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                    AuthFactorType::kPassword),
+                IsOkAndHolds(AuthBlockType::kScrypt));
+    EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                    AuthFactorType::kKiosk),
+                IsOkAndHolds(AuthBlockType::kScrypt));
   } else {
-    EXPECT_THAT(type_without_tpm, NotOk());
+    EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                    AuthFactorType::kPassword),
+                NotOk());
+    EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                    AuthFactorType::kKiosk),
+                NotOk());
   }
 
-  // Test for Tpm backed AuthBlock types.
-  EXPECT_CALL(hwsec_, IsEnabled()).WillRepeatedly(ReturnValue(true));
-  EXPECT_CALL(hwsec_, IsReady()).WillRepeatedly(ReturnValue(true));
+  // Auth factor that requires tpm to function will fail to get
+  // the auth block.
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  AuthFactorType::kPin),
+              NotOk());
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  AuthFactorType::kSmartCard),
+              NotOk());
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  AuthFactorType::kFingerprint),
+              NotOk());
 
-  // Test for kPinWeaver
-  KeyData key_data;
-  key_data.mutable_policy()->set_low_entropy_credential(true);
-  credentials.set_key_data(key_data);
+  // legacy fingerprint never maps to any auth block.
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  AuthFactorType::kLegacyFingerprint),
+              NotOk());
+
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  AuthFactorType::kUnspecified),
+              NotOk());
+}
+
+TEST_F(AuthBlockUtilityImplTest, GetAuthBlockTypeForCreationWithTpm20) {
+  crypto_.Init();
+  MakeAuthBlockUtilityImpl();
+
+  // Setup: TPM with PinWeaver and ECC support.
+  ON_CALL(hwsec_, IsEnabled()).WillByDefault(ReturnValue(true));
+  ON_CALL(hwsec_, IsReady()).WillByDefault(ReturnValue(true));
+  ON_CALL(hwsec_, IsSealingSupported()).WillByDefault(ReturnValue(true));
   ON_CALL(hwsec_, IsPinWeaverEnabled()).WillByDefault(ReturnValue(true));
+  EXPECT_CALL(cryptohome_keys_manager_, GetKeyLoader(CryptohomeKeyType::kECC))
+      .WillRepeatedly(
+          Return(cryptohome_keys_manager_.get_mock_cryptohome_key_loader()));
+
+  // Password and Kiosk auth factor maps to TpmEcc Auth Block.
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  AuthFactorType::kPassword),
+              IsOkAndHolds(AuthBlockType::kTpmEcc));
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  AuthFactorType::kKiosk),
+              IsOkAndHolds(AuthBlockType::kTpmEcc));
+
+  // Other Tpm related auth block works as expected.
   EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
                   AuthFactorType::kPin),
               IsOkAndHolds(AuthBlockType::kPinWeaver));
-
-  // Test for kChallengeResponse
-  KeyData key_data2;
-  key_data2.set_type(KeyData::KEY_TYPE_CHALLENGE_RESPONSE);
-  credentials.set_key_data(key_data2);
   EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
                   AuthFactorType::kSmartCard),
               IsOkAndHolds(AuthBlockType::kChallengeCredential));
 
-  // credentials.key_data type shouldn't be challenge credential any more.
-  KeyData key_data3;
-  credentials.set_key_data(key_data3);
-
-  // Test for kTpmEcc
+  // Fingerprint auth block needs additional biod service setup to gain
+  // support.
   EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kPassword),
-              IsOkAndHolds(AuthBlockType::kTpmEcc));
+                  AuthFactorType::kFingerprint),
+              NotOk());
 
-  // Test for kTpmNotBoundToPcr (No TPM or no TPM2.0)
-  EXPECT_CALL(hwsec_, IsSealingSupported()).WillRepeatedly(ReturnValue(false));
+  // legacy fingerprint never maps to any auth block.
   EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kPassword),
-              IsOkAndHolds(AuthBlockType::kTpmNotBoundToPcr));
+                  AuthFactorType::kLegacyFingerprint),
+              NotOk());
 
-  // Test for kTpmBoundToPcr (TPM2.0 but no support for ECC key)
-  EXPECT_CALL(hwsec_, IsSealingSupported()).WillRepeatedly(ReturnValue(true));
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  AuthFactorType::kUnspecified),
+              NotOk());
+}
+
+TEST_F(AuthBlockUtilityImplTest, GetAuthBlockTypeForCreationWithTpm20NoEcc) {
+  crypto_.Init();
+  MakeAuthBlockUtilityImpl();
+
+  // Setup: TPM with PinWeaver but without ECC support.
+  ON_CALL(hwsec_, IsEnabled()).WillByDefault(ReturnValue(true));
+  ON_CALL(hwsec_, IsReady()).WillByDefault(ReturnValue(true));
+  ON_CALL(hwsec_, IsSealingSupported()).WillByDefault(ReturnValue(true));
+  ON_CALL(hwsec_, IsPinWeaverEnabled()).WillByDefault(ReturnValue(true));
   EXPECT_CALL(cryptohome_keys_manager_, GetKeyLoader(CryptohomeKeyType::kECC))
-      .WillOnce(Return(nullptr));
+      .WillRepeatedly(Return(nullptr));
   EXPECT_CALL(cryptohome_keys_manager_, GetKeyLoader(CryptohomeKeyType::kRSA))
       .WillRepeatedly(
           Return(cryptohome_keys_manager_.get_mock_cryptohome_key_loader()));
+
+  // Password and Kiosk auth factor maps to TpmBoundToPcr Auth Block.
   EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
                   AuthFactorType::kPassword),
               IsOkAndHolds(AuthBlockType::kTpmBoundToPcr));
-
-  // Test for kCryptohomeRecovery
   EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
-                  AuthFactorType::kCryptohomeRecovery),
-              IsOkAndHolds(AuthBlockType::kCryptohomeRecovery));
+                  AuthFactorType::kKiosk),
+              IsOkAndHolds(AuthBlockType::kTpmBoundToPcr));
+
+  // Other TPM related auth block works as expected.
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  AuthFactorType::kPin),
+              IsOkAndHolds(AuthBlockType::kPinWeaver));
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  AuthFactorType::kSmartCard),
+              IsOkAndHolds(AuthBlockType::kChallengeCredential));
+
+  // Fingerprint auth block needs additional biod service setup to gain
+  // support.
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  AuthFactorType::kFingerprint),
+              NotOk());
+
+  // legacy fingerprint never maps to any auth block.
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  AuthFactorType::kLegacyFingerprint),
+              NotOk());
+
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  AuthFactorType::kUnspecified),
+              NotOk());
+}
+
+TEST_F(AuthBlockUtilityImplTest, GetAuthBlockTypeForCreationWithTpm11) {
+  crypto_.Init();
+  MakeAuthBlockUtilityImpl();
+
+  // Setup: TPM with PinWeaver but without ECC and sealing support.
+  // In other words, this is a TPM 1.1 environment.
+  ON_CALL(hwsec_, IsEnabled()).WillByDefault(ReturnValue(true));
+  ON_CALL(hwsec_, IsReady()).WillByDefault(ReturnValue(true));
+  ON_CALL(hwsec_, IsSealingSupported()).WillByDefault(ReturnValue(false));
+  ON_CALL(hwsec_, IsPinWeaverEnabled()).WillByDefault(ReturnValue(true));
+  EXPECT_CALL(cryptohome_keys_manager_, GetKeyLoader(CryptohomeKeyType::kECC))
+      .WillRepeatedly(nullptr);
+  EXPECT_CALL(cryptohome_keys_manager_, GetKeyLoader(CryptohomeKeyType::kRSA))
+      .WillRepeatedly(
+          Return(cryptohome_keys_manager_.get_mock_cryptohome_key_loader()));
+
+  // Password and Kiosk auth factor maps to TpmBoundToPcr Auth Block.
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  AuthFactorType::kPassword),
+              IsOkAndHolds(AuthBlockType::kTpmNotBoundToPcr));
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  AuthFactorType::kKiosk),
+              IsOkAndHolds(AuthBlockType::kTpmNotBoundToPcr));
+
+  // Other tpm related auth block works as expected.
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  AuthFactorType::kPin),
+              IsOkAndHolds(AuthBlockType::kPinWeaver));
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  AuthFactorType::kSmartCard),
+              IsOkAndHolds(AuthBlockType::kChallengeCredential));
+
+  // Fingerprint auth block needs additional biod service setup to gain
+  // support.
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  AuthFactorType::kFingerprint),
+              NotOk());
+
+  // legacy fingerprint never maps to any auth block.
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  AuthFactorType::kLegacyFingerprint),
+              NotOk());
+
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  AuthFactorType::kUnspecified),
+              NotOk());
+}
+
+TEST_F(AuthBlockUtilityImplTest, GetAuthBlockTypeForCreationFingerprint) {
+  crypto_.Init();
+  MakeAuthBlockUtilityImpl();
+  ON_CALL(hwsec_, IsEnabled()).WillByDefault(ReturnValue(true));
+  ON_CALL(hwsec_, IsReady()).WillByDefault(ReturnValue(true));
+  ON_CALL(hwsec_, IsBiometricsPinWeaverEnabled())
+      .WillByDefault(ReturnValue(true));
+
+  // Should fail before the bid service is ready.
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  AuthFactorType::kFingerprint),
+              NotOk());
+
+  // Should succeed after setup the biod service
+  SetupBiometricsService();
+
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeForCreation(
+                  AuthFactorType::kFingerprint),
+              IsOkAndHolds(AuthBlockType::kFingerprint));
 }
 
 // Test `GetAsyncAuthBlockWithType()` with the `kPinWeaver` type succeeds.
