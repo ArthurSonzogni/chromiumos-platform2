@@ -2794,17 +2794,14 @@ void AuthSession::ResetLECredentials() {
                    "Credential with label "
                 << auth_factor.label()
                 << ". Will try to obtain it with the Vault Keyset reset seed.";
-      MountStatusOr<std::unique_ptr<VaultKeyset>> vk_reset_status =
-          keyset_management_->GetVaultKeyset(obfuscated_username_,
-                                             auth_factor.label());
-      if (!vk_reset_status.ok()) {
+      std::unique_ptr<VaultKeyset> vk = keyset_management_->GetVaultKeyset(
+          obfuscated_username_, auth_factor.label());
+      if (!vk) {
         LOG(WARNING) << "Pin VK for the reset could not be retrieved for "
                      << auth_factor.label() << ".";
         continue;
       }
-      std::unique_ptr<VaultKeyset> vk_reset =
-          std::move(vk_reset_status).value();
-      const brillo::SecureBlob& reset_salt = vk_reset->GetResetSalt();
+      const brillo::SecureBlob& reset_salt = vk->GetResetSalt();
       if (local_reset_seed.empty() || reset_salt.empty()) {
         LOG(ERROR)
             << "Reset seed/salt is empty in VK , can't reset LE credential for "
