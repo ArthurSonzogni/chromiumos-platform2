@@ -208,6 +208,11 @@ if (use.test) {
       "libtpm_manager-client-test",
       "system_api",
     ]
+    if (use.fuzzer) {
+      pkg_deps += [ "protobuf" ]
+    } else {
+      pkg_deps += [ "protobuf-lite" ]
+    }
   }
 
   executable("hwsec-foundation_testrunner") {
