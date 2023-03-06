@@ -75,7 +75,8 @@ namespace {
 std::vector<AuthBlockType> GetAuthBlockPriorityListForCreation(
     const AuthFactorType& auth_factor_type) {
   switch (auth_factor_type) {
-    case AuthFactorType::kPassword: {
+    case AuthFactorType::kPassword:
+    case AuthFactorType::kKiosk: {
       std::vector<AuthBlockType> password_types = {
           // `kTpmEcc` comes first as the fastest auth block.
           AuthBlockType::kTpmEcc,
@@ -106,7 +107,6 @@ std::vector<AuthBlockType> GetAuthBlockPriorityListForCreation(
     case AuthFactorType::kFingerprint:
       return {AuthBlockType::kFingerprint};
     case AuthFactorType::kLegacyFingerprint:
-    case AuthFactorType::kKiosk:
     case AuthFactorType::kUnspecified:
       return {};
   }
@@ -529,7 +529,11 @@ void AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlockAsync(
 
 CryptoStatusOr<AuthBlockType> AuthBlockUtilityImpl::GetAuthBlockTypeForCreation(
     const AuthFactorType& auth_factor_type) const {
-  CryptoStatus status;
+  // Default status if there are no entries in the returned priority list.
+  CryptoStatus status = MakeStatus<CryptohomeCryptoError>(
+      CRYPTOHOME_ERR_LOC(kLocAuthBlockUtilEmptyListInGetAuthBlockWithType),
+      ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+      CryptoError::CE_OTHER_CRYPTO);
   for (AuthBlockType candidate_type :
        GetAuthBlockPriorityListForCreation(auth_factor_type)) {
     status = IsAuthBlockSupported(candidate_type);
@@ -538,7 +542,8 @@ CryptoStatusOr<AuthBlockType> AuthBlockUtilityImpl::GetAuthBlockTypeForCreation(
     }
   }
   // No suitable block was found. As we need to return only one error, take it
-  // from the last attempted candidate (it's likely the most permissive one).
+  // from the last attempted candidate (it's likely the most permissive one), if
+  // any.
   return MakeStatus<CryptohomeCryptoError>(
              CRYPTOHOME_ERR_LOC(
                  kLocAuthBlockUtilNoSupportedInGetAuthBlockWithType),

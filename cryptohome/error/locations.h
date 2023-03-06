@@ -1271,6 +1271,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocUserDataAuthRecoveryObjectFailureGetRecoveryId = 722,
   /* =Obsolete= */
   kLocAuthBlockUtilNoTpmInGetAuthBlockWithType = 723,
+  /* ./auth_blocks/auth_block_utility_impl.cc */
+  kLocAuthBlockUtilEmptyListInGetAuthBlockWithType = 724,
   //////////////////////////////////////////////////
   //// This is a separator block at value 1500
   //// See location_db.py for more info.
