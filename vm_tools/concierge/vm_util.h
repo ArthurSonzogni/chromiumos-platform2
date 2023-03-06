@@ -197,12 +197,24 @@ class CustomParametersForDev {
   bool initialized_{false};
 };
 
+// Uid and gid mappings for the android data directory. This is a
+// comma-separated list of 3 values: <start of range inside the user namespace>
+// <start of range outside the user namespace> <count>. The values are taken
+// from platform2/arc/container-bundle/pi/config.json.
+constexpr char kAndroidUidMap[] =
+    "0 655360 5000,5000 600 50,5050 660410 1994950";
+constexpr char kAndroidGidMap[] =
+    "0 655360 1065,1065 20119 1,1066 656426 3934,5000 600 50,5050 660410 "
+    "1994950";
+
 // Shared data parameter for crosvm.
 struct SharedDataParam {
   std::string to_string() const;
 
   base::FilePath data_dir;
   std::string tag;
+  std::string uid_map;
+  std::string gid_map;
   bool enable_caches;
   bool ascii_casefold;
   bool posix_acl;

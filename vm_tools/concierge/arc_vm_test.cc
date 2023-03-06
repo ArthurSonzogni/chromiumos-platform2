@@ -844,7 +844,9 @@ TEST(ArcVmTest, GetOemEtcSharedDataParam) {
                                300 /* gid */),
       "/run/arcvm/host_generated/oem/etc"
       ":oem_etc:type=fs:cache=always:uidmap=0 299 1, 5000 600 50:gidmap=0 300 "
-      "1, 5000 600 50:timeout=3600:rewrite-security-xattrs=true");
+      "1, 5000 600 "
+      "50:timeout=3600:rewrite-security-xattrs=true:ascii_casefold=false:"
+      "writeback=true:posix_acl=false");
 }
 }  // namespace concierge
 }  // namespace vm_tools

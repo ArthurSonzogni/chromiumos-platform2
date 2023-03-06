@@ -45,16 +45,6 @@ const char kCrosvmBin[] = "/usr/bin/crosvm";
 
 namespace {
 
-// Uid and gid mappings for the android data directory. This is a
-// comma-separated list of 3 values: <start of range inside the user namespace>
-// <start of range outside the user namespace> <count>. The values are taken
-// from platform2/arc/container-bundle/pi/config.json.
-constexpr char kAndroidUidMap[] =
-    "0 655360 5000,5000 600 50,5050 660410 1994950";
-constexpr char kAndroidGidMap[] =
-    "0 655360 1065,1065 20119 1,1066 656426 3934,5000 600 50,5050 660410 "
-    "1994950";
-
 constexpr char kFontsSharedDir[] = "/usr/share/fonts";
 constexpr char kFontsSharedDirTag[] = "fonts";
 
@@ -563,10 +553,16 @@ std::optional<const std::string> CustomParametersForDev::ObtainSpecialParameter(
 std::string SharedDataParam::to_string() const {
   // TODO(b/169446394): Go back to using "never" when caching is disabled
   // once we can switch /data/media to use 9p.
+
+  // We can relax this condition later if we want to serve users which do not
+  // set uid_map and gid_map, but today there is none.
+  CHECK_NE(uid_map, "");
+  CHECK_NE(gid_map, "");
+
   std::string result =
       base::StrCat({data_dir.value(), ":", tag,
                     ":type=fs:cache=", enable_caches ? "always" : "auto",
-                    ":uidmap=", kAndroidUidMap, ":gidmap=", kAndroidGidMap,
+                    ":uidmap=", uid_map, ":gidmap=", gid_map,
                     ":timeout=", enable_caches ? "3600" : "1",
                     ":rewrite-"
                     "security-xattrs=true:ascii_casefold=",
@@ -588,6 +584,8 @@ std::string SharedDataParam::to_string() const {
 std::string CreateFontsSharedDataParam() {
   return SharedDataParam{.data_dir = base::FilePath(kFontsSharedDir),
                          .tag = kFontsSharedDirTag,
+                         .uid_map = kAndroidUidMap,
+                         .gid_map = kAndroidGidMap,
                          .enable_caches = true,
                          .ascii_casefold = false,
                          .posix_acl = true}

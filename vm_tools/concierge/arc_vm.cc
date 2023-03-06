@@ -240,12 +240,12 @@ std::string GetOemEtcSharedDataParam(uid_t euid, gid_t egid) {
       base::StringPrintf(kOemEtcUgidMapTemplate, euid);
   std::string oem_etc_gid_map =
       base::StringPrintf(kOemEtcUgidMapTemplate, egid);
-  std::string oem_etc_shared_dir = base::StringPrintf(
-      "%s:%s:type=fs:cache=always:uidmap=%s:gidmap=%s:timeout=3600:rewrite-"
-      "security-xattrs=true",
-      kOemEtcSharedDir, kOemEtcSharedDirTag, oem_etc_uid_map.c_str(),
-      oem_etc_gid_map.c_str());
-  return oem_etc_shared_dir;
+  return SharedDataParam{.data_dir = base::FilePath(kOemEtcSharedDir),
+                         .tag = kOemEtcSharedDirTag,
+                         .uid_map = oem_etc_uid_map,
+                         .gid_map = oem_etc_gid_map,
+                         .enable_caches = true}
+      .to_string();
 }
 
 ArcVm::ArcVm(int32_t vsock_cid,
@@ -372,6 +372,8 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       .AppendSharedDir(
           SharedDataParam{.data_dir = base::FilePath(kTestHarnessSharedDir),
                           .tag = kTestHarnessSharedDirTag,
+                          .uid_map = kAndroidUidMap,
+                          .gid_map = kAndroidGidMap,
                           .enable_caches = true,
                           .ascii_casefold = false,
                           .posix_acl = true}
@@ -379,6 +381,8 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       .AppendSharedDir(
           SharedDataParam{.data_dir = base::FilePath(kApkCacheSharedDir),
                           .tag = kApkCacheSharedDirTag,
+                          .uid_map = kAndroidUidMap,
+                          .gid_map = kAndroidGidMap,
                           .enable_caches = true,
                           .ascii_casefold = false,
                           .posix_acl = true}
@@ -387,6 +391,8 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       .AppendSharedDir(
           SharedDataParam{.data_dir = base::FilePath(kLibSharedDir),
                           .tag = kLibSharedDirTag,
+                          .uid_map = kAndroidUidMap,
+                          .gid_map = kAndroidGidMap,
                           .enable_caches = true,
                           .ascii_casefold = false,
                           .posix_acl = true}
@@ -394,6 +400,8 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       .AppendSharedDir(
           SharedDataParam{.data_dir = base::FilePath(kUsrLibSharedDir),
                           .tag = kUsrLibSharedDirTag,
+                          .uid_map = kAndroidUidMap,
+                          .gid_map = kAndroidGidMap,
                           .enable_caches = true,
                           .ascii_casefold = false,
                           .posix_acl = true}
@@ -401,6 +409,8 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       .AppendSharedDir(
           SharedDataParam{.data_dir = base::FilePath(kSbinSharedDir),
                           .tag = kSbinSharedDirTag,
+                          .uid_map = kAndroidUidMap,
+                          .gid_map = kAndroidGidMap,
                           .enable_caches = true,
                           .ascii_casefold = false,
                           .posix_acl = true}
@@ -408,6 +418,8 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       .AppendSharedDir(
           SharedDataParam{.data_dir = base::FilePath(kUsrBinSharedDir),
                           .tag = kUsrBinSharedDirTag,
+                          .uid_map = kAndroidUidMap,
+                          .gid_map = kAndroidGidMap,
                           .enable_caches = true,
                           .ascii_casefold = false,
                           .posix_acl = true}
@@ -415,6 +427,8 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       .AppendSharedDir(
           SharedDataParam{.data_dir = jemalloc_config_file.DirName(),
                           .tag = kJemallocSharedDirTag,
+                          .uid_map = kAndroidUidMap,
+                          .gid_map = kAndroidGidMap,
                           .enable_caches = true,
                           .ascii_casefold = false,
                           .posix_acl = true}
@@ -463,6 +477,8 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
       vm_builder
           .AppendSharedDir(SharedDataParam{.data_dir = usr_local_bin_dir,
                                            .tag = kUsrLocalBinSharedDirTag,
+                                           .uid_map = kAndroidUidMap,
+                                           .gid_map = kAndroidGidMap,
                                            .enable_caches = true,
                                            .ascii_casefold = false,
                                            .posix_acl = true}
@@ -470,6 +486,8 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
           .AppendSharedDir(
               SharedDataParam{.data_dir = base::FilePath(kUsrLocalLibSharedDir),
                               .tag = kUsrLocalLibSharedDirTag,
+                              .uid_map = kAndroidUidMap,
+                              .gid_map = kAndroidGidMap,
                               .enable_caches = true,
                               .ascii_casefold = false,
                               .posix_acl = true}

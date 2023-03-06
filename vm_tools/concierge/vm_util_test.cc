@@ -534,6 +534,8 @@ TEST(VMUtilTest, CreateArcVMAffinitySMP4Core) {
 TEST(VMUtilTest, SharedDataParamSimple) {
   SharedDataParam param{.data_dir = base::FilePath("/usr/local/bin"),
                         .tag = "usr_local_bin",
+                        .uid_map = kAndroidUidMap,
+                        .gid_map = kAndroidGidMap,
                         .enable_caches = true,
                         .ascii_casefold = false,
                         .posix_acl = true};
@@ -549,6 +551,8 @@ TEST(VMUtilTest, SharedDataParamSimple) {
 TEST(VMUtilTest, SharedDataParamWithPrivilegedQuotaUids) {
   SharedDataParam param{.data_dir = base::FilePath("/usr/local/bin"),
                         .tag = "usr_local_bin",
+                        .uid_map = kAndroidUidMap,
+                        .gid_map = kAndroidGidMap,
                         .enable_caches = true,
                         .ascii_casefold = false,
                         .posix_acl = true,
