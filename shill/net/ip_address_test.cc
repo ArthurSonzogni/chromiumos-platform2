@@ -454,19 +454,6 @@ INSTANTIATE_TEST_SUITE_P(
                            "10.0.0.0",
                            "10.255.255.255")));
 
-struct MinPrefixLengthMapping {
-  MinPrefixLengthMapping() : family(IPAddress::kFamilyUnknown) {}
-  MinPrefixLengthMapping(IPAddress::Family family_in,
-                         const std::string& address_in,
-                         size_t expected_min_prefix_in)
-      : family(family_in),
-        address(address_in),
-        expected_min_prefix(expected_min_prefix_in) {}
-  IPAddress::Family family;
-  std::string address;
-  size_t expected_min_prefix;
-};
-
 struct CanReachAddressMapping {
   CanReachAddressMapping(const std::string& address_a_in,
                          size_t prefix_a_in,
