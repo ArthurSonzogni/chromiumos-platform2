@@ -203,6 +203,26 @@ TEST_F(FlagHelperTest, SetValueSingleDash) {
   EXPECT_STREQ(FLAGS_string_2.c_str(), "value");
 }
 
+// Test that unknown command line flag values are ignored (and Init returns
+// false) when kReturn is set.
+TEST_F(FlagHelperTest, SkipUnknownValueOnReturn) {
+  DEFINE_bool(bool1, false, "Test bool flag");
+  DEFINE_int32(int32_1, 1, "Test int32 flag");
+
+  const char* argv[] = {"test_program", "--bool1", "--string_1=value",
+                        "--int32_1=2"};
+  base::CommandLine command_line(std::size(argv), argv);
+
+  brillo::FlagHelper::GetInstance()->set_command_line_for_testing(
+      &command_line);
+  EXPECT_FALSE(
+      brillo::FlagHelper::Init(std::size(argv), argv, "TestSkipUnknown",
+                               brillo::FlagHelper::InitFuncType::kReturn));
+
+  EXPECT_TRUE(FLAGS_bool1);
+  EXPECT_EQ(FLAGS_int32_1, 2);
+}
+
 // Test that a duplicated flag on the command line picks up the last
 // value set.
 TEST_F(FlagHelperTest, DuplicateSetValue) {
