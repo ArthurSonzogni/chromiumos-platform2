@@ -59,15 +59,15 @@ bool GetSHA256FromString(const std::string& hash_str,
 
 // Ensure the metadata entry is a dictionary mapping strings to strings and
 // parse it into |out_metadata| and return true if so.
-bool ParseMetadata(const base::Value& metadata_dict,
+bool ParseMetadata(const base::Value& metadata,
                    std::map<std::string, std::string>* out_metadata) {
   DCHECK(out_metadata);
 
-  if (!metadata_dict.is_dict()) {
+  if (!metadata.is_dict()) {
     return false;
   }
 
-  for (const auto& item : metadata_dict.DictItems()) {
+  for (const auto& item : metadata.GetDict()) {
     if (!item.second.is_string()) {
       LOG(ERROR) << "Key \"" << item.first << "\" did not map to string value";
       return false;
@@ -95,11 +95,11 @@ bool Manifest::ParseManifest(const std::string& manifest_raw) {
     LOG(ERROR) << "Manifest file is not dictionary.";
     return false;
   }
-  base::Value manifest_dict = std::move(*manifest_value);
+  const base::Value::Dict& manifest_dict = manifest_value->GetDict();
 
   // This will have to be changed if the manifest version is bumped.
   std::optional<int> manifest_version =
-      manifest_dict.FindIntKey(kManifestVersionField);
+      manifest_dict.FindInt(kManifestVersionField);
   if (!manifest_version.has_value()) {
     LOG(ERROR) << "Could not parse manifest version field from manifest.";
     return false;
@@ -110,8 +110,7 @@ bool Manifest::ParseManifest(const std::string& manifest_raw) {
   }
   manifest_version_ = *manifest_version;
 
-  const std::string* image_hash_str =
-      manifest_dict.FindStringKey(kImageHashField);
+  const std::string* image_hash_str = manifest_dict.FindString(kImageHashField);
   if (!image_hash_str) {
     LOG(ERROR) << "Could not parse image hash from manifest.";
     return false;
@@ -122,8 +121,7 @@ bool Manifest::ParseManifest(const std::string& manifest_raw) {
     return false;
   }
 
-  const std::string* table_hash_str =
-      manifest_dict.FindStringKey(kTableHashField);
+  const std::string* table_hash_str = manifest_dict.FindString(kTableHashField);
   if (table_hash_str == nullptr) {
     LOG(ERROR) << "Could not parse table hash from manifest.";
     return false;
@@ -134,7 +132,7 @@ bool Manifest::ParseManifest(const std::string& manifest_raw) {
     return false;
   }
 
-  const std::string* version = manifest_dict.FindStringKey(kVersionField);
+  const std::string* version = manifest_dict.FindString(kVersionField);
   if (!version) {
     LOG(ERROR) << "Could not parse component version from manifest.";
     return false;
@@ -142,7 +140,7 @@ bool Manifest::ParseManifest(const std::string& manifest_raw) {
   version_ = *version;
 
   // The fs_type field is optional, and squashfs by default.
-  const std::string* fs_type = manifest_dict.FindStringKey(kFSType);
+  const std::string* fs_type = manifest_dict.FindString(kFSType);
   if (fs_type) {
     if (*fs_type == "ext4") {
       fs_type_ = FileSystem::kExt4;
@@ -156,69 +154,65 @@ bool Manifest::ParseManifest(const std::string& manifest_raw) {
     fs_type_ = FileSystem::kSquashFS;
   }
 
-  std::optional<bool> is_removable =
-      manifest_dict.FindBoolKey(kIsRemovableField);
+  std::optional<bool> is_removable = manifest_dict.FindBool(kIsRemovableField);
   // If |is-removable| field does not exist, by default it is false.
   is_removable_ = is_removable.value_or(false);
 
-  std::optional<bool> preload_allowed =
-      manifest_dict.FindBoolKey(kPreloadAllowed);
+  std::optional<bool> preload_allowed = manifest_dict.FindBool(kPreloadAllowed);
   // If |preaload-allowed| field does not exist, by default it is false.
   preload_allowed_ = preload_allowed.value_or(false);
 
-  std::optional<bool> factory_install =
-      manifest_dict.FindBoolKey(kFactoryInstall);
+  std::optional<bool> factory_install = manifest_dict.FindBool(kFactoryInstall);
   // If |factory-install| field does not exist, by default it is false.
   factory_install_ = factory_install.value_or(false);
 
   std::optional<bool> mount_file_required =
-      manifest_dict.FindBoolKey(kMountFileRequired);
+      manifest_dict.FindBool(kMountFileRequired);
   // If 'mount-file-required' field does not exist, by default it is false.
   mount_file_required_ = mount_file_required.value_or(false);
 
   // If 'reserved' field does not exist, by default it is false.
-  reserved_ = manifest_dict.FindBoolKey(kReserved).value_or(false);
+  reserved_ = manifest_dict.FindBool(kReserved).value_or(false);
 
   // If 'critical-update` field does not exist, by default it is false.
-  critical_update_ = manifest_dict.FindBoolKey(kCriticalUpdate).value_or(false);
+  critical_update_ = manifest_dict.FindBool(kCriticalUpdate).value_or(false);
 
   // If `use-logical-volume` field does not exist, by default it is false.
   use_logical_volume_ =
-      manifest_dict.FindBoolKey(kUseLogicalVolume).value_or(false);
+      manifest_dict.FindBool(kUseLogicalVolume).value_or(false);
 
   // If `scaled` field does not exist, by default it is false.
-  scaled_ = manifest_dict.FindBoolKey(kScaled).value_or(false);
+  scaled_ = manifest_dict.FindBool(kScaled).value_or(false);
 
   // All of these fields are optional.
-  const std::string* id = manifest_dict.FindStringKey(kId);
+  const std::string* id = manifest_dict.FindString(kId);
   if (id)
     id_ = *id;
-  const std::string* package = manifest_dict.FindStringKey(kPackage);
+  const std::string* package = manifest_dict.FindString(kPackage);
   if (package)
     package_ = *package;
-  const std::string* name = manifest_dict.FindStringKey(kName);
+  const std::string* name = manifest_dict.FindString(kName);
   if (name)
     name_ = *name;
-  const std::string* image_type = manifest_dict.FindStringKey(kImageType);
+  const std::string* image_type = manifest_dict.FindString(kImageType);
   if (image_type)
     image_type_ = *image_type;
-  const std::string* used_by = manifest_dict.FindStringKey(kUsedBy);
+  const std::string* used_by = manifest_dict.FindString(kUsedBy);
   if (used_by)
     used_by_ = *used_by;
-  const std::string* days_to_purge_str =
-      manifest_dict.FindStringKey(kDaysToPurge);
+  const std::string* days_to_purge_str = manifest_dict.FindString(kDaysToPurge);
   if (days_to_purge_str) {
     if (!base::StringToInt64(*days_to_purge_str, &days_to_purge_)) {
       LOG(ERROR) << "Days to purge is malformed: " << *days_to_purge_str;
       return false;
     }
   }
-  const std::string* description = manifest_dict.FindStringKey(kDescription);
+  const std::string* description = manifest_dict.FindString(kDescription);
   if (description)
     description_ = *description;
 
   const std::string* preallocated_size_str =
-      manifest_dict.FindStringKey(kPreallocatedSize);
+      manifest_dict.FindString(kPreallocatedSize);
   if (preallocated_size_str) {
     if (!base::StringToInt64(*preallocated_size_str, &preallocated_size_)) {
       LOG(ERROR) << "Manifest pre-allocated-size was malformed: "
@@ -227,7 +221,7 @@ bool Manifest::ParseManifest(const std::string& manifest_raw) {
     }
   }
 
-  const std::string* size_str = manifest_dict.FindStringKey(kSize);
+  const std::string* size_str = manifest_dict.FindString(kSize);
   if (size_str) {
     if (!base::StringToInt64(*size_str, &size_)) {
       LOG(ERROR) << "Manifest size was malformed: " << *size_str;
@@ -236,7 +230,7 @@ bool Manifest::ParseManifest(const std::string& manifest_raw) {
   }
 
   // Copy out the metadata, if it's there.
-  const base::Value* metadata = manifest_dict.FindKey(kMetadataField);
+  const base::Value* metadata = manifest_dict.Find(kMetadataField);
   if (metadata) {
     if (!ParseMetadata(*metadata, &metadata_)) {
       LOG(ERROR) << "Manifest metadata was malformed";
