@@ -8,6 +8,7 @@
 #include <set>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <base/check.h>
 #include <base/files/file_enumerator.h>
@@ -18,9 +19,11 @@
 #include <brillo/udev/udev_device.h>
 
 #include "diagnostics/base/file_utils.h"
+#include "diagnostics/cros_healthd/utils/display_utils.h"
 #include "diagnostics/cros_healthd/utils/usb_utils.h"
 #include "diagnostics/cros_healthd/utils/usb_utils_constants.h"
 #include "diagnostics/mojom/public/cros_healthd_events.mojom.h"
+#include "diagnostics/mojom/public/cros_healthd_probe.mojom-forward.h"
 
 namespace diagnostics {
 
@@ -262,8 +265,8 @@ void UdevEventsImpl::AddHdmiObserver(
 }
 
 void UdevEventsImpl::OnHdmiChange() {
+  std::vector<mojom::ExternalDisplayInfoPtr> newly_connected_display_infos;
   int remove = 0;
-  int add = 0;
 
   std::map<uint32_t, bool> new_hdmi_connector_status =
       libdrm_util_->GetHdmiConnectorStatus();
@@ -274,13 +277,15 @@ void UdevEventsImpl::OnHdmiChange() {
     // if a new connector is added and connected.
     if (hdmi_connector_status_.count(connector_id) == 0 &&
         new_connection_status) {
-      add += 1;
+      newly_connected_display_infos.push_back(
+          GetExternalDisplayInfo(libdrm_util_, connector_id));
       continue;
     }
     // if the status of a connector has been changed.
     if (new_connection_status != hdmi_connector_status_.at(connector_id)) {
       if (new_connection_status)
-        add += 1;
+        newly_connected_display_infos.push_back(
+            GetExternalDisplayInfo(libdrm_util_, connector_id));
       else
         remove += 1;
     }
@@ -295,9 +300,10 @@ void UdevEventsImpl::OnHdmiChange() {
   }
   hdmi_connector_status_ = std::move(new_hdmi_connector_status);
 
-  for (int i = 0; i < add; i++) {
+  for (int i = 0; i < newly_connected_display_infos.size(); i++) {
     mojom::HdmiEventInfo info;
     info.state = mojom::HdmiEventInfo::State::kAdd;
+    info.display_info = std::move(newly_connected_display_infos[i]);
     for (auto& observer : hdmi_observers_) {
       observer->OnEvent(mojom::EventInfo::NewHdmiEventInfo(info.Clone()));
     }

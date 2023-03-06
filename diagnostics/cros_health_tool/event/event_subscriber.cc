@@ -370,6 +370,59 @@ void OutputTouchscreenEventInfo(const mojom::TouchscreenEventInfoPtr& info) {
 void OutputHdmiEventInfo(const mojom::HdmiEventInfoPtr& info) {
   std::cout << "Hdmi event received: " << EnumToString(info->state)
             << std::endl;
+  if (!info->display_info.is_null()) {
+    if (!info->display_info->display_width.is_null()) {
+      std::cout << "display_width: " << info->display_info->display_width->value
+                << std::endl;
+    }
+    if (!info->display_info->display_height.is_null()) {
+      std::cout << "display_height: "
+                << info->display_info->display_height->value << std::endl;
+    }
+    if (!info->display_info->resolution_horizontal.is_null()) {
+      std::cout << "resolution_horizontal: "
+                << info->display_info->resolution_horizontal->value
+                << std::endl;
+    }
+    if (!info->display_info->resolution_vertical.is_null()) {
+      std::cout << "resolution_vertical: "
+                << info->display_info->resolution_vertical->value << std::endl;
+    }
+    if (!info->display_info->refresh_rate.is_null()) {
+      std::cout << "refresh_rate: " << info->display_info->refresh_rate->value
+                << std::endl;
+    }
+    if (info->display_info->manufacturer.has_value()) {
+      std::cout << "manufacturer: " << info->display_info->manufacturer.value()
+                << std::endl;
+    }
+    if (!info->display_info->model_id.is_null()) {
+      std::cout << "model_id: " << info->display_info->model_id->value
+                << std::endl;
+    }
+    if (!info->display_info->serial_number.is_null()) {
+      std::cout << "serial_number: " << info->display_info->serial_number->value
+                << std::endl;
+    }
+    if (!info->display_info->manufacture_week.is_null()) {
+      std::cout << "manufacture_week: "
+                << static_cast<int>(info->display_info->manufacture_week->value)
+                << std::endl;
+    }
+    if (!info->display_info->manufacture_year.is_null()) {
+      std::cout << "manufacture_year: "
+                << info->display_info->manufacture_year->value << std::endl;
+    }
+    if (info->display_info->edid_version.has_value()) {
+      std::cout << "edid_version: " << info->display_info->edid_version.value()
+                << std::endl;
+    }
+    std::cout << "input_type: " << info->display_info->input_type << std::endl;
+    if (info->display_info->display_name.has_value()) {
+      std::cout << "display_name: " << info->display_info->display_name.value()
+                << std::endl;
+    }
+  }
 }
 
 void OutputStylusGarageEventInfo(const mojom::StylusGarageEventInfoPtr& info) {

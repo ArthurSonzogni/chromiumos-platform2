@@ -12,6 +12,7 @@ module ash.cros_healthd.mojom;
 
 import "diagnostics/mojom/external/input.mojom";
 import "diagnostics/mojom/public/nullable_primitives.mojom";
+import "diagnostics/mojom/public/cros_healthd_probe.mojom";
 
 // Implemented by clients who desire Bluetooth notifications.
 //
@@ -364,7 +365,7 @@ union TouchpadEventInfo {
 
 // HDMI event info.
 //
-// NextMinVersion: 1, NextIndex: 1
+// NextMinVersion: 2, NextIndex: 2
 [Stable]
 struct HdmiEventInfo {
   [Stable, Extensible]
@@ -378,6 +379,9 @@ struct HdmiEventInfo {
   };
 
   State state@0;
+  // On Hdmi plug in event, also report information about the newly added
+  // display.
+  [MinVersion=1] ExternalDisplayInfo? display_info@1;
 };
 
 // Emitted when new touch points are updated.
