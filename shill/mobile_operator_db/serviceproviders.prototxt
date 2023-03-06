@@ -4848,15 +4848,6 @@ mno {
       type: IA
     }
     mobile_apn {
-      apn : "mobile.o2.co.uk"
-      localized_name {
-        name : "Contract (faster)"
-      }
-      username : "faster"
-      password : "password"
-      type : DEFAULT
-    }
-    mobile_apn {
       apn : "payandgo.o2.co.uk"
       localized_name {
         name : "Pay and Go (Prepaid)"
@@ -4864,33 +4855,7 @@ mno {
       username : "payandgo"
       password : "password"
       type : DEFAULT
-    }
-    mobile_apn {
-      apn : "idata.o2.co.uk"
-      localized_name {
-        name : "iPhone (Contract)"
-      }
-      username : "vertigo"
-      password : "password"
-      type : DEFAULT
-    }
-    mobile_apn {
-      apn : "m-bb.o2.co.uk"
-      localized_name {
-        name : "Mobile Broadband"
-      }
-      username : "o2bb"
-      password : "password"
-      type : DEFAULT
-    }
-    mobile_apn {
-      apn : "wap.o2.co.uk"
-      localized_name {
-        name : "WAP"
-      }
-      username : "o2wap"
-      password : "password"
-      type : DEFAULT
+      type: IA
     }
   }
   earmarked : true
