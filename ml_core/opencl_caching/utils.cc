@@ -17,13 +17,30 @@ const char kPrebuiltCacheDir[] = "cl_cache";
 
 namespace cros {
 
-// This will examine the DLC package for a set of prebuilt
-// CL cache files, and copy them into the main caching dir
-// (/var/lib/ml_core/opencl_cache). It will not overwrite
-// any existing files in that directory.
-void InstallPrebuiltCache(const base::FilePath& dlc_root_path) {
-  auto prebuilt_cache = dlc_root_path.Append(kPrebuiltCacheDir);
-  CopyCacheFiles(prebuilt_cache, false);
+base::FilePath PrebuiltCacheDir(const base::FilePath& dlc_root_path) {
+  return dlc_root_path.Append(kPrebuiltCacheDir);
+}
+
+bool DirIsEmpty(const base::FilePath& source_dir) {
+  bool is_empty = true;
+
+  base::DirReaderPosix reader(kOpenCLCachingDir);
+  if (!reader.IsValid()) {
+    LOG(ERROR) << "Error opening cache directory";
+    return is_empty;
+  }
+
+  while (reader.Next()) {
+    // Don't count ".", ".."
+    if (reader.name() == std::string(base::FilePath::kCurrentDirectory) ||
+        reader.name() == std::string(base::FilePath::kParentDirectory)) {
+      continue;
+    }
+    is_empty = false;
+    break;
+  }
+
+  return is_empty;
 }
 
 // Deletes all the files in the cache
@@ -48,7 +65,9 @@ void ClearCacheDirectory() {
   }
 }
 
-void CopyCacheFiles(const base::FilePath& source_dir, bool overwrite_files) {
+// Will copy cache files from the source_dir into kOpenCLCachingDir.
+// It will overwrite any existing files of the same name.
+void CopyCacheFiles(const base::FilePath& source_dir) {
   base::DirReaderPosix reader(source_dir.value().c_str());
   if (!reader.IsValid()) {
     LOG(ERROR) << "Error opening source directory";
@@ -66,11 +85,9 @@ void CopyCacheFiles(const base::FilePath& source_dir, bool overwrite_files) {
     }
 
     auto target = base::FilePath(kOpenCLCachingDir).Append(reader.name());
-    if (!base::PathExists(target) || overwrite_files) {
-      LOG(INFO) << "Copying " << source << " to OpenCL cache dir";
-      if (!base::CopyFile(source, target)) {
-        LOG(ERROR) << "Error copying " << source << " to " << target;
-      }
+    LOG(INFO) << "Copying " << source << " to OpenCL cache dir";
+    if (!base::CopyFile(source, target)) {
+      LOG(ERROR) << "Error copying " << source << " to " << target;
     }
   }
 }

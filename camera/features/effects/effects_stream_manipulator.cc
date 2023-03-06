@@ -46,6 +46,8 @@
 #include "gpu/image_processor.h"
 #include "gpu/shared_image.h"
 #include "ml_core/effects_pipeline.h"
+#include "ml_core/opencl_caching/constants.h"
+#include "ml_core/opencl_caching/utils.h"
 
 namespace cros {
 
@@ -292,10 +294,6 @@ EffectsStreamManipulatorImpl::EffectsStreamManipulatorImpl(
   if (!ret) {
     LOGF(ERROR) << "Failed to start GL thread. Turning off feature by default";
   }
-
-  // Clear out any stale marker file that may exist. It will get recreated
-  // once CreatePipeline is called.
-  DeleteEffectsMarkerFile();
 
   if (!runtime_options_->GetDlcRootPath().empty()) {
     CreatePipeline(base::FilePath(runtime_options_->GetDlcRootPath()));
@@ -753,9 +751,29 @@ void EffectsStreamManipulatorImpl::RGBAToNV12(GLuint texture,
 
 void EffectsStreamManipulatorImpl::CreatePipeline(
     const base::FilePath& dlc_root_path) {
+  // Check to see if the cache dir is empty, and if so,
+  // point the pipeline to the prebuilt cache as this may
+  // indicate the opencl_cacher tool hasn't had the chance
+  // to run or complete yet. Niche edge case, but it does
+  // cause a large startup delay for the user. This is particularly
+  // true when running behind a chrome flag, as the cacher
+  // tool doesn't run on a UI restart.
+  base::FilePath cache_dir_override("");
+  // Don't override the cache if the marker file exists,
+  // since we may be trying to recover from a bad cache.
+  if (!base::PathExists(kEffectsRunningMarker)) {
+    auto default_cache_dir = base::FilePath(kOpenCLCachingDir);
+    if (DirIsEmpty(default_cache_dir)) {
+      cache_dir_override = PrebuiltCacheDir(dlc_root_path);
+      LOG(INFO) << "OpenCL cache at " << default_cache_dir
+                << " is empty, using " << cache_dir_override << " instead.";
+    }
+  }
+
   marker_file_timer_ = CreateEffectsMarkerFile();
 
-  pipeline_ = EffectsPipeline::Create(dlc_root_path, egl_context_->Get());
+  pipeline_ = EffectsPipeline::Create(dlc_root_path, egl_context_->Get(),
+                                      cache_dir_override);
   pipeline_->SetRenderedImageObserver(std::make_unique<RenderedImageObserver>(
       base::BindRepeating(&EffectsStreamManipulatorImpl::OnFrameProcessed,
                           base::Unretained(this))));

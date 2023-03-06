@@ -43,12 +43,6 @@ int main(int argc, char* argv[]) {
     return EX_SOFTWARE;
   }
 
-  // Ideally we would do this within EffectsPipeline::Create
-  // but we need to ensure the owner / group is "ml-core", and
-  // that creates a race if the camera stack creates the pipeline
-  // first and installs the files as arc-camera
-  cros::InstallPrebuiltCache(dlc_loader.GetDlcRootPath());
-
   base::ScopedTempDir new_cache_dir;
   if (!new_cache_dir.CreateUniqueTempDir()) {
     LOG(ERROR) << "ERROR: Unable to create temporary directory.";
@@ -82,7 +76,7 @@ int main(int argc, char* argv[]) {
   // Clear out any stale files in the cache
   cros::ClearCacheDirectory();
   // Update the cache dir with newly generated files
-  cros::CopyCacheFiles(cache_path, /*overwrite_files=*/true);
+  cros::CopyCacheFiles(cache_path);
   LOG(INFO) << "Cache update complete";
 
   return EX_OK;

@@ -32,7 +32,10 @@ pkg_config("target_defaults") {
 shared_library("libcros_ml_core") {
   sources = []
   if (use.camera_feature_effects) {
-    sources += [ "effects_pipeline.cc" ]
+    sources += [
+      "effects_pipeline.cc",
+      "opencl_caching/utils.cc",
+    ]
   }
   configs += [ ":target_defaults" ]
   install_path = "lib"
