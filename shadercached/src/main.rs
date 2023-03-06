@@ -17,7 +17,7 @@ use dbus::channel::MatchingReceiver;
 use dbus::message::MatchRule;
 use dbus::MethodErr;
 use dbus_crossroads::Crossroads;
-use libchromeos::sys::{debug, error, info};
+use libchromeos::sys::{debug, error, info, warn};
 use libchromeos::syslog;
 use tokio::signal::unix::{signal, SignalKind};
 
@@ -34,6 +34,9 @@ pub async fn main() -> Result<()> {
     }
 
     info!("Starting shadercached...");
+    if *BOOT_ID == *OS_BUILD_ID {
+        warn!("Failed to digest OS build id, falling back to boot id");
+    }
     // Mount points are VM GPU cache mounting destinations. Each mount point has
     // metadata on what is last requested to be mounted there and current mount
     // status.

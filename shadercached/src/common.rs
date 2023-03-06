@@ -13,6 +13,8 @@ use std::{
 
 pub type SteamAppId = u64;
 
+pub const UNMOUNTER_INTERVAL: Duration = Duration::from_millis(1000);
+
 // GPU device id reported by the pcie ID
 lazy_static! {
     pub static ref GPU_DEVICE_ID: u16 = get_gpu_device_id().unwrap_or(0);
@@ -39,9 +41,25 @@ lazy_static! {
         // DLC suffix)
         variant_mapping.get(&*GPU_DEVICE_ID).unwrap_or(&"")
     };
-}
 
-pub const UNMOUNTER_INTERVAL: Duration = Duration::from_millis(1000);
+    pub static ref BOOT_ID: String = {
+        const BOOT_ID_FILE: &str = "/proc/sys/kernel/random/boot_id";
+        let contents = std::fs::read(BOOT_ID_FILE).expect(
+            "Expected to be able to read the boot id file");
+        hex::encode(openssl::sha::sha256(&contents))
+    };
+
+    pub static ref OS_BUILD_ID: String = {
+        if let Ok(os_release) = sys_info::linux_os_release() {
+            if let Some(build_id) = os_release.build_id {
+                return hex::encode(openssl::sha::sha256(build_id.as_bytes()))
+            }
+        }
+
+        // Fall back to boot id
+        BOOT_ID.to_string()
+    };
+}
 
 pub fn steam_app_id_to_dlc(steam_app_id: SteamAppId) -> String {
     format!(
