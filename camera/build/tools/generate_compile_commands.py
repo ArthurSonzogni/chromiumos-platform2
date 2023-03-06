@@ -20,6 +20,7 @@ from typing import List
 PLATFORM2_CAMERA_CORE_PACKAGES = [
     "chromeos-base/cros-camera",
     "chromeos-base/cros-camera-android-deps",
+    "chromeos-base/cros-camera-diagnostics",
     "chromeos-base/cros-camera-libs",
     "chromeos-base/cros-camera-tool",
     "media-libs/cros-camera-connector-client",
@@ -167,6 +168,7 @@ def aggregate_compile_db(
     )
     result = []
     for path in compdb_files:
+        # pylint: disable=encoding-missing
         with open(path, "r") as f:
             result.extend(json.loads(f.read()))
     return result
@@ -325,6 +327,7 @@ def main(argv: list):
             logging.info(
                 "Append to the existing compdb file %s", args.output_file
             )
+            # pylint: disable=encoding-missing
             with open(args.output_file, "r") as f:
                 compdb_aggregated.extend(json.loads(f.read()))
 
@@ -335,6 +338,7 @@ def main(argv: list):
         fix_source_file_path(compdb_aggregated, args.chroot)
         fix_include_path(compdb_aggregated, args.chroot)
 
+        # pylint: disable=encoding-missing
         with open(args.output_file, "w+") as f:
             f.write(json.dumps(compdb_aggregated, indent=2))
     finally:

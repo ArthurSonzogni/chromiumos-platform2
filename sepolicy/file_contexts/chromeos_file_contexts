@@ -87,6 +87,7 @@ include(sepolicy/file_contexts/sysfs_contexts)
 /usr/bin/cros-health-tool       u:object_r:cros_health_tool_exec:s0
 /usr/bin/cros_camera_algo       u:object_r:cros_camera_algo_exec:s0
 /usr/bin/cros_camera_service    u:object_r:cros_camera_service_exec:s0
+/usr/bin/cros_camera_diagnostics_service    u:object_r:cros_camera_diagnostics_service_exec:s0
 /usr/bin/cros_healthd           u:object_r:cros_healthd_exec:s0
 /usr/bin/cros_installer         u:object_r:cros_installer_exec:s0
 /usr/bin/crossystem             u:object_r:cros_crossystem_exec:s0
