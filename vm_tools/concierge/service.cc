@@ -4207,6 +4207,7 @@ std::unique_ptr<dbus::Response> Service::CancelDiskImageOperation(
 std::unique_ptr<dbus::Response> Service::ListVmDisks(
     dbus::MethodCall* method_call) {
   DCHECK(sequence_checker_.CalledOnValidSequence());
+  LOG(INFO) << "Received ListVmDisks request";
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
 
@@ -5316,6 +5317,7 @@ std::unique_ptr<dbus::Response> Service::AddGroupPermissionMesa(
     dbus::MethodCall* method_call) {
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
+  LOG(INFO) << "Received AddGroupPermissionMesa request";
 
   dbus::MessageReader reader(method_call);
   dbus::MessageWriter writer(dbus_response.get());
@@ -5448,6 +5450,7 @@ std::unique_ptr<dbus::Response> Service::GetVmLogs(
 std::unique_ptr<dbus::Response> Service::SwapVm(dbus::MethodCall* method_call) {
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
+  LOG(INFO) << "Received SwapVm request";
 
   dbus::MessageReader reader(method_call);
   dbus::MessageWriter writer(dbus_response.get());
@@ -5597,6 +5600,7 @@ std::unique_ptr<dbus::Response> Service::GetVmGpuCachePath(
     dbus::MethodCall* method_call) {
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
+  LOG(INFO) << "Received GetVmGpuCachePath request";
 
   dbus::MessageReader reader(method_call);
   dbus::MessageWriter writer(dbus_response.get());
