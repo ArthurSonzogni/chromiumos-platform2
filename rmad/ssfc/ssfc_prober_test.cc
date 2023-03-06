@@ -68,7 +68,7 @@ class SsfcProberImplTest : public testing::Test {
 
     // Mock |CbiUtils|.
     auto mock_cbi_utils = std::make_unique<NiceMock<MockCbiUtils>>();
-    ON_CALL(*mock_cbi_utils, GetSSFC(_))
+    ON_CALL(*mock_cbi_utils, GetSsfc(_))
         .WillByDefault(
             DoAll(SetArgPointee<0>(kOriginalSsfcValue), Return(true)));
 

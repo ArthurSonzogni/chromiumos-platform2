@@ -64,43 +64,43 @@ class SsfcUtilsImplTest : public testing::Test {
   base::FilePath file_path_;
 };
 
-TEST_F(SsfcUtilsImplTest, GetSSFC_Success) {
+TEST_F(SsfcUtilsImplTest, GetSsfc_Success) {
   auto ssfc_utils = CreateSsfcUtils(true, kTestSsfcOutput);
 
   bool need_to_update = false;
   uint32_t ssfc = 0;
-  EXPECT_TRUE(ssfc_utils->GetSSFC(kTestModelName, &need_to_update, &ssfc));
+  EXPECT_TRUE(ssfc_utils->GetSsfc(kTestModelName, &need_to_update, &ssfc));
   EXPECT_TRUE(need_to_update);
   EXPECT_EQ(ssfc, kTestSsfc);
 }
 
-TEST_F(SsfcUtilsImplTest, GetSSFC_NoScriptFileSuccess) {
+TEST_F(SsfcUtilsImplTest, GetSsfc_NoScriptFileSuccess) {
   auto ssfc_utils = CreateSsfcUtils(true, kTestSsfcOutput);
   base::DeleteFile(file_path_);
 
   bool need_to_update = false;
   uint32_t ssfc = 0;
-  EXPECT_TRUE(ssfc_utils->GetSSFC(kTestModelName, &need_to_update, &ssfc));
+  EXPECT_TRUE(ssfc_utils->GetSsfc(kTestModelName, &need_to_update, &ssfc));
   EXPECT_FALSE(need_to_update);
   EXPECT_EQ(ssfc, 0);
 }
 
-TEST_F(SsfcUtilsImplTest, GetSSFC_FailedToExecScriptFailed) {
+TEST_F(SsfcUtilsImplTest, GetSsfc_FailedToExecScriptFailed) {
   auto ssfc_utils = CreateSsfcUtils(false, kTestSsfcOutput);
 
   bool need_to_update = false;
   uint32_t ssfc = 0;
-  EXPECT_FALSE(ssfc_utils->GetSSFC(kTestModelName, &need_to_update, &ssfc));
+  EXPECT_FALSE(ssfc_utils->GetSsfc(kTestModelName, &need_to_update, &ssfc));
   EXPECT_FALSE(need_to_update);
   EXPECT_EQ(ssfc, 0);
 }
 
-TEST_F(SsfcUtilsImplTest, GetSSFC_InvalidScriptOutputFailed) {
+TEST_F(SsfcUtilsImplTest, GetSsfc_InvalidScriptOutputFailed) {
   auto ssfc_utils = CreateSsfcUtils(true, "InvalidString");
 
   bool need_to_update = false;
   uint32_t ssfc = 0;
-  EXPECT_FALSE(ssfc_utils->GetSSFC(kTestModelName, &need_to_update, &ssfc));
+  EXPECT_FALSE(ssfc_utils->GetSsfc(kTestModelName, &need_to_update, &ssfc));
   EXPECT_FALSE(need_to_update);
   EXPECT_EQ(ssfc, 0);
 }

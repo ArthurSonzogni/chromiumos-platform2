@@ -24,7 +24,7 @@ class SsfcUtilsImpl : public SsfcUtils {
                          const std::string& script_search_path);
   ~SsfcUtilsImpl() override = default;
 
-  bool GetSSFC(const std::string& model,
+  bool GetSsfc(const std::string& model,
                bool* need_to_update,
                uint32_t* ssfc) const override;
 

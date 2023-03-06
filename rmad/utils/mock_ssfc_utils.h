@@ -19,7 +19,7 @@ class MockSsfcUtils : public SsfcUtils {
   ~MockSsfcUtils() override = default;
 
   MOCK_METHOD(bool,
-              GetSSFC,
+              GetSsfc,
               (const std::string&, bool*, uint32_t*),
               (const, override));
 };

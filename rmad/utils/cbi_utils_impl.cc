@@ -24,7 +24,7 @@ constexpr char kEctoolIntValRegex[] = R"(As uint: (\d+))";
 
 constexpr int kCbiTagSkuId = 2;
 constexpr int kCbiTagDramPartNum = 3;
-constexpr int kCbiTagSSFC = 8;
+constexpr int kCbiTagSsfc = 8;
 
 }  // namespace
 
@@ -49,11 +49,11 @@ bool CbiUtilsImpl::GetDramPartNum(std::string* dram_part_num) const {
   return GetCbi(kCbiTagDramPartNum, dram_part_num);
 }
 
-bool CbiUtilsImpl::GetSSFC(uint32_t* ssfc) const {
+bool CbiUtilsImpl::GetSsfc(uint32_t* ssfc) const {
   CHECK(ssfc);
 
   uint64_t buf;
-  if (!GetCbi(kCbiTagSSFC, &buf)) {
+  if (!GetCbi(kCbiTagSsfc, &buf)) {
     return false;
   }
 
@@ -82,9 +82,9 @@ bool CbiUtilsImpl::SetDramPartNum(const std::string& dram_part_num) {
   return SetCbi(kCbiTagDramPartNum, dram_part_num);
 }
 
-bool CbiUtilsImpl::SetSSFC(uint32_t ssfc) {
+bool CbiUtilsImpl::SetSsfc(uint32_t ssfc) {
   // For SSFC, we always use 4 bytes.
-  return SetCbi(kCbiTagSSFC, ssfc, 4);
+  return SetCbi(kCbiTagSsfc, ssfc, 4);
 }
 
 bool CbiUtilsImpl::SetCbi(int tag, const std::string& value, int set_flag) {

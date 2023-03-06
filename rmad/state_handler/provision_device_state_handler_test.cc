@@ -44,7 +44,7 @@ using testing::WithArg;
 namespace {
 
 constexpr char kTestModelName[] = "TestModelName";
-constexpr uint32_t kTestSSFC = 0x1234;
+constexpr uint32_t kTestSsfc = 0x1234;
 
 constexpr char kEmptyBoardIdType[] = "ffffffff";
 constexpr char kValidBoardIdType[] = "12345678";
@@ -100,7 +100,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
 
     // Mock |CbiUtils|.
     auto mock_cbi_utils = std::make_unique<NiceMock<MockCbiUtils>>();
-    ON_CALL(*mock_cbi_utils, SetSSFC(_)).WillByDefault(Return(set_ssfc));
+    ON_CALL(*mock_cbi_utils, SetSsfc(_)).WillByDefault(Return(set_ssfc));
 
     // Mock |CmdUtils|.
     auto mock_cmd_utils = std::make_unique<NiceMock<MockCmdUtils>>();
@@ -159,11 +159,11 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
     // Mock |SsfcUtils|.
     auto mock_ssfc_utils = std::make_unique<NiceMock<MockSsfcUtils>>();
     if (need_update_ssfc) {
-      ON_CALL(*mock_ssfc_utils, GetSSFC(_, _, _))
+      ON_CALL(*mock_ssfc_utils, GetSsfc(_, _, _))
           .WillByDefault(DoAll(SetArgPointee<1>(true),
-                               SetArgPointee<2>(kTestSSFC), Return(get_ssfc)));
+                               SetArgPointee<2>(kTestSsfc), Return(get_ssfc)));
     } else {
-      ON_CALL(*mock_ssfc_utils, GetSSFC(_, _, _))
+      ON_CALL(*mock_ssfc_utils, GetSsfc(_, _, _))
           .WillByDefault(DoAll(SetArgPointee<1>(false), Return(true)));
     }
 

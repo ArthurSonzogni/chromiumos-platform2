@@ -32,7 +32,7 @@ SsfcUtilsImpl::SsfcUtilsImpl(std::unique_ptr<CmdUtils> cmd_utils,
     : cmd_utils_(std::move(cmd_utils)),
       script_search_path_(script_search_path) {}
 
-bool SsfcUtilsImpl::GetSSFC(const std::string& model,
+bool SsfcUtilsImpl::GetSsfc(const std::string& model,
                             bool* need_to_update,
                             uint32_t* ssfc) const {
   CHECK(need_to_update);

@@ -50,8 +50,8 @@ constexpr double kProgressFailedBlocking = -2.0;
 constexpr double kProgressInit = 0.0;
 constexpr double kProgressGetDestination = 0.2;
 constexpr double kProgressGetModelName = 0.3;
-constexpr double kProgressGetSSFC = 0.4;
-constexpr double kProgressWriteSSFC = 0.5;
+constexpr double kProgressGetSsfc = 0.4;
+constexpr double kProgressWriteSsfc = 0.5;
 constexpr double kProgressUpdateStableDeviceSecret = 0.6;
 constexpr double kProgressFlushOutVpdCache = 0.7;
 constexpr double kProgressResetGbbFlags = 0.8;
@@ -380,16 +380,16 @@ void ProvisionDeviceStateHandler::RunProvision() {
 
   bool need_to_update_ssfc = false;
   uint32_t ssfc;
-  if (!ssfc_utils_->GetSSFC(model_name, &need_to_update_ssfc, &ssfc)) {
+  if (!ssfc_utils_->GetSsfc(model_name, &need_to_update_ssfc, &ssfc)) {
     UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
                  kProgressFailedBlocking,
                  ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
     return;
   }
   UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
-               kProgressGetSSFC);
+               kProgressGetSsfc);
 
-  if (need_to_update_ssfc && !cbi_utils_->SetSSFC(ssfc)) {
+  if (need_to_update_ssfc && !cbi_utils_->SetSsfc(ssfc)) {
     if (IsHwwpDisabled()) {
       UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
                    kProgressFailedBlocking,
@@ -402,7 +402,7 @@ void ProvisionDeviceStateHandler::RunProvision() {
     return;
   }
   UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
-               kProgressWriteSSFC);
+               kProgressWriteSsfc);
 
   if (!same_owner) {
     std::string stable_device_secret;

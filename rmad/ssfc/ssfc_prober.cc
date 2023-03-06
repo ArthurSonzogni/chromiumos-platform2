@@ -58,7 +58,7 @@ bool SsfcProberImpl::ProbeSsfc(uint32_t* ssfc) const {
 
   // Get existing SSFC, which might not exist.
   uint32_t probed_ssfc = 0;
-  cbi_utils_->GetSSFC(&probed_ssfc);
+  cbi_utils_->GetSsfc(&probed_ssfc);
   probed_ssfc &= ssfc_config_.mask;
 
   // Update SSFC by probed results.

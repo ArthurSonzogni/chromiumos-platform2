@@ -19,7 +19,7 @@ class SsfcUtils {
   // true: SSFC was calculated and assigned to |ssfc| or SSFC is not required.
   //       It depends on the value of |need_to_update|, if true, the ssfc is
   //       calculated and should be updated.
-  virtual bool GetSSFC(const std::string& model,
+  virtual bool GetSsfc(const std::string& model,
                        bool* need_to_update,
                        uint32_t* ssfc) const = 0;
 };
