@@ -1421,7 +1421,7 @@ std::unique_ptr<patchpanel::ConnectNamespaceResponse> Manager::ConnectNamespace(
     return response;
   }
 
-  base::ScopedFD local_client_fd(AddLifelineFd(client_fd.get()));
+  base::ScopedFD local_client_fd = AddLifelineFd(std::move(client_fd));
   if (!local_client_fd.is_valid()) {
     LOG(ERROR) << "Failed to create lifeline fd";
     return response;
@@ -1494,21 +1494,26 @@ std::unique_ptr<patchpanel::ConnectNamespaceResponse> Manager::ConnectNamespace(
   return response;
 }
 
-int Manager::AddLifelineFd(int dbus_fd) {
+base::ScopedFD Manager::AddLifelineFd(base::ScopedFD dbus_fd) {
+  if (dbus_fd.is_valid()) {
+    LOG(ERROR) << "Invalid client file descriptor";
+    return base::ScopedFD();
+  }
+
   // Dup the client fd into our own: this guarantees that the fd number will
   // be stable and tied to the actual kernel resources used by the client.
   // The duped fd will be watched for read events.
-  int fd = dup(dbus_fd);
+  int fd = dup(dbus_fd.get());
   if (fd < 0) {
-    PLOG(ERROR) << "dup failed";
-    return -1;
+    PLOG(ERROR) << "dup() failed";
+    return base::ScopedFD();
   }
 
   lifeline_fd_controllers_[fd] = base::FileDescriptorWatcher::WatchReadable(
       fd, base::BindRepeating(&Manager::OnLifelineFdClosed,
                               // The callback will not outlive the object.
                               base::Unretained(this), fd));
-  return fd;
+  return base::ScopedFD(fd);
 }
 
 bool Manager::DeleteLifelineFd(int dbus_fd) {
@@ -1589,7 +1594,7 @@ void Manager::OnLifelineFdClosed(int client_fd) {
 bool Manager::RedirectDns(
     base::ScopedFD client_fd,
     const patchpanel::SetDnsRedirectionRuleRequest& request) {
-  base::ScopedFD local_client_fd(AddLifelineFd(client_fd.get()));
+  base::ScopedFD local_client_fd = AddLifelineFd(std::move(client_fd));
   if (!local_client_fd.is_valid()) {
     LOG(ERROR) << "Failed to create lifeline fd";
     return false;
@@ -1677,7 +1682,7 @@ patchpanel::DownstreamNetworkResult Manager::OnDownstreamNetworkRequest(
 
   // TODO(b/239559602) Select IPv4 config if none.
 
-  base::ScopedFD local_client_fd(AddLifelineFd(client_fd.get()));
+  base::ScopedFD local_client_fd = AddLifelineFd(std::move(client_fd));
   if (!local_client_fd.is_valid()) {
     LOG(ERROR) << __func__ << ": " << info << ": Failed to create lifeline fd";
     return patchpanel::DownstreamNetworkResult::ERROR;

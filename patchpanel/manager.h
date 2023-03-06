@@ -199,8 +199,11 @@ class Manager final : public brillo::DBusDaemon {
       const patchpanel::ConnectNamespaceRequest& request);
 
   // Helper functions for tracking DBus request lifetime with file descriptors
-  // provided by DBus clients.
-  int AddLifelineFd(int dbus_fd);
+  // provided by DBus clients. Consumes the file descriptor |dbus_fd| read from
+  // DBus and returns a duplicate wrapped in base::ScopedFD. The duplicate is
+  // added to the list of file descriptors watched for invalidation. Returns an
+  // invalid ScopedFD object if it fails. The original fd is closed.
+  base::ScopedFD AddLifelineFd(base::ScopedFD dbus_fd);
   bool DeleteLifelineFd(int dbus_fd);
 
   // Detects if any file descriptor committed in patchpanel's DBus API has been
