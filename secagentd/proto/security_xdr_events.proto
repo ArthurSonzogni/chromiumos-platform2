@@ -116,13 +116,29 @@ message ProcessTerminateEvent {
   optional Process process = 2;
 }
 
+// Encapsulates fields that are common to each message in a
+// batch.
+message CommonEventVariantDataFields {
+  optional int64 create_timestamp_us = 1;
+}
+
+// Singular Process event.
+message ProcessEventAtomicVariant {
+  optional CommonEventVariantDataFields common = 1;
+  oneof variant_type {
+    ProcessExecEvent process_exec = 2;
+    ProcessTerminateEvent process_terminate = 3;
+  }
+}
+
 // Process Events wrapper.
 message XdrProcessEvent {
   optional CommonEventDataFields common = 1;
   oneof message_type {
-    ProcessExecEvent process_exec = 2;
-    ProcessTerminateEvent process_terminate = 3;
+    ProcessExecEvent process_exec = 2 [deprecated = true];
+    ProcessTerminateEvent process_terminate = 3 [deprecated = true];
   }
+  repeated ProcessEventAtomicVariant batched_events = 4;
 }
 
 // Network Event wrapper.
