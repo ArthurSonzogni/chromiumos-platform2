@@ -5,8 +5,6 @@
 #ifndef DNS_PROXY_RESOLVER_H_
 #define DNS_PROXY_RESOLVER_H_
 
-#include <sys/socket.h>
-
 #include <map>
 #include <memory>
 #include <string>
@@ -105,12 +103,6 @@ class Resolver {
     base::WeakPtrFactory<ProbeState> weak_factory{this};
   };
 
-  // |ProbeMetricsData| stores required data of a probe to record metrics.
-  struct ProbeMetricsData {
-    sa_family_t family;
-    int num_attempts;
-  };
-
   Resolver(base::TimeDelta timeout,
            base::TimeDelta retry_delay,
            int max_num_retries);
@@ -178,14 +170,11 @@ class Resolver {
   // provided inside |probe_state|. |probe_state| also defines the current
   // probing state, including if it is already successful. If the probe is
   // successful, the provider or name server will be validated.
-  // For Do53, |data| is added for metrics, including IP family. This is not
-  // added for DoH as it uses all nameservers concurrently.
   void HandleDoHProbeResult(base::WeakPtr<ProbeState> probe_state,
                             const DoHCurlClient::CurlResult& res,
                             unsigned char* msg,
                             size_t len);
   void HandleDo53ProbeResult(base::WeakPtr<ProbeState> probe_state,
-                             const ProbeMetricsData& data,
                              int status,
                              unsigned char* msg,
                              size_t len);

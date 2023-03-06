@@ -150,7 +150,7 @@ TEST_F(ResolverTest, Resolve_DNSDoHServersValidated) {
   for (const auto& name_server : kTestNameServers) {
     auto probe_state =
         std::make_unique<Resolver::ProbeState>(name_server, /*doh=*/false);
-    resolver_->HandleDo53ProbeResult(probe_state->weak_factory.GetWeakPtr(), {},
+    resolver_->HandleDo53ProbeResult(probe_state->weak_factory.GetWeakPtr(),
                                      ARES_SUCCESS, nullptr, 0);
   }
 
@@ -195,7 +195,7 @@ TEST_F(ResolverTest, Resolve_DNSDoHServersFallbackPartiallyValidated) {
   const auto& validated_name_server = kTestNameServers.front();
   auto probe_state = std::make_unique<Resolver::ProbeState>(
       validated_name_server, /*doh=*/false);
-  resolver_->HandleDo53ProbeResult(probe_state->weak_factory.GetWeakPtr(), {},
+  resolver_->HandleDo53ProbeResult(probe_state->weak_factory.GetWeakPtr(),
                                    ARES_SUCCESS, nullptr, 0);
 
   EXPECT_CALL(*ares_client_, Resolve(_, _, _, validated_name_server, _))
@@ -222,7 +222,7 @@ TEST_F(ResolverTest, Resolve_DNSDoHServersFallbackValidated) {
   for (const auto& name_server : kTestNameServers) {
     auto probe_state =
         std::make_unique<Resolver::ProbeState>(name_server, /*doh=*/false);
-    resolver_->HandleDo53ProbeResult(probe_state->weak_factory.GetWeakPtr(), {},
+    resolver_->HandleDo53ProbeResult(probe_state->weak_factory.GetWeakPtr(),
                                      ARES_SUCCESS, nullptr, 0);
   }
 
@@ -547,7 +547,7 @@ TEST_F(ResolverTest, Probe_InvalidateNameServer) {
   for (const auto& name_server : name_servers) {
     auto probe_state =
         std::make_unique<Resolver::ProbeState>(name_server, /*doh=*/false);
-    resolver_->HandleDo53ProbeResult(probe_state->weak_factory.GetWeakPtr(), {},
+    resolver_->HandleDo53ProbeResult(probe_state->weak_factory.GetWeakPtr(),
                                      ARES_SUCCESS, nullptr, 0);
   }
 
@@ -646,7 +646,7 @@ TEST_F(ResolverTest, Probe_Do53ProbeRestarted) {
   for (const auto& name_server : name_servers) {
     auto probe_state =
         std::make_unique<Resolver::ProbeState>(name_server, /*doh=*/false);
-    resolver_->HandleDo53ProbeResult(probe_state->weak_factory.GetWeakPtr(), {},
+    resolver_->HandleDo53ProbeResult(probe_state->weak_factory.GetWeakPtr(),
                                      ARES_SUCCESS, nullptr, 0);
   }
 

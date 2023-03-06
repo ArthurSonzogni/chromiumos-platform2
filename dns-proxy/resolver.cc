@@ -4,8 +4,6 @@
 
 #include "dns-proxy/resolver.h"
 
-#include <sys/socket.h>
-
 #include <algorithm>
 #include <cmath>
 #include <iterator>
@@ -392,9 +390,9 @@ void Resolver::HandleDoHProbeResult(base::WeakPtr<ProbeState> probe_state,
                                     const DoHCurlClient::CurlResult& res,
                                     unsigned char* msg,
                                     size_t len) {
-  if (!probe_state) {
+  if (!probe_state)
     return;
-  }
+
   if (res.curl_code != CURLE_OK) {
     LOG(ERROR) << "DoH probe failed: " << curl_easy_strerror(res.curl_code);
     return;
@@ -415,17 +413,12 @@ void Resolver::HandleDoHProbeResult(base::WeakPtr<ProbeState> probe_state,
 }
 
 void Resolver::HandleDo53ProbeResult(base::WeakPtr<ProbeState> probe_state,
-                                     const ProbeMetricsData& probe_data,
                                      int status,
                                      unsigned char* msg,
                                      size_t len) {
-  if (metrics_) {
-    metrics_->RecordProbeResult(probe_data.family, probe_data.num_attempts,
-                                AresStatusMetric(status));
-  }
-  if (!probe_state) {
+  if (!probe_state)
     return;
-  }
+
   if (status != ARES_SUCCESS) {
     LOG(ERROR) << "Do53 probe failed for " << probe_state->target
                << " with ares status " << ares_strerror(status);
@@ -732,13 +725,11 @@ void Resolver::Probe(base::WeakPtr<ProbeState> probe_state) {
                             weak_factory_.GetWeakPtr(), probe_state),
         GetActiveNameServers(), probe_state->target);
   } else {
-    const ProbeMetricsData data = {patchpanel::GetIpFamily(probe_state->target),
-                                   probe_state->num_attempts};
     ares_client_->Resolve(
         reinterpret_cast<const unsigned char*>(kDNSQueryGstatic),
         sizeof(kDNSQueryGstatic),
         base::BindRepeating(&Resolver::HandleDo53ProbeResult,
-                            weak_factory_.GetWeakPtr(), probe_state, data),
+                            weak_factory_.GetWeakPtr(), probe_state),
         probe_state->target);
   }
   probe_state->num_attempts++;
