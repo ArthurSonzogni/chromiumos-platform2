@@ -67,12 +67,6 @@ class UserSession {
   // Unmounts the session.
   virtual bool Unmount() = 0;
 
-  // Returns status string of the proxied Mount objest.
-  //
-  // The returned object is a dictionary whose keys describe the mount. Current
-  // keys are: "keysets", "mounted", "owner", "enterprise", and "type".
-  virtual base::Value GetStatus() const = 0;
-
   // Returns the WebAuthn secret and clears it from memory.
   virtual std::unique_ptr<brillo::SecureBlob> GetWebAuthnSecret() = 0;
 

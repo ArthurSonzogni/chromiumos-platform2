@@ -1137,16 +1137,6 @@ message GetLoginStatusReply {
   bool is_locked_to_single_user = 3;
 }
 
-// Input parameters to GetStatusString()
-message GetStatusStringRequest {}
-
-// Output parameters for GetStatusString()
-message GetStatusStringReply {
-  // Contains a JSON string that includes some tpm status, mount status and
-  // install attributes status information.
-  string status = 1;
-}
-
 // Input parameters to LockToSingleUserMountUntilReboot()
 // Lock the device to single user use.
 message LockToSingleUserMountUntilRebootRequest {

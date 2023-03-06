@@ -205,7 +205,6 @@ constexpr const char* kActions[] = {"unmount",
                                     "get_system_salt",
                                     "dump_keyset",
                                     "dump_last_activity",
-                                    "status",
                                     "set_current_user_old",
                                     "tpm_take_ownership",
                                     "tpm_clear_stored_password",
@@ -291,7 +290,6 @@ enum ActionEnum {
   ACTION_GET_SYSTEM_SALT,
   ACTION_DUMP_KEYSET,
   ACTION_DUMP_LAST_ACTIVITY,
-  ACTION_STATUS,
   ACTION_SET_CURRENT_USER_OLD,
   ACTION_TPM_TAKE_OWNERSHIP,
   ACTION_TPM_CLEAR_STORED_PASSWORD,
@@ -1246,18 +1244,6 @@ int main(int argc, char** argv) {
             "%s %3d\n", dir_name.c_str(),
             (base::Time::Now() - last_activity).InDays());
       }
-    }
-  } else if (!strcmp(switches::kActions[switches::ACTION_STATUS],
-                     action.c_str())) {
-    user_data_auth::GetStatusStringRequest req;
-    user_data_auth::GetStatusStringReply reply;
-    brillo::ErrorPtr error;
-    if (!misc_proxy.GetStatusString(req, &reply, &error, timeout_ms) || error) {
-      printer.PrintFormattedHumanOutput(
-          "GetStatusString call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-    } else {
-      printer.PrintFormattedHumanOutput("%s\n", reply.status().c_str());
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_SET_CURRENT_USER_OLD],
                      action.c_str())) {

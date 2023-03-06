@@ -43,8 +43,6 @@ inline constexpr char kNeedsDircryptoMigration[] = "NeedsDircryptoMigration";
 inline constexpr char kGetSupportedKeyPolicies[] = "GetSupportedKeyPolicies";
 inline constexpr char kGetAccountDiskUsage[] = "GetAccountDiskUsage";
 inline constexpr char kStartAuthSession[] = "StartAuthSession";
-inline constexpr char kAddCredentials[] = "AddCredentials";
-inline constexpr char kUpdateCredential[] = "UpdateCredential";
 inline constexpr char kInvalidateAuthSession[] = "InvalidateAuthSession";
 inline constexpr char kExtendAuthSession[] = "ExtendAuthSession";
 inline constexpr char kCreatePersistentUser[] = "CreatePersistentUser";
@@ -98,7 +96,6 @@ inline constexpr char kUpdateCurrentUserActivityTimestamp[] =
     "UpdateCurrentUserActivityTimestamp";
 inline constexpr char kGetSanitizedUsername[] = "GetSanitizedUsername";
 inline constexpr char kGetLoginStatus[] = "GetLoginStatus";
-inline constexpr char kGetStatusString[] = "GetStatusString";
 inline constexpr char kLockToSingleUserMountUntilReboot[] =
     "LockToSingleUserMountUntilReboot";
 inline constexpr char kGetRsuDeviceId[] = "GetRsuDeviceId";

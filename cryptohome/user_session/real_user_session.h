@@ -68,8 +68,6 @@ class RealUserSession : public UserSession {
 
   bool Unmount() override;
 
-  base::Value GetStatus() const override;
-
   std::unique_ptr<brillo::SecureBlob> GetWebAuthnSecret() override;
 
   const brillo::SecureBlob& GetWebAuthnSecretHash() const override;

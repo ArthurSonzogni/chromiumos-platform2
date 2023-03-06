@@ -2044,22 +2044,6 @@ bool UserDataAuth::OwnerUserExists() {
   return homedirs_->GetPlainOwner(&owner);
 }
 
-std::string UserDataAuth::GetStatusString() {
-  AssertOnMountThread();
-
-  base::Value::List mounts;
-  for (const auto& [unused, session] : *sessions_) {
-    mounts.Append(session.GetStatus());
-  }
-
-  base::Value dv(base::Value::Type::DICT);
-  dv.SetKey("mounts", base::Value(std::move(mounts)));
-  std::string json;
-  base::JSONWriter::WriteWithOptions(dv, base::JSONWriter::OPTIONS_PRETTY_PRINT,
-                                     &json);
-  return json;
-}
-
 void UserDataAuth::StartAuthSession(
     user_data_auth::StartAuthSessionRequest request,
     base::OnceCallback<void(const user_data_auth::StartAuthSessionReply&)>

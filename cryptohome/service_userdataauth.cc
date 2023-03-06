@@ -1144,26 +1144,6 @@ void CryptohomeMiscAdaptor::GetLoginStatus(
   response->Return(reply);
 }
 
-void CryptohomeMiscAdaptor::GetStatusString(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        user_data_auth::GetStatusStringReply>> response,
-    const user_data_auth::GetStatusStringRequest& in_request) {
-  service_->PostTaskToMountThread(
-      FROM_HERE,
-      base::BindOnce(
-          &CryptohomeMiscAdaptor::DoGetStatusString, base::Unretained(this),
-          ThreadSafeDBusMethodResponse<user_data_auth::GetStatusStringReply>::
-              MakeThreadSafe(std::move(response))));
-}
-
-void CryptohomeMiscAdaptor::DoGetStatusString(
-    std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
-        user_data_auth::GetStatusStringReply>> response) {
-  user_data_auth::GetStatusStringReply reply;
-  reply.set_status(service_->GetStatusString());
-  std::move(response)->Return(reply);
-}
-
 void CryptohomeMiscAdaptor::LockToSingleUserMountUntilReboot(
     std::unique_ptr<brillo::dbus_utils::DBusMethodResponse<
         user_data_auth::LockToSingleUserMountUntilRebootReply>> response,

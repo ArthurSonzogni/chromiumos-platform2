@@ -152,46 +152,6 @@ bool RealUserSession::Unmount() {
   return mount_->UnmountCryptohome();
 }
 
-base::Value RealUserSession::GetStatus() const {
-  base::Value dv(base::Value::Type::DICT);
-  base::Value::List keysets;
-  std::vector<int> key_indices;
-  if (!obfuscated_username_->empty() &&
-      keyset_management_->GetVaultKeysets(obfuscated_username_, &key_indices)) {
-    for (auto key_index : key_indices) {
-      base::Value keyset_dict(base::Value::Type::DICT);
-      std::unique_ptr<VaultKeyset> keyset(
-          keyset_management_->LoadVaultKeysetForUser(obfuscated_username_,
-                                                     key_index));
-      if (keyset.get()) {
-        bool tpm = keyset->GetFlags() & SerializedVaultKeyset::TPM_WRAPPED;
-        bool scrypt =
-            keyset->GetFlags() & SerializedVaultKeyset::SCRYPT_WRAPPED;
-        keyset_dict.SetBoolKey("tpm", tpm);
-        keyset_dict.SetBoolKey("scrypt", scrypt);
-        keyset_dict.SetBoolKey("ok", true);
-        if (keyset->HasKeyData()) {
-          keyset_dict.SetStringKey("label", keyset->GetKeyData().label());
-        }
-      } else {
-        keyset_dict.SetBoolKey("ok", false);
-      }
-      keyset_dict.SetIntKey("index", key_index);
-      keysets.Append(std::move(keyset_dict));
-    }
-  }
-  dv.SetKey("keysets", base::Value(std::move(keysets)));
-  dv.SetBoolKey("mounted", mount_->IsMounted());
-  ObfuscatedUsername obfuscated_owner;
-  homedirs_->GetOwner(&obfuscated_owner);
-  dv.SetStringKey("owner", *obfuscated_owner);
-  dv.SetBoolKey("enterprise", homedirs_->enterprise_owned());
-
-  dv.SetStringKey("type", mount_->GetMountTypeString());
-
-  return dv;
-}
-
 void RealUserSession::PrepareWebAuthnSecret(const brillo::SecureBlob& fek,
                                             const brillo::SecureBlob& fnek) {
   // This WebAuthn secret can be rederived upon in-session user auth success
