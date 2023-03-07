@@ -14,6 +14,7 @@
 #include "secagentd/bpf_skeleton_wrappers.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/plugins.h"
+#include "secagentd/policies_features_broker.h"
 
 namespace secagentd {
 
@@ -85,12 +86,15 @@ PluginFactory::PluginFactory() {
 std::unique_ptr<PluginInterface> PluginFactory::Create(
     PluginType type,
     scoped_refptr<MessageSenderInterface> message_sender,
-    scoped_refptr<ProcessCacheInterface> process_cache) {
+    scoped_refptr<ProcessCacheInterface> process_cache,
+    scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
+    uint32_t batch_interval_s) {
   std::unique_ptr<PluginInterface> rv{nullptr};
   switch (type) {
     case PluginType::kProcess:
-      rv = std::make_unique<ProcessPlugin>(bpf_skeleton_factory_,
-                                           message_sender, process_cache);
+      rv = std::make_unique<ProcessPlugin>(
+          bpf_skeleton_factory_, message_sender, process_cache,
+          policies_features_broker, batch_interval_s);
       break;
 
     default:

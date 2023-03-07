@@ -40,10 +40,12 @@ Daemon::Daemon(struct Inject injected) : weak_ptr_factory_(this) {
 
 Daemon::Daemon(bool bypass_policy_for_testing,
                bool bypass_enq_ok_wait_for_testing,
-               uint32_t set_heartbeat_period_s_for_testing)
+               uint32_t heartbeat_period_s,
+               uint32_t plugin_batch_interval_s)
     : bypass_policy_for_testing_(bypass_policy_for_testing),
       bypass_enq_ok_wait_for_testing_(bypass_enq_ok_wait_for_testing),
-      set_heartbeat_period_s_for_testing_(set_heartbeat_period_s_for_testing),
+      heartbeat_period_s_(heartbeat_period_s),
+      plugin_batch_interval_s_(plugin_batch_interval_s),
       weak_ptr_factory_(this) {}
 
 int Daemon::OnInit() {
@@ -131,7 +133,7 @@ void Daemon::StartXDRReporting() {
       Types::Plugin::kAgent, message_sender_,
       std::make_unique<org::chromium::AttestationProxy>(bus_),
       std::make_unique<org::chromium::TpmManagerProxy>(bus_),
-      std::move(cb_for_agent), set_heartbeat_period_s_for_testing_);
+      std::move(cb_for_agent), heartbeat_period_s_);
 
   if (!agent_plugin_) {
     QuitWithExitCode(EX_SOFTWARE);
@@ -165,8 +167,9 @@ int Daemon::CreatePlugin(PluginFactory::PluginType type) {
   std::unique_ptr<PluginInterface> plugin;
   switch (type) {
     case PluginFactory::PluginType::kProcess: {
-      plugin = plugin_factory_->Create(Types::Plugin::kProcess, message_sender_,
-                                       process_cache_);
+      plugin = plugin_factory_->Create(
+          Types::Plugin::kProcess, message_sender_, process_cache_,
+          policies_features_broker_, plugin_batch_interval_s_);
       break;
     }
     default:

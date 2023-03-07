@@ -37,6 +37,19 @@ void FillNamespaces(const secagentd::bpf::cros_namespace_info& ns,
   ns_proto->set_net_ns(ns.net_ns);
   ns_proto->set_ipc_ns(ns.ipc_ns);
 }
+
+std::string GetBatchedEventKey(
+    const pb::ProcessEventAtomicVariant& process_event) {
+  switch (process_event.variant_type_case()) {
+    case cros_xdr::reporting::ProcessEventAtomicVariant::kProcessExec:
+      return process_event.process_exec().spawn_process().process_uuid();
+    case cros_xdr::reporting::ProcessEventAtomicVariant::kProcessTerminate:
+      return process_event.process_terminate().process().process_uuid();
+    case cros_xdr::reporting::ProcessEventAtomicVariant::VARIANT_TYPE_NOT_SET:
+      return "";
+  }
+}
+
 }  // namespace
 
 namespace secagentd {
@@ -44,10 +57,21 @@ namespace secagentd {
 ProcessPlugin::ProcessPlugin(
     scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory,
     scoped_refptr<MessageSenderInterface> message_sender,
-    scoped_refptr<ProcessCacheInterface> process_cache)
+    scoped_refptr<ProcessCacheInterface> process_cache,
+    scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
+    uint32_t batch_interval_s)
     : weak_ptr_factory_(this),
       message_sender_(message_sender),
-      process_cache_(process_cache) {
+      process_cache_(process_cache),
+      policies_features_broker_(policies_features_broker),
+      batch_sender_(
+          std::make_unique<BatchSender<std::string,
+                                       pb::XdrProcessEvent,
+                                       pb::ProcessEventAtomicVariant>>(
+              base::BindRepeating(&GetBatchedEventKey),
+              message_sender,
+              reporting::Destination::CROS_SECURITY_PROCESS,
+              batch_interval_s)) {
   CHECK(message_sender != nullptr);
   CHECK(process_cache != nullptr);
   CHECK(bpf_skeleton_factory);
@@ -101,7 +125,12 @@ void ProcessPlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
     LOG(ERROR) << "ProcessBPF: unknown BPF process event type.";
     return;
   }
-  DeprecatedSendImmediate(std::move(atomic_event));
+  if (policies_features_broker_->GetFeature(
+          PoliciesFeaturesBroker::Feature::kCrosLateBootSecagentdBatchEvents)) {
+    EnqueueBatchedEvent(std::move(atomic_event));
+  } else {
+    DeprecatedSendImmediate(std::move(atomic_event));
+  }
 }
 
 void ProcessPlugin::HandleBpfRingBufferReadReady() const {
@@ -120,6 +149,7 @@ absl::Status ProcessPlugin::Activate() {
   if (skeleton_wrapper_ == nullptr) {
     return absl::InternalError("Process BPF program loading error.");
   }
+  batch_sender_->Start();
   return absl::OkStatus();
 }
 
@@ -141,13 +171,19 @@ void ProcessPlugin::DeprecatedSendImmediate(
                                std::move(xdr_process_event), std::nullopt);
 }
 
+void ProcessPlugin::EnqueueBatchedEvent(
+    std::unique_ptr<pb::ProcessEventAtomicVariant> atomic_event) {
+  batch_sender_->Enqueue(std::move(atomic_event));
+}
+
 std::unique_ptr<pb::ProcessExecEvent> ProcessPlugin::MakeExecEvent(
     const secagentd::bpf::cros_process_start& process_start) {
   auto process_exec_event = std::make_unique<pb::ProcessExecEvent>();
   FillNamespaces(process_start.spawn_namespace,
                  process_exec_event->mutable_spawn_namespaces());
   // Fetch information on process that was just spawned, the parent process
-  // that spawned that process, and its parent process. I.e a total of three.
+  // that spawned that process, and its parent process. I.e a total of
+  // three.
   auto hierarchy = process_cache_->GetProcessHierarchy(
       process_start.task_info.pid, process_start.task_info.start_time, 3);
   if (hierarchy.empty()) {

@@ -35,12 +35,16 @@ class Daemon : public brillo::DBusDaemon {
   };
 
  public:
+  static constexpr uint32_t kDefaultHeartbeatPeriodS = 300;
+  static constexpr uint32_t kDefaultPluginBatchIntervalS = 2 * 60;
+
   Daemon() = delete;
   /* dependency injection for unit tests */
   explicit Daemon(struct Inject);
   Daemon(bool bypass_policy_for_testing,
          bool bypass_enq_ok_wait_for_testing,
-         uint32_t set_heartbeat_period_s_for_testing);
+         uint32_t heartbeat_period_s,
+         uint32_t plugin_batch_interval_s);
   ~Daemon() override = default;
 
  protected:
@@ -69,7 +73,8 @@ class Daemon : public brillo::DBusDaemon {
   bool bypass_policy_for_testing_ = false;
   bool bypass_enq_ok_wait_for_testing_ = false;
   bool reporting_events_ = false;
-  uint32_t set_heartbeat_period_s_for_testing_ = 300;
+  uint32_t heartbeat_period_s_ = kDefaultHeartbeatPeriodS;
+  uint32_t plugin_batch_interval_s_ = kDefaultPluginBatchIntervalS;
   base::WeakPtrFactory<Daemon> weak_ptr_factory_;
 };
 };  // namespace secagentd

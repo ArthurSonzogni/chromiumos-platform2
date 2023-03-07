@@ -5,8 +5,12 @@
 #ifndef SECAGENTD_PLUGINS_H_
 #define SECAGENTD_PLUGINS_H_
 
+#include <cstdint>
 #include <memory>
 #include <string>
+#include <utility>
+#include <variant>
+#include <vector>
 
 #include "absl/status/status.h"
 #include "absl/strings/str_format.h"
@@ -16,6 +20,7 @@
 #include "base/timer/timer.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
 #include "secagentd/message_sender.h"
+#include "secagentd/policies_features_broker.h"
 #include "secagentd/process_cache.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 #include "tpm_manager/proto_bindings/tpm_manager.pb.h"
@@ -25,6 +30,7 @@ namespace secagentd {
 
 namespace testing {
 class AgentPluginTestFixture;
+class ProcessPluginTestFixture;
 }
 
 class PluginInterface {
@@ -37,31 +43,58 @@ class PluginInterface {
 
 class ProcessPlugin : public PluginInterface {
  public:
-  ProcessPlugin(scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory,
-                scoped_refptr<MessageSenderInterface> message_sender,
-                scoped_refptr<ProcessCacheInterface> process_cache);
+  ProcessPlugin(
+      scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory,
+      scoped_refptr<MessageSenderInterface> message_sender,
+      scoped_refptr<ProcessCacheInterface> process_cache,
+      scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
+      uint32_t batch_interval_s);
   // Load, verify and attach the process BPF applications.
   absl::Status Activate() override;
   std::string GetName() const override;
 
+  // Handles an individual incoming Process BPF event.
   void HandleRingBufferEvent(const bpf::cros_event& bpf_event);
+  // Requests immediate event consumption from BPF.
   void HandleBpfRingBufferReadReady() const;
 
  private:
+  friend class testing::ProcessPluginTestFixture;
+
+  using BatchSenderType =
+      BatchSenderInterface<std::string,
+                           cros_xdr::reporting::XdrProcessEvent,
+                           cros_xdr::reporting::ProcessEventAtomicVariant>;
+
+  // Immediately enqueues the given process event to ERP. This method will copy
+  // the given message into one of the deprecated unbatched fields in
+  // XdrProcessEvent.
   void DeprecatedSendImmediate(
       std::unique_ptr<cros_xdr::reporting::ProcessEventAtomicVariant>
           atomic_event);
+  // Pushes the given process event into the next outgoing batch.
+  void EnqueueBatchedEvent(
+      std::unique_ptr<cros_xdr::reporting::ProcessEventAtomicVariant>
+          atomic_event);
+  // Converts the BPF process start event into a XDR process exec protobuf.
   std::unique_ptr<cros_xdr::reporting::ProcessExecEvent> MakeExecEvent(
       const secagentd::bpf::cros_process_start& process_start);
   std::unique_ptr<cros_xdr::reporting::ProcessTerminateEvent>
+  // Converts the BPF process exit event into a XDR process terminate protobuf.
   MakeTerminateEvent(const secagentd::bpf::cros_process_exit& process_exit);
+  // Inject the given (mock) BatchSender object for unit testing.
+  void SetBatchSenderForTesting(std::unique_ptr<BatchSenderType> given) {
+    batch_sender_ = std::move(given);
+  }
   // This is static because it must be accessible to a C style function.
   static struct BpfCallbacks callbacks_;
   base::WeakPtrFactory<ProcessPlugin> weak_ptr_factory_;
   scoped_refptr<MessageSenderInterface> message_sender_;
   scoped_refptr<ProcessCacheInterface> process_cache_;
+  scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;
   scoped_refptr<BpfSkeletonFactoryInterface> factory_;
   std::unique_ptr<BpfSkeletonInterface> skeleton_wrapper_;
+  std::unique_ptr<BatchSenderType> batch_sender_;
 };
 
 class AgentPlugin : public PluginInterface {
@@ -124,7 +157,9 @@ class PluginFactoryInterface {
   virtual std::unique_ptr<PluginInterface> Create(
       PluginType type,
       scoped_refptr<MessageSenderInterface> message_sender,
-      scoped_refptr<ProcessCacheInterface> process_cache) = 0;
+      scoped_refptr<ProcessCacheInterface> process_cache,
+      scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
+      uint32_t batch_interval_s) = 0;
   virtual std::unique_ptr<PluginInterface> Create(
       PluginType type,
       scoped_refptr<MessageSenderInterface> message_sender,
@@ -160,7 +195,9 @@ class PluginFactory : public PluginFactoryInterface {
   std::unique_ptr<PluginInterface> Create(
       PluginType type,
       scoped_refptr<MessageSenderInterface> message_sender,
-      scoped_refptr<ProcessCacheInterface> process_cache) override;
+      scoped_refptr<ProcessCacheInterface> process_cache,
+      scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
+      uint32_t batch_interval_s) override;
   std::unique_ptr<PluginInterface> Create(
       PluginType type,
       scoped_refptr<MessageSenderInterface> message_sender,

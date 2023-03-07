@@ -27,7 +27,10 @@ class PoliciesFeaturesBrokerTestFixture;
 class PoliciesFeaturesBrokerInterface
     : public base::RefCounted<PoliciesFeaturesBrokerInterface> {
  public:
-  enum class Feature { kCrOSLateBootSecagentdXDRReporting };
+  enum class Feature {
+    kCrOSLateBootSecagentdXDRReporting,
+    kCrosLateBootSecagentdBatchEvents,
+  };
 
   // Starts polling the watched features and policies. Runs the first watch
   // immediately and blocks for the result. Posts a task to run poll_done_cb_
