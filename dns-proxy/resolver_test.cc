@@ -57,6 +57,40 @@ class MockAresClient : public AresClient {
 }  // namespace
 
 class ResolverTest : public testing::Test {
+ public:
+  void SetNameServers(const std::vector<std::string>& name_servers,
+                      bool validate = false) {
+    resolver_->SetNameServers(name_servers);
+    if (!validate) {
+      return;
+    }
+    // Validate name servers.
+    for (const auto& name_server : name_servers) {
+      auto probe_state =
+          std::make_unique<Resolver::ProbeState>(name_server, /*doh=*/false);
+      resolver_->HandleDo53ProbeResult(probe_state->weak_factory.GetWeakPtr(),
+                                       ARES_SUCCESS, nullptr, 0);
+    }
+  }
+
+  void SetDoHProviders(const std::vector<std::string>& doh_providers,
+                       bool validate = false,
+                       bool always_on_doh = false) {
+    resolver_->SetDoHProviders(doh_providers, always_on_doh);
+    if (!validate) {
+      return;
+    }
+    // Validate DoH providers.
+    for (const auto& doh_provider : doh_providers) {
+      DoHCurlClient::CurlResult res(CURLE_OK, 200 /* http_code */,
+                                    0 /* timeout */);
+      auto probe_state =
+          std::make_unique<Resolver::ProbeState>(doh_provider, /*doh=*/true);
+      resolver_->HandleDoHProbeResult(probe_state->weak_factory.GetWeakPtr(),
+                                      res, nullptr, 0);
+    }
+  }
+
  protected:
   void SetUp() override {
     std::unique_ptr<MockAresClient> scoped_ares_client(new MockAresClient());
@@ -81,10 +115,11 @@ TEST_F(ResolverTest, SetNameServers) {
         .WillOnce(Return(true));
   }
 
-  resolver_->SetNameServers(kTestNameServers);
+  SetNameServers(kTestNameServers, /*validate=*/true);
 
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
+  EXPECT_GT(sock_fd->num_active_queries, 0);
 }
 
 TEST_F(ResolverTest, SetDoHProviders) {
@@ -95,11 +130,12 @@ TEST_F(ResolverTest, SetDoHProviders) {
         .WillOnce(Return(true));
   }
 
-  resolver_->SetNameServers(kTestNameServers);
-  resolver_->SetDoHProviders(kTestDoHProviders, /*always_on_doh=*/true);
+  SetNameServers(kTestNameServers, /*validate=*/true);
+  SetDoHProviders(kTestDoHProviders, /*validate=*/true, /*always_on_doh=*/true);
 
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
+  EXPECT_GT(sock_fd->num_active_queries, 0);
 }
 
 TEST_F(ResolverTest, Resolve_DNSDoHServersNotValidated) {
@@ -108,16 +144,17 @@ TEST_F(ResolverTest, Resolve_DNSDoHServersNotValidated) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _)).Times(0);
 
-  resolver_->SetNameServers(kTestNameServers);
-  resolver_->SetDoHProviders(kTestDoHProviders);
+  SetNameServers(kTestNameServers);
+  SetDoHProviders(kTestDoHProviders);
 
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
+  EXPECT_GT(sock_fd->num_active_queries, 0);
 }
 
 TEST_F(ResolverTest, Resolve_DNSDoHServersPartiallyValidated) {
-  resolver_->SetNameServers(kTestNameServers);
-  resolver_->SetDoHProviders(kTestDoHProviders);
+  SetNameServers(kTestNameServers);
+  SetDoHProviders(kTestDoHProviders);
 
   const auto& validated_doh_provider = kTestDoHProviders.front();
   DoHCurlClient::CurlResult res(CURLE_OK, 200 /* http_code */, 0 /* timeout*/);
@@ -132,27 +169,12 @@ TEST_F(ResolverTest, Resolve_DNSDoHServersPartiallyValidated) {
 
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
+  EXPECT_GT(sock_fd->num_active_queries, 0);
 }
 
 TEST_F(ResolverTest, Resolve_DNSDoHServersValidated) {
-  resolver_->SetNameServers(kTestNameServers);
-  resolver_->SetDoHProviders(kTestDoHProviders);
-
-  // Validate DoH providers and name servers.
-  for (const auto& doh_provider : kTestDoHProviders) {
-    DoHCurlClient::CurlResult res(CURLE_OK, 200 /* http_code */,
-                                  0 /* timeout */);
-    auto probe_state =
-        std::make_unique<Resolver::ProbeState>(doh_provider, /*doh=*/true);
-    resolver_->HandleDoHProbeResult(probe_state->weak_factory.GetWeakPtr(), res,
-                                    nullptr, 0);
-  }
-  for (const auto& name_server : kTestNameServers) {
-    auto probe_state =
-        std::make_unique<Resolver::ProbeState>(name_server, /*doh=*/false);
-    resolver_->HandleDo53ProbeResult(probe_state->weak_factory.GetWeakPtr(),
-                                     ARES_SUCCESS, nullptr, 0);
-  }
+  SetNameServers(kTestNameServers, /*validate=*/true);
+  SetDoHProviders(kTestDoHProviders, /*validate=*/true);
 
   EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
   EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _))
@@ -161,6 +183,7 @@ TEST_F(ResolverTest, Resolve_DNSDoHServersValidated) {
 
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
+  EXPECT_GT(sock_fd->num_active_queries, 0);
 }
 
 TEST_F(ResolverTest, Resolve_DNSServers) {
@@ -169,10 +192,11 @@ TEST_F(ResolverTest, Resolve_DNSServers) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _)).Times(0);
 
-  resolver_->SetNameServers(kTestNameServers);
+  SetNameServers(kTestNameServers, /*validate=*/true);
 
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
+  EXPECT_GT(sock_fd->num_active_queries, 0);
 }
 
 TEST_F(ResolverTest, Resolve_DNSDoHServersFallbackNotValidated) {
@@ -181,16 +205,17 @@ TEST_F(ResolverTest, Resolve_DNSDoHServersFallbackNotValidated) {
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _)).Times(0);
 
-  resolver_->SetNameServers(kTestNameServers);
-  resolver_->SetDoHProviders(kTestDoHProviders);
+  SetNameServers(kTestNameServers);
+  SetDoHProviders(kTestDoHProviders);
 
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
+  EXPECT_GT(sock_fd->num_active_queries, 0);
 }
 
 TEST_F(ResolverTest, Resolve_DNSDoHServersFallbackPartiallyValidated) {
-  resolver_->SetNameServers(kTestNameServers);
-  resolver_->SetDoHProviders(kTestDoHProviders);
+  SetNameServers(kTestNameServers);
+  SetDoHProviders(kTestDoHProviders);
 
   const auto& validated_name_server = kTestNameServers.front();
   auto probe_state = std::make_unique<Resolver::ProbeState>(
@@ -204,27 +229,12 @@ TEST_F(ResolverTest, Resolve_DNSDoHServersFallbackPartiallyValidated) {
 
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
+  EXPECT_GT(sock_fd->num_active_queries, 0);
 }
 
 TEST_F(ResolverTest, Resolve_DNSDoHServersFallbackValidated) {
-  resolver_->SetNameServers(kTestNameServers);
-  resolver_->SetDoHProviders(kTestDoHProviders);
-
-  // Validate DoH providers and name servers.
-  for (const auto& doh_provider : kTestDoHProviders) {
-    DoHCurlClient::CurlResult res(CURLE_OK, 200 /* http_code */,
-                                  0 /* timeout */);
-    auto probe_state =
-        std::make_unique<Resolver::ProbeState>(doh_provider, /*doh=*/true);
-    resolver_->HandleDoHProbeResult(probe_state->weak_factory.GetWeakPtr(), res,
-                                    nullptr, 0);
-  }
-  for (const auto& name_server : kTestNameServers) {
-    auto probe_state =
-        std::make_unique<Resolver::ProbeState>(name_server, /*doh=*/false);
-    resolver_->HandleDo53ProbeResult(probe_state->weak_factory.GetWeakPtr(),
-                                     ARES_SUCCESS, nullptr, 0);
-  }
+  SetNameServers(kTestNameServers, /*validate=*/true);
+  SetDoHProviders(kTestDoHProviders, /*validate=*/true);
 
   EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _))
       .Times(kTestNameServers.size())
@@ -233,26 +243,18 @@ TEST_F(ResolverTest, Resolve_DNSDoHServersFallbackValidated) {
 
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr(), true);
+  EXPECT_GT(sock_fd->num_active_queries, 0);
 }
 
 TEST_F(ResolverTest, CurlResult_CURLFail) {
-  resolver_->SetNameServers(kTestNameServers);
-  resolver_->SetDoHProviders(kTestDoHProviders);
-
-  // Validate DoH providers.
-  for (const auto& doh_provider : kTestDoHProviders) {
-    DoHCurlClient::CurlResult res(CURLE_OK, 200 /* http_code */,
-                                  0 /* timeout */);
-    auto probe_state =
-        std::make_unique<Resolver::ProbeState>(doh_provider, /*doh=*/true);
-    resolver_->HandleDoHProbeResult(probe_state->weak_factory.GetWeakPtr(), res,
-                                    nullptr, 0);
-  }
+  SetNameServers(kTestNameServers, /*validate=*/true);
+  SetDoHProviders(kTestDoHProviders, /*validate=*/true);
 
   EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _))
       .WillRepeatedly(Return(true));
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
+  EXPECT_GT(sock_fd->num_active_queries, 0);
 
   // Expect query to be done with Do53.
   EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _))
@@ -271,23 +273,14 @@ TEST_F(ResolverTest, CurlResult_CURLFail) {
 }
 
 TEST_F(ResolverTest, CurlResult_HTTPError) {
-  resolver_->SetNameServers(kTestNameServers);
-  resolver_->SetDoHProviders(kTestDoHProviders);
-
-  // Validate DoH providers.
-  for (const auto& doh_provider : kTestDoHProviders) {
-    DoHCurlClient::CurlResult res(CURLE_OK, 200 /* http_code */,
-                                  0 /* timeout */);
-    auto probe_state =
-        std::make_unique<Resolver::ProbeState>(doh_provider, /*doh=*/true);
-    resolver_->HandleDoHProbeResult(probe_state->weak_factory.GetWeakPtr(), res,
-                                    nullptr, 0);
-  }
+  SetNameServers(kTestNameServers, /*validate=*/true);
+  SetDoHProviders(kTestDoHProviders, /*validate=*/true);
 
   EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _))
       .WillRepeatedly(Return(true));
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
+  EXPECT_GT(sock_fd->num_active_queries, 0);
 
   // Expect query to be done with Do53.
   EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _))
@@ -305,23 +298,14 @@ TEST_F(ResolverTest, CurlResult_HTTPError) {
 }
 
 TEST_F(ResolverTest, CurlResult_SuccessNoRetry) {
-  resolver_->SetNameServers(kTestNameServers);
-  resolver_->SetDoHProviders(kTestDoHProviders);
-
-  // Validate DoH providers.
-  for (const auto& doh_provider : kTestDoHProviders) {
-    DoHCurlClient::CurlResult res(CURLE_OK, 200 /* http_code */,
-                                  0 /* timeout */);
-    auto probe_state =
-        std::make_unique<Resolver::ProbeState>(doh_provider, /*doh=*/true);
-    resolver_->HandleDoHProbeResult(probe_state->weak_factory.GetWeakPtr(), res,
-                                    nullptr, 0);
-  }
+  SetNameServers(kTestNameServers, /*validate=*/true);
+  SetDoHProviders(kTestDoHProviders, /*validate=*/true);
 
   EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _))
       .WillRepeatedly(Return(true));
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
+  EXPECT_GT(sock_fd->num_active_queries, 0);
 
   // Expect no more queries.
   EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
@@ -336,13 +320,14 @@ TEST_F(ResolverTest, CurlResult_SuccessNoRetry) {
 }
 
 TEST_F(ResolverTest, CurlResult_CurlErrorNoRetry) {
-  resolver_->SetNameServers(kTestNameServers);
-  resolver_->SetDoHProviders(kTestDoHProviders, true /* always_on */);
+  SetNameServers(kTestNameServers, /*validate=*/true);
+  SetDoHProviders(kTestDoHProviders, /*validate=*/true, /*always_on_doh=*/true);
 
   EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _))
       .WillRepeatedly(Return(true));
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
+  EXPECT_GT(sock_fd->num_active_queries, 0);
 
   // Expect no more queries.
   EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
@@ -358,13 +343,14 @@ TEST_F(ResolverTest, CurlResult_CurlErrorNoRetry) {
 }
 
 TEST_F(ResolverTest, CurlResult_HTTPErrorNoRetry) {
-  resolver_->SetNameServers(kTestNameServers);
-  resolver_->SetDoHProviders(kTestDoHProviders, true /* always_on */);
+  SetNameServers(kTestNameServers, /*validate=*/true);
+  SetDoHProviders(kTestDoHProviders, /*validate=*/true, /*always_on_doh=*/true);
 
   EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _))
       .WillRepeatedly(Return(true));
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
+  EXPECT_GT(sock_fd->num_active_queries, 0);
 
   // Expect no more queries.
   EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
@@ -379,13 +365,15 @@ TEST_F(ResolverTest, CurlResult_HTTPErrorNoRetry) {
 }
 
 TEST_F(ResolverTest, CurlResult_FailTooManyRetries) {
-  resolver_->SetNameServers(kTestNameServers);
-  resolver_->SetDoHProviders(kTestDoHProviders);
+  SetNameServers(kTestNameServers, /*validate=*/true);
+  SetDoHProviders(kTestDoHProviders, /*validate=*/true);
 
+  EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
   EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, _))
       .WillRepeatedly(Return(true));
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_STREAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
+  EXPECT_GT(sock_fd->num_active_queries, 0);
 
   // Expect no more queries.
   EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
@@ -401,12 +389,13 @@ TEST_F(ResolverTest, CurlResult_FailTooManyRetries) {
 }
 
 TEST_F(ResolverTest, HandleAresResult_Success) {
-  resolver_->SetNameServers(kTestNameServers);
+  SetNameServers(kTestNameServers, /*validate=*/true);
 
   EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _))
       .WillRepeatedly(Return(true));
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_DGRAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
+  EXPECT_GT(sock_fd->num_active_queries, 0);
 
   // Expect no more queries.
   EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
@@ -559,6 +548,7 @@ TEST_F(ResolverTest, Probe_InvalidateNameServer) {
       .WillRepeatedly(Return(true));
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_DGRAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
+  EXPECT_GT(sock_fd->num_active_queries, 0);
 
   auto validated_probe_state = std::make_unique<Resolver::ProbeState>(
       invalidated_name_server, /*doh=*/false, /*validated=*/true);
@@ -583,6 +573,7 @@ TEST_F(ResolverTest, Probe_InvalidateNameServer) {
 
   auto fd_check = std::make_unique<Resolver::SocketFd>(SOCK_DGRAM, 0);
   resolver_->Resolve(fd_check->weak_factory.GetWeakPtr());
+  EXPECT_GT(fd_check->num_active_queries, 0);
 }
 
 TEST_F(ResolverTest, Probe_InvalidateDoHProvider) {
@@ -608,6 +599,7 @@ TEST_F(ResolverTest, Probe_InvalidateDoHProvider) {
       .WillRepeatedly(Return(true));
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_DGRAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
+  EXPECT_GT(sock_fd->num_active_queries, 0);
 
   auto validated_probe_state = std::make_unique<Resolver::ProbeState>(
       invalidated_doh_provider, /*doh=*/true, /*validated=*/true);
@@ -636,6 +628,7 @@ TEST_F(ResolverTest, Probe_InvalidateDoHProvider) {
 
   auto fd_check = std::make_unique<Resolver::SocketFd>(SOCK_DGRAM, 0);
   resolver_->Resolve(fd_check->weak_factory.GetWeakPtr());
+  EXPECT_GT(fd_check->num_active_queries, 0);
 }
 
 TEST_F(ResolverTest, Probe_Do53ProbeRestarted) {
@@ -658,6 +651,7 @@ TEST_F(ResolverTest, Probe_Do53ProbeRestarted) {
       .WillRepeatedly(Return(true));
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_DGRAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
+  EXPECT_GT(sock_fd->num_active_queries, 0);
 
   // Expect probe to be restarted only for the invalidated name server.
   EXPECT_CALL(*ares_client_, Resolve(_, _, _, invalidated_name_server, _))
@@ -704,6 +698,7 @@ TEST_F(ResolverTest, Probe_DoHProbeRestarted) {
       .WillRepeatedly(Return(true));
   auto sock_fd = std::make_unique<Resolver::SocketFd>(SOCK_DGRAM, 0);
   resolver_->Resolve(sock_fd->weak_factory.GetWeakPtr());
+  EXPECT_GT(sock_fd->num_active_queries, 0);
 
   // Expect probe to be restarted only for the invalidated DoH provider.
   EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, invalidated_doh_provider))
