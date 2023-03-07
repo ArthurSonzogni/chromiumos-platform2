@@ -3,20 +3,36 @@
 # found in the LICENSE file.
 
 import("//common-mk/install_seccomp_policy.gni")
+import("//common-mk/mojom_bindings_generator.gni")
 
 group("all") {
   deps = [
     ":cros_camera_diagnostics_service",
     ":install_cros_camera_diagnostics_conf",
+    ":install_cros_camera_diagnostics_mojo",
     ":install_cros_camera_diagnostics_policy",
   ]
 }
 
+generate_mojom_bindings("cros_camera_diagnostics_mojom") {
+  sources = [ "mojo/camera_diagnostics.mojom" ]
+  mojo_root = "${platform2_root}"
+}
+
 executable("cros_camera_diagnostics_service") {
-  sources = [ "camera_diagnostics_main.cc" ]
+  sources = [
+    "camera_diagnostics.cc",
+    "camera_diagnostics.h",
+    "camera_diagnostics_impl.h",
+    "camera_diagnostics_main.cc",
+    "diagnostics_service_provider.cc",
+    "diagnostics_service_provider.h",
+  ]
   configs += [ "//camera/build:cros_camera_common" ]
   pkg_deps = [
     "libbrillo",
+    "libmojo",
+    "mojo_service_manager",
 
     # For event tracing helpers.
     "perfetto",
@@ -25,12 +41,18 @@ executable("cros_camera_diagnostics_service") {
     "dl",
     "rt",
   ]
+  deps = [ ":cros_camera_diagnostics_mojom" ]
   install_path = "bin"
 }
 
 install_config("install_cros_camera_diagnostics_conf") {
   sources = [ "init/cros-camera-diagnostics.conf" ]
   install_path = "/etc/init"
+}
+
+install_config("install_cros_camera_diagnostics_mojo") {
+  sources = [ "mojo/cros_camera_diagnostics_mojo.jsonc" ]
+  install_path = "/etc/mojo/service_manager/policy"
 }
 
 install_seccomp_policy("install_cros_camera_diagnostics_policy") {

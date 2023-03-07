@@ -8,6 +8,7 @@
 #include <brillo/syslog_logging.h>
 
 #include "cros-camera/common.h"
+#include "diagnostics/camera_diagnostics.h"
 
 static void SetLogItems() {
   constexpr bool kOptionPID = true;
@@ -30,6 +31,10 @@ int main(int argc, char* argv[]) {
   // Create the daemon instance first to properly set up MessageLoop and
   // AtExitManager.
   brillo::Daemon daemon;
+
+  cros::CameraDiagnostics camera_diagnostics;
+  // Setup camera diagnostics mojo IPC.
+  camera_diagnostics.Start();
 
   LOGF(INFO) << "Starting DAEMON cros-camera-diagnostics service";
   daemon.Run();

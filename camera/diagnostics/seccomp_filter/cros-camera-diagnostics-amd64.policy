@@ -12,8 +12,10 @@ connect: 1
 epoll_create1: 1
 epoll_ctl: 1
 epoll_wait: 1
+eventfd2: 1
 exit: 1
 exit_group: 1
+fcntl: 1
 fstatfs: 1
 getegid: 1
 geteuid: 1
@@ -24,6 +26,7 @@ gettid: 1
 getuid: 1
 ioctl: arg1 == TCGETS
 lseek: 1
+memfd_create: 1
 mmap: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 mprotect: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
 munmap: 1
@@ -33,6 +36,7 @@ pipe2: 1
 pread64: 1
 prlimit64: 1
 read: 1
+recvmsg: 1
 restart_syscall: 1
 rt_sigprocmask: 1
 rt_sigreturn: 1
@@ -41,4 +45,5 @@ set_robust_list: 1
 set_tid_address: 1
 signalfd4: 1
 socket: arg0 == AF_UNIX
+uname: 1
 write: 1
