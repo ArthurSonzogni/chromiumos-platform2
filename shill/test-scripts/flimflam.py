@@ -75,6 +75,8 @@ def convert_dbus_value(value, indent=0):
             )
         valstr += "\n" + spacer + "]"
         return valstr
+    elif value.__class__ == dbus.String:
+        return value.encode("utf-8")
     else:
         return str(value)
 
