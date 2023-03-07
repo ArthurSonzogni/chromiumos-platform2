@@ -165,7 +165,7 @@ GrowableIOBuffer::~GrowableIOBuffer() {
 PickledIOBuffer::PickledIOBuffer() = default;
 
 void PickledIOBuffer::Done() {
-  data_ = const_cast<char*>(static_cast<const char*>(pickle_.data()));
+  data_ = reinterpret_cast<char*>(const_cast<uint8_t*>(pickle_.data()));
 }
 
 PickledIOBuffer::~PickledIOBuffer() {
