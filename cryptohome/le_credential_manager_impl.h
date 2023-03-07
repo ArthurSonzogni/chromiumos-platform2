@@ -96,7 +96,7 @@ class LECredentialManagerImpl : public LECredentialManager {
   // - LE_CRED_ERROR_HASH_TREE if there was an error in the hash tree.
   //
   // The returned label should be placed into the metadata associated with the
-  // Encrypted Vault Key (EVK). so that it can be used to look up the credential
+  // authentication factor. so that it can be used to look up the credential
   // later.
   LECredStatus InsertLeaf(
       uint8_t* auth_channel,
