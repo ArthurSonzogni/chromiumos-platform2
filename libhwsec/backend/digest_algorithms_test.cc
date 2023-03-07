@@ -47,7 +47,7 @@ DigestAlgorithm kSupportedDigestInfoAlgorithms[] = {
 };
 }  // namespace
 
-class DigestAlgorithmsTest : public ::testing::Test {};
+using DigestAlgorithmsTest = ::testing::Test;
 
 TEST_F(DigestAlgorithmsTest, GetDigestLength) {
   EXPECT_EQ(GetDigestLength(DigestAlgorithm::kNoDigest), 0);

@@ -22,7 +22,7 @@ using testing::SetArgPointee;
 using tpm_manager::TpmManagerStatus;
 namespace hwsec {
 
-class BackendRandomTpm1Test : public BackendTpm1TestBase {};
+using BackendRandomTpm1Test = BackendTpm1TestBase;
 
 TEST_F(BackendRandomTpm1Test, RandomBlob) {
   const size_t kFakeSize = 42;

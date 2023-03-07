@@ -8,7 +8,6 @@
 #include <base/strings/stringprintf.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 
-#include "libhwsec/backend/tpm1/backend.h"
 #include "libhwsec/error/tpm1_error.h"
 #include "libhwsec/overalls/overalls.h"
 #include "libhwsec/status.h"
@@ -27,16 +26,14 @@ StatusOr<brillo::Blob> RandomTpm1::RandomBlob(size_t size) {
 }
 
 StatusOr<brillo::SecureBlob> RandomTpm1::RandomSecureBlob(size_t size) {
-  ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
 
-  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, backend_.GetUserTpmHandle());
-
-  overalls::Overalls& overalls = backend_.GetOverall().overalls;
+  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, tss_helper_.GetUserTpmHandle());
 
   brillo::SecureBlob random(size);
-  ScopedTssSecureMemory tpm_data(overalls, context);
+  ScopedTssSecureMemory tpm_data(overalls_, context);
 
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_TPM_GetRandom(
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_TPM_GetRandom(
                       tpm_handle, random.size(), tpm_data.ptr())))
       .WithStatus<TPMError>("Failed to call Ospi_TPM_GetRandom");
 

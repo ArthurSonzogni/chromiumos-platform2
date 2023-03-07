@@ -11,7 +11,6 @@
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 
-#include "libhwsec/backend/tpm1/backend.h"
 #include "libhwsec/error/tpm1_error.h"
 #include "libhwsec/overalls/overalls.h"
 #include "libhwsec/status.h"
@@ -30,32 +29,29 @@ StatusOr<brillo::Blob> EncryptionTpm1::Encrypt(
     return MakeStatus<TPMError>("Unsupported schema", TPMRetryAction::kNoRetry);
   }
 
-  ASSIGN_OR_RETURN(const KeyTpm1& key_data,
-                   backend_.GetKeyManagementTpm1().GetKeyData(key));
+  ASSIGN_OR_RETURN(const KeyTpm1& key_data, key_management_.GetKeyData(key));
 
-  ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
-
-  overalls::Overalls& overalls = backend_.GetOverall().overalls;
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
 
   TSS_FLAG init_flags = TSS_ENCDATA_SEAL;
-  ScopedTssKey enc_handle(overalls, context);
+  ScopedTssKey enc_handle(overalls_, context);
 
   RETURN_IF_ERROR(
-      MakeStatus<TPM1Error>(overalls.Ospi_Context_CreateObject(
+      MakeStatus<TPM1Error>(overalls_.Ospi_Context_CreateObject(
           context, TSS_OBJECT_TYPE_ENCDATA, init_flags, enc_handle.ptr())))
       .WithStatus<TPMError>("Failed to call Ospi_Context_CreateObject");
 
   brillo::SecureBlob mutable_plaintext = plaintext;
 
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_Data_Bind(
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Data_Bind(
                       enc_handle, key_data.key_handle, mutable_plaintext.size(),
                       mutable_plaintext.data())))
       .WithStatus<TPMError>("Failed to call Ospi_Data_Bind");
 
   uint32_t length = 0;
-  ScopedTssMemory buffer(overalls, context);
+  ScopedTssMemory buffer(overalls_, context);
 
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_GetAttribData(
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_GetAttribData(
                       enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
                       TSS_TSPATTRIB_ENCDATABLOB_BLOB, &length, buffer.ptr())))
       .WithStatus<TPMError>("Failed to call Ospi_GetAttribData");
@@ -70,33 +66,30 @@ StatusOr<brillo::SecureBlob> EncryptionTpm1::Decrypt(
     return MakeStatus<TPMError>("Unsupported schema", TPMRetryAction::kNoRetry);
   }
 
-  ASSIGN_OR_RETURN(const KeyTpm1& key_data,
-                   backend_.GetKeyManagementTpm1().GetKeyData(key));
+  ASSIGN_OR_RETURN(const KeyTpm1& key_data, key_management_.GetKeyData(key));
 
-  ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
-
-  overalls::Overalls& overalls = backend_.GetOverall().overalls;
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
 
   brillo::Blob local_data = ciphertext;
 
   TSS_FLAG init_flags = TSS_ENCDATA_SEAL;
-  ScopedTssKey enc_handle(overalls, context);
+  ScopedTssKey enc_handle(overalls_, context);
 
   RETURN_IF_ERROR(
-      MakeStatus<TPM1Error>(overalls.Ospi_Context_CreateObject(
+      MakeStatus<TPM1Error>(overalls_.Ospi_Context_CreateObject(
           context, TSS_OBJECT_TYPE_ENCDATA, init_flags, enc_handle.ptr())))
       .WithStatus<TPMError>("Failed to call Ospi_Context_CreateObject");
 
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_SetAttribData(
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_SetAttribData(
                       enc_handle, TSS_TSPATTRIB_ENCDATA_BLOB,
                       TSS_TSPATTRIB_ENCDATABLOB_BLOB, local_data.size(),
                       local_data.data())))
       .WithStatus<TPMError>("Failed to call Ospi_SetAttribData");
 
-  ScopedTssSecureMemory buffer(overalls, context);
+  ScopedTssSecureMemory buffer(overalls_, context);
   uint32_t length = 0;
 
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_Data_Unbind(
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Data_Unbind(
                       enc_handle, key_data.key_handle, &length, buffer.ptr())))
       .WithStatus<TPMError>("Failed to call Ospi_Data_Unbind");
 

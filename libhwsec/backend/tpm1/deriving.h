@@ -7,17 +7,13 @@
 
 #include <brillo/secure_blob.h>
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/deriving.h"
 #include "libhwsec/status.h"
 
 namespace hwsec {
 
-class BackendTpm1;
-
-class DerivingTpm1 : public Backend::Deriving,
-                     public Backend::SubClassHelper<BackendTpm1> {
+class DerivingTpm1 : public Deriving {
  public:
-  using SubClassHelper::SubClassHelper;
   StatusOr<brillo::Blob> Derive(Key key, const brillo::Blob& blob) override;
   StatusOr<brillo::SecureBlob> SecureDerive(
       Key key, const brillo::SecureBlob& blob) override;

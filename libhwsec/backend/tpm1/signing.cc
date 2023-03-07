@@ -9,7 +9,6 @@
 #include <libhwsec-foundation/status/status_chain_macros.h>
 
 #include "libhwsec/backend/digest_algorithms.h"
-#include "libhwsec/backend/tpm1/backend.h"
 #include "libhwsec/error/tpm1_error.h"
 #include "libhwsec/overalls/overalls.h"
 #include "libhwsec/status.h"
@@ -39,19 +38,16 @@ StatusOr<brillo::Blob> SigningTpm1::RawSign(Key key,
                                 TPMRetryAction::kNoRetry);
   }
 
-  ASSIGN_OR_RETURN(const KeyTpm1& key_data,
-                   backend_.GetKeyManagementTpm1().GetKeyData(key),
+  ASSIGN_OR_RETURN(const KeyTpm1& key_data, key_management_.GetKeyData(key),
                    _.WithStatus<TPMError>("Failed to get the key data"));
 
-  overalls::Overalls& overalls = backend_.GetOverall().overalls;
-
-  ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
 
   // Create a hash object to hold the input.
-  ScopedTssObject<TSS_HHASH> hash_handle(overalls, context);
+  ScopedTssObject<TSS_HHASH> hash_handle(overalls_, context);
 
   RETURN_IF_ERROR(
-      MakeStatus<TPM1Error>(overalls.Ospi_Context_CreateObject(
+      MakeStatus<TPM1Error>(overalls_.Ospi_Context_CreateObject(
           context, TSS_OBJECT_TYPE_HASH, TSS_HASH_OTHER, hash_handle.ptr())))
       .WithStatus<TPMError>("Failed to create hash object");
 
@@ -62,14 +58,14 @@ StatusOr<brillo::Blob> SigningTpm1::RawSign(Key key,
   brillo::Blob der_encoded_input = brillo::CombineBlobs({der_header, data});
 
   RETURN_IF_ERROR(
-      MakeStatus<TPM1Error>(overalls.Ospi_Hash_SetHashValue(
+      MakeStatus<TPM1Error>(overalls_.Ospi_Hash_SetHashValue(
           hash_handle, der_encoded_input.size(), der_encoded_input.data())))
       .WithStatus<TPMError>("Failed to set hash data");
 
   uint32_t length = 0;
-  ScopedTssMemory buffer(overalls, context);
+  ScopedTssMemory buffer(overalls_, context);
 
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_Hash_Sign(
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Hash_Sign(
                       hash_handle, key_data.key_handle, &length, buffer.ptr())))
       .WithStatus<TPMError>("Failed to generate signature");
 

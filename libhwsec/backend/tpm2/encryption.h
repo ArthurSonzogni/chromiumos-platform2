@@ -7,24 +7,33 @@
 
 #include <brillo/secure_blob.h>
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/encryption.h"
+#include "libhwsec/backend/tpm2/config.h"
+#include "libhwsec/backend/tpm2/key_management.h"
+#include "libhwsec/backend/tpm2/trunks_context.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/key.h"
 
 namespace hwsec {
 
-class BackendTpm2;
-
-class EncryptionTpm2 : public Backend::Encryption,
-                       public Backend::SubClassHelper<BackendTpm2> {
+class EncryptionTpm2 : public Encryption {
  public:
-  using SubClassHelper::SubClassHelper;
+  EncryptionTpm2(TrunksContext& context,
+                 ConfigTpm2& config,
+                 KeyManagementTpm2& key_management)
+      : context_(context), config_(config), key_management_(key_management) {}
+
   StatusOr<brillo::Blob> Encrypt(Key key,
                                  const brillo::SecureBlob& plaintext,
                                  EncryptionOptions options) override;
   StatusOr<brillo::SecureBlob> Decrypt(Key key,
                                        const brillo::Blob& ciphertext,
                                        EncryptionOptions options) override;
+
+ private:
+  TrunksContext& context_;
+  ConfigTpm2& config_;
+  KeyManagementTpm2& key_management_;
 };
 
 }  // namespace hwsec

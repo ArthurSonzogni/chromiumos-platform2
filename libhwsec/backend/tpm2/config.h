@@ -16,20 +16,20 @@
 #include <trunks/command_transceiver.h>
 #include <trunks/trunks_factory.h>
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/config.h"
 #include "libhwsec/backend/tpm2/session_management.h"
+#include "libhwsec/backend/tpm2/trunks_context.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/key.h"
 #include "libhwsec/structures/operation_policy.h"
 
 namespace hwsec {
 
-class BackendTpm2;
-
-class ConfigTpm2 : public Backend::Config,
-                   public Backend::SubClassHelper<BackendTpm2> {
+class ConfigTpm2 : public Config {
  public:
-  using SubClassHelper::SubClassHelper;
+  ConfigTpm2(TrunksContext& context, SessionManagementTpm2& session_management)
+      : context_(context), session_management_(session_management) {}
+
   StatusOr<OperationPolicy> ToOperationPolicy(
       const OperationPolicySetting& policy) override;
   Status SetCurrentUser(const std::string& current_user) override;
@@ -85,6 +85,9 @@ class ConfigTpm2 : public Backend::Config,
 
  private:
   StatusOr<std::string> ReadPcr(uint32_t pcr_index);
+
+  TrunksContext& context_;
+  SessionManagementTpm2& session_management_;
 };
 
 }  // namespace hwsec

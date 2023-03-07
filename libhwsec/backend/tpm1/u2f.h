@@ -10,18 +10,13 @@
 
 #include <brillo/secure_blob.h>
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/u2f.h"
 #include "libhwsec/status.h"
 
 namespace hwsec {
 
-class BackendTpm1;
-
-class U2fTpm1 : public Backend::U2f,
-                public Backend::SubClassHelper<BackendTpm1> {
+class U2fTpm1 : public U2f {
  public:
-  using SubClassHelper::SubClassHelper;
-
   StatusOr<bool> IsEnabled() override;
   StatusOr<u2f::GenerateResult> GenerateUserPresenceOnly(
       const brillo::Blob& app_id,

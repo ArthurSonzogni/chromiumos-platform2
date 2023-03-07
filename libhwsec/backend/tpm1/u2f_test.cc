@@ -10,7 +10,7 @@ using hwsec_foundation::error::testing::IsOkAndHolds;
 
 namespace hwsec {
 
-class BackendU2fTpm1Test : public BackendTpm1TestBase {};
+using BackendU2fTpm1Test = BackendTpm1TestBase;
 
 TEST_F(BackendU2fTpm1Test, IsEnabled) {
   EXPECT_THAT(backend_->GetU2fTpm1().IsEnabled(), IsOkAndHolds(false));

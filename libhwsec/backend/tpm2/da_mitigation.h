@@ -5,20 +5,24 @@
 #ifndef LIBHWSEC_BACKEND_TPM2_DA_MITIGATION_H_
 #define LIBHWSEC_BACKEND_TPM2_DA_MITIGATION_H_
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/da_mitigation.h"
+#include "libhwsec/proxy/proxy.h"
 #include "libhwsec/status.h"
 
 namespace hwsec {
 
-class BackendTpm2;
-
-class DAMitigationTpm2 : public Backend::DAMitigation,
-                         public Backend::SubClassHelper<BackendTpm2> {
+class DAMitigationTpm2 : public DAMitigation {
  public:
-  using SubClassHelper::SubClassHelper;
+  explicit DAMitigationTpm2(
+      org::chromium::TpmManagerProxyInterface& tpm_manager)
+      : tpm_manager_(tpm_manager) {}
+
   StatusOr<bool> IsReady() override;
   StatusOr<DAMitigationStatus> GetStatus() override;
   Status Mitigate() override;
+
+ private:
+  org::chromium::TpmManagerProxyInterface& tpm_manager_;
 };
 
 }  // namespace hwsec

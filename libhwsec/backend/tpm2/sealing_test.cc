@@ -23,7 +23,7 @@ using testing::SetArgPointee;
 using tpm_manager::TpmManagerStatus;
 namespace hwsec {
 
-class BackendSealingTpm2Test : public BackendTpm2TestBase {};
+using BackendSealingTpm2Test = BackendTpm2TestBase;
 
 TEST_F(BackendSealingTpm2Test, IsSupported) {
   EXPECT_THAT(backend_->GetSealingTpm2().IsSupported(), IsOkAndHolds(true));

@@ -12,17 +12,18 @@
 #include <brillo/secure_blob.h>
 #include <trunks/tpm_utility.h>
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/pinweaver.h"
+#include "libhwsec/backend/tpm2/config.h"
+#include "libhwsec/backend/tpm2/trunks_context.h"
 #include "libhwsec/status.h"
 
 namespace hwsec {
 
-class BackendTpm2;
-
-class PinWeaverTpm2 : public Backend::PinWeaver,
-                      public Backend::SubClassHelper<BackendTpm2> {
+class PinWeaverTpm2 : public PinWeaver {
  public:
-  using SubClassHelper::SubClassHelper;
+  PinWeaverTpm2(TrunksContext& context, ConfigTpm2& config)
+      : context_(context), config_(config) {}
+
   StatusOr<bool> IsEnabled() override;
   StatusOr<uint8_t> GetVersion() override;
   StatusOr<CredentialTreeResult> Reset(uint32_t bits_per_level,
@@ -93,6 +94,9 @@ class PinWeaverTpm2 : public Backend::PinWeaver,
       const brillo::Blob& cred_metadata);
   StatusOr<trunks::ValidPcrCriteria> PolicySettingsToPcrCriteria(
       const std::vector<OperationPolicySetting>& policies);
+
+  TrunksContext& context_;
+  ConfigTpm2& config_;
 
   // The protocol version used by pinweaver.
   std::optional<uint8_t> protocol_version_;

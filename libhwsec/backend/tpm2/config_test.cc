@@ -23,7 +23,7 @@ using testing::SetArgPointee;
 using tpm_manager::TpmManagerStatus;
 namespace hwsec {
 
-class BackendConfigTpm2Test : public BackendTpm2TestBase {};
+using BackendConfigTpm2Test = BackendTpm2TestBase;
 
 TEST_F(BackendConfigTpm2Test, ToOperationPolicy) {
   const brillo::SecureBlob kFakeAuthValue("auth_value");

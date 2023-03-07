@@ -32,7 +32,7 @@ constexpr uint32_t kInstallAttributesIndex = 0x20000004;
 
 namespace hwsec {
 
-class BackendStorageTpm1Test : public BackendTpm1TestBase {};
+using BackendStorageTpm1Test = BackendTpm1TestBase;
 
 TEST_F(BackendStorageTpm1Test, IsReady) {
   tpm_manager::ListSpacesReply list_reply;

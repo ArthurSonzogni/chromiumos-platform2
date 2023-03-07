@@ -12,14 +12,29 @@ namespace hwsec {
 BackendTpm2::BackendTpm2(Proxy& proxy,
                          MiddlewareDerivative middleware_derivative)
     : proxy_(proxy),
-      trunks_context_({
-          .command_transceiver = proxy_.GetTrunksCommandTransceiver(),
-          .factory = proxy_.GetTrunksFactory(),
-          .tpm_state = proxy_.GetTrunksFactory().GetTpmState(),
-          .tpm_utility = proxy_.GetTrunksFactory().GetTpmUtility(),
-      }),
-      middleware_derivative_(middleware_derivative) {}
+      tpm_manager_(proxy_.GetTpmManager()),
+      tpm_nvram_(proxy_.GetTpmNvram()),
+      middleware_derivative_(middleware_derivative),
+      context_(proxy_.GetTrunksCommandTransceiver(), proxy_.GetTrunksFactory()),
+      state_(tpm_manager_),
+      da_mitigation_(tpm_manager_),
+      storage_(tpm_manager_, tpm_nvram_),
+      session_management_(context_),
+      config_(context_, session_management_),
+      key_management_(context_, config_, tpm_manager_, middleware_derivative_),
+      sealing_(context_, config_, key_management_, session_management_),
+      signature_sealing_(
+          context_, config_, key_management_, session_management_),
+      deriving_(context_, config_, key_management_),
+      encryption_(context_, config_, key_management_),
+      signing_(context_, config_, key_management_),
+      random_(context_),
+      pinweaver_(context_, config_),
+      vendor_(context_, tpm_manager_),
+      recovery_crypto_(context_, config_, key_management_, session_management_),
+      u2f_(context_),
+      ro_data_(tpm_nvram_) {}
 
-BackendTpm2::~BackendTpm2() {}
+BackendTpm2::~BackendTpm2() = default;
 
 }  // namespace hwsec

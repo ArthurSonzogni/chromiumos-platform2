@@ -17,15 +17,16 @@
 #include <brillo/secure_blob.h>
 #include <trunks/tpm_generated.h>
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/key_management.h"
+#include "libhwsec/backend/tpm2/config.h"
+#include "libhwsec/backend/tpm2/trunks_context.h"
+#include "libhwsec/proxy/proxy.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/key.h"
 #include "libhwsec/structures/no_default_init.h"
 #include "libhwsec/structures/operation_policy.h"
 
 namespace hwsec {
-
-class BackendTpm2;
 
 struct KeyReloadDataTpm2 {
   brillo::Blob key_blob;
@@ -52,10 +53,17 @@ struct KeyTpm2 {
   std::optional<KeyReloadDataTpm2> reload_data;
 };
 
-class KeyManagementTpm2 : public Backend::KeyManagement,
-                          public Backend::SubClassHelper<BackendTpm2> {
+class KeyManagementTpm2 : public KeyManagement {
  public:
-  using SubClassHelper::SubClassHelper;
+  KeyManagementTpm2(TrunksContext& context,
+                    ConfigTpm2& config,
+                    org::chromium::TpmManagerProxyInterface& tpm_manager,
+                    MiddlewareDerivative& middleware_derivative)
+      : context_(context),
+        config_(config),
+        tpm_manager_(tpm_manager),
+        middleware_derivative_(middleware_derivative) {}
+
   ~KeyManagementTpm2();
 
   StatusOr<absl::flat_hash_set<KeyAlgoType>> GetSupportedAlgo() override;
@@ -127,6 +135,11 @@ class KeyManagementTpm2 : public Backend::KeyManagement,
       std::optional<KeyReloadDataTpm2> reload_data);
   Status FlushTransientKey(Key key, KeyTpm2& key_data);
   Status FlushKeyTokenAndHandle(KeyToken token, trunks::TPM_HANDLE handle);
+
+  TrunksContext& context_;
+  ConfigTpm2& config_;
+  org::chromium::TpmManagerProxyInterface& tpm_manager_;
+  MiddlewareDerivative& middleware_derivative_;
 
   KeyToken current_token_ = 0;
   absl::flat_hash_map<KeyToken, KeyTpm2> key_map_;

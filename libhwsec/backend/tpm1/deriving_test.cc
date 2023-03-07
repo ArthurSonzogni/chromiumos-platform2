@@ -22,7 +22,7 @@ using testing::SetArgPointee;
 using tpm_manager::TpmManagerStatus;
 namespace hwsec {
 
-class BackendDerivingTpm1Test : public BackendTpm1TestBase {};
+using BackendDerivingTpm1Test = BackendTpm1TestBase;
 
 TEST_F(BackendDerivingTpm1Test, SecureDerive) {
   const brillo::SecureBlob kFakeBlob("blob");

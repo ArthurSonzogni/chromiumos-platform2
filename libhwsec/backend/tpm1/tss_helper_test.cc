@@ -24,9 +24,9 @@ using testing::SetArgPointee;
 
 namespace hwsec {
 
-class BackendTpm1Test : public BackendTpm1TestBase {};
+using TssHelperTest = BackendTpm1TestBase;
 
-TEST_F(BackendTpm1Test, GetScopedTssContext) {
+TEST_F(TssHelperTest, GetScopedTssContext) {
   TSS_HCONTEXT kFakeContext = 0x5566;
 
   EXPECT_CALL(proxy_->GetMock().overalls, Ospi_Context_Create(_))
@@ -39,12 +39,12 @@ TEST_F(BackendTpm1Test, GetScopedTssContext) {
   EXPECT_CALL(proxy_->GetMock().overalls, Ospi_Context_Close(kFakeContext))
       .WillOnce(Return(TPM_SUCCESS));
 
-  auto result = backend_->GetScopedTssContext();
+  auto result = backend_->GetTssHelper().GetScopedTssContext();
   ASSERT_OK(result);
   EXPECT_EQ(result->value(), kFakeContext);
 }
 
-TEST_F(BackendTpm1Test, GetTssContext) {
+TEST_F(TssHelperTest, GetTssContext) {
   TSS_HCONTEXT kFakeContext = 0x1234;
 
   EXPECT_CALL(proxy_->GetMock().overalls, Ospi_Context_Create(_))
@@ -57,13 +57,15 @@ TEST_F(BackendTpm1Test, GetTssContext) {
   EXPECT_CALL(proxy_->GetMock().overalls, Ospi_Context_Close(kFakeContext))
       .WillOnce(Return(TPM_SUCCESS));
 
-  EXPECT_THAT(backend_->GetTssContext(), IsOkAndHolds(kFakeContext));
+  EXPECT_THAT(backend_->GetTssHelper().GetTssContext(),
+              IsOkAndHolds(kFakeContext));
 
   // Run again to check the cache works correctly.
-  EXPECT_THAT(backend_->GetTssContext(), IsOkAndHolds(kFakeContext));
+  EXPECT_THAT(backend_->GetTssHelper().GetTssContext(),
+              IsOkAndHolds(kFakeContext));
 }
 
-TEST_F(BackendTpm1Test, GetUserTpmHandle) {
+TEST_F(TssHelperTest, GetUserTpmHandle) {
   TSS_HCONTEXT kFakeContext = 0x1234;
   TSS_HTPM kFakeTpm = 0x5678;
 
@@ -81,13 +83,15 @@ TEST_F(BackendTpm1Test, GetUserTpmHandle) {
   EXPECT_CALL(proxy_->GetMock().overalls, Ospi_Context_Close(kFakeContext))
       .WillOnce(Return(TPM_SUCCESS));
 
-  EXPECT_THAT(backend_->GetUserTpmHandle(), IsOkAndHolds(kFakeTpm));
+  EXPECT_THAT(backend_->GetTssHelper().GetUserTpmHandle(),
+              IsOkAndHolds(kFakeTpm));
 
   // Run again to check the cache works correctly.
-  EXPECT_THAT(backend_->GetUserTpmHandle(), IsOkAndHolds(kFakeTpm));
+  EXPECT_THAT(backend_->GetTssHelper().GetUserTpmHandle(),
+              IsOkAndHolds(kFakeTpm));
 }
 
-TEST_F(BackendTpm1Test, GetDelegateTpmHandle) {
+TEST_F(TssHelperTest, GetDelegateTpmHandle) {
   TSS_HCONTEXT kFakeContext = 0x1234;
   TSS_HTPM kFakeTpm1 = 0x5678;
   TSS_HTPM kFakeTpm2 = 0x8765;
@@ -157,11 +161,11 @@ TEST_F(BackendTpm1Test, GetDelegateTpmHandle) {
   EXPECT_CALL(proxy_->GetMock().overalls, Ospi_Context_Close(kFakeContext))
       .WillOnce(Return(TPM_SUCCESS));
 
-  auto result1 = backend_->GetDelegateTpmHandle();
+  auto result1 = backend_->GetTssHelper().GetDelegateTpmHandle();
   ASSERT_OK(result1);
   EXPECT_EQ(result1->value(), kFakeTpm1);
 
-  auto result2 = backend_->GetDelegateTpmHandle();
+  auto result2 = backend_->GetTssHelper().GetDelegateTpmHandle();
   ASSERT_OK(result2);
   EXPECT_EQ(result2->value(), kFakeTpm2);
 }

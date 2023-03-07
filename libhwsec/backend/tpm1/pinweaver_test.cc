@@ -22,7 +22,7 @@ using testing::SetArgPointee;
 using tpm_manager::TpmManagerStatus;
 namespace hwsec {
 
-class BackendPinweaverTpm1Test : public BackendTpm1TestBase {};
+using BackendPinweaverTpm1Test = BackendTpm1TestBase;
 
 TEST_F(BackendPinweaverTpm1Test, IsEnabled) {
   EXPECT_THAT(backend_->GetPinWeaverTpm1().IsEnabled(), IsOkAndHolds(false));

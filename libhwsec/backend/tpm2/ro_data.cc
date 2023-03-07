@@ -13,7 +13,6 @@
 #include <tpm_manager-client/tpm_manager/dbus-constants.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
-#include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm_manager_error.h"
 #include "libhwsec/error/tpm_nvram_error.h"
 #include "libhwsec/structures/no_default_init.h"
@@ -104,7 +103,7 @@ StatusOr<bool> RoDataTpm2::IsReady(RoSpace space) {
   ASSIGN_OR_RETURN(const SpaceInfo& space_info, GetSpaceInfo(space));
 
   StatusOr<DetailSpaceInfo> detail_info =
-      GetDetailSpaceInfo(backend_.GetProxy().GetTpmNvram(), space_info);
+      GetDetailSpaceInfo(tpm_nvram_, space_info);
 
   if (!detail_info.ok() &&
       detail_info.err_status()->UnifiedErrorCode() ==
@@ -129,7 +128,7 @@ StatusOr<brillo::Blob> RoDataTpm2::Read(RoSpace space) {
   request.set_use_owner_authorization(space_info.read_with_owner_auth);
   tpm_manager::ReadSpaceReply reply;
 
-  if (brillo::ErrorPtr err; !backend_.GetProxy().GetTpmNvram().ReadSpace(
+  if (brillo::ErrorPtr err; !tpm_nvram_.ReadSpace(
           request, &reply, &err, Proxy::kDefaultDBusTimeoutMs)) {
     return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
         .Wrap(std::move(err));

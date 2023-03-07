@@ -24,7 +24,7 @@ using testing::SetArgPointee;
 using tpm_manager::TpmManagerStatus;
 namespace hwsec {
 
-class BackendSessionManagementTpm2Test : public BackendTpm2TestBase {};
+using BackendSessionManagementTpm2Test = BackendTpm2TestBase;
 
 TEST_F(BackendSessionManagementTpm2Test, GetOrCreateHmacSession) {
   EXPECT_CALL(proxy_->GetMock().hmac_session, StartUnboundSession(false, false))

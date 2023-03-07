@@ -19,7 +19,6 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
-#include "libhwsec/backend/tpm1/backend.h"
 #include "libhwsec/backend/tpm1/static_utils.h"
 #include "libhwsec/error/tpm1_error.h"
 #include "libhwsec/overalls/overalls.h"
@@ -138,15 +137,14 @@ StatusOr<EncryptEccPrivateKeyResponse> RecoveryCryptoTpm1::EncryptEccPrivateKey(
   };
 
   ASSIGN_OR_RETURN(brillo::Blob encrypted_own_priv_key,
-                   backend_.GetSealingTpm1().Seal(policy, own_priv_key),
+                   sealing_.Seal(policy, own_priv_key),
                    _.WithStatus<TPMError>(
                        "Failed to seal to private key with first policy"));
 
-  ASSIGN_OR_RETURN(
-      brillo::Blob extended_pcr_bound_own_priv_key,
-      backend_.GetSealingTpm1().Seal(extended_policy, own_priv_key),
-      _.WithStatus<TPMError>(
-          "Failed to seal to private key with second policy"));
+  ASSIGN_OR_RETURN(brillo::Blob extended_pcr_bound_own_priv_key,
+                   sealing_.Seal(extended_policy, own_priv_key),
+                   _.WithStatus<TPMError>(
+                       "Failed to seal to private key with second policy"));
 
   return EncryptEccPrivateKeyResponse{
       .encrypted_own_priv_key = encrypted_own_priv_key,
@@ -173,8 +171,7 @@ RecoveryCryptoTpm1::GenerateDiffieHellmanSharedSecret(
 
   // if TPM is locked to single user, extended_pcr_bound_own_priv_key will be
   // used.
-  ASSIGN_OR_RETURN(bool is_current_user_set,
-                   backend_.GetConfigTpm1().IsCurrentUserSet(),
+  ASSIGN_OR_RETURN(bool is_current_user_set, config_.IsCurrentUserSet(),
                    _.WithStatus<TPMError>("Failed to get current user status"));
 
   // If auth_value is not provided, one's own private key will not be unsealed
@@ -192,11 +189,10 @@ RecoveryCryptoTpm1::GenerateDiffieHellmanSharedSecret(
         .permission = Permission{.auth_value = request.auth_value},
     };
 
-    ASSIGN_OR_RETURN(
-        unencrypted_own_priv_key,
-        backend_.GetSealingTpm1().Unseal(policy, encrypted_own_priv_key,
-                                         Sealing::UnsealOptions{}),
-        _.WithStatus<TPMError>("Failed to unseal"));
+    ASSIGN_OR_RETURN(unencrypted_own_priv_key,
+                     sealing_.Unseal(policy, encrypted_own_priv_key,
+                                     Sealing::UnsealOptions{}),
+                     _.WithStatus<TPMError>("Failed to unseal"));
   }
 
   crypto::ScopedBIGNUM unencrypted_own_priv_key_bn =
@@ -223,25 +219,23 @@ RecoveryCryptoTpm1::GenerateDiffieHellmanSharedSecret(
 
 StatusOr<std::optional<RecoveryCryptoRsaKeyPair>>
 RecoveryCryptoTpm1::GenerateRsaKeyPair() {
-  ASSIGN_OR_RETURN(KeyManagement::CreateKeyResult created_key,
-                   backend_.GetKeyManagementTpm1().CreateKey(
-                       OperationPolicySetting{}, KeyAlgoType::kRsa,
-                       KeyManagement::LoadKeyOptions{},
-                       KeyManagement::CreateKeyOptions{
-                           .allow_sign = true,
-                       }),
-                   _.WithStatus<TPMError>("Failed to create key"));
-
   ASSIGN_OR_RETURN(
-      const KeyTpm1& key_data,
-      backend_.GetKeyManagementTpm1().GetKeyData(created_key.key.GetKey()));
+      KeyManagement::CreateKeyResult created_key,
+      key_management_.CreateKey(OperationPolicySetting{}, KeyAlgoType::kRsa,
+                                KeyManagement::LoadKeyOptions{},
+                                KeyManagement::CreateKeyOptions{
+                                    .allow_sign = true,
+                                }),
+      _.WithStatus<TPMError>("Failed to create key"));
 
-  overalls::Overalls& overalls = backend_.GetOverall().overalls;
+  ASSIGN_OR_RETURN(const KeyTpm1& key_data,
+                   key_management_.GetKeyData(created_key.key.GetKey()));
 
   const brillo::Blob& pubkey_blob = key_data.cache.pubkey_blob;
 
   ASSIGN_OR_RETURN(
-      brillo::Blob public_key_der, ConvertPublicKeyToDER(overalls, pubkey_blob),
+      brillo::Blob public_key_der,
+      ConvertPublicKeyToDER(overalls_, pubkey_blob),
       _.WithStatus<TPMError>("Failed to convert public key to der"));
 
   return RecoveryCryptoRsaKeyPair{
@@ -255,14 +249,13 @@ StatusOr<std::optional<brillo::Blob>> RecoveryCryptoTpm1::SignRequestPayload(
     const brillo::Blob& request_payload) {
   ASSIGN_OR_RETURN(
       ScopedKey key,
-      backend_.GetKeyManagementTpm1().LoadKey(OperationPolicy{},
-                                              encrypted_rsa_private_key,
-                                              KeyManagement::LoadKeyOptions{}),
+      key_management_.LoadKey(OperationPolicy{}, encrypted_rsa_private_key,
+                              KeyManagement::LoadKeyOptions{}),
       _.WithStatus<TPMError>("Failed to load encrypted RSA private key"));
 
   ASSIGN_OR_RETURN(
       brillo::Blob signature,
-      backend_.GetSigningTpm1().Sign(
+      signing_.Sign(
           key.GetKey(), request_payload,
           SigningOptions{
               .digest_algorithm = DigestAlgorithm::kSha256,

@@ -22,11 +22,10 @@
 #include "libhwsec/backend/tpm1/signing.h"
 #include "libhwsec/backend/tpm1/state.h"
 #include "libhwsec/backend/tpm1/storage.h"
+#include "libhwsec/backend/tpm1/tss_helper.h"
 #include "libhwsec/backend/tpm1/u2f.h"
 #include "libhwsec/backend/tpm1/vendor.h"
 #include "libhwsec/middleware/middleware_derivative.h"
-#include "libhwsec/proxy/proxy.h"
-#include "libhwsec/tss_utils/scoped_tss_type.h"
 
 #ifndef BUILD_LIBHWSEC
 #error "Don't include this file outside libhwsec!"
@@ -36,29 +35,11 @@ namespace hwsec {
 
 class BackendTpm1 : public Backend {
  public:
-  // This structure holds all Overalls client objects.
-  struct OverallsContext {
-    overalls::Overalls& overalls;
-  };
-
   BackendTpm1(Proxy& proxy, MiddlewareDerivative middleware_derivative);
 
   ~BackendTpm1() override;
 
-  MiddlewareDerivative GetMiddlewareDerivative() const {
-    return middleware_derivative_;
-  }
-
-  Proxy& GetProxy() { return proxy_; }
-  OverallsContext& GetOverall() { return overall_context_; }
-
-  StatusOr<ScopedTssContext> GetScopedTssContext();
-  StatusOr<TSS_HCONTEXT> GetTssContext();
-  StatusOr<TSS_HTPM> GetUserTpmHandle();
-
-  // The delegate TPM handle would not be cached to prevent leaking the delegate
-  // permission.
-  StatusOr<ScopedTssObject<TSS_HTPM>> GetDelegateTpmHandle();
+  TssHelper& GetTssHelper() { return tss_helper_; }
 
   StateTpm1& GetStateTpm1() { return state_; }
   DAMitigationTpm1& GetDAMitigationTpm1() { return da_mitigation_; }
@@ -103,27 +84,29 @@ class BackendTpm1 : public Backend {
   U2f* GetU2f() override { return &u2f_; }
 
   Proxy& proxy_;
-  OverallsContext overall_context_;
-  std::optional<ScopedTssContext> tss_context_;
-  std::optional<ScopedTssObject<TSS_HTPM>> user_tpm_handle_;
-
-  StateTpm1 state_{*this};
-  DAMitigationTpm1 da_mitigation_{*this};
-  StorageTpm1 storage_{*this};
-  SealingTpm1 sealing_{*this};
-  SignatureSealingTpm1 signature_sealing_{*this};
-  DerivingTpm1 deriving_{*this};
-  EncryptionTpm1 encryption_{*this};
-  SigningTpm1 signing_{*this};
-  KeyManagementTpm1 key_management_{*this};
-  ConfigTpm1 config_{*this};
-  RandomTpm1 random_{*this};
-  PinWeaverTpm1 pinweaver_{*this};
-  VendorTpm1 vendor_{*this};
-  RecoveryCryptoTpm1 recovery_crypto_{*this};
-  U2fTpm1 u2f_{*this};
+  org::chromium::TpmManagerProxyInterface& tpm_manager_;
+  org::chromium::TpmNvramProxyInterface& tpm_nvram_;
+  overalls::Overalls& overalls_;
 
   MiddlewareDerivative middleware_derivative_;
+
+  TssHelper tss_helper_;
+
+  StateTpm1 state_;
+  DAMitigationTpm1 da_mitigation_;
+  StorageTpm1 storage_;
+  ConfigTpm1 config_;
+  RandomTpm1 random_;
+  KeyManagementTpm1 key_management_;
+  SealingTpm1 sealing_;
+  DerivingTpm1 deriving_;
+  SignatureSealingTpm1 signature_sealing_;
+  EncryptionTpm1 encryption_;
+  SigningTpm1 signing_;
+  PinWeaverTpm1 pinweaver_;
+  VendorTpm1 vendor_;
+  RecoveryCryptoTpm1 recovery_crypto_;
+  U2fTpm1 u2f_;
 };
 
 }  // namespace hwsec

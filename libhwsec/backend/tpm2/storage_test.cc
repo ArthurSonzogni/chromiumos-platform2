@@ -35,7 +35,7 @@ constexpr uint32_t kEnterpriseRollbackIndex = 0x100e;
 
 namespace hwsec {
 
-class BackendStorageTpm2Test : public BackendTpm2TestBase {};
+using BackendStorageTpm2Test = BackendTpm2TestBase;
 
 TEST_F(BackendStorageTpm2Test, IsReady) {
   tpm_manager::ListSpacesReply list_reply;

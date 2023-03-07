@@ -21,10 +21,10 @@ namespace hwsec {
 
 class BackendTpm2TestBase : public ::testing::Test {
  public:
-  BackendTpm2TestBase() {}
+  BackendTpm2TestBase() = default;
   BackendTpm2TestBase(const BackendTpm2TestBase&) = delete;
   BackendTpm2TestBase& operator=(const BackendTpm2TestBase&) = delete;
-  virtual ~BackendTpm2TestBase() {}
+  ~BackendTpm2TestBase() override = default;
 
   void SetUp() override {
     proxy_ = std::make_unique<ProxyForTest>();

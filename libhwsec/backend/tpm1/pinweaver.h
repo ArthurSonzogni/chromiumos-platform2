@@ -11,17 +11,13 @@
 
 #include <brillo/secure_blob.h>
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/pinweaver.h"
 #include "libhwsec/status.h"
 
 namespace hwsec {
 
-class BackendTpm1;
-
-class PinWeaverTpm1 : public Backend::PinWeaver,
-                      public Backend::SubClassHelper<BackendTpm1> {
+class PinWeaverTpm1 : public PinWeaver {
  public:
-  using SubClassHelper::SubClassHelper;
   StatusOr<bool> IsEnabled() override;
   StatusOr<uint8_t> GetVersion() override;
   StatusOr<CredentialTreeResult> Reset(uint32_t bits_per_level,

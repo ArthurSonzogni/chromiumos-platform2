@@ -8,17 +8,17 @@
 #include <optional>
 #include <vector>
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/state.h"
+#include "libhwsec/proxy/proxy.h"
 #include "libhwsec/status.h"
 
 namespace hwsec {
 
-class BackendTpm1;
-
-class StateTpm1 : public Backend::State,
-                  public Backend::SubClassHelper<BackendTpm1> {
+class StateTpm1 : public State {
  public:
-  using SubClassHelper::SubClassHelper;
+  explicit StateTpm1(org::chromium::TpmManagerProxyInterface& tpm_manager)
+      : tpm_manager_(tpm_manager) {}
+
   StatusOr<bool> IsEnabled() override;
   StatusOr<bool> IsReady() override;
   Status Prepare() override;
@@ -32,6 +32,8 @@ class StateTpm1 : public Backend::State,
   std::optional<bool> received_ready_signal_;
 
   std::vector<base::OnceCallback<void(Status)>> ready_callbacks_;
+
+  org::chromium::TpmManagerProxyInterface& tpm_manager_;
 
   // Member variables should appear before the WeakPtrFactory, to ensure
   // that any WeakPtrs to Controller are invalidated before its members

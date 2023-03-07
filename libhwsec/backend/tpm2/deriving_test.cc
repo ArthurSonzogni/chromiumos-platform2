@@ -30,7 +30,7 @@ using testing::SetArgPointee;
 using tpm_manager::TpmManagerStatus;
 namespace hwsec {
 
-class BackendDeriveTpm2Test : public BackendTpm2TestBase {};
+using BackendDeriveTpm2Test = BackendTpm2TestBase;
 
 TEST_F(BackendDeriveTpm2Test, DeriveSecureRsa) {
   const OperationPolicy kFakePolicy{};

@@ -17,7 +17,6 @@
 #include <openssl/sha.h>
 #include <trunks/tpm_utility.h>
 
-#include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/no_default_init.h"
@@ -32,7 +31,7 @@ using trunks::TPM_RC_SUCCESS;
 
 namespace hwsec {
 
-using Algorithm = Backend::SignatureSealing::Algorithm;
+using Algorithm = SignatureSealing::Algorithm;
 
 namespace {
 
@@ -121,8 +120,7 @@ StatusOr<SignatureSealedData> SignatureSealingTpm2::Seal(
     }
 
     ASSIGN_OR_RETURN(
-        const std::string& digest,
-        backend_.GetConfigTpm2().GetPolicyDigest(policy),
+        const std::string& digest, config_.GetPolicyDigest(policy),
         _.WithStatus<TPMError>("Failed to convert setting to PCR value"));
 
     policy_digests.push_back(digest);
@@ -131,23 +129,21 @@ StatusOr<SignatureSealedData> SignatureSealingTpm2::Seal(
   // Load the protection public key onto the TPM.
   ASSIGN_OR_RETURN(
       ScopedKey key,
-      backend_.GetKeyManagementTpm2().LoadPublicKeyFromSpki(
+      key_management_.LoadPublicKeyFromSpki(
           public_key_spki_der, algorithm.scheme, algorithm.hash_alg),
       _.WithStatus<TPMError>("Failed to load protection key"));
 
   ASSIGN_OR_RETURN(const KeyTpm2& key_data,
-                   backend_.GetKeyManagementTpm2().GetKeyData(key.GetKey()));
-
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
+                   key_management_.GetKeyData(key.GetKey()));
 
   std::string key_name;
-  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->GetKeyName(
+  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context_.GetTpmUtility().GetKeyName(
                       key_data.key_handle, &key_name)))
       .WithStatus<TPMError>("Failed to get key name");
 
   // Start a trial policy session for sealing the secret value.
   std::unique_ptr<trunks::PolicySession> policy_session =
-      context.factory.GetTrialSession();
+      context_.GetTrunksFactory().GetTrialSession();
 
   RETURN_IF_ERROR(MakeStatus<TPM2Error>(policy_session->StartUnboundSession(
                       /*salted=*/true, /*enable_encryption=*/false)))
@@ -162,7 +158,7 @@ StatusOr<SignatureSealedData> SignatureSealingTpm2::Seal(
 
   // Start a TPM authorization session.
   ASSIGN_OR_RETURN(trunks::HmacSession & hmac_session,
-                   backend_.GetSessionManagementTpm2().GetOrCreateHmacSession(
+                   session_management_.GetOrCreateHmacSession(
                        SessionSecuritySetting::kSaltAndEncrypted),
                    _.WithStatus<TPMError>("Failed to start hmac session"));
 
@@ -195,7 +191,7 @@ StatusOr<SignatureSealedData> SignatureSealingTpm2::Seal(
   // Seal the secret value.
   std::string sealed_value;
   RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context.tpm_utility->SealData(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().SealData(
           unsealed_data.to_string(), result_policy_digest, /*auth_value=*/"",
           /*require_admin_with_policy=*/true, hmac_session.GetDelegate(),
           &sealed_value)))
@@ -302,9 +298,9 @@ StatusOr<SignatureSealingTpm2::ChallengeResult> SignatureSealingTpm2::Challenge(
   // Start a policy session that will be used for obtaining the TPM nonce and
   // unsealing the secret value.
   ASSIGN_OR_RETURN(std::unique_ptr<trunks::PolicySession> session,
-                   backend_.GetConfigTpm2().GetTrunksPolicySession(
-                       policy, pcr_policy_digests, /*salted=*/true,
-                       /*enable_encryption=*/false),
+                   config_.GetTrunksPolicySession(policy, pcr_policy_digests,
+                                                  /*salted=*/true,
+                                                  /*enable_encryption=*/false),
                    _.WithStatus<TPMError>("Failed to get session for policy"));
 
   // Obtain the TPM nonce.
@@ -352,26 +348,24 @@ StatusOr<brillo::SecureBlob> SignatureSealingTpm2::Unseal(
                                 TPMRetryAction::kNoRetry);
   }
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   // Start a TPM authorization session.
   ASSIGN_OR_RETURN(trunks::HmacSession & hmac_session,
-                   backend_.GetSessionManagementTpm2().GetOrCreateHmacSession(
+                   session_management_.GetOrCreateHmacSession(
                        SessionSecuritySetting::kSaltAndEncrypted),
                    _.WithStatus<TPMError>("Failed to start hmac session"));
 
   // Load the protection public key onto the TPM.
   ASSIGN_OR_RETURN(ScopedKey key,
-                   backend_.GetKeyManagementTpm2().LoadPublicKeyFromSpki(
+                   key_management_.LoadPublicKeyFromSpki(
                        challenge_data.public_key_spki_der,
                        challenge_data.scheme, challenge_data.hash_alg),
                    _.WithStatus<TPMError>("Failed to load protection key"));
 
   ASSIGN_OR_RETURN(const KeyTpm2& key_data,
-                   backend_.GetKeyManagementTpm2().GetKeyData(key.GetKey()));
+                   key_management_.GetKeyData(key.GetKey()));
 
   std::string key_name;
-  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->GetKeyName(
+  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context_.GetTpmUtility().GetKeyName(
                       key_data.key_handle, &key_name)))
       .WithStatus<TPMError>("Failed to get key name");
 
@@ -400,7 +394,7 @@ StatusOr<brillo::SecureBlob> SignatureSealingTpm2::Unseal(
   // Unseal the secret value.
   std::string unsealed_value_string;
   RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context.tpm_utility->UnsealData(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().UnsealData(
           BlobToString(challenge_data.srk_wrapped_secret),
           challenge_data.session->GetDelegate(), &unsealed_value_string)))
       .WithStatus<TPMError>("Failed to seal secret data");

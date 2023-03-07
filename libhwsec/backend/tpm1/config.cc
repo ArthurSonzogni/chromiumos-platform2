@@ -14,7 +14,6 @@
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <openssl/sha.h>
 
-#include "libhwsec/backend/tpm1/backend.h"
 #include "libhwsec/error/tpm1_error.h"
 #include "libhwsec/overalls/overalls.h"
 #include "libhwsec/status.h"
@@ -77,19 +76,17 @@ StatusOr<OperationPolicy> ConfigTpm1::ToOperationPolicy(
 }
 
 Status ConfigTpm1::SetCurrentUser(const std::string& current_user) {
-  ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
 
-  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, backend_.GetUserTpmHandle());
-
-  overalls::Overalls& overalls = backend_.GetOverall().overalls;
+  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, tss_helper_.GetUserTpmHandle());
 
   brillo::Blob extention = Sha1(brillo::BlobFromString(current_user));
 
   uint32_t new_pcr_value_length = 0;
-  ScopedTssMemory new_pcr_value(overalls, context);
+  ScopedTssMemory new_pcr_value(overalls_, context);
 
   RETURN_IF_ERROR(
-      MakeStatus<TPM1Error>(overalls.Ospi_TPM_PcrExtend(
+      MakeStatus<TPM1Error>(overalls_.Ospi_TPM_PcrExtend(
           tpm_handle, kCurrentUserPcrTpm1, extention.size(), extention.data(),
           nullptr, &new_pcr_value_length, new_pcr_value.ptr())))
       .WithStatus<TPMError>("Failed to call Ospi_TPM_PcrExtend");
@@ -139,16 +136,14 @@ StatusOr<ConfigTpm1::PcrMap> ConfigTpm1::ToCurrentPcrValueMap(
 }
 
 StatusOr<brillo::Blob> ConfigTpm1::ReadPcr(uint32_t pcr_index) {
-  ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
 
-  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, backend_.GetUserTpmHandle());
-
-  overalls::Overalls& overalls = backend_.GetOverall().overalls;
+  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, tss_helper_.GetUserTpmHandle());
 
   uint32_t length = 0;
-  ScopedTssMemory buffer(overalls, context);
+  ScopedTssMemory buffer(overalls_, context);
 
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_TPM_PcrRead(
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_TPM_PcrRead(
                       tpm_handle, pcr_index, &length, buffer.ptr())))
       .WithStatus<TPMError>("Failed to call Ospi_TPM_PcrRead");
 

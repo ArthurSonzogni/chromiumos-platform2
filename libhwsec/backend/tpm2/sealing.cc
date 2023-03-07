@@ -14,7 +14,6 @@
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <trunks/tpm_utility.h>
 
-#include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/permission.h"
@@ -32,12 +31,10 @@ StatusOr<bool> SealingTpm2::IsSupported() {
 StatusOr<brillo::Blob> SealingTpm2::Seal(
     const OperationPolicySetting& policy,
     const brillo::SecureBlob& unsealed_data) {
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   bool use_only_policy_authorization = false;
 
   ASSIGN_OR_RETURN(const std::string& policy_digest,
-                   backend_.GetConfigTpm2().GetPolicyDigest(policy),
+                   config_.GetPolicyDigest(policy),
                    _.WithStatus<TPMError>("Failed to get policy digest"));
 
   if (!policy_digest.empty()) {
@@ -53,7 +50,7 @@ StatusOr<brillo::Blob> SealingTpm2::Seal(
   }
 
   ASSIGN_OR_RETURN(trunks::HmacSession & hmac_session,
-                   backend_.GetSessionManagementTpm2().GetOrCreateHmacSession(
+                   session_management_.GetOrCreateHmacSession(
                        SessionSecuritySetting::kSaltAndEncrypted),
                    _.WithStatus<TPMError>("Failed to start hmac session"));
 
@@ -73,7 +70,7 @@ StatusOr<brillo::Blob> SealingTpm2::Seal(
 
   std::string sealed_str;
   RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context.tpm_utility->SealData(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().SealData(
           plaintext, policy_digest, auth_value, use_only_policy_authorization,
           hmac_session.GetDelegate(), &sealed_str)))
       .WithStatus<TPMError>("Failed to seal data to PCR with authorization");
@@ -84,8 +81,8 @@ StatusOr<brillo::Blob> SealingTpm2::Seal(
 StatusOr<std::optional<ScopedKey>> SealingTpm2::PreloadSealedData(
     const OperationPolicy& policy, const brillo::Blob& sealed_data) {
   ASSIGN_OR_RETURN(ScopedKey key,
-                   backend_.GetKeyManagementTpm2().LoadKey(
-                       policy, sealed_data, KeyManagement::LoadKeyOptions{}),
+                   key_management_.LoadKey(policy, sealed_data,
+                                           KeyManagement::LoadKeyOptions{}),
                    _.WithStatus<TPMError>("Failed to load sealed data"));
   return std::move(key);
 }
@@ -95,12 +92,10 @@ StatusOr<brillo::SecureBlob> SealingTpm2::Unseal(
     const brillo::Blob& sealed_data,
     UnsealOptions options) {
   // Use unsalted session here, to unseal faster.
-  ASSIGN_OR_RETURN(ConfigTpm2::TrunksSession session,
-                   backend_.GetConfigTpm2().GetTrunksSession(
-                       policy, SessionSecuritySetting::kNoEncrypted),
-                   _.WithStatus<TPMError>("Failed to get session for policy"));
-
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
+  ASSIGN_OR_RETURN(
+      ConfigTpm2::TrunksSession session,
+      config_.GetTrunksSession(policy, SessionSecuritySetting::kNoEncrypted),
+      _.WithStatus<TPMError>("Failed to get session for policy"));
 
   std::string unsealed_data;
   // Cleanup the unsealed_data.
@@ -109,17 +104,16 @@ StatusOr<brillo::SecureBlob> SealingTpm2::Unseal(
 
   if (options.preload_data.has_value()) {
     ASSIGN_OR_RETURN(const KeyTpm2& key_data,
-                     backend_.GetKeyManagementTpm2().GetKeyData(
-                         options.preload_data.value()),
+                     key_management_.GetKeyData(options.preload_data.value()),
                      _.WithStatus<TPMError>("Failed to get preload data"));
 
     RETURN_IF_ERROR(
-        MakeStatus<TPM2Error>(context.tpm_utility->UnsealDataWithHandle(
+        MakeStatus<TPM2Error>(context_.GetTpmUtility().UnsealDataWithHandle(
             key_data.key_handle, session.delegate, &unsealed_data)))
         .WithStatus<TPMError>("Failed to unseal data with handle");
   } else {
     RETURN_IF_ERROR(
-        MakeStatus<TPM2Error>(context.tpm_utility->UnsealData(
+        MakeStatus<TPM2Error>(context_.GetTpmUtility().UnsealData(
             BlobToString(sealed_data), session.delegate, &unsealed_data)))
         .WithStatus<TPMError>("Error to unseal data");
   }

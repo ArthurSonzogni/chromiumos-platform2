@@ -14,7 +14,6 @@
 #include <trunks/tpm_utility.h>
 #include <trunks/trunks_factory.h>
 
-#include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/status.h"
 
@@ -43,11 +42,9 @@ SessionManagementTpm2::GetOrCreateHmacSession(SessionSecuritySetting setting) {
     return *iter->second;
   }
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   std::unique_ptr<trunks::HmacSession>& hmac_session = iter->second;
 
-  hmac_session = context.factory.GetHmacSession();
+  hmac_session = context_.GetTrunksFactory().GetHmacSession();
 
   SessionSecurityDetail detail = ToSessionSecurityDetail(setting);
 

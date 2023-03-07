@@ -28,7 +28,7 @@ using testing::SetArgPointee;
 using tpm_manager::TpmManagerStatus;
 namespace hwsec {
 
-class BackendSigningTpm1Test : public BackendTpm1TestBase {};
+using BackendSigningTpm1Test = BackendTpm1TestBase;
 
 TEST_F(BackendSigningTpm1Test, Sign) {
   const OperationPolicy kFakePolicy{};

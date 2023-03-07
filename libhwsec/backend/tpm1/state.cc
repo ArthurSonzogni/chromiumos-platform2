@@ -10,7 +10,6 @@
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
-#include "libhwsec/backend/tpm1/backend.h"
 #include "libhwsec/error/tpm_manager_error.h"
 #include "libhwsec/status.h"
 
@@ -22,8 +21,7 @@ StatusOr<bool> StateTpm1::IsEnabled() {
   tpm_manager::GetTpmNonsensitiveStatusRequest request;
   tpm_manager::GetTpmNonsensitiveStatusReply reply;
 
-  if (brillo::ErrorPtr err;
-      !backend_.GetProxy().GetTpmManager().GetTpmNonsensitiveStatus(
+  if (brillo::ErrorPtr err; !tpm_manager_.GetTpmNonsensitiveStatus(
           request, &reply, &err, Proxy::kDefaultDBusTimeoutMs)) {
     return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
         .Wrap(std::move(err));
@@ -38,8 +36,7 @@ StatusOr<bool> StateTpm1::IsReady() {
   tpm_manager::GetTpmNonsensitiveStatusRequest request;
   tpm_manager::GetTpmNonsensitiveStatusReply reply;
 
-  if (brillo::ErrorPtr err;
-      !backend_.GetProxy().GetTpmManager().GetTpmNonsensitiveStatus(
+  if (brillo::ErrorPtr err; !tpm_manager_.GetTpmNonsensitiveStatus(
           request, &reply, &err, Proxy::kDefaultDBusTimeoutMs)) {
     return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
         .Wrap(std::move(err));
@@ -54,7 +51,7 @@ Status StateTpm1::Prepare() {
   tpm_manager::TakeOwnershipRequest request;
   tpm_manager::TakeOwnershipReply reply;
 
-  if (brillo::ErrorPtr err; !backend_.GetProxy().GetTpmManager().TakeOwnership(
+  if (brillo::ErrorPtr err; !tpm_manager_.TakeOwnership(
           request, &reply, &err, Proxy::kDefaultDBusTimeoutMs)) {
     return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
         .Wrap(std::move(err));
@@ -66,13 +63,11 @@ Status StateTpm1::Prepare() {
 void StateTpm1::WaitUntilReady(base::OnceCallback<void(Status)> callback) {
   if (!received_ready_signal_.has_value()) {
     received_ready_signal_ = false;
-    backend_.GetProxy()
-        .GetTpmManager()
-        .RegisterSignalOwnershipTakenSignalHandler(
-            base::IgnoreArgs<const tpm_manager::OwnershipTakenSignal&>(
-                base::BindRepeating(&StateTpm1::OnReady,
-                                    weak_factory_.GetWeakPtr())),
-            base::DoNothing());
+    tpm_manager_.RegisterSignalOwnershipTakenSignalHandler(
+        base::IgnoreArgs<const tpm_manager::OwnershipTakenSignal&>(
+            base::BindRepeating(&StateTpm1::OnReady,
+                                weak_factory_.GetWeakPtr())),
+        base::DoNothing());
   }
 
   if (received_ready_signal_.value() == false) {

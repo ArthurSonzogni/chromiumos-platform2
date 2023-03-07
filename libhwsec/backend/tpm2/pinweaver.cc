@@ -21,7 +21,6 @@
 #define __aligned(x) __attribute((aligned(x)))
 #include <pinweaver/pinweaver_types.h>
 
-#include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm2_error.h"
 
 using hwsec_foundation::status::MakeStatus;
@@ -29,8 +28,8 @@ using hwsec_foundation::status::MakeStatus;
 namespace hwsec {
 
 using ErrorCode = PinWeaverTpm2::CredentialTreeResult::ErrorCode;
-using LogEntry = Backend::PinWeaver::GetLogResult::LogEntry;
-using LogEntryType = Backend::PinWeaver::GetLogResult::LogEntryType;
+using LogEntry = PinWeaver::GetLogResult::LogEntry;
+using LogEntryType = PinWeaver::GetLogResult::LogEntryType;
 
 namespace {
 
@@ -128,12 +127,11 @@ StatusOr<uint8_t> PinWeaverTpm2::GetVersion() {
     return protocol_version_.value();
   }
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   uint8_t version = 255;
 
-  auto status = MakeStatus<TPM2Error>(context.tpm_utility->PinWeaverIsSupported(
-      kPinWeaverProtocolVersion, &version));
+  auto status =
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().PinWeaverIsSupported(
+          kPinWeaverProtocolVersion, &version));
 
   if (!status.ok()) {
     if (status->ErrorCode() != trunks::SAPI_RC_ABI_MISMATCH) {
@@ -141,7 +139,7 @@ StatusOr<uint8_t> PinWeaverTpm2::GetVersion() {
           .Wrap(std::move(status));
     }
     status = MakeStatus<TPM2Error>(
-        context.tpm_utility->PinWeaverIsSupported(0, &version));
+        context_.GetTpmUtility().PinWeaverIsSupported(0, &version));
   }
 
   if (!status.ok()) {
@@ -158,14 +156,13 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::Reset(
     uint32_t bits_per_level, uint32_t length_labels) {
   ASSIGN_OR_RETURN(uint8_t version, GetVersion());
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   uint32_t pinweaver_status = 0;
   std::string root;
 
-  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->PinWeaverResetTree(
-                      version, bits_per_level, length_labels / bits_per_level,
-                      &pinweaver_status, &root)))
+  RETURN_IF_ERROR(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().PinWeaverResetTree(
+          version, bits_per_level, length_labels / bits_per_level,
+          &pinweaver_status, &root)))
       .WithStatus<TPMError>("Failed to reset tree in pinweaver");
 
   RETURN_IF_ERROR(ErrorCodeToStatus(ConvertPWStatus(pinweaver_status)));
@@ -201,15 +198,13 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::InsertCredential(
         TPMRetryAction::kNoRetry);
   }
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   uint32_t pinweaver_status = 0;
   std::string root;
   std::string cred_metadata_string;
   std::string mac_string;
 
   RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context.tpm_utility->PinWeaverInsertLeaf(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().PinWeaverInsertLeaf(
           version, label, encoded_aux, le_secret, he_secret, reset_secret,
           delay_schedule, pcr_criteria, expiration_delay, &pinweaver_status,
           &root, &cred_metadata_string, &mac_string)))
@@ -233,8 +228,6 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::CheckCredential(
   ASSIGN_OR_RETURN(uint8_t version, GetVersion());
   ASSIGN_OR_RETURN(std::string encoded_aux, EncodeAuxHashes(h_aux));
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   uint32_t pinweaver_status = 0;
   std::string root;
   uint32_t seconds_to_wait = 0;
@@ -243,11 +236,12 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::CheckCredential(
   std::string cred_metadata_string;
   std::string mac_string;
 
-  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->PinWeaverTryAuth(
-                      version, le_secret, encoded_aux,
-                      brillo::BlobToString(orig_cred_metadata),
-                      &pinweaver_status, &root, &seconds_to_wait, &he_secret,
-                      &reset_secret, &cred_metadata_string, &mac_string)))
+  RETURN_IF_ERROR(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().PinWeaverTryAuth(
+          version, le_secret, encoded_aux,
+          brillo::BlobToString(orig_cred_metadata), &pinweaver_status, &root,
+          &seconds_to_wait, &he_secret, &reset_secret, &cred_metadata_string,
+          &mac_string)))
       .WithStatus<TPMError>("Failed to try auth in pinweaver");
 
   return CredentialTreeResult{
@@ -267,13 +261,11 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::RemoveCredential(
   ASSIGN_OR_RETURN(uint8_t version, GetVersion());
   ASSIGN_OR_RETURN(std::string encoded_aux, EncodeAuxHashes(h_aux));
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   uint32_t pinweaver_status = 0;
   std::string root;
 
   RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context.tpm_utility->PinWeaverRemoveLeaf(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().PinWeaverRemoveLeaf(
           version, label, encoded_aux, brillo::BlobToString(mac),
           &pinweaver_status, &root)))
       .WithStatus<TPMError>("Failed to remove leaf in pinweaver");
@@ -301,15 +293,13 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::ResetCredential(
         TPMRetryAction::kNoRetry);
   }
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   uint32_t pinweaver_status = 0;
   std::string root;
   std::string cred_metadata_string;
   std::string mac_string;
 
   RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context.tpm_utility->PinWeaverResetAuth(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().PinWeaverResetAuth(
           version, reset_secret, strong_reset, encoded_aux,
           brillo::BlobToString(orig_cred_metadata), &pinweaver_status, &root,
           &cred_metadata_string, &mac_string)))
@@ -327,15 +317,14 @@ StatusOr<PinWeaverTpm2::GetLogResult> PinWeaverTpm2::GetLog(
     const brillo::Blob& cur_disk_root_hash) {
   ASSIGN_OR_RETURN(uint8_t version, GetVersion());
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   uint32_t pinweaver_status = 0;
   std::string root;
   std::vector<trunks::PinWeaverLogEntry> log_ret;
 
-  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->PinWeaverGetLog(
-                      version, brillo::BlobToString(cur_disk_root_hash),
-                      &pinweaver_status, &root, &log_ret)))
+  RETURN_IF_ERROR(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().PinWeaverGetLog(
+          version, brillo::BlobToString(cur_disk_root_hash), &pinweaver_status,
+          &root, &log_ret)))
       .WithStatus<TPMError>("Failed to get pinweaver log");
 
   RETURN_IF_ERROR(ErrorCodeToStatus(ConvertPWStatus(pinweaver_status)));
@@ -353,15 +342,13 @@ PinWeaverTpm2::ReplayLogOperation(const brillo::Blob& log_entry_root,
   ASSIGN_OR_RETURN(uint8_t version, GetVersion());
   ASSIGN_OR_RETURN(std::string encoded_aux, EncodeAuxHashes(h_aux));
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   uint32_t pinweaver_status = 0;
   std::string root;
   std::string cred_metadata_string;
   std::string mac_string;
 
   RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context.tpm_utility->PinWeaverLogReplay(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().PinWeaverLogReplay(
           version, brillo::BlobToString(log_entry_root), encoded_aux,
           brillo::BlobToString(orig_cred_metadata), &pinweaver_status, &root,
           &cred_metadata_string, &mac_string)))
@@ -571,18 +558,17 @@ StatusOr<PinWeaverTpm2::PinWeaverEccPoint> PinWeaverTpm2::GeneratePk(
                                 TPMRetryAction::kNoRetry);
   }
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   uint32_t pinweaver_status = 0;
   std::string root;
   trunks::PinWeaverEccPoint trunks_client_public_key, trunks_server_public_key;
   memcpy(trunks_client_public_key.x, client_public_key.x, 32);
   memcpy(trunks_client_public_key.y, client_public_key.y, 32);
 
-  RETURN_IF_ERROR(MakeStatus<TPM2Error>(
-                      context.tpm_utility->PinWeaverGenerateBiometricsAuthPk(
-                          version, auth_channel, trunks_client_public_key,
-                          &pinweaver_status, &root, &trunks_server_public_key)))
+  RETURN_IF_ERROR(
+      MakeStatus<TPM2Error>(
+          context_.GetTpmUtility().PinWeaverGenerateBiometricsAuthPk(
+              version, auth_channel, trunks_client_public_key,
+              &pinweaver_status, &root, &trunks_server_public_key)))
       .WithStatus<TPMError>("Failed to generate pk in pinweaver");
 
   RETURN_IF_ERROR(ErrorCodeToStatus(ConvertPWStatus(pinweaver_status)));
@@ -618,8 +604,6 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::InsertRateLimiter(
   ASSIGN_OR_RETURN(trunks::ValidPcrCriteria pcr_criteria,
                    PolicySettingsToPcrCriteria(policies));
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   uint32_t pinweaver_status = 0;
   std::string root;
   std::string cred_metadata_string;
@@ -627,7 +611,7 @@ StatusOr<PinWeaverTpm2::CredentialTreeResult> PinWeaverTpm2::InsertRateLimiter(
 
   RETURN_IF_ERROR(
       MakeStatus<TPM2Error>(
-          context.tpm_utility->PinWeaverCreateBiometricsAuthRateLimiter(
+          context_.GetTpmUtility().PinWeaverCreateBiometricsAuthRateLimiter(
               version, auth_channel, label, encoded_aux, reset_secret,
               delay_schedule, pcr_criteria, expiration_delay, &pinweaver_status,
               &root, &cred_metadata_string, &mac_string)))
@@ -663,8 +647,6 @@ PinWeaverTpm2::StartBiometricsAuth(uint8_t auth_channel,
 
   ASSIGN_OR_RETURN(std::string encoded_aux, EncodeAuxHashes(h_aux));
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   uint32_t pinweaver_status = 0;
   std::string root;
   brillo::SecureBlob server_nonce;
@@ -674,11 +656,12 @@ PinWeaverTpm2::StartBiometricsAuth(uint8_t auth_channel,
   std::string mac_string;
 
   RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context.tpm_utility->PinWeaverStartBiometricsAuth(
-          version, auth_channel, client_nonce, encoded_aux,
-          brillo::BlobToString(orig_cred_metadata), &pinweaver_status, &root,
-          &server_nonce, &encrypted_he_secret, &iv, &cred_metadata_string,
-          &mac_string)))
+      MakeStatus<TPM2Error>(
+          context_.GetTpmUtility().PinWeaverStartBiometricsAuth(
+              version, auth_channel, client_nonce, encoded_aux,
+              brillo::BlobToString(orig_cred_metadata), &pinweaver_status,
+              &root, &server_nonce, &encrypted_he_secret, &iv,
+              &cred_metadata_string, &mac_string)))
       .WithStatus<TPMError>("Failed to try auth in pinweaver");
 
   return CredentialTreeResult{
@@ -700,14 +683,12 @@ Status PinWeaverTpm2::BlockGeneratePk() {
         TPMRetryAction::kNoRetry);
   }
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   uint32_t pinweaver_status = 0;
   std::string root;
 
   RETURN_IF_ERROR(
       MakeStatus<TPM2Error>(
-          context.tpm_utility->PinWeaverBlockGenerateBiometricsAuthPk(
+          context_.GetTpmUtility().PinWeaverBlockGenerateBiometricsAuthPk(
               version, &pinweaver_status, &root)))
       .WithStatus<TPMError>("Failed to try auth in pinweaver");
 
@@ -766,15 +747,14 @@ StatusOr<PinWeaverTpm2::PinWeaverTimestamp>
 PinWeaverTpm2::GetSystemTimestamp() {
   ASSIGN_OR_RETURN(uint8_t version, GetVersion());
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   uint32_t pinweaver_status = 0;
   std::string root;
   PinWeaverTpm2::PinWeaverTimestamp timestamp;
 
-  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->PinWeaverSysInfo(
-                      version, &pinweaver_status, &root, &timestamp.boot_count,
-                      &timestamp.timer_value)))
+  RETURN_IF_ERROR(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().PinWeaverSysInfo(
+          version, &pinweaver_status, &root, &timestamp.boot_count,
+          &timestamp.timer_value)))
       .WithStatus<TPMError>("Failed to get sysinfo in pinweaver");
 
   RETURN_IF_ERROR(ErrorCodeToStatus(ConvertPWStatus(pinweaver_status)));
@@ -883,7 +863,7 @@ StatusOr<trunks::ValidPcrCriteria> PinWeaverTpm2::PolicySettingsToPcrCriteria(
 
     ASSIGN_OR_RETURN(
         const ConfigTpm2::PcrValue& pcr_value,
-        backend_.GetConfigTpm2().ToPcrValue(policy.device_config_settings),
+        config_.ToPcrValue(policy.device_config_settings),
         _.WithStatus<TPMError>("Failed to convert setting to PCR value"));
 
     pcr_values.push_back(pcr_value);

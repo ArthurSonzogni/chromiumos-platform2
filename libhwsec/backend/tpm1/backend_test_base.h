@@ -38,10 +38,10 @@ MATCHER_P(MatchTssUUID, uuid, "") {
 
 class BackendTpm1TestBase : public ::testing::Test {
  public:
-  BackendTpm1TestBase() {}
+  BackendTpm1TestBase() = default;
   BackendTpm1TestBase(const BackendTpm1TestBase&) = delete;
   BackendTpm1TestBase& operator=(const BackendTpm1TestBase&) = delete;
-  virtual ~BackendTpm1TestBase() {}
+  ~BackendTpm1TestBase() override = default;
 
   void SetUp() override {
     proxy_ = std::make_unique<ProxyForTest>();
@@ -142,7 +142,8 @@ class BackendTpm1TestBase : public ::testing::Test {
     using tpm_manager::TpmManagerStatus;
 
     // Cache the default user TPM handle.
-    EXPECT_THAT(backend_->GetUserTpmHandle(), IsOkAndHolds(kDefaultTpm));
+    EXPECT_THAT(backend_->GetTssHelper().GetUserTpmHandle(),
+                IsOkAndHolds(kDefaultTpm));
 
     TSS_HPOLICY kPolicy1 = 0x9909;
 

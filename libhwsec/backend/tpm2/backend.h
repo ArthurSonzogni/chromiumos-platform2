@@ -25,6 +25,7 @@
 #include "libhwsec/backend/tpm2/signing.h"
 #include "libhwsec/backend/tpm2/state.h"
 #include "libhwsec/backend/tpm2/storage.h"
+#include "libhwsec/backend/tpm2/trunks_context.h"
 #include "libhwsec/backend/tpm2/u2f.h"
 #include "libhwsec/backend/tpm2/vendor.h"
 #include "libhwsec/middleware/middleware_derivative.h"
@@ -41,21 +42,6 @@ class BackendTpm2 : public Backend {
   BackendTpm2(Proxy& proxy, MiddlewareDerivative middleware_derivative);
 
   ~BackendTpm2() override;
-
-  // This structure holds all Trunks client objects.
-  struct TrunksClientContext {
-    trunks::CommandTransceiver& command_transceiver;
-    trunks::TrunksFactory& factory;
-    std::unique_ptr<trunks::TpmState> tpm_state;
-    std::unique_ptr<trunks::TpmUtility> tpm_utility;
-  };
-
-  MiddlewareDerivative GetMiddlewareDerivative() const {
-    return middleware_derivative_;
-  }
-
-  Proxy& GetProxy() { return proxy_; }
-  TrunksClientContext& GetTrunksContext() { return trunks_context_; }
 
   StateTpm2& GetStateTpm2() { return state_; }
   DAMitigationTpm2& GetDAMitigationTpm2() { return da_mitigation_; }
@@ -106,28 +92,30 @@ class BackendTpm2 : public Backend {
   U2f* GetU2f() override { return &u2f_; }
 
   Proxy& proxy_;
-
-  TrunksClientContext trunks_context_;
-
-  StateTpm2 state_{*this};
-  DAMitigationTpm2 da_mitigation_{*this};
-  StorageTpm2 storage_{*this};
-  SealingTpm2 sealing_{*this};
-  SignatureSealingTpm2 signature_sealing_{*this};
-  DerivingTpm2 deriving_{*this};
-  EncryptionTpm2 encryption_{*this};
-  SigningTpm2 signing_{*this};
-  KeyManagementTpm2 key_management_{*this};
-  SessionManagementTpm2 session_management_{*this};
-  ConfigTpm2 config_{*this};
-  RandomTpm2 random_{*this};
-  PinWeaverTpm2 pinweaver_{*this};
-  VendorTpm2 vendor_{*this};
-  RecoveryCryptoTpm2 recovery_crypto_{*this};
-  U2fTpm2 u2f_{*this};
-  RoDataTpm2 ro_data_{*this};
+  org::chromium::TpmManagerProxyInterface& tpm_manager_;
+  org::chromium::TpmNvramProxyInterface& tpm_nvram_;
 
   MiddlewareDerivative middleware_derivative_;
+
+  TrunksContext context_;
+
+  StateTpm2 state_;
+  DAMitigationTpm2 da_mitigation_;
+  StorageTpm2 storage_;
+  SessionManagementTpm2 session_management_;
+  ConfigTpm2 config_;
+  KeyManagementTpm2 key_management_;
+  SealingTpm2 sealing_;
+  SignatureSealingTpm2 signature_sealing_;
+  DerivingTpm2 deriving_;
+  EncryptionTpm2 encryption_;
+  SigningTpm2 signing_;
+  RandomTpm2 random_;
+  PinWeaverTpm2 pinweaver_;
+  VendorTpm2 vendor_;
+  RecoveryCryptoTpm2 recovery_crypto_;
+  U2fTpm2 u2f_;
+  RoDataTpm2 ro_data_;
 };
 
 }  // namespace hwsec

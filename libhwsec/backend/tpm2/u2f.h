@@ -10,18 +10,17 @@
 
 #include <brillo/secure_blob.h>
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/tpm2/trunks_context.h"
+#include "libhwsec/backend/u2f.h"
 #include "libhwsec/status.h"
 
 namespace hwsec {
 
-class BackendTpm2;
-
 // U2f provide the functions related to U2F vendor commands.
-class U2fTpm2 : public Backend::U2f,
-                public Backend::SubClassHelper<BackendTpm2> {
+class U2fTpm2 : public U2f {
  public:
-  using SubClassHelper::SubClassHelper;
+  explicit U2fTpm2(TrunksContext& context) : context_(context) {}
+
   StatusOr<bool> IsEnabled() override;
   StatusOr<u2f::GenerateResult> GenerateUserPresenceOnly(
       const brillo::Blob& app_id,
@@ -74,6 +73,8 @@ class U2fTpm2 : public Backend::U2f,
   StatusOr<u2f::Config> GetConfig() override;
 
  private:
+  TrunksContext& context_;
+
   std::optional<bool> enabled_;
 };
 

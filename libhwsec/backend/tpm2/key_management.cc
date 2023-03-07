@@ -29,7 +29,6 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
-#include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/error/tpm_manager_error.h"
 #include "libhwsec/status.h"
@@ -124,10 +123,11 @@ StatusOr<uint32_t> GetIntegerExponent(const brillo::Blob& public_exponent) {
   }
 
   uint32_t exponent = 0;
-  for (size_t i = 0; i < public_exponent.size(); i++) {
+  for (uint8_t byte : public_exponent) {
     exponent = exponent << 8;
-    exponent += public_exponent[i];
+    exponent += byte;
   }
+
   return exponent;
 }
 
@@ -290,14 +290,12 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateRsaKey(
     const CreateKeyOptions& options,
     const LoadKeyOptions& load_key_options) {
   ASSIGN_OR_RETURN(const std::string& policy_digest,
-                   backend_.GetConfigTpm2().GetPolicyDigest(policy),
+                   config_.GetPolicyDigest(policy),
                    _.WithStatus<TPMError>("Failed to get policy digest"));
 
   if (options.allow_software_gen && policy_digest.empty()) {
     return CreateSoftwareGenRsaKey(policy, options, load_key_options);
   }
-
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   ASSIGN_OR_RETURN(trunks::TpmUtility::AsymmetricKeyUsage usage,
                    GetKeyUsage(options),
@@ -328,12 +326,12 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateRsaKey(
       brillo::SecureClearContainer<std::string>, std::ref(auth_value)));
 
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
-      context.factory.GetPasswordAuthorization("");
+      context_.GetTrunksFactory().GetPasswordAuthorization("");
 
   std::string tpm_key_blob;
 
   RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context.tpm_utility->CreateRSAKeyPair(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().CreateRSAKeyPair(
           usage, options.rsa_modulus_bits.value_or(kDefaultTpmRsaKeyBits),
           exponent, auth_value, policy_digest, use_only_policy_authorization,
           /*creation_pcr_indexes=*/{}, delegate.get(), &tpm_key_blob,
@@ -343,8 +341,7 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateRsaKey(
   brillo::Blob key_blob = BlobFromString(tpm_key_blob);
 
   ASSIGN_OR_RETURN(
-      const OperationPolicy& op_policy,
-      backend_.GetConfigTpm2().ToOperationPolicy(policy),
+      const OperationPolicy& op_policy, config_.ToOperationPolicy(policy),
       _.WithStatus<TPMError>("Failed to convert setting to policy"));
 
   ASSIGN_OR_RETURN(ScopedKey key,
@@ -382,7 +379,7 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::WrapRSAKey(
     const CreateKeyOptions& options) {
   ASSIGN_OR_RETURN(
       const ConfigTpm2::PcrMap& setting,
-      backend_.GetConfigTpm2().ToSettingsPcrMap(policy.device_config_settings),
+      config_.ToSettingsPcrMap(policy.device_config_settings),
       _.WithStatus<TPMError>("Failed to convert setting to PCR map"));
 
   if (!setting.empty()) {
@@ -413,13 +410,11 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::WrapRSAKey(
                      GetIntegerExponent(options.rsa_exponent.value()));
   }
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   std::string tpm_key_blob;
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
-      context.factory.GetPasswordAuthorization("");
+      context_.GetTrunksFactory().GetPasswordAuthorization("");
 
-  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->ImportRSAKey(
+  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context_.GetTpmUtility().ImportRSAKey(
                       usage, brillo::BlobToString(public_modulus), exponent,
                       prime_factor, auth_value, delegate.get(), &tpm_key_blob)))
       .WithStatus<TPMError>("Failed to import software RSA key");
@@ -427,8 +422,7 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::WrapRSAKey(
   brillo::Blob key_blob = BlobFromString(tpm_key_blob);
 
   ASSIGN_OR_RETURN(
-      const OperationPolicy& op_policy,
-      backend_.GetConfigTpm2().ToOperationPolicy(policy),
+      const OperationPolicy& op_policy, config_.ToOperationPolicy(policy),
       _.WithStatus<TPMError>("Failed to convert setting to policy"));
 
   ASSIGN_OR_RETURN(
@@ -450,7 +444,7 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::WrapECCKey(
     const CreateKeyOptions& options) {
   ASSIGN_OR_RETURN(
       const ConfigTpm2::PcrMap& setting,
-      backend_.GetConfigTpm2().ToSettingsPcrMap(policy.device_config_settings),
+      config_.ToSettingsPcrMap(policy.device_config_settings),
       _.WithStatus<TPMError>("Failed to convert setting to PCR map"));
 
   if (!setting.empty()) {
@@ -477,14 +471,12 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::WrapECCKey(
     ASSIGN_OR_RETURN(curve, ConvertNIDToTrunksCurveID(options.ecc_nid.value()));
   }
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   std::string tpm_key_blob;
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
-      context.factory.GetPasswordAuthorization("");
+      context_.GetTrunksFactory().GetPasswordAuthorization("");
 
   RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context.tpm_utility->ImportECCKey(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().ImportECCKey(
           usage, curve,
           PaddingStringToLength(brillo::BlobToString(public_point_x),
                                 MAX_ECC_KEY_BYTES),
@@ -497,8 +489,7 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::WrapECCKey(
   brillo::Blob key_blob = BlobFromString(tpm_key_blob);
 
   ASSIGN_OR_RETURN(
-      const OperationPolicy& op_policy,
-      backend_.GetConfigTpm2().ToOperationPolicy(policy),
+      const OperationPolicy& op_policy, config_.ToOperationPolicy(policy),
       _.WithStatus<TPMError>("Failed to convert setting to policy"));
 
   ASSIGN_OR_RETURN(
@@ -515,8 +506,6 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateEccKey(
     const OperationPolicySetting& policy,
     const CreateKeyOptions& options,
     const LoadKeyOptions& load_key_options) {
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   ASSIGN_OR_RETURN(trunks::TpmUtility::AsymmetricKeyUsage usage,
                    GetKeyUsage(options),
                    _.WithStatus<TPMError>("Failed to get key usage"));
@@ -524,7 +513,7 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateEccKey(
   bool use_only_policy_authorization = false;
 
   ASSIGN_OR_RETURN(const std::string& policy_digest,
-                   backend_.GetConfigTpm2().GetPolicyDigest(policy),
+                   config_.GetPolicyDigest(policy),
                    _.WithStatus<TPMError>("Failed to get policy digest"));
 
   if (!policy_digest.empty()) {
@@ -550,12 +539,12 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateEccKey(
       brillo::SecureClearContainer<std::string>, std::ref(auth_value)));
 
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
-      context.factory.GetPasswordAuthorization("");
+      context_.GetTrunksFactory().GetPasswordAuthorization("");
 
   std::string tpm_key_blob;
 
   RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context.tpm_utility->CreateECCKeyPair(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().CreateECCKeyPair(
           usage, curve, auth_value, policy_digest,
           use_only_policy_authorization, /*creation_pcr_indexes=*/{},
           delegate.get(), &tpm_key_blob, /*creation_blob=*/nullptr)))
@@ -564,8 +553,7 @@ StatusOr<KeyManagementTpm2::CreateKeyResult> KeyManagementTpm2::CreateEccKey(
   brillo::Blob key_blob = BlobFromString(tpm_key_blob);
 
   ASSIGN_OR_RETURN(
-      const OperationPolicy& op_policy,
-      backend_.GetConfigTpm2().ToOperationPolicy(policy),
+      const OperationPolicy& op_policy, config_.ToOperationPolicy(policy),
       _.WithStatus<TPMError>("Failed to convert setting to policy"));
 
   ASSIGN_OR_RETURN(ScopedKey key,
@@ -594,19 +582,16 @@ StatusOr<ScopedKey> KeyManagementTpm2::LoadKey(
             std::min(key_data.reload_data->lazy_expiration_time,
                      load_key_options.lazy_expiration_time);
         key_data.reload_data->client_count++;
-        return ScopedKey(Key{.token = token},
-                         backend_.GetMiddlewareDerivative());
+        return ScopedKey(Key{.token = token}, middleware_derivative_);
       }
     }
   }
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   uint32_t key_handle;
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
-      context.factory.GetPasswordAuthorization("");
+      context_.GetTrunksFactory().GetPasswordAuthorization("");
 
-  if (auto status = MakeStatus<TPM2Error>(context.tpm_utility->LoadKey(
+  if (auto status = MakeStatus<TPM2Error>(context_.GetTpmUtility().LoadKey(
           BlobToString(key_blob), delegate.get(), &key_handle));
       !status.ok() && trunks::GetFormatOneError(status->ErrorCode()) ==
                           trunks::TPM_RC_INTEGRITY) {
@@ -658,30 +643,29 @@ StatusOr<ScopedKey> KeyManagementTpm2::GetPolicyEndorsementKey(
   }
 
   ASSIGN_OR_RETURN(const std::string& policy_digest,
-                   backend_.GetConfigTpm2().GetPolicyDigest(policy),
+                   config_.GetPolicyDigest(policy),
                    _.WithStatus<TPMError>("Failed to get policy digest"));
-
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   ASSIGN_OR_RETURN(
       const brillo::SecureBlob& endorsement_pass,
-      GetEndorsementPassword(backend_.GetProxy().GetTpmManager()),
+      GetEndorsementPassword(tpm_manager_),
       _.WithStatus<TPMError>("Failed to get endorsement password"));
 
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
-      context.factory.GetPasswordAuthorization(endorsement_pass.to_string());
+      context_.GetTrunksFactory().GetPasswordAuthorization(
+          endorsement_pass.to_string());
 
   trunks::TPM_HANDLE key_handle;
   trunks::TPM2B_NAME key_name;
 
   RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context.tpm_utility->GetAuthPolicyEndorsementKey(
-          key_type, policy_digest, delegate.get(), &key_handle, &key_name)))
+      MakeStatus<TPM2Error>(
+          context_.GetTpmUtility().GetAuthPolicyEndorsementKey(
+              key_type, policy_digest, delegate.get(), &key_handle, &key_name)))
       .WithStatus<TPMError>("Failed to get auth policy endorsement key");
 
   ASSIGN_OR_RETURN(
-      const OperationPolicy& op_policy,
-      backend_.GetConfigTpm2().ToOperationPolicy(policy),
+      const OperationPolicy& op_policy, config_.ToOperationPolicy(policy),
       _.WithStatus<TPMError>("Failed to convert setting to policy"));
 
   ASSIGN_OR_RETURN(
@@ -697,8 +681,7 @@ StatusOr<ScopedKey> KeyManagementTpm2::GetPersistentKey(
     PersistentKeyType key_type) {
   auto it = persistent_key_map_.find(key_type);
   if (it != persistent_key_map_.end()) {
-    return ScopedKey(Key{.token = it->second},
-                     backend_.GetMiddlewareDerivative());
+    return ScopedKey(Key{.token = it->second}, middleware_derivative_);
   }
 
   uint32_t key_handle = 0;
@@ -808,11 +791,10 @@ StatusOr<ScopedKey> KeyManagementTpm2::LoadKeyInternal(
     KeyTpm2::Type key_type,
     uint32_t key_handle,
     std::optional<KeyReloadDataTpm2> reload_data) {
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   trunks::TPMT_PUBLIC public_area;
-  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->GetKeyPublicArea(
-                      key_handle, &public_area)))
+  RETURN_IF_ERROR(
+      MakeStatus<TPM2Error>(
+          context_.GetTpmUtility().GetKeyPublicArea(key_handle, &public_area)))
       .WithStatus<TPMError>("Failed to Get key public area");
 
   KeyToken token = current_token_++;
@@ -827,7 +809,7 @@ StatusOr<ScopedKey> KeyManagementTpm2::LoadKeyInternal(
                               .reload_data = std::move(reload_data),
                           });
 
-  return ScopedKey(Key{.token = token}, backend_.GetMiddlewareDerivative());
+  return ScopedKey(Key{.token = token}, middleware_derivative_);
 }
 
 Status KeyManagementTpm2::Flush(Key key) {
@@ -884,11 +866,9 @@ Status KeyManagementTpm2::FlushTransientKey(Key key, KeyTpm2& key_data) {
 
 Status KeyManagementTpm2::FlushKeyTokenAndHandle(KeyToken token,
                                                  trunks::TPM_HANDLE handle) {
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
-  RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(
-          context.factory.GetTpm()->FlushContextSync(handle, nullptr)))
+  RETURN_IF_ERROR(MakeStatus<TPM2Error>(
+                      context_.GetTrunksFactory().GetTpm()->FlushContextSync(
+                          handle, nullptr)))
       .WithStatus<TPMError>("Failed to flush key handle");
 
   key_map_.erase(token);
@@ -916,10 +896,8 @@ Status KeyManagementTpm2::ReloadIfPossible(Key key) {
     return MakeStatus<TPMError>("Empty reload data", TPMRetryAction::kNoRetry);
   }
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
-  if (auto status =
-          MakeStatus<TPM2Error>(context.factory.GetTpm()->FlushContextSync(
+  if (auto status = MakeStatus<TPM2Error>(
+          context_.GetTrunksFactory().GetTpm()->FlushContextSync(
               key_data.key_handle, nullptr));
       !status.ok()) {
     LOG(WARNING) << "Failed to flush stale key handle: " << status;
@@ -927,8 +905,8 @@ Status KeyManagementTpm2::ReloadIfPossible(Key key) {
 
   uint32_t key_handle;
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
-      context.factory.GetPasswordAuthorization("");
-  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->LoadKey(
+      context_.GetTrunksFactory().GetPasswordAuthorization("");
+  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context_.GetTpmUtility().LoadKey(
                       BlobToString(key_data.reload_data->key_blob),
                       delegate.get(), &key_handle)))
       .WithStatus<TPMError>("Failed to reload SRK wrapped key");
@@ -944,13 +922,13 @@ StatusOr<ScopedKey> KeyManagementTpm2::LoadPublicKeyFromSpki(
   ASSIGN_OR_RETURN(const RsaParameters& public_key,
                    ParseSpkiDer(public_key_spki_der));
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
   // Load the key into the TPM.
   trunks::TPM_HANDLE key_handle = 0;
-  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->LoadRSAPublicKey(
-                      trunks::TpmUtility::AsymmetricKeyUsage::kSignKey, scheme,
-                      hash_alg, brillo::BlobToString(public_key.key_modulus),
-                      public_key.key_exponent, nullptr, &key_handle)))
+  RETURN_IF_ERROR(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().LoadRSAPublicKey(
+          trunks::TpmUtility::AsymmetricKeyUsage::kSignKey, scheme, hash_alg,
+          brillo::BlobToString(public_key.key_modulus), public_key.key_exponent,
+          nullptr, &key_handle)))
       .WithStatus<TPMError>("Failed to load RSA public key");
 
   return LoadKeyInternal(OperationPolicy{}, KeyTpm2::Type::kTransientKey,

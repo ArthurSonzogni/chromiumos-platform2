@@ -16,7 +16,6 @@
 #include <trunks/openssl_utility.h>
 #include <trunks/tpm_utility.h>
 
-#include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/operation_policy.h"
@@ -110,17 +109,16 @@ StatusOr<OperationPolicy> ConfigTpm2::ToOperationPolicy(
 }
 
 Status ConfigTpm2::SetCurrentUser(const std::string& current_user) {
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   std::unique_ptr<trunks::AuthorizationDelegate> delegate =
-      context.factory.GetPasswordAuthorization("");
+      context_.GetTrunksFactory().GetPasswordAuthorization("");
 
-  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->ExtendPCR(
+  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context_.GetTpmUtility().ExtendPCR(
                       kCurrentUserPcr, current_user, delegate.get())))
       .WithStatus<TPMError>("Failed to extend current user PCR");
 
-  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->ExtendPCRForCSME(
-                      kCurrentUserPcr, current_user)))
+  RETURN_IF_ERROR(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().ExtendPCRForCSME(
+          kCurrentUserPcr, current_user)))
       .WithStatus<TPMError>("Failed to extend current user PCR for CSME");
 
   return OkStatus();
@@ -205,10 +203,8 @@ ConfigTpm2::GetTrunksPolicySession(
     const std::vector<std::string>& extra_policy_digests,
     bool salted,
     bool enable_encryption) {
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   std::unique_ptr<trunks::PolicySession> policy_session =
-      context.factory.GetPolicySession();
+      context_.GetTrunksFactory().GetPolicySession();
 
   RETURN_IF_ERROR(MakeStatus<TPM2Error>(policy_session->StartUnboundSession(
                       salted, enable_encryption)))
@@ -255,10 +251,9 @@ StatusOr<ConfigTpm2::TrunksSession> ConfigTpm2::GetTrunksSession(
         .delegate = delegate,
     };
   } else {
-    ASSIGN_OR_RETURN(
-        trunks::HmacSession & hmac_session,
-        backend_.GetSessionManagementTpm2().GetOrCreateHmacSession(setting),
-        _.WithStatus<TPMError>("Failed to get hmac session"));
+    ASSIGN_OR_RETURN(trunks::HmacSession & hmac_session,
+                     session_management_.GetOrCreateHmacSession(setting),
+                     _.WithStatus<TPMError>("Failed to get hmac session"));
 
     if (policy.permission.auth_value.has_value()) {
       std::string auth_value = policy.permission.auth_value.value().to_string();
@@ -275,11 +270,9 @@ StatusOr<ConfigTpm2::TrunksSession> ConfigTpm2::GetTrunksSession(
 }
 
 StatusOr<std::string> ConfigTpm2::ReadPcr(uint32_t pcr_index) {
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   std::string pcr_digest;
   RETURN_IF_ERROR(MakeStatus<TPM2Error>(
-                      context.tpm_utility->ReadPCR(pcr_index, &pcr_digest)))
+                      context_.GetTpmUtility().ReadPCR(pcr_index, &pcr_digest)))
       .WithStatus<TPMError>("Failed to read PCR");
 
   return pcr_digest;
@@ -314,11 +307,9 @@ StatusOr<std::string> ConfigTpm2::GetPolicyDigest(
     return std::string();
   }
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   // Start a trial policy session.
   std::unique_ptr<trunks::PolicySession> policy_session =
-      context.factory.GetTrialSession();
+      context_.GetTrunksFactory().GetTrialSession();
 
   RETURN_IF_ERROR(
       MakeStatus<TPM2Error>(policy_session->StartUnboundSession(false, false)))

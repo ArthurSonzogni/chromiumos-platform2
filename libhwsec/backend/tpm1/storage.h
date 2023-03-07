@@ -9,17 +9,18 @@
 
 #include <brillo/secure_blob.h>
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/storage.h"
+#include "libhwsec/proxy/proxy.h"
 #include "libhwsec/status.h"
 
 namespace hwsec {
 
-class BackendTpm1;
-
-class StorageTpm1 : public Backend::Storage,
-                    public Backend::SubClassHelper<BackendTpm1> {
+class StorageTpm1 : public Storage {
  public:
-  using SubClassHelper::SubClassHelper;
+  StorageTpm1(org::chromium::TpmManagerProxyInterface& tpm_manager,
+              org::chromium::TpmNvramProxyInterface& tpm_nvram)
+      : tpm_manager_(tpm_manager), tpm_nvram_(tpm_nvram) {}
+
   StatusOr<ReadyState> IsReady(Space space) override;
   Status Prepare(Space space, uint32_t size) override;
   StatusOr<brillo::Blob> Load(Space space) override;
@@ -27,6 +28,10 @@ class StorageTpm1 : public Backend::Storage,
   Status Lock(Space space, LockOptions options) override;
   Status Destroy(Space space) override;
   StatusOr<bool> IsWriteLocked(Space space) override;
+
+ private:
+  org::chromium::TpmManagerProxyInterface& tpm_manager_;
+  org::chromium::TpmNvramProxyInterface& tpm_nvram_;
 };
 
 }  // namespace hwsec

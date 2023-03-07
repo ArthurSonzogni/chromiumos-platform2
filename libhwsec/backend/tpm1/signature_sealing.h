@@ -11,18 +11,33 @@
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/signature_sealing.h"
+#include "libhwsec/backend/tpm1/config.h"
+#include "libhwsec/backend/tpm1/key_management.h"
+#include "libhwsec/backend/tpm1/random.h"
+#include "libhwsec/backend/tpm1/sealing.h"
+#include "libhwsec/backend/tpm1/tss_helper.h"
+#include "libhwsec/proxy/proxy.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/no_default_init.h"
 
 namespace hwsec {
 
-class BackendTpm1;
-
-class SignatureSealingTpm1 : public Backend::SignatureSealing,
-                             public Backend::SubClassHelper<BackendTpm1> {
+class SignatureSealingTpm1 : public SignatureSealing {
  public:
-  using SubClassHelper::SubClassHelper;
+  SignatureSealingTpm1(overalls::Overalls& overalls,
+                       TssHelper& tss_helper,
+                       ConfigTpm1& config,
+                       KeyManagementTpm1& key_management,
+                       SealingTpm1& sealing,
+                       RandomTpm1& random)
+      : overalls_(overalls),
+        tss_helper_(tss_helper),
+        config_(config),
+        key_management_(key_management),
+        sealing_(sealing),
+        random_(random) {}
+
   StatusOr<SignatureSealedData> Seal(
       const std::vector<OperationPolicySetting>& policies,
       const brillo::SecureBlob& unsealed_data,
@@ -53,6 +68,13 @@ class SignatureSealingTpm1 : public Backend::SignatureSealing,
     crypto::ScopedRSA migration_destination_rsa;
     brillo::Blob migration_destination_key_pubkey;
   };
+
+  overalls::Overalls& overalls_;
+  TssHelper& tss_helper_;
+  ConfigTpm1& config_;
+  KeyManagementTpm1& key_management_;
+  SealingTpm1& sealing_;
+  RandomTpm1& random_;
 
   std::optional<InternalChallengeData> current_challenge_data_;
 };

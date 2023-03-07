@@ -14,7 +14,9 @@
 
 #include <brillo/secure_blob.h>
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/config.h"
+#include "libhwsec/backend/tpm1/tss_helper.h"
+#include "libhwsec/proxy/proxy.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/key.h"
 #include "libhwsec/structures/operation_policy.h"
@@ -23,12 +25,11 @@ namespace hwsec {
 
 extern const int kCurrentUserPcrTpm1;
 
-class BackendTpm1;
-
-class ConfigTpm1 : public Backend::Config,
-                   public Backend::SubClassHelper<BackendTpm1> {
+class ConfigTpm1 : public Config {
  public:
-  using SubClassHelper::SubClassHelper;
+  ConfigTpm1(overalls::Overalls& overalls, TssHelper& tss_helper)
+      : overalls_(overalls), tss_helper_(tss_helper) {}
+
   StatusOr<OperationPolicy> ToOperationPolicy(
       const OperationPolicySetting& policy) override;
   Status SetCurrentUser(const std::string& current_user) override;
@@ -49,6 +50,9 @@ class ConfigTpm1 : public Backend::Config,
 
  private:
   StatusOr<brillo::Blob> ReadPcr(uint32_t pcr_index);
+
+  overalls::Overalls& overalls_;
+  TssHelper& tss_helper_;
 };
 
 }  // namespace hwsec

@@ -42,17 +42,6 @@ namespace hwsec {
 // communication error.
 class Backend {
  public:
-  // A helper to give subclasses the ability to access the backend.
-  template <typename BackendType>
-  class SubClassHelper {
-   public:
-    explicit SubClassHelper(BackendType& backend) : backend_(backend) {}
-
-   protected:
-    ~SubClassHelper() = default;
-    BackendType& backend_;
-  };
-
   using State = ::hwsec::State;
   using DAMitigation = ::hwsec::DAMitigation;
   using Storage = ::hwsec::Storage;

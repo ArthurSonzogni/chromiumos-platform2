@@ -33,7 +33,7 @@ using ErrorCode = hwsec::Backend::PinWeaver::CredentialTreeResult::ErrorCode;
 
 namespace hwsec {
 
-class BackendPinweaverTpm2Test : public BackendTpm2TestBase {};
+using BackendPinweaverTpm2Test = BackendTpm2TestBase;
 
 TEST_F(BackendPinweaverTpm2Test, IsEnabled) {
   EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))

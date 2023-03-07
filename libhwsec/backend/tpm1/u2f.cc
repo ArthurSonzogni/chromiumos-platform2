@@ -9,7 +9,6 @@
 
 #include <brillo/secure_blob.h>
 
-#include "libhwsec/backend/tpm1/backend.h"
 #include "libhwsec/status.h"
 
 using hwsec_foundation::status::MakeStatus;

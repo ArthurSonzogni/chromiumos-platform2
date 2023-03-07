@@ -11,18 +11,20 @@
 #include <brillo/secure_blob.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/tpm2/trunks_context.h"
+#include "libhwsec/backend/vendor.h"
+#include "libhwsec/proxy/proxy.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/ifx_info.h"
 
 namespace hwsec {
 
-class BackendTpm2;
-
-class VendorTpm2 : public Backend::Vendor,
-                   public Backend::SubClassHelper<BackendTpm2> {
+class VendorTpm2 : public Vendor {
  public:
-  using SubClassHelper::SubClassHelper;
+  VendorTpm2(TrunksContext& context,
+             org::chromium::TpmManagerProxyInterface& tpm_manager)
+      : context_(context), tpm_manager_(tpm_manager) {}
+
   StatusOr<uint32_t> GetFamily() override;
   StatusOr<uint64_t> GetSpecLevel() override;
   StatusOr<uint32_t> GetManufacturer() override;
@@ -39,6 +41,9 @@ class VendorTpm2 : public Backend::Vendor,
 
  private:
   Status EnsureVersionInfo();
+
+  TrunksContext& context_;
+  org::chromium::TpmManagerProxyInterface& tpm_manager_;
 
   bool fw_declared_stable_ = false;
   std::optional<tpm_manager::GetVersionInfoReply> version_info_;

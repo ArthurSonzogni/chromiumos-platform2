@@ -10,26 +10,42 @@
 
 #include <brillo/secure_blob.h>
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/recovery_crypto.h"
+#include "libhwsec/backend/tpm2/config.h"
+#include "libhwsec/backend/tpm2/key_management.h"
+#include "libhwsec/backend/tpm2/session_management.h"
+#include "libhwsec/backend/tpm2/trunks_context.h"
 #include "libhwsec/status.h"
 
 namespace hwsec {
 
-class BackendTpm2;
-
-class RecoveryCryptoTpm2 : public Backend::RecoveryCrypto,
-                           public Backend::SubClassHelper<BackendTpm2> {
+class RecoveryCryptoTpm2 : public RecoveryCrypto {
  public:
-  using SubClassHelper::SubClassHelper;
-  StatusOr<std::optional<brillo::SecureBlob>> GenerateKeyAuthValue();
+  RecoveryCryptoTpm2(TrunksContext& context,
+                     ConfigTpm2& config,
+                     KeyManagementTpm2& key_management,
+                     SessionManagementTpm2& session_management)
+      : context_(context),
+        config_(config),
+        key_management_(key_management),
+        session_management_(session_management) {}
+
+  StatusOr<std::optional<brillo::SecureBlob>> GenerateKeyAuthValue() override;
   StatusOr<EncryptEccPrivateKeyResponse> EncryptEccPrivateKey(
-      const EncryptEccPrivateKeyRequest& request);
+      const EncryptEccPrivateKeyRequest& request) override;
   StatusOr<crypto::ScopedEC_POINT> GenerateDiffieHellmanSharedSecret(
-      const GenerateDhSharedSecretRequest& request);
-  StatusOr<std::optional<RecoveryCryptoRsaKeyPair>> GenerateRsaKeyPair();
+      const GenerateDhSharedSecretRequest& request) override;
+  StatusOr<std::optional<RecoveryCryptoRsaKeyPair>> GenerateRsaKeyPair()
+      override;
   StatusOr<std::optional<brillo::Blob>> SignRequestPayload(
       const brillo::Blob& encrypted_rsa_private_key,
-      const brillo::Blob& request_payload);
+      const brillo::Blob& request_payload) override;
+
+ private:
+  TrunksContext& context_;
+  ConfigTpm2& config_;
+  KeyManagementTpm2& key_management_;
+  SessionManagementTpm2& session_management_;
 };
 
 }  // namespace hwsec

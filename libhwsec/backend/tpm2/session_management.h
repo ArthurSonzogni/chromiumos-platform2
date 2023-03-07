@@ -11,13 +11,12 @@
 #include <absl/container/flat_hash_map.h>
 #include <trunks/hmac_session.h>
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/session_management.h"
+#include "libhwsec/backend/tpm2/trunks_context.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/no_default_init.h"
 
 namespace hwsec {
-
-class BackendTpm2;
 
 enum class SessionSecuritySetting {
   // The command content can be viewed by the passive attacker.
@@ -55,10 +54,10 @@ inline SessionSecurityDetail ToSessionSecurityDetail(
   }
 }
 
-class SessionManagementTpm2 : public Backend::SessionManagement,
-                              public Backend::SubClassHelper<BackendTpm2> {
+class SessionManagementTpm2 : public SessionManagement {
  public:
-  using SubClassHelper::SubClassHelper;
+  explicit SessionManagementTpm2(TrunksContext& context) : context_(context) {}
+
   Status FlushInvalidSessions() override;
 
   // Get the reference for existing unbound hmac session or create a new unbound
@@ -67,6 +66,8 @@ class SessionManagementTpm2 : public Backend::SessionManagement,
       SessionSecuritySetting setting);
 
  private:
+  TrunksContext& context_;
+
   absl::flat_hash_map<SessionSecuritySetting,
                       std::unique_ptr<trunks::HmacSession>>
       hmac_sessions_;

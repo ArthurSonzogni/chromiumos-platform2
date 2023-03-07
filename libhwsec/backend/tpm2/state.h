@@ -8,17 +8,17 @@
 #include <optional>
 #include <vector>
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/state.h"
+#include "libhwsec/proxy/proxy.h"
 #include "libhwsec/status.h"
 
 namespace hwsec {
 
-class BackendTpm2;
-
-class StateTpm2 : public Backend::State,
-                  public Backend::SubClassHelper<BackendTpm2> {
+class StateTpm2 : public State {
  public:
-  using SubClassHelper::SubClassHelper;
+  explicit StateTpm2(org::chromium::TpmManagerProxyInterface& tpm_manager)
+      : tpm_manager_(tpm_manager) {}
+
   StatusOr<bool> IsEnabled() override;
   StatusOr<bool> IsReady() override;
   Status Prepare() override;
@@ -26,6 +26,8 @@ class StateTpm2 : public Backend::State,
 
  private:
   void OnReady();
+
+  org::chromium::TpmManagerProxyInterface& tpm_manager_;
 
   // Receive the ready signal or not, this will be std::nullopt if we didn't
   // register the signal.

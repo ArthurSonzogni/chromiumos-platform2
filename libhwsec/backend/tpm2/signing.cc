@@ -8,12 +8,12 @@
 #include <utility>
 
 #include <brillo/secure_blob.h>
+#include <crypto/scoped_openssl_types.h>
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
 #include <trunks/tpm_utility.h>
 
 #include "libhwsec/backend/digest_algorithms.h"
-#include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/status.h"
 #include "trunks/tpm_generated.h"
@@ -114,8 +114,7 @@ StatusOr<brillo::Blob> SigningTpm2::Sign(Key key,
 StatusOr<brillo::Blob> SigningTpm2::RawSign(Key key,
                                             const brillo::Blob& data,
                                             const SigningOptions& options) {
-  ASSIGN_OR_RETURN(const KeyTpm2& key_data,
-                   backend_.GetKeyManagementTpm2().GetKeyData(key),
+  ASSIGN_OR_RETURN(const KeyTpm2& key_data, key_management_.GetKeyData(key),
                    _.WithStatus<TPMError>("Failed to get the key data"));
   const trunks::TPMT_PUBLIC& public_area = key_data.cache.public_area;
 
@@ -202,15 +201,13 @@ StatusOr<brillo::Blob> SigningTpm2::RawSign(Key key,
 
   ASSIGN_OR_RETURN(
       ConfigTpm2::TrunksSession session,
-      backend_.GetConfigTpm2().GetTrunksSession(
-          key_data.cache.policy, SessionSecuritySetting::kSaltAndEncrypted),
+      config_.GetTrunksSession(key_data.cache.policy,
+                               SessionSecuritySetting::kSaltAndEncrypted),
       _.WithStatus<TPMError>("Failed to get session for policy"));
-
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   std::string signature;
   RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context.tpm_utility->Sign(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().Sign(
           key_data.key_handle, sign_algorithm, digest_alg, data_to_sign,
           /*generate_hash=*/false, session.delegate, &signature)))
       .WithStatus<TPMError>("Failed to sign the data");
@@ -292,15 +289,13 @@ StatusOr<brillo::Blob> SigningTpm2::RawSignRsaWithDecrypt(
 
   ASSIGN_OR_RETURN(
       ConfigTpm2::TrunksSession session,
-      backend_.GetConfigTpm2().GetTrunksSession(
-          key_data.cache.policy, SessionSecuritySetting::kSaltAndEncrypted),
+      config_.GetTrunksSession(key_data.cache.policy,
+                               SessionSecuritySetting::kSaltAndEncrypted),
       _.WithStatus<TPMError>("Failed to get session for policy"));
-
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   std::string signature;
   RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context.tpm_utility->AsymmetricDecrypt(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().AsymmetricDecrypt(
           key_data.key_handle, trunks::TPM_ALG_NULL, trunks::TPM_ALG_NULL,
           padded_data, session.delegate, &signature)))
       .WithStatus<TPMError>("Failed to sign the data wish asymmetric decrypt");

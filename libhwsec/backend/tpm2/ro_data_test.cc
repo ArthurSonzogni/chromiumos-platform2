@@ -22,7 +22,7 @@ using tpm_manager::NvramSpaceAttribute;
 
 namespace hwsec {
 
-class BackendRoDataTpm2Test : public BackendTpm2TestBase {};
+using BackendRoDataTpm2Test = BackendTpm2TestBase;
 
 TEST_F(BackendRoDataTpm2Test, IsReady) {
   tpm_manager::GetSpaceInfoReply info_reply;

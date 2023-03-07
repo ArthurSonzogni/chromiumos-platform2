@@ -13,7 +13,6 @@
 #include <trunks/openssl_utility.h>
 #include <trunks/tpm_utility.h>
 
-#include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/no_default_init.h"
@@ -58,12 +57,9 @@ StatusOr<SchemaDetail> GetSchemaDetail(
 
 StatusOr<brillo::Blob> EncryptionTpm2::Encrypt(
     Key key, const brillo::SecureBlob& plaintext, EncryptionOptions options) {
-  ASSIGN_OR_RETURN(const KeyTpm2& key_data,
-                   backend_.GetKeyManagementTpm2().GetKeyData(key));
+  ASSIGN_OR_RETURN(const KeyTpm2& key_data, key_management_.GetKeyData(key));
 
   ASSIGN_OR_RETURN(const SchemaDetail& schema, GetSchemaDetail(options));
-
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
 
   std::string data = plaintext.to_string();
 
@@ -73,15 +69,16 @@ StatusOr<brillo::Blob> EncryptionTpm2::Encrypt(
 
   ASSIGN_OR_RETURN(
       ConfigTpm2::TrunksSession session,
-      backend_.GetConfigTpm2().GetTrunksSession(
-          key_data.cache.policy, SessionSecuritySetting::kSaltAndEncrypted),
+      config_.GetTrunksSession(key_data.cache.policy,
+                               SessionSecuritySetting::kSaltAndEncrypted),
       _.WithStatus<TPMError>("Failed to get session for policy"));
 
   std::string tpm_ciphertext;
 
-  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->AsymmetricEncrypt(
-                      key_data.key_handle, schema.schema, schema.hash_alg, data,
-                      session.delegate, &tpm_ciphertext)))
+  RETURN_IF_ERROR(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().AsymmetricEncrypt(
+          key_data.key_handle, schema.schema, schema.hash_alg, data,
+          session.delegate, &tpm_ciphertext)))
       .WithStatus<TPMError>("Failed to encrypt plaintext");
 
   return BlobFromString(tpm_ciphertext);
@@ -89,23 +86,20 @@ StatusOr<brillo::Blob> EncryptionTpm2::Encrypt(
 
 StatusOr<brillo::SecureBlob> EncryptionTpm2::Decrypt(
     Key key, const brillo::Blob& ciphertext, EncryptionOptions options) {
-  ASSIGN_OR_RETURN(const KeyTpm2& key_data,
-                   backend_.GetKeyManagementTpm2().GetKeyData(key));
+  ASSIGN_OR_RETURN(const KeyTpm2& key_data, key_management_.GetKeyData(key));
 
   ASSIGN_OR_RETURN(const SchemaDetail& schema, GetSchemaDetail(options));
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   ASSIGN_OR_RETURN(
       ConfigTpm2::TrunksSession session,
-      backend_.GetConfigTpm2().GetTrunksSession(
-          key_data.cache.policy, SessionSecuritySetting::kNoEncrypted),
+      config_.GetTrunksSession(key_data.cache.policy,
+                               SessionSecuritySetting::kNoEncrypted),
       _.WithStatus<TPMError>("Failed to get session for policy"));
 
   std::string tpm_plaintext;
 
   RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context.tpm_utility->AsymmetricDecrypt(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().AsymmetricDecrypt(
           key_data.key_handle, schema.schema, schema.hash_alg,
           BlobToString(ciphertext), session.delegate, &tpm_plaintext)))
       .WithStatus<TPMError>("Failed to decrypt ciphertext");

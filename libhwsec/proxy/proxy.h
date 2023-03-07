@@ -10,21 +10,17 @@
 #endif
 
 // Forward declarations
-namespace hwsec {
-namespace overalls {
+namespace hwsec::overalls {
 class Overalls;
-}  // namespace overalls
-}  // namespace hwsec
+}  // namespace hwsec::overalls
 namespace trunks {
 class CommandTransceiver;
 class TrunksFactory;
 }  // namespace trunks
-namespace org {
-namespace chromium {
+namespace org::chromium {
 class TpmManagerProxyInterface;
 class TpmNvramProxyInterface;
-}  // namespace chromium
-}  // namespace org
+}  // namespace org::chromium
 
 namespace hwsec {
 

@@ -19,7 +19,6 @@
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 
-#include "libhwsec/backend/tpm1/backend.h"
 #include "libhwsec/backend/tpm1/static_utils.h"
 #include "libhwsec/error/tpm1_error.h"
 #include "libhwsec/error/tpm_manager_error.h"
@@ -62,7 +61,7 @@ Status VendorTpm1::EnsureVersionInfo() {
   tpm_manager::GetVersionInfoRequest request;
   tpm_manager::GetVersionInfoReply reply;
 
-  if (brillo::ErrorPtr err; !backend_.GetProxy().GetTpmManager().GetVersionInfo(
+  if (brillo::ErrorPtr err; !tpm_manager_.GetVersionInfo(
           request, &reply, &err, Proxy::kDefaultDBusTimeoutMs)) {
     return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
         .Wrap(std::move(err));
@@ -135,19 +134,16 @@ StatusOr<int32_t> VendorTpm1::GetFingerprint() {
 }
 
 StatusOr<bool> VendorTpm1::IsSrkRocaVulnerable() {
-  ASSIGN_OR_RETURN(
-      ScopedKey srk,
-      backend_.GetKeyManagementTpm1().GetPersistentKey(
-          Backend::KeyManagement::PersistentKeyType::kStorageRootKey));
+  ASSIGN_OR_RETURN(ScopedKey srk,
+                   key_management_.GetPersistentKey(
+                       KeyManagement::PersistentKeyType::kStorageRootKey));
 
   ASSIGN_OR_RETURN(const KeyTpm1& srk_data,
-                   backend_.GetKeyManagementTpm1().GetKeyData(srk.GetKey()));
-
-  overalls::Overalls& overalls = backend_.GetOverall().overalls;
+                   key_management_.GetKeyData(srk.GetKey()));
 
   ASSIGN_OR_RETURN(
       const crypto::ScopedRSA& public_srk,
-      ParseRsaFromTpmPubkeyBlob(overalls, srk_data.cache.pubkey_blob),
+      ParseRsaFromTpmPubkeyBlob(overalls_, srk_data.cache.pubkey_blob),
       _.WithStatus<TPMError>("Failed to parse RSA public key"));
 
   const BIGNUM* n = nullptr;
@@ -161,26 +157,24 @@ StatusOr<brillo::Blob> VendorTpm1::GetRsuDeviceId() {
 }
 
 StatusOr<IFXFieldUpgradeInfo> VendorTpm1::GetIFXFieldUpgradeInfo() {
-  ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
 
-  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, backend_.GetUserTpmHandle());
-
-  overalls::Overalls& overalls = backend_.GetOverall().overalls;
+  ASSIGN_OR_RETURN(TSS_HTPM tpm_handle, tss_helper_.GetUserTpmHandle());
 
   uint32_t length;
-  ScopedTssMemory response(overalls, context);
+  ScopedTssMemory response(overalls_, context);
   brillo::Blob request(
       kIfxFieldUpgradeRequest,
       kIfxFieldUpgradeRequest + sizeof(kIfxFieldUpgradeRequest));
   RETURN_IF_ERROR(
-      MakeStatus<TPM1Error>(overalls.Ospi_TPM_FieldUpgrade(
+      MakeStatus<TPM1Error>(overalls_.Ospi_TPM_FieldUpgrade(
           tpm_handle, request.size(), request.data(), &length, response.ptr())))
       .WithStatus<TPMError>("Failed to call Ospi_TPM_FieldUpgrade");
 
   // Parse the response.
   uint64_t offset = 0;
   uint16_t size = 0;
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Orspi_UnloadBlob_UINT16_s(
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Orspi_UnloadBlob_UINT16_s(
       &offset, &size, response.value(), length)));
 
   if (size != length - sizeof(uint16_t)) {
@@ -194,44 +188,44 @@ StatusOr<IFXFieldUpgradeInfo> VendorTpm1::GetIFXFieldUpgradeInfo() {
   }
 
   IFXFieldUpgradeInfo info = {};
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Orspi_UnloadBlob_UINT16_s(
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Orspi_UnloadBlob_UINT16_s(
       &offset, nullptr, response.value(), length)));
 
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Orspi_UnloadBlob_UINT16_s(
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Orspi_UnloadBlob_UINT16_s(
       &offset, &info.max_data_size, response.value(), length)));
 
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Orspi_UnloadBlob_UINT16_s(
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Orspi_UnloadBlob_UINT16_s(
       &offset, nullptr, response.value(), length)));
 
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Orspi_UnloadBlob_UINT32_s(
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Orspi_UnloadBlob_UINT32_s(
       &offset, nullptr, response.value(), length)));
 
   offset += 34;
 
-  RETURN_IF_ERROR(ParseIFXFirmwarePackage(overalls, &offset, response.value(),
+  RETURN_IF_ERROR(ParseIFXFirmwarePackage(overalls_, &offset, response.value(),
                                           length, info.bootloader));
 
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Orspi_UnloadBlob_UINT16_s(
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Orspi_UnloadBlob_UINT16_s(
       &offset, nullptr, response.value(), length)));
 
-  RETURN_IF_ERROR(ParseIFXFirmwarePackage(overalls, &offset, response.value(),
+  RETURN_IF_ERROR(ParseIFXFirmwarePackage(overalls_, &offset, response.value(),
                                           length, info.firmware[0]));
 
-  RETURN_IF_ERROR(ParseIFXFirmwarePackage(overalls, &offset, response.value(),
+  RETURN_IF_ERROR(ParseIFXFirmwarePackage(overalls_, &offset, response.value(),
                                           length, info.firmware[1]));
 
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Orspi_UnloadBlob_UINT16_s(
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Orspi_UnloadBlob_UINT16_s(
       &offset, &info.status, response.value(), length)));
 
-  RETURN_IF_ERROR(ParseIFXFirmwarePackage(overalls, &offset, response.value(),
+  RETURN_IF_ERROR(ParseIFXFirmwarePackage(overalls_, &offset, response.value(),
                                           length, info.process_fw));
 
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Orspi_UnloadBlob_UINT16_s(
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Orspi_UnloadBlob_UINT16_s(
       &offset, nullptr, response.value(), length)));
 
   offset += 6;
 
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Orspi_UnloadBlob_UINT16_s(
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Orspi_UnloadBlob_UINT16_s(
       &offset, &info.field_upgrade_counter, response.value(), length)));
 
   return info;

@@ -9,20 +9,23 @@
 
 #include <brillo/secure_blob.h>
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/ro_data.h"
+#include "libhwsec/proxy/proxy.h"
 #include "libhwsec/status.h"
 
 namespace hwsec {
 
-class BackendTpm2;
-
-class RoDataTpm2 : public Backend::RoData,
-                   public Backend::SubClassHelper<BackendTpm2> {
+class RoDataTpm2 : public RoData {
  public:
-  using SubClassHelper::SubClassHelper;
+  explicit RoDataTpm2(org::chromium::TpmNvramProxyInterface& tpm_nvram)
+      : tpm_nvram_(tpm_nvram) {}
+
   StatusOr<bool> IsReady(RoSpace space) override;
   StatusOr<brillo::Blob> Read(RoSpace space) override;
   StatusOr<brillo::Blob> Certify(RoSpace space, Key key) override;
+
+ private:
+  org::chromium::TpmNvramProxyInterface& tpm_nvram_;
 };
 
 }  // namespace hwsec

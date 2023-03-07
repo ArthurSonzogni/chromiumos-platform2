@@ -13,18 +13,27 @@
 #include <brillo/secure_blob.h>
 #include <trunks/trunks_factory.h>
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/signature_sealing.h"
+#include "libhwsec/backend/tpm2/config.h"
+#include "libhwsec/backend/tpm2/key_management.h"
+#include "libhwsec/backend/tpm2/session_management.h"
+#include "libhwsec/backend/tpm2/trunks_context.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/no_default_init.h"
 
 namespace hwsec {
 
-class BackendTpm2;
-
-class SignatureSealingTpm2 : public Backend::SignatureSealing,
-                             public Backend::SubClassHelper<BackendTpm2> {
+class SignatureSealingTpm2 : public SignatureSealing {
  public:
-  using SubClassHelper::SubClassHelper;
+  SignatureSealingTpm2(TrunksContext& context,
+                       ConfigTpm2& config,
+                       KeyManagementTpm2& key_management,
+                       SessionManagementTpm2& session_management)
+      : context_(context),
+        config_(config),
+        key_management_(key_management),
+        session_management_(session_management) {}
+
   StatusOr<SignatureSealedData> Seal(
       const std::vector<OperationPolicySetting>& policies,
       const brillo::SecureBlob& unsealed_data,
@@ -48,6 +57,11 @@ class SignatureSealingTpm2 : public Backend::SignatureSealing,
     std::unique_ptr<trunks::PolicySession> session;
     std::string session_nonce;
   };
+
+  TrunksContext& context_;
+  ConfigTpm2& config_;
+  KeyManagementTpm2& key_management_;
+  SessionManagementTpm2& session_management_;
 
   std::optional<InternalChallengeData> current_challenge_data_;
 };

@@ -24,7 +24,7 @@ using testing::SetArgPointee;
 using tpm_manager::TpmManagerStatus;
 namespace hwsec {
 
-class BackendDAMitigationTpm2Test : public BackendTpm2TestBase {};
+using BackendDAMitigationTpm2Test = BackendTpm2TestBase;
 
 TEST_F(BackendDAMitigationTpm2Test, IsReady) {
   tpm_manager::GetTpmNonsensitiveStatusReply reply;

@@ -12,10 +12,10 @@
 
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/status/status_chain_macros.h>
-#include <trunks/tpm_utility.h>
+#include <openssl/sha.h>
 #include <trunks/cr50_headers/u2f.h>
+#include <trunks/tpm_utility.h>
 
-#include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/status.h"
 
@@ -103,10 +103,9 @@ StatusOr<bool> U2fTpm2::IsEnabled() {
     return *enabled_;
   }
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
   // TODO(b/257335815): Add Ti50 case here after its tpm_version is separated
   // from Cr50.
-  enabled_ = context.tpm_utility->IsCr50();
+  enabled_ = context_.GetTpmUtility().IsCr50();
 
   return *enabled_;
 }
@@ -116,12 +115,10 @@ StatusOr<GenerateResult> U2fTpm2::GenerateUserPresenceOnly(
     const brillo::SecureBlob& user_secret,
     ConsumeMode consume_mode,
     UserPresenceMode up_mode) {
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   brillo::Blob public_key;
   brillo::Blob key_handle;
 
-  if (auto status = MakeStatus<TPM2Error>(context.tpm_utility->U2fGenerate(
+  if (auto status = MakeStatus<TPM2Error>(context_.GetTpmUtility().U2fGenerate(
           /*version=*/0, app_id, user_secret,
           consume_mode == ConsumeMode::kConsume,
           up_mode == UserPresenceMode::kRequired,
@@ -152,12 +149,10 @@ StatusOr<GenerateResult> U2fTpm2::Generate(
     ConsumeMode consume_mode,
     UserPresenceMode up_mode,
     const brillo::Blob& auth_time_secret_hash) {
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   brillo::Blob public_key;
   brillo::Blob key_handle;
 
-  if (auto status = MakeStatus<TPM2Error>(context.tpm_utility->U2fGenerate(
+  if (auto status = MakeStatus<TPM2Error>(context_.GetTpmUtility().U2fGenerate(
           /*version=*/1, app_id, user_secret,
           consume_mode == ConsumeMode::kConsume,
           up_mode == UserPresenceMode::kRequired, auth_time_secret_hash,
@@ -194,12 +189,10 @@ StatusOr<Signature> U2fTpm2::SignUserPresenceOnly(
     ConsumeMode consume_mode,
     UserPresenceMode up_mode,
     const brillo::Blob& key_handle) {
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   brillo::Blob sig_r;
   brillo::Blob sig_s;
 
-  if (auto status = MakeStatus<TPM2Error>(context.tpm_utility->U2fSign(
+  if (auto status = MakeStatus<TPM2Error>(context_.GetTpmUtility().U2fSign(
           /*version=*/0, app_id, user_secret, /*auth_time_secret=*/std::nullopt,
           hash_to_sign, /*check_only=*/false,
           consume_mode == ConsumeMode::kConsume,
@@ -232,8 +225,6 @@ StatusOr<Signature> U2fTpm2::Sign(
     ConsumeMode consume_mode,
     UserPresenceMode up_mode,
     const brillo::Blob& key_handle) {
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   brillo::Blob sig_r;
   brillo::Blob sig_s;
 
@@ -243,7 +234,7 @@ StatusOr<Signature> U2fTpm2::Sign(
                                 TPMRetryAction::kNoRetry);
   }
 
-  if (auto status = MakeStatus<TPM2Error>(context.tpm_utility->U2fSign(
+  if (auto status = MakeStatus<TPM2Error>(context_.GetTpmUtility().U2fSign(
           /*version=*/1, app_id, user_secret, auth_time_secret, hash_to_sign,
           /*check_only=*/false, consume_mode == ConsumeMode::kConsume,
           up_mode == UserPresenceMode::kRequired, kh, &sig_r, &sig_s));
@@ -270,9 +261,7 @@ StatusOr<Signature> U2fTpm2::Sign(
 Status U2fTpm2::CheckUserPresenceOnly(const brillo::Blob& app_id,
                                       const brillo::SecureBlob& user_secret,
                                       const brillo::Blob& key_handle) {
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
-  return MakeStatus<TPM2Error>(context.tpm_utility->U2fSign(
+  return MakeStatus<TPM2Error>(context_.GetTpmUtility().U2fSign(
       /*version=*/0, app_id, user_secret, std::nullopt, std::nullopt,
       /*check_only=*/true, /*consume=*/false,
       /*up_required=*/false, key_handle, /*sig_r=*/nullptr,
@@ -282,15 +271,13 @@ Status U2fTpm2::CheckUserPresenceOnly(const brillo::Blob& app_id,
 Status U2fTpm2::Check(const brillo::Blob& app_id,
                       const brillo::SecureBlob& user_secret,
                       const brillo::Blob& key_handle) {
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   brillo::Blob kh(key_handle);
   if (!RemoveAuthTimeSecretHashFromCredentialId(kh)) {
     return MakeStatus<TPMError>("Invalid U2F key handle",
                                 TPMRetryAction::kNoRetry);
   }
 
-  return MakeStatus<TPM2Error>(context.tpm_utility->U2fSign(
+  return MakeStatus<TPM2Error>(context_.GetTpmUtility().U2fSign(
       /*version=*/1, app_id, user_secret, std::nullopt, std::nullopt,
       /*check_only=*/true, /*consume=*/false,
       /*up_required=*/false, kh, /*sig_r=*/nullptr,
@@ -309,13 +296,11 @@ StatusOr<Signature> U2fTpm2::G2fAttest(const brillo::Blob& app_id,
     return MakeStatus<TPMError>("Invalid parameters", TPMRetryAction::kNoRetry);
   }
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   brillo::Blob sig_r;
   brillo::Blob sig_s;
 
   RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context.tpm_utility->U2fAttest(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().U2fAttest(
           user_secret, U2F_ATTEST_FORMAT_REG_RESP, data, &sig_r, &sig_s)))
       .WithStatus<TPMError>("Failed to attest U2F credential");
 
@@ -374,13 +359,11 @@ StatusOr<Signature> U2fTpm2::CorpAttest(const brillo::Blob& app_id,
   brillo::Blob msg_blob(sizeof(msg));
   memcpy(msg_blob.data(), &msg, sizeof(msg));
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   brillo::Blob sig_r;
   brillo::Blob sig_s;
 
   RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context.tpm_utility->U2fAttest(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().U2fAttest(
           user_secret, CORP_ATTEST_FORMAT_REG_RESP, msg_blob, &sig_r, &sig_s)))
       .WithStatus<TPMError>("Failed to attest U2F credential");
 

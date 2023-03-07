@@ -64,7 +64,7 @@ bool GenerateRsaKey(int key_size_bits,
 
 }  // namespace
 
-class BackendKeyManagementTpm1Test : public BackendTpm1TestBase {};
+using BackendKeyManagementTpm1Test = BackendTpm1TestBase;
 
 TEST_F(BackendKeyManagementTpm1Test, GetSupportedAlgo) {
   auto result = backend_->GetKeyManagementTpm1().GetSupportedAlgo();
@@ -732,7 +732,7 @@ TEST_F(BackendKeyManagementTpm1Test, LoadPublicKeyFromSpki) {
 
   EXPECT_THAT(
       backend_->GetKeyManagementTpm1().LoadPublicKeyFromSpki(
-          public_key_spki_der, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA384),
+          public_key_spki_der, TSS_SS_RSASSAPKCS1V15_SHA1, TSS_ES_RSAESPKCSV15),
       IsOk());
 }
 
@@ -742,7 +742,7 @@ TEST_F(BackendKeyManagementTpm1Test, LoadPublicKeyFromSpkiFailed) {
 
   EXPECT_THAT(
       backend_->GetKeyManagementTpm1().LoadPublicKeyFromSpki(
-          public_key_spki_der, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_SHA384),
+          public_key_spki_der, TSS_SS_RSASSAPKCS1V15_SHA1, TSS_ES_RSAESPKCSV15),
       NotOk());
 }
 

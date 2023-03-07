@@ -4,7 +4,6 @@
 
 #include "libhwsec/backend/tpm1/deriving.h"
 
-#include "libhwsec/backend/tpm1/backend.h"
 #include "libhwsec/status.h"
 
 using brillo::Blob;

@@ -7,19 +7,21 @@
 
 #include <brillo/secure_blob.h>
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/random.h"
+#include "libhwsec/backend/tpm2/trunks_context.h"
 #include "libhwsec/status.h"
 
 namespace hwsec {
 
-class BackendTpm2;
-
-class RandomTpm2 : public Backend::Random,
-                   public Backend::SubClassHelper<BackendTpm2> {
+class RandomTpm2 : public Random {
  public:
-  using SubClassHelper::SubClassHelper;
+  explicit RandomTpm2(TrunksContext& context) : context_(context) {}
+
   StatusOr<brillo::Blob> RandomBlob(size_t size) override;
   StatusOr<brillo::SecureBlob> RandomSecureBlob(size_t size) override;
+
+ private:
+  TrunksContext& context_;
 };
 
 }  // namespace hwsec

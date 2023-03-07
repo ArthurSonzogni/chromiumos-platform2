@@ -15,7 +15,11 @@
 #include <absl/container/flat_hash_set.h>
 #include <brillo/secure_blob.h>
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/key_management.h"
+#include "libhwsec/backend/tpm1/config.h"
+#include "libhwsec/backend/tpm1/tss_helper.h"
+#include "libhwsec/middleware/middleware_derivative.h"
+#include "libhwsec/proxy/proxy.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/key.h"
 #include "libhwsec/structures/no_default_init.h"
@@ -48,12 +52,16 @@ struct KeyTpm1 {
   std::optional<KeyReloadDataTpm1> reload_data;
 };
 
-class BackendTpm1;
-
-class KeyManagementTpm1 : public Backend::KeyManagement,
-                          public Backend::SubClassHelper<BackendTpm1> {
+class KeyManagementTpm1 : public KeyManagement {
  public:
-  using SubClassHelper::SubClassHelper;
+  KeyManagementTpm1(overalls::Overalls& overalls,
+                    TssHelper& tss_helper,
+                    ConfigTpm1& config,
+                    MiddlewareDerivative& middleware_derivative)
+      : overalls_(overalls),
+        tss_helper_(tss_helper),
+        config_(config),
+        middleware_derivative_(middleware_derivative) {}
 
   ~KeyManagementTpm1();
   StatusOr<absl::flat_hash_set<KeyAlgoType>> GetSupportedAlgo() override;
@@ -136,6 +144,11 @@ class KeyManagementTpm1 : public Backend::KeyManagement,
       std::optional<KeyReloadDataTpm1> reload_data);
   StatusOr<brillo::Blob> GetPubkeyBlob(uint32_t key_handle);
   StatusOr<uint32_t> GetSrk();
+
+  overalls::Overalls& overalls_;
+  TssHelper& tss_helper_;
+  ConfigTpm1& config_;
+  MiddlewareDerivative& middleware_derivative_;
 
   KeyToken current_token_ = 0;
   absl::flat_hash_map<KeyToken, KeyTpm1> key_map_;

@@ -84,7 +84,7 @@ std::function<bool(const Status&)> RetryActionIs(TPMRetryAction action) {
 
 }  // namespace
 
-class BackendU2fTpm2Test : public BackendTpm2TestBase {};
+using BackendU2fTpm2Test = BackendTpm2TestBase;
 
 TEST_F(BackendU2fTpm2Test, IsEnabledCr50) {
   EXPECT_CALL(proxy_->GetMock().tpm_utility, IsCr50).WillOnce(Return(true));

@@ -19,7 +19,6 @@
 #include <trunks/tpm_generated.h>
 #include <trunks/tpm_utility.h>
 
-#include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/error/tpm_manager_error.h"
 
@@ -84,7 +83,7 @@ Status VendorTpm2::EnsureVersionInfo() {
   tpm_manager::GetVersionInfoRequest request;
   tpm_manager::GetVersionInfoReply reply;
 
-  if (brillo::ErrorPtr err; !backend_.GetProxy().GetTpmManager().GetVersionInfo(
+  if (brillo::ErrorPtr err; !tpm_manager_.GetVersionInfo(
           request, &reply, &err, Proxy::kDefaultDBusTimeoutMs)) {
     return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
         .Wrap(std::move(err));
@@ -161,11 +160,10 @@ StatusOr<bool> VendorTpm2::IsSrkRocaVulnerable() {
 }
 
 StatusOr<brillo::Blob> VendorTpm2::GetRsuDeviceId() {
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
   std::string device_id;
 
-  RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context.tpm_utility->GetRsuDeviceId(&device_id)))
+  RETURN_IF_ERROR(MakeStatus<TPM2Error>(
+                      context_.GetTpmUtility().GetRsuDeviceId(&device_id)))
       .WithStatus<TPMError>("Failed to get the RSU device ID");
 
   return BlobFromString(device_id);
@@ -180,10 +178,8 @@ Status VendorTpm2::DeclareTpmFirmwareStable() {
     return OkStatus();
   }
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
-  RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context.tpm_utility->DeclareTpmFirmwareStable()))
+  RETURN_IF_ERROR(MakeStatus<TPM2Error>(
+                      context_.GetTpmUtility().DeclareTpmFirmwareStable()))
       .WithStatus<TPMError>("Failed to declare TPM firmware stable");
 
   fw_declared_stable_ = true;
@@ -192,10 +188,9 @@ Status VendorTpm2::DeclareTpmFirmwareStable() {
 }
 
 StatusOr<VendorTpm2::RwVersion> VendorTpm2::GetRwVersion() {
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
   // TODO(b/257335815): Add Ti50 case here after its tpm_version is separated
   // from Cr50.
-  if (!context.tpm_utility->IsCr50()) {
+  if (!context_.GetTpmUtility().IsCr50()) {
     return MakeStatus<TPMError>("Not supported on non-GSC devices",
                                 TPMRetryAction::kNoRetry);
   }
@@ -243,9 +238,8 @@ StatusOr<VendorTpm2::RwVersion> VendorTpm2::GetRwVersion() {
 }
 
 StatusOr<brillo::Blob> VendorTpm2::SendRawCommand(const brillo::Blob& command) {
-  std::string response =
-      backend_.GetTrunksContext().command_transceiver.SendCommandAndWait(
-          BlobToString(command));
+  std::string response = context_.GetCommandTransceiver().SendCommandAndWait(
+      BlobToString(command));
 
   RETURN_IF_ERROR(GetResponseStatus(response));
 

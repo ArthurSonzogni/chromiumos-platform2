@@ -19,7 +19,6 @@
 #include <trunks/openssl_utility.h>
 #include <trunks/tpm_utility.h>
 
-#include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/status.h"
 
@@ -99,8 +98,7 @@ StatusOr<Blob> DerivingTpm2::Derive(Key key, const Blob& blob) {
 
 StatusOr<SecureBlob> DerivingTpm2::SecureDerive(Key key,
                                                 const SecureBlob& blob) {
-  ASSIGN_OR_RETURN(const KeyTpm2& key_data,
-                   backend_.GetKeyManagementTpm2().GetKeyData(key));
+  ASSIGN_OR_RETURN(const KeyTpm2& key_data, key_management_.GetKeyData(key));
 
   switch (key_data.cache.public_area.type) {
     case trunks::TPM_ALG_RSA:
@@ -123,8 +121,6 @@ StatusOr<SecureBlob> DerivingTpm2::DeriveRsaKey(const KeyTpm2& key_data,
         TPMRetryAction::kNoRetry);
   }
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   // To guarantee that pass_blob is lower that public key modulus, just set the
   // first byte to 0.
   std::string value_to_decrypt = blob.to_string();
@@ -136,14 +132,14 @@ StatusOr<SecureBlob> DerivingTpm2::DeriveRsaKey(const KeyTpm2& key_data,
 
   ASSIGN_OR_RETURN(
       ConfigTpm2::TrunksSession session,
-      backend_.GetConfigTpm2().GetTrunksSession(
-          key_data.cache.policy, SessionSecuritySetting::kNoEncrypted),
+      config_.GetTrunksSession(key_data.cache.policy,
+                               SessionSecuritySetting::kNoEncrypted),
       _.WithStatus<TPMError>("Failed to get session for policy"));
 
   std::string decrypted_value;
 
   RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context.tpm_utility->AsymmetricDecrypt(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().AsymmetricDecrypt(
           key_data.key_handle, trunks::TPM_ALG_NULL, trunks::TPM_ALG_NULL,
           value_to_decrypt, session.delegate, &decrypted_value)))
       .WithStatus<TPMError>("Failed to decrypt blob");
@@ -163,19 +159,17 @@ StatusOr<SecureBlob> DerivingTpm2::DeriveEccKey(const KeyTpm2& key_data,
       const trunks::TPMS_ECC_POINT& ecc_point, DeriveTpmEccPointFromSeed(blob),
       _.WithStatus<TPMError>("Failed to derive TPM ECC point from seed"));
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   trunks::TPM2B_ECC_POINT in_point = trunks::Make_TPM2B_ECC_POINT(ecc_point);
   trunks::TPM2B_ECC_POINT z_point;
 
   ASSIGN_OR_RETURN(
       ConfigTpm2::TrunksSession session,
-      backend_.GetConfigTpm2().GetTrunksSession(
-          key_data.cache.policy, SessionSecuritySetting::kNoEncrypted),
+      config_.GetTrunksSession(key_data.cache.policy,
+                               SessionSecuritySetting::kNoEncrypted),
       _.WithStatus<TPMError>("Failed to get session for policy"));
 
   RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context.tpm_utility->ECDHZGen(
+      MakeStatus<TPM2Error>(context_.GetTpmUtility().ECDHZGen(
           key_data.key_handle, in_point, session.delegate, &z_point)))
       .WithStatus<TPMError>("Failed to ECDH ZGen");
 

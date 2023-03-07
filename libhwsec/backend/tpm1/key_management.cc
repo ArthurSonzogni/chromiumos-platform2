@@ -21,7 +21,6 @@
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
 
-#include "libhwsec/backend/tpm1/backend.h"
 #include "libhwsec/error/tpm1_error.h"
 #include "libhwsec/overalls/overalls.h"
 #include "libhwsec/status.h"
@@ -210,7 +209,7 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateRsaKey(
     const LoadKeyOptions& load_key_options) {
   ASSIGN_OR_RETURN(
       const ConfigTpm1::PcrMap& setting,
-      backend_.GetConfigTpm1().ToSettingsPcrMap(policy.device_config_settings),
+      config_.ToSettingsPcrMap(policy.device_config_settings),
       _.WithStatus<TPMError>("Failed to convert setting to PCR map"));
 
   if (options.allow_software_gen && setting.empty()) {
@@ -222,15 +221,13 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateRsaKey(
 
   ASSIGN_OR_RETURN(const KeyTpm1& srk_data, GetKeyData(srk.GetKey()));
 
-  ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
-
-  overalls::Overalls& overalls = backend_.GetOverall().overalls;
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
 
   // Create a PCRS object to hold pcr_index and pcr_value.
-  ScopedTssPcrs pcrs(overalls, context);
+  ScopedTssPcrs pcrs(overalls_, context);
   if (!setting.empty()) {
     RETURN_IF_ERROR(
-        MakeStatus<TPM1Error>(overalls.Ospi_Context_CreateObject(
+        MakeStatus<TPM1Error>(overalls_.Ospi_Context_CreateObject(
             context, TSS_OBJECT_TYPE_PCRS, TSS_PCRS_STRUCT_INFO, pcrs.ptr())))
         .WithStatus<TPMError>("Failed to call Ospi_Context_CreateObject");
 
@@ -238,14 +235,14 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateRsaKey(
       uint32_t pcr_index = map_pair.first;
       brillo::Blob pcr_value = map_pair.second;
       RETURN_IF_ERROR(
-          MakeStatus<TPM1Error>(overalls.Ospi_PcrComposite_SetPcrValue(
+          MakeStatus<TPM1Error>(overalls_.Ospi_PcrComposite_SetPcrValue(
               pcrs, pcr_index, pcr_value.size(), pcr_value.data())))
           .WithStatus<TPMError>("Failed to call Ospi_PcrComposite_SetPcrValue");
     }
   }
 
   // Create a non-migratable key restricted to |pcrs|.
-  ScopedTssKey pcr_bound_key(overalls, context);
+  ScopedTssKey pcr_bound_key(overalls_, context);
   TSS_FLAG init_flags = TSS_KEY_VOLATILE | TSS_KEY_NOT_MIGRATABLE |
                         GetKeySize(options.rsa_modulus_bits.value_or(
                             kDefaultTpmRsaKeyModulusBit));
@@ -266,13 +263,13 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateRsaKey(
                    std::end(kDefaultTpmPublicExponentArray)));
 
   RETURN_IF_ERROR(
-      MakeStatus<TPM1Error>(overalls.Ospi_Context_CreateObject(
+      MakeStatus<TPM1Error>(overalls_.Ospi_Context_CreateObject(
           context, TSS_OBJECT_TYPE_RSAKEY, init_flags, pcr_bound_key.ptr())))
       .WithStatus<TPMError>("Failed to call Ospi_Context_CreateObject");
 
   if (options.allow_sign) {
     uint32_t sig_scheme = TSS_SS_RSASSAPKCS1V15_DER;
-    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_SetAttribUint32(
+    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_SetAttribUint32(
                         pcr_bound_key, TSS_TSPATTRIB_KEY_INFO,
                         TSS_TSPATTRIB_KEYINFO_SIGSCHEME, sig_scheme)))
         .WithStatus<TPMError>("Failed to call Ospi_Context_CreateObject");
@@ -280,7 +277,7 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateRsaKey(
 
   if (options.allow_decrypt) {
     uint32_t enc_scheme = TSS_ES_RSAESPKCSV15;
-    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_SetAttribUint32(
+    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_SetAttribUint32(
                         pcr_bound_key, TSS_TSPATTRIB_KEY_INFO,
                         TSS_TSPATTRIB_KEYINFO_ENCSCHEME, enc_scheme)))
         .WithStatus<TPMError>("Failed to call Ospi_SetAttribUint32");
@@ -288,33 +285,33 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateRsaKey(
 
   if (exponent != brillo::Blob(std::begin(kDefaultTpmPublicExponentArray),
                                std::end(kDefaultTpmPublicExponentArray))) {
-    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_SetAttribData(
+    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_SetAttribData(
                         pcr_bound_key, TSS_TSPATTRIB_RSAKEY_INFO,
                         TSS_TSPATTRIB_KEYINFO_RSA_EXPONENT, exponent.size(),
                         exponent.data())))
         .WithStatus<TPMError>("Failed to call Ospi_SetAttribData");
   }
 
-  ScopedTssPolicy auth_policy(overalls, context);
+  ScopedTssPolicy auth_policy(overalls_, context);
   if (policy.permission.auth_value.has_value()) {
     ASSIGN_OR_RETURN(auth_policy,
-                     AddAuthPolicy(overalls, context, pcr_bound_key,
+                     AddAuthPolicy(overalls_, context, pcr_bound_key,
                                    policy.permission.auth_value.value()),
                      _.WithStatus<TPMError>("Failed to add auth policy"));
   }
 
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_Key_CreateKey(
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Key_CreateKey(
                       pcr_bound_key, srk_data.key_handle, pcrs)))
       .WithStatus<TPMError>("Failed to call Ospi_Key_CreateKey");
 
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_Key_LoadKey(
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Key_LoadKey(
                       pcr_bound_key, srk_data.key_handle)))
       .WithStatus<TPMError>("Failed to call Ospi_Key_LoadKey");
 
   // Get the key blob so we can load it later.
   uint32_t length = 0;
-  ScopedTssMemory buf(overalls, context);
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_GetAttribData(
+  ScopedTssMemory buf(overalls_, context);
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_GetAttribData(
                       pcr_bound_key, TSS_TSPATTRIB_KEY_BLOB,
                       TSS_TSPATTRIB_KEYBLOB_BLOB, &length, buf.ptr())))
       .WithStatus<TPMError>("Failed to call Ospi_GetAttribData");
@@ -322,8 +319,7 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::CreateRsaKey(
   brillo::Blob key_blob(buf.value(), buf.value() + length);
 
   ASSIGN_OR_RETURN(
-      const OperationPolicy& op_policy,
-      backend_.GetConfigTpm1().ToOperationPolicy(policy),
+      const OperationPolicy& op_policy, config_.ToOperationPolicy(policy),
       _.WithStatus<TPMError>("Failed to convert setting to policy"));
 
   uint32_t key_handle = pcr_bound_key.value();
@@ -390,7 +386,7 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::WrapRSAKey(
 
   ASSIGN_OR_RETURN(const KeyTpm1& srk_data, GetKeyData(srk.GetKey()));
 
-  ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
 
   // Create the key object
   TSS_FLAG init_flags = TSS_KEY_VOLATILE | TSS_KEY_MIGRATABLE |
@@ -408,18 +404,16 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::WrapRSAKey(
     init_flags |= TSS_KEY_TYPE_LEGACY;
   }
 
-  overalls::Overalls& overalls = backend_.GetOverall().overalls;
-
-  ScopedTssKey local_key_handle(overalls, context);
+  ScopedTssKey local_key_handle(overalls_, context);
   RETURN_IF_ERROR(
-      MakeStatus<TPM1Error>(overalls.Ospi_Context_CreateObject(
+      MakeStatus<TPM1Error>(overalls_.Ospi_Context_CreateObject(
           context, TSS_OBJECT_TYPE_RSAKEY, init_flags, local_key_handle.ptr())))
       .WithStatus<TPMError>("Failed to call Ospi_Context_CreateObject");
 
   // Set the attributes
   if (options.allow_sign) {
     uint32_t sig_scheme = TSS_SS_RSASSAPKCS1V15_DER;
-    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_SetAttribUint32(
+    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_SetAttribUint32(
                         local_key_handle, TSS_TSPATTRIB_KEY_INFO,
                         TSS_TSPATTRIB_KEYINFO_SIGSCHEME, sig_scheme)))
         .WithStatus<TPMError>("Failed to call Ospi_SetAttribUint32");
@@ -427,7 +421,7 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::WrapRSAKey(
 
   if (options.allow_decrypt) {
     uint32_t enc_scheme = TSS_ES_RSAESPKCSV15;
-    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_SetAttribUint32(
+    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_SetAttribUint32(
                         local_key_handle, TSS_TSPATTRIB_KEY_INFO,
                         TSS_TSPATTRIB_KEYINFO_ENCSCHEME, enc_scheme)))
         .WithStatus<TPMError>("Failed to call Ospi_SetAttribUint32");
@@ -436,34 +430,34 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::WrapRSAKey(
   // Set a random migration policy password, and discard it.  The key will not
   // be migrated, but to create the key outside of the TPM, we have to do it
   // this way.
-  ScopedTssPolicy policy_handle(overalls, context);
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_Context_CreateObject(
+  ScopedTssPolicy policy_handle(overalls_, context);
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Context_CreateObject(
                       context, TSS_OBJECT_TYPE_POLICY, TSS_POLICY_MIGRATION,
                       policy_handle.ptr())))
       .WithStatus<TPMError>("Failed to call Ospi_SetAttribUint32");
 
   brillo::SecureBlob migration_password =
       CreateSecureRandomBlob(kDefaultDiscardableWrapPasswordLength);
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_Policy_SetSecret(
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Policy_SetSecret(
                       policy_handle, TSS_SECRET_MODE_PLAIN,
                       migration_password.size(), migration_password.data())))
       .WithStatus<TPMError>("Failed to call Ospi_Policy_SetSecret");
 
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_Policy_AssignToObject(
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Policy_AssignToObject(
                       policy_handle, local_key_handle)))
       .WithStatus<TPMError>("Failed to call Ospi_Policy_AssignToObject");
 
-  ScopedTssPolicy auth_policy(overalls, context);
+  ScopedTssPolicy auth_policy(overalls_, context);
   if (policy.permission.auth_value.has_value()) {
     ASSIGN_OR_RETURN(auth_policy,
-                     AddAuthPolicy(overalls, context, local_key_handle,
+                     AddAuthPolicy(overalls_, context, local_key_handle,
                                    policy.permission.auth_value.value()),
                      _.WithStatus<TPMError>("Failed to add auth policy"));
   }
 
   if (exponent != brillo::Blob(std::begin(kDefaultTpmPublicExponentArray),
                                std::end(kDefaultTpmPublicExponentArray))) {
-    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_SetAttribData(
+    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_SetAttribData(
                         local_key_handle, TSS_TSPATTRIB_RSAKEY_INFO,
                         TSS_TSPATTRIB_KEYINFO_RSA_EXPONENT, exponent.size(),
                         exponent.data())))
@@ -471,24 +465,24 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::WrapRSAKey(
   }
 
   RETURN_IF_ERROR(
-      MakeStatus<TPM1Error>(overalls.Ospi_SetAttribData(
+      MakeStatus<TPM1Error>(overalls_.Ospi_SetAttribData(
           local_key_handle, TSS_TSPATTRIB_RSAKEY_INFO,
           TSS_TSPATTRIB_KEYINFO_RSA_MODULUS, modulus.size(), modulus.data())))
       .WithStatus<TPMError>("Failed to call Ospi_SetAttribData");
 
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_SetAttribData(
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_SetAttribData(
                       local_key_handle, TSS_TSPATTRIB_KEY_BLOB,
                       TSS_TSPATTRIB_KEYBLOB_PRIVATE_KEY, prime_factor.size(),
                       prime_factor.data())))
       .WithStatus<TPMError>("Failed to call Ospi_SetAttribData");
 
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_Key_WrapKey(
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Key_WrapKey(
                       local_key_handle, srk_data.key_handle, 0)))
       .WithStatus<TPMError>("Failed to call Ospi_Key_WrapKey");
 
   uint32_t length = 0;
-  ScopedTssMemory buf(overalls, context);
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_GetAttribData(
+  ScopedTssMemory buf(overalls_, context);
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_GetAttribData(
                       local_key_handle, TSS_TSPATTRIB_KEY_BLOB,
                       TSS_TSPATTRIB_KEYBLOB_BLOB, &length, buf.ptr())))
       .WithStatus<TPMError>("Failed to call Ospi_GetAttribData");
@@ -496,8 +490,7 @@ StatusOr<KeyManagementTpm1::CreateKeyResult> KeyManagementTpm1::WrapRSAKey(
   brillo::Blob key_blob(buf.value(), buf.value() + length);
 
   ASSIGN_OR_RETURN(
-      const OperationPolicy& op_policy,
-      backend_.GetConfigTpm1().ToOperationPolicy(policy),
+      const OperationPolicy& op_policy, config_.ToOperationPolicy(policy),
       _.WithStatus<TPMError>("Failed to convert setting to policy"));
 
   // TODO(b/257208272): We should reuse the auth_policy, so we don't need to
@@ -551,22 +544,20 @@ StatusOr<KeyManagementTpm1::KeyPolicyPair> KeyManagementTpm1::LoadKeyBlob(
 
   ASSIGN_OR_RETURN(const KeyTpm1& srk_data, GetKeyData(srk.GetKey()));
 
-  ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
 
-  overalls::Overalls& overalls = backend_.GetOverall().overalls;
-
-  ScopedTssKey local_key_handle(overalls, context);
+  ScopedTssKey local_key_handle(overalls_, context);
   brillo::Blob mutable_key_blob = key_blob;
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_Context_LoadKeyByBlob(
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Context_LoadKeyByBlob(
                       context, srk_data.key_handle, mutable_key_blob.size(),
                       mutable_key_blob.data(), local_key_handle.ptr())))
       .WithStatus<TPMError>("Failed to call Ospi_Context_LoadKeyByBlob");
 
-  ScopedTssPolicy auth_policy(overalls, context);
+  ScopedTssPolicy auth_policy(overalls_, context);
   if (policy.permission.auth_value.has_value()) {
     ASSIGN_OR_RETURN(
         auth_policy,
-        AddAuthPolicy(overalls, context, local_key_handle,
+        AddAuthPolicy(overalls_, context, local_key_handle,
                       policy.permission.auth_value.value()),
         _.WithStatus<TPMError>("Failed to add auth policy for load key"));
   }
@@ -587,8 +578,7 @@ StatusOr<ScopedKey> KeyManagementTpm1::GetPersistentKey(
     PersistentKeyType key_type) {
   auto it = persistent_key_map_.find(key_type);
   if (it != persistent_key_map_.end()) {
-    return ScopedKey(Key{.token = it->second},
-                     backend_.GetMiddlewareDerivative());
+    return ScopedKey(Key{.token = it->second}, middleware_derivative_);
   }
 
   uint32_t key_handle = 0;
@@ -623,22 +613,20 @@ StatusOr<brillo::Blob> KeyManagementTpm1::GetPubkeyHash(Key key) {
 StatusOr<RSAPublicInfo> KeyManagementTpm1::GetRSAPublicInfo(Key key) {
   ASSIGN_OR_RETURN(const KeyTpm1& key_data, GetKeyData(key));
 
-  ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
-
-  overalls::Overalls& overalls = backend_.GetOverall().overalls;
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
 
   uint32_t exponent_len = 0;
-  ScopedTssMemory exponent(overalls, context);
+  ScopedTssMemory exponent(overalls_, context);
   RETURN_IF_ERROR(
-      MakeStatus<TPM1Error>(overalls.Ospi_GetAttribData(
+      MakeStatus<TPM1Error>(overalls_.Ospi_GetAttribData(
           key_data.key_handle, TSS_TSPATTRIB_RSAKEY_INFO,
           TSS_TSPATTRIB_KEYINFO_RSA_EXPONENT, &exponent_len, exponent.ptr())))
       .WithStatus<TPMError>("Failed to call Ospi_GetAttribData");
 
   uint32_t modulus_len = 0;
-  ScopedTssMemory modulus(overalls, context);
+  ScopedTssMemory modulus(overalls_, context);
   RETURN_IF_ERROR(
-      MakeStatus<TPM1Error>(overalls.Ospi_GetAttribData(
+      MakeStatus<TPM1Error>(overalls_.Ospi_GetAttribData(
           key_data.key_handle, TSS_TSPATTRIB_RSAKEY_INFO,
           TSS_TSPATTRIB_KEYINFO_RSA_MODULUS, &modulus_len, modulus.ptr())))
       .WithStatus<TPMError>("Failed to call Ospi_GetAttribData");
@@ -667,13 +655,11 @@ StatusOr<uint32_t> KeyManagementTpm1::GetKeyHandle(Key key) {
 }
 
 StatusOr<brillo::Blob> KeyManagementTpm1::GetPubkeyBlob(uint32_t key_handle) {
-  ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
-
-  overalls::Overalls& overalls = backend_.GetOverall().overalls;
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
 
   uint32_t size;
-  ScopedTssMemory public_blob(overalls, context);
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_Key_GetPubKey(
+  ScopedTssMemory public_blob(overalls_, context);
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Key_GetPubKey(
                       key_handle, &size, public_blob.ptr())))
       .WithStatus<TPMError>("Failed to call Ospi_Key_GetPubKey");
 
@@ -708,7 +694,7 @@ StatusOr<ScopedKey> KeyManagementTpm1::LoadKeyInternal(
                               .reload_data = std::move(reload_data),
                           });
 
-  return ScopedKey(Key{.token = token}, backend_.GetMiddlewareDerivative());
+  return ScopedKey(Key{.token = token}, middleware_derivative_);
 }
 
 Status KeyManagementTpm1::Flush(Key key) {
@@ -767,21 +753,19 @@ StatusOr<uint32_t> KeyManagementTpm1::GetSrk() {
     return srk_cache_->value();
   }
 
-  ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
-
-  overalls::Overalls& overalls = backend_.GetOverall().overalls;
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
 
   // Load the Storage Root Key
   TSS_UUID SRK_UUID = TSS_UUID_SRK;
-  ScopedTssKey local_srk_handle(overalls, context);
+  ScopedTssKey local_srk_handle(overalls_, context);
   RETURN_IF_ERROR(
-      MakeStatus<TPM1Error>(overalls.Ospi_Context_LoadKeyByUUID(
+      MakeStatus<TPM1Error>(overalls_.Ospi_Context_LoadKeyByUUID(
           context, TSS_PS_TYPE_SYSTEM, SRK_UUID, local_srk_handle.ptr())))
       .WithStatus<TPMError>("Failed to call Ospi_Context_LoadKeyByUUID");
 
   // Check if the SRK wants a password
   uint32_t srk_authusage;
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_GetAttribUint32(
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_GetAttribUint32(
                       local_srk_handle, TSS_TSPATTRIB_KEY_INFO,
                       TSS_TSPATTRIB_KEYINFO_AUTHUSAGE, &srk_authusage)))
       .WithStatus<TPMError>("Failed to call Ospi_GetAttribUint32");
@@ -789,13 +773,13 @@ StatusOr<uint32_t> KeyManagementTpm1::GetSrk() {
   // Give it the password if needed
   if (srk_authusage) {
     TSS_HPOLICY srk_usage_policy;
-    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_GetPolicyObject(
+    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_GetPolicyObject(
                         local_srk_handle, TSS_POLICY_USAGE, &srk_usage_policy)))
         .WithStatus<TPMError>("Failed to call Ospi_GetPolicyObject");
 
     brillo::Blob srk_auth(kDefaultSrkAuth,
                           kDefaultSrkAuth + sizeof(kDefaultSrkAuth));
-    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_Policy_SetSecret(
+    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_Policy_SetSecret(
                         srk_usage_policy, TSS_SECRET_MODE_PLAIN,
                         srk_auth.size(), srk_auth.data())))
         .WithStatus<TPMError>("Failed to call Ospi_Policy_SetSecret");
@@ -810,31 +794,29 @@ StatusOr<ScopedKey> KeyManagementTpm1::CreateRsaPublicKeyObject(
     uint32_t key_flags,
     uint32_t signature_scheme,
     uint32_t encryption_scheme) {
-  ASSIGN_OR_RETURN(TSS_HCONTEXT context, backend_.GetTssContext());
+  ASSIGN_OR_RETURN(TSS_HCONTEXT context, tss_helper_.GetTssContext());
 
-  overalls::Overalls& overalls = backend_.GetOverall().overalls;
-
-  ScopedTssKey local_key_handle(overalls, context);
+  ScopedTssKey local_key_handle(overalls_, context);
   RETURN_IF_ERROR(
-      MakeStatus<TPM1Error>(overalls.Ospi_Context_CreateObject(
+      MakeStatus<TPM1Error>(overalls_.Ospi_Context_CreateObject(
           context, TSS_OBJECT_TYPE_RSAKEY, key_flags, local_key_handle.ptr())))
       .WithStatus<TPMError>("Failed to call Ospi_Context_CreateObject");
 
-  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_SetAttribData(
+  RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_SetAttribData(
                       local_key_handle, TSS_TSPATTRIB_RSAKEY_INFO,
                       TSS_TSPATTRIB_KEYINFO_RSA_MODULUS, key_modulus.size(),
                       key_modulus.data())))
       .WithStatus<TPMError>("Failed to call Ospi_SetAttribData");
 
   if (signature_scheme != TSS_SS_NONE) {
-    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_SetAttribUint32(
+    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_SetAttribUint32(
                         local_key_handle, TSS_TSPATTRIB_KEY_INFO,
                         TSS_TSPATTRIB_KEYINFO_SIGSCHEME, signature_scheme)))
         .WithStatus<TPMError>("Failed to call Ospi_SetAttribUint32");
   }
 
   if (encryption_scheme != TSS_ES_NONE) {
-    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls.Ospi_SetAttribUint32(
+    RETURN_IF_ERROR(MakeStatus<TPM1Error>(overalls_.Ospi_SetAttribUint32(
                         local_key_handle, TSS_TSPATTRIB_KEY_INFO,
                         TSS_TSPATTRIB_KEYINFO_ENCSCHEME, encryption_scheme)))
         .WithStatus<TPMError>("Failed to call Ospi_SetAttribUint32");
@@ -857,7 +839,7 @@ StatusOr<ScopedKey> KeyManagementTpm1::CreateRsaPublicKeyObject(
           .reload_data = std::nullopt,
       });
 
-  return ScopedKey(Key{.token = token}, backend_.GetMiddlewareDerivative());
+  return ScopedKey(Key{.token = token}, middleware_derivative_);
 }
 
 StatusOr<ScopedKey> KeyManagementTpm1::LoadPublicKeyFromSpki(

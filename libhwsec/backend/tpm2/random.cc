@@ -12,7 +12,6 @@
 #include <trunks/openssl_utility.h>
 #include <trunks/tpm_utility.h>
 
-#include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/status.h"
 
@@ -29,15 +28,13 @@ StatusOr<brillo::Blob> RandomTpm2::RandomBlob(size_t size) {
 }
 
 StatusOr<brillo::SecureBlob> RandomTpm2::RandomSecureBlob(size_t size) {
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   std::string random_data;
 
   // Cleanup the data for secure blob.
   base::ScopedClosureRunner cleanup_random_data(base::BindOnce(
       brillo::SecureClearContainer<std::string>, std::ref(random_data)));
 
-  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->GenerateRandom(
+  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context_.GetTpmUtility().GenerateRandom(
                       size, /*delegate=*/nullptr, &random_data)))
       .WithStatus<TPMError>("Failed to get random data");
 

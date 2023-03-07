@@ -35,7 +35,7 @@ using testing::SetArgPointee;
 using tpm_manager::TpmManagerStatus;
 namespace hwsec {
 
-class BackendRecoveryCryptoTpm2Test : public BackendTpm2TestBase {};
+using BackendRecoveryCryptoTpm2Test = BackendTpm2TestBase;
 
 TEST_F(BackendRecoveryCryptoTpm2Test, GenerateKeyAuthValue) {
   EXPECT_THAT(backend_->GetRecoveryCryptoTpm2().GenerateKeyAuthValue(),

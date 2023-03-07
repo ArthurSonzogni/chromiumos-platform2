@@ -11,7 +11,6 @@
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>
 
-#include "libhwsec/backend/tpm1/backend.h"
 #include "libhwsec/error/tpm_manager_error.h"
 
 using hwsec_foundation::status::MakeStatus;
@@ -22,8 +21,7 @@ StatusOr<bool> DAMitigationTpm1::IsReady() {
   tpm_manager::GetTpmNonsensitiveStatusRequest request;
   tpm_manager::GetTpmNonsensitiveStatusReply reply;
 
-  if (brillo::ErrorPtr err;
-      !backend_.GetProxy().GetTpmManager().GetTpmNonsensitiveStatus(
+  if (brillo::ErrorPtr err; !tpm_manager_.GetTpmNonsensitiveStatus(
           request, &reply, &err, Proxy::kDefaultDBusTimeoutMs)) {
     return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
         .Wrap(std::move(err));
@@ -38,8 +36,7 @@ StatusOr<DAMitigationTpm1::DAMitigationStatus> DAMitigationTpm1::GetStatus() {
   tpm_manager::GetDictionaryAttackInfoRequest request;
   tpm_manager::GetDictionaryAttackInfoReply reply;
 
-  if (brillo::ErrorPtr err;
-      !backend_.GetProxy().GetTpmManager().GetDictionaryAttackInfo(
+  if (brillo::ErrorPtr err; !tpm_manager_.GetDictionaryAttackInfo(
           request, &reply, &err, Proxy::kDefaultDBusTimeoutMs)) {
     return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
         .Wrap(std::move(err));
@@ -58,8 +55,7 @@ Status DAMitigationTpm1::Mitigate() {
   tpm_manager::ResetDictionaryAttackLockRequest request;
   tpm_manager::ResetDictionaryAttackLockReply reply;
 
-  if (brillo::ErrorPtr err;
-      !backend_.GetProxy().GetTpmManager().ResetDictionaryAttackLock(
+  if (brillo::ErrorPtr err; !tpm_manager_.ResetDictionaryAttackLock(
           request, &reply, &err, Proxy::kDefaultDBusTimeoutMs)) {
     return MakeStatus<TPMError>(TPMRetryAction::kCommunication)
         .Wrap(std::move(err));

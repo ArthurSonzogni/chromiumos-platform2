@@ -20,7 +20,6 @@
 #include <trunks/policy_session.h>
 #include <trunks/tpm_utility.h>
 
-#include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm2_error.h"
 #include "libhwsec/status.h"
 #include "libhwsec/structures/operation_policy.h"
@@ -135,8 +134,6 @@ StatusOr<EncryptEccPrivateKeyResponse> RecoveryCryptoTpm2::EncryptEccPrivateKey(
                                 TPMRetryAction::kNoRetry);
   }
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   // Translate EllipticCurve::CurveType to trunks curveID
   trunks::TPM_ECC_CURVE tpm_curve_id = trunks::TPM_ECC_NONE;
   switch (request.ec.GetCurveType()) {
@@ -162,12 +159,11 @@ StatusOr<EncryptEccPrivateKeyResponse> RecoveryCryptoTpm2::EncryptEccPrivateKey(
   }
 
   ASSIGN_OR_RETURN(std::vector<std::string> policy_digests,
-                   GetCurrentUserPolicyDigests(backend_.GetConfigTpm2(),
-                                               request.current_user));
+                   GetCurrentUserPolicyDigests(config_, request.current_user));
 
   // Start a trial policy session for sealing the secret value.
   std::unique_ptr<trunks::PolicySession> trial_session =
-      context.factory.GetTrialSession();
+      context_.GetTrunksFactory().GetTrialSession();
 
   RETURN_IF_ERROR(MakeStatus<TPM2Error>(trial_session->StartUnboundSession(
                       /*salted=*/false, /*enable_encryption=*/false)))
@@ -188,18 +184,19 @@ StatusOr<EncryptEccPrivateKeyResponse> RecoveryCryptoTpm2::EncryptEccPrivateKey(
 
   // Create the TPM session.
   ASSIGN_OR_RETURN(trunks::HmacSession & hmac_session,
-                   backend_.GetSessionManagementTpm2().GetOrCreateHmacSession(
+                   session_management_.GetOrCreateHmacSession(
                        SessionSecuritySetting::kSaltAndEncrypted),
                    _.WithStatus<TPMError>("Failed to start hmac session"));
 
   // Encrypt its own private key via the TPM2_Import command.
   std::string encrypted_own_priv_key_string;
   RETURN_IF_ERROR(
-      MakeStatus<TPM2Error>(context.tpm_utility->ImportECCKeyWithPolicyDigest(
-          trunks::TpmUtility::AsymmetricKeyUsage::kDecryptKey, tpm_curve_id,
-          pub_point_x.to_string(), pub_point_y.to_string(),
-          own_priv_key.to_string(), result_policy_digest,
-          hmac_session.GetDelegate(), &encrypted_own_priv_key_string)))
+      MakeStatus<TPM2Error>(
+          context_.GetTpmUtility().ImportECCKeyWithPolicyDigest(
+              trunks::TpmUtility::AsymmetricKeyUsage::kDecryptKey, tpm_curve_id,
+              pub_point_x.to_string(), pub_point_y.to_string(),
+              own_priv_key.to_string(), result_policy_digest,
+              hmac_session.GetDelegate(), &encrypted_own_priv_key_string)))
       .WithStatus<TPMError>("Failed to import its own private key into TPM");
 
   return EncryptEccPrivateKeyResponse{
@@ -255,17 +252,15 @@ RecoveryCryptoTpm2::GenerateDiffieHellmanSharedSecret(
         TPMRetryAction::kNoRetry);
   }
 
-  BackendTpm2::TrunksClientContext& context = backend_.GetTrunksContext();
-
   brillo::Blob key_blob = request.encrypted_own_priv_key;
   ASSIGN_OR_RETURN(
       ScopedKey key,
-      backend_.GetKeyManagementTpm2().LoadKey(OperationPolicy{}, key_blob,
-                                              KeyManagement::LoadKeyOptions{}),
+      key_management_.LoadKey(OperationPolicy{}, key_blob,
+                              KeyManagement::LoadKeyOptions{}),
       _.WithStatus<TPMError>("Failed to load encrypted ECC private key"));
 
   ASSIGN_OR_RETURN(const KeyTpm2& key_data,
-                   backend_.GetKeyManagementTpm2().GetKeyData(key.GetKey()));
+                   key_management_.GetKeyData(key.GetKey()));
 
   OperationPolicy policy{
       .device_configs = DeviceConfigs{DeviceConfig::kCurrentUser},
@@ -273,15 +268,14 @@ RecoveryCryptoTpm2::GenerateDiffieHellmanSharedSecret(
   };
 
   ASSIGN_OR_RETURN(std::vector<std::string> policy_digests,
-                   GetCurrentUserPolicyDigests(backend_.GetConfigTpm2(),
-                                               request.current_user));
+                   GetCurrentUserPolicyDigests(config_, request.current_user));
 
   // TODO(b/196192089): set enable_encryption to true
-  ASSIGN_OR_RETURN(std::unique_ptr<trunks::PolicySession> session,
-                   backend_.GetConfigTpm2().GetTrunksPolicySession(
-                       policy, policy_digests, /*salted=*/true,
-                       /*enable_encryption=*/false),
-                   _.WithStatus<TPMError>("Failed to get session for policy"));
+  ASSIGN_OR_RETURN(
+      std::unique_ptr<trunks::PolicySession> session,
+      config_.GetTrunksPolicySession(policy, policy_digests, /*salted=*/true,
+                                     /*enable_encryption=*/false),
+      _.WithStatus<TPMError>("Failed to get session for policy"));
 
   trunks::TPMS_ECC_POINT tpm_others_pub_point = {
       trunks::Make_TPM2B_ECC_PARAMETER(others_pub_point_x.to_string()),
@@ -290,7 +284,7 @@ RecoveryCryptoTpm2::GenerateDiffieHellmanSharedSecret(
   // Perform the multiplication of the destination share and the other party's
   // public point via the TPM2_ECDH_ZGen command.
   trunks::TPM2B_ECC_POINT tpm_point_dh;
-  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context.tpm_utility->ECDHZGen(
+  RETURN_IF_ERROR(MakeStatus<TPM2Error>(context_.GetTpmUtility().ECDHZGen(
                       key_data.key_handle,
                       trunks::Make_TPM2B_ECC_POINT(tpm_others_pub_point),
                       session->GetDelegate(), &tpm_point_dh)))

@@ -23,7 +23,7 @@ using testing::SetArgPointee;
 using tpm_manager::TpmManagerStatus;
 namespace hwsec {
 
-class BackendEncryptionTpm1Test : public BackendTpm1TestBase {};
+using BackendEncryptionTpm1Test = BackendTpm1TestBase;
 
 TEST_F(BackendEncryptionTpm1Test, Encrypt) {
   const OperationPolicy kFakePolicy{};

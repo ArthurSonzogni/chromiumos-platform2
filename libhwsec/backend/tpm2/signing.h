@@ -8,18 +8,21 @@
 #include <brillo/secure_blob.h>
 #include <trunks/tpm_generated.h>
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/signing.h"
+#include "libhwsec/backend/tpm2/config.h"
 #include "libhwsec/backend/tpm2/key_management.h"
+#include "libhwsec/backend/tpm2/trunks_context.h"
 #include "libhwsec/status.h"
 
 namespace hwsec {
 
-class BackendTpm2;
-
-class SigningTpm2 : public Backend::Signing,
-                    public Backend::SubClassHelper<BackendTpm2> {
+class SigningTpm2 : public Signing {
  public:
-  using SubClassHelper::SubClassHelper;
+  SigningTpm2(TrunksContext& context,
+              ConfigTpm2& config,
+              KeyManagementTpm2& key_management)
+      : context_(context), config_(config), key_management_(key_management) {}
+
   StatusOr<brillo::Blob> Sign(Key key,
                               const brillo::Blob& data,
                               const SigningOptions& options) override;
@@ -33,6 +36,11 @@ class SigningTpm2 : public Backend::Signing,
                                                const KeyTpm2& key_data,
                                                const brillo::Blob& data,
                                                const SigningOptions& options);
+
+ private:
+  TrunksContext& context_;
+  ConfigTpm2& config_;
+  KeyManagementTpm2& key_management_;
 };
 
 }  // namespace hwsec

@@ -36,7 +36,7 @@ using tpm_manager::TpmManagerStatus;
 
 namespace hwsec {
 
-class BackendRecoveryCryptoTpm1Test : public BackendTpm1TestBase {};
+using BackendRecoveryCryptoTpm1Test = BackendTpm1TestBase;
 
 TEST_F(BackendRecoveryCryptoTpm1Test, GenerateKeyAuthValue) {
   auto result = backend_->GetRecoveryCryptoTpm1().GenerateKeyAuthValue();

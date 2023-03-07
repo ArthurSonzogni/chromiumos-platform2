@@ -26,7 +26,7 @@ using testing::SetArgPointee;
 using tpm_manager::TpmManagerStatus;
 namespace hwsec {
 
-class BackendVendorTpm1Test : public BackendTpm1TestBase {};
+using BackendVendorTpm1Test = BackendTpm1TestBase;
 
 TEST_F(BackendVendorTpm1Test, GetVersionInfo) {
   const brillo::Blob kFakeVendorSpecific = {0x06, 0x2B, 0x00, 0xF3, 0x00,

@@ -9,18 +9,30 @@
 
 #include <brillo/secure_blob.h>
 
-#include "libhwsec/backend/backend.h"
+#include "libhwsec/backend/sealing.h"
+#include "libhwsec/backend/tpm1/config.h"
+#include "libhwsec/backend/tpm1/da_mitigation.h"
+#include "libhwsec/backend/tpm1/key_management.h"
+#include "libhwsec/backend/tpm1/tss_helper.h"
+#include "libhwsec/proxy/proxy.h"
 #include "libhwsec/status.h"
 #include "libhwsec/tss_utils/scoped_tss_type.h"
 
 namespace hwsec {
 
-class BackendTpm1;
-
-class SealingTpm1 : public Backend::Sealing,
-                    public Backend::SubClassHelper<BackendTpm1> {
+class SealingTpm1 : public Sealing {
  public:
-  using SubClassHelper::SubClassHelper;
+  SealingTpm1(overalls::Overalls& overalls,
+              TssHelper& tss_helper,
+              ConfigTpm1& config,
+              KeyManagementTpm1& key_management,
+              DAMitigationTpm1& da_mitigation)
+      : overalls_(overalls),
+        tss_helper_(tss_helper),
+        config_(config),
+        key_management_(key_management),
+        da_mitigation_(da_mitigation) {}
+
   StatusOr<bool> IsSupported() override;
   StatusOr<brillo::Blob> Seal(const OperationPolicySetting& policy,
                               const brillo::SecureBlob& unsealed_data) override;
@@ -32,6 +44,12 @@ class SealingTpm1 : public Backend::Sealing,
 
  private:
   StatusOr<ScopedTssKey> GetAuthValueKey(const brillo::SecureBlob& auth_value);
+
+  overalls::Overalls& overalls_;
+  TssHelper& tss_helper_;
+  ConfigTpm1& config_;
+  KeyManagementTpm1& key_management_;
+  DAMitigationTpm1& da_mitigation_;
 };
 
 }  // namespace hwsec
