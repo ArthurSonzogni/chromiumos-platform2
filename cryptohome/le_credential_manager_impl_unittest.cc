@@ -22,6 +22,7 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 
 #include "cryptohome/error/utilities.h"
+#include "cryptohome/le_credential_error.h"
 #include "cryptohome/le_credential_manager.h"
 #include "cryptohome/le_credential_manager_impl.h"
 
@@ -32,12 +33,21 @@ namespace {
 using ::hwsec_foundation::error::testing::IsOk;
 using ::hwsec_foundation::error::testing::IsOkAnd;
 using ::hwsec_foundation::error::testing::IsOkAndHolds;
+using ::hwsec_foundation::error::testing::NotOkAnd;
 using ::testing::Eq;
 using ::testing::Ge;
 
 constexpr int kLEMaxIncorrectAttempt = 5;
 constexpr int kFakeLogSize = 2;
 constexpr uint8_t kAuthChannel = 0;
+
+MATCHER_P(HasLeCredError, matcher, "") {
+  if (arg.ok()) {
+    return false;
+  }
+  return ExplainMatchResult(matcher, arg->local_lecred_error(),
+                            result_listener);
+}
 
 // All the keys are 32 bytes long.
 constexpr uint8_t kLeSecret1Array[] = {
@@ -119,10 +129,10 @@ class LECredentialManagerImplUnitTest : public testing::Test {
     brillo::SecureBlob he_secret;
     brillo::SecureBlob reset_secret;
     for (int i = 0; i < kLEMaxIncorrectAttempt; i++) {
-      EXPECT_EQ(
-          LE_CRED_ERROR_INVALID_LE_SECRET,
-          le_mgr_->CheckCredential(label, kHeSecret1, &he_secret, &reset_secret)
-              ->local_lecred_error());
+      EXPECT_THAT(
+          le_mgr_->CheckCredential(label, kHeSecret1, &he_secret,
+                                   &reset_secret),
+          NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_INVALID_LE_SECRET))));
     }
     return label;
   }
@@ -245,10 +255,9 @@ TEST_F(LECredentialManagerImplUnitTest, BasicInsertAndCheck) {
       le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret),
       IsOk());
   EXPECT_EQ(he_secret, kHeSecret1);
-  EXPECT_EQ(
-      LE_CRED_ERROR_INVALID_LE_SECRET,
-      le_mgr_->CheckCredential(label2, kLeSecret1, &he_secret, &reset_secret)
-          ->local_lecred_error());
+  EXPECT_THAT(
+      le_mgr_->CheckCredential(label2, kLeSecret1, &he_secret, &reset_secret),
+      NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_INVALID_LE_SECRET))));
   EXPECT_THAT(
       le_mgr_->CheckCredential(label2, kLeSecret2, &he_secret, &reset_secret),
       IsOk());
@@ -290,11 +299,9 @@ TEST_F(LECredentialManagerImplUnitTest, BiometricsBasicInsertAndCheck) {
 
   // Incorrect auth channel passed should result in INVALID_LE_SECRET.
   GeneratePk(kWrongAuthChannel);
-  EXPECT_EQ(
-      LE_CRED_ERROR_INVALID_LE_SECRET,
-      le_mgr_->StartBiometricsAuth(kWrongAuthChannel, label1, kClientNonce)
-          .status()
-          ->local_lecred_error());
+  EXPECT_THAT(
+      le_mgr_->StartBiometricsAuth(kWrongAuthChannel, label1, kClientNonce),
+      NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_INVALID_LE_SECRET))));
 }
 
 // Insert a label and verify that authentication works. Simulate the PCR
@@ -349,10 +356,9 @@ TEST_F(LECredentialManagerImplUnitTest, CheckPcrAuth) {
 
   EXPECT_THAT(factory_.GetCryptohomeFrontend()->SetCurrentUser("wrong_user"),
               IsOk());
-  EXPECT_EQ(
-      LE_CRED_ERROR_PCR_NOT_MATCH,
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
-          ->local_lecred_error());
+  EXPECT_THAT(
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret),
+      NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_PCR_NOT_MATCH))));
 }
 
 // Verify invalid secrets and getting locked out due to too many attempts.
@@ -362,16 +368,17 @@ TEST_F(LECredentialManagerImplUnitTest, LockedOutSecret) {
   uint64_t label1 = CreateLockedOutCredential();
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
-  LECredStatus status =
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret);
-  EXPECT_EQ(LE_CRED_ERROR_TOO_MANY_ATTEMPTS, status->local_lecred_error());
+  LECredStatus status;
+  EXPECT_THAT(status = le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret,
+                                                &reset_secret),
+              NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_TOO_MANY_ATTEMPTS))));
   EXPECT_TRUE(ContainsActionInStack(status, error::ErrorAction::kLeLockedOut));
 
   // Check once more to ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the
   // right metadata is stored.
-  status =
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret);
-  EXPECT_EQ(LE_CRED_ERROR_TOO_MANY_ATTEMPTS, status->local_lecred_error());
+  EXPECT_THAT(status = le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret,
+                                                &reset_secret),
+              NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_TOO_MANY_ATTEMPTS))));
   EXPECT_TRUE(ContainsActionInStack(status, error::ErrorAction::kLeLockedOut));
 }
 
@@ -414,18 +421,14 @@ TEST_F(LECredentialManagerImplUnitTest, InvalidLabelCheck) {
   uint64_t invalid_label = ~label1;
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
-  EXPECT_EQ(LE_CRED_ERROR_INVALID_LABEL,
-            le_mgr_
-                ->CheckCredential(invalid_label, kLeSecret1, &he_secret,
-                                  &reset_secret)
-                ->local_lecred_error());
+  EXPECT_THAT(le_mgr_->CheckCredential(invalid_label, kLeSecret1, &he_secret,
+                                       &reset_secret),
+              NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_INVALID_LABEL))));
   // Next check a valid, but absent label.
   invalid_label = label1 ^ 0x1;
-  EXPECT_EQ(LE_CRED_ERROR_INVALID_LABEL,
-            le_mgr_
-                ->CheckCredential(invalid_label, kLeSecret1, &he_secret,
-                                  &reset_secret)
-                ->local_lecred_error());
+  EXPECT_THAT(le_mgr_->CheckCredential(invalid_label, kLeSecret1, &he_secret,
+                                       &reset_secret),
+              NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_INVALID_LABEL))));
 }
 
 // Insert a credential and then remove it.
@@ -443,10 +446,9 @@ TEST_F(LECredentialManagerImplUnitTest, BasicInsertRemove) {
   ASSERT_THAT(le_mgr_->RemoveCredential(label1), IsOk());
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
-  EXPECT_EQ(
-      LE_CRED_ERROR_INVALID_LABEL,
-      le_mgr_->CheckCredential(label1, kHeSecret1, &he_secret, &reset_secret)
-          ->local_lecred_error());
+  EXPECT_THAT(
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret),
+      NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_INVALID_LABEL))));
 }
 
 // Check that a reset unlocks a locked out credential.
@@ -457,10 +459,9 @@ TEST_F(LECredentialManagerImplUnitTest, ResetSecret) {
   // is stored.
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
-  ASSERT_EQ(
-      LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
-          ->local_lecred_error());
+  ASSERT_THAT(
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret),
+      NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_TOO_MANY_ATTEMPTS))));
 
   EXPECT_THAT(
       le_mgr_->ResetCredential(label1, kResetSecret1, /*strong_reset=*/false),
@@ -481,20 +482,18 @@ TEST_F(LECredentialManagerImplUnitTest, ResetSecretNegative) {
   // is stored.
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
-  ASSERT_EQ(
-      LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
-          ->local_lecred_error());
+  ASSERT_THAT(
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret),
+      NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_TOO_MANY_ATTEMPTS))));
 
-  EXPECT_EQ(LE_CRED_ERROR_INVALID_RESET_SECRET,
-            le_mgr_->ResetCredential(label1, kLeSecret1, /*strong_reset=*/false)
-                ->local_lecred_error());
+  EXPECT_THAT(
+      le_mgr_->ResetCredential(label1, kLeSecret1, /*strong_reset=*/false),
+      NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_INVALID_RESET_SECRET))));
 
   // Make sure that Check still fails.
-  EXPECT_EQ(
-      LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
-          ->local_lecred_error());
+  EXPECT_THAT(
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret),
+      NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_TOO_MANY_ATTEMPTS))));
 }
 
 // Check that a reset unlocks a locked out rate-limiter.
@@ -506,10 +505,8 @@ TEST_F(LECredentialManagerImplUnitTest, BiometricsResetSecret) {
 
   // Ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the right metadata
   // is stored.
-  ASSERT_EQ(LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
-            le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce)
-                .status()
-                ->local_lecred_error());
+  ASSERT_THAT(le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce),
+              NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_TOO_MANY_ATTEMPTS))));
 
   EXPECT_THAT(
       le_mgr_->ResetCredential(label1, kResetSecret1, /*strong_reset=*/false),
@@ -529,20 +526,16 @@ TEST_F(LECredentialManagerImplUnitTest, BiometricsResetSecretNegative) {
 
   // Ensure that even after an ERROR_TOO_MANY_ATTEMPTS, the right metadata
   // is stored.
-  ASSERT_EQ(LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
-            le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce)
-                .status()
-                ->local_lecred_error());
+  ASSERT_THAT(le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce),
+              NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_TOO_MANY_ATTEMPTS))));
 
-  EXPECT_EQ(LE_CRED_ERROR_INVALID_RESET_SECRET,
-            le_mgr_->ResetCredential(label1, kLeSecret1, /*strong_reset=*/false)
-                ->local_lecred_error());
+  EXPECT_THAT(
+      le_mgr_->ResetCredential(label1, kLeSecret1, /*strong_reset=*/false),
+      NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_INVALID_RESET_SECRET))));
 
-  // Make sure that Check still fails.
-  EXPECT_EQ(LE_CRED_ERROR_TOO_MANY_ATTEMPTS,
-            le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce)
-                .status()
-                ->local_lecred_error());
+  // Make sure that StartBiometricsAuth still fails.
+  EXPECT_THAT(le_mgr_->StartBiometricsAuth(kAuthChannel, label1, kClientNonce),
+              NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_TOO_MANY_ATTEMPTS))));
 }
 
 // Corrupt the hash cache, and see if subsequent LE operations succeed.
@@ -699,10 +692,9 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostChecks) {
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
   for (int i = 0; i < kFakeLogSize; i++) {
-    ASSERT_EQ(
-        LE_CRED_ERROR_INVALID_LE_SECRET,
-        le_mgr_->CheckCredential(label1, kLeSecret2, &he_secret, &reset_secret)
-            ->local_lecred_error());
+    ASSERT_THAT(
+        le_mgr_->CheckCredential(label1, kLeSecret2, &he_secret, &reset_secret),
+        NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_INVALID_LE_SECRET))));
   }
 
   le_mgr_.reset();
@@ -821,11 +813,9 @@ TEST_F(LECredentialManagerImplUnitTest, LogReplayLostRemoves) {
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
   for (int i = 0; i < kFakeLogSize; i++) {
-    EXPECT_EQ(LE_CRED_ERROR_INVALID_LABEL,
-              le_mgr_
-                  ->CheckCredential(labels_to_remove[i], kLeSecret1, &he_secret,
-                                    &reset_secret)
-                  ->local_lecred_error());
+    EXPECT_THAT(le_mgr_->CheckCredential(labels_to_remove[i], kLeSecret1,
+                                         &he_secret, &reset_secret),
+                NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_INVALID_LABEL))));
   }
 
   // Subsequent operations should work.
@@ -964,10 +954,9 @@ TEST_F(LECredentialManagerImplUnitTest, FailedLogReplayTooManyOps) {
   brillo::SecureBlob he_secret;
   brillo::SecureBlob reset_secret;
   for (int i = 0; i < kFakeLogSize + 1; i++) {
-    ASSERT_EQ(
-        LE_CRED_ERROR_INVALID_LE_SECRET,
-        le_mgr_->CheckCredential(label1, kLeSecret2, &he_secret, &reset_secret)
-            ->local_lecred_error());
+    ASSERT_THAT(
+        le_mgr_->CheckCredential(label1, kLeSecret2, &he_secret, &reset_secret),
+        NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_INVALID_LE_SECRET))));
   }
   uint64_t label3;
   ASSERT_THAT(le_mgr_->InsertCredential(
@@ -982,14 +971,12 @@ TEST_F(LECredentialManagerImplUnitTest, FailedLogReplayTooManyOps) {
 
   // Subsequent operations should fail.
   // TODO(crbug.com/809710): Should we reset the tree in this case?
-  EXPECT_EQ(
-      LE_CRED_ERROR_HASH_TREE,
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
-          ->local_lecred_error());
-  EXPECT_EQ(
-      LE_CRED_ERROR_HASH_TREE,
-      le_mgr_->CheckCredential(label2, kLeSecret2, &he_secret, &reset_secret)
-          ->local_lecred_error());
+  EXPECT_THAT(
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret),
+      NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_HASH_TREE))));
+  EXPECT_THAT(
+      le_mgr_->CheckCredential(label2, kLeSecret2, &he_secret, &reset_secret),
+      NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_HASH_TREE))));
 }
 
 // Verify behaviour when there is an unsalvageable disk corruption.
@@ -1027,21 +1014,17 @@ TEST_F(LECredentialManagerImplUnitTest, FailedSyncDiskCorrupted) {
   // Any operation should now fail.
   // TODO(crbug.com/809710): Should we reset the tree in this case?
   he_secret.clear();
-  EXPECT_EQ(
-      LE_CRED_ERROR_HASH_TREE,
-      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret)
-          ->local_lecred_error());
-  EXPECT_EQ(
-      LE_CRED_ERROR_HASH_TREE,
-      le_mgr_->CheckCredential(label2, kLeSecret1, &he_secret, &reset_secret)
-          ->local_lecred_error());
-  EXPECT_EQ(
-      LE_CRED_ERROR_HASH_TREE,
-      le_mgr_
-          ->InsertCredential(std::vector<hwsec::OperationPolicySetting>(),
-                             kLeSecret2, kHeSecret1, kResetSecret1, delay_sched,
-                             /*expiration_delay=*/std::nullopt, &label2)
-          ->local_lecred_error());
+  EXPECT_THAT(
+      le_mgr_->CheckCredential(label1, kLeSecret1, &he_secret, &reset_secret),
+      NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_HASH_TREE))));
+  EXPECT_THAT(
+      le_mgr_->CheckCredential(label2, kLeSecret1, &he_secret, &reset_secret),
+      NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_HASH_TREE))));
+  EXPECT_THAT(le_mgr_->InsertCredential(
+                  std::vector<hwsec::OperationPolicySetting>(), kLeSecret2,
+                  kHeSecret1, kResetSecret1, delay_sched,
+                  /*expiration_delay=*/std::nullopt, &label2),
+              NotOkAnd(HasLeCredError(Eq(LE_CRED_ERROR_HASH_TREE))));
 }
 
 TEST_F(LECredentialManagerImplUnitTest, CheckCredentialExpirations) {
