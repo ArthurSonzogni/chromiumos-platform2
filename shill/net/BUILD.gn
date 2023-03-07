@@ -125,7 +125,7 @@ if (use.test) {
       "//common-mk:test",
       ":target_defaults",
     ]
-    public_deps = [ ":libshill-net" ]
+    pkg_deps = [ "libshill-net" ]
   }
 
   pkg_config("shill_net_test_config") {
