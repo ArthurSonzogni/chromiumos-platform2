@@ -34,6 +34,7 @@ use std::time::Instant;
 
 use crate::cookie::set_hibernate_cookie;
 use crate::cookie::HibernateCookieValue;
+use crate::device_mapper::DeviceMapper;
 use crate::files::HIBERNATE_DIR;
 use crate::hiberutil::checked_command;
 use crate::hiberutil::checked_command_output;
@@ -333,26 +334,16 @@ impl VolumeManager {
         let snapshot_string = snapshot.as_ref().to_string_lossy();
         let origin_table = format!("0 {} snapshot-origin {}", size_sectors, &origin_string);
         debug!("Creating snapshot origin: {}", &origin_table);
-        checked_command(Command::new(DMSETUP_PATH).args([
-            "create",
-            &format!("{}-origin", name),
-            "--table",
-            &origin_table,
-        ]))
-        .context(format!("Cannot setup snapshot-origin for {}", name))?;
+        DeviceMapper::create_device(&format!("{name}-origin"), &origin_table)
+            .context(format!("Cannot setup snapshot-origin for {}", name))?;
 
         let snapshot_table = format!(
             "0 {} snapshot {} {} P {}",
             size_sectors, &origin_string, &snapshot_string, chunk_size
         );
         debug!("Creating snapshot table: {}", &snapshot_table);
-        checked_command(Command::new(DMSETUP_PATH).args([
-            "create",
-            &format!("{}-rw", name),
-            "--table",
-            &snapshot_table,
-        ]))
-        .context(format!("Cannot setup dm-snapshot for {}", name))?;
+        DeviceMapper::create_device(&format!("{name}-rw"), &snapshot_table)
+            .context(format!("Cannot setup dm-snapshot for {}", name))?;
 
         Ok(())
     }
@@ -476,7 +467,7 @@ impl VolumeManager {
 
         let new_table = thinpool_config.to_table();
         let _suspended_device = SuspendedDmDevice::new(&name);
-        reload_dm_table(&name, &new_table).context("Failed to reload thin-pool table")
+        DeviceMapper::reload_device_table(&name, &new_table)
     }
 
     /// Get the thinpool volume name and table line.
@@ -605,8 +596,7 @@ struct SuspendedDmDevice {
 
 impl SuspendedDmDevice {
     pub fn new(name: &str) -> Result<Self> {
-        checked_command(Command::new(DMSETUP_PATH).args(["suspend", name]))
-            .context(format!("Failed to suspend {}", name))?;
+        DeviceMapper::suspend_device(name)?;
 
         Ok(Self {
             name: name.to_string(),
@@ -616,8 +606,8 @@ impl SuspendedDmDevice {
 
 impl Drop for SuspendedDmDevice {
     fn drop(&mut self) {
-        if let Err(e) = checked_command(Command::new(DMSETUP_PATH).args(["resume", &self.name])) {
-            error!("Failed to run dmsetup resume {}: {}", &self.name, e);
+        if let Err(e) = DeviceMapper::resume_device(&self.name) {
+            error!("{e}");
         }
     }
 }
@@ -684,8 +674,7 @@ impl DmSnapshotMerge {
 
         // If the snapshot path doesn't exist, there's nothing to merge.
         // Consider this a success.
-        let snapshot_path = Path::new("/dev/mapper").join(&snapshot_name);
-        if !snapshot_path.exists() {
+        if !DeviceMapper::device_exists(&snapshot_name) {
             return Ok(None);
         }
 
@@ -696,12 +685,12 @@ impl DmSnapshotMerge {
 
         // Get the origin table, which points at the "real" block device, for
         // later.
-        let origin_table = get_dm_table(&origin_name)?;
+        let origin_table = DeviceMapper::get_device_table(&origin_name)?;
 
         // Get the snapshot table line, and substitute snapshot for
         // snapshot-merge, which (once installed) will kick off the merge
         // process in the kernel.
-        let snapshot_table = get_dm_table(&snapshot_name)?;
+        let snapshot_table = DeviceMapper::get_device_table(&snapshot_name)?;
         let snapshot_table = snapshot_table.replace(" snapshot ", " snapshot-merge ");
 
         // Suspend both the origin and the snapshot. Be careful, as the stateful
@@ -714,14 +703,13 @@ impl DmSnapshotMerge {
             SuspendedDmDevice::new(&snapshot_name).context("Failed to suspend snapshot")?;
 
         // With both devices suspended, replace the table to begin the merge process.
-        reload_dm_table(&snapshot_name, &snapshot_table)
-            .context("Failed to reload snapshot as merge")?;
+        DeviceMapper::reload_device_table(&snapshot_name, &snapshot_table)?;
 
         // If that worked, resume the devices (by dropping the suspend object),
         // then remove the origin.
         drop(suspended_origin);
         drop(suspended_snapshot);
-        remove_dm_target(&origin_name).context("Failed to remove origin")?;
+        DeviceMapper::remove_device(&origin_name)?;
 
         // Delete the loop device backing the snapshot.
         let snapshot_majmin = get_nth_element(&snapshot_table, 4)?;
@@ -788,19 +776,17 @@ impl DmSnapshotMerge {
         let suspended_snapshot =
             SuspendedDmDevice::new(&self.snapshot_name).context("Failed to suspend snapshot")?;
 
-        let snapshot_table = get_dm_table(&self.snapshot_name)?;
+        let snapshot_table = DeviceMapper::get_device_table(&self.snapshot_name)?;
         let origin_size = get_nth_element(&snapshot_table, 1)?;
         let origin_table = format!("0 {} snapshot-origin {}", origin_size, self.origin_majmin);
-        reload_dm_table(&self.snapshot_name, &origin_table)
-            .context("Failed to reload snapshot as origin")?;
+        DeviceMapper::reload_device_table(&self.snapshot_name, &origin_table)?;
 
         drop(suspended_snapshot);
 
         // Rename the dm target, which doesn't serve any functional purpose, but
         // serves as a useful breadcrumb during debugging and in feedback reports.
         let merged_name = format!("{}-merged", self.name);
-        rename_dm_target(&self.snapshot_name, &merged_name)
-            .context("Failed to rename dm target")?;
+        DeviceMapper::rename_device(&self.snapshot_name, &merged_name)?;
 
         // Victory log!
         log_io_duration(
@@ -882,40 +868,10 @@ fn delete_snapshot(name: &str) -> Result<()> {
     remove_file(snapshot_file_path).context("Failed to delete snapshot file")
 }
 
-/// Get the dm table line for a particular target.
-fn get_dm_table(target: &str) -> Result<String> {
-    dmsetup_checked_output(Command::new(DMSETUP_PATH).args(["table", target]))
-        .context(format!("Failed to get dm target line for {}", target))
-}
-
 /// Get the dm status line for a particular target.
 fn get_dm_status(target: &str) -> Result<String> {
     dmsetup_checked_output(Command::new(DMSETUP_PATH).args(["status", target]))
         .context(format!("Failed to get dm status line for {}", target))
-}
-
-/// Reload a target table.
-fn reload_dm_table(target: &str, table: &str) -> Result<()> {
-    checked_command(Command::new(DMSETUP_PATH).args(["reload", target, "--table", table])).context(
-        format!(
-            "Failed to run dmsetup reload for {}, table {}",
-            target, table
-        ),
-    )
-}
-
-/// Rename a dm target.
-fn rename_dm_target(target: &str, new_name: &str) -> Result<()> {
-    checked_command(Command::new(DMSETUP_PATH).args(["rename", target, new_name])).context(format!(
-        "Failed to run dmsetup rename {} {}",
-        target, new_name
-    ))
-}
-
-/// Remove a dm target.
-fn remove_dm_target(target: &str) -> Result<()> {
-    checked_command(Command::new(DMSETUP_PATH).args(["remove", target]))
-        .context(format!("Failed to run dmsetup remove {}", target))
 }
 
 /// Delete a loop device.
