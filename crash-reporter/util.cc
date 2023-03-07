@@ -715,7 +715,7 @@ std::optional<std::string> ExtractChromeVersionFromMetadata(
     return std::nullopt;
   }
 
-  const base::Value* content = parsed_metadata->FindKey("content");
+  const base::Value* content = parsed_metadata->GetDict().Find("content");
   if (content == nullptr) {
     LOG(ERROR) << "Error parsing Chrome metadata file " << metadata_path.value()
                << ": could not find 'content' key";
@@ -727,7 +727,7 @@ std::optional<std::string> ExtractChromeVersionFromMetadata(
                << base::Value::GetTypeName(content->type());
     return std::nullopt;
   }
-  const base::Value* version = content->FindKey("version");
+  const base::Value* version = content->GetDict().Find("version");
   if (version == nullptr) {
     LOG(ERROR) << "Error parsing Chrome metadata file " << metadata_path.value()
                << ": could not find 'version' key";
