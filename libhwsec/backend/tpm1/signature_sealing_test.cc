@@ -472,7 +472,7 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
                         SetArgPointee<4>(fake_sealed_data2_.data()),
                         Return(TPM_SUCCESS)));
 
-    return middleware_->CallSync<&Backend::SignatureSealing::Seal>(
+    return backend_->GetSignatureSealingTpm1().Seal(
         operation_policy_setting_, unsealed_data_, public_key_spki_der_,
         key_algorithms_);
   }
@@ -556,7 +556,7 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
                         SetArgPointee<4>(mig_dest_pubkey_.data()),
                         Return(TPM_SUCCESS)));
 
-    return middleware_->CallSync<&Backend::SignatureSealing::Challenge>(
+    return backend_->GetSignatureSealingTpm1().Challenge(
         operation_policy_, sealed_data, public_key_spki_der_, key_algorithms_);
   }
 
@@ -944,8 +944,8 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
                         SetArgPointee<3>(unsealed_data_.data()),
                         Return(TPM_SUCCESS)));
 
-    return middleware_->CallSync<&Backend::SignatureSealing::Unseal>(
-        challenge, fake_challenge_response_);
+    return backend_->GetSignatureSealingTpm1().Unseal(challenge,
+                                                      fake_challenge_response_);
   }
 
   // Default parameters.
@@ -1213,71 +1213,58 @@ TEST_F(BackendSignatureSealingTpm1Test, ChallengeWrongData) {
 
   // Wrong method.
   SignatureSealedData sealed_data = Tpm12CertifiedMigratableKeyData{};
-  auto challenge_result =
-      middleware_->CallSync<&Backend::SignatureSealing::Challenge>(
-          operation_policy_, sealed_data, public_key_spki_der_,
-          key_algorithms_);
+  auto challenge_result = backend_->GetSignatureSealingTpm1().Challenge(
+      operation_policy_, sealed_data, public_key_spki_der_, key_algorithms_);
   EXPECT_FALSE(challenge_result.ok());
 
   // Empty public_key_spki_der.
   sealed_data = seal_result.value();
   std::get<Tpm12CertifiedMigratableKeyData>(sealed_data).public_key_spki_der =
       brillo::Blob();
-  challenge_result =
-      middleware_->CallSync<&Backend::SignatureSealing::Challenge>(
-          operation_policy_, sealed_data, public_key_spki_der_,
-          key_algorithms_);
+  challenge_result = backend_->GetSignatureSealingTpm1().Challenge(
+      operation_policy_, sealed_data, public_key_spki_der_, key_algorithms_);
   EXPECT_FALSE(challenge_result.ok());
 
   // Empty srk_wrapped_cmk.
   sealed_data = seal_result.value();
   std::get<Tpm12CertifiedMigratableKeyData>(sealed_data).srk_wrapped_cmk =
       brillo::Blob();
-  challenge_result =
-      middleware_->CallSync<&Backend::SignatureSealing::Challenge>(
-          operation_policy_, sealed_data, public_key_spki_der_,
-          key_algorithms_);
+  challenge_result = backend_->GetSignatureSealingTpm1().Challenge(
+      operation_policy_, sealed_data, public_key_spki_der_, key_algorithms_);
   EXPECT_FALSE(challenge_result.ok());
 
   // Empty cmk_wrapped_auth_data.
   sealed_data = seal_result.value();
   std::get<Tpm12CertifiedMigratableKeyData>(sealed_data).cmk_wrapped_auth_data =
       brillo::Blob();
-  challenge_result =
-      middleware_->CallSync<&Backend::SignatureSealing::Challenge>(
-          operation_policy_, sealed_data, public_key_spki_der_,
-          key_algorithms_);
+  challenge_result = backend_->GetSignatureSealingTpm1().Challenge(
+      operation_policy_, sealed_data, public_key_spki_der_, key_algorithms_);
   EXPECT_FALSE(challenge_result.ok());
 
   // Empty cmk_pubkey.
   sealed_data = seal_result.value();
   std::get<Tpm12CertifiedMigratableKeyData>(sealed_data).cmk_pubkey =
       brillo::Blob();
-  challenge_result =
-      middleware_->CallSync<&Backend::SignatureSealing::Challenge>(
-          operation_policy_, sealed_data, public_key_spki_der_,
-          key_algorithms_);
+  challenge_result = backend_->GetSignatureSealingTpm1().Challenge(
+      operation_policy_, sealed_data, public_key_spki_der_, key_algorithms_);
   EXPECT_FALSE(challenge_result.ok());
 
   // Mismatch public_key_spki_der.
   sealed_data = seal_result.value();
   std::get<Tpm12CertifiedMigratableKeyData>(sealed_data)
       .public_key_spki_der[0] ^= 1;
-  challenge_result =
-      middleware_->CallSync<&Backend::SignatureSealing::Challenge>(
-          operation_policy_, sealed_data, public_key_spki_der_,
-          key_algorithms_);
+  challenge_result = backend_->GetSignatureSealingTpm1().Challenge(
+      operation_policy_, sealed_data, public_key_spki_der_, key_algorithms_);
   EXPECT_FALSE(challenge_result.ok());
 
   // Mismatch algorithm.
-  challenge_result =
-      middleware_->CallSync<&Backend::SignatureSealing::Challenge>(
-          operation_policy_, seal_result.value(), public_key_spki_der_,
-          std::vector<Algorithm>{
-              Algorithm::kRsassaPkcs1V15Sha256,
-              Algorithm::kRsassaPkcs1V15Sha384,
-              Algorithm::kRsassaPkcs1V15Sha512,
-          });
+  challenge_result = backend_->GetSignatureSealingTpm1().Challenge(
+      operation_policy_, seal_result.value(), public_key_spki_der_,
+      std::vector<Algorithm>{
+          Algorithm::kRsassaPkcs1V15Sha256,
+          Algorithm::kRsassaPkcs1V15Sha384,
+          Algorithm::kRsassaPkcs1V15Sha512,
+      });
   EXPECT_FALSE(challenge_result.ok());
 
   // Empty PCR bound secret.
@@ -1288,27 +1275,23 @@ TEST_F(BackendSignatureSealingTpm1Test, ChallengeWrongData) {
   std::get<Tpm12CertifiedMigratableKeyData>(sealed_data)
       .pcr_bound_items[1]
       .bound_secret = brillo::Blob();
-  challenge_result =
-      middleware_->CallSync<&Backend::SignatureSealing::Challenge>(
-          operation_policy_, sealed_data, public_key_spki_der_,
-          key_algorithms_);
+  challenge_result = backend_->GetSignatureSealingTpm1().Challenge(
+      operation_policy_, sealed_data, public_key_spki_der_, key_algorithms_);
   EXPECT_FALSE(challenge_result.ok());
 }
 
 TEST_F(BackendSignatureSealingTpm1Test, UnsealNoChallenge) {
-  auto unseal_result =
-      middleware_->CallSync<&Backend::SignatureSealing::Unseal>(
-          static_cast<Backend::SignatureSealing::ChallengeID>(0),
-          fake_challenge_response_);
+  auto unseal_result = backend_->GetSignatureSealingTpm1().Unseal(
+      static_cast<Backend::SignatureSealing::ChallengeID>(0),
+      fake_challenge_response_);
   EXPECT_FALSE(unseal_result.ok());
 }
 
 TEST_F(BackendSignatureSealingTpm1Test, UnsealWrongData) {
   // No challenge.
-  auto unseal_result =
-      middleware_->CallSync<&Backend::SignatureSealing::Unseal>(
-          static_cast<Backend::SignatureSealing::ChallengeID>(0),
-          fake_challenge_response_);
+  auto unseal_result = backend_->GetSignatureSealingTpm1().Unseal(
+      static_cast<Backend::SignatureSealing::ChallengeID>(0),
+      fake_challenge_response_);
   EXPECT_FALSE(unseal_result.ok());
 
   StatusOr<SignatureSealedData> seal_result = SetupSealing();
@@ -1323,7 +1306,7 @@ TEST_F(BackendSignatureSealingTpm1Test, UnsealWrongData) {
       challenge_result->challenge_id;
   challenge_id = static_cast<Backend::SignatureSealing::ChallengeID>(
       static_cast<uint32_t>(challenge_id) + 3);
-  unseal_result = middleware_->CallSync<&Backend::SignatureSealing::Unseal>(
+  unseal_result = backend_->GetSignatureSealingTpm1().Unseal(
       challenge_id, fake_challenge_response_);
   EXPECT_FALSE(unseal_result.ok());
 }

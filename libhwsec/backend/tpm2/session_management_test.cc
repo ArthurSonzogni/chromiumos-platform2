@@ -42,9 +42,7 @@ TEST_F(BackendSessionManagementTpm2Test, GetOrCreateHmacSession) {
 
 TEST_F(BackendSessionManagementTpm2Test, GetOrCreateHmacSessionAndFlush) {
   // Nothing to flush.
-  auto result0 =
-      middleware_
-          ->CallSync<&Backend::SessionManagement::FlushInvalidSessions>();
+  auto result0 = backend_->GetSessionManagementTpm2().FlushInvalidSessions();
   EXPECT_THAT(result0, NotOk());
 
   EXPECT_CALL(proxy_->GetMock().hmac_session, StartUnboundSession(false, true))
@@ -72,9 +70,7 @@ TEST_F(BackendSessionManagementTpm2Test, GetOrCreateHmacSessionAndFlush) {
   EXPECT_THAT(result4, IsOk());
 
   // Flush again.
-  auto result5 =
-      middleware_
-          ->CallSync<&Backend::SessionManagement::FlushInvalidSessions>();
+  auto result5 = backend_->GetSessionManagementTpm2().FlushInvalidSessions();
   EXPECT_THAT(result5, IsOk());
 
   // The cache should not work.

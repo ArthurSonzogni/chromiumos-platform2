@@ -38,9 +38,8 @@ namespace hwsec {
 class BackendRecoveryCryptoTpm2Test : public BackendTpm2TestBase {};
 
 TEST_F(BackendRecoveryCryptoTpm2Test, GenerateKeyAuthValue) {
-  EXPECT_THAT(
-      middleware_->CallSync<&Backend::RecoveryCrypto::GenerateKeyAuthValue>(),
-      IsOkAndHolds(std::nullopt));
+  EXPECT_THAT(backend_->GetRecoveryCryptoTpm2().GenerateKeyAuthValue(),
+              IsOkAndHolds(std::nullopt));
 }
 
 TEST_F(BackendRecoveryCryptoTpm2Test, EncryptEccPrivateKey) {
@@ -102,9 +101,8 @@ TEST_F(BackendRecoveryCryptoTpm2Test, EncryptEccPrivateKey) {
       .current_user = "obfuscated_username",
   };
 
-  auto result =
-      middleware_->CallSync<&Backend::RecoveryCrypto::EncryptEccPrivateKey>(
-          std::move(encrypt_request_destination_share));
+  auto result = backend_->GetRecoveryCryptoTpm2().EncryptEccPrivateKey(
+      std::move(encrypt_request_destination_share));
 
   ASSERT_OK(result);
   EXPECT_EQ(result->encrypted_own_priv_key, encrypted_own_priv_key);
@@ -133,9 +131,8 @@ TEST_F(BackendRecoveryCryptoTpm2Test, EncryptEccPrivateKeyWithAuth) {
       .current_user = "obfuscated_username",
   };
 
-  auto result =
-      middleware_->CallSync<&Backend::RecoveryCrypto::EncryptEccPrivateKey>(
-          std::move(encrypt_request_destination_share));
+  auto result = backend_->GetRecoveryCryptoTpm2().EncryptEccPrivateKey(
+      std::move(encrypt_request_destination_share));
 
   EXPECT_THAT(result, NotOk());
 }
@@ -157,9 +154,8 @@ TEST_F(BackendRecoveryCryptoTpm2Test, EncryptEccPrivateKeyNoKeyPair) {
       .current_user = "obfuscated_username",
   };
 
-  auto result =
-      middleware_->CallSync<&Backend::RecoveryCrypto::EncryptEccPrivateKey>(
-          std::move(encrypt_request_destination_share));
+  auto result = backend_->GetRecoveryCryptoTpm2().EncryptEccPrivateKey(
+      std::move(encrypt_request_destination_share));
 
   EXPECT_THAT(result, NotOk());
 }
@@ -243,9 +239,9 @@ TEST_F(BackendRecoveryCryptoTpm2Test, GenerateDiffieHellmanSharedSecret) {
       .others_pub_point = std::move(others_pub_key),
   };
 
-  auto result = middleware_->CallSync<
-      &Backend::RecoveryCrypto::GenerateDiffieHellmanSharedSecret>(
-      std::move(decrypt_request_destination_share));
+  auto result =
+      backend_->GetRecoveryCryptoTpm2().GenerateDiffieHellmanSharedSecret(
+          std::move(decrypt_request_destination_share));
 
   ASSERT_OK(result);
   EXPECT_NE(result.value(), nullptr);
@@ -334,9 +330,9 @@ TEST_F(BackendRecoveryCryptoTpm2Test,
       .others_pub_point = std::move(others_pub_key),
   };
 
-  auto result = middleware_->CallSync<
-      &Backend::RecoveryCrypto::GenerateDiffieHellmanSharedSecret>(
-      std::move(decrypt_request_destination_share));
+  auto result =
+      backend_->GetRecoveryCryptoTpm2().GenerateDiffieHellmanSharedSecret(
+          std::move(decrypt_request_destination_share));
 
   EXPECT_THAT(result, NotOk());
 }
@@ -376,9 +372,9 @@ TEST_F(BackendRecoveryCryptoTpm2Test,
       .others_pub_point = std::move(others_pub_key),
   };
 
-  auto result = middleware_->CallSync<
-      &Backend::RecoveryCrypto::GenerateDiffieHellmanSharedSecret>(
-      std::move(decrypt_request_destination_share));
+  auto result =
+      backend_->GetRecoveryCryptoTpm2().GenerateDiffieHellmanSharedSecret(
+          std::move(decrypt_request_destination_share));
 
   EXPECT_THAT(result, NotOk());
 }
@@ -407,24 +403,22 @@ TEST_F(BackendRecoveryCryptoTpm2Test,
       .others_pub_point = nullptr,
   };
 
-  auto result = middleware_->CallSync<
-      &Backend::RecoveryCrypto::GenerateDiffieHellmanSharedSecret>(
-      std::move(decrypt_request_destination_share));
+  auto result =
+      backend_->GetRecoveryCryptoTpm2().GenerateDiffieHellmanSharedSecret(
+          std::move(decrypt_request_destination_share));
 
   EXPECT_THAT(result, NotOk());
 }
 
 TEST_F(BackendRecoveryCryptoTpm2Test, GenerateRsaKeyPair) {
-  EXPECT_THAT(
-      middleware_->CallSync<&Backend::RecoveryCrypto::GenerateRsaKeyPair>(),
-      IsOkAndHolds(std::nullopt));
+  EXPECT_THAT(backend_->GetRecoveryCryptoTpm2().GenerateRsaKeyPair(),
+              IsOkAndHolds(std::nullopt));
 }
 
 TEST_F(BackendRecoveryCryptoTpm2Test, SignRequestPayload) {
-  EXPECT_THAT(
-      middleware_->CallSync<&Backend::RecoveryCrypto::SignRequestPayload>(
-          brillo::Blob(), brillo::Blob()),
-      IsOkAndHolds(std::nullopt));
+  EXPECT_THAT(backend_->GetRecoveryCryptoTpm2().SignRequestPayload(
+                  brillo::Blob(), brillo::Blob()),
+              IsOkAndHolds(std::nullopt));
 }
 
 }  // namespace hwsec

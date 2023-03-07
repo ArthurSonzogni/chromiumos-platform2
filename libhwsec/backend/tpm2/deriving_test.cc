@@ -78,7 +78,7 @@ TEST_F(BackendDeriveTpm2Test, DeriveSecureRsa) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
@@ -90,7 +90,7 @@ TEST_F(BackendDeriveTpm2Test, DeriveSecureRsa) {
       .WillOnce(
           DoAll(SetArgPointee<5>(kFakeOutput), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Deriving::SecureDerive>(
+  EXPECT_THAT(backend_->GetDerivingTpm2().SecureDerive(
                   key->GetKey(), brillo::SecureBlob(kFakeBlob)),
               IsOkAndHolds(Sha256(brillo::SecureBlob(kFakeOutput))));
 }
@@ -159,7 +159,7 @@ TEST_F(BackendDeriveTpm2Test, DeriveEcc) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
@@ -169,7 +169,7 @@ TEST_F(BackendDeriveTpm2Test, DeriveEcc) {
       .WillOnce(
           DoAll(SetArgPointee<3>(kFakeZPoint), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Deriving::Derive>(
+  EXPECT_THAT(backend_->GetDerivingTpm2().Derive(
                   key->GetKey(), brillo::BlobFromString(kFakeBlob)),
               IsOkAndHolds(Sha256(brillo::BlobFromString("9876543210"))));
 }
@@ -230,14 +230,13 @@ TEST_F(BackendDeriveTpm2Test, DeriveEccOutOfRange) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
-  auto result = middleware_->CallSync<&Backend::Deriving::Derive>(key->GetKey(),
-                                                                  fake_blob);
+  auto result = backend_->GetDerivingTpm2().Derive(key->GetKey(), fake_blob);
 
   ASSERT_NOT_OK(result);
   EXPECT_EQ(result.err_status()->ToTPMRetryAction(),

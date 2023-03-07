@@ -40,30 +40,27 @@ TEST_F(BackendVendorTpm2Test, GetVersionInfo) {
   EXPECT_CALL(proxy_->GetMock().tpm_manager, GetVersionInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetFamily>(),
-              IsOkAndHolds(0x322E3000));
+  EXPECT_THAT(backend_->GetVendorTpm2().GetFamily(), IsOkAndHolds(0x322E3000));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetSpecLevel>(),
-              IsOkAndHolds(0x74));
+  EXPECT_THAT(backend_->GetVendorTpm2().GetSpecLevel(), IsOkAndHolds(0x74));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetManufacturer>(),
+  EXPECT_THAT(backend_->GetVendorTpm2().GetManufacturer(),
               IsOkAndHolds(0x43524F53));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetTpmModel>(),
-              IsOkAndHolds(1));
+  EXPECT_THAT(backend_->GetVendorTpm2().GetTpmModel(), IsOkAndHolds(1));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetFirmwareVersion>(),
+  EXPECT_THAT(backend_->GetVendorTpm2().GetFirmwareVersion(),
               IsOkAndHolds(0x8E0F7DC508B56D7C));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetVendorSpecific>(),
+  EXPECT_THAT(backend_->GetVendorTpm2().GetVendorSpecific(),
               IsOkAndHolds(kFakeVendorSpecific));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetFingerprint>(),
+  EXPECT_THAT(backend_->GetVendorTpm2().GetFingerprint(),
               IsOkAndHolds(0x2A0797FD));
 }
 
 TEST_F(BackendVendorTpm2Test, IsSrkRocaVulnerable) {
-  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::IsSrkRocaVulnerable>(),
+  EXPECT_THAT(backend_->GetVendorTpm2().IsSrkRocaVulnerable(),
               IsOkAndHolds(false));
 }
 
@@ -71,13 +68,9 @@ TEST_F(BackendVendorTpm2Test, DeclareTpmFirmwareStable) {
   EXPECT_CALL(proxy_->GetMock().tpm_utility, DeclareTpmFirmwareStable())
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  EXPECT_THAT(
-      middleware_->CallSync<&Backend::Vendor::DeclareTpmFirmwareStable>(),
-      IsOk());
+  EXPECT_THAT(backend_->GetVendorTpm2().DeclareTpmFirmwareStable(), IsOk());
 
-  EXPECT_THAT(
-      middleware_->CallSync<&Backend::Vendor::DeclareTpmFirmwareStable>(),
-      IsOk());
+  EXPECT_THAT(backend_->GetVendorTpm2().DeclareTpmFirmwareStable(), IsOk());
 }
 
 TEST_F(BackendVendorTpm2Test, SendRawCommand) {
@@ -97,9 +90,8 @@ TEST_F(BackendVendorTpm2Test, SendRawCommand) {
               SendCommandAndWait(kFakeInput))
       .WillOnce(Return(kFakeOutput));
 
-  EXPECT_THAT(
-      middleware_->CallSync<&Backend::Vendor::SendRawCommand>(kFakeRequest),
-      IsOkAndHolds(kFakeResponse));
+  EXPECT_THAT(backend_->GetVendorTpm2().SendRawCommand(kFakeRequest),
+              IsOkAndHolds(kFakeResponse));
 }
 
 TEST_F(BackendVendorTpm2Test, GetRsuDeviceId) {
@@ -109,7 +101,7 @@ TEST_F(BackendVendorTpm2Test, GetRsuDeviceId) {
       .WillOnce(DoAll(SetArgPointee<0>(kFakeRsuDeviceId),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetRsuDeviceId>(),
+  EXPECT_THAT(backend_->GetVendorTpm2().GetRsuDeviceId(),
               IsOkAndHolds(brillo::BlobFromString(kFakeRsuDeviceId)));
 }
 

@@ -54,8 +54,7 @@ TEST_F(BackendConfigTpm2Test, ToOperationPolicy) {
           },
   };
 
-  auto result =
-      middleware_->CallSync<&Backend::Config::ToOperationPolicy>(kFakeSetting);
+  auto result = backend_->GetConfigTpm2().ToOperationPolicy(kFakeSetting);
 
   ASSERT_OK(result);
   ASSERT_TRUE(result->permission.auth_value.has_value());
@@ -76,8 +75,7 @@ TEST_F(BackendConfigTpm2Test, SetCurrentUser) {
   EXPECT_CALL(proxy_->GetMock().tpm_utility, ExtendPCRForCSME(_, kFakeUser))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  auto result =
-      middleware_->CallSync<&Backend::Config::SetCurrentUser>(kFakeUser);
+  auto result = backend_->GetConfigTpm2().SetCurrentUser(kFakeUser);
 
   EXPECT_TRUE(result.ok());
 }
@@ -89,8 +87,7 @@ TEST_F(BackendConfigTpm2Test, IsCurrentUserSet) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kNonZeroPcr), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Config::IsCurrentUserSet>(),
-              IsOkAndHolds(true));
+  EXPECT_THAT(backend_->GetConfigTpm2().IsCurrentUserSet(), IsOkAndHolds(true));
 }
 
 TEST_F(BackendConfigTpm2Test, IsCurrentUserSetZero) {
@@ -100,7 +97,7 @@ TEST_F(BackendConfigTpm2Test, IsCurrentUserSetZero) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kZeroPcr), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Config::IsCurrentUserSet>(),
+  EXPECT_THAT(backend_->GetConfigTpm2().IsCurrentUserSet(),
               IsOkAndHolds(false));
 }
 

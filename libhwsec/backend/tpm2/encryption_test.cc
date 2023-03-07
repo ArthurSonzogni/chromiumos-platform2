@@ -54,7 +54,7 @@ TEST_F(BackendEncryptionTpm2Test, Encrypt) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
@@ -66,7 +66,7 @@ TEST_F(BackendEncryptionTpm2Test, Encrypt) {
       .WillOnce(
           DoAll(SetArgPointee<5>(kFakeOutput), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Encryption::Encrypt>(
+  EXPECT_THAT(backend_->GetEncryptionTpm2().Encrypt(
                   key->GetKey(), brillo::SecureBlob(kFakeBlob),
                   Backend::Encryption::EncryptionOptions{}),
               IsOkAndHolds(brillo::BlobFromString(kFakeOutput)));
@@ -94,7 +94,7 @@ TEST_F(BackendEncryptionTpm2Test, EncryptNullAlgo) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
@@ -107,7 +107,7 @@ TEST_F(BackendEncryptionTpm2Test, EncryptNullAlgo) {
           DoAll(SetArgPointee<5>(kFakeOutput), Return(trunks::TPM_RC_SUCCESS)));
 
   EXPECT_THAT(
-      middleware_->CallSync<&Backend::Encryption::Encrypt>(
+      backend_->GetEncryptionTpm2().Encrypt(
           key->GetKey(), brillo::SecureBlob(kFakeBlob),
           Backend::Encryption::EncryptionOptions{
               .schema = Backend::Encryption::EncryptionOptions::Schema::kNull,
@@ -137,7 +137,7 @@ TEST_F(BackendEncryptionTpm2Test, EncryptRsaesSha1Algo) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
@@ -150,7 +150,7 @@ TEST_F(BackendEncryptionTpm2Test, EncryptRsaesSha1Algo) {
           DoAll(SetArgPointee<5>(kFakeOutput), Return(trunks::TPM_RC_SUCCESS)));
 
   EXPECT_THAT(
-      middleware_->CallSync<&Backend::Encryption::Encrypt>(
+      backend_->GetEncryptionTpm2().Encrypt(
           key->GetKey(), brillo::SecureBlob(kFakeBlob),
           Backend::Encryption::EncryptionOptions{
               .schema =
@@ -181,7 +181,7 @@ TEST_F(BackendEncryptionTpm2Test, Decrypt) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
@@ -193,7 +193,7 @@ TEST_F(BackendEncryptionTpm2Test, Decrypt) {
       .WillOnce(
           DoAll(SetArgPointee<5>(kFakeOutput), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Encryption::Decrypt>(
+  EXPECT_THAT(backend_->GetEncryptionTpm2().Decrypt(
                   key->GetKey(), brillo::BlobFromString(kFakeBlob),
                   Backend::Encryption::EncryptionOptions{}),
               IsOkAndHolds(brillo::SecureBlob(kFakeOutput)));

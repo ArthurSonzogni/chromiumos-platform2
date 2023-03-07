@@ -27,16 +27,15 @@ class BackendDerivingTpm1Test : public BackendTpm1TestBase {};
 TEST_F(BackendDerivingTpm1Test, SecureDerive) {
   const brillo::SecureBlob kFakeBlob("blob");
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Deriving::SecureDerive>(
-                  Key{.token = 0}, kFakeBlob),
-              IsOkAndHolds(kFakeBlob));
+  EXPECT_THAT(
+      backend_->GetDerivingTpm1().SecureDerive(Key{.token = 0}, kFakeBlob),
+      IsOkAndHolds(kFakeBlob));
 }
 
 TEST_F(BackendDerivingTpm1Test, Derive) {
   const brillo::Blob kFakeBlob = brillo::BlobFromString("blob");
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Deriving::Derive>(Key{.token = 0},
-                                                                kFakeBlob),
+  EXPECT_THAT(backend_->GetDerivingTpm1().Derive(Key{.token = 0}, kFakeBlob),
               IsOkAndHolds(kFakeBlob));
 }
 

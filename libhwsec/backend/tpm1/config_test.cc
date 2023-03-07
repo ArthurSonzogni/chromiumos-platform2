@@ -55,8 +55,7 @@ TEST_F(BackendConfigTpm1Test, ToOperationPolicy) {
           },
   };
 
-  auto result =
-      middleware_->CallSync<&Backend::Config::ToOperationPolicy>(kFakeSetting);
+  auto result = backend_->GetConfigTpm1().ToOperationPolicy(kFakeSetting);
 
   ASSERT_OK(result);
   ASSERT_TRUE(result->permission.auth_value.has_value());
@@ -75,9 +74,7 @@ TEST_F(BackendConfigTpm1Test, SetCurrentUser) {
               Ospi_TPM_PcrExtend(kDefaultTpm, _, _, _, _, _, _))
       .WillOnce(Return(TPM_SUCCESS));
 
-  EXPECT_THAT(
-      middleware_->CallSync<&Backend::Config::SetCurrentUser>(kFakeUser),
-      IsOk());
+  EXPECT_THAT(backend_->GetConfigTpm1().SetCurrentUser(kFakeUser), IsOk());
 }
 
 TEST_F(BackendConfigTpm1Test, IsCurrentUserSet) {
@@ -89,8 +86,7 @@ TEST_F(BackendConfigTpm1Test, IsCurrentUserSet) {
                       SetArgPointee<3>(non_zero_pcr.data()),
                       Return(TPM_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Config::IsCurrentUserSet>(),
-              IsOkAndHolds(true));
+  EXPECT_THAT(backend_->GetConfigTpm1().IsCurrentUserSet(), IsOkAndHolds(true));
 }
 
 TEST_F(BackendConfigTpm1Test, IsCurrentUserSetZero) {
@@ -101,7 +97,7 @@ TEST_F(BackendConfigTpm1Test, IsCurrentUserSetZero) {
       .WillOnce(DoAll(SetArgPointee<2>(zero_pcr.size()),
                       SetArgPointee<3>(zero_pcr.data()), Return(TPM_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Config::IsCurrentUserSet>(),
+  EXPECT_THAT(backend_->GetConfigTpm1().IsCurrentUserSet(),
               IsOkAndHolds(false));
 }
 

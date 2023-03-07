@@ -13,6 +13,7 @@
 #include <absl/container/flat_hash_set.h>
 #include <base/functional/callback_helpers.h>
 #include <base/numerics/safe_conversions.h>
+#include <base/threading/sequenced_task_runner_handle.h>
 #include <base/timer/timer.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>

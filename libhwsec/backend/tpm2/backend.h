@@ -27,7 +27,7 @@
 #include "libhwsec/backend/tpm2/storage.h"
 #include "libhwsec/backend/tpm2/u2f.h"
 #include "libhwsec/backend/tpm2/vendor.h"
-#include "libhwsec/middleware/middleware.h"
+#include "libhwsec/middleware/middleware_derivative.h"
 #include "libhwsec/proxy/proxy.h"
 
 #ifndef BUILD_LIBHWSEC
@@ -60,6 +60,7 @@ class BackendTpm2 : public Backend {
   StateTpm2& GetStateTpm2() { return state_; }
   DAMitigationTpm2& GetDAMitigationTpm2() { return da_mitigation_; }
   StorageTpm2& GetStorageTpm2() { return storage_; }
+  RoDataTpm2& GetRoDataTpm2() { return ro_data_; }
   SealingTpm2& GetSealingTpm2() { return sealing_; }
   SignatureSealingTpm2& GetSignatureSealingTpm2() { return signature_sealing_; }
   DerivingTpm2& GetDerivingTpm2() { return deriving_; }
@@ -74,6 +75,7 @@ class BackendTpm2 : public Backend {
   PinWeaverTpm2& GetPinWeaverTpm2() { return pinweaver_; }
   VendorTpm2& GetVendorTpm2() { return vendor_; }
   RecoveryCryptoTpm2& GetRecoveryCryptoTpm2() { return recovery_crypto_; }
+  U2fTpm2& GetU2fTpm2() { return u2f_; }
 
   void set_middleware_derivative_for_test(
       MiddlewareDerivative middleware_derivative) {

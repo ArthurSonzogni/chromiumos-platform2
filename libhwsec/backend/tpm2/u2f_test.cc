@@ -89,15 +89,13 @@ class BackendU2fTpm2Test : public BackendTpm2TestBase {};
 TEST_F(BackendU2fTpm2Test, IsEnabledCr50) {
   EXPECT_CALL(proxy_->GetMock().tpm_utility, IsCr50).WillOnce(Return(true));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::U2f::IsEnabled>(),
-              IsOkAndHolds(true));
+  EXPECT_THAT(backend_->GetU2fTpm2().IsEnabled(), IsOkAndHolds(true));
 }
 
 TEST_F(BackendU2fTpm2Test, IsEnabledOthers) {
   EXPECT_CALL(proxy_->GetMock().tpm_utility, IsCr50).WillOnce(Return(false));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::U2f::IsEnabled>(),
-              IsOkAndHolds(false));
+  EXPECT_THAT(backend_->GetU2fTpm2().IsEnabled(), IsOkAndHolds(false));
 }
 
 TEST_F(BackendU2fTpm2Test, GenerateUpOnly) {
@@ -110,7 +108,7 @@ TEST_F(BackendU2fTpm2Test, GenerateUpOnly) {
                       SetArgPointee<7>(kKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::U2f::GenerateUserPresenceOnly>(
+  auto result = backend_->GetU2fTpm2().GenerateUserPresenceOnly(
       GetStubBlob(), GetStubSecureBlob(), u2f::ConsumeMode::kNoConsume,
       u2f::UserPresenceMode::kNotRequired);
   ASSERT_OK(result);
@@ -124,7 +122,7 @@ TEST_F(BackendU2fTpm2Test, GenerateUpOnlyFailed) {
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
 
   EXPECT_THAT(
-      middleware_->CallSync<&Backend::U2f::GenerateUserPresenceOnly>(
+      backend_->GetU2fTpm2().GenerateUserPresenceOnly(
           GetStubBlob(), GetStubSecureBlob(), u2f::ConsumeMode::kNoConsume,
           u2f::UserPresenceMode::kNotRequired),
       NotOkAnd(RetryActionIs(TPMRetryAction::kNoRetry)));
@@ -136,7 +134,7 @@ TEST_F(BackendU2fTpm2Test, GenerateUpOnlyMissingUp) {
       .WillOnce(Return(kCr50StatusNotAllowed));
 
   EXPECT_THAT(
-      middleware_->CallSync<&Backend::U2f::GenerateUserPresenceOnly>(
+      backend_->GetU2fTpm2().GenerateUserPresenceOnly(
           GetStubBlob(), GetStubSecureBlob(), u2f::ConsumeMode::kNoConsume,
           u2f::UserPresenceMode::kNotRequired),
       NotOkAnd(RetryActionIs(TPMRetryAction::kUserPresence)));
@@ -152,7 +150,7 @@ TEST_F(BackendU2fTpm2Test, Generate) {
                       SetArgPointee<7>(kKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::U2f::Generate>(
+  auto result = backend_->GetU2fTpm2().Generate(
       GetStubBlob(), GetStubSecureBlob(), u2f::ConsumeMode::kNoConsume,
       u2f::UserPresenceMode::kNotRequired, GetValidAuthTimeSecretHash());
   ASSERT_OK(result);
@@ -166,7 +164,7 @@ TEST_F(BackendU2fTpm2Test, GenerateFailed) {
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
 
   EXPECT_THAT(
-      middleware_->CallSync<&Backend::U2f::Generate>(
+      backend_->GetU2fTpm2().Generate(
           GetStubBlob(), GetStubSecureBlob(), u2f::ConsumeMode::kNoConsume,
           u2f::UserPresenceMode::kNotRequired, GetStubBlob()),
       NotOkAnd(RetryActionIs(TPMRetryAction::kNoRetry)));
@@ -178,7 +176,7 @@ TEST_F(BackendU2fTpm2Test, GenerateFailedMissingUp) {
       .WillOnce(Return(kCr50StatusNotAllowed));
 
   EXPECT_THAT(
-      middleware_->CallSync<&Backend::U2f::Generate>(
+      backend_->GetU2fTpm2().Generate(
           GetStubBlob(), GetStubSecureBlob(), u2f::ConsumeMode::kConsume,
           u2f::UserPresenceMode::kRequired, GetStubBlob()),
       NotOkAnd(RetryActionIs(TPMRetryAction::kUserPresence)));
@@ -195,7 +193,7 @@ TEST_F(BackendU2fTpm2Test, GenerateFailedInvalidKeyHandle) {
                       Return(trunks::TPM_RC_SUCCESS)));
 
   EXPECT_THAT(
-      middleware_->CallSync<&Backend::U2f::Generate>(
+      backend_->GetU2fTpm2().Generate(
           GetStubBlob(), GetStubSecureBlob(), u2f::ConsumeMode::kNoConsume,
           u2f::UserPresenceMode::kNotRequired, GetStubBlob()),
       NotOkWith("Invalid U2F key handle is generated"));
@@ -211,7 +209,7 @@ TEST_F(BackendU2fTpm2Test, SignUpOnly) {
       .WillOnce(DoAll(SetArgPointee<9>(kSigR), SetArgPointee<10>(kSigS),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::U2f::SignUserPresenceOnly>(
+  auto result = backend_->GetU2fTpm2().SignUserPresenceOnly(
       GetStubBlob(), GetStubSecureBlob(), GetStubBlob(),
       u2f::ConsumeMode::kNoConsume, u2f::UserPresenceMode::kNotRequired,
       GetStubBlob());
@@ -226,7 +224,7 @@ TEST_F(BackendU2fTpm2Test, SignUpOnlyFailed) {
       U2fSign(0, _, _, Eq(std::nullopt), Optional(_), false, _, _, _, _, _))
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::U2f::SignUserPresenceOnly>(
+  EXPECT_THAT(backend_->GetU2fTpm2().SignUserPresenceOnly(
                   GetStubBlob(), GetStubSecureBlob(), GetStubBlob(),
                   u2f::ConsumeMode::kNoConsume,
                   u2f::UserPresenceMode::kNotRequired, GetStubBlob()),
@@ -239,7 +237,7 @@ TEST_F(BackendU2fTpm2Test, SignUpOnlyFailedIncorrectAuth) {
       U2fSign(0, _, _, Eq(std::nullopt), Optional(_), false, _, _, _, _, _))
       .WillOnce(Return(kCr50StatusPasswordRequired));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::U2f::SignUserPresenceOnly>(
+  EXPECT_THAT(backend_->GetU2fTpm2().SignUserPresenceOnly(
                   GetStubBlob(), GetStubSecureBlob(), GetStubBlob(),
                   u2f::ConsumeMode::kNoConsume,
                   u2f::UserPresenceMode::kNotRequired, GetStubBlob()),
@@ -255,7 +253,7 @@ TEST_F(BackendU2fTpm2Test, Sign) {
       .WillOnce(DoAll(SetArgPointee<9>(kSigR), SetArgPointee<10>(kSigS),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::U2f::Sign>(
+  auto result = backend_->GetU2fTpm2().Sign(
       GetStubBlob(), GetStubSecureBlob(), GetStubSecureBlob(), GetStubBlob(),
       u2f::ConsumeMode::kNoConsume, u2f::UserPresenceMode::kNotRequired,
       GetValidVersionedKeyHandle());
@@ -269,16 +267,16 @@ TEST_F(BackendU2fTpm2Test, SignFailed) {
               U2fSign(1, _, _, Optional(_), Optional(_), false, _, _, _, _, _))
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
 
-  EXPECT_THAT(
-      middleware_->CallSync<&Backend::U2f::Sign>(
-          GetStubBlob(), GetStubSecureBlob(), GetStubSecureBlob(),
-          GetStubBlob(), u2f::ConsumeMode::kNoConsume,
-          u2f::UserPresenceMode::kNotRequired, GetValidVersionedKeyHandle()),
-      NotOkAnd(RetryActionIs(TPMRetryAction::kNoRetry)));
+  EXPECT_THAT(backend_->GetU2fTpm2().Sign(GetStubBlob(), GetStubSecureBlob(),
+                                          GetStubSecureBlob(), GetStubBlob(),
+                                          u2f::ConsumeMode::kNoConsume,
+                                          u2f::UserPresenceMode::kNotRequired,
+                                          GetValidVersionedKeyHandle()),
+              NotOkAnd(RetryActionIs(TPMRetryAction::kNoRetry)));
 }
 
 TEST_F(BackendU2fTpm2Test, SignFailedInvalidKeyHandle) {
-  EXPECT_THAT(middleware_->CallSync<&Backend::U2f::Sign>(
+  EXPECT_THAT(backend_->GetU2fTpm2().Sign(
                   GetStubBlob(), GetStubSecureBlob(), GetStubSecureBlob(),
                   GetStubBlob(), u2f::ConsumeMode::kNoConsume,
                   u2f::UserPresenceMode::kNotRequired, GetStubBlob()),
@@ -290,12 +288,12 @@ TEST_F(BackendU2fTpm2Test, SignFailedIncorrectAuth) {
               U2fSign(1, _, _, Optional(_), Optional(_), false, _, _, _, _, _))
       .WillOnce(Return(kCr50StatusPasswordRequired));
 
-  EXPECT_THAT(
-      middleware_->CallSync<&Backend::U2f::Sign>(
-          GetStubBlob(), GetStubSecureBlob(), GetStubSecureBlob(),
-          GetStubBlob(), u2f::ConsumeMode::kNoConsume,
-          u2f::UserPresenceMode::kNotRequired, GetValidVersionedKeyHandle()),
-      NotOkAnd(RetryActionIs(TPMRetryAction::kUserAuth)));
+  EXPECT_THAT(backend_->GetU2fTpm2().Sign(GetStubBlob(), GetStubSecureBlob(),
+                                          GetStubSecureBlob(), GetStubBlob(),
+                                          u2f::ConsumeMode::kNoConsume,
+                                          u2f::UserPresenceMode::kNotRequired,
+                                          GetValidVersionedKeyHandle()),
+              NotOkAnd(RetryActionIs(TPMRetryAction::kUserAuth)));
 }
 
 TEST_F(BackendU2fTpm2Test, Check) {
@@ -308,13 +306,12 @@ TEST_F(BackendU2fTpm2Test, Check) {
                       false, _, _, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::U2f::CheckUserPresenceOnly>(
+  EXPECT_THAT(backend_->GetU2fTpm2().CheckUserPresenceOnly(
                   GetStubBlob(), GetStubSecureBlob(), GetStubBlob()),
               IsOk());
-  EXPECT_THAT(
-      middleware_->CallSync<&Backend::U2f::Check>(
-          GetStubBlob(), GetStubSecureBlob(), GetValidVersionedKeyHandle()),
-      IsOk());
+  EXPECT_THAT(backend_->GetU2fTpm2().Check(GetStubBlob(), GetStubSecureBlob(),
+                                           GetValidVersionedKeyHandle()),
+              IsOk());
 }
 
 TEST_F(BackendU2fTpm2Test, CheckFailed) {
@@ -327,15 +324,14 @@ TEST_F(BackendU2fTpm2Test, CheckFailed) {
                       false, _, _, _))
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::U2f::CheckUserPresenceOnly>(
+  EXPECT_THAT(backend_->GetU2fTpm2().CheckUserPresenceOnly(
                   GetStubBlob(), GetStubSecureBlob(), GetStubBlob()),
               NotOk());
-  EXPECT_THAT(
-      middleware_->CallSync<&Backend::U2f::Check>(
-          GetStubBlob(), GetStubSecureBlob(), GetValidVersionedKeyHandle()),
-      NotOk());
-  EXPECT_THAT(middleware_->CallSync<&Backend::U2f::Check>(
-                  GetStubBlob(), GetStubSecureBlob(), GetStubBlob()),
+  EXPECT_THAT(backend_->GetU2fTpm2().Check(GetStubBlob(), GetStubSecureBlob(),
+                                           GetValidVersionedKeyHandle()),
+              NotOk());
+  EXPECT_THAT(backend_->GetU2fTpm2().Check(GetStubBlob(), GetStubSecureBlob(),
+                                           GetStubBlob()),
               NotOkWith("Invalid U2F key handle"));
 }
 
@@ -349,7 +345,7 @@ TEST_F(BackendU2fTpm2Test, G2fAttest) {
       .WillOnce(DoAll(SetArgPointee<3>(kSigR), SetArgPointee<4>(kSigS),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::U2f::G2fAttest>(
+  auto result = backend_->GetU2fTpm2().G2fAttest(
       GetValidAppId(), GetValidUserSecret(), GetValidG2fChallenge(),
       GetValidKeyHandle(), GetValidPublicKey());
   ASSERT_OK(result);
@@ -358,23 +354,23 @@ TEST_F(BackendU2fTpm2Test, G2fAttest) {
 }
 
 TEST_F(BackendU2fTpm2Test, G2fAttestInvalidParams) {
-  EXPECT_THAT(middleware_->CallSync<&Backend::U2f::G2fAttest>(
+  EXPECT_THAT(backend_->GetU2fTpm2().G2fAttest(
                   GetStubBlob(), GetValidUserSecret(), GetValidG2fChallenge(),
                   GetValidKeyHandle(), GetValidPublicKey()),
               NotOkWith("Invalid parameters"));
-  EXPECT_THAT(middleware_->CallSync<&Backend::U2f::G2fAttest>(
+  EXPECT_THAT(backend_->GetU2fTpm2().G2fAttest(
                   GetValidAppId(), GetStubSecureBlob(), GetValidG2fChallenge(),
                   GetValidKeyHandle(), GetValidPublicKey()),
               NotOkWith("Invalid parameters"));
-  EXPECT_THAT(middleware_->CallSync<&Backend::U2f::G2fAttest>(
+  EXPECT_THAT(backend_->GetU2fTpm2().G2fAttest(
                   GetValidAppId(), GetValidUserSecret(), GetStubBlob(),
                   GetValidKeyHandle(), GetValidPublicKey()),
               NotOkWith("Invalid parameters"));
-  EXPECT_THAT(middleware_->CallSync<&Backend::U2f::G2fAttest>(
+  EXPECT_THAT(backend_->GetU2fTpm2().G2fAttest(
                   GetValidAppId(), GetValidUserSecret(), GetValidG2fChallenge(),
                   GetStubBlob(), GetValidPublicKey()),
               NotOkWith("Invalid parameters"));
-  EXPECT_THAT(middleware_->CallSync<&Backend::U2f::G2fAttest>(
+  EXPECT_THAT(backend_->GetU2fTpm2().G2fAttest(
                   GetValidAppId(), GetValidUserSecret(), GetValidG2fChallenge(),
                   GetValidKeyHandle(), GetStubBlob()),
               NotOkWith("Invalid parameters"));
@@ -386,14 +382,14 @@ TEST_F(BackendU2fTpm2Test, G2fAttestFailed) {
                         SizeIs(sizeof(g2f_register_msg_v0)), _, _))
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::U2f::G2fAttest>(
+  EXPECT_THAT(backend_->GetU2fTpm2().G2fAttest(
                   GetValidAppId(), GetValidUserSecret(), GetValidG2fChallenge(),
                   GetValidKeyHandle(), GetValidPublicKey()),
               NotOk());
 }
 
 TEST_F(BackendU2fTpm2Test, GetG2fAttestData) {
-  EXPECT_THAT(middleware_->CallSync<&Backend::U2f::GetG2fAttestData>(
+  EXPECT_THAT(backend_->GetU2fTpm2().GetG2fAttestData(
                   GetValidAppId(), GetValidG2fChallenge(), GetValidKeyHandle(),
                   GetValidPublicKey()),
               IsOkAnd(SizeIs(sizeof(g2f_register_msg_v0))));
@@ -409,7 +405,7 @@ TEST_F(BackendU2fTpm2Test, CorpAttest) {
       .WillOnce(DoAll(SetArgPointee<3>(kSigR), SetArgPointee<4>(kSigS),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::U2f::CorpAttest>(
+  auto result = backend_->GetU2fTpm2().CorpAttest(
       GetValidAppId(), GetValidUserSecret(), GetValidCorpChallenge(),
       GetValidKeyHandle(), GetValidPublicKey(), GetValidSalt());
   ASSERT_OK(result);
@@ -418,27 +414,27 @@ TEST_F(BackendU2fTpm2Test, CorpAttest) {
 }
 
 TEST_F(BackendU2fTpm2Test, CorpAttestInvalidParams) {
-  EXPECT_THAT(middleware_->CallSync<&Backend::U2f::CorpAttest>(
+  EXPECT_THAT(backend_->GetU2fTpm2().CorpAttest(
                   GetStubBlob(), GetValidUserSecret(), GetValidG2fChallenge(),
                   GetValidKeyHandle(), GetValidPublicKey(), GetValidSalt()),
               NotOkWith("Invalid parameters"));
-  EXPECT_THAT(middleware_->CallSync<&Backend::U2f::CorpAttest>(
+  EXPECT_THAT(backend_->GetU2fTpm2().CorpAttest(
                   GetValidAppId(), GetStubSecureBlob(), GetValidG2fChallenge(),
                   GetValidKeyHandle(), GetValidPublicKey(), GetValidSalt()),
               NotOkWith("Invalid parameters"));
-  EXPECT_THAT(middleware_->CallSync<&Backend::U2f::CorpAttest>(
+  EXPECT_THAT(backend_->GetU2fTpm2().CorpAttest(
                   GetValidAppId(), GetValidUserSecret(), GetStubBlob(),
                   GetValidKeyHandle(), GetValidPublicKey(), GetValidSalt()),
               NotOkWith("Invalid parameters"));
-  EXPECT_THAT(middleware_->CallSync<&Backend::U2f::CorpAttest>(
+  EXPECT_THAT(backend_->GetU2fTpm2().CorpAttest(
                   GetValidAppId(), GetValidUserSecret(), GetValidG2fChallenge(),
                   GetStubBlob(), GetValidPublicKey(), GetValidSalt()),
               NotOkWith("Invalid parameters"));
-  EXPECT_THAT(middleware_->CallSync<&Backend::U2f::CorpAttest>(
+  EXPECT_THAT(backend_->GetU2fTpm2().CorpAttest(
                   GetValidAppId(), GetValidUserSecret(), GetValidG2fChallenge(),
                   GetValidKeyHandle(), GetStubBlob(), GetValidSalt()),
               NotOkWith("Invalid parameters"));
-  EXPECT_THAT(middleware_->CallSync<&Backend::U2f::CorpAttest>(
+  EXPECT_THAT(backend_->GetU2fTpm2().CorpAttest(
                   GetValidAppId(), GetValidUserSecret(), GetValidG2fChallenge(),
                   GetValidKeyHandle(), GetValidPublicKey(), GetStubBlob()),
               NotOkWith("Invalid parameters"));
@@ -451,7 +447,7 @@ TEST_F(BackendU2fTpm2Test, CorpAttestFailed) {
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
 
   EXPECT_THAT(
-      middleware_->CallSync<&Backend::U2f::CorpAttest>(
+      backend_->GetU2fTpm2().CorpAttest(
           GetValidAppId(), GetValidUserSecret(), GetValidCorpChallenge(),
           GetValidKeyHandle(), GetValidPublicKey(), GetValidSalt()),
       NotOk());

@@ -35,9 +35,8 @@ TEST_F(BackendRoDataTpm2Test, IsReady) {
   EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
 
-  EXPECT_THAT(
-      middleware_->CallSync<&Backend::RoData::IsReady>(RoSpace::kG2fCert),
-      IsOkAndHolds(true));
+  EXPECT_THAT(backend_->GetRoDataTpm2().IsReady(RoSpace::kG2fCert),
+              IsOkAndHolds(true));
 }
 
 TEST_F(BackendRoDataTpm2Test, IsReadyNotAvailable) {
@@ -50,9 +49,8 @@ TEST_F(BackendRoDataTpm2Test, IsReadyNotAvailable) {
   EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
 
-  EXPECT_THAT(
-      middleware_->CallSync<&Backend::RoData::IsReady>(RoSpace::kG2fCert),
-      IsOkAndHolds(false));
+  EXPECT_THAT(backend_->GetRoDataTpm2().IsReady(RoSpace::kG2fCert),
+              IsOkAndHolds(false));
 }
 
 TEST_F(BackendRoDataTpm2Test, IsReadySpaceNotExist) {
@@ -61,9 +59,8 @@ TEST_F(BackendRoDataTpm2Test, IsReadySpaceNotExist) {
   EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
 
-  EXPECT_THAT(
-      middleware_->CallSync<&Backend::RoData::IsReady>(RoSpace::kG2fCert),
-      IsOkAndHolds(false));
+  EXPECT_THAT(backend_->GetRoDataTpm2().IsReady(RoSpace::kG2fCert),
+              IsOkAndHolds(false));
 }
 
 TEST_F(BackendRoDataTpm2Test, IsReadyOtherError) {
@@ -72,9 +69,7 @@ TEST_F(BackendRoDataTpm2Test, IsReadyOtherError) {
   EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
 
-  EXPECT_THAT(
-      middleware_->CallSync<&Backend::RoData::IsReady>(RoSpace::kG2fCert),
-      NotOk());
+  EXPECT_THAT(backend_->GetRoDataTpm2().IsReady(RoSpace::kG2fCert), NotOk());
 }
 
 TEST_F(BackendRoDataTpm2Test, Read) {
@@ -86,7 +81,7 @@ TEST_F(BackendRoDataTpm2Test, Read) {
   EXPECT_CALL(proxy_->GetMock().tpm_nvram, ReadSpace(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(read_reply), Return(true)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::RoData::Read>(RoSpace::kG2fCert),
+  EXPECT_THAT(backend_->GetRoDataTpm2().Read(RoSpace::kG2fCert),
               IsOkAndHolds(brillo::BlobFromString(kFakeData)));
 }
 

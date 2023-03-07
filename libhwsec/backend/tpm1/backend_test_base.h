@@ -15,7 +15,8 @@
 
 #include "libhwsec/backend/tpm1/backend.h"
 #include "libhwsec/error/tpm1_error.h"
-#include "libhwsec/middleware/middleware.h"
+#include "libhwsec/middleware/middleware_derivative.h"
+#include "libhwsec/middleware/middleware_owner.h"
 #include "libhwsec/proxy/proxy_for_test.h"
 #include "libhwsec/status.h"
 #include "libhwsec-foundation/error/testing_helper.h"
@@ -53,8 +54,6 @@ class BackendTpm1TestBase : public ::testing::Test {
         std::move(backend), ThreadingMode::kCurrentThread);
 
     backend_->set_middleware_derivative_for_test(middleware_owner_->Derive());
-
-    middleware_ = std::make_unique<Middleware>(middleware_owner_->Derive());
 
     using testing::_;
     using testing::DoAll;
@@ -188,7 +187,6 @@ class BackendTpm1TestBase : public ::testing::Test {
   brillo::Blob kDefaultSrkPubkey = brillo::BlobFromString("default_srk");
   std::unique_ptr<ProxyForTest> proxy_;
   std::unique_ptr<MiddlewareOwner> middleware_owner_;
-  std::unique_ptr<Middleware> middleware_;
   BackendTpm1* backend_;
 };
 

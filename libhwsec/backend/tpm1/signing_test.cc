@@ -54,7 +54,7 @@ TEST_F(BackendSigningTpm1Test, Sign) {
                       SetArgPointee<2>(fake_pubkey.data()),
                       Return(TPM_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm1().LoadKey(
       kFakePolicy, kFakeKeyBlob, Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
@@ -74,8 +74,8 @@ TEST_F(BackendSigningTpm1Test, Sign) {
       .WillOnce(DoAll(SetArgPointee<2>(signature.size()),
                       SetArgPointee<3>(signature.data()), Return(TPM_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Signing::Sign>(
-                  key->GetKey(), kFakeData, SigningOptions{}),
+  EXPECT_THAT(backend_->GetSigningTpm1().Sign(key->GetKey(), kFakeData,
+                                              SigningOptions{}),
               IsOkAndHolds(signature));
 }
 
@@ -101,12 +101,12 @@ TEST_F(BackendSigningTpm1Test, SignNotSupported) {
                       SetArgPointee<2>(fake_pubkey.data()),
                       Return(TPM_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm1().LoadKey(
       kFakePolicy, kFakeKeyBlob, Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Signing::Sign>(
+  EXPECT_THAT(backend_->GetSigningTpm1().Sign(
                   key->GetKey(), kFakeData,
                   SigningOptions{
                       .rsa_padding_scheme =

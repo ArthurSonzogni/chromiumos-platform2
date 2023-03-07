@@ -44,25 +44,24 @@ TEST_F(BackendVendorTpm1Test, GetVersionInfo) {
   EXPECT_CALL(proxy_->GetMock().tpm_manager, GetVersionInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetFamily>(),
-              IsOkAndHolds(0x312E3200));
+  EXPECT_THAT(backend_->GetVendorTpm1().GetFamily(), IsOkAndHolds(0x312E3200));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetSpecLevel>(),
+  EXPECT_THAT(backend_->GetVendorTpm1().GetSpecLevel(),
               IsOkAndHolds(0x200000003));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetManufacturer>(),
+  EXPECT_THAT(backend_->GetVendorTpm1().GetManufacturer(),
               IsOkAndHolds(0x49465800));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetTpmModel>(),
+  EXPECT_THAT(backend_->GetVendorTpm1().GetTpmModel(),
               IsOkAndHolds(0xFFFFFFFF));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetFirmwareVersion>(),
+  EXPECT_THAT(backend_->GetVendorTpm1().GetFirmwareVersion(),
               IsOkAndHolds(0x62B));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetVendorSpecific>(),
+  EXPECT_THAT(backend_->GetVendorTpm1().GetVendorSpecific(),
               IsOkAndHolds(kFakeVendorSpecific));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetFingerprint>(),
+  EXPECT_THAT(backend_->GetVendorTpm1().GetFingerprint(),
               IsOkAndHolds(0x2081EE27));
 }
 
@@ -144,7 +143,7 @@ TEST_F(BackendVendorTpm1Test, IsSrkRocaVulnerable) {
       .WillOnce(DoAll(SetArgPointee<0>(sizeof(kFakeParms)),
                       SetArgPointee<3>(key_parms), Return(TPM_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::IsSrkRocaVulnerable>(),
+  EXPECT_THAT(backend_->GetVendorTpm1().IsSrkRocaVulnerable(),
               IsOkAndHolds(true));
 }
 
@@ -220,7 +219,7 @@ TEST_F(BackendVendorTpm1Test, IsSrkRocaVulnerableFalse) {
       .WillOnce(DoAll(SetArgPointee<0>(sizeof(kFakeParms)),
                       SetArgPointee<3>(key_parms), Return(TPM_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::IsSrkRocaVulnerable>(),
+  EXPECT_THAT(backend_->GetVendorTpm1().IsSrkRocaVulnerable(),
               IsOkAndHolds(false));
 }
 
@@ -234,7 +233,7 @@ TEST_F(BackendVendorTpm1Test, IsSrkRocaVulnerableLengthFailed) {
       .WillOnce(DoAll(SetArgPointee<0>(kDefaultSrkPubkey.size() - 1),
                       SetArgPointee<3>(fake_pub_key), Return(TPM_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::Vendor::IsSrkRocaVulnerable>();
+  auto result = backend_->GetVendorTpm1().IsSrkRocaVulnerable();
   ASSERT_NOT_OK(result);
 }
 
@@ -255,7 +254,7 @@ TEST_F(BackendVendorTpm1Test, IsSrkRocaVulnerableLengthFailed2) {
       .WillOnce(DoAll(SetArgPointee<0>(1), SetArgPointee<3>(key_parms),
                       Return(TPM_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::Vendor::IsSrkRocaVulnerable>();
+  auto result = backend_->GetVendorTpm1().IsSrkRocaVulnerable();
   ASSERT_NOT_OK(result);
 }
 
@@ -276,8 +275,7 @@ TEST_F(BackendVendorTpm1Test, GetIFXFieldUpgradeInfo) {
   EXPECT_CALL(proxy_->GetMock().overalls, Orspi_UnloadBlob_UINT32_s(_, _, _, _))
       .WillRepeatedly(Trspi_UnloadBlob_UINT32_s);
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetIFXFieldUpgradeInfo>(),
-              IsOk());
+  EXPECT_THAT(backend_->GetVendorTpm1().GetIFXFieldUpgradeInfo(), IsOk());
 }
 
 TEST_F(BackendVendorTpm1Test, GetIFXFieldUpgradeInfoLengthMismatch) {
@@ -295,8 +293,7 @@ TEST_F(BackendVendorTpm1Test, GetIFXFieldUpgradeInfoLengthMismatch) {
   EXPECT_CALL(proxy_->GetMock().overalls, Orspi_UnloadBlob_UINT32_s(_, _, _, _))
       .WillRepeatedly(Trspi_UnloadBlob_UINT32_s);
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetIFXFieldUpgradeInfo>(),
-              NotOk());
+  EXPECT_THAT(backend_->GetVendorTpm1().GetIFXFieldUpgradeInfo(), NotOk());
 }
 
 TEST_F(BackendVendorTpm1Test, GetIFXFieldUpgradeInfoUnknownLength) {
@@ -314,8 +311,7 @@ TEST_F(BackendVendorTpm1Test, GetIFXFieldUpgradeInfoUnknownLength) {
   EXPECT_CALL(proxy_->GetMock().overalls, Orspi_UnloadBlob_UINT32_s(_, _, _, _))
       .WillRepeatedly(Trspi_UnloadBlob_UINT32_s);
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Vendor::GetIFXFieldUpgradeInfo>(),
-              NotOk());
+  EXPECT_THAT(backend_->GetVendorTpm1().GetIFXFieldUpgradeInfo(), NotOk());
 }
 
 }  // namespace hwsec

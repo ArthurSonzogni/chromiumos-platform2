@@ -81,8 +81,7 @@ class BackendKeyManagementTpm2Test : public BackendTpm2TestBase {
 };
 
 TEST_F(BackendKeyManagementTpm2Test, GetSupportedAlgo) {
-  auto result =
-      middleware_->CallSync<&Backend::KeyManagement::GetSupportedAlgo>();
+  auto result = backend_->GetKeyManagementTpm2().GetSupportedAlgo();
 
   ASSERT_OK(result);
   EXPECT_TRUE(result->count(KeyAlgoType::kRsa));
@@ -109,7 +108,7 @@ TEST_F(BackendKeyManagementTpm2Test, CreateSoftwareRsaKey) {
               GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
+  auto result = backend_->GetKeyManagementTpm2().CreateKey(
       kFakePolicy, kFakeAlgo, Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = true,
@@ -145,7 +144,7 @@ TEST_F(BackendKeyManagementTpm2Test, CreateRsaKey) {
               GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
+  auto result = backend_->GetKeyManagementTpm2().CreateKey(
       kFakePolicy, kFakeAlgo, Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = false,
@@ -182,7 +181,7 @@ TEST_F(BackendKeyManagementTpm2Test, CreateRsaKeyWithParams) {
               GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
+  auto result = backend_->GetKeyManagementTpm2().CreateKey(
       kFakePolicy, kFakeAlgo, Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = false,
@@ -220,7 +219,7 @@ TEST_F(BackendKeyManagementTpm2Test, CreateEccKey) {
               GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
+  auto result = backend_->GetKeyManagementTpm2().CreateKey(
       kFakePolicy, kFakeAlgo, Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = true,
@@ -232,9 +231,9 @@ TEST_F(BackendKeyManagementTpm2Test, CreateEccKey) {
   ASSERT_OK(result);
   EXPECT_EQ(result->key_blob, brillo::BlobFromString(kFakeKeyBlob));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::ReloadIfPossible>(
-                  result->key.GetKey()),
-              IsOk());
+  EXPECT_THAT(
+      backend_->GetKeyManagementTpm2().ReloadIfPossible(result->key.GetKey()),
+      IsOk());
 
   EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
@@ -253,15 +252,15 @@ TEST_F(BackendKeyManagementTpm2Test, LoadKey) {
               GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto result = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(result);
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::ReloadIfPossible>(
-                  result->GetKey()),
-              IsOk());
+  EXPECT_THAT(
+      backend_->GetKeyManagementTpm2().ReloadIfPossible(result->GetKey()),
+      IsOk());
 
   EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
@@ -289,7 +288,7 @@ TEST_F(BackendKeyManagementTpm2Test, CreateAutoReloadKey) {
               GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
+  auto result = backend_->GetKeyManagementTpm2().CreateKey(
       kFakePolicy, kFakeAlgo,
       Backend::KeyManagement::LoadKeyOptions{.auto_reload = true},
       Backend::KeyManagement::CreateKeyOptions{
@@ -308,9 +307,9 @@ TEST_F(BackendKeyManagementTpm2Test, CreateAutoReloadKey) {
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle2),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::ReloadIfPossible>(
-                  result->key.GetKey()),
-              IsOk());
+  EXPECT_THAT(
+      backend_->GetKeyManagementTpm2().ReloadIfPossible(result->key.GetKey()),
+      IsOk());
 
   EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle2, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
@@ -330,7 +329,7 @@ TEST_F(BackendKeyManagementTpm2Test, LoadAutoReloadKey) {
               GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto result = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{.auto_reload = true});
 
@@ -343,9 +342,9 @@ TEST_F(BackendKeyManagementTpm2Test, LoadAutoReloadKey) {
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle2),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::ReloadIfPossible>(
-                  result->GetKey()),
-              IsOk());
+  EXPECT_THAT(
+      backend_->GetKeyManagementTpm2().ReloadIfPossible(result->GetKey()),
+      IsOk());
 
   EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle2, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
@@ -364,20 +363,18 @@ TEST_F(BackendKeyManagementTpm2Test, GetPersistentKey) {
       .Times(0);
 
   {
-    auto result =
-        middleware_->CallSync<&Backend::KeyManagement::GetPersistentKey>(
-            Backend::KeyManagement::PersistentKeyType::kStorageRootKey);
+    auto result = backend_->GetKeyManagementTpm2().GetPersistentKey(
+        Backend::KeyManagement::PersistentKeyType::kStorageRootKey);
 
     EXPECT_THAT(result, IsOk());
 
-    auto result2 =
-        middleware_->CallSync<&Backend::KeyManagement::GetPersistentKey>(
-            Backend::KeyManagement::PersistentKeyType::kStorageRootKey);
+    auto result2 = backend_->GetKeyManagementTpm2().GetPersistentKey(
+        Backend::KeyManagement::PersistentKeyType::kStorageRootKey);
 
     EXPECT_THAT(result2, IsOk());
   }
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::GetPersistentKey>(
+  EXPECT_THAT(backend_->GetKeyManagementTpm2().GetPersistentKey(
                   Backend::KeyManagement::PersistentKeyType::kStorageRootKey),
               IsOk());
 }
@@ -426,14 +423,13 @@ TEST_F(BackendKeyManagementTpm2Test, GetRsaPubkeyHash) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto result = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(result);
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::GetPubkeyHash>(
-                  result->GetKey()),
+  EXPECT_THAT(backend_->GetKeyManagementTpm2().GetPubkeyHash(result->GetKey()),
               IsOkAndHolds(Sha256(BlobFromString("9876543210"))));
 
   EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
@@ -491,14 +487,13 @@ TEST_F(BackendKeyManagementTpm2Test, GetEccPubkeyHash) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto result = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(result);
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::GetPubkeyHash>(
-                  result->GetKey()),
+  EXPECT_THAT(backend_->GetKeyManagementTpm2().GetPubkeyHash(result->GetKey()),
               IsOkAndHolds(Sha256(BlobFromString("0123456789"))));
 
   EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
@@ -517,13 +512,11 @@ TEST_F(BackendKeyManagementTpm2Test, SideLoadKey) {
   EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
       .Times(0);
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::SideLoadKey>(
-      kFakeKeyHandle);
+  auto result = backend_->GetKeyManagementTpm2().SideLoadKey(kFakeKeyHandle);
 
   ASSERT_OK(result);
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::GetKeyHandle>(
-                  result->GetKey()),
+  EXPECT_THAT(backend_->GetKeyManagementTpm2().GetKeyHandle(result->GetKey()),
               IsOkAndHolds(kFakeKeyHandle));
 }
 
@@ -566,7 +559,7 @@ TEST_F(BackendKeyManagementTpm2Test, PolicyRsaKey) {
               GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
+  auto result = backend_->GetKeyManagementTpm2().CreateKey(
       kFakePolicy, kFakeAlgo, Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = true,
@@ -620,7 +613,7 @@ TEST_F(BackendKeyManagementTpm2Test, PolicyEccKey) {
               GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
+  auto result = backend_->GetKeyManagementTpm2().CreateKey(
       kFakePolicy, kFakeAlgo, Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = true,
@@ -684,7 +677,7 @@ TEST_F(BackendKeyManagementTpm2Test, WrapRsaKey) {
               GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::WrapRSAKey>(
+  auto result = backend_->GetKeyManagementTpm2().WrapRSAKey(
       kFakePolicy, brillo::BlobFromString(kFakeModulus),
       brillo::SecureBlob(kFakePrime), Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
@@ -717,7 +710,7 @@ TEST_F(BackendKeyManagementTpm2Test, WrapRsaKeyNotSupportedConfig) {
   const std::string kFakePrime(1024 / 8, 'X');
   const brillo::Blob kExponent{0x03};
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::WrapRSAKey>(
+  auto result = backend_->GetKeyManagementTpm2().WrapRSAKey(
       kFakePolicy, brillo::BlobFromString(kFakeModulus),
       brillo::SecureBlob(kFakePrime), Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
@@ -738,7 +731,7 @@ TEST_F(BackendKeyManagementTpm2Test, WrapRsaKeyExponentTooLarge) {
   const std::string kFakePrime(1024 / 8, 'X');
   const brillo::Blob kExponent{0x01, 0x00, 0x00, 0x00, 0x00, 0x01};
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::WrapRSAKey>(
+  auto result = backend_->GetKeyManagementTpm2().WrapRSAKey(
       kFakePolicy, brillo::BlobFromString(kFakeModulus),
       brillo::SecureBlob(kFakePrime), Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
@@ -781,7 +774,7 @@ TEST_F(BackendKeyManagementTpm2Test, WrapEccKey) {
               GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::WrapECCKey>(
+  auto result = backend_->GetKeyManagementTpm2().WrapECCKey(
       kFakePolicy, brillo::BlobFromString(kFakePointX),
       brillo::BlobFromString(kFakePointY), brillo::SecureBlob(kFakePrivateVal),
       Backend::KeyManagement::LoadKeyOptions{},
@@ -814,7 +807,7 @@ TEST_F(BackendKeyManagementTpm2Test, WrapEccKeyNotSupportedConfig) {
   const std::string kFakePointY = "point_y";
   const std::string kFakePrivateVal = "private_value";
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::WrapECCKey>(
+  auto result = backend_->GetKeyManagementTpm2().WrapECCKey(
       kFakePolicy, brillo::BlobFromString(kFakePointX),
       brillo::BlobFromString(kFakePointY), brillo::SecureBlob(kFakePrivateVal),
       Backend::KeyManagement::LoadKeyOptions{},
@@ -835,7 +828,7 @@ TEST_F(BackendKeyManagementTpm2Test, WrapEccKeyNotSupportedNID) {
   const std::string kFakePointY = "point_y";
   const std::string kFakePrivateVal = "private_value";
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::WrapECCKey>(
+  auto result = backend_->GetKeyManagementTpm2().WrapECCKey(
       kFakePolicy, brillo::BlobFromString(kFakePointX),
       brillo::BlobFromString(kFakePointY), brillo::SecureBlob(kFakePrivateVal),
       Backend::KeyManagement::LoadKeyOptions{},
@@ -856,7 +849,7 @@ TEST_F(BackendKeyManagementTpm2Test, WrapEccKeyUseless) {
   const std::string kFakePointY = "point_y";
   const std::string kFakePrivateVal = "private_value";
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::WrapECCKey>(
+  auto result = backend_->GetKeyManagementTpm2().WrapECCKey(
       kFakePolicy, brillo::BlobFromString(kFakePointX),
       brillo::BlobFromString(kFakePointY), brillo::SecureBlob(kFakePrivateVal),
       Backend::KeyManagement::LoadKeyOptions{},
@@ -914,15 +907,14 @@ TEST_F(BackendKeyManagementTpm2Test, GetRSAPublicInfo) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
   auto result =
-      middleware_->CallSync<&Backend::KeyManagement::GetRSAPublicInfo>(
-          key->GetKey());
+      backend_->GetKeyManagementTpm2().GetRSAPublicInfo(key->GetKey());
 
   ASSERT_OK(result);
   EXPECT_EQ(result->exponent, brillo::Blob({0x00, 0x00, 0x00, 0x03}));
@@ -949,14 +941,13 @@ TEST_F(BackendKeyManagementTpm2Test, GetRSAPublicInfoWrongType) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::GetRSAPublicInfo>(
-                  key->GetKey()),
+  EXPECT_THAT(backend_->GetKeyManagementTpm2().GetRSAPublicInfo(key->GetKey()),
               NotOkWith("Get RSA public info for none-RSA key"));
 }
 
@@ -1015,15 +1006,14 @@ TEST_F(BackendKeyManagementTpm2Test, GetECCPublicInfo) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
   auto result =
-      middleware_->CallSync<&Backend::KeyManagement::GetECCPublicInfo>(
-          key->GetKey());
+      backend_->GetKeyManagementTpm2().GetECCPublicInfo(key->GetKey());
 
   ASSERT_OK(result);
   EXPECT_EQ(result->nid, NID_X9_62_prime256v1);
@@ -1086,14 +1076,13 @@ TEST_F(BackendKeyManagementTpm2Test, GetECCPublicInfoUnsupportedCurve) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::GetECCPublicInfo>(
-                  key->GetKey()),
+  EXPECT_THAT(backend_->GetKeyManagementTpm2().GetECCPublicInfo(key->GetKey()),
               NotOkWith("Unsupported curve"));
 }
 
@@ -1117,19 +1106,18 @@ TEST_F(BackendKeyManagementTpm2Test, GetECCPublicInfoWrongType) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::GetECCPublicInfo>(
-                  key->GetKey()),
+  EXPECT_THAT(backend_->GetKeyManagementTpm2().GetECCPublicInfo(key->GetKey()),
               NotOkWith("Get ECC public info for none-ECC key"));
 }
 
 TEST_F(BackendKeyManagementTpm2Test, IsSupported) {
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::IsSupported>(
+  EXPECT_THAT(backend_->GetKeyManagementTpm2().IsSupported(
                   KeyAlgoType::kRsa,
                   KeyManagement::CreateKeyOptions{
                       .allow_software_gen = false,
@@ -1138,7 +1126,7 @@ TEST_F(BackendKeyManagementTpm2Test, IsSupported) {
                   }),
               IsOk());
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::IsSupported>(
+  EXPECT_THAT(backend_->GetKeyManagementTpm2().IsSupported(
                   KeyAlgoType::kRsa,
                   KeyManagement::CreateKeyOptions{
                       .allow_software_gen = false,
@@ -1148,7 +1136,7 @@ TEST_F(BackendKeyManagementTpm2Test, IsSupported) {
                   }),
               IsOk());
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::IsSupported>(
+  EXPECT_THAT(backend_->GetKeyManagementTpm2().IsSupported(
                   KeyAlgoType::kRsa,
                   KeyManagement::CreateKeyOptions{
                       .allow_software_gen = false,
@@ -1160,7 +1148,7 @@ TEST_F(BackendKeyManagementTpm2Test, IsSupported) {
                   }),
               NotOkWith("Exponent too large"));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::IsSupported>(
+  EXPECT_THAT(backend_->GetKeyManagementTpm2().IsSupported(
                   KeyAlgoType::kRsa,
                   KeyManagement::CreateKeyOptions{
                       .allow_software_gen = false,
@@ -1170,7 +1158,7 @@ TEST_F(BackendKeyManagementTpm2Test, IsSupported) {
                   }),
               NotOkWith("Modulus bits too small"));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::IsSupported>(
+  EXPECT_THAT(backend_->GetKeyManagementTpm2().IsSupported(
                   KeyAlgoType::kRsa,
                   KeyManagement::CreateKeyOptions{
                       .allow_software_gen = false,
@@ -1180,7 +1168,7 @@ TEST_F(BackendKeyManagementTpm2Test, IsSupported) {
                   }),
               NotOkWith("Modulus bits too big"));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::IsSupported>(
+  EXPECT_THAT(backend_->GetKeyManagementTpm2().IsSupported(
                   KeyAlgoType::kEcc,
                   KeyManagement::CreateKeyOptions{
                       .allow_software_gen = false,
@@ -1189,7 +1177,7 @@ TEST_F(BackendKeyManagementTpm2Test, IsSupported) {
                   }),
               IsOk());
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::IsSupported>(
+  EXPECT_THAT(backend_->GetKeyManagementTpm2().IsSupported(
                   KeyAlgoType::kEcc,
                   KeyManagement::CreateKeyOptions{
                       .allow_software_gen = false,
@@ -1215,19 +1203,19 @@ TEST_F(BackendKeyManagementTpm2Test, LoadRefCountReloadKey) {
               GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  auto result1 = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto result1 = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{.auto_reload = true});
 
   ASSERT_OK(result1);
 
-  auto result2 = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto result2 = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{.auto_reload = true});
 
   ASSERT_OK(result2);
 
-  auto result3 = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto result3 = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{.auto_reload = true});
 
@@ -1248,9 +1236,9 @@ TEST_F(BackendKeyManagementTpm2Test, LoadRefCountReloadKey) {
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle2),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::ReloadIfPossible>(
-                  result2->GetKey()),
-              IsOk());
+  EXPECT_THAT(
+      backend_->GetKeyManagementTpm2().ReloadIfPossible(result2->GetKey()),
+      IsOk());
 
   EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle2, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
@@ -1272,7 +1260,7 @@ TEST_F(BackendKeyManagementTpm2Test, LoadAndLazyFlushKey) {
               GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  auto result1 = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto result1 = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{
           .auto_reload = true,
@@ -1281,7 +1269,7 @@ TEST_F(BackendKeyManagementTpm2Test, LoadAndLazyFlushKey) {
 
   ASSERT_OK(result1);
 
-  auto result2 = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto result2 = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{
           .auto_reload = true,
@@ -1309,7 +1297,7 @@ TEST_F(BackendKeyManagementTpm2Test, LoadAndLazyFlushKey) {
   // Nothing should happen because the minimum lazy expiration time is 17 secs.
   task_environment_.FastForwardBy(base::Seconds(15));
 
-  auto result3 = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto result3 = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{
           .auto_reload = true,
@@ -1325,11 +1313,11 @@ TEST_F(BackendKeyManagementTpm2Test, LoadAndLazyFlushKey) {
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle2),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::ReloadIfPossible>(
-                  result3->GetKey()),
-              IsOk());
+  EXPECT_THAT(
+      backend_->GetKeyManagementTpm2().ReloadIfPossible(result3->GetKey()),
+      IsOk());
 
-  auto result4 = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto result4 = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{
           .auto_reload = true,
@@ -1370,7 +1358,7 @@ TEST_F(BackendKeyManagementTpm2Test, LoadAndLazyFlushKey) {
               GetKeyPublicArea(kFakeKeyHandle3, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  auto result5 = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto result5 = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{
           .auto_reload = true,
@@ -1401,7 +1389,7 @@ TEST_F(BackendKeyManagementTpm2Test, LoadReloadKeyWithWrongAuth) {
               GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  auto result1 = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto result1 = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{
           .auto_reload = true,
@@ -1410,7 +1398,7 @@ TEST_F(BackendKeyManagementTpm2Test, LoadReloadKeyWithWrongAuth) {
 
   ASSERT_OK(result1);
 
-  auto result2 = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto result2 = backend_->GetKeyManagementTpm2().LoadKey(
       kWrongPolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{
           .auto_reload = true,
@@ -1466,9 +1454,8 @@ TEST_F(BackendKeyManagementTpm2Test, PolicyEndorsementKey) {
                 GetKeyPublicArea(kFakeKeyHandle, _))
         .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-    auto result =
-        middleware_->CallSync<&Backend::KeyManagement::GetPolicyEndorsementKey>(
-            kFakePolicy, hwsec_algo);
+    auto result = backend_->GetKeyManagementTpm2().GetPolicyEndorsementKey(
+        kFakePolicy, hwsec_algo);
 
     ASSERT_OK(result);
 
@@ -1502,9 +1489,8 @@ TEST_F(BackendKeyManagementTpm2Test, PolicyEndorsementKeyWrongPermissionType) {
           },
   };
 
-  auto result =
-      middleware_->CallSync<&Backend::KeyManagement::GetPolicyEndorsementKey>(
-          kFakePolicy, KeyAlgoType::kEcc);
+  auto result = backend_->GetKeyManagementTpm2().GetPolicyEndorsementKey(
+      kFakePolicy, KeyAlgoType::kEcc);
 
   EXPECT_THAT(result, NotOk());
 }

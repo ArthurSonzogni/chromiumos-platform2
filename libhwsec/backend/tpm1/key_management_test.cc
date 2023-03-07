@@ -67,8 +67,7 @@ bool GenerateRsaKey(int key_size_bits,
 class BackendKeyManagementTpm1Test : public BackendTpm1TestBase {};
 
 TEST_F(BackendKeyManagementTpm1Test, GetSupportedAlgo) {
-  auto result =
-      middleware_->CallSync<&Backend::KeyManagement::GetSupportedAlgo>();
+  auto result = backend_->GetKeyManagementTpm1().GetSupportedAlgo();
 
   ASSERT_OK(result);
   EXPECT_TRUE(result->count(KeyAlgoType::kRsa));
@@ -110,22 +109,19 @@ TEST_F(BackendKeyManagementTpm1Test, GetPersistentKey) {
                       Return(TPM_SUCCESS)));
 
   {
-    auto result =
-        middleware_->CallSync<&Backend::KeyManagement::GetPersistentKey>(
-            Backend::KeyManagement::PersistentKeyType::kStorageRootKey);
+    auto result = backend_->GetKeyManagementTpm1().GetPersistentKey(
+        Backend::KeyManagement::PersistentKeyType::kStorageRootKey);
 
     EXPECT_THAT(result, IsOk());
 
-    auto result2 =
-        middleware_->CallSync<&Backend::KeyManagement::GetPersistentKey>(
-            Backend::KeyManagement::PersistentKeyType::kStorageRootKey);
+    auto result2 = backend_->GetKeyManagementTpm1().GetPersistentKey(
+        Backend::KeyManagement::PersistentKeyType::kStorageRootKey);
 
     EXPECT_THAT(result2, IsOk());
   }
 
-  auto result3 =
-      middleware_->CallSync<&Backend::KeyManagement::GetPersistentKey>(
-          Backend::KeyManagement::PersistentKeyType::kStorageRootKey);
+  auto result3 = backend_->GetKeyManagementTpm1().GetPersistentKey(
+      Backend::KeyManagement::PersistentKeyType::kStorageRootKey);
 
   EXPECT_THAT(result3, IsOk());
 }
@@ -204,7 +200,7 @@ TEST_F(BackendKeyManagementTpm1Test, CreateSoftwareGenRsaKey) {
                       SetArgPointee<2>(fake_pubkey.data()),
                       Return(TPM_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
+  auto result = backend_->GetKeyManagementTpm1().CreateKey(
       kFakePolicy, kFakeAlgo, Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
           .allow_software_gen = true,
@@ -281,7 +277,7 @@ TEST_F(BackendKeyManagementTpm1Test, CreateRsaKey) {
                       SetArgPointee<2>(fake_pubkey.data()),
                       Return(TPM_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
+  auto result = backend_->GetKeyManagementTpm1().CreateKey(
       kFakePolicy, kFakeAlgo,
       Backend::KeyManagement::LoadKeyOptions{.auto_reload = true},
       Backend::KeyManagement::CreateKeyOptions{
@@ -366,7 +362,7 @@ TEST_F(BackendKeyManagementTpm1Test, CreateRsaKeyWithParams) {
                       SetArgPointee<2>(fake_pubkey.data()),
                       Return(TPM_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
+  auto result = backend_->GetKeyManagementTpm1().CreateKey(
       kFakePolicy, kFakeAlgo,
       Backend::KeyManagement::LoadKeyOptions{.auto_reload = true},
       Backend::KeyManagement::CreateKeyOptions{
@@ -469,7 +465,7 @@ TEST_F(BackendKeyManagementTpm1Test, CreateRsaKeyWithAuth) {
                       SetArgPointee<2>(fake_pubkey.data()),
                       Return(TPM_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
+  auto result = backend_->GetKeyManagementTpm1().CreateKey(
       kFakePolicy, kFakeAlgo,
       Backend::KeyManagement::LoadKeyOptions{.auto_reload = true},
       Backend::KeyManagement::CreateKeyOptions{
@@ -570,7 +566,7 @@ TEST_F(BackendKeyManagementTpm1Test, CreateRsaKeyWithAuthSha1) {
                       SetArgPointee<2>(fake_pubkey.data()),
                       Return(TPM_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::CreateKey>(
+  auto result = backend_->GetKeyManagementTpm1().CreateKey(
       kFakePolicy, kFakeAlgo,
       Backend::KeyManagement::LoadKeyOptions{.auto_reload = true},
       Backend::KeyManagement::CreateKeyOptions{
@@ -603,17 +599,16 @@ TEST_F(BackendKeyManagementTpm1Test, LoadKey) {
                       SetArgPointee<2>(fake_pubkey.data()),
                       Return(TPM_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto result = backend_->GetKeyManagementTpm1().LoadKey(
       kFakePolicy, kFakeKeyBlob, Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(result);
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::ReloadIfPossible>(
-                  result->GetKey()),
-              IsOk());
+  EXPECT_THAT(
+      backend_->GetKeyManagementTpm1().ReloadIfPossible(result->GetKey()),
+      IsOk());
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::GetKeyHandle>(
-                  result->GetKey()),
+  EXPECT_THAT(backend_->GetKeyManagementTpm1().GetKeyHandle(result->GetKey()),
               IsOkAndHolds(kFakeKeyHandle));
 }
 
@@ -660,18 +655,17 @@ TEST_F(BackendKeyManagementTpm1Test, LoadKeyWithAuth) {
               Ospi_Policy_AssignToObject(kFakeAuthPolicyHandle, kFakeKeyHandle))
       .WillOnce(Return(TPM_SUCCESS));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto result = backend_->GetKeyManagementTpm1().LoadKey(
       kFakePolicy, kFakeKeyBlob,
       Backend::KeyManagement::LoadKeyOptions{.auto_reload = false});
 
   ASSERT_OK(result);
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::ReloadIfPossible>(
-                  result->GetKey()),
-              IsOk());
+  EXPECT_THAT(
+      backend_->GetKeyManagementTpm1().ReloadIfPossible(result->GetKey()),
+      IsOk());
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::GetKeyHandle>(
-                  result->GetKey()),
+  EXPECT_THAT(backend_->GetKeyManagementTpm1().GetKeyHandle(result->GetKey()),
               IsOkAndHolds(kFakeKeyHandle));
 }
 
@@ -697,18 +691,17 @@ TEST_F(BackendKeyManagementTpm1Test, LoadAutoReloadKey) {
                       SetArgPointee<2>(fake_pubkey.data()),
                       Return(TPM_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto result = backend_->GetKeyManagementTpm1().LoadKey(
       kFakePolicy, kFakeKeyBlob,
       Backend::KeyManagement::LoadKeyOptions{.auto_reload = true});
 
   ASSERT_OK(result);
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::ReloadIfPossible>(
-                  result->GetKey()),
-              IsOk());
+  EXPECT_THAT(
+      backend_->GetKeyManagementTpm1().ReloadIfPossible(result->GetKey()),
+      IsOk());
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::GetKeyHandle>(
-                  result->GetKey()),
+  EXPECT_THAT(backend_->GetKeyManagementTpm1().GetKeyHandle(result->GetKey()),
               IsOkAndHolds(kFakeKeyHandle2));
 }
 
@@ -724,13 +717,11 @@ TEST_F(BackendKeyManagementTpm1Test, SideLoadKey) {
                       SetArgPointee<2>(fake_pubkey.data()),
                       Return(TPM_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::SideLoadKey>(
-      kFakeKeyHandle);
+  auto result = backend_->GetKeyManagementTpm1().SideLoadKey(kFakeKeyHandle);
 
   ASSERT_OK(result);
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::GetKeyHandle>(
-                  result->GetKey()),
+  EXPECT_THAT(backend_->GetKeyManagementTpm1().GetKeyHandle(result->GetKey()),
               IsOkAndHolds(kFakeKeyHandle));
 }
 
@@ -834,7 +825,7 @@ TEST_F(BackendKeyManagementTpm1Test, WrapRsaKey) {
                       SetArgPointee<2>(fake_pubkey.data()),
                       Return(TPM_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::WrapRSAKey>(
+  auto result = backend_->GetKeyManagementTpm1().WrapRSAKey(
       kFakePolicy, kFakeModulus, kFakePrime,
       Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
@@ -970,7 +961,7 @@ TEST_F(BackendKeyManagementTpm1Test, WrapRsaKeyWithAuth) {
                       SetArgPointee<2>(fake_pubkey.data()),
                       Return(TPM_SUCCESS)));
 
-  auto result = middleware_->CallSync<&Backend::KeyManagement::WrapRSAKey>(
+  auto result = backend_->GetKeyManagementTpm1().WrapRSAKey(
       kFakePolicy, kFakeModulus, kFakePrime,
       Backend::KeyManagement::LoadKeyOptions{},
       Backend::KeyManagement::CreateKeyOptions{
@@ -1014,13 +1005,12 @@ TEST_F(BackendKeyManagementTpm1Test, GetPubkeyHash) {
                       SetArgPointee<2>(fake_pubkey.data()),
                       Return(TPM_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm1().LoadKey(
       kFakePolicy, kFakeKeyBlob, Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::GetPubkeyHash>(
-                  key->GetKey()),
+  EXPECT_THAT(backend_->GetKeyManagementTpm1().GetPubkeyHash(key->GetKey()),
               IsOkAndHolds(Sha1(kFakePubkey)));
 }
 
@@ -1046,7 +1036,7 @@ TEST_F(BackendKeyManagementTpm1Test, GetRSAPublicInfo) {
                       SetArgPointee<2>(fake_pubkey.data()),
                       Return(TPM_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm1().LoadKey(
       kFakePolicy, kFakeKeyBlob, Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
@@ -1066,8 +1056,7 @@ TEST_F(BackendKeyManagementTpm1Test, GetRSAPublicInfo) {
                       SetArgPointee<4>(modulus.data()), Return(TPM_SUCCESS)));
 
   auto result =
-      middleware_->CallSync<&Backend::KeyManagement::GetRSAPublicInfo>(
-          key->GetKey());
+      backend_->GetKeyManagementTpm1().GetRSAPublicInfo(key->GetKey());
 
   ASSERT_OK(result);
   EXPECT_EQ(result->exponent, kExponent);
@@ -1075,7 +1064,7 @@ TEST_F(BackendKeyManagementTpm1Test, GetRSAPublicInfo) {
 }
 
 TEST_F(BackendKeyManagementTpm1Test, IsSupported) {
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::IsSupported>(
+  EXPECT_THAT(backend_->GetKeyManagementTpm1().IsSupported(
                   KeyAlgoType::kRsa,
                   KeyManagement::CreateKeyOptions{
                       .allow_software_gen = false,
@@ -1084,7 +1073,7 @@ TEST_F(BackendKeyManagementTpm1Test, IsSupported) {
                   }),
               IsOk());
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::IsSupported>(
+  EXPECT_THAT(backend_->GetKeyManagementTpm1().IsSupported(
                   KeyAlgoType::kRsa,
                   KeyManagement::CreateKeyOptions{
                       .allow_software_gen = false,
@@ -1094,7 +1083,7 @@ TEST_F(BackendKeyManagementTpm1Test, IsSupported) {
                   }),
               NotOkWith("Modulus bits too small"));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::IsSupported>(
+  EXPECT_THAT(backend_->GetKeyManagementTpm1().IsSupported(
                   KeyAlgoType::kRsa,
                   KeyManagement::CreateKeyOptions{
                       .allow_software_gen = false,
@@ -1104,7 +1093,7 @@ TEST_F(BackendKeyManagementTpm1Test, IsSupported) {
                   }),
               NotOkWith("Modulus bits too big"));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::KeyManagement::IsSupported>(
+  EXPECT_THAT(backend_->GetKeyManagementTpm1().IsSupported(
                   KeyAlgoType::kEcc,
                   KeyManagement::CreateKeyOptions{
                       .allow_software_gen = false,

@@ -48,7 +48,7 @@ TEST_F(BackendEncryptionTpm1Test, Encrypt) {
                       SetArgPointee<2>(fake_pubkey.data()),
                       Return(TPM_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm1().LoadKey(
       kFakePolicy, kFakeKeyBlob, Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
@@ -72,7 +72,7 @@ TEST_F(BackendEncryptionTpm1Test, Encrypt) {
                       Return(TPM_SUCCESS)));
 
   EXPECT_THAT(
-      middleware_->CallSync<&Backend::Encryption::Encrypt>(
+      backend_->GetEncryptionTpm1().Encrypt(
           key->GetKey(), kPlaintext, Backend::Encryption::EncryptionOptions{}),
       IsOkAndHolds(kCiphertext));
 }
@@ -100,7 +100,7 @@ TEST_F(BackendEncryptionTpm1Test, Decrypt) {
                       SetArgPointee<2>(fake_pubkey.data()),
                       Return(TPM_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm1().LoadKey(
       kFakePolicy, kFakeKeyBlob, Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
@@ -124,7 +124,7 @@ TEST_F(BackendEncryptionTpm1Test, Decrypt) {
                       Return(TPM_SUCCESS)));
 
   EXPECT_THAT(
-      middleware_->CallSync<&Backend::Encryption::Decrypt>(
+      backend_->GetEncryptionTpm1().Decrypt(
           key->GetKey(), kCiphertext, Backend::Encryption::EncryptionOptions{}),
       IsOkAndHolds(kPlaintext));
 }

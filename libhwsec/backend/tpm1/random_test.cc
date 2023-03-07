@@ -33,7 +33,7 @@ TEST_F(BackendRandomTpm1Test, RandomBlob) {
               Ospi_TPM_GetRandom(kDefaultTpm, kFakeSize, _))
       .WillOnce(DoAll(SetArgPointee<2>(fake_data.data()), Return(TPM_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Random::RandomBlob>(kFakeSize),
+  EXPECT_THAT(backend_->GetRandomTpm1().RandomBlob(kFakeSize),
               IsOkAndHolds(kFakeData));
 }
 
@@ -46,9 +46,8 @@ TEST_F(BackendRandomTpm1Test, RandomSecureBlob) {
               Ospi_TPM_GetRandom(kDefaultTpm, kFakeSize, _))
       .WillOnce(DoAll(SetArgPointee<2>(fake_data.data()), Return(TPM_SUCCESS)));
 
-  EXPECT_THAT(
-      middleware_->CallSync<&Backend::Random::RandomSecureBlob>(kFakeSize),
-      IsOkAndHolds(kFakeData));
+  EXPECT_THAT(backend_->GetRandomTpm1().RandomSecureBlob(kFakeSize),
+              IsOkAndHolds(kFakeData));
 }
 
 }  // namespace hwsec

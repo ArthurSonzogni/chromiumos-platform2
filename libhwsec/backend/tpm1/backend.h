@@ -24,7 +24,7 @@
 #include "libhwsec/backend/tpm1/storage.h"
 #include "libhwsec/backend/tpm1/u2f.h"
 #include "libhwsec/backend/tpm1/vendor.h"
-#include "libhwsec/middleware/middleware.h"
+#include "libhwsec/middleware/middleware_derivative.h"
 #include "libhwsec/proxy/proxy.h"
 #include "libhwsec/tss_utils/scoped_tss_type.h"
 
@@ -74,6 +74,7 @@ class BackendTpm1 : public Backend {
   PinWeaverTpm1& GetPinWeaverTpm1() { return pinweaver_; }
   VendorTpm1& GetVendorTpm1() { return vendor_; }
   RecoveryCryptoTpm1& GetRecoveryCryptoTpm1() { return recovery_crypto_; }
+  U2fTpm1& GetU2fTpm1() { return u2f_; }
 
   void set_middleware_derivative_for_test(
       MiddlewareDerivative middleware_derivative) {

@@ -34,7 +34,7 @@ TEST_F(BackendRandomTpm2Test, RandomBlob) {
       .WillOnce(DoAll(SetArgPointee<2>(brillo::BlobToString(kFakeData)),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Random::RandomBlob>(kFakeSize),
+  EXPECT_THAT(backend_->GetRandomTpm2().RandomBlob(kFakeSize),
               IsOkAndHolds(kFakeData));
 }
 
@@ -47,9 +47,8 @@ TEST_F(BackendRandomTpm2Test, RandomSecureBlob) {
       .WillOnce(DoAll(SetArgPointee<2>(kFakeData.to_string()),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_THAT(
-      middleware_->CallSync<&Backend::Random::RandomSecureBlob>(kFakeSize),
-      IsOkAndHolds(kFakeData));
+  EXPECT_THAT(backend_->GetRandomTpm2().RandomSecureBlob(kFakeSize),
+              IsOkAndHolds(kFakeData));
 }
 
 TEST_F(BackendRandomTpm2Test, RandomSecureBlobWrongSize) {
@@ -61,9 +60,7 @@ TEST_F(BackendRandomTpm2Test, RandomSecureBlobWrongSize) {
       .WillOnce(DoAll(SetArgPointee<2>(kFakeData.to_string()),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_THAT(
-      middleware_->CallSync<&Backend::Random::RandomSecureBlob>(kFakeSize),
-      NotOk());
+  EXPECT_THAT(backend_->GetRandomTpm2().RandomSecureBlob(kFakeSize), NotOk());
 }
 
 }  // namespace hwsec

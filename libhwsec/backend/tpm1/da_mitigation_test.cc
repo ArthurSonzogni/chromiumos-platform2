@@ -36,8 +36,7 @@ TEST_F(BackendDAMitigationTpm1Test, IsReady) {
               GetTpmNonsensitiveStatus(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::DAMitigation::IsReady>(),
-              IsOkAndHolds(true));
+  EXPECT_THAT(backend_->GetDAMitigationTpm1().IsReady(), IsOkAndHolds(true));
 }
 
 TEST_F(BackendDAMitigationTpm1Test, IsNotReady) {
@@ -50,8 +49,7 @@ TEST_F(BackendDAMitigationTpm1Test, IsNotReady) {
               GetTpmNonsensitiveStatus(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::DAMitigation::IsReady>(),
-              IsOkAndHolds(false));
+  EXPECT_THAT(backend_->GetDAMitigationTpm1().IsReady(), IsOkAndHolds(false));
 }
 
 TEST_F(BackendDAMitigationTpm1Test, GetStatus) {
@@ -65,7 +63,7 @@ TEST_F(BackendDAMitigationTpm1Test, GetStatus) {
               GetDictionaryAttackInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 
-  auto result = middleware_->CallSync<&Backend::DAMitigation::GetStatus>();
+  auto result = backend_->GetDAMitigationTpm1().GetStatus();
   ASSERT_OK(result);
   EXPECT_TRUE(result->lockout);
   EXPECT_EQ(result->remaining, kRemaining);
@@ -78,8 +76,7 @@ TEST_F(BackendDAMitigationTpm1Test, Mitigate) {
               ResetDictionaryAttackLock(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::DAMitigation::Mitigate>(),
-              IsOk());
+  EXPECT_THAT(backend_->GetDAMitigationTpm1().Mitigate(), IsOk());
 }
 
 }  // namespace hwsec

@@ -39,8 +39,7 @@ namespace hwsec {
 class BackendRecoveryCryptoTpm1Test : public BackendTpm1TestBase {};
 
 TEST_F(BackendRecoveryCryptoTpm1Test, GenerateKeyAuthValue) {
-  auto result =
-      middleware_->CallSync<&Backend::RecoveryCrypto::GenerateKeyAuthValue>();
+  auto result = backend_->GetRecoveryCryptoTpm1().GenerateKeyAuthValue();
 
   ASSERT_OK(result);
   ASSERT_TRUE(result.value().has_value());
@@ -130,9 +129,8 @@ TEST_F(BackendRecoveryCryptoTpm1Test, EncryptEccPrivateKey) {
       .current_user = current_user,
   };
 
-  auto result =
-      middleware_->CallSync<&Backend::RecoveryCrypto::EncryptEccPrivateKey>(
-          std::move(encrypt_request_destination_share));
+  auto result = backend_->GetRecoveryCryptoTpm1().EncryptEccPrivateKey(
+      std::move(encrypt_request_destination_share));
 
   ASSERT_OK(result);
   EXPECT_EQ(result->encrypted_own_priv_key, encrypted_own_priv_key);
@@ -162,9 +160,8 @@ TEST_F(BackendRecoveryCryptoTpm1Test, EncryptEccPrivateKeyNoAuth) {
       .current_user = current_user,
   };
 
-  auto result =
-      middleware_->CallSync<&Backend::RecoveryCrypto::EncryptEccPrivateKey>(
-          std::move(encrypt_request_destination_share));
+  auto result = backend_->GetRecoveryCryptoTpm1().EncryptEccPrivateKey(
+      std::move(encrypt_request_destination_share));
 
   ASSERT_OK(result);
   EXPECT_FALSE(result->encrypted_own_priv_key.empty());
@@ -191,9 +188,8 @@ TEST_F(BackendRecoveryCryptoTpm1Test, EncryptEccPrivateKeyNoKeyPair) {
       .current_user = current_user,
   };
 
-  auto result =
-      middleware_->CallSync<&Backend::RecoveryCrypto::EncryptEccPrivateKey>(
-          std::move(encrypt_request_destination_share));
+  auto result = backend_->GetRecoveryCryptoTpm1().EncryptEccPrivateKey(
+      std::move(encrypt_request_destination_share));
 
   ASSERT_NOT_OK(result);
 }
@@ -273,9 +269,9 @@ TEST_F(BackendRecoveryCryptoTpm1Test, GenerateDiffieHellmanSharedSecret) {
       .others_pub_point = std::move(others_pub_key),
   };
 
-  auto result = middleware_->CallSync<
-      &Backend::RecoveryCrypto::GenerateDiffieHellmanSharedSecret>(
-      std::move(decrypt_request_destination_share));
+  auto result =
+      backend_->GetRecoveryCryptoTpm1().GenerateDiffieHellmanSharedSecret(
+          std::move(decrypt_request_destination_share));
 
   ASSERT_OK(result);
   EXPECT_NE(result.value(), nullptr);
@@ -314,9 +310,9 @@ TEST_F(BackendRecoveryCryptoTpm1Test, GenerateDiffieHellmanSharedSecretNoAuth) {
       .others_pub_point = std::move(others_pub_key),
   };
 
-  auto result = middleware_->CallSync<
-      &Backend::RecoveryCrypto::GenerateDiffieHellmanSharedSecret>(
-      std::move(decrypt_request_destination_share));
+  auto result =
+      backend_->GetRecoveryCryptoTpm1().GenerateDiffieHellmanSharedSecret(
+          std::move(decrypt_request_destination_share));
 
   ASSERT_OK(result);
   EXPECT_NE(result.value(), nullptr);
@@ -345,9 +341,9 @@ TEST_F(BackendRecoveryCryptoTpm1Test,
       .others_pub_point = nullptr,
   };
 
-  auto result = middleware_->CallSync<
-      &Backend::RecoveryCrypto::GenerateDiffieHellmanSharedSecret>(
-      std::move(decrypt_request_destination_share));
+  auto result =
+      backend_->GetRecoveryCryptoTpm1().GenerateDiffieHellmanSharedSecret(
+          std::move(decrypt_request_destination_share));
 
   EXPECT_THAT(result, NotOk());
 }
@@ -456,8 +452,7 @@ TEST_F(BackendRecoveryCryptoTpm1Test, GenerateRsaKeyPair) {
                       }),
                       Return(TPM_SUCCESS)));
 
-  auto result =
-      middleware_->CallSync<&Backend::RecoveryCrypto::GenerateRsaKeyPair>();
+  auto result = backend_->GetRecoveryCryptoTpm1().GenerateRsaKeyPair();
 
   ASSERT_OK(result);
   ASSERT_TRUE(result.value().has_value());
@@ -503,9 +498,8 @@ TEST_F(BackendRecoveryCryptoTpm1Test, SignRequestPayload) {
       .WillOnce(DoAll(SetArgPointee<2>(signature.size()),
                       SetArgPointee<3>(signature.data()), Return(TPM_SUCCESS)));
 
-  auto result =
-      middleware_->CallSync<&Backend::RecoveryCrypto::SignRequestPayload>(
-          kFakeKeyBlob, kFakeData);
+  auto result = backend_->GetRecoveryCryptoTpm1().SignRequestPayload(
+      kFakeKeyBlob, kFakeData);
 
   ASSERT_OK(result);
   ASSERT_TRUE(result.value().has_value());

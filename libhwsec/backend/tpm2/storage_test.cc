@@ -58,8 +58,7 @@ TEST_F(BackendStorageTpm2Test, IsReady) {
   EXPECT_CALL(proxy_->GetMock().tpm_manager, RemoveOwnerDependency(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(remove_reply), Return(true)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Storage::IsReady>(
-                  Space::kInstallAttributes),
+  EXPECT_THAT(backend_->GetStorageTpm2().IsReady(Space::kInstallAttributes),
               IsOkAndHolds(Backend::Storage::ReadyState::kReadableAndWritable));
 }
 
@@ -87,8 +86,7 @@ TEST_F(BackendStorageTpm2Test, IsReadyPreparable) {
               GetTpmNonsensitiveStatus(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(status_reply), Return(true)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Storage::IsReady>(
-                  Space::kInstallAttributes),
+  EXPECT_THAT(backend_->GetStorageTpm2().IsReady(Space::kInstallAttributes),
               IsOkAndHolds(Backend::Storage::ReadyState::kPreparable));
 }
 
@@ -116,8 +114,7 @@ TEST_F(BackendStorageTpm2Test, IsReadyNotAvailable) {
               GetTpmNonsensitiveStatus(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(status_reply), Return(true)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Storage::IsReady>(
-                  Space::kInstallAttributes),
+  EXPECT_THAT(backend_->GetStorageTpm2().IsReady(Space::kInstallAttributes),
               NotOk());
 }
 
@@ -153,9 +150,9 @@ TEST_F(BackendStorageTpm2Test, Prepare) {
   EXPECT_CALL(proxy_->GetMock().tpm_manager, RemoveOwnerDependency(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(remove_reply), Return(true)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Storage::Prepare>(
-                  Space::kInstallAttributes, kFakeSize),
-              IsOk());
+  EXPECT_THAT(
+      backend_->GetStorageTpm2().Prepare(Space::kInstallAttributes, kFakeSize),
+      IsOk());
 }
 
 TEST_F(BackendStorageTpm2Test, PrepareNotAvailable) {
@@ -165,7 +162,7 @@ TEST_F(BackendStorageTpm2Test, PrepareNotAvailable) {
   EXPECT_CALL(proxy_->GetMock().tpm_nvram, ListSpaces(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(list_reply), Return(true)));
 
-  auto result = middleware_->CallSync<&Backend::Storage::Prepare>(
+  auto result = backend_->GetStorageTpm2().Prepare(
       Space::kPlatformFirmwareManagementParameters, kFakeSize);
   ASSERT_NOT_OK(result);
 }
@@ -190,7 +187,7 @@ TEST_F(BackendStorageTpm2Test, PrepareReady) {
   EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Storage::Prepare>(
+  EXPECT_THAT(backend_->GetStorageTpm2().Prepare(
                   Space::kPlatformFirmwareManagementParameters, kFakeSize),
               IsOk());
 }
@@ -204,9 +201,9 @@ TEST_F(BackendStorageTpm2Test, Load) {
   EXPECT_CALL(proxy_->GetMock().tpm_nvram, ReadSpace(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(read_reply), Return(true)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Storage::Load>(
-                  Space::kFirmwareManagementParameters),
-              IsOkAndHolds(brillo::BlobFromString(kFakeData)));
+  EXPECT_THAT(
+      backend_->GetStorageTpm2().Load(Space::kFirmwareManagementParameters),
+      IsOkAndHolds(brillo::BlobFromString(kFakeData)));
 }
 
 TEST_F(BackendStorageTpm2Test, Store) {
@@ -231,7 +228,7 @@ TEST_F(BackendStorageTpm2Test, Store) {
   EXPECT_CALL(proxy_->GetMock().tpm_nvram, LockSpace(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(lock_reply), Return(true)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Storage::Store>(
+  EXPECT_THAT(backend_->GetStorageTpm2().Store(
                   Space::kInstallAttributes, brillo::BlobFromString(kFakeData)),
               IsOk());
 }
@@ -253,12 +250,11 @@ TEST_F(BackendStorageTpm2Test, Lock) {
   EXPECT_CALL(proxy_->GetMock().tpm_nvram, LockSpace(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(lock_reply), Return(true)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Storage::Lock>(
-                  Space::kBootlockbox,
-                  Backend::Storage::LockOptions{
-                      .read_lock = false,
-                      .write_lock = true,
-                  }),
+  EXPECT_THAT(backend_->GetStorageTpm2().Lock(Space::kBootlockbox,
+                                              Backend::Storage::LockOptions{
+                                                  .read_lock = false,
+                                                  .write_lock = true,
+                                              }),
               IsOk());
 }
 
@@ -280,12 +276,11 @@ TEST_F(BackendStorageTpm2Test, LockNoOp) {
   // command again.
   EXPECT_CALL(proxy_->GetMock().tpm_nvram, LockSpace).Times(0);
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Storage::Lock>(
-                  Space::kBootlockbox,
-                  Backend::Storage::LockOptions{
-                      .read_lock = false,
-                      .write_lock = true,
-                  }),
+  EXPECT_THAT(backend_->GetStorageTpm2().Lock(Space::kBootlockbox,
+                                              Backend::Storage::LockOptions{
+                                                  .read_lock = false,
+                                                  .write_lock = true,
+                                              }),
               IsOk());
 }
 
@@ -299,9 +294,9 @@ TEST_F(BackendStorageTpm2Test, IsWriteLocked) {
   EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Storage::IsWriteLocked>(
-                  Space::kInstallAttributes),
-              IsOkAndHolds(true));
+  EXPECT_THAT(
+      backend_->GetStorageTpm2().IsWriteLocked(Space::kInstallAttributes),
+      IsOkAndHolds(true));
 }
 
 TEST_F(BackendStorageTpm2Test, EnterpriseRollbackReady) {
@@ -323,8 +318,7 @@ TEST_F(BackendStorageTpm2Test, EnterpriseRollbackReady) {
   EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Storage::IsReady>(
-                  Space::kEnterpriseRollback),
+  EXPECT_THAT(backend_->GetStorageTpm2().IsReady(Space::kEnterpriseRollback),
               IsOkAndHolds(Storage::ReadyState::kReadableAndWritable));
 }
 
@@ -334,8 +328,7 @@ TEST_F(BackendStorageTpm2Test, EnterpriseRollbackNotReady) {
   EXPECT_CALL(proxy_->GetMock().tpm_nvram, ListSpaces(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(list_reply), Return(true)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Storage::IsReady>(
-                  Space::kEnterpriseRollback),
+  EXPECT_THAT(backend_->GetStorageTpm2().IsReady(Space::kEnterpriseRollback),
               NotOk());
 }
 

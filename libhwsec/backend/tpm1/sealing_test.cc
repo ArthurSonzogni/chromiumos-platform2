@@ -88,8 +88,7 @@ TEST_F(BackendSealingTpm1Test, Seal) {
                       SetArgPointee<4>(sealed_data.data()),
                       Return(TPM_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Sealing::Seal>(kFakePolicy,
-                                                             kFakeUnsealedData),
+  EXPECT_THAT(backend_->GetSealingTpm1().Seal(kFakePolicy, kFakeUnsealedData),
               IsOkAndHolds(kFakeSealedData));
 }
 
@@ -97,7 +96,7 @@ TEST_F(BackendSealingTpm1Test, PreloadSealedData) {
   const OperationPolicy kFakePolicy{};
   const std::string kFakeSealedData = "fake_sealed_data";
 
-  auto result = middleware_->CallSync<&Backend::Sealing::PreloadSealedData>(
+  auto result = backend_->GetSealingTpm1().PreloadSealedData(
       kFakePolicy, brillo::BlobFromString(kFakeSealedData));
 
   ASSERT_OK(result);
@@ -156,8 +155,8 @@ TEST_F(BackendSealingTpm1Test, Unseal) {
                       Return(TPM_SUCCESS)));
 
   EXPECT_THAT(
-      middleware_->CallSync<&Backend::Sealing::Unseal>(
-          kFakePolicy, kFakeSealedData, Backend::Sealing::UnsealOptions{}),
+      backend_->GetSealingTpm1().Unseal(kFakePolicy, kFakeSealedData,
+                                        Backend::Sealing::UnsealOptions{}),
       IsOkAndHolds(kFakeUnsealedData));
 }
 

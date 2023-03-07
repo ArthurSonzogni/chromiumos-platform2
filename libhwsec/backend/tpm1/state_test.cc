@@ -41,8 +41,7 @@ TEST_F(BackendStateTpm1Test, IsEnabled) {
               GetTpmNonsensitiveStatus(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::State::IsEnabled>(),
-              IsOkAndHolds(true));
+  EXPECT_THAT(backend_->GetStateTpm1().IsEnabled(), IsOkAndHolds(true));
 }
 
 TEST_F(BackendStateTpm1Test, IsReady) {
@@ -53,8 +52,7 @@ TEST_F(BackendStateTpm1Test, IsReady) {
               GetTpmNonsensitiveStatus(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::State::IsReady>(),
-              IsOkAndHolds(true));
+  EXPECT_THAT(backend_->GetStateTpm1().IsReady(), IsOkAndHolds(true));
 }
 
 TEST_F(BackendStateTpm1Test, Prepare) {
@@ -63,7 +61,7 @@ TEST_F(BackendStateTpm1Test, Prepare) {
   EXPECT_CALL(proxy_->GetMock().tpm_manager, TakeOwnership(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::State::Prepare>(), IsOk());
+  EXPECT_THAT(backend_->GetStateTpm1().Prepare(), IsOk());
 }
 
 TEST_F(BackendStateTpm1Test, WaitUntilReadyEarly) {
@@ -76,8 +74,7 @@ TEST_F(BackendStateTpm1Test, WaitUntilReadyEarly) {
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 
   TestFuture<Status> future;
-  middleware_->CallAsync<&Backend::State::WaitUntilReady>(
-      future.GetCallback<Status>());
+  backend_->GetStateTpm1().WaitUntilReady(future.GetCallback<Status>());
 
   EXPECT_THAT(future.Get(), IsOk());
 }
@@ -99,8 +96,7 @@ TEST_F(BackendStateTpm1Test, WaitUntilReadySignal) {
       .WillOnce(SaveArg<0>(&signal_callback));
 
   TestFuture<Status> future;
-  middleware_->CallAsync<&Backend::State::WaitUntilReady>(
-      future.GetCallback<Status>());
+  backend_->GetStateTpm1().WaitUntilReady(future.GetCallback<Status>());
 
   task_environment_.RunUntilIdle();
   ASSERT_NE(signal_callback, base::NullCallback());
@@ -128,8 +124,7 @@ TEST_F(BackendStateTpm1Test, WaitUntilReadyEarlyAndSignal) {
       .WillOnce(SaveArg<0>(&signal_callback));
 
   TestFuture<Status> future;
-  middleware_->CallAsync<&Backend::State::WaitUntilReady>(
-      future.GetCallback<Status>());
+  backend_->GetStateTpm1().WaitUntilReady(future.GetCallback<Status>());
 
   EXPECT_THAT(future.Get(), IsOk());
 

@@ -25,8 +25,7 @@ namespace hwsec {
 class BackendPinweaverTpm1Test : public BackendTpm1TestBase {};
 
 TEST_F(BackendPinweaverTpm1Test, IsEnabled) {
-  EXPECT_THAT(middleware_->CallSync<&Backend::PinWeaver::IsEnabled>(),
-              IsOkAndHolds(false));
+  EXPECT_THAT(backend_->GetPinWeaverTpm1().IsEnabled(), IsOkAndHolds(false));
 }
 
 }  // namespace hwsec

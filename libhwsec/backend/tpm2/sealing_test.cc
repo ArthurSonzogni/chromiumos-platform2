@@ -26,8 +26,7 @@ namespace hwsec {
 class BackendSealingTpm2Test : public BackendTpm2TestBase {};
 
 TEST_F(BackendSealingTpm2Test, IsSupported) {
-  EXPECT_THAT(middleware_->CallSync<&Backend::Sealing::IsSupported>(),
-              IsOkAndHolds(true));
+  EXPECT_THAT(backend_->GetSealingTpm2().IsSupported(), IsOkAndHolds(true));
 }
 
 TEST_F(BackendSealingTpm2Test, Seal) {
@@ -59,8 +58,8 @@ TEST_F(BackendSealingTpm2Test, Seal) {
       .WillOnce(DoAll(SetArgPointee<5>(kFakeSealedData),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Sealing::Seal>(
-                  kFakePolicy, brillo::SecureBlob(kFakeData)),
+  EXPECT_THAT(backend_->GetSealingTpm2().Seal(kFakePolicy,
+                                              brillo::SecureBlob(kFakeData)),
               IsOkAndHolds(brillo::BlobFromString(kFakeSealedData)));
 }
 
@@ -77,7 +76,7 @@ TEST_F(BackendSealingTpm2Test, PreloadSealedData) {
               GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  auto result = middleware_->CallSync<&Backend::Sealing::PreloadSealedData>(
+  auto result = backend_->GetSealingTpm2().PreloadSealedData(
       kFakePolicy, brillo::BlobFromString(kFakeSealedData));
 
   ASSERT_OK(result);
@@ -103,7 +102,7 @@ TEST_F(BackendSealingTpm2Test, Unseal) {
       .WillOnce(
           DoAll(SetArgPointee<2>(kFakeData), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Sealing::Unseal>(
+  EXPECT_THAT(backend_->GetSealingTpm2().Unseal(
                   kFakePolicy, brillo::BlobFromString(kFakeSealedData),
                   Backend::Sealing::UnsealOptions{}),
               IsOkAndHolds(brillo::SecureBlob(kFakeData)));
@@ -130,7 +129,7 @@ TEST_F(BackendSealingTpm2Test, UnsealWithPreload) {
               GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  auto result = middleware_->CallSync<&Backend::Sealing::PreloadSealedData>(
+  auto result = backend_->GetSealingTpm2().PreloadSealedData(
       kFakePolicy, brillo::BlobFromString(kFakeSealedData));
 
   ASSERT_OK(result);
@@ -141,7 +140,7 @@ TEST_F(BackendSealingTpm2Test, UnsealWithPreload) {
       .WillOnce(
           DoAll(SetArgPointee<2>(kFakeData), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Sealing::Unseal>(
+  EXPECT_THAT(backend_->GetSealingTpm2().Unseal(
                   kFakePolicy, brillo::BlobFromString(kFakeSealedData),
                   Backend::Sealing::UnsealOptions{
                       .preload_data = result->value().GetKey(),

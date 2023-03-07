@@ -80,7 +80,7 @@ TEST_F(BackendSigningTpm2Test, SignRSA) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
@@ -93,7 +93,7 @@ TEST_F(BackendSigningTpm2Test, SignRSA) {
           DoAll(SetArgPointee<6>(kSignature), Return(trunks::TPM_RC_SUCCESS)));
 
   EXPECT_THAT(
-      middleware_->CallSync<&Backend::Signing::RawSign>(
+      backend_->GetSigningTpm2().RawSign(
           key->GetKey(), brillo::BlobFromString(kDataToSign),
           SigningOptions{
               .digest_algorithm = DigestAlgorithm::kSha256,
@@ -167,7 +167,7 @@ TEST_F(BackendSigningTpm2Test, SignECCSha1Raw) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
@@ -179,7 +179,7 @@ TEST_F(BackendSigningTpm2Test, SignECCSha1Raw) {
       .WillOnce(
           DoAll(SetArgPointee<6>(kSignature), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Signing::RawSign>(
+  EXPECT_THAT(backend_->GetSigningTpm2().RawSign(
                   key->GetKey(), brillo::BlobFromString(kDataToSign),
                   SigningOptions{
                       .digest_algorithm = DigestAlgorithm::kNoDigest,
@@ -251,7 +251,7 @@ TEST_F(BackendSigningTpm2Test, SignECC) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
@@ -263,7 +263,7 @@ TEST_F(BackendSigningTpm2Test, SignECC) {
       .WillOnce(
           DoAll(SetArgPointee<6>(kSignature), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Signing::RawSign>(
+  EXPECT_THAT(backend_->GetSigningTpm2().RawSign(
                   key->GetKey(), brillo::BlobFromString(kDataToSign),
                   SigningOptions{
                       .digest_algorithm = DigestAlgorithm::kSha1,
@@ -325,7 +325,7 @@ TEST_F(BackendSigningTpm2Test, SignECCWrongResponse) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
@@ -337,7 +337,7 @@ TEST_F(BackendSigningTpm2Test, SignECCWrongResponse) {
       .WillOnce(
           DoAll(SetArgPointee<6>(kSignature), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Signing::RawSign>(
+  EXPECT_THAT(backend_->GetSigningTpm2().RawSign(
                   key->GetKey(), brillo::BlobFromString(kDataToSign),
                   SigningOptions{
                       .digest_algorithm = DigestAlgorithm::kSha256,
@@ -367,14 +367,14 @@ TEST_F(BackendSigningTpm2Test, SignUnknownKey) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
   EXPECT_THAT(
-      middleware_->CallSync<&Backend::Signing::Sign>(
+      backend_->GetSigningTpm2().Sign(
           key->GetKey(), brillo::BlobFromString(kDataToSign),
           SigningOptions{
               .digest_algorithm = DigestAlgorithm::kSha256,
@@ -430,7 +430,7 @@ TEST_F(BackendSigningTpm2Test, SignRSAPkcs1v15WithNull) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
@@ -443,7 +443,7 @@ TEST_F(BackendSigningTpm2Test, SignRSAPkcs1v15WithNull) {
           DoAll(SetArgPointee<6>(kSignature), Return(trunks::TPM_RC_SUCCESS)));
 
   EXPECT_THAT(
-      middleware_->CallSync<&Backend::Signing::RawSign>(
+      backend_->GetSigningTpm2().RawSign(
           key->GetKey(), brillo::BlobFromString(kDataToSign),
           SigningOptions{
               .digest_algorithm = DigestAlgorithm::kMd5,
@@ -499,7 +499,7 @@ TEST_F(BackendSigningTpm2Test, SignRSARsassaPss) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
@@ -511,7 +511,7 @@ TEST_F(BackendSigningTpm2Test, SignRSARsassaPss) {
       .WillOnce(
           DoAll(SetArgPointee<6>(kSignature), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Signing::RawSign>(
+  EXPECT_THAT(backend_->GetSigningTpm2().RawSign(
                   key->GetKey(), brillo::BlobFromString(kDataToSign),
                   SigningOptions{
                       .digest_algorithm = DigestAlgorithm::kSha512,
@@ -568,13 +568,13 @@ TEST_F(BackendSigningTpm2Test, SignRSARsassaPssUnsupported) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Signing::RawSign>(
+  EXPECT_THAT(backend_->GetSigningTpm2().RawSign(
                   key->GetKey(), brillo::BlobFromString(kDataToSign),
                   SigningOptions{
                       .digest_algorithm = DigestAlgorithm::kMd5,
@@ -632,7 +632,7 @@ TEST_F(BackendSigningTpm2Test, SignRSAPkcs1v15WithDecrypt) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
@@ -645,7 +645,7 @@ TEST_F(BackendSigningTpm2Test, SignRSAPkcs1v15WithDecrypt) {
           DoAll(SetArgPointee<5>(kSignature), Return(trunks::TPM_RC_SUCCESS)));
 
   EXPECT_THAT(
-      middleware_->CallSync<&Backend::Signing::RawSign>(
+      backend_->GetSigningTpm2().RawSign(
           key->GetKey(), brillo::BlobFromString(kDataToSign),
           SigningOptions{
               .digest_algorithm = DigestAlgorithm::kSha384,
@@ -701,14 +701,14 @@ TEST_F(BackendSigningTpm2Test, SignRSAPkcs1v15WithDecryptTooLong) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
   EXPECT_THAT(
-      middleware_->CallSync<&Backend::Signing::RawSign>(
+      backend_->GetSigningTpm2().RawSign(
           key->GetKey(), brillo::BlobFromString(kDataToSign),
           SigningOptions{
               .digest_algorithm = DigestAlgorithm::kSha384,
@@ -765,7 +765,7 @@ TEST_F(BackendSigningTpm2Test, SignRSARsassaPssWithDecrypt) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
@@ -777,7 +777,7 @@ TEST_F(BackendSigningTpm2Test, SignRSARsassaPssWithDecrypt) {
       .WillOnce(
           DoAll(SetArgPointee<5>(kSignature), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Signing::RawSign>(
+  EXPECT_THAT(backend_->GetSigningTpm2().RawSign(
                   key->GetKey(), brillo::BlobFromString(kDataToSign),
                   SigningOptions{
                       .digest_algorithm = DigestAlgorithm::kSha1,
@@ -835,13 +835,13 @@ TEST_F(BackendSigningTpm2Test, SignRSARsassaPssWithDecryptDataTooSmall) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Signing::RawSign>(
+  EXPECT_THAT(backend_->GetSigningTpm2().RawSign(
                   key->GetKey(), brillo::BlobFromString(kDataToSign),
                   SigningOptions{
                       .digest_algorithm = DigestAlgorithm::kSha1,
@@ -899,13 +899,13 @@ TEST_F(BackendSigningTpm2Test, SignRSARsassaPssWithDecryptUnsupportedMgf1Alg) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
   ASSERT_OK(key);
 
-  EXPECT_THAT(middleware_->CallSync<&Backend::Signing::RawSign>(
+  EXPECT_THAT(backend_->GetSigningTpm2().RawSign(
                   key->GetKey(), brillo::BlobFromString(kDataToSign),
                   SigningOptions{
                       .digest_algorithm = DigestAlgorithm::kSha1,
@@ -974,7 +974,7 @@ TEST_F(BackendSigningTpm2Test, SignRSAPkcs1v15WithoutDigestAlgorithm) {
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  auto key = middleware_->CallSync<&Backend::KeyManagement::LoadKey>(
+  auto key = backend_->GetKeyManagementTpm2().LoadKey(
       kFakePolicy, brillo::BlobFromString(kFakeKeyBlob),
       Backend::KeyManagement::LoadKeyOptions{});
 
@@ -987,7 +987,7 @@ TEST_F(BackendSigningTpm2Test, SignRSAPkcs1v15WithoutDigestAlgorithm) {
           DoAll(SetArgPointee<6>(kSignature), Return(trunks::TPM_RC_SUCCESS)));
 
   EXPECT_THAT(
-      middleware_->CallSync<&Backend::Signing::RawSign>(
+      backend_->GetSigningTpm2().RawSign(
           key->GetKey(), brillo::BlobFromString(kFullDataToSign),
           SigningOptions{
               .digest_algorithm = DigestAlgorithm::kNoDigest,

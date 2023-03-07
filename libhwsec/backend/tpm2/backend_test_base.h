@@ -12,7 +12,8 @@
 
 #include "libhwsec/backend/tpm2/backend.h"
 #include "libhwsec/error/tpm2_error.h"
-#include "libhwsec/middleware/middleware.h"
+#include "libhwsec/middleware/middleware_derivative.h"
+#include "libhwsec/middleware/middleware_owner.h"
 #include "libhwsec/proxy/proxy_for_test.h"
 #include "libhwsec/status.h"
 
@@ -36,14 +37,11 @@ class BackendTpm2TestBase : public ::testing::Test {
         std::move(backend), ThreadingMode::kCurrentThread);
 
     backend_->set_middleware_derivative_for_test(middleware_owner_->Derive());
-
-    middleware_ = std::make_unique<Middleware>(middleware_owner_->Derive());
   }
 
  protected:
   std::unique_ptr<ProxyForTest> proxy_;
   std::unique_ptr<MiddlewareOwner> middleware_owner_;
-  std::unique_ptr<Middleware> middleware_;
   BackendTpm2* backend_;
 };
 
