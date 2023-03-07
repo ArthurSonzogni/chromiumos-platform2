@@ -16,8 +16,7 @@ class AudioSetGainRoutine final : public DiagnosticRoutineWithStatus {
  public:
   explicit AudioSetGainRoutine(Context* context,
                                uint64_t node_id,
-                               uint8_t gain,
-                               bool mute_on);
+                               uint8_t gain);
   AudioSetGainRoutine(const AudioSetGainRoutine&) = delete;
   AudioSetGainRoutine& operator=(const AudioSetGainRoutine&) = delete;
 
@@ -32,13 +31,8 @@ class AudioSetGainRoutine final : public DiagnosticRoutineWithStatus {
  private:
   // Tartget node id.
   uint64_t node_id_;
-
   // Target gain value.
   uint8_t gain_;
-
-  // Mute the device or not.
-  bool mute_on_;
-
   // Context object used to communicate with the executor.
   Context* context_;
 };

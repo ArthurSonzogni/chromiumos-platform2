@@ -132,7 +132,7 @@ class FakeDiagnosticsService final
                                 RunAudioSetVolumeRoutineCallback) override;
   void RunAudioSetGainRoutine(uint64_t node_id,
                               uint8_t gain,
-                              bool mute_on,
+                              bool deprecated_mute_on,
                               RunAudioSetGainRoutineCallback) override;
   void RunBluetoothDiscoveryRoutine(
       RunBluetoothDiscoveryRoutineCallback callback) override;

@@ -668,14 +668,12 @@ bool DiagActions::ActionRunAudioSetVolumeRoutine(uint64_t node_id,
   return ProcessRoutineResponse(response);
 }
 
-bool DiagActions::ActionRunAudioSetGainRoutine(uint64_t node_id,
-                                               uint8_t gain,
-                                               bool mute_on) {
+bool DiagActions::ActionRunAudioSetGainRoutine(uint64_t node_id, uint8_t gain) {
   mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
 
   cros_healthd_diagnostics_service_->RunAudioSetGainRoutine(
-      node_id, gain, mute_on,
+      node_id, gain, /*deprecated_mute_on=*/false,
       base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
                      &response, run_loop.QuitClosure()));
   run_loop.Run();

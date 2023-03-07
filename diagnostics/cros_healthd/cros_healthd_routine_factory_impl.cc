@@ -323,10 +323,8 @@ CrosHealthdRoutineFactoryImpl::MakeAudioSetVolumeRoutine(uint64_t node_id,
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeAudioSetGainRoutine(uint64_t node_id,
-                                                       uint8_t gain,
-                                                       bool mute_on) {
-  return std::make_unique<AudioSetGainRoutine>(context_, node_id, gain,
-                                               mute_on);
+                                                       uint8_t gain) {
+  return std::make_unique<AudioSetGainRoutine>(context_, node_id, gain);
 }
 
 std::unique_ptr<DiagnosticRoutine>

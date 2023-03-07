@@ -179,7 +179,7 @@ class CrosHealthdRoutineFactory {
   // diagnostics/routines/audio/audio_set_gain.cc for details on the routine
   // itself.
   virtual std::unique_ptr<DiagnosticRoutine> MakeAudioSetGainRoutine(
-      uint64_t node_id, uint8_t gain, bool mute_on) = 0;
+      uint64_t node_id, uint8_t gain) = 0;
   // Constructs a new instance of the Bluetooth power routine. See
   // diagnostics/routines/bluetooth/bluetooth_power for details on the routine
   // itself.

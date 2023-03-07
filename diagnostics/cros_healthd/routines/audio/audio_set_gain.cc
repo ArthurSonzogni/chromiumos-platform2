@@ -24,9 +24,8 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 AudioSetGainRoutine::AudioSetGainRoutine(Context* context,
                                          uint64_t node_id,
-                                         uint8_t gain,
-                                         bool mute_on)
-    : node_id_(node_id), gain_(gain), mute_on_(mute_on), context_(context) {
+                                         uint8_t gain)
+    : node_id_(node_id), gain_(gain), context_(context) {
   gain_ = std::min(gain_, (uint8_t)100);
 }
 
@@ -36,12 +35,6 @@ void AudioSetGainRoutine::Start() {
   UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kRunning, "");
   brillo::ErrorPtr error;
 
-  if (!context_->cras_proxy()->SetInputMute(mute_on_, &error)) {
-    LOG(ERROR) << "Failed to set input mute: " << error->GetMessage();
-    UpdateStatus(mojom::DiagnosticRoutineStatusEnum::kError,
-                 "Failed to set input mute");
-    return;
-  }
   if (!context_->cras_proxy()->SetInputNodeGain(node_id_, gain_, &error)) {
     LOG(ERROR) << "Failed to set audio input node[" << node_id_ << "] to gain["
                << gain_ << "]: " << error->GetMessage();

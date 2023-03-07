@@ -27,7 +27,6 @@ using ::testing::WithArg;
 
 constexpr uint8_t target_gain = 42;
 constexpr uint64_t target_node_id = 1234567;
-constexpr bool target_mute_on = false;
 
 class AudioSetGainRoutineTest : public testing::Test {
  protected:
@@ -37,24 +36,11 @@ class AudioSetGainRoutineTest : public testing::Test {
 
   void CreateRoutine() {
     routine_ = std::make_unique<AudioSetGainRoutine>(
-        &mock_context_, target_node_id, target_gain, target_mute_on);
+        &mock_context_, target_node_id, target_gain);
   }
 
   org::chromium::cras::ControlProxyMock* mock_cras_proxy() {
     return mock_context_.mock_cras_proxy();
-  }
-
-  void SetSetInputMute() {
-    EXPECT_CALL(*mock_cras_proxy(), SetInputMute(target_mute_on, _, _))
-        .WillOnce(Return(true));
-  }
-
-  void SetSetInputMuteError() {
-    EXPECT_CALL(*mock_cras_proxy(), SetInputMute(target_mute_on, _, _))
-        .WillOnce(DoAll(WithArg<1>(Invoke([](brillo::ErrorPtr* error) {
-                          *error = brillo::Error::Create(FROM_HERE, "", "", "");
-                        })),
-                        Return(false)));
   }
 
   void SetSetInputNodeGain() {
@@ -84,24 +70,14 @@ TEST_F(AudioSetGainRoutineTest, DefaultConstruction) {
 
 TEST_F(AudioSetGainRoutineTest, SuccessfulCase) {
   CreateRoutine();
-  SetSetInputMute();
   SetSetInputNodeGain();
 
   routine_->Start();
   EXPECT_EQ(routine_->GetStatus(), mojom::DiagnosticRoutineStatusEnum::kPassed);
 }
 
-TEST_F(AudioSetGainRoutineTest, SetInputMuteError) {
-  CreateRoutine();
-  SetSetInputMuteError();
-
-  routine_->Start();
-  EXPECT_EQ(routine_->GetStatus(), mojom::DiagnosticRoutineStatusEnum::kError);
-}
-
 TEST_F(AudioSetGainRoutineTest, SetInputNodeGainError) {
   CreateRoutine();
-  SetSetInputMute();
   SetSetInputNodeGainError();
 
   routine_->Start();

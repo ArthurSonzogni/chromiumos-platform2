@@ -499,9 +499,9 @@ void CrosHealthdDiagnosticsService::RunAudioSetVolumeRoutine(
 void CrosHealthdDiagnosticsService::RunAudioSetGainRoutine(
     uint64_t node_id,
     uint8_t gain,
-    bool mute_on,
+    bool deprecated_mute_on,
     RunAudioSetGainRoutineCallback callback) {
-  RunRoutine(routine_factory_->MakeAudioSetGainRoutine(node_id, gain, mute_on),
+  RunRoutine(routine_factory_->MakeAudioSetGainRoutine(node_id, gain),
              mojo_ipc::DiagnosticRoutineEnum::kAudioSetGain,
              std::move(callback));
 }

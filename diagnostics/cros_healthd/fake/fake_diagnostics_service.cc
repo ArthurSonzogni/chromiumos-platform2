@@ -248,7 +248,7 @@ void FakeDiagnosticsService::RunAudioSetVolumeRoutine(
 void FakeDiagnosticsService::RunAudioSetGainRoutine(
     uint64_t node_id,
     uint8_t gain,
-    bool mute_on,
+    bool deprecated_mute_on,
     RunAudioSetGainRoutineCallback callback) {
   NOTIMPLEMENTED();
 }

@@ -142,7 +142,7 @@ class CrosHealthdDiagnosticsService final
       RunAudioSetVolumeRoutineCallback callback) override;
   void RunAudioSetGainRoutine(uint64_t node_id,
                               uint8_t gain,
-                              bool mute_on,
+                              bool deprecated_mute_on,
                               RunAudioSetGainRoutineCallback callback) override;
   void RunBluetoothPowerRoutine(
       RunBluetoothPowerRoutineCallback callback) override;

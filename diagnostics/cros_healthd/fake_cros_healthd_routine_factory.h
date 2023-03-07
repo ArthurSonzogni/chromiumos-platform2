@@ -117,7 +117,7 @@ class FakeCrosHealthdRoutineFactory final : public CrosHealthdRoutineFactory {
   std::unique_ptr<DiagnosticRoutine> MakeAudioSetVolumeRoutine(
       uint64_t node_id, uint8_t volume, bool mute_on) override;
   std::unique_ptr<DiagnosticRoutine> MakeAudioSetGainRoutine(
-      uint64_t node_id, uint8_t gain, bool mute_on) override;
+      uint64_t node_id, uint8_t gain) override;
   std::unique_ptr<DiagnosticRoutine> MakeBluetoothPowerRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakeBluetoothDiscoveryRoutine() override;
   std::unique_ptr<DiagnosticRoutine> MakeBluetoothScanningRoutine(

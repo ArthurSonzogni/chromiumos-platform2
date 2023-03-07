@@ -423,8 +423,7 @@ FakeCrosHealthdRoutineFactory::MakeAudioSetVolumeRoutine(uint64_t node_id,
 
 std::unique_ptr<DiagnosticRoutine>
 FakeCrosHealthdRoutineFactory::MakeAudioSetGainRoutine(uint64_t node_id,
-                                                       uint8_t gain,
-                                                       bool mute_on) {
+                                                       uint8_t gain) {
   return std::move(next_routine_);
 }
 
