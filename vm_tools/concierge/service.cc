@@ -1936,7 +1936,7 @@ std::string GetFilesystem(const base::FilePath& disk_location) {
 StartVmResponse Service::StartVm(StartVmRequest request,
                                  std::unique_ptr<dbus::MessageReader> reader,
                                  VmMemoryId vm_memory_id) {
-  LOG(INFO) << "Received StartVm request";
+  LOG(INFO) << "Received request: " << __func__;
   StartVmResponse response;
   response.set_status(VM_STATUS_FAILURE);
 
@@ -2453,8 +2453,8 @@ int64_t Service::GetVmMemoryMiB(const StartVmRequest& request) {
 }
 
 std::unique_ptr<dbus::Response> Service::StopVm(dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received StopVm request";
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -2616,8 +2616,8 @@ void Service::StopAllVmsImpl(VmStopReason reason) {
 
 std::unique_ptr<dbus::Response> Service::SuspendVm(
     dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received SuspendVm request";
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -2680,8 +2680,8 @@ std::unique_ptr<dbus::Response> Service::SuspendVm(
 
 std::unique_ptr<dbus::Response> Service::ResumeVm(
     dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received ResumeVm request";
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -2754,8 +2754,8 @@ std::unique_ptr<dbus::Response> Service::ResumeVm(
 
 std::unique_ptr<dbus::Response> Service::GetVmInfo(
     dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received GetVmInfo request";
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -2814,8 +2814,8 @@ std::unique_ptr<dbus::Response> Service::GetVmInfo(
 
 std::unique_ptr<dbus::Response> Service::GetVmEnterpriseReportingInfo(
     dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received GetVmEnterpriseReportingInfo request";
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -2888,8 +2888,8 @@ bool Service::OnVmBootComplete(const std::string& owner_id,
 
 std::unique_ptr<dbus::Response> Service::ArcVmCompleteBoot(
     dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received ArcVmCompleteBoot request";
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -2929,8 +2929,8 @@ std::unique_ptr<dbus::Response> Service::ArcVmCompleteBoot(
 
 std::unique_ptr<dbus::Response> Service::SetBalloonTimer(
     dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received SetBalloonTimer request";
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -2967,8 +2967,8 @@ std::unique_ptr<dbus::Response> Service::SetBalloonTimer(
 
 std::unique_ptr<dbus::Response> Service::AdjustVm(
     dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received AdjustVm request";
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -3062,8 +3062,8 @@ std::unique_ptr<dbus::Response> Service::AdjustVm(
 
 std::unique_ptr<dbus::Response> Service::SyncVmTimes(
     dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received SyncVmTimes request";
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -3237,8 +3237,8 @@ bool CreateFilesystem(const base::FilePath& disk_location,
 
 std::unique_ptr<dbus::Response> Service::CreateDiskImage(
     dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received CreateDiskImage request";
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -3535,8 +3535,8 @@ std::unique_ptr<dbus::Response> Service::CreateDiskImage(
 
 std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
     dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received DestroyDiskImage request";
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -3683,8 +3683,8 @@ std::unique_ptr<dbus::Response> Service::DestroyDiskImage(
 
 std::unique_ptr<dbus::Response> Service::ResizeDiskImage(
     dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received ResizeDiskImage request";
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -3841,8 +3841,8 @@ void Service::FinishResize(const std::string& owner_id,
 
 std::unique_ptr<dbus::Response> Service::ExportDiskImage(
     dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received ExportDiskImage request";
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -3970,8 +3970,8 @@ std::unique_ptr<dbus::Response> Service::ExportDiskImage(
 
 std::unique_ptr<dbus::Response> Service::ImportDiskImage(
     dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received ImportDiskImage request";
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -4107,8 +4107,8 @@ void Service::RunDiskImageOperation(std::string uuid) {
 
 std::unique_ptr<dbus::Response> Service::CheckDiskImageStatus(
     dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received DiskImageStatus request";
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -4154,8 +4154,8 @@ std::unique_ptr<dbus::Response> Service::CheckDiskImageStatus(
 
 std::unique_ptr<dbus::Response> Service::CancelDiskImageOperation(
     dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received CancelDiskImage request";
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -4206,8 +4206,9 @@ std::unique_ptr<dbus::Response> Service::CancelDiskImageOperation(
 
 std::unique_ptr<dbus::Response> Service::ListVmDisks(
     dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received ListVmDisks request";
+
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
 
@@ -4254,8 +4255,9 @@ std::unique_ptr<dbus::Response> Service::ListVmDisks(
 
 std::unique_ptr<dbus::Response> Service::GetContainerSshKeys(
     dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received GetContainerSshKeys request";
+
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
 
@@ -4306,8 +4308,8 @@ std::unique_ptr<dbus::Response> Service::GetContainerSshKeys(
 
 std::unique_ptr<dbus::Response> Service::AttachUsbDevice(
     dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received AttachUsbDevice request";
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -4402,8 +4404,8 @@ std::unique_ptr<dbus::Response> Service::AttachUsbDevice(
 
 std::unique_ptr<dbus::Response> Service::DetachUsbDevice(
     dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received DetachUsbDevice request";
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -4465,8 +4467,8 @@ std::unique_ptr<dbus::Response> Service::DetachUsbDevice(
 
 std::unique_ptr<dbus::Response> Service::ListUsbDevices(
     dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received ListUsbDevices request";
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -4534,8 +4536,8 @@ void Service::ComposeDnsResponse(dbus::MessageWriter* writer) {
 
 std::unique_ptr<dbus::Response> Service::GetDnsSettings(
     dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received GetDnsSettings request";
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -4593,8 +4595,8 @@ std::unique_ptr<dbus::Response> Service::SetVmCpuRestriction(
 
 std::unique_ptr<dbus::Response> Service::ListVms(
     dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received ListVms request";
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -4666,8 +4668,8 @@ std::unique_ptr<dbus::Response> Service::ListVms(
 void Service::ReclaimVmMemory(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender response_sender) {
+  LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received ReclaimVmMemory request";
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -4958,7 +4960,7 @@ void Service::OnTremplinStartedSignal(dbus::Signal* signal) {
                        tremplin_started_signal.vm_name());
     return;
   }
-  LOG(INFO) << "Received TremplinStartedSignal for " << iter->first;
+  LOG(INFO) << "Received request: " << __func__ << " for " << iter->first;
   iter->second->SetTremplinStarted();
 }
 
@@ -4976,7 +4978,7 @@ void Service::OnVmToolsStateChangedSignal(dbus::Signal* signal) {
                << VmId(owner_id, vm_name);
     return;
   }
-  LOG(INFO) << "Received VmToolsStateChangedSignal for " << iter->first;
+  LOG(INFO) << "Received request: " << __func__ << " for " << iter->first;
   iter->second->VmToolsStateChanged(running);
 }
 
@@ -5317,7 +5319,7 @@ std::unique_ptr<dbus::Response> Service::AddGroupPermissionMesa(
     dbus::MethodCall* method_call) {
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
-  LOG(INFO) << "Received AddGroupPermissionMesa request";
+  LOG(INFO) << "Received request: " << __func__;
 
   dbus::MessageReader reader(method_call);
   dbus::MessageWriter writer(dbus_response.get());
@@ -5350,8 +5352,8 @@ std::unique_ptr<dbus::Response> Service::AddGroupPermissionMesa(
 
 std::unique_ptr<dbus::Response> Service::GetVmLaunchAllowed(
     dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received GetVmLaunchAllowed request";
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -5386,8 +5388,8 @@ std::unique_ptr<dbus::Response> Service::GetVmLaunchAllowed(
 
 std::unique_ptr<dbus::Response> Service::GetVmLogs(
     dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request: " << __func__;
   DCHECK(sequence_checker_.CalledOnValidSequence());
-  LOG(INFO) << "Received GetVmLogs request";
 
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
@@ -5450,7 +5452,7 @@ std::unique_ptr<dbus::Response> Service::GetVmLogs(
 std::unique_ptr<dbus::Response> Service::SwapVm(dbus::MethodCall* method_call) {
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
-  LOG(INFO) << "Received SwapVm request";
+  LOG(INFO) << "Received request: " << __func__;
 
   dbus::MessageReader reader(method_call);
   dbus::MessageWriter writer(dbus_response.get());
@@ -5598,9 +5600,10 @@ std::unique_ptr<dbus::Response> Service::InstallPflash(
 // TODO(b/244486983): separate out GPU VM cache methods out of service.cc file
 std::unique_ptr<dbus::Response> Service::GetVmGpuCachePath(
     dbus::MethodCall* method_call) {
+  LOG(INFO) << "Received request: " << __func__;
+
   std::unique_ptr<dbus::Response> dbus_response(
       dbus::Response::FromMethodCall(method_call));
-  LOG(INFO) << "Received GetVmGpuCachePath request";
 
   dbus::MessageReader reader(method_call);
   dbus::MessageWriter writer(dbus_response.get());
