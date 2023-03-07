@@ -412,6 +412,7 @@ if (use.test) {
     ]
     if (use.tpm || use.test) {
       sources += [
+        "backend/tpm1/backend_test_base.cc",
         "backend/tpm1/config_test.cc",
         "backend/tpm1/da_mitigation_test.cc",
         "backend/tpm1/deriving_test.cc",
@@ -436,6 +437,7 @@ if (use.test) {
     }
     if (use.tpm2 || use.test) {
       sources += [
+        "backend/tpm2/backend_test_base.cc",
         "backend/tpm2/config_test.cc",
         "backend/tpm2/da_mitigation_test.cc",
         "backend/tpm2/deriving_test.cc",

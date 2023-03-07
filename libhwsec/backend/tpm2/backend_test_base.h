@@ -6,38 +6,23 @@
 #define LIBHWSEC_BACKEND_TPM2_BACKEND_TEST_BASE_H_
 
 #include <memory>
-#include <utility>
 
 #include <gtest/gtest.h>
 
 #include "libhwsec/backend/tpm2/backend.h"
-#include "libhwsec/error/tpm2_error.h"
-#include "libhwsec/middleware/middleware_derivative.h"
 #include "libhwsec/middleware/middleware_owner.h"
 #include "libhwsec/proxy/proxy_for_test.h"
-#include "libhwsec/status.h"
 
 namespace hwsec {
 
 class BackendTpm2TestBase : public ::testing::Test {
  public:
-  BackendTpm2TestBase() = default;
+  BackendTpm2TestBase();
   BackendTpm2TestBase(const BackendTpm2TestBase&) = delete;
   BackendTpm2TestBase& operator=(const BackendTpm2TestBase&) = delete;
-  ~BackendTpm2TestBase() override = default;
+  ~BackendTpm2TestBase() override;
 
-  void SetUp() override {
-    proxy_ = std::make_unique<ProxyForTest>();
-
-    auto backend =
-        std::make_unique<BackendTpm2>(*proxy_, MiddlewareDerivative{});
-    backend_ = backend.get();
-
-    middleware_owner_ = std::make_unique<MiddlewareOwner>(
-        std::move(backend), ThreadingMode::kCurrentThread);
-
-    backend_->set_middleware_derivative_for_test(middleware_owner_->Derive());
-  }
+  void SetUp() override;
 
  protected:
   std::unique_ptr<ProxyForTest> proxy_;

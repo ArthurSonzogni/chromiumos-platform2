@@ -9,6 +9,7 @@
 
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <trunks/error_codes.h>
 
 #define __packed __attribute((packed))
 #define __aligned(x) __attribute((aligned(x)))
