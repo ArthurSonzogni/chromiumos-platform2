@@ -154,7 +154,7 @@ class NetInterface {
   std::string mac_;
   Value signal_strengths_{Value::Type::DICT};
 
-  void AddAddressTo(Value* dv, struct sockaddr* sa);
+  void AddAddressTo(Value::Dict& dv, struct sockaddr* sa);
 };
 
 NetInterface::NetInterface(int fd, const char* name) : fd_(fd), name_(name) {}
@@ -169,11 +169,11 @@ void NetInterface::AddSignalStrength(const std::string& name, int strength) {
   signal_strengths_.SetIntKey(name, strength);
 }
 
-void NetInterface::AddAddressTo(Value* dv, struct sockaddr* sa) {
-  Value* lv = dv->FindListKey("addrs");
+void NetInterface::AddAddressTo(Value::Dict& dict, struct sockaddr* sa) {
+  Value::List* lv = dict.FindList("addrs");
   if (lv == nullptr)
-    lv = dv->GetDict().Set("addrs", Value::List{});
-  lv->GetList().Append(sockaddr2str(sa));
+    lv = dict.Set("addrs", Value::List{})->GetIfList();
+  lv->Append(sockaddr2str(sa));
 }
 
 void NetInterface::AddAddress(struct ifaddrs* ifa) {
@@ -183,16 +183,17 @@ void NetInterface::AddAddress(struct ifaddrs* ifa) {
     return;
   if (ifa->ifa_addr->sa_family == AF_INET) {
     // An IPv4 address.
-    AddAddressTo(&ipv4_, ifa->ifa_addr);
-    if (!ipv4_.FindKey("mask")) {
-      ipv4_.SetStringKey("mask", sockaddr2str(ifa->ifa_netmask));
+    auto& ipv4_dict = ipv4_.GetDict();
+    AddAddressTo(ipv4_dict, ifa->ifa_addr);
+    if (!ipv4_dict.Find("mask")) {
+      ipv4_dict.Set("mask", sockaddr2str(ifa->ifa_netmask));
     }
-    if (!ipv4_.FindKey("destination")) {
-      ipv4_.SetStringKey("destination", sockaddr2str(ifa->ifa_broadaddr));
+    if (!ipv4_dict.Find("destination")) {
+      ipv4_dict.Set("destination", sockaddr2str(ifa->ifa_broadaddr));
     }
   } else if (ifa->ifa_addr->sa_family == AF_INET6) {
     // An IPv6 address.
-    AddAddressTo(&ipv6_, ifa->ifa_addr);
+    AddAddressTo(ipv6_.GetDict(), ifa->ifa_addr);
   }
 }
 
