@@ -673,7 +673,7 @@
           "disable-dark-resume": "0",
           "internal-backlight-no-als-ac-brightness": "80.5",
           "internal-backlight-no-als-battery-brightness": "63.4",
-          "set-cellular-regulatory-domain-mapping": "ISED 2\nCE 4\nMIC 4",
+          "set-cellular-regulatory-domain-mapping": "CE 4\nISED 2\nMIC 4",
           "set-cellular-transmit-power-for-activity-proximity": "1",
           "set-cellular-transmit-power-for-proximity": "1",
           "set-cellular-transmit-power-for-tablet-mode": "1",
