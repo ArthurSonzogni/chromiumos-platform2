@@ -38,14 +38,14 @@ namespace hwsec {
 using BackendPinweaverTpm2Test = BackendTpm2TestBase;
 
 TEST_F(BackendPinweaverTpm2Test, IsEnabled) {
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(1), Return(trunks::TPM_RC_SUCCESS)));
 
   EXPECT_THAT(backend_->GetPinWeaverTpm2().IsEnabled(), IsOkAndHolds(true));
 }
 
 TEST_F(BackendPinweaverTpm2Test, IsEnabledMismatch) {
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(Return(trunks::SAPI_RC_ABI_MISMATCH))
       .WillOnce(DoAll(SetArgPointee<1>(1), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -53,14 +53,14 @@ TEST_F(BackendPinweaverTpm2Test, IsEnabledMismatch) {
 }
 
 TEST_F(BackendPinweaverTpm2Test, IsDisabled) {
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
 
   EXPECT_THAT(backend_->GetPinWeaverTpm2().IsEnabled(), IsOkAndHolds(false));
 }
 
 TEST_F(BackendPinweaverTpm2Test, IsDisabledMismatch) {
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(Return(trunks::SAPI_RC_ABI_MISMATCH))
       .WillOnce(Return(trunks::SAPI_RC_ABI_MISMATCH));
 
@@ -72,11 +72,11 @@ TEST_F(BackendPinweaverTpm2Test, Reset) {
   constexpr uint32_t kBitsPerLevel = 2;
   constexpr uint32_t kVersion = 1;
   const std::string kFakeRoot = "fake_root";
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               PinWeaverResetTree(kVersion, 2, 7, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(0), SetArgPointee<4>(kFakeRoot),
                       Return(trunks::TPM_RC_SUCCESS)));
@@ -93,11 +93,11 @@ TEST_F(BackendPinweaverTpm2Test, ResetFailure) {
   constexpr uint32_t kLengthLabels = 128;
   constexpr uint32_t kBitsPerLevel = 128;
   constexpr uint32_t kVersion = 1;
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               PinWeaverResetTree(kVersion, 128, 1, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(PW_ERR_BITS_PER_LEVEL_INVALID),
                       Return(trunks::TPM_RC_SUCCESS)));
@@ -147,11 +147,11 @@ TEST_F(BackendPinweaverTpm2Test, InsertCredential) {
       brillo::Blob(32, 'Z'),
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               PinWeaverInsertLeaf(kVersion, kLabel, _, kFakeLeSecret,
                                   kFakeHeSecret, kFakeResetSecret, kDelaySched,
                                   _, Eq(kExpirationDelay), _, _, _, _))
@@ -198,7 +198,7 @@ TEST_F(BackendPinweaverTpm2Test, InsertCredentialUnsupportedPolicy) {
       brillo::Blob(32, 'Z'),
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -247,7 +247,7 @@ TEST_F(BackendPinweaverTpm2Test, InsertCredentialV0PolicyUnsupported) {
       brillo::Blob(32, 'Z'),
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -297,7 +297,7 @@ TEST_F(BackendPinweaverTpm2Test, InsertCredentialV1ExpirationUnsupported) {
       brillo::Blob(32, 'Z'),
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -347,11 +347,11 @@ TEST_F(BackendPinweaverTpm2Test, InsertCredentialNoDelay) {
       brillo::Blob(32, 'Z'),
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               PinWeaverInsertLeaf(kVersion, kLabel, _, kFakeLeSecret,
                                   kFakeHeSecret, kFakeResetSecret, kDelaySched,
                                   _, Eq(kExpirationDelay), _, _, _, _))
@@ -381,11 +381,11 @@ TEST_F(BackendPinweaverTpm2Test, CheckCredential) {
       brillo::Blob(32, 'Z'),
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               PinWeaverTryAuth(kVersion, kFakeLeSecret, _, kFakeCred, _, _, _,
                                _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<4>(0), SetArgPointee<5>(kFakeRoot),
@@ -427,11 +427,11 @@ TEST_F(BackendPinweaverTpm2Test, CheckCredentialAuthFail) {
       brillo::Blob(32, 'Z'),
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               PinWeaverTryAuth(kVersion, kFakeLeSecret, _, kFakeCred, _, _, _,
                                _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<4>(PW_ERR_LOWENT_AUTH_FAILED),
@@ -467,11 +467,11 @@ TEST_F(BackendPinweaverTpm2Test, CheckCredentialTpmFail) {
       brillo::Blob(32, 'Z'),
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               PinWeaverTryAuth(kVersion, kFakeLeSecret, _, kFakeCred, _, _, _,
                                _, _, _, _))
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
@@ -493,11 +493,11 @@ TEST_F(BackendPinweaverTpm2Test, RemoveCredential) {
       brillo::Blob(32, 'Z'),
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               PinWeaverRemoveLeaf(kVersion, kLabel, _, kFakeMac, _, _))
       .WillOnce(DoAll(SetArgPointee<4>(0), SetArgPointee<5>(kFakeRoot),
                       Return(trunks::TPM_RC_SUCCESS)));
@@ -521,11 +521,11 @@ TEST_F(BackendPinweaverTpm2Test, RemoveCredentialFail) {
       brillo::Blob(32, 'Z'),
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               PinWeaverRemoveLeaf(kVersion, kLabel, _, kFakeMac, _, _))
       .WillOnce(DoAll(SetArgPointee<4>(PW_ERR_HMAC_AUTH_FAILED),
                       SetArgPointee<5>(kFakeRoot),
@@ -551,12 +551,12 @@ TEST_F(BackendPinweaverTpm2Test, ResetCredential) {
       brillo::Blob(32, 'Z'),
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
   EXPECT_CALL(
-      proxy_->GetMock().tpm_utility,
+      proxy_->GetMockTpmUtility(),
       PinWeaverResetAuth(kVersion, kFakeResetSecret, /*strong_reset=*/true, _,
                          kFakeCred, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<5>(0), SetArgPointee<6>(kFakeRoot),
@@ -591,7 +591,7 @@ TEST_F(BackendPinweaverTpm2Test, ResetCredentialV1ExpirationUnsupported) {
       brillo::Blob(32, 'Z'),
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -629,11 +629,11 @@ TEST_F(BackendPinweaverTpm2Test, GetLog) {
   const std::vector<trunks::PinWeaverLogEntry> kFakeLog = {entry1, entry2,
                                                            entry3, entry4};
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               PinWeaverGetLog(kVersion, kFakeRoot, _, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(0), SetArgPointee<3>(kNewRoot),
                       SetArgPointee<4>(kFakeLog),
@@ -652,11 +652,11 @@ TEST_F(BackendPinweaverTpm2Test, GetLogFail) {
   const std::string kFakeRoot = "fake_root";
   const std::string kNewRoot = "new_root";
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               PinWeaverGetLog(kVersion, kFakeRoot, _, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(PW_ERR_TREE_INVALID),
                       Return(trunks::TPM_RC_SUCCESS)));
@@ -681,11 +681,11 @@ TEST_F(BackendPinweaverTpm2Test, ReplayLogOperation) {
       brillo::Blob(32, 'Z'),
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               PinWeaverLogReplay(kVersion, kFakeRoot, _, kFakeCred, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<4>(0), SetArgPointee<5>(kFakeRoot),
                       SetArgPointee<6>(kNewCred), SetArgPointee<7>(kFakeMac),
@@ -714,11 +714,11 @@ TEST_F(BackendPinweaverTpm2Test, ReplayLogOperationFail) {
       brillo::Blob(32, 'Z'),
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               PinWeaverLogReplay(kVersion, kFakeRoot, _, kFakeCred, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<4>(PW_ERR_ROOT_NOT_FOUND),
                       Return(trunks::TPM_RC_SUCCESS)));
@@ -784,7 +784,7 @@ TEST_F(BackendPinweaverTpm2Test, GetDelayInSecondsV1) {
 
   // In version 1, GetDelayInSeconds only parses the cred metadata, without
   // initiating any requests to the PinWeaver server.
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(1), Return(trunks::TPM_RC_SUCCESS)));
 
   EXPECT_THAT(backend_->GetPinWeaverTpm2().GetDelayInSeconds(
@@ -818,12 +818,12 @@ TEST_F(BackendPinweaverTpm2Test, GetDelayInSecondsV2) {
 
   // In version 2, GetDelayInSeconds requests the current timestamp from the
   // PinWeaver server, so that it can return a more accurate remaining seconds.
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(2), Return(trunks::TPM_RC_SUCCESS)));
 
   // This is only called twice because when the delay is infinite, we don't have
   // to query the current timestamp.
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverSysInfo(2, _, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverSysInfo(2, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(0), SetArgPointee<2>(kFakeRoot),
                       SetArgPointee<3>(0), SetArgPointee<4>(120),
                       Return(trunks::TPM_RC_SUCCESS)))
@@ -871,7 +871,7 @@ TEST_F(BackendPinweaverTpm2Test, GetExpirationInSecondsV1) {
   leaf_data->expiration_ts.boot_count = 1;
   leaf_data->expiration_ts.timer_value = 120;
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -896,13 +896,13 @@ TEST_F(BackendPinweaverTpm2Test, GetExpirationInSecondsV2) {
   leaf_data->expiration_ts.boot_count = 0;
   leaf_data->expiration_ts.timer_value = 0;
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
   // This is only called 3 times because when the delay is 0, we don't have
   // to query the current timestamp.
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               PinWeaverSysInfo(kVersion, _, _, _, _))
       .Times(3)
       .WillRepeatedly(DoAll(SetArgPointee<1>(0), SetArgPointee<2>(kFakeRoot),
@@ -957,12 +957,12 @@ TEST_F(BackendPinweaverTpm2Test, GeneratePk) {
   memcpy(server_public_key.y, kServerCoordinate.data(),
          kServerCoordinate.size());
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
   EXPECT_CALL(
-      proxy_->GetMock().tpm_utility,
+      proxy_->GetMockTpmUtility(),
       PinWeaverGenerateBiometricsAuthPk(kVersion, kAuthChannel, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(0), SetArgPointee<4>(kFakeRoot),
                       SetArgPointee<5>(server_public_key),
@@ -986,7 +986,7 @@ TEST_F(BackendPinweaverTpm2Test, GeneratePkV1Unsupported) {
   memcpy(client_public_key.y, kClientCoordinate.data(),
          kClientCoordinate.size());
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -1006,7 +1006,7 @@ TEST_F(BackendPinweaverTpm2Test, GeneratePkInvalidAuthChannel) {
   memcpy(client_public_key.y, kClientCoordinate.data(),
          kClientCoordinate.size());
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -1053,11 +1053,11 @@ TEST_F(BackendPinweaverTpm2Test, InsertRateLimiter) {
       brillo::Blob(32, 'Z'),
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               PinWeaverCreateBiometricsAuthRateLimiter(
                   kVersion, kAuthChannel, kLabel, _, kFakeResetSecret,
                   kDelaySched, _, Eq(kExpirationDelay), _, _, _, _))
@@ -1097,7 +1097,7 @@ TEST_F(BackendPinweaverTpm2Test, InsertRateLimiterV1Unsupported) {
       brillo::Blob(32, 'Z'),
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -1126,7 +1126,7 @@ TEST_F(BackendPinweaverTpm2Test, InsertRateLimiterInvalidAuthChannel) {
       brillo::Blob(32, 'Z'),
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -1155,12 +1155,12 @@ TEST_F(BackendPinweaverTpm2Test, StartBiometricsAuth) {
       brillo::Blob(32, 'Z'),
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
   EXPECT_CALL(
-      proxy_->GetMock().tpm_utility,
+      proxy_->GetMockTpmUtility(),
       PinWeaverStartBiometricsAuth(kVersion, kAuthChannel, kFakeClientNonce, _,
                                    kFakeCred, _, _, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<5>(0), SetArgPointee<6>(kFakeRoot),
@@ -1205,11 +1205,11 @@ TEST_F(BackendPinweaverTpm2Test, StartBiometricsAuthAuthFail) {
       brillo::Blob(32, 'Z'),
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               PinWeaverStartBiometricsAuth(kVersion, kWrongAuthChannel,
                                            kFakeClientNonce, _, kFakeCred, _, _,
                                            _, _, _, _, _))
@@ -1253,12 +1253,12 @@ TEST_F(BackendPinweaverTpm2Test, StartBiometricsAuthTpmFail) {
       brillo::Blob(32, 'Z'),
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
   EXPECT_CALL(
-      proxy_->GetMock().tpm_utility,
+      proxy_->GetMockTpmUtility(),
       PinWeaverStartBiometricsAuth(kVersion, kAuthChannel, kFakeClientNonce, _,
                                    kFakeCred, _, _, _, _, _, _, _))
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
@@ -1284,7 +1284,7 @@ TEST_F(BackendPinweaverTpm2Test, StartBiometricsAuthV1NotSupported) {
       brillo::Blob(32, 'Z'),
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -1309,7 +1309,7 @@ TEST_F(BackendPinweaverTpm2Test, StartBiometricsAuthInvalidAuthChannel) {
       brillo::Blob(32, 'Z'),
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -1323,11 +1323,11 @@ TEST_F(BackendPinweaverTpm2Test, BlockGeneratePk) {
   constexpr uint32_t kVersion = 2;
   const std::string kFakeRoot = "fake_root";
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               PinWeaverBlockGenerateBiometricsAuthPk(kVersion, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(0), SetArgPointee<2>(kFakeRoot),
                       Return(trunks::TPM_RC_SUCCESS)));
@@ -1338,7 +1338,7 @@ TEST_F(BackendPinweaverTpm2Test, BlockGeneratePk) {
 TEST_F(BackendPinweaverTpm2Test, BlockGeneratePkV1NotSupported) {
   constexpr uint32_t kVersion = 1;
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, PinWeaverIsSupported(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), PinWeaverIsSupported(_, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kVersion), Return(trunks::TPM_RC_SUCCESS)));
 

@@ -207,7 +207,7 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
     TSS_HPOLICY kFakeHPolicy = 0x94123;
 
     EXPECT_CALL(
-        proxy_->GetMock().overalls,
+        proxy_->GetMockOveralls(),
         Ospi_Context_CreateObject(
             kDefaultContext, TSS_OBJECT_TYPE_RSAKEY,
             TSS_KEY_VOLATILE | TSS_KEY_TYPE_SIGNING | TSS_KEY_SIZE_2048, _))
@@ -215,20 +215,20 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
         .WillOnce(
             DoAll(SetArgPointee<3>(kFakePubKeyHandle), Return(TPM_SUCCESS)));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_SetAttribData(kFakePubKeyHandle, TSS_TSPATTRIB_RSAKEY_INFO,
                                    TSS_TSPATTRIB_KEYINFO_RSA_MODULUS, _, _))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_SetAttribUint32(kFakePubKeyHandle, TSS_TSPATTRIB_KEY_INFO,
                                      TSS_TSPATTRIB_KEYINFO_SIGSCHEME,
                                      TSS_SS_RSASSAPKCS1V15_SHA1))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_GetAttribData(kFakePubKeyHandle, TSS_TSPATTRIB_KEY_BLOB,
                                    TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY, _, _))
         .Times(generic_times)
@@ -236,24 +236,24 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
                         SetArgPointee<4>(fake_pubkey_.data()),
                         Return(TPM_SUCCESS)));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_Context_CreateObject(kDefaultContext,
                                           TSS_OBJECT_TYPE_MIGDATA, 0, _))
         .Times(generic_times)
         .WillOnce(DoAll(SetArgPointee<3>(kMigdataHandle), Return(TPM_SUCCESS)));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_SetAttribData(kMigdataHandle, TSS_MIGATTRIB_AUTHORITY_DATA,
                                    TSS_MIGATTRIB_AUTHORITY_DIGEST, _, _))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_TPM_CMKApproveMA(kDefaultDelegateTpm, kMigdataHandle))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_GetAttribData(kMigdataHandle, TSS_MIGATTRIB_AUTHORITY_DATA,
                                    TSS_MIGATTRIB_AUTHORITY_APPROVAL_HMAC, _, _))
         .Times(generic_times)
@@ -262,7 +262,7 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
                         Return(TPM_SUCCESS)));
 
     EXPECT_CALL(
-        proxy_->GetMock().overalls,
+        proxy_->GetMockOveralls(),
         Ospi_Context_CreateObject(
             kDefaultContext, TSS_OBJECT_TYPE_RSAKEY,
             TSS_KEY_STRUCT_KEY12 | TSS_KEY_VOLATILE | TSS_KEY_TYPE_STORAGE |
@@ -272,13 +272,13 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
         .Times(generic_times)
         .WillOnce(DoAll(SetArgPointee<3>(kCmkHandle), Return(TPM_SUCCESS)));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_SetAttribData(kCmkHandle, TSS_TSPATTRIB_KEY_CMKINFO,
                                    TSS_TSPATTRIB_KEYINFO_CMK_MA_DIGEST, _, _))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_SetAttribData(kCmkHandle, TSS_TSPATTRIB_KEY_CMKINFO,
                                    TSS_TSPATTRIB_KEYINFO_CMK_MA_APPROVAL, _, _))
         .With(Args<4, 3>(ElementsAreArray(ma_approval_ticket_)))
@@ -286,7 +286,7 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
         .WillOnce(Return(TPM_SUCCESS));
 
     EXPECT_CALL(
-        proxy_->GetMock().overalls,
+        proxy_->GetMockOveralls(),
         Ospi_Context_CreateObject(kDefaultContext, TSS_OBJECT_TYPE_POLICY,
                                   TSS_POLICY_USAGE, _))
         .Times(generic_times)
@@ -294,41 +294,41 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
             DoAll(SetArgPointee<3>(kUsagePolicyHandle), Return(TPM_SUCCESS)));
 
     EXPECT_CALL(
-        proxy_->GetMock().overalls,
+        proxy_->GetMockOveralls(),
         Ospi_Policy_SetSecret(kUsagePolicyHandle, TSS_SECRET_MODE_PLAIN, _, _))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_Policy_AssignToObject(kUsagePolicyHandle, kCmkHandle))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
     EXPECT_CALL(
-        proxy_->GetMock().overalls,
+        proxy_->GetMockOveralls(),
         Ospi_Context_CreateObject(kDefaultContext, TSS_OBJECT_TYPE_POLICY,
                                   TSS_POLICY_MIGRATION, _))
         .Times(generic_times)
         .WillOnce(DoAll(SetArgPointee<3>(kMigrationPolicyHandle),
                         Return(TPM_SUCCESS)));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_Policy_SetSecret(kMigrationPolicyHandle,
                                       TSS_SECRET_MODE_PLAIN, _, _))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_Policy_AssignToObject(kMigrationPolicyHandle, kCmkHandle))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_Key_CreateKey(kCmkHandle, kDefaultSrkHandle, 0))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_GetAttribData(kCmkHandle, TSS_TSPATTRIB_KEY_BLOB,
                                    TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY, _, _))
         .Times(generic_times)
@@ -336,7 +336,7 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
                         SetArgPointee<4>(cmk_pubkey_.data()),
                         Return(TPM_SUCCESS)));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_GetAttribData(kCmkHandle, TSS_TSPATTRIB_KEY_BLOB,
                                    TSS_TSPATTRIB_KEYBLOB_BLOB, _, _))
         .Times(generic_times)
@@ -344,13 +344,13 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
                         SetArgPointee<4>(srk_wrapped_cmk_.data()),
                         Return(TPM_SUCCESS)));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_TPM_GetRandom(kDefaultTpm, 32, _))
         .Times(generic_times)
         .WillOnce(
             DoAll(SetArgPointee<2>(auth_data_.data()), Return(TPM_SUCCESS)));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Orspi_UnloadBlob_PUBKEY_s(_, _, _, _))
         .With(Args<1, 2>(ElementsAreArray(cmk_pubkey_)))
         .Times(generic_times)
@@ -381,7 +381,7 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
           return TPM_SUCCESS;
         });
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Orspi_UnloadBlob_RSA_KEY_PARMS_s(_, _, _, _))
         .With(Args<1, 2>(ElementsAreArray(kFakeParms)))
         .Times(generic_times)
@@ -394,7 +394,7 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
                         }),
                         Return(TPM_SUCCESS)));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_Context_CreateObject(kDefaultContext, TSS_OBJECT_TYPE_PCRS,
                                           TSS_PCRS_STRUCT_INFO, _))
         .Times(generic_times)
@@ -402,18 +402,18 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
         .WillOnce(
             DoAll(SetArgPointee<3>(kFakePcrHandle2), Return(TPM_SUCCESS)));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_PcrComposite_SetPcrValue(kFakePcrHandle1, _, _, _))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_PcrComposite_SetPcrValue(kFakePcrHandle2, _, _, _))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
     EXPECT_CALL(
-        proxy_->GetMock().overalls,
+        proxy_->GetMockOveralls(),
         Ospi_Context_CreateObject(kDefaultContext, TSS_OBJECT_TYPE_ENCDATA,
                                   TSS_ENCDATA_SEAL, _))
         .Times(generic_times)
@@ -421,43 +421,43 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
         .WillOnce(
             DoAll(SetArgPointee<3>(kFakeEncHandle2), Return(TPM_SUCCESS)));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_GetPolicyObject(kDefaultTpm, TSS_POLICY_USAGE, _))
         .Times(generic_times)
         .WillOnce(DoAll(SetArgPointee<2>(kFakeHPolicy), Return(TPM_SUCCESS)))
         .WillOnce(DoAll(SetArgPointee<2>(kFakeHPolicy), Return(TPM_SUCCESS)));
 
     EXPECT_CALL(
-        proxy_->GetMock().overalls,
+        proxy_->GetMockOveralls(),
         Ospi_Policy_SetSecret(kFakeHPolicy, TSS_SECRET_MODE_PLAIN, _, _))
         .With(Args<3, 2>(ElementsAreArray(auth_data_)))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS))
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_Policy_AssignToObject(kFakeHPolicy, kFakeEncHandle1))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_Policy_AssignToObject(kFakeHPolicy, kFakeEncHandle2))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_Data_Seal(kFakeEncHandle1, kDefaultSrkHandle, _, _,
                                kFakePcrHandle1))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_Data_Seal(kFakeEncHandle2, kDefaultSrkHandle, _, _,
                                kFakePcrHandle2))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_GetAttribData(kFakeEncHandle1, TSS_TSPATTRIB_ENCDATA_BLOB,
                                    TSS_TSPATTRIB_ENCDATABLOB_BLOB, _, _))
         .Times(generic_times)
@@ -465,7 +465,7 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
                         SetArgPointee<4>(fake_sealed_data1_.data()),
                         Return(TPM_SUCCESS)));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_GetAttribData(kFakeEncHandle2, TSS_TSPATTRIB_ENCDATA_BLOB,
                                    TSS_TSPATTRIB_ENCDATABLOB_BLOB, _, _))
         .Times(generic_times)
@@ -489,14 +489,14 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
 
     SetupDelegate();
 
-    EXPECT_CALL(proxy_->GetMock().overalls, Ospi_TPM_PcrRead(_, _, _, _))
+    EXPECT_CALL(proxy_->GetMockOveralls(), Ospi_TPM_PcrRead(_, _, _, _))
         .Times(generic_times)
         .WillOnce(DoAll(SetArgPointee<2>(pcr_value_.size()),
                         SetArgPointee<3>(pcr_value_.data()),
                         Return(TPM_SUCCESS)));
 
     EXPECT_CALL(
-        proxy_->GetMock().overalls,
+        proxy_->GetMockOveralls(),
         Ospi_Context_CreateObject(
             kDefaultContext, TSS_OBJECT_TYPE_RSAKEY,
             TSS_KEY_VOLATILE | TSS_KEY_TYPE_SIGNING | TSS_KEY_SIZE_2048, _))
@@ -504,20 +504,20 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
         .WillOnce(
             DoAll(SetArgPointee<3>(kFakePubKeyHandle), Return(TPM_SUCCESS)));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_SetAttribData(kFakePubKeyHandle, TSS_TSPATTRIB_RSAKEY_INFO,
                                    TSS_TSPATTRIB_KEYINFO_RSA_MODULUS, _, _))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_SetAttribUint32(kFakePubKeyHandle, TSS_TSPATTRIB_KEY_INFO,
                                      TSS_TSPATTRIB_KEYINFO_SIGSCHEME,
                                      TSS_SS_RSASSAPKCS1V15_SHA1))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_GetAttribData(kFakePubKeyHandle, TSS_TSPATTRIB_KEY_BLOB,
                                    TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY, _, _))
         .Times(generic_times)
@@ -526,7 +526,7 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
                         Return(TPM_SUCCESS)));
 
     EXPECT_CALL(
-        proxy_->GetMock().overalls,
+        proxy_->GetMockOveralls(),
         Ospi_Context_CreateObject(
             kDefaultContext, TSS_OBJECT_TYPE_RSAKEY,
             TSS_KEY_VOLATILE | TSS_KEY_TYPE_STORAGE | TSS_KEY_SIZE_2048, _))
@@ -535,13 +535,13 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
                         Return(TPM_SUCCESS)));
 
     EXPECT_CALL(
-        proxy_->GetMock().overalls,
+        proxy_->GetMockOveralls(),
         Ospi_SetAttribData(kFakeMigDestPubKeyHandle, TSS_TSPATTRIB_RSAKEY_INFO,
                            TSS_TSPATTRIB_KEYINFO_RSA_MODULUS, _, _))
         .WillOnce(Return(TPM_SUCCESS));
 
     EXPECT_CALL(
-        proxy_->GetMock().overalls,
+        proxy_->GetMockOveralls(),
         Ospi_SetAttribUint32(kFakeMigDestPubKeyHandle, TSS_TSPATTRIB_KEY_INFO,
                              TSS_TSPATTRIB_KEYINFO_ENCSCHEME,
                              TSS_ES_RSAESOAEP_SHA1_MGF1))
@@ -549,7 +549,7 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
         .WillOnce(Return(TPM_SUCCESS));
 
     EXPECT_CALL(
-        proxy_->GetMock().overalls,
+        proxy_->GetMockOveralls(),
         Ospi_GetAttribData(kFakeMigDestPubKeyHandle, TSS_TSPATTRIB_KEY_BLOB,
                            TSS_TSPATTRIB_KEYBLOB_PUBLIC_KEY, _, _))
         .Times(generic_times)
@@ -580,7 +580,7 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
     SetupDelegate();
 
     EXPECT_CALL(
-        proxy_->GetMock().overalls,
+        proxy_->GetMockOveralls(),
         Ospi_Context_CreateObject(
             kDefaultContext, TSS_OBJECT_TYPE_RSAKEY,
             TSS_KEY_VOLATILE | TSS_KEY_TYPE_SIGNING | TSS_KEY_SIZE_2048, _))
@@ -588,13 +588,13 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
         .WillOnce(
             DoAll(SetArgPointee<3>(kFakePubKeyHandle), Return(TPM_SUCCESS)));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_SetAttribData(kFakePubKeyHandle, TSS_TSPATTRIB_RSAKEY_INFO,
                                    TSS_TSPATTRIB_KEYINFO_RSA_MODULUS, _, _))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_SetAttribUint32(kFakePubKeyHandle, TSS_TSPATTRIB_KEY_INFO,
                                      TSS_TSPATTRIB_KEYINFO_SIGSCHEME,
                                      TSS_SS_RSASSAPKCS1V15_SHA1))
@@ -602,7 +602,7 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
         .WillOnce(Return(TPM_SUCCESS));
 
     EXPECT_CALL(
-        proxy_->GetMock().overalls,
+        proxy_->GetMockOveralls(),
         Ospi_Context_CreateObject(
             kDefaultContext, TSS_OBJECT_TYPE_RSAKEY,
             TSS_KEY_VOLATILE | TSS_KEY_TYPE_STORAGE | TSS_KEY_SIZE_2048, _))
@@ -611,21 +611,21 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
                         Return(TPM_SUCCESS)));
 
     EXPECT_CALL(
-        proxy_->GetMock().overalls,
+        proxy_->GetMockOveralls(),
         Ospi_SetAttribData(kFakeMigDestPubKeyHandle, TSS_TSPATTRIB_RSAKEY_INFO,
                            TSS_TSPATTRIB_KEYINFO_RSA_MODULUS, _, _))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
     EXPECT_CALL(
-        proxy_->GetMock().overalls,
+        proxy_->GetMockOveralls(),
         Ospi_SetAttribUint32(kFakeMigDestPubKeyHandle, TSS_TSPATTRIB_KEY_INFO,
                              TSS_TSPATTRIB_KEYINFO_ENCSCHEME,
                              TSS_ES_RSAESOAEP_SHA1_MGF1))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_TPM_AuthorizeMigrationTicket(
                     kDefaultDelegateTpm, kFakeMigDestPubKeyHandle,
                     TSS_MS_RESTRICT_APPROVE_DOUBLE, _, _))
@@ -634,7 +634,7 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
                         SetArgPointee<4>(mig_auth_blob_.data()),
                         Return(TPM_SUCCESS)));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_Context_CreateObject(kDefaultContext,
                                           TSS_OBJECT_TYPE_MIGDATA, 0, _))
         .Times(generic_times)
@@ -643,14 +643,14 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
             DoAll(SetArgPointee<3>(kMigdataHandle2), Return(TPM_SUCCESS)));
 
     EXPECT_CALL(
-        proxy_->GetMock().overalls,
+        proxy_->GetMockOveralls(),
         Ospi_SetAttribData(kMigdataHandle, TSS_MIGATTRIB_MIGRATIONBLOB,
                            TSS_MIGATTRIB_MIG_DESTINATION_PUBKEY_BLOB, _, _))
         .With(Args<4, 3>(ElementsAreArray(mig_dest_pubkey_)))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_SetAttribData(kMigdataHandle, TSS_MIGATTRIB_MIGRATIONBLOB,
                                    TSS_MIGATTRIB_MIG_SOURCE_PUBKEY_BLOB, _, _))
         .With(Args<4, 3>(ElementsAreArray(cmk_pubkey_)))
@@ -658,27 +658,27 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
         .WillOnce(Return(TPM_SUCCESS));
 
     EXPECT_CALL(
-        proxy_->GetMock().overalls,
+        proxy_->GetMockOveralls(),
         Ospi_SetAttribData(kMigdataHandle, TSS_MIGATTRIB_MIGRATIONBLOB,
                            TSS_MIGATTRIB_MIG_AUTHORITY_PUBKEY_BLOB, _, _))
         .With(Args<4, 3>(ElementsAreArray(fake_pubkey_)))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_SetAttribData(kMigdataHandle, TSS_MIGATTRIB_TICKET_DATA,
                                    TSS_MIGATTRIB_TICKET_SIG_VALUE, _, _))
         .With(Args<4, 3>(ElementsAreArray(fake_challenge_response_)))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_TPM_CMKCreateTicket(kDefaultDelegateTpm, kFakePubKeyHandle,
                                          kMigdataHandle))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_GetAttribData(kMigdataHandle, TSS_MIGATTRIB_TICKET_DATA,
                                    TSS_MIGATTRIB_TICKET_SIG_TICKET, _, _))
         .Times(generic_times)
@@ -686,13 +686,13 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
                         SetArgPointee<4>(cmk_mig_sign_ticket_.data()),
                         Return(TPM_SUCCESS)));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_Context_CreateObject(kDefaultContext,
                                           TSS_OBJECT_TYPE_RSAKEY, 0, _))
         .Times(generic_times)
         .WillOnce(DoAll(SetArgPointee<3>(kCmkHandle), Return(TPM_SUCCESS)));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_SetAttribData(kCmkHandle, TSS_TSPATTRIB_KEY_BLOB,
                                    TSS_TSPATTRIB_KEYBLOB_BLOB, _, _))
         .With(Args<4, 3>(ElementsAreArray(srk_wrapped_cmk_)))
@@ -700,14 +700,14 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
         .WillOnce(Return(TPM_SUCCESS));
 
     EXPECT_CALL(
-        proxy_->GetMock().overalls,
+        proxy_->GetMockOveralls(),
         Ospi_SetAttribData(kMigdataHandle2, TSS_MIGATTRIB_MIGRATIONBLOB,
                            TSS_MIGATTRIB_MIG_DESTINATION_PUBKEY_BLOB, _, _))
         .With(Args<4, 3>(ElementsAreArray(mig_dest_pubkey_)))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_SetAttribData(kMigdataHandle2, TSS_MIGATTRIB_MIGRATIONBLOB,
                                    TSS_MIGATTRIB_MIG_SOURCE_PUBKEY_BLOB, _, _))
         .With(Args<4, 3>(ElementsAreArray(cmk_pubkey_)))
@@ -715,35 +715,35 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
         .WillOnce(Return(TPM_SUCCESS));
 
     EXPECT_CALL(
-        proxy_->GetMock().overalls,
+        proxy_->GetMockOveralls(),
         Ospi_SetAttribData(kMigdataHandle2, TSS_MIGATTRIB_MIGRATIONBLOB,
                            TSS_MIGATTRIB_MIG_AUTHORITY_PUBKEY_BLOB, _, _))
         .With(Args<4, 3>(ElementsAreArray(fake_pubkey_)))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_SetAttribData(kMigdataHandle2, TSS_MIGATTRIB_MIGRATIONBLOB,
                                    TSS_MIGATTRIB_MIG_MSALIST_PUBKEY_BLOB, _, _))
         .With(Args<4, 3>(ElementsAreArray(fake_pubkey_)))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_SetAttribData(kMigdataHandle2,
                                    TSS_MIGATTRIB_MIGRATIONTICKET, 0, _, _))
         .With(Args<4, 3>(ElementsAreArray(mig_auth_blob_)))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_SetAttribData(kMigdataHandle2, TSS_MIGATTRIB_TICKET_DATA,
                                    TSS_MIGATTRIB_TICKET_SIG_TICKET, _, _))
         .With(Args<4, 3>(ElementsAreArray(cmk_mig_sign_ticket_)))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_Key_CMKCreateBlob(kCmkHandle, kDefaultSrkHandle,
                                        kMigdataHandle2, _, _))
         .Times(generic_times)
@@ -751,7 +751,7 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
                         SetArgPointee<4>(migration_random_.data()),
                         Return(TPM_SUCCESS)));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_GetAttribData(kMigdataHandle2, TSS_MIGATTRIB_MIGRATIONBLOB,
                                    TSS_MIGATTRIB_MIG_XOR_BLOB, _, _))
         .Times(generic_times)
@@ -772,8 +772,7 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
     RSA_public_encrypt(padded.size(), padded.data(), key12_encdata.data(), rsa,
                        RSA_NO_PADDING);
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
-                Orspi_UnloadBlob_KEY12_s(_, _, _, _))
+    EXPECT_CALL(proxy_->GetMockOveralls(), Orspi_UnloadBlob_KEY12_s(_, _, _, _))
         .With(Args<1, 2>(ElementsAreArray(migrated_cmk_key12_)))
         .Times(generic_times)
         .WillOnce([&](uint64_t* offset, auto&&, auto&&, TPM_KEY12* tpm_key12) {
@@ -835,7 +834,7 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
         brillo::CombineBlobs({Sha1(tpm_migrate_asymkey_oaep_label_blob),
                               brillo::Blob(1, 1), message});
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Orspi_MGF1(TSS_HASH_SHA1, _, _, seed.size(), _))
         .With(Args<2, 1>(ElementsAreArray(brillo::Blob(
             SHA_DIGEST_LENGTH + 1 + kTpmMigrateAsymkeyBlobSize, '\0'))))
@@ -847,7 +846,7 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
           return TPM_SUCCESS;
         });
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Orspi_MGF1(TSS_HASH_SHA1, _, _, padded_message.size(), _))
         .With(Args<2, 1>(ElementsAreArray(seed)))
         .Times(generic_times)
@@ -858,7 +857,7 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
           return TPM_SUCCESS;
         });
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Orspi_UnloadBlob_PUBKEY_s(_, _, _, _))
         .With(Args<1, 2>(ElementsAreArray(cmk_pubkey_)))
         .Times(generic_times)
@@ -889,7 +888,7 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
           return TPM_SUCCESS;
         });
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Orspi_UnloadBlob_RSA_KEY_PARMS_s(_, _, _, _))
         .With(Args<1, 2>(ElementsAreArray(kFakeParms)))
         .Times(generic_times)
@@ -903,42 +902,42 @@ class BackendSignatureSealingTpm1Test : public BackendTpm1TestBase {
                         Return(TPM_SUCCESS)));
 
     EXPECT_CALL(
-        proxy_->GetMock().overalls,
+        proxy_->GetMockOveralls(),
         Ospi_Context_CreateObject(kDefaultContext, TSS_OBJECT_TYPE_ENCDATA,
                                   TSS_ENCDATA_SEAL, _))
         .Times(generic_times)
         .WillOnce(DoAll(SetArgPointee<3>(kFakeEncHandle), Return(TPM_SUCCESS)));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_GetPolicyObject(kDefaultTpm, TSS_POLICY_USAGE, _))
         .Times(generic_times)
         .WillOnce(DoAll(SetArgPointee<2>(kFakeHPolicy), Return(TPM_SUCCESS)));
 
     EXPECT_CALL(
-        proxy_->GetMock().overalls,
+        proxy_->GetMockOveralls(),
         Ospi_Policy_SetSecret(kFakeHPolicy, TSS_SECRET_MODE_PLAIN, _, _))
         .With(Args<3, 2>(ElementsAreArray(auth_data_)))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_Policy_AssignToObject(kFakeHPolicy, kFakeEncHandle))
         .Times(generic_times)
         .WillOnce(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_SetAttribData(kFakeEncHandle, TSS_TSPATTRIB_ENCDATA_BLOB,
                                    TSS_TSPATTRIB_ENCDATABLOB_BLOB, _, _))
         .With(Args<4, 3>(ElementsAreArray(fake_sealed_data1_)))
         .WillRepeatedly(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_SetAttribData(kFakeEncHandle, TSS_TSPATTRIB_ENCDATA_BLOB,
                                    TSS_TSPATTRIB_ENCDATABLOB_BLOB, _, _))
         .With(Args<4, 3>(ElementsAreArray(fake_sealed_data2_)))
         .WillRepeatedly(Return(TPM_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().overalls,
+    EXPECT_CALL(proxy_->GetMockOveralls(),
                 Ospi_Data_Unseal(kFakeEncHandle, kDefaultSrkHandle, _, _))
         .Times(generic_times)
         .WillOnce(DoAll(SetArgPointee<2>(unsealed_data_.size()),

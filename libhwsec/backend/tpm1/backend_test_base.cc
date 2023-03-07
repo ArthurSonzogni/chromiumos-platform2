@@ -67,20 +67,20 @@ void BackendTpm1TestBase::SetUp() {
 
   backend_->set_middleware_derivative_for_test(middleware_owner_->Derive());
 
-  EXPECT_CALL(proxy_->GetMock().overalls, Ospi_Context_Create(_))
+  EXPECT_CALL(proxy_->GetMockOveralls(), Ospi_Context_Create(_))
       .WillRepeatedly(
           DoAll(SetArgPointee<0>(kDefaultContext), Return(TPM_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Context_Connect(kDefaultContext, nullptr))
       .WillRepeatedly(Return(TPM_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Context_GetTpmObject(kDefaultContext, _))
       .WillRepeatedly(
           DoAll(SetArgPointee<1>(kDefaultTpm), Return(TPM_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().overalls, Ospi_Context_Close(kDefaultContext))
+  EXPECT_CALL(proxy_->GetMockOveralls(), Ospi_Context_Close(kDefaultContext))
       .WillRepeatedly(Return(TPM_SUCCESS));
 }
 
@@ -92,33 +92,33 @@ void BackendTpm1TestBase::SetupSrk() {
   tpm_manager::GetTpmNonsensitiveStatusReply reply;
   reply.set_status(TpmManagerStatus::STATUS_SUCCESS);
   reply.set_is_owned(true);
-  EXPECT_CALL(proxy_->GetMock().tpm_manager,
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(),
               GetTpmNonsensitiveStatus(_, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(reply), Return(true)));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Context_LoadKeyByUUID(kDefaultContext, TSS_PS_TYPE_SYSTEM,
                                          MatchTssUUID(SRK_UUID), _))
       .WillRepeatedly(
           DoAll(SetArgPointee<3>(kDefaultSrkHandle), Return(TPM_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_GetAttribUint32(kDefaultSrkHandle, TSS_TSPATTRIB_KEY_INFO,
                                    TSS_TSPATTRIB_KEYINFO_AUTHUSAGE, _))
       .WillRepeatedly(
           DoAll(SetArgPointee<3>(kFakeSrkAuthUsage), Return(TPM_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_GetPolicyObject(kDefaultSrkHandle, TSS_POLICY_USAGE, _))
       .WillRepeatedly(
           DoAll(SetArgPointee<2>(kFakeSrkUsagePolicy), Return(TPM_SUCCESS)));
 
   EXPECT_CALL(
-      proxy_->GetMock().overalls,
+      proxy_->GetMockOveralls(),
       Ospi_Policy_SetSecret(kFakeSrkUsagePolicy, TSS_SECRET_MODE_PLAIN, _, _))
       .WillRepeatedly(Return(TPM_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Key_GetPubKey(kDefaultSrkHandle, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(kDefaultSrkPubkey.size()),
                             SetArgPointee<2>(kDefaultSrkPubkey.data()),
@@ -141,28 +141,28 @@ void BackendTpm1TestBase::SetupDelegate() {
       fake_delegate_blob;
   *reply.mutable_local_data()->mutable_owner_delegate()->mutable_secret() =
       fake_delegate_secret;
-  EXPECT_CALL(proxy_->GetMock().tpm_manager, GetTpmStatus(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetTpmStatus(_, _, _, _))
       .Times(AtMost(1))
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)))
       .RetiresOnSaturation();
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Context_GetTpmObject(kDefaultContext, _))
       .Times(AtMost(1))
       .WillOnce(
           DoAll(SetArgPointee<1>(kDefaultDelegateTpm), Return(TPM_SUCCESS)))
       .RetiresOnSaturation();
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_GetPolicyObject(kDefaultDelegateTpm, TSS_POLICY_USAGE, _))
       .WillRepeatedly(DoAll(SetArgPointee<2>(kPolicy1), Return(TPM_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Policy_SetSecret(kPolicy1, TSS_SECRET_MODE_PLAIN, _, _))
       .With(Args<3, 2>(ElementsAreArray(fake_delegate_secret)))
       .WillRepeatedly(Return(TPM_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_SetAttribData(kPolicy1, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
                                  TSS_TSPATTRIB_POLDEL_OWNERBLOB, _, _))
       .With(Args<4, 3>(ElementsAreArray(fake_delegate_blob)))

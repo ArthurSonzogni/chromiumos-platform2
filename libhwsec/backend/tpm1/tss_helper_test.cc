@@ -32,14 +32,14 @@ using TssHelperTest = BackendTpm1TestBase;
 TEST_F(TssHelperTest, GetScopedTssContext) {
   TSS_HCONTEXT kFakeContext = 0x5566;
 
-  EXPECT_CALL(proxy_->GetMock().overalls, Ospi_Context_Create(_))
+  EXPECT_CALL(proxy_->GetMockOveralls(), Ospi_Context_Create(_))
       .WillOnce(DoAll(SetArgPointee<0>(kFakeContext), Return(TPM_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Context_Connect(kFakeContext, nullptr))
       .WillOnce(Return(TPM_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().overalls, Ospi_Context_Close(kFakeContext))
+  EXPECT_CALL(proxy_->GetMockOveralls(), Ospi_Context_Close(kFakeContext))
       .WillOnce(Return(TPM_SUCCESS));
 
   auto result = backend_->GetTssHelper().GetScopedTssContext();
@@ -50,14 +50,14 @@ TEST_F(TssHelperTest, GetScopedTssContext) {
 TEST_F(TssHelperTest, GetTssContext) {
   TSS_HCONTEXT kFakeContext = 0x1234;
 
-  EXPECT_CALL(proxy_->GetMock().overalls, Ospi_Context_Create(_))
+  EXPECT_CALL(proxy_->GetMockOveralls(), Ospi_Context_Create(_))
       .WillOnce(DoAll(SetArgPointee<0>(kFakeContext), Return(TPM_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Context_Connect(kFakeContext, nullptr))
       .WillOnce(Return(TPM_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().overalls, Ospi_Context_Close(kFakeContext))
+  EXPECT_CALL(proxy_->GetMockOveralls(), Ospi_Context_Close(kFakeContext))
       .WillOnce(Return(TPM_SUCCESS));
 
   EXPECT_THAT(backend_->GetTssHelper().GetTssContext(),
@@ -72,18 +72,18 @@ TEST_F(TssHelperTest, GetUserTpmHandle) {
   TSS_HCONTEXT kFakeContext = 0x1234;
   TSS_HTPM kFakeTpm = 0x5678;
 
-  EXPECT_CALL(proxy_->GetMock().overalls, Ospi_Context_Create(_))
+  EXPECT_CALL(proxy_->GetMockOveralls(), Ospi_Context_Create(_))
       .WillOnce(DoAll(SetArgPointee<0>(kFakeContext), Return(TPM_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Context_Connect(kFakeContext, nullptr))
       .WillOnce(Return(TPM_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Context_GetTpmObject(kFakeContext, _))
       .WillOnce(DoAll(SetArgPointee<1>(kFakeTpm), Return(TPM_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().overalls, Ospi_Context_Close(kFakeContext))
+  EXPECT_CALL(proxy_->GetMockOveralls(), Ospi_Context_Close(kFakeContext))
       .WillOnce(Return(TPM_SUCCESS));
 
   EXPECT_THAT(backend_->GetTssHelper().GetUserTpmHandle(),
@@ -109,59 +109,59 @@ TEST_F(TssHelperTest, GetDelegateTpmHandle) {
       fake_delegate_blob;
   *reply.mutable_local_data()->mutable_owner_delegate()->mutable_secret() =
       fake_delegate_secret;
-  EXPECT_CALL(proxy_->GetMock().tpm_manager, GetTpmStatus(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetTpmStatus(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)))
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 
-  EXPECT_CALL(proxy_->GetMock().overalls, Ospi_Context_Create(_))
+  EXPECT_CALL(proxy_->GetMockOveralls(), Ospi_Context_Create(_))
       .WillOnce(DoAll(SetArgPointee<0>(kFakeContext), Return(TPM_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Context_Connect(kFakeContext, nullptr))
       .WillOnce(Return(TPM_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Context_GetTpmObject(kFakeContext, _))
       .WillOnce(DoAll(SetArgPointee<1>(kFakeTpm1), Return(TPM_SUCCESS)))
       .WillOnce(DoAll(SetArgPointee<1>(kFakeTpm2), Return(TPM_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_GetPolicyObject(kFakeTpm1, TSS_POLICY_USAGE, _))
       .WillOnce(DoAll(SetArgPointee<2>(kPolicy1), Return(TPM_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_GetPolicyObject(kFakeTpm2, TSS_POLICY_USAGE, _))
       .WillOnce(DoAll(SetArgPointee<2>(kPolicy2), Return(TPM_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Policy_SetSecret(kPolicy1, TSS_SECRET_MODE_PLAIN, _, _))
       .With(Args<3, 2>(ElementsAreArray(fake_delegate_secret)))
       .WillOnce(Return(TPM_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Policy_SetSecret(kPolicy2, TSS_SECRET_MODE_PLAIN, _, _))
       .With(Args<3, 2>(ElementsAreArray(fake_delegate_secret)))
       .WillOnce(Return(TPM_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_SetAttribData(kPolicy1, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
                                  TSS_TSPATTRIB_POLDEL_OWNERBLOB, _, _))
       .With(Args<4, 3>(ElementsAreArray(fake_delegate_blob)))
       .WillOnce(Return(TPM_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_SetAttribData(kPolicy2, TSS_TSPATTRIB_POLICY_DELEGATION_INFO,
                                  TSS_TSPATTRIB_POLDEL_OWNERBLOB, _, _))
       .With(Args<4, 3>(ElementsAreArray(fake_delegate_blob)))
       .WillOnce(Return(TPM_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Context_CloseObject(kFakeContext, kFakeTpm1))
       .WillOnce(Return(TPM_SUCCESS));
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Context_CloseObject(kFakeContext, kFakeTpm2))
       .WillOnce(Return(TPM_SUCCESS));
-  EXPECT_CALL(proxy_->GetMock().overalls, Ospi_Context_Close(kFakeContext))
+  EXPECT_CALL(proxy_->GetMockOveralls(), Ospi_Context_Close(kFakeContext))
       .WillOnce(Return(TPM_SUCCESS));
 
   auto result1 = backend_->GetTssHelper().GetDelegateTpmHandle();

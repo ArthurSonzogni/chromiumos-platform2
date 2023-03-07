@@ -30,7 +30,7 @@ TEST_F(BackendRandomTpm1Test, RandomBlob) {
   const brillo::Blob kFakeData(kFakeSize, 'X');
 
   brillo::Blob fake_data = kFakeData;
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_TPM_GetRandom(kDefaultTpm, kFakeSize, _))
       .WillOnce(DoAll(SetArgPointee<2>(fake_data.data()), Return(TPM_SUCCESS)));
 
@@ -43,7 +43,7 @@ TEST_F(BackendRandomTpm1Test, RandomSecureBlob) {
   const brillo::SecureBlob kFakeData(kFakeSize, 'Y');
 
   brillo::SecureBlob fake_data = kFakeData;
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_TPM_GetRandom(kDefaultTpm, kFakeSize, _))
       .WillOnce(DoAll(SetArgPointee<2>(fake_data.data()), Return(TPM_SUCCESS)));
 

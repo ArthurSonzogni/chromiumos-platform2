@@ -72,12 +72,11 @@ TEST_F(BackendSigningTpm2Test, SignRSA) {
           },
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -87,7 +86,7 @@ TEST_F(BackendSigningTpm2Test, SignRSA) {
 
   ASSERT_OK(key);
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               Sign(kFakeKeyHandle, trunks::TPM_ALG_RSASSA,
                    trunks::TPM_ALG_SHA256, kDataToSign, false, _, _))
       .WillOnce(
@@ -159,12 +158,11 @@ TEST_F(BackendSigningTpm2Test, SignECCSha1Raw) {
           },
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -174,7 +172,7 @@ TEST_F(BackendSigningTpm2Test, SignECCSha1Raw) {
 
   ASSERT_OK(key);
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               Sign(kFakeKeyHandle, trunks::TPM_ALG_ECDSA, trunks::TPM_ALG_SHA1,
                    kDataToSign, false, _, _))
       .WillOnce(
@@ -243,12 +241,11 @@ TEST_F(BackendSigningTpm2Test, SignECC) {
           },
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -258,7 +255,7 @@ TEST_F(BackendSigningTpm2Test, SignECC) {
 
   ASSERT_OK(key);
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               Sign(kFakeKeyHandle, trunks::TPM_ALG_ECDSA, trunks::TPM_ALG_SHA1,
                    kDataToSign, false, _, _))
       .WillOnce(
@@ -317,12 +314,11 @@ TEST_F(BackendSigningTpm2Test, SignECCWrongResponse) {
           },
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -332,7 +328,7 @@ TEST_F(BackendSigningTpm2Test, SignECCWrongResponse) {
 
   ASSERT_OK(key);
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               Sign(kFakeKeyHandle, trunks::TPM_ALG_ECDSA,
                    trunks::TPM_ALG_SHA256, kDataToSign, false, _, _))
       .WillOnce(
@@ -359,12 +355,11 @@ TEST_F(BackendSigningTpm2Test, SignUnknownKey) {
       .auth_policy = trunks::TPM2B_DIGEST{.size = 0},
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -422,12 +417,11 @@ TEST_F(BackendSigningTpm2Test, SignRSAPkcs1v15WithNull) {
           },
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -437,7 +431,7 @@ TEST_F(BackendSigningTpm2Test, SignRSAPkcs1v15WithNull) {
 
   ASSERT_OK(key);
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               Sign(kFakeKeyHandle, trunks::TPM_ALG_RSASSA, trunks::TPM_ALG_NULL,
                    _, false, _, _))
       .WillOnce(
@@ -491,12 +485,11 @@ TEST_F(BackendSigningTpm2Test, SignRSARsassaPss) {
           },
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -506,7 +499,7 @@ TEST_F(BackendSigningTpm2Test, SignRSARsassaPss) {
 
   ASSERT_OK(key);
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               Sign(kFakeKeyHandle, trunks::TPM_ALG_RSAPSS,
                    trunks::TPM_ALG_SHA512, kDataToSign, false, _, _))
       .WillOnce(
@@ -560,12 +553,11 @@ TEST_F(BackendSigningTpm2Test, SignRSARsassaPssUnsupported) {
           },
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -624,12 +616,11 @@ TEST_F(BackendSigningTpm2Test, SignRSAPkcs1v15WithDecrypt) {
           },
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -639,7 +630,7 @@ TEST_F(BackendSigningTpm2Test, SignRSAPkcs1v15WithDecrypt) {
 
   ASSERT_OK(key);
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               AsymmetricDecrypt(kFakeKeyHandle, trunks::TPM_ALG_NULL,
                                 trunks::TPM_ALG_NULL, _, _, _))
       .WillOnce(
@@ -693,12 +684,11 @@ TEST_F(BackendSigningTpm2Test, SignRSAPkcs1v15WithDecryptTooLong) {
           },
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -757,12 +747,11 @@ TEST_F(BackendSigningTpm2Test, SignRSARsassaPssWithDecrypt) {
           },
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -772,7 +761,7 @@ TEST_F(BackendSigningTpm2Test, SignRSARsassaPssWithDecrypt) {
 
   ASSERT_OK(key);
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               AsymmetricDecrypt(kFakeKeyHandle, trunks::TPM_ALG_NULL,
                                 trunks::TPM_ALG_NULL, _, _, _))
       .WillOnce(
@@ -827,12 +816,11 @@ TEST_F(BackendSigningTpm2Test, SignRSARsassaPssWithDecryptDataTooSmall) {
           },
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -891,12 +879,11 @@ TEST_F(BackendSigningTpm2Test, SignRSARsassaPssWithDecryptUnsupportedMgf1Alg) {
           },
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -966,12 +953,11 @@ TEST_F(BackendSigningTpm2Test, SignRSAPkcs1v15WithoutDigestAlgorithm) {
           },
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -981,7 +967,7 @@ TEST_F(BackendSigningTpm2Test, SignRSAPkcs1v15WithoutDigestAlgorithm) {
 
   ASSERT_OK(key);
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               Sign(kFakeKeyHandle, trunks::TPM_ALG_RSASSA,
                    trunks::TPM_ALG_SHA512, _, false, _, _))
       .WillOnce(

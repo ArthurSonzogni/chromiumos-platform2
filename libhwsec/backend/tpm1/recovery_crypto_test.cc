@@ -73,47 +73,47 @@ TEST_F(BackendRecoveryCryptoTpm1Test, EncryptEccPrivateKey) {
 
   SetupSrk();
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Context_CreateObject(kDefaultContext, TSS_OBJECT_TYPE_PCRS,
                                         TSS_PCRS_STRUCT_INFO, _))
       .WillOnce(DoAll(SetArgPointee<3>(kFakePcrHandle), Return(TPM_SUCCESS)))
       .WillOnce(DoAll(SetArgPointee<3>(kFakePcrHandle), Return(TPM_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_PcrComposite_SetPcrValue(kFakePcrHandle, _, _, _))
       .WillOnce(Return(TPM_SUCCESS))
       .WillOnce(Return(TPM_SUCCESS));
 
   EXPECT_CALL(
-      proxy_->GetMock().overalls,
+      proxy_->GetMockOveralls(),
       Ospi_Context_CreateObject(kDefaultContext, TSS_OBJECT_TYPE_ENCDATA,
                                 TSS_ENCDATA_SEAL, _))
       .WillOnce(DoAll(SetArgPointee<3>(kFakeEncHandle), Return(TPM_SUCCESS)))
       .WillOnce(DoAll(SetArgPointee<3>(kFakeEncHandle), Return(TPM_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_GetPolicyObject(kDefaultTpm, TSS_POLICY_USAGE, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeHPolicy), Return(TPM_SUCCESS)))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeHPolicy), Return(TPM_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Policy_SetSecret(kFakeHPolicy, TSS_SECRET_MODE_PLAIN, _, _))
       .With(Args<3, 2>(ElementsAreArray(auth_value)))
       .WillOnce(Return(TPM_SUCCESS))
       .WillOnce(Return(TPM_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Policy_AssignToObject(kFakeHPolicy, kFakeEncHandle))
       .WillOnce(Return(TPM_SUCCESS))
       .WillOnce(Return(TPM_SUCCESS));
 
   EXPECT_CALL(
-      proxy_->GetMock().overalls,
+      proxy_->GetMockOveralls(),
       Ospi_Data_Seal(kFakeEncHandle, kDefaultSrkHandle, _, _, kFakePcrHandle))
       .WillOnce(Return(TPM_SUCCESS))
       .WillOnce(Return(TPM_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_GetAttribData(kFakeEncHandle, TSS_TSPATTRIB_ENCDATA_BLOB,
                                  TSS_TSPATTRIB_ENCDATABLOB_BLOB, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(encrypted_own_priv_key.size()),
@@ -222,8 +222,7 @@ TEST_F(BackendRecoveryCryptoTpm1Test, GenerateDiffieHellmanSharedSecret) {
       EC_POINT_dup(others_pub_key_ptr, ec_256->GetGroup()));
   ASSERT_NE(others_pub_key, nullptr);
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
-              Ospi_TPM_PcrRead(kDefaultTpm, _, _, _))
+  EXPECT_CALL(proxy_->GetMockOveralls(), Ospi_TPM_PcrRead(kDefaultTpm, _, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(empty_pcr.size()),
                       SetArgPointee<3>(empty_pcr.data()), Return(TPM_SUCCESS)));
 
@@ -233,29 +232,29 @@ TEST_F(BackendRecoveryCryptoTpm1Test, GenerateDiffieHellmanSharedSecret) {
   SetupSrk();
 
   EXPECT_CALL(
-      proxy_->GetMock().overalls,
+      proxy_->GetMockOveralls(),
       Ospi_Context_CreateObject(kDefaultContext, TSS_OBJECT_TYPE_ENCDATA,
                                 TSS_ENCDATA_SEAL, _))
       .WillOnce(DoAll(SetArgPointee<3>(kFakeEncHandle), Return(TPM_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_GetPolicyObject(kDefaultTpm, TSS_POLICY_USAGE, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeHPolicy), Return(TPM_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Policy_SetSecret(kFakeHPolicy, TSS_SECRET_MODE_PLAIN, _, _))
       .With(Args<3, 2>(ElementsAreArray(auth_value)));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Policy_AssignToObject(kFakeHPolicy, kFakeEncHandle))
       .WillOnce(Return(TPM_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_SetAttribData(kFakeEncHandle, TSS_TSPATTRIB_ENCDATA_BLOB,
                                  TSS_TSPATTRIB_ENCDATABLOB_BLOB, _, _))
       .WillOnce(Return(TPM_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Data_Unseal(kFakeEncHandle, kDefaultSrkHandle, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(unencrypted_own_priv_key.size()),
                       SetArgPointee<3>(unencrypted_own_priv_key.data()),
@@ -384,38 +383,38 @@ TEST_F(BackendRecoveryCryptoTpm1Test, GenerateRsaKeyPair) {
   SetupSrk();
 
   EXPECT_CALL(
-      proxy_->GetMock().overalls,
+      proxy_->GetMockOveralls(),
       Ospi_Context_CreateObject(kDefaultContext, TSS_OBJECT_TYPE_RSAKEY, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(kFakeKeyHandle), Return(TPM_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_SetAttribUint32(kFakeKeyHandle, TSS_TSPATTRIB_KEY_INFO,
                                    TSS_TSPATTRIB_KEYINFO_SIGSCHEME, _))
       .WillOnce(Return(TPM_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Key_CreateKey(kFakeKeyHandle, kDefaultSrkHandle, 0))
       .WillOnce(Return(TPM_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Key_LoadKey(kFakeKeyHandle, kDefaultSrkHandle))
       .WillOnce(Return(TPM_SUCCESS));
 
   brillo::Blob key_blob = kFakeKeyBlob;
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_GetAttribData(kFakeKeyHandle, TSS_TSPATTRIB_KEY_BLOB,
                                  TSS_TSPATTRIB_KEYBLOB_BLOB, _, _))
       .WillOnce(DoAll(SetArgPointee<3>(key_blob.size()),
                       SetArgPointee<4>(key_blob.data()), Return(TPM_SUCCESS)));
 
   brillo::Blob fake_pubkey = kFakePubkey;
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Key_GetPubKey(kFakeKeyHandle, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(fake_pubkey.size()),
                       SetArgPointee<2>(fake_pubkey.data()),
                       Return(TPM_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().overalls, Orspi_UnloadBlob_PUBKEY_s(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockOveralls(), Orspi_UnloadBlob_PUBKEY_s(_, _, _, _))
       .With(Args<1, 2>(ElementsAreArray(fake_pubkey)))
       .WillOnce([&](uint64_t* offset, auto&&, auto&&, TPM_PUBKEY* tpm_pubkey) {
         *offset = fake_pubkey.size();
@@ -441,7 +440,7 @@ TEST_F(BackendRecoveryCryptoTpm1Test, GenerateRsaKeyPair) {
         return TPM_SUCCESS;
       });
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Orspi_UnloadBlob_RSA_KEY_PARMS_s(_, _, _, _))
       .With(Args<1, 2>(ElementsAreArray(kFakeParms)))
       .WillOnce(DoAll(SetArgPointee<0>(sizeof(kFakeParms)),
@@ -472,29 +471,29 @@ TEST_F(BackendRecoveryCryptoTpm1Test, SignRequestPayload) {
   SetupSrk();
 
   EXPECT_CALL(
-      proxy_->GetMock().overalls,
+      proxy_->GetMockOveralls(),
       Ospi_Context_LoadKeyByBlob(kDefaultContext, kDefaultSrkHandle, _, _, _))
       .With(Args<3, 2>(ElementsAreArray(kFakeKeyBlob)))
       .WillOnce(DoAll(SetArgPointee<4>(kFakeKeyHandle), Return(TPM_SUCCESS)));
 
   brillo::Blob fake_pubkey = kFakePubkey;
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Key_GetPubKey(kFakeKeyHandle, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(kFakePubkey.size()),
                       SetArgPointee<2>(fake_pubkey.data()),
                       Return(TPM_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Context_CreateObject(kDefaultContext, TSS_OBJECT_TYPE_HASH,
                                         TSS_HASH_OTHER, _))
       .WillOnce(DoAll(SetArgPointee<3>(kFakeHashHandle), Return(TPM_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Hash_SetHashValue(kFakeHashHandle, _, _))
       .WillOnce(Return(TPM_SUCCESS));
 
   brillo::Blob signature = kFakeSignature;
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Hash_Sign(kFakeHashHandle, kFakeKeyHandle, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(signature.size()),
                       SetArgPointee<3>(signature.data()), Return(TPM_SUCCESS)));

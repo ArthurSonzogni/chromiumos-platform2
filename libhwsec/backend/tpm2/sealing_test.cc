@@ -51,12 +51,12 @@ TEST_F(BackendSealingTpm2Test, Seal) {
   const std::string kFakeData = "fake_data";
   const std::string kFakeSealedData = "fake_sealed_data";
 
-  EXPECT_CALL(proxy_->GetMock().trial_session, GetDigest(_))
+  EXPECT_CALL(proxy_->GetMockTrialSession(), GetDigest(_))
       .WillOnce(DoAll(SetArgPointee<0>(kFakePolicyDigest),
                       Return(trunks::TPM_RC_SUCCESS)));
 
   EXPECT_CALL(
-      proxy_->GetMock().tpm_utility,
+      proxy_->GetMockTpmUtility(),
       SealData(kFakeData, kFakePolicyDigest, kFakeAuthValue, true, _, _))
       .WillOnce(DoAll(SetArgPointee<5>(kFakeSealedData),
                       Return(trunks::TPM_RC_SUCCESS)));
@@ -71,12 +71,11 @@ TEST_F(BackendSealingTpm2Test, PreloadSealedData) {
   const std::string kFakeSealedData = "fake_sealed_data";
   const uint32_t kFakeKeyHandle = 0x1337;
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeSealedData, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeSealedData, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   auto result = backend_->GetSealingTpm2().PreloadSealedData(
@@ -85,7 +84,7 @@ TEST_F(BackendSealingTpm2Test, PreloadSealedData) {
   ASSERT_OK(result);
   EXPECT_TRUE(result->has_value());
 
-  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 }
 
@@ -101,7 +100,7 @@ TEST_F(BackendSealingTpm2Test, Unseal) {
   const std::string kFakeData = "fake_data";
   const std::string kFakeSealedData = "fake_sealed_data";
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, UnsealData(kFakeSealedData, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), UnsealData(kFakeSealedData, _, _))
       .WillOnce(
           DoAll(SetArgPointee<2>(kFakeData), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -124,12 +123,11 @@ TEST_F(BackendSealingTpm2Test, UnsealWithPreload) {
   const std::string kFakeSealedData = "fake_sealed_data";
   const uint32_t kFakeKeyHandle = 0x1337;
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeSealedData, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeSealedData, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   auto result = backend_->GetSealingTpm2().PreloadSealedData(
@@ -138,7 +136,7 @@ TEST_F(BackendSealingTpm2Test, UnsealWithPreload) {
   ASSERT_OK(result);
   EXPECT_TRUE(result->has_value());
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               UnsealDataWithHandle(kFakeKeyHandle, _, _))
       .WillOnce(
           DoAll(SetArgPointee<2>(kFakeData), Return(trunks::TPM_RC_SUCCESS)));
@@ -150,7 +148,7 @@ TEST_F(BackendSealingTpm2Test, UnsealWithPreload) {
                   }),
               IsOkAndHolds(brillo::SecureBlob(kFakeData)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 }
 

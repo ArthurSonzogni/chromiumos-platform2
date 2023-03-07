@@ -46,12 +46,11 @@ TEST_F(BackendEncryptionTpm2Test, Encrypt) {
       .auth_policy = trunks::TPM2B_DIGEST{.size = 0},
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -61,7 +60,7 @@ TEST_F(BackendEncryptionTpm2Test, Encrypt) {
 
   ASSERT_OK(key);
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               AsymmetricEncrypt(kFakeKeyHandle, trunks::TPM_ALG_OAEP,
                                 trunks::TPM_ALG_SHA256, _, _, _))
       .WillOnce(
@@ -86,12 +85,11 @@ TEST_F(BackendEncryptionTpm2Test, EncryptNullAlgo) {
       .auth_policy = trunks::TPM2B_DIGEST{.size = 0},
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -101,7 +99,7 @@ TEST_F(BackendEncryptionTpm2Test, EncryptNullAlgo) {
 
   ASSERT_OK(key);
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               AsymmetricEncrypt(kFakeKeyHandle, trunks::TPM_ALG_NULL,
                                 trunks::TPM_ALG_NULL, _, _, _))
       .WillOnce(
@@ -129,12 +127,11 @@ TEST_F(BackendEncryptionTpm2Test, EncryptRsaesSha1Algo) {
       .auth_policy = trunks::TPM2B_DIGEST{.size = 0},
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -144,7 +141,7 @@ TEST_F(BackendEncryptionTpm2Test, EncryptRsaesSha1Algo) {
 
   ASSERT_OK(key);
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               AsymmetricEncrypt(kFakeKeyHandle, trunks::TPM_ALG_RSAES,
                                 trunks::TPM_ALG_SHA1, _, _, _))
       .WillOnce(
@@ -173,12 +170,11 @@ TEST_F(BackendEncryptionTpm2Test, Decrypt) {
       .auth_policy = trunks::TPM2B_DIGEST{.size = 0},
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -188,7 +184,7 @@ TEST_F(BackendEncryptionTpm2Test, Decrypt) {
 
   ASSERT_OK(key);
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               AsymmetricDecrypt(kFakeKeyHandle, trunks::TPM_ALG_OAEP,
                                 trunks::TPM_ALG_SHA256, _, _, _))
       .WillOnce(

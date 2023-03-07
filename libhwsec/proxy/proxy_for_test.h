@@ -16,13 +16,10 @@
 #endif
 
 // Forward declarations for mocks
-#if USE_TPM1
 namespace hwsec::overalls {
 class MockOveralls;
 }  // namespace hwsec::overalls
-#endif  // USE_TPM1
 
-#if USE_TPM2
 namespace trunks {
 class MockCommandTransceiver;
 class MockTpm;
@@ -35,7 +32,6 @@ class MockPolicySession;
 class MockBlobParser;
 class TrunksFactoryForTest;
 }  // namespace trunks
-#endif  // USE_TPM2
 
 namespace org::chromium {
 class TpmManagerProxyMock;
@@ -55,41 +51,30 @@ namespace hwsec {
 //   proxy.SetTpmManager(mock_tpm_manager);
 //   // Set expectations on mock_tpm_manager...
 
-struct MockProxyData {
-#if USE_TPM1
-  hwsec::overalls::MockOveralls& overalls;
-#endif
-
-#if USE_TPM2
-  trunks::MockCommandTransceiver& trunks_command_transceiver;
-  trunks::MockTpm& tpm;
-  trunks::MockTpmCache& tpm_cache;
-  trunks::MockTpmState& tpm_state;
-  trunks::MockTpmUtility& tpm_utility;
-  trunks::MockAuthorizationDelegate& authorization_delegate;
-  trunks::MockHmacSession& hmac_session;
-  trunks::MockPolicySession& policy_session;
-  trunks::MockPolicySession& trial_session;
-  trunks::MockBlobParser& blob_parser;
-#endif
-
-  org::chromium::TpmManagerProxyMock& tpm_manager;
-  org::chromium::TpmNvramProxyMock& tpm_nvram;
-};
-
 class ProxyForTest : public Proxy {
  public:
   ProxyForTest();
   ~ProxyForTest() override;
 
-  MockProxyData& GetMock() { return mock_proxy_data_; }
+  hwsec::overalls::MockOveralls& GetMockOveralls();
+  trunks::MockCommandTransceiver& GetMockCommandTransceiver();
+  trunks::MockTpm& GetMockTpm();
+  trunks::MockTpmCache& GetMockTpmCache();
+  trunks::MockTpmState& GetMockTpmState();
+  trunks::MockTpmUtility& GetMockTpmUtility();
+  trunks::MockAuthorizationDelegate& GetMockAuthorizationDelegate();
+  trunks::MockHmacSession& GetMockHmacSession();
+  trunks::MockPolicySession& GetMockPolicySession();
+  trunks::MockPolicySession& GetMockTrialSession();
+  trunks::MockBlobParser& GetMockBlobParser();
+  org::chromium::TpmManagerProxyMock& GetMockTpmManagerProxy();
+  org::chromium::TpmNvramProxyMock& GetMockTpmNvramProxy();
 
  private:
   // The InnerData implementation is in the cpp file.
   struct InnerData;
 
   std::unique_ptr<InnerData> inner_data_;
-  MockProxyData mock_proxy_data_;
 };
 
 }  // namespace hwsec

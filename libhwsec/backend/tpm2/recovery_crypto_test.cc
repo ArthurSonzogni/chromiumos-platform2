@@ -65,16 +65,15 @@ TEST_F(BackendRecoveryCryptoTpm2Test, EncryptEccPrivateKey) {
 
   ASSERT_NE(destination_share_key_pair, nullptr);
 
-  EXPECT_CALL(proxy_->GetMock().trial_session,
-              StartUnboundSession(false, false))
+  EXPECT_CALL(proxy_->GetMockTrialSession(), StartUnboundSession(false, false))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
-  EXPECT_CALL(proxy_->GetMock().trial_session, PolicyPCR(_))
+  EXPECT_CALL(proxy_->GetMockTrialSession(), PolicyPCR(_))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().trial_session, GetDigest(_))
+  EXPECT_CALL(proxy_->GetMockTrialSession(), GetDigest(_))
       // The intermediate digests for different policy.
       .WillOnce(DoAll(SetArgPointee<0>(fake_digests1),
                       Return(trunks::TPM_RC_SUCCESS)))
@@ -84,11 +83,11 @@ TEST_F(BackendRecoveryCryptoTpm2Test, EncryptEccPrivateKey) {
       .WillOnce(DoAll(SetArgPointee<0>(fake_digests3),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().trial_session,
+  EXPECT_CALL(proxy_->GetMockTrialSession(),
               PolicyOR(std::vector<std::string>{fake_digests1, fake_digests2}))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               ImportECCKeyWithPolicyDigest(
                   trunks::TpmUtility::AsymmetricKeyUsage::kDecryptKey,
                   trunks::TPM_ECC_NIST_P256, _, _, _, fake_digests3, _, _))
@@ -203,32 +202,30 @@ TEST_F(BackendRecoveryCryptoTpm2Test, GenerateDiffieHellmanSharedSecret) {
                                &ecc_point);
   trunks::TPM2B_ECC_POINT fake_point = trunks::Make_TPM2B_ECC_POINT(ecc_point);
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               LoadKey(brillo::BlobToString(enc_priv_key), _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().trial_session,
-              StartUnboundSession(false, false))
+  EXPECT_CALL(proxy_->GetMockTrialSession(), StartUnboundSession(false, false))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
-  EXPECT_CALL(proxy_->GetMock().trial_session, PolicyPCR(_))
+  EXPECT_CALL(proxy_->GetMockTrialSession(), PolicyPCR(_))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().trial_session, GetDigest(_))
+  EXPECT_CALL(proxy_->GetMockTrialSession(), GetDigest(_))
       // The intermediate digests for different policy.
       .WillOnce(DoAll(SetArgPointee<0>(fake_digests1),
                       Return(trunks::TPM_RC_SUCCESS)))
       .WillOnce(DoAll(SetArgPointee<0>(fake_digests2),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, ECDHZGen(kFakeKeyHandle, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), ECDHZGen(kFakeKeyHandle, _, _, _))
       .WillOnce(
           DoAll(SetArgPointee<3>(fake_point), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -294,32 +291,30 @@ TEST_F(BackendRecoveryCryptoTpm2Test,
           },
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               LoadKey(brillo::BlobToString(enc_priv_key), _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().trial_session,
-              StartUnboundSession(false, false))
+  EXPECT_CALL(proxy_->GetMockTrialSession(), StartUnboundSession(false, false))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
-  EXPECT_CALL(proxy_->GetMock().trial_session, PolicyPCR(_))
+  EXPECT_CALL(proxy_->GetMockTrialSession(), PolicyPCR(_))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().trial_session, GetDigest(_))
+  EXPECT_CALL(proxy_->GetMockTrialSession(), GetDigest(_))
       // The intermediate digests for different policy.
       .WillOnce(DoAll(SetArgPointee<0>(fake_digests1),
                       Return(trunks::TPM_RC_SUCCESS)))
       .WillOnce(DoAll(SetArgPointee<0>(fake_digests2),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, ECDHZGen(kFakeKeyHandle, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), ECDHZGen(kFakeKeyHandle, _, _, _))
       .WillOnce(
           DoAll(SetArgPointee<3>(fake_point), Return(trunks::TPM_RC_SUCCESS)));
 

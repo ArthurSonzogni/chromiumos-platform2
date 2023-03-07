@@ -34,7 +34,7 @@ TEST_F(BackendDAMitigationTpm1Test, IsReady) {
   reply.set_is_enabled(true);
   reply.set_is_owned(true);
   reply.set_has_reset_lock_permissions(true);
-  EXPECT_CALL(proxy_->GetMock().tpm_manager,
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(),
               GetTpmNonsensitiveStatus(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 
@@ -47,7 +47,7 @@ TEST_F(BackendDAMitigationTpm1Test, IsNotReady) {
   reply.set_is_enabled(true);
   reply.set_is_owned(true);
   reply.set_has_reset_lock_permissions(false);
-  EXPECT_CALL(proxy_->GetMock().tpm_manager,
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(),
               GetTpmNonsensitiveStatus(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 
@@ -61,7 +61,7 @@ TEST_F(BackendDAMitigationTpm1Test, GetStatus) {
   reply.set_status(TpmManagerStatus::STATUS_SUCCESS);
   reply.set_dictionary_attack_lockout_in_effect(true);
   reply.set_dictionary_attack_lockout_seconds_remaining(kRemaining.InSeconds());
-  EXPECT_CALL(proxy_->GetMock().tpm_manager,
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(),
               GetDictionaryAttackInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 
@@ -74,7 +74,7 @@ TEST_F(BackendDAMitigationTpm1Test, GetStatus) {
 TEST_F(BackendDAMitigationTpm1Test, Mitigate) {
   tpm_manager::ResetDictionaryAttackLockReply reply;
   reply.set_status(TpmManagerStatus::STATUS_SUCCESS);
-  EXPECT_CALL(proxy_->GetMock().tpm_manager,
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(),
               ResetDictionaryAttackLock(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 

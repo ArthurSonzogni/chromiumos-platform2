@@ -99,18 +99,17 @@ TEST_F(BackendKeyManagementTpm2Test, CreateSoftwareRsaKey) {
   const std::string kFakeKeyBlob = "fake_key_blob";
   const uint32_t kFakeKeyHandle = 0x1337;
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               ImportRSAKey(trunks::TpmUtility::AsymmetricKeyUsage::kDecryptKey,
                            _, _, _, "", _, _))
       .WillOnce(DoAll(SetArgPointee<6>(kFakeKeyBlob),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   auto result = backend_->GetKeyManagementTpm2().CreateKey(
@@ -124,7 +123,7 @@ TEST_F(BackendKeyManagementTpm2Test, CreateSoftwareRsaKey) {
   ASSERT_OK(result);
   EXPECT_EQ(result->key_blob, brillo::BlobFromString(kFakeKeyBlob));
 
-  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 }
 
@@ -135,18 +134,17 @@ TEST_F(BackendKeyManagementTpm2Test, CreateRsaKey) {
   const uint32_t kFakeKeyHandle = 0x1337;
 
   EXPECT_CALL(
-      proxy_->GetMock().tpm_utility,
+      proxy_->GetMockTpmUtility(),
       CreateRSAKeyPair(trunks::TpmUtility::AsymmetricKeyUsage::kDecryptKey, _,
                        _, "", "", false, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<8>(kFakeKeyBlob),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   auto result = backend_->GetKeyManagementTpm2().CreateKey(
@@ -160,7 +158,7 @@ TEST_F(BackendKeyManagementTpm2Test, CreateRsaKey) {
   ASSERT_OK(result);
   EXPECT_EQ(result->key_blob, brillo::BlobFromString(kFakeKeyBlob));
 
-  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 }
 
@@ -172,18 +170,17 @@ TEST_F(BackendKeyManagementTpm2Test, CreateRsaKeyWithParams) {
   const brillo::Blob kExponent{0x01, 0x00, 0x01};
 
   EXPECT_CALL(
-      proxy_->GetMock().tpm_utility,
+      proxy_->GetMockTpmUtility(),
       CreateRSAKeyPair(trunks::TpmUtility::AsymmetricKeyUsage::kDecryptKey,
                        1024, 0x10001, "", "", false, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<8>(kFakeKeyBlob),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   auto result = backend_->GetKeyManagementTpm2().CreateKey(
@@ -199,7 +196,7 @@ TEST_F(BackendKeyManagementTpm2Test, CreateRsaKeyWithParams) {
   ASSERT_OK(result);
   EXPECT_EQ(result->key_blob, brillo::BlobFromString(kFakeKeyBlob));
 
-  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 }
 
@@ -210,18 +207,17 @@ TEST_F(BackendKeyManagementTpm2Test, CreateEccKey) {
   const uint32_t kFakeKeyHandle = 0x1337;
 
   EXPECT_CALL(
-      proxy_->GetMock().tpm_utility,
+      proxy_->GetMockTpmUtility(),
       CreateECCKeyPair(trunks::TpmUtility::AsymmetricKeyUsage::kDecryptKey, _,
                        "", "", false, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<7>(kFakeKeyBlob),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   auto result = backend_->GetKeyManagementTpm2().CreateKey(
@@ -240,7 +236,7 @@ TEST_F(BackendKeyManagementTpm2Test, CreateEccKey) {
       backend_->GetKeyManagementTpm2().ReloadIfPossible(result->key.GetKey()),
       IsOk());
 
-  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 }
 
@@ -249,12 +245,11 @@ TEST_F(BackendKeyManagementTpm2Test, LoadKey) {
   const std::string kFakeKeyBlob = "fake_key_blob";
   const uint32_t kFakeKeyHandle = 0x1337;
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   auto result = backend_->GetKeyManagementTpm2().LoadKey(
@@ -267,7 +262,7 @@ TEST_F(BackendKeyManagementTpm2Test, LoadKey) {
       backend_->GetKeyManagementTpm2().ReloadIfPossible(result->GetKey()),
       IsOk());
 
-  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 }
 
@@ -279,18 +274,17 @@ TEST_F(BackendKeyManagementTpm2Test, CreateAutoReloadKey) {
   const uint32_t kFakeKeyHandle2 = 0x7331;
 
   EXPECT_CALL(
-      proxy_->GetMock().tpm_utility,
+      proxy_->GetMockTpmUtility(),
       CreateECCKeyPair(trunks::TpmUtility::AsymmetricKeyUsage::kDecryptKey, _,
                        "", "", false, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<7>(kFakeKeyBlob),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   auto result = backend_->GetKeyManagementTpm2().CreateKey(
@@ -305,10 +299,10 @@ TEST_F(BackendKeyManagementTpm2Test, CreateAutoReloadKey) {
   ASSERT_OK(result);
   EXPECT_EQ(result->key_blob, brillo::BlobFromString(kFakeKeyBlob));
 
-  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle2),
                       Return(trunks::TPM_RC_SUCCESS)));
 
@@ -316,7 +310,7 @@ TEST_F(BackendKeyManagementTpm2Test, CreateAutoReloadKey) {
       backend_->GetKeyManagementTpm2().ReloadIfPossible(result->key.GetKey()),
       IsOk());
 
-  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle2, _))
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle2, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 }
 
@@ -326,12 +320,11 @@ TEST_F(BackendKeyManagementTpm2Test, LoadAutoReloadKey) {
   const uint32_t kFakeKeyHandle = 0x1337;
   const uint32_t kFakeKeyHandle2 = 0x7331;
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   auto result = backend_->GetKeyManagementTpm2().LoadKey(
@@ -340,10 +333,10 @@ TEST_F(BackendKeyManagementTpm2Test, LoadAutoReloadKey) {
 
   ASSERT_OK(result);
 
-  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle2),
                       Return(trunks::TPM_RC_SUCCESS)));
 
@@ -351,7 +344,7 @@ TEST_F(BackendKeyManagementTpm2Test, LoadAutoReloadKey) {
       backend_->GetKeyManagementTpm2().ReloadIfPossible(result->GetKey()),
       IsOk());
 
-  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle2, _))
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle2, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 }
 
@@ -360,11 +353,11 @@ TEST_F(BackendKeyManagementTpm2Test, GetPersistentKey) {
   const std::string kFakeKeyBlob = "fake_key_blob";
   const uint32_t kFakeKeyHandle = 0x1337;
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               GetKeyPublicArea(trunks::kStorageRootKey, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle, _))
       .Times(0);
 
   {
@@ -419,12 +412,11 @@ TEST_F(BackendKeyManagementTpm2Test, GetRsaPubkeyHash) {
           },
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -437,7 +429,7 @@ TEST_F(BackendKeyManagementTpm2Test, GetRsaPubkeyHash) {
   EXPECT_THAT(backend_->GetKeyManagementTpm2().GetPubkeyHash(result->GetKey()),
               IsOkAndHolds(Sha256(BlobFromString("9876543210"))));
 
-  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 }
 
@@ -483,12 +475,11 @@ TEST_F(BackendKeyManagementTpm2Test, GetEccPubkeyHash) {
           },
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -501,7 +492,7 @@ TEST_F(BackendKeyManagementTpm2Test, GetEccPubkeyHash) {
   EXPECT_THAT(backend_->GetKeyManagementTpm2().GetPubkeyHash(result->GetKey()),
               IsOkAndHolds(Sha256(BlobFromString("0123456789"))));
 
-  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 }
 
@@ -510,11 +501,10 @@ TEST_F(BackendKeyManagementTpm2Test, SideLoadKey) {
   const std::string kFakeKeyBlob = "fake_key_blob";
   const uint32_t kFakeKeyHandle = 0x1337;
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle, _))
       .Times(0);
 
   auto result = backend_->GetKeyManagementTpm2().SideLoadKey(kFakeKeyHandle);
@@ -545,23 +535,22 @@ TEST_F(BackendKeyManagementTpm2Test, PolicyRsaKey) {
   const std::string kFakePolicyDigest = "fake_policy_digest";
   const uint32_t kFakeKeyHandle = 0x1337;
 
-  EXPECT_CALL(proxy_->GetMock().trial_session, GetDigest(_))
+  EXPECT_CALL(proxy_->GetMockTrialSession(), GetDigest(_))
       .WillOnce(DoAll(SetArgPointee<0>(kFakePolicyDigest),
                       Return(trunks::TPM_RC_SUCCESS)));
 
   EXPECT_CALL(
-      proxy_->GetMock().tpm_utility,
+      proxy_->GetMockTpmUtility(),
       CreateRSAKeyPair(trunks::TpmUtility::AsymmetricKeyUsage::kDecryptKey, _,
                        _, kFakeAuthValue, kFakePolicyDigest, true, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<8>(kFakeKeyBlob),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   auto result = backend_->GetKeyManagementTpm2().CreateKey(
@@ -575,7 +564,7 @@ TEST_F(BackendKeyManagementTpm2Test, PolicyRsaKey) {
   ASSERT_OK(result);
   EXPECT_EQ(result->key_blob, brillo::BlobFromString(kFakeKeyBlob));
 
-  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 }
 
@@ -599,23 +588,22 @@ TEST_F(BackendKeyManagementTpm2Test, PolicyEccKey) {
   const std::string kFakePolicyDigest = "fake_policy_digest";
   const uint32_t kFakeKeyHandle = 0x1337;
 
-  EXPECT_CALL(proxy_->GetMock().trial_session, GetDigest(_))
+  EXPECT_CALL(proxy_->GetMockTrialSession(), GetDigest(_))
       .WillOnce(DoAll(SetArgPointee<0>(kFakePolicyDigest),
                       Return(trunks::TPM_RC_SUCCESS)));
 
   EXPECT_CALL(
-      proxy_->GetMock().tpm_utility,
+      proxy_->GetMockTpmUtility(),
       CreateECCKeyPair(trunks::TpmUtility::AsymmetricKeyUsage::kDecryptKey, _,
                        kFakeAuthValue, kFakePolicyDigest, true, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<7>(kFakeKeyBlob),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   auto result = backend_->GetKeyManagementTpm2().CreateKey(
@@ -629,7 +617,7 @@ TEST_F(BackendKeyManagementTpm2Test, PolicyEccKey) {
   ASSERT_OK(result);
   EXPECT_EQ(result->key_blob, brillo::BlobFromString(kFakeKeyBlob));
 
-  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 }
 
@@ -668,18 +656,17 @@ TEST_F(BackendKeyManagementTpm2Test, WrapRsaKey) {
   const brillo::Blob kExponent{0x03};
   const uint32_t kFakeKeyHandle = 0x1337;
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               ImportRSAKey(trunks::TpmUtility::AsymmetricKeyUsage::kSignKey,
                            kFakeModulus, 3, kFakePrime, kFakeAuthValue, _, _))
       .WillOnce(DoAll(SetArgPointee<6>(kFakeKeyBlob),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   auto result = backend_->GetKeyManagementTpm2().WrapRSAKey(
@@ -696,7 +683,7 @@ TEST_F(BackendKeyManagementTpm2Test, WrapRsaKey) {
   ASSERT_OK(result);
   EXPECT_EQ(result->key_blob, brillo::BlobFromString(kFakeKeyBlob));
 
-  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 }
 
@@ -765,18 +752,17 @@ TEST_F(BackendKeyManagementTpm2Test, WrapEccKey) {
   const uint32_t kFakeKeyHandle = 0x1337;
 
   EXPECT_CALL(
-      proxy_->GetMock().tpm_utility,
+      proxy_->GetMockTpmUtility(),
       ImportECCKey(trunks::TpmUtility::AsymmetricKeyUsage::kDecryptAndSignKey,
                    trunks::TPM_ECC_NIST_P256, _, _, _, kFakeAuthValue, _, _))
       .WillOnce(DoAll(SetArgPointee<7>(kFakeKeyBlob),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   auto result = backend_->GetKeyManagementTpm2().WrapECCKey(
@@ -793,7 +779,7 @@ TEST_F(BackendKeyManagementTpm2Test, WrapEccKey) {
   ASSERT_OK(result);
   EXPECT_EQ(result->key_blob, brillo::BlobFromString(kFakeKeyBlob));
 
-  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 }
 
@@ -903,12 +889,11 @@ TEST_F(BackendKeyManagementTpm2Test, GetRSAPublicInfo) {
           },
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -937,12 +922,11 @@ TEST_F(BackendKeyManagementTpm2Test, GetRSAPublicInfoWrongType) {
       .auth_policy = trunks::TPM2B_DIGEST{.size = 0},
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -1002,12 +986,11 @@ TEST_F(BackendKeyManagementTpm2Test, GetECCPublicInfo) {
           },
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -1072,12 +1055,11 @@ TEST_F(BackendKeyManagementTpm2Test, GetECCPublicInfoUnsupportedCurve) {
           },
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -1102,12 +1084,11 @@ TEST_F(BackendKeyManagementTpm2Test, GetECCPublicInfoWrongType) {
       .auth_policy = trunks::TPM2B_DIGEST{.size = 0},
   };
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(
           DoAll(SetArgPointee<1>(kFakePublic), Return(trunks::TPM_RC_SUCCESS)));
 
@@ -1200,12 +1181,11 @@ TEST_F(BackendKeyManagementTpm2Test, LoadRefCountReloadKey) {
   const uint32_t kFakeKeyHandle = 0x1337;
   const uint32_t kFakeKeyHandle2 = 0x7331;
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   auto result1 = backend_->GetKeyManagementTpm2().LoadKey(
@@ -1234,10 +1214,10 @@ TEST_F(BackendKeyManagementTpm2Test, LoadRefCountReloadKey) {
     ScopedKey drop_key = std::move(result1).value();
   }
 
-  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle2),
                       Return(trunks::TPM_RC_SUCCESS)));
 
@@ -1245,7 +1225,7 @@ TEST_F(BackendKeyManagementTpm2Test, LoadRefCountReloadKey) {
       backend_->GetKeyManagementTpm2().ReloadIfPossible(result2->GetKey()),
       IsOk());
 
-  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle2, _))
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle2, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 }
 
@@ -1257,12 +1237,11 @@ TEST_F(BackendKeyManagementTpm2Test, LoadAndLazyFlushKey) {
   const uint32_t kFakeKeyHandle2 = 0x7331;
   const uint32_t kFakeKeyHandle3 = 0x7133;
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   auto result1 = backend_->GetKeyManagementTpm2().LoadKey(
@@ -1311,10 +1290,10 @@ TEST_F(BackendKeyManagementTpm2Test, LoadAndLazyFlushKey) {
 
   ASSERT_OK(result3);
 
-  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle2),
                       Return(trunks::TPM_RC_SUCCESS)));
 
@@ -1350,17 +1329,16 @@ TEST_F(BackendKeyManagementTpm2Test, LoadAndLazyFlushKey) {
   }
 
   // The key should be dropped after the minimum lazy expiration time (7secs).
-  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle2, _))
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle2, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
   task_environment_.FastForwardBy(base::Seconds(7));
 
   // The LoadKey should load another new key.
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle3),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle3, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle3, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   auto result5 = backend_->GetKeyManagementTpm2().LoadKey(
@@ -1372,7 +1350,7 @@ TEST_F(BackendKeyManagementTpm2Test, LoadAndLazyFlushKey) {
 
   ASSERT_OK(result5);
 
-  EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle3, _))
+  EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle3, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 }
 
@@ -1385,13 +1363,12 @@ TEST_F(BackendKeyManagementTpm2Test, LoadReloadKeyWithWrongAuth) {
   const std::string kFakeKeyBlob = "fake_key_blob";
   const uint32_t kFakeKeyHandle = 0x1337;
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, LoadKey(kFakeKeyBlob, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), LoadKey(kFakeKeyBlob, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(kFakeKeyHandle),
                       Return(trunks::TPM_RC_SUCCESS)))
       .WillOnce(Return(trunks::TPM_RC_BAD_AUTH));
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
-              GetKeyPublicArea(kFakeKeyHandle, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyPublicArea(kFakeKeyHandle, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
   auto result1 = backend_->GetKeyManagementTpm2().LoadKey(
@@ -1442,20 +1419,20 @@ TEST_F(BackendKeyManagementTpm2Test, PolicyEndorsementKey) {
     reply.set_enabled(true);
     reply.set_owned(true);
     reply.mutable_local_data()->set_endorsement_password(kFakeEndorsementPass);
-    EXPECT_CALL(proxy_->GetMock().tpm_manager, GetTpmStatus(_, _, _, _))
+    EXPECT_CALL(proxy_->GetMockTpmManagerProxy(), GetTpmStatus(_, _, _, _))
         .WillOnce(DoAll(SetArgPointee<1>(reply), Return(true)));
 
-    EXPECT_CALL(proxy_->GetMock().trial_session, GetDigest(_))
+    EXPECT_CALL(proxy_->GetMockTrialSession(), GetDigest(_))
         .WillOnce(DoAll(SetArgPointee<0>(kFakePolicyDigest),
                         Return(trunks::TPM_RC_SUCCESS)));
 
     EXPECT_CALL(
-        proxy_->GetMock().tpm_utility,
+        proxy_->GetMockTpmUtility(),
         GetAuthPolicyEndorsementKey(trunks_algo, kFakePolicyDigest, _, _, _))
         .WillOnce(DoAll(SetArgPointee<3>(kFakeKeyHandle),
                         Return(trunks::TPM_RC_SUCCESS)));
 
-    EXPECT_CALL(proxy_->GetMock().tpm_utility,
+    EXPECT_CALL(proxy_->GetMockTpmUtility(),
                 GetKeyPublicArea(kFakeKeyHandle, _))
         .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
@@ -1464,7 +1441,7 @@ TEST_F(BackendKeyManagementTpm2Test, PolicyEndorsementKey) {
 
     ASSERT_OK(result);
 
-    EXPECT_CALL(proxy_->GetMock().tpm, FlushContextSync(kFakeKeyHandle, _))
+    EXPECT_CALL(proxy_->GetMockTpm(), FlushContextSync(kFakeKeyHandle, _))
         .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
     {
@@ -1473,7 +1450,7 @@ TEST_F(BackendKeyManagementTpm2Test, PolicyEndorsementKey) {
     }
 
     task_environment_.RunUntilIdle();
-    Mock::VerifyAndClearExpectations(&proxy_->GetMock().tpm);
+    Mock::VerifyAndClearExpectations(&proxy_->GetMockTpm());
   }
 }
 

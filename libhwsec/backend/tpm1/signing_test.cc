@@ -43,13 +43,13 @@ TEST_F(BackendSigningTpm1Test, Sign) {
   SetupSrk();
 
   EXPECT_CALL(
-      proxy_->GetMock().overalls,
+      proxy_->GetMockOveralls(),
       Ospi_Context_LoadKeyByBlob(kDefaultContext, kDefaultSrkHandle, _, _, _))
       .With(Args<3, 2>(ElementsAreArray(kFakeKeyBlob)))
       .WillOnce(DoAll(SetArgPointee<4>(kFakeKeyHandle), Return(TPM_SUCCESS)));
 
   brillo::Blob fake_pubkey = kFakePubkey;
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Key_GetPubKey(kFakeKeyHandle, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(kFakePubkey.size()),
                       SetArgPointee<2>(fake_pubkey.data()),
@@ -60,17 +60,17 @@ TEST_F(BackendSigningTpm1Test, Sign) {
 
   ASSERT_OK(key);
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Context_CreateObject(kDefaultContext, TSS_OBJECT_TYPE_HASH,
                                         TSS_HASH_OTHER, _))
       .WillOnce(DoAll(SetArgPointee<3>(kFakeHashHandle), Return(TPM_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Hash_SetHashValue(kFakeHashHandle, _, _))
       .WillOnce(Return(TPM_SUCCESS));
 
   brillo::Blob signature = kFakeSignature;
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Hash_Sign(kFakeHashHandle, kFakeKeyHandle, _, _))
       .WillOnce(DoAll(SetArgPointee<2>(signature.size()),
                       SetArgPointee<3>(signature.data()), Return(TPM_SUCCESS)));
@@ -90,13 +90,13 @@ TEST_F(BackendSigningTpm1Test, SignNotSupported) {
   SetupSrk();
 
   EXPECT_CALL(
-      proxy_->GetMock().overalls,
+      proxy_->GetMockOveralls(),
       Ospi_Context_LoadKeyByBlob(kDefaultContext, kDefaultSrkHandle, _, _, _))
       .With(Args<3, 2>(ElementsAreArray(kFakeKeyBlob)))
       .WillOnce(DoAll(SetArgPointee<4>(kFakeKeyHandle), Return(TPM_SUCCESS)));
 
   brillo::Blob fake_pubkey = kFakePubkey;
-  EXPECT_CALL(proxy_->GetMock().overalls,
+  EXPECT_CALL(proxy_->GetMockOveralls(),
               Ospi_Key_GetPubKey(kFakeKeyHandle, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(kFakePubkey.size()),
                       SetArgPointee<2>(fake_pubkey.data()),

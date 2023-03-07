@@ -88,13 +88,13 @@ std::function<bool(const Status&)> RetryActionIs(TPMRetryAction action) {
 using BackendU2fTpm2Test = BackendTpm2TestBase;
 
 TEST_F(BackendU2fTpm2Test, IsEnabledCr50) {
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, IsCr50).WillOnce(Return(true));
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), IsCr50).WillOnce(Return(true));
 
   EXPECT_THAT(backend_->GetU2fTpm2().IsEnabled(), IsOkAndHolds(true));
 }
 
 TEST_F(BackendU2fTpm2Test, IsEnabledOthers) {
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, IsCr50).WillOnce(Return(false));
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), IsCr50).WillOnce(Return(false));
 
   EXPECT_THAT(backend_->GetU2fTpm2().IsEnabled(), IsOkAndHolds(false));
 }
@@ -103,7 +103,7 @@ TEST_F(BackendU2fTpm2Test, GenerateUpOnly) {
   const brillo::Blob kPublicKey(65, 1);
   const brillo::Blob kKeyHandle(32, 2);
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               U2fGenerate(0, _, _, _, _, Eq(std::nullopt), _, _))
       .WillOnce(DoAll(SetArgPointee<6>(kPublicKey),
                       SetArgPointee<7>(kKeyHandle),
@@ -118,7 +118,7 @@ TEST_F(BackendU2fTpm2Test, GenerateUpOnly) {
 }
 
 TEST_F(BackendU2fTpm2Test, GenerateUpOnlyFailed) {
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               U2fGenerate(0, _, _, _, _, Eq(std::nullopt), _, _))
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
 
@@ -130,7 +130,7 @@ TEST_F(BackendU2fTpm2Test, GenerateUpOnlyFailed) {
 }
 
 TEST_F(BackendU2fTpm2Test, GenerateUpOnlyMissingUp) {
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               U2fGenerate(0, _, _, _, _, Eq(std::nullopt), _, _))
       .WillOnce(Return(kCr50StatusNotAllowed));
 
@@ -145,7 +145,7 @@ TEST_F(BackendU2fTpm2Test, Generate) {
   const brillo::Blob kPublicKey(65, 1);
   const brillo::Blob kKeyHandle(U2F_V1_KH_SIZE, 2);
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               U2fGenerate(1, _, _, _, _, Optional(_), _, _))
       .WillOnce(DoAll(SetArgPointee<6>(kPublicKey),
                       SetArgPointee<7>(kKeyHandle),
@@ -160,7 +160,7 @@ TEST_F(BackendU2fTpm2Test, Generate) {
 }
 
 TEST_F(BackendU2fTpm2Test, GenerateFailed) {
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               U2fGenerate(1, _, _, _, _, Optional(_), _, _))
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
 
@@ -172,7 +172,7 @@ TEST_F(BackendU2fTpm2Test, GenerateFailed) {
 }
 
 TEST_F(BackendU2fTpm2Test, GenerateFailedMissingUp) {
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               U2fGenerate(1, _, _, _, _, Optional(_), _, _))
       .WillOnce(Return(kCr50StatusNotAllowed));
 
@@ -187,7 +187,7 @@ TEST_F(BackendU2fTpm2Test, GenerateFailedInvalidKeyHandle) {
   const brillo::Blob kPublicKey(65, 1);
   const brillo::Blob kKeyHandle(32, 2);
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               U2fGenerate(1, _, _, _, _, Optional(_), _, _))
       .WillOnce(DoAll(SetArgPointee<6>(kPublicKey),
                       SetArgPointee<7>(kKeyHandle),
@@ -205,7 +205,7 @@ TEST_F(BackendU2fTpm2Test, SignUpOnly) {
   const brillo::Blob kSigS(32, 2);
 
   EXPECT_CALL(
-      proxy_->GetMock().tpm_utility,
+      proxy_->GetMockTpmUtility(),
       U2fSign(0, _, _, Eq(std::nullopt), Optional(_), false, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<9>(kSigR), SetArgPointee<10>(kSigS),
                       Return(trunks::TPM_RC_SUCCESS)));
@@ -221,7 +221,7 @@ TEST_F(BackendU2fTpm2Test, SignUpOnly) {
 
 TEST_F(BackendU2fTpm2Test, SignUpOnlyFailed) {
   EXPECT_CALL(
-      proxy_->GetMock().tpm_utility,
+      proxy_->GetMockTpmUtility(),
       U2fSign(0, _, _, Eq(std::nullopt), Optional(_), false, _, _, _, _, _))
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
 
@@ -234,7 +234,7 @@ TEST_F(BackendU2fTpm2Test, SignUpOnlyFailed) {
 
 TEST_F(BackendU2fTpm2Test, SignUpOnlyFailedIncorrectAuth) {
   EXPECT_CALL(
-      proxy_->GetMock().tpm_utility,
+      proxy_->GetMockTpmUtility(),
       U2fSign(0, _, _, Eq(std::nullopt), Optional(_), false, _, _, _, _, _))
       .WillOnce(Return(kCr50StatusPasswordRequired));
 
@@ -249,7 +249,7 @@ TEST_F(BackendU2fTpm2Test, Sign) {
   const brillo::Blob kSigR(32, 1);
   const brillo::Blob kSigS(32, 2);
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               U2fSign(1, _, _, Optional(_), Optional(_), false, _, _, _, _, _))
       .WillOnce(DoAll(SetArgPointee<9>(kSigR), SetArgPointee<10>(kSigS),
                       Return(trunks::TPM_RC_SUCCESS)));
@@ -264,7 +264,7 @@ TEST_F(BackendU2fTpm2Test, Sign) {
 }
 
 TEST_F(BackendU2fTpm2Test, SignFailed) {
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               U2fSign(1, _, _, Optional(_), Optional(_), false, _, _, _, _, _))
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
 
@@ -285,7 +285,7 @@ TEST_F(BackendU2fTpm2Test, SignFailedInvalidKeyHandle) {
 }
 
 TEST_F(BackendU2fTpm2Test, SignFailedIncorrectAuth) {
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               U2fSign(1, _, _, Optional(_), Optional(_), false, _, _, _, _, _))
       .WillOnce(Return(kCr50StatusPasswordRequired));
 
@@ -298,11 +298,11 @@ TEST_F(BackendU2fTpm2Test, SignFailedIncorrectAuth) {
 }
 
 TEST_F(BackendU2fTpm2Test, Check) {
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               U2fSign(0, _, _, Eq(std::nullopt), Eq(std::nullopt), true, false,
                       false, _, _, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               U2fSign(1, _, _, Eq(std::nullopt), Eq(std::nullopt), true, false,
                       false, _, _, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
@@ -316,11 +316,11 @@ TEST_F(BackendU2fTpm2Test, Check) {
 }
 
 TEST_F(BackendU2fTpm2Test, CheckFailed) {
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               U2fSign(0, _, _, Eq(std::nullopt), Eq(std::nullopt), true, false,
                       false, _, _, _))
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               U2fSign(1, _, _, Eq(std::nullopt), Eq(std::nullopt), true, false,
                       false, _, _, _))
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
@@ -340,7 +340,7 @@ TEST_F(BackendU2fTpm2Test, G2fAttest) {
   const brillo::Blob kSigR(32, 1);
   const brillo::Blob kSigS(32, 2);
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               U2fAttest(_, U2F_ATTEST_FORMAT_REG_RESP,
                         SizeIs(sizeof(g2f_register_msg_v0)), _, _))
       .WillOnce(DoAll(SetArgPointee<3>(kSigR), SetArgPointee<4>(kSigS),
@@ -378,7 +378,7 @@ TEST_F(BackendU2fTpm2Test, G2fAttestInvalidParams) {
 }
 
 TEST_F(BackendU2fTpm2Test, G2fAttestFailed) {
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               U2fAttest(_, U2F_ATTEST_FORMAT_REG_RESP,
                         SizeIs(sizeof(g2f_register_msg_v0)), _, _))
       .WillOnce(Return(trunks::TPM_RC_FAILURE));
@@ -400,7 +400,7 @@ TEST_F(BackendU2fTpm2Test, CorpAttest) {
   const brillo::Blob kSigR(32, 1);
   const brillo::Blob kSigS(32, 2);
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               U2fAttest(_, CORP_ATTEST_FORMAT_REG_RESP,
                         SizeIs(sizeof(corp_register_msg_v0)), _, _))
       .WillOnce(DoAll(SetArgPointee<3>(kSigR), SetArgPointee<4>(kSigS),
@@ -442,7 +442,7 @@ TEST_F(BackendU2fTpm2Test, CorpAttestInvalidParams) {
 }
 
 TEST_F(BackendU2fTpm2Test, CorpAttestFailed) {
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               U2fAttest(_, CORP_ATTEST_FORMAT_REG_RESP,
                         SizeIs(sizeof(corp_register_msg_v0)), _, _))
       .WillOnce(Return(trunks::TPM_RC_FAILURE));

@@ -77,47 +77,90 @@ struct ProxyForTest::InnerData {
 };
 
 ProxyForTest::ProxyForTest()
-    : inner_data_(std::make_unique<ProxyForTest::InnerData>()),
-      mock_proxy_data_(MockProxyData {
+    : inner_data_(std::make_unique<ProxyForTest::InnerData>()) {
 #if USE_TPM1
-        .overalls = inner_data_->overalls,
-#endif  // USE_TPM1
-#if USE_TPM2
-        .trunks_command_transceiver = inner_data_->trunks_command_transceiver,
-        .tpm = inner_data_->tpm, .tpm_cache = inner_data_->tpm_cache,
-        .tpm_state = inner_data_->tpm_state,
-        .tpm_utility = inner_data_->tpm_utility,
-        .authorization_delegate = inner_data_->authorization_delegate,
-        .hmac_session = inner_data_->hmac_session,
-        .policy_session = inner_data_->policy_session,
-        .trial_session = inner_data_->trial_session,
-        .blob_parser = inner_data_->blob_parser,
-#endif  // USE_TPM2
-        .tpm_manager = inner_data_->tpm_manager,
-        .tpm_nvram = inner_data_->tpm_nvram,
-      }) {
-#if USE_TPM1
-  SetOveralls(&mock_proxy_data_.overalls);
+  SetOveralls(&inner_data_->overalls);
 #endif
 #if USE_TPM2
   trunks::TrunksFactoryForTest& factory = inner_data_->trunks_factory;
-  factory.set_tpm(&mock_proxy_data_.tpm);
-  factory.set_tpm_cache(&mock_proxy_data_.tpm_cache);
-  factory.set_tpm_state(&mock_proxy_data_.tpm_state);
-  factory.set_tpm_utility(&mock_proxy_data_.tpm_utility);
+  factory.set_tpm(&inner_data_->tpm);
+  factory.set_tpm_cache(&inner_data_->tpm_cache);
+  factory.set_tpm_state(&inner_data_->tpm_state);
+  factory.set_tpm_utility(&inner_data_->tpm_utility);
   factory.set_password_authorization_delegate(
-      &mock_proxy_data_.authorization_delegate);
-  factory.set_hmac_session(&mock_proxy_data_.hmac_session);
-  factory.set_policy_session(&mock_proxy_data_.policy_session);
-  factory.set_trial_session(&mock_proxy_data_.trial_session);
-  factory.set_blob_parser(&mock_proxy_data_.blob_parser);
-  SetTrunksCommandTransceiver(&mock_proxy_data_.trunks_command_transceiver);
+      &inner_data_->authorization_delegate);
+  factory.set_hmac_session(&inner_data_->hmac_session);
+  factory.set_policy_session(&inner_data_->policy_session);
+  factory.set_trial_session(&inner_data_->trial_session);
+  factory.set_blob_parser(&inner_data_->blob_parser);
+  SetTrunksCommandTransceiver(&inner_data_->trunks_command_transceiver);
   SetTrunksFactory(&inner_data_->trunks_factory);
 #endif
-  SetTpmManager(&mock_proxy_data_.tpm_manager);
-  SetTpmNvram(&mock_proxy_data_.tpm_nvram);
+  SetTpmManager(&inner_data_->tpm_manager);
+  SetTpmNvram(&inner_data_->tpm_nvram);
 }
 
 ProxyForTest::~ProxyForTest() = default;
+
+#if USE_TPM1
+
+hwsec::overalls::MockOveralls& ProxyForTest::GetMockOveralls() {
+  return inner_data_->overalls;
+}
+
+#endif  // USE_TPM1
+
+#if USE_TPM2
+
+trunks::MockCommandTransceiver& ProxyForTest::GetMockCommandTransceiver() {
+  return inner_data_->trunks_command_transceiver;
+}
+
+trunks::MockTpm& ProxyForTest::GetMockTpm() {
+  return inner_data_->tpm;
+}
+
+trunks::MockTpmCache& ProxyForTest::GetMockTpmCache() {
+  return inner_data_->tpm_cache;
+}
+
+trunks::MockTpmState& ProxyForTest::GetMockTpmState() {
+  return inner_data_->tpm_state;
+}
+
+trunks::MockTpmUtility& ProxyForTest::GetMockTpmUtility() {
+  return inner_data_->tpm_utility;
+}
+
+trunks::MockAuthorizationDelegate&
+ProxyForTest::GetMockAuthorizationDelegate() {
+  return inner_data_->authorization_delegate;
+}
+
+trunks::MockHmacSession& ProxyForTest::GetMockHmacSession() {
+  return inner_data_->hmac_session;
+}
+
+trunks::MockPolicySession& ProxyForTest::GetMockPolicySession() {
+  return inner_data_->policy_session;
+}
+
+trunks::MockPolicySession& ProxyForTest::GetMockTrialSession() {
+  return inner_data_->trial_session;
+}
+
+trunks::MockBlobParser& ProxyForTest::GetMockBlobParser() {
+  return inner_data_->blob_parser;
+}
+
+#endif  // USE_TPM2
+
+org::chromium::TpmManagerProxyMock& ProxyForTest::GetMockTpmManagerProxy() {
+  return inner_data_->tpm_manager;
+}
+
+org::chromium::TpmNvramProxyMock& ProxyForTest::GetMockTpmNvramProxy() {
+  return inner_data_->tpm_nvram;
+}
 
 }  // namespace hwsec

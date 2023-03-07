@@ -107,15 +107,15 @@ class BackendSignatureSealingTpm2Test : public BackendTpm2TestBase {
 
   StatusOr<SignatureSealedData> SetupSealing() {
     // ConfigTpm2::GetPolicyDigest twice for two policy settings.
-    EXPECT_CALL(proxy_->GetMock().trial_session,
+    EXPECT_CALL(proxy_->GetMockTrialSession(),
                 StartUnboundSession(false, false))
         .WillOnce(Return(trunks::TPM_RC_SUCCESS))
         .WillOnce(Return(trunks::TPM_RC_SUCCESS));
-    EXPECT_CALL(proxy_->GetMock().trial_session, PolicyPCR(_))
+    EXPECT_CALL(proxy_->GetMockTrialSession(), PolicyPCR(_))
         .WillOnce(Return(trunks::TPM_RC_SUCCESS))
         .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().trial_session, GetDigest(_))
+    EXPECT_CALL(proxy_->GetMockTrialSession(), GetDigest(_))
         // The intermediate digests for different policy.
         .WillOnce(DoAll(SetArgPointee<0>(fake_digests1_),
                         Return(trunks::TPM_RC_SUCCESS)))
@@ -125,20 +125,19 @@ class BackendSignatureSealingTpm2Test : public BackendTpm2TestBase {
         .WillOnce(DoAll(SetArgPointee<0>(fake_digests3_),
                         Return(trunks::TPM_RC_SUCCESS)));
 
-    EXPECT_CALL(proxy_->GetMock().trial_session,
-                StartUnboundSession(true, false))
+    EXPECT_CALL(proxy_->GetMockTrialSession(), StartUnboundSession(true, false))
         .WillOnce(Return(trunks::TPM_RC_SUCCESS));
     EXPECT_CALL(
-        proxy_->GetMock().trial_session,
+        proxy_->GetMockTrialSession(),
         PolicyOR(std::vector<std::string>{fake_digests1_, fake_digests2_}))
         .WillOnce(Return(trunks::TPM_RC_SUCCESS));
-    EXPECT_CALL(proxy_->GetMock().trial_session,
+    EXPECT_CALL(proxy_->GetMockTrialSession(),
                 PolicySigned(_, _, _, _, _, _, _, _))
         .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
     // Seal the data.
     EXPECT_CALL(
-        proxy_->GetMock().tpm_utility,
+        proxy_->GetMockTpmUtility(),
         SealData(unsealed_data_.to_string(), fake_digests3_, "", true, _, _))
         .WillOnce(DoAll(SetArgPointee<5>(trunks_sealed_data_),
                         Return(trunks::TPM_RC_SUCCESS)));
@@ -150,23 +149,23 @@ class BackendSignatureSealingTpm2Test : public BackendTpm2TestBase {
 
   StatusOr<Backend::SignatureSealing::ChallengeResult> SetupChallenge(
       const SignatureSealedData& sealed_data) {
-    EXPECT_CALL(proxy_->GetMock().policy_session,
+    EXPECT_CALL(proxy_->GetMockPolicySession(),
                 StartUnboundSession(true, false))
         .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-    EXPECT_CALL(proxy_->GetMock().policy_session, PolicyAuthValue()).Times(0);
+    EXPECT_CALL(proxy_->GetMockPolicySession(), PolicyAuthValue()).Times(0);
 
-    EXPECT_CALL(proxy_->GetMock().policy_session, PolicyPCR(_))
+    EXPECT_CALL(proxy_->GetMockPolicySession(), PolicyPCR(_))
         .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
     EXPECT_CALL(
-        proxy_->GetMock().policy_session,
+        proxy_->GetMockPolicySession(),
         PolicyOR(std::vector<std::string>{fake_digests1_, fake_digests2_}))
         .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
     trunks::MockAuthorizationDelegate authorization_delegate;
 
-    EXPECT_CALL(proxy_->GetMock().policy_session, GetDelegate())
+    EXPECT_CALL(proxy_->GetMockPolicySession(), GetDelegate())
         .WillOnce(Return(&authorization_delegate));
     EXPECT_CALL(authorization_delegate, GetTpmNonce(_))
         .WillOnce(DoAll(SetArgPointee<0>(fake_tpm_nonce_), Return(true)));
@@ -220,24 +219,24 @@ TEST_F(BackendSignatureSealingTpm2Test, SealChallengeUnseal) {
       {brillo::BlobFromString(fake_tpm_nonce_), brillo::Blob(4)});
   EXPECT_EQ(challenge_result->challenge, challenge_value);
 
-  EXPECT_CALL(proxy_->GetMock().tpm_utility, GetKeyName(_, _))
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), GetKeyName(_, _))
       .WillOnce(DoAll(SetArgPointee<1>(fake_key_name_),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().policy_session,
+  EXPECT_CALL(proxy_->GetMockPolicySession(),
               PolicySigned(_, fake_key_name_, fake_tpm_nonce_, _, _, _, _, _))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().policy_session, GetDigest(_))
+  EXPECT_CALL(proxy_->GetMockPolicySession(), GetDigest(_))
       .WillOnce(DoAll(SetArgPointee<0>(fake_digests3_),
                       Return(trunks::TPM_RC_SUCCESS)));
 
   trunks::MockAuthorizationDelegate delegate;
-  EXPECT_CALL(proxy_->GetMock().policy_session, GetDelegate())
+  EXPECT_CALL(proxy_->GetMockPolicySession(), GetDelegate())
       .WillOnce(Return(&delegate));
 
   // Unseal the data.
-  EXPECT_CALL(proxy_->GetMock().tpm_utility,
+  EXPECT_CALL(proxy_->GetMockTpmUtility(),
               UnsealData(trunks_sealed_data_, &delegate, _))
       .WillOnce(DoAll(SetArgPointee<2>(unsealed_data_.to_string()),
                       Return(trunks::TPM_RC_SUCCESS)));
@@ -377,15 +376,14 @@ TEST_F(BackendSignatureSealingTpm2Test, SealWrongDigestLength) {
   std::string fake_digests3 = "";
 
   // ConfigTpm2::GetPolicyDigest twice for two policy settings.
-  EXPECT_CALL(proxy_->GetMock().trial_session,
-              StartUnboundSession(false, false))
+  EXPECT_CALL(proxy_->GetMockTrialSession(), StartUnboundSession(false, false))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
-  EXPECT_CALL(proxy_->GetMock().trial_session, PolicyPCR(_))
+  EXPECT_CALL(proxy_->GetMockTrialSession(), PolicyPCR(_))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 
-  EXPECT_CALL(proxy_->GetMock().trial_session, GetDigest(_))
+  EXPECT_CALL(proxy_->GetMockTrialSession(), GetDigest(_))
       // The intermediate digests for different policy.
       .WillOnce(DoAll(SetArgPointee<0>(fake_digests1_),
                       Return(trunks::TPM_RC_SUCCESS)))
@@ -395,10 +393,10 @@ TEST_F(BackendSignatureSealingTpm2Test, SealWrongDigestLength) {
       .WillOnce(DoAll(SetArgPointee<0>(fake_digests3),
                       Return(trunks::TPM_RC_SUCCESS)));
 
-  EXPECT_CALL(proxy_->GetMock().trial_session, StartUnboundSession(true, false))
+  EXPECT_CALL(proxy_->GetMockTrialSession(), StartUnboundSession(true, false))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
   EXPECT_CALL(
-      proxy_->GetMock().trial_session,
+      proxy_->GetMockTrialSession(),
       PolicyOR(std::vector<std::string>{fake_digests1_, fake_digests2_}))
       .WillOnce(Return(trunks::TPM_RC_SUCCESS));
 

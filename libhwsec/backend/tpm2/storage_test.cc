@@ -43,7 +43,7 @@ TEST_F(BackendStorageTpm2Test, IsReady) {
   tpm_manager::ListSpacesReply list_reply;
   list_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
   list_reply.add_index_list(kInstallAttributesIndex);
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, ListSpaces(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), ListSpaces(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(list_reply), Return(true)));
 
   tpm_manager::GetSpaceInfoReply info_reply;
@@ -52,12 +52,13 @@ TEST_F(BackendStorageTpm2Test, IsReady) {
   info_reply.set_is_read_locked(false);
   info_reply.set_is_write_locked(false);
   info_reply.add_attributes(NvramSpaceAttribute::NVRAM_PERSISTENT_WRITE_LOCK);
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), GetSpaceInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
 
   tpm_manager::RemoveOwnerDependencyReply remove_reply;
   remove_reply.set_status(TpmManagerStatus::STATUS_SUCCESS);
-  EXPECT_CALL(proxy_->GetMock().tpm_manager, RemoveOwnerDependency(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(),
+              RemoveOwnerDependency(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(remove_reply), Return(true)));
 
   EXPECT_THAT(backend_->GetStorageTpm2().IsReady(Space::kInstallAttributes),
@@ -68,7 +69,7 @@ TEST_F(BackendStorageTpm2Test, IsReadyPreparable) {
   tpm_manager::ListSpacesReply list_reply;
   list_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
   list_reply.add_index_list(kInstallAttributesIndex);
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, ListSpaces(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), ListSpaces(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(list_reply), Return(true)));
 
   tpm_manager::GetSpaceInfoReply info_reply;
@@ -76,7 +77,7 @@ TEST_F(BackendStorageTpm2Test, IsReadyPreparable) {
   info_reply.set_size(10);
   info_reply.set_is_read_locked(false);
   info_reply.set_is_write_locked(true);
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), GetSpaceInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
 
   tpm_manager::GetTpmNonsensitiveStatusReply status_reply;
@@ -84,7 +85,7 @@ TEST_F(BackendStorageTpm2Test, IsReadyPreparable) {
   status_reply.set_is_enabled(true);
   status_reply.set_is_owned(true);
   status_reply.set_is_owner_password_present(true);
-  EXPECT_CALL(proxy_->GetMock().tpm_manager,
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(),
               GetTpmNonsensitiveStatus(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(status_reply), Return(true)));
 
@@ -96,7 +97,7 @@ TEST_F(BackendStorageTpm2Test, IsReadyNotAvailable) {
   tpm_manager::ListSpacesReply list_reply;
   list_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
   list_reply.add_index_list(kInstallAttributesIndex);
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, ListSpaces(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), ListSpaces(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(list_reply), Return(true)));
 
   tpm_manager::GetSpaceInfoReply info_reply;
@@ -104,7 +105,7 @@ TEST_F(BackendStorageTpm2Test, IsReadyNotAvailable) {
   info_reply.set_size(10);
   info_reply.set_is_read_locked(false);
   info_reply.set_is_write_locked(true);
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), GetSpaceInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
 
   tpm_manager::GetTpmNonsensitiveStatusReply status_reply;
@@ -112,7 +113,7 @@ TEST_F(BackendStorageTpm2Test, IsReadyNotAvailable) {
   status_reply.set_is_enabled(true);
   status_reply.set_is_owned(true);
   status_reply.set_is_owner_password_present(false);
-  EXPECT_CALL(proxy_->GetMock().tpm_manager,
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(),
               GetTpmNonsensitiveStatus(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(status_reply), Return(true)));
 
@@ -125,7 +126,7 @@ TEST_F(BackendStorageTpm2Test, Prepare) {
   tpm_manager::ListSpacesReply list_reply;
   list_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
   list_reply.add_index_list(kInstallAttributesIndex);
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, ListSpaces(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), ListSpaces(_, _, _, _))
       .WillRepeatedly(DoAll(SetArgPointee<1>(list_reply), Return(true)));
 
   tpm_manager::GetSpaceInfoReply info_reply;
@@ -134,22 +135,23 @@ TEST_F(BackendStorageTpm2Test, Prepare) {
   info_reply.set_is_read_locked(false);
   info_reply.set_is_write_locked(true);
   info_reply.add_attributes(NvramSpaceAttribute::NVRAM_PERSISTENT_WRITE_LOCK);
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), GetSpaceInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
 
   tpm_manager::DestroySpaceReply destroy_reply;
   destroy_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, DestroySpace(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), DestroySpace(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(destroy_reply), Return(true)));
 
   tpm_manager::DefineSpaceReply define_reply;
   define_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, DefineSpace(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), DefineSpace(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(define_reply), Return(true)));
 
   tpm_manager::RemoveOwnerDependencyReply remove_reply;
   remove_reply.set_status(TpmManagerStatus::STATUS_SUCCESS);
-  EXPECT_CALL(proxy_->GetMock().tpm_manager, RemoveOwnerDependency(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(),
+              RemoveOwnerDependency(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(remove_reply), Return(true)));
 
   EXPECT_THAT(
@@ -161,7 +163,7 @@ TEST_F(BackendStorageTpm2Test, PrepareNotAvailable) {
   const uint32_t kFakeSize = 32;
   tpm_manager::ListSpacesReply list_reply;
   list_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, ListSpaces(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), ListSpaces(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(list_reply), Return(true)));
 
   auto result = backend_->GetStorageTpm2().Prepare(
@@ -174,7 +176,7 @@ TEST_F(BackendStorageTpm2Test, PrepareReady) {
   tpm_manager::ListSpacesReply list_reply;
   list_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
   list_reply.add_index_list(kFwmpIndex);
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, ListSpaces(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), ListSpaces(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(list_reply), Return(true)));
 
   tpm_manager::GetSpaceInfoReply info_reply;
@@ -186,7 +188,7 @@ TEST_F(BackendStorageTpm2Test, PrepareReady) {
   info_reply.add_attributes(NvramSpaceAttribute::NVRAM_OWNER_WRITE);
   info_reply.add_attributes(NvramSpaceAttribute::NVRAM_READ_AUTHORIZATION);
   info_reply.add_attributes(NvramSpaceAttribute::NVRAM_PLATFORM_READ);
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), GetSpaceInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
 
   EXPECT_THAT(backend_->GetStorageTpm2().Prepare(
@@ -200,7 +202,7 @@ TEST_F(BackendStorageTpm2Test, Load) {
   tpm_manager::ReadSpaceReply read_reply;
   read_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
   read_reply.set_data(kFakeData);
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, ReadSpace(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), ReadSpace(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(read_reply), Return(true)));
 
   EXPECT_THAT(
@@ -213,7 +215,7 @@ TEST_F(BackendStorageTpm2Test, Store) {
 
   tpm_manager::WriteSpaceReply write_reply;
   write_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, WriteSpace(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), WriteSpace(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(write_reply), Return(true)));
 
   tpm_manager::GetSpaceInfoReply info_reply;
@@ -222,12 +224,12 @@ TEST_F(BackendStorageTpm2Test, Store) {
   info_reply.set_is_read_locked(false);
   info_reply.set_is_write_locked(false);
   info_reply.add_attributes(NvramSpaceAttribute::NVRAM_PERSISTENT_WRITE_LOCK);
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), GetSpaceInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
 
   tpm_manager::LockSpaceReply lock_reply;
   lock_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, LockSpace(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), LockSpace(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(lock_reply), Return(true)));
 
   EXPECT_THAT(backend_->GetStorageTpm2().Store(
@@ -244,12 +246,12 @@ TEST_F(BackendStorageTpm2Test, Lock) {
   info_reply.add_attributes(NvramSpaceAttribute::NVRAM_READ_AUTHORIZATION);
   info_reply.add_attributes(NvramSpaceAttribute::NVRAM_BOOT_WRITE_LOCK);
   info_reply.add_attributes(NvramSpaceAttribute::NVRAM_WRITE_AUTHORIZATION);
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), GetSpaceInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
 
   tpm_manager::LockSpaceReply lock_reply;
   lock_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, LockSpace(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), LockSpace(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(lock_reply), Return(true)));
 
   EXPECT_THAT(backend_->GetStorageTpm2().Lock(Space::kBootlockbox,
@@ -269,14 +271,14 @@ TEST_F(BackendStorageTpm2Test, LockNoOp) {
   info_reply.add_attributes(NvramSpaceAttribute::NVRAM_READ_AUTHORIZATION);
   info_reply.add_attributes(NvramSpaceAttribute::NVRAM_BOOT_WRITE_LOCK);
   info_reply.add_attributes(NvramSpaceAttribute::NVRAM_WRITE_AUTHORIZATION);
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), GetSpaceInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
 
   tpm_manager::LockSpaceReply lock_reply;
   lock_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
   // Space is already locked as requested, so no need to send the LockSpace
   // command again.
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, LockSpace).Times(0);
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), LockSpace).Times(0);
 
   EXPECT_THAT(backend_->GetStorageTpm2().Lock(Space::kBootlockbox,
                                               Backend::Storage::LockOptions{
@@ -293,7 +295,7 @@ TEST_F(BackendStorageTpm2Test, IsWriteLocked) {
   info_reply.set_is_read_locked(false);
   info_reply.set_is_write_locked(true);
   info_reply.add_attributes(NvramSpaceAttribute::NVRAM_PERSISTENT_WRITE_LOCK);
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), GetSpaceInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
 
   EXPECT_THAT(
@@ -306,7 +308,7 @@ TEST_F(BackendStorageTpm2Test, EnterpriseRollbackReady) {
   tpm_manager::ListSpacesReply list_reply;
   list_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
   list_reply.add_index_list(kEnterpriseRollbackIndex);
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, ListSpaces(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), ListSpaces(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(list_reply), Return(true)));
 
   tpm_manager::GetSpaceInfoReply info_reply;
@@ -317,7 +319,7 @@ TEST_F(BackendStorageTpm2Test, EnterpriseRollbackReady) {
   info_reply.add_attributes(NvramSpaceAttribute::NVRAM_PLATFORM_CREATE);
   info_reply.add_attributes(NvramSpaceAttribute::NVRAM_READ_AUTHORIZATION);
   info_reply.add_attributes(NvramSpaceAttribute::NVRAM_WRITE_AUTHORIZATION);
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, GetSpaceInfo(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), GetSpaceInfo(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
 
   EXPECT_THAT(backend_->GetStorageTpm2().IsReady(Space::kEnterpriseRollback),
@@ -327,7 +329,7 @@ TEST_F(BackendStorageTpm2Test, EnterpriseRollbackReady) {
 TEST_F(BackendStorageTpm2Test, EnterpriseRollbackNotReady) {
   tpm_manager::ListSpacesReply list_reply;
   list_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
-  EXPECT_CALL(proxy_->GetMock().tpm_nvram, ListSpaces(_, _, _, _))
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), ListSpaces(_, _, _, _))
       .WillOnce(DoAll(SetArgPointee<1>(list_reply), Return(true)));
 
   EXPECT_THAT(backend_->GetStorageTpm2().IsReady(Space::kEnterpriseRollback),
