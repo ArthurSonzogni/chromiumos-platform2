@@ -133,6 +133,8 @@ bool EvdevUtil::Initialize(const base::FilePath& path) {
     return false;
   }
 
+  LOG(INFO) << "Connected to evdev node: " << path
+            << ", device name: " << libevdev_get_name(dev_.get());
   delegate_->ReportProperties(dev_.get());
   return true;
 }
