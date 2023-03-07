@@ -7,6 +7,8 @@
 
 #include <string>
 
+#include <base/memory/weak_ptr.h>
+
 #include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
 #include "diagnostics/cros_healthd/system/context.h"
 
@@ -30,17 +32,18 @@ class AudioSetVolumeRoutine final : public DiagnosticRoutineWithStatus {
                             bool include_output) override;
 
  private:
+  void SetAudioOutputMuteCallback(bool success);
+
   // Tartget node id.
-  uint64_t node_id_;
-
+  uint64_t node_id_ = 0;
   // Target volume value.
-  uint8_t volume_;
-
+  uint8_t volume_ = 50;
   // Mute the device or not.
-  bool mute_on_;
-
+  bool mute_on_ = true;
   // Context object used to communicate with the executor.
-  Context* context_;
+  Context* context_ = nullptr;
+  // Must be the last class member.
+  base::WeakPtrFactory<AudioSetVolumeRoutine> weak_ptr_factory_{this};
 };
 
 }  // namespace diagnostics

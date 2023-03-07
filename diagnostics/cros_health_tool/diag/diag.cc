@@ -176,7 +176,7 @@ int diag_main(int argc, char** argv) {
   DEFINE_uint64(node_id, 0, "Target node id.");
   DEFINE_uint32(volume, 100, "Target volume. [0-100]");
   DEFINE_uint32(gain, 100, "Target gain. [0-100]");
-  DEFINE_bool(mute_on, false, "Mute or not.");
+  DEFINE_bool(mute_on, true, "Mute or not.");
 
   // Flag for the Bluetooth pairing routine.
   DEFINE_string(

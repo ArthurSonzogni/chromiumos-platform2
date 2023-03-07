@@ -3,14 +3,18 @@
 // found in the LICENSE file.
 
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include <base/check.h>
+#include <base/test/bind.h>
+#include <base/test/task_environment.h>
 #include <chromeos/dbus/service_constants.h>
 #include <gtest/gtest.h>
 
 #include "cras/dbus-proxy-mocks.h"
 #include "diagnostics/cros_healthd/routines/audio/audio_set_volume.h"
+#include "diagnostics/cros_healthd/system/fake_mojo_service.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
@@ -36,6 +40,10 @@ class AudioSetVolumeRoutineTest : public testing::Test {
   AudioSetVolumeRoutineTest& operator=(const AudioSetVolumeRoutineTest&) =
       delete;
 
+  void SetUp() override {
+    mock_context_.fake_mojo_service()->InitializeFakeMojoService();
+  }
+
   void CreateRoutine() {
     routine_ = std::make_unique<AudioSetVolumeRoutine>(
         &mock_context_, target_node_id, target_volume, target_mute_on);
@@ -43,19 +51,6 @@ class AudioSetVolumeRoutineTest : public testing::Test {
 
   org::chromium::cras::ControlProxyMock* mock_cras_proxy() {
     return mock_context_.mock_cras_proxy();
-  }
-
-  void SetSetOutputUserMute() {
-    EXPECT_CALL(*mock_cras_proxy(), SetOutputUserMute(target_mute_on, _, _))
-        .WillOnce(Return(true));
-  }
-
-  void SetSetOutputUserMuteError() {
-    EXPECT_CALL(*mock_cras_proxy(), SetOutputUserMute(target_mute_on, _, _))
-        .WillOnce(DoAll(WithArg<1>(Invoke([](brillo::ErrorPtr* error) {
-                          *error = brillo::Error::Create(FROM_HERE, "", "", "");
-                        })),
-                        Return(false)));
   }
 
   void SetSetOutputNodeVolume() {
@@ -72,10 +67,25 @@ class AudioSetVolumeRoutineTest : public testing::Test {
                         Return(false)));
   }
 
+  void SetAudioOutputMuteRequestResult(bool expected_result) {
+    mock_context_.fake_mojo_service()
+        ->fake_chromium_data_collector()
+        .SetAudioOutputMuteRequestResult(expected_result);
+  }
+
+  void WaitUntilRoutineFinished(base::OnceClosure callback) {
+    base::SequencedTaskRunner::GetCurrentDefault()->PostDelayedTask(
+        FROM_HERE, std::move(callback),
+        // This routine should be finished within 1 second. Set 2 seconds as a
+        // safe timeout.
+        base::Milliseconds(2000));
+  }
+
   MockContext mock_context_;
   std::unique_ptr<AudioSetVolumeRoutine> routine_;
   mojom::RoutineUpdate update_{0, mojo::ScopedHandle(),
                                mojom::RoutineUpdateUnionPtr()};
+  base::test::TaskEnvironment task_environment_;
 };
 
 TEST_F(AudioSetVolumeRoutineTest, DefaultConstruction) {
@@ -85,28 +95,38 @@ TEST_F(AudioSetVolumeRoutineTest, DefaultConstruction) {
 
 TEST_F(AudioSetVolumeRoutineTest, SuccessfulCase) {
   CreateRoutine();
-  SetSetOutputUserMute();
   SetSetOutputNodeVolume();
+  SetAudioOutputMuteRequestResult(true);
 
   routine_->Start();
-  EXPECT_EQ(routine_->GetStatus(), mojom::DiagnosticRoutineStatusEnum::kPassed);
+  WaitUntilRoutineFinished(base::BindLambdaForTesting([&]() {
+    EXPECT_EQ(routine_->GetStatus(),
+              mojom::DiagnosticRoutineStatusEnum::kPassed);
+  }));
 }
 
 TEST_F(AudioSetVolumeRoutineTest, SetOutputUserMuteError) {
   CreateRoutine();
-  SetSetOutputUserMuteError();
+  SetSetOutputNodeVolume();
+  SetAudioOutputMuteRequestResult(false);
 
   routine_->Start();
-  EXPECT_EQ(routine_->GetStatus(), mojom::DiagnosticRoutineStatusEnum::kError);
+  WaitUntilRoutineFinished(base::BindLambdaForTesting([&]() {
+    EXPECT_EQ(routine_->GetStatus(),
+              mojom::DiagnosticRoutineStatusEnum::kFailed);
+  }));
 }
 
 TEST_F(AudioSetVolumeRoutineTest, SetOutputNodeVolumeError) {
   CreateRoutine();
-  SetSetOutputUserMute();
   SetSetOutputNodeVolumeError();
+  SetAudioOutputMuteRequestResult(true);
 
   routine_->Start();
-  EXPECT_EQ(routine_->GetStatus(), mojom::DiagnosticRoutineStatusEnum::kError);
+  WaitUntilRoutineFinished(base::BindLambdaForTesting([&]() {
+    EXPECT_EQ(routine_->GetStatus(),
+              mojom::DiagnosticRoutineStatusEnum::kError);
+  }));
 }
 
 }  // namespace
