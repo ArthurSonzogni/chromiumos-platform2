@@ -20,7 +20,7 @@ class ValidatorTest : public testing::Test {
   void SetUp() override { ASSERT_TRUE(grp_); }
 
  protected:
-  SimpleLog log_;
+  SimpleValidatorLog log_;
   Frame frame_ = Frame(Operation::Activate_Printer);
   Collection* grp_ = frame_.GetGroup(GroupTag::operation_attributes);
 };
@@ -41,19 +41,19 @@ TEST_F(ValidatorTest, InvalidHeader) {
             "header[0]>major-version-number");
   EXPECT_EQ(log_.Entries()[0].error.Index(), 0);
   EXPECT_EQ(log_.Entries()[0].error.ErrorsAsVector(),
-            (std::vector{ValidationCode::kIntegerOutOfRange}));
+            (std::vector{ValidatorCode::kIntegerOutOfRange}));
   EXPECT_EQ(log_.Entries()[1].path.AsString(),
             "header[0]>minor-version-number");
   EXPECT_EQ(log_.Entries()[1].error.Index(), 0);
   EXPECT_EQ(log_.Entries()[1].error.ErrorsAsVector(),
-            (std::vector{ValidationCode::kIntegerOutOfRange}));
+            (std::vector{ValidatorCode::kIntegerOutOfRange}));
   EXPECT_EQ(log_.Entries()[2].error.Index(), 0);
   EXPECT_EQ(log_.Entries()[2].error.ErrorsAsVector(),
-            (std::vector{ValidationCode::kIntegerOutOfRange}));
+            (std::vector{ValidatorCode::kIntegerOutOfRange}));
   EXPECT_EQ(log_.Entries()[3].path.AsString(), "header[0]>request-id");
   EXPECT_EQ(log_.Entries()[3].error.Index(), 0);
   EXPECT_EQ(log_.Entries()[3].error.ErrorsAsVector(),
-            (std::vector{ValidationCode::kIntegerOutOfRange}));
+            (std::vector{ValidatorCode::kIntegerOutOfRange}));
 }
 
 TEST_F(ValidatorTest, InvalidAttributeName) {
@@ -71,18 +71,18 @@ TEST_F(ValidatorTest, InvalidAttributeName) {
             "operation-attributes[0]>invalid char");
   EXPECT_TRUE(log_.Entries()[0].error.IsInTheName());
   EXPECT_EQ(log_.Entries()[0].error.ErrorsAsVector(),
-            std::vector{ValidationCode::kStringInvalidCharacter});
+            std::vector{ValidatorCode::kStringInvalidCharacter});
   EXPECT_EQ(log_.Entries()[1].path.AsString(),
             "operation-attributes[0]>" + too_long);
   EXPECT_TRUE(log_.Entries()[1].error.IsInTheName());
   EXPECT_EQ(log_.Entries()[1].error.ErrorsAsVector(),
-            std::vector{ValidationCode::kStringTooLong});
+            std::vector{ValidatorCode::kStringTooLong});
   EXPECT_EQ(log_.Entries()[2].path.AsString(),
             "operation-attributes[0]>" + too_long_2);
   EXPECT_TRUE(log_.Entries()[2].error.IsInTheName());
   EXPECT_EQ(log_.Entries()[2].error.ErrorsAsVector(),
-            (std::vector{ValidationCode::kStringTooLong,
-                         ValidationCode::kStringInvalidCharacter}));
+            (std::vector{ValidatorCode::kStringTooLong,
+                         ValidatorCode::kStringInvalidCharacter}));
 }
 
 TEST_F(ValidatorTest, InvalidOctetString) {
@@ -96,7 +96,7 @@ TEST_F(ValidatorTest, InvalidOctetString) {
   ASSERT_EQ(log_.Entries().size(), 1);
   EXPECT_EQ(log_.Entries()[0].error.Index(), 1);
   EXPECT_EQ(log_.Entries()[0].error.ErrorsAsVector(),
-            std::vector{ValidationCode::kStringTooLong});
+            std::vector{ValidatorCode::kStringTooLong});
 }
 
 TEST_F(ValidatorTest, InvalidDateTime) {
@@ -128,18 +128,18 @@ TEST_F(ValidatorTest, InvalidDateTime) {
   ASSERT_EQ(log_.Entries().size(), 4);
   EXPECT_EQ(log_.Entries()[0].error.Index(), 1);
   EXPECT_EQ(log_.Entries()[0].error.ErrorsAsVector(),
-            std::vector{ValidationCode::kDateTimeInvalidDate});
+            std::vector{ValidatorCode::kDateTimeInvalidDate});
   EXPECT_EQ(log_.Entries()[1].error.Index(), 2);
   EXPECT_EQ(log_.Entries()[1].error.ErrorsAsVector(),
-            std::vector{ValidationCode::kDateTimeInvalidTimeOfDay});
+            std::vector{ValidatorCode::kDateTimeInvalidTimeOfDay});
   EXPECT_EQ(log_.Entries()[2].error.Index(), 3);
   EXPECT_EQ(log_.Entries()[2].error.ErrorsAsVector(),
-            std::vector{ValidationCode::kDateTimeInvalidZone});
+            std::vector{ValidatorCode::kDateTimeInvalidZone});
   EXPECT_EQ(log_.Entries()[3].error.Index(), 4);
   EXPECT_EQ(log_.Entries()[3].error.ErrorsAsVector(),
-            (std::vector{ValidationCode::kDateTimeInvalidDate,
-                         ValidationCode::kDateTimeInvalidTimeOfDay,
-                         ValidationCode::kDateTimeInvalidZone}));
+            (std::vector{ValidatorCode::kDateTimeInvalidDate,
+                         ValidatorCode::kDateTimeInvalidTimeOfDay,
+                         ValidatorCode::kDateTimeInvalidZone}));
 }
 
 TEST_F(ValidatorTest, InvalidDateTimeLeapYear) {
@@ -154,10 +154,10 @@ TEST_F(ValidatorTest, InvalidDateTimeLeapYear) {
   ASSERT_EQ(log_.Entries().size(), 2);
   EXPECT_EQ(log_.Entries()[0].error.Index(), 2);
   EXPECT_EQ(log_.Entries()[0].error.ErrorsAsVector(),
-            std::vector{ValidationCode::kDateTimeInvalidDate});
+            std::vector{ValidatorCode::kDateTimeInvalidDate});
   EXPECT_EQ(log_.Entries()[1].error.Index(), 3);
   EXPECT_EQ(log_.Entries()[1].error.ErrorsAsVector(),
-            std::vector{ValidationCode::kDateTimeInvalidDate});
+            std::vector{ValidatorCode::kDateTimeInvalidDate});
 }
 
 TEST_F(ValidatorTest, InvalidResolution) {
@@ -174,14 +174,14 @@ TEST_F(ValidatorTest, InvalidResolution) {
   ASSERT_EQ(log_.Entries().size(), 3);
   EXPECT_EQ(log_.Entries()[0].error.Index(), 0xffffu);
   EXPECT_EQ(log_.Entries()[0].error.ErrorsAsVector(),
-            std::vector{ValidationCode::kStringInvalidCharacter});
+            std::vector{ValidatorCode::kStringInvalidCharacter});
   EXPECT_EQ(log_.Entries()[1].error.Index(), 0);
   EXPECT_EQ(log_.Entries()[1].error.ErrorsAsVector(),
-            (std::vector{ValidationCode::kResolutionInvalidUnit,
-                         ValidationCode::kResolutionInvalidDimension}));
+            (std::vector{ValidatorCode::kResolutionInvalidUnit,
+                         ValidatorCode::kResolutionInvalidDimension}));
   EXPECT_EQ(log_.Entries()[2].error.Index(), 1);
   EXPECT_EQ(log_.Entries()[2].error.ErrorsAsVector(),
-            std::vector{ValidationCode::kResolutionInvalidDimension});
+            std::vector{ValidatorCode::kResolutionInvalidDimension});
 }
 
 TEST_F(ValidatorTest, InvalidRangeOfInteger) {
@@ -196,7 +196,7 @@ TEST_F(ValidatorTest, InvalidRangeOfInteger) {
   ASSERT_EQ(log_.Entries().size(), 1);
   EXPECT_EQ(log_.Entries()[0].error.Index(), 1);
   EXPECT_EQ(log_.Entries()[0].error.ErrorsAsVector(),
-            std::vector{ValidationCode::kRangeOfIntegerMaxLessMin});
+            std::vector{ValidatorCode::kRangeOfIntegerMaxLessMin});
 }
 
 TEST_F(ValidatorTest, InvalidCollection) {
@@ -214,12 +214,12 @@ TEST_F(ValidatorTest, InvalidCollection) {
             "operation-attributes[0]>colls[1]>coll2[0]>bad attr");
   EXPECT_TRUE(log_.Entries()[0].error.IsInTheName());
   EXPECT_EQ(log_.Entries()[0].error.ErrorsAsVector(),
-            (std::vector{ValidationCode::kStringInvalidCharacter}));
+            (std::vector{ValidatorCode::kStringInvalidCharacter}));
   EXPECT_EQ(log_.Entries()[1].path.AsString(),
             "operation-attributes[0]>colls[2]>-also bad");
   EXPECT_TRUE(log_.Entries()[1].error.IsInTheName());
   EXPECT_EQ(log_.Entries()[1].error.ErrorsAsVector(),
-            (std::vector{ValidationCode::kStringInvalidCharacter}));
+            (std::vector{ValidatorCode::kStringInvalidCharacter}));
 }
 
 TEST_F(ValidatorTest, InvalidText) {
@@ -232,10 +232,10 @@ TEST_F(ValidatorTest, InvalidText) {
   ASSERT_EQ(log_.Entries().size(), 2);
   EXPECT_EQ(log_.Entries()[0].error.Index(), 0);
   EXPECT_EQ(log_.Entries()[0].error.ErrorsAsVector(),
-            (std::vector{ValidationCode::kStringTooLong}));
+            (std::vector{ValidatorCode::kStringTooLong}));
   EXPECT_EQ(log_.Entries()[1].error.Index(), 0);
   EXPECT_EQ(log_.Entries()[1].error.ErrorsAsVector(),
-            (std::vector{ValidationCode::kStringWithLangInvalidLanguage}));
+            (std::vector{ValidatorCode::kStringWithLangInvalidLanguage}));
 }
 
 TEST_F(ValidatorTest, InvalidName) {
@@ -249,7 +249,7 @@ TEST_F(ValidatorTest, InvalidName) {
   ASSERT_EQ(log_.Entries().size(), 1);
   EXPECT_EQ(log_.Entries()[0].error.Index(), 0);
   EXPECT_EQ(log_.Entries()[0].error.ErrorsAsVector(),
-            (std::vector{ValidationCode::kStringTooLong}));
+            (std::vector{ValidatorCode::kStringTooLong}));
 }
 
 TEST_F(ValidatorTest, InvalidUri) {
@@ -261,10 +261,10 @@ TEST_F(ValidatorTest, InvalidUri) {
   ASSERT_EQ(log_.Entries().size(), 2);
   EXPECT_EQ(log_.Entries()[0].error.Index(), 0);
   EXPECT_EQ(log_.Entries()[0].error.ErrorsAsVector(),
-            (std::vector{ValidationCode::kStringTooLong}));
+            (std::vector{ValidatorCode::kStringTooLong}));
   EXPECT_EQ(log_.Entries()[1].error.Index(), 0);
   EXPECT_EQ(log_.Entries()[1].error.ErrorsAsVector(),
-            (std::vector{ValidationCode::kStringEmpty}));
+            (std::vector{ValidatorCode::kStringEmpty}));
 }
 
 TEST_F(ValidatorTest, InvalidUriScheme) {
@@ -276,10 +276,10 @@ TEST_F(ValidatorTest, InvalidUriScheme) {
   ASSERT_EQ(log_.Entries().size(), 2);
   EXPECT_EQ(log_.Entries()[0].error.Index(), 0);
   EXPECT_EQ(log_.Entries()[0].error.ErrorsAsVector(),
-            (std::vector{ValidationCode::kStringTooLong}));
+            (std::vector{ValidatorCode::kStringTooLong}));
   EXPECT_EQ(log_.Entries()[1].error.Index(), 0);
   EXPECT_EQ(log_.Entries()[1].error.ErrorsAsVector(),
-            (std::vector{ValidationCode::kStringEmpty}));
+            (std::vector{ValidatorCode::kStringEmpty}));
 }
 
 TEST_F(ValidatorTest, InvalidCharset) {
@@ -292,12 +292,12 @@ TEST_F(ValidatorTest, InvalidCharset) {
   EXPECT_EQ(log_.Entries()[0].path.AsString(),
             "operation-attributes[0]>non-printable");
   EXPECT_EQ(log_.Entries()[0].error.ErrorsAsVector(),
-            (std::vector{ValidationCode::kStringInvalidCharacter}));
+            (std::vector{ValidatorCode::kStringInvalidCharacter}));
   EXPECT_EQ(log_.Entries()[1].error.Index(), 0);
   EXPECT_EQ(log_.Entries()[1].path.AsString(),
             "operation-attributes[0]>uppercase");
   EXPECT_EQ(log_.Entries()[1].error.ErrorsAsVector(),
-            (std::vector{ValidationCode::kStringInvalidCharacter}));
+            (std::vector{ValidatorCode::kStringInvalidCharacter}));
 }
 
 TEST_F(ValidatorTest, InvalidNaturalLanguage) {
@@ -309,10 +309,10 @@ TEST_F(ValidatorTest, InvalidNaturalLanguage) {
   ASSERT_EQ(log_.Entries().size(), 2);
   EXPECT_EQ(log_.Entries()[0].error.Index(), 0);
   EXPECT_EQ(log_.Entries()[0].error.ErrorsAsVector(),
-            (std::vector{ValidationCode::kStringTooLong}));
+            (std::vector{ValidatorCode::kStringTooLong}));
   EXPECT_EQ(log_.Entries()[1].error.Index(), 0);
   EXPECT_EQ(log_.Entries()[1].error.ErrorsAsVector(),
-            (std::vector{ValidationCode::kStringEmpty}));
+            (std::vector{ValidatorCode::kStringEmpty}));
 }
 
 TEST_F(ValidatorTest, InvalidMimeMediaType) {
@@ -324,10 +324,10 @@ TEST_F(ValidatorTest, InvalidMimeMediaType) {
   ASSERT_EQ(log_.Entries().size(), 2);
   EXPECT_EQ(log_.Entries()[0].error.Index(), 0);
   EXPECT_EQ(log_.Entries()[0].error.ErrorsAsVector(),
-            (std::vector{ValidationCode::kStringTooLong}));
+            (std::vector{ValidatorCode::kStringTooLong}));
   EXPECT_EQ(log_.Entries()[1].error.Index(), 0);
   EXPECT_EQ(log_.Entries()[1].error.ErrorsAsVector(),
-            (std::vector{ValidationCode::kStringEmpty}));
+            (std::vector{ValidatorCode::kStringEmpty}));
 }
 
 TEST_F(ValidatorTest, StopAfterTheFirstError) {
@@ -336,7 +336,7 @@ TEST_F(ValidatorTest, StopAfterTheFirstError) {
   grp_->AddAttr("too-long-2", ValueTag::mimeMediaType,
                 std::string(kMaxLengthOfMimeMediaType + 1, 'x'));
 
-  SimpleLog log_first_error(1);
+  SimpleValidatorLog log_first_error(1);
   EXPECT_FALSE(Validate(frame_, log_first_error));
   ASSERT_EQ(log_first_error.Entries().size(), 1);
 }

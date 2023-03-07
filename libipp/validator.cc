@@ -40,17 +40,17 @@ struct StringValidator {
   // The input string to validate.
   std::string_view value;
   // Output set of error codes.
-  std::set<ValidationCode> codes;
+  std::set<ValidatorCode> codes;
   // Validates the string length.
   void CheckLength(size_t max_length, bool empty_string_allowed = false) {
     if (value.empty()) {
       if (!empty_string_allowed) {
-        codes.insert(ValidationCode::kStringEmpty);
+        codes.insert(ValidatorCode::kStringEmpty);
       }
       return;
     }
     if (value.size() > max_length) {
-      codes.insert(ValidationCode::kStringTooLong);
+      codes.insert(ValidatorCode::kStringTooLong);
     }
   }
   // Checks if the string starts from lowercase letter. It does nothing if
@@ -58,7 +58,7 @@ struct StringValidator {
   void CheckFirstLetterIsLowercase() {
     if (value.empty() || IsLowercaseLetter(value.front()))
       return;
-    codes.insert(ValidationCode::kStringMustStartLowercaseLetter);
+    codes.insert(ValidatorCode::kStringMustStartLowercaseLetter);
   }
   // Checks if the input string consists only of letters, digits and
   // characters from `allowed_chars`.
@@ -72,7 +72,7 @@ struct StringValidator {
       if (IsDigit(c))
         continue;
       if (allowed_chars.find(c) == std::string_view::npos) {
-        codes.insert(ValidationCode::kStringInvalidCharacter);
+        codes.insert(ValidatorCode::kStringInvalidCharacter);
         break;
       }
     }
@@ -81,11 +81,11 @@ struct StringValidator {
   void CheckPrintable(bool uppercase_letters_allowed = false) {
     for (char c : value) {
       if (c < 0x20 || c > 0x7e) {
-        codes.insert(ValidationCode::kStringInvalidCharacter);
+        codes.insert(ValidatorCode::kStringInvalidCharacter);
         break;
       }
       if (!uppercase_letters_allowed && IsUppercaseLetter(c)) {
-        codes.insert(ValidationCode::kStringInvalidCharacter);
+        codes.insert(ValidatorCode::kStringInvalidCharacter);
         break;
       }
     }
@@ -105,7 +105,7 @@ bool IsLeapYear(uint16_t year) {
 
 // Validate 'text' value based on:
 // * rfc8011, section 5.1.2.
-std::set<ValidationCode> validateTextWithoutLanguage(std::string_view value) {
+std::set<ValidatorCode> validateTextWithoutLanguage(std::string_view value) {
   StringValidator validator = {value};
   validator.CheckLength(kMaxLengthOfText, /*empty_string_allowed=*/true);
   return validator.codes;
@@ -113,7 +113,7 @@ std::set<ValidationCode> validateTextWithoutLanguage(std::string_view value) {
 
 // Validate 'name' value based on:
 // * rfc8011, section 5.1.3.
-std::set<ValidationCode> validateNameWithoutLanguage(std::string_view value) {
+std::set<ValidatorCode> validateNameWithoutLanguage(std::string_view value) {
   StringValidator validator = {value};
   validator.CheckLength(kMaxLengthOfName, /*empty_string_allowed=*/true);
   return validator.codes;
@@ -122,7 +122,7 @@ std::set<ValidationCode> validateNameWithoutLanguage(std::string_view value) {
 // Validate 'keyword' value based on:
 // * rfc8011, section 5.1.4.
 // * rfc8011 errata
-std::set<ValidationCode> validateKeyword(std::string_view value) {
+std::set<ValidatorCode> validateKeyword(std::string_view value) {
   StringValidator validator = {value};
   validator.CheckLength(kMaxLengthOfKeyword);
   validator.CheckLettersDigits(kAllowedCharsInKeyword,
@@ -133,7 +133,7 @@ std::set<ValidationCode> validateKeyword(std::string_view value) {
 // Validate 'uri' value based on:
 // * rfc8011, section 5.1.6;
 // * rfc3986, section 2.
-std::set<ValidationCode> validateUri(std::string_view value) {
+std::set<ValidatorCode> validateUri(std::string_view value) {
   StringValidator validator = {value};
   validator.CheckLength(kMaxLengthOfUri);
   validator.CheckLettersDigits(kAllowedCharsInUri,
@@ -144,7 +144,7 @@ std::set<ValidationCode> validateUri(std::string_view value) {
 // Validate 'uriScheme' value based on:
 // * rfc8011, section 5.1.7;
 // * rfc3986, section 3.1.
-std::set<ValidationCode> validateUriScheme(std::string_view value) {
+std::set<ValidatorCode> validateUriScheme(std::string_view value) {
   StringValidator validator = {value};
   validator.CheckLength(kMaxLengthOfUriScheme);
   validator.CheckFirstLetterIsLowercase();
@@ -155,7 +155,7 @@ std::set<ValidationCode> validateUriScheme(std::string_view value) {
 // Validate 'charset' value based on:
 // * rfc8011, section 5.1.8;
 // * https://www.iana.org/assignments/character-sets/character-sets.xhtml.
-std::set<ValidationCode> validateCharset(std::string_view value) {
+std::set<ValidatorCode> validateCharset(std::string_view value) {
   StringValidator validator = {value};
   validator.CheckLength(kMaxLengthOfCharset);
   validator.CheckPrintable();
@@ -165,7 +165,7 @@ std::set<ValidationCode> validateCharset(std::string_view value) {
 // Validate 'naturalLanguage' value based on:
 // * rfc8011, section 5.1.9;
 // * rfc5646, section 2.1.
-std::set<ValidationCode> validateNaturalLanguage(std::string_view value) {
+std::set<ValidatorCode> validateNaturalLanguage(std::string_view value) {
   StringValidator validator = {value};
   validator.CheckLength(kMaxLengthOfNaturalLanguage);
   validator.CheckLettersDigits(kAllowedCharsInNaturalLanguage);
@@ -175,7 +175,7 @@ std::set<ValidationCode> validateNaturalLanguage(std::string_view value) {
 // Validate 'mimeMediaType' value based on:
 // * rfc8011, section 5.1.10;
 // * https://www.iana.org/assignments/media-types/media-types.xhtml.
-std::set<ValidationCode> validateMimeMediaType(std::string_view value) {
+std::set<ValidatorCode> validateMimeMediaType(std::string_view value) {
   StringValidator validator = {value};
   validator.CheckLength(kMaxLengthOfMimeMediaType);
   validator.CheckPrintable(/*uppercase_letters_allowed=*/true);
@@ -184,10 +184,10 @@ std::set<ValidationCode> validateMimeMediaType(std::string_view value) {
 
 // Validate 'octetString' value based on:
 // * rfc8011, section 5.1.11.
-std::set<ValidationCode> validateOctetString(std::string_view value) {
-  std::set<ValidationCode> codes;
+std::set<ValidatorCode> validateOctetString(std::string_view value) {
+  std::set<ValidatorCode> codes;
   if (value.size() > kMaxLengthOfOctetString)
-    codes.insert(ValidationCode::kStringTooLong);
+    codes.insert(ValidatorCode::kStringTooLong);
   return codes;
 }
 
@@ -195,13 +195,13 @@ std::set<ValidationCode> validateOctetString(std::string_view value) {
 // * rfc8011, section 5.1.15;
 // * DateAndTime defined in rfc2579, section 2;
 // * also enforces 1970 <= year <= 2100.
-std::set<ValidationCode> validateDateTime(const DateTime& value) {
-  std::set<ValidationCode> codes;
+std::set<ValidatorCode> validateDateTime(const DateTime& value) {
+  std::set<ValidatorCode> codes;
 
   // Verify the date.
   if (value.year < 1970 || value.year > 2100 || value.month < 1 ||
       value.month > 12 || value.day < 1) {
-    codes.insert(ValidationCode::kDateTimeInvalidDate);
+    codes.insert(ValidatorCode::kDateTimeInvalidDate);
   } else {
     uint8_t max_day = 31;
     switch (value.month) {
@@ -220,20 +220,20 @@ std::set<ValidationCode> validateDateTime(const DateTime& value) {
         break;
     }
     if (value.day > max_day) {
-      codes.insert(ValidationCode::kDateTimeInvalidDate);
+      codes.insert(ValidatorCode::kDateTimeInvalidDate);
     }
   }
 
   // Verify the time of day (seconds == 60 means leap second).
   if (value.hour > 23 || value.minutes > 59 || value.seconds > 60 ||
       value.deci_seconds > 9) {
-    codes.insert(ValidationCode::kDateTimeInvalidTimeOfDay);
+    codes.insert(ValidatorCode::kDateTimeInvalidTimeOfDay);
   }
 
   // Verify the timezone (daylight saving time in New Zealand is +13).
   if ((value.UTC_direction != '-' && value.UTC_direction != '+') ||
       value.UTC_hours > 13 || value.UTC_minutes > 59) {
-    codes.insert(ValidationCode::kDateTimeInvalidZone);
+    codes.insert(ValidatorCode::kDateTimeInvalidZone);
   }
 
   return codes;
@@ -241,53 +241,53 @@ std::set<ValidationCode> validateDateTime(const DateTime& value) {
 
 // Validate 'resolution' value based on:
 // * rfc8011, section 5.1.16.
-std::set<ValidationCode> validateResolution(Resolution value) {
-  std::set<ValidationCode> codes;
+std::set<ValidatorCode> validateResolution(Resolution value) {
+  std::set<ValidatorCode> codes;
   if (value.units != Resolution::Units::kDotsPerCentimeter &&
       value.units != Resolution::Units::kDotsPerInch)
-    codes.insert(ValidationCode::kResolutionInvalidUnit);
+    codes.insert(ValidatorCode::kResolutionInvalidUnit);
   if (value.xres < 1 || value.yres < 1)
-    codes.insert(ValidationCode::kResolutionInvalidDimension);
+    codes.insert(ValidatorCode::kResolutionInvalidDimension);
   return codes;
 }
 
 // Validate 'rangeOfInteger' value based on:
 // * rfc8011, section 5.1.14.
-std::set<ValidationCode> validateRangeOfInteger(RangeOfInteger value) {
-  std::set<ValidationCode> codes;
+std::set<ValidatorCode> validateRangeOfInteger(RangeOfInteger value) {
+  std::set<ValidatorCode> codes;
   if (value.min_value > value.max_value)
-    codes.insert(ValidationCode::kRangeOfIntegerMaxLessMin);
+    codes.insert(ValidatorCode::kRangeOfIntegerMaxLessMin);
   return codes;
 }
 
 // Validate 'textWithLanguage' value based on:
 // * rfc8011, section 5.1.2.2.
-std::set<ValidationCode> validateTextWithLanguage(
+std::set<ValidatorCode> validateTextWithLanguage(
     const StringWithLanguage& value) {
-  std::set<ValidationCode> codes = validateTextWithoutLanguage(value.value);
+  std::set<ValidatorCode> codes = validateTextWithoutLanguage(value.value);
   if (!value.language.empty()) {
     if (!validateNaturalLanguage(value.language).empty())
-      codes.insert(ValidationCode::kStringWithLangInvalidLanguage);
+      codes.insert(ValidatorCode::kStringWithLangInvalidLanguage);
   }
   return codes;
 }
 
 // Validate 'nameWithLanguage' value based on:
 // * rfc8011, section 5.1.3.2.
-std::set<ValidationCode> validateNameWithLanguage(
+std::set<ValidatorCode> validateNameWithLanguage(
     const StringWithLanguage& value) {
-  std::set<ValidationCode> codes = validateNameWithoutLanguage(value.value);
+  std::set<ValidatorCode> codes = validateNameWithoutLanguage(value.value);
   if (!value.language.empty()) {
     if (!validateNaturalLanguage(value.language).empty())
-      codes.insert(ValidationCode::kStringWithLangInvalidLanguage);
+      codes.insert(ValidatorCode::kStringWithLangInvalidLanguage);
   }
   return codes;
 }
 
 // Validate a single value in `attribute`. `attribute` must not be nullptr and
 // `value_index` must be a valid index.
-std::set<ValidationCode> ValidateValue(const Attribute* attribute,
-                                       size_t value_index) {
+std::set<ValidatorCode> ValidateValue(const Attribute* attribute,
+                                      size_t value_index) {
   if (IsString(attribute->Tag())) {
     std::string values_str;
     attribute->GetValue(&values_str, value_index);
@@ -364,14 +364,14 @@ ValidationResult operator&&(ValidationResult vr1, ValidationResult vr2) {
 
 ValidationResult ValidateCollections(
     const std::vector<const Collection*>& colls,
-    ErrorsLog& log,
+    ValidatorLog& log,
     AttrPath& path);
 
 ValidationResult ValidateAttribute(const Attribute* attr,
-                                   ErrorsLog& log,
+                                   ValidatorLog& log,
                                    AttrPath& path) {
   ValidationResult result;
-  std::set<ValidationCode> name_errors = validateKeyword(attr->Name());
+  std::set<ValidatorCode> name_errors = validateKeyword(attr->Name());
   if (!name_errors.empty()) {
     result.no_errors = false;
     result.keep_going =
@@ -388,7 +388,7 @@ ValidationResult ValidateAttribute(const Attribute* attr,
     result = result && ValidateCollections(colls, log, path);
   } else {
     for (size_t i = 0; i < values_count; ++i) {
-      std::set<ValidationCode> value_errors = ValidateValue(attr, i);
+      std::set<ValidatorCode> value_errors = ValidateValue(attr, i);
       if (!value_errors.empty()) {
         result.no_errors = false;
         result.keep_going =
@@ -403,7 +403,7 @@ ValidationResult ValidateAttribute(const Attribute* attr,
 
 ValidationResult ValidateCollections(
     const std::vector<const Collection*>& colls,
-    ErrorsLog& log,
+    ValidatorLog& log,
     AttrPath& path) {
   ValidationResult result;
   for (size_t icoll = 0; icoll < colls.size(); ++icoll) {
@@ -421,7 +421,7 @@ ValidationResult ValidateCollections(
 }
 
 // Checks the values saved in the header of `frame`.
-ValidationResult ValidateHeader(const Frame& frame, ErrorsLog& log) {
+ValidationResult ValidateHeader(const Frame& frame, ValidatorLog& log) {
   std::vector<std::string> invalid_fields;
   invalid_fields.reserve(4);
   uint8_t ver_major = static_cast<uint16_t>(frame.VersionNumber()) >> 8;
@@ -440,7 +440,7 @@ ValidationResult ValidateHeader(const Frame& frame, ErrorsLog& log) {
   }
   ValidationResult result;
   result.no_errors = invalid_fields.empty();
-  AttrError error = AttrError(0, {ValidationCode::kIntegerOutOfRange});
+  AttrError error = AttrError(0, {ValidatorCode::kIntegerOutOfRange});
   AttrPath path = AttrPath(AttrPath::kHeader);
   for (const std::string& name : invalid_fields) {
     path.PushBack(0, name);
@@ -455,7 +455,19 @@ ValidationResult ValidateHeader(const Frame& frame, ErrorsLog& log) {
 
 }  // namespace
 
-bool Validate(const Frame& frame, ErrorsLog& log) {
+std::vector<ValidatorCode> AttrError::ErrorsAsVector() const {
+  return std::vector<ValidatorCode>(errors_.begin(), errors_.end());
+}
+
+bool SimpleValidatorLog::AddValidationError(const AttrPath& path,
+                                            AttrError error) {
+  if (entries_.size() < max_entries_count_) {
+    entries_.emplace_back(path, error);
+  }
+  return (entries_.size() < max_entries_count_);
+}
+
+bool Validate(const Frame& frame, ValidatorLog& log) {
   ValidationResult result = ValidateHeader(frame, log);
   if (!result.keep_going)
     return result.no_errors;

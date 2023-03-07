@@ -71,10 +71,6 @@ std::string ToJsonString(const std::string& str, std::string special_chars) {
 
 }  // namespace
 
-std::vector<ValidationCode> AttrError::ErrorsAsVector() const {
-  return std::vector<ValidationCode>(errors_.begin(), errors_.end());
-}
-
 std::string AttrPath::AsString() const {
   std::string out = (group_ == kHeader) ? "header" : ToString(group_);
   for (const Segment& segment : path_) {
@@ -84,13 +80,6 @@ std::string AttrPath::AsString() const {
     out += ToJsonString(segment.attribute_name, "[]>");
   }
   return out;
-}
-
-bool SimpleLog::AddValidationError(const AttrPath& path, AttrError error) {
-  if (entries_.size() < max_entries_count_) {
-    entries_.emplace_back(path, error);
-  }
-  return (entries_.size() < max_entries_count_);
 }
 
 }  // namespace ipp
