@@ -45,7 +45,8 @@ bool ParseArgument(const char* function_name,
                    T* member,
                    const base::Value& value) {
   if (value.is_dict()) {
-    auto* real_value = value.FindKey(member_name);
+    const auto& value_dict = value.GetDict();
+    auto* real_value = value_dict.Find(member_name);
     if (!real_value) {
       LOG(ERROR) << function_name << ": `" << member_name << "` not found";
       return false;
@@ -63,7 +64,8 @@ bool ParseArgument(const char* function_name,
                    const base::Value& value,
                    const T&& default_value) {
   CHECK(value.is_dict());
-  if (!value.FindKey(member_name)) {
+  const auto& value_dict = value.GetDict();
+  if (!value_dict.Find(member_name)) {
     *member = default_value;
     return true;
   }

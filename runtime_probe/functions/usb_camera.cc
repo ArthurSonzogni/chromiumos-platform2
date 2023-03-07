@@ -60,11 +60,11 @@ bool ReadUsbSysfs(const base::FilePath& path, base::Value* res) {
     return false;
   }
 
-  auto* removable = result->FindStringKey("usb_removable");
+  auto* removable = result->GetDict().FindString("usb_removable");
   if (removable) {
     *removable = base::ToUpperASCII(*removable);
   }
-  res->MergeDictionary(&*result);
+  res->GetDict().Merge(std::move(result->GetDict()));
   return true;
 }
 

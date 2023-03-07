@@ -26,19 +26,21 @@ std::unique_ptr<ProbeFunction> ProbeFunction::FromValue(const base::Value& dv) {
     LOG(ERROR) << "ProbeFunction::FromValue takes a dictionary as parameter";
     return nullptr;
   }
+  const auto& dict = dv.GetDict();
 
-  if (dv.DictSize() == 0) {
+  auto size = dict.size();
+  if (size == 0) {
     LOG(ERROR) << "No function name found in the ProbeFunction dictionary";
     return nullptr;
   }
 
-  if (dv.DictSize() > 1) {
+  if (size > 1) {
     LOG(ERROR) << "More than 1 function names specified in the ProbeFunction"
                   " dictionary";
     return nullptr;
   }
 
-  const auto& it = dv.DictItems().begin();
+  const auto& it = dict.begin();
 
   // function_name is the only key exists in the dictionary */
   const auto& function_name = it->first;

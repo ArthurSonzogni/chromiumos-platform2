@@ -12,6 +12,7 @@ namespace runtime_probe {
 
 SequenceFunction::DataType SequenceFunction::EvalImpl() const {
   base::Value result(base::Value::Type::DICT);
+  auto& result_dict = result.GetDict();
 
   for (const auto& func : functions_) {
     const auto& probe_results = func->Eval();
@@ -24,7 +25,7 @@ SequenceFunction::DataType SequenceFunction::EvalImpl() const {
       return {};
     }
 
-    result.MergeDictionary(&probe_results[0]);
+    result_dict.Merge(probe_results[0].GetDict().Clone());
   }
 
   DataType results;

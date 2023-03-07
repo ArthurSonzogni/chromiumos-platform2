@@ -142,15 +142,14 @@ StorageFunction::DataType StorageFunction::EvalImpl() const {
 void StorageFunction::PostHelperEvalImpl(
     StorageFunction::DataType* result) const {
   for (auto& storage_res : *result) {
-    auto* node_path = storage_res.FindStringKey("path");
+    auto* node_path = storage_res.GetDict().FindString("path");
     if (!node_path) {
       LOG(ERROR) << "No path in storage probe result";
       continue;
     }
-    const auto storage_aux_res =
-        ProbeFromStorageTool(base::FilePath(*node_path));
+    auto storage_aux_res = ProbeFromStorageTool(base::FilePath(*node_path));
     if (storage_aux_res)
-      storage_res.MergeDictionary(&*storage_aux_res);
+      storage_res.GetDict().Merge(std::move(storage_aux_res->GetDict()));
   }
 }
 

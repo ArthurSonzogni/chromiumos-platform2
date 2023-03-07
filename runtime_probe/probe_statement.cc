@@ -33,10 +33,15 @@ std::unique_ptr<ProbeStatement> ProbeStatement::FromValue(
     LOG(ERROR) << "ProbeStatement::FromValue takes a dictionary as parameter";
     return nullptr;
   }
+  const auto& dict = dv.GetDict();
 
   // Parse required field "eval"
-  const auto* eval_value = dv.FindDictKey("eval");
+  const auto* eval_value = dict.Find("eval");
   if (!eval_value) {
+    LOG(ERROR) << "\"eval\" does not exist.";
+    return nullptr;
+  }
+  if (!eval_value->is_dict()) {
     LOG(ERROR) << "\"eval\" should be a dictionary.";
     return nullptr;
   }
@@ -51,11 +56,11 @@ std::unique_ptr<ProbeStatement> ProbeStatement::FromValue(
   instance->eval_ = std::move(function);
 
   // Parse optional field "keys"
-  const auto* keys_value = dv.FindListKey("keys");
+  const auto* keys_value = dict.FindList("keys");
   if (!keys_value) {
     VLOG(3) << "\"keys\" does not exist or is not a list";
   } else {
-    for (const auto& v : keys_value->GetList()) {
+    for (const auto& v : *keys_value) {
       // Currently, destroy all previously inserted valid elems
       if (!v.is_string()) {
         LOG(ERROR) << "\"keys\" should be a list of string: " << *keys_value;
@@ -68,7 +73,7 @@ std::unique_ptr<ProbeStatement> ProbeStatement::FromValue(
 
   // Parse optional field "expect"
   // TODO(b:121354690): Make expect useful
-  const auto* expect_value = dv.FindKey("expect");
+  const auto* expect_value = dict.Find("expect");
   if (!expect_value) {
     VLOG(3) << "\"expect\" does not exist.";
   } else {
@@ -82,11 +87,11 @@ std::unique_ptr<ProbeStatement> ProbeStatement::FromValue(
   }
 
   // Parse optional field "information"
-  const auto* information = dv.FindDictKey("information");
+  const auto* information = dict.FindDict("information");
   if (!information) {
     VLOG(3) << "\"information\" does not exist or is not a dictionary";
   } else {
-    instance->information_ = information->Clone();
+    instance->information_ = base::Value(information->Clone());
   }
 
   return instance;

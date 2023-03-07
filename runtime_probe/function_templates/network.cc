@@ -139,14 +139,15 @@ std::optional<base::Value> GetNetworkData(const base::FilePath& node_path) {
     return std::nullopt;
   }
 
-  if (bus_type == kBusTypePci && !res->FindKey("revision")) {
+  auto& res_dict = res->GetDict();
+  if (bus_type == kBusTypePci && !res_dict.Find("revision")) {
     auto revision_id = GetPciRevisionIdFromConfig(dev_path);
     if (revision_id) {
-      res->SetStringKey("revision", ByteToHexString(*revision_id));
+      res_dict.Set("revision", ByteToHexString(*revision_id));
     }
   }
   PrependToDVKey(&*res, std::string(bus_type) + "_");
-  res->SetStringKey("bus_type", bus_type);
+  res_dict.Set("bus_type", bus_type);
 
   return res;
 }

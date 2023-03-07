@@ -220,20 +220,21 @@ std::unique_ptr<DoubleFieldConverter> DoubleFieldConverter::Build(
 ReturnCode StringFieldConverter::Convert(const std::string& field_name,
                                          base::Value* dict_value) const {
   CHECK(dict_value);
+  auto& dict = dict_value->GetDict();
 
-  auto* value = dict_value->FindKey(field_name);
+  auto* value = dict.Find(field_name);
   if (!value)
     return ReturnCode::FIELD_NOT_FOUND;
 
   switch (value->type()) {
     case base::Value::Type::DOUBLE:
-      dict_value->SetStringKey(field_name, std::to_string(value->GetDouble()));
+      dict.Set(field_name, std::to_string(value->GetDouble()));
       return ReturnCode::OK;
     case base::Value::Type::INTEGER:
-      dict_value->SetStringKey(field_name, std::to_string(value->GetInt()));
+      dict.Set(field_name, std::to_string(value->GetInt()));
       return ReturnCode::OK;
     case base::Value::Type::NONE:
-      dict_value->SetStringKey(field_name, "null");
+      dict.Set(field_name, "null");
       return ReturnCode::OK;
     case base::Value::Type::STRING:
       return ReturnCode::OK;
@@ -245,14 +246,15 @@ ReturnCode StringFieldConverter::Convert(const std::string& field_name,
 ReturnCode IntegerFieldConverter::Convert(const std::string& field_name,
                                           base::Value* dict_value) const {
   CHECK(dict_value);
+  auto& dict = dict_value->GetDict();
 
-  auto* value = dict_value->FindKey(field_name);
+  auto* value = dict.Find(field_name);
   if (!value)
     return ReturnCode::FIELD_NOT_FOUND;
 
   switch (value->type()) {
     case base::Value::Type::DOUBLE:
-      dict_value->SetIntKey(field_name, static_cast<int>(value->GetDouble()));
+      dict.Set(field_name, static_cast<int>(value->GetDouble()));
       return ReturnCode::OK;
     case base::Value::Type::INTEGER:
       return ReturnCode::OK;
@@ -260,7 +262,7 @@ ReturnCode IntegerFieldConverter::Convert(const std::string& field_name,
       const auto& string_value = value->GetString();
       OperandType int_value;
       if (StringToOperand(string_value, &int_value)) {
-        dict_value->SetIntKey(field_name, int_value);
+        dict.Set(field_name, int_value);
         return ReturnCode::OK;
       } else {
         LOG(ERROR) << "Failed to convert '" << string_value << "' to integer.";
@@ -275,15 +277,19 @@ ReturnCode IntegerFieldConverter::Convert(const std::string& field_name,
 ReturnCode HexFieldConverter::Convert(const std::string& field_name,
                                       base::Value* dict_value) const {
   CHECK(dict_value);
+  if (!dict_value->is_dict()) {
+    return ReturnCode::FIELD_NOT_FOUND;
+  }
+  auto& dict = dict_value->GetDict();
 
-  auto* value = dict_value->FindKey(field_name);
+  auto* value = dict.Find(field_name);
   if (!value)
     return ReturnCode::FIELD_NOT_FOUND;
 
   OperandType int_value;
   switch (value->type()) {
     case base::Value::Type::DOUBLE:
-      dict_value->SetIntKey(field_name, static_cast<int>(value->GetDouble()));
+      dict.Set(field_name, static_cast<int>(value->GetDouble()));
       return ReturnCode::OK;
     case base::Value::Type::INTEGER: {
       int_value = value->GetInt();
@@ -305,15 +311,19 @@ ReturnCode HexFieldConverter::Convert(const std::string& field_name,
   // google::protobuf::util::JsonStringToMessage parse strings to integers
   // correctly.
   const auto string_value = base::NumberToString(int_value);
-  dict_value->SetStringKey(field_name, string_value);
+  dict.Set(field_name, string_value);
   return ReturnCode::OK;
 }
 
 ReturnCode DoubleFieldConverter::Convert(const std::string& field_name,
                                          base::Value* dict_value) const {
   CHECK(dict_value);
+  if (!dict_value->is_dict()) {
+    return ReturnCode::FIELD_NOT_FOUND;
+  }
+  auto& dict = dict_value->GetDict();
 
-  auto* value = dict_value->FindKey(field_name);
+  auto* value = dict.Find(field_name);
   if (!value)
     return ReturnCode::FIELD_NOT_FOUND;
 
@@ -321,13 +331,13 @@ ReturnCode DoubleFieldConverter::Convert(const std::string& field_name,
     case base::Value::Type::DOUBLE:
       return ReturnCode::OK;
     case base::Value::Type::INTEGER:
-      dict_value->SetDoubleKey(field_name, value->GetDouble());
+      dict.Set(field_name, value->GetDouble());
       return ReturnCode::OK;
     case base::Value::Type::STRING: {
       const auto& string_value = value->GetString();
       double double_value;
       if (StringToDouble(string_value, &double_value)) {
-        dict_value->SetDoubleKey(field_name, double_value);
+        dict.Set(field_name, double_value);
         return ReturnCode::OK;
       } else {
         LOG(ERROR) << "Failed to convert '" << string_value << "' to double.";
@@ -342,8 +352,12 @@ ReturnCode DoubleFieldConverter::Convert(const std::string& field_name,
 ReturnCode StringFieldConverter::Validate(const std::string& field_name,
                                           base::Value* dict_value) const {
   CHECK(dict_value);
+  if (!dict_value->is_dict()) {
+    return ReturnCode::FIELD_NOT_FOUND;
+  }
+  const auto& dict = dict_value->GetDict();
 
-  auto* value_ = dict_value->FindKey(field_name);
+  auto* value_ = dict.Find(field_name);
   if (!value_)
     return ReturnCode::FIELD_NOT_FOUND;
   if (!value_->is_string())
@@ -372,8 +386,12 @@ ReturnCode StringFieldConverter::Validate(const std::string& field_name,
 ReturnCode IntegerFieldConverter::Validate(const std::string& field_name,
                                            base::Value* dict_value) const {
   CHECK(dict_value);
+  if (!dict_value->is_dict()) {
+    return ReturnCode::FIELD_NOT_FOUND;
+  }
+  const auto& dict = dict_value->GetDict();
 
-  auto* value_ = dict_value->FindKey(field_name);
+  auto* value_ = dict.Find(field_name);
   if (!value_)
     return ReturnCode::FIELD_NOT_FOUND;
   if (!value_->is_int())
@@ -386,8 +404,12 @@ ReturnCode IntegerFieldConverter::Validate(const std::string& field_name,
 ReturnCode HexFieldConverter::Validate(const std::string& field_name,
                                        base::Value* dict_value) const {
   CHECK(dict_value);
+  if (!dict_value->is_dict()) {
+    return ReturnCode::FIELD_NOT_FOUND;
+  }
+  const auto& dict = dict_value->GetDict();
 
-  auto* value_ = dict_value->FindKey(field_name);
+  auto* value_ = dict.Find(field_name);
   if (!value_)
     return ReturnCode::FIELD_NOT_FOUND;
   OperandType value;
@@ -411,8 +433,12 @@ ReturnCode HexFieldConverter::Validate(const std::string& field_name,
 ReturnCode DoubleFieldConverter::Validate(const std::string& field_name,
                                           base::Value* dict_value) const {
   CHECK(dict_value);
+  if (!dict_value->is_dict()) {
+    return ReturnCode::FIELD_NOT_FOUND;
+  }
+  const auto& dict = dict_value->GetDict();
 
-  auto* value_ = dict_value->FindKey(field_name);
+  auto* value_ = dict.Find(field_name);
   if (!value_)
     return ReturnCode::FIELD_NOT_FOUND;
   if (!value_->is_double() && !value_->is_int())

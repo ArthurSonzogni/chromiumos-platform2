@@ -62,11 +62,12 @@ std::string GetDriverName(const base::FilePath& node_path) {
 }
 
 void FixTouchscreenI2cDevice(base::Value* device) {
-  const auto* path = device->FindStringKey("path");
+  auto& device_dict = device->GetDict();
+  const auto* path = device_dict.FindString("path");
   if (!path)
     return;
 
-  const auto* vid_old = device->FindStringKey("vendor");
+  const auto* vid_old = device_dict.FindString("vendor");
   if (vid_old && *vid_old != "0000")
     return;
 
@@ -84,8 +85,8 @@ void FixTouchscreenI2cDevice(base::Value* device) {
     return;
   }
 
-  device->SetStringKey("vendor", entry->second);
-  device->MergeDictionary(&*dict_value);
+  device_dict.Set("vendor", entry->second);
+  device_dict.Merge(std::move(dict_value->GetDict()));
   return;
 }
 
@@ -100,15 +101,15 @@ void AppendInputDevice(InputDeviceFunction::DataType* list_value,
       base::StringPrintf("sys%s", input_device->sysfs.c_str()));
 
   base::Value value(base::Value::Type::DICT);
-  value.SetStringKey("bus", input_device->bus);
-  value.SetStringKey("event", input_device->event);
-  value.SetStringKey("name", input_device->name);
-  value.SetStringKey("product", input_device->product);
-  value.SetStringKey("vendor", input_device->vendor);
-  value.SetStringKey("version", input_device->version);
-  value.SetStringKey("path", path.value());
-  value.SetStringKey("device_type",
-                     InputDevice::Type_Name(input_device->type()));
+  auto& dict = value.GetDict();
+  dict.Set("bus", input_device->bus);
+  dict.Set("event", input_device->event);
+  dict.Set("name", input_device->name);
+  dict.Set("product", input_device->product);
+  dict.Set("vendor", input_device->vendor);
+  dict.Set("version", input_device->version);
+  dict.Set("path", path.value());
+  dict.Set("device_type", InputDevice::Type_Name(input_device->type()));
   FixTouchscreenI2cDevice(&value);
   list_value->Append(std::move(value));
 }

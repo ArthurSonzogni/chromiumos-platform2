@@ -94,13 +94,14 @@ bool ProbeResultCheckerDict::Apply(base::Value* probe_result) const {
   bool success = true;
 
   CHECK(probe_result != nullptr);
+  const auto& probe_result_dict = probe_result->GetDict();
 
   // Try to convert and validate each required fields.
   // Any failures will cause the final result be |false|.
   for (const auto& entry : required_fields_) {
     const auto& key = entry.first;
     const auto& converter = entry.second;
-    if (!probe_result->FindKey(key)) {
+    if (!probe_result_dict.Find(key)) {
       DVLOG(2) << "Missing key: " << key;
       success = false;
       break;
@@ -108,7 +109,7 @@ bool ProbeResultCheckerDict::Apply(base::Value* probe_result) const {
 
     auto return_code = converter->Convert(key, probe_result);
     if (return_code != ReturnCode::OK) {
-      auto* value = probe_result->FindKey(key);
+      auto* value = probe_result_dict.Find(key);
       LOG(ERROR) << "Failed to apply " << converter->ToString() << " on "
                  << *value << "(ReturnCode = " << static_cast<int>(return_code)
                  << ")";
@@ -130,7 +131,7 @@ bool ProbeResultCheckerDict::Apply(base::Value* probe_result) const {
   for (const auto& entry : optional_fields_) {
     const auto& key = entry.first;
     const auto& converter = entry.second;
-    if (!probe_result->FindKey(key))
+    if (!probe_result_dict.Find(key))
       continue;
 
     auto return_code = converter->Convert(key, probe_result);
