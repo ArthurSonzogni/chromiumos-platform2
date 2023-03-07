@@ -16,6 +16,8 @@
 #include <chromeos/ec/ec_commands.h>
 
 #include "power_manager/common/clock.h"
+#include "power_manager/common/metrics_constants.h"
+#include "power_manager/common/metrics_sender.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/common/prefs.h"
 #include "power_manager/common/util.h"
@@ -185,6 +187,17 @@ void Suspender::OnReadyForSuspend(SuspendDelayController* controller,
                                   int suspend_id) {
   if (controller == suspend_delay_controller_.get() &&
       suspend_id == suspend_request_id_) {
+    // Send Power.SuspendDelay to UMA.
+    const base::TimeTicks suspend_ready_time = clock_->GetCurrentBootTime();
+    base::TimeDelta suspend_delay =
+        suspend_ready_time - suspend_request_start_time_;
+    SendMetric(metrics::kSuspendDelayName,
+               static_cast<int>(round(suspend_delay.InSecondsF())),
+               metrics::kSuspendDelayMin, metrics::kSuspendDelayMax,
+               metrics::kDefaultBuckets);
+    LOG(INFO) << "Ready for suspend (" << suspend_request_id_ << ") after "
+              << util::TimeDeltaToString(suspend_delay);
+
     HandleEvent(Event::SUSPEND_DELAYS_READY);
   } else if (controller == dark_suspend_delay_controller_.get() &&
              suspend_id == dark_suspend_id_) {

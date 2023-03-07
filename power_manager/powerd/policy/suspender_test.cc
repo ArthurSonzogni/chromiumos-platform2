@@ -15,6 +15,8 @@
 #include "power_manager/common/action_recorder.h"
 #include "power_manager/common/clock.h"
 #include "power_manager/common/fake_prefs.h"
+#include "power_manager/common/metrics_constants.h"
+#include "power_manager/common/metrics_sender_stub.h"
 #include "power_manager/common/power_constants.h"
 #include "power_manager/powerd/policy/mock_adaptive_charging_controller.h"
 #include "power_manager/powerd/policy/shutdown_from_suspend_stub.h"
@@ -303,6 +305,7 @@ class SuspenderTest : public TestEnvironment {
   system::DisplayWatcherStub display_watcher_;
   system::WakeupSourceIdentifierStub wakeup_source_identifier_;
   policy::ShutdownFromSuspendStub shutdown_from_suspend_;
+  MetricsSenderStub metrics_sender_;
   MockAdaptiveChargingController adaptive_charging_controller_;
   system::SuspendConfiguratorStub configurator_stub_;
   Suspender suspender_;
@@ -1648,6 +1651,29 @@ TEST_F(SuspenderTest, QuirksHandledCorrectly) {
 
   EXPECT_EQ(1, delegate_.num_suspend_attempts());
   EXPECT_FALSE(delegate_.quirks_applied());
+}
+
+// Tests that Power.SuspendDelay metric is sent to UMA from OnReadyForSuspend.
+TEST_F(SuspenderTest, SuspendDelayMetrics) {
+  Init();
+  suspender_.RequestSuspend(SuspendImminent_Reason_OTHER, base::TimeDelta(),
+                            SuspendFlavor::SUSPEND_DEFAULT);
+
+  const int kSuspendDelaySecond = 3;
+  test_api_.clock()->advance_current_boot_time_for_testing(
+      base::Seconds(kSuspendDelaySecond));
+
+  EXPECT_EQ(metrics_sender_.num_metrics(), 0);
+
+  AnnounceReadyForSuspend(test_api_.suspend_id());
+
+  ASSERT_EQ(metrics_sender_.num_metrics(), 1);
+  EXPECT_EQ(MetricsSenderStub::Metric::CreateExp(
+                metrics::kSuspendDelayName, kSuspendDelaySecond,
+                metrics::kSuspendDelayMin, metrics::kSuspendDelayMax,
+                metrics::kDefaultBuckets)
+                .ToString(),
+            metrics_sender_.GetMetric(0));
 }
 
 }  // namespace power_manager::policy

@@ -36,6 +36,10 @@ extern const int kSuspendAttemptsMin;
 extern const int kSuspendAttemptsMax;
 extern const int kSuspendAttemptsBuckets;
 
+extern const char kSuspendDelayName[];
+extern const int kSuspendDelayMin;
+extern const int kSuspendDelayMax;
+
 extern const char kShutdownReasonName[];
 extern const int kShutdownReasonMax;
 

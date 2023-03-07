@@ -31,6 +31,10 @@ const int kSuspendAttemptsMax = 20;
 const int kSuspendAttemptsBuckets =
     kSuspendAttemptsMax - kSuspendAttemptsMin + 1;
 
+const char kSuspendDelayName[] = "Power.SuspendDelay";
+const int kSuspendDelayMin = 0;
+const int kSuspendDelayMax = 60;
+
 const char kShutdownReasonName[] = "Power.ShutdownReason";
 const int kShutdownReasonMax = 10;
 
