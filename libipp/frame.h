@@ -190,8 +190,8 @@ class LIBIPP_EXPORT Frame {
   //     ...
   //   }
   // The groups are in the same order as they occur in the frame.
-  CollectionsView Groups(GroupTag tag);
-  ConstCollectionsView Groups(GroupTag tag) const;
+  CollsView Groups(GroupTag tag);
+  ConstCollsView Groups(GroupTag tag) const;
 
   // Return all groups of attributes in the frame in the order they were added.
   // The returned vector never contains nullptr values.
@@ -222,9 +222,9 @@ class LIBIPP_EXPORT Frame {
   //  * Code::kInvalidGroupTag
   //  * Code::kTooManyGroups
   // If the returned value != Code::kOK then `new_group` is not modified.
-  Code AddGroup(GroupTag tag, CollectionsView::iterator& new_group);
+  Code AddGroup(GroupTag tag, CollsView::iterator& new_group);
 
-  // DEPRECATED. Use AddGroup(tag, CollectionsView::iterator&) instead.
+  // DEPRECATED. Use AddGroup(tag, CollsView::iterator&) instead.
   // Add a new group of attributes to the frame. The pointer to the new group
   // (Collection*) is saved in `new_group` if `new_group` != nullptr.
   // The returned value is one of the following:

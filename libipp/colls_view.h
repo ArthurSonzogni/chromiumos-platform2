@@ -14,14 +14,14 @@ namespace ipp {
 
 class Attribute;
 class Collection;
-class ConstCollectionsView;
+class ConstCollsView;
 class Frame;
 
 // This class represents a range of Collections inside Frame or Attribute. It
 // provides const and non-const access to underlying Collections with
 // bidirectional iterators, operator[], as well as, methods size() and empty().
 //
-class LIBIPP_EXPORT CollectionsView {
+class LIBIPP_EXPORT CollsView {
  public:
   class const_iterator;
   class iterator {
@@ -53,7 +53,7 @@ class LIBIPP_EXPORT CollectionsView {
     bool operator!=(const const_iterator& i) const { return iter_ != i.iter_; }
 
    private:
-    friend class CollectionsView;
+    friend class CollsView;
     friend class Frame;
     explicit iterator(std::vector<Collection*>::iterator iter) : iter_(iter) {}
     std::vector<Collection*>::iterator iter_;
@@ -93,8 +93,8 @@ class LIBIPP_EXPORT CollectionsView {
     bool operator!=(const const_iterator& i) const { return iter_ != i.iter_; }
 
    private:
-    friend class CollectionsView;
-    friend class ConstCollectionsView;
+    friend class CollsView;
+    friend class ConstCollsView;
     friend class Frame;
     explicit const_iterator(std::vector<Collection*>::const_iterator iter)
         : iter_(iter) {}
@@ -102,9 +102,9 @@ class LIBIPP_EXPORT CollectionsView {
   };
 
   // Default constructor returns always empty range.
-  CollectionsView();
-  CollectionsView(const CollectionsView& cv) = default;
-  CollectionsView& operator=(const CollectionsView& cv) {
+  CollsView();
+  CollsView(const CollsView& cv) = default;
+  CollsView& operator=(const CollsView& cv) {
     colls_ = cv.colls_;
     return *this;
   }
@@ -121,27 +121,26 @@ class LIBIPP_EXPORT CollectionsView {
 
  private:
   friend class Attribute;
-  friend class ConstCollectionsView;
+  friend class ConstCollsView;
   friend class Frame;
-  explicit CollectionsView(std::vector<Collection*>& colls) : colls_(&colls) {}
+  explicit CollsView(std::vector<Collection*>& colls) : colls_(&colls) {}
   std::vector<Collection*>* colls_;
 };
 
-// Const version of CollectionsView.
-class LIBIPP_EXPORT ConstCollectionsView {
+// Const version of CollsView.
+class LIBIPP_EXPORT ConstCollsView {
  public:
-  using const_iterator = CollectionsView::const_iterator;
+  using const_iterator = CollsView::const_iterator;
 
   // Default constructor returns always empty range.
-  ConstCollectionsView();
-  ConstCollectionsView(const ConstCollectionsView& cv) = default;
-  explicit ConstCollectionsView(const CollectionsView& cv)
-      : colls_(cv.colls_) {}
-  ConstCollectionsView& operator=(const ConstCollectionsView& cv) {
+  ConstCollsView();
+  ConstCollsView(const ConstCollsView& cv) = default;
+  explicit ConstCollsView(const CollsView& cv) : colls_(cv.colls_) {}
+  ConstCollsView& operator=(const ConstCollsView& cv) {
     colls_ = cv.colls_;
     return *this;
   }
-  ConstCollectionsView& operator=(const CollectionsView& cv) {
+  ConstCollsView& operator=(const CollsView& cv) {
     colls_ = cv.colls_;
     return *this;
   }
@@ -156,7 +155,7 @@ class LIBIPP_EXPORT ConstCollectionsView {
  private:
   friend class Attribute;
   friend class Frame;
-  explicit ConstCollectionsView(const std::vector<Collection*>& colls)
+  explicit ConstCollsView(const std::vector<Collection*>& colls)
       : colls_(&colls) {}
   const std::vector<Collection*>* colls_;
 };

@@ -404,7 +404,7 @@ class LIBIPP_EXPORT Collection {
   // Add a new attribute with one or more collections. Pointers to created
   // collections are returned in the last parameter. The size of the vector
   // `values` determines the number of collections in the attribute.
-  // DEPRECATED, use the next two methods instead (with CollectionsView).
+  // DEPRECATED, use the next two methods instead (with CollsView).
   // Possible errors:
   //  * kInvalidName
   //  * kNameConflict
@@ -422,8 +422,8 @@ class LIBIPP_EXPORT Collection {
   //  * kNameConflict
   //  * kValueOutOfRange   (`size` is out of range)
   //  * kTooManyAttributes.
-  Code AddAttr(const std::string& name, CollectionsView::iterator& coll);
-  Code AddAttr(const std::string& name, size_t size, CollectionsView& colls);
+  Code AddAttr(const std::string& name, CollsView::iterator& coll);
+  Code AddAttr(const std::string& name, size_t size, CollsView& colls);
 
  private:
   friend class Attribute;
@@ -548,8 +548,8 @@ class LIBIPP_EXPORT Attribute {
   //     ...
   //   }
   // (Tag() != collection) <=> attr.Colls().empty()
-  CollectionsView Colls();
-  ConstCollectionsView Colls() const;
+  CollsView Colls();
+  ConstCollsView Colls() const;
 
   // DEPRECATED. Use Colls()[index] instead.
   // Returns a pointer to Collection.

@@ -14,7 +14,7 @@
 namespace ipp {
 namespace {
 
-TEST(CollectionsViewTest, FrameGroups) {
+TEST(CollsViewTest, FrameGroups) {
   Frame frame = Frame(Operation::Cancel_Job);
   EXPECT_EQ(frame.Groups(GroupTag::operation_attributes).size(), 1);
   EXPECT_EQ(frame.Groups(static_cast<GroupTag>(0x00)).size(), 0);
@@ -28,7 +28,7 @@ TEST(CollectionsViewTest, FrameGroups) {
             frame.Groups(static_cast<GroupTag>(0x0f)).cend());
 }
 
-TEST(CollectionsViewTest, FrameGroupsConst) {
+TEST(CollsViewTest, FrameGroupsConst) {
   const Frame frame = Frame(Operation::Cancel_Job);
   EXPECT_EQ(frame.Groups(GroupTag::operation_attributes).size(), 1);
   EXPECT_EQ(frame.Groups(static_cast<GroupTag>(0x00)).size(), 0);
@@ -42,7 +42,7 @@ TEST(CollectionsViewTest, FrameGroupsConst) {
             frame.Groups(static_cast<GroupTag>(0x0f)).cend());
 }
 
-TEST(CollectionsViewTest, AttributeColls) {
+TEST(CollsViewTest, AttributeColls) {
   Frame frame = Frame(Operation::Cancel_Job);
   Collection* coll = frame.GetGroup(GroupTag::operation_attributes);
   std::vector<Collection*> attr_colls(4, nullptr);
@@ -58,7 +58,7 @@ TEST(CollectionsViewTest, AttributeColls) {
   }
 }
 
-TEST(CollectionsViewTest, AttributeCollsConst) {
+TEST(CollsViewTest, AttributeCollsConst) {
   Frame frame = Frame(Operation::Cancel_Job);
   Collection* coll = frame.GetGroup(GroupTag::operation_attributes);
   std::vector<Collection*> attr_colls(4, nullptr);
@@ -74,14 +74,14 @@ TEST(CollectionsViewTest, AttributeCollsConst) {
   }
 }
 
-TEST(CollectionsViewTest, FrameGroupsReverseIteration) {
+TEST(CollsViewTest, FrameGroupsReverseIteration) {
   Frame frame = Frame(Operation::Cancel_Job);
   Collection* colls[3];
   frame.AddGroup(GroupTag::job_attributes, &colls[0]);
   frame.AddGroup(GroupTag::job_attributes, &colls[1]);
   frame.AddGroup(GroupTag::job_attributes, &colls[2]);
-  CollectionsView::iterator it = frame.Groups(GroupTag::job_attributes).end();
-  CollectionsView::const_iterator itc;
+  CollsView::iterator it = frame.Groups(GroupTag::job_attributes).end();
+  CollsView::const_iterator itc;
   itc = it;
   int index = 3;
   while (it != frame.Groups(GroupTag::job_attributes).begin()) {
@@ -97,14 +97,14 @@ TEST(CollectionsViewTest, FrameGroupsReverseIteration) {
   EXPECT_EQ(itc, frame.Groups(GroupTag::job_attributes).cbegin());
 }
 
-TEST(CollectionsViewTest, FrameGroupsReverseIterationConst) {
+TEST(CollsViewTest, FrameGroupsReverseIterationConst) {
   Frame frame = Frame(Operation::Cancel_Job);
   Collection* colls[3];
   frame.AddGroup(GroupTag::job_attributes, &colls[0]);
   frame.AddGroup(GroupTag::job_attributes, &colls[1]);
   frame.AddGroup(GroupTag::job_attributes, &colls[2]);
   const Frame& frame2 = frame;
-  ConstCollectionsView::const_iterator itc =
+  ConstCollsView::const_iterator itc =
       frame2.Groups(GroupTag::job_attributes).end();
   int index = 3;
   while (itc != frame.Groups(GroupTag::job_attributes).begin()) {

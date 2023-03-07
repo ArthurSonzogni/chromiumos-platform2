@@ -653,11 +653,11 @@ bool Attribute::SetValue(const DateTime& val, size_t index) {
   return SaveValue(index, val);
 }
 
-CollectionsView Attribute::Colls() {
+CollsView Attribute::Colls() {
   if (Tag() != ValueTag::collection || Size() == 0) {
-    return CollectionsView();
+    return CollsView();
   }
-  return CollectionsView(*ReadValuePtr<std::vector<Collection*>>(&values_));
+  return CollsView(*ReadValuePtr<std::vector<Collection*>>(&values_));
 }
 
 Code Attribute::GetValues(std::vector<bool>& values) const {
@@ -817,12 +817,11 @@ Code Attribute::SetValues(const std::vector<RangeOfInteger>& values) {
   return Code::kOK;
 }
 
-ConstCollectionsView Attribute::Colls() const {
+ConstCollsView Attribute::Colls() const {
   if (Tag() != ValueTag::collection || Size() == 0) {
-    return ConstCollectionsView();
+    return ConstCollsView();
   }
-  return ConstCollectionsView(
-      *ReadValueConstPtr<std::vector<Collection*>>(&values_));
+  return ConstCollsView(*ReadValueConstPtr<std::vector<Collection*>>(&values_));
 }
 
 Collection* Attribute::GetCollection(size_t index) {
@@ -1145,9 +1144,8 @@ Code Collection::AddAttr(const std::string& name,
   return Code::kOK;
 }
 
-Code Collection::AddAttr(const std::string& name,
-                         CollectionsView::iterator& coll) {
-  CollectionsView colls;
+Code Collection::AddAttr(const std::string& name, CollsView::iterator& coll) {
+  CollsView colls;
   Code code = AddAttr(name, 1, colls);
   if (code == Code::kOK)
     coll = colls.begin();
@@ -1156,7 +1154,7 @@ Code Collection::AddAttr(const std::string& name,
 
 Code Collection::AddAttr(const std::string& name,
                          size_t size,
-                         CollectionsView& colls) {
+                         CollsView& colls) {
   if (size == 0) {
     return Code::kValueOutOfRange;
   }

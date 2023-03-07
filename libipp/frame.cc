@@ -180,18 +180,18 @@ Code Frame::SetData(std::vector<uint8_t>&& data) {
   return Code::kOK;
 }
 
-CollectionsView Frame::Groups(GroupTag tag) {
+CollsView Frame::Groups(GroupTag tag) {
   if (IsValid(tag)) {
-    return CollectionsView(groups_by_tag_[static_cast<size_t>(tag)]);
+    return CollsView(groups_by_tag_[static_cast<size_t>(tag)]);
   }
-  return CollectionsView();
+  return CollsView();
 }
 
-ConstCollectionsView Frame::Groups(GroupTag tag) const {
+ConstCollsView Frame::Groups(GroupTag tag) const {
   if (IsValid(tag)) {
-    return ConstCollectionsView(groups_by_tag_[static_cast<size_t>(tag)]);
+    return ConstCollsView(groups_by_tag_[static_cast<size_t>(tag)]);
   }
-  return ConstCollectionsView();
+  return ConstCollsView();
 }
 
 std::vector<std::pair<GroupTag, Collection*>> Frame::GetGroups() {
@@ -236,7 +236,7 @@ const Collection* Frame::GetGroup(GroupTag tag, size_t index) const {
   return groups_by_tag_[group_tag][index];
 }
 
-Code Frame::AddGroup(GroupTag tag, CollectionsView::iterator& new_group) {
+Code Frame::AddGroup(GroupTag tag, CollsView::iterator& new_group) {
   if (!IsValid(tag)) {
     return Code::kInvalidGroupTag;
   }
@@ -246,12 +246,12 @@ Code Frame::AddGroup(GroupTag tag, CollectionsView::iterator& new_group) {
   Collection* coll = new Collection;
   groups_.emplace_back(tag, coll);
   std::vector<ipp::Collection*>& vg = groups_by_tag_[static_cast<size_t>(tag)];
-  new_group = CollectionsView::iterator(vg.insert(vg.end(), coll));
+  new_group = CollsView::iterator(vg.insert(vg.end(), coll));
   return Code::kOK;
 }
 
 Code Frame::AddGroup(GroupTag tag, Collection** new_group) {
-  CollectionsView::iterator it;
+  CollsView::iterator it;
   Code code = AddGroup(tag, it);
   if (new_group != nullptr && code == Code::kOK) {
     *new_group = &*it;

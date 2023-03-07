@@ -18,8 +18,8 @@ std::vector<Collection*>* EmptyVectorOfColls() {
 
 }  // namespace
 
-CollectionsView::CollectionsView() : colls_(EmptyVectorOfColls()) {}
+CollsView::CollsView() : colls_(EmptyVectorOfColls()) {}
 
-ConstCollectionsView::ConstCollectionsView() : colls_(EmptyVectorOfColls()) {}
+ConstCollsView::ConstCollsView() : colls_(EmptyVectorOfColls()) {}
 
 }  // namespace ipp

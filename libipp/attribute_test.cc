@@ -150,7 +150,7 @@ TEST_F(CollectionTest, AddAttrRangeOfInteger) {
 }
 
 TEST_F(CollectionTest, AddAttrCollection) {
-  CollectionsView::iterator attr_coll;
+  CollsView::iterator attr_coll;
   auto err = coll_->AddAttr("test", attr_coll);
   EXPECT_EQ(err, Code::kOK);
   auto attr = coll_->GetAttribute("test");
@@ -160,7 +160,7 @@ TEST_F(CollectionTest, AddAttrCollection) {
 }
 
 TEST_F(CollectionTest, AddAttrCollections) {
-  CollectionsView colls;
+  CollsView colls;
   Code err = coll_->AddAttr("test", 3, colls);
   EXPECT_EQ(err, Code::kOK);
   EXPECT_EQ(colls.size(), 3);
@@ -303,7 +303,7 @@ class AttributeTest : public testing::Test {
 
  protected:
   Frame frame_;
-  CollectionsView::iterator coll_;
+  CollsView::iterator coll_;
 };
 
 TEST_F(AttributeTest, CollsWrongType) {
