@@ -8,6 +8,7 @@
 
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <libec/flash_protect_command.h>
 #include <libec/reboot_command.h>
 
 namespace {
@@ -25,6 +26,18 @@ bool EcUtilsImpl::Reboot() {
   }
   ec::RebootCommand reboot_cmd;
   return reboot_cmd.Run(ec_fd.get());
+}
+
+bool EcUtilsImpl::EnableSoftwareWriteProtection() {
+  base::ScopedFD ec_fd = GetEcFd();
+  if (!ec_fd.is_valid()) {
+    return false;
+  }
+  ec::flash_protect::Flags flags =
+      ec::flash_protect::Flags::kRoNow | ec::flash_protect::Flags::kRwNow;
+  ec::flash_protect::Flags mask = ec::flash_protect::Flags::kNone;
+  auto flashprotect_cmd = ec::FlashProtectCommand(flags, mask);
+  return flashprotect_cmd.Run(ec_fd.get());
 }
 
 base::ScopedFD EcUtilsImpl::GetEcFd() const {
