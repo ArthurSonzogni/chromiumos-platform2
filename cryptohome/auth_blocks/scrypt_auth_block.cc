@@ -33,6 +33,10 @@ using ::hwsec_foundation::status::OkStatus;
 
 namespace cryptohome {
 
+CryptoStatus ScryptAuthBlock::IsSupported(Crypto& crypto) {
+  return OkStatus<CryptohomeCryptoError>();
+}
+
 ScryptAuthBlock::ScryptAuthBlock() : SyncAuthBlock(kScryptBacked) {}
 
 ScryptAuthBlock::ScryptAuthBlock(DerivationType derivation_type)

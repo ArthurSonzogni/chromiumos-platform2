@@ -1347,6 +1347,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocScryptVerifierVerifyWrongScryptOutputSize = 2102,
   /* ./scrypt_verifier.cc */
   kLocScryptVerifierVerifySecretMismatch = 2103,
+  /* ./auth_blocks/generic.h */
+  kLocGenericAuthBlockIsSupportedNotFound = 2104,
   //////////////////////////////////////////////////
   //// This is a separator block at value 2300
   //// See location_db.py for more info.

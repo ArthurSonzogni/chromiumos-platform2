@@ -12,6 +12,7 @@
 #include <base/gtest_prod_util.h>
 #include <libhwsec/frontend/cryptohome/frontend.h>
 
+#include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_keys_manager.h"
@@ -23,8 +24,8 @@ namespace cryptohome {
 
 class TpmNotBoundToPcrAuthBlock : public SyncAuthBlock {
  public:
-  // Returns success if the AuthBlock is supported on the current hardware and
-  // software environment.
+  // Implement the GenericAuthBlock concept.
+  static constexpr auto kType = AuthBlockType::kTpmNotBoundToPcr;
   static CryptoStatus IsSupported(Crypto& crypto);
 
   TpmNotBoundToPcrAuthBlock(hwsec::CryptohomeFrontend* hwsec,

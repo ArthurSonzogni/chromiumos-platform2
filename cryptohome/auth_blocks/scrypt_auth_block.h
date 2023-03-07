@@ -6,6 +6,7 @@
 #define CRYPTOHOME_AUTH_BLOCKS_SCRYPT_AUTH_BLOCK_H_
 
 #include "cryptohome/auth_blocks/auth_block.h"
+#include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 
 namespace cryptohome {
@@ -14,6 +15,10 @@ namespace cryptohome {
 // similar to the other standard auth block.
 class ScryptAuthBlock : public SyncAuthBlock {
  public:
+  // Implement the GenericAuthBlock concept.
+  static constexpr auto kType = AuthBlockType::kScrypt;
+  static CryptoStatus IsSupported(Crypto& crypto);
+
   ScryptAuthBlock();
   ~ScryptAuthBlock() = default;
 

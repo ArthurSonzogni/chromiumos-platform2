@@ -12,6 +12,7 @@
 
 #include <base/memory/weak_ptr.h>
 
+#include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/challenge_credentials/challenge_credentials_helper.h"
 #include "cryptohome/credentials.h"
@@ -28,8 +29,8 @@ namespace cryptohome {
 // block.
 class AsyncChallengeCredentialAuthBlock : public AuthBlock {
  public:
-  // Returns success if the AuthBlock is supported on the current hardware and
-  // software environment.
+  // Implement the GenericAuthBlock concept.
+  static constexpr auto kType = AuthBlockType::kChallengeCredential;
   static CryptoStatus IsSupported(Crypto& crypto);
 
   AsyncChallengeCredentialAuthBlock(

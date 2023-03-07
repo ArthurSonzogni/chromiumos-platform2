@@ -6,6 +6,7 @@
 #define CRYPTOHOME_AUTH_BLOCKS_PIN_WEAVER_AUTH_BLOCK_H_
 
 #include "cryptohome/auth_blocks/auth_block.h"
+#include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
@@ -15,8 +16,8 @@ namespace cryptohome {
 
 class PinWeaverAuthBlock : public SyncAuthBlock {
  public:
-  // Returns success if the AuthBlock is supported on the current hardware and
-  // software environment.
+  // Implement the GenericAuthBlock concept.
+  static constexpr auto kType = AuthBlockType::kPinWeaver;
   static CryptoStatus IsSupported(Crypto& crypto);
 
   explicit PinWeaverAuthBlock(LECredentialManager* le_manager);

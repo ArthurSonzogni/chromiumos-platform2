@@ -28,6 +28,7 @@
 #include "cryptohome/auth_blocks/cryptohome_recovery_auth_block.h"
 #include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"
 #include "cryptohome/auth_blocks/fingerprint_auth_block.h"
+#include "cryptohome/auth_blocks/generic.h"
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
 #include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/auth_blocks/sync_to_async_auth_block_adapter.h"
@@ -553,34 +554,17 @@ CryptoStatusOr<AuthBlockType> AuthBlockUtilityImpl::GetAuthBlockTypeForCreation(
 
 CryptoStatus AuthBlockUtilityImpl::IsAuthBlockSupported(
     AuthBlockType auth_block_type) const {
-  switch (auth_block_type) {
-    case AuthBlockType::kPinWeaver:
-      return PinWeaverAuthBlock::IsSupported(*crypto_);
-    case AuthBlockType::kChallengeCredential:
-      return AsyncChallengeCredentialAuthBlock::IsSupported(*crypto_);
-    case AuthBlockType::kDoubleWrappedCompat:
-      return DoubleWrappedCompatAuthBlock::IsSupported(*crypto_);
-    case AuthBlockType::kTpmBoundToPcr:
-      return TpmBoundToPcrAuthBlock::IsSupported(*crypto_);
-    case AuthBlockType::kTpmNotBoundToPcr:
-      return TpmNotBoundToPcrAuthBlock::IsSupported(*crypto_);
-    case AuthBlockType::kScrypt:
-      // `ScryptAuthBlock` has no `IsSupported()` method. This AuthBlock is
-      // pruned in factor creation by `GetAuthBlockPriorityListForCreation()`.
-      return OkStatus<CryptohomeCryptoError>();
-    case AuthBlockType::kCryptohomeRecovery:
-      return CryptohomeRecoveryAuthBlock::IsSupported(*crypto_);
-    case AuthBlockType::kTpmEcc:
-      return TpmEccAuthBlock::IsSupported(*crypto_);
-    case AuthBlockType::kFingerprint:
-      if (!bio_service_getter_.Run()) {
-        return MakeStatus<CryptohomeCryptoError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocAuthBlockUtilFingerprintNoServiceInIsAuthBlockSupported),
-            ErrorActionSet({ErrorAction::kAuth}), CryptoError::CE_OTHER_CRYPTO);
-      }
-      return FingerprintAuthBlock::IsSupported(*crypto_);
+  // Fingerprint requires and extra special case check.
+  if (auth_block_type == AuthBlockType::kFingerprint &&
+      !bio_service_getter_.Run()) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthBlockUtilFingerprintNoServiceInIsAuthBlockSupported),
+        ErrorActionSet({ErrorAction::kAuth}), CryptoError::CE_OTHER_CRYPTO);
   }
+
+  GenericAuthBlockFunctions generic(crypto_);
+  return generic.IsSupported(auth_block_type);
 }
 
 CryptoStatusOr<std::unique_ptr<SyncAuthBlock>>

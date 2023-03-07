@@ -11,6 +11,7 @@
 
 #include <base/gtest_prod_util.h>
 
+#include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/scrypt_auth_block.h"
 #include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
 #include "cryptohome/crypto.h"
@@ -23,8 +24,8 @@ class CryptohomeKeysManager;
 
 class DoubleWrappedCompatAuthBlock : public SyncAuthBlock {
  public:
-  // Returns success if the AuthBlock is supported on the current hardware and
-  // software environment.
+  // Implement the GenericAuthBlock concept.
+  static constexpr auto kType = AuthBlockType::kDoubleWrappedCompat;
   static CryptoStatus IsSupported(Crypto& crypto);
 
   DoubleWrappedCompatAuthBlock(hwsec::CryptohomeFrontend* hwsec,
