@@ -45,6 +45,7 @@ use crate::hiberutil::get_total_memory_pages;
 use crate::hiberutil::log_io_duration;
 use crate::hiberutil::stateful_block_partition_one;
 use crate::hiberutil::HibernateError;
+use crate::lvm::activate_lv;
 use crate::lvm::create_thin_volume;
 use crate::lvm::get_active_lvs;
 use crate::lvm::get_vg_name;
@@ -142,12 +143,11 @@ impl VolumeManager {
     }
 
     /// Activate the thinpool in RO mode.
-    pub fn activate_thinpool_ro(&mut self) -> Result<Option<ActivatedLogicalVolume>> {
-        let thinpool = ActivatedLogicalVolume::new(&self.vg_name, THINPOOL_NAME)
+    pub fn activate_thinpool_ro(&mut self) -> Result<()> {
+        activate_lv(&self.vg_name, THINPOOL_NAME)
             .context("Failed to activate thinpool")?;
         self.set_thinpool_mode(ThinpoolMode::ReadOnly)
-            .context("Failed to make thin-pool RO")?;
-        Ok(thinpool)
+            .context("Failed to make thin-pool RO")
     }
 
     /// Change the RO thinpool to be RW.
@@ -160,11 +160,7 @@ impl VolumeManager {
     pub fn setup_hibernate_lv(&mut self, create: bool) -> Result<()> {
         if lv_exists(&self.vg_name, HIBER_VOLUME_NAME)? {
             info!("Activating hibervol");
-            let activated_lv = ActivatedLogicalVolume::new(&self.vg_name, HIBER_VOLUME_NAME)
-                .context("Failed to activate hibervol")?;
-            if let Some(mut activated_lv) = activated_lv {
-                activated_lv.dont_deactivate();
-            }
+            activate_lv(&self.vg_name, HIBER_VOLUME_NAME)?;
         } else if create {
             self.create_hibernate_lv()?;
         } else {

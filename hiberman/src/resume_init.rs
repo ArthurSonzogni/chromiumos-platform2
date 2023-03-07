@@ -114,12 +114,9 @@ impl ResumeInitConductor {
         // metadata changes that somehow get around the snapshot. Ideally we'd
         // do this before activating all the LVs under the snapshots, but doing
         // the activation seems to flip the pool back to being writeable.
-        let ro_thinpool = volmgr
+        volmgr
             .activate_thinpool_ro()
             .context("Failed to activate thinpool RO")?;
-        if let Some(mut ro_thinpool) = ro_thinpool {
-            ro_thinpool.dont_deactivate();
-        }
 
         Ok(())
     }
