@@ -16,6 +16,9 @@
 #include <openssl/evp.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
+#include <trunks/mock_authorization_delegate.h>
+#include <trunks/mock_policy_session.h>
+#include <trunks/mock_tpm_utility.h>
 
 #include "libhwsec/backend/tpm2/backend_test_base.h"
 #include "libhwsec/structures/signature_sealed_data_test_utils.h"

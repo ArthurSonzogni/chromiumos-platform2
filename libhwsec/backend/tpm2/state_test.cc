@@ -9,6 +9,8 @@
 #include <base/test/test_future.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"

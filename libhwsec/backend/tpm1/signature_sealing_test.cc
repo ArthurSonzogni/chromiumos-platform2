@@ -12,6 +12,7 @@
 #include <openssl/rsa.h>
 
 #include "libhwsec/backend/tpm1/backend_test_base.h"
+#include "libhwsec/overalls/mock_overalls.h"
 #include "libhwsec/structures/signature_sealed_data_test_utils.h"
 
 using hwsec_foundation::Sha1;

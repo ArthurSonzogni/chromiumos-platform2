@@ -7,6 +7,7 @@
 
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <trunks/mock_hmac_session.h>
 
 #include "libhwsec/backend/tpm2/backend_test_base.h"
 #include "libhwsec/backend/tpm2/session_management.h"

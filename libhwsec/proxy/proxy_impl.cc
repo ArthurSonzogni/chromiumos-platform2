@@ -46,9 +46,9 @@ struct ProxyImpl::InnerData {
   std::unique_ptr<org::chromium::TpmNvramProxy> tpm_nvram;
 };
 
-ProxyImpl::ProxyImpl() {}
+ProxyImpl::ProxyImpl() = default;
 
-ProxyImpl::~ProxyImpl() {}
+ProxyImpl::~ProxyImpl() = default;
 
 bool ProxyImpl::Init() {
   inner_data_ = std::make_unique<ProxyImpl::InnerData>();

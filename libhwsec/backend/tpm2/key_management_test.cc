@@ -15,6 +15,11 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
+#include <trunks/mock_policy_session.h>
+#include <trunks/mock_tpm.h>
+#include <trunks/mock_tpm_utility.h>
 
 #include "base/time/time.h"
 #include "libhwsec/backend/tpm2/backend_test_base.h"
@@ -187,7 +192,7 @@ TEST_F(BackendKeyManagementTpm2Test, CreateRsaKeyWithParams) {
           .allow_software_gen = false,
           .allow_decrypt = true,
           .allow_sign = false,
-          .rsa_modulus_bits = TSS_KEY_SIZEVAL_1024BIT,
+          .rsa_modulus_bits = 1024,
           .rsa_exponent = kExponent,
       });
 
@@ -684,7 +689,7 @@ TEST_F(BackendKeyManagementTpm2Test, WrapRsaKey) {
           .allow_software_gen = false,
           .allow_decrypt = false,
           .allow_sign = true,
-          .rsa_modulus_bits = TSS_KEY_SIZEVAL_1024BIT,
+          .rsa_modulus_bits = 1024,
           .rsa_exponent = kExponent,
       });
 
@@ -717,7 +722,7 @@ TEST_F(BackendKeyManagementTpm2Test, WrapRsaKeyNotSupportedConfig) {
           .allow_software_gen = false,
           .allow_decrypt = false,
           .allow_sign = true,
-          .rsa_modulus_bits = TSS_KEY_SIZEVAL_1024BIT,
+          .rsa_modulus_bits = 1024,
           .rsa_exponent = kExponent,
       });
 
@@ -738,7 +743,7 @@ TEST_F(BackendKeyManagementTpm2Test, WrapRsaKeyExponentTooLarge) {
           .allow_software_gen = false,
           .allow_decrypt = false,
           .allow_sign = true,
-          .rsa_modulus_bits = TSS_KEY_SIZEVAL_1024BIT,
+          .rsa_modulus_bits = 1024,
           .rsa_exponent = kExponent,
       });
 

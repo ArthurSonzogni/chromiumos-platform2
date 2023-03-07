@@ -12,8 +12,11 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <openssl/rsa.h>
 #include <openssl/x509.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 
 #include "libhwsec/backend/tpm1/backend_test_base.h"
+#include "libhwsec/overalls/mock_overalls.h"
 
 using hwsec_foundation::Sha1;
 using hwsec_foundation::error::testing::IsOk;
@@ -369,7 +372,7 @@ TEST_F(BackendKeyManagementTpm1Test, CreateRsaKeyWithParams) {
           .allow_software_gen = true,
           .allow_decrypt = true,
           .allow_sign = true,
-          .rsa_modulus_bits = TSS_KEY_SIZEVAL_1024BIT,
+          .rsa_modulus_bits = 1024,
           .rsa_exponent = kExponent,
       });
 
@@ -832,7 +835,7 @@ TEST_F(BackendKeyManagementTpm1Test, WrapRsaKey) {
           .allow_software_gen = false,
           .allow_decrypt = false,
           .allow_sign = true,
-          .rsa_modulus_bits = TSS_KEY_SIZEVAL_1024BIT,
+          .rsa_modulus_bits = 1024,
           .rsa_exponent = kExponent,
       });
 
@@ -968,7 +971,7 @@ TEST_F(BackendKeyManagementTpm1Test, WrapRsaKeyWithAuth) {
           .allow_software_gen = false,
           .allow_decrypt = false,
           .allow_sign = true,
-          .rsa_modulus_bits = TSS_KEY_SIZEVAL_1024BIT,
+          .rsa_modulus_bits = 1024,
           .rsa_exponent = kExponent,
       });
 

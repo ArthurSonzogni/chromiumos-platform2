@@ -13,11 +13,14 @@
 #include <brillo/secure_blob.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 
 #include "libhwsec/backend/tpm1/backend.h"
 #include "libhwsec/error/tpm1_error.h"
 #include "libhwsec/middleware/middleware_derivative.h"
 #include "libhwsec/middleware/middleware_owner.h"
+#include "libhwsec/overalls/mock_overalls.h"
 #include "libhwsec/proxy/proxy_for_test.h"
 #include "libhwsec/status.h"
 

@@ -7,6 +7,7 @@
 
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <trunks/mock_tpm_utility.h>
 
 #include "libhwsec/backend/tpm2/backend_test_base.h"
 

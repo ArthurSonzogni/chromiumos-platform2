@@ -16,6 +16,8 @@
 #include <openssl/bn.h>
 #include <openssl/ec.h>
 #include <trunks/openssl_utility.h>
+#include <trunks/mock_policy_session.h>
+#include <trunks/mock_tpm_utility.h>
 
 #include "libhwsec/backend/tpm2/backend_test_base.h"
 

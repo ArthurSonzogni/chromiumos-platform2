@@ -8,6 +8,7 @@
 
 #include <base/strings/string_number_conversions.h>
 #include <gtest/gtest.h>
+#include <trunks/mock_tpm_utility.h>
 
 #include <libhwsec-foundation/crypto/sha.h>
 #include <libhwsec-foundation/error/testing_helper.h>

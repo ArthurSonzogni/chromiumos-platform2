@@ -8,8 +8,11 @@
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/crypto/rsa.h>
 #include <libhwsec-foundation/error/testing_helper.h>
+#include <tpm_manager/proto_bindings/tpm_manager.pb.h>
+#include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
 
 #include "libhwsec/backend/tpm1/backend_test_base.h"
+#include "libhwsec/overalls/mock_overalls.h"
 
 using hwsec_foundation::kWellKnownExponent;
 using hwsec_foundation::error::testing::IsOk;
