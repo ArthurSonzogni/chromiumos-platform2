@@ -15,4 +15,4 @@ EVENTLOG_FILE="/var/log/eventlog.txt"
 # Need to do this before user can request it in Chrome.
 # Moved here to keep out of critical boot path
 
-elogtool list >"${EVENTLOG_FILE}" 2>&1 || true
+elogtool list --utc >"${EVENTLOG_FILE}" 2>&1 || true

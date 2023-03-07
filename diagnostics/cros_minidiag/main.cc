@@ -20,6 +20,7 @@
 namespace {
 constexpr const char kElogTool[] = "elogtool";
 constexpr const char kList[] = "list";
+constexpr const char kListArg[] = "--utc";
 constexpr const char kFileLastLine[] = "/var/lib/metrics/elog-last-line";
 
 int GetElogtoolString(std::string& output) {
@@ -27,6 +28,7 @@ int GetElogtoolString(std::string& output) {
   elogtool.SetSearchPath(true);
   elogtool.AddArg(kElogTool);
   elogtool.AddArg(kList);
+  elogtool.AddArg(kListArg);
   elogtool.RedirectOutputToMemory(true);
 
   output = "";

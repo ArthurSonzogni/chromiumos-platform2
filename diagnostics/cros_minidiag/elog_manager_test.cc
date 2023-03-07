@@ -22,12 +22,12 @@ namespace cros_minidiag {
 namespace {
 
 const std::array<const char*, 6> kElogLines = {
-    "1 | 2022-01-01 00:00:00 | Mock Type | Mock Data",
-    "2 | 2022-01-01 00:00:01 | Mock Type | Mock Data",
-    "3 | 2022-01-01 00:00:02 | Mock Type | Mock Data",
-    "4 | 2022-01-01 00:00:03 | Mock Type | Mock Data",
-    "5 | 2022-01-01 00:00:04 | Mock Type | Mock Data",
-    "6 | 2022-01-01 00:00:05 | Mock Type | Mock Data",
+    "1 | 2022-01-01 00:00:00+0000 | Mock Type | Mock Data",
+    "2 | 2022-01-01 00:00:01+0000 | Mock Type | Mock Data",
+    "3 | 2022-01-01 00:00:02+0000 | Mock Type | Mock Data",
+    "4 | 2022-01-01 00:00:03+0000 | Mock Type | Mock Data",
+    "5 | 2022-01-01 00:00:04+0000 | Mock Type | Mock Data",
+    "6 | 2022-01-01 00:00:05+0000 | Mock Type | Mock Data",
 };
 
 }  // namespace
@@ -105,15 +105,16 @@ TEST_F(ElogManagerTest, BadPreviousLastLine) {
 
 TEST_F(ElogManagerTest, BasicReportMiniDiagLaunch) {
   SetUpElog(std::array<const char*, 6>({
-      "1 | 2022-01-01 00:00:00 | Mock Type",
+      "1 | 2022-01-01 00:00:00+0000 | Mock Type",
       // Legacy launch event
-      "2 | 2022-01-01 00:00:01 | Diagnostics Mode | Launch Diagnostics",
-      "3 | 2022-01-01 00:00:02 | Mock Type | Mock Data",
-      "4 | 2022-01-01 00:00:03 | Mock Type | Mock Data",
+      "2 | 2022-01-01 00:00:01+0000 | Diagnostics Mode | Launch Diagnostics",
+      "3 | 2022-01-01 00:00:02+0000 | Mock Type | Mock Data",
+      "4 | 2022-01-01 00:00:03+0000 | Mock Type | Mock Data",
       // New launch event
-      "5 | 2022-01-01 00:00:04 | Firmware vboot info | boot_mode=Diagnostic | "
-      "fw_tried=A | fw_try_count=0 | fw_prev_tried=A | fw_prev_result=Unknown",
-      "6 | 2022-01-01 00:00:05 | Mock Type | Mock Data",
+      "5 | 2022-01-01 00:00:04+0000 | Firmware vboot info | "
+      "boot_mode=Diagnostic | fw_tried=A | fw_try_count=0 | fw_prev_tried=A | "
+      "fw_prev_result=Unknown",
+      "6 | 2022-01-01 00:00:05+0000 | Mock Type | Mock Data",
   }));
   EXPECT_CALL(
       mock_metrics_library_,
@@ -128,18 +129,18 @@ TEST_F(ElogManagerTest, BasicReportMiniDiagLaunch) {
 
 TEST_F(ElogManagerTest, BasicTestReport) {
   SetUpElog(std::array<const char*, 4>({
-      "1 | 2022-01-01 00:00:01 | Diagnostics Mode | Launch Diagnostics",
-      "2 | 2022-01-01 00:01:01 | Diagnostics Mode | Diagnostics Logs | "
+      "1 | 2022-01-01 00:00:01+0000 | Diagnostics Mode | Launch Diagnostics",
+      "2 | 2022-01-01 00:01:01+0000 | Diagnostics Mode | Diagnostics Logs | "
       "type=Memory check (quick), result=Passed, time=0m20s | "
       "type=Memory check (full), result=Aborted, time=0m0s | "
       "type=Memory check (quick), result=Aborted, time=0m0s | "
       "type=Storage health info, result=Passed, time=0m0s",
-      "3 | 2022-01-01 01:01:01 | Diagnostics Mode | Diagnostics Logs | "
+      "3 | 2022-01-01 01:01:01+0000 | Diagnostics Mode | Diagnostics Logs | "
       "type=Storage self-test (short), result=Error, time=10m20s | "
       "type=Storage self-test (extended), result=Failed, time=1m1s | "
       "type=Storage self-test (extended), result=Passed, time=2m0s",
       // Bad event; ignored
-      "4 | 2022-01-01 02:01:01 | Diagnostics Mode | Diagnostics Logs | "
+      "4 | 2022-01-01 02:01:01+0000 | Diagnostics Mode | Diagnostics Logs | "
       "type=Mock ",
   }));
   ExpectUMA(metrics::kMemoryCheckQuick, MiniDiagResultType::kPassed, 20);
@@ -159,7 +160,7 @@ TEST_F(ElogManagerTest, BasicTestReport) {
 
 TEST_F(ElogManagerTest, TestReportCaseInsensitive) {
   SetUpElog(std::array<const char*, 1>(
-      {"2 | 2022-01-01 00:01:01 | Diagnostics Mode | Diagnostics Logs | "
+      {"2 | 2022-01-01 00:01:01+0000 | Diagnostics Mode | Diagnostics Logs | "
        "type=mEmorY CHECK (quicK), result=paSSEd, time=0m20s "}));
   ExpectUMA(metrics::kMemoryCheckQuick, MiniDiagResultType::kPassed, 20);
   ExpectOpenDurationUMA(20);
@@ -170,7 +171,7 @@ TEST_F(ElogManagerTest, TestReportCaseInsensitive) {
 
 TEST(ElogEventTest, BasicEvent) {
   auto event =
-      std::make_unique<ElogEvent>("1 | 2022-01-01 00:00:00 | Mock Type");
+      std::make_unique<ElogEvent>("1 | 2022-01-01 00:00:00+0000 | Mock Type");
   auto type = event->GetType();
   auto subtype = event->GetSubType();
   EXPECT_TRUE(!!type);
@@ -180,7 +181,8 @@ TEST(ElogEventTest, BasicEvent) {
 
 TEST(ElogEventTest, BasicEventWithSubtype) {
   auto event = std::make_unique<ElogEvent>(
-      "1 | 2022-01-01 00:00:00 | Mock Type | Mock SubType | Additional Data");
+      "1 | 2022-01-01 00:00:00+0000 | Mock Type | Mock SubType | "
+      "Additional Data");
   auto type = event->GetType();
   auto subtype = event->GetSubType();
   EXPECT_TRUE(!!type);
