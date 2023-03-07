@@ -14,9 +14,9 @@
 
 namespace cros {
 
-const int kVarThreshold = 4;
-const int kMeanThreshold = 16;
-const int kMaxThreshold = 50;
+const int kMaxThreshold = 86;
+const int kMeanThreshold = 26;
+const int kVarThreshold = 29;
 
 std::unique_ptr<PrivacyShutterDetector> PrivacyShutterDetector::New() {
   return std::make_unique<PrivacyShutterDetectorImpl>();
@@ -62,7 +62,7 @@ bool PrivacyShutterDetectorImpl::DetectPrivacyShutterFromHandleInternal(
   }
 
   double yMean = ySum / width / height;
-  if (yMean > kMeanThreshold) {
+  if (kMeanThreshold < yMean) {
     LOGF(INFO) << "The image is overall bright: " << yMean;
     return false;
   }
@@ -76,7 +76,7 @@ bool PrivacyShutterDetectorImpl::DetectPrivacyShutterFromHandleInternal(
   }
 
   yVar /= width * height;
-  if (yVar > kVarThreshold) {
+  if (kVarThreshold < yVar) {
     LOGF(INFO) << "Variance is over threshold: " << yVar;
     return false;
   }
