@@ -71,7 +71,7 @@ pub fn get_vg_name(blockdev: &str) -> Result<String> {
 
 /// Determine if the given logical volume exists.
 pub fn lv_exists(volume_group: &str, name: &str) -> Result<bool> {
-    let volume = format!("{}/{}", volume_group, name);
+    let volume = full_lv_name(volume_group, name);
     let output = Command::new("/sbin/lvdisplay")
         .arg(&volume)
         .output()
@@ -94,6 +94,20 @@ pub fn get_active_lvs() -> Result<Vec<String>> {
     });
 
     Ok(elements)
+}
+
+/// Activate a logical volume.
+pub fn activate_lv(volume_group: &str, name: &str) -> Result<()> {
+    if lv_path(volume_group, name).exists() {
+        // LV is already active
+        return Ok(());
+    }
+
+    let full_name = full_lv_name(volume_group, name);
+    checked_command(Command::new("/sbin/lvchange").args(["-ay", &full_name]))
+        .context("Failed to activate logical volume '{full_name}'")?;
+
+    Ok(())
 }
 
 /// Create a new thinpool volume under the given volume group, with the
@@ -139,6 +153,11 @@ pub fn thicken_thin_volume<P: AsRef<Path>>(path: P, size_mb: i64) -> Result<()> 
     Ok(())
 }
 
+/// Get the fully qualified name of an LV.
+fn full_lv_name(volume_group: &str, name: &str) -> String {
+    format!("{}/{}", volume_group, name)
+}
+
 pub struct ActivatedLogicalVolume {
     lv_arg: Option<String>,
 }
@@ -146,16 +165,14 @@ pub struct ActivatedLogicalVolume {
 impl ActivatedLogicalVolume {
     pub fn new(vg_name: &str, lv_name: &str) -> Result<Option<Self>> {
         // If it already exists, don't reactivate it.
-        if fs::metadata(format!("/dev/{}/{}", vg_name, lv_name)).is_ok() {
+        if fs::metadata(lv_path(vg_name, lv_name)).is_ok() {
             return Ok(None);
         }
 
-        let lv_arg = format!("{}/{}", vg_name, lv_name);
-        checked_command(Command::new("/sbin/lvchange").args(["-ay", &lv_arg]))
-            .context("Cannot activate logical volume")?;
+        activate_lv(vg_name, lv_name)?;
 
         Ok(Some(Self {
-            lv_arg: Some(lv_arg),
+            lv_arg: Some(full_lv_name(vg_name, lv_name)),
         }))
     }
 
