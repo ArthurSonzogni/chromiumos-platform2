@@ -65,8 +65,12 @@ using ::testing::Combine;
 using ::testing::NiceMock;
 using ::testing::ValuesIn;
 
-constexpr AuthFactorStorageType kAllAuthFactorStorageTypes[] = {
+constexpr AuthFactorStorageType kAllAuthFactorStorageFromTypes[] = {
     AuthFactorStorageType::kVaultKeyset,
+    AuthFactorStorageType::kUserSecretStash,
+};
+
+constexpr AuthFactorStorageType kAllAuthFactorStorageToTypes[] = {
     AuthFactorStorageType::kUserSecretStash,
 };
 
@@ -386,8 +390,8 @@ class AuthSessionWithTpmSimulatorUssMigrationAgnosticTest
 INSTANTIATE_TEST_SUITE_P(
     All,
     AuthSessionWithTpmSimulatorUssMigrationAgnosticTest,
-    Combine(ValuesIn(kAllAuthFactorStorageTypes),
-            ValuesIn(kAllAuthFactorStorageTypes)),
+    Combine(ValuesIn(kAllAuthFactorStorageFromTypes),
+            ValuesIn(kAllAuthFactorStorageToTypes)),
     [](auto info) {
       // Return human-readable parameterized test name. Use caps in order to
       // clearly separate lowercase words visually.
@@ -486,7 +490,6 @@ TEST_P(AuthSessionWithTpmSimulatorUssMigrationAgnosticTest, UpdatePassword) {
   // Check the same holds after switching back to the initial storage type.
   SetToInitialStorageType();
   EXPECT_THAT(try_authenticate(kPassword), NotOk());
-  EXPECT_THAT(try_authenticate(kNewPassword), IsOk());
 }
 
 // Test a password factor can be successfully updated after authenticating via a

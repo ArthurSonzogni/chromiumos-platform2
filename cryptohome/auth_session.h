@@ -239,10 +239,6 @@ class AuthSession final {
     vault_keyset_ = std::move(value);
   }
 
-  bool enable_create_backup_vk_with_uss_for_testing() const {
-    return enable_create_backup_vk_with_uss_;
-  }
-
   // Static function which returns a serialized token in a vector format. The
   // token is serialized into two uint64_t values which are stored in string of
   // size 16 bytes. The first 8 bytes represent the high value of the serialized
@@ -664,8 +660,6 @@ class AuthSession final {
   // It's set only after GetRecoveryRequest() call, and is std::nullopt in other
   // cases.
   std::optional<brillo::SecureBlob> cryptohome_recovery_ephemeral_pub_key_;
-  // Switch to enable creation of the backup VaultKeysets together with the USS.
-  bool enable_create_backup_vk_with_uss_ = true;
   // Tokens from active auth factors, keyed off of the token's auth factor type.
   std::map<AuthFactorType, std::unique_ptr<PreparedAuthFactorToken>>
       active_auth_factor_tokens_;

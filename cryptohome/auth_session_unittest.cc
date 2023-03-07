@@ -163,14 +163,6 @@ std::unique_ptr<VaultKeyset> CreatePasswordVaultKeyset(
   return vk;
 }
 
-std::unique_ptr<VaultKeyset> CreateBackupVaultKeyset(const std::string& label) {
-  auto backup_vk = CreatePasswordVaultKeyset(label);
-  backup_vk->set_backup_vk_for_testing(true);
-  backup_vk->SetResetSeed(brillo::SecureBlob(32, 'A'));
-  backup_vk->SetWrappedResetSeed(brillo::SecureBlob(32, 'B'));
-  return backup_vk;
-}
-
 // A helpful utility for setting up AuthFactorMaps for testing. This provides a
 // very concise way to construct them with a variety of configurable options.
 // The way you use this is something like:
@@ -1780,17 +1772,6 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
               .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
                    std::move(auth_block_state));
         });
-    // Setting the expectation that a backup VaultKeyset will be created.
-    if (first_factor) {
-      EXPECT_CALL(keyset_management_,
-                  AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _, _))
-          .WillOnce(
-              [](auto, auto, const KeyData& key_data, auto, auto, auto, auto) {
-                auto vk = std::make_unique<VaultKeyset>();
-                vk->SetKeyData(key_data);
-                return vk;
-              });
-    }
     user_data_auth::AddAuthFactorRequest request;
     request.mutable_auth_factor()->set_type(
         user_data_auth::AUTH_FACTOR_TYPE_PASSWORD);
@@ -1864,16 +1845,6 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
           std::move(derive_callback)
               .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs));
         });
-    // Setting the expectation that backup password VaultKeyset is decrypted.
-    EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
-        .WillOnce([](const ObfuscatedUsername&, KeyBlobs,
-                     const std::optional<std::string>& label) {
-          KeyData key_data;
-          key_data.set_label(*label);
-          auto vk = std::make_unique<VaultKeyset>();
-          vk->SetKeyData(std::move(key_data));
-          return vk;
-        });
 
     TestFuture<CryptohomeStatus> authenticate_future;
     std::string auth_factor_labels[] = {kFakeLabel};
@@ -1932,9 +1903,7 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
   }
 
   user_data_auth::CryptohomeErrorCode AddPinAuthFactor(
-      bool backup_keyset_enabled,
-      const std::string& pin,
-      AuthSession& auth_session) {
+      const std::string& pin, AuthSession& auth_session) {
     EXPECT_CALL(auth_block_utility_,
                 GetAuthBlockTypeForCreation(AuthFactorType::kPin))
         .WillRepeatedly(ReturnValue(AuthBlockType::kPinWeaver));
@@ -1953,12 +1922,7 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
               .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
                    std::move(auth_block_state));
         });
-    // Setting the expectation that a backup VaultKeyset will be created if it
-    // is not explicitly disabled by adding a USS-only factor.
-    if (backup_keyset_enabled) {
-      EXPECT_CALL(keyset_management_,
-                  AddKeysetWithKeyBlobs(_, _, _, _, _, _, _, _));
-    }
+
     // Calling AddAuthFactor.
     user_data_auth::AddAuthFactorRequest add_pin_request;
     add_pin_request.set_auth_session_id(auth_session.serialized_token());
@@ -1974,7 +1938,6 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
         !add_future.Get()->local_legacy_error().has_value()) {
       return user_data_auth::CRYPTOHOME_ERROR_NOT_SET;
     }
-
     return add_future.Get()->local_legacy_error().value();
   }
 
@@ -2157,15 +2120,6 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss) {
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
                  std::move(auth_block_state));
       });
-  // Setting the expectation that a backup VaultKeyset will be created.
-  EXPECT_CALL(keyset_management_,
-              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _, _))
-      .WillOnce(
-          [](auto, auto, const KeyData& key_data, auto, auto, auto, auto) {
-            auto vk = std::make_unique<VaultKeyset>();
-            vk->SetKeyData(key_data);
-            return vk;
-          });
   // Calling AddAuthFactor.
   user_data_auth::AddAuthFactorRequest request;
   request.set_auth_session_id(auth_session.serialized_token());
@@ -2231,15 +2185,6 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaAsyncUss) {
                            OkStatus<CryptohomeCryptoError>(),
                            std::move(key_blobs), std::move(auth_block_state)));
       });
-  // Setting the expectation that a backup VaultKeyset will be created.
-  EXPECT_CALL(keyset_management_,
-              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _, _))
-      .WillOnce(
-          [](auto, auto, const KeyData& key_data, auto, auto, auto, auto) {
-            auto vk = std::make_unique<VaultKeyset>();
-            vk->SetKeyData(key_data);
-            return vk;
-          });
   // Calling AddAuthFactor.
   user_data_auth::AddAuthFactorRequest request;
   request.set_auth_session_id(auth_session.serialized_token());
@@ -2398,15 +2343,6 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
                  std::move(auth_block_state));
       });
-  // Setting the expectation that a backup VaultKeyset will be created.
-  EXPECT_CALL(keyset_management_,
-              AddInitialKeysetWithKeyBlobs(_, _, _, _, _, _, _))
-      .WillOnce(
-          [](auto, auto, const KeyData& key_data, auto, auto, auto, auto) {
-            auto vk = std::make_unique<VaultKeyset>();
-            vk->SetKeyData(key_data);
-            return vk;
-          });
   // Calling AddAuthFactor.
   user_data_auth::AddAuthFactorRequest request;
   request.set_auth_session_id(auth_session.serialized_token());
@@ -2419,8 +2355,6 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
   // Test and Verify.
   TestFuture<CryptohomeStatus> add_future;
   auth_session.AddAuthFactor(request, add_future.GetCallback());
-  std::unique_ptr<VaultKeyset> backup_vk = CreateBackupVaultKeyset(kFakeLabel);
-  auth_session.set_vault_keyset_for_testing(std::move(backup_vk));
 
   // Verify.
   EXPECT_THAT(add_future.Get(), IsOk());
@@ -2442,9 +2376,6 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
                  std::move(auth_block_state));
       });
-  // Setting the expectation that a backup VaultKeyset will be created.
-  EXPECT_CALL(keyset_management_,
-              AddKeysetWithKeyBlobs(_, _, _, _, _, _, _, _));
   // Calling AddAuthFactor.
   user_data_auth::AddAuthFactorRequest add_pin_request;
   add_pin_request.set_auth_session_id(auth_session.serialized_token());
@@ -2488,15 +2419,6 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
   std::optional<brillo::SecureBlob> uss_main_key =
       UserSecretStash::CreateRandomMainKey();
   ASSERT_TRUE(uss_main_key.has_value());
-  // Generating the backup VK.
-  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, _))
-      .WillOnce([](const ObfuscatedUsername&, const std::string& label) {
-        KeyData key_data;
-        key_data.set_label(label);
-        auto vk = std::make_unique<VaultKeyset>();
-        vk->SetKeyData(std::move(key_data));
-        return vk;
-      });
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
   auto auth_factor = std::make_unique<AuthFactor>(
@@ -2552,16 +2474,6 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
         std::move(derive_callback)
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs));
       });
-  // Setting the expectation that backup password VaultKeyset is decrypted.
-  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
-      .WillOnce([](const ObfuscatedUsername&, KeyBlobs,
-                   const std::optional<std::string>& label) {
-        KeyData key_data;
-        key_data.set_label(*label);
-        auto vk = std::make_unique<VaultKeyset>();
-        vk->SetKeyData(std::move(key_data));
-        return vk;
-      });
   // Calling AuthenticateAuthFactor.
   TestFuture<CryptohomeStatus> authenticate_future;
   std::string auth_factor_labels[] = {kFakeLabel};
@@ -2602,15 +2514,6 @@ TEST_F(AuthSessionWithUssExperimentTest,
   std::optional<brillo::SecureBlob> uss_main_key =
       UserSecretStash::CreateRandomMainKey();
   ASSERT_TRUE(uss_main_key.has_value());
-  // Generating the backup VK.
-  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, _))
-      .WillOnce([](const ObfuscatedUsername&, const std::string& label) {
-        KeyData key_data;
-        key_data.set_label(label);
-        auto vk = std::make_unique<VaultKeyset>();
-        vk->SetKeyData(std::move(key_data));
-        return vk;
-      });
   // Creating the auth factor. An arbitrary auth block state is used in this
   // test.
   auto auth_factor = std::make_unique<AuthFactor>(
@@ -2667,16 +2570,6 @@ TEST_F(AuthSessionWithUssExperimentTest,
                                base::BindOnce(std::move(derive_callback),
                                               OkStatus<CryptohomeCryptoError>(),
                                               std::move(key_blobs)));
-      });
-  // Setting the expectation that backup password VaultKeyset is decrypted.
-  EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
-      .WillOnce([](const ObfuscatedUsername&, KeyBlobs,
-                   const std::optional<std::string>& label) {
-        KeyData key_data;
-        key_data.set_label(*label);
-        auto vk = std::make_unique<VaultKeyset>();
-        vk->SetKeyData(std::move(key_data));
-        return vk;
       });
   // Calling AuthenticateAuthFactor.
   std::string auth_factor_labels[] = {kFakeLabel};
@@ -3515,10 +3408,7 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {
   error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
                                 auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  std::unique_ptr<VaultKeyset> backup_vk = CreateBackupVaultKeyset(kFakeLabel);
-  auth_session.set_vault_keyset_for_testing(std::move(backup_vk));
-  error =
-      AddPinAuthFactor(/*backup_keyset_enabled=*/true, kFakePin, auth_session);
+  error = AddPinAuthFactor(kFakePin, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Both password and pin are available.
@@ -3529,11 +3419,6 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAuthFactor) {
                           Pair(kFakePinLabel, AuthFactorType::kPin)));
   EXPECT_THAT(auth_session.auth_factor_map().Find(kFakeLabel), Optional(_));
   EXPECT_THAT(auth_session.auth_factor_map().Find(kFakePinLabel), Optional(_));
-
-  // Setting the expectation that backup VaultKeyset is also removed.
-  // VaultKeyset is loaded to be removed.
-  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, _))
-      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
 
   // Test.
 
@@ -3621,11 +3506,6 @@ TEST_F(AuthSessionWithUssExperimentTest,
           IsVerifierPtrWithLabelAndPassword(kFakeLabel, kFakePass),
           IsVerifierPtrWithLabelAndPassword(kFakeOtherLabel, kFakeOtherPass)));
 
-  // Setting the expectation that backup VaultKeyset is also removed.
-  // VaultKeyset is loaded to be removed.
-  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, _))
-      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
-
   // Test.
 
   // Calling RemoveAuthFactor for the second password.
@@ -3691,17 +3571,10 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAndReAddAuthFactor) {
   error = AddPasswordAuthFactor(kFakeLabel, kFakePass, /*first_factor=*/true,
                                 auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-  std::unique_ptr<VaultKeyset> backup_vk = CreateBackupVaultKeyset(kFakeLabel);
-  auth_session.set_vault_keyset_for_testing(std::move(backup_vk));
-  error =
-      AddPinAuthFactor(/*backup_keyset_enabled=*/true, kFakePin, auth_session);
+  error = AddPinAuthFactor(kFakePin, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Test.
-  // Setting the expectation that backup VaultKeyset is also removed.
-  // VaultKeyset is loaded to be removed.
-  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, _))
-      .WillOnce(Return(ByMove(std::make_unique<VaultKeyset>())));
   // Calling RemoveAuthFactor for pin.
   user_data_auth::RemoveAuthFactorRequest request;
   request.set_auth_session_id(auth_session.serialized_token());
@@ -3713,8 +3586,7 @@ TEST_F(AuthSessionWithUssExperimentTest, RemoveAndReAddAuthFactor) {
   EXPECT_THAT(remove_future.Get(), IsOk());
 
   // Add the same pin auth factor again.
-  error =
-      AddPinAuthFactor(/*backup_keyset_enabled=*/true, kFakePin, auth_session);
+  error = AddPinAuthFactor(kFakePin, auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
   // The verifier still uses the original password.
   UserSession* user_session = FindOrCreateUserSession(kFakeUsername);
@@ -3829,16 +3701,6 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdateAuthFactor) {
     FindOrCreateUserSession(kFakeUsername);
   }
 
-  // Generating the backup VK.
-  EXPECT_CALL(keyset_management_, GetVaultKeyset(_, _))
-      .WillOnce([](const ObfuscatedUsername&, const std::string& label) {
-        KeyData key_data;
-        key_data.set_label(label);
-        auto vk = std::make_unique<VaultKeyset>();
-        vk->SetKeyData(std::move(key_data));
-        return vk;
-      });
-
   AuthSession new_auth_session(
       {.username = kFakeUsername,
        .is_ephemeral_user = false,
@@ -3895,8 +3757,6 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPinAfterRecoveryAuth) {
     EXPECT_EQ(AddRecoveryAuthFactor(kRecoveryLabel, kFakeRecoverySecret,
                                     auth_session),
               user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-
-    EXPECT_FALSE(auth_session.enable_create_backup_vk_with_uss_for_testing());
   }
 
   // Obtain AuthSession for authentication.
@@ -3915,7 +3775,6 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPinAfterRecoveryAuth) {
        .migrate_to_user_secret_stash = false},
       backing_apis_);
 
-  EXPECT_FALSE(new_auth_session.enable_create_backup_vk_with_uss_for_testing());
   // Authenticate the new auth session with recovery factor.
   EXPECT_EQ(AuthenticateRecoveryAuthFactor(kRecoveryLabel, kFakeRecoverySecret,
                                            new_auth_session),
@@ -3926,8 +3785,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPinAfterRecoveryAuth) {
   EXPECT_TRUE(new_auth_session.has_user_secret_stash());
 
   // Test adding a PIN AuthFactor.
-  user_data_auth::CryptohomeErrorCode error = AddPinAuthFactor(
-      /*backup_keyset_enabled=*/false, kFakePin, new_auth_session);
+  user_data_auth::CryptohomeErrorCode error =
+      AddPinAuthFactor(kFakePin, new_auth_session);
   EXPECT_EQ(error, user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
 
   // Verify PIN factor is added.
@@ -3969,8 +3828,6 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdatePasswordAfterRecoveryAuth) {
     EXPECT_EQ(AddRecoveryAuthFactor(kRecoveryLabel, kFakeRecoverySecret,
                                     auth_session),
               user_data_auth::CRYPTOHOME_ERROR_NOT_SET);
-
-    EXPECT_FALSE(auth_session.enable_create_backup_vk_with_uss_for_testing());
   }
 
   // Set up mocks for the now-existing user.
@@ -3990,7 +3847,6 @@ TEST_F(AuthSessionWithUssExperimentTest, UpdatePasswordAfterRecoveryAuth) {
                .Consume(),
        .migrate_to_user_secret_stash = false},
       backing_apis_);
-  EXPECT_FALSE(new_auth_session.enable_create_backup_vk_with_uss_for_testing());
 
   // Authenticate the new auth session with recovery factor.
   EXPECT_EQ(AuthenticateRecoveryAuthFactor(kRecoveryLabel, kFakeRecoverySecret,
