@@ -19,6 +19,7 @@
 #include <string>
 #include <utility>
 #include <vector>
+#include "camera/features/effects/tracing.h"
 
 #include <base/containers/flat_set.h>
 #include <base/containers/stack_container.h>
@@ -395,6 +396,7 @@ std::optional<int64_t> EffectsStreamManipulatorImpl::TryGetSensorTimestamp(
 bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
     Camera3CaptureDescriptor result) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  TRACE_EFFECTS("frame_number", result.frame_number());
 
   auto processing_time_start = base::TimeTicks::Now();
   if (!process_thread_) {
@@ -723,6 +725,7 @@ bool EffectsStreamManipulatorImpl::EnsureImages(buffer_handle_t buffer_handle) {
 
 bool EffectsStreamManipulatorImpl::NV12ToRGBA() {
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
+  TRACE_EFFECTS();
 
   bool conv_result = image_processor_->NV12ToRGBA(input_image_yuv_.y_texture(),
                                                   input_image_yuv_.uv_texture(),
@@ -735,6 +738,7 @@ void EffectsStreamManipulatorImpl::RGBAToNV12(GLuint texture,
                                               uint32_t width,
                                               uint32_t height) {
   DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
+  TRACE_EFFECTS();
 
   Texture2D texture_2d(texture, kRGBAFormat, width, height);
   bool conv_result = image_processor_->RGBAToNV12(
