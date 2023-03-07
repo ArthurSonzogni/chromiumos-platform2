@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "diagnostics/cros_healthd/fetchers/display_fetcher.h"
+#include "diagnostics/cros_healthd/utils/display_utils.h"
 #include "diagnostics/cros_healthd/utils/error_utils.h"
 
 namespace diagnostics {
@@ -15,42 +16,6 @@ namespace diagnostics {
 namespace {
 
 namespace mojo_ipc = ::ash::cros_healthd::mojom;
-
-void FillDisplaySize(const std::unique_ptr<LibdrmUtil>& libdrm_util,
-                     const uint32_t connector_id,
-                     mojo_ipc::NullableUint32Ptr* out_width,
-                     mojo_ipc::NullableUint32Ptr* out_height) {
-  uint32_t width;
-  uint32_t height;
-  if (!libdrm_util->FillDisplaySize(connector_id, &width, &height))
-    return;
-
-  *out_width = mojo_ipc::NullableUint32::New(width);
-  *out_height = mojo_ipc::NullableUint32::New(height);
-}
-
-void FillDisplayResolution(const std::unique_ptr<LibdrmUtil>& libdrm_util,
-                           const uint32_t connector_id,
-                           mojo_ipc::NullableUint32Ptr* out_horizontal,
-                           mojo_ipc::NullableUint32Ptr* out_vertical) {
-  uint32_t horizontal;
-  uint32_t vertical;
-  if (!libdrm_util->FillDisplayResolution(connector_id, &horizontal, &vertical))
-    return;
-
-  *out_horizontal = mojo_ipc::NullableUint32::New(horizontal);
-  *out_vertical = mojo_ipc::NullableUint32::New(vertical);
-}
-
-void FillDisplayRefreshRate(const std::unique_ptr<LibdrmUtil>& libdrm_util,
-                            const uint32_t connector_id,
-                            mojo_ipc::NullableDoublePtr* out_refresh_rate) {
-  double refresh_rate;
-  if (!libdrm_util->FillDisplayRefreshRate(connector_id, &refresh_rate))
-    return;
-
-  *out_refresh_rate = mojo_ipc::NullableDouble::New(refresh_rate);
-}
 
 mojo_ipc::EmbeddedDisplayInfoPtr FetchEmbeddedDisplayInfo(
     const std::unique_ptr<LibdrmUtil>& libdrm_util) {
@@ -97,36 +62,7 @@ FetchExternalDisplayInfo(const std::unique_ptr<LibdrmUtil>& libdrm_util) {
 
   std::vector<mojo_ipc::ExternalDisplayInfoPtr> infos;
   for (const auto& connector_id : connector_ids) {
-    auto info = mojo_ipc::ExternalDisplayInfo::New();
-
-    FillDisplaySize(libdrm_util, connector_id, &info->display_width,
-                    &info->display_height);
-    FillDisplayResolution(libdrm_util, connector_id,
-                          &info->resolution_horizontal,
-                          &info->resolution_vertical);
-    FillDisplayRefreshRate(libdrm_util, connector_id, &info->refresh_rate);
-
-    EdidInfo edid_info;
-    if (libdrm_util->FillEdidInfo(connector_id, &edid_info)) {
-      info->manufacturer = edid_info.manufacturer;
-      info->model_id = mojo_ipc::NullableUint16::New(edid_info.model_id);
-      if (edid_info.serial_number.has_value())
-        info->serial_number =
-            mojo_ipc::NullableUint32::New(edid_info.serial_number.value());
-      if (edid_info.manufacture_week.has_value())
-        info->manufacture_week =
-            mojo_ipc::NullableUint8::New(edid_info.manufacture_week.value());
-      if (edid_info.manufacture_year.has_value())
-        info->manufacture_year =
-            mojo_ipc::NullableUint16::New(edid_info.manufacture_year.value());
-      info->edid_version = edid_info.edid_version;
-      if (edid_info.is_degital_input)
-        info->input_type = mojo_ipc::DisplayInputType::kDigital;
-      else
-        info->input_type = mojo_ipc::DisplayInputType::kAnalog;
-      info->display_name = edid_info.display_name;
-    }
-    infos.push_back(std::move(info));
+    infos.push_back(GetExternalDisplayInfo(libdrm_util, connector_id));
   }
 
   return infos;

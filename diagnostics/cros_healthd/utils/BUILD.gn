@@ -21,6 +21,7 @@ source_set("libcros_healthd_utils") {
   configs += [ ":libcros_healthd_utils_pkg_deps" ]
   sources = [
     "callback_barrier.cc",
+    "display_utils.cc",
     "edid.cc",
     "fwupd_utils.cc",
     "memory_info.cc",
