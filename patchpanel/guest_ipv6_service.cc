@@ -510,9 +510,9 @@ void GuestIPv6Service::RegisterDownstreamNeighborIP(
     return;
   }
 
-  VLOG(3) << __func__ << ": " << ifname_downlink << ", neighbor IP " << ip
-          << ", corresponding uplink " << uplink.value() << "["
-          << uplink_ips_[uplink.value()] << "]";
+  LOG(INFO) << __func__ << ": " << ifname_downlink << ", neighbor IP " << ip
+            << ", corresponding uplink " << uplink.value() << "["
+            << uplink_ips_[uplink.value()] << "]";
   if (!datapath_->AddIPv6HostRoute(ifname_downlink, ip, 128,
                                    uplink_ips_[uplink.value()])) {
     LOG(WARNING) << "Failed to setup the IPv6 route: " << ip << " dev "
