@@ -168,10 +168,10 @@ bool AuthBlockUtilityImpl::IsAuthFactorSupported(
     case AuthFactorType::kLegacyFingerprint:
       return false;
     case AuthFactorType::kFingerprint: {
+      auto getter_copy = bio_service_getter_;
       return (auth_factor_storage_type ==
               AuthFactorStorageType::kUserSecretStash) &&
-             bio_service_getter_.Run() &&
-             FingerprintAuthBlock::IsSupported(*crypto_).ok();
+             FingerprintAuthBlock::IsSupported(*crypto_, getter_copy).ok();
     }
     case AuthFactorType::kUnspecified:
       return false;
@@ -554,16 +554,7 @@ CryptoStatusOr<AuthBlockType> AuthBlockUtilityImpl::GetAuthBlockTypeForCreation(
 
 CryptoStatus AuthBlockUtilityImpl::IsAuthBlockSupported(
     AuthBlockType auth_block_type) const {
-  // Fingerprint requires and extra special case check.
-  if (auth_block_type == AuthBlockType::kFingerprint &&
-      !bio_service_getter_.Run()) {
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(
-            kLocAuthBlockUtilFingerprintNoServiceInIsAuthBlockSupported),
-        ErrorActionSet({ErrorAction::kAuth}), CryptoError::CE_OTHER_CRYPTO);
-  }
-
-  GenericAuthBlockFunctions generic(crypto_);
+  GenericAuthBlockFunctions generic(crypto_, bio_service_getter_);
   return generic.IsSupported(auth_block_type);
 }
 

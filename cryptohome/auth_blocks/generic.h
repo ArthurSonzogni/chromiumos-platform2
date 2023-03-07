@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_AUTH_BLOCKS_GENERIC_H_
 #define CRYPTOHOME_AUTH_BLOCKS_GENERIC_H_
 
+#include <tuple>
+
 #include <libhwsec-foundation/status/status_chain.h>
 
 #include "cryptohome/auth_blocks/async_challenge_credential_auth_block.h"
@@ -65,12 +67,19 @@ class GenericAuthBlockFunctions {
                                       TpmEccAuthBlock,
                                       FingerprintAuthBlock>;
 
+  // Call the given function pointer with all of the parameters in |parameters_|
+  // but stripped down to the subset of parameters it accepts.
+  template <typename Ret, typename... Args>
+  Ret CallWithParameters(Ret (*func)(Args...)) {
+    return std::apply(func, std::tie(std::get<Args>(parameters_)...));
+  }
+
   // Generic thunk from generic to type-specific IsSupported.
   template <typename T, typename... Rest>
   CryptoStatus IsSupportedImpl(AuthBlockType auth_block_type,
                                TypeContainer<T, Rest...>) {
     if (T::kType == auth_block_type) {
-      return T::IsSupported(*crypto_);
+      return CallWithParameters(&T::IsSupported);
     }
     return IsSupportedImpl(auth_block_type, TypeContainer<Rest...>());
   }
@@ -82,7 +91,12 @@ class GenericAuthBlockFunctions {
   }
 
  public:
-  explicit GenericAuthBlockFunctions(Crypto* crypto) : crypto_(crypto) {}
+  GenericAuthBlockFunctions(
+      Crypto* crypto,
+      base::RepeatingCallback<BiometricsAuthBlockService*()> bio_service_getter)
+      : crypto_(crypto),
+        bio_service_getter_(bio_service_getter),
+        parameters_(std::tie(*crypto_, bio_service_getter_)) {}
 
   // Returns success if this auth block type is supported on the current
   // hardware and software environment.
@@ -93,6 +107,14 @@ class GenericAuthBlockFunctions {
  private:
   // Global interfaces used as parameters by the various auth block functions.
   Crypto* crypto_;
+  base::RepeatingCallback<BiometricsAuthBlockService*()> bio_service_getter_;
+
+  // References to all of the parameters values that we support, stored as a
+  // tuple. We keep this in a tuple because it makes it much simpler to
+  // automatically reduce to the subset of arguments that the underlying
+  // AuthBlock functions require.
+  std::tuple<Crypto&, base::RepeatingCallback<BiometricsAuthBlockService*()>&>
+      parameters_;
 };
 
 }  // namespace cryptohome

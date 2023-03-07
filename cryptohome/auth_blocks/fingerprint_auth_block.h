@@ -19,7 +19,10 @@ class FingerprintAuthBlock : public AuthBlock {
  public:
   // Implement the GenericAuthBlock concept.
   static constexpr auto kType = AuthBlockType::kFingerprint;
-  static CryptoStatus IsSupported(Crypto& crypto);
+  static CryptoStatus IsSupported(
+      Crypto& crypto,
+      base::RepeatingCallback<BiometricsAuthBlockService*()>&
+          bio_service_getter);
 
   FingerprintAuthBlock(LECredentialManager* le_manager,
                        BiometricsAuthBlockService* service);

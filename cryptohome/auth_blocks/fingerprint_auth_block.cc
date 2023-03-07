@@ -91,7 +91,16 @@ FingerprintAuthBlock::FingerprintAuthBlock(LECredentialManager* le_manager,
   CHECK(service_);
 }
 
-CryptoStatus FingerprintAuthBlock::IsSupported(Crypto& crypto) {
+CryptoStatus FingerprintAuthBlock::IsSupported(
+    Crypto& crypto,
+    base::RepeatingCallback<BiometricsAuthBlockService*()>&
+        bio_service_getter) {
+  if (!bio_service_getter.Run()) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockNoServiceInIsSupported),
+        ErrorActionSet({ErrorAction::kAuth}), CryptoError::CE_OTHER_CRYPTO);
+  }
+
   hwsec::CryptohomeFrontend* frontend = crypto.GetHwsec();
   DCHECK(frontend);
   hwsec::StatusOr<bool> is_ready = frontend->IsReady();

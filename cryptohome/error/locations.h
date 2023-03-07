@@ -1562,7 +1562,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   /* ./auth_blocks/fingerprint_auth_block.cc */
   kLocFingerprintAuthBlockPrepareForRemovalUnimplemented = 3338,
   /* ./auth_blocks/auth_block_utility_impl.cc */
-  kLocAuthBlockUtilFingerprintNoServiceInIsAuthBlockSupported = 3339,
+  kLocFingerprintAuthBlockNoServiceInIsSupported = 3339,
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockUtilFingerprintNoServiceInGetAsyncAuthBlock = 3340,
   /* ./auth_blocks/fingerprint_auth_block.cc */
