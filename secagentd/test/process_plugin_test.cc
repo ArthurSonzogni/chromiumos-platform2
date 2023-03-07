@@ -127,7 +127,7 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExecEvent) {
   EXPECT_CALL(*process_cache_,
               GetProcessHierarchy(kPids[0], kSpawnStartTime, 3))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
-  EXPECT_CALL(*process_cache_, IsEventFiltered(_)).WillOnce(Return(false));
+  EXPECT_CALL(*process_cache_, IsEventFiltered(_, _)).WillOnce(Return(false));
 
   std::unique_ptr<google::protobuf::MessageLite> actual_sent_message;
   pb::CommonEventDataFields* actual_mutable_common = nullptr;
@@ -203,7 +203,7 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExecEventPartialHierarchy) {
               GetProcessHierarchy(kPids[0], kSpawnStartTime, 3))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
 
-  EXPECT_CALL(*process_cache_, IsEventFiltered(_)).WillOnce(Return(false));
+  EXPECT_CALL(*process_cache_, IsEventFiltered(_, _)).WillOnce(Return(false));
   std::unique_ptr<google::protobuf::MessageLite> actual_sent_message;
   EXPECT_CALL(
       *message_sender_,
@@ -259,7 +259,7 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginFilteredExecEvent) {
   EXPECT_CALL(*process_cache_,
               GetProcessHierarchy(kPids[0], kSpawnStartTime, 3))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
-  EXPECT_CALL(*process_cache_, IsEventFiltered(_)).WillOnce(Return(true));
+  EXPECT_CALL(*process_cache_, IsEventFiltered(_, _)).WillOnce(Return(true));
   EXPECT_CALL(*message_sender_, SendMessage(_, _, _, _)).Times(0);
   cbs_.ring_buffer_event_callback.Run(a);
 }
@@ -418,7 +418,7 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginFilteredExitEvent) {
   EXPECT_CALL(*process_cache_, GetProcessHierarchy(kPids[0], kStartTime, 2))
       .WillOnce(Return(ByMove(std::move(hierarchy))));
 
-  EXPECT_CALL(*process_cache_, IsEventFiltered(_)).WillOnce(Return(true));
+  EXPECT_CALL(*process_cache_, IsEventFiltered(_, _)).WillOnce(Return(true));
   EXPECT_CALL(*message_sender_, SendMessage(_, _, _, _)).Times(0);
   EXPECT_CALL(*process_cache_, EraseProcess(kPids[0], kStartTime));
   cbs_.ring_buffer_event_callback.Run(a);

@@ -44,7 +44,8 @@ class ProcessCacheInterface
 
   // Is the event a noisy background event that should be dropped?
   virtual bool IsEventFiltered(
-      const cros_xdr::reporting::XdrProcessEvent& event) = 0;
+      const cros_xdr::reporting::Process* parent_process,
+      const cros_xdr::reporting::Process* process) = 0;
 
   // Initializes the event filter for use.
   // underscorify is used for testing and is defaulted to false. The fake root
@@ -115,8 +116,8 @@ class ProcessCache : public ProcessCacheInterface {
   GetProcessHierarchy(uint64_t pid,
                       bpf::time_ns_t start_time_ns,
                       int num_generations) override;
-  bool IsEventFiltered(
-      const cros_xdr::reporting::XdrProcessEvent& event) override;
+  bool IsEventFiltered(const cros_xdr::reporting::Process* parent_process,
+                       const cros_xdr::reporting::Process* process) override;
   void InitializeFilter(bool underscorify = false) override;
   // Allow calling the private test-only constructor without befriending
   // scoped_refptr.

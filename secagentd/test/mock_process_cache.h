@@ -30,7 +30,8 @@ class MockProcessCache : public ProcessCacheInterface {
 
   MOCK_METHOD(bool,
               IsEventFiltered,
-              (const cros_xdr::reporting::XdrProcessEvent&),
+              (const cros_xdr::reporting::Process*,
+               const cros_xdr::reporting::Process*),
               (override));
 
   MOCK_METHOD(void, InitializeFilter, (bool underscorify), (override));

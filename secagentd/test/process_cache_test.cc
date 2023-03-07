@@ -544,12 +544,8 @@ TEST_F(ProcessCacheTestFixture, ThermalLoggerChildrenExecEventsAreFiltered) {
   auto hierarchy = process_cache_->GetProcessHierarchy(
       process_start.task_info.pid, process_start.task_info.start_time, 3);
   EXPECT_GE(hierarchy.size(), 2);
-  cros_xdr::reporting::XdrProcessEvent process_event;
-  process_event.mutable_process_exec()->set_allocated_spawn_process(
-      hierarchy[0].release());
-  process_event.mutable_process_exec()->set_allocated_process(
-      hierarchy[1].release());
-  EXPECT_TRUE(process_cache_->IsEventFiltered(process_event));
+  EXPECT_TRUE(
+      process_cache_->IsEventFiltered(hierarchy[1].get(), hierarchy[0].get()));
 }
 
 TEST_F(ProcessCacheTestFixture,
@@ -562,12 +558,8 @@ TEST_F(ProcessCacheTestFixture,
   auto hierarchy = process_cache_->GetProcessHierarchy(
       process_start.task_info.pid, process_start.task_info.start_time, 3);
   EXPECT_GE(hierarchy.size(), 2);
-  cros_xdr::reporting::XdrProcessEvent process_event;
-  process_event.mutable_process_terminate()->set_allocated_process(
-      hierarchy[0].release());
-  process_event.mutable_process_terminate()->set_allocated_parent_process(
-      hierarchy[1].release());
-  EXPECT_TRUE(process_cache_->IsEventFiltered(process_event));
+  EXPECT_TRUE(
+      process_cache_->IsEventFiltered(hierarchy[1].get(), hierarchy[0].get()));
 }
 
 TEST_F(ProcessCacheTestFixture, RecoverDutsChildrenExecEventsAreFiltered) {
@@ -579,12 +571,8 @@ TEST_F(ProcessCacheTestFixture, RecoverDutsChildrenExecEventsAreFiltered) {
   auto hierarchy = process_cache_->GetProcessHierarchy(
       process_start.task_info.pid, process_start.task_info.start_time, 3);
   EXPECT_GE(hierarchy.size(), 2);
-  cros_xdr::reporting::XdrProcessEvent process_event;
-  process_event.mutable_process_exec()->set_allocated_spawn_process(
-      hierarchy[0].release());
-  process_event.mutable_process_exec()->set_allocated_process(
-      hierarchy[1].release());
-  EXPECT_TRUE(process_cache_->IsEventFiltered(process_event));
+  EXPECT_TRUE(
+      process_cache_->IsEventFiltered(hierarchy[1].get(), hierarchy[0].get()));
 }
 
 TEST_F(ProcessCacheTestFixture, RecoverDutsChildrenTerminateEventsAreFiltered) {
@@ -596,12 +584,8 @@ TEST_F(ProcessCacheTestFixture, RecoverDutsChildrenTerminateEventsAreFiltered) {
   auto hierarchy = process_cache_->GetProcessHierarchy(
       process_start.task_info.pid, process_start.task_info.start_time, 3);
   EXPECT_GE(hierarchy.size(), 2);
-  cros_xdr::reporting::XdrProcessEvent process_event;
-  process_event.mutable_process_terminate()->set_allocated_process(
-      hierarchy[0].release());
-  process_event.mutable_process_terminate()->set_allocated_parent_process(
-      hierarchy[1].release());
-  EXPECT_TRUE(process_cache_->IsEventFiltered(process_event));
+  EXPECT_TRUE(
+      process_cache_->IsEventFiltered(hierarchy[1].get(), hierarchy[0].get()));
 }
 
 TEST_F(ProcessCacheTestFixture, SpacedCliExecEventsAreFiltered) {
@@ -614,12 +598,8 @@ TEST_F(ProcessCacheTestFixture, SpacedCliExecEventsAreFiltered) {
   auto hierarchy = process_cache_->GetProcessHierarchy(
       process_start.task_info.pid, process_start.task_info.start_time, 2);
   EXPECT_GE(hierarchy.size(), 2);
-  cros_xdr::reporting::XdrProcessEvent process_event;
-  process_event.mutable_process_exec()->set_allocated_spawn_process(
-      hierarchy[0].release());
-  process_event.mutable_process_exec()->set_allocated_process(
-      hierarchy[1].release());
-  EXPECT_TRUE(process_cache_->IsEventFiltered(process_event));
+  EXPECT_TRUE(
+      process_cache_->IsEventFiltered(hierarchy[1].get(), hierarchy[0].get()));
 }
 
 TEST_F(ProcessCacheTestFixture, SpacedCliTerminateEventsAreFiltered) {
@@ -632,12 +612,8 @@ TEST_F(ProcessCacheTestFixture, SpacedCliTerminateEventsAreFiltered) {
   auto hierarchy = process_cache_->GetProcessHierarchy(
       process_start.task_info.pid, process_start.task_info.start_time, 2);
   EXPECT_GE(hierarchy.size(), 2);
-  cros_xdr::reporting::XdrProcessEvent process_event;
-  process_event.mutable_process_terminate()->set_allocated_process(
-      hierarchy[0].release());
-  process_event.mutable_process_terminate()->set_allocated_parent_process(
-      hierarchy[1].release());
-  EXPECT_TRUE(process_cache_->IsEventFiltered(process_event));
+  EXPECT_TRUE(
+      process_cache_->IsEventFiltered(hierarchy[1].get(), hierarchy[0].get()));
 }
 
 TEST_F(ProcessCacheTestFixture, NotEverythingIsFiltered) {
@@ -649,12 +625,8 @@ TEST_F(ProcessCacheTestFixture, NotEverythingIsFiltered) {
   auto hierarchy = process_cache_->GetProcessHierarchy(
       process_start.task_info.pid, process_start.task_info.start_time, 2);
   EXPECT_GE(hierarchy.size(), 2);
-  cros_xdr::reporting::XdrProcessEvent process_event;
-  process_event.mutable_process_exec()->set_allocated_spawn_process(
-      hierarchy[0].release());
-  process_event.mutable_process_exec()->set_allocated_process(
-      hierarchy[1].release());
-  EXPECT_FALSE(process_cache_->IsEventFiltered(process_event));
+  EXPECT_FALSE(
+      process_cache_->IsEventFiltered(hierarchy[1].get(), hierarchy[0].get()));
 }
 
 TEST_F(ProcessCacheTestFixture, BpfCacheHit) {

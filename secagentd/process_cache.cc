@@ -510,24 +510,8 @@ ProcessCache::MakeFromProcfs(const ProcessCache::InternalProcessKeyType& key) {
 }
 
 bool ProcessCache::IsEventFiltered(
-    const cros_xdr::reporting::XdrProcessEvent& event) {
-  const cros_xdr::reporting::Process* process = nullptr;
-  const cros_xdr::reporting::Process* parent_process = nullptr;
-  if (event.has_process_exec()) {
-    parent_process = event.process_exec().has_process()
-                         ? &event.process_exec().process()
-                         : nullptr;
-    process = event.process_exec().has_spawn_process()
-                  ? &event.process_exec().spawn_process()
-                  : nullptr;
-  } else if (event.has_process_terminate()) {
-    parent_process = event.process_terminate().has_parent_process()
-                         ? &event.process_terminate().parent_process()
-                         : nullptr;
-    process = event.process_terminate().has_process()
-                  ? &event.process_terminate().process()
-                  : nullptr;
-  }
+    const cros_xdr::reporting::Process* parent_process,
+    const cros_xdr::reporting::Process* process) {
   const auto& parent_filter = filter_rules_parent_;
   const auto& image_filter = filter_rules_process_;
   const auto& should_filter = [](const cros_xdr::reporting::Process& p,
