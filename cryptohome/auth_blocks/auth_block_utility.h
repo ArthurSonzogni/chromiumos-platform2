@@ -95,18 +95,6 @@ class AuthBlockUtility {
       const ObfuscatedUsername& username,
       PreparedAuthFactorToken::Consumer callback) = 0;
 
-  // Creates KeyBlobs and AuthBlockState with the given type of AuthBlock for
-  // the given credentials. Creating KeyBlobs means generating the KeyBlobs from
-  // user credentials when the credentials are entered first time. Thus,
-  // CreateKeyBlobsWithAuthBlock() should be called to generate the KeyBlobs for
-  // adding initial key, adding key and migrating a key.
-  virtual CryptoStatus CreateKeyBlobsWithAuthBlock(
-      AuthBlockType auth_block_type,
-      const Credentials& credentials,
-      const std::optional<brillo::SecureBlob>& reset_secret,
-      AuthBlockState& out_state,
-      KeyBlobs& out_key_blobs) const = 0;
-
   // Creates KeyBlobs and AuthBlockState for the given credentials and returns
   // through the asynchronous create_callback.
   virtual void CreateKeyBlobsWithAuthBlockAsync(

@@ -60,14 +60,6 @@ class MockAuthBlockUtility : public AuthBlockUtility {
                const ObfuscatedUsername&,
                PreparedAuthFactorToken::Consumer),
               (override));
-  MOCK_METHOD(CryptoStatus,
-              CreateKeyBlobsWithAuthBlock,
-              (AuthBlockType auth_block_type,
-               const Credentials& credentials,
-               const std::optional<brillo::SecureBlob>& reset_secret,
-               AuthBlockState& out_state,
-               KeyBlobs& out_key_blobs),
-              (const, override));
   MOCK_METHOD(void,
               CreateKeyBlobsWithAuthBlockAsync,
               (AuthBlockType auth_block_type,

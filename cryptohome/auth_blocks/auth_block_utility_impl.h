@@ -79,13 +79,6 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       const ObfuscatedUsername& username,
       PreparedAuthFactorToken::Consumer callback) override;
 
-  CryptoStatus CreateKeyBlobsWithAuthBlock(
-      AuthBlockType auth_block_type,
-      const Credentials& credentials,
-      const std::optional<brillo::SecureBlob>& reset_secret,
-      AuthBlockState& out_state,
-      KeyBlobs& out_key_blobs) const override;
-
   void CreateKeyBlobsWithAuthBlockAsync(
       AuthBlockType auth_block_type,
       const AuthInput& auth_input,

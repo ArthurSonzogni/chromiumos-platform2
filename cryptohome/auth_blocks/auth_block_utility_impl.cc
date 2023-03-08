@@ -366,45 +366,6 @@ void AuthBlockUtilityImpl::PrepareAuthFactorForAdd(
   }
 }
 
-CryptoStatus AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlock(
-    AuthBlockType auth_block_type,
-    const Credentials& credentials,
-    const std::optional<brillo::SecureBlob>& reset_secret,
-    AuthBlockState& out_state,
-    KeyBlobs& out_key_blobs) const {
-  CryptoStatusOr<std::unique_ptr<SyncAuthBlock>> auth_block =
-      GetAuthBlockWithType(auth_block_type);
-  if (!auth_block.ok()) {
-    LOG(ERROR) << "Failed to retrieve auth block.";
-    return MakeStatus<CryptohomeCryptoError>(
-               CRYPTOHOME_ERR_LOC(kLocAuthBlockUtilNoAuthBlockInCreateKeyBlobs))
-        .Wrap(std::move(auth_block).status());
-  }
-  ReportCreateAuthBlock(auth_block_type);
-
-  // |reset_secret| is not processed in the AuthBlocks, the value is copied to
-  // the |out_key_blobs| directly. |reset_secret| will be added to the
-  // |out_key_blobs| in the VaultKeyset, if missing.
-  AuthInput user_input = {
-      credentials.passkey(),
-      /*locked_to_single_user*=*/std::nullopt,
-      /*username=*/credentials.username(),
-      brillo::cryptohome::home::SanitizeUserName(credentials.username()),
-      reset_secret};
-
-  CryptoStatus error =
-      auth_block.value()->Create(user_input, &out_state, &out_key_blobs);
-  if (!error.ok()) {
-    LOG(ERROR) << "Failed to create per credential secret: " << error;
-    return MakeStatus<CryptohomeCryptoError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocAuthBlockUtilCreateFailedInCreateKeyBlobs))
-        .Wrap(std::move(error));
-  }
-
-  return OkStatus<CryptohomeCryptoError>();
-}
-
 void AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlockAsync(
     AuthBlockType auth_block_type,
     const AuthInput& auth_input,

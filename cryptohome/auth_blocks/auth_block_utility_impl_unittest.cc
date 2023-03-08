@@ -95,6 +95,7 @@ using ::testing::IsNull;
 using ::testing::Mock;
 using ::testing::NiceMock;
 using ::testing::NotNull;
+using ::testing::Optional;
 using ::testing::Return;
 
 constexpr const char* kKeyDelegateDBusService = "key-delegate-service";
@@ -584,10 +585,12 @@ TEST_F(AuthBlockUtilityImplTest, VerifyFingerprintFailure) {
 // with PinWeaverAuthBlock when the AuthBlock type is low entropy credential.
 TEST_F(AuthBlockUtilityImplTest, CreatePinweaverAuthBlockTest) {
   // Setup mock expectations and test inputs for low entropy AuthBlock.
-  brillo::SecureBlob passkey(20, 'A');
-  Credentials credentials(kUser, passkey);
-  brillo::SecureBlob reset_secret(32, 'S');
-
+  AuthInput auth_input = {
+      .user_input = brillo::SecureBlob(20, 'A'),
+      .username = kUser,
+      .obfuscated_username = kObfuscated,
+      .reset_secret = brillo::SecureBlob(32, 'S'),
+  };
   EXPECT_CALL(hwsec_, IsPinWeaverEnabled()).WillRepeatedly(ReturnValue(true));
   MockLECredentialManager* le_cred_manager = new MockLECredentialManager();
   EXPECT_CALL(*le_cred_manager, InsertCredential(_, _, _, _, _, _, _))
@@ -595,22 +598,21 @@ TEST_F(AuthBlockUtilityImplTest, CreatePinweaverAuthBlockTest) {
   crypto_.set_le_manager_for_testing(
       std::unique_ptr<LECredentialManager>(le_cred_manager));
   crypto_.Init();
-
   MakeAuthBlockUtilityImpl();
 
   // Test
-  KeyBlobs out_key_blobs;
-  AuthBlockState out_state;
-  EXPECT_TRUE(auth_block_utility_impl_
-                  ->CreateKeyBlobsWithAuthBlock(AuthBlockType::kPinWeaver,
-                                                credentials, reset_secret,
-                                                out_state, out_key_blobs)
-                  .ok());
+  TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
+             std::unique_ptr<AuthBlockState>>
+      create_result;
+  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
+      AuthBlockType::kPinWeaver, auth_input, create_result.GetCallback());
 
-  // Verify that a PinWeaver AuthBlock is generated.
-  EXPECT_TRUE(std::holds_alternative<PinWeaverAuthBlockState>(out_state.state));
-  auto& pinweaver_state = std::get<PinWeaverAuthBlockState>(out_state.state);
-  EXPECT_TRUE(pinweaver_state.salt.has_value());
+  // Verify
+  ASSERT_THAT(create_result.Get<2>(), NotNull());
+  auto* state =
+      std::get_if<PinWeaverAuthBlockState>(&create_result.Get<2>()->state);
+  ASSERT_THAT(state, NotNull());
+  EXPECT_THAT(state->salt, Optional(_));
 }
 
 // Test that DeriveKeyBlobsWithAuthBlock derives KeyBlobs with
@@ -659,11 +661,12 @@ TEST_F(AuthBlockUtilityImplTest, DerivePinWeaverAuthBlock) {
 // AuthBlockType::kTpmBoundToPcr.
 TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedPcrBoundAuthBlock) {
   // Setup test inputs and the mock expectations..
-  brillo::SecureBlob passkey(20, 'A');
-  Credentials credentials(kUser, passkey);
-
+  AuthInput auth_input = {
+      .user_input = brillo::SecureBlob(20, 'A'),
+      .username = kUser,
+      .obfuscated_username = kObfuscated,
+  };
   crypto_.Init();
-
   brillo::SecureBlob auth_value(256, 'a');
   EXPECT_CALL(hwsec_, GetAuthValue(_, _)).WillOnce(ReturnValue(auth_value));
   EXPECT_CALL(hwsec_, SealWithCurrentUser(_, auth_value, _)).Times(Exactly(2));
@@ -673,22 +676,21 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedPcrBoundAuthBlock) {
   MakeAuthBlockUtilityImpl();
 
   // Test
-  KeyBlobs out_key_blobs;
-  AuthBlockState out_state;
-  EXPECT_TRUE(auth_block_utility_impl_
-                  ->CreateKeyBlobsWithAuthBlock(AuthBlockType::kTpmBoundToPcr,
-                                                credentials, std::nullopt,
-                                                out_state, out_key_blobs)
-                  .ok());
+  TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
+             std::unique_ptr<AuthBlockState>>
+      create_result;
+  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
+      AuthBlockType::kTpmBoundToPcr, auth_input, create_result.GetCallback());
 
-  // Verify that tpm backed pcr bound auth block is created.
-  EXPECT_TRUE(
-      std::holds_alternative<TpmBoundToPcrAuthBlockState>(out_state.state));
-  EXPECT_NE(out_key_blobs.vkk_key, std::nullopt);
-  EXPECT_NE(out_key_blobs.vkk_iv, std::nullopt);
-  EXPECT_NE(out_key_blobs.chaps_iv, std::nullopt);
-  auto& tpm_state = std::get<TpmBoundToPcrAuthBlockState>(out_state.state);
-  EXPECT_TRUE(tpm_state.salt.has_value());
+  // Verify
+  ASSERT_THAT(create_result.Get<2>(), NotNull());
+  auto* state =
+      std::get_if<TpmBoundToPcrAuthBlockState>(&create_result.Get<2>()->state);
+  ASSERT_THAT(state, NotNull());
+  EXPECT_NE(create_result.Get<1>()->vkk_key, std::nullopt);
+  EXPECT_NE(create_result.Get<1>()->vkk_iv, std::nullopt);
+  EXPECT_NE(create_result.Get<1>()->chaps_iv, std::nullopt);
+  EXPECT_THAT(state->salt, Optional(_));
 }
 
 // Test that CreateKeyBlobsWithAuthBlock with TpmBoundToPcr returns error (but
@@ -696,21 +698,24 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedPcrBoundAuthBlock) {
 TEST_F(AuthBlockUtilityImplTest,
        CreateTpmBackedPcrBoundAuthBlockErrorNoLoader) {
   // Setup
-  brillo::SecureBlob passkey(20, 'A');
-  Credentials credentials(kUser, passkey);
+  AuthInput auth_input = {
+      .user_input = brillo::SecureBlob(20, 'A'),
+      .username = kUser,
+      .obfuscated_username = kObfuscated,
+  };
   EXPECT_CALL(cryptohome_keys_manager_, GetKeyLoader(CryptohomeKeyType::kRSA))
       .WillRepeatedly(Return(nullptr));
   MakeAuthBlockUtilityImpl();
 
   // Test
-  KeyBlobs out_key_blobs;
-  AuthBlockState out_state;
-  CryptoStatus status = auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
-      AuthBlockType::kTpmBoundToPcr, credentials, std::nullopt, out_state,
-      out_key_blobs);
+  TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
+             std::unique_ptr<AuthBlockState>>
+      create_result;
+  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
+      AuthBlockType::kTpmBoundToPcr, auth_input, create_result.GetCallback());
 
   // Verify
-  EXPECT_THAT(status, NotOk());
+  EXPECT_THAT(create_result.Get<0>(), NotOk());
 }
 
 // Test that DeriveKeyBlobsWithAuthBlock derive KeyBlobs successfully with
@@ -753,32 +758,34 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedPcrBoundAuthBlock) {
 // AuthBlockType::kTpmNotBoundToPcr.
 TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedNonPcrBoundAuthBlock) {
   // Setup test inputs and the mock expectations.
-  brillo::SecureBlob passkey(20, 'A');
-  Credentials credentials(kUser, passkey);
-  brillo::SecureBlob aes_key;
+  AuthInput auth_input = {
+      .user_input = brillo::SecureBlob(20, 'A'),
+      .username = kUser,
+      .obfuscated_username = kObfuscated,
+  };
   crypto_.Init();
-
+  brillo::SecureBlob aes_key;
   brillo::Blob encrypt_out(64, 'X');
   EXPECT_CALL(hwsec_, Encrypt(_, _)).WillOnce(ReturnValue(encrypt_out));
+  MakeAuthBlockUtilityImpl();
 
   // Test
-  MakeAuthBlockUtilityImpl();
-  KeyBlobs out_key_blobs;
-  AuthBlockState out_state;
-  EXPECT_TRUE(auth_block_utility_impl_
-                  ->CreateKeyBlobsWithAuthBlock(
-                      AuthBlockType::kTpmNotBoundToPcr, credentials,
-                      std::nullopt, out_state, out_key_blobs)
-                  .ok());
+  TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
+             std::unique_ptr<AuthBlockState>>
+      create_result;
+  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
+      AuthBlockType::kTpmNotBoundToPcr, auth_input,
+      create_result.GetCallback());
 
-  // Verify that Tpm backed not pcr bound Authblock is created.
-  EXPECT_TRUE(
-      std::holds_alternative<TpmNotBoundToPcrAuthBlockState>(out_state.state));
-  EXPECT_NE(out_key_blobs.vkk_key, std::nullopt);
-  EXPECT_NE(out_key_blobs.vkk_iv, std::nullopt);
-  EXPECT_NE(out_key_blobs.chaps_iv, std::nullopt);
-  auto& tpm_state = std::get<TpmNotBoundToPcrAuthBlockState>(out_state.state);
-  EXPECT_TRUE(tpm_state.salt.has_value());
+  // Verify
+  ASSERT_THAT(create_result.Get<2>(), NotNull());
+  auto* state = std::get_if<TpmNotBoundToPcrAuthBlockState>(
+      &create_result.Get<2>()->state);
+  ASSERT_THAT(state, NotNull());
+  EXPECT_NE(create_result.Get<1>()->vkk_key, std::nullopt);
+  EXPECT_NE(create_result.Get<1>()->vkk_iv, std::nullopt);
+  EXPECT_NE(create_result.Get<1>()->chaps_iv, std::nullopt);
+  EXPECT_THAT(state->salt, Optional(_));
 }
 
 // Test that CreateKeyBlobsWithAuthBlock with TpmNotBoundToPcr returns error
@@ -786,21 +793,25 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedNonPcrBoundAuthBlock) {
 TEST_F(AuthBlockUtilityImplTest,
        CreateTpmBackedNonPcrBoundAuthBlockErrorNoLoader) {
   // Setup
-  brillo::SecureBlob passkey(20, 'A');
-  Credentials credentials(kUser, passkey);
+  AuthInput auth_input = {
+      .user_input = brillo::SecureBlob(20, 'A'),
+      .username = kUser,
+      .obfuscated_username = kObfuscated,
+  };
   EXPECT_CALL(cryptohome_keys_manager_, GetKeyLoader(CryptohomeKeyType::kRSA))
       .WillRepeatedly(Return(nullptr));
   MakeAuthBlockUtilityImpl();
 
   // Test
-  KeyBlobs out_key_blobs;
-  AuthBlockState out_state;
-  CryptoStatus status = auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
-      AuthBlockType::kTpmNotBoundToPcr, credentials, std::nullopt, out_state,
-      out_key_blobs);
+  TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
+             std::unique_ptr<AuthBlockState>>
+      create_result;
+  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
+      AuthBlockType::kTpmNotBoundToPcr, auth_input,
+      create_result.GetCallback());
 
   // Verify
-  EXPECT_THAT(status, NotOk());
+  EXPECT_THAT(create_result.Get<0>(), NotOk());
 }
 
 // Test that DeriveKeyBlobsWithAuthBlock derive KeyBlobs successfully with
@@ -843,10 +854,12 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedNonPcrBoundAuthBlock) {
 // with TpmEccAuthBlock when the AuthBlock type is AuthBlockType::kTpmEcc.
 TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedEccAuthBlock) {
   // Setup test inputs and the mock expectations.
-  brillo::SecureBlob passkey(20, 'A');
-  Credentials credentials(kUser, passkey);
+  AuthInput auth_input = {
+      .user_input = brillo::SecureBlob(20, 'A'),
+      .username = kUser,
+      .obfuscated_username = kObfuscated,
+  };
   crypto_.Init();
-
   brillo::SecureBlob auth_value(32, 'a');
   EXPECT_CALL(hwsec_, GetManufacturer()).WillOnce(ReturnValue(0x43524f53));
   EXPECT_CALL(hwsec_, GetAuthValue(_, _))
@@ -855,46 +868,48 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedEccAuthBlock) {
   EXPECT_CALL(hwsec_, SealWithCurrentUser(_, auth_value, _))
       .WillOnce(ReturnValue(brillo::Blob()))
       .WillOnce(ReturnValue(brillo::Blob()));
-
   MakeAuthBlockUtilityImpl();
 
   // Test
-  KeyBlobs out_key_blobs;
-  AuthBlockState out_state;
-  EXPECT_TRUE(auth_block_utility_impl_
-                  ->CreateKeyBlobsWithAuthBlock(AuthBlockType::kTpmEcc,
-                                                credentials, std::nullopt,
-                                                out_state, out_key_blobs)
-                  .ok());
+  TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
+             std::unique_ptr<AuthBlockState>>
+      create_result;
+  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
+      AuthBlockType::kTpmEcc, auth_input, create_result.GetCallback());
 
-  // Verify that Tpm Ecc AuthBlock is created.
-  EXPECT_TRUE(std::holds_alternative<TpmEccAuthBlockState>(out_state.state));
-  EXPECT_NE(out_key_blobs.vkk_key, std::nullopt);
-  EXPECT_NE(out_key_blobs.vkk_iv, std::nullopt);
-  EXPECT_NE(out_key_blobs.chaps_iv, std::nullopt);
-  auto& tpm_state = std::get<TpmEccAuthBlockState>(out_state.state);
-  EXPECT_TRUE(tpm_state.salt.has_value());
+  // Verify
+  ASSERT_THAT(create_result.Get<2>(), NotNull());
+  auto* state =
+      std::get_if<TpmEccAuthBlockState>(&create_result.Get<2>()->state);
+  ASSERT_THAT(state, NotNull());
+  EXPECT_NE(create_result.Get<1>()->vkk_key, std::nullopt);
+  EXPECT_NE(create_result.Get<1>()->vkk_iv, std::nullopt);
+  EXPECT_NE(create_result.Get<1>()->chaps_iv, std::nullopt);
+  EXPECT_THAT(state->salt, Optional(_));
 }
 
 // Test that CreateKeyBlobsWithAuthBlock with TpmEcc returns error (but doesn't
 // crash) when the ECC key loader is unavailable.
 TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedEccAuthBlockErrorNoLoader) {
   // Setup
-  brillo::SecureBlob passkey(20, 'A');
-  Credentials credentials(kUser, passkey);
+  AuthInput auth_input = {
+      .user_input = brillo::SecureBlob(20, 'A'),
+      .username = kUser,
+      .obfuscated_username = kObfuscated,
+  };
   EXPECT_CALL(cryptohome_keys_manager_, GetKeyLoader(CryptohomeKeyType::kECC))
       .WillRepeatedly(Return(nullptr));
   MakeAuthBlockUtilityImpl();
 
   // Test
-  KeyBlobs out_key_blobs;
-  AuthBlockState out_state;
-  CryptoStatus status = auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
-      AuthBlockType::kTpmEcc, credentials, std::nullopt, out_state,
-      out_key_blobs);
+  TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
+             std::unique_ptr<AuthBlockState>>
+      create_result;
+  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
+      AuthBlockType::kTpmEcc, auth_input, create_result.GetCallback());
 
   // Verify
-  EXPECT_THAT(status, NotOk());
+  EXPECT_THAT(create_result.Get<0>(), NotOk());
 }
 
 // Test that DeriveKeyBlobsWithAuthBlock derives KeyBlobs successfully with
@@ -942,24 +957,26 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedEccAuthBlock) {
 // AuthBlockType::kScrypt.
 TEST_F(AuthBlockUtilityImplTest, CreateScryptAuthBlockTest) {
   // Setup mock expectations and test inputs for low entropy AuthBlock.
-  brillo::SecureBlob passkey(20, 'A');
-  Credentials credentials(kUser, passkey);
-
+  AuthInput auth_input = {
+      .user_input = brillo::SecureBlob(20, 'A'),
+      .username = kUser,
+      .obfuscated_username = kObfuscated,
+  };
   MakeAuthBlockUtilityImpl();
 
   // Test
-  KeyBlobs out_key_blobs;
-  AuthBlockState out_state;
-  EXPECT_TRUE(auth_block_utility_impl_
-                  ->CreateKeyBlobsWithAuthBlock(AuthBlockType::kScrypt,
-                                                credentials, std::nullopt,
-                                                out_state, out_key_blobs)
-                  .ok());
+  TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
+             std::unique_ptr<AuthBlockState>>
+      create_result;
+  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
+      AuthBlockType::kScrypt, auth_input, create_result.GetCallback());
 
-  // Verify that a script wrapped AuthBlock is generated.
-  EXPECT_TRUE(std::holds_alternative<ScryptAuthBlockState>(out_state.state));
-  auto& scrypt_state = std::get<ScryptAuthBlockState>(out_state.state);
-  EXPECT_TRUE(scrypt_state.salt.has_value());
+  // Verify
+  ASSERT_THAT(create_result.Get<2>(), NotNull());
+  auto* state =
+      std::get_if<ScryptAuthBlockState>(&create_result.Get<2>()->state);
+  ASSERT_THAT(state, NotNull());
+  EXPECT_THAT(state->salt, Optional(_));
 }
 
 // Test that DeriveKeyBlobsWithAuthBlock derives AuthBlocks with
@@ -1149,32 +1166,6 @@ TEST_F(AuthBlockUtilityImplTest, DeriveDoubleWrappedAuthBlock) {
           ->DeriveKeyBlobsWithAuthBlock(AuthBlockType::kDoubleWrappedCompat,
                                         credentials, auth_state, out_key_blobs)
           .ok());
-}
-
-// Test that CreateKeyBlobsWithAuthBlock creates AuthBlockState with
-// ChallengeCredentialAuthBlock when the AuthBlock type is
-// AuthBlockType::kChallengeCredential.
-TEST_F(AuthBlockUtilityImplTest, CreateChallengeCredentialAuthBlock) {
-  // Setup mock expectations and test inputs for low entropy AuthBlock.
-  brillo::SecureBlob passkey(20, 'A');
-  Credentials credentials(kUser, passkey);
-
-  MakeAuthBlockUtilityImpl();
-
-  // Test
-  KeyBlobs out_key_blobs;
-  AuthBlockState out_state;
-  EXPECT_TRUE(auth_block_utility_impl_
-                  ->CreateKeyBlobsWithAuthBlock(
-                      AuthBlockType::kChallengeCredential, credentials,
-                      std::nullopt, out_state, out_key_blobs)
-                  .ok());
-
-  // Verify that a script wrapped AuthBlock is generated.
-  // TODO(betuls): Update verifications after the integration of the
-  // asynchronous AuthBlock.
-  EXPECT_TRUE(std::holds_alternative<ChallengeCredentialAuthBlockState>(
-      out_state.state));
 }
 
 // Test that DeriveKeyBlobsWithAuthBlock derives AuthBlocks with
