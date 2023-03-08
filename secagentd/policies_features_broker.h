@@ -30,6 +30,7 @@ class PoliciesFeaturesBrokerInterface
   enum class Feature {
     kCrOSLateBootSecagentdXDRReporting,
     kCrosLateBootSecagentdBatchEvents,
+    kCrosLateBootSecagentdCoalesceTerminates,
   };
 
   // Starts polling the watched features and policies. Runs the first watch

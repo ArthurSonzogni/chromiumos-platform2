@@ -22,12 +22,14 @@
 #include "secagentd/policies_features_broker.h"
 #include "secagentd/proto/security_xdr_events.pb.h"
 
-namespace {
+namespace secagentd {
 
 namespace pb = cros_xdr::reporting;
 
+namespace {
+
 // Fills a Namespaces proto with contents from bpf namespace_info.
-void FillNamespaces(const secagentd::bpf::cros_namespace_info& ns,
+void FillNamespaces(const bpf::cros_namespace_info& ns,
                     pb::Namespaces* ns_proto) {
   ns_proto->set_cgroup_ns(ns.cgroup_ns);
   ns_proto->set_pid_ns(ns.pid_ns);
@@ -50,9 +52,15 @@ std::string GetBatchedEventKey(
   }
 }
 
-}  // namespace
+void SetTerminateTimestamp(pb::ProcessEventAtomicVariant* exec) {
+  if (exec->has_process_exec()) {
+    exec->mutable_process_exec()->set_terminate_timestamp_us(
+        base::Time::Now().ToJavaTime() *
+        base::Time::kMicrosecondsPerMillisecond);
+  }
+}
 
-namespace secagentd {
+}  // namespace
 
 ProcessPlugin::ProcessPlugin(
     scoped_refptr<BpfSkeletonFactoryInterface> bpf_skeleton_factory,
@@ -173,11 +181,22 @@ void ProcessPlugin::DeprecatedSendImmediate(
 
 void ProcessPlugin::EnqueueBatchedEvent(
     std::unique_ptr<pb::ProcessEventAtomicVariant> atomic_event) {
+  if (atomic_event->has_process_terminate() &&
+      policies_features_broker_->GetFeature(
+          PoliciesFeaturesBroker::Feature::
+              kCrosLateBootSecagentdCoalesceTerminates)) {
+    if (batch_sender_->Visit(pb::ProcessEventAtomicVariant::kProcessExec,
+                             GetBatchedEventKey(*atomic_event),
+                             base::BindOnce(&SetTerminateTimestamp))) {
+      // Successfully visited and presumably also coalesced.
+      return;
+    }
+  }
   batch_sender_->Enqueue(std::move(atomic_event));
 }
 
 std::unique_ptr<pb::ProcessExecEvent> ProcessPlugin::MakeExecEvent(
-    const secagentd::bpf::cros_process_start& process_start) {
+    const bpf::cros_process_start& process_start) {
   auto process_exec_event = std::make_unique<pb::ProcessExecEvent>();
   FillNamespaces(process_start.spawn_namespace,
                  process_exec_event->mutable_spawn_namespaces());
@@ -204,7 +223,7 @@ std::unique_ptr<pb::ProcessExecEvent> ProcessPlugin::MakeExecEvent(
 }
 
 std::unique_ptr<pb::ProcessTerminateEvent> ProcessPlugin::MakeTerminateEvent(
-    const secagentd::bpf::cros_process_exit& process_exit) {
+    const bpf::cros_process_exit& process_exit) {
   auto process_terminate_event = std::make_unique<pb::ProcessTerminateEvent>();
   // Try to fetch from the process cache if possible. The cache has more
   // complete information.

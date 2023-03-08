@@ -88,6 +88,10 @@ class ProcessPluginTestFixture : public ::testing::Test {
         GetFeature(
             PoliciesFeaturesBroker::Feature::kCrosLateBootSecagentdBatchEvents))
         .WillByDefault(Return(false));
+    ON_CALL(*policies_features_broker_,
+            GetFeature(PoliciesFeaturesBroker::Feature::
+                           kCrosLateBootSecagentdCoalesceTerminates))
+        .WillByDefault(Return(false));
   }
 
   scoped_refptr<MockSkeletonFactory> skel_factory_;
@@ -293,6 +297,124 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExecEventBatched) {
             actual_sent_event->process_exec().spawn_namespaces().net_ns());
   EXPECT_EQ(ns.ipc_ns,
             actual_sent_event->process_exec().spawn_namespaces().ipc_ns());
+}
+
+TEST_F(ProcessPluginTestFixture, TestProcessPluginCoalesceTerminate) {
+  constexpr bpf::time_ns_t kSpawnStartTime = 2222;
+  constexpr uint64_t kPid = 30;
+  constexpr char kUuid[] = "uuid1";
+  constexpr bpf::time_ns_t kSpawnStartTimeVeryOld = 1111;
+  constexpr uint64_t kPidVeryOld = 5;
+  constexpr char kUuidVeryOld[] = "very_old_uuid1";
+  std::vector<std::unique_ptr<pb::Process>> exec_hierarchy;
+  exec_hierarchy.push_back(std::make_unique<pb::Process>());
+  exec_hierarchy[0]->set_process_uuid(kUuid);
+
+  std::vector<std::unique_ptr<pb::Process>> terminate_hierarchy;
+  terminate_hierarchy.push_back(std::make_unique<pb::Process>());
+  terminate_hierarchy[0]->set_process_uuid(kUuid);
+
+  std::vector<std::unique_ptr<pb::Process>> terminate_hierarchy_very_old;
+  terminate_hierarchy_very_old.push_back(std::make_unique<pb::Process>());
+  terminate_hierarchy_very_old[0]->set_process_uuid(kUuidVeryOld);
+
+  const bpf::cros_event exec = {
+      .data.process_event = {.type = bpf::process_start_type,
+                             .data.process_start =
+                                 {
+                                     .task_info =
+                                         {
+                                             .pid = kPid,
+                                             .start_time = kSpawnStartTime,
+                                         },
+                                 }},
+      .type = bpf::process_type,
+  };
+  const bpf::cros_event terminate = {
+      .data.process_event = {.type = bpf::process_exit_type,
+                             .data.process_start =
+                                 {
+                                     .task_info =
+                                         {
+                                             .pid = kPid,
+                                             .start_time = kSpawnStartTime,
+                                         },
+                                 }},
+      .type = bpf::process_type,
+  };
+  const bpf::cros_event terminate_very_old = {
+      .data.process_event = {.type = bpf::process_exit_type,
+                             .data.process_start =
+                                 {
+                                     .task_info =
+                                         {
+                                             .pid = kPidVeryOld,
+                                             .start_time =
+                                                 kSpawnStartTimeVeryOld,
+                                         },
+                                 }},
+      .type = bpf::process_type,
+  };
+  EXPECT_CALL(*process_cache_,
+              PutFromBpfExec(Ref(exec.data.process_event.data.process_start)));
+  EXPECT_CALL(*process_cache_, GetProcessHierarchy(kPid, kSpawnStartTime, 3))
+      .WillOnce(Return(ByMove(std::move(exec_hierarchy))));
+  EXPECT_CALL(*process_cache_, GetProcessHierarchy(kPid, kSpawnStartTime, 2))
+      .WillOnce(Return(ByMove(std::move(terminate_hierarchy))));
+  EXPECT_CALL(*process_cache_,
+              GetProcessHierarchy(kPidVeryOld, kSpawnStartTimeVeryOld, 2))
+      .WillOnce(Return(ByMove(std::move(terminate_hierarchy_very_old))));
+  EXPECT_CALL(*process_cache_, IsEventFiltered(_, _))
+      .WillRepeatedly(Return(false));
+
+  EXPECT_CALL(*policies_features_broker_,
+              GetFeature(PoliciesFeaturesBrokerInterface::Feature::
+                             kCrosLateBootSecagentdBatchEvents))
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*policies_features_broker_,
+              GetFeature(PoliciesFeaturesBrokerInterface::Feature::
+                             kCrosLateBootSecagentdCoalesceTerminates))
+      .WillRepeatedly(Return(true));
+
+  std::vector<std::unique_ptr<pb::ProcessEventAtomicVariant>>
+      actual_sent_events;
+  EXPECT_CALL(*batch_sender_, Enqueue(_))
+      .WillRepeatedly([&actual_sent_events](
+                          std::unique_ptr<pb::ProcessEventAtomicVariant> e) {
+        actual_sent_events.emplace_back(std::move(e));
+      });
+  EXPECT_CALL(
+      *batch_sender_,
+      Visit(Eq(pb::ProcessEventAtomicVariant::kProcessExec), Eq(kUuid), _))
+      .WillOnce([&actual_sent_events](auto unused_type, const auto& unused_key,
+                                      BatchSenderType::VisitCallback cb) {
+        std::move(cb).Run(actual_sent_events[0].get());
+        return true;
+      });
+  EXPECT_CALL(*batch_sender_,
+              Visit(Eq(pb::ProcessEventAtomicVariant::kProcessExec),
+                    Eq(kUuidVeryOld), _))
+      .WillOnce([](auto unused_type, const auto& unused_key,
+                   BatchSenderType::VisitCallback cb) {
+        std::move(cb).Reset();
+        return false;
+      });
+
+  cbs_.ring_buffer_event_callback.Run(exec);
+  // Expect this first terminate to be coalesced because we just enqueued its
+  // exec.
+  cbs_.ring_buffer_event_callback.Run(terminate);
+  cbs_.ring_buffer_event_callback.Run(terminate_very_old);
+
+  ASSERT_EQ(2, actual_sent_events.size());
+  EXPECT_EQ(
+      kUuid,
+      actual_sent_events[0]->process_exec().spawn_process().process_uuid());
+  EXPECT_TRUE(
+      actual_sent_events[0]->process_exec().has_terminate_timestamp_us());
+  EXPECT_EQ(
+      kUuidVeryOld,
+      actual_sent_events[1]->process_terminate().process().process_uuid());
 }
 
 TEST_F(ProcessPluginTestFixture, TestProcessPluginExecEventPartialHierarchy) {

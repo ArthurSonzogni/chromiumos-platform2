@@ -41,6 +41,10 @@ PoliciesFeaturesBroker::PoliciesFeaturesBroker(
            {{.name = "CrosLateBootSecagentdBatchEvents",
              .default_state = FEATURE_DISABLED_BY_DEFAULT},
             false}},
+          {Feature::kCrosLateBootSecagentdCoalesceTerminates,
+           {{.name = "CrosLateBootSecagentdCoalesceTerminates",
+             .default_state = FEATURE_DISABLED_BY_DEFAULT},
+            false}},
       } {
   for (const auto& [k, v] : feature_values_) {
     variations_to_query_.push_back(&v.variation);
