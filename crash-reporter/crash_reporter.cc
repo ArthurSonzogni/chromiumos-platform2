@@ -369,7 +369,11 @@ int main(int argc, char* argv[]) {
 
   FilePath my_path = util::GetPathToThisBinary(argv);
 
-  brillo::FlagHelper::Init(argc, argv, "ChromiumOS Crash Reporter");
+  // Can't log yet because we haven't initialized logging.
+  std::vector<brillo::FlagHelper::ParseResultsEntry> results;
+  bool unknown_flags = !brillo::FlagHelper::Init(
+      argc, argv, "ChromiumOS Crash Reporter",
+      brillo::FlagHelper::InitFuncType::kReturn, &results);
 
   if (FLAGS_early) {
     // Work around b/244755427.
@@ -386,6 +390,26 @@ int main(int argc, char* argv[]) {
   } else {
     brillo::OpenLog(my_path.BaseName().value().c_str(), true);
     brillo::InitLog(brillo::kLogToSyslog);
+  }
+
+  if (unknown_flags) {
+    for (const auto& [name, error] : results) {
+      switch (error) {
+        case brillo::FlagHelper::ParseFailure::kUnknownFlag: {
+          LOG(WARNING) << "Received unknown flag " << name
+                       << "; proceeding anyway";
+          break;
+        }
+        case brillo::FlagHelper::ParseFailure::kBadValue: {
+          LOG(WARNING) << "Bad value for flag " << name << "; aborting";
+          return EXIT_FAILURE;
+        }
+        default: {
+          LOG(WARNING) << "Unknown error parsing flag " << name << "; aborting";
+          return EXIT_FAILURE;
+        }
+      }
+    }
   }
 
   if (util::SkipCrashCollection(argc, argv)) {
