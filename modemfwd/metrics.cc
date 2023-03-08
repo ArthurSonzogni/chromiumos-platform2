@@ -16,6 +16,7 @@ using modemfwd::metrics::DlcInstallResult;
 using modemfwd::metrics::DlcUninstallResult;
 using modemfwd::metrics::FwInstallResult;
 using modemfwd::metrics::FwUpdateLocation;
+using modemfwd::metrics::ModemRecoveryState;
 using std::string;
 
 namespace modemfwd {
@@ -49,6 +50,7 @@ const char kMetricDlcUninstallResult[] = "Platform.Modemfwd.DlcUninstallResult";
 const char kMetricFwUpdateLocation[] = "Platform.Modemfwd.FWUpdateLocation";
 const char kMetricFwInstallResult[] = "Platform.Modemfwd.FWInstallResult";
 const char kMetricFwInstallTime[] = "Platform.Modemfwd.FWInstallTime";
+const char kMetricModemRecoveryState[] = "Platform.Modemfwd.ModemRecoveryState";
 static constexpr base::TimeDelta kMetricFwInstallTimeMax = base::Minutes(5);
 static constexpr base::TimeDelta kMetricFwInstallTimeMin = base::Seconds(1);
 static constexpr int kMetricFwInstallTimeNumBuckets = 60;
@@ -183,6 +185,13 @@ void Metrics::SendFwInstallResult(FwInstallResult result) {
   metrics_library_->SendEnumToUMA(
       metrics::kMetricFwInstallResult, static_cast<int>(result),
       static_cast<int>(FwInstallResult::kNumConstants));
+}
+
+void Metrics::SendModemRecoveryState(ModemRecoveryState state) {
+  ELOG(INFO) << "SendModemRecoveryState:" << static_cast<int>(state);
+  metrics_library_->SendEnumToUMA(
+      metrics::kMetricModemRecoveryState, static_cast<int>(state),
+      static_cast<int>(ModemRecoveryState::kNumConstants));
 }
 
 void Metrics::SendCheckForWedgedModemResult(CheckForWedgedModemResult result) {

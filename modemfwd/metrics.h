@@ -85,6 +85,14 @@ enum class FwInstallResult {
   kNumConstants
 };
 
+enum class ModemRecoveryState {
+  kRecoveryStateUnknown = 0,
+  kRecoveryStateSkipped = 1,
+  kRecoveryStateSuccess = 2,
+  kRecoveryStateFailure = 3,
+  kNumConstants
+};
+
 enum class CheckForWedgedModemResult {
   kModemPresent = 0,
   kModemPresentAfterReboot = 1,
@@ -134,6 +142,9 @@ class Metrics {
 
   // Sends the |FwInstallResult::kSuccess| value.
   void SendFwInstallResultSuccess();
+
+  // Sends the |ModemRecoveryState| value.
+  void SendModemRecoveryState(metrics::ModemRecoveryState result);
 
   // Sends the |FwInstallResult| value that corresponds to |err|.
   void SendFwInstallResultFailure(const brillo::Error* err);

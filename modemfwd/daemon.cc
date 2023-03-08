@@ -556,15 +556,20 @@ void Daemon::ResetModemWithHelper(const std::string& device_id,
                                   ModemHelper* helper) {
   if (!base::Contains(device_id, "pci:14c3:4d75")) {
     LOG(WARNING) << "Not FM350, not attempting recovery";
+    metrics_->SendModemRecoveryState(
+        metrics::ModemRecoveryState::kRecoveryStateSkipped);
     return;
   }
-
   // Attempt recovery
   if (helper->Reboot()) {
     LOG(INFO) << "Reboot succeeded";
     modems_[device_id]->ResetHeartbeatFailures();
+    metrics_->SendModemRecoveryState(
+        metrics::ModemRecoveryState::kRecoveryStateSuccess);
   } else {
     LOG(ERROR) << "Reboot failed";
+    metrics_->SendModemRecoveryState(
+        metrics::ModemRecoveryState::kRecoveryStateFailure);
   }
 }
 
