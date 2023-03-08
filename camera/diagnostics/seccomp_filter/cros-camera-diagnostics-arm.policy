@@ -18,6 +18,8 @@ exit: 1
 exit_group: 1
 fcntl64: 1
 fstatfs64: 1
+getdents: 1
+getdents64: 1
 getegid32: 1
 geteuid32: 1
 getgid32: 1
@@ -25,7 +27,7 @@ getpid: 1
 getrandom: 1
 gettid: 1
 getuid32: 1
-ioctl: arg1 == TCGETS
+ioctl: 1
 _llseek: 1
 memfd_create: 1
 mmap2: arg2 in ~PROT_EXEC || arg2 in ~PROT_WRITE
