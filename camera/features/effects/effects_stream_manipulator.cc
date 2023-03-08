@@ -308,6 +308,10 @@ EffectsStreamManipulatorImpl::~EffectsStreamManipulatorImpl() {
   // runner (see constructor above). If we change that, we need to ensure the
   // upload task is complete before the destructor exits, or change the
   // behaviour to be synchronous in this situation.
+  if (pipeline_) {
+    pipeline_->Wait();
+    pipeline_.reset();
+  }
   UploadAndResetMetricsData();
   gl_thread_.Stop();
   ResetState();
