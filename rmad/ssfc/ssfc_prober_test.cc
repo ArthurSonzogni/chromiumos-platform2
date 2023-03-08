@@ -184,6 +184,21 @@ TEST_F(SsfcProberImplTest, ProbeSsfc_Success_ComponentNotInConfig) {
   EXPECT_EQ(kApI2cValue1, ssfc);
 }
 
+TEST_F(SsfcProberImplTest, ProbeSsfc_Success_DuplicateComponents) {
+  RmadConfig rmad_config = {
+      .ssfc = {.component_type_configs = {{
+                   .default_value = kApI2cDefaultValue,
+                   .probeable_components = {{kApI2cName1, kApI2cValue1}},
+               }}}};
+  std::vector<std::pair<RmadComponent, std::string>> probed_components = {
+      {kComponentApI2c, kApI2cName1}, {kComponentApI2c, kApI2cName1}};
+  auto ssfc_prober = CreateSsfcProber(rmad_config, true, probed_components);
+
+  uint32_t ssfc;
+  EXPECT_TRUE(ssfc_prober->ProbeSsfc(&ssfc));
+  EXPECT_EQ(kApI2cValue1, ssfc);
+}
+
 TEST_F(SsfcProberImplTest, ProbeSsfc_Fail_MultipleComponents) {
   RmadConfig rmad_config = {
       .ssfc = {.component_type_configs = {{

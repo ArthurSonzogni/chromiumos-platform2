@@ -70,8 +70,11 @@ bool SsfcProberImpl::ProbeSsfc(uint32_t* ssfc) const {
     auto probed_it = probeable_components.cend();
     for (const auto& [component, identifier] : runtime_probed_components) {
       if (auto it = probeable_components.find(identifier);
-          it != probeable_components.end()) {
-        if (probed_it != probeable_components.cend()) {
+          it != probeable_components.cend()) {
+        // There could be multiple probed results that map to the same component
+        // depending on how the probe statement is written, but at most one
+        // component under the component type should be probed.
+        if (probed_it != it && probed_it != probeable_components.cend()) {
           LOG(ERROR) << "Failed to probe component type "
                      << component_type_config.component_type
                      << ": multiple components under the same type: "
