@@ -7,8 +7,10 @@
 #include <atomic>
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <tuple>
 #include <utility>
+#include <vector>
 
 #include <base/containers/flat_map.h>
 #include <base/feature_list.h>
@@ -23,6 +25,7 @@
 #include <base/threading/sequence_bound.h>
 #include <base/time/time.h>
 #include <crypto/sha2.h>
+#include <gmock/gmock-matchers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -45,6 +48,8 @@
 #include "missive/util/test_support_callbacks.h"
 
 using ::testing::_;
+using ::testing::AnyOf;
+using ::testing::Args;
 using ::testing::AtLeast;
 using ::testing::AtMost;
 using ::testing::Between;
@@ -61,7 +66,62 @@ using ::testing::WithArg;
 using ::testing::WithoutArgs;
 
 namespace reporting {
+
 namespace {
+
+using TestRecord = std::tuple<Priority, int64_t, std::string>;
+using ExpectRecordGroupCallback =
+    base::RepeatingCallback<void(std::vector<TestRecord>)>;
+
+//  Returns true if the records in `expected_order` were found in the same
+//  (not-necessarily continugous) order in `received_during_test`. Returns
+//  false otherwise.
+bool RecordsArrivedInExpectedOrder(
+    const std::vector<TestRecord> received_during_test,
+    const std::vector<TestRecord> expected_order) {
+  auto expected = expected_order.begin();
+  auto received = received_during_test.begin();
+
+  while (expected != expected_order.end() &&
+         received != received_during_test.end()) {
+    if (*expected == *received) {
+      ++expected;
+    }
+    ++received;
+  }
+
+  return expected == expected_order.end();
+}
+
+// Stores an entire upload of records from `SequenceBoundUpload` in the order
+// they were received when the upload is declared complete. Intended to be a
+// class member of `StorageTest`, so that it outlives
+// `TestUploader` and `SequenceBoundUpload` and can be used to perform checks
+// that span multiple separate uploads. The user is responsible for resetting
+// the state by calling `Reset()`.
+class RecordUploadStore {
+ public:
+  void Store(std::vector<TestRecord> records) {
+    // Mark these records as uploaded
+    records_.insert(records_.end(), records.begin(), records.end());
+    // Add the entire upload as a whole
+    uploads_.emplace_back(std::move(records));
+  }
+  void Reset() {
+    uploads_.clear();
+    records_.clear();
+  }
+
+  std::vector<std::vector<TestRecord>> Uploads() { return uploads_; }
+  std::vector<TestRecord> Records() { return records_; }
+
+ private:
+  // List of uploads. Each vector is a distinct upload.
+  std::vector<std::vector<TestRecord>> uploads_;
+  // Concatenation of all records across all uploads in the order they were
+  // received.
+  std::vector<TestRecord> records_;
+};
 
 // Test uploader counter - for generation of unique ids.
 std::atomic<int64_t> next_uploader_id{0};
@@ -250,6 +310,7 @@ class StorageTest
     }
     test_compression_module_ =
         base::MakeRefCounted<test::TestCompressionModule>();
+    upload_store_.Reset();
   }
 
   void TearDown() override {
@@ -291,8 +352,10 @@ class StorageTest
   // the main test thread.
   class SequenceBoundUpload {
    public:
-    explicit SequenceBoundUpload(std::unique_ptr<const MockUpload> mock_upload)
-        : mock_upload_(std::move(mock_upload)) {
+    explicit SequenceBoundUpload(std::unique_ptr<const MockUpload> mock_upload,
+                                 ExpectRecordGroupCallback callback)
+        : mock_upload_(std::move(mock_upload)),
+          expect_record_group_callback_(std::move(callback)) {
       DETACH_FROM_SEQUENCE(scoped_checker_);
       upload_progress_.assign("\nStart\n");
     }
@@ -331,6 +394,7 @@ class StorageTest
       std::move(processed_cb)
           .Run(mock_upload_->UploadRecord(uploader_id, priority, sequencing_id,
                                           data));
+      records_.emplace_back(priority, sequencing_id, data);
     }
 
     void DoUploadRecordFailure(int64_t uploader_id,
@@ -383,11 +447,13 @@ class StorageTest
           .append("\n");
       LOG(ERROR) << "TestUploader: " << upload_progress_ << "End\n";
       mock_upload_->UploadComplete(uploader_id, status);
+      expect_record_group_callback_.Run(std::move(records_));
     }
 
    private:
     const std::unique_ptr<const MockUpload> mock_upload_;
-
+    ExpectRecordGroupCallback expect_record_group_callback_;
+    std::vector<TestRecord> records_;
     SEQUENCE_CHECKER(scoped_checker_);
 
     // Snapshot of data received in this upload (for debug purposes).
@@ -447,6 +513,21 @@ class StorageTest
         EXPECT_CALL(*uploader_->mock_upload_,
                     UploadRecord(Eq(uploader_id_), Eq(priority_),
                                  Eq(sequencing_id), StrEq(std::string(value))))
+            .InSequence(uploader_->test_upload_sequence_)
+            .WillOnce(Return(true));
+        return *this;
+      }
+
+      SetUp& RequireEither(int64_t seq_id,
+                           base::StringPiece value,
+                           int64_t seq_id_other,
+                           base::StringPiece value_other) {
+        CHECK(uploader_) << "'Complete' already called";
+        EXPECT_CALL(*uploader_->mock_upload_,
+                    UploadRecord(uploader_id_, priority_, _, _))
+            .With(AnyOf(
+                Args<2, 3>(Eq(std::make_tuple(seq_id, value))),
+                Args<2, 3>(Eq(std::make_tuple(seq_id_other, value_other)))))
             .InSequence(uploader_->test_upload_sequence_)
             .WillOnce(Return(true));
         return *this;
@@ -539,14 +620,18 @@ class StorageTest
     explicit TestUploader(StorageTest* self)
         : uploader_id_(next_uploader_id.fetch_add(1)),
           last_upload_generation_id_(&self->last_upload_generation_id_),
-          last_record_digest_map_(&self->last_record_digest_map_),
           // Allocate MockUpload as raw pointer and immediately wrap it in
           // unique_ptr and pass to SequenceBoundUpload to own.
           // MockUpload outlives TestUploader and is destructed together with
           // SequenceBoundUpload (on a sequenced task runner).
+          last_record_digest_map_(&self->last_record_digest_map_),
           mock_upload_(new ::testing::NiceMock<const MockUpload>()),
-          sequence_bound_upload_(self->main_task_runner_,
-                                 base::WrapUnique(mock_upload_)),
+          sequence_bound_upload_(
+              self->main_task_runner_,
+              base::WrapUnique(mock_upload_),
+              base::BindRepeating(&RecordUploadStore::Store,
+                                  base::Unretained(&self->upload_store_))),
+
           decryptor_(self->decryptor_) {
       DETACH_FROM_SEQUENCE(test_uploader_checker_);
     }
@@ -643,6 +728,7 @@ class StorageTest
       sequence_bound_upload_.AsyncCall(&SequenceBoundUpload::DoUploadComplete)
           .WithArgs(uploader_id_, status);
     }
+    std::vector<TestRecord> records_;
 
     // Helper method for setting up dummy mock uploader expectations.
     // To be used only for uploads that we want to just ignore and do not care
@@ -749,6 +835,9 @@ class StorageTest
                     sequence_information.sequencing_id(),
                     sequence_information.generation_id(),
                     wrapped_record.record().data(), std::move(processed_cb));
+      records_.emplace_back(sequence_information.priority(),
+                            sequence_information.sequencing_id(),
+                            wrapped_record.record().data());
     }
 
     SEQUENCE_CHECKER(test_uploader_checker_);
@@ -1019,6 +1108,9 @@ class StorageTest
     expected_uploads_count_ = count;
   }
 
+  // Track records that are uploaded across multiple uploads
+  RecordUploadStore upload_store_;
+
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   // Sequenced task runner where all EXPECTs will happen - main thread.
@@ -1240,6 +1332,22 @@ TEST_P(StorageTest, WriteIntoNewStorageReopenWriteMoreAndUpload) {
     CreateTestStorageOrDie(BuildTestStorageOptions());
   }
 
+  const std::vector<TestRecord> data = {{FAST_BATCH, 0, kData[0]},
+                                        {FAST_BATCH, 1, kData[1]},
+                                        {FAST_BATCH, 2, kData[2]}};
+
+  // Expect records to contained in the same upload
+  EXPECT_THAT(upload_store_.Uploads(), testing::Contains(data));
+
+  // Expect records are uploaded in the correct order relative to each other
+  // regardless of which upload they arrive in.
+  EXPECT_TRUE(RecordsArrivedInExpectedOrder(upload_store_.Records(), data));
+
+  // Delete all records in the upload store. Otherwise they will
+  // persist and potentially interfere with future
+  // expectations.
+  upload_store_.Reset();
+
   WriteStringOrDie(FAST_BATCH, kMoreData[0]);
   WriteStringOrDie(FAST_BATCH, kMoreData[1]);
   WriteStringOrDie(FAST_BATCH, kMoreData[2]);
@@ -1250,12 +1358,12 @@ TEST_P(StorageTest, WriteIntoNewStorageReopenWriteMoreAndUpload) {
               Call(Eq(UploaderInterface::UploadReason::PERIODIC)))
       .WillOnce(Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
         return TestUploader::SetUp(FAST_BATCH, &waiter, this)
-            .Required(0, kData[0])
-            .Required(1, kData[1])
-            .Required(2, kData[2])
-            .Required(3, kMoreData[0])
-            .Required(4, kMoreData[1])
-            .Required(5, kMoreData[2])
+            .RequireEither(0, kData[0], 3, kMoreData[0])
+            .RequireEither(1, kData[1], 4, kMoreData[1])
+            .RequireEither(2, kData[2], 5, kMoreData[2])
+            .RequireEither(0, kData[0], 3, kMoreData[0])
+            .RequireEither(1, kData[1], 4, kMoreData[1])
+            .RequireEither(2, kData[2], 5, kMoreData[2])
             .Complete();
       }))
       .RetiresOnSaturation();
@@ -1263,6 +1371,20 @@ TEST_P(StorageTest, WriteIntoNewStorageReopenWriteMoreAndUpload) {
   // Trigger upload.
   SetExpectedUploadsCount();
   task_environment_.FastForwardBy(base::Seconds(1));
+  task_environment_.RunUntilIdle();
+
+  const std::vector<TestRecord> all_uploaded_records = {
+      {FAST_BATCH, 0, kData[0]},     {FAST_BATCH, 1, kData[1]},
+      {FAST_BATCH, 2, kData[2]},     {FAST_BATCH, 3, kMoreData[0]},
+      {FAST_BATCH, 4, kMoreData[1]}, {FAST_BATCH, 5, kMoreData[2]}};
+
+  // Expect records to be contained in the same upload
+  EXPECT_THAT(upload_store_.Uploads(), testing::Contains(all_uploaded_records));
+
+  // Expect records are uploaded in the correct order relative to each other
+  // regardless of which upload they arrive in.
+  EXPECT_TRUE(RecordsArrivedInExpectedOrder(upload_store_.Records(),
+                                            all_uploaded_records));
 }
 
 TEST_P(StorageTest, WriteIntoNewStorageAndFlush) {
