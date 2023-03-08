@@ -989,6 +989,8 @@ std::vector<std::string> ArcVm::GetKernelParams(
       base::StringPrintf("androidboot.arcvm_virtio_blk_data=%d",
                          request.enable_virtio_blk_data()),
       base::StringPrintf("androidboot.zram_size=%d", request.guest_zram_size()),
+      base::StringPrintf("androidboot.arc_switch_to_keymint=%d",
+                         mini_instance_request.arc_switch_to_keymint()),
   };
 
   auto mglru_reclaim_interval = request.mglru_reclaim_interval();
