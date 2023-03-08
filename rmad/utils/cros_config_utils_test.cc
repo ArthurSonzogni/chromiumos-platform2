@@ -56,6 +56,7 @@ constexpr char kCrosRmadSsfcProbeableComponentsRelPath[] =
 constexpr char kCrosRmadSsfcIdentifierKey[] = "identifier";
 constexpr char kCrosRmadSsfcValueKey[] = "value";
 
+constexpr char kUndefinedComponentType[] = "undefined_component_type";
 constexpr uint32_t kSsfcMask = 0x8;
 constexpr char kSsfcComponentType[] = "TestComponentType";
 constexpr uint32_t kSsfcDefaultValue = 0x4;
@@ -157,7 +158,9 @@ class CrosConfigUtilsImplTest : public testing::Test {
   }
 
   std::unique_ptr<CrosConfigUtils> CreateCrosConfigUtils(
-      bool custom_label = true, bool enable_rmad = true) {
+      bool custom_label = true,
+      bool enable_rmad = true,
+      bool set_optional = true) {
     auto fake_cros_config = std::make_unique<brillo::FakeCrosConfig>();
     fake_cros_config->SetString(kCrosRootPath, kCrosModelNameKey, kModelName);
     fake_cros_config->SetString(std::string(kCrosIdentityPath),
@@ -183,16 +186,18 @@ class CrosConfigUtilsImplTest : public testing::Test {
                                   kCrosRmadEnabledKey, kTrueStr);
       fake_cros_config->SetString(std::string(kCrosRmadPath),
                                   kCrosRmadHasCbiKey, kTrueStr);
-      fake_cros_config->SetString(std::string(kCrosRmadSsfcPath),
-                                  kCrosRmadSsfcMaskKey,
-                                  base::NumberToString(kSsfcMask));
-      fake_cros_config->SetString(
-          base::StringPrintf("%s/0", kCrosRmadSsfcComponentTypeConfigsPath),
-          kCrosRmadSsfcComponentTypeKey, kSsfcComponentType);
-      fake_cros_config->SetString(
-          base::StringPrintf("%s/0", kCrosRmadSsfcComponentTypeConfigsPath),
-          kCrosRmadSsfcDefaultValueKey,
-          base::NumberToString(kSsfcDefaultValue));
+      if (set_optional) {
+        fake_cros_config->SetString(std::string(kCrosRmadSsfcPath),
+                                    kCrosRmadSsfcMaskKey,
+                                    base::NumberToString(kSsfcMask));
+        fake_cros_config->SetString(
+            base::StringPrintf("%s/0", kCrosRmadSsfcComponentTypeConfigsPath),
+            kCrosRmadSsfcComponentTypeKey, kSsfcComponentType);
+        fake_cros_config->SetString(
+            base::StringPrintf("%s/0", kCrosRmadSsfcComponentTypeConfigsPath),
+            kCrosRmadSsfcDefaultValueKey,
+            base::NumberToString(kSsfcDefaultValue));
+      }
 
       fake_cros_config->SetString(
           base::StringPrintf("%s/0/%s/%d",
@@ -239,6 +244,27 @@ TEST_F(CrosConfigUtilsImplTest, GetRmadConfig_Enabled) {
   EXPECT_EQ(component_type_configs.size(), 1);
   EXPECT_EQ(component_type_configs[0].component_type, kSsfcComponentType);
   EXPECT_EQ(component_type_configs[0].default_value, kSsfcDefaultValue);
+
+  const auto& probeable_components =
+      component_type_configs[0].probeable_components;
+  EXPECT_EQ(probeable_components.size(), 2);
+  EXPECT_EQ(probeable_components.at(kSsfcIdentifier1), kSsfcValue1);
+  EXPECT_EQ(probeable_components.at(kSsfcIdentifier2), kSsfcValue2);
+}
+
+TEST_F(CrosConfigUtilsImplTest, GetRmadConfig_Enabled_NoOptionalValues) {
+  auto cros_config_utils = CreateCrosConfigUtils(true, true, false);
+
+  RmadConfig config;
+  EXPECT_TRUE(cros_config_utils->GetRmadConfig(&config));
+  EXPECT_TRUE(config.enabled);
+  EXPECT_TRUE(config.has_cbi);
+  EXPECT_EQ(config.ssfc.mask, 0);
+
+  const auto& component_type_configs = config.ssfc.component_type_configs;
+  EXPECT_EQ(component_type_configs.size(), 1);
+  EXPECT_EQ(component_type_configs[0].component_type, kUndefinedComponentType);
+  EXPECT_EQ(component_type_configs[0].default_value, 0);
 
   const auto& probeable_components =
       component_type_configs[0].probeable_components;

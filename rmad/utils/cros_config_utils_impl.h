@@ -37,15 +37,22 @@ class CrosConfigUtilsImpl : public CrosConfigUtils {
  private:
   bool GetMatchedItemsFromIdentity(const std::string& key,
                                    std::vector<base::Value>* list) const;
+  std::string GetStringWithDefault(const std::string& path,
+                                   const std::string& key,
+                                   const std::string& default_value) const;
   bool GetBooleanWithDefault(const std::string& path,
                              const std::string& key,
                              bool default_value) const;
+  uint32_t GetUintWithDefault(const std::string& path,
+                              const std::string& key,
+                              uint32_t default_value) const;
+
   SsfcConfig GetSsfc() const;
-  uint32_t GetSsfcMask() const;
   std::vector<SsfcComponentTypeConfig> GetSsfcComponentTypeConfigs() const;
-  bool GetSsfcComponentTypeConfig(
-      const std::string& path,
-      SsfcComponentTypeConfig* component_type_config) const;
+  SsfcComponentTypeConfig GetSsfcComponentTypeConfig(
+      const std::string& path) const;
+  std::map<std::string, uint32_t> GetSsfcProbeableComponents(
+      const std::string& path) const;
 
   std::string config_file_path_;
   std::unique_ptr<brillo::CrosConfigInterface> cros_config_;
