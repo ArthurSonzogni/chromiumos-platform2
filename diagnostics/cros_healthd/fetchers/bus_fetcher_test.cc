@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -30,18 +31,13 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-constexpr char kFakePathPciDevices[] = "sys/devices/pci0000:00";
-constexpr char kLinkPciDevices[] = "../../../devices/pci0000:00";
 constexpr char kFakePathUsbDevices[] =
     "sys/devices/pci0000:00/0000:00:14.0/usb1";
 constexpr char kFakeThunderboltDevices[] = "sys/bus/thunderbolt/devices";
 constexpr char kLinkUsbDevices[] =
     "../../../devices/pci0000:00/0000:00:14.0/usb1";
-constexpr char kLinkPciDriver[] = "../../../bus/pci/drivers";
 constexpr char kLinkUsbDriver[] = "../../../../../../bus/usb/drivers";
 
-constexpr char kFakePciVendorName[] = "Vendor:12AB";
-constexpr char kFakePciProductName[] = "Device:34CD";
 constexpr char kFakeUsbVendorName[] = "Usb Vendor";
 constexpr char kFakeUsbProductName[] = "Usb Product";
 constexpr uint8_t kFakeClass = 0x0a;
@@ -50,8 +46,6 @@ constexpr uint8_t kFakeProg = 0x2c;
 constexpr uint8_t kFakeProtocol = kFakeProg;
 constexpr uint16_t kFakeVendor = 0x12ab;
 constexpr uint16_t kFakeDevice = 0x34cd;
-constexpr uint16_t kFakeSubVendor = 0x23ab;
-constexpr uint16_t kFakeSubDevice = 0x45cd;
 constexpr char kFakeDriver[] = "driver";
 constexpr char kFakeUsbFWVer[] = "3.14";
 constexpr mojom::FwupdVersionFormat kFakeUsbFwVerFmtMojoEnum =
@@ -142,27 +136,6 @@ class BusFetcherTest : public BaseFileTest {
     return udevice;
   }
 
-  mojom::BusDevicePtr& AddExpectedPciDevice() {
-    auto device = mojom::BusDevice::New();
-    auto pci_info = mojom::PciBusInfo::New();
-
-    device->vendor_name = kFakePciVendorName;
-    device->product_name = kFakePciProductName;
-    device->device_class = mojom::BusDeviceClass::kOthers;
-    pci_info->class_id = kFakeClass;
-    pci_info->subclass_id = kFakeSubclass;
-    pci_info->prog_if_id = kFakeProg;
-    pci_info->vendor_id = kFakeVendor;
-    pci_info->device_id = kFakeDevice;
-    pci_info->sub_vendor_id = mojom::NullableUint16::New(kFakeSubVendor);
-    pci_info->sub_device_id = mojom::NullableUint16::New(kFakeSubDevice);
-    pci_info->driver = kFakeDriver;
-
-    device->bus_info = mojom::BusInfo::NewPciBusInfo(std::move(pci_info));
-    expected_bus_devices_.push_back(std::move(device));
-    return expected_bus_devices_.back();
-  }
-
   mojom::BusDevicePtr& AddExpectedUsbDevice(size_t interface_count) {
     CHECK_GE(interface_count, 1);
     auto device = mojom::BusDevice::New();
@@ -229,7 +202,7 @@ class BusFetcherTest : public BaseFileTest {
       const auto& bus_info = expected_bus_devices_[i]->bus_info;
       switch (bus_info->which()) {
         case mojom::BusInfo::Tag::kPciBusInfo:
-          SetPciBusInfo(bus_info->get_pci_bus_info(), i);
+          NOTREACHED();
           break;
         case mojom::BusInfo::Tag::kUsbBusInfo:
           SetUsbBusInfo(bus_info->get_usb_bus_info(), i);
@@ -244,31 +217,17 @@ class BusFetcherTest : public BaseFileTest {
     }
   }
 
-  void SetPciBusInfo(const mojom::PciBusInfoPtr& pci_info, size_t id) {
-    const auto dir = kFakePathPciDevices;
+  // Creates a pci device with default attributes. Returns the device's
+  // directory so tests can modify the attributes.
+  base::FilePath SetDefaultPciDevice(size_t id) {
+    const auto dir = "/sys/devices/pci0000:00";
     const auto dev = base::StringPrintf("0000:00:%02zx.0", id);
-    SetSymbolicLink({kLinkPciDevices, dev}, {kPathSysPci, dev});
+    SetSymbolicLink({"../../../devices/pci0000:00", dev}, {kPathSysPci, dev});
 
-    auto class_str =
-        base::StringPrintf("%#02x%02x%02x", pci_info->class_id,
-                           pci_info->subclass_id, pci_info->prog_if_id);
-    SetFile({dir, dev, kFilePciClass}, class_str);
-    SetFile({dir, dev, kFilePciVendor},
-            "0x" + ToFixHexStr(pci_info->vendor_id));
-    SetFile({dir, dev, kFilePciDevice},
-            "0x" + ToFixHexStr(pci_info->device_id));
-    if (pci_info->sub_vendor_id) {
-      SetFile({dir, dev, kFilePciSubVendor},
-              "0x" + ToFixHexStr(pci_info->sub_vendor_id->value));
-    }
-    if (pci_info->sub_device_id) {
-      SetFile({dir, dev, kFilePciSubDevice},
-              "0x" + ToFixHexStr(pci_info->sub_device_id->value));
-    }
-    if (pci_info->driver) {
-      SetSymbolicLink({kLinkPciDriver, pci_info->driver.value()},
-                      {dir, dev, kFileDriver});
-    }
+    SetFile({dir, dev, kFilePciClass}, "0x0a1b2c");
+    SetFile({dir, dev, kFilePciVendor}, "0x12ab");
+    SetFile({dir, dev, kFilePciDevice}, "0x34cd");
+    return base::FilePath{dir}.Append(dev);
   }
 
   void SetUsbBusInfo(const mojom::UsbBusInfoPtr& usb_info, size_t id) {
@@ -363,7 +322,7 @@ class BusFetcherTest : public BaseFileTest {
     }
   }
 
-  mojom::BusResultPtr FetchBusDevicesSync() {
+  std::vector<mojom::BusDevicePtr> FetchBusDevicesSync() {
     base::RunLoop run_loop;
     mojom::BusResultPtr result;
     FetchBusDevices(&mock_context_, base::BindLambdaForTesting(
@@ -372,7 +331,8 @@ class BusFetcherTest : public BaseFileTest {
                                           run_loop.Quit();
                                         }));
     run_loop.Run();
-    return result;
+    EXPECT_TRUE(result->is_bus_devices());
+    return std::move(result->get_bus_devices());
   }
 
   base::flat_map<base::FilePath, mojom::BusDevicePtr>
@@ -391,9 +351,7 @@ class BusFetcherTest : public BaseFileTest {
   }
 
   void CheckBusDevices() {
-    auto res = FetchBusDevicesSync();
-    ASSERT_TRUE(res->is_bus_devices());
-    const auto& bus_devices = res->get_bus_devices();
+    auto bus_devices = FetchBusDevicesSync();
     const auto got = Sorted(bus_devices);
     const auto expected = Sorted(expected_bus_devices_);
     EXPECT_EQ(got, expected) << GetDiffString(got, expected);
@@ -407,10 +365,58 @@ class BusFetcherTest : public BaseFileTest {
   MockContext mock_context_;
 };
 
-TEST_F(BusFetcherTest, TestFetchPci) {
-  AddExpectedPciDevice();
-  SetExpectedBusDevices();
-  CheckBusDevices();
+TEST_F(BusFetcherTest, TestFetchPciBasic) {
+  const auto dev = SetDefaultPciDevice(0);
+  SetFile(dev.Append(kFilePciClass), "0x0a1b2c");
+  SetFile(dev.Append(kFilePciVendor), "0x12ab");
+  SetFile(dev.Append(kFilePciDevice), "0x34cd");
+  SetFile(dev.Append(kFilePciSubVendor), "0x1234");
+  SetFile(dev.Append(kFilePciSubDevice), "0x5678");
+  SetSymbolicLink({"../../../bus/pci/drivers", "my_driver"},
+                  dev.Append(kFileDriver));
+
+  auto res = FetchBusDevicesSync();
+  EXPECT_EQ(res.size(), 1);
+  EXPECT_EQ(res[0]->bus_info->which(), mojom::BusInfo::Tag::kPciBusInfo);
+  // Sets by FakePciUtil.
+  EXPECT_EQ(res[0]->vendor_name, "Vendor:12AB");
+  EXPECT_EQ(res[0]->product_name, "Device:34CD");
+
+  const auto& pci_info = res[0]->bus_info->get_pci_bus_info();
+  EXPECT_EQ(pci_info->class_id, 0x0a);
+  EXPECT_EQ(pci_info->subclass_id, 0x1b);
+  EXPECT_EQ(pci_info->prog_if_id, 0x2c);
+  EXPECT_EQ(pci_info->vendor_id, 0x12ab);
+  EXPECT_EQ(pci_info->device_id, 0x34cd);
+  EXPECT_EQ(pci_info->sub_vendor_id, mojom::NullableUint16::New(0x1234));
+  EXPECT_EQ(pci_info->sub_device_id, mojom::NullableUint16::New(0x5678));
+  EXPECT_EQ(pci_info->driver, "my_driver");
+}
+
+TEST_F(BusFetcherTest, TestFetchPciNullableFields) {
+  SetDefaultPciDevice(0);
+
+  auto res = FetchBusDevicesSync();
+  EXPECT_EQ(res.size(), 1);
+  EXPECT_EQ(res[0]->bus_info->which(), mojom::BusInfo::Tag::kPciBusInfo);
+  const auto& pci_info = res[0]->bus_info->get_pci_bus_info();
+  EXPECT_FALSE(pci_info->sub_vendor_id);
+  EXPECT_FALSE(pci_info->sub_device_id);
+  EXPECT_EQ(pci_info->driver, std::nullopt);
+}
+
+TEST_F(BusFetcherTest, TestFetchPciSubInfoZero) {
+  const auto dev = SetDefaultPciDevice(0);
+  SetFile(dev.Append(kFilePciSubVendor), "0x0000");
+  SetFile(dev.Append(kFilePciSubDevice), "0x0000");
+
+  auto res = FetchBusDevicesSync();
+  EXPECT_EQ(res.size(), 1);
+  EXPECT_EQ(res[0]->bus_info->which(), mojom::BusInfo::Tag::kPciBusInfo);
+  const auto& pci_info = res[0]->bus_info->get_pci_bus_info();
+  // Zero should be parsed as null.
+  EXPECT_FALSE(pci_info->sub_vendor_id);
+  EXPECT_FALSE(pci_info->sub_device_id);
 }
 
 TEST_F(BusFetcherTest, TestFetchUsbBusInfo) {
@@ -426,9 +432,20 @@ TEST_F(BusFetcherTest, TestFetchThunderboltBusInfo) {
 }
 
 TEST_F(BusFetcherTest, TestFetchMultiple) {
-  AddExpectedPciDevice();
-  AddExpectedPciDevice();
-  AddExpectedPciDevice();
+  SetDefaultPciDevice(0);
+  SetDefaultPciDevice(1);
+  SetDefaultPciDevice(42);
+
+  auto res = FetchBusDevicesSync();
+  EXPECT_EQ(res.size(), 3);
+  std::multiset<mojom::BusInfo::Tag> type_count;
+  for (const auto& dev : res) {
+    type_count.insert(dev->bus_info->which());
+  }
+  EXPECT_EQ(type_count.count(mojom::BusInfo::Tag::kPciBusInfo), 3);
+}
+
+TEST_F(BusFetcherTest, TestFetchMultiple_DEPRECATED) {
   AddExpectedUsbDevice(1);
   AddExpectedUsbDevice(2);
   AddExpectedUsbDevice(3);
@@ -439,12 +456,10 @@ TEST_F(BusFetcherTest, TestFetchMultiple) {
 }
 
 TEST_F(BusFetcherTest, TestFetchSysfsPathsBusDeviceMapPci) {
-  AddExpectedPciDevice();
-  SetExpectedBusDevices();
+  const auto dev = SetDefaultPciDevice(0);
 
   auto result = FetchSysfsPathsBusDeviceMapSync();
-  EXPECT_EQ(result.begin()->first,
-            GetPathUnderRoot({kFakePathPciDevices, "0000:00:00.0"}));
+  EXPECT_EQ(result.begin()->first, GetPathUnderRoot(dev));
 }
 
 TEST_F(BusFetcherTest, TestFetchSysfsPathsBusDeviceMapUsb) {
@@ -454,16 +469,6 @@ TEST_F(BusFetcherTest, TestFetchSysfsPathsBusDeviceMapUsb) {
   auto result = FetchSysfsPathsBusDeviceMapSync();
   EXPECT_EQ(result.begin()->first,
             GetPathUnderRoot({kFakePathUsbDevices, "1-0"}));
-}
-
-TEST_F(BusFetcherTest, TestFetchWithoutSubInfo) {
-  auto& ptr = AddExpectedPciDevice();
-  ptr->bus_info->get_pci_bus_info()->sub_vendor_id = nullptr;
-  ptr->bus_info->get_pci_bus_info()->sub_device_id = nullptr;
-  SetExpectedBusDevices();
-  SetFile({kFakePathPciDevices, "0000:00:00.0", kFilePciSubVendor}, "0x0000");
-  SetFile({kFakePathPciDevices, "0000:00:00.0", kFilePciSubDevice}, "0x0000");
-  CheckBusDevices();
 }
 
 }  // namespace
