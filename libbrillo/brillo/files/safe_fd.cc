@@ -674,7 +674,9 @@ SafeFD::Error SafeFD::Rmdir(const std::string& name,
         return dir_fd.Rmdir(entry->d_name, true, max_depth - 1, keep_going);
       }();
 
-      if (IsError(err)) {
+      if (err == SafeFD::Error::kIOError && errno == ENOENT) {
+        // Ignore this error since it means the child entry is gone.
+      } else if (IsError(err)) {
         if (!keep_going) {
           return err;
         }
@@ -691,9 +693,12 @@ SafeFD::Error SafeFD::Rmdir(const std::string& name,
   }
 
   if (HANDLE_EINTR(unlinkat(fd_.get(), name.c_str(), AT_REMOVEDIR)) != 0) {
-    PLOG(ERROR) << "unlinkat failed";
     if (errno == ENOTDIR) {
+      // In brillo::DeleteFile we use both Rmdir and Unlink with an expectation
+      // that it will fail for files, so don't log here.
       return SafeFD::Error::kWrongType;
+    } else {
+      PLOG(ERROR) << "unlinkat failed";
     }
     // If there was an error during the recursive delete, we expect unlink
     // to fail with ENOTEMPTY and we bubble the error from recursion
