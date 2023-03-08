@@ -16,7 +16,8 @@ namespace camera3_test {
 
 class Camera3FrameFixture : public Camera3StreamFixture {
  public:
-  const uint32_t kDefaultTimeoutMs = 1000;
+  // "kDefaultTimeoutMs" is matched with CTS "WAIT_FOR_RESULT_TIMEOUT_MS"
+  const uint32_t kDefaultTimeoutMs = 3000;
   static const uint32_t kARGBPixelWidth = 4;
 
   explicit Camera3FrameFixture(int cam_id)
