@@ -33,7 +33,10 @@ std::optional<uint8_t> i2cget(int i2c_bus, int chip_addr, uint8_t data_addr) {
     return std::nullopt;
   }
   // TODO(kevinptt): move ioctl to runtime_probe::Syscaller.
-  if (ioctl(fd.get(), I2C_SLAVE, chip_addr) < 0) {
+  // If a device is busy (under control of others), the kernel will not allowed
+  // to read data with `I2C_SLAVE` to prevent race condition, so we use
+  // `I2C_SLAVE_FORCE` instead, which is also used by `i2cget -f`.
+  if (ioctl(fd.get(), I2C_SLAVE_FORCE, chip_addr) < 0) {
     LOG(ERROR) << "Could not set target address to "
                << base::StringPrintf("0x%02x", chip_addr);
     return std::nullopt;

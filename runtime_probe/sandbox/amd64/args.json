@@ -5,7 +5,8 @@
         "dirname": "/dev",
         "basename": "i2c-\\d+"
       }
-    ]
+    ],
+    "group": "i2c"
   },
   "ata_storage": {
     "binds": [
