@@ -69,8 +69,8 @@ bool Camera3PerfLog::UpdateDeviceEvent(int cam_id,
   VLOGF(1) << "Updating device event " << static_cast<int>(event)
            << " of camera " << cam_id << " at " << time << " us";
   if (base::Contains(device_events_[cam_id], event)) {
-    LOGF(ERROR) << "Device event " << static_cast<int>(event) << " of camera "
-                << cam_id << " is being updated multiple times";
+    LOGF(WARNING) << "Device event " << static_cast<int>(event) << " of camera "
+                  << cam_id << " is being updated multiple times";
     return false;
   }
   device_events_[cam_id][event] = time;
@@ -85,9 +85,9 @@ bool Camera3PerfLog::UpdateFrameEvent(int cam_id,
            << " of camera " << cam_id << " for frame number " << frame_number
            << " at " << time << " us";
   if (base::Contains(frame_events_[cam_id][frame_number], event)) {
-    LOGF(ERROR) << "Frame event " << static_cast<int>(event) << " of camera "
-                << cam_id << " frame number " << frame_number
-                << " is being updated multiple times";
+    LOGF(WARNING) << "Frame event " << static_cast<int>(event) << " of camera "
+                  << cam_id << " frame number " << frame_number
+                  << " is being updated multiple times";
     return false;
   }
   frame_events_[cam_id][frame_number][event] = time;
