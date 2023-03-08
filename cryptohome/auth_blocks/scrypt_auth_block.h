@@ -17,10 +17,13 @@ class ScryptAuthBlock : public SyncAuthBlock {
  public:
   // Implement the GenericAuthBlock concept.
   static constexpr auto kType = AuthBlockType::kScrypt;
+  using StateType = ScryptAuthBlockState;
   static CryptoStatus IsSupported(Crypto& crypto);
 
   ScryptAuthBlock();
-  ~ScryptAuthBlock() = default;
+
+  ScryptAuthBlock(const ScryptAuthBlock&) = delete;
+  ScryptAuthBlock& operator=(const ScryptAuthBlock&) = delete;
 
   // Derives a high entropy secret from the user's password with scrypt.
   // Returns a key for each field that must be wrapped by scrypt, such as the

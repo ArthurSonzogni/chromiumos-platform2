@@ -29,10 +29,12 @@ class TpmEccAuthBlock : public SyncAuthBlock {
  public:
   // Implement the GenericAuthBlock concept.
   static constexpr auto kType = AuthBlockType::kTpmEcc;
+  using StateType = TpmEccAuthBlockState;
   static CryptoStatus IsSupported(Crypto& crypto);
 
   TpmEccAuthBlock(hwsec::CryptohomeFrontend* hwsec,
                   CryptohomeKeysManager* cryptohome_keys_manager);
+
   TpmEccAuthBlock(const TpmEccAuthBlock&) = delete;
   TpmEccAuthBlock& operator=(const TpmEccAuthBlock&) = delete;
 

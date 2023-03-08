@@ -18,9 +18,11 @@ class PinWeaverAuthBlock : public SyncAuthBlock {
  public:
   // Implement the GenericAuthBlock concept.
   static constexpr auto kType = AuthBlockType::kPinWeaver;
+  using StateType = PinWeaverAuthBlockState;
   static CryptoStatus IsSupported(Crypto& crypto);
 
   explicit PinWeaverAuthBlock(LECredentialManager* le_manager);
+
   PinWeaverAuthBlock(const PinWeaverAuthBlock&) = delete;
   PinWeaverAuthBlock& operator=(const PinWeaverAuthBlock&) = delete;
 

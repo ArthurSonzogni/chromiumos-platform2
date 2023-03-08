@@ -26,10 +26,12 @@ class DoubleWrappedCompatAuthBlock : public SyncAuthBlock {
  public:
   // Implement the GenericAuthBlock concept.
   static constexpr auto kType = AuthBlockType::kDoubleWrappedCompat;
+  using StateType = DoubleWrappedCompatAuthBlockState;
   static CryptoStatus IsSupported(Crypto& crypto);
 
   DoubleWrappedCompatAuthBlock(hwsec::CryptohomeFrontend* hwsec,
                                CryptohomeKeysManager* cryptohome_keys_manager);
+
   DoubleWrappedCompatAuthBlock(const DoubleWrappedCompatAuthBlock&) = delete;
   DoubleWrappedCompatAuthBlock& operator=(const DoubleWrappedCompatAuthBlock&) =
       delete;

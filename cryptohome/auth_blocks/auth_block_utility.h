@@ -140,7 +140,7 @@ class AuthBlockUtility {
   virtual CryptoStatusOr<AuthBlockType> GetAuthBlockTypeForCreation(
       const AuthFactorType& auth_factor_type) const = 0;
 
-  // This function returns the AuthBlock type based on AutBlockState.
+  // This function returns the AuthBlock type based on AuthBlockState.
   virtual std::optional<AuthBlockType> GetAuthBlockTypeFromState(
       const AuthBlockState& state) const = 0;
 

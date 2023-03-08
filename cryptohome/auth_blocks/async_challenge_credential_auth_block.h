@@ -31,13 +31,18 @@ class AsyncChallengeCredentialAuthBlock : public AuthBlock {
  public:
   // Implement the GenericAuthBlock concept.
   static constexpr auto kType = AuthBlockType::kChallengeCredential;
+  using StateType = ChallengeCredentialAuthBlockState;
   static CryptoStatus IsSupported(Crypto& crypto);
 
   AsyncChallengeCredentialAuthBlock(
       ChallengeCredentialsHelper* challenge_credentials_helper,
       std::unique_ptr<KeyChallengeService> key_challenge_service,
       const Username& account_id);
-  ~AsyncChallengeCredentialAuthBlock() = default;
+
+  AsyncChallengeCredentialAuthBlock(const AsyncChallengeCredentialAuthBlock&) =
+      delete;
+  AsyncChallengeCredentialAuthBlock& operator=(
+      const AsyncChallengeCredentialAuthBlock&) = delete;
 
   // This creates the KeyBlobs & AuthBlockState  from the key challenge service.
   void Create(const AuthInput& user_input, CreateCallback callback) override;

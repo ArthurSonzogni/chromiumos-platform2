@@ -5,6 +5,7 @@
 #ifndef CRYPTOHOME_AUTH_BLOCKS_GENERIC_H_
 #define CRYPTOHOME_AUTH_BLOCKS_GENERIC_H_
 
+#include <optional>
 #include <tuple>
 
 #include <libhwsec-foundation/status/status_chain.h>
@@ -23,6 +24,7 @@
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
+#include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 
 namespace cryptohome {
 
@@ -32,6 +34,7 @@ namespace cryptohome {
 // TODO(b/272098290): Make this an actual concept when C++20 is available.
 // The generic auth block type must:
 //   - Have a static constexpr member kType of AuthBlockType
+//   - Have a StateType alias specifying the AuthBlockState type
 //   - Have a static function IsSupported() that returns CryptoStatus
 
 // Provide a collection of functions that delegates the actual operations to the
@@ -90,6 +93,23 @@ class GenericAuthBlockFunctions {
         CryptoError::CE_OTHER_CRYPTO);
   }
 
+  // Underlying implementation of GetAuthBlockTypeFromState. Looks for an auth
+  // block implementation whose StateType matches the state stored in the auth
+  // block state variant.
+  template <typename T, typename... Rest>
+  std::optional<AuthBlockType> GetAuthBlockTypeFromStateImpl(
+      const AuthBlockState& auth_block_state, TypeContainer<T, Rest...>) {
+    if (std::holds_alternative<typename T::StateType>(auth_block_state.state)) {
+      return T::kType;
+    }
+    return GetAuthBlockTypeFromStateImpl(auth_block_state,
+                                         TypeContainer<Rest...>());
+  }
+  std::optional<AuthBlockType> GetAuthBlockTypeFromStateImpl(
+      const AuthBlockState& auth_block_state, TypeContainer<>) {
+    return std::nullopt;
+  }
+
  public:
   GenericAuthBlockFunctions(
       Crypto* crypto,
@@ -102,6 +122,12 @@ class GenericAuthBlockFunctions {
   // hardware and software environment.
   CryptoStatus IsSupported(AuthBlockType auth_block_type) {
     return IsSupportedImpl(auth_block_type, AllBlockTypes());
+  }
+
+  // Generic implementation of AuthBlockUtility::GetAuthBlockTypeFromState.
+  std::optional<AuthBlockType> GetAuthBlockTypeFromState(
+      const AuthBlockState& auth_block_state) {
+    return GetAuthBlockTypeFromStateImpl(auth_block_state, AllBlockTypes());
   }
 
  private:

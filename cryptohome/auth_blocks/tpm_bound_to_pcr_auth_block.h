@@ -29,10 +29,12 @@ class TpmBoundToPcrAuthBlock : public SyncAuthBlock {
  public:
   // Implement the GenericAuthBlock concept.
   static constexpr auto kType = AuthBlockType::kTpmBoundToPcr;
+  using StateType = TpmBoundToPcrAuthBlockState;
   static CryptoStatus IsSupported(Crypto& crypto);
 
   TpmBoundToPcrAuthBlock(hwsec::CryptohomeFrontend* hwsec,
                          CryptohomeKeysManager* cryptohome_keys_manager);
+
   TpmBoundToPcrAuthBlock(const TpmBoundToPcrAuthBlock&) = delete;
   TpmBoundToPcrAuthBlock& operator=(const TpmBoundToPcrAuthBlock&) = delete;
 

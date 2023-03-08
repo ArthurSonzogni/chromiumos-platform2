@@ -24,6 +24,7 @@ class CryptohomeRecoveryAuthBlock : public SyncAuthBlock {
  public:
   // Implement the GenericAuthBlock concept.
   static constexpr auto kType = AuthBlockType::kCryptohomeRecovery;
+  using StateType = CryptohomeRecoveryAuthBlockState;
   static CryptoStatus IsSupported(Crypto& crypto);
 
   // the `tpm` pointer must outlive `this`
@@ -40,7 +41,6 @@ class CryptohomeRecoveryAuthBlock : public SyncAuthBlock {
   CryptohomeRecoveryAuthBlock(const CryptohomeRecoveryAuthBlock&) = delete;
   CryptohomeRecoveryAuthBlock& operator=(const CryptohomeRecoveryAuthBlock&) =
       delete;
-  ~CryptohomeRecoveryAuthBlock() = default;
 
   // `auth_input` object should have `salt` and
   // `cryptohome_recovery_auth_input.mediator_pub_key` fields set.

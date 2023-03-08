@@ -2274,6 +2274,28 @@ TEST_F(AuthBlockUtilityImplTest,
       auth_block_utility_impl_->PrepareAuthBlockForRemoval(auth_state).ok());
 }
 
+TEST_F(AuthBlockUtilityImplTest, EmptyAuthBlockState) {
+  MakeAuthBlockUtilityImpl();
+  AuthBlockState state;
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeFromState(state),
+              Eq(std::nullopt));
+}
+
+TEST_F(AuthBlockUtilityImplTest, NonEmptyAuthBlockState) {
+  MakeAuthBlockUtilityImpl();
+  // We don't want to copy the full list of types in this test, since that's
+  // just repeating the same list we have elsewhere. However, we want to at
+  // least ensure a basic lookup works, so spot check a couple values.
+  AuthBlockState first_state;
+  first_state.state = PinWeaverAuthBlockState();
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeFromState(first_state),
+              Eq(AuthBlockType::kPinWeaver));
+  AuthBlockState second_state;
+  second_state.state = CryptohomeRecoveryAuthBlockState();
+  EXPECT_THAT(auth_block_utility_impl_->GetAuthBlockTypeFromState(second_state),
+              Eq(AuthBlockType::kCryptohomeRecovery));
+}
+
 class AuthBlockUtilityImplRecoveryTest : public AuthBlockUtilityImplTest {
  public:
   AuthBlockUtilityImplRecoveryTest() = default;
