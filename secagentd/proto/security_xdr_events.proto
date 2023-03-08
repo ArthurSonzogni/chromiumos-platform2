@@ -108,6 +108,7 @@ message ProcessExecEvent {
   optional Process process = 2;
   optional Process spawn_process = 3;
   optional Namespaces spawn_namespaces = 4;
+  optional int64 terminate_timestamp_us = 5;
 }
 
 // Acting process (was) terminated.
