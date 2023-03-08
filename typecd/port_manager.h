@@ -35,9 +35,7 @@ class PortManager : public UdevMonitor::TypecObserver,
   void SetECUtil(ECUtil* ec_util) { ec_util_ = ec_util; }
 
   bool GetModeEntrySupported() { return mode_entry_supported_; }
-  void SetModeEntrySupported(bool supported) {
-    mode_entry_supported_ = supported;
-  }
+  void SetModeEntrySupported(bool supported);
 
   bool GetUserActive() { return user_active_; }
   void SetUserActive(bool active) { user_active_ = active; }
@@ -50,7 +48,7 @@ class PortManager : public UdevMonitor::TypecObserver,
     features_client_ = client;
   }
 
-  void SetSupportsUSB4(bool enable) { supports_usb4_ = enable; }
+  void SetSupportsUSB4(bool enable);
 
  protected:
   bool GetPeripheralDataAccess() { return peripheral_data_access_; }
@@ -75,6 +73,7 @@ class PortManager : public UdevMonitor::TypecObserver,
   FRIEND_TEST(PortManagerTest, MetricsReportingOnMultiplePorts);
   FRIEND_TEST(PortManagerTest, MetricsReportingCancelled);
   FRIEND_TEST(PortManagerTest, PartnerPdDeviceAddRemove);
+  FRIEND_TEST(PortManagerTest, RunModeEntryOnceEnabled);
   FRIEND_TEST(PortManagerNotificationTest, ModeEntryUSB4NotifyThunderboltDp);
   FRIEND_TEST(PortManagerNotificationTest, ModeEntryTBTNotifyThunderboltOnly);
   FRIEND_TEST(PortManagerNotificationTest, ModeEntryDpAltModeNoNotifications);

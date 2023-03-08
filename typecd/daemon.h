@@ -6,6 +6,7 @@
 #define TYPECD_DAEMON_H_
 
 #include <memory>
+#include <string>
 
 #include <base/memory/weak_ptr.h>
 #include <brillo/daemons/dbus_daemon.h>
@@ -37,6 +38,10 @@ class Daemon : public brillo::DBusServiceDaemon {
   // Set the initial UserActive state for the |port_manager_| using
   // state retrieved from the |session_manager_proxy_|.
   void InitUserActiveState();
+
+  // Callback function for debugd service updates signaled over D-Bus. Can
+  // update mode entry and USB4 support if typecd initialized before debugd.
+  void DebugdListener(const std::string& owner);
 
   std::unique_ptr<UdevMonitor> udev_monitor_;
   std::unique_ptr<PortManager> port_manager_;

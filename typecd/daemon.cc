@@ -8,6 +8,7 @@
 
 #include <base/check.h>
 #include <base/logging.h>
+#include <dbus/debugd/dbus-constants.h>
 #include <dbus/typecd/dbus-constants.h>
 
 #include "typecd/cros_config_util.h"
@@ -54,10 +55,17 @@ int Daemon::OnInit() {
   dbus_mgr_->SetFeaturesClient(features_client_.get());
 
   // Stash whether mode entry is supported at init, instead of querying it
-  // repeatedly.
+  // repeatedly. But, add a listener for debugd service changes. In some cases
+  // typecd will init before debugd causing this initial check for mode entry
+  // to fail where mode entry will be supported once debugd initializes.
   bool mode_entry_supported = cros_ec_util_->ModeEntrySupported();
-  if (!mode_entry_supported)
-    LOG(INFO) << "Mode entry not supported on this device.";
+  if (!mode_entry_supported) {
+    LOG(INFO) << "Mode entry currently not supported on this device.";
+    bus_->ListenForServiceOwnerChange(
+        debugd::kDebugdServiceName,
+        base::BindRepeating(&Daemon::DebugdListener,
+                            weak_factory_.GetWeakPtr()));
+  }
   port_manager_->SetModeEntrySupported(mode_entry_supported);
 
   auto config = std::make_unique<CrosConfigUtil>();
@@ -92,6 +100,23 @@ void Daemon::RegisterDBusObjectsAsync(
 
   dbus_object_->RegisterAsync(sequencer->GetHandler(
       "Failed to register D-Bus object", true /* failure_is_fatal */));
+}
+
+void Daemon::DebugdListener(const std::string& owner) {
+  LOG(INFO) << "Update received from debugd (" << owner << ").";
+  if (port_manager_->GetModeEntrySupported())
+    return;
+
+  bool mode_entry_supported = cros_ec_util_->ModeEntrySupported();
+  if (!mode_entry_supported)
+    return;
+
+  LOG(INFO) << "Mode entry now supported on this device.";
+  auto config = std::make_unique<CrosConfigUtil>();
+  if (config->APModeEntryDPOnly())
+    port_manager_->SetSupportsUSB4(false);
+
+  port_manager_->SetModeEntrySupported(mode_entry_supported);
 }
 
 }  // namespace typecd

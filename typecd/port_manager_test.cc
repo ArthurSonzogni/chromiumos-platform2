@@ -810,4 +810,36 @@ TEST_F(PortManagerTest, PartnerPdDeviceAddRemove) {
   port_manager->OnPdDeviceAddedOrRemoved(base::FilePath(kInvalidPdPath), true);
 }
 
+// Test that enabling mode entry support from typecd after it initializes will
+// run mode entry.
+TEST_F(PortManagerTest, RunModeEntryOnceEnabled) {
+  // Create port manager without mode entry support.
+  auto port_manager = std::make_unique<PortManager>();
+  port_manager->SetModeEntrySupported(false);
+
+  // Create the MockECUtil and set the expectations: EnterMode for USB4.
+  auto ec_util = std::make_unique<MockECUtil>();
+  EXPECT_CALL(*ec_util, ModeEntrySupported()).Times(0);
+  EXPECT_CALL(*ec_util, EnterMode(0, TypeCMode::kUSB4))
+      .WillOnce(testing::Return(true));
+  EXPECT_CALL(*ec_util, ExitMode(0)).Times(0);
+  port_manager->SetECUtil(ec_util.get());
+
+  // Add a fake port that supports USB4.
+  auto port = std::make_unique<MockPort>(base::FilePath("fakepath"), 0);
+  EXPECT_CALL(*port, GetDataRole())
+      .WillRepeatedly(testing::Return(DataRole::kHost));
+  EXPECT_CALL(*port, IsPartnerDiscoveryComplete())
+      .WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(*port, IsCableDiscoveryComplete())
+      .WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(*port, CanEnterUSB4())
+      .WillRepeatedly(testing::Return(ModeEntryResult::kSuccess));
+  port_manager->ports_.insert(
+      std::pair<int, std::unique_ptr<Port>>(0, std::move(port)));
+
+  // Trigger mode entry by setting |mode_entry_supported_|.
+  port_manager->SetModeEntrySupported(true);
+}
+
 }  // namespace typecd

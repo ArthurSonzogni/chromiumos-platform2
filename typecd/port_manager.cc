@@ -52,6 +52,24 @@ PortManager::PortManager()
       port_num_previously_sink(-1),
       metrics_(nullptr) {}
 
+void PortManager::SetModeEntrySupported(bool supported) {
+  // Run mode entry when switching from unsupported to supported.
+  bool run_mode_entry = !mode_entry_supported_ && supported;
+
+  mode_entry_supported_ = supported;
+  if (run_mode_entry) {
+    for (int i = 0; i < ports_.size(); i++)
+      RunModeEntry(i);
+  }
+}
+
+void PortManager::SetSupportsUSB4(bool enable) {
+  supports_usb4_ = enable;
+
+  for (int i = 0; i < ports_.size(); i++)
+    ports_[i]->SetSupportsUSB4(enable);
+}
+
 void PortManager::OnPortAddedOrRemoved(const base::FilePath& path,
                                        int port_num,
                                        bool added) {
