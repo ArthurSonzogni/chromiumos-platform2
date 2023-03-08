@@ -66,8 +66,8 @@ constexpr base::TimeDelta kShillPropertyAttemptDelay = base::Milliseconds(200);
 constexpr base::TimeDelta kRequestTimeout = base::Seconds(10);
 constexpr base::TimeDelta kRequestRetryDelay = base::Milliseconds(200);
 
-constexpr char kSystemProxyType[] = "sys";
-constexpr char kDefaultProxyType[] = "def";
+constexpr char kSystemProxyType[] = "system";
+constexpr char kDefaultProxyType[] = "default";
 constexpr char kARCProxyType[] = "arc";
 constexpr int32_t kRequestMaxRetry = 1;
 constexpr uint16_t kDefaultPort = 13568;  // port 53 in network order.
@@ -105,13 +105,27 @@ std::ostream& operator<<(std::ostream& stream, Proxy::Type type) {
   return stream;
 }
 
-std::ostream& operator<<(std::ostream& stream, Proxy::Options opt) {
-  stream << "{" << Proxy::TypeToString(opt.type) << ":" << opt.ifname << "}";
+std::ostream& operator<<(std::ostream& stream, Proxy::Options opts) {
+  stream << "{" << Proxy::TypeToString(opts.type) << ":" << opts.ifname << "}";
   return stream;
+}
+
+std::ostream& operator<<(std::ostream& stream, const Proxy& proxy) {
+  stream << "{" << Proxy::TypeToString(proxy.opts_.type) << ":";
+  if (!proxy.opts_.ifname.empty()) {
+    stream << proxy.opts_.ifname;
+  } else if (proxy.device_ && !proxy.device_->ifname.empty()) {
+    stream << proxy.device_->ifname;
+  } else {
+    stream << "_";
+  }
+  return stream << "}";
 }
 
 Proxy::Proxy(const Proxy::Options& opts, int32_t fd)
     : opts_(opts), metrics_proc_type_(ProcessTypeOf(opts_.type)) {
+  doh_config_.set_logger(
+      base::BindRepeating(&Proxy::LogName, weak_factory_.GetWeakPtr()));
   if (opts_.type == Type::kSystem) {
     doh_config_.set_metrics(&metrics_);
     msg_dispatcher_ =
@@ -142,7 +156,7 @@ Proxy::Proxy(const Options& opts,
 }
 
 int Proxy::OnInit() {
-  LOG(INFO) << "Starting DNS proxy " << opts_;
+  LOG(INFO) << *this << " Starting DNS proxy";
 
   /// Run after Daemon::OnInit()
   base::ThreadTaskRunnerHandle::Get()->PostTask(
@@ -151,7 +165,7 @@ int Proxy::OnInit() {
 }
 
 void Proxy::OnShutdown(int* code) {
-  LOG(INFO) << "Stopping DNS proxy " << opts_ << "(" << *code << ")";
+  LOG(INFO) << *this << " Stopping DNS proxy (" << *code << ")";
   addr_listener_.reset();
   if (opts_.type == Type::kSystem) {
     ClearShillDNSProxyAddresses();
@@ -172,7 +186,7 @@ void Proxy::Setup() {
   if (!patchpanel_) {
     metrics_.RecordProcessEvent(
         metrics_proc_type_, Metrics::ProcessEvent::kPatchpanelNotInitialized);
-    LOG(ERROR) << "Failed to initialize patchpanel client";
+    LOG(ERROR) << *this << " Failed to initialize patchpanel client";
     QuitWithExitCode(EX_UNAVAILABLE);
     return;
   }
@@ -187,7 +201,7 @@ void Proxy::OnPatchpanelReady(bool success) {
   if (!success) {
     metrics_.RecordProcessEvent(metrics_proc_type_,
                                 Metrics::ProcessEvent::kPatchpanelNotReady);
-    LOG(ERROR) << "Failed to connect to patchpanel";
+    LOG(ERROR) << *this << " Failed to connect to patchpanel";
     QuitWithExitCode(EX_UNAVAILABLE);
     return;
   }
@@ -217,13 +231,13 @@ void Proxy::OnPatchpanelReady(bool success) {
   if (!res.first.is_valid()) {
     metrics_.RecordProcessEvent(metrics_proc_type_,
                                 Metrics::ProcessEvent::kPatchpanelNoNamespace);
-    LOG(ERROR) << "Failed to establish private network namespace";
+    LOG(ERROR) << *this << " Failed to establish private network namespace";
     QuitWithExitCode(EX_CANTCREAT);
     return;
   }
   ns_fd_ = std::move(res.first);
   ns_ = res.second;
-  LOG(INFO) << "Sucessfully connected private network namespace:"
+  LOG(INFO) << *this << " Successfully connected private network namespace: "
             << ns_.host_ifname() << " <--> " << ns_.peer_ifname();
 
   // Now it's safe to connect shill.
@@ -263,7 +277,7 @@ void Proxy::StartDnsRedirection(const std::string& ifname,
       type = patchpanel::SetDnsRedirectionRuleRequest::ARC;
       break;
     default:
-      LOG(DFATAL) << "Unexpected proxy type " << opts_.type;
+      LOG(DFATAL) << *this << " Unexpected proxy type " << opts_.type;
       return;
   }
 
@@ -280,7 +294,7 @@ void Proxy::StartDnsRedirection(const std::string& ifname,
   if (!fd.is_valid()) {
     metrics_.RecordProcessEvent(metrics_proc_type_,
                                 Metrics::ProcessEvent::kPatchpanelNoRedirect);
-    LOG(ERROR) << "Failed to start DNS redirection for " << opts_.type;
+    LOG(ERROR) << *this << " Failed to start DNS redirection";
     QuitWithExitCode(EX_CONFIG);
     return;
   }
@@ -296,7 +310,7 @@ void Proxy::OnPatchpanelReset(bool reset) {
   if (reset) {
     metrics_.RecordProcessEvent(metrics_proc_type_,
                                 Metrics::ProcessEvent::kPatchpanelReset);
-    LOG(WARNING) << "Patchpanel has been reset";
+    LOG(WARNING) << *this << " Patchpanel has been reset";
     return;
   }
 
@@ -305,7 +319,7 @@ void Proxy::OnPatchpanelReset(bool reset) {
   // us. Note if this is the system proxy, it will inform shill on shutdown.
   metrics_.RecordProcessEvent(metrics_proc_type_,
                               Metrics::ProcessEvent::kPatchpanelShutdown);
-  LOG(ERROR) << "Patchpanel has been shutdown - restarting DNS proxy " << opts_;
+  LOG(ERROR) << *this << " Patchpanel has been shutdown - restarting DNS proxy";
   QuitWithExitCode(EX_UNAVAILABLE);
 }
 
@@ -325,7 +339,7 @@ void Proxy::OnShillReady(bool success) {
   if (!shill_ready_) {
     metrics_.RecordProcessEvent(metrics_proc_type_,
                                 Metrics::ProcessEvent::kShillNotReady);
-    LOG(ERROR) << "Failed to connect to shill";
+    LOG(ERROR) << *this << " Failed to connect to shill";
     QuitWithExitCode(EX_UNAVAILABLE);
     return;
   }
@@ -345,7 +359,7 @@ void Proxy::OnShillReset(bool reset) {
   if (reset) {
     metrics_.RecordProcessEvent(metrics_proc_type_,
                                 Metrics::ProcessEvent::kShillReset);
-    LOG(WARNING) << "Shill has been reset";
+    LOG(WARNING) << *this << " Shill has been reset";
 
     // If applicable, restore the address of the system proxy.
     if (opts_.type == Type::kSystem && ns_fd_.is_valid()) {
@@ -363,7 +377,7 @@ void Proxy::OnShillReset(bool reset) {
 
   metrics_.RecordProcessEvent(metrics_proc_type_,
                               Metrics::ProcessEvent::kShillShutdown);
-  LOG(WARNING) << "Shill has been shutdown";
+  LOG(WARNING) << *this << " Shill has been shutdown";
   shill_ready_ = false;
   shill_props_.reset();
   shill_.reset();
@@ -372,12 +386,12 @@ void Proxy::OnShillReset(bool reset) {
 
 void Proxy::OnSessionStateChanged(bool login) {
   if (login) {
-    LOG(INFO) << "Service enabled by user login";
+    LOG(INFO) << *this << " Service enabled by user login";
     Enable();
     return;
   }
 
-  LOG(INFO) << "Service disabled by user logout";
+  LOG(INFO) << *this << " Service disabled by user logout";
   Disable();
 }
 
@@ -439,7 +453,9 @@ void Proxy::Stop() {
 std::unique_ptr<Resolver> Proxy::NewResolver(base::TimeDelta timeout,
                                              base::TimeDelta retry_delay,
                                              int max_num_retries) {
-  return std::make_unique<Resolver>(timeout, retry_delay, max_num_retries);
+  return std::make_unique<Resolver>(
+      base::BindRepeating(&Proxy::LogName, weak_factory_.GetWeakPtr()), timeout,
+      retry_delay, max_num_retries);
 }
 
 void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
@@ -451,7 +467,7 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
   if (!device) {
     // If it disconnected, shutdown the resolver.
     if (device_) {
-      LOG(WARNING) << opts_
+      LOG(WARNING) << *this
                    << " is stopping because there is no default service";
       Stop();
     }
@@ -472,7 +488,7 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
     // device and use that from here forward.
     auto dd = shill_->DefaultDevice(true /* exclude_vpn */);
     if (!dd) {
-      LOG(ERROR) << "No default non-VPN device found";
+      LOG(ERROR) << *this << " No default non-VPN device found";
       return;
     }
     new_default_device = *dd.get();
@@ -483,7 +499,7 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
   if (new_default_device.state !=
       shill::Client::Device::ConnectionState::kOnline) {
     if (device_) {
-      LOG(WARNING) << opts_ << " is stopping because the default device ["
+      LOG(WARNING) << *this << " is stopping because the default device ["
                    << new_default_device.ifname << "] is offline";
       Stop();
     }
@@ -495,7 +511,7 @@ void Proxy::OnDefaultDeviceChanged(const shill::Client::Device* const device) {
 
   // The default network has changed.
   if (new_default_device.ifname != device_->ifname)
-    LOG(INFO) << opts_ << " is now tracking [" << new_default_device.ifname
+    LOG(INFO) << *this << " is now tracking [" << new_default_device.ifname
               << "]";
 
   *device_.get() = new_default_device;
@@ -572,7 +588,7 @@ void Proxy::OnDeviceChanged(const shill::Client::Device* const device) {
 
       if (device->state != shill::Client::Device::ConnectionState::kOnline) {
         if (device_) {
-          LOG(WARNING) << opts_ << " is stopping because the device ["
+          LOG(WARNING) << *this << " is stopping because the device ["
                        << device->ifname << "] is offline";
           Stop();
         }
@@ -620,7 +636,7 @@ void Proxy::MaybeCreateResolver() {
   if (!resolver_->ListenUDP(reinterpret_cast<struct sockaddr*>(&addr))) {
     metrics_.RecordProcessEvent(
         metrics_proc_type_, Metrics::ProcessEvent::kResolverListenUDPFailure);
-    LOG(ERROR) << opts_ << " failed to start UDP relay loop";
+    LOG(ERROR) << *this << " failed to start UDP relay loop";
     QuitWithExitCode(EX_IOERR);
     return;
   }
@@ -628,7 +644,7 @@ void Proxy::MaybeCreateResolver() {
   if (!resolver_->ListenTCP(reinterpret_cast<struct sockaddr*>(&addr))) {
     metrics_.RecordProcessEvent(
         metrics_proc_type_, Metrics::ProcessEvent::kResolverListenTCPFailure);
-    LOG(DFATAL) << opts_ << " failed to start TCP relay loop";
+    LOG(DFATAL) << *this << " failed to start TCP relay loop";
   }
 
   // Fetch the DoH settings.
@@ -642,7 +658,7 @@ void Proxy::MaybeCreateResolver() {
     if (opts_.type == Type::kSystem) {
       metrics_.RecordDnsOverHttpsMode(Metrics::DnsOverHttpsMode::kUnknown);
     }
-    LOG(ERROR) << opts_ << " failed to obtain DoH configuration from shill: "
+    LOG(ERROR) << *this << " failed to obtain DoH configuration from shill: "
                << error->GetMessage();
   }
 }
@@ -680,7 +696,7 @@ void Proxy::UpdateNameServers(const shill::Client::IPConfig& ipconfig) {
   doh_config_.set_nameservers(ipv4_nameservers, ipv6_nameservers);
   metrics_.RecordNameservers(doh_config_.ipv4_nameservers().size(),
                              doh_config_.ipv6_nameservers().size());
-  LOG(INFO) << opts_ << " applied device DNS configuration";
+  LOG(INFO) << *this << " applied device DNS configuration";
 }
 
 void Proxy::OnDoHProvidersChanged(const brillo::Any& value) {
@@ -701,7 +717,8 @@ void Proxy::SetShillDNSProxyAddresses(const std::string& ipv4_addr,
                                       bool die_on_failure,
                                       uint8_t num_retries) {
   if (opts_.type != Type::kSystem) {
-    LOG(DFATAL) << "Must be called from system proxy only";
+    LOG(DFATAL) << *this << " " << __func__
+                << " must be called from system proxy only";
     return;
   }
 
@@ -709,7 +726,7 @@ void Proxy::SetShillDNSProxyAddresses(const std::string& ipv4_addr,
     metrics_.RecordProcessEvent(
         metrics_proc_type_,
         Metrics::ProcessEvent::kShillSetProxyAddressRetryExceeded);
-    LOG(ERROR) << "Maximum number of retries exceeding attempt to"
+    LOG(ERROR) << *this << " Maximum number of retries exceeding attempt to"
                << " set dns-proxy address property on shill";
 
     if (die_on_failure)
@@ -722,7 +739,8 @@ void Proxy::SetShillDNSProxyAddresses(const std::string& ipv4_addr,
   // if it does, then initialization process will eventually come back
   // into this function and succeed.
   if (!shill_ready_) {
-    LOG(WARNING) << "No connection to shill - cannot set dns-proxy address "
+    LOG(WARNING) << *this
+                 << " No connection to shill - cannot set dns-proxy address "
                     "property IPv4 ["
                  << ipv4_addr << "], IPv6 [" << ipv6_addr << "]";
     return;
@@ -737,18 +755,18 @@ void Proxy::SetShillDNSProxyAddresses(const std::string& ipv4_addr,
   }
   if (addrs.empty()) {
     shill_->GetManagerProxy()->ClearDNSProxyAddresses(nullptr /* error */);
-    LOG(INFO) << "Successfully cleared dns-proxy address property";
+    LOG(INFO) << *this << " Successfully cleared dns-proxy address property";
     return;
   }
 
   brillo::ErrorPtr error;
   if (shill_->GetManagerProxy()->SetDNSProxyAddresses(addrs, &error)) {
-    LOG(INFO) << "Successfully set dns-proxy address property ["
+    LOG(INFO) << *this << " Successfully set dns-proxy address property ["
               << base::JoinString(addrs, ",") << "]";
     return;
   }
 
-  LOG(ERROR) << "Failed to set dns-proxy address property ["
+  LOG(ERROR) << *this << " Failed to set dns-proxy address property ["
              << base::JoinString(addrs, ",")
              << "] on shill: " << error->GetMessage() << ". Retrying...";
 
@@ -767,7 +785,7 @@ void Proxy::ClearShillDNSProxyAddresses() {
 void Proxy::SendIPAddressesToController(const std::string& ipv4_addr,
                                         const std::string& ipv6_addr) {
   if (opts_.type != Type::kSystem) {
-    LOG(DFATAL) << "Must be called from system proxy only";
+    LOG(DFATAL) << *this << " Must be called from system proxy only";
     return;
   }
 
@@ -798,7 +816,7 @@ void Proxy::SendProtoMessage(const ProxyAddrMessage& msg) {
   if (msg_dispatcher_->SendMessage(msg)) {
     return;
   }
-  LOG(ERROR) << "Failed to set IP addresses to controller";
+  LOG(ERROR) << *this << " Failed to set IP addresses to controller";
   // This might be caused by the file descriptor getting invalidated. Quit the
   // process to let the controller restart the proxy. Restarting allows a new
   // clean state.
@@ -835,7 +853,7 @@ void Proxy::DoHConfig::set_providers(
     if (metrics_) {
       metrics_->RecordDnsOverHttpsMode(Metrics::DnsOverHttpsMode::kOff);
     }
-    LOG(INFO) << "DoH: off";
+    LOG(INFO) << *this << " DoH: off";
     update();
     return;
   }
@@ -865,13 +883,13 @@ void Proxy::DoHConfig::set_providers(
     if (metrics_) {
       metrics_->RecordDnsOverHttpsMode(Metrics::DnsOverHttpsMode::kAutomatic);
     }
-    LOG(INFO) << "DoH: automatic";
+    LOG(INFO) << *this << " DoH: automatic";
   }
   if (!secure_providers_.empty()) {
     if (metrics_) {
       metrics_->RecordDnsOverHttpsMode(Metrics::DnsOverHttpsMode::kAlwaysOn);
     }
-    LOG(INFO) << "DoH: always-on";
+    LOG(INFO) << *this << " DoH: always-on";
   }
   update();
 }
@@ -913,6 +931,10 @@ void Proxy::DoHConfig::set_metrics(Metrics* metrics) {
   metrics_ = metrics;
 }
 
+void Proxy::DoHConfig::set_logger(Proxy::Logger logger) {
+  logger_ = std::move(logger);
+}
+
 void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
   // Listen only for global or site-local IPv6 address changes.
   if (msg.address_status().scope != RT_SCOPE_UNIVERSE &&
@@ -931,7 +953,7 @@ void Proxy::RTNLMessageHandler(const shill::RTNLMessage& msg) {
       if (const auto tmp_addr = msg.GetIfaAddress(); tmp_addr.has_value()) {
         peer_ipv6_addr = tmp_addr->ToString();
       } else {
-        LOG(ERROR) << "IFA_ADDRESS in RTNL message is invalid";
+        LOG(ERROR) << *this << " IFA_ADDRESS in RTNL message is invalid";
         return;
       }
       if (ns_peer_ipv6_address_ == peer_ipv6_addr) {
@@ -1037,6 +1059,10 @@ void Proxy::StopGuestDnsRedirection(const patchpanel::NetworkDevice& device,
       }
       return;
   }
+}
+
+void Proxy::LogName(std::ostream& stream) const {
+  stream << *this;
 }
 
 }  // namespace dns_proxy

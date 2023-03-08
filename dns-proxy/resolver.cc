@@ -137,6 +137,11 @@ int NextId() {
 
 }  // namespace
 
+std::ostream& operator<<(std::ostream& stream, const Resolver& resolver) {
+  resolver.logger_.Run(stream);
+  return stream;
+}
+
 Resolver::SocketFd::SocketFd(int type, int fd)
     : type(type), fd(fd), num_retries(0), num_active_queries(0), id(NextId()) {
   if (type == SOCK_STREAM) {
@@ -160,10 +165,12 @@ Resolver::ProbeState::ProbeState(const std::string& target,
                                  bool validated)
     : target(target), doh(doh), validated(validated), num_attempts(0) {}
 
-Resolver::Resolver(base::TimeDelta timeout,
+Resolver::Resolver(base::RepeatingCallback<void(std::ostream& stream)> logger,
+                   base::TimeDelta timeout,
                    base::TimeDelta retry_delay,
                    int max_num_retries)
-    : always_on_doh_(false),
+    : logger_(logger),
+      always_on_doh_(false),
       doh_enabled_(false),
       retry_delay_(retry_delay),
       max_num_retries_(max_num_retries),
@@ -176,7 +183,8 @@ Resolver::Resolver(std::unique_ptr<AresClient> ares_client,
                    std::unique_ptr<DoHCurlClientInterface> curl_client,
                    bool disable_probe,
                    std::unique_ptr<Metrics> metrics)
-    : always_on_doh_(false),
+    : logger_(base::DoNothing()),
+      always_on_doh_(false),
       doh_enabled_(false),
       disable_probe_(disable_probe),
       metrics_(std::move(metrics)),
@@ -190,17 +198,17 @@ bool Resolver::ListenTCP(struct sockaddr* addr) {
   socklen_t len =
       addr->sa_family == AF_INET ? sizeof(sockaddr_in) : sizeof(sockaddr_in6);
   if (!tcp_src->Bind(addr, len)) {
-    LOG(ERROR) << "Cannot bind source socket to " << *addr;
+    LOG(ERROR) << *this << " Cannot bind source socket to " << *addr;
     return false;
   }
 
   if (!tcp_src->Listen(kMaxClientTcpConn)) {
-    LOG(ERROR) << "Cannot listen on " << *addr;
+    LOG(ERROR) << *this << " Cannot listen on " << *addr;
     return false;
   }
 
   // Run the accept loop.
-  LOG(INFO) << "Accepting connections on " << *addr;
+  LOG(INFO) << *this << " Accepting connections on " << *addr;
   tcp_src_watcher_ = base::FileDescriptorWatcher::WatchReadable(
       tcp_src->fd(), base::BindRepeating(&Resolver::OnTCPConnection,
                                          weak_factory_.GetWeakPtr()));
@@ -216,12 +224,12 @@ bool Resolver::ListenUDP(struct sockaddr* addr) {
   socklen_t len =
       addr->sa_family == AF_INET ? sizeof(sockaddr_in) : sizeof(sockaddr_in6);
   if (!udp_src->Bind(addr, len)) {
-    LOG(ERROR) << "Cannot bind source socket to " << *addr;
+    LOG(ERROR) << *this << " Cannot bind source socket to " << *addr;
     return false;
   }
 
   // Start listening.
-  LOG(INFO) << "Accepting connections on " << *addr;
+  LOG(INFO) << *this << " Accepting connections on " << *addr;
   udp_src_watcher_ = base::FileDescriptorWatcher::WatchReadable(
       udp_src->fd(),
       base::BindRepeating(&Resolver::OnDNSQuery, weak_factory_.GetWeakPtr(),
@@ -236,7 +244,7 @@ void Resolver::OnTCPConnection() {
   auto client_conn =
       tcp_src_->Accept((struct sockaddr*)&client_src, &sockaddr_len);
   if (!client_conn) {
-    LOG(ERROR) << "Failed to accept TCP connection";
+    LOG(ERROR) << *this << " Failed to accept TCP connection";
     return;
   }
   tcp_connections_.emplace(
@@ -264,9 +272,9 @@ void Resolver::HandleAresResult(base::WeakPtr<SocketFd> sock_fd,
   if (probe_state && probe_state->validated &&
       !base::Contains(query_success_statuses, status)) {
     RestartProbe(probe_state);
-    LOG(ERROR) << "Do53 query failed " << ares_strerror(status) << ". "
-               << validated_name_servers_.size() << "/" << name_servers_.size()
-               << " validated name servers";
+    LOG(ERROR) << *this << " Do53 query failed " << ares_strerror(status)
+               << ". " << validated_name_servers_.size() << "/"
+               << name_servers_.size() << " validated name servers";
   }
 
   // Query is already handled.
@@ -292,7 +300,8 @@ void Resolver::HandleAresResult(base::WeakPtr<SocketFd> sock_fd,
   // Process the last unsuccessful result.
   // Retry query upon failure.
   if (sock_fd->num_retries++ >= max_num_retries_) {
-    LOG(ERROR) << "Failed to do ares lookup: " << ares_strerror(status);
+    LOG(ERROR) << *this
+               << " Failed to do ares lookup: " << ares_strerror(status);
     sock_fds_.erase(sock_fd->id);
     return;
   }
@@ -311,7 +320,8 @@ void Resolver::HandleCurlResult(base::WeakPtr<SocketFd> sock_fd,
   // Query failed, restart probing.
   if (probe_state && probe_state->validated && res.http_code != kHTTPOk) {
     RestartProbe(probe_state);
-    LOG(ERROR) << "DoH query failed " << validated_doh_providers_.size() << "/"
+    LOG(ERROR) << *this << " DoH query failed "
+               << validated_doh_providers_.size() << "/"
                << doh_providers_.size() << " validated DoH providers";
   }
 
@@ -331,7 +341,7 @@ void Resolver::HandleCurlResult(base::WeakPtr<SocketFd> sock_fd,
 
   // Process result.
   if (res.curl_code != CURLE_OK) {
-    LOG(ERROR) << "DoH resolution failed: "
+    LOG(ERROR) << *this << " DoH resolution failed: "
                << curl_easy_strerror(res.curl_code);
     if (always_on_doh_) {
       // TODO(jasongustaman): Send failure reply with RCODE.
@@ -353,8 +363,8 @@ void Resolver::HandleCurlResult(base::WeakPtr<SocketFd> sock_fd,
     }
     case kHTTPTooManyRequests: {
       if (sock_fd->num_retries >= max_num_retries_) {
-        LOG(ERROR) << "Failed to resolve hostname, retried " << max_num_retries_
-                   << " tries";
+        LOG(ERROR) << *this << " Failed to resolve hostname, retried "
+                   << max_num_retries_ << " tries";
         sock_fds_.erase(sock_fd->id);
         return;
       }
@@ -373,7 +383,7 @@ void Resolver::HandleCurlResult(base::WeakPtr<SocketFd> sock_fd,
       return;
     }
     default: {
-      LOG(ERROR) << "Failed to do curl lookup, HTTP status code "
+      LOG(ERROR) << *this << " Failed to do curl lookup, HTTP status code "
                  << res.http_code;
       if (always_on_doh_) {
         // TODO(jasongustaman): Send failure reply with RCODE.
@@ -396,11 +406,13 @@ void Resolver::HandleDoHProbeResult(base::WeakPtr<ProbeState> probe_state,
     return;
   }
   if (res.curl_code != CURLE_OK) {
-    LOG(ERROR) << "DoH probe failed: " << curl_easy_strerror(res.curl_code);
+    LOG(ERROR) << *this
+               << " DoH probe failed: " << curl_easy_strerror(res.curl_code);
     return;
   }
   if (res.http_code != kHTTPOk) {
-    LOG(ERROR) << "DoH probe failed, HTTP status code " << res.http_code;
+    LOG(ERROR) << *this << " DoH probe failed, HTTP status code "
+               << res.http_code;
     return;
   }
 
@@ -410,8 +422,9 @@ void Resolver::HandleDoHProbeResult(base::WeakPtr<ProbeState> probe_state,
   doh_provider->second = std::make_unique<ProbeState>(
       doh_provider->first, probe_state->doh, /*validated=*/true);
   validated_doh_providers_.push_back(doh_provider->first);
-  LOG(INFO) << "DoH probe successful. " << validated_doh_providers_.size()
-            << "/" << doh_providers_.size() << " validated DoH providers";
+  LOG(INFO) << *this << " DoH probe successful. "
+            << validated_doh_providers_.size() << "/" << doh_providers_.size()
+            << " validated DoH providers";
 }
 
 void Resolver::HandleDo53ProbeResult(base::WeakPtr<ProbeState> probe_state,
@@ -427,7 +440,7 @@ void Resolver::HandleDo53ProbeResult(base::WeakPtr<ProbeState> probe_state,
     return;
   }
   if (status != ARES_SUCCESS) {
-    LOG(ERROR) << "Do53 probe failed for " << probe_state->target
+    LOG(ERROR) << *this << " Do53 probe failed for " << probe_state->target
                << " with ares status " << ares_strerror(status);
     return;
   }
@@ -439,9 +452,10 @@ void Resolver::HandleDo53ProbeResult(base::WeakPtr<ProbeState> probe_state,
       name_server->first, name_server->second->doh, /*validated=*/true);
   validated_name_servers_.push_back(name_server->first);
 
-  LOG(INFO) << "Do53 probe successful for " << name_server->second->target
-            << ". " << validated_name_servers_.size() << "/"
-            << name_servers_.size() << " validated name servers";
+  LOG(INFO) << *this << " Do53 probe successful for "
+            << name_server->second->target << ". "
+            << validated_name_servers_.size() << "/" << name_servers_.size()
+            << " validated name servers";
 }
 
 void Resolver::ReplyDNS(base::WeakPtr<SocketFd> sock_fd,
@@ -476,7 +490,7 @@ void Resolver::ReplyDNS(base::WeakPtr<SocketFd> sock_fd,
   const bool ok = sendmsg(sock_fd->fd, &hdr, 0) >= 0;
   sock_fd->timer.StopReply(ok);
   if (!ok) {
-    PLOG(ERROR) << "sendmsg() " << sock_fd->fd << " failed";
+    PLOG(ERROR) << *this << " sendmsg() " << sock_fd->fd << " failed";
   }
 }
 
@@ -537,12 +551,13 @@ void Resolver::SetServers(const std::vector<std::string>& new_servers,
     return;
 
   if (doh) {
-    LOG(INFO) << "DoH providers are updated, "
+    LOG(INFO) << *this << " DoH providers are updated, "
               << validated_doh_providers_.size() << "/" << doh_providers_.size()
               << " validated DoH providers";
   } else {
-    LOG(INFO) << "Name servers are updated, " << validated_name_servers_.size()
-              << "/" << name_servers_.size() << " validated name servers";
+    LOG(INFO) << *this << " Name servers are updated, "
+              << validated_name_servers_.size() << "/" << name_servers_.size()
+              << " validated name servers";
   }
 }
 
@@ -568,7 +583,7 @@ void Resolver::OnDNSQuery(int fd, int type) {
       src = nullptr;
       break;
     default:
-      LOG(DFATAL) << "Unexpected socket type: " << type;
+      LOG(DFATAL) << *this << " Unexpected socket type: " << type;
       return;
   }
   sock_fd->timer.StartReceive();
@@ -578,7 +593,7 @@ void Resolver::OnDNSQuery(int fd, int type) {
   sock_fd->timer.StopReceive(true);
   if (sock_fd->len < 0) {
     sock_fd->timer.StopReceive(false);
-    PLOG(WARNING) << "recvfrom failed";
+    PLOG(WARNING) << *this << " recvfrom failed";
     return;
   }
   // Handle TCP connection closed.
@@ -602,7 +617,8 @@ void Resolver::OnDNSQuery(int fd, int type) {
 
 bool Resolver::ResolveDNS(base::WeakPtr<SocketFd> sock_fd, bool doh) {
   if (!sock_fd) {
-    LOG(ERROR) << "Unexpected ResolveDNS() call with deleted SocketFd";
+    LOG(ERROR) << *this
+               << " Unexpected ResolveDNS() call with deleted SocketFd";
     return false;
   }
 
@@ -610,7 +626,7 @@ bool Resolver::ResolveDNS(base::WeakPtr<SocketFd> sock_fd, bool doh) {
       doh ? Metrics::QueryType::kDnsOverHttps : Metrics::QueryType::kPlainText;
   const auto& name_servers = GetActiveNameServers();
   if (name_servers.empty()) {
-    LOG(ERROR) << "Name server list must not be empty";
+    LOG(ERROR) << *this << " Name server list must not be empty";
     if (metrics_) {
       metrics_->RecordQueryResult(query_type,
                                   Metrics::QueryError::kEmptyNameServers);
@@ -624,7 +640,7 @@ bool Resolver::ResolveDNS(base::WeakPtr<SocketFd> sock_fd, bool doh) {
     if (!doh_providers_.empty()) {
       return false;
     }
-    LOG(ERROR) << "DoH provider list must not be empty";
+    LOG(ERROR) << *this << " DoH provider list must not be empty";
     if (metrics_) {
       metrics_->RecordQueryResult(Metrics::QueryType::kDnsOverHttps,
                                   Metrics::QueryError::kEmptyDoHProviders);
@@ -663,7 +679,7 @@ bool Resolver::ResolveDNS(base::WeakPtr<SocketFd> sock_fd, bool doh) {
   if (sock_fd->num_active_queries > 0)
     return true;
 
-  LOG(ERROR) << "No requests for query";
+  LOG(ERROR) << *this << " No requests for query";
   if (metrics_) {
     metrics_->RecordQueryResult(
         query_type, Metrics::QueryError::kClientInitializationError);
@@ -746,7 +762,7 @@ void Resolver::Probe(base::WeakPtr<ProbeState> probe_state) {
 
 void Resolver::Resolve(base::WeakPtr<SocketFd> sock_fd, bool fallback) {
   if (!sock_fd) {
-    LOG(ERROR) << "Unexpected Resolve() call with deleted SocketFd";
+    LOG(ERROR) << *this << " Unexpected Resolve() call with deleted SocketFd";
     return;
   }
 

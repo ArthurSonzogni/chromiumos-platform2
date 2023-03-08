@@ -14,6 +14,7 @@
 #include <vector>
 
 #include <base/files/file_descriptor_watcher_posix.h>
+#include <base/functional/callback.h>
 #include <base/time/time.h>
 
 namespace dns_proxy {

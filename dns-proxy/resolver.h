@@ -7,12 +7,14 @@
 
 #include <sys/socket.h>
 
+#include <iostream>
 #include <map>
 #include <memory>
 #include <string>
 #include <vector>
 
 #include <base/files/file_descriptor_watcher_posix.h>
+#include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/time/time.h>
 #include <chromeos/patchpanel/dns/dns_response.h>
@@ -111,7 +113,8 @@ class Resolver {
     int num_attempts;
   };
 
-  Resolver(base::TimeDelta timeout,
+  Resolver(base::RepeatingCallback<void(std::ostream& stream)> logger,
+           base::TimeDelta timeout,
            base::TimeDelta retry_delay,
            int max_num_retries);
   // Provided for testing only.
@@ -196,6 +199,9 @@ class Resolver {
   // Provided for testing only. Enable or disable probing.
   void SetProbingEnabled(bool enable_probe);
 
+  friend std::ostream& operator<<(std::ostream& stream,
+                                  const Resolver& resolver);
+
  private:
   // |TCPConnection| is used to track and terminate TCP connections.
   struct TCPConnection {
@@ -242,6 +248,10 @@ class Resolver {
   // |probe_state|. Weak pointer is used here to cancel remaining probes if it
   // is no longer interesting.
   void Probe(base::WeakPtr<ProbeState> probe_state);
+
+  // A logging name for this Resolver to distinguish its logs from lots of other
+  // Resolvers owner by other Proxy instances.
+  base::RepeatingCallback<void(std::ostream& stream)> logger_;
 
   // Disallow DoH fallback to standard plain-text DNS.
   bool always_on_doh_;

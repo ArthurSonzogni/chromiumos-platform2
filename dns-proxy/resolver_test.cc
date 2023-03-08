@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/functional/callback.h>
 #include <base/test/task_environment.h>
 #include <base/time/time.h>
 #include <gmock/gmock.h>

@@ -12,6 +12,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/functional/callback.h>
 #include <chromeos/patchpanel/net_util.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
 #include <chromeos/patchpanel/mock_message_dispatcher.h>
@@ -232,7 +233,10 @@ class MockPatchpanelClient : public patchpanel::Client {
 class MockResolver : public Resolver {
  public:
   MockResolver()
-      : Resolver(kRequestTimeout, kRequestRetryDelay, kRequestMaxRetry) {}
+      : Resolver(base::DoNothing(),
+                 kRequestTimeout,
+                 kRequestRetryDelay,
+                 kRequestMaxRetry) {}
   ~MockResolver() = default;
 
   MOCK_METHOD(bool, ListenUDP, (struct sockaddr*), (override));

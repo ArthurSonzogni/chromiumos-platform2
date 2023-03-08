@@ -14,6 +14,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 #include <base/files/scoped_file.h>
 #include <brillo/daemons/dbus_daemon.h>
@@ -44,6 +45,8 @@ class Proxy : public brillo::DBusDaemon {
     std::string ifname;
   };
 
+  using Logger = base::RepeatingCallback<void(std::ostream& stream)>;
+
   Proxy(const Options& opts, int32_t fd);
   // For testing.
   Proxy(const Options& opts,
@@ -57,6 +60,7 @@ class Proxy : public brillo::DBusDaemon {
 
   static const char* TypeToString(Type t);
   static std::optional<Type> StringToType(const std::string& s);
+  friend std::ostream& operator<<(std::ostream& stream, const Proxy& proxy);
 
  protected:
   int OnInit() override;
@@ -97,11 +101,21 @@ class Proxy : public brillo::DBusDaemon {
     void clear();
 
     void set_metrics(Metrics* metrics);
+    void set_logger(Logger logger);
+
+    friend std::ostream& operator<<(std::ostream& stream,
+                                    const DoHConfig& config) {
+      if (config.logger_) {
+        config.logger_.Run(stream);
+      }
+      return stream;
+    }
 
    private:
     void update();
 
     Resolver* resolver_{nullptr};
+    Logger logger_;
     std::vector<std::string> ipv4_nameservers_;
     std::vector<std::string> ipv6_nameservers_;
     // If non-empty, the secure providers to use for always-on DoH.
@@ -196,6 +210,8 @@ class Proxy : public brillo::DBusDaemon {
   // Callback from RTNetlink listener, invoked when the lan interface IPv6
   // address is changed.
   void RTNLMessageHandler(const shill::RTNLMessage& msg);
+
+  void LogName(std::ostream& stream) const;
 
   // Return the property accessor, creating it if needed.
   shill::Client::ManagerPropertyAccessor* shill_props();
