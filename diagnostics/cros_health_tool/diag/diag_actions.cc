@@ -109,6 +109,10 @@ void OnMojoResponseReceived(T* response_destination,
   std::move(quit_closure).Run();
 }
 
+void PrintStatusMessage(const std::string& status_message) {
+  std::cout << "Status message: " << status_message << std::endl;
+}
+
 }  // namespace
 
 DiagActions::DiagActions(base::TimeDelta polling_interval,
@@ -757,7 +761,7 @@ bool DiagActions::ProcessRoutineResponse(
       default:
         status_msg = "Failed to start routine";
     }
-    std::cout << "Status Message: " << status_msg << std::endl;
+    PrintStatusMessage(status_msg);
     return true;
   }
 
@@ -887,8 +891,7 @@ bool DiagActions::ProcessNonInteractiveResultAndEnd(
   if (!PrintStatus(status))
     return false;
 
-  std::cout << "Status message: " << noninteractive_result->status_message
-            << std::endl;
+  PrintStatusMessage(noninteractive_result->status_message);
 
   return true;
 }
