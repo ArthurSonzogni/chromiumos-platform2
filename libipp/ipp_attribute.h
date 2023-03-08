@@ -460,20 +460,6 @@ class LIBIPP_EXPORT Attribute {
   bool GetValue(RangeOfInteger* val, size_t index = 0) const;
   bool GetValue(DateTime* val, size_t index = 0) const;
 
-  // DEPRECATED. Use SetValues() instead.
-  // Stores a value in given attribute's element. If given index is out of
-  // range, the underlying container is resized.
-  // Returns true for success and false if given value cannot be converted
-  // to internal variable or one of the following conditions are met:
-  // * Tag() == collection
-  // * IsOutOfBand(Tag())
-  bool SetValue(const std::string& val, size_t index = 0);
-  bool SetValue(const StringWithLanguage& val, size_t index = 0);
-  bool SetValue(const int& val, size_t index = 0);
-  bool SetValue(const Resolution& val, size_t index = 0);
-  bool SetValue(const RangeOfInteger& val, size_t index = 0);
-  bool SetValue(const DateTime& val, size_t index = 0);
-
   // Retrieves values from the attribute. They are copied to the given vector.
   // Possible errors:
   //  * kIncompatibleType

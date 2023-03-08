@@ -625,34 +625,6 @@ bool Attribute::GetValue(DateTime* val, size_t index) const {
   return ReadConvertValue(values_, name_, def_, index, val);
 }
 
-bool Attribute::SetValue(const std::string& val, size_t index) {
-  if (val.size() > kMaxSizeOfNameOrValue)
-    return false;
-  return SaveValue(index, val);
-}
-
-bool Attribute::SetValue(const StringWithLanguage& val, size_t index) {
-  if (val.value.size() + val.language.size() + 4 > kMaxSizeOfNameOrValue)
-    return false;
-  return SaveValue(index, val);
-}
-
-bool Attribute::SetValue(const int& val, size_t index) {
-  return SaveValue(index, val);
-}
-
-bool Attribute::SetValue(const Resolution& val, size_t index) {
-  return SaveValue(index, val);
-}
-
-bool Attribute::SetValue(const RangeOfInteger& val, size_t index) {
-  return SaveValue(index, val);
-}
-
-bool Attribute::SetValue(const DateTime& val, size_t index) {
-  return SaveValue(index, val);
-}
-
 CollsView Attribute::Colls() {
   if (Tag() != ValueTag::collection || Size() == 0) {
     return CollsView();
@@ -881,9 +853,7 @@ Code Collection::AddAttributeToCollection(const std::string& name,
     return result;
   }
   if (!IsOutOfBand(tag)) {
-    attr->Resize(values.size());
-    for (size_t i = 0; i < values.size(); ++i)
-      attr->SetValue(values[i], i);
+    attr->SetValues(values);
   }
 
   return Code::kOK;

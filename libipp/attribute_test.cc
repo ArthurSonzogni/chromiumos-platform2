@@ -342,12 +342,17 @@ TEST_F(AttributeTest, AddAttrWithLongString) {
 }
 
 TEST_F(AttributeTest, SetValueLongString) {
-  coll_->AddAttr("test", ValueTag::nameWithoutLanguage,
-                 std::vector<std::string>(2));
+  coll_->AddAttr("test", ValueTag::nameWithoutLanguage, "");
   Collection::iterator it = coll_->GetAttr("test");
   ASSERT_NE(it, coll_->end());
-  EXPECT_FALSE(it->SetValue(std::string(32768, 'x'), 0));
-  EXPECT_TRUE(it->SetValue(std::string(32767, 'x'), 1));
+  EXPECT_EQ(it->SetValues(std::string(32768, 'x')), Code::kValueOutOfRange);
+  EXPECT_EQ(it->SetValues(std::string(32767, 'x')), Code::kOK);
+  EXPECT_EQ(
+      it->SetValues(std::vector<std::string>{"", std::string(32768, 'x')}),
+      Code::kValueOutOfRange);
+  EXPECT_EQ(
+      it->SetValues(std::vector<std::string>{"", std::string(32767, 'x')}),
+      Code::kOK);
 }
 
 TEST_F(AttributeTest, AddAttrWithLongStringWithLanguage) {
@@ -370,8 +375,14 @@ TEST_F(AttributeTest, SetValueLongStringWithLanguage) {
   StringWithLanguage strlang_ok = {"", std::string(32763, 'x')};
   StringWithLanguage strlang_too_long = {std::string(4, 'x'),
                                          std::string(32760, 'x')};
-  EXPECT_FALSE(it->SetValue(strlang_too_long, 0));
-  EXPECT_TRUE(it->SetValue(strlang_ok, 1));
+  EXPECT_EQ(it->SetValues(strlang_too_long), Code::kValueOutOfRange);
+  EXPECT_EQ(it->SetValues(strlang_ok), Code::kOK);
+  EXPECT_EQ(it->SetValues(
+                std::vector<StringWithLanguage>{strlang_ok, strlang_too_long}),
+            Code::kValueOutOfRange);
+  EXPECT_EQ(
+      it->SetValues(std::vector<StringWithLanguage>{strlang_ok, strlang_ok}),
+      Code::kOK);
 }
 
 class AttributeValuesTest : public AttributeTest {
