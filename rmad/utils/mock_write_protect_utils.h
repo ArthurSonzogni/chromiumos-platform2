@@ -7,12 +7,21 @@
 
 #include "rmad/utils/write_protect_utils.h"
 
+#include <gmock/gmock.h>
+
 namespace rmad {
 
 class MockWriteProtectUtils : public WriteProtectUtils {
  public:
   MockWriteProtectUtils() = default;
   ~MockWriteProtectUtils() override = default;
+
+  MOCK_METHOD(bool,
+              GetHardwareWriteProtectionStatus,
+              (bool*),
+              (const, override));
+  MOCK_METHOD(bool, GetApWriteProtectionStatus, (bool*), (const, override));
+  MOCK_METHOD(bool, GetEcWriteProtectionStatus, (bool*), (const, override));
 };
 
 }  // namespace rmad

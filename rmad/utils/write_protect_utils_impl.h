@@ -24,6 +24,10 @@ class WriteProtectUtilsImpl : public WriteProtectUtils {
       std::unique_ptr<FlashromUtils> flashrom_utils);
   ~WriteProtectUtilsImpl() override = default;
 
+  bool GetHardwareWriteProtectionStatus(bool* enabled) const override;
+  bool GetApWriteProtectionStatus(bool* enabled) const override;
+  bool GetEcWriteProtectionStatus(bool* enabled) const override;
+
  private:
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
   std::unique_ptr<EcUtils> ec_utils_;

@@ -11,6 +11,10 @@ class WriteProtectUtils {
  public:
   WriteProtectUtils() = default;
   virtual ~WriteProtectUtils() = default;
+
+  virtual bool GetHardwareWriteProtectionStatus(bool* enabled) const = 0;
+  virtual bool GetApWriteProtectionStatus(bool* enabled) const = 0;
+  virtual bool GetEcWriteProtectionStatus(bool* enabled) const = 0;
 };
 
 }  // namespace rmad
