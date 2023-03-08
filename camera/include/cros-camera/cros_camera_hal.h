@@ -62,18 +62,18 @@ typedef struct cros_camera_hal {
    * Sets up the camera HAL. The |token| can be used for communication through
    * Mojo.
    */
-  void (*set_up)(CameraMojoChannelManagerToken* token);
+  void (*set_up)(CameraMojoChannelManagerToken* token) = nullptr;
 
   /**
    * Tears down the camera HAL.
    */
-  void (*tear_down)();
+  void (*tear_down)() = nullptr;
 
   /**
    * Registers camera privacy switch observer.
    */
   void (*set_privacy_switch_callback)(
-      PrivacySwitchStateChangeCallback callback);
+      PrivacySwitchStateChangeCallback callback) = nullptr;
 
   /**
    *  Open the camera device by client type.
@@ -81,20 +81,25 @@ typedef struct cros_camera_hal {
   int (*camera_device_open_ext)(const hw_module_t* module,
                                 const char* name,
                                 hw_device_t** device,
-                                ClientType client_type);
+                                ClientType client_type) = nullptr;
 
   /**
    * Gets the camera info by client type.
    */
   int (*get_camera_info_ext)(int id,
                              struct camera_info* info,
-                             ClientType client_type);
+                             ClientType client_type) = nullptr;
 
   /**
    * Registers facessd detect callback.
    */
   void (*set_face_detection_result_callback)(
-      int camera_id, FaceDetectionResultCallback callback);
+      int camera_id, FaceDetectionResultCallback callback) = nullptr;
+
+  /**
+   * Sets the software privacy switch state.
+   */
+  void (*set_privacy_switch_state)(bool on) = nullptr;
 
   /* reserved for future use */
   void* reserved[4];

@@ -264,7 +264,9 @@ int32_t CameraHalAdapter::OpenDevice(
           StreamManipulatorManager::CreateOptions{
               .camera_module_name = camera_module->common.name,
               .set_face_detection_result_callback =
-                  std::move(set_face_detection_result_callback)},
+                  std::move(set_face_detection_result_callback),
+              .sw_privacy_switch_stream_manipulator_enabled =
+                  cros_camera_hal->set_privacy_switch_state == nullptr},
           &stream_manipulator_runtime_options_, gpu_resources_,
           mojo_manager_token_));
 
@@ -294,7 +296,29 @@ CameraHalAdapter::GetCameraSWPrivacySwitchState() {
 
 void CameraHalAdapter::SetCameraSWPrivacySwitchState(
     mojom::CameraPrivacySwitchState state) {
+  // TODO(okuji): Once we migrate to the HAL SW privacy switch, we should change
+  // the timing of calling SetSWPrivacySwitchState() since it can be delayed for
+  // switch state changes to take effect in HAL. For example, we want to avoid
+  // accidentally disabling stream manipulator effects before the SW state
+  // change from OFF to ON takes effect.
   stream_manipulator_runtime_options_.SetSWPrivacySwitchState(state);
+  camera_module_thread_.task_runner()->PostTask(
+      FROM_HERE,
+      base::BindOnce(
+          &CameraHalAdapter::SetCameraSWPrivacySwitchStateOnCameraModuleThread,
+          base::Unretained(this), state));
+}
+
+void CameraHalAdapter::SetCameraSWPrivacySwitchStateOnCameraModuleThread(
+    mojom::CameraPrivacySwitchState state) {
+  DCHECK(camera_module_thread_.task_runner()->BelongsToCurrentThread());
+  for (const auto& camera_interface : camera_interfaces_) {
+    cros_camera_hal_t* hal = camera_interface.second;
+    if (hal->set_privacy_switch_state != nullptr) {
+      hal->set_privacy_switch_state(state ==
+                                    mojom::CameraPrivacySwitchState::ON);
+    }
+  }
 }
 
 mojom::SetEffectResult CameraHalAdapter::SetCameraEffect(

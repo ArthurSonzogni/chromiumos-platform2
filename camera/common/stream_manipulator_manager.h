@@ -39,6 +39,11 @@ class CROS_CAMERA_EXPORT StreamManipulatorManager {
     // camera HAL.
     base::OnceCallback<void(FaceDetectionResultCallback)>
         set_face_detection_result_callback;
+
+    // Enable SWPrivacySwitchStreamManipulator if set true.
+    // SWPrivacySwitchStreamManipulator must be disabled when HAL implements
+    // cros_camera_hal_t.set_privacy_switch_state.
+    bool sw_privacy_switch_stream_manipulator_enabled = true;
   };
 
   StreamManipulatorManager(CreateOptions create_options,

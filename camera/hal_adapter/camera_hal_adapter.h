@@ -115,6 +115,9 @@ class CameraHalAdapter {
 
   void SetCameraSWPrivacySwitchState(mojom::CameraPrivacySwitchState state);
 
+  void SetCameraSWPrivacySwitchStateOnCameraModuleThread(
+      mojom::CameraPrivacySwitchState state);
+
   mojom::SetEffectResult SetCameraEffect(mojom::EffectsConfigPtr config);
 
  protected:
