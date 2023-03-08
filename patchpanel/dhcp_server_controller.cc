@@ -4,9 +4,22 @@
 
 #include "patchpanel/dhcp_server_controller.h"
 
+#include <linux/capability.h>
+
+#include <vector>
+
+#include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/strings/stringprintf.h>
+#include <shill/net/process_manager.h>
+
+#include "patchpanel/system.h"
 
 namespace patchpanel {
+namespace {
+constexpr char kDnsmasqPath[] = "/usr/sbin/dnsmasq";
+constexpr char kLeaseTime[] = "12h";  // 12 hours
+}  // namespace
 
 using Config = DHCPServerController::Config;
 
@@ -55,23 +68,67 @@ std::ostream& operator<<(std::ostream& os, const Config& config) {
 }
 
 DHCPServerController::DHCPServerController(const std::string& ifname)
-    : ifname_(ifname) {}
+    : ifname_(ifname), process_manager_(shill::ProcessManager::GetInstance()) {}
 
 DHCPServerController::~DHCPServerController() {
   Stop();
 }
 
 bool DHCPServerController::Start(const Config& config) {
-  LOG(INFO) << "Starting DHCP server at: " << ifname_ << ", config: " << config;
+  if (IsRunning()) {
+    LOG(ERROR) << "DHCP server is still running: " << ifname_
+               << ", old config=" << *config_;
+    return false;
+  }
 
-  // TODO(b/271371399): Implement the method.
+  LOG(INFO) << "Starting DHCP server at: " << ifname_ << ", config: " << config;
+  const std::vector<std::string> dnsmasq_args = {
+      "--dhcp-authoritative",  // dnsmasq is the only DHCP server on a network.
+      "--keep-in-foreground",  // Use foreground mode to prevent forking.
+      "--log-dhcp",            // Log the DHCP event.
+      "--no-ping",             // (b/257377981): Speed up the negotiation.
+      "--port=0",              // Disable DNS.
+      base::StringPrintf("--interface=%s", ifname_.c_str()),
+      base::StringPrintf("--dhcp-range=%s,%s,%s,%s", config.start_ip().c_str(),
+                         config.end_ip().c_str(), config.netmask().c_str(),
+                         kLeaseTime),
+      base::StringPrintf("--dhcp-option=option:netmask,%s",
+                         config.netmask().c_str()),
+      base::StringPrintf("--dhcp-option=option:router,%s",
+                         config.host_ip().c_str()),
+  };
+
+  shill::ProcessManager::MinijailOptions minijail_options = {};
+  minijail_options.user = kPatchpaneldUser;
+  minijail_options.group = kPatchpaneldGroup;
+  minijail_options.capmask =
+      CAP_TO_MASK(CAP_NET_RAW) | CAP_TO_MASK(CAP_NET_BIND_SERVICE);
+
+  const pid_t pid = process_manager_->StartProcessInMinijail(
+      FROM_HERE, base::FilePath(kDnsmasqPath), dnsmasq_args, /*environment=*/{},
+      minijail_options,
+      base::DoNothing());  // TODO(akahuang): Handle the exit callback.
+  if (pid < 0) {
+    LOG(ERROR) << "Failed to start the DHCP server: " << ifname_;
+    return false;
+  }
+
+  pid_ = pid;
+  config_ = config;
   return true;
 }
 
 void DHCPServerController::Stop() {
-  LOG(INFO) << "Stopping DHCP server at: " << ifname_;
+  if (!IsRunning()) {
+    return;
+  }
 
+  LOG(INFO) << "Stopping DHCP server at: " << ifname_;
   // TODO(b/271371399): Implement the method.
+}
+
+bool DHCPServerController::IsRunning() const {
+  return pid_.has_value();
 }
 
 }  // namespace patchpanel

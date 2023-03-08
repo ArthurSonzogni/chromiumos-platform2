@@ -10,6 +10,10 @@
 
 #include <shill/net/ip_address.h>
 
+namespace shill {
+class ProcessManager;
+}  // namespace shill
+
 namespace patchpanel {
 
 // This class manages the one DHCP server on a certain network interface.
@@ -42,10 +46,10 @@ class DHCPServerController {
 
     friend std::ostream& operator<<(std::ostream& os, const Config& config);
 
-    const std::string host_ip_;
-    const std::string netmask_;
-    const std::string start_ip_;
-    const std::string end_ip_;
+    std::string host_ip_;
+    std::string netmask_;
+    std::string start_ip_;
+    std::string end_ip_;
   };
 
   explicit DHCPServerController(const std::string& ifname);
@@ -55,16 +59,34 @@ class DHCPServerController {
 
   virtual ~DHCPServerController();
 
+  // Injects the mock ProcessManager for testing.
+  void set_process_manager_for_testing(shill::ProcessManager* process_manager) {
+    process_manager_ = process_manager;
+  }
+
   // Starts a DHCP server at the |ifname_| interface. Returns true if the server
-  // is running successfully.
+  // is created successfully. Note that if the previous server process is still
+  // running, then returns false and does nothing.
   bool Start(const Config& config);
 
   // Stops the DHCP server. No-op if the server is not running.
   void Stop();
 
+  // Returns true if the dnsmasq process is running.
+  bool IsRunning() const;
+
  private:
   // The network interface that the DHCP server listens.
-  std::string ifname_;
+  const std::string ifname_;
+
+  // The process manager to create the dnsmasq subprocess.
+  shill::ProcessManager* process_manager_;
+
+  // The pid of the dnsmasq process, nullopt iff the process is not running.
+  std::optional<pid_t> pid_;
+  // The configuration of the dnsmasq process, nullopt iff the process is not
+  // running.
+  std::optional<Config> config_;
 };
 
 }  // namespace patchpanel

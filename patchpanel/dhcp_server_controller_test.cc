@@ -4,9 +4,16 @@
 
 #include "patchpanel/dhcp_server_controller.h"
 
+#include <vector>
+
 #include <base/check.h>
+#include <base/files/file_path.h>
 #include <gtest/gtest.h>
 #include <shill/net/ip_address.h>
+#include <shill/net/mock_process_manager.h>
+
+using testing::_;
+using testing::Return;
 
 namespace patchpanel {
 namespace {
@@ -26,8 +33,18 @@ shill::IPAddress CreateAndUnwrapIPAddress(const std::string& ip,
 
 class DHCPServerControllerTest : public ::testing::Test {
  protected:
-  void SetUp() override {}
+  void SetUp() override {
+    dhcp_server_controller_.set_process_manager_for_testing(&process_manager_);
+  }
 
+  Config CreateValidConfig() {
+    const auto host_ip = CreateAndUnwrapIPAddress("192.168.1.1", 24);
+    const auto start_ip = CreateAndUnwrapIPAddress("192.168.1.50");
+    const auto end_ip = CreateAndUnwrapIPAddress("192.168.1.100");
+    return Config::Create(host_ip, start_ip, end_ip).value();
+  }
+
+  shill::MockProcessManager process_manager_;
   DHCPServerController dhcp_server_controller_{"wlan0"};
 };
 
@@ -62,13 +79,44 @@ TEST_F(DHCPServerControllerTest, ValidConfig) {
   EXPECT_EQ(config->end_ip(), "192.168.1.100");
 }
 
-TEST_F(DHCPServerControllerTest, Start) {
-  const auto host_ip = CreateAndUnwrapIPAddress("192.168.1.1", 24);
-  const auto start_ip = CreateAndUnwrapIPAddress("192.168.1.50");
-  const auto end_ip = CreateAndUnwrapIPAddress("192.168.1.100");
-  const auto config = Config::Create(host_ip, start_ip, end_ip).value();
+TEST_F(DHCPServerControllerTest, StartSuccessfulAtFirstTime) {
+  const auto config = CreateValidConfig();
+  const auto cmd_path = base::FilePath("/usr/sbin/dnsmasq");
+  const std::vector<std::string> cmd_args = {
+      "--dhcp-authoritative",
+      "--keep-in-foreground",
+      "--log-dhcp",
+      "--no-ping",
+      "--port=0",
+      "--interface=wlan0",
+      "--dhcp-range=192.168.1.50,192.168.1.100,255.255.255.0,12h",
+      "--dhcp-option=option:netmask,255.255.255.0",
+      "--dhcp-option=option:router,192.168.1.1"};
+  constexpr pid_t pid = 5;
 
+  EXPECT_CALL(process_manager_,
+              StartProcessInMinijail(_, cmd_path, cmd_args, _, _, _))
+      .WillOnce(Return(pid));
+
+  // Start() should be successful at the first time.
+  EXPECT_EQ(dhcp_server_controller_.IsRunning(), false);
   EXPECT_EQ(dhcp_server_controller_.Start(config), true);
+  EXPECT_EQ(dhcp_server_controller_.IsRunning(), true);
+
+  // Start() should fail and do nothing when the previous one is still running.
+  EXPECT_EQ(dhcp_server_controller_.Start(config), false);
+}
+
+TEST_F(DHCPServerControllerTest, StartFailed) {
+  const auto config = CreateValidConfig();
+  constexpr pid_t invalid_pid = shill::ProcessManager::kInvalidPID;
+
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
+      .WillOnce(Return(invalid_pid));
+
+  // Start() should fail if receiving invalid pid.
+  EXPECT_EQ(dhcp_server_controller_.Start(config), false);
+  EXPECT_EQ(dhcp_server_controller_.IsRunning(), false);
 }
 
 }  // namespace patchpanel

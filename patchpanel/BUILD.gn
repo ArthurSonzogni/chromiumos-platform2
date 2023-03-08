@@ -285,6 +285,7 @@ if (use.test) {
     deps = [
       ":libpatchpanel",
       "//common-mk/testrunner",
+      "//shill/net:net_test_support",
     ]
   }
 }

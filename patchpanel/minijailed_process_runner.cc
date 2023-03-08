@@ -24,7 +24,6 @@ namespace patchpanel {
 namespace {
 
 constexpr char kUnprivilegedUser[] = "nobody";
-constexpr char kNetworkUnprivilegedUser[] = "patchpaneld";
 constexpr uint64_t kModprobeCapMask = CAP_TO_MASK(CAP_SYS_MODULE);
 constexpr uint64_t kNetRawCapMask = CAP_TO_MASK(CAP_NET_RAW);
 constexpr uint64_t kNetRawAdminCapMask =
@@ -118,7 +117,7 @@ void EnterChildProcessJail() {
 
   // Most of these return void, but DropRoot() can fail if the user/group
   // does not exist.
-  CHECK(m->DropRoot(jail, kNetworkUnprivilegedUser, kNetworkUnprivilegedUser))
+  CHECK(m->DropRoot(jail, kPatchpaneldUser, kPatchpaneldGroup))
       << "Could not drop root privileges";
   m->UseCapabilities(jail, kNetRawCapMask);
   m->Enter(jail);
