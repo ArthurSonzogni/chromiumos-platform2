@@ -18,6 +18,7 @@
 #include <base/logging.h>
 #include <base/memory/ref_counted.h>
 #include <base/rand_util.h>
+#include <base/strings/string_util.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <chromeos/patchpanel/dns/dns_protocol.h>
 #include <chromeos/patchpanel/dns/dns_query.h>
@@ -163,7 +164,7 @@ Resolver::TCPConnection::TCPConnection(
 Resolver::ProbeState::ProbeState(const std::string& target,
                                  bool doh,
                                  bool validated)
-    : target(target), doh(doh), validated(validated), num_attempts(0) {}
+    : target(target), doh(doh), validated(validated), num_retries(0) {}
 
 Resolver::Resolver(base::RepeatingCallback<void(std::ostream& stream)> logger,
                    base::TimeDelta timeout,
@@ -194,21 +195,25 @@ Resolver::Resolver(std::unique_ptr<AresClient> ares_client,
 bool Resolver::ListenTCP(struct sockaddr* addr) {
   auto tcp_src = std::make_unique<patchpanel::Socket>(
       addr->sa_family, SOCK_STREAM | SOCK_NONBLOCK);
+  if (!tcp_src->is_valid()) {
+    PLOG(ERROR) << *this << " Failed to create TCP socket";
+    return false;
+  }
 
   socklen_t len =
       addr->sa_family == AF_INET ? sizeof(sockaddr_in) : sizeof(sockaddr_in6);
   if (!tcp_src->Bind(addr, len)) {
-    LOG(ERROR) << *this << " Cannot bind source socket to " << *addr;
+    PLOG(ERROR) << *this << " Cannot bind TCP listening socket to " << *addr;
     return false;
   }
 
   if (!tcp_src->Listen(kMaxClientTcpConn)) {
-    LOG(ERROR) << *this << " Cannot listen on " << *addr;
+    PLOG(ERROR) << *this << " Cannot listen on " << *addr;
     return false;
   }
 
   // Run the accept loop.
-  LOG(INFO) << *this << " Accepting connections on " << *addr;
+  LOG(INFO) << *this << " Accepting TCP connections on " << *addr;
   tcp_src_watcher_ = base::FileDescriptorWatcher::WatchReadable(
       tcp_src->fd(), base::BindRepeating(&Resolver::OnTCPConnection,
                                          weak_factory_.GetWeakPtr()));
@@ -220,16 +225,20 @@ bool Resolver::ListenTCP(struct sockaddr* addr) {
 bool Resolver::ListenUDP(struct sockaddr* addr) {
   auto udp_src = std::make_unique<patchpanel::Socket>(
       addr->sa_family, SOCK_DGRAM | SOCK_NONBLOCK);
+  if (!udp_src->is_valid()) {
+    PLOG(ERROR) << *this << " Failed to create UDP socket";
+    return false;
+  }
 
   socklen_t len =
       addr->sa_family == AF_INET ? sizeof(sockaddr_in) : sizeof(sockaddr_in6);
   if (!udp_src->Bind(addr, len)) {
-    LOG(ERROR) << *this << " Cannot bind source socket to " << *addr;
+    PLOG(ERROR) << *this << " Cannot bind UDP socket to " << *addr;
     return false;
   }
 
   // Start listening.
-  LOG(INFO) << *this << " Accepting connections on " << *addr;
+  LOG(INFO) << *this << " Accepting UDP queries on " << *addr;
   udp_src_watcher_ = base::FileDescriptorWatcher::WatchReadable(
       udp_src->fd(),
       base::BindRepeating(&Resolver::OnDNSQuery, weak_factory_.GetWeakPtr(),
@@ -244,7 +253,7 @@ void Resolver::OnTCPConnection() {
   auto client_conn =
       tcp_src_->Accept((struct sockaddr*)&client_src, &sockaddr_len);
   if (!client_conn) {
-    LOG(ERROR) << *this << " Failed to accept TCP connection";
+    PLOG(ERROR) << *this << " Failed to accept TCP connection";
     return;
   }
   tcp_connections_.emplace(
@@ -272,9 +281,12 @@ void Resolver::HandleAresResult(base::WeakPtr<SocketFd> sock_fd,
   if (probe_state && probe_state->validated &&
       !base::Contains(query_success_statuses, status)) {
     RestartProbe(probe_state);
-    LOG(ERROR) << *this << " Do53 query failed " << ares_strerror(status)
-               << ". " << validated_name_servers_.size() << "/"
-               << name_servers_.size() << " validated name servers";
+    int attempt = sock_fd->num_retries + 1;
+    LOG(ERROR) << *this << " Do53 query to " << probe_state->target
+               << " failed after " << attempt
+               << " attempt: " << ares_strerror(status) << ". "
+               << validated_name_servers_.size() << "/" << name_servers_.size()
+               << " validated name servers";
   }
 
   // Query is already handled.
@@ -320,9 +332,12 @@ void Resolver::HandleCurlResult(base::WeakPtr<SocketFd> sock_fd,
   // Query failed, restart probing.
   if (probe_state && probe_state->validated && res.http_code != kHTTPOk) {
     RestartProbe(probe_state);
-    LOG(ERROR) << *this << " DoH query failed "
-               << validated_doh_providers_.size() << "/"
-               << doh_providers_.size() << " validated DoH providers";
+    int attempt = sock_fd->num_retries + 1;
+    LOG(WARNING) << *this << " DoH query to " << probe_state->target
+                 << " failed after " << attempt
+                 << " attempt, http status code: " << res.http_code << ". "
+                 << validated_doh_providers_.size() << "/"
+                 << doh_providers_.size() << " validated DoH providers";
   }
 
   // Query is already handled.
@@ -383,7 +398,7 @@ void Resolver::HandleCurlResult(base::WeakPtr<SocketFd> sock_fd,
       return;
     }
     default: {
-      LOG(ERROR) << *this << " Failed to do curl lookup, HTTP status code "
+      LOG(ERROR) << *this << " Failed to do curl lookup, HTTP status code: "
                  << res.http_code;
       if (always_on_doh_) {
         // TODO(jasongustaman): Send failure reply with RCODE.
@@ -399,63 +414,83 @@ void Resolver::HandleCurlResult(base::WeakPtr<SocketFd> sock_fd,
 }
 
 void Resolver::HandleDoHProbeResult(base::WeakPtr<ProbeState> probe_state,
+                                    const ProbeData& probe_data,
                                     const DoHCurlClient::CurlResult& res,
                                     unsigned char* msg,
                                     size_t len) {
   if (!probe_state) {
     return;
   }
+
+  int attempt = probe_data.num_retries + 1;
+  auto now = base::Time::Now();
+  auto attempt_latency = now - probe_data.start_time;
+
   if (res.curl_code != CURLE_OK) {
-    LOG(ERROR) << *this
-               << " DoH probe failed: " << curl_easy_strerror(res.curl_code);
+    LOG(INFO) << *this << " DoH probe attempt " << attempt << " to "
+              << probe_state->target
+              << " failed: " << curl_easy_strerror(res.curl_code) << " ("
+              << attempt_latency << ")";
     return;
   }
   if (res.http_code != kHTTPOk) {
-    LOG(ERROR) << *this << " DoH probe failed, HTTP status code "
-               << res.http_code;
+    LOG(INFO) << *this << " DoH probe attempt " << attempt << " to "
+              << probe_state->target
+              << " failed, HTTP status code: " << res.http_code << " ("
+              << attempt_latency << ")";
     return;
   }
+
+  validated_doh_providers_.push_back(probe_state->target);
+
+  LOG(INFO) << *this << " DoH probe attempt " << attempt << " to "
+            << probe_state->target << " succeeded (" << attempt_latency << "). "
+            << validated_doh_providers_.size() << "/" << doh_providers_.size()
+            << " validated DoH providers";
 
   // Clear the old probe state to stop running probes.
   // Entry must be valid as |probe_state| is still valid.
   const auto& doh_provider = doh_providers_.find(probe_state->target);
   doh_provider->second = std::make_unique<ProbeState>(
       doh_provider->first, probe_state->doh, /*validated=*/true);
-  validated_doh_providers_.push_back(doh_provider->first);
-  LOG(INFO) << *this << " DoH probe successful. "
-            << validated_doh_providers_.size() << "/" << doh_providers_.size()
-            << " validated DoH providers";
 }
 
 void Resolver::HandleDo53ProbeResult(base::WeakPtr<ProbeState> probe_state,
-                                     const ProbeMetricsData& probe_data,
+                                     const ProbeData& probe_data,
                                      int status,
                                      unsigned char* msg,
                                      size_t len) {
   if (metrics_) {
-    metrics_->RecordProbeResult(probe_data.family, probe_data.num_attempts,
+    metrics_->RecordProbeResult(probe_data.family, probe_data.num_retries,
                                 AresStatusMetric(status));
   }
   if (!probe_state) {
     return;
   }
+
+  int attempt = probe_data.num_retries + 1;
+  auto now = base::Time::Now();
+  auto attempt_latency = now - probe_data.start_time;
+
   if (status != ARES_SUCCESS) {
-    LOG(ERROR) << *this << " Do53 probe failed for " << probe_state->target
-               << " with ares status " << ares_strerror(status);
+    LOG(INFO) << *this << " Do53 probe attempt " << attempt << " to "
+              << probe_state->target << " failed: " << ares_strerror(status)
+              << " (" << attempt_latency << ")";
     return;
   }
+
+  validated_name_servers_.push_back(probe_state->target);
+
+  LOG(INFO) << *this << " Do53 probe attempt " << attempt << " to "
+            << probe_state->target << " succeeded (" << attempt_latency << "). "
+            << validated_name_servers_.size() << "/" << name_servers_.size()
+            << " validated name servers";
 
   // Clear the old probe state to stop running probes.
   // Entry must be valid as |probe_state| is still valid.
   const auto& name_server = name_servers_.find(probe_state->target);
   name_server->second = std::make_unique<ProbeState>(
       name_server->first, name_server->second->doh, /*validated=*/true);
-  validated_name_servers_.push_back(name_server->first);
-
-  LOG(INFO) << *this << " Do53 probe successful for "
-            << name_server->second->target << ". "
-            << validated_name_servers_.size() << "/" << name_servers_.size()
-            << " validated name servers";
 }
 
 void Resolver::ReplyDNS(base::WeakPtr<SocketFd> sock_fd,
@@ -636,7 +671,7 @@ bool Resolver::ResolveDNS(base::WeakPtr<SocketFd> sock_fd, bool doh) {
 
   const auto& doh_providers = GetActiveDoHProviders();
   if (doh && doh_providers.empty()) {
-    // All DoH providers are not validated, fallback to Do53.
+    // No DoH providers are currently validated, fallback to Do53.
     if (!doh_providers_.empty()) {
       return false;
     }
@@ -679,7 +714,7 @@ bool Resolver::ResolveDNS(base::WeakPtr<SocketFd> sock_fd, bool doh) {
   if (sock_fd->num_active_queries > 0)
     return true;
 
-  LOG(ERROR) << *this << " No requests for query";
+  LOG(ERROR) << *this << " No requests successfully started for query";
   if (metrics_) {
     metrics_->RecordQueryResult(
         query_type, Metrics::QueryError::kClientInitializationError);
@@ -738,26 +773,27 @@ void Resolver::Probe(base::WeakPtr<ProbeState> probe_state) {
   base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
       FROM_HERE,
       base::BindOnce(&Resolver::Probe, weak_factory_.GetWeakPtr(), probe_state),
-      GetTimeUntilProbe(probe_state->num_attempts));
+      GetTimeUntilProbe(probe_state->num_retries));
 
   // Run the probe.
+  const ProbeData probe_data = {patchpanel::GetIpFamily(probe_state->target),
+                                probe_state->num_retries, base::Time::Now()};
   if (probe_state->doh) {
-    curl_client_->Resolve(
-        kDNSQueryGstatic, sizeof(kDNSQueryGstatic),
-        base::BindRepeating(&Resolver::HandleDoHProbeResult,
-                            weak_factory_.GetWeakPtr(), probe_state),
-        GetActiveNameServers(), probe_state->target);
+    curl_client_->Resolve(kDNSQueryGstatic, sizeof(kDNSQueryGstatic),
+                          base::BindRepeating(&Resolver::HandleDoHProbeResult,
+                                              weak_factory_.GetWeakPtr(),
+                                              probe_state, probe_data),
+                          GetActiveNameServers(), probe_state->target);
   } else {
-    const ProbeMetricsData data = {patchpanel::GetIpFamily(probe_state->target),
-                                   probe_state->num_attempts};
     ares_client_->Resolve(
         reinterpret_cast<const unsigned char*>(kDNSQueryGstatic),
         sizeof(kDNSQueryGstatic),
         base::BindRepeating(&Resolver::HandleDo53ProbeResult,
-                            weak_factory_.GetWeakPtr(), probe_state, data),
+                            weak_factory_.GetWeakPtr(), probe_state,
+                            probe_data),
         probe_state->target);
   }
-  probe_state->num_attempts++;
+  probe_state->num_retries++;
 }
 
 void Resolver::Resolve(base::WeakPtr<SocketFd> sock_fd, bool fallback) {

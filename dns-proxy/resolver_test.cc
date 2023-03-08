@@ -88,7 +88,7 @@ class ResolverTest : public testing::Test {
       auto probe_state =
           std::make_unique<Resolver::ProbeState>(doh_provider, /*doh=*/true);
       resolver_->HandleDoHProbeResult(probe_state->weak_factory.GetWeakPtr(),
-                                      res, nullptr, 0);
+                                      {}, res, nullptr, 0);
     }
   }
 
@@ -161,8 +161,8 @@ TEST_F(ResolverTest, Resolve_DNSDoHServersPartiallyValidated) {
   DoHCurlClient::CurlResult res(CURLE_OK, 200 /* http_code */, 0 /* timeout*/);
   auto probe_state = std::make_unique<Resolver::ProbeState>(
       validated_doh_provider, /*doh=*/true);
-  resolver_->HandleDoHProbeResult(probe_state->weak_factory.GetWeakPtr(), res,
-                                  nullptr, 0);
+  resolver_->HandleDoHProbeResult(probe_state->weak_factory.GetWeakPtr(), {},
+                                  res, nullptr, 0);
 
   EXPECT_CALL(*ares_client_, Resolve(_, _, _, _, _)).Times(0);
   EXPECT_CALL(*curl_client_, Resolve(_, _, _, _, validated_doh_provider))
@@ -588,8 +588,8 @@ TEST_F(ResolverTest, Probe_InvalidateDoHProvider) {
         std::make_unique<Resolver::ProbeState>(doh_provider, /*doh=*/true);
     DoHCurlClient::CurlResult res(CURLE_OK, 200 /* http_code */,
                                   0 /* timeout */);
-    resolver_->HandleDoHProbeResult(probe_state->weak_factory.GetWeakPtr(), res,
-                                    nullptr, 0);
+    resolver_->HandleDoHProbeResult(probe_state->weak_factory.GetWeakPtr(), {},
+                                    res, nullptr, 0);
   }
 
   // Invalidate a DoH provider.
@@ -687,8 +687,8 @@ TEST_F(ResolverTest, Probe_DoHProbeRestarted) {
         std::make_unique<Resolver::ProbeState>(doh_provider, /*doh=*/true);
     DoHCurlClient::CurlResult res(CURLE_OK, 200 /* http_code */,
                                   0 /* timeout */);
-    resolver_->HandleDoHProbeResult(probe_state->weak_factory.GetWeakPtr(), res,
-                                    nullptr, 0);
+    resolver_->HandleDoHProbeResult(probe_state->weak_factory.GetWeakPtr(), {},
+                                    res, nullptr, 0);
   }
 
   // Invalidate a DoH provider.

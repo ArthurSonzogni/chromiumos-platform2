@@ -121,7 +121,7 @@ void DoHCurlClient::OnFileCanReadWithoutBlocking(curl_socket_t socket_fd) {
   CURLMcode rc = curl_multi_socket_action(curlm_, socket_fd, CURL_CSELECT_IN,
                                           &still_running);
   if (rc != CURLM_OK) {
-    LOG(INFO) << "Failed to read from socket: " << curl_multi_strerror(rc);
+    LOG(ERROR) << "Failed to read from socket: " << curl_multi_strerror(rc);
     return;
   }
   CheckMultiInfo();
@@ -132,7 +132,7 @@ void DoHCurlClient::OnFileCanWriteWithoutBlocking(curl_socket_t socket_fd) {
   CURLMcode rc = curl_multi_socket_action(curlm_, socket_fd, CURL_CSELECT_OUT,
                                           &still_running);
   if (rc != CURLM_OK) {
-    LOG(INFO) << "Failed to write to socket: " << curl_multi_strerror(rc);
+    LOG(ERROR) << "Failed to write to socket: " << curl_multi_strerror(rc);
     return;
   }
   CheckMultiInfo();

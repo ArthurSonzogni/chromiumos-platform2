@@ -103,14 +103,16 @@ class Resolver {
     bool doh;
 
     bool validated;
-    int num_attempts;
+    int num_retries;
     base::WeakPtrFactory<ProbeState> weak_factory{this};
   };
 
-  // |ProbeMetricsData| stores required data of a probe to record metrics.
-  struct ProbeMetricsData {
+  // |ProbeData| stores required data of a DoH or Do53 probe to record metrics
+  // and logs.
+  struct ProbeData {
     sa_family_t family;
-    int num_attempts;
+    int num_retries;
+    base::Time start_time;
   };
 
   Resolver(base::RepeatingCallback<void(std::ostream& stream)> logger,
@@ -181,14 +183,14 @@ class Resolver {
   // provided inside |probe_state|. |probe_state| also defines the current
   // probing state, including if it is already successful. If the probe is
   // successful, the provider or name server will be validated.
-  // For Do53, |data| is added for metrics, including IP family. This is not
-  // added for DoH as it uses all nameservers concurrently.
+  // For Do53, |data| is added for metrics, including IP family.
   void HandleDoHProbeResult(base::WeakPtr<ProbeState> probe_state,
+                            const ProbeData& probe_data,
                             const DoHCurlClient::CurlResult& res,
                             unsigned char* msg,
                             size_t len);
   void HandleDo53ProbeResult(base::WeakPtr<ProbeState> probe_state,
-                             const ProbeMetricsData& data,
+                             const ProbeData& probe_data,
                              int status,
                              unsigned char* msg,
                              size_t len);
