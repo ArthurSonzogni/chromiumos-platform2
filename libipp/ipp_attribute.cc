@@ -824,30 +824,6 @@ ConstCollsView Attribute::Colls() const {
   return ConstCollsView(*ReadValueConstPtr<std::vector<Collection*>>(&values_));
 }
 
-Collection* Attribute::GetCollection(size_t index) {
-  if (def_.cc_type != InternalType::kCollection)
-    return nullptr;
-  if (values_ == nullptr)
-    return nullptr;
-  Collection* p = nullptr;
-  auto v = ReadValuePtr<std::vector<Collection*>>(&values_);
-  if (v->size() > index)
-    p = *(v->data() + index);
-  return p;
-}
-
-const Collection* Attribute::GetCollection(size_t index) const {
-  if (def_.cc_type != InternalType::kCollection)
-    return nullptr;
-  if (values_ == nullptr)
-    return nullptr;
-  const Collection* p = nullptr;
-  auto v = ReadValueConstPtr<std::vector<Collection*>>(&values_);
-  if (v->size() > index)
-    p = *(v->data() + index);
-  return p;
-}
-
 Collection::Collection() = default;
 
 Collection::~Collection() = default;

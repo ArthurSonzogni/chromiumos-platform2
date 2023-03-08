@@ -4,17 +4,17 @@
 
 #include "libipp/attribute.h"
 #include "libipp/frame.h"
+#include "libipp/parser.h"
 
 #include <cstdint>
 #include <vector>
 
-void BrowseCollection(ipp::Collection* coll) {
-  const std::vector<ipp::Attribute*> attrs = coll->GetAllAttributes();
-  for (ipp::Attribute* attr : attrs) {
-    if (attr->Tag() == ipp::ValueTag::collection) {
-      const size_t n = attr->Size();
+void BrowseCollection(ipp::Collection& coll) {
+  for (ipp::Attribute& attr : coll) {
+    if (attr.Tag() == ipp::ValueTag::collection) {
+      const size_t n = attr.Size();
       for (size_t i = 0; i < n; ++i) {
-        BrowseCollection(attr->GetCollection(i));
+        BrowseCollection(attr.Colls()[i]);
       }
     }
   }
@@ -22,12 +22,12 @@ void BrowseCollection(ipp::Collection* coll) {
 
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   // Parse the input data.
-  ipp::ParsingResults log;
-  ipp::Frame frame(data, size, &log);
+  ipp::SimpleParserLog log;
+  ipp::Frame frame = ipp::Parse(data, size, log);
   // Browse the obtained frame.
   for (ipp::GroupTag gt : ipp::kGroupTags) {
-    std::vector<ipp::Collection*> colls = frame.GetGroups(gt);
-    for (ipp::Collection* coll : colls) {
+    ipp::CollsView colls = frame.Groups(gt);
+    for (ipp::Collection& coll : colls) {
       BrowseCollection(coll);
     }
   }

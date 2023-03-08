@@ -185,10 +185,10 @@ void SaveAttrValue(const Attribute* attr,
   }
 }
 
-void SaveCollection(const Collection* coll,
+void SaveCollection(const Collection& coll,
                     std::list<TagNameValue>* data_chunks) {
   // save the attributes
-  for (const Attribute& attr : *coll) {
+  for (const Attribute& attr : coll) {
     TagNameValue tnv;
     tnv.tag = memberAttrName_value_tag;
     tnv.name.clear();
@@ -205,7 +205,7 @@ void SaveCollection(const Collection* coll,
           tnv.tag = begCollection_value_tag;
           tnv.value.clear();
           data_chunks->push_back(tnv);
-          SaveCollection(attr.GetCollection(val_index), data_chunks);
+          SaveCollection(attr.Colls()[val_index], data_chunks);
           tnv.tag = endCollection_value_tag;
           tnv.value.clear();
         } else {
@@ -233,7 +233,7 @@ void SaveGroup(const Collection* coll, std::list<TagNameValue>* data_chunks) {
         tnv.tag = begCollection_value_tag;
         tnv.value.clear();
         data_chunks->push_back(tnv);
-        SaveCollection(attr.GetCollection(val_index), data_chunks);
+        SaveCollection(attr.Colls()[val_index], data_chunks);
         tnv.tag = endCollection_value_tag;
         tnv.name.clear();
         tnv.value.clear();

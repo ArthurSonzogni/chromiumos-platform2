@@ -362,10 +362,9 @@ ValidationResult operator&&(ValidationResult vr1, ValidationResult vr2) {
   return result;
 }
 
-ValidationResult ValidateCollections(
-    const std::vector<const Collection*>& colls,
-    ValidatorLog& log,
-    AttrPath& path);
+ValidationResult ValidateCollections(ConstCollsView colls,
+                                     ValidatorLog& log,
+                                     AttrPath& path);
 
 ValidationResult ValidateAttribute(const Attribute* attr,
                                    ValidatorLog& log,
@@ -381,11 +380,7 @@ ValidationResult ValidateAttribute(const Attribute* attr,
   }
   const size_t values_count = attr->Size();
   if (attr->Tag() == ValueTag::collection) {
-    std::vector<const Collection*> colls(values_count);
-    for (size_t i = 0; i < values_count; ++i) {
-      colls[i] = attr->GetCollection(i);
-    }
-    result = result && ValidateCollections(colls, log, path);
+    result = result && ValidateCollections(attr->Colls(), log, path);
   } else {
     for (size_t i = 0; i < values_count; ++i) {
       std::set<ValidatorCode> value_errors = ValidateValue(attr, i);
@@ -401,20 +396,20 @@ ValidationResult ValidateAttribute(const Attribute* attr,
   return result;
 }
 
-ValidationResult ValidateCollections(
-    const std::vector<const Collection*>& colls,
-    ValidatorLog& log,
-    AttrPath& path) {
+ValidationResult ValidateCollections(ConstCollsView colls,
+                                     ValidatorLog& log,
+                                     AttrPath& path) {
   ValidationResult result;
-  for (size_t icoll = 0; icoll < colls.size(); ++icoll) {
-    const Collection* coll = colls[icoll];
-    for (const Attribute& attr : *coll) {
+  uint16_t icoll = 0;
+  for (const Collection& coll : colls) {
+    for (const Attribute& attr : coll) {
       path.PushBack(icoll, attr.Name());
       result = result && ValidateAttribute(&attr, log, path);
       path.PopBack();
       if (!result.keep_going)
         return result;
     }
+    ++icoll;
   }
   return result;
 }

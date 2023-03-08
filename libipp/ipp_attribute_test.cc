@@ -49,16 +49,14 @@ TEST(attribute, UnknownCollectionAttribute) {
   ASSERT_NE(attr, coll.end());
   EXPECT_EQ(attr->Colls().begin(), new_coll);
   TestNewAttribute(attr, "abcd", ValueTag::collection);
-  EXPECT_NE(attr->GetCollection(), nullptr);
-  EXPECT_EQ(attr->GetCollection(1), nullptr);
+  EXPECT_EQ(attr->Colls().size(), 1);
+  EXPECT_EQ(attr->Size(), 1);
   attr->Resize(3);
-  EXPECT_NE(attr->GetCollection(), nullptr);
-  EXPECT_NE(attr->GetCollection(2), nullptr);
-  EXPECT_EQ(attr->GetCollection(3), nullptr);
+  EXPECT_EQ(attr->Colls().size(), 3);
+  EXPECT_EQ(attr->Size(), 3);
   Collection::const_iterator attr_const = Collection::const_iterator(attr);
-  EXPECT_NE(attr_const->GetCollection(), nullptr);
-  EXPECT_NE(attr_const->GetCollection(2), nullptr);
-  EXPECT_EQ(attr_const->GetCollection(3), nullptr);
+  EXPECT_EQ(attr_const->Colls().size(), 3);
+  EXPECT_EQ(attr_const->Size(), 3);
 }
 
 TEST(attribute, FromStringToInt) {

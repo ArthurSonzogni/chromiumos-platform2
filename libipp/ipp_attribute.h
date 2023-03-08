@@ -518,12 +518,6 @@ class LIBIPP_EXPORT Attribute {
   CollsView Colls();
   ConstCollsView Colls() const;
 
-  // DEPRECATED. Use Colls()[index] instead.
-  // Returns a pointer to Collection.
-  // (Tag() != collection || index >= Size()) <=> returns nullptr.
-  Collection* GetCollection(size_t index = 0);
-  const Collection* GetCollection(size_t index = 0) const;
-
  private:
   friend class Collection;
 
