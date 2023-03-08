@@ -175,7 +175,7 @@ uint16_t ParseUInt16(const uint8_t*& ptr) {
 
 }  //  namespace
 
-std::string_view ToStrView(ParserCode code) {
+std::string_view ToStrViewVerbose(ParserCode code) {
   static const std::string kLimitOnCollectionLevelMsg =
       "The frame has too many recursive collections; the maximum allowed "
       "number of levels is " +
@@ -251,7 +251,7 @@ void Parser::LogParserError(ParserCode error_code, const uint8_t* ptr) {
     return;
   }
   Log l;
-  l.message = ToStrView(error_code);
+  l.message = ToStrViewVerbose(error_code);
   l.parser_context = parser_context_.AsString();
   // Let's try to save to frame_context the closest neighborhood of ptr.
   if (ptr != nullptr && ptr >= buffer_begin_ && ptr <= buffer_end_) {
@@ -270,20 +270,7 @@ void Parser::LogParserError(ParserCode error_code, const uint8_t* ptr) {
                       ToHexSeq(ptr, ptr + right_margin);
   }
   errors_->push_back(l);
-  static const std::set<ParserCode> kCriticalErrors = {
-      ParserCode::kAttributeNameIsEmpty,
-      ParserCode::kUnexpectedEndOfFrame,
-      ParserCode::kGroupTagWasExpected,
-      ParserCode::kEmptyNameExpectedInTNV,
-      ParserCode::kEmptyValueExpectedInTNV,
-      ParserCode::kNegativeNameLengthInTNV,
-      ParserCode::kNegativeValueLengthInTNV,
-      ParserCode::kTNVWithUnexpectedValueTag,
-      ParserCode::kUnexpectedEndOfGroup,
-      ParserCode::kLimitOnCollectionsLevelExceeded,
-      ParserCode::kLimitOnGroupsCountExceeded};
-  const bool is_critical = kCriticalErrors.count(error_code);
-  log_->AddParserError(parser_context_, error_code, is_critical);
+  log_->AddParserError({parser_context_, error_code});
 }
 
 void Parser::LogParserErrors(const std::vector<ParserCode>& error_codes) {

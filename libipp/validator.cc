@@ -375,7 +375,7 @@ ValidationResult ValidateAttribute(const Attribute* attr,
   if (!name_errors.empty()) {
     result.no_errors = false;
     result.keep_going =
-        log.AddValidationError(path, AttrError(std::move(name_errors)));
+        log.AddValidatorError({path, AttrError(std::move(name_errors))});
     if (!result.keep_going)
       return result;
   }
@@ -391,8 +391,8 @@ ValidationResult ValidateAttribute(const Attribute* attr,
       std::set<ValidatorCode> value_errors = ValidateValue(attr, i);
       if (!value_errors.empty()) {
         result.no_errors = false;
-        result.keep_going =
-            log.AddValidationError(path, AttrError(i, std::move(value_errors)));
+        result.keep_going = log.AddValidatorError(
+            {path, AttrError(i, std::move(value_errors))});
         if (!result.keep_going)
           return result;
       }
@@ -444,7 +444,7 @@ ValidationResult ValidateHeader(const Frame& frame, ValidatorLog& log) {
   AttrPath path = AttrPath(AttrPath::kHeader);
   for (const std::string& name : invalid_fields) {
     path.PushBack(0, name);
-    result.keep_going = log.AddValidationError(path, error);
+    result.keep_going = log.AddValidatorError({path, error});
     if (!result.keep_going) {
       break;
     }
@@ -455,14 +455,61 @@ ValidationResult ValidateHeader(const Frame& frame, ValidatorLog& log) {
 
 }  // namespace
 
+std::string_view ToStrView(ValidatorCode code) {
+  switch (code) {
+    case ValidatorCode::kStringEmpty:
+      return "StringEmpty";
+    case ValidatorCode::kStringTooLong:
+      return "StringTooLong";
+    case ValidatorCode::kStringMustStartLowercaseLetter:
+      return "StringMustStartLowercaseLetter";
+    case ValidatorCode::kStringInvalidCharacter:
+      return "StringInvalidCharacter";
+    case ValidatorCode::kStringWithLangInvalidLanguage:
+      return "StringWithLangInvalidLanguage";
+    case ValidatorCode::kDateTimeInvalidDate:
+      return "DateTimeInvalidDate";
+    case ValidatorCode::kDateTimeInvalidTimeOfDay:
+      return "DateTimeInvalidTimeOfDay";
+    case ValidatorCode::kDateTimeInvalidZone:
+      return "DateTimeInvalidZone";
+    case ValidatorCode::kResolutionInvalidUnit:
+      return "ResolutionInvalidUnit";
+    case ValidatorCode::kResolutionInvalidDimension:
+      return "ResolutionInvalidDimension";
+    case ValidatorCode::kRangeOfIntegerMaxLessMin:
+      return "RangeOfIntegerMaxLessMin";
+    case ValidatorCode::kIntegerOutOfRange:
+      return "IntegerOutOfRange";
+  }
+}
+
 std::vector<ValidatorCode> AttrError::ErrorsAsVector() const {
   return std::vector<ValidatorCode>(errors_.begin(), errors_.end());
 }
 
-bool SimpleValidatorLog::AddValidationError(const AttrPath& path,
-                                            AttrError error) {
+std::string ToString(const ValidatorError& error) {
+  std::string msg = error.path.AsString();
+  if (error.error.IsInTheName()) {
+    msg += "; name; ";
+  } else {
+    msg += "; ";
+    msg += std::to_string(error.error.Index());
+    msg += "; ";
+  }
+  const std::vector<ValidatorCode> codes = error.error.ErrorsAsVector();
+  for (ValidatorCode code : codes) {
+    if (msg.back() != '\t') {
+      msg += ",";
+    }
+    msg += ToStrView(code);
+  }
+  return msg;
+}
+
+bool SimpleValidatorLog::AddValidatorError(const ValidatorError& error) {
   if (entries_.size() < max_entries_count_) {
-    entries_.emplace_back(path, error);
+    entries_.emplace_back(error);
   }
   return (entries_.size() < max_entries_count_);
 }

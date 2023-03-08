@@ -19,24 +19,24 @@ TEST(SimpleParserLog, Empty) {
 
 TEST(SimpleParserLog, AddParserError) {
   SimpleParserLog log;
-  log.AddParserError(AttrPath(GroupTag::printer_attributes),
-                     ParserCode::kGroupTagWasExpected, false);
+  log.AddParserError(
+      {AttrPath(GroupTag::printer_attributes), ParserCode::kValueInvalidSize});
   ASSERT_EQ(log.Errors().size(), 1);
   EXPECT_EQ(log.Errors()[0].path.AsString(), "printer-attributes");
-  EXPECT_EQ(log.Errors()[0].error, ParserCode::kGroupTagWasExpected);
+  EXPECT_EQ(log.Errors()[0].code, ParserCode::kValueInvalidSize);
   EXPECT_TRUE(log.CriticalErrors().empty());
 }
 
 TEST(SimpleParserLog, AddParserErrorCritical) {
   SimpleParserLog log;
-  log.AddParserError(AttrPath(GroupTag::printer_attributes),
-                     ParserCode::kGroupTagWasExpected, true);
+  log.AddParserError({AttrPath(GroupTag::printer_attributes),
+                      ParserCode::kGroupTagWasExpected});
   ASSERT_EQ(log.Errors().size(), 1);
   EXPECT_EQ(log.Errors()[0].path.AsString(), "printer-attributes");
-  EXPECT_EQ(log.Errors()[0].error, ParserCode::kGroupTagWasExpected);
+  EXPECT_EQ(log.Errors()[0].code, ParserCode::kGroupTagWasExpected);
   ASSERT_EQ(log.CriticalErrors().size(), 1);
   EXPECT_EQ(log.CriticalErrors()[0].path.AsString(), "printer-attributes");
-  EXPECT_EQ(log.CriticalErrors()[0].error, ParserCode::kGroupTagWasExpected);
+  EXPECT_EQ(log.CriticalErrors()[0].code, ParserCode::kGroupTagWasExpected);
 }
 
 }  // namespace

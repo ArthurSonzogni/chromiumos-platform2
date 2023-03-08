@@ -27,7 +27,7 @@ class Frame;
 struct RawAttribute;
 struct RawCollection;
 
-std::string_view ToStrView(ParserCode code);
+std::string_view ToStrViewVerbose(ParserCode code);
 
 class Parser {
  public:

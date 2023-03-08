@@ -8,6 +8,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <set>
+#include <string>
+#include <string_view>
 #include <vector>
 
 #include "errors.h"
@@ -44,7 +46,7 @@ constexpr size_t kMaxLengthOfMimeMediaType = 255;
 constexpr size_t kMaxLengthOfOctetString = 1023;
 
 // Describes types of validation errors in a single value.
-enum class ValidatorCode {
+enum class ValidatorCode : uint8_t {
   // The string value is empty when it is not allowed.
   kStringEmpty = 0,
   // The string value is too long.
@@ -73,6 +75,10 @@ enum class ValidatorCode {
   kIntegerOutOfRange
 };
 
+// Returns a string representation of `code`. Returned string contains a name
+// of corresponding enum's value and has no whitespaces.
+std::string_view ToStrView(ValidatorCode code);
+
 // Represents information about invalid value or name of an attribute.
 class LIBIPP_EXPORT AttrError {
  public:
@@ -97,36 +103,41 @@ class LIBIPP_EXPORT AttrError {
   std::set<ValidatorCode> errors_;
 };
 
-// The interface of errors log.
+// The structure represents an `error` for the attribute at `path`.
+struct ValidatorError {
+  AttrPath path;
+  AttrError error;
+};
+
+// Returns one-line string representation of the `error`. There is no EOL
+// characters in the returned message.
+std::string ToString(const ValidatorError& error);
+
+// The interface of validator log.
 class ValidatorLog {
  public:
   ValidatorLog() = default;
   ValidatorLog(const ValidatorLog&) = delete;
   ValidatorLog& operator=(const ValidatorLog&) = delete;
   virtual ~ValidatorLog() = default;
-  // Reports an `error` for the attribute at `path`. The errors are reported in
+  // Reports an `error` found by the validator. The errors are reported in
   // the same order as they occurred in the frame. Return false if you do not
   // want to get any more AddValidationError() calls.
-  virtual bool AddValidationError(const AttrPath& path, AttrError error) = 0;
+  virtual bool AddValidatorError(const ValidatorError& error) = 0;
 };
 
 // Simple implementation of the ValidatorLog interface. It just saves the first
 // `max_entries_count` (see the constructor) errors in the frame.
 class LIBIPP_EXPORT SimpleValidatorLog : public ValidatorLog {
  public:
-  struct Entry {
-    AttrPath path;
-    AttrError error;
-    Entry(const AttrPath& path, AttrError error) : path(path), error(error) {}
-  };
   explicit SimpleValidatorLog(size_t max_entries_count = 100)
       : max_entries_count_(max_entries_count) {}
-  bool AddValidationError(const AttrPath& path, AttrError error) override;
-  const std::vector<Entry>& Entries() const { return entries_; }
+  bool AddValidatorError(const ValidatorError& error) override;
+  const std::vector<ValidatorError>& Entries() const { return entries_; }
 
  private:
   const size_t max_entries_count_;
-  std::vector<Entry> entries_;
+  std::vector<ValidatorError> entries_;
 };
 
 // Validates all groups in the `frame`. All detected errors are saved in `log`

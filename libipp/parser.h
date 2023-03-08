@@ -6,6 +6,8 @@
 #define LIBIPP_PARSER_H_
 
 #include <cstdint>
+#include <string>
+#include <string_view>
 #include <vector>
 
 #include "errors.h"
@@ -17,29 +19,51 @@ namespace ipp {
 // actions taken by the parser.
 enum class ParserCode : uint8_t {
   kOK = 0,
-  kAttributeNameIsEmpty,              // the parser stopped
+  kBooleanValueOutOfRange,            // the boolean value was set to 1
   kValueMismatchTagConverted,         // the value was converted
+  kOutOfBandValueWithNonEmptyData,    // the data field was ignored
+  kOutOfBandAttributeWithManyValues,  // additional values were ignored
   kValueMismatchTagOmitted,           // the value was omitted
+  kUnsupportedValueTag,               // the value was omitted
+  kValueInvalidSize,                  // the value was omitted
   kAttributeNoValues,                 // the attribute was omitted
   kAttributeNameConflict,             // the attribute was omitted
-  kBooleanValueOutOfRange,            // the boolean value was set to 1
-  kValueInvalidSize,                  // the value was omitted
   kErrorWhenAddingAttribute,          // the attribute was omitted
-  kOutOfBandAttributeWithManyValues,  // additional values were ignored
-  kOutOfBandValueWithNonEmptyData,    // the data field was ignored
-  kUnexpectedEndOfFrame,              // the parser stopped
-  kGroupTagWasExpected,               // the parser stopped
-  kEmptyNameExpectedInTNV,            // the parser stopped
-  kEmptyValueExpectedInTNV,           // the parser stopped
-  kNegativeNameLengthInTNV,           // the parser stopped
-  kNegativeValueLengthInTNV,          // the parser stopped
-  kTNVWithUnexpectedValueTag,         // the parser stopped
-  kUnsupportedValueTag,               // the value was omitted
-  kUnexpectedEndOfGroup,              // the parser stopped
-  kLimitOnCollectionsLevelExceeded,   // the parser stopped
-  kLimitOnGroupsCountExceeded,        // the parser stopped
-  kErrorWhenAddingGroup               // the group was omitted
+  kErrorWhenAddingGroup,              // the group was omitted
+  kFirstCritialError = 16,
+  kAttributeNameIsEmpty = 16,        // the parser stopped
+  kUnexpectedEndOfFrame,             // the parser stopped
+  kGroupTagWasExpected,              // the parser stopped
+  kEmptyNameExpectedInTNV,           // the parser stopped
+  kEmptyValueExpectedInTNV,          // the parser stopped
+  kNegativeNameLengthInTNV,          // the parser stopped
+  kNegativeValueLengthInTNV,         // the parser stopped
+  kTNVWithUnexpectedValueTag,        // the parser stopped
+  kUnexpectedEndOfGroup,             // the parser stopped
+  kLimitOnCollectionsLevelExceeded,  // the parser stopped
+  kLimitOnGroupsCountExceeded,       // the parser stopped
 };
+
+// After spotting a critical error the parser cannot continue and will stop
+// parsing before reaching the end of input frame.
+constexpr bool IsCritical(ParserCode code) {
+  return code >= ParserCode::kFirstCritialError;
+}
+
+// Returns a string representation of `code`. Returned string contains a name
+// of corresponding enum's value and has no whitespaces.
+std::string_view ToStrView(ParserCode code);
+
+// Represents an error spotted by the parser when parsing an element pointed
+// by `path`.
+struct ParserError {
+  AttrPath path;
+  ParserCode code;
+};
+
+// Returns a one line string representation of the `error`. There is no EOL
+// characters in the returned message.
+std::string ToString(const ParserError& error);
 
 // The interface of parser log.
 class ParserLog {
@@ -48,45 +72,37 @@ class ParserLog {
   ParserLog(const ParserLog&) = delete;
   ParserLog& operator=(const ParserLog&) = delete;
   virtual ~ParserLog() = default;
-  // Reports an `error` when parsing an element pointed by `path`. `critical`
-  // set to true means that the parser cannot continue and will stop parsing
-  // before reaching the end of input frame. `critical` == true DOES NOT mean
-  // that this call is the last one. Also, there may be more than one call
-  // with `critical` == true during single parser run.
-  virtual void AddParserError(const AttrPath& path,
-                              ParserCode error,
-                              bool critical) = 0;
+  // Reports an `error` when parsing an element pointed by `path`.
+  // `IsCritical(error.code)` == true DOES NOT mean that this call is the last
+  // one. Also, there may be more than one call with critical errors during
+  // a single parser run.
+  virtual void AddParserError(const ParserError& error) = 0;
 };
 
 // Simple implementation of the ParserLog interface. It just saves the first
 // `max_entries_count` (see the constructor) parser errors.
 class LIBIPP_EXPORT SimpleParserLog : public ParserLog {
  public:
-  struct Entry {
-    AttrPath path;
-    ParserCode error;
-    Entry(const AttrPath& path, ParserCode error) : path(path), error(error) {}
-  };
   explicit SimpleParserLog(size_t max_entries_count = 100)
       : max_entries_count_(max_entries_count) {}
-  void AddParserError(const AttrPath& path,
-                      ParserCode error,
-                      bool critical) override;
+  void AddParserError(const ParserError& error) override;
 
   // Returns all errors added by AddParserError() in the same order they were
   // added. The log is truncated <=> the number of entries reached the value
   // `max_entries_count` passed to the constructor.
-  const std::vector<Entry>& Errors() const { return errors_; }
+  const std::vector<ParserError>& Errors() const { return errors_; }
   // Returns all critical errors added by AddParserError() in the same order
   // they were added. The log is not truncated, but there is no more than a
   // couple of critical errors in a single parser run. All critical errors are
   // also included in Errors() (if it doesn't reach the limit).
-  const std::vector<Entry>& CriticalErrors() const { return critical_errors_; }
+  const std::vector<ParserError>& CriticalErrors() const {
+    return critical_errors_;
+  }
 
  private:
   const size_t max_entries_count_;
-  std::vector<Entry> errors_;
-  std::vector<Entry> critical_errors_;
+  std::vector<ParserError> errors_;
+  std::vector<ParserError> critical_errors_;
 };
 
 // Parse the frame of `size` bytes saved in `buffer`. Errors detected by the
