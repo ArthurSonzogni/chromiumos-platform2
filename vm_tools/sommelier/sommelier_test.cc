@@ -80,34 +80,42 @@ class MockWaylandChannel : public WaylandChannel {
  public:
   MockWaylandChannel() {}
 
-  MOCK_METHOD(int32_t, init, ());
-  MOCK_METHOD(bool, supports_dmabuf, ());
+  MOCK_METHOD(int32_t, init, (), (override));
+  MOCK_METHOD(bool, supports_dmabuf, (), (override));
   MOCK_METHOD(int32_t,
               create_context,
-              (int& out_socket_fd));  // NOLINT(runtime/references)
+              (int& out_socket_fd),
+              (override));  // NOLINT(runtime/references)
   MOCK_METHOD(int32_t,
               create_pipe,
-              (int& out_pipe_fd));  // NOLINT(runtime/references)
-  MOCK_METHOD(int32_t, send, (const struct WaylandSendReceive& send));
+              (int& out_pipe_fd),
+              (override));  // NOLINT(runtime/references)
+  MOCK_METHOD(int32_t,
+              send,
+              (const struct WaylandSendReceive& send),
+              (override));
   MOCK_METHOD(
       int32_t,
       handle_channel_event,
       (enum WaylandChannelEvent & event_type,  // NOLINT(runtime/references)
        struct WaylandSendReceive& receive,     // NOLINT(runtime/references)
-       int& out_read_pipe));                   // NOLINT(runtime/references)
+       int& out_read_pipe),                    // NOLINT(runtime/references)
+      (override));
 
   MOCK_METHOD(int32_t,
               allocate,
               (const struct WaylandBufferCreateInfo& create_info,
                struct WaylandBufferCreateOutput&
-                   create_output));  // NOLINT(runtime/references)
-  MOCK_METHOD(int32_t, sync, (int dmabuf_fd, uint64_t flags));
+                   create_output),  // NOLINT(runtime/references)
+              (override));
+  MOCK_METHOD(int32_t, sync, (int dmabuf_fd, uint64_t flags), (override));
   MOCK_METHOD(int32_t,
               handle_pipe,
               (int read_fd,
                bool readable,
-               bool& hang_up));  // NOLINT(runtime/references)
-  MOCK_METHOD(size_t, max_send_size, ());
+               bool& hang_up),  // NOLINT(runtime/references)
+              (override));
+  MOCK_METHOD(size_t, max_send_size, (), (override));
 
  protected:
   ~MockWaylandChannel() override {}
