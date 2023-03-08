@@ -456,8 +456,9 @@ class BRILLO_EXPORT Client {
 
   // Reads the list of IPConfigs for a device and composes them into an IPConfig
   // data structure.
-  IPConfig ParseIPConfigsProperty(const std::string& device_path,
-                                  const brillo::Any& property_value) const;
+  IPConfig ParseIPConfigsProperty(
+      const std::string& device_path,
+      const std::vector<dbus::ObjectPath>& ipconfig_paths) const;
 
   scoped_refptr<dbus::Bus> bus_;
 
