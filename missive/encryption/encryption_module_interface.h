@@ -19,6 +19,9 @@
 
 namespace reporting {
 
+constexpr char kEncryptionKeyFilePrefix[] = "EncryptionKey.";
+constexpr int32_t kEncryptionKeyMaxFileSize = 256;
+
 class EncryptionModuleInterface
     : public DynamicFlag,
       public base::RefCountedThreadSafe<EncryptionModuleInterface> {

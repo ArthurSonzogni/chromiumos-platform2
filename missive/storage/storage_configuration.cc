@@ -3,7 +3,12 @@
 // found in the LICENSE file.
 
 #include "missive/storage/storage_configuration.h"
+
+#include <base/containers/flat_set.h>
+
+#include "missive/proto/record_constants.pb.h"
 #include "missive/resources/resource_manager.h"
+#include "missive/util/status.h"
 
 namespace reporting {
 
@@ -11,7 +16,6 @@ namespace {
 
 // Parameters of individual queues.
 // TODO(b/159352842): Deliver space and upload parameters from outside.
-
 constexpr char kSecurityQueueSubdir[] = "Security";
 constexpr char kSecurityQueuePrefix[] = "P_Security";
 
@@ -37,6 +41,11 @@ constexpr base::TimeDelta kManualUploadPeriod = base::TimeDelta::Max();
 constexpr char kManualLacrosQueueSubdir[] = "ManualLacros";
 constexpr char kManualLacrosQueuePrefix[] = "P_ManualLacros";
 
+// Order of priorities
+constexpr std::array<Priority, 7> kPriorityOrder = {
+    MANUAL_BATCH_LACROS, MANUAL_BATCH, BACKGROUND_BATCH, SLOW_BATCH,
+    FAST_BATCH,          IMMEDIATE,    SECURITY};
+
 // Failed upload retry delay: if an upload fails and there are no more incoming
 // events, collected events will not get uploaded for an indefinite time (see
 // b/192666219).
@@ -54,48 +63,60 @@ StorageOptions::StorageOptions()
 StorageOptions::StorageOptions(const StorageOptions& options) = default;
 StorageOptions::~StorageOptions() = default;
 
-// Returns vector of <priority, queue_options> for all expected queues in
-// Storage. Queues are all located under the given root directory.
-StorageOptions::QueuesOptionsList StorageOptions::ProduceQueuesOptions() const {
-  return {
-      std::make_pair(MANUAL_BATCH_LACROS,
-                     QueueOptions(*this)
-                         .set_subdirectory(kManualLacrosQueueSubdir)
-                         .set_file_prefix(kManualLacrosQueuePrefix)
-                         .set_upload_period(kManualUploadPeriod)
-                         .set_upload_retry_delay(kFailedUploadRetryDelay)),
-      std::make_pair(MANUAL_BATCH,
-                     QueueOptions(*this)
-                         .set_subdirectory(kManualQueueSubdir)
-                         .set_file_prefix(kManualQueuePrefix)
-                         .set_upload_period(kManualUploadPeriod)
-                         .set_upload_retry_delay(kFailedUploadRetryDelay)),
-      std::make_pair(BACKGROUND_BATCH,
-                     QueueOptions(*this)
-                         .set_subdirectory(kBackgroundQueueSubdir)
-                         .set_file_prefix(kBackgroundQueuePrefix)
-                         .set_upload_period(kBackgroundQueueUploadPeriod)),
-      std::make_pair(SLOW_BATCH,
-                     QueueOptions(*this)
-                         .set_subdirectory(kSlowBatchQueueSubdir)
-                         .set_file_prefix(kSlowBatchQueuePrefix)
-                         .set_upload_period(kSlowBatchUploadPeriod)),
-      std::make_pair(FAST_BATCH,
-                     QueueOptions(*this)
-                         .set_subdirectory(kFastBatchQueueSubdir)
-                         .set_file_prefix(kFastBatchQueuePrefix)
-                         .set_upload_period(kFastBatchUploadPeriod)),
-      std::make_pair(IMMEDIATE,
-                     QueueOptions(*this)
-                         .set_subdirectory(kImmediateQueueSubdir)
-                         .set_file_prefix(kImmediateQueuePrefix)
-                         .set_upload_retry_delay(kFailedUploadRetryDelay)),
-      std::make_pair(SECURITY,
-                     QueueOptions(*this)
-                         .set_subdirectory(kSecurityQueueSubdir)
-                         .set_file_prefix(kSecurityQueuePrefix)
-                         .set_upload_retry_delay(kFailedUploadRetryDelay)),
-  };
+QueueOptions StorageOptions::ProduceQueuesOptions(Priority priority) const {
+  switch (priority) {
+    case MANUAL_BATCH_LACROS:
+      return QueueOptions(*this)
+          .set_subdirectory(kManualLacrosQueueSubdir)
+          .set_file_prefix(kManualLacrosQueuePrefix)
+          .set_upload_period(kManualUploadPeriod)
+          .set_upload_retry_delay(kFailedUploadRetryDelay);
+    case MANUAL_BATCH:
+      return QueueOptions(*this)
+          .set_subdirectory(kManualQueueSubdir)
+          .set_file_prefix(kManualQueuePrefix)
+          .set_upload_period(kManualUploadPeriod)
+          .set_upload_retry_delay(kFailedUploadRetryDelay);
+    case BACKGROUND_BATCH:
+      return QueueOptions(*this)
+          .set_subdirectory(kBackgroundQueueSubdir)
+          .set_file_prefix(kBackgroundQueuePrefix)
+          .set_upload_period(kBackgroundQueueUploadPeriod);
+    case SLOW_BATCH:
+      return QueueOptions(*this)
+          .set_subdirectory(kSlowBatchQueueSubdir)
+          .set_file_prefix(kSlowBatchQueuePrefix)
+          .set_upload_period(kSlowBatchUploadPeriod);
+    case FAST_BATCH:
+      return QueueOptions(*this)
+          .set_subdirectory(kFastBatchQueueSubdir)
+          .set_file_prefix(kFastBatchQueuePrefix)
+          .set_upload_period(kFastBatchUploadPeriod);
+    case IMMEDIATE:
+      return QueueOptions(*this)
+          .set_subdirectory(kImmediateQueueSubdir)
+          .set_file_prefix(kImmediateQueuePrefix)
+          .set_upload_retry_delay(kFailedUploadRetryDelay);
+    case SECURITY:
+      return QueueOptions(*this)
+          .set_subdirectory(kSecurityQueueSubdir)
+          .set_file_prefix(kSecurityQueuePrefix)
+          .set_upload_retry_delay(kFailedUploadRetryDelay);
+    case UNDEFINED_PRIORITY:
+      NOTREACHED() << "No QueueOptions for priority UNDEFINED_PRIORITY.";
+      return QueueOptions(*this);
+      break;
+  }
+}
+
+StorageOptions::QueuesOptionsList StorageOptions::ProduceQueuesOptionsList()
+    const {
+  QueuesOptionsList queue_options_list;
+  // Create queue option for each priority and add to the list
+  for (const auto priority : kPriorityOrder) {
+    queue_options_list.emplace_back(priority, ProduceQueuesOptions(priority));
+  }
+  return queue_options_list;
 }
 
 QueueOptions::QueueOptions(const StorageOptions& storage_options)

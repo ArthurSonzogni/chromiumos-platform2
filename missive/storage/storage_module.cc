@@ -17,7 +17,9 @@
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
+#include "missive/storage/new_storage.h"
 #include "missive/storage/storage.h"
+#include "missive/storage/storage_base.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_module_interface.h"
 #include "missive/storage/storage_uploader_interface.h"
@@ -64,21 +66,32 @@ void StorageModule::Create(
   scoped_refptr<StorageModule> instance =
       // Cannot base::MakeRefCounted, since constructor is protected.
       base::WrapRefCounted(new StorageModule());
-  Storage::Create(
-      options, async_start_upload_cb, encryption_module, compression_module,
-      base::BindOnce(
-          [](scoped_refptr<StorageModule> instance,
-             base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
-                 callback,
-             StatusOr<scoped_refptr<Storage>> storage) {
-            if (!storage.ok()) {
-              std::move(callback).Run(storage.status());
-              return;
-            }
-            instance->storage_ = std::move(storage.ValueOrDie());
-            std::move(callback).Run(std::move(instance));
-          },
-          std::move(instance), std::move(callback)));
+
+  auto completion_cb = base::BindOnce(
+      [](scoped_refptr<StorageModule> instance,
+         base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
+             callback,
+         StatusOr<scoped_refptr<StorageInterface>> storage) {
+        if (!storage.ok()) {
+          std::move(callback).Run(storage.status());
+          return;
+        }
+        instance->storage_ = std::move(storage.ValueOrDie());
+        std::move(callback).Run(std::move(instance));
+      },
+      std::move(instance), std::move(callback));
+
+  // TODO(b/278121325): Create and use feature flag to switch storage
+  // implementations
+  const bool use_legacy_storage = true;
+
+  if (use_legacy_storage) {
+    Storage::Create(options, async_start_upload_cb, encryption_module,
+                    compression_module, std::move(completion_cb));
+  } else {
+    NewStorage::Create(options, async_start_upload_cb, encryption_module,
+                       compression_module, std::move(completion_cb));
+  }
 }
 
 }  // namespace reporting

@@ -144,6 +144,7 @@ struct RecordHeader {
 
 // static
 void StorageQueue::Create(
+    std::string generation_guid,
     const QueueOptions& options,
     UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
     scoped_refptr<EncryptionModuleInterface> encryption_module,
@@ -186,10 +187,11 @@ void StorageQueue::Create(
   // Create StorageQueue object.
   // Cannot use base::MakeRefCounted<StorageQueue>, because constructor is
   // private.
-  scoped_refptr<StorageQueue> storage_queue = base::WrapRefCounted(
-      new StorageQueue(std::move(sequenced_task_runner), options,
-                       std::move(async_start_upload_cb), encryption_module,
-                       compression_module));
+  scoped_refptr<StorageQueue> storage_queue =
+      base::WrapRefCounted(new StorageQueue(
+          std::move(generation_guid), std::move(sequenced_task_runner), options,
+          std::move(async_start_upload_cb), encryption_module,
+          compression_module));
 
   // Asynchronously run initialization.
   Start<StorageQueueInitContext>(std::move(storage_queue),
@@ -197,6 +199,7 @@ void StorageQueue::Create(
 }
 
 StorageQueue::StorageQueue(
+    std::string generation_guid,
     scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
     const QueueOptions& options,
     UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
@@ -209,6 +212,7 @@ StorageQueue::StorageQueue(
       low_priority_task_runner_(base::ThreadPool::CreateSequencedTaskRunner(
           {base::TaskPriority::BEST_EFFORT, base::MayBlock()})),
       options_(options),
+      generation_guid_(std::move(generation_guid)),
       async_start_upload_cb_(async_start_upload_cb),
       encryption_module_(encryption_module),
       compression_module_(compression_module) {
@@ -960,6 +964,7 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
     // use minimum of first_sequencing_id_ and first_unconfirmed_sequencing_id_
     // if the latter has been recorded.
     sequence_info_.set_generation_id(storage_queue_->generation_id_);
+    sequence_info_.set_generation_guid(storage_queue_->generation_guid_);
     if (storage_queue_->first_unconfirmed_sequencing_id_.has_value()) {
       sequence_info_.set_sequencing_id(
           std::min(storage_queue_->first_unconfirmed_sequencing_id_.value(),

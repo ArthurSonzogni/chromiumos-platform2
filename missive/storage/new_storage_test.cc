@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "missive/storage/storage.h"
+#include "missive/storage/new_storage.h"
 
 #include <atomic>
 #include <cstdint>
@@ -12,14 +12,18 @@
 #include <utility>
 #include <vector>
 
+#include <base/check.h>
 #include <base/containers/flat_map.h>
+#include <base/feature_list.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/sequence_checker.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/task/thread_pool.h>
+#include <base/test/scoped_feature_list.h>
 #include <base/test/task_environment.h>
 #include <base/thread_annotations.h>
 #include <base/threading/sequence_bound.h>
@@ -42,6 +46,7 @@
 #include "missive/proto/record.pb.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/resources/resource_manager.h"
+#include "missive/storage/storage_base.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_uploader_interface.h"
 #include "missive/util/status.h"
@@ -67,7 +72,7 @@ using ::testing::StrEq;
 using ::testing::WithArg;
 using ::testing::WithoutArgs;
 
-// TODO(b/278734198): Combine common test logic with new_storage_test.cc
+// TODO(b/278734198): Combine common test logic with storage_test.cc
 namespace reporting {
 
 namespace {
@@ -98,7 +103,7 @@ bool RecordsArrivedInExpectedOrder(
 
 // Stores an entire upload of records from `SequenceBoundUpload` in the order
 // they were received when the upload is declared complete. Intended to be a
-// class member of `LegacyStorageTest`, so that it outlives
+// class member of `NewStorageTest`, so that it outlives
 // `TestUploader` and `SequenceBoundUpload` and can be used to perform checks
 // that span multiple separate uploads. The user is responsible for resetting
 // the state by calling `Reset()`.
@@ -131,24 +136,22 @@ constexpr char kKeyDeliveryErrorMessage[] = "Test cannot start upload";
 // Test uploader counter - for generation of unique ids.
 std::atomic<int64_t> next_uploader_id{0};
 
-// Storage options to be used in tests.
+// NewStorage options to be used in tests.
 class TestStorageOptions : public StorageOptions {
  public:
   TestStorageOptions() = default;
 
-  QueuesOptionsList ProduceQueuesOptionsList() const override {
+  QueueOptions ProduceQueuesOptions(Priority priority) const override {
     // Call base class method.
-    auto queues_options = StorageOptions::ProduceQueuesOptionsList();
-    for (auto& queue_options : queues_options) {
-      // Disable upload retry.
-      queue_options.second.set_upload_retry_delay(upload_retry_delay_);
-    }
+    auto queue_options = StorageOptions::ProduceQueuesOptions(priority);
+    // Disable upload retry.
+    queue_options.set_upload_retry_delay(upload_retry_delay_);
     // Make adjustments.
-    return queues_options;
+    return queue_options;
   }
 
   // Prepare options adjustment.
-  // Must be called before the options are used by Storage::Create().
+  // Must be called before the options are used by NewStorage::Create().
   void set_upload_retry_delay(base::TimeDelta upload_retry_delay) {
     upload_retry_delay_ = upload_retry_delay;
   }
@@ -277,7 +280,7 @@ class SingleDecryptionContext {
   base::OnceCallback<void(StatusOr<base::StringPiece>)> response_;
 };
 
-class LegacyStorageTest
+class NewStorageTest
     : public ::testing::TestWithParam<::testing::tuple<bool, size_t>> {
   // Mapping of <generation id, sequencing id> to matching record digest.
   // Whenever a record is uploaded and includes last record digest, this map
@@ -288,9 +291,8 @@ class LegacyStorageTest
                                 int64_t /*generation id*/,
                                 int64_t /*sequencing id*/>,
                      std::optional<std::string /*digest*/>>;
-
-  // Track the last uploaded generation id based on priority
-  using LastUploadedGenerationIdMap = base::flat_map<Priority, int64_t>;
+  using LastUploadedGenerationIdMap =
+      base::flat_map<Priority, std::tuple<int64_t, GenerationGuid>>;
 
  protected:
   void SetUp() override {
@@ -304,7 +306,7 @@ class LegacyStorageTest
           return TestUploader::SetUpDummy(this);
         }));
     ResetExpectedUploadsCount();
-    // Prepare encryption, if requested to be enabled.
+    // Encryption is enabled by default.
     if (is_encryption_enabled()) {
       // Generate signing key pair.
       test::GenerateSigningKeyPair(signing_private_key_,
@@ -318,7 +320,7 @@ class LegacyStorageTest
       decryptor_ = std::move(decryptor_result.ValueOrDie());
       // Prepare the key.
       signed_encryption_key_ = GenerateAndSignKey();
-      // First record enqueue to Storage would need key delivered.
+      // First record enqueue to NewStorage would need key delivered.
       expect_to_need_key_ = true;
     }
     test_compression_module_ =
@@ -393,6 +395,7 @@ class LegacyStorageTest
             uploader_id_, sequence_information.priority(),
             sequence_information.sequencing_id(),
             sequence_information.generation_id(),
+            sequence_information.generation_guid(),
             Status(error::DATA_LOSS,
                    base::StrCat({"Generation id mismatch, expected=",
                                  base::NumberToString(generation_id_.value()),
@@ -406,7 +409,8 @@ class LegacyStorageTest
         generation_id_ = sequence_information.generation_id();
         last_upload_generation_id_->emplace(
             sequence_information.priority(),
-            sequence_information.generation_id());
+            std::make_tuple(sequence_information.generation_id(),
+                            sequence_information.generation_guid()));
       }
 
       last_record_digest_map_->emplace(
@@ -417,7 +421,8 @@ class LegacyStorageTest
 
       DoUploadGap(uploader_id_, sequence_information.priority(),
                   sequence_information.sequencing_id(),
-                  sequence_information.generation_id(), count,
+                  sequence_information.generation_id(),
+                  sequence_information.generation_guid(), count,
                   std::move(processed_cb));
     }
 
@@ -425,7 +430,6 @@ class LegacyStorageTest
                       SequenceInformation sequence_information,
                       WrappedRecord wrapped_record,
                       base::OnceCallback<void(bool)> processed_cb) {
-      DCHECK_CALLED_ON_VALID_SEQUENCE(scoped_checker_);
       // Verify generation match.
       if (generation_id_.has_value() &&
           generation_id_.value() != sequence_information.generation_id()) {
@@ -433,6 +437,7 @@ class LegacyStorageTest
             uploader_id_, sequence_information.priority(),
             sequence_information.sequencing_id(),
             sequence_information.generation_id(),
+            sequence_information.generation_guid(),
             Status(error::DATA_LOSS,
                    base::StrCat({"Generation id mismatch, expected=",
                                  base::NumberToString(generation_id_.value()),
@@ -446,7 +451,8 @@ class LegacyStorageTest
         generation_id_ = sequence_information.generation_id();
         last_upload_generation_id_->emplace(
             sequence_information.priority(),
-            sequence_information.generation_id());
+            std::make_tuple(sequence_information.generation_id(),
+                            sequence_information.generation_guid()));
       }
 
       // Verify digest and its match.
@@ -460,6 +466,7 @@ class LegacyStorageTest
               uploader_id_, sequence_information.priority(),
               sequence_information.sequencing_id(),
               sequence_information.generation_id(),
+              sequence_information.generation_guid(),
               Status(error::DATA_LOSS, "Record digest mismatch"),
               std::move(processed_cb));
           return;
@@ -476,6 +483,7 @@ class LegacyStorageTest
                 uploader_id_, sequence_information.priority(),
                 sequence_information.sequencing_id(),
                 sequence_information.generation_id(),
+                sequence_information.generation_guid(),
                 Status(error::DATA_LOSS, "Last record digest mismatch"),
                 std::move(processed_cb));
             return;
@@ -491,18 +499,22 @@ class LegacyStorageTest
       DoUploadRecord(uploader_id_, sequence_information.priority(),
                      sequence_information.sequencing_id(),
                      sequence_information.generation_id(),
+                     sequence_information.generation_guid(),
                      wrapped_record.record().data(), std::move(processed_cb));
     }
 
     void DoEncounterSeqId(int64_t uploader_id,
                           Priority priority,
                           int64_t sequencing_id,
-                          int64_t generation_id) {
+                          int64_t generation_id,
+                          GenerationGuid generation_guid) {
       DCHECK_CALLED_ON_VALID_SEQUENCE(scoped_checker_);
       upload_progress_.append("SeqId: ")
           .append(base::NumberToString(sequencing_id))
           .append("/")
           .append(base::NumberToString(generation_id))
+          .append("/")
+          .append(generation_guid)
           .append("\n");
       mock_upload_->EncounterSeqId(uploader_id, priority, sequencing_id);
     }
@@ -511,14 +523,18 @@ class LegacyStorageTest
                         Priority priority,
                         int64_t sequencing_id,
                         int64_t generation_id,
+                        GenerationGuid generation_guid,
                         base::StringPiece data,
                         base::OnceCallback<void(bool)> processed_cb) {
-      DoEncounterSeqId(uploader_id, priority, sequencing_id, generation_id);
+      DoEncounterSeqId(uploader_id, priority, sequencing_id, generation_id,
+                       generation_guid);
       DCHECK_CALLED_ON_VALID_SEQUENCE(scoped_checker_);
       upload_progress_.append("Record: ")
           .append(base::NumberToString(sequencing_id))
           .append("/")
           .append(base::NumberToString(generation_id))
+          .append("/")
+          .append(generation_guid)
           .append(" '")
           .append(data.data(), data.size())
           .append("'\n");
@@ -532,6 +548,7 @@ class LegacyStorageTest
                                Priority priority,
                                int64_t sequencing_id,
                                int64_t generation_id,
+                               GenerationGuid generation_guid,
                                Status status,
                                base::OnceCallback<void(bool)> processed_cb) {
       DCHECK_CALLED_ON_VALID_SEQUENCE(scoped_checker_);
@@ -539,6 +556,8 @@ class LegacyStorageTest
           .append(base::NumberToString(sequencing_id))
           .append("/")
           .append(base::NumberToString(generation_id))
+          .append("/")
+          .append(generation_guid)
           .append(" '")
           .append(status.ToString())
           .append("'\n");
@@ -551,18 +570,21 @@ class LegacyStorageTest
                      Priority priority,
                      int64_t sequencing_id,
                      int64_t generation_id,
+                     GenerationGuid generation_guid,
                      uint64_t count,
                      base::OnceCallback<void(bool)> processed_cb) {
       DCHECK_CALLED_ON_VALID_SEQUENCE(scoped_checker_);
       for (uint64_t c = 0; c < count; ++c) {
         DoEncounterSeqId(uploader_id, priority,
-                         sequencing_id + static_cast<int64_t>(c),
-                         generation_id);
+                         sequencing_id + static_cast<int64_t>(c), generation_id,
+                         generation_guid);
       }
       upload_progress_.append("Gap: ")
           .append(base::NumberToString(sequencing_id))
           .append("/")
           .append(base::NumberToString(generation_id))
+          .append("/")
+          .append(generation_guid)
           .append(" (")
           .append(base::NumberToString(count))
           .append(")\n");
@@ -595,7 +617,7 @@ class LegacyStorageTest
   };
 
   // Uploader interface implementation to be assigned to tests.
-  // Note that Storage guarantees that all APIs are executed on the same
+  // Note that NewStorage guarantees that all APIs are executed on the same
   // sequenced task runner (not the main test thread!).
   class TestUploader : public UploaderInterface {
    public:
@@ -605,7 +627,7 @@ class LegacyStorageTest
      public:
       SetUp(Priority priority,
             test::TestCallbackWaiter* waiter,
-            LegacyStorageTest* self)
+            NewStorageTest* self)
           : priority_(priority),
             uploader_(std::make_unique<TestUploader>(self)),
             uploader_id_(uploader_->uploader_id_),
@@ -713,7 +735,7 @@ class LegacyStorageTest
     // Helper class for setting up mock uploader expectations for key delivery.
     class SetKeyDelivery {
      public:
-      explicit SetKeyDelivery(LegacyStorageTest* self)
+      explicit SetKeyDelivery(NewStorageTest* self)
           : self_(self), uploader_(std::make_unique<TestUploader>(self)) {}
       SetKeyDelivery(const SetKeyDelivery& other) = delete;
       SetKeyDelivery& operator=(const SetKeyDelivery& other) = delete;
@@ -731,18 +753,17 @@ class LegacyStorageTest
         EXPECT_CALL(
             *uploader_->mock_upload_,
             UploadComplete(Eq(uploader_->uploader_id_), Eq(Status::StatusOK())))
-            .WillOnce(
-                WithoutArgs(Invoke(self_, &LegacyStorageTest::DeliverKey)))
+            .WillOnce(WithoutArgs(Invoke(self_, &NewStorageTest::DeliverKey)))
             .RetiresOnSaturation();
         return std::move(uploader_);
       }
 
      private:
-      LegacyStorageTest* const self_;
+      NewStorageTest* const self_;
       std::unique_ptr<TestUploader> uploader_;
     };
 
-    explicit TestUploader(LegacyStorageTest* self)
+    explicit TestUploader(NewStorageTest* self)
         : uploader_id_(next_uploader_id.fetch_add(1)),
           // Allocate MockUpload as raw pointer and immediately wrap it in
           // unique_ptr and pass to SequenceBoundUpload to own.
@@ -825,7 +846,7 @@ class LegacyStorageTest
     // Helper method for setting up dummy mock uploader expectations.
     // To be used only for uploads that we want to just ignore and do not care
     // about their outcome.
-    static std::unique_ptr<TestUploader> SetUpDummy(LegacyStorageTest* self) {
+    static std::unique_ptr<TestUploader> SetUpDummy(NewStorageTest* self) {
       auto uploader = std::make_unique<TestUploader>(self);
       // Any Record, RecordFailure of Gap could be encountered, and
       // returning false will cut the upload short.
@@ -879,13 +900,13 @@ class LegacyStorageTest
   StatusOr<scoped_refptr<StorageInterface>> CreateTestStorage(
       const StorageOptions& options,
       scoped_refptr<EncryptionModuleInterface> encryption_module) {
-    // Initialize Storage with no key.
+    // Initialize NewStorage with no key.
     test::TestEvent<StatusOr<scoped_refptr<StorageInterface>>> e;
     test_compression_module_ =
         base::MakeRefCounted<test::TestCompressionModule>();
-    Storage::Create(
+    NewStorage::Create(
         options,
-        base::BindRepeating(&LegacyStorageTest::AsyncStartMockUploader,
+        base::BindRepeating(&NewStorageTest::AsyncStartMockUploader,
                             base::Unretained(this)),
         encryption_module, test_compression_module_, e.cb());
     ASSIGN_OR_RETURN(auto storage, e.result());
@@ -925,8 +946,8 @@ class LegacyStorageTest
 
   void ResetTestStorage() {
     if (storage_) {
-      // StorageQueue comprising Storage are destructed on threads, wait
-      // for them to finish.
+      // StorageQueue comprising NewStorage are destructed on threads, wait for
+      // them to finish.
       test::TestCallbackAutoWaiter waiter;
       storage_->RegisterCompletionCallback(base::BindOnce(
           &test::TestCallbackAutoWaiter::Signal, base::Unretained(&waiter)));
@@ -940,8 +961,8 @@ class LegacyStorageTest
     EXPECT_THAT(expected_uploads_count_, Eq(0u));
     // Make sure all memory is deallocated.
     EXPECT_THAT(options_.memory_resource()->GetUsed(), Eq(0u));
-    // Make sure all disk is not reserved (files remain, but Storage is
-    // not responsible for them anymore).
+    // Make sure all disk is not reserved (files remain, but NewStorage is not
+    // responsible for them anymore).
     EXPECT_THAT(options_.disk_space_resource()->GetUsed(), Eq(0u));
   }
 
@@ -952,13 +973,13 @@ class LegacyStorageTest
           EncryptionModule::Create(
               /*is_enabled=*/true,
               /*renew_encryption_key_period=*/base::Minutes(30))) {
-    // Initialize Storage with no key.
+    // Initialize NewStorage with no key.
     test::TestEvent<StatusOr<scoped_refptr<StorageInterface>>> e;
     test_compression_module_ =
         base::MakeRefCounted<test::TestCompressionModule>();
-    Storage::Create(
+    NewStorage::Create(
         options,
-        base::BindRepeating(&LegacyStorageTest::AsyncStartMockUploaderFailing,
+        base::BindRepeating(&NewStorageTest::AsyncStartMockUploaderFailing,
                             base::Unretained(this)),
         encryption_module, test_compression_module_, e.cb());
     ASSIGN_OR_RETURN(auto storage, e.result());
@@ -975,7 +996,7 @@ class LegacyStorageTest
         base::BindOnce(
             [](UploaderInterface::UploadReason reason,
                UploaderInterface::UploaderInterfaceResultCb start_uploader_cb,
-               LegacyStorageTest* self) {
+               NewStorageTest* self) {
               if (self->expect_to_need_key_ &&
                   reason == UploaderInterface::UploadReason::KEY_DELIVERY) {
                 // Ignore expectation count in this special case.
@@ -1024,12 +1045,18 @@ class LegacyStorageTest
   }
 
   Status WriteString(Priority priority, base::StringPiece data) {
-    EXPECT_TRUE(storage_) << "Storage not created yet";
+    return WriteString(priority, data, "DM TOKEN");
+  }
+
+  Status WriteString(Priority priority,
+                     base::StringPiece data,
+                     DMtoken dm_token) {
+    EXPECT_TRUE(storage_) << "NewStorage not created yet";
     test::TestEvent<Status> w;
     Record record;
     record.set_data(std::string(data));
     record.set_destination(UPLOAD_EVENTS);
-    record.set_dm_token("DM TOKEN");
+    record.set_dm_token(dm_token);
     LOG(ERROR) << "Write priority=" << priority << " data='" << record.data()
                << "'";
     storage_->Write(priority, std::move(record), w.cb());
@@ -1037,7 +1064,13 @@ class LegacyStorageTest
   }
 
   void WriteStringOrDie(Priority priority, base::StringPiece data) {
-    const Status write_result = WriteString(priority, data);
+    WriteStringOrDie(priority, data, "DM TOKEN");
+  }
+
+  void WriteStringOrDie(Priority priority,
+                        base::StringPiece data,
+                        DMtoken dm_token) {
+    const Status write_result = WriteString(priority, data, dm_token);
     ASSERT_OK(write_result) << write_result;
   }
 
@@ -1046,11 +1079,14 @@ class LegacyStorageTest
                     bool force = false) {
     auto generation_it = last_upload_generation_id_.find(priority);
     ASSERT_NE(generation_it, last_upload_generation_id_.end()) << priority;
+    auto [generation_id, generation_guid] = generation_it->second;
     LOG(ERROR) << "Confirm priority=" << priority << " force=" << force
-               << " seq=" << sequencing_id << " gen=" << generation_it->second;
+               << " seq=" << sequencing_id << " gen_id=" << generation_id
+               << "gen_guid=" << generation_guid;
     SequenceInformation seq_info;
     seq_info.set_sequencing_id(sequencing_id);
-    seq_info.set_generation_id(generation_it->second);
+    seq_info.set_generation_id(generation_id);
+    seq_info.set_generation_guid(generation_guid);
     seq_info.set_priority(priority);
     test::TestEvent<Status> c;
     storage_->Confirm(std::move(seq_info), force, c.cb());
@@ -1080,7 +1116,7 @@ class LegacyStorageTest
     auto prepare_key_result = prepare_key_pair.result();
     DCHECK(prepare_key_result.ok());
     public_key_id = prepare_key_result.ValueOrDie();
-    // Prepare signed encryption key to be delivered to Storage.
+    // Prepare signed encryption key to be delivered to NewStorage.
     SignedEncryptionInfo signed_encryption_key;
     signed_encryption_key.set_public_asymmetric_key(
         std::string(reinterpret_cast<const char*>(public_value), kKeySize));
@@ -1185,7 +1221,7 @@ constexpr std::array<const char*, 3> kData = {"Rec1111", "Rec222", "Rec33"};
 constexpr std::array<const char*, 3> kMoreData = {"More1111", "More222",
                                                   "More33"};
 
-TEST_P(LegacyStorageTest, WriteIntoNewStorageAndReopen) {
+TEST_P(NewStorageTest, WriteIntoNewStorageAndReopen) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
   WriteStringOrDie(FAST_BATCH, kData[0]);
   WriteStringOrDie(FAST_BATCH, kData[1]);
@@ -1211,7 +1247,7 @@ TEST_P(LegacyStorageTest, WriteIntoNewStorageAndReopen) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
 }
 
-TEST_P(LegacyStorageTest, WriteIntoNewStorageReopenAndWriteMore) {
+TEST_P(NewStorageTest, WriteIntoNewStorageReopenAndWriteMore) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
   WriteStringOrDie(FAST_BATCH, kData[0]);
   WriteStringOrDie(FAST_BATCH, kData[1]);
@@ -1241,7 +1277,7 @@ TEST_P(LegacyStorageTest, WriteIntoNewStorageReopenAndWriteMore) {
   WriteStringOrDie(FAST_BATCH, kMoreData[2]);
 }
 
-TEST_P(LegacyStorageTest, WriteIntoNewStorageAndUpload) {
+TEST_P(NewStorageTest, WriteIntoNewStorageAndUpload) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
   WriteStringOrDie(FAST_BATCH, kData[0]);
   WriteStringOrDie(FAST_BATCH, kData[1]);
@@ -1265,7 +1301,7 @@ TEST_P(LegacyStorageTest, WriteIntoNewStorageAndUpload) {
   task_environment_.FastForwardBy(base::Seconds(1));
 }
 
-TEST_P(LegacyStorageTest, WriteIntoNewStorageAndUploadWithKeyUpdate) {
+TEST_P(NewStorageTest, WriteIntoNewStorageAndUploadWithKeyUpdate) {
   // Run the test only when encryption is enabled.
   if (!is_encryption_enabled()) {
     return;
@@ -1311,26 +1347,26 @@ TEST_P(LegacyStorageTest, WriteIntoNewStorageAndUploadWithKeyUpdate) {
   task_environment_.FastForwardBy(kKeyRenewalTime + base::Milliseconds(100));
 
   // Set uploader expectations for MANUAL upload with key delivery.
+  // Expect at least one KEY_DELIVERY, but allow for more if other MANUAL queues
+  // also need the key.
+  expect_to_need_key_ = true;
   test::TestCallbackAutoWaiter waiter;
   EXPECT_CALL(set_mock_uploader_expectations_,
               Call(Eq(UploaderInterface::UploadReason::KEY_DELIVERY)))
-      .WillOnce(Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
-        // Prevent more key delivery requests.
-        DeliverKey();
-        return TestUploader::SetUp(MANUAL_BATCH, &waiter, this)
-            .Required(3, kMoreData[0])
-            .Required(4, kMoreData[1])
-            .Required(5, kMoreData[2])
-            .Complete();
-      }))
-      .RetiresOnSaturation();
-
+      .Times(AtLeast(1))
+      .WillRepeatedly(
+          Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+            return TestUploader::SetUp(MANUAL_BATCH, &waiter, this)
+                .Possible(3, kMoreData[0])
+                .Possible(4, kMoreData[1])
+                .Possible(5, kMoreData[2])
+                .Complete();
+          }));
   // Trigger upload to make sure data is present.
-  SetExpectedUploadsCount();
   FlushOrDie(MANUAL_BATCH);
 }
 
-TEST_P(LegacyStorageTest, WriteIntoNewStorageReopenWriteMoreAndUpload) {
+TEST_P(NewStorageTest, WriteIntoNewStorageReopenWriteMoreAndUpload) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
   WriteStringOrDie(FAST_BATCH, kData[0]);
   WriteStringOrDie(FAST_BATCH, kData[1]);
@@ -1382,38 +1418,48 @@ TEST_P(LegacyStorageTest, WriteIntoNewStorageReopenWriteMoreAndUpload) {
   test::TestCallbackAutoWaiter waiter;
   EXPECT_CALL(set_mock_uploader_expectations_,
               Call(Eq(UploaderInterface::UploadReason::PERIODIC)))
-      .WillOnce(Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
-        return TestUploader::SetUp(FAST_BATCH, &waiter, this)
-            .RequireEither(0, kData[0], 3, kMoreData[0])
-            .RequireEither(1, kData[1], 4, kMoreData[1])
-            .RequireEither(2, kData[2], 5, kMoreData[2])
-            .RequireEither(0, kData[0], 3, kMoreData[0])
-            .RequireEither(1, kData[1], 4, kMoreData[1])
-            .RequireEither(2, kData[2], 5, kMoreData[2])
-            .Complete();
-      }))
+      .WillRepeatedly(
+          Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+            return TestUploader::SetUp(FAST_BATCH, &waiter, this)
+                .RequireEither(0, kData[0], 0, kMoreData[0])
+                .RequireEither(1, kData[1], 1, kMoreData[1])
+                .RequireEither(2, kData[2], 2, kMoreData[2])
+                .Complete();
+          }))
       .RetiresOnSaturation();
 
+  // Delete any received records uploaded at this point
+  upload_store_.Reset();
+
+  // Expect two uploads. Two queues exists and both will upload once: one queue
+  // uploads data enqueued before the storage reset and one queue uploads data
+  // enqueued after storage reset. This is technically testing implementation
+  // details and should be addressed at some point, but for now there's nothing
+  // we can do since SetExpectedUploadsCount MUST be called with the correct
+  // number of uploads or else the tests will not pass.
+  SetExpectedUploadsCount(2);
+
   // Trigger upload.
-  SetExpectedUploadsCount();
   task_environment_.FastForwardBy(base::Seconds(1));
+
+  // Wait for the TestUploader to finish because it runs on NewStorage's
+  // sequenced task runner, not the main test thread.
   task_environment_.RunUntilIdle();
 
-  const std::vector<TestRecord> all_uploaded_records = {
-      {FAST_BATCH, 0, kData[0]},     {FAST_BATCH, 1, kData[1]},
-      {FAST_BATCH, 2, kData[2]},     {FAST_BATCH, 3, kMoreData[0]},
-      {FAST_BATCH, 4, kMoreData[1]}, {FAST_BATCH, 5, kMoreData[2]}};
+  const std::vector<TestRecord> allKData = {{FAST_BATCH, 0, kData[0]},
+                                            {FAST_BATCH, 1, kData[1]},
+                                            {FAST_BATCH, 2, kData[2]}};
 
-  // Expect records to be contained in the same upload
-  EXPECT_THAT(upload_store_.Uploads(), testing::Contains(all_uploaded_records));
+  const std::vector<TestRecord> allKMoreData = {{FAST_BATCH, 0, kMoreData[0]},
+                                                {FAST_BATCH, 1, kMoreData[1]},
+                                                {FAST_BATCH, 2, kMoreData[2]}};
 
-  // Expect records are uploaded in the correct order relative to each other
-  // regardless of which upload they arrive in.
-  EXPECT_TRUE(RecordsArrivedInExpectedOrder(upload_store_.Records(),
-                                            all_uploaded_records));
+  EXPECT_TRUE(RecordsArrivedInExpectedOrder(upload_store_.Records(), allKData));
+  EXPECT_TRUE(
+      RecordsArrivedInExpectedOrder(upload_store_.Records(), allKMoreData));
 }
 
-TEST_P(LegacyStorageTest, WriteIntoNewStorageAndFlush) {
+TEST_P(NewStorageTest, WriteIntoNewStorageAndFlush) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
   WriteStringOrDie(MANUAL_BATCH, kData[0]);
   WriteStringOrDie(MANUAL_BATCH, kData[1]);
@@ -1437,7 +1483,7 @@ TEST_P(LegacyStorageTest, WriteIntoNewStorageAndFlush) {
   FlushOrDie(MANUAL_BATCH);
 }
 
-TEST_P(LegacyStorageTest, WriteIntoNewStorageReopenWriteMoreAndFlush) {
+TEST_P(NewStorageTest, WriteIntoNewStorageReopenWriteMoreAndFlush) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
   WriteStringOrDie(MANUAL_BATCH, kData[0]);
   WriteStringOrDie(MANUAL_BATCH, kData[1]);
@@ -1469,28 +1515,55 @@ TEST_P(LegacyStorageTest, WriteIntoNewStorageReopenWriteMoreAndFlush) {
   WriteStringOrDie(MANUAL_BATCH, kMoreData[1]);
   WriteStringOrDie(MANUAL_BATCH, kMoreData[2]);
 
+  // Delete any received records uploaded at this point
+  upload_store_.Reset();
+
   // Set uploader expectations.
   test::TestCallbackAutoWaiter waiter;
   EXPECT_CALL(set_mock_uploader_expectations_,
               Call(Eq(UploaderInterface::UploadReason::MANUAL)))
-      .WillOnce(Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
-        return TestUploader::SetUp(MANUAL_BATCH, &waiter, this)
-            .Required(0, kData[0])
-            .Required(1, kData[1])
-            .Required(2, kData[2])
-            .Required(3, kMoreData[0])
-            .Required(4, kMoreData[1])
-            .Required(5, kMoreData[2])
-            .Complete();
-      }))
+      .WillRepeatedly(
+          Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+            return TestUploader::SetUp(MANUAL_BATCH, &waiter, this)
+                // This setup verifies that data is received in the correct
+                // order -- kData[0] arrives before kData[1]. It does NOT verify
+                // that data is received in a specific upload (i.e. does not
+                // care if kData[0] arrives in the first or second upload)
+                .RequireEither(0, kData[0], 0, kMoreData[0])
+                .RequireEither(1, kData[1], 1, kMoreData[1])
+                .RequireEither(2, kData[2], 2, kMoreData[2])
+                .Complete();
+          }))
       .RetiresOnSaturation();
 
-  // Trigger upload.
-  SetExpectedUploadsCount();
+  // Expect two uploads. Two queues exists and both will upload once: one queue
+  // uploads data enqueued before the storage reset and one queue uploads data
+  // enqueued after storage reset. This is technically testing implementation
+  // details and should be addressed at some point, but for now there's nothing
+  // we can do since SetExpectedUploadsCount MUST be called with the correct
+  // number of uploads or else the tests will not pass.
+  SetExpectedUploadsCount(2);
   FlushOrDie(MANUAL_BATCH);
+
+  // Wait for the TestUploader to finish because it runs on NewStorage's
+  // sequenced task runner, not the main test thread.
+  task_environment_.RunUntilIdle();
+
+  const std::vector<TestRecord> allKData = {{MANUAL_BATCH, 0, kData[0]},
+                                            {MANUAL_BATCH, 1, kData[1]},
+                                            {MANUAL_BATCH, 2, kData[2]}};
+
+  const std::vector<TestRecord> allKMoreData = {
+      {MANUAL_BATCH, 0, kMoreData[0]},
+      {MANUAL_BATCH, 1, kMoreData[1]},
+      {MANUAL_BATCH, 2, kMoreData[2]}};
+
+  EXPECT_TRUE(RecordsArrivedInExpectedOrder(upload_store_.Records(), allKData));
+  EXPECT_TRUE(
+      RecordsArrivedInExpectedOrder(upload_store_.Records(), allKMoreData));
 }
 
-TEST_P(LegacyStorageTest, WriteAndRepeatedlyUploadWithConfirmations) {
+TEST_P(NewStorageTest, WriteAndRepeatedlyUploadWithConfirmations) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
 
   WriteStringOrDie(FAST_BATCH, kData[0]);
@@ -1603,7 +1676,7 @@ TEST_P(LegacyStorageTest, WriteAndRepeatedlyUploadWithConfirmations) {
   }
 }
 
-TEST_P(LegacyStorageTest, WriteAndUploadWithBadConfirmation) {
+TEST_P(NewStorageTest, WriteAndUploadWithBadConfirmation) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
 
   WriteStringOrDie(FAST_BATCH, kData[0]);
@@ -1643,7 +1716,7 @@ TEST_P(LegacyStorageTest, WriteAndUploadWithBadConfirmation) {
   ASSERT_FALSE(c_result.ok()) << c_result;
 }
 
-TEST_P(LegacyStorageTest, WriteAndRepeatedlySecurityUpload) {
+TEST_P(NewStorageTest, WriteAndRepeatedlySecurityUpload) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
 
   // Upload is initiated asynchronously, so it may happen after the next
@@ -1701,7 +1774,7 @@ TEST_P(LegacyStorageTest, WriteAndRepeatedlySecurityUpload) {
   }
 }
 
-TEST_P(LegacyStorageTest, WriteAndRepeatedlyImmediateUpload) {
+TEST_P(NewStorageTest, WriteAndRepeatedlyImmediateUpload) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
 
   // Upload is initiated asynchronously, so it may happen after the next
@@ -1759,7 +1832,7 @@ TEST_P(LegacyStorageTest, WriteAndRepeatedlyImmediateUpload) {
   }
 }
 
-TEST_P(LegacyStorageTest, WriteAndRepeatedlyImmediateUploadWithConfirmations) {
+TEST_P(NewStorageTest, WriteAndRepeatedlyImmediateUploadWithConfirmations) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
 
   // Upload is initiated asynchronously, so it may happen after the next
@@ -1873,7 +1946,7 @@ TEST_P(LegacyStorageTest, WriteAndRepeatedlyImmediateUploadWithConfirmations) {
   }
 }
 
-TEST_P(LegacyStorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
+TEST_P(NewStorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
 
   {
@@ -1972,7 +2045,7 @@ TEST_P(LegacyStorageTest, WriteAndRepeatedlyUploadMultipleQueues) {
   }
 }
 
-TEST_P(LegacyStorageTest, WriteAndImmediateUploadWithFailure) {
+TEST_P(NewStorageTest, WriteAndImmediateUploadWithFailure) {
   // Reset options to enable failure retry.
   options_.set_upload_retry_delay(base::Seconds(1));
 
@@ -2005,7 +2078,7 @@ TEST_P(LegacyStorageTest, WriteAndImmediateUploadWithFailure) {
   }
 }
 
-TEST_P(LegacyStorageTest, WriteEncryptFailure) {
+TEST_P(NewStorageTest, WriteEncryptFailure) {
   if (!is_encryption_enabled()) {
     return;  // No need to test when encryption is disabled.
   }
@@ -2028,7 +2101,7 @@ TEST_P(LegacyStorageTest, WriteEncryptFailure) {
   EXPECT_EQ(result.error_code(), error::UNKNOWN);
 }
 
-TEST_P(LegacyStorageTest, ForceConfirm) {
+TEST_P(NewStorageTest, ForceConfirm) {
   CreateTestStorageOrDie(BuildTestStorageOptions());
 
   WriteStringOrDie(FAST_BATCH, kData[0]);
@@ -2127,13 +2200,13 @@ TEST_P(LegacyStorageTest, ForceConfirm) {
   }
 }
 
-TEST_P(LegacyStorageTest, KeyIsRequestedWhenEncryptionRenewalPeriodExpires) {
+TEST_P(NewStorageTest, KeyIsRequestedWhenEncryptionRenewalPeriodExpires) {
   if (!is_encryption_enabled()) {
     return;  // Test only makes sense with encryption enabled.
   }
 
-  // Initialize Storage with failure to deliver key.
-  ASSERT_FALSE(storage_) << "LegacyStorageTest already assigned";
+  // Initialize NewStorage with failure to deliver key.
+  ASSERT_FALSE(storage_) << "NewStorageTest already assigned";
   options_.set_key_check_period(base::Seconds(4));
   StatusOr<scoped_refptr<StorageInterface>> storage_result =
       CreateTestStorageWithFailedKeyDelivery(
@@ -2145,8 +2218,8 @@ TEST_P(LegacyStorageTest, KeyIsRequestedWhenEncryptionRenewalPeriodExpires) {
           EncryptionModule::Create(
               /*is_enabled=*/true,
               base::Seconds(options_.key_check_period().InSeconds() - 1)));
-  ASSERT_OK(storage_result) << "Failed to create LegacyStorageTest, error="
-                            << storage_result.status();
+  ASSERT_OK(storage_result)
+      << "Failed to create NewStorageTest, error=" << storage_result.status();
   storage_ = std::move(storage_result.ValueOrDie());
 
   test::TestCallbackAutoWaiter waiter;
@@ -2162,8 +2235,8 @@ TEST_P(LegacyStorageTest, KeyIsRequestedWhenEncryptionRenewalPeriodExpires) {
       }))
       .RetiresOnSaturation();
 
-  // Storage doesn't have a key yet, so key request should succeed, and
-  // thus we expect UMA to log success for key delivery
+  // NewStorage doesn't have a key yet, so key request should succeed, and thus
+  // we expect UMA to log success for key delivery
   EXPECT_CALL(
       reporting::analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
       SendEnumToUMA(kKeyDeliveryResultUma, error::OK, error::MAX_VALUE));
@@ -2182,19 +2255,19 @@ TEST_P(LegacyStorageTest, KeyIsRequestedWhenEncryptionRenewalPeriodExpires) {
   task_environment_.FastForwardBy(options_.key_check_period());
 }
 
-TEST_P(LegacyStorageTest, KeyDeliveryFailureOnNewStorage) {
+TEST_P(NewStorageTest, KeyDeliveryFailureOnNewStorage) {
   static constexpr size_t kFailuresCount = 3;
 
   if (!is_encryption_enabled()) {
     return;  // Test only makes sense with encryption enabled.
   }
 
-  // Initialize Storage with failure to deliver key.
-  ASSERT_FALSE(storage_) << "LegacyStorageTest already assigned";
+  // Initialize NewStorage with failure to deliver key.
+  ASSERT_FALSE(storage_) << "NewStorageTest already assigned";
   StatusOr<scoped_refptr<StorageInterface>> storage_result =
       CreateTestStorageWithFailedKeyDelivery(BuildTestStorageOptions());
-  ASSERT_OK(storage_result) << "Failed to create LegacyStorageTest, error="
-                            << storage_result.status();
+  ASSERT_OK(storage_result)
+      << "Failed to create NewStorageTest, error=" << storage_result.status();
   storage_ = std::move(storage_result.ValueOrDie());
 
   key_delivery_failure_.store(true);
@@ -2217,7 +2290,7 @@ TEST_P(LegacyStorageTest, KeyDeliveryFailureOnNewStorage) {
     EXPECT_THAT(write_result.message(), HasSubstr(kKeyDeliveryErrorMessage))
         << write_result;
 
-    // Storage will continue to request the encryption key
+    // NewStorage will continue to request the encryption key
     EXPECT_CALL(
         reporting::analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
         SendEnumToUMA(kKeyDeliveryResultUma, kKeyDeliveryError,
@@ -2301,32 +2374,93 @@ TEST_P(LegacyStorageTest, KeyDeliveryFailureOnNewStorage) {
   WriteStringOrDie(MANUAL_BATCH, kMoreData[2]);
 
   // Set uploader expectations.
-  {
-    test::TestCallbackAutoWaiter waiter;
-    EXPECT_CALL(set_mock_uploader_expectations_,
-                Call(Eq(UploaderInterface::UploadReason::MANUAL)))
-        .WillOnce(
-            Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
-              return TestUploader::SetUp(MANUAL_BATCH, &waiter, this)
-                  .Required(0, kData[0])
-                  .Required(1, kData[1])
-                  .Required(2, kData[2])
-                  .Required(3, kMoreData[0])
-                  .Required(4, kMoreData[1])
-                  .Required(5, kMoreData[2])
-                  .Complete();
-            }))
-        .RetiresOnSaturation();
+  test::TestCallbackAutoWaiter waiter;
+  EXPECT_CALL(set_mock_uploader_expectations_,
+              Call(Eq(UploaderInterface::UploadReason::MANUAL)))
+      .WillRepeatedly(
+          Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+            return TestUploader::SetUp(MANUAL_BATCH, &waiter, this)
+                // This setup verifies that data is received in the
+                // correct order -- kData[0] arrives before kData[1]. It
+                // does NOT verify that data is received in a specific
+                // upload (i.e. does not care if kData[0] arrives in the
+                // first or second upload)
+                .RequireEither(0, kData[0], 0, kMoreData[0])
+                .RequireEither(1, kData[1], 1, kMoreData[1])
+                .RequireEither(2, kData[2], 2, kMoreData[2])
+                .Complete();
+          }))
+      .RetiresOnSaturation();
 
-    // Trigger upload.
-    SetExpectedUploadsCount();
-    FlushOrDie(MANUAL_BATCH);
+  // Expect two uploads. Two queues exists and both will upload once: one queue
+  // uploads data enqueued before the storage reset and one queue uploads data
+  // enqueued after storage reset. This is technically testing implementation
+  // details and should be addressed at some point, but for now there's nothing
+  // we can do since SetExpectedUploadsCount MUST be called with the correct
+  // number of uploads or else the tests will not pass.
+  SetExpectedUploadsCount(2);
+  FlushOrDie(MANUAL_BATCH);
+
+  // Wait for the TestUploader to finish because it runs on NewStorage's
+  // sequenced task runner, not the main test thread.
+  task_environment_.RunUntilIdle();
+
+  const std::vector<TestRecord> allKData = {{MANUAL_BATCH, 0, kData[0]},
+                                            {MANUAL_BATCH, 1, kData[1]},
+                                            {MANUAL_BATCH, 2, kData[2]}};
+
+  const std::vector<TestRecord> allKMoreData = {
+      {MANUAL_BATCH, 0, kMoreData[0]},
+      {MANUAL_BATCH, 1, kMoreData[1]},
+      {MANUAL_BATCH, 2, kMoreData[2]}};
+
+  EXPECT_TRUE(RecordsArrivedInExpectedOrder(upload_store_.Records(), allKData));
+  EXPECT_TRUE(
+      RecordsArrivedInExpectedOrder(upload_store_.Records(), allKMoreData));
+}
+
+TEST_P(NewStorageTest, MultipleUsersWriteSamePriorityAndUpload) {
+  CreateTestStorageOrDie(BuildTestStorageOptions());
+
+  std::vector<DMtoken> dm_tokens = {kDeviceDMToken};
+  static constexpr size_t kNumDMTokens = 12;
+  for (size_t i = 0; i < kNumDMTokens; i++) {
+    // Value of dm token doesn't matter so just use `i`
+    dm_tokens.emplace_back(base::NumberToString(i));
   }
+
+  for (const auto& dm_token : dm_tokens) {
+    // TODO(b/278735510): vary data
+    WriteStringOrDie(FAST_BATCH, kData[0], dm_token);
+    WriteStringOrDie(FAST_BATCH, kData[1], dm_token);
+    WriteStringOrDie(FAST_BATCH, kData[2], dm_token);
+  }
+
+  // Set uploader expectations.
+  test::TestCallbackAutoWaiter waiter;
+  EXPECT_CALL(set_mock_uploader_expectations_,
+              Call(Eq(UploaderInterface::UploadReason::PERIODIC)))
+      .WillRepeatedly(
+          Invoke([&waiter, this](UploaderInterface::UploadReason reason) {
+            return TestUploader::SetUp(FAST_BATCH, &waiter, this)
+                .Required(0, kData[0])
+                .Required(1, kData[1])
+                .Required(2, kData[2])
+                .Complete();
+          }))
+      .RetiresOnSaturation();
+
+  // One queue for each distinct DM token will write data.
+  SetExpectedUploadsCount(dm_tokens.size());
+
+  // Trigger upload.
+  task_environment_.FastForwardBy(base::Seconds(1));
+  task_environment_.RunUntilIdle();
 }
 
 INSTANTIATE_TEST_SUITE_P(
     VaryingFileSize,
-    LegacyStorageTest,
+    NewStorageTest,
     ::testing::Combine(::testing::Bool() /* true - encryption enabled */,
                        ::testing::Values(128 * 1024LL * 1024LL,
                                          256 /* two records in file */,

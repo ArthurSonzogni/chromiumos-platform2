@@ -73,9 +73,7 @@ class StorageModule : public StorageModuleInterface {
  private:
   friend base::RefCountedThreadSafe<StorageModule>;
 
-  // Storage backend (currently only Storage).
-  // TODO(b/160334561): make it a pluggable interface.
-  scoped_refptr<Storage> storage_;
+  scoped_refptr<StorageInterface> storage_;
 };
 
 }  // namespace reporting

@@ -93,6 +93,7 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // uploading records - periodically or immediately after Write (and in the
   // near future - upon explicit Flush request).
   static void Create(
+      GenerationGuid generation_guid,
       const QueueOptions& options,
       UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
       scoped_refptr<EncryptionModuleInterface> encryption_module,
@@ -273,7 +274,8 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   };
 
   // Private constructor, to be called by Create factory method only.
-  StorageQueue(scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
+  StorageQueue(GenerationGuid generation_guid,
+               scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner,
                const QueueOptions& options,
                UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
                scoped_refptr<EncryptionModuleInterface> encryption_module,
@@ -407,6 +409,12 @@ class StorageQueue : public base::RefCountedDeleteOnSequence<StorageQueue> {
   // matching the last sequencing id, or generated anew as a random number if no
   // such file found (files do not match the id).
   int64_t generation_id_ = 0;
+
+  // Identical in function to `generation_id_` but is globally unique across
+  // all devices instead of just on the device itself. Passed in as a parameter
+  // during initialization. The directory where the queue writes files to is
+  // named 'priority.generation_guid_'.
+  const GenerationGuid generation_guid_;
 
   // Digest of the last written record (loaded at queue initialization, absent
   // if the new generation has just started, and no records where stored yet).

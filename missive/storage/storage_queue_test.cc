@@ -628,7 +628,7 @@ class StorageQueueTest
     test::TestEvent<StatusOr<scoped_refptr<StorageQueue>>>
         storage_queue_create_event;
     StorageQueue::Create(
-        options,
+        /*generation_guid=*/"GENERATION_GUID", options,
         base::BindRepeating(&StorageQueueTest::AsyncStartMockUploader,
                             base::Unretained(this)),
         test_encryption_module_,

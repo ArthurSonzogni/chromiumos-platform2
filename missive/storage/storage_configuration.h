@@ -16,8 +16,17 @@
 
 #include "missive/proto/record_constants.pb.h"
 #include "missive/resources/resource_manager.h"
+#include "missive/util/statusor.h"
 
 namespace reporting {
+
+using GenerationGuid = std::string;
+using DMtoken = std::string;
+constexpr char kDeviceDMToken[] = "";
+
+// Key delivery UMA name
+static constexpr char kKeyDeliveryResultUma[] =
+    "Platform.Missive.KeyDeliveryResult";
 
 // Forward declaration.
 class QueueOptions;
@@ -45,10 +54,12 @@ class StorageOptions {
     return *this;
   }
 
-  // Generates list of queues with their priorities, ordered from logically
-  // lowest to the highest (not the order of `Priority` enumerator!)
+  // Generates queue options based on a given priority
   // Can be overridden by tests to modify queues options.
-  virtual QueuesOptionsList ProduceQueuesOptions() const;
+  virtual QueueOptions ProduceQueuesOptions(Priority priority) const;
+
+  // Generates list queue options. One QueueOption for each priority
+  virtual QueuesOptionsList ProduceQueuesOptionsList() const;
 
   StorageOptions& set_signature_verification_public_key(
       base::StringPiece signature_verification_public_key) {
@@ -129,6 +140,10 @@ class QueueOptions {
   QueueOptions& operator=(const QueueOptions& options) = delete;
   QueueOptions& set_subdirectory(const std::string& subdirectory) {
     directory_ = storage_options_.directory().Append(subdirectory);
+    return *this;
+  }
+  QueueOptions& set_subdirectory_extension(const std::string& extension) {
+    directory_ = directory_.AddExtension(extension);
     return *this;
   }
   QueueOptions& set_file_prefix(const std::string& file_prefix) {
