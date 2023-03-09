@@ -10,19 +10,19 @@
 
 #include <chromeos/libipp/attribute.h>
 #include <chromeos/libipp/frame.h>
+#include <chromeos/libipp/parser.h>
 #include <gtest/gtest.h>
 
 namespace {
 
 TEST(IppToJson, StringAttribute) {
-  ipp::Collection* grp = nullptr;
-  ipp::ParsingResults log{.whole_buffer_was_parsed = true};
+  ipp::CollsView::iterator grp;
+  ipp::SimpleParserLog log;
 
-  ipp::Frame frame(ipp::Version::_2_0, ipp::Status::client_error_gone, 1,
+  ipp::Frame frame(ipp::Status::client_error_gone, ipp::Version::_2_0, 1,
                    false);
-  ASSERT_EQ(frame.AddGroup(ipp::GroupTag::document_attributes, &grp),
+  ASSERT_EQ(frame.AddGroup(ipp::GroupTag::document_attributes, grp),
             ipp::Code::kOK);
-  ASSERT_NE(grp, nullptr);
   EXPECT_EQ(
       grp->AddAttr("test-attr", ipp::ValueTag::textWithoutLanguage, "value"),
       ipp::Code::kOK);
@@ -36,14 +36,13 @@ TEST(IppToJson, StringAttribute) {
 }
 
 TEST(IppToJson, StringWithLanguageAttribute) {
-  ipp::Collection* grp = nullptr;
-  ipp::ParsingResults log{.whole_buffer_was_parsed = true};
+  ipp::CollsView::iterator grp;
+  ipp::SimpleParserLog log;
 
-  ipp::Frame frame(ipp::Version::_2_0, ipp::Status::client_error_gone, 1,
+  ipp::Frame frame(ipp::Status::client_error_gone, ipp::Version::_2_0, 1,
                    false);
-  ASSERT_EQ(frame.AddGroup(ipp::GroupTag::document_attributes, &grp),
+  ASSERT_EQ(frame.AddGroup(ipp::GroupTag::document_attributes, grp),
             ipp::Code::kOK);
-  ASSERT_NE(grp, nullptr);
   EXPECT_EQ(grp->AddAttr("test-attr", ipp::ValueTag::textWithLanguage,
                          ipp::StringWithLanguage("Value", "Language")),
             ipp::Code::kOK);
@@ -57,13 +56,11 @@ TEST(IppToJson, StringWithLanguageAttribute) {
 }
 
 TEST(IppToJson, IntegerAttribute) {
-  ipp::Collection* grp = nullptr;
-  ipp::ParsingResults log{.whole_buffer_was_parsed = true};
+  ipp::CollsView::iterator grp;
+  ipp::SimpleParserLog log;
 
-  ipp::Frame frame(ipp::Version::_1_1, ipp::Status::successful_ok, 1, false);
-  ASSERT_EQ(frame.AddGroup(ipp::GroupTag::job_attributes, &grp),
-            ipp::Code::kOK);
-  ASSERT_NE(grp, nullptr);
+  ipp::Frame frame(ipp::Status::successful_ok, ipp::Version::_1_1, 1, false);
+  ASSERT_EQ(frame.AddGroup(ipp::GroupTag::job_attributes, grp), ipp::Code::kOK);
   EXPECT_EQ(grp->AddAttr("abc", ipp::ValueTag::integer, 123), ipp::Code::kOK);
 
   std::string json;
@@ -74,13 +71,11 @@ TEST(IppToJson, IntegerAttribute) {
 }
 
 TEST(IppToJson, EnumAttribute) {
-  ipp::Collection* grp = nullptr;
-  ipp::ParsingResults log{.whole_buffer_was_parsed = true};
+  ipp::CollsView::iterator grp;
+  ipp::SimpleParserLog log;
 
-  ipp::Frame frame(ipp::Version::_1_1, ipp::Status::successful_ok, 1, false);
-  ASSERT_EQ(frame.AddGroup(ipp::GroupTag::job_attributes, &grp),
-            ipp::Code::kOK);
-  ASSERT_NE(grp, nullptr);
+  ipp::Frame frame(ipp::Status::successful_ok, ipp::Version::_1_1, 1, false);
+  ASSERT_EQ(frame.AddGroup(ipp::GroupTag::job_attributes, grp), ipp::Code::kOK);
   EXPECT_EQ(grp->AddAttr("abcd", ipp::ValueTag::enum_, 1234), ipp::Code::kOK);
 
   std::string json;
@@ -91,13 +86,11 @@ TEST(IppToJson, EnumAttribute) {
 }
 
 TEST(IppToJson, BooleanAttribute) {
-  ipp::Collection* grp = nullptr;
-  ipp::ParsingResults log{.whole_buffer_was_parsed = true};
+  ipp::CollsView::iterator grp;
+  ipp::SimpleParserLog log;
 
-  ipp::Frame frame(ipp::Version::_1_1, ipp::Status::successful_ok, 1, false);
-  ASSERT_EQ(frame.AddGroup(ipp::GroupTag::job_attributes, &grp),
-            ipp::Code::kOK);
-  ASSERT_NE(grp, nullptr);
+  ipp::Frame frame(ipp::Status::successful_ok, ipp::Version::_1_1, 1, false);
+  ASSERT_EQ(frame.AddGroup(ipp::GroupTag::job_attributes, grp), ipp::Code::kOK);
   EXPECT_EQ(grp->AddAttr("attr1", true), ipp::Code::kOK);
   EXPECT_EQ(grp->AddAttr("attr2", false), ipp::Code::kOK);
 
@@ -110,13 +103,12 @@ TEST(IppToJson, BooleanAttribute) {
 }
 
 TEST(IppToJson, OutOfBandAttribute) {
-  ipp::Collection* grp = nullptr;
-  ipp::ParsingResults log{.whole_buffer_was_parsed = true};
+  ipp::CollsView::iterator grp;
+  ipp::SimpleParserLog log;
 
-  ipp::Frame frame(ipp::Version::_1_1, ipp::Status::successful_ok, 1, false);
-  ASSERT_EQ(frame.AddGroup(ipp::GroupTag::printer_attributes, &grp),
+  ipp::Frame frame(ipp::Status::successful_ok, ipp::Version::_1_1, 1, false);
+  ASSERT_EQ(frame.AddGroup(ipp::GroupTag::printer_attributes, grp),
             ipp::Code::kOK);
-  ASSERT_NE(grp, nullptr);
   EXPECT_EQ(grp->AddAttr("attr", ipp::ValueTag::not_settable), ipp::Code::kOK);
 
   std::string json;
@@ -127,13 +119,11 @@ TEST(IppToJson, OutOfBandAttribute) {
 }
 
 TEST(IppToJson, SetOfIntegersAttribute) {
-  ipp::Collection* grp = nullptr;
-  ipp::ParsingResults log{.whole_buffer_was_parsed = true};
+  ipp::CollsView::iterator grp;
+  ipp::SimpleParserLog log;
 
-  ipp::Frame frame(ipp::Version::_1_1, ipp::Status::successful_ok, 1, false);
-  ASSERT_EQ(frame.AddGroup(ipp::GroupTag::job_attributes, &grp),
-            ipp::Code::kOK);
-  ASSERT_NE(grp, nullptr);
+  ipp::Frame frame(ipp::Status::successful_ok, ipp::Version::_1_1, 1, false);
+  ASSERT_EQ(frame.AddGroup(ipp::GroupTag::job_attributes, grp), ipp::Code::kOK);
   EXPECT_EQ(grp->AddAttr("attr", std::vector<int32_t>{1, 2, 3}),
             ipp::Code::kOK);
 
@@ -145,14 +135,12 @@ TEST(IppToJson, SetOfIntegersAttribute) {
 }
 
 TEST(IppToJson, CollectionAttribute) {
-  ipp::Collection* grp = nullptr;
-  ipp::ParsingResults log{.whole_buffer_was_parsed = true};
+  ipp::CollsView::iterator grp;
+  ipp::SimpleParserLog log;
 
-  ipp::Frame frame(ipp::Version::_1_1, ipp::Status::successful_ok, 1, false);
-  ASSERT_EQ(frame.AddGroup(ipp::GroupTag::job_attributes, &grp),
-            ipp::Code::kOK);
-  ASSERT_NE(grp, nullptr);
-  ipp::Collection* coll;
+  ipp::Frame frame(ipp::Status::successful_ok, ipp::Version::_1_1, 1, false);
+  ASSERT_EQ(frame.AddGroup(ipp::GroupTag::job_attributes, grp), ipp::Code::kOK);
+  ipp::CollsView::iterator coll;
   ASSERT_EQ(grp->AddAttr("attr", coll), ipp::Code::kOK);
   EXPECT_EQ(coll->AddAttr("attr", true), ipp::Code::kOK);
 
@@ -165,16 +153,12 @@ TEST(IppToJson, CollectionAttribute) {
 }
 
 TEST(IppToJson, TwoEmptyGroups) {
-  ipp::Collection* grp = nullptr;
-  ipp::ParsingResults log{.whole_buffer_was_parsed = true};
+  ipp::CollsView::iterator grp;
+  ipp::SimpleParserLog log;
 
-  ipp::Frame frame(ipp::Version::_1_1, ipp::Status::successful_ok, 1, false);
-  ASSERT_EQ(frame.AddGroup(ipp::GroupTag::job_attributes, &grp),
-            ipp::Code::kOK);
-  ASSERT_NE(grp, nullptr);
-  ASSERT_EQ(frame.AddGroup(ipp::GroupTag::job_attributes, &grp),
-            ipp::Code::kOK);
-  ASSERT_NE(grp, nullptr);
+  ipp::Frame frame(ipp::Status::successful_ok, ipp::Version::_1_1, 1, false);
+  ASSERT_EQ(frame.AddGroup(ipp::GroupTag::job_attributes, grp), ipp::Code::kOK);
+  ASSERT_EQ(frame.AddGroup(ipp::GroupTag::job_attributes, grp), ipp::Code::kOK);
 
   std::string json;
   EXPECT_TRUE(ConvertToJson(frame, log, true, &json));
@@ -183,18 +167,18 @@ TEST(IppToJson, TwoEmptyGroups) {
 }
 
 TEST(IppToJson, ParsingLogs) {
-  ipp::ParsingResults log{.whole_buffer_was_parsed = true};
-  log.errors.push_back(ipp::Log{
-      .message = "msg", .frame_context = "fc", .parser_context = "pc"});
+  ipp::SimpleParserLog log;
+  log.AddParserError(
+      ipp::ParserError{ipp::AttrPath(ipp::GroupTag::job_attributes),
+                       ipp::ParserCode::kValueInvalidSize});
 
-  ipp::Frame frame(ipp::Version::_2_0, ipp::Status::client_error_gone, 1,
+  ipp::Frame frame(ipp::Status::client_error_gone, ipp::Version::_2_0, 1,
                    false);
 
   std::string json;
   EXPECT_TRUE(ConvertToJson(frame, log, true, &json));
-  EXPECT_EQ(json, R"({"parsing_logs":[{"frame_context":"fc","message":"msg",)"
-                  R"("parser_context":"pc"}],"response":{},)"
-                  R"("status":"client-error-gone"})");
+  EXPECT_EQ(json, R"({"parsing_logs":["job-attributes; ValueInvalidSize"],)"
+                  R"("response":{},"status":"client-error-gone"})");
 }
 
 }  // namespace

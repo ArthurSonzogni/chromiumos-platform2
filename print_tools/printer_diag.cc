@@ -13,7 +13,9 @@
 #include <brillo/http/http_request.h>
 #include <brillo/http/http_transport.h>
 #include <chromeos/libipp/attribute.h>
+#include <chromeos/libipp/builder.h>
 #include <chromeos/libipp/frame.h>
+#include <chromeos/libipp/parser.h>
 
 #include "helpers.h"
 #include "ipp_in_json.h"
@@ -161,10 +163,10 @@ int main(int argc, char** argv) {
     FLAGS_jsonf = "-";
 
   // Send IPP request and get a response.
-  ipp::Frame request(version, ipp::Operation::Get_Printer_Attributes);
-  auto group = request.GetGroup(ipp::GroupTag::operation_attributes);
-  group->AddAttr("printer-uri", ipp::ValueTag::uri, FLAGS_url);
-  std::vector<uint8_t> data = request.SaveToBuffer();
+  ipp::Frame request(ipp::Operation::Get_Printer_Attributes, version);
+  ipp::Collection& grp = request.Groups(ipp::GroupTag::operation_attributes)[0];
+  grp.AddAttr("printer-uri", ipp::ValueTag::uri, FLAGS_url);
+  std::vector<uint8_t> data = ipp::BuildBinaryFrame(request);
   auto data_optional = SendIppFrameAndGetResponse(FLAGS_url, data);
   if (!data_optional)
     return -2;
@@ -179,9 +181,9 @@ int main(int argc, char** argv) {
 
   // Parse the IPP response and save results.
   int return_code = 0;
-  ipp::ParsingResults log;
-  ipp::Frame response(data.data(), data.size(), &log);
-  if (!log.whole_buffer_was_parsed) {
+  ipp::SimpleParserLog log;
+  ipp::Frame response = ipp::Parse(data.data(), data.size(), log);
+  if (!log.CriticalErrors().empty()) {
     std::cerr << "Parsing of an obtained response was not completed."
               << std::endl;
     return_code = -5;
