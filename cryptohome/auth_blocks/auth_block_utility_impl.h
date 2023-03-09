@@ -79,12 +79,12 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       const ObfuscatedUsername& username,
       PreparedAuthFactorToken::Consumer callback) override;
 
-  void CreateKeyBlobsWithAuthBlockAsync(
+  void CreateKeyBlobsWithAuthBlock(
       AuthBlockType auth_block_type,
       const AuthInput& auth_input,
       AuthBlock::CreateCallback create_callback) override;
 
-  void DeriveKeyBlobsWithAuthBlockAsync(
+  void DeriveKeyBlobsWithAuthBlock(
       AuthBlockType auth_block_type,
       const AuthInput& auth_input,
       const AuthBlockState& auth_state,

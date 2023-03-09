@@ -434,7 +434,7 @@ bool DoRecoveryCryptoGetFakeMediatorPublicKeyAction(
 }
 
 // PersistVaultKeyset is as a functional callback for
-// AuthBlockUtility::CreateKeyBlobsWithAuthBlockAsync, which populates
+// AuthBlockUtility::CreateKeyBlobsWithAuthBlock, which populates
 // |key_blobs| and |auth_state| parameters. These parameters are used to write
 // freshly created VaultKeysets to disk.
 void PersistVaultKeyset(KeysetManagement* keyset_management,
@@ -507,7 +507,7 @@ void PersistVaultKeyset(KeysetManagement* keyset_management,
 }
 
 // DeriveExistingVaultKeyset is as a functional callback for
-// AuthBlockUtility::DeriveKeyBlobsWithAuthBlockAsync, which populates
+// AuthBlockUtility::DeriveKeyBlobsWithAuthBlock, which populates
 // |key_blobs| parameter. This parameter used to load VaultKeysets
 // from disk, and then starts a new callback to save a new
 // Vaultkeyset to disk
@@ -551,7 +551,7 @@ void DeriveExistingVaultKeyset(KeysetManagement* keyset_management,
   auto create_callback = base::BindOnce(&PersistVaultKeyset, keyset_management,
                                         key_data, std::move(old_vault_keyset),
                                         obfuscated_username, enable_key_data);
-  auth_block_utility->CreateKeyBlobsWithAuthBlockAsync(
+  auth_block_utility->CreateKeyBlobsWithAuthBlock(
       auth_block_type.value(), auth_input, std::move(create_callback));
 }
 
@@ -633,7 +633,7 @@ bool DoCreateVaultKeyset(const Username& username,
     auto create_callback = base::BindOnce(
         &PersistVaultKeyset, &keyset_management, key_data,
         /*old_vault_keyset=*/nullptr, obfuscated_username, enable_key_data);
-    auth_block_utility.CreateKeyBlobsWithAuthBlockAsync(
+    auth_block_utility.CreateKeyBlobsWithAuthBlock(
         auth_block_type.value(), auth_input, std::move(create_callback));
   } else {  // Add additional VaultKeyset case.
     AuthBlockState auth_state;
@@ -658,7 +658,7 @@ bool DoCreateVaultKeyset(const Username& username,
         key_data, std::ref(auth_input), std::move(existing_vault_keyset),
         obfuscated_username, enable_key_data);
 
-    auth_block_utility.DeriveKeyBlobsWithAuthBlockAsync(
+    auth_block_utility.DeriveKeyBlobsWithAuthBlock(
         *auth_block_type, auth_input, auth_state, std::move(derive_callback));
   }
 

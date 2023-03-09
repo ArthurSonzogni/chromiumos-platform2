@@ -282,8 +282,7 @@ class AuthSessionTest : public ::testing::Test {
     EXPECT_CALL(keyset_management_, AddResetSeedIfMissing(_))
         .WillRepeatedly(Return(false));
 
-    EXPECT_CALL(auth_block_utility_,
-                DeriveKeyBlobsWithAuthBlockAsync(_, _, _, _))
+    EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
         .WillRepeatedly([](AuthBlockType auth_block_type,
                            const AuthInput& auth_input,
                            const AuthBlockState& auth_state,
@@ -549,7 +548,7 @@ TEST_F(AuthSessionTest, NoLightweightAuthForDecryption) {
       .WillOnce(Return(true));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
       .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
-  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlockAsync(_, _, _, _))
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
       .WillOnce([](AuthBlockType, const AuthInput&, const AuthBlockState&,
                    AuthBlock::DeriveCallback derive_callback) {
         std::move(derive_callback)
@@ -708,7 +707,7 @@ TEST_F(AuthSessionTest,
 
   auto key_blobs = std::make_unique<KeyBlobs>();
   auto auth_block_state2 = std::make_unique<AuthBlockState>();
-  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(_, _, _))
+  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
       .WillOnce([&key_blobs, &auth_block_state2](
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
                     AuthBlock::CreateCallback create_callback) {
@@ -718,7 +717,7 @@ TEST_F(AuthSessionTest,
       });
 
   auto key_blobs2 = std::make_unique<KeyBlobs>();
-  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlockAsync(_, _, _, _))
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
       .WillOnce([&key_blobs2](AuthBlockType auth_block_type,
                               const AuthInput& auth_input,
                               const AuthBlockState& auth_state,
@@ -803,7 +802,7 @@ TEST_F(AuthSessionTest,
 
   auto key_blobs = std::make_unique<KeyBlobs>();
   auto auth_block_state2 = std::make_unique<AuthBlockState>();
-  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(_, _, _))
+  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
       .WillOnce([&key_blobs, &auth_block_state2](
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
                     AuthBlock::CreateCallback create_callback) {
@@ -813,7 +812,7 @@ TEST_F(AuthSessionTest,
       });
 
   auto key_blobs2 = std::make_unique<KeyBlobs>();
-  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlockAsync(_, _, _, _))
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
       .WillOnce([&key_blobs2](AuthBlockType auth_block_type,
                               const AuthInput& auth_input,
                               const AuthBlockState& auth_state,
@@ -892,7 +891,7 @@ TEST_F(AuthSessionTest,
       .WillOnce(Return(false));
 
   auto key_blobs2 = std::make_unique<KeyBlobs>();
-  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlockAsync(_, _, _, _))
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
       .WillOnce([&key_blobs2](AuthBlockType auth_block_type,
                               const AuthInput& auth_input,
                               const AuthBlockState& auth_state,
@@ -1055,11 +1054,11 @@ TEST_F(AuthSessionTest, AddMultipleAuthFactor) {
   request.mutable_auth_factor()->mutable_password_metadata();
   request.mutable_auth_input()->mutable_password_input()->set_secret(kFakePass);
 
-  // GetauthBlockTypeForCreation() and CreateKeyBlobsWithAuthBlockAsync() are
+  // GetauthBlockTypeForCreation() and CreateKeyBlobsWithAuthBlock() are
   // called for each of the key addition operations below.
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_))
       .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
-  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(_, _, _))
+  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
       .WillRepeatedly([](AuthBlockType auth_block_type,
                          const AuthInput& auth_input,
                          AuthBlock::CreateCallback create_callback) {
@@ -1269,11 +1268,11 @@ TEST_F(AuthSessionTest, UpdateAuthFactorSucceedsForPasswordVK) {
   EXPECT_EQ(auth_session.status(), AuthStatus::kAuthStatusAuthenticated);
   EXPECT_TRUE(auth_session.user_exists());
 
-  // GetAuthBlockTypeForCreation() and CreateKeyBlobsWithAuthBlockAsync() are
+  // GetAuthBlockTypeForCreation() and CreateKeyBlobsWithAuthBlock() are
   // called for the key update operations below.
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(_))
       .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
-  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(_, _, _))
+  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
       .WillRepeatedly([&](AuthBlockType auth_block_type,
                           const AuthInput& auth_input,
                           AuthBlock::CreateCallback create_callback) {
@@ -1563,7 +1562,7 @@ TEST_F(AuthSessionTest, AuthenticateAuthFactorWebAuthnIntent) {
       .WillOnce(Return(true));
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
       .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
-  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlockAsync(_, _, _, _))
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
       .WillOnce([](AuthBlockType, const AuthInput&, const AuthBlockState&,
                    AuthBlock::DeriveCallback derive_callback) {
         std::move(derive_callback)
@@ -1712,9 +1711,9 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
     EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeForCreation(
                                          AuthFactorType::kCryptohomeRecovery))
         .WillRepeatedly(ReturnValue(AuthBlockType::kCryptohomeRecovery));
-    EXPECT_CALL(auth_block_utility_,
-                CreateKeyBlobsWithAuthBlockAsync(
-                    AuthBlockType::kCryptohomeRecovery, _, _))
+    EXPECT_CALL(
+        auth_block_utility_,
+        CreateKeyBlobsWithAuthBlock(AuthBlockType::kCryptohomeRecovery, _, _))
         .WillOnce([&secret](auto auth_block_type, auto auth_input,
                             auto create_callback) {
           auto key_blobs = std::make_unique<KeyBlobs>();
@@ -1755,7 +1754,7 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
     EXPECT_CALL(auth_block_utility_,
                 GetAuthBlockTypeForCreation(AuthFactorType::kPassword))
         .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
-    EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(
+    EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(
                                          AuthBlockType::kTpmBoundToPcr, _, _))
         .WillOnce([](AuthBlockType auth_block_type, const AuthInput& auth_input,
                      AuthBlock::CreateCallback create_callback) {
@@ -1809,8 +1808,8 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
                     AuthBlockStateTypeIs<CryptohomeRecoveryAuthBlockState>()))
         .WillRepeatedly(Return(AuthBlockType::kCryptohomeRecovery));
     EXPECT_CALL(auth_block_utility_,
-                DeriveKeyBlobsWithAuthBlockAsync(
-                    AuthBlockType::kCryptohomeRecovery, _, _, _))
+                DeriveKeyBlobsWithAuthBlock(AuthBlockType::kCryptohomeRecovery,
+                                            _, _, _))
         .WillOnce([&secret](auto auth_block_type, auto auth_input,
                             auto auth_state, auto derive_callback) {
           auto key_blobs = std::make_unique<KeyBlobs>();
@@ -1841,9 +1840,9 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
                 GetAuthBlockTypeFromState(
                     AuthBlockStateTypeIs<TpmBoundToPcrAuthBlockState>()))
         .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
-    EXPECT_CALL(auth_block_utility_,
-                DeriveKeyBlobsWithAuthBlockAsync(AuthBlockType::kTpmBoundToPcr,
-                                                 _, _, _))
+    EXPECT_CALL(
+        auth_block_utility_,
+        DeriveKeyBlobsWithAuthBlock(AuthBlockType::kTpmBoundToPcr, _, _, _))
         .WillOnce([](AuthBlockType auth_block_type, const AuthInput& auth_input,
                      const AuthBlockState& auth_state,
                      AuthBlock::DeriveCallback derive_callback) {
@@ -1884,7 +1883,7 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
     EXPECT_CALL(auth_block_utility_,
                 GetAuthBlockTypeForCreation(AuthFactorType::kPassword))
         .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
-    EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(
+    EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(
                                          AuthBlockType::kTpmBoundToPcr, _, _))
         .WillOnce([](AuthBlockType auth_block_type, const AuthInput& auth_input,
                      AuthBlock::CreateCallback create_callback) {
@@ -1927,8 +1926,8 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
     EXPECT_CALL(auth_block_utility_,
                 GetAuthBlockTypeForCreation(AuthFactorType::kPin))
         .WillRepeatedly(ReturnValue(AuthBlockType::kPinWeaver));
-    EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(
-                                         AuthBlockType::kPinWeaver, _, _))
+    EXPECT_CALL(auth_block_utility_,
+                CreateKeyBlobsWithAuthBlock(AuthBlockType::kPinWeaver, _, _))
         .WillOnce([](AuthBlockType auth_block_type, const AuthInput& auth_input,
                      AuthBlock::CreateCallback create_callback) {
           // Make an arbitrary auth block state type can be used in this test.
@@ -2034,8 +2033,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaUss) {
   EXPECT_CALL(auth_block_utility_,
               GetAuthBlockTypeForCreation(AuthFactorType::kPassword))
       .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
-  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(
-                                       AuthBlockType::kTpmBoundToPcr, _, _))
+  EXPECT_CALL(auth_block_utility_,
+              CreateKeyBlobsWithAuthBlock(AuthBlockType::kTpmBoundToPcr, _, _))
       .WillOnce([](AuthBlockType auth_block_type, const AuthInput& auth_input,
                    AuthBlock::CreateCallback create_callback) {
         // Make an arbitrary auth block state type can be used in this test.
@@ -2105,8 +2104,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAuthFactorViaAsyncUss) {
   EXPECT_CALL(auth_block_utility_,
               GetAuthBlockTypeForCreation(AuthFactorType::kPassword))
       .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
-  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(
-                                       AuthBlockType::kTpmBoundToPcr, _, _))
+  EXPECT_CALL(auth_block_utility_,
+              CreateKeyBlobsWithAuthBlock(AuthBlockType::kTpmBoundToPcr, _, _))
       .WillOnce([this](AuthBlockType, const AuthInput&,
                        AuthBlock::CreateCallback create_callback) {
         // Make an arbitrary auth block state, but schedule it to run later to
@@ -2180,8 +2179,8 @@ TEST_F(AuthSessionWithUssExperimentTest,
   EXPECT_CALL(auth_block_utility_,
               GetAuthBlockTypeForCreation(AuthFactorType::kPassword))
       .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
-  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(
-                                       AuthBlockType::kTpmBoundToPcr, _, _))
+  EXPECT_CALL(auth_block_utility_,
+              CreateKeyBlobsWithAuthBlock(AuthBlockType::kTpmBoundToPcr, _, _))
       .WillOnce([this](AuthBlockType, const AuthInput&,
                        AuthBlock::CreateCallback create_callback) {
         // Have the creation callback report an error.
@@ -2275,8 +2274,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
   EXPECT_CALL(auth_block_utility_,
               GetAuthBlockTypeForCreation(AuthFactorType::kPassword))
       .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
-  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(
-                                       AuthBlockType::kTpmBoundToPcr, _, _))
+  EXPECT_CALL(auth_block_utility_,
+              CreateKeyBlobsWithAuthBlock(AuthBlockType::kTpmBoundToPcr, _, _))
       .WillOnce([](AuthBlockType auth_block_type, const AuthInput& auth_input,
                    AuthBlock::CreateCallback create_callback) {
         // Make an arbitrary auth block state type can be used in this test.
@@ -2320,7 +2319,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AddPasswordAndPinAuthFactorViaUss) {
               GetAuthBlockTypeForCreation(AuthFactorType::kPin))
       .WillRepeatedly(ReturnValue(AuthBlockType::kPinWeaver));
   EXPECT_CALL(auth_block_utility_,
-              CreateKeyBlobsWithAuthBlockAsync(AuthBlockType::kPinWeaver, _, _))
+              CreateKeyBlobsWithAuthBlock(AuthBlockType::kPinWeaver, _, _))
       .WillOnce([](AuthBlockType auth_block_type, const AuthInput& auth_input,
                    AuthBlock::CreateCallback create_callback) {
         // Make an arbitrary auth block state type can be used in this test.
@@ -2431,7 +2430,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordAuthFactorViaUss) {
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<TpmBoundToPcrAuthBlockState>()))
       .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
-  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlockAsync(
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(
                                        AuthBlockType::kTpmBoundToPcr, _, _, _))
       .WillOnce([&kFakePerCredentialSecret](
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
@@ -2545,7 +2544,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<TpmBoundToPcrAuthBlockState>()))
       .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
-  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlockAsync(
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(
                                        AuthBlockType::kTpmBoundToPcr, _, _, _))
       .WillOnce([this, &kFakePerCredentialSecret](
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
@@ -2652,7 +2651,7 @@ TEST_F(AuthSessionWithUssExperimentTest,
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<TpmBoundToPcrAuthBlockState>()))
       .WillRepeatedly(Return(AuthBlockType::kTpmBoundToPcr));
-  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlockAsync(
+  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlock(
                                        AuthBlockType::kTpmBoundToPcr, _, _, _))
       .WillOnce([this](AuthBlockType auth_block_type,
                        const AuthInput& auth_input,
@@ -2748,8 +2747,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePinAuthFactorViaUss) {
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<PinWeaverAuthBlockState>()))
       .WillRepeatedly(Return(AuthBlockType::kPinWeaver));
-  EXPECT_CALL(auth_block_utility_, DeriveKeyBlobsWithAuthBlockAsync(
-                                       AuthBlockType::kPinWeaver, _, _, _))
+  EXPECT_CALL(auth_block_utility_,
+              DeriveKeyBlobsWithAuthBlock(AuthBlockType::kPinWeaver, _, _, _))
       .WillOnce([&kFakePerCredentialSecret](
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
                     const AuthBlockState& auth_state,
@@ -2794,9 +2793,9 @@ TEST_F(AuthSessionWithUssExperimentTest, AddCryptohomeRecoveryAuthFactor) {
   EXPECT_CALL(auth_block_utility_,
               GetAuthBlockTypeForCreation(AuthFactorType::kCryptohomeRecovery))
       .WillRepeatedly(ReturnValue(AuthBlockType::kCryptohomeRecovery));
-  EXPECT_CALL(auth_block_utility_,
-              CreateKeyBlobsWithAuthBlockAsync(
-                  AuthBlockType::kCryptohomeRecovery, _, _))
+  EXPECT_CALL(
+      auth_block_utility_,
+      CreateKeyBlobsWithAuthBlock(AuthBlockType::kCryptohomeRecovery, _, _))
       .WillOnce([](AuthBlockType auth_block_type, const AuthInput& auth_input,
                    AuthBlock::CreateCallback create_callback) {
         // Make an arbitrary auth block state type can be used in this test.
@@ -2927,9 +2926,9 @@ TEST_F(AuthSessionWithUssExperimentTest,
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<CryptohomeRecoveryAuthBlockState>()))
       .WillRepeatedly(Return(AuthBlockType::kCryptohomeRecovery));
-  EXPECT_CALL(auth_block_utility_,
-              DeriveKeyBlobsWithAuthBlockAsync(
-                  AuthBlockType::kCryptohomeRecovery, _, _, _))
+  EXPECT_CALL(
+      auth_block_utility_,
+      DeriveKeyBlobsWithAuthBlock(AuthBlockType::kCryptohomeRecovery, _, _, _))
       .WillOnce([&kFakePerCredentialSecret](
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
                     const AuthBlockState& auth_state,
@@ -3034,9 +3033,9 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticateSmartCardAuthFactor) {
               GetAuthBlockTypeFromState(
                   AuthBlockStateTypeIs<ChallengeCredentialAuthBlockState>()))
       .WillRepeatedly(Return(AuthBlockType::kChallengeCredential));
-  EXPECT_CALL(auth_block_utility_,
-              DeriveKeyBlobsWithAuthBlockAsync(
-                  AuthBlockType::kChallengeCredential, _, _, _))
+  EXPECT_CALL(
+      auth_block_utility_,
+      DeriveKeyBlobsWithAuthBlock(AuthBlockType::kChallengeCredential, _, _, _))
       .WillOnce([&kFakePerCredentialSecret](
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
                     const AuthBlockState& auth_state,
@@ -4071,7 +4070,7 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsInAuthBlock) {
   EXPECT_CALL(auth_block_utility_,
               GetAuthBlockTypeForCreation(AuthFactorType::kPassword))
       .WillRepeatedly(ReturnValue(AuthBlockType::kTpmBoundToPcr));
-  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(_, _, _))
+  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
       .WillOnce([](auto, auto, AuthBlock::CreateCallback create_callback) {
         // Make an arbitrary auth block state type can be used in this test.
         auto key_blobs = std::make_unique<KeyBlobs>();
@@ -4106,7 +4105,7 @@ TEST_F(AuthSessionTest, UpdateAuthFactorFailsInAuthBlock) {
   EXPECT_THAT(add_future.Get(), IsOk());
   // Setting the expectations for the new auth block creation. The mock is set
   // to fail.
-  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(_, _, _))
+  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
       .WillOnce([](auto, auto, AuthBlock::CreateCallback create_callback) {
         std::move(create_callback)
             .Run(MakeStatus<CryptohomeCryptoError>(
@@ -4226,7 +4225,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordVkToKioskUss) {
   EXPECT_CALL(auth_block_utility_, GetAuthBlockTypeFromState(_))
       .WillRepeatedly(Return(AuthBlockType::kScrypt));
   EXPECT_CALL(auth_block_utility_,
-              DeriveKeyBlobsWithAuthBlockAsync(AuthBlockType::kScrypt, _, _, _))
+              DeriveKeyBlobsWithAuthBlock(AuthBlockType::kScrypt, _, _, _))
       .WillOnce([&](AuthBlockType auth_block_type, const AuthInput& auth_input,
                     const AuthBlockState& auth_state,
                     AuthBlock::DeriveCallback derive_callback) {
@@ -4236,7 +4235,7 @@ TEST_F(AuthSessionWithUssExperimentTest, AuthenticatePasswordVkToKioskUss) {
   EXPECT_CALL(keyset_management_, GetValidKeysetWithKeyBlobs(_, _, _))
       .WillOnce([&](auto...) { return make_vk(); });
   // These calls will happen during the migration.
-  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(_, _, _))
+  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
       .WillOnce([&](AuthBlockType auth_block_type, const AuthInput& auth_input,
                     AuthBlock::CreateCallback create_callback) {
         std::move(create_callback)
@@ -4289,8 +4288,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddFingerprint) {
   EXPECT_CALL(auth_block_utility_,
               GetAuthBlockTypeForCreation(AuthFactorType::kFingerprint))
       .WillRepeatedly(ReturnValue(AuthBlockType::kFingerprint));
-  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(
-                                       AuthBlockType::kFingerprint, _, _))
+  EXPECT_CALL(auth_block_utility_,
+              CreateKeyBlobsWithAuthBlock(AuthBlockType::kFingerprint, _, _))
       .WillOnce([&](AuthBlockType auth_block_type, const AuthInput& auth_input,
                     AuthBlock::CreateCallback create_callback) {
         // During the first create, rate-limiter should be empty.
@@ -4331,8 +4330,8 @@ TEST_F(AuthSessionWithUssExperimentTest, AddFingerprint) {
   EXPECT_CALL(auth_block_utility_,
               GetAuthBlockTypeForCreation(AuthFactorType::kFingerprint))
       .WillRepeatedly(ReturnValue(AuthBlockType::kFingerprint));
-  EXPECT_CALL(auth_block_utility_, CreateKeyBlobsWithAuthBlockAsync(
-                                       AuthBlockType::kFingerprint, _, _))
+  EXPECT_CALL(auth_block_utility_,
+              CreateKeyBlobsWithAuthBlock(AuthBlockType::kFingerprint, _, _))
       .WillOnce([&](AuthBlockType auth_block_type, const AuthInput& auth_input,
                     AuthBlock::CreateCallback create_callback) {
         // During the second create, rate-limiter should already exist.

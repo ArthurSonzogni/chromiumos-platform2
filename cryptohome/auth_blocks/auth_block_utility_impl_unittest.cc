@@ -604,7 +604,7 @@ TEST_F(AuthBlockUtilityImplTest, CreatePinweaverAuthBlockTest) {
   TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
              std::unique_ptr<AuthBlockState>>
       create_result;
-  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
+  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
       AuthBlockType::kPinWeaver, auth_input, create_result.GetCallback());
 
   // Verify
@@ -652,7 +652,7 @@ TEST_F(AuthBlockUtilityImplTest, DerivePinWeaverAuthBlock) {
   // No need to check for the KeyBlobs value, it is already being tested in
   // AuthBlock unittest.
   TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>> derive_result;
-  auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlockAsync(
+  auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
       AuthBlockType::kPinWeaver, auth_input, auth_state,
       derive_result.GetCallback());
   EXPECT_THAT(derive_result.Get<0>(), IsOk());
@@ -681,7 +681,7 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedPcrBoundAuthBlock) {
   TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
              std::unique_ptr<AuthBlockState>>
       create_result;
-  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
+  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
       AuthBlockType::kTpmBoundToPcr, auth_input, create_result.GetCallback());
 
   // Verify
@@ -713,7 +713,7 @@ TEST_F(AuthBlockUtilityImplTest,
   TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
              std::unique_ptr<AuthBlockState>>
       create_result;
-  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
+  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
       AuthBlockType::kTpmBoundToPcr, auth_input, create_result.GetCallback());
 
   // Verify
@@ -753,7 +753,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedPcrBoundAuthBlock) {
 
   // Verify.
   TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>> derive_result;
-  auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlockAsync(
+  auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
       AuthBlockType::kTpmBoundToPcr, auth_input, auth_state,
       derive_result.GetCallback());
   EXPECT_THAT(derive_result.Get<0>(), IsOk());
@@ -779,7 +779,7 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedNonPcrBoundAuthBlock) {
   TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
              std::unique_ptr<AuthBlockState>>
       create_result;
-  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
+  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
       AuthBlockType::kTpmNotBoundToPcr, auth_input,
       create_result.GetCallback());
 
@@ -812,7 +812,7 @@ TEST_F(AuthBlockUtilityImplTest,
   TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
              std::unique_ptr<AuthBlockState>>
       create_result;
-  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
+  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
       AuthBlockType::kTpmNotBoundToPcr, auth_input,
       create_result.GetCallback());
 
@@ -854,7 +854,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedNonPcrBoundAuthBlock) {
 
   // Verify
   TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>> derive_result;
-  auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlockAsync(
+  auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
       AuthBlockType::kTpmNotBoundToPcr, auth_input, auth_state,
       derive_result.GetCallback());
   EXPECT_THAT(derive_result.Get<0>(), IsOk());
@@ -884,7 +884,7 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedEccAuthBlock) {
   TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
              std::unique_ptr<AuthBlockState>>
       create_result;
-  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
+  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
       AuthBlockType::kTpmEcc, auth_input, create_result.GetCallback());
 
   // Verify
@@ -915,7 +915,7 @@ TEST_F(AuthBlockUtilityImplTest, CreateTpmBackedEccAuthBlockErrorNoLoader) {
   TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
              std::unique_ptr<AuthBlockState>>
       create_result;
-  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
+  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
       AuthBlockType::kTpmEcc, auth_input, create_result.GetCallback());
 
   // Verify
@@ -960,7 +960,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveTpmBackedEccAuthBlock) {
 
   // Verify
   TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>> derive_result;
-  auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlockAsync(
+  auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
       AuthBlockType::kTpmEcc, auth_input, auth_state,
       derive_result.GetCallback());
   EXPECT_THAT(derive_result.Get<0>(), IsOk());
@@ -982,7 +982,7 @@ TEST_F(AuthBlockUtilityImplTest, CreateScryptAuthBlockTest) {
   TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>,
              std::unique_ptr<AuthBlockState>>
       create_result;
-  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
+  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
       AuthBlockType::kScrypt, auth_input, create_result.GetCallback());
 
   // Verify
@@ -1081,7 +1081,7 @@ TEST_F(AuthBlockUtilityImplTest, DeriveScryptAuthBlock) {
   // Test
   // Verify
   TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>> derive_result;
-  auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlockAsync(
+  auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
       AuthBlockType::kScrypt, auth_input, auth_state,
       derive_result.GetCallback());
   EXPECT_THAT(derive_result.Get<0>(), IsOk());
@@ -1182,13 +1182,13 @@ TEST_F(AuthBlockUtilityImplTest, DeriveDoubleWrappedAuthBlock) {
 
   // Verify
   TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>> derive_result;
-  auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlockAsync(
+  auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
       AuthBlockType::kDoubleWrappedCompat, auth_input, auth_state,
       derive_result.GetCallback());
   EXPECT_THAT(derive_result.Get<0>(), IsOk());
 }
 
-// Test that CreateKeyBlobsWithAuthBlockAsync creates AuthBlockState
+// Test that CreateKeyBlobsWithAuthBlock creates AuthBlockState
 // and KeyBlobs, internally using a SyncToAsyncAuthBlockAdapter for
 // accessing the key material from TpmBoundToPcrAuthBlock.
 TEST_F(AuthBlockUtilityImplTest, SyncToAsyncAdapterCreate) {
@@ -1228,11 +1228,11 @@ TEST_F(AuthBlockUtilityImplTest, SyncToAsyncAdapterCreate) {
       credentials.GetObfuscatedUsername(), /*reset_secret*/ std::nullopt};
 
   // Test.
-  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
+  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
       AuthBlockType::kTpmBoundToPcr, auth_input, std::move(create_callback));
 }
 
-// Test that DeriveKeyBlobsWithAuthBlockAsync derives KeyBlobs,
+// Test that DeriveKeyBlobsWithAuthBlock derives KeyBlobs,
 // internally using a SyncToAsyncAuthBlockAdapter for
 // accessing the key material from TpmBoundToPcrAuthBlock.
 TEST_F(AuthBlockUtilityImplTest, SyncToAsyncAdapterDerive) {
@@ -1270,12 +1270,12 @@ TEST_F(AuthBlockUtilityImplTest, SyncToAsyncAdapterDerive) {
         EXPECT_NE(blobs->chaps_iv, std::nullopt);
       });
 
-  auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlockAsync(
+  auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
       AuthBlockType::kTpmBoundToPcr, auth_input, auth_state,
       std::move(derive_callback));
 }
 
-// Test that CreateKeyBlobsWithAuthBlockAsync creates AuthBlockState
+// Test that CreateKeyBlobsWithAuthBlock creates AuthBlockState
 // and KeyBlobs, internally using a AsyncChallengeCredentialAuthBlock for
 // accessing the key material.
 TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialCreate) {
@@ -1357,7 +1357,7 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialCreate) {
       .dbus_service_name = kKeyDelegateDBusService};
 
   // Test.
-  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlockAsync(
+  auth_block_utility_impl_->CreateKeyBlobsWithAuthBlock(
       AuthBlockType::kChallengeCredential, auth_input,
       std::move(create_callback));
 }
@@ -1450,7 +1450,7 @@ TEST_F(AuthBlockUtilityImplTest, AsyncChallengeCredentialDerive) {
           .challenge_signature_algorithms =
               {structure::ChallengeSignatureAlgorithm::kRsassaPkcs1V15Sha256},
           .dbus_service_name = kKeyDelegateDBusService}};
-  auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlockAsync(
+  auth_block_utility_impl_->DeriveKeyBlobsWithAuthBlock(
       AuthBlockType::kChallengeCredential, auth_input, auth_state,
       std::move(derive_callback));
 }

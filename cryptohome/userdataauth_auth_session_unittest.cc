@@ -191,7 +191,7 @@ void MockKeysetDerivation(const ObfuscatedUsername& obfuscated_username,
           static_cast<CryptohomeError::ErrorLocation>(1),
           std::string("FakeErrorLocation"));
 
-  EXPECT_CALL(auth_block_utility, DeriveKeyBlobsWithAuthBlockAsync(_, _, _, _))
+  EXPECT_CALL(auth_block_utility, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
       .WillOnce([=](AuthBlockType, const AuthInput&, const AuthBlockState&,
                     AuthBlock::DeriveCallback derive_callback) {
         std::move(derive_callback)
@@ -210,7 +210,7 @@ void MockKeysetCreation(MockAuthBlockUtility& auth_block_utility) {
       .WillOnce(ReturnValue(AuthBlockType::kTpmEcc))
       .RetiresOnSaturation();
 
-  EXPECT_CALL(auth_block_utility, CreateKeyBlobsWithAuthBlockAsync(_, _, _))
+  EXPECT_CALL(auth_block_utility, CreateKeyBlobsWithAuthBlock(_, _, _))
       .WillOnce([](AuthBlockType, const AuthInput&,
                    AuthBlock::CreateCallback create_callback) {
         std::move(create_callback)

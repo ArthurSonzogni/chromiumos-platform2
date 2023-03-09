@@ -366,7 +366,7 @@ void AuthBlockUtilityImpl::PrepareAuthFactorForAdd(
   }
 }
 
-void AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlockAsync(
+void AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlock(
     AuthBlockType auth_block_type,
     const AuthInput& auth_input,
     AuthBlock::CreateCallback create_callback) {
@@ -399,7 +399,7 @@ void AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlockAsync(
   auth_block_ptr->Create(auth_input, std::move(managed_callback));
 }
 
-void AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlockAsync(
+void AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlock(
     AuthBlockType auth_block_type,
     const AuthInput& auth_input,
     const AuthBlockState& auth_state,

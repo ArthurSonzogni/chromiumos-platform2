@@ -682,7 +682,7 @@ void AuthSession::AuthenticateViaVaultKeysetAndMigrateToUss(
       request_auth_factor_type, auth_input, *auth_block_type, metadata,
       std::move(auth_session_performance_timer), std::move(on_done));
 
-  auth_block_utility_->DeriveKeyBlobsWithAuthBlockAsync(
+  auth_block_utility_->DeriveKeyBlobsWithAuthBlock(
       *auth_block_type, auth_input, auth_state, std::move(derive_callback));
 }
 
@@ -845,7 +845,7 @@ void AuthSession::OnMigrationUssCreated(
       std::move(migration_performance_timer), std::move(on_done),
       std::move(pre_migration_status));
 
-  auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
+  auth_block_utility_->CreateKeyBlobsWithAuthBlock(
       auth_block_type, migration_auth_input_status.value(),
       std::move(create_callback));
 }
@@ -1361,9 +1361,9 @@ void AuthSession::UpdateAuthFactor(
       auth_input_status.value(), stored_auth_factor->storage_type(),
       std::move(auth_session_performance_timer), std::move(on_done));
 
-  auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
-      auth_block_type.value(), auth_input_status.value(),
-      std::move(create_callback));
+  auth_block_utility_->CreateKeyBlobsWithAuthBlock(auth_block_type.value(),
+                                                   auth_input_status.value(),
+                                                   std::move(create_callback));
 }
 
 AuthBlock::CreateCallback AuthSession::GetUpdateAuthFactorCallback(
@@ -1800,7 +1800,7 @@ AuthBlockType AuthSession::ResaveVaultKeysetIfNeeded(
   AuthBlock::CreateCallback create_callback =
       base::BindOnce(&AuthSession::ResaveKeysetOnKeyBlobsGenerated,
                      base::Unretained(this), std::move(updated_vault_keyset));
-  auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
+  auth_block_utility_->CreateKeyBlobsWithAuthBlock(
       out_auth_block_type.value(), auth_input,
       /*CreateCallback*/ std::move(create_callback));
 
@@ -2473,7 +2473,7 @@ void AuthSession::AddAuthFactorImpl(
       auth_input, auth_factor_storage_type,
       std::move(auth_session_performance_timer), std::move(on_done));
 
-  auth_block_utility_->CreateKeyBlobsWithAuthBlockAsync(
+  auth_block_utility_->CreateKeyBlobsWithAuthBlock(
       auth_block_type.value(), auth_input, std::move(create_callback));
 }
 
@@ -2571,7 +2571,7 @@ void AuthSession::AuthenticateViaUserSecretStash(
       &AuthSession::LoadUSSMainKeyAndFsKeyset, weak_factory_.GetWeakPtr(),
       auth_factor.type(), auth_factor_label, auth_input,
       std::move(auth_session_performance_timer), std::move(on_done));
-  auth_block_utility_->DeriveKeyBlobsWithAuthBlockAsync(
+  auth_block_utility_->DeriveKeyBlobsWithAuthBlock(
       *auth_block_type, auth_input, auth_factor.auth_block_state(),
       std::move(derive_callback));
 }

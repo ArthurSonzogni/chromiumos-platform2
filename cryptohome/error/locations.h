@@ -133,25 +133,25 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocPinWeaverAuthBlockDeriveScryptFailedInDerive = 153,
   /* ./auth_blocks/pin_weaver_auth_block.cc */
   kLocPinWeaverAuthBlockCheckCredFailedInDerive = 154,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* =Obsolete= */
   kLocAuthBlockUtilNoAuthBlockInCreateKeyBlobs = 155,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* =Obsolete= */
   kLocAuthBlockUtilCreateFailedInCreateKeyBlobs = 156,
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockUtilNoAuthBlockInCreateKeyBlobsAsync = 157,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* =Obsolete= */
   kLocAuthBlockUtilNoAuthBlockInDeriveKeyBlobs = 158,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* =Obsolete= */
   kLocAuthBlockUtilNoVaultKeysetInDeriveKeyBlobs = 159,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* =Obsolete= */
   kLocAuthBlockUtilDeriveFailedInDeriveKeyBlobs = 160,
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockUtilNoAuthBlockInDeriveKeyBlobsAsync = 161,
   /* =Obsolete= */
   kLocAuthBlockUtilCHRecoveryUnsupportedInGetAuthBlockWithType = 162,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* =Obsolete= */
   kLocAuthBlockUtilMaxValueUnsupportedInGetAuthBlockWithType = 163,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* =Obsolete= */
   kLocAuthBlockUtilUnknownUnsupportedInGetAuthBlockWithType = 164,
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockUtilNoChalInGetAsyncAuthBlockWithType = 165,
@@ -1441,7 +1441,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthBlockUtilNoSupportedInGetAuthBlockWithType = 2717,
   /* =Obsolete= */
   kLocAuthBlockUtilMaxValueUnsupportedInIsAuthBlockSupported = 2718,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* =Obsolete= */
   kLocAuthBlockUtilNotSupportedInGetAuthBlockWithType = 2719,
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockUtilNotSupportedInGetAsyncAuthBlockWithType = 2720,
@@ -1561,7 +1561,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocFingerprintAuthBlockUnimplemented = 3337,
   /* ./auth_blocks/fingerprint_auth_block.cc */
   kLocFingerprintAuthBlockPrepareForRemovalUnimplemented = 3338,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* ./auth_blocks/fingerprint_auth_block.cc */
   kLocFingerprintAuthBlockNoServiceInIsSupported = 3339,
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockUtilFingerprintNoServiceInGetAsyncAuthBlock = 3340,

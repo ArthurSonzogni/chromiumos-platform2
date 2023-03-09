@@ -100,7 +100,7 @@ class AuthBlockUtility {
   // user input when the credentials are entered first time. Thus, Create should
   // be called to generate the KeyBlobs for adding initial key, adding key and
   // migrating a key.
-  virtual void CreateKeyBlobsWithAuthBlockAsync(
+  virtual void CreateKeyBlobsWithAuthBlock(
       AuthBlockType auth_block_type,
       const AuthInput& auth_input,
       AuthBlock::CreateCallback create_callback) = 0;
@@ -110,7 +110,7 @@ class AuthBlockUtility {
   // KeyBlobs from provided input and the stored metadata for an existing
   // key. Thus Derive should be called to generate the KeyBlob for loading an
   // existing wrapped key from the disk for user authentication.
-  virtual void DeriveKeyBlobsWithAuthBlockAsync(
+  virtual void DeriveKeyBlobsWithAuthBlock(
       AuthBlockType auth_block_type,
       const AuthInput& auth_input,
       const AuthBlockState& auth_state,

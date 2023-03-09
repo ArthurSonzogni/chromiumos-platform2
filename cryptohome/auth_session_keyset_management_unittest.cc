@@ -290,8 +290,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     auto auth_block_state = std::make_unique<AuthBlockState>();
     auth_block_state->state = kTpmState;
 
-    EXPECT_CALL(mock_auth_block_utility_,
-                CreateKeyBlobsWithAuthBlockAsync(_, _, _))
+    EXPECT_CALL(mock_auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
         .WillOnce([&key_blobs, &auth_block_state](
                       AuthBlockType auth_block_type,
                       const AuthInput& auth_input,
@@ -324,7 +323,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
 
     auto key_blobs2 = std::make_unique<KeyBlobs>(kKeyBlobs);
     EXPECT_CALL(mock_auth_block_utility_,
-                DeriveKeyBlobsWithAuthBlockAsync(_, _, _, _))
+                DeriveKeyBlobsWithAuthBlock(_, _, _, _))
         .WillOnce([&key_blobs2](AuthBlockType auth_block_type,
                                 const AuthInput& auth_input,
                                 const AuthBlockState& auth_state,
@@ -337,8 +336,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
     auto auth_block_state = std::make_unique<AuthBlockState>();
     auth_block_state->state = kTpmState;
 
-    EXPECT_CALL(mock_auth_block_utility_,
-                CreateKeyBlobsWithAuthBlockAsync(_, _, _))
+    EXPECT_CALL(mock_auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
         .WillRepeatedly([&key_blobs, &auth_block_state](
                             AuthBlockType auth_block_type,
                             const AuthInput& auth_input,
@@ -505,7 +503,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
       .username = users_[0].username,
       .obfuscated_username = users_[0].obfuscated,
   };
-  auth_block_utility_.CreateKeyBlobsWithAuthBlockAsync(
+  auth_block_utility_.CreateKeyBlobsWithAuthBlock(
       AuthBlockType::kTpmEcc, auth_input,
       base::BindLambdaForTesting(
           [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs,
@@ -922,8 +920,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   };
   auto auth_block_state = std::make_unique<AuthBlockState>();
   auth_block_state->state = tpm_state;
-  EXPECT_CALL(mock_auth_block_utility_,
-              CreateKeyBlobsWithAuthBlockAsync(_, _, _))
+  EXPECT_CALL(mock_auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
       .WillOnce([&key_blobs, &auth_block_state](
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
                     AuthBlock::CreateCallback create_callback) {
@@ -951,8 +948,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   };
   auto auth_block_state2 = std::make_unique<AuthBlockState>();
   auth_block_state2->state = tpm_state2;
-  EXPECT_CALL(mock_auth_block_utility_,
-              CreateKeyBlobsWithAuthBlockAsync(_, _, _))
+  EXPECT_CALL(mock_auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
       .WillOnce([&key_blobs2, &auth_block_state2](
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
                     AuthBlock::CreateCallback create_callback) {
@@ -997,8 +993,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   key_blobs3->vkk_key = kNewBlob32;
   key_blobs3->vkk_iv = kNewBlob16;
   key_blobs3->chaps_iv = kNewBlob16;
-  EXPECT_CALL(mock_auth_block_utility_,
-              DeriveKeyBlobsWithAuthBlockAsync(_, _, _, _))
+  EXPECT_CALL(mock_auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
       .WillOnce([&key_blobs3](AuthBlockType auth_block_type,
                               const AuthInput& auth_input,
                               const AuthBlockState& auth_state,
@@ -1058,8 +1053,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   };
   auto auth_block_state = std::make_unique<AuthBlockState>();
   auth_block_state->state = tpm_state;
-  EXPECT_CALL(mock_auth_block_utility_,
-              CreateKeyBlobsWithAuthBlockAsync(_, _, _))
+  EXPECT_CALL(mock_auth_block_utility_, CreateKeyBlobsWithAuthBlock(_, _, _))
       .WillOnce([&key_blobs, &auth_block_state](
                     AuthBlockType auth_block_type, const AuthInput& auth_input,
                     AuthBlock::CreateCallback create_callback) {
@@ -1112,8 +1106,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
   key_blobs2->vkk_key = kBlob32;
   key_blobs2->vkk_iv = kBlob16;
   key_blobs2->chaps_iv = kBlob16;
-  EXPECT_CALL(mock_auth_block_utility_,
-              DeriveKeyBlobsWithAuthBlockAsync(_, _, _, _))
+  EXPECT_CALL(mock_auth_block_utility_, DeriveKeyBlobsWithAuthBlock(_, _, _, _))
       .WillOnce([&key_blobs2](AuthBlockType auth_block_type,
                               const AuthInput& auth_input,
                               const AuthBlockState& auth_state,
