@@ -121,12 +121,6 @@ constexpr char kVmRootfsName[] = "vm_rootfs.img";
 // Name of the VM tools image to be mounted at kToolsMountPath.
 constexpr char kVmToolsDiskName[] = "vm_tools.img";
 
-// Filesystem location to mount VM tools image.
-constexpr char kToolsMountPath[] = "/opt/google/cros-containers";
-
-// Filesystem type of VM tools image.
-constexpr char kToolsFsType[] = "ext4";
-
 // The VM instance name of Arcvm
 constexpr char kArcVmName[] = "arcvm";
 
@@ -2259,16 +2253,6 @@ StartVmResponse Service::StartVm(StartVmRequest request,
   std::string error;
   if (!vm->SetTimezone(GetHostTimeZone(), &error)) {
     LOG(WARNING) << "Failed to set VM timezone: " << error;
-  }
-
-  // Mount the tools disk if it exists.
-  if (!tools_device.empty()) {
-    if (!vm->Mount(tools_device, kToolsMountPath, kToolsFsType, MS_RDONLY,
-                   "")) {
-      LOG(ERROR) << "Failed to mount tools disk";
-      response.set_failure_reason("Failed to mount tools disk");
-      return response;
-    }
   }
 
   // Do all the mounts.
