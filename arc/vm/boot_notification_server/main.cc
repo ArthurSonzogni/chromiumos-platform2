@@ -19,6 +19,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <brillo/files/file_util.h>
 #include <brillo/syslog_logging.h>
 
 #include "arc/vm/boot_notification_server/util.h"
@@ -52,7 +53,7 @@ int main(int argc, const char** argv) {
     return -1;
 
   // Delete host socket path if it exists.
-  if (!base::DeleteFile(base::FilePath(kHostSocketPath)))
+  if (!brillo::DeleteFile(base::FilePath(kHostSocketPath)))
     LOG(FATAL) << "Unable to delete pre-existing socket at " << kHostSocketPath;
 
   // Listen for connection from host/Chrome. Chrome expects that by the time it

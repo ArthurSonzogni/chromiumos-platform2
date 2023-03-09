@@ -19,6 +19,7 @@
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
+#include <brillo/files/file_util.h>
 #include <sqlite3.h>
 
 #include "arc/apk-cache/apk_cache_database.h"
@@ -152,7 +153,8 @@ bool OpaqueFilesCleaner::DeleteCache() const {
 }
 
 bool OpaqueFilesCleaner::DeleteFiles() const {
-  if (base::PathExists(files_path_) && base::DeletePathRecursively(files_path_))
+  if (base::PathExists(files_path_) &&
+      brillo::DeletePathRecursively(files_path_))
     return true;
 
   LOG(ERROR) << "Failed to delete files directory";

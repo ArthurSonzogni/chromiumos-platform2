@@ -13,6 +13,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
+#include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 
 namespace apk_cache {
@@ -28,7 +29,7 @@ bool CreateFile(const base::FilePath& file_path) {
 }
 
 bool DeleteFile(const base::FilePath& file_path) {
-  return base::DeleteFile(file_path);
+  return brillo::DeleteFile(file_path);
 }
 
 bool CreateDir(const base::FilePath& dir_path) {

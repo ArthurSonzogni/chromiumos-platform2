@@ -11,6 +11,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <brillo/cryptohome.h>
 #include <brillo/data_encoding.h>
+#include <brillo/files/file_util.h>
 #include <brillo/secure_blob.h>
 #include <crypto/rsa_private_key.h>
 #include <dbus/bus.h>
@@ -83,7 +84,7 @@ class DBusAdaptorTest : public testing::Test {
 
   void TearDown() override {
     dbus_adaptor_.reset();
-    EXPECT_TRUE(base::DeletePathRecursively(root_tempdir_.GetPath()));
+    EXPECT_TRUE(brillo::DeletePathRecursively(root_tempdir_.GetPath()));
   }
 
   DBusAdaptor* dbus_adaptor() { return dbus_adaptor_.get(); }
@@ -301,7 +302,7 @@ TEST_F(DBusAdaptorTest, TakeSnapshotDouble) {
 TEST_F(DBusAdaptorTest, LoadSnapshotNoAndroidDataDir) {
   CreateDir(last_snapshot_dir().Append(kAndroidDataDirectory));
   CreateDir(previous_snapshot_dir().Append(kAndroidDataDirectory));
-  EXPECT_TRUE(base::DeletePathRecursively(user_directory()));
+  EXPECT_TRUE(brillo::DeletePathRecursively(user_directory()));
   EXPECT_FALSE(base::DirectoryExists(user_directory()));
 
   bool last, success;

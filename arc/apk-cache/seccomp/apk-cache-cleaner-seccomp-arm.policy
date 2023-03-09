@@ -63,3 +63,5 @@ geteuid32: 1
 fchmod: 1
 clock_gettime: 1
 clock_gettime64: 1
+dup: 1
+unlinkat: 1

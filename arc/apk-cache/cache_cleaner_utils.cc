@@ -11,6 +11,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <brillo/files/file_util.h>
 
 namespace apk_cache {
 
@@ -27,7 +28,7 @@ bool RemoveUnexpectedItemsFromDir(
     if (expected_items.find(unexpected_file_path.BaseName().MaybeAsASCII()) ==
         expected_items.end()) {
       LOG(INFO) << "Deleting " << unexpected_file_path.value();
-      if (!base::DeletePathRecursively(unexpected_file_path)) {
+      if (!brillo::DeletePathRecursively(unexpected_file_path)) {
         LOG(ERROR) << "Could not delete " << unexpected_file_path.value();
         success = false;
       }

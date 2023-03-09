@@ -21,6 +21,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <brillo/dbus/dbus_method_invoker.h>
+#include <brillo/files/file_util.h>
 #include <brillo/files/safe_fd.h>
 #include <cdm_oemcrypto/proto_bindings/client_information.pb.h>
 #include <chromeos/dbus/service_constants.h>
@@ -586,7 +587,7 @@ bool ExpandPropertyFiles(const base::FilePath& source_path,
                          scoped_refptr<::dbus::Bus> bus) {
   brillo::CrosConfig config;
   if (single_file)
-    base::DeleteFile(dest_path);
+    brillo::DeleteFile(dest_path);
 
   ExtraProps soc_props_type = ExtraProps::kNone;
   if (include_soc_props) {

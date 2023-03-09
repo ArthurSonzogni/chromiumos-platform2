@@ -15,6 +15,7 @@
 #include <base/memory/ptr_util.h>
 #include <base/strings/string_number_conversions.h>
 #include <brillo/data_encoding.h>
+#include <brillo/files/file_util.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
@@ -159,7 +160,7 @@ bool DBusAdaptor::ClearSnapshot(bool last) {
     LOG(WARNING) << "Snapshot directory is already empty: " << dir.value();
     return true;
   }
-  if (!base::DeletePathRecursively(dir)) {
+  if (!brillo::DeletePathRecursively(dir)) {
     LOG(ERROR) << "Failed to delete snapshot directory: " << dir.value();
     return false;
   }

@@ -23,6 +23,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/posix/eintr_wrapper.h>
+#include <brillo/files/file_util.h>
 
 namespace arc {
 namespace {
@@ -83,7 +84,7 @@ base::ScopedFD CreateUnixDomainSocket(const base::FilePath& path) {
   }
 
   // Remove stale file first. Ignore the error intentionally.
-  base::DeleteFile(path);
+  brillo::DeleteFile(path);
 
   if (bind(fd.get(), reinterpret_cast<const struct sockaddr*>(&sa),
            sizeof(sa)) == -1) {

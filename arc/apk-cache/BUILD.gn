@@ -115,6 +115,7 @@ if (use.fuzzer) {
 if (use.test) {
   pkg_config("apk-cache-common_testrunner_config") {
     pkg_deps = [
+      "libbrillo",
       "libchrome",
       "libchrome-test",
       "sqlite3",

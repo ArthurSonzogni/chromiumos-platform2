@@ -19,6 +19,7 @@
 #include <base/logging.h>
 #include <base/time/time.h>
 #include <base/values.h>
+#include <brillo/files/file_util.h>
 
 #include "arc/apk-cache/apk_cache_utils.h"
 #include "arc/apk-cache/cache_cleaner_db.h"
@@ -189,7 +190,7 @@ bool Clean(const base::FilePath& cache_path) {
       continue;
 
     if (!IsPackageValid(package_path)) {
-      if (!base::DeletePathRecursively(package_path)) {
+      if (!brillo::DeletePathRecursively(package_path)) {
         LOG(ERROR) << "Error deletion path " << package_path.value();
         success = false;
       }

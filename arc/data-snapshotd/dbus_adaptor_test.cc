@@ -15,6 +15,7 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <brillo/cryptohome.h>
 #include <brillo/data_encoding.h>
+#include <brillo/files/file_util.h>
 #include <brillo/secure_blob.h>
 #include <brillo/dbus/mock_dbus_method_response.h>
 #include <dbus/bus.h>
@@ -145,7 +146,7 @@ class DBusAdaptorTest : public testing::Test {
 
   void TearDown() override {
     dbus_adaptor_.reset();
-    EXPECT_TRUE(base::DeletePathRecursively(root_tempdir_.GetPath()));
+    EXPECT_TRUE(brillo::DeletePathRecursively(root_tempdir_.GetPath()));
     process_launcher_.reset();
   }
 

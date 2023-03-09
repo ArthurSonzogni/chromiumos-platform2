@@ -62,3 +62,5 @@ fchmod: 1
 gettid: 1
 clock_gettime: 1
 gettimeofday: 1
+dup: 1
+unlinkat: 1

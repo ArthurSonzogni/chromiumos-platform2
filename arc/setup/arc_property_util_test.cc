@@ -13,6 +13,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/files/file_util.h>
 #include <cdm_oemcrypto/proto_bindings/client_information.pb.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos-config/libcros_config/cros_config.h>
@@ -322,7 +323,7 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles) {
   // If default.prop does not exist in the source path, it should still process
   // the other files, while also ensuring that default.prop is removed from the
   // destination path.
-  base::DeleteFile(dest_dir.Append("default.prop"));
+  brillo::DeleteFile(dest_dir.Append("default.prop"));
 
   EXPECT_TRUE(expander.Expand());
 
@@ -436,8 +437,8 @@ TEST_F(ArcPropertyUtilTest, ExpandPropertyFiles_SingleFile) {
 
   // If optional ones e.g. default.prop does not exist in the source path, it
   // should still process the other files.
-  base::DeleteFile(source_dir.Append("default.prop"));
-  base::DeleteFile(source_dir.Append("odm_build.prop"));
+  brillo::DeleteFile(source_dir.Append("default.prop"));
+  brillo::DeleteFile(source_dir.Append("odm_build.prop"));
   EXPECT_TRUE(expander.Expand());
   EXPECT_TRUE(base::ReadFileToString(dest_prop_file, &content));
   EXPECT_EQ(base::StringPrintf("%s%s%s%s", kBuildProp, kSystemExtBuildProp,

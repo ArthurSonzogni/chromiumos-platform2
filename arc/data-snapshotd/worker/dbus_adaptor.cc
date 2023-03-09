@@ -16,6 +16,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <brillo/data_encoding.h>
 #include <brillo/cryptohome.h>
+#include <brillo/files/file_util.h>
 #include <brillo/secure_blob.h>
 #include <crypto/scoped_openssl_types.h>
 #include <crypto/rsa_private_key.h>
@@ -138,7 +139,7 @@ bool DBusAdaptor::TakeSnapshot(const std::string& account_id,
 
   // This callback will be executed or released before the end of this function.
   base::ScopedClosureRunner snapshot_clearer(
-      base::BindOnce(base::IgnoreResult(&base::DeletePathRecursively),
+      base::BindOnce(base::IgnoreResult(&brillo::DeletePathRecursively),
                      last_snapshot_directory_));
   std::vector<uint8_t> public_key_info;
   if (!brillo::data_encoding::Base64Decode(encoded_public_key,
@@ -253,8 +254,8 @@ bool DBusAdaptor::TryToLoadSnapshot(const std::string& userhash,
 
   // TODO(b/188753815): remove once the second path deletion is no longer
   // needed with --profile=minimalistc-mountns
-  if (!base::DeletePathRecursively(android_data_dir) &&
-      !base::DeletePathRecursively(android_data_dir)) {
+  if (!brillo::DeletePathRecursively(android_data_dir) &&
+      !brillo::DeletePathRecursively(android_data_dir)) {
     LOG(ERROR) << "Failed to remove android-data directory.";
     return false;
   }

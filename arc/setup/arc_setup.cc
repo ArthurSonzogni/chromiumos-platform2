@@ -46,6 +46,7 @@
 #include <brillo/cryptohome.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/file_utils.h>
+#include <brillo/files/file_util.h>
 #include <brillo/files/safe_fd.h>
 #include <brillo/scoped_mount_namespace.h>
 #include <chromeos-config/libcros_config/cros_config.h>
@@ -1124,7 +1125,7 @@ bool ArcSetup::InstallLinksToHostSideCodeInternal(
     const base::FilePath dest_file = dest_isa_directory.Append(base_name);
     // Remove |dest_file| first when it exists. When |dest_file| is a symlink,
     // this deletes the link itself.
-    IGNORE_ERRORS(base::DeleteFile(dest_file));
+    IGNORE_ERRORS(brillo::DeleteFile(dest_file));
     EXIT_IF(!base::CreateSymbolicLink(link_target, dest_file));
     EXIT_IF(lchown(dest_file.value().c_str(), kRootUid, kRootGid) != 0);
     EXIT_IF(!Chcon(kDalvikCacheSELinuxContext, dest_file));
@@ -1200,7 +1201,7 @@ void ArcSetup::CreateAndroidCmdlineFile(bool is_dev_mode) {
   }
   EXIT_IF(!Chown(kRootUid, kRootGid, arc_paths_->art_dalvik_cache_directory));
   // Remove the file zygote may have created.
-  IGNORE_ERRORS(base::DeleteFile(
+  IGNORE_ERRORS(brillo::DeleteFile(
       arc_paths_->art_dalvik_cache_directory.Append(kZygotePreloadDoneFile)));
 
   // For now, integrity checking time is the time needed to relocate
@@ -1781,7 +1782,7 @@ void ArcSetup::UnmountOnStop() {
 void ArcSetup::RemoveAndroidKmsgFifo() {
   // This function is for Mode::STOP. Use IGNORE_ERRORS to make sure to run all
   // clean up code.
-  IGNORE_ERRORS(base::DeleteFile(arc_paths_->android_kmsg_fifo));
+  IGNORE_ERRORS(brillo::DeleteFile(arc_paths_->android_kmsg_fifo));
 }
 
 // Note: This function has to be in sync with Android's arc-boot-type-detector.

@@ -25,6 +25,7 @@
 #include <base/stl_util.h>
 #include <base/synchronization/waitable_event.h>
 #include <base/threading/thread_task_runner_handle.h>
+#include <brillo/files/file_util.h>
 #include <brillo/userdb_utils.h>
 
 #include "arc/vm/mojo_proxy/file_descriptor_util.h"
@@ -41,7 +42,7 @@ constexpr char kVirtwlSocketPath[] = "/run/arcvm/mojo/mojo-proxy.sock";
 // Sets up a socket to accept virtwl connections.
 base::ScopedFD SetupVirtwlSocket() {
   // Delete the socket created by a previous run if any.
-  if (!base::DeleteFile(base::FilePath(kVirtwlSocketPath))) {
+  if (!brillo::DeleteFile(base::FilePath(kVirtwlSocketPath))) {
     PLOG(ERROR) << "DeleteFile() failed " << kVirtwlSocketPath;
     return {};
   }

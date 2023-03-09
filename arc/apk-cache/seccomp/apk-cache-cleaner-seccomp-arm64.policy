@@ -56,3 +56,4 @@ uname: 1
 getrlimit: 1
 faccessat2: 1
 clock_gettime: 1
+dup: 1

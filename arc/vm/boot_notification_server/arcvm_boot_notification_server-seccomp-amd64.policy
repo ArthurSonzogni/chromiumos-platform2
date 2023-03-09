@@ -46,3 +46,5 @@ clock_gettime: 1
 futex: 1
 tgkill: 1
 getpeername: 1
+fcntl: 1
+unlinkat: 1

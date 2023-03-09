@@ -13,6 +13,7 @@
 #include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/files/file_util.h>
 
 namespace arc {
 namespace appfuse {
@@ -76,7 +77,7 @@ bool AppfuseMount::Unmount() {
     PLOG(ERROR) << "Failed to unmount " << mount_point_.value();
     return false;
   }
-  if (!base::DeletePathRecursively(mount_point_)) {
+  if (!brillo::DeletePathRecursively(mount_point_)) {
     PLOG(ERROR) << "Failed to delete " << mount_point_.value();
     return false;
   }
