@@ -84,12 +84,6 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       const AuthInput& auth_input,
       AuthBlock::CreateCallback create_callback) override;
 
-  CryptoStatus DeriveKeyBlobsWithAuthBlock(
-      AuthBlockType auth_block_type,
-      const Credentials& credentials,
-      const AuthBlockState& state,
-      KeyBlobs& out_key_blobs) const override;
-
   void DeriveKeyBlobsWithAuthBlockAsync(
       AuthBlockType auth_block_type,
       const AuthInput& auth_input,
@@ -131,14 +125,12 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
 
   bool IsChallengeCredentialReady(const AuthInput& auth_input) const override;
 
-  // Factory functions for constructing synchronous and asynchronous auth blocks
-  // of a given type.
-  CryptoStatusOr<std::unique_ptr<SyncAuthBlock>> GetAuthBlockWithType(
-      const AuthBlockType& auth_block_type) const;
-  CryptoStatusOr<std::unique_ptr<AuthBlock>> GetAsyncAuthBlockWithType(
+  // Factory function to construct an auth block of the given type.
+  CryptoStatusOr<std::unique_ptr<AuthBlock>> GetAuthBlockWithType(
       const AuthBlockType& auth_block_type, const AuthInput& auth_input);
 
  private:
+  // Determine if a given type of auth block is supported.
   CryptoStatus IsAuthBlockSupported(AuthBlockType auth_block_type) const;
 
   // Non-owned object used for the keyset management operations. Must be alive

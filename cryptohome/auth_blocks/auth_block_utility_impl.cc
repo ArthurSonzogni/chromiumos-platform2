@@ -371,7 +371,7 @@ void AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlockAsync(
     const AuthInput& auth_input,
     AuthBlock::CreateCallback create_callback) {
   CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
-      GetAsyncAuthBlockWithType(auth_block_type, auth_input);
+      GetAuthBlockWithType(auth_block_type, auth_input);
   if (!auth_block.ok()) {
     LOG(ERROR) << "Failed to retrieve auth block.";
     std::move(create_callback)
@@ -399,70 +399,13 @@ void AuthBlockUtilityImpl::CreateKeyBlobsWithAuthBlockAsync(
   auth_block_ptr->Create(auth_input, std::move(managed_callback));
 }
 
-CryptoStatus AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlock(
-    AuthBlockType auth_block_type,
-    const Credentials& credentials,
-    const AuthBlockState& auth_state,
-    KeyBlobs& out_key_blobs) const {
-  AuthInput auth_input = {credentials.passkey(),
-                          /*locked_to_single_user=*/std::nullopt};
-
-  auth_input.locked_to_single_user = GetLockedToSingleUser();
-
-  CryptoStatusOr<std::unique_ptr<SyncAuthBlock>> auth_block =
-      GetAuthBlockWithType(auth_block_type);
-  if (!auth_block.ok()) {
-    LOG(ERROR) << "Keyset wrapped with unknown method.";
-    return MakeStatus<CryptohomeCryptoError>(
-               CRYPTOHOME_ERR_LOC(kLocAuthBlockUtilNoAuthBlockInDeriveKeyBlobs))
-        .Wrap(std::move(auth_block).err_status());
-  }
-  ReportDeriveAuthBlock(auth_block_type);
-
-  CryptoStatus error =
-      auth_block.value()->Derive(auth_input, auth_state, &out_key_blobs);
-  if (error.ok()) {
-    return OkStatus<CryptohomeCryptoError>();
-  }
-  LOG(ERROR) << "Failed to derive per credential secret: " << error;
-
-  // For LE credentials, if deriving the key blobs failed due to too many
-  // attempts, set auth_locked=true in the corresponding keyset. Then save it
-  // for future callers who can Load it w/o Decrypt'ing to check that flag.
-  // When the pin is entered wrong and AuthBlock fails to derive the KeyBlobs
-  // it doesn't make it into the VaultKeyset::Decrypt(); so auth_lock should
-  // be set here.
-  if (ContainsActionInStack(error, error::ErrorAction::kLeLockedOut)) {
-    // Get the corresponding encrypted vault keyset for the user and the label
-    // to set the auth_locked.
-    std::unique_ptr<VaultKeyset> vk = keyset_management_->GetVaultKeyset(
-        brillo::cryptohome::home::SanitizeUserName(credentials.username()),
-        credentials.key_data().label());
-
-    if (vk == nullptr) {
-      LOG(ERROR)
-          << "No vault keyset is found on disk for the given label. Cannot "
-             "decide on the AuthBlock type without vault keyset metadata.";
-      return MakeStatus<CryptohomeCryptoError>(
-          CRYPTOHOME_ERR_LOC(kLocAuthBlockUtilNoVaultKeysetInDeriveKeyBlobs),
-          ErrorActionSet({ErrorAction::kAuth, ErrorAction::kReboot}),
-          CryptoError::CE_OTHER_CRYPTO);
-    }
-    vk->SetAuthLocked(true);
-    vk->Save(vk->GetSourceFile());
-  }
-  return MakeStatus<CryptohomeCryptoError>(
-             CRYPTOHOME_ERR_LOC(kLocAuthBlockUtilDeriveFailedInDeriveKeyBlobs))
-      .Wrap(std::move(error));
-}
-
 void AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlockAsync(
     AuthBlockType auth_block_type,
     const AuthInput& auth_input,
     const AuthBlockState& auth_state,
     AuthBlock::DeriveCallback derive_callback) {
   CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
-      GetAsyncAuthBlockWithType(auth_block_type, auth_input);
+      GetAuthBlockWithType(auth_block_type, auth_input);
   if (!auth_block.ok()) {
     LOG(ERROR) << "Failed to retrieve auth block.";
     std::move(derive_callback)
@@ -519,69 +462,9 @@ CryptoStatus AuthBlockUtilityImpl::IsAuthBlockSupported(
   return generic.IsSupported(auth_block_type);
 }
 
-CryptoStatusOr<std::unique_ptr<SyncAuthBlock>>
-AuthBlockUtilityImpl::GetAuthBlockWithType(
-    const AuthBlockType& auth_block_type) const {
-  if (auto status = IsAuthBlockSupported(auth_block_type); !status.ok()) {
-    return MakeStatus<CryptohomeCryptoError>(
-               CRYPTOHOME_ERR_LOC(
-                   kLocAuthBlockUtilNotSupportedInGetAuthBlockWithType))
-        .Wrap(std::move(status));
-  }
-
-  switch (auth_block_type) {
-    case AuthBlockType::kPinWeaver:
-      return std::make_unique<PinWeaverAuthBlock>(crypto_->le_manager());
-
-    case AuthBlockType::kChallengeCredential:
-      return std::make_unique<ChallengeCredentialAuthBlock>();
-
-    case AuthBlockType::kDoubleWrappedCompat:
-      return std::make_unique<DoubleWrappedCompatAuthBlock>(
-          crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
-
-    case AuthBlockType::kTpmEcc:
-      return std::make_unique<TpmEccAuthBlock>(
-          crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
-
-    case AuthBlockType::kTpmBoundToPcr:
-      return std::make_unique<TpmBoundToPcrAuthBlock>(
-          crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
-
-    case AuthBlockType::kTpmNotBoundToPcr:
-      return std::make_unique<TpmNotBoundToPcrAuthBlock>(
-          crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
-
-    case AuthBlockType::kScrypt:
-      return std::make_unique<ScryptAuthBlock>();
-
-    case AuthBlockType::kCryptohomeRecovery:
-      return std::make_unique<CryptohomeRecoveryAuthBlock>(
-          crypto_->GetHwsec(), crypto_->GetRecoveryCrypto(),
-          crypto_->le_manager(), platform_);
-
-    // Synchronous FingerprintAuthBlock isn't supported.
-    case AuthBlockType::kFingerprint:
-      LOG(ERROR) << "Unsupported AuthBlockType.";
-
-      return MakeStatus<CryptohomeCryptoError>(
-          CRYPTOHOME_ERR_LOC(
-              kLocAuthBlockUtilMaxValueUnsupportedInGetAuthBlockWithType),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
-          CryptoError::CE_OTHER_CRYPTO);
-  }
-  return MakeStatus<CryptohomeCryptoError>(
-      CRYPTOHOME_ERR_LOC(
-          kLocAuthBlockUtilUnknownUnsupportedInGetAuthBlockWithType),
-      ErrorActionSet(
-          {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
-      CryptoError::CE_OTHER_CRYPTO);
-}
-
 CryptoStatusOr<std::unique_ptr<AuthBlock>>
-AuthBlockUtilityImpl::GetAsyncAuthBlockWithType(
-    const AuthBlockType& auth_block_type, const AuthInput& auth_input) {
+AuthBlockUtilityImpl::GetAuthBlockWithType(const AuthBlockType& auth_block_type,
+                                           const AuthInput& auth_input) {
   if (auto status = IsAuthBlockSupported(auth_block_type); !status.ok()) {
     return MakeStatus<CryptohomeCryptoError>(
                CRYPTOHOME_ERR_LOC(
@@ -814,7 +697,7 @@ CryptohomeStatus AuthBlockUtilityImpl::PrepareAuthBlockForRemoval(
 
   AuthInput auth_input;
   CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
-      GetAsyncAuthBlockWithType(*auth_block_type, auth_input);
+      GetAuthBlockWithType(*auth_block_type, auth_input);
   if (!auth_block.ok()) {
     LOG(ERROR) << "Failed to retrieve auth block.";
     return MakeStatus<CryptohomeCryptoError>(

@@ -95,27 +95,21 @@ class AuthBlockUtility {
       const ObfuscatedUsername& username,
       PreparedAuthFactorToken::Consumer callback) = 0;
 
-  // Creates KeyBlobs and AuthBlockState for the given credentials and returns
-  // through the asynchronous create_callback.
+  // Creates KeyBlobs and AuthBlockState with the given type of AuthBlock for
+  // the given input. Creating KeyBlobs means generating the KeyBlobs from
+  // user input when the credentials are entered first time. Thus, Create should
+  // be called to generate the KeyBlobs for adding initial key, adding key and
+  // migrating a key.
   virtual void CreateKeyBlobsWithAuthBlockAsync(
       AuthBlockType auth_block_type,
       const AuthInput& auth_input,
       AuthBlock::CreateCallback create_callback) = 0;
 
   // Derives KeyBlobs with the given type of AuthBlock using the passed
-  // credentials and the AuthBlockState. Deriving KeyBlobs means generating the
-  // KeyBlobs from entered credentials and the stored metadata for an existing
-  // key. Thus DeriveKeyBlobsWithAuthBlock() should be called to generate the
-  // KeyBlob for loading an existing wrapped key from the disk for user
-  // authentication.
-  virtual CryptoStatus DeriveKeyBlobsWithAuthBlock(
-      AuthBlockType auth_block_type,
-      const Credentials& credentials,
-      const AuthBlockState& state,
-      KeyBlobs& out_key_blobs) const = 0;
-
-  // Creates KeyBlobs and AuthBlockState for the given credentials and returns
-  // through the asynchronous derive_callback.
+  // input and the AuthBlockState. Deriving KeyBlobs means generating the
+  // KeyBlobs from provided input and the stored metadata for an existing
+  // key. Thus Derive should be called to generate the KeyBlob for loading an
+  // existing wrapped key from the disk for user authentication.
   virtual void DeriveKeyBlobsWithAuthBlockAsync(
       AuthBlockType auth_block_type,
       const AuthInput& auth_input,
