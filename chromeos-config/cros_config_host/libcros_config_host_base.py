@@ -55,8 +55,11 @@ BaseFile = namedtuple("BaseFile", ["source", "dest"])
 #       zephyr EC), or None if none
 #   main_image_uri: URI to use to obtain main firmware image (e.g.
 #       'bcs://Caroline.2017.21.1.tbz2')
+#   main_rw_image_uri: URI to use to obtain main firmware RW image (e.g.
+#       'bcs://Caroline.2017.21.1.tbz2')
 #   ec_image_uri: URI to use to obtain the EC (Embedded Controller) firmware
 #       image
+#   ec_rw_image_uri: URI to use to obtain the EC RW firmware image
 #   pd_image_uri: URI to use to obtain the PD (Power Delivery controller)
 #       firmware image
 #   sig_id: Signature ID to put in the setvars.sh file. This is normally the
@@ -76,6 +79,7 @@ FirmwareInfo = namedtuple(
         "main_image_uri",
         "main_rw_image_uri",
         "ec_image_uri",
+        "ec_rw_image_uri",
         "pd_image_uri",
         "sig_id",
         "brand_code",
@@ -83,7 +87,7 @@ FirmwareInfo = namedtuple(
 )
 
 # Represents the firmware image for a model:
-#   type\: one of ‘ap’, ‘ec’, ‘pd’, ‘rw’.
+#   type\: one of 'ap', 'ap_rw', 'ec', 'ec_rw', 'pd'.
 #   build_target: The build target for given firmware image.
 #   image_uri: The BCS image URI.
 FirmwareImage = namedtuple(

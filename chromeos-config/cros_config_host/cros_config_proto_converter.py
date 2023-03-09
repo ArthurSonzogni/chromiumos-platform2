@@ -1619,6 +1619,7 @@ def _build_firmware(config):
     main_ro = fw_payload_config.main_ro_payload
     main_rw = fw_payload_config.main_rw_payload
     ec_ro = fw_payload_config.ec_ro_payload
+    ec_rw = fw_payload_config.ec_rw_payload
     pd_ro = fw_payload_config.pd_ro_payload
 
     build_targets = {}
@@ -1678,6 +1679,7 @@ def _build_firmware(config):
     _upsert(_fw_bcs_path(main_ro, ap_fw_suffix), result, "main-ro-image")
     _upsert(_fw_bcs_path(main_rw, ap_fw_suffix), result, "main-rw-image")
     _upsert(_fw_bcs_path(ec_ro), result, "ec-ro-image")
+    _upsert(_fw_bcs_path(ec_rw), result, "ec-rw-image")
     _upsert(_fw_bcs_path(pd_ro), result, "pd-ro-image")
 
     _upsert(

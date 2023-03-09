@@ -66,6 +66,7 @@
             "u-boot": "some"
           },
           "ec-ro-image": "bcs://Some_EC.1111.11.1.tbz2",
+          "ec-rw-image": "bcs://Some_EC_RW.1111.11.1.tbz2",
           "main-ro-image": "bcs://Some.1111.11.1.tbz2",
           "main-rw-image": "bcs://Some_RW.1111.11.1.tbz2"
         },
@@ -214,6 +215,7 @@
             "u-boot": "some"
           },
           "ec-ro-image": "bcs://Some_EC.1111.11.1.tbz2",
+          "ec-rw-image": "bcs://Some_EC_RW.1111.11.1.tbz2",
           "main-ro-image": "bcs://Some.1111.11.1.tbz2",
           "main-rw-image": "bcs://Some_RW.1111.11.1.tbz2"
         },
@@ -365,6 +367,7 @@
             "u-boot": "some"
           },
           "ec-ro-image": "bcs://Some_EC.1111.11.1.tbz2",
+          "ec-rw-image": "bcs://Some_EC_RW.1111.11.1.tbz2",
           "main-ro-image": "bcs://Some.1111.11.1.tbz2",
           "main-rw-image": "bcs://Some_RW.1111.11.1.tbz2"
         },
@@ -524,6 +527,7 @@
             "u-boot": "some"
           },
           "ec-ro-image": "bcs://Some_EC.1111.11.1.tbz2",
+          "ec-rw-image": "bcs://Some_EC_RW.1111.11.1.tbz2",
           "main-ro-image": "bcs://Some.1111.11.1.tbz2",
           "main-rw-image": "bcs://Some_RW.1111.11.1.tbz2"
         },
@@ -888,6 +892,7 @@
           },
           "detachable-ui": true,
           "ec-ro-image": "bcs://Another_EC.1111.11.1.tbz2",
+          "ec-rw-image": "bcs://Another_EC_RW.1111.11.1.tbz2",
           "firmware-config": 4294967295,
           "main-ro-image": "bcs://Another.1111.11.1.tbz2",
           "main-rw-image": "bcs://Another_RW.1111.11.1.tbz2"
@@ -1014,6 +1019,7 @@
             "u-boot": "some"
           },
           "ec-ro-image": "bcs://Some_EC.1111.11.1.tbz2",
+          "ec-rw-image": "bcs://Some_EC_RW.1111.11.1.tbz2",
           "main-ro-image": "bcs://Some.1111.11.1.tbz2",
           "main-rw-image": "bcs://Some_RW.1111.11.1.tbz2"
         },
@@ -1111,6 +1117,7 @@
             "u-boot": "some"
           },
           "ec-ro-image": "bcs://Some_EC.1111.11.1.tbz2",
+          "ec-rw-image": "bcs://Some_EC_RW.1111.11.1.tbz2",
           "main-ro-image": "bcs://Some.1111.11.1.tbz2",
           "main-rw-image": "bcs://Some_RW.1111.11.1.tbz2"
         },
@@ -1208,6 +1215,7 @@
             "u-boot": "some"
           },
           "ec-ro-image": "bcs://Some_EC.1111.11.1.tbz2",
+          "ec-rw-image": "bcs://Some_EC_RW.1111.11.1.tbz2",
           "main-ro-image": "bcs://Some.1111.11.1.tbz2",
           "main-rw-image": "bcs://Some_RW.1111.11.1.tbz2"
         },
@@ -1305,6 +1313,7 @@
             "u-boot": "some"
           },
           "ec-ro-image": "bcs://Some_EC.1111.11.1.tbz2",
+          "ec-rw-image": "bcs://Some_EC_RW.1111.11.1.tbz2",
           "main-ro-image": "bcs://Some.1111.11.1.tbz2",
           "main-rw-image": "bcs://Some_RW.1111.11.1.tbz2"
         },

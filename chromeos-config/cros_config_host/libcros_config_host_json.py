@@ -248,6 +248,7 @@ class CrosConfigJson(CrosConfigBaseImpl):
                 main_image_uri = config.GetValue(fw, "main-ro-image") or ""
                 main_rw_image_uri = config.GetValue(fw, "main-rw-image") or ""
                 ec_image_uri = config.GetValue(fw, "ec-ro-image") or ""
+                ec_rw_image_uri = config.GetValue(fw, "ec-rw-image") or ""
                 pd_image_uri = config.GetValue(fw, "pd-ro-image") or ""
 
                 fw_signer_config = config.GetProperties("/firmware-signing")
@@ -275,6 +276,7 @@ class CrosConfigJson(CrosConfigBaseImpl):
                     main_image_uri,
                     main_rw_image_uri,
                     ec_image_uri,
+                    ec_rw_image_uri,
                     pd_image_uri,
                     sig_id,
                     brand_code,
@@ -343,7 +345,7 @@ class CrosConfigJson(CrosConfigBaseImpl):
             if value.main_rw_image_uri:
                 fw_images.append(
                     FirmwareImage(
-                        type="rw",
+                        type="ap_rw",
                         build_target=ap_build_target,
                         image_uri=value.main_rw_image_uri,
                     )
@@ -354,6 +356,14 @@ class CrosConfigJson(CrosConfigBaseImpl):
                         type="ec",
                         build_target=ec_build_target,
                         image_uri=value.ec_image_uri,
+                    )
+                )
+            if value.ec_rw_image_uri:
+                fw_images.append(
+                    FirmwareImage(
+                        type="ec_rw",
+                        build_target=ec_build_target,
+                        image_uri=value.ec_rw_image_uri,
                     )
                 )
             if value.pd_image_uri:

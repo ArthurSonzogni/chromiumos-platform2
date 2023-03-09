@@ -61,6 +61,7 @@ some_base_config: &some_base_config
       u-boot: "some"
 
     ec-ro-image: "bcs://Some_EC.1111.11.1.tbz2"
+    ec-rw-image: "bcs://Some_EC_RW.1111.11.1.tbz2"
     main-ro-image: "bcs://Some.1111.11.1.tbz2"
     main-rw-image: "bcs://Some_RW.1111.11.1.tbz2"
   fingerprint:
@@ -249,6 +250,7 @@ chromeos:
               bcs-overlay: "overlay-another-private"
               detachable-ui: True
               ec-ro-image: "bcs://Another_EC.1111.11.1.tbz2"
+              ec-rw-image: "bcs://Another_EC_RW.1111.11.1.tbz2"
               main-ro-image: "bcs://Another.1111.11.1.tbz2"
               main-rw-image: "bcs://Another_RW.1111.11.1.tbz2"
               build-targets:
