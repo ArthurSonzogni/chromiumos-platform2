@@ -52,7 +52,7 @@ constexpr bool IsCritical(ParserCode code) {
 
 // Returns a string representation of `code`. Returned string contains a name
 // of corresponding enum's value and has no whitespaces.
-std::string_view ToStrView(ParserCode code);
+LIBIPP_EXPORT std::string_view ToStrView(ParserCode code);
 
 // Represents an error spotted by the parser when parsing an element pointed
 // by `path`.
@@ -63,7 +63,7 @@ struct ParserError {
 
 // Returns a one line string representation of the `error`. There is no EOL
 // characters in the returned message.
-std::string ToString(const ParserError& error);
+LIBIPP_EXPORT std::string ToString(const ParserError& error);
 
 // The interface of parser log.
 class ParserLog {

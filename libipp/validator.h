@@ -77,7 +77,7 @@ enum class ValidatorCode : uint8_t {
 
 // Returns a string representation of `code`. Returned string contains a name
 // of corresponding enum's value and has no whitespaces.
-std::string_view ToStrView(ValidatorCode code);
+LIBIPP_EXPORT std::string_view ToStrView(ValidatorCode code);
 
 // Represents information about invalid value or name of an attribute.
 class LIBIPP_EXPORT AttrError {
@@ -111,7 +111,7 @@ struct ValidatorError {
 
 // Returns one-line string representation of the `error`. There is no EOL
 // characters in the returned message.
-std::string ToString(const ValidatorError& error);
+LIBIPP_EXPORT std::string ToString(const ValidatorError& error);
 
 // The interface of validator log.
 class ValidatorLog {
