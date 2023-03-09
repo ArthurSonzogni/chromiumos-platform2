@@ -364,8 +364,7 @@ bool CellularService::Load(const StoreInterface* storage) {
     friendly_name_ = friendly_name;
   }
 
-  const Stringmaps& apn_list =
-      cellular() ? cellular()->apn_list() : Stringmaps();
+  const Stringmaps& apn_list = cellular_ ? cellular_->apn_list() : Stringmaps();
   LoadApn(storage, id, kStorageAPN, apn_list, &apn_info_);
   LoadApn(storage, id, kStorageLastGoodAPN, apn_list, &last_good_apn_info_);
   LoadApn(storage, id, kStorageLastConnectedDefaultAPN, apn_list,
@@ -806,6 +805,7 @@ std::string CellularService::CalculateActivationType(Error* error) {
 
 Stringmap CellularService::ValidateCustomApn(const Stringmap& value,
                                              bool using_apn_revamp_ui) {
+  DCHECK(cellular_);
   // Only copy in the fields we care about, and validate the contents.
   // If the "apn" field is missing or empty, the APN is cleared.
   std::string new_apn;
@@ -814,7 +814,7 @@ Stringmap CellularService::ValidateCustomApn(const Stringmap& value,
     new_apn_info[kApnProperty] = new_apn;
 
     // Fetch details from the APN database first.
-    FetchDetailsFromApnList(cellular()->apn_list(), &new_apn_info);
+    FetchDetailsFromApnList(cellular_->apn_list(), &new_apn_info);
 
     // If this is a user-entered APN, the one or more of the following
     // details should exist, even if they are empty.
@@ -860,6 +860,15 @@ Stringmap CellularService::GetApn(Error* /*error*/) {
 }
 
 bool CellularService::SetApn(const Stringmap& value, Error* error) {
+  if (!cellular_) {
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kOperationFailed,
+        base::StringPrintf(
+            "Failed setting user APN: %s Service %s has no device.",
+            kTypeCellular, log_name().c_str()));
+    return false;
+  }
+
   Stringmap new_apn_info = ValidateCustomApn(value, false);
   if (apn_info_ == new_apn_info) {
     return true;
@@ -910,6 +919,16 @@ bool CellularService::SetCustomApnList(const Stringmaps& value, Error* error) {
   SLOG(this, 2) << __func__;
   bool exist_attach = false;
   Stringmaps new_apn_info_list;
+
+  if (!cellular_) {
+    Error::PopulateAndLog(
+        FROM_HERE, error, Error::kOperationFailed,
+        base::StringPrintf(
+            "Failed setting user APN list: %s Service %s has no device.",
+            kTypeCellular, log_name().c_str()));
+    return false;
+  }
+
   for (auto& apn_value : value) {
     Stringmap new_apn_info =
         new_apn_info_list.emplace_back(ValidateCustomApn(apn_value, true));
