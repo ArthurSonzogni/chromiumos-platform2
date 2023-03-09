@@ -29,6 +29,10 @@ class MockBiometricsCommandProcessor : public BiometricsCommandProcessor {
                                             brillo::Blob)>),
               (override));
   MOCK_METHOD(void,
+              SetSessionFailedCallback,
+              (base::RepeatingCallback<void()>),
+              (override));
+  MOCK_METHOD(void,
               StartEnrollSession,
               (base::OnceCallback<void(bool)>),
               (override));

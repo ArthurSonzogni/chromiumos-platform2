@@ -39,6 +39,8 @@ class BiometricsCommandProcessorImpl : public BiometricsCommandProcessor {
   void SetAuthScanDoneCallback(
       base::RepeatingCallback<void(user_data_auth::AuthScanDone, brillo::Blob)>
           on_done) override;
+  void SetSessionFailedCallback(
+      base::RepeatingCallback<void()> on_failure) override;
   void StartEnrollSession(base::OnceCallback<void(bool)> on_done) override;
   void StartAuthenticateSession(
       ObfuscatedUsername obfuscated_username,
@@ -60,6 +62,9 @@ class BiometricsCommandProcessorImpl : public BiometricsCommandProcessor {
   // parses the signal into an AuthScanDone proto and triggers
   // on_auth_scan_done_.
   void OnAuthScanDone(dbus::Signal* signal);
+  // This is used as the OnFinish callback we register to the biod proxy. It in
+  // practice only reports failures encountered in enroll and auth sessions.
+  void OnFinish(bool success);
   // This is used as the callback of biod proxy's CreateCredential method. It
   // decrypts the secret data contained in the response with the session key and
   // packs it into OperationOutput.
@@ -80,6 +85,7 @@ class BiometricsCommandProcessorImpl : public BiometricsCommandProcessor {
       on_enroll_scan_done_;
   base::RepeatingCallback<void(user_data_auth::AuthScanDone, brillo::Blob)>
       on_auth_scan_done_;
+  base::RepeatingCallback<void()> on_session_failed_;
   std::unique_ptr<biod::AuthStackManagerProxyBase> proxy_;
 };
 

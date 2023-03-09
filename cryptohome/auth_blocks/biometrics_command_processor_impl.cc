@@ -338,6 +338,7 @@ BiometricsCommandProcessorImpl::BiometricsCommandProcessorImpl(
     std::unique_ptr<biod::AuthStackManagerProxyBase> proxy)
     : on_enroll_scan_done_(base::DoNothing()),
       on_auth_scan_done_(base::DoNothing()),
+      on_session_failed_(base::DoNothing()),
       proxy_(std::move(proxy)) {
   proxy_->ConnectToEnrollScanDoneSignal(
       base::BindRepeating(&BiometricsCommandProcessorImpl::OnEnrollScanDone,
@@ -347,6 +348,8 @@ BiometricsCommandProcessorImpl::BiometricsCommandProcessorImpl(
       base::BindRepeating(&BiometricsCommandProcessorImpl::OnAuthScanDone,
                           base::Unretained(this)),
       /*on_connected_callback=*/base::DoNothing());
+  proxy_->SetFinishHandler(base::BindRepeating(
+      &BiometricsCommandProcessorImpl::OnFinish, base::Unretained(this)));
 }
 
 void BiometricsCommandProcessorImpl::SetEnrollScanDoneCallback(
@@ -359,6 +362,11 @@ void BiometricsCommandProcessorImpl::SetAuthScanDoneCallback(
     base::RepeatingCallback<void(user_data_auth::AuthScanDone, brillo::Blob)>
         on_done) {
   on_auth_scan_done_ = on_done;
+}
+
+void BiometricsCommandProcessorImpl::SetSessionFailedCallback(
+    base::RepeatingCallback<void()> on_failure) {
+  on_session_failed_ = on_failure;
 }
 
 void BiometricsCommandProcessorImpl::StartEnrollSession(
@@ -484,6 +492,13 @@ void BiometricsCommandProcessorImpl::OnAuthScanDone(dbus::Signal* signal) {
       user_data_auth::FINGERPRINT_SCAN_RESULT_SUCCESS);
   on_auth_scan_done_.Run(std::move(scan_done),
                          brillo::BlobFromString(message.auth_nonce()));
+}
+
+void BiometricsCommandProcessorImpl::OnFinish(bool success) {
+  if (!success) {
+    LOG(WARNING) << "Biometrics session failure.";
+    on_session_failed_.Run();
+  }
 }
 
 void BiometricsCommandProcessorImpl::OnCreateCredentialReply(

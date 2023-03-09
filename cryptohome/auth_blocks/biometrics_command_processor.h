@@ -58,6 +58,11 @@ class BiometricsCommandProcessor {
       base::RepeatingCallback<void(user_data_auth::AuthScanDone, brillo::Blob)>
           on_done) = 0;
 
+  // Sets the repeating callback that will be triggered whenever the biod proxy
+  // reports a session error.
+  virtual void SetSessionFailedCallback(
+      base::RepeatingCallback<void()> on_failure) = 0;
+
   // Starts an enroll session in biod. |on_done| is triggered with whether the
   // enroll session is started successfully.
   virtual void StartEnrollSession(base::OnceCallback<void(bool)> on_done) = 0;

@@ -10,6 +10,7 @@
 
 #include <base/functional/callback.h>
 #include <base/strings/string_number_conversions.h>
+#include <base/test/bind.h>
 #include <base/test/repeating_test_future.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/test/task_environment.h>
@@ -118,6 +119,8 @@ class BiometricsCommandProcessorImplTest : public BaseTestFixture {
         .WillOnce(SaveArg<0>(&enroll_callback_));
     EXPECT_CALL(*mock_proxy_, ConnectToAuthScanDoneSignal(_, _))
         .WillOnce(SaveArg<0>(&auth_callback_));
+    EXPECT_CALL(*mock_proxy_, SetFinishHandler(_))
+        .WillOnce(SaveArg<0>(&finish_callback_));
     processor_ =
         std::make_unique<BiometricsCommandProcessorImpl>(std::move(mock_proxy));
   }
@@ -143,8 +146,11 @@ class BiometricsCommandProcessorImplTest : public BaseTestFixture {
     auth_callback_.Run(&auth_scan_done_signal);
   }
 
+  void EmitSessionFailedEvent() { finish_callback_.Run(false); }
+
   base::RepeatingCallback<void(dbus::Signal*)> enroll_callback_;
   base::RepeatingCallback<void(dbus::Signal*)> auth_callback_;
+  base::RepeatingCallback<void(bool)> finish_callback_;
   biod::MockAuthStackManagerProxyBase* mock_proxy_;
   std::unique_ptr<BiometricsCommandProcessorImpl> processor_;
 };
@@ -227,6 +233,16 @@ TEST_F(BiometricsCommandProcessorImplTest, ReceiveAuthSignal) {
   EXPECT_EQ(scan.scan_result().fingerprint_result(),
             user_data_auth::FINGERPRINT_SCAN_RESULT_SUCCESS);
   EXPECT_EQ(nonce, kFakeNonce2);
+}
+
+TEST_F(BiometricsCommandProcessorImplTest, ReceiveSessionFailed) {
+  bool called = false;
+  processor_->SetSessionFailedCallback(
+      base::BindLambdaForTesting([&called]() { called = true; }));
+
+  EXPECT_FALSE(called);
+  EmitSessionFailedEvent();
+  EXPECT_TRUE(called);
 }
 
 TEST_F(BiometricsCommandProcessorImplTest, CreateCredential) {
