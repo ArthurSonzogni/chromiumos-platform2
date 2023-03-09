@@ -20,6 +20,7 @@ clock_nanosleep_time64: 1
 clone: 1
 close: 1
 connect: 1
+dup: 1
 dup2: 1
 execve: 1
 epoll_ctl: 1
@@ -94,5 +95,6 @@ tgkill: 1
 ugetrlimit: 1
 umount2: 1
 uname: 1
+unlinkat: 1
 wait4: 1
 write: 1

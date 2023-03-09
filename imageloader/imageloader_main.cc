@@ -13,6 +13,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <brillo/files/file_util.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
 #include <brillo/userdb_utils.h>
@@ -89,8 +90,9 @@ bool CreateComponentsPath() {
   // Check if kComponentsPath does not exist or it is not a folder.
   if (!base::DirectoryExists(base::FilePath(kComponentsPath))) {
     // Remove the file at kComponentsPath.
-    if (!base::DeletePathRecursively(base::FilePath(kComponentsPath))) {
-      PLOG(ERROR) << "base::DeletePathRecursively failed: " << kComponentsPath;
+    if (!brillo::DeletePathRecursively(base::FilePath(kComponentsPath))) {
+      PLOG(ERROR) << "brillo::DeletePathRecursively failed: "
+                  << kComponentsPath;
       return false;
     }
     // Create a folder for kComponentsPath.

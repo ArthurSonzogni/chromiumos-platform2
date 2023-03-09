@@ -32,6 +32,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
+#include <brillo/files/file_util.h>
 
 #include "imageloader/component.h"
 #include "imageloader/verity_mounter_impl.h"
@@ -528,7 +529,7 @@ bool CleanupImpl(const base::FilePath& mount_point,
     return false;
   }
   // Delete mount target folder
-  base::DeletePathRecursively(mount_point);
+  brillo::DeletePathRecursively(mount_point);
 
   // Clear Verity device.
   if (!MapperWipeTable(source_path.value())) {

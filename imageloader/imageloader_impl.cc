@@ -19,6 +19,7 @@
 #include <base/logging.h>
 #include <base/values.h>
 #include <base/version.h>
+#include <brillo/files/file_util.h>
 #include <chromeos/dbus/service_constants.h>
 
 #include "imageloader/component.h"
@@ -218,7 +219,7 @@ bool ImageLoaderImpl::RemoveComponentAtPath(
   }
 
   // Remove the component (all versions) and latest-version file.
-  if (!base::DeletePathRecursively(component_root)) {
+  if (!brillo::DeletePathRecursively(component_root)) {
     LOG(ERROR) << "Failed to delete component.";
     return false;
   }
@@ -289,7 +290,7 @@ bool ImageLoaderImpl::RegisterComponent(
   // If |version_path| exists but was not the active version, ImageLoader
   // probably crashed previously and could not cleanup.
   if (base::PathExists(version_path)) {
-    base::DeletePathRecursively(version_path);
+    brillo::DeletePathRecursively(version_path);
   }
 
   if (mkdir(version_path.value().c_str(), kComponentDirPerms) != 0) {
@@ -298,20 +299,20 @@ bool ImageLoaderImpl::RegisterComponent(
   }
 
   if (!component->CopyTo(version_path)) {
-    base::DeletePathRecursively(version_path);
+    brillo::DeletePathRecursively(version_path);
     return false;
   }
 
   if (!base::ImportantFileWriter::WriteFileAtomically(version_hint_path,
                                                       version)) {
-    base::DeletePathRecursively(version_path);
+    brillo::DeletePathRecursively(version_path);
     LOG(ERROR) << "Failed to update current version hint file.";
     return false;
   }
 
   // Now delete the old component version, if there was one.
   if (have_old_version) {
-    base::DeletePathRecursively(GetVersionPath(name, old_version_hint));
+    brillo::DeletePathRecursively(GetVersionPath(name, old_version_hint));
   }
 
   return true;

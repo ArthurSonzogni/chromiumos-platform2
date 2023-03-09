@@ -15,6 +15,7 @@ clock_getres_time64: 1
 clock_gettime: 1
 clock_gettime64: 1
 close: 1
+dup: 1
 epoll_ctl: 1
 epoll_wait: 1
 exit: 1
@@ -73,4 +74,5 @@ tgkill: 1
 time: 1
 uname: 1
 unlink: 1
+unlinkat: 1
 write: 1

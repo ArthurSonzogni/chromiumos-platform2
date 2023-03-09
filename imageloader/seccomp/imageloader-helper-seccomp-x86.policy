@@ -18,6 +18,7 @@ clock_nanosleep: 1
 clock_nanosleep_time64: 1
 clone: 1
 close: 1
+dup: 1
 dup2: 1
 epoll_ctl: 1
 epoll_wait: 1
@@ -92,6 +93,7 @@ ugetrlimit: 1
 umount2: 1
 uname: 1
 unlink: 1
+unlinkat: 1
 wait4: 1
 waitpid: 1
 write: 1
