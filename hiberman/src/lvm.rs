@@ -112,19 +112,19 @@ pub fn activate_lv(volume_group: &str, name: &str) -> Result<()> {
 
 /// Create a new thinpool volume under the given volume group, with the
 /// specified name and size.
-pub fn create_thin_volume(volume_group: &str, size_mb: i64, name: &str) -> Result<()> {
-    // lvcreate --thin -V "${lv_size}M" -n "{name}" "${volume_group}/thinpool"
-    let size = format!("{}M", size_mb);
+pub fn create_thin_volume(volume_group: &str, size: i64, name: &str) -> Result<()> {
+    // lvcreate --thin -V "${lv_size}b" -n "{name}" "${volume_group}/thinpool"
+    let size_arg = format!("{}b", size);
     let thinpool = format!("{}/thinpool", volume_group);
     checked_command(
-        Command::new("/sbin/lvcreate").args(["--thin", "-V", &size, "-n", name, &thinpool]),
+        Command::new("/sbin/lvcreate").args(["--thin", "-V", &size_arg, "-n", name, &thinpool]),
     )
     .context("Cannot create logical volume")
 }
 
 /// Take a newly created thin volume and ensure space is fully allocated for it
 /// from the thinpool. This is destructive to the data on the volume.
-pub fn thicken_thin_volume<P: AsRef<Path>>(path: P, size_mb: i64) -> Result<()> {
+pub fn thicken_thin_volume<P: AsRef<Path>>(path: P, size: i64) -> Result<()> {
     let mut file = OpenOptions::new()
         .write(true)
         .open(path.as_ref())
@@ -133,20 +133,19 @@ pub fn thicken_thin_volume<P: AsRef<Path>>(path: P, size_mb: i64) -> Result<()> 
             path.as_ref().display()
         ))?;
     let buf = [0u8; SECTOR_SIZE];
-    let size_bytes = size_mb * 1024 * 1024;
     let skip = LVM_EXTENT_SIZE - (SECTOR_SIZE as i64);
     let mut offset = 0;
 
     loop {
         file.write_all(&buf).context("Failed to thicken LV")?;
         offset += LVM_EXTENT_SIZE;
-        if offset >= size_bytes {
+        if offset >= size {
             break;
         }
         file.seek(SeekFrom::Current(skip)).context(format!(
             "Failed to seek {}/{} in LV",
             offset + skip,
-            size_bytes
+            size
         ))?;
     }
 

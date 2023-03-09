@@ -189,28 +189,27 @@ impl VolumeManager {
     fn create_hibernate_lv(&mut self) -> Result<()> {
         info!("Creating hibernate logical volume");
         let path = lv_path(&self.vg_name, HIBER_VOLUME_NAME);
-        let size_mb = Self::hiber_volume_mb();
+        let size = Self::hiber_volume();
         let start = Instant::now();
-        create_thin_volume(&self.vg_name, size_mb, HIBER_VOLUME_NAME)
+        create_thin_volume(&self.vg_name, size, HIBER_VOLUME_NAME)
             .context("Failed to create thin volume")?;
-        thicken_thin_volume(&path, size_mb).context("Failed to thicken volume")?;
+        thicken_thin_volume(&path, size).context("Failed to thicken volume")?;
         // Use -K to tell mkfs not to run a discard on the block device, which
         // would destroy all the nice thickening done above.
         checked_command_output(Command::new("/sbin/mkfs.ext4").arg("-K").arg(path))
             .context("Cannot format hibernate volume")?;
         log_io_duration(
             "Created hibernate logical volume",
-            size_mb * 1024 * 1024,
+            size,
             start.elapsed(),
         );
         Ok(())
     }
 
     /// Figure out the appropriate size for the hibernate volume.
-    fn hiber_volume_mb() -> i64 {
+    fn hiber_volume() -> i64 {
         let total_mem = (get_total_memory_pages() as i64) * (get_page_size() as i64);
-        let size_bytes = total_mem + MAX_SNAPSHOT_BYTES + HIBER_VOLUME_FUDGE_BYTES;
-        size_bytes / (1024 * 1024)
+        total_mem + MAX_SNAPSHOT_BYTES + HIBER_VOLUME_FUDGE_BYTES
     }
 
     /// Create snapshot storage files for all active LVs.
