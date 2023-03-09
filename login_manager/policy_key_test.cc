@@ -14,6 +14,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
+#include <brillo/files/file_util.h>
 #include <crypto/nss_key_util.h>
 #include <crypto/nss_util.h>
 #include <crypto/nss_util_internal.h>
@@ -42,7 +43,7 @@ class PolicyKeyTest : public ::testing::Test {
 
   void TearDown() override {}
 
-  void StartUnowned() { base::DeleteFile(tmpfile_); }
+  void StartUnowned() { brillo::DeleteFile(tmpfile_); }
 
   static std::unique_ptr<crypto::RSAPrivateKey> CreateRSAPrivateKey(
       PK11SlotInfo* slot, uint16_t num_bits) {

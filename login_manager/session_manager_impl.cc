@@ -40,6 +40,7 @@
 #include <brillo/cryptohome.h>
 #include <brillo/dbus/dbus_object.h>
 #include <brillo/dbus/utils.h>
+#include <brillo/files/file_util.h>
 #include <brillo/scoped_mount_namespace.h>
 #include <chromeos/dbus/service_constants.h>
 #include <crypto/scoped_nss_types.h>
@@ -1889,7 +1890,7 @@ void SessionManagerImpl::ImportValidateAndStoreGeneratedKey(
     ns_mnt = brillo::ScopedMountNamespace::CreateFromPath(ns_mnt_path.value());
   }
   base::ReadFileToString(temp_key_file, &key);
-  PLOG_IF(WARNING, !base::DeleteFile(temp_key_file))
+  PLOG_IF(WARNING, !brillo::DeleteFile(temp_key_file))
       << "Can't delete " << temp_key_file.value();
   ns_mnt.reset();
 

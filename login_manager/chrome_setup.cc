@@ -26,6 +26,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
 #include <base/values.h>
+#include <brillo/files/file_util.h>
 #include <brillo/udev/udev.h>
 #include <brillo/udev/udev_device.h>
 #include <brillo/udev/udev_enumerate.h>
@@ -369,13 +370,13 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
   CHECK(EnsureDirectoryExists(data_dir.Append("Default"), uid, gid, 0755));
 
   const base::FilePath state_dir("/run/state");
-  CHECK(base::DeletePathRecursively(state_dir));
+  CHECK(brillo::DeletePathRecursively(state_dir));
   CHECK(EnsureDirectoryExists(state_dir, kRootUid, kRootGid, 0710));
 
   // Create a directory where the session manager can store a copy of the user
   // policy key, that will be readable by the chrome process as chronos.
   const base::FilePath policy_dir("/run/user_policy");
-  CHECK(base::DeletePathRecursively(policy_dir));
+  CHECK(brillo::DeletePathRecursively(policy_dir));
   CHECK(EnsureDirectoryExists(policy_dir, kRootUid, gid, 0710));
 
   // Create a directory where the chrome process can store a reboot request so
@@ -394,7 +395,7 @@ void CreateDirectories(ChromiumCommandBuilder* builder) {
   // Create a directory where the libassistant V2 can create socket files for
   // gRPC.
   const base::FilePath libassistant_dir("/run/libassistant");
-  CHECK(base::DeletePathRecursively(libassistant_dir));
+  CHECK(brillo::DeletePathRecursively(libassistant_dir));
   CHECK(EnsureDirectoryExists(libassistant_dir, uid, gid, 0700));
 
   // Create the directory where policies for extensions installed in
@@ -478,8 +479,8 @@ void AddSystemFlags(ChromiumCommandBuilder* builder,
 
   // We need to delete these files as Chrome may have left them around from its
   // prior run (if it crashed).
-  base::DeleteFile(data_dir.Append("SingletonLock"));
-  base::DeleteFile(data_dir.Append("SingletonSocket"));
+  brillo::DeleteFile(data_dir.Append("SingletonLock"));
+  brillo::DeleteFile(data_dir.Append("SingletonSocket"));
 
   // Some targets (embedded, VMs) do not need component updates.
   if (!builder->UseFlagIsSet("compupdates"))
@@ -582,8 +583,8 @@ void AddUiFlags(ChromiumCommandBuilder* builder,
 
   // Force OOBE on test images that have requested it.
   if (base::PathExists(base::FilePath("/root/.test_repeat_oobe"))) {
-    base::DeleteFile(data_dir.Append(".oobe_completed"));
-    base::DeleteFile(data_dir.Append("Local State"));
+    brillo::DeleteFile(data_dir.Append(".oobe_completed"));
+    brillo::DeleteFile(data_dir.Append("Local State"));
   }
 
   // Disable logging redirection on test images to make debugging easier.

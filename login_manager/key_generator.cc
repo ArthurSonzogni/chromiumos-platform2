@@ -14,6 +14,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/cryptohome.h>
+#include <brillo/files/file_util.h>
 
 #include "login_manager/generator_job.h"
 #include "login_manager/system_utils.h"
@@ -43,7 +44,7 @@ bool KeyGenerator::Start(const string& username,
       brillo::cryptohome::home::Username(username)));
   base::FilePath temporary_key_path(
       user_path.AppendASCII(kTemporaryKeyFilename));
-  if (!base::DeleteFile(temporary_key_path)) {
+  if (!brillo::DeleteFile(temporary_key_path)) {
     PLOG(ERROR) << "Old keygen state still present; can't generate keys: ";
     return false;
   }

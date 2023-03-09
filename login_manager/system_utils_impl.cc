@@ -40,6 +40,7 @@
 #include <base/threading/platform_thread.h>
 #include <base/time/time.h>
 #include <brillo/file_utils.h>
+#include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
 #include <brillo/userdb_utils.h>
 #include <chromeos/dbus/service_constants.h>
@@ -289,7 +290,7 @@ bool SystemUtilsImpl::RemoveFile(const base::FilePath& filename) {
   const base::FilePath filename_in_base_dir = PutInsideBaseDir(filename);
   if (base::DirectoryExists(filename_in_base_dir))
     return false;
-  return base::DeleteFile(filename_in_base_dir);
+  return brillo::DeleteFile(filename_in_base_dir);
 }
 
 bool SystemUtilsImpl::AtomicFileWrite(const base::FilePath& filename,

@@ -7,6 +7,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/logging.h>
+#include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 
 namespace em = enterprise_management;
@@ -27,7 +28,7 @@ class PolicyStoreTest : public ::testing::Test {
     // Create a temporary filename that's guaranteed to not exist, but is
     // inside our scoped directory so it'll get deleted later.
     ASSERT_TRUE(base::CreateTemporaryFileInDir(tmpdir_.GetPath(), &tmpfile_));
-    ASSERT_TRUE(base::DeleteFile(tmpfile_));
+    ASSERT_TRUE(brillo::DeleteFile(tmpfile_));
   }
 
   void TearDown() override {}

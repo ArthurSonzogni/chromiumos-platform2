@@ -31,6 +31,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
 #include <base/time/time.h>
+#include <brillo/files/file_util.h>
 #include <brillo/message_loops/message_loop.h>
 #include <chromeos/dbus/service_constants.h>
 #include <chromeos/switches/chrome_switches.h>
@@ -718,7 +719,7 @@ void SessionManagerService::WriteBrowserPidFile(base::FilePath path) {
   // This is safe from symlink attacks because /run/chrome is guaranteed to be a
   // root-owned directory (/run is in the rootfs, /run/chrome is created by
   // session_manager as a directory).
-  if (!base::DeleteFile(path)) {
+  if (!brillo::DeleteFile(path)) {
     PLOG(ERROR) << "Failed to delete " << path.value();
     return;
   }

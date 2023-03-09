@@ -14,6 +14,7 @@
 #include <base/logging.h>
 #include <base/notreached.h>
 #include <base/strings/string_number_conversions.h>
+#include <brillo/files/file_util.h>
 #include <policy/policy_util.h>
 #include <policy/device_policy_impl.h>
 #include <policy/resilient_policy_util.h>
@@ -89,7 +90,7 @@ bool ResilientPolicyStore::LoadOrCreate() {
     // If at least one policy file has been deleted, we need to delete the
     // |kCleanupDoneFileName| to make sure the next persist doesn't overwrite
     // the data in a good file saved in a previous session.
-    base::DeleteFile(GetCleanupDoneFilePath(policy_path_));
+    brillo::DeleteFile(GetCleanupDoneFilePath(policy_path_));
   }
 
   return policy_loaded;
@@ -135,7 +136,7 @@ void ResilientPolicyStore::CleanupPolicyFiles(
       break;
 
     const base::FilePath& policy_path = map_pair.second;
-    base::DeleteFile(policy_path);
+    brillo::DeleteFile(policy_path);
     LOG(INFO) << "Deleted old device policy file: " << policy_path.value();
     remaining_files--;
   }

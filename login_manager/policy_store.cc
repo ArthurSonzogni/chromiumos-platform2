@@ -7,6 +7,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/notreached.h>
+#include <brillo/files/file_util.h>
 #include <policy/policy_util.h>
 
 #include "login_manager/system_utils_impl.h"
@@ -68,7 +69,7 @@ bool PolicyStore::LoadOrCreateFromPath(const base::FilePath& policy_path) {
       return false;
     case policy::LoadPolicyResult::kInvalidPolicyData:
       LOG(WARNING) << "Invalid policy data: " << policy_path.value();
-      base::DeleteFile(policy_path);
+      brillo::DeleteFile(policy_path);
       policy_.Clear();
       return false;
   }
@@ -105,7 +106,7 @@ void PolicyStore::Set(
 }
 
 bool PolicyStore::Delete() {
-  if (!base::DeleteFile(policy_path_))
+  if (!brillo::DeleteFile(policy_path_))
     return false;
   policy_.Clear();
   return true;

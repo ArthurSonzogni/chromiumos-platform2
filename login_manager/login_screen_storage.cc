@@ -8,6 +8,7 @@
 
 #include <base/files/file_util.h>
 #include <base/strings/string_number_conversions.h>
+#include <brillo/files/file_util.h>
 #include <crypto/sha2.h>
 #include <dbus/bus.h>
 
@@ -133,7 +134,7 @@ void LoginScreenStorage::RemoveKeyFromLoginScreenStorage(
     // Deleting the file first and then updating the index. So if a crash
     // happens in between, we don't have an incorrect state (a key is present,
     // but not listed by |ListKeys()|).
-    base::DeleteFile(GetPersistentStoragePathForKey(key));
+    brillo::DeleteFile(GetPersistentStoragePathForKey(key));
     WriteIndexToFile(*index);
   }
 }

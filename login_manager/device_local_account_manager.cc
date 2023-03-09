@@ -12,6 +12,7 @@
 #include <base/memory/ptr_util.h>
 #include <base/strings/string_util.h>
 #include <brillo/cryptohome.h>
+#include <brillo/files/file_util.h>
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "login_manager/policy_service.h"
@@ -63,7 +64,7 @@ void DeviceLocalAccountManager::UpdateDeviceSettings(
     if (IsValidAccountKey(subdir.BaseName().value()) &&
         policy_map_.find(subdir.BaseName().value()) == policy_map_.end()) {
       LOG(INFO) << "Purging " << subdir.value();
-      if (!base::DeletePathRecursively(subdir))
+      if (!brillo::DeletePathRecursively(subdir))
         LOG(ERROR) << "Failed to delete " << subdir.value();
     }
   }
