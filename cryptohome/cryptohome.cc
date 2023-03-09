@@ -283,6 +283,7 @@ constexpr const char* kActions[] = {"unmount",
                                     "get_recovery_request",
                                     "reset_application_container",
                                     "prepare_auth_factor",
+                                    "terminate_auth_factor",
                                     nullptr};
 enum ActionEnum {
   ACTION_UNMOUNT,
@@ -369,6 +370,7 @@ enum ActionEnum {
   ACTION_GET_RECOVERY_REQUEST,
   ACTION_RESET_APPLICATION_CONTAINER,
   ACTION_PREPARE_AUTH_FACTOR,
+  ACTION_TERMINATE_AUTH_FACTOR,
 };
 constexpr char kUserSwitch[] = "user";
 constexpr char kPasswordSwitch[] = "password";
@@ -3521,6 +3523,39 @@ int main(int argc, char** argv) {
 
     run_loop.Run();
     return ret_code;
+  } else if (!strcmp(switches::kActions[switches::ACTION_TERMINATE_AUTH_FACTOR],
+                     action.c_str())) {
+    user_data_auth::TerminateAuthFactorRequest request;
+    user_data_auth::TerminateAuthFactorReply reply;
+
+    std::string auth_session_id_hex, auth_session_id;
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
+      return 1;
+    base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
+    request.set_auth_session_id(auth_session_id);
+
+    user_data_auth::AuthFactorType auth_factor_type;
+    if (!GetAuthFactorType(printer, cl, &auth_factor_type))
+      return 1;
+    request.set_auth_factor_type(auth_factor_type);
+
+    brillo::ErrorPtr error;
+    VLOG(1) << "Attempting to TerminateAuthFactor";
+    if (!userdataauth_proxy.TerminateAuthFactor(request, &reply, &error,
+                                                timeout_ms) ||
+        error) {
+      printer.PrintFormattedHumanOutput(
+          "TerminateAuthFactor call failed: %s.\n",
+          BrilloErrorToString(error.get()).c_str());
+      return 1;
+    }
+
+    printer.PrintReplyProtobuf(reply);
+    if (reply.error() !=
+        user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+      printer.PrintHumanOutput("Failed to prepare auth factor.\n");
+      return static_cast<int>(reply.error());
+    }
   } else {
     printer.PrintHumanOutput(
         "Unknown action or no action given.  Available actions:\n");
