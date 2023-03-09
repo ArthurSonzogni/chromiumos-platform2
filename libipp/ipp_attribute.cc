@@ -601,28 +601,76 @@ void Attribute::Resize(size_t new_size) {
   ResizeAttr(values_, def_, new_size, true);
 }
 
-bool Attribute::GetValue(std::string* val, size_t index) const {
-  return ReadConvertValue(values_, name_, def_, index, val);
+Code Attribute::GetValue(size_t index, bool& val) const {
+  if (def_.ipp_type != ValueTag::boolean)
+    return Code::kIncompatibleType;
+  auto values = ReadValueConstPtr<std::vector<int32_t>>(&values_);
+  if (index >= values->size())
+    return Code::kIndexOutOfRange;
+  val = values->at(index);
+  return Code::kOK;
 }
 
-bool Attribute::GetValue(StringWithLanguage* val, size_t index) const {
-  return ReadConvertValue(values_, name_, def_, index, val);
+Code Attribute::GetValue(size_t index, int32_t& val) const {
+  if (!IsInteger(def_.ipp_type))
+    return Code::kIncompatibleType;
+  auto values = ReadValueConstPtr<std::vector<int32_t>>(&values_);
+  if (index >= values->size())
+    return Code::kIndexOutOfRange;
+  val = values->at(index);
+  return Code::kOK;
 }
 
-bool Attribute::GetValue(int* val, size_t index) const {
-  return ReadConvertValue(values_, name_, def_, index, val);
+Code Attribute::GetValue(size_t index, std::string& val) const {
+  if (!IsString(def_.ipp_type) && def_.ipp_type != ValueTag::octetString)
+    return Code::kIncompatibleType;
+  auto values = ReadValueConstPtr<std::vector<std::string>>(&values_);
+  if (index >= values->size())
+    return Code::kIndexOutOfRange;
+  val = values->at(index);
+  return Code::kOK;
 }
 
-bool Attribute::GetValue(Resolution* val, size_t index) const {
-  return ReadConvertValue(values_, name_, def_, index, val);
+Code Attribute::GetValue(size_t index, StringWithLanguage& val) const {
+  if (def_.ipp_type != ValueTag::nameWithLanguage &&
+      def_.ipp_type != ValueTag::textWithLanguage) {
+    return Code::kIncompatibleType;
+  }
+  auto values = ReadValueConstPtr<std::vector<StringWithLanguage>>(&values_);
+  if (index >= values->size())
+    return Code::kIndexOutOfRange;
+  val = values->at(index);
+  return Code::kOK;
 }
 
-bool Attribute::GetValue(RangeOfInteger* val, size_t index) const {
-  return ReadConvertValue(values_, name_, def_, index, val);
+Code Attribute::GetValue(size_t index, DateTime& val) const {
+  if (def_.ipp_type != ValueTag::dateTime)
+    return Code::kIncompatibleType;
+  auto values = ReadValueConstPtr<std::vector<DateTime>>(&values_);
+  if (index >= values->size())
+    return Code::kIndexOutOfRange;
+  val = values->at(index);
+  return Code::kOK;
 }
 
-bool Attribute::GetValue(DateTime* val, size_t index) const {
-  return ReadConvertValue(values_, name_, def_, index, val);
+Code Attribute::GetValue(size_t index, Resolution& val) const {
+  if (def_.ipp_type != ValueTag::resolution)
+    return Code::kIncompatibleType;
+  auto values = ReadValueConstPtr<std::vector<Resolution>>(&values_);
+  if (index >= values->size())
+    return Code::kIndexOutOfRange;
+  val = values->at(index);
+  return Code::kOK;
+}
+
+Code Attribute::GetValue(size_t index, RangeOfInteger& val) const {
+  if (def_.ipp_type != ValueTag::rangeOfInteger)
+    return Code::kIncompatibleType;
+  auto values = ReadValueConstPtr<std::vector<RangeOfInteger>>(&values_);
+  if (index >= values->size())
+    return Code::kIndexOutOfRange;
+  val = values->at(index);
+  return Code::kOK;
 }
 
 CollsView Attribute::Colls() {

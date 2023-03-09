@@ -38,11 +38,11 @@ TEST(Frame, Constructor2) {
       auto att = groups[0].GetAttr("attributes-charset");
       ASSERT_NE(att, groups[0].end());
       std::string value;
-      ASSERT_TRUE(att->GetValue(&value));
+      EXPECT_EQ(att->GetValue(0, value), Code::kOK);
       EXPECT_EQ(value, "utf-8");
       att = groups[0].GetAttr("attributes-natural-language");
       ASSERT_NE(att, groups[0].end());
-      ASSERT_TRUE(att->GetValue(&value));
+      EXPECT_EQ(att->GetValue(0, value), Code::kOK);
       EXPECT_EQ(value, "en-us");
     } else {
       EXPECT_TRUE(groups.empty());
@@ -74,15 +74,15 @@ TEST(Frame, Constructor3) {
       auto att = groups[0].GetAttr("attributes-charset");
       ASSERT_NE(att, groups[0].end());
       std::string value;
-      ASSERT_TRUE(att->GetValue(&value));
+      EXPECT_EQ(att->GetValue(0, value), Code::kOK);
       EXPECT_EQ(value, "utf-8");
       att = groups[0].GetAttr("attributes-natural-language");
       ASSERT_NE(att, groups[0].end());
-      ASSERT_TRUE(att->GetValue(&value));
+      EXPECT_EQ(att->GetValue(0, value), Code::kOK);
       EXPECT_EQ(value, "en-us");
       att = groups[0].GetAttr("status-message");
       ASSERT_NE(att, groups[0].end());
-      ASSERT_TRUE(att->GetValue(&value));
+      EXPECT_EQ(att->GetValue(0, value), Code::kOK);
       EXPECT_EQ(value, "client-error-gone");
     } else {
       EXPECT_TRUE(groups.empty());

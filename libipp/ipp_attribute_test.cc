@@ -36,7 +36,7 @@ TEST(attribute, UnknownValueAttribute) {
   ASSERT_NE(attr, coll.end());
   TestNewAttribute(attr, "abc", ValueTag::nameWithLanguage);
   StringWithLanguage sl;
-  ASSERT_TRUE(attr->GetValue(&sl));
+  EXPECT_EQ(attr->GetValue(0, sl), Code::kOK);
   EXPECT_EQ(sl.language, "");
   EXPECT_EQ(sl.value, "val");
 }

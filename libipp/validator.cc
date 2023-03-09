@@ -290,7 +290,7 @@ std::set<ValidatorCode> ValidateValue(const Attribute* attribute,
                                       size_t value_index) {
   if (IsString(attribute->Tag())) {
     std::string values_str;
-    attribute->GetValue(&values_str, value_index);
+    attribute->GetValue(value_index, values_str);
     switch (attribute->Tag()) {
       case ValueTag::textWithoutLanguage:
         return validateTextWithoutLanguage(values_str);
@@ -316,32 +316,32 @@ std::set<ValidatorCode> ValidateValue(const Attribute* attribute,
   switch (attribute->Tag()) {
     case ValueTag::octetString: {
       std::string value;
-      attribute->GetValue(&value, value_index);
+      attribute->GetValue(value_index, value);
       return validateOctetString(value);
     }
     case ValueTag::dateTime: {
       DateTime value;
-      attribute->GetValue(&value, value_index);
+      attribute->GetValue(value_index, value);
       return validateDateTime(value);
     }
     case ValueTag::resolution: {
       Resolution value;
-      attribute->GetValue(&value, value_index);
+      attribute->GetValue(value_index, value);
       return validateResolution(value);
     }
     case ValueTag::rangeOfInteger: {
       RangeOfInteger value;
-      attribute->GetValue(&value, value_index);
+      attribute->GetValue(value_index, value);
       return validateRangeOfInteger(value);
     }
     case ValueTag::textWithLanguage: {
       StringWithLanguage value;
-      attribute->GetValue(&value, value_index);
+      attribute->GetValue(value_index, value);
       return validateTextWithLanguage(value);
     }
     case ValueTag::nameWithLanguage: {
       StringWithLanguage value;
-      attribute->GetValue(&value, value_index);
+      attribute->GetValue(value_index, value);
       return validateNameWithLanguage(value);
     }
     default:

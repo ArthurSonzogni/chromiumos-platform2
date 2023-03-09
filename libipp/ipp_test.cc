@@ -76,8 +76,8 @@ void CompareCollections(const ipp::Collection& c1, const ipp::Collection& c2) {
       switch (a1->Tag()) {
         case ipp::ValueTag::textWithLanguage:
         case ipp::ValueTag::nameWithLanguage:
-          a1->GetValue(&l1, j);
-          a2->GetValue(&l2, j);
+          a1->GetValue(j, l1);
+          a2->GetValue(j, l2);
           EXPECT_EQ(l1.value, l2.value);
           EXPECT_EQ(l1.language, l2.language);
           break;
@@ -93,23 +93,23 @@ void CompareCollections(const ipp::Collection& c1, const ipp::Collection& c2) {
         case ipp::ValueTag::mimeMediaType:
         case ipp::ValueTag::nameWithoutLanguage:
         case ipp::ValueTag::textWithoutLanguage:
-          a1->GetValue(&s1, j);
-          a2->GetValue(&s2, j);
+          a1->GetValue(j, s1);
+          a2->GetValue(j, s2);
           EXPECT_EQ(s1, s2);
           break;
         case ipp::ValueTag::dateTime:
-          a1->GetValue(&d1, j);
-          a2->GetValue(&d2, j);
+          a1->GetValue(j, d1);
+          a2->GetValue(j, d2);
           EXPECT_EQ(d1, d2);
           break;
         case ipp::ValueTag::resolution:
-          a1->GetValue(&r1, j);
-          a2->GetValue(&r2, j);
+          a1->GetValue(j, r1);
+          a2->GetValue(j, r2);
           EXPECT_EQ(r1, r2);
           break;
         case ipp::ValueTag::rangeOfInteger:
-          a1->GetValue(&i1, j);
-          a2->GetValue(&i2, j);
+          a1->GetValue(j, i1);
+          a2->GetValue(j, i2);
           EXPECT_EQ(i1, i2);
           break;
         case ipp::ValueTag::collection:

@@ -446,19 +446,17 @@ class LIBIPP_EXPORT Attribute {
   // When (IsOutOfBand(Tag()) or `new_size` equals 0 this method does nothing.
   void Resize(size_t new_size);
 
-  // DEPRECATED. Use GetValues() instead.
-  // Retrieves a value from an attribute, returns true for success and
-  // false if the index is out of range or the value cannot be converted
-  // to given variable (in this case, the given variable is not modified).
-  // For attributes with collections use GetCollection().
-  // (val == nullptr) => does nothing and returns false.
-  // (Tag() == collection) => does nothing and returns false.
-  bool GetValue(std::string* val, size_t index = 0) const;
-  bool GetValue(StringWithLanguage* val, size_t index = 0) const;
-  bool GetValue(int* val, size_t index = 0) const;
-  bool GetValue(Resolution* val, size_t index = 0) const;
-  bool GetValue(RangeOfInteger* val, size_t index = 0) const;
-  bool GetValue(DateTime* val, size_t index = 0) const;
+  // Retrieves a single value from the attribute and saves it in `value`.
+  // Possible errors:
+  //  * kIncompatibleType
+  //  * kIndexOutOfRange
+  Code GetValue(size_t index, bool& value) const;
+  Code GetValue(size_t index, int32_t& value) const;
+  Code GetValue(size_t index, std::string& value) const;
+  Code GetValue(size_t index, StringWithLanguage& value) const;
+  Code GetValue(size_t index, DateTime& value) const;
+  Code GetValue(size_t index, Resolution& value) const;
+  Code GetValue(size_t index, RangeOfInteger& value) const;
 
   // Retrieves values from the attribute. They are copied to the given vector.
   // Possible errors:

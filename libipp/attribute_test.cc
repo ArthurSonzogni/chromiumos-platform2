@@ -41,7 +41,7 @@ TEST_F(CollectionTest, AddAttrEnumAsInt) {
   ASSERT_NE(attr, coll_->end());
   EXPECT_EQ(attr->Tag(), ValueTag::enum_);
   int value;
-  ASSERT_TRUE(attr->GetValue(&value));
+  EXPECT_EQ(Code::kOK, attr->GetValue(0, value));
   EXPECT_EQ(value, 1234);
 }
 
@@ -52,7 +52,7 @@ TEST_F(CollectionTest, AddAttrString) {
   ASSERT_NE(attr, coll_->end());
   EXPECT_EQ(attr->Tag(), ValueTag::mimeMediaType);
   std::string value;
-  ASSERT_TRUE(attr->GetValue(&value));
+  EXPECT_EQ(Code::kOK, attr->GetValue(0, value));
   EXPECT_EQ(value, "abc&123 DEF");
 }
 
@@ -66,7 +66,7 @@ TEST_F(CollectionTest, AddAttrStringWithLanguage) {
   ASSERT_NE(attr, coll_->end());
   EXPECT_EQ(attr->Tag(), ValueTag::textWithLanguage);
   StringWithLanguage value;
-  ASSERT_TRUE(attr->GetValue(&value));
+  EXPECT_EQ(Code::kOK, attr->GetValue(0, value));
   EXPECT_EQ(value.language, "lang_def");
   EXPECT_EQ(value.value, "str value");
 }
@@ -78,7 +78,7 @@ TEST_F(CollectionTest, AddAttrBool) {
   ASSERT_NE(attr, coll_->end());
   EXPECT_EQ(attr->Tag(), ValueTag::boolean);
   int value;
-  ASSERT_TRUE(attr->GetValue(&value));
+  EXPECT_EQ(Code::kOK, attr->GetValue(0, value));
   EXPECT_EQ(value, 1);
 }
 
@@ -89,7 +89,7 @@ TEST_F(CollectionTest, AddAttrInteger) {
   ASSERT_NE(attr, coll_->end());
   EXPECT_EQ(attr->Tag(), ValueTag::integer);
   int32_t value;
-  ASSERT_TRUE(attr->GetValue(&value));
+  EXPECT_EQ(Code::kOK, attr->GetValue(0, value));
   EXPECT_EQ(value, -1234567890);
 }
 
@@ -109,7 +109,7 @@ TEST_F(CollectionTest, AddAttrDateTime) {
   ASSERT_NE(attr, coll_->end());
   EXPECT_EQ(attr->Tag(), ValueTag::dateTime);
   DateTime value;
-  ASSERT_TRUE(attr->GetValue(&value));
+  EXPECT_EQ(Code::kOK, attr->GetValue(0, value));
   EXPECT_EQ(value.year, 2034);
   EXPECT_EQ(value.month, 6);
   EXPECT_EQ(value.day, 23);
@@ -130,7 +130,7 @@ TEST_F(CollectionTest, AddAttrResolution) {
   ASSERT_NE(attr, coll_->end());
   EXPECT_EQ(attr->Tag(), ValueTag::resolution);
   Resolution value;
-  ASSERT_TRUE(attr->GetValue(&value));
+  EXPECT_EQ(Code::kOK, attr->GetValue(0, value));
   EXPECT_EQ(value.xres, 123);
   EXPECT_EQ(value.yres, 456);
   EXPECT_EQ(value.units, Resolution::Units::kDotsPerInch);
@@ -144,7 +144,7 @@ TEST_F(CollectionTest, AddAttrRangeOfInteger) {
   ASSERT_NE(attr, coll_->end());
   EXPECT_EQ(attr->Tag(), ValueTag::rangeOfInteger);
   RangeOfInteger value;
-  ASSERT_TRUE(attr->GetValue(&value));
+  EXPECT_EQ(Code::kOK, attr->GetValue(0, value));
   EXPECT_EQ(value.min_value, -123);
   EXPECT_EQ(value.max_value, 456);
 }

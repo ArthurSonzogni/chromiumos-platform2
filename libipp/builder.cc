@@ -120,38 +120,38 @@ void SaveAttrValue(const Attribute* attr,
   switch (attr->Tag()) {
     case ValueTag::boolean: {
       int v = 0;
-      attr->GetValue(&v, index);
+      attr->GetValue(index, v);
       SaveBoolean((v != 0), buf);
       break;
     }
     case ValueTag::integer:
     case ValueTag::enum_: {
       int v = 0;
-      attr->GetValue(&v, index);
+      attr->GetValue(index, v);
       SaveInt32(v, buf);
       break;
     }
     case ValueTag::dateTime: {
       DateTime v;
-      attr->GetValue(&v, index);
+      attr->GetValue(index, v);
       SaveDateTime(v, buf);
       break;
     }
     case ValueTag::resolution: {
       Resolution v;
-      attr->GetValue(&v, index);
+      attr->GetValue(index, v);
       SaveResolution(v, buf);
       break;
     }
     case ValueTag::rangeOfInteger: {
       RangeOfInteger v;
-      attr->GetValue(&v, index);
+      attr->GetValue(index, v);
       SaveRangeOfInteger(v, buf);
       break;
     }
     case ValueTag::textWithLanguage: {
       StringWithLanguage s;
-      attr->GetValue(&s, index);
+      attr->GetValue(index, s);
       if (s.language.empty()) {
         *tag = static_cast<uint8_t>(ValueTag::textWithoutLanguage);
         SaveOctetString(s.value, buf);
@@ -162,7 +162,7 @@ void SaveAttrValue(const Attribute* attr,
     }
     case ValueTag::nameWithLanguage: {
       StringWithLanguage s;
-      attr->GetValue(&s, index);
+      attr->GetValue(index, s);
       if (s.language.empty()) {
         *tag = static_cast<uint8_t>(ValueTag::nameWithoutLanguage);
         SaveOctetString(s.value, buf);
@@ -174,7 +174,7 @@ void SaveAttrValue(const Attribute* attr,
     default:
       if (IsString(attr->Tag()) || attr->Tag() == ValueTag::octetString) {
         std::string s = "";
-        attr->GetValue(&s, index);
+        attr->GetValue(index, s);
         SaveOctetString(s, buf);
       } else {
         // attr->Tag() must be out-of-band or unsupported value.
