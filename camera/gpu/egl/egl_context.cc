@@ -10,7 +10,6 @@
 #include <vector>
 
 #include "cros-camera/common.h"
-#include "gpu/egl/egl_display.h"
 #include "gpu/egl/utils.h"
 
 namespace cros {
@@ -18,8 +17,9 @@ namespace cros {
 // static
 std::unique_ptr<EglContext> EglContext::GetSurfacelessContext(
     const EglContextOptions& options) {
-  EGLDisplay egl_display = GetInitializedEglDisplay();
-  if (egl_display == EGL_NO_DISPLAY) {
+  EGLDisplay egl_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+  if (eglInitialize(egl_display, /*major=*/nullptr, /*minor=*/nullptr) !=
+      EGL_TRUE) {
     LOGF(ERROR) << "Failed to create EGL display";
     return std::make_unique<EglContext>();
   }
