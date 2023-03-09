@@ -31,6 +31,9 @@ class UserDataAuthAdaptor
     service_->SetFingerprintScanResultCallback(
         base::BindRepeating(&UserDataAuthAdaptor::FingerprintScanResultCallback,
                             base::Unretained(this)));
+    service_->SetPrepareAuthFactorProgressCallback(base::BindRepeating(
+        &UserDataAuthAdaptor::PrepareAuthFactorProgressCallback,
+        base::Unretained(this)));
   }
   UserDataAuthAdaptor(const UserDataAuthAdaptor&) = delete;
   UserDataAuthAdaptor& operator=(const UserDataAuthAdaptor&) = delete;

@@ -656,6 +656,7 @@ void UserDataAuth::OnFingerprintEnrollProgress(
   *add_progress.mutable_biometrics_progress() = result;
   progress.set_purpose(user_data_auth::PURPOSE_ADD_AUTH_FACTOR);
   *progress.mutable_add_progress() = add_progress;
+  prepare_auth_factor_progress_callback_.Run(progress);
 }
 
 void UserDataAuth::OnFingerprintAuthProgress(
@@ -671,6 +672,7 @@ void UserDataAuth::OnFingerprintAuthProgress(
   *auth_progress.mutable_biometrics_progress() = result;
   progress.set_purpose(user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR);
   *progress.mutable_auth_progress() = auth_progress;
+  prepare_auth_factor_progress_callback_.Run(progress);
 }
 
 void UserDataAuth::OnOwnershipTakenSignal() {
