@@ -1067,9 +1067,6 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
         value.value());
   }
 
-  if (std::optional<bool> value = EncodeBoolean(key::kDeviceBorealisAllowed))
-    policy->mutable_device_borealis_allowed()->set_allowed(value.value());
-
   if (std::optional<bool> value =
           EncodeBoolean(key::kDeviceSystemWideTracingEnabled)) {
     policy->mutable_device_system_wide_tracing_enabled()->set_enabled(
@@ -1135,10 +1132,12 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
     policy->mutable_device_screensaver_image_display_interval_seconds()
         ->set_device_screensaver_image_display_interval_seconds(value.value());
 
-  if (std::optional<std::string> value =
-          EncodeString(key::kDeviceScreensaverImages))
-    policy->mutable_device_screensaver_images()->set_device_screensaver_images(
-        value.value());
+  if (std::optional<std::vector<std::string>> values =
+          EncodeStringList(key::kDeviceScreensaverImages)) {
+    *policy->mutable_device_screensaver_images()
+         ->mutable_device_screensaver_images() = {values.value().begin(),
+                                                  values.value().end()};
+  }
 }
 
 std::optional<bool> DevicePolicyEncoder::EncodeBoolean(
