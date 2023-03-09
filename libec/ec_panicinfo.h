@@ -6,30 +6,25 @@
 #define LIBEC_EC_PANICINFO_H_
 
 #include <stdio.h>
+#include <string>
+#include <vector>
 
+#include <base/containers/span.h>
+#include <base/types/expected.h>
 #include <brillo/brillo_export.h>
 #include <chromeos/ec/panic_defs.h>
 
 namespace ec {
 
-/**
- * Prints panic information to stdout.
- *
- * @param pdata  Panic information to print
- * @return 0 if success or non-zero error code if error.
- */
+// Return the parsed panic information from |data|.
 BRILLO_EXPORT
-int parse_panic_info(const char* data, size_t size);
+base::expected<std::string, std::string> ParsePanicInfo(
+    base::span<const uint8_t> data);
 
-/**
- * Read stdin to data.
- *
- * @param data  Raw information to store.
- * @param max_size  Maximum size can be stored to data.
- * @return data length if success or non-zero code if error.
- */
+// Return the data read from stdin. Data returned will not exceed |max_size|.
 BRILLO_EXPORT
-int get_panic_input(char *data, size_t max_size);
+base::expected<std::vector<uint8_t>, std::string> GetPanicInput(
+    size_t max_size);
 
 }  // namespace ec
 
