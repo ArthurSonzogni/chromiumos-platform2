@@ -108,6 +108,8 @@ inline constexpr char kLowDiskSpace[] = "LowDiskSpace";
 inline constexpr char kAuthScanResultSignal[] = "AuthScanResult";
 inline constexpr char kAuthEnrollmentProgressSignal[] =
     "AuthEnrollmentProgress";
+inline constexpr char kPrepareAuthFactorProgressSignal[] =
+    "PrepareAuthFactorProgress";
 
 }  // namespace user_data_auth
 
