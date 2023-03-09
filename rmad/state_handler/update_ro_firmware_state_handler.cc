@@ -59,7 +59,6 @@ UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
   udev_utils_ = std::make_unique<UdevUtilsImpl>();
   cmd_utils_ = std::make_unique<CmdUtilsImpl>();
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
-  flashrom_utils_ = std::make_unique<FlashromUtilsImpl>();
   power_manager_client_ =
       std::make_unique<PowerManagerClientImpl>(GetSystemBus());
 }
@@ -70,14 +69,12 @@ UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
     std::unique_ptr<UdevUtils> udev_utils,
     std::unique_ptr<CmdUtils> cmd_utils,
     std::unique_ptr<WriteProtectUtils> write_protect_utils,
-    std::unique_ptr<FlashromUtils> flashrom_utils,
     std::unique_ptr<PowerManagerClient> power_manager_client)
     : BaseStateHandler(json_store, daemon_callback),
       is_mocked_(true),
       udev_utils_(std::move(udev_utils)),
       cmd_utils_(std::move(cmd_utils)),
       write_protect_utils_(std::move(write_protect_utils)),
-      flashrom_utils_(std::move(flashrom_utils)),
       power_manager_client_(std::move(power_manager_client)) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
 }
@@ -342,12 +339,12 @@ bool UpdateRoFirmwareStateHandler::RunFirmwareUpdater() {
 
   // Make sure AP/EC WP are off.
   if (bool enabled;
-      !flashrom_utils_->GetApWriteProtectionStatus(&enabled) || enabled) {
+      !write_protect_utils_->GetApWriteProtectionStatus(&enabled) || enabled) {
     LOG(ERROR) << "AP SWWP is enabled. Aborting firmware update.";
     return false;
   }
   if (bool enabled;
-      !flashrom_utils_->GetEcWriteProtectionStatus(&enabled) || enabled) {
+      !write_protect_utils_->GetEcWriteProtectionStatus(&enabled) || enabled) {
     LOG(ERROR) << "EC SWWP is enabled. Aborting firmware update.";
     return false;
   }

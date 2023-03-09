@@ -19,7 +19,6 @@
 #include "rmad/udev/mock_udev_utils.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/mock_cmd_utils.h"
-#include "rmad/utils/mock_flashrom_utils.h"
 #include "rmad/utils/mock_write_protect_utils.h"
 
 using testing::_;
@@ -52,9 +51,6 @@ class UpdateRoFirmwareStateHandlerTest : public StateHandlerTest {
     ON_CALL(*mock_write_protect_utils, GetHardwareWriteProtectionStatus(_))
         .WillByDefault(DoAll(SetArgPointee<0>(hwwp_enabled), Return(true)));
 
-    // Mock |FlashromUtils|.
-    auto mock_flashrom_utils = std::make_unique<NiceMock<MockFlashromUtils>>();
-
     // Mock |PowerManagerClient|.
     auto mock_power_manager_client =
         std::make_unique<NiceMock<MockPowerManagerClient>>();
@@ -62,7 +58,7 @@ class UpdateRoFirmwareStateHandlerTest : public StateHandlerTest {
     return base::MakeRefCounted<UpdateRoFirmwareStateHandler>(
         json_store_, daemon_callback_, std::move(mock_udev_utils),
         std::move(mock_cmd_utils), std::move(mock_write_protect_utils),
-        std::move(mock_flashrom_utils), std::move(mock_power_manager_client));
+        std::move(mock_power_manager_client));
   }
 
  protected:
