@@ -67,14 +67,19 @@ const DMSETUP_PATH: &str = "/sbin/dmsetup";
 /// Define the path to the losetup utility.
 const LOSETUP_PATH: &str = "/sbin/losetup";
 
+const SIZE_1K: u64 = 1024;
+const SIZE_4K: u64 = 4 * SIZE_1K;
+const SIZE_1M: u64 = SIZE_1K * SIZE_1K;
+const SIZE_1G: u64 = SIZE_1K * SIZE_1M;
+
 /// Define the size to include in the hibernate volume for accumulating all the
 /// writes in the resume boot. Usually (as of mid 2022) this is about 32MB. Size
 /// it way up to be safe.
-const MAX_SNAPSHOT_BYTES: u64 = 1024 * 1024 * 1024;
+const MAX_SNAPSHOT_BYTES: u64 = SIZE_1G;
 
 /// Define the amount of extra space in the hibernate volume to account for
 /// things like file system overhead and general safety margin.
-const HIBER_VOLUME_FUDGE_BYTES: u64 = 1024 * 1024 * 1024;
+const HIBER_VOLUME_FUDGE_BYTES: u64 = SIZE_1G;
 
 /// Define the number of sectors per dm-snapshot chunk.
 const DM_SNAPSHOT_CHUNK_SIZE: usize = 8;
@@ -89,10 +94,10 @@ const NO_SNAPSHOT_LVS: [&str; 5] = [
 ];
 
 /// Define the size of a volume snapshot.
-const SNAPSHOT_SIZE: u64 = 512 * 1024 * 1024;
+const SNAPSHOT_SIZE: u64 = 512 * SIZE_1M;
 
 /// Define the size of the unencrypted snapshot, which is a little bit bigger.
-const UNENCRYPTED_SNAPSHOT_SIZE: u64 = 1024 * 1024 * 1024;
+const UNENCRYPTED_SNAPSHOT_SIZE: u64 = SIZE_1G;
 
 /// Define the number of milliseconds to wait for all dm-snapshot merges to
 /// complete.
@@ -229,7 +234,7 @@ impl VolumeManager {
         }
 
         let active_lvs = get_active_lvs()?;
-        let zeroes = [0u8; 4096];
+        let zeroes = [0u8; SIZE_4K as usize];
         for lv_name in &active_lvs {
             // Skip certain LVs.
             let mut skip_lv = false;
