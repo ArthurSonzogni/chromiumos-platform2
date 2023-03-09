@@ -38,6 +38,8 @@ class FileSystem {
                            size_t count,
                            fuse_forget_data* forgets);
 
+  virtual void GetFsattr(std::unique_ptr<FsattrRequest> request);
+
   virtual void GetAttr(std::unique_ptr<AttrRequest> request, ino_t ino);
 
   virtual void SetAttr(std::unique_ptr<AttrRequest> request,

@@ -120,6 +120,10 @@ static void fs_releasedir(fuse_req_t req,
   fs(req)->ReleaseDir(std::make_unique<OkRequest>(req, fi), ino);
 }
 
+static void fs_statfs(fuse_req_t req, fuse_ino_t ino) {
+  fs(req)->GetFsattr(std::make_unique<FsattrRequest>(req));
+}
+
 static void fs_create(fuse_req_t req,
                       fuse_ino_t parent,
                       const char* name,
@@ -148,6 +152,7 @@ fuse_lowlevel_ops FileSystem::FuseOps() {
       .opendir = fs_opendir,
       .readdir = fs_readdir,
       .releasedir = fs_releasedir,
+      .statfs = fs_statfs,
       .create = fs_create,
       .forget_multi = fs_forget_multi,
   };

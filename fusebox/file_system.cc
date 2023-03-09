@@ -40,6 +40,10 @@ void FileSystem::ForgetMulti(std::unique_ptr<NoneRequest> request,
   FuseNotImplemented(request.get());
 }
 
+void FileSystem::GetFsattr(std::unique_ptr<FsattrRequest> request) {
+  FuseNotImplemented(request.get());
+}
+
 void FileSystem::GetAttr(std::unique_ptr<AttrRequest> request, ino_t ino) {
   FuseNotImplemented(request.get());
 }

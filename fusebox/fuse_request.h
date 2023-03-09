@@ -67,6 +67,13 @@ class AttrRequest : public FuseRequest {
   void ReplyAttr(const struct stat& attr, double timeout);
 };
 
+// FUSE request with a file-system attribute stat response.
+class FsattrRequest : public FuseRequest {
+ public:
+  explicit FsattrRequest(fuse_req_t req) : FuseRequest(req) {}
+  void ReplyFsattr(const struct statvfs& fs_attr);
+};
+
 // FUSE request with a fuse_entry_param response.
 class EntryRequest : public FuseRequest {
  public:

@@ -51,6 +51,12 @@ void AttrRequest::ReplyAttr(const struct stat& attr, double timeout) {
   replied_ = true;
 }
 
+void FsattrRequest::ReplyFsattr(const struct statvfs& fs_attr) {
+  DCHECK(!replied_);
+  fuse_reply_statfs(req_, &fs_attr);
+  replied_ = true;
+}
+
 void EntryRequest::ReplyEntry(const fuse_entry_param& entry) {
   DCHECK(!replied_);
   fuse_reply_entry(req_, &entry);

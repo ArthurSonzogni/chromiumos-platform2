@@ -166,6 +166,44 @@ class FuseBoxClient : public FileSystem {
     CHECK(userdata) << "FileSystem (userdata) is required";
   }
 
+  void GetFsattr(std::unique_ptr<FsattrRequest> request) override {
+    // Without overriding this GetFsattr method, we'd report "zero bytes free
+    // disk space" by default. This would mean that other programs that first
+    // check "is there enough space" before copying in files would balk.
+    //
+    // This Fusebox daemon can serve multiple subdirs, often backed by the
+    // cloud instead of by physical storage on Chromebook-local disks. It's
+    // non-trivial to get an accurate estimate of "how much free disk space"
+    // there is in total under /media/fuse/fusebox.
+    //
+    // But we don't need accuracy to pass the "is there enough space" check.
+    // And even with accuracy, reporting enough space (a big enough number)
+    // across *all* subdirs doesn't imply that there was enough space on *one
+    // particular* subdir you're copying into.
+    //
+    // Instead, we'll just make up an arbitrary big number (1099511627776 bytes
+    // = 1 tebibyte), enough to effectively always say "go ahead, try to copy".
+    // If it turns out that there wasn't enough space, the copy will fail. But
+    // copies can already fail, in a "not enough space" way (if something else
+    // is concurrently writing to the "disk") and in other ways.
+    //
+    // See also: "man 2 statfs" and "man 3 statvfs".
+
+    struct statvfs stat = {0};
+    stat.f_bsize = 4096;      // The block size is 1<<12.
+    stat.f_frsize = 4096;     // On Linux, fragment size = block size.
+    stat.f_blocks = 1 << 28;  // There are 1<<28 blocks, all free (unused) and
+    stat.f_bfree = 1 << 28;   // available (for unprivileged users), and so
+    stat.f_bavail = 1 << 28;  // there is 1<<40 = 1TiB of "free disk space".
+    stat.f_files = 1 << 20;   // There are also over 1 million free inodes.
+    stat.f_ffree = 1 << 20;
+    stat.f_favail = 1 << 20;
+    stat.f_fsid = 0;
+    stat.f_flag = ST_NODEV | ST_NOEXEC | ST_NOSUID;
+    stat.f_namemax = NAME_MAX;
+    request->ReplyFsattr(stat);
+  }
+
   void GetAttr(std::unique_ptr<AttrRequest> request, ino_t ino) override {
     VLOG(1) << "getattr " << ino;
 
