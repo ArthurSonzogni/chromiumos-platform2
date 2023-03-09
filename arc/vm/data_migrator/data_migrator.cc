@@ -6,6 +6,7 @@
 
 #include <arcvm_data_migrator/proto_bindings/arcvm_data_migrator.pb.h>
 #include <base/command_line.h>
+#include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/functional/bind.h>
@@ -84,6 +85,29 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
             brillo::cryptohome::home::Username(request.username()))
             .Append("android-data/data/data");
     *response = base::DirectoryExists(android_data_data_dir);
+    return true;
+  }
+
+  bool GetAndroidDataSize(brillo::ErrorPtr* error,
+                          const GetAndroidDataSizeRequest& request,
+                          int64_t* size) override {
+    const base::FilePath android_data_dir =
+        brillo::cryptohome::home::GetRootPath(
+            brillo::cryptohome::home::Username(request.username()))
+            .Append("android-data/data");
+
+    base::FileEnumerator enumerator(
+        android_data_dir, /*recursive=*/true,
+        // Use the same set of file types as
+        // cryptohome::data_migrator::MigrationHelper::CalculateDataToMigrate.
+        base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES |
+            base::FileEnumerator::SHOW_SYM_LINKS);
+
+    *size = 0;
+    for (base::FilePath entry = enumerator.Next(); !entry.empty();
+         entry = enumerator.Next()) {
+      *size += enumerator.GetInfo().GetSize();
+    }
     return true;
   }
 
