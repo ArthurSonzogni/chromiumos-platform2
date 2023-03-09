@@ -48,7 +48,6 @@
 #include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/user_session/user_session_map.h"
 #include "cryptohome/username.h"
-#include "featured/c_feature_library.h"
 #include "featured/feature_library.h"
 
 namespace cryptohome {
@@ -73,7 +72,7 @@ enum class AuthStatus {
 inline constexpr struct VariationsFeature
     kCrOSLateBootMigrateToUserSecretStash = {
         .name = "CrOSLateBootMigrateToUserSecretStash",
-        .default_state = FEATURE_ENABLED_BY_DEFAULT,
+        .default_state = FEATURE_DISABLED_BY_DEFAULT,
 };
 
 // The list of all intents satisfied when the auth session is "fully
