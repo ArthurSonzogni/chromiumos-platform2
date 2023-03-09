@@ -122,6 +122,23 @@ void PrintAltMode(const base::FilePath& alt_mode, int indent) {
   ParseDirsAndExecute(alt_mode, indent + 2, kModeRegex, &PrintDirFiles);
 }
 
+void PrintPdos(const base::FilePath& pdo_path, int indent) {
+  if (!base::DirectoryExists(pdo_path))
+    return;
+
+  PrintDirFiles(pdo_path, indent);
+  ParseDirsAndExecute(pdo_path, indent + 2, kPdoCapabilitiesRegex,
+                      &PrintPdoCapabilities);
+}
+
+void PrintPdoCapabilities(const base::FilePath& capabilities, int indent) {
+  if (!base::DirectoryExists(capabilities))
+    return;
+
+  PrintDirFiles(capabilities, indent);
+  ParseDirsAndExecute(capabilities, indent + 2, kPdoTypeRegex, &PrintDirFiles);
+}
+
 void PrintPlugInfo(const base::FilePath& plug, int indent) {
   if (!base::DirectoryExists(plug))
     return;
@@ -451,6 +468,7 @@ void PrintPartner(const base::FilePath& port, int indent) {
   PrintPartnerIdentity(partner_dir, indent + 2);
   ParseDirsAndExecute(partner_dir, indent + 2, kPartnerAltModeRegex,
                       &PrintAltMode);
+  ParseDirsAndExecute(partner_dir, indent + 2, kPartnerPdoRegex, &PrintPdos);
 }
 
 void PrintCable(const base::FilePath& port, int indent) {

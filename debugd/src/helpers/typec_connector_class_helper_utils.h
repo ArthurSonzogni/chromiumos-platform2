@@ -53,6 +53,10 @@ constexpr char kPartnerAltModeRegex[] = "port[0-9]+-partner\\.[0-9]+$";
 constexpr char kModeRegex[] = "mode[0-9]+$";
 constexpr char kPlugRegex[] = "port[0-9]+\\-plug[0-9]+$";
 constexpr char kPlugAltModeRegex[] = "port[0-9]+\\-plug[0-9]+\\.[0-9]+$";
+constexpr char kPartnerPdoRegex[] = "pd[0-9]+$";
+constexpr char kPdoCapabilitiesRegex[] = "(sink|source)-capabilities$";
+constexpr char kPdoTypeRegex[] =
+    "[0-9]+:(battery|fixed_supply|programmable_supply|variable_supply)$";
 
 // Masks for id_header fields.
 constexpr uint32_t kPDUFPProductTypeMask = 0x38000000;
@@ -395,6 +399,14 @@ void PrintVdo(const base::FilePath& vdo_file,
 // PrintAltMode will print the immediate files in an alternate mode directory,
 // then print the files in a mode subdirectory.
 void PrintAltMode(const base::FilePath& alt_mode, int indent);
+
+// PrintPdos will print the immediate files in a PDO data directory, then call
+// PrintPdoCapabilities to print more detailed PDO information.
+void PrintPdos(const base::FilePath& pdo_path, int indent);
+
+// PrintPdoCapabilities will print detailed information about the PDOs given
+// at a device's sysfs path, including available voltages and currents.
+void PrintPdoCapabilities(const base::FilePath& capabilities, int indent);
 
 // PrintPlugInfo will print the immediate files in an plug directory, then print
 // the files in an alternate mode directory.
