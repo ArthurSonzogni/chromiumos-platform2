@@ -30,7 +30,7 @@ use crate::mmapbuf::MmapBuffer;
 /// Define the minimum size of a block device sector.
 const SECTOR_SIZE: usize = 512;
 /// Define the size of an LVM extent.
-const LVM_EXTENT_SIZE: i64 = 64 * 1024;
+const LVM_EXTENT_SIZE: u64 = 64 * 1024;
 
 /// Helper function to determine if this is a system where the stateful
 /// partition is running on top of LVM.
@@ -112,7 +112,7 @@ pub fn activate_lv(volume_group: &str, name: &str) -> Result<()> {
 
 /// Create a new thinpool volume under the given volume group, with the
 /// specified name and size.
-pub fn create_thin_volume(volume_group: &str, size: i64, name: &str) -> Result<()> {
+pub fn create_thin_volume(volume_group: &str, size: u64, name: &str) -> Result<()> {
     // lvcreate --thin -V "${lv_size}b" -n "{name}" "${volume_group}/thinpool"
     let size_arg = format!("{}b", size);
     let thinpool = format!("{}/thinpool", volume_group);
@@ -124,7 +124,7 @@ pub fn create_thin_volume(volume_group: &str, size: i64, name: &str) -> Result<(
 
 /// Take a newly created thin volume and ensure space is fully allocated for it
 /// from the thinpool. This is destructive to the data on the volume.
-pub fn thicken_thin_volume<P: AsRef<Path>>(path: P, size: i64) -> Result<()> {
+pub fn thicken_thin_volume<P: AsRef<Path>>(path: P, size: u64) -> Result<()> {
     let mut file = OpenOptions::new()
         .write(true)
         .open(path.as_ref())
@@ -133,7 +133,7 @@ pub fn thicken_thin_volume<P: AsRef<Path>>(path: P, size: i64) -> Result<()> {
             path.as_ref().display()
         ))?;
     let buf = [0u8; SECTOR_SIZE];
-    let skip = LVM_EXTENT_SIZE - (SECTOR_SIZE as i64);
+    let skip = LVM_EXTENT_SIZE - (SECTOR_SIZE as u64);
     let mut offset = 0;
 
     loop {
@@ -142,7 +142,8 @@ pub fn thicken_thin_volume<P: AsRef<Path>>(path: P, size: i64) -> Result<()> {
         if offset >= size {
             break;
         }
-        file.seek(SeekFrom::Current(skip)).context(format!(
+        // Unwrap is fine here because LVM_EXTENT_SIZE can fit in an i64.
+        file.seek(SeekFrom::Current(skip.try_into().unwrap())).context(format!(
             "Failed to seek {}/{} in LV",
             offset + skip,
             size

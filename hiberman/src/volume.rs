@@ -70,11 +70,11 @@ const LOSETUP_PATH: &str = "/sbin/losetup";
 /// Define the size to include in the hibernate volume for accumulating all the
 /// writes in the resume boot. Usually (as of mid 2022) this is about 32MB. Size
 /// it way up to be safe.
-const MAX_SNAPSHOT_BYTES: i64 = 1024 * 1024 * 1024;
+const MAX_SNAPSHOT_BYTES: u64 = 1024 * 1024 * 1024;
 
 /// Define the amount of extra space in the hibernate volume to account for
 /// things like file system overhead and general safety margin.
-const HIBER_VOLUME_FUDGE_BYTES: i64 = 1024 * 1024 * 1024;
+const HIBER_VOLUME_FUDGE_BYTES: u64 = 1024 * 1024 * 1024;
 
 /// Define the number of sectors per dm-snapshot chunk.
 const DM_SNAPSHOT_CHUNK_SIZE: usize = 8;
@@ -96,7 +96,7 @@ const UNENCRYPTED_SNAPSHOT_SIZE: u64 = 1024 * 1024 * 1024;
 
 /// Define the number of milliseconds to wait for all dm-snapshot merges to
 /// complete.
-const MERGE_TIMEOUT_MS: i64 = 1000 * 60 * 20;
+const MERGE_TIMEOUT_MS: u32 = 20 * 60 * 1000;
 
 /// The pending stateful merge is an object that when dropped will ask the
 /// volume manager to merge the stateful snapshots.
@@ -215,8 +215,8 @@ impl VolumeManager {
     }
 
     /// Figure out the appropriate size for the hibernate volume.
-    fn hiber_volume() -> i64 {
-        let total_mem = (get_total_memory_pages() as i64) * (get_page_size() as i64);
+    fn hiber_volume() -> u64 {
+        let total_mem = (get_total_memory_pages() as u64) * (get_page_size() as u64);
         total_mem + MAX_SNAPSHOT_BYTES + HIBER_VOLUME_FUDGE_BYTES
     }
 
@@ -354,7 +354,7 @@ impl VolumeManager {
     /// Get the size of the block device at the given path, in sectors.
     /// Note: We could save the external process by opening the device and
     /// using the BLKGETSIZE64 ioctl instead.
-    fn get_blockdev_size<P: AsRef<OsStr>>(path: P) -> Result<i64> {
+    fn get_blockdev_size<P: AsRef<OsStr>>(path: P) -> Result<u64> {
         let output =
             checked_command_output(Command::new("/sbin/blockdev").arg("--getsz").arg(path))
                 .context("Failed to get block device size")?;
@@ -618,8 +618,9 @@ impl Drop for SuspendedDmDevice {
 /// Function that waits for a vector of references to DmSnapshotMerge objects to
 /// finish. Returns an error if any failed, and waits with a timeout for any
 /// that did not fail.
-fn wait_for_snapshots_merge(snapshots: &mut Vec<DmSnapshotMerge>, mut timeout: i64) -> Result<()> {
+fn wait_for_snapshots_merge(snapshots: &mut Vec<DmSnapshotMerge>, timeout_ms: u32) -> Result<()> {
     info!("Waiting for {} snapshots to merge", snapshots.len());
+    let mut remaining_ms: i64 = timeout_ms.into();
     let mut result = Ok(());
     loop {
         let mut all_done = true;
@@ -639,7 +640,7 @@ fn wait_for_snapshots_merge(snapshots: &mut Vec<DmSnapshotMerge>, mut timeout: i
             break;
         }
 
-        if timeout <= 0 {
+        if remaining_ms <= 0 {
             return result.and(
                 Err(HibernateError::MergeTimeoutError())
                     .context("Timed out waiting for snapshot merges"),
@@ -650,7 +651,7 @@ fn wait_for_snapshots_merge(snapshots: &mut Vec<DmSnapshotMerge>, mut timeout: i
         // progress can be made, but not so long that our I/O rate measurements
         // would be significantly skewed by the wait period remainder.
         thread::sleep(Duration::from_millis(50));
-        timeout -= 50;
+        remaining_ms -= 50;
     }
 
     result
@@ -664,7 +665,7 @@ struct DmSnapshotMerge {
     snapshot_name: String,
     origin_majmin: String,
     start: Instant,
-    starting_sectors: i64,
+    starting_sectors: u64,
 }
 
 impl DmSnapshotMerge {
@@ -737,7 +738,7 @@ impl DmSnapshotMerge {
 
     /// Check on the progress of the async merge happening. On success, returns
     /// the number of sectors remaining to merge.
-    pub fn check_merge_progress(&mut self) -> Result<i64> {
+    pub fn check_merge_progress(&mut self) -> Result<u64> {
         if self.complete {
             return Ok(0);
         }
@@ -751,7 +752,7 @@ impl DmSnapshotMerge {
     }
 
     /// Inner routine to check the merge.
-    fn check_and_complete_merge(&mut self) -> Result<i64> {
+    fn check_and_complete_merge(&mut self) -> Result<u64> {
         let data_sectors = get_snapshot_data_sectors(&self.snapshot_name)?;
         if data_sectors == 0 {
             self.complete_post_merge()?;
@@ -813,7 +814,7 @@ impl Drop for DmSnapshotMerge {
 
 /// Return the number of data sectors in the snapshot.
 /// See https://www.kernel.org/doc/Documentation/device-mapper/snapshot.txt
-fn get_snapshot_data_sectors(name: &str) -> Result<i64> {
+fn get_snapshot_data_sectors(name: &str) -> Result<u64> {
     let status = get_dm_status(name).context(format!("Failed to get dm status for {}", name))?;
     let allocated_element =
         get_nth_element(&status, 3).context("Failed to get dm status allocated element")?;
@@ -822,11 +823,11 @@ fn get_snapshot_data_sectors(name: &str) -> Result<i64> {
     let metadata =
         get_nth_element(&status, 4).context("Failed to get dm status metadata element")?;
 
-    let allocated: i64 = allocated
+    let allocated: u64 = allocated
         .parse()
         .context("Failed to parse dm-snapshot allocated field")?;
 
-    let metadata: i64 = metadata
+    let metadata: u64 = metadata
         .parse()
         .context("Failed to parse dm-snapshot metadata fielf")?;
 
@@ -836,7 +837,7 @@ fn get_snapshot_data_sectors(name: &str) -> Result<i64> {
 /// Return the number of used data sectors, and the total number of data
 /// sectors. See
 /// https://www.kernel.org/doc/Documentation/device-mapper/snapshot.txt
-pub fn get_snapshot_size(name: &str) -> Result<(i64, i64)> {
+pub fn get_snapshot_size(name: &str) -> Result<(u64, u64)> {
     let status = get_dm_status(name).context(format!("Failed to get dm status for {}", name))?;
     let allocated_element =
         get_nth_element(&status, 3).context("Failed to get dm status allocated element")?;
@@ -854,11 +855,11 @@ pub fn get_snapshot_size(name: &str) -> Result<(i64, i64)> {
         .next()
         .context("Failed to get dm-snapshot total sectors")?;
 
-    let allocated: i64 = allocated
+    let allocated: u64 = allocated
         .parse()
         .context("Failed to parse dm-snapshot allocated field")?;
 
-    let total: i64 = total
+    let total: u64 = total
         .parse()
         .context("Failed to parse dm-snapshot total field")?;
     Ok((allocated, total))
