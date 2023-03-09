@@ -6,12 +6,12 @@
 
 #include <linux/capability.h>
 
+#include <utility>
 #include <vector>
 
 #include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
-#include <shill/net/process_manager.h>
 
 #include "patchpanel/system.h"
 
@@ -74,7 +74,8 @@ DHCPServerController::~DHCPServerController() {
   Stop();
 }
 
-bool DHCPServerController::Start(const Config& config) {
+bool DHCPServerController::Start(const Config& config,
+                                 ExitCallback exit_callback) {
   if (IsRunning()) {
     LOG(ERROR) << "DHCP server is still running: " << ifname_
                << ", old config=" << *config_;
@@ -107,7 +108,8 @@ bool DHCPServerController::Start(const Config& config) {
   const pid_t pid = process_manager_->StartProcessInMinijail(
       FROM_HERE, base::FilePath(kDnsmasqPath), dnsmasq_args, /*environment=*/{},
       minijail_options,
-      base::DoNothing());  // TODO(akahuang): Handle the exit callback.
+      base::BindOnce(&DHCPServerController::OnProcessExitedUnexpectedly,
+                     weak_ptr_factory_.GetWeakPtr()));
   if (pid < 0) {
     LOG(ERROR) << "Failed to start the DHCP server: " << ifname_;
     return false;
@@ -115,6 +117,7 @@ bool DHCPServerController::Start(const Config& config) {
 
   pid_ = pid;
   config_ = config;
+  exit_callback_ = std::move(exit_callback);
   return true;
 }
 
@@ -124,11 +127,23 @@ void DHCPServerController::Stop() {
   }
 
   LOG(INFO) << "Stopping DHCP server at: " << ifname_;
-  // TODO(b/271371399): Implement the method.
+  process_manager_->StopProcess(*pid_);
+
+  pid_ = std::nullopt;
+  config_ = std::nullopt;
+  exit_callback_.Reset();
 }
 
 bool DHCPServerController::IsRunning() const {
   return pid_.has_value();
+}
+
+void DHCPServerController::OnProcessExitedUnexpectedly(int exit_status) {
+  LOG(ERROR) << "dnsmasq exited unexpectedly, status: " << exit_status;
+
+  pid_ = std::nullopt;
+  config_ = std::nullopt;
+  std::move(exit_callback_).Run(exit_status);
 }
 
 }  // namespace patchpanel

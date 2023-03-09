@@ -4,6 +4,7 @@
 
 #include "patchpanel/dhcp_server_controller.h"
 
+#include <utility>
 #include <vector>
 
 #include <base/check.h>
@@ -14,6 +15,8 @@
 
 using testing::_;
 using testing::Return;
+using testing::StrictMock;
+using testing::WithArg;
 
 namespace patchpanel {
 namespace {
@@ -28,6 +31,11 @@ shill::IPAddress CreateAndUnwrapIPAddress(const std::string& ip,
   CHECK(ret.has_value()) << ip << "/" << prefix << " is not a valid IP";
   return *ret;
 }
+
+class MockCallback {
+ public:
+  MOCK_METHOD(void, OnProcessExited, (int));
+};
 
 }  // namespace
 
@@ -44,7 +52,7 @@ class DHCPServerControllerTest : public ::testing::Test {
     return Config::Create(host_ip, start_ip, end_ip).value();
   }
 
-  shill::MockProcessManager process_manager_;
+  StrictMock<shill::MockProcessManager> process_manager_;
   DHCPServerController dhcp_server_controller_{"wlan0"};
 };
 
@@ -97,14 +105,15 @@ TEST_F(DHCPServerControllerTest, StartSuccessfulAtFirstTime) {
   EXPECT_CALL(process_manager_,
               StartProcessInMinijail(_, cmd_path, cmd_args, _, _, _))
       .WillOnce(Return(pid));
+  EXPECT_CALL(process_manager_, StopProcess(pid)).WillOnce(Return(true));
 
   // Start() should be successful at the first time.
   EXPECT_EQ(dhcp_server_controller_.IsRunning(), false);
-  EXPECT_EQ(dhcp_server_controller_.Start(config), true);
-  EXPECT_EQ(dhcp_server_controller_.IsRunning(), true);
+  EXPECT_TRUE(dhcp_server_controller_.Start(config, base::DoNothing()));
+  EXPECT_TRUE(dhcp_server_controller_.IsRunning());
 
   // Start() should fail and do nothing when the previous one is still running.
-  EXPECT_EQ(dhcp_server_controller_.Start(config), false);
+  EXPECT_FALSE(dhcp_server_controller_.Start(config, base::DoNothing()));
 }
 
 TEST_F(DHCPServerControllerTest, StartFailed) {
@@ -115,8 +124,50 @@ TEST_F(DHCPServerControllerTest, StartFailed) {
       .WillOnce(Return(invalid_pid));
 
   // Start() should fail if receiving invalid pid.
-  EXPECT_EQ(dhcp_server_controller_.Start(config), false);
-  EXPECT_EQ(dhcp_server_controller_.IsRunning(), false);
+  EXPECT_FALSE(dhcp_server_controller_.Start(config, base::DoNothing()));
+  EXPECT_FALSE(dhcp_server_controller_.IsRunning());
 }
 
+TEST_F(DHCPServerControllerTest, StartAndStop) {
+  const auto config = CreateValidConfig();
+  constexpr pid_t pid = 5;
+
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
+      .WillOnce(Return(pid));
+  EXPECT_CALL(process_manager_, StopProcess(pid)).WillOnce(Return(true));
+
+  EXPECT_TRUE(dhcp_server_controller_.Start(config, base::DoNothing()));
+  EXPECT_TRUE(dhcp_server_controller_.IsRunning());
+
+  // After the server is running, Stop() should make the server not running.
+  dhcp_server_controller_.Stop();
+  EXPECT_FALSE(dhcp_server_controller_.IsRunning());
+}
+
+TEST_F(DHCPServerControllerTest, OnProcessExited) {
+  const auto config = CreateValidConfig();
+  constexpr pid_t pid = 5;
+  constexpr int exit_status = 7;
+
+  // Store the exit callback at |exit_cb_at_process_manager|.
+  base::OnceCallback<void(int)> exit_cb_at_process_manager;
+  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
+      .WillOnce(WithArg<5>([&exit_cb_at_process_manager](
+                               base::OnceCallback<void(int)> exit_callback) {
+        exit_cb_at_process_manager = std::move(exit_callback);
+        return pid;
+      }));
+
+  // The callback from caller should be called with exit status when the process
+  // is exited unexpectedly.
+  MockCallback exit_cb_from_caller;
+  EXPECT_CALL(exit_cb_from_caller, OnProcessExited(exit_status));
+  EXPECT_TRUE(dhcp_server_controller_.Start(
+      config, base::BindOnce(&MockCallback::OnProcessExited,
+                             base::Unretained(&exit_cb_from_caller))));
+
+  // Call the |exit_cb_at_process_manager| to simulate the process being exited
+  // unexpectedly.
+  std::move(exit_cb_at_process_manager).Run(exit_status);
+}
 }  // namespace patchpanel

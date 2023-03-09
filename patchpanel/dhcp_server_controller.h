@@ -8,17 +8,17 @@
 #include <optional>
 #include <string>
 
+#include <base/memory/weak_ptr.h>
 #include <shill/net/ip_address.h>
-
-namespace shill {
-class ProcessManager;
-}  // namespace shill
+#include <shill/net/process_manager.h>
 
 namespace patchpanel {
 
 // This class manages the one DHCP server on a certain network interface.
 class DHCPServerController {
  public:
+  using ExitCallback = shill::ProcessManager::ExitCallback;
+
   // The configuration of the DHCP server. The instance is read-only once
   // created, so the configuration is always valid.
   class Config {
@@ -66,8 +66,9 @@ class DHCPServerController {
 
   // Starts a DHCP server at the |ifname_| interface. Returns true if the server
   // is created successfully. Note that if the previous server process is still
-  // running, then returns false and does nothing.
-  bool Start(const Config& config);
+  // running, then returns false and does nothing. |exit_callback| is called if
+  // the server process is exited unexpectedly.
+  bool Start(const Config& config, ExitCallback exit_callback);
 
   // Stops the DHCP server. No-op if the server is not running.
   void Stop();
@@ -76,6 +77,9 @@ class DHCPServerController {
   bool IsRunning() const;
 
  private:
+  // Callback when the process is exited unexpectedly.
+  void OnProcessExitedUnexpectedly(int exit_status);
+
   // The network interface that the DHCP server listens.
   const std::string ifname_;
 
@@ -87,6 +91,11 @@ class DHCPServerController {
   // The configuration of the dnsmasq process, nullopt iff the process is not
   // running.
   std::optional<Config> config_;
+  // The callback that is called when the dnsmasq process is exited
+  // unexpectedly, null state iff the process is not running.
+  ExitCallback exit_callback_;
+
+  base::WeakPtrFactory<DHCPServerController> weak_ptr_factory_{this};
 };
 
 }  // namespace patchpanel
