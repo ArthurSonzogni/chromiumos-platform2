@@ -16,6 +16,7 @@
 #include <brillo/errors/error.h>
 #include <dbus/bus.h>
 
+#include "printscanmgr/daemon/cups_tool.h"
 #include "printscanmgr/dbus_adaptors/org.chromium.printscanmgr.h"
 
 namespace printscanmgr {
@@ -47,6 +48,7 @@ class DbusAdaptor final : public org::chromium::printscanmgrAdaptor,
 
  private:
   brillo::dbus_utils::DBusObject dbus_object_;
+  CupsTool cups_tool_;
 };
 
 }  // namespace printscanmgr

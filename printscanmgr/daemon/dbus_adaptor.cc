@@ -32,30 +32,22 @@ void DbusAdaptor::RegisterAsync(
 
 int32_t DbusAdaptor::CupsAddAutoConfiguredPrinter(const std::string& name,
                                                   const std::string& uri) {
-  NOTIMPLEMENTED() << " CupsAddAutoConfiguredPrinter not implemented.";
-
-  return -1;
+  return cups_tool_.AddAutoConfiguredPrinter(name, uri);
 }
 
 int32_t DbusAdaptor::CupsAddManuallyConfiguredPrinter(
     const std::string& name,
     const std::string& uri,
     const std::vector<uint8_t>& ppd_contents) {
-  NOTIMPLEMENTED() << " CupsAddManuallyConfiguredPrinter not implemented.";
-
-  return -1;
+  return cups_tool_.AddManuallyConfiguredPrinter(name, uri, ppd_contents);
 }
 
 bool DbusAdaptor::CupsRemovePrinter(const std::string& name) {
-  NOTIMPLEMENTED() << " CupsRemovePrinter not implemented.";
-
-  return false;
+  return cups_tool_.RemovePrinter(name);
 }
 
 std::vector<uint8_t> DbusAdaptor::CupsRetrievePpd(const std::string& name) {
-  NOTIMPLEMENTED() << " CupsRetrievePpd not implemented.";
-
-  return {};
+  return cups_tool_.RetrievePpd(name);
 }
 
 bool DbusAdaptor::PrintscanDebugSetCategories(brillo::ErrorPtr* error,
