@@ -91,6 +91,11 @@ FileTest::FileTest() {
   CHECK(root_.is_valid());
 }
 
+FileTest::~FileTest() {
+  // Restore root path to avoid UaF.
+  SafeFD::SetRootPathForTesting("/");
+}
+
 bool FileTest::SetupSubdir() {
   if (!base::CreateDirectory(sub_dir_path_)) {
     PLOG(ERROR) << "Failed to create '" << sub_dir_path_.value() << "'";

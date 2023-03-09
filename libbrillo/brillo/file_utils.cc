@@ -23,6 +23,8 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 
+#include "brillo/files/file_util.h"
+
 namespace brillo {
 
 namespace {
@@ -90,7 +92,7 @@ RegularFileOrDeleteResult RegularFileOrDelete(const base::FilePath& path,
   // If we get here and anything was at |path|, try to delete it so we can put
   // our file there.
   if (path_not_empty) {
-    if (!base::DeletePathRecursively(path)) {
+    if (!brillo::DeletePathRecursively(path)) {
       PLOG(WARNING) << "Failed to delete entity at \"" << path.value() << '"';
       return kFailure;
     }
@@ -252,7 +254,7 @@ bool TouchFile(const base::FilePath& path,
   if (scoped_fd != -1 &&
       HANDLE_EINTR(fchmod(scoped_fd.get(), new_file_permissions)) == -1) {
     PLOG(WARNING) << "Failed to set permissions for \"" << path.value() << '"';
-    base::DeleteFile(path);
+    brillo::DeleteFile(path);
     return false;
   }
 

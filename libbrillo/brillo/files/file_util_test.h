@@ -37,6 +37,7 @@ class FileTest : public testing::Test {
   static void SetUpTestCase();
 
   FileTest();
+  ~FileTest();
 
  protected:
   std::vector<char> temp_dir_path_;

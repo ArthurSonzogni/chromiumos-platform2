@@ -9,6 +9,8 @@
 #include <base/files/scoped_temp_dir.h>
 #include <gtest/gtest.h>
 
+#include "brillo/files/file_util.h"
+
 using std::string;
 
 namespace brillo {
@@ -33,7 +35,7 @@ TEST_F(OsReleaseReaderTest, MissingOsReleaseTest) {
 }
 
 TEST_F(OsReleaseReaderTest, MissingOsReleaseDTest) {
-  base::DeletePathRecursively(osreleased_);
+  brillo::DeletePathRecursively(osreleased_);
   store_.LoadTestingOnly(temp_dir_.GetPath());
 }
 
