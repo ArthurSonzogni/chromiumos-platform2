@@ -162,6 +162,8 @@ bool RuntimeProbeClientImpl::ProbeSsfcComponents(
                    use_customized_identifier, components);
   AppendComponents(rmad::RMAD_COMPONENT_EC_I2C, reply.ec_i2c(),
                    use_customized_identifier, components);
+  AppendComponents(rmad::RMAD_COMPONENT_TCPC, reply.tcpc(),
+                   use_customized_identifier, components);
 
   return true;
 }

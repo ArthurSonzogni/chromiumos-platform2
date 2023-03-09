@@ -120,6 +120,13 @@ std::string GetComponentFieldsIdentifier(
   return "eci2c_" + Uint32ToHexString(fields.data(), 4);
 }
 
+std::string GetComponentFieldsIdentifier(
+    const runtime_probe::Tcpc_Fields& fields) {
+  return "tcpc_" + Uint32ToHexString(fields.vendor_id(), 4) + "_" +
+         Uint32ToHexString(fields.product_id(), 4) + "_" +
+         Uint32ToHexString(fields.device_id(), 4);
+}
+
 // Extension for |runtime_probe::ComponentFields|.
 std::string GetComponentFieldsIdentifier(
     const runtime_probe::ComponentFields& component_fields) {
