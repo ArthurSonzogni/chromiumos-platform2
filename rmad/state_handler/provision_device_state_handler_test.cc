@@ -27,9 +27,9 @@
 #include "rmad/utils/mock_cmd_utils.h"
 #include "rmad/utils/mock_cr50_utils.h"
 #include "rmad/utils/mock_cros_config_utils.h"
-#include "rmad/utils/mock_crossystem_utils.h"
 #include "rmad/utils/mock_iio_sensor_probe_utils.h"
 #include "rmad/utils/mock_vpd_utils.h"
+#include "rmad/utils/mock_write_protect_utils.h"
 
 using testing::_;
 using testing::Assign;
@@ -154,12 +154,11 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
           .WillByDefault(Return(false));
     }
 
-    // Mock |CrosSystemUtils|.
-    auto mock_crossystem_utils =
-        std::make_unique<NiceMock<MockCrosSystemUtils>>();
-    ON_CALL(*mock_crossystem_utils,
-            GetInt(Eq(CrosSystemUtils::kHwwpStatusProperty), _))
-        .WillByDefault(DoAll(SetArgPointee<1>(hwwp_enabled), Return(true)));
+    // Mock |WriteProtectUtils|.
+    auto mock_write_protect_utils =
+        std::make_unique<NiceMock<MockWriteProtectUtils>>();
+    ON_CALL(*mock_write_protect_utils, GetHardwareWriteProtectionStatus(_))
+        .WillByDefault(DoAll(SetArgPointee<0>(hwwp_enabled), Return(true)));
 
     // Mock |IioSensorProbeUtils|.
     auto mock_iio_sensor_probe_utils =
@@ -184,7 +183,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
         std::move(mock_ssfc_prober), std::move(mock_power_manager_client),
         std::move(mock_cbi_utils), std::move(mock_cmd_utils),
         std::move(mock_cr50_utils), std::move(mock_cros_config_utils),
-        std::move(mock_crossystem_utils),
+        std::move(mock_write_protect_utils),
         std::move(mock_iio_sensor_probe_utils), std::move(mock_vpd_utils));
   }
 

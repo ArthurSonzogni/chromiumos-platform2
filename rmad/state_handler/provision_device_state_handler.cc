@@ -33,11 +33,11 @@
 #include "rmad/utils/cmd_utils_impl.h"
 #include "rmad/utils/cr50_utils_impl.h"
 #include "rmad/utils/cros_config_utils_impl.h"
-#include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
 #include "rmad/utils/iio_sensor_probe_utils_impl.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/vpd_utils_impl.h"
+#include "rmad/utils/write_protect_utils_impl.h"
 
 namespace {
 
@@ -81,7 +81,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
   cmd_utils_ = std::make_unique<CmdUtilsImpl>();
   cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
   cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
-  crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
+  write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
   iio_sensor_probe_utils_ = std::make_unique<IioSensorProbeUtilsImpl>();
   vpd_utils_ = std::make_unique<VpdUtilsImpl>();
   status_.set_status(ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN);
@@ -99,7 +99,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     std::unique_ptr<CmdUtils> cmd_utils,
     std::unique_ptr<Cr50Utils> cr50_utils,
     std::unique_ptr<CrosConfigUtils> cros_config_utils,
-    std::unique_ptr<CrosSystemUtils> crossystem_utils,
+    std::unique_ptr<WriteProtectUtils> write_protect_utils,
     std::unique_ptr<IioSensorProbeUtils> iio_sensor_probe_utils,
     std::unique_ptr<VpdUtils> vpd_utils)
     : BaseStateHandler(json_store, daemon_callback),
@@ -110,7 +110,7 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
       cmd_utils_(std::move(cmd_utils)),
       cr50_utils_(std::move(cr50_utils)),
       cros_config_utils_(std::move(cros_config_utils)),
-      crossystem_utils_(std::move(crossystem_utils)),
+      write_protect_utils_(std::move(write_protect_utils)),
       iio_sensor_probe_utils_(std::move(iio_sensor_probe_utils)),
       vpd_utils_(std::move(vpd_utils)),
       should_calibrate_(false),
@@ -555,8 +555,10 @@ void ProvisionDeviceStateHandler::Reboot() {
 }
 
 bool ProvisionDeviceStateHandler::IsHwwpDisabled() const {
-  int hwwp_status;
-  return (crossystem_utils_->GetHwwpStatus(&hwwp_status) && hwwp_status == 0);
+  bool hwwp_enabled;
+  return (
+      write_protect_utils_->GetHardwareWriteProtectionStatus(&hwwp_enabled) &&
+      !hwwp_enabled);
 }
 
 }  // namespace rmad

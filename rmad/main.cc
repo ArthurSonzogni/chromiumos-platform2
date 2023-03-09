@@ -16,15 +16,16 @@
 #include "rmad/executor/executor_daemon.h"
 #include "rmad/interface/rmad_interface_impl.h"
 #include "rmad/minijail/minijail_configuration.h"
-#include "rmad/utils/crossystem_utils_impl.h"
+#include "rmad/utils/write_protect_utils_impl.h"
 
 namespace {
 
 void CheckWriteProtectAndEnterMinijail() {
   bool set_admin_caps = false;
-  rmad::CrosSystemUtilsImpl crossystem_utils;
-  int hwwp_status;
-  if (crossystem_utils.GetHwwpStatus(&hwwp_status) && hwwp_status == 0) {
+  rmad::WriteProtectUtilsImpl write_protect_utils;
+  bool hwwp_enabled;
+  if (write_protect_utils.GetHardwareWriteProtectionStatus(&hwwp_enabled) &&
+      !hwwp_enabled) {
     VLOG(1) << "Hardware write protection off.";
     set_admin_caps = true;
   } else {

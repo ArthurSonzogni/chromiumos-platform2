@@ -21,6 +21,7 @@
 #include "rmad/state_handler/write_protect_disable_rsu_state_handler.h"
 #include "rmad/utils/mock_cr50_utils.h"
 #include "rmad/utils/mock_crossystem_utils.h"
+#include "rmad/utils/mock_write_protect_utils.h"
 
 using testing::_;
 using testing::Assign;
@@ -70,13 +71,15 @@ class WriteProtectDisableRsuStateHandlerTest : public StateHandlerTest {
             GetString(Eq(CrosSystemUtils::kHwidProperty), _))
         .WillByDefault(DoAll(SetArgPointee<1>(kTestHwid), Return(true)));
     ON_CALL(*mock_crossystem_utils,
-            GetInt(Eq(CrosSystemUtils::kHwwpStatusProperty), _))
-        .WillByDefault(DoAll(SetArgPointee<1>(factory_mode_enabled ? 0 : 1),
-                             Return(true)));
-    ON_CALL(*mock_crossystem_utils,
             GetInt(Eq(CrosSystemUtils::kCrosDebugProperty), _))
         .WillByDefault(
             DoAll(SetArgPointee<1>(is_cros_debug ? 1 : 0), Return(true)));
+    // Mock |WriteProtectUtils|.
+    auto mock_write_protect_utils =
+        std::make_unique<NiceMock<MockWriteProtectUtils>>();
+    ON_CALL(*mock_write_protect_utils, GetHardwareWriteProtectionStatus(_))
+        .WillByDefault(
+            DoAll(SetArgPointee<0>(!factory_mode_enabled), Return(true)));
 
     // Register request powerwash feedback.
     daemon_callback_->SetExecuteRequestRmaPowerwashCallback(base::BindRepeating(
@@ -89,7 +92,8 @@ class WriteProtectDisableRsuStateHandlerTest : public StateHandlerTest {
 
     return base::MakeRefCounted<WriteProtectDisableRsuStateHandler>(
         json_store_, daemon_callback_, GetTempDirPath(),
-        std::move(mock_cr50_utils), std::move(mock_crossystem_utils));
+        std::move(mock_cr50_utils), std::move(mock_crossystem_utils),
+        std::move(mock_write_protect_utils));
   }
 
   void RequestRmaPowerwash(bool* request_powerwash,

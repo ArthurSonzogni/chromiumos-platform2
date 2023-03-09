@@ -9,8 +9,8 @@
 
 #include <base/files/file_path.h>
 
-#include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/flashrom_utils_impl.h"
+#include "rmad/utils/write_protect_utils_impl.h"
 
 #include <base/logging.h>
 
@@ -20,17 +20,17 @@ WriteProtectEnablePhysicalStateHandler::WriteProtectEnablePhysicalStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback) {
-  crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
+  write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
   flashrom_utils_ = std::make_unique<FlashromUtilsImpl>();
 }
 
 WriteProtectEnablePhysicalStateHandler::WriteProtectEnablePhysicalStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback,
-    std::unique_ptr<CrosSystemUtils> crossystem_utils,
+    std::unique_ptr<WriteProtectUtils> write_protect_utils,
     std::unique_ptr<FlashromUtils> flashrom_utils)
     : BaseStateHandler(json_store, daemon_callback),
-      crossystem_utils_(std::move(crossystem_utils)),
+      write_protect_utils_(std::move(write_protect_utils)),
       flashrom_utils_(std::move(flashrom_utils)) {}
 
 RmadErrorCode WriteProtectEnablePhysicalStateHandler::InitializeState() {
@@ -73,8 +73,9 @@ WriteProtectEnablePhysicalStateHandler::GetNextStateCase(
     return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
 
-  int hwwp_status;
-  if (crossystem_utils_->GetHwwpStatus(&hwwp_status) && hwwp_status == 1) {
+  bool hwwp_enabled;
+  if (write_protect_utils_->GetHardwareWriteProtectionStatus(&hwwp_enabled) &&
+      hwwp_enabled) {
     return NextStateCaseWrapper(RmadState::StateCase::kFinalize);
   }
   return NextStateCaseWrapper(RMAD_ERROR_WAIT);
@@ -83,12 +84,12 @@ WriteProtectEnablePhysicalStateHandler::GetNextStateCase(
 void WriteProtectEnablePhysicalStateHandler::CheckWriteProtectOnTask() {
   VLOG(1) << "Check write protection";
 
-  int hwwp_status;
-  if (!crossystem_utils_->GetHwwpStatus(&hwwp_status)) {
+  bool hwwp_enabled;
+  if (!write_protect_utils_->GetHardwareWriteProtectionStatus(&hwwp_enabled)) {
     LOG(ERROR) << "Failed to get HWWP status";
     return;
   }
-  if (hwwp_status == 1) {
+  if (hwwp_enabled) {
     daemon_callback_->GetWriteProtectSignalCallback().Run(true);
     timer_.Stop();
   }

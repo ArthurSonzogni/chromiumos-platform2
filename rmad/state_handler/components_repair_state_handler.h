@@ -13,7 +13,7 @@
 
 #include "rmad/system/cryptohome_client.h"
 #include "rmad/system/runtime_probe_client.h"
-#include "rmad/utils/crossystem_utils.h"
+#include "rmad/utils/write_protect_utils.h"
 
 namespace rmad {
 
@@ -29,7 +29,7 @@ class ComponentsRepairStateHandler : public BaseStateHandler {
       scoped_refptr<DaemonCallback> daemon_callback,
       std::unique_ptr<CryptohomeClient> cryptohome_client,
       std::unique_ptr<RuntimeProbeClient> runtime_probe_client,
-      std::unique_ptr<CrosSystemUtils> crossystem_utils);
+      std::unique_ptr<WriteProtectUtils> write_protect_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kComponentsRepair);
   SET_REPEATABLE;
@@ -51,7 +51,7 @@ class ComponentsRepairStateHandler : public BaseStateHandler {
   bool active_;
   std::unique_ptr<CryptohomeClient> cryptohome_client_;
   std::unique_ptr<RuntimeProbeClient> runtime_probe_client_;
-  std::unique_ptr<CrosSystemUtils> crossystem_utils_;
+  std::unique_ptr<WriteProtectUtils> write_protect_utils_;
 };
 
 }  // namespace rmad

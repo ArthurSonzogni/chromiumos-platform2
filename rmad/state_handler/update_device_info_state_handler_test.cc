@@ -17,9 +17,9 @@
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/utils/mock_cbi_utils.h"
 #include "rmad/utils/mock_cros_config_utils.h"
-#include "rmad/utils/mock_crossystem_utils.h"
 #include "rmad/utils/mock_regions_utils.h"
 #include "rmad/utils/mock_vpd_utils.h"
+#include "rmad/utils/mock_write_protect_utils.h"
 
 using testing::_;
 using testing::Assign;
@@ -64,7 +64,7 @@ constexpr char kNewDramPartNum[] = "NewTestDramPartNum";
 class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
  public:
   scoped_refptr<UpdateDeviceInfoStateHandler> CreateStateHandler(
-      const std::vector<bool>& wp_status,
+      const std::vector<bool>& wp_status_list,
       bool serial_number = true,
       bool region = true,
       bool sku = true,
@@ -80,21 +80,19 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
       bool set_dram_part_num = true,
       bool sku_overflow = false,
       bool flush_out_vpd = true) {
-    auto cbi_utils = std::make_unique<NiceMock<MockCbiUtils>>();
-    auto cros_config_utils = std::make_unique<NiceMock<MockCrosConfigUtils>>();
-    auto crossystem_utils = std::make_unique<StrictMock<MockCrosSystemUtils>>();
-    auto regions_utils = std::make_unique<NiceMock<MockRegionsUtils>>();
-    auto vpd_utils = std::make_unique<NiceMock<MockVpdUtils>>();
-
+    // Mock |WriteProtectUtils|.
+    auto write_protect_utils =
+        std::make_unique<StrictMock<MockWriteProtectUtils>>();
     {
       InSequence seq;
-      for (bool enabled : wp_status) {
-        EXPECT_CALL(*crossystem_utils,
-                    GetInt(Eq(CrosSystemUtils::kHwwpStatusProperty), _))
-            .WillOnce(DoAll(SetArgPointee<1>(enabled ? 1 : 0), Return(true)));
+      for (bool enabled : wp_status_list) {
+        EXPECT_CALL(*write_protect_utils, GetHardwareWriteProtectionStatus(_))
+            .WillOnce(DoAll(SetArgPointee<0, bool>(enabled), Return(true)));
       }
     }
 
+    // Mock |VpdUtils|.
+    auto vpd_utils = std::make_unique<NiceMock<MockVpdUtils>>();
     ON_CALL(*vpd_utils, FlushOutRoVpdCache())
         .WillByDefault(Return(flush_out_vpd));
 
@@ -112,6 +110,36 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
       ON_CALL(*vpd_utils, GetRegion(_)).WillByDefault(Return(false));
     }
 
+    if (!custom_label.empty()) {
+      ON_CALL(*vpd_utils, GetCustomLabelTag(_, _))
+          .WillByDefault(DoAll(SetArgPointee<0>(custom_label), Return(true)));
+    } else {
+      ON_CALL(*vpd_utils, GetCustomLabelTag(_, _)).WillByDefault(Return(false));
+    }
+
+    if (set_serial_number) {
+      ON_CALL(*vpd_utils, SetSerialNumber(_))
+          .WillByDefault(DoAll(SaveArg<0>(&serial_number_set_), Return(true)));
+    } else {
+      ON_CALL(*vpd_utils, SetSerialNumber(_)).WillByDefault(Return(false));
+    }
+
+    if (set_region) {
+      ON_CALL(*vpd_utils, SetRegion(_))
+          .WillByDefault(DoAll(SaveArg<0>(&region_set_), Return(true)));
+    } else {
+      ON_CALL(*vpd_utils, SetRegion(_)).WillByDefault(Return(false));
+    }
+
+    if (set_custom_label) {
+      ON_CALL(*vpd_utils, SetCustomLabelTag(_, _))
+          .WillByDefault(DoAll(SaveArg<0>(&custom_label_set_), Return(true)));
+    } else {
+      ON_CALL(*vpd_utils, SetCustomLabelTag(_, _)).WillByDefault(Return(false));
+    }
+
+    // Mock |CbiUtils|.
+    auto cbi_utils = std::make_unique<NiceMock<MockCbiUtils>>();
     if (sku && !sku_overflow) {
       ON_CALL(*cbi_utils, GetSkuId(_))
           .WillByDefault(DoAll(SetArgPointee<0>(kSkuId), Return(true)));
@@ -122,11 +150,11 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
       ON_CALL(*cbi_utils, GetSkuId(_)).WillByDefault(Return(false));
     }
 
-    if (!custom_label.empty()) {
-      ON_CALL(*vpd_utils, GetCustomLabelTag(_, _))
-          .WillByDefault(DoAll(SetArgPointee<0>(custom_label), Return(true)));
+    if (set_sku) {
+      ON_CALL(*cbi_utils, SetSkuId(_))
+          .WillByDefault(DoAll(SaveArg<0>(&sku_set_), Return(true)));
     } else {
-      ON_CALL(*vpd_utils, GetCustomLabelTag(_, _)).WillByDefault(Return(false));
+      ON_CALL(*cbi_utils, SetSkuId(_)).WillByDefault(Return(false));
     }
 
     if (dram_part_num) {
@@ -136,6 +164,15 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
       ON_CALL(*cbi_utils, GetDramPartNum(_)).WillByDefault(Return(false));
     }
 
+    if (set_dram_part_num) {
+      ON_CALL(*cbi_utils, SetDramPartNum(_))
+          .WillByDefault(DoAll(SaveArg<0>(&dram_part_num_set_), Return(true)));
+    } else {
+      ON_CALL(*cbi_utils, SetDramPartNum(_)).WillByDefault(Return(false));
+    }
+
+    // Mock |RegionsUtils|.
+    auto regions_utils = std::make_unique<NiceMock<MockRegionsUtils>>();
     if (region_list) {
       ON_CALL(*regions_utils, GetRegionList(_))
           .WillByDefault(DoAll(SetArgPointee<0>(kRegionList), Return(true)));
@@ -143,6 +180,8 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
       ON_CALL(*regions_utils, GetRegionList(_)).WillByDefault(Return(false));
     }
 
+    // Mocl |CrosConfigUtils|.
+    auto cros_config_utils = std::make_unique<NiceMock<MockCrosConfigUtils>>();
     ON_CALL(*cros_config_utils, GetRmadConfig(_))
         .WillByDefault(
             DoAll(SetArgPointee<0>(RmadConfig{.has_cbi = true}), Return(true)));
@@ -162,44 +201,9 @@ class UpdateDeviceInfoStateHandlerTest : public StateHandlerTest {
           .WillByDefault(Return(false));
     }
 
-    if (set_serial_number) {
-      ON_CALL(*vpd_utils, SetSerialNumber(_))
-          .WillByDefault(DoAll(SaveArg<0>(&serial_number_set_), Return(true)));
-    } else {
-      ON_CALL(*vpd_utils, SetSerialNumber(_)).WillByDefault(Return(false));
-    }
-
-    if (set_region) {
-      ON_CALL(*vpd_utils, SetRegion(_))
-          .WillByDefault(DoAll(SaveArg<0>(&region_set_), Return(true)));
-    } else {
-      ON_CALL(*vpd_utils, SetRegion(_)).WillByDefault(Return(false));
-    }
-
-    if (set_sku) {
-      ON_CALL(*cbi_utils, SetSkuId(_))
-          .WillByDefault(DoAll(SaveArg<0>(&sku_set_), Return(true)));
-    } else {
-      ON_CALL(*cbi_utils, SetSkuId(_)).WillByDefault(Return(false));
-    }
-
-    if (set_custom_label) {
-      ON_CALL(*vpd_utils, SetCustomLabelTag(_, _))
-          .WillByDefault(DoAll(SaveArg<0>(&custom_label_set_), Return(true)));
-    } else {
-      ON_CALL(*vpd_utils, SetCustomLabelTag(_, _)).WillByDefault(Return(false));
-    }
-
-    if (set_dram_part_num) {
-      ON_CALL(*cbi_utils, SetDramPartNum(_))
-          .WillByDefault(DoAll(SaveArg<0>(&dram_part_num_set_), Return(true)));
-    } else {
-      ON_CALL(*cbi_utils, SetDramPartNum(_)).WillByDefault(Return(false));
-    }
-
     return base::MakeRefCounted<UpdateDeviceInfoStateHandler>(
         json_store_, daemon_callback_, std::move(cbi_utils),
-        std::move(cros_config_utils), std::move(crossystem_utils),
+        std::move(cros_config_utils), std::move(write_protect_utils),
         std::move(regions_utils), std::move(vpd_utils));
   }
 

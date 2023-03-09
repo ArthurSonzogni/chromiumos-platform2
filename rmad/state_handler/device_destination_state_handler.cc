@@ -18,8 +18,8 @@
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/system/cryptohome_client_impl.h"
-#include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
+#include "rmad/utils/write_protect_utils_impl.h"
 
 namespace rmad {
 
@@ -30,17 +30,17 @@ DeviceDestinationStateHandler::DeviceDestinationStateHandler(
     scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback) {
   cryptohome_client_ = std::make_unique<CryptohomeClientImpl>(GetSystemBus());
-  crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
+  write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
 }
 
 DeviceDestinationStateHandler::DeviceDestinationStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback,
     std::unique_ptr<CryptohomeClient> cryptohome_client,
-    std::unique_ptr<CrosSystemUtils> crossystem_utils)
+    std::unique_ptr<WriteProtectUtils> write_protect_utils)
     : BaseStateHandler(json_store, daemon_callback),
       cryptohome_client_(std::move(cryptohome_client)),
-      crossystem_utils_(std::move(crossystem_utils)) {}
+      write_protect_utils_(std::move(write_protect_utils)) {}
 
 RmadErrorCode DeviceDestinationStateHandler::InitializeState() {
   if (!state_.has_device_destination()) {
@@ -125,8 +125,10 @@ DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
       json_store_->SetValue(kCcdBlocked, false);
       // If HWWP is already disabled, assume the user will select the physical
       // method and go directly to WpDisablePhysical state.
-      if (int hwwp_status;
-          crossystem_utils_->GetHwwpStatus(&hwwp_status) && hwwp_status == 0) {
+      if (bool hwwp_enabled;
+          write_protect_utils_->GetHardwareWriteProtectionStatus(
+              &hwwp_enabled) &&
+          !hwwp_enabled) {
         return NextStateCaseWrapper(RmadState::StateCase::kWpDisablePhysical);
       }
       // Otherwise, let the user choose between physical method or RSU.

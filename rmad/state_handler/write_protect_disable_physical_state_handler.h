@@ -15,6 +15,7 @@
 
 #include "rmad/utils/cr50_utils.h"
 #include "rmad/utils/crossystem_utils.h"
+#include "rmad/utils/write_protect_utils.h"
 
 namespace rmad {
 
@@ -30,13 +31,15 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
   explicit WriteProtectDisablePhysicalStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback);
-  // Used to inject mock |cr50_utils_| and |crossystem_utils_| for testing.
+  // Used to inject mock |cr50_utils_|, |crossystem_utils_|, and
+  // |write_protect_utils_| for testing.
   explicit WriteProtectDisablePhysicalStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
       const base::FilePath& working_dir_path,
       std::unique_ptr<Cr50Utils> cr50_utils,
-      std::unique_ptr<CrosSystemUtils> crossystem_utils);
+      std::unique_ptr<CrosSystemUtils> crossystem_utils,
+      std::unique_ptr<WriteProtectUtils> write_protect_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kWpDisablePhysical);
   SET_REPEATABLE;
@@ -80,6 +83,7 @@ class WriteProtectDisablePhysicalStateHandler : public BaseStateHandler {
 
   std::unique_ptr<Cr50Utils> cr50_utils_;
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;
+  std::unique_ptr<WriteProtectUtils> write_protect_utils_;
 };
 
 }  // namespace rmad

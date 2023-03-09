@@ -25,10 +25,10 @@
 #include "rmad/utils/cmd_utils.h"
 #include "rmad/utils/cr50_utils.h"
 #include "rmad/utils/cros_config_utils.h"
-#include "rmad/utils/crossystem_utils.h"
 #include "rmad/utils/iio_sensor_probe_utils.h"
 #include "rmad/utils/json_store.h"
 #include "rmad/utils/vpd_utils.h"
+#include "rmad/utils/write_protect_utils.h"
 
 namespace rmad {
 
@@ -45,7 +45,7 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
       scoped_refptr<DaemonCallback> daemon_callback);
   // Used to inject |working_dir_path_|, mock |ssfc_prober_|,
   // |power_manager_client_|, |cbi_utils_|, |cmd_utils_|, |cr50_utils_|,
-  // |cros_config_utils_|, |crossystem_utils_|, |iio_sensor_probe_utils_|,
+  // |cros_config_utils_|, |write_protect_utils_|, |iio_sensor_probe_utils_|,
   // and |vpd_utils_| for testing.
   explicit ProvisionDeviceStateHandler(
       scoped_refptr<JsonStore> json_store,
@@ -57,7 +57,7 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
       std::unique_ptr<CmdUtils> cmd_utils,
       std::unique_ptr<Cr50Utils> cr50_utils,
       std::unique_ptr<CrosConfigUtils> cros_config_utils,
-      std::unique_ptr<CrosSystemUtils> crossystem_utils,
+      std::unique_ptr<WriteProtectUtils> write_protect_utils,
       std::unique_ptr<IioSensorProbeUtils> iio_sensor_probe_utils,
       std::unique_ptr<VpdUtils> vpd_utils);
 
@@ -110,7 +110,7 @@ class ProvisionDeviceStateHandler : public BaseStateHandler {
   std::unique_ptr<CmdUtils> cmd_utils_;
   std::unique_ptr<Cr50Utils> cr50_utils_;
   std::unique_ptr<CrosConfigUtils> cros_config_utils_;
-  std::unique_ptr<CrosSystemUtils> crossystem_utils_;
+  std::unique_ptr<WriteProtectUtils> write_protect_utils_;
   std::unique_ptr<IioSensorProbeUtils> iio_sensor_probe_utils_;
   std::unique_ptr<VpdUtils> vpd_utils_;
 

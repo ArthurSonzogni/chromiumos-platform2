@@ -17,8 +17,8 @@
 
 #include "rmad/constants.h"
 #include "rmad/utils/cr50_utils_impl.h"
-#include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/flashrom_utils_impl.h"
+#include "rmad/utils/write_protect_utils_impl.h"
 
 namespace {
 
@@ -37,7 +37,7 @@ FinalizeStateHandler::FinalizeStateHandler(
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(kDefaultWorkingDirPath) {
   cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
-  crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
+  write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
   flashrom_utils_ = std::make_unique<FlashromUtilsImpl>();
 }
 
@@ -46,12 +46,12 @@ FinalizeStateHandler::FinalizeStateHandler(
     scoped_refptr<DaemonCallback> daemon_callback,
     const base::FilePath& working_dir_path,
     std::unique_ptr<Cr50Utils> cr50_utils,
-    std::unique_ptr<CrosSystemUtils> crossystem_utils,
+    std::unique_ptr<WriteProtectUtils> write_protect_utils,
     std::unique_ptr<FlashromUtils> flashrom_utils)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(working_dir_path),
       cr50_utils_(std::move(cr50_utils)),
-      crossystem_utils_(std::move(crossystem_utils)),
+      write_protect_utils_(std::move(write_protect_utils)),
       flashrom_utils_(std::move(flashrom_utils)) {}
 
 RmadErrorCode FinalizeStateHandler::InitializeState() {
@@ -142,8 +142,9 @@ void FinalizeStateHandler::StartFinalize() {
 
 void FinalizeStateHandler::FinalizeTask() {
   // Enable SWWP if HWWP is still disabled.
-  if (int hwwp_status;
-      crossystem_utils_->GetHwwpStatus(&hwwp_status) && hwwp_status == 0) {
+  if (bool hwwp_enabled;
+      write_protect_utils_->GetHardwareWriteProtectionStatus(&hwwp_enabled) &&
+      !hwwp_enabled) {
     if (!flashrom_utils_->EnableSoftwareWriteProtection()) {
       LOG(ERROR) << "Failed to enable software write protection";
       status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
@@ -165,8 +166,9 @@ void FinalizeStateHandler::FinalizeTask() {
   status_.set_progress(0.8);
 
   // Make sure HWWP is disabled.
-  if (int hwwp_status;
-      !crossystem_utils_->GetHwwpStatus(&hwwp_status) || hwwp_status != 1) {
+  if (bool hwwp_enabled;
+      !write_protect_utils_->GetHardwareWriteProtectionStatus(&hwwp_enabled) ||
+      !hwwp_enabled) {
     LOG(ERROR) << "HWWP is still disabled";
     status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
     status_.set_error(FinalizeStatus::RMAD_FINALIZE_ERROR_CANNOT_ENABLE_HWWP);

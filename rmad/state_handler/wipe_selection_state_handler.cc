@@ -12,7 +12,7 @@
 
 #include "rmad/constants.h"
 #include "rmad/logs/logs_utils.h"
-#include "rmad/utils/crossystem_utils_impl.h"
+#include "rmad/utils/write_protect_utils_impl.h"
 
 namespace rmad {
 
@@ -20,15 +20,15 @@ WipeSelectionStateHandler::WipeSelectionStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback) {
-  crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
+  write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
 }
 
 WipeSelectionStateHandler::WipeSelectionStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback,
-    std::unique_ptr<CrosSystemUtils> crossystem_utils)
+    std::unique_ptr<WriteProtectUtils> write_protect_utils)
     : BaseStateHandler(json_store, daemon_callback),
-      crossystem_utils_(std::move(crossystem_utils)) {}
+      write_protect_utils_(std::move(write_protect_utils)) {}
 
 RmadErrorCode WipeSelectionStateHandler::InitializeState() {
   if (!state_.has_wipe_selection()) {
@@ -113,8 +113,10 @@ WipeSelectionStateHandler::GetNextStateCase(const RmadState& state) {
         // If HWWP is already disabled, assume the user will select the physical
         // method and go directly to WpDisablePhysical state. Otherwise, let the
         // user choose between physical method or RSU.
-        if (int hwwp_status; crossystem_utils_->GetHwwpStatus(&hwwp_status) &&
-                             hwwp_status == 0) {
+        if (bool hwwp_enabled;
+            write_protect_utils_->GetHardwareWriteProtectionStatus(
+                &hwwp_enabled) &&
+            !hwwp_enabled) {
           next_state = RmadState::StateCase::kWpDisablePhysical;
         } else {
           next_state = RmadState::StateCase::kWpDisableMethod;

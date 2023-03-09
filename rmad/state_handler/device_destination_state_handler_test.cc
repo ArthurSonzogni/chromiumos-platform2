@@ -17,7 +17,7 @@
 #include "rmad/state_handler/device_destination_state_handler.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/system/mock_cryptohome_client.h"
-#include "rmad/utils/mock_crossystem_utils.h"
+#include "rmad/utils/mock_write_protect_utils.h"
 
 using testing::_;
 using testing::DoAll;
@@ -33,33 +33,32 @@ using ComponentRepairStatus = ComponentsRepairState::ComponentRepairStatus;
 class DeviceDestinationStateHandlerTest : public StateHandlerTest {
  public:
   scoped_refptr<DeviceDestinationStateHandler> CreateStateHandler(
-      bool ccd_blocked, int hwwp_enabled) {
+      bool ccd_blocked, bool hwwp_enabled) {
     // Mock |CryptohomeClient|.
     auto mock_cryptohome_client =
         std::make_unique<NiceMock<MockCryptohomeClient>>();
     ON_CALL(*mock_cryptohome_client, IsCcdBlocked())
         .WillByDefault(Return(ccd_blocked));
-    // Mock |CrosSystemUtils|.
-    auto mock_crossystem_utils =
-        std::make_unique<NiceMock<MockCrosSystemUtils>>();
-    ON_CALL(*mock_crossystem_utils,
-            GetInt(Eq(CrosSystemUtils::kHwwpStatusProperty), _))
-        .WillByDefault(DoAll(SetArgPointee<1>(hwwp_enabled), Return(true)));
+    // Mock |WriteProtectUtils|.
+    auto mock_write_protect_utils =
+        std::make_unique<NiceMock<MockWriteProtectUtils>>();
+    ON_CALL(*mock_write_protect_utils, GetHardwareWriteProtectionStatus(_))
+        .WillByDefault(DoAll(SetArgPointee<0>(hwwp_enabled), Return(true)));
 
     return base::MakeRefCounted<DeviceDestinationStateHandler>(
         json_store_, daemon_callback_, std::move(mock_cryptohome_client),
-        std::move(mock_crossystem_utils));
+        std::move(mock_write_protect_utils));
   }
 };
 
 TEST_F(DeviceDestinationStateHandlerTest, InitializeState_Success) {
-  auto handler = CreateStateHandler(false, 1);
+  auto handler = CreateStateHandler(false, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 }
 
 TEST_F(DeviceDestinationStateHandlerTest,
        GetNextStateCase_Success_Same_WpDisableRequired_CcdBlocked) {
-  auto handler = CreateStateHandler(true, 1);
+  auto handler = CreateStateHandler(true, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   json_store_->SetValue(kReplacedComponentNames,
@@ -103,7 +102,7 @@ TEST_F(DeviceDestinationStateHandlerTest,
 
 TEST_F(DeviceDestinationStateHandlerTest,
        GetNextStateCase_Success_Same_WpDisableRequired_CcdNotBlocked) {
-  auto handler = CreateStateHandler(false, 1);
+  auto handler = CreateStateHandler(false, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   json_store_->SetValue(kReplacedComponentNames,
@@ -136,7 +135,7 @@ TEST_F(DeviceDestinationStateHandlerTest,
 
 TEST_F(DeviceDestinationStateHandlerTest,
        GetNextStateCase_Success_Same_WpDisableNotRequired) {
-  auto handler = CreateStateHandler(false, 1);
+  auto handler = CreateStateHandler(false, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   json_store_->SetValue(kReplacedComponentNames,
@@ -167,7 +166,7 @@ TEST_F(DeviceDestinationStateHandlerTest,
 
 TEST_F(DeviceDestinationStateHandlerTest,
        GetNextStateCase_Success_Different_CcdBlocked) {
-  auto handler = CreateStateHandler(true, 1);
+  auto handler = CreateStateHandler(true, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -197,7 +196,7 @@ TEST_F(DeviceDestinationStateHandlerTest,
 
 TEST_F(DeviceDestinationStateHandlerTest,
        GetNextStateCase_Success_Different_CcdNotBlocked_HwwpDisabled) {
-  auto handler = CreateStateHandler(false, 0);
+  auto handler = CreateStateHandler(false, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;
@@ -227,7 +226,7 @@ TEST_F(DeviceDestinationStateHandlerTest,
 
 TEST_F(DeviceDestinationStateHandlerTest,
        GetNextStateCase_Success_Different_CcdNotBlocked_HwwpEnabled) {
-  auto handler = CreateStateHandler(false, 1);
+  auto handler = CreateStateHandler(false, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
   RmadState state;

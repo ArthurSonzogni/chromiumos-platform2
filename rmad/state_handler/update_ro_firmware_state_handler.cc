@@ -27,9 +27,9 @@
 #include "rmad/udev/udev_device.h"
 #include "rmad/udev/udev_utils.h"
 #include "rmad/utils/cmd_utils_impl.h"
-#include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/dbus_utils.h"
 #include "rmad/utils/flashrom_utils_impl.h"
+#include "rmad/utils/write_protect_utils_impl.h"
 
 namespace {
 
@@ -58,7 +58,7 @@ UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
   DETACH_FROM_SEQUENCE(sequence_checker_);
   udev_utils_ = std::make_unique<UdevUtilsImpl>();
   cmd_utils_ = std::make_unique<CmdUtilsImpl>();
-  crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
+  write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
   flashrom_utils_ = std::make_unique<FlashromUtilsImpl>();
   power_manager_client_ =
       std::make_unique<PowerManagerClientImpl>(GetSystemBus());
@@ -69,14 +69,14 @@ UpdateRoFirmwareStateHandler::UpdateRoFirmwareStateHandler(
     scoped_refptr<DaemonCallback> daemon_callback,
     std::unique_ptr<UdevUtils> udev_utils,
     std::unique_ptr<CmdUtils> cmd_utils,
-    std::unique_ptr<CrosSystemUtils> crossystem_utils,
+    std::unique_ptr<WriteProtectUtils> write_protect_utils,
     std::unique_ptr<FlashromUtils> flashrom_utils,
     std::unique_ptr<PowerManagerClient> power_manager_client)
     : BaseStateHandler(json_store, daemon_callback),
       is_mocked_(true),
       udev_utils_(std::move(udev_utils)),
       cmd_utils_(std::move(cmd_utils)),
-      crossystem_utils_(std::move(crossystem_utils)),
+      write_protect_utils_(std::move(write_protect_utils)),
       flashrom_utils_(std::move(flashrom_utils)),
       power_manager_client_(std::move(power_manager_client)) {
   DETACH_FROM_SEQUENCE(sequence_checker_);
@@ -86,8 +86,9 @@ RmadErrorCode UpdateRoFirmwareStateHandler::InitializeState() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   // Make sure HWWP is off before initializing the state.
-  if (int hwwp_status;
-      !crossystem_utils_->GetHwwpStatus(&hwwp_status) || hwwp_status != 0) {
+  if (bool hwwp_enabled;
+      !write_protect_utils_->GetHardwareWriteProtectionStatus(&hwwp_enabled) ||
+      hwwp_enabled) {
     return RMAD_ERROR_WP_ENABLED;
   }
 
@@ -332,8 +333,9 @@ bool UpdateRoFirmwareStateHandler::RunFirmwareUpdater() {
   }
 
   // Make sure HWWP is off.
-  if (int hwwp_status;
-      !crossystem_utils_->GetHwwpStatus(&hwwp_status) || hwwp_status != 0) {
+  if (bool hwwp_enabled;
+      !write_protect_utils_->GetHardwareWriteProtectionStatus(&hwwp_enabled) ||
+      hwwp_enabled) {
     LOG(ERROR) << "HWWP is enabled. Aborting firmware update.";
     return false;
   }

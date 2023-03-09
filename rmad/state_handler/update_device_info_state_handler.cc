@@ -16,9 +16,9 @@
 #include "rmad/metrics/metrics_utils.h"
 #include "rmad/utils/cbi_utils_impl.h"
 #include "rmad/utils/cros_config_utils_impl.h"
-#include "rmad/utils/crossystem_utils_impl.h"
 #include "rmad/utils/regions_utils_impl.h"
 #include "rmad/utils/vpd_utils_impl.h"
+#include "rmad/utils/write_protect_utils_impl.h"
 
 namespace {
 
@@ -46,7 +46,7 @@ UpdateDeviceInfoStateHandler::UpdateDeviceInfoStateHandler(
     : BaseStateHandler(json_store, daemon_callback) {
   cbi_utils_ = std::make_unique<CbiUtilsImpl>();
   cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
-  crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
+  write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
   regions_utils_ = std::make_unique<RegionsUtilsImpl>();
   vpd_utils_ = std::make_unique<VpdUtilsImpl>();
 }
@@ -56,26 +56,27 @@ UpdateDeviceInfoStateHandler::UpdateDeviceInfoStateHandler(
     scoped_refptr<DaemonCallback> daemon_callback,
     std::unique_ptr<CbiUtils> cbi_utils,
     std::unique_ptr<CrosConfigUtils> cros_config_utils,
-    std::unique_ptr<CrosSystemUtils> crossystem_utils,
+    std::unique_ptr<WriteProtectUtils> write_protect_utils,
     std::unique_ptr<RegionsUtils> regions_utils,
     std::unique_ptr<VpdUtils> vpd_utils)
     : BaseStateHandler(json_store, daemon_callback),
       cbi_utils_(std::move(cbi_utils)),
       cros_config_utils_(std::move(cros_config_utils)),
-      crossystem_utils_(std::move(crossystem_utils)),
+      write_protect_utils_(std::move(write_protect_utils)),
       regions_utils_(std::move(regions_utils)),
       vpd_utils_(std::move(vpd_utils)) {}
 
 RmadErrorCode UpdateDeviceInfoStateHandler::InitializeState() {
   CHECK(cbi_utils_);
   CHECK(cros_config_utils_);
-  CHECK(crossystem_utils_);
+  CHECK(write_protect_utils_);
   CHECK(regions_utils_);
   CHECK(vpd_utils_);
 
   // Make sure HWWP is off before initializing the state.
-  if (int hwwp_status;
-      !crossystem_utils_->GetHwwpStatus(&hwwp_status) || hwwp_status != 0) {
+  if (bool hwwp_enabled;
+      !write_protect_utils_->GetHardwareWriteProtectionStatus(&hwwp_enabled) ||
+      hwwp_enabled) {
     return RMAD_ERROR_WP_ENABLED;
   }
 
@@ -219,8 +220,10 @@ UpdateDeviceInfoStateHandler::GetNextStateCase(const RmadState& state) {
   if (!WriteDeviceInfo(state.update_device_info())) {
     vpd_utils_->ClearRoVpdCache();
     vpd_utils_->ClearRwVpdCache();
-    if (int hwwp_status;
-        !crossystem_utils_->GetHwwpStatus(&hwwp_status) || hwwp_status != 0) {
+    if (bool hwwp_enabled;
+        !write_protect_utils_->GetHardwareWriteProtectionStatus(
+            &hwwp_enabled) ||
+        hwwp_enabled) {
       return NextStateCaseWrapper(RMAD_ERROR_WP_ENABLED);
     }
     return NextStateCaseWrapper(RMAD_ERROR_CANNOT_WRITE);

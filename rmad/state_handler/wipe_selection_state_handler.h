@@ -11,7 +11,7 @@
 
 #include <base/files/file_path.h>
 
-#include "rmad/utils/crossystem_utils.h"
+#include "rmad/utils/write_protect_utils.h"
 
 namespace rmad {
 
@@ -20,11 +20,11 @@ class WipeSelectionStateHandler : public BaseStateHandler {
   explicit WipeSelectionStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback);
-  // Used to inject mock |crossystem_utils_| for testing.
+  // Used to inject mock |write_protect_utils_| for testing.
   explicit WipeSelectionStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
-      std::unique_ptr<CrosSystemUtils> crossystem_utils);
+      std::unique_ptr<WriteProtectUtils> write_protect_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kWipeSelection);
   SET_REPEATABLE;
@@ -38,7 +38,7 @@ class WipeSelectionStateHandler : public BaseStateHandler {
  private:
   bool InitializeVarsFromStateFile();
 
-  std::unique_ptr<CrosSystemUtils> crossystem_utils_;
+  std::unique_ptr<WriteProtectUtils> write_protect_utils_;
 
   bool wp_disable_required_;
   bool ccd_blocked_;
