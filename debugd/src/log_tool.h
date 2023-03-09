@@ -12,11 +12,15 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
+#include <base/files/scoped_temp_dir.h>
 #include <base/memory/ref_counted.h>
 #include <base/values.h>
+#include <brillo/process/process.h>
 #include <cryptohome/proto_bindings/rpc.pb.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/bus.h>
@@ -65,13 +69,20 @@ class LogTool : public debugd::LogProvider {
     virtual ~Log() = default;
 
     std::string GetName() const;
+    LogType GetType() const;
+    LogTool::Encoding GetEncoding() const;
     virtual std::string GetLogData() const;
+    int64_t GetMaxBytes() const;
 
     std::string GetCommandLogData() const;
     std::string GetFileLogData() const;
     std::string GetGlobLogData() const;
 
     void DisableMinijailForTest();
+    // Config and start the child process to collect log. The log data will be
+    // saved to the |output_file_name|.
+    bool StartToGetLogData(std::unique_ptr<SandboxedProcess>& child_proc,
+                           const base::FilePath& output_file_name) const;
 
    protected:
     Log() = default;  // For testing only.
@@ -96,6 +107,35 @@ class LogTool : public debugd::LogProvider {
     bool access_root_mount_ns_;
 
     bool minijail_disabled_for_test_ = false;
+  };
+
+  // A helper class to collect logs in parallel.
+  class ParallelLogCollector {
+   public:
+    ParallelLogCollector();
+    ParallelLogCollector(const ParallelLogCollector&) = delete;
+    ParallelLogCollector& operator=(const ParallelLogCollector&) = delete;
+
+    // Starts asynchronous log collection. Each log will be saved to a temp
+    // file. Returns false if temp folder creation fails.
+    bool StartGetLogs(const std::vector<Log>& log_list);
+    // Insert logs collected to the |dict|. Must be called after StartGetLogs().
+    // It will wait maximum !timeout_seconds| seconds. The logs which have not
+    // finished on time may not be collected.
+    void EndGetLogs(base::Value::Dict* dict, base::TimeDelta timeout);
+
+   private:
+    // Wait for all child processes to be completed. Must be called after
+    // StartGetLogs().
+    void Wait(base::TimeDelta timeout);
+
+    std::vector<std::unique_ptr<brillo::Process>> child_processes_;
+    // Track the mapping between the output file name and the Log.
+    std::map<base::FilePath, Log> file_log_map_;
+    // Track created pids and their corresponding log names. Used by Wait().
+    std::unordered_map<pid_t, const std::string&> child_pids_;
+    // Log data will be saved to this temp folder.
+    base::ScopedTempDir temp_dir_;
   };
 
   explicit LogTool(scoped_refptr<dbus::Bus> bus, const bool perf_logging);
