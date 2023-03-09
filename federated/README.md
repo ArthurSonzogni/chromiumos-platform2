@@ -80,7 +80,7 @@ generate examples, and report them to federated service via [mojo interface].
 
 #### Register new client
 
-Add the new client to federated_metadata.cc::kClientMetadata in this repo. The
+Add the new client to federated_metadata.cc::kClientMetadata in [this repo]. The
 metadata is pretty simple, it only contains the unique client name, a
 retry_token which is usually an empty string, and a launch_stage.
 
@@ -124,6 +124,7 @@ client is enabled and its launch_stage. See [go/finch-slides] for details.
 ["timezone_code_phh"]: http://google3/intelligence/brella/config/prod/chromeos/timezone_code_phh/
 [google3/intelligence/brella/config/prod/registry.pbtxt]: http://google3/intelligence/brella/config/prod/registry.pbtxt
 [mojo interface]: https://crsrc.org/c/chromeos/ash/services/federated/public/cpp/service_connection.h
+[this repo]: ./
 [this finch example]: http://cl/503838903
 [kclientfeaturemap]: https://crsrc.org/c/ash/system/federated/federated_service_controller_impl.cc
 [go/finch-slides]: http://go/finch-slides
