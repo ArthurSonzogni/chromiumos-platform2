@@ -26,12 +26,15 @@
 #include <base/check.h>
 #include <base/command_line.h>
 #include <base/compiler_specific.h>
+#include <base/files/file_descriptor_watcher_posix.h>
 #include <base/files/file_path.h>
 #include <base/logging.h>
+#include <base/run_loop.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
+#include <base/task/single_thread_task_executor.h>
 #include <base/time/time.h>
 #include <brillo/cryptohome.h>
 #include <brillo/dbus/dbus_connection.h>
@@ -279,6 +282,7 @@ constexpr const char* kActions[] = {"unmount",
                                     "get_auth_session_status",
                                     "get_recovery_request",
                                     "reset_application_container",
+                                    "prepare_auth_factor",
                                     nullptr};
 enum ActionEnum {
   ACTION_UNMOUNT,
@@ -363,7 +367,8 @@ enum ActionEnum {
   ACTION_LIST_AUTH_FACTORS,
   ACTION_GET_AUTH_SESSION_STATUS,
   ACTION_GET_RECOVERY_REQUEST,
-  ACTION_RESET_APPLICATION_CONTAINER
+  ACTION_RESET_APPLICATION_CONTAINER,
+  ACTION_PREPARE_AUTH_FACTOR,
 };
 constexpr char kUserSwitch[] = "user";
 constexpr char kPasswordSwitch[] = "password";
@@ -406,6 +411,9 @@ constexpr char kApplicationName[] = "application_name";
 constexpr char kDeviceSetupCertId[] = "device_setup_cert_id";
 constexpr char kDeviceSetupCertContentBinding[] =
     "device_setup_cert_content_binding";
+constexpr char kFingerprintSwitch[] = "fingerprint";
+constexpr char kPreparePurposeAddSwitch[] = "add";
+constexpr char kPreparePurposeAuthSwitch[] = "auth";
 }  // namespace
 }  // namespace switches
 
@@ -687,6 +695,10 @@ bool BuildAuthFactor(Printer& printer,
     auth_factor->mutable_smart_card_metadata()->set_public_key_spki_der(
         challenge_spki);
     return true;
+  } else if (cl->HasSwitch(switches::kFingerprintSwitch)) {
+    auth_factor->set_type(user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT);
+    auth_factor->mutable_fingerprint_metadata();
+    return true;
   }
   printer.PrintHumanOutput("No auth factor specified\n");
   return false;
@@ -842,6 +854,9 @@ bool BuildAuthInput(Printer& printer,
     auth_input->mutable_smart_card_input()->set_key_delegate_dbus_service_name(
         cl->GetSwitchValueASCII(switches::kKeyDelegateName));
     return true;
+  } else if (cl->HasSwitch(switches::kFingerprintSwitch)) {
+    auth_input->mutable_fingerprint_input();
+    return true;
   }
   printer.PrintHumanOutput("No auth input specified\n");
   return false;
@@ -860,6 +875,183 @@ std::string GetPCAName(int pca_type) {
     }
   }
 }
+
+bool GetAuthFactorType(Printer& printer,
+                       base::CommandLine* cl,
+                       user_data_auth::AuthFactorType* auth_factor_type) {
+  if (cl->HasSwitch(switches::kPasswordSwitch)) {
+    *auth_factor_type = user_data_auth::AUTH_FACTOR_TYPE_PASSWORD;
+    return true;
+  } else if (cl->HasSwitch(switches::kPinSwitch)) {
+    *auth_factor_type = user_data_auth::AUTH_FACTOR_TYPE_PIN;
+    return true;
+  } else if (cl->HasSwitch(switches::kRecoveryMediatorPubKeySwitch)) {
+    *auth_factor_type = user_data_auth::AUTH_FACTOR_TYPE_CRYPTOHOME_RECOVERY;
+    return true;
+  } else if (cl->HasSwitch(switches::kPublicMount)) {
+    *auth_factor_type = user_data_auth::AUTH_FACTOR_TYPE_KIOSK;
+    return true;
+  } else if (cl->HasSwitch(switches::kChallengeSPKI)) {
+    *auth_factor_type = user_data_auth::AUTH_FACTOR_TYPE_SMART_CARD;
+    return true;
+  } else if (cl->HasSwitch(switches::kFingerprintSwitch)) {
+    *auth_factor_type = user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT;
+    return true;
+  }
+  printer.PrintHumanOutput("No auth factor type specified\n");
+  return false;
+}
+
+bool GetPreparePurpose(Printer& printer,
+                       base::CommandLine* cl,
+                       user_data_auth::AuthFactorPreparePurpose* purpose) {
+  if (cl->HasSwitch(switches::kPreparePurposeAddSwitch)) {
+    *purpose = user_data_auth::PURPOSE_ADD_AUTH_FACTOR;
+    return true;
+  } else if (cl->HasSwitch(switches::kPreparePurposeAuthSwitch)) {
+    *purpose = user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR;
+    return true;
+  }
+  printer.PrintHumanOutput("No auth factor prepare purpose specified\n");
+  return false;
+}
+
+// This is used as the signal callback for the PrepareAuthFactorProgress signal
+// emitted from userdataauth service. |auth_factor_type| and |prepare_purpose|
+// are the parameters specified by the user, which are passed to the callback so
+// we only parse relevant signals. The CLI will indefinitely block on upcoming
+// signals, so when we know that the preparation is finished (either because the
+// operation has completed or a failure has occurred), we need to quit
+// |run_loop| and write to |ret_code| for the CLI process to end with that
+// return code.
+void OnPrepareSignal(
+    base::RunLoop* run_loop,
+    int* ret_code,
+    Printer* printer,
+    user_data_auth::AuthFactorType auth_factor_type,
+    user_data_auth::AuthFactorPreparePurpose prepare_purpose,
+    const user_data_auth::PrepareAuthFactorProgress& progress) {
+  auto QuitWithSuccess = [&]() {
+    run_loop->Quit();
+    *ret_code = 0;
+  };
+  auto QuitWithFailure = [&](const std::string& msg) {
+    printer->PrintHumanOutput(msg);
+    run_loop->Quit();
+    *ret_code = 1;
+  };
+  if (progress.purpose() != prepare_purpose) {
+    QuitWithFailure("Mismatched purpose.\n");
+    return;
+  }
+  if (prepare_purpose == user_data_auth::PURPOSE_ADD_AUTH_FACTOR) {
+    user_data_auth::PrepareAuthFactorForAddProgress add_progress =
+        progress.add_progress();
+    if (add_progress.auth_factor_type() != auth_factor_type) {
+      QuitWithFailure("Mismatched auth factor type.\n");
+      return;
+    }
+    switch (auth_factor_type) {
+      case user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT: {
+        user_data_auth::AuthEnrollmentProgress fp_progress =
+            add_progress.biometrics_progress();
+        printer->PrintReplyProtobuf(fp_progress);
+        // We use the fatal error to signal a session failure.
+        if (fp_progress.scan_result().fingerprint_result() ==
+            user_data_auth::FINGERPRINT_SCAN_RESULT_FATAL_ERROR) {
+          QuitWithFailure("Session failed.\n");
+          return;
+        } else if (fp_progress.done()) {
+          // Preparation is finished.
+          QuitWithSuccess();
+          return;
+        }
+        return;
+      }
+      default:
+        QuitWithFailure(
+            "Invalid auth factor type for PrepareAuthFactorForAdd.\n");
+        return;
+    }
+  } else if (prepare_purpose ==
+             user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR) {
+    user_data_auth::PrepareAuthFactorForAuthProgress auth_progress =
+        progress.auth_progress();
+    if (auth_progress.auth_factor_type() != auth_factor_type) {
+      QuitWithFailure("Mismatched auth factor type.\n");
+      return;
+    }
+    switch (auth_factor_type) {
+      case user_data_auth::AUTH_FACTOR_TYPE_FINGERPRINT: {
+        user_data_auth::AuthScanDone fp_progress =
+            auth_progress.biometrics_progress();
+        printer->PrintReplyProtobuf(fp_progress);
+        // Anything other than SUCCESS signals a session failure.
+        if (fp_progress.scan_result().fingerprint_result() !=
+            user_data_auth::FINGERPRINT_SCAN_RESULT_SUCCESS) {
+          QuitWithFailure("Session failed.\n");
+          return;
+        }
+        // Preparation is finished.
+        QuitWithSuccess();
+        return;
+      }
+      default:
+        QuitWithFailure(
+            "Invalid auth factor type for PrepareAuthFactorForAuth.\n");
+        return;
+    }
+  } else {
+    QuitWithFailure("Unrecognized prepare purpose.\n");
+    return;
+  }
+}
+
+// This is used as the signal connected callback for userdataauth's
+// PrepareAuthFactorProgress signal. If the signal connection is successful,
+// send the PrepareAuthFactor request and parse its response. If any errors
+// occur, we need to quit the |run_loop| with |ret_code|. If PrepareAuthFactor
+// completes successfully, the signal callback OnPrepareSignal will continue
+// take care of the signals emitted.
+void OnPrepareSignalConnected(base::RunLoop* run_loop,
+                              int* ret_code,
+                              Printer* printer,
+                              org::chromium::UserDataAuthInterfaceProxy* proxy,
+                              user_data_auth::PrepareAuthFactorRequest request,
+                              const std::string&,
+                              const std::string&,
+                              bool success) {
+  if (!success) {
+    printer->PrintHumanOutput(
+        "Failed to connect to signal PrepareAuthFactorProgress.\n");
+    run_loop->Quit();
+    *ret_code = 1;
+    return;
+  }
+
+  user_data_auth::PrepareAuthFactorReply reply;
+  brillo::ErrorPtr error;
+  VLOG(1) << "Attempting to PrepareAuthFactor";
+  if (!proxy->PrepareAuthFactor(request, &reply, &error, kDefaultTimeoutMs) ||
+      error) {
+    printer->PrintFormattedHumanOutput(
+        "PrepareAuthFactor call failed: %s.\n",
+        BrilloErrorToString(error.get()).c_str());
+    run_loop->Quit();
+    *ret_code = 1;
+    return;
+  }
+
+  printer->PrintReplyProtobuf(reply);
+  if (reply.error() !=
+      user_data_auth::CryptohomeErrorCode::CRYPTOHOME_ERROR_NOT_SET) {
+    printer->PrintHumanOutput("Failed to prepare auth factor.\n");
+    run_loop->Quit();
+    *ret_code = static_cast<int>(reply.error());
+    return;
+  }
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -944,6 +1136,9 @@ int main(int argc, char** argv) {
 
   std::string action = cl->GetSwitchValueASCII(switches::kActionSwitch);
   const int timeout_ms = kDefaultTimeoutMs;
+
+  base::SingleThreadTaskExecutor task_executor(base::MessagePumpType::IO);
+  base::FileDescriptorWatcher watcher(task_executor.task_runner());
 
   // Setup libbrillo dbus.
   brillo::DBusConnection connection;
@@ -3289,6 +3484,43 @@ int main(int argc, char** argv) {
           ".\n");
       return static_cast<int>(reply.error());
     }
+  } else if (!strcmp(switches::kActions[switches::ACTION_PREPARE_AUTH_FACTOR],
+                     action.c_str())) {
+    user_data_auth::PrepareAuthFactorRequest request;
+
+    std::string auth_session_id_hex, auth_session_id;
+    if (!GetAuthSessionId(printer, cl, &auth_session_id_hex))
+      return 1;
+    base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
+    request.set_auth_session_id(auth_session_id);
+
+    user_data_auth::AuthFactorType auth_factor_type;
+    if (!GetAuthFactorType(printer, cl, &auth_factor_type))
+      return 1;
+    request.set_auth_factor_type(auth_factor_type);
+
+    user_data_auth::AuthFactorPreparePurpose prepare_purpose;
+    if (!GetPreparePurpose(printer, cl, &prepare_purpose))
+      return 1;
+    request.set_purpose(prepare_purpose);
+
+    // Because signals might be emitted as soon as PrepareAuthFactor operation
+    // returns successfully, we need to ensure the signal is connected first.
+    // Therefore, the actual request will be sent in OnPrepareSignalConnected.
+    // We will indefinitely block on the prepare signals in the CLI until either
+    // the operation failed or completed. So we'll start the run loop here, pass
+    // its pointer to the callbacks, and let the callbacks end the run loop when
+    // the conditions are met.
+    int ret_code = 1;
+    base::RunLoop run_loop;
+    userdataauth_proxy.RegisterPrepareAuthFactorProgressSignalHandler(
+        base::BindRepeating(&OnPrepareSignal, &run_loop, &ret_code, &printer,
+                            auth_factor_type, prepare_purpose),
+        base::BindOnce(&OnPrepareSignalConnected, &run_loop, &ret_code,
+                       &printer, &userdataauth_proxy, std::move(request)));
+
+    run_loop.Run();
+    return ret_code;
   } else {
     printer.PrintHumanOutput(
         "Unknown action or no action given.  Available actions:\n");
