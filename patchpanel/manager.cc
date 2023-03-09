@@ -1495,7 +1495,7 @@ std::unique_ptr<patchpanel::ConnectNamespaceResponse> Manager::ConnectNamespace(
 }
 
 base::ScopedFD Manager::AddLifelineFd(base::ScopedFD dbus_fd) {
-  if (dbus_fd.is_valid()) {
+  if (!dbus_fd.is_valid()) {
     LOG(ERROR) << "Invalid client file descriptor";
     return base::ScopedFD();
   }
