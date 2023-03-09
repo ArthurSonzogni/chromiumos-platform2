@@ -300,13 +300,15 @@ class LIBIPP_EXPORT Collection {
   Collection& operator=(Collection&&) = delete;
   virtual ~Collection();
 
-  // Standard methods returning iterators.
+  // Standard container methods.
   iterator begin() { return iterator(attributes_.begin()); }
   iterator end() { return iterator(attributes_.end()); }
   const_iterator cbegin() const { return const_iterator(attributes_.cbegin()); }
   const_iterator cend() const { return const_iterator(attributes_.cend()); }
   const_iterator begin() const { return cbegin(); }
   const_iterator end() const { return cend(); }
+  size_t size() const { return attributes_index_.size(); }
+  bool empty() const { return attributes_index_.empty(); }
 
   // Methods return attribute by name. Methods return an iterator end() <=> the
   // collection has no attributes with this name.
