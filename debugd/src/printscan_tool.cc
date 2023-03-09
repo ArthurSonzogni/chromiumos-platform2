@@ -14,6 +14,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <brillo/errors/error.h>
+#include <brillo/files/file_util.h>
 #include <chromeos/dbus/debugd/dbus-constants.h>
 #include <debugd/src/error_utils.h>
 #include <debugd/src/process_with_output.h>
@@ -123,7 +124,7 @@ bool PrintscanTool::DeleteFile(PrintscanFilePaths path) {
       full_path = root_path_.Append(kLorgnetteFilePath);
       break;
   }
-  return base::DeleteFile(full_path);
+  return brillo::DeleteFile(full_path);
 }
 
 // Enable Cups debug logs if `enable` is set, otherwise disable the logs.

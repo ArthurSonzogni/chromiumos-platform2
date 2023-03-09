@@ -20,6 +20,7 @@
 #include <base/posix/safe_strerror.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/strings/string_util.h>
+#include <brillo/files/file_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -184,7 +185,7 @@ TEST(UploadSingleCrash, CreatesDirectory) {
   const base::FilePath kExpectedCrashDirectory("/tmp/crash.1");
   // Tests aren't as hermetic as we'd like; make sure that stale crash
   // directories aren't left over from previous failures.
-  base::DeletePathRecursively(kExpectedCrashDirectory);
+  brillo::DeletePathRecursively(kExpectedCrashDirectory);
 
   std::vector<std::tuple<std::string, base::ScopedFD>> files;
   brillo::ErrorPtr error;
@@ -216,7 +217,7 @@ TEST(UploadSingleCrash, CreatesDirectory) {
 
 TEST(UploadSingleCrash, CreatesFilesInDirectory) {
   const base::FilePath kExpectedCrashDirectory("/tmp/crash.1");
-  base::DeletePathRecursively(kExpectedCrashDirectory);
+  brillo::DeletePathRecursively(kExpectedCrashDirectory);
 
   std::vector<std::tuple<std::string, base::ScopedFD>> files;
   constexpr char kFileAaaContents[] = "aaa";
@@ -256,7 +257,7 @@ TEST(UploadSingleCrash, CreatesFilesInDirectory) {
 
 TEST(UploadSingleCrash, CreatesEmptyFile) {
   const base::FilePath kExpectedCrashDirectory("/tmp/crash.1");
-  base::DeletePathRecursively(kExpectedCrashDirectory);
+  brillo::DeletePathRecursively(kExpectedCrashDirectory);
 
   std::vector<std::tuple<std::string, base::ScopedFD>> files;
   files.emplace_back("empty", base::ScopedFD(memfd_create("empty", 0)));
@@ -287,7 +288,7 @@ TEST(UploadSingleCrash, CreatesEmptyFile) {
 
 TEST(UploadSingleCrash, CreatesLargeFilesCorrectly) {
   const base::FilePath kExpectedCrashDirectory("/tmp/crash.1");
-  base::DeletePathRecursively(kExpectedCrashDirectory);
+  brillo::DeletePathRecursively(kExpectedCrashDirectory);
 
   std::vector<std::tuple<std::string, base::ScopedFD>> files;
   std::string long_string;
@@ -335,7 +336,7 @@ TEST(UploadSingleCrash, PassesConsentAlreadyCheckedCheckFlag) {
   const base::FilePath kExpectedCrashDirectory("/tmp/crash.1");
   // Tests aren't as hermetic as we'd like; make sure that stale crash
   // directories aren't left over from previous failures.
-  base::DeletePathRecursively(kExpectedCrashDirectory);
+  brillo::DeletePathRecursively(kExpectedCrashDirectory);
 
   std::vector<std::tuple<std::string, base::ScopedFD>> files;
   brillo::ErrorPtr error;

@@ -9,6 +9,7 @@
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
 #include <base/strings/stringprintf.h>
+#include <brillo/files/file_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -63,7 +64,7 @@ class DevFeaturesPasswordHelperTest : public Test {
   }
 
   // Deletes the password file if it exists.
-  void DeletePasswordFile() { base::DeleteFile(file_path_); }
+  void DeletePasswordFile() { brillo::DeleteFile(file_path_); }
 
   // Creates a password file with valid entries for chronos and root users.
   bool MakeValidPasswordFile() {

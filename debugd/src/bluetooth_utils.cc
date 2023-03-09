@@ -13,6 +13,7 @@
 #include <base/functional/bind.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
+#include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
 
 #include "debugd/src/sandboxed_process.h"
@@ -46,8 +47,9 @@ void GetBluetoothBqr() {
   }
 
   // Remove btsnoop_outfile at exit.
-  base::ScopedClosureRunner delete_outfile(base::BindOnce(
-      base::IgnoreResult(&base::DeleteFile), base::FilePath(btsnoop_outfile)));
+  base::ScopedClosureRunner delete_outfile(
+      base::BindOnce(base::IgnoreResult(&brillo::DeleteFile),
+                     base::FilePath(btsnoop_outfile)));
 
   // The process is used to decompress the Bluetooth log.
   //   - input: btsnoop_infile

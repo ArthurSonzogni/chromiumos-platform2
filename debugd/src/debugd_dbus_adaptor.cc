@@ -14,6 +14,7 @@
 #include <base/memory/ref_counted.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
+#include <brillo/files/file_util.h>
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
 #include <dbus/object_path.h>
@@ -440,7 +441,7 @@ bool DebugdDBusAdaptor::DisableDevCoredumpUpload(brillo::ErrorPtr* error) {
     VLOG(1) << "Device coredump upload already disabled";
     return true;
   }
-  if (!base::DeleteFile(
+  if (!brillo::DeleteFile(
           base::FilePath(debugd::kDeviceCoredumpUploadFlagPath))) {
     DEBUGD_ADD_ERROR(error, kDevCoredumpDBusErrorString,
                      "Failed to delete flag file.");

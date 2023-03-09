@@ -14,6 +14,7 @@
 #include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <brillo/file_utils.h>
+#include <brillo/files/file_util.h>
 #include <chromeos/dbus/debugd/dbus-constants.h>
 
 #include "debugd/src/process_with_output.h"
@@ -60,7 +61,7 @@ std::string U2fTool::SetFlags(const std::string& flags) {
     all_flags.insert(cur);
 
     // Clean-up existing flag.
-    base::DeleteFile(FlagFile(cur));
+    brillo::DeleteFile(FlagFile(cur));
   }
 
   // Iterate over the new flags.

@@ -21,6 +21,7 @@
 #include <base/strings/stringprintf.h>
 #include <base/time/time.h>
 #include <base/values.h>
+#include <brillo/files/file_util.h>
 
 #include "debugd/src/error_utils.h"
 #include "debugd/src/helpers/scheduler_configuration_utils.h"
@@ -229,7 +230,7 @@ void RestoreCpuIdleStates() {
   std::optional<base::Value> all_cpu_states = base::JSONReader::Read(json);
   if (all_cpu_states.has_value() && all_cpu_states->is_dict())
     WriteCpuIdleStates(all_cpu_states->GetDict());
-  base::DeleteFile(cpuidle_states_map);
+  brillo::DeleteFile(cpuidle_states_map);
 }
 
 }  // namespace
