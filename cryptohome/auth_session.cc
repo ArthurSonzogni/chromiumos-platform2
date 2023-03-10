@@ -2309,10 +2309,9 @@ CryptohomeStatus AuthSession::AddAuthFactorToUssInMemory(
     // A reset secret must come with the rate-limiter.
     if (!key_blobs.reset_secret.has_value()) {
       return MakeStatus<CryptohomeError>(
-                 CRYPTOHOME_ERR_LOC(
-                     kLocNewRateLimiterWithNoSecretInAddSecretToUSS),
-                 user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED)
-          .Wrap(std::move(status));
+          CRYPTOHOME_ERR_LOC(kLocNewRateLimiterWithNoSecretInAddSecretToUSS),
+          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          user_data_auth::CRYPTOHOME_ADD_CREDENTIALS_FAILED);
     }
     // Note that both setters don't allow overwrite, so if we run into a
     // situation where one write succeeded where another failed, the state will
