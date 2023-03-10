@@ -183,7 +183,7 @@ constexpr char kDefaultContainerName[] = "penguin";
 constexpr char kBruschettaBiosDlcId[] = "bruschetta-bios-dlc";
 
 // File path for the Bruschetta Bios file inside the DLC root.
-constexpr char kBruschettaBiosDlcPath[] = "opt/CLOUDHV.fd";
+constexpr char kBruschettaBiosDlcPath[] = "opt/CROSVM_CODE.fd";
 
 constexpr uint64_t kMinimumDiskSize = 1ll * 1024 * 1024 * 1024;  // 1 GiB
 constexpr uint64_t kDiskSizeMask = ~4095ll;  // Round to disk block size.
