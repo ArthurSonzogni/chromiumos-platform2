@@ -11,12 +11,15 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 #include <sys/socket.h>
+#include <wayland-client-protocol.h>
 #include <wayland-client.h>
 #include <wayland-server-core.h>
+#include <wayland-server-protocol.h>
 #include <wayland-util.h>
 #include <xcb/xproto.h>
 
 #include "sommelier.h"                       // NOLINT(build/include_directory)
+#include "sommelier-util.h"                  // NOLINT(build/include_directory)
 #include "virtualization/wayland_channel.h"  // NOLINT(build/include_directory)
 #include "xcb/mock-xcb-shim.h"
 
@@ -75,6 +78,46 @@ using ::testing::PrintToString;
 using ::testing::Return;
 using ::testing::SetArgPointee;
 
+namespace {
+uint32_t XdgToplevelId(sl_window* window) {
+  assert(window->xdg_toplevel);
+  return wl_proxy_get_id(reinterpret_cast<wl_proxy*>(window->xdg_toplevel));
+}
+
+uint32_t AuraSurfaceId(sl_window* window) {
+  assert(window->aura_surface);
+  return wl_proxy_get_id(reinterpret_cast<wl_proxy*>(window->aura_surface));
+}
+
+// This family of functions retrieves Sommelier's listeners for events received
+// from the host, so we can call them directly in the test rather than
+// (a) exporting the actual functions (which are typically static), or (b)
+// creating a fake host compositor to dispatch events via libwayland
+// (unnecessarily complicated).
+const xdg_surface_listener* HostEventHandler(struct xdg_surface* xdg_surface) {
+  const void* listener =
+      wl_proxy_get_listener(reinterpret_cast<wl_proxy*>(xdg_surface));
+  EXPECT_NE(listener, nullptr);
+  return static_cast<const xdg_surface_listener*>(listener);
+}
+
+const xdg_toplevel_listener* HostEventHandler(
+    struct xdg_toplevel* xdg_toplevel) {
+  const void* listener =
+      wl_proxy_get_listener(reinterpret_cast<wl_proxy*>(xdg_toplevel));
+  EXPECT_NE(listener, nullptr);
+  return static_cast<const xdg_toplevel_listener*>(listener);
+}
+
+const wl_output_listener* HostEventHandler(struct wl_output* output) {
+  const void* listener =
+      wl_proxy_get_listener(reinterpret_cast<wl_proxy*>(output));
+  EXPECT_NE(listener, nullptr);
+  return static_cast<const wl_output_listener*>(listener);
+}
+
+}  // namespace
+
 // Mock of Sommelier's Wayland connection to the host compositor.
 class MockWaylandChannel : public WaylandChannel {
  public:
@@ -126,8 +169,8 @@ class MockWaylandChannel : public WaylandChannel {
 MATCHER_P2(ExactlyOneMessage,
            object_id,
            opcode,
-           std::string("exactly one Wayland message ") +
-               (negation ? "not for" : "for") + " object ID " +
+           std::string(negation ? "not " : "") +
+               "exactly one Wayland message for object ID " +
                PrintToString(object_id) + ", opcode " + PrintToString(opcode)) {
   const struct WaylandSendReceive& send = arg;
   if (send.data_size < sizeof(uint32_t) * 2) {
@@ -145,6 +188,37 @@ MATCHER_P2(ExactlyOneMessage,
   return object_id == actual_object_id && opcode == actual_opcode &&
          message_size_in_bytes == send.data_size;
 };
+
+// Match a WaylandSendReceive buffer containing at least one Wayland message
+// with given object ID and opcode.
+MATCHER_P2(AtLeastOneMessage,
+           object_id,
+           opcode,
+           std::string(negation ? "no Wayland messages "
+                                : "at least one Wayland message ") +
+               "for object ID " + PrintToString(object_id) + ", opcode " +
+               PrintToString(opcode)) {
+  const struct WaylandSendReceive& send = arg;
+  if (send.data_size < sizeof(uint32_t) * 2) {
+    // Malformed packet (too short)
+    return false;
+  }
+  for (uint32_t i = 0; i < send.data_size;) {
+    uint32_t actual_object_id = *reinterpret_cast<uint32_t*>(send.data + i);
+    uint32_t second_word = *reinterpret_cast<uint32_t*>(send.data + i + 4);
+    uint16_t message_size_in_bytes = second_word >> 16;
+    uint16_t actual_opcode = second_word & 0xffff;
+    if (i + message_size_in_bytes > send.data_size) {
+      // Malformed packet (stated message size overflows buffer)
+      break;
+    }
+    if (object_id == actual_object_id && opcode == actual_opcode) {
+      return true;
+    }
+    i += message_size_in_bytes;
+  }
+  return false;
+}
 
 // Match a WaylandSendReceive buffer containing a string.
 // TODO(cpelling): This is currently very naive; it doesn't respect
@@ -193,6 +267,22 @@ class FakeWaylandClient {
     client = nullptr;
   }
 
+  // Bind to every advertised wl_output and return how many were bound.
+  unsigned int BindToWlOutputs(struct sl_context* ctx) {
+    unsigned int bound = 0;
+    struct sl_global* global;
+    wl_list_for_each(global, &ctx->globals, link) {
+      if (global->interface == &wl_output_interface) {
+        outputs.push_back(static_cast<wl_output*>(
+            wl_registry_bind(client_registry, global->name, global->interface,
+                             WL_OUTPUT_DONE_SINCE_VERSION)));
+        bound++;
+      }
+    }
+    wl_display_flush(client_display);
+    return bound;
+  }
+
   // Create a surface and return its ID
   uint32_t CreateSurface() {
     struct wl_surface* surface = wl_compositor_create_surface(compositor);
@@ -202,6 +292,8 @@ class FakeWaylandClient {
 
   // Represents the client from the server's (Sommelier's) end.
   struct wl_client* client = nullptr;
+
+  std::vector<wl_output*> outputs;
 
  protected:
   // Find the "name" of Sommelier's global for a particular interface,
@@ -226,6 +318,18 @@ class FakeWaylandClient {
   struct wl_display* client_display = nullptr;
   struct wl_registry* client_registry = nullptr;
   struct wl_compositor* compositor = nullptr;
+};
+
+// Properties of a fake output (monitor) to advertise.
+struct OutputConfig {
+  int32_t x = 0;
+  int32_t y = 0;
+  int32_t physical_width_mm = 400;
+  int32_t physical_height_mm = 225;
+  int32_t width_pixels = 1920;
+  int32_t height_pixels = 1080;
+  int32_t transform = WL_OUTPUT_TRANSFORM_NORMAL;
+  int32_t scale = 1;
 };
 
 // Fixture for tests which exercise only Wayland functionality.
@@ -281,18 +385,60 @@ class WaylandTest : public ::testing::Test {
     wl_registry* registry = wl_display_get_registry(ctx.display);
 
     // Fake the host compositor advertising globals.
-    uint32_t id = 0;
-    sl_registry_handler(&ctx, registry, id++, "wl_compositor",
+    sl_registry_handler(&ctx, registry, next_server_id++, "wl_compositor",
                         kMinHostWlCompositorVersion);
     EXPECT_NE(ctx.compositor, nullptr);
-    sl_registry_handler(&ctx, registry, id++, "xdg_wm_base",
+    sl_registry_handler(&ctx, registry, next_server_id++, "xdg_wm_base",
                         XDG_WM_BASE_GET_XDG_SURFACE_SINCE_VERSION);
-    sl_registry_handler(&ctx, registry, id++, "zaura_shell",
+    sl_registry_handler(&ctx, registry, next_server_id++, "zaura_shell",
                         ZAURA_SURFACE_SET_FULLSCREEN_MODE_SINCE_VERSION);
+  }
+
+  // Set up one or more fake outputs for the test.
+  void AdvertiseOutputs(FakeWaylandClient* client,
+                        std::vector<OutputConfig> outputs) {
+    // The host compositor should advertise a wl_output global for each output.
+    // Sommelier will handle this by forwarding the globals to its client.
+    for (const auto& output : outputs) {
+      UNUSED(output);  // suppress -Wunused-variable
+      uint32_t output_id = next_server_id++;
+      sl_registry_handler(&ctx, wl_display_get_registry(ctx.display), output_id,
+                          "wl_output", WL_OUTPUT_DONE_SINCE_VERSION);
+    }
+
+    // host_outputs populates when Sommelier's client binds to those globals.
+    EXPECT_EQ(client->BindToWlOutputs(&ctx), outputs.size());
+    Pump();  // process the bind requests
+
+    // Now the outputs are populated, we can advertise their settings.
+    sl_host_output* host_output;
+    uint32_t i = 0;
+    wl_list_for_each(host_output, &ctx.host_outputs, link) {
+      ConfigureOutput(host_output->proxy, outputs[i]);
+      i++;
+    }
+    // host_outputs should be the requested length.
+    EXPECT_EQ(i, outputs.size());
+  }
+
+  void ConfigureOutput(wl_output* output, const OutputConfig& config) {
+    HostEventHandler(output)->geometry(
+        nullptr, output, config.x, config.y, config.physical_width_mm,
+        config.physical_height_mm, WL_OUTPUT_SUBPIXEL_NONE, "ACME Corp",
+        "Generic Monitor", config.transform);
+    HostEventHandler(output)->mode(
+        nullptr, output, WL_OUTPUT_MODE_CURRENT | WL_OUTPUT_MODE_PREFERRED,
+        config.width_pixels, config.height_pixels, 60);
+    HostEventHandler(output)->scale(nullptr, output, config.scale);
+    HostEventHandler(output)->done(nullptr, output);
+    Pump();
   }
 
   testing::NiceMock<MockWaylandChannel> mock_wayland_channel_;
   sl_context ctx;
+
+  // IDs allocated by the server are in the range [0xff000000, 0xffffffff].
+  uint32_t next_server_id = 0xff000000;
 };
 
 // Fixture for unit tests which exercise both Wayland and X11 functionality.
@@ -367,39 +513,6 @@ class X11Test : public WaylandTest {
   NiceMock<MockXcbShim> xcb;
   std::unique_ptr<FakeWaylandClient> xwayland;
 };
-
-namespace {
-uint32_t XdgToplevelId(sl_window* window) {
-  assert(window->xdg_toplevel);
-  return wl_proxy_get_id(reinterpret_cast<wl_proxy*>(window->xdg_toplevel));
-}
-
-uint32_t AuraSurfaceId(sl_window* window) {
-  assert(window->aura_surface);
-  return wl_proxy_get_id(reinterpret_cast<wl_proxy*>(window->aura_surface));
-}
-
-// This family of functions retrieves Sommelier's listeners for events received
-// from the host, so we can call them directly in the test rather than
-// (a) exporting the actual functions (which are typically static), or (b)
-// creating a fake host compositor to dispatch events via libwayland
-// (unnecessarily complicated).
-const xdg_surface_listener* HostEventHandler(struct xdg_surface* xdg_surface) {
-  const void* listener =
-      wl_proxy_get_listener(reinterpret_cast<wl_proxy*>(xdg_surface));
-  EXPECT_NE(listener, nullptr);
-  return static_cast<const xdg_surface_listener*>(listener);
-}
-
-const xdg_toplevel_listener* HostEventHandler(
-    struct xdg_toplevel* xdg_toplevel) {
-  const void* listener =
-      wl_proxy_get_listener(reinterpret_cast<wl_proxy*>(xdg_toplevel));
-  EXPECT_NE(listener, nullptr);
-  return static_cast<const xdg_toplevel_listener*>(listener);
-}
-
-}  // namespace
 
 TEST_F(WaylandTest, CanCommitToEmptySurface) {
   wl_surface* surface = wl_compositor_create_surface(ctx.compositor->internal);
@@ -830,8 +943,9 @@ MATCHER_P(ValueListMatches, expected, "") {
   return values == expected;
 }
 
-TEST_F(X11Test, XdgToplevelConfigureTriggersX11ConfigureWindow) {
+TEST_F(X11Test, XdgToplevelConfigureTriggersX11Configure) {
   // Arrange
+  AdvertiseOutputs(xwayland.get(), {OutputConfig()});
   sl_window* window = CreateToplevelWindow();
   window->managed = 1;     // pretend window is mapped
   window->size_flags = 0;  // no hinted position or size
