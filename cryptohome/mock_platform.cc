@@ -47,6 +47,9 @@ MockPlatform::MockPlatform()
   ON_CALL(*this, DirectoryExists(_))
       .WillByDefault(
           Invoke(fake_platform_.get(), &FakePlatform::DirectoryExists));
+  ON_CALL(*this, CreateDirectoryAndGetError(_, _))
+      .WillByDefault(Invoke(fake_platform_.get(),
+                            &FakePlatform::CreateDirectoryAndGetError));
   ON_CALL(*this, CreateDirectory(_))
       .WillByDefault(
           Invoke(fake_platform_.get(), &FakePlatform::CreateDirectory));

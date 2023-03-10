@@ -479,10 +479,11 @@ bool MigrationHelper::MigrateDir(const base::FilePath& child,
   const base::FilePath from_dir = from_base_path_.Append(child);
   const base::FilePath to_dir = to_base_path_.Append(child);
 
-  if (!platform_->CreateDirectory(to_dir)) {
+  base::File::Error error;
+  if (!platform_->CreateDirectoryAndGetError(to_dir, &error)) {
     LOG(ERROR) << "Failed to create directory " << to_dir.value();
-    RecordFileErrorWithCurrentErrno(kMigrationFailedAtMkdir, child,
-                                    FailureLocationType::kDest);
+    RecordFileError(kMigrationFailedAtMkdir, child, error,
+                    FailureLocationType::kDest);
     return false;
   }
   if (!platform_->SyncDirectory(to_dir.DirName())) {
