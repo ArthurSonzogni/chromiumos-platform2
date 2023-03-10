@@ -135,6 +135,7 @@ int JpegEncodeAcceleratorImpl::EncodeSync(
     int coded_size_width,
     int coded_size_height,
     int quality,
+    uint64_t input_modifier,
     uint32_t* output_data_size) {
   TRACE_JPEG("width", coded_size_width, "height", coded_size_height);
 
@@ -154,7 +155,8 @@ int JpegEncodeAcceleratorImpl::EncodeSync(
                      ipc_bridge_->GetWeakPtr(), task_id, input_format,
                      std::move(input_planes), std::move(output_planes),
                      exif_buffer, exif_buffer_size, coded_size_width,
-                     coded_size_height, quality, std::move(callback)));
+                     coded_size_height, quality, input_modifier,
+                     std::move(callback)));
 
   if (!future->Wait()) {
     if (!ipc_bridge_->IsReady()) {
@@ -317,6 +319,7 @@ void JpegEncodeAcceleratorImpl::IPCBridge::Encode(
     int coded_size_width,
     int coded_size_height,
     int quality,
+    uint64_t input_modifier,
     EncodeWithDmaBufCallback callback) {
   DCHECK(ipc_task_runner_->BelongsToCurrentThread());
   TRACE_JPEG_DEBUG("width", coded_size_width, "height", coded_size_height);
@@ -376,7 +379,8 @@ void JpegEncodeAcceleratorImpl::IPCBridge::Encode(
   jea_->EncodeWithDmaBuf(
       task_id, input_format, std::move(mojo_input_planes),
       std::move(mojo_output_planes), std::move(exif_handle), exif_buffer_size,
-      coded_size_width, coded_size_height, quality,
+      coded_size_width, coded_size_height, quality, /*has_input_modifier=*/true,
+      input_modifier,
       base::BindOnce(&JpegEncodeAcceleratorImpl::IPCBridge::OnEncodeDmaBufAck,
                      GetWeakPtr(), std::move(callback)));
 }

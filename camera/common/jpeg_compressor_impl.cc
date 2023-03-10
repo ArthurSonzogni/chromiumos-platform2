@@ -555,10 +555,12 @@ bool JpegCompressorImpl::EncodeHw(buffer_handle_t input_handle,
     return false;
   }
 
+  const uint64_t input_modifier =
+      cros::CameraBufferManager::GetModifier(input_handle);
   int status = hw_encoder_->EncodeSync(
       input_format, std::move(input_planes), std::move(output_planes),
       static_cast<const uint8_t*>(app1_ptr), app1_size, width, height, quality,
-      out_data_size);
+      input_modifier, out_data_size);
   if (status == cros::JpegEncodeAccelerator::TRY_START_AGAIN) {
     // There might be some mojo errors. We will give a second try.
     LOGF(WARNING) << "EncodeSync() returns TRY_START_AGAIN.";
@@ -567,7 +569,7 @@ bool JpegCompressorImpl::EncodeHw(buffer_handle_t input_handle,
       status = hw_encoder_->EncodeSync(
           input_format, std::move(input_planes), std::move(output_planes),
           static_cast<const uint8_t*>(app1_ptr), app1_size, width, height,
-          quality, out_data_size);
+          quality, input_modifier, out_data_size);
     } else {
       LOGF(ERROR) << "JPEG encode accelerator can't be started.";
     }

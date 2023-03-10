@@ -148,6 +148,7 @@ class CROS_CAMERA_EXPORT JpegEncodeAccelerator {
       int coded_size_width,
       int coded_size_height,
       int quality,
+      uint64_t input_modifier,
       uint32_t* output_data_size) = 0;
 };
 

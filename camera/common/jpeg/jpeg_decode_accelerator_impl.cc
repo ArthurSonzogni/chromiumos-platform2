@@ -251,7 +251,8 @@ void JpegDecodeAcceleratorImpl::IPCBridge::Decode(int32_t buffer_id,
   }
   auto output_frame = mojom::DmaBufVideoFrame::New(
       mojo_format, buffer_manager->GetWidth(output_buffer),
-      buffer_manager->GetHeight(output_buffer), std::move(planes));
+      buffer_manager->GetHeight(output_buffer), std::move(planes),
+      /*has_modifier=*/true, buffer_manager->GetModifier(output_buffer));
 
   mojo::ScopedHandle input_handle = mojo::WrapPlatformFile(
       base::ScopedPlatformFile(HANDLE_EINTR(dup(input_fd))));

@@ -61,6 +61,7 @@ class JpegEncodeAcceleratorImpl : public JpegEncodeAccelerator {
                  int width,
                  int height,
                  int quality,
+                 uint64_t input_modifier,
                  uint32_t* output_data_size) override;
 
  private:
@@ -104,6 +105,7 @@ class JpegEncodeAcceleratorImpl : public JpegEncodeAccelerator {
                 int coded_size_width,
                 int coded_size_height,
                 int quality,
+                uint64_t input_modifier,
                 EncodeWithDmaBufCallback callback);
 
     // For synced Encode API.
