@@ -46,6 +46,7 @@ using user_data_auth::AuthScanDone;
 
 using testing::_;
 using testing::AllOf;
+using testing::AnyNumber;
 using testing::DoAll;
 using testing::Field;
 using testing::SaveArg;
@@ -59,6 +60,9 @@ using OperationOutput = BiometricsAuthBlockService::OperationOutput;
 using CreateTestFuture = TestFuture<CryptohomeStatus,
                                     std::unique_ptr<KeyBlobs>,
                                     std::unique_ptr<AuthBlockState>>;
+using SelectFactorTestFuture = TestFuture<CryptohomeStatus,
+                                          std::optional<AuthInput>,
+                                          std::optional<AuthFactor>>;
 
 constexpr uint8_t kFingerprintAuthChannel = 0;
 
@@ -66,12 +70,24 @@ constexpr uint64_t kFakeRateLimiterLabel = 100;
 constexpr uint64_t kFakeCredLabel = 200;
 
 constexpr char kFakeRecordId[] = "fake_record_id";
+constexpr char kFakeRecordId2[] = "fake_record_id_2";
+
+constexpr char kFakeAuthFactorLabel1[] = "fake_label_1";
+constexpr char kFakeAuthFactorLabel2[] = "fake_label_2";
 
 // TODO(b/247704971): Blob should be used for fields that doesn't contain secret
 // values. Before the LE manager interface changes accordingly, transform the
 // blob types explicitly.
 brillo::SecureBlob BlobToSecureBlob(const brillo::Blob& blob) {
   return brillo::SecureBlob(blob.begin(), blob.end());
+}
+
+AuthBlockState GetFingerprintStateWithRecordId(std::string record_id) {
+  AuthBlockState auth_state;
+  FingerprintAuthBlockState fingerprint_auth_state;
+  fingerprint_auth_state.template_id = record_id;
+  auth_state.state = fingerprint_auth_state;
+  return auth_state;
 }
 
 class FingerprintAuthBlockTest : public ::testing::Test {
@@ -126,6 +142,26 @@ class FingerprintAuthBlockTest : public ::testing::Test {
     ret_token = *std::move(token);
 
     EXPECT_CALL(*mock_processor_, EndEnrollSession);
+  }
+
+  void StartAuthenticateSession(
+      std::unique_ptr<PreparedAuthFactorToken>& ret_token) {
+    EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeAccountId, _))
+        .WillRepeatedly(
+            [](auto&&, auto&& callback) { std::move(callback).Run(true); });
+
+    TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+        result;
+    bio_service_->StartAuthenticateSession(
+        AuthFactorType::kFingerprint, kFakeAccountId, result.GetCallback());
+    ASSERT_TRUE(result.IsReady());
+    CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>> token =
+        result.Take();
+    ASSERT_TRUE(token.ok());
+    EmitAuthEvent(kFakeAuthNonce);
+    ret_token = *std::move(token);
+
+    EXPECT_CALL(*mock_processor_, EndAuthenticateSession).Times(AnyNumber());
   }
 
   base::test::TaskEnvironment task_environment_;
@@ -462,6 +498,232 @@ TEST_F(FingerprintAuthBlockTest, CreateNoResetSecretFailed) {
             user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   EXPECT_EQ(key_blobs, nullptr);
   EXPECT_EQ(auth_state, nullptr);
+}
+
+TEST_F(FingerprintAuthBlockTest, SelectFactorSuccess) {
+  const brillo::SecureBlob kFakeAuthSecret(32, 1), kFakeAuthPin(32, 2);
+  const brillo::Blob kFakeGscNonce(32, 1), kFakeLabelSeed(32, 2);
+  const brillo::Blob kFakeGscIv(16, 1);
+  const AuthInput kFakeAuthInput{.rate_limiter_label = kFakeRateLimiterLabel};
+  const std::vector<AuthFactor> kFakeAuthFactors{
+      AuthFactor(AuthFactorType::kFingerprint, kFakeAuthFactorLabel1,
+                 AuthFactorMetadata{},
+                 GetFingerprintStateWithRecordId(kFakeRecordId)),
+      AuthFactor(AuthFactorType::kFingerprint, kFakeAuthFactorLabel2,
+                 AuthFactorMetadata{},
+                 GetFingerprintStateWithRecordId(kFakeRecordId2))};
+
+  std::unique_ptr<PreparedAuthFactorToken> token;
+  StartAuthenticateSession(token);
+  ASSERT_NE(token, nullptr);
+
+  EXPECT_CALL(
+      mock_le_manager_,
+      StartBiometricsAuth(kFingerprintAuthChannel, kFakeRateLimiterLabel,
+                          BlobToSecureBlob(kFakeAuthNonce)))
+      .WillOnce(ReturnValue(LECredentialManager::StartBiometricsAuthReply{
+          .server_nonce = BlobToSecureBlob(kFakeGscNonce),
+          .iv = BlobToSecureBlob(kFakeGscIv),
+          .encrypted_he_secret = BlobToSecureBlob(kFakeLabelSeed)}));
+  EXPECT_CALL(
+      *mock_processor_,
+      MatchCredential(
+          AllOf(Field(&OperationInput::nonce, kFakeGscNonce),
+                Field(&OperationInput::encrypted_label_seed, kFakeLabelSeed),
+                Field(&OperationInput::iv, kFakeGscIv)),
+          _))
+      .WillOnce([&](auto&&, auto&& callback) {
+        std::move(callback).Run(OperationOutput{
+            .record_id = kFakeRecordId,
+            .auth_secret = kFakeAuthSecret,
+            .auth_pin = kFakeAuthPin,
+        });
+      });
+
+  SelectFactorTestFuture result;
+  auth_block_->SelectFactor(kFakeAuthInput, kFakeAuthFactors,
+                            result.GetCallback());
+
+  ASSERT_TRUE(result.IsReady());
+  auto [status, auth_input, auth_factor] = result.Take();
+  ASSERT_THAT(status, IsOk());
+  ASSERT_TRUE(auth_input.has_value());
+  EXPECT_EQ(auth_input->user_input, kFakeAuthPin);
+  ASSERT_TRUE(auth_input->fingerprint_auth_input.has_value());
+  ASSERT_TRUE(auth_input->fingerprint_auth_input->auth_secret.has_value());
+  EXPECT_EQ(auth_input->fingerprint_auth_input->auth_secret, kFakeAuthSecret);
+  ASSERT_TRUE(auth_factor.has_value());
+  const AuthBlockState& auth_state = auth_factor->auth_block_state();
+  ASSERT_TRUE(
+      std::holds_alternative<FingerprintAuthBlockState>(auth_state.state));
+  auto& state = std::get<FingerprintAuthBlockState>(auth_state.state);
+  EXPECT_EQ(state.template_id, std::string(kFakeRecordId));
+}
+
+TEST_F(FingerprintAuthBlockTest, SelectFactorNoLabel) {
+  const AuthInput kFakeAuthInput{};
+  const std::vector<AuthFactor> kFakeAuthFactors{};
+
+  SelectFactorTestFuture result;
+  auth_block_->SelectFactor(kFakeAuthInput, kFakeAuthFactors,
+                            result.GetCallback());
+
+  ASSERT_TRUE(result.IsReady());
+  auto [status, auth_input, auth_factor] = result.Take();
+  EXPECT_TRUE(
+      ContainsActionInStack(status, ErrorAction::kDevCheckUnexpectedState));
+  EXPECT_FALSE(auth_input.has_value());
+  EXPECT_FALSE(auth_factor.has_value());
+}
+
+TEST_F(FingerprintAuthBlockTest, SelectFactorNoSession) {
+  const AuthInput kFakeAuthInput{.rate_limiter_label = kFakeRateLimiterLabel};
+  const std::vector<AuthFactor> kFakeAuthFactors{
+      AuthFactor(AuthFactorType::kFingerprint, kFakeAuthFactorLabel1,
+                 AuthFactorMetadata{},
+                 GetFingerprintStateWithRecordId(kFakeRecordId)),
+      AuthFactor(AuthFactorType::kFingerprint, kFakeAuthFactorLabel2,
+                 AuthFactorMetadata{},
+                 GetFingerprintStateWithRecordId(kFakeRecordId2))};
+
+  SelectFactorTestFuture result;
+  auth_block_->SelectFactor(kFakeAuthInput, kFakeAuthFactors,
+                            result.GetCallback());
+
+  ASSERT_TRUE(result.IsReady());
+  auto [status, auth_input, auth_factor] = result.Take();
+  EXPECT_TRUE(
+      ContainsActionInStack(status, ErrorAction::kDevCheckUnexpectedState));
+  EXPECT_FALSE(auth_input.has_value());
+  EXPECT_FALSE(auth_factor.has_value());
+}
+
+TEST_F(FingerprintAuthBlockTest, SelectFactorStartBioAuthFailed) {
+  const AuthInput kFakeAuthInput{.rate_limiter_label = kFakeRateLimiterLabel};
+  const std::vector<AuthFactor> kFakeAuthFactors{
+      AuthFactor(AuthFactorType::kFingerprint, kFakeAuthFactorLabel1,
+                 AuthFactorMetadata{},
+                 GetFingerprintStateWithRecordId(kFakeRecordId)),
+      AuthFactor(AuthFactorType::kFingerprint, kFakeAuthFactorLabel2,
+                 AuthFactorMetadata{},
+                 GetFingerprintStateWithRecordId(kFakeRecordId2))};
+
+  std::unique_ptr<PreparedAuthFactorToken> token;
+  StartAuthenticateSession(token);
+  ASSERT_NE(token, nullptr);
+
+  EXPECT_CALL(mock_le_manager_, StartBiometricsAuth)
+      .WillOnce([this](auto&&, auto&&, auto&&) {
+        return MakeStatus<CryptohomeLECredError>(
+            kErrorLocationPlaceholder,
+            ErrorActionSet({ErrorAction::kLeLockedOut}),
+            LECredError::LE_CRED_ERROR_TOO_MANY_ATTEMPTS);
+      });
+
+  SelectFactorTestFuture result;
+  auth_block_->SelectFactor(kFakeAuthInput, kFakeAuthFactors,
+                            result.GetCallback());
+
+  ASSERT_TRUE(result.IsReady());
+  auto [status, auth_input, auth_factor] = result.Take();
+  EXPECT_TRUE(ContainsActionInStack(status, ErrorAction::kLeLockedOut));
+  EXPECT_FALSE(auth_input.has_value());
+  EXPECT_FALSE(auth_factor.has_value());
+}
+
+TEST_F(FingerprintAuthBlockTest, SelectFactorMatchFailed) {
+  const brillo::Blob kFakeGscNonce(32, 1), kFakeLabelSeed(32, 2);
+  const brillo::Blob kFakeGscIv(16, 1);
+  const AuthInput kFakeAuthInput{.rate_limiter_label = kFakeRateLimiterLabel};
+  const std::vector<AuthFactor> kFakeAuthFactors{
+      AuthFactor(AuthFactorType::kFingerprint, kFakeAuthFactorLabel1,
+                 AuthFactorMetadata{},
+                 GetFingerprintStateWithRecordId(kFakeRecordId)),
+      AuthFactor(AuthFactorType::kFingerprint, kFakeAuthFactorLabel2,
+                 AuthFactorMetadata{},
+                 GetFingerprintStateWithRecordId(kFakeRecordId2))};
+
+  std::unique_ptr<PreparedAuthFactorToken> token;
+  StartAuthenticateSession(token);
+  ASSERT_NE(token, nullptr);
+
+  EXPECT_CALL(
+      mock_le_manager_,
+      StartBiometricsAuth(kFingerprintAuthChannel, kFakeRateLimiterLabel,
+                          BlobToSecureBlob(kFakeAuthNonce)))
+      .WillOnce(ReturnValue(LECredentialManager::StartBiometricsAuthReply{
+          .server_nonce = BlobToSecureBlob(kFakeGscNonce),
+          .iv = BlobToSecureBlob(kFakeGscIv),
+          .encrypted_he_secret = BlobToSecureBlob(kFakeLabelSeed)}));
+  EXPECT_CALL(*mock_processor_, MatchCredential(_, _))
+      .WillOnce([&](auto&&, auto&& callback) {
+        std::move(callback).Run(MakeStatus<CryptohomeError>(
+            kErrorLocationPlaceholder,
+            ErrorActionSet({ErrorAction::kIncorrectAuth}),
+            user_data_auth::CRYPTOHOME_ERROR_NOT_IMPLEMENTED));
+      });
+
+  SelectFactorTestFuture result;
+  auth_block_->SelectFactor(kFakeAuthInput, kFakeAuthFactors,
+                            result.GetCallback());
+
+  ASSERT_TRUE(result.IsReady());
+  auto [status, auth_input, auth_factor] = result.Take();
+  EXPECT_TRUE(ContainsActionInStack(status, ErrorAction::kIncorrectAuth));
+  EXPECT_FALSE(auth_input.has_value());
+  EXPECT_FALSE(auth_factor.has_value());
+}
+
+TEST_F(FingerprintAuthBlockTest, SelectFactorAuthFactorNotInList) {
+  const brillo::SecureBlob kFakeAuthSecret(32, 1), kFakeAuthPin(32, 2);
+  const brillo::Blob kFakeGscNonce(32, 1), kFakeLabelSeed(32, 2);
+  const brillo::Blob kFakeGscIv(16, 1);
+  const AuthInput kFakeAuthInput{.rate_limiter_label = kFakeRateLimiterLabel};
+  const std::vector<AuthFactor> kFakeAuthFactors{
+      AuthFactor(AuthFactorType::kFingerprint, kFakeAuthFactorLabel1,
+                 AuthFactorMetadata{},
+                 GetFingerprintStateWithRecordId(kFakeRecordId)),
+      AuthFactor(AuthFactorType::kFingerprint, kFakeAuthFactorLabel2,
+                 AuthFactorMetadata{},
+                 GetFingerprintStateWithRecordId(kFakeRecordId2))};
+
+  std::unique_ptr<PreparedAuthFactorToken> token;
+  StartAuthenticateSession(token);
+  ASSERT_NE(token, nullptr);
+
+  EXPECT_CALL(
+      mock_le_manager_,
+      StartBiometricsAuth(kFingerprintAuthChannel, kFakeRateLimiterLabel,
+                          BlobToSecureBlob(kFakeAuthNonce)))
+      .WillOnce(ReturnValue(LECredentialManager::StartBiometricsAuthReply{
+          .server_nonce = BlobToSecureBlob(kFakeGscNonce),
+          .iv = BlobToSecureBlob(kFakeGscIv),
+          .encrypted_he_secret = BlobToSecureBlob(kFakeLabelSeed)}));
+  EXPECT_CALL(
+      *mock_processor_,
+      MatchCredential(
+          AllOf(Field(&OperationInput::nonce, kFakeGscNonce),
+                Field(&OperationInput::encrypted_label_seed, kFakeLabelSeed),
+                Field(&OperationInput::iv, kFakeGscIv)),
+          _))
+      .WillOnce([&](auto&&, auto&& callback) {
+        std::move(callback).Run(OperationOutput{
+            .record_id = "unknown_record",
+            .auth_secret = kFakeAuthSecret,
+            .auth_pin = kFakeAuthPin,
+        });
+      });
+
+  SelectFactorTestFuture result;
+  auth_block_->SelectFactor(kFakeAuthInput, kFakeAuthFactors,
+                            result.GetCallback());
+
+  ASSERT_TRUE(result.IsReady());
+  auto [status, auth_input, auth_factor] = result.Take();
+  EXPECT_TRUE(
+      ContainsActionInStack(status, ErrorAction::kDevCheckUnexpectedState));
+  EXPECT_FALSE(auth_input.has_value());
+  EXPECT_FALSE(auth_factor.has_value());
 }
 
 }  // namespace
