@@ -15,12 +15,11 @@ namespace shill {
 
 class MockPasspointCredentials : public PasspointCredentials {
  public:
-  explicit MockPasspointCredentials(std::string id)
-      : PasspointCredentials(id) {}
+  explicit MockPasspointCredentials(std::string id);
   MockPasspointCredentials(const MockPasspointCredentials&) = delete;
   MockPasspointCredentials& operator=(const MockPasspointCredentials&) = delete;
 
-  ~MockPasspointCredentials() = default;
+  ~MockPasspointCredentials();
 
   MOCK_METHOD(bool,
               ToSupplicantProperties,

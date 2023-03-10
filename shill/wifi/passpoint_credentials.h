@@ -14,6 +14,7 @@
 #include "shill/data_types.h"
 #include "shill/eap_credentials.h"
 #include "shill/error.h"
+#include "shill/profile.h"
 #include "shill/refptr_types.h"
 #include "shill/store/key_value_store.h"
 #include "shill/store/pkcs11_slot_getter.h"
@@ -34,11 +35,11 @@ class PasspointCredentials : public base::RefCounted<PasspointCredentials> {
   static constexpr char kStorageType[] = "Type";
   static constexpr char kTypePasspoint[] = "passpoint";
 
-  explicit PasspointCredentials(std::string id) : id_(id) {}
+  explicit PasspointCredentials(std::string id);
   PasspointCredentials(const PasspointCredentials&) = delete;
   PasspointCredentials& operator=(const PasspointCredentials&) = delete;
 
-  virtual ~PasspointCredentials() = default;
+  virtual ~PasspointCredentials();
 
   // Set the profile that owns this set of credentials.
   void SetProfile(const ProfileRefPtr& profile) { profile_ = profile; }

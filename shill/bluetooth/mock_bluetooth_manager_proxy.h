@@ -16,12 +16,12 @@ namespace shill {
 
 class MockBluetoothManagerProxy : public BluetoothManagerProxyInterface {
  public:
-  MockBluetoothManagerProxy() = default;
+  MockBluetoothManagerProxy();
   MockBluetoothManagerProxy(const MockBluetoothManagerProxy&) = delete;
   MockBluetoothManagerProxy& operator=(const MockBluetoothManagerProxy&) =
       delete;
 
-  ~MockBluetoothManagerProxy() override = default;
+  ~MockBluetoothManagerProxy() override;
 
   MOCK_METHOD(bool,
               GetAvailableAdapters,

@@ -22,4 +22,10 @@ MockNetwork::MockNetwork(int interface_index,
               /*dispatcher=*/nullptr,
               /*metrics=*/nullptr) {}
 
+MockNetwork::~MockNetwork() = default;
+
+MockNetworkEventHandler::MockNetworkEventHandler() = default;
+
+MockNetworkEventHandler::~MockNetworkEventHandler() = default;
+
 }  // namespace shill

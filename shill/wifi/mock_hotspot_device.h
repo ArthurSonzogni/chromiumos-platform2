@@ -7,6 +7,10 @@
 
 #include "shill/wifi/hotspot_device.h"
 
+#include <memory>
+#include <string>
+#include <vector>
+
 #include <gmock/gmock.h>
 
 namespace shill {
@@ -18,14 +22,8 @@ class MockHotspotDevice : public HotspotDevice {
                     const std::string& link_name,
                     const std::string& mac_address,
                     uint32_t phy_index,
-                    const EventCallback& callback)
-      : HotspotDevice(manager,
-                      primary_link_name,
-                      link_name,
-                      mac_address,
-                      phy_index,
-                      callback) {}
-  ~MockHotspotDevice() override = default;
+                    const EventCallback& callback);
+  ~MockHotspotDevice() override;
 
   bool Start() override { return true; }
 

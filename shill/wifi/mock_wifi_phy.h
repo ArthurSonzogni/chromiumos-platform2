@@ -13,9 +13,9 @@ namespace shill {
 
 class MockWiFiPhy : public WiFiPhy {
  public:
-  explicit MockWiFiPhy(uint32_t phy_index) : WiFiPhy(phy_index) {}
+  explicit MockWiFiPhy(uint32_t phy_index);
 
-  ~MockWiFiPhy() = default;
+  ~MockWiFiPhy() override;
 
   void SetFrequencies(const Frequencies& freqs) { frequencies_ = freqs; }
 

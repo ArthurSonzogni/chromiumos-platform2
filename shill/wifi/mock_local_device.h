@@ -7,6 +7,8 @@
 
 #include "shill/wifi/local_device.h"
 
+#include <string>
+
 #include <gmock/gmock.h>
 
 namespace shill {
@@ -18,10 +20,8 @@ class MockLocalDevice : public LocalDevice {
                   const std::string& link_name,
                   const std::string& mac_address,
                   uint32_t phy_index,
-                  const EventCallback& callback)
-      : LocalDevice(
-            manager, type, link_name, mac_address, phy_index, callback) {}
-  ~MockLocalDevice() override = default;
+                  const EventCallback& callback);
+  ~MockLocalDevice() override;
 
   bool Start() override { return true; }
 

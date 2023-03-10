@@ -16,12 +16,12 @@ namespace shill {
 
 class MockDBusServiceWatcherFactory : public DBusServiceWatcherFactory {
  public:
-  MockDBusServiceWatcherFactory() = default;
+  MockDBusServiceWatcherFactory();
   MockDBusServiceWatcherFactory(const MockDBusServiceWatcherFactory&) = delete;
   MockDBusServiceWatcherFactory& operator=(
       const MockDBusServiceWatcherFactory&) = delete;
 
-  virtual ~MockDBusServiceWatcherFactory() = default;
+  ~MockDBusServiceWatcherFactory() override;
 
   MOCK_METHOD(std::unique_ptr<DBusServiceWatcher>,
               CreateDBusServiceWatcher,

@@ -13,8 +13,8 @@ namespace shill {
 
 class MockWiFiLinkStatistics : public WiFiLinkStatistics {
  public:
-  MockWiFiLinkStatistics() = default;
-  ~MockWiFiLinkStatistics() = default;
+  MockWiFiLinkStatistics();
+  ~MockWiFiLinkStatistics() override;
 
   MOCK_METHOD(void,
               UpdateNl80211LinkStatistics,

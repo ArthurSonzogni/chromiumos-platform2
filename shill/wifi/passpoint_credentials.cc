@@ -56,6 +56,10 @@ bool ParsePasspointOiList(const KeyValueStore& args,
 // Size of an UUID string.
 constexpr size_t kUUIDStringLength = 37;
 
+PasspointCredentials::PasspointCredentials(std::string id) : id_(id) {}
+
+PasspointCredentials::~PasspointCredentials() = default;
+
 PasspointCredentials::PasspointCredentials(
     const std::string& id,
     const std::vector<std::string>& domains,

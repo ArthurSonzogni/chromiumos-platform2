@@ -31,7 +31,7 @@ class MockNetwork : public Network {
                        Technology technology);
   MockNetwork(const MockNetwork&) = delete;
   MockNetwork& operator=(const MockNetwork&) = delete;
-  ~MockNetwork() override = default;
+  ~MockNetwork() override;
 
   MOCK_METHOD(void, Start, (const StartOptions&), (override));
   MOCK_METHOD(void, Stop, (), (override));
@@ -83,6 +83,11 @@ class MockNetwork : public Network {
 
 class MockNetworkEventHandler : public Network::EventHandler {
  public:
+  MockNetworkEventHandler();
+  MockNetworkEventHandler(const MockNetworkEventHandler&) = delete;
+  MockNetworkEventHandler& operator=(const MockNetworkEventHandler&) = delete;
+  ~MockNetworkEventHandler();
+
   MOCK_METHOD(void, OnConnectionUpdated, (int), (override));
   MOCK_METHOD(void, OnNetworkStopped, (int, bool), (override));
   MOCK_METHOD(void, OnIPConfigsPropertyUpdated, (int), (override));

@@ -17,11 +17,11 @@ namespace shill {
 
 class MockSLAACController : public SLAACController {
  public:
-  MockSLAACController() : SLAACController(0, nullptr, nullptr, nullptr) {}
+  MockSLAACController();
   MockSLAACController(const MockSLAACController&) = delete;
   MockSLAACController& operator=(const MockSLAACController&) = delete;
 
-  ~MockSLAACController() override = default;
+  ~MockSLAACController() override;
 
   MOCK_METHOD(void, Start, (), (override));
   MOCK_METHOD(void, Stop, (), (override));

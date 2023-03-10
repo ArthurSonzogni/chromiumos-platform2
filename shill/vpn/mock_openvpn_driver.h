@@ -15,12 +15,11 @@ namespace shill {
 
 class MockOpenVPNDriver : public OpenVPNDriver {
  public:
-  MockOpenVPNDriver(Manager* manager, ProcessManager* process_manager)
-      : OpenVPNDriver(manager, process_manager) {}
+  MockOpenVPNDriver(Manager* manager, ProcessManager* process_manager);
   MockOpenVPNDriver(const MockOpenVPNDriver&) = delete;
   MockOpenVPNDriver& operator=(const MockOpenVPNDriver&) = delete;
 
-  ~MockOpenVPNDriver() = default;
+  ~MockOpenVPNDriver() override;
 
   MOCK_METHOD(void, OnReconnecting, (ReconnectReason), (override));
   MOCK_METHOD(void,
