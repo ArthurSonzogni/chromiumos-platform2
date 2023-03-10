@@ -217,6 +217,7 @@ class FakeWaylandClient {
       }
     }
     assert(false);
+    return 0;
   }
 
   int sv[2];
