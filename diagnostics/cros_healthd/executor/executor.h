@@ -91,6 +91,10 @@ class Executor final : public ash::cros_healthd::mojom::Executor {
           observer,
       mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
           process_control_receiver) override;
+  void MonitorStylus(
+      mojo::PendingRemote<ash::cros_healthd::mojom::StylusObserver> observer,
+      mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
+          process_control_receiver) override;
 
  private:
   // Runs the given process and wait for it to die. Does not track the process

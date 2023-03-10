@@ -135,6 +135,26 @@ class EvdevStylusGarageObserver final : public EvdevUtil::Delegate {
   EvdevUtil evdev_util_{this};
 };
 
+class EvdevStylusObserver final : public EvdevUtil::Delegate {
+ public:
+  explicit EvdevStylusObserver(
+      mojo::PendingRemote<ash::cros_healthd::mojom::StylusObserver> observer);
+
+  // EvdevUtil::Delegate overrides.
+  bool IsTarget(libevdev* dev) override;
+  void FireEvent(const input_event& event, libevdev* dev) override;
+  void InitializationFail(uint32_t custom_reason,
+                          const std::string& description) override;
+  void ReportProperties(libevdev* dev) override;
+
+ private:
+  // Whether the previous emitted event has a touch point. This is used to
+  // emit an event when the stylus is no longer in contact.
+  bool last_event_has_touch_point_{false};
+  mojo::Remote<ash::cros_healthd::mojom::StylusObserver> observer_;
+  EvdevUtil evdev_util_{this};
+};
+
 }  // namespace diagnostics
 
 #endif  // DIAGNOSTICS_CROS_HEALTHD_DELEGATE_UTILS_EVDEV_UTILS_H_

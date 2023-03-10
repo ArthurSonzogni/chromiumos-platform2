@@ -300,4 +300,54 @@ void EvdevStylusGarageObserver::InitializationFail(
 
 void EvdevStylusGarageObserver::ReportProperties(libevdev* dev) {}
 
+EvdevStylusObserver::EvdevStylusObserver(
+    mojo::PendingRemote<mojom::StylusObserver> observer)
+    : observer_(std::move(observer)) {}
+
+bool EvdevStylusObserver::IsTarget(libevdev* dev) {
+  // - Typical non-pointer devices: touchscreens.
+  // - Typical direct devices: touchscreens, drawing tablets.
+  // - Use ABS_MT_TRACKING_ID to filter out touchscreen.
+  return !libevdev_has_property(dev, INPUT_PROP_POINTER) &&
+         libevdev_has_property(dev, INPUT_PROP_DIRECT) &&
+         !libevdev_has_event_code(dev, EV_ABS, ABS_MT_TRACKING_ID);
+}
+
+void EvdevStylusObserver::FireEvent(const input_event& ev, libevdev* dev) {
+  if (ev.type == EV_SYN && ev.code == SYN_REPORT) {
+    bool is_stylus_in_contact =
+        libevdev_get_event_value(dev, EV_KEY, BTN_TOUCH);
+    if (is_stylus_in_contact) {
+      auto point_info = mojom::StylusTouchPointInfo::New();
+      point_info->x = libevdev_get_event_value(dev, EV_ABS, ABS_X);
+      point_info->y = libevdev_get_event_value(dev, EV_ABS, ABS_Y);
+      point_info->pressure = mojom::NullableUint32::New(
+          libevdev_get_event_value(dev, EV_ABS, ABS_PRESSURE));
+
+      observer_->OnTouch(mojom::StylusTouchEvent::New(std::move(point_info)));
+      last_event_has_touch_point_ = true;
+    } else {
+      // Don't repeatedly report events without the touch point.
+      if (last_event_has_touch_point_) {
+        observer_->OnTouch(mojom::StylusTouchEvent::New());
+        last_event_has_touch_point_ = false;
+      }
+    }
+  }
+}
+
+void EvdevStylusObserver::InitializationFail(uint32_t custom_reason,
+                                             const std::string& description) {
+  observer_.ResetWithReason(custom_reason, description);
+}
+
+void EvdevStylusObserver::ReportProperties(libevdev* dev) {
+  auto connected_event = mojom::StylusConnectedEvent::New();
+  connected_event->max_x = std::max(libevdev_get_abs_maximum(dev, ABS_X), 0);
+  connected_event->max_y = std::max(libevdev_get_abs_maximum(dev, ABS_Y), 0);
+  connected_event->max_pressure =
+      std::max(libevdev_get_abs_maximum(dev, ABS_PRESSURE), 0);
+  observer_->OnConnected(std::move(connected_event));
+}
+
 }  // namespace diagnostics

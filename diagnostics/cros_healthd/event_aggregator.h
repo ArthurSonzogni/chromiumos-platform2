@@ -15,6 +15,7 @@
 #include "diagnostics/cros_healthd/events/event_reporter.h"
 #include "diagnostics/cros_healthd/events/lid_events.h"
 #include "diagnostics/cros_healthd/events/power_events.h"
+#include "diagnostics/cros_healthd/events/stylus_events.h"
 #include "diagnostics/cros_healthd/events/stylus_garage_events.h"
 #include "diagnostics/cros_healthd/events/touchpad_events.h"
 #include "diagnostics/cros_healthd/events/touchscreen_events.h"
@@ -74,6 +75,7 @@ class EventAggregator final {
   std::unique_ptr<TouchpadEvents> touchpad_events_;
   std::unique_ptr<TouchscreenEvents> touchscreen_events_;
   std::unique_ptr<StylusGarageEvents> stylus_garage_events_;
+  std::unique_ptr<StylusEvents> stylus_events_;
   EventReporter event_reporter_{context_};
 };
 

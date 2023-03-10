@@ -91,6 +91,12 @@ interface StylusGarageObserver {
   OnRemove();
 };
 
+// Implemented by clients who desire stylus notifications.
+interface StylusObserver {
+  OnTouch(StylusTouchEvent touch_event);
+  OnConnected(StylusConnectedEvent connected_event);
+};
+
 // Root-level executor interface exposed to the cros_healthd daemon. In
 // production, this is implemented by the Executor daemon.
 interface Executor {
@@ -244,4 +250,12 @@ interface Executor {
   // * |process_control| - Used to stop the monitor process.
   MonitorStylusGarage(pending_remote<StylusGarageObserver> observer,
                       pending_receiver<ProcessControl> process_control);
+
+  // Monitor stylus events.
+  //
+  // The request:
+  // * |observer| - The observer to notify client.
+  // * |process_control| - Used to stop the monitor process.
+  MonitorStylus(pending_remote<StylusObserver> observer,
+                pending_receiver<ProcessControl> process_control);
 };

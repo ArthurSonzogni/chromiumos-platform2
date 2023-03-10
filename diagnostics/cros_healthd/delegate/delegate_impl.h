@@ -41,6 +41,9 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
   void MonitorStylusGarage(
       mojo::PendingRemote<ash::cros_healthd::mojom::StylusGarageObserver>
           observer) override;
+  void MonitorStylus(
+      mojo::PendingRemote<ash::cros_healthd::mojom::StylusObserver> observer)
+      override;
 };
 
 }  // namespace diagnostics

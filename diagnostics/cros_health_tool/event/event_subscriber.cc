@@ -430,6 +430,55 @@ void OutputStylusGarageEventInfo(const mojom::StylusGarageEventInfoPtr& info) {
             << std::endl;
 }
 
+void OutputStylusTouchEventInfo(const mojom::StylusTouchEventPtr& touch_event) {
+  base::Value::Dict output;
+  if (touch_event->touch_point) {
+    base::Value::Dict point_dict;
+    const auto& point = touch_event->touch_point;
+    point_dict.Set("x", static_cast<double>(point->x));
+    point_dict.Set("y", static_cast<double>(point->y));
+    if (point->pressure) {
+      point_dict.Set("pressure", static_cast<double>(point->pressure->value));
+    }
+    output.Set("touch_point", std::move(point_dict));
+  }
+
+  std::string json;
+  base::JSONWriter::WriteWithOptions(
+      output, base::JSONWriter::Options::OPTIONS_OMIT_DOUBLE_TYPE_PRESERVATION,
+      &json);
+  std::cout << "Stylus touch event received: " << json << std::endl;
+}
+
+void OutputStylusConnectedEventInfo(
+    const mojom::StylusConnectedEventPtr& connected_event) {
+  base::Value::Dict output;
+  output.Set("max_x", static_cast<double>(connected_event->max_x));
+  output.Set("max_y", static_cast<double>(connected_event->max_y));
+  output.Set("max_pressure",
+             static_cast<double>(connected_event->max_pressure));
+
+  std::string json;
+  base::JSONWriter::WriteWithOptions(
+      output, base::JSONWriter::Options::OPTIONS_OMIT_DOUBLE_TYPE_PRESERVATION,
+      &json);
+  std::cout << "Stylus connected event received: " << json << std::endl;
+}
+
+void OutputStylusEventInfo(const mojom::StylusEventInfoPtr& info) {
+  switch (info->which()) {
+    case mojom::StylusEventInfo::Tag::kDefaultType:
+      LOG(ERROR) << "Got StylusEventInfo::Tag::kDefaultType";
+      break;
+    case mojom::StylusEventInfo::Tag::kTouchEvent:
+      OutputStylusTouchEventInfo(info->get_touch_event());
+      break;
+    case mojom::StylusEventInfo::Tag::kConnectedEvent:
+      OutputStylusConnectedEventInfo(info->get_connected_event());
+      break;
+  }
+}
+
 }  // namespace
 
 EventSubscriber::EventSubscriber() {
@@ -506,6 +555,9 @@ void EventSubscriber::OnEvent(const mojom::EventInfoPtr info) {
       break;
     case mojom::EventInfo::Tag::kStylusGarageEventInfo:
       OutputStylusGarageEventInfo(info->get_stylus_garage_event_info());
+      break;
+    case mojom::EventInfo::Tag::kStylusEventInfo:
+      OutputStylusEventInfo(info->get_stylus_event_info());
       break;
   }
 }

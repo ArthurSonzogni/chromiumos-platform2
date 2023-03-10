@@ -275,4 +275,11 @@ void DelegateImpl::MonitorStylusGarage(
   new EvdevStylusGarageObserver(std::move(observer));
 }
 
+void DelegateImpl::MonitorStylus(
+    mojo::PendingRemote<mojom::StylusObserver> observer) {
+  // Long-run method. The following object keeps alive until the process
+  // terminates.
+  new EvdevStylusObserver(std::move(observer));
+}
+
 }  // namespace diagnostics
