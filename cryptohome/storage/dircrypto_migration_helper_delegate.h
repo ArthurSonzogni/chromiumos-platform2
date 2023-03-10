@@ -47,7 +47,8 @@ class DircryptoMigrationHelperDelegate
   void ReportTotalSize(int total_byte_count_mb, int total_file_count) override;
   void ReportFailure(base::File::Error error_code,
                      data_migrator::MigrationFailedOperationType type,
-                     const base::FilePath& path) override;
+                     const base::FilePath& path,
+                     data_migrator::FailureLocationType location_type) override;
   void ReportFailedNoSpace(int initial_migration_free_space_mb,
                            int failure_free_space_mb) override;
   void ReportFailedNoSpaceXattrSizeInBytes(int total_xattr_size_bytes) override;

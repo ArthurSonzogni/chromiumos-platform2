@@ -213,7 +213,8 @@ void DircryptoMigrationHelperDelegate::ReportEndStatus(
 void DircryptoMigrationHelperDelegate::ReportFailure(
     base::File::Error error_code,
     data_migrator::MigrationFailedOperationType operation_type,
-    const base::FilePath& path) {
+    const base::FilePath& path,
+    data_migrator::FailureLocationType location_type) {
   DircryptoMigrationFailedPathType path_type = kMigrationFailedUnderOther;
   for (const auto& path_type_mapping : kPathTypeMappings) {
     if (base::FilePath(path_type_mapping.path).IsParent(path)) {

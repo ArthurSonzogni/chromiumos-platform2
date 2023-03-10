@@ -143,8 +143,10 @@ class BRILLO_EXPORT MigrationHelper {
                                         const char* value,
                                         ssize_t size);
   // Record the latest file error happened during the migration.
-  // |operation| is the type of the operation cause the |error| and
-  // |child| is the path of migrated file from the root of migration.
+  // |operation| is the type of the operation cause the |error|,
+  // |child| is the path of the file from the migration root, and
+  // |location_type| is the type of location of the failed file (whether it is
+  // in the migration source, the destination, or both).
   //
   // We should record the error immediately after the failed low-level
   // file operations (|platform_| methods or base:: functions), not after
@@ -152,9 +154,11 @@ class BRILLO_EXPORT MigrationHelper {
   // and to avoid unintended duplicated logging.
   void RecordFileError(MigrationFailedOperationType operation,
                        const base::FilePath& child,
-                       base::File::Error error);
+                       base::File::Error error,
+                       FailureLocationType location_type);
   void RecordFileErrorWithCurrentErrno(MigrationFailedOperationType operation,
-                                       const base::FilePath& child);
+                                       const base::FilePath& child,
+                                       FailureLocationType location_type);
 
   // Processes the job.
   // Must be called on a job thread.

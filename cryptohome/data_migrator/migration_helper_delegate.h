@@ -15,6 +15,18 @@
 
 namespace cryptohome::data_migrator {
 
+// The types of the location of files which we failed to migrate.
+enum class FailureLocationType {
+  // The failure happened in the migration source.
+  kSource,
+  // The failure happened in the migration destination.
+  kDest,
+  // The failure happened in the migration source or the destination. This is
+  // the case for operations that take both of the source file and the
+  // destination file, such as sendfile().
+  kSourceOrDest,
+};
+
 // Delegate class for MigrationHelper that handles logic specific to the type of
 // the migration.
 class BRILLO_EXPORT MigrationHelperDelegate {
@@ -81,11 +93,13 @@ class BRILLO_EXPORT MigrationHelperDelegate {
   virtual void ReportTotalSize(int total_byte_count_mb, int total_file_count) {}
 
   // Called when a migration failure happens. Reports the error code, the failed
-  // operation type, and the relative path from the root of migration to the
-  // failed file.
+  // operation type, the relative path to the failed file from the migration
+  // root, and the type of the location of the failed file (whether it is in the
+  // migration source, the destination, or both).
   virtual void ReportFailure(base::File::Error error_code,
                              MigrationFailedOperationType type,
-                             const base::FilePath& path) {}
+                             const base::FilePath& child,
+                             FailureLocationType location_type) {}
 
   // Called when ENOSPC failure happens. Reports the amount of free disk space
   // measured before the migration (|initial_migration_free_space_mb|) and at
