@@ -51,6 +51,7 @@ using crypto_test_data::kUserID;
 
 using testing::_;
 using testing::ByMove;
+using testing::DoAll;
 using testing::Return;
 using testing::ReturnRef;
 using testing::SaveArg;
