@@ -26,6 +26,7 @@ group("host") {
       ":cicerone_test",
       ":concierge_test",
       ":syslog_forwarder_test",
+      ":vsh_test",
     ]
     if (use.arcvm) {
       deps += [ ":vm_pstore_dump_test" ]
@@ -395,6 +396,19 @@ if (use.test) {
       ":libconcierge",
       "//common-mk/testrunner:testrunner",
       "//vm_tools:libvm_tools_common",
+    ]
+  }
+  executable("vsh_test") {
+    sources = [ "../vsh/utils_test.cc" ]
+    configs += [
+      "//common-mk:test",
+      ":host_target_defaults",
+    ]
+    pkg_deps = [ "vm_protos" ]
+    deps = [
+      "//common-mk/testrunner:testrunner",
+      "//vm_tools:libvm_tools_common",
+      "//vm_tools:libvsh",
     ]
   }
 

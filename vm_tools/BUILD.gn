@@ -16,7 +16,15 @@ group("all") {
 
 static_library("libvsh") {
   sources = [ "vsh/utils.cc" ]
-  pkg_deps = [ "libchrome" ]
+  pkg_deps = [
+    "libbrillo",
+    "libchrome",
+  ]
+  if (use.fuzzer) {
+    pkg_deps += [ "protobuf" ]
+  } else {
+    pkg_deps += [ "protobuf-lite" ]
+  }
 }
 
 executable("vshd") {
@@ -27,7 +35,6 @@ executable("vshd") {
   pkg_deps = [
     "libbrillo",
     "libchrome",
-    "protobuf",
     "vm_protos",
   ]
   deps = [ ":libvsh" ]
