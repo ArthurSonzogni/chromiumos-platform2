@@ -707,6 +707,14 @@ bool State::FetchPhysicalCpus() {
       }
     }
 
+    if (!ReadInteger(GetCoreIdPath(root_dir, processor_id), &base::StringToUint,
+                     &logical_cpu.core_id)) {
+      LogAndSetError(mojo_ipc::ErrorType::kParseError,
+                     "Unable to parse core ID for cpu " +
+                         base::NumberToString(processor_id));
+      return false;
+    }
+
     // Add this logical CPU to the corresponding physical CPU.
     itr->second->logical_cpus.push_back(logical_cpu.Clone());
   }
@@ -947,6 +955,14 @@ base::FilePath GetPhysicalPackageIdPath(const base::FilePath& root_dir,
   return root_dir.Append(kRelativeCpuDir)
       .Append(logical_cpu_dir)
       .Append(physical_package_id_filename);
+}
+
+base::FilePath GetCoreIdPath(const base::FilePath& root_dir, int logical_id) {
+  std::string logical_cpu_dir = "cpu" + base::NumberToString(logical_id);
+  std::string core_id_filename = "topology/core_id";
+  return root_dir.Append(kRelativeCpuDir)
+      .Append(logical_cpu_dir)
+      .Append(core_id_filename);
 }
 
 mojo_ipc::VulnerabilityInfo::Status GetVulnerabilityStatusFromMessage(

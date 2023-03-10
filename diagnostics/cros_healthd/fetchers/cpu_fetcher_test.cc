@@ -274,6 +274,16 @@ class CpuFetcherTest : public testing::Test {
     ASSERT_TRUE(WriteFileAndCreateParentDirs(
         GetPhysicalPackageIdPath(root_dir(), kThirdLogicalId), "1"));
 
+    // Write core ID data for the first logical CPU.
+    ASSERT_TRUE(WriteFileAndCreateParentDirs(
+        GetCoreIdPath(root_dir(), kFirstLogicalId), "0"));
+    // Write core ID data for the second logical CPU.
+    ASSERT_TRUE(WriteFileAndCreateParentDirs(
+        GetCoreIdPath(root_dir(), kSecondLogicalId), "0"));
+    // Write core ID data for the third logical CPU.
+    ASSERT_TRUE(WriteFileAndCreateParentDirs(
+        GetCoreIdPath(root_dir(), kThirdLogicalId), "0"));
+
     // Write CPU temperature data.
     base::FilePath first_temp_dir =
         root_dir().AppendASCII(kFirstFakeCpuTemperatureDir);
@@ -1280,5 +1290,47 @@ TEST_F(CpuFetcherTest, TestParseCpuFlags) {
             std::vector<std::string>{"cpu_flags"});
 }
 
+TEST_F(CpuFetcherTest, ValidCoreIdFile) {
+  // Write core ID data for the first logical CPU.
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      GetCoreIdPath(root_dir(), kFirstLogicalId), "10"));
+  // Write core ID data for the second logical CPU.
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      GetCoreIdPath(root_dir(), kSecondLogicalId), "11"));
+  // Write core ID data for the third logical CPU.
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      GetCoreIdPath(root_dir(), kThirdLogicalId), "12"));
+
+  auto cpu_result = FetchCpuInfoSync();
+
+  ASSERT_TRUE(cpu_result->is_cpu_info());
+  const auto& cpu_info = cpu_result->get_cpu_info();
+
+  ASSERT_EQ(cpu_info->physical_cpus.size(), 2);
+  ASSERT_EQ(cpu_info->physical_cpus[0]->logical_cpus.size(), 2);
+  ASSERT_EQ(cpu_info->physical_cpus[1]->logical_cpus.size(), 1);
+  EXPECT_EQ(cpu_info->physical_cpus[0]->logical_cpus[0]->core_id, 10);
+  EXPECT_EQ(cpu_info->physical_cpus[0]->logical_cpus[1]->core_id, 11);
+  EXPECT_EQ(cpu_info->physical_cpus[1]->logical_cpus[0]->core_id, 12);
+}
+
+TEST_F(CpuFetcherTest, InvalidCoreIdFile) {
+  // Write core ID data for the first logical CPU.
+  ASSERT_TRUE(WriteFileAndCreateParentDirs(
+      GetCoreIdPath(root_dir(), kFirstLogicalId), "InvalidContent"));
+
+  auto cpu_result = FetchCpuInfoSync();
+  ASSERT_TRUE(cpu_result->is_error());
+  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kParseError);
+}
+
+// Test that we handle a cpuinfo file for processors without core_id.
+TEST_F(CpuFetcherTest, NoCoreIdFile) {
+  ASSERT_TRUE(base::DeleteFile(GetCoreIdPath(root_dir(), 0)));
+
+  auto cpu_result = FetchCpuInfoSync();
+  ASSERT_TRUE(cpu_result->is_error());
+  EXPECT_EQ(cpu_result->get_error()->type, mojo_ipc::ErrorType::kParseError);
+}
 }  // namespace
 }  // namespace diagnostics

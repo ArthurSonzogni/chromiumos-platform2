@@ -78,6 +78,11 @@ base::FilePath GetCpuFreqDirectoryPath(const base::FilePath& root_dir,
 base::FilePath GetPhysicalPackageIdPath(const base::FilePath& root_dir,
                                         int logical_id);
 
+// Returns an absolute path to the CPU Core ID file for the logical CPU with ID
+// |logical_id|. On a real device, this will be
+// /sys/devices/system/cpu/cpu|logical_id|/topology/core_id.
+base::FilePath GetCoreIdPath(const base::FilePath& root_dir, int logical_id);
+
 // Returns the parsed vulnerability status from reading the vulnerability
 // message. This function is exported for testing.
 ash::cros_healthd::mojom::VulnerabilityInfo::Status

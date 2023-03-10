@@ -997,6 +997,7 @@ void DisplayCpuInfo(const mojom::CpuResultPtr& result) {
       SET_DICT(scaling_max_frequency_khz, logical_cpu, &logical_cpu_data);
       SET_DICT(system_time_user_hz, logical_cpu, &logical_cpu_data);
       SET_DICT(user_time_user_hz, logical_cpu, &logical_cpu_data);
+      SET_DICT(core_id, logical_cpu, &logical_cpu_data);
 
       base::Value::List c_states;
       for (const auto& c_state : logical_cpu->c_states) {
