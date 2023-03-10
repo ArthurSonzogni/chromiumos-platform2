@@ -817,6 +817,70 @@ class FuseBoxClient : public FileSystem {
     request->ReplyOk();
   }
 
+  void Rename(std::unique_ptr<OkRequest> request,
+              ino_t old_parent,
+              const char* old_name,
+              ino_t new_parent,
+              const char* new_name) override {
+    VLOG(1) << "rename " << old_parent << "/" << old_name << " " << new_parent
+            << "/" << new_name;
+
+    if (request->IsInterrupted())
+      return;
+
+    errno = 0;
+    Node* old_parent_node = GetInodeTable().Lookup(old_parent);
+    Node* new_parent_node = GetInodeTable().Lookup(new_parent);
+    if (!old_parent_node || (old_parent < FIRST_UNRESERVED_INO) ||
+        !new_parent_node || (new_parent < FIRST_UNRESERVED_INO)) {
+      errno = request->ReplyError(errno ? errno : EACCES);
+      PLOG(ERROR) << "rename";
+      return;
+    }
+
+    RenameRequestProto request_proto;
+    request_proto.set_src_file_system_url(base::StrCat(
+        {GetInodeTable().GetDevicePath(old_parent_node), "/", old_name}));
+    request_proto.set_dst_file_system_url(base::StrCat(
+        {GetInodeTable().GetDevicePath(new_parent_node), "/", new_name}));
+
+    dbus::MethodCall method(kFuseBoxServiceInterface, kRenameMethod);
+    dbus::MessageWriter writer(&method);
+    writer.AppendProtoAsArrayOfBytes(request_proto);
+
+    auto rename_response = base::BindOnce(
+        &FuseBoxClient::RenameResponse, weak_ptr_factory_.GetWeakPtr(),
+        std::move(request), old_parent, std::string(old_name), new_parent,
+        std::string(new_name));
+    CallFuseBoxServerMethod(&method, std::move(rename_response));
+  }
+
+  void RenameResponse(std::unique_ptr<OkRequest> request,
+                      ino_t old_parent,
+                      std::string old_name,
+                      ino_t new_parent,
+                      std::string new_name,
+                      dbus::Response* response) {
+    VLOG(1) << "rename-resp";
+
+    if (request->IsInterrupted()) {
+      return;
+    }
+    RenameResponseProto response_proto;
+    if (errno = ReadDBusProto(response, &response_proto); errno) {
+      request->ReplyError(errno);
+      PLOG(ERROR) << "rename-resp";
+      return;
+    }
+
+    Node* node = GetInodeTable().Lookup(old_parent, old_name.c_str());
+    if (node) {
+      GetInodeTable().Move(node, new_parent, new_name.c_str());
+    }
+
+    request->ReplyOk();
+  }
+
   void Open(std::unique_ptr<OpenRequest> request, ino_t ino) override {
     VLOG(1) << "open " << ino;
 
