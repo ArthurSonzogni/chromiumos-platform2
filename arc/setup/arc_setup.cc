@@ -123,6 +123,9 @@ constexpr char kFakeMmapRndBits[] = "/run/arc/fake_mmap_rnd_bits";
 constexpr char kFakeMmapRndCompatBits[] = "/run/arc/fake_mmap_rnd_compat_bits";
 constexpr char kHostSideDalvikCacheDirectoryInContainer[] =
     "/var/run/arc/dalvik-cache";
+constexpr char kMediaCodecsRelative[] = "etc/media_codecs_c2.xml";
+constexpr char kMediaCodecsPerformanceRelative[] =
+    "etc/media_codecs_performance_c2.xml";
 constexpr char kMediaMountDirectory[] = "/run/arc/media";
 constexpr char kMediaMyFilesDirectory[] = "/run/arc/media/MyFiles";
 constexpr char kMediaMyFilesDefaultDirectory[] =
@@ -182,6 +185,9 @@ constexpr const char* kBinFmtMiscEntryNames[] = {"arm_dyn", "arm_exe",
 // https://chromium.googlesource.com/chromiumos/config/+/HEAD/test/project/fake/fake/sw_build_config/platform/chromeos-config/generated/arc/
 constexpr char kHardwareFeaturesSetting[] = "/arc/hardware-features";
 constexpr char kMediaProfilesSetting[] = "/arc/media-profiles";
+constexpr char kMediaCodecsSetting[] = "/arc/media-codecs";
+constexpr char kMediaCodecsPerformanceSetting[] =
+    "/arc/media-codecs-performance";
 constexpr char kSystemPath[] = "system-path";
 
 constexpr uid_t kHostRootUid = 0;
@@ -551,6 +557,15 @@ std::string GetSELinuxContext(const base::FilePath& path) {
   return result;
 }
 
+std::optional<base::FilePath> GetConfigPath(brillo::CrosConfigInterface& config,
+                                            const std::string& path) {
+  std::string value;
+  if (!config.GetString(path, kSystemPath, &value)) {
+    return std::nullopt;
+  }
+  return base::FilePath(value);
+}
+
 }  // namespace
 
 // A struct that holds all the FilePaths ArcSetup uses.
@@ -601,6 +616,9 @@ struct ArcPaths {
   const base::FilePath fake_mmap_rnd_compat_bits{kFakeMmapRndCompatBits};
   const base::FilePath host_side_dalvik_cache_directory_in_container{
       kHostSideDalvikCacheDirectoryInContainer};
+  const base::FilePath media_codecs_relative{kMediaCodecsRelative};
+  const base::FilePath media_codecs_performance_relative{
+      kMediaCodecsPerformanceRelative};
   const base::FilePath media_mount_directory{kMediaMountDirectory};
   const base::FilePath media_myfiles_directory{kMediaMyFilesDirectory};
   const base::FilePath media_myfiles_default_directory{
@@ -870,9 +888,9 @@ void ArcSetup::ApplyPerBoardConfigurationsInternal(
           .Append(arc_paths_->media_profile_file);
 
   std::string media_profile_setting;
-  if (config->GetString(kMediaProfilesSetting, kSystemPath,
-                        &media_profile_setting)) {
-    media_profile_xml = base::FilePath(media_profile_setting);
+  if (auto media_profile_setting =
+          GetConfigPath(*config, kMediaProfilesSetting)) {
+    media_profile_xml = *media_profile_setting;
   } else {
     // TODO(chromium:1083652) Remove dynamic shell scripts once all overlays
     // are migrated to static XML config.
@@ -905,15 +923,9 @@ void ArcSetup::ApplyPerBoardConfigurationsInternal(
       EXIT_IF(!base::WriteFileDescriptor(dest_fd.get(), *content));
     }
   }
-
-  base::FilePath hardware_features_xml("/etc/hardware_features.xml");
-
-  std::string hw_feature_setting;
-  if (config->GetString(kHardwareFeaturesSetting, kSystemPath,
-                        &hw_feature_setting)) {
-    hardware_features_xml = base::FilePath(hw_feature_setting);
-  }
-
+  base::FilePath hardware_features_xml =
+      GetConfigPath(*config, kHardwareFeaturesSetting)
+          .value_or(base::FilePath("/etc/hardware_features.xml"));
   if (!base::PathExists(hardware_features_xml))
     return;
 
@@ -2570,7 +2582,8 @@ void ArcSetup::OnPrepareHostGeneratedDir() {
 }
 
 void ArcSetup::OnApplyPerBoardConfig() {
-  ApplyPerBoardConfigurationsInternal(base::FilePath(kArcVmPerBoardConfigPath));
+  base::FilePath per_board_config_path(kArcVmPerBoardConfigPath);
+  ApplyPerBoardConfigurationsInternal(per_board_config_path);
   SetUpCameraProperty(base::FilePath(kBuildPropFileVm));
 
   // ARCVM's platform.xml has to be owned by crosvm for proper ugid mapping by
@@ -2578,8 +2591,7 @@ void ArcSetup::OnApplyPerBoardConfig() {
   brillo::SafeFD fd;
   brillo::SafeFD::Error err;
   std::tie(fd, err) = brillo::SafeFD::Root().first.OpenExistingFile(
-      base::FilePath(kArcVmPerBoardConfigPath)
-          .Append(kPlatformXmlFileRelative));
+      per_board_config_path.Append(kPlatformXmlFileRelative));
   if (err == brillo::SafeFD::Error::kDoesNotExist)
     return;  // the board does not have the file.
   EXIT_IF(!fd.is_valid());
@@ -2588,6 +2600,30 @@ void ArcSetup::OnApplyPerBoardConfig() {
   gid_t crosvm_gid;
   EXIT_IF(!GetUserId("crosvm", &crosvm_uid, &crosvm_gid));
   EXIT_IF(fchown(fd.get(), crosvm_uid, crosvm_gid));
+
+  auto config = std::make_unique<brillo::CrosConfig>();
+  if (auto media_codecs_c2_xml = GetConfigPath(*config, kMediaCodecsSetting);
+      media_codecs_c2_xml && base::PathExists(*media_codecs_c2_xml)) {
+    EXIT_IF(!SafeCopyFile(*media_codecs_c2_xml, brillo::SafeFD::Root().first,
+                          arc_paths_->media_codecs_relative,
+                          brillo::SafeFD::Root()
+                              .first.OpenExistingDir(per_board_config_path)
+                              .first,
+                          0644, crosvm_uid, crosvm_gid));
+  }
+
+  if (auto media_codecs_performance_c2_xml =
+          GetConfigPath(*config, kMediaCodecsPerformanceSetting);
+      media_codecs_performance_c2_xml &&
+      base::PathExists(*media_codecs_performance_c2_xml)) {
+    EXIT_IF(!SafeCopyFile(*media_codecs_performance_c2_xml,
+                          brillo::SafeFD::Root().first,
+                          arc_paths_->media_codecs_performance_relative,
+                          brillo::SafeFD::Root()
+                              .first.OpenExistingDir(per_board_config_path)
+                              .first,
+                          0644, crosvm_uid, crosvm_gid));
+  }
 }
 
 void ArcSetup::OnCreateData() {
