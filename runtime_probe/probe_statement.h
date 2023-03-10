@@ -70,6 +70,18 @@ class ProbeStatement {
   // Gets pointer to the probe function or nullptr on failure.
   const ProbeFunction* probe_function() const { return probe_function_.get(); }
 
+  // Set mocked probe function for testing.
+  void SetProbeFunctionForTesting(
+      std::unique_ptr<ProbeFunction> probe_function) {
+    probe_function_ = std::move(probe_function);
+  }
+
+  // Set mocked probe result checker for testing.
+  void SetExpectForTesting(
+      std::unique_ptr<ProbeResultChecker> probe_result_checker) {
+    expect_ = std::move(probe_result_checker);
+  }
+
  protected:
   ProbeStatement() = default;
 
@@ -81,7 +93,6 @@ class ProbeStatement {
   std::optional<base::Value> information_;
 
   FRIEND_TEST(ProbeConfigTest, LoadConfig);
-  FRIEND_TEST(ProbeStatementTest, TestEval);
 };
 
 }  // namespace runtime_probe
