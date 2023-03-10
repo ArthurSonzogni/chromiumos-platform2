@@ -8,7 +8,7 @@
 #include <memory>
 
 #include "gmock/gmock-function-mocker.h"
-#include "gmock/gmock-generated-matchers.h"
+#include "gmock/gmock-matchers.h"
 #include "secagentd/bpf_skeleton_wrappers.h"
 
 namespace secagentd {
