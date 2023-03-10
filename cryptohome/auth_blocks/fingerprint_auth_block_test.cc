@@ -84,6 +84,7 @@ class FingerprintAuthBlockTest : public ::testing::Test {
         .WillOnce(SaveArg<0>(&enroll_callback_));
     EXPECT_CALL(*mock_processor_, SetAuthScanDoneCallback(_))
         .WillOnce(SaveArg<0>(&auth_callback_));
+    EXPECT_CALL(*mock_processor_, SetSessionFailedCallback);
     bio_service_ = std::make_unique<BiometricsAuthBlockService>(
         std::move(mock_processor), /*enroll_signal_sender=*/base::DoNothing(),
         /*auth_signal_sender=*/base::DoNothing());

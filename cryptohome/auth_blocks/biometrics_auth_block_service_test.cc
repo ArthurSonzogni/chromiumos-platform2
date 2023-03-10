@@ -119,6 +119,8 @@ class BiometricsAuthBlockServiceTest : public BaseTestFixture {
         .WillOnce(SaveArg<0>(&enroll_callback_));
     EXPECT_CALL(*mock_processor_, SetAuthScanDoneCallback(_))
         .WillOnce(SaveArg<0>(&auth_callback_));
+    EXPECT_CALL(*mock_processor_, SetSessionFailedCallback(_))
+        .WillOnce(SaveArg<0>(&session_failed_callback_));
     service_ = std::make_unique<BiometricsAuthBlockService>(
         std::move(mock_processor), enroll_signals_.GetCallback(),
         auth_signals_.GetCallback());
@@ -137,6 +139,8 @@ class BiometricsAuthBlockServiceTest : public BaseTestFixture {
     auth_callback_.Run(auth_scan, nonce);
   }
 
+  void EmitSessionFailedEvent() { session_failed_callback_.Run(); }
+
   MockBiometricsCommandProcessor* mock_processor_;
   base::RepeatingCallback<void(user_data_auth::AuthEnrollmentProgress,
                                std::optional<brillo::Blob>)>
@@ -145,6 +149,7 @@ class BiometricsAuthBlockServiceTest : public BaseTestFixture {
   base::RepeatingCallback<void(user_data_auth::AuthScanDone, brillo::Blob)>
       auth_callback_;
   RepeatingTestFuture<user_data_auth::AuthScanDone> auth_signals_;
+  base::RepeatingCallback<void()> session_failed_callback_;
   std::unique_ptr<BiometricsAuthBlockService> service_;
 };
 
@@ -281,6 +286,39 @@ TEST_F(BiometricsAuthBlockServiceTest, ReceiveEnrollSignalSuccess) {
 
   ASSERT_TRUE(enroll_signals_.IsEmpty());
   EXPECT_EQ(service_->TakeNonce(), std::nullopt);
+
+  EXPECT_CALL(*mock_processor_, EndEnrollSession);
+}
+
+TEST_F(BiometricsAuthBlockServiceTest, SessionFailedInEnrollSession) {
+  EXPECT_CALL(*mock_processor_, StartEnrollSession(_))
+      .Times(2)
+      .WillRepeatedly([&](auto&& callback) { std::move(callback).Run(true); });
+
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      start_result;
+  service_->StartEnrollSession(AuthFactorType::kFingerprint, kFakeUserId,
+                               start_result.GetCallback());
+
+  ASSERT_TRUE(start_result.IsReady());
+  EXPECT_THAT(start_result.Get(), IsOk());
+
+  EmitSessionFailedEvent();
+  user_data_auth::AuthEnrollmentProgress event;
+  event.mutable_scan_result()->set_fingerprint_result(
+      FingerprintScanResult::FINGERPRINT_SCAN_RESULT_FATAL_ERROR);
+  EXPECT_FALSE(enroll_signals_.IsEmpty());
+  EXPECT_THAT(enroll_signals_.Take(), ProtoEq(event));
+
+  // Test that we can start a new session now because the previous session has
+  // ended.
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      second_start_result;
+  service_->StartEnrollSession(AuthFactorType::kFingerprint, kFakeUserId,
+                               second_start_result.GetCallback());
+
+  ASSERT_TRUE(second_start_result.IsReady());
+  EXPECT_THAT(second_start_result.Get(), IsOk());
 
   EXPECT_CALL(*mock_processor_, EndEnrollSession);
 }
@@ -507,6 +545,40 @@ TEST_F(BiometricsAuthBlockServiceTest, ReceiveAuthenticateSignalSuccess) {
 
   ASSERT_TRUE(auth_signals_.IsEmpty());
   EXPECT_EQ(service_->TakeNonce(), std::nullopt);
+
+  EXPECT_CALL(*mock_processor_, EndAuthenticateSession);
+}
+
+TEST_F(BiometricsAuthBlockServiceTest, SessionFailedInAuthenticateSession) {
+  EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _))
+      .Times(2)
+      .WillRepeatedly(
+          [&](auto&&, auto&& callback) { std::move(callback).Run(true); });
+
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      start_result;
+  service_->StartAuthenticateSession(AuthFactorType::kFingerprint, kFakeUserId,
+                                     start_result.GetCallback());
+
+  ASSERT_TRUE(start_result.IsReady());
+  EXPECT_THAT(start_result.Get(), IsOk());
+
+  EmitSessionFailedEvent();
+  user_data_auth::AuthScanDone event;
+  event.mutable_scan_result()->set_fingerprint_result(
+      FingerprintScanResult::FINGERPRINT_SCAN_RESULT_FATAL_ERROR);
+  EXPECT_FALSE(auth_signals_.IsEmpty());
+  EXPECT_THAT(auth_signals_.Take(), ProtoEq(event));
+
+  // Test that we can start a new session now because the previous session has
+  // ended.
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      second_start_result;
+  service_->StartAuthenticateSession(AuthFactorType::kFingerprint, kFakeUserId,
+                                     second_start_result.GetCallback());
+
+  ASSERT_TRUE(second_start_result.IsReady());
+  EXPECT_THAT(second_start_result.Get(), IsOk());
 
   EXPECT_CALL(*mock_processor_, EndAuthenticateSession);
 }

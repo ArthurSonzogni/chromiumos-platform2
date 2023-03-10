@@ -41,6 +41,8 @@ BiometricsAuthBlockService::BiometricsAuthBlockService(
       &BiometricsAuthBlockService::OnEnrollScanDone, base::Unretained(this)));
   processor_->SetAuthScanDoneCallback(base::BindRepeating(
       &BiometricsAuthBlockService::OnAuthScanDone, base::Unretained(this)));
+  processor_->SetSessionFailedCallback(base::BindRepeating(
+      &BiometricsAuthBlockService::OnSessionFailed, base::Unretained(this)));
 }
 
 void BiometricsAuthBlockService::StartEnrollSession(
@@ -231,6 +233,35 @@ void BiometricsAuthBlockService::OnAuthScanDone(
 
   auth_nonce_ = std::move(nonce);
   auth_signal_sender_.Run(std::move(signal));
+}
+
+void BiometricsAuthBlockService::OnSessionFailed() {
+  if (!active_token_) {
+    return;
+  }
+
+  Token::TokenType type = active_token_->type();
+  active_token_->DetachFromService();
+  active_token_ = nullptr;
+  // Use FINGERPRINT_SCAN_RESULT_FATAL_ERROR to indicate session failure. We
+  // don't have to make an explicit end session call here because it's assumed
+  // that the session will be ended itself when an error occurs.
+  switch (type) {
+    case Token::TokenType::kEnroll: {
+      user_data_auth::AuthEnrollmentProgress enroll_signal;
+      enroll_signal.mutable_scan_result()->set_fingerprint_result(
+          user_data_auth::FINGERPRINT_SCAN_RESULT_FATAL_ERROR);
+      enroll_signal_sender_.Run(std::move(enroll_signal));
+      break;
+    }
+    case Token::TokenType::kAuthenticate: {
+      user_data_auth::AuthScanDone auth_signal;
+      auth_signal.mutable_scan_result()->set_fingerprint_result(
+          user_data_auth::FINGERPRINT_SCAN_RESULT_FATAL_ERROR);
+      auth_signal_sender_.Run(std::move(auth_signal));
+      break;
+    }
+  }
 }
 
 void BiometricsAuthBlockService::OnMatchCredentialResponse(

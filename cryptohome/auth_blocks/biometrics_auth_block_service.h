@@ -132,6 +132,14 @@ class BiometricsAuthBlockService {
 
   void OnAuthScanDone(user_data_auth::AuthScanDone signal, brillo::Blob nonce);
 
+  // This is triggered when biometrics command processor reports a session
+  // failure. The way we indicate session failures (and hence there will be no
+  // upcoming signals) to the user is to use the designated
+  // FINGERPRINT_SCAN_RESULT_FATAL_ERROR error code. We can detach the active
+  // token without an extra EndSession call because the biod implementation
+  // always ends the session when there is a session failure.
+  void OnSessionFailed();
+
   // As biometrics auth stack's AuthenticateSession is expected to be
   // established once for each touch, but the cryptohome AuthSession prefers
   // treating the AuthenticateSession as long-living, we need to restart the
