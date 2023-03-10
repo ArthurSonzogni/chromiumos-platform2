@@ -254,7 +254,7 @@ int HandleReportError(const Configuration& config,
   if (!base::DirectoryExists(normalized_devpath))
     return EXIT_FAILURE;
 
-  if (driver == "hub") {
+  if (driver == "hub" || driver == "usb") {
     if (base::PathExists(normalized_devpath.Append("bInterfaceClass")))
       normalized_devpath = usb_bouncer::GetInterfaceDevice(normalized_devpath);
 
