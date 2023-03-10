@@ -13,11 +13,11 @@ namespace shill {
 
 class MockIOHandlerFactory : public IOHandlerFactory {
  public:
-  MockIOHandlerFactory() = default;
+  MockIOHandlerFactory();
   MockIOHandlerFactory(const MockIOHandlerFactory&) = delete;
   MockIOHandlerFactory& operator=(const MockIOHandlerFactory&) = delete;
 
-  ~MockIOHandlerFactory() override = default;
+  ~MockIOHandlerFactory() override;
 
   MOCK_METHOD(IOHandler*,
               CreateIOInputHandler,

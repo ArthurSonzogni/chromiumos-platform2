@@ -15,11 +15,11 @@ namespace shill {
 
 class MockSockets : public Sockets {
  public:
-  MockSockets() = default;
+  MockSockets();
   MockSockets(const MockSockets&) = delete;
   MockSockets& operator=(const MockSockets&) = delete;
 
-  ~MockSockets() override = default;
+  ~MockSockets() override;
 
   MOCK_METHOD(int,
               Accept,

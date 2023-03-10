@@ -120,7 +120,15 @@ if (use.fuzzer) {
 
 if (use.test) {
   source_set("net_test_support") {
-    sources = [ "mock_process_manager.cc" ]
+    sources = [
+      "mock_io_handler_factory.cc",
+      "mock_netlink_manager.cc",
+      "mock_netlink_socket.cc",
+      "mock_process_manager.cc",
+      "mock_rtnl_handler.cc",
+      "mock_sockets.cc",
+      "mock_time.cc",
+    ]
     configs += [
       "//common-mk:test",
       ":target_defaults",
@@ -163,6 +171,7 @@ if (use.test) {
     ]
     deps = [
       ":libshill-net",
+      ":net_test_support",
       "//common-mk/testrunner",
     ]
   }

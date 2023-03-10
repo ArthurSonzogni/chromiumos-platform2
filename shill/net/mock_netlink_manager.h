@@ -15,11 +15,11 @@ namespace shill {
 
 class MockNetlinkManager : public NetlinkManager {
  public:
-  MockNetlinkManager() = default;
+  MockNetlinkManager();
   MockNetlinkManager(const MockNetlinkManager&) = delete;
   MockNetlinkManager& operator=(const MockNetlinkManager&) = delete;
 
-  ~MockNetlinkManager() override = default;
+  ~MockNetlinkManager() override;
 
   MOCK_METHOD(bool, Init, (), (override));
   MOCK_METHOD(void, Start, (), (override));

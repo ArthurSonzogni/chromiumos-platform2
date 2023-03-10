@@ -16,11 +16,11 @@ namespace shill {
 
 class MockRTNLHandler : public RTNLHandler {
  public:
-  MockRTNLHandler() = default;
+  MockRTNLHandler();
   MockRTNLHandler(const MockRTNLHandler&) = delete;
   MockRTNLHandler& operator=(const MockRTNLHandler&) = delete;
 
-  ~MockRTNLHandler() override = default;
+  ~MockRTNLHandler() override;
 
   MOCK_METHOD(void, Start, (uint32_t), (override));
   MOCK_METHOD(void, AddListener, (RTNLListener*), (override));

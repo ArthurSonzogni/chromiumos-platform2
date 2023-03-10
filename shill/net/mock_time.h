@@ -13,11 +13,11 @@ namespace shill {
 
 class MockTime : public Time {
  public:
-  MockTime() = default;
+  MockTime();
   MockTime(const MockTime&) = delete;
   MockTime& operator=(const MockTime&) = delete;
 
-  ~MockTime() override = default;
+  ~MockTime() override;
 
   MOCK_METHOD(bool, GetSecondsMonotonic, (time_t*), (override));
   MOCK_METHOD(bool, GetMicroSecondsMonotonic, (int64_t*), (override));
