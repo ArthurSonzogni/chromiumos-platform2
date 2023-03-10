@@ -13,7 +13,7 @@ namespace {
 
 // All registered client configs. Users of federated service need to add their
 // client configs here. Each client has its own table in example database.
-constexpr std::array<const char* [3], 2> kClientMetadata = {{
+constexpr std::array<const char* [3], 3> kClientMetadata = {{
     {
         /*name=*/"analytics_test_population",
         /*retry_token=*/"",
@@ -21,6 +21,11 @@ constexpr std::array<const char* [3], 2> kClientMetadata = {{
     },
     {
         "timezone_code_phh",
+        "",
+        "dev",
+    },
+    {
+        "launcher_query_analytics_v1",
         "",
         "dev",
     },
