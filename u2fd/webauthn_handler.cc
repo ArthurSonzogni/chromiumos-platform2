@@ -1091,7 +1091,7 @@ void WebAuthnHandler::IsUvpaa(
 
   if (!Initialized()) {
     LOG(WARNING) << "IsUvpaa: WebAuthnHandler not initialized.";
-    response.set_not_ready(true);
+    response.set_not_available(true);
     method_response->Return(response);
     return;
   }
@@ -1099,19 +1099,19 @@ void WebAuthnHandler::IsUvpaa(
   std::optional<std::string> account_id = user_state_->GetUser();
   if (!account_id) {
     LOG(WARNING) << "IsUvpaa: No user.";
-    response.set_not_ready(true);
+    response.set_not_available(true);
     method_response->Return(response);
     return;
   }
 
   if (!auth_time_secret_hash_) {
     LOG(WARNING) << "IsUvpaa: No auth-time secret hash.";
-    response.set_not_ready(true);
+    response.set_not_available(true);
     method_response->Return(response);
     return;
   }
 
-  response.set_not_ready(false);
+  response.set_not_available(false);
   method_response->Return(response);
 }
 

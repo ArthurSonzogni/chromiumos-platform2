@@ -198,9 +198,9 @@ message IsUvpaaResponse {
   bool available = 1 [deprecated = true];
   // Before this field was introduced, IsUvpaa is always assumed to be true in
   // Chrome. To preserve backward compatibility, the simplest way is to
-  // introduce this response field which default value (not_ready = false)
+  // introduce this response field which default value (not_available = false)
   // matches the old behavior.
-  bool not_ready = 2;
+  bool not_available = 2;
 }
 
 // Check whether u2f is enabled (by policy or by force flag). If u2f is
