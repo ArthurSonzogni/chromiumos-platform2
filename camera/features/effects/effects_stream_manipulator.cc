@@ -295,14 +295,13 @@ EffectsStreamManipulatorImpl::EffectsStreamManipulatorImpl(
   if (!ret) {
     LOGF(ERROR) << "Failed to start GL thread. Turning off feature by default";
   }
-
-  if (!runtime_options_->GetDlcRootPath().empty()) {
-    CreatePipeline(base::FilePath(runtime_options_->GetDlcRootPath()));
-  }
 }
 
 EffectsStreamManipulatorImpl::~EffectsStreamManipulatorImpl() {
   DeleteEffectsMarkerFile();
+  if (process_thread_) {
+    process_thread_->DeleteSoon(FROM_HERE, std::move(marker_file_timer_));
+  }
 
   // UploadAndResetMetricsData currently posts a task to the gl_thread task
   // runner (see constructor above). If we change that, we need to ensure the
