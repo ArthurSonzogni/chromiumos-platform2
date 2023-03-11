@@ -27,7 +27,9 @@
 #include <dbus/object_path.h>
 #include <vboot/crossystem.h>
 
+#include "patchpanel/ipc.h"
 #include "patchpanel/manager.h"
+#include "patchpanel/message_dispatcher.h"
 #include "patchpanel/minijailed_process_runner.h"
 #include "patchpanel/net_util.h"
 
@@ -94,12 +96,6 @@ void AdbProxy::Reset() {
   fwd_.clear();
   arcvm_vsock_cid_ = std::nullopt;
   arc_type_ = GuestMessage::UNKNOWN_GUEST;
-}
-
-void AdbProxy::OnParentProcessExit() {
-  LOG(ERROR) << "Quitting because the parent process died";
-  Reset();
-  Quit();
 }
 
 void AdbProxy::OnFileCanReadWithoutBlocking() {
@@ -191,6 +187,12 @@ std::unique_ptr<Socket> AdbProxy::Connect() const {
   }
   PLOG(ERROR) << "Failed to connect TCP socket to adbd at " << addr_in;
   return nullptr;
+}
+
+void AdbProxy::OnParentProcessExit() {
+  LOG(ERROR) << "Quitting because the parent process died";
+  Reset();
+  Quit();
 }
 
 void AdbProxy::OnGuestMessage(const SubprocessMessage& root_msg) {

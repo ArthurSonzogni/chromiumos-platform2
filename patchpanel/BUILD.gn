@@ -78,6 +78,7 @@ util_sources = [
   "dns/io_buffer.cc",
   "guest_type.cc",
   "mac_address_generator.cc",
+  "message_dispatcher.cc",
   "net_util.cc",
   "socket.cc",
   "socket_forwarder.cc",
@@ -97,7 +98,6 @@ libpatchpanel_sources = [
   "firewall.cc",
   "guest_ipv6_service.cc",
   "manager.cc",
-  "message_dispatcher.cc",
   "minijailed_process_runner.cc",
   "multicast_forwarder.cc",
   "multicast_proxy.cc",
@@ -117,6 +117,7 @@ shared_library("libpatchpanel-util") {
     "libchrome",
     "libshill-client",
     "libshill-net",
+    "protobuf",
     "re2",
   ]
   libs = [ "system_api" ]

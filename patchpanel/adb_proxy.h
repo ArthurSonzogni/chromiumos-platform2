@@ -15,6 +15,7 @@
 #include <dbus/bus.h>
 
 #include "patchpanel/file_descriptor_watcher_posix.h"
+#include "patchpanel/ipc.h"
 #include "patchpanel/message_dispatcher.h"
 #include "patchpanel/socket.h"
 #include "patchpanel/socket_forwarder.h"
@@ -62,7 +63,7 @@ class AdbProxy : public brillo::DBusDaemon {
   // start listening for connections.
   void CheckAdbSideloadingStatus(int num_try);
 
-  MessageDispatcher msg_dispatcher_;
+  MessageDispatcher<SubprocessMessage> msg_dispatcher_;
   std::unique_ptr<Socket> src_;
   std::deque<std::unique_ptr<SocketForwarder>> fwd_;
   std::unique_ptr<base::FileDescriptorWatcher::Controller> src_watcher_;

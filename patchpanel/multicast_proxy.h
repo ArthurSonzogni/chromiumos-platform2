@@ -12,6 +12,7 @@
 #include <brillo/daemons/daemon.h>
 
 #include "patchpanel/broadcast_forwarder.h"
+#include "patchpanel/ipc.h"
 #include "patchpanel/message_dispatcher.h"
 #include "patchpanel/multicast_forwarder.h"
 
@@ -36,7 +37,7 @@ class MulticastProxy : public brillo::Daemon {
  private:
   void Reset();
 
-  MessageDispatcher msg_dispatcher_;
+  MessageDispatcher<SubprocessMessage> msg_dispatcher_;
   std::map<std::string, std::unique_ptr<MulticastForwarder>> mdns_fwds_;
   std::map<std::string, std::unique_ptr<MulticastForwarder>> ssdp_fwds_;
   std::map<std::string, std::unique_ptr<BroadcastForwarder>> bcast_fwds_;

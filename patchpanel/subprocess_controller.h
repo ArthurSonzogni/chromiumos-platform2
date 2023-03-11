@@ -56,7 +56,7 @@ class SubprocessController {
 
  private:
   void Launch();
-  void OnMessage(const SubprocessMessage&);
+  void OnMessage(const SubprocessMessage& msg);
 
   base::RepeatingCallback<void(const FeedbackMessage&)> feedback_handler_;
 
@@ -64,7 +64,7 @@ class SubprocessController {
   uint8_t restarts_{0};
   std::vector<std::string> argv_;
   std::string fd_arg_;
-  std::unique_ptr<MessageDispatcher> msg_dispatcher_;
+  std::unique_ptr<MessageDispatcher<SubprocessMessage>> msg_dispatcher_;
 
   base::WeakPtrFactory<SubprocessController> weak_factory_{this};
 };

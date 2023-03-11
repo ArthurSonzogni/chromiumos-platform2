@@ -17,6 +17,8 @@
 #include <base/process/launch.h>
 #include <brillo/syslog_logging.h>
 
+#include "patchpanel/ipc.h"
+
 namespace patchpanel {
 namespace {
 constexpr int kMaxRestarts = 5;
@@ -51,10 +53,8 @@ void SubprocessController::Launch() {
   }
 
   base::ScopedFD control_fd(control[0]);
-  msg_dispatcher_ =
-      std::make_unique<MessageDispatcher>(std::move(control_fd), false);
-  msg_dispatcher_->RegisterMessageHandler(base::BindRepeating(
-      &SubprocessController::OnMessage, weak_factory_.GetWeakPtr()));
+  msg_dispatcher_ = std::make_unique<MessageDispatcher<SubprocessMessage>>(
+      std::move(control_fd));
   const int subprocess_fd = control[1];
 
   std::vector<std::string> child_argv = argv_;
@@ -85,7 +85,8 @@ void SubprocessController::Listen() {
   if (!msg_dispatcher_) {
     return;
   }
-  msg_dispatcher_->Start();
+  msg_dispatcher_->RegisterMessageHandler(base::BindRepeating(
+      &SubprocessController::OnMessage, weak_factory_.GetWeakPtr()));
 }
 
 void SubprocessController::RegisterFeedbackMessageHandler(

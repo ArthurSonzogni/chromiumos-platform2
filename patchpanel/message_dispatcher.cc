@@ -7,73 +7,72 @@
 #include <utility>
 #include <vector>
 
-#include <base/files/scoped_file.h>
+#include <sys/socket.h>
+
 #include <base/functional/bind.h>
 #include <base/logging.h>
-#include <base/posix/unix_domain_socket.h>
+#include <google/protobuf/message_lite.h>
 
 namespace patchpanel {
 
-MessageDispatcher::MessageDispatcher(base::ScopedFD fd, bool start)
-    : fd_(std::move(fd)) {
-  if (start)
-    Start();
-}
+MessageDispatcherInternal::MessageDispatcherInternal(base::ScopedFD fd)
+    : fd_(std::move(fd)) {}
 
-void MessageDispatcher::Start() {
-  watcher_ = base::FileDescriptorWatcher::WatchReadable(
-      fd_.get(),
-      base::BindRepeating(&MessageDispatcher::OnFileCanReadWithoutBlocking,
-                          base::Unretained(this)));
-}
-
-void MessageDispatcher::RegisterFailureHandler(
+void MessageDispatcherInternal::RegisterFailureHandler(
     base::RepeatingCallback<void()> handler) {
   failure_handler_ = std::move(handler);
 }
 
-void MessageDispatcher::RegisterMessageHandler(
-    base::RepeatingCallback<void(const SubprocessMessage&)> handler) {
-  message_handler_ = std::move(handler);
+void MessageDispatcherInternal::RegisterMessageHandler(
+    base::RepeatingCallback<void()> handler) {
+  watcher_ =
+      base::FileDescriptorWatcher::WatchReadable(fd_.get(), std::move(handler));
 }
 
-void MessageDispatcher::OnFileCanReadWithoutBlocking() {
+bool MessageDispatcherInternal::GetMessage(
+    google::protobuf::MessageLite* proto) {
   char buffer[1024];
-  std::vector<base::ScopedFD> fds{};
-  ssize_t len =
-      base::UnixDomainSocket::RecvMsg(fd_.get(), buffer, sizeof(buffer), &fds);
-  if (len <= 0) {
-    PLOG(ERROR) << "Read failed: exiting";
+  ssize_t len = recvfrom(fd_.get(), buffer, sizeof(buffer), MSG_DONTWAIT,
+                         nullptr, nullptr);
+  if (len < 0 && errno != EAGAIN && errno != EINTR) {
+    PLOG(ERROR) << "Read failed: stopping watcher";
     watcher_.reset();
-    if (!failure_handler_.is_null())
+    if (!failure_handler_.is_null()) {
       failure_handler_.Run();
-    return;
+    }
+    return false;
   }
 
-  msg_.Clear();
-  if (!msg_.ParseFromArray(buffer, static_cast<int>(len))) {
-    LOG(ERROR) << "Error parsing protobuf";
-    return;
+  proto->Clear();
+  if (!proto->ParseFromArray(buffer, static_cast<int>(len))) {
+    LOG(ERROR) << "Error parsing protobuf " << proto->GetTypeName();
+    return false;
   }
 
-  if (!message_handler_.is_null()) {
-    message_handler_.Run(msg_);
-  }
+  return true;
 }
 
-void MessageDispatcher::SendMessage(const SubprocessMessage& proto) const {
+bool MessageDispatcherInternal::SendMessage(
+    const google::protobuf::MessageLite& proto) {
   if (!proto.IsInitialized()) {
     LOG(DFATAL) << "protobuf missing mandatory fields";
-    return;
+    return false;
   }
   std::string str;
   if (!proto.SerializeToString(&str)) {
     LOG(ERROR) << "error serializing protobuf";
+    return false;
   }
-  if (write(fd_.get(), str.data(), str.size()) !=
-      static_cast<ssize_t>(str.size())) {
+  ssize_t len = write(fd_.get(), str.data(), str.size());
+  if (len < 0) {
+    PLOG(ERROR) << "write failed";
+    return false;
+  }
+  if (len != static_cast<ssize_t>(str.size())) {
     LOG(ERROR) << "short write on protobuf";
+    return false;
   }
+  return true;
 }
 
 }  // namespace patchpanel

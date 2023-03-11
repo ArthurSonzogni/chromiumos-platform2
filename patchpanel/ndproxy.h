@@ -24,6 +24,7 @@
 #include <brillo/daemons/daemon.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "patchpanel/ipc.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/message_dispatcher.h"
 
@@ -230,7 +231,7 @@ class NDProxyDaemon : public brillo::Daemon {
                          int prefix_len);
 
   // Utilize MessageDispatcher to watch control fd
-  std::unique_ptr<MessageDispatcher> msg_dispatcher_;
+  std::unique_ptr<MessageDispatcher<SubprocessMessage>> msg_dispatcher_;
 
   // Data fd and its watcher
   base::ScopedFD fd_;

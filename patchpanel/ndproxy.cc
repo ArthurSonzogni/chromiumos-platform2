@@ -835,8 +835,8 @@ bool NDProxy::IsRouterInterface(int ifindex) {
 }
 
 NDProxyDaemon::NDProxyDaemon(base::ScopedFD control_fd)
-    : msg_dispatcher_(
-          std::make_unique<MessageDispatcher>(std::move(control_fd))) {}
+    : msg_dispatcher_(std::make_unique<MessageDispatcher<SubprocessMessage>>(
+          std::move(control_fd))) {}
 
 NDProxyDaemon::~NDProxyDaemon() {}
 
