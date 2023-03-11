@@ -730,6 +730,8 @@ void TetheringManager::LoadConfigFromProfile(const ProfileRefPtr& profile) {
       LOG(ERROR) << "Failed to save config to user profile";
     }
   }
+
+  stop_reason_ = StopReason::kInitial;
 }
 
 void TetheringManager::UnloadConfigFromProfile() {
