@@ -103,6 +103,7 @@ pkg_config("libcrash_reporter_config") {
     "libbrillo",
     "libchrome",
     "libdebugd-client",
+    "libec",
     "libsession_manager-client",
   ]
 }

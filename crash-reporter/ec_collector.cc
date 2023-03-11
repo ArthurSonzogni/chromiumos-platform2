@@ -11,6 +11,8 @@
 #include <base/logging.h>
 #include <base/strings/strcat.h>
 #include <base/strings/stringprintf.h>
+#include <libec/ec_command.h>
+#include <libec/ec_panicinfo.h>
 
 #include "crash-reporter/util.h"
 
@@ -24,7 +26,6 @@ namespace {
 
 const char kECDebugFSPath[] = "/sys/kernel/debug/cros_ec/";
 const char kECPanicInfo[] = "panicinfo";
-const char kECPanicInfoParser[] = "/usr/sbin/ec_parse_panicinfo";
 const char kECExecName[] = "embedded-controller";
 
 }  // namespace
@@ -71,27 +72,18 @@ bool ECCollector::Collect(bool use_saved_lsb) {
     return true;
   }
 
-  ProcessImpl panicinfo_parser;
-  panicinfo_parser.AddArg(kECPanicInfoParser);
-  panicinfo_parser.RedirectInput(panicinfo_path.value());
-  // Combine stdout and stderr.
-  panicinfo_parser.RedirectOutputToMemory(true);
-
+  base::span<uint8_t> sdata = base::make_span(reinterpret_cast<uint8_t*>(data),
+                                              static_cast<size_t>(len));
+  auto result = ec::ParsePanicInfo(sdata);
   std::string output;
-  const int result = panicinfo_parser.Run();
-  output = panicinfo_parser.GetOutputString(STDOUT_FILENO);
-  if (result != 0) {
-    PLOG(ERROR) << "Failed to run ec_parse_panicinfo. Error=" << result;
+
+  if (!result.has_value()) {
+    LOG(ERROR) << "Failed to parse EC panic info. Error=" << result.error();
     // Append error code and raw crash on error.
-    output = base::StrCat(
-        {output,
-         base::StringPrintf(
-             "\nERROR: ec_parse_panicinfo: Non-zero return value (%d).\n",
-             result),
-         "Raw data: ",
-         base::Base64Encode(base::make_span(reinterpret_cast<uint8_t*>(data),
-                                            static_cast<size_t>(len))),
-         "\n"});
+    output = base::StrCat({"ERROR: Parse EC panic info:\n", result.error(),
+                           "Raw data: ", base::Base64Encode(sdata), "\n"});
+  } else {
+    output = result.value();
   }
 
   std::string dump_basename = FormatDumpBasename(kECExecName, time(nullptr), 0);
