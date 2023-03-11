@@ -429,7 +429,8 @@
 			"options": [
 				"nosuid",
 				"noexec",
-				"nodev"
+				"nodev",
+				"hidepid=2"
 			]
 		},
 		{
