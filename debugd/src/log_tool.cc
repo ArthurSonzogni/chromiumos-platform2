@@ -6,8 +6,6 @@
 
 #include <algorithm>
 #include <array>
-#include <atomic>
-#include <cstddef>
 #include <glob.h>
 #include <grp.h>
 #include <inttypes.h>
@@ -41,12 +39,6 @@
 #include <shill/dbus-proxies.h>
 
 #include "base/functional/bind.h"
-#include "base/functional/callback_forward.h"
-#include "base/location.h"
-#include "base/task/post_job.h"
-#include "base/task/task_traits.h"
-#include "base/time/time.h"
-#include "dbus/debugd/dbus-constants.h"
 #include "debugd/src/bluetooth_utils.h"
 #include "debugd/src/constants.h"
 #include "debugd/src/metrics.h"
@@ -497,15 +489,6 @@ const std::array kFeedbackLogs {
 };
 // clang-format on
 
-const Log kNetLog =
-    Log{kCommand,
-        "netlog",
-        "/usr/share/userfeedback/scripts/getmsgs /var/log/net.log",
-        SandboxedProcess::kDefaultUser,
-        SandboxedProcess::kDefaultGroup,
-        Log::kDefaultMaxBytes,
-        LogTool::Encoding::kUtf8};
-
 // The log files reside under /var/log/. Logs will be obtained by reading the
 // complete files in this list without extracting specific information. Other
 // lists (e.g. |kCommandLogs|) may still read /var/log files to search for
@@ -571,7 +554,10 @@ const std::array kVarLogFileLogs {
   Log{kGlob, "memd clips", "/var/log/memd/memd.clip*"},
   Log{kFile, "memd.parameters", "/var/log/memd/memd.parameters"},
   Log{kFile, "mount-encrypted", "/var/log/mount-encrypted.log"},
-  kNetLog,
+  Log{kCommand, "netlog",
+    "/usr/share/userfeedback/scripts/getmsgs /var/log/net.log",
+    SandboxedProcess::kDefaultUser, SandboxedProcess::kDefaultGroup,
+    Log::kDefaultMaxBytes, LogTool::Encoding::kUtf8},
   Log{kFile, "powerd.LATEST", "/var/log/power_manager/powerd.LATEST"},
   Log{kFile, "powerd.PREVIOUS", "/var/log/power_manager/powerd.PREVIOUS"},
   Log{kFile, "powerd.out", "/var/log/powerd.out"},
@@ -1130,144 +1116,10 @@ void LogTool::GetFeedbackLogsV3(const base::ScopedFD& fd,
                                 const std::string& username,
                                 PerfTool* perf_tool,
                                 const std::vector<int32_t>& requested_logs) {
-  // Note: If CreateConnectivityReport and GetArcBugReport are posted to a
-  // different thread, it will crash with error "Check failed:
-  // origin_task_runner_->RunsTasksInCurrentSequence()". Therefore they are
-  // handled separately.
-
-  // Create and start the stopwatch used for measuring performance.
-  Stopwatch sw("Perf.GetBigFeedbackLogs", perf_logging_,
-               /*report_lap_to_uma=*/false);
-
-  const bool include_connectivity_report =
-      (requested_logs.empty() ||
-       base::Contains(requested_logs, FeedbackLogType::CONNECTIVITY_REPORT));
-  const base::TimeTicks start_at = base::TimeTicks::Now();
-  if (include_connectivity_report) {
-    // The net.log depends on this call to generate more logs. As an
-    // optimization, postpone waiting for results until other tasks have
-    // completed.
-    CreateConnectivityReport(/*wait_for_results=*/false);
-  }
-
-  // The maximum number of concurrent sub tasks. Which is the size of
-  // log_sources array.
-  const size_t kNumLogSources = 8;
-  // Reserve a Dict and a LogMap for each concurrent sub tasks that set results
-  // in to avoid potential race condition.
-  std::vector<base::Value::Dict> temp_dicts(kNumLogSources);
-  std::vector<LogMap> temp_logs(kNumLogSources);
-  int dict_users_count = 0;
-  int map_users_count = 0;
-
-  std::array log_sources = {
-      LogSource{
-          FeedbackLogType::VERBOSE_COMMAND_LOGS, "kCommandLogsVerbose",
-          base::BindOnce(&GetLogsInDictionary<kCommandLogsVerbose.size()>,
-                         kCommandLogsVerbose, &temp_dicts[dict_users_count++])},
-      LogSource{FeedbackLogType::COMMAND_LOGS, "kCommandLogs",
-                base::BindOnce(&GetLogsInDictionary<kCommandLogs.size()>,
-                               kCommandLogs, &temp_dicts[dict_users_count++])},
-      LogSource{FeedbackLogType::FEEDBACK_LOGS, "kFeedbackLogs",
-                base::BindOnce(&GetLogsInDictionary<kFeedbackLogs.size()>,
-                               kFeedbackLogs, &temp_dicts[dict_users_count++])},
-      LogSource{FeedbackLogType::BLUETOOTH_BQR, "GetBluetoothBqr",
-                base::BindOnce(&GetBluetoothBqr)},
-      LogSource{
-          FeedbackLogType::LSB_RELEASE_INFO, "GetLsbReleaseInfo",
-          base::BindOnce(&GetLsbReleaseInfo, &temp_logs[map_users_count++])},
-      LogSource{FeedbackLogType::PERF_DATA, "GetPerfData",
-                base::BindOnce(&GetPerfData, &temp_logs[map_users_count++],
-                               perf_tool)},
-      LogSource{
-          FeedbackLogType::OS_RELEASE_INFO, "GetOsReleaseInfo",
-          base::BindOnce(&GetOsReleaseInfo, &temp_logs[map_users_count++])},
-      LogSource{
-          FeedbackLogType::VAR_LOG_FILES, "kVarLogFileLogs",
-          base::BindOnce(&GetLogsInDictionary<kVarLogFileLogs.size()>,
-                         kVarLogFileLogs, &temp_dicts[dict_users_count++])}};
-
-  // Make sure the temp_logs & temp_dicts are big enough.
-  CHECK(dict_users_count <= kNumLogSources);
-  CHECK(map_users_count <= kNumLogSources);
-  temp_dicts.resize(dict_users_count);
-  temp_logs.resize(map_users_count);
-
-  using SubTask = std::pair<string, base::OnceClosure>;
-  std::vector<SubTask> sub_tasks;
-  // Figure out what sub tasks are required.
-  for (auto& [log_type, func_name, func_callback] : log_sources) {
-    if (requested_logs.empty() || base::Contains(requested_logs, log_type))
-      sub_tasks.emplace_back(func_name, std::move(func_callback));
-  }
-  const size_t tasks_count = sub_tasks.size();
-
-  // Use to synchromize the processing of individual task and to track pending
-  // tasks. After a task is picked up by a thread, the number is decremented
-  // by 1.
-  std::atomic_size_t pending_tasks{tasks_count};
-
-  // TODO(xiangdongkong@): Add metrics to track the performance impacts in a
-  // followup CL.
-  auto job_handler = base::PostJob(
-      FROM_HERE, {base::MayBlock()},
-      base::BindRepeating(
-          [](std::vector<SubTask>* work_list, std::atomic_size_t* pending_tasks,
-             base::JobDelegate* delegate) {
-            if (!delegate->ShouldYield()) {
-              const size_t tasks_left =
-                  pending_tasks->fetch_sub(1, std::memory_order_relaxed);
-              if (tasks_left <= 0) {
-                // Return if no more pending task.
-                return;
-              }
-              SubTask& item = (*work_list)[tasks_left - 1];
-              std::move(item.second).Run();
-            }
-          },
-          base::Unretained(&sub_tasks), base::Unretained(&pending_tasks)),
-      base::BindRepeating(
-          [](std::atomic_size_t* pending_tasks, size_t /*work_count*/) {
-            // The default ThreadPool size is still respected if pendings tasks
-            // size is greater.
-            return pending_tasks->load(std::memory_order_relaxed);
-          },
-          base::Unretained(&pending_tasks)));
-
-  // All logs will eventually be added to |dictionary|.
   base::Value::Dict dictionary;
-  if (requested_logs.empty() ||
-      base::Contains(requested_logs, FeedbackLogType::ARC_BUG_REPORT)) {
-    GetArcBugReportInDictionary(username, &dictionary);
-  }
-
-  // Wait for all sub tasks to complete.
-  job_handler.Join();
-
-  // Consolidate all logs into |dictionary|.
-  for (auto& log : temp_logs) {
-    for (auto& map : log)
-      dictionary.Set(map.first, map.second);
-  }
-  for (auto& dict : temp_dicts) {
-    dictionary.Merge(std::move(dict));
-  }
-
-  // Special handling for connectivity report. See the call to
-  // CreateConnectivityReport above for more details.
-  if (include_connectivity_report) {
-    const base::TimeDelta remaining_wait_time =
-        base::Seconds(kConnectionTesterTimeoutSeconds) -
-        (base::TimeTicks::Now() - start_at);
-    if (remaining_wait_time.is_positive()) {
-      // Make sure we have waited at least kConnectionTesterTimeoutSeconds
-      // before collecting netlog.
-      usleep(remaining_wait_time.InMicroseconds());
-    }
-    // Collecting netlog is very quick. Doing it again is ok.
-    dictionary.Set(kNetLog.GetName(), kNetLog.GetLogData());
-  }
-
+  // TODO(xiangdongkong@): Implement the logic that collects the same logs as
+  // GetFeedbackLogsV2 in parallel whenever possible.
+  dictionary.Set("fake log section", "fake log value");
   SerializeLogsAsJSON(dictionary, fd);
 }
 

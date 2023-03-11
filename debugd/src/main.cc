@@ -8,7 +8,6 @@
 
 #include <base/command_line.h>
 #include <base/logging.h>
-#include <base/task/thread_pool/thread_pool_instance.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <brillo/flag_helper.h>
 #include <brillo/syslog_logging.h>
@@ -174,8 +173,6 @@ class Daemon : public brillo::DBusServiceDaemon {
 }  // namespace
 
 int main(int argc, char* argv[]) {
-  // Create a thread pool to be used in log_tool to collect logs in parallel.
-  base::ThreadPoolInstance::CreateAndStartWithDefaultParams("debugd");
   DEFINE_bool(perf_logging, false,
               "Record and locally log the performance of all LogTool sub-tasks "
               "within the feedback log collection function.")
@@ -184,6 +181,5 @@ int main(int argc, char* argv[]) {
 
   enter_vfs_namespace();
   Daemon(FLAGS_perf_logging).Run();
-  base::ThreadPoolInstance::Get()->Shutdown();
   return 0;
 }
