@@ -20,6 +20,7 @@
 #include <base/strings/string_util.h>
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
+#include <chromeos/patchpanel/message_dispatcher.h>
 #include <chromeos/patchpanel/net_util.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 #include <shill/dbus-constants.h>
@@ -110,9 +111,13 @@ std::ostream& operator<<(std::ostream& stream, Proxy::Options opt) {
 }
 
 Proxy::Proxy(const Proxy::Options& opts, int32_t fd)
-    : opts_(opts), metrics_proc_type_(ProcessTypeOf(opts_.type)), msg_fd_(fd) {
-  if (opts_.type == Type::kSystem)
+    : opts_(opts), metrics_proc_type_(ProcessTypeOf(opts_.type)) {
+  if (opts_.type == Type::kSystem) {
     doh_config_.set_metrics(&metrics_);
+    msg_dispatcher_ =
+        std::make_unique<patchpanel::MessageDispatcher<ProxyAddrMessage>>(
+            base::ScopedFD(fd));
+  }
 
   addr_listener_ = std::make_unique<shill::RTNLListener>(
       shill::RTNLHandler::kRequestAddr,
@@ -128,7 +133,13 @@ Proxy::Proxy(const Options& opts,
     : opts_(opts),
       patchpanel_(std::move(patchpanel)),
       shill_(std::move(shill)),
-      metrics_proc_type_(ProcessTypeOf(opts_.type)) {}
+      metrics_proc_type_(ProcessTypeOf(opts_.type)) {
+  if (opts_.type == Type::kSystem) {
+    msg_dispatcher_ =
+        std::make_unique<patchpanel::MessageDispatcher<ProxyAddrMessage>>(
+            base::ScopedFD());
+  }
+}
 
 int Proxy::OnInit() {
   LOG(INFO) << "Starting DNS proxy " << opts_;
@@ -774,20 +785,10 @@ void Proxy::SendIPAddressesToController(const std::string& ipv4_addr,
     return;
   }
 
-  std::string str;
-  if (!msg.SerializeToString(&str)) {
-    LOG(ERROR) << "Failed to set dns-proxy address: error serializing protobuf";
+  if (msg_dispatcher_->SendMessage(msg)) {
     return;
   }
-  ssize_t len = write(msg_fd_.get(), str.data(), str.size());
-  if (len == static_cast<ssize_t>(str.size())) {
-    return;
-  }
-  if (len < 0) {
-    PLOG(ERROR) << "Failed to set dns-proxy address";
-  } else {
-    LOG(ERROR) << "Failed to set dns-proxy address: short write";
-  }
+  LOG(ERROR) << "Failed to set IP addresses to controller";
   // This might be caused by the file descriptor getting invalidated. Quit the
   // process to let the controller restart the proxy. Restarting allows a new
   // clean state.

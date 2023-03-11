@@ -21,6 +21,7 @@
 #include <base/threading/thread_task_runner_handle.h>
 #include <base/time/time.h>
 #include <chromeos/scoped_minijail.h>
+#include <chromeos/patchpanel/message_dispatcher.h>
 #include <shill/dbus-constants.h>
 
 #include "dns-proxy/ipc.pb.h"
@@ -261,38 +262,25 @@ void Controller::RunProxy(Proxy::Type type, const std::string& ifname) {
   }
 
   if (type == Proxy::Type::kSystem) {
-    msg_receiver_fd_ = std::move(controller_fd);
-    msg_watcher_ = base::FileDescriptorWatcher::WatchReadable(
-        msg_receiver_fd_.get(),
-        base::BindRepeating(&Controller::OnProxyMessage,
-                            weak_factory_.GetWeakPtr()));
+    msg_dispatcher_ =
+        std::make_unique<patchpanel::MessageDispatcher<ProxyAddrMessage>>(
+            std::move(controller_fd));
+    msg_dispatcher_->RegisterFailureHandler(base::BindRepeating(
+        &Controller::OnProxyAddrMessageFailure, weak_factory_.GetWeakPtr()));
+    msg_dispatcher_->RegisterMessageHandler(base::BindRepeating(
+        &Controller::OnProxyAddrMessage, weak_factory_.GetWeakPtr()));
   }
   proxies_.emplace(proc);
 }
 
-void Controller::OnProxyMessage() {
-  char buffer[1024];
-  ssize_t len = recvfrom(msg_receiver_fd_.get(), buffer, sizeof(buffer),
-                         MSG_DONTWAIT, nullptr, nullptr);
-  if (len < 0 && errno != EAGAIN && errno != EINTR) {
-    PLOG(ERROR) << "Read failed";
-    // Restart system proxy.
-    msg_receiver_fd_.reset();
-    msg_watcher_.reset();
-    KillProxy(Proxy::Type::kSystem, /*ifname=*/"", /*forget=*/false);
-    return;
-  }
+void Controller::OnProxyAddrMessageFailure() {
+  msg_dispatcher_.reset();
+  KillProxy(Proxy::Type::kSystem, /*ifname=*/"", /*forget=*/false);
+}
 
-  ProxyAddrMessage msg;
-  if (!msg.ParseFromArray(buffer, len)) {
-    LOG(ERROR) << "Error parsing protobuf";
-    return;
-  }
-
-  std::vector<std::string> dns_proxy_addrs(
-      std::make_move_iterator(msg.addrs().begin()),
-      std::make_move_iterator(msg.addrs().end()));
-
+void Controller::OnProxyAddrMessage(const ProxyAddrMessage& msg) {
+  std::vector<std::string> dns_proxy_addrs(msg.addrs().begin(),
+                                           msg.addrs().end());
   resolv_conf_->SetDNSProxyAddresses(dns_proxy_addrs);
 }
 
@@ -413,8 +401,7 @@ void Controller::EvalProxyExit(const ProxyProc& proc) {
   resolv_conf_->SetDNSProxyAddresses({});
 
   // Cleanup fd between the proxy and controller.
-  msg_receiver_fd_.reset();
-  msg_watcher_.reset();
+  msg_dispatcher_.reset();
 }
 
 void Controller::OnVirtualDeviceChanged(

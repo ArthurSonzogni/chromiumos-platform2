@@ -18,11 +18,13 @@
 #include <base/files/scoped_file.h>
 #include <brillo/daemons/dbus_daemon.h>
 #include <chromeos/patchpanel/dbus/client.h>
+#include <chromeos/patchpanel/message_dispatcher.h>
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 #include <shill/dbus/client/client.h>
 #include <shill/net/byte_string.h>
 #include <shill/net/rtnl_listener.h>
 
+#include "dns-proxy/ipc.pb.h"
 #include "dns-proxy/metrics.h"
 #include "dns-proxy/resolver.h"
 #include "dns-proxy/session_monitor.h"
@@ -282,8 +284,10 @@ class Proxy : public brillo::DBusDaemon {
   Metrics metrics_;
   const Metrics::ProcessType metrics_proc_type_;
 
-  // File descriptor to communicate to the controller.
-  base::ScopedFD msg_fd_;
+  // Helper to send system proxy's IP addresses to be the controller. This is
+  // necessary to write to /etc/resolv.conf.
+  std::unique_ptr<patchpanel::MessageDispatcher<ProxyAddrMessage>>
+      msg_dispatcher_;
 
   // Listens for RTMGRP_IPV6_IFADDR messages and invokes RTNLMessageHandler.
   std::unique_ptr<shill::RTNLListener> addr_listener_;
