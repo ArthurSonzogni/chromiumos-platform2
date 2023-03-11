@@ -173,6 +173,9 @@ class WiFiProvider : public ProviderInterface {
   // WiFiPhy at phy_index.
   mockable const WiFiPhy* GetPhyAtIndex(uint32_t phy_index);
 
+  // Return all the WiFiPhy objects.
+  mockable std::vector<const WiFiPhy*> GetPhys() const;
+
   // Register a WiFi device object to a WiFiPhy object. This method asserts that
   // there is a WiFiPhy object at the given phy_index, so it is expected that
   // the caller checks this condition before calling.

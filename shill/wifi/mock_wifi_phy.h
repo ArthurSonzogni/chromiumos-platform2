@@ -20,6 +20,7 @@ class MockWiFiPhy : public WiFiPhy {
   void SetFrequencies(const Frequencies& freqs) { frequencies_ = freqs; }
 
   MOCK_METHOD(void, OnNewWiphy, (const Nl80211Message&), (override));
+  MOCK_METHOD(bool, SupportAPMode, (), (const, override));
 };
 
 }  // namespace shill

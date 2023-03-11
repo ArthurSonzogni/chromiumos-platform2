@@ -63,7 +63,10 @@ class WiFiPhy {
   mockable void OnNewWiphy(const Nl80211Message& nl80211_message);
 
   // Return true if the phy supports iftype, false otherwise.
-  bool SupportsIftype(nl80211_iftype iftype);
+  bool SupportsIftype(nl80211_iftype iftype) const;
+
+  // Return true if the phy supports AP interface type, false otherwise.
+  mockable bool SupportAPMode() const;
 
   std::vector<ConcurrencyCombination> ConcurrencyCombinations() {
     return concurrency_combs_;

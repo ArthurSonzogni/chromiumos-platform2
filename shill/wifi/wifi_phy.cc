@@ -43,7 +43,7 @@ void WiFiPhy::OnNewWiphy(const Nl80211Message& nl80211_message) {
   ParseFrequencies(nl80211_message);
 }
 
-bool WiFiPhy::SupportsIftype(nl80211_iftype iftype) {
+bool WiFiPhy::SupportsIftype(nl80211_iftype iftype) const {
   return base::Contains(supported_ifaces_, iftype);
 }
 
@@ -185,6 +185,10 @@ void WiFiPhy::ParseFrequencies(const Nl80211Message& nl80211_message) {
       }
     }
   }
+}
+
+bool WiFiPhy::SupportAPMode() const {
+  return SupportsIftype(NL80211_IFTYPE_AP);
 }
 
 }  // namespace shill

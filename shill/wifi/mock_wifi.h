@@ -54,7 +54,6 @@ class MockWiFi : public WiFi {
               (override));
   MOCK_METHOD(bool, IsCurrentService, (const WiFiService* service), (const));
   MOCK_METHOD(int16_t, GetSignalLevelForActiveService, (), (override));
-  MOCK_METHOD(bool, SupportAP, (), (const, override));
   MOCK_METHOD(void,
               EmitStationInfoRequestEvent,
               (WiFiLinkStatistics::Trigger trigger),

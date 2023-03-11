@@ -88,6 +88,7 @@ class MockWiFiProvider : public WiFiProvider {
               (const Nl80211Message& nl80211_message),
               (override));
   MOCK_METHOD(const WiFiPhy*, GetPhyAtIndex, (uint32_t), (override));
+  MOCK_METHOD(std::vector<const WiFiPhy*>, GetPhys, (), (const, override));
   MOCK_METHOD(void,
               RegisterDeviceToPhy,
               (WiFiConstRefPtr, uint32_t),

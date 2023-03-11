@@ -40,6 +40,7 @@
 #include "shill/wifi/mock_hotspot_device.h"
 #include "shill/wifi/mock_wake_on_wifi.h"
 #include "shill/wifi/mock_wifi.h"
+#include "shill/wifi/mock_wifi_phy.h"
 #include "shill/wifi/mock_wifi_provider.h"
 
 using testing::_;
@@ -55,6 +56,7 @@ namespace {
 // Fake profile identities
 constexpr char kDefaultProfile[] = "default";
 constexpr char kUserProfile[] = "~user/profile";
+constexpr uint32_t kPhyIndex = 5678;
 
 bool GetConfigMAR(const KeyValueStore& caps) {
   return caps.Get<bool>(kTetheringConfMARProperty);
@@ -135,12 +137,6 @@ class TetheringManagerTest : public testing::Test {
     ON_CALL(manager_, modem_info()).WillByDefault(Return(&modem_info_));
   }
   ~TetheringManagerTest() override = default;
-
-  scoped_refptr<MockWiFi> MakeWiFi(const std::string& ifname,
-                                   const std::string& mac) {
-    return new NiceMock<MockWiFi>(&manager_, ifname, mac, 1, 1,
-                                  new MockWakeOnWiFi());
-  }
 
   scoped_refptr<MockCellular> MakeCellular(const std::string& link_name,
                                            const std::string& address,
@@ -338,11 +334,11 @@ class TetheringManagerTest : public testing::Test {
 };
 
 TEST_F(TetheringManagerTest, GetTetheringCapabilities) {
-  scoped_refptr<MockWiFi> wifi = MakeWiFi("wlan0", "0a:0b:0c:0d:0e:0f");
-  ON_CALL(*wifi, SupportAP()).WillByDefault(Return(true));
-  const std::vector<DeviceRefPtr> devices = {wifi};
-  ON_CALL(manager_, FilterByTechnology(Technology::kWiFi))
-      .WillByDefault(Return(devices));
+  std::unique_ptr<NiceMock<MockWiFiPhy>> phy(
+      new NiceMock<MockWiFiPhy>(kPhyIndex));
+  const std::vector<const WiFiPhy*> phys = {phy.get()};
+  ON_CALL(*wifi_provider_, GetPhys()).WillByDefault(Return(phys));
+  ON_CALL(*phy, SupportAPMode()).WillByDefault(Return(true));
   SetAllowed(tethering_manager_, true);
   KeyValueStore caps = GetCapabilities(tethering_manager_);
 

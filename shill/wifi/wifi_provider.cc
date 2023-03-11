@@ -1049,6 +1049,14 @@ const WiFiPhy* WiFiProvider::GetPhyAtIndex(uint32_t phy_index) {
   return wifi_phys_[phy_index].get();
 }
 
+std::vector<const WiFiPhy*> WiFiProvider::GetPhys() const {
+  std::vector<const WiFiPhy*> phy_vec;
+  for (auto& [idx, phy] : wifi_phys_) {
+    phy_vec.push_back(phy.get());
+  }
+  return phy_vec;
+}
+
 void WiFiProvider::RegisterDeviceToPhy(WiFiConstRefPtr device,
                                        uint32_t phy_index) {
   CHECK(device);
