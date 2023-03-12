@@ -9,12 +9,20 @@
 #include <string>
 #include <vector>
 
-#include "cellular/dbus-proxies.h"
 #include <base/functional/callback.h>
 #include <brillo/any.h>
 
 #include "shill/error.h"
 #include "shill/store/key_value_store.h"
+
+// Using forward declarations to avoid including "cellular/dbus-proxies.h",
+// which may inrease the compile time by ~2 seconds by itself.
+namespace dbus {
+class Bus;
+}
+namespace org::freedesktop::DBus {
+class PropertiesProxyInterface;
+}
 
 namespace shill {
 

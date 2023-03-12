@@ -10,6 +10,7 @@
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
 
+#include "cellular/dbus-proxies.h"
 #include "shill/logging.h"
 
 namespace shill {

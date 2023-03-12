@@ -15,6 +15,7 @@
 #include <base/containers/contains.h>
 #include <base/functional/bind.h>
 #include <base/functional/callback.h>
+#include <base/functional/callback_helpers.h>
 #include <base/memory/weak_ptr.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
