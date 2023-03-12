@@ -32,6 +32,9 @@ namespace dns_proxy {
 class Controller : public brillo::DBusDaemon {
  public:
   explicit Controller(const std::string& progname);
+  // For testing.
+  explicit Controller(ResolvConf* resolv_conf);
+
   Controller(const Controller&) = delete;
   Controller& operator=(const Controller&) = delete;
   ~Controller() = default;
@@ -127,6 +130,9 @@ class Controller : public brillo::DBusDaemon {
   // Triggered by the Chrome features client in response to checking
   // IsDNSProxyEnabled.
   void OnFeatureEnabled(std::optional<bool> enabled);
+
+  FRIEND_TEST(ControllerTest, SetProxyAddrs);
+  FRIEND_TEST(ControllerTest, ClearProxyAddrs);
 
   const std::string progname_;
   brillo::ProcessReaper process_reaper_;

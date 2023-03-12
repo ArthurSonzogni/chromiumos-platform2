@@ -14,6 +14,7 @@
 
 #include <chromeos/patchpanel/net_util.h>
 #include <chromeos/patchpanel/dbus/fake_client.h>
+#include <chromeos/patchpanel/mock_message_dispatcher.h>
 #include <dbus/mock_bus.h>
 #include <dbus/mock_object_proxy.h>
 #include <gmock/gmock.h>
@@ -22,6 +23,8 @@
 #include <shill/dbus-constants.h>
 #include <shill/dbus-proxy-mocks.h>
 #include <shill/net/rtnl_handler.h>
+
+#include "dns-proxy/ipc.pb.h"
 
 using testing::ElementsAreArray;
 
@@ -48,6 +51,15 @@ using testing::IsEmpty;
 using testing::Return;
 using testing::SetArgPointee;
 using testing::StrEq;
+
+MATCHER_P(EqualsProto,
+          message,
+          "Match a proto Message equal to the matcher's argument.") {
+  std::string expected_serialized, actual_serialized;
+  message.SerializeToString(&expected_serialized);
+  arg.SerializeToString(&actual_serialized);
+  return expected_serialized == actual_serialized;
+}
 
 class FakeShillClient : public shill::FakeClient {
  public:
@@ -239,8 +251,13 @@ class TestProxy : public Proxy {
  public:
   TestProxy(const Options& opts,
             std::unique_ptr<patchpanel::Client> patchpanel,
-            std::unique_ptr<shill::Client> shill)
-      : Proxy(opts, std::move(patchpanel), std::move(shill)) {}
+            std::unique_ptr<shill::Client> shill,
+            std::unique_ptr<patchpanel::MessageDispatcher<ProxyAddrMessage>>
+                msg_dispatcher)
+      : Proxy(opts,
+              std::move(patchpanel),
+              std::move(shill),
+              std::move(msg_dispatcher)) {}
 
   std::unique_ptr<Resolver> resolver;
   std::unique_ptr<Resolver> NewResolver(base::TimeDelta timeout,
@@ -274,6 +291,12 @@ class ProxyTest : public ::testing::Test {
                        const_cast<ManagerProxyMock*>(&mock_manager_)));
   }
 
+  std::unique_ptr<patchpanel::MockMessageDispatcher<ProxyAddrMessage>>
+  MessageDispatcher() const {
+    return std::make_unique<
+        patchpanel::MockMessageDispatcher<ProxyAddrMessage>>();
+  }
+
  protected:
   scoped_refptr<dbus::MockBus> mock_bus_;
   scoped_refptr<dbus::MockObjectProxy> mock_proxy_;
@@ -283,7 +306,7 @@ class ProxyTest : public ::testing::Test {
 TEST_F(ProxyTest, SystemProxy_OnShutdownClearsAddressPropertyOnShill) {
   EXPECT_CALL(mock_manager_, ClearDNSProxyAddresses(_, _));
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   int unused;
   proxy.shill_ready_ = true;
   proxy.OnShutdown(&unused);
@@ -293,7 +316,7 @@ TEST_F(ProxyTest, NonSystemProxy_OnShutdownDoesNotCallShill) {
   EXPECT_CALL(mock_manager_, SetDNSProxyAddresses(_, _, _)).Times(0);
   EXPECT_CALL(mock_manager_, ClearDNSProxyAddresses(_, _)).Times(0);
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kDefault}, PatchpanelClient(),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   int unused;
   proxy.shill_ready_ = true;
   proxy.OnShutdown(&unused);
@@ -303,14 +326,14 @@ TEST_F(ProxyTest, SystemProxy_SetShillDNSProxyAddressesDoesntCrashIfDieFalse) {
   ::testing::FLAGS_gtest_death_test_style = "threadsafe";
   EXPECT_CALL(mock_manager_, SetProperty(_, _, _, _)).Times(0);
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.shill_ready_ = true;
   proxy.SetShillDNSProxyAddresses("10.10.10.10", "::1", false, 0);
 }
 
 TEST_F(ProxyTest, SystemProxy_SetShillDNSProxyAddresses) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.shill_ready_ = true;
   proxy.doh_config_.set_nameservers({"8.8.8.8"}, {"2001:4860:4860::8888"});
   EXPECT_CALL(mock_manager_,
@@ -321,7 +344,7 @@ TEST_F(ProxyTest, SystemProxy_SetShillDNSProxyAddresses) {
 
 TEST_F(ProxyTest, SystemProxy_SetShillDNSProxyAddressesEmptyNameserver) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.shill_ready_ = true;
 
   // Only IPv4 nameserver.
@@ -340,16 +363,64 @@ TEST_F(ProxyTest, SystemProxy_SetShillDNSProxyAddressesEmptyNameserver) {
 
 TEST_F(ProxyTest, SystemProxy_ClearShillDNSProxyAddresses) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.shill_ready_ = true;
   proxy.doh_config_.set_nameservers({"8.8.8.8"}, {"2001:4860:4860::8888"});
   EXPECT_CALL(mock_manager_, ClearDNSProxyAddresses(_, _));
   proxy.ClearShillDNSProxyAddresses();
 }
 
+TEST_F(ProxyTest, SystemProxy_SendIPAddressesToController) {
+  auto msg_dispatcher = MessageDispatcher();
+  auto* msg_dispatcher_ptr = msg_dispatcher.get();
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
+              ShillClient(), std::move(msg_dispatcher));
+  proxy.doh_config_.set_nameservers({"8.8.8.8"}, {"2001:4860:4860::8888"});
+
+  ProxyAddrMessage msg;
+  msg.add_addrs("10.10.10.10");
+  msg.add_addrs("::1");
+  EXPECT_CALL(*msg_dispatcher_ptr, SendMessage(EqualsProto(msg)))
+      .WillOnce(Return(true));
+  proxy.SendIPAddressesToController("10.10.10.10", "::1");
+}
+
+TEST_F(ProxyTest, SystemProxy_SendIPAddressesToControllerEmptyNameserver) {
+  auto msg_dispatcher = MessageDispatcher();
+  auto* msg_dispatcher_ptr = msg_dispatcher.get();
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
+              ShillClient(), std::move(msg_dispatcher));
+
+  // Only IPv4 nameserver.
+  proxy.doh_config_.set_nameservers({"8.8.8.8"}, {});
+  ProxyAddrMessage msg;
+  msg.add_addrs("10.10.10.10");
+  EXPECT_CALL(*msg_dispatcher_ptr, SendMessage(EqualsProto(msg)))
+      .WillOnce(Return(true));
+  proxy.SendIPAddressesToController("10.10.10.10", "::1");
+
+  // Only IPv6 nameserver.
+  proxy.doh_config_.set_nameservers({}, {"2001:4860:4860::8888"});
+  msg.Clear();
+  msg.add_addrs("::1");
+  EXPECT_CALL(*msg_dispatcher_ptr, SendMessage(EqualsProto(msg)))
+      .WillOnce(Return(true));
+  proxy.SendIPAddressesToController("10.10.10.10", "::1");
+}
+
+TEST_F(ProxyTest, SystemProxy_ClearIPAddressesInController) {
+  auto msg_dispatcher = MessageDispatcher();
+  auto* msg_dispatcher_ptr = msg_dispatcher.get();
+  Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
+              ShillClient(), std::move(msg_dispatcher));
+  proxy.doh_config_.set_nameservers({"8.8.8.8"}, {"2001:4860:4860::8888"});
+  EXPECT_CALL(*msg_dispatcher_ptr, SendMessage(_)).WillOnce(Return(true));
+  proxy.ClearIPAddressesInController();
+}
+
 TEST_F(ProxyTest, ShillInitializedWhenReady) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.OnShillReady(true);
   EXPECT_TRUE(proxy.shill_ready_);
 }
@@ -360,7 +431,7 @@ TEST_F(ProxyTest, SystemProxy_ConnectedNamedspace) {
   pp->SetConnectNamespaceResult(make_fd(),
                                 patchpanel::ConnectNamespaceResponse());
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, std::move(pp),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.OnPatchpanelReady(true);
   EXPECT_TRUE(pp_ptr->ns_ifname_.empty());
   EXPECT_FALSE(pp_ptr->ns_rvpn_);
@@ -373,7 +444,7 @@ TEST_F(ProxyTest, DefaultProxy_ConnectedNamedspace) {
   pp->SetConnectNamespaceResult(make_fd(),
                                 patchpanel::ConnectNamespaceResponse());
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kDefault}, std::move(pp),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.OnPatchpanelReady(true);
   EXPECT_TRUE(pp_ptr->ns_ifname_.empty());
   EXPECT_TRUE(pp_ptr->ns_rvpn_);
@@ -386,7 +457,7 @@ TEST_F(ProxyTest, ArcProxy_ConnectedNamedspace) {
   pp->SetConnectNamespaceResult(make_fd(),
                                 patchpanel::ConnectNamespaceResponse());
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
-              std::move(pp), ShillClient());
+              std::move(pp), ShillClient(), MessageDispatcher());
   proxy.OnPatchpanelReady(true);
   EXPECT_EQ(pp_ptr->ns_ifname_, "eth0");
   EXPECT_FALSE(pp_ptr->ns_rvpn_);
@@ -399,7 +470,7 @@ TEST_F(ProxyTest, ShillResetRestoresAddressProperty) {
   resp.set_peer_ipv4_address(patchpanel::Ipv4Addr(10, 10, 10, 10));
   pp->SetConnectNamespaceResult(make_fd(), resp);
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, std::move(pp),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.doh_config_.set_nameservers({"8.8.8.8"}, {"2401::8888"});
   proxy.ns_peer_ipv6_address_ = "::1";
   proxy.OnPatchpanelReady(true);
@@ -412,7 +483,7 @@ TEST_F(ProxyTest, ShillResetRestoresAddressProperty) {
 
 TEST_F(ProxyTest, StateClearedIfDefaultServiceDrops) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.resolver_ = std::make_unique<MockResolver>();
   proxy.OnDefaultDeviceChanged(nullptr /* no service */);
@@ -422,7 +493,7 @@ TEST_F(ProxyTest, StateClearedIfDefaultServiceDrops) {
 
 TEST_F(ProxyTest, ArcProxy_IgnoredIfDefaultServiceDrops) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kARC}, PatchpanelClient(),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.resolver_ = std::make_unique<MockResolver>();
   proxy.OnDefaultDeviceChanged(nullptr /* no service */);
@@ -432,7 +503,7 @@ TEST_F(ProxyTest, ArcProxy_IgnoredIfDefaultServiceDrops) {
 
 TEST_F(ProxyTest, StateClearedIfDefaultServiceIsNotOnline) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
   proxy.resolver_ = std::make_unique<MockResolver>();
@@ -445,7 +516,7 @@ TEST_F(ProxyTest, StateClearedIfDefaultServiceIsNotOnline) {
 
 TEST_F(ProxyTest, NewResolverStartsListeningOnDefaultServiceComesOnline) {
   TestProxy proxy(Proxy::Options{.type = Proxy::Type::kDefault},
-                  PatchpanelClient(), ShillClient());
+                  PatchpanelClient(), ShillClient(), MessageDispatcher());
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
   auto resolver = std::make_unique<MockResolver>();
@@ -464,7 +535,7 @@ TEST_F(ProxyTest, NewResolverStartsListeningOnDefaultServiceComesOnline) {
 
 TEST_F(ProxyTest, NameServersUpdatedOnDefaultServiceComesOnline) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kDefault}, PatchpanelClient(),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
   auto resolver = std::make_unique<MockResolver>();
@@ -487,8 +558,10 @@ TEST_F(ProxyTest, NameServersUpdatedOnDefaultServiceComesOnline) {
 }
 
 TEST_F(ProxyTest, SystemProxy_ShillPropertyUpdatedOnDefaultServiceComesOnline) {
+  auto msg_dispatcher = MessageDispatcher();
+  auto* msg_dispatcher_ptr = msg_dispatcher.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
-              ShillClient());
+              ShillClient(), std::move(msg_dispatcher));
   proxy.shill_ready_ = true;
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
@@ -502,12 +575,15 @@ TEST_F(ProxyTest, SystemProxy_ShillPropertyUpdatedOnDefaultServiceComesOnline) {
   EXPECT_CALL(*mock_resolver, SetNameServers(_));
   EXPECT_CALL(mock_manager_, SetDNSProxyAddresses(_, _, _))
       .WillOnce(Return(true));
+  EXPECT_CALL(*msg_dispatcher_ptr, SendMessage(_)).WillOnce(Return(true));
   proxy.OnDefaultDeviceChanged(&dev);
 }
 
 TEST_F(ProxyTest, SystemProxy_IgnoresVPN) {
+  auto msg_dispatcher = MessageDispatcher();
+  auto* msg_dispatcher_ptr = msg_dispatcher.get();
   TestProxy proxy(Proxy::Options{.type = Proxy::Type::kSystem},
-                  PatchpanelClient(), ShillClient());
+                  PatchpanelClient(), ShillClient(), std::move(msg_dispatcher));
   proxy.shill_ready_ = true;
   auto resolver = std::make_unique<MockResolver>();
   MockResolver* mock_resolver = resolver.get();
@@ -518,6 +594,7 @@ TEST_F(ProxyTest, SystemProxy_IgnoresVPN) {
       .WillOnce(DoAll(SetArgPointee<0>(props), Return(true)));
   EXPECT_CALL(mock_manager_, SetDNSProxyAddresses(_, _, _))
       .WillOnce(Return(true));
+  EXPECT_CALL(*msg_dispatcher_ptr, SendMessage(_)).WillOnce(Return(true));
   proxy.resolver = std::move(resolver);
   proxy.doh_config_.set_resolver(mock_resolver);
   shill::Client::Device dev;
@@ -536,8 +613,11 @@ TEST_F(ProxyTest, SystemProxy_IgnoresVPN) {
 TEST_F(ProxyTest, SystemProxy_GetsPhysicalDeviceOnInitialVPN) {
   auto shill = ShillClient();
   auto* shill_ptr = shill.get();
+  auto msg_dispatcher = MessageDispatcher();
+  auto* msg_dispatcher_ptr = msg_dispatcher.get();
   TestProxy proxy(Proxy::Options{.type = Proxy::Type::kSystem},
-                  PatchpanelClient(), std::move(shill));
+                  PatchpanelClient(), std::move(shill),
+                  std::move(msg_dispatcher));
   proxy.shill_ready_ = true;
   auto resolver = std::make_unique<MockResolver>();
   MockResolver* mock_resolver = resolver.get();
@@ -548,6 +628,7 @@ TEST_F(ProxyTest, SystemProxy_GetsPhysicalDeviceOnInitialVPN) {
       .WillOnce(DoAll(SetArgPointee<0>(props), Return(true)));
   EXPECT_CALL(mock_manager_, SetDNSProxyAddresses(_, _, _))
       .WillOnce(Return(true));
+  EXPECT_CALL(*msg_dispatcher_ptr, SendMessage(_)).WillOnce(Return(true));
   proxy.resolver = std::move(resolver);
   proxy.doh_config_.set_resolver(mock_resolver);
   shill::Client::Device vpn;
@@ -565,7 +646,7 @@ TEST_F(ProxyTest, SystemProxy_GetsPhysicalDeviceOnInitialVPN) {
 
 TEST_F(ProxyTest, DefaultProxy_UsesVPN) {
   TestProxy proxy(Proxy::Options{.type = Proxy::Type::kDefault},
-                  PatchpanelClient(), ShillClient());
+                  PatchpanelClient(), ShillClient(), MessageDispatcher());
   proxy.shill_ready_ = true;
   auto resolver = std::make_unique<MockResolver>();
   MockResolver* mock_resolver = resolver.get();
@@ -590,7 +671,7 @@ TEST_F(ProxyTest, DefaultProxy_UsesVPN) {
 
 TEST_F(ProxyTest, ArcProxy_NameServersUpdatedOnDeviceChangeEvent) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "wlan0"},
-              PatchpanelClient(), ShillClient());
+              PatchpanelClient(), ShillClient(), MessageDispatcher());
   auto resolver = std::make_unique<MockResolver>();
   MockResolver* mock_resolver = resolver.get();
   proxy.resolver_ = std::move(resolver);
@@ -626,8 +707,10 @@ TEST_F(ProxyTest, ArcProxy_NameServersUpdatedOnDeviceChangeEvent) {
 }
 
 TEST_F(ProxyTest, SystemProxy_NameServersUpdatedOnDeviceChangeEvent) {
+  auto msg_dispatcher = MessageDispatcher();
+  auto* msg_dispatcher_ptr = msg_dispatcher.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
-              ShillClient());
+              ShillClient(), std::move(msg_dispatcher));
   proxy.shill_ready_ = true;
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
@@ -643,6 +726,7 @@ TEST_F(ProxyTest, SystemProxy_NameServersUpdatedOnDeviceChangeEvent) {
   // Doesn't call listen since the resolver already exists.
   EXPECT_CALL(mock_manager_, SetDNSProxyAddresses(_, _, _))
       .WillOnce(Return(true));
+  EXPECT_CALL(*msg_dispatcher_ptr, SendMessage(_)).WillOnce(Return(true));
   EXPECT_CALL(*mock_resolver, ListenUDP(_)).Times(0);
   EXPECT_CALL(*mock_resolver, ListenTCP(_)).Times(0);
   EXPECT_CALL(*mock_resolver,
@@ -661,8 +745,10 @@ TEST_F(ProxyTest, SystemProxy_NameServersUpdatedOnDeviceChangeEvent) {
 }
 
 TEST_F(ProxyTest, DeviceChangeEventIgnored) {
+  auto msg_dispatcher = MessageDispatcher();
+  auto* msg_dispatcher_ptr = msg_dispatcher.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
-              ShillClient());
+              ShillClient(), std::move(msg_dispatcher));
   proxy.shill_ready_ = true;
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
@@ -679,6 +765,7 @@ TEST_F(ProxyTest, DeviceChangeEventIgnored) {
   // Doesn't call listen since the resolver already exists.
   EXPECT_CALL(mock_manager_, SetDNSProxyAddresses(_, _, _))
       .WillOnce(Return(true));
+  EXPECT_CALL(*msg_dispatcher_ptr, SendMessage(_)).WillOnce(Return(true));
   EXPECT_CALL(*mock_resolver, ListenUDP(_)).Times(0);
   EXPECT_CALL(*mock_resolver, ListenTCP(_)).Times(0);
   EXPECT_CALL(*mock_resolver,
@@ -697,7 +784,7 @@ TEST_F(ProxyTest, DeviceChangeEventIgnored) {
 
 TEST_F(ProxyTest, BasicDoHDisable) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
   auto resolver = std::make_unique<MockResolver>();
@@ -711,7 +798,7 @@ TEST_F(ProxyTest, BasicDoHDisable) {
 
 TEST_F(ProxyTest, BasicDoHAlwaysOn) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
   auto resolver = std::make_unique<MockResolver>();
@@ -728,7 +815,7 @@ TEST_F(ProxyTest, BasicDoHAlwaysOn) {
 
 TEST_F(ProxyTest, BasicDoHAutomatic) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
   auto resolver = std::make_unique<MockResolver>();
@@ -749,7 +836,7 @@ TEST_F(ProxyTest, BasicDoHAutomatic) {
 
 TEST_F(ProxyTest, RemovesDNSQueryParameterTemplate_AlwaysOn) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
   auto resolver = std::make_unique<MockResolver>();
@@ -766,7 +853,7 @@ TEST_F(ProxyTest, RemovesDNSQueryParameterTemplate_AlwaysOn) {
 
 TEST_F(ProxyTest, RemovesDNSQueryParameterTemplate_Automatic) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
   auto resolver = std::make_unique<MockResolver>();
@@ -787,7 +874,7 @@ TEST_F(ProxyTest, RemovesDNSQueryParameterTemplate_Automatic) {
 
 TEST_F(ProxyTest, NewResolverConfiguredWhenSet) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
   brillo::VariantDictionary props;
@@ -814,7 +901,7 @@ TEST_F(ProxyTest, NewResolverConfiguredWhenSet) {
 
 TEST_F(ProxyTest, DoHModeChangingFixedNameServers) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
   auto resolver = std::make_unique<MockResolver>();
@@ -890,7 +977,7 @@ TEST_F(ProxyTest, DoHModeChangingFixedNameServers) {
 
 TEST_F(ProxyTest, MultipleDoHProvidersForAlwaysOnMode) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
   auto resolver = std::make_unique<MockResolver>();
@@ -910,7 +997,7 @@ TEST_F(ProxyTest, MultipleDoHProvidersForAlwaysOnMode) {
 
 TEST_F(ProxyTest, MultipleDoHProvidersForAutomaticMode) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
   auto resolver = std::make_unique<MockResolver>();
@@ -948,7 +1035,7 @@ TEST_F(ProxyTest, MultipleDoHProvidersForAutomaticMode) {
 
 TEST_F(ProxyTest, DoHBadAlwaysOnConfigSetsAutomaticMode) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
   auto resolver = std::make_unique<MockResolver>();
@@ -987,7 +1074,7 @@ TEST_F(ProxyTest, DoHBadAlwaysOnConfigSetsAutomaticMode) {
 
 TEST_F(ProxyTest, DefaultProxy_DisableDoHProvidersOnVPN) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kDefault}, PatchpanelClient(),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.device_->state = shill::Client::Device::ConnectionState::kOnline;
   proxy.device_->type = shill::Client::Device::Type::kVPN;
@@ -1005,8 +1092,10 @@ TEST_F(ProxyTest, DefaultProxy_DisableDoHProvidersOnVPN) {
 TEST_F(ProxyTest, SystemProxy_SetsDnsRedirectionRule) {
   auto client = std::make_unique<MockPatchpanelClient>();
   MockPatchpanelClient* mock_client = client.get();
+  auto msg_dispatcher = MessageDispatcher();
+  auto* msg_dispatcher_ptr = msg_dispatcher.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, std::move(client),
-              ShillClient());
+              ShillClient(), std::move(msg_dispatcher));
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
   proxy.device_ = std::make_unique<shill::Client::Device>();
@@ -1034,6 +1123,7 @@ TEST_F(ProxyTest, SystemProxy_SetsDnsRedirectionRule) {
   proxy.OnPatchpanelReady(true);
   EXPECT_CALL(mock_manager_, SetDNSProxyAddresses(_, _, _))
       .WillOnce(Return(true));
+  EXPECT_CALL(*msg_dispatcher_ptr, SendMessage(_)).WillOnce(Return(true));
   proxy.Enable();
 
   // Default device changed.
@@ -1050,6 +1140,7 @@ TEST_F(ProxyTest, SystemProxy_SetsDnsRedirectionRule) {
       .WillOnce(Return(ByMove(base::ScopedFD(make_fd()))));
   EXPECT_CALL(mock_manager_, SetDNSProxyAddresses(_, _, _))
       .WillOnce(Return(true));
+  EXPECT_CALL(*msg_dispatcher_ptr, SendMessage(_)).WillOnce(Return(true));
   proxy.OnDefaultDeviceChanged(&default_device);
 
   // Plugin VM started.
@@ -1074,7 +1165,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
   auto client = std::make_unique<MockPatchpanelClient>();
   MockPatchpanelClient* mock_client = client.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kDefault}, std::move(client),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
   proxy.ns_peer_ipv6_address_ = "::1";
@@ -1148,7 +1239,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleNewDeviceStarted) {
   auto client = std::make_unique<MockPatchpanelClient>();
   MockPatchpanelClient* mock_client = client.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kDefault}, std::move(client),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
   proxy.ns_peer_ipv6_address_ = "::1";
@@ -1215,7 +1306,7 @@ TEST_F(ProxyTest, DefaultProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
   auto client = std::make_unique<MockPatchpanelClient>();
   MockPatchpanelClient* mock_client = client.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kDefault}, std::move(client),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
   proxy.ns_peer_ipv6_address_ = "::1";
@@ -1263,7 +1354,7 @@ TEST_F(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Added) {
   auto client = std::make_unique<MockPatchpanelClient>();
   MockPatchpanelClient* mock_client = client.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, std::move(client),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.ns_.set_peer_ifname("");
   proxy.Enable();
   proxy.device_ = std::make_unique<shill::Client::Device>();
@@ -1300,7 +1391,7 @@ TEST_F(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Added) {
 TEST_F(ProxyTest, SystemProxy_SetDnsRedirectionRuleIPv6Deleted) {
   auto client = std::make_unique<MockPatchpanelClient>();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, std::move(client),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.ns_.set_peer_ifname("");
   proxy.Enable();
   proxy.device_ = std::make_unique<shill::Client::Device>();
@@ -1322,7 +1413,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleWithoutIPv6) {
   auto client = std::make_unique<MockPatchpanelClient>();
   MockPatchpanelClient* mock_client = client.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kDefault}, std::move(client),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.resolver_ = std::make_unique<MockResolver>();
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
@@ -1383,7 +1474,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Added) {
   auto client = std::make_unique<MockPatchpanelClient>();
   MockPatchpanelClient* mock_client = client.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kDefault}, std::move(client),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.ns_.set_peer_ifname("");
   proxy.Enable();
   proxy.device_ = std::make_unique<shill::Client::Device>();
@@ -1433,7 +1524,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleIPv6Deleted) {
   auto client = std::make_unique<MockPatchpanelClient>();
   MockPatchpanelClient* mock_client = client.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kDefault}, std::move(client),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.ns_.set_peer_ifname("");
   proxy.device_ = std::make_unique<shill::Client::Device>();
 
@@ -1466,7 +1557,7 @@ TEST_F(ProxyTest, DefaultProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
   auto client = std::make_unique<MockPatchpanelClient>();
   MockPatchpanelClient* mock_client = client.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kDefault}, std::move(client),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   proxy.ns_.set_peer_ifname("");
   proxy.Enable();
   proxy.device_ = std::make_unique<shill::Client::Device>();
@@ -1520,7 +1611,7 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleDeviceAlreadyStarted) {
   auto client = std::make_unique<MockPatchpanelClient>();
   MockPatchpanelClient* mock_client = client.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
-              std::move(client), ShillClient());
+              std::move(client), ShillClient(), MessageDispatcher());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
   proxy.ns_peer_ipv6_address_ = "::1";
@@ -1563,7 +1654,7 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleNewDeviceStarted) {
   auto client = std::make_unique<MockPatchpanelClient>();
   MockPatchpanelClient* mock_client = client.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
-              std::move(client), ShillClient());
+              std::move(client), ShillClient(), MessageDispatcher());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
   proxy.ns_peer_ipv6_address_ = "::1";
@@ -1607,7 +1698,7 @@ TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherGuest) {
   auto client = std::make_unique<MockPatchpanelClient>();
   MockPatchpanelClient* mock_client = client.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
-              std::move(client), ShillClient());
+              std::move(client), ShillClient(), MessageDispatcher());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
   proxy.ns_peer_ipv6_address_ = "::1";
@@ -1647,7 +1738,7 @@ TEST_F(ProxyTest, ArcProxy_NeverSetsDnsRedirectionRuleOtherIfname) {
   auto client = std::make_unique<MockPatchpanelClient>();
   MockPatchpanelClient* mock_client = client.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "wlan0"},
-              std::move(client), ShillClient());
+              std::move(client), ShillClient(), MessageDispatcher());
   proxy.shill_ready_ = true;
   proxy.resolver_ = std::make_unique<MockResolver>();
   proxy.ns_peer_ipv6_address_ = "::1";
@@ -1687,7 +1778,7 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Added) {
   auto client = std::make_unique<MockPatchpanelClient>();
   MockPatchpanelClient* mock_client = client.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
-              std::move(client), ShillClient());
+              std::move(client), ShillClient(), MessageDispatcher());
   proxy.ns_.set_peer_ifname("");
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.Enable();
@@ -1729,7 +1820,7 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleIPv6Deleted) {
   auto client = std::make_unique<MockPatchpanelClient>();
   MockPatchpanelClient* mock_client = client.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
-              std::move(client), ShillClient());
+              std::move(client), ShillClient(), MessageDispatcher());
   proxy.ns_.set_peer_ifname("");
 
   proxy.device_.reset(new shill::Client::Device{});
@@ -1760,7 +1851,7 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
   auto client = std::make_unique<MockPatchpanelClient>();
   MockPatchpanelClient* mock_client = client.get();
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kARC, .ifname = "eth0"},
-              std::move(client), ShillClient());
+              std::move(client), ShillClient(), MessageDispatcher());
   proxy.ns_.set_peer_ifname("");
   proxy.device_ = std::make_unique<shill::Client::Device>();
   proxy.Enable();
@@ -1807,7 +1898,7 @@ TEST_F(ProxyTest, ArcProxy_SetDnsRedirectionRuleUnrelatedIPv6Added) {
 
 TEST_F(ProxyTest, UpdateNameServers) {
   Proxy proxy(Proxy::Options{.type = Proxy::Type::kSystem}, PatchpanelClient(),
-              ShillClient());
+              ShillClient(), MessageDispatcher());
   shill::Client::IPConfig ipconfig;
   ipconfig.ipv4_dns_addresses = {"8.8.4.4",
                                  "192.168.1.1",

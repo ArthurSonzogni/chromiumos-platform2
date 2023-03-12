@@ -48,7 +48,9 @@ class Proxy : public brillo::DBusDaemon {
   // For testing.
   Proxy(const Options& opts,
         std::unique_ptr<patchpanel::Client> patchpanel,
-        std::unique_ptr<shill::Client> shill);
+        std::unique_ptr<shill::Client> shill,
+        std::unique_ptr<patchpanel::MessageDispatcher<ProxyAddrMessage>>
+            msg_dispatcher);
   Proxy(const Proxy&) = delete;
   Proxy& operator=(const Proxy&) = delete;
   ~Proxy() = default;
@@ -206,6 +208,10 @@ class Proxy : public brillo::DBusDaemon {
   FRIEND_TEST(ProxyTest, SystemProxy_SetShillDNSProxyAddresses);
   FRIEND_TEST(ProxyTest, SystemProxy_SetShillDNSProxyAddressesEmptyNameserver);
   FRIEND_TEST(ProxyTest, SystemProxy_ClearShillDNSProxyAddresses);
+  FRIEND_TEST(ProxyTest, SystemProxy_SendIPAddressesToController);
+  FRIEND_TEST(ProxyTest,
+              SystemProxy_SendIPAddressesToControllerEmptyNameserver);
+  FRIEND_TEST(ProxyTest, SystemProxy_ClearIPAddressesInController);
   FRIEND_TEST(ProxyTest, ShillInitializedWhenReady);
   FRIEND_TEST(ProxyTest, SystemProxy_ConnectedNamedspace);
   FRIEND_TEST(ProxyTest, DefaultProxy_ConnectedNamedspace);

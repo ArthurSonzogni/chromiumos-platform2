@@ -129,15 +129,15 @@ Proxy::Proxy(const Proxy::Options& opts, int32_t fd)
 // This ctor is only used for testing.
 Proxy::Proxy(const Options& opts,
              std::unique_ptr<patchpanel::Client> patchpanel,
-             std::unique_ptr<shill::Client> shill)
+             std::unique_ptr<shill::Client> shill,
+             std::unique_ptr<patchpanel::MessageDispatcher<ProxyAddrMessage>>
+                 msg_dispatcher)
     : opts_(opts),
       patchpanel_(std::move(patchpanel)),
       shill_(std::move(shill)),
       metrics_proc_type_(ProcessTypeOf(opts_.type)) {
   if (opts_.type == Type::kSystem) {
-    msg_dispatcher_ =
-        std::make_unique<patchpanel::MessageDispatcher<ProxyAddrMessage>>(
-            base::ScopedFD());
+    msg_dispatcher_ = std::move(msg_dispatcher);
   }
 }
 
