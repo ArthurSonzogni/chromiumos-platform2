@@ -21,11 +21,6 @@ ResolvConf::ResolvConf() = default;
 
 ResolvConf::~ResolvConf() = default;
 
-ResolvConf* ResolvConf::GetInstance() {
-  static base::NoDestructor<ResolvConf> instance;
-  return instance.get();
-}
-
 bool ResolvConf::SetDNSFromLists(
     const std::vector<std::string>& name_servers,
     const std::vector<std::string>& domain_search_list) {

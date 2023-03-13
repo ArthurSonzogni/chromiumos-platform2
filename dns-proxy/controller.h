@@ -33,7 +33,7 @@ class Controller : public brillo::DBusDaemon {
  public:
   explicit Controller(const std::string& progname);
   // For testing.
-  explicit Controller(ResolvConf* resolv_conf);
+  explicit Controller(std::unique_ptr<ResolvConf> resolv_conf);
 
   Controller(const Controller&) = delete;
   Controller& operator=(const Controller&) = delete;
@@ -144,7 +144,7 @@ class Controller : public brillo::DBusDaemon {
       msg_dispatcher_;
 
   // Helper class to update resolv.conf entries.
-  ResolvConf* resolv_conf_;
+  std::unique_ptr<ResolvConf> resolv_conf_;
 
   bool shill_ready_{false};
   std::unique_ptr<shill::Client> shill_;

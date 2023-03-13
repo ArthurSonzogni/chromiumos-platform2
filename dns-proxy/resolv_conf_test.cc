@@ -4,6 +4,7 @@
 
 #include "dns-proxy/resolv_conf.h"
 
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -43,7 +44,7 @@ const char kExpectedProxyWithSearchOutput[] =
 
 class ResolvConfTest : public Test {
  public:
-  ResolvConfTest() : resolv_conf_(ResolvConf::GetInstance()) {}
+  ResolvConfTest() : resolv_conf_(new ResolvConf()) {}
 
   void SetUp() override {
     ASSERT_TRUE(temp_dir_.CreateUniqueTempDir());
@@ -63,7 +64,7 @@ class ResolvConfTest : public Test {
   std::string ReadFile();
 
   base::ScopedTempDir temp_dir_;
-  ResolvConf* resolv_conf_;
+  std::unique_ptr<ResolvConf> resolv_conf_;
   base::FilePath path_;
 };
 

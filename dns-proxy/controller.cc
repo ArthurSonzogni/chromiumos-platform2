@@ -38,10 +38,11 @@ constexpr char kResolvConfRunPath[] = "/run/dns-proxy/resolv.conf";
 }  // namespace
 
 Controller::Controller(const std::string& progname)
-    : progname_(progname), resolv_conf_(ResolvConf::GetInstance()) {}
+    : progname_(progname), resolv_conf_(new ResolvConf()) {}
 
 // This ctor is only used for testing.
-Controller::Controller(ResolvConf* resolv_conf) : resolv_conf_(resolv_conf) {}
+Controller::Controller(std::unique_ptr<ResolvConf> resolv_conf)
+    : resolv_conf_(std::move(resolv_conf)) {}
 
 int Controller::OnInit() {
   LOG(INFO) << "Starting DNS Proxy service";

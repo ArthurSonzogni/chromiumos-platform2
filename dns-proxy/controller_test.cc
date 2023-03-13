@@ -25,11 +25,13 @@ using testing::ElementsAre;
 class ControllerTest : public Test {
  public:
   void SetUp() override {
-    controller_ = std::make_unique<Controller>(&resolv_conf_);
+    auto resolv_conf = std::make_unique<MockResolvConf>();
+    resolv_conf_ptr_ = resolv_conf.get();
+    controller_ = std::make_unique<Controller>(std::move(resolv_conf));
   }
 
  protected:
-  MockResolvConf resolv_conf_;
+  MockResolvConf* resolv_conf_ptr_;
   std::unique_ptr<Controller> controller_;
 };
 
@@ -37,14 +39,14 @@ TEST_F(ControllerTest, SetProxyAddrs) {
   ProxyAddrMessage msg;
   msg.add_addrs("100.115.92.100");
   msg.add_addrs("::1");
-  EXPECT_CALL(resolv_conf_,
+  EXPECT_CALL(*resolv_conf_ptr_,
               SetDNSProxyAddresses(ElementsAre("100.115.92.100", "::1")));
   controller_->OnProxyAddrMessage(msg);
 }
 
 TEST_F(ControllerTest, ClearProxyAddrs) {
   ProxyAddrMessage msg;
-  EXPECT_CALL(resolv_conf_, SetDNSProxyAddresses(ElementsAre()));
+  EXPECT_CALL(*resolv_conf_ptr_, SetDNSProxyAddresses(ElementsAre()));
   controller_->OnProxyAddrMessage(msg);
 }
 
