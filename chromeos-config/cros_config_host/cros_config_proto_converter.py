@@ -382,7 +382,7 @@ def _format_power_pref_value(value) -> str:
     if isinstance(value, collections.abc.Mapping):
         return "\n".join(
             f"{_format_power_pref_value(k)} {_format_power_pref_value(v)}"
-            for k, v in value.items()
+            for k, v in sorted(value.items())
         )
     if isinstance(value, bool):
         return str(int(value))
