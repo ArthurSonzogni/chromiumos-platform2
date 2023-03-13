@@ -29,48 +29,51 @@ FlashProtectCommand::FlashProtectCommand(flash_protect::Flags flags,
  */
 std::string FlashProtectCommand::ParseFlags(flash_protect::Flags flags) {
   std::string output;
-  if ((flags & flash_protect::Flags::kRoAtBoot) !=
-      flash_protect::Flags::kNone) {
-    output += "RO_AT_BOOT  ";
-  }
-  if ((flags & flash_protect::Flags::kRoNow) != flash_protect::Flags::kNone) {
-    output += "RO_NOW  ";
-  }
-  if ((flags & flash_protect::Flags::kAllNow) != flash_protect::Flags::kNone) {
-    output += "ALL_NOW  ";
-  }
   if ((flags & flash_protect::Flags::kGpioAsserted) !=
       flash_protect::Flags::kNone) {
-    output += "GPIO_ASSERTED  ";
+    output += " wp_gpio_asserted";
   }
-  if ((flags & flash_protect::Flags::kErrorStuck) !=
+  if ((flags & flash_protect::Flags::kRoAtBoot) !=
       flash_protect::Flags::kNone) {
-    output += "ERROR_STUCK  ";
-  }
-  if ((flags & flash_protect::Flags::kErrorInconsistent) !=
-      flash_protect::Flags::kNone) {
-    output += "ERROR_INCONSISTENT  ";
-  }
-  if ((flags & flash_protect::Flags::kAllAtBoot) !=
-      flash_protect::Flags::kNone) {
-    output += "ALL_AT_BOOT  ";
+    output += " ro_at_boot";
   }
   if ((flags & flash_protect::Flags::kRwAtBoot) !=
       flash_protect::Flags::kNone) {
-    output += "RW_AT_BOOT  ";
-  }
-  if ((flags & flash_protect::Flags::kRwNow) != flash_protect::Flags::kNone) {
-    output += "RW_NOW  ";
+    output += " rw_at_boot";
   }
   if ((flags & flash_protect::Flags::kRollbackAtBoot) !=
       flash_protect::Flags::kNone) {
-    output += "ROLLBACK_AT_BOOT  ";
+    output += " rollback_at_boot";
+  }
+  if ((flags & flash_protect::Flags::kAllAtBoot) !=
+      flash_protect::Flags::kNone) {
+    output += " all_at_boot";
+  }
+  if ((flags & flash_protect::Flags::kRoNow) != flash_protect::Flags::kNone) {
+    output += " ro_now";
+  }
+  if ((flags & flash_protect::Flags::kRwNow) != flash_protect::Flags::kNone) {
+    output += " rw_now";
   }
   if ((flags & flash_protect::Flags::kRollbackNow) !=
       flash_protect::Flags::kNone) {
-    output += "ROLLBACK_NOW  ";
+    output += " rollback_now";
   }
-
+  if ((flags & flash_protect::Flags::kAllNow) != flash_protect::Flags::kNone) {
+    output += " all_now";
+  }
+  if ((flags & flash_protect::Flags::kErrorStuck) !=
+      flash_protect::Flags::kNone) {
+    output += " STUCK";
+  }
+  if ((flags & flash_protect::Flags::kErrorInconsistent) !=
+      flash_protect::Flags::kNone) {
+    output += " INCONSISTENT";
+  }
+  if ((flags & flash_protect::Flags::kErrorUnknown) !=
+      flash_protect::Flags::kNone) {
+    output += " UNKNOWN_ERROR";
+  }
   return output;
 }
 

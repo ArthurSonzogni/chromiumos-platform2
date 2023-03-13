@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include <base/stl_util.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "libec/ec_command.h"
@@ -10,6 +11,8 @@
 
 namespace ec {
 namespace {
+
+using ::testing::StrEq;
 
 TEST(FlashProtectCommand, FlashProtectCommand) {
   flash_protect::Flags flags =
@@ -28,57 +31,61 @@ TEST(FlashProtectCommand, ParseFlags) {
   // test each flag string individually
   flash_protect::Flags flags = flash_protect::Flags::kNone;
   result = FlashProtectCommand::ParseFlags(flags);
-  EXPECT_EQ(result, "");
+  EXPECT_THAT(result, StrEq(""));
 
   flags = flash_protect::Flags::kRoAtBoot;
   result = FlashProtectCommand::ParseFlags(flags);
-  EXPECT_EQ(result, "RO_AT_BOOT  ");
+  EXPECT_THAT(result, StrEq(" ro_at_boot"));
 
   flags = flash_protect::Flags::kRoNow;
   result = FlashProtectCommand::ParseFlags(flags);
-  EXPECT_EQ(result, "RO_NOW  ");
+  EXPECT_THAT(result, StrEq(" ro_now"));
 
   flags = flash_protect::Flags::kAllNow;
   result = FlashProtectCommand::ParseFlags(flags);
-  EXPECT_EQ(result, "ALL_NOW  ");
+  EXPECT_THAT(result, StrEq(" all_now"));
 
   flags = flash_protect::Flags::kGpioAsserted;
   result = FlashProtectCommand::ParseFlags(flags);
-  EXPECT_EQ(result, "GPIO_ASSERTED  ");
+  EXPECT_THAT(result, StrEq(" wp_gpio_asserted"));
 
   flags = flash_protect::Flags::kErrorStuck;
   result = FlashProtectCommand::ParseFlags(flags);
-  EXPECT_EQ(result, "ERROR_STUCK  ");
+  EXPECT_THAT(result, StrEq(" STUCK"));
 
   flags = flash_protect::Flags::kErrorInconsistent;
   result = FlashProtectCommand::ParseFlags(flags);
-  EXPECT_EQ(result, "ERROR_INCONSISTENT  ");
+  EXPECT_THAT(result, StrEq(" INCONSISTENT"));
 
   flags = flash_protect::Flags::kAllAtBoot;
   result = FlashProtectCommand::ParseFlags(flags);
-  EXPECT_EQ(result, "ALL_AT_BOOT  ");
+  EXPECT_THAT(result, StrEq(" all_at_boot"));
 
   flags = flash_protect::Flags::kRwAtBoot;
   result = FlashProtectCommand::ParseFlags(flags);
-  EXPECT_EQ(result, "RW_AT_BOOT  ");
+  EXPECT_THAT(result, StrEq(" rw_at_boot"));
 
   flags = flash_protect::Flags::kRwNow;
   result = FlashProtectCommand::ParseFlags(flags);
-  EXPECT_EQ(result, "RW_NOW  ");
+  EXPECT_THAT(result, StrEq(" rw_now"));
 
   flags = flash_protect::Flags::kRollbackAtBoot;
   result = FlashProtectCommand::ParseFlags(flags);
-  EXPECT_EQ(result, "ROLLBACK_AT_BOOT  ");
+  EXPECT_THAT(result, StrEq(" rollback_at_boot"));
 
   flags = flash_protect::Flags::kRollbackNow;
   result = FlashProtectCommand::ParseFlags(flags);
-  EXPECT_EQ(result, "ROLLBACK_NOW  ");
+  EXPECT_THAT(result, StrEq(" rollback_now"));
+
+  flags = flash_protect::Flags::kErrorUnknown;
+  result = FlashProtectCommand::ParseFlags(flags);
+  EXPECT_THAT(result, StrEq(" UNKNOWN_ERROR"));
 
   // test a combination of flags
   flags = flash_protect::Flags::kRoAtBoot | flash_protect::Flags::kRoNow |
           flash_protect::Flags::kGpioAsserted;
   result = FlashProtectCommand::ParseFlags(flags);
-  EXPECT_EQ(result, "RO_AT_BOOT  RO_NOW  GPIO_ASSERTED  ");
+  EXPECT_THAT(result, StrEq(" wp_gpio_asserted ro_at_boot ro_now"));
 }
 
 TEST(FlashProtectCommand, Enum) {

@@ -27,7 +27,8 @@ enum class BRILLO_EXPORT Flags : uint32_t {
   kRwAtBoot = EC_FLASH_PROTECT_RW_AT_BOOT,
   kRwNow = EC_FLASH_PROTECT_RW_NOW,
   kRollbackAtBoot = EC_FLASH_PROTECT_ROLLBACK_AT_BOOT,
-  kRollbackNow = EC_FLASH_PROTECT_ROLLBACK_NOW
+  kRollbackNow = EC_FLASH_PROTECT_ROLLBACK_NOW,
+  kErrorUnknown = EC_FLASH_PROTECT_ERROR_UNKNOWN
 };
 DECLARE_FLAGS_ENUM(Flags);
 BRILLO_EXPORT std::ostream& operator<<(std::ostream& os,
