@@ -99,6 +99,9 @@ class MigrationStartAndEndStatusReporter {
         error == base::File::FILE_ERROR_IO) {
       end_status_ = resumed_ ? kResumedMigrationFailedFileErrorOpenEIO
                              : kNewMigrationFailedFileErrorOpenEIO;
+    } else if (error == base::File::FILE_ERROR_NO_SPACE) {
+      end_status_ =
+          resumed_ ? kResumedMigrationFailedENOSPC : kNewMigrationFailedENOSPC;
     } else {
       end_status_ = resumed_ ? kResumedMigrationFailedFileError
                              : kNewMigrationFailedFileError;
@@ -283,6 +286,7 @@ MigrationHelper::MigrationHelper(Platform* platform,
       migrated_byte_count_(0),
       failed_operation_type_(kMigrationFailedAtOtherOperation),
       failed_error_type_(base::File::FILE_OK),
+      no_space_failure_free_space_bytes_(0),
       num_job_threads_(0),
       max_job_list_size_(kDefaultMaxJobListSize),
       worker_pool_(new WorkerPool(this)) {}
@@ -384,6 +388,11 @@ bool MigrationHelper::Migrate(const ProgressCallback& progress_callback) {
     LOG(ERROR) << "Migration Failed, aborting.";
     status_reporter.SetFileErrorFailure(failed_operation_type_,
                                         failed_error_type_);
+    if (failed_error_type_ == base::File::FILE_ERROR_NO_SPACE) {
+      delegate_->ReportFailedNoSpace(
+          initial_free_space_bytes_ / (1024 * 1024),
+          no_space_failure_free_space_bytes_ / (1024 * 1024));
+    }
     return false;
   }
   if (!resumed)
@@ -884,16 +893,15 @@ void MigrationHelper::RecordFileError(MigrationFailedOperationType operation,
   // Report UMA stats here for each single error.
   delegate_->ReportFailure(error, operation, child);
 
-  if (error == base::File::FILE_ERROR_NO_SPACE) {
-    delegate_->ReportFailedNoSpace(
-        initial_free_space_bytes_ / (1024 * 1024),
-        platform_->AmountOfFreeDiskSpace(to_base_path_) / (1024 * 1024));
-  }
-
   {  // Record the data for the final end-status report.
     base::AutoLock lock(failure_info_lock_);
     failed_operation_type_ = operation;
     failed_error_type_ = error;
+
+    if (error == base::File::FILE_ERROR_NO_SPACE) {
+      no_space_failure_free_space_bytes_ =
+          platform_->AmountOfFreeDiskSpace(to_base_path_);
+    }
   }
 }
 

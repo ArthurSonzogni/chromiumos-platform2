@@ -197,7 +197,9 @@ class BRILLO_EXPORT MigrationHelper {
 
   MigrationFailedOperationType failed_operation_type_;
   base::File::Error failed_error_type_;
-  // Lock for |failed_operation_type_| and |failed_error_type_|.
+  int64_t no_space_failure_free_space_bytes_;
+  // Lock for |failed_operation_type_|, |failed_error_type_| and
+  // |no_space_failure_free_space_bytes_|.
   base::Lock failure_info_lock_;
 
   size_t num_job_threads_;

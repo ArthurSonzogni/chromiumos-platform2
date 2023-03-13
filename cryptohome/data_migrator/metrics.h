@@ -35,6 +35,8 @@ enum MigrationEndStatus {
   kResumedMigrationFailedFileErrorOpenEIO = 10,
   kNewMigrationCancelled = 11,
   kResumedMigrationCancelled = 12,
+  kNewMigrationFailedENOSPC = 13,
+  kResumedMigrationFailedENOSPC = 14,
   kMigrationEndStatusNumBuckets
 };
 
