@@ -7,7 +7,6 @@
 #include <glib-object.h>
 
 #include <gtest/gtest.h>
-#include <gtest/gtest-spi.h>
 
 #include <base/files/file_util.h>
 

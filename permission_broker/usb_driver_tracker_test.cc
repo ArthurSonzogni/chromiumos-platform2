@@ -8,7 +8,6 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <gtest/gtest-death-test.h>
 
 #include <base/containers/contains.h>
 #include <base/files/file_descriptor_watcher_posix.h>

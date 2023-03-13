@@ -5,7 +5,6 @@
 #include "p2p/common/server_message.h"
 
 #include <gtest/gtest.h>
-#include <gtest/gtest-spi.h>
 
 namespace p2p {
 

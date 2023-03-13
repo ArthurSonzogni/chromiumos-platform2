@@ -9,7 +9,6 @@
 #include <optional>
 #include <vector>
 
-#include <gtest/gtest-death-test.h>
 #include <gtest/gtest.h>
 
 namespace cros {

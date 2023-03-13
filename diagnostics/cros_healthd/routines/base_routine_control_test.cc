@@ -15,7 +15,6 @@
 #include <base/values.h>
 #include <gmock/gmock-cardinalities.h>
 #include <gmock/gmock.h>
-#include <gtest/gtest-death-test.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/callback_helpers.h>
 #include <mojo/public/cpp/bindings/receiver.h>
