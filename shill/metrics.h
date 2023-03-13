@@ -17,7 +17,6 @@
 #include <metrics/timer.h>
 #include <patchpanel/proto_bindings/patchpanel_service.pb.h>
 
-#include "shill/cellular/cellular_bearer.h"
 #include "shill/default_service_observer.h"
 #include "shill/error.h"
 #include "shill/net/ieee80211.h"
@@ -1491,12 +1490,19 @@ class Metrics : public DefaultServiceObserver {
   void NotifyCellularConnectionResult(Error::Type error);
 
   struct DetailedCellularConnectionResult {
+    // The values are used in metrics and thus should not be changed.
+    enum class IPConfigMethod {
+      kUnknown = 0,
+      kPPP = 1,
+      kStatic = 2,
+      kDHCP = 3
+    };
     Error::Type error;
     std::string detailed_error;
     std::string uuid;
     shill::Stringmap apn_info;
-    CellularBearer::IPConfigMethod ipv4_config_method;
-    CellularBearer::IPConfigMethod ipv6_config_method;
+    IPConfigMethod ipv4_config_method;
+    IPConfigMethod ipv6_config_method;
     std::string home_mccmnc;
     std::string serving_mccmnc;
     std::string roaming_state;

@@ -34,8 +34,7 @@ class CellularBearer {
   static const char kMMAllowRoamingProperty[];
   static const char kMMIpTypeProperty[];
 
-  // The values are used in metrics and thus should not be changed.
-  enum class IPConfigMethod { kUnknown = 0, kPPP = 1, kStatic = 2, kDHCP = 3 };
+  enum class IPConfigMethod { kUnknown, kPPP, kStatic, kDHCP };
 
   // Constructs a cellular bearer for observing property changes of a
   // corresponding bearer object, at the DBus path |dbus_path| of DBus service

@@ -99,6 +99,22 @@ bool IsEnabledModemState(Cellular::ModemState state) {
   return false;
 }
 
+Metrics::DetailedCellularConnectionResult::IPConfigMethod
+BearerIPConfigMethodToMetrics(CellularBearer::IPConfigMethod method) {
+  using BearerType = CellularBearer::IPConfigMethod;
+  using MetricsType = Metrics::DetailedCellularConnectionResult::IPConfigMethod;
+  switch (method) {
+    case BearerType::kUnknown:
+      return MetricsType::kUnknown;
+    case BearerType::kPPP:
+      return MetricsType::kPPP;
+    case BearerType::kStatic:
+      return MetricsType::kStatic;
+    case BearerType::kDHCP:
+      return MetricsType::kDHCP;
+  }
+}
+
 }  // namespace
 
 // static
@@ -1128,8 +1144,8 @@ void Cellular::NotifyDetailedCellularConnectionResult(
   result.detailed_error = cellular_error;
   result.uuid = mobile_operator_info_->uuid();
   result.apn_info = apn_info;
-  result.ipv4_config_method = ipv4;
-  result.ipv6_config_method = ipv6;
+  result.ipv4_config_method = BearerIPConfigMethodToMetrics(ipv4);
+  result.ipv6_config_method = BearerIPConfigMethodToMetrics(ipv6);
   result.home_mccmnc = mobile_operator_info_->mccmnc();
   result.serving_mccmnc = mobile_operator_info_->serving_mccmnc();
   result.roaming_state = roaming_state;
