@@ -103,6 +103,7 @@ pid_t ProcessManager::StartProcess(
     const base::FilePath& program,
     const std::vector<std::string>& arguments,
     const std::map<std::string, std::string>& environment,
+    const std::vector<std::pair<int, int>>& fds_to_bind,
     bool terminate_with_parent,
     ExitCallback exit_callback) {
   SLOG(2) << __func__ << "(" << program.value() << ")";
@@ -112,6 +113,9 @@ pid_t ProcessManager::StartProcess(
   process->AddArg(program.value());
   for (const auto& option : arguments) {
     process->AddArg(option);
+  }
+  for (const auto& pair : fds_to_bind) {
+    process->BindFd(pair.first, pair.second);
   }
   // Important to close unused fds. See crbug.com/531655 and crbug.com/911234.
   process->SetCloseUnusedFileDescriptors(true);

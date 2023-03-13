@@ -9,6 +9,7 @@
 
 #include <map>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <base/location.h>
@@ -32,6 +33,7 @@ class MockProcessManager : public ProcessManager {
                const base::FilePath&,
                const std::vector<std::string>&,
                (const std::map<std::string, std::string>&),
+               (const std::vector<std::pair<int, int>>&),
                bool,
                ExitCallback),
               (override));

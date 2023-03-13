@@ -71,7 +71,7 @@ class PPPDaemonTest : public Test, public RpcTaskDelegate {
 };
 
 TEST_F(PPPDaemonTest, PluginUsed) {
-  EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _))
+  EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _, _))
       .WillOnce(WithArg<2>(Invoke(this, &PPPDaemonTest::CaptureArgv)));
 
   Error error;
@@ -86,7 +86,7 @@ TEST_F(PPPDaemonTest, PluginUsed) {
 }
 
 TEST_F(PPPDaemonTest, OptionsConverted) {
-  EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _))
+  EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _, _))
       .WillOnce(WithArg<2>(Invoke(this, &PPPDaemonTest::CaptureArgv)));
 
   PPPDaemon::Options options;
@@ -112,7 +112,7 @@ TEST_F(PPPDaemonTest, OptionsConverted) {
 }
 
 TEST_F(PPPDaemonTest, ErrorPropagated) {
-  EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _))
+  EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _, _))
       .WillOnce(Return(-1));
 
   PPPDaemon::Options options;

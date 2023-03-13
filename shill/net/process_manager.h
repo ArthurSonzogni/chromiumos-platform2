@@ -79,18 +79,24 @@ class SHILL_EXPORT ProcessManager {
   // Call on shutdown to release async_signal_handler_.
   virtual void Stop();
 
-  // Create and start a process for |program| with |arguments|. |environment|
-  // variables will be setup in the child process before exec the |program|.
+  // Create and start a process for |program| with |arguments|.
+  // |environment| variables will be setup in the child process before executing
+  // the |program|.
+  // |fds_to_bind| is used to bind the file descriptors between the parent
+  // process and child process. The pair of int is the file descriptors at the
+  // parent process and child process.
   // |terminate_with_parent| is used to indicate if child process should self
-  // terminate if the parent process exits.  |exit_callback| will be invoked
-  // when child process exits (not terminated by us).  Return kInvalidPID if
-  // failed to start the process, otherwise, return the pid of the child
-  // process.
+  // terminate if the parent process exits.
+  // |exit_callback| will be invoked when child process exits (not terminated by
+  // us).
+  // Return kInvalidPID if failed to start the process, otherwise, return the
+  // pid of the child process.
   virtual pid_t StartProcess(
       const base::Location& spawn_source,
       const base::FilePath& program,
       const std::vector<std::string>& arguments,
       const std::map<std::string, std::string>& environment,
+      const std::vector<std::pair<int, int>>& fds_to_bind,
       bool terminate_with_parent,
       ExitCallback exit_callback);
 

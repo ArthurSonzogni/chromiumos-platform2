@@ -142,7 +142,7 @@ TEST_F(ExternalTaskTest, Start) {
   const int kPID = 234678;
   EXPECT_CALL(process_manager_,
               StartProcess(_, base::FilePath(kCommand), kCommandOptions,
-                           expected_env, false, _))
+                           expected_env, _, false, _))
       .WillOnce(Return(-1))
       .WillOnce(Return(kPID));
   Error error;

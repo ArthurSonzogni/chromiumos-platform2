@@ -286,7 +286,7 @@ class CellularTest : public testing::Test {
   }
 
   void StartPPP(int pid) {
-    EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _))
+    EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _, _))
         .WillOnce(Return(pid));
     EXPECT_CALL(*network_, Start(_)).Times(0);
     device_->StartPPP("fake_serial_device");
@@ -1763,7 +1763,7 @@ TEST_F(CellularTest, EstablishLinkPPP) {
   device_->set_state_for_testing(Cellular::State::kConnected);
 
   const int kPID = 123;
-  EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _))
+  EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _, _))
       .WillOnce(Return(kPID));
   EXPECT_CALL(*network_, Start(_)).Times(0);
 

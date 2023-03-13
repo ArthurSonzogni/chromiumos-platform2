@@ -52,7 +52,8 @@ bool ExternalTask::Start(const base::FilePath& program,
   env.insert(environment.begin(), environment.end());
 
   pid_t pid = process_manager_->StartProcess(
-      FROM_HERE, program, arguments, env, terminate_with_parent,
+      FROM_HERE, program, arguments, env, /*fds_to_bind=*/{},
+      terminate_with_parent,
       base::BindOnce(&ExternalTask::OnTaskDied, base::Unretained(this)));
 
   if (pid < 0) {
