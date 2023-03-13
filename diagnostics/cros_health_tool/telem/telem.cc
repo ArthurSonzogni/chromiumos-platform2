@@ -951,8 +951,6 @@ void DisplayCpuInfo(const mojom::CpuResultPtr& result) {
 
   const auto& info = result->get_cpu_info();
 
-  LOG(INFO) << "Fetcher value: " << info->virtualization->has_kvm_device;
-
   base::Value::Dict output;
   base::Value::List physical_cpus;
   for (const auto& physical_cpu : info->physical_cpus) {
