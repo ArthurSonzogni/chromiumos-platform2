@@ -32,6 +32,7 @@ message FeatureOverride {
 }
 
 // Information about the last known "safe" seed.
+// Keep in sync with featured::SeedsEqual when adding new fields.
 message SeedDetails {
   // Last known "safe" seed represented as the base64-encoded gzip-compressed
   // serialized form of the variations seed protobuf.

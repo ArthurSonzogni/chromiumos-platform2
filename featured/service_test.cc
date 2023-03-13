@@ -16,6 +16,7 @@
 #include <dbus/mock_object_proxy.h>
 #include <gtest/gtest.h>
 
+#include "featured/mock_tmp_storage_impl.h"
 #include "featured/service.h"
 #include "featured/store_impl.h"
 #include "featured/store_impl_mock.h"
@@ -87,10 +88,12 @@ class DbusFeaturedServiceTest : public testing::Test {
         mock_exported_object_(base::MakeRefCounted<dbus::MockExportedObject>(
             mock_bus_.get(), path_)) {
     auto mock_store_impl = std::make_unique<MockStoreImpl>();
+    auto mock_tmp_storage_impl = std::make_unique<MockTmpStorageImpl>();
     // Necessary for `EXPECT_CALL` to succeed.
     mock_store_impl_ = mock_store_impl.get();
-    service_ =
-        std::make_shared<DbusFeaturedService>(std::move(mock_store_impl));
+    mock_tmp_storage_impl_ = mock_tmp_storage_impl.get();
+    service_ = std::make_shared<DbusFeaturedService>(
+        std::move(mock_store_impl), std::move(mock_tmp_storage_impl));
 
     ON_CALL(*mock_bus_, GetExportedObject(_))
         .WillByDefault(Return(mock_exported_object_.get()));
@@ -117,6 +120,7 @@ class DbusFeaturedServiceTest : public testing::Test {
   scoped_refptr<dbus::MockObjectProxy> mock_proxy_;
   scoped_refptr<dbus::MockExportedObject> mock_exported_object_;
   MockStoreImpl* mock_store_impl_;
+  MockTmpStorageImpl* mock_tmp_storage_impl_;
   std::shared_ptr<DbusFeaturedService> service_;
 };
 
@@ -138,16 +142,52 @@ TEST_F(DbusFeaturedServiceTest, IncrementBootAttemptsOnStartup_Failure) {
   EXPECT_FALSE(service_->Start(mock_bus_.get(), service_));
 }
 
-// Checks that an empty response is returned on success.
-TEST_F(DbusFeaturedServiceTest, HandleSeedFetched_Success) {
+// Checks that an empty response is returned on success, and that the store's
+// SetLastGoodSeed method is called when the used seed matches safe seed.
+TEST_F(DbusFeaturedServiceTest, HandleSeedFetched_Success_MatchedSeed) {
   constexpr char kExpectedMessage[] = R"--(message_type: MESSAGE_METHOD_RETURN
 reply_serial: 123
 
 )--";
 
+  SeedDetails used;
+  used.set_compressed_data("fake");
+  EXPECT_CALL(*mock_tmp_storage_impl_, GetUsedSeedDetails())
+      .WillOnce(Return(used));
+  EXPECT_CALL(*mock_store_impl_, SetLastGoodSeed(_)).WillOnce(Return(true));
+
   dbus::MethodCall method_call("com.example.Interface", "SomeMethod");
   dbus::MessageWriter writer(&method_call);
+  // Should match |used|.
   SeedDetails seed;
+  seed.set_compressed_data("fake");
+  writer.AppendProtoAsArrayOfBytes(seed);
+  // Not setting the serial causes a crash.
+  method_call.SetSerial(123);
+
+  HandleSeedFetched(&method_call,
+                    base::BindOnce(&ResponseSenderCallback, kExpectedMessage));
+}
+
+// Checks that an empty response is returned on success, and that the store's
+// SetLastGoodSeed method isn't called when used seed doesn't match safe seed.
+TEST_F(DbusFeaturedServiceTest, HandleSeedFetched_Success_MismatchedSeed) {
+  constexpr char kExpectedMessage[] = R"--(message_type: MESSAGE_METHOD_RETURN
+reply_serial: 123
+
+)--";
+
+  SeedDetails used;
+  used.set_compressed_data("fake");
+  EXPECT_CALL(*mock_tmp_storage_impl_, GetUsedSeedDetails())
+      .WillOnce(Return(used));
+  EXPECT_CALL(*mock_store_impl_, SetLastGoodSeed(_)).Times(0);
+
+  dbus::MethodCall method_call("com.example.Interface", "SomeMethod");
+  dbus::MessageWriter writer(&method_call);
+  // Should be different than |used|.
+  SeedDetails seed;
+  seed.set_compressed_data("different");
   writer.AppendProtoAsArrayOfBytes(seed);
   // Not setting the serial causes a crash.
   method_call.SetSerial(123);

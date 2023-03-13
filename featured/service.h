@@ -31,6 +31,7 @@
 #include <vector>
 
 #include "featured/store_interface.h"
+#include "featured/tmp_storage_interface.h"
 
 namespace featured {
 class FeatureCommand {
@@ -156,9 +157,11 @@ class JsonFeatureParser : public FeatureParserBase {
 
 class DbusFeaturedService {
  public:
-  explicit DbusFeaturedService(std::unique_ptr<StoreInterface> store)
+  explicit DbusFeaturedService(std::unique_ptr<StoreInterface> store,
+                               std::unique_ptr<TmpStorageInterface> tmp_storage)
       : parser_(std::make_unique<JsonFeatureParser>()),
-        store_(std::move(store)) {}
+        store_(std::move(store)),
+        tmp_storage_(std::move(tmp_storage)) {}
   DbusFeaturedService(const DbusFeaturedService&) = delete;
   DbusFeaturedService& operator=(const DbusFeaturedService&) = delete;
 
@@ -185,6 +188,7 @@ class DbusFeaturedService {
   std::unique_ptr<FeatureParserBase> parser_;
   std::unique_ptr<feature::PlatformFeatures> library_;
   std::unique_ptr<StoreInterface> store_;
+  std::unique_ptr<TmpStorageInterface> tmp_storage_;
   std::unique_ptr<org::chromium::SessionManagerInterfaceProxyInterface>
       session_manager_ = nullptr;
   bool evaluated_platform_features_json_ = false;

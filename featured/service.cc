@@ -337,6 +337,35 @@ void OnSignalConnected(const std::string& interface,
   }
 }
 
+// Compare two SeedDetails protos for equality.
+bool SeedsEqual(const SeedDetails& a, const SeedDetails& b) {
+  if (a.compressed_data() != b.compressed_data()) {
+    return false;
+  }
+  if (a.locale() != b.locale()) {
+    return false;
+  }
+  if (a.milestone() != b.milestone()) {
+    return false;
+  }
+  if (a.permanent_consistency_country() != b.permanent_consistency_country()) {
+    return false;
+  }
+  if (a.session_consistency_country() != b.session_consistency_country()) {
+    return false;
+  }
+  if (a.signature() != b.signature()) {
+    return false;
+  }
+  if (a.date() != b.date()) {
+    return false;
+  }
+  if (a.fetch_time() != b.fetch_time()) {
+    return false;
+  }
+  return true;
+}
+
 void DbusFeaturedService::HandleSeedFetched(
     dbus::MethodCall* method_call,
     dbus::ExportedObject::ResponseSender sender) {
@@ -348,6 +377,14 @@ void DbusFeaturedService::HandleSeedFetched(
     LOG(ERROR) << "Missing seed argument to HandleSeedFetched";
     response = dbus::ErrorResponse::FromMethodCall(
         method_call, DBUS_ERROR_INVALID_ARGS, "Could not parse seed argument");
+    std::move(sender).Run(std::move(response));
+    return;
+  }
+
+  SeedDetails used_seed = tmp_storage_->GetUsedSeedDetails();
+  if (!SeedsEqual(used_seed, seed)) {
+    LOG(WARNING) << "Chrome sent an unexpected seed; ignoring";
+    response = dbus::Response::FromMethodCall(method_call);
     std::move(sender).Run(std::move(response));
     return;
   }

@@ -63,6 +63,7 @@ static_library("libfeatured") {
     ":featured-adaptors",
     ":libfeatures",
     ":libstore_impl",
+    ":libtmp_storage_impl",
   ]
 }
 
@@ -103,6 +104,11 @@ static_library("libstore_impl") {
   sources = [ "store_impl.cc" ]
   configs += [ ":target_defaults" ]
   deps = [ ":hmac" ]
+}
+
+static_library("libtmp_storage_impl") {
+  sources = [ "tmp_storage_impl.cc" ]
+  configs += [ ":target_defaults" ]
 }
 
 static_library("hmac") {

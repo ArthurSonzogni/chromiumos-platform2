@@ -20,6 +20,8 @@
 #include "featured/service.h"
 #include "featured/store_impl.h"
 #include "featured/store_interface.h"
+#include "featured/tmp_storage_impl.h"
+#include "featured/tmp_storage_interface.h"
 
 namespace {
 class FeatureDaemon : public brillo::Daemon {
@@ -49,8 +51,11 @@ int main(int argc, char** argv) {
     LOG(ERROR) << "Could not create StoreImpl instance";
     return EX_UNAVAILABLE;
   }
+  std::unique_ptr<featured::TmpStorageInterface> tmp_storage_impl =
+      std::make_unique<featured::TmpStorageImpl>();
   std::shared_ptr<featured::DbusFeaturedService> service =
-      std::make_shared<featured::DbusFeaturedService>(std::move(store));
+      std::make_shared<featured::DbusFeaturedService>(
+          std::move(store), std::move(tmp_storage_impl));
 
   CHECK(service->Start(bus.get(), service)) << "Failed to start featured!";
 
