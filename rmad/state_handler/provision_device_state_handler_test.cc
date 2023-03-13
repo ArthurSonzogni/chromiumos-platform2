@@ -974,6 +974,24 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   RunHandlerTaskRunner(handler);
 }
 
+TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_SetSsfcBypassed) {
+  auto handler = CreateStateHandler(true, true, true, true, false, true, true);
+  json_store_->SetValue(kSameOwner, false);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  // Bypass setting SSFC.
+  EXPECT_TRUE(brillo::TouchFile(GetTempDirPath().Append(kTestDirPath)));
+
+  handler->RunState();
+  task_environment_.FastForwardBy(
+      ProvisionDeviceStateHandler::kReportStatusInterval);
+  EXPECT_GE(status_history_.size(), 1);
+  EXPECT_EQ(status_history_.back().status(),
+            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+
+  RunHandlerTaskRunner(handler);
+}
+
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_VpdFlushFailedBlocking) {
   auto handler = CreateStateHandler(true, true, true, true, true, true, false);

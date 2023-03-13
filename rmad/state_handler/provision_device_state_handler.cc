@@ -426,17 +426,23 @@ void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
   UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
                kProgressGetSsfc);
 
-  if (ssfc.has_value() && !cbi_utils_->SetSsfc(ssfc.value())) {
-    if (IsHwwpDisabled()) {
-      UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
-                   kProgressFailedBlocking,
-                   ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
-    } else {
-      UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
-                   kProgressFailedBlocking,
-                   ProvisionStatus::RMAD_PROVISION_ERROR_WP_ENABLED);
+  if (ssfc.has_value()) {
+    if (base::PathExists(working_dir_path_.Append(kTestDirPath))) {
+      DLOG(INFO) << "Setting SSFC bypassed in test mode.";
+      DLOG(INFO) << "SSFC value: " << ssfc.value();
+    } else if (!cbi_utils_->SetSsfc(ssfc.value())) {
+      // Failed to set SSFC.
+      if (IsHwwpDisabled()) {
+        UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                     kProgressFailedBlocking,
+                     ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_WRITE);
+      } else {
+        UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
+                     kProgressFailedBlocking,
+                     ProvisionStatus::RMAD_PROVISION_ERROR_WP_ENABLED);
+      }
+      return;
     }
-    return;
   }
   UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
                kProgressWriteSsfc);
