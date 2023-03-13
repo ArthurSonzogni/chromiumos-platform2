@@ -16,7 +16,6 @@
 #include <base/strings/stringprintf.h>
 #include <base/test/simple_test_clock.h>
 #include <chromeos/dbus/service_constants.h>
-#include <gmock/gmock-cardinalities.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

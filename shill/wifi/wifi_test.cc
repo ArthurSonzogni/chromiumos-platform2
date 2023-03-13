@@ -4,8 +4,7 @@
 
 #include "shill/wifi/wifi.h"
 
-#include <gmock/gmock-cardinalities.h>
-#include <gmock/gmock-spec-builders.h>
+#include <gmock/gmock.h>
 #include <linux/if.h>
 #include <linux/netlink.h>  // Needs typedefs from sys/socket.h.
 #include <netinet/ether.h>

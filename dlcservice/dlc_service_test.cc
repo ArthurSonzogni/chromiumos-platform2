@@ -13,7 +13,6 @@
 #include <brillo/message_loops/message_loop_utils.h>
 #include <dbus/dlcservice/dbus-constants.h>
 #include <dlcservice/proto_bindings/dlcservice.pb.h>
-#include <gmock/gmock-matchers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <update_engine/proto_bindings/update_engine.pb.h>

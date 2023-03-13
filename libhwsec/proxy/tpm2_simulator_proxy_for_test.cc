@@ -13,7 +13,7 @@
 #include <base/logging.h>
 #include <base/time/time.h>
 #include <brillo/dbus/dbus_connection.h>
-#include <gmock/gmock-spec-builders.h>
+#include <gmock/gmock.h>
 #include <libhwsec-foundation/tpm/tpm_version.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client/tpm_manager/dbus-proxies.h>

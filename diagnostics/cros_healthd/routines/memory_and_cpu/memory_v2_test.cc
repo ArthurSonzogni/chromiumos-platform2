@@ -21,7 +21,7 @@
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
 #include <base/values.h>
-#include <gmock/gmock-function-mocker.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/callback_helpers.h>
 #include <mojo/public/cpp/bindings/receiver.h>

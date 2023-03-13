@@ -8,7 +8,7 @@
 #include <cstdint>
 #include <vector>
 
-#include <gmock/gmock-function-mocker.h>
+#include <gmock/gmock.h>
 
 #include "shill/bluetooth/bluetooth_manager_proxy_interface.h"
 

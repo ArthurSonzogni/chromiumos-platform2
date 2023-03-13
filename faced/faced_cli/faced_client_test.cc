@@ -8,7 +8,6 @@
 #include <utility>
 #include <vector>
 
-#include <gmock/gmock-nice-strict.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

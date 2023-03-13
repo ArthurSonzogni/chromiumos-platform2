@@ -5,7 +5,6 @@
 #include <memory>
 
 #include <gmock/gmock.h>
-#include <gmock/gmock-matchers.h>
 #include <gtest/gtest.h>
 
 #include "patchpanel/fake_shill_client.h"

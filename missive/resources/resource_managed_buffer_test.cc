@@ -10,7 +10,6 @@
 #include <base/memory/scoped_refptr.h>
 #include <base/task/thread_pool.h>
 #include <base/test/task_environment.h>
-#include <gmock/gmock-more-matchers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

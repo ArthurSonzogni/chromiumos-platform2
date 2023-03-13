@@ -14,7 +14,7 @@
 #include <base/test/task_environment.h>
 #include <brillo/cryptohome.h>
 #include <brillo/secure_blob.h>
-#include <gmock/gmock-matchers.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec/frontend/cryptohome/mock_frontend.h>
 #include <libhwsec/frontend/pinweaver/mock_frontend.h>

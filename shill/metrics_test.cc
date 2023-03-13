@@ -13,8 +13,7 @@
 
 #include <base/files/scoped_temp_dir.h>
 #include <chromeos/dbus/service_constants.h>
-#include <gmock/gmock-cardinalities.h>
-#include <gmock/gmock-matchers.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <metrics/metrics_library_mock.h>
 #include <metrics/structured/event_base.h>

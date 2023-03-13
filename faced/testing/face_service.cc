@@ -11,7 +11,7 @@
 #include <absl/status/statusor.h>
 #include <base/strings/strcat.h>
 #include <base/strings/string_piece.h>
-#include <gmock/gmock-nice-strict.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
 #include "faced/common/face_status.h"

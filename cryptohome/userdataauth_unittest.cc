@@ -25,7 +25,7 @@
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
 #include <dbus/mock_bus.h>
 #include <featured/fake_platform_features.h>
-#include <gmock/gmock-matchers.h>
+#include <gmock/gmock.h>
 #include <libhwsec/backend/mock_backend.h>
 #include <libhwsec/factory/mock_factory.h>
 #include <libhwsec/factory/tpm2_simulator_factory_for_test.h>

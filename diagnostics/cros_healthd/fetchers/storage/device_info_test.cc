@@ -7,7 +7,6 @@
 
 #include <base/files/file_path.h>
 
-#include <gmock/gmock-actions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

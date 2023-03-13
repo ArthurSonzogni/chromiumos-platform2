@@ -20,7 +20,6 @@
 #include <chaps/token_manager_client_mock.h>
 #include <brillo/cryptohome.h>
 #include <brillo/map_utils.h>
-#include <gmock/gmock-matchers.h>
 #include <gmock/gmock.h>
 #include <google/protobuf/stubs/port.h>
 #include <google/protobuf/stubs/strutil.h>

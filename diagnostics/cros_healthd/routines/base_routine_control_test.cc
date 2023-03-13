@@ -13,7 +13,6 @@
 #include <base/json/json_writer.h>
 #include <base/test/task_environment.h>
 #include <base/values.h>
-#include <gmock/gmock-cardinalities.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/callback_helpers.h>

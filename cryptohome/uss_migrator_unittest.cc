@@ -16,7 +16,6 @@
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <brillo/cryptohome.h>
-#include <gmock/gmock-matchers.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>

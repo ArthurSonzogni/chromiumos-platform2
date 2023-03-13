@@ -13,10 +13,6 @@
 
 #include <base/check_op.h>
 #include <base/files/file_path.h>
-#include <gmock/gmock-actions.h>
-#include <gmock/gmock-matchers.h>
-#include <gmock/gmock-nice-strict.h>
-#include <gmock/gmock-spec-builders.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

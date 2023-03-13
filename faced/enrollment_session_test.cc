@@ -16,7 +16,6 @@
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
 #include <brillo/cryptohome.h>
-#include <gmock/gmock-nice-strict.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <mojo/public/cpp/bindings/receiver.h>

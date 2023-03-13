@@ -14,7 +14,6 @@
 #include <base/test/test_future.h>
 #include <base/threading/sequenced_task_runner_handle.h>
 #include <cryptohome/proto_bindings/UserDataAuth.pb.h>
-#include <gmock/gmock-spec-builders.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <libhwsec-foundation/error/testing_helper.h>

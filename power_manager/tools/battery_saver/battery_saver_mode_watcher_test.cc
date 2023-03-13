@@ -12,8 +12,7 @@
 #include <base/test/bind.h>
 #include <base/test/repeating_test_future.h>
 #include <base/test/task_environment.h>
-#include <gmock/gmock-matchers.h>
-#include <gmock/gmock-nice-strict.h>
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <power_manager/dbus-proxy-mocks.h>
 #include <power_manager/proto_bindings/battery_saver.pb.h>

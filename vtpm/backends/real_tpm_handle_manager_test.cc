@@ -8,8 +8,6 @@
 #include <string>
 #include <utility>
 
-#include <gmock/gmock-actions.h>
-#include <gmock/gmock-more-actions.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <trunks/mock_response_serializer.h>

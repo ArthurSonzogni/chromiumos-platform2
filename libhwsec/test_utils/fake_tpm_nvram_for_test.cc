@@ -9,7 +9,6 @@
 #include <vector>
 
 #include <absl/container/flat_hash_map.h>
-#include <gmock/gmock-spec-builders.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 

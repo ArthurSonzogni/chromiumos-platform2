@@ -7,7 +7,6 @@
 #include <base/test/test_future.h>
 #include <brillo/files/file_util.h>
 #include <gmock/gmock.h>
-#include <gmock/gmock-actions.h>
 #include <gtest/gtest.h>
 #include <utility>
 
