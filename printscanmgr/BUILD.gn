@@ -7,7 +7,6 @@ import("//common-mk/pkg_config.gni")
 group("all") {
   deps = [
     ":printscanmgr",
-    "//printscanmgr/cups_uri_helper:cups_uri_helper",
     "//printscanmgr/dbus:dbus_config",
     "//printscanmgr/dbus_bindings:printscanmgr-adaptors",
     "//printscanmgr/dbus_service:dbus_service",
@@ -49,7 +48,6 @@ if (use.test) {
       "//common-mk/testrunner",
       "//printscanmgr/cups_uri_helper:cups_uri_helper_utils_test",
       "//printscanmgr/daemon:libdaemon_test",
-      "//printscanmgr/daemon/utils:libdaemon_utils_test",
     ]
   }
 }

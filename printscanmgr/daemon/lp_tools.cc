@@ -15,7 +15,7 @@
 #include <base/logging.h>
 #include <brillo/process/process.h>
 
-#include "printscanmgr/daemon/utils/helper_utils.h"
+#include "printscanmgr/cups_uri_helper/cups_uri_helper_utils.h"
 
 namespace printscanmgr {
 
@@ -24,7 +24,6 @@ namespace {
 constexpr char kLpadminCommand[] = "/usr/sbin/lpadmin";
 constexpr char kLpstatCommand[] = "/usr/bin/lpstat";
 constexpr char kTestPPDCommand[] = "/usr/bin/cupstestppd";
-constexpr char kUriHelperBasename[] = "cups_uri_helper";
 
 }  // namespace
 
@@ -107,15 +106,8 @@ int LpToolsImpl::CupsTestPpd(const std::vector<uint8_t>& ppd_content) const {
                     &ppd_content);
 }
 
-int LpToolsImpl::CupsUriHelper(const std::string& uri) const {
-  std::string helper_path;
-  if (!GetHelperPath(kUriHelperBasename, &helper_path)) {
-    DCHECK(false) << "GetHelperPath() failed to return the CUPS URI helper!";
-    return 127;  // Shell exit code for command not found.
-  }
-
-  std::vector<std::string> args = {uri};
-  return RunCommand(helper_path, args);
+bool LpToolsImpl::CupsUriHelper(const std::string& uri) const {
+  return cups_helper::UriSeemsReasonable(uri);
 }
 
 const base::FilePath& LpToolsImpl::GetCupsPpdDir() const {

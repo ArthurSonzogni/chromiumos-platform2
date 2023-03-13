@@ -27,7 +27,7 @@ source_set("libdaemon") {
   ]
   configs += [ ":libdaemon_pkg_deps" ]
   deps = [
-    "//printscanmgr/daemon/utils:libdaemon_utils",
+    "//printscanmgr/cups_uri_helper:cups_uri_helper_utils",
     "//printscanmgr/dbus_bindings:printscanmgr-adaptors",
   ]
 }

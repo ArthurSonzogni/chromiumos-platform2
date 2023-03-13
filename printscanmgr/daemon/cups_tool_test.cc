@@ -78,7 +78,7 @@ class FakeLpTools : public LpTools {
     return cupstestppd_result_;
   }
 
-  int CupsUriHelper(const std::string& uri) const override {
+  bool CupsUriHelper(const std::string& uri) const override {
     return urihelper_result_;
   }
 
@@ -104,7 +104,7 @@ class FakeLpTools : public LpTools {
 
   void SetCupsTestPPDResult(int result) { cupstestppd_result_ = result; }
 
-  void SetCupsUriHelperResult(int result) { urihelper_result_ = result; }
+  void SetCupsUriHelperResult(bool result) { urihelper_result_ = result; }
 
   void SetRunCommandResult(int result) { runcommand_result_ = result; }
 
@@ -146,7 +146,7 @@ class FakeLpTools : public LpTools {
   std::string lpstat_output_;
   base::ScopedTempDir ppd_dir_;
   int cupstestppd_result_{0};
-  int urihelper_result_{0};
+  bool urihelper_result_{true};
   int runcommand_result_{0};
   int chown_result_{0};
   int lpadmin_result_{0};
@@ -307,7 +307,7 @@ TEST(CupsToolTest, ManualMissingName) {
 
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
   lptools->SetCupsTestPPDResult(0);    // Successful validation.
-  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetCupsUriHelperResult(true);  // URI validated.
 
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
@@ -323,7 +323,7 @@ TEST(CupsToolTest, ManualUnknownError) {
 
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
   lptools->SetCupsTestPPDResult(0);    // Successful validation.
-  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(1);
 
   CupsTool cups;
@@ -340,7 +340,7 @@ TEST(CupsToolTest, ManualInvalidPpdDuringLpadmin) {
 
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
   lptools->SetCupsTestPPDResult(0);    // Successful validation.
-  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(5);
 
   CupsTool cups;
@@ -357,7 +357,7 @@ TEST(CupsToolTest, ManualNotAutoConf) {
 
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
   lptools->SetCupsTestPPDResult(0);    // Successful validation.
-  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(9);
 
   CupsTool cups;
@@ -374,7 +374,7 @@ TEST(CupsToolTest, ManualUnhandledError) {
 
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
   lptools->SetCupsTestPPDResult(0);    // Successful validation.
-  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(100);      // Error code without CUPS equivalent.
 
   CupsTool cups;
@@ -392,7 +392,7 @@ TEST(CupsToolTest, AutoMissingURI) {
 
 TEST(CupsToolTest, AutoMissingName) {
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
-  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetCupsUriHelperResult(true);  // URI validated.
 
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
@@ -403,7 +403,7 @@ TEST(CupsToolTest, AutoMissingName) {
 
 TEST(CupsToolTest, AutoUnreasonableUri) {
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
-  lptools->SetCupsUriHelperResult(-1);  // Unreasonable URI.
+  lptools->SetCupsUriHelperResult(false);  // Unreasonable URI.
 
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
@@ -414,7 +414,7 @@ TEST(CupsToolTest, AutoUnreasonableUri) {
 
 TEST(CupsToolTest, AddAutoConfiguredPrinter) {
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
-  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetCupsUriHelperResult(true);  // URI validated.
 
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
@@ -426,7 +426,7 @@ TEST(CupsToolTest, AddAutoConfiguredPrinter) {
 
 TEST(CupsToolTest, AutoUnknwonError) {
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
-  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(1);
 
   CupsTool cups;
@@ -439,7 +439,7 @@ TEST(CupsToolTest, AutoUnknwonError) {
 
 TEST(CupsToolTest, AutoFatalError) {
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
-  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(2);
 
   CupsTool cups;
@@ -452,7 +452,7 @@ TEST(CupsToolTest, AutoFatalError) {
 
 TEST(CupsToolTest, AutoIoError) {
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
-  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(3);
 
   CupsTool cups;
@@ -465,7 +465,7 @@ TEST(CupsToolTest, AutoIoError) {
 
 TEST(CupsToolTest, AutoMemoryAllocError) {
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
-  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(4);
 
   CupsTool cups;
@@ -478,7 +478,7 @@ TEST(CupsToolTest, AutoMemoryAllocError) {
 
 TEST(CupsToolTest, AutoInvalidPpd) {
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
-  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(5);
 
   CupsTool cups;
@@ -491,7 +491,7 @@ TEST(CupsToolTest, AutoInvalidPpd) {
 
 TEST(CupsToolTest, AutoServerUnreachable) {
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
-  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(6);
 
   CupsTool cups;
@@ -504,7 +504,7 @@ TEST(CupsToolTest, AutoServerUnreachable) {
 
 TEST(CupsToolTest, AutoPrinterUnreachable) {
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
-  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(7);
 
   CupsTool cups;
@@ -517,7 +517,7 @@ TEST(CupsToolTest, AutoPrinterUnreachable) {
 
 TEST(CupsToolTest, AutoPrinterWrongResponse) {
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
-  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(8);
 
   CupsTool cups;
@@ -530,7 +530,7 @@ TEST(CupsToolTest, AutoPrinterWrongResponse) {
 
 TEST(CupsToolTest, AutoPrinterNotAutoConf) {
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
-  lptools->SetCupsUriHelperResult(0);  // URI validated.
+  lptools->SetCupsUriHelperResult(true);  // URI validated.
   lptools->SetLpadminResult(9);
 
   CupsTool cups;

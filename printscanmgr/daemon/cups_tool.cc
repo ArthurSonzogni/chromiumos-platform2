@@ -25,8 +25,6 @@
 #include <brillo/files/safe_fd.h>
 #include <chromeos/dbus/printscanmgr/dbus-constants.h>
 
-#include "printscanmgr/daemon/utils/constants.h"
-
 namespace printscanmgr {
 
 namespace {
@@ -298,11 +296,7 @@ bool CupsTool::UriSeemsReasonable(const std::string& uri) {
     return false;
   }
 
-  int cups_uri_helper_exit_code = lp_tools_->CupsUriHelper(uri);
-  if (cups_uri_helper_exit_code == 0) {
-    return true;
-  }
-  return false;
+  return lp_tools_->CupsUriHelper(uri);
 }
 
 }  // namespace printscanmgr

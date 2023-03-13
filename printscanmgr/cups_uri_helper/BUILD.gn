@@ -4,12 +4,6 @@
 
 import("//common-mk/pkg_config.gni")
 
-executable("cups_uri_helper") {
-  sources = [ "cups_uri_helper.cc" ]
-  install_path = "/usr/libexec/printscanmgr/helpers"
-  deps = [ ":cups_uri_helper_utils" ]
-}
-
 pkg_config("cups_uri_helper_utils_pkg_deps") {
   pkg_deps = [ "libchrome" ]
 }
