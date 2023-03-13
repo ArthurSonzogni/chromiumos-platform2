@@ -76,7 +76,7 @@ BaseStateHandler::GetNextStateCaseReply RestockStateHandler::GetNextStateCase(
 }
 
 void RestockStateHandler::Shutdown() {
-  LOG(INFO) << "Shutting down to restock";
+  DLOG(INFO) << "Shutting down to restock";
   if (!power_manager_client_->Shutdown()) {
     LOG(ERROR) << "Failed to shut down";
   }

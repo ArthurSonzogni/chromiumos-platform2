@@ -138,11 +138,11 @@ RunCalibrationStateHandler::GetNextStateCase(const RmadState& state) {
       return NextStateCaseWrapper(RmadState::StateCase::kWpEnablePhysical);
     }
   } else if (running_instruction_ == setup_instruction_) {
-    LOG(INFO) << "Rmad: Sensor calibrations is still running.";
+    VLOG(1) << "Rmad: Sensor calibrations is still running.";
     return NextStateCaseWrapper(RMAD_ERROR_WAIT);
   } else {
-    LOG(INFO) << "Rmad: Sensor calibration needs another round.";
-    LOG(INFO) << CalibrationSetupInstruction_Name(running_instruction_);
+    VLOG(1) << "Rmad: Sensor calibration needs another round.";
+    VLOG(1) << CalibrationSetupInstruction_Name(running_instruction_);
     return NextStateCaseWrapper(RmadState::StateCase::kSetupCalibration);
   }
 }
@@ -230,7 +230,7 @@ void RunCalibrationStateHandler::CalibrateAndSendProgress(
       base::BindOnce(&RunCalibrationStateHandler::UpdateCalibrationResult,
                      base::Unretained(this)));
 
-  LOG(INFO) << "Start calibrating for " << RmadComponent_Name(component);
+  DLOG(INFO) << "Start calibrating for " << RmadComponent_Name(component);
 }
 
 void RunCalibrationStateHandler::UpdateCalibrationProgress(

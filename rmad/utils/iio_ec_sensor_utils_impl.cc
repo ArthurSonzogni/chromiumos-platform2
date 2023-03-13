@@ -195,7 +195,7 @@ void IioEcSensorUtilsImpl::OnSampleUpdated(
   // Check if we got enough samples and stop sampling.
   if (sampled_data_.at(target_channel_ids_.at(0)).size() == sample_times_) {
     mojo_service_->GetSensorDevice(id_)->StopReadingSamples();
-    LOG(INFO) << "Stopped sampling";
+    DLOG(INFO) << "Stopped sampling";
     FinishSampling();
   }
 }

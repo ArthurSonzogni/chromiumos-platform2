@@ -269,7 +269,7 @@ void UpdateRoFirmwareStateHandler::OnCopyCompleted(bool copy_success) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   FirmwareUpdateStatus firmware_update_status;
   if (copy_success) {
-    LOG(INFO) << "Found firmware updater";
+    DLOG(INFO) << "Found firmware updater";
     status_ = RMAD_UPDATE_RO_FIRMWARE_UPDATING;
     updater_task_runner_->PostTask(
         FROM_HERE, base::BindOnce(&UpdateRoFirmwareStateHandler::OnCopySuccess,
@@ -356,7 +356,7 @@ bool UpdateRoFirmwareStateHandler::RunFirmwareUpdater() {
           {"futility", "update", "-a", kFirmwareUpdaterPath, "--mode=recovery",
            "--force"},
           &output)) {
-    LOG(INFO) << "Firmware updater success";
+    DLOG(INFO) << "Firmware updater success";
     update_success = true;
   } else {
     LOG(ERROR) << "Firmware updater failed";

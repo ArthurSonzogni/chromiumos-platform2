@@ -262,7 +262,7 @@ RmadErrorCode RmadInterfaceImpl::GetInitializedStateHandler(
 }
 
 void RmadInterfaceImpl::TryTransitionNextStateFromCurrentState() {
-  LOG(INFO) << "Trying a state transition using current state";
+  DLOG(INFO) << "Trying a state transition using current state";
   TransitionNextStateInternal(TransitionNextStateRequest(), true);
 }
 
@@ -282,7 +282,7 @@ GetStateReply RmadInterfaceImpl::GetCurrentStateInternal() {
              error != RMAD_ERROR_OK) {
     reply.set_error(error);
   } else {
-    LOG(INFO) << "Get current state succeeded: " << current_state_case_;
+    DLOG(INFO) << "Get current state succeeded: " << current_state_case_;
     reply.set_error(RMAD_ERROR_OK);
     reply.set_allocated_state(new RmadState(state_handler->GetState(true)));
     reply.set_can_go_back(CanGoBack());
@@ -325,8 +325,8 @@ GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
       try_at_boot ? current_state_handler->TryGetNextStateCaseAtBoot()
                   : current_state_handler->GetNextStateCase(request.state());
   if (next_state_case_error != RMAD_ERROR_OK) {
-    LOG(INFO) << "Transitioning to next state rejected by state "
-              << current_state_case_;
+    DLOG(INFO) << "Transitioning to next state rejected by state "
+               << current_state_case_;
     CHECK(next_state_case == current_state_case_)
         << "State transition should not happen with errors.";
     // Staying at the same state. Run it again.
@@ -348,8 +348,8 @@ GetStateReply RmadInterfaceImpl::TransitionNextStateInternal(
   }
 
   // Transition to next state.
-  LOG(INFO) << "Transition to next state succeeded: from "
-            << current_state_case_ << " to " << next_state_case;
+  DLOG(INFO) << "Transition to next state succeeded: from "
+             << current_state_case_ << " to " << next_state_case;
   current_state_handler->CleanUpState();
   // Append next state to stack.
   state_history_.push_back(next_state_case);
@@ -415,7 +415,7 @@ GetStateReply RmadInterfaceImpl::TransitionPreviousStateInternal() {
   reply.set_can_abort(CanAbort());
 
   if (!CanGoBack()) {
-    LOG(INFO) << "Cannot go back to previous state";
+    DLOG(INFO) << "Cannot go back to previous state";
     // Staying at the same state. Run it again.
     current_state_handler->RunState();
     reply.set_error(RMAD_ERROR_TRANSITION_FAILED);
@@ -433,8 +433,8 @@ GetStateReply RmadInterfaceImpl::TransitionPreviousStateInternal() {
   }
 
   // Transition to previous state.
-  LOG(INFO) << "Transition to previous state succeeded: from "
-            << current_state_case_ << " to " << prev_state_case;
+  DLOG(INFO) << "Transition to previous state succeeded: from "
+             << current_state_case_ << " to " << prev_state_case;
   current_state_handler->CleanUpState();
   // Remove current state from stack.
   state_history_.pop_back();

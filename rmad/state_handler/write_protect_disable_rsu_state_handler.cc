@@ -164,7 +164,7 @@ bool WriteProtectDisableRsuStateHandler::IsFactoryModeEnabled() const {
 }
 
 void WriteProtectDisableRsuStateHandler::RequestRmaPowerwashAndRebootEc() {
-  LOG(INFO) << "Requesting RMA mode powerwash";
+  DLOG(INFO) << "Requesting RMA mode powerwash";
   daemon_callback_->GetExecuteRequestRmaPowerwashCallback().Run(
       base::BindOnce(&WriteProtectDisableRsuStateHandler::
                          RequestRmaPowerwashAndRebootEcCallback,
@@ -180,7 +180,7 @@ void WriteProtectDisableRsuStateHandler::RequestRmaPowerwashAndRebootEcCallback(
 }
 
 void WriteProtectDisableRsuStateHandler::RebootEc() {
-  LOG(INFO) << "Rebooting EC after RSU";
+  DLOG(INFO) << "Rebooting EC after RSU";
   daemon_callback_->GetExecuteRebootEcCallback().Run(
       base::BindOnce(&WriteProtectDisableRsuStateHandler::RebootEcCallback,
                      base::Unretained(this)));

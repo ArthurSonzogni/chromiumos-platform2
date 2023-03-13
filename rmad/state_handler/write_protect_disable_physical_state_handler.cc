@@ -172,7 +172,7 @@ void WriteProtectDisablePhysicalStateHandler::OnWriteProtectDisabled() {
 }
 
 void WriteProtectDisablePhysicalStateHandler::RequestRmaPowerwashAndRebootEc() {
-  LOG(INFO) << "Requesting RMA mode powerwash";
+  DLOG(INFO) << "Requesting RMA mode powerwash";
   daemon_callback_->GetExecuteRequestRmaPowerwashCallback().Run(
       base::BindOnce(&WriteProtectDisablePhysicalStateHandler::
                          RequestRmaPowerwashAndRebootEcCallback,
@@ -188,7 +188,7 @@ void WriteProtectDisablePhysicalStateHandler::
 }
 
 void WriteProtectDisablePhysicalStateHandler::RebootEc() {
-  LOG(INFO) << "Rebooting EC after physically removing WP";
+  DLOG(INFO) << "Rebooting EC after physically removing WP";
   json_store_->SetValue(kEcRebooted, true);
   json_store_->Sync();
   daemon_callback_->GetExecuteRebootEcCallback().Run(

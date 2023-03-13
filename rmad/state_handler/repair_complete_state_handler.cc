@@ -158,7 +158,7 @@ RepairCompleteStateHandler::GetNextStateCase(const RmadState& state) {
 }
 
 void RepairCompleteStateHandler::RequestRmaPowerwash() {
-  LOG(INFO) << "Requesting RMA mode powerwash";
+  DLOG(INFO) << "Requesting RMA mode powerwash";
   daemon_callback_->GetExecuteRequestRmaPowerwashCallback().Run(
       base::BindOnce(&RepairCompleteStateHandler::RequestRmaPowerwashCallback,
                      base::Unretained(this)));
@@ -173,7 +173,7 @@ void RepairCompleteStateHandler::RequestRmaPowerwashCallback(bool success) {
 }
 
 void RepairCompleteStateHandler::RequestBatteryCutoff() {
-  LOG(INFO) << "Requesting battery cutoff";
+  DLOG(INFO) << "Requesting battery cutoff";
   daemon_callback_->GetExecuteRequestBatteryCutoffCallback().Run(
       base::BindOnce(&RepairCompleteStateHandler::RequestBatteryCutoffCallback,
                      base::Unretained(this)));
@@ -190,14 +190,14 @@ void RepairCompleteStateHandler::RequestBatteryCutoffCallback(bool success) {
 }
 
 void RepairCompleteStateHandler::Reboot() {
-  LOG(INFO) << "RMA flow complete. Rebooting.";
+  DLOG(INFO) << "RMA flow complete. Rebooting.";
   if (!power_manager_client_->Restart()) {
     LOG(ERROR) << "Failed to reboot";
   }
 }
 
 void RepairCompleteStateHandler::Shutdown() {
-  LOG(INFO) << "RMA flow complete. Shutting down.";
+  DLOG(INFO) << "RMA flow complete. Shutting down.";
   if (!power_manager_client_->Shutdown()) {
     LOG(ERROR) << "Failed to shut down";
   }

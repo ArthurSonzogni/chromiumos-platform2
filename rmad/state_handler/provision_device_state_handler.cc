@@ -507,7 +507,7 @@ void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
     //                 it.
     LOG(ERROR) << "Cr50 board ID type cannot be ZZCR in RMA";
     if (base::PathExists(working_dir_path_.Append(kTestDirPath))) {
-      LOG(INFO) << "Cr50 board ID check bypassed";
+      DLOG(INFO) << "Cr50 board ID check bypassed";
     } else {
       UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
                    kProgressFailedBlocking,
@@ -548,7 +548,7 @@ bool ProvisionDeviceStateHandler::GenerateStableDeviceSecret(
 }
 
 void ProvisionDeviceStateHandler::Reboot() {
-  LOG(INFO) << "Rebooting after updating configs.";
+  DLOG(INFO) << "Rebooting after updating configs.";
   if (!power_manager_client_->Restart()) {
     LOG(ERROR) << "Failed to reboot";
   }

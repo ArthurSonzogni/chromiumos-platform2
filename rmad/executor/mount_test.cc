@@ -75,7 +75,7 @@ class MountTest : public testing::Test {
       if (!retry) {
         break;
       }
-      LOG(INFO) << "LoopMountInternal failed with EBUSY. Try again.";
+      DLOG(INFO) << "LoopMountInternal failed with EBUSY. Try again.";
     }
     FAIL() << "LoopMountInternal failed " << kMaxRetry << " tries";
   }

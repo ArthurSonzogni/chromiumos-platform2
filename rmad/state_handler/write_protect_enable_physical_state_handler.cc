@@ -49,7 +49,7 @@ RmadErrorCode WriteProtectEnablePhysicalStateHandler::InitializeState() {
 }
 
 void WriteProtectEnablePhysicalStateHandler::RunState() {
-  LOG(INFO) << "Start polling write protection";
+  DLOG(INFO) << "Start polling write protection";
   if (timer_.IsRunning()) {
     timer_.Stop();
   }

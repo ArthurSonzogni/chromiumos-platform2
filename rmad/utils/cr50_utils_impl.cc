@@ -49,7 +49,7 @@ bool Cr50UtilsImpl::GetRsuChallengeCode(std::string* challenge_code) const {
   if (cmd_utils_->GetOutput(kRsuArgv, challenge_code)) {
     base::RemoveChars(*challenge_code, base::kWhitespaceASCII, challenge_code);
     base::ReplaceFirstSubstringAfterOffset(challenge_code, 0, "Challenge:", "");
-    LOG(INFO) << "Challenge code: " << *challenge_code;
+    DLOG(INFO) << "Challenge code: " << *challenge_code;
     return true;
   }
   return false;
@@ -60,11 +60,11 @@ bool Cr50UtilsImpl::PerformRsu(const std::string& unlock_code) const {
   argv.push_back(unlock_code);
   std::string output;
   if (cmd_utils_->GetOutput(argv, &output)) {
-    LOG(INFO) << "RSU succeeded.";
+    DLOG(INFO) << "RSU succeeded.";
     return true;
   }
-  LOG(INFO) << "RSU failed.";
-  LOG(ERROR) << output;
+  DLOG(ERROR) << "RSU failed.";
+  DLOG(ERROR) << output;
   return false;
 }
 
