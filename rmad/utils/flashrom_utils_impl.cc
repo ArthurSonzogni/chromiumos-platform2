@@ -64,7 +64,7 @@ bool FlashromUtilsImpl::GetSoftwareWriteProtectionStatus(const char* programmer,
   return true;
 }
 
-bool FlashromUtilsImpl::EnableSoftwareWriteProtection() {
+bool FlashromUtilsImpl::EnableApSoftwareWriteProtection() {
   int ap_wp_start, ap_wp_len;
   if (!GetApWriteProtectionRange(&ap_wp_start, &ap_wp_len)) {
     LOG(ERROR) << "Failed to get AP write protection range";
@@ -73,7 +73,6 @@ bool FlashromUtilsImpl::EnableSoftwareWriteProtection() {
 
   std::stringstream ap_wp_range_arg;
   ap_wp_range_arg << ap_wp_start << "," << ap_wp_len;
-  // Enable AP WP.
   if (std::string output;
       !cmd_utils_->GetOutput({kFlashromCmd, "-p", "host", "--wp-enable",
                               "--wp-range", ap_wp_range_arg.str()},
@@ -82,7 +81,13 @@ bool FlashromUtilsImpl::EnableSoftwareWriteProtection() {
     LOG(ERROR) << output;
     return false;
   }
-  // Enable EC WP. EC doesn't require WP range.
+
+  return true;
+}
+
+// TODO(jeffulin): Enable ECWP with ec_utils.
+bool FlashromUtilsImpl::EnableEcSoftwareWriteProtection() {
+  // EC doesn't require WP range.
   if (std::string output; !cmd_utils_->GetOutput(
           {kFlashromCmd, "-p", "ec", "--wp-enable"}, &output)) {
     LOG(ERROR) << "Failed to enable EC SWWP";
@@ -91,6 +96,10 @@ bool FlashromUtilsImpl::EnableSoftwareWriteProtection() {
   }
 
   return true;
+}
+
+bool FlashromUtilsImpl::EnableSoftwareWriteProtection() {
+  return EnableApSoftwareWriteProtection() && EnableEcSoftwareWriteProtection();
 }
 
 bool FlashromUtilsImpl::DisableSoftwareWriteProtection() {

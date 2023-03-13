@@ -22,6 +22,8 @@ class FlashromUtilsImpl : public FlashromUtils {
   bool GetApWriteProtectionStatus(bool* enabled) override;
   bool GetEcWriteProtectionStatus(bool* enabled) override;
   bool EnableSoftwareWriteProtection() override;
+  bool EnableApSoftwareWriteProtection() override;
+  bool EnableEcSoftwareWriteProtection() override;
   bool DisableSoftwareWriteProtection() override;
 
  private:
