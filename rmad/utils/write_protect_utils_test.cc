@@ -44,6 +44,9 @@ class WriteProtectUtilsTest : public testing::Test {
 
     // Mock |EcUtils|.
     auto mock_ec_utils = std::make_unique<NiceMock<MockEcUtils>>();
+    // Use |ecwp_success| to control the return value of enabling EC SWWP.
+    ON_CALL(*mock_ec_utils, EnableSoftwareWriteProtection())
+        .WillByDefault(Return(ecwp_success));
 
     // Mock |FlashromUtils|.
     auto mock_flashrom_utils = std::make_unique<NiceMock<MockFlashromUtils>>();
@@ -53,6 +56,11 @@ class WriteProtectUtilsTest : public testing::Test {
     ON_CALL(*mock_flashrom_utils, GetEcWriteProtectionStatus(_))
         .WillByDefault(
             DoAll(SetArgPointee<0>(ecwp_enabled), Return(ecwp_success)));
+    ON_CALL(*mock_flashrom_utils, DisableSoftwareWriteProtection())
+        .WillByDefault(Return(true));
+    // Use |apwp_success| to control the return value of enabling AP SWWP.
+    ON_CALL(*mock_flashrom_utils, EnableApSoftwareWriteProtection())
+        .WillByDefault(Return(apwp_success));
 
     return std::make_unique<WriteProtectUtilsImpl>(
         std::move(mock_crossystem_utils), std::move(mock_ec_utils),
@@ -145,6 +153,38 @@ TEST_F(WriteProtectUtilsTest, GetEcwp_Fail) {
                               /*ecwp_success*/ false, /*ecwp_enabled*/ true);
   bool wp_status;
   ASSERT_FALSE(utils->GetEcWriteProtectionStatus(&wp_status));
+}
+
+TEST_F(WriteProtectUtilsTest, DisableWp_Success) {
+  auto utils =
+      CreateWriteProtectUtils(/*hwwp_success*/ true, /*hwwp_enabled*/ true,
+                              /*apwp_success*/ true, /*apwp_enabled*/ true,
+                              /*ecwp_success*/ true, /*ecwp_enabled*/ true);
+  ASSERT_TRUE(utils->DisableSoftwareWriteProtection());
+}
+
+TEST_F(WriteProtectUtilsTest, EnableWp_Success) {
+  auto utils =
+      CreateWriteProtectUtils(/*hwwp_success*/ true, /*hwwp_enabled*/ true,
+                              /*apwp_success*/ true, /*apwp_enabled*/ true,
+                              /*ecwp_success*/ true, /*ecwp_enabled*/ true);
+  ASSERT_TRUE(utils->EnableSoftwareWriteProtection());
+}
+
+TEST_F(WriteProtectUtilsTest, EnableWp_Failed_Ap) {
+  auto utils =
+      CreateWriteProtectUtils(/*hwwp_success*/ true, /*hwwp_enabled*/ true,
+                              /*apwp_success*/ false, /*apwp_enabled*/ true,
+                              /*ecwp_success*/ true, /*ecwp_enabled*/ true);
+  ASSERT_FALSE(utils->EnableSoftwareWriteProtection());
+}
+
+TEST_F(WriteProtectUtilsTest, EnableWp_Failed_Ec) {
+  auto utils =
+      CreateWriteProtectUtils(/*hwwp_success*/ true, /*hwwp_enabled*/ true,
+                              /*apwp_success*/ true, /*apwp_enabled*/ true,
+                              /*ecwp_success*/ false, /*ecwp_enabled*/ true);
+  ASSERT_FALSE(utils->EnableSoftwareWriteProtection());
 }
 
 }  // namespace rmad

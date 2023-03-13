@@ -27,6 +27,8 @@ class WriteProtectUtilsImpl : public WriteProtectUtils {
   bool GetHardwareWriteProtectionStatus(bool* enabled) const override;
   bool GetApWriteProtectionStatus(bool* enabled) const override;
   bool GetEcWriteProtectionStatus(bool* enabled) const override;
+  bool DisableSoftwareWriteProtection() override;
+  bool EnableSoftwareWriteProtection() override;
 
  private:
   std::unique_ptr<CrosSystemUtils> crossystem_utils_;

@@ -15,6 +15,10 @@ class WriteProtectUtils {
   virtual bool GetHardwareWriteProtectionStatus(bool* enabled) const = 0;
   virtual bool GetApWriteProtectionStatus(bool* enabled) const = 0;
   virtual bool GetEcWriteProtectionStatus(bool* enabled) const = 0;
+  // Disable both AP and EC write protection.
+  virtual bool DisableSoftwareWriteProtection() = 0;
+  // Enable both AP and EC write protection.
+  virtual bool EnableSoftwareWriteProtection() = 0;
 };
 
 }  // namespace rmad

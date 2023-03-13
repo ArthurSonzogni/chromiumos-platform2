@@ -56,4 +56,19 @@ bool WriteProtectUtilsImpl::GetEcWriteProtectionStatus(bool* enabled) const {
   return true;
 }
 
+bool WriteProtectUtilsImpl::DisableSoftwareWriteProtection() {
+  return flashrom_utils_->DisableSoftwareWriteProtection();
+}
+
+bool WriteProtectUtilsImpl::EnableSoftwareWriteProtection() {
+  // Enable EC write protection.
+  if (!ec_utils_->EnableSoftwareWriteProtection()) {
+    LOG(ERROR) << "Failed to enable EC SWWP";
+    return false;
+  }
+
+  // Enable AP write protection.
+  return flashrom_utils_->EnableApSoftwareWriteProtection();
+}
+
 }  // namespace rmad
