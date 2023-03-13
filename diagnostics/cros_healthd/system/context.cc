@@ -130,7 +130,7 @@ Context::Context(mojo::PlatformChannelEndpoint executor_endpoint,
       FROM_HERE,
       base::BindOnce(&Context::BootstrapBluezProxy,
                      weak_ptr_factory_.GetWeakPtr()),
-      base::Seconds(5));
+      base::Seconds(10));
 }
 
 Context::~Context() = default;
