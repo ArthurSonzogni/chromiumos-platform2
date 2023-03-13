@@ -10,6 +10,7 @@
 #include <libhwsec-foundation/error/testing_helper.h>
 #include <tpm_manager/proto_bindings/tpm_manager.pb.h>
 #include <tpm_manager-client-test/tpm_manager/dbus-proxy-mocks.h>
+#include <trunks/mock_tpm_utility.h>
 
 #include "libhwsec/backend/tpm2/backend_test_base.h"
 
@@ -195,6 +196,18 @@ TEST_F(BackendStorageTpm2Test, PrepareNotAvailable) {
 }
 
 TEST_F(BackendStorageTpm2Test, PrepareReady) {
+  constexpr unsigned char kNormalModePCRBytes[] = {
+      0x89, 0xEA, 0xF3, 0x51, 0x34, 0xB4, 0xB3, 0xC6, 0x49, 0xF4, 0x4C,
+      0x0C, 0x76, 0x5B, 0x96, 0xAE, 0xAB, 0x8B, 0xB3, 0x4E, 0xE8, 0x3C,
+      0xC7, 0xA6, 0x83, 0xC4, 0xE5, 0x3D, 0x15, 0x81, 0xC8, 0xC7};
+
+  const std::string kNormalModePCR(std::begin(kNormalModePCRBytes),
+                                   std::end(kNormalModePCRBytes));
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), ReadPCR(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kNormalModePCR),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
   const uint32_t kFakeSize = 32;
   tpm_manager::ListSpacesReply list_reply;
   list_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
@@ -404,6 +417,247 @@ TEST_F(BackendStorageTpm2Test, EnterpriseRollbackNotReady) {
 
   EXPECT_THAT(backend_->GetStorageTpm2().IsReady(Space::kEnterpriseRollback),
               NotOk());
+}
+
+TEST_F(BackendStorageTpm2Test, FWMPPreparableNormalMode) {
+  constexpr unsigned char kNormalModePCRBytes[] = {
+      0x89, 0xEA, 0xF3, 0x51, 0x34, 0xB4, 0xB3, 0xC6, 0x49, 0xF4, 0x4C,
+      0x0C, 0x76, 0x5B, 0x96, 0xAE, 0xAB, 0x8B, 0xB3, 0x4E, 0xE8, 0x3C,
+      0xC7, 0xA6, 0x83, 0xC4, 0xE5, 0x3D, 0x15, 0x81, 0xC8, 0xC7};
+
+  const std::string kNormalModePCR(std::begin(kNormalModePCRBytes),
+                                   std::end(kNormalModePCRBytes));
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), ReadPCR(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kNormalModePCR),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  tpm_manager::ListSpacesReply list_reply;
+  list_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), ListSpaces(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(list_reply), Return(true)));
+
+  tpm_manager::GetTpmNonsensitiveStatusReply status_reply;
+  status_reply.set_status(TpmManagerStatus::STATUS_SUCCESS);
+  status_reply.set_is_enabled(true);
+  status_reply.set_is_owned(true);
+  status_reply.set_is_owner_password_present(true);
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(),
+              GetTpmNonsensitiveStatus(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(status_reply), Return(true)));
+
+  auto result =
+      backend_->GetStorageTpm2().IsReady(Space::kFirmwareManagementParameters);
+  ASSERT_OK(result);
+  EXPECT_TRUE(result->preparable);
+  EXPECT_TRUE(result->destroyable);
+}
+
+TEST_F(BackendStorageTpm2Test, FWMPNotPreparableWrongMode) {
+  const std::string kUnexpectedModePCR(SHA256_DIGEST_LENGTH, 'X');
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), ReadPCR(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kUnexpectedModePCR),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  tpm_manager::ListSpacesReply list_reply;
+  list_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), ListSpaces(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(list_reply), Return(true)));
+
+  tpm_manager::GetTpmNonsensitiveStatusReply status_reply;
+  status_reply.set_status(TpmManagerStatus::STATUS_SUCCESS);
+  status_reply.set_is_enabled(true);
+  status_reply.set_is_owned(true);
+  status_reply.set_is_owner_password_present(true);
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(),
+              GetTpmNonsensitiveStatus(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(status_reply), Return(true)));
+
+  auto result =
+      backend_->GetStorageTpm2().IsReady(Space::kFirmwareManagementParameters);
+  ASSERT_OK(result);
+  EXPECT_FALSE(result->preparable);
+  EXPECT_FALSE(result->readable);
+  EXPECT_FALSE(result->writable);
+  EXPECT_FALSE(result->destroyable);
+}
+
+TEST_F(BackendStorageTpm2Test, FWMPWritableDevMode) {
+  constexpr unsigned char kDevModePCRBytes[] = {
+      0x23, 0xE1, 0x4D, 0xD9, 0xBB, 0x51, 0xA5, 0x0E, 0x16, 0x91, 0x1F,
+      0x7E, 0x11, 0xDF, 0x1E, 0x1A, 0xAF, 0x0B, 0x17, 0x13, 0x4D, 0xC7,
+      0x39, 0xC5, 0x65, 0x36, 0x07, 0xA1, 0xEC, 0x8D, 0xD3, 0x7A};
+
+  const std::string kDevModePCR(std::begin(kDevModePCRBytes),
+                                std::end(kDevModePCRBytes));
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), ReadPCR(_, _))
+      .WillOnce(
+          DoAll(SetArgPointee<1>(kDevModePCR), Return(trunks::TPM_RC_SUCCESS)));
+
+  const uint32_t kFakeSize = 32;
+  tpm_manager::ListSpacesReply list_reply;
+  list_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
+  list_reply.add_index_list(kFwmpIndex);
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), ListSpaces(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(list_reply), Return(true)));
+
+  tpm_manager::GetSpaceInfoReply info_reply;
+  info_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
+  info_reply.set_size(kFakeSize);
+  info_reply.set_is_read_locked(false);
+  info_reply.set_is_write_locked(false);
+  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_PLATFORM_CREATE);
+  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_OWNER_WRITE);
+  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_READ_AUTHORIZATION);
+  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_PLATFORM_READ);
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), GetSpaceInfo(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
+
+  tpm_manager::GetTpmNonsensitiveStatusReply status_reply;
+  status_reply.set_status(TpmManagerStatus::STATUS_SUCCESS);
+  status_reply.set_is_enabled(true);
+  status_reply.set_is_owned(true);
+  status_reply.set_is_owner_password_present(true);
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(),
+              GetTpmNonsensitiveStatus(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(status_reply), Return(true)));
+
+  auto result = backend_->GetStorageTpm2().IsReady(
+      Space::kPlatformFirmwareManagementParameters);
+  ASSERT_OK(result);
+  EXPECT_TRUE(result->readable);
+  EXPECT_TRUE(result->writable);
+}
+
+TEST_F(BackendStorageTpm2Test, FWMPNotWritableWrongMode) {
+  const std::string kUnexpectedModePCR(SHA256_DIGEST_LENGTH, 'X');
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), ReadPCR(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kUnexpectedModePCR),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  const uint32_t kFakeSize = 32;
+  tpm_manager::ListSpacesReply list_reply;
+  list_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
+  list_reply.add_index_list(kFwmpIndex);
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), ListSpaces(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(list_reply), Return(true)));
+
+  tpm_manager::GetSpaceInfoReply info_reply;
+  info_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
+  info_reply.set_size(kFakeSize);
+  info_reply.set_is_read_locked(false);
+  info_reply.set_is_write_locked(false);
+  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_PLATFORM_CREATE);
+  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_OWNER_WRITE);
+  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_READ_AUTHORIZATION);
+  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_PLATFORM_READ);
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), GetSpaceInfo(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
+
+  tpm_manager::GetTpmNonsensitiveStatusReply status_reply;
+  status_reply.set_status(TpmManagerStatus::STATUS_SUCCESS);
+  status_reply.set_is_enabled(true);
+  status_reply.set_is_owned(true);
+  status_reply.set_is_owner_password_present(true);
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(),
+              GetTpmNonsensitiveStatus(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(status_reply), Return(true)));
+
+  auto result = backend_->GetStorageTpm2().IsReady(
+      Space::kPlatformFirmwareManagementParameters);
+  ASSERT_OK(result);
+  EXPECT_TRUE(result->readable);
+  EXPECT_FALSE(result->writable);
+}
+
+TEST_F(BackendStorageTpm2Test, DestroyModifiableFWMP) {
+  constexpr unsigned char kNormalModePCRBytes[] = {
+      0x89, 0xEA, 0xF3, 0x51, 0x34, 0xB4, 0xB3, 0xC6, 0x49, 0xF4, 0x4C,
+      0x0C, 0x76, 0x5B, 0x96, 0xAE, 0xAB, 0x8B, 0xB3, 0x4E, 0xE8, 0x3C,
+      0xC7, 0xA6, 0x83, 0xC4, 0xE5, 0x3D, 0x15, 0x81, 0xC8, 0xC7};
+
+  const std::string kNormalModePCR(std::begin(kNormalModePCRBytes),
+                                   std::end(kNormalModePCRBytes));
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), ReadPCR(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kNormalModePCR),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  tpm_manager::ListSpacesReply list_reply;
+  list_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
+  list_reply.add_index_list(kFwmpIndex);
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), ListSpaces(_, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(list_reply), Return(true)));
+
+  const uint32_t kFakeSize = 32;
+  tpm_manager::GetSpaceInfoReply info_reply;
+  info_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
+  info_reply.set_size(kFakeSize);
+  info_reply.set_is_read_locked(false);
+  info_reply.set_is_write_locked(false);
+  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_PERSISTENT_WRITE_LOCK);
+  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_PLATFORM_READ);
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), GetSpaceInfo(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
+
+  tpm_manager::GetTpmNonsensitiveStatusReply status_reply;
+  status_reply.set_status(TpmManagerStatus::STATUS_SUCCESS);
+  status_reply.set_is_enabled(true);
+  status_reply.set_is_owned(true);
+  status_reply.set_is_owner_password_present(true);
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(),
+              GetTpmNonsensitiveStatus(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(status_reply), Return(true)));
+
+  tpm_manager::DestroySpaceReply destroy_reply;
+  destroy_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), DestroySpace(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(destroy_reply), Return(true)));
+
+  EXPECT_THAT(
+      backend_->GetStorageTpm2().Destroy(Space::kFirmwareManagementParameters),
+      IsOk());
+}
+
+TEST_F(BackendStorageTpm2Test, DestroyUnmodifiableFWMP) {
+  const std::string kUnexpectedModePCR(SHA256_DIGEST_LENGTH, 'X');
+
+  EXPECT_CALL(proxy_->GetMockTpmUtility(), ReadPCR(_, _))
+      .WillOnce(DoAll(SetArgPointee<1>(kUnexpectedModePCR),
+                      Return(trunks::TPM_RC_SUCCESS)));
+
+  tpm_manager::ListSpacesReply list_reply;
+  list_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
+  list_reply.add_index_list(kFwmpIndex);
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), ListSpaces(_, _, _, _))
+      .WillRepeatedly(DoAll(SetArgPointee<1>(list_reply), Return(true)));
+
+  const uint32_t kFakeSize = 32;
+  tpm_manager::GetSpaceInfoReply info_reply;
+  info_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
+  info_reply.set_size(kFakeSize);
+  info_reply.set_is_read_locked(false);
+  info_reply.set_is_write_locked(false);
+  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_PERSISTENT_WRITE_LOCK);
+  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_PLATFORM_READ);
+  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), GetSpaceInfo(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
+
+  tpm_manager::GetTpmNonsensitiveStatusReply status_reply;
+  status_reply.set_status(TpmManagerStatus::STATUS_SUCCESS);
+  status_reply.set_is_enabled(true);
+  status_reply.set_is_owned(true);
+  status_reply.set_is_owner_password_present(true);
+  EXPECT_CALL(proxy_->GetMockTpmManagerProxy(),
+              GetTpmNonsensitiveStatus(_, _, _, _))
+      .WillOnce(DoAll(SetArgPointee<1>(status_reply), Return(true)));
+
+  EXPECT_THAT(
+      backend_->GetStorageTpm2().Destroy(Space::kFirmwareManagementParameters),
+      NotOk());
 }
 
 }  // namespace hwsec

@@ -21,9 +21,11 @@
 #include "libhwsec/error/tpm_retry_action.h"
 #include "libhwsec/structures/no_default_init.h"
 
-using hwsec_foundation::status::MakeStatus;
-
 namespace hwsec {
+
+using hwsec_foundation::status::MakeStatus;
+using BootModeSetting = DeviceConfigSettings::BootModeSetting;
+using Mode = DeviceConfigSettings::BootModeSetting::Mode;
 
 namespace {
 
@@ -32,6 +34,30 @@ constexpr uint32_t kInstallAttributesIndex =
     USE_TPM_DYNAMIC ? 0x9da5b0 : 0x800004;
 constexpr uint32_t kBootlockboxIndex = USE_TPM_DYNAMIC ? 0x9da5b2 : 0x800006;
 constexpr uint32_t kEnterpriseRollbackIndex = 0x100e;
+
+// 3-byte boot mode:
+//  - byte 0: 1 if in developer mode, 0 otherwise,
+//  - byte 1: 1 if in recovery mode, 0 otherwise,
+//  - byte 2: 1 if verified firmware, 0 if developer firmware.
+// Allowed modes for FWMP update:
+//  - normal =   {0, 0, 1}
+//  - dev =      {1, 0, 1}
+//  - recovery = {0, 1, 0}
+constexpr Mode kAllowedFWMPUpdateBootModes[] = {Mode{
+                                                    .developer_mode = false,
+                                                    .recovery_mode = false,
+                                                    .verified_firmware = true,
+                                                },
+                                                Mode{
+                                                    .developer_mode = true,
+                                                    .recovery_mode = false,
+                                                    .verified_firmware = true,
+                                                },
+                                                Mode{
+                                                    .developer_mode = false,
+                                                    .recovery_mode = true,
+                                                    .verified_firmware = false,
+                                                }};
 
 using Attributes = std::bitset<tpm_manager::NvramSpaceAttribute_ARRAYSIZE>;
 
@@ -254,6 +280,11 @@ StatusOr<DetailSpaceInfo> GetDetailSpaceInfo(
   return result;
 }
 
+bool IsFWMP(Space space) {
+  return space == Space::kFirmwareManagementParameters ||
+         space == Space::kPlatformFirmwareManagementParameters;
+}
+
 }  // namespace
 
 StatusOr<StorageTpm2::ReadyState> StorageTpm2::IsReadyInternal(Space space) {
@@ -336,11 +367,28 @@ StatusOr<StorageTpm2::ReadyState> StorageTpm2::IsReadyInternal(Space space) {
 
 StatusOr<StorageTpm2::ReadyState> StorageTpm2::IsReady(Space space) {
   auto cache_it = state_cache_.find(space);
+
+  ReadyState state{
+      .preparable = false,
+      .readable = false,
+      .writable = false,
+      .destroyable = false,
+  };
+
   if (cache_it != state_cache_.end()) {
-    return cache_it->second;
+    state = cache_it->second;
+  } else {
+    ASSIGN_OR_RETURN(state, IsReadyInternal(space));
   }
 
-  ASSIGN_OR_RETURN(ReadyState state, IsReadyInternal(space));
+  if (IsFWMP(space) &&
+      (state.preparable || state.writable || state.destroyable) &&
+      !CanModifyFWMP().value_or(false)) {
+    state.preparable = false;
+    state.writable = false;
+    state.destroyable = false;
+  }
+
   state_cache_.insert_or_assign(space, state);
 
   return state;
@@ -358,7 +406,7 @@ Status StorageTpm2::Prepare(Space space, uint32_t size) {
 
   if (!ready_state.preparable) {
     return MakeStatus<TPMError>("The space is not preparable",
-                                TPMRetryAction::kNoRetry);
+                                TPMRetryAction::kReboot);
   }
 
   if (!ready_state.destroyable) {
@@ -433,7 +481,7 @@ Status StorageTpm2::Store(Space space, const brillo::Blob& blob) {
 
   if (!ready_state.writable) {
     return MakeStatus<TPMError>("The space is not writable",
-                                TPMRetryAction::kNoRetry);
+                                TPMRetryAction::kReboot);
   }
 
   ASSIGN_OR_RETURN(const SpaceInfo& space_info, GetSpaceInfo(space));
@@ -507,7 +555,7 @@ Status StorageTpm2::Destroy(Space space) {
 
   if (!ready_state.destroyable) {
     return MakeStatus<TPMError>("The space is not destroyable",
-                                TPMRetryAction::kNoRetry);
+                                TPMRetryAction::kReboot);
   }
 
   ASSIGN_OR_RETURN(const SpaceInfo& space_info, GetSpaceInfo(space));
@@ -536,6 +584,34 @@ Status StorageTpm2::Destroy(Space space) {
   RETURN_IF_ERROR(MakeStatus<TPMNvramError>(reply.result()));
 
   return OkStatus();
+}
+
+StatusOr<bool> StorageTpm2::CanModifyFWMP() {
+  using BootModeSetting = DeviceConfigSettings::BootModeSetting;
+  using Mode = DeviceConfigSettings::BootModeSetting::Mode;
+
+  ASSIGN_OR_RETURN(const ConfigTpm2::PcrMap&& current_pcr,
+                   config_.ToSettingsPcrMap(
+                       DeviceConfigSettings{.boot_mode =
+                                                BootModeSetting{
+                                                    // Current boot mode
+                                                    .mode = std::nullopt,
+                                                }}),
+                   _.WithStatus<TPMError>("Failed to read current boot mode"));
+
+  for (const Mode& allowed_mode : kAllowedFWMPUpdateBootModes) {
+    ASSIGN_OR_RETURN(
+        const ConfigTpm2::PcrMap& allowed_pcr,
+        config_.ToSettingsPcrMap(DeviceConfigSettings{
+            .boot_mode = BootModeSetting{.mode = allowed_mode}}),
+        _.WithStatus<TPMError>("Failed to read current boot mode"));
+
+    if (allowed_pcr == current_pcr) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 }  // namespace hwsec

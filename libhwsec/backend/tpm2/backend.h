@@ -101,9 +101,9 @@ class BackendTpm2 : public Backend {
 
   StateTpm2 state_;
   DAMitigationTpm2 da_mitigation_;
-  StorageTpm2 storage_;
   SessionManagementTpm2 session_management_;
   ConfigTpm2 config_;
+  StorageTpm2 storage_;
   KeyManagementTpm2 key_management_;
   SealingTpm2 sealing_;
   SignatureSealingTpm2 signature_sealing_;
