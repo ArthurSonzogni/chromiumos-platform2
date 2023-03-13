@@ -70,6 +70,9 @@ struct Disk {
   // Whether the disk access should be done with O_DIRECT by the VM.
   std::optional<bool> o_direct;
 
+  // Whether to enable multiple workers
+  std::optional<bool> multiple_workers;
+
   // Async executor crosvm should use to run the disk devices.
   std::optional<AsyncExecutor> async_executor;
 

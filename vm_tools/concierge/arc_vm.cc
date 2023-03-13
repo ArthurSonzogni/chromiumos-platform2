@@ -69,6 +69,9 @@ constexpr char kKeyToOverrideKernelPath[] = "KERNEL_PATH";
 // Custom parameter key to override the o_direct= disk parameter.
 constexpr char kKeyToOverrideODirect[] = "O_DIRECT";
 
+// Custom parameter key to override the multiple_workers= disk parameter.
+constexpr char kKeyToOverrideBlockMultipleWorkers[] = "BLOCK_MULTIPLE_WORKERS";
+
 // Custom parameter key to override the async executor for the disk devices.
 constexpr char kKeyToOverrideIoBlockAsyncExecutor[] = "BLOCK_ASYNC_EXECUTOR";
 
@@ -483,6 +486,12 @@ bool ArcVm::Start(base::FilePath kernel, VmBuilder vm_builder) {
     vm_builder.EnableODirect(true);
     /* block size for DM-verity root file system */
     vm_builder.SetBlockSize(4096);
+  }
+
+  if (custom_parameters
+          .ObtainSpecialParameter(kKeyToOverrideBlockMultipleWorkers)
+          .value_or("false") == "true") {
+    vm_builder.EnableMultipleWorkers(true);
   }
 
   const auto block_async_executor = custom_parameters.ObtainSpecialParameter(

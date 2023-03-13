@@ -108,6 +108,8 @@ class VmBuilder {
 
   // Override flags for O_DIRECT for already appended disks.
   VmBuilder& EnableODirect(bool enable);
+  // Override flags for multiple_workers for already appended disks.
+  VmBuilder& EnableMultipleWorkers(bool enable);
   // Override options for the async runtime for already appended disks.
   VmBuilder& SetBlockAsyncExecutor(AsyncExecutor executor);
   // Override block size for already appended disks.

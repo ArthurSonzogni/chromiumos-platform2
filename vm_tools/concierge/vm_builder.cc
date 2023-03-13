@@ -332,6 +332,13 @@ VmBuilder& VmBuilder::EnableODirect(bool enable) {
   return *this;
 }
 
+VmBuilder& VmBuilder::EnableMultipleWorkers(bool enable) {
+  for (auto& d : disks_) {
+    d.multiple_workers = enable;
+  }
+  return *this;
+}
+
 VmBuilder& VmBuilder::SetBlockAsyncExecutor(AsyncExecutor executor) {
   for (auto& d : disks_) {
     d.async_executor = executor;

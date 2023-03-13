@@ -112,6 +112,11 @@ base::StringPairs Disk::GetCrosvmArgs() const {
   if (o_direct) {
     o_direct_arg = BooleanParameter(",o_direct=", o_direct.value());
   }
+  std::string multiple_workers_arg;
+  if (multiple_workers) {
+    multiple_workers_arg =
+        BooleanParameter(",multiple-workers=", multiple_workers.value());
+  }
   std::string block_size_arg;
   if (block_size) {
     block_size_arg =
@@ -123,8 +128,9 @@ base::StringPairs Disk::GetCrosvmArgs() const {
         {",async_executor=", AsyncExecutorToString(async_executor.value())});
   }
 
-  std::string second = base::StrCat({path.value(), sparse_arg, o_direct_arg,
-                                     block_size_arg, async_executor_arg});
+  std::string second =
+      base::StrCat({path.value(), sparse_arg, o_direct_arg,
+                    multiple_workers_arg, block_size_arg, async_executor_arg});
   base::StringPairs result = {{std::move(first), std::move(second)}};
   return result;
 }

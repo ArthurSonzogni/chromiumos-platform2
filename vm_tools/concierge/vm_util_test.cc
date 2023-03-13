@@ -183,6 +183,20 @@ TEST(CustomParametersForDevTest, ODirect) {
   EXPECT_THAT(o_direct, "true");
 }
 
+TEST(CustomParametersForDevTest, BlockMultipleWorkers) {
+  base::StringPairs args = {{"--Key1", "Value1"}};
+  CustomParametersForDev custom(R"(BLOCK_MULTIPLE_WORKERS=true)");
+  custom.Apply(&args);
+  const std::string multiple_workers =
+      custom.ObtainSpecialParameter("BLOCK_MULTIPLE_WORKERS").value_or("false");
+
+  base::StringPairs expected{
+      {"--Key1", "Value1"},
+  };
+  EXPECT_THAT(args, testing::ContainerEq(expected));
+  EXPECT_THAT(multiple_workers, "true");
+}
+
 TEST(CustomParametersForDevTest, BlockAsyncExecutor) {
   base::StringPairs args = {{"--Key1", "Value1"}};
   CustomParametersForDev custom(R"(BLOCK_ASYNC_EXECUTOR=uring)");
@@ -195,6 +209,20 @@ TEST(CustomParametersForDevTest, BlockAsyncExecutor) {
   };
   EXPECT_THAT(args, testing::ContainerEq(expected));
   EXPECT_THAT(block_async_executor, "uring");
+}
+
+TEST(VMUtilTest, BlockMultipleWorkers) {
+  // multiple_workers option is not enabled by default
+  Disk disk{.path = base::FilePath("/path/to/image.img")};
+  EXPECT_FALSE(base::Contains(JoinStringPairs(disk.GetCrosvmArgs()),
+                              "multiple-workers=true"));
+
+  // Test that a disk config with multiple workers builds the correct arguments.
+  Disk disk_multiple_workers{.path = base::FilePath("/path/to/image.img"),
+                             .multiple_workers = true};
+  EXPECT_TRUE(
+      base::Contains(JoinStringPairs(disk_multiple_workers.GetCrosvmArgs()),
+                     "multiple-workers=true"));
 }
 
 TEST(VMUtilTest, BlockSize) {
