@@ -37,7 +37,6 @@
 #include "rmad/utils/dbus_utils.h"
 #include "rmad/utils/iio_sensor_probe_utils_impl.h"
 #include "rmad/utils/json_store.h"
-#include "rmad/utils/ssfc_utils_impl.h"
 #include "rmad/utils/vpd_utils_impl.h"
 
 namespace {
@@ -51,7 +50,6 @@ constexpr double kProgressFailedBlocking = -2.0;
 constexpr double kProgressInit = 0.0;
 constexpr double kProgressGetDestination = 0.2;
 constexpr double kProgressGetModelName = 0.3;
-constexpr double kProgressGetSsfc = 0.4;
 constexpr double kProgressWriteSsfc = 0.5;
 constexpr double kProgressUpdateStableDeviceSecret = 0.6;
 constexpr double kProgressFlushOutVpdCache = 0.7;
@@ -85,7 +83,6 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
   cros_config_utils_ = std::make_unique<CrosConfigUtilsImpl>();
   crossystem_utils_ = std::make_unique<CrosSystemUtilsImpl>();
   iio_sensor_probe_utils_ = std::make_unique<IioSensorProbeUtilsImpl>();
-  ssfc_utils_ = std::make_unique<SsfcUtilsImpl>();
   vpd_utils_ = std::make_unique<VpdUtilsImpl>();
   status_.set_status(ProvisionStatus::RMAD_PROVISION_STATUS_UNKNOWN);
   status_.set_progress(kProgressInit);
@@ -104,7 +101,6 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
     std::unique_ptr<CrosConfigUtils> cros_config_utils,
     std::unique_ptr<CrosSystemUtils> crossystem_utils,
     std::unique_ptr<IioSensorProbeUtils> iio_sensor_probe_utils,
-    std::unique_ptr<SsfcUtils> ssfc_utils,
     std::unique_ptr<VpdUtils> vpd_utils)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(working_dir_path),
@@ -116,7 +112,6 @@ ProvisionDeviceStateHandler::ProvisionDeviceStateHandler(
       cros_config_utils_(std::move(cros_config_utils)),
       crossystem_utils_(std::move(crossystem_utils)),
       iio_sensor_probe_utils_(std::move(iio_sensor_probe_utils)),
-      ssfc_utils_(std::move(ssfc_utils)),
       vpd_utils_(std::move(vpd_utils)),
       should_calibrate_(false),
       sensor_integrity_(false) {
@@ -406,25 +401,6 @@ void ProvisionDeviceStateHandler::RunProvision(std::optional<uint32_t> ssfc) {
   }
   UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
                kProgressGetModelName);
-
-  // Try legacy way of getting SSFC.
-  // TODO(chenghan): Remove this section once all models migrate to the new SSFC
-  //                 generation method using runtime_probe and cros_config.
-  if (!ssfc.has_value()) {
-    bool ssfc_required;
-    uint32_t ssfc_value;
-    if (!ssfc_utils_->GetSsfc(model_name, &ssfc_required, &ssfc_value)) {
-      UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING,
-                   kProgressFailedBlocking,
-                   ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
-      return;
-    }
-    if (ssfc_required) {
-      ssfc = std::optional<uint32_t>{ssfc_value};
-    }
-  }
-  UpdateStatus(ProvisionStatus::RMAD_PROVISION_STATUS_IN_PROGRESS,
-               kProgressGetSsfc);
 
   if (ssfc.has_value()) {
     if (base::PathExists(working_dir_path_.Append(kTestDirPath))) {

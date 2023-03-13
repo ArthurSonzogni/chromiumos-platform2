@@ -29,7 +29,6 @@
 #include "rmad/utils/mock_cros_config_utils.h"
 #include "rmad/utils/mock_crossystem_utils.h"
 #include "rmad/utils/mock_iio_sensor_probe_utils.h"
-#include "rmad/utils/mock_ssfc_utils.h"
 #include "rmad/utils/mock_vpd_utils.h"
 
 using testing::_;
@@ -74,7 +73,6 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
 
   scoped_refptr<ProvisionDeviceStateHandler> CreateStateHandler(
       bool get_model_name = true,
-      bool get_ssfc_from_runtime_probe = true,
       bool get_ssfc = true,
       bool need_update_ssfc = true,
       bool set_ssfc = true,
@@ -93,35 +91,15 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
         .WillByDefault(WithArg<0>(
             Invoke(this, &ProvisionDeviceStateHandlerTest::QueueStatus)));
 
-    // Mock |SsfcProber| and |SsfcUtils|.
+    // Mock |SsfcProber|.
     auto mock_ssfc_prober = std::make_unique<NiceMock<MockSsfcProber>>();
-    auto mock_ssfc_utils = std::make_unique<NiceMock<MockSsfcUtils>>();
-    if (get_ssfc_from_runtime_probe) {
-      ON_CALL(*mock_ssfc_prober, IsSsfcRequired())
-          .WillByDefault(Return(need_update_ssfc));
-      if (need_update_ssfc && get_ssfc) {
-        ON_CALL(*mock_ssfc_prober, ProbeSsfc(_))
-            .WillByDefault(DoAll(SetArgPointee<0>(kTestSsfc), Return(true)));
-      } else {
-        ON_CALL(*mock_ssfc_prober, ProbeSsfc(_)).WillByDefault(Return(false));
-      }
-      // Do not fall back to use the legacy way.
-      ON_CALL(*mock_ssfc_utils, GetSsfc(_, _, _))
-          .WillByDefault(DoAll(SetArgPointee<1>(false), Return(true)));
-
+    ON_CALL(*mock_ssfc_prober, IsSsfcRequired())
+        .WillByDefault(Return(need_update_ssfc));
+    if (need_update_ssfc && get_ssfc) {
+      ON_CALL(*mock_ssfc_prober, ProbeSsfc(_))
+          .WillByDefault(DoAll(SetArgPointee<0>(kTestSsfc), Return(true)));
     } else {
-      // Legacy way of getting SSFC.
-      ON_CALL(*mock_ssfc_prober, IsSsfcRequired()).WillByDefault(Return(false));
-
-      if (need_update_ssfc && get_ssfc) {
-        ON_CALL(*mock_ssfc_utils, GetSsfc(_, _, _))
-            .WillByDefault(DoAll(SetArgPointee<1>(true),
-                                 SetArgPointee<2>(kTestSsfc), Return(true)));
-      } else {
-        ON_CALL(*mock_ssfc_utils, GetSsfc(_, _, _))
-            .WillByDefault(
-                DoAll(SetArgPointee<1>(need_update_ssfc), Return(get_ssfc)));
-      }
+      ON_CALL(*mock_ssfc_prober, ProbeSsfc(_)).WillByDefault(Return(false));
     }
 
     // Mock |PowerManagerClient|.
@@ -207,8 +185,7 @@ class ProvisionDeviceStateHandlerTest : public StateHandlerTest {
         std::move(mock_cbi_utils), std::move(mock_cmd_utils),
         std::move(mock_cr50_utils), std::move(mock_cros_config_utils),
         std::move(mock_crossystem_utils),
-        std::move(mock_iio_sensor_probe_utils), std::move(mock_ssfc_utils),
-        std::move(mock_vpd_utils));
+        std::move(mock_iio_sensor_probe_utils), std::move(mock_vpd_utils));
   }
 
   void RunHandlerTaskRunner(
@@ -397,8 +374,8 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
 
   auto handler_after_reboot = CreateStateHandler(
-      true, true, true, true, true, true, true, false, true, true,
-      kValidBoardIdType, kPvtBoardIdFlags,
+      true, true, true, true, true, true, false, true, true, kValidBoardIdType,
+      kPvtBoardIdFlags,
       {RMAD_COMPONENT_LID_ACCELEROMETER, RMAD_COMPONENT_BASE_GYROSCOPE,
        RMAD_COMPONENT_LID_GYROSCOPE});
   EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
@@ -467,8 +444,8 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
 
   auto handler_after_reboot = CreateStateHandler(
-      true, true, true, true, true, true, true, false, true, true,
-      kValidBoardIdType, kPvtBoardIdFlags,
+      true, true, true, true, true, true, false, true, true, kValidBoardIdType,
+      kPvtBoardIdFlags,
       {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_BASE_GYROSCOPE,
        RMAD_COMPONENT_LID_GYROSCOPE});
   EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
@@ -537,8 +514,8 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
 
   auto handler_after_reboot = CreateStateHandler(
-      true, true, true, true, true, true, true, false, true, true,
-      kValidBoardIdType, kPvtBoardIdFlags,
+      true, true, true, true, true, true, false, true, true, kValidBoardIdType,
+      kPvtBoardIdFlags,
       {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
        RMAD_COMPONENT_LID_GYROSCOPE});
   EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
@@ -608,8 +585,8 @@ TEST_F(ProvisionDeviceStateHandlerTest,
   EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
 
   auto handler_after_reboot = CreateStateHandler(
-      true, true, true, true, true, true, true, false, true, true,
-      kValidBoardIdType, kPvtBoardIdFlags,
+      true, true, true, true, true, true, false, true, true, kValidBoardIdType,
+      kPvtBoardIdFlags,
       {RMAD_COMPONENT_BASE_ACCELEROMETER, RMAD_COMPONENT_LID_ACCELEROMETER,
        RMAD_COMPONENT_BASE_GYROSCOPE});
   EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
@@ -786,7 +763,7 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_Retry) {
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_SetStableDeviceSecretFailedBlocking) {
-  auto handler = CreateStateHandler(true, true, true, true, true, false, true);
+  auto handler = CreateStateHandler(true, true, true, true, false, true);
   json_store_->SetValue(kSameOwner, false);
   json_store_->SetValue(kWipeDevice, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
@@ -804,7 +781,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_GetModelNameFailedBlocking) {
-  auto handler = CreateStateHandler(false, true, true, true, true, true, true);
+  auto handler = CreateStateHandler(false, true, true, true, true, true);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
@@ -821,52 +798,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_SsfcNotRequiredSuccess) {
-  auto handler = CreateStateHandler(true, true, true, false, true, true, true);
-  json_store_->SetValue(kSameOwner, false);
-  json_store_->SetValue(kWipeDevice, true);
-  json_store_->SetValue(
-      kReplacedComponentNames,
-      std::vector<std::string>{
-          RmadComponent_Name(RMAD_COMPONENT_BATTERY),
-          RmadComponent_Name(RMAD_COMPONENT_BASE_ACCELEROMETER),
-          RmadComponent_Name(RMAD_COMPONENT_LID_ACCELEROMETER),
-          RmadComponent_Name(RMAD_COMPONENT_BASE_GYROSCOPE),
-          RmadComponent_Name(RMAD_COMPONENT_LID_GYROSCOPE)});
-
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
-
-  auto provision = std::make_unique<ProvisionDeviceState>();
-  provision->set_choice(ProvisionDeviceState::RMAD_PROVISION_CHOICE_CONTINUE);
-  RmadState state;
-  state.set_allocated_provision_device(provision.release());
-
-  auto [error, state_case] = handler->GetNextStateCase(state);
-  EXPECT_EQ(error, RMAD_ERROR_EXPECT_REBOOT);
-  task_environment_.FastForwardBy(ProvisionDeviceStateHandler::kRebootDelay);
-  EXPECT_EQ(reboot_called_, true);
-  EXPECT_EQ(state_case, RmadState::StateCase::kProvisionDevice);
-
-  auto handler_after_reboot = CreateStateHandler();
-  EXPECT_EQ(handler_after_reboot->InitializeState(), RMAD_ERROR_OK);
-  handler_after_reboot->RunState();
-  auto [error_try_boot, state_case_try_boot] =
-      handler_after_reboot->TryGetNextStateCaseAtBoot();
-  EXPECT_EQ(error_try_boot, RMAD_ERROR_OK);
-  EXPECT_EQ(state_case_try_boot, RmadState::StateCase::kSetupCalibration);
-
-  RunHandlerTaskRunner(handler);
-}
-
-TEST_F(ProvisionDeviceStateHandlerTest,
-       GetNextStateCase_SsfcNotRequiredSuccess_Legacy) {
-  // Legacy way of getting SSFC. Behavior should be same as above.
-  auto handler = CreateStateHandler(true, false, true, false, true, true, true);
+  auto handler = CreateStateHandler(true, true, false, true, true, true);
   json_store_->SetValue(kSameOwner, false);
   json_store_->SetValue(kWipeDevice, true);
   json_store_->SetValue(
@@ -910,23 +842,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_GetSsfcFailedBlocking) {
-  auto handler = CreateStateHandler(true, true, false, true, true, true, true);
-  json_store_->SetValue(kSameOwner, false);
-  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
-  handler->RunState();
-  task_environment_.FastForwardBy(
-      ProvisionDeviceStateHandler::kReportStatusInterval);
-  EXPECT_GE(status_history_.size(), 1);
-  EXPECT_EQ(status_history_.back().status(),
-            ProvisionStatus::RMAD_PROVISION_STATUS_FAILED_BLOCKING);
-  EXPECT_EQ(status_history_.back().error(),
-            ProvisionStatus::RMAD_PROVISION_ERROR_CANNOT_READ);
-}
-
-TEST_F(ProvisionDeviceStateHandlerTest,
-       GetNextStateCase_GetSsfcFailedBlocking_Legacy) {
-  // Legacy way of getting SSFC. Behavior should be same as above.
-  auto handler = CreateStateHandler(true, false, false, true, true, true, true);
+  auto handler = CreateStateHandler(true, false, true, true, true, true);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
@@ -941,7 +857,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_SetSsfcFailedBlockingCannotWrite) {
-  auto handler = CreateStateHandler(true, true, true, true, false, true, true);
+  auto handler = CreateStateHandler(true, true, true, false, true, true);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
@@ -958,8 +874,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_SetSsfcFailedBlockingWpEnabled) {
-  auto handler =
-      CreateStateHandler(true, true, true, true, false, true, true, true);
+  auto handler = CreateStateHandler(true, true, true, false, true, true, true);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
@@ -975,7 +890,7 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_SetSsfcBypassed) {
-  auto handler = CreateStateHandler(true, true, true, true, false, true, true);
+  auto handler = CreateStateHandler(true, true, true, false, true, true);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -994,7 +909,7 @@ TEST_F(ProvisionDeviceStateHandlerTest, GetNextStateCase_SetSsfcBypassed) {
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_VpdFlushFailedBlocking) {
-  auto handler = CreateStateHandler(true, true, true, true, true, true, false);
+  auto handler = CreateStateHandler(true, true, true, true, true, false);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
@@ -1011,8 +926,8 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_ResetGbbFlagsFailedBlocking) {
-  auto handler = CreateStateHandler(true, true, true, true, true, true, true,
-                                    false, false);
+  auto handler =
+      CreateStateHandler(true, true, true, true, true, true, false, false);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
@@ -1029,8 +944,8 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_CannotReadBoardIdBlocking) {
-  auto handler = CreateStateHandler(true, true, true, true, true, true, true,
-                                    false, true, false);
+  auto handler = CreateStateHandler(true, true, true, true, true, true, false,
+                                    true, false);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
@@ -1047,8 +962,8 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_InvalidBoardIdTypeBlocking) {
-  auto handler = CreateStateHandler(true, true, true, true, true, true, true,
-                                    false, true, true, kInvalidBoardIdType);
+  auto handler = CreateStateHandler(true, true, true, true, true, true, false,
+                                    true, true, kInvalidBoardIdType);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
@@ -1065,8 +980,8 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_InvalidBoardIdTypeBlocking_Bypass) {
-  auto handler = CreateStateHandler(true, true, true, true, true, true, true,
-                                    false, true, true, kInvalidBoardIdType);
+  auto handler = CreateStateHandler(true, true, true, true, true, true, false,
+                                    true, true, kInvalidBoardIdType);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 
@@ -1086,8 +1001,8 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_EmptyBoardIdType_NotCustomLabel_Success) {
   auto handler =
-      CreateStateHandler(true, true, true, true, true, true, true, false, true,
-                         true, kEmptyBoardIdType, kPvtBoardIdFlags);
+      CreateStateHandler(true, true, true, true, true, true, false, true, true,
+                         kEmptyBoardIdType, kPvtBoardIdFlags);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
@@ -1103,8 +1018,8 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 TEST_F(ProvisionDeviceStateHandlerTest,
        GetNextStateCase_EmptyBoardIdType_CustomLabel_Success) {
   auto handler =
-      CreateStateHandler(true, true, true, true, true, true, true, false, true,
-                         true, kEmptyBoardIdType, kCustomLabelPvtBoardIdFlags);
+      CreateStateHandler(true, true, true, true, true, true, false, true, true,
+                         kEmptyBoardIdType, kCustomLabelPvtBoardIdFlags);
   json_store_->SetValue(kSameOwner, false);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
   handler->RunState();
