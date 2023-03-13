@@ -533,6 +533,14 @@ std::optional<brillo::SecureVector> CrosFpDevice::GetPositiveMatchSecret(
   return FpReadMatchSecret(static_cast<uint16_t>(*opt_index));
 }
 
+std::optional<ec::CrosFpDeviceInterface::GetSecretReply>
+CrosFpDevice::GetPositiveMatchSecretWithPubkey(int index,
+                                               const brillo::Blob& pk_in_x,
+                                               const brillo::Blob& pk_in_y) {
+  // TODO(b/251380205): Implement new commands in CrosFpDevice.
+  return std::nullopt;
+}
+
 std::unique_ptr<VendorTemplate> CrosFpDevice::GetTemplate(int index) {
   if (index == kLastTemplate) {
     auto opt_index = GetIndexOfLastTemplate();
@@ -645,6 +653,18 @@ bool CrosFpDevice::SetContext(std::string user_hex) {
 
   biod_metrics_->SendSetContextSuccess(success);
   return success;
+}
+
+bool CrosFpDevice::SetNonceContext(const brillo::Blob& nonce,
+                                   const brillo::Blob& encrypted_user_id,
+                                   const brillo::Blob& iv) {
+  // TODO(b/251380205): Implement new commands in CrosFpDevice.
+  return false;
+}
+
+std::optional<brillo::Blob> CrosFpDevice::GetNonce() {
+  // TODO(b/251380205): Implement new commands in CrosFpDevice.
+  return std::nullopt;
 }
 
 bool CrosFpDevice::ResetContext() {

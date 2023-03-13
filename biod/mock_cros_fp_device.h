@@ -31,6 +31,13 @@ class MockCrosFpDevice : public ec::CrosFpDeviceInterface {
               (override));
   MOCK_METHOD(bool, UploadTemplate, (const VendorTemplate& tmpl), (override));
   MOCK_METHOD(bool, SetContext, (std::string user_id), (override));
+  MOCK_METHOD(bool,
+              SetNonceContext,
+              (const brillo::Blob& nonce,
+               const brillo::Blob& encrypted_user_id,
+               const brillo::Blob& iv),
+              (override));
+  MOCK_METHOD(std::optional<brillo::Blob>, GetNonce, (), (override));
   MOCK_METHOD(bool, ResetContext, (), (override));
   MOCK_METHOD(bool, InitEntropy, (bool reset), (override));
   MOCK_METHOD(bool, UpdateFpInfo, (), (override));
@@ -46,6 +53,12 @@ class MockCrosFpDevice : public ec::CrosFpDeviceInterface {
   MOCK_METHOD(std::optional<brillo::SecureVector>,
               GetPositiveMatchSecret,
               (int index),
+              (override));
+  MOCK_METHOD(std::optional<GetSecretReply>,
+              GetPositiveMatchSecretWithPubkey,
+              (int index,
+               const brillo::Blob& pk_in_x,
+               const brillo::Blob& pk_in_y),
               (override));
 };
 

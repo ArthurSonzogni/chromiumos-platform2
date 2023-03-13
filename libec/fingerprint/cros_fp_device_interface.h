@@ -51,6 +51,13 @@ class CrosFpDeviceInterface {
     uint32_t overall_ms = 0;
   };
 
+  struct GetSecretReply {
+    brillo::Blob encrypted_secret;
+    brillo::Blob iv;
+    brillo::Blob pk_out_x;
+    brillo::Blob pk_out_y;
+  };
+
   virtual bool SetFpMode(const ec::FpMode& mode) = 0;
   /**
    * @return mode on success, FpMode(FpMode::Mode::kModeInvalid) on failure
@@ -61,9 +68,19 @@ class CrosFpDeviceInterface {
   virtual bool SupportsPositiveMatchSecret() = 0;
   virtual std::optional<brillo::SecureVector> GetPositiveMatchSecret(
       int index) = 0;
+  // Get the positive match secret, but with response encrypted by a ECDH
+  // session.
+  virtual std::optional<GetSecretReply> GetPositiveMatchSecretWithPubkey(
+      int index, const brillo::Blob& pk_in_x, const brillo::Blob& pk_in_y) = 0;
   virtual std::unique_ptr<VendorTemplate> GetTemplate(int index) = 0;
   virtual bool UploadTemplate(const VendorTemplate& tmpl) = 0;
   virtual bool SetContext(std::string user_id) = 0;
+  // Set the nonce context by providing nonce and user_id of the context.
+  virtual bool SetNonceContext(const brillo::Blob& nonce,
+                               const brillo::Blob& encrypted_user_id,
+                               const brillo::Blob& iv) = 0;
+  // Get nonce from FP device to initiate the session key exchange.
+  virtual std::optional<brillo::Blob> GetNonce() = 0;
   virtual bool ResetContext() = 0;
   // Initialise the entropy in the SBP. If |reset| is true, the old entropy
   // will be deleted. If |reset| is false, we will only add entropy, and only

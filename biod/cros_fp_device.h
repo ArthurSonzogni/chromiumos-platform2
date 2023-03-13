@@ -58,9 +58,17 @@ class CrosFpDevice : public ec::CrosFpDeviceInterface {
   bool SupportsPositiveMatchSecret() override;
   std::optional<brillo::SecureVector> GetPositiveMatchSecret(
       int index) override;
+  std::optional<GetSecretReply> GetPositiveMatchSecretWithPubkey(
+      int index,
+      const brillo::Blob& pk_in_x,
+      const brillo::Blob& pk_in_y) override;
   std::unique_ptr<VendorTemplate> GetTemplate(int index) override;
   bool UploadTemplate(const VendorTemplate& tmpl) override;
   bool SetContext(std::string user_id) override;
+  bool SetNonceContext(const brillo::Blob& nonce,
+                       const brillo::Blob& encrypted_user_id,
+                       const brillo::Blob& iv) override;
+  std::optional<brillo::Blob> GetNonce() override;
   bool ResetContext() override;
   // Initialise the entropy in the SBP. If |reset| is true, the old entropy
   // will be deleted. If |reset| is false, we will only add entropy, and only
