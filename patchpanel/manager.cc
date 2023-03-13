@@ -155,12 +155,18 @@ void RecordDbusEvent(std::unique_ptr<MetricsLibraryInterface>& metrics,
 
 }  // namespace
 
-Manager::Manager(std::unique_ptr<SubprocessController> adb_proxy,
-                 std::unique_ptr<SubprocessController> mcast_proxy,
-                 std::unique_ptr<SubprocessController> nd_proxy)
-    : adb_proxy_(std::move(adb_proxy)),
-      mcast_proxy_(std::move(mcast_proxy)),
-      nd_proxy_(std::move(nd_proxy)) {
+Manager::Manager(int argc, char* argv[]) {
+  std::vector<std::string> arg_list;
+  for (int i = 0; i < argc; ++i) {
+    arg_list.push_back(argv[i]);
+  }
+  adb_proxy_ = std::make_unique<patchpanel::SubprocessController>(
+      arg_list, "--adb_proxy_fd");
+  mcast_proxy_ = std::make_unique<patchpanel::SubprocessController>(
+      arg_list, "--mcast_proxy_fd");
+  nd_proxy_ = std::make_unique<patchpanel::SubprocessController>(
+      arg_list, "--nd_proxy_fd");
+
   system_ = std::make_unique<System>();
   datapath_ = std::make_unique<Datapath>(system_.get());
 }
@@ -237,9 +243,13 @@ bool Manager::ShouldEnableFeature(
 int Manager::OnInit() {
   prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
 
+  // Start the subprocesses.
+  adb_proxy_->Start();
+  mcast_proxy_->Start();
+  nd_proxy_->Start();
+
   // Handle subprocess lifecycle.
   process_reaper_.Register(this);
-
   CHECK(process_reaper_.WatchForChild(
       FROM_HERE, adb_proxy_->pid(),
       base::BindOnce(&Manager::OnSubprocessExited, weak_factory_.GetWeakPtr(),

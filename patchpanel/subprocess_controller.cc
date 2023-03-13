@@ -24,15 +24,10 @@ namespace {
 constexpr int kMaxRestarts = 5;
 }  // namespace
 
-void SubprocessController::Start(int argc,
-                                 char* argv[],
-                                 const std::string& fd_arg) {
-  CHECK_GE(argc, 1);
-  for (int i = 0; i < argc; i++) {
-    argv_.push_back(argv[i]);
-  }
-  fd_arg_ = fd_arg;
-  Launch();
+SubprocessController::SubprocessController(const std::vector<std::string>& argv,
+                                           const std::string& fd_arg)
+    : argv_(argv), fd_arg_(fd_arg) {
+  CHECK_GE(argv.size(), 1);
 }
 
 bool SubprocessController::Restart() {
@@ -41,11 +36,11 @@ bool SubprocessController::Restart() {
     return false;
   }
   LOG(INFO) << "Restarting...";
-  Launch();
+  Start();
   return true;
 }
 
-void SubprocessController::Launch() {
+void SubprocessController::Start() {
   int control[2];
 
   if (socketpair(AF_UNIX, SOCK_SEQPACKET, 0, control) != 0) {

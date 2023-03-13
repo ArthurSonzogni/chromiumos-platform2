@@ -59,17 +59,7 @@ int main(int argc, char* argv[]) {
     return mcast_proxy.Run();
   }
 
-  auto adb_proxy = std::make_unique<patchpanel::SubprocessController>();
-  adb_proxy->Start(argc, argv, "--adb_proxy_fd");
-
-  auto mcast_proxy = std::make_unique<patchpanel::SubprocessController>();
-  mcast_proxy->Start(argc, argv, "--mcast_proxy_fd");
-
-  auto nd_proxy = std::make_unique<patchpanel::SubprocessController>();
-  nd_proxy->Start(argc, argv, "--nd_proxy_fd");
-
   LOG(INFO) << "Starting patchpanel manager";
-  patchpanel::Manager manager(std::move(adb_proxy), std::move(mcast_proxy),
-                              std::move(nd_proxy));
+  patchpanel::Manager manager(argc, argv);
   return manager.Run();
 }

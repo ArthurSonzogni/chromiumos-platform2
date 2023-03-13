@@ -25,16 +25,17 @@ namespace patchpanel {
 // This object is used by the main Manager process.
 class SubprocessController {
  public:
-  SubprocessController() = default;
+  SubprocessController(const std::vector<std::string>& argv,
+                       const std::string& fd_arg);
   SubprocessController(const SubprocessController&) = delete;
   SubprocessController& operator=(const SubprocessController&) = delete;
 
   virtual ~SubprocessController() = default;
 
-  // Re-execs patchpanel with a new argument: "|fd_arg|=N", where N is the
-  // side of |control_fd|.  This tells the subprocess to start up a different
-  // mainloop.
-  void Start(int argc, char* argv[], const std::string& fd_arg);
+  // Re-execs patchpanel with a new argument: |argv_| + "|fd_arg_|=N", where N
+  // is the side of |control_fd|. This tells the subprocess to start up a
+  // different mainloop.
+  void Start();
 
   // Attempts to restart the process with the original arguments.
   // Returns false if the maximum number of restarts has been exceeded.
@@ -55,7 +56,6 @@ class SubprocessController {
   uint8_t restarts() const { return restarts_; }
 
  private:
-  void Launch();
   void OnMessage(const SubprocessMessage& msg);
 
   base::RepeatingCallback<void(const FeedbackMessage&)> feedback_handler_;

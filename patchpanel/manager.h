@@ -44,9 +44,7 @@ struct ForwardingSet {
 // Main class that runs the mainloop and responds to LAN interface changes.
 class Manager final : public brillo::DBusDaemon {
  public:
-  Manager(std::unique_ptr<SubprocessController> adb_proxy,
-          std::unique_ptr<SubprocessController> mcast_proxy,
-          std::unique_ptr<SubprocessController> nd_proxy);
+  Manager(int argc, char* argv[]);
   Manager(const Manager&) = delete;
   Manager& operator=(const Manager&) = delete;
 
