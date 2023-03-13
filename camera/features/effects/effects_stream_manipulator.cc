@@ -148,6 +148,8 @@ EffectsConfig ConvertMojoConfig(cros::mojom::EffectsConfigPtr effects_config) {
       .replace_enabled = effects_config->replace_enabled,
       .blur_level = static_cast<cros::BlurLevel>(effects_config->blur_level),
       .graph_max_frames_in_flight = effects_config->graph_max_frames_in_flight,
+      .segmentation_model_type = static_cast<cros::SegmentationModelType>(
+          effects_config->segmentation_model),
   };
 }
 
