@@ -296,8 +296,8 @@ static void sl_internal_toplevel_configure(struct sl_window* window,
       // Convert to virtual coordinates
       int32_t guest_x = x;
       int32_t guest_y = y;
-      sl_transform_host_to_guest(window->ctx, window->paired_surface, &guest_x,
-                                 &guest_y);
+      sl_transform_host_position_to_guest_position(
+          window->ctx, window->paired_surface, &guest_x, &guest_y);
 
       window->next_config.mask |= XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y;
       window->next_config.values[i++] = guest_x;
@@ -447,8 +447,8 @@ static void sl_internal_zaura_toplevel_origin_change(
 
   int32_t guest_x = x;
   int32_t guest_y = y;
-  sl_transform_host_to_guest(window->ctx, window->paired_surface, &guest_x,
-                             &guest_y);
+  sl_transform_host_position_to_guest_position(
+      window->ctx, window->paired_surface, &guest_x, &guest_y);
   uint32_t values[] = {static_cast<uint32_t>(guest_x),
                        static_cast<uint32_t>(guest_y)};
   window->x = guest_x;
@@ -492,17 +492,13 @@ void sl_toplevel_send_window_bounds_to_host(struct sl_window* window) {
       h = window->max_height;
   }
 
-  sl_transform_guest_to_host(window->ctx, window->paired_surface, &x, &y);
+  sl_host_output* output = sl_transform_guest_position_to_host_position(
+      window->ctx, window->paired_surface, &x, &y);
   sl_transform_guest_to_host(window->ctx, window->paired_surface, &w, &h);
 
-  // TODO(cpelling): Don't just arbitrarily pick the first output;
-  // instead, choose the one containing the window in guest space.
-  struct sl_host_output* output;
-  wl_list_for_each(output, &window->ctx->host_outputs, link) {
-    zaura_toplevel_set_window_bounds(window->aura_toplevel, x, y, w, h,
-                                     output->proxy);
-    break;
-  }
+  zaura_toplevel_set_window_bounds(window->aura_toplevel, x, y, w, h,
+                                   output->proxy);
+
   if (window->configure_event_barrier) {
     wl_callback_destroy(window->configure_event_barrier);
   }

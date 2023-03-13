@@ -6,6 +6,7 @@
 #include "sommelier-transform.h"  // NOLINT(build/include_directory)
 
 #include <assert.h>
+#include <cstdint>
 #include <stdlib.h>
 #include <string.h>
 #include <wayland-client.h>
@@ -321,6 +322,78 @@ void sl_output_shift_output_x(struct sl_host_output* host, bool skip_host) {
     }
     next_output_x += output->virt_rotated_width;
   }
+}
+
+struct sl_host_output* sl_infer_output_for_host_position(struct sl_context* ctx,
+                                                         int32_t host_x,
+                                                         int32_t host_y) {
+  struct sl_host_output* output;
+  struct sl_host_output* closest = nullptr;
+  int32_t closest_distance = INT32_MAX;
+
+  // Return the output containing, or closest to, the query X/Y coordinates
+  // in host logical space. "Closest" considers Manhattan distance.
+  wl_list_for_each(output, &ctx->host_outputs, link) {
+    if (!closest) {
+      closest = output;
+    }
+    int32_t x_distance;
+    if (host_x < output->x) {
+      // Query point is left of the output
+      x_distance = output->x - host_x;
+    } else if (host_x < output->x + output->width) {
+      // Query point is inside the output (on X axis)
+      x_distance = 0;
+    } else {
+      // Query point is right of the output
+      x_distance = host_x - (output->x + output->width);
+    }
+    int32_t y_distance;
+    if (host_y < output->y) {
+      // Query point is above the output
+      y_distance = output->y - host_y;
+    } else if (host_y < output->y + output->height) {
+      // Query point is inside the output (on Y axis)
+      y_distance = 0;
+    } else {
+      // Query point is below the output
+      y_distance = host_y - (output->y + output->height);
+    }
+    if (x_distance + y_distance < closest_distance) {
+      closest = output;
+      closest_distance = x_distance + y_distance;
+      if (closest_distance == 0) {
+        break;
+      }
+    }
+  }
+  return closest;
+}
+
+struct sl_host_output* sl_infer_output_for_guest_position(
+    struct sl_context* ctx, int32_t virt_x, int32_t virt_y) {
+  struct sl_host_output* output;
+  struct sl_host_output* first = nullptr;
+  struct sl_host_output* last = nullptr;
+
+  // Return the output containing the query X coordinate (in virtual space).
+  // Since outputs are placed in a horizontal line in virtual space, we can
+  // ignore the Y coordinate entirely.
+  wl_list_for_each(output, &ctx->host_outputs, link) {
+    if (!first) {
+      first = output;
+    }
+    last = output;
+    if (virt_x >= output->virt_x && virt_x < output->virt_x + output->width) {
+      return output;
+    }
+  }
+
+  // The query X coordinate is out of bounds, so return the "nearest" output.
+  if (first && virt_x < first->virt_x) {
+    return first;
+  }
+  return last;
 }
 
 void sl_output_send_host_output_state(struct sl_host_output* host) {

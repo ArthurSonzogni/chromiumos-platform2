@@ -286,6 +286,44 @@ void sl_transform_guest_to_host_fixed(struct sl_context* ctx,
   }
 }
 
+struct sl_host_output* sl_transform_guest_position_to_host_position(
+    sl_context* ctx, sl_host_surface* surface, int32_t* x, int32_t* y) {
+  sl_host_output* output = sl_infer_output_for_guest_position(ctx, *x, *y);
+  assert(output);
+
+  // Translate from global to output-relative guest coordinates
+  (*x) -= output->virt_x;
+  (*y) -= output->virt_y;
+
+  // Convert to host logical scale
+  sl_transform_guest_to_host(ctx, surface, x, y);
+
+  // Translate to global host coordinates
+  (*x) += output->x;
+  (*y) += output->y;
+
+  return output;
+}
+
+struct sl_host_output* sl_transform_host_position_to_guest_position(
+    sl_context* ctx, sl_host_surface* surface, int32_t* x, int32_t* y) {
+  sl_host_output* output = sl_infer_output_for_host_position(ctx, *x, *y);
+  assert(output);
+
+  // Translate from global to output-local host coordinates
+  (*x) -= output->x;
+  (*y) -= output->y;
+
+  // Convert to guest virtual scale
+  sl_transform_host_to_guest(ctx, surface, x, y);
+
+  // Translate to global guest coordinates
+  (*x) += output->virt_x;
+  (*y) += output->virt_y;
+
+  return output;
+}
+
 void sl_transform_try_window_scale(struct sl_context* ctx,
                                    struct sl_host_surface* surface,
                                    int32_t width_in_pixels,

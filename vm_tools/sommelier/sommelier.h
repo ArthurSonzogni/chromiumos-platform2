@@ -231,8 +231,11 @@ struct sl_host_output {
   struct zxdg_output_v1* zxdg_output;
   struct zaura_output* aura_output;
   int internal;
+
+  // Position in host's global logical space
   int x;
   int y;
+
   int physical_width;
   int physical_height;
   // The physical width/height after being scaled by
@@ -244,12 +247,16 @@ struct sl_host_output {
   char* model;
   int transform;
   uint32_t flags;
+
+  // Physical size in pixels, as indicated by wl_output.mode.
+  // https://wayland.app/protocols/wayland#wl_output:event:mode
   int width;
   int height;
   // The width/height after being scaled by
   // sl_output_get_dimensions_original and rotated.
   int virt_rotated_width;
   int virt_rotated_height;
+
   int refresh;
   int scale_factor;
   int current_scale;
@@ -442,6 +449,17 @@ struct sl_global* sl_subcompositor_global_create(struct sl_context* ctx);
 struct sl_global* sl_shell_global_create(struct sl_context* ctx);
 
 double sl_output_aura_scale_factor_to_double(int scale_factor);
+
+// Given a position in global host logical space (see sommelier-transform.h),
+// return the output that contains it, or the closest output.
+struct sl_host_output* sl_infer_output_for_host_position(struct sl_context* ctx,
+                                                         int32_t host_x,
+                                                         int32_t host_y);
+
+// Given a position in virtual coordinate space (see sommelier-transform.h),
+// return the output that contains it, or the closest output.
+struct sl_host_output* sl_infer_output_for_guest_position(
+    struct sl_context* ctx, int32_t virt_x, int32_t virt_y);
 
 void sl_output_send_host_output_state(struct sl_host_output* host);
 

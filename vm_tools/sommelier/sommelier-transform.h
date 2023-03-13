@@ -48,7 +48,9 @@
 //
 // The logical coordinates come to us from the host. This is the
 // coordinate space that the host is operating in. This can change
-// based on the users scale settings.
+// based on the users scale settings. In ash-chrome, this is called
+// "screen space in DPs". Each output occupies a non-overlapping
+// rectangle within the logical coordinate space.
 //
 // The physical coordinate space is no longer necessary once the virtual
 // coordinate space has been formed, so no scaling factors are needed to
@@ -60,7 +62,8 @@
 //
 // The virtual to logical scale factors are derived from the ratios between
 // the virtual coordinate spaces dimensions and the logical coordinate spaces
-// dimensions.
+// dimensions. An output's location in virtual space is arbitrarily chosen by
+// Sommelier without regard to its location in logical space.
 //
 // In this mode, a buffer that is full screen sized within Xwayland (virtual)
 // will also be full screen sized in the logical coordinate space. The same
@@ -132,6 +135,15 @@ void sl_transform_host_to_guest_fixed(struct sl_context* ctx,
                                       wl_fixed_t* coord,
                                       uint32_t axis);
 
+// Like sl_transform_host_to_guest, but for window positions instead of sizes.
+// Accounts for outputs being positioned on the host differently than they are
+// in virtual space.
+struct sl_host_output* sl_transform_host_position_to_guest_position(
+    struct sl_context* ctx,
+    struct sl_host_surface* surface,
+    int32_t* x,
+    int32_t* y);
+
 // Opposite Direction
 void sl_transform_guest_to_host(struct sl_context* ctx,
                                 struct sl_host_surface* surface,
@@ -147,6 +159,15 @@ void sl_transform_guest_to_host_fixed(struct sl_context* ctx,
                                       struct sl_host_surface* surface,
                                       wl_fixed_t* coord,
                                       uint32_t axis);
+
+// Like sl_transform_guest_to_host, but for window positions instead of sizes.
+// Accounts for outputs being positioned on the host differently than they are
+// in virtual space.
+struct sl_host_output* sl_transform_guest_position_to_host_position(
+    struct sl_context* ctx,
+    struct sl_host_surface* surface,
+    int32_t* x,
+    int32_t* y);
 
 // Given the desired window size in virtual pixels, this function
 // will see if it can be cleanly converted to logical coordinates and back.
