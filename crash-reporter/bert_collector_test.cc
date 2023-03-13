@@ -100,6 +100,8 @@ TEST_F(BERTCollectorTest, TestGoodBERTData) {
   EXPECT_GT(collector_.get_bytes_written(), 0);
   EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
       test_dir_, "bert_error.*.meta", "upload_var_collector=bert"));
+  EXPECT_TRUE(test_util::DirectoryHasFileWithPatternAndContents(
+      scoped_temp_dir_.GetPath(), "bert_error.*.meta", "sig=bert_error\n"));
 }
 
 class BERTCollectorSavedLsbTest : public BERTCollectorTest,

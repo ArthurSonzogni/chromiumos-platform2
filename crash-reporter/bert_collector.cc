@@ -22,6 +22,7 @@ constexpr char kACPITablePath[] = "/sys/firmware/acpi/tables";
 constexpr char kBertTable[] = "BERT";
 constexpr char kBertData[] = "data/BERT";
 constexpr char kBertErrorName[] = "bert_error";
+const char kSignatureKey[] = "sig";
 
 // Validate BERT table signature, length and region length.
 bool BertCheckTable(const struct acpi_table_bert& bert_table) {
@@ -125,6 +126,8 @@ bool BERTCollector::Collect(bool use_saved_lsb) {
     PLOG(ERROR) << "Failed to write BERT data to " << bert_crash_path.value();
     return false;
   }
+
+  AddCrashMetaData(kSignatureKey, kBertErrorName);
 
   // Create meta file with bert dump info and finish up.
   FinishCrash(GetCrashPath(root_crash_directory, dump_basename, "meta"),
