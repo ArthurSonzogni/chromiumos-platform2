@@ -17,7 +17,6 @@
 #include <brillo/blkdev_utils/loop_device.h>
 #include <brillo/cryptohome.h>
 #include <brillo/daemons/dbus_daemon.h>
-#include <brillo/syslog_logging.h>
 #include <chromeos/dbus/service_constants.h>
 #include <cryptohome/data_migrator/migration_helper.h>
 #include <cryptohome/platform.h>
@@ -25,6 +24,7 @@
 
 #include "arc/vm/data_migrator/arcvm_data_migration_helper_delegate.h"
 #include "arc/vm/data_migrator/dbus_adaptors/org.chromium.ArcVmDataMigrator.h"
+#include "arc/vm/data_migrator/logging.h"
 #include "arc/vm/data_migrator/metrics.h"
 
 // This is provided as macro because providing it as a function would cause the
@@ -297,8 +297,11 @@ class Daemon : public brillo::DBusServiceDaemon {
 
 int main(int argc, char** argv) {
   base::CommandLine::Init(argc, argv);
-  brillo::InitLog(brillo::kLogToSyslog | brillo::kLogHeader |
-                  brillo::kLogToStderrIfTty);
+  logging::InitLogging(logging::LoggingSettings());
+  // Disable timestamp from base/logging to avoid printing it twice.
+  logging::SetLogItems(/*enable_process_id=*/false, /*enable_thread_id=*/false,
+                       /*enable_timestamp=*/false, /*enable_tickcount=*/false);
+  logging::SetLogMessageHandler(arc::data_migrator::LogMessageHandler);
 
   return arc::data_migrator::Daemon().Run();
 }

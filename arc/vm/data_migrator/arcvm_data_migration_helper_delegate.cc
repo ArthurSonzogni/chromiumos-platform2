@@ -20,6 +20,8 @@ using cryptohome::data_migrator::FailureLocationType;
 
 namespace arc::data_migrator {
 
+// This should be kept in sync with |kPrefixRegexp| in
+// arc/vm/data_migrator/logging.cc.
 const char kDestinationMountPoint[] = "/tmp/arcvm-data-migration-mount";
 
 namespace {
