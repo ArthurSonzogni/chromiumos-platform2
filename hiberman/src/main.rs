@@ -148,49 +148,6 @@ fn hiberman_cookie(args: &mut std::env::Args) -> std::result::Result<(), ()> {
     Ok(())
 }
 
-fn set_device_usage(error: bool, options: &Options) {
-    let brief = r#"Usage: hiberman set-device <device>
-    "#;
-
-    print_usage(&options.usage(brief), error);
-}
-
-fn hiberman_set_device(args: &mut std::env::Args) -> std::result::Result<(), ()> {
-    // Note: Don't fire up logging immediately in this command as it's called
-    // during very early init, before syslog is ready.
-    let mut opts = Options::new();
-    opts.optflag("h", "help", "Print this help text");
-    opts.optflag("v", "verbose", "Print more during the command");
-    let matches = match opts.parse(args) {
-        Ok(m) => m,
-        Err(e) => {
-            eprintln!("Failed to parse arguments: {}", e);
-            cookie_usage(true, &opts);
-            return Err(());
-        }
-    };
-
-    if matches.opt_present("h") {
-        set_device_usage(false, &opts);
-        return Ok(());
-    }
-
-    let dev_path = matches.free.get(0).cloned();
-
-    let verbosity = if matches.opt_present("v") { 9 } else { 1 };
-    stderrlog::new()
-        .module(module_path!())
-        .verbosity(verbosity)
-        .init()
-        .unwrap();
-
-    if let Err(e) = hiberman::set_snapshot_block_device(dev_path.as_ref()) {
-        error!("Failed to set block device: {:?}", e);
-    }
-
-    Ok(())
-}
-
 fn cat_usage(error: bool, options: &Options) {
     let brief = r#"Usage: hiberman cat [options] <file> [file...]
 Print a disk file to stdout. Since disk files write to blocks
@@ -463,7 +420,6 @@ fn hiberman_main() -> std::result::Result<(), ()> {
         "abort-resume" => hiberman_abort_resume(&mut args),
         "cat" => hiberman_cat(&mut args),
         "cookie" => hiberman_cookie(&mut args),
-        "set-device" => hiberman_set_device(&mut args),
         "hibernate" => hiberman_hibernate(&mut args),
         "resume-init" => hiberman_resume_init(&mut args),
         "resume" => hiberman_resume(&mut args),
