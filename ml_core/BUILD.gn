@@ -7,6 +7,7 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
+    ":install_headers",
     ":install_tmpfiles",
     ":libcros_ml_core",
   ]
@@ -44,4 +45,13 @@ shared_library("libcros_ml_core") {
 install_config("install_tmpfiles") {
   sources = [ "tmpfiles.d/ml-core.conf" ]
   install_path = "/usr/lib/tmpfiles.d"
+}
+
+# These headers come from the ml-core-headers-*.tar.xz unpacked by the ebuild file.
+install_config("install_headers") {
+  sources = [
+    "effects_pipeline_bindings.h",
+    "effects_pipeline_types.h",
+  ]
+  install_path = "/usr/include/ml_core"
 }
