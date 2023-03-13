@@ -458,12 +458,14 @@ CryptoStatusOr<AuthBlockType> AuthBlockUtilityImpl::GetAuthBlockTypeForCreation(
 
 CryptoStatus AuthBlockUtilityImpl::IsAuthBlockSupported(
     AuthBlockType auth_block_type) const {
-  GenericAuthBlockFunctions generic(crypto_, bio_service_getter_);
+  GenericAuthBlockFunctions generic(platform_, challenge_credentials_helper_,
+                                    key_challenge_service_factory_,
+                                    bio_service_getter_, crypto_);
   return generic.IsSupported(auth_block_type);
 }
 
 CryptoStatusOr<std::unique_ptr<AuthBlock>>
-AuthBlockUtilityImpl::GetAuthBlockWithType(const AuthBlockType& auth_block_type,
+AuthBlockUtilityImpl::GetAuthBlockWithType(AuthBlockType auth_block_type,
                                            const AuthInput& auth_input) {
   if (auto status = IsAuthBlockSupported(auth_block_type); !status.ok()) {
     return MakeStatus<CryptohomeCryptoError>(
@@ -471,79 +473,19 @@ AuthBlockUtilityImpl::GetAuthBlockWithType(const AuthBlockType& auth_block_type,
                    kLocAuthBlockUtilNotSupportedInGetAsyncAuthBlockWithType))
         .Wrap(std::move(status));
   }
-
-  switch (auth_block_type) {
-    case AuthBlockType::kPinWeaver:
-      return std::make_unique<SyncToAsyncAuthBlockAdapter>(
-          std::make_unique<PinWeaverAuthBlock>(crypto_->le_manager()));
-
-    case AuthBlockType::kChallengeCredential:
-      if (IsChallengeCredentialReady(auth_input)) {
-        auto key_challenge_service = key_challenge_service_factory_->New(
-            auth_input.challenge_credential_auth_input->dbus_service_name);
-        return std::make_unique<AsyncChallengeCredentialAuthBlock>(
-            challenge_credentials_helper_, std::move(key_challenge_service),
-            auth_input.username);
-      }
-      LOG(ERROR) << "No valid ChallengeCredentialsHelper, "
-                    "KeyChallengeService, or account id in AuthBlockUtility";
-      return MakeStatus<CryptohomeCryptoError>(
-          CRYPTOHOME_ERR_LOC(
-              kLocAuthBlockUtilNoChalInGetAsyncAuthBlockWithType),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
-          CryptoError::CE_OTHER_CRYPTO);
-
-    case AuthBlockType::kDoubleWrappedCompat:
-      return std::make_unique<SyncToAsyncAuthBlockAdapter>(
-          std::make_unique<DoubleWrappedCompatAuthBlock>(
-              crypto_->GetHwsec(), crypto_->cryptohome_keys_manager()));
-
-    case AuthBlockType::kTpmEcc:
-      return std::make_unique<SyncToAsyncAuthBlockAdapter>(
-          std::make_unique<TpmEccAuthBlock>(
-              crypto_->GetHwsec(), crypto_->cryptohome_keys_manager()));
-
-    case AuthBlockType::kTpmBoundToPcr:
-      return std::make_unique<SyncToAsyncAuthBlockAdapter>(
-          std::make_unique<TpmBoundToPcrAuthBlock>(
-              crypto_->GetHwsec(), crypto_->cryptohome_keys_manager()));
-
-    case AuthBlockType::kTpmNotBoundToPcr:
-      return std::make_unique<SyncToAsyncAuthBlockAdapter>(
-          std::make_unique<TpmNotBoundToPcrAuthBlock>(
-              crypto_->GetHwsec(), crypto_->cryptohome_keys_manager()));
-
-    case AuthBlockType::kScrypt:
-      return std::make_unique<SyncToAsyncAuthBlockAdapter>(
-          std::make_unique<ScryptAuthBlock>());
-
-    case AuthBlockType::kCryptohomeRecovery:
-      return std::make_unique<SyncToAsyncAuthBlockAdapter>(
-          std::make_unique<CryptohomeRecoveryAuthBlock>(
-              crypto_->GetHwsec(), crypto_->GetRecoveryCrypto(),
-              crypto_->le_manager(), platform_));
-
-    case AuthBlockType::kFingerprint: {
-      BiometricsAuthBlockService* bio_service = bio_service_getter_.Run();
-      if (!bio_service) {
-        return MakeStatus<CryptohomeCryptoError>(
-            CRYPTOHOME_ERR_LOC(
-                kLocAuthBlockUtilFingerprintNoServiceInGetAsyncAuthBlock),
-            ErrorActionSet(
-                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
-            CryptoError::CE_OTHER_CRYPTO);
-      }
-      return std::make_unique<FingerprintAuthBlock>(crypto_->le_manager(),
-                                                    bio_service);
-    }
+  GenericAuthBlockFunctions generic(platform_, challenge_credentials_helper_,
+                                    key_challenge_service_factory_,
+                                    bio_service_getter_, crypto_);
+  auto auth_block = generic.GetAuthBlockWithType(auth_block_type, auth_input);
+  if (!auth_block) {
+    return MakeStatus<CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(
+            kLocAuthBlockUtilUnknownUnsupportedInGetAsyncAuthBlockWithType),
+        ErrorActionSet(
+            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
-  return MakeStatus<CryptohomeCryptoError>(
-      CRYPTOHOME_ERR_LOC(
-          kLocAuthBlockUtilUnknownUnsupportedInGetAsyncAuthBlockWithType),
-      ErrorActionSet(
-          {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
-      CryptoError::CE_OTHER_CRYPTO);
+  return auth_block;
 }
 
 void AuthBlockUtilityImpl::InitializeChallengeCredentialsHelper(
@@ -618,7 +560,9 @@ void AuthBlockUtilityImpl::AssignAuthBlockStateToVaultKeyset(
 
 std::optional<AuthBlockType> AuthBlockUtilityImpl::GetAuthBlockTypeFromState(
     const AuthBlockState& auth_block_state) const {
-  GenericAuthBlockFunctions generic(crypto_, bio_service_getter_);
+  GenericAuthBlockFunctions generic(platform_, challenge_credentials_helper_,
+                                    key_challenge_service_factory_,
+                                    bio_service_getter_, crypto_);
   return generic.GetAuthBlockTypeFromState(auth_block_state);
 }
 

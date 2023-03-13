@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_AUTH_BLOCKS_PIN_WEAVER_AUTH_BLOCK_H_
 #define CRYPTOHOME_AUTH_BLOCKS_PIN_WEAVER_AUTH_BLOCK_H_
 
+#include <memory>
+
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/crypto.h"
@@ -20,6 +22,7 @@ class PinWeaverAuthBlock : public SyncAuthBlock {
   static constexpr auto kType = AuthBlockType::kPinWeaver;
   using StateType = PinWeaverAuthBlockState;
   static CryptoStatus IsSupported(Crypto& crypto);
+  static std::unique_ptr<AuthBlock> New(LECredentialManager* le_manager);
 
   explicit PinWeaverAuthBlock(LECredentialManager* le_manager);
 

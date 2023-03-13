@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_AUTH_BLOCKS_CRYPTOHOME_RECOVERY_AUTH_BLOCK_H_
 #define CRYPTOHOME_AUTH_BLOCKS_CRYPTOHOME_RECOVERY_AUTH_BLOCK_H_
 
+#include <memory>
+
 #include <libhwsec/frontend/cryptohome/frontend.h>
 
 #include "cryptohome/auth_blocks/auth_block.h"
@@ -26,6 +28,11 @@ class CryptohomeRecoveryAuthBlock : public SyncAuthBlock {
   static constexpr auto kType = AuthBlockType::kCryptohomeRecovery;
   using StateType = CryptohomeRecoveryAuthBlockState;
   static CryptoStatus IsSupported(Crypto& crypto);
+  static std::unique_ptr<AuthBlock> New(
+      Platform& platform,
+      hwsec::CryptohomeFrontend& hwsec,
+      hwsec::RecoveryCryptoFrontend& recovery_hwsec,
+      LECredentialManager* le_manager);
 
   // the `tpm` pointer must outlive `this`
   explicit CryptohomeRecoveryAuthBlock(

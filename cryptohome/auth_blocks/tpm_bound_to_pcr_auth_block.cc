@@ -23,6 +23,7 @@
 #include <libhwsec-foundation/crypto/scrypt.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 
+#include "cryptohome/auth_blocks/sync_to_async_auth_block_adapter.h"
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
@@ -91,6 +92,14 @@ CryptoStatus TpmBoundToPcrAuthBlock::IsSupported(Crypto& crypto) {
   }
 
   return OkStatus<CryptohomeCryptoError>();
+}
+
+std::unique_ptr<AuthBlock> TpmBoundToPcrAuthBlock::New(
+    hwsec::CryptohomeFrontend& hwsec,
+    CryptohomeKeysManager& cryptohome_keys_manager) {
+  return std::make_unique<SyncToAsyncAuthBlockAdapter>(
+      std::make_unique<TpmBoundToPcrAuthBlock>(&hwsec,
+                                               &cryptohome_keys_manager));
 }
 
 TpmBoundToPcrAuthBlock::TpmBoundToPcrAuthBlock(

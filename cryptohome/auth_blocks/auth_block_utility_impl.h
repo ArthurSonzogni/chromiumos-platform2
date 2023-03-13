@@ -127,7 +127,7 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
 
   // Factory function to construct an auth block of the given type.
   CryptoStatusOr<std::unique_ptr<AuthBlock>> GetAuthBlockWithType(
-      const AuthBlockType& auth_block_type, const AuthInput& auth_input);
+      AuthBlockType auth_block_type, const AuthInput& auth_input);
 
  private:
   // Determine if a given type of auth block is supported.

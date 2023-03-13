@@ -146,6 +146,17 @@ CryptoStatus FingerprintAuthBlock::IsSupported(
   return OkStatus<CryptohomeCryptoError>();
 }
 
+std::unique_ptr<AuthBlock> FingerprintAuthBlock::New(
+    Crypto& crypto,
+    base::RepeatingCallback<BiometricsAuthBlockService*()>& service_getter) {
+  auto* le_manager = crypto.le_manager();
+  auto* bio_service = service_getter.Run();
+  if (le_manager && bio_service) {
+    return std::make_unique<FingerprintAuthBlock>(le_manager, bio_service);
+  }
+  return nullptr;
+}
+
 void FingerprintAuthBlock::Create(const AuthInput& auth_input,
                                   CreateCallback callback) {
   if (!auth_input.obfuscated_username.has_value()) {

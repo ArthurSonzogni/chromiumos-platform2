@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_AUTH_BLOCKS_SCRYPT_AUTH_BLOCK_H_
 #define CRYPTOHOME_AUTH_BLOCKS_SCRYPT_AUTH_BLOCK_H_
 
+#include <memory>
+
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
@@ -19,6 +21,7 @@ class ScryptAuthBlock : public SyncAuthBlock {
   static constexpr auto kType = AuthBlockType::kScrypt;
   using StateType = ScryptAuthBlockState;
   static CryptoStatus IsSupported(Crypto& crypto);
+  static std::unique_ptr<AuthBlock> New();
 
   ScryptAuthBlock();
 

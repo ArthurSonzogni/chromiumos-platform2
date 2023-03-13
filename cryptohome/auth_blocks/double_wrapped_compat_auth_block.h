@@ -17,6 +17,7 @@
 #include "cryptohome/crypto.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
+#include "libhwsec/frontend/cryptohome/frontend.h"
 
 namespace cryptohome {
 
@@ -28,6 +29,9 @@ class DoubleWrappedCompatAuthBlock : public SyncAuthBlock {
   static constexpr auto kType = AuthBlockType::kDoubleWrappedCompat;
   using StateType = DoubleWrappedCompatAuthBlockState;
   static CryptoStatus IsSupported(Crypto& crypto);
+  static std::unique_ptr<AuthBlock> New(
+      hwsec::CryptohomeFrontend& hwsec,
+      CryptohomeKeysManager& cryptohome_keys_manager);
 
   DoubleWrappedCompatAuthBlock(hwsec::CryptohomeFrontend* hwsec,
                                CryptohomeKeysManager* cryptohome_keys_manager);

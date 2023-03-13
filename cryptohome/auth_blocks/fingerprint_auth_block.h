@@ -5,6 +5,8 @@
 #ifndef CRYPTOHOME_AUTH_BLOCKS_FINGERPRINT_AUTH_BLOCK_H_
 #define CRYPTOHOME_AUTH_BLOCKS_FINGERPRINT_AUTH_BLOCK_H_
 
+#include <memory>
+
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/biometrics_auth_block_service.h"
@@ -24,6 +26,9 @@ class FingerprintAuthBlock : public AuthBlock {
       Crypto& crypto,
       base::RepeatingCallback<BiometricsAuthBlockService*()>&
           bio_service_getter);
+  static std::unique_ptr<AuthBlock> New(
+      Crypto& crypto,
+      base::RepeatingCallback<BiometricsAuthBlockService*()>& service_getter);
 
   FingerprintAuthBlock(LECredentialManager* le_manager,
                        BiometricsAuthBlockService* service);

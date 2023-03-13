@@ -4,12 +4,9 @@
 
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
 
-#include <libhwsec-foundation/crypto/scrypt.h>
-#include "cryptohome/cryptohome_metrics.h"
-#include "cryptohome/vault_keyset.h"
-
 #include <limits>
 #include <map>
+#include <memory>
 #include <optional>
 #include <string>
 #include <utility>
@@ -24,16 +21,20 @@
 #include <libhwsec/status.h>
 #include <libhwsec-foundation/crypto/aes.h>
 #include <libhwsec-foundation/crypto/hmac.h>
+#include <libhwsec-foundation/crypto/scrypt.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 
+#include "cryptohome/auth_blocks/sync_to_async_auth_block_adapter.h"
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
 #include "cryptohome/crypto.h"
+#include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/action.h"
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/error/locations.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
+#include "cryptohome/vault_keyset.h"
 #include "cryptohome/vault_keyset.pb.h"
 
 using ::cryptohome::error::CryptohomeCryptoError;
@@ -129,6 +130,15 @@ CryptoStatus PinWeaverAuthBlock::IsSupported(Crypto& crypto) {
   }
 
   return OkStatus<CryptohomeCryptoError>();
+}
+
+std::unique_ptr<AuthBlock> PinWeaverAuthBlock::New(
+    LECredentialManager* le_manager) {
+  if (le_manager) {
+    return std::make_unique<SyncToAsyncAuthBlockAdapter>(
+        std::make_unique<PinWeaverAuthBlock>(le_manager));
+  }
+  return nullptr;
 }
 
 PinWeaverAuthBlock::PinWeaverAuthBlock(LECredentialManager* le_manager)

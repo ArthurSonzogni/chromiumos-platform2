@@ -20,6 +20,7 @@
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_challenge_service.h"
+#include "cryptohome/key_challenge_service_factory.h"
 #include "cryptohome/username.h"
 
 namespace cryptohome {
@@ -33,6 +34,10 @@ class AsyncChallengeCredentialAuthBlock : public AuthBlock {
   static constexpr auto kType = AuthBlockType::kChallengeCredential;
   using StateType = ChallengeCredentialAuthBlockState;
   static CryptoStatus IsSupported(Crypto& crypto);
+  static std::unique_ptr<AuthBlock> New(
+      const AuthInput& auth_input,
+      ChallengeCredentialsHelper* challenge_credentials_helper,
+      KeyChallengeServiceFactory* key_challenge_service_factory);
 
   AsyncChallengeCredentialAuthBlock(
       ChallengeCredentialsHelper* challenge_credentials_helper,

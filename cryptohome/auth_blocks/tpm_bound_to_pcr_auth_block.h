@@ -31,6 +31,9 @@ class TpmBoundToPcrAuthBlock : public SyncAuthBlock {
   static constexpr auto kType = AuthBlockType::kTpmBoundToPcr;
   using StateType = TpmBoundToPcrAuthBlockState;
   static CryptoStatus IsSupported(Crypto& crypto);
+  static std::unique_ptr<AuthBlock> New(
+      hwsec::CryptohomeFrontend& hwsec,
+      CryptohomeKeysManager& cryptohome_keys_manager);
 
   TpmBoundToPcrAuthBlock(hwsec::CryptohomeFrontend* hwsec,
                          CryptohomeKeysManager* cryptohome_keys_manager);

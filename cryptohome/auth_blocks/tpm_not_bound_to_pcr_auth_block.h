@@ -7,6 +7,7 @@
 
 #include "cryptohome/auth_blocks/auth_block.h"
 
+#include <memory>
 #include <string>
 
 #include <base/gtest_prod_util.h>
@@ -28,6 +29,9 @@ class TpmNotBoundToPcrAuthBlock : public SyncAuthBlock {
   static constexpr auto kType = AuthBlockType::kTpmNotBoundToPcr;
   using StateType = TpmNotBoundToPcrAuthBlockState;
   static CryptoStatus IsSupported(Crypto& crypto);
+  static std::unique_ptr<AuthBlock> New(
+      hwsec::CryptohomeFrontend& hwsec,
+      CryptohomeKeysManager& cryptohome_keys_manager);
 
   TpmNotBoundToPcrAuthBlock(hwsec::CryptohomeFrontend* hwsec,
                             CryptohomeKeysManager* cryptohome_keys_manager);

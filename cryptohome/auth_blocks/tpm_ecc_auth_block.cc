@@ -23,6 +23,7 @@
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 #include <libhwsec-foundation/crypto/sha.h>
 
+#include "cryptohome/auth_blocks/sync_to_async_auth_block_adapter.h"
 #include "cryptohome/auth_blocks/tpm_auth_block_utils.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/crypto_error.h"
@@ -161,6 +162,13 @@ TpmEccAuthBlock::TpmEccAuthBlock(hwsec::CryptohomeFrontend* hwsec,
   scrypt_thread_ = std::make_unique<base::Thread>("scrypt_thread");
   scrypt_thread_->StartWithOptions(std::move(options));
   scrypt_task_runner_ = scrypt_thread_->task_runner();
+}
+
+std::unique_ptr<AuthBlock> TpmEccAuthBlock::New(
+    hwsec::CryptohomeFrontend& hwsec,
+    CryptohomeKeysManager& cryptohome_keys_manager) {
+  return std::make_unique<SyncToAsyncAuthBlockAdapter>(
+      std::make_unique<TpmEccAuthBlock>(&hwsec, &cryptohome_keys_manager));
 }
 
 CryptoStatus TpmEccAuthBlock::TryCreate(const AuthInput& auth_input,

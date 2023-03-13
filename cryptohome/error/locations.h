@@ -153,7 +153,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthBlockUtilMaxValueUnsupportedInGetAuthBlockWithType = 163,
   /* =Obsolete= */
   kLocAuthBlockUtilUnknownUnsupportedInGetAuthBlockWithType = 164,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* =Obsolete= */
   kLocAuthBlockUtilNoChalInGetAsyncAuthBlockWithType = 165,
   /* =Obsolete= */
   kLocAuthBlockUtilCHUnsupportedInGetAsyncAuthBlockWithType = 166,
@@ -1563,7 +1563,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocFingerprintAuthBlockPrepareForRemovalUnimplemented = 3338,
   /* ./auth_blocks/fingerprint_auth_block.cc */
   kLocFingerprintAuthBlockNoServiceInIsSupported = 3339,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* =Obsolete= */
   kLocAuthBlockUtilFingerprintNoServiceInGetAsyncAuthBlock = 3340,
   /* ./auth_blocks/fingerprint_auth_block.cc */
   kLocFingerprintAuthBlockHwsecReadyErrorInIsSupported = 3341,

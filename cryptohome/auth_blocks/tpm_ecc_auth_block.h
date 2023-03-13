@@ -31,6 +31,9 @@ class TpmEccAuthBlock : public SyncAuthBlock {
   static constexpr auto kType = AuthBlockType::kTpmEcc;
   using StateType = TpmEccAuthBlockState;
   static CryptoStatus IsSupported(Crypto& crypto);
+  static std::unique_ptr<AuthBlock> New(
+      hwsec::CryptohomeFrontend& hwsec,
+      CryptohomeKeysManager& cryptohome_keys_manager);
 
   TpmEccAuthBlock(hwsec::CryptohomeFrontend* hwsec,
                   CryptohomeKeysManager* cryptohome_keys_manager);

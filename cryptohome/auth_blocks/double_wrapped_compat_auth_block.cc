@@ -11,6 +11,7 @@
 #include <base/logging.h>
 
 #include "cryptohome/auth_blocks/scrypt_auth_block.h"
+#include "cryptohome/auth_blocks/sync_to_async_auth_block_adapter.h"
 #include "cryptohome/auth_blocks/tpm_not_bound_to_pcr_auth_block.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/cryptohome_keys_manager.h"
@@ -42,12 +43,19 @@ CryptoStatus DoubleWrappedCompatAuthBlock::IsSupported(Crypto& crypto) {
   return OkStatus<CryptohomeCryptoError>();
 }
 
+std::unique_ptr<AuthBlock> DoubleWrappedCompatAuthBlock::New(
+    hwsec::CryptohomeFrontend& hwsec,
+    CryptohomeKeysManager& cryptohome_keys_manager) {
+  return std::make_unique<SyncToAsyncAuthBlockAdapter>(
+      std::make_unique<DoubleWrappedCompatAuthBlock>(&hwsec,
+                                                     &cryptohome_keys_manager));
+}
+
 DoubleWrappedCompatAuthBlock::DoubleWrappedCompatAuthBlock(
     hwsec::CryptohomeFrontend* hwsec,
     CryptohomeKeysManager* cryptohome_keys_manager)
     : SyncAuthBlock(kDoubleWrapped),
-      tpm_auth_block_(hwsec, cryptohome_keys_manager),
-      scrypt_auth_block_() {}
+      tpm_auth_block_(hwsec, cryptohome_keys_manager) {}
 
 CryptoStatus DoubleWrappedCompatAuthBlock::Create(
     const AuthInput& user_input,

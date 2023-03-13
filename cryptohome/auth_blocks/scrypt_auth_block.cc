@@ -14,6 +14,7 @@
 #include <libhwsec-foundation/crypto/scrypt.h>
 #include <libhwsec-foundation/crypto/secure_blob_util.h>
 
+#include "cryptohome/auth_blocks/sync_to_async_auth_block_adapter.h"
 #include "cryptohome/cryptohome_metrics.h"
 #include "cryptohome/error/location_utils.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
@@ -35,6 +36,11 @@ namespace cryptohome {
 
 CryptoStatus ScryptAuthBlock::IsSupported(Crypto& crypto) {
   return OkStatus<CryptohomeCryptoError>();
+}
+
+std::unique_ptr<AuthBlock> ScryptAuthBlock::New() {
+  return std::make_unique<SyncToAsyncAuthBlockAdapter>(
+      std::make_unique<ScryptAuthBlock>());
 }
 
 ScryptAuthBlock::ScryptAuthBlock() : SyncAuthBlock(kScryptBacked) {}
