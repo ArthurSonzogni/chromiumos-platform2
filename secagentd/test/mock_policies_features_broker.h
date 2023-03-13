@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "base/time/time.h"
-#include "gmock/gmock-function-mocker.h"
+#include "gmock/gmock.h"  // IWYU pragma: keep
 #include "secagentd/policies_features_broker.h"
 
 namespace secagentd::testing {

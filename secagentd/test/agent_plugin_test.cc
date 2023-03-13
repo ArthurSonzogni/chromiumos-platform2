@@ -26,8 +26,6 @@
 #include "dbus/mock_bus.h"
 #include "dbus/mock_object_proxy.h"
 #include "gmock/gmock.h"  // IWYU pragma: keep
-#include "gmock/gmock-actions.h"
-#include "gmock/gmock-spec-builders.h"
 #include "gtest/gtest.h"
 #include "missive/proto/record_constants.pb.h"
 #include "missive/util/status.h"
