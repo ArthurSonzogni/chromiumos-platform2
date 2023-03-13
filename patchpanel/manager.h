@@ -33,6 +33,10 @@
 #include "patchpanel/subprocess_controller.h"
 #include "patchpanel/system.h"
 
+namespace shill {
+class ProcessManager;
+}  // namespace shill
+
 namespace patchpanel {
 
 // Struct to specify which forwarders to start and stop.
@@ -101,11 +105,6 @@ class Manager final : public brillo::DBusDaemon {
                    GuestMessage::GuestType vm_type,
                    uint32_t subnet_index = kAnySubnetIndex);
   void StopCrosVm(uint64_t vm_id, GuestMessage::GuestType vm_type);
-
-  // Callback from ProcessReaper to notify Manager that one of the
-  // subprocesses died.
-  void OnSubprocessExited(pid_t pid, const siginfo_t& info);
-  void RestartSubprocess(SubprocessController* subproc);
 
   // Callback from Daemon to notify that the message loop exits and before
   // Daemon::Run() returns.
@@ -235,6 +234,10 @@ class Manager final : public brillo::DBusDaemon {
 
   friend std::ostream& operator<<(std::ostream& stream, const Manager& manager);
 
+  // The singleton instance that manages the creation and exit notification of
+  // each subprocess. All the subprocesses should be created by this.
+  shill::ProcessManager* process_manager_;
+
   // Unique instance of patchpanel::System shared for all subsystems.
   std::unique_ptr<System> system_;
   // UMA metrics client.
@@ -251,8 +254,6 @@ class Manager final : public brillo::DBusDaemon {
   std::unique_ptr<CrostiniService> cros_svc_;
   // Patchpanel DBus service.
   dbus::ExportedObject* dbus_svc_path_;  // Owned by |bus_|.
-  // Other services.
-  brillo::ProcessReaper process_reaper_;
   // adb connection forwarder service.
   std::unique_ptr<SubprocessController> adb_proxy_;
   // IPv4 and IPv6 Multicast forwarder service.

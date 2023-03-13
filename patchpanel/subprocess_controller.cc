@@ -15,30 +15,29 @@
 #include <base/check_op.h>
 #include <base/logging.h>
 #include <base/process/launch.h>
+#include <base/threading/thread_task_runner_handle.h>
 #include <brillo/syslog_logging.h>
+#include <shill/net/process_manager.h>
 
 #include "patchpanel/ipc.h"
 
 namespace patchpanel {
 namespace {
+// Maximum tries of restart.
 constexpr int kMaxRestarts = 5;
+// The delay of the first round of restart.
+constexpr int kSubprocessRestartDelayMs = 900;
 }  // namespace
 
-SubprocessController::SubprocessController(const std::vector<std::string>& argv,
-                                           const std::string& fd_arg)
-    : argv_(argv), fd_arg_(fd_arg) {
-  CHECK_GE(argv.size(), 1);
-}
-
-bool SubprocessController::Restart() {
-  if (++restarts_ > kMaxRestarts) {
-    LOG(ERROR) << "Maximum number of restarts exceeded";
-    return false;
-  }
-  LOG(INFO) << "Restarting...";
-  Start();
-  return true;
-}
+SubprocessController::SubprocessController(
+    shill::ProcessManager* process_manager,
+    const base::FilePath& cmd_path,
+    const std::vector<std::string>& argv,
+    const std::string& fd_arg)
+    : process_manager_(process_manager),
+      cmd_path_(cmd_path),
+      argv_(argv),
+      fd_arg_(fd_arg) {}
 
 void SubprocessController::Start() {
   int control[2];
@@ -55,15 +54,33 @@ void SubprocessController::Start() {
   std::vector<std::string> child_argv = argv_;
   child_argv.push_back(fd_arg_ + "=" + std::to_string(subprocess_fd));
 
-  base::FileHandleMappingVector fd_mapping;
-  fd_mapping.push_back({subprocess_fd, subprocess_fd});
+  const std::vector<std::pair<int, int>> fds_to_bind = {
+      {subprocess_fd, subprocess_fd}};
 
-  base::LaunchOptions options;
-  options.fds_to_remap = std::move(fd_mapping);
+  pid_ = process_manager_->StartProcess(
+      FROM_HERE, cmd_path_, child_argv, /*environment=*/{}, fds_to_bind, true,
+      base::BindOnce(&SubprocessController::OnProcessExitedUnexpectedly,
+                     weak_factory_.GetWeakPtr()));
+}
 
-  base::Process p = base::LaunchProcess(child_argv, options);
-  CHECK(p.IsValid());
-  pid_ = p.Pid();
+void SubprocessController::OnProcessExitedUnexpectedly(int exit_status) {
+  const auto delay = base::Milliseconds(kSubprocessRestartDelayMs << restarts_);
+  LOG(ERROR) << "Subprocess: " << fd_arg_
+             << " exited unexpectedly, status: " << exit_status
+             << ", attempting to restart after " << delay;
+
+  ++restarts_;
+  if (restarts_ > kMaxRestarts) {
+    LOG(ERROR) << "Subprocess: " << fd_arg_
+               << " exceeded maximum number of restarts";
+    return;
+  }
+
+  // Restart the subprocess with exponential backoff delay.
+  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
+      FROM_HERE,
+      base::BindOnce(&SubprocessController::Start, weak_factory_.GetWeakPtr()),
+      delay);
 }
 
 void SubprocessController::SendControlMessage(

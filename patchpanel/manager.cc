@@ -29,6 +29,7 @@
 #include <brillo/key_value_store.h>
 #include <brillo/minijail/minijail.h>
 #include <metrics/metrics_library.h>
+#include <shill/net/process_manager.h>
 
 #include "patchpanel/guest_ipv6_service.h"
 #include "patchpanel/guest_type.h"
@@ -42,7 +43,6 @@
 
 namespace patchpanel {
 namespace {
-constexpr int kSubprocessRestartDelayMs = 900;
 // Delay to restart IPv6 in a namespace to trigger SLAAC in the kernel.
 constexpr int kIPv6RestartDelayMs = 300;
 
@@ -155,17 +155,19 @@ void RecordDbusEvent(std::unique_ptr<MetricsLibraryInterface>& metrics,
 
 }  // namespace
 
-Manager::Manager(int argc, char* argv[]) {
+Manager::Manager(int argc, char* argv[])
+    : process_manager_(shill::ProcessManager::GetInstance()) {
+  const auto cmd_path = base::FilePath(argv[0]);
   std::vector<std::string> arg_list;
-  for (int i = 0; i < argc; ++i) {
+  for (int i = 1; i < argc; ++i) {
     arg_list.push_back(argv[i]);
   }
   adb_proxy_ = std::make_unique<patchpanel::SubprocessController>(
-      arg_list, "--adb_proxy_fd");
+      process_manager_, cmd_path, arg_list, "--adb_proxy_fd");
   mcast_proxy_ = std::make_unique<patchpanel::SubprocessController>(
-      arg_list, "--mcast_proxy_fd");
+      process_manager_, cmd_path, arg_list, "--mcast_proxy_fd");
   nd_proxy_ = std::make_unique<patchpanel::SubprocessController>(
-      arg_list, "--nd_proxy_fd");
+      process_manager_, cmd_path, arg_list, "--nd_proxy_fd");
 
   system_ = std::make_unique<System>();
   datapath_ = std::make_unique<Datapath>(system_.get());
@@ -243,28 +245,13 @@ bool Manager::ShouldEnableFeature(
 int Manager::OnInit() {
   prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
 
-  // Start the subprocesses.
+  // Initialize |process_manager_| before creating subprocesses.
+  process_manager_->Init();
+
+  // Start the subprocesses and handle their lifecycle.
   adb_proxy_->Start();
   mcast_proxy_->Start();
   nd_proxy_->Start();
-
-  // Handle subprocess lifecycle.
-  process_reaper_.Register(this);
-  CHECK(process_reaper_.WatchForChild(
-      FROM_HERE, adb_proxy_->pid(),
-      base::BindOnce(&Manager::OnSubprocessExited, weak_factory_.GetWeakPtr(),
-                     adb_proxy_->pid())))
-      << "Failed to watch adb-proxy child process";
-  CHECK(process_reaper_.WatchForChild(
-      FROM_HERE, mcast_proxy_->pid(),
-      base::BindOnce(&Manager::OnSubprocessExited, weak_factory_.GetWeakPtr(),
-                     nd_proxy_->pid())))
-      << "Failed to watch multicast-proxy child process";
-  CHECK(process_reaper_.WatchForChild(
-      FROM_HERE, nd_proxy_->pid(),
-      base::BindOnce(&Manager::OnSubprocessExited, weak_factory_.GetWeakPtr(),
-                     nd_proxy_->pid())))
-      << "Failed to watch nd-proxy child process";
 
   // Run after Daemon::OnInit().
   base::ThreadTaskRunnerHandle::Get()->PostTask(
@@ -392,42 +379,9 @@ void Manager::OnShutdown(int* exit_code) {
   if (bus_) {
     bus_->ShutdownAndBlock();
   }
+
+  process_manager_->Stop();
   brillo::DBusDaemon::OnShutdown(exit_code);
-}
-
-void Manager::OnSubprocessExited(pid_t pid, const siginfo_t&) {
-  LOG(ERROR) << "Subprocess " << pid << " exited unexpectedly -"
-             << " attempting to restart";
-
-  SubprocessController* proc;
-  if (pid == adb_proxy_->pid()) {
-    proc = adb_proxy_.get();
-  } else if (pid == mcast_proxy_->pid()) {
-    proc = mcast_proxy_.get();
-  } else if (pid == nd_proxy_->pid()) {
-    proc = nd_proxy_.get();
-  } else {
-    LOG(DFATAL) << "Unknown child process";
-    return;
-  }
-
-  process_reaper_.ForgetChild(pid);
-
-  base::ThreadTaskRunnerHandle::Get()->PostDelayedTask(
-      FROM_HERE,
-      base::BindOnce(&Manager::RestartSubprocess, weak_factory_.GetWeakPtr(),
-                     proc),
-      base::Milliseconds((2 << proc->restarts()) * kSubprocessRestartDelayMs));
-}
-
-void Manager::RestartSubprocess(SubprocessController* subproc) {
-  if (subproc->Restart()) {
-    DCHECK(process_reaper_.WatchForChild(
-        FROM_HERE, subproc->pid(),
-        base::BindOnce(&Manager::OnSubprocessExited, weak_factory_.GetWeakPtr(),
-                       subproc->pid())))
-        << "Failed to watch child process " << subproc->pid();
-  }
 }
 
 void Manager::OnShillDefaultLogicalDeviceChanged(

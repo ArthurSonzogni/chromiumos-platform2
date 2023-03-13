@@ -11,12 +11,17 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
 #include <base/memory/weak_ptr.h>
 
 #include "patchpanel/ipc.h"
 #include "patchpanel/message_dispatcher.h"
+
+namespace shill {
+class ProcessManager;
+}  // namespace shill
 
 namespace patchpanel {
 
@@ -25,7 +30,9 @@ namespace patchpanel {
 // This object is used by the main Manager process.
 class SubprocessController {
  public:
-  SubprocessController(const std::vector<std::string>& argv,
+  SubprocessController(shill::ProcessManager* process_manager,
+                       const base::FilePath& cmd_path,
+                       const std::vector<std::string>& argv,
                        const std::string& fd_arg);
   SubprocessController(const SubprocessController&) = delete;
   SubprocessController& operator=(const SubprocessController&) = delete;
@@ -37,14 +44,10 @@ class SubprocessController {
   // different mainloop.
   void Start();
 
-  // Attempts to restart the process with the original arguments.
-  // Returns false if the maximum number of restarts has been exceeded.
-  bool Restart();
-
   // Serializes a protobuf and sends it to the helper process.
   void SendControlMessage(const ControlMessage& proto) const;
 
-  // Start listening on messages from subprocess and dispatching them to
+  // Starts listening on messages from subprocess and dispatching them to
   // handlers. This function can only be called after that the message loop of
   // main process is initialized.
   void Listen();
@@ -52,16 +55,21 @@ class SubprocessController {
   void RegisterFeedbackMessageHandler(
       base::RepeatingCallback<void(const FeedbackMessage&)> handler);
 
-  pid_t pid() const { return pid_; }
-  uint8_t restarts() const { return restarts_; }
-
  private:
+  // The callback that is called when the subprocess is exited unexpectedly.
+  // Attempts to restart the subprocess with exponential backoff delay.
+  void OnProcessExitedUnexpectedly(int exit_status);
   void OnMessage(const SubprocessMessage& msg);
 
   base::RepeatingCallback<void(const FeedbackMessage&)> feedback_handler_;
 
+  // The singleton instance which is used to create the subprocess and watch the
+  // subprocess exited unexpectedly.
+  shill::ProcessManager* process_manager_;
+
   pid_t pid_{0};
   uint8_t restarts_{0};
+  base::FilePath cmd_path_;
   std::vector<std::string> argv_;
   std::string fd_arg_;
   std::unique_ptr<MessageDispatcher<SubprocessMessage>> msg_dispatcher_;
