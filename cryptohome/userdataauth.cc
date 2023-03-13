@@ -203,6 +203,7 @@ UserDataAuth::UserDataAuth()
       pkcs11_token_factory_(default_pkcs11_token_factory_.get()),
       firmware_management_parameters_(nullptr),
       fingerprint_manager_(nullptr),
+      biometrics_service_(nullptr),
       ownership_callback_has_run_(false),
       default_install_attrs_(nullptr),
       install_attrs_(nullptr),
