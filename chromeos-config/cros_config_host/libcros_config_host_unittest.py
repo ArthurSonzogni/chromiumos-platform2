@@ -125,6 +125,23 @@ class CrosConfigHostTest(unittest.TestCase):
             ],
         )
 
+    def testGetArcCodecFiles(self):
+        config = CrosConfig(self.filepath)
+        arc_files = config.GetArcCodecFiles()
+        self.assertEqual(
+            arc_files,
+            [
+                BaseFile(
+                    source="some/media_codecs_c2.xml",
+                    dest="/etc/some_media_codecs_c2.xml",
+                ),
+                BaseFile(
+                    source="some/media_codecs_performance_c2.xml",
+                    dest="/etc/some_media_codecs_performance_c2.xml",
+                ),
+            ],
+        )
+
     def testGetThermalFiles(self):
         config = CrosConfig(self.filepath)
         thermal_files = config.GetThermalFiles()

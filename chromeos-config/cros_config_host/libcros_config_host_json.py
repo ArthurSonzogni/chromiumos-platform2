@@ -142,6 +142,11 @@ class DeviceConfigJson(DeviceConfig):
             ["/arc/hardware-features", "/arc/media-profiles"]
         )
 
+    def GetArcCodecFiles(self):
+        return self._GetSystemFilesV2(
+            ["/arc/media-codecs", "/arc/media-codecs-performance"]
+        )
+
     def GetAudioFiles(self):
         return self._GetFiles("/audio/main")
 

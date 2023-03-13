@@ -11,6 +11,12 @@
           "hardware-features": {
             "system-path": "/etc/some_hardware_features.xml"
           },
+          "media-codecs": {
+            "system-path": "/etc/some_media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "system-path": "/etc/some_media_codecs_performance_c2.xml"
+          },
           "media-profiles": {
             "system-path": "/etc/some_media_profiles.xml"
           }
@@ -93,6 +99,12 @@
           "hardware-features": {
             "system-path": "/etc/some_hardware_features.xml"
           },
+          "media-codecs": {
+            "system-path": "/etc/some_media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "system-path": "/etc/some_media_codecs_performance_c2.xml"
+          },
           "media-profiles": {
             "system-path": "/etc/some_media_profiles.xml"
           }
@@ -174,6 +186,12 @@
           },
           "hardware-features": {
             "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-codecs": {
+            "system-path": "/etc/some_media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "system-path": "/etc/some_media_codecs_performance_c2.xml"
           },
           "media-profiles": {
             "system-path": "/etc/some_media_profiles.xml"
@@ -266,6 +284,12 @@
           },
           "hardware-features": {
             "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-codecs": {
+            "system-path": "/etc/some_media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "system-path": "/etc/some_media_codecs_performance_c2.xml"
           },
           "media-profiles": {
             "system-path": "/etc/some_media_profiles.xml"
@@ -358,6 +382,12 @@
           },
           "hardware-features": {
             "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-codecs": {
+            "system-path": "/etc/some_media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "system-path": "/etc/some_media_codecs_performance_c2.xml"
           },
           "media-profiles": {
             "system-path": "/etc/some_media_profiles.xml"
@@ -432,6 +462,12 @@
           },
           "hardware-features": {
             "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-codecs": {
+            "system-path": "/etc/some_media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "system-path": "/etc/some_media_codecs_performance_c2.xml"
           },
           "media-profiles": {
             "system-path": "/etc/some_media_profiles.xml"
@@ -585,6 +621,12 @@
           "hardware-features": {
             "system-path": "/etc/some_hardware_features.xml"
           },
+          "media-codecs": {
+            "system-path": "/etc/some_media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "system-path": "/etc/some_media_codecs_performance_c2.xml"
+          },
           "media-profiles": {
             "system-path": "/etc/some_media_profiles.xml"
           }
@@ -644,6 +686,12 @@
           },
           "hardware-features": {
             "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-codecs": {
+            "system-path": "/etc/some_media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "system-path": "/etc/some_media_codecs_performance_c2.xml"
           },
           "media-profiles": {
             "system-path": "/etc/some_media_profiles.xml"
@@ -705,6 +753,12 @@
           "hardware-features": {
             "system-path": "/etc/some_hardware_features.xml"
           },
+          "media-codecs": {
+            "system-path": "/etc/some_media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "system-path": "/etc/some_media_codecs_performance_c2.xml"
+          },
           "media-profiles": {
             "system-path": "/etc/some_media_profiles.xml"
           }
@@ -764,6 +818,12 @@
           },
           "hardware-features": {
             "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-codecs": {
+            "system-path": "/etc/some_media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "system-path": "/etc/some_media_codecs_performance_c2.xml"
           },
           "media-profiles": {
             "system-path": "/etc/some_media_profiles.xml"
@@ -824,6 +884,12 @@
           },
           "hardware-features": {
             "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-codecs": {
+            "system-path": "/etc/some_media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "system-path": "/etc/some_media_codecs_performance_c2.xml"
           },
           "media-profiles": {
             "system-path": "/etc/some_media_profiles.xml"
@@ -879,6 +945,12 @@
           },
           "hardware-features": {
             "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-codecs": {
+            "system-path": "/etc/some_media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "system-path": "/etc/some_media_codecs_performance_c2.xml"
           },
           "media-profiles": {
             "system-path": "/etc/some_media_profiles.xml"
@@ -935,6 +1007,12 @@
           "hardware-features": {
             "system-path": "/etc/some_hardware_features.xml"
           },
+          "media-codecs": {
+            "system-path": "/etc/some_media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "system-path": "/etc/some_media_codecs_performance_c2.xml"
+          },
           "media-profiles": {
             "system-path": "/etc/some_media_profiles.xml"
           }
@@ -989,6 +1067,12 @@
           },
           "hardware-features": {
             "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-codecs": {
+            "system-path": "/etc/some_media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "system-path": "/etc/some_media_codecs_performance_c2.xml"
           },
           "media-profiles": {
             "system-path": "/etc/some_media_profiles.xml"
@@ -1044,6 +1128,12 @@
           },
           "hardware-features": {
             "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-codecs": {
+            "system-path": "/etc/some_media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "system-path": "/etc/some_media_codecs_performance_c2.xml"
           },
           "media-profiles": {
             "system-path": "/etc/some_media_profiles.xml"
@@ -1098,6 +1188,12 @@
           },
           "hardware-features": {
             "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-codecs": {
+            "system-path": "/etc/some_media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "system-path": "/etc/some_media_codecs_performance_c2.xml"
           },
           "media-profiles": {
             "system-path": "/etc/some_media_profiles.xml"
@@ -1153,6 +1249,12 @@
           "hardware-features": {
             "system-path": "/etc/some_hardware_features.xml"
           },
+          "media-codecs": {
+            "system-path": "/etc/some_media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "system-path": "/etc/some_media_codecs_performance_c2.xml"
+          },
           "media-profiles": {
             "system-path": "/etc/some_media_profiles.xml"
           }
@@ -1206,6 +1308,12 @@
           },
           "hardware-features": {
             "system-path": "/etc/some_hardware_features.xml"
+          },
+          "media-codecs": {
+            "system-path": "/etc/some_media_codecs_c2.xml"
+          },
+          "media-codecs-performance": {
+            "system-path": "/etc/some_media_codecs_performance_c2.xml"
           },
           "media-profiles": {
             "system-path": "/etc/some_media_profiles.xml"

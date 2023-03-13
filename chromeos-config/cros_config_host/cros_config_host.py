@@ -122,6 +122,24 @@ def GetArcFiles(config):
         print(files.dest)
 
 
+def GetArcCodecFiles(config):
+    """Print a list of arc media codec files across all models
+
+    The output is one line for the source file (typically relative to
+    ${FILESDIR}) and one line for the install file, e.g.:
+       media_codecs_c2.xml
+       /etc/media_codecs_c2.xml
+       media_codecs_c2_performance.xml
+       /etc/media_codecs_c2_performance.xml
+
+    Args:
+        config: A CrosConfig instance
+    """
+    for files in config.GetArcCodecFiles():
+        print(files.source)
+        print(files.dest)
+
+
 def GetAudioFiles(config):
     """Print a list of audio files across all models
 
@@ -450,6 +468,12 @@ def GetParser(description):
         help="Lists pairs of arc++ files in sequence: first line is "
         "the relative source file, second line is the full install pathname",
     )
+    # Parser: get-arc-codec-files
+    subparsers.add_parser(
+        "get-arc-codec-files",
+        help="Lists pairs of arc media codec files in sequence: first line is "
+        "the relative source file, second line is the full install pathname",
+    )
     # Parser: get-audio-files
     subparsers.add_parser(
         "get-audio-files",
@@ -644,6 +668,8 @@ def main(argv=None):
         GetFirmwareUris(config)
     elif opts.subcommand == "get-arc-files":
         GetArcFiles(config)
+    elif opts.subcommand == "get-arc-codec-files":
+        GetArcCodecFiles(config)
     elif opts.subcommand == "get-audio-files":
         GetAudioFiles(config)
     elif opts.subcommand == "get-bluetooth-files":

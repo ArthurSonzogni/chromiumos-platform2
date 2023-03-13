@@ -45,6 +45,12 @@ some_base_config: &some_base_config
     media-profiles:
       build-path: "some/media_profiles.xml"
       system-path: "/etc/some_media_profiles.xml"
+    media-codecs:
+      build-path: "some/media_codecs_c2.xml"
+      system-path: "/etc/some_media_codecs_c2.xml"
+    media-codecs-performance:
+      build-path: "some/media_codecs_performance_c2.xml"
+      system-path: "/etc/some_media_codecs_performance_c2.xml"
     build-properties:
       product: "{{$name}}"
       device: "{{$name}}_cheets"

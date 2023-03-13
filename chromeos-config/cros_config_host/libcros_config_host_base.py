@@ -260,6 +260,13 @@ class DeviceConfig(object):
             List of BaseFile objects representing the arc++ files needed.
         """
 
+    def GetArcCodecFiles(self):
+        """Get a list of arc media codec files for this device
+
+        Returns:
+            List of BaseFile objects representing the arc codec files needed.
+        """
+
     def GetAudioFiles(self):
         """Get a list of audio files
 
@@ -383,6 +390,7 @@ class CrosConfigBaseImpl(object):
             "GetDetachableBaseFirmwareFiles"
         ] = self.GetDetachableBaseFirmwareFiles()
         result["GetArcFiles"] = self.GetArcFiles()
+        result["GetArcCodecFiles"] = self.GetArcCodecFiles()
         result["GetAudioFiles"] = self.GetAudioFiles()
         bluetooth_files = self.GetBluetoothFiles()
         if bluetooth_files:
@@ -509,6 +517,15 @@ class CrosConfigBaseImpl(object):
             referenced by all devices
         """
         return self._GetFiles("GetArcFiles")
+
+    def GetArcCodecFiles(self):
+        """Get a list of unique Arc++ files for all devices
+
+        Returns:
+            List of BaseFile objects representing all the arc++ files
+            referenced by all devices
+        """
+        return self._GetFiles("GetArcCodecFiles")
 
     def GetAudioFiles(self):
         """Get a list of unique audio files for all models
