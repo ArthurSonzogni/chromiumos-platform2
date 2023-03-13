@@ -60,6 +60,20 @@ class MockCrosFpDevice : public ec::CrosFpDeviceInterface {
                const brillo::Blob& pk_in_x,
                const brillo::Blob& pk_in_y),
               (override));
+  MOCK_METHOD(std::optional<PairingKeyKeygenReply>,
+              PairingKeyKeygen,
+              (),
+              (override));
+  MOCK_METHOD(std::optional<brillo::Blob>,
+              PairingKeyWrap,
+              (const brillo::Blob& pub_x,
+               const brillo::Blob& pub_y,
+               const brillo::Blob& encrypted_priv),
+              (override));
+  MOCK_METHOD(bool,
+              LoadPairingKey,
+              (const brillo::Blob& encrypted_pairing_key),
+              (override));
 };
 
 }  // namespace biod

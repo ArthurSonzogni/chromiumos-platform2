@@ -76,6 +76,13 @@ class CrosFpDevice : public ec::CrosFpDeviceInterface {
   bool InitEntropy(bool reset) override;
   bool UpdateFpInfo() override;
 
+  std::optional<PairingKeyKeygenReply> PairingKeyKeygen() override;
+  std::optional<brillo::Blob> PairingKeyWrap(
+      const brillo::Blob& pub_x,
+      const brillo::Blob& pub_y,
+      const brillo::Blob& encrypted_priv) override;
+  bool LoadPairingKey(const brillo::Blob& encrypted_pairing_key) override;
+
   int MaxTemplateCount() override;
   int TemplateVersion() override;
   int DeadPixelCount() override;

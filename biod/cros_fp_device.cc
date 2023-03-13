@@ -782,6 +782,25 @@ bool CrosFpDevice::UpdateEntropy(bool reset) {
   return true;
 }
 
+std::optional<ec::CrosFpDeviceInterface::PairingKeyKeygenReply>
+CrosFpDevice::PairingKeyKeygen() {
+  // TODO(b/251380205): Implement new commands in CrosFpDevice.
+  return std::nullopt;
+}
+
+std::optional<brillo::Blob> CrosFpDevice::PairingKeyWrap(
+    const brillo::Blob& pub_x,
+    const brillo::Blob& pub_y,
+    const brillo::Blob& encrypted_priv) {
+  // TODO(b/251380205): Implement new commands in CrosFpDevice.
+  return std::nullopt;
+}
+
+bool CrosFpDevice::LoadPairingKey(const brillo::Blob& encrypted_pairing_key) {
+  // TODO(b/251380205): Implement new commands in CrosFpDevice.
+  return false;
+}
+
 int CrosFpDevice::MaxTemplateCount() {
   if (!info_ || !info_->template_info()) {
     UpdateFpInfo();

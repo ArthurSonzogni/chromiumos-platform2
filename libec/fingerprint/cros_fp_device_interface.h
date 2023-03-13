@@ -58,6 +58,12 @@ class CrosFpDeviceInterface {
     brillo::Blob pk_out_y;
   };
 
+  struct PairingKeyKeygenReply {
+    brillo::Blob pub_x;
+    brillo::Blob pub_y;
+    brillo::Blob encrypted_private_key;
+  };
+
   virtual bool SetFpMode(const ec::FpMode& mode) = 0;
   /**
    * @return mode on success, FpMode(FpMode::Mode::kModeInvalid) on failure
@@ -79,7 +85,7 @@ class CrosFpDeviceInterface {
   virtual bool SetNonceContext(const brillo::Blob& nonce,
                                const brillo::Blob& encrypted_user_id,
                                const brillo::Blob& iv) = 0;
-  // Get nonce from FP device to initiate the session key exchange.
+  // Get nonce from FPMCU to initiate the session key exchange.
   virtual std::optional<brillo::Blob> GetNonce() = 0;
   virtual bool ResetContext() = 0;
   // Initialise the entropy in the SBP. If |reset| is true, the old entropy
@@ -87,6 +93,30 @@ class CrosFpDeviceInterface {
   // if no entropy had been added before.
   virtual bool InitEntropy(bool reset) = 0;
   virtual bool UpdateFpInfo() = 0;
+  // Initiate the ECDH session to establish the pairing key.
+  // The FPMCU generates and returns its public key and encrypted
+  // private key. This encrypted private key is provided to the FPMCU
+  // during the PairingKeyWrap command, so that no FPMCU state is required.
+  //
+  // Note that the encrypted private key Blob contains the as-is
+  // serialization of the returned private key struct. We do not
+  // unpack the key struct, since we are simply returning the as-is
+  // contents to the FPMCU through PairingKeyWrap.
+  virtual std::optional<PairingKeyKeygenReply> PairingKeyKeygen() = 0;
+  // Complete the ECDH session to establish the pairing key. Give the FPMCU
+  // the public key of the caller. Also, provide the wrapped private key of
+  // their key pair returned in PairingKeyKeygen. The wrapped pairing key is
+  // returned from the FPMCU because it doesn't have persistent storage, and
+  // relies on userland storing it.
+  virtual std::optional<brillo::Blob> PairingKeyWrap(
+      const brillo::Blob& pub_x,
+      const brillo::Blob& pub_y,
+      const brillo::Blob& encrypted_priv) = 0;
+  // Load the wrapped pairing key into the FPMCU. This will be called on
+  // each boot as most FP operations require the pairing key to be loaded in the
+  // FPMCU. This is the key returned from PairingKeyWrap, which must be
+  // persisted on the host.
+  virtual bool LoadPairingKey(const brillo::Blob& encrypted_pairing_key) = 0;
 
   virtual int MaxTemplateCount() = 0;
   virtual int TemplateVersion() = 0;
