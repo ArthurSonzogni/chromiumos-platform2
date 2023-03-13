@@ -65,12 +65,21 @@ class WiFiPhy {
   // Return true if the phy supports iftype, false otherwise.
   bool SupportsIftype(nl80211_iftype iftype) const;
 
-  // Return true if the phy supports AP interface type, false otherwise.
-  mockable bool SupportAPMode() const;
-
   std::vector<ConcurrencyCombination> ConcurrencyCombinations() {
     return concurrency_combs_;
   }
+
+  // Helper functions to retrieve WiFiPhy capabilities.
+  // Return true if the phy supports AP interface type, false otherwise.
+  mockable bool SupportAPMode() const;
+
+  // Return true if the phy supports |iface_type1|/|iface_type2| concurrency,
+  // false otherwise.
+  bool SupportConcurrency(nl80211_iftype iface_type1,
+                          nl80211_iftype iface_type2) const;
+
+  // Return true if the phy supports AP/STA concurrency, false otherwise.
+  mockable bool SupportAPSTAConcurrency() const;
 
   // This structure keeps information about frequency reported in PHY dump.
   // |flags| is a bitmap with bits corresponding to NL80211_FREQUENCY_ATTR_*

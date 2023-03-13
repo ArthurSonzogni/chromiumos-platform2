@@ -21,6 +21,7 @@ class MockWiFiPhy : public WiFiPhy {
 
   MOCK_METHOD(void, OnNewWiphy, (const Nl80211Message&), (override));
   MOCK_METHOD(bool, SupportAPMode, (), (const, override));
+  MOCK_METHOD(bool, SupportAPSTAConcurrency, (), (const, override));
 };
 
 }  // namespace shill

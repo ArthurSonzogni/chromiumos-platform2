@@ -191,4 +191,45 @@ bool WiFiPhy::SupportAPMode() const {
   return SupportsIftype(NL80211_IFTYPE_AP);
 }
 
+bool WiFiPhy::SupportConcurrency(nl80211_iftype iface_type1,
+                                 nl80211_iftype iface_type2) const {
+  for (auto comb : concurrency_combs_) {
+    if (comb.max_num < 2) {
+      // Support less than 2 interfaces combination, skip this combination.
+      continue;
+    }
+
+    bool support_type1 = false;
+    bool support_type2 = false;
+
+    for (auto limit : comb.limits) {
+      std::set<nl80211_iftype> iftypes(limit.iftypes.begin(),
+                                       limit.iftypes.end());
+
+      if (limit.max == 1 && base::Contains(iftypes, iface_type1) &&
+          base::Contains(iftypes, iface_type2)) {
+        // Case #{ iface_type1, iface_type2 } <= 1 does not meet concurrency
+        // requirement, skip and check next combination.
+        break;
+      }
+      if (base::Contains(iftypes, iface_type1)) {
+        support_type1 = true;
+      } else if (base::Contains(iftypes, iface_type2)) {
+        support_type2 = true;
+      }
+    }
+
+    if (support_type1 && support_type2) {
+      // This combination already satisfies concurrency, skip checking the rest
+      // combinations.
+      return true;
+    }
+  }
+  return false;
+}
+
+bool WiFiPhy::SupportAPSTAConcurrency() const {
+  return SupportConcurrency(NL80211_IFTYPE_AP, NL80211_IFTYPE_STATION);
+}
+
 }  // namespace shill

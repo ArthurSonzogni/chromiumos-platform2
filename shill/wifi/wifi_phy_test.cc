@@ -430,8 +430,33 @@ const WiFiPhy::Frequencies kNewWiphyNlMsg_AllFrequencies = {
 
 // Bytes representing a NL80211_CMD_NEW_WIPHY message which includes the
 // attribute NL80211_ATTR_INTERFACE_COMBINATIONS. The combination in this
-// message supports multiple channels on a single interface. The full
-// combintations attribute of this message looks like this:
+// message supports single channel on a single interface. The full combintations
+// attribute of this message looks like this:
+//
+// valid interface combinations:
+//     * #{ P2P-client } <= 1, #{ managed, AP, P2P-GO } <= 1, #{ P2P-device }
+//     <= 1, total <= 3, #channels <= 1
+const uint8_t kNewSingleChannelNoAPSTAConcurrencyNlMsg[] = {
+    0xac, 0x00, 0x00, 0x00, 0x14, 0x00, 0x00, 0x00, 0x03, 0x00, 0x00, 0x00,
+    0xf6, 0x31, 0x00, 0x00, 0x03, 0x01, 0x00, 0x00, 0x08, 0x00, 0x01, 0x00,
+    0x00, 0x00, 0x00, 0x00, 0x09, 0x00, 0x02, 0x00, 0x70, 0x68, 0x79, 0x30,
+    0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x2e, 0x00, 0x01, 0x00, 0x00, 0x00,
+    0x0c, 0x00, 0x79, 0x00, 0x04, 0x00, 0x04, 0x00, 0x04, 0x00, 0x06, 0x00,
+    0x70, 0x00, 0x78, 0x00, 0x6c, 0x00, 0x01, 0x00, 0x48, 0x00, 0x01, 0x00,
+    0x14, 0x00, 0x01, 0x00, 0x08, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00,
+    0x08, 0x00, 0x02, 0x00, 0x04, 0x00, 0x08, 0x00, 0x1c, 0x00, 0x02, 0x00,
+    0x08, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00, 0x10, 0x00, 0x02, 0x00,
+    0x04, 0x00, 0x02, 0x00, 0x04, 0x00, 0x03, 0x00, 0x04, 0x00, 0x09, 0x00,
+    0x14, 0x00, 0x03, 0x00, 0x08, 0x00, 0x01, 0x00, 0x01, 0x00, 0x00, 0x00,
+    0x08, 0x00, 0x02, 0x00, 0x04, 0x00, 0x0a, 0x00, 0x08, 0x00, 0x04, 0x00,
+    0x01, 0x00, 0x00, 0x00, 0x08, 0x00, 0x02, 0x00, 0x03, 0x00, 0x00, 0x00,
+    0x08, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x06, 0x00,
+    0x00, 0x00, 0x00, 0x00};
+
+// Bytes representing a NL80211_CMD_NEW_WIPHY message which includes the
+// attribute NL80211_ATTR_INTERFACE_COMBINATIONS. The combination in this
+// message supports single channel on a single interface. The full combintations
+// attribute of this message looks like this:
 //
 // valid interface combinations:
 //     * #{ managed } <= 1, #{ AP, P2P-client, P2P-GO } <= 1, #{ P2P-device }
@@ -578,6 +603,10 @@ class WiFiPhyTest : public ::testing::Test {
                                             combs[i]);
     }
   }
+
+  void AssertApStaConcurrency(bool support) {
+    ASSERT_EQ(wifi_phy_.SupportAPSTAConcurrency(), support);
+  }
 };
 
 TEST_F(WiFiPhyTest, AddAndDeleteDevices) {
@@ -674,6 +703,35 @@ TEST_F(WiFiPhyTest, ParseInterfaceTypes) {
   EXPECT_FALSE(SupportsIftype(NL80211_IFTYPE_NAN));
 }
 
+TEST_F(WiFiPhyTest, ParseNoAPSTAConcurrencySingleChannel) {
+  NewWiphyMessage msg;
+  NetlinkPacket packet(kNewSingleChannelNoAPSTAConcurrencyNlMsg,
+                       sizeof(kNewSingleChannelNoAPSTAConcurrencyNlMsg));
+  msg.InitFromPacket(&packet, NetlinkMessage::MessageContext());
+  ParseConcurrency(msg);
+
+  // These values align with those from
+  // kNewSingleChannelNoAPSTAConcurrencyNlMsg. They must be declared inline
+  // because the |nl80211_iftype|s are C values which can't be instantiated
+  // outside a function context.
+  std::vector<ConcurrencyCombination>
+      SingleChannelNoAPSTAConcurrencyCombinations{(
+          struct ConcurrencyCombination){
+          .limits = {(struct IfaceLimit){.iftypes = {NL80211_IFTYPE_P2P_CLIENT},
+                                         .max = 1},
+                     (struct IfaceLimit){
+                         .iftypes = {NL80211_IFTYPE_STATION, NL80211_IFTYPE_AP,
+                                     NL80211_IFTYPE_P2P_GO},
+                         .max = 1,
+                     },
+                     (struct IfaceLimit){.iftypes = {NL80211_IFTYPE_P2P_DEVICE},
+                                         .max = 1}},
+          .max_num = 3,
+          .num_channels = 1}};
+  AssertPhyConcurrencyIsEqualTo(SingleChannelNoAPSTAConcurrencyCombinations);
+  AssertApStaConcurrency(false);
+}
+
 TEST_F(WiFiPhyTest, ParseConcurrencySingleChannel) {
   NewWiphyMessage msg;
   NetlinkPacket packet(kNewSingleChannelConcurrencyNlMsg,
@@ -698,6 +756,7 @@ TEST_F(WiFiPhyTest, ParseConcurrencySingleChannel) {
       .max_num = 3,
       .num_channels = 1}};
   AssertPhyConcurrencyIsEqualTo(SingleChannelConcurrencyCombinations);
+  AssertApStaConcurrency(true);
 }
 
 TEST_F(WiFiPhyTest, ParseConcurrencyMultiChannel) {
@@ -748,6 +807,7 @@ TEST_F(WiFiPhyTest, ParseConcurrencyMultiChannel) {
           .num_channels = 1},
   };
   AssertPhyConcurrencyIsEqualTo(MultiChannelConcurrencyCombinations);
+  AssertApStaConcurrency(true);
 }
 
 }  // namespace shill

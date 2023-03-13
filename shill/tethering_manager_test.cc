@@ -339,6 +339,7 @@ TEST_F(TetheringManagerTest, GetTetheringCapabilities) {
   const std::vector<const WiFiPhy*> phys = {phy.get()};
   ON_CALL(*wifi_provider_, GetPhys()).WillByDefault(Return(phys));
   ON_CALL(*phy, SupportAPMode()).WillByDefault(Return(true));
+  ON_CALL(*phy, SupportAPSTAConcurrency()).WillByDefault(Return(true));
   SetAllowed(tethering_manager_, true);
   KeyValueStore caps = GetCapabilities(tethering_manager_);
 
