@@ -305,107 +305,11 @@ impl DeviceCpuStatus {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
-    use std::path::Path;
+    use crate::test_utils::tests::*;
+    use anyhow::Result;
     use tempfile::tempdir;
 
     const MOCK_NUM_CPU: i32 = 8;
-
-    fn write_mock_pl0(root: &Path, value: u64) -> Result<()> {
-        std::fs::write(
-            root.join(super::DEVICE_POWER_LIMIT_PATH)
-                .join("constraint_0_power_limit_uw"),
-            value.to_string(),
-        )?;
-
-        Ok(())
-    }
-
-    fn write_mock_cpu(
-        root: &Path,
-        cpu_num: i32,
-        baseline_max: u64,
-        curr_max: u64,
-        baseline_min: u64,
-        curr_min: u64,
-    ) -> Result<()> {
-        let policy_path = root
-            .join(super::DEVICE_CPUFREQ_PATH)
-            .join(format!("policy{cpu_num}"));
-        std::fs::write(
-            policy_path.join("cpuinfo_max_freq"),
-            baseline_max.to_string(),
-        )
-        .expect("Failed to write to file!");
-        std::fs::write(
-            policy_path.join("cpuinfo_min_freq"),
-            baseline_min.to_string(),
-        )
-        .expect("Failed to write to file!");
-
-        std::fs::write(policy_path.join("scaling_max_freq"), curr_max.to_string())?;
-
-        std::fs::write(policy_path.join("scaling_min_freq"), curr_min.to_string())?;
-        Ok(())
-    }
-
-    fn setup_mock_cpu_dev_dirs(root: &Path) -> anyhow::Result<()> {
-        fs::create_dir_all(root.join(super::DEVICE_POWER_LIMIT_PATH))?;
-        for i in 0..MOCK_NUM_CPU {
-            fs::create_dir_all(
-                root.join(super::DEVICE_CPUFREQ_PATH)
-                    .join(format!("policy{i}")),
-            )?;
-        }
-        Ok(())
-    }
-
-    fn helper_read_cpu0_freq_max(root: &Path) -> i32 {
-        let policy_path = root.join(super::DEVICE_CPUFREQ_PATH).join("policy0");
-        let read_val = std::fs::read(policy_path.join("scaling_max_freq")).unwrap();
-
-        str::from_utf8(&read_val).unwrap().parse::<i32>().unwrap()
-    }
-
-    fn helper_read_cpu0_freq_min(root: &Path) -> i32 {
-        let policy_path = root.join(super::DEVICE_CPUFREQ_PATH).join("policy0");
-        let read_val = std::fs::read(policy_path.join("scaling_min_freq")).unwrap();
-
-        str::from_utf8(&read_val).unwrap().parse::<i32>().unwrap()
-    }
-
-    fn setup_mock_files(root: &Path) -> anyhow::Result<()> {
-        let pl_files: Vec<&str> = vec![
-            "constraint_0_power_limit_uw",
-            "constraint_0_max_power_uw",
-            "constraint_1_power_limit_uw",
-            "constraint_1_max_power_uw",
-            "energy_uj",
-            "max_energy_range_uj",
-        ];
-
-        let cpufreq_files: Vec<&str> = vec!["scaling_max_freq", "cpuinfo_max_freq"];
-
-        for pl_file in &pl_files {
-            std::fs::write(
-                root.join(super::DEVICE_POWER_LIMIT_PATH)
-                    .join(PathBuf::from(pl_file)),
-                "0",
-            )?;
-        }
-
-        for i in 0..MOCK_NUM_CPU {
-            let policy_path = root
-                .join(super::DEVICE_CPUFREQ_PATH)
-                .join(format!("policy{i}"));
-
-            for cpufreq_file in &cpufreq_files {
-                std::fs::write(policy_path.join(PathBuf::from(cpufreq_file)), "0")?;
-            }
-        }
-
-        Ok(())
-    }
 
     #[test]
     fn test_sysfs_files_missing_gives_error() {
@@ -417,7 +321,7 @@ mod tests {
     fn test_get_pl0() -> anyhow::Result<()> {
         let root = tempdir()?;
         setup_mock_cpu_dev_dirs(root.path()).unwrap();
-        setup_mock_files(root.path()).unwrap();
+        setup_mock_cpu_files(root.path()).unwrap();
         write_mock_cpu(root.path(), 0, 3200000, 3000000, 400000, 1000000).unwrap();
         write_mock_pl0(root.path(), 15000000).unwrap();
         let mock_cpu_dev_res = DeviceCpuStatus::new(PathBuf::from(root.path()));
@@ -429,10 +333,10 @@ mod tests {
     }
 
     #[test]
-    fn test_cpu_read_write_reset() -> anyhow::Result<()> {
+    fn test_cpu_read_write_reset() -> Result<()> {
         let root = tempdir()?;
         setup_mock_cpu_dev_dirs(root.path()).unwrap();
-        setup_mock_files(root.path()).unwrap();
+        setup_mock_cpu_files(root.path()).unwrap();
         for cpu in 0..MOCK_NUM_CPU {
             write_mock_cpu(root.path(), cpu, 3200000, 3000000, 400000, 1000000).unwrap();
         }
@@ -440,23 +344,23 @@ mod tests {
         let mock_cpu_dev_res = DeviceCpuStatus::new(PathBuf::from(root.path()));
         assert!(mock_cpu_dev_res.is_ok());
         let mock_cpu_dev = mock_cpu_dev_res?;
-        assert_eq!(helper_read_cpu0_freq_max(root.path()), 3000000);
+        assert_eq!(get_cpu0_freq_max(root.path()), 3000000);
 
         mock_cpu_dev.set_all_max_cpu_freq(2000000)?;
-        assert_eq!(helper_read_cpu0_freq_max(root.path()), 2000000);
+        assert_eq!(get_cpu0_freq_max(root.path()), 2000000);
 
         mock_cpu_dev.set_all_min_cpu_freq(1200000)?;
-        assert_eq!(helper_read_cpu0_freq_min(root.path()), 1200000);
+        assert_eq!(get_cpu0_freq_min(root.path()), 1200000);
 
         mock_cpu_dev.reset_all_max_min_cpu_freq()?;
-        assert_eq!(helper_read_cpu0_freq_max(root.path()), 3000000);
-        assert_eq!(helper_read_cpu0_freq_min(root.path()), 1000000);
+        assert_eq!(get_cpu0_freq_max(root.path()), 3000000);
+        assert_eq!(get_cpu0_freq_min(root.path()), 1000000);
 
         mock_cpu_dev.set_all_max_cpu_freq(1600000)?;
-        assert_eq!(helper_read_cpu0_freq_max(root.path()), 1600000);
+        assert_eq!(get_cpu0_freq_max(root.path()), 1600000);
 
         mock_cpu_dev.set_all_max_cpu_freq(2800000)?;
-        assert_eq!(helper_read_cpu0_freq_min(root.path()), 1000000);
+        assert_eq!(get_cpu0_freq_min(root.path()), 1000000);
 
         Ok(())
     }

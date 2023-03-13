@@ -15,6 +15,9 @@ use once_cell::sync::Lazy;
 use crate::power;
 
 #[cfg(target_arch = "x86_64")]
+use crate::gpu_freq_scaling::intel_device;
+
+#[cfg(target_arch = "x86_64")]
 use crate::cgroup_x86_64::{media_dynamic_cgroup, MediaDynamicCgroupAction};
 
 // Extract the parsing function for unittest.
@@ -57,6 +60,9 @@ impl TryFrom<u8> for GameMode {
 
 static GAME_MODE: Lazy<Mutex<GameMode>> = Lazy::new(|| Mutex::new(GameMode::Off));
 
+#[cfg(target_arch = "x86_64")]
+const GPU_TUNING_POLLING_INTERVAL_MS: u64 = 1000;
+
 pub struct TuneSwappiness {
     pub swappiness: u32,
 }
@@ -76,6 +82,14 @@ pub fn set_game_mode(
     };
 
     update_power_preferences(power_preference_manager)?;
+
+    #[cfg(target_arch = "x86_64")]
+    if mode == GameMode::Borealis {
+        match intel_device::run_active_gpu_tuning(GPU_TUNING_POLLING_INTERVAL_MS) {
+            Ok(_) => log::info!("Active GPU tuning running."),
+            Err(e) => log::warn!("Active GPU tuning not set. {:?}", e),
+        }
+    }
 
     const TUNED_SWAPPINESS_VALUE: u32 = 30;
     const DEFAULT_SWAPPINESS_VALUE: u32 = 60;
@@ -268,6 +282,8 @@ fn set_gt_boost_freq_mhz_impl(root: &Path, mode: RTCAudioActive) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use crate::test_utils::tests::MockPowerPreferencesManager;
+
     use super::*;
     use std::fs;
     use tempfile::tempdir;
@@ -319,18 +335,6 @@ mod tests {
         set_gt_boost_freq_mhz_impl(root_path, RTCAudioActive::Inactive).unwrap();
 
         assert_eq!(read_file_to_u64(&gt_boost_freq_mhz_path).unwrap(), 1100);
-    }
-
-    struct MockPowerPreferencesManager {}
-    impl power::PowerPreferencesManager for MockPowerPreferencesManager {
-        fn update_power_preferences(
-            &self,
-            _rtc: RTCAudioActive,
-            _fullscreen: FullscreenVideo,
-            _game: GameMode,
-        ) -> Result<()> {
-            Ok(())
-        }
     }
 
     #[test]

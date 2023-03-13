@@ -5,6 +5,15 @@
 DRIVERS=="i915", ACTION=="add", ATTR{gt_boost_freq_mhz}!="", \
   RUN+="/bin/chown resourced:resourced $sys$devpath/gt_boost_freq_mhz"
 
+DRIVERS=="i915", ACTION=="add", ATTR{gt_max_freq_mhz}!="", \
+  RUN+="/bin/chown resourced:resourced $sys$devpath/gt_max_freq_mhz"
+
+KERNEL=="intel-rapl:0", ACTION=="add", ATTR{constraint_0_power_limit_uw}!="", \
+  RUN+="/bin/chown resourced:resourced $sys$devpath/constraint_0_power_limit_uw"
+
+KERNEL=="intel-rapl:0", ACTION=="add", ATTR{constraint_0_max_power_uw}!="", \
+  RUN+="/bin/chown resourced:resourced $sys$devpath/constraint_0_max_power_uw"
+
 KERNEL=="cpu*", SUBSYSTEM=="cpu", ACTION=="add", \
   RUN+="/bin/chown resourced:resourced $sys$devpath/cpufreq/scaling_governor"
 

@@ -5,13 +5,18 @@
 mod common;
 mod config;
 mod dbus;
-mod gpu_freq_scaling;
 mod memory;
 mod power;
 mod psi;
 
+#[cfg(test)]
+mod test_utils;
+
 #[cfg(target_arch = "x86_64")]
 mod cgroup_x86_64;
+
+#[cfg(target_arch = "x86_64")]
+mod gpu_freq_scaling;
 
 #[cfg(target_arch = "x86_64")]
 mod cpu_scaling;

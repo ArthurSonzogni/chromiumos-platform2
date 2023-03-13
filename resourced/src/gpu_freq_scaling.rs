@@ -2,252 +2,307 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// TODO: removeme once other todos addressed.
-#![allow(dead_code)]
+pub mod intel_device {
+    use crate::{
+        common::{self, GameMode},
+        cpu_scaling::DeviceCpuStatus,
+    };
+    use anyhow::{bail, Context, Result};
+    use log::{info, warn};
+    use regex::Regex;
+    use std::{
+        fs::{self, File},
+        io::{BufRead, BufReader},
+        path::PathBuf,
+        sync::Mutex,
+        thread,
+        time::Duration,
+    };
 
-use anyhow::{bail, Result};
-use std::fs;
-use std::path::{Path, PathBuf};
+    // Device path for cpuinfo.
+    const CPUINFO_PATH: &str = "proc/cpuinfo";
 
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
-use std::thread;
-use std::time::Duration;
+    // Device path for GPU card.
+    const GPU0_DEVICE_PATH: &str = "sys/class/drm/card0";
 
-use crate::gpu_freq_scaling::amd_device::{
-    amd_sustained_mode_cleanup, amd_sustained_mode_init, AmdDeviceConfig,
-};
+    // Expected GPU freq for cometlake.  Used for filtering check.
+    const EXPECTED_GPU_MAX_FREQ: u64 = 1000;
 
-use crate::common;
+    // Guard range when reclocking.  max > min + guard.
+    const GPU_FREQUENCY_GUARD_BUFFER_MHZ: u64 = 200;
 
-#[derive(Debug)]
-pub struct DeviceGpuConfigParams {
-    max_freq_path: PathBuf,
-    turbo_freq_path: PathBuf,
-    power_limit_path: PathBuf,
-    // power_limit_thr contains a mapping of power limits to corresponding frequency ranges.
-    // Field contains a vector of (power limit, GPU max freq) pairs.
-    power_limit_thr: Vec<(u32, u32)>,
-}
+    pub struct IntelGpuDeviceConfig {
+        min_freq_path: PathBuf,
 
-// TODO: Distinguish RO vs R/W.
-#[allow(dead_code)]
-enum SupportedPaths {
-    GpuMax,
-    GpuTurbo,
-    PowerLimitCurrent,
-}
+        max_freq_path: PathBuf,
 
-/// Starts a thread that continuously monitors power limits and adjusts gpu frequency accordingly.
-///
-/// This function will spawn a thread that will periodically poll the power limit and adjust
-/// GPU frequency as needed.  The thread can be terminated by the caller by setting the game_mode_on
-/// atomic bool to false.  There can be a delay of up to 1x polling_freq_ms to clean up the thread.
-///
-/// # Arguments
-///
-/// * `game_mode_on` - A shared atomic bool with the caller that controls when the
-///                    newly spawned thread will terminate.
-///
-/// * `polling_freq_ms` - The polling frequency to use for reading the power limit val.
-///                       1000ms can be used as a default.
-///
-/// # Return
-///
-/// Result enum indicated successful creation of thread.
-pub fn init_gpu_scaling_thread(game_mode_on: Arc<AtomicBool>, polling_freq_ms: u64) -> Result<()> {
-    let config = init_gpu_params()?;
-    let mut last_pl_val: u32 = 15000000;
+        turbo_freq_path: PathBuf,
 
-    thread::spawn(move || {
-        let mut consecutive_fails: u32 = 0;
+        // pub(crate) for sanity unit testing
+        /// `power_liit_thr` is a table of tuple containing a power_limit_0 value and
+        /// a max_gpu_freq.  Any power_limit that falls within index i and i+1
+        /// gets mapped to max_gpu_freq i.  If power limit exceeds index 0, gpu_max_freq
+        /// gets mapped to index 0.  Any power_limit below the defined table min will be
+        /// mapped to the lowest max_gpu_freq.
+        pub(crate) power_limit_thr: Vec<(u64, u64)>,
 
-        let amd_dev: Option<AmdDeviceConfig> = if AmdDeviceConfig::is_amd_device() {
-            match amd_sustained_mode_init() {
-                Ok(dev) => Some(dev),
-                Err(_) => return,
-            }
-        } else {
-            None
-        };
+        polling_interval_ms: u64,
+    }
 
-        while game_mode_on.load(Ordering::Relaxed) && consecutive_fails < 100 {
-            println!("Game mode ON");
+    struct GpuStats {
+        min_freq: u64,
 
-            let last_pl_buf = evaluate_gpu_frequency(&config, last_pl_val);
-            match last_pl_buf {
-                Ok(pl) => {
-                    last_pl_val = pl;
-                    consecutive_fails = 0;
+        max_freq: u64,
+
+        // Turbo freq is not manually controlled.  MAX == TURBO initially.
+        _turbo_freq: u64,
+    }
+
+    /// Function to check if device has Intel cpu.
+    ///
+    /// # Return
+    ///
+    /// Boolean denoting if device has Intel CPU.
+    pub fn is_intel_device(root: PathBuf) -> bool {
+        if let Ok(reader) = File::open(root.join(CPUINFO_PATH))
+            .map(BufReader::new)
+            .context("Couldn't read cpuinfo")
+        {
+            for line in reader.lines().flatten() {
+                // Only check CPU0 and fail early.
+                // TODO: integrate with `crgoup_x86_64.rs`
+                if line.starts_with("vendor_id") {
+                    return line.ends_with("GenuineIntel");
                 }
-                Err(_) => consecutive_fails += 1,
             }
-
-            thread::sleep(Duration::from_millis(polling_freq_ms));
         }
-
-        if consecutive_fails >= 100 {
-            println!("Gpu scaling failed");
-        }
-
-        // Cleanup
-        if let Some(dev) = amd_dev {
-            amd_sustained_mode_cleanup(&dev);
-        } else {
-            cleanup_gpu_scaling();
-        }
-
-        println!("Game mode is off");
-    });
-
-    Ok(())
-}
-
-fn cleanup_gpu_scaling() {
-    println!("Cleanup and reset to defaults");
-    // TODO: Needs implementation and sysfs values for default GPU min, max, turbo.
-}
-
-/// Stateless function to check the power limit and adjust GPU frequency range.
-///
-/// This function is called periodically to check if GPU frequency range needs
-/// to be adjusted.  Providing a last_pl_val allows it to check for deltas in
-/// power limit.
-///
-/// # Arguments
-///
-/// * `config` - Device-specifc configuration files to use.
-///
-/// * `last_pl_val` - Previously buffered power limit value.
-///
-/// # Return u32 value
-///
-/// Returns the current power limit.  Can be buffered and sent in the subsequent call.
-pub fn evaluate_gpu_frequency(config: &DeviceGpuConfigParams, last_pl_val: u32) -> Result<u32> {
-    let current_pl = get_sysfs_val(config, SupportedPaths::PowerLimitCurrent)?;
-
-    println!("Last PL =\t {}\nCurrent PL =\t {}", last_pl_val, current_pl);
-    if current_pl == last_pl_val {
-        // No change in powerlimit since last check, no action needed.
-        return Ok(current_pl);
+        false
     }
 
-    let mut prev_thr = 0;
-    let mut requested_gpu_freq = 0;
-    let mut last_bucket = false;
+    /// Creates a thread that periodically checks for changes in power_limit and adjusts
+    /// the GPU frequency accordingly.
+    ///
+    /// # Arguments
+    ///
+    /// * `polling_interval_ms` - How often to check if tuning should be re-adjusted
+    pub fn run_active_gpu_tuning(polling_interval_ms: u64) -> Result<()> {
+        run_active_gpu_tuning_impl(PathBuf::from("/"), polling_interval_ms)
+    }
 
-    // This loop will iterate over the power limit threshold to GPU max frequency mappings
-    // provided in the config param.  If the current_pl falls within the range of the any 2
-    // threshold ranges (prev_thr and pl_thr), attempt to assign the corresponding max GPU freq.
-    // Additionally checks to see if the previously buffered power_limit value (last_pl_val) was
-    // in a different bucket compared to the current power limit value (current_pl).
-    for (i, &(pl_thr, gpu_max)) in config.power_limit_thr.iter().enumerate() {
-        println!(
-            "Checking config: pl_thr = {}, gpu_max = {}",
-            pl_thr, gpu_max
-        );
-        if i == 0 {
-            if current_pl >= pl_thr {
-                // This case should never happen, but assign Max in case.
-                requested_gpu_freq = gpu_max;
-                break;
+    /// TODO: remove pub. Separate amd and intel unit tests into their own module so
+    /// they have access to private functions.  Leave this `pub` for now.
+    pub(crate) fn run_active_gpu_tuning_impl(
+        root: PathBuf,
+        polling_interval_ms: u64,
+    ) -> Result<()> {
+        static TUNING_RUNNING: Mutex<bool> = Mutex::new(false);
+
+        if let Ok(mut running) = TUNING_RUNNING.lock() {
+            if *running {
+                // Not an error case since set_game_mode called periodically.
+                // Prevent new thread from spawning.
+                info!("Tuning thread already running, ignoring new request");
             } else {
-                prev_thr = pl_thr;
-            }
+                let gpu_dev = IntelGpuDeviceConfig::new(root.to_owned(), polling_interval_ms)?;
+                let cpu_dev = DeviceCpuStatus::new(root)?;
 
-            continue;
-        } else if i == (config.power_limit_thr.len() - 1) {
-            last_bucket = true;
+                *running = true;
+
+                thread::spawn(move || {
+                    info!("Created GPU tuning thread with {polling_interval_ms}ms interval");
+                    match gpu_dev.adjust_gpu_frequency(&cpu_dev) {
+                        Ok(_) => info!("GPU tuning thread ended successfully"),
+                        Err(e) => {
+                            warn!("GPU tuning thread ended prematurely: {:?}", e);
+                        }
+                    }
+
+                    if gpu_dev.tuning_cleanup().is_err() {
+                        warn!("GPU tuning thread cleanup failed");
+                    }
+
+                    if let Ok(mut running) = TUNING_RUNNING.lock() {
+                        *running = false;
+                    } else {
+                        warn!("GPU Tuning thread Mutex poisoned, unable to reset flag");
+                    }
+                });
+            }
+        } else {
+            warn!("GPU Tuning thread Mutex poisoned, ignoring run request");
         }
 
-        // If threshold is within a bucket range or below the min bucket.
-        if prev_thr >= current_pl && current_pl > pl_thr || (last_bucket && current_pl < pl_thr) {
-            println!("Current pl thr in bucket = {}", gpu_max);
+        Ok(())
+    }
 
-            // This check might be unnecessary.  Read guard on write protects unnecessary override already.
-            if prev_thr > last_pl_val && last_pl_val > pl_thr
-                || (last_bucket && last_pl_val < pl_thr)
+    impl IntelGpuDeviceConfig {
+        /// Create a new Intel GPU device object which can be used to set system tuning parameters.
+        ///
+        /// # Arguments
+        ///
+        /// * `root` - root path of device.  Used for using relative paths for testing.  Should
+        /// always be '/' for device.
+        ///
+        /// * `polling_interval_ms` - How often to check if tuning should be re-adjusted.
+        ///
+        /// # Return
+        ///
+        /// New Intel GPU device object.
+        pub fn new(root: PathBuf, polling_interval_ms: u64) -> Result<IntelGpuDeviceConfig> {
+            if !is_intel_device(root.to_owned())
+                || !IntelGpuDeviceConfig::is_supported_device(root.to_owned())
             {
-                // Still in same bucket, no change in GPU freq.
-                return Ok(current_pl);
+                bail!("Not a supported intel device");
             }
 
-            // PL is in new threshold bucket, adjust max freq.
-            requested_gpu_freq = gpu_max;
-            break;
+            let gpu_dev = IntelGpuDeviceConfig {
+                min_freq_path: root.join(GPU0_DEVICE_PATH).join("gt_min_freq_mhz"),
+                max_freq_path: root.join(GPU0_DEVICE_PATH).join("gt_max_freq_mhz"),
+                turbo_freq_path: root.join(GPU0_DEVICE_PATH).join("gt_boost_freq_mhz"),
+                power_limit_thr: vec![
+                    (15000000, EXPECTED_GPU_MAX_FREQ),
+                    (14500000, 900),
+                    (13500000, 800),
+                    (12500000, 700),
+                    (10000000, 650),
+                ],
+                polling_interval_ms,
+            };
+
+            // Don't attempt to tune if tuning table isn't calibrated for device or another
+            // process has already modified the max_freq.
+            if gpu_dev.get_gpu_stats()?.max_freq != EXPECTED_GPU_MAX_FREQ {
+                bail!("Expected GPU max frequency does not match.  Aborting dynamic tuning.");
+            }
+
+            Ok(gpu_dev)
         }
-    }
 
-    // TODO: Compare against GPU_MIN+buffer instead of 0.  Need to read GPU min from sysfs.
-    // This block will assign a new GPU max if needed.
-    if requested_gpu_freq > 0
-        && requested_gpu_freq != get_sysfs_val(config, SupportedPaths::GpuMax)?
-    {
-        println!("Setting GPU max to {}", requested_gpu_freq);
-        // For the initial version, gpu_max = turbo.
-        set_sysfs_val(config, SupportedPaths::GpuMax, requested_gpu_freq)?;
-        set_sysfs_val(config, SupportedPaths::GpuTurbo, requested_gpu_freq)?;
-    }
+        // This function will only filter in 10th gen (Cometlake CPUs).  The current tuning
+        // table is only valid for Intel cometlake deives using a core i3/i5/i7 processors.
+        fn is_supported_device(root: PathBuf) -> bool {
+            if let Ok(reader) = File::open(root.join(CPUINFO_PATH))
+                .map(BufReader::new)
+                .context("Couldn't read cpuinfo")
+            {
+                for line in reader.lines().flatten() {
+                    // Only check CPU0 and fail early.
+                    if line.starts_with(r"model name") {
+                        // Regex will only match 10th gen intel i3, i5, i7
+                        // Intel CPU naming convention can be found here:
+                        // `https://www.intel.com/content/www/us/en/processors/processor-numbers.html`
+                        if let Ok(re) = Regex::new(r".*Intel.* i(3|5|7)-10.*") {
+                            return re.is_match(&line);
+                        };
+                        return false;
+                    }
+                }
+            }
+            false
+        }
 
-    Ok(current_pl)
-}
+        fn get_gpu_stats(&self) -> Result<GpuStats> {
+            Ok(GpuStats {
+                min_freq: common::read_file_to_u64(&self.min_freq_path)?,
+                max_freq: common::read_file_to_u64(&self.max_freq_path)?,
+                _turbo_freq: common::read_file_to_u64(&self.turbo_freq_path)?,
+            })
+        }
 
-/// Gathers and bundles device-specific configurations related to GPU frequency and power limit.
-pub fn init_gpu_params() -> Result<DeviceGpuConfigParams> {
-    let config = DeviceGpuConfigParams {
-        max_freq_path: PathBuf::from("/sys/class/drm/card0/gt_max_freq_mhz"),
-        turbo_freq_path: PathBuf::from("/sys/class/drm/card0/gt_boost_freq_mhz"),
-        power_limit_path: PathBuf::from(
-            "/sys/class/powercap/intel-rapl/intel-rapl:0/constraint_0_power_limit_uw",
-        ),
-        //TODO: power_limit_thr must be guaranteed pre-sorted
-        //      Need to get TDP max (/sys/class/powercap/intel-rapl/intel-rapl:0/constraint_0_max_power_uw),
-        //      GPU max/min from sysfs; or read tuning from a device config file
-        power_limit_thr: vec![
-            (15000000, 1000),
-            (14500000, 900),
-            (13500000, 800),
-            (12500000, 700),
-            (10000000, 650),
-        ],
-    };
+        fn set_gpu_max_freq(&self, val: u64) -> Result<()> {
+            Ok(fs::write(&self.max_freq_path, val.to_string())?)
+        }
 
-    Ok(config)
-}
+        fn set_gpu_turbo_freq(&self, val: u64) -> Result<()> {
+            Ok(fs::write(&self.turbo_freq_path, val.to_string())?)
+        }
 
-fn get_supported_path(
-    config: &DeviceGpuConfigParams,
-    path_type: SupportedPaths,
-) -> Result<PathBuf> {
-    let path = match path_type {
-        SupportedPaths::GpuMax => &config.max_freq_path,
-        SupportedPaths::GpuTurbo => &config.turbo_freq_path,
-        SupportedPaths::PowerLimitCurrent => &config.power_limit_path,
-    };
+        /// Function to check the power limit and adjust GPU frequency range.
+        /// Function will first check if there any power_limit changes since
+        /// the last poll.  If there are changes, it then checks if the power_limit range
+        /// has moved to a new bucket, which would require adjusting the GPU
+        /// max and turbo frequency.  Buckets are ranges of power_limit values
+        /// that map to a specific max_gpu_freq.
+        ///
+        /// # Arguments
+        ///
+        /// * `cpu_dev` - CpuDevice object for reading power limit.
+        fn adjust_gpu_frequency(&self, cpu_dev: &DeviceCpuStatus) -> Result<()> {
+            let mut last_pl_val = cpu_dev.get_pl0_curr()?;
+            let mut prev_bucket_index = self.get_pl_bucket_index(last_pl_val);
 
-    Ok(PathBuf::from(path))
-}
+            while common::get_game_mode()? == GameMode::Borealis {
+                thread::sleep(Duration::from_millis(self.polling_interval_ms));
 
-// TODO: Move the R/W functions to traits to allow mocking and stubbing for unit testing.
-fn get_sysfs_val(config: &DeviceGpuConfigParams, path_type: SupportedPaths) -> Result<u32> {
-    let path_buf = get_supported_path(config, path_type)?;
-    Ok(common::read_file_to_u64(path_buf.as_path())? as u32)
-}
+                let current_pl = cpu_dev.get_pl0_curr()?;
+                if current_pl == last_pl_val {
+                    // No change in powerlimit since last check, no action needed.
+                    continue;
+                }
 
-fn set_sysfs_val(
-    config: &DeviceGpuConfigParams,
-    path_type: SupportedPaths,
-    val: u32,
-) -> Result<()> {
-    let path_buf = get_supported_path(config, path_type)?;
-    let path = path_buf.as_path();
+                let current_bucket_index = self.get_pl_bucket_index(current_pl);
 
-    match Path::new(path).exists() {
-        true => {
-            fs::write(path, val.to_string())?;
+                // Only change GPU freq if PL0 changed and we moved to a new bucket.
+                if current_bucket_index != prev_bucket_index {
+                    info!("power_limit_0 changed: {} -> {}", last_pl_val, current_pl);
+                    info!(
+                        "pl0 bucket changed {} -> {}",
+                        prev_bucket_index, current_bucket_index
+                    );
+                    if let Some(requested_bucket) = self.power_limit_thr.get(current_bucket_index) {
+                        let gpu_stats = self.get_gpu_stats()?;
+                        let requested_gpu_freq = requested_bucket.1;
+
+                        // This block will assign a new GPU max if needed.  Leave a 200MHz buffer
+                        if requested_gpu_freq
+                            > (gpu_stats.min_freq + GPU_FREQUENCY_GUARD_BUFFER_MHZ)
+                            && requested_gpu_freq != gpu_stats.max_freq
+                        {
+                            info!("Setting GPU max to {}", requested_gpu_freq);
+                            // For the initial version, gpu_max = turbo.
+                            self.set_gpu_max_freq(requested_gpu_freq)?;
+                            self.set_gpu_turbo_freq(requested_gpu_freq)?;
+                        } else {
+                            warn!("Did not change GPU frequency to {requested_gpu_freq}");
+                        }
+                    }
+                }
+                last_pl_val = current_pl;
+                prev_bucket_index = current_bucket_index;
+            }
+
             Ok(())
         }
-        false => bail!("Could not write to path: {:?}", path.to_str()),
+
+        // This function returns the index of the vector power_limit_thr where this given
+        // power_limit (pl0_val) falls.
+        fn get_pl_bucket_index(&self, pl0_val: u64) -> usize {
+            for (i, &(pl_thr, _)) in self.power_limit_thr.iter().enumerate() {
+                if i == 0 && pl0_val >= pl_thr {
+                    // Requested pl0 is bigger than max supported. Use max.
+                    return 0;
+                } else if i == self.power_limit_thr.len() - 1 {
+                    // Didn't fall into any previous bucket.  Use min.
+                    return self.power_limit_thr.len() - 1;
+                } else if i > 0 && pl0_val > pl_thr {
+                    return i;
+                }
+            }
+
+            // Default is unthrottled (error case)
+            0
+        }
+
+        pub fn tuning_cleanup(&self) -> Result<()> {
+            info!("Active Gpu Tuning STOP requested");
+
+            // Swallow any potential errors when resetting.
+            let gpu_max_default = self.power_limit_thr.first().unwrap_or(&(1000, 1000)).1;
+            self.set_gpu_max_freq(gpu_max_default)?;
+            self.set_gpu_turbo_freq(gpu_max_default)?;
+
+            Ok(())
+        }
     }
 }
 
@@ -495,15 +550,162 @@ pub mod amd_device {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+
+    use std::{path::PathBuf, thread, time::Duration};
+    use tempfile::tempdir;
+
+    use super::{intel_device::IntelGpuDeviceConfig, *};
+
+    use crate::test_utils::tests::*;
+    use crate::{
+        common, cpu_scaling::DeviceCpuStatus, gpu_freq_scaling::amd_device::AmdDeviceConfig,
+    };
+
+    #[test]
+    fn test_intel_malformed_root() {
+        let _ = IntelGpuDeviceConfig::new(PathBuf::from("/bad_root"), 100).is_err();
+    }
+
+    #[test]
+    fn test_intel_device_filter() {
+        let tmp_root = tempdir().unwrap();
+        let root = tmp_root.path();
+
+        setup_mock_intel_gpu_dev_dirs(root);
+        setup_mock_intel_gpu_files(root);
+
+        // Wrong CPU
+        write_mock_cpuinfo(
+            root,
+            "filter_out",
+            "Intel(R) Core(TM) i3-10110U CPU @ 2.10GHz",
+        );
+        assert!(IntelGpuDeviceConfig::new(PathBuf::from(root), 100).is_err());
+
+        // Wrong model
+        write_mock_cpuinfo(
+            root,
+            "GenuineIntel",
+            "Intel(R) Core(TM) i3-11110U CPU @ 2.10GHz",
+        );
+        assert!(IntelGpuDeviceConfig::new(PathBuf::from(root), 100).is_err());
+
+        // Supported model
+        write_mock_cpuinfo(
+            root,
+            "GenuineIntel",
+            "Intel(R) Core(TM) i3-10110U CPU @ 2.10GHz",
+        );
+        assert!(IntelGpuDeviceConfig::new(PathBuf::from(root), 100).is_ok());
+    }
+
+    #[test]
+    fn test_intel_tuning_table_ordering() {
+        let tmp_root = tempdir().unwrap();
+        let root = tmp_root.path();
+
+        setup_mock_intel_gpu_dev_dirs(root);
+        setup_mock_intel_gpu_files(root);
+        write_mock_cpuinfo(
+            root,
+            "GenuineIntel",
+            "Intel(R) Core(TM) i3-10110U CPU @ 2.10GHz",
+        );
+
+        let mock_gpu = IntelGpuDeviceConfig::new(PathBuf::from(root), 100).unwrap();
+
+        let mut last_pl_thr: u64 = 0;
+        for (i, &(pl_thr, _)) in mock_gpu.power_limit_thr.iter().enumerate() {
+            if i == 0 {
+                last_pl_thr = pl_thr;
+                continue;
+            }
+
+            assert!(last_pl_thr > pl_thr);
+            last_pl_thr = pl_thr;
+        }
+    }
+
+    /// TODO: static atomicBool for thread duplication is persisting
+    /// in unit test.  Fix before re-enabling
+    #[test]
+    #[ignore]
+    fn test_intel_dynamic_gpu_adjust() {
+        const POLLING_DELAY_MS: u64 = 4;
+        const OP_LATCH_DELAY_MS: u64 = POLLING_DELAY_MS + 1;
+
+        let power_manager = MockPowerPreferencesManager {};
+        assert!(common::get_game_mode().unwrap() == common::GameMode::Off);
+        common::set_game_mode(&power_manager, common::GameMode::Borealis).unwrap();
+        assert!(common::get_game_mode().unwrap() == common::GameMode::Borealis);
+
+        let tmp_root = tempdir().unwrap();
+        let root = tmp_root.path();
+
+        setup_mock_intel_gpu_dev_dirs(root);
+        setup_mock_intel_gpu_files(root);
+        write_mock_cpuinfo(
+            root,
+            "GenuineIntel",
+            "Intel(R) Core(TM) i3-10110U CPU @ 2.10GHz",
+        );
+
+        assert!(IntelGpuDeviceConfig::new(PathBuf::from(root), POLLING_DELAY_MS).is_ok());
+        assert!(get_intel_gpu_max(root) == 1000);
+        assert!(get_intel_gpu_boost(root) == 1000);
+
+        setup_mock_cpu_dev_dirs(root).unwrap();
+        setup_mock_cpu_files(root).unwrap();
+        write_mock_pl0(root, 15000000).unwrap();
+
+        // Sanitize CPU object creation (used internally in GPU object)
+        let mock_cpu_dev_res = DeviceCpuStatus::new(PathBuf::from(root));
+        assert!(mock_cpu_dev_res.is_ok());
+
+        intel_device::run_active_gpu_tuning_impl(root.to_path_buf(), POLLING_DELAY_MS).unwrap();
+        // Initial sleep to latch init values
+        thread::sleep(Duration::from_millis(OP_LATCH_DELAY_MS));
+
+        // Check GPU clock down
+        write_mock_pl0(root, 12000000).unwrap();
+        thread::sleep(Duration::from_millis(OP_LATCH_DELAY_MS));
+        assert!(get_intel_gpu_max(root) == 650);
+        assert!(get_intel_gpu_boost(root) == 650);
+
+        // Check same bucket, pl0 change
+        write_mock_pl0(root, 11000000).unwrap();
+        thread::sleep(Duration::from_millis(OP_LATCH_DELAY_MS));
+        assert!(get_intel_gpu_max(root) == 650);
+        assert!(get_intel_gpu_boost(root) == 650);
+
+        // Check PL0 out of range (high)
+        write_mock_pl0(root, 18000000).unwrap();
+        thread::sleep(Duration::from_millis(OP_LATCH_DELAY_MS));
+        assert!(get_intel_gpu_max(root) == 1000);
+        assert!(get_intel_gpu_boost(root) == 1000);
+
+        // Check PL0 out of range (low)
+        write_mock_pl0(root, 8000000).unwrap();
+        thread::sleep(Duration::from_millis(OP_LATCH_DELAY_MS));
+        assert!(get_intel_gpu_max(root) == 650);
+        assert!(get_intel_gpu_boost(root) == 650);
+
+        // Check GPU clock up
+        write_mock_pl0(root, 14000000).unwrap();
+        thread::sleep(Duration::from_millis(OP_LATCH_DELAY_MS));
+        assert!(get_intel_gpu_max(root) == 800);
+        assert!(get_intel_gpu_boost(root) == 800);
+
+        // Check frequency reset on game mode off
+        common::set_game_mode(&power_manager, common::GameMode::Off).unwrap();
+        thread::sleep(Duration::from_millis(OP_LATCH_DELAY_MS));
+        assert!(get_intel_gpu_max(root) == 1000);
+        assert!(get_intel_gpu_boost(root) == 1000);
+    }
 
     #[test]
     fn test_amd_device_true() {
-        let mock_cpuinfo = r#"
-processor       : 0
-vendor_id       : AuthenticAMD
-cpu family      : 23
-model           : 24"#;
+        let mock_cpuinfo = construct_poc_cpuinfo_snippet("AuthenticAMD", "dont_care");
         assert!(AmdDeviceConfig::has_amd_tag_in_cpu_info(
             mock_cpuinfo.as_bytes()
         ));
@@ -512,11 +714,7 @@ model           : 24"#;
     #[test]
     fn test_amd_device_false() {
         // Incorrect vendor ID
-        let mock_cpuinfo = r#"
-processor       : 0
-vendor_id       : GenuineIntel
-cpu family      : 23
-model           : 24"#;
+        let mock_cpuinfo = construct_poc_cpuinfo_snippet("GenuineIntel", "dont_care");
         assert!(!AmdDeviceConfig::has_amd_tag_in_cpu_info(
             mock_cpuinfo.as_bytes()
         ));
@@ -570,14 +768,10 @@ model           : 24"#;
     fn test_amd_device_filter_pass() {
         let dev: AmdDeviceConfig = AmdDeviceConfig::new("mock_file", "mock_sclk");
 
-        let mock_cpuinfo = r#"
-processor       : 0
-vendor_id       : AuthenticAMD
-cpu family      : 23
-model           : 24
-model name      : AMD Ryzen 7 3700C  with Radeon Vega Mobile Gfx
-stepping        : 1
-microcode       : 0x8108109"#;
+        let mock_cpuinfo = construct_poc_cpuinfo_snippet(
+            "AuthenticAMD",
+            "AMD Ryzen 7 3700C  with Radeon Vega Mobile Gfx",
+        );
 
         assert!(dev
             .is_supported_dev_family(mock_cpuinfo.as_bytes())
@@ -591,14 +785,10 @@ microcode       : 0x8108109"#;
     fn test_amd_device_filter_fail() {
         let dev: AmdDeviceConfig = AmdDeviceConfig::new("mock_file", "mock_sclk");
 
-        let mock_cpuinfo = r#"
-processor       : 0
-vendor_id       : AuthenticAMD
-cpu family      : 23
-model           : 24
-model name      : AMD Ryzen 3 3700C  with Radeon Vega Mobile Gfx
-stepping        : 1
-microcode       : 0x8108109"#;
+        let mock_cpuinfo = construct_poc_cpuinfo_snippet(
+            "AuthenticAMD",
+            "AMD Ryzen 3 3700C  with Radeon Vega Mobile Gfx",
+        );
 
         assert!(!dev
             .is_supported_dev_family(mock_cpuinfo.as_bytes())
@@ -613,24 +803,5 @@ microcode       : 0x8108109"#;
             .is_supported_dev_family("model name        : malformed".as_bytes())
             .unwrap());
         assert!(!dev.is_supported_dev_family("".as_bytes()).unwrap());
-    }
-
-    #[test]
-    #[allow(unused_must_use)]
-    fn test_gpu_thread_on_off() {
-        println!("test gpu thread");
-        let config = init_gpu_params().unwrap();
-
-        // TODO: break this function to make is unit testable
-        evaluate_gpu_frequency(&config, 150);
-        let game_mode_on = Arc::new(AtomicBool::new(true));
-        let game_mode_on_clone = Arc::clone(&game_mode_on);
-
-        init_gpu_scaling_thread(game_mode_on_clone, 1000);
-        thread::sleep(Duration::from_millis(500));
-        game_mode_on.store(false, Ordering::Relaxed);
-        thread::sleep(Duration::from_millis(500));
-
-        println!("gpu thread exit gracefully");
     }
 }
