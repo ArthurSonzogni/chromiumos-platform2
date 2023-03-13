@@ -134,7 +134,7 @@ void ProcessPlugin::HandleRingBufferEvent(const bpf::cros_event& bpf_event) {
     return;
   }
   if (policies_features_broker_->GetFeature(
-          PoliciesFeaturesBroker::Feature::kCrosLateBootSecagentdBatchEvents)) {
+          PoliciesFeaturesBroker::Feature::kCrOSLateBootSecagentdBatchEvents)) {
     EnqueueBatchedEvent(std::move(atomic_event));
   } else {
     DeprecatedSendImmediate(std::move(atomic_event));
@@ -184,7 +184,7 @@ void ProcessPlugin::EnqueueBatchedEvent(
   if (atomic_event->has_process_terminate() &&
       policies_features_broker_->GetFeature(
           PoliciesFeaturesBroker::Feature::
-              kCrosLateBootSecagentdCoalesceTerminates)) {
+              kCrOSLateBootSecagentdCoalesceTerminates)) {
     if (batch_sender_->Visit(pb::ProcessEventAtomicVariant::kProcessExec,
                              GetBatchedEventKey(*atomic_event),
                              base::BindOnce(&SetTerminateTimestamp))) {

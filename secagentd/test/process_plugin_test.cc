@@ -86,11 +86,11 @@ class ProcessPluginTestFixture : public ::testing::Test {
     ON_CALL(
         *policies_features_broker_,
         GetFeature(
-            PoliciesFeaturesBroker::Feature::kCrosLateBootSecagentdBatchEvents))
+            PoliciesFeaturesBroker::Feature::kCrOSLateBootSecagentdBatchEvents))
         .WillByDefault(Return(false));
     ON_CALL(*policies_features_broker_,
             GetFeature(PoliciesFeaturesBroker::Feature::
-                           kCrosLateBootSecagentdCoalesceTerminates))
+                           kCrOSLateBootSecagentdCoalesceTerminates))
         .WillByDefault(Return(false));
   }
 
@@ -264,7 +264,7 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginExecEventBatched) {
 
   EXPECT_CALL(*policies_features_broker_,
               GetFeature(PoliciesFeaturesBrokerInterface::Feature::
-                             kCrosLateBootSecagentdBatchEvents))
+                             kCrOSLateBootSecagentdBatchEvents))
       .WillOnce(Return(true));
 
   std::unique_ptr<pb::ProcessEventAtomicVariant> actual_sent_event;
@@ -369,11 +369,11 @@ TEST_F(ProcessPluginTestFixture, TestProcessPluginCoalesceTerminate) {
 
   EXPECT_CALL(*policies_features_broker_,
               GetFeature(PoliciesFeaturesBrokerInterface::Feature::
-                             kCrosLateBootSecagentdBatchEvents))
+                             kCrOSLateBootSecagentdBatchEvents))
       .WillRepeatedly(Return(true));
   EXPECT_CALL(*policies_features_broker_,
               GetFeature(PoliciesFeaturesBrokerInterface::Feature::
-                             kCrosLateBootSecagentdCoalesceTerminates))
+                             kCrOSLateBootSecagentdCoalesceTerminates))
       .WillRepeatedly(Return(true));
 
   std::vector<std::unique_ptr<pb::ProcessEventAtomicVariant>>
