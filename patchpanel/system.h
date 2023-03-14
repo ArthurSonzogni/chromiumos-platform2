@@ -73,6 +73,8 @@ class System {
   int Ioctl(int fd, ioctl_req_t request, struct ifreq* ifr);
   int Ioctl(int fd, ioctl_req_t request, struct rtentry* route);
 
+  virtual int SocketPair(int domain, int type, int protocol, int sv[2]);
+
   virtual pid_t WaitPid(pid_t pid, int* wstatus, int options = 0);
 
   // Simple wrappers around if_nametoindex which returns a signed int instead

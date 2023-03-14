@@ -73,6 +73,7 @@ class FakeSystem : public System {
     return base::ScopedFD(open("/dev/null", O_RDONLY | O_CLOEXEC));
   }
 
+  MOCK_METHOD(int, SocketPair, (int, int, int, int[2]), (override));
   MOCK_METHOD3(SysNetSet,
                bool(SysNet target,
                     const std::string& content,

@@ -25,12 +25,17 @@ class ProcessManager;
 
 namespace patchpanel {
 
+class System;
+
 // Tracks a helper subprocess.  Handles forking, cleaning up on termination,
 // and IPC.
 // This object is used by the main Manager process.
 class SubprocessController {
  public:
-  SubprocessController(shill::ProcessManager* process_manager,
+  // The caller should guarantee the |system| and |process_manager| outlive
+  // the SubprocessController instance.
+  SubprocessController(System* system,
+                       shill::ProcessManager* process_manager,
                        const base::FilePath& cmd_path,
                        const std::vector<std::string>& argv,
                        const std::string& fd_arg);
@@ -63,6 +68,8 @@ class SubprocessController {
 
   base::RepeatingCallback<void(const FeedbackMessage&)> feedback_handler_;
 
+  // Used to create the subprocess and watch the subprocess exited unexpectedly.
+  System* system_;
   // The singleton instance which is used to create the subprocess and watch the
   // subprocess exited unexpectedly.
   shill::ProcessManager* process_manager_;

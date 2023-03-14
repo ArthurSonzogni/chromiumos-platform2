@@ -234,12 +234,12 @@ class Manager final : public brillo::DBusDaemon {
 
   friend std::ostream& operator<<(std::ostream& stream, const Manager& manager);
 
+  // Unique instance of patchpanel::System shared for all subsystems.
+  std::unique_ptr<System> system_;
   // The singleton instance that manages the creation and exit notification of
   // each subprocess. All the subprocesses should be created by this.
   shill::ProcessManager* process_manager_;
 
-  // Unique instance of patchpanel::System shared for all subsystems.
-  std::unique_ptr<System> system_;
   // UMA metrics client.
   std::unique_ptr<MetricsLibraryInterface> metrics_;
   // Shill Dbus client.

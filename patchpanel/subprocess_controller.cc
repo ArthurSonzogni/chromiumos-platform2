@@ -6,7 +6,6 @@
 
 #include <signal.h>
 #include <string.h>
-#include <sys/socket.h>
 #include <unistd.h>
 
 #include <utility>
@@ -20,6 +19,7 @@
 #include <shill/net/process_manager.h>
 
 #include "patchpanel/ipc.h"
+#include "patchpanel/system.h"
 
 namespace patchpanel {
 namespace {
@@ -30,11 +30,13 @@ constexpr int kSubprocessRestartDelayMs = 900;
 }  // namespace
 
 SubprocessController::SubprocessController(
+    System* system,
     shill::ProcessManager* process_manager,
     const base::FilePath& cmd_path,
     const std::vector<std::string>& argv,
     const std::string& fd_arg)
-    : process_manager_(process_manager),
+    : system_(system),
+      process_manager_(process_manager),
       cmd_path_(cmd_path),
       argv_(argv),
       fd_arg_(fd_arg) {}
@@ -42,7 +44,7 @@ SubprocessController::SubprocessController(
 void SubprocessController::Start() {
   int control[2];
 
-  if (socketpair(AF_UNIX, SOCK_SEQPACKET, 0, control) != 0) {
+  if (system_->SocketPair(AF_UNIX, SOCK_SEQPACKET, 0, control) != 0) {
     PLOG(FATAL) << "socketpair failed";
   }
 

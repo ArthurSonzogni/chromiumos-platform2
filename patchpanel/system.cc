@@ -6,6 +6,7 @@
 
 #include <fcntl.h>
 #include <net/if.h>
+#include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -66,6 +67,10 @@ int System::Ioctl(int fd, ioctl_req_t request, struct ifreq* ifr) {
 
 int System::Ioctl(int fd, ioctl_req_t request, struct rtentry* route) {
   return Ioctl(fd, request, reinterpret_cast<const char*>(route));
+}
+
+int System::SocketPair(int domain, int type, int protocol, int sv[2]) {
+  return socketpair(domain, type, protocol, sv);
 }
 
 pid_t System::WaitPid(pid_t pid, int* wstatus, int options) {
