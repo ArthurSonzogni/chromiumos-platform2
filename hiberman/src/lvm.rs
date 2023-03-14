@@ -153,6 +153,14 @@ pub fn thicken_thin_volume<P: AsRef<Path>>(path: P, size: u64) -> Result<()> {
     Ok(())
 }
 
+/// Remove a logical volume.
+pub fn lv_remove(volume_group: &str, name: &str) -> Result<()> {
+    let volume = full_lv_name(volume_group, name);
+
+    checked_command(Command::new("/sbin/lvremove").args(["-y", &volume]))
+        .context(format!("Failed to remove logical volume '{volume}'"))
+}
+
 /// Get the fully qualified name of an LV.
 fn full_lv_name(volume_group: &str, name: &str) -> String {
     format!("{}/{}", volume_group, name)
