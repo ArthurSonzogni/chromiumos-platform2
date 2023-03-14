@@ -13,7 +13,7 @@
 #include "rmad/proto_bindings/rmad.pb.h"
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/state_handler/write_protect_disable_complete_state_handler.h"
-#include "rmad/utils/mock_flashrom_utils.h"
+#include "rmad/utils/mock_write_protect_utils.h"
 
 using testing::NiceMock;
 using testing::Return;
@@ -24,15 +24,16 @@ class WriteProtectDisableCompleteStateHandlerTest : public StateHandlerTest {
  public:
   scoped_refptr<WriteProtectDisableCompleteStateHandler> CreateStateHandler(
       WpDisableMethod wp_disable_method, bool disable_swwp_success) {
-    // Mock |FlashromUtils|.
-    auto mock_flashrom_utils = std::make_unique<NiceMock<MockFlashromUtils>>();
-    ON_CALL(*mock_flashrom_utils, DisableSoftwareWriteProtection())
+    // Mock |WriteProtectUtils|.
+    auto mock_write_protect_utils =
+        std::make_unique<NiceMock<MockWriteProtectUtils>>();
+    ON_CALL(*mock_write_protect_utils, DisableSoftwareWriteProtection())
         .WillByDefault(Return(disable_swwp_success));
 
     EXPECT_TRUE(json_store_->SetValue(kWpDisableMethod,
                                       WpDisableMethod_Name(wp_disable_method)));
     return base::MakeRefCounted<WriteProtectDisableCompleteStateHandler>(
-        json_store_, daemon_callback_, std::move(mock_flashrom_utils));
+        json_store_, daemon_callback_, std::move(mock_write_protect_utils));
   }
 };
 

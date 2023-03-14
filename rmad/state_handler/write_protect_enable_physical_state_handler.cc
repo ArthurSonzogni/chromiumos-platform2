@@ -9,7 +9,6 @@
 
 #include <base/files/file_path.h>
 
-#include "rmad/utils/flashrom_utils_impl.h"
 #include "rmad/utils/write_protect_utils_impl.h"
 
 #include <base/logging.h>
@@ -21,24 +20,21 @@ WriteProtectEnablePhysicalStateHandler::WriteProtectEnablePhysicalStateHandler(
     scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback) {
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
-  flashrom_utils_ = std::make_unique<FlashromUtilsImpl>();
 }
 
 WriteProtectEnablePhysicalStateHandler::WriteProtectEnablePhysicalStateHandler(
     scoped_refptr<JsonStore> json_store,
     scoped_refptr<DaemonCallback> daemon_callback,
-    std::unique_ptr<WriteProtectUtils> write_protect_utils,
-    std::unique_ptr<FlashromUtils> flashrom_utils)
+    std::unique_ptr<WriteProtectUtils> write_protect_utils)
     : BaseStateHandler(json_store, daemon_callback),
-      write_protect_utils_(std::move(write_protect_utils)),
-      flashrom_utils_(std::move(flashrom_utils)) {}
+      write_protect_utils_(std::move(write_protect_utils)) {}
 
 RmadErrorCode WriteProtectEnablePhysicalStateHandler::InitializeState() {
   if (!state_.has_wp_enable_physical() && !RetrieveState()) {
     state_.set_allocated_wp_enable_physical(
         new WriteProtectEnablePhysicalState);
     // Enable SWWP when entering the state for the first time.
-    if (!flashrom_utils_->EnableSoftwareWriteProtection()) {
+    if (!write_protect_utils_->EnableSoftwareWriteProtection()) {
       LOG(ERROR) << "Failed to enable software write protection";
       return RMAD_ERROR_STATE_HANDLER_INITIALIZATION_FAILED;
     }

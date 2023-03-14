@@ -17,7 +17,6 @@
 
 #include "rmad/constants.h"
 #include "rmad/utils/cr50_utils_impl.h"
-#include "rmad/utils/flashrom_utils_impl.h"
 #include "rmad/utils/write_protect_utils_impl.h"
 
 namespace {
@@ -38,7 +37,6 @@ FinalizeStateHandler::FinalizeStateHandler(
       working_dir_path_(kDefaultWorkingDirPath) {
   cr50_utils_ = std::make_unique<Cr50UtilsImpl>();
   write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
-  flashrom_utils_ = std::make_unique<FlashromUtilsImpl>();
 }
 
 FinalizeStateHandler::FinalizeStateHandler(
@@ -46,13 +44,11 @@ FinalizeStateHandler::FinalizeStateHandler(
     scoped_refptr<DaemonCallback> daemon_callback,
     const base::FilePath& working_dir_path,
     std::unique_ptr<Cr50Utils> cr50_utils,
-    std::unique_ptr<WriteProtectUtils> write_protect_utils,
-    std::unique_ptr<FlashromUtils> flashrom_utils)
+    std::unique_ptr<WriteProtectUtils> write_protect_utils)
     : BaseStateHandler(json_store, daemon_callback),
       working_dir_path_(working_dir_path),
       cr50_utils_(std::move(cr50_utils)),
-      write_protect_utils_(std::move(write_protect_utils)),
-      flashrom_utils_(std::move(flashrom_utils)) {}
+      write_protect_utils_(std::move(write_protect_utils)) {}
 
 RmadErrorCode FinalizeStateHandler::InitializeState() {
   if (!state_.has_finalize()) {
@@ -145,7 +141,7 @@ void FinalizeStateHandler::FinalizeTask() {
   if (bool hwwp_enabled;
       write_protect_utils_->GetHardwareWriteProtectionStatus(&hwwp_enabled) &&
       !hwwp_enabled) {
-    if (!flashrom_utils_->EnableSoftwareWriteProtection()) {
+    if (!write_protect_utils_->EnableSoftwareWriteProtection()) {
       LOG(ERROR) << "Failed to enable software write protection";
       status_.set_status(FinalizeStatus::RMAD_FINALIZE_STATUS_FAILED_BLOCKING);
       status_.set_error(FinalizeStatus::RMAD_FINALIZE_ERROR_CANNOT_ENABLE_SWWP);

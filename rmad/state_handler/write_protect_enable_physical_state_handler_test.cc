@@ -14,7 +14,6 @@
 
 #include "rmad/state_handler/state_handler_test_common.h"
 #include "rmad/state_handler/write_protect_enable_physical_state_handler.h"
-#include "rmad/utils/mock_flashrom_utils.h"
 #include "rmad/utils/mock_write_protect_utils.h"
 
 using testing::_;
@@ -51,11 +50,8 @@ class WriteProtectEnablePhysicalStateHandlerTest : public StateHandlerTest {
             .WillOnce(DoAll(SetArgPointee<0, bool>(enabled), Return(true)));
       }
     }
-
-    // Mock |FlashromUtils|.
-    auto mock_flashrom_utils = std::make_unique<NiceMock<MockFlashromUtils>>();
-    ON_CALL(*mock_flashrom_utils, EnableSoftwareWriteProtection())
-        .WillByDefault(Return(enable_swwp_success));
+    EXPECT_CALL(*mock_write_protect_utils, EnableSoftwareWriteProtection())
+        .WillRepeatedly(Return(enable_swwp_success));
 
     // Register signal callback.
     daemon_callback_->SetWriteProtectSignalCallback(
@@ -63,8 +59,7 @@ class WriteProtectEnablePhysicalStateHandlerTest : public StateHandlerTest {
                             base::Unretained(&signal_sender_)));
 
     return base::MakeRefCounted<WriteProtectEnablePhysicalStateHandler>(
-        json_store_, daemon_callback_, std::move(mock_write_protect_utils),
-        std::move(mock_flashrom_utils));
+        json_store_, daemon_callback_, std::move(mock_write_protect_utils));
   }
 
  protected:

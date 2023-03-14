@@ -9,7 +9,7 @@
 
 #include <memory>
 
-#include "rmad/utils/flashrom_utils.h"
+#include "rmad/utils/write_protect_utils.h"
 
 namespace rmad {
 
@@ -18,11 +18,11 @@ class WriteProtectDisableCompleteStateHandler : public BaseStateHandler {
   explicit WriteProtectDisableCompleteStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback);
-  // Used to inject mock |flashrom_utils_| for testing.
+  // Used to inject mock |write_protect_utils_| for testing.
   explicit WriteProtectDisableCompleteStateHandler(
       scoped_refptr<JsonStore> json_store,
       scoped_refptr<DaemonCallback> daemon_callback,
-      std::unique_ptr<FlashromUtils> flashrom_utils);
+      std::unique_ptr<WriteProtectUtils> write_protect_utils);
 
   ASSIGN_STATE(RmadState::StateCase::kWpDisableComplete);
   SET_UNREPEATABLE;
@@ -34,7 +34,7 @@ class WriteProtectDisableCompleteStateHandler : public BaseStateHandler {
   ~WriteProtectDisableCompleteStateHandler() override = default;
 
  private:
-  std::unique_ptr<FlashromUtils> flashrom_utils_;
+  std::unique_ptr<WriteProtectUtils> write_protect_utils_;
 };
 
 }  // namespace rmad

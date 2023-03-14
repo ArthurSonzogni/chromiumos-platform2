@@ -13,7 +13,7 @@
 
 #include "rmad/constants.h"
 #include "rmad/proto_bindings/rmad.pb.h"
-#include "rmad/utils/flashrom_utils_impl.h"
+#include "rmad/utils/write_protect_utils_impl.h"
 
 namespace rmad {
 
@@ -22,16 +22,16 @@ WriteProtectDisableCompleteStateHandler::
         scoped_refptr<JsonStore> json_store,
         scoped_refptr<DaemonCallback> daemon_callback)
     : BaseStateHandler(json_store, daemon_callback) {
-  flashrom_utils_ = std::make_unique<FlashromUtilsImpl>();
+  write_protect_utils_ = std::make_unique<WriteProtectUtilsImpl>();
 }
 
 WriteProtectDisableCompleteStateHandler::
     WriteProtectDisableCompleteStateHandler(
         scoped_refptr<JsonStore> json_store,
         scoped_refptr<DaemonCallback> daemon_callback,
-        std::unique_ptr<FlashromUtils> flashrom_utils)
+        std::unique_ptr<WriteProtectUtils> write_protect_utils)
     : BaseStateHandler(json_store, daemon_callback),
-      flashrom_utils_(std::move(flashrom_utils)) {}
+      write_protect_utils_(std::move(write_protect_utils)) {}
 
 RmadErrorCode WriteProtectDisableCompleteStateHandler::InitializeState() {
   WpDisableMethod wp_disable_method;
@@ -82,7 +82,7 @@ WriteProtectDisableCompleteStateHandler::GetNextStateCase(
     return NextStateCaseWrapper(RMAD_ERROR_REQUEST_INVALID);
   }
 
-  if (!flashrom_utils_->DisableSoftwareWriteProtection()) {
+  if (!write_protect_utils_->DisableSoftwareWriteProtection()) {
     LOG(ERROR) << "Failed to disable software write protect";
     return NextStateCaseWrapper(RMAD_ERROR_WP_ENABLED);
   }
