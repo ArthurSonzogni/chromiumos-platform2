@@ -24,15 +24,17 @@ constexpr char kSeccompFilterPath[] =
 
 void EnterDaemonMinijail() {
   ScopedMinijail jail(minijail_new());
-  minijail_set_using_minimalistic_mountns(jail.get());
   minijail_no_new_privs(jail.get());   // The no_new_privs bit.
   minijail_namespace_uts(jail.get());  // New UTS namespace.
   minijail_namespace_ipc(jail.get());  // New IPC namespace.
   minijail_namespace_net(jail.get());  // New network namespace.
   minijail_namespace_vfs(jail.get());  // New VFS namespace.
+  minijail_mount_tmp(jail.get());
   CHECK_EQ(
       0, minijail_enter_pivot_root(jail.get(),
                                    "/mnt/empty"));  // Set /mnt/empty as rootfs.
+
+  CHECK_EQ(0, minijail_bind(jail.get(), "/", "/", 0));
 
   // Create a new tmpfs filesystem for /run and mount necessary files.
   CHECK_EQ(
@@ -41,10 +43,15 @@ void EnterDaemonMinijail() {
                   jail.get(), "/run/dbus", "/run/dbus",
                   0));  // Shared socket file for talking to the D-Bus daemon.
   CHECK_EQ(1, minijail_add_fs_restriction_rw(jail.get(), "/run/dbus"));
+  CHECK_EQ(0, minijail_bind(jail.get(), "/run/cups", "/run/cups",
+                            0));  // Shared socket file for talking to cupsd.
+  CHECK_EQ(1, minijail_add_fs_restriction_rw(jail.get(), "/run/cups"));
 
-  // Run as the printscanmgr user and group.
+  // Run as the printscanmgr user and group. Inherit supplementary groups so
+  // printscanmgr can run `lpadmin` and `lpstat`.
   CHECK_EQ(0, minijail_change_user(jail.get(), kPrintscanmgrUserName));
   CHECK_EQ(0, minijail_change_group(jail.get(), kPrintscanmgrGroupName));
+  minijail_inherit_usergroups(jail.get());
 
   // Apply SECCOMP filtering.
   minijail_use_seccomp_filter(jail.get());
