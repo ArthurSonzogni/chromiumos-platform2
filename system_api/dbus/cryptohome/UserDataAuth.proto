@@ -17,7 +17,6 @@ option go_package = "chromiumos/system_api/user_data_auth_proto";
 
 import "auth_factor.proto";
 import "fido.proto";
-import "key.proto";
 
 ///////////////////////////////////////////////////////////////////////////////
 // Messages that's used by the actual request/reply goes below
@@ -560,10 +559,6 @@ message StartAuthSessionRequest {
   // TODO(b/240596931): Stop assuming that leaving this unset is the same as
   // `AUTH_INTENT_DECRYPT`, and forbid `AUTH_INTENT_UNSPECIFIED`.
   AuthIntent intent = 3;
-  // Currently nothing is required to be passed in for KeyData map request,
-  // but in the future we can expect this to be expanded to filter queries with
-  // |key.data().type()| to return all keys of a certain class, testing
-  // |key.secret()|, or |key.data().provider_data()| entries.
 }
 
 // AuthFactorWithStatus returns read-only AuthFactor with relevant status
