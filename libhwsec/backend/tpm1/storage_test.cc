@@ -285,20 +285,4 @@ TEST_F(BackendStorageTpm1Test, LockNoOp) {
               IsOk());
 }
 
-TEST_F(BackendStorageTpm1Test, IsWriteLocked) {
-  tpm_manager::GetSpaceInfoReply info_reply;
-  info_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
-  info_reply.set_size(10);
-  info_reply.set_is_read_locked(false);
-  info_reply.set_is_write_locked(true);
-  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_PERSISTENT_WRITE_LOCK);
-  info_reply.set_policy(tpm_manager::NVRAM_POLICY_PCR0);
-  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), GetSpaceInfo(_, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
-
-  EXPECT_THAT(
-      backend_->GetStorageTpm1().IsWriteLocked(Space::kInstallAttributes),
-      IsOkAndHolds(true));
-}
-
 }  // namespace hwsec

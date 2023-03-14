@@ -43,11 +43,6 @@ Status BootLockboxFrontendImpl::LockSpace() {
       Space::kBootlockbox, Storage::LockOptions{.write_lock = true});
 }
 
-StatusOr<bool> BootLockboxFrontendImpl::IsSpaceWriteLocked() {
-  return middleware_.CallSync<&Backend::Storage::IsWriteLocked>(
-      Space::kBootlockbox);
-}
-
 void BootLockboxFrontendImpl::WaitUntilReady(
     base::OnceCallback<void(Status)> callback) {
   middleware_.CallAsync<&Backend::State::WaitUntilReady>(std::move(callback));

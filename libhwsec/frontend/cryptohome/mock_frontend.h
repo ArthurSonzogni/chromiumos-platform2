@@ -82,7 +82,6 @@ class MockCryptohomeFrontend : public MockFrontend, public CryptohomeFrontend {
   MOCK_METHOD(StatusOr<brillo::Blob>, LoadSpace, (Space), (override));
   MOCK_METHOD(Status, StoreSpace, (Space, const brillo::Blob&), (override));
   MOCK_METHOD(Status, DestroySpace, (Space), (override));
-  MOCK_METHOD(StatusOr<bool>, IsSpaceWriteLocked, (Space), (override));
   MOCK_METHOD(Status, DeclareTpmFirmwareStable, (), (override));
   MOCK_METHOD(StatusOr<SignatureSealedData>,
               SealWithSignatureAndCurrentUser,

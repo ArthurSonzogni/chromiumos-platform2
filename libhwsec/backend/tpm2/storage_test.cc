@@ -288,21 +288,6 @@ TEST_F(BackendStorageTpm2Test, LockNoOp) {
               IsOk());
 }
 
-TEST_F(BackendStorageTpm2Test, IsWriteLocked) {
-  tpm_manager::GetSpaceInfoReply info_reply;
-  info_reply.set_result(NvramResult::NVRAM_RESULT_SUCCESS);
-  info_reply.set_size(10);
-  info_reply.set_is_read_locked(false);
-  info_reply.set_is_write_locked(true);
-  info_reply.add_attributes(NvramSpaceAttribute::NVRAM_PERSISTENT_WRITE_LOCK);
-  EXPECT_CALL(proxy_->GetMockTpmNvramProxy(), GetSpaceInfo(_, _, _, _))
-      .WillOnce(DoAll(SetArgPointee<1>(info_reply), Return(true)));
-
-  EXPECT_THAT(
-      backend_->GetStorageTpm2().IsWriteLocked(Space::kInstallAttributes),
-      IsOkAndHolds(true));
-}
-
 TEST_F(BackendStorageTpm2Test, EnterpriseRollbackReady) {
   const uint32_t kFakeSize = 32;
   tpm_manager::ListSpacesReply list_reply;

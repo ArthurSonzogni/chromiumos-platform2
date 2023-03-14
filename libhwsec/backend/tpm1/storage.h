@@ -27,7 +27,6 @@ class StorageTpm1 : public Storage {
   Status Store(Space space, const brillo::Blob& blob) override;
   Status Lock(Space space, LockOptions options) override;
   Status Destroy(Space space) override;
-  StatusOr<bool> IsWriteLocked(Space space) override;
 
  private:
   org::chromium::TpmManagerProxyInterface& tpm_manager_;

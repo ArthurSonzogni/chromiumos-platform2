@@ -211,10 +211,6 @@ Status CryptohomeFrontendImpl::DestroySpace(Space space) {
   return middleware_.CallSync<&Backend::Storage::Destroy>(space);
 }
 
-StatusOr<bool> CryptohomeFrontendImpl::IsSpaceWriteLocked(Space space) {
-  return middleware_.CallSync<&Backend::Storage::IsWriteLocked>(space);
-}
-
 Status CryptohomeFrontendImpl::DeclareTpmFirmwareStable() {
   return middleware_.CallSync<&Backend::Vendor::DeclareTpmFirmwareStable>();
 }

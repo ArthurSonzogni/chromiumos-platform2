@@ -61,7 +61,6 @@ class CryptohomeFrontendImpl : public CryptohomeFrontend, public FrontendImpl {
   StatusOr<brillo::Blob> LoadSpace(Space space) override;
   Status StoreSpace(Space space, const brillo::Blob& blob) override;
   Status DestroySpace(Space space) override;
-  StatusOr<bool> IsSpaceWriteLocked(Space space) override;
   Status DeclareTpmFirmwareStable() override;
   StatusOr<SignatureSealedData> SealWithSignatureAndCurrentUser(
       const std::string& current_user,

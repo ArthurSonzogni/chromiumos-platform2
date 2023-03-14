@@ -430,14 +430,4 @@ Status StorageTpm1::Destroy(Space space) {
   return OkStatus();
 }
 
-StatusOr<bool> StorageTpm1::IsWriteLocked(Space space) {
-  ASSIGN_OR_RETURN(const SpaceInfo& space_info, GetSpaceInfo(space));
-
-  ASSIGN_OR_RETURN(const DetailSpaceInfo& detail_info,
-                   GetDetailSpaceInfo(tpm_nvram_, space_info),
-                   _.WithStatus<TPMError>("Failed to get detail space info"));
-
-  return detail_info.is_write_locked;
-}
-
 }  // namespace hwsec

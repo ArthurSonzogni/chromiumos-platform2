@@ -133,9 +133,6 @@ class CryptohomeFrontend : public Frontend {
   // Destroys the |space|.
   virtual Status DestroySpace(Space space) = 0;
 
-  // Is the |space| write locked or not.
-  virtual StatusOr<bool> IsSpaceWriteLocked(Space space) = 0;
-
   // Declares the TPM firmware is stable.
   virtual Status DeclareTpmFirmwareStable() = 0;
 

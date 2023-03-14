@@ -27,7 +27,6 @@ class MockBootLockboxFrontend : public MockFrontend,
   MOCK_METHOD(StatusOr<brillo::Blob>, LoadSpace, (), (override));
   MOCK_METHOD(Status, StoreSpace, (const brillo::Blob& blob), (override));
   MOCK_METHOD(Status, LockSpace, (), (override));
-  MOCK_METHOD(StatusOr<bool>, IsSpaceWriteLocked, (), (override));
   MOCK_METHOD(void,
               WaitUntilReady,
               (base::OnceCallback<void(Status)> callback),

@@ -49,9 +49,6 @@ class Storage {
   // Destroys the |space|.
   virtual Status Destroy(Space space) = 0;
 
-  // Is the |space| write locked or not.
-  virtual StatusOr<bool> IsWriteLocked(Space space) = 0;
-
  protected:
   Storage() = default;
   ~Storage() = default;

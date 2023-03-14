@@ -27,7 +27,6 @@ class BootLockboxFrontendImpl : public BootLockboxFrontend,
   StatusOr<brillo::Blob> LoadSpace() override;
   Status StoreSpace(const brillo::Blob& blob) override;
   Status LockSpace() override;
-  StatusOr<bool> IsSpaceWriteLocked() override;
   void WaitUntilReady(base::OnceCallback<void(Status)> callback) override;
 };
 

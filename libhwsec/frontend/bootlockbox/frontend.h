@@ -40,9 +40,6 @@ class BootLockboxFrontend : public Frontend {
 
   // Locks the bootlockbox space.
   virtual Status LockSpace() = 0;
-
-  // Is the bootlockbox space write locked or not.
-  virtual StatusOr<bool> IsSpaceWriteLocked() = 0;
 };
 
 }  // namespace hwsec

@@ -30,8 +30,6 @@ class MockStorage : public Storage {
     ON_CALL(*this, Store).WillByDefault(Invoke(default_, &Storage::Store));
     ON_CALL(*this, Lock).WillByDefault(Invoke(default_, &Storage::Lock));
     ON_CALL(*this, Destroy).WillByDefault(Invoke(default_, &Storage::Destroy));
-    ON_CALL(*this, IsWriteLocked)
-        .WillByDefault(Invoke(default_, &Storage::IsWriteLocked));
   }
 
   MOCK_METHOD(StatusOr<ReadyState>, IsReady, (Space space), (override));
@@ -43,7 +41,6 @@ class MockStorage : public Storage {
               (override));
   MOCK_METHOD(Status, Lock, (Space space, LockOptions options), (override));
   MOCK_METHOD(Status, Destroy, (Space space), (override));
-  MOCK_METHOD(StatusOr<bool>, IsWriteLocked, (Space space), (override));
 
  private:
   Storage* default_;
