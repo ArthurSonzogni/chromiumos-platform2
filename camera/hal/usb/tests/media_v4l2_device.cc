@@ -871,6 +871,22 @@ bool V4L2Device::EnumFrameInterval(uint32_t pixfmt,
   return true;
 }
 
+bool V4L2Device::OneCapture() {
+  int ret;
+  uint32_t buf_index, data_size;
+  do {
+    ret = ReadOneFrame(&buf_index, &data_size);
+  } while (ret == 0);
+  if (ret < 0)
+    return false;
+  if (ret) {
+    ProcessImage(v4l2_buffers_[buf_index].start);
+    if (!EnqueueBuffer(buf_index))
+      return false;
+  }
+  return true;
+}
+
 bool V4L2Device::GetFrameInterval(uint32_t index,
                                   uint32_t pixfmt,
                                   uint32_t width,

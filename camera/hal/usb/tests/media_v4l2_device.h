@@ -75,6 +75,7 @@ class V4L2Device {
                          uint32_t* num_intervals,
                          bool show_intervals = true);
 
+  bool OneCapture();
   bool QueryControl(uint32_t id, v4l2_queryctrl* ctrl);
   bool SetControl(uint32_t id, int32_t value);
   bool ProbeCaps(v4l2_capability* cap, bool show_caps = false);

@@ -5,6 +5,7 @@
 #include <linux/v4l2-controls.h>
 
 #include <algorithm>
+#include <cstddef>
 #include <iostream>
 #include <limits>
 #include <memory>
@@ -19,6 +20,7 @@
 #include <base/strings/string_util.h>
 #include <base/strings/stringprintf.h>
 #include <base/system/sys_info.h>
+#include <base/timer/elapsed_timer.h>
 #include <base/time/time.h>
 #include <brillo/flag_helper.h>
 #include <gmock/gmock.h>
@@ -224,11 +226,17 @@ class V4L2TestEnvironment : public ::testing::Environment {
       }
       return config->GetModelName();
     }();
-    // The WFC maximum supported resoltuion requirement is waived on some
+    // The WFC maximum supported resolution requirement is waived on some
     // models (b/158564147).
     if ((model == "blacktip360" && usb_info_.vid_pid == "0408:5192") ||
         (model == "garg360" && usb_info_.vid_pid == "0408:5194")) {
       AddNegativeGtestFilter("V4L2Test.MaximumSupportedResolution");
+    }
+    // Waive reconfigure stream latency for collis model. The latency for this
+    // model can be up to 4s.
+    if (model == "collis" && usb_info_.vid_pid == "13d3:5521") {
+      AddNegativeGtestFilter(
+          "V4L2Test/V4L2ReconfigureTest.ReconfigureAndOneCaptureLatency*");
     }
 
     // The gtest filter need to be modified before RUN_ALL_TESTS().
@@ -1040,6 +1048,96 @@ TEST_F(V4L2Test, GetRoiSupport) {
   }
 }
 
+TEST_F(V4L2Test, ReconfigureStreamLatency) {
+  constexpr base::TimeDelta kAllowedLatency = base::Milliseconds(1000);
+
+  const SupportedFormat* old_format = FindSupportedFormat(320, 240, 30.0f);
+
+  ASSERT_NE(old_format, nullptr);
+
+  for (const auto& format : GetSupportedFormats()) {
+    ASSERT_TRUE(dev_.InitDevice(V4L2Device::IO_METHOD_MMAP, old_format->width,
+                                old_format->height, old_format->fourcc, 30.0f,
+                                V4L2Device::DEFAULT_FRAMERATE_SETTING, 0));
+    ASSERT_TRUE(dev_.StartCapture());
+    ASSERT_TRUE(dev_.Run(3));
+
+    base::ElapsedTimer timer;
+    ASSERT_TRUE(dev_.StopCapture());
+    ASSERT_TRUE(dev_.UninitDevice());
+    ASSERT_TRUE(dev_.InitDevice(
+        V4L2Device::IO_METHOD_MMAP, format.width, format.height, format.fourcc,
+        GetMaxFrameRate(format), V4L2Device::DEFAULT_FRAMERATE_SETTING, 0));
+    ASSERT_TRUE(dev_.StartCapture());
+
+    ASSERT_LE(timer.Elapsed(), kAllowedLatency);
+    ASSERT_TRUE(dev_.StopCapture());
+    ASSERT_TRUE(dev_.UninitDevice());
+  }
+}
+
+class V4L2ReconfigureTest : public V4L2Test,
+                            public ::testing::WithParamInterface<
+                                std::tuple<Size, Size, base::TimeDelta>> {};
+
+TEST_P(V4L2ReconfigureTest, ReconfigureAndOneCaptureLatency) {
+  const auto& [small_size, large_size, allowed_latency] = GetParam();
+
+  const SupportedFormat* large_format = nullptr;
+  for (const auto& format : GetSupportedFormats()) {
+    if (format.width == large_size.width &&
+        format.height == large_size.height &&
+        format.fourcc == static_cast<uint32_t>(V4L2_PIX_FMT_YUYV)) {
+      large_format = &format;
+    }
+  }
+
+  if (!large_format) {
+    GTEST_SKIP() << "Device doesn't support resolution "
+                 << large_size.ToString();
+  }
+  const SupportedFormat* small_format =
+      FindSupportedFormat(small_size.width, small_size.height, 30.0f);
+
+  ASSERT_NE(small_format, nullptr);
+
+  ASSERT_TRUE(dev_.InitDevice(V4L2Device::IO_METHOD_MMAP, small_format->width,
+                              small_format->height, small_format->fourcc, 30.0f,
+                              V4L2Device::DEFAULT_FRAMERATE_SETTING, 0));
+  ASSERT_TRUE(dev_.StartCapture());
+  // Exercise capture with current resolution for 3s.
+  ASSERT_TRUE(dev_.Run(3));
+
+  base::ElapsedTimer timer;
+  ASSERT_TRUE(dev_.StopCapture());
+  ASSERT_TRUE(dev_.UninitDevice());
+
+  ASSERT_TRUE(dev_.InitDevice(V4L2Device::IO_METHOD_MMAP, large_format->width,
+                              large_format->height, large_format->fourcc,
+                              GetMaxFrameRate(*large_format),
+                              V4L2Device::DEFAULT_FRAMERATE_SETTING, 0));
+  ASSERT_TRUE(dev_.StartCapture());
+  ASSERT_TRUE(dev_.OneCapture());
+  ASSERT_TRUE(dev_.StopCapture());
+  ASSERT_TRUE(dev_.UninitDevice());
+
+  ASSERT_TRUE(dev_.InitDevice(V4L2Device::IO_METHOD_MMAP, small_format->width,
+                              small_format->height, small_format->fourcc, 30.0f,
+                              V4L2Device::DEFAULT_FRAMERATE_SETTING, 0));
+
+  ASSERT_TRUE(dev_.StartCapture());
+  ASSERT_LE(timer.Elapsed(), allowed_latency);
+  ASSERT_TRUE(dev_.StopCapture());
+  ASSERT_TRUE(dev_.UninitDevice());
+}
+
+INSTANTIATE_TEST_SUITE_P(
+    V4L2Test,
+    V4L2ReconfigureTest,
+    ::testing::ValuesIn(std::vector<std::tuple<Size, Size, base::TimeDelta>>{
+        {Size(320, 240), Size(1280, 720), base::Milliseconds(1500)},
+        {Size(320, 240), Size(1920, 1080), base::Milliseconds(3000)},
+        {Size(320, 240), Size(2592, 1944), base::Milliseconds(3000)}}));
 }  // namespace tests
 }  // namespace cros
 
