@@ -159,10 +159,10 @@ impl ResumeConductor {
                         HibernateCookieValue::NoResume,
                     )
                     .context("Failed to clear emergency reboot cookie")?;
-                    // Resume-init doesn't activate the hibervol LV in order to
+                    // Resume-init doesn't activate the hibermeta LV in order to
                     // minimize failures in the critical path. Activate it now
                     // so logs can be replayed.
-                    pending_merge.volume_manager.setup_hibernate_lv(false)?;
+                    pending_merge.volume_manager.setup_hibermeta_lv(false)?;
                 }
 
                 return Err(HibernateError::CookieError(format!(

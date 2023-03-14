@@ -24,7 +24,7 @@ use log::warn;
 
 use crate::fiemap::Fiemap;
 use crate::fiemap::FiemapExtent;
-use crate::files::HIBERNATE_DIR;
+use crate::files::HIBERMETA_DIR;
 use crate::hiberutil::get_device_mounted_at_dir;
 use crate::hiberutil::get_page_size;
 use crate::mmapbuf::MmapBuffer;
@@ -153,7 +153,7 @@ impl DiskFile {
         let fiemap = Fiemap::new(fs_file)?;
         let blockdev = match block_file {
             None => {
-                let blockdev_path = get_device_mounted_at_dir(HIBERNATE_DIR)?;
+                let blockdev_path = get_device_mounted_at_dir(HIBERMETA_DIR)?;
                 OpenOptions::new()
                     .read(true)
                     .write(true)

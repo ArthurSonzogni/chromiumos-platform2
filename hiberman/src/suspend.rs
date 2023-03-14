@@ -79,7 +79,8 @@ impl SuspendConductor {
         info!("Beginning hibernate");
         let start = Instant::now();
 
-        self.volume_manager.setup_hibernate_lv(true)?;
+        self.volume_manager.setup_hibermeta_lv(true)?;
+
         if let Err(e) = log_hibernate_attempt() {
             warn!("Failed to log hibernate attempt: \n {}", e);
         }

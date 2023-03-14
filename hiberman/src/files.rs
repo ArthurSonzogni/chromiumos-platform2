@@ -28,7 +28,7 @@ use crate::metrics::MetricsFile;
 use crate::mmapbuf::MmapBuffer;
 
 /// Define the directory where hibernate state files are kept.
-pub const HIBERNATE_DIR: &str = "/mnt/hibernate";
+pub const HIBERMETA_DIR: &str = "/mnt/hibermeta";
 /// Define the root of the stateful partition mount.
 pub const STATEFUL_DIR: &str = "/mnt/stateful_partition";
 /// Define the ramfs location where ephemeral files are stored that should not
@@ -66,7 +66,7 @@ pub fn preallocate_log_file(log_file: HiberlogFile, zero_out: bool) -> Result<Bo
         HiberlogFile::Resume => RESUME_LOG_FILE_NAME,
     };
 
-    let log_file_path = Path::new(HIBERNATE_DIR).join(name);
+    let log_file_path = Path::new(HIBERMETA_DIR).join(name);
     preallocate_bounced_disk_file(log_file_path, HIBER_LOG_SIZE, zero_out)
 }
 
@@ -80,7 +80,7 @@ pub fn preallocate_metrics_file(
         MetricsFile::Resume => RESUME_METRICS_FILE_NAME,
     };
 
-    let metrics_file_path = Path::new(HIBERNATE_DIR).join(name);
+    let metrics_file_path = Path::new(HIBERMETA_DIR).join(name);
     preallocate_bounced_disk_file(metrics_file_path, HIBER_METRICS_SIZE, zero_out)
 }
 
@@ -97,7 +97,7 @@ pub fn open_bounced_disk_file<P: AsRef<Path>>(path: P) -> Result<BouncedDiskFile
 
 /// Helper function to determine if the hiberfile already exists.
 pub fn does_hiberfile_exist() -> bool {
-    let hiberfile_path = Path::new(HIBERNATE_DIR).join(HIBER_DATA_NAME);
+    let hiberfile_path = Path::new(HIBERMETA_DIR).join(HIBER_DATA_NAME);
     metadata(hiberfile_path).is_ok()
 }
 
@@ -108,7 +108,7 @@ pub fn metrics_file_exists(metrics_file: &MetricsFile) -> bool {
         MetricsFile::Resume => RESUME_METRICS_FILE_NAME,
     };
 
-    let hiberfile_path = Path::new(HIBERNATE_DIR).join(name);
+    let hiberfile_path = Path::new(HIBERMETA_DIR).join(name);
     hiberfile_path.exists()
 }
 
@@ -119,7 +119,7 @@ pub fn open_metrics_file(metrics_file: MetricsFile) -> Result<BouncedDiskFile> {
         MetricsFile::Resume => RESUME_METRICS_FILE_NAME,
     };
 
-    let hiberfile_path = Path::new(HIBERNATE_DIR).join(name);
+    let hiberfile_path = Path::new(HIBERMETA_DIR).join(name);
     open_bounced_disk_file(hiberfile_path)
 }
 
@@ -130,7 +130,7 @@ pub fn open_log_file(log_file: HiberlogFile) -> Result<BouncedDiskFile> {
         HiberlogFile::Resume => RESUME_LOG_FILE_NAME,
     };
 
-    let path = Path::new(HIBERNATE_DIR).join(name);
+    let path = Path::new(HIBERMETA_DIR).join(name);
     open_bounced_disk_file(path)
 }
 
@@ -148,21 +148,21 @@ fn open_cumulative_metrics_file(path: &Path) -> Result<File> {
 /// Open the attempts_count file, to keep track of the number of hibernate
 /// attempts for metric tracking purposes.
 pub fn open_attempts_file() -> Result<File> {
-    let path = Path::new(HIBERNATE_DIR).join(HIBER_ATTEMPTS_FILE_NAME);
+    let path = Path::new(HIBERMETA_DIR).join(HIBER_ATTEMPTS_FILE_NAME);
     open_cumulative_metrics_file(&path)
 }
 
 /// Open the hibernate_failures file, to keep track of the number of hibernate
 /// failures for metric tracking purposes.
 pub fn open_hiber_fails_file() -> Result<File> {
-    let path = Path::new(HIBERNATE_DIR).join(HIBER_FAILURES_FILE_NAME);
+    let path = Path::new(HIBERMETA_DIR).join(HIBER_FAILURES_FILE_NAME);
     open_cumulative_metrics_file(&path)
 }
 
 /// Open the resume_failures file, to keep track of the number of resume
 /// failures for metric tracking purposes.
 pub fn open_resume_failures_file() -> Result<File> {
-    let path = Path::new(HIBERNATE_DIR).join(RESUME_FAILURES_FILE_NAME);
+    let path = Path::new(HIBERMETA_DIR).join(RESUME_FAILURES_FILE_NAME);
     open_cumulative_metrics_file(&path)
 }
 

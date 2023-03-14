@@ -39,7 +39,7 @@ use std::time::Instant;
 use crate::cookie::set_hibernate_cookie;
 use crate::cookie::HibernateCookieValue;
 use crate::device_mapper::DeviceMapper;
-use crate::files::HIBERNATE_DIR;
+use crate::files::HIBERMETA_DIR;
 use crate::hiberutil::checked_command;
 use crate::hiberutil::checked_command_output;
 use crate::hiberutil::emergency_reboot;
@@ -61,7 +61,7 @@ use crate::lvm::ActivatedLogicalVolume;
 use crate::snapwatch::DmSnapshotSpaceMonitor;
 
 /// Define the name of the hibernate logical volume.
-const HIBER_VOLUME_NAME: &str = "hibervol";
+const HIBERMETA_VOLUME_NAME: &str = "hibermeta";
 const HIBERIMAGE_VOLUME_NAME: &str = "hiberimage";
 const HIBERINTEGRITY_VOLUME_NAME: &str = "hiberintegrity";
 /// Define the name of the thinpool logical volume.
@@ -92,7 +92,7 @@ const DM_SNAPSHOT_CHUNK_SIZE: usize = 8;
 /// Define the list of logical volumes known to not need a snapshot.
 const NO_SNAPSHOT_LVS: [&str; 5] = [
     THINPOOL_NAME,
-    HIBER_VOLUME_NAME,
+    HIBERMETA_VOLUME_NAME,
     "cryptohome-",
     HIBERIMAGE_VOLUME_NAME,
     HIBERINTEGRITY_VOLUME_NAME,
@@ -157,7 +157,7 @@ enum HibernateVolume {
 
 pub struct VolumeManager {
     vg_name: String,
-    hibervol: Option<ActiveMount>,
+    hibermeta_mount: Option<ActiveMount>,
 }
 
 impl VolumeManager {
@@ -171,7 +171,7 @@ impl VolumeManager {
         let vg_name = get_vg_name(&partition1)?;
         Ok(Self {
             vg_name,
-            hibervol: None,
+            hibermeta_mount: None,
         })
     }
 
@@ -189,25 +189,25 @@ impl VolumeManager {
             .context("Failed to make thin-pool RW")
     }
 
-    /// Set up the hibernate logical volume.
-    pub fn setup_hibernate_lv(&mut self, create: bool) -> Result<()> {
-        if lv_exists(&self.vg_name, HIBER_VOLUME_NAME)? {
-            info!("Activating hibervol");
-            activate_lv(&self.vg_name, HIBER_VOLUME_NAME)?;
+    /// Set up the hibermeta logical volume.
+    pub fn setup_hibermeta_lv(&mut self, create: bool) -> Result<()> {
+        if lv_exists(&self.vg_name, HIBERMETA_VOLUME_NAME)? {
+            info!("Activating hibermeta");
+            activate_lv(&self.vg_name, HIBERMETA_VOLUME_NAME)?;
         } else if create {
-            self.create_hibernate_lv()?;
+            self.create_hibermeta_lv()?;
         } else {
             return Err(HibernateError::HibernateVolumeError()).context("Missing hibernate volume");
         }
 
         // Mount the LV to the hibernate directory unless it's already mounted.
-        if get_device_mounted_at_dir(HIBERNATE_DIR).is_err() {
-            let hibernate_dir = Path::new(HIBERNATE_DIR);
-            let path = lv_path(&self.vg_name, HIBER_VOLUME_NAME);
-            info!("Mounting hibervol");
-            self.hibervol = Some(ActiveMount::new(
+        if get_device_mounted_at_dir(HIBERMETA_DIR).is_err() {
+            let hibermeta_dir = Path::new(HIBERMETA_DIR);
+            let path = lv_path(&self.vg_name, HIBERMETA_VOLUME_NAME);
+            info!("Mounting hibermeta");
+            self.hibermeta_mount = Some(ActiveMount::new(
                 path.as_path(),
-                hibernate_dir,
+                hibermeta_dir,
                 "ext4",
                 0,
                 "",
@@ -246,29 +246,29 @@ impl VolumeManager {
         Ok(())
     }
 
-    /// Create the hibernate volume.
-    fn create_hibernate_lv(&mut self) -> Result<()> {
-        info!("Creating hibernate logical volume");
-        let path = lv_path(&self.vg_name, HIBER_VOLUME_NAME);
-        let size = Self::hiber_volume();
+    /// Create the hibermeta volume.
+    fn create_hibermeta_lv(&mut self) -> Result<()> {
+        info!("Creating hibermeta logical volume");
+        let path = lv_path(&self.vg_name, HIBERMETA_VOLUME_NAME);
+        let size = Self::hibermeta_volume_size();
         let start = Instant::now();
-        create_thin_volume(&self.vg_name, size, HIBER_VOLUME_NAME)
+        create_thin_volume(&self.vg_name, size, HIBERMETA_VOLUME_NAME)
             .context("Failed to create thin volume")?;
         thicken_thin_volume(&path, size).context("Failed to thicken volume")?;
         // Use -K to tell mkfs not to run a discard on the block device, which
         // would destroy all the nice thickening done above.
         checked_command_output(Command::new("/sbin/mkfs.ext4").arg("-K").arg(path))
-            .context("Cannot format hibernate volume")?;
+            .context("Cannot format hibermeta volume")?;
         log_io_duration(
-            "Created hibernate logical volume",
+            "Created hibermeta logical volume",
             size,
             start.elapsed(),
         );
         Ok(())
     }
 
-    /// Figure out the appropriate size for the hibernate volume.
-    fn hiber_volume() -> u64 {
+    /// Figure out the appropriate size (in bytes) for the hibermeta volume.
+    fn hibermeta_volume_size() -> u64 {
         let total_mem = (get_total_memory_pages() as u64) * (get_page_size() as u64);
         total_mem + MAX_SNAPSHOT_BYTES + HIBER_VOLUME_FUDGE_BYTES
     }
@@ -1104,7 +1104,7 @@ fn snapshot_file_path(name: &str) -> PathBuf {
 
 /// Return the snapshot directory.
 fn snapshot_dir() -> PathBuf {
-    Path::new(HIBERNATE_DIR).join("snapshots")
+    Path::new(HIBERMETA_DIR).join("snapshots")
 }
 
 /// Separate a string by whitespace, and return the n-th element, or an error
