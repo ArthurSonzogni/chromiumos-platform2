@@ -43,6 +43,12 @@ bool DeleteFilesWarnIfFailed(
   return success;
 }
 
+bool DeleteFilesWarnIfFailed(
+    base::FileEnumerator&& dir_enum,
+    base::RepeatingCallback<bool(const base::FilePath&)> pred) {
+  return DeleteFilesWarnIfFailed(dir_enum, pred);
+}
+
 StatusOr<std::string> MaybeReadFile(const base::FilePath& file_path,
                                     int64_t offset) {
   base::File file(file_path, base::File::FLAG_OPEN | base::File::FLAG_READ);

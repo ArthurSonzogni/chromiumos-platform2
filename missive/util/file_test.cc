@@ -91,9 +91,8 @@ TEST(FileTest, DeleteFilesWarnIfFailed) {
   ASSERT_TRUE(base::CreateTemporaryFileInDir(dir_path, &file_path));
 
   // empty the directory
-  base::FileEnumerator dir_enum(dir_path, /*recursive=*/false,
-                                base::FileEnumerator::FILES, "*");
-  ASSERT_TRUE(DeleteFilesWarnIfFailed(dir_enum))
+  ASSERT_TRUE(DeleteFilesWarnIfFailed(base::FileEnumerator(
+      dir_path, /*recursive=*/false, base::FileEnumerator::FILES, "*")))
       << "Failed to delete " << file_path.MaybeAsASCII();
   ASSERT_FALSE(base::PathExists(file_path))
       << "Deletion succeeds but " << file_path.MaybeAsASCII()
