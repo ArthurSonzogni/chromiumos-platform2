@@ -195,8 +195,6 @@ class CrosConfigJson(CrosConfigBaseImpl):
         for config in self._json["chromeos"]["configs"]:
             self._configs.append(DeviceConfigJson(config))
 
-        sorted(self._configs, key=lambda x: str(x.GetProperties("/identity")))
-
         # TODO(shapiroc): This is mess and needs considerable rework on the fw
         # side to cleanup, but for now, we're sticking with it in order to
         # finish migration to YAML.
