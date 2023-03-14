@@ -8,7 +8,6 @@ use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Read;
 use std::io::Write;
-use std::path::Path;
 
 use anyhow::Context;
 use anyhow::Result;
@@ -21,6 +20,7 @@ use crate::cookie::cookie_description;
 use crate::cookie::get_hibernate_cookie;
 use crate::cookie::set_hibernate_cookie;
 use crate::cookie::HibernateCookieValue;
+use crate::device_mapper::DeviceMapper;
 use crate::files::open_log_file;
 use crate::files::open_metrics_file;
 use crate::files::remove_resume_in_progress_file;
@@ -101,16 +101,30 @@ impl ResumeConductor {
     /// Helper function to perform the meat of the resume action now that the
     /// logging is routed.
     fn resume_inner(&mut self, pending_merge: &mut PendingStatefulMerge) -> Result<()> {
-        self.decide_to_resume(pending_merge)?;
+        if let Err(e) = self.decide_to_resume(pending_merge) {
+            // No resume from hibernate
+
+            // Remove hiberimage volumes if they exist to release allocated
+            // storage to the thinpool.
+            VolumeManager::new()?.teardown_hiberimage()?;
+
+            // Set up the snapshot device for future hibernates
+            self.setup_snapshot_device(true)?;
+
+            return Err(e);
+        }
+
         let metrics_file = open_metrics_file(MetricsFile::Resume)?;
         self.metrics_logger.file = Some(metrics_file);
 
-        debug!("Opening hiberfile");
-        let hiberfile_path = Path::new("/dev/mapper/hiberimage");
+        // Set up the snapshot device for resuming
+        self.setup_snapshot_device(false)?;
+
+        debug!("Opening hiberimage");
         let mut hiber_file = OpenOptions::new()
             .read(true)
             .create(false)
-            .open(hiberfile_path)
+            .open(DeviceMapper::device_path(VolumeManager::HIBERIMAGE))
             .unwrap();
         let _locked_memory = lock_process_memory()?;
         self.resume_system(&mut hiber_file)
@@ -213,6 +227,22 @@ impl ResumeConductor {
         } else {
             self.launch_resume_image(frozen_userspace)
         }
+    }
+
+    /// Helper to set up the 'hiberimage' DM device and configuring it as
+    /// snapshot device for hibernate.
+    ///
+    /// # Arguments
+    ///
+    /// * `new_hiberimage` - Indicates whether to create a new hiberimage or
+    ///                      use an existing one (for resuming).
+    fn setup_snapshot_device(&self, new_hiberimage: bool) -> Result<()> {
+        // TODO: pass actual key
+        let key = "0000000000000000000000000000000000000000000000000000000000000000";
+        VolumeManager::new()?.setup_hiberimage(key, new_hiberimage)?;
+
+        SnapshotDevice::new(SnapshotMode::Read)?.
+            set_block_device(&DeviceMapper::device_path(VolumeManager::HIBERIMAGE))
     }
 
     /// Emits the signal upstart is waiting for to allow trunksd to start and

@@ -20,6 +20,7 @@ use log::warn;
 
 use crate::cookie::set_hibernate_cookie;
 use crate::cookie::HibernateCookieValue;
+use crate::device_mapper::DeviceMapper;
 use crate::files::does_hiberfile_exist;
 use crate::files::open_metrics_file;
 use crate::files::preallocate_log_file;
@@ -77,6 +78,7 @@ impl SuspendConductor {
     pub fn hibernate(&mut self, options: HibernateOptions) -> Result<()> {
         info!("Beginning hibernate");
         let start = Instant::now();
+
         self.volume_manager.setup_hibernate_lv(true)?;
         if let Err(e) = log_hibernate_attempt() {
             warn!("Failed to log hibernate attempt: \n {}", e);
@@ -140,6 +142,7 @@ impl SuspendConductor {
         );
         // Read the metrics files and send out the samples.
         read_and_send_metrics();
+
         result
     }
 
