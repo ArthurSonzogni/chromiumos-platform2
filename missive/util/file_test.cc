@@ -99,6 +99,25 @@ TEST(FileTest, DeleteFilesWarnIfFailed) {
       << " still exists.";
 }
 
+TEST(FileTest, DeleteFilesWarnIfFailedSubSubDir) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  const auto dir_path = temp_dir.GetPath();
+  ASSERT_TRUE(base::DirectoryExists(dir_path));
+
+  ASSERT_TRUE(base::CreateDirectory(dir_path.Append("subdir0")));
+  ASSERT_TRUE(base::CreateDirectory(dir_path.Append("subdir0/subdir1")));
+  ASSERT_TRUE(
+      base::CreateDirectory(dir_path.Append("subdir0/subdir1/subdir2")));
+
+  // empty the directory
+  ASSERT_TRUE(DeleteFilesWarnIfFailed(base::FileEnumerator(
+      dir_path, /*recursive=*/true,
+      base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES)));
+  ASSERT_FALSE(base::PathExists(dir_path.Append("subdir0")))
+      << dir_path << " is not empty.";
+}
+
 TEST(FileTest, ReadWriteFile) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());

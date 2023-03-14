@@ -4,6 +4,7 @@
 
 #include "missive/util/file.h"
 
+#include <algorithm>
 #include <string>
 #include <utility>
 #include <vector>
@@ -34,6 +35,17 @@ bool DeleteFilesWarnIfFailed(
       files_to_delete.push_back(std::move(full_name));
     }
   }
+
+  // Starting from deeper paths so that directories are always emptied first if
+  // the files there are to be deleted. This can be done by deleting the file
+  // with the longest full paths first.
+  std::sort(files_to_delete.begin(), files_to_delete.end(),
+            [](const base::FilePath& fp0, const base::FilePath& fp1) {
+              // Use size of the file path string is sufficient. Semantically it
+              // is better to use the number of components in a file path
+              // (GetComponents().size()), but this is more efficient.
+              return fp0.value().size() > fp1.value().size();
+            });
   bool success = true;
   for (const auto& file_to_delete : files_to_delete) {
     if (!DeleteFileWarnIfFailed(file_to_delete)) {

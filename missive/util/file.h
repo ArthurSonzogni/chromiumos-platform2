@@ -26,10 +26,12 @@ namespace reporting {
 bool DeleteFileWarnIfFailed(const base::FilePath& path);
 
 // Enumerates over |dir_enum|, and deletes the file if pred.Run(file) returns
-// true. If |pred| is unspecified, all files enumerated are deleted. It deletes
-// each individual file with DeleteFileWarnIfFailed(). Refer to
-// DeleteFileWarnIfFailed() for the effect of the deletion.
-// Returns true if all files are deleted successfully, otherwise returns false.
+// true. If |pred| is unspecified, all files enumerated are deleted. If a
+// directory is enumerated, it is deleted only if it is empty or contains only
+// files and subdirectories that are also to be deleted. It deletes each
+// individual file with DeleteFileWarnIfFailed(). Refer to
+// DeleteFileWarnIfFailed() for the effect of the deletion. Returns true if all
+// files are deleted successfully, otherwise returns false.
 bool DeleteFilesWarnIfFailed(
     base::FileEnumerator& dir_enum,
     base::RepeatingCallback<bool(const base::FilePath&)> pred =
