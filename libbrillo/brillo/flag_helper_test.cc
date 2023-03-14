@@ -11,6 +11,7 @@
 #include <base/command_line.h>
 #include <brillo/flag_helper.h>
 
+#include <gmock/gmock.h>  // UnorderedElementsAreArray
 #include <gtest/gtest.h>
 
 namespace brillo {
@@ -208,19 +209,30 @@ TEST_F(FlagHelperTest, SetValueSingleDash) {
 TEST_F(FlagHelperTest, SkipUnknownValueOnReturn) {
   DEFINE_bool(bool1, false, "Test bool flag");
   DEFINE_int32(int32_1, 1, "Test int32 flag");
+  DEFINE_int32(int32_2, -1, "Test int32 flag");
 
   const char* argv[] = {"test_program", "--bool1", "--string_1=value",
-                        "--int32_1=2"};
+                        "--int32_1=2", "--int32_2=notAnInt"};
   base::CommandLine command_line(std::size(argv), argv);
 
   brillo::FlagHelper::GetInstance()->set_command_line_for_testing(
       &command_line);
-  EXPECT_FALSE(
-      brillo::FlagHelper::Init(std::size(argv), argv, "TestSkipUnknown",
-                               brillo::FlagHelper::InitFuncType::kReturn));
+  std::vector<FlagHelper::ParseResultsEntry> results;
+  EXPECT_FALSE(brillo::FlagHelper::Init(
+      std::size(argv), argv, "TestSkipUnknown",
+      brillo::FlagHelper::InitFuncType::kReturn, &results));
 
   EXPECT_TRUE(FLAGS_bool1);
   EXPECT_EQ(FLAGS_int32_1, 2);
+  EXPECT_EQ(FLAGS_int32_2, -1);
+  std::vector<FlagHelper::ParseResultsEntry> expected;
+  expected.push_back(
+      {.flag_name = "string_1",
+       .failure_type = brillo::FlagHelper::ParseFailure::kUnknownFlag});
+  expected.push_back(
+      {.flag_name = "int32_2",
+       .failure_type = brillo::FlagHelper::ParseFailure::kBadValue});
+  EXPECT_THAT(results, testing::UnorderedElementsAreArray(expected));
 }
 
 // Test that a duplicated flag on the command line picks up the last

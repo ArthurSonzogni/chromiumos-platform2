@@ -57,6 +57,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <base/command_line.h>
 #include <brillo/brillo_export.h>
@@ -249,11 +250,27 @@ class BRILLO_EXPORT FlagHelper final {
     kReturn,  // Always returns boolean results.
   };
 
+  enum class ParseFailure {
+    kBadValue,     // Bad value (e.g. string when expected int)
+    kUnknownFlag,  // Unknown name
+  };
+
+  struct ParseResultsEntry {
+    std::string flag_name;
+    // to avoid uninitialized memory, give it *a* default.
+    ParseFailure failure_type = ParseFailure::kBadValue;
+
+    bool operator==(const ParseResultsEntry& other) const {
+      return flag_name == other.flag_name && failure_type == other.failure_type;
+    }
+  };
+
   // This function aborts/exits/returns based on the func_type arg.
   static bool Init(int argc,
                    const char* const* argv,
                    std::string help_usage,
-                   InitFuncType func_type = InitFuncType::kExit);
+                   InitFuncType func_type = InitFuncType::kExit,
+                   std::vector<ParseResultsEntry>* out = nullptr);
 
   // Only to be used for running unit tests.
   void set_command_line_for_testing(base::CommandLine* command_line) {
@@ -266,7 +283,7 @@ class BRILLO_EXPORT FlagHelper final {
   // passed in, it outputs a help message and exits the program. If an unknown
   // flag is passed in, it outputs an error message and returns exit code
   // EX_USAGE.
-  int UpdateFlagValues();
+  int UpdateFlagValues(std::vector<ParseResultsEntry>* out = nullptr);
 
   // Adds a flag to be tracked and updated once the command line is actually
   // parsed.  This function is an implementation detail, and is not meant

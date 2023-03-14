@@ -194,7 +194,8 @@ void FlagHelper::ResetForTesting() {
 bool FlagHelper::Init(int argc,
                       const char* const* argv,
                       std::string help_usage,
-                      InitFuncType func_type) {
+                      InitFuncType func_type,
+                      std::vector<ParseResultsEntry>* out) {
   brillo::FlagHelper* helper = GetInstance();
   if (!helper->command_line_) {
     if (!base::CommandLine::InitializedForCurrentProcess())
@@ -206,7 +207,7 @@ bool FlagHelper::Init(int argc,
 
   GetInstance()->SetProgramName(argv[0]);
 
-  int exit_code = GetInstance()->UpdateFlagValues();
+  int exit_code = GetInstance()->UpdateFlagValues(out);
 
   if (exit_code == EX_OK)
     return true;
@@ -221,7 +222,7 @@ bool FlagHelper::Init(int argc,
   }
 }
 
-int FlagHelper::UpdateFlagValues() {
+int FlagHelper::UpdateFlagValues(std::vector<ParseResultsEntry>* out) {
   std::string error_msg;
   int error_code = EX_OK;
 
@@ -257,6 +258,11 @@ int FlagHelper::UpdateFlagValues() {
                             GetProgramName().c_str(), value.c_str(),
                             flag->GetType(), flag->name_);
         error_code = EX_DATAERR;
+        flag->SetValue(flag->default_value_);
+        if (out) {
+          out->push_back(
+              {.flag_name = key, .failure_type = ParseFailure::kBadValue});
+        }
       }
     } else {
       base::StringAppendF(&error_msg,
@@ -264,6 +270,10 @@ int FlagHelper::UpdateFlagValues() {
                           "unknown command line flag '%s'\n",
                           GetProgramName().c_str(), key.c_str());
       error_code = EX_USAGE;
+      if (out) {
+        out->push_back(
+            {.flag_name = key, .failure_type = ParseFailure::kUnknownFlag});
+      }
     }
   }
 
