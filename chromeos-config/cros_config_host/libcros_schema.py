@@ -2,6 +2,7 @@
 # Copyright 2018 The ChromiumOS Authors
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
+
 """Chrome OS Configuration Schema library.
 
 Provides common cros_config and cros_config_test schema functions.
