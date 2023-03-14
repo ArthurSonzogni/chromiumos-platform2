@@ -80,6 +80,7 @@
 #include <chromeos/patchpanel/dbus/client.h>
 #include <crosvm/qcow_utils.h>
 #include <dbus/object_proxy.h>
+#include <dbus/shadercached/dbus-constants.h>
 #include <dbus/vm_concierge/dbus-constants.h>
 #include <manatee/dbus-proxies.h>
 #include <vboot/crossystem.h>
@@ -97,6 +98,7 @@
 #include "vm_tools/concierge/plugin_vm.h"
 #include "vm_tools/concierge/plugin_vm_helper.h"
 #include "vm_tools/concierge/seneschal_server_proxy.h"
+#include "vm_tools/concierge/shadercached_helper.h"
 #include "vm_tools/concierge/shared_data.h"
 #include "vm_tools/concierge/ssh_keys.h"
 #include "vm_tools/concierge/termina_vm.h"
@@ -1652,6 +1654,15 @@ bool Service::Init() {
 
   platform_features_ = feature::PlatformFeatures::New(bus_);
 
+  shadercached_proxy_ = bus_->GetObjectProxy(
+      shadercached::kShaderCacheServiceName,
+      dbus::ObjectPath(shadercached::kShaderCacheServicePath));
+  if (!shadercached_proxy_) {
+    LOG(ERROR) << "Unable to get dbus proxy for "
+               << shadercached::kShaderCacheServiceName;
+    return false;
+  }
+
   // Setup & start the gRPC listener services.
   if (!SetupListenerService(
           &grpc_thread_vm_, &startup_listener_,
@@ -2102,7 +2113,18 @@ StartVmResponse Service::StartVm(StartVmRequest request,
                          base::FilePath(kTerminaVcpuCpuCgroup).value())
       .SetRenderServerCachePath(std::move(gpu_cache_spec.render_server));
   if (enable_foz_db_list) {
-    vm_builder.SetFozDbListPath(std::move(gpu_cache_spec.foz_db_list));
+    auto prepare_result = PrepareShaderCache(request.owner_id(), request.name(),
+                                             bus_, shadercached_proxy_);
+    if (prepare_result.has_value()) {
+      auto precompiled_cache_path =
+          base::FilePath(prepare_result.value().precompiled_cache_path());
+      vm_builder.SetFozDbListPath(std::move(gpu_cache_spec.foz_db_list))
+          .SetPrecompiledCachePath(precompiled_cache_path)
+          .AppendSharedDir(CreateShaderSharedDataParam(precompiled_cache_path));
+    } else {
+      LOG(ERROR) << "Unable to initialize shader cache: "
+                 << prepare_result.error();
+    }
   }
   if (!image_spec.rootfs.empty()) {
     vm_builder.SetRootfs({.device = std::move(rootfs_device),
@@ -4482,6 +4504,7 @@ VMImageSpec Service::GetImageSpec(
   };
 }
 
+// TODO(b/244486983): move this functionality to shadercached
 Service::VMGpuCacheSpec Service::PrepareVmGpuCachePaths(
     const std::string& owner_id,
     const std::string& vm_name,
