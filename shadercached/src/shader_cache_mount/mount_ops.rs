@@ -89,13 +89,21 @@ impl ShaderCacheMount {
         Ok(())
     }
 
+    pub fn local_precompiled_cache_path(&self) -> Result<String> {
+        self.precompiled_cache_path
+            .clone()
+            .into_os_string()
+            .into_string()
+            .map_err(|e| anyhow!("Failed to convert path to string: {:?}", e))
+    }
+
     fn dlc_content_path(&self, steam_app_id: SteamAppId) -> Result<String> {
         // Generate DLC content
         let str_base = format!(
             "/run/imageloader/{}/package/root/",
             steam_app_id_to_dlc(steam_app_id),
         );
-        let path = Path::new(&str_base).join(&self.relative_mesa_cache_path);
+        let path = Path::new(&str_base).join(self.get_relative_mesa_cache_path()?);
 
         if !path.exists() {
             return Err(anyhow!(
@@ -116,7 +124,7 @@ impl ShaderCacheMount {
 
     fn is_any_mounted(&self, mount_list: &str) -> Result<bool> {
         let base_path = self
-            .mount_base_path
+            .get_mount_base_path()?
             .to_str()
             .ok_or_else(|| anyhow!("Failed to convert PathBuf to string"))?;
 

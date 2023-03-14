@@ -12,6 +12,7 @@ pub const INSTALL_METHOD: &str = "Install";
 pub const UNINSTALL_METHOD: &str = "Uninstall";
 pub const PURGE_METHOD: &str = "Purge";
 pub const UNMOUNT_METHOD: &str = "Unmount";
+pub const PREPARE_SHADER_CACHE_METHOD: &str = "PrepareShaderCache";
 
 pub const MOUNT_STATUS_CHANGED_SIGNAL: &str = "ShaderCacheMountStatusChanged";
 

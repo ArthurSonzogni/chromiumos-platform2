@@ -27,37 +27,57 @@ use std::os::unix::prelude::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+const CRYPTO_HOME: &str = "/run/daemon-store/shadercached";
+const PRECOMPILED_CACHE_DIR: &str = "precompiled_cache";
+const UNINITIALIZED_ERROR: &str = "Mesa cache path not initialized";
+
 #[derive(Debug, Clone)]
 pub struct ShaderCacheMount {
     // The Steam application that we want to mount to this directory.
     mount_queue: HashSet<SteamAppId>,
     // Steam app ids to unmount in periodic unmount loop
     unmount_queue: HashSet<SteamAppId>,
-    // Absolute path to bind-mount DLC contents into.
-    pub mount_base_path: PathBuf,
-    // Within gpu cache directory, mesa creates a nested sub directory to store
-    // shader cache. |relative_mesa_cache_path| is relative to the
-    // render_server's base path within crosvm's gpu cache directory
-    relative_mesa_cache_path: PathBuf,
+    // crosvm render server cache path
+    render_server_path: PathBuf,
+    // Precompiled cache path
+    precompiled_cache_path: PathBuf,
     // After mounting or before unmounting, we need to update foz db list file
     // so that mesa uses or stops using the path.
     foz_blob_db_list_path: PathBuf,
+    // Absolute path to bind-mount DLC contents into.
+    mount_base_path: Option<PathBuf>,
+    // Within gpu cache directory, mesa creates a nested sub directory to store
+    // shader cache. |relative_mesa_cache_path| is relative to the
+    // render_server's base path within crosvm's gpu cache directory
+    relative_mesa_cache_path: Option<PathBuf>,
 }
 
 impl ShaderCacheMount {
-    pub fn new(vm_gpu_cache_path: PathBuf) -> Result<ShaderCacheMount> {
+    pub fn new(vm_gpu_cache_path: PathBuf, owner_id: &str) -> Result<ShaderCacheMount> {
         // Render server path is what mesa sees as its base path, so we don't
         // need to worry about paths before that.
         let render_server_path = vm_gpu_cache_path.join(GPU_RENDER_SERVER_PATH);
-        let relative_mesa_cache_path = get_mesa_cache_relative_path(&render_server_path)?;
-        let mount_base_path = render_server_path.join(&relative_mesa_cache_path);
+        let precompiled_cache_path = Path::new(CRYPTO_HOME)
+            .join(owner_id)
+            .join(PRECOMPILED_CACHE_DIR);
         Ok(ShaderCacheMount {
             mount_queue: HashSet::new(),
             unmount_queue: HashSet::new(),
-            mount_base_path,
-            relative_mesa_cache_path,
+            render_server_path: render_server_path.clone(),
+            precompiled_cache_path,
             foz_blob_db_list_path: render_server_path.join(FOZ_DB_LIST_FILE),
+            mount_base_path: None,
+            relative_mesa_cache_path: None,
         })
+    }
+
+    pub fn initialize(&mut self) -> Result<()> {
+        if self.mount_base_path.is_none() || self.relative_mesa_cache_path.is_none() {
+            let relative_mesa_path = get_mesa_cache_relative_path(&self.render_server_path)?;
+            self.mount_base_path = Some(self.render_server_path.join(&relative_mesa_path));
+            self.relative_mesa_cache_path = Some(relative_mesa_path);
+        }
+        Ok(())
     }
 
     pub async fn setup_mount_destination(
@@ -86,7 +106,7 @@ impl ShaderCacheMount {
                 // on service module. This may involve splitting path creation
                 // and setting up permissions.
                 service::add_shader_cache_group_permission(vm_id, conn).await?;
-                fs::create_dir(&self.mount_base_path)?;
+                fs::create_dir(&self.get_mount_base_path()?)?;
                 debug!("Successfully created mount directory on retry");
             }
             let perm = fs::Permissions::from_mode(0o750);
@@ -100,8 +120,26 @@ impl ShaderCacheMount {
         Ok(())
     }
 
+    fn get_mount_base_path(&self) -> Result<&PathBuf> {
+        if let Some(path) = &self.mount_base_path {
+            return Ok(path);
+        }
+        Err(anyhow!(UNINITIALIZED_ERROR))
+    }
+
+    fn get_relative_mesa_cache_path(&self) -> Result<&PathBuf> {
+        if let Some(path) = &self.relative_mesa_cache_path {
+            return Ok(path);
+        }
+        Err(anyhow!(UNINITIALIZED_ERROR))
+    }
+
     fn get_str_absolute_mount_destination_path(&self, steam_app_id: SteamAppId) -> Result<String> {
-        match self.mount_base_path.join(steam_app_id.to_string()).to_str() {
+        match self
+            .get_mount_base_path()?
+            .join(steam_app_id.to_string())
+            .to_str()
+        {
             Some(str) => Ok(String::from(str)),
             None => Err(anyhow!(
                 "Failed to get string path for {:?}",

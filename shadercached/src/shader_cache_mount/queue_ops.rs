@@ -160,7 +160,7 @@ impl ShaderCacheMount {
             }
         }
 
-        for entry in fs::read_dir(&self.mount_base_path)? {
+        for entry in fs::read_dir(self.get_mount_base_path()?)? {
             let entry = entry?;
             if entry.path().is_dir() {
                 if let Ok(str_entry) = entry.file_name().into_string() {

@@ -154,6 +154,25 @@ pub async fn main() -> Result<()> {
                 }
             },
         );
+
+        let mount_map_clone5 = mount_map.clone();
+        // Method umount only
+        builder.method_with_cr_async(
+            dbus_constants::PREPARE_SHADER_CACHE_METHOD,
+            ("prepare_shader_cache_request_proto",),
+            ("prepare_shader_cache_response_proto",),
+            move |mut ctx, _, (raw_bytes,): (Vec<u8>,)| {
+                debug!("Received prepare shader cache request");
+                let handler =
+                    service::handle_prepare_shader_cache(raw_bytes, mount_map_clone5.clone());
+                async move {
+                    match handler.await.map_err(to_method_err) {
+                        Ok(result) => ctx.reply(Ok((result,))),
+                        Err(e) => ctx.reply(Err(e)),
+                    }
+                }
+            },
+        );
     });
     cr.insert(dbus_constants::PATH_NAME, &[iface_token], ());
 

@@ -17,10 +17,14 @@ use crate::shader_cache_mount::{ShaderCacheMount, ShaderCacheMountMapPtr, VmId};
 use anyhow::{anyhow, Result};
 use dbus::{nonblock::SyncConnection, MethodErr};
 use libchromeos::sys::debug;
-use std::path::Path;
+use protobuf::Message;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
-use system_api::shadercached::{InstallRequest, UninstallRequest, UnmountRequest};
+use system_api::shadercached::{
+    InstallRequest, PrepareShaderCacheRequest, PrepareShaderCacheResponse, UninstallRequest,
+    UnmountRequest,
+};
 
 // Selectively expose service methods
 pub use concierge::add_shader_cache_group_permission;
@@ -48,11 +52,17 @@ pub async fn handle_install(
 
         let mut mut_mount_map = mount_map.write().await;
 
+        // TODO(b/271776528): move the insert ShaderCacheMount to
+        // PrepareShaderCache method response once we support local RW shader
+        // cache in shadercached.
         if !mut_mount_map.contains_key(&vm_id) {
             let vm_gpu_cache_path =
                 Path::new(&concierge::get_vm_gpu_cache_path(&vm_id, conn.clone()).await?)
                     .to_path_buf();
-            mut_mount_map.insert(vm_id.clone(), ShaderCacheMount::new(vm_gpu_cache_path)?);
+            mut_mount_map.insert(
+                vm_id.clone(),
+                ShaderCacheMount::new(vm_gpu_cache_path, &vm_id.vm_owner_id)?,
+            );
         } else {
             debug!("Reusing mount information for {:?}", vm_id);
         }
@@ -61,6 +71,8 @@ pub async fn handle_install(
             .get_mut(&vm_id)
             .ok_or_else(|| MethodErr::failed("Failed to get mount information"))?;
 
+        // Mesa cache path initialization must succeed before we enqueue mount
+        shader_cache_mount.initialize()?;
         // Even if current application is mounted, re-install and re-mount
         shader_cache_mount.enqueue_mount(request.steam_app_id);
     }
@@ -104,6 +116,34 @@ pub async fn handle_purge(
     // unmounts.
     dlc::uninstall_all_shader_cache_dlcs(conn.clone()).await?;
     Ok(())
+}
+
+pub async fn handle_prepare_shader_cache(
+    raw_bytes: Vec<u8>,
+    _mount_map: ShaderCacheMountMapPtr,
+) -> Result<std::vec::Vec<u8>> {
+    let request: PrepareShaderCacheRequest = protobuf::Message::parse_from_bytes(&raw_bytes)?;
+    let mut response = PrepareShaderCacheResponse::new();
+    if request.vm_name.is_empty() || request.vm_owner_id.is_empty() {
+        return Err(anyhow!("vm_name and vm_owner_id must be set"));
+    }
+
+    let vm_id = VmId {
+        vm_name: request.vm_name,
+        vm_owner_id: request.vm_owner_id,
+    };
+    debug!("Preparing shader cache for {:?}", vm_id);
+
+    // TODO(b/271776528): insert ShaderCacheMount here once we support local RW
+    // shader cache in shadercached.
+    let shader_cache_mount = ShaderCacheMount::new(PathBuf::new(), &vm_id.vm_owner_id)?;
+    let path = shader_cache_mount.local_precompiled_cache_path()?;
+    if !Path::new(&path).exists() {
+        std::fs::create_dir(&path)?;
+    }
+    response.set_precompiled_cache_path(path);
+
+    Ok(response.write_to_bytes()?)
 }
 
 pub async fn handle_unmount(raw_bytes: Vec<u8>, mount_map: ShaderCacheMountMapPtr) -> Result<()> {
