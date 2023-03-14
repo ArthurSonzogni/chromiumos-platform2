@@ -192,8 +192,12 @@ TEST_F(InstallAttributesTest, NormalBootWithTpm) {
   EXPECT_TRUE(install_attrs_.IsSecure());
 
   EXPECT_CALL(hwsec_, GetSpaceState(hwsec::Space::kInstallAttributes))
-      .WillRepeatedly(
-          ReturnValue(hwsec::CryptohomeFrontend::StorageState::kReadable));
+      .WillRepeatedly(ReturnValue(hwsec::CryptohomeFrontend::StorageState{
+          .preparable = false,
+          .readable = true,
+          .writable = false,
+          .destroyable = false,
+      }));
 
   brillo::Blob serialized_data = GenerateTestDataFileContents();
   EXPECT_CALL(platform_,

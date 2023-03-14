@@ -7,6 +7,7 @@
 
 #include <cstdint>
 
+#include <absl/container/flat_hash_map.h>
 #include <brillo/secure_blob.h>
 
 #include "libhwsec/backend/storage.h"
@@ -29,8 +30,12 @@ class StorageTpm2 : public Storage {
   Status Destroy(Space space) override;
 
  private:
+  StatusOr<ReadyState> IsReadyInternal(Space space);
+
   org::chromium::TpmManagerProxyInterface& tpm_manager_;
   org::chromium::TpmNvramProxyInterface& tpm_nvram_;
+
+  absl::flat_hash_map<Space, ReadyState> state_cache_;
 };
 
 }  // namespace hwsec

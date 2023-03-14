@@ -111,15 +111,15 @@ bool InstallAttributes::Init() {
       return false;
     }
 
-    if (state.value() == StorageState::kReadable) {
-      LOG(INFO) << "Valid secure install attributes cache found.";
-      status_ = Status::kValid;
+    if (state->writable) {
+      LOG(WARNING) << "Found unfinalized install attributs.";
+      status_ = Status::kFirstInstall;
       return true;
     }
 
-    if (state.value() == StorageState::kReadableAndWritable) {
-      LOG(WARNING) << "Found unfinalized install attributs.";
-      status_ = Status::kFirstInstall;
+    if (state->readable) {
+      LOG(INFO) << "Valid secure install attributes cache found.";
+      status_ = Status::kValid;
       return true;
     }
 

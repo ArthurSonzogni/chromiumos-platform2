@@ -127,11 +127,8 @@ bool FirmwareManagementParameters::Load(void) {
     return false;
   }
 
-  if (state.value() !=
-          hwsec::CryptohomeFrontend::StorageState::kReadableAndWritable &&
-      state.value() != hwsec::CryptohomeFrontend::StorageState::kReadable) {
-    LOG(INFO) << "Load() called with unexpected FWMP state: "
-              << static_cast<int>(state.value());
+  if (!state->readable) {
+    LOG(INFO) << "Load() called with unreadable FWMP.";
     return false;
   }
 
@@ -190,10 +187,8 @@ bool FirmwareManagementParameters::Store(
     return false;
   }
 
-  if (state.value() !=
-      hwsec::CryptohomeFrontend::StorageState::kReadableAndWritable) {
-    LOG(INFO) << "Store() called with unexpected FWMP state: "
-              << static_cast<int>(state.value());
+  if (!state->writable) {
+    LOG(INFO) << "Store() called with unwritable FWMP state.";
     return false;
   }
 

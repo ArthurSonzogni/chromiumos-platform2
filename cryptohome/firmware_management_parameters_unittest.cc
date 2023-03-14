@@ -67,8 +67,12 @@ class FirmwareManagementParametersTestBase : public ::testing::Test {
   // to the configurations.
   void SetExpectationForStore(SecureBlob* nvram_data) {
     EXPECT_CALL(hwsec_, GetSpaceState(_))
-        .WillRepeatedly(ReturnValue(
-            hwsec::CryptohomeFrontend::StorageState::kReadableAndWritable));
+        .WillRepeatedly(ReturnValue(hwsec::CryptohomeFrontend::StorageState{
+            .preparable = false,
+            .readable = true,
+            .writable = true,
+            .destroyable = false,
+        }));
 
     // Save blob that was written
     EXPECT_CALL(hwsec_, StoreSpace(_, _))
@@ -174,8 +178,12 @@ TEST_F(FirmwareManagementParametersTest, StoreFlagsOnly) {
 // Store fails if hash is wrong size
 TEST_F(FirmwareManagementParametersTest, StoreHashSizeBad) {
   EXPECT_CALL(hwsec_, GetSpaceState(_))
-      .WillRepeatedly(ReturnValue(
-          hwsec::CryptohomeFrontend::StorageState::kReadableAndWritable));
+      .WillRepeatedly(ReturnValue(hwsec::CryptohomeFrontend::StorageState{
+          .preparable = false,
+          .readable = true,
+          .writable = true,
+          .destroyable = false,
+      }));
 
   // Return a bad NVRAM size.
   brillo::Blob bad_hash = brillo::BlobFromString("wrong-size");
@@ -186,8 +194,12 @@ TEST_F(FirmwareManagementParametersTest, StoreHashSizeBad) {
 // Store failure
 TEST_F(FirmwareManagementParametersTest, StoreFailure) {
   EXPECT_CALL(hwsec_, GetSpaceState(_))
-      .WillRepeatedly(ReturnValue(
-          hwsec::CryptohomeFrontend::StorageState::kReadableAndWritable));
+      .WillRepeatedly(ReturnValue(hwsec::CryptohomeFrontend::StorageState{
+          .preparable = false,
+          .readable = true,
+          .writable = true,
+          .destroyable = false,
+      }));
   EXPECT_CALL(hwsec_, StoreSpace(_, _))
       .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
 
@@ -203,8 +215,12 @@ TEST_F(FirmwareManagementParametersTest, LoadExisting) {
   SecureBlob nvram_data(kContentsWithHash);
 
   EXPECT_CALL(hwsec_, GetSpaceState(_))
-      .WillRepeatedly(ReturnValue(
-          hwsec::CryptohomeFrontend::StorageState::kReadableAndWritable));
+      .WillRepeatedly(ReturnValue(hwsec::CryptohomeFrontend::StorageState{
+          .preparable = false,
+          .readable = true,
+          .writable = true,
+          .destroyable = false,
+      }));
   EXPECT_CALL(hwsec_, LoadSpace(_))
       .WillOnce(
           ReturnValue(brillo::Blob(nvram_data.begin(), nvram_data.end())));
@@ -228,8 +244,12 @@ TEST_F(FirmwareManagementParametersTest, GetFlags) {
   SecureBlob nvram_data(kContentsWithHash);
 
   EXPECT_CALL(hwsec_, GetSpaceState(_))
-      .WillRepeatedly(ReturnValue(
-          hwsec::CryptohomeFrontend::StorageState::kReadableAndWritable));
+      .WillRepeatedly(ReturnValue(hwsec::CryptohomeFrontend::StorageState{
+          .preparable = false,
+          .readable = true,
+          .writable = true,
+          .destroyable = false,
+      }));
   EXPECT_CALL(hwsec_, LoadSpace(_))
       .WillOnce(
           ReturnValue(brillo::Blob(nvram_data.begin(), nvram_data.end())));
@@ -246,8 +266,12 @@ TEST_F(FirmwareManagementParametersTest, GetDeveloperKeyHash) {
   SecureBlob nvram_data(kContentsWithHash);
 
   EXPECT_CALL(hwsec_, GetSpaceState(_))
-      .WillRepeatedly(ReturnValue(
-          hwsec::CryptohomeFrontend::StorageState::kReadableAndWritable));
+      .WillRepeatedly(ReturnValue(hwsec::CryptohomeFrontend::StorageState{
+          .preparable = false,
+          .readable = true,
+          .writable = true,
+          .destroyable = false,
+      }));
   EXPECT_CALL(hwsec_, LoadSpace(_))
       .WillOnce(
           ReturnValue(brillo::Blob(nvram_data.begin(), nvram_data.end())));
@@ -280,8 +304,12 @@ TEST_F(FirmwareManagementParametersTest, LoadNoNvram) {
 // Load fails on read error
 TEST_F(FirmwareManagementParametersTest, LoadReadError) {
   EXPECT_CALL(hwsec_, GetSpaceState(_))
-      .WillRepeatedly(ReturnValue(
-          hwsec::CryptohomeFrontend::StorageState::kReadableAndWritable));
+      .WillRepeatedly(ReturnValue(hwsec::CryptohomeFrontend::StorageState{
+          .preparable = false,
+          .readable = true,
+          .writable = true,
+          .destroyable = false,
+      }));
   EXPECT_CALL(hwsec_, LoadSpace(_))
       .WillOnce(ReturnError<TPMError>("fake", TPMRetryAction::kNoRetry));
   EXPECT_FALSE(fwmp_.Load());
@@ -294,8 +322,12 @@ TEST_F(FirmwareManagementParametersTest, LoadNvramTooSmall) {
   nvram_data.erase(nvram_data.begin(), nvram_data.begin() + 1);
 
   EXPECT_CALL(hwsec_, GetSpaceState(_))
-      .WillRepeatedly(ReturnValue(
-          hwsec::CryptohomeFrontend::StorageState::kReadableAndWritable));
+      .WillRepeatedly(ReturnValue(hwsec::CryptohomeFrontend::StorageState{
+          .preparable = false,
+          .readable = true,
+          .writable = true,
+          .destroyable = false,
+      }));
   EXPECT_CALL(hwsec_, LoadSpace(_))
       .WillOnce(
           ReturnValue(brillo::Blob(nvram_data.begin(), nvram_data.end())));
@@ -311,8 +343,12 @@ TEST_F(FirmwareManagementParametersTest, LoadBadStructSize) {
   nvram_data[1]++;
 
   EXPECT_CALL(hwsec_, GetSpaceState(_))
-      .WillRepeatedly(ReturnValue(
-          hwsec::CryptohomeFrontend::StorageState::kReadableAndWritable));
+      .WillRepeatedly(ReturnValue(hwsec::CryptohomeFrontend::StorageState{
+          .preparable = false,
+          .readable = true,
+          .writable = true,
+          .destroyable = false,
+      }));
   EXPECT_CALL(hwsec_, LoadSpace(_))
       .WillOnce(
           ReturnValue(brillo::Blob(nvram_data.begin(), nvram_data.end())));
@@ -328,8 +364,12 @@ TEST_F(FirmwareManagementParametersTest, LoadBadCrc) {
   nvram_data[0] ^= 0x42;
 
   EXPECT_CALL(hwsec_, GetSpaceState(_))
-      .WillRepeatedly(ReturnValue(
-          hwsec::CryptohomeFrontend::StorageState::kReadableAndWritable));
+      .WillRepeatedly(ReturnValue(hwsec::CryptohomeFrontend::StorageState{
+          .preparable = false,
+          .readable = true,
+          .writable = true,
+          .destroyable = false,
+      }));
   EXPECT_CALL(hwsec_, LoadSpace(_))
       .WillOnce(
           ReturnValue(brillo::Blob(nvram_data.begin(), nvram_data.end())));
@@ -350,8 +390,12 @@ TEST_F(FirmwareManagementParametersTest, LoadMinorVersion) {
            nvram_data.size() - FirmwareManagementParameters::kCrcDataOffset);
 
   EXPECT_CALL(hwsec_, GetSpaceState(_))
-      .WillRepeatedly(ReturnValue(
-          hwsec::CryptohomeFrontend::StorageState::kReadableAndWritable));
+      .WillRepeatedly(ReturnValue(hwsec::CryptohomeFrontend::StorageState{
+          .preparable = false,
+          .readable = true,
+          .writable = true,
+          .destroyable = false,
+      }));
   EXPECT_CALL(hwsec_, LoadSpace(_))
       .WillOnce(
           ReturnValue(brillo::Blob(nvram_data.begin(), nvram_data.end())));
@@ -372,8 +416,12 @@ TEST_F(FirmwareManagementParametersTest, LoadMajorVersion) {
            nvram_data.size() - FirmwareManagementParameters::kCrcDataOffset);
 
   EXPECT_CALL(hwsec_, GetSpaceState(_))
-      .WillRepeatedly(ReturnValue(
-          hwsec::CryptohomeFrontend::StorageState::kReadableAndWritable));
+      .WillRepeatedly(ReturnValue(hwsec::CryptohomeFrontend::StorageState{
+          .preparable = false,
+          .readable = true,
+          .writable = true,
+          .destroyable = false,
+      }));
   EXPECT_CALL(hwsec_, LoadSpace(_))
       .WillOnce(
           ReturnValue(brillo::Blob(nvram_data.begin(), nvram_data.end())));

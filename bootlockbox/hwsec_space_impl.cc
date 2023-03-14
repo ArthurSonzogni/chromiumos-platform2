@@ -27,13 +27,12 @@ SpaceState HwsecSpaceImpl::DefineSpace() {
                        .LogError()
                        .As(SpaceState::kSpaceNeedPowerwash));
 
-  if (state == hwsec::BootLockboxFrontend::StorageState::kReadableAndWritable) {
+  if (state.writable) {
     return SpaceState::kSpaceUninitialized;
   }
 
-  if (state != hwsec::BootLockboxFrontend::StorageState::kPreparable) {
-    LOG(ERROR) << "Cannot prepare space with unprepareable state: "
-               << static_cast<int>(state);
+  if (!state.preparable) {
+    LOG(ERROR) << "Cannot prepare space with unprepareable state.";
     return SpaceState::kSpaceError;
   }
 
@@ -74,7 +73,7 @@ SpaceState HwsecSpaceImpl::ReadSpace(std::string* digest) {
                        .LogError()
                        .As(SpaceState::kSpaceNeedPowerwash));
 
-  if (state == hwsec::BootLockboxFrontend::StorageState::kPreparable) {
+  if (!state.readable && state.preparable) {
     return SpaceState::kSpaceUndefined;
   }
 

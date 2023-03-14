@@ -10,6 +10,7 @@
 #include <brillo/secure_blob.h>
 
 #include "libhwsec/status.h"
+#include "libhwsec/structures/no_default_init.h"
 #include "libhwsec/structures/space.h"
 
 namespace hwsec {
@@ -17,13 +18,15 @@ namespace hwsec {
 // Storage provide the functions for writeable space.
 class Storage {
  public:
-  enum class ReadyState {
-    // Ready to use, and both read and write are allowed.
-    kReadableAndWritable,
-    // Ready to use, but write locked.
-    kReadable,
-    // Not ready to use, should be prepared before using it.
-    kPreparable,
+  struct ReadyState {
+    // Can be prepared or not.
+    NoDefault<bool> preparable;
+    // Can be read or not.
+    NoDefault<bool> readable;
+    // Can be written or not.
+    NoDefault<bool> writable;
+    // Can be destroyed or not.
+    NoDefault<bool> destroyable;
   };
 
   struct LockOptions {

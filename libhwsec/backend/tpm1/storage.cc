@@ -18,6 +18,7 @@
 
 #include "libhwsec/error/tpm_manager_error.h"
 #include "libhwsec/error/tpm_nvram_error.h"
+#include "libhwsec/status.h"
 #include "libhwsec/structures/no_default_init.h"
 
 using hwsec_foundation::status::MakeStatus;
@@ -37,7 +38,7 @@ struct SpaceInfo {
   NoDefault<bool> write_with_owner_auth;
   NoDefault<bool> read_with_owner_auth;
   NoDefault<bool> lock_after_write;
-  NoDefault<bool> prepare_if_not_writable;
+  NoDefault<bool> preparable_if_not_writable;
   std::optional<Attributes> init_attributes;
   Attributes require_attributes;
   Attributes deny_attributes;
@@ -88,7 +89,7 @@ StatusOr<SpaceInfo> GetSpaceInfo(Space space) {
           .write_with_owner_auth = false,
           .read_with_owner_auth = false,
           .lock_after_write = true,
-          .prepare_if_not_writable = true,
+          .preparable_if_not_writable = true,
           .init_attributes = kFwmpInitAttributes,
           .require_attributes = kFwmpRequireAttributes,
       };
@@ -98,7 +99,7 @@ StatusOr<SpaceInfo> GetSpaceInfo(Space space) {
           .write_with_owner_auth = false,
           .read_with_owner_auth = false,
           .lock_after_write = true,
-          .prepare_if_not_writable = true,
+          .preparable_if_not_writable = true,
           .init_attributes = kInstallAttributesInitAttributes,
           .require_attributes = kInstallAttributesRequireAttributes,
           .bind_to_pcr0 = true,
@@ -110,7 +111,7 @@ StatusOr<SpaceInfo> GetSpaceInfo(Space space) {
           .write_with_owner_auth = false,
           .read_with_owner_auth = false,
           .lock_after_write = false,
-          .prepare_if_not_writable = false,
+          .preparable_if_not_writable = false,
           .init_attributes = kBootlockboxInitAttributes,
           .owner_dependency = tpm_manager::kTpmOwnerDependency_Bootlockbox,
       };
@@ -223,8 +224,7 @@ StatusOr<DetailSpaceInfo> GetDetailSpaceInfo(
 
 }  // namespace
 
-StatusOr<StorageTpm1::ReadyState> StorageTpm1::IsReady(Space space) {
-  // TODO(b/229524745): Add cache for this function.
+StatusOr<StorageTpm1::ReadyState> StorageTpm1::IsReadyInternal(Space space) {
   ASSIGN_OR_RETURN(const absl::flat_hash_set<uint32_t>& space_list,
                    List(tpm_nvram_),
                    _.WithStatus<TPMError>("Failed to list space"));
@@ -242,6 +242,10 @@ StatusOr<StorageTpm1::ReadyState> StorageTpm1::IsReady(Space space) {
                             space_info.deny_attributes, detail_info.attributes);
   }
 
+  ASSIGN_OR_RETURN(
+      bool has_owner_pass, HasOwnerPassword(tpm_manager_),
+      _.WithStatus<TPMError>("Failed to get owner password status"));
+
   if (!ready) {
     if (!space_info.init_attributes.has_value()) {
       return MakeStatus<TPMError>("This space is not preparable",
@@ -250,27 +254,61 @@ StatusOr<StorageTpm1::ReadyState> StorageTpm1::IsReady(Space space) {
                                       : TPMRetryAction::kSpaceNotFound);
     }
 
-    ASSIGN_OR_RETURN(
-        bool has_owner_pass, HasOwnerPassword(tpm_manager_),
-        _.WithStatus<TPMError>("Failed to get owner password status"));
-
     if (!has_owner_pass) {
+      // Nothing we can do under this kind of case.
       return MakeStatus<TPMError>(
           "No owner password", space_exists ? TPMRetryAction::kNoRetry
                                             : TPMRetryAction::kSpaceNotFound);
     }
 
-    return ReadyState::kPreparable;
+    return ReadyState{
+        .preparable = true,
+        .readable = false,
+        .writable = false,
+        .destroyable = true,
+    };
   }
 
-  if (detail_info.is_write_locked) {
-    // We don't need to remove the dependency for locked space.
-    return ReadyState::kReadable;
+  bool preparable = false;
+  bool readable = !detail_info.is_read_locked;
+  bool writable = !detail_info.is_write_locked;
+  bool destroyable = has_owner_pass;
+
+  if (space_info.read_with_owner_auth && !has_owner_pass) {
+    readable = false;
   }
 
-  RETURN_IF_ERROR(CheckAndRemoveDependency(tpm_manager_, space_info))
-      .WithStatus<TPMError>("Failed to check and remove dependency");
-  return ReadyState::kReadableAndWritable;
+  if (space_info.write_with_owner_auth && !has_owner_pass) {
+    writable = false;
+  }
+
+  if (!writable && space_info.preparable_if_not_writable) {
+    preparable = has_owner_pass;
+  }
+
+  if (!preparable && has_owner_pass) {
+    RETURN_IF_ERROR(CheckAndRemoveDependency(tpm_manager_, space_info))
+        .WithStatus<TPMError>("Failed to check and remove dependency");
+  }
+
+  return ReadyState{
+      .preparable = preparable,
+      .readable = readable,
+      .writable = writable,
+      .destroyable = destroyable,
+  };
+}
+
+StatusOr<StorageTpm1::ReadyState> StorageTpm1::IsReady(Space space) {
+  auto cache_it = state_cache_.find(space);
+  if (cache_it != state_cache_.end()) {
+    return cache_it->second;
+  }
+
+  ASSIGN_OR_RETURN(ReadyState state, IsReadyInternal(space));
+  state_cache_.insert_or_assign(space, state);
+
+  return state;
 }
 
 Status StorageTpm1::Prepare(Space space, uint32_t size) {
@@ -279,17 +317,26 @@ Status StorageTpm1::Prepare(Space space, uint32_t size) {
 
   ASSIGN_OR_RETURN(const SpaceInfo& space_info, GetSpaceInfo(space));
 
-  if (ready_state == ReadyState::kReadableAndWritable) {
+  if (ready_state.readable && ready_state.writable) {
     return OkStatus();
   }
 
-  if (ready_state == ReadyState::kReadable &&
-      !space_info.prepare_if_not_writable) {
-    return OkStatus();
+  if (!ready_state.preparable) {
+    return MakeStatus<TPMError>("The space is not preparable",
+                                TPMRetryAction::kNoRetry);
+  }
+
+  if (!ready_state.destroyable) {
+    return MakeStatus<TPMError>(
+        "The space is not preparable due to not destroyable",
+        TPMRetryAction::kNoRetry);
   }
 
   RETURN_IF_ERROR(Destroy(space))
       .WithStatus<TPMError>("Failed to destroy space when prepare space");
+
+  // The cache will be invalidated.
+  state_cache_.erase(space);
 
   tpm_manager::DefineSpaceRequest define_request;
   define_request.set_index(space_info.index);
@@ -323,6 +370,14 @@ Status StorageTpm1::Prepare(Space space, uint32_t size) {
 }
 
 StatusOr<brillo::Blob> StorageTpm1::Load(Space space) {
+  ASSIGN_OR_RETURN(ReadyState ready_state, IsReady(space),
+                   _.WithStatus<TPMError>("Failed to get space ready state"));
+
+  if (!ready_state.readable) {
+    return MakeStatus<TPMError>("The space is not readable",
+                                TPMRetryAction::kNoRetry);
+  }
+
   ASSIGN_OR_RETURN(const SpaceInfo& space_info, GetSpaceInfo(space));
 
   tpm_manager::ReadSpaceRequest request;
@@ -342,6 +397,14 @@ StatusOr<brillo::Blob> StorageTpm1::Load(Space space) {
 }
 
 Status StorageTpm1::Store(Space space, const brillo::Blob& blob) {
+  ASSIGN_OR_RETURN(ReadyState ready_state, IsReady(space),
+                   _.WithStatus<TPMError>("Failed to get space ready state"));
+
+  if (!ready_state.writable) {
+    return MakeStatus<TPMError>("The space is not writable",
+                                TPMRetryAction::kNoRetry);
+  }
+
   ASSIGN_OR_RETURN(const SpaceInfo& space_info, GetSpaceInfo(space));
 
   tpm_manager::WriteSpaceRequest request;
@@ -389,6 +452,9 @@ Status StorageTpm1::Lock(Space space, LockOptions options) {
     return OkStatus();
   }
 
+  // The cache will be invalidated.
+  state_cache_.erase(space);
+
   tpm_manager::LockSpaceRequest request;
   request.set_index(space_info.index);
   request.set_lock_write(options.write_lock);
@@ -405,6 +471,14 @@ Status StorageTpm1::Lock(Space space, LockOptions options) {
 }
 
 Status StorageTpm1::Destroy(Space space) {
+  ASSIGN_OR_RETURN(ReadyState ready_state, IsReady(space),
+                   _.WithStatus<TPMError>("Failed to get space ready state"));
+
+  if (!ready_state.destroyable) {
+    return MakeStatus<TPMError>("The space is not destroyable",
+                                TPMRetryAction::kNoRetry);
+  }
+
   ASSIGN_OR_RETURN(const SpaceInfo& space_info, GetSpaceInfo(space));
 
   ASSIGN_OR_RETURN(const absl::flat_hash_set<uint32_t>& space_list,
@@ -414,6 +488,9 @@ Status StorageTpm1::Destroy(Space space) {
   if (space_list.find(space_info.index) == space_list.end()) {
     return OkStatus();
   }
+
+  // The cache will be invalidated.
+  state_cache_.erase(space);
 
   tpm_manager::DestroySpaceRequest request;
   request.set_index(space_info.index);
