@@ -223,20 +223,39 @@ base::expected<std::string, std::string> ParsePanicInfo(
          data.last(trailer_size).data(), trailer_size);
 
   /*
-   * We only understand panic data with version <= 2. Warn the user
-   * of higher versions.
+   * We only understand panic data with version in [1, 2]. Error on invalid
+   * versions.
    */
-  if (pdata.struct_version > 2)
-    base::StrAppend(&warning, {base::StringPrintf(
-                                  "WARNING: Unknown panic data version (%d).\n",
-                                  pdata.struct_version)});
+  if (pdata.struct_version > 2 || pdata.struct_version == 0)
+    return base::unexpected(
+        warning +
+        base::StringPrintf("ERROR: Unknown panic data version (%d).\n",
+                           pdata.struct_version));
 
-  /* Validate magic number */
+  if (pdata.reserved != 0)
+    return base::unexpected(
+        warning + base::StringPrintf("ERROR: Panic reserve is not 0 (%d).\n",
+                                     pdata.reserved));
+
+  /* Validate flag is within BIT(0) to BIT(6). */
+  if (pdata.flags >> 6)
+    return base::unexpected(
+        warning +
+        base::StringPrintf("ERROR: Incorrect flag (%d).\n", pdata.flags));
+
+  /*
+   * Validate magic number. This is unlikely to happen but we should investigate
+   * the mismatching in crash reports.
+   */
   if (pdata.magic != PANIC_DATA_MAGIC)
     base::StrAppend(
         &warning, {base::StringPrintf("WARNING: Incorrect panic magic (%d).\n",
                                       pdata.magic)});
 
+  /*
+   * The size mismatching is unlikely to happen but we should investiage this
+   * case in crash reports.
+   */
   if (pdata.struct_size != size)
     base::StrAppend(
         &warning, {base::StringPrintf(
