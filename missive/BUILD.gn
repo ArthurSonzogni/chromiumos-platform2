@@ -116,6 +116,7 @@ executable("missived") {
   deps = [
     "//missive/daemon:missive_daemon",
     "//missive/dbus:dbus_adaptor",
+    "//missive/missive:migration",
     "//missive/missive:missive_args",
     "//missive/missive:missive_impl",
     "//missive/missive:missive_service",

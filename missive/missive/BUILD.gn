@@ -12,6 +12,18 @@ pkg_config("target_defaults") {
   ]
 }
 
+static_library("migration") {
+  sources = [
+    "migration.cc",
+    "migration.h",
+  ]
+  configs += [ ":target_defaults" ]
+  deps = [
+    "//missive/util:file",
+    "//missive/util:status",
+  ]
+}
+
 static_library("missive_args") {
   sources = [
     "missive_args.cc",
@@ -58,10 +70,12 @@ static_library("missive_impl") {
 
 source_set("unit_tests") {
   sources = [
+    "migration_test.cc",
     "missive_args_test.cc",
     "missive_impl_test.cc",
   ]
   deps = [
+    ":migration",
     ":missive_impl",
     "//missive/proto:libmissiveprotorecord",
     "//missive/util:status",

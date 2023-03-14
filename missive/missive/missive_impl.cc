@@ -68,6 +68,17 @@ MissiveImpl::MissiveImpl(
       create_storage_factory_(std::move(create_storage_factory)) {
   // Constructor may even be called not on any seq task runner.
   DETACH_FROM_SEQUENCE(sequence_checker_);
+
+  // TODO(b/266603275) Uncomment and adjust the following when the migration
+  // code is ready
+#if 0
+  auto migration_status = Migrate(base::FilePath("/var/cache/reporting"),
+                                  base::FilePath("/var/spool/reporting"));
+  if (!migration_status.ok()) {
+    LOG(ERROR) << migration_status.error_message();
+    std::abort();
+  }
+#endif
 }
 
 MissiveImpl::~MissiveImpl() {
