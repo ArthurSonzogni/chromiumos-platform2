@@ -75,6 +75,10 @@ class DeviceConfigJson(DeviceConfig):
             return str(props[name])
         return ""
 
+    def GetPropertiesStr(self, path):
+        """Get the string representation of the properties."""
+        return json.dumps(self.GetProperties(path), sort_keys=True)
+
     def GetValue(self, source, name):
         return source.get(name, None)
 
@@ -211,14 +215,14 @@ class CrosConfigJson(CrosConfigBaseImpl):
                 identity = (
                     name,
                     image_name,
-                    str(config.GetProperties("/identity")),
+                    config.GetPropertiesStr("/identity"),
                 )
                 if identity in processed:
                     continue
 
                 firmware_name = image_name or name
 
-                fw_str = str(fw)
+                fw_str = json.dumps(fw, sort_keys=True)
                 if fw_str not in fw_by_model:
                     # Use the explicit name of the firmware, else use the
                     # calculated firmware name. This supports equivalence
@@ -282,8 +286,8 @@ class CrosConfigJson(CrosConfigBaseImpl):
                             wl_brand_code = wl_config.GetProperty(
                                 "/", "brand-code"
                             )
-                            wl_identity_str = str(
-                                wl_config.GetProperties("/identity")
+                            wl_identity_str = wl_config.GetPropertiesStr(
+                                "/identity"
                             )
                             wl_identity = name, image_name, wl_identity_str
                             processed.add(wl_identity)
