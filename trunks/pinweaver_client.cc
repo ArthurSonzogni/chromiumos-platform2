@@ -93,8 +93,9 @@ void PrintUsage() {
       "GSC reboots.");
   puts("  selftest [--protocol=<version>] - runs a self test with the");
   puts("           following commands:");
-  puts("  biometrics_selftest - runs a self test for the biometrics pinweaver");
-  puts("           commands.");
+  puts("  biometrics_selftest [--full] - runs a self test for the biometrics");
+  puts("           pinweaver commands. Full test can only be run on platforms");
+  puts("           that support at least two Pk slots.");
 }
 
 std::string HexEncode(const std::string& bytes) {
@@ -1272,7 +1273,10 @@ int HandleBiometricsSelfTest(
     TrunksFactoryImpl* factory) {
   const uint8_t kFpAuthChannel = 0, kFaceAuthChannel = 1;
 
-  if (begin != end) {
+  bool full = false;
+  if (end - begin == 1 && begin[0] == "--full") {
+    full = true;
+  } else if (begin != end) {
     puts("Invalid options!");
     PrintUsage();
     return EXIT_FAILURE;
@@ -1340,44 +1344,45 @@ int HandleBiometricsSelfTest(
     return EXIT_FAILURE;
   }
 
-  // 3. Generate Pk for face slot
-  LOG(INFO) << "generate_ba_pk (face slot)";
-  result_code = 0;
-  key_pair = ec->GenerateKey(context.get());
-  if (!key_pair) {
-    LOG(ERROR) << "Failed to generate EC key.";
-    return EXIT_FAILURE;
-  }
-  pub_point = EC_KEY_get0_public_key(key_pair.get());
-  auth_pk = ToPinWeaverEccPoint(*ec, context.get(), pub_point);
-  if (!auth_pk.has_value()) {
-    LOG(ERROR) << "Failed to generate EC point proto.";
-    return EXIT_FAILURE;
-  }
-  result = tpm_utility->PinWeaverGenerateBiometricsAuthPk(
-      protocol_version, kFaceAuthChannel, *auth_pk, &result_code, &root,
-      &gsc_pk);
-  if (result || result_code) {
-    LOG(ERROR) << "generate_ba_pk failed! " << result_code << " "
-               << PwErrorStr(result_code);
-    return EXIT_FAILURE;
-  }
-  gsc_pub_point = FromPinWeaverEccPoint(*ec, context.get(), gsc_pk);
-  const std::optional<brillo::SecureBlob> pk_face = CalculatePkFromKeys(
-      *ec, context.get(), *EC_KEY_get0_private_key(key_pair.get()),
-      *gsc_pub_point);
-  if (!pk_face.has_value()) {
-    LOG(ERROR) << "Failed to calculate Pk.";
-    return EXIT_FAILURE;
+  if (full) {
+    // 3. Generate Pk for face slot
+    LOG(INFO) << "generate_ba_pk (face slot)";
+    result_code = 0;
+    key_pair = ec->GenerateKey(context.get());
+    if (!key_pair) {
+      LOG(ERROR) << "Failed to generate EC key.";
+      return EXIT_FAILURE;
+    }
+    pub_point = EC_KEY_get0_public_key(key_pair.get());
+    auth_pk = ToPinWeaverEccPoint(*ec, context.get(), pub_point);
+    if (!auth_pk.has_value()) {
+      LOG(ERROR) << "Failed to generate EC point proto.";
+      return EXIT_FAILURE;
+    }
+    result = tpm_utility->PinWeaverGenerateBiometricsAuthPk(
+        protocol_version, kFaceAuthChannel, *auth_pk, &result_code, &root,
+        &gsc_pk);
+    if (result || result_code) {
+      LOG(ERROR) << "generate_ba_pk failed! " << result_code << " "
+                 << PwErrorStr(result_code);
+      return EXIT_FAILURE;
+    }
+    gsc_pub_point = FromPinWeaverEccPoint(*ec, context.get(), gsc_pk);
+    const std::optional<brillo::SecureBlob> pk_face = CalculatePkFromKeys(
+        *ec, context.get(), *EC_KEY_get0_private_key(key_pair.get()),
+        *gsc_pub_point);
+    if (!pk_face.has_value()) {
+      LOG(ERROR) << "Failed to calculate Pk.";
+      return EXIT_FAILURE;
+    }
   }
 
-  // 4. Generate Pk for face slot again should fail because there's already a Pk
-  // for it.
-  LOG(INFO) << "generate_ba_pk should fail (face slot)";
+  // 4. Generate Pk for fingerprint slot again should fail because there's
+  // already a Pk for it.
+  LOG(INFO) << "generate_ba_pk should fail (fingerprint slot)";
   result_code = 0;
   result = tpm_utility->PinWeaverGenerateBiometricsAuthPk(
-      protocol_version, kFaceAuthChannel, *auth_pk, &result_code, &root,
-      &gsc_pk);
+      protocol_version, kFpAuthChannel, *auth_pk, &result_code, &root, &gsc_pk);
   if (result) {
     LOG(ERROR) << "generate_ba_pk failed!";
     return EXIT_FAILURE;
@@ -1572,29 +1577,31 @@ int HandleBiometricsSelfTest(
     return EXIT_FAILURE;
   }
 
-  // 9. Verify the authenticate attempt will fail with PW_ERR_LOWENT_AUTH_FAILED
-  // if we send the wrong auth channel.
-  LOG(INFO) << "start_bio_auth should fail";
-  result_code = 0;
-  base::RandBytes(auth_nonce.data(), auth_nonce.size());
-  result = tpm_utility->PinWeaverStartBiometricsAuth(
-      protocol_version, kFaceAuthChannel, auth_nonce, h_aux, cred_metadata,
-      &result_code, &root, &gsc_nonce, &encrypted_hec, &iv, &cred_metadata,
-      &mac);
-  if (result) {
-    LOG(ERROR) << "start_bio_auth failed!\ntrunks error: "
-               << trunks::GetErrorString(result);
-    return EXIT_FAILURE;
-  }
-  if (result_code != PW_ERR_LOWENT_AUTH_FAILED) {
-    LOG(ERROR) << "unexpected start_bio_auth result code: " << result_code
-               << " " << PwErrorStr(result_code);
-    return EXIT_FAILURE;
-  }
-  // Verify that secrets are not leaked
-  if (!gsc_nonce.empty() || !encrypted_hec.empty() || !iv.empty()) {
-    LOG(ERROR) << "secrets are leaked!";
-    return EXIT_FAILURE;
+  if (full) {
+    // 9. Verify the authenticate attempt will fail with
+    // PW_ERR_LOWENT_AUTH_FAILED if we send the wrong auth channel.
+    LOG(INFO) << "start_bio_auth should fail (wrong channel)";
+    result_code = 0;
+    base::RandBytes(auth_nonce.data(), auth_nonce.size());
+    result = tpm_utility->PinWeaverStartBiometricsAuth(
+        protocol_version, kFaceAuthChannel, auth_nonce, h_aux, cred_metadata,
+        &result_code, &root, &gsc_nonce, &encrypted_hec, &iv, &cred_metadata,
+        &mac);
+    if (result) {
+      LOG(ERROR) << "start_bio_auth failed!\ntrunks error: "
+                 << trunks::GetErrorString(result);
+      return EXIT_FAILURE;
+    }
+    if (result_code != PW_ERR_LOWENT_AUTH_FAILED) {
+      LOG(ERROR) << "unexpected start_bio_auth result code: " << result_code
+                 << " " << PwErrorStr(result_code);
+      return EXIT_FAILURE;
+    }
+    // Verify that secrets are not leaked
+    if (!gsc_nonce.empty() || !encrypted_hec.empty() || !iv.empty()) {
+      LOG(ERROR) << "secrets are leaked!";
+      return EXIT_FAILURE;
+    }
   }
 
   // 10. Start an authenticate attempt toward the rate-limiter again, and verify
