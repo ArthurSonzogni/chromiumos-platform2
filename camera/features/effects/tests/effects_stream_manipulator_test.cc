@@ -89,6 +89,8 @@ class EffectsStreamManipulatorTest : public ::testing::Test {
 
     effect_set_success = false;
     loop = std::make_unique<base::RunLoop>();
+
+    stream_config_.AppendStream(&yuv_720_stream);
   }
 
   void TearDown() override {
@@ -98,6 +100,7 @@ class EffectsStreamManipulatorTest : public ::testing::Test {
 
   StreamManipulator::RuntimeOptions runtime_options_;
   std::unique_ptr<EffectsStreamManipulator> stream_manipulator_;
+  Camera3StreamConfiguration stream_config_;
   base::FilePath config_path_;
 
   ScopedBufferHandle output_buffer_;
@@ -234,6 +237,8 @@ TEST_F(EffectsStreamManipulatorTest, OverrideConfigFileToSetBackgroundReplace) {
       nullptr,
       StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
                                    .notify_callback = base::DoNothing()});
+  stream_manipulator_->ConfigureStreams(&stream_config_);
+
   ConfigureStreams(&yuv_720_stream);
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
   WaitForEffectSetAndReset();
@@ -259,6 +264,8 @@ TEST_F(EffectsStreamManipulatorTest,
       nullptr,
       StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
                                    .notify_callback = base::DoNothing()});
+  stream_manipulator_->ConfigureStreams(&stream_config_);
+
   ConfigureStreams(&yuv_720_stream);
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
   WaitForEffectSetAndReset();
@@ -284,6 +291,8 @@ TEST_F(EffectsStreamManipulatorTest, ReplaceEffectAppliedUsingEnableFlag) {
       nullptr,
       StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
                                    .notify_callback = base::DoNothing()});
+  stream_manipulator_->ConfigureStreams(&stream_config_);
+
   ConfigureStreams(&yuv_720_stream);
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
   WaitForEffectSetAndReset();
@@ -311,6 +320,8 @@ TEST_F(EffectsStreamManipulatorTest, BlurEffectWithExtraBlurLevel) {
       nullptr,
       StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
                                    .notify_callback = base::DoNothing()});
+  stream_manipulator_->ConfigureStreams(&stream_config_);
+
   ConfigureStreams(&yuv_720_stream);
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
   WaitForEffectSetAndReset();
@@ -337,6 +348,8 @@ TEST_F(EffectsStreamManipulatorTest, RelightEffectAppliedUsingEnableFlag) {
       nullptr,
       StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
                                    .notify_callback = base::DoNothing()});
+  stream_manipulator_->ConfigureStreams(&stream_config_);
+
   ConfigureStreams(&yuv_720_stream);
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
   WaitForEffectSetAndReset();
@@ -359,6 +372,8 @@ TEST_F(EffectsStreamManipulatorTest, NoneEffectApplied) {
       nullptr,
       StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
                                    .notify_callback = base::DoNothing()});
+  stream_manipulator_->ConfigureStreams(&stream_config_);
+
   ConfigureStreams(&yuv_720_stream);
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""),
                                       kNumFrames);
@@ -384,6 +399,8 @@ TEST_F(EffectsStreamManipulatorTest, RotateThroughEffectsUsingOverrideFile) {
       nullptr,
       StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
                                    .notify_callback = base::DoNothing()});
+  stream_manipulator_->ConfigureStreams(&stream_config_);
+
   ConfigureStreams(&yuv_720_stream);
   ProcessFileThroughStreamManipulator(kSampleImagePath, base::FilePath(""), 1);
   WaitForEffectSetAndReset();
@@ -420,6 +437,8 @@ TEST_F(EffectsStreamManipulatorTest,
       nullptr,
       StreamManipulator::Callbacks{.result_callback = base::DoNothing(),
                                    .notify_callback = base::DoNothing()});
+  stream_manipulator_->ConfigureStreams(&stream_config_);
+
   ConfigureStreams(&yuv_720_stream);
   ScopedBufferHandle ref_buffer = CameraBufferManager::AllocateScopedBuffer(
       yuv_720_stream.width, yuv_720_stream.height, yuv_720_stream.format,

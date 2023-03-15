@@ -656,12 +656,6 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
   TRACE_EFFECTS("frame_number", result.frame_number());
 
   auto processing_time_start = base::TimeTicks::Now();
-  if (!process_thread_) {
-    process_thread_ = base::ThreadTaskRunnerHandle::Get();
-    config_.SetCallback(
-        base::BindRepeating(&EffectsStreamManipulatorImpl::OnOptionsUpdated,
-                            base::Unretained(this)));
-  }
 
   base::ScopedClosureRunner callback_action =
       StreamManipulator::MakeScopedCaptureResultCallbackRunner(
@@ -677,6 +671,13 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
   }
   if (!pipeline_)
     return true;
+
+  if (!process_thread_) {
+    process_thread_ = base::ThreadTaskRunnerHandle::Get();
+    config_.SetCallback(
+        base::BindRepeating(&EffectsStreamManipulatorImpl::OnOptionsUpdated,
+                            base::Unretained(this)));
+  }
 
   auto new_config = ConvertMojoConfig(runtime_options_->GetEffectsConfig());
   if (active_runtime_effects_config_ != new_config) {
@@ -828,8 +829,9 @@ EffectsStreamManipulatorImpl::RenderEffect(Camera3StreamBuffer& result_buffer,
   }
 
   // Mediapipe requires timestamps to be strictly increasing for a given
-  // pipeline. If we receive non-monotonic timestamps or render the pipeline for
-  // multiple streams in parallel, make sure the same timestamp isn't repeated.
+  // pipeline. If we receive non-monotonic timestamps or render the pipeline
+  // for multiple streams in parallel, make sure the same timestamp isn't
+  // repeated.
   timestamp = std::max(timestamp, last_timestamp_ + 1);
   last_timestamp_ = timestamp;
 
@@ -1106,5 +1108,4 @@ void EffectsStreamManipulatorImpl::UploadAndResetMetricsData() {
   metrics_ = EffectsMetricsData();
   metrics_uploader_->UploadMetricsData(std::move(metrics_copy));
 }
-
 }  // namespace cros
