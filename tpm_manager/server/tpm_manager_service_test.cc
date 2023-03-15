@@ -166,6 +166,9 @@ TEST_F(TpmManagerServiceTest_Preinit, InitializeMetrics) {
 
   EXPECT_CALL(mock_tpm_status_, GetAlertsData(_)).WillOnce(Return(true));
 
+  EXPECT_CALL(mock_tpm_status_, GetGscVersion())
+      .WillRepeatedly(Return(GscVersion::GSC_VERSION_TI50));
+
   EXPECT_CALL(mock_tpm_status_, GetTi50Stats(_, _, _, _))
       .WillOnce(Return(true));
 
