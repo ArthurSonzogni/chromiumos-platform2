@@ -16,6 +16,9 @@ group("all") {
   if (use.test) {
     deps += [ ":libec_tests" ]
   }
+  if (use.fuzzer) {
+    deps += [ ":libec_ec_panicinfo_fuzzer" ]
+  }
 }
 
 default_pkg_deps = [
@@ -158,6 +161,7 @@ if (use.test) {
       "display_soc_command_test.cc",
       "ec_command_async_test.cc",
       "ec_command_test.cc",
+      "ec_panicinfo_test.cc",
       "ec_usb_device_monitor_test.cc",
       "ec_usb_endpoint_test.cc",
       "fingerprint/fp_context_command_factory_test.cc",
@@ -212,6 +216,17 @@ if (use.test) {
       "libchrome-test",
       "protobuf-lite",
     ]
+  }
+}
+
+if (use.fuzzer) {
+  executable("libec_ec_panicinfo_fuzzer") {
+    sources = [ "ec_panicinfo_fuzzer.cc" ]
+    configs += [
+      "//common-mk/common_fuzzer",
+      ":target_defaults_pkg_deps",
+    ]
+    deps = [ ":libec_static" ]
   }
 }
 
