@@ -402,6 +402,8 @@ static_library("libshill") {
     "rootdev",
     "rt",
   ]
+  precompiled_header = "pch.h"
+  precompiled_source = "pch.h"
 
   all_dependent_pkg_deps = [
     "libcares",
@@ -831,6 +833,8 @@ if (use.test) {
       ":shill_unittest_config",
       ":target_defaults",
     ]
+    precompiled_header = "pch_test.h"
+    precompiled_source = "pch_test.h"
     deps = [
       ":libshill",
       ":mobile_operator_db-db",

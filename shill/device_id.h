@@ -73,9 +73,8 @@ class DeviceId {
   std::optional<uint16_t> product_id_;
 };
 
-}  // namespace shill
+std::ostream& operator<<(std::ostream& stream, const DeviceId& device_id);
 
-std::ostream& operator<<(std::ostream& stream,
-                         const shill::DeviceId& device_id);
+}  // namespace shill
 
 #endif  // SHILL_DEVICE_ID_H_

@@ -190,9 +190,8 @@ bool DeviceId::Match(const DeviceId& pattern) const {
          product_id_.value() == pattern.product_id_.value();
 }
 
-}  // namespace shill
-
-std::ostream& operator<<(std::ostream& stream,
-                         const shill::DeviceId& device_id) {
+std::ostream& operator<<(std::ostream& stream, const DeviceId& device_id) {
   return stream << device_id.AsString();
 }
+
+}  // namespace shill
