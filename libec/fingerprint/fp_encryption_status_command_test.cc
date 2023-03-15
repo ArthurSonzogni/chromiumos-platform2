@@ -4,6 +4,7 @@
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <string>
 
 #include "libec/ec_command.h"
 #include "libec/fingerprint/fp_encryption_status_command.h"
@@ -13,10 +14,23 @@ using testing::Return;
 namespace ec {
 namespace {
 
+using ::testing::StrEq;
+
 TEST(FpEncryptionStatusCommand, FpEncryptionStatusCommand) {
   FpEncryptionStatusCommand cmd;
   EXPECT_EQ(cmd.Version(), 0);
   EXPECT_EQ(cmd.Command(), EC_CMD_FP_ENC_STATUS);
+}
+
+TEST(FpEncryptionStatusCommand, ParseFlags) {
+  // test each flag string individually
+  uint32_t flags = 0;
+  std::string result = FpEncryptionStatusCommand::ParseFlags(flags);
+  EXPECT_THAT(result, StrEq(""));
+
+  flags = FP_ENC_STATUS_SEED_SET;
+  result = FpEncryptionStatusCommand::ParseFlags(flags);
+  EXPECT_THAT(result, StrEq(" FPTPM_seed_set"));
 }
 
 // Mock the underlying EcCommand to test

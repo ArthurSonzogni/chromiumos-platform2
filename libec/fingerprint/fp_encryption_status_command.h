@@ -6,6 +6,7 @@
 #define LIBEC_FINGERPRINT_FP_ENCRYPTION_STATUS_COMMAND_H_
 
 #include <brillo/brillo_export.h>
+#include <string>
 
 #include "libec/ec_command.h"
 
@@ -16,6 +17,8 @@ class BRILLO_EXPORT FpEncryptionStatusCommand
  public:
   FpEncryptionStatusCommand();
   ~FpEncryptionStatusCommand() override = default;
+
+  static std::string ParseFlags(uint32_t flags);
 
   uint32_t GetValidFlags() const;
   uint32_t GetStatus() const;
