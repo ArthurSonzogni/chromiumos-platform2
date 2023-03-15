@@ -10,10 +10,12 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/fixed_flat_map.h>
 #include <base/containers/span.h>
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <base/strings/string_piece.h>
 #include <base/values.h>
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/variant_dictionary.h>
@@ -28,22 +30,25 @@
 namespace runtime_probe {
 namespace {
 
-constexpr auto kBusTypePci("pci");
-constexpr auto kBusTypeSdio("sdio");
-constexpr auto kBusTypeUsb("usb");
+constexpr char kBusTypePci[] = "pci";
+constexpr char kBusTypeSdio[] = "sdio";
+constexpr char kBusTypeUsb[] = "usb";
 
-using FieldType = std::pair<std::string, std::string>;
-
-const std::vector<FieldType> kPciFields = {{"vendor_id", "vendor"},
-                                           {"device_id", "device"}};
-const std::vector<FieldType> kPciOptionalFields = {
-    {"revision", "revision"}, {"subsystem", "subsystem_device"}};
-const std::vector<FieldType> kSdioFields = {{"vendor_id", "vendor"},
-                                            {"device_id", "device"}};
-const std::vector<FieldType> kSdioOptionalFields = {};
-const std::vector<FieldType> kUsbFields = {{"vendor_id", "idVendor"},
-                                           {"product_id", "idProduct"}};
-const std::vector<FieldType> kUsbOptionalFields = {{"bcd_device", "bcdDevice"}};
+constexpr auto kPciFields =
+    base::MakeFixedFlatMap<base::StringPiece, base::StringPiece>(
+        {{"vendor_id", "vendor"}, {"device_id", "device"}});
+constexpr auto kPciOptionalFields =
+    base::MakeFixedFlatMap<base::StringPiece, base::StringPiece>(
+        {{"revision", "revision"}, {"subsystem", "subsystem_device"}});
+constexpr auto kSdioFields =
+    base::MakeFixedFlatMap<base::StringPiece, base::StringPiece>(
+        {{"vendor_id", "vendor"}, {"device_id", "device"}});
+constexpr auto kUsbFields =
+    base::MakeFixedFlatMap<base::StringPiece, base::StringPiece>(
+        {{"vendor_id", "idVendor"}, {"product_id", "idProduct"}});
+constexpr auto kUsbOptionalFields =
+    base::MakeFixedFlatMap<base::StringPiece, base::StringPiece>(
+        {{"bcd_device", "bcdDevice"}});
 
 constexpr int PCI_REVISION_ID_OFFSET = 0x08;
 
@@ -108,46 +113,34 @@ std::optional<base::Value> GetNetworkData(const base::FilePath& node_path) {
     VLOG(2) << "Cannot get real path of " << dev_subsystem_path;
     return std::nullopt;
   }
+  std::string bus_type = dev_subsystem_link_path.BaseName().value();
 
-  auto bus_type_idx = dev_subsystem_link_path.value().find_last_of('/') + 1;
-  const std::string bus_type =
-      dev_subsystem_link_path.value().substr(bus_type_idx);
-
-  const std::vector<FieldType>*fields, *optional_fields;
-  base::FilePath field_path;
+  std::optional<base::Value> res;
   if (bus_type == kBusTypePci) {
-    field_path = dev_path;
-    fields = &kPciFields;
-    optional_fields = &kPciOptionalFields;
+    res = MapFilesToDict(dev_path, kPciFields, kPciOptionalFields);
+    if (res && !res->GetDict().FindString("revision")) {
+      auto revision_id = GetPciRevisionIdFromConfig(dev_path);
+      if (revision_id) {
+        res->GetDict().Set("revision", ByteToHexString(*revision_id));
+      }
+    }
   } else if (bus_type == kBusTypeSdio) {
-    field_path = dev_path;
-    fields = &kSdioFields;
-    optional_fields = &kSdioOptionalFields;
+    res = MapFilesToDict(dev_path, kSdioFields);
   } else if (bus_type == kBusTypeUsb) {
-    field_path = base::MakeAbsoluteFilePath(dev_path.Append(".."));
-    fields = &kUsbFields;
-    optional_fields = &kUsbOptionalFields;
+    auto field_path = base::MakeAbsoluteFilePath(dev_path.Append(".."));
+    res = MapFilesToDict(field_path, kUsbFields, kUsbOptionalFields);
   } else {
     LOG(ERROR) << "Unknown bus_type " << bus_type;
     return std::nullopt;
   }
 
-  auto res = MapFilesToDict(field_path, *fields, *optional_fields);
   if (!res) {
     LOG(ERROR) << "Cannot find " << bus_type << "-specific fields on network \""
-               << dev_path.value() << "\"";
+               << dev_path << "\"";
     return std::nullopt;
   }
-
-  auto& res_dict = res->GetDict();
-  if (bus_type == kBusTypePci && !res_dict.Find("revision")) {
-    auto revision_id = GetPciRevisionIdFromConfig(dev_path);
-    if (revision_id) {
-      res_dict.Set("revision", ByteToHexString(*revision_id));
-    }
-  }
-  PrependToDVKey(&*res, std::string(bus_type) + "_");
-  res_dict.Set("bus_type", bus_type);
+  PrependToDVKey(&*res, bus_type + "_");
+  res->GetDict().Set("bus_type", bus_type);
 
   return res;
 }
@@ -181,7 +174,7 @@ void NetworkFunction::PostHelperEvalImpl(DataType* results) const {
     auto& dict = helper_result.GetDict();
     auto* path = dict.FindString("path");
     CHECK(path);
-    std::string interface = base::FilePath{*path}.BaseName().value();
+    const std::string interface = base::FilePath{*path}.BaseName().value();
     auto it = devices_type.find(interface);
     if (it == devices_type.end()) {
       LOG(ERROR) << "Cannot get type of interface " << interface;
