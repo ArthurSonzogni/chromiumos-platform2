@@ -4,7 +4,6 @@
 
 #include "installer/cgpt_manager.h"
 
-#include <err.h>
 #include <linux/major.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -38,7 +37,7 @@ bool ReadGptFromNor(string* file_name) {
   char tmp_name[] = "/tmp/cgptmanagerXXXXXX";
   int fd = mkstemp(tmp_name);
   if (fd < 0) {
-    warn("Cannot create temp file to store GPT structs read from NOR");
+    PLOG(ERROR) << "Cannot create temp file to store GPT structs read from NOR";
     return false;
   }
   // Extra parens to work around the compiler parser.
@@ -60,7 +59,7 @@ bool WriteToNor(const string& data, const string& region) {
   char tmp_name[] = "/tmp/cgptmanagerXXXXXX";
   base::ScopedFD fd(mkstemp(tmp_name));
   if (!fd.is_valid()) {
-    warn("Cannot create temp file to write to NOR flash");
+    PLOG(ERROR) << "Cannot create temp file to write to NOR flash";
     return false;
   }
 
@@ -129,7 +128,7 @@ int WriteGptToNor(const string& file_name) {
 bool IsMtd(const string& block_dev, bool* is_mtd) {
   struct stat stat_buf;
   if (stat(block_dev.c_str(), &stat_buf) != 0) {
-    warn("Failed to stat %s", block_dev.c_str());
+    PLOG(ERROR) << "Failed to stat " << block_dev;
     return false;
   }
   *is_mtd = (major(stat_buf.st_rdev) == MTD_CHAR_MAJOR);
@@ -151,7 +150,7 @@ bool GetMtdSize(const string& block_dev, uint64_t* ret) {
   char* end;
   size = strtoull(size_string.c_str(), &end, 10);
   if (*end != '\x0A') {
-    warn("Cannot convert %s into decimal", size_string.c_str());
+    PLOG(ERROR) << "Cannot convert " << size_string << " into decimal";
     return false;
   }
 
@@ -201,7 +200,7 @@ CgptErrorCode CgptManager::Finalize() {
       return kCgptUnknownError;
     }
     if (unlink(device_name_.c_str()) != 0) {
-      warn("Cannot remove temp file %s", device_name_.c_str());
+      PLOG(ERROR) << "Cannot remove temp file " << device_name_;
     }
   }
 
