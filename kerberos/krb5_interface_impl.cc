@@ -107,15 +107,15 @@ ErrorType TranslateErrorCode(errcode_t code) {
     case KRB5KDC_ERR_KEY_EXP:
       return ERROR_PASSWORD_EXPIRED;
 
-    // TODO(https://crbug.com/951741): Verify
+    // TODO(b/259178385): Verify this mapping.
     case KRB5_KPASSWD_SOFTERROR:
       return ERROR_PASSWORD_REJECTED;
 
-    // TODO(https://crbug.com/951741): Verify
+    // TODO(b/259178385): Verify this mapping.
     case KRB5_FCC_NOFILE:
       return ERROR_NO_CREDENTIALS_CACHE_FOUND;
 
-    // TODO(https://crbug.com/951741): Verify
+    // TODO(b/259178385): Verify this mapping.
     case KRB5KRB_AP_ERR_TKT_EXPIRED:
       return ERROR_KERBEROS_TICKET_EXPIRED;
 
@@ -123,6 +123,7 @@ ErrorType TranslateErrorCode(errcode_t code) {
       return ERROR_KDC_DOES_NOT_SUPPORT_ENCRYPTION_TYPE;
 
     case KRB5_REALM_UNKNOWN:
+    case KRB5KDC_ERR_WRONG_REALM:
       return ERROR_CONTACTING_KDC_FAILED;
 
     default:
