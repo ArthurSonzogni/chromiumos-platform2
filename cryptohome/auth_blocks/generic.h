@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <tuple>
+#include <utility>
 
 #include <libhwsec-foundation/status/status_chain.h>
 
@@ -146,21 +147,17 @@ class GenericAuthBlockFunctions {
       KeyChallengeServiceFactory* key_challenge_service_factory,
       base::RepeatingCallback<BiometricsAuthBlockService*()> bio_service_getter,
       Crypto* crypto)
-      : platform_(platform),
-        challenge_credentials_helper_(challenge_credentials_helper),
-        key_challenge_service_factory_(key_challenge_service_factory),
-        bio_service_getter_(bio_service_getter),
-        crypto_(crypto),
-        parameters_(
-            std::forward_as_tuple(*platform_,
-                                  challenge_credentials_helper_,
-                                  key_challenge_service_factory_,
-                                  bio_service_getter_,
-                                  *crypto_,
-                                  crypto_->le_manager(),
-                                  *crypto_->GetHwsec(),
-                                  *crypto_->GetRecoveryCrypto(),
-                                  *crypto_->cryptohome_keys_manager())) {}
+      : bio_service_getter_(std::move(bio_service_getter)),
+        parameters_(std::forward_as_tuple(*platform,
+                                          challenge_credentials_helper,
+                                          key_challenge_service_factory,
+                                          bio_service_getter_,
+                                          *crypto,
+                                          crypto->le_manager(),
+                                          *crypto->GetHwsec(),
+                                          *crypto->GetRecoveryCrypto(),
+                                          *crypto->cryptohome_keys_manager())) {
+  }
 
   // Returns success if this auth block type is supported on the current
   // hardware and software environment.
@@ -182,17 +179,21 @@ class GenericAuthBlockFunctions {
   }
 
  private:
-  // Global interfaces used as parameters by the various auth block functions.
-  Platform* platform_;
-  ChallengeCredentialsHelper* challenge_credentials_helper_;
-  KeyChallengeServiceFactory* key_challenge_service_factory_;
+  // Copies of any |parameters_| entries which don't live anywhere else with a
+  // longer lifetime than |this|. This shouldn't be necessary for most
+  // parameters, which are "global" interfaces owned by AuthBlockUtility, or the
+  // larger Cryptohome service as a whole.
   base::RepeatingCallback<BiometricsAuthBlockService*()> bio_service_getter_;
-  Crypto* crypto_;
 
-  // References to all of the parameters values that we support, stored as a
-  // tuple. We keep this in a tuple because it makes it much simpler to
-  // automatically reduce to the subset of arguments that the underlying
+  // References or pointers to all of the parameters values that we support,
+  // stored as a tuple. We keep this in a tuple because it makes it much simpler
+  // to automatically reduce to the subset of arguments that the underlying
   // AuthBlock functions require.
+  //
+  // References should be used whenever the parameter MUST always be valid, and
+  // can never be null. If it's possible for the parameter to be null then you
+  // must instead use a pointer, and auth block functions that consume it MUST
+  // check it for null and gracefully (i.e. no CHECK) fail.
   std::tuple<Platform&,
              ChallengeCredentialsHelper*,
              KeyChallengeServiceFactory*,
