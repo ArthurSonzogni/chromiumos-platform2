@@ -28,12 +28,6 @@ static std::string ObjectID(const Modem* m) {
 }
 }  // namespace Logging
 
-namespace {
-// TODO(b/175305412): Remove kRmnetIpa0 and kRmnetData0.
-constexpr char kRmnetIpa0[] = "rmnet_ipa0";
-constexpr char kRmnetData0[] = "rmnet_data0";
-}  // namespace
-
 // statics
 constexpr char Modem::kFakeDevNameFormat[];
 const char Modem::kFakeDevAddress[] = "000000000000";
@@ -114,14 +108,6 @@ bool Modem::GetLinkName(const KeyValueStore& modem_props,
   for (const auto& port_pair : ports) {
     if (std::get<1>(port_pair) == MM_MODEM_PORT_TYPE_NET) {
       net_port = std::get<0>(port_pair);
-      // TODO(b/175305412): Remove the special handling of `kRmnetIpa0`.
-      // Now that ModemManager supports multiplexing, it reports the parent
-      // interface name when the modem is created and the child link
-      // `kRmnetData0` when the bearer is created. Shill only cares about the
-      // child link. Until shill can handle this correctly, we override the
-      // parent name with the child name.
-      if (std::get<0>(port_pair) == kRmnetIpa0)
-        net_port = kRmnetData0;
       break;
     }
   }
