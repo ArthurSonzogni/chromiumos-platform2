@@ -8,7 +8,6 @@
 
 # pylint: disable=missing-docstring,protected-access
 
-import filecmp
 import pathlib
 import subprocess
 import unittest
@@ -89,33 +88,29 @@ class MainTest(cros_test_lib.TempDirTestCase):
         )
         output_file.write_text(contents)
 
-        dircmp = filecmp.dircmp(output_dir, TEST_DATA_DIR)
-        if (
-            dircmp.diff_files
-            or dircmp.left_only
-            or dircmp.right_only
-            or dircmp.funny_files
-        ):
-            dircmp.report_full_closure()
-            msg = ""
-
-            # Add a diff output for convenience / debugging.
-            for path in dircmp.diff_files:
-                # pylint: disable=subprocess-run-check
-                result = subprocess.run(
-                    ["diff", "-u", TEST_DATA_DIR / path, output_dir / path],
-                    stdout=subprocess.PIPE,
-                    encoding="utf-8",
-                )
-                # pylint: enable=subprocess-run-check
-                msg += result.stdout
-
-            msg += (
-                "\nFake project transform does not match.\n"
+        # Check all the files in output_dir
+        # pylint: disable=subprocess-run-check
+        result = subprocess.run(
+            [
+                "diff",
+                "-ru",
+                TEST_DATA_DIR,
+                output_dir,
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            encoding="utf-8",
+        )
+        # pylint: enable=subprocess-run-check
+        if result.returncode:
+            msg = [""]  # to start with a newline
+            msg.append(result.stderr)
+            msg.append(result.stdout)
+            msg.append(
+                "Fake project transform does not match.\n"
                 "Please run ./regen.sh and amend your changes if necessary.\n"
             )
-
-            self.fail(msg)
+            self.fail("\n".join(msg))
 
 
 class TransformBuildConfigsTest(unittest.TestCase):
