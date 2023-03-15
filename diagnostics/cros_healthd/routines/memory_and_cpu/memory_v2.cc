@@ -31,7 +31,7 @@ namespace mojom = ::ash::cros_healthd::mojom;
 // Update the progress bar every kUpdatePeriod.
 constexpr base::TimeDelta kUpdatePeriod = base::Seconds(1);
 // The minimum required memory in KiB for memtester to run successfully.
-constexpr int kMemoryRoutineMinimumRequireKiB = 4;
+constexpr uint32_t kMemoryRoutineMinimumRequireKiB = 4;
 // Regex to parse out the amount of memory tested. An example input would be:
 //
 // got  100MB (104857600 bytes)
@@ -211,7 +211,9 @@ SubtestProgressInfo SubtestEnumToProgressInfo(
 
 }  // namespace
 
-MemoryRoutineV2::MemoryRoutineV2(Context* context) : context_(context) {
+MemoryRoutineV2::MemoryRoutineV2(Context* context,
+                                 const mojom::MemoryRoutineArgumentPtr& arg)
+    : context_(context), max_testing_mem_kib_(arg->max_testing_mem_kib) {
   DCHECK(context_);
 }
 
@@ -242,10 +244,13 @@ void MemoryRoutineV2::Run(
     return;
   }
 
-  uint32_t testing_mem_kib =
-      std::max(static_cast<int64_t>(available_mem_kib) -
-                   kCpuMemoryRoutineReservedSizeKiB,
-               static_cast<int64_t>(kMemoryRoutineMinimumRequireKiB));
+  uint32_t testing_mem_kib = std::max(static_cast<int64_t>(0),
+                                      static_cast<int64_t>(available_mem_kib) -
+                                          kCpuMemoryRoutineReservedSizeKiB);
+  if (max_testing_mem_kib_.has_value()) {
+    testing_mem_kib = std::min(max_testing_mem_kib_.value(), testing_mem_kib);
+  }
+  testing_mem_kib = std::max(testing_mem_kib, kMemoryRoutineMinimumRequireKiB);
 
   SetRunningState();
   context_->executor()->RunMemtesterV2(

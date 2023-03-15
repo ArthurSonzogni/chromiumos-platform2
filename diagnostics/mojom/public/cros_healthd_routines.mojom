@@ -45,7 +45,11 @@ union RoutineArgument {
 
 // This routine checks whether there is any memory problem by
 // reading/writing different patterns.
-struct MemoryRoutineArgument {};
+struct MemoryRoutineArgument {
+  // An optional field to indicate how much memory should be tested. If the
+  // value is null, memory test will run with as much memory as possible.
+  uint32? max_testing_mem_kib;
+};
 
 
 // Interface exposed to clients for controlling a routine.

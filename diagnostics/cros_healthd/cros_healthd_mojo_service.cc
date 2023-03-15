@@ -116,7 +116,8 @@ void CrosHealthdMojoService::CreateRoutine(
     mojo::PendingReceiver<mojom::RoutineControl> routine_receiver) {
   switch (routine_arg->which()) {
     case mojom::RoutineArgument::Tag::kMemory:
-      AddRoutine(std::make_unique<MemoryRoutineV2>(context_),
+      AddRoutine(std::make_unique<MemoryRoutineV2>(context_,
+                                                   routine_arg->get_memory()),
                  std::move(routine_receiver));
       break;
     case mojom::RoutineArgument::Tag::kUnrecognizedArgument:

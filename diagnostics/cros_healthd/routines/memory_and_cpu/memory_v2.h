@@ -6,6 +6,7 @@
 #define DIAGNOSTICS_CROS_HEALTHD_ROUTINES_MEMORY_AND_CPU_MEMORY_V2_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -28,7 +29,9 @@ namespace diagnostics {
 // The memory routine checks that the device's memory is working correctly.
 class MemoryRoutineV2 final : public BaseRoutineControl {
  public:
-  explicit MemoryRoutineV2(Context* context);
+  explicit MemoryRoutineV2(
+      Context* context,
+      const ash::cros_healthd::mojom::MemoryRoutineArgumentPtr& arg);
   MemoryRoutineV2(const MemoryRoutineV2&) = delete;
   MemoryRoutineV2& operator=(const MemoryRoutineV2&) = delete;
   ~MemoryRoutineV2() override;
@@ -80,6 +83,9 @@ class MemoryRoutineV2 final : public BaseRoutineControl {
   size_t read_stdout_size_;
   // Stores the parsed stdout result.
   std::vector<std::vector<std::string>> parsed_memtester_result_;
+  // Stores the number of kib the memtester should test for as requested by the
+  // user. Has value of std::nullopt if the user did not specify.
+  std::optional<uint32_t> max_testing_mem_kib_;
 
   // Must be the last class member.
   base::WeakPtrFactory<MemoryRoutineV2> weak_ptr_factory_{this};

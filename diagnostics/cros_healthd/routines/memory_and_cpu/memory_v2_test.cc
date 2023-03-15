@@ -35,7 +35,6 @@
 #include "diagnostics/cros_healthd/routines/memory_and_cpu/memory_v2.h"
 #include "diagnostics/cros_healthd/system/mock_context.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
-#include "diagnostics/mojom/public/cros_healthd_routines.mojom-forward.h"
 
 namespace diagnostics {
 namespace {
@@ -44,6 +43,7 @@ namespace mojom = ash::cros_healthd::mojom;
 using ::testing::_;
 using ::testing::Invoke;
 using ::testing::WithArg;
+using ::testing::WithArgs;
 
 // Location of files containing test data (fake memtester output).
 constexpr char kTestDataRoot[] =
@@ -84,28 +84,30 @@ class MemoryRoutineV2Test : public BaseFileTest {
         "MemTotal:        3906320 kB\n"
         "MemFree:         2873180 kB\n"
         "MemAvailable:    2878980 kB\n");
+    routine_ = std::make_unique<MemoryRoutineV2>(
+        &mock_context_, mojom::MemoryRoutineArgument::New(std::nullopt));
   }
 
   mojom::RoutineStatePtr RunRoutineAndWaitForExit() {
     base::RunLoop run_loop;
-    routine_.SetOnExceptionCallback(
+    routine_->SetOnExceptionCallback(
         base::BindOnce([](uint32_t error, const std::string& reason) {
           CHECK(false) << "An exception has occurred when it shouldn't have.";
         }));
     mojo::PendingRemote<mojom::RoutineObserver> remote;
     auto observer_ = std::make_unique<RoutineObserverImpl>(
         base::BindOnce(run_loop.QuitClosure()));
-    routine_.AddObserver(observer_->receiver_.BindNewPipeAndPassRemote());
-    routine_.Start();
+    routine_->AddObserver(observer_->receiver_.BindNewPipeAndPassRemote());
+    routine_->Start();
     run_loop.Run();
     return std::move(observer_->result_);
   }
 
   void RunRoutineAndWaitForException() {
     base::RunLoop run_loop;
-    routine_.SetOnExceptionCallback(base::BindLambdaForTesting(
+    routine_->SetOnExceptionCallback(base::BindLambdaForTesting(
         [&](uint32_t error, const std::string& reason) { run_loop.Quit(); }));
-    routine_.Start();
+    routine_->Start();
     run_loop.Run();
   }
 
@@ -161,7 +163,7 @@ class MemoryRoutineV2Test : public BaseFileTest {
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   MockContext mock_context_;
   FakeProcessControl fake_process_control_;
-  MemoryRoutineV2 routine_{&mock_context_};
+  std::unique_ptr<MemoryRoutineV2> routine_;
 
   base::WeakPtrFactory<MemoryRoutineV2Test> weak_ptr_factory_{this};
 };
@@ -289,6 +291,33 @@ TEST_F(MemoryRoutineV2Test, MultipleTestFailure) {
                             ->detail->get_memory()
                             ->result->failed_items),
             expected_failed);
+}
+
+// Test that the memory routine handles setting a max_testing_mem_kib value.
+TEST_F(MemoryRoutineV2Test, SettingMaxTestingMemKibValue) {
+  std::string stdout_content;
+  int received_testing_mem_kib = -1;
+  EXPECT_TRUE(base::ReadFileToString(
+      base::FilePath(kTestDataRoot).Append("all_test_passed_output"),
+      &stdout_content));
+  EXPECT_CALL(*mock_context_.mock_executor(), RunMemtesterV2(_, _))
+      .WillOnce(WithArgs<0, 1>(Invoke(
+          [&](uint32_t testing_mem_kib,
+              mojo::PendingReceiver<ash::cros_healthd::mojom::ProcessControl>
+                  receiver) mutable {
+            fake_process_control_.BindReceiver(std::move(receiver));
+            fake_process_control_.SetReturnCode(EXIT_SUCCESS);
+            fake_process_control_.SetStdoutFileContent(stdout_content);
+            fake_process_control_.SetStderrFileContent(stdout_content);
+            received_testing_mem_kib = testing_mem_kib;
+          })));
+  routine_ = std::make_unique<MemoryRoutineV2>(
+      &mock_context_, mojom::MemoryRoutineArgument::New(1000));
+  mojom::RoutineStatePtr result = RunRoutineAndWaitForExit();
+  EXPECT_EQ(result->percentage, 100);
+  EXPECT_TRUE(result->state_union->is_finished());
+  EXPECT_TRUE(result->state_union->get_finished()->has_passed);
+  EXPECT_EQ(received_testing_mem_kib, 1000);
 }
 
 }  // namespace
