@@ -18,6 +18,9 @@ namespace {
 
 const char kECPanicInfo[] = "panicinfo";
 const char kDevCoredumpDirectory[] = "cros_ec";
+const unsigned int kPanicDataArchByte = 0;
+const unsigned int kPanicDataVersionByte = 1;
+const unsigned int kPanicDataReservedByte = 3;
 
 }  // namespace
 
@@ -28,7 +31,7 @@ class ECCollectorMock : public ECCollector {
 
 class ECCollectorTest : public ::testing::Test {
  protected:
-  void PreparePanicInfo(bool present, bool stale) {
+  void PreparePanicInfo(bool present, bool stale, bool valid = true) {
     FilePath panicinfo_path = collector_.debugfs_path_.Append(kECPanicInfo);
 
     if (present) {
@@ -36,10 +39,18 @@ class ECCollectorTest : public ::testing::Test {
       for (unsigned int i = 0; i < sizeof(data); i++)
         data[i] = i;
 
+      if (valid) {
+        // Forge a panic data with valid arch, struct version, flag, and
+        // reserved.
+        data[kPanicDataArchByte] = 1;
+        data[kPanicDataVersionByte] = 2;
+        data[PANIC_DATA_FLAGS_BYTE] = 0;
+        data[kPanicDataReservedByte] = 0;
+      }
       if (stale)
-        data[PANIC_DATA_FLAGS_BYTE] = PANIC_DATA_FLAG_OLD_HOSTCMD;
+        data[PANIC_DATA_FLAGS_BYTE] |= PANIC_DATA_FLAG_OLD_HOSTCMD;
       else
-        data[PANIC_DATA_FLAGS_BYTE] = ~PANIC_DATA_FLAG_OLD_HOSTCMD;
+        data[PANIC_DATA_FLAGS_BYTE] &= ~PANIC_DATA_FLAG_OLD_HOSTCMD;
 
       ASSERT_EQ(base::WriteFile(panicinfo_path, data, sizeof(data)),
                 static_cast<int>(sizeof(data)));
@@ -90,6 +101,11 @@ TEST_F(ECCollectorTest, TestGood) {
       temp_dir_generator_.GetPath(), "embedded_controller.*.meta",
       "upload_var_collector=ec"));
   /* TODO(drinkcat): Test crash file content */
+}
+
+TEST_F(ECCollectorTest, TestInvalid) {
+  PreparePanicInfo(true, false, false);
+  ASSERT_FALSE(collector_.Collect(/*use_saved_lsb=*/true));
 }
 
 class ECCollectorSavedLsbTest : public ECCollectorTest,

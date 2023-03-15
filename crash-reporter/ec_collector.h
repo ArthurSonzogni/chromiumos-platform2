@@ -31,7 +31,8 @@ class ECCollector : public CrashCollector {
   ~ECCollector() override;
 
   // Collect any preserved EC panicinfo. Returns true if there was
-  // a dump (even if there were problems storing the dump), false otherwise.
+  // a valid dump (even if there were problems storing the dump), false
+  // otherwise.
   bool Collect(bool use_saved_lsb);
 
  private:

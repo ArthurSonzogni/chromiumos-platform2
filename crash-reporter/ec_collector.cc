@@ -78,10 +78,8 @@ bool ECCollector::Collect(bool use_saved_lsb) {
   std::string output;
 
   if (!result.has_value()) {
-    LOG(ERROR) << "Failed to parse EC panic info. Error=" << result.error();
-    // Append error code and raw crash on error.
-    output = base::StrCat({"ERROR: Parse EC panic info:\n", result.error(),
-                           "Raw data: ", base::Base64Encode(sdata), "\n"});
+    LOG(ERROR) << "Failed to get valid eccrash. Error=" << result.error();
+    return false;
   } else {
     output = result.value();
   }
