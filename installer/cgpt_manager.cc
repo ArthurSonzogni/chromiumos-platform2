@@ -110,7 +110,7 @@ int WriteGptToNor(const string& file_name) {
       break;
     }
     case 1: {
-      warnx("Failed to write some part. It might still be okay.\n");
+      warnx("Failed to write one part.\n");
       break;
     }
     case 2: {
