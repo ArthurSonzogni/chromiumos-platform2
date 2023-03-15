@@ -89,6 +89,16 @@
       "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M"
     ]
   },
+  "network": {
+    "binds": [
+      "/sys/class/net/",
+      "/sys/devices/platform/"
+    ],
+    "other_args": [
+      "-k",
+      "tmpfs,/sys,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M"
+    ]
+  },
   "nvme_storage": {
     "binds": [
       "/sys/class/block/",

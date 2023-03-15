@@ -22,6 +22,7 @@ install_seccomp_policy("install_sandbox_seccomp") {
     "${_arch}/input_device-seccomp.policy",
     "${_arch}/mipi_camera-seccomp.policy",
     "${_arch}/mmc_storage-seccomp.policy",
+    "${_arch}/network-seccomp.policy",
     "${_arch}/nvme_storage-seccomp.policy",
     "${_arch}/tcpc-seccomp.policy",
     "${_arch}/usb_camera-seccomp.policy",
