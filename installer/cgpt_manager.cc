@@ -67,7 +67,7 @@ bool WriteToNor(const string& data, const string& region) {
   // Extra parens to work around the compiler parser.
   ScopedPathRemover remover((string(tmp_name)));
   if (!WriteFullyToFileDescriptor(data, fd.get())) {
-    warnx("Cannot write data to temp file %s.\n", tmp_name);
+    LOG(ERROR) << "Cannot write data to temp file " << tmp_name;
     return false;
   }
 
@@ -77,7 +77,7 @@ bool WriteToNor(const string& data, const string& region) {
   std::vector<string> cmd{"/usr/sbin/flashrom", "-i", region + ":" + tmp_name,
                           "-w", "--noverify-all"};
   if (RunCommand(cmd) != 0) {
-    warnx("Cannot write %s to %s section.\n", tmp_name, region.c_str());
+    LOG(ERROR) << "Cannot write " << tmp_name << " to " << region << " section";
     return false;
   }
 
@@ -92,7 +92,7 @@ bool WriteToNor(const string& data, const string& region) {
 int WriteGptToNor(const string& file_name) {
   string gpt_data;
   if (!base::ReadFileToString(base::FilePath(file_name), &gpt_data)) {
-    warnx("Cannot read from %s.\n", file_name.c_str());
+    LOG(ERROR) << "Cannot read from " << file_name;
     return -1;
   }
 
@@ -110,11 +110,11 @@ int WriteGptToNor(const string& file_name) {
       break;
     }
     case 1: {
-      warnx("Failed to write one part.\n");
+      LOG(ERROR) << "Failed to write one part";
       break;
     }
     case 2: {
-      warnx("Cannot write either part to flashrom.\n");
+      LOG(ERROR) << "Cannot write either part to flashrom";
       break;
     }
     default: {
@@ -143,7 +143,7 @@ bool GetMtdSize(const string& block_dev, uint64_t* ret) {
                                  .Append("size");
   string size_string;
   if (!base::ReadFileToString(size_file, &size_string)) {
-    warnx("Cannot read MTD size from %s.\n", size_file.value().c_str());
+    LOG(ERROR) << "Cannot read MTD size from " << size_file;
     return false;
   }
 
@@ -173,17 +173,17 @@ CgptErrorCode CgptManager::Initialize(const string& device_name) {
   device_name_ = device_name;
   bool is_mtd;
   if (!IsMtd(device_name, &is_mtd)) {
-    warnx("Cannot determine if %s is an MTD device.\n", device_name.c_str());
+    LOG(ERROR) << "Cannot determine if " << device_name << " is an MTD device";
     return kCgptNotInitialized;
   }
   if (is_mtd) {
-    warnx("%s is an MTD device.\n", device_name.c_str());
+    LOG(INFO) << device_name << " is an MTD device";
     if (!GetMtdSize(device_name, &device_size_)) {
-      warnx("But we do not know its size.\n");
+      LOG(ERROR) << "But we do not know its size";
       return kCgptNotInitialized;
     }
     if (!ReadGptFromNor(&device_name_)) {
-      warnx("Failed to read GPT structs from NOR flash.\n");
+      LOG(ERROR) << "Failed to read GPT structs from NOR flash";
       return kCgptNotInitialized;
     }
   }
