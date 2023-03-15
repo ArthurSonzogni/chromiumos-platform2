@@ -19,7 +19,9 @@ class NetworkFunction : public PrivilegedProbeFunction {
   virtual std::optional<std::string> GetNetworkType() const = 0;
 
  private:
+  // PrivilegedProbeFunction overrides.
   DataType EvalImpl() const final;
+  void PostHelperEvalImpl(DataType* helper_results) const final;
 };
 
 }  // namespace runtime_probe

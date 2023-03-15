@@ -4,6 +4,7 @@
 
 #include "runtime_probe/function_templates/network.h"
 
+#include <map>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -26,7 +27,6 @@
 
 namespace runtime_probe {
 namespace {
-constexpr auto kNetworkDirPath("sys/class/net/");
 
 constexpr auto kBusTypePci("pci");
 constexpr auto kBusTypeSdio("sdio");
@@ -67,9 +67,8 @@ std::optional<uint8_t> GetPciRevisionIdFromConfig(base::FilePath node_path) {
   return revision_array[0];
 }
 
-std::vector<brillo::VariantDictionary> GetDevicesProps(
-    std::optional<std::string> type) {
-  std::vector<brillo::VariantDictionary> devices_props{};
+std::map<std::string, std::string> GetDevicesType() {
+  std::map<std::string, std::string> result;
 
   auto shill_proxy = Context::Get()->shill_manager_proxy();
   brillo::VariantDictionary props;
@@ -91,13 +90,14 @@ std::vector<brillo::VariantDictionary> GetDevicesProps(
               << ". Skipped.";
       continue;
     }
-    auto device_type = device_props[shill::kTypeProperty].TryGet<std::string>();
-    if (!type || device_type == type) {
-      devices_props.push_back(std::move(device_props));
-    }
+    std::string interface =
+        device_props.at(shill::kInterfaceProperty).TryGet<std::string>();
+    std::string type =
+        device_props.at(shill::kTypeProperty).TryGet<std::string>();
+    result[interface] = type;
   }
 
-  return devices_props;
+  return result;
 }
 
 std::optional<base::Value> GetNetworkData(const base::FilePath& node_path) {
@@ -105,7 +105,7 @@ std::optional<base::Value> GetNetworkData(const base::FilePath& node_path) {
   const auto dev_subsystem_path = dev_path.Append("subsystem");
   base::FilePath dev_subsystem_link_path;
   if (!base::ReadSymbolicLink(dev_subsystem_path, &dev_subsystem_link_path)) {
-    LOG(ERROR) << "Cannot get real path of " << dev_subsystem_path.value();
+    VLOG(2) << "Cannot get real path of " << dev_subsystem_path;
     return std::nullopt;
   }
 
@@ -155,41 +155,47 @@ std::optional<base::Value> GetNetworkData(const base::FilePath& node_path) {
 }  // namespace
 
 NetworkFunction::DataType NetworkFunction::EvalImpl() const {
-  const auto devices_props = GetDevicesProps(GetNetworkType());
-  NetworkFunction::DataType result{};
-
-  for (const auto& device_props : devices_props) {
-    const base::FilePath node_path(Context::Get()->root_dir().Append(
-        kNetworkDirPath +
-        device_props.at(shill::kInterfaceProperty).TryGet<std::string>()));
-    std::string device_type =
-        device_props.at(shill::kTypeProperty).TryGet<std::string>();
-
-    VLOG(2) << "Processing the node \"" << node_path.value() << "\".";
-
-    // Get type specific fields and their values.
-    auto node_res = GetNetworkData(node_path);
-    if (!node_res)
+  DataType results;
+  base::FilePath net_dev_pattern =
+      Context::Get()->root_dir().Append("sys/class/net/*");
+  for (const auto& net_dev_path : Glob(net_dev_pattern)) {
+    auto node_res = GetNetworkData(net_dev_path);
+    if (!node_res) {
       continue;
-
-    // Report the absolute path we probe the reported info from.
-    VLOG_IF(2, node_res->FindStringKey("path"))
-        << "Attribute \"path\" already existed. Overrided.";
-    node_res->SetStringKey("path", node_path.value());
-
-    VLOG_IF(2, node_res->FindStringKey("type"))
-        << "Attribute \"type\" already existed. Overrided.";
-    // Align with the category name.
-    if (device_type == shill::kTypeWifi) {
-      node_res->SetStringKey("type", kTypeWireless);
-    } else {
-      node_res->SetStringKey("type", device_type);
     }
-
-    result.Append(std::move(*node_res));
+    CHECK(!node_res->GetDict().FindString("path"));
+    node_res->GetDict().Set("path", net_dev_path.value());
+    results.Append(std::move(*node_res));
   }
 
-  return result;
+  return results;
+}
+
+void NetworkFunction::PostHelperEvalImpl(DataType* results) const {
+  const std::optional<std::string> target_type = GetNetworkType();
+  const auto devices_type = GetDevicesType();
+  auto helper_results = std::move(*results);
+  *results = DataType();
+
+  for (auto& helper_result : helper_results) {
+    auto& dict = helper_result.GetDict();
+    auto* path = dict.FindString("path");
+    CHECK(path);
+    std::string interface = base::FilePath{*path}.BaseName().value();
+    auto it = devices_type.find(interface);
+    if (it == devices_type.end()) {
+      LOG(ERROR) << "Cannot get type of interface " << interface;
+      continue;
+    }
+    if (target_type && target_type.value() != it->second) {
+      VLOG(3) << "Interface " << interface << " doesn't match the target type "
+              << target_type.value();
+      continue;
+    }
+    CHECK(!dict.FindString("type"));
+    dict.Set("type", it->second);
+    results->Append(std::move(helper_result));
+  }
 }
 
 }  // namespace runtime_probe

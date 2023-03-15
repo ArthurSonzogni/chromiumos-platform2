@@ -112,7 +112,7 @@ TEST_F(NetworkFunctionTest, ProbeNetworkPci) {
         "path": "%s",
         "pci_device_id": "0x1111",
         "pci_vendor_id": "0x2222",
-        "type": "wireless"
+        "type": "wifi"
       }
     ]
   )JSON",
@@ -151,7 +151,7 @@ TEST_F(NetworkFunctionTest, GetPciRevisionIdFromConfig) {
         "pci_device_id": "0x1111",
         "pci_vendor_id": "0x2222",
         "pci_revision": "0x08",
-        "type": "wireless"
+        "type": "wifi"
       }
     ]
   )JSON",
@@ -188,7 +188,7 @@ TEST_F(NetworkFunctionTest, GetPciRevisionIdFromConfigFailed) {
         "path": "%s",
         "pci_device_id": "0x1111",
         "pci_vendor_id": "0x2222",
-        "type": "wireless"
+        "type": "wifi"
       }
     ]
   )JSON",
@@ -219,7 +219,7 @@ TEST_F(NetworkFunctionTest, ProbeNetworkSdio) {
         "path": "%s",
         "sdio_device_id": "0x1111",
         "sdio_vendor_id": "0x2222",
-        "type": "wireless"
+        "type": "wifi"
       }
     ]
   )JSON",
@@ -250,7 +250,7 @@ TEST_F(NetworkFunctionTest, ProbeNetworkUsb) {
         "path": "%s",
         "usb_product_id": "0x1111",
         "usb_vendor_id": "0x2222",
-        "type": "wireless"
+        "type": "wifi"
       }
     ]
   )JSON",
@@ -337,7 +337,7 @@ TEST_F(NetworkFunctionTest, ProbeAllTypeNetwork) {
         "path": "%s",
         "pci_device_id": "0x1111",
         "pci_vendor_id": "0x2222",
-        "type": "wireless"
+        "type": "wifi"
       },
       {
         "bus_type": "pci",
@@ -358,7 +358,7 @@ TEST_F(NetworkFunctionTest, ProbeAllTypeNetwork) {
       GetPathUnderRoot({kNetworkDirPath, "wlan0"}).value().c_str(),
       GetPathUnderRoot({kNetworkDirPath, "eth0"}).value().c_str(),
       GetPathUnderRoot({kNetworkDirPath, "wwan0"}).value().c_str()));
-  EXPECT_EQ(result, ans);
+  ExpectUnorderedListEqual(result, ans);
 }
 
 TEST_F(NetworkFunctionTest, ProbeSpecificTypeNetwork) {
@@ -398,7 +398,7 @@ TEST_F(NetworkFunctionTest, ProbeSpecificTypeNetwork) {
         "path": "%s",
         "pci_device_id": "0x1111",
         "pci_vendor_id": "0x2222",
-        "type": "wireless"
+        "type": "wifi"
       }
     ]
   )JSON",
