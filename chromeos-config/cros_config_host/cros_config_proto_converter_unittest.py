@@ -78,9 +78,15 @@ class MainTest(cros_test_lib.TempDirTestCase):
             dtd_path=dtd_path,
         )
 
-        # Replace paths which reference the tempdir with the source directory.
+        # Replace the "build-path" fields which reference output_dir with the
+        # source directory.  The project name needs to be prepended to
+        # TEST_DATA_DIR because of the logic in cros_config_proto_converter.py
+        # to avoid portage file installation collisions.
         contents = output_file.read_text()
-        contents = contents.replace(str(self.tempdir), str(TEST_DATA_DIR))
+        project_name = TEST_DATA_DIR.name
+        contents = contents.replace(
+            str(output_dir), f"{project_name}/{TEST_DATA_DIR}"
+        )
         output_file.write_text(contents)
 
         dircmp = filecmp.dircmp(output_dir, TEST_DATA_DIR)
@@ -97,7 +103,7 @@ class MainTest(cros_test_lib.TempDirTestCase):
             for path in dircmp.diff_files:
                 # pylint: disable=subprocess-run-check
                 result = subprocess.run(
-                    ["diff", "-u", TEST_DATA_DIR / path, self.tempdir / path],
+                    ["diff", "-u", TEST_DATA_DIR / path, output_dir / path],
                     stdout=subprocess.PIPE,
                     encoding="utf-8",
                 )
