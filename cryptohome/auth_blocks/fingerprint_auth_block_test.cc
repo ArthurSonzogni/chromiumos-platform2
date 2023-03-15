@@ -64,6 +64,9 @@ using SelectFactorTestFuture = TestFuture<CryptohomeStatus,
                                           std::optional<AuthInput>,
                                           std::optional<AuthFactor>>;
 
+using DeriveTestFuture =
+    TestFuture<CryptohomeStatus, std::unique_ptr<KeyBlobs>>;
+
 constexpr uint8_t kFingerprintAuthChannel = 0;
 
 constexpr uint64_t kFakeRateLimiterLabel = 100;
@@ -86,6 +89,14 @@ AuthBlockState GetFingerprintStateWithRecordId(std::string record_id) {
   AuthBlockState auth_state;
   FingerprintAuthBlockState fingerprint_auth_state;
   fingerprint_auth_state.template_id = record_id;
+  auth_state.state = fingerprint_auth_state;
+  return auth_state;
+}
+
+AuthBlockState GetFingerprintStateWithFakeLabel() {
+  AuthBlockState auth_state;
+  FingerprintAuthBlockState fingerprint_auth_state;
+  fingerprint_auth_state.gsc_secret_label = kFakeCredLabel;
   auth_state.state = fingerprint_auth_state;
   return auth_state;
 }
@@ -724,6 +735,82 @@ TEST_F(FingerprintAuthBlockTest, SelectFactorAuthFactorNotInList) {
       ContainsActionInStack(status, ErrorAction::kDevCheckUnexpectedState));
   EXPECT_FALSE(auth_input.has_value());
   EXPECT_FALSE(auth_factor.has_value());
+}
+
+TEST_F(FingerprintAuthBlockTest, DeriveSuccess) {
+  const brillo::SecureBlob kFakeAuthSecret(32, 1), kFakeAuthPin(32, 2);
+  const brillo::SecureBlob kFakeGscSecret(32, 3);
+  const AuthInput kFakeAuthInput{
+      .user_input = kFakeAuthPin,
+      .fingerprint_auth_input =
+          FingerprintAuthInput{
+              .auth_secret = kFakeAuthSecret,
+          },
+  };
+  const AuthBlockState kFakeAuthBlockState = GetFingerprintStateWithFakeLabel();
+
+  EXPECT_CALL(mock_le_manager_,
+              CheckCredential(kFakeCredLabel, kFakeAuthPin, _, _))
+      .WillOnce(DoAll(SetArgPointee<2>(kFakeGscSecret),
+                      ReturnOk<CryptohomeLECredError>()));
+
+  DeriveTestFuture result;
+  auth_block_->Derive(kFakeAuthInput, kFakeAuthBlockState,
+                      result.GetCallback());
+
+  ASSERT_TRUE(result.IsReady());
+  auto [status, key_blobs] = result.Take();
+  ASSERT_THAT(status, IsOk());
+  ASSERT_NE(key_blobs, nullptr);
+  ASSERT_TRUE(key_blobs->vkk_key.has_value());
+  EXPECT_THAT(key_blobs->vkk_key.value(), SizeIs(32));
+}
+
+TEST_F(FingerprintAuthBlockTest, DeriveInvalidAuthInput) {
+  const brillo::SecureBlob kFakeAuthPin(32, 1), kFakeGscSecret(32, 2);
+  const AuthInput kFakeAuthInput{.user_input = kFakeAuthPin};
+  const AuthBlockState kFakeAuthBlockState = GetFingerprintStateWithFakeLabel();
+
+  DeriveTestFuture result;
+  auth_block_->Derive(kFakeAuthInput, kFakeAuthBlockState,
+                      result.GetCallback());
+
+  ASSERT_TRUE(result.IsReady());
+  auto [status, key_blobs] = result.Take();
+  EXPECT_TRUE(
+      ContainsActionInStack(status, ErrorAction::kDevCheckUnexpectedState));
+  EXPECT_EQ(key_blobs, nullptr);
+}
+
+TEST_F(FingerprintAuthBlockTest, DeriveCheckCredentialFailed) {
+  const brillo::SecureBlob kFakeAuthSecret(32, 1), kFakeAuthPin(32, 2);
+  const brillo::SecureBlob kFakeGscSecret(32, 3);
+  const AuthInput kFakeAuthInput{
+      .user_input = kFakeAuthPin,
+      .fingerprint_auth_input =
+          FingerprintAuthInput{
+              .auth_secret = kFakeAuthSecret,
+          },
+  };
+  const AuthBlockState kFakeAuthBlockState = GetFingerprintStateWithFakeLabel();
+
+  EXPECT_CALL(mock_le_manager_, CheckCredential)
+      .WillOnce([this](auto&&, auto&&, auto&&, auto&&) {
+        return MakeStatus<CryptohomeLECredError>(
+            kErrorLocationPlaceholder,
+            ErrorActionSet({ErrorAction::kLeLockedOut}),
+            LECredError::LE_CRED_ERROR_TOO_MANY_ATTEMPTS);
+      });
+
+  DeriveTestFuture result;
+  auth_block_->Derive(kFakeAuthInput, kFakeAuthBlockState,
+                      result.GetCallback());
+
+  ASSERT_TRUE(result.IsReady());
+  auto [status, key_blobs] = result.Take();
+  EXPECT_TRUE(
+      ContainsActionInStack(status, ErrorAction::kDevCheckUnexpectedState));
+  EXPECT_EQ(key_blobs, nullptr);
 }
 
 }  // namespace

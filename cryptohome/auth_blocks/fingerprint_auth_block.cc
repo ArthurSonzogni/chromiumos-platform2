@@ -252,7 +252,77 @@ void FingerprintAuthBlock::Create(const AuthInput& auth_input,
 void FingerprintAuthBlock::Derive(const AuthInput& auth_input,
                                   const AuthBlockState& state,
                                   DeriveCallback callback) {
-  NOTREACHED();
+  if (!auth_input.fingerprint_auth_input.has_value() ||
+      !auth_input.fingerprint_auth_input->auth_secret.has_value()) {
+    LOG(ERROR) << "Missing auth_secret.";
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockNoAuthSecretInDerive),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr);
+    return;
+  }
+  if (!auth_input.user_input.has_value()) {
+    LOG(ERROR) << "Missing auth_pin.";
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocFingerprintAuthBlockNoAuthPinInDerive),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr);
+    return;
+  }
+
+  const FingerprintAuthBlockState* auth_state;
+  if (!(auth_state = std::get_if<FingerprintAuthBlockState>(&state.state))) {
+    LOG(ERROR) << "No FingerprintAuthBlockState in AuthBlockState.";
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocFingerprintAuthBlockWrongAuthBlockStateInDerive),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr);
+    return;
+  }
+  if (!auth_state->gsc_secret_label.has_value()) {
+    LOG(ERROR)
+        << "Invalid FingerprintAuthBlockState: missing gsc_secret_label.";
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocFingerprintAuthBlockNoGscSecretLabelInDerive),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO),
+        nullptr);
+    return;
+  }
+
+  brillo::SecureBlob gsc_secret, unused_reset_secret;
+  LECredStatus status = le_manager_->CheckCredential(
+      *auth_state->gsc_secret_label, *auth_input.user_input, &gsc_secret,
+      &unused_reset_secret);
+  if (!status.ok()) {
+    LOG(ERROR) << "Failed to check biometrics secret with PinWeaver.";
+    // Include kDevCheckUnexpectedState as according to the protocol this
+    // authentication should never fail.
+    std::move(callback).Run(
+        MakeStatus<CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocFingerprintAuthBlockCheckCredentialFailedInCreate),
+            ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}))
+            .Wrap(std::move(status).err_status()),
+        nullptr);
+    return;
+  }
+
+  auto key_blobs = std::make_unique<KeyBlobs>();
+  auto hmac_key = brillo::SecureBlob::Combine(
+      gsc_secret, *auth_input.fingerprint_auth_input->auth_secret);
+  key_blobs->vkk_key =
+      HmacSha256(hmac_key, brillo::BlobFromString(kFekKeyHmacData));
+  std::move(callback).Run(OkStatus<CryptohomeError>(), std::move(key_blobs));
 }
 
 // SelectFactor for FingerprintAuthBlock is actually doing the heavy-lifting
