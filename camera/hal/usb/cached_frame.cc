@@ -19,6 +19,7 @@
 #include "cros-camera/utils/camera_config.h"
 #include "hal/usb/camera_hal.h"
 #include "hal/usb/common_types.h"
+#include "hal/usb/tracing.h"
 
 namespace cros {
 
@@ -145,10 +146,8 @@ int CachedFrame::Convert(
   //   1a. Input format is MJPEG. Try HW JDA decoding or fallback to SW
   //       decoding:
   //
-  //                        HW JDA
-  //      MJPEG -------------------------------> NV12
-  //           \  SW Decode          Convert  /
-  //            ------------> I420 -----------
+  //             HW JDA or SW Decode
+  //      MJPEG ---------------------> NV12
   //
   //   1b. Input format is YUYV:
   //
@@ -318,6 +317,8 @@ int CachedFrame::ConvertFromNV12(
 }
 
 int CachedFrame::DecodeToNV12(FrameBuffer& in_frame, FrameBuffer& out_frame) {
+  TRACE_USB_HAL();
+
   // Try HW decoding.
   base::ElapsedTimer hw_timer;
   int ret = DecodeByJDA(in_frame, out_frame);
@@ -340,17 +341,8 @@ int CachedFrame::DecodeToNV12(FrameBuffer& in_frame, FrameBuffer& out_frame) {
   }
 
   // SW decoding.
-  if (!SharedFrameBuffer::Reallocate(in_frame.GetWidth(), in_frame.GetHeight(),
-                                     V4L2_PIX_FMT_YUV420, &temp_i420_frame_)) {
-    return -EINVAL;
-  }
   base::ElapsedTimer sw_timer;
-  ret = image_processor_->ConvertFormat(in_frame, *temp_i420_frame_);
-  if (ret) {
-    LOGF(ERROR) << "Decode JPEG to YU12 failed: " << ret;
-    return -EAGAIN;
-  }
-  ret = image_processor_->ConvertFormat(*temp_i420_frame_, out_frame);
+  ret = image_processor_->ConvertFormat(in_frame, out_frame);
   if (ret) {
     return -EINVAL;
   }

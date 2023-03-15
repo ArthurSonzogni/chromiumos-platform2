@@ -285,6 +285,18 @@ int ImageProcessor::ConvertFormat(FrameBuffer& in_frame,
         LOGF_IF(ERROR, res) << "libyuv::MJPEGToI420() returns " << res;
         return res ? -EINVAL : 0;
       }
+      case V4L2_PIX_FMT_NV12:     // NV12
+      case V4L2_PIX_FMT_NV12M: {  // NM12
+        int res = libyuv::MJPGToNV12(
+            in_frame.GetData(), in_frame.GetDataSize(),
+            out_frame.GetData(FrameBuffer::YPLANE),
+            out_frame.GetStride(FrameBuffer::YPLANE),
+            out_frame.GetData(FrameBuffer::UPLANE),
+            out_frame.GetStride(FrameBuffer::UPLANE), in_frame.GetWidth(),
+            in_frame.GetHeight(), out_frame.GetWidth(), out_frame.GetHeight());
+        LOGF_IF(ERROR, res) << "libyuv::MJPGToNV12() returns " << res;
+        return res ? -EINVAL : 0;
+      }
       default:
         LOGF(ERROR) << "Destination pixel format "
                     << FormatToString(out_frame.GetFourcc())
