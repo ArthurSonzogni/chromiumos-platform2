@@ -801,7 +801,7 @@ void WakeOnWiFi::OnWakeupReasonReceived(const NetlinkMessage& netlink_message) {
 void WakeOnWiFi::OnBeforeSuspend(
     bool is_connected,
     const std::vector<ByteString>& allowed_ssids,
-    ResultOnceCallback done_callback,
+    ResultCallback done_callback,
     base::OnceClosure renew_dhcp_lease_callback,
     base::OnceClosure remove_supplicant_networks_callback,
     std::optional<base::TimeDelta> time_to_next_lease_renewal) {
@@ -850,7 +850,7 @@ void WakeOnWiFi::OnAfterResume() {
 void WakeOnWiFi::OnDarkResume(
     bool is_connected,
     const std::vector<ByteString>& allowed_ssids,
-    ResultOnceCallback done_callback,
+    ResultCallback done_callback,
     base::OnceClosure renew_dhcp_lease_callback,
     InitiateScanCallback initiate_scan_callback,
     const base::RepeatingClosure& remove_supplicant_networks_callback) {

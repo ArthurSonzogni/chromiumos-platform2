@@ -596,7 +596,7 @@ void ThirdPartyVpnDriver::OnDefaultPhysicalServiceEvent(
   adaptor_interface_->EmitPlatformMessage(static_cast<uint32_t>(message));
 }
 
-void ThirdPartyVpnDriver::OnBeforeSuspend(ResultOnceCallback callback) {
+void ThirdPartyVpnDriver::OnBeforeSuspend(ResultCallback callback) {
   if (event_handler_ && reconnect_supported_) {
     // FIXME: Currently the VPN app receives this message at the same time
     // as the resume message, even if shill adds a delay to hold off the

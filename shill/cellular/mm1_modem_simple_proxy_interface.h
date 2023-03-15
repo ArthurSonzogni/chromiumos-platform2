@@ -28,7 +28,7 @@ class ModemSimpleProxyInterface {
                        RpcIdentifierCallback callback,
                        int timeout) = 0;
   virtual void Disconnect(const RpcIdentifier& bearer,
-                          ResultOnceCallback callback,
+                          ResultCallback callback,
                           int timeout) = 0;
 };
 

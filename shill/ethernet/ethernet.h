@@ -155,7 +155,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   bool DisableOffloadFeatures();
 
   void SetUsbEthernetMacAddressSource(const std::string& source,
-                                      ResultOnceCallback callback) override;
+                                      ResultCallback callback) override;
 
   // Returns hex coded MAC address in lower case and without colons on success.
   // Otherwise returns an empty string.
@@ -166,7 +166,7 @@ class Ethernet : public Device, public SupplicantEventDelegateInterface {
   // if |error == 0|;
   void OnSetInterfaceMacResponse(const std::string& mac_address_source,
                                  const std::string& new_mac_address,
-                                 ResultOnceCallback callback,
+                                 ResultCallback callback,
                                  int32_t error);
   // Sets new MAC address and reconnects to the |service_| to renew IP address
   // if needed.

@@ -32,7 +32,7 @@ ModemSignalProxy::~ModemSignalProxy() = default;
 
 void ModemSignalProxy::Setup(const int rate,
                              Error* /*error*/,
-                             ResultOnceCallback callback,
+                             ResultCallback callback,
                              int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << rate;
   auto split_callback = base::SplitOnceCallback(std::move(callback));
@@ -46,12 +46,12 @@ void ModemSignalProxy::Setup(const int rate,
                      timeout);
 }
 
-void ModemSignalProxy::OnSetupSuccess(ResultOnceCallback callback) {
+void ModemSignalProxy::OnSetupSuccess(ResultCallback callback) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   std::move(callback).Run(Error());
 }
 
-void ModemSignalProxy::OnSetupFailure(ResultOnceCallback callback,
+void ModemSignalProxy::OnSetupFailure(ResultCallback callback,
                                       brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
@@ -61,7 +61,7 @@ void ModemSignalProxy::OnSetupFailure(ResultOnceCallback callback,
 
 void ModemSignalProxy::SetupThresholds(const KeyValueStore& settings,
                                        Error* /*error*/,
-                                       ResultOnceCallback callback,
+                                       ResultCallback callback,
                                        int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   brillo::VariantDictionary settings_dict =
@@ -78,12 +78,12 @@ void ModemSignalProxy::SetupThresholds(const KeyValueStore& settings,
       timeout);
 }
 
-void ModemSignalProxy::OnSetupThresholdsSuccess(ResultOnceCallback callback) {
+void ModemSignalProxy::OnSetupThresholdsSuccess(ResultCallback callback) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   std::move(callback).Run(Error());
 }
 
-void ModemSignalProxy::OnSetupThresholdsFailure(ResultOnceCallback callback,
+void ModemSignalProxy::OnSetupThresholdsFailure(ResultCallback callback,
                                                 brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;

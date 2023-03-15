@@ -48,7 +48,7 @@ void ModemSimpleProxy::Connect(const KeyValueStore& properties,
 }
 
 void ModemSimpleProxy::Disconnect(const RpcIdentifier& bearer,
-                                  ResultOnceCallback callback,
+                                  ResultCallback callback,
                                   int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << bearer.value();
   auto split_callback = base::SplitOnceCallback(std::move(callback));
@@ -76,12 +76,12 @@ void ModemSimpleProxy::OnConnectFailure(RpcIdentifierCallback callback,
   std::move(callback).Run(RpcIdentifier(""), error);
 }
 
-void ModemSimpleProxy::OnDisconnectSuccess(ResultOnceCallback callback) {
+void ModemSimpleProxy::OnDisconnectSuccess(ResultCallback callback) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   std::move(callback).Run(Error());
 }
 
-void ModemSimpleProxy::OnDisconnectFailure(ResultOnceCallback callback,
+void ModemSimpleProxy::OnDisconnectFailure(ResultCallback callback,
                                            brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;

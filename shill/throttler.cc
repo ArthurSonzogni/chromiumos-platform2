@@ -74,7 +74,7 @@ void Throttler::ClearTCState() {
   callback_.Reset();
 }
 
-bool Throttler::DisableThrottlingOnAllInterfaces(ResultOnceCallback callback) {
+bool Throttler::DisableThrottlingOnAllInterfaces(ResultCallback callback) {
   bool result = false;
 
   std::vector<std::string> interfaces = manager_->GetDeviceInterfaceNames();
@@ -102,7 +102,7 @@ bool Throttler::DisableThrottlingOnAllInterfaces(ResultOnceCallback callback) {
   return result;
 }
 
-void Throttler::Done(ResultOnceCallback callback,
+void Throttler::Done(ResultCallback callback,
                      Error::Type error_type,
                      const std::string& message) {
   Error error(error_type, message, FROM_HERE);
@@ -119,7 +119,7 @@ void Throttler::Done(ResultOnceCallback callback,
   return;
 }
 
-bool Throttler::ThrottleInterfaces(ResultOnceCallback callback,
+bool Throttler::ThrottleInterfaces(ResultCallback callback,
                                    uint32_t upload_rate_kbits,
                                    uint32_t download_rate_kbits) {
   // At least one of upload/download should be throttled.
@@ -149,7 +149,7 @@ bool Throttler::ThrottleInterfaces(ResultOnceCallback callback,
                   download_rate_kbits);
 }
 
-bool Throttler::Throttle(ResultOnceCallback callback,
+bool Throttler::Throttle(ResultCallback callback,
                          const std::string& interface_name,
                          uint32_t upload_rate_kbits,
                          uint32_t download_rate_kbits) {

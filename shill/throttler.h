@@ -43,8 +43,8 @@ class Throttler {
 
   virtual ~Throttler();
 
-  virtual bool DisableThrottlingOnAllInterfaces(ResultOnceCallback callback);
-  virtual bool ThrottleInterfaces(ResultOnceCallback callback,
+  virtual bool DisableThrottlingOnAllInterfaces(ResultCallback callback);
+  virtual bool ThrottleInterfaces(ResultCallback callback,
                                   uint32_t upload_rate_kbits,
                                   uint32_t download_rate_kbits);
 
@@ -76,7 +76,7 @@ class Throttler {
   // Statekeeping while spawning 'tc'
   pid_t tc_pid_;
   std::vector<std::string> tc_commands_;
-  ResultOnceCallback callback_;
+  ResultCallback callback_;
 
   // Applicable when throttling is called for multiple
   // interfaces (i.e. ThrottleInterfaces)
@@ -90,7 +90,7 @@ class Throttler {
 
   virtual bool StartTCForCommands(const std::vector<std::string>& commands);
 
-  virtual bool Throttle(ResultOnceCallback callback,
+  virtual bool Throttle(ResultCallback callback,
                         const std::string& interface_name,
                         uint32_t upload_rate_kbits,
                         uint32_t download_rate_kbits);
@@ -102,7 +102,7 @@ class Throttler {
   virtual void OnProcessExited(int exit_status);
 
   // Helpers
-  virtual void Done(ResultOnceCallback callback,
+  virtual void Done(ResultCallback callback,
                     Error::Type error_type,
                     const std::string& message);
 

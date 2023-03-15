@@ -31,7 +31,7 @@ class ModemLocationProxy : public ModemLocationProxyInterface {
   void Setup(uint32_t sources,
              bool signal_location,
              Error* error,
-             ResultOnceCallback callback,
+             ResultCallback callback,
              int timeout) override;
 
   void GetLocation(Error* error,
@@ -40,8 +40,8 @@ class ModemLocationProxy : public ModemLocationProxyInterface {
 
  private:
   // Callbacks for Setup async call.
-  void OnSetupSuccess(ResultOnceCallback callback);
-  void OnSetupFailure(ResultOnceCallback callback, brillo::Error* dbus_error);
+  void OnSetupSuccess(ResultCallback callback);
+  void OnSetupFailure(ResultCallback callback, brillo::Error* dbus_error);
 
   // Callbacks for GetLocation async call.
   void OnGetLocationSuccess(BrilloAnyCallback callback,

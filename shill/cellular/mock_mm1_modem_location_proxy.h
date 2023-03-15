@@ -23,7 +23,7 @@ class MockModemLocationProxy : public ModemLocationProxyInterface {
   // Inherited methods from ModemLocationProxyInterface.
   MOCK_METHOD(void,
               Setup,
-              (uint32_t, bool, Error*, ResultOnceCallback, int),
+              (uint32_t, bool, Error*, ResultCallback, int),
               (override));
   MOCK_METHOD(void, GetLocation, (Error*, BrilloAnyCallback, int), (override));
 };

@@ -212,7 +212,7 @@ void IKEv2Driver::OnConnectTimeout() {
 }
 
 // TODO(b/210064468): Check if charon can handle these events.
-void IKEv2Driver::OnBeforeSuspend(ResultOnceCallback callback) {
+void IKEv2Driver::OnBeforeSuspend(ResultCallback callback) {
   if (ipsec_connection_ && ipsec_connection_->IsConnectingOrConnected()) {
     ipsec_connection_->Disconnect();
     NotifyServiceOfFailure(Service::kFailureDisconnect);

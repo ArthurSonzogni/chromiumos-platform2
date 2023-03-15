@@ -311,7 +311,7 @@ KeyValueStore VPNDriver::GetProvider(Error* error) {
   return provider_properties;
 }
 
-void VPNDriver::OnBeforeSuspend(ResultOnceCallback callback) {
+void VPNDriver::OnBeforeSuspend(ResultCallback callback) {
   // Nothing to be done in the general case, so immediately report success.
   std::move(callback).Run(Error(Error::kSuccess));
 }

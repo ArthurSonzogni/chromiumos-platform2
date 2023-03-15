@@ -170,7 +170,7 @@ TEST_F(ThirdPartyVpnDriverTest, PowerEvents) {
 
   driver_->reconnect_supported_ = true;
 
-  ResultOnceCallback callback = base::BindOnce(
+  ResultCallback callback = base::BindOnce(
       &ThirdPartyVpnDriverTest::TestCallback, base::Unretained(this));
   EXPECT_CALL(*adaptor_interface_, EmitPlatformMessage(static_cast<uint32_t>(
                                        ThirdPartyVpnDriver::kSuspend)));

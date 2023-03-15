@@ -24,12 +24,12 @@ class MockModemSignalProxy : public ModemSignalProxyInterface {
 
   MOCK_METHOD(void,
               Setup,
-              (const int, Error*, ResultOnceCallback, int),
+              (const int, Error*, ResultCallback, int),
               (override));
 
   MOCK_METHOD(void,
               SetupThresholds,
-              (const KeyValueStore& settings, Error*, ResultOnceCallback, int),
+              (const KeyValueStore& settings, Error*, ResultCallback, int),
               (override));
 };
 

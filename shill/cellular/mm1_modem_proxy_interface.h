@@ -26,38 +26,36 @@ class ModemProxyInterface {
  public:
   virtual ~ModemProxyInterface() = default;
 
-  virtual void Enable(bool enable,
-                      ResultOnceCallback callback,
-                      int timeout) = 0;
+  virtual void Enable(bool enable, ResultCallback callback, int timeout) = 0;
   virtual void CreateBearer(const KeyValueStore& properties,
                             RpcIdentifierCallback callback,
                             int timeout) = 0;
   virtual void DeleteBearer(const RpcIdentifier& bearer,
-                            ResultOnceCallback callback,
+                            ResultCallback callback,
                             int timeout) = 0;
-  virtual void Reset(ResultOnceCallback callback, int timeout) = 0;
+  virtual void Reset(ResultCallback callback, int timeout) = 0;
   virtual void FactoryReset(const std::string& code,
-                            ResultOnceCallback callback,
+                            ResultCallback callback,
                             int timeout) = 0;
   virtual void SetCurrentCapabilities(uint32_t capabilities,
-                                      ResultOnceCallback callback,
+                                      ResultCallback callback,
                                       int timeout) = 0;
   virtual void SetCurrentModes(uint32_t allowed_modes,
                                uint32_t preferred_mode,
-                               ResultOnceCallback callback,
+                               ResultCallback callback,
                                int timeout) = 0;
   virtual void SetCurrentBands(const std::vector<uint32_t>& bands,
-                               ResultOnceCallback callback,
+                               ResultCallback callback,
                                int timeout) = 0;
   virtual void SetPrimarySimSlot(uint32_t slot,
-                                 ResultOnceCallback callback,
+                                 ResultCallback callback,
                                  int timeout) = 0;
   virtual void Command(const std::string& cmd,
                        uint32_t user_timeout,
                        StringCallback callback,
                        int timeout) = 0;
   virtual void SetPowerState(uint32_t power_state,
-                             ResultOnceCallback callback,
+                             ResultCallback callback,
                              int timeout) = 0;
 
   virtual void set_state_changed_callback(

@@ -24,10 +24,10 @@ class ModemModem3gppProxyInterface {
   virtual ~ModemModem3gppProxyInterface() = default;
 
   virtual void Register(const std::string& operator_id,
-                        ResultOnceCallback callback) = 0;
+                        ResultCallback callback) = 0;
   virtual void Scan(KeyValueStoresCallback callback) = 0;
   virtual void SetInitialEpsBearerSettings(const KeyValueStore& properties,
-                                           ResultOnceCallback callback) = 0;
+                                           ResultCallback callback) = 0;
 };
 
 }  // namespace mm1

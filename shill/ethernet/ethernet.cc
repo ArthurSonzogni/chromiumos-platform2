@@ -698,7 +698,7 @@ void Ethernet::DeregisterService(EthernetServiceRefPtr service) {
 }
 
 void Ethernet::SetUsbEthernetMacAddressSource(const std::string& source,
-                                              ResultOnceCallback callback) {
+                                              ResultCallback callback) {
   SLOG(this, 2) << __func__ << " " << source;
 
   if (bus_type_ != kDeviceBusTypeUsb) {
@@ -775,7 +775,7 @@ std::string Ethernet::ReadMacAddressFromFile(const base::FilePath& file_path) {
 
 void Ethernet::OnSetInterfaceMacResponse(const std::string& mac_address_source,
                                          const std::string& new_mac_address,
-                                         ResultOnceCallback callback,
+                                         ResultCallback callback,
                                          int32_t error) {
   if (error) {
     LOG(ERROR) << __func__ << " received response with error "

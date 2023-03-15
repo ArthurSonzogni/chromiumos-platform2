@@ -570,7 +570,7 @@ void Cellular::Scan(Error* error, const std::string& /*reason*/) {
 }
 
 void Cellular::RegisterOnNetwork(const std::string& network_id,
-                                 ResultOnceCallback callback) {
+                                 ResultCallback callback) {
   if (!capability_) {
     std::move(callback).Run(Error(Error::Type::kOperationFailed));
     return;
@@ -580,7 +580,7 @@ void Cellular::RegisterOnNetwork(const std::string& network_id,
 
 void Cellular::RequirePin(const std::string& pin,
                           bool require,
-                          ResultOnceCallback callback) {
+                          ResultCallback callback) {
   SLOG(2) << LoggingTag() << ": " << __func__ << ": " << require;
   if (!capability_) {
     std::move(callback).Run(Error(Error::Type::kOperationFailed));
@@ -589,7 +589,7 @@ void Cellular::RequirePin(const std::string& pin,
   capability_->RequirePin(pin, require, std::move(callback));
 }
 
-void Cellular::EnterPin(const std::string& pin, ResultOnceCallback callback) {
+void Cellular::EnterPin(const std::string& pin, ResultCallback callback) {
   SLOG(2) << LoggingTag() << ": " << __func__;
   if (!capability_) {
     std::move(callback).Run(Error(Error::Type::kOperationFailed));
@@ -600,7 +600,7 @@ void Cellular::EnterPin(const std::string& pin, ResultOnceCallback callback) {
 
 void Cellular::UnblockPin(const std::string& unblock_code,
                           const std::string& pin,
-                          ResultOnceCallback callback) {
+                          ResultCallback callback) {
   SLOG(2) << LoggingTag() << ": " << __func__;
   if (!capability_) {
     std::move(callback).Run(Error(Error::Type::kOperationFailed));
@@ -611,7 +611,7 @@ void Cellular::UnblockPin(const std::string& unblock_code,
 
 void Cellular::ChangePin(const std::string& old_pin,
                          const std::string& new_pin,
-                         ResultOnceCallback callback) {
+                         ResultCallback callback) {
   SLOG(2) << LoggingTag() << ": " << __func__;
   if (!capability_) {
     std::move(callback).Run(Error(Error::Type::kOperationFailed));
@@ -620,7 +620,7 @@ void Cellular::ChangePin(const std::string& old_pin,
   capability_->ChangePin(old_pin, new_pin, std::move(callback));
 }
 
-void Cellular::Reset(ResultOnceCallback callback) {
+void Cellular::Reset(ResultCallback callback) {
   SLOG(2) << LoggingTag() << ": " << __func__;
 
   // Qualcomm q6v5 modems on trogdor do not support reset using qmi messages.
@@ -715,7 +715,7 @@ void Cellular::OnConnected() {
   }
 }
 
-void Cellular::OnBeforeSuspend(ResultOnceCallback callback) {
+void Cellular::OnBeforeSuspend(ResultCallback callback) {
   LOG(INFO) << LoggingTag() << ": " << __func__;
   Error error;
   StopPPP();

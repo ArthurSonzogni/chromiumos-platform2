@@ -231,11 +231,11 @@ class CellularTest : public testing::Test {
     device_->set_mobile_operator_info_for_testing(mock_mobile_operator_info_);
   }
 
-  void InvokeEnable(bool enable, ResultOnceCallback callback, int timeout) {
+  void InvokeEnable(bool enable, ResultCallback callback, int timeout) {
     std::move(callback).Run(Error(Error::kSuccess));
   }
   void InvokeEnableReturningWrongState(bool enable,
-                                       ResultOnceCallback callback,
+                                       ResultCallback callback,
                                        int timeout) {
     std::move(callback).Run(Error(Error::kWrongState));
   }
@@ -252,13 +252,13 @@ class CellularTest : public testing::Test {
     std::move(callback).Run(RpcIdentifier(), Error(Error::kNotOnHomeNetwork));
   }
   void InvokeDisconnect(const RpcIdentifier& bearer,
-                        ResultOnceCallback callback,
+                        ResultCallback callback,
                         int timeout) {
     if (!callback.is_null())
       std::move(callback).Run(Error());
   }
   void InvokeDisconnectFail(const RpcIdentifier& bearer,
-                            ResultOnceCallback callback,
+                            ResultCallback callback,
                             int timeout) {
     if (!callback.is_null())
       std::move(callback).Run(Error(Error::kOperationFailed));
@@ -267,7 +267,7 @@ class CellularTest : public testing::Test {
     std::move(callback).Run(VariantDictionaries(), Error());
   }
   void InvokeSetPowerState(const uint32_t& power_state,
-                           ResultOnceCallback callback,
+                           ResultCallback callback,
                            int timeout) {
     std::move(callback).Run(Error(Error::kSuccess));
   }
@@ -1626,7 +1626,7 @@ TEST_F(CellularTest, OnAfterResumePowerDownInProgressWantEnabled) {
   EXPECT_TRUE(device_->enabled_persistent());
   EXPECT_EQ(Cellular::State::kModemStarted, device_->state());
 
-  auto return_success = [](ResultOnceCallback callback) {
+  auto return_success = [](ResultCallback callback) {
     std::move(callback).Run(Error(Error::kSuccess));
   };
 
@@ -1639,7 +1639,7 @@ TEST_F(CellularTest, OnAfterResumePowerDownInProgressWantEnabled) {
   EXPECT_CALL(*mm1_modem_proxy, Enable(false, _, _))
       .WillOnce(WithArg<1>(Invoke(return_success)));
   EXPECT_CALL(*mm1_modem_proxy, SetPowerState(MM_MODEM_POWER_STATE_LOW, _, _))
-      .WillOnce(WithArg<1>(Invoke([](ResultOnceCallback callback) {
+      .WillOnce(WithArg<1>(Invoke([](ResultCallback callback) {
         LOG(INFO) << "Dropping callback during suspend";
       })));
   device_->SetEnabled(false);
@@ -1685,12 +1685,11 @@ TEST_F(CellularTest, OnAfterResumeDisabledWantEnabled) {
   EXPECT_EQ(Cellular::State::kDisabled, device_->state());
 
   // Resume.
-  ResultOnceCallback modem_proxy_enable_callback;
+  ResultCallback modem_proxy_enable_callback;
   EXPECT_CALL(*mm1_modem_proxy, Enable(true, _, _))
-      .WillOnce(
-          WithArg<1>([&modem_proxy_enable_callback](ResultOnceCallback cb) {
-            modem_proxy_enable_callback = std::move(cb);
-          }));
+      .WillOnce(WithArg<1>([&modem_proxy_enable_callback](ResultCallback cb) {
+        modem_proxy_enable_callback = std::move(cb);
+      }));
   device_->OnAfterResume();
 
   // Complete enable.

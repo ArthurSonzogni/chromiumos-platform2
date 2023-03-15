@@ -24,11 +24,11 @@ class MockThrottler : public Throttler {
 
   MOCK_METHOD(bool,
               DisableThrottlingOnAllInterfaces,
-              (ResultOnceCallback),
+              (ResultCallback),
               (override));
   MOCK_METHOD(bool,
               ThrottleInterfaces,
-              (ResultOnceCallback, uint32_t, uint32_t),
+              (ResultCallback, uint32_t, uint32_t),
               (override));
   MOCK_METHOD(bool,
               ApplyThrottleToNewInterface,
@@ -40,13 +40,13 @@ class MockThrottler : public Throttler {
               (override));
   MOCK_METHOD(bool,
               Throttle,
-              (ResultOnceCallback, const std::string&, uint32_t, uint32_t),
+              (ResultCallback, const std::string&, uint32_t, uint32_t),
               (override));
   MOCK_METHOD(void, WriteTCCommands, (int), (override));
   MOCK_METHOD(void, OnProcessExited, (int), (override));
   MOCK_METHOD(void,
               Done,
-              (ResultOnceCallback, Error::Type, const std::string&),
+              (ResultCallback, Error::Type, const std::string&),
               (override));
   MOCK_METHOD(std::string, GetNextInterface, (), (override));
   MOCK_METHOD(void, ClearTCState, (), (override));

@@ -313,7 +313,7 @@ class Manager {
   void SetEnabledStateForTechnology(const std::string& technology_name,
                                     bool enabled_state,
                                     bool persist,
-                                    ResultOnceCallback callback);
+                                    ResultCallback callback);
   // Return whether a technology is marked as enabled for portal detection.
   virtual bool IsPortalDetectionEnabled(Technology tech);
 
@@ -420,7 +420,7 @@ class Manager {
   // Error::kOperationTimeout.
   //
   // Returns true, if termination actions were run.
-  bool RunTerminationActionsAndNotifyMetrics(ResultOnceCallback done_callback);
+  bool RunTerminationActionsAndNotifyMetrics(ResultCallback done_callback);
 
   // Add/remove observers to subscribe to default Service notifications.
   void AddDefaultServiceObserver(DefaultServiceObserver* observer);
@@ -442,7 +442,7 @@ class Manager {
 
   RpcIdentifiers EnumerateDevices(Error* error);
 
-  bool SetNetworkThrottlingStatus(ResultOnceCallback callback,
+  bool SetNetworkThrottlingStatus(ResultCallback callback,
                                   bool enabled,
                                   uint32_t upload_rate_kbits,
                                   uint32_t download_rate_kbits);
@@ -702,7 +702,7 @@ class Manager {
   // |kTerminationActionsTimeoutMilliseconds|, |done_callback| is called with a
   // value of Error::kSuccess.  Otherwise, it is called with
   // Error::kOperationTimeout.
-  void RunTerminationActions(ResultOnceCallback done_callback);
+  void RunTerminationActions(ResultCallback done_callback);
 
   // Called when the system is about to be suspended.  Each call will be
   // followed by a call to OnSuspendDone().

@@ -147,24 +147,24 @@ class Cellular : public Device,
   bool IsUnderlyingDeviceEnabled() const override;
   void Scan(Error* error, const std::string& /*reason*/) override;
   void RegisterOnNetwork(const std::string& network_id,
-                         ResultOnceCallback callback) override;
+                         ResultCallback callback) override;
   void RequirePin(const std::string& pin,
                   bool require,
-                  ResultOnceCallback callback) override;
-  void EnterPin(const std::string& pin, ResultOnceCallback callback) override;
+                  ResultCallback callback) override;
+  void EnterPin(const std::string& pin, ResultCallback callback) override;
   void UnblockPin(const std::string& unblock_code,
                   const std::string& pin,
-                  ResultOnceCallback callback) override;
+                  ResultCallback callback) override;
   void ChangePin(const std::string& old_pin,
                  const std::string& new_pin,
-                 ResultOnceCallback callback) override;
-  void Reset(ResultOnceCallback callback) override;
+                 ResultCallback callback) override;
+  void Reset(ResultCallback callback) override;
   void DropConnection() override;
   void SetServiceState(Service::ConnectState state) override;
   void SetServiceFailure(Service::ConnectFailure failure_state) override;
   void SetServiceFailureSilent(Service::ConnectFailure failure_state) override;
   void OnConnected() override;
-  void OnBeforeSuspend(ResultOnceCallback callback) override;
+  void OnBeforeSuspend(ResultCallback callback) override;
   void OnAfterResume() override;
   void UpdateGeolocationObjects(
       std::vector<GeolocationInfo>* geolocation_infos) const override;

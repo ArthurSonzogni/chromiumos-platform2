@@ -57,7 +57,7 @@ void HookTable::ActionComplete(const std::string& name) {
   }
 }
 
-void HookTable::Run(base::TimeDelta timeout, ResultOnceCallback done) {
+void HookTable::Run(base::TimeDelta timeout, ResultCallback done) {
   SLOG(2) << __func__;
   if (hook_table_.empty()) {
     std::move(done).Run(Error(Error::kSuccess));

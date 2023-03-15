@@ -38,7 +38,7 @@ ModemModem3gppProxy::ModemModem3gppProxy(const scoped_refptr<dbus::Bus>& bus,
 ModemModem3gppProxy::~ModemModem3gppProxy() = default;
 
 void ModemModem3gppProxy::Register(const std::string& operator_id,
-                                   ResultOnceCallback callback) {
+                                   ResultCallback callback) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << operator_id;
   auto split_callback = base::SplitOnceCallback(std::move(callback));
   proxy_->RegisterAsync(operator_id,
@@ -64,7 +64,7 @@ void ModemModem3gppProxy::Scan(KeyValueStoresCallback callback) {
 }
 
 void ModemModem3gppProxy::SetInitialEpsBearerSettings(
-    const KeyValueStore& properties, ResultOnceCallback callback) {
+    const KeyValueStore& properties, ResultCallback callback) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   brillo::VariantDictionary properties_dict =
       KeyValueStore::ConvertToVariantDictionary(properties);
@@ -80,12 +80,12 @@ void ModemModem3gppProxy::SetInitialEpsBearerSettings(
       kSetInitialEpsBearerTimeout.InMilliseconds());
 }
 
-void ModemModem3gppProxy::OnRegisterSuccess(ResultOnceCallback callback) {
+void ModemModem3gppProxy::OnRegisterSuccess(ResultCallback callback) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   std::move(callback).Run(Error());
 }
 
-void ModemModem3gppProxy::OnRegisterFailure(ResultOnceCallback callback,
+void ModemModem3gppProxy::OnRegisterFailure(ResultCallback callback,
                                             brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
@@ -115,13 +115,13 @@ void ModemModem3gppProxy::OnScanFailure(KeyValueStoresCallback callback,
 }
 
 void ModemModem3gppProxy::OnSetInitialEpsBearerSettingsSuccess(
-    ResultOnceCallback callback) {
+    ResultCallback callback) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   std::move(callback).Run(Error());
 }
 
 void ModemModem3gppProxy::OnSetInitialEpsBearerSettingsFailure(
-    ResultOnceCallback callback, brillo::Error* dbus_error) {
+    ResultCallback callback, brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;
   CellularError::FromMM1ChromeosDBusError(dbus_error, &error);

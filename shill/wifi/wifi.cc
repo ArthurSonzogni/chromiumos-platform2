@@ -2772,7 +2772,7 @@ void WiFi::HelpRegisterConstDerivedUint16s(PropertyStore* store,
       Uint16sAccessor(new CustomAccessor<WiFi, Uint16s>(this, get, nullptr)));
 }
 
-void WiFi::OnBeforeSuspend(ResultOnceCallback callback) {
+void WiFi::OnBeforeSuspend(ResultCallback callback) {
   if (!enabled()) {
     std::move(callback).Run(Error(Error::kSuccess));
     return;
@@ -2795,7 +2795,7 @@ void WiFi::OnBeforeSuspend(ResultOnceCallback callback) {
       network()->TimeToNextDHCPLeaseRenewal());
 }
 
-void WiFi::OnDarkResume(ResultOnceCallback callback) {
+void WiFi::OnDarkResume(ResultCallback callback) {
   if (!enabled()) {
     std::move(callback).Run(Error(Error::kSuccess));
     return;

@@ -28,7 +28,7 @@ class MockModemSimpleProxy : public ModemSimpleProxyInterface {
               (override));
   MOCK_METHOD(void,
               Disconnect,
-              (const RpcIdentifier&, ResultOnceCallback, int),
+              (const RpcIdentifier&, ResultCallback, int),
               (override));
 };
 

@@ -1087,7 +1087,7 @@ void Manager::SetProfileForService(const ServiceRefPtr& to_set,
 void Manager::SetEnabledStateForTechnology(const std::string& technology_name,
                                            bool enabled_state,
                                            bool persist,
-                                           ResultOnceCallback callback) {
+                                           ResultCallback callback) {
   Error error;
   Technology id = TechnologyFromName(technology_name);
   if (id == Technology::kUnknown) {
@@ -1121,7 +1121,7 @@ void Manager::SetEnabledStateForTechnology(const std::string& technology_name,
     if (device->technology() != id)
       continue;
 
-    ResultOnceCallback aggregator_callback(
+    ResultCallback aggregator_callback(
         base::BindOnce(&ResultAggregator::ReportResult, result_aggregator));
     device->SetEnabledChecked(enabled_state, persist,
                               std::move(aggregator_callback));
@@ -1294,7 +1294,7 @@ bool Manager::SetProhibitedTechnologies(
   }
   SLOG(1) << __func__ << ": " << prohibited_technologies;
   for (const auto& technology : technology_vector) {
-    ResultOnceCallback result_callback(base::BindOnce(
+    ResultCallback result_callback(base::BindOnce(
         &Manager::OnTechnologyProhibited, base::Unretained(this), technology));
     const bool kPersistentSave = false;
     SetEnabledStateForTechnology(TechnologyName(technology), false,
@@ -1468,14 +1468,14 @@ void Manager::RemoveTerminationAction(const std::string& name) {
   termination_actions_.Remove(name);
 }
 
-void Manager::RunTerminationActions(ResultOnceCallback done_callback) {
+void Manager::RunTerminationActions(ResultCallback done_callback) {
   LOG(INFO) << "Running termination actions.";
   termination_actions_.Run(kTerminationActionsTimeout,
                            std::move(done_callback));
 }
 
 bool Manager::RunTerminationActionsAndNotifyMetrics(
-    ResultOnceCallback done_callback) {
+    ResultCallback done_callback) {
   if (termination_actions_.IsEmpty())
     return false;
 
@@ -3005,7 +3005,7 @@ bool Manager::RemovePasspointCredentials(const std::string& profile_rpcid,
   return true;
 }
 
-bool Manager::SetNetworkThrottlingStatus(ResultOnceCallback callback,
+bool Manager::SetNetworkThrottlingStatus(ResultCallback callback,
                                          bool enabled,
                                          uint32_t upload_rate_kbits,
                                          uint32_t download_rate_kbits) {

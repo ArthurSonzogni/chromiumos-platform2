@@ -25,12 +25,12 @@ class ModemSignalProxyInterface {
 
   virtual void Setup(const int rate,
                      Error* error,
-                     ResultOnceCallback callback,
+                     ResultCallback callback,
                      int timeout) = 0;
 
   virtual void SetupThresholds(const KeyValueStore& settings,
                                Error* error,
-                               ResultOnceCallback callback,
+                               ResultCallback callback,
                                int timeout) = 0;
 };
 

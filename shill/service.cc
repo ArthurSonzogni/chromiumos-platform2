@@ -1663,7 +1663,7 @@ void Service::OnPropertyChanged(const std::string& property) {
   }
 }
 
-void Service::OnBeforeSuspend(ResultOnceCallback callback) {
+void Service::OnBeforeSuspend(ResultCallback callback) {
   // Nothing to be done in the general case, so immediately report success.
   std::move(callback).Run(Error(Error::kSuccess));
 }

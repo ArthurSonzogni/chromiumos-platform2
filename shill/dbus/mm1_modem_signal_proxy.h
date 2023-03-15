@@ -32,22 +32,22 @@ class ModemSignalProxy : public ModemSignalProxyInterface {
   // Inherited methods from ModemSignalProxyInterface.
   void Setup(const int rate,
              Error* /*error*/,
-             ResultOnceCallback callback,
+             ResultCallback callback,
              int timeout) override;
 
   void SetupThresholds(const KeyValueStore& settings,
                        Error* /*error*/,
-                       ResultOnceCallback callback,
+                       ResultCallback callback,
                        int timeout) override;
 
  private:
   // Callbacks for Setup async call.
-  void OnSetupSuccess(ResultOnceCallback callback);
-  void OnSetupFailure(ResultOnceCallback callback, brillo::Error* dbus_error);
+  void OnSetupSuccess(ResultCallback callback);
+  void OnSetupFailure(ResultCallback callback, brillo::Error* dbus_error);
 
   // Callbacks for SetupThresholds async call.
-  void OnSetupThresholdsSuccess(ResultOnceCallback callback);
-  void OnSetupThresholdsFailure(ResultOnceCallback callback,
+  void OnSetupThresholdsSuccess(ResultCallback callback);
+  void OnSetupThresholdsFailure(ResultCallback callback,
                                 brillo::Error* dbus_error);
 
   std::unique_ptr<org::freedesktop::ModemManager1::Modem::SignalProxy> proxy_;

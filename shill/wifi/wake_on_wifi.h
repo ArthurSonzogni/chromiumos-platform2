@@ -200,7 +200,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   void OnBeforeSuspend(
       bool is_connected,
       const std::vector<ByteString>& allowed_ssids,
-      ResultOnceCallback done_callback,
+      ResultCallback done_callback,
       base::OnceClosure renew_dhcp_lease_callback,
       base::OnceClosure remove_supplicant_networks_callback,
       std::optional<base::TimeDelta> time_to_next_lease_renewal) override;
@@ -221,7 +221,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   //    to remove all networks from WPA supplicant.
   void OnDarkResume(bool is_connected,
                     const std::vector<ByteString>& allowed_ssids,
-                    ResultOnceCallback done_callback,
+                    ResultCallback done_callback,
                     base::OnceClosure renew_dhcp_lease_callback,
                     InitiateScanCallback initiate_scan_callback,
                     const base::RepeatingClosure&
@@ -432,7 +432,7 @@ class WakeOnWiFi : public WakeOnWiFiInterface {
   base::CancelableOnceClosure verify_wake_on_wifi_settings_callback_;
   // Callback to be invoked after all suspend actions finish executing both
   // before regular suspend and before suspend in dark resume.
-  ResultOnceCallback suspend_actions_done_callback_;
+  ResultCallback suspend_actions_done_callback_;
   // Number of retry attempts to program the NIC's wake-on-WiFi settings.
   int num_set_wake_on_wifi_retries_;
   // Keeps track of triggers that the NIC will be programmed to wake from

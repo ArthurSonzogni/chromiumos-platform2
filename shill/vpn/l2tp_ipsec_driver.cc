@@ -303,7 +303,7 @@ void L2TPIPsecDriver::OnConnectTimeout() {
   NotifyServiceOfFailure(Service::kFailureConnect);
 }
 
-void L2TPIPsecDriver::OnBeforeSuspend(ResultOnceCallback callback) {
+void L2TPIPsecDriver::OnBeforeSuspend(ResultCallback callback) {
   if (ipsec_connection_ && ipsec_connection_->IsConnectingOrConnected()) {
     ipsec_connection_->Disconnect();
     NotifyServiceOfFailure(Service::kFailureDisconnect);

@@ -106,7 +106,7 @@ class CellularCapability3gpp {
   // operation advances to the next step, until either an error occurs in one of
   // them, or all the steps have been completed, at which point StartModem() is
   // finished.
-  void StartModem(ResultOnceCallback callback);
+  void StartModem(ResultCallback callback);
 
   // Sets a flag to be used by |StopModem| to decide if the modem will be set
   // to low power mode as the last step. By default, |StopModem| does set the
@@ -118,10 +118,10 @@ class CellularCapability3gpp {
   // `false` value, |StopModem| will not set the modem to low power mode.
   // |callback| is invoked when this completes and the result is passed to the
   // callback.
-  void StopModem(ResultOnceCallback callback);
+  void StopModem(ResultCallback callback);
 
   // Resets the modem.
-  void Reset(ResultOnceCallback callback);
+  void Reset(ResultCallback callback);
 
   // -------------------------------------------------------------------------
   // Activation
@@ -159,11 +159,11 @@ class CellularCapability3gpp {
   // bearer used at registration, particularly the 'Attach' APN settings.
   // specified by |properties|.
   void SetInitialEpsBearer(const KeyValueStore& properties,
-                           ResultOnceCallback callback);
+                           ResultCallback callback);
 
   // Registers on a network with |network_id|.
   void RegisterOnNetwork(const std::string& network_id,
-                         ResultOnceCallback callback);
+                         ResultCallback callback);
 
   // Returns true if the modem is registered on a network, which can be a home
   // or roaming network. It is possible that we cannot determine whether it is
@@ -193,12 +193,12 @@ class CellularCapability3gpp {
   // Connects the modem to a network, specifying the relevant APN type
   // associated to this connection. Only one connection of a given APN type is
   // expected for now.
-  void Connect(ApnList::ApnType apn_type, ResultOnceCallback callback);
+  void Connect(ApnList::ApnType apn_type, ResultCallback callback);
 
   // Disconnects the modem from all networks.
-  void DisconnectAll(ResultOnceCallback callback);
+  void DisconnectAll(ResultCallback callback);
   // Disconnects the modem from the network specified by the APN type.
-  void Disconnect(ApnList::ApnType apn_type, ResultOnceCallback callback);
+  void Disconnect(ApnList::ApnType apn_type, ResultCallback callback);
 
   // Returns a pointer to the current active bearer object or nullptr if no
   // active bearer exists. The returned bearer object is managed by this
@@ -213,17 +213,17 @@ class CellularCapability3gpp {
 
   void RequirePin(const std::string& pin,
                   bool require,
-                  ResultOnceCallback callback);
+                  ResultCallback callback);
 
-  void EnterPin(const std::string& pin, ResultOnceCallback callback);
+  void EnterPin(const std::string& pin, ResultCallback callback);
 
   void UnblockPin(const std::string& unblock_code,
                   const std::string& pin,
-                  ResultOnceCallback callback);
+                  ResultCallback callback);
 
   void ChangePin(const std::string& old_pin,
                  const std::string& new_pin,
-                 ResultOnceCallback callback);
+                 ResultCallback callback);
 
   // Returns a KeyValueStore with kSIMLock* properties set if available, or
   // an empty KeyValueStore if not.
@@ -239,7 +239,7 @@ class CellularCapability3gpp {
 
   void SetupLocation(uint32_t sources,
                      bool signal_location,
-                     ResultOnceCallback callback);
+                     ResultCallback callback);
 
   void GetLocation(StringCallback callback);
 
@@ -249,10 +249,10 @@ class CellularCapability3gpp {
   // Signal reporting
   // -------------------------------------------------------------------------
 
-  void SetupSignal(uint32_t rate, ResultOnceCallback callback);
+  void SetupSignal(uint32_t rate, ResultCallback callback);
 
   void SetupSignalThresholds(const KeyValueStore& settings,
-                             ResultOnceCallback callback);
+                             ResultCallback callback);
 
   // Used to encapsulate bounds for rssi/rsrp
   struct SignalQualityBounds {
@@ -371,7 +371,7 @@ class CellularCapability3gpp {
   struct ConnectionAttemptInfo {
     std::deque<Stringmap> apn_try_list;
     bool simple_connect;
-    ResultOnceCallback result_callback;
+    ResultCallback result_callback;
   };
 
   // SimLockStatus represents the fields in the Cellular.SIMLockStatus
@@ -386,19 +386,18 @@ class CellularCapability3gpp {
   };
 
   // Methods used in starting a modem
-  void EnableModemCompleted(ResultOnceCallback callback, const Error& error);
+  void EnableModemCompleted(ResultCallback callback, const Error& error);
 
   // Methods used in stopping a modem
-  void Stop_Completed(ResultOnceCallback callback, const Error& error);
-  void Stop_Disable(ResultOnceCallback callback);
-  void Stop_DisableCompleted(ResultOnceCallback callback, const Error& error);
-  void Stop_PowerDown(ResultOnceCallback callback,
-                      const Error& stop_disable_error);
-  void Stop_PowerDownCompleted(ResultOnceCallback callback,
+  void Stop_Completed(ResultCallback callback, const Error& error);
+  void Stop_Disable(ResultCallback callback);
+  void Stop_DisableCompleted(ResultCallback callback, const Error& error);
+  void Stop_PowerDown(ResultCallback callback, const Error& stop_disable_error);
+  void Stop_PowerDownCompleted(ResultCallback callback,
                                std::unique_ptr<Error> stop_disable_error,
                                const Error& error);
 
-  void Register(ResultOnceCallback callback);
+  void Register(ResultCallback callback);
 
   // Updates |active_bearers_| to match the currently active bearers.
   void UpdateActiveBearers();
@@ -427,7 +426,7 @@ class CellularCapability3gpp {
                                  uint32_t reason);
 
   // Profile manager signal handlers and callbacks
-  void OnProfilesListReply(ResultOnceCallback callback,
+  void OnProfilesListReply(ResultCallback callback,
                            const Profiles& results,
                            const Error& error);
   void OnModem3gppProfileManagerUpdatedSignal();
@@ -476,7 +475,7 @@ class CellularCapability3gpp {
   void ConnectionAttemptComplete(ApnList::ApnType apn_type, const Error& error);
   bool ConnectionAttemptInitialize(ApnList::ApnType apn_type,
                                    const std::deque<Stringmap>& apn_try_list,
-                                   ResultOnceCallback result_callback);
+                                   ResultCallback result_callback);
   KeyValueStore ConnectionAttemptNextProperties(ApnList::ApnType apn_type);
   void ConnectionAttemptConnect(ApnList::ApnType apn_type);
   void ConnectionAttemptOnConnectReply(ApnList::ApnType apn_type,
@@ -486,8 +485,8 @@ class CellularCapability3gpp {
   void ConnectionAttemptAbortAll();
 
   // Method callbacks
-  void OnRegisterReply(ResultOnceCallback callback, const Error& error);
-  void OnResetReply(ResultOnceCallback callback, const Error& error);
+  void OnRegisterReply(ResultCallback callback, const Error& error);
+  void OnResetReply(ResultCallback callback, const Error& error);
   void OnScanReply(ResultStringmapsCallback callback,
                    const ScanResults& results,
                    const Error& error);
@@ -497,8 +496,7 @@ class CellularCapability3gpp {
                           const Error& error);
   void OnSetupSignalReply(const Error& error);
   void OnSetupSignalThresholdsReply(const Error& error);
-  void OnSetInitialEpsBearerReply(ResultOnceCallback callback,
-                                  const Error& error);
+  void OnSetInitialEpsBearerReply(ResultCallback callback, const Error& error);
 
   // Returns the normalized version of |mdn| by keeping only digits in |mdn|
   // and removing other non-digit characters.

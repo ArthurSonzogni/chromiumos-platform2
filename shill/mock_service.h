@@ -76,7 +76,7 @@ class MockService : public Service {
   MOCK_METHOD(void, ClearExplicitlyDisconnected, (), (override));
   MOCK_METHOD(bool, link_monitor_disabled, (), (const, override));
   MOCK_METHOD(void, EnableAndRetainAutoConnect, (), (override));
-  MOCK_METHOD(void, OnBeforeSuspend, (ResultOnceCallback), (override));
+  MOCK_METHOD(void, OnBeforeSuspend, (ResultCallback), (override));
   MOCK_METHOD(void, OnAfterResume, (), (override));
   MOCK_METHOD(void,
               OnDefaultServiceStateChanged,

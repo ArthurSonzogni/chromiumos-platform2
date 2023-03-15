@@ -24,44 +24,41 @@ class MockModemProxy : public ModemProxyInterface {
   ~MockModemProxy() override;
 
   // Inherited methods from ModemProxyInterface.
-  MOCK_METHOD(void, Enable, (bool, ResultOnceCallback, int), (override));
+  MOCK_METHOD(void, Enable, (bool, ResultCallback, int), (override));
   MOCK_METHOD(void,
               CreateBearer,
               (const KeyValueStore&, RpcIdentifierCallback, int),
               (override));
   MOCK_METHOD(void,
               DeleteBearer,
-              (const RpcIdentifier&, ResultOnceCallback, int),
+              (const RpcIdentifier&, ResultCallback, int),
               (override));
-  MOCK_METHOD(void, Reset, (ResultOnceCallback, int), (override));
+  MOCK_METHOD(void, Reset, (ResultCallback, int), (override));
   MOCK_METHOD(void,
               FactoryReset,
-              (const std::string&, ResultOnceCallback, int),
+              (const std::string&, ResultCallback, int),
               (override));
   MOCK_METHOD(void,
               SetCurrentCapabilities,
-              (uint32_t, ResultOnceCallback, int),
+              (uint32_t, ResultCallback, int),
               (override));
   MOCK_METHOD(void,
               SetCurrentModes,
-              (uint32_t, uint32_t, ResultOnceCallback, int),
+              (uint32_t, uint32_t, ResultCallback, int),
               (override));
   MOCK_METHOD(void,
               SetCurrentBands,
-              (const std::vector<uint32_t>&, ResultOnceCallback, int),
+              (const std::vector<uint32_t>&, ResultCallback, int),
               (override));
   MOCK_METHOD(void,
               SetPrimarySimSlot,
-              (uint32_t, ResultOnceCallback, int),
+              (uint32_t, ResultCallback, int),
               (override));
   MOCK_METHOD(void,
               Command,
               (const std::string&, uint32_t, StringCallback, int),
               (override));
-  MOCK_METHOD(void,
-              SetPowerState,
-              (uint32_t, ResultOnceCallback, int),
-              (override));
+  MOCK_METHOD(void, SetPowerState, (uint32_t, ResultCallback, int), (override));
   MOCK_METHOD(void,
               set_state_changed_callback,
               (const ModemStateChangedSignalCallback&),

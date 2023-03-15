@@ -38,7 +38,7 @@ class IKEv2Driver : public VPNDriver {
   // Disconnects from the VPN service before suspend or when the current default
   // physical service becomes unavailable. The reconnection behavior relies on
   // whether the user sets "Automatically connect to this network".
-  void OnBeforeSuspend(ResultOnceCallback callback) override;
+  void OnBeforeSuspend(ResultCallback callback) override;
   void OnDefaultPhysicalServiceEvent(
       DefaultPhysicalServiceEvent event) override;
 

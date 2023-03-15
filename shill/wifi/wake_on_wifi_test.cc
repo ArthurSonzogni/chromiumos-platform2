@@ -600,7 +600,7 @@ class WakeOnWiFiTest : public ::testing::Test {
       bool is_connected,
       const std::vector<ByteString>& allowed_ssids,
       std::optional<base::TimeDelta> time_to_next_lease_renewal) {
-    ResultOnceCallback done_callback(
+    ResultCallback done_callback(
         base::BindOnce(&WakeOnWiFiTest::DoneCallback, base::Unretained(this)));
     base::OnceClosure renew_dhcp_lease_callback(base::BindOnce(
         &WakeOnWiFiTest::RenewDHCPLeaseCallback, base::Unretained(this)));
@@ -616,7 +616,7 @@ class WakeOnWiFiTest : public ::testing::Test {
 
   void OnDarkResume(bool is_connected,
                     const std::vector<ByteString>& allowed_ssids) {
-    ResultOnceCallback done_callback(
+    ResultCallback done_callback(
         base::BindOnce(&WakeOnWiFiTest::DoneCallback, base::Unretained(this)));
     base::OnceClosure renew_dhcp_lease_callback(base::BindOnce(
         &WakeOnWiFiTest::RenewDHCPLeaseCallback, base::Unretained(this)));

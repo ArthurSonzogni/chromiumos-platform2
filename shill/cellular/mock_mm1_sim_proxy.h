@@ -22,21 +22,18 @@ class MockSimProxy : public SimProxyInterface {
 
   ~MockSimProxy() override;
 
-  MOCK_METHOD(void,
-              SendPin,
-              (const std::string&, ResultOnceCallback),
-              (override));
+  MOCK_METHOD(void, SendPin, (const std::string&, ResultCallback), (override));
   MOCK_METHOD(void,
               SendPuk,
-              (const std::string&, const std::string&, ResultOnceCallback),
+              (const std::string&, const std::string&, ResultCallback),
               (override));
   MOCK_METHOD(void,
               EnablePin,
-              (const std::string&, const bool, ResultOnceCallback),
+              (const std::string&, const bool, ResultCallback),
               (override));
   MOCK_METHOD(void,
               ChangePin,
-              (const std::string&, const std::string&, ResultOnceCallback),
+              (const std::string&, const std::string&, ResultCallback),
               (override));
 };
 

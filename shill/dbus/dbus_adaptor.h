@@ -43,7 +43,7 @@ class DBusAdaptor {
   FRIEND_TEST(DBusAdaptorTest, SanitizePathElement);
 
   // Callback to wrap around DBus method response.
-  ResultOnceCallback GetMethodReplyCallback(DBusMethodResponsePtr<> response);
+  ResultCallback GetMethodReplyCallback(DBusMethodResponsePtr<> response);
 
   brillo::dbus_utils::DBusObject* dbus_object() const {
     return dbus_object_.get();

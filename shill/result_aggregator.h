@@ -49,7 +49,7 @@ class EventDispatcher;
 //     LOG(ERROR) << "Failed!"
 //     return;
 //   }
-//   ResultOnceCallback aggregator_callback(
+//   ResultCallback aggregator_callback(
 //       BindOnce(&ResultAggregator::ReportResult, result_aggregator));
 //   devices_[0]->OnBeforeSuspend(std::move(aggregator_callback));
 // }
@@ -81,8 +81,8 @@ class EventDispatcher;
 
 class ResultAggregator : public base::RefCounted<ResultAggregator> {
  public:
-  explicit ResultAggregator(ResultOnceCallback callback);
-  ResultAggregator(ResultOnceCallback callback,
+  explicit ResultAggregator(ResultCallback callback);
+  ResultAggregator(ResultCallback callback,
                    EventDispatcher* dispatcher,
                    base::TimeDelta timeout);
   ResultAggregator(const ResultAggregator&) = delete;
@@ -97,7 +97,7 @@ class ResultAggregator : public base::RefCounted<ResultAggregator> {
   void Timeout();
 
   base::WeakPtrFactory<ResultAggregator> weak_ptr_factory_;
-  ResultOnceCallback callback_;
+  ResultCallback callback_;
   base::CancelableOnceClosure timeout_callback_;
   bool got_result_;
   bool timed_out_;

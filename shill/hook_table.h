@@ -68,7 +68,7 @@ class HookTable {
   // starts a timer for completion in |timeout_ms|.  If all actions complete
   // successfully within the timeout period, |done| is called with a value of
   // Error::kSuccess.  Otherwise, it is called with Error::kOperationTimeout.
-  void Run(base::TimeDelta timeout, ResultOnceCallback done);
+  void Run(base::TimeDelta timeout, ResultCallback done);
 
   bool IsEmpty() const { return hook_table_.empty(); }
 
@@ -100,7 +100,7 @@ class HookTable {
   std::map<std::string, HookAction> hook_table_;
 
   // This is the user-supplied callback to Run().
-  ResultOnceCallback done_callback_;
+  ResultCallback done_callback_;
 
   // This callback is created in Run() and is queued to the event dispatcher to
   // run after a timeout period.  If all the actions complete before the

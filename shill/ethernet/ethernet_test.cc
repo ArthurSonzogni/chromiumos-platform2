@@ -181,7 +181,7 @@ class EthernetTest : public testing::Test {
     run_loop.Run();
   }
   void SetUsbEthernetMacAddressSource(const std::string& source,
-                                      ResultOnceCallback callback) {
+                                      ResultCallback callback) {
     base::RunLoop run_loop;
     ethernet_->SetUsbEthernetMacAddressSource(
         source, std::move(callback).Then(run_loop.QuitClosure()));

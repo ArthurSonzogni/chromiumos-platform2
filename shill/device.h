@@ -72,24 +72,24 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   //
   // TODO(quiche): Replace both of the next two methods with calls to
   // SetEnabledChecked.
-  void SetEnabledNonPersistent(bool enable, ResultOnceCallback callback);
+  void SetEnabledNonPersistent(bool enable, ResultCallback callback);
   // Enable or disable the device, and save the setting in the profile.
   // The setting is persisted before the enable or disable operation
   // starts, so that even if it fails, the user's intent is still recorded
   // for the next time shill restarts.
-  void SetEnabledPersistent(bool enable, ResultOnceCallback callback);
+  void SetEnabledPersistent(bool enable, ResultCallback callback);
   // Enable or disable the Device, depending on |enable|.
   // Save the new setting to the profile, if |persist| is true.
   // Report synchronous errors using |error|, and asynchronous completion
   // with |callback|.
   mockable void SetEnabledChecked(bool enable,
                                   bool persist,
-                                  ResultOnceCallback callback);
+                                  ResultCallback callback);
   // Similar to SetEnabledChecked, but without coherence checking, and
   // without saving the new value of |enable| to the profile. If you
   // are rational (i.e. not Cellular), you should use
   // SetEnabledChecked instead.
-  void SetEnabledUnchecked(bool enable, ResultOnceCallback callback);
+  void SetEnabledUnchecked(bool enable, ResultCallback callback);
 
   // Returns true if the underlying device reports that it is already enabled.
   // Used when the device is registered with the Manager, so that shill can
@@ -102,18 +102,18 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // The default implementation sets |error| to kNotSupported.
   virtual void Scan(Error* error, const std::string& reason);
   virtual void RegisterOnNetwork(const std::string& network_id,
-                                 ResultOnceCallback callback);
+                                 ResultCallback callback);
   virtual void RequirePin(const std::string& pin,
                           bool require,
-                          ResultOnceCallback callback);
-  virtual void EnterPin(const std::string& pin, ResultOnceCallback callback);
+                          ResultCallback callback);
+  virtual void EnterPin(const std::string& pin, ResultCallback callback);
   virtual void UnblockPin(const std::string& unblock_code,
                           const std::string& pin,
-                          ResultOnceCallback callback);
+                          ResultCallback callback);
   virtual void ChangePin(const std::string& old_pin,
                          const std::string& new_pin,
-                         ResultOnceCallback callback);
-  virtual void Reset(ResultOnceCallback callback);
+                         ResultCallback callback);
+  virtual void Reset(ResultCallback callback);
 
   // Returns true if the selected service on the device (if any) is connected.
   // Returns false if there is no selected service, or if the selected service
@@ -206,7 +206,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   //
   // The default implementation invokes the |callback| immediately, since
   // there is nothing to be done in the general case.
-  virtual void OnBeforeSuspend(ResultOnceCallback callback);
+  virtual void OnBeforeSuspend(ResultCallback callback);
 
   // Resume event handler. Called by Manager as the system resumes.
   // The base class implementation takes care of renewing a DHCP lease
@@ -223,11 +223,11 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   //
   // The default implementation invokes the |callback| immediately, since
   // there is nothing to be done in the general case.
-  virtual void OnDarkResume(ResultOnceCallback callback);
+  virtual void OnDarkResume(ResultCallback callback);
 
   // Sets MAC address source for USB Ethernet device.
   virtual void SetUsbEthernetMacAddressSource(const std::string& source,
-                                              ResultOnceCallback callback);
+                                              ResultCallback callback);
 
   // Renew DHCPv4 lease and invalidate the IPv6 config kept in shill.
   void ForceIPConfigUpdate();
@@ -348,7 +348,7 @@ class Device : public base::RefCounted<Device>, public Network::EventHandler {
   // The EnabledStateChangedCallback that gets passed to the device's
   // Start() and Stop() methods is bound to this method. |callback|
   // is the callback that was passed to SetEnabled().
-  void OnEnabledStateChanged(ResultOnceCallback callback, const Error& error);
+  void OnEnabledStateChanged(ResultCallback callback, const Error& error);
 
   // Update the device state to the pending state.
   void UpdateEnabledState();

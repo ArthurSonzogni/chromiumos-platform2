@@ -376,7 +376,7 @@ VirtualDeviceRefPtr VPNService::GetVirtualDevice() const {
   return device_;
 }
 
-void VPNService::OnBeforeSuspend(ResultOnceCallback callback) {
+void VPNService::OnBeforeSuspend(ResultCallback callback) {
   driver_->OnBeforeSuspend(std::move(callback));
 }
 

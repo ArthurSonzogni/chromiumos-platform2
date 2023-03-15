@@ -32,7 +32,7 @@ void SetEnabledSync(Device* device, bool enable, bool persist, Error* error) {
 }
 
 template <>
-void ReturnOperationFailed<ResultOnceCallback>(ResultOnceCallback callback) {
+void ReturnOperationFailed<ResultCallback>(ResultCallback callback) {
   std::move(callback).Run(Error(Error::kOperationFailed));
 }
 

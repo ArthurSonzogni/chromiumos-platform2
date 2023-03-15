@@ -15,10 +15,10 @@
 
 namespace shill {
 
-ResultAggregator::ResultAggregator(ResultOnceCallback callback)
+ResultAggregator::ResultAggregator(ResultCallback callback)
     : ResultAggregator(std::move(callback), nullptr, base::TimeDelta()) {}
 
-ResultAggregator::ResultAggregator(ResultOnceCallback callback,
+ResultAggregator::ResultAggregator(ResultCallback callback,
                                    EventDispatcher* dispatcher,
                                    base::TimeDelta timeout)
     : weak_ptr_factory_(this),

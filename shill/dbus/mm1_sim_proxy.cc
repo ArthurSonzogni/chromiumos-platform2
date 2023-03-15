@@ -36,7 +36,7 @@ SimProxy::SimProxy(const scoped_refptr<dbus::Bus>& bus,
 
 SimProxy::~SimProxy() = default;
 
-void SimProxy::SendPin(const std::string& pin, ResultOnceCallback callback) {
+void SimProxy::SendPin(const std::string& pin, ResultCallback callback) {
   // pin is intentionally not logged.
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   auto split_callback = base::SplitOnceCallback(std::move(callback));
@@ -51,7 +51,7 @@ void SimProxy::SendPin(const std::string& pin, ResultOnceCallback callback) {
 
 void SimProxy::SendPuk(const std::string& puk,
                        const std::string& pin,
-                       ResultOnceCallback callback) {
+                       ResultCallback callback) {
   // pin and puk are intentionally not logged.
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   auto split_callback = base::SplitOnceCallback(std::move(callback));
@@ -66,7 +66,7 @@ void SimProxy::SendPuk(const std::string& puk,
 
 void SimProxy::EnablePin(const std::string& pin,
                          const bool enabled,
-                         ResultOnceCallback callback) {
+                         ResultCallback callback) {
   // pin is intentionally not logged.
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << enabled;
   auto split_callback = base::SplitOnceCallback(std::move(callback));
@@ -81,7 +81,7 @@ void SimProxy::EnablePin(const std::string& pin,
 
 void SimProxy::ChangePin(const std::string& old_pin,
                          const std::string& new_pin,
-                         ResultOnceCallback callback) {
+                         ResultCallback callback) {
   // old_pin and new_pin are intentionally not logged.
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   auto split_callback = base::SplitOnceCallback(std::move(callback));
@@ -94,13 +94,13 @@ void SimProxy::ChangePin(const std::string& old_pin,
       kDefaultTimeout.InMilliseconds());
 }
 
-void SimProxy::OnOperationSuccess(ResultOnceCallback callback,
+void SimProxy::OnOperationSuccess(ResultCallback callback,
                                   const std::string& operation) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << operation;
   std::move(callback).Run(Error());
 }
 
-void SimProxy::OnOperationFailure(ResultOnceCallback callback,
+void SimProxy::OnOperationFailure(ResultCallback callback,
                                   const std::string& operation,
                                   brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__ << ": " << operation;

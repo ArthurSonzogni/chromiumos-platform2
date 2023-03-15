@@ -34,7 +34,7 @@ ModemLocationProxy::~ModemLocationProxy() = default;
 void ModemLocationProxy::Setup(uint32_t sources,
                                bool signal_location,
                                Error* error,
-                               ResultOnceCallback callback,
+                               ResultCallback callback,
                                int timeout) {
   SLOG(&proxy_->GetObjectPath(), 2)
       << __func__ << ": " << sources << ", " << signal_location;
@@ -64,12 +64,12 @@ void ModemLocationProxy::GetLocation(Error* error,
       timeout);
 }
 
-void ModemLocationProxy::OnSetupSuccess(ResultOnceCallback callback) {
+void ModemLocationProxy::OnSetupSuccess(ResultCallback callback) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   std::move(callback).Run(Error());
 }
 
-void ModemLocationProxy::OnSetupFailure(ResultOnceCallback callback,
+void ModemLocationProxy::OnSetupFailure(ResultCallback callback,
                                         brillo::Error* dbus_error) {
   SLOG(&proxy_->GetObjectPath(), 2) << __func__;
   Error error;

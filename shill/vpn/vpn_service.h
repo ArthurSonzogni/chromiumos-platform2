@@ -40,7 +40,7 @@ class VPNService : public Service,
   VirtualDeviceRefPtr GetVirtualDevice() const override;
 
   // Power management events.
-  void OnBeforeSuspend(ResultOnceCallback callback) override;
+  void OnBeforeSuspend(ResultCallback callback) override;
   void OnAfterResume() override;
 
   // Inherited from DefaultServiceObserver.

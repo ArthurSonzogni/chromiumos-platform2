@@ -43,11 +43,11 @@ class HookTableTest : public testing::Test {
     return base::BindOnce(&HookTableTest::StartAction2, base::Unretained(this));
   }
 
-  ResultOnceCallback CreateDoneCallback() {
+  ResultCallback CreateDoneCallback() {
     return base::BindOnce(&HookTableTest::DoneAction, base::Unretained(this));
   }
 
-  ResultOnceCallback* GetDoneCallback() { return &hook_table_.done_callback_; }
+  ResultCallback* GetDoneCallback() { return &hook_table_.done_callback_; }
 
   EventDispatcherForTest event_dispatcher_;
   HookTable hook_table_;

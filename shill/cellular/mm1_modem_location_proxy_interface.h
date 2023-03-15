@@ -24,7 +24,7 @@ class ModemLocationProxyInterface {
   virtual void Setup(uint32_t sources,
                      bool signal_location,
                      Error* error,
-                     ResultOnceCallback callback,
+                     ResultCallback callback,
                      int timeout) = 0;
 
   virtual void GetLocation(Error* error,

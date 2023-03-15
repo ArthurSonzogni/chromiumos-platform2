@@ -143,9 +143,9 @@ class WiFi : public Device, public SupplicantEventDelegateInterface {
   void Scan(Error* error, const std::string& reason) override;
   void EnsureScanAndConnectToBestService(Error* error);
   // Callback for system suspend.
-  void OnBeforeSuspend(ResultOnceCallback callback) override;
+  void OnBeforeSuspend(ResultCallback callback) override;
   // Callback for dark resume.
-  void OnDarkResume(ResultOnceCallback callback) override;
+  void OnDarkResume(ResultCallback callback) override;
   // Callback for system resume. If this WiFi device is idle, a scan
   // is initiated. Additionally, the base class implementation is
   // invoked unconditionally.

@@ -225,7 +225,7 @@ void Device::Scan(Error* error, const std::string& reason) {
 }
 
 void Device::RegisterOnNetwork(const std::string& /*network_id*/,
-                               ResultOnceCallback callback) {
+                               ResultCallback callback) {
   Error error;
   Error::PopulateAndLog(
       FROM_HERE, &error, Error::kNotImplemented,
@@ -235,7 +235,7 @@ void Device::RegisterOnNetwork(const std::string& /*network_id*/,
 
 void Device::RequirePin(const std::string& /*pin*/,
                         bool /*require*/,
-                        ResultOnceCallback callback) {
+                        ResultCallback callback) {
   Error error;
   Error::PopulateAndLog(
       FROM_HERE, &error, Error::kNotImplemented,
@@ -243,7 +243,7 @@ void Device::RequirePin(const std::string& /*pin*/,
   std::move(callback).Run(error);
 }
 
-void Device::EnterPin(const std::string& /*pin*/, ResultOnceCallback callback) {
+void Device::EnterPin(const std::string& /*pin*/, ResultCallback callback) {
   Error error;
   Error::PopulateAndLog(
       FROM_HERE, &error, Error::kNotImplemented,
@@ -253,7 +253,7 @@ void Device::EnterPin(const std::string& /*pin*/, ResultOnceCallback callback) {
 
 void Device::UnblockPin(const std::string& /*unblock_code*/,
                         const std::string& /*pin*/,
-                        ResultOnceCallback callback) {
+                        ResultCallback callback) {
   Error error;
   Error::PopulateAndLog(
       FROM_HERE, &error, Error::kNotImplemented,
@@ -263,7 +263,7 @@ void Device::UnblockPin(const std::string& /*unblock_code*/,
 
 void Device::ChangePin(const std::string& /*old_pin*/,
                        const std::string& /*new_pin*/,
-                       ResultOnceCallback callback) {
+                       ResultCallback callback) {
   Error error;
   Error::PopulateAndLog(
       FROM_HERE, &error, Error::kNotImplemented,
@@ -271,7 +271,7 @@ void Device::ChangePin(const std::string& /*old_pin*/,
   std::move(callback).Run(error);
 }
 
-void Device::Reset(ResultOnceCallback callback) {
+void Device::Reset(ResultCallback callback) {
   Error error;
   Error::PopulateAndLog(
       FROM_HERE, &error, Error::kNotImplemented,
@@ -331,7 +331,7 @@ bool Device::Save(StoreInterface* storage) {
   return true;
 }
 
-void Device::OnBeforeSuspend(ResultOnceCallback callback) {
+void Device::OnBeforeSuspend(ResultCallback callback) {
   // Nothing to be done in the general case, so immediately report success.
   std::move(callback).Run(Error(Error::kSuccess));
 }
@@ -340,7 +340,7 @@ void Device::OnAfterResume() {
   ForceIPConfigUpdate();
 }
 
-void Device::OnDarkResume(ResultOnceCallback callback) {
+void Device::OnDarkResume(ResultCallback callback) {
   // Nothing to be done in the general case, so immediately report success.
   std::move(callback).Run(Error(Error::kSuccess));
 }
@@ -358,7 +358,7 @@ void Device::ResetConnection() {
 }
 
 void Device::SetUsbEthernetMacAddressSource(const std::string& source,
-                                            ResultOnceCallback callback) {
+                                            ResultCallback callback) {
   Error error;
   Error::PopulateAndLog(FROM_HERE, &error, Error::kNotImplemented,
                         "SetUsbEthernetMacAddressSource from source " + source +
@@ -704,7 +704,7 @@ bool Device::IsUnderlyingDeviceEnabled() const {
 }
 
 // callback
-void Device::OnEnabledStateChanged(ResultOnceCallback callback,
+void Device::OnEnabledStateChanged(ResultCallback callback,
                                    const Error& error) {
   LOG(INFO) << __func__ << " (target: " << enabled_pending_ << ","
             << " success: " << error.IsSuccess() << ")"
@@ -741,19 +741,19 @@ void Device::SetEnabled(bool enable) {
   SetEnabledChecked(enable, false, base::DoNothing());
 }
 
-void Device::SetEnabledNonPersistent(bool enable, ResultOnceCallback callback) {
+void Device::SetEnabledNonPersistent(bool enable, ResultCallback callback) {
   SLOG(this, 1) << __func__ << "(" << enable << ")";
   SetEnabledChecked(enable, false, std::move(callback));
 }
 
-void Device::SetEnabledPersistent(bool enable, ResultOnceCallback callback) {
+void Device::SetEnabledPersistent(bool enable, ResultCallback callback) {
   SLOG(this, 1) << __func__ << "(" << enable << ")";
   SetEnabledChecked(enable, true, std::move(callback));
 }
 
 void Device::SetEnabledChecked(bool enable,
                                bool persist,
-                               ResultOnceCallback callback) {
+                               ResultCallback callback) {
   LOG(INFO) << __func__ << ": Device " << link_name_ << " "
             << (enable ? "starting" : "stopping");
   if (enable && manager_->IsTechnologyProhibited(technology())) {
@@ -805,7 +805,7 @@ void Device::SetEnabledChecked(bool enable,
 }
 
 void Device::SetEnabledUnchecked(bool enable,
-                                 ResultOnceCallback on_enable_complete) {
+                                 ResultCallback on_enable_complete) {
   LOG(INFO) << LoggingTag() << " SetEnabledUnchecked(" << std::boolalpha
             << enable << ")";
   enabled_pending_ = enable;

@@ -317,14 +317,14 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
                                                 modem_signal_property_lte);
   }
 
-  void InvokeEnable(bool enable, ResultOnceCallback callback, int timeout) {
+  void InvokeEnable(bool enable, ResultCallback callback, int timeout) {
     std::move(callback).Run(Error(Error::kSuccess));
   }
-  void InvokeEnableFail(bool enable, ResultOnceCallback callback, int timeout) {
+  void InvokeEnableFail(bool enable, ResultCallback callback, int timeout) {
     std::move(callback).Run(Error(Error::kOperationFailed));
   }
   void InvokeEnableInWrongState(bool enable,
-                                ResultOnceCallback callback,
+                                ResultCallback callback,
                                 int timeout) {
     std::move(callback).Run(Error(Error::kWrongState));
   }
@@ -332,7 +332,7 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
     std::move(callback).Run(VariantDictionaries(), Error());
   }
   void InvokeSetPowerState(const uint32_t& power_state,
-                           ResultOnceCallback callback,
+                           ResultCallback callback,
                            int timeout) {
     std::move(callback).Run(Error(Error::kSuccess));
   }
@@ -381,7 +381,7 @@ class CellularCapability3gppTest : public testing::TestWithParam<std::string> {
   }
   bool ConnectionAttemptInitialize(ApnList::ApnType apn_type,
                                    const std::deque<Stringmap>& apn_try_list,
-                                   ResultOnceCallback result_callback) {
+                                   ResultCallback result_callback) {
     return capability_->ConnectionAttemptInitialize(apn_type, apn_try_list,
                                                     std::move(result_callback));
   }
@@ -666,7 +666,7 @@ TEST_F(CellularCapability3gppTest, StopModem) {
   EXPECT_CALL(*modem_proxy, set_state_changed_callback(_));
   InitProxies();
 
-  auto return_success = [](ResultOnceCallback callback) {
+  auto return_success = [](ResultCallback callback) {
     std::move(callback).Run(Error(Error::kSuccess));
   };
 
@@ -696,7 +696,7 @@ TEST_F(CellularCapability3gppTest, StopModemSetPowerStateFailure) {
   EXPECT_CALL(
       *modem_proxy,
       Enable(false, _, CellularCapability3gpp::kTimeoutEnable.InMilliseconds()))
-      .WillOnce(WithArg<1>(Invoke([](ResultOnceCallback callback) {
+      .WillOnce(WithArg<1>(Invoke([](ResultCallback callback) {
         std::move(callback).Run(Error(Error::kSuccess));
       })));
 
@@ -707,7 +707,7 @@ TEST_F(CellularCapability3gppTest, StopModemSetPowerStateFailure) {
       SetPowerState(
           MM_MODEM_POWER_STATE_LOW, _,
           CellularCapability3gpp::kTimeoutSetPowerState.InMilliseconds()))
-      .WillOnce(WithArg<1>(Invoke(ReturnOperationFailed<ResultOnceCallback>)));
+      .WillOnce(WithArg<1>(Invoke(ReturnOperationFailed<ResultCallback>)));
 
   Error error;
   StopModem(&error);
@@ -824,7 +824,7 @@ TEST_F(CellularCapability3gppTest, TerminationActionRemovedByStopModem) {
 TEST_F(CellularCapability3gppTest, DisconnectNoProxy) {
   mm1::MockModemSimpleProxy* modem_simple_proxy = modem_simple_proxy_.get();
   SetSimpleProxy();
-  ResultOnceCallback callback = base::BindOnce(
+  ResultCallback callback = base::BindOnce(
       &CellularCapability3gppTest::TestCallback, base::Unretained(this));
   EXPECT_CALL(*modem_simple_proxy, Disconnect(_, _, _)).Times(0);
   ReleaseCapabilityProxies();
@@ -836,11 +836,11 @@ TEST_F(CellularCapability3gppTest, DisconnectAllBearers) {
   mm1::MockModemSimpleProxy* modem_simple_proxy = modem_simple_proxy_.get();
   SetSimpleProxy();
 
-  auto return_success = [](ResultOnceCallback callback) {
+  auto return_success = [](ResultCallback callback) {
     std::move(callback).Run(Error(Error::kSuccess));
   };
 
-  ResultOnceCallback callback = base::BindOnce(
+  ResultCallback callback = base::BindOnce(
       &CellularCapability3gppTest::TestCallback, base::Unretained(this));
   EXPECT_CALL(
       *modem_simple_proxy,
@@ -863,11 +863,11 @@ TEST_F(CellularCapability3gppTest, DisconnectSingleBearer) {
   capability_->OnBearersChanged({default_bearer_path, dun_bearer_path});
   capability_->UpdateActiveBearers();
 
-  auto return_success = [](ResultOnceCallback callback) {
+  auto return_success = [](ResultCallback callback) {
     std::move(callback).Run(Error(Error::kSuccess));
   };
 
-  ResultOnceCallback callback = base::BindOnce(
+  ResultCallback callback = base::BindOnce(
       &CellularCapability3gppTest::TestCallback, base::Unretained(this));
   EXPECT_CALL(
       *modem_simple_proxy,
@@ -1391,9 +1391,9 @@ TEST_F(CellularCapability3gppTest, Reset) {
   // This allows us to peek at the value of |resetting_| while the operation
   // is in progress.
   EXPECT_CALL(*modem_proxy, Reset(_, _))
-      .WillOnce(WithArg<0>(Invoke([this](ResultOnceCallback callback) {
+      .WillOnce(WithArg<0>(Invoke([this](ResultCallback callback) {
         // Error is not movable or copyable, making this weird.
-        auto return_success = [](ResultOnceCallback callback) {
+        auto return_success = [](ResultCallback callback) {
           std::move(callback).Run(Error(Error::kSuccess));
         };
         dispatcher_.PostTask(
@@ -1504,14 +1504,14 @@ TEST_F(CellularCapability3gppTest, SetInitialEpsBearer) {
   constexpr char kTestApn[] = "test_apn";
   KeyValueStore properties;
   Error error;
-  ResultOnceCallback callback = base::BindOnce(
+  ResultCallback callback = base::BindOnce(
       &CellularCapability3gppTest::TestCallback, base::Unretained(this));
 
-  ResultOnceCallback set_callback;
+  ResultCallback set_callback;
   EXPECT_CALL(*modem_3gpp_proxy_, SetInitialEpsBearerSettings(_, _))
       .Times(1)
-      .WillOnce(WithArg<1>(
-          [&](ResultOnceCallback cb) { set_callback = std::move(cb); }));
+      .WillOnce(
+          WithArg<1>([&](ResultCallback cb) { set_callback = std::move(cb); }));
   EXPECT_CALL(*this, TestCallback(IsSuccess()));
   properties.Set<std::string>(CellularBearer::kMMApnProperty, kTestApn);
 
@@ -1533,18 +1533,18 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
 
   // Empty APN try list.
   EXPECT_FALSE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {},
-                                           ResultOnceCallback()));
+                                           ResultCallback()));
 
   // Connection of same type already initialized.
   EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
-                                          ResultOnceCallback()));
+                                          ResultCallback()));
   EXPECT_FALSE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
-                                           ResultOnceCallback()));
+                                           ResultCallback()));
   ConnectionAttemptComplete(ApnList::ApnType::kDefault, Error(Error::kSuccess));
 
   // Connection with APN only.
   EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
-                                          ResultOnceCallback()));
+                                          ResultCallback()));
   properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasNoUser());
@@ -1556,7 +1556,7 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
   // Connection with APN and username.
   apn[kApnUsernameProperty] = kTestUser;
   EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
-                                          ResultOnceCallback()));
+                                          ResultCallback()));
   properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
@@ -1568,7 +1568,7 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
   // Connection with APN, username and password.
   apn[kApnPasswordProperty] = kTestPassword;
   EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
-                                          ResultOnceCallback()));
+                                          ResultCallback()));
   properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
@@ -1580,7 +1580,7 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
   // Connection with APN, username, password and PAP auth type.
   apn[kApnAuthenticationProperty] = kApnAuthenticationPap;
   EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
-                                          ResultOnceCallback()));
+                                          ResultCallback()));
   properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
@@ -1592,7 +1592,7 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
   // Connection with APN, username, password and CHAP auth type.
   apn[kApnAuthenticationProperty] = kApnAuthenticationChap;
   EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
-                                          ResultOnceCallback()));
+                                          ResultCallback()));
   properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
@@ -1604,7 +1604,7 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
   // Connection with APN, username, password and unknown auth type.
   apn[kApnAuthenticationProperty] = "something";
   EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
-                                          ResultOnceCallback()));
+                                          ResultCallback()));
   properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
@@ -1616,7 +1616,7 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
   // Connection with APN, username, password and empty auth type.
   apn[kApnAuthenticationProperty] = "";
   EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
-                                          ResultOnceCallback()));
+                                          ResultCallback()));
   properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
@@ -1628,7 +1628,7 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
   // Connection with APN, username, password, empty auth type and IPv4.
   apn[kApnIpTypeProperty] = kApnIpTypeV4;
   EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
-                                          ResultOnceCallback()));
+                                          ResultCallback()));
   properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
@@ -1640,7 +1640,7 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
   // Connection with APN, username, password, empty auth type and IPv6.
   apn[kApnIpTypeProperty] = kApnIpTypeV6;
   EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
-                                          ResultOnceCallback()));
+                                          ResultCallback()));
   properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
@@ -1652,7 +1652,7 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
   // Connection with APN, username, password, empty auth type and IPv4v6.
   apn[kApnIpTypeProperty] = kApnIpTypeV4V6;
   EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
-                                          ResultOnceCallback()));
+                                          ResultCallback()));
   properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
@@ -1664,7 +1664,7 @@ TEST_F(CellularCapability3gppTest, FillConnectPropertyMap) {
   // IP type defaults to v4 if something unsupported is specified.
   apn[kApnIpTypeProperty] = "orekid";
   EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
-                                          ResultOnceCallback()));
+                                          ResultCallback()));
   properties = ConnectionAttemptNextProperties(ApnList::ApnType::kDefault);
   EXPECT_THAT(properties, HasApn(kTestApn));
   EXPECT_THAT(properties, HasUser(kTestUser));
@@ -1685,7 +1685,7 @@ TEST_F(CellularCapability3gppTest, Connect) {
   apn[kApnProperty] = apn_name_foo;
 
   // Test connect failure
-  ResultOnceCallback callback = base::BindOnce(
+  ResultCallback callback = base::BindOnce(
       &CellularCapability3gppTest::TestCallback, base::Unretained(this));
   EXPECT_TRUE(ConnectionAttemptInitialize(ApnList::ApnType::kDefault, {apn},
                                           std::move(callback)));
@@ -1729,7 +1729,7 @@ TEST_F(CellularCapability3gppTest, Connect) {
 TEST_F(CellularCapability3gppTest, ConnectAbort) {
   mm1::MockModemSimpleProxy* modem_simple_proxy = modem_simple_proxy_.get();
   SetSimpleProxy();
-  ResultOnceCallback callback = base::BindOnce(
+  ResultCallback callback = base::BindOnce(
       &CellularCapability3gppTest::TestCallback, base::Unretained(this));
   RpcIdentifier bearer("/foo");
 
@@ -1749,7 +1749,7 @@ TEST_F(CellularCapability3gppTest, ConnectAbort) {
 TEST_F(CellularCapability3gppTest, ConnectApns) {
   mm1::MockModemSimpleProxy* modem_simple_proxy = modem_simple_proxy_.get();
   SetSimpleProxy();
-  ResultOnceCallback callback = base::BindOnce(
+  ResultCallback callback = base::BindOnce(
       &CellularCapability3gppTest::TestCallback, base::Unretained(this));
   RpcIdentifier bearer("/bearer0");
 
