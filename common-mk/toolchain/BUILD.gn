@@ -46,6 +46,7 @@ toolchain("toolchain") {
     description = "CXX {{output}}"
     outputs =
         [ "{{source_out_dir}}/{{target_output_name}}.{{source_name_part}}.o" ]
+    precompiled_header_type = "gcc"
   }
 
   tool("alink") {
