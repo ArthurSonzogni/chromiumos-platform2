@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/containers/contains.h>
 #include <base/containers/fixed_flat_map.h>
 #include <base/containers/span.h>
 #include <base/files/file_path.h>
@@ -20,6 +21,7 @@
 #include <brillo/dbus/dbus_connection.h>
 #include <brillo/variant_dictionary.h>
 #include <chromeos/dbus/service_constants.h>
+#include <chromeos/dbus/shill/dbus-constants.h>
 #include <shill/dbus-proxies.h>
 
 #include "runtime_probe/system/context.h"
@@ -29,6 +31,13 @@
 
 namespace runtime_probe {
 namespace {
+
+constexpr const char* kValidNetworkTypes[] = {
+    "",  // The default value which means all the type are accepted.
+    shill::kTypeWifi,
+    shill::kTypeCellular,
+    shill::kTypeEthernet,
+};
 
 constexpr char kBusTypePci[] = "pci";
 constexpr char kBusTypeSdio[] = "sdio";
@@ -147,6 +156,14 @@ std::optional<base::Value> GetNetworkData(const base::FilePath& node_path) {
 
 }  // namespace
 
+namespace internal {
+
+bool IsValidNetworkType(const std::string& type) {
+  return base::Contains(kValidNetworkTypes, type);
+}
+
+}  // namespace internal
+
 NetworkFunction::DataType NetworkFunction::EvalImpl() const {
   DataType results;
   base::FilePath net_dev_pattern =
@@ -189,6 +206,13 @@ void NetworkFunction::PostHelperEvalImpl(DataType* results) const {
     dict.Set("type", it->second);
     results->Append(std::move(helper_result));
   }
+}
+
+std::optional<std::string> NetworkFunction::GetNetworkType() const {
+  if (device_type_.empty()) {
+    return std::nullopt;
+  }
+  return device_type_;
 }
 
 }  // namespace runtime_probe

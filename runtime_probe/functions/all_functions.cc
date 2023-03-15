@@ -6,6 +6,7 @@
 
 #include "runtime_probe/probe_function.h"
 
+#include "runtime_probe/function_templates/network.h"
 #include "runtime_probe/functions/ap_i2c.h"
 #include "runtime_probe/functions/ata_storage.h"
 #include "runtime_probe/functions/audio_codec.h"
@@ -50,6 +51,7 @@ using AllFunctions = ProbeFunctions<ApI2cFunction,
                                     MemoryFunction,
                                     MipiCameraFunction,
                                     MmcStorageFunction,
+                                    NetworkFunction,
                                     NvmeStorageFunction,
                                     SequenceFunction,
                                     ShellFunction,

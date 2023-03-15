@@ -91,8 +91,7 @@ class NetworkFunctionTest : public BaseFunctionTest {
 
 TEST_F(NetworkFunctionTest, ProbeNetworkPci) {
   const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockNetworkFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<NetworkFunction>(probe_statement);
 
   SetNetworkDevice(kBusTypePci, "wlan0",
                    {{"device", "0x1111"}, {"vendor", "0x2222"}});
@@ -102,7 +101,6 @@ TEST_F(NetworkFunctionTest, ProbeNetworkPci) {
       {shill::kTypeProperty, std::string(shill::kTypeWifi)}};
   mock_context()->SetShillProxies({{"/dev/0", device0_props}});
 
-  EXPECT_CALL(*probe_function, GetNetworkType()).WillOnce(Return(std::nullopt));
   auto result = probe_function->Eval();
   auto ans = CreateProbeResultFromJson(base::StringPrintf(
       R"JSON(
@@ -122,8 +120,7 @@ TEST_F(NetworkFunctionTest, ProbeNetworkPci) {
 
 TEST_F(NetworkFunctionTest, GetPciRevisionIdFromConfig) {
   const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockNetworkFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<NetworkFunction>(probe_statement);
 
   SetNetworkDevice(kBusTypePci, "wlan0",
                    {{"device", "0x1111"}, {"vendor", "0x2222"}});
@@ -132,8 +129,6 @@ TEST_F(NetworkFunctionTest, GetPciRevisionIdFromConfig) {
       {shill::kInterfaceProperty, std::string("wlan0")},
       {shill::kTypeProperty, std::string(shill::kTypeWifi)}};
   mock_context()->SetShillProxies({{"/dev/0", device0_props}});
-
-  EXPECT_CALL(*probe_function, GetNetworkType()).WillOnce(Return(std::nullopt));
 
   // The revision is at offset 8 of the binary file.
   std::vector<uint8_t> config_buffer{0x00, 0x01, 0x02, 0x03, 0x04,
@@ -161,8 +156,7 @@ TEST_F(NetworkFunctionTest, GetPciRevisionIdFromConfig) {
 
 TEST_F(NetworkFunctionTest, GetPciRevisionIdFromConfigFailed) {
   const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockNetworkFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<NetworkFunction>(probe_statement);
 
   SetNetworkDevice(kBusTypePci, "wlan0",
                    {{"device", "0x1111"}, {"vendor", "0x2222"}});
@@ -171,8 +165,6 @@ TEST_F(NetworkFunctionTest, GetPciRevisionIdFromConfigFailed) {
       {shill::kInterfaceProperty, std::string("wlan0")},
       {shill::kTypeProperty, std::string(shill::kTypeWifi)}};
   mock_context()->SetShillProxies({{"/dev/0", device0_props}});
-
-  EXPECT_CALL(*probe_function, GetNetworkType()).WillOnce(Return(std::nullopt));
 
   // Fail to read the binary file at offset 8.
   std::vector<uint8_t> config_buffer{0x00, 0x01, 0x02, 0x03, 0x04};
@@ -198,8 +190,7 @@ TEST_F(NetworkFunctionTest, GetPciRevisionIdFromConfigFailed) {
 
 TEST_F(NetworkFunctionTest, ProbeNetworkSdio) {
   const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockNetworkFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<NetworkFunction>(probe_statement);
 
   SetNetworkDevice(kBusTypeSdio, "wlan0",
                    {{"device", "0x1111"}, {"vendor", "0x2222"}});
@@ -209,7 +200,6 @@ TEST_F(NetworkFunctionTest, ProbeNetworkSdio) {
       {shill::kTypeProperty, std::string(shill::kTypeWifi)}};
   mock_context()->SetShillProxies({{"/dev/0", device0_props}});
 
-  EXPECT_CALL(*probe_function, GetNetworkType()).WillOnce(Return(std::nullopt));
   auto result = probe_function->Eval();
   auto ans = CreateProbeResultFromJson(base::StringPrintf(
       R"JSON(
@@ -229,8 +219,7 @@ TEST_F(NetworkFunctionTest, ProbeNetworkSdio) {
 
 TEST_F(NetworkFunctionTest, ProbeNetworkUsb) {
   const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockNetworkFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<NetworkFunction>(probe_statement);
 
   SetNetworkDevice(kBusTypeUsb, "wlan0",
                    {{"idProduct", "0x1111"}, {"idVendor", "0x2222"}}, "0");
@@ -240,7 +229,6 @@ TEST_F(NetworkFunctionTest, ProbeNetworkUsb) {
       {shill::kTypeProperty, std::string(shill::kTypeWifi)}};
   mock_context()->SetShillProxies({{"/dev/0", device0_props}});
 
-  EXPECT_CALL(*probe_function, GetNetworkType()).WillOnce(Return(std::nullopt));
   auto result = probe_function->Eval();
   auto ans = CreateProbeResultFromJson(base::StringPrintf(
       R"JSON(
@@ -260,8 +248,7 @@ TEST_F(NetworkFunctionTest, ProbeNetworkUsb) {
 
 TEST_F(NetworkFunctionTest, UnknownBusType) {
   const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockNetworkFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<NetworkFunction>(probe_statement);
 
   // The bus type is "unknown".
   SetNetworkDevice("unknown", "wlan0",
@@ -272,7 +259,6 @@ TEST_F(NetworkFunctionTest, UnknownBusType) {
       {shill::kTypeProperty, std::string(shill::kTypeWifi)}};
   mock_context()->SetShillProxies({{"/dev/0", device0_props}});
 
-  EXPECT_CALL(*probe_function, GetNetworkType()).WillOnce(Return(std::nullopt));
   auto result = probe_function->Eval();
   auto ans = CreateProbeResultFromJson(R"JSON(
     []
@@ -282,8 +268,7 @@ TEST_F(NetworkFunctionTest, UnknownBusType) {
 
 TEST_F(NetworkFunctionTest, NoRequiredFields) {
   const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockNetworkFunction>(probe_statement);
+  auto probe_function = CreateProbeFunction<NetworkFunction>(probe_statement);
 
   // No required field "vendor".
   SetNetworkDevice(kBusTypePci, "wlan0", {{"device", "0x1111"}});
@@ -293,7 +278,6 @@ TEST_F(NetworkFunctionTest, NoRequiredFields) {
       {shill::kTypeProperty, std::string(shill::kTypeWifi)}};
   mock_context()->SetShillProxies({{"/dev/0", device0_props}});
 
-  EXPECT_CALL(*probe_function, GetNetworkType()).WillOnce(Return(std::nullopt));
   auto result = probe_function->Eval();
   auto ans = CreateProbeResultFromJson(R"JSON(
     []
@@ -301,11 +285,7 @@ TEST_F(NetworkFunctionTest, NoRequiredFields) {
   EXPECT_EQ(result, ans);
 }
 
-TEST_F(NetworkFunctionTest, ProbeAllTypeNetwork) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockNetworkFunction>(probe_statement);
-
+TEST_F(NetworkFunctionTest, ProbeNetworkByType) {
   SetNetworkDevice(kBusTypePci, "wlan0",
                    {{"device", "0x1111"}, {"vendor", "0x2222"}});
   SetNetworkDevice(kBusTypePci, "eth0",
@@ -326,9 +306,6 @@ TEST_F(NetworkFunctionTest, ProbeAllTypeNetwork) {
                                    {"/dev/1", device1_props},
                                    {"/dev/2", device2_props}});
 
-  // Probe all types of network.
-  EXPECT_CALL(*probe_function, GetNetworkType()).WillOnce(Return(std::nullopt));
-  auto result = probe_function->Eval();
   auto ans = CreateProbeResultFromJson(base::StringPrintf(
       R"JSON(
     [
@@ -358,52 +335,55 @@ TEST_F(NetworkFunctionTest, ProbeAllTypeNetwork) {
       GetPathUnderRoot({kNetworkDirPath, "wlan0"}).value().c_str(),
       GetPathUnderRoot({kNetworkDirPath, "eth0"}).value().c_str(),
       GetPathUnderRoot({kNetworkDirPath, "wwan0"}).value().c_str()));
-  ExpectUnorderedListEqual(result, ans);
+
+  // Probe all.
+  {
+    const base::Value probe_statement(base::Value::Type::DICT);
+    auto probe_function = CreateProbeFunction<NetworkFunction>(probe_statement);
+    auto result = probe_function->Eval();
+    ExpectUnorderedListEqual(result, ans);
+  }
+  // Filter by each type.
+  for (const auto& each_ans : ans) {
+    const std::string expected_type = *each_ans.GetDict().FindString("type");
+    base::Value probe_statement(base::Value::Type::DICT);
+    probe_statement.GetDict().Set("device_type", expected_type);
+    auto probe_function = CreateProbeFunction<NetworkFunction>(probe_statement);
+    auto result = probe_function->Eval();
+    EXPECT_EQ(result.size(), 1);
+    EXPECT_EQ(result[0], each_ans);
+  }
+
+  // TODO(b/269822306): The below two do the same thing as the above, but use
+  // the old interface to pass the type. Remove this after we done the
+  // migration.
+  {
+    const base::Value probe_statement(base::Value::Type::DICT);
+    auto probe_function =
+        CreateProbeFunction<MockNetworkFunction>(probe_statement);
+    EXPECT_CALL(*probe_function, GetNetworkType())
+        .WillOnce(Return(std::nullopt));
+    auto result = probe_function->Eval();
+    ExpectUnorderedListEqual(result, ans);
+  }
+  for (const auto& each_ans : ans) {
+    const std::string expected_type = *each_ans.GetDict().FindString("type");
+    base::Value probe_statement(base::Value::Type::DICT);
+    auto probe_function =
+        CreateProbeFunction<MockNetworkFunction>(probe_statement);
+    EXPECT_CALL(*probe_function, GetNetworkType())
+        .WillOnce(Return(expected_type));
+    auto result = probe_function->Eval();
+    EXPECT_EQ(result.size(), 1);
+    EXPECT_EQ(result[0], each_ans);
+  }
 }
 
-TEST_F(NetworkFunctionTest, ProbeSpecificTypeNetwork) {
-  const base::Value probe_statement(base::Value::Type::DICT);
-  auto probe_function =
-      CreateProbeFunction<MockNetworkFunction>(probe_statement);
-
-  SetNetworkDevice(kBusTypePci, "wlan0",
-                   {{"device", "0x1111"}, {"vendor", "0x2222"}});
-  SetNetworkDevice(kBusTypePci, "eth0",
-                   {{"device", "0x3333"}, {"vendor", "0x4444"}});
-  SetNetworkDevice(kBusTypePci, "wwan0",
-                   {{"device", "0x5555"}, {"vendor", "0x6666"}});
-
-  brillo::VariantDictionary device0_props = {
-      {shill::kInterfaceProperty, std::string("wlan0")},
-      {shill::kTypeProperty, std::string(shill::kTypeWifi)}};
-  brillo::VariantDictionary device1_props = {
-      {shill::kInterfaceProperty, std::string("eth0")},
-      {shill::kTypeProperty, std::string(shill::kTypeEthernet)}};
-  brillo::VariantDictionary device2_props = {
-      {shill::kInterfaceProperty, std::string("wwan0")},
-      {shill::kTypeProperty, std::string(shill::kTypeCellular)}};
-  mock_context()->SetShillProxies({{"/dev/0", device0_props},
-                                   {"/dev/1", device1_props},
-                                   {"/dev/2", device2_props}});
-
-  // Probe only wireless network.
-  EXPECT_CALL(*probe_function, GetNetworkType())
-      .WillOnce(Return(shill::kTypeWifi));
-  auto result = probe_function->Eval();
-  auto ans = CreateProbeResultFromJson(base::StringPrintf(
-      R"JSON(
-    [
-      {
-        "bus_type": "pci",
-        "path": "%s",
-        "pci_device_id": "0x1111",
-        "pci_vendor_id": "0x2222",
-        "type": "wifi"
-      }
-    ]
-  )JSON",
-      GetPathUnderRoot({kNetworkDirPath, "wlan0"}).value().c_str()));
-  EXPECT_EQ(result, ans);
+TEST_F(NetworkFunctionTest, CreateNetworkFunctionFailed) {
+  base::Value probe_statement(base::Value::Type::DICT);
+  probe_statement.GetDict().Set("device_type", "unknown_type");
+  auto probe_function = CreateProbeFunction<NetworkFunction>(probe_statement);
+  EXPECT_FALSE(probe_function);
 }
 
 }  // namespace
