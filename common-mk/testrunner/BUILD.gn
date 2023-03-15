@@ -7,6 +7,7 @@ import("//common-mk/pkg_config.gni")
 if (use.test) {
   pkg_config("testrunner_config") {
     pkg_deps = [
+      "libbrillo",
       "libchrome",
       "libchrome-test",
     ]
