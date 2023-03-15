@@ -381,7 +381,12 @@ void DbusFeaturedService::HandleSeedFetched(
     return;
   }
 
-  SeedDetails used_seed = tmp_storage_->GetUsedSeedDetails();
+  SeedDetails used_seed;
+  if (tmp_storage_) {
+    used_seed = tmp_storage_->GetUsedSeedDetails();
+  }
+  // Fall back to assuming null-seed was used if we cannot determine which seed
+  // was used.
   if (!SeedsEqual(used_seed, seed)) {
     LOG(WARNING) << "Chrome sent an unexpected seed; ignoring";
     response = dbus::Response::FromMethodCall(method_call);
@@ -389,21 +394,24 @@ void DbusFeaturedService::HandleSeedFetched(
     return;
   }
 
-  if (!store_->SetLastGoodSeed(seed)) {
-    LOG(ERROR) << "Failed to write fetched seed to disk";
-    response = dbus::ErrorResponse::FromMethodCall(
-        method_call, DBUS_ERROR_FAILED, "Failed to write fetched seed to disk");
-    std::move(sender).Run(std::move(response));
-    return;
-  }
+  if (store_) {
+    if (!store_->SetLastGoodSeed(seed)) {
+      LOG(ERROR) << "Failed to write fetched seed to disk";
+      response = dbus::ErrorResponse::FromMethodCall(
+          method_call, DBUS_ERROR_FAILED,
+          "Failed to write fetched seed to disk");
+      std::move(sender).Run(std::move(response));
+      return;
+    }
 
-  if (!store_->ClearBootAttemptsSinceLastUpdate()) {
-    LOG(ERROR) << "Failed to reset boot attempts counter after fetching seed";
-    response = dbus::ErrorResponse::FromMethodCall(
-        method_call, DBUS_ERROR_FAILED,
-        "Failed to reset boot attempts counter");
-    std::move(sender).Run(std::move(response));
-    return;
+    if (!store_->ClearBootAttemptsSinceLastUpdate()) {
+      LOG(ERROR) << "Failed to reset boot attempts counter after fetching seed";
+      response = dbus::ErrorResponse::FromMethodCall(
+          method_call, DBUS_ERROR_FAILED,
+          "Failed to reset boot attempts counter");
+      std::move(sender).Run(std::move(response));
+      return;
+    }
   }
 
   response = dbus::Response::FromMethodCall(method_call);
@@ -419,7 +427,7 @@ bool DbusFeaturedService::Start(dbus::Bus* bus,
 
   library_ = feature::PlatformFeatures::New(bus);
 
-  if (!store_->IncrementBootAttemptsSinceLastUpdate()) {
+  if (store_ && !store_->IncrementBootAttemptsSinceLastUpdate()) {
     LOG(ERROR) << "Failed to increment boot attempts";
     return false;
   }

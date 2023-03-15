@@ -170,7 +170,7 @@ class DbusFeaturedService {
   bool Start(dbus::Bus* bus, std::shared_ptr<DbusFeaturedService> ptr);
 
  private:
-  friend class DbusFeaturedServiceTest;
+  friend class DbusFeaturedServiceTestBase;
 
   // Helpers to invoke a feature parser
   bool ParseFeatureList();

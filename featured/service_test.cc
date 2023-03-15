@@ -78,18 +78,21 @@ TEST(FeatureCommand, MkdirTest) {
   }
 }
 
-class DbusFeaturedServiceTest : public testing::Test {
+// A base class to set up dbus objects, etc, needed for all tests.
+class DbusFeaturedServiceTestBase : public testing::Test {
  public:
-  DbusFeaturedServiceTest()
+  DbusFeaturedServiceTestBase(
+      std::unique_ptr<MockStoreImpl> mock_store_impl,
+      std::unique_ptr<MockTmpStorageImpl> mock_tmp_storage_impl)
       : mock_bus_(base::MakeRefCounted<dbus::MockBus>(dbus::Bus::Options{})),
         path_(chromeos::kChromeFeaturesServicePath),
         mock_proxy_(base::MakeRefCounted<dbus::MockObjectProxy>(
             mock_bus_.get(), chromeos::kChromeFeaturesServiceName, path_)),
         mock_exported_object_(base::MakeRefCounted<dbus::MockExportedObject>(
             mock_bus_.get(), path_)) {
-    auto mock_store_impl = std::make_unique<MockStoreImpl>();
-    auto mock_tmp_storage_impl = std::make_unique<MockTmpStorageImpl>();
-    // Necessary for `EXPECT_CALL` to succeed.
+    // This weird ownership structure is necessary to be able to run
+    // EXPECT_CALLS/ON_CALLS in individual tests. The DbusFeaturedService class
+    // will take ownership.
     mock_store_impl_ = mock_store_impl.get();
     mock_tmp_storage_impl_ = mock_tmp_storage_impl.get();
     service_ = std::make_shared<DbusFeaturedService>(
@@ -103,9 +106,6 @@ class DbusFeaturedServiceTest : public testing::Test {
     ON_CALL(*mock_bus_, RequestOwnershipAndBlock(_, _))
         .WillByDefault(Return(true));
     ON_CALL(*mock_exported_object_, ExportMethodAndBlock(_, _, _))
-        .WillByDefault(Return(true));
-    ON_CALL(*mock_store_impl_, SetLastGoodSeed(_)).WillByDefault(Return(true));
-    ON_CALL(*mock_store_impl_, ClearBootAttemptsSinceLastUpdate())
         .WillByDefault(Return(true));
   }
 
@@ -122,6 +122,17 @@ class DbusFeaturedServiceTest : public testing::Test {
   MockStoreImpl* mock_store_impl_;
   MockTmpStorageImpl* mock_tmp_storage_impl_;
   std::shared_ptr<DbusFeaturedService> service_;
+};
+
+class DbusFeaturedServiceTest : public DbusFeaturedServiceTestBase {
+ public:
+  DbusFeaturedServiceTest()
+      : DbusFeaturedServiceTestBase(std::make_unique<MockStoreImpl>(),
+                                    std::make_unique<MockTmpStorageImpl>()) {
+    ON_CALL(*mock_store_impl_, SetLastGoodSeed(_)).WillByDefault(Return(true));
+    ON_CALL(*mock_store_impl_, ClearBootAttemptsSinceLastUpdate())
+        .WillByDefault(Return(true));
+  }
 };
 
 // Checks that service start successfully increments the boot attempts counter
@@ -285,4 +296,33 @@ string "Failed to reset boot attempts counter"
   HandleSeedFetched(&method_call,
                     base::BindOnce(&ResponseSenderCallback, kExpectedMessage));
 }
+
+class DbusFeaturedServiceNoLockboxTest : public DbusFeaturedServiceTestBase {
+ public:
+  DbusFeaturedServiceNoLockboxTest()
+      : DbusFeaturedServiceTestBase(nullptr, nullptr) {}
+};
+
+TEST_F(DbusFeaturedServiceNoLockboxTest, Startup_Success) {
+  EXPECT_TRUE(service_->Start(mock_bus_.get(), service_));
+}
+
+// Checks that an empty response is returned on missing store.
+TEST_F(DbusFeaturedServiceNoLockboxTest, HandleSeedFetched_Success) {
+  constexpr char kExpectedMessage[] = R"--(message_type: MESSAGE_METHOD_RETURN
+reply_serial: 123
+
+)--";
+
+  dbus::MethodCall method_call("com.example.Interface", "SomeMethod");
+  dbus::MessageWriter writer(&method_call);
+  SeedDetails seed;
+  writer.AppendProtoAsArrayOfBytes(seed);
+  // Not setting the serial causes a crash.
+  method_call.SetSerial(123);
+
+  HandleSeedFetched(&method_call,
+                    base::BindOnce(&ResponseSenderCallback, kExpectedMessage));
+}
+
 }  // namespace featured

@@ -48,11 +48,15 @@ int main(int argc, char** argv) {
   std::unique_ptr<featured::StoreInterface> store =
       featured::StoreImpl::Create();
   if (!store) {
-    LOG(ERROR) << "Could not create StoreImpl instance";
-    return EX_UNAVAILABLE;
+    // TODO(b/274168816): Support boards without boot lockboxes, once we have
+    // worked out an acceptable solution with security.
+    LOG(ERROR) << "Could not create StoreImpl instance. Will not support "
+               << "early-boot features. See b/274168816";
   }
-  std::unique_ptr<featured::TmpStorageInterface> tmp_storage_impl =
-      std::make_unique<featured::TmpStorageImpl>();
+  std::unique_ptr<featured::TmpStorageInterface> tmp_storage_impl(nullptr);
+  if (store) {
+    tmp_storage_impl = std::make_unique<featured::TmpStorageImpl>();
+  }
   std::shared_ptr<featured::DbusFeaturedService> service =
       std::make_shared<featured::DbusFeaturedService>(
           std::move(store), std::move(tmp_storage_impl));
