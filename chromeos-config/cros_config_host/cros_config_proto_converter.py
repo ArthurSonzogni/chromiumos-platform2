@@ -165,6 +165,23 @@ def _build_arc(config, config_files):
     if ppi and ppi > 250:
         result["scale"] = ppi
 
+    platform = config.program.platform
+    if platform.HasField("arc_settings"):
+        hw_features = config.hw_design_config.hardware_features
+        suffix = (
+            hw_features.soc.arc_media_codecs_suffix
+            or platform.arc_settings.media_codecs_suffix
+        )
+        if suffix:
+            suffix = f"_{suffix}"
+        result["media-codecs"] = _file_v2(
+            f"media_codecs_c2{suffix}.xml",
+            f"/etc/media_codecs_c2{suffix}.xml",
+        )
+        result["media-codecs-performance"] = _file_v2(
+            f"media_codecs_performance_c2{suffix}.xml",
+            f"/etc/media_codecs_performance_c2{suffix}.xml",
+        )
     return result
 
 
