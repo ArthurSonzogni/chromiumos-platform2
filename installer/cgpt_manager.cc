@@ -19,6 +19,7 @@
 
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
+#include <base/logging.h>
 #include <base/strings/stringprintf.h>
 
 #include "installer/inst_util.h"
@@ -117,7 +118,7 @@ int WriteGptToNor(const string& file_name) {
       break;
     }
     default: {
-      errx(-1, "Unexpected number of write failures (%d)", ret);
+      LOG(ERROR) << "Unexpected number of write failures (" << ret << ")";
       break;
     }
   }
