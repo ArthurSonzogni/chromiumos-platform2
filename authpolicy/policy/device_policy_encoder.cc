@@ -1118,25 +1118,29 @@ void DevicePolicyEncoder::EncodeGenericPolicies(
             static_cast<em::LoginScreenExtensionManifestV2AvailabilityProto::
                             Availability>(value.value()));
 
-  if (std::optional<bool> value = EncodeBoolean(key::kDeviceScreensaverEnabled))
-    policy->mutable_device_screensaver_enabled()
-        ->set_device_screensaver_enabled(value.value());
+  if (std::optional<bool> value =
+          EncodeBoolean(key::kDeviceScreensaverLoginScreenEnabled))
+    policy->mutable_device_screensaver_login_screen_enabled()
+        ->set_device_screensaver_login_screen_mode(value.value());
 
   if (std::optional<int> value =
-          EncodeInteger(key::kDeviceScreensaverIdleTimeoutSeconds))
-    policy->mutable_device_screensaver_idle_timeout_seconds()
-        ->set_device_screensaver_idle_timeout_seconds(value.value());
+          EncodeInteger(key::kDeviceScreensaverLoginScreenIdleTimeoutSeconds))
+    policy->mutable_device_screensaver_login_screen_idle_timeout_seconds()
+        ->set_device_screensaver_login_screen_idle_timeout_seconds(
+            value.value());
 
-  if (std::optional<int> value =
-          EncodeInteger(key::kDeviceScreensaverImageDisplayIntervalSeconds))
-    policy->mutable_device_screensaver_image_display_interval_seconds()
-        ->set_device_screensaver_image_display_interval_seconds(value.value());
+  if (std::optional<int> value = EncodeInteger(
+          key::kDeviceScreensaverLoginScreenImageDisplayIntervalSeconds))
+    policy
+        ->mutable_device_screensaver_login_screen_image_display_interval_seconds()
+        ->set_device_screensaver_login_screen_image_display_interval_seconds(
+            value.value());
 
   if (std::optional<std::vector<std::string>> values =
-          EncodeStringList(key::kDeviceScreensaverImages)) {
-    *policy->mutable_device_screensaver_images()
-         ->mutable_device_screensaver_images() = {values.value().begin(),
-                                                  values.value().end()};
+          EncodeStringList(key::kDeviceScreensaverLoginScreenImages)) {
+    *policy->mutable_device_screensaver_login_screen_images()
+         ->mutable_device_screensaver_login_screen_images() = {
+        values.value().begin(), values.value().end()};
   }
 }
 

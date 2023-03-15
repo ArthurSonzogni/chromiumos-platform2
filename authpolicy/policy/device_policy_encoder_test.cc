@@ -795,20 +795,24 @@ TEST_F(DevicePolicyEncoderTest, TestEncoding) {
       policy.login_screen_extension_manifest_v2_availability()
           .login_screen_extension_manifest_v2_availability());
 
-  EncodeBoolean(&policy, key::kDeviceScreensaverEnabled, kBool);
-  EXPECT_EQ(kBool,
-            policy.device_screensaver_enabled().device_screensaver_enabled());
+  EncodeBoolean(&policy, key::kDeviceScreensaverLoginScreenEnabled, kBool);
+  EXPECT_EQ(kBool, policy.device_screensaver_login_screen_enabled()
+                       .device_screensaver_login_screen_mode());
 
-  EncodeInteger(&policy, key::kDeviceScreensaverIdleTimeoutSeconds, kInt);
-  EXPECT_EQ(kInt, policy.device_screensaver_idle_timeout_seconds()
-                      .device_screensaver_idle_timeout_seconds());
-
-  EncodeInteger(&policy, key::kDeviceScreensaverImageDisplayIntervalSeconds,
+  EncodeInteger(&policy, key::kDeviceScreensaverLoginScreenIdleTimeoutSeconds,
                 kInt);
-  EXPECT_EQ(kInt, policy.device_screensaver_image_display_interval_seconds()
-                      .device_screensaver_image_display_interval_seconds());
+  EXPECT_EQ(kInt, policy.device_screensaver_login_screen_idle_timeout_seconds()
+                      .device_screensaver_login_screen_idle_timeout_seconds());
 
-  MarkHandled(key::kDeviceScreensaverImages);
+  EncodeInteger(&policy,
+                key::kDeviceScreensaverLoginScreenImageDisplayIntervalSeconds,
+                kInt);
+  EXPECT_EQ(
+      kInt,
+      policy.device_screensaver_login_screen_image_display_interval_seconds()
+          .device_screensaver_login_screen_image_display_interval_seconds());
+
+  MarkHandled(key::kDeviceScreensaverLoginScreenImages);
   MarkHandled(key::kDeviceSystemAecEnabled);
 
   //
