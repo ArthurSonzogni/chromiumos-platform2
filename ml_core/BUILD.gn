@@ -10,6 +10,7 @@ group("all") {
     ":install_headers",
     ":install_tmpfiles",
     ":libcros_ml_core",
+    ":maybe_install_dev_lib",
   ]
   if (use.camera_feature_effects) {
     deps += [ "//ml_core/opencl_caching:all" ]
@@ -54,4 +55,12 @@ install_config("install_headers") {
     "effects_pipeline_types.h",
   ]
   install_path = "/usr/include/ml_core"
+}
+
+install_config("maybe_install_dev_lib") {
+  sources = []
+  if (use.local_ml_core_internal) {
+    sources += [ "libcros_ml_core_internal.so" ]
+  }
+  install_path = "/usr/local/lib64/"
 }
