@@ -6,8 +6,8 @@ import("//common-mk/pkg_config.gni")
 
 if (use.lvm_stateful_partition) {
   action("chromeos_install_script") {
-    inputs = ["chromeos-install"]
-    outputs = ["${root_gen_dir}/chromeos-install"]
+    inputs = [ "chromeos-install" ]
+    outputs = [ "${root_gen_dir}/chromeos-install" ]
 
     script = "/bin/sh"
     args = [
@@ -55,9 +55,7 @@ action("postinst_script_symlink") {
 }
 
 install_config("crx_import_script") {
-  sources = [
-    "init/crx-import.sh",
-  ]
+  sources = [ "init/crx-import.sh" ]
   install_path = "/usr/share/cros/init"
   type = "executable"
 }
