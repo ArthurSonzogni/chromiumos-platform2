@@ -67,12 +67,12 @@ ScopedPathRemover::~ScopedPathRemover() {
   if (root_.empty()) {
     return;
   }
-  if (!base::DeletePathRecursively(base::FilePath(root_)))
+  if (!base::DeletePathRecursively(root_))
     PLOG(ERROR) << "Cannot remove path " << root_;
 }
 
-string ScopedPathRemover::Release() {
-  string r = root_;
+base::FilePath ScopedPathRemover::Release() {
+  base::FilePath r = root_;
   root_.clear();
   return r;
 }

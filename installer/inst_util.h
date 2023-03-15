@@ -31,17 +31,17 @@ enum partition_nums_t {
 // boubled up. If need to, use release() and handle the deletion yourself.
 class ScopedPathRemover {
  public:
-  explicit ScopedPathRemover(const std::string& root) : root_(root) {}
+  explicit ScopedPathRemover(const base::FilePath& root) : root_(root) {}
   virtual ~ScopedPathRemover();
 
   ScopedPathRemover(const ScopedPathRemover& other) = delete;
   void operator=(const ScopedPathRemover& other) = delete;
 
   // Return the root path and no longer remove it.
-  std::string Release();
+  base::FilePath Release();
 
  private:
-  std::string root_;
+  base::FilePath root_;
 };
 
 // Find a pointer to the first element of a statically sized array.

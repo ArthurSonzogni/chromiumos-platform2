@@ -41,7 +41,7 @@ bool ReadGptFromNor(string* file_name) {
     return false;
   }
   // Extra parens to work around the compiler parser.
-  ScopedPathRemover remover((string(tmp_name)));
+  ScopedPathRemover remover((base::FilePath(tmp_name)));
   // Close fd so that flashrom can write to the file right after.
   close(fd);
   if (RunCommand({"/usr/sbin/flashrom", "-i", string("RW_GPT:") + tmp_name,
@@ -64,7 +64,7 @@ bool WriteToNor(const string& data, const string& region) {
   }
 
   // Extra parens to work around the compiler parser.
-  ScopedPathRemover remover((string(tmp_name)));
+  ScopedPathRemover remover((base::FilePath(tmp_name)));
   if (!WriteFullyToFileDescriptor(data, fd.get())) {
     LOG(ERROR) << "Cannot write data to temp file " << tmp_name;
     return false;

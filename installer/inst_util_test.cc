@@ -295,37 +295,37 @@ TEST(UtilTest, ReplaceAllTest) {
 }
 
 TEST(UtilTest, ScopedPathRemoverWithFile) {
-  const string filename = tmpnam(NULL);
-  EXPECT_EQ(base::WriteFile(base::FilePath(filename), "abc"), true);
-  ASSERT_EQ(access(filename.c_str(), F_OK), 0);
+  const base::FilePath filename = base::FilePath(tmpnam(NULL));
+  EXPECT_TRUE(base::WriteFile(filename, "abc"));
+  ASSERT_TRUE(base::PathExists(filename));
 
   // Release early to prevent removal.
   {
     ScopedPathRemover remover(filename);
     remover.Release();
   }
-  EXPECT_EQ(access(filename.c_str(), F_OK), 0);
+  EXPECT_TRUE(base::PathExists(filename));
 
   // No releasing, the file should be removed.
   { ScopedPathRemover remover(filename); }
-  EXPECT_EQ(access(filename.c_str(), F_OK), -1);
+  EXPECT_FALSE(base::PathExists(filename));
 }
 
 TEST(UtilTest, ScopedPathRemoverWithDirectory) {
-  const string dirname = tmpnam(NULL);
-  const string filename = dirname + "/abc";
-  ASSERT_EQ(mkdir(dirname.c_str(), 0700), 0);
-  ASSERT_EQ(access(dirname.c_str(), F_OK), 0);
-  EXPECT_EQ(base::WriteFile(base::FilePath(filename), "abc"), true);
-  ASSERT_EQ(access(filename.c_str(), F_OK), 0);
+  const base::FilePath dirname = base::FilePath(tmpnam(NULL));
+  const base::FilePath filename = dirname.Append("abc");
+  ASSERT_TRUE(base::CreateDirectory(dirname));
+  ASSERT_TRUE(base::PathExists(dirname));
+  EXPECT_TRUE(base::WriteFile(filename, "abc"));
+  ASSERT_TRUE(base::PathExists(filename));
   { ScopedPathRemover remover(dirname); }
-  EXPECT_EQ(access(filename.c_str(), F_OK), -1);
-  EXPECT_EQ(access(dirname.c_str(), F_OK), -1);
+  EXPECT_FALSE(base::PathExists(filename));
+  EXPECT_FALSE(base::PathExists(dirname));
 }
 
 TEST(UtilTest, ScopedPathRemoverWithNonExistingPath) {
-  string filename = tmpnam(NULL);
-  ASSERT_EQ(access(filename.c_str(), F_OK), -1);
+  base::FilePath filename = base::FilePath(tmpnam(NULL));
+  ASSERT_FALSE(base::PathExists(filename));
   { ScopedPathRemover remover(filename); }
   // There should be no crash.
 }
