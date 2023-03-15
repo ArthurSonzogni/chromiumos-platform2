@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <limits>
+#include <memory>
 
 #include <base/check.h>
 #include <base/containers/contains.h>
@@ -954,18 +955,21 @@ const SupportedFormats V4L2CameraDevice::GetDeviceSupportedFormats(
     return {};
   }
 
-  std::vector<std::string> filter_out_resolution_strings =
-      CameraConfig::Create(constants::kCrosCameraConfigPathString)
-          ->GetStrings(constants::kCrosUsbFilteredOutResolutions,
-                       std::vector<std::string>());
+  std::unique_ptr<CameraConfig> camera_config =
+      CameraConfig::Create(constants::kCrosCameraConfigPathString);
 
   std::vector<Size> filter_out_resolutions;
-  for (const auto& filter_out_resolution_string :
-       filter_out_resolution_strings) {
-    int width, height;
-    CHECK(RE2::FullMatch(filter_out_resolution_string, R"((\d+)x(\d+))", &width,
-                         &height));
-    filter_out_resolutions.emplace_back(width, height);
+  if (camera_config != nullptr) {
+    std::vector<std::string> filter_out_resolution_strings =
+        camera_config->GetStrings(constants::kCrosUsbFilteredOutResolutions,
+                                  std::vector<std::string>());
+    for (const auto& filter_out_resolution_string :
+         filter_out_resolution_strings) {
+      int width, height;
+      CHECK(RE2::FullMatch(filter_out_resolution_string, R"((\d+)x(\d+))",
+                           &width, &height));
+      filter_out_resolutions.emplace_back(width, height);
+    }
   }
 
   SupportedFormats formats;
