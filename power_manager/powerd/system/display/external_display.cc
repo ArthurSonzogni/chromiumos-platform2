@@ -113,7 +113,7 @@ bool ExternalDisplay::RealDelegate::OpenI2CFile() {
 ExternalDisplay::TestApi::TestApi(ExternalDisplay* display)
     : display_(display) {
   display_->clock_.set_current_time_for_testing(
-      base::TimeTicks::FromInternalValue(1000));  // Arbitrary.
+      base::TimeTicks() + base::Microseconds(1000));  // Arbitrary.
 }
 
 void ExternalDisplay::TestApi::AdvanceTime(base::TimeDelta interval) {

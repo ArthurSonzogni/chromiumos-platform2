@@ -37,39 +37,34 @@ TEST(RollingAverageTest, MultipleSamples) {
 }
 
 TEST(RollingAverageTest, GetDelta) {
-  const base::TimeTicks kTime1 = base::TimeTicks::FromInternalValue(1000);
-  const base::TimeTicks kTime2 = base::TimeTicks::FromInternalValue(2000);
-  const base::TimeTicks kTime3 = base::TimeTicks::FromInternalValue(4000);
-  const base::TimeTicks kTime4 = base::TimeTicks::FromInternalValue(8000);
+  const base::TimeTicks kTime1 = base::TimeTicks() + base::Microseconds(1000);
+  const base::TimeTicks kTime2 = base::TimeTicks() + base::Microseconds(2000);
+  const base::TimeTicks kTime3 = base::TimeTicks() + base::Microseconds(4000);
+  const base::TimeTicks kTime4 = base::TimeTicks() + base::Microseconds(8000);
 
   const double kValue1 = 10.0;
   const double kValue2 = 4.0;
   const double kValue3 = -5.0;
   const double kValue4 = 13.0;
 
-  const int64_t kEmptyDelta = base::TimeDelta().ToInternalValue();
-
   RollingAverage average(3);
-  EXPECT_EQ(kEmptyDelta, average.GetTimeDelta().ToInternalValue());
+  EXPECT_EQ(base::TimeDelta(), average.GetTimeDelta());
   EXPECT_EQ(0.0, average.GetValueDelta());
 
   average.AddSample(kValue1, kTime1);
-  EXPECT_EQ(kEmptyDelta, average.GetTimeDelta().ToInternalValue());
+  EXPECT_EQ(base::TimeDelta(), average.GetTimeDelta());
   EXPECT_EQ(0.0, average.GetValueDelta());
 
   average.AddSample(kValue2, kTime2);
-  EXPECT_EQ((kTime2 - kTime1).ToInternalValue(),
-            average.GetTimeDelta().ToInternalValue());
+  EXPECT_EQ((kTime2 - kTime1), average.GetTimeDelta());
   EXPECT_EQ(kValue2 - kValue1, average.GetValueDelta());
 
   average.AddSample(kValue3, kTime3);
-  EXPECT_EQ((kTime3 - kTime1).ToInternalValue(),
-            average.GetTimeDelta().ToInternalValue());
+  EXPECT_EQ((kTime3 - kTime1), average.GetTimeDelta());
   EXPECT_EQ(kValue3 - kValue1, average.GetValueDelta());
 
   average.AddSample(kValue4, kTime4);
-  EXPECT_EQ((kTime4 - kTime2).ToInternalValue(),
-            average.GetTimeDelta().ToInternalValue());
+  EXPECT_EQ((kTime4 - kTime2), average.GetTimeDelta());
   EXPECT_EQ(kValue4 - kValue2, average.GetValueDelta());
 }
 

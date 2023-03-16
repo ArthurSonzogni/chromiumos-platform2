@@ -28,7 +28,7 @@ class ThermalEventHandlerTest : public TestEnvironment {
                      {&thermal_devices_[0], &thermal_devices_[1]}),
                  &dbus_wrapper_) {
     handler_.clock_for_testing()->set_current_time_for_testing(
-        base::TimeTicks::FromInternalValue(1000));
+        base::TimeTicks() + base::Microseconds(1000));
   }
   ThermalEventHandlerTest(const ThermalEventHandlerTest&) = delete;
   ThermalEventHandlerTest& operator=(const ThermalEventHandlerTest&) = delete;
@@ -53,12 +53,12 @@ class ThermalEventHandlerTest : public TestEnvironment {
 
   // Tests that one ThermalEvent D-Bus signal has been sent and returns the
   // signal's |timestamp| field.
-  int64_t GetThermalEventTimestamp() {
+  base::TimeTicks GetThermalEventTimestamp() {
     ThermalEvent proto;
     EXPECT_EQ(1, dbus_wrapper_.num_sent_signals());
     EXPECT_TRUE(
         dbus_wrapper_.GetSentSignal(0, kThermalEventSignal, &proto, nullptr));
-    return proto.timestamp();
+    return base::TimeTicks() + base::Microseconds(proto.timestamp());
   }
 
   // Returns the current (fake) time.
@@ -88,7 +88,7 @@ TEST_F(ThermalEventHandlerTest, BasicThermalEvents) {
     thermal_devices_[0].set_thermal_state(state);
     thermal_devices_[0].NotifyObservers();
     EXPECT_EQ(DeviceThermalStateToProto(state), GetThermalEventThermalState());
-    EXPECT_EQ(Now().ToInternalValue(), GetThermalEventTimestamp());
+    EXPECT_EQ(Now(), GetThermalEventTimestamp());
     dbus_wrapper_.ClearSentSignals();
   }
 }
@@ -107,7 +107,7 @@ TEST_F(ThermalEventHandlerTest, ThermalEventNotChange) {
   thermal_devices_[0].NotifyObservers();
   EXPECT_EQ(DeviceThermalStateToProto(system::DeviceThermalState::kCritical),
             GetThermalEventThermalState());
-  EXPECT_EQ(Now().ToInternalValue(), GetThermalEventTimestamp());
+  EXPECT_EQ(Now(), GetThermalEventTimestamp());
   dbus_wrapper_.ClearSentSignals();
 
   // No thermal state change dbus signal because thermal_devices_[0] is always
@@ -155,7 +155,7 @@ TEST_F(ThermalEventHandlerTest, ThermalEventVoting) {
     thermal_devices_[1].NotifyObservers();
     EXPECT_EQ(DeviceThermalStateToProto(state.output),
               GetThermalEventThermalState());
-    EXPECT_EQ(Now().ToInternalValue(), GetThermalEventTimestamp());
+    EXPECT_EQ(Now(), GetThermalEventTimestamp());
     dbus_wrapper_.ClearSentSignals();
   }
 }
@@ -171,7 +171,7 @@ TEST_F(ThermalEventHandlerTest, IgnoreChargerWhenOnBattery) {
   thermal_devices_[1].NotifyObservers();
   EXPECT_EQ(DeviceThermalStateToProto(system::DeviceThermalState::kCritical),
             GetThermalEventThermalState());
-  EXPECT_EQ(Now().ToInternalValue(), GetThermalEventTimestamp());
+  EXPECT_EQ(Now(), GetThermalEventTimestamp());
   dbus_wrapper_.ClearSentSignals();
 
   // Charger: Critical, Processor: Fair, Power: Battery -> Fair.
@@ -179,7 +179,7 @@ TEST_F(ThermalEventHandlerTest, IgnoreChargerWhenOnBattery) {
   handler_.HandlePowerSourceChange(PowerSource::BATTERY);
   EXPECT_EQ(DeviceThermalStateToProto(system::DeviceThermalState::kFair),
             GetThermalEventThermalState());
-  EXPECT_EQ(Now().ToInternalValue(), GetThermalEventTimestamp());
+  EXPECT_EQ(Now(), GetThermalEventTimestamp());
   dbus_wrapper_.ClearSentSignals();
 
   // Charger: Serious, Processor: Fair, Power: Battery -> No change.
@@ -193,7 +193,7 @@ TEST_F(ThermalEventHandlerTest, IgnoreChargerWhenOnBattery) {
   handler_.HandlePowerSourceChange(PowerSource::AC);
   EXPECT_EQ(DeviceThermalStateToProto(system::DeviceThermalState::kSerious),
             GetThermalEventThermalState());
-  EXPECT_EQ(Now().ToInternalValue(), GetThermalEventTimestamp());
+  EXPECT_EQ(Now(), GetThermalEventTimestamp());
   dbus_wrapper_.ClearSentSignals();
 }
 
@@ -222,7 +222,7 @@ TEST_F(ThermalEventHandlerTest, GetThermalState) {
     ASSERT_TRUE(
         dbus::MessageReader(response.get()).PopArrayOfBytesAsProto(&proto));
     EXPECT_EQ(DeviceThermalStateToProto(state), proto.thermal_state());
-    EXPECT_EQ(Now().ToInternalValue(), proto.timestamp());
+    EXPECT_EQ(Now(), base::TimeTicks() + base::Microseconds(proto.timestamp()));
     dbus_wrapper_.ClearSentSignals();
     proto.Clear();
   }

@@ -1319,7 +1319,7 @@ void StateController::UpdateState() {
                 << util::TimeDeltaToString(time_until_idle) << " after "
                 << util::TimeDeltaToString(idle_duration);
       IdleActionImminent proto;
-      proto.set_time_until_idle_action(time_until_idle.ToInternalValue());
+      proto.set_time_until_idle_action(time_until_idle.InMicroseconds());
       dbus_wrapper_->EmitSignalWithProtocolBuffer(kIdleActionImminentSignal,
                                                   proto);
       sent_idle_warning_ = true;

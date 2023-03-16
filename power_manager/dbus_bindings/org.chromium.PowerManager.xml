@@ -143,14 +143,14 @@
     <method name="HandlePowerButtonAcknowledgment">
       <tp:docstring>
         The |timestamp_internal| arg is represented as the return value of
-        base::TimeTicks::ToInternalValue().
+        (|timestamp| - base::TimeTicks()).InMicroseconds().
       </tp:docstring>
       <arg name="timestamp_internal" direction="in" type="x" />
     </method>
     <method name="IgnoreNextPowerButtonPress">
       <tp:docstring>
         The |timeout_internal| arg is represented as the return value of
-        base::TimeDelta::ToInternalValue(). Setting it to 0 cancels a
+        base::TimeDelta::InMicroseconds(). Setting it to 0 cancels a
         previously set period.
       </tp:docstring>
       <arg name="timeout_internal" direction="in" type="x" />

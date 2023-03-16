@@ -73,7 +73,7 @@ const char* const kUdevSubsystemBAT1 = "BAT1";
 const char* const kUdevSubsystemUSBPD0 = "CROS_USBPD_CHARGER0";
 
 // Starting value used by |power_supply_| as "now".
-const base::TimeTicks kStartTime = base::TimeTicks::FromInternalValue(1000);
+const base::TimeTicks kStartTime = base::TimeTicks() + base::Microseconds(1000);
 
 // Invalid values for usb_type.
 const char* kInvalidUsbTypeValues[] = {

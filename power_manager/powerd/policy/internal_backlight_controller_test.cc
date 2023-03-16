@@ -787,7 +787,7 @@ TEST_F(InternalBacklightControllerTest, DockedMode) {
 TEST_F(InternalBacklightControllerTest, GiveUpOnBrokenAmbientLightSensor) {
   // Don't report any ambient light readings. As before, the controller
   // should avoid changing the backlight from its initial brightness.
-  init_time_ = base::TimeTicks::FromInternalValue(1000);
+  init_time_ = base::TimeTicks() + base::Microseconds(1000);
   report_initial_als_reading_ = false;
   Init(PowerSource::AC);
   EXPECT_EQ(initial_backlight_level_, backlight_.current_level());
@@ -1002,7 +1002,8 @@ TEST_F(InternalBacklightControllerTest, SetDisplayPowerBeforeBrightness) {
   // Tell the backlight and DisplayPowerSetter to use the same clock for
   // recording calls, and configure the clock to return increasing values.
   Clock clock;
-  clock.set_current_time_for_testing(base::TimeTicks::FromInternalValue(1000));
+  clock.set_current_time_for_testing(base::TimeTicks() +
+                                     base::Microseconds(1000));
   clock.set_time_step_for_testing(base::Milliseconds(1));
   backlight_.set_clock(&clock);
   display_power_setter_.set_clock(&clock);
@@ -1017,19 +1018,16 @@ TEST_F(InternalBacklightControllerTest, SetDisplayPowerBeforeBrightness) {
   const base::TimeTicks off_time =
       display_power_setter_.last_set_display_power_time();
   const base::TimeTicks zero_time = backlight_.last_set_brightness_level_time();
-  EXPECT_GT(off_time.ToInternalValue(), dim_time.ToInternalValue());
-  EXPECT_GT(zero_time.ToInternalValue(), off_time.ToInternalValue());
+  EXPECT_GT(off_time, dim_time);
+  EXPECT_GT(zero_time, off_time);
 
   // Suspend and start the resume process. Nothing should change yet since the
   // display was already (and is still) turned off for inactivity.
   controller_->SetSuspended(true);
   controller_->SetSuspended(false);
   controller_->SetDimmedForInactivity(false);
-  EXPECT_EQ(
-      off_time.ToInternalValue(),
-      display_power_setter_.last_set_display_power_time().ToInternalValue());
-  EXPECT_EQ(zero_time.ToInternalValue(),
-            backlight_.last_set_brightness_level_time().ToInternalValue());
+  EXPECT_EQ(off_time, display_power_setter_.last_set_display_power_time());
+  EXPECT_EQ(zero_time, backlight_.last_set_brightness_level_time());
 
   // Check that the display is turned on before the backlight level is restored.
   controller_->SetOffForInactivity(false);
@@ -1037,8 +1035,8 @@ TEST_F(InternalBacklightControllerTest, SetDisplayPowerBeforeBrightness) {
       display_power_setter_.last_set_display_power_time();
   const base::TimeTicks undim_time =
       backlight_.last_set_brightness_level_time();
-  EXPECT_GT(on_time.ToInternalValue(), zero_time.ToInternalValue());
-  EXPECT_GT(undim_time.ToInternalValue(), on_time.ToInternalValue());
+  EXPECT_GT(on_time, zero_time);
+  EXPECT_GT(undim_time, on_time);
 
   backlight_.set_clock(nullptr);
   display_power_setter_.set_clock(nullptr);

@@ -617,30 +617,34 @@ TEST_F(AdaptiveChargingControllerTest, TestGetChargeHistory) {
   // means that the "i + 1" for charge events created in that function are
   // changed to just "i".
   for (size_t i = 1; i < proto.charge_event().size(); i++) {
-    EXPECT_EQ(stored_charge_events[i].first,
-              (now - i * base::Hours(20)).ToInternalValue());
-    EXPECT_EQ(stored_charge_events[i].second, base::Hours(i).ToInternalValue());
+    EXPECT_EQ(base::Time::FromDeltaSinceWindowsEpoch(
+                  base::Microseconds(stored_charge_events[i].first)),
+              now - i * base::Hours(20));
+    EXPECT_EQ(base::Microseconds(stored_charge_events[i].second),
+              base::Hours(i));
   }
 
   // Check the start time and duration of the incomplete charge event.
-  EXPECT_EQ(stored_charge_events[0].first, now.ToInternalValue());
-  EXPECT_EQ(stored_charge_events[0].second,
-            base::TimeDelta().ToInternalValue());
+  EXPECT_EQ(base::Time::FromDeltaSinceWindowsEpoch(
+                base::Microseconds(stored_charge_events[0].first)),
+            now);
+  EXPECT_EQ(base::Microseconds(stored_charge_events[0].second),
+            base::TimeDelta());
 
   std::vector<int64_t> stored_midnights;
   EXPECT_EQ(proto.daily_history().size(), 15);
   for (auto& history : proto.daily_history()) {
     stored_midnights.push_back(history.utc_midnight());
-    EXPECT_EQ(history.time_on_ac(), base::Hours(5).ToInternalValue());
-    EXPECT_EQ(history.time_full_on_ac(), base::Hours(2).ToInternalValue());
-    EXPECT_EQ(history.hold_time_on_ac(), base::Hours(1).ToInternalValue());
+    EXPECT_EQ(base::Microseconds(history.time_on_ac()), base::Hours(5));
+    EXPECT_EQ(base::Microseconds(history.time_full_on_ac()), base::Hours(2));
+    EXPECT_EQ(base::Microseconds(history.hold_time_on_ac()), base::Hours(1));
   }
 
   std::sort(stored_midnights.begin(), stored_midnights.end());
   for (size_t i = 0; i < stored_midnights.size(); i++) {
-    EXPECT_EQ(
-        stored_midnights[i],
-        (now - base::Days(stored_midnights.size() - i - 1)).ToInternalValue());
+    EXPECT_EQ(base::Time::FromDeltaSinceWindowsEpoch(
+                  base::Microseconds(stored_midnights[i])),
+              now - base::Days(stored_midnights.size() - i - 1));
   }
 }
 

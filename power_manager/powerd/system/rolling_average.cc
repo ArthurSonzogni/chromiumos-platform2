@@ -18,9 +18,10 @@ RollingAverage::RollingAverage(size_t window_size) : window_size_(window_size) {
 void RollingAverage::AddSample(double value, const base::TimeTicks& time) {
   if (!samples_.empty() && time < samples_.back().time) {
     LOG(WARNING) << "Sample " << value << "'s timestamp ("
-                 << time.ToInternalValue() << ") precedes previously-"
-                 << "appended sample's timestamp ("
-                 << samples_.back().time.ToInternalValue() << ")";
+                 << (time - base::TimeTicks()).InMicroseconds()
+                 << ") precedes previously-appended sample's timestamp ("
+                 << (samples_.back().time - base::TimeTicks()).InMicroseconds()
+                 << ")";
   }
 
   while (samples_.size() >= window_size_)

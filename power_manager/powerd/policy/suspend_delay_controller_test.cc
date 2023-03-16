@@ -68,7 +68,7 @@ class SuspendDelayControllerTest : public TestEnvironment {
   // newly-created delay's ID.
   int RegisterSuspendDelay(base::TimeDelta timeout, const std::string& client) {
     RegisterSuspendDelayRequest request;
-    request.set_timeout(timeout.ToInternalValue());
+    request.set_timeout(timeout.InMicroseconds());
     request.set_description(client + "-desc");
     RegisterSuspendDelayReply reply;
     controller_.RegisterSuspendDelay(request, client, &reply);

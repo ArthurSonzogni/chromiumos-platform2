@@ -361,7 +361,7 @@ TEST_F(SuspenderTest, SuspendResume) {
   EXPECT_TRUE(
       dbus_wrapper_.GetSentSignal(0, kSuspendDoneSignal, &done_proto, nullptr));
   EXPECT_EQ(suspend_id, done_proto.suspend_id());
-  EXPECT_EQ(kDuration.ToInternalValue(), done_proto.suspend_duration());
+  EXPECT_EQ(kDuration, base::Microseconds(done_proto.suspend_duration()));
   EXPECT_EQ(done_proto.wakeup_type(), SuspendDone_WakeupType_OTHER);
   EXPECT_FALSE(delegate_.suspend_announced());
 
@@ -892,7 +892,7 @@ TEST_F(SuspenderTest, SendSuspendDoneAtStartupForAbandonedAttempt) {
   EXPECT_TRUE(
       dbus_wrapper_.GetSentSignal(0, kSuspendDoneSignal, &proto, nullptr));
   EXPECT_EQ(0, proto.suspend_id());
-  EXPECT_EQ(base::TimeDelta().ToInternalValue(), proto.suspend_duration());
+  EXPECT_EQ(base::TimeDelta(), base::Microseconds(proto.suspend_duration()));
   EXPECT_FALSE(delegate_.suspend_announced());
 }
 

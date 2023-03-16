@@ -25,7 +25,7 @@ class ActivityLoggerTest : public testing::Test {
   void Init(BaseActivityLogger* logger) {
     logger_ = logger;
     logger_->clock_for_test()->set_current_time_for_testing(
-        base::TimeTicks::FromInternalValue(100));  // Arbitrary.
+        base::TimeTicks() + base::Microseconds(100));  // Arbitrary.
     logger_->SetLogCallbackForTest(base::BindRepeating(
         &ActivityLoggerTest::SaveMessage, base::Unretained(this)));
   }

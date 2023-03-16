@@ -335,14 +335,16 @@ bool ChargeHistory::CopyToProtocolBuffer(ChargeHistoryState* proto) {
   CheckAndFixSystemTimeChange();
   for (auto& event : charge_events_) {
     ChargeHistoryState::ChargeEvent* charge_event = proto->add_charge_event();
-    charge_event->set_start_time(event.first.ToInternalValue());
-    charge_event->set_duration(event.second.ToInternalValue());
+    charge_event->set_start_time(
+        event.first.ToDeltaSinceWindowsEpoch().InMicroseconds());
+    charge_event->set_duration(event.second.InMicroseconds());
   }
 
   // Do not set the duration for incomplete ChargeEvents.
   if (ac_connect_time_ != base::Time()) {
     ChargeHistoryState::ChargeEvent* charge_event = proto->add_charge_event();
-    charge_event->set_start_time(ac_connect_time_.ToInternalValue());
+    charge_event->set_start_time(
+        ac_connect_time_.ToDeltaSinceWindowsEpoch().InMicroseconds());
   }
 
   // Add any missing days. This can happen if this function is called after a
@@ -357,13 +359,14 @@ bool ChargeHistory::CopyToProtocolBuffer(ChargeHistoryState* proto) {
   while (time_on_ac_it != time_on_ac_days_.end()) {
     ChargeHistoryState::DailyHistory* history = proto->add_daily_history();
     base::Time day_start = time_on_ac_it->first;
-    history->set_utc_midnight(day_start.ToInternalValue());
+    history->set_utc_midnight(
+        day_start.ToDeltaSinceWindowsEpoch().InMicroseconds());
 
     // Add in time for the current time on AC if an AC charger is connected.
     base::TimeDelta duration = time_on_ac_it->second;
     duration += DurationForDay(ac_connect_time_, day_start);
     duration = duration.FloorToMultiple(kChargeHistoryTimeInterval);
-    history->set_time_on_ac(duration.ToInternalValue());
+    history->set_time_on_ac(duration.InMicroseconds());
     time_on_ac_it++;
 
     // If this happens, we missed calling `AddZeroDurationChargeDays` somewhere.
@@ -374,7 +377,7 @@ bool ChargeHistory::CopyToProtocolBuffer(ChargeHistoryState* proto) {
       duration = time_full_on_ac_it->second;
       duration += DurationForDay(full_charge_time_, day_start);
       duration = duration.FloorToMultiple(kChargeHistoryTimeInterval);
-      history->set_time_full_on_ac(duration.ToInternalValue());
+      history->set_time_full_on_ac(duration.InMicroseconds());
       time_full_on_ac_it++;
     }
 
@@ -385,7 +388,7 @@ bool ChargeHistory::CopyToProtocolBuffer(ChargeHistoryState* proto) {
       duration = hold_time_on_ac_it->second;
       duration += DurationForDay(hold_charge_time_, day_start);
       duration = duration.FloorToMultiple(kChargeHistoryTimeInterval);
-      history->set_hold_time_on_ac(duration.ToInternalValue());
+      history->set_hold_time_on_ac(duration.InMicroseconds());
       hold_time_on_ac_it++;
     }
   }

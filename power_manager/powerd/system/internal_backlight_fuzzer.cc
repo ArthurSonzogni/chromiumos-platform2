@@ -71,7 +71,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
                        data_provider.ConsumeIntegral<int64_t>(),
                        data_provider.ConsumeIntegral<int64_t>());
   power_manager::system::InternalBacklight real_backlight;
-  const base::TimeTicks start_time = base::TimeTicks::FromInternalValue(10000);
+  const base::TimeTicks start_time =
+      base::TimeTicks() + base::Microseconds(10000);
   real_backlight.clock()->set_current_time_for_testing(start_time);
 
   // Try creating a backlight, but if the Init() fails, just return.

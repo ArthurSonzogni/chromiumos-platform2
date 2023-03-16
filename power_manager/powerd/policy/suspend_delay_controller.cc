@@ -58,9 +58,8 @@ void SuspendDelayController::RegisterSuspendDelay(
   int delay_id = next_delay_id_++;
 
   DelayInfo info;
-  // Timeout is sent as |ToInternalValue| from clients.
-  base::TimeDelta timeout =
-      base::TimeDelta::FromInternalValue(request.timeout());
+  // Timeout is sent as microseconds from clients.
+  base::TimeDelta timeout = base::Microseconds(request.timeout());
   if ((timeout < base::TimeDelta()) || (timeout > max_delay_timeout_)) {
     info.timeout = max_delay_timeout_;
   } else {

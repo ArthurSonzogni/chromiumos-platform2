@@ -48,10 +48,10 @@ namespace power_manager::metrics {
 class MetricsCollectorTest : public TestEnvironment {
  public:
   MetricsCollectorTest() : metrics_sender_(metrics_lib_) {
-    collector_.clock_.set_current_time_for_testing(
-        base::TimeTicks::FromInternalValue(1000));
+    collector_.clock_.set_current_time_for_testing(base::TimeTicks() +
+                                                   base::Microseconds(1000));
     collector_.clock_.set_current_boot_time_for_testing(
-        base::TimeTicks::FromInternalValue(2000));
+        base::TimeTicks() + base::Microseconds(2000));
     CHECK(temp_root_dir_.CreateUniqueTempDir());
     collector_.set_prefix_path_for_testing(temp_root_dir_.GetPath());
 
@@ -931,10 +931,10 @@ class AdaptiveChargingMetricsTest : public TestEnvironment {
 
  protected:
   void Init() {
-    collector_.clock_.set_current_time_for_testing(
-        base::TimeTicks::FromInternalValue(1000));
+    collector_.clock_.set_current_time_for_testing(base::TimeTicks() +
+                                                   base::Microseconds(1000));
     collector_.clock_.set_current_boot_time_for_testing(
-        base::TimeTicks::FromInternalValue(2000));
+        base::TimeTicks() + base::Microseconds(2000));
     collector_.Init(&prefs_, &display_backlight_controller_,
                     &keyboard_backlight_controller_, {},
                     /*first_run_after_boot=*/false);

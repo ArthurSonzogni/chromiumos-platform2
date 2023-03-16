@@ -115,7 +115,7 @@ class SuspendDelayRegisterer {
     dbus::MessageReader reader(signal);
     CHECK(reader.PopArrayOfBytesAsProto(&info));
     const base::TimeDelta duration =
-        base::TimeDelta::FromInternalValue(info.suspend_duration());
+        base::Microseconds(info.suspend_duration());
     LOG(INFO) << "Suspend attempt " << info.suspend_id() << " is complete; "
               << "system was suspended for " << duration.InMilliseconds()
               << " ms";
@@ -131,7 +131,7 @@ class SuspendDelayRegisterer {
   // Registers a suspend delay and returns the corresponding ID.
   void RegisterSuspendDelay() {
     power_manager::RegisterSuspendDelayRequest request;
-    request.set_timeout(base::Milliseconds(timeout_ms_).ToInternalValue());
+    request.set_timeout(base::Milliseconds(timeout_ms_).InMicroseconds());
     request.set_description(kSuspendDelayDescription);
     std::string method_name =
         dark_suspend_delay_ ? power_manager::kRegisterDarkSuspendDelayMethod

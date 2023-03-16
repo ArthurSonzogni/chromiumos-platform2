@@ -282,13 +282,13 @@ class StateControllerTest : public TestEnvironment {
     base::TimeTicks timeout_time = test_api_.action_timer_time();
     if (timeout_time == base::TimeTicks()) {
       LOG(ERROR) << "Ignoring request to trigger unscheduled timeout at "
-                 << now_.ToInternalValue();
+                 << (now_ - base::TimeTicks()).InMicroseconds();
       return false;
     }
     if (timeout_time != now_) {
       LOG(ERROR) << "Ignoring request to trigger timeout scheduled for "
-                 << timeout_time.ToInternalValue() << " at "
-                 << now_.ToInternalValue();
+                 << (timeout_time - base::TimeTicks()).InMicroseconds()
+                 << " at " << (now_ - base::TimeTicks()).InMicroseconds();
       return false;
     }
     test_api_.TriggerActionTimeout();
@@ -408,9 +408,8 @@ class StateControllerTest : public TestEnvironment {
       if (name == kIdleActionImminentSignal) {
         IdleActionImminent proto;
         EXPECT_TRUE(dbus_wrapper_.GetSentSignal(i, name, &proto, nullptr));
-        signals.push_back(
-            GetIdleActionImminentString(base::TimeDelta::FromInternalValue(
-                proto.time_until_idle_action())));
+        signals.push_back(GetIdleActionImminentString(
+            base::Microseconds(proto.time_until_idle_action())));
       } else if (name == kInactivityDelaysChangedSignal) {
         PowerManagementPolicy::Delays proto;
         EXPECT_TRUE(dbus_wrapper_.GetSentSignal(i, name, &proto, nullptr));
@@ -450,7 +449,7 @@ class StateControllerTest : public TestEnvironment {
   dbus::ObjectProxy* ml_decision_proxy_;    // owned by |dbus_wrapper_|
   dbus::ObjectProxy* hps_dbus_proxy_;       // owned by |dbus_wrapper_|
 
-  base::TimeTicks now_ = base::TimeTicks::FromInternalValue(1000);
+  base::TimeTicks now_ = base::TimeTicks() + base::Microseconds(1000);
 
   // Last delay that was passed to StepTimeAndTriggerTimeout().
   base::TimeDelta last_step_delay_;

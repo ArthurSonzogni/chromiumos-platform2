@@ -889,7 +889,7 @@ void Suspender::EmitSuspendDoneSignal(int suspend_request_id,
                                       bool hibernated) {
   SuspendDone proto;
   proto.set_suspend_id(suspend_request_id);
-  proto.set_suspend_duration(suspend_duration.ToInternalValue());
+  proto.set_suspend_duration(suspend_duration.InMicroseconds());
   proto.set_wakeup_type(wakeup_type);
   proto.set_deepest_state(hibernated ? SuspendDone_SuspendState_TO_DISK
                                      : SuspendDone_SuspendState_TO_RAM);

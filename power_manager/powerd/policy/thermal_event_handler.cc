@@ -67,7 +67,8 @@ void ThermalEventHandler::OnGetThermalStateMethodCall(
     dbus::ExportedObject::ResponseSender response_sender) {
   ThermalEvent protobuf;
   protobuf.set_thermal_state(DeviceThermalStateToProto(last_state_));
-  protobuf.set_timestamp(clock_->GetCurrentTime().ToInternalValue());
+  protobuf.set_timestamp(
+      (clock_->GetCurrentTime() - base::TimeTicks()).InMicroseconds());
   std::unique_ptr<dbus::Response> response =
       dbus::Response::FromMethodCall(method_call);
   dbus::MessageWriter writer(response.get());
@@ -98,7 +99,8 @@ void ThermalEventHandler::OnThermalChanged(
 
   ThermalEvent proto;
   proto.set_thermal_state(DeviceThermalStateToProto(new_state));
-  proto.set_timestamp(clock_->GetCurrentTime().ToInternalValue());
+  proto.set_timestamp(
+      (clock_->GetCurrentTime() - base::TimeTicks()).InMicroseconds());
   dbus_wrapper_->EmitSignalWithProtocolBuffer(kThermalEventSignal, proto);
 
   last_state_ = new_state;
