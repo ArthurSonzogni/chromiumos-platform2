@@ -31,6 +31,9 @@ namespace cryptohome {
 
 namespace {
 
+// Prefix for the smartphone (easyunlock, smartunlock) VaultKeyset label.
+constexpr char kEasyUnlockLabelPrefix[] = "easy-unlock-";
+
 // Construct the AuthFactor metadata based on AuthFactor type.
 bool GetAuthFactorMetadataWithType(const AuthFactorType& type,
                                    AuthFactorMetadata& metadata,
@@ -172,6 +175,20 @@ AuthFactorVaultKeysetConverter::VaultKeysetsToAuthFactorsAndKeyLabelData(
     std::unique_ptr<VaultKeyset> vk =
         keyset_management_->LoadVaultKeysetForUser(obfuscated_username, index);
     if (!vk) {
+      continue;
+    }
+
+    // If there is any EasyUnlock keyset when loading the AuthFactor map,
+    // we just want to delete it, not migrate to USS.
+    std::string label = vk->GetLabel();
+    if (label.rfind(kEasyUnlockLabelPrefix, 0) == 0) {
+      // Remove and check that it has been removed.
+      CryptohomeStatus status =
+          keyset_management_->ForceRemoveKeyset(obfuscated_username, index);
+      if (!status.ok()) {
+        LOG(ERROR) << "RemoveKeysetByLabel: failed to remove keyset file for "
+                      "EasyUnlock.";
+      }
       continue;
     }
 

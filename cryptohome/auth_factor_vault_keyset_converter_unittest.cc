@@ -10,6 +10,7 @@
 
 #include <map>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include <base/check.h>
@@ -57,6 +58,7 @@ constexpr char kLabel1[] = "label1";
 constexpr char kLabel2[] = "label2";
 constexpr char kUserPassword[] = "user_pass";
 constexpr char kCredsDir[] = "le_creds";
+constexpr char kEasyUnlockLabel[] = "easy-unlock-1";
 
 constexpr char kFirstIndex[] = "0";
 constexpr char kSecondIndex[] = "1";
@@ -294,6 +296,33 @@ TEST_F(AuthFactorVaultKeysetConverterTest,
   EXPECT_EQ(3, label_to_auth_factor_.size());
 
   EXPECT_EQ(kLabel0, label_to_auth_factor_[kLabel0]->label());
+
+  EXPECT_EQ(kLabel1, label_to_auth_factor_[kLabel1]->label());
+  EXPECT_EQ(AuthFactorType::kPassword, label_to_auth_factor_[kLabel1]->type());
+
+  EXPECT_EQ(kLabel2, label_to_auth_factor_[kLabel2]->label());
+  EXPECT_EQ(AuthFactorType::kPin, label_to_auth_factor_[kLabel2]->type());
+
+  EXPECT_TRUE(label_to_auth_factor_backup_.empty());
+}
+
+// Test that VaultKeysetsToAuthFactorsAndKeyLabelData does not list any
+// EasyUnlock based VaultKeysets
+TEST_F(AuthFactorVaultKeysetConverterTest,
+       ConvertToAuthFactorListEasyUnlockSkipped) {
+  KeysetSetUpWithKeyData(SetKeyData(kEasyUnlockLabel), kFirstIndex);
+  KeysetSetUpWithKeyData(SetKeyData(kLabel1), kSecondIndex);
+  KeysetSetUpWithKeyData(SetPinKeyData(kLabel2), kThirdIndex);
+
+  EXPECT_CALL(platform_, DeleteFileSecurely(VaultKeysetPath(
+                             user.obfuscated, std::stoi(kFirstIndex))));
+
+  EXPECT_EQ(user_data_auth::CRYPTOHOME_ERROR_NOT_SET,
+            converter_->VaultKeysetsToAuthFactorsAndKeyLabelData(
+                user.obfuscated, migrated_labels_, label_to_auth_factor_,
+                label_to_auth_factor_backup_));
+
+  EXPECT_EQ(2, label_to_auth_factor_.size());
 
   EXPECT_EQ(kLabel1, label_to_auth_factor_[kLabel1]->label());
   EXPECT_EQ(AuthFactorType::kPassword, label_to_auth_factor_[kLabel1]->type());

@@ -31,6 +31,9 @@ MockPlatform::MockPlatform()
   ON_CALL(*this, DeleteFileDurable(_))
       .WillByDefault(
           Invoke(fake_platform_.get(), &FakePlatform::DeleteFileDurable));
+  ON_CALL(*this, DeleteFileSecurely(_))
+      .WillByDefault(
+          Invoke(fake_platform_.get(), &FakePlatform::DeleteFileSecurely));
   ON_CALL(*this, EnumerateDirectoryEntries(_, _, _))
       .WillByDefault(Invoke(fake_platform_.get(),
                             &FakePlatform::EnumerateDirectoryEntries));

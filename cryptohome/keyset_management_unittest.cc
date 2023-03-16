@@ -89,7 +89,6 @@ constexpr char kUserPassword0[] = "user0_pass";
 constexpr char kCredDirName[] = "low_entropy_creds";
 constexpr char kPasswordLabel[] = "password";
 constexpr char kPinLabel[] = "lecred1";
-constexpr char kEasyUnlockLabel[] = "easy-unlock-1";
 
 constexpr char kWrongPasskey[] = "wrong pass";
 constexpr char kNewPasskey[] = "new pass";
@@ -1488,60 +1487,6 @@ TEST_F(KeysetManagementTest, AddResetSeed) {
 
   // Verify
   EXPECT_TRUE(init_vk_status.value()->HasWrappedResetSeed());
-}
-
-// Tests that AddResetSeedIfMissing() doesn't add a reset seed if the
-// VaultKeyset has smartunlock label
-TEST_F(KeysetManagementTest, NotAddingResetSeedToSmartUnlockKeyset) {
-  // Setup a vault keyset.
-  //
-  // Non-scrypt encryption would fail on missing reset seed, so use scrypt.
-  VaultKeyset vk;
-  vk.Initialize(&platform_, &crypto_);
-  vk.CreateFromFileSystemKeyset(file_system_keyset_);
-
-  KeyData key_data;
-  key_data.set_label(kEasyUnlockLabel);
-  vk.SetKeyData(key_data);
-
-  key_blobs_.vkk_key = brillo::SecureBlob(kInitialBlob64 /*derived_key*/);
-  key_blobs_.scrypt_chaps_key =
-      brillo::SecureBlob(kInitialBlob64 /*derived_key*/);
-  key_blobs_.scrypt_reset_seed_key =
-      brillo::SecureBlob(kInitialBlob64 /*derived_key*/);
-  ScryptAuthBlockState scrypt_state = {.salt = kInitialBlob32,
-                                       .chaps_salt = kInitialBlob32,
-                                       .reset_seed_salt = kInitialBlob32};
-  auth_state_->state = scrypt_state;
-
-  // Explicitly set |reset_seed_| to be empty.
-  vk.reset_seed_.clear();
-  ASSERT_THAT(vk.EncryptEx(key_blobs_, *auth_state_), IsOk());
-  ASSERT_TRUE(
-      vk.Save(users_[0].homedir_path.Append(kKeyFile).AddExtension("0")));
-
-  MountStatusOr<std::unique_ptr<VaultKeyset>> init_vk_status =
-      keyset_management_->GetValidKeysetWithKeyBlobs(
-          users_[0].obfuscated, std::move(key_blobs_), kEasyUnlockLabel);
-  ASSERT_THAT(init_vk_status, IsOk());
-  EXPECT_FALSE(init_vk_status.value()->HasWrappedResetSeed());
-  // Generate reset seed and add it to the VaultKeyset object. Need to generate
-  // the Keyblobs again since it is not available any more.
-  KeyBlobs key_blobs = {
-      .vkk_key = brillo::SecureBlob(kInitialBlob64 /*derived_key*/),
-      .scrypt_chaps_key = brillo::SecureBlob(kInitialBlob64 /*derived_key*/),
-      .scrypt_reset_seed_key =
-          brillo::SecureBlob(kInitialBlob64 /*derived_key*/)};
-  // Test
-  EXPECT_FALSE(
-      keyset_management_->AddResetSeedIfMissing(*init_vk_status.value()));
-  EXPECT_THAT(keyset_management_->EncryptAndSaveKeyset(
-                  *init_vk_status.value(), key_blobs, *auth_state_,
-                  users_[0].homedir_path.Append(kKeyFile).AddExtension("0")),
-              IsOk());
-
-  // Verify
-  EXPECT_FALSE(init_vk_status.value()->HasWrappedResetSeed());
 }
 
 }  // namespace cryptohome

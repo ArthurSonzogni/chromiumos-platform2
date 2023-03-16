@@ -50,13 +50,6 @@ using hwsec_foundation::status::StatusChain;
 
 namespace cryptohome {
 
-namespace {
-
-// Prefix for the smartphone (easyunlock, smartunlock) VaultKeyset label.
-constexpr char kEasyUnlockLabelPrefix[] = "easy-unlock-";
-
-}  // namespace
-
 KeysetManagement::KeysetManagement(
     Platform* platform,
     Crypto* crypto,
@@ -803,13 +796,6 @@ bool KeysetManagement::AddResetSeedIfMissing(VaultKeyset& vault_keyset) {
   // Don't add any other reset seed otherwise it may result in fake reset
   // secrets.
   if (vault_keyset.IsLECredential()) {
-    return false;
-  }
-
-  // Smartphones are not used for resetting a PIN counter, thus shouldn't have a
-  // reset seed.
-  std::string label = vault_keyset.GetLabel();
-  if (label.rfind(kEasyUnlockLabelPrefix, 0) == 0) {
     return false;
   }
 

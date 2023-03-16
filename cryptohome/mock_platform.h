@@ -95,6 +95,7 @@ class MockPlatform : public Platform {
   MOCK_METHOD(bool, DeleteFile, (const base::FilePath&), (override));
   MOCK_METHOD(bool, DeletePathRecursively, (const base::FilePath&), (override));
   MOCK_METHOD(bool, DeleteFileDurable, (const base::FilePath&), (override));
+  MOCK_METHOD(bool, DeleteFileSecurely, (const base::FilePath&), (override));
   MOCK_METHOD(bool, FileExists, (const base::FilePath&), (const, override));
   MOCK_METHOD(bool, DirectoryExists, (const base::FilePath&), (override));
   MOCK_METHOD(int, Access, (const base::FilePath&, uint32_t), (override));
