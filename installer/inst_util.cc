@@ -199,7 +199,8 @@ base::FilePath GetBlockDevFromPartitionDev(
   return base::FilePath(partition_dev.substr(0, i));
 }
 
-int GetPartitionFromPartitionDev(const string& partition_dev) {
+int GetPartitionFromPartitionDev(const base::FilePath& partition_dev_path) {
+  const std::string& partition_dev = partition_dev_path.value();
   size_t i = partition_dev.length();
   if (base::EndsWith(partition_dev, "_0", base::CompareCase::SENSITIVE)) {
     i -= 2;
