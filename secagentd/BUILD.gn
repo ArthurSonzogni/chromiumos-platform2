@@ -91,7 +91,7 @@ executable("secagentd") {
 
 # Install Upstart configuration.
 install_config("install_upstart_conf") {
-  sources = [ "secagentd.conf" ]
+  sources = [ "init/secagentd.conf" ]
   install_path = "/etc/init"
 }
 
