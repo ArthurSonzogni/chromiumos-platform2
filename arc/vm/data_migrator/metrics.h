@@ -28,7 +28,9 @@ enum class SetupResult {
   kMountFailure = 3,
   // Failed to start a new thread for MigrationHelper.
   kThreadStartFailure = 4,
-  kMaxValue = kThreadStartFailure,
+  // Failed to create /data/media with the casefold flag.
+  kDataMediaWithCasefoldSetupFailure = 5,
+  kMaxValue = kDataMediaWithCasefoldSetupFailure,
 };
 
 // The types of the location of files at which the migration failed. This is a

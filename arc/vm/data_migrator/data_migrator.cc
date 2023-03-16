@@ -22,6 +22,10 @@
 #include <cryptohome/platform.h>
 #include <dbus/bus.h>
 
+extern "C" {
+#include <ext2fs/ext2_fs.h>
+}
+
 #include "arc/vm/data_migrator/arcvm_data_migration_helper_delegate.h"
 #include "arc/vm/data_migrator/dbus_adaptors/org.chromium.ArcVmDataMigrator.h"
 #include "arc/vm/data_migrator/logging.h"
@@ -167,6 +171,21 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
     }
     mounted_ = true;
 
+    if (!CreateDataMediaWithCasefoldFlag()) {
+      LOG_AND_ADD_ERROR(LOG, error,
+                        "Failed to create /data/media with casefold flag");
+      metrics_.ReportSetupResult(
+          SetupResult::kDataMediaWithCasefoldSetupFailure);
+      // On failures, delete /data/media which should be an empty directory.
+      if (base::DeletePathRecursively(
+              base::FilePath(kDestinationMountPoint).Append("media"))) {
+        LOG(ERROR)
+            << "Failed to delete /data/media in the migration destination";
+      }
+      CleanupMount();
+      return false;
+    }
+
     // Unretained is safe to use here because |migration_thread_| will be joined
     // on the destruction of |this|.
     auto migrate = base::BindOnce(&DBusAdaptor::Migrate, base::Unretained(this),
@@ -187,9 +206,29 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
   // TODO(momohatt): Add StopMigration as a D-Bus method?
 
  private:
+  bool CreateDataMediaWithCasefoldFlag() {
+    const base::FilePath dest_data_media =
+        base::FilePath(kDestinationMountPoint).Append("media");
+
+    // Skip the setup if /data/media exists, assuming that it is already
+    // completed in the previous attempt.
+    if (base::DirectoryExists(dest_data_media)) {
+      return true;
+    }
+    // Other attributes (ownership, etc.) will be set up during the migration.
+    if (!base::CreateDirectory(dest_data_media)) {
+      LOG(ERROR) << "Failed to create /data/media";
+      return false;
+    }
+    if (!platform_.SetExtFileAttributes(dest_data_media, EXT4_CASEFOLD_FL)) {
+      LOG(ERROR) << "Failed to set ext4 casefold attribute";
+      return false;
+    }
+    return true;
+  }
+
   void Migrate(const base::FilePath& source_dir,
                const base::FilePath& status_files_dir) {
-    cryptohome::Platform platform;
     ArcVmDataMigrationHelperDelegate delegate(source_dir, &metrics_);
     constexpr uint64_t kMaxChunkSize = 128 * 1024 * 1024;
 
@@ -197,7 +236,7 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
       base::AutoLock lock(migration_helper_lock_);
       migration_helper_ =
           std::make_unique<cryptohome::data_migrator::MigrationHelper>(
-              &platform, &delegate, source_dir,
+              &platform_, &delegate, source_dir,
               base::FilePath(kDestinationMountPoint), status_files_dir,
               kMaxChunkSize);
     }
@@ -263,6 +302,7 @@ class DBusAdaptor : public org::chromium::ArcVmDataMigratorAdaptor,
 
   std::unique_ptr<base::Thread> migration_thread_;
   std::unique_ptr<cryptohome::data_migrator::MigrationHelper> migration_helper_;
+  cryptohome::Platform platform_;
   base::Lock migration_helper_lock_;
 
   ArcVmDataMigratorMetrics metrics_;
