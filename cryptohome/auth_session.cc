@@ -1051,18 +1051,124 @@ void AuthSession::AuthenticateAuthFactor(
                 CRYPTOHOME_ERROR_INVALID_ARGUMENT));
         return;
       }
-      // TODO(b/262308692): Implement the fingerprint auth factor selection.
-      // Locate the exact fingerprint template id through a biod dbus method,
-      // and use that template id to pick the right auth factor for
-      // |stored_auth_factors|. Each fingerprint template corresponds to one
-      // unique auth factor and the template id will be stored in the auth block
-      // state.
-      std::move(on_done).Run(MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(kLocAuthSessionLabelLookupUnimplemented),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
-          user_data_auth::CryptohomeErrorCode::
-              CRYPTOHOME_ERROR_NOT_IMPLEMENTED));
+
+      std::vector<AuthFactor> auth_factors;
+      // All the auth factors iterated here should have the same auth block
+      // type.
+      std::optional<AuthBlockType> auth_block_type;
+      for (const std::string& label : auth_factor_labels) {
+        // Load the auth factor and it should exist for authentication.
+        std::optional<AuthFactorMap::ValueView> stored_auth_factor =
+            auth_factor_map_.Find(label);
+        if (!stored_auth_factor) {
+          // This could happen for 2 reasons, either the user doesn't exist or
+          // the auth factor is not available for this user.
+          if (!user_exists_) {
+            // Attempting to authenticate a user that doesn't exist.
+            LOG(ERROR) << "Attempting to authenticate user that doesn't exist: "
+                       << username_;
+            std::move(on_done).Run(MakeStatus<CryptohomeError>(
+                CRYPTOHOME_ERR_LOC(
+                    kLocAuthSessionUserNotFoundInMultiLabelAuthAuthFactor),
+                ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+                user_data_auth::CryptohomeErrorCode::
+                    CRYPTOHOME_ERROR_ACCOUNT_NOT_FOUND));
+            return;
+          }
+          LOG(ERROR) << "Authentication factor not found: " << label;
+          std::move(on_done).Run(MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(
+                  kLocAuthSessionFactorNotFoundInMultiLabelAuthAuthFactor),
+              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+              user_data_auth::CryptohomeErrorCode::
+                  CRYPTOHOME_ERROR_KEY_NOT_FOUND));
+          return;
+        }
+
+        // Ensure that if an auth factor is found, the requested type matches
+        // what we have on disk for the user.
+        if (*request_auth_factor_type !=
+            stored_auth_factor->auth_factor().type()) {
+          LOG(ERROR)
+              << "Unexpected mismatch in type from label and auth_input.";
+          std::move(on_done).Run(MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(kLocAuthSessionMultiLabelMismatchedAuthTypes),
+              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+              user_data_auth::CryptohomeErrorCode::
+                  CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+          return;
+        }
+
+        std::optional<AuthBlockType> cur_auth_block_type =
+            auth_block_utility_->GetAuthBlockTypeFromState(
+                stored_auth_factor->auth_factor().auth_block_state());
+        if (!cur_auth_block_type.has_value()) {
+          LOG(ERROR) << "Failed to determine auth block type.";
+          std::move(on_done).Run(MakeStatus<CryptohomeCryptoError>(
+              CRYPTOHOME_ERR_LOC(
+                  kLocAuthSessionInvalidBlockTypeInAuthAuthFactor),
+              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+              CryptoError::CE_OTHER_CRYPTO));
+          return;
+        }
+        if (auth_block_type.has_value()) {
+          if (cur_auth_block_type.value() != auth_block_type.value()) {
+            LOG(ERROR) << "Unexpected mismatch in auth block types in auth "
+                          "factor candidates.";
+            std::move(on_done).Run(MakeStatus<CryptohomeCryptoError>(
+                CRYPTOHOME_ERR_LOC(
+                    kLocAuthSessionMismatchedBlockTypesInAuthAuthFactor),
+                ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+                CryptoError::CE_OTHER_CRYPTO));
+            return;
+          }
+        } else {
+          auth_block_type = cur_auth_block_type.value();
+        }
+
+        // Perform the storage type check here because we want to directly call
+        // AuthenticateViaUserSecretStash later on.
+        if (stored_auth_factor->storage_type() !=
+            AuthFactorStorageType::kUserSecretStash) {
+          LOG(ERROR) << "Multiple label arity auth factors are only supported "
+                        "with USS storage type.";
+          std::move(on_done).Run(MakeStatus<CryptohomeError>(
+              CRYPTOHOME_ERR_LOC(kLocAuthSessionMultiLabelInvalidStorageType),
+              ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+              user_data_auth::CryptohomeErrorCode::
+                  CRYPTOHOME_ERROR_INVALID_ARGUMENT));
+          return;
+        }
+
+        auth_factors.push_back(stored_auth_factor->auth_factor());
+      }
+
+      // auth_block_type is guaranteed to be non-null because we've checked
+      // auth_factor_labels's length above, and auth_block_type must be set in
+      // the first iteration of the loop.
+      DCHECK(auth_block_type.has_value());
+
+      CryptohomeStatusOr<AuthInput> auth_input =
+          CreateAuthInputForSelectFactor(*request_auth_factor_type);
+      if (!auth_input.ok()) {
+        std::move(on_done).Run(
+            MakeStatus<CryptohomeError>(
+                CRYPTOHOME_ERR_LOC(
+                    kLocAuthSessionAuthInputParseFailed4InAuthAuthFactor))
+                .Wrap(std::move(auth_input).err_status()));
+        return;
+      }
+
+      // Record current time for timing for how long AuthenticateAuthFactor will
+      // take.
+      auto auth_session_performance_timer =
+          std::make_unique<AuthSessionPerformanceTimer>(
+              kAuthSessionAuthenticateAuthFactorUSSTimer);
+      auth_block_utility_->SelectAuthFactorWithAuthBlock(
+          auth_block_type.value(), auth_input.value(), std::move(auth_factors),
+          base::BindOnce(&AuthSession::AuthenticateViaSelectedAuthFactor,
+                         weak_factory_.GetWeakPtr(), std::move(on_done),
+                         std::move(auth_session_performance_timer)));
       return;
     }
   }
@@ -1940,6 +2046,53 @@ CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForAdding(
   return std::move(auth_input.value());
 }
 
+CryptohomeStatusOr<AuthInput> AuthSession::CreateAuthInputForSelectFactor(
+    AuthFactorType auth_factor_type) {
+  AuthInput auth_input{};
+
+  if (NeedsRateLimiter(auth_factor_type)) {
+    // Load the USS container with the encrypted payload.
+    CryptohomeStatusOr<brillo::Blob> encrypted_uss =
+        user_secret_stash_storage_->LoadPersisted(obfuscated_username_);
+    if (!encrypted_uss.ok()) {
+      LOG(ERROR) << "Failed to load the user secret stash.";
+      return MakeStatus<CryptohomeError>(
+                 CRYPTOHOME_ERR_LOC(
+                     kLocAuthSessionLoadUSSFailedInAuthInputForSelect),
+                 user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
+          .Wrap(std::move(encrypted_uss).err_status());
+    }
+
+    CryptohomeStatusOr<UserMetadata> user_metadata =
+        UserSecretStash::GetUserMetadata(encrypted_uss.value());
+    if (!user_metadata.ok()) {
+      LOG(ERROR) << "Failed to load the user metadata.";
+      return MakeStatus<CryptohomeError>(
+                 CRYPTOHOME_ERR_LOC(
+                     kLocAuthSessionGetMetadataFailedInAuthInputForSelect),
+                 user_data_auth::CRYPTOHOME_ERROR_BACKING_STORE_FAILURE)
+          .Wrap(std::move(user_metadata).err_status());
+    }
+
+    // Currently fingerprint is the only auth factor type using rate
+    // limiter, so the field name isn't generic. We'll make it generic to any
+    // auth factor types in the future.
+    if (!user_metadata->fingerprint_rate_limiter_id.has_value()) {
+      LOG(ERROR) << "No rate limiter ID in user metadata.";
+      return MakeStatus<CryptohomeError>(
+          CRYPTOHOME_ERR_LOC(kLocAuthSessionNoRateLimiterInAuthInputForSelect),
+          ErrorActionSet(
+              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+          user_data_auth::CRYPTOHOME_ERROR_KEY_NOT_FOUND);
+    }
+
+    auth_input.rate_limiter_label =
+        user_metadata->fingerprint_rate_limiter_id.value();
+  }
+
+  return auth_input;
+}
+
 CredentialVerifier* AuthSession::AddCredentialVerifier(
     AuthFactorType auth_factor_type,
     const std::string& auth_factor_label,
@@ -2623,6 +2776,35 @@ void AuthSession::AuthenticateViaSingleFactor(
   AuthenticateViaVaultKeysetAndMigrateToUss(
       request_auth_factor_type, auth_factor_label, auth_input, metadata,
       std::move(auth_session_performance_timer), std::move(on_done));
+}
+
+void AuthSession::AuthenticateViaSelectedAuthFactor(
+    StatusCallback on_done,
+    std::unique_ptr<AuthSessionPerformanceTimer> auth_session_performance_timer,
+    CryptohomeStatus callback_error,
+    std::optional<AuthInput> auth_input,
+    std::optional<AuthFactor> auth_factor) {
+  if (!callback_error.ok() || !auth_input.has_value() ||
+      !auth_factor.has_value()) {
+    if (callback_error.ok()) {
+      callback_error = MakeStatus<CryptohomeCryptoError>(
+          CRYPTOHOME_ERR_LOC(kLocAuthSessionNullParamInAuthViaSelected),
+          ErrorActionSet({ErrorAction::kDevCheckUnexpectedState}),
+          CryptoError::CE_OTHER_CRYPTO,
+          user_data_auth::CryptohomeErrorCode::
+              CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+    }
+    LOG(ERROR) << "AuthFactor selection failed before deriving KeyBlobs.";
+    std::move(on_done).Run(
+        MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthSessionSelectionFailed))
+            .Wrap(std::move(callback_error)));
+    return;
+  }
+
+  AuthenticateViaUserSecretStash(auth_factor->label(), auth_input.value(),
+                                 std::move(auth_session_performance_timer),
+                                 auth_factor.value(), std::move(on_done));
 }
 
 void AuthSession::LoadUSSMainKeyAndFsKeyset(

@@ -306,6 +306,13 @@ class AuthSession final {
   CryptohomeStatusOr<AuthInput> CreateAuthInputForMigration(
       const AuthInput& auth_input, AuthFactorType auth_factor_type);
 
+  // Creates AuthInput for selecting the correct auth factor to be used for
+  // authentication. As in this case the auth factor hasn't been decided yet,
+  // the AuthInput will typically be simpler than Add and Authenticate cases,
+  // and derivable from solely the |auth_factor_type|.
+  CryptohomeStatusOr<AuthInput> CreateAuthInputForSelectFactor(
+      AuthFactorType auth_factor_type);
+
   // Initializes a ChallengeCredentialAuthInput, i.e.
   // {.public_key_spki_der, .challenge_signature_algorithms} from
   // the challenge_response_key values in in authorization
@@ -519,6 +526,17 @@ class AuthSession final {
       std::unique_ptr<AuthSessionPerformanceTimer>
           auth_session_performance_timer,
       StatusCallback on_done);
+
+  // Authenticates the user using the selected |auth_factor|. Used when the
+  // auth factor type takes multiple labels during authentication, and used as
+  // the callback for AuthBlockUtility::SelectAuthFactorWithAuthBlock.
+  void AuthenticateViaSelectedAuthFactor(
+      StatusCallback on_done,
+      std::unique_ptr<AuthSessionPerformanceTimer>
+          auth_session_performance_timer,
+      CryptohomeStatus callback_error,
+      std::optional<AuthInput> auth_input,
+      std::optional<AuthFactor> auth_factor);
 
   // Fetches a valid VaultKeyset for |obfuscated_username_| that matches the
   // label provided by key_data_.label(). The VaultKeyset is loaded and

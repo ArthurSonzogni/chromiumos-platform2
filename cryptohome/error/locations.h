@@ -1633,6 +1633,30 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthBlockSyncSelectFactorNotSupported = 3373,
   /* ./auth_blocks/auth_block_utility_impl.cc */
   kLocAuthBlockUtilNoAuthBlockInSelectAuthFactor = 3374,
+  /* ./auth_session.cc */
+  kLocAuthSessionUserNotFoundInMultiLabelAuthAuthFactor = 3375,
+  /* ./auth_session.cc */
+  kLocAuthSessionFactorNotFoundInMultiLabelAuthAuthFactor = 3376,
+  /* ./auth_session.cc */
+  kLocAuthSessionMultiLabelMismatchedAuthTypes = 3377,
+  /* ./auth_session.cc */
+  kLocAuthSessionInvalidBlockTypeInAuthAuthFactor = 3378,
+  /* ./auth_session.cc */
+  kLocAuthSessionMismatchedBlockTypesInAuthAuthFactor = 3379,
+  /* ./auth_session.cc */
+  kLocAuthSessionMultiLabelInvalidStorageType = 3380,
+  /* ./auth_session.cc */
+  kLocAuthSessionAuthInputParseFailed4InAuthAuthFactor = 3381,
+  /* ./auth_session.cc */
+  kLocAuthSessionLoadUSSFailedInAuthInputForSelect = 3382,
+  /* ./auth_session.cc */
+  kLocAuthSessionGetMetadataFailedInAuthInputForSelect = 3383,
+  /* ./auth_session.cc */
+  kLocAuthSessionNoRateLimiterInAuthInputForSelect = 3384,
+  /* ./auth_session.cc */
+  kLocAuthSessionNullParamInAuthViaSelected = 3385,
+  /* ./auth_session.cc */
+  kLocAuthSessionSelectionFailed = 3386,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.
@@ -1683,7 +1707,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionAuthInputParseFailed3InAuthAuthFactor = 3521,
   /* ./auth_session.cc */
   kLocAuthSessionMismatchedMultipLabelSizeAuthAuthFactor = 3522,
-  /* ./auth_session.cc */
+  /* =Obsolete= */
   kLocAuthSessionLabelLookupUnimplemented = 3523,
   /* ./userdataauth.cc */
   kLocUserDataMalformedRequestInAuthAuthFactor = 3524,
