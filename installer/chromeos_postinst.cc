@@ -608,7 +608,7 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       // WARNING: This doesn't work with upgrade from USB, rather than full
       // install/recovery. We don't have support for it as it'll increase the
       // complexity here, and only developers do upgrade from USB.
-      if (!RemovePackFiles("/var/lib/ureadahead")) {
+      if (!RemovePackFiles(base::FilePath("/var/lib/ureadahead"))) {
         LOG(ERROR) << "RemovePackFiles Failed.";
       }
 

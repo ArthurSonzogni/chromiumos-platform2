@@ -249,11 +249,11 @@ base::FilePath MakePartitionDev(const base::FilePath& block_dev_path,
 }
 
 // rm *pack from /dirname
-bool RemovePackFiles(const string& dirname) {
+bool RemovePackFiles(const base::FilePath& dirname) {
   DIR* dp;
   struct dirent* ep;
 
-  dp = opendir(dirname.c_str());
+  dp = opendir(dirname.value().c_str());
 
   if (dp == NULL)
     return false;
@@ -269,10 +269,10 @@ bool RemovePackFiles(const string& dirname) {
         (filename.compare(filename.size() - 4, 4, "pack") != 0))
       continue;
 
-    string full_filename = dirname + '/' + filename;
+    base::FilePath full_filename = dirname.Append(filename);
 
     LOG(INFO) << "Unlinked file: " << full_filename;
-    unlink(full_filename.c_str());
+    unlink(full_filename.value().c_str());
   }
 
   closedir(dp);

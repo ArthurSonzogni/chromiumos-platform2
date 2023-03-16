@@ -153,7 +153,7 @@ TEST(UtilTest, RemovePackFileTest) {
   EXPECT_EQ(Touch(base::FilePath("/tmp/PackFileTest/.foo.pack")), true);
 
   // Test
-  EXPECT_EQ(RemovePackFiles("/tmp/PackFileTest"), true);
+  EXPECT_EQ(RemovePackFiles(base::FilePath("/tmp/PackFileTest")), true);
 
   // Test to see which files were removed
   struct stat stats;
@@ -164,7 +164,7 @@ TEST(UtilTest, RemovePackFileTest) {
   EXPECT_EQ(stat("/tmp/PackFileTest/.foo.pack", &stats), 0);
 
   // Bad dir name
-  EXPECT_EQ(RemovePackFiles("/fuzzy"), false);
+  EXPECT_EQ(RemovePackFiles(base::FilePath("/fuzzy")), false);
 
   // Cleanup
   EXPECT_EQ(RunCommand({"rm", "-rf", "/tmp/PackFileTest"}), 0);
