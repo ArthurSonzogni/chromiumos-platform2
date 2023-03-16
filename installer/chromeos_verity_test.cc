@@ -41,7 +41,7 @@ TEST_F(ChromeOSVerityTest, VerityTest) {
   brillo::WriteToFile(device, buf.data(), buf.size());
   EXPECT_EQ(0, chromeos_verity(&mock_bht_,
                                /*alg=*/"",
-                               /*device=*/device.value(),
+                               /*device=*/device,
                                /*blocksize=*/kBlockSize,
                                /*fs_blocks=*/kNumBlocks,
                                /*salt=*/"",
@@ -63,7 +63,7 @@ TEST_F(ChromeOSVerityTest, VerityMultiplePageTest) {
   brillo::WriteToFile(device, buf.data(), buf.size());
   EXPECT_EQ(0, chromeos_verity(&mock_bht_,
                                /*alg=*/"",
-                               /*device=*/device.value(),
+                               /*device=*/device,
                                /*blocksize=*/kBlockSize,
                                /*fs_blocks=*/kNumBlocks,
                                /*salt=*/"",

@@ -111,10 +111,10 @@ bool SetImage(const InstallConfig& install_config) {
   LOG(INFO) << "Setting up verity.";
   LoggingTimerStart();
   verity::DmBht bht;
-  int result = chromeos_verity(&bht, verity_algorithm,
-                               install_config.root.device(), getpagesize(),
-                               (uint64_t)(atoi(rootfs_sectors.c_str()) / 8),
-                               salt, expected_hash, enable_rootfs_verification);
+  int result = chromeos_verity(
+      &bht, verity_algorithm, base::FilePath(install_config.root.device()),
+      getpagesize(), (uint64_t)(atoi(rootfs_sectors.c_str()) / 8), salt,
+      expected_hash, enable_rootfs_verification);
   LoggingTimerFinish();
 
   return result == 0;

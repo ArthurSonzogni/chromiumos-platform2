@@ -10,6 +10,8 @@
 
 #include <string>
 
+#include <base/files/file_path.h>
+
 #include <verity/dm-bht.h>
 
 /* chromeos_verity
@@ -23,13 +25,13 @@
  * @salt - ascii string with a salt value to add before calculating each hash
  * @expected - ascii string with the exptected final root hash value
  * @enforce_rootfs_verification - bool indicating whether we should complain if
- *   expected doesn't match
+ *   expected doesn't matchp
  * return - 0 for success, non-zero indicates failure
  *
  */
 int chromeos_verity(verity::DmBhtInterface* bht,
                     const std::string& alg,
-                    const std::string& device,
+                    const base::FilePath& device,
                     unsigned blocksize,
                     uint64_t fs_blocks,
                     const std::string& salt,

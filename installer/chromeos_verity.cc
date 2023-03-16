@@ -36,9 +36,9 @@ namespace {
 constexpr uint64_t IO_BUF_SIZE = 1 * 1024 * 1024;
 
 // Obtain LEB size of a UBI volume. Return -1 if |dev| is not a UBI volume.
-int64_t GetUbiLebSize(const std::string& dev) {
+int64_t GetUbiLebSize(const base::FilePath& dev) {
   struct stat stat_buf;
-  if (stat(dev.c_str(), &stat_buf)) {
+  if (stat(dev.value().c_str(), &stat_buf)) {
     PLOG(WARNING) << "Cannot stat " << dev;
     return -1;
   }
@@ -160,12 +160,13 @@ ssize_t PwriteToUbi(int fd,
   return nr_written;
 }
 
-ssize_t WriteHash(const std::string& dev,
+ssize_t WriteHash(const base::FilePath& dev,
                   const uint8_t* buf,
                   size_t size,
                   off64_t offset) {
   int64_t eraseblock_size = GetUbiLebSize(dev);
-  base::ScopedFD fd(HANDLE_EINTR(open(dev.c_str(), O_WRONLY | O_CLOEXEC)));
+  base::ScopedFD fd(
+      HANDLE_EINTR(open(dev.value().c_str(), O_WRONLY | O_CLOEXEC)));
   if (!fd.is_valid()) {
     PLOG(WARNING) << "Cannot open " << dev << " for writing";
     return -1;
@@ -192,7 +193,7 @@ typedef base::ScopedGeneric<struct verity::dm_bht*, ScopedDmBhtDestroyTraits>
 
 int chromeos_verity(verity::DmBhtInterface* bht,
                     const std::string& alg,
-                    const std::string& device,
+                    const base::FilePath& device,
                     unsigned blocksize,
                     uint64_t fs_blocks,
                     const std::string& salt,
@@ -228,7 +229,8 @@ int chromeos_verity(verity::DmBhtInterface* bht,
   memset(hash_buffer.get(), 0, hash_size);
   bht->SetBuffer(hash_buffer.get());
 
-  base::ScopedFD fd(HANDLE_EINTR(open(device.c_str(), O_RDONLY | O_CLOEXEC)));
+  base::ScopedFD fd(
+      HANDLE_EINTR(open(device.value().c_str(), O_RDONLY | O_CLOEXEC)));
   if (!fd.is_valid()) {
     PLOG(ERROR) << "error opening " << device;
     return errno;
