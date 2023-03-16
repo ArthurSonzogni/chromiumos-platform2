@@ -1657,6 +1657,8 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionNullParamInAuthViaSelected = 3385,
   /* ./auth_session.cc */
   kLocAuthSessionSelectionFailed = 3386,
+  /* ./auth_blocks/auth_block_utility_impl.cc */
+  kLocAuthBlockUtilPrepareForAddFingerprintNoService = 3387,
   //////////////////////////////////////////////////
   //// This is a separator block at value 3500
   //// See location_db.py for more info.
@@ -1691,7 +1693,7 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocAuthSessionTerminateInactiveAuthFactor = 3513,
   /* ./auth_blocks/fp_service.cc */
   kLocFpServiceCheckSessionStartCouldNotGetFpManager = 3514,
-  /* ./auth_blocks/auth_block_utility_impl.cc */
+  /* =Obsolete= */
   kLocAuthBlockUtilUnimplementedPrepareForAuthFingerprint = 3515,
   /* ./auth_session.cc */
   kLocAuthSessionMismatchedZeroLabelSizeAuthAuthFactor = 3516,

@@ -292,15 +292,20 @@ void AuthBlockUtilityImpl::PrepareAuthFactorForAuth(
       return;
     }
     case AuthFactorType::kFingerprint: {
-      // TODO(b/262308692): Not implemented for now.
-      CryptohomeStatus status = MakeStatus<CryptohomeError>(
-          CRYPTOHOME_ERR_LOC(
-              kLocAuthBlockUtilUnimplementedPrepareForAuthFingerprint),
-          ErrorActionSet(
-              {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
-          user_data_auth::CryptohomeErrorCode::
-              CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
-      std::move(callback).Run(std::move(status));
+      BiometricsAuthBlockService* bio_service = bio_service_getter_.Run();
+      if (!bio_service) {
+        CryptohomeStatus status = MakeStatus<CryptohomeError>(
+            CRYPTOHOME_ERR_LOC(
+                kLocAuthBlockUtilPrepareForAuthFingerprintNoService),
+            ErrorActionSet(
+                {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
+            user_data_auth::CryptohomeErrorCode::
+                CRYPTOHOME_ERROR_INVALID_ARGUMENT);
+        std::move(callback).Run(std::move(status));
+        return;
+      }
+      bio_service->StartAuthenticateSession(AuthFactorType::kFingerprint,
+                                            username, std::move(callback));
       return;
     }
     case AuthFactorType::kPassword:
@@ -332,11 +337,11 @@ void AuthBlockUtilityImpl::PrepareAuthFactorForAdd(
       if (!bio_service) {
         CryptohomeStatus status = MakeStatus<CryptohomeError>(
             CRYPTOHOME_ERR_LOC(
-                kLocAuthBlockUtilPrepareForAuthFingerprintNoService),
+                kLocAuthBlockUtilPrepareForAddFingerprintNoService),
             ErrorActionSet(
                 {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kAuth}),
             user_data_auth::CryptohomeErrorCode::
-                CRYPTOHOME_ERROR_NOT_IMPLEMENTED);
+                CRYPTOHOME_ERROR_INVALID_ARGUMENT);
         std::move(callback).Run(std::move(status));
         return;
       }

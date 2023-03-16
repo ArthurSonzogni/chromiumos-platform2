@@ -478,6 +478,44 @@ TEST_F(AuthBlockUtilityImplTest, PrepareFingerprintAddFailure) {
               Eq(user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL));
 }
 
+TEST_F(AuthBlockUtilityImplTest, PrepareFingerprintAuthSuccess) {
+  SetupBiometricsService();
+  MakeAuthBlockUtilityImpl();
+
+  // Setup.
+  EXPECT_CALL(*bio_processor_, StartAuthenticateSession(kObfuscated, _))
+      .WillOnce([](auto&&, auto&& callback) { std::move(callback).Run(true); });
+
+  // Test.
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      prepare_result;
+  auth_block_utility_impl_->PrepareAuthFactorForAuth(
+      AuthFactorType::kFingerprint, kObfuscated, prepare_result.GetCallback());
+
+  // Verify.
+  EXPECT_THAT(prepare_result.Get(), IsOk());
+}
+
+TEST_F(AuthBlockUtilityImplTest, PrepareFingerprintAuthFailure) {
+  SetupBiometricsService();
+  MakeAuthBlockUtilityImpl();
+
+  // Setup.
+  EXPECT_CALL(*bio_processor_, StartAuthenticateSession(kObfuscated, _))
+      .WillOnce(
+          [](auto&&, auto&& callback) { std::move(callback).Run(false); });
+
+  // Test.
+  TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
+      prepare_result;
+  auth_block_utility_impl_->PrepareAuthFactorForAuth(
+      AuthFactorType::kFingerprint, kObfuscated, prepare_result.GetCallback());
+
+  // Verify.
+  EXPECT_THAT(prepare_result.Get().status()->local_legacy_error(),
+              Eq(user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_ERROR_INTERNAL));
+}
+
 TEST_F(AuthBlockUtilityImplTest, CreatePasswordCredentialVerifier) {
   MakeAuthBlockUtilityImpl();
 
