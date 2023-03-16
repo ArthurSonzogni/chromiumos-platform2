@@ -74,6 +74,9 @@ constexpr char kPasswordLabel[] = "fake-password-label";
 constexpr char kPassword[] = "fake-password";
 constexpr char kNewPassword[] = "fake-new-password";
 
+constexpr char kPinLabel[] = "fake-pin-label";
+constexpr char kPin[] = "1234";
+
 constexpr char kRecoveryLabel[] = "fake-recovery-label";
 constexpr char kUserGaiaId[] = "fake-gaia-id";
 constexpr char kDeviceUserId[] = "fake-device-user-id";
@@ -154,6 +157,29 @@ CryptohomeStatus UpdatePasswordFactor(const std::string& label,
   request.mutable_auth_input()->mutable_password_input()->set_secret(
       new_password);
   return RunUpdateAuthFactor(request, auth_session);
+}
+
+CryptohomeStatus AddPinFactor(const std::string& label,
+                              const std::string& pin,
+                              AuthSession& auth_session) {
+  user_data_auth::AddAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  user_data_auth::AuthFactor& factor = *request.mutable_auth_factor();
+  factor.set_type(user_data_auth::AUTH_FACTOR_TYPE_PIN);
+  factor.set_label(label);
+  factor.mutable_pin_metadata();
+  request.mutable_auth_input()->mutable_pin_input()->set_secret(pin);
+  return RunAddAuthFactor(request, auth_session);
+}
+
+CryptohomeStatus AuthenticatePinFactor(const std::string& label,
+                                       const std::string& pin,
+                                       AuthSession& auth_session) {
+  user_data_auth::AuthenticateAuthFactorRequest request;
+  request.set_auth_session_id(auth_session.serialized_token());
+  request.set_auth_factor_label(label);
+  request.mutable_auth_input()->mutable_pin_input()->set_secret(pin);
+  return RunAuthenticateAuthFactor(request, auth_session);
 }
 
 CryptohomeStatus AddRecoveryFactor(AuthSession& auth_session) {
@@ -535,6 +561,70 @@ TEST_P(AuthSessionWithTpmSimulatorUssMigrationAgnosticTest,
         AuthenticatePasswordFactor(kPasswordLabel, kPassword, *auth_session),
         NotOk());
   }
+}
+
+// Test that updating via a previously added password works correctly: you can
+// authenticate via the new password but not via the old one. All this while Pin
+// is not migrated.
+TEST_P(AuthSessionWithTpmSimulatorUssMigrationAgnosticTest,
+       UpdatePasswordPartialMigration) {
+  auto create_auth_session = [this]() {
+    return AuthSession::Create(
+        kUsername, user_data_auth::AUTH_SESSION_FLAGS_NONE,
+        AuthIntent::kDecrypt, &platform_features_, backing_apis_);
+  };
+
+  // Arrange.
+  // Configure the creation via USS or VK, depending on the first test
+  // parameter.
+  SetToInitialStorageType();
+  {
+    // Create a user with a password factor.
+    std::unique_ptr<AuthSession> auth_session = create_auth_session();
+    ASSERT_TRUE(auth_session);
+    EXPECT_THAT(auth_session->OnUserCreated(), IsOk());
+    EXPECT_THAT(AddPasswordFactor(kPasswordLabel, kPassword, *auth_session),
+                IsOk());
+    EXPECT_THAT(AddPinFactor(kPinLabel, kPin, *auth_session), IsOk());
+  }
+  // Switch to the new backend (USS or VK) depending on the second test
+  // parameter).
+  SetToFinalStorageType();
+
+  // Act.
+  // Update the password factor after authenticating via the old password.
+  {
+    std::unique_ptr<AuthSession> auth_session = create_auth_session();
+    ASSERT_TRUE(auth_session);
+    EXPECT_THAT(
+        AuthenticatePasswordFactor(kPasswordLabel, kPassword, *auth_session),
+        IsOk());
+    EXPECT_THAT(
+        UpdatePasswordFactor(kPasswordLabel, kNewPassword, *auth_session),
+        IsOk());
+  }
+
+  // Assert.
+  auto try_authenticate = [&](const std::string& password) {
+    std::unique_ptr<AuthSession> auth_session = create_auth_session();
+    if (!auth_session) {
+      ADD_FAILURE() << "Failed to create AuthSession";
+      return MakeFakeCryptohomeError();
+    }
+    return AuthenticatePasswordFactor(kPasswordLabel, password, *auth_session);
+  };
+  // Check the old password isn't accepted, but the new one is.
+  EXPECT_THAT(try_authenticate(kPassword), NotOk());
+  EXPECT_THAT(try_authenticate(kNewPassword), IsOk());
+  // Check the same holds after switching back to the initial storage type.
+  SetToInitialStorageType();
+  EXPECT_THAT(try_authenticate(kPassword), NotOk());
+  EXPECT_THAT(try_authenticate(kNewPassword), IsOk());
+
+  // Expect Pin can be authenticated still.
+  std::unique_ptr<AuthSession> auth_session = create_auth_session();
+  ASSERT_TRUE(auth_session);
+  EXPECT_THAT(AuthenticatePinFactor(kPinLabel, kPin, *auth_session), IsOk());
 }
 
 }  // namespace
