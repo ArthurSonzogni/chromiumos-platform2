@@ -19,9 +19,9 @@ void TestConfigureInstall(const base::FilePath& install_dev,
                           const base::FilePath& install_dir,
                           bool expected_success,
                           const string& expected_slot,
-                          const string& expected_root,
-                          const string& expected_kernel,
-                          const string& expected_boot) {
+                          const base::FilePath& expected_root,
+                          const base::FilePath& expected_kernel,
+                          const base::FilePath& expected_boot) {
   InstallConfig install_config;
 
   BiosType expected_bios = BiosType::kSecure;
@@ -76,19 +76,27 @@ class InstallConfigTest : public ::testing::Test {};
 
 TEST(InstallConfigTest, ConfigureInstallTest) {
   TestConfigureInstall(base::FilePath("/dev/sda3"), base::FilePath("/mnt"),
-                       true, "A", "/dev/sda3", "/dev/sda2", "/dev/sda12");
+                       true, "A", base::FilePath("/dev/sda3"),
+                       base::FilePath("/dev/sda2"),
+                       base::FilePath("/dev/sda12"));
   TestConfigureInstall(base::FilePath("/dev/sda5"), base::FilePath("/mnt"),
-                       true, "B", "/dev/sda5", "/dev/sda4", "/dev/sda12");
+                       true, "B", base::FilePath("/dev/sda5"),
+                       base::FilePath("/dev/sda4"),
+                       base::FilePath("/dev/sda12"));
   TestConfigureInstall(base::FilePath("/dev/mmcblk0p3"), base::FilePath("/mnt"),
-                       true, "A", "/dev/mmcblk0p3", "/dev/mmcblk0p2",
-                       "/dev/mmcblk0p12");
+                       true, "A", base::FilePath("/dev/mmcblk0p3"),
+                       base::FilePath("/dev/mmcblk0p2"),
+                       base::FilePath("/dev/mmcblk0p12"));
   TestConfigureInstall(base::FilePath("/dev/mmcblk0p5"), base::FilePath("/mnt"),
-                       true, "B", "/dev/mmcblk0p5", "/dev/mmcblk0p4",
-                       "/dev/mmcblk0p12");
+                       true, "B", base::FilePath("/dev/mmcblk0p5"),
+                       base::FilePath("/dev/mmcblk0p4"),
+                       base::FilePath("/dev/mmcblk0p12"));
   TestConfigureInstall(base::FilePath("/dev/sda2"), base::FilePath("/mnt"),
-                       false, "", "", "", "");
+                       false, "", base::FilePath(), base::FilePath(),
+                       base::FilePath());
   TestConfigureInstall(base::FilePath("/dev/sda"), base::FilePath("/mnt"),
-                       false, "", "", "", "");
+                       false, "", base::FilePath(), base::FilePath(),
+                       base::FilePath());
 }
 
 TEST(InstallConfigTest, StrToBiosTypeTest) {

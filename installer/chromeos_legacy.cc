@@ -175,8 +175,7 @@ bool RunLegacyPostInstall(const InstallConfig& install_config) {
   if (!UpdateLegacyKernel(install_config))
     return false;
 
-  string kernel_config =
-      DumpKernelConfig(base::FilePath(install_config.kernel.device()));
+  string kernel_config = DumpKernelConfig(install_config.kernel.device());
   base::FilePath kernel_config_root =
       base::FilePath(ExtractKernelArg(kernel_config, "root"));
 
@@ -263,9 +262,9 @@ bool RunLegacyUBootPostInstall(const InstallConfig& install_config) {
 bool UpdateEfiBootloaders(const InstallConfig& install_config) {
   bool result = true;
   const base::FilePath src_dir =
-      base::FilePath(install_config.root.mount()).Append("boot/efi/boot");
+      install_config.root.mount().Append("boot/efi/boot");
   const base::FilePath dest_dir =
-      base::FilePath(install_config.boot.mount()).Append("efi/boot");
+      install_config.boot.mount().Append("efi/boot");
   base::FileEnumerator file_enum(src_dir, false, base::FileEnumerator::FILES,
                                  "*.efi");
   for (auto src = file_enum.Next(); !src.empty(); src = file_enum.Next()) {
@@ -298,8 +297,7 @@ bool StringToSlot(const std::string& slot_string, BootSlot* slot) {
 // Returns true if the boot grub.cfg file was successfully updated.
 bool UpdateEfiGrubCfg(const InstallConfig& install_config) {
   // Of the form: PARTUUID=XXX-YYY-ZZZ
-  string kernel_config =
-      DumpKernelConfig(base::FilePath(install_config.kernel.device()));
+  string kernel_config = DumpKernelConfig(install_config.kernel.device());
   string root_uuid = install_config.root.uuid();
   string kernel_config_dm = ExpandVerityArguments(kernel_config, root_uuid);
 
@@ -311,11 +309,10 @@ bool UpdateEfiGrubCfg(const InstallConfig& install_config) {
 
   // Path to the target grub.cfg to be updated in the EFI partition.
   const base::FilePath boot_grub_path =
-      base::FilePath(install_config.boot.mount()).Append("efi/boot/grub.cfg");
+      install_config.boot.mount().Append("efi/boot/grub.cfg");
   // Grub.cfg source in the new root filesystem.
   const base::FilePath root_grub_path =
-      base::FilePath(install_config.root.mount())
-          .Append("boot/efi/boot/grub.cfg");
+      install_config.root.mount().Append("boot/efi/boot/grub.cfg");
 
   EfiGrubCfg boot_cfg;
   if (!boot_cfg.LoadFile(boot_grub_path)) {

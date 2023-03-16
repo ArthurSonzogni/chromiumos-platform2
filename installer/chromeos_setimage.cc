@@ -61,8 +61,7 @@ bool SetImage(const InstallConfig& install_config) {
   // Instead, rootfs integrity will be validated on next boot through
   // the verified kernel configuration.
 
-  string kernel_config =
-      DumpKernelConfig(base::FilePath(install_config.kernel.device()));
+  string kernel_config = DumpKernelConfig(install_config.kernel.device());
 
   LOG(INFO) << "KERNEL_CONFIG: " << kernel_config.c_str();
 
@@ -106,15 +105,15 @@ bool SetImage(const InstallConfig& install_config) {
   bool enable_rootfs_verification = IsReadonly(kernel_config_root);
 
   if (!enable_rootfs_verification)
-    MakeFileSystemRw(base::FilePath(install_config.root.device()));
+    MakeFileSystemRw(install_config.root.device());
 
   LOG(INFO) << "Setting up verity.";
   LoggingTimerStart();
   verity::DmBht bht;
-  int result = chromeos_verity(
-      &bht, verity_algorithm, base::FilePath(install_config.root.device()),
-      getpagesize(), (uint64_t)(atoi(rootfs_sectors.c_str()) / 8), salt,
-      expected_hash, enable_rootfs_verification);
+  int result = chromeos_verity(&bht, verity_algorithm,
+                               install_config.root.device(), getpagesize(),
+                               (uint64_t)(atoi(rootfs_sectors.c_str()) / 8),
+                               salt, expected_hash, enable_rootfs_verification);
   LoggingTimerFinish();
 
   return result == 0;

@@ -62,7 +62,7 @@ bool ConfigureInstall(const base::FilePath& install_dev,
                       DeferUpdateAction defer_update_action,
                       bool force_update_firmware,
                       InstallConfig* install_config) {
-  Partition root = Partition(install_dev.value(), install_dir.value());
+  Partition root = Partition(install_dev, install_dir);
 
   string slot;
   switch (root.number()) {
@@ -78,10 +78,10 @@ bool ConfigureInstall(const base::FilePath& install_dev,
   }
 
   base::FilePath kernel_dev =
-      MakePartitionDev(base::FilePath(root.base_device()), root.number() - 1);
+      MakePartitionDev(root.base_device(), root.number() - 1);
 
   base::FilePath boot_dev =
-      MakePartitionDev(base::FilePath(root.base_device()), PART_NUM_EFI_SYSTEM);
+      MakePartitionDev(root.base_device(), PART_NUM_EFI_SYSTEM);
 
   // if we don't know the bios type, detect it. Errors are logged
   // by the detect method.
@@ -92,8 +92,8 @@ bool ConfigureInstall(const base::FilePath& install_dev,
   // Put the actual values on the result structure
   install_config->slot = slot;
   install_config->root = root;
-  install_config->kernel = Partition(kernel_dev.value());
-  install_config->boot = Partition(boot_dev.value(), "/tmp/boot_mnt");
+  install_config->kernel = Partition(kernel_dev);
+  install_config->boot = Partition(boot_dev, base::FilePath("/tmp/boot_mnt"));
   install_config->bios_type = bios_type;
   install_config->defer_update_action = defer_update_action;
   install_config->force_update_firmware = force_update_firmware;
@@ -209,7 +209,7 @@ int RunCr50Script(const base::FilePath& install_dir,
 // TODO(hungte) Replace the shell execution by native code (crosbug.com/25407).
 // Note that this returns an exit code, not bool success/failure.
 int FirmwareUpdate(const InstallConfig& install_config, bool is_update) {
-  base::FilePath install_dir = base::FilePath(install_config.root.mount());
+  base::FilePath install_dir = install_config.root.mount();
   base::FilePath command =
       install_dir.Append("usr/sbin/chromeos-firmwareupdate");
   if (!base::PathExists(command)) {
@@ -408,7 +408,7 @@ bool ESPPostInstall(const InstallConfig& install_config) {
       break;
   }
 
-  if (!base::CreateDirectory(base::FilePath(install_config.boot.mount()))) {
+  if (!base::CreateDirectory(install_config.boot.mount())) {
     LOG(ERROR) << "Failed to create mount dir for EFI System Partition.";
     return false;
   }
@@ -416,8 +416,8 @@ bool ESPPostInstall(const InstallConfig& install_config) {
   // Mount the EFI system partition.
   LOG(INFO) << "mount " << install_config.boot.device() << " to "
             << install_config.boot.mount();
-  if (mount(install_config.boot.device().c_str(),
-            install_config.boot.mount().c_str(), "vfat",
+  if (mount(install_config.boot.device().value().c_str(),
+            install_config.boot.mount().value().c_str(), "vfat",
             MS_NODEV | MS_NOEXEC | MS_NOSUID, nullptr) != 0) {
     PLOG(ERROR) << "Failed to mount " << install_config.boot.device() << " to "
                 << install_config.boot.mount();
@@ -486,7 +486,7 @@ bool ESPPostInstall(const InstallConfig& install_config) {
 
   // Unmount the EFI system partition.
   LOG(INFO) << "umount " << install_config.boot.mount();
-  if (umount(install_config.boot.mount().c_str()) != 0) {
+  if (umount(install_config.boot.mount().value().c_str()) != 0) {
     PLOG(ERROR) << "Failed to unmount " << install_config.boot.mount();
     success = false;
   }
@@ -516,8 +516,8 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       // TODO(dgarrett): Remove when chromium:216338 is fixed.
       // If this FS was mounted read-write, we can't do deltas from it. Mark the
       // FS as such
-      Touch(base::FilePath(install_config.root.mount() +
-                           "/.nodelta"));  // Ignore Error on purpose
+      Touch(install_config.root.mount().Append(
+          ".nodelta"));  // Ignore Error on purpose
 
       LOG(INFO) << "Setting boot target to " << install_config.root.device()
                 << ": Partition " << install_config.root.number() << ", Slot "
@@ -549,8 +549,7 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
 
   CgptManager cgpt_manager;
 
-  int result = cgpt_manager.Initialize(
-      base::FilePath(install_config.root.base_device()));
+  int result = cgpt_manager.Initialize(install_config.root.base_device());
   if (result != kCgptSuccess) {
     LOG(ERROR) << "Unable to initialize CgptManager().";
     return false;
@@ -631,7 +630,7 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       unlink(disk_fw_check_complete.c_str());
 
       if (!is_factory_install &&
-          !RunBoardPostInstall(base::FilePath(install_config.root.mount()))) {
+          !RunBoardPostInstall(install_config.root.mount())) {
         LOG(ERROR) << "Failed to perform board specific post install script.";
         // The comment starting "For Chromebook firmware..." says not to return
         // failure here. Looks like we're doing it anyway?
@@ -646,8 +645,8 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
   }
 
   // Use `--force_update_firmware` to bypass this tag check.
-  base::FilePath firmware_tag_file = base::FilePath(install_config.root.mount())
-                                         .Append("root/.force_update_firmware");
+  base::FilePath firmware_tag_file =
+      install_config.root.mount().Append("root/.force_update_firmware");
 
   bool attempt_firmware_update =
       (!is_factory_install && base::PathExists(firmware_tag_file));
@@ -706,20 +705,20 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
     int result = 0;
 
     // Check the device state to determine if the board id should be set.
-    if (RunCr50Script(base::FilePath(install_config.root.mount()),
-                      "cr50-set-board-id.sh", "check_device")) {
+    if (RunCr50Script(install_config.root.mount(), "cr50-set-board-id.sh",
+                      "check_device")) {
       LOG(INFO) << "Skip setting board id";
     } else {
       // Set the board id with unknown phase.
-      result = RunCr50Script(base::FilePath(install_config.root.mount()),
+      result = RunCr50Script(install_config.root.mount(),
                              "cr50-set-board-id.sh", "unknown");
       // cr50 set board id failure is not a reason to interrupt installation.
       if (result)
         LOG(ERROR) << "ignored: cr50-set-board-id failure: " << result;
     }
 
-    result = RunCr50Script(base::FilePath(install_config.root.mount()),
-                           "cr50-update.sh", install_config.root.mount());
+    result = RunCr50Script(install_config.root.mount(), "cr50-update.sh",
+                           install_config.root.mount().value());
     // cr50 update failure is not a reason for interrupting installation.
     if (result)
       LOG(WARNING) << "ignored: cr50-update failure: " << result;
@@ -773,7 +772,7 @@ bool RunPostInstall(const base::FilePath& install_dev,
   string lsb_contents;
   // If we can read the lsb-release we are updating TO, log it
   if (base::ReadFileToString(
-          base::FilePath(install_config.root.mount()).Append("etc/lsb-release"),
+          install_config.root.mount().Append("etc/lsb-release"),
           &lsb_contents)) {
     LOG(INFO) << "lsb-release inside the new rootfs:\n" << lsb_contents.c_str();
   }

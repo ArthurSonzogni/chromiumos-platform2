@@ -453,8 +453,7 @@ class EfiBootManager {
     std::vector<uint8_t> efidp;
 
     if (!efivar_->GenerateFileDevicePathFromEsp(
-            base::FilePath(boot_dev.base_device()), boot_dev.number(),
-            boot_file, efidp)) {
+            boot_dev.base_device(), boot_dev.number(), boot_file, efidp)) {
       LOG(ERROR)
           << "Can't decide on desired entry: couldn't determine device path";
       return std::nullopt;
