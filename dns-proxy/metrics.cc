@@ -37,6 +37,8 @@ constexpr char kProbeResultsTemplate[] =
     "Network.DnsProxy.PlainTextProbe.$1.Results";
 constexpr char kProbeErrorsTemplate[] =
     "Network.DnsProxy.PlainTextProbe.$1.Errors";
+constexpr char kProbeRetriesUntilSuccess[] =
+    "Network.DnsProxy.PlainTextProbe.$1.RetriesUntilSuccess";
 constexpr char kProbeResultsWithRetriesTemplate[] =
     "Network.DnsProxy.PlainTextProbe.$1.ResultsWithRetries";
 constexpr char kProbeFailedRetriesTemplate[] =
@@ -242,11 +244,15 @@ void Metrics::RecordProbeResult(sa_family_t family,
       base::ReplaceStringPlaceholders(kProbeResultsTemplate, {fs}, nullptr);
   auto result_retry_name = base::ReplaceStringPlaceholders(
       kProbeResultsWithRetriesTemplate, {fs}, nullptr);
+  auto retries_until_success_name =
+      base::ReplaceStringPlaceholders(kProbeRetriesUntilSuccess, {fs}, nullptr);
 
   // Record success metrics.
   if (error == Metrics::QueryError::kNone) {
     metrics_.SendEnumToUMA(result_name, Metrics::QueryResult::kSuccess);
     metrics_.SendEnumToUMA(result_retry_name, Metrics::QueryResult::kSuccess);
+    metrics_.SendToUMA(retries_until_success_name, num_attempts, 0,
+                       kProbeRetriesMax, kProbeRetriesBuckets);
     return;
   }
 
