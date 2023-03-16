@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
   if (args.size() > 2) {
     int optind = 0;
     string command = args[optind++];
-    string dev = args[optind++];
+    base::FilePath dev = base::FilePath(args[optind++]);
     string s_part_no = args[optind++];
     int part_no = 0;
     if (!base::StringToInt(s_part_no, &part_no)) {

@@ -16,20 +16,18 @@
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 
-using std::string;
-
 namespace brillo {
 
 namespace installer {
 
-bool RemoveNandPartition(const string& dev, int partno) {
+bool RemoveNandPartition(const base::FilePath& dev, int partno) {
   // We use /dev/mtd0 as the "master" device.
   if (partno <= 0) {
     LOG(INFO) << "Partition number " << partno << " is not greater than 0";
     return false;
   }
 
-  base::ScopedFD fd(open(dev.c_str(), O_RDWR | O_CLOEXEC));
+  base::ScopedFD fd(open(dev.value().c_str(), O_RDWR | O_CLOEXEC));
   if (!fd.is_valid()) {
     PLOG(ERROR) << "Cannot open " << dev;
     return false;
@@ -52,7 +50,7 @@ bool RemoveNandPartition(const string& dev, int partno) {
   return r == 0;
 }
 
-bool AddNandPartition(const std::string& dev,
+bool AddNandPartition(const base::FilePath& dev,
                       int partno,
                       uint64_t offset,
                       uint64_t length) {
@@ -62,7 +60,7 @@ bool AddNandPartition(const std::string& dev,
     return false;
   }
 
-  base::ScopedFD fd(open(dev.c_str(), O_RDWR | O_CLOEXEC));
+  base::ScopedFD fd(open(dev.value().c_str(), O_RDWR | O_CLOEXEC));
   if (!fd.is_valid()) {
     PLOG(ERROR) << "Cannot open " << dev;
     return false;
