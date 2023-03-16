@@ -100,6 +100,8 @@ constexpr char kCreateAuthBlockTypeHistogram[] =
     "Cryptohome.CreateAuthBlockType";
 constexpr char kDeriveAuthBlockTypeHistogram[] =
     "Cryptohome.DeriveAuthBlockType";
+constexpr char kSelectFactorAuthBlockTypeHistogram[] =
+    "Cryptohome.SelectFactorAuthBlockType";
 constexpr char kLegacyCodePathUsageHistogramPrefix[] =
     "Cryptohome.LegacyCodePathUsage";
 constexpr char kVaultKeysetMetric[] = "Cryptohome.VaultKeysetMetric";
@@ -745,6 +747,15 @@ void ReportDeriveAuthBlock(AuthBlockType type) {
     return;
   }
   g_metrics->SendEnumToUMA(kDeriveAuthBlockTypeHistogram,
+                           static_cast<int>(type),
+                           static_cast<int>(kAuthBlockTypeMaxValue) + 1);
+}
+
+void ReportSelectFactorAuthBlock(AuthBlockType type) {
+  if (!g_metrics) {
+    return;
+  }
+  g_metrics->SendEnumToUMA(kSelectFactorAuthBlockTypeHistogram,
                            static_cast<int>(type),
                            static_cast<int>(kAuthBlockTypeMaxValue) + 1);
 }

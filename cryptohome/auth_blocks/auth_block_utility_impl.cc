@@ -448,6 +448,7 @@ void AuthBlockUtilityImpl::SelectAuthFactorWithAuthBlock(
              std::nullopt, std::nullopt);
     return;
   }
+  ReportSelectFactorAuthBlock(auth_block_type);
 
   // This lambda functions to keep the auth_block reference valid until
   // the results are returned through select_callback.

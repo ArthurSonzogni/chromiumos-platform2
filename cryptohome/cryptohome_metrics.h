@@ -575,6 +575,9 @@ void ReportCreateAuthBlock(AuthBlockType type);
 // Reports which kinds of auth block we are used to derive.
 void ReportDeriveAuthBlock(AuthBlockType type);
 
+// Reports which kinds of auth block we are used to select auth factor.
+void ReportSelectFactorAuthBlock(AuthBlockType type);
+
 // Reports which code paths are being used today and performing what actions.
 void ReportUsageOfLegacyCodePath(LegacyCodePathLocation location, bool result);
 
