@@ -174,15 +174,19 @@ bool FakeStream::CopyBuffer(FrameBuffer& buffer,
 
   CHECK_EQ(mapped_buffer->num_planes(), mapped_frame_buffer->num_planes());
   for (size_t i = 0; i < mapped_buffer->num_planes(); i++) {
-    // Since the camera3_jpeg_blob_t "header" is located at the end of the
-    // buffer, we requires the output to be the same size as the cached buffer.
-    // They should both be the size of jpeg_max_size_.
-    // TODO(pihsun): Only copy the JPEG part and append the camera3_jpeg_blob_t
-    // per frame?
     auto src_plane = mapped_buffer->plane(i);
     auto dst_plane = mapped_frame_buffer->plane(i);
-    CHECK_EQ(src_plane.size, dst_plane.size);
-    memcpy(dst_plane.addr, src_plane.addr, dst_plane.size);
+    if (format_ == HAL_PIXEL_FORMAT_BLOB) {
+      // Since the camera3_jpeg_blob_t "header" is located at the end of the
+      // buffer, we requires the output to be the same size as the cached
+      // buffer. They should both be the size of jpeg_max_size_.
+      // TODO(pihsun): Only copy the JPEG part and append the
+      // camera3_jpeg_blob_t per frame?
+      CHECK_EQ(src_plane.size, dst_plane.size);
+    } else {
+      CHECK_LE(src_plane.size, dst_plane.size);
+    }
+    memcpy(dst_plane.addr, src_plane.addr, src_plane.size);
   }
 
   return true;
