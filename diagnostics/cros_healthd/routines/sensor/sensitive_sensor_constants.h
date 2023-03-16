@@ -16,6 +16,8 @@ inline constexpr char kSensitiveSensorRoutineFailedUnexpectedlyMessage[] =
     "Sensitive sensor routine failed unexpectedly.";
 inline constexpr char kSensitiveSensorRoutineFailedMessage[] =
     "Sensitive sensor routine failed to pass all sensors.";
+inline constexpr char kSensitiveSensorRoutineFailedCheckConfigMessage[] =
+    "Sensitive sensor routine failed to pass configuration check.";
 
 // Supported sensor types
 inline constexpr char kSensitiveSensorRoutineTypeAccel[] = "Accel";

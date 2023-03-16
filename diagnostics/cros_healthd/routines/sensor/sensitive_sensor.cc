@@ -134,8 +134,10 @@ base::Value::Dict SensitiveSensorRoutine::SensorDetail::GetDetailValue(
   return sensor_output;
 }
 
-SensitiveSensorRoutine::SensitiveSensorRoutine(MojoService* const mojo_service)
-    : mojo_service_(mojo_service) {
+SensitiveSensorRoutine::SensitiveSensorRoutine(
+    MojoService* const mojo_service, SystemConfigInterface* const system_config)
+    : mojo_service_(mojo_service),
+      sensor_checker_{mojo_service, system_config} {
   DCHECK(mojo_service);
 
   observer_receiver_set_.set_disconnect_handler(base::BindRepeating(
@@ -220,13 +222,29 @@ void SensitiveSensorRoutine::PopulateStatusUpdate(
 void SensitiveSensorRoutine::HandleGetAllDeviceIdsResponse(
     const base::flat_map<int32_t, std::vector<cros::mojom::DeviceType>>&
         ids_types) {
-  for (const auto& id_types : ids_types) {
-    auto types = FilterSupportedTypes(id_types.second);
+  sensor_checker_.VerifySensorInfo(
+      ids_types,
+      base::BindOnce(&SensitiveSensorRoutine::HandleVerificationResponse,
+                     weak_ptr_factory_.GetWeakPtr(), ids_types));
+}
+
+void SensitiveSensorRoutine::HandleVerificationResponse(
+    const base::flat_map<int32_t, std::vector<cros::mojom::DeviceType>>&
+        ids_types,
+    bool is_verfied) {
+  if (!is_verfied) {
+    SetResultAndStop(mojom::DiagnosticRoutineStatusEnum::kError,
+                     kSensitiveSensorRoutineFailedCheckConfigMessage);
+    return;
+  }
+
+  for (const auto& [sensor_id, sensor_types] : ids_types) {
+    auto types = FilterSupportedTypes(sensor_types);
     if (types.empty())
       continue;
 
-    pending_sensors_[id_types.first] = {.types = types};
-    InitSensorDevice(id_types.first);
+    pending_sensors_[sensor_id] = {.types = types};
+    InitSensorDevice(sensor_id);
   }
   if (pending_sensors_.empty())
     OnRoutineFinished();

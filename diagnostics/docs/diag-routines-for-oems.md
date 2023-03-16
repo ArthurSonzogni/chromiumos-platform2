@@ -1265,6 +1265,7 @@ Status message: Sensitive sensor routine passed.
 Errors:
 - `Sensitive sensor routine failed unexpectedly.`
 - `Sensitive sensor routine failed to pass all sensors.`
+- `Sensitive sensor routine failed to pass configuration check.`
 
 ## LED Routines
 

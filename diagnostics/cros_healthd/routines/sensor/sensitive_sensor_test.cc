@@ -35,14 +35,18 @@ class SensitiveSensorRoutineTest : public testing::Test {
 
   void SetUp() override {
     mock_context_.fake_mojo_service()->InitializeFakeMojoService();
-    routine_ =
-        std::make_unique<SensitiveSensorRoutine>(mock_context_.mojo_service());
+    routine_ = std::make_unique<SensitiveSensorRoutine>(
+        mock_context_.mojo_service(), mock_context_.fake_system_config());
   }
 
   base::test::TaskEnvironment* task_environment() { return &task_environment_; }
 
   FakeSensorService& fake_sensor_service() {
     return mock_context_.fake_mojo_service()->fake_sensor_service();
+  }
+
+  FakeSystemConfig* fake_system_config() {
+    return mock_context_.fake_system_config();
   }
 
   void CheckRoutineUpdate(uint32_t progress_percent,
@@ -90,8 +94,8 @@ class SensitiveSensorRoutineTest : public testing::Test {
       base::OnceClosure remote_on_bound = base::DoNothing(),
       std::vector<int32_t> failed_indices = {}) {
     auto device = std::make_unique<FakeSensorDevice>(
-        std::nullopt, std::nullopt, channels, failed_indices,
-        std::move(remote_on_bound));
+        /*name=*/std::nullopt, /*location=*/cros::mojom::kLocationBase,
+        channels, failed_indices, std::move(remote_on_bound));
     auto& remote = device->observer();
     fake_sensor_service().SetSensorDevice(device_id, std::move(device));
     return remote;
@@ -216,12 +220,28 @@ TEST_F(SensitiveSensorRoutineTest, RoutineSuccessWithMultipleSensors) {
 
 // Test that the SensitiveSensorRoutine can be run successfully without sensor.
 TEST_F(SensitiveSensorRoutineTest, RoutineSuccessWithoutSensor) {
+  fake_sensor_service().SetIdsTypes({});
   StartRoutine();
 
   // Wait for the routine to finish.
   task_environment()->RunUntilIdle();
   CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kPassed,
                      kSensitiveSensorRoutinePassedMessage,
+                     ConstructRoutineOutput());
+}
+
+// Test that the SensitiveSensorRoutine returns a kError status when the config
+// check is failed.
+TEST_F(SensitiveSensorRoutineTest, RoutineConfigCheckError) {
+  fake_sensor_service().SetIdsTypes({});
+  // Setup wrong configuration.
+  fake_system_config()->SetSensor(kBaseAccelerometer, true);
+  StartRoutine();
+
+  // Wait for the error to occur.
+  task_environment()->RunUntilIdle();
+  CheckRoutineUpdate(100, mojom::DiagnosticRoutineStatusEnum::kError,
+                     kSensitiveSensorRoutineFailedCheckConfigMessage,
                      ConstructRoutineOutput());
 }
 

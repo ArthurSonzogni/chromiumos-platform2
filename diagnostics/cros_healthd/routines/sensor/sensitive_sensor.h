@@ -18,7 +18,9 @@
 
 #include "diagnostics/cros_healthd/routines/diag_routine_with_status.h"
 #include "diagnostics/cros_healthd/routines/sensor/sensitive_sensor_constants.h"
+#include "diagnostics/cros_healthd/routines/sensor/sensor_config_checker.h"
 #include "diagnostics/cros_healthd/system/mojo_service.h"
+#include "diagnostics/cros_healthd/system/system_config_interface.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
 
 namespace diagnostics {
@@ -31,7 +33,8 @@ class SensitiveSensorRoutine final
     : public DiagnosticRoutineWithStatus,
       public cros::mojom::SensorDeviceSamplesObserver {
  public:
-  explicit SensitiveSensorRoutine(MojoService* const mojo_service);
+  explicit SensitiveSensorRoutine(MojoService* const mojo_service,
+                                  SystemConfigInterface* const system_config);
   SensitiveSensorRoutine(const SensitiveSensorRoutine&) = delete;
   SensitiveSensorRoutine& operator=(const SensitiveSensorRoutine&) = delete;
   ~SensitiveSensorRoutine() override;
@@ -62,6 +65,12 @@ class SensitiveSensorRoutine final
   void HandleGetAllDeviceIdsResponse(
       const base::flat_map<int32_t, std::vector<cros::mojom::DeviceType>>&
           ids_types);
+
+  // Handle the response of sensor verification from the config checker.
+  void HandleVerificationResponse(
+      const base::flat_map<int32_t, std::vector<cros::mojom::DeviceType>>&
+          ids_types,
+      bool is_verfied);
 
   // Initialize sensor device to read samples.
   void InitSensorDevice(int32_t sensor_id);
@@ -96,6 +105,9 @@ class SensitiveSensorRoutine final
 
   // Unowned. Should outlive this instance.
   MojoService* const mojo_service_;
+  // Used to check if any sensor is missing by iioservice by checking static
+  // configuration.
+  SensorConfigChecker sensor_checker_;
   // Details of the passed sensors and failed sensors, stored in |output| of
   // |response| and reported in status updates if requested. Also used to
   // calculate the progress percentage.

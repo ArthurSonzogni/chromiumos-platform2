@@ -276,7 +276,8 @@ CrosHealthdRoutineFactoryImpl::MakeArcDnsResolutionRoutine() {
 
 std::unique_ptr<DiagnosticRoutine>
 CrosHealthdRoutineFactoryImpl::MakeSensitiveSensorRoutine() {
-  return std::make_unique<SensitiveSensorRoutine>(context_->mojo_service());
+  return std::make_unique<SensitiveSensorRoutine>(context_->mojo_service(),
+                                                  context_->system_config());
 }
 
 std::unique_ptr<DiagnosticRoutine>

@@ -27,10 +27,19 @@ void FakeSensorDevice::SetTimeout(uint32_t timeout) {
 void FakeSensorDevice::FakeSensorDevice::GetAttributes(
     const std::vector<std::string>& attr_names,
     GetAttributesCallback callback) {
-  CHECK_EQ(attr_names.size(), 2);
-  CHECK_EQ(attr_names[0], cros::mojom::kDeviceName);
-  CHECK_EQ(attr_names[1], cros::mojom::kLocation);
-  std::move(callback).Run({sensor_name_, sensor_location_});
+  CHECK(!attr_names.empty());
+
+  std::vector<std::optional<std::string>> values(attr_names.size());
+  for (int i = 0; i < attr_names.size(); i++) {
+    if (attr_names[i] == cros::mojom::kDeviceName) {
+      values[i] = sensor_name_;
+    } else if (attr_names[i] == cros::mojom::kLocation) {
+      values[i] = sensor_location_;
+    } else {
+      NOTREACHED() << "Unexpected attribute name: " << attr_names[i];
+    }
+  }
+  std::move(callback).Run(values);
 }
 
 void FakeSensorDevice::SetFrequency(double frequency,
