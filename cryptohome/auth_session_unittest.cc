@@ -54,6 +54,7 @@
 #include "cryptohome/mock_cryptohome_keys_manager.h"
 #include "cryptohome/mock_key_challenge_service_factory.h"
 #include "cryptohome/mock_keyset_management.h"
+#include "cryptohome/mock_le_credential_manager.h"
 #include "cryptohome/mock_platform.h"
 #include "cryptohome/pkcs11/mock_pkcs11_token_factory.h"
 #include "cryptohome/scrypt_verifier.h"
@@ -117,10 +118,13 @@ constexpr char kFakeRecoverySecret[] = "test_recovery_secret";
 
 // Fingerprint-related constants to be used in this test suite.
 const uint64_t kFakeRateLimiterLabel = 100;
+const uint64_t kFakeFpLabel = 200;
+const uint64_t kFakeSecondFpLabel = 300;
 constexpr char kFakeVkkKey[] = "fake_vkk_key";
 constexpr char kFakeSecondVkkKey[] = "fake_second_vkk_key";
 constexpr char kFakeRecordId[] = "fake_record_id";
 constexpr char kFakeSecondRecordId[] = "fake_second_record_id";
+constexpr char kFakeResetSecret[] = "fake_reset_secret";
 
 // Set to match the 5 minute timer and a 1 minute extension in AuthSession.
 constexpr int kAuthSessionExtensionDuration = 60;
@@ -1992,11 +1996,12 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
           auto key_blobs = std::make_unique<KeyBlobs>();
           key_blobs->vkk_key = brillo::SecureBlob(kFakeVkkKey);
           key_blobs->rate_limiter_label = kFakeRateLimiterLabel;
-          key_blobs->reset_secret = brillo::SecureBlob("reset secret");
+          key_blobs->reset_secret = brillo::SecureBlob(kFakeResetSecret);
           auto auth_block_state = std::make_unique<AuthBlockState>();
           FingerprintAuthBlockState fingerprint_state =
               FingerprintAuthBlockState();
           fingerprint_state.template_id = kFakeRecordId;
+          fingerprint_state.gsc_secret_label = kFakeFpLabel;
           auth_block_state->state = fingerprint_state;
           std::move(create_callback)
               .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
@@ -2038,7 +2043,7 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
                     kFakeRateLimiterLabel);
           ASSERT_TRUE(auth_input.reset_secret.has_value());
           EXPECT_EQ(auth_input.reset_secret.value(),
-                    brillo::SecureBlob("reset secret"));
+                    brillo::SecureBlob(kFakeResetSecret));
           // Make an arbitrary auth block state type that can be used in the
           // tests.
           auto key_blobs = std::make_unique<KeyBlobs>();
@@ -2047,6 +2052,7 @@ class AuthSessionWithUssExperimentTest : public AuthSessionTest {
           FingerprintAuthBlockState fingerprint_state =
               FingerprintAuthBlockState();
           fingerprint_state.template_id = kFakeSecondRecordId;
+          fingerprint_state.gsc_secret_label = kFakeSecondFpLabel;
           auth_block_state->state = fingerprint_state;
           std::move(create_callback)
               .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs),
@@ -4446,6 +4452,9 @@ TEST_F(AuthSessionWithUssExperimentTest, PrepareFingerprintAdd) {
 // Test adding two fingerprint auth factors and authenticating them.
 TEST_F(AuthSessionWithUssExperimentTest, AddFingerprintAndAuth) {
   const brillo::SecureBlob kFakeAuthPin(32, 1), kFakeAuthSecret(32, 2);
+  auto mock_le_manager = std::make_unique<MockLECredentialManager>();
+  MockLECredentialManager* mock_le_manager_ptr = mock_le_manager.get();
+  crypto_.set_le_manager_for_testing(std::move(mock_le_manager));
   // Setup.
   AuthSession auth_session(
       {.username = kFakeUsername,
@@ -4511,6 +4520,25 @@ TEST_F(AuthSessionWithUssExperimentTest, AddFingerprintAndAuth) {
         std::move(derive_callback)
             .Run(OkStatus<CryptohomeCryptoError>(), std::move(key_blobs));
       });
+  // Set expectations that rate-limiter and fingerprint credential leaves with
+  // non-zero wrong auth attempts will be reset after a successful
+  // authentication.
+  EXPECT_CALL(*mock_le_manager_ptr, GetWrongAuthAttempts(kFakeRateLimiterLabel))
+      .WillOnce(Return(1));
+  EXPECT_CALL(*mock_le_manager_ptr, GetWrongAuthAttempts(kFakeFpLabel))
+      .WillOnce(Return(1));
+  EXPECT_CALL(*mock_le_manager_ptr, GetWrongAuthAttempts(kFakeSecondFpLabel))
+      .WillOnce(Return(0));
+  EXPECT_CALL(*mock_le_manager_ptr,
+              ResetCredential(kFakeRateLimiterLabel,
+                              brillo::SecureBlob(kFakeResetSecret),
+                              /*strong_reset=*/false));
+  EXPECT_CALL(
+      *mock_le_manager_ptr,
+      ResetCredential(kFakeFpLabel, brillo::SecureBlob(kFakeResetSecret),
+                      /*strong_reset=*/false));
+  EXPECT_CALL(*mock_le_manager_ptr, ResetCredential(kFakeSecondFpLabel, _, _))
+      .Times(0);
 
   // Test.
   std::string auth_factor_labels[] = {kFakeFingerprintLabel,

@@ -2922,6 +2922,7 @@ void AuthSession::LoadUSSMainKeyAndFsKeyset(
   }
 
   ResetLECredentials();
+  ResetRateLimiterCredentials();
 
   ReportTimerDuration(auth_session_performance_timer.get());
   std::move(on_done).Run(std::move(prepare_status));
@@ -2997,6 +2998,61 @@ void AuthSession::ResetLECredentials() {
                                       error)) {
       LOG(WARNING) << "Failed to reset an LE credential for "
                    << state->le_label.value() << " with error: " << error;
+    }
+  }
+}
+
+void AuthSession::ResetRateLimiterCredentials() {
+  if (!user_secret_stash_) {
+    return;
+  }
+  std::optional<uint64_t> rate_limiter_label =
+      user_secret_stash_->GetFingerprintRateLimiterId();
+  if (!rate_limiter_label.has_value()) {
+    return;
+  }
+
+  // Currently only fingerprint auth factor has a rate-limiter.
+  std::optional<brillo::SecureBlob> reset_secret =
+      user_secret_stash_->GetRateLimiterResetSecret(
+          AuthFactorType::kFingerprint);
+  if (!reset_secret.has_value()) {
+    LOG(WARNING) << "Fingerprint rate-limiter has no reset secret in USS.";
+    return;
+  }
+  CryptoError error;
+  if (crypto_->GetWrongAuthAttempts(rate_limiter_label.value()) != 0 &&
+      !crypto_->ResetLeCredentialEx(rate_limiter_label.value(),
+                                    reset_secret.value(), error)) {
+    LOG(WARNING) << "Failed to reset fingerprint rate-limiter with error: "
+                 << error;
+  }
+
+  for (AuthFactorMap::ValueView stored_auth_factor : auth_factor_map_) {
+    const AuthFactor& auth_factor = stored_auth_factor.auth_factor();
+
+    // Look for only pinweaver backed AuthFactors.
+    auto* state = std::get_if<FingerprintAuthBlockState>(
+        &(auth_factor.auth_block_state().state));
+    if (!state) {
+      continue;
+    }
+    // Ensure that the AuthFactor has le_label.
+    if (!state->gsc_secret_label.has_value()) {
+      LOG(WARNING)
+          << "Fingerprint AuthBlock State does not have gsc_secret_label.";
+      continue;
+    }
+    // If the credential is already at 0 attempts, there is no need to reset
+    // it.
+    if (crypto_->GetWrongAuthAttempts(state->gsc_secret_label.value()) == 0) {
+      continue;
+    }
+    if (!crypto_->ResetLeCredentialEx(state->gsc_secret_label.value(),
+                                      reset_secret.value(), error)) {
+      LOG(WARNING) << "Failed to reset fingerprint credential for "
+                   << state->gsc_secret_label.value()
+                   << " with error: " << error;
     }
   }
 }
