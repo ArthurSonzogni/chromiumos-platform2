@@ -125,6 +125,7 @@ ScopedMinijail SetupMinijail(const base::FilePath& home_path,
   minijail_remount_proc_readonly(j.get());
   minijail_mount_tmp(j.get());
   minijail_mount_with_data(j.get(), "tmpfs", "/run", "tmpfs", 0, nullptr);
+  minijail_mount_with_data(j.get(), "tmpfs", "/var", "tmpfs", 0, nullptr);
   minijail_bind(j.get(), "/run/dbus", "/run/dbus", 0);
   minijail_mount(j.get(), "/run/daemon-store/dlp", "/run/daemon-store/dlp",
                  "none", MS_BIND | MS_REC);
@@ -133,6 +134,7 @@ ScopedMinijail SetupMinijail(const base::FilePath& home_path,
                 0);
   minijail_bind(j.get(), home_path.Append("MyFiles/Downloads").value().c_str(),
                 home_path.Append("MyFiles/Downloads").value().c_str(), 0);
+  minijail_bind(j.get(), "/var/lib/metrics", "/var/lib/metrics", 0);
 
   // Use a seccomp filter.
   minijail_parse_seccomp_filters(j.get(), kDlpSeccompPolicy);
