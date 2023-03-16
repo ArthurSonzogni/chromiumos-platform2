@@ -680,6 +680,46 @@ def _build_power(config: Config) -> dict:
     return power_prefs_map
 
 
+# From drm_mode.h in libdrm.
+_CONNECTOR_TYPES = {
+    topology_pb2.HardwareFeatures.Screen.ConnectorType.CONNECTOR_TYPE_EDP: 14,
+}
+
+
+def _build_display(screen_topo: topology_pb2.HardwareFeatures.Screen) -> dict:
+    """Builds a single object under /displays/N."""
+    props = screen_topo.panel_properties
+    result = {}
+
+    if props.HasField("rounded_corners"):
+        result["rounded-corners"] = {
+            "top-left": props.rounded_corners.top_left.radius_px,
+            "top-right": props.rounded_corners.top_right.radius_px,
+            "bottom-left": props.rounded_corners.bottom_left.radius_px,
+            "bottom-right": props.rounded_corners.bottom_right.radius_px,
+        }
+
+    if not result:
+        return {}
+
+    # We assume that eDP (type 14) is a resaonable default connector type.
+    libdrm_connector_type = _CONNECTOR_TYPES.get(screen_topo.connector_type, 14)
+    result["connector-type"] = libdrm_connector_type
+    return result
+
+
+def _build_displays(hw_topology: topology_pb2.HardwareFeatures) -> list:
+    """Builds the /displays object."""
+    displays = []
+
+    # Boxster only understands one display, which does not map to what
+    # cros_config is capable of encoding.  We can fix this later should we
+    # require it.
+    displays.append(_build_display(hw_topology.screen.hardware_feature.screen))
+
+    return [x for x in displays if x]
+
+
 def _build_resource(config: Config) -> dict:
     """Builds the 'resource' property for cros_config_schema."""
 
@@ -2463,6 +2503,11 @@ def _transform_build_config(config, config_files, whitelabel):
     _upsert(_build_audio(config), result, "audio")
     _upsert(_build_battery(config), result, "battery")
     _upsert(_build_bluetooth(config), result, "bluetooth")
+    _upsert(
+        _build_displays(config.hw_design_config.hardware_topology),
+        result,
+        "displays",
+    )
     _upsert(_build_wifi(config, config_files), result, "wifi")
     _upsert(_build_health(config), result, "cros-healthd")
     _upsert(_build_rma(config), result, "rmad")

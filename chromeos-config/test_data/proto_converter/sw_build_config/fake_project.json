@@ -1904,6 +1904,17 @@
             }
           ]
         },
+        "displays": [
+          {
+            "connector-type": 14,
+            "rounded-corners": {
+              "bottom-left": 15,
+              "bottom-right": 15,
+              "top-left": 15,
+              "top-right": 15
+            }
+          }
+        ],
         "fingerprint": {
           "sensor-location": "none"
         },
@@ -2091,6 +2102,17 @@
             }
           ]
         },
+        "displays": [
+          {
+            "connector-type": 14,
+            "rounded-corners": {
+              "bottom-left": 15,
+              "bottom-right": 15,
+              "top-left": 15,
+              "top-right": 15
+            }
+          }
+        ],
         "fingerprint": {
           "sensor-location": "none"
         },
@@ -2279,6 +2301,17 @@
             }
           ]
         },
+        "displays": [
+          {
+            "connector-type": 14,
+            "rounded-corners": {
+              "bottom-left": 15,
+              "bottom-right": 15,
+              "top-left": 15,
+              "top-right": 15
+            }
+          }
+        ],
         "fingerprint": {
           "sensor-location": "none"
         },
@@ -2467,6 +2500,17 @@
             }
           ]
         },
+        "displays": [
+          {
+            "connector-type": 14,
+            "rounded-corners": {
+              "bottom-left": 15,
+              "bottom-right": 15,
+              "top-left": 15,
+              "top-right": 15
+            }
+          }
+        ],
         "fingerprint": {
           "sensor-location": "none"
         },
@@ -2668,6 +2712,17 @@
             }
           ]
         },
+        "displays": [
+          {
+            "connector-type": 14,
+            "rounded-corners": {
+              "bottom-left": 15,
+              "bottom-right": 15,
+              "top-left": 15,
+              "top-right": 15
+            }
+          }
+        ],
         "fingerprint": {
           "sensor-location": "none"
         },
@@ -2828,6 +2883,17 @@
         "camera": {
           "count": 0
         },
+        "displays": [
+          {
+            "connector-type": 14,
+            "rounded-corners": {
+              "bottom-left": 15,
+              "bottom-right": 15,
+              "top-left": 15,
+              "top-right": 15
+            }
+          }
+        ],
         "fingerprint": {
           "sensor-location": "none"
         },
@@ -2986,6 +3052,17 @@
         "camera": {
           "count": 0
         },
+        "displays": [
+          {
+            "connector-type": 14,
+            "rounded-corners": {
+              "bottom-left": 15,
+              "bottom-right": 15,
+              "top-left": 15,
+              "top-right": 15
+            }
+          }
+        ],
         "fingerprint": {
           "sensor-location": "none"
         },
@@ -3141,6 +3218,17 @@
         "camera": {
           "count": 0
         },
+        "displays": [
+          {
+            "connector-type": 14,
+            "rounded-corners": {
+              "bottom-left": 15,
+              "bottom-right": 15,
+              "top-left": 15,
+              "top-right": 15
+            }
+          }
+        ],
         "fingerprint": {
           "sensor-location": "none"
         },
