@@ -45,6 +45,10 @@ class RoutineAdapter : public DiagnosticRoutine,
   mojo::PendingReceiver<ash::cros_healthd::mojom::RoutineControl>
   BindNewPipeAndPassReceiver();
 
+  // Exported for testing only.
+  void FlushRoutineControlForTesting();
+  mojo::Remote<ash::cros_healthd::mojom::RoutineControl>& routine_control();
+
  private:
   // Sets error message when routine disconnects.
   void OnRoutineDisconnect(uint32_t custom_reason, const std::string& message);

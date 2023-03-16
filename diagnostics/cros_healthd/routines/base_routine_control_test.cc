@@ -18,6 +18,7 @@
 #include <mojo/public/cpp/bindings/callback_helpers.h>
 #include <mojo/public/cpp/bindings/receiver.h>
 
+#include "diagnostics/cros_healthd/routine_adapter.h"
 #include "diagnostics/cros_healthd/routines/base_routine_control.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/mojom/public/cros_healthd_diagnostics.mojom.h"
@@ -27,7 +28,14 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
+mojom::RoutineDetailPtr CreateEmptyMemoryDetail() {
+  auto detail = mojom::MemoryRoutineDetail::New();
+  detail->bytes_tested = 0;
+  detail->result = mojom::MemtesterResult::New();
+  return mojom::RoutineDetail::NewMemory(std::move(detail));
 }
+
+}  // namespace
 
 namespace diagnostics {
 
@@ -75,6 +83,17 @@ class RoutineControlImplPeer final : public BaseRoutineControl {
     // executed.
     observers_.FlushForTesting();
   }
+
+  void RaiseException(const std::string& reason) {
+    BaseRoutineControl::RaiseException(reason);
+  }
+
+  mojo::Receiver<ash::cros_healthd::mojom::RoutineControl>* receiver() {
+    return &receiver_;
+  }
+
+ private:
+  mojo::Receiver<ash::cros_healthd::mojom::RoutineControl> receiver_{this};
 };
 
 namespace {
@@ -82,6 +101,20 @@ namespace {
 using ::testing::_;
 using ::testing::AtLeast;
 using ::testing::StrictMock;
+
+class MockObserver : public mojom::RoutineObserver {
+ public:
+  explicit MockObserver(
+      mojo::PendingReceiver<ash::cros_healthd::mojom::RoutineObserver> receiver)
+      : receiver_{this /* impl */, std::move(receiver)} {}
+  MOCK_METHOD(void,
+              OnRoutineStateChange,
+              (ash::cros_healthd::mojom::RoutineStatePtr),
+              (override));
+
+ private:
+  const mojo::Receiver<ash::cros_healthd::mojom::RoutineObserver> receiver_;
+};
 
 class BaseRoutineControlTest : public testing::Test {
  public:
@@ -99,18 +132,49 @@ class BaseRoutineControlTest : public testing::Test {
   base::test::SingleThreadTaskEnvironment task_environment_;
 };
 
-class MockObserver : public mojom::RoutineObserver {
- public:
-  explicit MockObserver(
-      mojo::PendingReceiver<ash::cros_healthd::mojom::RoutineObserver> receiver)
-      : receiver_{this /* impl */, std::move(receiver)} {}
-  MOCK_METHOD(void,
-              OnRoutineStateChange,
-              (ash::cros_healthd::mojom::RoutineStatePtr),
-              (override));
+class RoutineAdapterTest : public testing::Test {
+ protected:
+  RoutineAdapterTest() = default;
+  RoutineAdapterTest(const RoutineAdapterTest&) = delete;
+  RoutineAdapterTest& operator=(const RoutineAdapterTest&) = delete;
+
+  void SetUp() override {
+    routine_control_ = std::make_unique<RoutineControlImplPeer>(base::BindOnce(
+        &RoutineAdapterTest::OnRoutineException, base::Unretained(this)));
+    // Use Memory Routine argument here to prevent causing error. Routine
+    // Adapter will bind to routine_control regardless of the Routine Argument
+    // type.
+    routine_adapter_ =
+        std::make_unique<RoutineAdapter>(mojom::RoutineArgument::Tag::kMemory);
+
+    routine_control_->receiver()->Bind(
+        routine_adapter_->BindNewPipeAndPassReceiver());
+  }
+
+  void SetUpWithUnrecognizedRoutineArgument() {
+    routine_control_ = std::make_unique<RoutineControlImplPeer>(base::BindOnce(
+        &RoutineAdapterTest::OnRoutineException, base::Unretained(this)));
+    routine_adapter_ = std::make_unique<RoutineAdapter>(
+        mojom::RoutineArgument::Tag::kUnrecognizedArgument);
+    routine_control_->receiver()->Bind(
+        routine_adapter_->BindNewPipeAndPassReceiver());
+  }
+
+  void OnRoutineException(uint32_t error, const std::string& reason) {
+    routine_control_->receiver()->ResetWithReason(error, reason);
+  }
+
+  mojom::RoutineUpdatePtr GetUpdate() {
+    mojom::RoutineUpdatePtr update = mojom::RoutineUpdate::New();
+    routine_adapter_->PopulateStatusUpdate(update.get(), true);
+    return update;
+  }
+
+  std::unique_ptr<RoutineControlImplPeer> routine_control_;
+  std::unique_ptr<RoutineAdapter> routine_adapter_;
 
  private:
-  const mojo::Receiver<ash::cros_healthd::mojom::RoutineObserver> receiver_;
+  base::test::TaskEnvironment task_environment_;
 };
 
 void ExpectOutput(int8_t expect_percentage,
@@ -382,6 +446,142 @@ TEST_F(BaseRoutineControlTest, DisconnectedObserver) {
   observer_3.reset();
   rc.Start();
   rc.SetFinishedImpl(true, nullptr);
+}
+
+TEST_F(RoutineAdapterTest, RoutinePassed) {
+  routine_adapter_->Start();
+  routine_adapter_->FlushRoutineControlForTesting();
+
+  // Check if started.
+  mojom::RoutineUpdatePtr update = GetUpdate();
+  EXPECT_TRUE(update->routine_update_union->is_noninteractive_update());
+  EXPECT_EQ(update->routine_update_union->get_noninteractive_update()->status,
+            mojom::DiagnosticRoutineStatusEnum::kRunning);
+
+  // Check if finished and passed.
+  routine_control_->SetFinishedImpl(true, CreateEmptyMemoryDetail());
+  update = GetUpdate();
+  EXPECT_TRUE(update->routine_update_union->is_noninteractive_update());
+  EXPECT_EQ(update->routine_update_union->get_noninteractive_update()->status,
+            mojom::DiagnosticRoutineStatusEnum::kPassed);
+}
+
+TEST_F(RoutineAdapterTest, RoutineFailed) {
+  routine_adapter_->Start();
+  routine_adapter_->FlushRoutineControlForTesting();
+
+  // Check if started.
+  mojom::RoutineUpdatePtr update = GetUpdate();
+  EXPECT_TRUE(update->routine_update_union->is_noninteractive_update());
+  EXPECT_EQ(update->routine_update_union->get_noninteractive_update()->status,
+            mojom::DiagnosticRoutineStatusEnum::kRunning);
+
+  // Check if finished and failed.
+  routine_control_->SetFinishedImpl(false, CreateEmptyMemoryDetail());
+  update = GetUpdate();
+  EXPECT_TRUE(update->routine_update_union->is_noninteractive_update());
+  EXPECT_EQ(update->routine_update_union->get_noninteractive_update()->status,
+            mojom::DiagnosticRoutineStatusEnum::kFailed);
+}
+
+TEST_F(RoutineAdapterTest, SetRoutineStatus) {
+  // Check for initial state.
+  routine_adapter_->Start();
+  routine_adapter_->FlushRoutineControlForTesting();
+  mojom::RoutineUpdatePtr update = GetUpdate();
+  EXPECT_TRUE(update->routine_update_union->is_noninteractive_update());
+  EXPECT_EQ(update->routine_update_union->get_noninteractive_update()->status,
+            mojom::DiagnosticRoutineStatusEnum::kRunning);
+  EXPECT_EQ(routine_adapter_->GetStatus(),
+            mojom::DiagnosticRoutineStatusEnum::kRunning);
+
+  // Check for waiting state.
+  routine_control_->SetWaitingImpl(
+      mojom::RoutineStateWaiting::Reason::kWaitingToBeScheduled,
+      "Waiting Reason");
+  routine_adapter_->FlushRoutineControlForTesting();
+  update = GetUpdate();
+  EXPECT_TRUE(update->routine_update_union->is_noninteractive_update());
+  EXPECT_EQ(update->routine_update_union->get_noninteractive_update()->status,
+            mojom::DiagnosticRoutineStatusEnum::kRunning);
+  EXPECT_EQ(routine_adapter_->GetStatus(),
+            mojom::DiagnosticRoutineStatusEnum::kRunning);
+
+  // Check for finished state.
+  routine_control_->SetRunningImpl();
+  routine_control_->SetFinishedImpl(true, CreateEmptyMemoryDetail());
+  routine_adapter_->FlushRoutineControlForTesting();
+  update = GetUpdate();
+  EXPECT_TRUE(update->routine_update_union->is_noninteractive_update());
+  EXPECT_EQ(update->routine_update_union->get_noninteractive_update()->status,
+            mojom::DiagnosticRoutineStatusEnum::kPassed);
+  EXPECT_EQ(routine_adapter_->GetStatus(),
+            mojom::DiagnosticRoutineStatusEnum::kPassed);
+}
+
+TEST_F(RoutineAdapterTest, SetRoutinePercentage) {
+  // Check for initial state.
+  routine_adapter_->Start();
+  routine_adapter_->FlushRoutineControlForTesting();
+  mojom::RoutineUpdatePtr update = GetUpdate();
+  EXPECT_EQ(update->progress_percent, 0);
+
+  // Check for setting different percentage.
+  routine_control_->SetPercentageImpl(50);
+  update = GetUpdate();
+  EXPECT_EQ(update->progress_percent, 50);
+
+  // Check for finished state.
+  routine_control_->SetFinishedImpl(true, CreateEmptyMemoryDetail());
+  update = GetUpdate();
+  EXPECT_EQ(update->progress_percent, 100);
+}
+
+TEST_F(RoutineAdapterTest, RoutineError) {
+  routine_adapter_->Start();
+  routine_adapter_->FlushRoutineControlForTesting();
+
+  routine_control_->RaiseException("Error Reason");
+  routine_adapter_->FlushRoutineControlForTesting();
+  mojom::RoutineUpdatePtr update = GetUpdate();
+  EXPECT_TRUE(update->routine_update_union->is_noninteractive_update());
+  EXPECT_EQ(update->routine_update_union->get_noninteractive_update()->status,
+            mojom::DiagnosticRoutineStatusEnum::kError);
+  EXPECT_EQ(
+      update->routine_update_union->get_noninteractive_update()->status_message,
+      "Error Reason");
+}
+
+TEST_F(RoutineAdapterTest, RoutineCancel) {
+  routine_adapter_->Start();
+  routine_adapter_->FlushRoutineControlForTesting();
+
+  routine_adapter_->Cancel();
+  // No need to flush remote since the mojo connection has been reset.
+  mojom::RoutineUpdatePtr update = GetUpdate();
+  EXPECT_TRUE(update->routine_update_union->is_noninteractive_update());
+  EXPECT_EQ(update->routine_update_union->get_noninteractive_update()->status,
+            mojom::DiagnosticRoutineStatusEnum::kCancelled);
+}
+
+// There should not be a case where routine is initialized without running in
+// the V1 Routine API. However, still test to make sure in the worst case the
+// program still won't crash.
+TEST_F(RoutineAdapterTest, PopulateStatusUpdateBeforeInitialized) {
+  mojom::RoutineUpdatePtr update = GetUpdate();
+  EXPECT_EQ(update->progress_percent, 0);
+  EXPECT_TRUE(update->routine_update_union->is_noninteractive_update());
+  EXPECT_EQ(update->routine_update_union->get_noninteractive_update()->status,
+            mojom::DiagnosticRoutineStatusEnum::kRunning);
+}
+
+TEST_F(RoutineAdapterTest, UnrecognizedRoutineArgument) {
+  SetUpWithUnrecognizedRoutineArgument();
+
+  mojom::RoutineUpdatePtr update = GetUpdate();
+  EXPECT_TRUE(update->routine_update_union->is_noninteractive_update());
+  EXPECT_EQ(update->routine_update_union->get_noninteractive_update()->status,
+            mojom::DiagnosticRoutineStatusEnum::kUnknown);
 }
 
 }  // namespace

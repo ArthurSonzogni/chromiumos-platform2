@@ -265,4 +265,13 @@ void RoutineAdapter::OnRoutineDisconnect(uint32_t custom_reason,
   cached_state_ = mojom::RoutineState::New();
 }
 
+void RoutineAdapter::FlushRoutineControlForTesting() {
+  routine_control_.FlushForTesting();
+}
+
+mojo::Remote<ash::cros_healthd::mojom::RoutineControl>&
+RoutineAdapter::routine_control() {
+  return routine_control_;
+}
+
 }  // namespace diagnostics
