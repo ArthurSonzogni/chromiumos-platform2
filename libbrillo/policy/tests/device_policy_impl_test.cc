@@ -605,4 +605,115 @@ TEST_F(DevicePolicyImplTest, GetDeviceReportXDREvents_Set) {
               testing::Eq(std::optional(true)));
 }
 
+TEST_F(DevicePolicyImplTest, GetEphemeralSettings_NotSet) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
+                   device_policy_proto);
+
+  DevicePolicy::EphemeralSettings ephemeral_settings;
+  EXPECT_FALSE(device_policy_.GetEphemeralSettings(&ephemeral_settings));
+  EXPECT_FALSE(ephemeral_settings.global_ephemeral_users_enabled);
+  EXPECT_TRUE(ephemeral_settings.specific_ephemeral_users.empty());
+  EXPECT_TRUE(ephemeral_settings.specific_nonephemeral_users.empty());
+}
+
+TEST_F(DevicePolicyImplTest,
+       GetEphemeralSettings_Set_EphemeralUsersEnabled_True) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  device_policy_proto.mutable_ephemeral_users_enabled()
+      ->set_ephemeral_users_enabled(true);
+  InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
+                   device_policy_proto);
+
+  DevicePolicy::EphemeralSettings ephemeral_settings;
+  EXPECT_TRUE(device_policy_.GetEphemeralSettings(&ephemeral_settings));
+  EXPECT_TRUE(ephemeral_settings.global_ephemeral_users_enabled);
+  EXPECT_TRUE(ephemeral_settings.specific_ephemeral_users.empty());
+  EXPECT_TRUE(ephemeral_settings.specific_nonephemeral_users.empty());
+}
+
+TEST_F(DevicePolicyImplTest,
+       GetEphemeralSettings_Set_EphemeralUsersEnabled_False) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  device_policy_proto.mutable_ephemeral_users_enabled()
+      ->set_ephemeral_users_enabled(false);
+  InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
+                   device_policy_proto);
+
+  DevicePolicy::EphemeralSettings ephemeral_settings;
+  EXPECT_TRUE(device_policy_.GetEphemeralSettings(&ephemeral_settings));
+  EXPECT_FALSE(ephemeral_settings.global_ephemeral_users_enabled);
+  EXPECT_TRUE(ephemeral_settings.specific_ephemeral_users.empty());
+  EXPECT_TRUE(ephemeral_settings.specific_nonephemeral_users.empty());
+}
+
+TEST_F(DevicePolicyImplTest, GetEphemeralSettings_Set_Non_Ephemeral_User) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  em::DeviceLocalAccountInfoProto* account =
+      device_policy_proto.mutable_device_local_accounts()->add_account();
+  account->set_account_id("account");
+  account->set_ephemeral_mode(
+      em::DeviceLocalAccountInfoProto::EPHEMERAL_MODE_DISABLE);
+
+  InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
+                   device_policy_proto);
+
+  DevicePolicy::EphemeralSettings ephemeral_settings;
+  EXPECT_TRUE(device_policy_.GetEphemeralSettings(&ephemeral_settings));
+  EXPECT_FALSE(ephemeral_settings.global_ephemeral_users_enabled);
+  EXPECT_TRUE(ephemeral_settings.specific_ephemeral_users.empty());
+  EXPECT_EQ(1, ephemeral_settings.specific_nonephemeral_users.size());
+  EXPECT_EQ("6163636f756e74@public-accounts.device-local.localhost",
+            ephemeral_settings.specific_nonephemeral_users[0]);
+}
+
+TEST_F(DevicePolicyImplTest, GetEphemeralSettings_Set_Ephemeral_User) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  em::DeviceLocalAccountInfoProto* account =
+      device_policy_proto.mutable_device_local_accounts()->add_account();
+  account->set_account_id("account");
+  account->set_ephemeral_mode(
+      em::DeviceLocalAccountInfoProto::EPHEMERAL_MODE_ENABLE);
+
+  InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
+                   device_policy_proto);
+
+  DevicePolicy::EphemeralSettings ephemeral_settings;
+  EXPECT_TRUE(device_policy_.GetEphemeralSettings(&ephemeral_settings));
+  EXPECT_FALSE(ephemeral_settings.global_ephemeral_users_enabled);
+  EXPECT_EQ(1, ephemeral_settings.specific_ephemeral_users.size());
+  EXPECT_EQ("6163636f756e74@public-accounts.device-local.localhost",
+            ephemeral_settings.specific_ephemeral_users[0]);
+  EXPECT_TRUE(ephemeral_settings.specific_nonephemeral_users.empty());
+}
+
+TEST_F(DevicePolicyImplTest, GetEphemeralSettings_Set_EphemeralMode_Unset) {
+  em::ChromeDeviceSettingsProto device_policy_proto;
+  device_policy_proto.mutable_ephemeral_users_enabled()
+      ->set_ephemeral_users_enabled(true);
+  em::DeviceLocalAccountsProto* device_local_accounts =
+      device_policy_proto.mutable_device_local_accounts();
+
+  em::DeviceLocalAccountInfoProto* account1 =
+      device_local_accounts->add_account();
+  account1->set_account_id("account1");
+  account1->set_ephemeral_mode(
+      em::DeviceLocalAccountInfoProto::EPHEMERAL_MODE_UNSET);
+
+  em::DeviceLocalAccountInfoProto* account2 =
+      device_local_accounts->add_account();
+  account2->set_account_id("account2");
+  account2->set_ephemeral_mode(em::DeviceLocalAccountInfoProto::
+                                   EPHEMERAL_MODE_FOLLOW_DEVICE_WIDE_POLICY);
+
+  InitializePolicy(InstallAttributesReader::kDeviceModeEnterprise,
+                   device_policy_proto);
+
+  DevicePolicy::EphemeralSettings ephemeral_settings;
+  EXPECT_TRUE(device_policy_.GetEphemeralSettings(&ephemeral_settings));
+  EXPECT_TRUE(ephemeral_settings.global_ephemeral_users_enabled);
+  EXPECT_TRUE(ephemeral_settings.specific_ephemeral_users.empty());
+  EXPECT_TRUE(ephemeral_settings.specific_nonephemeral_users.empty());
+}
+
 }  // namespace policy

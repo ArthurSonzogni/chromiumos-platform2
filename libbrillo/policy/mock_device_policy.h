@@ -68,6 +68,10 @@ class MockDevicePolicy : public DevicePolicy {
   MOCK_METHOD(bool, GetReportActivityTimes, (bool*), (const, override));
   MOCK_METHOD(bool, GetReportBootMode, (bool*), (const, override));
   MOCK_METHOD(bool, GetEphemeralUsersEnabled, (bool*), (const, override));
+  MOCK_METHOD(bool,
+              GetEphemeralSettings,
+              (EphemeralSettings*),
+              (const, override));
   MOCK_METHOD(bool, GetReleaseChannel, (std::string*), (const, override));
   MOCK_METHOD(bool, GetReleaseChannelDelegated, (bool*), (const, override));
   MOCK_METHOD(bool, GetReleaseLtsTag, (std::string*), (const, override));

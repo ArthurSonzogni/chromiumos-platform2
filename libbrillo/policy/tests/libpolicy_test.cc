@@ -101,9 +101,9 @@ TEST(PolicyTest, DevicePolicyAllSetTest) {
   ASSERT_TRUE(policy.GetReportBootMode(&bool_value));
   EXPECT_FALSE(bool_value);
 
-  bool_value = true;
-  ASSERT_TRUE(policy.GetEphemeralUsersEnabled(&bool_value));
-  EXPECT_FALSE(bool_value);
+  DevicePolicy::EphemeralSettings ephemeral_settings;
+  ASSERT_TRUE(policy.GetEphemeralSettings(&ephemeral_settings));
+  EXPECT_FALSE(ephemeral_settings.global_ephemeral_users_enabled);
 
   std::string string_value;
   ASSERT_TRUE(policy.GetReleaseChannel(&string_value));
@@ -260,6 +260,7 @@ TEST(PolicyTest, DevicePolicyNoneSetTest) {
   std::vector<DevicePolicy::UsbDeviceId> list_device;
   std::vector<DevicePolicy::WeeklyTimeInterval> intervals;
   base::Version device_minimum_version;
+  DevicePolicy::EphemeralSettings ephemeral_settings;
 
   EXPECT_FALSE(policy.GetPolicyRefreshRate(&int_value));
   EXPECT_FALSE(policy.GetGuestModeEnabled(&bool_value));
@@ -271,7 +272,7 @@ TEST(PolicyTest, DevicePolicyNoneSetTest) {
   EXPECT_FALSE(policy.GetReportVersionInfo(&bool_value));
   EXPECT_FALSE(policy.GetReportActivityTimes(&bool_value));
   EXPECT_FALSE(policy.GetReportBootMode(&bool_value));
-  EXPECT_FALSE(policy.GetEphemeralUsersEnabled(&bool_value));
+  EXPECT_FALSE(policy.GetEphemeralSettings(&ephemeral_settings));
   EXPECT_FALSE(policy.GetReleaseChannel(&string_value));
   EXPECT_FALSE(policy.GetUpdateDisabled(&bool_value));
   EXPECT_FALSE(policy.GetTargetVersionPrefix(&string_value));

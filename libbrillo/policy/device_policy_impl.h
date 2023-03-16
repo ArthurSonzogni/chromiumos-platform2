@@ -68,6 +68,8 @@ class DevicePolicyImpl : public DevicePolicy {
   bool GetReportActivityTimes(bool* report_activity_times) const override;
   bool GetReportBootMode(bool* report_boot_mode) const override;
   bool GetEphemeralUsersEnabled(bool* ephemeral_users_enabled) const override;
+  bool GetEphemeralSettings(
+      EphemeralSettings* ephemeral_settings) const override;
   bool GetReleaseChannel(std::string* release_channel) const override;
   bool GetReleaseChannelDelegated(
       bool* release_channel_delegated) const override;

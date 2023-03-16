@@ -18,6 +18,7 @@
 #include <base/json/json_reader.h>
 #include <base/logging.h>
 #include <base/memory/ptr_util.h>
+#include <base/strings/string_number_conversions.h>
 #include <base/time/time.h>
 #include <base/values.h>
 #include <openssl/evp.h>
@@ -25,6 +26,7 @@
 
 #include "bindings/chrome_device_policy.pb.h"
 #include "bindings/device_management_backend.pb.h"
+#include "policy/device_local_account_policy_util.h"
 #include "policy/policy_util.h"
 #include "policy/resilient_policy_util.h"
 
@@ -192,7 +194,6 @@ std::optional<base::Value> DecodeDictValueFromJSON(
 
   return std::move(*decoded_json);
 }
-
 }  // namespace
 
 DevicePolicyImpl::DevicePolicyImpl()
@@ -335,6 +336,47 @@ bool DevicePolicyImpl::GetEphemeralUsersEnabled(
     return false;
   *ephemeral_users_enabled =
       device_policy_.ephemeral_users_enabled().ephemeral_users_enabled();
+  return true;
+}
+
+bool DevicePolicyImpl::GetEphemeralSettings(
+    EphemeralSettings* ephemeral_settings) const {
+  if (!device_policy_.has_ephemeral_users_enabled() &&
+      !device_policy_.has_device_local_accounts())
+    return false;
+
+  ephemeral_settings->global_ephemeral_users_enabled = false;
+  ephemeral_settings->specific_ephemeral_users.clear();
+  ephemeral_settings->specific_nonephemeral_users.clear();
+
+  if (device_policy_.has_device_local_accounts()) {
+    const em::DeviceLocalAccountsProto& local_accounts =
+        device_policy_.device_local_accounts();
+
+    for (const em::DeviceLocalAccountInfoProto& account :
+         local_accounts.account()) {
+      if (!account.has_ephemeral_mode()) {
+        continue;
+      }
+
+      if (account.ephemeral_mode() ==
+          em::DeviceLocalAccountInfoProto::EPHEMERAL_MODE_DISABLE) {
+        ephemeral_settings->specific_nonephemeral_users.push_back(
+            GenerateDeviceLocalAccountUserId(account.account_id(),
+                                             account.type()));
+      } else if (account.ephemeral_mode() ==
+                 em::DeviceLocalAccountInfoProto::EPHEMERAL_MODE_ENABLE) {
+        ephemeral_settings->specific_ephemeral_users.push_back(
+            GenerateDeviceLocalAccountUserId(account.account_id(),
+                                             account.type()));
+      }
+    }
+  }
+  if (device_policy_.has_ephemeral_users_enabled()) {
+    ephemeral_settings->global_ephemeral_users_enabled =
+        device_policy_.ephemeral_users_enabled().ephemeral_users_enabled();
+  }
+
   return true;
 }
 

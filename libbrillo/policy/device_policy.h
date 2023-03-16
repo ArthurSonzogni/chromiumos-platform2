@@ -72,6 +72,14 @@ class DevicePolicy {
     kEnterprise,
   };
 
+  // Ephemeral Settings which are generated from DeviceLocalAccountInfoProto
+  // ephemeral_mode value and EphemeralUsersEnabledProto.
+  struct EphemeralSettings {
+    bool global_ephemeral_users_enabled = false;
+    std::vector<std::string> specific_ephemeral_users;
+    std::vector<std::string> specific_nonephemeral_users;
+  };
+
   DevicePolicy();
   DevicePolicy(const DevicePolicy&) = delete;
   DevicePolicy& operator=(const DevicePolicy&) = delete;
@@ -132,6 +140,12 @@ class DevicePolicy {
   // |ephemeral_users_enabled|. Returns true on success.
   virtual bool GetEphemeralUsersEnabled(
       bool* ephemeral_users_enabled) const = 0;
+
+  // Writes the value of the EphemeralUsersEnabled policy and the values from
+  // DeviceLocalAccountInfoProto EphemeralMode to |ephemeral_settings|.
+  // Returns true if either of the policies are present.
+  virtual bool GetEphemeralSettings(
+      EphemeralSettings* ephemeral_settings) const = 0;
 
   // Writes the value of the release channel policy in |release_channel|.
   // Returns true on success.
