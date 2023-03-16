@@ -44,6 +44,7 @@
 #include "cryptohome/error/action.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/fake_platform.h"
+#include "cryptohome/features.h"
 #include "cryptohome/le_credential_manager_impl.h"
 #include "cryptohome/user_secret_stash.h"
 #include "cryptohome/user_secret_stash_storage.h"
