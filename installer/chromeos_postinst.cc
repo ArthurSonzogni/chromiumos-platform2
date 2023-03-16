@@ -512,8 +512,8 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       // TODO(dgarrett): Remove when chromium:216338 is fixed.
       // If this FS was mounted read-write, we can't do deltas from it. Mark the
       // FS as such
-      Touch(install_config.root.mount() +
-            "/.nodelta");  // Ignore Error on purpose
+      Touch(base::FilePath(install_config.root.mount() +
+                           "/.nodelta"));  // Ignore Error on purpose
 
       LOG(INFO) << "Setting boot target to " << install_config.root.device()
                 << ": Partition " << install_config.root.number() << ", Slot "
@@ -613,9 +613,10 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       // Create a file indicating that the install is completed. The file
       // will be used in /sbin/chromeos_startup to run tasks on the next boot.
       // See comments above about removing ureadahead files.
-      string install_completed = string(kStatefulMount) + "/.install_completed";
+      base::FilePath install_completed =
+          base::FilePath(kStatefulMount).Append(".install_completed");
       if (!Touch(install_completed)) {
-        PLOG(ERROR) << "Touch(" << install_completed.c_str() << ") failed.";
+        PLOG(ERROR) << "Touch(" << install_completed << ") failed.";
       }
 
       // If present, remove firmware checking completion file to force a disk

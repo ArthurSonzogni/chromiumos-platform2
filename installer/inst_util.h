@@ -95,7 +95,7 @@ std::string MakePartitionDev(const std::string& partition_dev, int partition);
 bool RemovePackFiles(const std::string& dirname);
 
 // Create an empty file
-bool Touch(const std::string& filename);
+bool Touch(const base::FilePath& filename);
 
 // Replace the first instance of pattern in the file with value.
 bool ReplaceInFile(const std::string& pattern,

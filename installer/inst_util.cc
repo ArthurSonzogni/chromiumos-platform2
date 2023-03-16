@@ -273,8 +273,8 @@ bool RemovePackFiles(const string& dirname) {
   return true;
 }
 
-bool Touch(const string& filename) {
-  int fd = open(filename.c_str(), O_WRONLY | O_CREAT,
+bool Touch(const base::FilePath& filename) {
+  int fd = open(filename.value().c_str(), O_WRONLY | O_CREAT,
                 S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
   if (fd == -1)

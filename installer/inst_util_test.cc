@@ -115,10 +115,10 @@ TEST(UtilTest, RemovePackFileTest) {
   // Setup
   EXPECT_EQ(RunCommand({"rm", "-rf", "/tmp/PackFileTest"}), 0);
   EXPECT_EQ(RunCommand({"mkdir", "/tmp/PackFileTest"}), 0);
-  EXPECT_EQ(Touch("/tmp/PackFileTest/foo"), true);
-  EXPECT_EQ(Touch("/tmp/PackFileTest/foo.pack"), true);
-  EXPECT_EQ(Touch("/tmp/PackFileTest/foopack"), true);
-  EXPECT_EQ(Touch("/tmp/PackFileTest/.foo.pack"), true);
+  EXPECT_EQ(Touch(base::FilePath("/tmp/PackFileTest/foo")), true);
+  EXPECT_EQ(Touch(base::FilePath("/tmp/PackFileTest/foo.pack")), true);
+  EXPECT_EQ(Touch(base::FilePath("/tmp/PackFileTest/foopack")), true);
+  EXPECT_EQ(Touch(base::FilePath("/tmp/PackFileTest/.foo.pack")), true);
 
   // Test
   EXPECT_EQ(RemovePackFiles("/tmp/PackFileTest"), true);
@@ -142,16 +142,16 @@ TEST(UtilTest, TouchTest) {
   unlink("/tmp/fuzzy");
 
   // Touch a non-existent file
-  EXPECT_EQ(Touch("/tmp/fuzzy"), true);
+  EXPECT_EQ(Touch(base::FilePath("/tmp/fuzzy")), true);
 
   // Touch an existent file
-  EXPECT_EQ(Touch("/tmp/fuzzy"), true);
+  EXPECT_EQ(Touch(base::FilePath("/tmp/fuzzy")), true);
 
   // This touch creates files, and so can't touch a dir
-  EXPECT_EQ(Touch("/tmp"), false);
+  EXPECT_EQ(Touch(base::FilePath("/tmp")), false);
 
   // Bad Touch
-  EXPECT_EQ(Touch("/fuzzy/wuzzy"), false);
+  EXPECT_EQ(Touch(base::FilePath("/fuzzy/wuzzy")), false);
 
   unlink("/tmp/fuzzy");
 }
