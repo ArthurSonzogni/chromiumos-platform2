@@ -176,7 +176,8 @@ bool RunLegacyPostInstall(const InstallConfig& install_config) {
     return false;
 
   string kernel_config = DumpKernelConfig(install_config.kernel.device());
-  string kernel_config_root = ExtractKernelArg(kernel_config, "root");
+  base::FilePath kernel_config_root =
+      base::FilePath(ExtractKernelArg(kernel_config, "root"));
 
   // Prepare the new default.cfg
 

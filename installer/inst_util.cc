@@ -482,9 +482,11 @@ bool SetKernelArg(const string& key,
 
 // For the purposes of ChromeOS, devices that start with
 // "/dev/dm" are to be treated as read-only.
-bool IsReadonly(const string& device) {
-  return base::StartsWith(device, "/dev/dm", base::CompareCase::SENSITIVE) ||
-         base::StartsWith(device, "/dev/ubi", base::CompareCase::SENSITIVE);
+bool IsReadonly(const base::FilePath& device) {
+  return base::StartsWith(device.value(), "/dev/dm",
+                          base::CompareCase::SENSITIVE) ||
+         base::StartsWith(device.value(), "/dev/ubi",
+                          base::CompareCase::SENSITIVE);
 }
 
 bool GetKernelInfo(std::string* result) {

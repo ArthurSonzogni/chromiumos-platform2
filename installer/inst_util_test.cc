@@ -273,12 +273,12 @@ TEST(UtilTest, SetKernelArgTest) {
 }
 
 TEST(UtilTest, IsReadonlyTest) {
-  EXPECT_EQ(IsReadonly("/dev/sda3"), false);
-  EXPECT_EQ(IsReadonly("/dev/dm-0"), true);
-  EXPECT_EQ(IsReadonly("/dev/dm-1"), true);
-  EXPECT_EQ(IsReadonly("/dev/ubi1_0"), true);
-  EXPECT_EQ(IsReadonly("/dev/ubo1_0"), false);
-  EXPECT_EQ(IsReadonly("/dev/ubiblock1_0"), true);
+  EXPECT_EQ(IsReadonly(base::FilePath("/dev/sda3")), false);
+  EXPECT_EQ(IsReadonly(base::FilePath("/dev/dm-0")), true);
+  EXPECT_EQ(IsReadonly(base::FilePath("/dev/dm-1")), true);
+  EXPECT_EQ(IsReadonly(base::FilePath("/dev/ubi1_0")), true);
+  EXPECT_EQ(IsReadonly(base::FilePath("/dev/ubo1_0")), false);
+  EXPECT_EQ(IsReadonly(base::FilePath("/dev/ubiblock1_0")), true);
 }
 
 TEST(UtilTest, ReplaceAllTest) {

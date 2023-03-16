@@ -128,7 +128,7 @@ bool SetKernelArg(const std::string& tag,
 // read-only. This is based on the device name being prefixed with
 // "/dev/dm". This catches both cases where verity may be /dev/dm-0
 // or /dev/dm-1.
-bool IsReadonly(const std::string& device);
+bool IsReadonly(const base::FilePath& device);
 
 // Sets |result| with the current running kernel information like name, version,
 // etc.

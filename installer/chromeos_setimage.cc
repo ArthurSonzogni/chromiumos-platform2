@@ -76,7 +76,8 @@ bool SetImage(const InstallConfig& install_config) {
   // 66fc48dffef" noinitrd cros_debug vt.global_cursor_default=0 kern_guid=%U
   //
 
-  string kernel_config_root = ExtractKernelArg(kernel_config, "root");
+  base::FilePath kernel_config_root =
+      base::FilePath(ExtractKernelArg(kernel_config, "root"));
   string dm_config = ExtractKernelArg(kernel_config, "dm");
   std::vector<string> dm_parts = base::SplitString(
       dm_config, ",", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
