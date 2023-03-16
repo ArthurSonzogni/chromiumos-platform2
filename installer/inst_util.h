@@ -111,7 +111,7 @@ void ReplaceAll(std::string* target,
 bool MakeFileSystemRw(const std::string& dev_name);
 
 // Conveniently invoke the external dump_kernel_config library
-std::string DumpKernelConfig(const std::string& kernel_dev);
+std::string DumpKernelConfig(const base::FilePath& kernel_dev);
 
 // ExtractKernelNamedArg(DumpKernelConfig(..), "root") -> /dev/dm-0
 // This understands quoted values. dm -> "a b c, foo=far" (strips quotes)

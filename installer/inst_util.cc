@@ -377,10 +377,11 @@ __attribute__((__format__(__printf__, 1, 2))) void VbExError(const char* format,
 }
 }
 
-string DumpKernelConfig(const string& kernel_dev) {
+string DumpKernelConfig(const base::FilePath& kernel_dev) {
   string result;
 
-  char* config = FindKernelConfig(kernel_dev.c_str(), USE_PREAMBLE_LOAD_ADDR);
+  char* config =
+      FindKernelConfig(kernel_dev.value().c_str(), USE_PREAMBLE_LOAD_ADDR);
   if (!config) {
     LOG(ERROR) << "Error retrieving kernel config from " << kernel_dev;
     return result;

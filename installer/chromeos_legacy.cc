@@ -175,7 +175,8 @@ bool RunLegacyPostInstall(const InstallConfig& install_config) {
   if (!UpdateLegacyKernel(install_config))
     return false;
 
-  string kernel_config = DumpKernelConfig(install_config.kernel.device());
+  string kernel_config =
+      DumpKernelConfig(base::FilePath(install_config.kernel.device()));
   base::FilePath kernel_config_root =
       base::FilePath(ExtractKernelArg(kernel_config, "root"));
 
@@ -297,7 +298,8 @@ bool StringToSlot(const std::string& slot_string, BootSlot* slot) {
 // Returns true if the boot grub.cfg file was successfully updated.
 bool UpdateEfiGrubCfg(const InstallConfig& install_config) {
   // Of the form: PARTUUID=XXX-YYY-ZZZ
-  string kernel_config = DumpKernelConfig(install_config.kernel.device());
+  string kernel_config =
+      DumpKernelConfig(base::FilePath(install_config.kernel.device()));
   string root_uuid = install_config.root.uuid();
   string kernel_config_dm = ExpandVerityArguments(kernel_config, root_uuid);
 

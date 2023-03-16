@@ -61,7 +61,8 @@ bool SetImage(const InstallConfig& install_config) {
   // Instead, rootfs integrity will be validated on next boot through
   // the verified kernel configuration.
 
-  string kernel_config = DumpKernelConfig(install_config.kernel.device());
+  string kernel_config =
+      DumpKernelConfig(base::FilePath(install_config.kernel.device()));
 
   LOG(INFO) << "KERNEL_CONFIG: " << kernel_config.c_str();
 
