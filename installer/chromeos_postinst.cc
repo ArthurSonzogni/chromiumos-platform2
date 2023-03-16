@@ -191,15 +191,16 @@ void SendNonChromebookBiosSuccess(MetricsInterface& metrics,
 // script_name the script in /usr/share/cros to run
 // script_arg the args to run the script with
 //
-int RunCr50Script(const string& install_dir,
+int RunCr50Script(const base::FilePath& install_dir,
                   const string& script_name,
                   const string& script_arg) {
-  string script = install_dir + "/usr/share/cros/" + script_name;
-  if (access(script.c_str(), X_OK)) {
+  base::FilePath script =
+      install_dir.Append("usr/share/cros").Append(script_name);
+  if (!base::PathExists(script)) {
     // The script is not there, means no cr50 present either, nothing to do.
     return 0;
   }
-  return RunCommand({script, script_arg});
+  return RunCommand({script.value(), script_arg});
 }
 
 // Updates firmware. We must activate new firmware only after new kernel is
@@ -704,20 +705,20 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
     int result = 0;
 
     // Check the device state to determine if the board id should be set.
-    if (RunCr50Script(install_config.root.mount(), "cr50-set-board-id.sh",
-                      "check_device")) {
+    if (RunCr50Script(base::FilePath(install_config.root.mount()),
+                      "cr50-set-board-id.sh", "check_device")) {
       LOG(INFO) << "Skip setting board id";
     } else {
       // Set the board id with unknown phase.
-      result = RunCr50Script(install_config.root.mount(),
+      result = RunCr50Script(base::FilePath(install_config.root.mount()),
                              "cr50-set-board-id.sh", "unknown");
       // cr50 set board id failure is not a reason to interrupt installation.
       if (result)
         LOG(ERROR) << "ignored: cr50-set-board-id failure: " << result;
     }
 
-    result = RunCr50Script(install_config.root.mount(), "cr50-update.sh",
-                           install_config.root.mount());
+    result = RunCr50Script(base::FilePath(install_config.root.mount()),
+                           "cr50-update.sh", install_config.root.mount());
     // cr50 update failure is not a reason for interrupting installation.
     if (result)
       LOG(WARNING) << "ignored: cr50-update failure: " << result;
