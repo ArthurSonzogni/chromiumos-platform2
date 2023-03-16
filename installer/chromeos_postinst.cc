@@ -291,14 +291,14 @@ void FixUnencryptedPermission() {
 }
 
 // Do board specific post install stuff, if available.
-bool RunBoardPostInstall(const string& install_dir) {
-  string script = install_dir + "/usr/sbin/board-postinst";
+bool RunBoardPostInstall(const base::FilePath& install_dir) {
+  base::FilePath script = install_dir.Append("usr/sbin/board-postinst");
 
-  if (access(script.c_str(), X_OK)) {
+  if (!base::PathExists(script)) {
     return true;
   }
 
-  int result = RunCommand({script, install_dir});
+  int result = RunCommand({script.value(), install_dir.value()});
 
   if (result)
     LOG(ERROR) << "Board post install failed, result: " << result;
@@ -631,7 +631,7 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
       unlink(disk_fw_check_complete.c_str());
 
       if (!is_factory_install &&
-          !RunBoardPostInstall(install_config.root.mount())) {
+          !RunBoardPostInstall(base::FilePath(install_config.root.mount()))) {
         LOG(ERROR) << "Failed to perform board specific post install script.";
         // The comment starting "For Chromebook firmware..." says not to return
         // failure here. Looks like we're doing it anyway?
