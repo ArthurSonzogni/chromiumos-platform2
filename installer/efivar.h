@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/memory/free_deleter.h>
 
 // All the efi variables we're writing want the same set of attributes,
@@ -42,9 +43,9 @@ class EfiVarInterface {
   virtual bool DelVariable(const std::string& name) = 0;
 
   virtual bool GenerateFileDevicePathFromEsp(
-      const std::string& device_path,
+      const base::FilePath& device_path,
       int esp_partition,
-      const std::string& boot_file,
+      const base::FilePath& boot_file,
       std::vector<uint8_t>& efidp_data) = 0;
 
   // These three don't do filesystem access, they just operate on data
@@ -75,9 +76,9 @@ class EfiVarImpl : public EfiVarInterface {
 
   bool DelVariable(const std::string& name) override;
 
-  bool GenerateFileDevicePathFromEsp(const std::string& device_path,
+  bool GenerateFileDevicePathFromEsp(const base::FilePath& device_path,
                                      int esp_partition,
-                                     const std::string& boot_file,
+                                     const base::FilePath& boot_file,
                                      std::vector<uint8_t>& efidp_data) override;
 };
 

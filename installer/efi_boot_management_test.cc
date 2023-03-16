@@ -143,9 +143,9 @@ class EfiVarFake : public EfiVarInterface {
   }
 
   bool GenerateFileDevicePathFromEsp(
-      const std::string& device_path,
+      const base::FilePath& device_path,
       int esp_partition,
-      const std::string& boot_file,
+      const base::FilePath& boot_file,
       std::vector<uint8_t>& efidp_data) override {
     // Put our "cros" data in there
     efidp_data.assign(kExamplePathCros,

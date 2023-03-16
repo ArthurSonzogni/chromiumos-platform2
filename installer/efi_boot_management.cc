@@ -445,15 +445,16 @@ class EfiBootManager {
   std::optional<EfiBootEntryContents> BuildDesiredEntry(
       const Partition& boot_dev, int efi_size) {
     // Select the target boot file based on the platform.
-    std::string boot_file = "/efi/boot/bootx64.efi";
+    base::FilePath boot_file = base::FilePath("/efi/boot/bootx64.efi");
     if (efi_size == 32) {
-      boot_file = "/efi/boot/bootia32.efi";
+      boot_file = base::FilePath("/efi/boot/bootia32.efi");
     }
 
     std::vector<uint8_t> efidp;
 
     if (!efivar_->GenerateFileDevicePathFromEsp(
-            boot_dev.base_device(), boot_dev.number(), boot_file, efidp)) {
+            base::FilePath(boot_dev.base_device()), boot_dev.number(),
+            boot_file, efidp)) {
       LOG(ERROR)
           << "Can't decide on desired entry: couldn't determine device path";
       return std::nullopt;
