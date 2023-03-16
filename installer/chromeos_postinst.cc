@@ -646,11 +646,11 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
   }
 
   // Use `--force_update_firmware` to bypass this tag check.
-  string firmware_tag_file =
-      (install_config.root.mount() + "/root/.force_update_firmware");
+  base::FilePath firmware_tag_file = base::FilePath(install_config.root.mount())
+                                         .Append("root/.force_update_firmware");
 
   bool attempt_firmware_update =
-      (!is_factory_install && (access(firmware_tag_file.c_str(), 0) == 0));
+      (!is_factory_install && base::PathExists(firmware_tag_file));
 
   if (install_config.force_update_firmware) {
     if (attempt_firmware_update) {
