@@ -115,10 +115,4 @@ const base::FilePath& LpToolsImpl::GetCupsPpdDir() const {
   return kCupsPpdDir;
 }
 
-int LpToolsImpl::Chown(const std::string& path,
-                       uid_t owner,
-                       gid_t group) const {
-  return chown(path.c_str(), owner, group);
-}
-
 }  // namespace printscanmgr

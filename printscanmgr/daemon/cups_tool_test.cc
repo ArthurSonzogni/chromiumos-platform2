@@ -93,10 +93,6 @@ class FakeLpTools : public LpTools {
     return ppd_dir_.GetPath();
   }
 
-  int Chown(const std::string& path, uid_t owner, gid_t group) const override {
-    return chown_result_;
-  }
-
   // The following methods allow the user to setup the fake object to return the
   // desired results.
 
@@ -107,8 +103,6 @@ class FakeLpTools : public LpTools {
   void SetCupsUriHelperResult(bool result) { urihelper_result_ = result; }
 
   void SetRunCommandResult(int result) { runcommand_result_ = result; }
-
-  void SetChownResult(int result) { chown_result_ = result; }
 
   void SetLpadminResult(int result) { lpadmin_result_ = result; }
 
@@ -148,7 +142,6 @@ class FakeLpTools : public LpTools {
   int cupstestppd_result_{0};
   bool urihelper_result_{true};
   int runcommand_result_{0};
-  int chown_result_{0};
   int lpadmin_result_{0};
 };
 
@@ -552,7 +545,6 @@ TEST(CupsToolTest, FoomaticPPD) {
 
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
   lptools->SetRunCommandResult(0);
-  lptools->SetChownResult(0);
 
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));
@@ -570,8 +562,7 @@ TEST(CupsToolTest, FoomaticError) {
             std::back_inserter(foomatic_ppd));
 
   std::unique_ptr<FakeLpTools> lptools = std::make_unique<FakeLpTools>();
-  lptools->SetRunCommandResult(0);
-  lptools->SetChownResult(-1);
+  lptools->SetRunCommandResult(-1);
 
   CupsTool cups;
   cups.SetLpToolsForTesting(std::move(lptools));

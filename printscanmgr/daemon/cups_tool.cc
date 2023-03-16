@@ -45,8 +45,6 @@ startxref
 constexpr char kGzipCommand[] = "/bin/gzip";
 constexpr char kFoomaticCommand[] = "/usr/bin/foomatic-rip";
 
-constexpr char kPrintscanmgrUser[] = "printscanmgr";
-
 constexpr base::StringPiece kLpstatInterfaceLinePrefix("Interface: ");
 
 // Minimum size of a plausible PPD.  Determined by gzipping a minimal PPD
@@ -86,12 +84,6 @@ int TestPPD(const LpTools& lp_tools, const std::vector<uint8_t>& ppd_data) {
     base::FilePath ppd_file = tmp.GetPath().Append("ppd.ppd");
     if (!base::WriteFile(ppd_file, ppd_content)) {
       PLOG(ERROR) << "Could not write to file";
-      return 1;
-    }
-    if (lp_tools.Chown(tmp.GetPath().MaybeAsASCII(),
-                       getpwnam(kPrintscanmgrUser)->pw_uid, -1)) {
-      PLOG(ERROR) << "Could not set directory ownership ("
-                  << tmp.GetPath().MaybeAsASCII() << ")";
       return 1;
     }
     auto env = base::Environment::Create();

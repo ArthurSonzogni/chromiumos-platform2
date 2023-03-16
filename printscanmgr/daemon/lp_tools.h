@@ -40,11 +40,6 @@ class LpTools {
                          const std::vector<std::string>& arg_list,
                          const std::vector<uint8_t>* std_input = nullptr,
                          std::string* out = nullptr) const = 0;
-
-  // Change ownership of a file.  Return 0 on success, -1 on error.
-  virtual int Chown(const std::string& path,
-                    uid_t owner,
-                    gid_t group) const = 0;
 };
 
 // Production implementation of the LpTools interface.
@@ -64,7 +59,6 @@ class LpToolsImpl : public LpTools {
                  const std::vector<std::string>& arg_list,
                  const std::vector<uint8_t>* std_input = nullptr,
                  std::string* out = nullptr) const override;
-  int Chown(const std::string& path, uid_t owner, gid_t group) const override;
 };
 
 }  // namespace printscanmgr
