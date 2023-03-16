@@ -85,23 +85,6 @@ bool FlashromUtilsImpl::EnableApSoftwareWriteProtection() {
   return true;
 }
 
-// TODO(jeffulin): Enable ECWP with ec_utils.
-bool FlashromUtilsImpl::EnableEcSoftwareWriteProtection() {
-  // EC doesn't require WP range.
-  if (std::string output; !cmd_utils_->GetOutput(
-          {kFlashromCmd, "-p", "ec", "--wp-enable"}, &output)) {
-    LOG(ERROR) << "Failed to enable EC SWWP";
-    LOG(ERROR) << output;
-    return false;
-  }
-
-  return true;
-}
-
-bool FlashromUtilsImpl::EnableSoftwareWriteProtection() {
-  return EnableApSoftwareWriteProtection() && EnableEcSoftwareWriteProtection();
-}
-
 bool FlashromUtilsImpl::DisableSoftwareWriteProtection() {
   // Disable AP WP.
   if (std::string output; !cmd_utils_->GetOutput(

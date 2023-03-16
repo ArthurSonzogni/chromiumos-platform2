@@ -19,8 +19,6 @@ class MockFlashromUtils : public FlashromUtils {
   MOCK_METHOD(bool, GetApWriteProtectionStatus, (bool*), (override));
   MOCK_METHOD(bool, GetEcWriteProtectionStatus, (bool*), (override));
   MOCK_METHOD(bool, EnableApSoftwareWriteProtection, (), (override));
-  MOCK_METHOD(bool, EnableEcSoftwareWriteProtection, (), (override));
-  MOCK_METHOD(bool, EnableSoftwareWriteProtection, (), (override));
   MOCK_METHOD(bool, DisableSoftwareWriteProtection, (), (override));
 };
 

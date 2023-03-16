@@ -112,7 +112,7 @@ TEST_F(FlashromUtilsTest, GetEcWriteProtectionStatus_Failed) {
   EXPECT_FALSE(flashrom_utils->GetEcWriteProtectionStatus(&enabled));
 }
 
-TEST_F(FlashromUtilsTest, EnableSoftwareWriteProtection_Success) {
+TEST_F(FlashromUtilsTest, EnableApSoftwareWriteProtection_Success) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   {
     InSequence seq;
@@ -123,16 +123,14 @@ TEST_F(FlashromUtilsTest, EnableSoftwareWriteProtection_Success) {
         .WillOnce(DoAll(SetArgPointee<1>(kFmapOutput), Return(true)));
     // Flashrom set AP WP range.
     EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(true));
-    // Flashrom set EC WP range.
-    EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(true));
   }
   auto flashrom_utils =
       std::make_unique<FlashromUtilsImpl>(std::move(mock_cmd_utils));
 
-  EXPECT_TRUE(flashrom_utils->EnableSoftwareWriteProtection());
+  EXPECT_TRUE(flashrom_utils->EnableApSoftwareWriteProtection());
 }
 
-TEST_F(FlashromUtilsTest, EnableSoftwareWriteProtection_ReadFail) {
+TEST_F(FlashromUtilsTest, EnableApSoftwareWriteProtection_ReadFail) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   {
     InSequence seq;
@@ -142,10 +140,10 @@ TEST_F(FlashromUtilsTest, EnableSoftwareWriteProtection_ReadFail) {
   auto flashrom_utils =
       std::make_unique<FlashromUtilsImpl>(std::move(mock_cmd_utils));
 
-  EXPECT_FALSE(flashrom_utils->EnableSoftwareWriteProtection());
+  EXPECT_FALSE(flashrom_utils->EnableApSoftwareWriteProtection());
 }
 
-TEST_F(FlashromUtilsTest, EnableSoftwareWriteProtection_FmapCmdFail) {
+TEST_F(FlashromUtilsTest, EnableApSoftwareWriteProtection_FmapCmdFail) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   {
     InSequence seq;
@@ -157,10 +155,10 @@ TEST_F(FlashromUtilsTest, EnableSoftwareWriteProtection_FmapCmdFail) {
   auto flashrom_utils =
       std::make_unique<FlashromUtilsImpl>(std::move(mock_cmd_utils));
 
-  EXPECT_FALSE(flashrom_utils->EnableSoftwareWriteProtection());
+  EXPECT_FALSE(flashrom_utils->EnableApSoftwareWriteProtection());
 }
 
-TEST_F(FlashromUtilsTest, EnableSoftwareWriteProtection_FmapParseFail) {
+TEST_F(FlashromUtilsTest, EnableApSoftwareWriteProtection_FmapParseFail) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   {
     InSequence seq;
@@ -173,10 +171,10 @@ TEST_F(FlashromUtilsTest, EnableSoftwareWriteProtection_FmapParseFail) {
   auto flashrom_utils =
       std::make_unique<FlashromUtilsImpl>(std::move(mock_cmd_utils));
 
-  EXPECT_FALSE(flashrom_utils->EnableSoftwareWriteProtection());
+  EXPECT_FALSE(flashrom_utils->EnableApSoftwareWriteProtection());
 }
 
-TEST_F(FlashromUtilsTest, EnableSoftwareWriteProtection_EnableApWpFail) {
+TEST_F(FlashromUtilsTest, EnableApSoftwareWriteProtection_EnableApWpFail) {
   auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
   {
     InSequence seq;
@@ -191,27 +189,7 @@ TEST_F(FlashromUtilsTest, EnableSoftwareWriteProtection_EnableApWpFail) {
   auto flashrom_utils =
       std::make_unique<FlashromUtilsImpl>(std::move(mock_cmd_utils));
 
-  EXPECT_FALSE(flashrom_utils->EnableSoftwareWriteProtection());
-}
-
-TEST_F(FlashromUtilsTest, EnableSoftwareWriteProtection_EnableEcWpFail) {
-  auto mock_cmd_utils = std::make_unique<StrictMock<MockCmdUtils>>();
-  {
-    InSequence seq;
-    // Flashrom read.
-    EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(true));
-    // Parse fmap.
-    EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _))
-        .WillOnce(DoAll(SetArgPointee<1>(kFmapOutput), Return(true)));
-    // Flashrom set AP WP range.
-    EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(true));
-    // Flashrom set EC WP range.
-    EXPECT_CALL(*mock_cmd_utils, GetOutput(_, _)).WillOnce(Return(false));
-  }
-  auto flashrom_utils =
-      std::make_unique<FlashromUtilsImpl>(std::move(mock_cmd_utils));
-
-  EXPECT_FALSE(flashrom_utils->EnableSoftwareWriteProtection());
+  EXPECT_FALSE(flashrom_utils->EnableApSoftwareWriteProtection());
 }
 
 }  // namespace rmad
