@@ -431,6 +431,41 @@ void AuthBlockUtilityImpl::DeriveKeyBlobsWithAuthBlock(
   auth_block_ptr->Derive(auth_input, auth_state, std::move(managed_callback));
 }
 
+void AuthBlockUtilityImpl::SelectAuthFactorWithAuthBlock(
+    AuthBlockType auth_block_type,
+    const AuthInput& auth_input,
+    std::vector<AuthFactor> auth_factors,
+    AuthBlock::SelectFactorCallback select_callback) {
+  CryptoStatusOr<std::unique_ptr<AuthBlock>> auth_block =
+      GetAuthBlockWithType(auth_block_type, auth_input);
+  if (!auth_block.ok()) {
+    LOG(ERROR) << "Failed to retrieve auth block.";
+    std::move(select_callback)
+        .Run(MakeStatus<CryptohomeCryptoError>(
+                 CRYPTOHOME_ERR_LOC(
+                     kLocAuthBlockUtilNoAuthBlockInSelectAuthFactor))
+                 .Wrap(std::move(auth_block).err_status()),
+             std::nullopt, std::nullopt);
+    return;
+  }
+
+  // This lambda functions to keep the auth_block reference valid until
+  // the results are returned through select_callback.
+  AuthBlock* auth_block_ptr = auth_block->get();
+  auto managed_callback = base::BindOnce(
+      [](std::unique_ptr<AuthBlock> owned_auth_block,
+         AuthBlock::SelectFactorCallback callback, CryptohomeStatus error,
+         std::optional<AuthInput> auth_input,
+         std::optional<AuthFactor> auth_factor) {
+        std::move(callback).Run(std::move(error), std::move(auth_input),
+                                std::move(auth_factor));
+      },
+      std::move(auth_block.value()), std::move(select_callback));
+
+  auth_block_ptr->SelectFactor(auth_input, std::move(auth_factors),
+                               std::move(managed_callback));
+}
+
 CryptoStatusOr<AuthBlockType> AuthBlockUtilityImpl::GetAuthBlockTypeForCreation(
     const AuthFactorType& auth_factor_type) const {
   // Default status if there are no entries in the returned priority list.

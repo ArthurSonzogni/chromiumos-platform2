@@ -9,6 +9,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <vector>
 
 #include <brillo/secure_blob.h>
 #include <libhwsec-foundation/status/status_chain_or.h>
@@ -89,6 +90,12 @@ class AuthBlockUtilityImpl final : public AuthBlockUtility {
       const AuthInput& auth_input,
       const AuthBlockState& auth_state,
       AuthBlock::DeriveCallback derive_callback) override;
+
+  void SelectAuthFactorWithAuthBlock(
+      AuthBlockType auth_block_type,
+      const AuthInput& auth_input,
+      std::vector<AuthFactor> auth_factors,
+      AuthBlock::SelectFactorCallback select_callback) override;
 
   CryptoStatusOr<AuthBlockType> GetAuthBlockTypeForCreation(
       const AuthFactorType& auth_factor_type) const override;

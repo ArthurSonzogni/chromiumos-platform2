@@ -12,10 +12,12 @@
 #include <set>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <brillo/secure_blob.h>
 #include <gmock/gmock.h>
 
+#include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/credentials.h"
@@ -72,6 +74,13 @@ class MockAuthBlockUtility : public AuthBlockUtility {
                const AuthInput& auth_input,
                const AuthBlockState& auth_state,
                AuthBlock::DeriveCallback derive_callback),
+              (override));
+  MOCK_METHOD(void,
+              SelectAuthFactorWithAuthBlock,
+              (AuthBlockType auth_block_type,
+               const AuthInput& auth_input,
+               std::vector<AuthFactor> auth_factors,
+               AuthBlock::SelectFactorCallback select_callback),
               (override));
   MOCK_METHOD(CryptoStatusOr<AuthBlockType>,
               GetAuthBlockTypeForCreation,

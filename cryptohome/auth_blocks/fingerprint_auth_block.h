@@ -47,21 +47,9 @@ class FingerprintAuthBlock : public AuthBlock {
 
   CryptohomeStatus PrepareForRemoval(const AuthBlockState& state) override;
 
-  // If the operation succeeds, |auth_input| will contain the constructed
-  // AuthInput used for Derive, |auth_factor| will contain the selected
-  // AuthFactor, and |error| will be an ok status. On failure, error will be
-  // populated, and should not rely on the value of auth_input and auth_factor.
-  using SelectFactorCallback =
-      base::OnceCallback<void(CryptohomeStatus error,
-                              std::optional<AuthInput> auth_input,
-                              std::optional<AuthFactor> auth_factor)>;
-
-  // This asynchronous API receives a callback to construct the AuthInput used
-  // for deriving key blobs, and to select the correct AuthFactor that should be
-  // used for deriving the key blobs in the candidates |auth_factors|.
   void SelectFactor(const AuthInput& auth_input,
                     std::vector<AuthFactor> auth_factors,
-                    SelectFactorCallback callback);
+                    SelectFactorCallback callback) override;
 
  private:
   // Creates a rate-limiter PinWeaver leaf and returns the label of the created

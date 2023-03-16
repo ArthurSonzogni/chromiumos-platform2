@@ -9,6 +9,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <vector>
 
 #include <base/containers/flat_set.h>
 #include <brillo/secure_blob.h>
@@ -17,6 +18,7 @@
 #include "cryptohome/auth_blocks/auth_block.h"
 #include "cryptohome/auth_blocks/auth_block_type.h"
 #include "cryptohome/auth_blocks/prepare_token.h"
+#include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_storage_type.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/auth_intent.h"
@@ -115,6 +117,14 @@ class AuthBlockUtility {
       const AuthInput& auth_input,
       const AuthBlockState& auth_state,
       AuthBlock::DeriveCallback derive_callback) = 0;
+
+  // Select the correct AuthFactor that should be used for deriving the
+  // KeyBlob from the candidates.
+  virtual void SelectAuthFactorWithAuthBlock(
+      AuthBlockType auth_block_type,
+      const AuthInput& auth_input,
+      std::vector<AuthFactor> auth_factors,
+      AuthBlock::SelectFactorCallback select_callback) = 0;
 
   // This function returns the AuthBlock type for
   // AuthBlock::Create() based on the specified credential type, |tpm_| and

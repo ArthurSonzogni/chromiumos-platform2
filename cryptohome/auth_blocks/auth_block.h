@@ -6,10 +6,16 @@
 #define CRYPTOHOME_AUTH_BLOCKS_AUTH_BLOCK_H_
 
 #include <memory>
+#include <optional>
+#include <utility>
+#include <vector>
 
 #include <base/functional/callback.h>
 
+#include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/error/location_utils.h"
+#include "cryptohome/error/locations.h"
 #include "cryptohome/flatbuffer_schemas/auth_block_state.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/vault_keyset.h"
@@ -61,11 +67,35 @@ class AuthBlock {
                       const AuthBlockState& state,
                       DeriveCallback callback) = 0;
 
-  // This is implemented by concrete auth factor methods which need to execute
-  // additional steps before removal of the AuthFactor from disk.
+  // This is optionally implemented by concrete auth factor methods which need
+  // to execute additional steps before removal of the AuthFactor from disk.
   virtual CryptohomeStatus PrepareForRemoval(const AuthBlockState& state) {
     // By default, do nothing. Subclasses can provide custom behavior.
     return hwsec_foundation::status::OkStatus<error::CryptohomeCryptoError>();
+  }
+
+  // If the operation succeeds, |auth_input| will contain the constructed
+  // AuthInput used for Derive, |auth_factor| will contain the selected
+  // AuthFactor, and |error| will be an ok status. On failure, error will be
+  // populated, and should not rely on the value of auth_input and auth_factor.
+  using SelectFactorCallback =
+      base::OnceCallback<void(CryptohomeStatus error,
+                              std::optional<AuthInput> auth_input,
+                              std::optional<AuthFactor> auth_factor)>;
+
+  // This asynchronous API receives a callback to construct the AuthInput used
+  // for deriving key blobs, and to select the correct AuthFactor that should be
+  // used for deriving the key blobs in the candidates |auth_factors|.
+  virtual void SelectFactor(const AuthInput& auth_input,
+                            std::vector<AuthFactor> auth_factors,
+                            SelectFactorCallback callback) {
+    std::move(callback).Run(
+        hwsec_foundation::status::MakeStatus<error::CryptohomeCryptoError>(
+            CRYPTOHOME_ERR_LOC(kLocAuthBlockSelectFactorNotSupported),
+            error::ErrorActionSet(
+                {error::ErrorAction::kDevCheckUnexpectedState}),
+            CryptoError::CE_OTHER_CRYPTO),
+        std::nullopt, std::nullopt);
   }
 
   DerivationType derivation_type() const { return derivation_type_; }
@@ -105,6 +135,20 @@ class SyncAuthBlock {
   virtual CryptohomeStatus PrepareForRemoval(const AuthBlockState& state) {
     // By default, do nothing. Subclasses can provide custom behavior.
     return hwsec_foundation::status::OkStatus<error::CryptohomeError>();
+  }
+
+  // This is implemented by concrete auth factor methods to construct the
+  // AuthInput used for deriving key blobs, and to select the correct AuthFactor
+  // that should be used for deriving the key blobs in the candidates
+  // |auth_factors|.
+  virtual CryptoStatus SelectFactor(const AuthInput& auth_input,
+                                    std::vector<AuthFactor> auth_factors,
+                                    AuthInput* auth_input_out,
+                                    AuthFactor* auth_factor) {
+    return hwsec_foundation::status::MakeStatus<error::CryptohomeCryptoError>(
+        CRYPTOHOME_ERR_LOC(kLocAuthBlockSyncSelectFactorNotSupported),
+        error::ErrorActionSet({error::ErrorAction::kDevCheckUnexpectedState}),
+        CryptoError::CE_OTHER_CRYPTO);
   }
 
   DerivationType derivation_type() const { return derivation_type_; }
