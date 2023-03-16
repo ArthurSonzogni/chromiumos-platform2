@@ -31,10 +31,10 @@ std::map<BuiltinModelId, BuiltinModelMetadata> GetBuiltinModelMetadata() {
           },
       },
       {
-          BuiltinModelId::ADAPTIVE_CHARGING_20211105,
+          BuiltinModelId::ADAPTIVE_CHARGING_20230314,
           {
-              BuiltinModelId::ADAPTIVE_CHARGING_20211105,
-              "mlservice-model-adaptive_charging-20211105.tflite",
+              BuiltinModelId::ADAPTIVE_CHARGING_20230314,
+              "mlservice-model-adaptive_charging-20230314.tflite",
               {{"input", 0}},
               {{"output", 13}},
               "AdaptiveChargingModel",

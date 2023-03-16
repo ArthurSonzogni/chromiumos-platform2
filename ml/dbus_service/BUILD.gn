@@ -15,6 +15,7 @@ static_library("core") {
   sources = [
     "adaptive_charging_service.cc",
     "tf_model_graph_executor.cc",
+    "tf_model_graph_executor_util.cc",
   ]
 
   include_dirs = [ "${sysroot}/usr/include/tensorflow" ]

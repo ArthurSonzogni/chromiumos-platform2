@@ -15,7 +15,7 @@ using ::chromeos::machine_learning::mojom::BuiltinModelId;
 using ::chromeos::machine_learning::mojom::TensorPtr;
 
 constexpr char kPreprocessorFileName[] =
-    "mlservice-model-adaptive_charging-20211105-preprocessor.pb";
+    "mlservice-model-adaptive_charging-20230314-preprocessor.pb";
 
 }  // namespace
 
@@ -24,7 +24,7 @@ AdaptiveChargingService::AdaptiveChargingService(
     : org::chromium::MachineLearning::AdaptiveChargingAdaptor(this),
       dbus_object_(std::move(dbus_object)),
       tf_model_graph_executor_(new TfModelGraphExecutor(
-          BuiltinModelId::ADAPTIVE_CHARGING_20211105, kPreprocessorFileName)) {}
+          BuiltinModelId::ADAPTIVE_CHARGING_20230314, kPreprocessorFileName)) {}
 
 AdaptiveChargingService::~AdaptiveChargingService() = default;
 

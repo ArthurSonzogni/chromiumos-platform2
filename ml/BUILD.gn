@@ -306,6 +306,7 @@ if (use.test) {
   executable("ml_service_test") {
     sources = [
       "dbus_service/tf_model_graph_executor_test.cc",
+      "dbus_service/tf_model_graph_executor_util_test.cc",
       "dlcservice_client_test.cc",
       "document_scanner_library_test.cc",
       "example_preprocessor/example_preprocessing_test.cc",

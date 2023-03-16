@@ -13,6 +13,7 @@
 #include <tensorflow/lite/model.h>
 
 #include "chrome/knowledge/assist_ranker/ranker_example.pb.h"
+#include "ml/dbus_service/tf_model_graph_executor_util.h"
 #include "ml/example_preprocessor/example_preprocessing.h"
 #include "ml/mojom/model.mojom.h"
 #include "ml/request_metrics.h"
@@ -130,10 +131,7 @@ bool TfModelGraphExecutor::Execute(
 
   const int preprocessor_result = assist_ranker::ExamplePreprocessor::Process(
       *config_, example, clear_other_features);
-  // kNoFeatureIndexFound can occur normally and is not treated as an error.
-  if (preprocessor_result != assist_ranker::ExamplePreprocessor::kSuccess &&
-      preprocessor_result !=
-          assist_ranker::ExamplePreprocessor::kNoFeatureIndexFound) {
+  if (!AcceptablePreprocessResult(preprocessor_result)) {
     LOG(ERROR) << "Preprocess example failed! Error type = "
                << preprocessor_result;
     return false;

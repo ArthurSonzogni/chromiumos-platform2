@@ -17,8 +17,8 @@ namespace ml {
 namespace {
 constexpr char kPreprocessorFileNameForSmartDim20190521[] =
     "mlservice-model-smart_dim-20190521-preprocessor.pb";
-constexpr char kPreprocessorFileNameForAdaptiveCharging20211105[] =
-    "mlservice-model-adaptive_charging-20211105-preprocessor.pb";
+constexpr char kPreprocessorFileNameForAdaptiveCharging20230314[] =
+    "mlservice-model-adaptive_charging-20230314-preprocessor.pb";
 constexpr char kBadPreprocessorFileName[] = "non-exist.pb";
 
 using ::chromeos::machine_learning::mojom::BuiltinModelId;
@@ -91,16 +91,15 @@ TEST(TfModelGraphExecutorTest, ExecuteSmartDim20190521) {
               ElementsAre(DoubleNear(expected_output, 1e-5)));
 }
 
-// Tests that TfModelGraphExecutor works with adaptive_charging_20111105 assets.
-TEST(TfModelGraphExecutorTest, ExecuteAdaptiveCharging20211105) {
+// Tests that TfModelGraphExecutor works with adaptive_charging_20230314 assets.
+TEST(TfModelGraphExecutorTest, ExecuteAdaptiveCharging20230314) {
   const auto tf_model_graph_executor = TfModelGraphExecutor::CreateForTesting(
-      BuiltinModelId::ADAPTIVE_CHARGING_20211105,
-      kPreprocessorFileNameForAdaptiveCharging20211105, GetTestModelDir());
+      BuiltinModelId::ADAPTIVE_CHARGING_20230314,
+      kPreprocessorFileNameForAdaptiveCharging20230314, GetTestModelDir());
   ASSERT_TRUE(tf_model_graph_executor->Ready());
 
   assist_ranker::RankerExample example;
   std::vector<TensorPtr> output_tensors;
-
   EXPECT_TRUE(tf_model_graph_executor->Execute(true /*clear_other_features*/,
                                                &example, &output_tensors));
 
@@ -115,8 +114,8 @@ TEST(TfModelGraphExecutorTest, ExecuteAdaptiveCharging20211105) {
   EXPECT_EQ(out_tensor_view.GetShape(), expected_shape);
   EXPECT_THAT(out_tensor_view.GetValues(),
               ElementsAreArray(ArrayDoubleNear(
-                  {0.0615005, 0.0902007, 0.0648901, 0.0545519, 0.0482139,
-                   0.0408426, 0.0351965, 0.0277829, 0.576821})));
+                  {0.207927, 0.187088, 0.121717, 0.090703, 0.065328, 0.045972,
+                   0.026243, 0.018707, 0.236313})));
 }
 
 }  // namespace ml
