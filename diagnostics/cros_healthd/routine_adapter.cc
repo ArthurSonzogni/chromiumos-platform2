@@ -62,9 +62,9 @@ std::string EnumToString(mojom::MemtesterTestItemEnum subtest_enum) {
     case mojom::MemtesterTestItemEnum::kWalkingZeroes:
       return "WalkingZeroes";
     case mojom::MemtesterTestItemEnum::k8BitWrites:
-      return "8-bitWrite";
+      return "8-bitWrites";
     case mojom::MemtesterTestItemEnum::k16BitWrites:
-      return "16-bitWrite";
+      return "16-bitWrites";
     case mojom::MemtesterTestItemEnum::kUnmappedEnumField:
       LOG(ERROR) << "Unmapped subtest enum: " << subtest_enum;
       return "";
@@ -116,16 +116,6 @@ RoutineAdapter::RoutineAdapter(
   routine_control_->AddObserver(observer_receiver_.BindNewPipeAndPassRemote());
   routine_control_.set_disconnect_with_reason_handler(base::BindRepeating(
       &RoutineAdapter::OnRoutineDisconnect, weak_ptr_factory_.GetWeakPtr()));
-}
-
-RoutineAdapter::~RoutineAdapter() = default;
-
-void RoutineAdapter::OnRoutineStateChange(mojom::RoutineStatePtr state) {
-  UpdateRoutineCacheState(std::move(state));
-}
-
-void RoutineAdapter::Start() {
-  routine_control_->Start();
   // We cannot guarantee when the observer will receive its first update,
   // therefore we cannot guarantee when the cached routine state will receive
   // its first update. Since in the old API a routine's availability check is
@@ -134,6 +124,16 @@ void RoutineAdapter::Start() {
   cached_state_ = mojom::RoutineState::New(
       0,
       mojom::RoutineStateUnion::NewRunning(mojom::RoutineStateRunning::New()));
+}
+
+RoutineAdapter::~RoutineAdapter() = default;
+
+void RoutineAdapter::OnRoutineStateChange(mojom::RoutineStatePtr state) {
+  cached_state_ = std::move(state);
+}
+
+void RoutineAdapter::Start() {
+  routine_control_->Start();
 }
 
 void RoutineAdapter::Resume() {
@@ -146,34 +146,14 @@ void RoutineAdapter::Cancel() {
   cached_state_ = mojom::RoutineState::New();
 }
 
-ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum
-RoutineAdapter::GetStatus() {
-  if (routine_cancelled_)
-    return ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum::kCancelled;
-
-  if (error_occured_)
-    return ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum::kError;
-
-  switch (cached_state_->state_union->which()) {
-    case mojom::RoutineStateUnion::Tag::kInitialized:
-      return mojom::DiagnosticRoutineStatusEnum::kRunning;
-    case mojom::RoutineStateUnion::Tag::kRunning:
-      return mojom::DiagnosticRoutineStatusEnum::kRunning;
-    case mojom::RoutineStateUnion::Tag::kWaiting:
-      switch (cached_state_->state_union->get_waiting()->reason) {
-        case mojom::RoutineStateWaiting::Reason::kWaitingToBeScheduled:
-          // The behaviour of waiting in resource queue corresponds to kRunning
-          // of the V1 API.
-          return mojom::DiagnosticRoutineStatusEnum::kRunning;
-        case mojom::RoutineStateWaiting::Reason::kUnmappedEnumField:
-          return mojom::DiagnosticRoutineStatusEnum::kWaiting;
-      }
-    case mojom::RoutineStateUnion::Tag::kFinished: {
-      if (cached_state_->state_union->get_finished()->has_passed)
-        return mojom::DiagnosticRoutineStatusEnum::kPassed;
-      return mojom::DiagnosticRoutineStatusEnum::kFailed;
-    }
+mojom::DiagnosticRoutineStatusEnum RoutineAdapter::GetStatus() {
+  auto update = mojom::RoutineUpdate::New();
+  PopulateStatusUpdate(update.get(), false);
+  if (update->routine_update_union->is_noninteractive_update()) {
+    return update->routine_update_union->get_noninteractive_update()->status;
   }
+  // If the update is an interactive update, the status is kWaiting.
+  return mojom::DiagnosticRoutineStatusEnum::kWaiting;
 }
 
 void RoutineAdapter::RegisterStatusChangedCallback(
@@ -184,47 +164,93 @@ void RoutineAdapter::RegisterStatusChangedCallback(
 
 void RoutineAdapter::PopulateStatusUpdate(
     ash::cros_healthd::mojom::RoutineUpdate* response, bool include_output) {
-  DCHECK(response);
-  auto status = GetStatus();
+  CHECK(response);
 
-  // Because the memory routine is non-interactive, we will never include a user
-  // message.
-  switch (routine_type_) {
-    case mojom::RoutineArgument::Tag::kMemory: {
+  if (error_occured_) {
+    auto update = mojom::NonInteractiveRoutineUpdate::New();
+    update->status = mojom::DiagnosticRoutineStatusEnum::kError;
+    update->status_message = error_message_;
+    response->routine_update_union =
+        mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
+    return;
+  }
+
+  if (routine_cancelled_) {
+    auto update = mojom::NonInteractiveRoutineUpdate::New();
+    update->status = mojom::DiagnosticRoutineStatusEnum::kCancelled;
+    response->routine_update_union =
+        mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
+    return;
+  }
+
+  if (routine_type_ == mojom::RoutineArgument::Tag::kUnrecognizedArgument) {
+    auto update = mojom::NonInteractiveRoutineUpdate::New();
+    update->status = mojom::DiagnosticRoutineStatusEnum::kUnknown;
+    response->routine_update_union =
+        mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
+    return;
+  }
+
+  CHECK(cached_state_);
+
+  response->progress_percent = cached_state_->percentage;
+
+  switch (cached_state_->state_union->which()) {
+    case mojom::RoutineStateUnion::Tag::kInitialized: {
       auto update = mojom::NonInteractiveRoutineUpdate::New();
-      update->status = status;
-
-      if (status == mojom::DiagnosticRoutineStatusEnum::kError) {
-        update->status_message = error_message_;
-        response->routine_update_union =
-            mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(
-                std::move(update));
-        return;
-      }
-
-      response->progress_percent = cached_state_->percentage;
-
-      mojo::ScopedHandle output;
-      if (cached_state_->state_union->is_waiting()) {
-        update->status_message =
-            cached_state_->state_union->get_waiting()->message;
-      }
-
-      if (cached_state_->state_union->is_finished()) {
-        if (include_output) {
-          if (cached_state_->state_union->get_finished()->detail->is_memory()) {
-            response->output = ConvertMemoryV2ResultToJson(
-                cached_state_->state_union->get_finished()
-                    ->detail->get_memory());
-          }
-        }
-      }
-
+      update->status = mojom::DiagnosticRoutineStatusEnum::kRunning;
       response->routine_update_union =
           mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
       return;
     }
-    case mojom::RoutineArgument::Tag::kUnrecognizedArgument: {
+    case mojom::RoutineStateUnion::Tag::kRunning: {
+      auto update = mojom::NonInteractiveRoutineUpdate::New();
+      update->status = mojom::DiagnosticRoutineStatusEnum::kRunning;
+      response->routine_update_union =
+          mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
+      return;
+    }
+    // For all status that is not kWaiting, the update is a non-interactive
+    // update. We do not yet support routines that has a waiting state.
+    case mojom::RoutineStateUnion::Tag::kWaiting: {
+      const auto& waiting_ptr = cached_state_->state_union->get_waiting();
+      auto update = mojom::NonInteractiveRoutineUpdate::New();
+      switch (waiting_ptr->reason) {
+        case mojom::RoutineStateWaiting::Reason::kWaitingToBeScheduled:
+          // The behaviour of waiting in resource queue corresponds to kRunning
+          // of the V1 API.
+          update->status = mojom::DiagnosticRoutineStatusEnum::kRunning;
+          break;
+        case mojom::RoutineStateWaiting::Reason::kUnmappedEnumField:
+          update->status = mojom::DiagnosticRoutineStatusEnum::kWaiting;
+          break;
+      }
+      update->status_message = waiting_ptr->message;
+      response->routine_update_union =
+          mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
+      return;
+    }
+    case mojom::RoutineStateUnion::Tag::kFinished: {
+      const auto& finished_ptr = cached_state_->state_union->get_finished();
+      auto update = mojom::NonInteractiveRoutineUpdate::New();
+      update->status = finished_ptr->has_passed
+                           ? mojom::DiagnosticRoutineStatusEnum::kPassed
+                           : mojom::DiagnosticRoutineStatusEnum::kFailed;
+
+      if (include_output) {
+        if (routine_type_ == mojom::RoutineArgument::Tag::kMemory) {
+          if (!finished_ptr->detail.is_null() &&
+              finished_ptr->detail->is_memory()) {
+            response->output =
+                ConvertMemoryV2ResultToJson(finished_ptr->detail->get_memory());
+          } else {
+            update->status = mojom::DiagnosticRoutineStatusEnum::kError;
+            update->status_message = "Unrecognized output from memory routine.";
+          }
+        }
+      }
+      response->routine_update_union =
+          mojom::RoutineUpdateUnion::NewNoninteractiveUpdate(std::move(update));
       return;
     }
   }
@@ -236,11 +262,6 @@ void RoutineAdapter::OnRoutineDisconnect(uint32_t custom_reason,
   error_occured_ = true;
   error_message_ = message;
   cached_state_ = mojom::RoutineState::New();
-}
-
-void RoutineAdapter::UpdateRoutineCacheState(
-    ash::cros_healthd::mojom::RoutineStatePtr state) {
-  cached_state_ = std::move(state);
 }
 
 }  // namespace diagnostics

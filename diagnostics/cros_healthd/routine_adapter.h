@@ -42,9 +42,6 @@ class RoutineAdapter : public DiagnosticRoutine,
   void RegisterStatusChangedCallback(StatusChangedCallback callback) override;
 
  private:
-  // Update the cached status with the received state.
-  void UpdateRoutineCacheState(ash::cros_healthd::mojom::RoutineStatePtr state);
-
   // Sets error message when routine disconnects.
   void OnRoutineDisconnect(uint32_t custom_reason, const std::string& message);
 
