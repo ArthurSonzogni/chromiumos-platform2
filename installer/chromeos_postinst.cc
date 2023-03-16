@@ -545,7 +545,8 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
 
   CgptManager cgpt_manager;
 
-  int result = cgpt_manager.Initialize(install_config.root.base_device());
+  int result = cgpt_manager.Initialize(
+      base::FilePath(install_config.root.base_device()));
   if (result != kCgptSuccess) {
     LOG(ERROR) << "Unable to initialize CgptManager().";
     return false;

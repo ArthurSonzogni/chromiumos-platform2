@@ -66,7 +66,7 @@ void GuidToStr(const Guid* guid, char* str, unsigned int buflen) {
 string Partition::uuid() const {
   CgptManager cgpt;
 
-  if (cgpt.Initialize(base_device()) != kCgptSuccess) {
+  if (cgpt.Initialize(base::FilePath(base_device())) != kCgptSuccess) {
     LOG(ERROR) << "CgptManager failed to initialize for " << base_device();
     return "";
   }

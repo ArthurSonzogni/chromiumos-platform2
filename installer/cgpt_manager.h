@@ -6,6 +6,9 @@
 #define INSTALLER_CGPT_MANAGER_H_
 
 #include <string>
+
+#include <base/files/file_path.h>
+
 #include <vboot/gpt.h>
 
 // This file defines a simple C++ wrapper class interface for the cgpt methods.
@@ -35,7 +38,7 @@ class CgptManager {
   // return kCgptNotInitialized.
   // Returns kCgptSuccess or an appropriate error code.
   // This device is automatically closed when this object is destructed.
-  CgptErrorCode Initialize(const std::string& device_name);
+  CgptErrorCode Initialize(const base::FilePath& device_name);
 
   // Performs any necessary write-backs so that the GPT structs are written to
   // the device. This method is called in the destructor but its error code is
@@ -68,7 +71,7 @@ class CgptManager {
   // Note: Strictly speaking, the PMBR is not part of the GPT, but it is
   // included here for ease of use.
   CgptErrorCode SetPmbr(uint32_t boot_partition_number,
-                        const std::string& boot_file_name,
+                        const base::FilePath& boot_file_name,
                         bool should_create_legacy_partition);
 
   // Populates boot_partition with the partition number that's set to
@@ -163,7 +166,7 @@ class CgptManager {
 
  private:
   // The device name that is passed to Initialize.
-  std::string device_name_;
+  base::FilePath device_name_;
   // The size of that device in case we store GPT structs off site (such as on
   // NOR flash). Zero if we store GPT structs on the same device.
   uint64_t device_size_;
