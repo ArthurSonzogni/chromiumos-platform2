@@ -123,7 +123,7 @@ void CameraGPUAlgorithm::RequestOnThread(uint32_t req_id,
   };
   if (!is_initialized_) {
     LOGF(ERROR) << "Algorithm is not initialized yet";
-    callback(EAGAIN);
+    callback(EINVAL);
     return;
   }
   if (req_header.size() < sizeof(CameraGPUAlgoCmdHeader)) {
@@ -155,13 +155,20 @@ void CameraGPUAlgorithm::RequestOnThread(uint32_t req_id,
         shm_region_map_.at(params.input_buffer_handle).Map();
     base::WritableSharedMemoryMapping output_shm_mapping =
         shm_region_map_.at(params.output_buffer_handle).Map();
-    if (!input_shm_mapping.IsValid() || !output_shm_mapping.IsValid() ||
-        !portrait_processor_.Process(
+    if (!input_shm_mapping.IsValid() || !output_shm_mapping.IsValid()) {
+      LOGF(ERROR) << "Failed to map shared memory";
+      callback(EINVAL);
+      return;
+    }
+    if (!portrait_processor_.Process(
             req_id, portrait_request,
             input_shm_mapping.GetMemoryAs<const uint8_t>(),
             output_shm_mapping.GetMemoryAs<uint8_t>())) {
-      LOGF(ERROR) << "Run portrait processor failed";
-      callback(EINVAL);
+      // We process portrait images using Google3 portrait library. Not
+      // processing cases is primarily due to no human face being detected.
+      // We assume the failure here is not containing a clear face.
+      LOGF(WARNING) << "Portrait processor failed with no human face detected.";
+      callback(ECANCELED);
       return;
     }
     callback(0);

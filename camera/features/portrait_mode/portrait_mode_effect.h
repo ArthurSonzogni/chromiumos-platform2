@@ -40,11 +40,10 @@ constexpr uint32_t kPortraitModeSegmentationResultVendorKey =
 
 enum class SegmentationResult : uint8_t {
   kSuccess = 0,  // Portrait mode segmentation succeeds.
-  kFailure = 1,  // Portrait mode segmentation fails, this failure may be
-                 // caused by errors or no human face detected.
-                 // TODO(b/268126664): Distinguish between two types of errors.
+  kFailure = 1,  // Portrait mode segmentation fails.
   kTimeout = 2,  // Portrait processing timeout.
-  kUnknown = 3
+  kNoFaces = 3,  // Portrait mode segmentation fails with no face detected.
+  kUnknown = 4
 };
 
 class PortraitModeEffect : public base::SupportsWeakPtr<PortraitModeEffect> {

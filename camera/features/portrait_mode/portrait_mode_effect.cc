@@ -163,12 +163,12 @@ int32_t PortraitModeEffect::ReprocessRequest(
     result = return_status_;
 
     LOGF(INFO) << "Portrait processing finished, result: " << result;
-    if (result != 0) {
+    if (result == -EINVAL || result == -ETIMEDOUT) {
+      return result;
+    } else if (result == -ECANCELED) {
       // Portrait processing finishes with non-zero result when there's no human
       // face in the image. Returns 0 here with the status set in the vendor tag
       // by |result_metadata_runner|.
-      // TODO(julianachang): make the status returned from portrait library more
-      // fine-grained to filter critical errors. (b/268126664)
       return 0;
     }
 
@@ -223,10 +223,11 @@ int32_t PortraitModeEffect::ReprocessRequest(
 
 void PortraitModeEffect::UpdateSegmentationResult(
     SegmentationResult* segmentation_result, const int* result) {
-  *segmentation_result = (*result == 0) ? SegmentationResult::kSuccess
-                         : (*result == -ETIMEDOUT)
-                             ? SegmentationResult::kTimeout
-                             : SegmentationResult::kFailure;
+  *segmentation_result =
+      (*result == 0)            ? SegmentationResult::kSuccess
+      : (*result == -ETIMEDOUT) ? SegmentationResult::kTimeout
+      : (*result == -ECANCELED) ? SegmentationResult::kNoFaces
+                                : SegmentationResult::kFailure;
 }
 
 void PortraitModeEffect::ReturnCallback(uint32_t status,
