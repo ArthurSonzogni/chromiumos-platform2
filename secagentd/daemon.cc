@@ -129,9 +129,8 @@ void Daemon::StartXDRReporting() {
   if (bypass_enq_ok_wait_for_testing_) {
     std::swap(cb_for_agent, cb_for_now);
   }
-  agent_plugin_ = plugin_factory_->Create(
-      Types::Plugin::kAgent, message_sender_,
-      std::make_unique<org::chromium::AttestationProxy>(bus_),
+  agent_plugin_ = plugin_factory_->CreateAgentPlugin(
+      message_sender_, std::make_unique<org::chromium::AttestationProxy>(bus_),
       std::make_unique<org::chromium::TpmManagerProxy>(bus_),
       std::move(cb_for_agent), heartbeat_period_s_);
 

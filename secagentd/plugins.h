@@ -160,8 +160,7 @@ class PluginFactoryInterface {
       scoped_refptr<ProcessCacheInterface> process_cache,
       scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
       uint32_t batch_interval_s) = 0;
-  virtual std::unique_ptr<PluginInterface> Create(
-      PluginType type,
+  virtual std::unique_ptr<PluginInterface> CreateAgentPlugin(
       scoped_refptr<MessageSenderInterface> message_sender,
       std::unique_ptr<org::chromium::AttestationProxyInterface>
           attestation_proxy,
@@ -198,8 +197,7 @@ class PluginFactory : public PluginFactoryInterface {
       scoped_refptr<ProcessCacheInterface> process_cache,
       scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker,
       uint32_t batch_interval_s) override;
-  std::unique_ptr<PluginInterface> Create(
-      PluginType type,
+  std::unique_ptr<PluginInterface> CreateAgentPlugin(
       scoped_refptr<MessageSenderInterface> message_sender,
       std::unique_ptr<org::chromium::AttestationProxyInterface>
           attestation_proxy,

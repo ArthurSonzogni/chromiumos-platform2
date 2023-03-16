@@ -87,17 +87,17 @@ class AgentPluginTestFixture : public ::testing::TestWithParam<BootmodeAndTpm> {
   }
 
   void CreateAgentPlugin(base::RunLoop* run_loop) {
-    plugin_ = plugin_factory_->Create(Types::Plugin::kAgent, message_sender_,
-                                      std::move(attestation_proxy_),
-                                      std::move(tpm_manager_proxy_),
-                                      base::BindOnce(
-                                          [](base::RunLoop* run_loop) {
-                                            if (run_loop) {
-                                              run_loop->Quit();
-                                            }
-                                          },
-                                          run_loop),
-                                      heartbeat_timer);
+    plugin_ = plugin_factory_->CreateAgentPlugin(
+        message_sender_, std::move(attestation_proxy_),
+        std::move(tpm_manager_proxy_),
+        base::BindOnce(
+            [](base::RunLoop* run_loop) {
+              if (run_loop) {
+                run_loop->Quit();
+              }
+            },
+            run_loop),
+        heartbeat_timer);
     EXPECT_NE(nullptr, plugin_);
     agent_plugin_ = static_cast<AgentPlugin*>(plugin_.get());
   }
@@ -501,7 +501,8 @@ INSTANTIATE_TEST_SUITE_P(
           gsc_version = "TI50";
           break;
       }
-      return base::StringPrintf("%s%s", boot_mode.c_str(), gsc_version.c_str());
+      return base::StringPrintf("%s_%s", boot_mode.c_str(),
+                                gsc_version.c_str());
     });
 
 }  // namespace secagentd::testing

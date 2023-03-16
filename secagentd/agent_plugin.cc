@@ -112,9 +112,6 @@ void AgentPlugin::StartInitializingAgentProto() {
   char buffer[VB_MAX_STRING_PROPERTY];
   auto get_fwid_rv =
       VbGetSystemPropertyString("fwid", buffer, std::size(buffer));
-  if (!get_fwid_rv) {
-    LOG(ERROR) << "Failed to retrieve fwid";
-  }
 
   // Get linux version.
   struct utsname buf;
