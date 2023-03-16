@@ -13,11 +13,9 @@
 
 #include "diagnostics/cros_healthd/system/system_config_interface.h"
 
-namespace org {
-namespace chromium {
+namespace org::chromium {
 class debugdProxyInterface;
-}  // namespace chromium
-}  // namespace org
+}  // namespace org::chromium
 
 namespace diagnostics {
 
@@ -50,6 +48,7 @@ class SystemConfig final : public SystemConfigInterface {
   std::optional<std::string> GetMarketingName() override;
   std::optional<std::string> GetOemName() override;
   std::string GetCodeName() override;
+  std::optional<bool> HasSensor(SensorConfig sensor) override;
 
  private:
   // Unowned pointer. The CrosConfigInterface should outlive this instance.

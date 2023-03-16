@@ -81,6 +81,10 @@ std::string FakeSystemConfig::GetCodeName() {
   return code_name_;
 }
 
+std::optional<bool> FakeSystemConfig::HasSensor(SensorConfig sensor) {
+  return has_sensors_[sensor];
+}
+
 void FakeSystemConfig::SetHasBacklight(bool value) {
   has_backlight_ = value;
 }
@@ -140,6 +144,11 @@ void FakeSystemConfig::SetOemName(const std::optional<std::string>& value) {
 
 void FakeSystemConfig::SetCodeName(const std::string& value) {
   code_name_ = value;
+}
+
+void FakeSystemConfig::SetSensor(SensorConfig sensor,
+                                 const std::optional<bool>& value) {
+  has_sensors_[sensor] = value;
 }
 
 }  // namespace diagnostics

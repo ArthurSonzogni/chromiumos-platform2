@@ -32,6 +32,24 @@ inline constexpr char kCachedVpdPropertiesPath[] = "/cros-healthd/cached-vpd";
 // The master configuration property that indicates whether a device has a
 // sku number in the VPD fields.
 inline constexpr char kHasSkuNumberProperty[] = "has-sku-number";
+// The master configuration property that indicates whether a device has a base
+// accelerometer.
+inline constexpr char kHasBaseAccelerometer[] = "has-base-accelerometer";
+// The master configuration property that indicates whether a device has a base
+// gyroscope.
+inline constexpr char kHasBaseGyroscope[] = "has-base-gyroscope";
+// The master configuration property that indicates whether a device has a base
+// magnetometer.
+inline constexpr char kHasBaseMagnetometer[] = "has-base-magnetometer";
+// The master configuration property that indicates whether a device has a lid
+// accelerometer.
+inline constexpr char kHasLidAccelerometer[] = "has-lid-accelerometer";
+// The master configuration property that indicates whether a device has a lid
+// gyroscope.
+inline constexpr char kHasLidGyroscope[] = "has-lid-gyroscope";
+// The master configuration property that indicates whether a device has a lid
+// magnetometer.
+inline constexpr char kHasLidMagnetometer[] = "has-lid-magnetometer";
 // NVME utility program path relative to the root directory.
 inline constexpr char kNvmeToolPath[] = "usr/sbin/nvme";
 // Linux device path relative to the root directory.

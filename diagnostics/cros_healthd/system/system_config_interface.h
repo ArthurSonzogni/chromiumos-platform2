@@ -12,6 +12,15 @@
 
 namespace diagnostics {
 
+enum SensorConfig {
+  kBaseAccelerometer,
+  kBaseGyroscope,
+  kBaseMagnetometer,
+  kLidAccelerometer,
+  kLidGyroscope,
+  kLidMagnetometer,
+};
+
 class SystemConfigInterface {
  public:
   using NvmeSelfTestSupportedCallback = base::OnceCallback<void(bool)>;
@@ -69,6 +78,9 @@ class SystemConfigInterface {
 
   // Returns the code name associated with this device.
   virtual std::string GetCodeName() = 0;
+
+  // Returns if the device has a sensor of type |sensor|.
+  virtual std::optional<bool> HasSensor(SensorConfig sensor) = 0;
 };
 
 }  // namespace diagnostics

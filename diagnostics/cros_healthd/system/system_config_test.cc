@@ -313,5 +313,125 @@ TEST_F(SystemConfigTest, CodeNameUnset) {
   EXPECT_EQ(system_config()->GetCodeName(), "");
 }
 
+TEST_F(SystemConfigTest, TestBaseAccelerometerTrue) {
+  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasBaseAccelerometer,
+                                "true");
+  const auto& has_sensor = system_config()->HasSensor(kBaseAccelerometer);
+  ASSERT_TRUE(has_sensor.has_value());
+  EXPECT_TRUE(has_sensor.value());
+}
+
+TEST_F(SystemConfigTest, TestBaseAccelerometerFalse) {
+  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasBaseAccelerometer,
+                                "false");
+  const auto& has_sensor = system_config()->HasSensor(kBaseAccelerometer);
+  ASSERT_TRUE(has_sensor.has_value());
+  EXPECT_FALSE(has_sensor.value());
+}
+
+TEST_F(SystemConfigTest, TestBaseAccelerometerUnset) {
+  EXPECT_FALSE(system_config()->HasSensor(kBaseAccelerometer).has_value());
+}
+
+TEST_F(SystemConfigTest, TestBaseGyroscopeTrue) {
+  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasBaseGyroscope,
+                                "true");
+  const auto& has_sensor = system_config()->HasSensor(kBaseGyroscope);
+  ASSERT_TRUE(has_sensor.has_value());
+  EXPECT_TRUE(has_sensor.value());
+}
+
+TEST_F(SystemConfigTest, TestBaseGyroscopeFalse) {
+  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasBaseGyroscope,
+                                "false");
+  const auto& has_sensor = system_config()->HasSensor(kBaseGyroscope);
+  ASSERT_TRUE(has_sensor.has_value());
+  EXPECT_FALSE(has_sensor.value());
+}
+
+TEST_F(SystemConfigTest, TestBaseGyroscopeUnset) {
+  EXPECT_FALSE(system_config()->HasSensor(kBaseGyroscope).has_value());
+}
+
+TEST_F(SystemConfigTest, TestBaseMagnetometerTrue) {
+  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasBaseMagnetometer,
+                                "true");
+  const auto& has_sensor = system_config()->HasSensor(kBaseMagnetometer);
+  ASSERT_TRUE(has_sensor.has_value());
+  EXPECT_TRUE(has_sensor.value());
+}
+
+TEST_F(SystemConfigTest, TestBaseMagnetometerFalse) {
+  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasBaseMagnetometer,
+                                "false");
+  const auto& has_sensor = system_config()->HasSensor(kBaseMagnetometer);
+  ASSERT_TRUE(has_sensor.has_value());
+  EXPECT_FALSE(has_sensor.value());
+}
+
+TEST_F(SystemConfigTest, TestBaseMagnetometerUnset) {
+  EXPECT_FALSE(system_config()->HasSensor(kBaseMagnetometer).has_value());
+}
+
+TEST_F(SystemConfigTest, TestLidAccelerometerTrue) {
+  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasLidAccelerometer,
+                                "true");
+  const auto& has_sensor = system_config()->HasSensor(kLidAccelerometer);
+  ASSERT_TRUE(has_sensor.has_value());
+  EXPECT_TRUE(has_sensor.value());
+}
+
+TEST_F(SystemConfigTest, TestLidAccelerometerFalse) {
+  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasLidAccelerometer,
+                                "false");
+  const auto& has_sensor = system_config()->HasSensor(kLidAccelerometer);
+  ASSERT_TRUE(has_sensor.has_value());
+  EXPECT_FALSE(has_sensor.value());
+}
+
+TEST_F(SystemConfigTest, TestLidAccelerometerUnset) {
+  EXPECT_FALSE(system_config()->HasSensor(kLidAccelerometer).has_value());
+}
+
+TEST_F(SystemConfigTest, TestLidGyroscopeTrue) {
+  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasLidGyroscope,
+                                "true");
+  const auto& has_sensor = system_config()->HasSensor(kLidGyroscope);
+  ASSERT_TRUE(has_sensor.has_value());
+  EXPECT_TRUE(has_sensor.value());
+}
+
+TEST_F(SystemConfigTest, TestLidGyroscopeFalse) {
+  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasLidGyroscope,
+                                "false");
+  const auto& has_sensor = system_config()->HasSensor(kLidGyroscope);
+  ASSERT_TRUE(has_sensor.has_value());
+  EXPECT_FALSE(has_sensor.value());
+}
+
+TEST_F(SystemConfigTest, TestLidGyroscopeUnset) {
+  EXPECT_FALSE(system_config()->HasSensor(kLidGyroscope).has_value());
+}
+
+TEST_F(SystemConfigTest, TestLidMagnetometerTrue) {
+  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasLidMagnetometer,
+                                "true");
+  const auto& has_sensor = system_config()->HasSensor(kLidMagnetometer);
+  ASSERT_TRUE(has_sensor.has_value());
+  EXPECT_TRUE(has_sensor.value());
+}
+
+TEST_F(SystemConfigTest, TestLidMagnetometerFalse) {
+  fake_cros_config()->SetString(kHardwarePropertiesPath, kHasLidMagnetometer,
+                                "false");
+  const auto& has_sensor = system_config()->HasSensor(kLidMagnetometer);
+  ASSERT_TRUE(has_sensor.has_value());
+  EXPECT_FALSE(has_sensor.value());
+}
+
+TEST_F(SystemConfigTest, TestLidMagnetometerUnset) {
+  EXPECT_FALSE(system_config()->HasSensor(kLidMagnetometer).has_value());
+}
+
 }  // namespace
 }  // namespace diagnostics

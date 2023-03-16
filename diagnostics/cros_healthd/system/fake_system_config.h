@@ -5,6 +5,7 @@
 #ifndef DIAGNOSTICS_CROS_HEALTHD_SYSTEM_FAKE_SYSTEM_CONFIG_H_
 #define DIAGNOSTICS_CROS_HEALTHD_SYSTEM_FAKE_SYSTEM_CONFIG_H_
 
+#include <map>
 #include <optional>
 #include <string>
 
@@ -36,6 +37,7 @@ class FakeSystemConfig final : public SystemConfigInterface {
   std::optional<std::string> GetMarketingName() override;
   std::optional<std::string> GetOemName() override;
   std::string GetCodeName() override;
+  std::optional<bool> HasSensor(SensorConfig sensor) override;
 
   // Setters for FakeSystemConfig attributes.
   void SetFioSupported(bool value);
@@ -54,6 +56,7 @@ class FakeSystemConfig final : public SystemConfigInterface {
   void SetMarketingName(const std::optional<std::string>& value);
   void SetOemName(const std::optional<std::string>& value);
   void SetCodeName(const std::string& value);
+  void SetSensor(SensorConfig sensor, const std::optional<bool>& value);
 
  private:
   bool fio_supported_ = true;
@@ -72,6 +75,7 @@ class FakeSystemConfig final : public SystemConfigInterface {
   std::optional<std::string> marketing_name_;
   std::optional<std::string> oem_name_;
   std::string code_name_;
+  std::map<SensorConfig, std::optional<bool>> has_sensors_;
 };
 
 }  // namespace diagnostics

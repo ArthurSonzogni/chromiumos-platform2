@@ -76,6 +76,23 @@ void NvmeSelfTestSupportedByDebugd(
       }).Then(base::BindOnce(std::move(cb2), false)));
 }
 
+std::string GetSensorPropertyName(SensorConfig sensor) {
+  switch (sensor) {
+    case kBaseAccelerometer:
+      return kHasBaseAccelerometer;
+    case kBaseGyroscope:
+      return kHasBaseGyroscope;
+    case kBaseMagnetometer:
+      return kHasBaseMagnetometer;
+    case kLidAccelerometer:
+      return kHasLidAccelerometer;
+    case kLidGyroscope:
+      return kHasLidGyroscope;
+    case kLidMagnetometer:
+      return kHasLidMagnetometer;
+  }
+}
+
 }  // namespace
 
 SystemConfig::SystemConfig(brillo::CrosConfigInterface* cros_config,
@@ -238,6 +255,15 @@ std::string SystemConfig::GetCodeName() {
     return "";
   }
   return code_name;
+}
+
+std::optional<bool> SystemConfig::HasSensor(SensorConfig sensor) {
+  std::string has_sensor;
+  if (!cros_config_->GetString(kHardwarePropertiesPath,
+                               GetSensorPropertyName(sensor), &has_sensor)) {
+    return std::nullopt;
+  }
+  return has_sensor == "true";
 }
 
 }  // namespace diagnostics
