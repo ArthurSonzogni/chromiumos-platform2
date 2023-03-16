@@ -93,7 +93,8 @@ class FakeDiagnosticsService final
       uint32_t length_seconds,
       uint32_t minimum_charge_percent_required,
       RunBatteryChargeRoutineCallback callback) override;
-  void RunMemoryRoutine(RunMemoryRoutineCallback callback) override;
+  void RunMemoryRoutine(std::optional<uint32_t> max_testing_mem_kib,
+                        RunMemoryRoutineCallback callback) override;
   void RunLanConnectivityRoutine(RunLanConnectivityRoutineCallback) override;
   void RunSignalStrengthRoutine(RunSignalStrengthRoutineCallback) override;
   void RunGatewayCanBePingedRoutine(

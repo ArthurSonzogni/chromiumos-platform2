@@ -7,6 +7,7 @@
 #include <stdlib.h>
 
 #include <cstdint>
+#include <cstdlib>
 #include <iostream>
 #include <iterator>
 #include <limits>
@@ -183,6 +184,10 @@ int diag_main(int argc, char** argv) {
       peripheral_id, "",
       "ID of Bluetooth peripheral device for the Bluetooth pairing routine.");
 
+  // Flag for the memory routine.
+  DEFINE_uint32(max_testing_mem_kib, std::numeric_limits<uint32_t>::max(),
+                "Number of kib to run the memory test for.");
+
   brillo::FlagHelper::Init(argc, argv, "diag - Device diagnostic tool.");
 
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
@@ -208,7 +213,7 @@ int diag_main(int argc, char** argv) {
     // This is the switch case for routines in CrosHealthdRoutineService
     if (FLAGS_routine == "memory_v2") {
       return RunV2Routine(mojo_ipc::RoutineArgument::NewMemory(
-          mojo_ipc::MemoryRoutineArgument::New()));
+          mojo_ipc::MemoryRoutineArgument::New(FLAGS_max_testing_mem_kib)));
     }
 
     std::map<std::string, mojo_ipc::DiagnosticRoutineEnum>
@@ -309,7 +314,7 @@ int diag_main(int argc, char** argv) {
         routine_result = actions.ActionRunSignalStrengthRoutine();
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kMemory:
-        routine_result = actions.ActionRunMemoryRoutine();
+        routine_result = actions.ActionRunMemoryRoutine(std::nullopt);
         break;
       case mojo_ipc::DiagnosticRoutineEnum::kGatewayCanBePinged:
         routine_result = actions.ActionRunGatewayCanBePingedRoutine();

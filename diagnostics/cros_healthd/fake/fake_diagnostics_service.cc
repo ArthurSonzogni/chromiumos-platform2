@@ -124,6 +124,7 @@ void FakeDiagnosticsService::RunBatteryChargeRoutine(
 }
 
 void FakeDiagnosticsService::RunMemoryRoutine(
+    std::optional<uint32_t> max_testing_mem_kib,
     RunMemoryRoutineCallback callback) {
   NOTIMPLEMENTED();
 }

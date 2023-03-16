@@ -423,10 +423,12 @@ bool DiagActions::ActionRunLanConnectivityRoutine() {
   return ProcessRoutineResponse(response);
 }
 
-bool DiagActions::ActionRunMemoryRoutine() {
+bool DiagActions::ActionRunMemoryRoutine(
+    std::optional<uint32_t> max_testing_mem_kib) {
   mojom::RunRoutineResponsePtr response;
   base::RunLoop run_loop;
   cros_healthd_diagnostics_service_->RunMemoryRoutine(
+      max_testing_mem_kib,
       base::BindOnce(&OnMojoResponseReceived<mojom::RunRoutineResponsePtr>,
                      &response, run_loop.QuitClosure()));
   run_loop.Run();

@@ -93,7 +93,8 @@ class CrosHealthdDiagnosticsService final
   void RunHttpsLatencyRoutine(RunHttpsLatencyRoutineCallback callback) override;
   void RunLanConnectivityRoutine(
       RunLanConnectivityRoutineCallback callback) override;
-  void RunMemoryRoutine(RunMemoryRoutineCallback callback) override;
+  void RunMemoryRoutine(std::optional<uint32_t> max_testing_mem_kib,
+                        RunMemoryRoutineCallback callback) override;
   void RunNvmeSelfTestRoutine(
       ash::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type,
       RunNvmeSelfTestRoutineCallback callback) override;

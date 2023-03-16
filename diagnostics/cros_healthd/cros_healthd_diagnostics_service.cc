@@ -15,6 +15,7 @@
 #include <base/check.h>
 #include <base/functional/callback_helpers.h>
 #include <base/logging.h>
+#include <base/notreached.h>
 #include <base/time/time.h>
 #include <chromeos/mojo/service_constants.h>
 #include <metrics/metrics_library.h>
@@ -345,7 +346,11 @@ void CrosHealthdDiagnosticsService::RunLanConnectivityRoutine(
 }
 
 void CrosHealthdDiagnosticsService::RunMemoryRoutine(
+    std::optional<uint32_t> max_testing_mem_kib,
     RunMemoryRoutineCallback callback) {
+  if (max_testing_mem_kib.has_value()) {
+    NOTIMPLEMENTED() << "max_testing_mem_kib is not implemented";
+  }
   RunRoutine(routine_factory_->MakeMemoryRoutine(),
              mojo_ipc::DiagnosticRoutineEnum::kMemory, std::move(callback));
 }

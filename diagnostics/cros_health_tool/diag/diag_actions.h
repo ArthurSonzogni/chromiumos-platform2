@@ -75,7 +75,7 @@ class DiagActions final {
   bool ActionRunHttpsFirewallRoutine();
   bool ActionRunHttpsLatencyRoutine();
   bool ActionRunLanConnectivityRoutine();
-  bool ActionRunMemoryRoutine();
+  bool ActionRunMemoryRoutine(std::optional<uint32_t> max_testing_mem_kib);
   bool ActionRunNvmeSelfTestRoutine(
       ash::cros_healthd::mojom::NvmeSelfTestTypeEnum nvme_self_test_type);
   bool ActionRunNvmeWearLevelRoutine(
