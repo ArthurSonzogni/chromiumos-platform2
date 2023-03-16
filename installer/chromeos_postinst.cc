@@ -77,9 +77,11 @@ bool ConfigureInstall(const string& install_dev,
       return false;
   }
 
-  string kernel_dev = MakePartitionDev(root.base_device(), root.number() - 1);
+  base::FilePath kernel_dev =
+      MakePartitionDev(base::FilePath(root.base_device()), root.number() - 1);
 
-  string boot_dev = MakePartitionDev(root.base_device(), PART_NUM_EFI_SYSTEM);
+  base::FilePath boot_dev =
+      MakePartitionDev(base::FilePath(root.base_device()), PART_NUM_EFI_SYSTEM);
 
   // if we don't know the bios type, detect it. Errors are logged
   // by the detect method.
@@ -90,8 +92,8 @@ bool ConfigureInstall(const string& install_dev,
   // Put the actual values on the result structure
   install_config->slot = slot;
   install_config->root = root;
-  install_config->kernel = Partition(kernel_dev);
-  install_config->boot = Partition(boot_dev, "/tmp/boot_mnt");
+  install_config->kernel = Partition(kernel_dev.value());
+  install_config->boot = Partition(boot_dev.value(), "/tmp/boot_mnt");
   install_config->bios_type = bios_type;
   install_config->defer_update_action = defer_update_action;
   install_config->force_update_firmware = force_update_firmware;

@@ -116,19 +116,31 @@ TEST(UtilTest, GetPartitionDevTest) {
 }
 
 TEST(UtilTest, MakePartitionDevTest) {
-  EXPECT_EQ(MakePartitionDev("/dev/sda", 3), "/dev/sda3");
-  EXPECT_EQ(MakePartitionDev("/dev/sda", 321), "/dev/sda321");
-  EXPECT_EQ(MakePartitionDev("/dev/mmcblk0", 3), "/dev/mmcblk0p3");
-  EXPECT_EQ(MakePartitionDev("/dev/mmcblk12", 321), "/dev/mmcblk12p321");
-  EXPECT_EQ(MakePartitionDev("/dev/loop16", 321), "/dev/loop16p321");
-  EXPECT_EQ(MakePartitionDev("", 0), "0");
-  EXPECT_EQ(MakePartitionDev("/dev/mtd0", 0), "/dev/mtd0");
-  EXPECT_EQ(MakePartitionDev("/dev/mtd0", 1), "/dev/ubi1_0");
-  EXPECT_EQ(MakePartitionDev("/dev/mtd0", 2), "/dev/mtd2");
-  EXPECT_EQ(MakePartitionDev("/dev/mtd0", 3), "/dev/ubiblock3_0");
-  EXPECT_EQ(MakePartitionDev("/dev/mtd0", 4), "/dev/mtd4");
-  EXPECT_EQ(MakePartitionDev("/dev/mtd0", 5), "/dev/ubiblock5_0");
-  EXPECT_EQ(MakePartitionDev("/dev/nvme0n1", 12), "/dev/nvme0n1p12");
+  EXPECT_EQ(MakePartitionDev(base::FilePath("/dev/sda"), 3),
+            base::FilePath("/dev/sda3"));
+  EXPECT_EQ(MakePartitionDev(base::FilePath("/dev/sda"), 321),
+            base::FilePath("/dev/sda321"));
+  EXPECT_EQ(MakePartitionDev(base::FilePath("/dev/mmcblk0"), 3),
+            base::FilePath("/dev/mmcblk0p3"));
+  EXPECT_EQ(MakePartitionDev(base::FilePath("/dev/mmcblk12"), 321),
+            base::FilePath("/dev/mmcblk12p321"));
+  EXPECT_EQ(MakePartitionDev(base::FilePath("/dev/loop16"), 321),
+            base::FilePath("/dev/loop16p321"));
+  EXPECT_EQ(MakePartitionDev(base::FilePath(), 0), base::FilePath("0"));
+  EXPECT_EQ(MakePartitionDev(base::FilePath("/dev/mtd0"), 0),
+            base::FilePath("/dev/mtd0"));
+  EXPECT_EQ(MakePartitionDev(base::FilePath("/dev/mtd0"), 1),
+            base::FilePath("/dev/ubi1_0"));
+  EXPECT_EQ(MakePartitionDev(base::FilePath("/dev/mtd0"), 2),
+            base::FilePath("/dev/mtd2"));
+  EXPECT_EQ(MakePartitionDev(base::FilePath("/dev/mtd0"), 3),
+            base::FilePath("/dev/ubiblock3_0"));
+  EXPECT_EQ(MakePartitionDev(base::FilePath("/dev/mtd0"), 4),
+            base::FilePath("/dev/mtd4"));
+  EXPECT_EQ(MakePartitionDev(base::FilePath("/dev/mtd0"), 5),
+            base::FilePath("/dev/ubiblock5_0"));
+  EXPECT_EQ(MakePartitionDev(base::FilePath("/dev/nvme0n1"), 12),
+            base::FilePath("/dev/nvme0n1p12"));
 }
 
 TEST(UtilTest, RemovePackFileTest) {

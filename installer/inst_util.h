@@ -89,7 +89,8 @@ int GetPartitionFromPartitionDev(const base::FilePath& partition_dev);
 //   * Root partitions ubiblockX_0
 //   * Kernel partitions mtdX
 //   * Stateful and OEM partitions ubiX_0
-std::string MakePartitionDev(const std::string& partition_dev, int partition);
+base::FilePath MakePartitionDev(const base::FilePath& partition_dev,
+                                int partition);
 
 // rm *pack from /dirname
 bool RemovePackFiles(const std::string& dirname);
