@@ -138,11 +138,13 @@ bool WriteFullyToFileDescriptor(const string& content, int fd) {
 // Look up a keyed value from a /etc/lsb-release formatted file.
 // TODO(dgarrett): If we ever call this more than once, cache
 // file contents to avoid reparsing.
-bool LsbReleaseValue(const string& file, const string& key, string* result) {
+bool LsbReleaseValue(const base::FilePath& file,
+                     const string& key,
+                     string* result) {
   string preamble = key + "=";
 
   string file_contents;
-  if (!base::ReadFileToString(base::FilePath(file), &file_contents))
+  if (!base::ReadFileToString(file, &file_contents))
     return false;
 
   vector<string> file_lines = base::SplitString(

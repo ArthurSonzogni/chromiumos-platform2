@@ -20,10 +20,10 @@ using std::vector;
 
 class UtilTest : public ::testing::Test {};
 
-const string GetSourceFile(const string& file) {
+const base::FilePath GetSourceFile(const base::FilePath& file) {
   static const char* srcdir = getenv("SRC");
 
-  return srcdir ? string(srcdir) + "/" + file : file;
+  return srcdir ? base::FilePath(srcdir).Append(file) : file;
 }
 
 TEST(UtilTest, RunCommandTest) {
@@ -39,9 +39,11 @@ TEST(UtilTest, RunCommandTest) {
 
 TEST(UtilTest, LsbReleaseValueTest) {
   string result_string;
-  string lsb_file = GetSourceFile("lsb-release-test.txt");
+  base::FilePath lsb_file =
+      GetSourceFile(base::FilePath("lsb-release-test.txt"));
 
-  EXPECT_EQ(LsbReleaseValue("bogus", "CHROMEOS_RELEASE_BOARD", &result_string),
+  EXPECT_EQ(LsbReleaseValue(base::FilePath("bogus"), "CHROMEOS_RELEASE_BOARD",
+                            &result_string),
             false);
 
   EXPECT_EQ(LsbReleaseValue(lsb_file, "CHROMEOS_RELEASE_BOARD", &result_string),

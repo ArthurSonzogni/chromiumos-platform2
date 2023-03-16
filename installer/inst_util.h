@@ -70,7 +70,7 @@ int RunCommand(const std::vector<std::string>& cmdline);
 // as needed to ensure that |content| is fully written. Return false on error.
 bool WriteFullyToFileDescriptor(const std::string& content, int fd);
 
-bool LsbReleaseValue(const std::string& file,
+bool LsbReleaseValue(const base::FilePath& file,
                      const std::string& key,
                      std::string* result);
 
