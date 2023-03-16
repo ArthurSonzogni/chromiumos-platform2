@@ -15,8 +15,8 @@
 
 using std::string;
 
-void TestConfigureInstall(const string& install_dev,
-                          const string& install_dir,
+void TestConfigureInstall(const base::FilePath& install_dev,
+                          const base::FilePath& install_dir,
                           bool expected_success,
                           const string& expected_slot,
                           const string& expected_root,
@@ -75,16 +75,20 @@ void TestKernelConfigToBiosType(string kernel_config,
 class InstallConfigTest : public ::testing::Test {};
 
 TEST(InstallConfigTest, ConfigureInstallTest) {
-  TestConfigureInstall("/dev/sda3", "/mnt", true, "A", "/dev/sda3", "/dev/sda2",
-                       "/dev/sda12");
-  TestConfigureInstall("/dev/sda5", "/mnt", true, "B", "/dev/sda5", "/dev/sda4",
-                       "/dev/sda12");
-  TestConfigureInstall("/dev/mmcblk0p3", "/mnt", true, "A", "/dev/mmcblk0p3",
-                       "/dev/mmcblk0p2", "/dev/mmcblk0p12");
-  TestConfigureInstall("/dev/mmcblk0p5", "/mnt", true, "B", "/dev/mmcblk0p5",
-                       "/dev/mmcblk0p4", "/dev/mmcblk0p12");
-  TestConfigureInstall("/dev/sda2", "/mnt", false, "", "", "", "");
-  TestConfigureInstall("/dev/sda", "/mnt", false, "", "", "", "");
+  TestConfigureInstall(base::FilePath("/dev/sda3"), base::FilePath("/mnt"),
+                       true, "A", "/dev/sda3", "/dev/sda2", "/dev/sda12");
+  TestConfigureInstall(base::FilePath("/dev/sda5"), base::FilePath("/mnt"),
+                       true, "B", "/dev/sda5", "/dev/sda4", "/dev/sda12");
+  TestConfigureInstall(base::FilePath("/dev/mmcblk0p3"), base::FilePath("/mnt"),
+                       true, "A", "/dev/mmcblk0p3", "/dev/mmcblk0p2",
+                       "/dev/mmcblk0p12");
+  TestConfigureInstall(base::FilePath("/dev/mmcblk0p5"), base::FilePath("/mnt"),
+                       true, "B", "/dev/mmcblk0p5", "/dev/mmcblk0p4",
+                       "/dev/mmcblk0p12");
+  TestConfigureInstall(base::FilePath("/dev/sda2"), base::FilePath("/mnt"),
+                       false, "", "", "", "");
+  TestConfigureInstall(base::FilePath("/dev/sda"), base::FilePath("/mnt"),
+                       false, "", "", "", "");
 }
 
 TEST(InstallConfigTest, StrToBiosTypeTest) {

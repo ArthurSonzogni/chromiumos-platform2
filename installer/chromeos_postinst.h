@@ -7,11 +7,13 @@
 
 #include <string>
 
+#include <base/files/file_path.h>
+
 #include "installer/chromeos_install_config.h"
 
 // Create the configuration structure used during an install.
-bool ConfigureInstall(const std::string& install_dev,
-                      const std::string& install_dir,
+bool ConfigureInstall(const base::FilePath& install_dev,
+                      const base::FilePath& install_dir,
                       BiosType bios_type,
                       DeferUpdateAction defer_update_action,
                       bool force_update_firmware,

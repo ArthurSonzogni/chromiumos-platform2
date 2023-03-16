@@ -56,13 +56,13 @@ bool GetKernelCommandLine(string* kernel_cmd_line) {
 }
 }  // namespace
 
-bool ConfigureInstall(const string& install_dev,
-                      const string& install_dir,
+bool ConfigureInstall(const base::FilePath& install_dev,
+                      const base::FilePath& install_dir,
                       BiosType bios_type,
                       DeferUpdateAction defer_update_action,
                       bool force_update_firmware,
                       InstallConfig* install_config) {
-  Partition root = Partition(install_dev, install_dir);
+  Partition root = Partition(install_dev.value(), install_dir.value());
 
   string slot;
   switch (root.number()) {
@@ -745,9 +745,9 @@ bool RunPostInstall(const string& install_dev,
                     int* exit_code) {
   InstallConfig install_config;
 
-  if (!ConfigureInstall(install_dev, install_dir, bios_type,
-                        defer_update_action, force_update_firmware,
-                        &install_config)) {
+  if (!ConfigureInstall(
+          base::FilePath(install_dev), base::FilePath(install_dir), bios_type,
+          defer_update_action, force_update_firmware, &install_config)) {
     LOG(ERROR) << "Configure failed.";
     // In the failure case don't try to use `install_config.bios_type`, we don't
     // want to rely on the implementation of `ConfigureInstall`.
