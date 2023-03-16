@@ -325,10 +325,10 @@ void ReplaceAll(string* target, const string& pattern, const string& value) {
   }
 }
 
-bool MakeFileSystemRw(const string& dev_name) {
+bool MakeFileSystemRw(const base::FilePath& dev_name) {
   const int offset = 0x464 + 3;  // Set 'highest' byte
 
-  base::ScopedFD fd(open(dev_name.c_str(), O_RDWR));
+  base::ScopedFD fd(open(dev_name.value().c_str(), O_RDWR));
   if (!fd.is_valid()) {
     PLOG(ERROR) << "Failed to open: " << dev_name;
     return false;

@@ -106,7 +106,7 @@ bool SetImage(const InstallConfig& install_config) {
   bool enable_rootfs_verification = IsReadonly(kernel_config_root);
 
   if (!enable_rootfs_verification)
-    MakeFileSystemRw(install_config.root.device());
+    MakeFileSystemRw(base::FilePath(install_config.root.device()));
 
   LOG(INFO) << "Setting up verity.";
   LoggingTimerStart();

@@ -109,7 +109,7 @@ void ReplaceAll(std::string* target,
                 const std::string& value);
 
 // Mark ext2 (3 or 4???) filesystem RW
-bool MakeFileSystemRw(const std::string& dev_name);
+bool MakeFileSystemRw(const base::FilePath& dev_name);
 
 // Conveniently invoke the external dump_kernel_config library
 std::string DumpKernelConfig(const base::FilePath& kernel_dev);
