@@ -12,6 +12,7 @@
 #include <base/files/file_enumerator.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <base/functional/bind.h>
 #include <base/logging.h>
 #include <base/strings/stringprintf.h>
 #include <base/strings/string_util.h>
@@ -23,7 +24,6 @@
 #include "dlcservice/error.h"
 #include "dlcservice/utils.h"
 
-using base::Callback;
 using brillo::ErrorPtr;
 using brillo::MessageLoop;
 using std::string;
