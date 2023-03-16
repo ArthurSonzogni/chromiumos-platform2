@@ -31,8 +31,8 @@ bool KernelConfigToBiosType(const std::string& kernel_config, BiosType* type);
 // Perform the post install operation. This is used after a kernel and
 // rootfs have been copied into to place to make the valid and set them
 // up for the next boot.
-bool RunPostInstall(const std::string& install_dev,
-                    const std::string& install_dir,
+bool RunPostInstall(const base::FilePath& install_dev,
+                    const base::FilePath& install_dir,
                     BiosType bios_type,
                     DeferUpdateAction defer_update_action,
                     bool force_update_firmware,

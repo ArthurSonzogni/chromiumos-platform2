@@ -47,7 +47,8 @@ int main(int argc, char* argv[]) {
     }
 
     int exit_code = 0;
-    if (!RunPostInstall(FLAGS_install_dev, FLAGS_install_dir, bios_type,
+    if (!RunPostInstall(base::FilePath(FLAGS_install_dev),
+                        base::FilePath(FLAGS_install_dir), bios_type,
                         defer_update_action, FLAGS_force_update_firmware,
                         &exit_code)) {
       return exit_code ? exit_code : 1;

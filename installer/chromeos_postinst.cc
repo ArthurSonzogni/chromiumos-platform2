@@ -737,17 +737,17 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
 
 }  // namespace
 
-bool RunPostInstall(const string& install_dev,
-                    const string& install_dir,
+bool RunPostInstall(const base::FilePath& install_dev,
+                    const base::FilePath& install_dir,
                     BiosType bios_type,
                     DeferUpdateAction defer_update_action,
                     bool force_update_firmware,
                     int* exit_code) {
   InstallConfig install_config;
 
-  if (!ConfigureInstall(
-          base::FilePath(install_dev), base::FilePath(install_dir), bios_type,
-          defer_update_action, force_update_firmware, &install_config)) {
+  if (!ConfigureInstall(install_dev, install_dir, bios_type,
+                        defer_update_action, force_update_firmware,
+                        &install_config)) {
     LOG(ERROR) << "Configure failed.";
     // In the failure case don't try to use `install_config.bios_type`, we don't
     // want to rely on the implementation of `ConfigureInstall`.
