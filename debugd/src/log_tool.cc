@@ -370,7 +370,7 @@ const std::array kCommandLogs {
   // Log{kCommand, "setxkbmap", "/usr/bin/setxkbmap -print -query"},
   // Log{kCommand, "xrandr", "/usr/bin/xrandr --verbose}
 };
-// clang-format on
+// clang-format on /usr/bin/lspci
 
 // NOTE: IF YOU ADD AN ENTRY TO THIS LIST, PLEASE:
 // * add a row to http://go/cros-feedback-audit and fill it out
@@ -378,7 +378,7 @@ const std::array kCommandLogs {
 // (Eventually we'll have a better process, but for now please do this.)
 const std::array kCommandLogsVerbose{
     // PCI config space accesses are limited without CAP_SYS_ADMIN.
-    Log{kCommand, "lspci_verbose", "/usr/sbin/lspci -vvvnn", kRoot, kRoot},
+    Log{kCommand, "lspci_verbose", "/usr/bin/lspci -vvvnn", kRoot, kRoot},
     // Same as drm_trace, but a larger log. Caller should trim it as needed.
     Log{kFile, "drm_trace_verbose", "/sys/kernel/tracing/instances/drm/trace",
         SandboxedProcess::kDefaultUser, kDebugfsGroup, 10 * 1024 * 1024,
@@ -390,7 +390,7 @@ const std::array kCommandLogsVerbose{
 // * email cros-feedback-app@
 // (Eventually we'll have a better process, but for now please do this.)
 const std::array kCommandLogsShort{
-    Log{kCommand, "lspci", "/usr/sbin/lspci"},
+    Log{kCommand, "lspci", "/usr/bin/lspci"},
 };
 
 // Extra logs are logs such as netstat and logcat which should appear in
