@@ -715,10 +715,11 @@ TEST_F(CrosHealthdDiagnosticsServiceTest, RunBatteryChargeRoutine) {
 
 // Test that the memory routine can be run.
 TEST_F(CrosHealthdDiagnosticsServiceTest, RunMemoryRoutine) {
-  // Routines with adapter should immediately return a Running status once
-  // created.
   constexpr mojo_ipc::DiagnosticRoutineStatusEnum kExpectedStatus =
-      mojo_ipc::DiagnosticRoutineStatusEnum::kRunning;
+      mojo_ipc::DiagnosticRoutineStatusEnum::kWaiting;
+  routine_factory()->SetNonInteractiveStatus(
+      kExpectedStatus, /*status_message=*/"", /*progress_percent=*/50,
+      /*output=*/"");
 
   mojo_ipc::RunRoutineResponsePtr response;
   base::RunLoop run_loop;

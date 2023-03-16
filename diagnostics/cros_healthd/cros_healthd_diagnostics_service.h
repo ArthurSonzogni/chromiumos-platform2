@@ -192,7 +192,8 @@ class CrosHealthdDiagnosticsService final
   MojoServiceProvider<ash::cros_healthd::mojom::CrosHealthdDiagnosticsService>
       provider_{this};
 
-  ash::cros_healthd::mojom::CrosHealthdRoutinesService* const routine_service_;
+  [[maybe_unused]] ash::cros_healthd::mojom::CrosHealthdRoutinesService* const
+      routine_service_;
 
   // Must be the last class member.
   base::WeakPtrFactory<CrosHealthdDiagnosticsService> weak_ptr_factory_{this};

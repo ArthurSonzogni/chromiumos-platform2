@@ -346,10 +346,7 @@ void CrosHealthdDiagnosticsService::RunLanConnectivityRoutine(
 
 void CrosHealthdDiagnosticsService::RunMemoryRoutine(
     RunMemoryRoutineCallback callback) {
-  auto memory_routine_v2 = std::make_unique<RoutineAdapter>(
-      routine_service_, mojo_ipc::RoutineArgument::NewMemory(
-                            mojo_ipc::MemoryRoutineArgument::New()));
-  RunRoutine(std::move(memory_routine_v2),
+  RunRoutine(routine_factory_->MakeMemoryRoutine(),
              mojo_ipc::DiagnosticRoutineEnum::kMemory, std::move(callback));
 }
 
