@@ -116,6 +116,13 @@ const wl_output_listener* HostEventHandler(struct wl_output* output) {
   return static_cast<const wl_output_listener*>(listener);
 }
 
+const zaura_output_listener* HostEventHandler(struct zaura_output* output) {
+  const void* listener =
+      wl_proxy_get_listener(reinterpret_cast<wl_proxy*>(output));
+  EXPECT_NE(listener, nullptr);
+  return static_cast<const zaura_output_listener*>(listener);
+}
+
 }  // namespace
 
 // Mock of Sommelier's Wayland connection to the host compositor.
@@ -330,6 +337,7 @@ struct OutputConfig {
   int32_t height_pixels = 1080;
   int32_t transform = WL_OUTPUT_TRANSFORM_NORMAL;
   int32_t scale = 1;
+  int32_t output_scale = 1000;
 };
 
 // Fixture for tests which exercise only Wayland functionality.
@@ -414,23 +422,34 @@ class WaylandTest : public ::testing::Test {
     sl_host_output* host_output;
     uint32_t i = 0;
     wl_list_for_each(host_output, &ctx.host_outputs, link) {
-      ConfigureOutput(host_output->proxy, outputs[i]);
+      ConfigureOutput(host_output, outputs[i]);
       i++;
     }
     // host_outputs should be the requested length.
     EXPECT_EQ(i, outputs.size());
   }
 
-  void ConfigureOutput(wl_output* output, const OutputConfig& config) {
-    HostEventHandler(output)->geometry(
-        nullptr, output, config.x, config.y, config.physical_width_mm,
-        config.physical_height_mm, WL_OUTPUT_SUBPIXEL_NONE, "ACME Corp",
-        "Generic Monitor", config.transform);
-    HostEventHandler(output)->mode(
-        nullptr, output, WL_OUTPUT_MODE_CURRENT | WL_OUTPUT_MODE_PREFERRED,
-        config.width_pixels, config.height_pixels, 60);
-    HostEventHandler(output)->scale(nullptr, output, config.scale);
-    HostEventHandler(output)->done(nullptr, output);
+  void ConfigureOutput(sl_host_output* host_output,
+                       const OutputConfig& config) {
+    // This is mimicking components/exo/wayland/output_metrics.cc
+    uint32_t flags = ZAURA_OUTPUT_SCALE_PROPERTY_CURRENT;
+    if (config.output_scale == 1000) {
+      flags |= ZAURA_OUTPUT_SCALE_PROPERTY_PREFERRED;
+    }
+    HostEventHandler(host_output->aura_output)
+        ->scale(nullptr, host_output->aura_output, flags, config.output_scale);
+    HostEventHandler(host_output->proxy)
+        ->geometry(nullptr, host_output->proxy, config.x, config.y,
+                   config.physical_width_mm, config.physical_height_mm,
+                   WL_OUTPUT_SUBPIXEL_NONE, "ACME Corp", "Generic Monitor",
+                   config.transform);
+    HostEventHandler(host_output->proxy)
+        ->mode(nullptr, host_output->proxy,
+               WL_OUTPUT_MODE_CURRENT | WL_OUTPUT_MODE_PREFERRED,
+               config.width_pixels, config.height_pixels, 60);
+    HostEventHandler(host_output->proxy)
+        ->scale(nullptr, host_output->proxy, config.scale);
+    HostEventHandler(host_output->proxy)->done(nullptr, host_output->proxy);
     Pump();
   }
 
