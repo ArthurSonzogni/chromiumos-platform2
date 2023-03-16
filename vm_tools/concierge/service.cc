@@ -40,12 +40,15 @@
 #include <base/base64url.h>
 #include <base/check.h>
 #include <base/check_op.h>
+#include <base/files/file.h>
 #include <base/files/file_enumerator.h>
 #include <base/files/file_path.h>
 #include <base/files/file_path_watcher.h>
 #include <base/files/file_util.h>
+#include <base/files/scoped_file.h>
 #include <base/format_macros.h>
 #include <base/functional/bind.h>
+#include <base/functional/bind_internal.h>
 #include <base/functional/callback.h>
 #include <base/functional/callback_forward.h>
 #include <base/functional/callback_helpers.h>
@@ -83,9 +86,6 @@
 #include <vm_concierge/concierge_service.pb.h>
 #include <vm_protos/proto_bindings/vm_guest.pb.h>
 
-#include "base/files/file.h"
-#include "base/files/scoped_file.h"
-#include "base/functional/bind_internal.h"
 #include "vm_tools/common/naming.h"
 #include "vm_tools/concierge/arc_vm.h"
 #include "vm_tools/concierge/dlc_helper.h"

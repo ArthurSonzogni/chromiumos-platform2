@@ -18,6 +18,7 @@
 #include <vector>
 
 #include <base/files/file_descriptor_watcher_posix.h>
+#include <base/files/file_path.h>
 #include <base/files/file_path_watcher.h>
 #include <base/files/scoped_file.h>
 #include <base/functional/callback.h>
@@ -31,11 +32,10 @@
 #include <dbus/bus.h>
 #include <dbus/exported_object.h>
 #include <dbus/message.h>
+#include <featured/feature_library.h>
 #include <grpcpp/grpcpp.h>
 #include <spaced/disk_usage_proxy.h>
 
-#include "base/files/file_path.h"
-#include "featured/feature_library.h"
 #include "vm_tools/common/vm_id.h"
 #include "vm_tools/concierge/disk_image.h"
 #include "vm_tools/concierge/manatee_memory_service.h"
