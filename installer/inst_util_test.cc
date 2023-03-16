@@ -60,19 +60,32 @@ TEST(UtilTest, LsbReleaseValueTest) {
 }
 
 TEST(UtilTest, GetBlockDevFromPartitionDev) {
-  EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/sda3"), "/dev/sda");
-  EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/sda321"), "/dev/sda");
-  EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/sda"), "/dev/sda");
-  EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/mmcblk0p3"), "/dev/mmcblk0");
-  EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/mmcblk12p321"), "/dev/mmcblk12");
-  EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/mmcblk0"), "/dev/mmcblk0");
-  EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/loop0"), "/dev/loop0");
-  EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/loop32p12"), "/dev/loop32");
-  EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/mtd0"), "/dev/mtd0");
-  EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/ubi1_0"), "/dev/mtd0");
-  EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/mtd2_0"), "/dev/mtd0");
-  EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/ubiblock3_0"), "/dev/mtd0");
-  EXPECT_EQ(GetBlockDevFromPartitionDev("/dev/nvme0n1p12"), "/dev/nvme0n1");
+  EXPECT_EQ(GetBlockDevFromPartitionDev(base::FilePath("/dev/sda3")),
+            base::FilePath("/dev/sda"));
+  EXPECT_EQ(GetBlockDevFromPartitionDev(base::FilePath("/dev/sda321")),
+            base::FilePath("/dev/sda"));
+  EXPECT_EQ(GetBlockDevFromPartitionDev(base::FilePath("/dev/sda")),
+            base::FilePath("/dev/sda"));
+  EXPECT_EQ(GetBlockDevFromPartitionDev(base::FilePath("/dev/mmcblk0p3")),
+            base::FilePath("/dev/mmcblk0"));
+  EXPECT_EQ(GetBlockDevFromPartitionDev(base::FilePath("/dev/mmcblk12p321")),
+            base::FilePath("/dev/mmcblk12"));
+  EXPECT_EQ(GetBlockDevFromPartitionDev(base::FilePath("/dev/mmcblk0")),
+            base::FilePath("/dev/mmcblk0"));
+  EXPECT_EQ(GetBlockDevFromPartitionDev(base::FilePath("/dev/loop0")),
+            base::FilePath("/dev/loop0"));
+  EXPECT_EQ(GetBlockDevFromPartitionDev(base::FilePath("/dev/loop32p12")),
+            base::FilePath("/dev/loop32"));
+  EXPECT_EQ(GetBlockDevFromPartitionDev(base::FilePath("/dev/mtd0")),
+            base::FilePath("/dev/mtd0"));
+  EXPECT_EQ(GetBlockDevFromPartitionDev(base::FilePath("/dev/ubi1_0")),
+            base::FilePath("/dev/mtd0"));
+  EXPECT_EQ(GetBlockDevFromPartitionDev(base::FilePath("/dev/mtd2_0")),
+            base::FilePath("/dev/mtd0"));
+  EXPECT_EQ(GetBlockDevFromPartitionDev(base::FilePath("/dev/ubiblock3_0")),
+            base::FilePath("/dev/mtd0"));
+  EXPECT_EQ(GetBlockDevFromPartitionDev(base::FilePath("/dev/nvme0n1p12")),
+            base::FilePath("/dev/nvme0n1"));
 }
 
 TEST(UtilTest, GetPartitionDevTest) {

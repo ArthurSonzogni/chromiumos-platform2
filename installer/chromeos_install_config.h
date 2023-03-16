@@ -50,7 +50,7 @@ class Partition {
 
   // If the device is /dev/sda3 the base_device is /dev/sda
   std::string base_device() const {
-    return GetBlockDevFromPartitionDev(device());
+    return GetBlockDevFromPartitionDev(base::FilePath(device())).value();
   }
 
   // If the device is /dev/sda3 the number is 3

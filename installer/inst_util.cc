@@ -165,12 +165,14 @@ bool LsbReleaseValue(const base::FilePath& file,
 // which use the 'p' notation to denote partitions.
 const char* numbered_devices[] = {"/dev/loop", "/dev/mmcblk", "/dev/nvme"};
 
-string GetBlockDevFromPartitionDev(const string& partition_dev) {
+base::FilePath GetBlockDevFromPartitionDev(
+    const base::FilePath& partition_dev_path) {
+  const std::string& partition_dev = partition_dev_path.value();
   if (base::StartsWith(partition_dev, "/dev/mtd",
                        base::CompareCase::SENSITIVE) ||
       base::StartsWith(partition_dev, "/dev/ubi",
                        base::CompareCase::SENSITIVE)) {
-    return "/dev/mtd0";
+    return base::FilePath("/dev/mtd0");
   }
 
   size_t i = partition_dev.length();
@@ -186,7 +188,7 @@ string GetBlockDevFromPartitionDev(const string& partition_dev) {
       if ((i == nd_len) || (partition_dev[i - 1] != 'p')) {
         // If there was no partition at the end (/dev/mmcblk12) return
         // unmodified.
-        return partition_dev;
+        return base::FilePath(partition_dev);
       } else {
         // If it ends with a p, strip off the p.
         i--;
@@ -194,7 +196,7 @@ string GetBlockDevFromPartitionDev(const string& partition_dev) {
     }
   }
 
-  return partition_dev.substr(0, i);
+  return base::FilePath(partition_dev.substr(0, i));
 }
 
 int GetPartitionFromPartitionDev(const string& partition_dev) {

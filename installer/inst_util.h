@@ -76,7 +76,7 @@ bool LsbReleaseValue(const base::FilePath& file,
 
 // Given root partition dev node (such as /dev/sda3, /dev/mmcblk0p3,
 // /dev/ubiblock3_0), return the block dev (/dev/sda, /dev/mmcblk0, /dev/mtd0).
-std::string GetBlockDevFromPartitionDev(const std::string& partition_dev);
+base::FilePath GetBlockDevFromPartitionDev(const base::FilePath& partition_dev);
 
 // Given root partition dev node (such as /dev/sda3, /dev/mmcblk0p3,
 // /dev/ubiblock3_0), return the partition number (3).
