@@ -632,15 +632,24 @@ Code Attribute::GetValue(size_t index, std::string& val) const {
 }
 
 Code Attribute::GetValue(size_t index, StringWithLanguage& val) const {
-  if (def_.ipp_type != ValueTag::nameWithLanguage &&
-      def_.ipp_type != ValueTag::textWithLanguage) {
-    return Code::kIncompatibleType;
+  if (def_.ipp_type == ValueTag::nameWithLanguage ||
+      def_.ipp_type == ValueTag::textWithLanguage) {
+    auto values = ReadValueConstPtr<std::vector<StringWithLanguage>>(&values_);
+    if (index >= values->size())
+      return Code::kIndexOutOfRange;
+    val = values->at(index);
+    return Code::kOK;
   }
-  auto values = ReadValueConstPtr<std::vector<StringWithLanguage>>(&values_);
-  if (index >= values->size())
-    return Code::kIndexOutOfRange;
-  val = values->at(index);
-  return Code::kOK;
+  if (def_.ipp_type == ValueTag::nameWithoutLanguage ||
+      def_.ipp_type == ValueTag::textWithoutLanguage) {
+    auto values = ReadValueConstPtr<std::vector<std::string>>(&values_);
+    if (index >= values->size())
+      return Code::kIndexOutOfRange;
+    val.value = values->at(index);
+    val.language = "";
+    return Code::kOK;
+  }
+  return Code::kIncompatibleType;
 }
 
 Code Attribute::GetValue(size_t index, DateTime& val) const {
@@ -664,13 +673,21 @@ Code Attribute::GetValue(size_t index, Resolution& val) const {
 }
 
 Code Attribute::GetValue(size_t index, RangeOfInteger& val) const {
-  if (def_.ipp_type != ValueTag::rangeOfInteger)
-    return Code::kIncompatibleType;
-  auto values = ReadValueConstPtr<std::vector<RangeOfInteger>>(&values_);
-  if (index >= values->size())
-    return Code::kIndexOutOfRange;
-  val = values->at(index);
-  return Code::kOK;
+  if (def_.ipp_type == ValueTag::rangeOfInteger) {
+    auto values = ReadValueConstPtr<std::vector<RangeOfInteger>>(&values_);
+    if (index >= values->size())
+      return Code::kIndexOutOfRange;
+    val = values->at(index);
+    return Code::kOK;
+  }
+  if (def_.ipp_type == ValueTag::integer) {
+    auto values = ReadValueConstPtr<std::vector<int32_t>>(&values_);
+    if (index >= values->size())
+      return Code::kIndexOutOfRange;
+    val.min_value = val.max_value = values->at(index);
+    return Code::kOK;
+  }
+  return Code::kIncompatibleType;
 }
 
 CollsView Attribute::Colls() {
@@ -704,12 +721,22 @@ Code Attribute::GetValues(std::vector<std::string>& values) const {
 }
 
 Code Attribute::GetValues(std::vector<StringWithLanguage>& values) const {
-  if (def_.ipp_type != ValueTag::nameWithLanguage &&
-      def_.ipp_type != ValueTag::textWithLanguage) {
-    return Code::kIncompatibleType;
+  if (def_.ipp_type == ValueTag::nameWithLanguage ||
+      def_.ipp_type == ValueTag::textWithLanguage) {
+    values = *ReadValueConstPtr<std::vector<StringWithLanguage>>(&values_);
+    return Code::kOK;
   }
-  values = *ReadValueConstPtr<std::vector<StringWithLanguage>>(&values_);
-  return Code::kOK;
+  if (def_.ipp_type == ValueTag::nameWithoutLanguage ||
+      def_.ipp_type == ValueTag::textWithoutLanguage) {
+    auto org_values = ReadValueConstPtr<std::vector<std::string>>(&values_);
+    values.resize(org_values->size());
+    for (size_t i = 0; i < values.size(); ++i) {
+      values[i].value = (*org_values)[i];
+      values[i].language.clear();
+    }
+    return Code::kOK;
+  }
+  return Code::kIncompatibleType;
 }
 
 Code Attribute::GetValues(std::vector<DateTime>& values) const {
@@ -727,10 +754,19 @@ Code Attribute::GetValues(std::vector<Resolution>& values) const {
 }
 
 Code Attribute::GetValues(std::vector<RangeOfInteger>& values) const {
-  if (def_.ipp_type != ValueTag::rangeOfInteger)
-    return Code::kIncompatibleType;
-  values = *ReadValueConstPtr<std::vector<RangeOfInteger>>(&values_);
-  return Code::kOK;
+  if (def_.ipp_type == ValueTag::rangeOfInteger) {
+    values = *ReadValueConstPtr<std::vector<RangeOfInteger>>(&values_);
+    return Code::kOK;
+  }
+  if (def_.ipp_type == ValueTag::integer) {
+    auto org_values = ReadValueConstPtr<std::vector<int32_t>>(&values_);
+    values.resize(org_values->size());
+    for (size_t i = 0; i < values.size(); ++i) {
+      values[i].min_value = values[i].max_value = (*org_values)[i];
+    }
+    return Code::kOK;
+  }
+  return Code::kIncompatibleType;
 }
 
 Code Attribute::SetValues(bool value) {

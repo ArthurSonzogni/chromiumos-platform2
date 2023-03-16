@@ -392,6 +392,7 @@ class AttributeValuesTest : public AttributeTest {
     coll_->AddAttr("bool", ValueTag::boolean, true);
     coll_->AddAttr("int32", ValueTag::integer, 123);
     coll_->AddAttr("string", ValueTag::octetString, "str");
+    coll_->AddAttr("name", ValueTag::nameWithoutLanguage, "name");
     coll_->AddAttr("string_lang", ValueTag::nameWithLanguage,
                    StringWithLanguage("val", "lang"));
     coll_->AddAttr("date_time", ValueTag::dateTime, DateTime());
@@ -401,6 +402,7 @@ class AttributeValuesTest : public AttributeTest {
     attr_bool_ = coll_->GetAttr("bool");
     attr_int32_ = coll_->GetAttr("int32");
     attr_string_ = coll_->GetAttr("string");
+    attr_name_ = coll_->GetAttr("name");
     attr_string_lang_ = coll_->GetAttr("string_lang");
     attr_date_time_ = coll_->GetAttr("date_time");
     attr_resolution_ = coll_->GetAttr("resolution");
@@ -408,9 +410,13 @@ class AttributeValuesTest : public AttributeTest {
   }
 
  protected:
+  template <typename ApiType>
+  void CompareGetValueWithGetValues();
+
   Collection::iterator attr_out_of_band_;
   Collection::iterator attr_bool_;
   Collection::iterator attr_int32_;
+  Collection::iterator attr_name_;
   Collection::iterator attr_string_;
   Collection::iterator attr_string_lang_;
   Collection::iterator attr_date_time_;
@@ -423,6 +429,7 @@ TEST_F(AttributeValuesTest, GetValuesVectorBool) {
   EXPECT_EQ(attr_out_of_band_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_bool_->GetValues(v), Code::kOK);
   EXPECT_EQ(attr_int32_->GetValues(v), Code::kIncompatibleType);
+  EXPECT_EQ(attr_name_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_string_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_string_lang_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_date_time_->GetValues(v), Code::kIncompatibleType);
@@ -437,6 +444,7 @@ TEST_F(AttributeValuesTest, GetValuesVectorInt32) {
   EXPECT_EQ(attr_bool_->GetValues(v), Code::kOK);
   EXPECT_EQ(v, std::vector<int32_t>{1});
   EXPECT_EQ(attr_int32_->GetValues(v), Code::kOK);
+  EXPECT_EQ(attr_name_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_string_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_string_lang_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_date_time_->GetValues(v), Code::kIncompatibleType);
@@ -446,29 +454,33 @@ TEST_F(AttributeValuesTest, GetValuesVectorInt32) {
 }
 
 TEST_F(AttributeValuesTest, GetValuesVectorString) {
-  std::vector<std::string> v;
+  std::vector<std::string> v, v2;
   EXPECT_EQ(attr_out_of_band_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_bool_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_int32_->GetValues(v), Code::kIncompatibleType);
-  EXPECT_EQ(attr_string_->GetValues(v), Code::kOK);
-  EXPECT_EQ(attr_string_lang_->GetValues(v), Code::kIncompatibleType);
+  EXPECT_EQ(attr_name_->GetValues(v), Code::kOK);
+  EXPECT_EQ(attr_string_->GetValues(v2), Code::kOK);
+  EXPECT_EQ(attr_string_lang_->GetValues(v2), Code::kIncompatibleType);
   EXPECT_EQ(attr_date_time_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_resolution_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_range_->GetValues(v), Code::kIncompatibleType);
-  EXPECT_EQ(v, std::vector<std::string>{"str"});
+  EXPECT_EQ(v, std::vector<std::string>{"name"});
+  EXPECT_EQ(v2, std::vector<std::string>{"str"});
 }
 
 TEST_F(AttributeValuesTest, GetValuesVectorStringWithLanguage) {
-  std::vector<StringWithLanguage> v;
+  std::vector<StringWithLanguage> v, v2;
   EXPECT_EQ(attr_out_of_band_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_bool_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_int32_->GetValues(v), Code::kIncompatibleType);
+  EXPECT_EQ(attr_name_->GetValues(v), Code::kOK);
   EXPECT_EQ(attr_string_->GetValues(v), Code::kIncompatibleType);
-  EXPECT_EQ(attr_string_lang_->GetValues(v), Code::kOK);
+  EXPECT_EQ(attr_string_lang_->GetValues(v2), Code::kOK);
   EXPECT_EQ(attr_date_time_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_resolution_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_range_->GetValues(v), Code::kIncompatibleType);
-  EXPECT_EQ(v,
+  EXPECT_EQ(v, std::vector<StringWithLanguage>{StringWithLanguage("name", "")});
+  EXPECT_EQ(v2,
             std::vector<StringWithLanguage>{StringWithLanguage("val", "lang")});
 }
 
@@ -477,6 +489,7 @@ TEST_F(AttributeValuesTest, GetValuesVectorDateTime) {
   EXPECT_EQ(attr_out_of_band_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_bool_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_int32_->GetValues(v), Code::kIncompatibleType);
+  EXPECT_EQ(attr_name_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_string_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_string_lang_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_date_time_->GetValues(v), Code::kOK);
@@ -490,6 +503,7 @@ TEST_F(AttributeValuesTest, GetValuesVectorResolution) {
   EXPECT_EQ(attr_out_of_band_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_bool_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_int32_->GetValues(v), Code::kIncompatibleType);
+  EXPECT_EQ(attr_name_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_string_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_string_lang_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_date_time_->GetValues(v), Code::kIncompatibleType);
@@ -499,16 +513,64 @@ TEST_F(AttributeValuesTest, GetValuesVectorResolution) {
 }
 
 TEST_F(AttributeValuesTest, GetValuesVectorRangeOfInteger) {
-  std::vector<RangeOfInteger> v;
+  std::vector<RangeOfInteger> v, v2;
   EXPECT_EQ(attr_out_of_band_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_bool_->GetValues(v), Code::kIncompatibleType);
-  EXPECT_EQ(attr_int32_->GetValues(v), Code::kIncompatibleType);
+  EXPECT_EQ(attr_int32_->GetValues(v), Code::kOK);
+  EXPECT_EQ(attr_name_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_string_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_string_lang_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_date_time_->GetValues(v), Code::kIncompatibleType);
   EXPECT_EQ(attr_resolution_->GetValues(v), Code::kIncompatibleType);
-  EXPECT_EQ(attr_range_->GetValues(v), Code::kOK);
-  EXPECT_EQ(v, (std::vector<RangeOfInteger>{RangeOfInteger(0, 2)}));
+  EXPECT_EQ(attr_range_->GetValues(v2), Code::kOK);
+  EXPECT_EQ(v, (std::vector<RangeOfInteger>{RangeOfInteger(123, 123)}));
+  EXPECT_EQ(v2, (std::vector<RangeOfInteger>{RangeOfInteger(0, 2)}));
+}
+
+template <typename ApiType>
+void AttributeValuesTest::CompareGetValueWithGetValues() {
+  const std::vector<ipp::Collection::iterator> attrs = {
+      attr_out_of_band_, attr_bool_,       attr_int32_,
+      attr_name_,        attr_string_,     attr_string_lang_,
+      attr_date_time_,   attr_resolution_, attr_range_};
+  for (ipp::Collection::iterator attr : attrs) {
+    ApiType x;
+    std::vector<ApiType> vx;
+    ipp::Code code = attr->GetValue(0, x);
+    ipp::Code vcode = attr->GetValues(vx);
+    EXPECT_EQ(code, vcode);
+    if (vcode == ipp::Code::kOK) {
+      EXPECT_EQ(x, vx[0]);
+    }
+  }
+}
+
+TEST_F(AttributeValuesTest, GetValueBool) {
+  CompareGetValueWithGetValues<bool>();
+}
+
+TEST_F(AttributeValuesTest, GetValueInt32) {
+  CompareGetValueWithGetValues<int32_t>();
+}
+
+TEST_F(AttributeValuesTest, GetValueString) {
+  CompareGetValueWithGetValues<std::string>();
+}
+
+TEST_F(AttributeValuesTest, GetValueStringWithLanguage) {
+  CompareGetValueWithGetValues<StringWithLanguage>();
+}
+
+TEST_F(AttributeValuesTest, GetValueDateTime) {
+  CompareGetValueWithGetValues<DateTime>();
+}
+
+TEST_F(AttributeValuesTest, GetValueResolution) {
+  CompareGetValueWithGetValues<Resolution>();
+}
+
+TEST_F(AttributeValuesTest, GetValueRangeOfInteger) {
+  CompareGetValueWithGetValues<RangeOfInteger>();
 }
 
 TEST_F(AttributeValuesTest, SetValuesBool) {

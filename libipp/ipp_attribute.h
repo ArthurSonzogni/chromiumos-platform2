@@ -450,6 +450,19 @@ class LIBIPP_EXPORT Attribute {
   // Possible errors:
   //  * kIncompatibleType
   //  * kIndexOutOfRange
+  // The second parameter must match the type of the attribute, otherwise the
+  // code kIncompatibleType is returned. However, there are a couple of
+  // exceptions when the underlying value is silently converted to the type of
+  // the given parameter. See the table below for a list of silent conversions:
+  //
+  //      ValueTag       |  target C++ type
+  //  -------------------+--------------------
+  //       boolean       |      int32_t  (0 or 1)
+  //        enum         |      int32_t
+  //       integer       |  RangeOfIntegers  (as range [int,int])
+  // nameWithoutLanguage | StringWithLanguage  (language is empty)
+  // textWithoutLanguage | StringWithLanguage  (language is empty)
+  //
   Code GetValue(size_t index, bool& value) const;
   Code GetValue(size_t index, int32_t& value) const;
   Code GetValue(size_t index, std::string& value) const;
@@ -461,6 +474,7 @@ class LIBIPP_EXPORT Attribute {
   // Retrieves values from the attribute. They are copied to the given vector.
   // Possible errors:
   //  * kIncompatibleType
+  // These methods follow the same rules for types' conversions as GetValue().
   Code GetValues(std::vector<bool>& values) const;
   Code GetValues(std::vector<int32_t>& values) const;
   Code GetValues(std::vector<std::string>& values) const;
