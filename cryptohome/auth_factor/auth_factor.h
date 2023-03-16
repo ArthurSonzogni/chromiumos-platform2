@@ -11,8 +11,6 @@
 
 #include <libhwsec-foundation/status/status_chain_or.h>
 
-#include "cryptohome/auth_blocks/auth_block.h"
-#include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
 #include "cryptohome/auth_factor/auth_factor_type.h"
 #include "cryptohome/credentials.h"
@@ -44,12 +42,6 @@ class AuthFactor {
   const std::string& label() const { return label_; }
   const AuthFactorMetadata& metadata() const { return metadata_; }
   const AuthBlockState& auth_block_state() const { return auth_block_state_; }
-
-  // Executes additional steps needed for auth factor removal before it's
-  // deleted from disk. This method can be used before removing or replacing an
-  // auth factor.
-  CryptohomeStatus PrepareForRemoval(
-      AuthBlockUtility* auth_block_utility) const;
 
  private:
   // The auth factor public information.

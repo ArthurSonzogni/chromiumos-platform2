@@ -21,6 +21,7 @@
 #include <libhwsec-foundation/flatbuffers/basic_objects.h>
 #include <libhwsec-foundation/flatbuffers/flatbuffer_secure_allocator_bridge.h>
 
+#include "cryptohome/auth_blocks/auth_block_utility.h"
 #include "cryptohome/auth_factor/auth_factor.h"
 #include "cryptohome/auth_factor/auth_factor_label.h"
 #include "cryptohome/auth_factor/auth_factor_metadata.h"
@@ -569,7 +570,8 @@ CryptohomeStatus AuthFactorManager::RemoveAuthFactor(
         user_data_auth::CRYPTOHOME_ERROR_INVALID_ARGUMENT);
   }
 
-  CryptohomeStatus status = auth_factor.PrepareForRemoval(auth_block_utility);
+  CryptohomeStatus status = auth_block_utility->PrepareAuthBlockForRemoval(
+      auth_factor.auth_block_state());
   if (!status.ok()) {
     LOG(WARNING) << "Failed to prepare for removal for auth factor "
                  << auth_factor.label() << " of type "
@@ -640,8 +642,8 @@ CryptohomeStatus AuthFactorManager::UpdateAuthFactor(
 
   // 3. The old auth factor state was removed from disk. Call
   // `PrepareForRemoval()` to complete the removal.
-  CryptohomeStatus status =
-      existing_auth_factor.value()->PrepareForRemoval(auth_block_utility);
+  CryptohomeStatus status = auth_block_utility->PrepareAuthBlockForRemoval(
+      existing_auth_factor.value()->auth_block_state());
   if (!status.ok()) {
     LOG(WARNING) << "PrepareForRemoval failed for auth factor "
                  << auth_factor.label() << " of type "
