@@ -209,9 +209,10 @@ int RunCr50Script(const base::FilePath& install_dir,
 // TODO(hungte) Replace the shell execution by native code (crosbug.com/25407).
 // Note that this returns an exit code, not bool success/failure.
 int FirmwareUpdate(const InstallConfig& install_config, bool is_update) {
-  string install_dir = install_config.root.mount();
-  string command = install_dir + "/usr/sbin/chromeos-firmwareupdate";
-  if (access(command.c_str(), X_OK) != 0) {
+  base::FilePath install_dir = base::FilePath(install_config.root.mount());
+  base::FilePath command =
+      install_dir.Append("usr/sbin/chromeos-firmwareupdate");
+  if (!base::PathExists(command)) {
     LOG(INFO) << "No firmware updates available.";
     // Return success.
     return 0;
@@ -237,7 +238,7 @@ int FirmwareUpdate(const InstallConfig& install_config, bool is_update) {
   }
 
   LOG(INFO) << "Fimrware update with mode=" << mode;
-  int result = RunCommand({command, "--mode=" + mode});
+  int result = RunCommand({command.value(), "--mode=" + mode});
 
   // Next step after postinst may take a lot of time (eg, disk wiping)
   // and people may confuse that as 'firmware update takes a long wait',
