@@ -27,9 +27,7 @@ class WireGuardDriver : public VPNDriver {
 
   ~WireGuardDriver();
 
-  // Inherited from VPNDriver. During ConnectAsync(), we will try to create the
-  // tunnel in the kernel at first. If that fails, then we will try to let the
-  // userspace program open the tunnel.
+  // Inherited from VPNDriver.
   base::TimeDelta ConnectAsync(EventHandler* event_handler) override;
   void Disconnect() override;
   void OnConnectTimeout() override;
@@ -72,14 +70,6 @@ class WireGuardDriver : public VPNDriver {
   static const VPNDriver::Property kProperties[];
 
   void CreateKernelWireGuardInterface();
-
-  void StartUserspaceWireGuardTunnel();
-
-  // Spawns the userspace wireguard process, which will setup the tunnel
-  // interface and do the data tunneling. WireGuardProcessExited() will be
-  // invoked if that process exits unexpectedly.
-  bool SpawnWireGuard();
-  void WireGuardProcessExited(int exit_code);
 
   // Generates the contents for the config file that will be used by
   // wireguard-tools from the profile. Returns an empty string on failure.

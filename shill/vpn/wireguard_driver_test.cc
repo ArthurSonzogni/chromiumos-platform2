@@ -56,7 +56,6 @@ class WireGuardDriverTestPeer {
 
 namespace {
 
-constexpr pid_t kWireGuardPid = 12345;
 constexpr pid_t kWireGuardToolsPid = 12346;
 const char kIfName[] = "wg0";
 constexpr int kIfIndex = 123;
@@ -182,39 +181,6 @@ class WireGuardDriverTest : public testing::Test {
     dispatcher_.DispatchPendingEvents();
   }
 
-  void InvokeConnectAsyncUserspace() {
-    driver_->ConnectAsync(&driver_event_handler_);
-    EXPECT_CALL(device_info_, CreateWireGuardInterface(kIfName, _, _))
-        .WillOnce([this](const std::string&,
-                         DeviceInfo::LinkReadyCallback link_ready_cb,
-                         base::OnceClosure failure_cb) {
-          this->link_ready_callback_ = std::move(link_ready_cb);
-          this->create_kernel_link_failed_callback_ = std::move(failure_cb);
-          return true;
-        });
-    EXPECT_CALL(device_info_, AddVirtualInterfaceReadyCallback(kIfName, _))
-        .WillOnce([this](const std::string&, DeviceInfo::LinkReadyCallback cb) {
-          this->link_ready_callback_ = std::move(cb);
-        });
-
-    constexpr uint64_t kExpectedCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
-    EXPECT_CALL(process_manager_,
-                StartProcessInMinijail(
-                    _, _, _, _,
-                    AllOf(MinijailOptionsMatchUserGroup("vpn", "vpn"),
-                          MinijailOptionsMatchCapMask(kExpectedCapMask),
-                          MinijailOptionsMatchInheritSupplumentaryGroup(true),
-                          MinijailOptionsMatchCloseNonstdFDs(true)),
-                    _))
-        .WillOnce(
-            WithArg<5>([this](base::OnceCallback<void(int)> exit_callback) {
-              wireguard_exit_callback_ = std::move(exit_callback);
-              return kWireGuardPid;
-            }));
-    dispatcher_.DispatchPendingEvents();
-    std::move(create_kernel_link_failed_callback_).Run();
-  }
-
   void InvokeLinkReady() {
     // wireguard-tools should be invoked on interface ready.
     std::vector<std::string> args;
@@ -323,30 +289,6 @@ TEST_F(WireGuardDriverTest, ConnectFlowKernel) {
 
   // Disconnect.
   EXPECT_CALL(device_info_, DeleteInterface(kIfIndex));
-  driver_->Disconnect();
-}
-
-TEST_F(WireGuardDriverTest, ConnectFlowUserspace) {
-  InitializePropertyStore();
-  InvokeConnectAsyncUserspace();
-  InvokeLinkReady();
-
-  // Checks config file content.
-  std::string contents;
-  CHECK(base::ReadFileToString(config_file_path_, &contents));
-  EXPECT_EQ(contents, kExpectedConfigFileContents);
-
-  // Configuration done.
-  EXPECT_CALL(driver_event_handler_, OnDriverConnected(kIfName, kIfIndex));
-  std::move(wireguard_tools_exit_callback_).Run(0);
-
-  // Checks that the config file has been deleted.
-  EXPECT_FALSE(driver_test_peer_->config_fd().is_valid());
-
-  // Skips checks for IPProperties. See ConnectFlowKernel.
-
-  // Disconnect.
-  EXPECT_CALL(process_manager_, StopProcess(kWireGuardPid));
   driver_->Disconnect();
 }
 
@@ -575,22 +517,6 @@ TEST_F(WireGuardDriverTest, KeyPairGeneration) {
   property_store_->SetStringProperty(kWireGuardPrivateKey, kPrivateKey2, &err);
   driver_->Save(&fake_store_, kStorageId, /*save_credentials=*/true);
   assert_pubkey_is(kPrivateKey2);
-}
-
-TEST_F(WireGuardDriverTest, SpawnWireGuardProcessFailed) {
-  driver_->ConnectAsync(&driver_event_handler_);
-  EXPECT_CALL(device_info_, CreateWireGuardInterface(kIfName, _, _))
-      .WillOnce(Return(false));
-  EXPECT_CALL(process_manager_, StartProcessInMinijail(_, _, _, _, _, _))
-      .WillOnce(Return(-1));
-  EXPECT_CALL(driver_event_handler_, OnDriverFailure(_, _));
-  dispatcher_.DispatchPendingEvents();
-}
-
-TEST_F(WireGuardDriverTest, WireGuardProcessExitedUnexpectedly) {
-  InvokeConnectAsyncUserspace();
-  EXPECT_CALL(driver_event_handler_, OnDriverFailure(_, _));
-  std::move(wireguard_exit_callback_).Run(1);
 }
 
 // Checks interface cleanup on timeout.

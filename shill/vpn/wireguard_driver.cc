@@ -46,7 +46,6 @@ static auto kModuleLogScope = ScopeLogger::kVPN;
 
 namespace {
 
-constexpr char kWireGuardPath[] = "/usr/sbin/wireguard";
 constexpr char kWireGuardToolsPath[] = "/usr/bin/wg";
 constexpr char kDefaultInterfaceName[] = "wg0";
 
@@ -420,63 +419,15 @@ void WireGuardDriver::CreateKernelWireGuardInterface() {
   auto link_ready_callback = base::BindOnce(
       &WireGuardDriver::ConfigureInterface, weak_factory_.GetWeakPtr(),
       /*created_in_kernel=*/true);
+  const std::string err_msg = "Failed to create wireguard interface in kernel";
   auto failure_callback =
-      base::BindOnce(&WireGuardDriver::StartUserspaceWireGuardTunnel,
-                     weak_factory_.GetWeakPtr());
+      base::BindOnce(&WireGuardDriver::FailService, weak_factory_.GetWeakPtr(),
+                     Service::kFailureInternal, err_msg);
   if (!manager()->device_info()->CreateWireGuardInterface(
           kDefaultInterfaceName, std::move(link_ready_callback),
           std::move(failure_callback))) {
-    StartUserspaceWireGuardTunnel();
+    FailService(Service::kFailureInternal, err_msg);
   }
-}
-
-void WireGuardDriver::StartUserspaceWireGuardTunnel() {
-  LOG(INFO) << "Failed to create a wireguard interface in the kernel. Fallback "
-               "to userspace tunnel.";
-
-  // Claims the interface before the wireguard process creates it.
-  // TODO(b/177876632): Actually when the tunnel interface is ready, it cannot
-  // guarantee that the wireguard-tools can talk with the userspace wireguard
-  // process now. We should also wait for another event that the UAPI socket
-  // appears (which is a UNIX-domain socket created by the userspace wireguard
-  // process at a fixed path: `/var/run/wireguard/wg0.sock`).
-  manager()->device_info()->AddVirtualInterfaceReadyCallback(
-      kDefaultInterfaceName,
-      base::BindOnce(&WireGuardDriver::ConfigureInterface,
-                     weak_factory_.GetWeakPtr(),
-                     /*created_in_kernel=*/false));
-
-  if (!SpawnWireGuard()) {
-    FailService(Service::kFailureInternal, "Failed to spawn wireguard process");
-  }
-}
-
-bool WireGuardDriver::SpawnWireGuard() {
-  SLOG(2) << __func__;
-
-  // TODO(b/177876632): Change this part after we decide the userspace binary to
-  // use. For wireguard-go, we need to change the way to invoke minijail; for
-  // wireugard-rs, we need to add `--disable-drop-privileges` or change the
-  // capmask.
-  std::vector<std::string> args = {
-      "--foreground",
-      kDefaultInterfaceName,
-  };
-  constexpr uint64_t kCapMask = CAP_TO_MASK(CAP_NET_ADMIN);
-  wireguard_pid_ = process_manager()->StartProcessInMinijail(
-      FROM_HERE, base::FilePath(kWireGuardPath), args,
-      /*environment=*/{}, VPNUtil::BuildMinijailOptions(kCapMask),
-      base::BindOnce(&WireGuardDriver::WireGuardProcessExited,
-                     weak_factory_.GetWeakPtr()));
-  return wireguard_pid_ > -1;
-}
-
-void WireGuardDriver::WireGuardProcessExited(int exit_code) {
-  wireguard_pid_ = -1;
-  FailService(
-      Service::kFailureInternal,
-      base::StringPrintf("wireguard process exited unexpectedly with code=%d",
-                         exit_code));
 }
 
 std::string WireGuardDriver::GenerateConfigFileContents() {
