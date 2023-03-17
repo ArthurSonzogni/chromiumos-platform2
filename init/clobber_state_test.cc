@@ -18,6 +18,7 @@
 #include <base/files/scoped_temp_dir.h>
 #include <brillo/blkdev_utils/mock_lvm.h>
 #include <brillo/blkdev_utils/lvm.h>
+#include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
 #include <gtest/gtest.h>
 
@@ -871,7 +872,7 @@ class ClobberStateMock : public ClobberState {
   }
 
   bool SecureErase(const base::FilePath& path) override {
-    return secure_erase_supported_ && base::DeleteFile(path);
+    return secure_erase_supported_ && brillo::DeleteFile(path);
   }
 
   bool DropCaches() override { return secure_erase_supported_; }

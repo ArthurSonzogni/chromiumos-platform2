@@ -10,6 +10,7 @@
 
 #include <base/files/file_util.h>
 #include <base/logging.h>
+#include <brillo/files/file_util.h>
 
 #include "init/startup/fake_platform_impl.h"
 
@@ -148,7 +149,7 @@ bool FakePlatform::VpdSlow(const std::vector<std::string>& args,
 void FakePlatform::RemoveInBackground(
     const std::vector<base::FilePath>& paths) {
   for (auto path : paths) {
-    base::DeletePathRecursively(path);
+    brillo::DeletePathRecursively(path);
   }
 }
 

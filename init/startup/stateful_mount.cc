@@ -26,6 +26,7 @@
 #include <base/strings/string_util.h>
 #include <base/values.h>
 #include <brillo/blkdev_utils/lvm.h>
+#include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
 #include <brillo/key_value_store.h>
 #include <brillo/secure_blob.h>
@@ -493,7 +494,7 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
       } else {
         path_target = stateful_.Append(path);
       }
-      if (!base::DeletePathRecursively(path_target)) {
+      if (!brillo::DeletePathRecursively(path_target)) {
         PLOG(WARNING) << "Failed to delete " << path_target.value();
       }
 
@@ -550,9 +551,9 @@ bool StatefulMount::DevUpdateStatefulPartition(const std::string& args) {
 
       if (!preserve) {
         if (base::DirectoryExists(path)) {
-          base::DeletePathRecursively(path);
+          brillo::DeletePathRecursively(path);
         } else {
-          base::DeleteFile(path);
+          brillo::DeleteFile(path);
         }
       }
     }
@@ -598,7 +599,7 @@ void StatefulMount::DevGatherLogs(const base::FilePath& base_dir) {
     }
   }
 
-  if (!base::DeleteFile(lab_preserve_logs)) {
+  if (!brillo::DeleteFile(lab_preserve_logs)) {
     PLOG(WARNING) << "Failed to delete file: " << lab_preserve_logs;
   }
 }

@@ -13,6 +13,7 @@
 #include <base/process/launch.h>
 #include <base/strings/string_number_conversions.h>
 #include <base/threading/platform_thread.h>
+#include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
 #include <brillo/syslog_logging.h>
 
@@ -29,7 +30,7 @@ bool SanitizePath(const base::FilePath& path) {
   if (lstat(path.value().c_str(), &path_stat) != 0 ||
       !S_ISDIR(path_stat.st_mode)) {
     // Don't recursively delete the directory if we can't stat it.
-    base::DeleteFile(path);
+    brillo::DeleteFile(path);
     if (!base::CreateDirectory(path)) {
       PLOG(ERROR) << "Failed to create new directory " << path.value();
       return false;
@@ -136,7 +137,7 @@ bool PeriodicScheduler::Run(bool start_immediately) {
     auto current_time = base::Time::Now();
 
     if (start_immediately || current_time - file_last_mtime > period_seconds_) {
-      base::DeleteFile(spool_file);
+      brillo::DeleteFile(spool_file);
       base::WriteFile(spool_file, nullptr, 0);
       auto now = base::Time::Now();
       base::TouchFile(spool_file, now, now);

@@ -20,6 +20,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <base/values.h>
+#include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 
 #include "init/startup/fake_platform_impl.h"
@@ -195,7 +196,7 @@ TEST_F(SecurityManagerTest, EmptyAfter_v5_9) {
 }
 
 TEST_F(SecurityManagerLoadPinTest, LoadPinAttributeUnsupported) {
-  ASSERT_TRUE(base::DeleteFile(loadpin_verity_path_));
+  ASSERT_TRUE(brillo::DeleteFile(loadpin_verity_path_));
 
   base::ScopedFD loadpin_verity(
       HANDLE_EINTR(open(loadpin_verity_path_.value().c_str(),
@@ -211,7 +212,7 @@ TEST_F(SecurityManagerLoadPinTest, LoadPinAttributeUnsupported) {
 }
 
 TEST_F(SecurityManagerLoadPinTest, FailureToOpenLoadPinVerity) {
-  ASSERT_TRUE(base::DeleteFile(loadpin_verity_path_));
+  ASSERT_TRUE(brillo::DeleteFile(loadpin_verity_path_));
 
   base::ScopedFD loadpin_verity(
       HANDLE_EINTR(open(loadpin_verity_path_.value().c_str(), kWriteFlags)));
@@ -254,7 +255,7 @@ TEST_F(SecurityManagerLoadPinTest, ValidDigests) {
 }
 
 TEST_F(SecurityManagerLoadPinTest, MissingDigests) {
-  ASSERT_TRUE(base::DeleteFile(trusted_verity_digests_path_));
+  ASSERT_TRUE(brillo::DeleteFile(trusted_verity_digests_path_));
 
   base::ScopedFD loadpin_verity(
       HANDLE_EINTR(open(loadpin_verity_path_.value().c_str(), kWriteFlags)));
@@ -287,7 +288,7 @@ TEST_F(SecurityManagerLoadPinTest, MissingDigests) {
 }
 
 TEST_F(SecurityManagerLoadPinTest, FailureToReadDigests) {
-  ASSERT_TRUE(base::DeleteFile(trusted_verity_digests_path_));
+  ASSERT_TRUE(brillo::DeleteFile(trusted_verity_digests_path_));
 
   base::ScopedFD loadpin_verity(
       HANDLE_EINTR(open(loadpin_verity_path_.value().c_str(), kWriteFlags)));
@@ -323,8 +324,8 @@ TEST_F(SecurityManagerLoadPinTest, FailureToReadDigests) {
 }
 
 TEST_F(SecurityManagerLoadPinTest, FailureToReadInvalidDigestsDevNull) {
-  ASSERT_TRUE(base::DeleteFile(trusted_verity_digests_path_));
-  ASSERT_TRUE(base::DeleteFile(dev_null_path_));
+  ASSERT_TRUE(brillo::DeleteFile(trusted_verity_digests_path_));
+  ASSERT_TRUE(brillo::DeleteFile(dev_null_path_));
 
   base::ScopedFD loadpin_verity(
       HANDLE_EINTR(open(loadpin_verity_path_.value().c_str(), kWriteFlags)));

@@ -15,6 +15,7 @@
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 #include <brillo/blkdev_utils/lvm.h>
+#include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
 #include <brillo/strings/string_utils.h>
 #include <brillo/userdb_utils.h>
@@ -494,10 +495,10 @@ void ChromeosStartup::MoveToLibDeviceSettings() {
   if (base::DirectoryExists(whitelist)) {
     if (base::IsDirectoryEmpty(whitelist)) {
       // If it is empty, delete it.
-      if (!base::DeleteFile(whitelist)) {
+      if (!brillo::DeleteFile(whitelist)) {
         PLOG(WARNING) << "Failed to delete path " << whitelist.value();
       }
-    } else if (base::DeleteFile(devicesettings)) {
+    } else if (brillo::DeleteFile(devicesettings)) {
       // If devicesettings didn't exist, or was empty, DeleteFile passed.
       // Rename the old path.
       if (!base::Move(whitelist, devicesettings)) {
@@ -585,7 +586,7 @@ int ChromeosStartup::Run() {
     return 0;
   }
 
-  base::DeleteFile(encrypted_failed);
+  brillo::DeleteFile(encrypted_failed);
   base::FilePath encrypted_state_mnt = stateful_.Append(kEncryptedStatefulMnt);
   mount_helper_->RememberMount(encrypted_state_mnt);
 
@@ -607,7 +608,7 @@ int ChromeosStartup::Run() {
   // is very unlikely. If such a thing happens, we have a serious problem
   // which should not be covered up here.
   if (IsVarFull()) {
-    base::DeletePathRecursively(root_.Append(kVarLog));
+    brillo::DeletePathRecursively(root_.Append(kVarLog));
     base::FilePath reclaim_full_var = stateful_.Append(kReclaimFullVar);
     base::WriteFile(reclaim_full_var, "Startup.ReclaimFullVar");
   }

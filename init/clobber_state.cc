@@ -42,6 +42,7 @@
 #include <brillo/blkdev_utils/lvm.h>
 #include <brillo/blkdev_utils/storage_device.h>
 #include <brillo/blkdev_utils/storage_utils.h>
+#include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
 #include <crypto/random.h>
 #include <rootdev/rootdev.h>
@@ -366,7 +367,7 @@ int ClobberState::PreserveFiles(
     const std::vector<base::FilePath>& preserved_files,
     const base::FilePath& tar_file_path) {
   // Remove any stale tar files from previous clobber-state runs.
-  base::DeleteFile(tar_file_path);
+  brillo::DeleteFile(tar_file_path);
 
   // We want to preserve permissions and recreate the directory structure
   // for all of the files in |preserved_files|. In order to do so we run tar
@@ -1242,7 +1243,7 @@ int ClobberState::Run() {
 
   // Clear clobber log if needed.
   if (!preserve_sensitive_files) {
-    base::DeleteFile(stateful_.Append(kStatefulClobberLogPath));
+    brillo::DeleteFile(stateful_.Append(kStatefulClobberLogPath));
   }
 
   std::vector<base::FilePath> preserved_files = GetPreservedFilesList();
@@ -1497,9 +1498,9 @@ void ClobberState::AttemptSwitchToFastWipe(bool is_rotational) {
 void ClobberState::ShredRotationalStatefulFiles() {
   // Directly remove things that are already encrypted (which are also the
   // large things), or are static from images.
-  base::DeleteFile(stateful_.Append("encrypted.block"));
-  base::DeletePathRecursively(stateful_.Append("var_overlay"));
-  base::DeletePathRecursively(stateful_.Append("dev_image"));
+  brillo::DeleteFile(stateful_.Append("encrypted.block"));
+  brillo::DeletePathRecursively(stateful_.Append("var_overlay"));
+  brillo::DeletePathRecursively(stateful_.Append("dev_image"));
 
   base::FileEnumerator shadow_files(
       stateful_.Append("home/.shadow"),
@@ -1507,7 +1508,7 @@ void ClobberState::ShredRotationalStatefulFiles() {
   for (base::FilePath path = shadow_files.Next(); !path.empty();
        path = shadow_files.Next()) {
     if (path.BaseName() == base::FilePath("vault")) {
-      base::DeletePathRecursively(path);
+      brillo::DeletePathRecursively(path);
     }
   }
 

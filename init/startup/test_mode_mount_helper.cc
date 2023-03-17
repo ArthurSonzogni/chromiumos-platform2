@@ -15,6 +15,7 @@
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/values.h>
+#include <brillo/files/file_util.h>
 #include <brillo/process/process.h>
 
 #include "init/startup/flags.h"
@@ -80,7 +81,7 @@ bool TestModeMountHelper::DoMountVarAndHomeChronos() {
                                         "--mount_device='encstateful'"};
     platform_->AddClobberCrashReport(crash_args);
     base::FilePath backup = GetStateful().Append("corrupted_encryption");
-    base::DeletePathRecursively(backup);
+    brillo::DeletePathRecursively(backup);
     base::CreateDirectory(backup);
 
     base::FileEnumerator enumerator(GetStateful(), false /* recursive */,

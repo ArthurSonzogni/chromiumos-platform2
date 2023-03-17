@@ -21,6 +21,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <brillo/blkdev_utils/lvm.h>
+#include <brillo/files/file_util.h>
 #include <brillo/key_value_store.h>
 #include <brillo/process/process.h>
 
@@ -95,7 +96,7 @@ int Platform::MountEncrypted(const std::vector<std::string>& args,
   if (status == 0) {
     base::ReadFileToString(file, output);
   }
-  base::DeleteFile(file);
+  brillo::DeleteFile(file);
   return status;
 }
 
@@ -167,7 +168,7 @@ void Platform::RemoveInBackground(const std::vector<base::FilePath>& paths) {
   pid_t pid = fork();
   if (pid == 0) {
     for (auto path : paths) {
-      base::DeletePathRecursively(path);
+      brillo::DeletePathRecursively(path);
     }
     exit(0);
   }
