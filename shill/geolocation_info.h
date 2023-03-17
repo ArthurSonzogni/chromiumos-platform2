@@ -18,7 +18,7 @@ using GeolocationInfo = std::map<std::string, std::string>;
 
 // Helper functions to serialize and transform the last-seen time for a
 // geolocation object, so up-to-date age values can be returned over D-Bus.
-void AddLastSeenTime(GeolocationInfo* info, const base::TimeTicks& time);
+void AddLastSeenTime(GeolocationInfo* info, const base::Time& time);
 GeolocationInfo PrepareGeolocationInfoForExport(const GeolocationInfo& info);
 
 bool IsGeolocationInfoOlderThan(const GeolocationInfo& geoinfo,

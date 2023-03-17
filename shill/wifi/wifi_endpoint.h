@@ -107,7 +107,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   const std::string& country_code() const;
   const WiFiRefPtr& device() const;
   int16_t signal_strength() const;
-  base::TimeTicks last_seen() const;
+  base::Time last_seen() const;
   uint16_t frequency() const;
   uint16_t physical_mode() const;
   const std::string& network_mode() const;
@@ -240,7 +240,7 @@ class WiFiEndpoint : public base::RefCounted<WiFiEndpoint> {
   const std::string bssid_hex_;
   std::string country_code_;
   int16_t signal_strength_;
-  base::TimeTicks last_seen_;
+  base::Time last_seen_;
   uint16_t frequency_;
   uint16_t physical_mode_;
   // network_mode_ is represented as flimflam names

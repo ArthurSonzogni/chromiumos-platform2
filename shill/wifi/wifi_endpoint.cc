@@ -95,10 +95,10 @@ WiFiEndpoint::WiFiEndpoint(ControlInterface* control_interface,
   signal_strength_ = properties.Get<int16_t>(WPASupplicant::kBSSPropertySignal);
   if (properties.Contains<uint32_t>(WPASupplicant::kBSSPropertyAge)) {
     last_seen_ =
-        base::TimeTicks::Now() -
+        base::Time::Now() -
         base::Seconds(properties.Get<uint32_t>(WPASupplicant::kBSSPropertyAge));
   } else {
-    last_seen_ = base::TimeTicks();
+    last_seen_ = base::Time();
   }
   if (properties.Contains<uint16_t>(WPASupplicant::kBSSPropertyFrequency)) {
     frequency_ = properties.Get<uint16_t>(WPASupplicant::kBSSPropertyFrequency);
@@ -143,7 +143,7 @@ void WiFiEndpoint::PropertiesChanged(const KeyValueStore& properties) {
 
   if (properties.Contains<uint32_t>(WPASupplicant::kBSSPropertyAge)) {
     last_seen_ =
-        base::TimeTicks::Now() -
+        base::Time::Now() -
         base::Seconds(properties.Get<uint32_t>(WPASupplicant::kBSSPropertyAge));
     should_notify = true;
   }
@@ -276,7 +276,7 @@ int16_t WiFiEndpoint::signal_strength() const {
   return signal_strength_;
 }
 
-base::TimeTicks WiFiEndpoint::last_seen() const {
+base::Time WiFiEndpoint::last_seen() const {
   return last_seen_;
 }
 

@@ -20,21 +20,18 @@ namespace {
 constexpr char kLastSeenKey[] = "lastSeen";
 
 base::TimeDelta LastSeenToAge(int64_t last_seen) {
-  return base::TimeTicks::Now() -
-         (base::TimeTicks() + base::Seconds(last_seen));
+  return base::Time::Now() -
+         base::Time::FromDeltaSinceWindowsEpoch(base::Seconds(last_seen));
 }
 
 }  // namespace
 
 namespace shill {
 
-void AddLastSeenTime(GeolocationInfo* info, const base::TimeTicks& time) {
-  if (time.is_null())
-    return;
-
+void AddLastSeenTime(GeolocationInfo* info, const base::Time& time) {
   DCHECK(info);
-  (*info)[kLastSeenKey] =
-      base::StringPrintf("%" PRId64, (time - base::TimeTicks()).InSeconds());
+  (*info)[kLastSeenKey] = base::StringPrintf(
+      "%" PRId64, time.ToDeltaSinceWindowsEpoch().InSeconds());
 }
 
 GeolocationInfo PrepareGeolocationInfoForExport(const GeolocationInfo& info) {
@@ -48,8 +45,8 @@ GeolocationInfo PrepareGeolocationInfoForExport(const GeolocationInfo& info) {
     return GeolocationInfo();
   }
 
-  // Calculate the age based on the current time. We have to
-  // reconstitute last_seen into a TimeTicks so we can get a TimeDelta.
+  // Calculate the age based on the current time. We have to reconstitute
+  // last_seen into base::Time so we can get a TimeDelta.
   base::TimeDelta age = LastSeenToAge(last_seen);
 
   GeolocationInfo new_info(info);
