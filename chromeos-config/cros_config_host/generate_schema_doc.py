@@ -232,7 +232,7 @@ def Main(schema, output):
         post_lines = []
 
         if os.path.isfile(output):
-            with open(output) as output_stream:
+            with open(output, encoding="utf-8") as output_stream:
                 output_lines = output_stream.readlines()
                 pre_section = True
                 post_section = False
@@ -249,7 +249,7 @@ def Main(schema, output):
                     if "end_definitions" in line:
                         post_section = True
 
-        with open(output, "w") as output_stream:
+        with open(output, "w", encoding="utf-8") as output_stream:
             if pre_lines:
                 output_stream.writelines(pre_lines)
 

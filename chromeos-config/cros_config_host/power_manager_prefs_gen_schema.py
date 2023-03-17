@@ -59,7 +59,7 @@ def Main(output):
 powerd_prefs: &powerd_prefs"""
     ]
 
-    with open(PREF_DEF_FILE, "r") as defs_stream:
+    with open(PREF_DEF_FILE, "r", encoding="utf-8") as defs_stream:
         defs_content = defs_stream.read()
         prefs = re.findall(
             r'const char .*Pref.. =[ |\n] *"(.*)";', defs_content, re.MULTILINE
@@ -70,7 +70,9 @@ powerd_prefs: &powerd_prefs"""
             if os.path.exists(default_pref_path):
                 result_lines.append("  %s:" % pref_name)
                 result_lines.append("    <<: *powerd_prefs_default")
-                with open(default_pref_path, "r") as default_stream:
+                with open(
+                    default_pref_path, "r", encoding="utf-8"
+                ) as default_stream:
                     default = default_stream.read()
                     result_lines.append(
                         '    default: "%s"' % default.strip().replace("\n", " ")
@@ -80,7 +82,7 @@ powerd_prefs: &powerd_prefs"""
 
     full_result = "\n".join(result_lines)
     if output:
-        with open(output, "w") as output_stream:
+        with open(output, "w", encoding="utf-8") as output_stream:
             print(full_result, file=output_stream)
     else:
         print(full_result)

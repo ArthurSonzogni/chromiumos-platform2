@@ -20,7 +20,7 @@ this_dir = os.path.dirname(__file__)
 class CrosConfigHostJsonTests(unittest.TestCase):
     def setUp(self):
         source = os.path.join(this_dir, "../test_data/test.yaml")
-        with open(source, "r") as source_stream:
+        with open(source, "r", encoding="utf-8") as source_stream:
             self.config = libcros_config_host_json.CrosConfigJson(source_stream)
 
     def testWallpaper(self):

@@ -2549,7 +2549,7 @@ def write_output(configs, output=None):
         separators=(",", ": "),
     )
     if output:
-        with open(output, "w") as output_stream:
+        with open(output, "w", encoding="utf-8") as output_stream:
             # Using print function adds proper trailing newline.
             print(json_output, file=output_stream)
     else:
@@ -2991,7 +2991,7 @@ def _read_config(path):
         path: Path to the file encoding the json pb proto.
     """
     config = config_bundle_pb2.ConfigBundle()
-    with open(path, "r") as f:
+    with open(path, "r", encoding="utf-8") as f:
         return json_format.Parse(f.read(), config)
 
 
@@ -3136,14 +3136,14 @@ def _proximity_map(configs, project_name, output_dir, build_root_dir):
                         filename,
                     )
                     if os.path.exists(output_path):
-                        with open(output_path) as f:
+                        with open(output_path, encoding="utf-8") as f:
                             if f.read().rstrip("\n") != semtech_file_content:
                                 raise Exception(
                                     f"Project {project_name} has conflicting"
                                     f"proximity file content under {filename}"
                                 )
                     else:
-                        with open(output_path, "w") as f:
+                        with open(output_path, "w", encoding="utf-8") as f:
                             # Using print function adds proper trailing newline.
                             print(semtech_file_content, file=f)
                     system_path = (

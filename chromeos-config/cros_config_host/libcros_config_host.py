@@ -50,7 +50,7 @@ def CrosConfig(fname=None, model_filter_regex=None):
             "yaml",
             "config.yaml",
         )
-    with (sys.stdin if fname == "-" else open(fname)) as infile:
+    with sys.stdin if fname == "-" else open(fname, encoding="utf-8") as infile:
         return libcros_config_host_json.CrosConfigJson(
             infile, model_filter_regex=model_filter_regex
         )

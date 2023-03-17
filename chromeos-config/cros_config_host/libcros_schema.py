@@ -73,7 +73,7 @@ def FindImports(config_file, includes):
         includes: List that is built up through processing the files.
     """
     working_dir = os.path.dirname(config_file)
-    with open(config_file, "r") as config_stream:
+    with open(config_file, "r", encoding="utf-8") as config_stream:
         config_lines = config_stream.readlines()
         yaml_import_lines = []
         found_imports = False
@@ -113,7 +113,7 @@ def ApplyImports(config_file):
 
     all_yaml_files = []
     for import_file in import_files:
-        with open(import_file, "r") as yaml_stream:
+        with open(import_file, "r", encoding="utf-8") as yaml_stream:
             all_yaml_files.append(yaml_stream.read())
 
     return "\n".join(all_yaml_files)

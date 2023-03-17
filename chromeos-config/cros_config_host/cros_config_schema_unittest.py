@@ -733,8 +733,8 @@ class MainTests(cros_test_lib.TempDirTestCase):
             "Please run ./regen.sh in the chromeos-config directory."
         )
 
-        with open(file_expected, "r") as expected, open(
-            file_actual, "r"
+        with open(file_expected, "r", encoding="utf-8") as expected, open(
+            file_actual, "r", encoding="utf-8"
         ) as actual:
             for line_num, (line_expected, line_actual) in enumerate(
                 zip_longest(expected, actual)

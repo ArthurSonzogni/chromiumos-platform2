@@ -975,7 +975,7 @@ def Main(
             json_transform, build_only_elements
         )
     if output:
-        with open(output, "w") as output_stream:
+        with open(output, "w", encoding="utf-8") as output_stream:
             # Using print function adds proper trailing newline.
             print(json_transform, file=output_stream)
     else:

@@ -39,7 +39,8 @@ def TestConfigs(*args):
         def _Wrapper(self):
             for filename in args:
                 with open(
-                    os.path.join(this_dir, "../test_data", filename)
+                    os.path.join(this_dir, "../test_data", filename),
+                    encoding="utf-8",
                 ) as f:
                     config = json.load(f)
 
