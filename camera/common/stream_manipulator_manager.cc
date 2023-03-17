@@ -178,6 +178,7 @@ StreamManipulatorManager::StreamManipulatorManager(
                                      gpu_resources, &stream_manipulators_);
 
 #if USE_CAMERA_FEATURE_EFFECTS
+  LOGF(INFO) << "Service built with effects support";
   if (feature_profile.IsEnabled(FeatureProfile::FeatureType::kEffects)) {
     std::unique_ptr<JpegCompressor> jpeg_compressor =
         JpegCompressor::GetInstance(CameraMojoChannelManager::GetInstance());
@@ -188,7 +189,11 @@ StreamManipulatorManager::StreamManipulatorManager(
             FeatureProfile::FeatureType::kEffects),
         runtime_options, std::move(still_capture_processor)));
     LOGF(INFO) << "EffectsStreamManipulator enabled";
+  } else {
+    LOGF(INFO) << "EffectsStreamManipulator not enabled";
   }
+#else
+  LOGF(INFO) << "Service built without effects support";
 #endif
 
   // TODO(jcliang): See if we want to move ZSL to feature profile.

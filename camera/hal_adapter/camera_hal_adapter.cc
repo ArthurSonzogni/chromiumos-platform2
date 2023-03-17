@@ -131,6 +131,8 @@ bool CameraHalAdapter::Start(GpuResources* gpu_resources) {
           LOGF(ERROR) << "DLC Completed (failed):" << error_msg;
         }));
     dlc_client_->InstallDlc();
+  } else {
+    LOGF(INFO) << "Effects are not enabled, DLC will not be installed.";
   }
 
   auto future = cros::Future<bool>::Create(nullptr);
