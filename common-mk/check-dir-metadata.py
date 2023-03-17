@@ -78,7 +78,6 @@ LEGACYLIST = {
     "libcontainer",
     "libpasswordprovider",
     "media_capabilities",
-    "media_perception",
     "midis",
     "minios",
     "mist",

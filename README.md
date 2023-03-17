@@ -110,7 +110,6 @@ copies.
 | [lvmd](./lvmd/) | ChromeOS LVM daemon |
 | [machine-id-regen](./machine-id-regen/) | Utility to periodically update machine-id |
 | [media_capabilities](./media_capabilities/) | Command line tool to show video and camera capabilities |
-| [media_perception](./media_perception/) | Media perception service for select platforms |
 | [memd](./metrics/memd/) | Daemon that logs memory-related data and events |
 | [mems_setup](./mems_setup/) | Boot-time initializer tool for sensors |
 | [metrics](./metrics/) | Client side user metrics collection |
