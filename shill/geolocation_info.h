@@ -7,6 +7,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 #include <base/time/time.h>
 
@@ -23,6 +24,14 @@ GeolocationInfo PrepareGeolocationInfoForExport(const GeolocationInfo& info);
 
 bool IsGeolocationInfoOlderThan(const GeolocationInfo& geoinfo,
                                 base::TimeDelta expiration);
+
+// Return the timestamps of the oldest and newest endpoints.
+void GeolocationInfoAgeRange(const std::vector<GeolocationInfo>& geoinfos,
+                             base::Time* oldest_timestamp,
+                             base::Time* newest_timestamp);
+
+// Convert a geolocation information object into string.
+std::string GeolocationInfoToString(const GeolocationInfo& geoinfo);
 
 }  // namespace shill
 

@@ -2671,6 +2671,7 @@ void WiFi::DisassociateFromService(const WiFiServiceRefPtr& service) {
 
 void WiFi::UpdateGeolocationObjects(
     std::vector<GeolocationInfo>* geolocation_infos) const {
+  int old_size = geolocation_infos->size();
   // Move all the geolocation objects from geolocation_infos to
   // geolocation_infos_copy. After this move, geolocation_infos is empty, and
   // all the geolocation objects are in geolocation_infos_copy
@@ -2686,12 +2687,17 @@ void WiFi::UpdateGeolocationObjects(
     geoinfo[kGeoChannelProperty] = base::StringPrintf(
         "%d", Metrics::WiFiFrequencyToChannel(endpoint->frequency()));
     AddLastSeenTime(&geoinfo, endpoint->last_seen());
+    SLOG(4) << "Cached: " << GeolocationInfoToString(geoinfo);
     geolocation_infos->emplace_back(geoinfo);
   }
+  int carry_num = 0, evict_num = 0, update_num = 0;
   // If a BSS is not in the latest scan result, we put it back to the
   // geolocation cache if it is not expired yet
   for (auto& geoinfo : geolocation_infos_copy) {
+    // Evict a cached endpoint if its age is older than
+    // kWiFiGeolocationInfoExpiration
     if (IsGeolocationInfoOlderThan(geoinfo, kWiFiGeolocationInfoExpiration)) {
+      evict_num++;
       continue;
     }
     std::vector<GeolocationInfo>::iterator it;
@@ -2701,8 +2707,26 @@ void WiFi::UpdateGeolocationObjects(
          it++) {
     }
     if (it == geolocation_infos->end()) {
+      SLOG(4) << "Carried over: " << GeolocationInfoToString(geoinfo);
+      // The cached endpoint is not in the WiFi scan result and has not expired
+      // yet, put it back to the cache
       geolocation_infos->emplace_back(geoinfo);
+      carry_num++;
+    } else {
+      // The cached endpoint has been updated with the WiFi scan result
+      update_num++;
     }
+  }
+  LOG(INFO) << "Geolocation cache input size: " << old_size
+            << ", output size: " << geolocation_infos->size()
+            << ", carried over: " << carry_num << ", updated: " << update_num
+            << ", evicted: " << evict_num;
+  base::Time oldest_timestamp, newest_timestamp;
+  GeolocationInfoAgeRange(*geolocation_infos, &oldest_timestamp,
+                          &newest_timestamp);
+  if (!oldest_timestamp.is_inf() && !newest_timestamp.is_inf()) {
+    LOG(INFO) << "The oldest endpoint was seen at " << oldest_timestamp
+              << ", the newest endpoint was seen at " << newest_timestamp;
   }
 }
 

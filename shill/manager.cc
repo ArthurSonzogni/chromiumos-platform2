@@ -2695,6 +2695,15 @@ Manager::GetNetworksForGeolocation() const {
                    std::back_inserter(*network_geolocation_info),
                    &PrepareGeolocationInfoForExport);
   }
+  if (!base::Contains(geolocation_infos, kGeoWifiAccessPointsProperty)) {
+    LOG(INFO) << "The WiFi AP list is empty";
+  } else {
+    LOG(INFO) << "The size of the WiFi AP list is "
+              << geolocation_infos[kGeoWifiAccessPointsProperty].size();
+    for (auto geoinfo : geolocation_infos[kGeoWifiAccessPointsProperty]) {
+      SLOG(4) << GeolocationInfoToString(geoinfo);
+    }
+  }
 
   return geolocation_infos;
 }

@@ -65,4 +65,41 @@ bool IsGeolocationInfoOlderThan(const GeolocationInfo& geoinfo,
   return LastSeenToAge(last_seen) > expiration;
 }
 
+void GeolocationInfoAgeRange(const std::vector<GeolocationInfo>& geoinfos,
+                             base::Time* oldest_timestamp,
+                             base::Time* newest_timestamp) {
+  *oldest_timestamp = base::Time::Max();
+  *newest_timestamp = base::Time::Min();
+  for (const auto& geoinfo : geoinfos) {
+    int64_t last_seen;
+    auto it = geoinfo.find(kLastSeenKey);
+    if (it == geoinfo.end() || !base::StringToInt64(it->second, &last_seen)) {
+      continue;
+    }
+    base::Time last_timestamp =
+        base::Time::FromDeltaSinceWindowsEpoch(base::Seconds(last_seen));
+
+    *oldest_timestamp =
+        *oldest_timestamp < last_timestamp ? *oldest_timestamp : last_timestamp;
+    *newest_timestamp =
+        *newest_timestamp > last_timestamp ? *newest_timestamp : last_timestamp;
+  }
+}
+
+std::string GeolocationInfoToString(const GeolocationInfo& geoinfo) {
+  std::string geoinfo_str = "WiFi endpoint OUI:";
+  auto it = geoinfo.find(kGeoMacAddressProperty);
+  if (it != geoinfo.end()) {
+    geoinfo_str += std::string(" ") + it->second.substr(0, 8);
+  }
+  for (auto key : {kGeoChannelProperty, kGeoAgeProperty, kLastSeenKey,
+                   kGeoSignalStrengthProperty}) {
+    it = geoinfo.find(key);
+    if (it != geoinfo.end()) {
+      geoinfo_str += std::string(" ") + key + ": " + it->second;
+    }
+  }
+  return geoinfo_str;
+}
+
 }  // namespace shill
