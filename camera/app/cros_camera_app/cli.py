@@ -15,6 +15,12 @@ import sys
 from typing import List, Optional
 
 from cros_camera_app import app
+from cros_camera_app import device
+
+
+def cmd_setup(args: argparse.Namespace):
+    del args
+    device.setup()
 
 
 # TODO(shik): Support specifying target mode and facing.
@@ -42,6 +48,13 @@ def parse_args(argv: Optional[List[str]]) -> argparse.Namespace:
     )
     parser.set_defaults(func=lambda _: parser.print_help())
     subparsers = parser.add_subparsers()
+
+    setup_parser = subparsers.add_parser(
+        "setup",
+        help="Setup the DUT",
+        description="Setup the DUT to make it ready to be controlled remotely.",
+    )
+    setup_parser.set_defaults(func=cmd_setup)
 
     open_parser = subparsers.add_parser(
         "open",
