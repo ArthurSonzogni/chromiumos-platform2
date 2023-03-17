@@ -351,8 +351,8 @@ def TransformConfig(config, model_filter_regex=None):
                     # Template variables scope is config, then device,
                     # then product.
                     # This allows shared configs to define defaults using
-                    # anchors, which # can then be easily overridden by
-                    # the product/device scope.
+                    # anchors, which can then be easily overridden by the
+                    # product/device scope.
                     _SetTemplateVars(sku, template_vars)
                     _SetTemplateVars(device, template_vars)
                     _SetTemplateVars(product, template_vars)
