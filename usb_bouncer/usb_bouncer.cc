@@ -239,7 +239,7 @@ int HandleReportError(const Configuration& config,
     return EXIT_FAILURE;
 
   int error_code;
-  std::string driver = argv[0];
+  std::string subsystem = argv[0];
   std::string devpath = argv[1];
   if (!base::StringToInt(argv[2], &error_code))
     return EXIT_FAILURE;
@@ -254,7 +254,7 @@ int HandleReportError(const Configuration& config,
   if (!base::DirectoryExists(normalized_devpath))
     return EXIT_FAILURE;
 
-  if (driver == "hub" || driver == "usb") {
+  if (subsystem == "usb") {
     if (base::PathExists(normalized_devpath.Append("bInterfaceClass")))
       normalized_devpath = usb_bouncer::GetInterfaceDevice(normalized_devpath);
 
@@ -269,7 +269,7 @@ int HandleReportError(const Configuration& config,
         usb_bouncer::GetDeviceClass(normalized_devpath),
         usb_bouncer::GetUsbTreePath(normalized_devpath),
         usb_bouncer::GetConnectedDuration(normalized_devpath));
-  } else if (driver == "xhci_hcd") {
+  } else if (subsystem == "pci") {
     usb_bouncer::StructuredMetricsXhciError(
         abs(error_code), usb_bouncer::GetPciDeviceClass(normalized_devpath));
   }
