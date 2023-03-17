@@ -35,14 +35,14 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t* data, size_t size) {
   std::string out;
 
   auto addr1 = IPAddress::CreateFromByteString(family, bytestring);
-  if (addr1->IsValid()) {
+  if (addr1.has_value()) {
     addr1->GetDefaultBroadcast();
     addr1->GetNetworkPart();
     addr1->IntoString(&out);
   }
 
   auto addr2 = IPAddress::CreateFromString(str);
-  if (addr2->IsValid()) {
+  if (addr2.has_value()) {
     addr2->GetDefaultBroadcast();
     addr2->GetNetworkPart();
     addr2->IntoString(&out);
