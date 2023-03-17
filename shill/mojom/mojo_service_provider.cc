@@ -52,6 +52,10 @@ void MojoServiceProvider::ConnectAndRegister() {
   // Connect to the service manager and watch errors.
   auto pending_remote =
       chromeos::mojo_service_manager::ConnectToMojoServiceManager();
+  if (!pending_remote.is_valid()) {
+    LOG(ERROR) << "Mojo service manager is not available.";
+    return;
+  }
   service_manager_.Bind(std::move(pending_remote));
   service_manager_.set_disconnect_with_reason_handler(
       base::BindOnce(&MojoServiceProvider::OnManagerDisconnected,
