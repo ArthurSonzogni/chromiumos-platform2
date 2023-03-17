@@ -424,6 +424,14 @@ class CrashSenderUtilTest : public testing::Test {
     if (!CreateFile(devcore_devcore_, "", now))
       return false;
 
+    // These should be kept, since the payload is a known kind and exists.
+    txt_meta_ = crash_directory.Append("txt.meta");
+    txt_txt_ = crash_directory.Append("txt.txt");
+    if (!CreateFile(txt_meta_, "payload=txt.txt\ndone=1\n", now))
+      return false;
+    if (!CreateFile(txt_txt_, "", now))
+      return false;
+
     // This should be ignored, since the metadata is corrupted but the file is
     // still fairly new.
     new_corrupted_meta_ = crash_directory.Append("new_corrupted.meta");
@@ -598,6 +606,8 @@ class CrashSenderUtilTest : public testing::Test {
   base::FilePath root_payload_meta_;
   base::FilePath devcore_meta_;
   base::FilePath devcore_devcore_;
+  base::FilePath txt_meta_;
+  base::FilePath txt_txt_;
   base::FilePath empty_meta_;
   base::FilePath new_corrupted_meta_;
   base::FilePath old_corrupted_meta_;
@@ -1171,6 +1181,9 @@ TEST_F(CrashSenderUtilTest, ChooseAction) {
   EXPECT_EQ(Sender::kSend,
             sender.ChooseAction(old_os_new_lacros_meta_, &reason, &info));
 
+  // Txt files should be sent if metrics enabled and we're using user consent.
+  EXPECT_EQ(Sender::kSend, sender.ChooseAction(txt_meta_, &reason, &info));
+
   EXPECT_CALL(
       *raw_metrics_lib,
       SendEnumToUMA("Platform.CrOS.CrashSenderRemoveReason",
@@ -1418,7 +1431,7 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
   EXPECT_FALSE(base::PathExists(root_payload_meta_));
   EXPECT_TRUE(base::PathExists(loop_meta_));
   // Check what files were picked for sending.
-  EXPECT_EQ(4, to_send.size());
+  EXPECT_EQ(5, to_send.size());
   EXPECT_EQ(good_meta_.value(), to_send[0].first.value());
   EXPECT_EQ(recent_os_meta_.value(), to_send[1].first.value());
 
@@ -1466,7 +1479,7 @@ TEST_F(CrashSenderUtilTest, RemoveAndPickCrashFiles) {
   CreateDeviceCoredumpUploadAllowedFile();
   to_send.clear();
   sender.RemoveAndPickCrashFiles(crash_directory, &to_send);
-  EXPECT_EQ(5, to_send.size());
+  EXPECT_EQ(6, to_send.size());
   EXPECT_EQ(devcore_meta_.value(), to_send[2].first.value());
 }
 

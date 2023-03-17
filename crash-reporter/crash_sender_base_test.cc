@@ -114,6 +114,7 @@ TEST_F(CrashSenderBaseTest, GetKindFromPayloadPath) {
   EXPECT_EQ("", GetKindFromPayloadPath(base::FilePath()));
   EXPECT_EQ("", GetKindFromPayloadPath(base::FilePath("foo")));
   EXPECT_EQ("log", GetKindFromPayloadPath(base::FilePath("foo.log")));
+  EXPECT_EQ("txt", GetKindFromPayloadPath(base::FilePath("foo.txt")));
   // "dmp" is a special case.
   EXPECT_EQ("minidump", GetKindFromPayloadPath(base::FilePath("foo.dmp")));
 

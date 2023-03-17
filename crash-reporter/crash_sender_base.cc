@@ -43,7 +43,8 @@ constexpr size_t kMaxMetaFileSize = 1024 * 1024;
 bool IsKnownKind(const std::string& kind) {
   return (kind == constants::kKindForMinidump || kind == "kcrash" ||
           kind == "log" || kind == "devcore" || kind == "eccrash" ||
-          kind == "bertdump" || kind == constants::kKindForJavaScriptError);
+          kind == "bertdump" || kind == "txt" ||
+          kind == constants::kKindForJavaScriptError);
 }
 
 // Returns true if the given key is valid for crash metadata.
