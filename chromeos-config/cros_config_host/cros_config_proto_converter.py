@@ -2334,6 +2334,8 @@ def _build_scheduler_tune(config):
     result = {}
     if scheduler_tune.boost_urgent != 0:
         _upsert(scheduler_tune.boost_urgent, result, "boost-urgent")
+    if scheduler_tune.boost_top_app != 0:
+        _upsert(scheduler_tune.boost_top_app, result, "boost-top-app")
     _upsert(scheduler_tune.cpuset_nonurgent, result, "cpuset-nonurgent")
     if scheduler_tune.input_boost != 0:
         _upsert(scheduler_tune.input_boost, result, "input-boost")

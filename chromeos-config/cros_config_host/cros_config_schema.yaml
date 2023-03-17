@@ -1485,6 +1485,19 @@ properties:
                     This value specifies how much CPUs will be boosted.
                   minimum: 0
                   maximum: 100
+                boost-top-app:
+                  type: integer
+                  description: (Optional) Scheduler's boost value(%) for ARCVM
+                    topmost applications. When top-app class application is
+                    running, ARCVM applies this value to scheduler attribute.
+                    Tasks with higher boost value are more likely to have higher
+                    operating power point even when the system is low-utilized.
+                    If it is not set, the default value will be calculated by
+                    the performance ratio of the highest performance core and
+                    the lowest performance core. So the recommended value is
+                    higher than that. 0 means no boost and is not recommended.
+                  minimum: 0
+                  maximum: 100
                 cpuset-nonurgent:
                   type: string
                   pattern: "^[0-9]+(-[0-9]+|(,[0-9]+)+)$"
