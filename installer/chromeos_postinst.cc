@@ -313,8 +313,9 @@ bool UpdatePartitionTable(CgptManager& cgpt_manager,
                           bool is_update) {
   LOG(INFO) << "Updating Partition Table Attributes using CgptManager...";
 
-  int result = cgpt_manager.SetHighestPriority(install_config.kernel.number());
-  if (result != kCgptSuccess) {
+  CgptErrorCode result =
+      cgpt_manager.SetHighestPriority(install_config.kernel.number());
+  if (result != CgptErrorCode::kSuccess) {
     LOG(ERROR) << "Unable to set highest priority for kernel: "
                << install_config.kernel.number();
     return false;
@@ -325,7 +326,7 @@ bool UpdatePartitionTable(CgptManager& cgpt_manager,
   bool new_kern_successful = !is_update;
   result = cgpt_manager.SetSuccessful(install_config.kernel.number(),
                                       new_kern_successful);
-  if (result != kCgptSuccess) {
+  if (result != CgptErrorCode::kSuccess) {
     LOG(ERROR) << "Unable to set successful to " << new_kern_successful
                << " for kernel: " << install_config.kernel.number();
     return false;
@@ -334,7 +335,7 @@ bool UpdatePartitionTable(CgptManager& cgpt_manager,
   int numTries = 6;
   result =
       cgpt_manager.SetNumTriesLeft(install_config.kernel.number(), numTries);
-  if (result != kCgptSuccess) {
+  if (result != CgptErrorCode::kSuccess) {
     LOG(ERROR) << "Unable to set NumTriesLeft to " << numTries
                << " for kernel: " << install_config.kernel.number();
     return false;
@@ -352,9 +353,9 @@ bool RollbackPartitionTable(CgptManager& cgpt_manager,
   // so as to cleanup as much as possible.
   bool new_kern_successful = false;
   bool rollback_successful = true;
-  int result =
+  CgptErrorCode result =
       cgpt_manager.SetSuccessful(install_config.kernel.number(), false);
-  if (result != kCgptSuccess) {
+  if (result != CgptErrorCode::kSuccess) {
     rollback_successful = false;
     LOG(ERROR) << "Unable to set successful to " << new_kern_successful
                << " for kernel: " << install_config.kernel.number();
@@ -363,7 +364,7 @@ bool RollbackPartitionTable(CgptManager& cgpt_manager,
   int numTries = 0;
   result =
       cgpt_manager.SetNumTriesLeft(install_config.kernel.number(), numTries);
-  if (result != kCgptSuccess) {
+  if (result != CgptErrorCode::kSuccess) {
     rollback_successful = false;
     LOG(ERROR) << "Unable to set NumTriesLeft to " << numTries
                << " for kernel: " << install_config.kernel.number();
@@ -371,7 +372,7 @@ bool RollbackPartitionTable(CgptManager& cgpt_manager,
 
   int priority = 0;
   result = cgpt_manager.SetPriority(install_config.kernel.number(), priority);
-  if (result != kCgptSuccess) {
+  if (result != CgptErrorCode::kSuccess) {
     rollback_successful = false;
     LOG(ERROR) << "Unable to set Priority to " << priority
                << " for kernel: " << install_config.kernel.number();
@@ -549,8 +550,9 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
 
   CgptManager cgpt_manager;
 
-  int result = cgpt_manager.Initialize(install_config.root.base_device());
-  if (result != kCgptSuccess) {
+  CgptErrorCode result =
+      cgpt_manager.Initialize(install_config.root.base_device());
+  if (result != CgptErrorCode::kSuccess) {
     LOG(ERROR) << "Unable to initialize CgptManager().";
     return false;
   }
@@ -725,7 +727,7 @@ bool ChromeosChrootPostinst(const InstallConfig& install_config,
     LOG(INFO) << "cr50 setup complete.";
   }
 
-  if (cgpt_manager.Finalize()) {
+  if (cgpt_manager.Finalize() != CgptErrorCode::kSuccess) {
     LOG(ERROR) << "Failed to write GPT changes back.";
     return false;
   }

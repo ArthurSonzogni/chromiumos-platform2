@@ -66,14 +66,14 @@ void GuidToStr(const Guid* guid, char* str, unsigned int buflen) {
 string Partition::uuid() const {
   CgptManager cgpt;
 
-  if (cgpt.Initialize(base_device()) != kCgptSuccess) {
+  if (cgpt.Initialize(base_device()) != CgptErrorCode::kSuccess) {
     LOG(ERROR) << "CgptManager failed to initialize for " << base_device();
     return "";
   }
 
   Guid guid;
 
-  if (cgpt.GetPartitionUniqueId(number(), &guid) != kCgptSuccess) {
+  if (cgpt.GetPartitionUniqueId(number(), &guid) != CgptErrorCode::kSuccess) {
     LOG(ERROR) << "CgptManager failed to get guid for " << number();
     return "";
   }

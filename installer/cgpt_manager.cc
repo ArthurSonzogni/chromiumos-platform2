@@ -172,31 +172,31 @@ CgptErrorCode CgptManager::Initialize(const base::FilePath& device_name) {
   bool is_mtd;
   if (!IsMtd(device_name, &is_mtd)) {
     LOG(ERROR) << "Cannot determine if " << device_name << " is an MTD device";
-    return kCgptNotInitialized;
+    return CgptErrorCode::kNotInitialized;
   }
   if (is_mtd) {
     LOG(INFO) << device_name << " is an MTD device";
     if (!GetMtdSize(device_name, &device_size_)) {
       LOG(ERROR) << "But we do not know its size";
-      return kCgptNotInitialized;
+      return CgptErrorCode::kNotInitialized;
     }
     if (!ReadGptFromNor(&device_name_)) {
       LOG(ERROR) << "Failed to read GPT structs from NOR flash";
-      return kCgptNotInitialized;
+      return CgptErrorCode::kNotInitialized;
     }
   }
   is_initialized_ = true;
-  return kCgptSuccess;
+  return CgptErrorCode::kSuccess;
 }
 
 CgptErrorCode CgptManager::Finalize() {
   if (!is_initialized_) {
-    return kCgptNotInitialized;
+    return CgptErrorCode::kNotInitialized;
   }
 
   if (device_size_) {
     if (WriteGptToNor(device_name_) != 0) {
-      return kCgptUnknownError;
+      return CgptErrorCode::kUnknownError;
     }
     if (unlink(device_name_.value().c_str()) != 0) {
       PLOG(ERROR) << "Cannot remove temp file " << device_name_;
@@ -205,12 +205,12 @@ CgptErrorCode CgptManager::Finalize() {
 
   device_size_ = 0;
   is_initialized_ = false;
-  return kCgptSuccess;
+  return CgptErrorCode::kSuccess;
 }
 
 CgptErrorCode CgptManager::ClearAll() {
   if (!is_initialized_)
-    return kCgptNotInitialized;
+    return CgptErrorCode::kNotInitialized;
 
   CgptCreateParams params;
   memset(&params, 0, sizeof(params));
@@ -221,9 +221,9 @@ CgptErrorCode CgptManager::ClearAll() {
 
   int retval = CgptCreate(&params);
   if (retval != CGPT_OK)
-    return kCgptUnknownError;
+    return CgptErrorCode::kUnknownError;
 
-  return kCgptSuccess;
+  return CgptErrorCode::kSuccess;
 }
 
 CgptErrorCode CgptManager::AddPartition(const string& label,
@@ -232,7 +232,7 @@ CgptErrorCode CgptManager::AddPartition(const string& label,
                                         uint64_t beginning_offset,
                                         uint64_t num_sectors) {
   if (!is_initialized_)
-    return kCgptNotInitialized;
+    return CgptErrorCode::kNotInitialized;
 
   CgptAddParams params;
   memset(&params, 0, sizeof(params));
@@ -257,18 +257,18 @@ CgptErrorCode CgptManager::AddPartition(const string& label,
 
   int retval = CgptAdd(&params);
   if (retval != CGPT_OK)
-    return kCgptUnknownError;
+    return CgptErrorCode::kUnknownError;
 
-  return kCgptSuccess;
+  return CgptErrorCode::kSuccess;
 }
 
 CgptErrorCode CgptManager::GetNumNonEmptyPartitions(
     uint8_t* num_partitions) const {
   if (!is_initialized_)
-    return kCgptNotInitialized;
+    return CgptErrorCode::kNotInitialized;
 
   if (!num_partitions)
-    return kCgptInvalidArgument;
+    return CgptErrorCode::kInvalidArgument;
 
   CgptShowParams params;
   memset(&params, 0, sizeof(params));
@@ -278,17 +278,17 @@ CgptErrorCode CgptManager::GetNumNonEmptyPartitions(
   int retval = CgptGetNumNonEmptyPartitions(&params);
 
   if (retval != CGPT_OK)
-    return kCgptUnknownError;
+    return CgptErrorCode::kUnknownError;
 
   *num_partitions = params.num_partitions;
-  return kCgptSuccess;
+  return CgptErrorCode::kSuccess;
 }
 
 CgptErrorCode CgptManager::SetPmbr(uint32_t boot_partition_number,
                                    const base::FilePath& boot_file_name,
                                    bool should_create_legacy_partition) {
   if (!is_initialized_)
-    return kCgptNotInitialized;
+    return CgptErrorCode::kNotInitialized;
 
   CgptBootParams params;
   memset(&params, 0, sizeof(params));
@@ -303,18 +303,18 @@ CgptErrorCode CgptManager::SetPmbr(uint32_t boot_partition_number,
 
   int retval = CgptBoot(&params);
   if (retval != CGPT_OK)
-    return kCgptUnknownError;
+    return CgptErrorCode::kUnknownError;
 
-  return kCgptSuccess;
+  return CgptErrorCode::kSuccess;
 }
 
 CgptErrorCode CgptManager::GetPmbrBootPartitionNumber(
     uint32_t* boot_partition) const {
   if (!is_initialized_)
-    return kCgptNotInitialized;
+    return CgptErrorCode::kNotInitialized;
 
   if (!boot_partition)
-    return kCgptInvalidArgument;
+    return CgptErrorCode::kInvalidArgument;
 
   CgptBootParams params;
   memset(&params, 0, sizeof(params));
@@ -324,16 +324,16 @@ CgptErrorCode CgptManager::GetPmbrBootPartitionNumber(
 
   int retval = CgptGetBootPartitionNumber(&params);
   if (retval != CGPT_OK)
-    return kCgptUnknownError;
+    return CgptErrorCode::kUnknownError;
 
   *boot_partition = params.partition;
-  return kCgptSuccess;
+  return CgptErrorCode::kSuccess;
 }
 
 CgptErrorCode CgptManager::SetSuccessful(uint32_t partition_number,
                                          bool is_successful) {
   if (!is_initialized_)
-    return kCgptNotInitialized;
+    return CgptErrorCode::kNotInitialized;
 
   CgptAddParams params;
   memset(&params, 0, sizeof(params));
@@ -347,18 +347,18 @@ CgptErrorCode CgptManager::SetSuccessful(uint32_t partition_number,
 
   int retval = CgptSetAttributes(&params);
   if (retval != CGPT_OK)
-    return kCgptUnknownError;
+    return CgptErrorCode::kUnknownError;
 
-  return kCgptSuccess;
+  return CgptErrorCode::kSuccess;
 }
 
 CgptErrorCode CgptManager::GetSuccessful(uint32_t partition_number,
                                          bool* is_successful) const {
   if (!is_initialized_)
-    return kCgptNotInitialized;
+    return CgptErrorCode::kNotInitialized;
 
   if (!is_successful)
-    return kCgptInvalidArgument;
+    return CgptErrorCode::kInvalidArgument;
 
   CgptAddParams params;
   memset(&params, 0, sizeof(params));
@@ -369,16 +369,16 @@ CgptErrorCode CgptManager::GetSuccessful(uint32_t partition_number,
 
   int retval = CgptGetPartitionDetails(&params);
   if (retval != CGPT_OK)
-    return kCgptUnknownError;
+    return CgptErrorCode::kUnknownError;
 
   *is_successful = params.successful;
-  return kCgptSuccess;
+  return CgptErrorCode::kSuccess;
 }
 
 CgptErrorCode CgptManager::SetNumTriesLeft(uint32_t partition_number,
                                            int numTries) {
   if (!is_initialized_)
-    return kCgptNotInitialized;
+    return CgptErrorCode::kNotInitialized;
 
   CgptAddParams params;
   memset(&params, 0, sizeof(params));
@@ -392,18 +392,18 @@ CgptErrorCode CgptManager::SetNumTriesLeft(uint32_t partition_number,
 
   int retval = CgptSetAttributes(&params);
   if (retval != CGPT_OK)
-    return kCgptUnknownError;
+    return CgptErrorCode::kUnknownError;
 
-  return kCgptSuccess;
+  return CgptErrorCode::kSuccess;
 }
 
 CgptErrorCode CgptManager::GetNumTriesLeft(uint32_t partition_number,
                                            int* numTries) const {
   if (!is_initialized_)
-    return kCgptNotInitialized;
+    return CgptErrorCode::kNotInitialized;
 
   if (!numTries)
-    return kCgptInvalidArgument;
+    return CgptErrorCode::kInvalidArgument;
 
   CgptAddParams params;
   memset(&params, 0, sizeof(params));
@@ -414,16 +414,16 @@ CgptErrorCode CgptManager::GetNumTriesLeft(uint32_t partition_number,
 
   int retval = CgptGetPartitionDetails(&params);
   if (retval != CGPT_OK)
-    return kCgptUnknownError;
+    return CgptErrorCode::kUnknownError;
 
   *numTries = params.tries;
-  return kCgptSuccess;
+  return CgptErrorCode::kSuccess;
 }
 
 CgptErrorCode CgptManager::SetPriority(uint32_t partition_number,
                                        uint8_t priority) {
   if (!is_initialized_)
-    return kCgptNotInitialized;
+    return CgptErrorCode::kNotInitialized;
 
   CgptAddParams params;
   memset(&params, 0, sizeof(params));
@@ -437,18 +437,18 @@ CgptErrorCode CgptManager::SetPriority(uint32_t partition_number,
 
   int retval = CgptSetAttributes(&params);
   if (retval != CGPT_OK)
-    return kCgptUnknownError;
+    return CgptErrorCode::kUnknownError;
 
-  return kCgptSuccess;
+  return CgptErrorCode::kSuccess;
 }
 
 CgptErrorCode CgptManager::GetPriority(uint32_t partition_number,
                                        uint8_t* priority) const {
   if (!is_initialized_)
-    return kCgptNotInitialized;
+    return CgptErrorCode::kNotInitialized;
 
   if (!priority)
-    return kCgptInvalidArgument;
+    return CgptErrorCode::kInvalidArgument;
 
   CgptAddParams params;
   memset(&params, 0, sizeof(params));
@@ -459,19 +459,19 @@ CgptErrorCode CgptManager::GetPriority(uint32_t partition_number,
 
   int retval = CgptGetPartitionDetails(&params);
   if (retval != CGPT_OK)
-    return kCgptUnknownError;
+    return CgptErrorCode::kUnknownError;
 
   *priority = params.priority;
-  return kCgptSuccess;
+  return CgptErrorCode::kSuccess;
 }
 
 CgptErrorCode CgptManager::GetBeginningOffset(uint32_t partition_number,
                                               uint64_t* offset) const {
   if (!is_initialized_)
-    return kCgptNotInitialized;
+    return CgptErrorCode::kNotInitialized;
 
   if (!offset)
-    return kCgptInvalidArgument;
+    return CgptErrorCode::kInvalidArgument;
 
   CgptAddParams params;
   memset(&params, 0, sizeof(params));
@@ -482,19 +482,19 @@ CgptErrorCode CgptManager::GetBeginningOffset(uint32_t partition_number,
 
   int retval = CgptGetPartitionDetails(&params);
   if (retval != CGPT_OK)
-    return kCgptUnknownError;
+    return CgptErrorCode::kUnknownError;
 
   *offset = params.begin;
-  return kCgptSuccess;
+  return CgptErrorCode::kSuccess;
 }
 
 CgptErrorCode CgptManager::GetNumSectors(uint32_t partition_number,
                                          uint64_t* num_sectors) const {
   if (!is_initialized_)
-    return kCgptNotInitialized;
+    return CgptErrorCode::kNotInitialized;
 
   if (!num_sectors)
-    return kCgptInvalidArgument;
+    return CgptErrorCode::kInvalidArgument;
 
   CgptAddParams params;
   memset(&params, 0, sizeof(params));
@@ -505,19 +505,19 @@ CgptErrorCode CgptManager::GetNumSectors(uint32_t partition_number,
 
   int retval = CgptGetPartitionDetails(&params);
   if (retval != CGPT_OK)
-    return kCgptUnknownError;
+    return CgptErrorCode::kUnknownError;
 
   *num_sectors = params.size;
-  return kCgptSuccess;
+  return CgptErrorCode::kSuccess;
 }
 
 CgptErrorCode CgptManager::GetPartitionTypeId(uint32_t partition_number,
                                               Guid* type_id) const {
   if (!is_initialized_)
-    return kCgptNotInitialized;
+    return CgptErrorCode::kNotInitialized;
 
   if (!type_id)
-    return kCgptInvalidArgument;
+    return CgptErrorCode::kInvalidArgument;
 
   CgptAddParams params;
   memset(&params, 0, sizeof(params));
@@ -528,19 +528,19 @@ CgptErrorCode CgptManager::GetPartitionTypeId(uint32_t partition_number,
 
   int retval = CgptGetPartitionDetails(&params);
   if (retval != CGPT_OK)
-    return kCgptUnknownError;
+    return CgptErrorCode::kUnknownError;
 
   *type_id = params.type_guid;
-  return kCgptSuccess;
+  return CgptErrorCode::kSuccess;
 }
 
 CgptErrorCode CgptManager::GetPartitionUniqueId(uint32_t partition_number,
                                                 Guid* unique_id) const {
   if (!is_initialized_)
-    return kCgptNotInitialized;
+    return CgptErrorCode::kNotInitialized;
 
   if (!unique_id)
-    return kCgptInvalidArgument;
+    return CgptErrorCode::kInvalidArgument;
 
   CgptAddParams params;
   memset(&params, 0, sizeof(params));
@@ -551,19 +551,19 @@ CgptErrorCode CgptManager::GetPartitionUniqueId(uint32_t partition_number,
 
   int retval = CgptGetPartitionDetails(&params);
   if (retval != CGPT_OK)
-    return kCgptUnknownError;
+    return CgptErrorCode::kUnknownError;
 
   *unique_id = params.unique_guid;
-  return kCgptSuccess;
+  return CgptErrorCode::kSuccess;
 }
 
 CgptErrorCode CgptManager::GetPartitionNumberByUniqueId(
     const Guid& unique_id, uint32_t* partition_number) const {
   if (!is_initialized_)
-    return kCgptNotInitialized;
+    return CgptErrorCode::kNotInitialized;
 
   if (!partition_number)
-    return kCgptInvalidArgument;
+    return CgptErrorCode::kInvalidArgument;
 
   CgptAddParams params;
   memset(&params, 0, sizeof(params));
@@ -575,16 +575,16 @@ CgptErrorCode CgptManager::GetPartitionNumberByUniqueId(
 
   int retval = CgptGetPartitionDetails(&params);
   if (retval != CGPT_OK)
-    return kCgptUnknownError;
+    return CgptErrorCode::kUnknownError;
 
   *partition_number = params.partition;
-  return kCgptSuccess;
+  return CgptErrorCode::kSuccess;
 }
 
 CgptErrorCode CgptManager::SetHighestPriority(uint32_t partition_number,
                                               uint8_t highest_priority) {
   if (!is_initialized_)
-    return kCgptNotInitialized;
+    return CgptErrorCode::kNotInitialized;
 
   CgptPrioritizeParams params;
   memset(&params, 0, sizeof(params));
@@ -596,9 +596,9 @@ CgptErrorCode CgptManager::SetHighestPriority(uint32_t partition_number,
 
   int retval = CgptPrioritize(&params);
   if (retval != CGPT_OK)
-    return kCgptUnknownError;
+    return CgptErrorCode::kUnknownError;
 
-  return kCgptSuccess;
+  return CgptErrorCode::kSuccess;
 }
 
 CgptErrorCode CgptManager::SetHighestPriority(uint32_t partition_number) {
@@ -609,7 +609,7 @@ CgptErrorCode CgptManager::SetHighestPriority(uint32_t partition_number) {
 
 CgptErrorCode CgptManager::Validate() {
   if (!is_initialized_)
-    return kCgptNotInitialized;
+    return CgptErrorCode::kNotInitialized;
 
   uint8_t num_partitions;
 
