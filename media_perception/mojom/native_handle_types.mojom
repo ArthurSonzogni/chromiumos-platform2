@@ -8,7 +8,6 @@ import "media_perception/mojom/shared_memory.mojom";
 import "media_perception/mojom/unguessable_token.mojom";
 
 // gfx::NativePixmapPlane
-[EnableIf=supports_native_pixmap, Stable]
 struct NativePixmapPlane {
   uint32 stride;
   uint64 offset;

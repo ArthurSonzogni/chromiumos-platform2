@@ -8,7 +8,6 @@ module mojo_base.mojom;
 //
 // One notable caveat is that Value supports arbitrary binary data, which JSON
 // does not support natively.
-[Stable]
 union Value {
   // Null type placeholder. This field is never used.
   uint8 null_value;
@@ -31,12 +30,10 @@ union Value {
 // once all existing usage is swapped over to the deprecated versions below,
 // the typemap will be updated to deserialize as a base::Value::Dict and
 // base::Value::List respectively instead.
-[Stable]
 struct DictionaryValue {
   map<string, Value> storage;
 };
 
-[Stable]
 struct ListValue {
   array<Value> storage;
 };
@@ -45,12 +42,10 @@ struct ListValue {
 // unconditionally typemapped to base::Value. Though the typemap ensures that
 // the deserialized base::Value has a matching subtype, use of these will be
 // removed in the future due to lack of type safety.
-[Stable]
 struct DeprecatedDictionaryValue {
   map<string, Value> storage;
 };
 
-[Stable]
 struct DeprecatedListValue {
   array<Value> storage;
 };

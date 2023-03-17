@@ -7,7 +7,7 @@ module media.mojom;
 import "media_perception/mojom/time.mojom";
 import "media_perception/mojom/geometry.mojom";
 
-[Stable, Extensible]
+[Extensible]
 enum VideoCapturePixelFormat {
   [Default] UNKNOWN,
   I420,
@@ -47,28 +47,28 @@ enum VideoCapturePixelFormat {
   [MinVersion=1] YUV444AP10,
 };
 
-[Stable, Extensible]
+[Extensible]
 enum ResolutionChangePolicy {
   [Default] FIXED_RESOLUTION,
   FIXED_ASPECT_RATIO,
   ANY_WITHIN_LIMIT,
 };
 
-[Stable, Extensible]
+[Extensible]
 enum PowerLineFrequency {
   [Default] DEFAULT,
   HZ_50,
   HZ_60
 };
 
-[Stable, Extensible]
+[Extensible]
 enum VideoFacingMode {
   [Default] NONE,
   USER,
   ENVIRONMENT
 };
 
-[Stable, Extensible]
+[Extensible]
 enum VideoCaptureApi {
   [Default] LINUX_V4L2_SINGLE_PLANE,
   WIN_MEDIA_FOUNDATION,
@@ -85,14 +85,14 @@ enum VideoCaptureApi {
   UNKNOWN
 };
 
-[Stable, Extensible]
+[Extensible]
 enum VideoCaptureTransportType {
   // For MACOSX_AVFOUNDATION Api, identifies devices that are built-in or USB.
   [Default] MACOSX_USB_OR_BUILT_IN,
   OTHER_TRANSPORT
 };
 
-[Stable, Extensible]
+[Extensible]
 enum VideoCaptureBufferType {
   [Default] kSharedMemory,
 
@@ -108,14 +108,13 @@ enum VideoCaptureBufferType {
 };
 
 // Represents capture device's support for different controls.
-[Stable]
 struct VideoCaptureControlSupport {
   bool pan;
   bool tilt;
   bool zoom;
 };
 
-[Stable, Extensible]
+[Extensible]
 enum VideoCaptureError {
   [Default] kNone,
   kVideoCaptureControllerInvalidOrUnsupportedVideoCaptureParametersRequested,
@@ -255,7 +254,7 @@ enum VideoCaptureError {
   [MinVersion=4] kScreenCaptureKitFailedToFindSCDisplay,
 };
 
-[Stable, Extensible]
+[Extensible]
 enum VideoCaptureFrameDropReason {
   [Default] kNone,
   kDeviceClientFrameHasInvalidFormat,
@@ -285,14 +284,12 @@ enum VideoCaptureFrameDropReason {
   kRendererSinkFrameDelivererIsNotStarted
 };
 
-[Stable]
 struct VideoCaptureFormat {
   gfx.mojom.Size frame_size;
   float frame_rate;
   VideoCapturePixelFormat pixel_format;
 };
 
-[Stable]
 struct VideoCaptureParams {
   VideoCaptureFormat requested_format;
   VideoCaptureBufferType buffer_type;
@@ -301,7 +298,6 @@ struct VideoCaptureParams {
   bool enable_face_detection;
 };
 
-[Stable, RenamedFrom="media.mojom.VideoFrameFeedback"]
 struct VideoCaptureFeedback {
   // Reports that the frame incurred some fractional utilization of the
   // downstream pipeline's per-frame processing capacity.
@@ -359,7 +355,6 @@ struct PlaneStrides {
 // |device_id| represents a unique id of a physical device. Since the same
 // physical device may be accessible through different APIs |capture_api|
 // disambiguates the API.
-[Stable]
 struct VideoCaptureDeviceDescriptor {
   string display_name;
   string device_id;
@@ -372,7 +367,6 @@ struct VideoCaptureDeviceDescriptor {
 
 // Bundles a VideoCaptureDeviceDescriptor with corresponding supported
 // video formats.
-[Stable]
 struct VideoCaptureDeviceInfo {
   VideoCaptureDeviceDescriptor descriptor;
   array<VideoCaptureFormat> supported_formats;

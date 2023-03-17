@@ -55,7 +55,6 @@ enum BufferPlane {
 };
 
 // gfx::GpuMemoryBufferId
-[Stable]
 struct GpuMemoryBufferId {
   int32 id;
 };
