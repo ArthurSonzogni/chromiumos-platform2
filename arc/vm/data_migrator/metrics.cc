@@ -58,13 +58,13 @@ void ArcVmDataMigratorMetrics::ReportEndStatus(MigrationEndStatus status) {
 
 void ArcVmDataMigratorMetrics::ReportTotalByteCountInMb(
     int total_byte_count_mb) {
-  constexpr int kMin = 1, kMax = 1 << 20 /* 1 TB */;
+  constexpr int kMin = 1, kMax = 64 * 1024 /* 64 GiB */;
   metrics_library_->SendToUMA(kTotalSizeMb, total_byte_count_mb, kMin, kMax,
                               kNumBuckets);
 }
 
 void ArcVmDataMigratorMetrics::ReportTotalFileCount(int total_file_count) {
-  constexpr int kMin = 1, kMax = 1 << 20 /* 1M files */;
+  constexpr int kMin = 1, kMax = 200000 /* 200K files */;
   metrics_library_->SendToUMA(kTotalFileCount, total_file_count, kMin, kMax,
                               kNumBuckets);
 }
@@ -93,21 +93,21 @@ void ArcVmDataMigratorMetrics::ReportFailedPathType(FailedPathType type) {
 
 void ArcVmDataMigratorMetrics::ReportInitialFreeSpace(
     int initial_free_space_mb) {
-  constexpr int kMin = 1, kMax = 1 << 20 /* 1 TB */;
+  constexpr int kMin = 1, kMax = 128 * 1024 /* 128 GiB */;
   metrics_library_->SendToUMA(kInitialFreeSpace, initial_free_space_mb, kMin,
                               kMax, kNumBuckets);
 }
 
 void ArcVmDataMigratorMetrics::ReportNoSpaceFailureFreeSpace(
     int failure_free_space_mb) {
-  constexpr int kMin = 1, kMax = 1 << 20 /* 1 TB */;
+  constexpr int kMin = 1, kMax = 128 * 1024 /* 128 GiB */;
   metrics_library_->SendToUMA(kNoSpaceFailureFreeSpace, failure_free_space_mb,
                               kMin, kMax, kNumBuckets);
 }
 
 void ArcVmDataMigratorMetrics::ReportNoSpaceXattrSize(
     int total_xattr_size_bytes) {
-  constexpr int kMin = 1, kMax = 1 << 20 /* 1 MB */;
+  constexpr int kMin = 1, kMax = 16 * 1024 /* 16 KiB */;
   metrics_library_->SendToUMA(kNoSpaceFailureXattrSize, total_xattr_size_bytes,
                               kMin, kMax, kNumBuckets);
 }
