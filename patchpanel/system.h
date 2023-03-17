@@ -12,6 +12,8 @@
 
 #include <string>
 
+#include <base/files/scoped_file.h>
+
 namespace patchpanel {
 
 // cros lint will yell to force using int16/int64 instead of long here, however
@@ -58,6 +60,8 @@ class System {
   System(const System&) = delete;
   System& operator=(const System&) = delete;
   virtual ~System() = default;
+
+  virtual base::ScopedFD OpenTunDev();
 
   // Write |content| to a "/proc/sys/net/" path as specified by |target|
   virtual bool SysNetSet(SysNet target,

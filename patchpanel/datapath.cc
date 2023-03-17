@@ -35,7 +35,6 @@ namespace {
 // TODO(hugobenichi) Consolidate this constant definition in a single place.
 constexpr pid_t kTestPID = -2;
 constexpr char kDefaultIfname[] = "vmtap%d";
-constexpr char kTunDev[] = "/dev/net/tun";
 constexpr char kArcAddr[] = "100.115.92.2";
 constexpr char kLocalhostAddr[] = "127.0.0.1";
 constexpr char kDefaultDnsPort[] = "53";
@@ -593,9 +592,9 @@ std::string Datapath::AddTAP(const std::string& name,
                              const MacAddress* mac_addr,
                              const SubnetAddress* ipv4_addr,
                              const std::string& user) {
-  base::ScopedFD dev(open(kTunDev, O_RDWR | O_NONBLOCK));
+  base::ScopedFD dev = system_->OpenTunDev();
   if (!dev.is_valid()) {
-    PLOG(ERROR) << "Failed to open " << kTunDev;
+    PLOG(ERROR) << "Failed to open tun device";
     return "";
   }
 
@@ -614,7 +613,7 @@ std::string Datapath::AddTAP(const std::string& name,
   const char* ifname = ifr.ifr_name;
 
   if (system_->Ioctl(dev.get(), TUNSETPERSIST, 1) != 0) {
-    PLOG(ERROR) << "Failed to persist the interface " << ifname;
+    PLOG(ERROR) << "Failed to persist tap interface " << ifname;
     return "";
   }
 

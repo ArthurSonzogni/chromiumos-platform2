@@ -5,6 +5,7 @@
 #ifndef PATCHPANEL_FAKE_SYSTEM_H_
 #define PATCHPANEL_FAKE_SYSTEM_H_
 
+#include <fcntl.h>
 #include <linux/if_tun.h>
 #include <linux/sockios.h>
 
@@ -12,6 +13,7 @@
 #include <utility>
 #include <vector>
 
+#include <base/files/scoped_file.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -65,6 +67,10 @@ class FakeSystem : public System {
       }
     }
     return 0;
+  }
+
+  base::ScopedFD OpenTunDev() override {
+    return base::ScopedFD(open("/dev/null", O_RDONLY | O_CLOEXEC));
   }
 
   MOCK_METHOD3(SysNetSet,

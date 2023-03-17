@@ -48,6 +48,8 @@ constexpr const char kSysNetIPv6AcceptRaSuffix[] = "/accept_ra";
 // Enables/Disables IPv6 cross-inteface NDP response.
 constexpr const char kSysNetIPv6ProxyNDPPath[] =
     "/proc/sys/net/ipv6/conf/all/proxy_ndp";
+
+constexpr char kTunDev[] = "/dev/net/tun";
 }  // namespace
 
 int System::Ioctl(int fd, ioctl_req_t request, const char* argp) {
@@ -68,6 +70,10 @@ int System::Ioctl(int fd, ioctl_req_t request, struct rtentry* route) {
 
 pid_t System::WaitPid(pid_t pid, int* wstatus, int options) {
   return waitpid(pid, wstatus, options);
+}
+
+base::ScopedFD System::OpenTunDev() {
+  return base::ScopedFD(open(kTunDev, O_RDWR | O_NONBLOCK));
 }
 
 bool System::SysNetSet(SysNet target,
