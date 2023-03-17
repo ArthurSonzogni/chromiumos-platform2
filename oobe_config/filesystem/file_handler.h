@@ -91,6 +91,15 @@ class FileHandler {
   // oobe_config_save directory.
   bool WritePstoreData(const std::string& data) const;
 
+  // Checks if rollback metrics data exists.
+  bool HasRollbackMetricsData() const;
+  // Reads rollback metrics data file.
+  bool ReadRollbackMetricsData(std::string* rollback_metrics_data) const;
+  // Writes rollback metrics data file.
+  bool WriteRollbackMetricsData(const std::string& rollback_metrics_data) const;
+  // Removes rollback metrics data file.
+  bool RemoveRollbackMetricsData() const;
+
   // Returns a file enumerator to contents of pstore after reboot.
   base::FileEnumerator RamoopsFileEnumerator() const;
 
@@ -118,6 +127,9 @@ class FileHandler {
   static constexpr char kRamoopsFilePattern[] = "pmsg-ramoops-*";
   static constexpr char kRamoopsPath[] = "sys/fs/pstore/";
   static constexpr char kPstoreFileName[] = "data_for_pstore";
+
+  static constexpr char kRollbackMetricsDataFileName[] =
+      "enterprise-rollback-metrics-data";
 
   virtual base::FilePath GetFullPath(
       const std::string& path_without_root) const;

@@ -50,6 +50,9 @@ class FileHandlerTest : public ::testing::Test {
       "var/lib/oobe_config_save/data_for_pstore";
   static constexpr char kExpectedRamoopsPath[] = "sys/fs/pstore";
   static constexpr char kExpectedRamoopsData[] = "sys/fs/pstore/pmsg-ramoops-0";
+  static constexpr char kExpectedRollbackMetricsData[] =
+      "mnt/stateful_partition/unencrypted/preserve/"
+      "enterprise-rollback-metrics-data";
 
   void VerifyHasFunction(const std::string& path,
                          base::RepeatingCallback<bool()> has_path) {
@@ -344,6 +347,32 @@ TEST_F(FileHandlerTest, ReadPstoreData) {
   VerifyReadFunction(FileHandlerTest::kExpectedPstoreData,
                      base::BindRepeating(&FileHandlerForTesting::ReadPstoreData,
                                          base::Unretained(&file_handler_)));
+}
+
+TEST_F(FileHandlerTest, HasRollbackMetricsData) {
+  VerifyHasFunction(FileHandlerTest::kExpectedRollbackMetricsData,
+                    base::BindRepeating(&FileHandler::HasRollbackMetricsData,
+                                        base::Unretained(&file_handler_)));
+}
+
+TEST_F(FileHandlerTest, ReadRollbackMetricsData) {
+  VerifyReadFunction(FileHandlerTest::kExpectedRollbackMetricsData,
+                     base::BindRepeating(&FileHandler::ReadRollbackMetricsData,
+                                         base::Unretained(&file_handler_)));
+}
+
+TEST_F(FileHandlerTest, WriteRollbackMetricsData) {
+  VerifyWriteFunction(
+      FileHandlerTest::kExpectedRollbackMetricsData,
+      base::BindRepeating(&FileHandler::WriteRollbackMetricsData,
+                          base::Unretained(&file_handler_)));
+}
+
+TEST_F(FileHandlerTest, RemoveRollbackMetricsData) {
+  VerifyRemoveFunction(
+      FileHandlerTest::kExpectedRollbackMetricsData,
+      base::BindRepeating(&FileHandler::RemoveRollbackMetricsData,
+                          base::Unretained(&file_handler_)));
 }
 
 TEST_F(FileHandlerTest, CreateRamoopsPath) {

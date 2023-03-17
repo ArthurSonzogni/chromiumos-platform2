@@ -54,6 +54,9 @@ class FileHandlerForTesting : public FileHandler {
   // and empty file for tests suffices.
   bool CreateMetricsReportingEnabledFile() const;
 
+  // Removes the file that indicates metrics reporting is enabled.
+  bool RemoveMetricsReportingEnabledFile() const;
+
   // Reads data staged to be preserved across powerwash in pstore from
   // oobe_config_save directory.
   bool ReadPstoreData(std::string* data) const;

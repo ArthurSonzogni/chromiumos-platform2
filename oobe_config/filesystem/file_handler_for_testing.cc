@@ -63,6 +63,11 @@ bool FileHandlerForTesting::CreateMetricsReportingEnabledFile() const {
       GetFullPath(kChronosPath).Append(kMetricsReportingEnabledFileName), "");
 }
 
+bool FileHandlerForTesting::RemoveMetricsReportingEnabledFile() const {
+  return base::DeleteFile(
+      GetFullPath(kChronosPath).Append(kMetricsReportingEnabledFileName));
+}
+
 bool FileHandlerForTesting::ReadPstoreData(std::string* data) const {
   return base::ReadFileToString(
       GetFullPath(kDataSavePath).Append(kPstoreFileName), data);

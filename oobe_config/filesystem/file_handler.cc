@@ -126,6 +126,30 @@ bool FileHandler::WritePstoreData(const std::string& data) const {
                          data);
 }
 
+bool FileHandler::HasRollbackMetricsData() const {
+  return base::PathExists(
+      GetFullPath(kPreservePath).Append(kRollbackMetricsDataFileName));
+}
+
+bool FileHandler::ReadRollbackMetricsData(
+    std::string* rollback_metrics_data) const {
+  return base::ReadFileToString(
+      GetFullPath(kPreservePath).Append(kRollbackMetricsDataFileName),
+      rollback_metrics_data);
+}
+
+bool FileHandler::WriteRollbackMetricsData(
+    const std::string& rollback_metrics_data) const {
+  return base::WriteFile(
+      GetFullPath(kPreservePath).Append(kRollbackMetricsDataFileName),
+      rollback_metrics_data);
+}
+
+bool FileHandler::RemoveRollbackMetricsData() const {
+  return base::DeleteFile(
+      GetFullPath(kPreservePath).Append(kRollbackMetricsDataFileName));
+}
+
 base::FileEnumerator FileHandler::RamoopsFileEnumerator() const {
   return base::FileEnumerator(GetFullPath(kRamoopsPath),
                               /*recursive=*/false, base::FileEnumerator::FILES,
