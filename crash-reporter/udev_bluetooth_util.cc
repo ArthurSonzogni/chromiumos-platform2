@@ -25,7 +25,7 @@
 namespace {
 
 constexpr char kCoredumpFlagPath[] = "/run/bluetooth/coredump_disabled";
-constexpr char kCoredumpParserPath[] = "/usr/local/bin/bluetooth_devcd_parser";
+constexpr char kCoredumpParserPath[] = "/usr/bin/bluetooth_devcd_parser";
 constexpr char kCoredumpMetaHeader[] = "Bluetooth devcoredump";
 
 bool SafeDirChmod(const base::FilePath& path, mode_t mode) {
