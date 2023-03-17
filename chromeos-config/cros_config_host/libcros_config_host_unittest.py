@@ -11,9 +11,7 @@ from __future__ import print_function
 
 from collections import OrderedDict
 from contextlib import contextmanager
-import copy
 from io import StringIO
-import json
 import os
 import sys
 import unittest
@@ -71,35 +69,13 @@ def capture_sys_output():
         sys.stdout, sys.stderr = old_out, old_err
 
 
-def _FormatNamedTuplesDict(value):
-    result = copy.deepcopy(value)
-    for key, val in result.items():
-        result[key] = val._asdict()
-    return json.dumps(result, indent=2)
-
-
-def _FormatListNamedTuplesDict(value):
-    result = copy.deepcopy(value)
-    for key, values in result.items():
-        result[key] = [value._asdict() for value in values]
-
-    return json.dumps(result, indent=2, sort_keys=True)
-
-
 class CrosConfigHostTest(unittest.TestCase):
     def setUp(self):
         self.filepath = os.path.join(os.path.dirname(__file__), YAML_FILE)
+        self.maxDiff = 80 * 25  # 25 lines
 
-    def _assertEqualsNamedTuplesDict(self, expected, result):
-        self.assertEqual(
-            _FormatNamedTuplesDict(expected), _FormatNamedTuplesDict(result)
-        )
-
-    def _assertEqualsListNamedTuplesDict(self, expected, result):
-        self.assertEqual(
-            _FormatListNamedTuplesDict(expected),
-            _FormatListNamedTuplesDict(result),
-        )
+    def assertOrderedDictEqual(self, first, second):
+        self.assertListEqual(list(first.items()), list(second.items()))
 
     def testGetProperty(self):
         config = CrosConfig(self.filepath)
@@ -664,7 +640,7 @@ class CrosConfigHostTest(unittest.TestCase):
             ]
         )
         result = CrosConfig(self.filepath).GetFirmwareInfo()
-        self._assertEqualsNamedTuplesDict(expected, result)
+        self.assertOrderedDictEqual(result, expected)
 
     def testFirmwareConfigs(self):
         """Test access to firmware configs."""
@@ -720,7 +696,7 @@ class CrosConfigHostTest(unittest.TestCase):
         }
 
         result = CrosConfig(self.filepath).GetFirmwareConfigs()
-        self._assertEqualsListNamedTuplesDict(expected, result)
+        self.assertEqual(result, expected)
 
     def testFirmwareConfigsByDevice(self):
         """Test access to firmware config names."""
