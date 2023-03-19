@@ -327,23 +327,32 @@ while true; do
 
   actual_sus_time=$(( end_time - start_time ))
   diff_sus_time=$(( actual_sus_time - sus_time ))
+  cur_ignore_count=$(get_wakeup_source_event_count \
+                     "${FLAGS_ignore_wakeup_source}")
   sus_time_str="slept for ${actual_sus_time}s, expected ${sus_time}s"
-  if [ "${diff_sus_time}" -lt "${FLAGS_suspend_time_margin_min}" ]; then
-    : $(( premature_wake_count += 1 ))
-    if [ "${FLAGS_premature_wake_fatal}" -eq "${FLAGS_TRUE}" ]; then
-      echo "Premature wake detected: ${sus_time_str}, test failed."
-      exit_loop=1
-    else
-      echo "Premature wake detected: ${sus_time_str} (ignoring)."
-    fi
+  ignore_failure=0
+  if [ "${cur_ignore_count}" -ne "${last_ignore_count}" ]; then
+    echo "Ignore wakeup from source ${FLAGS_ignore_wakeup_source}"
+    ignore_failure=1
   fi
-  if [ "${diff_sus_time}" -gt "${FLAGS_suspend_time_margin_max}" ]; then
-    : $(( late_wake_count += 1 ))
-    if [ "${FLAGS_late_wake_fatal}" -eq "${FLAGS_TRUE}" ]; then
-      echo "Late wake detected: ${sus_time_str}, test failed."
-      exit_loop=1
-    else
-      echo "Late wake detected: ${sus_time_str} (ignoring)."
+  if [ "${ignore_failure}" -eq 0 ]; then
+    if [ "${diff_sus_time}" -lt "${FLAGS_suspend_time_margin_min}" ]; then
+      : $(( premature_wake_count += 1 ))
+      if [ "${FLAGS_premature_wake_fatal}" -eq "${FLAGS_TRUE}" ]; then
+        echo "Premature wake detected: ${sus_time_str}, test failed."
+        exit_loop=1
+      else
+        echo "Premature wake detected: ${sus_time_str} (ignoring)."
+      fi
+    fi
+    if [ "${diff_sus_time}" -gt "${FLAGS_suspend_time_margin_max}" ]; then
+      : $(( late_wake_count += 1 ))
+      if [ "${FLAGS_late_wake_fatal}" -eq "${FLAGS_TRUE}" ]; then
+        echo "Late wake detected: ${sus_time_str}, test failed."
+        exit_loop=1
+      else
+        echo "Late wake detected: ${sus_time_str} (ignoring)."
+      fi
     fi
   fi
   # Wakealarm is expected to be cleared after the set wakeup time,
@@ -382,12 +391,10 @@ while true; do
   last_firmware_errors=${cur_firmware_errors}
   # Make sure suspend succeeded
   cur_successes=$(get_success_count)
-  cur_ignore_count=$(get_wakeup_source_event_count \
-                     "${FLAGS_ignore_wakeup_source}")
   cur_s0ix_count=$(get_s0ix_count)
   cur_s2idle_count=$(get_s2idle_count)
   if [ "${cur_successes}" -eq "${last_successes}" ] && \
-     [ "${cur_ignore_count}" -eq "${last_ignore_count}" ]; then
+     [ "${ignore_failure}" -eq "0" ]; then
     if [ "${FLAGS_errors_fatal}" -eq "${FLAGS_TRUE}" ]; then
       echo "Suspend failed."
       exit_loop=1
