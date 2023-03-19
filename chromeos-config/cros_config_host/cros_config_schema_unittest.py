@@ -6,6 +6,7 @@
 
 # pylint: disable=module-missing-docstring,class-missing-docstring
 
+import contextlib
 import io
 import json
 import os
@@ -849,13 +850,14 @@ class MainTests(cros_test_lib.TempDirTestCase):
         base_path = os.path.join(this_dir, "../test_data")
         output = io.BytesIO()
         for fname in ("test.yaml", "test_arm.yaml"):
-            cros_config_schema.Main(
-                None,
-                None,
-                None,
-                configs=[os.path.join(base_path, fname)],
-                identity_table_out=output,
-            )
+            with contextlib.redirect_stdout(io.StringIO()):
+                cros_config_schema.Main(
+                    None,
+                    None,
+                    None,
+                    configs=[os.path.join(base_path, fname)],
+                    identity_table_out=output,
+                )
             # crosid unittests go in depth with testing the file
             # contents/format.  We just check that we put some good looking
             # data there (greater than 32 bytes is required).
