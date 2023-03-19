@@ -33,10 +33,10 @@ bool EcUtilsImpl::EnableSoftwareWriteProtection() {
   if (!ec_fd.is_valid()) {
     return false;
   }
-  ec::flash_protect::Flags flags =
-      ec::flash_protect::Flags::kRoNow | ec::flash_protect::Flags::kRwNow;
-  ec::flash_protect::Flags mask = ec::flash_protect::Flags::kNone;
-  auto flashprotect_cmd = ec::FlashProtectCommand(flags, mask);
+  ec::flash_protect::Flags flags = ec::flash_protect::Flags::kRoNow |
+                                   ec::flash_protect::Flags::kRwNow |
+                                   ec::flash_protect::Flags::kRoAtBoot;
+  auto flashprotect_cmd = ec::FlashProtectCommand(flags, flags);
   return flashprotect_cmd.Run(ec_fd.get());
 }
 
