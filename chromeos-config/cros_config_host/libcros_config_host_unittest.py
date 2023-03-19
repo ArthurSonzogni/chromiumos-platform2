@@ -46,7 +46,6 @@ SOME_FIRMWARE_FILES = [
 ]
 ANOTHER_FIRMWARE_FILES = [
     "Another_EC.1111.11.1.tbz2",
-    "Another_EC_RW.1111.11.1.tbz2",
     "Another.1111.11.1.tbz2",
     "Another_RW.1111.11.1.tbz2",
 ]
@@ -487,7 +486,7 @@ class CrosConfigHostTest(unittest.TestCase):
                         main_image_uri="bcs://Another.1111.11.1.tbz2",
                         main_rw_image_uri="bcs://Another_RW.1111.11.1.tbz2",
                         ec_image_uri="bcs://Another_EC.1111.11.1.tbz2",
-                        ec_rw_image_uri="bcs://Another_EC_RW.1111.11.1.tbz2",
+                        ec_rw_image_uri="",
                         pd_image_uri="",
                         sig_id="another",
                         brand_code="",
@@ -684,11 +683,6 @@ class CrosConfigHostTest(unittest.TestCase):
                     type="ec",
                     build_target="another",
                     image_uri="bcs://Another_EC.1111.11.1.tbz2",
-                ),
-                FirmwareImage(
-                    type="ec_rw",
-                    build_target="another",
-                    image_uri="bcs://Another_EC_RW.1111.11.1.tbz2",
                 ),
             ],
             "some2": [],
