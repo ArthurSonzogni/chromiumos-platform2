@@ -21,6 +21,15 @@ namespace kerberos {
 // information than "You screwed up your config, screw you!"
 class ConfigParser {
  public:
+  // Maximum depth of nested '{' in the config.
+  static constexpr int kMaxGroupLevelDepth = 1000;
+
+  // Maximum length of each line in the config. This value matches the buffer
+  // size used in the krb5 library, minus one, to account for the null
+  // character ('\0').
+  // https://github.com/krb5/krb5/blob/krb5-1.20.1-final/src/util/profile/prof_parse.c#L328
+  static constexpr size_t kKrb5MaxLineLength = 2047;
+
   ConfigParser();
   ConfigParser(const ConfigParser&) = delete;
   ConfigParser& operator=(const ConfigParser&) = delete;

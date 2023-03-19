@@ -65,6 +65,14 @@ std::string GenerateNestedGroups(int count) {
   return result;
 }
 
+std::string GenerateLongLine(int count) {
+  if (count <= 0) {
+    return std::string();
+  }
+
+  return "#" + std::string(count - 1, 'A');
+}
+
 }  // namespace
 
 std::ostream& operator<<(std::ostream& os, ConfigErrorCode code) {
@@ -89,7 +97,9 @@ std::ostream& operator<<(std::ostream& os, ConfigErrorCode code) {
       return os << "KRB5 failed to parse";
     case CONFIG_ERROR_TOO_MANY_NESTED_GROUPS:
       return os << "Too many nested groups";
-    case CONFIG_ERROR_COUNT:
+    case CONFIG_ERROR_LINE_TOO_LONG:
+      return os << "Config line too long";
+    default:
       NOTREACHED();
   }
   return os;
@@ -311,9 +321,20 @@ TEST_F(ConfigParserTest, FuzzerRegressionTests) {
 
   // Too many nested groups should lead to an error preventing stack overflow
   // in krb5 parser.
-  ExpectNoError(GenerateNestedGroups(1000));
-  ExpectError(GenerateNestedGroups(1001), CONFIG_ERROR_TOO_MANY_NESTED_GROUPS,
-              1000);
+  ExpectNoError(GenerateNestedGroups(ConfigParser::kMaxGroupLevelDepth));
+  ExpectError(GenerateNestedGroups(ConfigParser::kMaxGroupLevelDepth + 1),
+              CONFIG_ERROR_TOO_MANY_NESTED_GROUPS,
+              ConfigParser::kMaxGroupLevelDepth);
+
+  // Config line too long should lead to an error.
+  ExpectNoError(GenerateLongLine(ConfigParser::kKrb5MaxLineLength));
+  ExpectError(GenerateLongLine(ConfigParser::kKrb5MaxLineLength + 1),
+              CONFIG_ERROR_LINE_TOO_LONG, 0);
+
+  // Leading/trailing whitespaces should be considered for the line size limit.
+  ExpectError(std::string(" ") +
+                  GenerateLongLine(ConfigParser::kKrb5MaxLineLength - 1) + " ",
+              CONFIG_ERROR_LINE_TOO_LONG, 0);
 }
 
 // |GetEncryptionTypes| with a complete config to be parsed.

@@ -8,12 +8,10 @@
 
 #include <base/containers/contains.h>
 #include <base/strings/string_split.h>
+#include <base/strings/string_util.h>
 
 namespace kerberos {
 namespace {
-
-// Maximum depth of nested '{' in the config.
-constexpr int kMaxGroupLevelDepth = 1000;
 
 // See
 // https://web.mit.edu/kerberos/krb5-1.12/doc/admin/conf_files/krb5_conf.html
@@ -148,10 +146,11 @@ ConfigErrorInfo ConfigParser::ParseConfig(
   // will be replaced at the end of this method, if |krb5conf| is valid.
   *encryption_types = KerberosEncryptionTypes::kStrong;
 
-  // Keep empty lines, they're necessary to get the line numbers right.
-  // Note: The MIT krb5 parser does not count \r as newline.
+  // Keep whitespaces to preserve the original line size. Keep empty lines,
+  // they're necessary to get the line numbers right. Note: The MIT krb5
+  // parser does not count \r as newline.
   const std::vector<std::string> lines = base::SplitString(
-      krb5conf, "\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
+      krb5conf, "\n", base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
 
   // Level of nested curly braces {}.
   int group_level = 0;
@@ -166,6 +165,13 @@ ConfigErrorInfo ConfigParser::ParseConfig(
   for (size_t line_index = 0; line_index < lines.size(); ++line_index) {
     // Convert to c_str() and back to get rid of embedded \0's.
     std::string line = lines.at(line_index).c_str();
+
+    if (line.size() > kKrb5MaxLineLength) {
+      return MakeErrorInfo(CONFIG_ERROR_LINE_TOO_LONG, line_index);
+    }
+
+    // After validating the original line length, we want to trim whitespaces.
+    base::TrimWhitespaceASCII(line, base::TRIM_ALL, &line);
 
     // Are we expecting a '{' to open a { group }?
     if (expect_opening_curly_brace) {
