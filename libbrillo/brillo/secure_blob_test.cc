@@ -235,15 +235,6 @@ TEST_F(SecureBlobTest, HexStringToSecureBlob) {
 template <typename T>
 class TestSecureAllocator : public SecureAllocator<T> {
  public:
-  using typename SecureAllocator<T>::pointer;
-  using typename SecureAllocator<T>::size_type;
-  using typename SecureAllocator<T>::value_type;
-
-  template <typename U>
-  struct rebind {
-    typedef TestSecureAllocator<U> other;
-  };
-
   TestSecureAllocator() {
     erased_count = 0;
   }
@@ -253,7 +244,7 @@ class TestSecureAllocator : public SecureAllocator<T> {
  protected:
   static int erased_count;
 
-  void clear_contents(pointer p, size_type n) override {
+  void clear_contents(T* p, std::size_t n) override {
     SecureAllocator<T>::clear_contents(p, n);
     unsigned char* v = reinterpret_cast<unsigned char*>(p);
     for (int i = 0; i < n; i++) {

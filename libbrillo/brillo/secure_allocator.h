@@ -9,14 +9,12 @@
 #include <sys/mman.h>
 #include <unistd.h>
 
+#include <cstddef>
 #include <limits>
-#include <memory>
-
-#include <openssl/crypto.h>
+#include <type_traits>
 
 #include <base/check.h>
 #include <base/check_op.h>
-#include <base/functional/callback_helpers.h>
 #include <base/logging.h>
 #include <brillo/brillo_export.h>
 #include <brillo/secure_string.h>
@@ -58,9 +56,7 @@ namespace brillo {
 template <typename T>
 class BRILLO_PRIVATE SecureAllocator {
  public:
-  using pointer = typename std::allocator<T>::pointer;
-  using size_type = typename std::allocator<T>::size_type;
-  using value_type = typename std::allocator<T>::value_type;
+  using value_type = T;
 
   // Allocators are equal if they are stateless. i.e., one allocator can
   // deallocate objects created by another allocator.
@@ -75,60 +71,43 @@ class BRILLO_PRIVATE SecureAllocator {
   template <class U>
   SecureAllocator(const SecureAllocator<U>& other) noexcept {}
 
-  template <typename U>
-  struct rebind {
-    typedef SecureAllocator<U> other;
-  };
-
   // Max theoretical count for type on system.
-  size_type max_size() const {
+  std::size_t max_size() const {
     // Calculate the page size the first time we are called, and
     // afterwards use the precalculated results.
-    static size_type result = GetMaxSizeForType(SystemPageSize());
-    static_assert(std::is_trivially_destructible_v<decltype(result)>);
-
+    static std::size_t result = GetMaxSizeForType(SystemPageSize());
     return result;
   }
 
   // Allocation: allocates ceil(size/pagesize) for holding the data.
-  pointer allocate(size_type n, pointer hint = nullptr) {
-    pointer buffer = nullptr;
+  T* allocate(std::size_t n) {
+    // Note: std::allocator is expected to throw a std::bad_alloc on failing to
+    // allocate the memory correctly. Instead of returning a nullptr, which
+    // confuses the standard template library, use CHECK(false) variations
+    // to crash on the failure path.
+
     // Check if n can be theoretically allocated.
     CHECK_LT(n, max_size());
-
-    // std::allocator is expected to throw a std::bad_alloc on failing to
-    // allocate the memory correctly. Instead of returning a nullptr, which
-    // confuses the standard template library, use CHECK(false) to crash on
-    // the failure path.
-    base::ScopedClosureRunner fail_on_allocation_error(base::BindOnce([]() {
-      PLOG(ERROR) << "Failed to allocate secure memory";
-      CHECK(false);
-    }));
-
     // Check if n = 0: there's nothing to allocate;
-    if (n == 0)
-      return nullptr;
+    CHECK_GT(n, 0u);
 
     // Calculate the page-aligned buffer size.
-    size_type buffer_size = CalculatePageAlignedBufferSize(n);
+    std::size_t buffer_size = CalculatePageAlignedBufferSize(n);
 
     // Memory locking granularity is per-page: mmap ceil(size/page size) pages.
-    buffer = reinterpret_cast<pointer>(
-        mmap(nullptr, buffer_size, PROT_READ | PROT_WRITE,
-             MAP_PRIVATE | MAP_ANONYMOUS, -1, 0));
-    if (buffer == MAP_FAILED)
-      return nullptr;
+    void* buffer = mmap(nullptr, buffer_size, PROT_READ | PROT_WRITE,
+                        MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    PCHECK(buffer != MAP_FAILED) << "failed to allocate secure memory";
 
     // Lock buffer into physical memory.
     if (mlock(buffer, buffer_size)) {
       CHECK_NE(errno, ENOMEM) << "It is likely that SecureAllocator has "
                                  "exceeded the RLIMIT_MEMLOCK limit";
-      return nullptr;
+      PLOG(FATAL) << "Failed to lock allocated pages";
     }
 
     // Mark memory as non dumpable in a core dump.
-    if (madvise(buffer, buffer_size, MADV_DONTDUMP))
-      return nullptr;
+    PCHECK(!madvise(buffer, buffer_size, MADV_DONTDUMP));
 
     // Mark memory as non mergeable with another page, even if the contents
     // are the same.
@@ -138,10 +117,8 @@ class BRILLO_PRIVATE SecureAllocator {
       // pages are not mergeable so this madvise option is not necessary.
       //
       // In the case where CONFIG_KSM is not set, EINVAL is the error set.
-      // Since this error value is expected in some cases, we don't return a
-      // nullptr.
-      if (errno != EINVAL)
-        return nullptr;
+      // Since this error value is expected in some cases, don't crash.
+      PCHECK(errno == EINVAL) << "Failed to mark UNMERGEABLE";
     }
 
     // Make this mapping available to child processes but don't copy data from
@@ -150,13 +127,10 @@ class BRILLO_PRIVATE SecureAllocator {
     // faults if the child process tries to access this address. For example,
     // if the parent process creates a SecureObject, forks() and the child
     // process tries to call the destructor at the virtual address.
-    if (madvise(buffer, buffer_size, MADV_WIPEONFORK))
-      return nullptr;
-
-    fail_on_allocation_error.ReplaceClosure(base::DoNothing());
+    PCHECK(!madvise(buffer, buffer_size, MADV_WIPEONFORK));
 
     // Allocation was successful.
-    return buffer;
+    return reinterpret_cast<T*>(buffer);
   }
 
   // Destroys object before deallocation.
@@ -171,7 +145,7 @@ class BRILLO_PRIVATE SecureAllocator {
     clear_contents(p, sizeof(U));
   }
 
-  void deallocate(pointer p, size_type n) {
+  void deallocate(T* p, std::size_t n) {
     // Check if n can be theoretically deallocated.
     CHECK_LT(n, max_size());
 
@@ -180,7 +154,7 @@ class BRILLO_PRIVATE SecureAllocator {
       return;
 
     // Calculate the page-aligned buffer size.
-    size_type buffer_size = CalculatePageAlignedBufferSize(n);
+    std::size_t buffer_size = CalculatePageAlignedBufferSize(n);
 
     clear_contents(p, buffer_size);
     munlock(p, buffer_size);
@@ -189,7 +163,7 @@ class BRILLO_PRIVATE SecureAllocator {
 
  protected:
   // Zero-out all bytes in the allocated buffer.
-  virtual void clear_contents(pointer v, size_type n) {
+  virtual void clear_contents(T* v, std::size_t n) {
     if (!v)
       return;
     // This is guaranteed not to be optimized out.
@@ -198,38 +172,37 @@ class BRILLO_PRIVATE SecureAllocator {
 
  private:
   // Return the system page size.
-  static size_t CalculateSystemPageSize() {
+  static std::size_t CalculateSystemPageSize() {
     long ret = sysconf(_SC_PAGESIZE);  // NOLINT [runtime/int]
     CHECK_GT(ret, 0L);
     return ret;
   }
 
   // Return a cached system page size.
-  static size_t SystemPageSize() {
+  static std::size_t SystemPageSize() {
     // Calculate the page size the first time we are called, and afterwards
     // use the precalculated results.
-    static size_t result = CalculateSystemPageSize();
-    static_assert(std::is_trivially_destructible_v<decltype(result)>);
+    static std::size_t result = CalculateSystemPageSize();
     return result;
   }
 
   // Calculates the page-aligned buffer size.
-  size_t CalculatePageAlignedBufferSize(size_type n) {
-    size_type page_size = SystemPageSize();
-    size_type real_size = n * sizeof(value_type);
-    size_type page_aligned_remainder = real_size % page_size;
-    size_type padding =
+  std::size_t CalculatePageAlignedBufferSize(std::size_t n) {
+    std::size_t page_size = SystemPageSize();
+    std::size_t real_size = n * sizeof(value_type);
+    std::size_t page_aligned_remainder = real_size % page_size;
+    std::size_t padding =
         page_aligned_remainder != 0 ? page_size - page_aligned_remainder : 0;
     return real_size + padding;
   }
 
   // Since the allocator reuses page size and max size consistently,
   // cache these values initially and reuse.
-  static size_t GetMaxSizeForType(size_t page_size) {
+  static std::size_t GetMaxSizeForType(std::size_t page_size) {
     // Initialize max size that can be theoretically allocated.
     // Calculate the max size that is page-aligned.
-    size_t max_theoretical_size = std::numeric_limits<size_type>::max();
-    size_t max_page_aligned_size =
+    std::size_t max_theoretical_size = std::numeric_limits<std::size_t>::max();
+    std::size_t max_page_aligned_size =
         max_theoretical_size - (max_theoretical_size % page_size);
 
     return max_page_aligned_size / sizeof(value_type);
