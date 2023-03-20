@@ -239,6 +239,11 @@ class TestSecureAllocator : public SecureAllocator<T> {
   using typename SecureAllocator<T>::size_type;
   using typename SecureAllocator<T>::value_type;
 
+  template <typename U>
+  struct rebind {
+    typedef TestSecureAllocator<U> other;
+  };
+
   TestSecureAllocator() {
     erased_count = 0;
   }
