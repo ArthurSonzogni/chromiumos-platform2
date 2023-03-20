@@ -197,13 +197,14 @@ pub fn reset_file_log() {
 mod tests {
     use std::fs;
 
-    use chrono::TimeZone;
+    use chrono::{Duration, TimeZone};
 
     use super::*;
 
     #[test]
     fn test_format() {
-        let when = Local.ymd(2020, 12, 11).and_hms_milli(13, 2, 27, 435);
+        let when =
+            Local.with_ymd_and_hms(2020, 12, 11, 13, 2, 27).unwrap() + Duration::milliseconds(435);
         let record = Record::builder()
             .args(format_args!("some message"))
             .level(Level::Error)
