@@ -19,9 +19,6 @@ namespace rmad {
 
 struct StateMetricsData {
  public:
-  StateMetricsData() = default;
-  ~StateMetricsData() = default;
-
   bool operator==(const StateMetricsData& other) const;
   base::Value ToValue() const;
   bool FromValue(const base::Value* value);
