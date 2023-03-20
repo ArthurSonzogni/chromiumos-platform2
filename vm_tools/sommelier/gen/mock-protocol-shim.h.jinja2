@@ -1,0 +1,23 @@
+// Copyright 2023 The ChromiumOS Authors
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+// NOTE: This code is automatically generated and  any changes to this file will be overwritten.
+
+#ifndef VM_TOOLS_SOMMELIER_GEN_MOCK_{{ protocol.name_underscore | upper }}_SHIM_H_
+#define VM_TOOLS_SOMMELIER_GEN_MOCK_{{ protocol.name_underscore | upper }}_SHIM_H_
+
+#include "{{ protocol.name_hyphen }}-shim.h"
+
+{%- for interface in protocol.interfaces %}
+class Mock{{interface.name}} {
+  public:
+  {%- for method in interface.methods %}
+    MOCK_METHOD({{ method.ret }}, {{ method.name }}, ({% for arg in method.args %}{{ arg.type }} {{ arg.name }}{% if not loop.last %},{% endif %}{% endfor %}), (override));
+  {% endfor -%}
+  {%- for event in interface.events %}
+    MOCK_METHOD(void, {{ event.name }}, ({% for arg in event.args %}{{ arg.type }} {{ arg.name }}{% if not loop.last %},{% endif %}{% endfor %}), (override));
+  {% endfor -%}
+};
+{% endfor -%}
+
+#endif // VM_TOOLS_SOMMELIER_GEN_MOCK_{{ protocol.name_underscore | upper }}_SHIM_H_

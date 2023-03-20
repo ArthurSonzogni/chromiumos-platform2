@@ -3,6 +3,7 @@
 # found in the LICENSE file.
 
 import("//common-mk/pkg_config.gni")
+import("shim_gen.gni")
 import("wayland_protocol.gni")
 
 group("all") {
@@ -36,25 +37,32 @@ if (!defined(dark_frame_color)) {
   dark_frame_color = "\"#323639\""
 }
 
+wayland_protocols = [
+  "protocol/aura-shell.xml",
+  "protocol/drm.xml",
+  "protocol/gaming-input-unstable-v2.xml",
+  "protocol/gtk-shell.xml",
+  "protocol/keyboard-extension-unstable-v1.xml",
+  "protocol/linux-dmabuf-unstable-v1.xml",
+  "protocol/linux-explicit-synchronization-unstable-v1.xml",
+  "protocol/pointer-constraints-unstable-v1.xml",
+  "protocol/relative-pointer-unstable-v1.xml",
+  "protocol/text-input-extension-unstable-v1.xml",
+  "protocol/text-input-unstable-v1.xml",
+  "protocol/text-input-x11-unstable-v1.xml",
+  "protocol/viewporter.xml",
+  "protocol/xdg-output-unstable-v1.xml",
+  "protocol/xdg-shell.xml",
+]
+
 wayland_protocol_library("sommelier-protocol") {
   out_dir = "include"
-  sources = [
-    "protocol/aura-shell.xml",
-    "protocol/drm.xml",
-    "protocol/gaming-input-unstable-v2.xml",
-    "protocol/gtk-shell.xml",
-    "protocol/keyboard-extension-unstable-v1.xml",
-    "protocol/linux-dmabuf-unstable-v1.xml",
-    "protocol/linux-explicit-synchronization-unstable-v1.xml",
-    "protocol/pointer-constraints-unstable-v1.xml",
-    "protocol/relative-pointer-unstable-v1.xml",
-    "protocol/text-input-extension-unstable-v1.xml",
-    "protocol/text-input-unstable-v1.xml",
-    "protocol/text-input-x11-unstable-v1.xml",
-    "protocol/viewporter.xml",
-    "protocol/xdg-output-unstable-v1.xml",
-    "protocol/xdg-shell.xml",
-  ]
+  sources = wayland_protocols
+}
+
+gen_shim("sommelier-shims") {
+  out_dir = "include"
+  sources = wayland_protocols
 }
 
 gaming_defines = [ "GAMEPAD_SUPPORT" ]
@@ -129,7 +137,10 @@ static_library("libsommelier") {
                "xkbcommon",
              ] + tracing_pkg_deps
   libs = [ "m" ] + tracing_libs
-  deps = [ ":sommelier-protocol" ] + gaming_deps
+  deps = [
+           ":sommelier-protocol",
+           ":sommelier-shims",
+         ] + gaming_deps
 }
 
 executable("sommelier") {

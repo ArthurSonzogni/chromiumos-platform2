@@ -62,6 +62,29 @@ foreach p : wl_protocols
   endforeach
 endforeach
 
+#===============#
+# Codegen Shims #
+#===============#
+
+# Ensure jinja2 exists within the python3 install.
+if run_command(
+    'python3', '-c', 'import jinja2',
+    check: false).returncode() != 0
+        error('python3 jinja2 missing')
+endif
+
+python_program = find_program('gen-shim.py')
+shim_generator = generator(
+  python_program,
+  output: ['@BASENAME@-shim.cc', '@BASENAME@-shim.h', 'mock-@BASENAME@-shim.h'],
+  arguments: ['@INPUT@', '@BUILD_DIR@']
+)
+
+shim_outs = []
+foreach p : wl_protocols
+  shim_outs += shim_generator.process(p)
+endforeach
+
 #==========#
 # Perfetto #
 #==========#
@@ -83,7 +106,6 @@ endif
 
 gamepad_sources = []
 gamepad_dependencies = []
-
 if get_option('gamepad')
   gamepad_sources = [
     'sommelier-gaming.cc',
@@ -145,7 +167,7 @@ libsommelier = static_library('sommelier',
     'virtualization/virtwl_channel.cc',
     'virtualization/virtgpu_channel.cc',
     'xcb/xcb-shim.cc',
-  ] + wl_outs + tracing_sources + gamepad_sources,
+  ] + wl_outs + tracing_sources + gamepad_sources + shim_outs,
   dependencies: [
     meson.get_compiler('cpp').find_library('m'),
     dependency('gbm'),
