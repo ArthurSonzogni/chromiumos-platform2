@@ -38,12 +38,16 @@ bool PingTool::Start(const base::ScopedFD& outfd,
        // Ping needs cap_net_raw.
        "-c", "cap_net_raw=eip",
        // Inherit capabilities because kSetuidHack is used.
-       "--ambient",
-       "--uts", "-k",
+       "--ambient", "--uts", "-k",
        "tmpfs,/run,tmpfs,MS_NODEV|MS_NOEXEC|MS_NOSUID,mode=755,size=10M",
        // A /run/shill bind mount is needed to access /etc/resolv.conf, which
        // is a symlink to /run/shill/resolv.conf.
-       "-b", "/run/shill"});
+       // TODO(259354228): Remove once resolv.conf migration to dns-proxy is
+       // done.
+       "-b", "/run/shill",
+       // A /run/dns-proxy bind mount is needed to access /etc/resolv.conf,
+       // which is a symlink to /run/dns-proxy/resolv.conf.
+       "-b", "/run/dns-proxy"});
   if (!p) {
     DEBUGD_ADD_ERROR(error, kPingToolErrorString,
                      "Could not create ping process");

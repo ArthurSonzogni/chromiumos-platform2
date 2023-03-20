@@ -111,8 +111,15 @@ void enter_vfs_namespace() {
 
   // Since shill provides network resolution settings, bind mount it.
   // In case we start before shill, make sure the path exists.
+  // TODO(259354228): Remove once resolv.conf migration to dns-proxy is done.
   mkdir("/run/shill", 0755);
   PCHECK(mj_call(minijail_bind(j.get(), "/run/shill", "/run/shill", 0)));
+
+  // Since dns-proxy provides network resolution settings, bind mount it.
+  // Path is expected to always exists before as it is created through
+  // tmpfiles.d.
+  PCHECK(
+      mj_call(minijail_bind(j.get(), "/run/dns-proxy", "/run/dns-proxy", 0)));
 
   // Bind mount /run/lockbox and /var/lib/devicesettings to be able to read
   // policy files and check device policies.
