@@ -48,7 +48,7 @@ fn gibibytes_to_bytes(num_gibibytes: u64) -> u64 {
 fn choose_destination_device_path(mut disks: Vec<Disk>) -> Option<PathBuf> {
     // Estimate of the minimum required disk size. This doesn't need
     // to be especially precise.
-    let minimum_size_in_bytes = gibibytes_to_bytes(8);
+    let minimum_size_in_bytes = gibibytes_to_bytes(14);
 
     // Start by getting all disks and then progressively filter and
     // sort (clarity favored over efficiency here since the list
