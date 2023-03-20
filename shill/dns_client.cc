@@ -9,7 +9,6 @@
 #include <netinet/in.h>
 #include <sys/socket.h>
 
-#include <map>
 #include <memory>
 #include <set>
 #include <string>
@@ -41,8 +40,6 @@ static std::string ObjectID(const DnsClient* d) {
 
 namespace {
 
-using IOHandlerMap = std::map<ares_socket_t, std::unique_ptr<IOHandler>>;
-
 std::vector<std::string> FilterEmptyIPs(
     const std::vector<std::string>& dns_list) {
   std::vector<std::string> results;
@@ -72,8 +69,8 @@ struct DnsClientState {
   DnsClientState() : channel(nullptr), start_time{} {}
 
   ares_channel channel;
-  IOHandlerMap read_handlers;
-  IOHandlerMap write_handlers;
+  std::vector<std::unique_ptr<IOHandler>> read_handlers;
+  std::vector<std::unique_ptr<IOHandler>> write_handlers;
   struct timeval start_time;
 };
 
@@ -209,17 +206,21 @@ void DnsClient::HandleCompletion() {
 }
 
 void DnsClient::HandleDnsRead(int fd) {
-  ares_->ProcessFd(resolver_state_->channel, fd, ARES_SOCKET_BAD);
-  RefreshHandles();
+  ProcessFd(fd, /*write_fd=*/ARES_SOCKET_BAD);
 }
 
 void DnsClient::HandleDnsWrite(int fd) {
-  ares_->ProcessFd(resolver_state_->channel, ARES_SOCKET_BAD, fd);
-  RefreshHandles();
+  ProcessFd(/*read_fd=*/ARES_SOCKET_BAD, fd);
 }
 
 void DnsClient::HandleTimeout() {
-  ares_->ProcessFd(resolver_state_->channel, ARES_SOCKET_BAD, ARES_SOCKET_BAD);
+  ProcessFd(/*read_fd=*/ARES_SOCKET_BAD, /*write_fd=*/ARES_SOCKET_BAD);
+}
+
+void DnsClient::ProcessFd(int read_fd, int write_fd) {
+  StopReadHandlers();
+  StopWriteHandlers();
+  ares_->ProcessFd(resolver_state_->channel, read_fd, write_fd);
   RefreshHandles();
 }
 
@@ -302,9 +303,6 @@ void DnsClient::ReceiveDnsReplyCB(void* arg,
 }
 
 bool DnsClient::RefreshHandles() {
-  IOHandlerMap old_read(std::move(resolver_state_->read_handlers));
-  IOHandlerMap old_write(std::move(resolver_state_->write_handlers));
-
   ares_socket_t sockets[ARES_GETSOCK_MAXNUM];
   int action_bits =
       ares_->GetSock(resolver_state_->channel, sockets, ARES_GETSOCK_MAXNUM);
@@ -315,24 +313,14 @@ bool DnsClient::RefreshHandles() {
       &DnsClient::HandleDnsWrite, weak_ptr_factory_.GetWeakPtr()));
   for (int i = 0; i < ARES_GETSOCK_MAXNUM; i++) {
     if (ARES_GETSOCK_READABLE(action_bits, i)) {
-      if (base::Contains(old_read, sockets[i])) {
-        resolver_state_->read_handlers[sockets[i]] =
-            std::move(old_read[sockets[i]]);
-      } else {
-        resolver_state_->read_handlers[sockets[i]] =
-            base::WrapUnique(io_handler_factory_->CreateIOReadyHandler(
-                sockets[i], IOHandler::kModeInput, read_callback));
-      }
+      resolver_state_->read_handlers.emplace_back(
+          base::WrapUnique(io_handler_factory_->CreateIOReadyHandler(
+              sockets[i], IOHandler::kModeInput, read_callback)));
     }
     if (ARES_GETSOCK_WRITABLE(action_bits, i)) {
-      if (base::Contains(old_write, sockets[i])) {
-        resolver_state_->write_handlers[sockets[i]] =
-            std::move(old_write[sockets[i]]);
-      } else {
-        resolver_state_->write_handlers[sockets[i]] =
-            base::WrapUnique(io_handler_factory_->CreateIOReadyHandler(
-                sockets[i], IOHandler::kModeOutput, write_callback));
-      }
+      resolver_state_->write_handlers.emplace_back(
+          base::WrapUnique(io_handler_factory_->CreateIOReadyHandler(
+              sockets[i], IOHandler::kModeOutput, write_callback)));
     }
   }
 
@@ -384,14 +372,16 @@ bool DnsClient::RefreshHandles() {
 }
 
 void DnsClient::StopReadHandlers() {
-  for (auto& iter : resolver_state_->read_handlers)
-    iter.second->Stop();
+  for (auto& iter : resolver_state_->read_handlers) {
+    iter->Stop();
+  }
   resolver_state_->read_handlers.clear();
 }
 
 void DnsClient::StopWriteHandlers() {
-  for (auto& iter : resolver_state_->write_handlers)
-    iter.second->Stop();
+  for (auto& iter : resolver_state_->write_handlers) {
+    iter->Stop();
+  }
   resolver_state_->write_handlers.clear();
 }
 

@@ -81,6 +81,7 @@ class DnsClient {
   void HandleDnsRead(int fd);
   void HandleDnsWrite(int fd);
   void HandleTimeout();
+  void ProcessFd(int read_fd, int write_fd);
   void ReceiveDnsReply(int status, struct hostent* hostent);
   static void ReceiveDnsReplyCB(void* arg,
                                 int status,

@@ -134,7 +134,7 @@ class DnsClientTest : public Test {
 
     EXPECT_CALL(io_handler_factory_,
                 CreateIOReadyHandler(kAresFd, IOHandler::kModeInput, _))
-        .WillOnce(ReturnNew<IOHandler>());
+        .WillRepeatedly(ReturnNew<IOHandler>());
     SetActive();
     EXPECT_CALL(dispatcher_, PostDelayedTask(_, _, kAresWait));
     EXPECT_CALL(ares_, InitOptions(_, _, _))
