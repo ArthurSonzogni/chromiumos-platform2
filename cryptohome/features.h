@@ -23,6 +23,19 @@ inline constexpr struct VariationsFeature
         .default_state = FEATURE_DISABLED_BY_DEFAULT,
 };
 
+// Control switch value for creating new PIN with the timebase backoff for
+// passwordless login.
+inline constexpr struct VariationsFeature kCrOSLateBootEnableModernPin = {
+    .name = "CrOSLateBootEnableModernPin",
+    .default_state = FEATURE_DISABLED_BY_DEFAULT,
+};
+
+// Control switch value for migrating existing users to modern pin.
+inline constexpr struct VariationsFeature kCrOSLateBootMigrateToModernPin = {
+    .name = "CrOSLateBootMigrateToModernPin",
+    .default_state = FEATURE_DISABLED_BY_DEFAULT,
+};
+
 // Features is a class which is a wrapper around PlatformFeatureInterface, which
 // can also be configured for testing.
 class Features {
@@ -32,7 +45,9 @@ class Features {
   enum ActiveFeature {
     // Feature to enable migration of existing VaultKeysets to AUthFactor and
     // USS.
-    kUSSMigration
+    kUSSMigration,
+    kModernPin,
+    KMigratePin
   };
 
   // Platform feature library can only initialized with a bus instance.

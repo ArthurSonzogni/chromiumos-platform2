@@ -19,6 +19,10 @@ const VariationsFeature& Features::GetVariationFeatureFor(
   switch (active_feature) {
     case kUSSMigration:
       return kCrOSLateBootMigrateToUserSecretStash;
+    case kModernPin:
+      return kCrOSLateBootEnableModernPin;
+    case KMigratePin:
+      return kCrOSLateBootMigrateToModernPin;
   }
 }
 
