@@ -27,7 +27,7 @@
 
 namespace federated {
 namespace {
-const base::TimeDelta kExampleTtl = base::Days(40);
+const base::TimeDelta kExampleTtl = base::Days(10);
 
 #if USE_LOCAL_FEDERATED_SERVER
 // When we are testing against a local federated server, we want to populate

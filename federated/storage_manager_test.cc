@@ -77,7 +77,7 @@ TEST_F(StorageManagerTest, ExampleRecieved) {
 // Tests that the databases example iterator is faithfully returned.
 TEST_F(StorageManagerTest, ExampleStreaming) {
   base::Time end_timestamp = base::Time::Now();
-  base::Time start_timestamp = end_timestamp - base::Days(80);
+  base::Time start_timestamp = end_timestamp - base::Days(20);
   EXPECT_CALL(*example_database_, IsOpen())
       .WillOnce(Return(false))
       .WillOnce(Return(true));
@@ -147,7 +147,7 @@ TEST_F(StorageManagerTest, CriteriaRejectUsedExamples) {
   EXPECT_CALL(*example_database_, IsOpen()).WillRepeatedly(Return(true));
 
   base::Time end_timestamp = base::Time::Now();
-  base::Time default_start_timestamp = base::Time::Now() - base::Days(80);
+  base::Time default_start_timestamp = base::Time::Now() - base::Days(20);
   base::Time last_used_example_timestamp = base::Time::Now() - base::Hours(10);
   const MetaRecord meta_record = {"", 1, last_used_example_timestamp,
                                   base::Time::Now()};
