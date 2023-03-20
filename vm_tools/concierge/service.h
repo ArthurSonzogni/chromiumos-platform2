@@ -74,8 +74,6 @@ class Service final {
     base::FilePath device;
     base::FilePath render_server;
     base::FilePath foz_db_list;
-
-    VMGpuCacheSpec() = default;
   };
 
   explicit Service(base::OnceClosure quit_closure);

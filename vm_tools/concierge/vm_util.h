@@ -41,8 +41,6 @@ struct VMImageSpec {
   base::FilePath pflash;
   base::FilePath tools_disk;
   bool is_trusted_image;
-
-  VMImageSpec() = default;
 };
 
 // Describe the values for --async-executor options passed to crosvm
