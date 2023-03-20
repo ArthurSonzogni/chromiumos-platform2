@@ -66,14 +66,14 @@ class PoliciesFeaturesBroker : public PoliciesFeaturesBrokerInterface {
   PoliciesFeaturesBroker& operator=(const PoliciesFeaturesBroker&) = delete;
   PoliciesFeaturesBroker& operator=(PoliciesFeaturesBroker&&) = delete;
 
+  // Default poll duration. Must be larger than poll_done_fallback_timer_
+  static constexpr base::TimeDelta kDefaultPollDuration = base::Minutes(10);
+
  private:
   struct VariationAndValue {
     VariationsFeature variation;
     bool value;
   };
-
-  // Default poll duration. Must be larger than poll_done_fallback_timer_
-  static constexpr base::TimeDelta kDefaultPollDuration = base::Minutes(10);
 
   void Poll(bool blocking);
   void UpdateFeaturesResults(

@@ -36,6 +36,7 @@ Daemon::Daemon(struct Inject injected) : weak_ptr_factory_(this) {
   message_sender_ = std::move(injected.message_sender_);
   process_cache_ = std::move(injected.process_cache_);
   policies_features_broker_ = std::move(injected.policies_features_broker_);
+  bus_ = std::move(injected.dbus_);
   MetricsSender::GetInstance().SetMetricsLibraryForTesting(
       std::move(injected.metrics_library_));
 }
@@ -103,6 +104,7 @@ void Daemon::CheckPolicyAndFeature() {
     LOG(INFO) << "Stopping event reporting and quitting. Policy: "
               << std::to_string(xdr_reporting_policy)
               << " Feature: " << std::to_string(xdr_reporting_feature);
+    reporting_events_ = false;
     // Will exit and restart secagentd.
     Quit();
   } else if (!reporting_events_ &&
@@ -135,7 +137,6 @@ void Daemon::StartXDRReporting() {
       message_sender_, std::make_unique<org::chromium::AttestationProxy>(bus_),
       std::make_unique<org::chromium::TpmManagerProxy>(bus_),
       std::move(cb_for_agent), heartbeat_period_s_);
-
   if (!agent_plugin_) {
     QuitWithExitCode(EX_SOFTWARE);
   }
@@ -191,7 +192,8 @@ int Daemon::OnEventLoopStarted() {
   MetricsSender::GetInstance().SendEnumMetricToUMA(metrics::kPolicy,
                                                    metrics::Policy::kChecked);
   // This will post a task to run CheckPolicyAndFeature.
-  policies_features_broker_->StartAndBlockForSync();
+  policies_features_broker_->StartAndBlockForSync(
+      PoliciesFeaturesBroker::kDefaultPollDuration);
 
   return EX_OK;
 }

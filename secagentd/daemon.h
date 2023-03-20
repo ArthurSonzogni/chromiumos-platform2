@@ -12,7 +12,6 @@
 #include "base/memory/scoped_refptr.h"
 #include "brillo/daemons/dbus_daemon.h"
 #include "dbus/mock_bus.h"
-#include "metrics/metrics_library.h"
 #include "secagentd/message_sender.h"
 #include "secagentd/metrics_sender.h"
 #include "secagentd/plugins.h"
@@ -21,6 +20,10 @@
 #include "secagentd/proto/security_xdr_events.pb.h"
 
 namespace secagentd {
+
+namespace testing {
+class DaemonTestFixture;
+}
 
 // The secagentd main daemon.
 // On startup the device policy is fetched. Based on the security collection
@@ -32,9 +35,10 @@ namespace secagentd {
 struct Inject {
   std::unique_ptr<PluginFactoryInterface> plugin_factory_;
   std::unique_ptr<MetricsLibraryInterface> metrics_library_;
-  scoped_refptr<MessageSender> message_sender_;
+  scoped_refptr<MessageSenderInterface> message_sender_;
   scoped_refptr<ProcessCacheInterface> process_cache_;
-  scoped_refptr<PoliciesFeaturesBroker> policies_features_broker_;
+  scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;
+  scoped_refptr<::dbus::Bus> dbus_;
 };
 
 class Daemon : public brillo::DBusDaemon {
@@ -68,9 +72,11 @@ class Daemon : public brillo::DBusDaemon {
   void StartXDRReporting();
 
  private:
-  scoped_refptr<MessageSender> message_sender_;
+  friend class testing::DaemonTestFixture;
+
+  scoped_refptr<MessageSenderInterface> message_sender_;
   scoped_refptr<ProcessCacheInterface> process_cache_;
-  scoped_refptr<PoliciesFeaturesBroker> policies_features_broker_;
+  scoped_refptr<PoliciesFeaturesBrokerInterface> policies_features_broker_;
   std::unique_ptr<PluginFactoryInterface> plugin_factory_;
   std::vector<std::unique_ptr<PluginInterface>> plugins_;
   std::unique_ptr<PluginInterface> agent_plugin_;
