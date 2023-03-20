@@ -993,8 +993,8 @@ void OnPrepareSignal(
           QuitWithFailure("Session failed.\n");
           return;
         }
-        // Preparation is finished.
-        QuitWithSuccess();
+        // Preparation is finished, next action expected in the session is
+        // AuthenticateAuthFactor.
         return;
       }
       default:
