@@ -373,6 +373,7 @@ enum ActionEnum {
 constexpr char kUserSwitch[] = "user";
 constexpr char kPasswordSwitch[] = "password";
 constexpr char kKeyLabelSwitch[] = "key_label";
+constexpr char kKeyLabelsSwitch[] = "key_labels";
 constexpr char kNewKeyLabelSwitch[] = "new_key_label";
 constexpr char kForceSwitch[] = "force";
 constexpr char kAttrNameSwitch[] = "name";
@@ -3239,12 +3240,23 @@ int main(int argc, char** argv) {
       return 1;
     base::HexStringToString(auth_session_id_hex.c_str(), &auth_session_id);
     req.set_auth_session_id(auth_session_id);
-    if (cl->GetSwitchValueASCII(switches::kKeyLabelSwitch).empty()) {
-      printer.PrintHumanOutput("No auth factor label specified.\n");
+    bool has_key_label_switch = cl->HasSwitch(switches::kKeyLabelSwitch);
+    bool has_key_labels_switch = cl->HasSwitch(switches::kKeyLabelsSwitch);
+    if (!(has_key_label_switch ^ has_key_labels_switch)) {
+      printer.PrintHumanOutput(
+          "Exactly one of `key_label` and `key_labels` should be specified.\n");
       return 1;
     }
     req.set_auth_factor_label(
         cl->GetSwitchValueASCII(switches::kKeyLabelSwitch));
+    std::vector<std::string> labels =
+        base::SplitString(cl->GetSwitchValueASCII(switches::kKeyLabelsSwitch),
+                          ",", base::WhitespaceHandling::KEEP_WHITESPACE,
+                          base::SplitResult::SPLIT_WANT_ALL);
+    for (std::string& label : labels) {
+      req.add_auth_factor_labels(std::move(label));
+    }
+
     if (!BuildAuthInput(printer, cl, &misc_proxy, req.mutable_auth_input())) {
       return 1;
     }
