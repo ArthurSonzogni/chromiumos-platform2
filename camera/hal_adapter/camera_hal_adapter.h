@@ -152,6 +152,10 @@ class CameraHalAdapter {
       const char* camera_id,
       int new_status);
 
+  std::optional<mojom::CameraPrivacySwitchState>
+  LoadCachedCameraSWPrivacySwitchState();
+  void CacheCameraSWPrivacySwitchState(mojom::CameraPrivacySwitchState state);
+
   // Gets the static metadata of a camera given the original static metadata
   // with updated metadata modifications from the camera service such as vendor
   // tags and available request keys.

@@ -140,12 +140,6 @@ class SWPrivacySwitchTest : public ::testing::Test {
                                  .output_buffers = &stream_buffer}));
   }
 
-  void TearDown() override {
-    if (base::PathExists(kSWPrivacySwitchFilePath)) {
-      base::DeleteFile(base::FilePath(kSWPrivacySwitchFilePath));
-    }
-  }
-
   StreamManipulator::RuntimeOptions runtime_options_;
   SWPrivacySwitchStreamManipulator stream_manipulator_;
   Camera3CaptureDescriptor returned_result_;

@@ -57,6 +57,10 @@ constexpr char kArcvmVendorTagSectionName[] = "com.google.arcvm";
 constexpr char kArcvmVendorTagHostTimeTagName[] = "hostSensorTimestamp";
 constexpr uint32_t kArcvmVendorTagHostTime = kArcvmVendorTagStart;
 
+const base::FilePath kSWPrivacySwitchFilePath("/run/camera/sw_privacy_switch");
+constexpr char kSWPrivacySwitchOn[] = "on";
+constexpr char kSWPrivacySwitchOff[] = "off";
+
 }  // namespace
 
 CameraHalAdapter::CameraHalAdapter(
@@ -134,6 +138,13 @@ bool CameraHalAdapter::Start(GpuResources* gpu_resources) {
       FROM_HERE,
       base::BindOnce(&CameraHalAdapter::StartOnThread, base::Unretained(this),
                      cros::GetFutureCallback(future)));
+
+  std::optional<mojom::CameraPrivacySwitchState> state =
+      LoadCachedCameraSWPrivacySwitchState();
+  if (state.has_value()) {
+    SetCameraSWPrivacySwitchState(state.value());
+  }
+
   return future->Get();
 }
 
@@ -307,6 +318,7 @@ void CameraHalAdapter::SetCameraSWPrivacySwitchState(
       base::BindOnce(
           &CameraHalAdapter::SetCameraSWPrivacySwitchStateOnCameraModuleThread,
           base::Unretained(this), state));
+  CacheCameraSWPrivacySwitchState(state);
 }
 
 void CameraHalAdapter::SetCameraSWPrivacySwitchStateOnCameraModuleThread(
@@ -491,6 +503,37 @@ void CameraHalAdapter::torch_mode_status_change(
       base::BindOnce(&CameraHalAdapter::TorchModeStatusChange,
                      base::Unretained(self), aux, atoi(internal_camera_id),
                      static_cast<torch_mode_status_t>(new_status)));
+}
+
+std::optional<mojom::CameraPrivacySwitchState>
+CameraHalAdapter::LoadCachedCameraSWPrivacySwitchState() {
+  if (base::PathExists(kSWPrivacySwitchFilePath)) {
+    std::string state;
+    if (base::ReadFileToString(kSWPrivacySwitchFilePath, &state)) {
+      LOGF(INFO) << "Read the SW privacy switch " << std::quoted(state)
+                 << " from " << std::quoted(kSWPrivacySwitchFilePath.value());
+      if (state == kSWPrivacySwitchOn) {
+        return mojom::CameraPrivacySwitchState::ON;
+      } else if (state == kSWPrivacySwitchOff) {
+        return mojom::CameraPrivacySwitchState::OFF;
+      }
+    } else {
+      LOGF(ERROR) << "Failed to read the SW privacy switch state from "
+                  << std::quoted(kSWPrivacySwitchFilePath.value());
+    }
+  }
+  return std::nullopt;
+}
+
+void CameraHalAdapter::CacheCameraSWPrivacySwitchState(
+    mojom::CameraPrivacySwitchState state) {
+  const char* str = state == mojom::CameraPrivacySwitchState::ON
+                        ? kSWPrivacySwitchOn
+                        : kSWPrivacySwitchOff;
+  if (!base::WriteFile(kSWPrivacySwitchFilePath, str)) {
+    LOGF(ERROR) << "Failed to write the SW privacy switch state to "
+                << std::quoted(kSWPrivacySwitchFilePath.value());
+  }
 }
 
 const camera_metadata_t* CameraHalAdapter::GetUpdatedCameraMetadata(
