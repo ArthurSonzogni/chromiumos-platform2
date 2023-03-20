@@ -283,6 +283,8 @@ constexpr const char* kActions[] = {"unmount",
                                     "reset_application_container",
                                     "prepare_auth_factor",
                                     "terminate_auth_factor",
+                                    "prepare_and_add_auth_factor",
+                                    "prepare_and_authenticate_auth_factor",
                                     nullptr};
 enum ActionEnum {
   ACTION_UNMOUNT,
@@ -369,6 +371,8 @@ enum ActionEnum {
   ACTION_RESET_APPLICATION_CONTAINER,
   ACTION_PREPARE_AUTH_FACTOR,
   ACTION_TERMINATE_AUTH_FACTOR,
+  ACTION_PREPARE_AND_ADD_AUTH_FACTOR,
+  ACTION_PREPARE_AND_AUTHENTICATE_AUTH_FACTOR,
 };
 constexpr char kUserSwitch[] = "user";
 constexpr char kPasswordSwitch[] = "password";
@@ -931,11 +935,8 @@ void OnPrepareSignal(
     Printer* printer,
     user_data_auth::AuthFactorType auth_factor_type,
     user_data_auth::AuthFactorPreparePurpose prepare_purpose,
+    base::RepeatingCallback<void(base::RunLoop*, int*)> on_success,
     const user_data_auth::PrepareAuthFactorProgress& progress) {
-  auto QuitWithSuccess = [&]() {
-    run_loop->Quit();
-    *ret_code = 0;
-  };
   auto QuitWithFailure = [&](const std::string& msg) {
     printer->PrintHumanOutput(msg);
     run_loop->Quit();
@@ -964,7 +965,7 @@ void OnPrepareSignal(
           return;
         } else if (fp_progress.done()) {
           // Preparation is finished.
-          QuitWithSuccess();
+          on_success.Run(run_loop, ret_code);
           return;
         }
         return;
@@ -995,6 +996,7 @@ void OnPrepareSignal(
         }
         // Preparation is finished, next action expected in the session is
         // AuthenticateAuthFactor.
+        on_success.Run(run_loop, ret_code);
         return;
       }
       default:
@@ -1147,9 +1149,15 @@ int DoAuthenticateAuthFactor(
   return 0;
 }
 
-int DoPrepareAuthFactor(Printer& printer,
-                        base::CommandLine* cl,
-                        org::chromium::UserDataAuthInterfaceProxy& proxy) {
+// The |on_success| callback is triggered whenever the prepare signal that
+// represents a "complete state", i.e., it's the caller's turn to perform the
+// next action now.
+int DoPrepareAuthFactor(
+    Printer& printer,
+    base::CommandLine* cl,
+    org::chromium::UserDataAuthInterfaceProxy& proxy,
+    user_data_auth::AuthFactorPreparePurpose prepare_purpose,
+    base::RepeatingCallback<void(base::RunLoop*, int*)> on_success) {
   user_data_auth::PrepareAuthFactorRequest request;
 
   std::string auth_session_id_hex, auth_session_id;
@@ -1162,10 +1170,6 @@ int DoPrepareAuthFactor(Printer& printer,
   if (!GetAuthFactorType(printer, cl, &auth_factor_type))
     return 1;
   request.set_auth_factor_type(auth_factor_type);
-
-  user_data_auth::AuthFactorPreparePurpose prepare_purpose;
-  if (!GetPreparePurpose(printer, cl, &prepare_purpose))
-    return 1;
   request.set_purpose(prepare_purpose);
 
   // Because signals might be emitted as soon as PrepareAuthFactor operation
@@ -1179,7 +1183,7 @@ int DoPrepareAuthFactor(Printer& printer,
   base::RunLoop run_loop;
   proxy.RegisterPrepareAuthFactorProgressSignalHandler(
       base::BindRepeating(&OnPrepareSignal, &run_loop, &ret_code, &printer,
-                          auth_factor_type, prepare_purpose),
+                          auth_factor_type, prepare_purpose, on_success),
       base::BindOnce(&OnPrepareSignalConnected, &run_loop, &ret_code, &printer,
                      &proxy, std::move(request)));
 
@@ -1220,6 +1224,82 @@ int DoTerminateAuthFactor(Printer& printer,
     return static_cast<int>(reply.error());
   }
   return 0;
+}
+
+// This is used as the |on_success| callback for the PrepareAuthFactor signal
+// handler. Attempts to add the auth factor and quit the run loop that listens
+// to the signals.
+void AddAfterPrepareDone(
+    Printer* printer,
+    base::CommandLine* cl,
+    org::chromium::UserDataAuthInterfaceProxy* userdataauth_proxy,
+    org::chromium::CryptohomeMiscInterfaceProxy* misc_proxy,
+    base::RunLoop* run_loop,
+    int* ret_code) {
+  *ret_code = DoAddAuthFactor(*printer, cl, *userdataauth_proxy, *misc_proxy);
+  run_loop->Quit();
+}
+
+// Perform PrepareAuthFactor. Upon the complete signal, add the auth factor.
+// Terminate the auth factor afterwards in all situations.
+int DoPrepareAddTerminate(
+    Printer& printer,
+    base::CommandLine* cl,
+    org::chromium::UserDataAuthInterfaceProxy& userdataauth_proxy,
+    org::chromium::CryptohomeMiscInterfaceProxy& misc_proxy) {
+  auto prepare_add_result = DoPrepareAuthFactor(
+      printer, cl, userdataauth_proxy, user_data_auth::PURPOSE_ADD_AUTH_FACTOR,
+      base::BindRepeating(&AddAfterPrepareDone, &printer, cl,
+                          &userdataauth_proxy, &misc_proxy));
+  int terminate_result = DoTerminateAuthFactor(printer, cl, userdataauth_proxy);
+  // Prioritize returning the prepare_add_result as it's usually more useful.
+  if (prepare_add_result != 0) {
+    return prepare_add_result;
+  }
+  return terminate_result;
+}
+
+// This is used as the |on_success| callback for the PrepareAuthFactor signal
+// handler. Attempts to authenticate the auth factor, and, if either the result
+// is success or a non-retryable error, quit the run loop that listens to the
+// signals.
+void AuthenticateAfterPrepareDone(
+    Printer* printer,
+    base::CommandLine* cl,
+    org::chromium::UserDataAuthInterfaceProxy* userdataauth_proxy,
+    org::chromium::CryptohomeMiscInterfaceProxy* misc_proxy,
+    base::RunLoop* run_loop,
+    int* ret_code) {
+  *ret_code =
+      DoAuthenticateAuthFactor(*printer, cl, *userdataauth_proxy, *misc_proxy);
+  // Currently the only auth factor type that utilizes this helper function is
+  // fingerprint, and this is the easiest way to determine whether it needs to
+  // keep the session open for retries. Switch to a more generic method in the
+  // future.
+  if (*ret_code !=
+      user_data_auth::CRYPTOHOME_ERROR_FINGERPRINT_RETRY_REQUIRED) {
+    run_loop->Quit();
+  }
+}
+
+// Perform PrepareAuthFactor. Upon the complete signal, authenticate the auth
+// factor. Terminate the auth factor afterwards in all situations.
+int DoPrepareAuthenticateTerminate(
+    Printer& printer,
+    base::CommandLine* cl,
+    org::chromium::UserDataAuthInterfaceProxy& userdataauth_proxy,
+    org::chromium::CryptohomeMiscInterfaceProxy& misc_proxy) {
+  auto prepare_auth_result = DoPrepareAuthFactor(
+      printer, cl, userdataauth_proxy,
+      user_data_auth::PURPOSE_AUTHENTICATE_AUTH_FACTOR,
+      base::BindRepeating(&AuthenticateAfterPrepareDone, &printer, cl,
+                          &userdataauth_proxy, &misc_proxy));
+  int terminate_result = DoTerminateAuthFactor(printer, cl, userdataauth_proxy);
+  // Prioritize returning the prepare_auth_result as it's usually more useful.
+  if (prepare_auth_result != 0) {
+    return prepare_auth_result;
+  }
+  return terminate_result;
 }
 
 }  // namespace
@@ -3577,10 +3657,25 @@ int main(int argc, char** argv) {
     }
   } else if (!strcmp(switches::kActions[switches::ACTION_PREPARE_AUTH_FACTOR],
                      action.c_str())) {
-    return DoPrepareAuthFactor(printer, cl, userdataauth_proxy);
+    user_data_auth::AuthFactorPreparePurpose prepare_purpose;
+    if (!GetPreparePurpose(printer, cl, &prepare_purpose))
+      return 1;
+
+    return DoPrepareAuthFactor(printer, cl, userdataauth_proxy, prepare_purpose,
+                               base::DoNothingAs<void(base::RunLoop*, int*)>());
   } else if (!strcmp(switches::kActions[switches::ACTION_TERMINATE_AUTH_FACTOR],
                      action.c_str())) {
     return DoTerminateAuthFactor(printer, cl, userdataauth_proxy);
+  } else if (!strcmp(switches::kActions
+                         [switches::ACTION_PREPARE_AND_ADD_AUTH_FACTOR],
+                     action.c_str())) {
+    return DoPrepareAddTerminate(printer, cl, userdataauth_proxy, misc_proxy);
+  } else if (!strcmp(
+                 switches::kActions
+                     [switches::ACTION_PREPARE_AND_AUTHENTICATE_AUTH_FACTOR],
+                 action.c_str())) {
+    return DoPrepareAuthenticateTerminate(printer, cl, userdataauth_proxy,
+                                          misc_proxy);
   } else {
     printer.PrintHumanOutput(
         "Unknown action or no action given.  Available actions:\n");
