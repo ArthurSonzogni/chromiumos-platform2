@@ -6,6 +6,7 @@
 #define INSTALLER_CGPT_MANAGER_H_
 
 #include <iostream>
+#include <optional>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -25,6 +26,15 @@ enum class [[nodiscard]] CgptErrorCode {
 };
 
 std::ostream& operator<<(std::ostream& os, const CgptErrorCode& error);
+
+// Range of sectors on disk.
+struct SectorRange {
+  // First sector.
+  uint64_t start = 0;
+
+  // Number of sectors.
+  uint64_t count = 0;
+};
 
 // CgptManagerInterface provices methods to manipulate the Guid
 // Partition Table as needed for ChromeOS scenarios.
@@ -83,6 +93,19 @@ class CgptManagerInterface {
   //
   // Returns kSuccess or an appropriate error code.
   virtual CgptErrorCode SetHighestPriority(PartitionNum partition_number) = 0;
+
+  // Get the sectors used by the partition.
+  // Returns kCgptSuccess or an appropriate error code.
+  virtual CgptErrorCode GetSectorRange(PartitionNum partition_number,
+                                       SectorRange& sectors) const = 0;
+
+  // Set the sectors used by the partition. If |start| or |count| is
+  // |std::nullopt|, the corresponding partition value will not be
+  // updated. At least one of them must be set.
+  // Returns kCgptSuccess or an appropriate error code.
+  virtual CgptErrorCode SetSectorRange(PartitionNum partition_number,
+                                       std::optional<uint64_t> start,
+                                       std::optional<uint64_t> count) = 0;
 };
 
 class CgptManager : public CgptManagerInterface {
@@ -104,6 +127,11 @@ class CgptManager : public CgptManagerInterface {
   CgptErrorCode GetPartitionUniqueId(PartitionNum partition_number,
                                      Guid* unique_id) const override;
   CgptErrorCode SetHighestPriority(PartitionNum partition_number) override;
+  CgptErrorCode GetSectorRange(PartitionNum partition_number,
+                               SectorRange& sectors) const override;
+  CgptErrorCode SetSectorRange(PartitionNum partition_number,
+                               std::optional<uint64_t> start,
+                               std::optional<uint64_t> count) override;
 
  private:
   // The device name that is passed to Initialize.

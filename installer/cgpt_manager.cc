@@ -339,3 +339,56 @@ CgptErrorCode CgptManager::SetHighestPriority(PartitionNum partition_number) {
 
   return CgptErrorCode::kSuccess;
 }
+
+CgptErrorCode CgptManager::GetSectorRange(PartitionNum partition_number,
+                                          SectorRange& sectors) const {
+  if (!is_initialized_)
+    return CgptErrorCode::kNotInitialized;
+
+  CgptAddParams params;
+  memset(&params, 0, sizeof(params));
+  params.drive_name = const_cast<char*>(device_name_.value().c_str());
+  params.drive_size = device_size_;
+  params.partition = partition_number.Value();
+
+  int retval = CgptGetPartitionDetails(&params);
+  if (retval != CGPT_OK)
+    return CgptErrorCode::kUnknownError;
+
+  sectors.start = params.begin;
+  sectors.count = params.size;
+  return CgptErrorCode::kSuccess;
+}
+
+CgptErrorCode CgptManager::SetSectorRange(PartitionNum partition_number,
+                                          std::optional<uint64_t> start,
+                                          std::optional<uint64_t> count) {
+  if (!is_initialized_)
+    return CgptErrorCode::kNotInitialized;
+
+  CgptAddParams params;
+  memset(&params, 0, sizeof(params));
+
+  params.drive_name = const_cast<char*>(device_name_.value().c_str());
+  params.drive_size = device_size_;
+  params.partition = partition_number.Value();
+
+  // At least one of the inputs must have a value.
+  if (!start.has_value() && !count.has_value())
+    return CgptErrorCode::kInvalidArgument;
+
+  if (start.has_value()) {
+    params.begin = start.value();
+    params.set_begin = true;
+  }
+  if (count.has_value()) {
+    params.size = count.value();
+    params.set_size = true;
+  }
+
+  int retval = CgptAdd(&params);
+  if (retval != CGPT_OK)
+    return CgptErrorCode::kUnknownError;
+
+  return CgptErrorCode::kSuccess;
+}

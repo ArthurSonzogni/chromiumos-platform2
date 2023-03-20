@@ -36,6 +36,16 @@ class MockCgptManager : public CgptManagerInterface {
               SetHighestPriority,
               (PartitionNum partition_number),
               (override));
+  MOCK_METHOD(CgptErrorCode,
+              GetSectorRange,
+              (PartitionNum partition_number, SectorRange& sectors),
+              (const override));
+  MOCK_METHOD(CgptErrorCode,
+              SetSectorRange,
+              (PartitionNum partition_number,
+               std::optional<uint64_t> start,
+               std::optional<uint64_t> count),
+              (override));
 };
 
 #endif  // INSTALLER_MOCK_CGPT_MANAGER_H_
