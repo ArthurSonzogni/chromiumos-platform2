@@ -31,8 +31,10 @@ class EffectsMetricsData {
   EffectsMetricsData();
   void RecordSelectedEffect(const EffectsConfig& config);
   void RecordFrameProcessingLatency(const EffectsConfig& config,
+                                    CameraEffectStreamType stream_type,
                                     const base::TimeDelta& latency);
   void RecordFrameProcessingInterval(const EffectsConfig& config,
+                                     CameraEffectStreamType stream_type,
                                      const base::TimeDelta& interval);
   void RecordRequestedFrameRate(int fps);
   void RecordStreamSize(CameraEffectStreamType stream_type, size_t size);
@@ -43,8 +45,10 @@ class EffectsMetricsData {
   void RecordError(CameraEffectError error);
 
   bool EffectSelected(CameraEffect effect) const;
-  base::TimeDelta AverageFrameProcessingLatency(CameraEffect effect) const;
-  base::TimeDelta AverageFrameProcessingInterval(CameraEffect effect) const;
+  base::TimeDelta AverageFrameProcessingLatency(
+      CameraEffect effect, CameraEffectStreamType stream_type) const;
+  base::TimeDelta AverageFrameProcessingInterval(
+      CameraEffect effect, CameraEffectStreamType stream_type) const;
 
  private:
   friend class EffectsMetricsUploader;
@@ -54,12 +58,13 @@ class EffectsMetricsData {
   size_t num_still_shots_taken_ = 0;
   CameraEffectError error_ = CameraEffectError::kNoError;
   base::flat_set<CameraEffect> selected_effects_;
-  std::array<std::vector<base::TimeDelta>,
-             static_cast<size_t>(CameraEffect::kMaxValue) + 1>
-      processing_times_;
-  std::array<std::vector<base::TimeDelta>,
-             static_cast<size_t>(CameraEffect::kMaxValue) + 1>
-      frame_intervals_;
+  // A vector of time durations for each effect and stream type combination.
+  using DurationVectorArray = std::array<
+      std::array<std::vector<base::TimeDelta>,
+                 static_cast<size_t>(CameraEffectStreamType::kMaxValue) + 1>,
+      static_cast<size_t>(CameraEffect::kMaxValue) + 1>;
+  DurationVectorArray processing_times_;
+  DurationVectorArray frame_intervals_;
   std::array<std::pair<size_t /*min*/, size_t /*max*/>,
              static_cast<size_t>(CameraEffect::kMaxValue) + 1>
       stream_sizes_;

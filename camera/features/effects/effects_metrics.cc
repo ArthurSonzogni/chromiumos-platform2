@@ -39,18 +39,22 @@ void EffectsMetricsData::RecordSelectedEffect(const EffectsConfig& config) {
   }
 }
 
-// TODO(b/265602808): record blob stream processing latency
 void EffectsMetricsData::RecordFrameProcessingLatency(
-    const EffectsConfig& config, const base::TimeDelta& latency) {
-  size_t idx = static_cast<size_t>(CameraEffectFromConfig(config));
-  processing_times_[idx].push_back(latency);
+    const EffectsConfig& config,
+    CameraEffectStreamType stream_type,
+    const base::TimeDelta& latency) {
+  size_t effect_idx = static_cast<size_t>(CameraEffectFromConfig(config));
+  size_t stream_idx = static_cast<size_t>(stream_type);
+  processing_times_[effect_idx][stream_idx].push_back(latency);
 }
 
-// TODO(b/265602808): record blob stream frame interval
 void EffectsMetricsData::RecordFrameProcessingInterval(
-    const EffectsConfig& config, const base::TimeDelta& interval) {
-  size_t idx = static_cast<size_t>(CameraEffectFromConfig(config));
-  frame_intervals_[idx].push_back(interval);
+    const EffectsConfig& config,
+    CameraEffectStreamType stream_type,
+    const base::TimeDelta& interval) {
+  size_t effect_idx = static_cast<size_t>(CameraEffectFromConfig(config));
+  size_t stream_idx = static_cast<size_t>(stream_type);
+  frame_intervals_[effect_idx][stream_idx].push_back(interval);
 }
 
 void EffectsMetricsData::RecordRequestedFrameRate(int fps) {
@@ -92,8 +96,9 @@ bool EffectsMetricsData::EffectSelected(CameraEffect effect) const {
 }
 
 base::TimeDelta EffectsMetricsData::AverageFrameProcessingLatency(
-    CameraEffect effect) const {
-  auto latencies = processing_times_[static_cast<size_t>(effect)];
+    CameraEffect effect, CameraEffectStreamType stream_type) const {
+  const auto& latencies = processing_times_[static_cast<size_t>(effect)]
+                                           [static_cast<size_t>(stream_type)];
   if (latencies.size() > 0) {
     return std::reduce(latencies.begin(), latencies.end()) / latencies.size();
   }
@@ -101,8 +106,9 @@ base::TimeDelta EffectsMetricsData::AverageFrameProcessingLatency(
 }
 
 base::TimeDelta EffectsMetricsData::AverageFrameProcessingInterval(
-    CameraEffect effect) const {
-  auto intervals = frame_intervals_[static_cast<size_t>(effect)];
+    CameraEffect effect, CameraEffectStreamType stream_type) const {
+  const auto& intervals = frame_intervals_[static_cast<size_t>(effect)]
+                                          [static_cast<size_t>(stream_type)];
   if (intervals.size() > 0) {
     return std::reduce(intervals.begin(), intervals.end()) / intervals.size();
   }
@@ -145,25 +151,30 @@ void EffectsMetricsUploader::UploadMetricsDataOnThread(
   metrics_helper_->SendEffectsNumStillShotsTaken(
       metrics.num_still_shots_taken_);
 
-  // TODO(b/265602808): upload blob stream metrics
   // Post per-effect metrics
   for (int i = 0; i <= static_cast<int>(CameraEffect::kMaxValue); i++) {
     CameraEffect effect = static_cast<CameraEffect>(i);
-
     if (metrics.EffectSelected(effect)) {
       metrics_helper_->SendEffectsSelectedEffect(effect);
     }
+    for (int j = 0; j <= static_cast<int>(CameraEffectStreamType::kMaxValue);
+         j++) {
+      CameraEffectStreamType stream_type =
+          static_cast<CameraEffectStreamType>(j);
 
-    auto avg_latency = metrics.AverageFrameProcessingLatency(effect);
-    if (avg_latency != base::TimeDelta()) {
-      metrics_helper_->SendEffectsAvgProcessingLatency(
-          effect, CameraEffectStreamType::kYuv, avg_latency);
-    }
+      auto avg_latency =
+          metrics.AverageFrameProcessingLatency(effect, stream_type);
+      if (avg_latency != base::TimeDelta()) {
+        metrics_helper_->SendEffectsAvgProcessingLatency(effect, stream_type,
+                                                         avg_latency);
+      }
 
-    auto avg_interval = metrics.AverageFrameProcessingInterval(effect);
-    if (avg_interval != base::TimeDelta()) {
-      metrics_helper_->SendEffectsAvgProcessedFrameInterval(
-          effect, CameraEffectStreamType::kYuv, avg_interval);
+      auto avg_interval =
+          metrics.AverageFrameProcessingInterval(effect, stream_type);
+      if (avg_interval != base::TimeDelta()) {
+        metrics_helper_->SendEffectsAvgProcessedFrameInterval(
+            effect, stream_type, avg_interval);
+      }
     }
   }
 

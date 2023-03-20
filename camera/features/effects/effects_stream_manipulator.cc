@@ -228,6 +228,9 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
 
     // In-flight still image capture requests for this stream.
     base::flat_map<uint32_t, CaptureContext> capture_contexts;
+
+    // Time at which the most recent frame was processed for this stream.
+    base::TimeTicks last_processed_frame_timestamp;
   };
 
   struct RenderResult {
@@ -254,6 +257,8 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
   void ResetState();
   StreamContext* GetStreamContext(const camera3_stream_t*) const;
   void ReturnStillCaptureResult(Camera3CaptureDescriptor result);
+  void OnFrameStarted(StreamContext& stream_context);
+  void OnFrameCompleted(StreamContext& stream_context);
 
   ReloadableConfigFile config_;
   RuntimeOptions* runtime_options_;
@@ -302,7 +307,6 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
 
   EffectsMetricsData metrics_;
   std::unique_ptr<EffectsMetricsUploader> metrics_uploader_;
-  base::TimeTicks last_processed_frame_timestamp_;
 
   std::unique_ptr<base::OneShotTimer> marker_file_timer_;
 };
@@ -391,6 +395,31 @@ EffectsStreamManipulatorImpl::StreamContext::GetCaptureContext(
     uint32_t frame_number) {
   auto it = capture_contexts.find(frame_number);
   return it == capture_contexts.end() ? nullptr : &it->second;
+}
+
+void EffectsStreamManipulatorImpl::OnFrameStarted(
+    StreamContext& stream_context) {
+  auto now = base::TimeTicks::Now();
+  auto stream_type = stream_context.yuv_stream_for_blob
+                         ? CameraEffectStreamType::kBlob
+                         : CameraEffectStreamType::kYuv;
+  // If we've recorded at least one frame
+  if (!stream_context.last_processed_frame_timestamp.is_null()) {
+    metrics_.RecordFrameProcessingInterval(
+        last_set_effect_config_, stream_type,
+        now - stream_context.last_processed_frame_timestamp);
+  }
+  stream_context.last_processed_frame_timestamp = now;
+}
+
+void EffectsStreamManipulatorImpl::OnFrameCompleted(
+    StreamContext& stream_context) {
+  auto stream_type = stream_context.yuv_stream_for_blob
+                         ? CameraEffectStreamType::kBlob
+                         : CameraEffectStreamType::kYuv;
+  metrics_.RecordFrameProcessingLatency(
+      last_set_effect_config_, stream_type,
+      base::TimeTicks::Now() - stream_context.last_processed_frame_timestamp);
 }
 
 void EffectsStreamManipulatorImpl::CaptureContext::CheckForCompletion() && {
@@ -617,6 +646,7 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureRequest(
     DCHECK(was_inserted);
     CaptureContext& capture_context = ctx_it->second;
 
+    OnFrameStarted(*stream_context);
     still_capture_processor_->QueuePendingOutputBuffer(
         request->frame_number(), output_buffer->raw_buffer(), *request);
 
@@ -734,6 +764,7 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
 
     // From this point onwards, we should only be dealing with YUV buffers.
     DCHECK_NE(result_buffer.stream()->format, HAL_PIXEL_FORMAT_BLOB);
+    OnFrameStarted(*stream_context);
 
     if (result_buffer.status() != CAMERA3_BUFFER_STATUS_OK) {
       LOGF(ERROR) << "EffectsStreamManipulator received failed buffer: "
@@ -777,21 +808,11 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
     }
 
     result.AppendOutputBuffer(std::move(result_buffer));
+    OnFrameCompleted(*stream_context);
   }
 
-  auto frame_processed_time = base::TimeTicks::Now();
-  // If we've recorded at least one frame
-  if (last_processed_frame_timestamp_ != base::TimeTicks()) {
-    metrics_.RecordFrameProcessingInterval(
-        last_set_effect_config_,
-        frame_processed_time - last_processed_frame_timestamp_);
-  }
-  last_processed_frame_timestamp_ = frame_processed_time;
-  metrics_.RecordFrameProcessingLatency(
-      last_set_effect_config_, frame_processed_time - processing_time_start);
   metrics_.RecordNumConcurrentStreams(stream_contexts_.size());
   metrics_.RecordNumConcurrentProcessedStreams(num_processed_streams);
-
   if (metrics_uploader_->TimeSinceLastUpload() >
       kMaximumMetricsSessionDuration) {
     UploadAndResetMetricsData();
@@ -904,6 +925,7 @@ void EffectsStreamManipulatorImpl::ReturnStillCaptureResult(
           *stream_context->GetCaptureContext(result.frame_number());
       capture_context.yuv_buffer = {};
       capture_context.still_capture_processor_pending = false;
+      OnFrameCompleted(*stream_context);
       std::move(capture_context).CheckForCompletion();
     }
     metrics_.RecordStillShotTaken();
@@ -1010,9 +1032,6 @@ void EffectsStreamManipulatorImpl::SetEffect(EffectsConfig new_config) {
 
     if (new_config.HasEnabledEffects()) {
       metrics_.RecordSelectedEffect(new_config);
-    } else {
-      // If no effect is set, stop recording frame intervals
-      last_processed_frame_timestamp_ = base::TimeTicks();
     }
   } else {
     LOGF(WARNING) << "SetEffect called, but pipeline not ready.";
