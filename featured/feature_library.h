@@ -100,7 +100,7 @@ class FEATURE_EXPORT PlatformFeaturesInterface {
   // (e.g. when logging in). So, if you need to run an experiment before this it
   // should be set up as a client-side trial.
   virtual void GetParamsAndEnabled(
-      const std::vector<const VariationsFeature* const>& features,
+      const std::vector<const VariationsFeature*>& features,
       GetParamsCallback callback) = 0;
   // Like GetParamsAndEnabled(), but blocks waiting for the dbus call to finish.
   // If you have multiple related features you wish to look up, you MUST look
@@ -120,7 +120,7 @@ class FEATURE_EXPORT PlatformFeaturesInterface {
   // GetParamsAndEnabled(), especially soon after Chrome starts.
   // TODO(b/236009983): Fix this.
   virtual ParamsResult GetParamsAndEnabledBlocking(
-      const std::vector<const VariationsFeature* const>& features) = 0;
+      const std::vector<const VariationsFeature*>& features) = 0;
 
   // Shutdown the bus object, if any. Used for C API, or when destroying it and
   // the bus is no longer owned.
@@ -159,11 +159,11 @@ class FEATURE_EXPORT PlatformFeatures : public PlatformFeaturesInterface {
   bool IsEnabledBlocking(const VariationsFeature& feature) override;
 
   void GetParamsAndEnabled(
-      const std::vector<const VariationsFeature* const>& features,
+      const std::vector<const VariationsFeature*>& features,
       GetParamsCallback callback) override;
 
   ParamsResult GetParamsAndEnabledBlocking(
-      const std::vector<const VariationsFeature* const>& features) override;
+      const std::vector<const VariationsFeature*>& features) override;
 
   void ShutdownBus() override;
 
@@ -193,18 +193,18 @@ class FEATURE_EXPORT PlatformFeatures : public PlatformFeaturesInterface {
 
   // Creates the default response for GetParamsAndEnabled{,Blocking}()
   ParamsResult CreateDefaultGetParamsAndEnabledResponse(
-      const std::vector<const VariationsFeature* const>& features);
+      const std::vector<const VariationsFeature*>& features);
 
   // Callback that is invoked for GetParamsAndEnabled() when
   // WaitForServiceToBeAvailable() finishes.
   void OnWaitForServiceGetParams(
-      const std::vector<const VariationsFeature* const>& feature,
+      const std::vector<const VariationsFeature*>& feature,
       GetParamsCallback callback,
       bool available);
 
   // Callback that is invoked when chrome_proxy_->CallMethod() finishes.
   void HandleGetParamsResponse(
-      const std::vector<const VariationsFeature* const>& features,
+      const std::vector<const VariationsFeature*>& features,
       GetParamsCallback callback,
       dbus::Response* response);
 
@@ -212,13 +212,13 @@ class FEATURE_EXPORT PlatformFeatures : public PlatformFeaturesInterface {
   // GetParamsAndEnabledBlocking.
   void EncodeGetParamsArgument(
       dbus::MessageWriter* writer,
-      const std::vector<const VariationsFeature* const>& features);
+      const std::vector<const VariationsFeature*>& features);
 
   // Decoding side of both HandleGetParamsResponse and
   // GetParamsAndEnabledBlocking.
   ParamsResult ParseGetParamsResponse(
       dbus::Response* response,
-      const std::vector<const VariationsFeature* const>& features);
+      const std::vector<const VariationsFeature*>& features);
 
   // Verify that we have only ever seen |feature| with this same address.
   // Used to prevent defining the same feature with distinct default values.

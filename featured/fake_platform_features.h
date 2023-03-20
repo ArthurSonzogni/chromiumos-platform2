@@ -33,11 +33,11 @@ class FEATURE_EXPORT FakePlatformFeatures : public PlatformFeaturesInterface {
   bool IsEnabledBlocking(const VariationsFeature& feature) override;
 
   void GetParamsAndEnabled(
-      const std::vector<const VariationsFeature* const>& features,
+      const std::vector<const VariationsFeature*>& features,
       GetParamsCallback callback) override;
 
   ParamsResult GetParamsAndEnabledBlocking(
-      const std::vector<const VariationsFeature* const>& features) override;
+      const std::vector<const VariationsFeature*>& features) override;
 
   void SetEnabled(const std::string& feature, bool enabled);
 

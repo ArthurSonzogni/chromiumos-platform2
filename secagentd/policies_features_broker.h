@@ -88,7 +88,7 @@ class PoliciesFeaturesBroker : public PoliciesFeaturesBrokerInterface {
   mutable base::Lock values_lock_;
   std::map<Feature, VariationAndValue> feature_values_;
   bool device_report_xdr_events_policy_value_ = false;
-  std::vector<const VariationsFeature* const> variations_to_query_;
+  std::vector<const VariationsFeature*> variations_to_query_;
 
   base::RepeatingTimer poll_timer_;
   base::OneShotTimer poll_done_fallback_timer_;

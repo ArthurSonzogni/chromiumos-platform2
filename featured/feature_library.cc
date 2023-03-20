@@ -123,9 +123,9 @@ void PlatformFeatures::HandleIsEnabledResponse(const VariationsFeature& feature,
 }
 
 void PlatformFeatures::GetParamsAndEnabled(
-    const std::vector<const VariationsFeature* const>& features,
+    const std::vector<const VariationsFeature*>& features,
     GetParamsCallback callback) {
-  for (const auto& feature : features) {
+  for (const auto* feature : features) {
     DCHECK(CheckFeatureIdentity(*feature)) << feature->name;
   }
 
@@ -136,8 +136,8 @@ void PlatformFeatures::GetParamsAndEnabled(
 
 PlatformFeaturesInterface::ParamsResult
 PlatformFeatures::GetParamsAndEnabledBlocking(
-    const std::vector<const VariationsFeature* const>& features) {
-  for (const auto& feature : features) {
+    const std::vector<const VariationsFeature*>& features) {
+  for (const auto* feature : features) {
     DCHECK(CheckFeatureIdentity(*feature)) << feature->name;
   }
 
@@ -152,10 +152,10 @@ PlatformFeatures::GetParamsAndEnabledBlocking(
 
 void PlatformFeatures::EncodeGetParamsArgument(
     dbus::MessageWriter* writer,
-    const std::vector<const VariationsFeature* const>& features) {
+    const std::vector<const VariationsFeature*>& features) {
   dbus::MessageWriter array_writer(nullptr);
   writer->OpenArray("s", &array_writer);
-  for (const auto& feature : features) {
+  for (const auto* feature : features) {
     array_writer.AppendString(feature->name);
   }
   writer->CloseContainer(&array_writer);
@@ -163,9 +163,9 @@ void PlatformFeatures::EncodeGetParamsArgument(
 
 PlatformFeaturesInterface::ParamsResult
 PlatformFeatures::CreateDefaultGetParamsAndEnabledResponse(
-    const std::vector<const VariationsFeature* const>& features) {
+    const std::vector<const VariationsFeature*>& features) {
   std::map<std::string, ParamsResultEntry> default_response;
-  for (const auto& feature : features) {
+  for (const auto* feature : features) {
     default_response[feature->name] = ParamsResultEntry{
         .enabled = feature->default_state == FEATURE_ENABLED_BY_DEFAULT,
     };
@@ -174,7 +174,7 @@ PlatformFeatures::CreateDefaultGetParamsAndEnabledResponse(
 }
 
 void PlatformFeatures::OnWaitForServiceGetParams(
-    const std::vector<const VariationsFeature* const>& features,
+    const std::vector<const VariationsFeature*>& features,
     GetParamsCallback callback,
     bool available) {
   if (!available) {
@@ -194,7 +194,7 @@ void PlatformFeatures::OnWaitForServiceGetParams(
 }
 
 void PlatformFeatures::HandleGetParamsResponse(
-    const std::vector<const VariationsFeature* const>& features,
+    const std::vector<const VariationsFeature*>& features,
     GetParamsCallback callback,
     dbus::Response* response) {
   std::move(callback).Run(ParseGetParamsResponse(response, features));
@@ -202,7 +202,7 @@ void PlatformFeatures::HandleGetParamsResponse(
 
 PlatformFeatures::ParamsResult PlatformFeatures::ParseGetParamsResponse(
     dbus::Response* response,
-    const std::vector<const VariationsFeature* const>& features) {
+    const std::vector<const VariationsFeature*>& features) {
   // Parse the response, which should be an array containing dict entries which
   // maps feature names to a struct containing:
   // * A bool for whether to use the overridden feature enable state
@@ -259,7 +259,7 @@ PlatformFeatures::ParamsResult PlatformFeatures::ParseGetParamsResponse(
         // This is mildly inefficient, but the number of features passed to this
         // method is expected to be small (human magnitude), so it isn't a
         // prohibitive cost.
-        for (const auto& feature : features) {
+        for (const auto* feature : features) {
           if (feature->name == feature_name) {
             entry.enabled =
                 feature->default_state == FEATURE_ENABLED_BY_DEFAULT;

@@ -41,8 +41,8 @@ extern "C" int CFeatureLibraryGetParamsAndEnabledBlocking(
   auto* library = reinterpret_cast<feature::PlatformFeaturesInterface*>(handle);
 
   // Initialize vector from C-style array
-  std::vector<const VariationsFeature* const> features_vec(
-      features, &features[num_features]);
+  std::vector<const VariationsFeature*> features_vec(features,
+                                                     &features[num_features]);
   auto result = library->GetParamsAndEnabledBlocking(features_vec);
   CHECK_EQ(result.size(), num_features);
 

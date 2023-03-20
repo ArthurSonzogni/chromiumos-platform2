@@ -33,7 +33,7 @@ bool FakePlatformFeatures::IsEnabledBlocking(const VariationsFeature& feature) {
 }
 
 void FakePlatformFeatures::GetParamsAndEnabled(
-    const std::vector<const VariationsFeature* const>& features,
+    const std::vector<const VariationsFeature*>& features,
     GetParamsCallback callback) {
   bus_->AssertOnOriginThread();
 
@@ -44,10 +44,10 @@ void FakePlatformFeatures::GetParamsAndEnabled(
 
 PlatformFeaturesInterface::ParamsResult
 FakePlatformFeatures::GetParamsAndEnabledBlocking(
-    const std::vector<const VariationsFeature* const>& features) {
+    const std::vector<const VariationsFeature*>& features) {
   base::AutoLock auto_lock(enabled_lock_);
   std::map<std::string, ParamsResultEntry> out;
-  for (const auto& feature : features) {
+  for (const auto* feature : features) {
     ParamsResultEntry cur;
 
     auto enabled_it = enabled_.find(feature->name);
