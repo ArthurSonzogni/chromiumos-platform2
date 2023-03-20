@@ -2255,14 +2255,8 @@ bool AttestationService::VerifyCertifiedKeyGeneration(
     LOG(ERROR) << __func__ << ": GetRandom(nonce) failed.";
     return false;
   }
-  std::vector<KeyType> key_type_candidates;
-  if (tpm_utility_->GetVersion() == TPM_2_0) {
-    key_type_candidates = {KEY_TYPE_RSA, KEY_TYPE_ECC};
-  } else {
-    key_type_candidates = {KEY_TYPE_RSA};
-  }
 
-  for (KeyType key_type : key_type_candidates) {
+  for (KeyType key_type : tpm_utility_->GetSupportedKeyTypes()) {
     std::string key_blob;
     std::string public_key_der;
     std::string public_key_tpm_format;
