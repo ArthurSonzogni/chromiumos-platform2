@@ -8,6 +8,7 @@
 #include <sys/types.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -41,7 +42,7 @@ class SubprocessController {
   SubprocessController(const SubprocessController&) = delete;
   SubprocessController& operator=(const SubprocessController&) = delete;
 
-  virtual ~SubprocessController() = default;
+  virtual ~SubprocessController();
 
   // Re-execs patchpanel with a new argument: |argv_| + "|fd_arg_|=N", where N
   // is the side of |control_fd|. This tells the subprocess to start up a
@@ -73,7 +74,7 @@ class SubprocessController {
   // subprocess exited unexpectedly.
   shill::ProcessManager* process_manager_;
 
-  pid_t pid_{0};
+  std::optional<pid_t> pid_ = std::nullopt;
   uint8_t restarts_{0};
   base::FilePath cmd_path_;
   std::vector<std::string> argv_;

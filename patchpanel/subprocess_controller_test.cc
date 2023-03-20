@@ -31,6 +31,15 @@ const base::FilePath kCmdPath("/usr/bin/patchpaneld");
 
 class SubprocessControllerTest : public ::testing::Test {
  protected:
+  void SetUp() override {
+    ON_CALL(system_, SocketPair(_, _, _, _))
+        .WillByDefault(WithArg<3>([&](int sv[2]) {
+          sv[0] = GenerateFakeFd();
+          sv[1] = GenerateFakeFd();
+          return 0;
+        }));
+  }
+
   // Generate a fake FD for the variables that will be closed during the tests.
   int GenerateFakeFd() { return open("/dev/null", O_RDONLY); }
 
@@ -64,16 +73,35 @@ TEST_F(SubprocessControllerTest, Start) {
   SubprocessController subprocess_controller(&system_, &process_manager_,
                                              kCmdPath, "--adb_proxy_fd");
   subprocess_controller.Start();
+
+  // Stop the process when subprocess_controller is destroyed.
+  EXPECT_CALL(process_manager_, StopProcess(pid));
+}
+
+TEST_F(SubprocessControllerTest, StartFailed) {
+  // StopProcess() should not be called when StartProcess() fails.
+  EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _, _))
+      .WillOnce(Return(shill::ProcessManager::kInvalidPID));
+  EXPECT_CALL(process_manager_, StopProcess(_)).Times(0);
+
+  SubprocessController subprocess_controller(&system_, &process_manager_,
+                                             kCmdPath, "--adb_proxy_fd");
+  subprocess_controller.Start();
+}
+
+TEST_F(SubprocessControllerTest, StartTwice) {
+  // StartProcess() should be called only once if the first Start() successes.
+  constexpr pid_t pid = 9;
+  EXPECT_CALL(process_manager_, StartProcess(_, _, _, _, _, _, _))
+      .WillOnce(Return(pid));
+
+  SubprocessController subprocess_controller(&system_, &process_manager_,
+                                             kCmdPath, "--adb_proxy_fd");
+  subprocess_controller.Start();
+  subprocess_controller.Start();
 }
 
 TEST_F(SubprocessControllerTest, Restart) {
-  ON_CALL(system_, SocketPair(_, _, _, _))
-      .WillByDefault(WithArg<3>([&](int sv[2]) {
-        sv[0] = GenerateFakeFd();
-        sv[1] = GenerateFakeFd();
-        return 0;
-      }));
-
   // Store the exit callback at |exit_cb_at_process_manager|.
   base::OnceCallback<void(int)> exit_cb_at_process_manager;
   constexpr pid_t pid = 9;

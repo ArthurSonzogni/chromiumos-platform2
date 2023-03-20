@@ -39,7 +39,18 @@ SubprocessController::SubprocessController(
       cmd_path_(cmd_path),
       fd_arg_(fd_arg) {}
 
+SubprocessController::~SubprocessController() {
+  if (pid_) {
+    process_manager_->StopProcess(*pid_);
+  }
+}
+
 void SubprocessController::Start() {
+  if (pid_) {
+    LOG(ERROR) << "The process is already running, ignore";
+    return;
+  }
+
   int control[2];
 
   if (system_->SocketPair(AF_UNIX, SOCK_SEQPACKET, 0, control) != 0) {
@@ -56,17 +67,24 @@ void SubprocessController::Start() {
   const std::vector<std::pair<int, int>> fds_to_bind = {
       {subprocess_fd, subprocess_fd}};
 
-  pid_ = process_manager_->StartProcess(
+  const auto pid = process_manager_->StartProcess(
       FROM_HERE, cmd_path_, child_argv, /*environment=*/{}, fds_to_bind, true,
       base::BindOnce(&SubprocessController::OnProcessExitedUnexpectedly,
                      weak_factory_.GetWeakPtr()));
+  if (pid != shill::ProcessManager::kInvalidPID) {
+    pid_ = pid;
+  } else {
+    LOG(ERROR) << "Failed to start the subprocess: " << fd_arg_;
+  }
 }
 
 void SubprocessController::OnProcessExitedUnexpectedly(int exit_status) {
   const auto delay = base::Milliseconds(kSubprocessRestartDelayMs << restarts_);
-  LOG(ERROR) << "Subprocess: " << fd_arg_
-             << " exited unexpectedly, status: " << exit_status
+  LOG(ERROR) << "Subprocess: " << fd_arg_ << " (pid = " << *pid_
+             << " ) exited unexpectedly, status: " << exit_status
              << ", attempting to restart after " << delay;
+
+  pid_ = std::nullopt;
 
   ++restarts_;
   if (restarts_ > kMaxRestarts) {
