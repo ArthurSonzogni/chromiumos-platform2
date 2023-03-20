@@ -16,6 +16,7 @@
 #include <base/run_loop.h>
 #include <base/strings/string_split.h>
 #include <base/test/task_environment.h>
+#include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/base/file_test_utils.h"
@@ -349,7 +350,7 @@ TEST_F(ProcessFetcherTest, FetchProcessInfo) {
 
 // Test that we handle a missing /proc/uptime file.
 TEST_F(ProcessFetcherTest, MissingProcUptimeFile) {
-  ASSERT_TRUE(base::DeleteFile(GetProcUptimePath(temp_dir_path())));
+  ASSERT_TRUE(brillo::DeleteFile(GetProcUptimePath(temp_dir_path())));
 
   auto process_result = FetchProcessInfo();
 
@@ -372,8 +373,8 @@ TEST_F(ProcessFetcherTest, IncorrectlyFormattedProcUptimeFile) {
 // Test that we handle a missing /proc/|kPid|/cmdline file.
 TEST_F(ProcessFetcherTest, MissingProcPidCmdlineFile) {
   ASSERT_TRUE(
-      base::DeleteFile(GetProcProcessDirectoryPath(temp_dir_path(), kPid)
-                           .Append(kProcessCmdlineFile)));
+      brillo::DeleteFile(GetProcProcessDirectoryPath(temp_dir_path(), kPid)
+                             .Append(kProcessCmdlineFile)));
 
   auto process_result = FetchProcessInfo();
 
@@ -385,8 +386,8 @@ TEST_F(ProcessFetcherTest, MissingProcPidCmdlineFile) {
 // Test that we handle a missing /proc/|kPid|/stat file.
 TEST_F(ProcessFetcherTest, MissingProcPidStatFile) {
   ASSERT_TRUE(
-      base::DeleteFile(GetProcProcessDirectoryPath(temp_dir_path(), kPid)
-                           .Append(kProcessStatFile)));
+      brillo::DeleteFile(GetProcProcessDirectoryPath(temp_dir_path(), kPid)
+                             .Append(kProcessStatFile)));
 
   auto process_result = FetchProcessInfo();
 
@@ -398,8 +399,8 @@ TEST_F(ProcessFetcherTest, MissingProcPidStatFile) {
 // Test that we handle a missing /proc/|kPid|/statm file.
 TEST_F(ProcessFetcherTest, MissingProcPidStatmFile) {
   ASSERT_TRUE(
-      base::DeleteFile(GetProcProcessDirectoryPath(temp_dir_path(), kPid)
-                           .Append(kProcessStatmFile)));
+      brillo::DeleteFile(GetProcProcessDirectoryPath(temp_dir_path(), kPid)
+                             .Append(kProcessStatmFile)));
 
   auto process_result = FetchProcessInfo();
 
@@ -411,8 +412,8 @@ TEST_F(ProcessFetcherTest, MissingProcPidStatmFile) {
 // Test that we handle a missing /proc/|kPid|/io file.
 TEST_F(ProcessFetcherTest, MissingProcPidIOFile) {
   ASSERT_TRUE(
-      base::DeleteFile(GetProcProcessDirectoryPath(temp_dir_path(), kPid)
-                           .Append(kProcessIOFile)));
+      brillo::DeleteFile(GetProcProcessDirectoryPath(temp_dir_path(), kPid)
+                             .Append(kProcessIOFile)));
   ExpectAndSetExecutorGetProcessIOContentsResponse({});
 
   auto process_result = FetchProcessInfo();
@@ -613,8 +614,8 @@ TEST_F(ProcessFetcherTest, ProcPidStatmFileExcessiveResidentMemory) {
 // Test that we handle a missing /proc/|kPid|/status file.
 TEST_F(ProcessFetcherTest, MissingProcPidStatusFile) {
   ASSERT_TRUE(
-      base::DeleteFile(GetProcProcessDirectoryPath(temp_dir_path(), kPid)
-                           .Append(kProcessStatusFile)));
+      brillo::DeleteFile(GetProcProcessDirectoryPath(temp_dir_path(), kPid)
+                             .Append(kProcessStatusFile)));
 
   auto process_result = FetchProcessInfo();
 
@@ -708,9 +709,9 @@ TEST_F(ProcessFetcherTest, FetchMultipleProcessInfo) {
 // Test that we handle a missing /proc/|kSecondPid|/stat file while ignoring
 // single process errors.
 TEST_F(ProcessFetcherTest, MissingProcPidStatFileMultipleProcessIgnoreError) {
-  ASSERT_TRUE(
-      base::DeleteFile(GetProcProcessDirectoryPath(temp_dir_path(), kSecondPid)
-                           .Append(kProcessStatFile)));
+  ASSERT_TRUE(brillo::DeleteFile(
+      GetProcProcessDirectoryPath(temp_dir_path(), kSecondPid)
+          .Append(kProcessStatFile)));
   ExpectAndSetExecutorGetProcessIOContentsResponse(
       kFakeProcPidIOContentsOnlyTwoResult);
   auto process_result = FetchMultipleProcessInfo(true);
@@ -724,9 +725,9 @@ TEST_F(ProcessFetcherTest, MissingProcPidStatFileMultipleProcessIgnoreError) {
 // Test that we handle a missing /proc/|kSecondPid|/stat file while not ignoring
 // single process errors.
 TEST_F(ProcessFetcherTest, MissingProcPidStatFileMultipleProcess) {
-  ASSERT_TRUE(
-      base::DeleteFile(GetProcProcessDirectoryPath(temp_dir_path(), kSecondPid)
-                           .Append(kProcessStatFile)));
+  ASSERT_TRUE(brillo::DeleteFile(
+      GetProcProcessDirectoryPath(temp_dir_path(), kSecondPid)
+          .Append(kProcessStatFile)));
   ExpectAndSetExecutorGetProcessIOContentsResponse(
       kFakeProcPidIOContentsOnlyTwoResult);
   auto process_result = FetchMultipleProcessInfo(false);
@@ -762,9 +763,9 @@ TEST_F(ProcessFetcherTest, ProcPidIOFileInsufficientTokensMultipleProcess) {
 // Test that we handle a missing /proc/|kSecondPid|/io file while not ignoring
 // single process errors.
 TEST_F(ProcessFetcherTest, MissingProcPidIOFileMultipleProcess) {
-  ASSERT_TRUE(
-      base::DeleteFile(GetProcProcessDirectoryPath(temp_dir_path(), kSecondPid)
-                           .Append(kProcessIOFile)));
+  ASSERT_TRUE(brillo::DeleteFile(
+      GetProcProcessDirectoryPath(temp_dir_path(), kSecondPid)
+          .Append(kProcessIOFile)));
   ExpectAndSetExecutorGetProcessIOContentsResponse(
       kFakeProcPidIOContentsOnlyTwoResult);
 

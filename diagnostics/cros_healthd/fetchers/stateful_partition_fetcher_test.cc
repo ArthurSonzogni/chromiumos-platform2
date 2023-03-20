@@ -6,6 +6,7 @@
 
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
+#include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/base/file_test_utils.h"
@@ -62,14 +63,14 @@ TEST_F(StatefulePartitionFetcherTest, TestFetchStatefulPartitionInfo) {
 }
 
 TEST_F(StatefulePartitionFetcherTest, TestNoStatefulPartition) {
-  ASSERT_TRUE(base::DeleteFile(root_dir().Append(kStatefulPartitionPath)));
+  ASSERT_TRUE(brillo::DeleteFile(root_dir().Append(kStatefulPartitionPath)));
 
   const auto result = FetchStatefulPartitionInfo();
   EXPECT_TRUE(result->is_error());
 }
 
 TEST_F(StatefulePartitionFetcherTest, TestNoMtabFile) {
-  ASSERT_TRUE(base::DeleteFile(root_dir().Append(kMtabPath)));
+  ASSERT_TRUE(brillo::DeleteFile(root_dir().Append(kMtabPath)));
 
   const auto result = FetchStatefulPartitionInfo();
   EXPECT_TRUE(result->is_error());

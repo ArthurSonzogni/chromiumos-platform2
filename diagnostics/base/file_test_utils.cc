@@ -12,6 +12,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/files/scoped_temp_dir.h>
+#include <brillo/files/file_util.h>
 
 namespace diagnostics {
 namespace {
@@ -109,7 +110,7 @@ void BaseFileTest::SetTestRoot(const base::FilePath& path) {
 
 void BaseFileTest::UnsetPath(const PathType& path) const {
   ASSERT_FALSE(GetRootDir().empty());
-  ASSERT_TRUE(base::DeletePathRecursively(GetPathUnderRoot(path)));
+  ASSERT_TRUE(brillo::DeletePathRecursively(GetPathUnderRoot(path)));
 }
 
 void BaseFileTest::SetSymbolicLink(const PathType& target,

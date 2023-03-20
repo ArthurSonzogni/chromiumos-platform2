@@ -7,6 +7,7 @@
 #include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/time/time_override.h>
+#include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/base/file_test_utils.h"
@@ -154,7 +155,7 @@ TEST_F(BootPerformanceFetcherTest, FetchBootPerformanceInfo) {
 }
 
 TEST_F(BootPerformanceFetcherTest, TestNoBiosTimesInfo) {
-  ASSERT_TRUE(base::DeleteFile(GetRootedPath(path::kBiosTimes)));
+  ASSERT_TRUE(brillo::DeleteFile(GetRootedPath(path::kBiosTimes)));
 
   auto result = FetchBootPerformanceInfo();
   ASSERT_TRUE(result->is_error());
@@ -162,7 +163,8 @@ TEST_F(BootPerformanceFetcherTest, TestNoBiosTimesInfo) {
 }
 
 TEST_F(BootPerformanceFetcherTest, TestNoUptimeLogInfo) {
-  ASSERT_TRUE(base::DeleteFile(GetRootedPath(path::kUptimeLoginPromptVisible)));
+  ASSERT_TRUE(
+      brillo::DeleteFile(GetRootedPath(path::kUptimeLoginPromptVisible)));
 
   auto result = FetchBootPerformanceInfo();
   ASSERT_TRUE(result->is_error());
@@ -170,7 +172,7 @@ TEST_F(BootPerformanceFetcherTest, TestNoUptimeLogInfo) {
 }
 
 TEST_F(BootPerformanceFetcherTest, TestNoProcUptimeInfo) {
-  ASSERT_TRUE(base::DeleteFile(GetRootedPath(path::kProcUptime)));
+  ASSERT_TRUE(brillo::DeleteFile(GetRootedPath(path::kProcUptime)));
 
   auto result = FetchBootPerformanceInfo();
   ASSERT_TRUE(result->is_error());
@@ -178,7 +180,7 @@ TEST_F(BootPerformanceFetcherTest, TestNoProcUptimeInfo) {
 }
 
 TEST_F(BootPerformanceFetcherTest, TestWrongBiosTimesInfo) {
-  ASSERT_TRUE(base::DeleteFile(GetRootedPath(path::kBiosTimes)));
+  ASSERT_TRUE(brillo::DeleteFile(GetRootedPath(path::kBiosTimes)));
   PopulateBiosTimesFile("Wrong content");
 
   auto result = FetchBootPerformanceInfo();
@@ -187,7 +189,7 @@ TEST_F(BootPerformanceFetcherTest, TestWrongBiosTimesInfo) {
 }
 
 TEST_F(BootPerformanceFetcherTest, TestWrongBiosTimesInfo2) {
-  ASSERT_TRUE(base::DeleteFile(GetRootedPath(path::kBiosTimes)));
+  ASSERT_TRUE(brillo::DeleteFile(GetRootedPath(path::kBiosTimes)));
   PopulateBiosTimesFile("Wrong content, Total Time: abcd");
 
   auto result = FetchBootPerformanceInfo();
@@ -196,7 +198,8 @@ TEST_F(BootPerformanceFetcherTest, TestWrongBiosTimesInfo2) {
 }
 
 TEST_F(BootPerformanceFetcherTest, TestWrongUptimeLogInfo) {
-  ASSERT_TRUE(base::DeleteFile(GetRootedPath(path::kUptimeLoginPromptVisible)));
+  ASSERT_TRUE(
+      brillo::DeleteFile(GetRootedPath(path::kUptimeLoginPromptVisible)));
   PopulateUptimeLogFile("Wrong content");
 
   auto result = FetchBootPerformanceInfo();
@@ -205,7 +208,7 @@ TEST_F(BootPerformanceFetcherTest, TestWrongUptimeLogInfo) {
 }
 
 TEST_F(BootPerformanceFetcherTest, TestWrongProcUptimeInfo) {
-  ASSERT_TRUE(base::DeleteFile(GetRootedPath(path::kProcUptime)));
+  ASSERT_TRUE(brillo::DeleteFile(GetRootedPath(path::kProcUptime)));
   PopulateProcUptimeFile("Wrong content");
 
   auto result = FetchBootPerformanceInfo();
@@ -214,7 +217,7 @@ TEST_F(BootPerformanceFetcherTest, TestWrongProcUptimeInfo) {
 }
 
 TEST_F(BootPerformanceFetcherTest, TestPowerdRebootLog) {
-  ASSERT_TRUE(base::DeleteFile(GetRootedPath(path::kPreviousPowerdLog)));
+  ASSERT_TRUE(brillo::DeleteFile(GetRootedPath(path::kPreviousPowerdLog)));
   PopulatePowerdLog(kFakePowerdRebootLog);
 
   auto result = FetchBootPerformanceInfo();
@@ -230,19 +233,19 @@ TEST_F(BootPerformanceFetcherTest, TestPowerdRebootLog) {
 }
 
 TEST_F(BootPerformanceFetcherTest, TestNoPowerdLog) {
-  ASSERT_TRUE(base::DeleteFile(GetRootedPath(path::kPreviousPowerdLog)));
+  ASSERT_TRUE(brillo::DeleteFile(GetRootedPath(path::kPreviousPowerdLog)));
 
   VerifyDefaultShutdownInfo(FetchBootPerformanceInfo());
 }
 
 TEST_F(BootPerformanceFetcherTest, TestNoShutdownMetrics) {
-  ASSERT_TRUE(base::DeleteFile(GetRootedPath(path::kShutdownMetrics)));
+  ASSERT_TRUE(brillo::DeleteFile(GetRootedPath(path::kShutdownMetrics)));
 
   VerifyDefaultShutdownInfo(FetchBootPerformanceInfo());
 }
 
 TEST_F(BootPerformanceFetcherTest, TestWrongPowerdLog) {
-  ASSERT_TRUE(base::DeleteFile(GetRootedPath(path::kPreviousPowerdLog)));
+  ASSERT_TRUE(brillo::DeleteFile(GetRootedPath(path::kPreviousPowerdLog)));
   PopulatePowerdLog("Wrong content");
 
   VerifyDefaultShutdownInfo(FetchBootPerformanceInfo());

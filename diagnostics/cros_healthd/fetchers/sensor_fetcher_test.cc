@@ -9,6 +9,7 @@
 #include <base/files/file_util.h>
 #include <base/run_loop.h>
 #include <base/test/task_environment.h>
+#include <brillo/files/file_util.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/cros_healthd/fetchers/sensor_fetcher.h"
@@ -142,7 +143,7 @@ TEST_F(SensorFetcherTest, FetchLidAngleFailure) {
 // Test that without Google EC can be handled and gets null lid_angle.
 TEST_F(SensorFetcherTest, FetchLidAngleWithoutEC) {
   ASSERT_TRUE(
-      base::DeletePathRecursively(root_dir().Append(kRelativeCrosEcPath)));
+      brillo::DeletePathRecursively(root_dir().Append(kRelativeCrosEcPath)));
 
   auto sensor_result = FetchSensorInfoSync();
   ASSERT_TRUE(sensor_result->is_sensor_info());

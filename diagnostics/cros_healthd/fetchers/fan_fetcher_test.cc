@@ -15,6 +15,7 @@
 #include <base/run_loop.h>
 #include <base/strings/stringprintf.h>
 #include <base/test/task_environment.h>
+#include <brillo/files/file_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -201,7 +202,7 @@ TEST_F(FanUtilsTest, BadValue) {
 // Test that no fan info is fetched for a device that does not have a Google EC.
 TEST_F(FanUtilsTest, NoGoogleEc) {
   ASSERT_TRUE(
-      base::DeletePathRecursively(root_dir().Append(kRelativeCrosEcPath)));
+      brillo::DeletePathRecursively(root_dir().Append(kRelativeCrosEcPath)));
 
   auto fan_result = FetchFanInfo();
 

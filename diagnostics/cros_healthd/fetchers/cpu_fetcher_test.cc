@@ -19,6 +19,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/test/bind.h>
 #include <base/test/task_environment.h>
+#include <brillo/files/file_util.h>
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
@@ -488,7 +489,7 @@ TEST_F(CpuFetcherTest, TestFetchCpu) {
 
 // Test that we handle a cpuinfo file for processors without physical_ids.
 TEST_F(CpuFetcherTest, NoPhysicalIdFile) {
-  ASSERT_TRUE(base::DeleteFile(GetPhysicalPackageIdPath(root_dir(), 0)));
+  ASSERT_TRUE(brillo::DeleteFile(GetPhysicalPackageIdPath(root_dir(), 0)));
 
   auto cpu_result = FetchCpuInfoSync();
   ASSERT_TRUE(cpu_result->is_error());
@@ -497,7 +498,7 @@ TEST_F(CpuFetcherTest, NoPhysicalIdFile) {
 
 // Test that we handle a missing cpuinfo file.
 TEST_F(CpuFetcherTest, MissingCpuinfoFile) {
-  ASSERT_TRUE(base::DeleteFile(GetProcCpuInfoPath(root_dir())));
+  ASSERT_TRUE(brillo::DeleteFile(GetProcCpuInfoPath(root_dir())));
 
   auto cpu_result = FetchCpuInfoSync();
 
@@ -621,7 +622,7 @@ TEST_F(CpuFetcherTest, ModelNameFromCompatibleString) {
 
 // Test that we handle a missing stat file.
 TEST_F(CpuFetcherTest, MissingStatFile) {
-  ASSERT_TRUE(base::DeleteFile(GetProcStatPath(root_dir())));
+  ASSERT_TRUE(brillo::DeleteFile(GetProcStatPath(root_dir())));
 
   auto cpu_result = FetchCpuInfoSync();
 
@@ -654,7 +655,7 @@ TEST_F(CpuFetcherTest, StatFileMissingLogicalCpuEntry) {
 
 // Test that we handle a missing present file.
 TEST_F(CpuFetcherTest, MissingPresentFile) {
-  ASSERT_TRUE(base::DeleteFile(
+  ASSERT_TRUE(brillo::DeleteFile(
       root_dir().Append(kRelativeCpuDir).Append(kPresentFileName)));
 
   auto cpu_result = FetchCpuInfoSync();
@@ -702,7 +703,7 @@ TEST_F(CpuFetcherTest, ComplexlyFormattedPresentFile) {
 
 // Test that we handle a missing cpuinfo_freq directory.
 TEST_F(CpuFetcherTest, MissingCpuinfoFreqDirectory) {
-  ASSERT_TRUE(base::DeletePathRecursively(
+  ASSERT_TRUE(brillo::DeletePathRecursively(
       GetCpuFreqDirectoryPath(root_dir(), kFirstLogicalId)));
 
   auto cpu_result = FetchCpuInfoSync();
@@ -718,8 +719,8 @@ TEST_F(CpuFetcherTest, MissingCpuinfoFreqDirectory) {
 // Test that we handle a missing cpuinfo_max_freq file.
 TEST_F(CpuFetcherTest, MissingCpuinfoMaxFreqFile) {
   ASSERT_TRUE(
-      base::DeleteFile(GetCpuFreqDirectoryPath(root_dir(), kFirstLogicalId)
-                           .Append(kCpuinfoMaxFreqFileName)));
+      brillo::DeleteFile(GetCpuFreqDirectoryPath(root_dir(), kFirstLogicalId)
+                             .Append(kCpuinfoMaxFreqFileName)));
 
   auto cpu_result = FetchCpuInfoSync();
 
@@ -743,8 +744,8 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedCpuinfoMaxFreqFile) {
 // Test that we handle a missing scaling_max_freq file.
 TEST_F(CpuFetcherTest, MissingScalingMaxFreqFile) {
   ASSERT_TRUE(
-      base::DeleteFile(GetCpuFreqDirectoryPath(root_dir(), kFirstLogicalId)
-                           .Append(kScalingMaxFreqFileName)));
+      brillo::DeleteFile(GetCpuFreqDirectoryPath(root_dir(), kFirstLogicalId)
+                             .Append(kScalingMaxFreqFileName)));
 
   auto cpu_result = FetchCpuInfoSync();
 
@@ -768,8 +769,8 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedScalingMaxFreqFile) {
 // Test that we handle a missing scaling_cur_freq file.
 TEST_F(CpuFetcherTest, MissingScalingCurFreqFile) {
   ASSERT_TRUE(
-      base::DeleteFile(GetCpuFreqDirectoryPath(root_dir(), kFirstLogicalId)
-                           .Append(kScalingCurFreqFileName)));
+      brillo::DeleteFile(GetCpuFreqDirectoryPath(root_dir(), kFirstLogicalId)
+                             .Append(kScalingCurFreqFileName)));
 
   auto cpu_result = FetchCpuInfoSync();
 
@@ -793,9 +794,9 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedScalingCurFreqFile) {
 // Test that we handle a missing C-state name file.
 TEST_F(CpuFetcherTest, MissingCStateNameFile) {
   ASSERT_TRUE(
-      base::DeleteFile(GetCStateDirectoryPath(root_dir(), kFirstLogicalId)
-                           .Append(kFirstCStateDir)
-                           .Append(kCStateNameFileName)));
+      brillo::DeleteFile(GetCStateDirectoryPath(root_dir(), kFirstLogicalId)
+                             .Append(kFirstCStateDir)
+                             .Append(kCStateNameFileName)));
 
   auto cpu_result = FetchCpuInfoSync();
 
@@ -806,9 +807,9 @@ TEST_F(CpuFetcherTest, MissingCStateNameFile) {
 // Test that we handle a missing C-state time file.
 TEST_F(CpuFetcherTest, MissingCStateTimeFile) {
   ASSERT_TRUE(
-      base::DeleteFile(GetCStateDirectoryPath(root_dir(), kFirstLogicalId)
-                           .Append(kFirstCStateDir)
-                           .Append(kCStateTimeFileName)));
+      brillo::DeleteFile(GetCStateDirectoryPath(root_dir(), kFirstLogicalId)
+                             .Append(kFirstCStateDir)
+                             .Append(kCStateTimeFileName)));
 
   auto cpu_result = FetchCpuInfoSync();
 
@@ -832,7 +833,7 @@ TEST_F(CpuFetcherTest, IncorrectlyFormattedCStateTimeFile) {
 
 // Test that we handle missing crypto file.
 TEST_F(CpuFetcherTest, MissingCryptoFile) {
-  ASSERT_TRUE(base::DeleteFile(GetProcCryptoPath(root_dir())));
+  ASSERT_TRUE(brillo::DeleteFile(GetProcCryptoPath(root_dir())));
 
   auto cpu_result = FetchCpuInfoSync();
 
@@ -843,9 +844,9 @@ TEST_F(CpuFetcherTest, MissingCryptoFile) {
 // Test that we handle CPU temperatures without labels.
 TEST_F(CpuFetcherTest, CpuTemperatureWithoutLabel) {
   ASSERT_TRUE(
-      base::DeleteFile(root_dir()
-                           .AppendASCII(kFirstFakeCpuTemperatureDir)
-                           .AppendASCII(kFirstFakeCpuTemperatureLabelFile)));
+      brillo::DeleteFile(root_dir()
+                             .AppendASCII(kFirstFakeCpuTemperatureDir)
+                             .AppendASCII(kFirstFakeCpuTemperatureLabelFile)));
 
   auto cpu_result = FetchCpuInfoSync();
 
@@ -980,10 +981,10 @@ TEST_F(CpuFetcherTest, ExistingKvmFile) {
 
 // Test that we handle missing SMT Active file.
 TEST_F(CpuFetcherTest, MissingSmtActiveFile) {
-  ASSERT_TRUE(base::DeleteFile(root_dir()
-                                   .Append(kRelativeCpuDir)
-                                   .Append(kSmtDirName)
-                                   .Append(kSmtActiveFileName)));
+  ASSERT_TRUE(brillo::DeleteFile(root_dir()
+                                     .Append(kRelativeCpuDir)
+                                     .Append(kSmtDirName)
+                                     .Append(kSmtActiveFileName)));
 
   auto cpu_result = FetchCpuInfoSync();
 
@@ -1036,10 +1037,10 @@ TEST_F(CpuFetcherTest, InactiveSMTActiveFile) {
 
 // Test that we handle missing SMT Control file.
 TEST_F(CpuFetcherTest, MissingSmtControlFile) {
-  ASSERT_TRUE(base::DeleteFile(root_dir()
-                                   .Append(kRelativeCpuDir)
-                                   .Append(kSmtDirName)
-                                   .Append(kSmtControlFileName)));
+  ASSERT_TRUE(brillo::DeleteFile(root_dir()
+                                     .Append(kRelativeCpuDir)
+                                     .Append(kSmtDirName)
+                                     .Append(kSmtControlFileName)));
 
   auto cpu_result = FetchCpuInfoSync();
 

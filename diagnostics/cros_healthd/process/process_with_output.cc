@@ -10,6 +10,7 @@
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <brillo/errors/error_codes.h>
+#include <brillo/files/file_util.h>
 
 namespace diagnostics {
 
@@ -29,9 +30,9 @@ ProcessWithOutput::~ProcessWithOutput() {
   errfile_.reset();
 
   if (!outfile_path_.empty())
-    base::DeleteFile(outfile_path_);  // not recursive
+    brillo::DeleteFile(outfile_path_);  // not recursive
   if (!errfile_path_.empty())
-    base::DeleteFile(errfile_path_);
+    brillo::DeleteFile(errfile_path_);
 }
 
 bool ProcessWithOutput::Init() {

@@ -5,6 +5,7 @@
 #include <base/files/file_path.h>
 #include <base/run_loop.h>
 #include <base/test/task_environment.h>
+#include <brillo/files/file_util.h>
 #include <gmock/gmock.h>
 #include <gmock/gmock-actions.h>
 #include <gtest/gtest.h>
@@ -260,7 +261,7 @@ TEST_F(MemoryFetcherTest, TestFetchMktmeInfo) {
 // Test to handle missing /sys/kernel/mm/mktme/active file.
 TEST_F(MemoryFetcherTest, MissingMktmeActiveFile) {
   CreateMkmteEnviroment();
-  ASSERT_TRUE(base::DeleteFile(root_dir().Append(kRelativeMtkmeActivePath)));
+  ASSERT_TRUE(brillo::DeleteFile(root_dir().Append(kRelativeMtkmeActivePath)));
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());
@@ -271,7 +272,7 @@ TEST_F(MemoryFetcherTest, MissingMktmeActiveFile) {
 TEST_F(MemoryFetcherTest, MissingMktmeActiveAlgorithmFile) {
   CreateMkmteEnviroment();
   ASSERT_TRUE(
-      base::DeleteFile(root_dir().Append(kRelativeMtkmeActiveAlgorithmPath)));
+      brillo::DeleteFile(root_dir().Append(kRelativeMtkmeActiveAlgorithmPath)));
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());
@@ -281,7 +282,8 @@ TEST_F(MemoryFetcherTest, MissingMktmeActiveAlgorithmFile) {
 // Test to handle missing /sys/kernel/mm/mktme/key_cnt file.
 TEST_F(MemoryFetcherTest, MissingMktmeKeyCountFile) {
   CreateMkmteEnviroment();
-  ASSERT_TRUE(base::DeleteFile(root_dir().Append(kRelativeMtkmeKeyCountPath)));
+  ASSERT_TRUE(
+      brillo::DeleteFile(root_dir().Append(kRelativeMtkmeKeyCountPath)));
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());
@@ -291,7 +293,8 @@ TEST_F(MemoryFetcherTest, MissingMktmeKeyCountFile) {
 // Test to handle missing /sys/kernel/mm/mktme/key_len file.
 TEST_F(MemoryFetcherTest, MissingMktmeKeyLengthFile) {
   CreateMkmteEnviroment();
-  ASSERT_TRUE(base::DeleteFile(root_dir().Append(kRelativeMtkmeKeyLengthPath)));
+  ASSERT_TRUE(
+      brillo::DeleteFile(root_dir().Append(kRelativeMtkmeKeyLengthPath)));
 
   auto result = FetchMemoryInfo();
   ASSERT_TRUE(result->is_error());

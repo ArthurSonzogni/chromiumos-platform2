@@ -17,6 +17,7 @@
 #include <base/strings/string_number_conversions.h>
 #include <base/system/sys_info.h>
 #include <base/time/time.h>
+#include <brillo/files/file_util.h>
 
 namespace diagnostics {
 
@@ -88,7 +89,7 @@ std::unique_ptr<DiagnosticRoutine> CreateDiskReadRoutine(
   auto test_file_deletion = base::BindOnce([]() {
     auto test_file = base::FilePath(kTmpPath).Append(kTestFileName);
     if (base::PathExists(test_file)) {
-      base::DeleteFile(test_file);
+      brillo::DeleteFile(test_file);
     }
   });
 
