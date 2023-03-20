@@ -145,7 +145,7 @@ mod tests {
     #[test]
     fn test_command_to_string() {
         let mut cmd = Command::new("myCmd");
-        cmd.args(&["arg1", "arg2"]);
+        cmd.args(["arg1", "arg2"]);
         assert_eq!(command_to_string(&cmd), "myCmd arg1 arg2");
     }
 
