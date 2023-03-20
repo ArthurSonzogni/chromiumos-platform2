@@ -308,6 +308,10 @@ bool TerminaVm::Start(VmBuilder vm_builder) {
 
     if (classification_ == VmInfo::BOREALIS) {
       vm_builder.SetGpuCacheSize(kGpuCacheSizeStringBorealis);
+      // For Borealis, place the render server process in
+      // the GPU server cpuset cgroup.
+      vm_builder.AppendCustomParam("--gpu-server-cgroup-path",
+                                   kBorealisGpuServerCpusetCgroup);
     } else {
       vm_builder.SetGpuCacheSize(kGpuCacheSizeString);
     }

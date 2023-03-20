@@ -40,6 +40,11 @@ namespace concierge {
 
 // The CPU cgroup where all the Termina main crosvm process should belong to.
 constexpr char kTerminaVcpuCpuCgroup[] = "/sys/fs/cgroup/cpu/termina-vcpus";
+
+// The cpuset cgroup where the Borealis vGPU server threads are to go into.
+constexpr char kBorealisGpuServerCpusetCgroup[] =
+    "/sys/fs/cgroup/cpuset/borealis-vgpuserver";
+
 // The CPU cgroup where all the Termina crosvm processes other than main should
 // belong to.
 constexpr char kTerminaCpuCgroup[] = "/sys/fs/cgroup/cpu/termina";
