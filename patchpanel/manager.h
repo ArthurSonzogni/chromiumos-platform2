@@ -48,7 +48,7 @@ struct ForwardingSet {
 // Main class that runs the mainloop and responds to LAN interface changes.
 class Manager final : public brillo::DBusDaemon {
  public:
-  Manager(int argc, char* argv[]);
+  explicit Manager(const base::FilePath& cmd_path);
   Manager(const Manager&) = delete;
   Manager& operator=(const Manager&) = delete;
 

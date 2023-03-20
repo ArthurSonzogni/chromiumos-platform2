@@ -37,7 +37,6 @@ class SubprocessController {
   SubprocessController(System* system,
                        shill::ProcessManager* process_manager,
                        const base::FilePath& cmd_path,
-                       const std::vector<std::string>& argv,
                        const std::string& fd_arg);
   SubprocessController(const SubprocessController&) = delete;
   SubprocessController& operator=(const SubprocessController&) = delete;

@@ -33,12 +33,10 @@ SubprocessController::SubprocessController(
     System* system,
     shill::ProcessManager* process_manager,
     const base::FilePath& cmd_path,
-    const std::vector<std::string>& argv,
     const std::string& fd_arg)
     : system_(system),
       process_manager_(process_manager),
       cmd_path_(cmd_path),
-      argv_(argv),
       fd_arg_(fd_arg) {}
 
 void SubprocessController::Start() {
@@ -53,9 +51,8 @@ void SubprocessController::Start() {
       std::move(control_fd));
   const int subprocess_fd = control[1];
 
-  std::vector<std::string> child_argv = argv_;
-  child_argv.push_back(fd_arg_ + "=" + std::to_string(subprocess_fd));
-
+  std::vector<std::string> child_argv = {fd_arg_ + "=" +
+                                         std::to_string(subprocess_fd)};
   const std::vector<std::pair<int, int>> fds_to_bind = {
       {subprocess_fd, subprocess_fd}};
 

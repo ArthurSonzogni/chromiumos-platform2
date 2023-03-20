@@ -8,6 +8,7 @@
 #include <memory>
 #include <utility>
 
+#include <base/files/file_path.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
 #include <brillo/flag_helper.h>
@@ -60,6 +61,7 @@ int main(int argc, char* argv[]) {
   }
 
   LOG(INFO) << "Starting patchpanel manager";
-  patchpanel::Manager manager(argc, argv);
+  const auto cmd_path = base::FilePath(argv[0]);
+  patchpanel::Manager manager(cmd_path);
   return manager.Run();
 }

@@ -52,9 +52,8 @@ TEST_F(SubprocessControllerTest, Start) {
         return 0;
       }));
 
-  const std::string fd_arg =
-      base::StringPrintf("--adb_proxy_fd=%d", fake_fds[1]);
-  const std::vector<std::string> args = {"--arg1", "--arg2", fd_arg};
+  const std::vector<std::string> args = {
+      base::StringPrintf("--adb_proxy_fd=%d", fake_fds[1])};
   const std::vector<std::pair<int, int>> fds_to_bind = {
       {fake_fds[1], fake_fds[1]}};
   constexpr pid_t pid = 9;
@@ -62,9 +61,8 @@ TEST_F(SubprocessControllerTest, Start) {
               StartProcess(_, kCmdPath, args, _, fds_to_bind, true, _))
       .WillOnce(Return(pid));
 
-  SubprocessController subprocess_controller(
-      &system_, &process_manager_, kCmdPath,
-      std::vector<std::string>{"--arg1", "--arg2"}, "--adb_proxy_fd");
+  SubprocessController subprocess_controller(&system_, &process_manager_,
+                                             kCmdPath, "--adb_proxy_fd");
   subprocess_controller.Start();
 }
 
@@ -87,7 +85,7 @@ TEST_F(SubprocessControllerTest, Restart) {
       }));
 
   SubprocessController subprocess_controller(&system_, &process_manager_,
-                                             kCmdPath, {}, "--adb_proxy_fd");
+                                             kCmdPath, "--adb_proxy_fd");
   subprocess_controller.Start();
 
   // The start logic should be called again when the process is exited

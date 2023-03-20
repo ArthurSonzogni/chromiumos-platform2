@@ -155,21 +155,16 @@ void RecordDbusEvent(std::unique_ptr<MetricsLibraryInterface>& metrics,
 
 }  // namespace
 
-Manager::Manager(int argc, char* argv[])
+Manager::Manager(const base::FilePath& cmd_path)
     : system_(std::make_unique<System>()),
       process_manager_(shill::ProcessManager::GetInstance()),
       datapath_(std::make_unique<Datapath>(system_.get())) {
-  const auto cmd_path = base::FilePath(argv[0]);
-  std::vector<std::string> arg_list;
-  for (int i = 1; i < argc; ++i) {
-    arg_list.push_back(argv[i]);
-  }
   adb_proxy_ = std::make_unique<patchpanel::SubprocessController>(
-      system_.get(), process_manager_, cmd_path, arg_list, "--adb_proxy_fd");
+      system_.get(), process_manager_, cmd_path, "--adb_proxy_fd");
   mcast_proxy_ = std::make_unique<patchpanel::SubprocessController>(
-      system_.get(), process_manager_, cmd_path, arg_list, "--mcast_proxy_fd");
+      system_.get(), process_manager_, cmd_path, "--mcast_proxy_fd");
   nd_proxy_ = std::make_unique<patchpanel::SubprocessController>(
-      system_.get(), process_manager_, cmd_path, arg_list, "--nd_proxy_fd");
+      system_.get(), process_manager_, cmd_path, "--nd_proxy_fd");
 }
 
 std::map<const std::string, bool> Manager::cached_feature_enabled_ = {};
