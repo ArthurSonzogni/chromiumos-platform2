@@ -308,7 +308,7 @@ void OutputTouchpadConnectedEventInfo(
 void OutputTouchpadEventInfo(const mojom::TouchpadEventInfoPtr& info) {
   switch (info->which()) {
     case mojom::TouchpadEventInfo::Tag::kDefaultType:
-      LOG(ERROR) << "Got TouchpadEventInfo::Tag::kDefaultType";
+      LOG(FATAL) << "Got TouchpadEventInfo::Tag::kDefaultType";
       break;
     case mojom::TouchpadEventInfo::Tag::kButtonEvent:
       OutputTouchpadButtonEventInfo(info->get_button_event());
@@ -356,7 +356,7 @@ void OutputTouchscreenConnectedEventInfo(
 void OutputTouchscreenEventInfo(const mojom::TouchscreenEventInfoPtr& info) {
   switch (info->which()) {
     case mojom::TouchscreenEventInfo::Tag::kDefaultType:
-      LOG(ERROR) << "Got TouchscreenEventInfo::Tag::kDefaultType";
+      LOG(FATAL) << "Got TouchscreenEventInfo::Tag::kDefaultType";
       break;
     case mojom::TouchscreenEventInfo::Tag::kTouchEvent:
       OutputTouchscreenTouchEventInfo(info->get_touch_event());
@@ -468,7 +468,7 @@ void OutputStylusConnectedEventInfo(
 void OutputStylusEventInfo(const mojom::StylusEventInfoPtr& info) {
   switch (info->which()) {
     case mojom::StylusEventInfo::Tag::kDefaultType:
-      LOG(ERROR) << "Got StylusEventInfo::Tag::kDefaultType";
+      LOG(FATAL) << "Got StylusEventInfo::Tag::kDefaultType";
       break;
     case mojom::StylusEventInfo::Tag::kTouchEvent:
       OutputStylusTouchEventInfo(info->get_touch_event());
