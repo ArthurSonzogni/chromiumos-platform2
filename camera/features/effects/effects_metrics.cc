@@ -6,6 +6,8 @@
 
 #include "features/effects/effects_metrics.h"
 
+#include <algorithm>
+#include <limits>
 #include <numeric>
 #include <utility>
 
@@ -25,6 +27,12 @@ cros::CameraEffect CameraEffectFromConfig(cros::EffectsConfig config) {
 
 namespace cros {
 
+EffectsMetricsData::EffectsMetricsData() {
+  // Initialize the min/max stream sizes to uint_max/zero so that
+  // `RecordStreamSize` can update the values as new streams are added.
+  stream_sizes_.fill({std::numeric_limits<size_t>::max(), 0ul});
+}
+
 void EffectsMetricsData::RecordSelectedEffect(const EffectsConfig& config) {
   if (config.HasEnabledEffects()) {
     selected_effects_.insert(CameraEffectFromConfig(config));
@@ -43,6 +51,40 @@ void EffectsMetricsData::RecordFrameProcessingInterval(
     const EffectsConfig& config, const base::TimeDelta& interval) {
   size_t idx = static_cast<size_t>(CameraEffectFromConfig(config));
   frame_intervals_[idx].push_back(interval);
+}
+
+void EffectsMetricsData::RecordRequestedFrameRate(int fps) {
+  max_requested_fps_ = std::max(max_requested_fps_, fps);
+}
+
+void EffectsMetricsData::RecordStreamSize(CameraEffectStreamType stream_type,
+                                          size_t size) {
+  size_t idx = static_cast<size_t>(stream_type);
+  stream_sizes_[idx].first = std::min(stream_sizes_[idx].first, size);
+  stream_sizes_[idx].second = std::max(stream_sizes_[idx].second, size);
+}
+
+void EffectsMetricsData::RecordNumConcurrentStreams(
+    size_t num_concurrent_streams) {
+  max_num_concurrent_streams_ =
+      std::max(max_num_concurrent_streams_, num_concurrent_streams);
+}
+
+void EffectsMetricsData::RecordNumConcurrentProcessedStreams(
+    size_t num_concurrent_processed_streams) {
+  max_num_concurrent_processed_streams_ = std::max(
+      max_num_concurrent_processed_streams_, num_concurrent_processed_streams);
+}
+
+void EffectsMetricsData::RecordStillShotTaken() {
+  num_still_shots_taken_++;
+}
+
+void EffectsMetricsData::RecordError(CameraEffectError error) {
+  // Only record the first error that occurs per session.
+  if (error_ != CameraEffectError::kNoError) {
+    error_ = error;
+  }
 }
 
 bool EffectsMetricsData::EffectSelected(CameraEffect effect) const {
@@ -90,6 +132,19 @@ void EffectsMetricsUploader::UploadMetricsData(EffectsMetricsData metrics) {
 
 void EffectsMetricsUploader::UploadMetricsDataOnThread(
     EffectsMetricsData metrics) {
+  if (metrics.max_requested_fps_) {
+    metrics_helper_->SendEffectsRequestedFrameRate(metrics.max_requested_fps_);
+  }
+  if (metrics.max_num_concurrent_streams_) {
+    metrics_helper_->SendEffectsNumConcurrentStreams(
+        metrics.max_num_concurrent_streams_);
+    metrics_helper_->SendEffectsNumConcurrentProcessedStreams(
+        metrics.max_num_concurrent_processed_streams_);
+  }
+  metrics_helper_->SendEffectsError(metrics.error_);
+  metrics_helper_->SendEffectsNumStillShotsTaken(
+      metrics.num_still_shots_taken_);
+
   // TODO(b/265602808): upload blob stream metrics
   // Post per-effect metrics
   for (int i = 0; i <= static_cast<int>(CameraEffect::kMaxValue); i++) {
@@ -109,6 +164,16 @@ void EffectsMetricsUploader::UploadMetricsDataOnThread(
     if (avg_interval != base::TimeDelta()) {
       metrics_helper_->SendEffectsAvgProcessedFrameInterval(
           effect, CameraEffectStreamType::kYuv, avg_interval);
+    }
+  }
+
+  for (int i = 0; i <= static_cast<int>(CameraEffectStreamType::kMaxValue);
+       i++) {
+    CameraEffectStreamType stream_type = static_cast<CameraEffectStreamType>(i);
+    auto [min, max] = metrics.stream_sizes_[i];
+    if (max) {
+      metrics_helper_->SendEffectsMinStreamSize(stream_type, min);
+      metrics_helper_->SendEffectsMaxStreamSize(stream_type, max);
     }
   }
 }

@@ -71,6 +71,15 @@ class CameraMetricsImpl : public CameraMetrics {
   void SendEffectsAvgProcessedFrameInterval(CameraEffect effect,
                                             CameraEffectStreamType stream_type,
                                             base::TimeDelta interval) override;
+  void SendEffectsRequestedFrameRate(int fps) override;
+  void SendEffectsMinStreamSize(CameraEffectStreamType stream_type,
+                                int size) override;
+  void SendEffectsMaxStreamSize(CameraEffectStreamType stream_type,
+                                int size) override;
+  void SendEffectsNumConcurrentStreams(int num_streams) override;
+  void SendEffectsNumConcurrentProcessedStreams(int num_streams) override;
+  void SendEffectsError(CameraEffectError error) override;
+  void SendEffectsNumStillShotsTaken(int num_shots) override;
 
  private:
   std::unique_ptr<MetricsLibraryInterface> metrics_lib_;

@@ -114,6 +114,29 @@ enum class CameraEffectStreamType {
   kMaxValue = kBlob,
 };
 
+enum class CameraEffectError {
+  kNoError = 0,
+  // Error during EffectsStreamManipulator GPU initialization.
+  kGPUInitializationError = 1,
+  // Error while allocating buffers.
+  kBufferAllocationError = 2,
+  // A failed buffer was sent into the stream manipulator.
+  kReceivedFailedBuffer = 3,
+  // A synchronous buffer wait failed.
+  kSyncWaitTimeout = 4,
+  // Unable to register a buffer.
+  kBufferRegistrationFailed = 5,
+  // Unable to unregister a buffer.
+  kBufferUnregistrationFailed = 6,
+  // Initializing GPU images failed.
+  kGPUImageInitializationFailed = 7,
+  // YUV to RGB conversion failed.
+  kYUVConversionFailed = 8,
+  // Effects pipeline rendering failed.
+  kPipelineFailed = 9,
+  kMaxValue = kPipelineFailed,
+};
+
 class CROS_CAMERA_EXPORT CameraMetrics {
  public:
   static std::unique_ptr<CameraMetrics> New();
@@ -242,6 +265,35 @@ class CROS_CAMERA_EXPORT CameraMetrics {
       CameraEffect effect,
       CameraEffectStreamType stream_type,
       base::TimeDelta interval) = 0;
+
+  // Records the requested frame rate for an EffectsStreamManipulator session.
+  virtual void SendEffectsRequestedFrameRate(int fps) = 0;
+
+  // Records the minimum size (in width * height) of the
+  // EffectsStreamManipulator stream configured for |stream_type| output.
+  virtual void SendEffectsMinStreamSize(CameraEffectStreamType stream_type,
+                                        int size) = 0;
+
+  // Records the maximum size (in width * height) of the
+  // EffectsStreamManipulator stream configured for |stream_type| output.
+  virtual void SendEffectsMaxStreamSize(CameraEffectStreamType stream_type,
+                                        int size) = 0;
+
+  // Records the number of concurrent EffectsStreamManipulator streams in a
+  // session.
+  virtual void SendEffectsNumConcurrentStreams(int num_streams) = 0;
+
+  // Records the number of concurrent EffectsStreamManipulator streams which
+  // involved rendering effects in a session.
+  virtual void SendEffectsNumConcurrentProcessedStreams(int num_streams) = 0;
+
+  // Records whether there's an error that can compromise the
+  // EffectsStreamManipulator feature.
+  virtual void SendEffectsError(CameraEffectError error) = 0;
+
+  // Records the number of EffectsStreamManipulator-rendered still capture shots
+  // taken in a session.
+  virtual void SendEffectsNumStillShotsTaken(int num_shots) = 0;
 };
 
 }  // namespace cros

@@ -169,6 +169,26 @@ constexpr char kCameraEffectStreamTypeBlob[] = "BLOB";
 
 constexpr char kCameraEffectSelected[] =
     "ChromeOS.Camera.Effects.SelectedEffect";
+constexpr char kCameraEffectsRequestedFrameRate[] =
+    "ChromeOS.Camera.Effects.RequestedFrameRate";
+constexpr int kMinEffectsFrameRate = 1;
+constexpr int kMaxEffectsFrameRate = 60;
+constexpr int kEffectsFrameRateBuckets = 60;
+
+constexpr char kCameraEffectsMinStreamSize[] =
+    "ChromeOS.Camera.Effects.%s.MinStreamSize";
+constexpr char kCameraEffectsMaxStreamSize[] =
+    "ChromeOS.Camera.Effects.%s.MaxStreamSize";
+constexpr char kCameraEffectsNumConcurrentStreams[] =
+    "ChromeOS.Camera.Effects.NumConcurrentStreams";
+constexpr int kMinNumConcurrentEffectStreams = 1;
+constexpr int kMaxNumConcurrentEffectStreams = 4;
+constexpr char kCameraEffectsNumConcurrentProcessedStreams[] =
+    "ChromeOS.Camera.Effects.NumConcurrentProcessedStreams";
+constexpr char kCameraEffectsError[] = "ChromeOS.Camera.Effects.Error";
+constexpr char kCameraEffectsNumStillShotsTaken[] =
+    "ChromeOS.Camera.Effects.NumStillShotsTaken";
+
 constexpr char kCameraEffectAvgProcessingLatency[] =
     "ChromeOS.Camera.Effects.%s.%s.AvgProcessingLatency";
 // 0ms -> 250ms
@@ -479,6 +499,53 @@ void CameraMetricsImpl::SendEffectsAvgProcessedFrameInterval(
   metrics_lib_->SendToUMA(
       metric_name, interval.InMicroseconds(), kMinEffectsFrameIntervalUs,
       kMaxEffectsFrameIntervalUs, kEffectsFrameIntervalBuckets);
+}
+
+void CameraMetricsImpl::SendEffectsRequestedFrameRate(int fps) {
+  metrics_lib_->SendToUMA(kCameraEffectsRequestedFrameRate, fps,
+                          kMinEffectsFrameRate, kMaxEffectsFrameRate,
+                          kEffectsFrameRateBuckets);
+}
+
+void CameraMetricsImpl::SendEffectsMinStreamSize(
+    CameraEffectStreamType stream_type, int size) {
+  std::string key = base::StringPrintf(
+      kCameraEffectsMinStreamSize, CameraEffectStreamTypeToString(stream_type));
+  metrics_lib_->SendToUMA(key, size, kMinResolutionInPixels,
+                          kMaxResolutionInPixels, kBucketResolutionInPixels);
+}
+
+void CameraMetricsImpl::SendEffectsMaxStreamSize(
+    CameraEffectStreamType stream_type, int size) {
+  std::string key = base::StringPrintf(
+      kCameraEffectsMaxStreamSize, CameraEffectStreamTypeToString(stream_type));
+  metrics_lib_->SendToUMA(key, size, kMinResolutionInPixels,
+                          kMaxResolutionInPixels, kBucketResolutionInPixels);
+}
+
+void CameraMetricsImpl::SendEffectsNumConcurrentStreams(int num_streams) {
+  metrics_lib_->SendToUMA(kCameraEffectsNumConcurrentStreams, num_streams,
+                          kMinNumConcurrentEffectStreams,
+                          kMaxNumConcurrentEffectStreams,
+                          kNumConcurrentCameraStreamsBuckets);
+}
+
+void CameraMetricsImpl::SendEffectsNumConcurrentProcessedStreams(
+    int num_streams) {
+  metrics_lib_->SendToUMA(kCameraEffectsNumConcurrentProcessedStreams,
+                          num_streams, kMinNumConcurrentEffectStreams,
+                          kMaxNumConcurrentEffectStreams,
+                          kNumConcurrentCameraStreamsBuckets);
+}
+
+void CameraMetricsImpl::SendEffectsError(CameraEffectError error) {
+  metrics_lib_->SendEnumToUMA(kCameraEffectsError, error);
+}
+
+void CameraMetricsImpl::SendEffectsNumStillShotsTaken(int num_shots) {
+  metrics_lib_->SendToUMA(kCameraEffectsNumStillShotsTaken, num_shots,
+                          kMinNumShotsTaken, kMaxNumShotsTaken,
+                          kNumShotsTakenBuckets);
 }
 
 }  // namespace cros

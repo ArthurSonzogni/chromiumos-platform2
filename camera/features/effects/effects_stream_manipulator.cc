@@ -211,6 +211,7 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
 
     // The original stream requested by the client.
     camera3_stream_t* original_stream = nullptr;
+    CameraEffectStreamType stream_type = CameraEffectStreamType::kYuv;
 
     // The stream that will be set in place of |original_stream| in capture
     // requests.
@@ -231,7 +232,7 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
 
   struct RenderResult {
     // Whether the render was successful or not.
-    bool success = false;
+    CameraEffectError result = CameraEffectError::kNoError;
 
     // Once the output buffer of a successful render isn't needed anymore, this
     // closure should be called.
@@ -351,6 +352,7 @@ EffectsStreamManipulatorImpl::EffectsStreamManipulatorImpl(
       &ret);
   if (!ret) {
     LOGF(ERROR) << "Failed to start GL thread. Turning off feature by default";
+    metrics_.RecordError(CameraEffectError::kGPUInitializationError);
   }
 }
 
@@ -458,6 +460,7 @@ bool EffectsStreamManipulatorImpl::ConfigureStreams(
       // stream. This YUV stream is fed to StillImageProcessor to be compressed
       // into jpeg blobs.
       if (s->format == HAL_PIXEL_FORMAT_BLOB) {
+        context->stream_type = CameraEffectStreamType::kBlob;
         still_capture_processor_->Initialize(
             s, base::BindRepeating(
                    &EffectsStreamManipulatorImpl::ReturnStillCaptureResult,
@@ -494,6 +497,7 @@ bool EffectsStreamManipulatorImpl::ConfigureStreams(
           modified_streams.push_back(context->yuv_stream_for_blob);
         }
       }
+      metrics_.RecordStreamSize(context->stream_type, s->width * s->height);
       stream_contexts_.emplace_back(std::move(context));
     }
   }
@@ -632,6 +636,7 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureRequest(
       if (!capture_context.yuv_buffer) {
         LOGF(ERROR) << "Failed to allocate buffer for frame "
                     << request->frame_number();
+        metrics_.RecordError(CameraEffectError::kBufferAllocationError);
         return false;
       }
       request->AppendOutputBuffer(Camera3StreamBuffer::MakeRequestOutput({
@@ -645,6 +650,11 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureRequest(
     }
   }
 
+  base::span<const int32_t> fps_range =
+      request->GetMetadata<int32_t>(ANDROID_CONTROL_AE_TARGET_FPS_RANGE);
+  if (!fps_range.empty()) {
+    metrics_.RecordRequestedFrameRate(fps_range[1]);
+  }
   return true;
 }
 
@@ -700,6 +710,7 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
   }
 
   base::AutoLock lock(stream_contexts_lock_);
+  size_t num_processed_streams = 0;
   for (auto& result_buffer : result.AcquireOutputBuffers()) {
     StreamContext* stream_context = GetStreamContext(result_buffer.stream());
     if (!stream_context) {
@@ -727,11 +738,14 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
     if (result_buffer.status() != CAMERA3_BUFFER_STATUS_OK) {
       LOGF(ERROR) << "EffectsStreamManipulator received failed buffer: "
                   << result.frame_number();
+      metrics_.RecordError(CameraEffectError::kReceivedFailedBuffer);
       return false;
     }
 
     RenderResult render_result = RenderEffect(result_buffer, *timestamp);
-    if (!render_result.success) {
+    num_processed_streams++;
+    if (render_result.result != CameraEffectError::kNoError) {
+      metrics_.RecordError(render_result.result);
       continue;
     }
     base::ScopedClosureRunner cleanup_runner(
@@ -775,6 +789,9 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
   last_processed_frame_timestamp_ = frame_processed_time;
   metrics_.RecordFrameProcessingLatency(
       last_set_effect_config_, frame_processed_time - processing_time_start);
+  metrics_.RecordNumConcurrentStreams(stream_contexts_.size());
+  metrics_.RecordNumConcurrentProcessedStreams(num_processed_streams);
+
   if (metrics_uploader_->TimeSinceLastUpload() >
       kMaximumMetricsSessionDuration) {
     UploadAndResetMetricsData();
@@ -794,7 +811,7 @@ EffectsStreamManipulatorImpl::RenderEffect(Camera3StreamBuffer& result_buffer,
   DCHECK(result_buffer.status() == CAMERA3_BUFFER_STATUS_OK);
   if (!result_buffer.WaitOnAndClearReleaseFence(kSyncWaitTimeoutMs)) {
     LOGF(ERROR) << "Timed out waiting for input buffer";
-    return {};
+    return {CameraEffectError::kSyncWaitTimeout};
   }
 
   buffer_handle_t buffer_handle = *result_buffer.buffer();
@@ -802,15 +819,17 @@ EffectsStreamManipulatorImpl::RenderEffect(Camera3StreamBuffer& result_buffer,
   auto* manager = CameraBufferManager::GetInstance();
   if (manager->Register(buffer_handle) != 0) {
     LOG(ERROR) << "Failed to register buffer";
-    return {};
+    return {CameraEffectError::kBufferRegistrationFailed};
   }
   base::ScopedClosureRunner deregister_action(base::BindOnce(
-      [](CameraBufferManager* manager, buffer_handle_t buffer_handle) {
+      [](EffectsMetricsData& metrics, CameraBufferManager* manager,
+         buffer_handle_t buffer_handle) {
         if (manager->Deregister(buffer_handle) != 0) {
           LOG(ERROR) << "Failed to deregister buffer";
+          metrics.RecordError(CameraEffectError::kBufferUnregistrationFailed);
         }
       },
-      manager, buffer_handle));
+      std::ref(metrics_), manager, buffer_handle));
 
   bool ret;
 
@@ -821,7 +840,7 @@ EffectsStreamManipulatorImpl::RenderEffect(Camera3StreamBuffer& result_buffer,
       &ret);
   if (!ret) {
     LOGF(ERROR) << "Failed to ensure GPU resources";
-    return {};
+    return {CameraEffectError::kGPUImageInitializationFailed};
   }
 
   gl_thread_.PostTaskSync(
@@ -831,7 +850,7 @@ EffectsStreamManipulatorImpl::RenderEffect(Camera3StreamBuffer& result_buffer,
       &ret);
   if (!ret) {
     LOGF(ERROR) << "Failed to convert from YUV to RGB";
-    return {};
+    return {CameraEffectError::kYUVConversionFailed};
   }
 
   // Mediapipe requires timestamps to be strictly increasing for a given
@@ -848,11 +867,10 @@ EffectsStreamManipulatorImpl::RenderEffect(Camera3StreamBuffer& result_buffer,
   pipeline_->Wait();
   if (!frame_status_.ok()) {
     LOG(ERROR) << frame_status_.message();
-    return {};
+    return {CameraEffectError::kPipelineFailed};
   }
   result_buffer.mutable_raw_buffer().status = CAMERA3_BUFFER_STATUS_OK;
-  return RenderResult{.success = true,
-                      .cleanup_closure = deregister_action.Release()};
+  return RenderResult{.cleanup_closure = deregister_action.Release()};
 }
 
 void EffectsStreamManipulatorImpl::Notify(camera3_notify_msg_t msg) {
@@ -888,6 +906,7 @@ void EffectsStreamManipulatorImpl::ReturnStillCaptureResult(
       capture_context.still_capture_processor_pending = false;
       std::move(capture_context).CheckForCompletion();
     }
+    metrics_.RecordStillShotTaken();
   }
   callbacks_.result_callback.Run(std::move(result));
 }

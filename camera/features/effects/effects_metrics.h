@@ -8,6 +8,7 @@
 #define CAMERA_FEATURES_EFFECTS_EFFECTS_METRICS_H_
 
 #include <memory>
+#include <utility>
 #include <vector>
 
 #include <base/containers/flat_set.h>
@@ -27,17 +28,31 @@ namespace cros {
 // method of EffectsMetricsUploader and then create a new one.
 class EffectsMetricsData {
  public:
+  EffectsMetricsData();
   void RecordSelectedEffect(const EffectsConfig& config);
   void RecordFrameProcessingLatency(const EffectsConfig& config,
                                     const base::TimeDelta& latency);
   void RecordFrameProcessingInterval(const EffectsConfig& config,
                                      const base::TimeDelta& interval);
+  void RecordRequestedFrameRate(int fps);
+  void RecordStreamSize(CameraEffectStreamType stream_type, size_t size);
+  void RecordNumConcurrentStreams(size_t num_concurrent_streams);
+  void RecordNumConcurrentProcessedStreams(
+      size_t num_concurrent_processed_streams);
+  void RecordStillShotTaken();
+  void RecordError(CameraEffectError error);
 
   bool EffectSelected(CameraEffect effect) const;
   base::TimeDelta AverageFrameProcessingLatency(CameraEffect effect) const;
   base::TimeDelta AverageFrameProcessingInterval(CameraEffect effect) const;
 
  private:
+  friend class EffectsMetricsUploader;
+  int max_requested_fps_ = 0;
+  size_t max_num_concurrent_streams_ = 0u;
+  size_t max_num_concurrent_processed_streams_ = 0u;
+  size_t num_still_shots_taken_ = 0;
+  CameraEffectError error_ = CameraEffectError::kNoError;
   base::flat_set<CameraEffect> selected_effects_;
   std::array<std::vector<base::TimeDelta>,
              static_cast<size_t>(CameraEffect::kMaxValue) + 1>
@@ -45,6 +60,9 @@ class EffectsMetricsData {
   std::array<std::vector<base::TimeDelta>,
              static_cast<size_t>(CameraEffect::kMaxValue) + 1>
       frame_intervals_;
+  std::array<std::pair<size_t /*min*/, size_t /*max*/>,
+             static_cast<size_t>(CameraEffect::kMaxValue) + 1>
+      stream_sizes_;
 };
 
 // EffectsMetricsUploader will upload an instance of EffectsMetricsData to
