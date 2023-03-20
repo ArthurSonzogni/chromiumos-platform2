@@ -457,7 +457,7 @@ TEST_F(ImageLoaderTest, ValidIdTest) {
   EXPECT_TRUE(ImageLoaderImpl::IsIdValid("dash-id0123"));
   EXPECT_TRUE(ImageLoaderImpl::IsIdValid("underscore_id_0123"));
   EXPECT_TRUE(ImageLoaderImpl::IsIdValid("0123-a_dash-id"));
-  EXPECT_TRUE(ImageLoaderImpl::IsIdValid(u8"unicode_id"));
+  EXPECT_TRUE(ImageLoaderImpl::IsIdValid("unicode_id"));
   // first char is illegal:
   EXPECT_FALSE(ImageLoaderImpl::IsIdValid("-non-alpha"));
   EXPECT_FALSE(ImageLoaderImpl::IsIdValid("_non-alpha"));
@@ -465,7 +465,7 @@ TEST_F(ImageLoaderTest, ValidIdTest) {
   // non-alpha numerical IDs:
   EXPECT_FALSE(ImageLoaderImpl::IsIdValid("dot.id"));
   EXPECT_FALSE(ImageLoaderImpl::IsIdValid("../../../../evilid"));
-  EXPECT_FALSE(ImageLoaderImpl::IsIdValid(u8"unicode_id_#"));
+  EXPECT_FALSE(ImageLoaderImpl::IsIdValid("unicode_id_#"));
   // ID is too long.
   EXPECT_FALSE(
       ImageLoaderImpl::IsIdValid("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
