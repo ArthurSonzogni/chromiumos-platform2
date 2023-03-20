@@ -30,9 +30,9 @@ static mut VM_INIT_RX: Lazy<bool> = Lazy::new(|| false);
 /// This executable can be run in the VM once resourced has started its v1 gRPC
 /// server
 fn main() {
-    println!("+--------------------------------------------+");
-    println!("|  Mock Client to stub VM side interactions  |");
-    println!("+--------------------------------------------+");
+    println!("+-----------------------------------------------------+");
+    println!("|  Mock Client to stub VM side interactions (v2 API)  |");
+    println!("+-----------------------------------------------------+");
 
     // Default host and port. Can be overwritten from cmdline.
     let mut server_host = "vsock:-1".to_string();
@@ -72,6 +72,9 @@ fn main() {
     loop {
         thread::sleep(std::time::Duration::from_secs(2));
 
+        println!("<== Get CPU Info");
+        get_cpu_info(client_addr);
+
         println!("<== Frequency update RPC request 3.2G");
         send_cpu_freq_change_request(3200000, client_addr);
 
@@ -94,6 +97,18 @@ fn main() {
             cycle_cnt += 1;
         }
     }
+}
+
+fn get_cpu_info(addr: &str) {
+    println!("Using addr {}", addr);
+    let env = Arc::new(EnvBuilder::new().build());
+    let ch = ChannelBuilder::new(env).connect(addr);
+    let client = ResourcedCommListenerClient::new(ch);
+
+    let req = EmptyMessage::default();
+    let reply = client.get_cpu_info(&req).expect("rpc");
+    println!("Server response: {:?}", reply.get_cpu_core_data());
+    //TODO: clean print
 }
 
 fn trigger_cpu_updates(freq_ms: i64, addr: &str) {
@@ -138,14 +153,10 @@ impl ResourcedComm for ResourcedCommService {
     fn vm_init_data(
         &mut self,
         ctx: grpcio::RpcContext,
-        req: crate::resourced_bridge::InitData,
+        req: crate::resourced_bridge::CpuInfoData,
         sink: grpcio::UnarySink<crate::resourced_bridge::EmptyMessage>,
     ) {
-        println!(
-            "VmInitPayload: battery status={:?}, cpu_freq={:?}",
-            req.get_battery_init().get_status(),
-            req.get_cpu_default_frequency()
-        );
+        println!("{:?}", req.get_cpu_core_data());
 
         unsafe {
             *VM_INIT_RX = true;
@@ -175,30 +186,6 @@ impl ResourcedComm for ResourcedCommService {
             req.get_power_limit_1(),
             req.get_cpu_energy()
         );
-        let resp = EmptyMessage::default();
-        let f = sink
-            .success(resp)
-            .map_err(move |e| println!("failed to reply {:?}: {:?}", req, e))
-            .map(|_| ());
-        ctx.spawn(f)
-    }
-
-    fn battery_update(
-        &mut self,
-        ctx: grpcio::RpcContext,
-        req: crate::resourced_bridge::BatteryData,
-        sink: grpcio::UnarySink<crate::resourced_bridge::EmptyMessage>,
-    ) {
-        println!(
-            "{:?} powerd battery update: charging:{:?}\tdnotifier_level:{:?}",
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .expect("Coudn't resolve time")
-                .as_millis(),
-            req.get_power_state(),
-            req.get_status()
-        );
-
         let resp = EmptyMessage::default();
         let f = sink
             .success(resp)

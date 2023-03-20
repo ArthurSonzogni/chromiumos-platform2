@@ -13,7 +13,7 @@ pub(crate) mod tests {
     use crate::common::{FullscreenVideo, GameMode, RTCAudioActive};
     use crate::power;
 
-    const MOCK_NUM_CPU: i32 = 8;
+    const MOCK_NUM_CPU: i32 = 16;
 
     pub const CPUINFO_PATH: &str = "proc/cpuinfo";
     /// Base path for power_limit relative to rootdir.
@@ -109,11 +109,12 @@ pub(crate) mod tests {
             "max_energy_range_uj",
         ];
 
-        let cpufreq_files: Vec<&str> = vec![
-            "scaling_max_freq",
-            "cpuinfo_max_freq",
-            "scaling_min_freq",
-            "cpuinfo_min_freq",
+        let cpufreq_files: Vec<(&str, &str)> = vec![
+            ("scaling_max_freq", "4100000"),
+            ("cpuinfo_max_freq", "4100000"),
+            ("scaling_min_freq", "400000"),
+            ("cpuinfo_min_freq", "400000"),
+            ("base_frequency", "2100000"),
         ];
 
         for pl_file in &pl_files {
@@ -128,7 +129,7 @@ pub(crate) mod tests {
             let policy_path = root.join(DEVICE_CPUFREQ_PATH).join(format!("policy{i}"));
 
             for cpufreq_file in &cpufreq_files {
-                std::fs::write(policy_path.join(PathBuf::from(cpufreq_file)), "0")?;
+                std::fs::write(policy_path.join(cpufreq_file.0), cpufreq_file.1)?;
             }
         }
 

@@ -4,6 +4,7 @@
 use anyhow::{bail, Result};
 use glob::glob;
 use libchromeos::sys::info;
+use regex::Regex;
 use std::path::{Path, PathBuf};
 use std::str;
 
@@ -33,6 +34,16 @@ pub struct DeviceCpuStatus {
     cpu_min_freq_path_pattern: String,
     cpu_max_freq_default: u64,
     cpu_min_freq_default: u64,
+    // TODO: store static CpuInfo at object creation.  Only update current_freq at runtime.
+    //cpu_info: Vec<CpuStaticInfo>
+}
+
+#[derive(Debug, Clone, Eq, Ord, PartialEq, PartialOrd)]
+pub struct CpuStaticInfo {
+    pub core_num: i64,
+    pub base_freq_khz: i64,
+    pub min_freq_khz: i64,
+    pub max_freq_khz: i64,
 }
 
 #[allow(dead_code)]
@@ -189,6 +200,81 @@ impl DeviceCpuStatus {
         Ok(())
     }
 
+    /// Returns the current CPU frequency oif the requested core.
+    ///
+    /// # Arguments
+    ///
+    /// * `root` - Relative path from which sysfs files are searches.
+    /// Should be `/` for non-test cases.
+    ///
+    /// * `core_num` - core number as defined in sysfs.
+    ///
+    /// # Return
+    ///
+    /// Result<i64> - integer denoting current frequency in KHz.
+    pub fn get_core_curr_freq_khz(&self, root: PathBuf, core_num: i64) -> Result<i64> {
+        let root_pathbuf = root
+            .join(DEVICE_CPUFREQ_PATH)
+            .join(format!("policy{core_num}/"))
+            .join("scaling_cur_freq");
+        let cpu_cur_freq_path = root_pathbuf.as_path();
+
+        Ok(self.get_sysfs_val(cpu_cur_freq_path)? as i64)
+    }
+
+    /// Returns the CPU info for all available CPU cores.
+    ///
+    /// # Arguments
+    ///
+    /// * `root` - Relative path from which sysfs files are searches.
+    /// Should be `/` for non-test cases.
+    ///
+    /// # Return
+    ///
+    /// Result<Vec<CpuStaticInfo>> - CpuInfo for all cores (sorted by core_number).
+    pub fn get_static_cpu_info(&self, root: PathBuf) -> Result<Vec<CpuStaticInfo>> {
+        let mut res: Vec<CpuStaticInfo> = vec![];
+        let mut core_num: i64;
+
+        let cpu_policy_path = root
+            .join(DEVICE_CPUFREQ_PATH)
+            .join("policy*/")
+            .as_path()
+            .display()
+            .to_string();
+
+        if let Ok(core_paths) = glob(&cpu_policy_path) {
+            for core_path in core_paths.flatten() {
+                let policy_path = core_path.display().to_string();
+
+                let re = Regex::new(r".*cpufreq/policy(\d{1,2}).*")?;
+                if let Some(cap) = re.captures(&policy_path) {
+                    core_num = cap
+                        .get(1)
+                        .map_or(0, |m| m.as_str().parse::<i64>().unwrap_or(0));
+                } else {
+                    bail!("Couldn't not parse core info.");
+                }
+
+                res.push(CpuStaticInfo {
+                    core_num,
+                    base_freq_khz: common::read_file_to_u64(core_path.join("base_frequency"))?
+                        .try_into()?,
+                    max_freq_khz: common::read_file_to_u64(core_path.join("cpuinfo_max_freq"))?
+                        .try_into()?,
+                    min_freq_khz: common::read_file_to_u64(core_path.join("cpuinfo_min_freq"))?
+                        .try_into()?,
+                });
+            }
+        } else {
+            bail!("Could not find CPU paths");
+        }
+
+        // Sort by core_number before returning.
+        res.sort_by(|a, b| a.core_num.cmp(&b.core_num));
+        Ok(res)
+    }
+
     /// Create a new DeviceCpuStatus.
     ///
     /// Constructor for new DeviceCpuStatus object. Will check if all associated sysfs path exists
@@ -304,12 +390,14 @@ impl DeviceCpuStatus {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+
     use super::*;
     use crate::test_utils::tests::*;
     use anyhow::Result;
     use tempfile::tempdir;
 
-    const MOCK_NUM_CPU: i32 = 8;
+    const MOCK_NUM_CPU: i32 = 16;
 
     #[test]
     fn test_sysfs_files_missing_gives_error() {
@@ -318,7 +406,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_pl0() -> anyhow::Result<()> {
+    fn test_get_pl0() -> Result<()> {
         let root = tempdir()?;
         setup_mock_cpu_dev_dirs(root.path()).unwrap();
         setup_mock_cpu_files(root.path()).unwrap();
@@ -330,6 +418,57 @@ mod tests {
         assert_eq!(mock_cpu_dev.get_pl0_curr()?, 15000000);
 
         Ok(())
+    }
+
+    #[test]
+    fn test_cpu_info_parsing() {
+        let root = tempdir().unwrap();
+        setup_mock_cpu_dev_dirs(root.path()).unwrap();
+        setup_mock_cpu_files(root.path()).unwrap();
+
+        let mock_cpu_dev = DeviceCpuStatus::new(PathBuf::from(root.path())).unwrap();
+        let cpu_info = mock_cpu_dev
+            .get_static_cpu_info(PathBuf::from(root.path()))
+            .unwrap();
+
+        // Test that cores are presorted
+        for i in 0..MOCK_NUM_CPU {
+            assert_eq!(cpu_info.get(i as usize).unwrap().core_num, i as i64);
+        }
+
+        // Test all cpu's were inserted with unique core_nums
+        assert_eq!(
+            cpu_info
+                .iter()
+                .map(|core| core.core_num)
+                .collect::<HashSet<i64>>()
+                .len() as i32,
+            MOCK_NUM_CPU
+        );
+
+        // Test that correct data and paths were picked up
+        let base_freqs = cpu_info
+            .iter()
+            .map(|core| core.base_freq_khz)
+            .collect::<HashSet<i64>>();
+        let min_freqs = cpu_info
+            .iter()
+            .map(|core| core.min_freq_khz)
+            .collect::<HashSet<i64>>();
+        let max_freqs = cpu_info
+            .iter()
+            .map(|core| core.max_freq_khz)
+            .collect::<HashSet<i64>>();
+
+        // Leave these extensible.  len will be 2 for heterogeneous cores.
+        assert_eq!(base_freqs.len(), 1);
+        assert_eq!(*base_freqs.iter().next().unwrap(), 2100000);
+
+        assert_eq!(min_freqs.len(), 1);
+        assert_eq!(*min_freqs.iter().next().unwrap(), 400000);
+
+        assert_eq!(max_freqs.len(), 1);
+        assert_eq!(*max_freqs.iter().next().unwrap(), 4100000);
     }
 
     #[test]

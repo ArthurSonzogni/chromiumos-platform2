@@ -48,8 +48,8 @@ minijail = { path = "../../platform/minijail/rust/minijail" } # ignored by ebuil
 sync = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/sync-0.1.149/" } # ignored by ebuild
 
 [[example]]
-name = "test_client_v1"
-path = "./src/vm_grpc/test_client/client_v1.rs"
+name = "test_client_v2"
+path = "./src/vm_grpc/test_client/client_v2.rs"
 required-features = ["vm_grpc"]
 
 [build-dependencies]

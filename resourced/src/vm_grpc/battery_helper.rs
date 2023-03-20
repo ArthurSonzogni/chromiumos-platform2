@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 use crate::common;
-use crate::vm_grpc::proto::resourced_bridge::BatteryData_DNotifierPowerState;
 use anyhow::{bail, Result};
 use std::{
     fs,
@@ -72,29 +71,6 @@ impl DeviceBatteryStatus {
             bail!("Could not find all sysfs files for battery status");
         }
     }
-
-    // Placeholder for notifier level.  This may be deprecated in favor of ACPI interrupts
-    // containing the DNOTIFER level.
-    pub fn get_notifier_level(batt_percent: f32) -> Result<BatteryData_DNotifierPowerState> {
-        match batt_percent {
-            x if (0.0..60.0).contains(&x) => {
-                Ok(BatteryData_DNotifierPowerState::DNOTIFIER_POWER_STATE_D5)
-            }
-            x if (60.0..70.0).contains(&x) => {
-                Ok(BatteryData_DNotifierPowerState::DNOTIFIER_POWER_STATE_D4)
-            }
-            x if (70.0..80.0).contains(&x) => {
-                Ok(BatteryData_DNotifierPowerState::DNOTIFIER_POWER_STATE_D3)
-            }
-            x if (80.0..90.0).contains(&x) => {
-                Ok(BatteryData_DNotifierPowerState::DNOTIFIER_POWER_STATE_D2)
-            }
-            x if (90.0..=100.0).contains(&x) => {
-                Ok(BatteryData_DNotifierPowerState::DNOTIFIER_POWER_STATE_D1)
-            }
-            _ => bail!("Battery percent outside range 0 to 100"),
-        }
-    }
 }
 
 #[cfg(test)]
@@ -143,20 +119,10 @@ mod tests {
         // Test 100% Full
         let mock_batt = mock_batt.unwrap();
         assert!(mock_batt.is_charging().unwrap());
-        assert_eq!(
-            DeviceBatteryStatus::get_notifier_level(mock_batt.get_percent().unwrap()).unwrap(),
-            BatteryData_DNotifierPowerState::DNOTIFIER_POWER_STATE_D1
-        );
-
         // Test 80% Discharging
         write_mock_battery(root.path(), "Discharging", 82, 100);
         assert!(!mock_batt.is_charging().unwrap());
         assert_eq!(mock_batt.get_percent().unwrap(), 82f32);
-
-        assert_eq!(
-            DeviceBatteryStatus::get_notifier_level(mock_batt.get_percent().unwrap()).unwrap(),
-            BatteryData_DNotifierPowerState::DNOTIFIER_POWER_STATE_D2
-        );
 
         //Test div by 0
         write_mock_battery(root.path(), "Discharging", 82, 0);

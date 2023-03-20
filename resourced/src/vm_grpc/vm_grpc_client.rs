@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::sync::Arc;
 use std::thread;
@@ -11,13 +11,11 @@ use std::time::Duration;
 use anyhow::{bail, Result};
 use futures_executor::block_on;
 use grpcio::{CallOption, ChannelBuilder, EnvBuilder};
-use libchromeos::sys::{debug, error, info, warn};
+use libchromeos::sys::{debug, info, warn};
+use protobuf::RepeatedField;
 
 use crate::cpu_scaling::DeviceCpuStatus;
-use crate::vm_grpc::battery_helper::DeviceBatteryStatus;
-use crate::vm_grpc::proto::resourced_bridge::{
-    BatteryData, BatteryData_BatteryStatus, CpuRaplPowerData, InitData,
-};
+use crate::vm_grpc::proto::resourced_bridge::{CpuInfoCoreData, CpuInfoData, CpuRaplPowerData};
 use crate::vm_grpc::proto::resourced_bridge_grpc::ResourcedCommClient;
 
 // Polling interval used when checking if connection is alive.
@@ -47,9 +45,9 @@ const DEFAULT_MESSAGE_TIME_MS: i64 = 5000;
 pub(crate) struct VmGrpcClient {
     vm_content_id: i16,
     client: ResourcedCommClient,
-    batt_dev: DeviceBatteryStatus,
     cpu_dev: DeviceCpuStatus,
     default_sleep_time_ms: u64,
+    root_path: PathBuf,
 }
 
 impl VmGrpcClient {
@@ -91,15 +89,14 @@ impl VmGrpcClient {
         // Create the client object for the internal thread.
         let client = VmGrpcClient::create_vm_rpc_client(vm_content_id, port)?;
         let cpu_dev = DeviceCpuStatus::new(root.to_path_buf())?;
-        let batt_dev = DeviceBatteryStatus::new(root.to_path_buf())?;
         let default_sleep_time_ms: u64 = 100;
 
         let grpc_client = VmGrpcClient {
             vm_content_id,
             client,
-            batt_dev,
             cpu_dev,
             default_sleep_time_ms,
+            root_path: root.to_path_buf(),
         };
 
         thread::spawn(
@@ -116,7 +113,6 @@ impl VmGrpcClient {
         info!("Grpc client main loop");
 
         let mut consecutive_fail = 0;
-        let mut last_charging_status = self.batt_dev.is_charging()?;
         let mut sleep_time_ms: u64;
 
         let mut msg_time_ms: i64 = DEFAULT_MESSAGE_TIME_MS;
@@ -192,13 +188,6 @@ impl VmGrpcClient {
                 sleep_time_ms = self.default_sleep_time_ms;
             }
 
-            // Battery status updates are sent independently and unsolicited.
-            let curr_charging_status = self.batt_dev.is_charging()?;
-            if last_charging_status != curr_charging_status {
-                self.send_battery_update()?;
-                last_charging_status = curr_charging_status;
-            }
-
             thread::sleep(Duration::from_millis(sleep_time_ms));
         }
     }
@@ -239,32 +228,38 @@ impl VmGrpcClient {
         true
     }
 
+    fn get_cpu_info_data(&self) -> Result<CpuInfoData> {
+        let data = self
+            .cpu_dev
+            .get_static_cpu_info(self.root_path.to_owned())?;
+        let mut cpu_info_data = CpuInfoData::default();
+        let mut all_core_data: RepeatedField<CpuInfoCoreData> = RepeatedField::new();
+
+        for core in data {
+            let mut core_data = CpuInfoCoreData::default();
+            let core_num: i64 = core.core_num;
+            core_data.set_core_num(core_num);
+            core_data.set_cpu_freq_base_khz(core.base_freq_khz);
+            core_data.set_cpu_freq_curr_khz(
+                self.cpu_dev
+                    .get_core_curr_freq_khz(self.root_path.to_owned(), core_num)?,
+            );
+            core_data.set_cpu_freq_max_khz(core.max_freq_khz);
+            core_data.set_cpu_freq_min_khz(core.min_freq_khz);
+
+            all_core_data.push(core_data);
+        }
+
+        cpu_info_data.set_cpu_core_data(all_core_data);
+
+        Ok(cpu_info_data)
+    }
+
     // TODO: make pub so main thread can send this on conn reestablish
     fn send_vm_init(&self) -> Result<()> {
-        let mut req = InitData::default();
+        let req = self.get_cpu_info_data()?;
 
-        let mut batt = BatteryData::default();
-        let percent = self.batt_dev.get_percent()?;
-        batt.set_status(if self.batt_dev.is_charging()? {
-            BatteryData_BatteryStatus::CHARGING
-        } else {
-            BatteryData_BatteryStatus::DISCHARGING
-        });
-        batt.set_power_state(DeviceBatteryStatus::get_notifier_level(percent)?);
-
-        req.set_battery_init(batt);
-
-        // FIXME (shahdath@): this value is wrong, using a placeholder for now.
-        // Need to change after `cpu_scaling.rs` is updated.
-        req.set_cpu_default_frequency(vec![self.cpu_dev.get_pl0_curr().unwrap_or_default() as i64]);
-
-        info!(
-            "VmInit: {:?}%, isCharging: {:?}, notif: {:?}",
-            percent,
-            req.get_battery_init().get_status(),
-            req.get_battery_init().get_power_state()
-        );
-
+        info!("Core data: {:?}", req);
         // Propagate error up the stack to count multiple failures and retry if needed.
         let options = CallOption::default()
             .wait_for_ready(true)
@@ -293,31 +288,6 @@ impl VmGrpcClient {
 
         //Propagate error up the stack to count multiple failures.
         let _reply = self.client.cpu_power_update(&req)?;
-        Ok(())
-    }
-
-    fn send_battery_update(&self) -> Result<()> {
-        let mut req = BatteryData::default();
-        let percent = self.batt_dev.get_percent()?;
-        req.set_status(if self.batt_dev.is_charging()? {
-            BatteryData_BatteryStatus::CHARGING
-        } else {
-            BatteryData_BatteryStatus::DISCHARGING
-        });
-        req.set_power_state(DeviceBatteryStatus::get_notifier_level(percent)?);
-
-        debug!(
-            "Battery update: {:?}%, isCharging: {:?}, notif: {:?}",
-            percent,
-            req.get_status(),
-            req.get_power_state()
-        );
-
-        let _reply = self
-            .client
-            .battery_update(&req)
-            .map_err(move |e| error!("error making rpc call {:?}: {:?}", req, e))
-            .map(|_| ());
         Ok(())
     }
 }

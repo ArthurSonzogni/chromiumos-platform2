@@ -2,24 +2,23 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+use anyhow::{bail, Result};
 use futures_util::future::{FutureExt as _, TryFutureExt as _};
 use grpcio::{ChannelBuilder, Environment, ResourceQuota, RpcContext, ServerBuilder, UnarySink};
+use libchromeos::sys::{error, info, warn};
+use protobuf::RepeatedField;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::sync::Arc;
-
-use crate::vm_grpc::proto::resourced_bridge::{RequestedInterval, ReturnCode, ReturnCode_Status};
-use crate::vm_grpc::proto::resourced_bridge_grpc::{
-    create_resourced_comm_listener, ResourcedCommListener,
-};
-
-use anyhow::{bail, Result};
-use libchromeos::sys::{error, info, warn};
-use std::path::Path;
 use std::thread;
 
 use crate::cpu_scaling::DeviceCpuStatus;
-
-use super::proto::resourced_bridge::EmptyMessage;
+use crate::vm_grpc::proto::resourced_bridge::{
+    CpuInfoCoreData, CpuInfoData, EmptyMessage, RequestedInterval, ReturnCode, ReturnCode_Status,
+};
+use crate::vm_grpc::proto::resourced_bridge_grpc::{
+    create_resourced_comm_listener, ResourcedCommListener,
+};
 
 // Server side handler
 #[derive(Clone)]
@@ -150,6 +149,55 @@ impl VmGrpcServer {
 }
 
 impl ResourcedCommListener for ResourcedCommListenerService {
+    fn get_cpu_info(
+        &mut self,
+        ctx: RpcContext<'_>,
+        req: EmptyMessage,
+        sink: UnarySink<CpuInfoData>,
+    ) {
+        info!("==> Get CPU Info request");
+
+        let mut resp = CpuInfoData::default();
+
+        if let Ok(data) = self.cpu_dev.get_static_cpu_info(PathBuf::from("/")) {
+            let mut all_core_data: RepeatedField<CpuInfoCoreData> = RepeatedField::new();
+
+            for core in data {
+                let mut core_data = CpuInfoCoreData::default();
+                let core_num: i64 = core.core_num;
+
+                core_data.set_core_num(core_num);
+                core_data.set_cpu_freq_base_khz(core.base_freq_khz);
+                core_data.set_cpu_freq_max_khz(core.max_freq_khz);
+                core_data.set_cpu_freq_min_khz(core.min_freq_khz);
+                if let Ok(core_curr_freq) = self
+                    .cpu_dev
+                    .get_core_curr_freq_khz(PathBuf::from("/"), core_num)
+                {
+                    core_data.set_cpu_freq_curr_khz(core_curr_freq);
+                } else {
+                    // We don't abort if frequency couldn't be read.
+                    warn!("Could not read cpu frequency for core {core_num}");
+                    core_data.set_cpu_freq_curr_khz(0);
+                }
+
+                all_core_data.push(core_data);
+            }
+
+            resp.set_cpu_core_data(all_core_data);
+        } else {
+            // Fail if static data couldn't be send.
+            warn!("Couldn't get static CPU data, not sending rpc response");
+            return;
+        }
+
+        let f = sink
+            .success(resp)
+            .map_err(move |e| error!("failed to reply {:?}: {:?}", req, e))
+            .map(|_| ());
+        ctx.spawn(f)
+    }
+
     fn start_cpu_updates(
         &mut self,
         ctx: RpcContext<'_>,
