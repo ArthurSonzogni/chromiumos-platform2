@@ -10,6 +10,7 @@ group("all") {
     ":bootlockboxd",
     ":bootlockboxtool",
     ":install_policy",
+    ":install_systemd",
     ":install_tmpfiles_config",
   ]
   if (use.test) {
@@ -18,6 +19,11 @@ group("all") {
   if (!use.systemd) {
     deps += [ ":install_init" ]
   }
+}
+
+install_config("install_systemd") {
+  sources = [ "org.chromium.BootLockbox.conf" ]
+  install_path = "/etc/dbus-1/system.d"
 }
 
 pkg_config("bootlockbox_dependent_config") {
