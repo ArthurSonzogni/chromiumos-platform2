@@ -522,10 +522,6 @@ constexpr char kMojoConnectionServiceInterface[] =
     "org.chromium.MojoConnectionService";
 
 // Methods
-constexpr char kBootstrapMojoConnectionForIioServiceMethod[] =
-    "BootstrapMojoConnectionForIioService";
-constexpr char kBootstrapMojoConnectionForSensorClientsMethod[] =
-    "BootstrapMojoConnectionForSensorClients";
 constexpr char kBootstrapMojoConnectionForRollbackNetworkConfigMethod[] =
     "BootstrapMojoConnectionForRollbackNetworkConfigService";
 constexpr char kBootstrapForCrosHealthdInternalServiceFactoryMethod[] =
