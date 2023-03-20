@@ -234,15 +234,30 @@ void DiskCleanup::set_routines_for_testing(DiskCleanupRoutines* routines) {
 }
 
 bool DiskCleanup::FreeDiskSpaceInternal() {
-  // If ephemeral users are enabled, remove all cryptohomes except those
-  // currently mounted or belonging to the owner.
-  // |AreEphemeralUsers| will reload the policy to guarantee freshness.
-  if (homedirs_->AreEphemeralUsersEnabled()) {
-    homedirs_->RemoveNonOwnerCryptohomes();
-
+  // If ephemeral policies are set, remove all ephemeral cryptohomes except
+  // those currently mounted or belonging to the owner.
+  // |RemoveCryptohomesBasedOnPolicy| will reload the policy to guarantee
+  // freshness.
+  auto ephemeral_removal_state = homedirs_->RemoveCryptohomesBasedOnPolicy();
+  if (ephemeral_removal_state == HomeDirs::CryptohomesRemovedStatus::kAll) {
     ReportDiskCleanupProgress(
         DiskCleanupProgress::kEphemeralUserProfilesCleaned);
     return true;
+  }
+
+  if (ephemeral_removal_state == HomeDirs::CryptohomesRemovedStatus::kSome) {
+    // If some ephemeral cryptohomes are cleaned and the free space is
+    // above the target, log progress and return.
+    if (HasTargetFreeSpace()) {
+      ReportDiskCleanupProgress(
+          DiskCleanupProgress::kSomeEphemeralUserProfilesCleanedAboveTarget);
+      return true;
+    }
+
+    // If some ephemeral cryptohomes are cleaned and free space is not above the
+    // target, log progress and continue with disk cleanup
+    ReportDiskCleanupProgress(
+        DiskCleanupProgress::kSomeEphemeralUserProfilesCleaned);
   }
 
   auto homedirs = homedirs_->GetHomeDirs();

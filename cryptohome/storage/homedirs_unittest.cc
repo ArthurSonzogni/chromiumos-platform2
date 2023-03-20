@@ -67,11 +67,6 @@ ACTION_P2(SetOwner, owner_known, owner) {
   return owner_known;
 }
 
-ACTION_P(SetEphemeralUsersEnabled, ephemeral_users_enabled) {
-  *arg0 = ephemeral_users_enabled;
-  return true;
-}
-
 ACTION_P(SetEphemeralSettings, ephemeral_settings) {
   *arg0 = ephemeral_settings;
   return true;
@@ -106,7 +101,7 @@ class HomeDirsTest
   HomeDirsTest& operator=(HomeDirsTest&&) = delete;
 
   void SetUp() override {
-    PreparePolicy(true, kOwner, false, "");
+    PreparePolicy(true, kOwner, "");
 
     std::unique_ptr<EncryptedContainerFactory> container_factory =
         std::make_unique<EncryptedContainerFactory>(
@@ -151,15 +146,12 @@ class HomeDirsTest
 
   void PreparePolicy(bool owner_known,
                      const std::string& owner,
-                     bool ephemeral_users_enabled,
                      const std::string& clean_up_strategy) {
     EXPECT_CALL(*mock_device_policy_,
                 LoadPolicy(/*delete_invalid_files=*/false))
         .WillRepeatedly(Return(true));
     EXPECT_CALL(*mock_device_policy_, GetOwner(_))
         .WillRepeatedly(SetOwner(owner_known, owner));
-    EXPECT_CALL(*mock_device_policy_, GetEphemeralUsersEnabled(_))
-        .WillRepeatedly(SetEphemeralUsersEnabled(ephemeral_users_enabled));
   }
 
   // Returns true if the test is running for eCryptfs, false if for dircrypto.
@@ -197,23 +189,23 @@ class HomeDirsTest
 INSTANTIATE_TEST_SUITE_P(WithEcryptfs, HomeDirsTest, ::testing::Values(true));
 INSTANTIATE_TEST_SUITE_P(WithDircrypto, HomeDirsTest, ::testing::Values(false));
 
-TEST_P(HomeDirsTest, RemoveNonOwnerCryptohomes) {
+TEST_P(HomeDirsTest, RemoveEphemeralCryptohomes_Error) {
   EXPECT_TRUE(platform_.DirectoryExists(users_[0].homedir_path));
   EXPECT_TRUE(platform_.DirectoryExists(users_[1].homedir_path));
   EXPECT_TRUE(platform_.DirectoryExists(users_[2].homedir_path));
   EXPECT_TRUE(platform_.DirectoryExists(users_[kOwnerIndex].homedir_path));
 
   EXPECT_CALL(platform_, IsDirectoryMounted(_)).WillRepeatedly(Return(false));
-  EXPECT_CALL(keyset_management_, RemoveLECredentials(_)).Times(3);
+  EXPECT_CALL(keyset_management_, RemoveLECredentials(_)).Times(0);
+  EXPECT_CALL(*mock_device_policy_, GetEphemeralSettings(_))
+      .WillRepeatedly(Return(false));
 
-  homedirs_->RemoveNonOwnerCryptohomes();
+  auto result = homedirs_->RemoveCryptohomesBasedOnPolicy();
+  EXPECT_EQ(result, HomeDirs::CryptohomesRemovedStatus::kError);
 
-  // Non-owners' vaults are removed.
-  EXPECT_FALSE(platform_.DirectoryExists(users_[0].homedir_path));
-  EXPECT_FALSE(platform_.DirectoryExists(users_[1].homedir_path));
-  EXPECT_FALSE(platform_.DirectoryExists(users_[2].homedir_path));
-
-  // Owner's vault still exists
+  EXPECT_TRUE(platform_.DirectoryExists(users_[0].homedir_path));
+  EXPECT_TRUE(platform_.DirectoryExists(users_[1].homedir_path));
+  EXPECT_TRUE(platform_.DirectoryExists(users_[2].homedir_path));
   EXPECT_TRUE(platform_.DirectoryExists(users_[kOwnerIndex].homedir_path));
 }
 
@@ -232,7 +224,8 @@ TEST_P(HomeDirsTest, RemoveEphemeralCryptohomes_EphemeralUsersDisabled) {
   EXPECT_CALL(*mock_device_policy_, GetEphemeralSettings(_))
       .WillRepeatedly(SetEphemeralSettings(ephemeral_settings));
 
-  homedirs_->RemoveCryptohomesBasedOnPolicy();
+  auto result = homedirs_->RemoveCryptohomesBasedOnPolicy();
+  EXPECT_EQ(result, HomeDirs::CryptohomesRemovedStatus::kNone);
 
   EXPECT_TRUE(platform_.DirectoryExists(users_[0].homedir_path));
   EXPECT_TRUE(platform_.DirectoryExists(users_[1].homedir_path));
@@ -256,7 +249,8 @@ TEST_P(HomeDirsTest, RemoveEphemeralCryptohomes_EphemeralUsersEnabled) {
   EXPECT_CALL(*mock_device_policy_, GetEphemeralSettings(_))
       .WillRepeatedly(SetEphemeralSettings(ephemeral_settings));
 
-  homedirs_->RemoveCryptohomesBasedOnPolicy();
+  auto result = homedirs_->RemoveCryptohomesBasedOnPolicy();
+  EXPECT_EQ(result, HomeDirs::CryptohomesRemovedStatus::kSome);
 
   // Non-owners' vaults are removed.
   EXPECT_FALSE(platform_.DirectoryExists(users_[0].homedir_path));
@@ -285,7 +279,8 @@ TEST_P(HomeDirsTest,
       .WillRepeatedly(SetEphemeralSettings(ephemeral_settings));
 
   homedirs_->set_enterprise_owned(true);
-  homedirs_->RemoveCryptohomesBasedOnPolicy();
+  auto result = homedirs_->RemoveCryptohomesBasedOnPolicy();
+  EXPECT_EQ(result, HomeDirs::CryptohomesRemovedStatus::kAll);
 
   // When enterprise owned there is no owner vault.
   EXPECT_FALSE(platform_.DirectoryExists(users_[0].homedir_path));
@@ -313,7 +308,8 @@ TEST_P(HomeDirsTest,
   EXPECT_CALL(*mock_device_policy_, GetEphemeralSettings(_))
       .WillRepeatedly(SetEphemeralSettings(ephemeral_settings));
 
-  homedirs_->RemoveCryptohomesBasedOnPolicy();
+  auto result = homedirs_->RemoveCryptohomesBasedOnPolicy();
+  EXPECT_EQ(result, HomeDirs::CryptohomesRemovedStatus::kSome);
 
   // Ephemeral vaults are removed.
   EXPECT_FALSE(platform_.DirectoryExists(users_[0].homedir_path));
@@ -342,7 +338,8 @@ TEST_P(HomeDirsTest,
   EXPECT_CALL(*mock_device_policy_, GetEphemeralSettings(_))
       .WillRepeatedly(SetEphemeralSettings(ephemeral_settings));
 
-  homedirs_->RemoveCryptohomesBasedOnPolicy();
+  auto result = homedirs_->RemoveCryptohomesBasedOnPolicy();
+  EXPECT_EQ(result, HomeDirs::CryptohomesRemovedStatus::kSome);
 
   // Ephemeral vaults are removed.
   EXPECT_FALSE(platform_.DirectoryExists(users_[0].homedir_path));

@@ -1071,9 +1071,9 @@ user_data_auth::UnmountReply UserDataAuth::Unmount() {
   // with open files.
   CleanUpStaleMounts(true);
 
-  if (homedirs_->AreEphemeralUsersEnabled()) {
-    homedirs_->RemoveNonOwnerCryptohomes();
-  }
+  // Removes all ephemeral cryptohomes owned by anyone other than the owner
+  // user (if set) and non ephemeral users, regardless of free disk space.
+  homedirs_->RemoveCryptohomesBasedOnPolicy();
 
   CryptohomeStatus result;
   if (!unmount_ok) {
@@ -2298,16 +2298,14 @@ void UserDataAuth::PreMountHook(const ObfuscatedUsername& obfuscated_username) {
   if (install_attrs_->status() == InstallAttributes::Status::kFirstInstall) {
     std::ignore = install_attrs_->Finalize();
   }
-  // Remove all existing cryptohomes, except for the owner's one, if the
-  // ephemeral users policy is on.
+  // Removes all ephemeral cryptohomes owned by anyone other than the owner
+  // user (if set) and non ephemeral users, regardless of free disk space.
   // Note that a fresh policy value is read here, which in theory can conflict
   // with the one used for calculation of |mount_args.is_ephemeral|. However,
   // this inconsistency (whose probability is anyway pretty low in practice)
   // should only lead to insignificant transient glitches, like an attempt to
   // mount a non existing anymore cryptohome.
-  if (homedirs_->AreEphemeralUsersEnabled()) {
-    homedirs_->RemoveNonOwnerCryptohomes();
-  }
+  homedirs_->RemoveCryptohomesBasedOnPolicy();
 }
 
 void UserDataAuth::PostMountHook(UserSession* user_session,

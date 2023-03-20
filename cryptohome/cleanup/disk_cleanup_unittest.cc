@@ -54,6 +54,10 @@ const std::vector<TestHomedir>& GetTestHomedirs() {
   return *kValue;
 }
 
+ACTION_P(SetEphemeralSettings, ephemeral_settings) {
+  *arg0 = ephemeral_settings;
+  return true;
+}
 }  // namespace
 
 class DiskCleanupTest : public ::testing::Test {
@@ -79,8 +83,12 @@ class DiskCleanupTest : public ::testing::Test {
 
     EXPECT_CALL(platform_, GetCurrentTime).WillRepeatedly(Return(base::Time()));
 
-    EXPECT_CALL(homedirs_, AreEphemeralUsersEnabled())
-        .WillRepeatedly(Return(false));
+    policy::DevicePolicy::EphemeralSettings ephemeral_settings;
+    ephemeral_settings.global_ephemeral_users_enabled = false;
+    EXPECT_CALL(homedirs_, GetEphemeralSettings(_))
+        .WillRepeatedly(SetEphemeralSettings(ephemeral_settings));
+    EXPECT_CALL(homedirs_, RemoveCryptohomesBasedOnPolicy())
+        .WillRepeatedly(Return(HomeDirs::CryptohomesRemovedStatus::kNone));
     EXPECT_CALL(homedirs_, GetOwner(_)).WillRepeatedly(Return(false));
     EXPECT_CALL(homedirs_, enterprise_owned()).WillRepeatedly(Return(false));
     EXPECT_CALL(homedirs_, DmcryptCacheContainerExists(_))
@@ -267,8 +275,15 @@ TEST_F(DiskCleanupTest, IsFreeableDiskSpaceAvailable) {
 TEST_F(DiskCleanupTest, EphemeralUsersHomedirs) {
   EXPECT_CALL(platform_, AmountOfFreeDiskSpace(ShadowRoot()))
       .WillRepeatedly(Return(kFreeSpaceThresholdToTriggerCleanup - 1));
-  EXPECT_CALL(homedirs_, AreEphemeralUsersEnabled()).WillOnce(Return(true));
-  EXPECT_CALL(homedirs_, RemoveNonOwnerCryptohomes()).WillOnce(Return());
+  EXPECT_CALL(homedirs_, GetHomeDirs())
+      .WillRepeatedly(Return(mounted_homedirs()));
+
+  policy::DevicePolicy::EphemeralSettings ephemeral_settings;
+  ephemeral_settings.global_ephemeral_users_enabled = true;
+  EXPECT_CALL(homedirs_, GetEphemeralSettings(_))
+      .WillRepeatedly(SetEphemeralSettings(ephemeral_settings));
+  EXPECT_CALL(homedirs_, RemoveCryptohomesBasedOnPolicy())
+      .WillOnce(Return(HomeDirs::CryptohomesRemovedStatus::kAll));
 
   cleanup_->FreeDiskSpace();
 }

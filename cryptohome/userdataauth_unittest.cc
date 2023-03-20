@@ -145,6 +145,10 @@ constexpr auto kAuthSessionExtension =
 // Fake labels to be in used in this test suite.
 constexpr char kFakeLabel[] = "test_label";
 
+ACTION_P(SetEphemeralSettings, ephemeral_settings) {
+  *arg0 = ephemeral_settings;
+  return true;
+}
 }  // namespace
 
 // UserDataAuthTestBase is a test fixture that does not call
@@ -957,8 +961,12 @@ TEST_F(UserDataAuthTest, Unmount_EphemeralNotEnabled) {
   ON_CALL(*session_, IsActive()).WillByDefault(Return(true));
 
   // Test that non-owner's vaults are not touched.
-  EXPECT_CALL(homedirs_, AreEphemeralUsersEnabled()).WillOnce(Return(false));
-  EXPECT_CALL(homedirs_, RemoveNonOwnerCryptohomes()).Times(0);
+  policy::DevicePolicy::EphemeralSettings ephemeral_settings;
+  ephemeral_settings.global_ephemeral_users_enabled = false;
+  EXPECT_CALL(homedirs_, GetEphemeralSettings(_))
+      .WillRepeatedly(SetEphemeralSettings(ephemeral_settings));
+  EXPECT_CALL(homedirs_, RemoveCryptohomesBasedOnPolicy())
+      .WillOnce(Return(HomeDirs::CryptohomesRemovedStatus::kNone));
 
   // Unmount should be successful.
   EXPECT_EQ(userdataauth_->Unmount().error_info().primary_action(),
@@ -976,8 +984,11 @@ TEST_F(UserDataAuthTest, Unmount_EphemeralNotEnabled) {
   ON_CALL(*session_, IsActive()).WillByDefault(Return(true));
 
   // Test that non-owner's vaults are not touched.
-  EXPECT_CALL(homedirs_, AreEphemeralUsersEnabled()).WillOnce(Return(false));
-  EXPECT_CALL(homedirs_, RemoveNonOwnerCryptohomes()).Times(0);
+  ephemeral_settings.global_ephemeral_users_enabled = false;
+  EXPECT_CALL(homedirs_, GetEphemeralSettings(_))
+      .WillRepeatedly(SetEphemeralSettings(ephemeral_settings));
+  EXPECT_CALL(homedirs_, RemoveCryptohomesBasedOnPolicy())
+      .WillOnce(Return(HomeDirs::CryptohomesRemovedStatus::kNone));
 
   // Unmount should be honest about failures.
   EXPECT_NE(userdataauth_->Unmount().error_info().primary_action(),
@@ -1001,8 +1012,12 @@ TEST_F(UserDataAuthTest, Unmount_EphemeralEnabled) {
   ON_CALL(*session_, IsActive()).WillByDefault(Return(true));
 
   // Test that non-owner's vaults are cleaned up.
-  EXPECT_CALL(homedirs_, AreEphemeralUsersEnabled()).WillOnce(Return(true));
-  EXPECT_CALL(homedirs_, RemoveNonOwnerCryptohomes()).Times(1);
+  policy::DevicePolicy::EphemeralSettings ephemeral_settings;
+  ephemeral_settings.global_ephemeral_users_enabled = true;
+  EXPECT_CALL(homedirs_, GetEphemeralSettings(_))
+      .WillRepeatedly(SetEphemeralSettings(ephemeral_settings));
+  EXPECT_CALL(homedirs_, RemoveCryptohomesBasedOnPolicy())
+      .WillOnce(Return(HomeDirs::CryptohomesRemovedStatus::kSome));
 
   // Unmount should be successful.
   EXPECT_EQ(userdataauth_->Unmount().error_info().primary_action(),
@@ -1020,8 +1035,11 @@ TEST_F(UserDataAuthTest, Unmount_EphemeralEnabled) {
   ON_CALL(*session_, IsActive()).WillByDefault(Return(true));
 
   // Test that non-owner's vaults are cleaned up anyway.
-  EXPECT_CALL(homedirs_, AreEphemeralUsersEnabled()).WillOnce(Return(true));
-  EXPECT_CALL(homedirs_, RemoveNonOwnerCryptohomes()).Times(1);
+  ephemeral_settings.global_ephemeral_users_enabled = true;
+  EXPECT_CALL(homedirs_, GetEphemeralSettings(_))
+      .WillRepeatedly(SetEphemeralSettings(ephemeral_settings));
+  EXPECT_CALL(homedirs_, RemoveCryptohomesBasedOnPolicy())
+      .WillOnce(Return(HomeDirs::CryptohomesRemovedStatus::kSome));
 
   // Unmount should be honest about failures.
   EXPECT_NE(userdataauth_->Unmount().error_info().primary_action(),

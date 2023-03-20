@@ -174,6 +174,8 @@ enum class DiskCleanupProgress {
   kNoUnmountedCryptohomes = 9,
   kCacheVaultsCleanedAboveTarget = 10,
   kCacheVaultsCleanedAboveMinimum = 11,
+  kSomeEphemeralUserProfilesCleanedAboveTarget = 12,
+  kSomeEphemeralUserProfilesCleaned = 13,
   kNumBuckets
 };
 
