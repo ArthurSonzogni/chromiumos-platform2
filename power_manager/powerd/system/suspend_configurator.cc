@@ -19,6 +19,7 @@
 namespace power_manager::system {
 
 constexpr char kCpuInfoPath[] = "/proc/cpuinfo";
+constexpr char kCryptoPath[] = "/proc/crypto";
 
 // The feature name for Hibernate gradual rollout and experiments.
 constexpr char kSuspendToHibernateFeatureName[] =
@@ -129,9 +130,18 @@ bool SuspendConfigurator::IsHibernateAvailable() {
     return false;
   }
 
-  // TODO(jakubm): Include a check for Intel Keylocker.
+  // Systems with Keylocker can only suspend to S4. S4 is not an allowed
+  // transition for hibernate at the moment, so any system with AESKL will be
+  // unable to hibernate. We're disabling hibernate when using AESKL.
+  if (HasAESKL()) {
+    LOG(INFO) << "Hibernate is not available: system has aeskl.";
+    return false;
+  }
 
-  // Check if the feature is enabled.
+  return IsHibernateEnabled();
+}
+
+bool SuspendConfigurator::IsHibernateEnabled() {
   return platform_features_->IsEnabledBlocking(kSuspendToHibernateFeature);
 }
 
@@ -212,6 +222,18 @@ bool SuspendConfigurator::IsSerialConsoleEnabled() {
   }
 
   return rc;
+}
+
+bool SuspendConfigurator::HasAESKL() {
+  base::FilePath file_path = GetPrefixedFilePath(base::FilePath(kCryptoPath));
+
+  std::string crypto_info;
+  if (!base::ReadFileToString(base::FilePath(file_path), &crypto_info)) {
+    PLOG(ERROR) << "Failed to read from: " << file_path;
+    return false;
+  }
+
+  return (crypto_info.find("aeskl") != std::string::npos);
 }
 
 bool SuspendConfigurator::ReadCpuInfo(std::string& cpuInfo) {
