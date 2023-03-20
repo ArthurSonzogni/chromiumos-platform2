@@ -16,6 +16,7 @@
 
 using testing::Contains;
 using testing::Key;
+using testing::NiceMock;
 using testing::Pair;
 using testing::Return;
 using testing::UnorderedElementsAre;
@@ -328,8 +329,8 @@ class EfiBootManagerTest : public ::testing::Test {
  protected:
   void SetUp() override {
     efi_boot_manager_ = std::make_unique<EfiBootManager>(
-        std::make_unique<EfiVarFake>(), std::make_unique<MockMetrics>(),
-        kCrosEfiDefaultDescription);
+        std::make_unique<EfiVarFake>(),
+        std::make_unique<NiceMock<MockMetrics>>(), kCrosEfiDefaultDescription);
     // We know these casts are safe because we just created the objects.
     efivar_ = static_cast<EfiVarFake*>(efi_boot_manager_->EfiVar());
     metrics_ = static_cast<MockMetrics*>(efi_boot_manager_->Metrics());

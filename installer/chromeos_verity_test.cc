@@ -14,6 +14,7 @@
 #include <verity/mock-dm-bht.h>
 
 using ::testing::_;
+using ::testing::NiceMock;
 using ::testing::Return;
 
 namespace verity {
@@ -24,7 +25,7 @@ class ChromeOSVerityTest : public ::testing::Test {
 
  protected:
   base::ScopedTempDir scoped_temp_dir_;
-  verity::MockDmBht mock_bht_;
+  NiceMock<verity::MockDmBht> mock_bht_;
 };
 
 TEST_F(ChromeOSVerityTest, VerityTest) {
