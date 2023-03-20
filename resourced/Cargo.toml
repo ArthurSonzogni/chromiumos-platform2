@@ -4,6 +4,9 @@ version = "0.1.0"
 authors = ["The ChromiumOS Authors"]
 edition = "2021"
 
+# Build the GRPC APIs only when feature vm_grpc is enabled.
+build = "src/vm_grpc/proto/build.rs"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
@@ -48,3 +51,6 @@ sync = { path = "../../../chroot/usr/lib/cros_rust_registry/registry/sync-0.1.14
 name = "test_client_v1"
 path = "./src/vm_grpc/test_client/client_v1.rs"
 required-features = ["vm_grpc"]
+
+[build-dependencies]
+protoc-grpcio = "2.0.0"
