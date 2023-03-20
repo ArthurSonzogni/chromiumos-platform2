@@ -4,6 +4,8 @@
 
 #include "installer/inst_util.h"
 
+#include <array>
+
 #include <ctype.h>
 #include <dirent.h>
 #include <err.h>
@@ -27,6 +29,8 @@ extern "C" {
 #include <base/files/file_util.h>
 #include <base/files/scoped_file.h>
 #include <base/logging.h>
+#include <base/strings/string_number_conversions.h>
+#include <base/strings/string_piece.h>
 #include <base/strings/string_split.h>
 #include <base/strings/string_util.h>
 #include <brillo/process/process.h>
@@ -60,6 +64,11 @@ base::FilePath MakeNandPartitionDevForMounting(int partition) {
   }
   return base::FilePath("/dev/ubi" + std::to_string(partition) + "_0");
 }
+
+// This is an array of device names that are allowed in end in a digit, and
+// which use the 'p' notation to denote partitions.
+constexpr std::array<base::StringPiece, 3> kNumberedDevices = {
+    "/dev/loop", "/dev/mmcblk", "/dev/nvme"};
 
 }  // namespace
 
@@ -161,10 +170,6 @@ bool LsbReleaseValue(const base::FilePath& file,
   return false;
 }
 
-// This is an array of device names that are allowed in end in a digit, and
-// which use the 'p' notation to denote partitions.
-const char* numbered_devices[] = {"/dev/loop", "/dev/mmcblk", "/dev/nvme"};
-
 base::FilePath GetBlockDevFromPartitionDev(
     const base::FilePath& partition_dev_path) {
   const std::string& partition_dev = partition_dev_path.value();
@@ -180,12 +185,10 @@ base::FilePath GetBlockDevFromPartitionDev(
   while (i > 0 && isdigit(partition_dev[i - 1]))
     i--;
 
-  for (const char** nd = begin(numbered_devices); nd != end(numbered_devices);
-       nd++) {
-    size_t nd_len = strlen(*nd);
-    // numbered_devices are of the form "/dev/mmcblk12p34"
-    if (partition_dev.compare(0, nd_len, *nd) == 0) {
-      if ((i == nd_len) || (partition_dev[i - 1] != 'p')) {
+  for (const base::StringPiece nd : kNumberedDevices) {
+    // kNumberedDevices are of the form "/dev/mmcblk12p34"
+    if (base::StartsWith(partition_dev, nd)) {
+      if ((i == nd.size()) || (partition_dev[i - 1] != 'p')) {
         // If there was no partition at the end (/dev/mmcblk12) return
         // unmodified.
         return base::FilePath(partition_dev);
@@ -200,29 +203,30 @@ base::FilePath GetBlockDevFromPartitionDev(
 }
 
 int GetPartitionFromPartitionDev(const base::FilePath& partition_dev_path) {
-  const std::string& partition_dev = partition_dev_path.value();
-  size_t i = partition_dev.length();
+  base::StringPiece partition_dev = partition_dev_path.value();
   if (base::EndsWith(partition_dev, "_0", base::CompareCase::SENSITIVE)) {
-    i -= 2;
+    partition_dev = partition_dev.substr(0, partition_dev.size() - 2);
   }
+  size_t i = partition_dev.length();
 
   while (i > 0 && isdigit(partition_dev[i - 1]))
     i--;
 
-  for (const char** nd = begin(numbered_devices); nd != end(numbered_devices);
-       nd++) {
-    size_t nd_len = strlen(*nd);
-    // numbered_devices are of the form "/dev/mmcblk12p34"
+  for (const base::StringPiece nd : kNumberedDevices) {
+    // kNumberedDevices are of the form "/dev/mmcblk12p34"
     // If there is no ending p, there is no partition at the end (/dev/mmcblk12)
-    if ((partition_dev.compare(0, nd_len, *nd) == 0) &&
-        ((i == nd_len) || (partition_dev[i - 1] != 'p'))) {
+    if (base::StartsWith(partition_dev, nd) &&
+        ((i == nd.size()) || (partition_dev[i - 1] != 'p'))) {
       return 0;
     }
   }
 
-  string partition_str = partition_dev.substr(i, i + 1);
+  base::StringPiece partition_str = partition_dev.substr(i, i + 1);
 
-  int result = atoi(partition_str.c_str());
+  int result = 0;
+  if (!base::StringToInt(partition_str, &result)) {
+    result = 0;
+  }
 
   if (result == 0)
     LOG(ERROR) << "Bad partition number from " << partition_dev;
@@ -238,10 +242,8 @@ base::FilePath MakePartitionDev(const base::FilePath& block_dev_path,
     return MakeNandPartitionDevForMounting(partition);
   }
 
-  for (const char** nd = begin(numbered_devices); nd != end(numbered_devices);
-       nd++) {
-    size_t nd_len = strlen(*nd);
-    if (block_dev.compare(0, nd_len, *nd) == 0)
+  for (const base::StringPiece nd : kNumberedDevices) {
+    if (base::StartsWith(block_dev, nd))
       return base::FilePath(block_dev + "p" + std::to_string(partition));
   }
 
