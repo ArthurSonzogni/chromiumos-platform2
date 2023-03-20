@@ -72,6 +72,11 @@ ACTION_P(SetEphemeralUsersEnabled, ephemeral_users_enabled) {
   return true;
 }
 
+ACTION_P(SetEphemeralSettings, ephemeral_settings) {
+  *arg0 = ephemeral_settings;
+  return true;
+}
+
 struct UserInfo {
   Username name;
   ObfuscatedUsername obfuscated;
@@ -203,12 +208,148 @@ TEST_P(HomeDirsTest, RemoveNonOwnerCryptohomes) {
 
   homedirs_->RemoveNonOwnerCryptohomes();
 
-  // Non-owners' vaults are removed
+  // Non-owners' vaults are removed.
   EXPECT_FALSE(platform_.DirectoryExists(users_[0].homedir_path));
   EXPECT_FALSE(platform_.DirectoryExists(users_[1].homedir_path));
   EXPECT_FALSE(platform_.DirectoryExists(users_[2].homedir_path));
 
   // Owner's vault still exists
+  EXPECT_TRUE(platform_.DirectoryExists(users_[kOwnerIndex].homedir_path));
+}
+
+// When the global ephemeral user policy is not set, and there are no ephemeral
+// or non-ephemeral users, we should not remove cryptohomes.
+TEST_P(HomeDirsTest, RemoveEphemeralCryptohomes_EphemeralUsersDisabled) {
+  EXPECT_TRUE(platform_.DirectoryExists(users_[0].homedir_path));
+  EXPECT_TRUE(platform_.DirectoryExists(users_[1].homedir_path));
+  EXPECT_TRUE(platform_.DirectoryExists(users_[2].homedir_path));
+  EXPECT_TRUE(platform_.DirectoryExists(users_[kOwnerIndex].homedir_path));
+
+  EXPECT_CALL(platform_, IsDirectoryMounted(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(keyset_management_, RemoveLECredentials(_)).Times(0);
+  policy::DevicePolicy::EphemeralSettings ephemeral_settings;
+  ephemeral_settings.global_ephemeral_users_enabled = false;
+  EXPECT_CALL(*mock_device_policy_, GetEphemeralSettings(_))
+      .WillRepeatedly(SetEphemeralSettings(ephemeral_settings));
+
+  homedirs_->RemoveCryptohomesBasedOnPolicy();
+
+  EXPECT_TRUE(platform_.DirectoryExists(users_[0].homedir_path));
+  EXPECT_TRUE(platform_.DirectoryExists(users_[1].homedir_path));
+  EXPECT_TRUE(platform_.DirectoryExists(users_[2].homedir_path));
+  EXPECT_TRUE(platform_.DirectoryExists(users_[kOwnerIndex].homedir_path));
+}
+
+// When the global ephemeral user policy is set, and there are no ephemeral
+// or non-ephemeral users and the device is enterprise owned we should remove
+// all cryptohomes except the owner.
+TEST_P(HomeDirsTest, RemoveEphemeralCryptohomes_EphemeralUsersEnabled) {
+  EXPECT_TRUE(platform_.DirectoryExists(users_[0].homedir_path));
+  EXPECT_TRUE(platform_.DirectoryExists(users_[1].homedir_path));
+  EXPECT_TRUE(platform_.DirectoryExists(users_[2].homedir_path));
+  EXPECT_TRUE(platform_.DirectoryExists(users_[kOwnerIndex].homedir_path));
+
+  EXPECT_CALL(platform_, IsDirectoryMounted(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(keyset_management_, RemoveLECredentials(_)).Times(3);
+  policy::DevicePolicy::EphemeralSettings ephemeral_settings;
+  ephemeral_settings.global_ephemeral_users_enabled = true;
+  EXPECT_CALL(*mock_device_policy_, GetEphemeralSettings(_))
+      .WillRepeatedly(SetEphemeralSettings(ephemeral_settings));
+
+  homedirs_->RemoveCryptohomesBasedOnPolicy();
+
+  // Non-owners' vaults are removed.
+  EXPECT_FALSE(platform_.DirectoryExists(users_[0].homedir_path));
+  EXPECT_FALSE(platform_.DirectoryExists(users_[1].homedir_path));
+  EXPECT_FALSE(platform_.DirectoryExists(users_[2].homedir_path));
+
+  // Owner's vault still exists.
+  EXPECT_TRUE(platform_.DirectoryExists(users_[kOwnerIndex].homedir_path));
+}
+
+// When the global ephemeral user policy is set, and there are no ephemeral
+// or non-ephemeral users and the device is not enterprise owned we should
+// remove all cryptohomes.
+TEST_P(HomeDirsTest,
+       RemoveEphemeralCryptohomes_EphemeralUsersEnabled_EnterpriseOwned) {
+  EXPECT_TRUE(platform_.DirectoryExists(users_[0].homedir_path));
+  EXPECT_TRUE(platform_.DirectoryExists(users_[1].homedir_path));
+  EXPECT_TRUE(platform_.DirectoryExists(users_[2].homedir_path));
+  EXPECT_TRUE(platform_.DirectoryExists(users_[kOwnerIndex].homedir_path));
+
+  EXPECT_CALL(platform_, IsDirectoryMounted(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(keyset_management_, RemoveLECredentials(_)).Times(4);
+  policy::DevicePolicy::EphemeralSettings ephemeral_settings;
+  ephemeral_settings.global_ephemeral_users_enabled = true;
+  EXPECT_CALL(*mock_device_policy_, GetEphemeralSettings(_))
+      .WillRepeatedly(SetEphemeralSettings(ephemeral_settings));
+
+  homedirs_->set_enterprise_owned(true);
+  homedirs_->RemoveCryptohomesBasedOnPolicy();
+
+  // When enterprise owned there is no owner vault.
+  EXPECT_FALSE(platform_.DirectoryExists(users_[0].homedir_path));
+  EXPECT_FALSE(platform_.DirectoryExists(users_[1].homedir_path));
+  EXPECT_FALSE(platform_.DirectoryExists(users_[2].homedir_path));
+  EXPECT_FALSE(platform_.DirectoryExists(users_[kOwnerIndex].homedir_path));
+}
+
+// When the global ephemeral user policy is set, and there are ephemeral
+// and non-ephemeral users, we should remove all cryptohomes except the owner
+// and the non-ephemeral cryptohomes.
+TEST_P(HomeDirsTest,
+       RemoveEphemeralCryptohomes_EphemeralUsersEnabled_WithAllowLists) {
+  EXPECT_TRUE(platform_.DirectoryExists(users_[0].homedir_path));
+  EXPECT_TRUE(platform_.DirectoryExists(users_[1].homedir_path));
+  EXPECT_TRUE(platform_.DirectoryExists(users_[2].homedir_path));
+  EXPECT_TRUE(platform_.DirectoryExists(users_[kOwnerIndex].homedir_path));
+
+  EXPECT_CALL(platform_, IsDirectoryMounted(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(keyset_management_, RemoveLECredentials(_)).Times(2);
+  policy::DevicePolicy::EphemeralSettings ephemeral_settings;
+  ephemeral_settings.global_ephemeral_users_enabled = true;
+  ephemeral_settings.specific_ephemeral_users.push_back(kUser0);
+  ephemeral_settings.specific_nonephemeral_users.push_back(kUser1);
+  EXPECT_CALL(*mock_device_policy_, GetEphemeralSettings(_))
+      .WillRepeatedly(SetEphemeralSettings(ephemeral_settings));
+
+  homedirs_->RemoveCryptohomesBasedOnPolicy();
+
+  // Ephemeral vaults are removed.
+  EXPECT_FALSE(platform_.DirectoryExists(users_[0].homedir_path));
+  EXPECT_FALSE(platform_.DirectoryExists(users_[2].homedir_path));
+  // Non-ephemeral cryptohome still exists.
+  EXPECT_TRUE(platform_.DirectoryExists(users_[1].homedir_path));
+  // Owner's vault still exists.
+  EXPECT_TRUE(platform_.DirectoryExists(users_[kOwnerIndex].homedir_path));
+}
+
+// When the global ephemeral user policy is not set, and there are ephemeral
+// and non-ephemeral users, we should remove only the ephemeral cryptohomes.
+TEST_P(HomeDirsTest,
+       RemoveEphemeralCryptohomes_EphemeralUsersDisabled_WithAllowLists) {
+  EXPECT_TRUE(platform_.DirectoryExists(users_[0].homedir_path));
+  EXPECT_TRUE(platform_.DirectoryExists(users_[1].homedir_path));
+  EXPECT_TRUE(platform_.DirectoryExists(users_[2].homedir_path));
+  EXPECT_TRUE(platform_.DirectoryExists(users_[kOwnerIndex].homedir_path));
+
+  EXPECT_CALL(platform_, IsDirectoryMounted(_)).WillRepeatedly(Return(false));
+  EXPECT_CALL(keyset_management_, RemoveLECredentials(_)).Times(1);
+  policy::DevicePolicy::EphemeralSettings ephemeral_settings;
+  ephemeral_settings.global_ephemeral_users_enabled = false;
+  ephemeral_settings.specific_ephemeral_users.push_back(kUser0);
+  ephemeral_settings.specific_nonephemeral_users.push_back(kUser1);
+  EXPECT_CALL(*mock_device_policy_, GetEphemeralSettings(_))
+      .WillRepeatedly(SetEphemeralSettings(ephemeral_settings));
+
+  homedirs_->RemoveCryptohomesBasedOnPolicy();
+
+  // Ephemeral vaults are removed.
+  EXPECT_FALSE(platform_.DirectoryExists(users_[0].homedir_path));
+  // Non-ephemeral vaults still exists.
+  EXPECT_TRUE(platform_.DirectoryExists(users_[2].homedir_path));
+  EXPECT_TRUE(platform_.DirectoryExists(users_[1].homedir_path));
+  // Owner's vault still exists.
   EXPECT_TRUE(platform_.DirectoryExists(users_[kOwnerIndex].homedir_path));
 }
 

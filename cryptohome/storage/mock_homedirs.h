@@ -30,9 +30,14 @@ class MockHomeDirs : public HomeDirs {
   virtual ~MockHomeDirs() = default;
 
   MOCK_METHOD(void, RemoveNonOwnerCryptohomes, (), (override));
+  MOCK_METHOD(bool, RemoveCryptohomesBasedOnPolicy, (), (override));
   MOCK_METHOD(bool, GetOwner, (ObfuscatedUsername*), (override));
   MOCK_METHOD(bool, GetPlainOwner, (Username*), (override));
   MOCK_METHOD(bool, AreEphemeralUsersEnabled, (), (override));
+  MOCK_METHOD(bool,
+              GetEphemeralSettings,
+              (policy::DevicePolicy::EphemeralSettings * settings),
+              (override));
   MOCK_METHOD(bool, KeylockerForStorageEncryptionEnabled, (), (override));
   MOCK_METHOD(bool, MustRunAutomaticCleanupOnLogin, (), (override));
   MOCK_METHOD(bool, Create, (const Username&), (override));

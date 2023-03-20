@@ -73,6 +73,11 @@ class HomeDirs {
 
   virtual ~HomeDirs();
 
+  // Removes all cryptohomes based on ephemeral policies owned by anyone other
+  // than the owner user (if set), regardless of free disk space. Returns true
+  // if no error occurred.
+  virtual bool RemoveCryptohomesBasedOnPolicy();
+
   // Removes all cryptohomes owned by anyone other than the owner user (if set),
   // regardless of free disk space.
   virtual void RemoveNonOwnerCryptohomes();
@@ -87,6 +92,10 @@ class HomeDirs {
 
   // Returns whether the ephemeral users policy is enabled.
   virtual bool AreEphemeralUsersEnabled();
+
+  // Get the Ephemeral related policies.
+  virtual bool GetEphemeralSettings(
+      policy::DevicePolicy::EphemeralSettings* settings);
 
   // Returns whether Keylocker should be used for per-user encrypted storage.
   virtual bool KeylockerForStorageEncryptionEnabled();

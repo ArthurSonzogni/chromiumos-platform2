@@ -37,6 +37,7 @@
 #include "cryptohome/storage/cryptohome_vault.h"
 #include "cryptohome/storage/cryptohome_vault_factory.h"
 #include "cryptohome/storage/encrypted_container/encrypted_container.h"
+#include "cryptohome/storage/ephemeral_policy_util.h"
 #include "cryptohome/storage/error.h"
 #include "cryptohome/storage/mount_helper.h"
 #include "cryptohome/username.h"
@@ -83,6 +84,20 @@ bool HomeDirs::AreEphemeralUsersEnabled() {
     policy_provider_->GetDevicePolicy().GetEphemeralUsersEnabled(
         &ephemeral_users_enabled);
   return ephemeral_users_enabled;
+}
+
+bool HomeDirs::GetEphemeralSettings(
+    policy::DevicePolicy::EphemeralSettings* settings) {
+  LoadDevicePolicy();
+  if (!policy_provider_->device_policy_is_loaded()) {
+    return false;
+  }
+
+  if (!policy_provider_->GetDevicePolicy().GetEphemeralSettings(settings)) {
+    return false;
+  }
+
+  return true;
 }
 
 bool HomeDirs::KeylockerForStorageEncryptionEnabled() {
@@ -194,6 +209,42 @@ bool HomeDirs::DmcryptCacheContainerExists(
     const ObfuscatedUsername& obfuscated_username) const {
   return DmcryptContainerExists(obfuscated_username,
                                 kDmcryptCacheContainerSuffix);
+}
+
+bool HomeDirs::RemoveCryptohomesBasedOnPolicy() {
+  // If the device is not enterprise owned it should have an owner user.
+  ObfuscatedUsername owner;
+  bool has_owner = GetOwner(&owner);
+  if (!enterprise_owned_ && !has_owner) {
+    return false;
+  }
+
+  policy::DevicePolicy::EphemeralSettings settings;
+  if (!GetEphemeralSettings(&settings)) {
+    return false;
+  }
+
+  auto homedirs = GetHomeDirs();
+  FilterMountedHomedirs(&homedirs);
+  EphemeralPolicyUtil ephemeral_util(settings);
+
+  for (const auto& dir : homedirs) {
+    if (has_owner && !enterprise_owned_ && dir.obfuscated == owner) {
+      continue;  // Owner vault shouldn't be remove.
+    }
+
+    if (!ephemeral_util.ShouldRemoveBasedOnPolicy(dir.obfuscated)) {
+      continue;
+    }
+
+    if (!HomeDirs::Remove(dir.obfuscated)) {
+      LOG(WARNING)
+          << "Failed to remove ephemeral cryptohome with obfuscated username: "
+          << dir.obfuscated;
+    }
+  }
+
+  return true;
 }
 
 void HomeDirs::RemoveNonOwnerCryptohomes() {

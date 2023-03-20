@@ -501,6 +501,7 @@ static_library("libcryptohome") {
     "../storage/cryptohome_vault.cc",
     "../storage/cryptohome_vault_factory.cc",
     "../storage/dircrypto_migration_helper_delegate.cc",
+    "../storage/ephemeral_policy_util.cc",
     "../storage/file_system_keyset.cc",
     "../storage/homedirs.cc",
     "../storage/mount.cc",
