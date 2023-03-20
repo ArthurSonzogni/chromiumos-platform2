@@ -392,3 +392,7 @@ CgptErrorCode CgptManager::SetSectorRange(PartitionNum partition_number,
 
   return CgptErrorCode::kSuccess;
 }
+
+const base::FilePath& CgptManager::DeviceName() const {
+  return device_name_;
+}

@@ -106,6 +106,9 @@ class CgptManagerInterface {
   virtual CgptErrorCode SetSectorRange(PartitionNum partition_number,
                                        std::optional<uint64_t> start,
                                        std::optional<uint64_t> count) = 0;
+
+  // Get the device path (e.g. "/dev/sda") that was passed in to |Initialize|.
+  virtual const base::FilePath& DeviceName() const = 0;
 };
 
 class CgptManager : public CgptManagerInterface {
@@ -132,6 +135,7 @@ class CgptManager : public CgptManagerInterface {
   CgptErrorCode SetSectorRange(PartitionNum partition_number,
                                std::optional<uint64_t> start,
                                std::optional<uint64_t> count) override;
+  const base::FilePath& DeviceName() const override;
 
  private:
   // The device name that is passed to Initialize.
