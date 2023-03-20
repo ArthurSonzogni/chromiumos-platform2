@@ -31,7 +31,8 @@ constexpr char kPlatformFeaturesPath[] = "/etc/featured/platform-features.json";
 constexpr char kSessionStartedState[] = "started";
 
 // Allow featured do write operations to path with these prefixes only.
-std::vector<std::string> allowedPrefixes = {"/proc", "/sys"};
+std::vector<std::string> allowedPrefixes = {"/proc", "/sys",
+                                            "/run/featured_test"};
 
 bool CheckPathPrefix(const base::FilePath& path) {
   bool valid = false;

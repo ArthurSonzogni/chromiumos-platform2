@@ -11,3 +11,8 @@ rw_dir_file(cros_featured, debugfs_tracing)
 r_dir_file(cros_featured, cros_featured_file)
 create_dir_file(cros_featured, cros_var_lib_featured)
 create_dir_file(cros_featured, debugfs_tracing_instances)
+
+# For tests
+# will be created by tast tests, in the "cros_ssh_session".
+filetrans_pattern(cros_ssh_session, cros_run, cros_run_featured_test, dir, "featured_test")
+rw_dir_file(cros_featured, cros_run_featured_test)

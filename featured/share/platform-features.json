@@ -138,5 +138,21 @@
         "path": "/sys/fs/cgroup/cpu/ui/cpu.uclamp.min"
       }
     ]
+  },
+  {
+    "name": "CrOSLateBootTestFeature",
+    "commands": [
+      {
+        "name": "WriteFile",
+        "path": "/run/featured_test/test_write",
+        "value": "test_featured"
+      }
+    ],
+    "support_check_commands": [
+      {
+        "name": "FileExists",
+        "path": "/run/featured_test/test_write"
+      }
+    ]
   }
 ]
