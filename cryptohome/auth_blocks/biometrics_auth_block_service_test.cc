@@ -599,7 +599,7 @@ TEST_F(BiometricsAuthBlockServiceTest, MatchCredentialSuccess) {
       .Times(2)
       .WillRepeatedly(
           [&](auto&&, auto&& on_done) { std::move(on_done).Run(true); });
-  EXPECT_CALL(*mock_processor_, EndAuthenticateSession).Times(2);
+  EXPECT_CALL(*mock_processor_, EndAuthenticateSession);
 
   TestFuture<CryptohomeStatusOr<std::unique_ptr<PreparedAuthFactorToken>>>
       start_result;
@@ -651,8 +651,8 @@ TEST_F(BiometricsAuthBlockServiceTest, MatchCredentialTwiceSuccess) {
   BiometricsCommandProcessor::OperationCallback match_credential_callback1,
       match_credential_callback2;
   // In this test, the processor should start an authenticate session, process a
-  // match credential operation after emitting an auth scan signal, end the
-  // authenticate session, and repeat these steps again.
+  // match credential operation after emitting an auth scan signal, and repeat
+  // these steps again.
   {
     InSequence s;
     EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _))
@@ -661,14 +661,12 @@ TEST_F(BiometricsAuthBlockServiceTest, MatchCredentialTwiceSuccess) {
     EXPECT_CALL(*mock_processor_,
                 MatchCredential(OperationInputEq(kFakeInput1), _))
         .WillOnce(SaveMatchCredentialCallback{&match_credential_callback1});
-    EXPECT_CALL(*mock_processor_, EndAuthenticateSession).Times(1);
     EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _))
         .WillOnce(
             [&](auto&&, auto&& on_done) { std::move(on_done).Run(true); });
     EXPECT_CALL(*mock_processor_,
                 MatchCredential(OperationInputEq(kFakeInput2), _))
         .WillOnce(SaveMatchCredentialCallback{&match_credential_callback2});
-    EXPECT_CALL(*mock_processor_, EndAuthenticateSession);
     EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _))
         .WillOnce(
             [&](auto&&, auto&& on_done) { std::move(on_done).Run(true); });
@@ -731,7 +729,6 @@ TEST_F(BiometricsAuthBlockServiceTest, MatchCredentialRestartFailure) {
     EXPECT_CALL(*mock_processor_,
                 MatchCredential(OperationInputEq(kFakeInput), _))
         .WillOnce(SaveMatchCredentialCallback{&match_credential_callback});
-    EXPECT_CALL(*mock_processor_, EndAuthenticateSession).Times(1);
     EXPECT_CALL(*mock_processor_, StartAuthenticateSession(kFakeUserId, _))
         .WillOnce(
             [&](auto&&, auto&& on_done) { std::move(on_done).Run(false); });

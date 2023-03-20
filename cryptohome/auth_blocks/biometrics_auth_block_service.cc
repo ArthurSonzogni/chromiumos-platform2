@@ -277,7 +277,6 @@ void BiometricsAuthBlockService::OnMatchCredentialResponse(
   // Restart the session before returning the MatchCredential, so that when the
   // user sees the match verdict it's guaranteed that they can already perform
   // the next touch.
-  processor_->EndAuthenticateSession();
   processor_->StartAuthenticateSession(
       active_token_->user_id(),
       base::BindOnce(&BiometricsAuthBlockService::OnSessionRestartResult,
