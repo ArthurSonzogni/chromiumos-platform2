@@ -65,6 +65,11 @@ class MetricsSender {
         base::StrCat({metrics::kMetricNamePrefix, metric.name}), sample);
   }
 
+  void SetMetricsLibraryForTesting(
+      std::unique_ptr<MetricsLibraryInterface> metrics_library) {
+    metrics_library_ = std::move(metrics_library);
+  }
+
  private:
   friend class base::NoDestructor<MetricsSender>;
   friend class testing::MetricsSenderTestFixture;

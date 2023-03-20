@@ -11,7 +11,10 @@
 
 #include "base/memory/scoped_refptr.h"
 #include "brillo/daemons/dbus_daemon.h"
+#include "dbus/mock_bus.h"
+#include "metrics/metrics_library.h"
 #include "secagentd/message_sender.h"
+#include "secagentd/metrics_sender.h"
 #include "secagentd/plugins.h"
 #include "secagentd/policies_features_broker.h"
 #include "secagentd/process_cache.h"
@@ -26,14 +29,15 @@ namespace secagentd {
 // which are packaged into protobuffs and sent to missived for delivery
 // to an off-machine service.
 
-class Daemon : public brillo::DBusDaemon {
-  struct Inject {
-    std::unique_ptr<PluginFactoryInterface> plugin_factory_;
-    scoped_refptr<MessageSender> message_sender_;
-    scoped_refptr<ProcessCacheInterface> process_cache_;
-    scoped_refptr<PoliciesFeaturesBroker> policies_features_broker_;
-  };
+struct Inject {
+  std::unique_ptr<PluginFactoryInterface> plugin_factory_;
+  std::unique_ptr<MetricsLibraryInterface> metrics_library_;
+  scoped_refptr<MessageSender> message_sender_;
+  scoped_refptr<ProcessCacheInterface> process_cache_;
+  scoped_refptr<PoliciesFeaturesBroker> policies_features_broker_;
+};
 
+class Daemon : public brillo::DBusDaemon {
  public:
   static constexpr uint32_t kDefaultHeartbeatPeriodS = 300;
   static constexpr uint32_t kDefaultPluginBatchIntervalS = 2 * 60;

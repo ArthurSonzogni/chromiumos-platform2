@@ -36,6 +36,8 @@ Daemon::Daemon(struct Inject injected) : weak_ptr_factory_(this) {
   message_sender_ = std::move(injected.message_sender_);
   process_cache_ = std::move(injected.process_cache_);
   policies_features_broker_ = std::move(injected.policies_features_broker_);
+  MetricsSender::GetInstance().SetMetricsLibraryForTesting(
+      std::move(injected.metrics_library_));
 }
 
 Daemon::Daemon(bool bypass_policy_for_testing,
