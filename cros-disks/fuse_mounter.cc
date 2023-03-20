@@ -151,7 +151,15 @@ bool FUSESandboxedProcessFactory::ConfigureSandbox(
     sandbox->NewNetworkNamespace();
   } else {
     // Network DNS configs are in /run/shill.
+    // TODO(259354228): Remove once resolv.conf migration to dns-proxy is done.
     if (const std::string p = "/run/shill";
+        !sandbox->BindMount(p, p, false, false)) {
+      PLOG(ERROR) << "Cannot bind-mount " << quote(p);
+      return false;
+    }
+
+    // Network DNS configs are in /run/dns-proxy.
+    if (const std::string p = "/run/dns-proxy";
         !sandbox->BindMount(p, p, false, false)) {
       PLOG(ERROR) << "Cannot bind-mount " << quote(p);
       return false;
