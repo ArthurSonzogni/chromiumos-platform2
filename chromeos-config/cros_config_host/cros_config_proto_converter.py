@@ -192,6 +192,37 @@ def _check_increasing_sequence(values: [float], description: str):
             )
 
 
+def _check_lux_threshold(
+    lux_thresholds: [component_pb2.Component.LuxThreshold],
+    description: str,
+):
+    _check_increasing_sequence(
+        [
+            lux_thresholds.increase_threshold
+            for lux_thresholds in lux_thresholds[:-1]
+        ],
+        f"{description}.lux_increase_threshold",
+    )
+    _check_increasing_sequence(
+        [
+            lux_thresholds.decrease_threshold
+            for lux_thresholds in lux_thresholds[1:]
+        ],
+        f"{description}.lux_decrease_threshold",
+    )
+
+    if lux_thresholds[0].decrease_threshold != -1:
+        raise Exception(
+            f"{description}[0].lux_decrease_threshold should be unset, \
+            not {lux_thresholds[0].decrease_threshold}"
+        )
+    if lux_thresholds[-1].increase_threshold != -1:
+        raise Exception(
+            f"{description}[0].lux_decrease_threshold should be unset, \
+            not {lux_thresholds[-1].increase_threshold}"
+        )
+
+
 def _check_als_steps(
     steps: [component_pb2.Component.AlsStep],
     max_screen_brightness_nits: float,
@@ -263,25 +294,7 @@ def _check_als_steps(
             "%s.battery_backlight_nits" % description,
         )
 
-    _check_increasing_sequence(
-        [step.lux_increase_threshold for step in steps[:-1]],
-        "%s.lux_increase_threshold" % description,
-    )
-    _check_increasing_sequence(
-        [step.lux_decrease_threshold for step in steps[1:]],
-        "%s.lux_decrease_threshold" % description,
-    )
-
-    if steps[0].lux_decrease_threshold != -1:
-        raise Exception(
-            "%s[0].lux_decrease_threshold should be unset, not %d"
-            % (description, steps[0].lux_decrease_threshold)
-        )
-    if steps[-1].lux_increase_threshold != -1:
-        raise Exception(
-            "%s[0].lux_decrease_threshold should be unset, not %d"
-            % (description, steps[-1].lux_increase_threshold)
-        )
+    _check_lux_threshold([step.lux_threshold for step in steps], description)
 
 
 def _format_als_step(als_step: component_pb2.Component.AlsStep) -> str:
@@ -314,8 +327,20 @@ def _format_als_step(als_step: component_pb2.Component.AlsStep) -> str:
     return "%s%s %s %s" % (
         ac_percent,
         battery_percent,
-        _format_power_pref_value(als_step.lux_decrease_threshold),
-        _format_power_pref_value(als_step.lux_increase_threshold),
+        _format_power_pref_value(als_step.lux_threshold.decrease_threshold),
+        _format_power_pref_value(als_step.lux_threshold.increase_threshold),
+    )
+
+
+def _format_kb_als_step(
+    als_step: topology_pb2.HardwareFeatures.KbAlsStep,
+) -> str:
+    return " ".join(
+        [
+            _format_power_pref_value(als_step.backlight_percent),
+            _format_power_pref_value(als_step.lux_threshold.decrease_threshold),
+            _format_power_pref_value(als_step.lux_threshold.increase_threshold),
+        ]
     )
 
 
@@ -403,6 +428,8 @@ def _format_power_pref_value(value) -> str:
         return _format_power_pref_value(value.value)
     if isinstance(value, component_pb2.Component.AlsStep):
         return _format_als_step(value)
+    if isinstance(value, topology_pb2.HardwareFeatures.KbAlsStep):
+        return _format_kb_als_step(value)
     return str(value)
 
 
@@ -629,6 +656,28 @@ def _build_derived_power_prefs(config: Config) -> dict:
         result[
             "keyboard-backlight-user-steps"
         ] = hw_features.keyboard.backlight_user_steps
+
+    if (
+        light_sensor.lid_lightsensor == present
+        or light_sensor.base_lightsensor == present
+    ):
+        if hw_features.keyboard.als_steps:
+            _check_lux_threshold(
+                [step.lux_threshold for step in hw_features.keyboard.als_steps],
+                "hw_features.keyboard.als_steps",
+            )
+            result[
+                "keyboard-backlight-als-steps"
+            ] = hw_features.keyboard.als_steps
+    else:
+        if hw_features.keyboard.no_als_brightness:
+            _check_percentage_value(
+                hw_features.keyboard.no_als_brightness,
+                "hw_features.keyboard.no_als_brightness",
+            )
+            result[
+                "keyboard-backlight-no-als-brightness"
+            ] = hw_features.keyboard.no_als_brightness
 
     if hw_features.screen.panel_properties.min_visible_backlight_level:
         result[

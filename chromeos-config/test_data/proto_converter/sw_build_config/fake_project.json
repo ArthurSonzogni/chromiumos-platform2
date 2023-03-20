@@ -182,6 +182,7 @@
           "has-backlight": true,
           "has-base-accelerometer": true,
           "has-base-gyroscope": true,
+          "has-base-light-sensor": true,
           "has-base-magnetometer": true,
           "has-lid-light-sensor": true,
           "psu-type": "battery",
@@ -210,7 +211,7 @@
           "charging-ports": "CROS_USBPD_CHARGER0 LEFT_BACK\nCROS_USBPD_CHARGER1 RIGHT\nCROS_USBPD_CHARGER2 LEFT_FRONT",
           "defer-external-display-timeout": "10",
           "disable-dark-resume": "0",
-          "has-ambient-light-sensor": "1",
+          "has-ambient-light-sensor": "2",
           "internal-backlight-als-steps": "80.0 63.4 -1 400\n100.0 100 -1",
           "suspend-to-idle": "1",
           "turn-off-screen-timeout-ms": "3000",
@@ -450,6 +451,235 @@
           "has-keyboard-backlight": "1",
           "internal-backlight-no-als-ac-brightness": "80.5",
           "internal-backlight-no-als-battery-brightness": "63.4",
+          "keyboard-backlight-no-als-brightness": "40.0",
+          "keyboard-backlight-user-steps": "0.0\n10.0\n20.0\n40.0\n60.0\n100.0",
+          "suspend-to-idle": "0",
+          "turn-off-screen-timeout-ms": "3000",
+          "usb-min-ac-watts": "20",
+          "wake-on-dp": "1"
+        },
+        "pvs": {
+          "program": "fake_program",
+          "project": "fake_ref_design"
+        },
+        "regulatory-label": "fake_regulatory_label",
+        "scheduler-tune": {
+          "boost-top-app": 60,
+          "boost-urgent": 20,
+          "cpuset-nonurgent": "0-5",
+          "input-boost": 15
+        },
+        "ui": {
+          "ash-enabled-features": [
+            "CloudGamingDevice"
+          ],
+          "extra-ash-flags": [
+            "--arc-build-properties={'device': 'fake_program_cheets', 'firstApiLevel': '28'}",
+            "--ash-power-button-position={\"edge\": \"left\", \"position\": 0.9}",
+            "--ash-side-volume-button-position={\"region\": \"screen\", \"side\": \"right\"}",
+            "--child-wallpaper-large=/usr/share/chromeos-assets/wallpaper/child_large.jpg",
+            "--child-wallpaper-small=/usr/share/chromeos-assets/wallpaper/child_small.jpg",
+            "--default-wallpaper-is-oem",
+            "--default-wallpaper-large=/usr/share/chromeos-assets/wallpaper/fake_wallpaper_large.jpg",
+            "--default-wallpaper-small=/usr/share/chromeos-assets/wallpaper/fake_wallpaper_small.jpg",
+            "--enable-microphone-mute-switch-device",
+            "--extra-web-apps-dir=apps2",
+            "--guest-wallpaper-large=/usr/share/chromeos-assets/wallpaper/guest_large.jpg",
+            "--guest-wallpaper-small=/usr/share/chromeos-assets/wallpaper/guest_small.jpg",
+            "--has-internal-stylus",
+            "--regulatory-label-dir=fake_regulatory_label"
+          ],
+          "help-content-id": "fake_help"
+        },
+        "wallpaper": "fake_wallpaper",
+        "wifi": {
+          "geo-offsets-eu": {
+            "offset-2g": 11,
+            "offset-5g": 12
+          },
+          "geo-offsets-fcc": {
+            "offset-2g": 9,
+            "offset-5g": 10
+          },
+          "geo-offsets-rest-of-world": {
+            "offset-2g": 13,
+            "offset-5g": 14
+          },
+          "non-tablet-mode-power-table-rtw": {
+            "limit-2g": 1,
+            "limit-5g-1": 2,
+            "limit-5g-3": 3,
+            "limit-5g-4": 4
+          },
+          "tablet-mode-power-table-rtw": {
+            "limit-2g": 5,
+            "limit-5g-1": 6,
+            "limit-5g-3": 7,
+            "limit-5g-4": 8
+          }
+        }
+      },
+      {
+        "arc": {
+          "build-properties": {
+            "device": "fake_program_cheets",
+            "marketing-name": "Fake ChromeOS Device Brandname",
+            "metrics-tag": "fake_ref_design",
+            "oem": "FAKE_OEM",
+            "product": "fake_program"
+          },
+          "hardware-features": {
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/hardware_features_fake_ref_design_1.xml",
+            "system-path": "/etc/hardware_features_fake_ref_design_1.xml"
+          },
+          "media-profiles": {
+            "build-path": "proto_converter/test_data/proto_converter/sw_build_config/arc/media_profiles_fake_ref_design_1.xml",
+            "system-path": "/etc/media_profiles_fake_ref_design_1.xml"
+          }
+        },
+        "audio": {
+          "main": {
+            "cras-config-dir": "fake_ref_design",
+            "files": [
+              {
+                "destination": "/usr/share/alsa/ucm/fakeaudiocard.alc5682i.1uf2wf.fake_ref_design/HiFi.conf",
+                "source": "fake_ref_design/audio/ucm-config/fakeaudiocard.alc5682i.1uf2wf.fake_ref_design/HiFi.conf"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/fakeaudiocard.alc5682i.1uf2wf.fake_ref_design/fakeaudiocard.alc5682i.1uf2wf.fake_ref_design.conf",
+                "source": "fake_ref_design/audio/ucm-config/fakeaudiocard.alc5682i.1uf2wf.fake_ref_design/fakeaudiocard.alc5682i.1uf2wf.fake_ref_design.conf"
+              },
+              {
+                "destination": "/etc/cras/fake_ref_design/fakeaudiocard.card_settings",
+                "source": "fake_ref_design/audio/cras-config/fakeaudiocard.card_settings"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/HDA ATI HDMI/HiFi.conf",
+                "source": "common/audio/ucm-config/HDA ATI HDMI/HiFi.conf"
+              },
+              {
+                "destination": "/usr/share/alsa/ucm/HDA ATI HDMI/HDA ATI HDMI.conf",
+                "source": "common/audio/ucm-config/HDA ATI HDMI/HDA ATI HDMI.conf"
+              },
+              {
+                "destination": "/etc/cras/fake_ref_design/dsp.ini",
+                "source": "fake_ref_design/audio/cras-config/dsp.ini"
+              },
+              {
+                "destination": "/etc/cras/fake_ref_design/board.ini",
+                "source": "fake_ref_design/audio/cras-config/board.ini"
+              },
+              {
+                "destination": "/etc/cras/fake_ref_design/apm.ini",
+                "source": "fake_ref_design/audio/cras-config/apm.ini"
+              },
+              {
+                "destination": "/etc/modprobe.d/alsa-fake_program.conf",
+                "source": "common/audio/alsa-module-config/alsa-fake_program.conf"
+              }
+            ],
+            "ucm-suffix": "alc5682i.1uf2wf.fake_ref_design"
+          }
+        },
+        "battery": {
+          "no-battery-boot-supported": true
+        },
+        "brand-code": "AAAA",
+        "branding": {
+          "marketing-name": "Fake ChromeOS Device Brandname",
+          "oem-name": "FAKE_OEM"
+        },
+        "camera": {
+          "count": 2,
+          "devices": [
+            {
+              "facing": "front",
+              "flags": {
+                "support-1080p": false,
+                "support-autofocus": true
+              },
+              "has-privacy-switch": true,
+              "ids": [
+                "0123:abcd"
+              ],
+              "interface": "usb",
+              "orientation": 0
+            },
+            {
+              "facing": "back",
+              "flags": {
+                "support-1080p": true,
+                "support-autofocus": true
+              },
+              "ids": [
+                "mipi-cam"
+              ],
+              "interface": "mipi",
+              "orientation": 180
+            }
+          ]
+        },
+        "fingerprint": {
+          "sensor-location": "none"
+        },
+        "firmware": {
+          "bcs-overlay": "overlay-fake_program-private",
+          "build-targets": {
+            "coreboot": "fake_0db_1custom_2cameras",
+            "depthcharge": "fake",
+            "ec": "fake",
+            "ec_extras": [
+              "fake_ec_extra1",
+              "fake_ec_extra2"
+            ],
+            "libpayload": "fake",
+            "zephyr-ec": "projects/fake/fake"
+          },
+          "ec-ro-image": "bcs://Fake_EC.11111.2.0.tbz2",
+          "firmware-config": 90880,
+          "image-name": "fake_ref_design_0db_1custom_2cameras",
+          "main-ro-image": "bcs://Fake_0Db_1Custom_2Cameras.11111.0.0.tbz2",
+          "main-rw-image": "bcs://Fake_0Db_1Custom_2Cameras.11111.2.3.tbz2",
+          "pd-ro-image": "bcs://Fake_PD.11111.0.0.tbz2"
+        },
+        "firmware-signing": {
+          "key-id": "DEFAULT",
+          "signature-id": "fake_ref_design_0db_1custom_2cameras"
+        },
+        "hardware-properties": {
+          "form-factor": "CLAMSHELL",
+          "has-backlight": true,
+          "has-base-accelerometer": true,
+          "has-base-gyroscope": true,
+          "has-base-light-sensor": true,
+          "has-base-magnetometer": true,
+          "has-lid-light-sensor": true,
+          "psu-type": "battery",
+          "recovery-input": "POWER_BUTTON",
+          "storage-type": "EMMC"
+        },
+        "identity": {
+          "frid": "Google_Fake_0Db_1Custom_2Cameras",
+          "platform-name": "fake",
+          "sku-id": 1
+        },
+        "keyboard": {
+          "backlight": true,
+          "mcutype": "prism_rgb_controller",
+          "numpad": true
+        },
+        "modem": {
+          "firmware-variant": "fakemodem"
+        },
+        "name": "fake_ref_design",
+        "power": {
+          "charging-ports": "CROS_USBPD_CHARGER0 LEFT_BACK\nCROS_USBPD_CHARGER1 LEFT_FRONT",
+          "defer-external-display-timeout": "10",
+          "disable-dark-resume": "0",
+          "has-ambient-light-sensor": "2",
+          "has-keyboard-backlight": "1",
+          "internal-backlight-als-steps": "80.0 63.4 -1 400\n100.0 100 -1",
+          "keyboard-backlight-als-steps": "40.0 -1 20\n0.0 15 -1",
           "keyboard-backlight-user-steps": "0.0\n10.0\n20.0\n40.0\n60.0\n100.0",
           "suspend-to-idle": "0",
           "turn-off-screen-timeout-ms": "3000",
