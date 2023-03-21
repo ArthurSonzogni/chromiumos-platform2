@@ -78,4 +78,9 @@ EcCommandFactory::FpReadMatchSecretWithPubkeyCommand(
   return FpReadMatchSecretWithPubkeyCommand::Create(index, pk_in_x, pk_in_y);
 }
 
+std::unique_ptr<ec::FpPairingKeyKeygenCommand>
+EcCommandFactory::FpPairingKeyKeygenCommand() {
+  return std::make_unique<ec::FpPairingKeyKeygenCommand>();
+}
+
 }  // namespace ec
