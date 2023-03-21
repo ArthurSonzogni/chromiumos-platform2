@@ -284,7 +284,7 @@ CgptErrorCode CgptManager::GetNumNonEmptyPartitions(
   return CgptErrorCode::kSuccess;
 }
 
-CgptErrorCode CgptManager::SetPmbr(uint32_t boot_partition_number,
+CgptErrorCode CgptManager::SetPmbr(PartitionNum boot_partition_number,
                                    const base::FilePath& boot_file_name,
                                    bool should_create_legacy_partition) {
   if (!is_initialized_)
@@ -298,7 +298,7 @@ CgptErrorCode CgptManager::SetPmbr(uint32_t boot_partition_number,
   if (!boot_file_name.empty())
     params.bootfile = const_cast<char*>(boot_file_name.value().c_str());
 
-  params.partition = boot_partition_number;
+  params.partition = boot_partition_number.Value();
   params.create_pmbr = should_create_legacy_partition;
 
   int retval = CgptBoot(&params);
@@ -309,7 +309,7 @@ CgptErrorCode CgptManager::SetPmbr(uint32_t boot_partition_number,
 }
 
 CgptErrorCode CgptManager::GetPmbrBootPartitionNumber(
-    uint32_t* boot_partition) const {
+    PartitionNum* boot_partition) const {
   if (!is_initialized_)
     return CgptErrorCode::kNotInitialized;
 
@@ -326,11 +326,11 @@ CgptErrorCode CgptManager::GetPmbrBootPartitionNumber(
   if (retval != CGPT_OK)
     return CgptErrorCode::kUnknownError;
 
-  *boot_partition = params.partition;
+  *boot_partition = PartitionNum(params.partition);
   return CgptErrorCode::kSuccess;
 }
 
-CgptErrorCode CgptManager::SetSuccessful(uint32_t partition_number,
+CgptErrorCode CgptManager::SetSuccessful(PartitionNum partition_number,
                                          bool is_successful) {
   if (!is_initialized_)
     return CgptErrorCode::kNotInitialized;
@@ -340,7 +340,7 @@ CgptErrorCode CgptManager::SetSuccessful(uint32_t partition_number,
 
   params.drive_name = const_cast<char*>(device_name_.value().c_str());
   params.drive_size = device_size_;
-  params.partition = partition_number;
+  params.partition = partition_number.Value();
 
   params.successful = is_successful;
   params.set_successful = true;
@@ -352,7 +352,7 @@ CgptErrorCode CgptManager::SetSuccessful(uint32_t partition_number,
   return CgptErrorCode::kSuccess;
 }
 
-CgptErrorCode CgptManager::GetSuccessful(uint32_t partition_number,
+CgptErrorCode CgptManager::GetSuccessful(PartitionNum partition_number,
                                          bool* is_successful) const {
   if (!is_initialized_)
     return CgptErrorCode::kNotInitialized;
@@ -365,7 +365,7 @@ CgptErrorCode CgptManager::GetSuccessful(uint32_t partition_number,
 
   params.drive_name = const_cast<char*>(device_name_.value().c_str());
   params.drive_size = device_size_;
-  params.partition = partition_number;
+  params.partition = partition_number.Value();
 
   int retval = CgptGetPartitionDetails(&params);
   if (retval != CGPT_OK)
@@ -375,7 +375,7 @@ CgptErrorCode CgptManager::GetSuccessful(uint32_t partition_number,
   return CgptErrorCode::kSuccess;
 }
 
-CgptErrorCode CgptManager::SetNumTriesLeft(uint32_t partition_number,
+CgptErrorCode CgptManager::SetNumTriesLeft(PartitionNum partition_number,
                                            int numTries) {
   if (!is_initialized_)
     return CgptErrorCode::kNotInitialized;
@@ -385,7 +385,7 @@ CgptErrorCode CgptManager::SetNumTriesLeft(uint32_t partition_number,
 
   params.drive_name = const_cast<char*>(device_name_.value().c_str());
   params.drive_size = device_size_;
-  params.partition = partition_number;
+  params.partition = partition_number.Value();
 
   params.tries = numTries;
   params.set_tries = true;
@@ -397,7 +397,7 @@ CgptErrorCode CgptManager::SetNumTriesLeft(uint32_t partition_number,
   return CgptErrorCode::kSuccess;
 }
 
-CgptErrorCode CgptManager::GetNumTriesLeft(uint32_t partition_number,
+CgptErrorCode CgptManager::GetNumTriesLeft(PartitionNum partition_number,
                                            int* numTries) const {
   if (!is_initialized_)
     return CgptErrorCode::kNotInitialized;
@@ -410,7 +410,7 @@ CgptErrorCode CgptManager::GetNumTriesLeft(uint32_t partition_number,
 
   params.drive_name = const_cast<char*>(device_name_.value().c_str());
   params.drive_size = device_size_;
-  params.partition = partition_number;
+  params.partition = partition_number.Value();
 
   int retval = CgptGetPartitionDetails(&params);
   if (retval != CGPT_OK)
@@ -420,7 +420,7 @@ CgptErrorCode CgptManager::GetNumTriesLeft(uint32_t partition_number,
   return CgptErrorCode::kSuccess;
 }
 
-CgptErrorCode CgptManager::SetPriority(uint32_t partition_number,
+CgptErrorCode CgptManager::SetPriority(PartitionNum partition_number,
                                        uint8_t priority) {
   if (!is_initialized_)
     return CgptErrorCode::kNotInitialized;
@@ -430,7 +430,7 @@ CgptErrorCode CgptManager::SetPriority(uint32_t partition_number,
 
   params.drive_name = const_cast<char*>(device_name_.value().c_str());
   params.drive_size = device_size_;
-  params.partition = partition_number;
+  params.partition = partition_number.Value();
 
   params.priority = priority;
   params.set_priority = true;
@@ -442,7 +442,7 @@ CgptErrorCode CgptManager::SetPriority(uint32_t partition_number,
   return CgptErrorCode::kSuccess;
 }
 
-CgptErrorCode CgptManager::GetPriority(uint32_t partition_number,
+CgptErrorCode CgptManager::GetPriority(PartitionNum partition_number,
                                        uint8_t* priority) const {
   if (!is_initialized_)
     return CgptErrorCode::kNotInitialized;
@@ -455,7 +455,7 @@ CgptErrorCode CgptManager::GetPriority(uint32_t partition_number,
 
   params.drive_name = const_cast<char*>(device_name_.value().c_str());
   params.drive_size = device_size_;
-  params.partition = partition_number;
+  params.partition = partition_number.Value();
 
   int retval = CgptGetPartitionDetails(&params);
   if (retval != CGPT_OK)
@@ -465,7 +465,7 @@ CgptErrorCode CgptManager::GetPriority(uint32_t partition_number,
   return CgptErrorCode::kSuccess;
 }
 
-CgptErrorCode CgptManager::GetBeginningOffset(uint32_t partition_number,
+CgptErrorCode CgptManager::GetBeginningOffset(PartitionNum partition_number,
                                               uint64_t* offset) const {
   if (!is_initialized_)
     return CgptErrorCode::kNotInitialized;
@@ -478,7 +478,7 @@ CgptErrorCode CgptManager::GetBeginningOffset(uint32_t partition_number,
 
   params.drive_name = const_cast<char*>(device_name_.value().c_str());
   params.drive_size = device_size_;
-  params.partition = partition_number;
+  params.partition = partition_number.Value();
 
   int retval = CgptGetPartitionDetails(&params);
   if (retval != CGPT_OK)
@@ -488,7 +488,7 @@ CgptErrorCode CgptManager::GetBeginningOffset(uint32_t partition_number,
   return CgptErrorCode::kSuccess;
 }
 
-CgptErrorCode CgptManager::GetNumSectors(uint32_t partition_number,
+CgptErrorCode CgptManager::GetNumSectors(PartitionNum partition_number,
                                          uint64_t* num_sectors) const {
   if (!is_initialized_)
     return CgptErrorCode::kNotInitialized;
@@ -501,7 +501,7 @@ CgptErrorCode CgptManager::GetNumSectors(uint32_t partition_number,
 
   params.drive_name = const_cast<char*>(device_name_.value().c_str());
   params.drive_size = device_size_;
-  params.partition = partition_number;
+  params.partition = partition_number.Value();
 
   int retval = CgptGetPartitionDetails(&params);
   if (retval != CGPT_OK)
@@ -511,7 +511,7 @@ CgptErrorCode CgptManager::GetNumSectors(uint32_t partition_number,
   return CgptErrorCode::kSuccess;
 }
 
-CgptErrorCode CgptManager::GetPartitionTypeId(uint32_t partition_number,
+CgptErrorCode CgptManager::GetPartitionTypeId(PartitionNum partition_number,
                                               Guid* type_id) const {
   if (!is_initialized_)
     return CgptErrorCode::kNotInitialized;
@@ -524,7 +524,7 @@ CgptErrorCode CgptManager::GetPartitionTypeId(uint32_t partition_number,
 
   params.drive_name = const_cast<char*>(device_name_.value().c_str());
   params.drive_size = device_size_;
-  params.partition = partition_number;
+  params.partition = partition_number.Value();
 
   int retval = CgptGetPartitionDetails(&params);
   if (retval != CGPT_OK)
@@ -534,7 +534,7 @@ CgptErrorCode CgptManager::GetPartitionTypeId(uint32_t partition_number,
   return CgptErrorCode::kSuccess;
 }
 
-CgptErrorCode CgptManager::GetPartitionUniqueId(uint32_t partition_number,
+CgptErrorCode CgptManager::GetPartitionUniqueId(PartitionNum partition_number,
                                                 Guid* unique_id) const {
   if (!is_initialized_)
     return CgptErrorCode::kNotInitialized;
@@ -547,7 +547,7 @@ CgptErrorCode CgptManager::GetPartitionUniqueId(uint32_t partition_number,
 
   params.drive_name = const_cast<char*>(device_name_.value().c_str());
   params.drive_size = device_size_;
-  params.partition = partition_number;
+  params.partition = partition_number.Value();
 
   int retval = CgptGetPartitionDetails(&params);
   if (retval != CGPT_OK)
@@ -558,7 +558,7 @@ CgptErrorCode CgptManager::GetPartitionUniqueId(uint32_t partition_number,
 }
 
 CgptErrorCode CgptManager::GetPartitionNumberByUniqueId(
-    const Guid& unique_id, uint32_t* partition_number) const {
+    const Guid& unique_id, PartitionNum* partition_number) const {
   if (!is_initialized_)
     return CgptErrorCode::kNotInitialized;
 
@@ -577,11 +577,11 @@ CgptErrorCode CgptManager::GetPartitionNumberByUniqueId(
   if (retval != CGPT_OK)
     return CgptErrorCode::kUnknownError;
 
-  *partition_number = params.partition;
+  *partition_number = PartitionNum(params.partition);
   return CgptErrorCode::kSuccess;
 }
 
-CgptErrorCode CgptManager::SetHighestPriority(uint32_t partition_number,
+CgptErrorCode CgptManager::SetHighestPriority(PartitionNum partition_number,
                                               uint8_t highest_priority) {
   if (!is_initialized_)
     return CgptErrorCode::kNotInitialized;
@@ -591,7 +591,7 @@ CgptErrorCode CgptManager::SetHighestPriority(uint32_t partition_number,
 
   params.drive_name = const_cast<char*>(device_name_.value().c_str());
   params.drive_size = device_size_;
-  params.set_partition = partition_number;
+  params.set_partition = partition_number.Value();
   params.max_priority = highest_priority;
 
   int retval = CgptPrioritize(&params);
@@ -601,7 +601,7 @@ CgptErrorCode CgptManager::SetHighestPriority(uint32_t partition_number,
   return CgptErrorCode::kSuccess;
 }
 
-CgptErrorCode CgptManager::SetHighestPriority(uint32_t partition_number) {
+CgptErrorCode CgptManager::SetHighestPriority(PartitionNum partition_number) {
   // The internal implementation in CgptPrioritize automatically computes the
   // right priority number if we supply 0 for the highest_priority argument.
   return SetHighestPriority(partition_number, 0);

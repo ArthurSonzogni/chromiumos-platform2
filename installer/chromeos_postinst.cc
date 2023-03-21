@@ -311,7 +311,7 @@ bool UpdatePartitionTable(CgptManager& cgpt_manager,
   LOG(INFO) << "Updating Partition Table Attributes using CgptManager...";
 
   CgptErrorCode result =
-      cgpt_manager.SetHighestPriority(install_config.kernel.number().Value());
+      cgpt_manager.SetHighestPriority(install_config.kernel.number());
   if (result != CgptErrorCode::kSuccess) {
     LOG(ERROR) << "Unable to set highest priority for kernel: "
                << install_config.kernel.number();
@@ -321,7 +321,7 @@ bool UpdatePartitionTable(CgptManager& cgpt_manager,
   // If it's not an update, pre-mark the first boot as successful
   // since we can't fall back on the old install.
   bool new_kern_successful = !is_update;
-  result = cgpt_manager.SetSuccessful(install_config.kernel.number().Value(),
+  result = cgpt_manager.SetSuccessful(install_config.kernel.number(),
                                       new_kern_successful);
   if (result != CgptErrorCode::kSuccess) {
     LOG(ERROR) << "Unable to set successful to " << new_kern_successful
@@ -330,8 +330,8 @@ bool UpdatePartitionTable(CgptManager& cgpt_manager,
   }
 
   int numTries = 6;
-  result = cgpt_manager.SetNumTriesLeft(install_config.kernel.number().Value(),
-                                        numTries);
+  result =
+      cgpt_manager.SetNumTriesLeft(install_config.kernel.number(), numTries);
   if (result != CgptErrorCode::kSuccess) {
     LOG(ERROR) << "Unable to set NumTriesLeft to " << numTries
                << " for kernel: " << install_config.kernel.number();
@@ -351,7 +351,7 @@ bool RollbackPartitionTable(CgptManager& cgpt_manager,
   bool new_kern_successful = false;
   bool rollback_successful = true;
   CgptErrorCode result =
-      cgpt_manager.SetSuccessful(install_config.kernel.number().Value(), false);
+      cgpt_manager.SetSuccessful(install_config.kernel.number(), false);
   if (result != CgptErrorCode::kSuccess) {
     rollback_successful = false;
     LOG(ERROR) << "Unable to set successful to " << new_kern_successful
@@ -359,8 +359,8 @@ bool RollbackPartitionTable(CgptManager& cgpt_manager,
   }
 
   int numTries = 0;
-  result = cgpt_manager.SetNumTriesLeft(install_config.kernel.number().Value(),
-                                        numTries);
+  result =
+      cgpt_manager.SetNumTriesLeft(install_config.kernel.number(), numTries);
   if (result != CgptErrorCode::kSuccess) {
     rollback_successful = false;
     LOG(ERROR) << "Unable to set NumTriesLeft to " << numTries
@@ -368,8 +368,7 @@ bool RollbackPartitionTable(CgptManager& cgpt_manager,
   }
 
   int priority = 0;
-  result = cgpt_manager.SetPriority(install_config.kernel.number().Value(),
-                                    priority);
+  result = cgpt_manager.SetPriority(install_config.kernel.number(), priority);
   if (result != CgptErrorCode::kSuccess) {
     rollback_successful = false;
     LOG(ERROR) << "Unable to set Priority to " << priority

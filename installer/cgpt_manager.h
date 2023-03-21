@@ -11,6 +11,8 @@
 
 #include <vboot/gpt.h>
 
+#include "installer/inst_util.h"
+
 // This file defines a simple C++ wrapper class interface for the cgpt methods.
 
 // These are the possible error codes that can be returned by the CgptManager.
@@ -70,76 +72,79 @@ class CgptManager {
   // should_create_legacy_partition is true.
   // Note: Strictly speaking, the PMBR is not part of the GPT, but it is
   // included here for ease of use.
-  CgptErrorCode SetPmbr(uint32_t boot_partition_number,
+  CgptErrorCode SetPmbr(PartitionNum boot_partition_number,
                         const base::FilePath& boot_file_name,
                         bool should_create_legacy_partition);
 
   // Populates boot_partition with the partition number that's set to
   // boot in the PMBR.
   // Returns kSuccess or an appropriate error code.
-  CgptErrorCode GetPmbrBootPartitionNumber(uint32_t* boot_partition) const;
+  CgptErrorCode GetPmbrBootPartitionNumber(PartitionNum* boot_partition) const;
 
   // Sets the "successful" attribute of the given kernelPartition to 0 or 1
   // based on the value of is_successful being true (1) or false(0)
   // Returns kSuccess or an appropriate error code.
-  CgptErrorCode SetSuccessful(uint32_t partition_number, bool is_successful);
+  CgptErrorCode SetSuccessful(PartitionNum partition_number,
+                              bool is_successful);
 
   // Populates is_successful to true if the successful attribute in the
   // given kernelPartition is non-zero, or to false if it's zero.
   // Returns kSuccess or an appropriate error code.
-  CgptErrorCode GetSuccessful(uint32_t partition_number,
+  CgptErrorCode GetSuccessful(PartitionNum partition_number,
                               bool* is_successful) const;
 
   // Sets the "NumTriesLeft" attribute of the given kernelPartition to
   // the given num_tries_left value.
   // Returns kSuccess or an appropriate error code.
-  CgptErrorCode SetNumTriesLeft(uint32_t partition_number, int num_tries_left);
+  CgptErrorCode SetNumTriesLeft(PartitionNum partition_number,
+                                int num_tries_left);
 
   // Populates the num_tries_left parameter with the value of the
   // NumTriesLeft attribute of the given kernelPartition.
   // Returns kSuccess or an appropriate error code.
-  CgptErrorCode GetNumTriesLeft(uint32_t partition_number,
+  CgptErrorCode GetNumTriesLeft(PartitionNum partition_number,
                                 int* num_tries_left) const;
 
   // Sets the "Priority" attribute of the given kernelPartition to
   // the given priority value.
   // Returns kSuccess or an appropriate error code.
-  CgptErrorCode SetPriority(uint32_t partition_number, uint8_t priority);
+  CgptErrorCode SetPriority(PartitionNum partition_number, uint8_t priority);
 
   // Populates the priority parameter with the value of the Priority
   // attribute of the given kernelPartition.
   // Returns kSuccess or an appropriate error code.
-  CgptErrorCode GetPriority(uint32_t partition_number, uint8_t* priority) const;
+  CgptErrorCode GetPriority(PartitionNum partition_number,
+                            uint8_t* priority) const;
 
   // Populates the offset parameter with the beginning offset of the
   // given partition.
   // Returns kSuccess or an appropriate error code.
-  CgptErrorCode GetBeginningOffset(uint32_t partition_number,
+  CgptErrorCode GetBeginningOffset(PartitionNum partition_number,
                                    uint64_t* offset) const;
 
   // Populates the number of sectors in the given partition.
   // Returns kSuccess or an appropriate error code.
-  CgptErrorCode GetNumSectors(uint32_t partition_number,
+  CgptErrorCode GetNumSectors(PartitionNum partition_number,
                               uint64_t* num_sectors) const;
 
   // Populates the type_id parameter with the partition type id
   // (these are the standard ids for kernel, rootfs, etc.)
   // of the partition corresponding to the given partition_number.
   // Returns kSuccess or an appropriate error code.
-  CgptErrorCode GetPartitionTypeId(uint32_t partition_number,
+  CgptErrorCode GetPartitionTypeId(PartitionNum partition_number,
                                    Guid* type_id) const;
 
   // Populates the unique_id parameter with the Guid that uniquely identifies
   // the given partition_number.
   // Returns kSuccess or an appropriate error code.
-  CgptErrorCode GetPartitionUniqueId(uint32_t partition_number,
+  CgptErrorCode GetPartitionUniqueId(PartitionNum partition_number,
                                      Guid* unique_id) const;
 
   // Populates the partition_number parameter with the partition number of
   // the partition which is uniquely identified by the given unique_id.
   // Returns kSuccess or an appropriate error code.
-  CgptErrorCode GetPartitionNumberByUniqueId(const Guid& unique_id,
-                                             uint32_t* partition_number) const;
+  CgptErrorCode GetPartitionNumberByUniqueId(
+      const Guid& unique_id, PartitionNum* partition_number) const;
 
   // Sets the "Priority" attribute of given kernelPartition to the value
   // specified in higestPriority parameter. In addition, also reduces the
@@ -148,7 +153,7 @@ class CgptManager {
   // ordering among the remaining partitions and doesn't touch the partitions
   // whose priorities are zero.
   // Returns kSuccess or an appropriate error code.
-  CgptErrorCode SetHighestPriority(uint32_t partition_number,
+  CgptErrorCode SetHighestPriority(PartitionNum partition_number,
                                    uint8_t highest_priority);
 
   // Same as SetHighestPriority above but works without having to explicitly
@@ -156,7 +161,7 @@ class CgptManager {
   // out the best highest number that needs to be given depending on the
   // existing priorities.
   // Returns kSuccess or an appropriate error code.
-  CgptErrorCode SetHighestPriority(uint32_t partition_number);
+  CgptErrorCode SetHighestPriority(PartitionNum partition_number);
 
   // Runs the sanity checks on the CGPT and MBR and
   // Returns kSuccess if everything is valid or an appropriate error code
