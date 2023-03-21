@@ -49,15 +49,9 @@ pub enum HibernateError {
     /// Cookie error
     #[error("Cookie error: {0}")]
     CookieError(String),
-    /// Error getting the fiemap
-    #[error("Error getting the fiemap: {0}")]
-    FiemapError(libchromeos::sys::Error),
     /// Insufficient Memory available.
     #[error("Not enough free memory and swap")]
     InsufficientMemoryAvailableError(),
-    /// Invalid fiemap
-    #[error("Invalid fiemap: {0}")]
-    InvalidFiemapError(String),
     /// Failed to send metrics
     #[error("Failed to send metrics: {0}")]
     MetricsSendFailure(String),

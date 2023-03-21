@@ -18,8 +18,6 @@ use anyhow::Context;
 use anyhow::Result;
 use log::warn;
 
-use crate::diskfile::BouncedDiskFile;
-
 /// Define the directory where hibernate state files are kept.
 pub const HIBERMETA_DIR: &str = "/mnt/hibermeta";
 /// Define the root of the stateful partition mount.
@@ -39,17 +37,6 @@ const HIBER_ATTEMPTS_FILE_NAME: &str = "attempts_count";
 const HIBER_FAILURES_FILE_NAME: &str = "hibernate_failures";
 /// Define the resume failures count file name.
 const RESUME_FAILURES_FILE_NAME: &str = "resume_failures";
-
-/// Open a pre-existing disk file with bounce buffer,
-/// still with read and write permissions.
-pub fn open_bounced_disk_file<P: AsRef<Path>>(path: P) -> Result<BouncedDiskFile> {
-    let mut file = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .open(path)
-        .context("Cannot open bounced disk file")?;
-    BouncedDiskFile::new(&mut file, None)
-}
 
 /// Helper function to determine if the hiberfile already exists.
 pub fn does_hiberfile_exist() -> bool {

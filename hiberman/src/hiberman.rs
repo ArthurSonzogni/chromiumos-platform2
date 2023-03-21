@@ -4,15 +4,12 @@
 
 //! Listing for hibernate library components.
 
-pub mod cat;
 pub mod cookie;
 pub mod hiberlog;
 pub mod metrics;
 
 mod dbus;
 mod device_mapper;
-mod diskfile;
-mod fiemap;
 mod files;
 mod hiberutil;
 mod lvm;

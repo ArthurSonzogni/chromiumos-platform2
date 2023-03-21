@@ -148,48 +148,6 @@ fn hiberman_cookie(args: &mut std::env::Args) -> std::result::Result<(), ()> {
     Ok(())
 }
 
-fn cat_usage(error: bool, options: &Options) {
-    let brief = r#"Usage: hiberman cat [options] <file> [file...]
-Print a disk file to stdout. Since disk files write to blocks
-underneath the file system, they cannot be read reliably by normal
-file system accesses.
-"#;
-
-    print_usage(&options.usage(brief), error);
-}
-
-fn hiberman_cat(args: &mut std::env::Args) -> std::result::Result<(), ()> {
-    init_logging()?;
-    let mut opts = Options::new();
-    opts.optflag("l", "log", "Treat the file(s) as log files");
-    opts.optflag("h", "help", "Print this help text");
-    let args: Vec<String> = args.collect();
-    let matches = match opts.parse(args) {
-        Ok(m) => m,
-        Err(e) => {
-            error!("Failed to parse arguments: {}", e);
-            cat_usage(true, &opts);
-            return Err(());
-        }
-    };
-
-    if matches.opt_present("h") {
-        cat_usage(false, &opts);
-        return Ok(());
-    }
-
-    let mut result = Ok(());
-    let is_log = matches.opt_present("l");
-    for f in matches.free {
-        if let Err(e) = hiberman::cat::cat_disk_file(&f, is_log) {
-            error!("Failed to cat {}: {:?}", &f, e);
-            result = Err(())
-        }
-    }
-
-    result
-}
-
 fn hibernate_usage(error: bool, options: &Options) {
     let brief = r#"Usage: hiberman hibernate [options]
 Hibernate the system now.
@@ -390,7 +348,6 @@ Valid subcommands are:
     resume-init -- Perform early initialization for resume.
     resume -- Resume the system now.
     abort-resume -- Send an abort request to an in-progress resume.
-    cat -- Write a disk file contents to stdout.
     cookie -- Read or write the hibernate cookie.
 "#;
     print_usage(usage_msg, error);
@@ -417,7 +374,6 @@ fn hiberman_main() -> std::result::Result<(), ()> {
             Ok(())
         }
         "abort-resume" => hiberman_abort_resume(&mut args),
-        "cat" => hiberman_cat(&mut args),
         "cookie" => hiberman_cookie(&mut args),
         "hibernate" => hiberman_hibernate(&mut args),
         "resume-init" => hiberman_resume_init(&mut args),
