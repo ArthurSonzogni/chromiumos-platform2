@@ -273,12 +273,10 @@ CryptohomeStatus CleanUpAllBackupKeysets(
 
 }  // namespace
 
-std::unique_ptr<AuthSession> AuthSession::Create(
-    Username account_id,
-    unsigned int flags,
-    AuthIntent intent,
-    feature::PlatformFeaturesInterface* feature_lib,
-    BackingApis backing_apis) {
+std::unique_ptr<AuthSession> AuthSession::Create(Username account_id,
+                                                 unsigned int flags,
+                                                 AuthIntent intent,
+                                                 BackingApis backing_apis) {
   ObfuscatedUsername obfuscated_username = SanitizeUserName(account_id);
 
   // Try to determine if a user exists in two ways: they have a persistent
@@ -296,9 +294,9 @@ std::unique_ptr<AuthSession> AuthSession::Create(
 
   // Determine if migration is enabled.
   bool migrate_to_user_secret_stash = false;
-  if (feature_lib) {
+  if (backing_apis.features) {
     migrate_to_user_secret_stash =
-        feature_lib->IsEnabledBlocking(kCrOSLateBootMigrateToUserSecretStash);
+        backing_apis.features->IsFeatureEnabled(Features::kUSSMigration);
   }
 
   // If we have an existing persistent user, load all of their auth factors.

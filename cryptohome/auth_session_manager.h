@@ -18,12 +18,12 @@
 #include "cryptohome/auth_session.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/features.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
 #include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/user_session/user_session_map.h"
 #include "cryptohome/username.h"
-#include "featured/feature_library.h"
 
 namespace cryptohome {
 
@@ -69,9 +69,7 @@ class AuthSessionManager {
   // Overload for find to avoid deserialization client side.
   InUseAuthSession FindAuthSession(const std::string& serialized_token);
 
-  void set_feature_lib(feature::PlatformFeaturesInterface* feature_lib) {
-    feature_lib_ = feature_lib;
-  }
+  void set_features(Features* features) { features_ = features; }
 
  private:
   friend class InUseAuthSession;
@@ -92,7 +90,7 @@ class AuthSessionManager {
   UserSecretStashStorage* const user_secret_stash_storage_;
   // // Unowned; must outlive `this`.
   // This holds the object that checks for feature enabled.
-  feature::PlatformFeaturesInterface* feature_lib_;
+  Features* features_;
 
   // Callback for session timeout. Currently just disambiguates
   // RemoveAuthSession overload for the callback.

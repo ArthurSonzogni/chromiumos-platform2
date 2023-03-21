@@ -461,8 +461,7 @@ TEST_F(AuthSessionTest, WebAuthnIntent) {
 TEST_F(AuthSessionTest, UssMigrationFlagCheckFailure) {
   auto auth_session = AuthSession::Create(
       kFakeUsername, user_data_auth::AuthSessionFlags::AUTH_SESSION_FLAGS_NONE,
-      AuthIntent::kDecrypt,
-      /*feature_lib=*/nullptr, backing_apis_);
+      AuthIntent::kDecrypt, backing_apis_);
 
   // Verify.
   ASSERT_THAT(auth_session, NotNull());
@@ -596,7 +595,7 @@ TEST_F(AuthSessionTest, ExistingEphemeralUser) {
 
   // Test.
   std::unique_ptr<AuthSession> auth_session = AuthSession::Create(
-      kFakeUsername, flags, AuthIntent::kDecrypt, nullptr, backing_apis_);
+      kFakeUsername, flags, AuthIntent::kDecrypt, backing_apis_);
 
   // Verify.
   EXPECT_TRUE(auth_session->user_exists());
@@ -610,7 +609,7 @@ TEST_F(AuthSessionTest, NoUssByDefault) {
   // Setting the expectation that the user does not exist.
   EXPECT_CALL(keyset_management_, UserExists(_)).WillRepeatedly(Return(false));
   std::unique_ptr<AuthSession> auth_session = AuthSession::Create(
-      kFakeUsername, flags, AuthIntent::kDecrypt, nullptr, backing_apis_);
+      kFakeUsername, flags, AuthIntent::kDecrypt, backing_apis_);
 
   // Test.
   EXPECT_FALSE(auth_session->has_user_secret_stash());

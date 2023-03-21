@@ -53,6 +53,7 @@
 #include "cryptohome/credentials_test_util.h"
 #include "cryptohome/cryptohome_common.h"
 #include "cryptohome/error/cryptohome_mount_error.h"
+#include "cryptohome/features.h"
 #include "cryptohome/filesystem_layout.h"
 #include "cryptohome/mock_credential_verifier.h"
 #include "cryptohome/mock_cryptohome_keys_manager.h"
@@ -223,9 +224,8 @@ class UserDataAuthTestBase : public ::testing::Test {
         &key_challenge_service_factory_);
     userdataauth_->set_low_disk_space_handler(&low_disk_space_handler_);
 
-    fake_feature_lib_ =
-        std::make_unique<feature::FakePlatformFeatures>(mount_bus_);
-    userdataauth_->set_feature_lib(fake_feature_lib_.get());
+    features_ = std::make_unique<Features>(mount_bus_, true /*testing*/);
+    userdataauth_->set_features(features_.get());
     // Empty token list by default.  The effect is that there are no
     // attempts to unload tokens unless a test explicitly sets up the token
     // list.
@@ -394,7 +394,7 @@ class UserDataAuthTestBase : public ::testing::Test {
   // Unowned pointer to the session object.
   NiceMock<MockUserSession>* session_ = nullptr;
 
-  std::unique_ptr<feature::PlatformFeaturesInterface> fake_feature_lib_;
+  std::unique_ptr<Features> features_;
 
   // Declare |userdataauth_| last so it gets destroyed before all the mocks.
   // This is important because otherwise the background thread may call into

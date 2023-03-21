@@ -41,6 +41,7 @@
 #include "cryptohome/cleanup/low_disk_space_handler.h"
 #include "cryptohome/crypto.h"
 #include "cryptohome/error/cryptohome_error.h"
+#include "cryptohome/features.h"
 #include "cryptohome/fingerprint_manager.h"
 #include "cryptohome/firmware_management_parameters.h"
 #include "cryptohome/install_attributes.h"
@@ -616,9 +617,7 @@ class UserDataAuth {
     low_disk_space_handler_ = low_disk_space_handler;
   }
 
-  void set_feature_lib(feature::PlatformFeaturesInterface* feature_lib) {
-    feature_lib_ = feature_lib;
-  }
+  void set_features(Features* features) { features_ = features; }
 
   // Retrieve the session associated with the given user, for testing purpose
   // only.
@@ -1266,10 +1265,10 @@ class UserDataAuth {
   bool pk_establishment_blocked_ = false;
 
   // Feature library to fetch enabled feature on Finch.
-  std::unique_ptr<feature::PlatformFeaturesInterface> default_feature_lib_;
+  std::unique_ptr<Features> default_features_;
 
   // This holds the object that checks for feature enabled.
-  feature::PlatformFeaturesInterface* feature_lib_;
+  Features* features_;
 
   friend class AuthSessionTestWithKeysetManagement;
   FRIEND_TEST(AuthSessionTestWithKeysetManagement,

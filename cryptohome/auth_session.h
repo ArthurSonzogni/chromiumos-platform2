@@ -40,6 +40,7 @@
 #include "cryptohome/error/cryptohome_crypto_error.h"
 #include "cryptohome/error/cryptohome_error.h"
 #include "cryptohome/error/cryptohome_mount_error.h"
+#include "cryptohome/features.h"
 #include "cryptohome/key_objects.h"
 #include "cryptohome/keyset_management.h"
 #include "cryptohome/platform.h"
@@ -48,7 +49,6 @@
 #include "cryptohome/user_secret_stash_storage.h"
 #include "cryptohome/user_session/user_session_map.h"
 #include "cryptohome/username.h"
-#include "featured/feature_library.h"
 
 namespace cryptohome {
 
@@ -104,16 +104,15 @@ class AuthSession final {
     AuthBlockUtility* auth_block_utility = nullptr;
     AuthFactorManager* auth_factor_manager = nullptr;
     UserSecretStashStorage* user_secret_stash_storage = nullptr;
+    Features* features = nullptr;
   };
 
   // Creates new auth session for account_id. This method returns a unique_ptr
   // to the created AuthSession for the auth_session_manager to hold.
-  static std::unique_ptr<AuthSession> Create(
-      Username username,
-      unsigned int flags,
-      AuthIntent intent,
-      feature::PlatformFeaturesInterface* feature_lib,
-      BackingApis backing_apis);
+  static std::unique_ptr<AuthSession> Create(Username username,
+                                             unsigned int flags,
+                                             AuthIntent intent,
+                                             BackingApis backing_apis);
 
   // Construct an AuthSession initialized with all of the given state. This
   // should generally only be used directly in testing; production code should

@@ -234,8 +234,8 @@ UserDataAuth::UserDataAuth()
       migrate_to_user_secret_stash_(false),
       default_arc_disk_quota_(nullptr),
       arc_disk_quota_(nullptr),
-      default_feature_lib_(nullptr),
-      feature_lib_(nullptr) {}
+      default_features_(nullptr),
+      features_(nullptr) {}
 
 UserDataAuth::~UserDataAuth() {
   if (low_disk_space_handler_) {
@@ -558,15 +558,15 @@ bool UserDataAuth::PostDBusInitialize() {
 
 void UserDataAuth::InitializeFeatureLibrary() {
   AssertOnMountThread();
-  if (!feature_lib_) {
-    default_feature_lib_ = feature::PlatformFeatures::New(mount_thread_bus_);
-    feature_lib_ = default_feature_lib_.get();
-    if (!feature_lib_) {
+  if (!features_) {
+    default_features_ = std::make_unique<Features>(mount_thread_bus_);
+    features_ = default_features_.get();
+    if (!features_) {
       LOG(WARNING) << "Failed to determine USS migration experiment flag";
       return;
     }
   }
-  auth_session_manager_->set_feature_lib(feature_lib_);
+  auth_session_manager_->set_features(features_);
 }
 
 void UserDataAuth::InitializeChallengeCredentialsHelper() {
@@ -2885,9 +2885,9 @@ void UserDataAuth::ListAuthFactors(
     // the auth factors from the disk.
     // Load the AuthFactorMap.
     bool migrate_to_user_secret_stash = false;
-    if (feature_lib_) {
-      migrate_to_user_secret_stash = feature_lib_->IsEnabledBlocking(
-          kCrOSLateBootMigrateToUserSecretStash);
+    if (default_features_) {
+      migrate_to_user_secret_stash =
+          default_features_->IsFeatureEnabled(Features::kUSSMigration);
     }
     AuthFactorVaultKeysetConverter converter(keyset_management_);
     AuthFactorMap auth_factor_map;

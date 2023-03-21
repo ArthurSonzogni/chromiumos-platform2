@@ -49,7 +49,7 @@ AuthSessionManager::AuthSessionManager(
       auth_block_utility_(auth_block_utility),
       auth_factor_manager_(auth_factor_manager),
       user_secret_stash_storage_(user_secret_stash_storage),
-      feature_lib_(nullptr) {
+      features_(nullptr) {
   // Preconditions
   DCHECK(crypto_);
   DCHECK(platform_);
@@ -64,9 +64,10 @@ CryptohomeStatusOr<InUseAuthSession> AuthSessionManager::CreateAuthSession(
     const Username& account_id, uint32_t flags, AuthIntent auth_intent) {
   // Assumption here is that keyset_management_ will outlive this AuthSession.
   std::unique_ptr<AuthSession> auth_session = AuthSession::Create(
-      account_id, flags, auth_intent, feature_lib_,
+      account_id, flags, auth_intent,
       {crypto_, platform_, user_session_map_, keyset_management_,
-       auth_block_utility_, auth_factor_manager_, user_secret_stash_storage_});
+       auth_block_utility_, auth_factor_manager_, user_secret_stash_storage_,
+       features_});
   return AddAuthSession(std::move(auth_session));
 }
 
