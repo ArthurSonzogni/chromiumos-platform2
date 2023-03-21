@@ -231,7 +231,8 @@ base::FilePath GetBlockDevFromPartitionDev(
   return base::FilePath(partition_dev.substr(0, i));
 }
 
-int GetPartitionFromPartitionDev(const base::FilePath& partition_dev_path) {
+PartitionNum GetPartitionFromPartitionDev(
+    const base::FilePath& partition_dev_path) {
   base::StringPiece partition_dev = partition_dev_path.value();
   if (base::EndsWith(partition_dev, "_0", base::CompareCase::SENSITIVE)) {
     partition_dev = partition_dev.substr(0, partition_dev.size() - 2);
@@ -246,7 +247,7 @@ int GetPartitionFromPartitionDev(const base::FilePath& partition_dev_path) {
     // If there is no ending p, there is no partition at the end (/dev/mmcblk12)
     if (base::StartsWith(partition_dev, nd) &&
         ((i == nd.size()) || (partition_dev[i - 1] != 'p'))) {
-      return 0;
+      return PartitionNum(0);
     }
   }
 
@@ -260,7 +261,7 @@ int GetPartitionFromPartitionDev(const base::FilePath& partition_dev_path) {
   if (result == 0)
     LOG(ERROR) << "Bad partition number from " << partition_dev;
 
-  return result;
+  return PartitionNum(result);
 }
 
 base::FilePath MakePartitionDev(const base::FilePath& block_dev_path,

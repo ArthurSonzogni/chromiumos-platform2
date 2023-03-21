@@ -119,7 +119,7 @@ base::FilePath GetBlockDevFromPartitionDev(const base::FilePath& partition_dev);
 
 // Given root partition dev node (such as /dev/sda3, /dev/mmcblk0p3,
 // /dev/ubiblock3_0), return the partition number (3).
-int GetPartitionFromPartitionDev(const base::FilePath& partition_dev);
+PartitionNum GetPartitionFromPartitionDev(const base::FilePath& partition_dev);
 
 // Given block dev node (/dev/sda, /dev/mmcblk0, /dev/mtd0) and a partition
 // number (such as 3), return a new dev node pointing to the partition
