@@ -50,19 +50,17 @@ namespace {
 // This function returns the appropriate device name for the corresponding
 // |partition| number on a NAND setup. It favors a mountable device name such
 // as "/dev/ubiblockX_0" over the read-write devices such as "/dev/ubiX_0".
-base::FilePath MakeNandPartitionDevForMounting(int partition) {
-  if (partition == 0) {
+base::FilePath MakeNandPartitionDevForMounting(PartitionNum partition) {
+  if (partition.Value() == 0) {
     return base::FilePath("/dev/mtd0");
   }
-  if (partition == PART_NUM_KERN_A || partition == PART_NUM_KERN_B ||
-      partition == PART_NUM_KERN_C) {
-    return base::FilePath("/dev/mtd" + std::to_string(partition));
+  if (partition.IsKernel()) {
+    return base::FilePath("/dev/mtd" + partition.ToString());
   }
-  if (partition == PART_NUM_ROOT_A || partition == PART_NUM_ROOT_B ||
-      partition == PART_NUM_ROOT_C) {
-    return base::FilePath("/dev/ubiblock" + std::to_string(partition) + "_0");
+  if (partition.IsRoot()) {
+    return base::FilePath("/dev/ubiblock" + partition.ToString() + "_0");
   }
-  return base::FilePath("/dev/ubi" + std::to_string(partition) + "_0");
+  return base::FilePath("/dev/ubi" + partition.ToString() + "_0");
 }
 
 // This is an array of device names that are allowed in end in a digit, and
@@ -265,7 +263,7 @@ PartitionNum GetPartitionFromPartitionDev(
 }
 
 base::FilePath MakePartitionDev(const base::FilePath& block_dev_path,
-                                int partition) {
+                                PartitionNum partition) {
   const std::string& block_dev = block_dev_path.value();
   if (base::StartsWith(block_dev, "/dev/mtd", base::CompareCase::SENSITIVE) ||
       base::StartsWith(block_dev, "/dev/ubi", base::CompareCase::SENSITIVE)) {
@@ -274,10 +272,10 @@ base::FilePath MakePartitionDev(const base::FilePath& block_dev_path,
 
   for (const base::StringPiece nd : kNumberedDevices) {
     if (base::StartsWith(block_dev, nd))
-      return base::FilePath(block_dev + "p" + std::to_string(partition));
+      return base::FilePath(block_dev + "p" + partition.ToString());
   }
 
-  return base::FilePath(block_dev + std::to_string(partition));
+  return base::FilePath(block_dev + partition.ToString());
 }
 
 // rm *pack from /dirname

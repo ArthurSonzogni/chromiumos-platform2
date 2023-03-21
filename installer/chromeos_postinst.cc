@@ -78,10 +78,10 @@ bool ConfigureInstall(const base::FilePath& install_dev,
   }
 
   base::FilePath kernel_dev =
-      MakePartitionDev(root.base_device(), root.number() - 1);
+      MakePartitionDev(root.base_device(), PartitionNum(root.number() - 1));
 
   base::FilePath boot_dev =
-      MakePartitionDev(root.base_device(), PART_NUM_EFI_SYSTEM);
+      MakePartitionDev(root.base_device(), PartitionNum::EFI_SYSTEM);
 
   // if we don't know the bios type, detect it. Errors are logged
   // by the detect method.

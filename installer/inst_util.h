@@ -129,7 +129,7 @@ PartitionNum GetPartitionFromPartitionDev(const base::FilePath& partition_dev);
 //   * Kernel partitions mtdX
 //   * Stateful and OEM partitions ubiX_0
 base::FilePath MakePartitionDev(const base::FilePath& partition_dev,
-                                int partition);
+                                PartitionNum partition);
 
 // rm *pack from /dirname
 bool RemovePackFiles(const base::FilePath& dirname);
