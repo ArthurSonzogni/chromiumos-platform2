@@ -72,6 +72,35 @@ constexpr std::array<base::StringPiece, 3> kNumberedDevices = {
 
 }  // namespace
 
+const PartitionNum PartitionNum::KERN_A = PartitionNum(2);
+const PartitionNum PartitionNum::ROOT_A = PartitionNum(3);
+const PartitionNum PartitionNum::KERN_B = PartitionNum(4);
+const PartitionNum PartitionNum::ROOT_B = PartitionNum(5);
+const PartitionNum PartitionNum::KERN_C = PartitionNum(6);
+const PartitionNum PartitionNum::ROOT_C = PartitionNum(7);
+const PartitionNum PartitionNum::EFI_SYSTEM = PartitionNum(12);
+
+bool PartitionNum::IsKernel() const {
+  return *this == KERN_A || *this == KERN_B || *this == KERN_C;
+}
+
+bool PartitionNum::IsRoot() const {
+  return *this == ROOT_A || *this == ROOT_B || *this == ROOT_C;
+}
+
+std::string PartitionNum::ToString() const {
+  return std::to_string(num_);
+}
+
+bool PartitionNum::operator==(const PartitionNum& other) const {
+  return num_ == other.num_;
+}
+
+std::ostream& operator<<(std::ostream& os, const PartitionNum& partition) {
+  os << "PartitionNum(" << partition.Value() << ")";
+  return os;
+}
+
 ScopedPathRemover::~ScopedPathRemover() {
   if (root_.empty()) {
     return;

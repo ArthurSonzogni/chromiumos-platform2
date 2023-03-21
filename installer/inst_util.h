@@ -5,6 +5,7 @@
 #ifndef INSTALLER_INST_UTIL_H_
 #define INSTALLER_INST_UTIL_H_
 
+#include <iostream>
 #include <string>
 #include <vector>
 
@@ -13,6 +14,44 @@
 extern const char kEnvIsInstall[];
 extern const char kEnvIsFactoryInstall[];
 extern const char kEnvIsRecoveryInstall[];
+
+// Index of a partition entry in the GPT.
+//
+// GPT partition indices start at 1.
+//
+// Note that the order of partition entries in the GPT does not
+// necessarily correspond to the order of the partition's actual data.
+class PartitionNum {
+ public:
+  static const PartitionNum KERN_A;
+  static const PartitionNum ROOT_A;
+  static const PartitionNum KERN_B;
+  static const PartitionNum ROOT_B;
+  static const PartitionNum KERN_C;
+  static const PartitionNum ROOT_C;
+  static const PartitionNum EFI_SYSTEM;
+
+  explicit PartitionNum(uint32_t num) : num_(num) {}
+
+  // Returns true if the partition is KERN_A, KERN_B, or KERN_C.
+  bool IsKernel() const;
+
+  // Returns true if the partition is ROOT_A, ROOT_B, or ROOT_C.
+  bool IsRoot() const;
+
+  // Get the partition number as a |uint32_t|.
+  uint32_t Value() const { return num_; }
+
+  // Convert the partition number to a string.
+  std::string ToString() const;
+
+  bool operator==(const PartitionNum& other) const;
+
+ private:
+  uint32_t num_ = 0;
+};
+
+std::ostream& operator<<(std::ostream& os, const PartitionNum& partition);
 
 enum partition_nums_t {
   PART_NUM_KERN_A = 2,
