@@ -31,26 +31,7 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-constexpr char kFakePathUsbDevices[] =
-    "sys/devices/pci0000:00/0000:00:14.0/usb1";
 constexpr char kFakeThunderboltDevices[] = "sys/bus/thunderbolt/devices";
-constexpr char kLinkUsbDevices[] =
-    "../../../devices/pci0000:00/0000:00:14.0/usb1";
-constexpr char kLinkUsbDriver[] = "../../../../../../bus/usb/drivers";
-
-constexpr char kFakeUsbVendorName[] = "Usb Vendor";
-constexpr char kFakeUsbProductName[] = "Usb Product";
-constexpr uint8_t kFakeClass = 0x0a;
-constexpr uint8_t kFakeSubclass = 0x1b;
-constexpr uint8_t kFakeProg = 0x2c;
-constexpr uint8_t kFakeProtocol = kFakeProg;
-constexpr uint16_t kFakeVendor = 0x12ab;
-constexpr uint16_t kFakeDevice = 0x34cd;
-constexpr char kFakeDriver[] = "driver";
-constexpr char kFakeUsbFWVer[] = "3.14";
-constexpr mojom::FwupdVersionFormat kFakeUsbFwVerFmtMojoEnum =
-    mojom::FwupdVersionFormat::kBcd;
-constexpr FwupdVersionFormat kFakeUsbFwVerFmtLibEnum = FWUPD_VERSION_FORMAT_BCD;
 
 constexpr char kFakeThunderboltDeviceVendorName[] =
     "FakeThunderboltDeviceVendor";
@@ -63,22 +44,29 @@ constexpr char kFakeThunderboltDeviceUUID[] =
     "d5010000-0060-6508-2304-61066ed3f91e";
 constexpr char kFakeThunderboltDeviceFWVer[] = "29.0";
 
-std::string ToFixHexStr(uint8_t val) {
-  return base::StringPrintf("%02x", val);
-}
+using ::testing::_;
+using ::testing::Invoke;
+using ::testing::WithArg;
 
-std::string ToFixHexStr(uint16_t val) {
-  return base::StringPrintf("%04x", val);
-}
-
-template <typename T>
-void EmplaceOptional(brillo::VariantDictionary* dictionary,
-                     const std::string& key,
-                     const std::optional<T>& value) {
-  if (value) {
-    dictionary->emplace(key, *value);
+class FakeUdevDevice : public brillo::MockUdevDevice {
+ public:
+  FakeUdevDevice(const std::string& vendor_name, const std::string& device_name)
+      : vendor_name_(vendor_name), device_name_(device_name) {
+    EXPECT_CALL(*this, GetPropertyValue)
+        .WillRepeatedly(Invoke([this](const char* key) {
+          if (std::string(key) == kPropertieVendorFromDB)
+            return vendor_name_.c_str();
+          if (std::string(key) == kPropertieModelFromDB)
+            return device_name_.c_str();
+          return "";
+        }));
   }
-}
+  ~FakeUdevDevice() = default;
+
+ private:
+  std::string vendor_name_;
+  std::string device_name_;
+};
 
 class BusFetcherTest : public BaseFileTest {
  public:
@@ -88,88 +76,29 @@ class BusFetcherTest : public BaseFileTest {
 
   void SetUp() override {
     SetTestRoot(mock_context_.root_dir());
-    ON_CALL(*mock_context_.mock_udev(), CreateDeviceFromSysPath)
-        .WillByDefault(
-            [this](const char* syspath) { return CreateMockUdevDevice(); });
+    MockUdevDevice("", "");
+    MockFwupdProxy({});
+  }
+
+  void MockUdevDevice(const std::string& vendor_name,
+                      const std::string& device_name) {
+    EXPECT_CALL(*mock_context_.mock_udev(), CreateDeviceFromSysPath)
+        .WillRepeatedly(Invoke([=](const char* syspath) {
+          auto udevice =
+              std::make_unique<FakeUdevDevice>(vendor_name, device_name);
+          return udevice;
+        }));
+  }
+
+  void MockFwupdProxy(
+      const std::vector<brillo::VariantDictionary>& fwupd_response) {
     EXPECT_CALL(*mock_context_.mock_fwupd_proxy(), GetDevicesAsync)
-        .WillRepeatedly(Invoke(this, &BusFetcherTest::GetDevicesAsyncMock));
-  }
-
-  void GetDevicesAsyncMock(
-      base::OnceCallback<void(const std::vector<brillo::VariantDictionary>&)>
-          success_callback,
-      base::OnceCallback<void(brillo::Error*)> error_callback,
-      int timeout_ms) {
-    std::vector<brillo::VariantDictionary> fwupd_response;
-    for (const auto& device_info : fwupd_device_list_) {
-      brillo::VariantDictionary dbus_response_entry;
-      EmplaceOptional(&dbus_response_entry, fwupd_utils::kFwupdResultKeyName,
-                      device_info.name);
-      dbus_response_entry.emplace(fwupd_utils::kFwupdReusltKeyGuid,
-                                  device_info.guids);
-      dbus_response_entry.emplace(fwupd_utils::kFwupdResultKeyInstanceIds,
-                                  device_info.instance_ids);
-      EmplaceOptional(&dbus_response_entry, fwupd_utils::kFwupdResultKeySerial,
-                      device_info.serial);
-      EmplaceOptional(&dbus_response_entry,
-                      fwupd_utils::kFwupdResultKeyVendorId,
-                      device_info.joined_vendor_id);
-      EmplaceOptional(&dbus_response_entry, fwupd_utils::kFwupdResultKeyVersion,
-                      device_info.version);
-      dbus_response_entry.emplace(
-          fwupd_utils::kFwupdResultKeyVersionFormat,
-          static_cast<uint32_t>(kFakeUsbFwVerFmtLibEnum));
-      fwupd_response.push_back(std::move(dbus_response_entry));
-    }
-    std::move(success_callback).Run(std::move(fwupd_response));
-  }
-
-  std::unique_ptr<brillo::MockUdevDevice> CreateMockUdevDevice() {
-    auto udevice = std::make_unique<brillo::MockUdevDevice>();
-    ON_CALL(*udevice, GetPropertyValue).WillByDefault([](const char* key) {
-      if (key == kPropertieVendorFromDB)
-        return kFakeUsbVendorName;
-      if (key == kPropertieModelFromDB)
-        return kFakeUsbProductName;
-      return "";
-    });
-    return udevice;
-  }
-
-  mojom::BusDevicePtr& AddExpectedUsbDevice(size_t interface_count) {
-    CHECK_GE(interface_count, 1);
-    auto device = mojom::BusDevice::New();
-    auto usb_info = mojom::UsbBusInfo::New();
-
-    device->vendor_name = kFakeUsbVendorName;
-    device->product_name = kFakeUsbProductName;
-    device->device_class = mojom::BusDeviceClass::kOthers;
-    usb_info->class_id = kFakeClass;
-    usb_info->subclass_id = kFakeSubclass;
-    usb_info->protocol_id = kFakeProtocol;
-    usb_info->vendor_id = kFakeVendor;
-    usb_info->product_id = kFakeDevice;
-    usb_info->version = mojom::UsbVersion::kUnknown;
-    usb_info->spec_speed = mojom::UsbSpecSpeed::k5Gbps;
-
-    auto usb_fw_info = mojom::FwupdFirmwareVersionInfo::New();
-    usb_fw_info->version = kFakeUsbFWVer;
-    usb_fw_info->version_format = kFakeUsbFwVerFmtMojoEnum;
-    usb_info->fwupd_firmware_version_info = std::move(usb_fw_info);
-
-    for (size_t i = 0; i < interface_count; ++i) {
-      auto usb_if_info = mojom::UsbBusInterfaceInfo::New();
-      usb_if_info->interface_number = static_cast<uint8_t>(i);
-      usb_if_info->class_id = kFakeClass;
-      usb_if_info->subclass_id = kFakeSubclass;
-      usb_if_info->protocol_id = kFakeProtocol;
-      usb_if_info->driver = kFakeDriver;
-      usb_info->interfaces.push_back(std::move(usb_if_info));
-    }
-
-    device->bus_info = mojom::BusInfo::NewUsbBusInfo(std::move(usb_info));
-    expected_bus_devices_.push_back(std::move(device));
-    return expected_bus_devices_.back();
+        .WillRepeatedly(WithArg<0>(
+            Invoke([=](base::OnceCallback<void(
+                           const std::vector<brillo::VariantDictionary>&)>
+                           success_callback) {
+              std::move(success_callback).Run(std::move(fwupd_response));
+            })));
   }
 
   mojom::BusDevicePtr& AddExpectedThunderboltDevice(size_t interface_count) {
@@ -205,7 +134,7 @@ class BusFetcherTest : public BaseFileTest {
           NOTREACHED();
           break;
         case mojom::BusInfo::Tag::kUsbBusInfo:
-          SetUsbBusInfo(bus_info->get_usb_bus_info(), i);
+          NOTREACHED();
           break;
         case mojom::BusInfo::Tag::kThunderboltBusInfo:
           SetThunderboltBusInfo(bus_info->get_thunderbolt_bus_info(), i);
@@ -230,50 +159,39 @@ class BusFetcherTest : public BaseFileTest {
     return base::FilePath{dir}.Append(dev);
   }
 
-  void SetUsbBusInfo(const mojom::UsbBusInfoPtr& usb_info, size_t id) {
-    const auto dir = kFakePathUsbDevices;
+  // Creates a usb device with default attributes. Returns the device's
+  // directory so tests can modify the attributes.
+  base::FilePath SetDefaultUsbDevice(size_t id) {
+    const auto dir = "/sys/devices/pci0000:00/0000:00:14.0/usb1";
     const auto dev = base::StringPrintf("1-%zu", id);
-    SetSymbolicLink({kLinkUsbDevices, dev}, {kPathSysUsb, dev});
+    SetSymbolicLink({"../../../devices/pci0000:00/0000:00:14.0/usb1", dev},
+                    {kPathSysUsb, dev});
 
-    SetFile({dir, dev, kFileUsbDevClass}, ToFixHexStr(usb_info->class_id));
-    SetFile({dir, dev, kFileUsbDevSubclass},
-            ToFixHexStr(usb_info->subclass_id));
-    SetFile({dir, dev, kFileUsbDevProtocol},
-            ToFixHexStr(usb_info->protocol_id));
-    SetFile({dir, dev, kFileUsbVendor}, ToFixHexStr(usb_info->vendor_id));
-    SetFile({dir, dev, kFileUsbProduct}, ToFixHexStr(usb_info->product_id));
+    SetFile({dir, dev, kFileUsbDevClass}, "00");
+    SetFile({dir, dev, kFileUsbDevSubclass}, "00");
+    SetFile({dir, dev, kFileUsbDevProtocol}, "00");
+    SetFile({dir, dev, kFileUsbVendor}, "0000");
+    SetFile({dir, dev, kFileUsbProduct}, "0000");
     SetFile({dir, dev, kFileUsbSpeed}, "5000");
 
-    fwupd_device_list_.push_back(fwupd_utils::DeviceInfo{
-        .name = kFakeUsbProductName,
-        .instance_ids = {base::StringPrintf("USB\\VID_%04X&PID_%04X",
-                                            usb_info->vendor_id,
-                                            usb_info->product_id)},
-        .version = usb_info->fwupd_firmware_version_info->version,
-        .version_format = usb_info->fwupd_firmware_version_info->version_format,
-        .joined_vendor_id =
-            base::StringPrintf("USB:0x%04X", usb_info->vendor_id),
-    });
+    const auto dev_path = base::FilePath{dir}.Append(dev);
+    SetDefaultUsbInterface(dev_path, id, 0);
+    return dev_path;
+  }
 
-    for (size_t i = 0; i < usb_info->interfaces.size(); ++i) {
-      const auto dev_if = base::StringPrintf("1-%zu:1.%zu", id, i);
-      const mojom::UsbBusInterfaceInfoPtr& usb_if_info =
-          usb_info->interfaces[i];
-
-      ASSERT_EQ(usb_if_info->interface_number, static_cast<uint8_t>(i));
-      SetFile({dir, dev, dev_if, kFileUsbIFNumber},
-              ToFixHexStr(usb_if_info->interface_number));
-      SetFile({dir, dev, dev_if, kFileUsbIFClass},
-              ToFixHexStr(usb_if_info->class_id));
-      SetFile({dir, dev, dev_if, kFileUsbIFSubclass},
-              ToFixHexStr(usb_if_info->subclass_id));
-      SetFile({dir, dev, dev_if, kFileUsbIFProtocol},
-              ToFixHexStr(usb_if_info->protocol_id));
-      if (usb_if_info->driver) {
-        SetSymbolicLink({kLinkUsbDriver, usb_if_info->driver.value()},
-                        {dir, dev, dev_if, kFileDriver});
-      }
-    }
+  // Creates a usb interface with default attributes. Returns the interface's
+  // directory so tests can modify the attributes.
+  base::FilePath SetDefaultUsbInterface(const base::FilePath& dev,
+                                        size_t device_id,
+                                        size_t interface_id) {
+    const auto dev_if =
+        dev.Append(base::StringPrintf("1-%zu:1.%zu", device_id, interface_id));
+    SetFile(dev_if.Append(kFileUsbIFNumber),
+            base::StringPrintf("%02zx", interface_id));
+    SetFile(dev_if.Append(kFileUsbIFClass), "00");
+    SetFile(dev_if.Append(kFileUsbIFSubclass), "00");
+    SetFile(dev_if.Append(kFileUsbIFProtocol), "00");
+    return dev_if;
   }
 
   std::string EnumToString(mojom::ThunderboltSecurityLevel level) {
@@ -361,7 +279,6 @@ class BusFetcherTest : public BaseFileTest {
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
   std::vector<mojom::BusDevicePtr> expected_bus_devices_;
-  fwupd_utils::DeviceList fwupd_device_list_;
   MockContext mock_context_;
 };
 
@@ -419,10 +336,75 @@ TEST_F(BusFetcherTest, TestFetchPciSubInfoZero) {
   EXPECT_FALSE(pci_info->sub_device_id);
 }
 
-TEST_F(BusFetcherTest, TestFetchUsbBusInfo) {
-  AddExpectedUsbDevice(1);
-  SetExpectedBusDevices();
-  CheckBusDevices();
+TEST_F(BusFetcherTest, TestFetchUsbBasic) {
+  size_t dev_id = 0;
+  const auto dev = SetDefaultUsbDevice(dev_id);
+  const auto dev_if = SetDefaultUsbInterface(dev, dev_id, 0);
+
+  // Assume that the parent directory is the root hub.
+  const auto usb_root = dev.DirName();
+  // Set usb version to make it a valid usb root hub.
+  SetFile(usb_root.Append(kFileUsbVendor), kLinuxFoundationVendorId);
+  SetFile(usb_root.Append(kFileUsbProduct),
+          /*LinuxFoundationUsb1ProductId*/ "1");
+
+  SetFile(dev.Append(kFileUsbDevClass), "0a");
+  SetFile(dev.Append(kFileUsbDevSubclass), "1b");
+  SetFile(dev.Append(kFileUsbDevProtocol), "2c");
+  SetFile(dev.Append(kFileUsbVendor), "12ab");
+  SetFile(dev.Append(kFileUsbProduct), "34cd");
+  SetFile(dev.Append(kFileUsbSpeed), "5000");
+  MockUdevDevice("FakeVendor", "FakeDevice");
+  MockFwupdProxy({{
+      {fwupd_utils::kFwupdResultKeyVendorId, std::string{"USB:0x12AB"}},
+      {fwupd_utils::kFwupdResultKeyInstanceIds,
+       std::vector<std::string>{"USB\\VID_12AB&PID_34CDX"}},
+      {fwupd_utils::kFwupdResultKeyVersion, std::string{"FakeFirmwareVersion"}},
+      {fwupd_utils::kFwupdResultKeyVersionFormat,
+       static_cast<uint32_t>(FWUPD_VERSION_FORMAT_PLAIN)},
+  }});
+  SetFile(dev_if.Append(kFileUsbIFClass), "0a");
+  SetFile(dev_if.Append(kFileUsbIFSubclass), "1b");
+  SetFile(dev_if.Append(kFileUsbIFProtocol), "2c");
+  SetSymbolicLink({"../../../../../../bus/usb/drivers", "my_driver"},
+                  dev_if.Append(kFileDriver));
+
+  auto res = FetchBusDevicesSync();
+  EXPECT_EQ(res.size(), 1);
+  EXPECT_EQ(res[0]->bus_info->which(), mojom::BusInfo::Tag::kUsbBusInfo);
+  EXPECT_EQ(res[0]->vendor_name, "FakeVendor");
+  EXPECT_EQ(res[0]->product_name, "FakeDevice");
+
+  const auto& usb_info = res[0]->bus_info->get_usb_bus_info();
+  EXPECT_EQ(usb_info->class_id, 0x0a);
+  EXPECT_EQ(usb_info->subclass_id, 0x1b);
+  EXPECT_EQ(usb_info->protocol_id, 0x2c);
+  EXPECT_EQ(usb_info->vendor_id, 0x12ab);
+  EXPECT_EQ(usb_info->product_id, 0x34cd);
+  EXPECT_EQ(usb_info->spec_speed, mojom::UsbSpecSpeed::k5Gbps);
+  EXPECT_EQ(usb_info->version, mojom::UsbVersion::kUsb1);
+  EXPECT_EQ(usb_info->fwupd_firmware_version_info->version,
+            "FakeFirmwareVersion");
+  EXPECT_EQ(usb_info->fwupd_firmware_version_info->version_format,
+            mojom::FwupdVersionFormat::kPlain);
+  EXPECT_EQ(usb_info->interfaces.size(), 1);
+  EXPECT_EQ(usb_info->interfaces[0]->interface_number, 0);
+  EXPECT_EQ(usb_info->interfaces[0]->class_id, 0x0a);
+  EXPECT_EQ(usb_info->interfaces[0]->subclass_id, 0x1b);
+  EXPECT_EQ(usb_info->interfaces[0]->protocol_id, 0x2c);
+  EXPECT_EQ(usb_info->interfaces[0]->driver, "my_driver");
+}
+
+TEST_F(BusFetcherTest, TestFetchUsbNullalbeFields) {
+  SetDefaultUsbDevice(0);
+
+  auto res = FetchBusDevicesSync();
+  EXPECT_EQ(res.size(), 1);
+  EXPECT_EQ(res[0]->bus_info->which(), mojom::BusInfo::Tag::kUsbBusInfo);
+  const auto& usb_info = res[0]->bus_info->get_usb_bus_info();
+  EXPECT_FALSE(usb_info->fwupd_firmware_version_info);
+  EXPECT_EQ(usb_info->interfaces.size(), 1);
+  EXPECT_EQ(usb_info->interfaces[0]->driver, std::nullopt);
 }
 
 TEST_F(BusFetcherTest, TestFetchThunderboltBusInfo) {
@@ -436,19 +418,28 @@ TEST_F(BusFetcherTest, TestFetchMultiple) {
   SetDefaultPciDevice(1);
   SetDefaultPciDevice(42);
 
+  SetDefaultUsbDevice(0);
+  {
+    const auto dev = SetDefaultUsbDevice(1);
+    SetDefaultUsbInterface(dev, 1, 1);
+  }
+  {
+    const auto dev = SetDefaultUsbDevice(42);
+    SetDefaultUsbInterface(dev, 42, 1);
+    SetDefaultUsbInterface(dev, 42, 2);
+  }
+
   auto res = FetchBusDevicesSync();
-  EXPECT_EQ(res.size(), 3);
+  EXPECT_EQ(res.size(), 6);
   std::multiset<mojom::BusInfo::Tag> type_count;
   for (const auto& dev : res) {
     type_count.insert(dev->bus_info->which());
   }
   EXPECT_EQ(type_count.count(mojom::BusInfo::Tag::kPciBusInfo), 3);
+  EXPECT_EQ(type_count.count(mojom::BusInfo::Tag::kUsbBusInfo), 3);
 }
 
 TEST_F(BusFetcherTest, TestFetchMultiple_DEPRECATED) {
-  AddExpectedUsbDevice(1);
-  AddExpectedUsbDevice(2);
-  AddExpectedUsbDevice(3);
   AddExpectedThunderboltDevice(1);
   AddExpectedThunderboltDevice(2);
   SetExpectedBusDevices();
@@ -463,12 +454,10 @@ TEST_F(BusFetcherTest, TestFetchSysfsPathsBusDeviceMapPci) {
 }
 
 TEST_F(BusFetcherTest, TestFetchSysfsPathsBusDeviceMapUsb) {
-  AddExpectedUsbDevice(1);
-  SetExpectedBusDevices();
+  const auto dev = SetDefaultUsbDevice(0);
 
   auto result = FetchSysfsPathsBusDeviceMapSync();
-  EXPECT_EQ(result.begin()->first,
-            GetPathUnderRoot({kFakePathUsbDevices, "1-0"}));
+  EXPECT_EQ(result.begin()->first, GetPathUnderRoot(dev));
 }
 
 }  // namespace
