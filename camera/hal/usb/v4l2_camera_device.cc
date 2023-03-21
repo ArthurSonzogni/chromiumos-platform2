@@ -329,6 +329,19 @@ int V4L2CameraDevice::Connect(const std::string& device_path) {
     }
   }
 
+  // By default set V4L2_CID_EXPOSURE_AUTO_PRIORITY to 0 (constant frame rate),
+  // since changing it from 1 to 0 later in video mode can affect the frame
+  // rate.
+  if (IsControlSupported(kControlExposureAutoPriority) &&
+      GetControlValue(kControlExposureAutoPriority, &value) == 0 &&
+      value != 0) {
+    LOGF(WARNING)
+        << "Set V4L2_CID_EXPOSURE_AUTO_PRIORITY to 0 (constant frame rate), "
+        << "since changing it from 1 to 0 later in video mode can affect the "
+        << "frame rate.";
+    SetControlValue(kControlExposureAutoPriority, 0);
+  }
+
   ControlInfo info;
   ControlRange range;
   manual_exposure_time_supported_ =
