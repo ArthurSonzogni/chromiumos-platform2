@@ -14,7 +14,7 @@ bool FpTemplateCommand::Run(int fd) {
 
   auto pos = template_data_.begin();
   const auto end = template_data_.cend();
-  while (pos < end) {
+  do {
     uint32_t remaining = end - pos;
     uint32_t transfer_len = std::min(max_data_chunk, remaining);
     Req()->req.offset = pos - template_data_.begin();
@@ -32,7 +32,7 @@ bool FpTemplateCommand::Run(int fd) {
       return false;
     }
     pos += transfer_len;
-  }
+  } while (pos < end);
   return true;
 }
 

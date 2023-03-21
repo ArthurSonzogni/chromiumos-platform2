@@ -48,12 +48,6 @@ TEST(FpTemplateCommand, MaxWriteSizeEqualsMaxPacketSize) {
   EXPECT_TRUE(FpTemplateCommand::Create(kTemplateData, kValidWriteSize));
 }
 
-TEST(FpTemplateCommand, ZeroFrameSize) {
-  const std::vector<uint8_t> kInvalidTemplateData(0);
-  EXPECT_FALSE(
-      FpTemplateCommand::Create(kInvalidTemplateData, kValidMaxWriteSize));
-}
-
 // Mock the underlying EcCommand to test.
 class FpTemplateCommandTest : public testing::Test {
  public:
@@ -65,6 +59,24 @@ class FpTemplateCommandTest : public testing::Test {
     MOCK_METHOD(uint32_t, Result, (), (const, override));
   };
 };
+
+TEST_F(FpTemplateCommandTest, ZeroFrameSize) {
+  constexpr int kMaxWriteSize = 544;  // SPI max packet size is 544.
+  const std::vector<uint8_t> kEmptyTemplate;
+
+  auto mock_fp_template_command =
+      FpTemplateCommand::Create<MockFpTemplateCommand>(kEmptyTemplate,
+                                                       kMaxWriteSize);
+
+  EXPECT_CALL(*mock_fp_template_command, EcCommandRun)
+      .WillOnce([&mock_fp_template_command](int fd) {
+        EXPECT_EQ(mock_fp_template_command->Req()->req.offset, 0);
+        // 0 | FP_TEMPLATE_COMMIT = 0x80000000
+        EXPECT_EQ(mock_fp_template_command->Req()->req.size, 0x80000000);
+        return true;
+      });
+  EXPECT_TRUE(mock_fp_template_command->Run(-1));
+}
 
 TEST_F(FpTemplateCommandTest, SmallTemplateSuccess) {
   constexpr int kMaxWriteSize = 544;  // SPI max packet size is 544.

@@ -26,8 +26,7 @@ class BRILLO_EXPORT FpTemplateCommand
     static_assert(std::is_base_of<FpTemplateCommand, T>::value,
                   "Only classes derived from FpTemplateCommand can use Create");
 
-    if (tmpl.empty() || max_write_size == 0 ||
-        max_write_size > kMaxPacketSize) {
+    if (max_write_size == 0 || max_write_size > kMaxPacketSize) {
       return nullptr;
     }
 
