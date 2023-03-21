@@ -89,4 +89,11 @@ EcCommandFactory::FpPairingKeyLoadCommand(
   return FpPairingKeyLoadCommand::Create(encrypted_pairing_key);
 }
 
+std::unique_ptr<ec::FpPairingKeyWrapCommand>
+EcCommandFactory::FpPairingKeyWrapCommand(const brillo::Blob& pub_x,
+                                          const brillo::Blob& pub_y,
+                                          const brillo::Blob& encrypted_priv) {
+  return FpPairingKeyWrapCommand::Create(pub_x, pub_y, encrypted_priv);
+}
+
 }  // namespace ec
