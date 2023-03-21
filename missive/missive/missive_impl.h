@@ -8,6 +8,7 @@
 #include <memory>
 #include <string>
 
+#include <base/files/file_path.h>
 #include <base/memory/weak_ptr.h>
 #include <base/task/bind_post_task.h>
 #include <base/threading/thread.h>
@@ -111,6 +112,8 @@ class MissiveImpl : public MissiveService {
       base::OnceCallback<void(StatusOr<scoped_refptr<StorageModule>>)>
           callback)>
       create_storage_factory_;
+
+  base::FilePath reporting_storage_dir_ GUARDED_BY_CONTEXT(sequence_checker_);
 
   scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner_;
   SEQUENCE_CHECKER(sequence_checker_);

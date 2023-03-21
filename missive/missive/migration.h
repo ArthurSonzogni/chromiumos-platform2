@@ -8,16 +8,22 @@
 #ifndef MISSIVE_MISSIVE_MIGRATION_H_
 #define MISSIVE_MISSIVE_MIGRATION_H_
 
+#include <tuple>
+
 #include <base/files/file_path.h>
 
 #include "missive/util/status.h"
 
 namespace reporting {
-// Migrates from the old reporting directory to the new one. Returns the status.
+// Migrates from the old reporting directory to the new one. Returns the
+// directory (either src or dest) that is suitable for use and the status of the
+// migration.
+//
 // In production code, this should be called as
 //   Migration(base::FilePath("/var/cache/reporting"),
 //   base::FilePath("/var/spool/reporting"))
-Status Migrate(const base::FilePath& src, const base::FilePath& dest);
+std::tuple<base::FilePath, Status> Migrate(const base::FilePath& src,
+                                           const base::FilePath& dest);
 }  // namespace reporting
 
 #endif  // MISSIVE_MISSIVE_MIGRATION_H_

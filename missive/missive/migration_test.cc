@@ -171,12 +171,14 @@ TEST_F(MigrationTest, DestinationNotExist) {
   const auto dest_path = dest_.GetPath();
   ASSERT_TRUE(dest_.Delete());
 
-  auto status = Migrate(src_.GetPath(), dest_path);
+  auto [dir, status] = Migrate(src_.GetPath(), dest_path);
 
+  EXPECT_EQ(dir, src_.GetPath());
   EXPECT_EQ(status.code(), error::FAILED_PRECONDITION);
   EXPECT_THAT(
       status.error_message(),
       HasSubstr(base::StrCat({dest_path.MaybeAsASCII(), " does not exist."})));
+  EXPECT_FALSE(base::PathExists(deletion_tag_file_path_));
 }
 
 TEST_F(MigrationTest, SourceNotExist) {
@@ -185,13 +187,15 @@ TEST_F(MigrationTest, SourceNotExist) {
   brillo::ClearLog();
   ScopedMinLogLevelSetter scoped_min_log_setter(-1);
 
-  auto status = Migrate(src_path, dest_.GetPath());
+  auto [dir, status] = Migrate(src_path, dest_.GetPath());
 
+  EXPECT_EQ(dir, dest_.GetPath());
   EXPECT_OK(status) << status.error_message();
   EXPECT_THAT(brillo::GetLog(),
               HasSubstr(base::StrCat(
                   {"Detected empty directory or not detected ",
                    src_path.MaybeAsASCII(), ", migration not needed."})));
+  EXPECT_FALSE(base::PathExists(deletion_tag_file_path_));
 }
 
 TEST_F(MigrationTest, SourceIsEmpty) {
@@ -199,13 +203,15 @@ TEST_F(MigrationTest, SourceIsEmpty) {
   brillo::ClearLog();
   ScopedMinLogLevelSetter scoped_min_log_setter(-1);
 
-  auto status = Migrate(src_.GetPath(), dest_.GetPath());
+  auto [dir, status] = Migrate(src_.GetPath(), dest_.GetPath());
 
+  EXPECT_EQ(dir, dest_.GetPath());
   EXPECT_OK(status) << status.error_message();
   EXPECT_THAT(brillo::GetLog(),
               HasSubstr(base::StrCat(
                   {"Detected empty directory or not detected ",
                    src_.GetPath().MaybeAsASCII(), ", migration not needed."})));
+  EXPECT_FALSE(base::PathExists(deletion_tag_file_path_));
 }
 
 TEST_F(MigrationTest, DeletionTagFileFound) {
@@ -213,8 +219,9 @@ TEST_F(MigrationTest, DeletionTagFileFound) {
   ASSERT_TRUE(base::WriteFile(deletion_tag_file_path_, ""));
   brillo::ClearLog();
 
-  auto status = Migrate(src_.GetPath(), dest_.GetPath());
+  auto [dir, status] = Migrate(src_.GetPath(), dest_.GetPath());
 
+  EXPECT_EQ(dir, dest_.GetPath());
   EXPECT_OK(status) << status.error_message();
   EXPECT_THAT(
       brillo::GetLog(),
@@ -222,31 +229,36 @@ TEST_F(MigrationTest, DeletionTagFileFound) {
           {"Detected file ", deletion_tag_file_path_.MaybeAsASCII(),
            ", start deleting files in ", src_.GetPath().MaybeAsASCII()})));
   EXPECT_TRUE(base::IsDirectoryEmpty(src_.GetPath()));
+  EXPECT_FALSE(base::PathExists(deletion_tag_file_path_));
 }
 
 TEST_F(MigrationTest, DestinationEmpty) {
   SetUpFilesInSource();
   ASSERT_TRUE(base::IsDirectoryEmpty(dest_.GetPath()));
 
-  auto status = Migrate(src_.GetPath(), dest_.GetPath());
+  auto [dir, status] = Migrate(src_.GetPath(), dest_.GetPath());
 
+  EXPECT_THAT(dir, dest_.GetPath());
   EXPECT_OK(status) << status.error_message();
   ExpectFilesInDestination();
   EXPECT_TRUE(base::IsDirectoryEmpty(src_.GetPath()));
+  EXPECT_FALSE(base::PathExists(deletion_tag_file_path_));
 }
 
 TEST_F(MigrationTest, DestinationNotEmpty) {
   SetUpFilesInSource();
   SetUpFilesInDestination();
 
-  auto status = Migrate(src_.GetPath(), dest_.GetPath());
+  auto [dir, status] = Migrate(src_.GetPath(), dest_.GetPath());
 
+  EXPECT_THAT(dir, dest_.GetPath());
   EXPECT_OK(status) << status.error_message();
   EXPECT_THAT(brillo::GetLog(),
               HasSubstr(base::StrCat({dest_.GetPath().MaybeAsASCII(),
                                       " is not empty. Cleaning it up..."})));
   ExpectFilesInDestination();
   EXPECT_TRUE(base::IsDirectoryEmpty(src_.GetPath()));
+  EXPECT_FALSE(base::PathExists(deletion_tag_file_path_));
 }
 
 TEST_F(MigrationTest, SrcDeletionFailsWithoutDeletionTagFile) {
@@ -254,8 +266,9 @@ TEST_F(MigrationTest, SrcDeletionFailsWithoutDeletionTagFile) {
   // Make files in subdir0 undeletable.
   ASSERT_TRUE(base::MakeFileUnwritable(src_.GetPath().Append("subdir0")));
 
-  auto status = Migrate(src_.GetPath(), dest_.GetPath());
+  auto [dir, status] = Migrate(src_.GetPath(), dest_.GetPath());
 
+  EXPECT_EQ(dir, dest_.GetPath());
   EXPECT_EQ(status.code(), error::INTERNAL);
   EXPECT_THAT(status.error_message(),
               HasSubstr(base::StrCat({"Failed to delete files in ",
@@ -269,8 +282,9 @@ TEST_F(MigrationTest, SrcDeletionFailsWithDeletionTagFile) {
   // Make files in subdir1 undeletable.
   ASSERT_TRUE(base::MakeFileUnwritable(src_.GetPath().Append("subdir1")));
 
-  auto status = Migrate(src_.GetPath(), dest_.GetPath());
+  auto [dir, status] = Migrate(src_.GetPath(), dest_.GetPath());
 
+  EXPECT_EQ(dir, dest_.GetPath());
   EXPECT_EQ(status.code(), error::INTERNAL);
   EXPECT_THAT(status.error_message(),
               HasSubstr(base::StrCat({"Failed to delete files in ",
@@ -284,25 +298,29 @@ TEST_F(MigrationTest, NonEmptyDestDeletionFails) {
   // Make files in sub_dir0 undeletable.
   ASSERT_TRUE(base::MakeFileUnwritable(dest_.GetPath().Append("sub_dir0")));
 
-  auto status = Migrate(src_.GetPath(), dest_.GetPath());
+  auto [dir, status] = Migrate(src_.GetPath(), dest_.GetPath());
 
+  EXPECT_EQ(dir, src_.GetPath());
   EXPECT_EQ(status.code(), error::INTERNAL);
   EXPECT_THAT(status.error_message(),
               HasSubstr(base::StrCat({"Failed to delete files in ",
                                       dest_.GetPath().MaybeAsASCII()})));
+  EXPECT_FALSE(base::PathExists(deletion_tag_file_path_));
 }
 
 TEST_F(MigrationTest, UnwritableDest) {
   SetUpFilesInSource();
   ASSERT_TRUE(base::MakeFileUnwritable(dest_.GetPath()));
 
-  auto status = Migrate(src_.GetPath(), dest_.GetPath());
+  auto [dir, status] = Migrate(src_.GetPath(), dest_.GetPath());
 
+  EXPECT_EQ(dir, src_.GetPath());
   EXPECT_EQ(status.code(), error::INTERNAL);
   EXPECT_THAT(status.error_message(),
               HasSubstr(base::StrCat({"Failed to copy files from ",
                                       src_.GetPath().MaybeAsASCII(), " to ",
                                       dest_.GetPath().MaybeAsASCII()})));
+  EXPECT_FALSE(base::PathExists(deletion_tag_file_path_));
 }
 }  // namespace
 }  // namespace reporting

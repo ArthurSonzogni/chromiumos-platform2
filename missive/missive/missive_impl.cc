@@ -6,8 +6,10 @@
 
 #include <cstdlib>
 #include <string>
+#include <tuple>
 #include <utility>
 
+#include <base/files/file_path.h>
 #include <base/logging.h>
 #include <base/memory/scoped_refptr.h>
 #include <base/threading/sequenced_task_runner_handle.h>
@@ -21,6 +23,7 @@
 #include "missive/dbus/upload_client.h"
 #include "missive/encryption/encryption_module.h"
 #include "missive/encryption/verification.h"
+#include "missive/missive/migration.h"
 #include "missive/missive/missive_args.h"
 #include "missive/proto/interface.pb.h"
 #include "missive/proto/record.pb.h"
@@ -38,7 +41,6 @@ namespace reporting {
 
 namespace {
 
-constexpr char kReportingDirectory[] = "/var/cache/reporting";
 constexpr CompressionInformation::CompressionAlgorithm kCompressionType =
     CompressionInformation::COMPRESSION_SNAPPY;
 constexpr size_t kCompressionThreshold = 512U;
@@ -69,16 +71,18 @@ MissiveImpl::MissiveImpl(
   // Constructor may even be called not on any seq task runner.
   DETACH_FROM_SEQUENCE(sequence_checker_);
 
-  // TODO(b/266603275) Uncomment and adjust the following when the migration
-  // code is ready
-#if 0
-  auto migration_status = Migrate(base::FilePath("/var/cache/reporting"),
-                                  base::FilePath("/var/spool/reporting"));
+  // Migrate from /var/cache to /var/spool
+  Status migration_status;
+  std::tie(reporting_storage_dir_, migration_status) =
+      Migrate(base::FilePath("/var/cache/reporting"),
+              base::FilePath("/var/spool/reporting"));
   if (!migration_status.ok()) {
     LOG(ERROR) << migration_status.error_message();
-    std::abort();
   }
-#endif
+
+  // A safeguard: reporting_storage_dir_ must not be empty upon finishing
+  // construction.
+  DCHECK(!reporting_storage_dir_.empty());
 }
 
 MissiveImpl::~MissiveImpl() {
@@ -111,15 +115,15 @@ void MissiveImpl::OnUploadClientCreated(
   upload_client_ = std::move(upload_client_result.ValueOrDie());
   enqueuing_record_tallier_ = std::make_unique<EnqueuingRecordTallier>(
       args_->enqueuing_record_tallier());
-  const base::FilePath kReportingPath(kReportingDirectory);
   analytics_registry_.Add(
-      "Storage", std::make_unique<analytics::ResourceCollectorStorage>(
-                     args_->storage_collector_interval(), kReportingPath));
+      "Storage",
+      std::make_unique<analytics::ResourceCollectorStorage>(
+          args_->storage_collector_interval(), reporting_storage_dir_));
   analytics_registry_.Add("CPU",
                           std::make_unique<analytics::ResourceCollectorCpu>(
                               args_->cpu_collector_interval()));
   StorageOptions storage_options;
-  storage_options.set_directory(kReportingPath)
+  storage_options.set_directory(reporting_storage_dir_)
       .set_signature_verification_public_key(
           SignatureVerifier::VerificationKey());
   auto memory_resource = storage_options.memory_resource();

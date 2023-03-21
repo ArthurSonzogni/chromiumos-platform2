@@ -49,20 +49,20 @@ Status DeleteSrcDir(const base::FilePath& src) {
 }
 }  // namespace
 
-Status Migrate(const base::FilePath& src, const base::FilePath& dest) {
+std::tuple<base::FilePath, Status> Migrate(const base::FilePath& src,
+                                           const base::FilePath& dest) {
   if (!base::DirectoryExists(dest)) {
-    return Status{
-        error::FAILED_PRECONDITION,
-        base::StrCat(
-            {dest.MaybeAsASCII(),
-             " does not exist. It should be created in the upstart script."})};
+    return {src, Status{error::FAILED_PRECONDITION,
+                        base::StrCat({dest.MaybeAsASCII(),
+                                      " does not exist. It should be created "
+                                      "in the upstart script."})}};
   }
 
   if (!base::DirectoryExists(src) || base::IsDirectoryEmpty(src)) {
     // The migration has been successfully done before or has never been needed.
     VLOG(1) << "Detected empty directory or not detected " << src.MaybeAsASCII()
             << ", migration not needed.";
-    return Status::StatusOK();
+    return {dest, Status::StatusOK()};
   }
 
   const base::FilePath deletion_tag_file_path = src.Append(kDeletionTagFile);
@@ -72,9 +72,9 @@ Status Migrate(const base::FilePath& src, const base::FilePath& dest) {
     LOG(INFO) << "Detected file " << deletion_tag_file_path.MaybeAsASCII()
               << ", start deleting files in " << src.MaybeAsASCII() << "...";
     if (Status deletion_status = DeleteSrcDir(src); !deletion_status.ok()) {
-      return deletion_status;
+      return {dest, deletion_status};
     }
-    return Status::StatusOK();
+    return {dest, Status::StatusOK()};
   }
 
   if (!base::IsDirectoryEmpty(dest)) {
@@ -84,9 +84,10 @@ Status Migrate(const base::FilePath& src, const base::FilePath& dest) {
     if (!DeleteFilesWarnIfFailed(base::FileEnumerator(
             dest, /*recursive=*/true,
             base::FileEnumerator::FILES | base::FileEnumerator::DIRECTORIES))) {
-      return Status{error::INTERNAL,
-                    base::StrCat({"Failed to delete files in ",
-                                  dest.MaybeAsASCII(), ". Migration failed."})};
+      return {src, Status{error::INTERNAL,
+                          base::StrCat({"Failed to delete files in ",
+                                        dest.MaybeAsASCII(),
+                                        ". Migration failed."})}};
     }
   }
 
@@ -99,24 +100,26 @@ Status Migrate(const base::FilePath& src, const base::FilePath& dest) {
   if (!base::CopyDirectory(
           // Without .Append("."), src would be copied as a sub dir of dest
           src.Append("."), dest, /*recursive=*/true)) {
-    return Status{
-        error::INTERNAL,
-        base::StrCat({"Failed to copy files from ", src.MaybeAsASCII(), " to ",
-                      dest.MaybeAsASCII(), ". Migration failed."})};
+    return {src,
+            Status{error::INTERNAL,
+                   base::StrCat({"Failed to copy files from ",
+                                 src.MaybeAsASCII(), " to ",
+                                 dest.MaybeAsASCII(), ". Migration failed."})}};
   }
 
   // Create the tag file that signals it is ready to delete src.
   if (!base::WriteFile(deletion_tag_file_path, "")) {
-    return Status{error::INTERNAL,
-                  base::StrCat({"Failed to create ",
-                                deletion_tag_file_path.MaybeAsASCII()})};
+    return {base::PathExists(deletion_tag_file_path) ? dest : src,
+            Status{error::INTERNAL,
+                   base::StrCat({"Failed to create ",
+                                 deletion_tag_file_path.MaybeAsASCII()})}};
   }
 
   // Cleanup everything in src
   if (Status deletion_status = DeleteSrcDir(src); !deletion_status.ok()) {
-    return deletion_status;
+    return {dest, deletion_status};
   }
 
-  return Status::StatusOK();
+  return {dest, Status::StatusOK()};
 }
 }  // namespace reporting

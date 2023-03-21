@@ -24,7 +24,7 @@ class QueueOptions;
 
 // Storage options class allowing to set parameters individually, e.g.:
 // Storage::Create(Options()
-//                     .set_directory("/var/cache/reporting")
+//                     .set_directory("/var/spool/reporting")
 //                     .set_max_record_size(4 * 1024u)
 //                     .set_max_total_files_size(64 * 1024u * 1024u)
 //                     .set_max_total_memory_size(256 * 1024u),
