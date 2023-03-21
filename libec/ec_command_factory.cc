@@ -60,4 +60,8 @@ EcCommandFactory::DisplayStateOfChargeCommand() {
   return std::make_unique<ec::DisplayStateOfChargeCommand>();
 }
 
+std::unique_ptr<ec::FpGetNonceCommand> EcCommandFactory::FpGetNonceCommand() {
+  return std::make_unique<ec::FpGetNonceCommand>();
+}
+
 }  // namespace ec

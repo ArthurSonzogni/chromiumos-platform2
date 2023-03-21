@@ -57,6 +57,10 @@ class MockEcCommandFactory : public ec::EcCommandFactoryInterface {
               DisplayStateOfChargeCommand,
               (),
               (override));
+  MOCK_METHOD(std::unique_ptr<ec::FpGetNonceCommand>,
+              FpGetNonceCommand,
+              (),
+              (override));
 };
 
 }  // namespace ec
