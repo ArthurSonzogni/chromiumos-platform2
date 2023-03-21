@@ -23,12 +23,12 @@ def cmd_setup(args: argparse.Namespace):
     device.setup()
 
 
-# TODO(shik): Support specifying target mode and facing.
 # TODO(shik): Wake up the display if it's sleeping.
 def cmd_open(args: argparse.Namespace):
-    del args  # unused for now
+    facing = args.facing and app.Facing[args.facing.upper()]
+    mode = args.mode and app.Mode[args.mode.upper()]
     cca = app.CameraApp()
-    cca.open()
+    cca.open(facing=facing, mode=mode)
 
 
 def cmd_close(args: argparse.Namespace):
@@ -60,6 +60,16 @@ def parse_args(argv: Optional[List[str]]) -> argparse.Namespace:
         "open",
         help="Open CCA",
         description="Open CCA.",
+    )
+    open_parser.add_argument(
+        "--facing",
+        help="facing of the camera to be opened",
+        choices=[f.name.lower() for f in app.Facing],
+    )
+    open_parser.add_argument(
+        "--mode",
+        help="target capture mode in app",
+        choices=[m.name.lower() for m in app.Mode],
     )
     open_parser.set_defaults(func=cmd_open)
 

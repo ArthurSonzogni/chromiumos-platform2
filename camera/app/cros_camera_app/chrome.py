@@ -282,7 +282,7 @@ class Page:
         self.rpc("Page.setBypassCSP", {"enabled": True})
         self.rpc("Runtime.enable", {})
 
-    def rpc(self, method: str, params: Dict[str, Any]):
+    def rpc(self, method: str, params: Dict[str, Any]) -> Any:
         """Invokes a RPC to Chrome on this page.
 
         Args:
@@ -294,7 +294,7 @@ class Page:
         """
         return self.chrome.rpc(method, params, session_id=self.session_id)
 
-    def eval(self, expr: str):
+    def eval(self, expr: str) -> Any:
         """Evaluates the JavaScript expression on this page.
 
         Args:
@@ -318,3 +318,33 @@ class Page:
             raise JSError(ex)
 
         return res["result"].get("value")
+
+    def call(self, fn_expr: str, *args) -> Any:
+        """Calls the JavaScript function with provided arguments.
+
+        Args:
+            fn_expr: A function expression that to be called on.
+            *args: The arguments to be passed to the function. All values
+                should be JSON-serializable.
+
+        Returns:
+            The evaluated function call result. If it's a promise, the result
+            would be automatically awaited.
+        """
+
+        # Technically, this could be implemented by Runtime.callFunctionOn RPC
+        # method to be more semantically correct without the string
+        # concatenation here, but Runtime.callFunctionOn requires passing the
+        # receiver explicitly, which is a less user-friendly API.
+
+        args_expr = ", ".join(json.dumps(a) for a in args)
+
+        # Note that the parentheses will NOT change the value of "this" for
+        # function invocation, because group operator will not apply GetValue
+        # operation to the result of evaluating expression. See
+        # https://262.ecma-international.org/13.0/#sec-function-calls and
+        # https://262.ecma-international.org/13.0/#sec-grouping-operator for
+        # more details.
+        full_expr = f"({fn_expr})({args_expr})"
+
+        return self.eval(full_expr)

@@ -46,14 +46,26 @@ const autotest = promisifyObject(chrome.autotestPrivate);
 class CCA {
   /**
    * Opens the camera app.
+   * @param {{facing?: string, mode?: string}} opts Target facing and mode.
    * @returns {!Promise<void>} Resolved when the app is launched.
    */
-  async open() {
+  async open({facing, mode}) {
     // TODO(shik): Check if CCA is already opened.
+
     await autotest.waitForSystemWebAppsInstall();
-    await autotest.launchSystemWebApp(
-        'Camera', 'chrome://camera-app/views/main.html');
+
+    const url = new URL('chrome://camera-app/views/main.html')
+    if (facing !== undefined) {
+      url.searchParams.append('facing', facing);
+    }
+    if (mode !== undefined) {
+      url.searchParams.append('mode', mode);
+    }
+    await autotest.launchSystemWebApp('Camera', url.href);
+
     // TODO(shik): Wait until the preview is streaming.
+    // TODO(shik): Check the landed facing.
+    // TODO(shik): Check the landed mode.
   }
 }
 

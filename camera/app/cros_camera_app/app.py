@@ -8,8 +8,10 @@ Use this module to write automation script in Python if the command-line tool
 is not powerful enough in your use cases.
 """
 
+import enum
 import json
 import pathlib
+from typing import Optional
 
 from cros_camera_app import chrome
 
@@ -36,6 +38,44 @@ _EXTENSION_JS_TEMPLATE = """
 """
 
 
+class Facing(enum.Enum):
+    """Camera facing.
+
+    This is the Python version of the Facing enum in CCA. Here we use the more
+    common front/back naming instead of the user/environment naming in CCA.
+    """
+
+    FRONT = enum.auto()
+    BACK = enum.auto()
+    EXTERNAL = enum.auto()
+
+    def to_js_value(self) -> str:
+        if self is Facing.FRONT:
+            return "user"
+        elif self is Facing.BACK:
+            return "environment"
+        elif self is Facing.EXTERNAL:
+            return "external"
+        else:
+            raise Exception("Unexpected enum value %s" % self)
+
+
+class Mode(enum.Enum):
+    """Capture mode of CCA.
+
+    This is the Python version of the Mode enum in CCA. Note that PORTRAIT mode
+    might not be available on all devices.
+    """
+
+    PHOTO = enum.auto()
+    VIDEO = enum.auto()
+    SCAN = enum.auto()
+    PORTRAIT = enum.auto()
+
+    def to_js_value(self) -> str:
+        return self.name.lower()
+
+
 class CameraApp:
     """Remote connections to CCA and the test extension."""
 
@@ -57,8 +97,25 @@ class CameraApp:
             page.eval(code)
         return page
 
-    def open(self):
-        self.ext.eval("ext.cca.open()")
+    def open(
+        self,
+        *,
+        facing: Optional[Facing] = None,
+        mode: Optional[Mode] = None,
+    ) -> None:
+        """Opens the camera app.
 
-    def close(self):
+        Args:
+            facing: The facing of the camera to be opened.
+            mode: The target capture mode in app.
+        """
+        opts = {}
+        if facing is not None:
+            opts["facing"] = facing.to_js_value()
+        if mode is not None:
+            opts["mode"] = mode.to_js_value()
+        self.ext.call("ext.cca.open", opts)
+
+    def close(self) -> None:
+        """Closes all the camera app windows."""
         self._cr.close_targets(_CCA_URL)
