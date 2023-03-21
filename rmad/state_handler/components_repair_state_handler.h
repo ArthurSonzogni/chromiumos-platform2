@@ -8,6 +8,8 @@
 #include "rmad/state_handler/base_state_handler.h"
 
 #include <memory>
+#include <string>
+#include <vector>
 
 #include <base/files/file_path.h>
 
@@ -47,6 +49,8 @@ class ComponentsRepairStateHandler : public BaseStateHandler {
   bool ApplyUserSelection(const RmadState& state);
   // Store variables that can be used by other state handlers to make decisions.
   bool StoreVars() const;
+  // Get the list of replaced components.
+  std::vector<std::string> GetReplacedComponents() const;
 
   bool active_;
   std::unique_ptr<CryptohomeClient> cryptohome_client_;

@@ -91,6 +91,14 @@ std::unordered_map<ComponentKey, RepairStatus> ConvertStateToDictionary(
         LOG(WARNING) << "RmadState component missing |component| field.";
         continue;
       }
+      // |mainboard_rework| and replaced component should not exist at the same
+      // time.
+      if (components_repair.mainboard_rework() &&
+          component_repair_status.repair_status() ==
+              ComponentRepairStatus::RMAD_REPAIR_STATUS_REPLACED) {
+        LOG(ERROR) << "No individual component should be replaced when the "
+                   << "mainboard is reworked";
+      }
       component_map[std::make_pair(component_repair_status.component(),
                                    component_repair_status.identifier())] =
           component_repair_status.repair_status();
@@ -110,6 +118,13 @@ RmadState ConvertDictionaryToState(
     if (component == RMAD_COMPONENT_UNKNOWN) {
       LOG(WARNING) << "List contains UNKNOWN component";
       continue;
+    }
+    // |mainboard_rework| and replaced component should not exist at the same
+    // time.
+    if (mainboard_rework &&
+        repair_status == ComponentRepairStatus::RMAD_REPAIR_STATUS_REPLACED) {
+      LOG(ERROR) << "No individual component should be replaced when the "
+                 << "mainboard is reworked";
     }
     *(components_repair->add_components()) =
         CreateComponentRepairStatus(component, repair_status, identifier);
@@ -153,7 +168,7 @@ RmadErrorCode ComponentsRepairStateHandler::InitializeState() {
   }
 
   if (!state_.has_components_repair() && !RetrieveState()) {
-    state_.set_allocated_components_repair(new ComponentsRepairState);
+    state_.mutable_components_repair()->set_mainboard_rework(false);
   }
 
   // Initialize helper data structures.
@@ -279,10 +294,10 @@ bool ComponentsRepairStateHandler::ApplyUserSelection(const RmadState& state) {
   const bool mainboard_rework = state.components_repair().mainboard_rework();
 
   if (mainboard_rework) {
-    // MLB rework. Set all the probed components to REPLACED.
+    // MLB rework. Set all the probed components to ORIGINAL.
     for (auto& [key, repair_status] : current_map) {
       if (repair_status != ComponentRepairStatus::RMAD_REPAIR_STATUS_MISSING) {
-        repair_status = ComponentRepairStatus::RMAD_REPAIR_STATUS_REPLACED;
+        repair_status = ComponentRepairStatus::RMAD_REPAIR_STATUS_ORIGINAL;
       }
     }
   } else {
@@ -330,29 +345,49 @@ bool ComponentsRepairStateHandler::ApplyUserSelection(const RmadState& state) {
 }
 
 bool ComponentsRepairStateHandler::StoreVars() const {
-  std::vector<std::string> replaced_components;
-  const std::unordered_map<ComponentKey, RepairStatus> component_map =
-      ConvertStateToDictionary(state_);
+  // Set |mlb_repair|.
+  const bool mlb_repair = state_.components_repair().mainboard_rework();
+  json_store_->SetValue(kMlbRepair, mlb_repair);
 
-  for (auto [key, repair_status] : component_map) {
+  // Set |replaced_components|.
+  std::vector<std::string> replaced_components = GetReplacedComponents();
+  json_store_->SetValue(kReplacedComponentNames, replaced_components);
+
+  if (!RecordSelectedComponentsToLogs(json_store_, replaced_components,
+                                      mlb_repair)) {
+    LOG(ERROR) << "Failed to store |mlb_repair| to |json_store_|";
+    return false;
+  }
+
+  if (!MetricsUtils::SetMetricsValue(
+          json_store_, kMetricsMlbReplacement,
+          MainboardReplacement_Name(
+              mlb_repair
+                  ? MainboardReplacement::RMAD_MLB_REPLACEMENT_REPLACED
+                  : MainboardReplacement::RMAD_MLB_REPLACEMENT_ORIGINAL))) {
+    LOG(ERROR) << "Failed to store mainboard_replacement to metrics";
+    return false;
+  }
+
+  if (!mlb_repair &&
+      !MetricsUtils::SetMetricsValue(json_store_, kMetricsReplacedComponents,
+                                     replaced_components)) {
+    LOG(ERROR) << "Failed to store replaced_components to metrics";
+    return false;
+  }
+
+  return true;
+}
+
+std::vector<std::string> ComponentsRepairStateHandler::GetReplacedComponents()
+    const {
+  std::vector<std::string> replaced_components;
+  for (auto [key, repair_status] : ConvertStateToDictionary(state_)) {
     if (repair_status == ComponentRepairStatus::RMAD_REPAIR_STATUS_REPLACED) {
       replaced_components.push_back(RmadComponent_Name(key.first));
     }
   }
-
-  bool mlb_repair = state_.components_repair().mainboard_rework();
-  return json_store_->SetValue(kReplacedComponentNames, replaced_components) &&
-         MetricsUtils::SetMetricsValue(json_store_, kMetricsReplacedComponents,
-                                       replaced_components) &&
-         RecordSelectedComponentsToLogs(json_store_, replaced_components,
-                                        mlb_repair) &&
-         json_store_->SetValue(kMlbRepair, mlb_repair) &&
-         MetricsUtils::SetMetricsValue(
-             json_store_, kMetricsMlbReplacement,
-             MainboardReplacement_Name(
-                 mlb_repair
-                     ? MainboardReplacement::RMAD_MLB_REPLACEMENT_REPLACED
-                     : MainboardReplacement::RMAD_MLB_REPLACEMENT_ORIGINAL));
+  return replaced_components;
 }
 
 }  // namespace rmad

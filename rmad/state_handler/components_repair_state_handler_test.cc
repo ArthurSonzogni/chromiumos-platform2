@@ -113,6 +113,10 @@ TEST_F(ComponentsRepairStateHandlerTest,
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kDeviceDestination);
 
+  bool mlb_repair;
+  EXPECT_TRUE(json_store_->GetValue(kMlbRepair, &mlb_repair));
+  EXPECT_FALSE(mlb_repair);
+
   std::vector<std::string> replaced_components;
   EXPECT_TRUE(
       json_store_->GetValue(kReplacedComponentNames, &replaced_components));
@@ -150,23 +154,14 @@ TEST_F(ComponentsRepairStateHandlerTest,
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableRsu);
 
+  bool mlb_repair;
+  EXPECT_TRUE(json_store_->GetValue(kMlbRepair, &mlb_repair));
+  EXPECT_TRUE(mlb_repair);
+
   std::vector<std::string> replaced_components;
   EXPECT_TRUE(
       json_store_->GetValue(kReplacedComponentNames, &replaced_components));
-
-  std::set<std::string> replaced_components_set(replaced_components.begin(),
-                                                replaced_components.end());
-  std::set<std::string> expected_replaced_components_set = {
-      RmadComponent_Name(RMAD_COMPONENT_BATTERY),
-      RmadComponent_Name(RMAD_COMPONENT_KEYBOARD),
-      RmadComponent_Name(RMAD_COMPONENT_POWER_BUTTON),
-      RmadComponent_Name(RMAD_COMPONENT_BASE_ACCELEROMETER),
-      RmadComponent_Name(RMAD_COMPONENT_LID_ACCELEROMETER),
-      RmadComponent_Name(RMAD_COMPONENT_BASE_GYROSCOPE),
-      RmadComponent_Name(RMAD_COMPONENT_LID_GYROSCOPE),
-      RmadComponent_Name(RMAD_COMPONENT_AUDIO_CODEC),
-  };
-  EXPECT_EQ(replaced_components_set, expected_replaced_components_set);
+  EXPECT_EQ(0, replaced_components.size());
 
   bool same_owner;
   EXPECT_TRUE(json_store_->GetValue(kSameOwner, &same_owner));
@@ -207,23 +202,14 @@ TEST_F(ComponentsRepairStateHandlerTest,
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kWpDisablePhysical);
 
+  bool mlb_repair;
+  EXPECT_TRUE(json_store_->GetValue(kMlbRepair, &mlb_repair));
+  EXPECT_TRUE(mlb_repair);
+
   std::vector<std::string> replaced_components;
   EXPECT_TRUE(
       json_store_->GetValue(kReplacedComponentNames, &replaced_components));
-
-  std::set<std::string> replaced_components_set(replaced_components.begin(),
-                                                replaced_components.end());
-  std::set<std::string> expected_replaced_components_set = {
-      RmadComponent_Name(RMAD_COMPONENT_BATTERY),
-      RmadComponent_Name(RMAD_COMPONENT_KEYBOARD),
-      RmadComponent_Name(RMAD_COMPONENT_POWER_BUTTON),
-      RmadComponent_Name(RMAD_COMPONENT_BASE_ACCELEROMETER),
-      RmadComponent_Name(RMAD_COMPONENT_LID_ACCELEROMETER),
-      RmadComponent_Name(RMAD_COMPONENT_BASE_GYROSCOPE),
-      RmadComponent_Name(RMAD_COMPONENT_LID_GYROSCOPE),
-      RmadComponent_Name(RMAD_COMPONENT_AUDIO_CODEC),
-  };
-  EXPECT_EQ(replaced_components_set, expected_replaced_components_set);
+  EXPECT_EQ(0, replaced_components.size());
 
   bool same_owner;
   EXPECT_TRUE(json_store_->GetValue(kSameOwner, &same_owner));
@@ -255,23 +241,14 @@ TEST_F(ComponentsRepairStateHandlerTest,
   EXPECT_EQ(error, RMAD_ERROR_OK);
   EXPECT_EQ(state_case, RmadState::StateCase::kWpDisableMethod);
 
+  bool mlb_repair;
+  EXPECT_TRUE(json_store_->GetValue(kMlbRepair, &mlb_repair));
+  EXPECT_TRUE(mlb_repair);
+
   std::vector<std::string> replaced_components;
   EXPECT_TRUE(
       json_store_->GetValue(kReplacedComponentNames, &replaced_components));
-
-  std::set<std::string> replaced_components_set(replaced_components.begin(),
-                                                replaced_components.end());
-  std::set<std::string> expected_replaced_components_set = {
-      RmadComponent_Name(RMAD_COMPONENT_BATTERY),
-      RmadComponent_Name(RMAD_COMPONENT_KEYBOARD),
-      RmadComponent_Name(RMAD_COMPONENT_POWER_BUTTON),
-      RmadComponent_Name(RMAD_COMPONENT_BASE_ACCELEROMETER),
-      RmadComponent_Name(RMAD_COMPONENT_LID_ACCELEROMETER),
-      RmadComponent_Name(RMAD_COMPONENT_BASE_GYROSCOPE),
-      RmadComponent_Name(RMAD_COMPONENT_LID_GYROSCOPE),
-      RmadComponent_Name(RMAD_COMPONENT_AUDIO_CODEC),
-  };
-  EXPECT_EQ(replaced_components_set, expected_replaced_components_set);
+  EXPECT_EQ(0, replaced_components.size());
 
   bool same_owner;
   EXPECT_TRUE(json_store_->GetValue(kSameOwner, &same_owner));
