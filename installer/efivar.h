@@ -13,6 +13,8 @@
 #include <base/files/file_path.h>
 #include <base/memory/free_deleter.h>
 
+#include "installer/inst_util.h"
+
 // All the efi variables we're writing want the same set of attributes,
 // according to the UEFI spec v2.9 section 3.3, Table 3-1 "Global Variables".
 extern const uint32_t kBootVariableAttributes;
@@ -44,7 +46,7 @@ class EfiVarInterface {
 
   virtual bool GenerateFileDevicePathFromEsp(
       const base::FilePath& device_path,
-      int esp_partition,
+      PartitionNum esp_partition,
       const base::FilePath& boot_file,
       std::vector<uint8_t>& efidp_data) = 0;
 
@@ -77,7 +79,7 @@ class EfiVarImpl : public EfiVarInterface {
   bool DelVariable(const std::string& name) override;
 
   bool GenerateFileDevicePathFromEsp(const base::FilePath& device_path,
-                                     int esp_partition,
+                                     PartitionNum esp_partition,
                                      const base::FilePath& boot_file,
                                      std::vector<uint8_t>& efidp_data) override;
 };

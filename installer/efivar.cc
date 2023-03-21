@@ -259,14 +259,14 @@ bool EfiVarImpl::DelVariable(const std::string& name) {
 
 bool EfiVarImpl::GenerateFileDevicePathFromEsp(
     const base::FilePath& device_path,
-    int esp_partition,
+    PartitionNum esp_partition,
     const base::FilePath& boot_file,
     std::vector<uint8_t>& efidp_data) {
   EfiLogWrapper log_wrapper(__func__);
 
   // Check how much capacity we'll need in efidp by passing null/0 first.
   const ssize_t required_size = efi_generate_file_device_path_from_esp(
-      nullptr, 0, device_path.value().c_str(), esp_partition,
+      nullptr, 0, device_path.value().c_str(), esp_partition.Value(),
       boot_file.value().c_str(), EFIBOOT_ABBREV_HD);
 
   if (required_size < 0) {
@@ -280,7 +280,7 @@ bool EfiVarImpl::GenerateFileDevicePathFromEsp(
 
   const ssize_t rv = efi_generate_file_device_path_from_esp(
       efidp_data.data(), required_size, device_path.value().c_str(),
-      esp_partition, boot_file.value().c_str(), EFIBOOT_ABBREV_HD);
+      esp_partition.Value(), boot_file.value().c_str(), EFIBOOT_ABBREV_HD);
 
   if (rv < 0) {
     LOG(ERROR) << "Could not generate device path. "
