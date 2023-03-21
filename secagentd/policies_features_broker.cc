@@ -39,7 +39,7 @@ PoliciesFeaturesBroker::PoliciesFeaturesBroker(
             false}},
           {Feature::kCrOSLateBootSecagentdBatchEvents,
            {{.name = "CrOSLateBootSecagentdBatchEvents",
-             .default_state = FEATURE_DISABLED_BY_DEFAULT},
+             .default_state = FEATURE_ENABLED_BY_DEFAULT},
             false}},
           {Feature::kCrOSLateBootSecagentdCoalesceTerminates,
            {{.name = "CrOSLateBootSecagentdCoalesceTerminates",
