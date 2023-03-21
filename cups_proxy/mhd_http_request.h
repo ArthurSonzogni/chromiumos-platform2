@@ -5,12 +5,12 @@
 #ifndef CUPS_PROXY_MHD_HTTP_REQUEST_H_
 #define CUPS_PROXY_MHD_HTTP_REQUEST_H_
 
+#include <cstdint>
 #include <map>
 #include <string>
 #include <vector>
 
 #include <base/strings/string_piece.h>
-#include <microhttpd.h>
 
 namespace cups_proxy {
 

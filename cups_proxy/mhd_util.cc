@@ -46,14 +46,15 @@ MHD_RESULT AddHeader(void* cls,
 // multiple times (with data in |upload_data| and a non-zero
 // |*upload_data_size|).
 // A final call with |*upload_data_size| zero indicates the end of the request.
-MHD_RESULT AccessHandler(void* cls,
-                         struct MHD_Connection* connection,
-                         const char* url,
-                         const char* method,
-                         const char* version,
-                         const char* upload_data,
-                         size_t* upload_data_size,
-                         void** con_cls) {
+// Marked as extern "C" because it is called inside a C library.
+extern "C" MHD_RESULT AccessHandler(void* cls,
+                                    struct MHD_Connection* connection,
+                                    const char* url,
+                                    const char* method,
+                                    const char* version,
+                                    const char* upload_data,
+                                    size_t* upload_data_size,
+                                    void** con_cls) {
   auto* request = static_cast<MHDHttpRequest*>(*con_cls);
   if (request == nullptr) {
     request = new MHDHttpRequest();
@@ -98,10 +99,11 @@ MHD_RESULT AccessHandler(void* cls,
 // Cleanup the allocated MHDHttpRequest object.
 //
 // This function is called when the HTTP request is completed.
-void CleanupRequest(void* cls,
-                    struct MHD_Connection* connection,
-                    void** con_cls,
-                    enum MHD_RequestTerminationCode toe) {
+// Marked as extern "C" because it is called inside a C library.
+extern "C" void CleanupRequest(void* cls,
+                               struct MHD_Connection* connection,
+                               void** con_cls,
+                               enum MHD_RequestTerminationCode toe) {
   auto* request = static_cast<MHDHttpRequest*>(*con_cls);
   delete request;
 }
