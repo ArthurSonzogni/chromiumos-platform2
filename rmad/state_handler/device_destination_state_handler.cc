@@ -138,17 +138,21 @@ DeviceDestinationStateHandler::GetNextStateCase(const RmadState& state) {
 }
 
 bool DeviceDestinationStateHandler::ReplacedComponentNeedHwwpDisabled() const {
-  std::vector<std::string> replaced_component_names;
-  if (!json_store_->GetValue(kReplacedComponentNames,
-                             &replaced_component_names)) {
-    return false;
+  if (bool mlb_repair;
+      json_store_->GetValue(kMlbRepair, &mlb_repair) && mlb_repair) {
+    // MLB repair implies "different owner" so this state should be skipped.
+    // Still adding this check just for safety.
+    return true;
   }
-  for (const std::string& component_name : replaced_component_names) {
-    RmadComponent component;
-    CHECK(RmadComponent_Parse(component_name, &component));
-    if (kComponentsNeedManualCalibration.contains(component) ||
-        kComponentsNeedUpdateCbi.contains(component)) {
-      return true;
+  if (std::vector<std::string> replaced_component_names; json_store_->GetValue(
+          kReplacedComponentNames, &replaced_component_names)) {
+    for (const std::string& component_name : replaced_component_names) {
+      RmadComponent component;
+      CHECK(RmadComponent_Parse(component_name, &component));
+      if (kComponentsNeedManualCalibration.contains(component) ||
+          kComponentsNeedUpdateCbi.contains(component)) {
+        return true;
+      }
     }
   }
   return false;

@@ -57,7 +57,50 @@ TEST_F(DeviceDestinationStateHandlerTest, InitializeState_Success) {
 }
 
 TEST_F(DeviceDestinationStateHandlerTest,
-       GetNextStateCase_Success_Same_WpDisableRequired_CcdBlocked) {
+       GetNextStateCase_Success_Same_WpDisableRequired_MlbRepair_CcdBlocked) {
+  auto handler = CreateStateHandler(true, true);
+  EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
+
+  json_store_->SetValue(kMlbRepair, true);
+
+  RmadState state;
+  state.mutable_device_destination()->set_destination(
+      DeviceDestinationState::RMAD_DESTINATION_SAME);
+
+  auto [error, state_case] = handler->GetNextStateCase(state);
+  EXPECT_EQ(error, RMAD_ERROR_OK);
+  EXPECT_EQ(state_case, RmadState::StateCase::kWipeSelection);
+
+  bool same_owner;
+  EXPECT_TRUE(json_store_->GetValue(kSameOwner, &same_owner));
+  EXPECT_TRUE(same_owner);
+
+  bool wp_disable_required;
+  EXPECT_TRUE(json_store_->GetValue(kWpDisableRequired, &wp_disable_required));
+  EXPECT_TRUE(wp_disable_required);
+
+  bool ccd_blocked;
+  EXPECT_TRUE(json_store_->GetValue(kCcdBlocked, &ccd_blocked));
+  EXPECT_TRUE(ccd_blocked);
+
+  bool wipe_device;
+  EXPECT_FALSE(json_store_->GetValue(kWipeDevice, &wipe_device));
+
+  base::Value logs(base::Value::Type::DICT);
+  json_store_->GetValue(kLogs, &logs);
+
+  const base::Value::List* events = logs.GetDict().FindList(kEvents);
+  EXPECT_EQ(1, events->size());
+  const base::Value::Dict& event = (*events)[0].GetDict();
+  EXPECT_EQ(static_cast<int>(LogEventType::kData), event.FindInt(kType));
+  EXPECT_EQ(
+      ReturningOwner_Name(ReturningOwner::RMAD_RETURNING_OWNER_SAME_OWNER),
+      *event.FindDict(kDetails)->FindString(kLogDestination));
+}
+
+TEST_F(
+    DeviceDestinationStateHandlerTest,
+    GetNextStateCase_Success_Same_WpDisableRequired_NonMlbRepair_CcdBlocked) {
   auto handler = CreateStateHandler(true, true);
   EXPECT_EQ(handler->InitializeState(), RMAD_ERROR_OK);
 

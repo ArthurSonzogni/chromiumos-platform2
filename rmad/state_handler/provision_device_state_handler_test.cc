@@ -320,7 +320,42 @@ TEST_F(ProvisionDeviceStateHandlerTest, TryGetNextStateCaseAtBoot_Failed) {
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
-       TryGetNextStateCaseAtBoot_NeedCalibrationSucceeded) {
+       TryGetNextStateCaseAtBoot_NeedCalibrationSucceeded_MlbRepair) {
+  // Set up environment for MLB repair, which also implies different owner.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+  json_store_->SetValue(kMlbRepair, true);
+  StateHandlerArgs args = {.probed_components = {kComponentNeedCalibration,
+                                                 kComponentNeedCalibration2}};
+
+  auto handler = CreateInitializedStateHandler(args);
+  handler->RunState();
+  RunHandlerTaskRunner(handler);
+
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+
+  // A reboot is expected after provisioning succeeds.
+  ExpectTransitionReboot(handler);
+
+  // Successfully transition to SetupCalibration state.
+  ExpectTransitionSucceededAtBoot(RmadState::StateCase::kSetupCalibration,
+                                  args);
+
+  // Check calibration map. |kComponentNeedCalibration| and
+  // |kComponentNeedCalibration2| are scheduled to be calibrated.
+  InstructionCalibrationStatusMap calibration_map;
+  EXPECT_TRUE(GetCalibrationMap(json_store_, &calibration_map));
+  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
+                kComponentNeedCalibration)][kComponentNeedCalibration],
+            CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
+  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
+                kComponentNeedCalibration2)][kComponentNeedCalibration2],
+            CalibrationComponentStatus::RMAD_CALIBRATION_WAITING);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
+       TryGetNextStateCaseAtBoot_NeedCalibrationSucceeded_NonMlbRepair) {
   // Set up environment for different owner and all replaced components need
   // calibration.
   json_store_->SetValue(kSameOwner, false);
