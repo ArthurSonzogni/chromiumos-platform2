@@ -69,6 +69,10 @@ class ApnBuilder {
     apn_.ip_type = value;
     return *this;
   }
+  ApnBuilder& IsRequiredByCarrierSpec(bool value) {
+    apn_.is_required_by_carrier_spec = value;
+    return *this;
+  }
   ApnBuilder& OperatorNameList(
       const std::vector<MobileOperatorMapper::LocalizedName> value) {
     apn_.operator_name_list = value;
@@ -183,6 +187,10 @@ class MobileOperatorInfoCarriersAttTest
         kAttApn5G(ApnBuilder("nrbroadband")
                       .IpType(kApnIpTypeV4V6)
                       .ApnTypes({kApnTypeDefault, kApnTypeIA})),
+        kAttApnHotspot(ApnBuilder("hotspot")
+                           .IpType(kApnIpTypeV4V6)
+                           .IsRequiredByCarrierSpec(true)
+                           .ApnTypes({kApnTypeDun})),
         kAtt5gMccmncs({"310410", "310280", "311180", "310950"}),
         kAttMxMccmncs({"334050", "334090"}),
         kCricketMccmncs({"310150"}),
@@ -201,6 +209,7 @@ class MobileOperatorInfoCarriersAttTest
 
   const ApnBuilder kAttApn4G;
   const ApnBuilder kAttApn5G;
+  const ApnBuilder kAttApnHotspot;
 
   const std::set<string> kAtt5gMccmncs;
   const std::set<string> kAttMxMccmncs;
@@ -220,6 +229,7 @@ TEST_F(MobileOperatorInfoCarriersAttTest, AttUsHome_AttServing) {
     EXPECT_EQ(operator_info_->mtu(), kAttMtu);
     operator_info_->UpdateGID1(CreateRandomGid1NotInSet({"53FF"}));
     CheckFirstApn(kAttApn4G);
+    CheckIfApnExists(kAttApnHotspot);
   }
 }
 
@@ -239,6 +249,7 @@ TEST_F(MobileOperatorInfoCarriersAttTest, AttHome_UnknownServing) {
   EXPECT_EQ(operator_info_->serving_operator_name(), "");
   EXPECT_EQ(operator_info_->mtu(), kAttMtu);
   CheckFirstApn(kAttApn4G);
+  CheckIfApnExists(kAttApnHotspot);
 }
 
 TEST_F(MobileOperatorInfoCarriersAttTest, Att5gUsHome_AttServing) {
@@ -253,6 +264,7 @@ TEST_F(MobileOperatorInfoCarriersAttTest, Att5gUsHome_AttServing) {
       EXPECT_EQ(operator_info_->mtu(), kAttMtu);
       CheckFirstApn(kAttApn5G);
       CheckIfApnExists(kAttApn4G);
+      CheckIfApnExists(kAttApnHotspot);
     }
   }
 }
@@ -285,6 +297,10 @@ TEST_F(MobileOperatorInfoCarriersAttTest, FirstnetHome_AttServing) {
       EXPECT_EQ(operator_info_->mtu(), 1342);
       CheckFirstApn(ApnBuilder("firstnet-broadband")
                         .ApnTypes({kApnTypeDefault, kApnTypeIA}));
+      if (home != "313110" && home != "313120")
+        CheckIfApnExists(ApnBuilder("firstnet-hotspot")
+                             .IsRequiredByCarrierSpec(true)
+                             .ApnTypes({kApnTypeDun}));
     }
   }
 }

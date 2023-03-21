@@ -13124,6 +13124,8 @@ mno {
     mccmnc : "313130"
     mccmnc : "313140"
     mccmnc : "313790"
+    mhs_entitlement_url : "http://entitlement.mobile.att.net/mhs1"
+    mhs_entitlement_method : GET
     mobile_apn {
       apn : "broadband"
       localized_name {
@@ -13132,6 +13134,12 @@ mno {
       ip_type: IPV4V6
       type : DEFAULT
       type : IA
+    }
+    mobile_apn {
+      apn : "hotspot"
+      is_required_by_carrier_spec : true
+      ip_type: IPV4V6
+      type : DUN
     }
     mtu : 1430
   }
@@ -13150,6 +13158,8 @@ mno {
       mccmnc : "310280"
       mccmnc : "311180"
       mccmnc : "310950"
+      mhs_entitlement_url : "http://entitlement.mobile.att.net/mhs1"
+      mhs_entitlement_method : GET
       mobile_apn {
         apn : "nrbroadband"
         localized_name {
@@ -13167,6 +13177,12 @@ mno {
         ip_type: IPV4V6
         type : DEFAULT
         type : IA
+      }
+      mobile_apn {
+        apn : "hotspot"
+        is_required_by_carrier_spec : true
+        ip_type: IPV4V6
+        type : DUN
       }
       mtu : 1430
     }
@@ -13306,10 +13322,22 @@ mno {
       mccmnc : "313120"
       mccmnc : "313130"
       mccmnc : "313140"
+      mhs_entitlement_url : "http://entitlement.mobile.att.net/mhs1"
+      mhs_entitlement_method : GET
       mobile_apn {
         apn : "firstnet-broadband"
         type : DEFAULT
         type : IA
+      }
+      mobile_apn {
+        apn_filter {
+          type : MCCMNC
+          # Req: CDR-CDS-037
+          exclude_regex : "313110|313120"
+        }
+        apn : "firstnet-hotspot"
+        is_required_by_carrier_spec : true
+        type : DUN
       }
       mtu : 1342
     }
