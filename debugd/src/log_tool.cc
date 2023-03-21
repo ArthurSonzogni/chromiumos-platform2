@@ -370,7 +370,7 @@ const std::array kCommandLogs {
   // Log{kCommand, "setxkbmap", "/usr/bin/setxkbmap -print -query"},
   // Log{kCommand, "xrandr", "/usr/bin/xrandr --verbose}
 };
-// clang-format on /usr/bin/lspci
+// clang-format
 
 // NOTE: IF YOU ADD AN ENTRY TO THIS LIST, PLEASE:
 // * add a row to http://go/cros-feedback-audit and fill it out
