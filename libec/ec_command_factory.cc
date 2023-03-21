@@ -7,6 +7,7 @@
 
 #include "libec/ec_command_factory.h"
 #include "libec/fingerprint/fp_info_command.h"
+#include "libec/fingerprint/fp_preload_template_command.h"
 #include "libec/fingerprint/fp_template_command.h"
 #include "libec/flash_protect_command_factory.h"
 
@@ -36,6 +37,13 @@ std::unique_ptr<ec::FpFrameCommand> EcCommandFactory::FpFrameCommand(
 std::unique_ptr<ec::FpSeedCommand> EcCommandFactory::FpSeedCommand(
     const brillo::SecureVector& seed, uint16_t seed_version) {
   return FpSeedCommand::Create(seed, seed_version);
+}
+
+std::unique_ptr<ec::FpPreloadTemplateCommand>
+EcCommandFactory::FpPreloadTemplateCommand(uint16_t fgr,
+                                           std::vector<uint8_t> tmpl,
+                                           uint16_t max_write_size) {
+  return FpPreloadTemplateCommand::Create(fgr, std::move(tmpl), max_write_size);
 }
 
 std::unique_ptr<ec::FpTemplateCommand> EcCommandFactory::FpTemplateCommand(

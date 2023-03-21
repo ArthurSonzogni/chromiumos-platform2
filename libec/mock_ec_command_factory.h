@@ -41,6 +41,12 @@ class MockEcCommandFactory : public ec::EcCommandFactoryInterface {
               FpFrameCommand,
               (int index, uint32_t frame_size, uint16_t max_read_size),
               (override));
+  MOCK_METHOD(std::unique_ptr<ec::FpPreloadTemplateCommand>,
+              FpPreloadTemplateCommand,
+              (uint16_t fgr,
+               std::vector<uint8_t> tmpl,
+               uint16_t max_write_size),
+              (override));
   MOCK_METHOD(std::unique_ptr<ec::FpTemplateCommand>,
               FpTemplateCommand,
               (std::vector<uint8_t> tmpl, uint16_t max_write_size),
