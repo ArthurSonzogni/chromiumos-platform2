@@ -247,6 +247,7 @@ install_config("mojo_policy") {
 static_library("libshill") {
   sources = [
     "cellular/apn_list.cc",
+    "cellular/carrier_entitlement.cc",
     "cellular/cellular.cc",
     "cellular/cellular_bearer.cc",
     "cellular/cellular_capability_3gpp.cc",
@@ -646,6 +647,7 @@ if (use.test) {
     sources = [
       "bluetooth/mock_bluetooth_manager_proxy.cc",
       "cellular/apn_list_test.cc",
+      "cellular/carrier_entitlement_test.cc",
       "cellular/cellular_bearer_test.cc",
       "cellular/cellular_capability_3gpp_test.cc",
       "cellular/cellular_error_test.cc",

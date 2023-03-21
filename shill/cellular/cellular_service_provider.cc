@@ -362,26 +362,7 @@ void CellularServiceProvider::TetheringEntitlementCheck(
     return;
   }
 
-  auto operator_info = cellular_service->cellular()->mobile_operator_info();
-  // TODO(b/270210498): remove the check for |IsMobileNetworkOperatorKnown|
-  // when tethering is allowed by default.
-  if (!operator_info->IsMobileNetworkOperatorKnown()) {
-    SLOG(3) << __func__ << " mobile operator not known";
-    std::move(callback).Run(
-        TetheringManager::EntitlementStatus::kUpstreamNetworkNotAvailable);
-    return;
-  }
-  if (!operator_info->tethering_allowed()) {
-    std::move(callback).Run(TetheringManager::EntitlementStatus::kNotAllowed);
-    return;
-  }
-
-  // TODO(b/249151422) Check if:
-  //   - a remote entitlement check is necessary, and send a request
-  //   accordingly.
-  manager_->dispatcher()->PostTask(
-      FROM_HERE, base::BindOnce(std::move(callback),
-                                TetheringManager::EntitlementStatus::kReady));
+  cellular_service->cellular()->EntitlementCheck(std::move(callback));
 }
 
 void CellularServiceProvider::AcquireTetheringNetwork(

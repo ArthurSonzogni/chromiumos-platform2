@@ -8,6 +8,7 @@
 #include <netinet/in.h>
 #include <linux/if.h>  // NOLINT - Needs definitions from netinet/in.h
 
+#include <memory>
 #include <optional>
 #include <set>
 #include <tuple>
@@ -34,6 +35,7 @@
 #include "dbus/shill/dbus-constants.h"
 #include "shill/adaptor_interfaces.h"
 #include "shill/cellular/apn_list.h"
+#include "shill/cellular/carrier_entitlement.h"
 #include "shill/cellular/cellular_bearer.h"
 #include "shill/cellular/cellular_capability_3gpp.h"
 #include "shill/cellular/cellular_consts.h"
@@ -43,6 +45,7 @@
 #include "shill/cellular/mobile_operator_info.h"
 #include "shill/cellular/modem_info.h"
 #include "shill/control_interface.h"
+#include "shill/data_types.h"
 #include "shill/dbus/dbus_properties_proxy.h"
 #include "shill/device.h"
 #include "shill/device_info.h"
@@ -52,6 +55,7 @@
 #include "shill/ipconfig.h"
 #include "shill/logging.h"
 #include "shill/manager.h"
+#include "shill/net/ip_address.h"
 #include "shill/net/netlink_sock_diag.h"
 #include "shill/net/process_manager.h"
 #include "shill/net/rtnl_handler.h"
@@ -263,6 +267,9 @@ Cellular::Cellular(Manager* manager,
   // Create an initial Capability.
   CreateCapability();
 
+  carrier_entitlement_ = std::make_unique<CarrierEntitlement>(
+      dispatcher(), base::BindRepeating(&Cellular::OnEntitlementCheckUpdated,
+                                        weak_ptr_factory_.GetWeakPtr()));
   SLOG(1) << LoggingTag() << ": Cellular()";
 }
 
@@ -1775,7 +1782,17 @@ bool Cellular::DisconnectCleanup() {
   SetServiceFailureSilent(Service::kFailureNone);
   SetPrimaryMultiplexedInterface("");
   network()->Stop();
+  ResetCarrierEntitlement();
+
   return true;
+}
+
+void Cellular::ResetCarrierEntitlement() {
+  carrier_entitlement_->Reset();
+  if (!entitlement_check_callback_.is_null()) {
+    std::move(entitlement_check_callback_)
+        .Run(TetheringManager::EntitlementStatus::kNotAllowed);
+  }
 }
 
 // static
@@ -2919,6 +2936,7 @@ void Cellular::OnOperatorChanged() {
       mobile_operator_info_->IsServingMobileNetworkOperatorKnown()) {
     UpdateHomeProvider();
     UpdateServingOperator();
+    ResetCarrierEntitlement();
   }
 }
 
@@ -2959,6 +2977,74 @@ void Cellular::TetheringAllowedUpdated(bool allowed) {
   }
   mobile_operator_info_->Init();
   ReAttach();
+}
+
+void Cellular::EntitlementCheck(
+    base::OnceCallback<void(TetheringManager::EntitlementStatus)> callback) {
+  // Only one entitlement check request should exist at any point.
+  DCHECK(entitlement_check_callback_.is_null());
+  if (!entitlement_check_callback_.is_null()) {
+    LOG(ERROR) << "Entitlement check received while another one is in progress";
+    dispatcher()->PostTask(
+        FROM_HERE,
+        base::BindOnce(std::move(callback),
+                       TetheringManager::EntitlementStatus::kNotAllowed));
+    return;
+  }
+
+  if (!mobile_operator_info_->tethering_allowed()) {
+    LOG(INFO) << "Entitlement check failed because tethering is not allowed by "
+                 "database settings";
+    dispatcher()->PostTask(
+        FROM_HERE,
+        base::BindOnce(std::move(callback),
+                       TetheringManager::EntitlementStatus::kNotAllowed));
+    return;
+  }
+  // TODO(b/270210498): remove this check when tethering is allowed by default.
+  if (!mobile_operator_info_->IsMobileNetworkOperatorKnown() &&
+      !mobile_operator_info_->IsServingMobileNetworkOperatorKnown()) {
+    LOG(INFO) << "Entitlement check failed because the carrier is not known.";
+    dispatcher()->PostTask(
+        FROM_HERE,
+        base::BindOnce(std::move(callback),
+                       TetheringManager::EntitlementStatus::kNotAllowed));
+    return;
+  }
+
+  if (!network()->local()) {
+    LOG(INFO) << "Entitlement check failed because there is no IP address.";
+    dispatcher()->PostTask(
+        FROM_HERE,
+        base::BindOnce(std::move(callback),
+                       TetheringManager::EntitlementStatus::kNotAllowed));
+    return;
+  }
+
+  entitlement_check_callback_ = std::move(callback);
+  carrier_entitlement_->Check(*network()->local(), network()->dns_servers(),
+                              mobile_operator_info_->entitlement_config());
+}
+
+void Cellular::OnEntitlementCheckUpdated(CarrierEntitlement::Result result) {
+  LOG(INFO) << "Entitlement check updated: " << static_cast<int>(result);
+  switch (result) {
+    case shill::CarrierEntitlement::Result::kAllowed:
+      if (!entitlement_check_callback_.is_null()) {
+        std::move(entitlement_check_callback_)
+            .Run(TetheringManager::EntitlementStatus::kReady);
+      }
+      break;
+    case shill::CarrierEntitlement::Result::kUnrecognizedUser:
+    case shill::CarrierEntitlement::Result::kUserNotAllowedToTether:
+    case shill::CarrierEntitlement::Result::kGenericError:
+      if (!entitlement_check_callback_.is_null()) {
+        std::move(entitlement_check_callback_)
+            .Run(TetheringManager::EntitlementStatus::kNotAllowed);
+      }
+      // TODO(b/273355097): Disconnect DUN and end hotspot session.
+      break;
+  }
 }
 
 }  // namespace shill

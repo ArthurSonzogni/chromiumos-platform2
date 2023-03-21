@@ -18,6 +18,7 @@
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "shill/cellular/apn_list.h"
+#include "shill/cellular/carrier_entitlement.h"
 #include "shill/cellular/dbus_objectmanager_proxy_interface.h"
 #include "shill/cellular/mobile_operator_info.h"
 #include "shill/device.h"
@@ -27,6 +28,7 @@
 #include "shill/mockable.h"
 #include "shill/refptr_types.h"
 #include "shill/rpc_task.h"
+#include "shill/tethering_manager.h"
 
 namespace shill {
 
@@ -252,6 +254,10 @@ class Cellular : public Device,
   // state accordingly.
   void SetSimProperties(const std::vector<SimProperties>& slot_properties,
                         size_t primary_slot);
+
+  // Verifies if the device is entitled to use the Hotspot feature.
+  void EntitlementCheck(
+      base::OnceCallback<void(TetheringManager::EntitlementStatus)> callback);
 
   // Called when an OTA profile update arrives from the network.
   void OnProfilesChanged();
@@ -622,6 +628,9 @@ class Cellular : public Device,
   void StartLinkListener();
   void StopLinkListener();
 
+  void ResetCarrierEntitlement();
+  void OnEntitlementCheckUpdated(CarrierEntitlement::Result result);
+
   State state_ = State::kDisabled;
   ModemState modem_state_ = kModemStateUnknown;
 
@@ -690,6 +699,7 @@ class Cellular : public Device,
 
   std::unique_ptr<CellularCapability3gpp> capability_;
   std::optional<InterfaceToProperties> initial_properties_;
+  std::unique_ptr<CarrierEntitlement> carrier_entitlement_;
 
   ProcessManager* process_manager_;
 
@@ -739,7 +749,10 @@ class Cellular : public Device,
   base::CancelableOnceClosure connect_pending_callback_;
   // Used to cancel a pending connect while waiting for Modem registration.
   base::CancelableOnceClosure connect_cancel_callback_;
-
+  // Stores the callback passed in |EntitlementCheck| when an entitlement check
+  // is requested to |CarrierEntitlement|.
+  base::OnceCallback<void(TetheringManager::EntitlementStatus)>
+      entitlement_check_callback_;
   // Legacy device storage identifier, used for removing legacy entry.
   std::string legacy_storage_id_;
 

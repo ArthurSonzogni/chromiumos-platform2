@@ -22,6 +22,7 @@
 
 #include "base/notreached.h"
 #include "base/ranges/algorithm.h"
+#include "shill/cellular/carrier_entitlement.h"
 #include "shill/cellular/mobile_operator_storage.h"
 #include "shill/ipconfig.h"
 #include "shill/logging.h"
@@ -218,8 +219,8 @@ MobileOperatorMapper::entitlement_config() {
     switch (param) {
       case shill::mobile_operator_db::Data_EntitlementParam::
           Data_EntitlementParam_IMSI:
-        // TODO(b/249372202): replace with CarrierEntitlement::kImsiProperty
-        entitlement_config_.params["imsi"] = user_imsi_;
+        entitlement_config_.params[CarrierEntitlement::kImsiProperty] =
+            user_imsi_;
         break;
     }
   }
