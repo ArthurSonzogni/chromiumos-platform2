@@ -79,4 +79,7 @@ interface Delegate {
   // The request:
   // * |observer| - The observer to notify client.
   MonitorStylus(pending_remote<StylusObserver> observer);
+
+  // Obtains lid angle from EC. Returns null if error is happened.
+  GetLidAngle() => (uint16? lid_angle);
 };

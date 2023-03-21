@@ -76,8 +76,8 @@ constexpr char kHciconfig[] = "hciconfig-seccomp.policy";
 constexpr char kIw[] = "iw-seccomp.policy";
 // SECCOMP policy for LED related routines.
 constexpr char kLed[] = "ec_led-seccomp.policy";
-// SECCOMP policy for ectool motionsense lid_angle.
-constexpr char kLidAngle[] = "ectool_motionsense_lid_angle-seccomp.policy";
+// SECCOMP policy for obtaining lid angle from EC.
+constexpr char kLidAngle[] = "ec_lid_angle-seccomp.policy";
 // SECCOMP policy for memtester.
 constexpr char kMemtester[] = "memtester-seccomp.policy";
 // SECCOMP policy for fetchers which only read and parse some files.
@@ -104,9 +104,6 @@ constexpr uint64_t kNullCapability = 0;
 
 // The ectool command used to collect fan speed in RPM.
 constexpr char kGetFanRpmCommand[] = "pwmgetfanrpm";
-// The ectool commands used to collect lid angle.
-constexpr char kMotionSenseCommand[] = "motionsense";
-constexpr char kLidAngleCommand[] = "lid_angle";
 
 // wireless interface name start with "wl" or "ml" and end it with a number. All
 // characters are in lowercase.  Max length is 16 characters.
@@ -349,16 +346,16 @@ void Executor::ReadMsr(const uint32_t msr_reg,
 }
 
 void Executor::GetLidAngle(GetLidAngleCallback callback) {
-  std::vector<std::string> command = {path::kEctoolBinary, kMotionSenseCommand,
-                                      kLidAngleCommand};
-  auto process = std::make_unique<SandboxedProcess>(
-      command, seccomp_file::kLidAngle, user::kEc, kNullCapability,
+  auto delegate = std::make_unique<DelegateProcess>(
+      seccomp_file::kLidAngle, user::kEc, kNullCapability,
       /*readonly_mount_points=*/
-      std::vector<base::FilePath>{base::FilePath(path::kCrosEcDevice)},
+      std::vector<base::FilePath>{base::FilePath{path::kCrosEcDevice}},
       /*writable_mount_points=*/std::vector<base::FilePath>{});
 
-  RunAndWaitProcess(std::move(process), std::move(callback),
-                    /*combine_stdout_and_stderr=*/false);
+  auto* delegate_ptr = delegate.get();
+  delegate_ptr->remote()->GetLidAngle(CreateOnceDelegateCallback(
+      std::move(delegate), std::move(callback), std::nullopt));
+  delegate_ptr->StartAsync();
 }
 
 void Executor::GetFingerprintFrame(mojom::FingerprintCaptureType type,

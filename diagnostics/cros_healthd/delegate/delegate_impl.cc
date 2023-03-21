@@ -18,6 +18,7 @@
 #include <libec/get_version_command.h>
 #include <libec/led_control_command.h>
 #include <libec/mkbp_event.h>
+#include <libec/motion_sense_command_lid_angle.h>
 
 #include "diagnostics/cros_healthd/delegate/constants.h"
 #include "diagnostics/cros_healthd/delegate/fetchers/boot_performance.h"
@@ -81,8 +82,8 @@ enum ec_led_colors ToEcLedColor(mojom::LedColor color) {
 
 namespace diagnostics {
 
-DelegateImpl::DelegateImpl() {}
-DelegateImpl::~DelegateImpl() {}
+DelegateImpl::DelegateImpl() = default;
+DelegateImpl::~DelegateImpl() = default;
 
 void DelegateImpl::GetFingerprintFrame(mojom::FingerprintCaptureType type,
                                        GetFingerprintFrameCallback callback) {
@@ -280,6 +281,21 @@ void DelegateImpl::MonitorStylus(
   // Long-run method. The following object keeps alive until the process
   // terminates.
   new EvdevStylusObserver(std::move(observer));
+}
+
+void DelegateImpl::GetLidAngle(GetLidAngleCallback callback) {
+  auto cros_fd = base::ScopedFD(open(ec::kCrosEcPath, O_RDWR));
+  ec::MotionSenseCommandLidAngle cmd;
+  if (!cmd.Run(cros_fd.get())) {
+    // TODO(b/274524224): Remove the below invalid EC result handling.
+    if (cmd.Result() == 1 || cmd.Result() == 3) {
+      std::move(callback).Run(LID_ANGLE_UNRELIABLE);
+      return;
+    }
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+  std::move(callback).Run(cmd.LidAngle());
 }
 
 }  // namespace diagnostics

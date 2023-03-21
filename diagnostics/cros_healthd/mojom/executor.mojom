@@ -164,12 +164,8 @@ interface Executor {
   // * |contents| - contains the value of 64-bit MSR register value.
   ReadMsr(uint32 msr_reg, uint32 cpu_index) => (NullableUint64? value);
 
-  // Obtains lid angle by running ectool and returns the result.
-  //
-  // The response:
-  // * |result| - contains the angle between lid and base received from running
-  //              the tool.
-  GetLidAngle() => (ExecutedProcessResult result);
+  // Obtains lid angle from EC. Returns null if error is happened.
+  GetLidAngle() => (uint16? lid_angle);
 
   // Get fingerprint frame data with specific capture type. We only support
   // testing related capture type.

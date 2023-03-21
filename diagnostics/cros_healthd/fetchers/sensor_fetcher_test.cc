@@ -7,9 +7,11 @@
 #include <utility>
 
 #include <base/files/file_util.h>
+#include <base/test/gmock_callback_support.h>
 #include <base/test/task_environment.h>
 #include <base/test/test_future.h>
 #include <brillo/files/file_util.h>
+#include <chromeos/ec/ec_commands.h>
 #include <gtest/gtest.h>
 
 #include "diagnostics/cros_healthd/fetchers/sensor_fetcher.h"
@@ -26,14 +28,9 @@ namespace mojom = ::ash::cros_healthd::mojom;
 
 using ::testing::_;
 using ::testing::Invoke;
-using ::testing::WithArg;
 
 // Relative filepath used to determine whether a device has a Google EC.
 constexpr char kRelativeCrosEcPath[] = "sys/class/chromeos/cros_ec";
-// Acceptable error code for getting lid angle.
-constexpr int kInvalidCommandCode = 1;
-// Failure error code for getting lid angle.
-constexpr int kExitFailureCode = 253;
 
 class SensorFetcherTest : public ::testing::Test {
  protected:
@@ -56,15 +53,9 @@ class SensorFetcherTest : public ::testing::Test {
     return future.Take();
   }
 
-  void SetExecutorResponse(const std::string& out, int32_t return_code) {
+  void SetExecutorResponse(std::optional<uint16_t> lid_angle = 120) {
     EXPECT_CALL(*mock_executor(), GetLidAngle(_))
-        .WillOnce(WithArg<0>(
-            Invoke([=](mojom::Executor::GetLidAngleCallback callback) {
-              mojom::ExecutedProcessResult result;
-              result.return_code = return_code;
-              result.out = out;
-              std::move(callback).Run(result.Clone());
-            })));
+        .WillOnce(base::test::RunOnceCallback<0>(lid_angle));
   }
 
  private:
@@ -72,9 +63,9 @@ class SensorFetcherTest : public ::testing::Test {
   MockContext mock_context_;
 };
 
-// Test that lid_angle can be fetched successfully.
-TEST_F(SensorFetcherTest, FetchLidAngle) {
-  SetExecutorResponse("Lid angle: 120\n", EXIT_SUCCESS);
+// Test that normal lid_angle can be fetched successfully.
+TEST_F(SensorFetcherTest, Success) {
+  SetExecutorResponse(120);
 
   auto sensor_result = FetchSensorInfoSync();
   ASSERT_TRUE(sensor_result->is_sensor_info());
@@ -86,8 +77,8 @@ TEST_F(SensorFetcherTest, FetchLidAngle) {
 }
 
 // Test that unreliable lid_angle can be handled and gets null.
-TEST_F(SensorFetcherTest, FetchLidAngleUnreliable) {
-  SetExecutorResponse("Lid angle: unreliable\n", EXIT_SUCCESS);
+TEST_F(SensorFetcherTest, LidAngleUnreliable) {
+  SetExecutorResponse(LID_ANGLE_UNRELIABLE);
 
   auto sensor_result = FetchSensorInfoSync();
   ASSERT_TRUE(sensor_result->is_sensor_info());
@@ -97,30 +88,19 @@ TEST_F(SensorFetcherTest, FetchLidAngleUnreliable) {
   ASSERT_TRUE(sensor_info->sensors.value().empty());
 }
 
-// Test that incorredtly formatted lid_angle can be handled and gets ProbeError.
-TEST_F(SensorFetcherTest, FetchLidAngleIncorrectlyFormatted) {
-  SetExecutorResponse("Lid angle: incorredtly formatted\n", EXIT_SUCCESS);
+// Test that invalid lid_angle can be handled and gets SystemUtilityError.
+TEST_F(SensorFetcherTest, LidAngleInvalidValue) {
+  SetExecutorResponse(720);
 
   auto sensor_result = FetchSensorInfoSync();
   ASSERT_TRUE(sensor_result->is_error());
-  EXPECT_EQ(sensor_result->get_error()->type, mojom::ErrorType::kParseError);
+  EXPECT_EQ(sensor_result->get_error()->type,
+            mojom::ErrorType::kSystemUtilityError);
 }
 
-// Test that acceptable error code can be handled and gets null lid_angle.
-TEST_F(SensorFetcherTest, FetchLidAngleAcceptableError) {
-  SetExecutorResponse("EC result 1 (INVALID_COMMAND)\n", kInvalidCommandCode);
-
-  auto sensor_result = FetchSensorInfoSync();
-  ASSERT_TRUE(sensor_result->is_sensor_info());
-  const auto& sensor_info = sensor_result->get_sensor_info();
-  ASSERT_FALSE(sensor_info->lid_angle);
-  ASSERT_TRUE(sensor_info->sensors.has_value());
-  ASSERT_TRUE(sensor_info->sensors.value().empty());
-}
-
-// Test that the executor fails to collect lid_angle and gets ProbeError.
-TEST_F(SensorFetcherTest, FetchLidAngleFailure) {
-  SetExecutorResponse("Some error happened!\n", kExitFailureCode);
+// Test that null lid_angle can be handled and gets SystemUtilityError.
+TEST_F(SensorFetcherTest, LidAngleNull) {
+  SetExecutorResponse(std::nullopt);
 
   auto sensor_result = FetchSensorInfoSync();
   ASSERT_TRUE(sensor_result->is_error());
@@ -129,7 +109,7 @@ TEST_F(SensorFetcherTest, FetchLidAngleFailure) {
 }
 
 // Test that without Google EC can be handled and gets null lid_angle.
-TEST_F(SensorFetcherTest, FetchLidAngleWithoutEC) {
+TEST_F(SensorFetcherTest, LidAngleWithoutEC) {
   ASSERT_TRUE(
       brillo::DeletePathRecursively(root_dir().Append(kRelativeCrosEcPath)));
 
@@ -143,7 +123,7 @@ TEST_F(SensorFetcherTest, FetchLidAngleWithoutEC) {
 
 // Test that single sensor's attributes can be fetched successfully.
 TEST_F(SensorFetcherTest, FetchSensorAttribue) {
-  SetExecutorResponse("Lid angle: 120\n", EXIT_SUCCESS);
+  SetExecutorResponse();
   fake_sensor_service().SetIdsTypes({{0, {cros::mojom::DeviceType::ACCEL}}});
   fake_sensor_service().SetSensorDevice(
       0, std::make_unique<FakeSensorDevice>("cros-ec-accel", "lid"));
@@ -163,7 +143,7 @@ TEST_F(SensorFetcherTest, FetchSensorAttribue) {
 
 // Test that multiple sensors' attributes can be fetched successfully.
 TEST_F(SensorFetcherTest, FetchMultipleSensorAttribue) {
-  SetExecutorResponse("Lid angle: 120\n", EXIT_SUCCESS);
+  SetExecutorResponse();
   fake_sensor_service().SetIdsTypes(
       {{1, {cros::mojom::DeviceType::ANGL}},
        {3, {cros::mojom::DeviceType::ANGLVEL}},
@@ -215,7 +195,7 @@ TEST_F(SensorFetcherTest, FetchMultipleSensorAttribue) {
 
 // Test that combo sensor's attributes can be fetched successfully.
 TEST_F(SensorFetcherTest, FetchSensorAttribueComboSensor) {
-  SetExecutorResponse("Lid angle: 120\n", EXIT_SUCCESS);
+  SetExecutorResponse();
   fake_sensor_service().SetIdsTypes(
       {{100, {cros::mojom::DeviceType::ANGL, cros::mojom::DeviceType::ACCEL}}});
   fake_sensor_service().SetSensorDevice(

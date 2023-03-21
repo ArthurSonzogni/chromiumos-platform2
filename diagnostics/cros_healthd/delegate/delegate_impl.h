@@ -44,6 +44,7 @@ class DelegateImpl : public ash::cros_healthd::mojom::Delegate {
   void MonitorStylus(
       mojo::PendingRemote<ash::cros_healthd::mojom::StylusObserver> observer)
       override;
+  void GetLidAngle(GetLidAngleCallback callback) override;
 };
 
 }  // namespace diagnostics

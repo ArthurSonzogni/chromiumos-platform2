@@ -36,7 +36,6 @@ install_and_check_seccomp_policy("diagnostics_seccomp") {
   _arch = getenv("ARCH")
   sources = [
     "${_arch}/ectool_i2cread-seccomp.policy",
-    "${_arch}/ectool_motionsense_lid_angle-seccomp.policy",
     "${_arch}/ectool_pwmgetfanrpm-seccomp.policy",
     "${_arch}/hciconfig-seccomp.policy",
     "${_arch}/iw-seccomp.policy",
@@ -54,6 +53,7 @@ install_and_check_seccomp_policy("diagnostics_seccomp_delegate") {
   _arch = getenv("ARCH")
   sources = [
     "${_arch}/ec_led-seccomp.policy",
+    "${_arch}/ec_lid_angle-seccomp.policy",
     "${_arch}/evdev-seccomp.policy",
     "${_arch}/fingerprint-seccomp.policy",
     "${_arch}/readonly-fetchers-seccomp.policy",

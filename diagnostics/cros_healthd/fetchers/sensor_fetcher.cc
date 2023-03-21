@@ -11,9 +11,7 @@
 #include <vector>
 
 #include <base/files/file_util.h>
-#include <base/strings/stringprintf.h>
-#include <base/strings/string_number_conversions.h>
-#include <base/strings/string_split.h>
+#include <chromeos/ec/ec_commands.h>
 #include <iioservice/mojo/sensor.mojom.h>
 
 #include "diagnostics/cros_healthd/utils/callback_barrier.h"
@@ -28,36 +26,9 @@ namespace mojom = ::ash::cros_healthd::mojom;
 // Relative filepath used to determine whether a device has a Google EC.
 constexpr char kRelativeCrosEcPath[] = "sys/class/chromeos/cros_ec";
 
-// Acceptable error code for getting lid angle.
-constexpr int kInvalidCommandCode = 1;
-constexpr int kInvalidParamCode = 3;
-
 // The target sensor attributes to fetch.
 const std::vector<std::string> kTargetSensorAttributes_ = {
     cros::mojom::kDeviceName, cros::mojom::kLocation};
-
-// Parse the raw lid angle and return ProbeError on failure.
-std::pair<mojom::NullableUint16Ptr, mojom::ProbeErrorPtr> ParseLidAngle(
-    std::string input) {
-  // Format of |input|: "Lid angle: ${LID_ANGLE}\n"
-  std::vector<std::string> tokens =
-      base::SplitString(input.substr(0, input.find_last_of("\n")), ":",
-                        base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
-
-  if (tokens.size() == 2 && tokens[0] == "Lid angle") {
-    uint lid_angle;
-    if (base::StringToUint(tokens[1], &lid_angle))
-      return {mojom::NullableUint16::New(lid_angle), nullptr};
-    else if (tokens[1] == "unreliable")
-      return {nullptr, nullptr};
-  }
-
-  return {nullptr, CreateAndLogProbeError(
-                       mojom::ErrorType::kParseError,
-                       base::StringPrintf(
-                           "GetLidAngle output is incorrectly formatted: %s",
-                           input.c_str()))};
-}
 
 // Filter for the sensor type we want and convert it to mojom::Sensor::Type.
 std::vector<mojom::Sensor::Type> GetSupportedTypes(
@@ -127,7 +98,7 @@ class State {
       const std::vector<std::optional<std::string>>& attributes);
 
   // Handle the response of lid angle from the executor.
-  void HandleLidAngleResponse(mojom::ExecutedProcessResultPtr result);
+  void HandleLidAngleResponse(std::optional<uint16_t> lid_angle);
 
   // Send back the SensorResult via |callback|. The result is ProbeError if
   // |error_| is not null or |is_finished| is false, otherwise |info_|.
@@ -153,16 +124,16 @@ void State::HandleSensorIdsTypesResponse(
         ids_types) {
   CallbackBarrier barrier{/*on_success=*/std::move(completion_callback),
                           /*on_error=*/base::DoNothing()};
-  for (const auto& id_types : ids_types) {
-    auto types = GetSupportedTypes(id_types.second);
+  for (const auto& [sensor_id, sensor_types] : ids_types) {
+    auto types = GetSupportedTypes(sensor_types);
     if (types.size() == 0)
       continue;
 
-    mojo_service_->GetSensorDevice(id_types.first)
-        ->GetAttributes(kTargetSensorAttributes_,
-                        barrier.Depend(base::BindOnce(
-                            &State::HandleAttributesResponse,
-                            base::Unretained(this), id_types.first, types)));
+    mojo_service_->GetSensorDevice(sensor_id)->GetAttributes(
+        kTargetSensorAttributes_,
+        barrier.Depend(base::BindOnce(&State::HandleAttributesResponse,
+                                      base::Unretained(this), sensor_id,
+                                      types)));
   }
 }
 
@@ -181,29 +152,21 @@ void State::HandleAttributesResponse(
   }
 }
 
-void State::HandleLidAngleResponse(mojom::ExecutedProcessResultPtr result) {
-  std::string err = result->err;
-  int32_t return_code = result->return_code;
-
-  // Some devices don't support `ectool motionsense lid_angle` and will return
-  // two return codes, INVALID_COMMAND and INVALID_PARAM, which are acceptable.
-  if (return_code == kInvalidCommandCode || return_code == kInvalidParamCode) {
+void State::HandleLidAngleResponse(std::optional<uint16_t> lid_angle) {
+  if (!lid_angle.has_value()) {
+    error_ = CreateAndLogProbeError(mojom::ErrorType::kSystemUtilityError,
+                                    "Failed to get lid angle.");
     return;
   }
-
-  if (!err.empty() || return_code != EXIT_SUCCESS) {
-    error_ = CreateAndLogProbeError(
-        mojom::ErrorType::kSystemUtilityError,
-        base::StringPrintf(
-            "GetLidAngle failed with return code: %d and error: %s",
-            return_code, err.c_str()));
+  const auto& value = lid_angle.value();
+  if (value == LID_ANGLE_UNRELIABLE) {
+    return;
+  } else if (value > 360) {
+    error_ = CreateAndLogProbeError(mojom::ErrorType::kSystemUtilityError,
+                                    "Get invalid lid angle.");
     return;
   }
-
-  mojom::ProbeErrorPtr parse_error;
-  std::tie(info_->lid_angle, parse_error) = ParseLidAngle(result->out);
-  if (!parse_error.is_null())
-    error_ = std::move(parse_error);
+  info_->lid_angle = mojom::NullableUint16::New(value);
 }
 
 void State::HandleResult(FetchSensorInfoCallback callback, bool is_finished) {
