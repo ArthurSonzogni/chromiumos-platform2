@@ -430,6 +430,7 @@
 				"nosuid",
 				"noexec",
 				"nodev",
+				"gid=3009",
 				"hidepid=2"
 			]
 		},
