@@ -72,4 +72,10 @@ EcCommandFactory::FpSetNonceContextCommand(
   return FpSetNonceContextCommand::Create(nonce, encrypted_user_id, iv);
 }
 
+std::unique_ptr<ec::FpReadMatchSecretWithPubkeyCommand>
+EcCommandFactory::FpReadMatchSecretWithPubkeyCommand(
+    uint16_t index, const brillo::Blob& pk_in_x, const brillo::Blob& pk_in_y) {
+  return FpReadMatchSecretWithPubkeyCommand::Create(index, pk_in_x, pk_in_y);
+}
+
 }  // namespace ec

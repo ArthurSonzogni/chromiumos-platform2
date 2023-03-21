@@ -17,6 +17,7 @@
 #include "libec/fingerprint/fp_frame_command.h"
 #include "libec/fingerprint/fp_get_nonce_command.h"
 #include "libec/fingerprint/fp_info_command.h"
+#include "libec/fingerprint/fp_read_match_secret_with_pubkey_command.h"
 #include "libec/fingerprint/fp_seed_command.h"
 #include "libec/fingerprint/fp_set_nonce_context_command.h"
 #include "libec/fingerprint/fp_template_command.h"
@@ -100,6 +101,15 @@ class EcCommandFactoryInterface {
       "All commands created by this class should derive from "
       "EcCommandInterface");
 
+  virtual std::unique_ptr<ec::FpReadMatchSecretWithPubkeyCommand>
+  FpReadMatchSecretWithPubkeyCommand(uint16_t index,
+                                     const brillo::Blob& pk_in_x,
+                                     const brillo::Blob& pk_in_y) = 0;
+  static_assert(std::is_base_of<EcCommandInterface,
+                                ec::FpReadMatchSecretWithPubkeyCommand>::value,
+                "All commands created by this class should derive from "
+                "EcCommandInterface");
+
   // TODO(b/144956297): Add factory methods for all of the EC
   // commands we use so that we can easily mock them for testing.
 };
@@ -146,6 +156,11 @@ class BRILLO_EXPORT EcCommandFactory : public EcCommandFactoryInterface {
       const brillo::Blob& nonce,
       const brillo::Blob& encrypted_user_id,
       const brillo::Blob& iv) override;
+
+  std::unique_ptr<ec::FpReadMatchSecretWithPubkeyCommand>
+  FpReadMatchSecretWithPubkeyCommand(uint16_t index,
+                                     const brillo::Blob& pk_in_x,
+                                     const brillo::Blob& pk_in_y) override;
 };
 
 }  // namespace ec
