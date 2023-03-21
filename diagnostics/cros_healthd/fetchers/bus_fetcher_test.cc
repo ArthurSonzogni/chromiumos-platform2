@@ -31,19 +31,6 @@ namespace {
 
 namespace mojom = ::ash::cros_healthd::mojom;
 
-constexpr char kFakeThunderboltDevices[] = "sys/bus/thunderbolt/devices";
-
-constexpr char kFakeThunderboltDeviceVendorName[] =
-    "FakeThunderboltDeviceVendor";
-constexpr char kFakeThunderboltDeviceName[] = "FakeThunderboltDevice";
-constexpr uint8_t kFakeThunderboltDeviceAuthorized = false;
-constexpr char kFakeThunderboltDeviceSpeedStr[] = "20.0 Gb/s";
-constexpr uint32_t kFakeThunderboltDeviceSpeed = 20;
-constexpr char kFakeThunderboltDeviceType[] = "0x4257";
-constexpr char kFakeThunderboltDeviceUUID[] =
-    "d5010000-0060-6508-2304-61066ed3f91e";
-constexpr char kFakeThunderboltDeviceFWVer[] = "29.0";
-
 using ::testing::_;
 using ::testing::Invoke;
 using ::testing::WithArg;
@@ -101,51 +88,6 @@ class BusFetcherTest : public BaseFileTest {
             })));
   }
 
-  mojom::BusDevicePtr& AddExpectedThunderboltDevice(size_t interface_count) {
-    CHECK_GE(interface_count, 1);
-    auto device = mojom::BusDevice::New();
-    auto tbt_info = mojom::ThunderboltBusInfo::New();
-
-    device->device_class = mojom::BusDeviceClass::kThunderboltController;
-    tbt_info->security_level = mojom::ThunderboltSecurityLevel::kNone;
-    for (size_t i = 0; i < interface_count; ++i) {
-      auto tbt_if_info = mojom::ThunderboltBusInterfaceInfo::New();
-      tbt_if_info->authorized = kFakeThunderboltDeviceAuthorized;
-      tbt_if_info->rx_speed_gbs = kFakeThunderboltDeviceSpeed;
-      tbt_if_info->tx_speed_gbs = kFakeThunderboltDeviceSpeed;
-      tbt_if_info->vendor_name = kFakeThunderboltDeviceVendorName;
-      tbt_if_info->device_name = kFakeThunderboltDeviceName;
-      tbt_if_info->device_type = kFakeThunderboltDeviceType;
-      tbt_if_info->device_uuid = kFakeThunderboltDeviceUUID;
-      tbt_if_info->device_fw_version = kFakeThunderboltDeviceFWVer;
-      tbt_info->thunderbolt_interfaces.push_back(std::move(tbt_if_info));
-    }
-    device->bus_info =
-        mojom::BusInfo::NewThunderboltBusInfo(std::move(tbt_info));
-    expected_bus_devices_.push_back(std::move(device));
-    return expected_bus_devices_.back();
-  }
-
-  void SetExpectedBusDevices() {
-    for (size_t i = 0; i < expected_bus_devices_.size(); ++i) {
-      const auto& bus_info = expected_bus_devices_[i]->bus_info;
-      switch (bus_info->which()) {
-        case mojom::BusInfo::Tag::kPciBusInfo:
-          NOTREACHED();
-          break;
-        case mojom::BusInfo::Tag::kUsbBusInfo:
-          NOTREACHED();
-          break;
-        case mojom::BusInfo::Tag::kThunderboltBusInfo:
-          SetThunderboltBusInfo(bus_info->get_thunderbolt_bus_info(), i);
-          break;
-        case mojom::BusInfo::Tag::kUnmappedField:
-          NOTREACHED();
-          break;
-      }
-    }
-  }
-
   // Creates a pci device with default attributes. Returns the device's
   // directory so tests can modify the attributes.
   base::FilePath SetDefaultPciDevice(size_t id) {
@@ -194,50 +136,42 @@ class BusFetcherTest : public BaseFileTest {
     return dev_if;
   }
 
-  std::string EnumToString(mojom::ThunderboltSecurityLevel level) {
-    switch (level) {
-      case mojom::ThunderboltSecurityLevel::kNone:
-        return "None";
-      case mojom::ThunderboltSecurityLevel::kUserLevel:
-        return "User";
-      case mojom::ThunderboltSecurityLevel::kSecureLevel:
-        return "Secure";
-      case mojom::ThunderboltSecurityLevel::kDpOnlyLevel:
-        return "DpOnly";
-      case mojom::ThunderboltSecurityLevel::kUsbOnlyLevel:
-        return "UsbOnly";
-      case mojom::ThunderboltSecurityLevel::kNoPcieLevel:
-        return "NoPcie";
-    }
+  // Creates a thunderbolt device with default attributes. Returns the
+  // device's directory so tests can modify the attributes.
+  base::FilePath SetDefaultThunderboltDevice(size_t id) {
+    const auto dir = "/sys/devices/pci0000:00/0000:00:14.0";
+    const auto dev = base::StringPrintf("domain%zu/", id);
+    SetSymbolicLink({"../../../devices/pci0000:00/0000:00:14.0", dev},
+                    {kPathSysThunderbolt, dev});
+
+    SetFile({dir, dev, kFileThunderboltSecurity}, "none");
+
+    const auto dev_path = base::FilePath{dir}.Append(dev);
+    SetDefaultThunderboltInterface(dev_path, id, 0);
+    return dev_path;
   }
 
-  void SetThunderboltBusInfo(const mojom::ThunderboltBusInfoPtr& tbt_info,
-                             size_t id) {
-    const auto dir = kFakeThunderboltDevices;
-    const auto dev = base::StringPrintf("domain%zu/", id);
-    SetFile({dir, dev, kFileThunderboltSecurity},
-            EnumToString(tbt_info->security_level));
+  // Creates a thunderbolt interface with default attributes. Returns the
+  // interface's directory so tests can modify the attributes.
+  base::FilePath SetDefaultThunderboltInterface(const base::FilePath& dev,
+                                                size_t device_id,
+                                                size_t interface_id) {
+    const auto dev_if = base::StringPrintf("%zu-%zu:%zu.%zu", device_id,
+                                           device_id, device_id, interface_id);
+    base::FilePath link_target{"../../../"};
+    EXPECT_TRUE(base::FilePath{"/sys"}.AppendRelativePath(dev, &link_target));
+    SetSymbolicLink(link_target.Append(dev_if), {kPathSysThunderbolt, dev_if});
 
-    for (size_t i = 0; i < tbt_info->thunderbolt_interfaces.size(); ++i) {
-      const auto dev_if = base::StringPrintf("%zu-%zu:%zu.%zu", id, id, id, i);
-      const mojom::ThunderboltBusInterfaceInfoPtr& tbt_if_info =
-          tbt_info->thunderbolt_interfaces[i];
-      SetFile({dir, dev_if, kFileThunderboltAuthorized},
-              tbt_if_info->authorized ? "1" : "0");
-      SetFile({dir, dev_if, kFileThunderboltRxSpeed},
-              kFakeThunderboltDeviceSpeedStr);
-      SetFile({dir, dev_if, kFileThunderboltTxSpeed},
-              kFakeThunderboltDeviceSpeedStr);
-      SetFile({dir, dev_if, kFileThunderboltVendorName},
-              tbt_if_info->vendor_name);
-      SetFile({dir, dev_if, kFileThunderboltDeviceName},
-              tbt_if_info->device_name);
-      SetFile({dir, dev_if, kFileThunderboltDeviceType},
-              tbt_if_info->device_type);
-      SetFile({dir, dev_if, kFileThunderboltUUID}, tbt_if_info->device_uuid);
-      SetFile({dir, dev_if, kFileThunderboltFWVer},
-              tbt_if_info->device_fw_version);
-    }
+    const auto dev_str = dev.value();
+    SetFile({dev_str, dev_if, kFileThunderboltAuthorized}, "0");
+    SetFile({dev_str, dev_if, kFileThunderboltRxSpeed}, "20.0 Gb/s");
+    SetFile({dev_str, dev_if, kFileThunderboltTxSpeed}, "20.0 Gb/s");
+    SetFile({dev_str, dev_if, kFileThunderboltVendorName}, "");
+    SetFile({dev_str, dev_if, kFileThunderboltDeviceName}, "");
+    SetFile({dev_str, dev_if, kFileThunderboltDeviceType}, "");
+    SetFile({dev_str, dev_if, kFileThunderboltUUID}, "");
+    SetFile({dev_str, dev_if, kFileThunderboltFWVer}, "");
+    return dev.Append(dev_if);
   }
 
   std::vector<mojom::BusDevicePtr> FetchBusDevicesSync() {
@@ -268,17 +202,9 @@ class BusFetcherTest : public BaseFileTest {
     return result;
   }
 
-  void CheckBusDevices() {
-    auto bus_devices = FetchBusDevicesSync();
-    const auto got = Sorted(bus_devices);
-    const auto expected = Sorted(expected_bus_devices_);
-    EXPECT_EQ(got, expected) << GetDiffString(got, expected);
-  }
-
  protected:
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::ThreadingMode::MAIN_THREAD_ONLY};
-  std::vector<mojom::BusDevicePtr> expected_bus_devices_;
   MockContext mock_context_;
 };
 
@@ -408,9 +334,41 @@ TEST_F(BusFetcherTest, TestFetchUsbNullalbeFields) {
 }
 
 TEST_F(BusFetcherTest, TestFetchThunderboltBusInfo) {
-  AddExpectedThunderboltDevice(1);
-  SetExpectedBusDevices();
-  CheckBusDevices();
+  size_t dev_id = 0;
+  const auto dev = SetDefaultThunderboltDevice(dev_id);
+  const auto dev_if = SetDefaultThunderboltInterface(dev, dev_id, 0);
+  SetFile(dev.Append(kFileThunderboltSecurity), "secure");
+
+  SetFile(dev_if.Append(kFileThunderboltAuthorized), "1");
+  SetFile(dev_if.Append(kFileThunderboltRxSpeed), "40.0 Gb/s");
+  SetFile(dev_if.Append(kFileThunderboltTxSpeed), "60.0 Gb/s");
+  SetFile(dev_if.Append(kFileThunderboltVendorName), "ThunderboltVendorName");
+  SetFile(dev_if.Append(kFileThunderboltDeviceName), "ThunderboltDeviceName");
+  SetFile(dev_if.Append(kFileThunderboltDeviceType), "0x4257");
+  SetFile(dev_if.Append(kFileThunderboltUUID),
+          "d5010000-0060-6508-2304-61066ed3f91e");
+  SetFile(dev_if.Append(kFileThunderboltFWVer), "29.0");
+
+  auto res = FetchBusDevicesSync();
+  EXPECT_EQ(res.size(), 1);
+  EXPECT_EQ(res[0]->vendor_name, "ThunderboltVendorName");
+  EXPECT_EQ(res[0]->product_name, "ThunderboltDeviceName");
+  EXPECT_EQ(res[0]->bus_info->which(),
+            mojom::BusInfo::Tag::kThunderboltBusInfo);
+  const auto& tdb_info = res[0]->bus_info->get_thunderbolt_bus_info();
+  EXPECT_EQ(tdb_info->security_level,
+            mojom::ThunderboltSecurityLevel::kSecureLevel);
+
+  EXPECT_EQ(tdb_info->thunderbolt_interfaces.size(), 1);
+  const auto& tbd_if = tdb_info->thunderbolt_interfaces[0];
+  EXPECT_TRUE(tbd_if->authorized);
+  EXPECT_EQ(tbd_if->rx_speed_gbs, 40);
+  EXPECT_EQ(tbd_if->tx_speed_gbs, 60);
+  EXPECT_EQ(tbd_if->vendor_name, "ThunderboltVendorName");
+  EXPECT_EQ(tbd_if->device_name, "ThunderboltDeviceName");
+  EXPECT_EQ(tbd_if->device_type, "0x4257");
+  EXPECT_EQ(tbd_if->device_uuid, "d5010000-0060-6508-2304-61066ed3f91e");
+  EXPECT_EQ(tbd_if->device_fw_version, "29.0");
 }
 
 TEST_F(BusFetcherTest, TestFetchMultiple) {
@@ -429,21 +387,21 @@ TEST_F(BusFetcherTest, TestFetchMultiple) {
     SetDefaultUsbInterface(dev, 42, 2);
   }
 
+  SetDefaultThunderboltDevice(0);
+  {
+    const auto dev = SetDefaultThunderboltDevice(1);
+    SetDefaultThunderboltInterface(dev, 1, 1);
+  }
+
   auto res = FetchBusDevicesSync();
-  EXPECT_EQ(res.size(), 6);
+  EXPECT_EQ(res.size(), 8);
   std::multiset<mojom::BusInfo::Tag> type_count;
   for (const auto& dev : res) {
     type_count.insert(dev->bus_info->which());
   }
   EXPECT_EQ(type_count.count(mojom::BusInfo::Tag::kPciBusInfo), 3);
   EXPECT_EQ(type_count.count(mojom::BusInfo::Tag::kUsbBusInfo), 3);
-}
-
-TEST_F(BusFetcherTest, TestFetchMultiple_DEPRECATED) {
-  AddExpectedThunderboltDevice(1);
-  AddExpectedThunderboltDevice(2);
-  SetExpectedBusDevices();
-  CheckBusDevices();
+  EXPECT_EQ(type_count.count(mojom::BusInfo::Tag::kThunderboltBusInfo), 2);
 }
 
 TEST_F(BusFetcherTest, TestFetchSysfsPathsBusDeviceMapPci) {
@@ -455,6 +413,13 @@ TEST_F(BusFetcherTest, TestFetchSysfsPathsBusDeviceMapPci) {
 
 TEST_F(BusFetcherTest, TestFetchSysfsPathsBusDeviceMapUsb) {
   const auto dev = SetDefaultUsbDevice(0);
+
+  auto result = FetchSysfsPathsBusDeviceMapSync();
+  EXPECT_EQ(result.begin()->first, GetPathUnderRoot(dev));
+}
+
+TEST_F(BusFetcherTest, TestFetchSysfsPathsBusDeviceMapThunderbolt) {
+  const auto dev = SetDefaultThunderboltDevice(0);
 
   auto result = FetchSysfsPathsBusDeviceMapSync();
   EXPECT_EQ(result.begin()->first, GetPathUnderRoot(dev));

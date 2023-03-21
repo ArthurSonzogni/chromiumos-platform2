@@ -115,6 +115,7 @@ void BaseFileTest::UnsetPath(const PathType& path) const {
 
 void BaseFileTest::SetSymbolicLink(const PathType& target,
                                    const PathType& path) {
+  UnsetPath(path);
   auto file = GetPathUnderRoot(path);
   ASSERT_TRUE(base::CreateDirectory(file.DirName()));
   auto real_target = target.file_path().IsAbsolute() ? GetPathUnderRoot(target)
