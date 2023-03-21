@@ -53,18 +53,6 @@ class PartitionNum {
 
 std::ostream& operator<<(std::ostream& os, const PartitionNum& partition);
 
-enum partition_nums_t {
-  PART_NUM_KERN_A = 2,
-  PART_NUM_ROOT_A = 3,
-  PART_NUM_KERN_B = 4,
-  PART_NUM_ROOT_B = 5,
-  PART_NUM_KERN_C = 6,
-  PART_NUM_ROOT_C = 7,
-  PART_NUM_OEM = 8,
-  PART_NUM_RWFW = 11,
-  PART_NUM_EFI_SYSTEM = 12
-};
-
 // A class to automatically remove directories/files with nftw().
 // The removal is done at object destruction time and hence no error will be
 // boubled up. If need to, use release() and handle the deletion yourself.

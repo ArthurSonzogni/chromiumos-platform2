@@ -56,7 +56,7 @@ class Partition {
   }
 
   // If the device is /dev/sda3 the number is 3
-  int number() const { return GetPartitionFromPartitionDev(device()).Value(); }
+  PartitionNum number() const { return GetPartitionFromPartitionDev(device()); }
 
   virtual std::string uuid() const;
 

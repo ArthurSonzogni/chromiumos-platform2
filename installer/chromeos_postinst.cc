@@ -65,20 +65,17 @@ bool ConfigureInstall(const base::FilePath& install_dev,
   Partition root = Partition(install_dev, install_dir);
 
   string slot;
-  switch (root.number()) {
-    case PART_NUM_ROOT_A:
-      slot = "A";
-      break;
-    case PART_NUM_ROOT_B:
-      slot = "B";
-      break;
-    default:
-      LOG(ERROR) << "Not a valid target partition number: " << root.number();
-      return false;
+  if (root.number() == PartitionNum::ROOT_A) {
+    slot = "A";
+  } else if (root.number() == PartitionNum::ROOT_B) {
+    slot = "B";
+  } else {
+    LOG(ERROR) << "Not a valid target partition number: " << root.number();
+    return false;
   }
 
-  base::FilePath kernel_dev =
-      MakePartitionDev(root.base_device(), PartitionNum(root.number() - 1));
+  base::FilePath kernel_dev = MakePartitionDev(
+      root.base_device(), PartitionNum(root.number().Value() - 1));
 
   base::FilePath boot_dev =
       MakePartitionDev(root.base_device(), PartitionNum::EFI_SYSTEM);
@@ -314,7 +311,7 @@ bool UpdatePartitionTable(CgptManager& cgpt_manager,
   LOG(INFO) << "Updating Partition Table Attributes using CgptManager...";
 
   CgptErrorCode result =
-      cgpt_manager.SetHighestPriority(install_config.kernel.number());
+      cgpt_manager.SetHighestPriority(install_config.kernel.number().Value());
   if (result != CgptErrorCode::kSuccess) {
     LOG(ERROR) << "Unable to set highest priority for kernel: "
                << install_config.kernel.number();
@@ -324,7 +321,7 @@ bool UpdatePartitionTable(CgptManager& cgpt_manager,
   // If it's not an update, pre-mark the first boot as successful
   // since we can't fall back on the old install.
   bool new_kern_successful = !is_update;
-  result = cgpt_manager.SetSuccessful(install_config.kernel.number(),
+  result = cgpt_manager.SetSuccessful(install_config.kernel.number().Value(),
                                       new_kern_successful);
   if (result != CgptErrorCode::kSuccess) {
     LOG(ERROR) << "Unable to set successful to " << new_kern_successful
@@ -333,8 +330,8 @@ bool UpdatePartitionTable(CgptManager& cgpt_manager,
   }
 
   int numTries = 6;
-  result =
-      cgpt_manager.SetNumTriesLeft(install_config.kernel.number(), numTries);
+  result = cgpt_manager.SetNumTriesLeft(install_config.kernel.number().Value(),
+                                        numTries);
   if (result != CgptErrorCode::kSuccess) {
     LOG(ERROR) << "Unable to set NumTriesLeft to " << numTries
                << " for kernel: " << install_config.kernel.number();
@@ -354,7 +351,7 @@ bool RollbackPartitionTable(CgptManager& cgpt_manager,
   bool new_kern_successful = false;
   bool rollback_successful = true;
   CgptErrorCode result =
-      cgpt_manager.SetSuccessful(install_config.kernel.number(), false);
+      cgpt_manager.SetSuccessful(install_config.kernel.number().Value(), false);
   if (result != CgptErrorCode::kSuccess) {
     rollback_successful = false;
     LOG(ERROR) << "Unable to set successful to " << new_kern_successful
@@ -362,8 +359,8 @@ bool RollbackPartitionTable(CgptManager& cgpt_manager,
   }
 
   int numTries = 0;
-  result =
-      cgpt_manager.SetNumTriesLeft(install_config.kernel.number(), numTries);
+  result = cgpt_manager.SetNumTriesLeft(install_config.kernel.number().Value(),
+                                        numTries);
   if (result != CgptErrorCode::kSuccess) {
     rollback_successful = false;
     LOG(ERROR) << "Unable to set NumTriesLeft to " << numTries
@@ -371,7 +368,8 @@ bool RollbackPartitionTable(CgptManager& cgpt_manager,
   }
 
   int priority = 0;
-  result = cgpt_manager.SetPriority(install_config.kernel.number(), priority);
+  result = cgpt_manager.SetPriority(install_config.kernel.number().Value(),
+                                    priority);
   if (result != CgptErrorCode::kSuccess) {
     rollback_successful = false;
     LOG(ERROR) << "Unable to set Priority to " << priority

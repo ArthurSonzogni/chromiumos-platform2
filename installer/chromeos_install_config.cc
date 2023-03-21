@@ -73,7 +73,8 @@ string Partition::uuid() const {
 
   Guid guid;
 
-  if (cgpt.GetPartitionUniqueId(number(), &guid) != CgptErrorCode::kSuccess) {
+  if (cgpt.GetPartitionUniqueId(number().Value(), &guid) !=
+      CgptErrorCode::kSuccess) {
     LOG(ERROR) << "CgptManager failed to get guid for " << number();
     return "";
   }
