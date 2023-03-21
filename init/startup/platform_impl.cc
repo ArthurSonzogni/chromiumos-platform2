@@ -199,7 +199,7 @@ bool Platform::RunHiberman(const base::FilePath& output_file) {
 
 void Platform::AddClobberCrashReport(const std::vector<std::string> args) {
   brillo::ProcessImpl crash;
-  crash.AddArg("crash_reporter");
+  crash.AddArg("/sbin/crash_reporter");
   crash.AddArg("--early");
   crash.AddArg("--log_to_stderr");
   for (auto arg : args) {
