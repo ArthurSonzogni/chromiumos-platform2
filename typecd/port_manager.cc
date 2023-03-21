@@ -642,4 +642,22 @@ PowerSourceLocationMetric PortManager::GetPowerSourceLocationMetric(
   return ret;
 }
 
+void PortManager::SetPortsUsingDisplays(
+    const std::vector<uint32_t>& port_nums) {
+  for (auto port_num : port_nums) {
+    auto it = ports_.find(port_num);
+    if (it == ports_.end()) {
+      LOG(WARNING) << "Display connection for non-existent port " << port_num;
+      return;
+    }
+  }
+
+  for (auto it = ports_.begin(); it != ports_.end(); it++) {
+    auto port_num = it->first;
+    auto port = it->second.get();
+    port->SetIsDisplayConnected(std::find(port_nums.begin(), port_nums.end(),
+                                          port_num) != port_nums.end());
+  }
+}
+
 }  // namespace typecd

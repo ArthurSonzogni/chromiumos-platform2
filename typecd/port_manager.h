@@ -8,6 +8,7 @@
 #include <map>
 #include <memory>
 #include <utility>
+#include <vector>
 
 #include <gtest/gtest_prod.h>
 
@@ -53,6 +54,8 @@ class PortManager : public UdevMonitor::TypecObserver,
   }
 
   void SetSupportsUSB4(bool enable) { supports_usb4_ = enable; }
+
+  void SetPortsUsingDisplays(const std::vector<uint32_t>& port_nums);
 
  protected:
   bool GetPeripheralDataAccess() { return peripheral_data_access_; }

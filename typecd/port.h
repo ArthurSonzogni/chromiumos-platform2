@@ -180,6 +180,11 @@ class Port {
   // Cancel enqueued metrics task.
   void CancelMetricsTask();
 
+  // Configure whether the port is driving a display.
+  void SetIsDisplayConnected(bool is_display_connected) {
+    is_display_connected_ = is_display_connected;
+  }
+
  private:
   friend class MetricsTest;
   friend class PortTest;
@@ -300,6 +305,8 @@ class Port {
   Panel panel_;
   HorizontalPosition horizontal_position_;
   VerticalPosition vertical_position_;
+  // Indicates whether the port is driving a display
+  bool is_display_connected_;
 
   // Cancelable callback for metrics reporting.
   base::CancelableOnceClosure report_metrics_callback_;
