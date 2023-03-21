@@ -20,15 +20,12 @@ use log::warn;
 
 use crate::cookie::set_hibernate_cookie;
 use crate::cookie::HibernateCookieValue;
-use crate::device_mapper::DeviceMapper;
 use crate::files::does_hiberfile_exist;
-use crate::files::open_metrics_file;
-use crate::files::preallocate_log_file;
-use crate::files::preallocate_metrics_file;
 use crate::files::STATEFUL_DIR;
+use crate::hiberlog;
 use crate::hiberlog::redirect_log;
 use crate::hiberlog::replay_logs;
-use crate::hiberlog::HiberlogFile;
+use crate::hiberlog::reset_log;
 use crate::hiberlog::HiberlogOut;
 use crate::hiberutil::lock_process_memory;
 use crate::hiberutil::log_duration;
@@ -36,6 +33,7 @@ use crate::hiberutil::path_to_stateful_block;
 use crate::hiberutil::prealloc_mem;
 use crate::hiberutil::HibernateError;
 use crate::hiberutil::HibernateOptions;
+use crate::hiberutil::HibernateStage;
 use crate::lvm::is_lvm_system;
 use crate::metrics::log_hibernate_attempt;
 use crate::metrics::read_and_send_metrics;
@@ -87,16 +85,11 @@ impl SuspendConductor {
 
         let is_lvm = is_lvm_system()?;
         let files_exist = does_hiberfile_exist();
-        let should_zero = is_lvm && !files_exist;
 
-        // The resume log file needs to be preallocated now before the
-        // snapshot is taken, though it's not used here.
-        preallocate_log_file(HiberlogFile::Resume, should_zero)?;
-        preallocate_metrics_file(MetricsFile::Resume, should_zero)?;
-        preallocate_metrics_file(MetricsFile::Suspend, should_zero)?;
-        let metrics_file = open_metrics_file(MetricsFile::Suspend)?;
+        let metrics_file_path = MetricsFile::get_path(HibernateStage::Resume);
+        let metrics_file = MetricsFile::create(metrics_file_path)?;
         self.metrics.file = Some(metrics_file);
-        let mut log_file = preallocate_log_file(HiberlogFile::Suspend, should_zero)?;
+
         let action_string = format!(
             "Set up {}hibernate files on {}LVM system",
             if files_exist { "" } else { "new " },
@@ -118,12 +111,12 @@ impl SuspendConductor {
             return Err(HibernateError::UpdateEngineBusyError()).context("Update engine is active");
         }
 
-        // Don't allow the logfile to log as it creates a deadlock.
-        log_file.set_logging(false);
-
         // Stop logging to syslog, and divert instead to a file since the
         // logging daemon's about to be frozen.
+        let log_file_path = hiberlog::LogFile::get_path(HibernateStage::Suspend);
+        let log_file = hiberlog::LogFile::create(log_file_path)?;
         redirect_log(HiberlogOut::File(Box::new(log_file)));
+
         debug!("Syncing filesystems");
         // This is safe because sync() does not modify memory.
         unsafe {
@@ -133,6 +126,9 @@ impl SuspendConductor {
         prealloc_mem(&mut self.metrics).context("Failed to preallocate memory for hibernate")?;
 
         let result = self.suspend_system();
+
+        self.volume_manager.mount_hibermeta()?;
+
         // Now send any remaining logs and future logs to syslog.
         redirect_log(HiberlogOut::Syslog);
         // Replay logs first because they happened earlier.
@@ -142,6 +138,8 @@ impl SuspendConductor {
         );
         // Read the metrics files and send out the samples.
         read_and_send_metrics();
+
+        self.volume_manager.unmount_hibermeta()?;
 
         result
     }
@@ -153,6 +151,12 @@ impl SuspendConductor {
         let mut snap_dev = SnapshotDevice::new(SnapshotMode::Read)?;
         info!("Freezing userspace");
         let frozen_userspace = snap_dev.freeze_userspace()?;
+
+        self.metrics.flush()?;
+        self.metrics.file = None;
+        redirect_log(HiberlogOut::BufferInMemory);
+        self.volume_manager.unmount_hibermeta()?;
+
         self.snapshot_and_save(frozen_userspace)
     }
 
@@ -167,6 +171,12 @@ impl SuspendConductor {
         // This is where the suspend path and resume path fork. On success,
         // both halves of these conditions execute, just at different times.
         if snap_dev.atomic_snapshot()? {
+            // Briefly remount 'hibermeta' to write logs and metrics.
+            self.volume_manager.mount_hibermeta()?;
+            let log_file_path = hiberlog::LogFile::get_path(HibernateStage::Suspend);
+            let log_file = hiberlog::LogFile::open(log_file_path)?;
+            redirect_log(HiberlogOut::File(Box::new(log_file)));
+
             // Suspend path. Everything after this point is invisible to the
             // hibernated kernel.
             if let Err(e) = snap_dev.transfer_block_device() {
@@ -183,12 +193,9 @@ impl SuspendConductor {
                 info!("Powering off");
             }
 
-            // Flush out the hibernate log, and start keeping logs in memory.
-            // Any logs beyond here are lost upon powerdown.
-            if let Err(e) = self.metrics.flush() {
-                warn!("Failed to flush suspend metrics {:?}", e);
-            }
             redirect_log(HiberlogOut::BufferInMemory);
+            self.volume_manager.unmount_hibermeta()?;
+
             // Power the thing down.
             if !dry_run {
                 Self::power_off()?;
@@ -198,8 +205,9 @@ impl SuspendConductor {
             // This is the resume path. First, forcefully reset the logger, which is some
             // stale partial state that the suspend path ultimately flushed and closed.
             // Keep logs in memory for now.
-            // reset_log();
-            // redirect_log(HiberlogOut::BufferInMemory);
+            reset_log();
+            redirect_log(HiberlogOut::BufferInMemory);
+
             info!("Resumed from hibernate");
         }
 

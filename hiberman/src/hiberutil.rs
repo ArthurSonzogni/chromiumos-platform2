@@ -38,14 +38,17 @@ use crate::metrics::MetricsLogger;
 use crate::metrics::MetricsSample;
 use crate::mmapbuf::MmapBuffer;
 
+/// Define the hibernate stages.
+pub enum HibernateStage {
+    Suspend,
+    Resume,
+}
+
 #[derive(Debug, ThisError)]
 pub enum HibernateError {
     /// Cookie error
     #[error("Cookie error: {0}")]
     CookieError(String),
-    /// Failed to copy the FD for the polling context.
-    #[error("Failed to fallocate the file: {0}")]
-    FallocateError(libchromeos::sys::Error),
     /// Error getting the fiemap
     #[error("Error getting the fiemap: {0}")]
     FiemapError(libchromeos::sys::Error),

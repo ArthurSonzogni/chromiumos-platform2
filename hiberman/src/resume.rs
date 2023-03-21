@@ -23,16 +23,15 @@ use crate::cookie::set_hibernate_cookie;
 use crate::cookie::HibernateCookieValue;
 use crate::dbus::HibernateKey;
 use crate::device_mapper::DeviceMapper;
-use crate::files::open_log_file;
-use crate::files::open_metrics_file;
 use crate::files::remove_resume_in_progress_file;
+use crate::hiberlog;
 use crate::hiberlog::redirect_log;
 use crate::hiberlog::replay_logs;
-use crate::hiberlog::HiberlogFile;
 use crate::hiberlog::HiberlogOut;
 use crate::hiberutil::lock_process_memory;
 use crate::hiberutil::path_to_stateful_block;
 use crate::hiberutil::HibernateError;
+use crate::hiberutil::HibernateStage;
 use crate::hiberutil::ResumeOptions;
 use crate::lvm::activate_physical_lv;
 use crate::metrics::read_and_send_metrics;
@@ -82,12 +81,21 @@ impl ResumeConductor {
         let mut pending_merge = PendingStatefulMerge::new(&mut volume_manager)?;
         // Start keeping logs in memory, anticipating success.
         redirect_log(HiberlogOut::BufferInMemory);
+
         let result = self.resume_inner(&mut pending_merge);
+
+        // If we get here resuming from hibernate failed and we continue to
+        // run the bootstrap system.
+
         // Move pending and future logs to syslog.
         redirect_log(HiberlogOut::Syslog);
+
+        // Mount hibermeta for access to logs and metrics. Create it if it doesn't exist yet.
+        VolumeManager::new()?.setup_hibermeta_lv(true)?;
+
         // Now replay earlier logs. Don't wipe the logs out if this is just a dry
         // run.
-        // replay_logs(true, !self.options.dry_run);
+        replay_logs(true, !self.options.dry_run);
         // Remove the resume_in_progress token file if it exists.
         remove_resume_in_progress_file();
         // Since resume_inner() returned, we are no longer in a viable resume
@@ -96,6 +104,8 @@ impl ResumeConductor {
         drop(pending_merge);
         // Read the metrics files to send out samples.
         read_and_send_metrics();
+
+        VolumeManager::new()?.unmount_hibermeta()?;
 
         result
     }
@@ -121,7 +131,10 @@ impl ResumeConductor {
             return Err(e);
         }
 
-        let metrics_file = open_metrics_file(MetricsFile::Resume)?;
+        VolumeManager::new()?.setup_hibermeta_lv(false)?;
+
+        let metrics_file_path = MetricsFile::get_path(HibernateStage::Resume);
+        let metrics_file = MetricsFile::create(metrics_file_path)?;
         self.metrics_logger.file = Some(metrics_file);
 
         // Set up the snapshot device for resuming
@@ -185,11 +198,11 @@ impl ResumeConductor {
 
     /// Inner helper function to read the resume image and launch it.
     fn resume_system(&mut self, hiber_file: &mut File) -> Result<()> {
-        let mut log_file = open_log_file(HiberlogFile::Resume)?;
-        // Don't allow the logfile to log as it creates a deadlock.
-        log_file.set_logging(false);
+        let log_file_path = hiberlog::LogFile::get_path(HibernateStage::Resume);
+        let log_file = hiberlog::LogFile::create(log_file_path)?;
         // Start logging to the resume logger.
         redirect_log(HiberlogOut::File(Box::new(log_file)));
+
         let mut snap_dev = SnapshotDevice::new(SnapshotMode::Write)?;
 
         let mut buf = [0; 4096];
@@ -219,14 +232,21 @@ impl ResumeConductor {
 
         info!("Freezing userspace");
         let frozen_userspace = snap_dev.freeze_userspace()?;
-        if let Err(e) = self.metrics_logger.flush() {
-            warn!("Failed to flush resume metrics {:?}", e);
-        }
+
+        // Close the metrics file before unmounting 'hibermeta'.
+        self.metrics_logger.flush()?;
+        self.metrics_logger.file = None;
+
+        // Keep logs in memory for now.
+        redirect_log(HiberlogOut::BufferInMemory);
+
+        // TODO: creating several instances of the volume manager is ugly.
+        // Should it be a ref-counted singleton?
+        VolumeManager::new()?.unmount_hibermeta()?;
+
         if self.options.dry_run {
             info!("Not launching resume image: in a dry run.");
-            // Keep logs in memory, like launch_resume_image() does.
-            // This also closes out the resume log.
-            redirect_log(HiberlogOut::BufferInMemory);
+
             Ok(())
         } else {
             self.launch_resume_image(frozen_userspace)
@@ -275,8 +295,6 @@ impl ResumeConductor {
         // portion of suspend_system() on success. Flush and stop the logging
         // before control is lost.
         info!("Launching resume image");
-        // Keep logs in memory for now, which also closes out the resume log file.
-        redirect_log(HiberlogOut::BufferInMemory);
         let snap_dev = frozen_userspace.as_mut();
         let result = snap_dev.atomic_restore();
         error!("Resume failed");

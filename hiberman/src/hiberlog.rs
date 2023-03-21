@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 //! Implement consistent logging across the hibernate and resume transition.
+use std::fs;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::BufRead;
@@ -10,10 +11,15 @@ use std::io::BufReader;
 use std::io::Cursor;
 use std::io::Read;
 use std::io::Write;
+use std::mem;
+use std::os::unix::fs::OpenOptionsExt;
+use std::path::Path;
+use std::path::PathBuf;
 use std::str;
 use std::sync::MutexGuard;
 use std::time::Instant;
 
+use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
 use log::debug;
@@ -29,16 +35,19 @@ use syslog::BasicLogger;
 use syslog::Facility;
 use syslog::Formatter3164;
 
-use crate::diskfile::BouncedDiskFile;
-use crate::files::open_log_file;
+use crate::files::HIBERMETA_DIR;
+use crate::hiberutil::HibernateStage;
 
 /// Define the path to kmsg, used to send log lines into the kernel buffer in
 /// case a crash occurs.
 const KMSG_PATH: &str = "/dev/kmsg";
 /// Define the prefix to go on log messages.
 const LOG_PREFIX: &str = "hiberman";
-/// Define the default flush threshold. This must be a power of two.
-const FLUSH_THRESHOLD: usize = 4096;
+
+/// Define the name of the resume log file.
+const RESUME_LOG_FILE_NAME: &str = "resume_log";
+/// Define the name of the suspend log file.
+const SUSPEND_LOG_FILE_NAME: &str = "suspend_log";
 
 static STATE: OnceCell<Mutex<Hiberlog>> = OnceCell::new();
 
@@ -89,8 +98,7 @@ impl Log for HiberLogger {
     }
 
     fn flush(&self) {
-        let mut state = lock!();
-        state.flush_full_pages()
+        // nothing to do with O_SYNC files.
     }
 }
 
@@ -108,10 +116,8 @@ pub enum HiberlogOut {
 struct Hiberlog {
     kmsg: File,
     start: Instant,
-    partial: Option<Vec<u8>>,
     pending: Vec<Vec<u8>>,
     pending_size: usize,
-    flush_threshold: usize,
     to_kmsg: bool,
     out: HiberlogOut,
     pid: u32,
@@ -131,10 +137,8 @@ impl Hiberlog {
         Ok(Hiberlog {
             kmsg,
             start: Instant::now(),
-            partial: None,
             pending: vec![],
             pending_size: 0,
-            flush_threshold: FLUSH_THRESHOLD,
             to_kmsg: false,
             out: HiberlogOut::Syslog,
             pid: std::process::id(),
@@ -182,107 +186,34 @@ impl Hiberlog {
                 let _ = self.kmsg.write_all(&buf[..*len]);
             }
 
-            self.pending.push(buf[..*len].to_vec());
-            self.pending_size += *len;
-            self.flush_full_pages();
-        }
-    }
-
-    /// Helper function to flush one page's worth of buffered log lines to a
-    /// file destination.
-    fn flush_one_page(&mut self) {
-        // Do nothing if buffering messages in memory.
-        if matches!(self.out, HiberlogOut::BufferInMemory) {
-            return;
-        }
-
-        // Start with the partial string from last time, or an empty buffer.
-        let mut buf = Vec::<u8>::new();
-        if let Some(v) = &self.partial {
-            buf.extend(v);
-        }
-
-        self.partial = None;
-        let mut partial = None;
-
-        // Add as many whole lines into the buffer as will fit.
-        let mut length = buf.len();
-        let mut i = 0;
-        while (i < self.pending.len()) && (length + self.pending[i].len() <= self.flush_threshold) {
-            buf.extend(&self.pending[i]);
-            length += self.pending[i].len();
-            i += 1;
-        }
-
-        // Add a partial line or pad out the space if needed.
-        if length < self.flush_threshold {
-            let remainder = self.flush_threshold - length;
-            if i < self.pending.len() {
-                // Add a part of this line to the buffer to fill it out.
-                buf.extend(&self.pending[i][..remainder]);
-                length += remainder;
-
-                // Save the rest of this line as the next partial, and advance over it.
-                partial = Some(self.pending[i][remainder..].to_vec());
-                i += 1;
+            if let HiberlogOut::File(f) = &mut self.out {
+                let _ = f.write_all(&buf[..*len]);
             } else {
-                // Fill the buffer with zeroes as a signal to stop reading.
-                buf.extend(vec![0x0u8; remainder]);
+                self.pending.push(buf[..*len].to_vec());
+                self.pending_size += *len;
             }
         }
+    }
 
+    /// Write any ending lines to the file.
+    fn flush_to_file(&mut self) {
         if let HiberlogOut::File(f) = &mut self.out {
-            let _ = f.write_all(&buf[..]);
+            flush_to_backend(&self.pending, |s| {
+                f.write_all(s.as_bytes()).unwrap();
+                f.write_all(&[b'\n']).unwrap();
+            });
+
+            self.reset();
+        } else {
+            panic!("current log backend is not a file");
         }
-
-        self.pending_size -= length;
-        self.pending = self.pending[i..].to_vec();
-        self.partial = partial;
-    }
-
-    /// Flush all complete pages of log lines.
-    pub fn flush_full_pages(&mut self) {
-        // Do nothing if buffering messages in memory.
-        if matches!(self.out, HiberlogOut::BufferInMemory) {
-            return;
-        }
-
-        while self.pending_size >= self.flush_threshold {
-            self.flush_one_page();
-        }
-    }
-
-    /// Flush and finalize the log file. This is used to terminate the logs
-    /// written to a file, to make sure that they are all written out, and that
-    /// when retrieved later the end of the log is known.
-    pub fn flush(&mut self) {
-        // Do a regular full-page flush, which will be perfectly page aligned.
-        self.flush_full_pages();
-        // Flush one more page, which serves two purposes:
-        // 1. Flushes out a partial page.
-        // 2. Ensures that there's padding at the end, even if the data
-        //    perfectly lines up with a page. This is used on read to know
-        //    when to stop.
-        self.flush_one_page();
-        self.is_empty = true;
     }
 
     /// Push any pending lines to the syslog.
-    pub fn flush_to_syslog(&mut self) {
-        // Ignore the partial line, just replay pending lines.
-        for line_vec in &self.pending {
-            let mut len = line_vec.len();
-            if len == 0 {
-                continue;
-            }
-
-            len -= 1;
-            let s = match str::from_utf8(&line_vec[0..len]) {
-                Ok(v) => v,
-                Err(_) => continue,
-            };
+    fn flush_to_syslog(&mut self) {
+        flush_to_backend(&self.pending, |s| {
             replay_line(&self.syslogger, "M", s.to_string());
-        }
+        });
 
         self.reset();
     }
@@ -295,8 +226,80 @@ impl Hiberlog {
     pub fn reset(&mut self) {
         self.pending_size = 0;
         self.pending = vec![];
-        self.partial = None;
         self.is_empty = true;
+    }
+}
+
+fn flush_to_backend<F>(line_data: &Vec<Vec<u8>>, mut write_func: F)
+where
+    F: FnMut(&str),
+{
+    for line_vec in line_data {
+        let mut len = line_vec.len();
+        if len == 0 {
+            continue;
+        }
+
+        len -= 1;
+        let s = match str::from_utf8(&line_vec[0..len]) {
+            Ok(v) => v,
+            Err(_) => continue,
+        };
+
+        write_func(s);
+    }
+}
+
+/// Struct with associated functions for creating and opening hibernate
+/// log files.
+pub struct LogFile {}
+
+impl LogFile {
+    /// Create the log file with the given path, truncate the file if it already
+    /// exists. The file is opened with O_SYNC to make sure data from writes
+    /// isn't buffered by the kernel but submitted to storage immediately.
+    pub fn create<P: AsRef<Path>>(path: P) -> Result<File> {
+        let opts = OpenOptions::new()
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .custom_flags(libc::O_SYNC)
+            .clone();
+
+        Self::open_file(path, &opts)
+    }
+
+    /// Open an existing log file at the given path. The file is opened with
+    /// O_SYNC to make sure data from writes isn't buffered by the kernel but
+    /// submitted to storage immediately.
+    pub fn open<P: AsRef<Path>>(path: P) -> Result<File> {
+        Self::open_file(
+            path,
+            OpenOptions::new()
+                .read(true)
+                .write(true)
+                .custom_flags(libc::O_SYNC),
+        )
+    }
+
+    /// Get the path of the log file for a given hibernate stage.
+    pub fn get_path(stage: HibernateStage) -> PathBuf {
+        let name = match stage {
+            HibernateStage::Suspend => SUSPEND_LOG_FILE_NAME,
+            HibernateStage::Resume => RESUME_LOG_FILE_NAME,
+        };
+
+        Path::new(HIBERMETA_DIR).join(name)
+    }
+
+    fn open_file<P: AsRef<Path>>(path: P, open_options: &OpenOptions) -> Result<File> {
+        match open_options.open(&path) {
+            Ok(f) => Ok(f),
+            Err(e) => Err(anyhow!(e).context(format!(
+                "Failed to open log file '{}'",
+                path.as_ref().display()
+            ))),
+        }
     }
 }
 
@@ -309,21 +312,15 @@ pub fn redirect_log(out: HiberlogOut) {
     let mut state = lock!();
     state.to_kmsg = false;
 
-    // Potentially close out the previous log with a flush.
-    match state.out {
-        HiberlogOut::BufferInMemory => {}
-        HiberlogOut::Syslog => state.flush_to_syslog(),
-        HiberlogOut::File(_) => {
-            if !state.is_empty {
-                state.flush()
-            }
-        }
-    }
+    let prev_out_was_memory = if matches!(state.out, HiberlogOut::BufferInMemory) {
+        true
+    } else {
+        false
+    };
 
-    match out {
-        HiberlogOut::BufferInMemory => {}
-        // If going back to syslog, dump any pending state (like from in memory
-        // logs) into syslog.
+    state.out = out;
+
+    match state.out {
         HiberlogOut::Syslog => state.flush_to_syslog(),
         HiberlogOut::File(_) => {
             // Any time we're redirecting to a file, also send to kmsg as a
@@ -332,10 +329,13 @@ pub fn redirect_log(out: HiberlogOut) {
             // success because when we're logging to a file we're also
             // barrelling towards a kexec or shutdown.
             state.to_kmsg = true;
-        }
-    }
 
-    state.out = out;
+            if prev_out_was_memory {
+                state.flush_to_file();
+            }
+        }
+        _ => {}
+    }
 }
 
 /// Discard any buffered but unsent logging data.
@@ -344,72 +344,55 @@ pub fn reset_log() {
     state.reset();
 }
 
-/// Write a newline to the beginning of the given log file so that future
-/// attempts to replay that log will see it as empty. This doesn't securely
-/// shred the log data.
-pub fn clear_log_file(file: &mut BouncedDiskFile) -> Result<()> {
-    let mut buf = [0u8; FLUSH_THRESHOLD];
-    buf[0] = b'\n';
-    file.rewind()?;
-    file.write_all(&buf).context("Failed to clear log file")?;
-    Ok(())
-}
-
-/// Define the known log file types.
-pub enum HiberlogFile {
-    Suspend,
-    Resume,
-}
-
 /// Replay the suspend (and maybe resume) logs to the syslogger.
 pub fn replay_logs(push_resume_logs: bool, clear: bool) {
     // Push the hibernate logs that were taken after the snapshot (and
     // therefore after syslog became frozen) back into the syslog now.
     // These should be there on both success and failure cases.
-    replay_log(HiberlogFile::Suspend, clear);
+    replay_log(HibernateStage::Suspend, clear);
 
     // If successfully resumed from hibernate, or in the bootstrapping kernel
     // after a failed resume attempt, also gather the resume logs
     // saved by the bootstrapping kernel.
     if push_resume_logs {
-        replay_log(HiberlogFile::Resume, clear);
+        replay_log(HibernateStage::Resume, clear);
     }
 }
 
 /// Helper function to replay the suspend or resume log to the syslogger, and
 /// potentially zero out the log as well.
-fn replay_log(log_file: HiberlogFile, clear: bool) {
-    let (name, prefix) = match log_file {
-        HiberlogFile::Suspend => ("suspend log", "S"),
-        HiberlogFile::Resume => ("resume log", "R"),
+fn replay_log(stage: HibernateStage, clear: bool) {
+    let (name, prefix) = match stage {
+        HibernateStage::Suspend => ("suspend log", "S"),
+        HibernateStage::Resume => ("resume log", "R"),
     };
 
-    let mut opened_log = match open_log_file(log_file) {
+    let path = LogFile::get_path(stage);
+    if !path.exists() {
+        return;
+    }
+
+    let mut opened_log = match LogFile::open(&path) {
         Ok(f) => f,
         Err(e) => {
-            warn!("Failed to open {}: {}", name, e);
+            warn!("{}", e);
             return;
         }
     };
 
     replay_log_file(&mut opened_log, prefix, name);
+
     if clear {
-        if let Err(e) = clear_log_file(&mut opened_log) {
-            warn!("Failed to clear {}: {}", name, e);
+        mem::drop(opened_log);
+        if let Err(e) = fs::remove_file(&path) {
+            warn!("Failed to remove {}: {}", path.display(), e);
         }
     }
 }
 
 /// Replay a generic log file to the syslogger.
 fn replay_log_file(file: &mut dyn Read, prefix: &str, name: &str) {
-    // Read the file until the first null byte is found, which signifies the end
-    // of the log.
-    let mut reader = BufReader::new(file);
-    let mut buf = Vec::<u8>::new();
-    if let Err(e) = reader.read_until(0, &mut buf) {
-        warn!("Failed to replay log file: {}", e);
-        return;
-    }
+    let reader = BufReader::new(file);
 
     let syslogger = create_syslogger();
     syslogger.log(
@@ -418,16 +401,13 @@ fn replay_log_file(file: &mut dyn Read, prefix: &str, name: &str) {
             .level(Level::Info)
             .build(),
     );
-    // Now split that big buffer into lines and feed it into the log.
-    let len_without_delim = buf.len() - 1;
-    let cursor = Cursor::new(&buf[..len_without_delim]);
-    for line in cursor.lines() {
-        let line = match line {
-            Ok(l) => l,
-            Err(_) => continue,
-        };
 
-        replay_line(&syslogger, prefix, line);
+    for line in reader.lines() {
+        if let Ok(line) = line {
+            replay_line(&syslogger, prefix, line);
+        } else {
+            warn!("Invalid line in log file!");
+        }
     }
 
     syslogger.log(

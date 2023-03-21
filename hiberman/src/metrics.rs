@@ -4,28 +4,40 @@
 
 //! Implements support for collecting and sending hibernate metrics.
 
+use std::fs;
+use std::fs::File;
+use std::fs::OpenOptions;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Cursor;
 use std::io::Write;
+use std::mem;
+use std::os::unix::fs::OpenOptionsExt;
+use std::path::Path;
+use std::path::PathBuf;
 use std::process::Command;
 use std::time::Duration;
 
+use anyhow::anyhow;
 use anyhow::Context;
 use anyhow::Result;
 use log::warn;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::diskfile::BouncedDiskFile;
 use crate::files::increment_file_counter;
-use crate::files::metrics_file_exists;
 use crate::files::open_attempts_file;
 use crate::files::open_hiber_fails_file;
-use crate::files::open_metrics_file;
 use crate::files::open_resume_failures_file;
+use crate::files::HIBERMETA_DIR;
 use crate::hiberutil::HibernateError;
+use crate::hiberutil::HibernateStage;
 use crate::mmapbuf::MmapBuffer;
+
+/// Define the resume metrics file name.
+const RESUME_METRICS_FILE_NAME: &str = "resume_metrics";
+/// Define the suspend metrics file name.
+const SUSPEND_METRICS_FILE_NAME: &str = "suspend_metrics";
 
 /// Bytes per MB float value.
 pub const BYTES_PER_MB_F64: f64 = 1048576.0;
@@ -46,15 +58,9 @@ pub struct MetricsSample<'a> {
     pub buckets: usize,
 }
 
-/// Define the known metrics file types.
-pub enum MetricsFile {
-    Suspend,
-    Resume,
-}
-
 /// Define the hibernate metrics logger.
 pub struct MetricsLogger {
-    pub file: Option<BouncedDiskFile>,
+    pub file: Option<File>,
     buf: MmapBuffer,
     offset: usize,
 }
@@ -174,6 +180,60 @@ impl MetricsLogger {
     }
 }
 
+/// Struct with associated functions for creating and opening hibernate
+/// metrics files.
+pub struct MetricsFile {}
+
+impl MetricsFile {
+    /// Create the metrics file with the given path, truncate the file if it
+    /// already exists. The file is opened with O_SYNC to make sure data from
+    /// writes isn't buffered by the kernel but submitted to storage
+    /// immediately.
+    pub fn create<P: AsRef<Path>>(path: P) -> Result<File> {
+        let opts = OpenOptions::new()
+            .create(true)
+            .truncate(true)
+            .write(true)
+            .custom_flags(libc::O_SYNC)
+            .clone();
+
+        Self::open_file(path, &opts)
+    }
+
+    /// Open an existing metrics file at the given path. The file is opened with
+    /// O_SYNC to make sure data from writes isn't buffered by the kernel but
+    /// submitted to storage immediately.
+    pub fn open<P: AsRef<Path>>(path: P) -> Result<File> {
+        Self::open_file(
+            path,
+            OpenOptions::new()
+                .read(true)
+                .write(true)
+                .custom_flags(libc::O_SYNC),
+        )
+    }
+
+    /// Get the path of the metrics file for a given hibernate stage.
+    pub fn get_path(stage: HibernateStage) -> PathBuf {
+        let name = match stage {
+            HibernateStage::Suspend => SUSPEND_METRICS_FILE_NAME,
+            HibernateStage::Resume => RESUME_METRICS_FILE_NAME,
+        };
+
+        Path::new(HIBERMETA_DIR).join(name)
+    }
+
+    fn open_file<P: AsRef<Path>>(path: P, open_options: &OpenOptions) -> Result<File> {
+        match open_options.open(&path) {
+            Ok(f) => Ok(f),
+            Err(e) => Err(anyhow!(e).context(format!(
+                "Failed to open metrics file '{}'",
+                path.as_ref().display()
+            ))),
+        }
+    }
+}
+
 /// Send metrics_client sample.
 fn metrics_send_sample(sample: &MetricsSample) -> Result<()> {
     let status = Command::new("metrics_client")
@@ -217,14 +277,22 @@ pub fn log_resume_failure() -> Result<()> {
     increment_file_counter(&mut f)
 }
 
-fn read_and_send_metrics_file(name: MetricsFile) -> Result<()> {
-    if !metrics_file_exists(&name) {
+fn read_and_send_metrics_file(stage: HibernateStage) -> Result<()> {
+    let metrics_file_path = MetricsFile::get_path(stage);
+
+    if !metrics_file_path.exists() {
         return Ok(());
     }
-    let mut metrics_file = open_metrics_file(name)?;
+
+    let mut metrics_file = MetricsFile::open(&metrics_file_path)?;
     let mut reader = BufReader::new(&mut metrics_file);
     let mut buf = Vec::<u8>::new();
     reader.read_until(0, &mut buf)?;
+
+    if buf.is_empty() {
+        warn!("Metrics file '{}' is empty", metrics_file_path.display());
+        return Ok(());
+    }
 
     // Now split that big buffer into lines.
     let len_without_delim = buf.len() - 1;
@@ -249,19 +317,20 @@ fn read_and_send_metrics_file(name: MetricsFile) -> Result<()> {
         let _ = metrics_send_sample(&sample);
     }
 
-    // Overwrite the metrics file with zeros to avoid stale metrics in next iteration.
-    metrics_file.rewind()?;
-    let zero = [0u8; METRICS_BUFFER_SIZE];
-    metrics_file
-        .write_all(&zero)
-        .context("Failed to zero-out metrics file")
+    // All metrics have been processed, delete the metrics file.
+    mem::drop(metrics_file);
+    if let Err(e) = fs::remove_file(&metrics_file_path) {
+        warn!("Failed to remove {}: {}", metrics_file_path.display(), e);
+    }
+
+    Ok(())
 }
 
 pub fn read_and_send_metrics() {
-    if let Err(e) = read_and_send_metrics_file(MetricsFile::Suspend) {
+    if let Err(e) = read_and_send_metrics_file(HibernateStage::Suspend) {
         warn!("Failed to read suspend metrics, {}", e);
     }
-    if let Err(e) = read_and_send_metrics_file(MetricsFile::Resume) {
+    if let Err(e) = read_and_send_metrics_file(HibernateStage::Resume) {
         warn!("Failed to read resume metrics, {}", e);
     }
 }

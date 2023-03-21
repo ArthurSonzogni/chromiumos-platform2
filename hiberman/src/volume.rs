@@ -44,6 +44,7 @@ use crate::hiberutil::get_total_memory_pages;
 use crate::hiberutil::log_io_duration;
 use crate::hiberutil::mount_filesystem;
 use crate::hiberutil::stateful_block_partition_one;
+use crate::hiberutil::unmount_filesystem;
 use crate::hiberutil::HibernateError;
 use crate::lvm::activate_lv;
 use crate::lvm::create_thin_volume;
@@ -67,6 +68,9 @@ pub const THINPOOL_NAME: &str = "thinpool";
 const DMSETUP_PATH: &str = "/sbin/dmsetup";
 /// Define the path to the losetup utility.
 const LOSETUP_PATH: &str = "/sbin/losetup";
+const MKFS_EXT2_PATH: &str = "/sbin/mkfs.ext2";
+/// The path of the e2fsck utility.
+const E2FSCK_PATH: &str = "/sbin/e2fsck";
 
 const SIZE_1K: u64 = 1024;
 const SIZE_4K: u64 = 4 * SIZE_1K;
@@ -187,21 +191,31 @@ impl VolumeManager {
         if lv_exists(&self.vg_name, HIBERMETA_VOLUME_NAME)? {
             info!("Activating hibermeta");
             activate_lv(&self.vg_name, HIBERMETA_VOLUME_NAME)?;
+
+            let bdev_path = lv_path(&self.vg_name, HIBERMETA_VOLUME_NAME);
+            let bdev_path = bdev_path.to_string_lossy();
+            if let Err(e) = checked_command(Command::new(E2FSCK_PATH).args(["-p", &bdev_path])) {
+                // fsck failed => re-format 'hibermeta'
+                warn!(
+                    "File system check for 'hibermeta' volume {} failed: {}",
+                    bdev_path, e
+                );
+
+                // TODO: add metric
+
+                info!("Formatting 'hibermeta' volume {}", bdev_path);
+                // Use -K to tell mkfs not to run a discard on the block device, which
+                // would destroy all the nice thickening done at creation time.
+                checked_command_output(Command::new(MKFS_EXT2_PATH).args(["-K", &bdev_path]))
+                    .context("Cannot format 'hibermeta' volume")?;
+            }
         } else if create {
             self.create_hibermeta_lv()?;
         } else {
             return Err(HibernateError::HibernateVolumeError()).context("Missing hibernate volume");
         }
 
-        // Mount the LV to the hibernate directory unless it's already mounted.
-        if get_device_mounted_at_dir(HIBERMETA_DIR).is_err() {
-            let hibermeta_dir = Path::new(HIBERMETA_DIR);
-            let path = lv_path(&self.vg_name, HIBERMETA_VOLUME_NAME);
-            info!("Mounting hibermeta");
-            mount_filesystem(path.as_path(), hibermeta_dir, "ext4", 0, "")?;
-        }
-
-        Ok(())
+        self.mount_hibermeta()
     }
 
     pub fn setup_hiberimage(
@@ -246,6 +260,23 @@ impl VolumeManager {
         Ok(())
     }
 
+    /// Mount the hibermeta LV if it isn't already mounted
+    pub fn mount_hibermeta(&mut self) -> Result<()> {
+        if get_device_mounted_at_dir(HIBERMETA_DIR).is_ok() {
+            debug!("{HIBERMETA_DIR} is already mounted");
+            return Ok(());
+        }
+
+        let hibermeta_dir = Path::new(HIBERMETA_DIR);
+        let path = lv_path(&self.vg_name, HIBERMETA_VOLUME_NAME);
+        mount_filesystem(path.as_path(), hibermeta_dir, "ext2", 0, "")
+    }
+
+    /// Unmount the hibermeta LV.
+    pub fn unmount_hibermeta(&mut self) -> Result<()> {
+        unmount_filesystem(Path::new(HIBERMETA_DIR))
+    }
+
     /// Create the hibermeta volume.
     fn create_hibermeta_lv(&mut self) -> Result<()> {
         info!("Creating hibermeta logical volume");
@@ -257,7 +288,7 @@ impl VolumeManager {
         thicken_thin_volume(&path, size).context("Failed to thicken volume")?;
         // Use -K to tell mkfs not to run a discard on the block device, which
         // would destroy all the nice thickening done above.
-        checked_command_output(Command::new("/sbin/mkfs.ext4").arg("-K").arg(path))
+        checked_command_output(Command::new(MKFS_EXT2_PATH).arg("-K").arg(path))
             .context("Cannot format hibermeta volume")?;
         log_io_duration("Created hibermeta logical volume", size, start.elapsed());
         Ok(())
