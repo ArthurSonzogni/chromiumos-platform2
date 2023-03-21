@@ -64,4 +64,12 @@ std::unique_ptr<ec::FpGetNonceCommand> EcCommandFactory::FpGetNonceCommand() {
   return std::make_unique<ec::FpGetNonceCommand>();
 }
 
+std::unique_ptr<ec::FpSetNonceContextCommand>
+EcCommandFactory::FpSetNonceContextCommand(
+    const brillo::Blob& nonce,
+    const brillo::Blob& encrypted_user_id,
+    const brillo::Blob& iv) {
+  return FpSetNonceContextCommand::Create(nonce, encrypted_user_id, iv);
+}
+
 }  // namespace ec

@@ -61,6 +61,12 @@ class MockEcCommandFactory : public ec::EcCommandFactoryInterface {
               FpGetNonceCommand,
               (),
               (override));
+  MOCK_METHOD(std::unique_ptr<ec::FpSetNonceContextCommand>,
+              FpSetNonceContextCommand,
+              (const brillo::Blob& nonce,
+               const brillo::Blob& encrypted_user_id,
+               const brillo::Blob& iv),
+              (override));
 };
 
 }  // namespace ec
