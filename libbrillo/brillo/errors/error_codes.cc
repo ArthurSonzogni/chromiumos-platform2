@@ -4,6 +4,8 @@
 
 #include <brillo/errors/error_codes.h>
 
+#include <errno.h>
+
 #include <base/posix/safe_strerror.h>
 
 namespace brillo {
