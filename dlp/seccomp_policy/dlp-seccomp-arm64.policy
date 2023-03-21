@@ -3,6 +3,8 @@
 # found in the LICENSE file.
 
 brk: 1
+clock_getres: 1
+clock_gettime: 1
 clone: 1
 close: 1
 connect: 1
@@ -26,6 +28,7 @@ getresgid: 1
 getresuid: 1
 getsockname: 1
 gettid: 1
+gettimeofday: 1
 getuid: 1
 ioctl: 1
 madvise: 1
@@ -48,6 +51,7 @@ rseq: 1
 rt_sigaction: 1
 rt_sigprocmask: 1
 rt_sigreturn: 1
+sched_getaffinity: 1
 sched_getattr: 1
 sched_setattr: 1
 sched_yield: 1
