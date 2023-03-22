@@ -208,128 +208,6 @@ CgptErrorCode CgptManager::Finalize() {
   return CgptErrorCode::kSuccess;
 }
 
-CgptErrorCode CgptManager::ClearAll() {
-  if (!is_initialized_)
-    return CgptErrorCode::kNotInitialized;
-
-  CgptCreateParams params;
-  memset(&params, 0, sizeof(params));
-
-  params.drive_name = const_cast<char*>(device_name_.value().c_str());
-  params.drive_size = device_size_;
-  params.zap = 0;
-
-  int retval = CgptCreate(&params);
-  if (retval != CGPT_OK)
-    return CgptErrorCode::kUnknownError;
-
-  return CgptErrorCode::kSuccess;
-}
-
-CgptErrorCode CgptManager::AddPartition(const string& label,
-                                        const Guid& partition_type_guid,
-                                        const Guid& unique_id,
-                                        uint64_t beginning_offset,
-                                        uint64_t num_sectors) {
-  if (!is_initialized_)
-    return CgptErrorCode::kNotInitialized;
-
-  CgptAddParams params;
-  memset(&params, 0, sizeof(params));
-
-  params.drive_name = const_cast<char*>(device_name_.value().c_str());
-  params.drive_size = device_size_;
-  params.label = const_cast<char*>(label.c_str());
-
-  params.type_guid = partition_type_guid;
-  params.set_type = 1;
-
-  params.begin = beginning_offset;
-  params.set_begin = 1;
-
-  params.size = num_sectors;
-  params.set_size = 1;
-
-  if (!GuidIsZero(&unique_id)) {
-    params.unique_guid = unique_id;
-    params.set_unique = 1;
-  }
-
-  int retval = CgptAdd(&params);
-  if (retval != CGPT_OK)
-    return CgptErrorCode::kUnknownError;
-
-  return CgptErrorCode::kSuccess;
-}
-
-CgptErrorCode CgptManager::GetNumNonEmptyPartitions(
-    uint8_t* num_partitions) const {
-  if (!is_initialized_)
-    return CgptErrorCode::kNotInitialized;
-
-  if (!num_partitions)
-    return CgptErrorCode::kInvalidArgument;
-
-  CgptShowParams params;
-  memset(&params, 0, sizeof(params));
-
-  params.drive_name = const_cast<char*>(device_name_.value().c_str());
-  params.drive_size = device_size_;
-  int retval = CgptGetNumNonEmptyPartitions(&params);
-
-  if (retval != CGPT_OK)
-    return CgptErrorCode::kUnknownError;
-
-  *num_partitions = params.num_partitions;
-  return CgptErrorCode::kSuccess;
-}
-
-CgptErrorCode CgptManager::SetPmbr(PartitionNum boot_partition_number,
-                                   const base::FilePath& boot_file_name,
-                                   bool should_create_legacy_partition) {
-  if (!is_initialized_)
-    return CgptErrorCode::kNotInitialized;
-
-  CgptBootParams params;
-  memset(&params, 0, sizeof(params));
-
-  params.drive_name = const_cast<char*>(device_name_.value().c_str());
-  params.drive_size = device_size_;
-  if (!boot_file_name.empty())
-    params.bootfile = const_cast<char*>(boot_file_name.value().c_str());
-
-  params.partition = boot_partition_number.Value();
-  params.create_pmbr = should_create_legacy_partition;
-
-  int retval = CgptBoot(&params);
-  if (retval != CGPT_OK)
-    return CgptErrorCode::kUnknownError;
-
-  return CgptErrorCode::kSuccess;
-}
-
-CgptErrorCode CgptManager::GetPmbrBootPartitionNumber(
-    PartitionNum* boot_partition) const {
-  if (!is_initialized_)
-    return CgptErrorCode::kNotInitialized;
-
-  if (!boot_partition)
-    return CgptErrorCode::kInvalidArgument;
-
-  CgptBootParams params;
-  memset(&params, 0, sizeof(params));
-
-  params.drive_name = const_cast<char*>(device_name_.value().c_str());
-  params.drive_size = device_size_;
-
-  int retval = CgptGetBootPartitionNumber(&params);
-  if (retval != CGPT_OK)
-    return CgptErrorCode::kUnknownError;
-
-  *boot_partition = PartitionNum(params.partition);
-  return CgptErrorCode::kSuccess;
-}
-
 CgptErrorCode CgptManager::SetSuccessful(PartitionNum partition_number,
                                          bool is_successful) {
   if (!is_initialized_)
@@ -349,29 +227,6 @@ CgptErrorCode CgptManager::SetSuccessful(PartitionNum partition_number,
   if (retval != CGPT_OK)
     return CgptErrorCode::kUnknownError;
 
-  return CgptErrorCode::kSuccess;
-}
-
-CgptErrorCode CgptManager::GetSuccessful(PartitionNum partition_number,
-                                         bool* is_successful) const {
-  if (!is_initialized_)
-    return CgptErrorCode::kNotInitialized;
-
-  if (!is_successful)
-    return CgptErrorCode::kInvalidArgument;
-
-  CgptAddParams params;
-  memset(&params, 0, sizeof(params));
-
-  params.drive_name = const_cast<char*>(device_name_.value().c_str());
-  params.drive_size = device_size_;
-  params.partition = partition_number.Value();
-
-  int retval = CgptGetPartitionDetails(&params);
-  if (retval != CGPT_OK)
-    return CgptErrorCode::kUnknownError;
-
-  *is_successful = params.successful;
   return CgptErrorCode::kSuccess;
 }
 
@@ -397,29 +252,6 @@ CgptErrorCode CgptManager::SetNumTriesLeft(PartitionNum partition_number,
   return CgptErrorCode::kSuccess;
 }
 
-CgptErrorCode CgptManager::GetNumTriesLeft(PartitionNum partition_number,
-                                           int* numTries) const {
-  if (!is_initialized_)
-    return CgptErrorCode::kNotInitialized;
-
-  if (!numTries)
-    return CgptErrorCode::kInvalidArgument;
-
-  CgptAddParams params;
-  memset(&params, 0, sizeof(params));
-
-  params.drive_name = const_cast<char*>(device_name_.value().c_str());
-  params.drive_size = device_size_;
-  params.partition = partition_number.Value();
-
-  int retval = CgptGetPartitionDetails(&params);
-  if (retval != CGPT_OK)
-    return CgptErrorCode::kUnknownError;
-
-  *numTries = params.tries;
-  return CgptErrorCode::kSuccess;
-}
-
 CgptErrorCode CgptManager::SetPriority(PartitionNum partition_number,
                                        uint8_t priority) {
   if (!is_initialized_)
@@ -439,98 +271,6 @@ CgptErrorCode CgptManager::SetPriority(PartitionNum partition_number,
   if (retval != CGPT_OK)
     return CgptErrorCode::kUnknownError;
 
-  return CgptErrorCode::kSuccess;
-}
-
-CgptErrorCode CgptManager::GetPriority(PartitionNum partition_number,
-                                       uint8_t* priority) const {
-  if (!is_initialized_)
-    return CgptErrorCode::kNotInitialized;
-
-  if (!priority)
-    return CgptErrorCode::kInvalidArgument;
-
-  CgptAddParams params;
-  memset(&params, 0, sizeof(params));
-
-  params.drive_name = const_cast<char*>(device_name_.value().c_str());
-  params.drive_size = device_size_;
-  params.partition = partition_number.Value();
-
-  int retval = CgptGetPartitionDetails(&params);
-  if (retval != CGPT_OK)
-    return CgptErrorCode::kUnknownError;
-
-  *priority = params.priority;
-  return CgptErrorCode::kSuccess;
-}
-
-CgptErrorCode CgptManager::GetBeginningOffset(PartitionNum partition_number,
-                                              uint64_t* offset) const {
-  if (!is_initialized_)
-    return CgptErrorCode::kNotInitialized;
-
-  if (!offset)
-    return CgptErrorCode::kInvalidArgument;
-
-  CgptAddParams params;
-  memset(&params, 0, sizeof(params));
-
-  params.drive_name = const_cast<char*>(device_name_.value().c_str());
-  params.drive_size = device_size_;
-  params.partition = partition_number.Value();
-
-  int retval = CgptGetPartitionDetails(&params);
-  if (retval != CGPT_OK)
-    return CgptErrorCode::kUnknownError;
-
-  *offset = params.begin;
-  return CgptErrorCode::kSuccess;
-}
-
-CgptErrorCode CgptManager::GetNumSectors(PartitionNum partition_number,
-                                         uint64_t* num_sectors) const {
-  if (!is_initialized_)
-    return CgptErrorCode::kNotInitialized;
-
-  if (!num_sectors)
-    return CgptErrorCode::kInvalidArgument;
-
-  CgptAddParams params;
-  memset(&params, 0, sizeof(params));
-
-  params.drive_name = const_cast<char*>(device_name_.value().c_str());
-  params.drive_size = device_size_;
-  params.partition = partition_number.Value();
-
-  int retval = CgptGetPartitionDetails(&params);
-  if (retval != CGPT_OK)
-    return CgptErrorCode::kUnknownError;
-
-  *num_sectors = params.size;
-  return CgptErrorCode::kSuccess;
-}
-
-CgptErrorCode CgptManager::GetPartitionTypeId(PartitionNum partition_number,
-                                              Guid* type_id) const {
-  if (!is_initialized_)
-    return CgptErrorCode::kNotInitialized;
-
-  if (!type_id)
-    return CgptErrorCode::kInvalidArgument;
-
-  CgptAddParams params;
-  memset(&params, 0, sizeof(params));
-
-  params.drive_name = const_cast<char*>(device_name_.value().c_str());
-  params.drive_size = device_size_;
-  params.partition = partition_number.Value();
-
-  int retval = CgptGetPartitionDetails(&params);
-  if (retval != CGPT_OK)
-    return CgptErrorCode::kUnknownError;
-
-  *type_id = params.type_guid;
   return CgptErrorCode::kSuccess;
 }
 
@@ -554,30 +294,6 @@ CgptErrorCode CgptManager::GetPartitionUniqueId(PartitionNum partition_number,
     return CgptErrorCode::kUnknownError;
 
   *unique_id = params.unique_guid;
-  return CgptErrorCode::kSuccess;
-}
-
-CgptErrorCode CgptManager::GetPartitionNumberByUniqueId(
-    const Guid& unique_id, PartitionNum* partition_number) const {
-  if (!is_initialized_)
-    return CgptErrorCode::kNotInitialized;
-
-  if (!partition_number)
-    return CgptErrorCode::kInvalidArgument;
-
-  CgptAddParams params;
-  memset(&params, 0, sizeof(params));
-
-  params.drive_name = const_cast<char*>(device_name_.value().c_str());
-  params.drive_size = device_size_;
-  params.unique_guid = unique_id;
-  params.set_unique = 1;
-
-  int retval = CgptGetPartitionDetails(&params);
-  if (retval != CGPT_OK)
-    return CgptErrorCode::kUnknownError;
-
-  *partition_number = PartitionNum(params.partition);
   return CgptErrorCode::kSuccess;
 }
 
@@ -605,16 +321,4 @@ CgptErrorCode CgptManager::SetHighestPriority(PartitionNum partition_number) {
   // The internal implementation in CgptPrioritize automatically computes the
   // right priority number if we supply 0 for the highest_priority argument.
   return SetHighestPriority(partition_number, 0);
-}
-
-CgptErrorCode CgptManager::Validate() {
-  if (!is_initialized_)
-    return CgptErrorCode::kNotInitialized;
-
-  uint8_t num_partitions;
-
-  // GetNumNonEmptyPartitions does the check for GptSanityCheck.
-  // so call it (ignore the num_partitions result) and just return
-  // its success/failure result.
-  return GetNumNonEmptyPartitions(&num_partitions);
 }
