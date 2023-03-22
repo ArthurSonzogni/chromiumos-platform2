@@ -93,6 +93,9 @@ class BaseStateHandler : public base::RefCounted<BaseStateHandler> {
   bool IsPowerwashComplete(
       const base::FilePath& unencrypted_preserve_path) const;
 
+  // Calibration related functions.
+  bool IsCalibrationDisabled(const base::FilePath& working_dir_path) const;
+
  protected:
   friend class base::RefCounted<BaseStateHandler>;
   virtual ~BaseStateHandler() = default;

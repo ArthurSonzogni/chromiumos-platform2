@@ -242,15 +242,18 @@ void ProvisionDeviceStateHandler::InitializeCalibrationTask() {
   InstructionCalibrationStatusMap calibration_map;
 
   std::set<RmadComponent> replaced_components_need_calibration;
-  if (std::vector<std::string> replaced_component_names; json_store_->GetValue(
-          kReplacedComponentNames, &replaced_component_names)) {
-    for (const std::string& component_name : replaced_component_names) {
-      RmadComponent component;
-      CHECK(RmadComponent_Parse(component_name, &component));
-      if (std::find(kComponentsNeedManualCalibration.begin(),
-                    kComponentsNeedManualCalibration.end(),
-                    component) != kComponentsNeedManualCalibration.end()) {
-        replaced_components_need_calibration.insert(component);
+  if (!IsCalibrationDisabled(working_dir_path_)) {
+    if (std::vector<std::string> replaced_component_names;
+        json_store_->GetValue(kReplacedComponentNames,
+                              &replaced_component_names)) {
+      for (const std::string& component_name : replaced_component_names) {
+        RmadComponent component;
+        CHECK(RmadComponent_Parse(component_name, &component));
+        if (std::find(kComponentsNeedManualCalibration.begin(),
+                      kComponentsNeedManualCalibration.end(),
+                      component) != kComponentsNeedManualCalibration.end()) {
+          replaced_components_need_calibration.insert(component);
+        }
       }
     }
   }

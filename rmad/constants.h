@@ -25,10 +25,11 @@ inline constexpr char kDefaultJsonStoreFilePath[] =
     "/mnt/stateful_partition/unencrypted/rma-data/state";
 inline constexpr char kDefaultUnencryptedPreservePath[] =
     "/mnt/stateful_partition/unencrypted/preserve";
-inline constexpr char kTestDirPath[] = ".test";
 
 // Files for testing purpose.
+inline constexpr char kTestDirPath[] = ".test";
 inline constexpr char kDisablePowerwashFilePath[] = ".disable_powerwash";
+inline constexpr char kDisableCalibrationFilePath[] = ".disable_calibration";
 
 // We currently treat InitialState as WelcomeState.
 inline constexpr RmadState::StateCase kInitialStateCase = RmadState::kWelcome;

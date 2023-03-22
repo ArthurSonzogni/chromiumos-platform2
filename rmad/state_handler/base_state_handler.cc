@@ -206,4 +206,12 @@ bool BaseStateHandler::IsPowerwashComplete(
   return current_powerwash_count > stored_powerwash_count;
 }
 
+bool BaseStateHandler::IsCalibrationDisabled(
+    const base::FilePath& working_dir_path) const {
+  // |kDisableCalibrationFilePath| is a file for testing convenience. Manually
+  // touch this file if we want to skip calibration steps during testing.
+  return base::PathExists(
+      working_dir_path.AppendASCII(kDisableCalibrationFilePath));
+}
+
 }  // namespace rmad

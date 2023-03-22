@@ -365,6 +365,48 @@ TEST_F(ProvisionDeviceStateHandlerTest,
 }
 
 TEST_F(ProvisionDeviceStateHandlerTest,
+       TryGetNextStateCaseAtBoot_SkipCalibrationSucceeded) {
+  // Set up environment for different owner and all replaced components need
+  // calibration.
+  json_store_->SetValue(kSameOwner, false);
+  json_store_->SetValue(kWipeDevice, true);
+  json_store_->SetValue(
+      kReplacedComponentNames,
+      std::vector<std::string>{RmadComponent_Name(kComponentNeedCalibration),
+                               RmadComponent_Name(kComponentNeedCalibration2)});
+  // Bypass calibration.
+  EXPECT_TRUE(
+      brillo::TouchFile(GetTempDirPath().Append(kDisableCalibrationFilePath)));
+
+  StateHandlerArgs args = {.probed_components = {kComponentNeedCalibration,
+                                                 kComponentNeedCalibration2}};
+
+  auto handler = CreateInitializedStateHandler(args);
+  handler->RunState();
+  RunHandlerTaskRunner(handler);
+
+  // Provision complete signal is sent.
+  ExpectSignal(ProvisionStatus::RMAD_PROVISION_STATUS_COMPLETE);
+
+  // A reboot is expected after provisioning succeeds.
+  ExpectTransitionReboot(handler);
+
+  // Successfully transition to Finalize state.
+  ExpectTransitionSucceededAtBoot(RmadState::StateCase::kFinalize, args);
+
+  // Check calibration map. |kComponentNeedCalibration| and
+  // |kComponentNeedCalibration2| are skipped.
+  InstructionCalibrationStatusMap calibration_map;
+  EXPECT_TRUE(GetCalibrationMap(json_store_, &calibration_map));
+  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
+                kComponentNeedCalibration)][kComponentNeedCalibration],
+            CalibrationComponentStatus::RMAD_CALIBRATION_SKIP);
+  EXPECT_EQ(calibration_map[GetCalibrationSetupInstruction(
+                kComponentNeedCalibration2)][kComponentNeedCalibration2],
+            CalibrationComponentStatus::RMAD_CALIBRATION_SKIP);
+}
+
+TEST_F(ProvisionDeviceStateHandlerTest,
        TryGetNextStateCaseAtBoot_NoNeedCalibrationSucceeded) {
   // Set up environment for different owner and no replaced components need
   // calibration.
