@@ -245,6 +245,20 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
     int height;
   };
 
+  struct CopyResult {
+    // Whether a buffer was found that we could copy to the current stream.
+    bool buffer_copied = false;
+
+    // If an error occurred while attempting to copy the buffer, it will be
+    // stored here. Note that if |buffer_copied| is false, this doesn't mean an
+    // error occurred, it could also mean there was no buffer to copy.
+    CameraEffectError copy_error = CameraEffectError::kNoError;
+
+    // Once the output buffer of a successful copy isn't needed anymore, this
+    // closure should be called.
+    base::OnceClosure cleanup_closure;
+  };
+
   void OnOptionsUpdated(const base::Value::Dict& json_values);
 
   void SetEffect(EffectsConfig new_config);
@@ -263,6 +277,10 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
   void ReturnStillCaptureResult(Camera3CaptureDescriptor result);
   void OnFrameStarted(StreamContext& stream_context);
   void OnFrameCompleted(StreamContext& stream_context);
+  CopyResult TryCopyExistingCameraBuffer(const Camera3CaptureDescriptor& result,
+                                         Camera3StreamBuffer& result_buffer);
+  CopyResult CopyCameraBuffer(buffer_handle_t input_buffer,
+                              buffer_handle_t output_buffer);
 
   ReloadableConfigFile config_;
   RuntimeOptions* runtime_options_;
@@ -774,19 +792,31 @@ bool EffectsStreamManipulatorImpl::ProcessCaptureResult(
       return false;
     }
 
+    // Check existing output buffers for one with the same size so we can just
+    // copy the results to this buffer instead of running the effects pipeline.
+    CopyResult copy_result = TryCopyExistingCameraBuffer(result, result_buffer);
+
     base::ScopedClosureRunner cleanup_runner;
-    if (last_set_effect_config_.HasEnabledEffects()) {
-      RenderResult render_result = RenderEffect(result_buffer, *timestamp);
-      num_processed_streams++;
-      if (render_result.result != CameraEffectError::kNoError) {
-        metrics_.RecordError(render_result.result);
-        continue;
+    if (copy_result.buffer_copied) {
+      cleanup_runner.ReplaceClosure(std::move(copy_result.cleanup_closure));
+    } else {
+      if (copy_result.copy_error != CameraEffectError::kNoError) {
+        metrics_.RecordError(copy_result.copy_error);
       }
-      cleanup_runner.ReplaceClosure(std::move(render_result.cleanup_closure));
+
+      if (last_set_effect_config_.HasEnabledEffects()) {
+        RenderResult render_result = RenderEffect(result_buffer, *timestamp);
+        num_processed_streams++;
+        if (render_result.result != CameraEffectError::kNoError) {
+          metrics_.RecordError(render_result.result);
+          continue;
+        }
+        cleanup_runner.ReplaceClosure(std::move(render_result.cleanup_closure));
+      }
     }
 
-    // If this buffer is the YUV input for a blob stream, feed it into the still
-    // capture processor.
+    // If this buffer is the YUV input for a blob stream, feed it into the
+    // still capture processor.
     StreamContext* blob_stream_context = nullptr;
     for (auto& s : stream_contexts_) {
       if (s->yuv_stream_for_blob == result_buffer.stream()) {
@@ -1085,8 +1115,9 @@ bool EffectsStreamManipulatorImpl::EnsureImages(buffer_handle_t buffer_handle) {
   uint32_t target_width = CameraBufferManager::GetWidth(buffer_handle);
   uint32_t target_height = CameraBufferManager::GetHeight(buffer_handle);
 
-  input_image_yuv_ = SharedImage::CreateFromBuffer(
-      buffer_handle, Texture2D::Target::kTarget2D, true);
+  input_image_yuv_ =
+      SharedImage::CreateFromBuffer(buffer_handle, Texture2D::Target::kTarget2D,
+                                    /*separate_yuv_textures=*/true);
 
   if (!input_buffer_rgba_ ||
       target_width != CameraBufferManager::GetWidth(*input_buffer_rgba_) ||
@@ -1166,4 +1197,83 @@ void EffectsStreamManipulatorImpl::UploadAndResetMetricsData() {
   metrics_ = EffectsMetricsData();
   metrics_uploader_->UploadMetricsData(std::move(metrics_copy));
 }
+
+EffectsStreamManipulatorImpl::CopyResult
+EffectsStreamManipulatorImpl::TryCopyExistingCameraBuffer(
+    const Camera3CaptureDescriptor& result,
+    Camera3StreamBuffer& result_buffer) {
+  CopyResult copy_result;
+  for (auto& existing_buffer : result.GetOutputBuffers()) {
+    StreamContext* stream_context = GetStreamContext(existing_buffer.stream());
+    if (!stream_context ||
+        stream_context->stream_type == CameraEffectStreamType::kBlob) {
+      continue;
+    }
+
+    buffer_handle_t raw_existing_buffer = *existing_buffer.buffer();
+    buffer_handle_t raw_result_buffer = *result_buffer.buffer();
+    if (CameraBufferManager::GetWidth(raw_existing_buffer) !=
+            CameraBufferManager::GetWidth(raw_result_buffer) ||
+        CameraBufferManager::GetHeight(raw_existing_buffer) !=
+            CameraBufferManager::GetHeight(raw_result_buffer)) {
+      continue;
+    }
+
+    gl_thread_.PostTaskSync(
+        FROM_HERE,
+        base::BindOnce(&EffectsStreamManipulatorImpl::CopyCameraBuffer,
+                       base::Unretained(this), raw_existing_buffer,
+                       raw_result_buffer),
+        &copy_result);
+    break;
+  }
+
+  return copy_result;
+}
+
+EffectsStreamManipulatorImpl::CopyResult
+EffectsStreamManipulatorImpl::CopyCameraBuffer(buffer_handle_t input_buffer,
+                                               buffer_handle_t output_buffer) {
+  DCHECK_CALLED_ON_VALID_THREAD(gl_thread_checker_);
+  TRACE_EFFECTS();
+
+  auto* manager = CameraBufferManager::GetInstance();
+  if (manager->Register(output_buffer) != 0) {
+    LOG(ERROR) << "Failed to register buffer";
+    return {.copy_error = CameraEffectError::kBufferRegistrationFailed};
+  }
+  base::ScopedClosureRunner deregister_action(base::BindOnce(
+      [](EffectsMetricsData& metrics, CameraBufferManager* manager,
+         buffer_handle_t buffer_handle) {
+        if (manager->Deregister(buffer_handle) != 0) {
+          LOG(ERROR) << "Failed to deregister buffer";
+          metrics.RecordError(CameraEffectError::kBufferUnregistrationFailed);
+        }
+      },
+      std::ref(metrics_), manager, output_buffer));
+
+  auto completed_image =
+      SharedImage::CreateFromBuffer(input_buffer, Texture2D::Target::kTarget2D,
+                                    /*separate_yuv_textures=*/true);
+  auto result_image =
+      SharedImage::CreateFromBuffer(output_buffer, Texture2D::Target::kTarget2D,
+                                    /*separate_yuv_textures=*/true);
+
+  if (!completed_image.IsValid() || !result_image.IsValid()) {
+    return {.copy_error = CameraEffectError::kGPUImageInitializationFailed};
+  }
+
+  bool buffer_copied = image_processor_->YUVToYUV(
+      completed_image.y_texture(), completed_image.uv_texture(),
+      result_image.y_texture(), result_image.uv_texture());
+  glFinish();
+
+  if (!buffer_copied) {
+    return CopyResult{.copy_error = CameraEffectError::kYUVConversionFailed};
+  }
+
+  return CopyResult{.buffer_copied = true,
+                    .cleanup_closure = deregister_action.Release()};
+}
+
 }  // namespace cros

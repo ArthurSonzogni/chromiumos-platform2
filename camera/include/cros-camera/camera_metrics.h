@@ -130,7 +130,7 @@ enum class CameraEffectError {
   kBufferUnregistrationFailed = 6,
   // Initializing GPU images failed.
   kGPUImageInitializationFailed = 7,
-  // YUV to RGB conversion failed.
+  // YUV to RGB or YUV to YUV conversion failed.
   kYUVConversionFailed = 8,
   // Effects pipeline rendering failed.
   kPipelineFailed = 9,
