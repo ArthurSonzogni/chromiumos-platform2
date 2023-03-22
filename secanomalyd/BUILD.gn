@@ -6,6 +6,7 @@ import("//common-mk/pkg_config.gni")
 
 group("all") {
   deps = [
+    ":install_minijail_conf",
     ":install_upstart_config",
     ":secanomalyd",
   ]
@@ -56,6 +57,11 @@ executable("secanomalyd") {
   configs += [ ":target_defaults" ]
   install_path = "sbin"
   deps = [ ":libsecanomaly" ]
+}
+
+install_config("install_minijail_conf") {
+  sources = [ "minijail/secanomalyd.conf" ]
+  install_path = "/usr/share/minijail"
 }
 
 install_config("install_upstart_config") {
