@@ -26,7 +26,6 @@
 #include <libhwsec-foundation/crypto/sha.h>
 
 #include "cryptohome/auth_blocks/auth_block_utils.h"
-#include "cryptohome/auth_blocks/challenge_credential_auth_block.h"
 #include "cryptohome/auth_blocks/double_wrapped_compat_auth_block.h"
 #include "cryptohome/auth_blocks/pin_weaver_auth_block.h"
 #include "cryptohome/auth_blocks/scrypt_auth_block.h"
@@ -321,89 +320,6 @@ CryptoStatus VaultKeyset::DecryptVaultKeysetEx(const KeyBlobs& key_blobs) {
   // operation (e.g. reset_seed).
   const SerializedVaultKeyset& serialized = ToSerialized();
   return UnwrapVaultKeyset(serialized, key_blobs);
-}
-
-CryptoStatus VaultKeyset::Decrypt(const SecureBlob& key,
-                                  bool locked_to_single_user) {
-  CHECK(crypto_);
-
-  if (!loaded_) {
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocVaultKeysetNotLoadedInDecrypt),
-        ErrorActionSet(
-            {ErrorAction::kDevCheckUnexpectedState, ErrorAction::kReboot}),
-        CryptoError::CE_OTHER_CRYPTO);
-  }
-
-  if (CryptoStatus status = DecryptVaultKeyset(key, locked_to_single_user);
-      !status.ok()) {
-    if (status->local_crypto_error() == CryptoError::CE_CREDENTIAL_LOCKED &&
-        !auth_locked_) {
-      // For LE credentials, if decrypting the keyset failed due to too many
-      // attempts, set auth_locked=true in the keyset. Then save it for future
-      // callers who can Load it w/o Decrypt'ing to check that flag.
-      auth_locked_ = true;
-      if (!Save(source_file_)) {
-        LOG(WARNING) << "Failed to set auth_locked in VaultKeyset on disk.";
-      }
-    }
-    return status;
-  }
-
-  return OkStatus<CryptohomeCryptoError>();
-}
-
-CryptoStatus VaultKeyset::DecryptVaultKeyset(const SecureBlob& vault_key,
-                                             bool locked_to_single_user) {
-  const SerializedVaultKeyset& serialized = ToSerialized();
-
-  AuthBlockState auth_state;
-  if (!GetAuthBlockState(*this, auth_state /*out*/)) {
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocVaultKeysetNoBlockStateInDecryptVK),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kAuth, ErrorAction::kDeleteVault}),
-        CryptoError::CE_OTHER_CRYPTO);
-  }
-
-  // TODO(crbug.com/1216659): Move AuthBlock instantiation to AuthFactor once it
-  // is ready.
-  std::unique_ptr<SyncAuthBlock> auth_block = GetAuthBlockForDerivation();
-  if (!auth_block) {
-    LOG(ERROR) << "Keyset wrapped with unknown method.";
-    return MakeStatus<CryptohomeCryptoError>(
-        CRYPTOHOME_ERR_LOC(kLocVaultKeysetUnknownBlockTypeInDecryptVK),
-        ErrorActionSet({ErrorAction::kDevCheckUnexpectedState,
-                        ErrorAction::kAuth, ErrorAction::kDeleteVault}),
-        CryptoError::CE_OTHER_CRYPTO);
-  }
-
-  AuthInput auth_input = {vault_key, locked_to_single_user};
-  KeyBlobs vkk_data;
-  CryptoStatus cryptohome_error =
-      auth_block->Derive(auth_input, auth_state, &vkk_data);
-  if (!cryptohome_error.ok()) {
-    return MakeStatus<CryptohomeCryptoError>(
-               CRYPTOHOME_ERR_LOC(kLocVaultKeysetDeriveFailedInDecryptVK))
-        .Wrap(std::move(cryptohome_error));
-  }
-
-  if (flags_ & SerializedVaultKeyset::LE_CREDENTIAL) {
-    // This is possible to be empty if an old version of CR50 is running.
-    if (vkk_data.reset_secret.has_value() &&
-        !vkk_data.reset_secret.value().empty()) {
-      SetResetSecret(vkk_data.reset_secret.value());
-    }
-  }
-
-  CryptoStatus status = UnwrapVaultKeyset(serialized, vkk_data);
-  if (status.ok()) {
-    return OkStatus<CryptohomeCryptoError>();
-  } else {
-    return MakeStatus<CryptohomeCryptoError>(
-               CRYPTOHOME_ERR_LOC(kLocVaultKeysetUnwrapVKFailedInDecryptVK))
-        .Wrap(std::move(status));
-  }
 }
 
 CryptoStatus VaultKeyset::UnwrapVKKVaultKeyset(
@@ -1071,84 +987,6 @@ bool VaultKeyset::GetTpmEccState(AuthBlockState* auth_state) const {
 
   auth_state->state = std::move(state);
   return true;
-}
-
-// TODO(crbug.com/1216659): Move AuthBlock to AuthFactor once it is ready.
-std::unique_ptr<SyncAuthBlock> VaultKeyset::GetAuthBlockForCreation() const {
-  if (IsLECredential()) {
-    if (!crypto_->le_manager() || !crypto_->cryptohome_keys_manager()) {
-      return nullptr;
-    }
-    ReportCreateAuthBlock(AuthBlockType::kPinWeaver);
-    return std::make_unique<PinWeaverAuthBlock>(crypto_->le_manager());
-  }
-
-  if (IsSignatureChallengeProtected()) {
-    ReportCreateAuthBlock(AuthBlockType::kChallengeCredential);
-    return std::make_unique<ChallengeCredentialAuthBlock>();
-  }
-  hwsec::StatusOr<bool> is_ready = crypto_->GetHwsec()->IsReady();
-  bool use_tpm = is_ready.ok() && is_ready.value();
-  bool with_user_auth = crypto_->CanUnsealWithUserAuth();
-  bool has_ecc_key = crypto_->cryptohome_keys_manager() &&
-                     crypto_->cryptohome_keys_manager()->HasCryptohomeKey(
-                         CryptohomeKeyType::kECC);
-
-  if (use_tpm && with_user_auth && has_ecc_key) {
-    ReportCreateAuthBlock(AuthBlockType::kTpmEcc);
-    return std::make_unique<TpmEccAuthBlock>(
-        crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
-  }
-
-  if (use_tpm && with_user_auth && !has_ecc_key) {
-    ReportCreateAuthBlock(AuthBlockType::kTpmBoundToPcr);
-    return std::make_unique<TpmBoundToPcrAuthBlock>(
-        crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
-  }
-
-  if (use_tpm && !with_user_auth) {
-    ReportCreateAuthBlock(AuthBlockType::kTpmNotBoundToPcr);
-    return std::make_unique<TpmNotBoundToPcrAuthBlock>(
-        crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
-  }
-
-  if (USE_TPM_INSECURE_FALLBACK) {
-    ReportCreateAuthBlock(AuthBlockType::kScrypt);
-    return std::make_unique<ScryptAuthBlock>();
-  }
-
-  LOG(WARNING) << "No available auth block for creation.";
-  return nullptr;
-}
-
-std::unique_ptr<SyncAuthBlock> VaultKeyset::GetAuthBlockForDerivation() {
-  AuthBlockType auth_block_type;
-  if (!FlagsToAuthBlockType(flags_, auth_block_type)) {
-    LOG(WARNING) << "Failed to get the AuthBlock type for key derivation";
-    return nullptr;
-  }
-  ReportDeriveAuthBlock(auth_block_type);
-
-  if (auth_block_type == AuthBlockType::kPinWeaver) {
-    return std::make_unique<PinWeaverAuthBlock>(crypto_->le_manager());
-  } else if (auth_block_type == AuthBlockType::kChallengeCredential) {
-    return std::make_unique<ChallengeCredentialAuthBlock>();
-  } else if (auth_block_type == AuthBlockType::kDoubleWrappedCompat) {
-    return std::make_unique<DoubleWrappedCompatAuthBlock>(
-        crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
-  } else if (auth_block_type == AuthBlockType::kTpmEcc) {
-    return std::make_unique<TpmEccAuthBlock>(
-        crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
-  } else if (auth_block_type == AuthBlockType::kTpmBoundToPcr) {
-    return std::make_unique<TpmBoundToPcrAuthBlock>(
-        crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
-  } else if (auth_block_type == AuthBlockType::kTpmNotBoundToPcr) {
-    return std::make_unique<TpmNotBoundToPcrAuthBlock>(
-        crypto_->GetHwsec(), crypto_->cryptohome_keys_manager());
-  } else if (auth_block_type == AuthBlockType::kScrypt) {
-    return std::make_unique<ScryptAuthBlock>();
-  }
-  return nullptr;
 }
 
 bool VaultKeyset::Save(const FilePath& filename) {

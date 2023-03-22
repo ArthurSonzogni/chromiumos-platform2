@@ -84,27 +84,13 @@ constexpr char kPublicHash[] = "public key hash";
 constexpr char kPublicHash2[] = "public key hash2";
 constexpr int kAuthValueRounds = 5;
 
-// TODO(b/233700483): Replace this with the mock auth block.
-class FallbackVaultKeyset : public VaultKeyset {
- protected:
-  std::unique_ptr<cryptohome::SyncAuthBlock> GetAuthBlockForCreation()
-      const override {
-    auto auth_block_for_creation = VaultKeyset::GetAuthBlockForCreation();
-    if (!auth_block_for_creation) {
-      return std::make_unique<ScryptAuthBlock>();
-    }
-
-    return auth_block_for_creation;
-  }
-};
-
 // Helper function to create a mock vault keyset with some useful default
 // functions to create basic minimal VKs.
 std::unique_ptr<VaultKeysetFactory> CreateMockVaultKeysetFactory() {
   auto factory = std::make_unique<MockVaultKeysetFactory>();
   ON_CALL(*factory, New(_, _))
       .WillByDefault([](Platform* platform, Crypto* crypto) {
-        auto* vk = new FallbackVaultKeyset();
+        auto* vk = new VaultKeyset();
         vk->Initialize(platform, crypto);
         return vk;
       });
@@ -236,7 +222,7 @@ class AuthSessionTestWithKeysetManagement : public ::testing::Test {
 
   void KeysetSetUpWithoutKeyDataAndKeyBlobs() {
     for (auto& user : users_) {
-      FallbackVaultKeyset vk;
+      VaultKeyset vk;
       vk.Initialize(&platform_, &crypto_);
       vk.CreateFromFileSystemKeyset(file_system_keyset_);
       AuthBlockState auth_block_state = {
@@ -516,7 +502,7 @@ TEST_F(AuthSessionTestWithKeysetManagement,
           [&](CryptohomeStatus error, std::unique_ptr<KeyBlobs> key_blobs,
               std::unique_ptr<AuthBlockState> auth_block_state) {
             ASSERT_THAT(error, IsOk());
-            FallbackVaultKeyset vk;
+            VaultKeyset vk;
             vk.Initialize(&platform_, &crypto_);
             KeyData key_data;
             key_data.set_label(kDefaultLabel);

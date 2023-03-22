@@ -72,12 +72,6 @@ class VaultKeyset {
 
   // Load must be called first.
   // Decrypts the encrypted fields of the VaultKeyset from serialized with the
-  // KeyBlobs derived from the provided |key|.
-  virtual CryptoStatus Decrypt(const brillo::SecureBlob& key,
-                               bool is_pcr_extended);
-
-  // Load must be called first.
-  // Decrypts the encrypted fields of the VaultKeyset from serialized with the
   // provided |key_blobs|.
   virtual CryptoStatus DecryptEx(const KeyBlobs& key_blobs);
 
@@ -258,17 +252,6 @@ class VaultKeyset {
   // set as a backup VaultKeyset for USS.
   void MarkMigrated(bool migrated);
 
-  // The protected functions that can be override for the testing purpose.
- protected:
-  // This function serves as a factory method to return the authblock used in
-  // authentication creation.
-  virtual std::unique_ptr<SyncAuthBlock> GetAuthBlockForCreation() const;
-
-  // This function serves as a factory method to return the authblock used in
-  // authentication derivation. The type of the AuthBlock is determined based on
-  // |flags_|.which derived from vault keyset.
-  virtual std::unique_ptr<SyncAuthBlock> GetAuthBlockForDerivation();
-
  private:
   // Converts the class to a protobuf for serialization to disk.
   SerializedVaultKeyset ToSerialized() const;
@@ -333,19 +316,6 @@ class VaultKeyset {
   // Return
   //   error - The specific error code on failure.
   CryptoStatus DecryptVaultKeysetEx(const KeyBlobs& key_blobs);
-
-  // Decrypts an encrypted vault keyset which is obtained from the unwrapped
-  // secrets returned from UnwrapVaultKeyset().
-  //
-  // Parameters
-  //   vault_key - The passkey used to decrypt the keyset.
-  //   locked_to_single_user - Whether the device has transitioned.
-  //   into user-specific modality by extending PCR4 with a user-specific
-  //   value.
-  // Return
-  //   error - The specific error code on failure.
-  CryptoStatus DecryptVaultKeyset(const brillo::SecureBlob& vault_key,
-                                  bool locked_to_single_user);
 
   // These store run time state for the class.
   Platform* platform_;

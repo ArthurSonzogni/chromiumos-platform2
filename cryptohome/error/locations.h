@@ -275,13 +275,13 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocDoubleWrappedAuthBlockInvalidBlockStateInDerive = 224,
   /* ./auth_blocks/double_wrapped_compat_auth_block.cc */
   kLocDoubleWrappedAuthBlockTpmDeriveFailedInDerive = 225,
-  /* ./auth_blocks/challenge_credential_auth_block.cc */
+  /* =Obsolete= */
   kLocChalCredAuthBlockCreateScryptAuthBlockFailedInCreate = 226,
-  /* ./auth_blocks/challenge_credential_auth_block.cc */
+  /* =Obsolete= */
   kLocChalCredAuthBlockDerivationFailedInCreate = 227,
-  /* ./auth_blocks/challenge_credential_auth_block.cc */
+  /* =Obsolete= */
   kLocChalCredAuthBlockInvalidBlockStateInDerive = 228,
-  /* ./auth_blocks/challenge_credential_auth_block.cc */
+  /* =Obsolete= */
   kLocChalCredAuthBlockScryptDeriveFailedInDerive = 229,
   /* ./auth_blocks/tpm_ecc_auth_block.cc */
   kLocTpmEccAuthBlockRetryLimitExceededInCreate = 230,
@@ -555,15 +555,15 @@ enum class ErrorLocationSpecifier : CryptohomeError::ErrorLocation {
   kLocVaultKeysetWrapAESDFailedInEncryptEx = 364,
   /* ./vault_keyset.cc */
   kLocVaultKeysetNotLoadedInDecryptEx = 365,
-  /* ./vault_keyset.cc */
+  /* =Obsolete= */
   kLocVaultKeysetNotLoadedInDecrypt = 366,
-  /* ./vault_keyset.cc */
+  /* =Obsolete= */
   kLocVaultKeysetNoBlockStateInDecryptVK = 367,
-  /* ./vault_keyset.cc */
+  /* =Obsolete= */
   kLocVaultKeysetUnknownBlockTypeInDecryptVK = 368,
-  /* ./vault_keyset.cc */
+  /* =Obsolete= */
   kLocVaultKeysetDeriveFailedInDecryptVK = 369,
-  /* ./vault_keyset.cc */
+  /* =Obsolete= */
   kLocVaultKeysetUnwrapVKFailedInDecryptVK = 370,
   /* ./vault_keyset.cc */
   kLocVaultKeysetKeysetDecryptFailedInUnwrapVKK = 371,
