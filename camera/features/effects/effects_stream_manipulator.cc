@@ -451,7 +451,7 @@ bool EffectsStreamManipulatorImpl::ConfigureStreams(
       context->original_stream = s;
       context->effect_stream = std::make_unique<camera3_stream_t>(*s);
       context->effect_stream->format = HAL_PIXEL_FORMAT_YCbCr_420_888;
-      modified_streams.push_back(s);
+      modified_streams.push_back(context->effect_stream.get());
 
       // To support still image capture, we need to make sure the blob stream
       // has an associated YUV stream. If not, create a corresponding new YUV
@@ -462,6 +462,7 @@ bool EffectsStreamManipulatorImpl::ConfigureStreams(
             s, base::BindRepeating(
                    &EffectsStreamManipulatorImpl::ReturnStillCaptureResult,
                    base::Unretained(this)));
+        modified_streams.push_back(s);
         blob_stream_initialized = true;
 
         // Find a matching YUV stream for this blob stream.
@@ -470,7 +471,12 @@ bool EffectsStreamManipulatorImpl::ConfigureStreams(
               (stream->format == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
                stream->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) &&
               stream->width == s->width && stream->height == s->height) {
+            StreamContext* stream_context = GetStreamContext(stream);
+            if (stream_context) {
+              stream = stream_context->effect_stream.get();
+            }
             context->yuv_stream_for_blob = stream;
+            break;
           }
         }
 
