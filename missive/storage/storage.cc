@@ -10,6 +10,7 @@
 #include <vector>
 
 #include <base/barrier_closure.h>
+#include <base/check.h>
 #include <base/containers/adapters.h>
 #include <base/containers/flat_set.h>
 #include <base/files/file.h>
@@ -27,13 +28,16 @@
 #include <base/task/task_traits.h>
 #include <base/task/thread_pool.h>
 #include <base/threading/thread.h>
+#include <base/time/time.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
+#include "missive/analytics/metrics.h"
 #include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/encryption/primitives.h"
 #include "missive/encryption/verification.h"
 #include "missive/proto/record.pb.h"
+#include "missive/proto/record_constants.pb.h"
 #include "missive/resources/resource_manager.h"
 #include "missive/storage/storage_configuration.h"
 #include "missive/storage/storage_queue.h"
@@ -123,16 +127,19 @@ class Storage::KeyDelivery {
 
   // Factory method, returns smart pointer with deletion on sequence.
   static std::unique_ptr<KeyDelivery, base::OnTaskRunnerDeleter> Create(
+      scoped_refptr<EncryptionModuleInterface> encryption_module,
       UploaderInterface::AsyncStartUploaderCb async_start_upload_cb) {
     auto sequence_task_runner = base::ThreadPool::CreateSequencedTaskRunner(
         {base::TaskPriority::BEST_EFFORT, base::MayBlock()});
     return std::unique_ptr<KeyDelivery, base::OnTaskRunnerDeleter>(
-        new KeyDelivery(async_start_upload_cb, sequence_task_runner),
+        new KeyDelivery(encryption_module, async_start_upload_cb,
+                        sequence_task_runner),
         base::OnTaskRunnerDeleter(sequence_task_runner));
   }
 
   ~KeyDelivery() {
     DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+    upload_timer_.AbandonAndStop();
     PostResponses(
         Status(error::UNAVAILABLE, "Key not delivered - Storage shuts down"));
   }
@@ -149,14 +156,54 @@ class Storage::KeyDelivery {
                                   base::Unretained(this), status));
   }
 
+  void StartPeriodicKeyUpdate(const base::TimeDelta period) {
+    sequenced_task_runner_->PostTask(
+        FROM_HERE,
+        base::BindOnce(
+            [](Storage::KeyDelivery* self, base::TimeDelta period) {
+              if (self->upload_timer_.IsRunning()) {
+                // We've already started the periodic key update.
+                return;
+              }
+              // `base::Unretained` is ok here because `upload_timer_` is
+              // destructed in the class destructor
+              self->upload_timer_.Start(
+                  FROM_HERE, period,
+                  base::BindRepeating(&Storage::KeyDelivery::RequestKeyIfNeeded,
+                                      base::Unretained(self)));
+            },
+            base::Unretained(this), period));
+  }
+
  private:
   // Constructor called by factory only.
   explicit KeyDelivery(
+      scoped_refptr<EncryptionModuleInterface> encryption_module,
       UploaderInterface::AsyncStartUploaderCb async_start_upload_cb,
       scoped_refptr<base::SequencedTaskRunner> sequenced_task_runner)
       : sequenced_task_runner_(sequenced_task_runner),
-        async_start_upload_cb_(async_start_upload_cb) {
+        async_start_upload_cb_(async_start_upload_cb),
+        encryption_module_(encryption_module) {
+    DCHECK(encryption_module_) << "Encryption module pointer not set";
     DETACH_FROM_SEQUENCE(sequence_checker_);
+  }
+
+  void RequestKeyIfNeeded() {
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+    if (encryption_module_->has_encryption_key() &&
+        !encryption_module_->need_encryption_key()) {
+      return;
+    }
+    // Request the key
+    Request(base::BindOnce([](Status status) {
+      // Log the request status in UMA
+      const auto res = analytics::Metrics::SendEnumToUMA(
+          /*name=*/kKeyDeliveryResultUma, status.code(),
+          error::Code::MAX_VALUE);
+      LOG_IF(ERROR, !res) << "SendLinearToUMA failure, "
+                          << kKeyDeliveryResultUma << " "
+                          << static_cast<int>(status.code());
+    }));
   }
 
   void EuqueueRequestAndPossiblyStart(RequestCallback callback) {
@@ -218,6 +265,13 @@ class Storage::KeyDelivery {
 
   // List of all request callbacks.
   std::vector<RequestCallback> callbacks_ GUARDED_BY_CONTEXT(sequence_checker_);
+
+  // Used to check whether or not encryption is enabled and if we need to
+  // request the key.
+  const scoped_refptr<EncryptionModuleInterface> encryption_module_;
+
+  // Used to periodically trigger check for encryption key
+  base::RepeatingTimer upload_timer_ GUARDED_BY_CONTEXT(sequence_checker_);
 };
 
 class Storage::KeyInStorage {
@@ -543,7 +597,13 @@ void Storage::Create(
             << "Encryption is enabled, but the key is not available yet, "
                "status="
             << status;
+
+        // Start a task in the background which periodically requests the
+        // encryption key if we need it.
+        storage_->key_delivery_->StartPeriodicKeyUpdate(
+            storage_->options_.key_check_period());
       }
+
       InitAllQueues();
     }
 
@@ -625,7 +685,8 @@ Storage::Storage(const StorageOptions& options,
                  UploaderInterface::AsyncStartUploaderCb async_start_upload_cb)
     : options_(options),
       encryption_module_(encryption_module),
-      key_delivery_(KeyDelivery::Create(async_start_upload_cb)),
+      key_delivery_(
+          KeyDelivery::Create(encryption_module, async_start_upload_cb)),
       compression_module_(compression_module),
       key_in_storage_(std::make_unique<KeyInStorage>(
           options.signature_verification_public_key(), options.directory())),

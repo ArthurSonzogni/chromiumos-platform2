@@ -20,6 +20,7 @@
 #include <base/strings/string_piece.h>
 #include <base/task/sequenced_task_runner.h>
 #include <base/thread_annotations.h>
+#include "base/time/time.h"
 #include "missive/compression/compression_module.h"
 #include "missive/encryption/encryption_module_interface.h"
 #include "missive/proto/record.pb.h"
@@ -31,6 +32,10 @@
 #include "missive/util/statusor.h"
 
 namespace reporting {
+
+// Key delivery UMA name
+static constexpr char kKeyDeliveryResultUma[] =
+    "Platform.Missive.KeyDeliveryResult";
 
 // Storage represents the data to be collected, stored persistently and uploaded
 // according to the priority.

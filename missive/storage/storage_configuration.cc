@@ -45,7 +45,8 @@ constexpr base::TimeDelta kFailedUploadRetryDelay = base::Seconds(1);
 }  // namespace
 
 StorageOptions::StorageOptions()
-    : memory_resource_(base::MakeRefCounted<ResourceManager>(
+    : key_check_period_(kDefaultKeyCheckPeriod),  // 1 second by default
+      memory_resource_(base::MakeRefCounted<ResourceManager>(
           4u * 1024uLL * 1024uLL)),  // 4 MiB by default
       disk_space_resource_(base::MakeRefCounted<ResourceManager>(
           64u * 1024uLL * 1024uLL))  // 64 MiB by default.

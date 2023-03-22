@@ -924,9 +924,6 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
         reason_(reason),
         completion_cb_(std::move(completion_cb)),
         async_start_upload_cb_(storage_queue->async_start_upload_cb_),
-        must_invoke_upload_(
-            EncryptionModuleInterface::is_enabled() &&
-            storage_queue->encryption_module_->need_encryption_key()),
         storage_queue_(storage_queue->weakptr_factory_.GetWeakPtr()) {
     DCHECK(storage_queue.get());
     DCHECK(async_start_upload_cb_);
@@ -944,15 +941,11 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
       Response(Status(error::UNAVAILABLE, "StorageQueue shut down"));
       return;
     }
+
     DCHECK_CALLED_ON_VALID_SEQUENCE(
         storage_queue_->storage_queue_sequence_checker_);
-    if (!must_invoke_upload_) {
-      PrepareDataFiles();
-      return;
-    }
 
-    InstantiateUploader(
-        base::BindOnce(&ReadContext::PrepareDataFiles, base::Unretained(this)));
+    PrepareDataFiles();
   }
 
   void PrepareDataFiles() {
@@ -1430,7 +1423,6 @@ class StorageQueue::ReadContext : public TaskRunnerContext<Status> {
   uint32_t current_pos_;
   std::map<int64_t, scoped_refptr<SingleFile>>::iterator current_file_;
   const UploaderInterface::AsyncStartUploaderCb async_start_upload_cb_;
-  const bool must_invoke_upload_;
   std::unique_ptr<UploaderInterface> uploader_;
   base::WeakPtr<StorageQueue> storage_queue_;
 };

@@ -29,6 +29,8 @@
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
 
+#include "missive/analytics/metrics.h"
+#include "missive/analytics/metrics_test_util.h"
 #include "missive/compression/compression_module.h"
 #include "missive/compression/test_compression_module.h"
 #include "missive/encryption/decryption.h"
@@ -122,6 +124,8 @@ class RecordUploadStore {
   // received.
   std::vector<TestRecord> records_;
 };
+constexpr error::Code kKeyDeliveryError = error::FAILED_PRECONDITION;
+constexpr char kKeyDeliveryErrorMessage[] = "Test cannot start upload";
 
 // Test uploader counter - for generation of unique ids.
 std::atomic<int64_t> next_uploader_id{0};
@@ -997,7 +1001,7 @@ class StorageTest
     if (reason == UploaderInterface::UploadReason::KEY_DELIVERY &&
         key_delivery_failure_.load()) {
       std::move(start_uploader_cb)
-          .Run(Status(error::FAILED_PRECONDITION, "Test cannot start upload"));
+          .Run(Status(kKeyDeliveryError, kKeyDeliveryErrorMessage));
       return;
     }
     AsyncStartMockUploader(reason, std::move(start_uploader_cb));
@@ -1113,6 +1117,10 @@ class StorageTest
 
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
+
+  // Initializes mock metric functions for UMA
+  analytics::Metrics::TestEnvironment metrics_test_environment_;
+
   // Sequenced task runner where all EXPECTs will happen - main thread.
   const scoped_refptr<base::SequencedTaskRunner> main_task_runner_{
       base::SequencedTaskRunnerHandle::Get()};
@@ -2101,6 +2109,60 @@ TEST_P(StorageTest, ForceConfirm) {
   }
 }
 
+TEST_P(StorageTest, KeyIsRequestedWhenEncryptionRenewalPeriodExpires) {
+  if (!is_encryption_enabled()) {
+    return;  // Test only makes sense with encryption enabled.
+  }
+
+  // Initialize Storage with failure to deliver key.
+  ASSERT_FALSE(storage_) << "StorageTest already assigned";
+  options_.set_key_check_period(base::Seconds(4));
+  StatusOr<scoped_refptr<Storage>> storage_result =
+      CreateTestStorageWithFailedKeyDelivery(
+          BuildTestStorageOptions(),
+          // Set the renew encryption key period to be 1 second less than the
+          // storage key check period so that each time storage asks the
+          // encryption module if it needs a new key, the encryption module says
+          // "yes"
+          EncryptionModule::Create(
+              base::Seconds(options_.key_check_period().InSeconds() - 1)));
+  ASSERT_OK(storage_result)
+      << "Failed to create StorageTest, error=" << storage_result.status();
+  storage_ = std::move(storage_result.ValueOrDie());
+
+  test::TestCallbackAutoWaiter waiter;
+  EXPECT_CALL(set_mock_uploader_expectations_,
+              Call(Eq(UploaderInterface::UploadReason::KEY_DELIVERY)))
+      // We'll fast forward time such that we trigger two key requests from
+      // storage
+      .Times(2)
+      .WillRepeatedly(Invoke([&waiter, this](UploaderInterface::UploadReason) {
+        auto result = TestUploader::SetKeyDelivery(this).Complete();
+        waiter.Signal();
+        return result;
+      }))
+      .RetiresOnSaturation();
+
+  // Storage doesn't have a key yet, so key request should succeed, and thus we
+  // expect UMA to log success for key delivery
+  EXPECT_CALL(
+      reporting::analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+      SendEnumToUMA(kKeyDeliveryResultUma, error::OK, error::MAX_VALUE));
+
+  // Forward time to trigger key request.
+  task_environment_.FastForwardBy(options_.key_check_period());
+
+  // Set test infrastructure to expect another key request
+  expect_to_need_key_ = true;
+
+  EXPECT_CALL(
+      reporting::analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+      SendEnumToUMA(kKeyDeliveryResultUma, error::OK, error::MAX_VALUE));
+
+  // Forward time to trigger key request.
+  task_environment_.FastForwardBy(options_.key_check_period());
+}
+
 TEST_P(StorageTest, KeyDeliveryFailureOnNewStorage) {
   static constexpr size_t kFailuresCount = 3;
 
@@ -2117,17 +2179,33 @@ TEST_P(StorageTest, KeyDeliveryFailureOnNewStorage) {
   storage_ = std::move(storage_result.ValueOrDie());
 
   key_delivery_failure_.store(true);
+
+  // Expect storage to request the encryption key after initialization
+  EXPECT_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+              SendEnumToUMA(kKeyDeliveryResultUma, kKeyDeliveryError,
+                            error::MAX_VALUE));
+
+  // Forward time to trigger key request
+  task_environment_.FastForwardBy(options_.key_check_period());
+
+  // Try writing multiple times and expect failure since we don't have the key
   for (size_t failure = 1; failure < kFailuresCount; ++failure) {
     // Failing attempt to write
     const Status write_result = WriteString(MANUAL_BATCH, kData[0]);
     EXPECT_FALSE(write_result.ok());
-    EXPECT_THAT(write_result.error_code(), Eq(error::FAILED_PRECONDITION))
+    EXPECT_THAT(write_result.error_code(), Eq(kKeyDeliveryError))
         << write_result;
-    EXPECT_THAT(write_result.message(), HasSubstr("Test cannot start upload"))
+    EXPECT_THAT(write_result.message(), HasSubstr(kKeyDeliveryErrorMessage))
         << write_result;
 
-    // Forward time to trigger upload
-    task_environment_.FastForwardBy(base::Seconds(1));
+    // Storage will continue to request the encryption key
+    EXPECT_CALL(
+        reporting::analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+        SendEnumToUMA(kKeyDeliveryResultUma, kKeyDeliveryError,
+                      error::MAX_VALUE));
+
+    // Forward time to trigger key request
+    task_environment_.FastForwardBy(options_.key_check_period());
   }
 
   // This time key delivery is to succeed.
@@ -2145,8 +2223,14 @@ TEST_P(StorageTest, KeyDeliveryFailureOnNewStorage) {
         }))
         .RetiresOnSaturation();
 
-    // Forward time to trigger upload
-    task_environment_.FastForwardBy(base::Seconds(1));
+    // Key request should succeed, so expect UMA to log success for key
+    // delivery
+    EXPECT_CALL(
+        reporting::analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
+        SendEnumToUMA(kKeyDeliveryResultUma, error::OK, error::MAX_VALUE));
+
+    // Forward time to trigger key request
+    task_environment_.FastForwardBy(options_.key_check_period());
   }
 
   // Successfully write data

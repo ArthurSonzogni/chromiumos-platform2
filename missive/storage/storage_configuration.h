@@ -31,6 +31,9 @@ class QueueOptions;
 //                 callback);
 class StorageOptions {
  public:
+  // Default period for Storage to check for encryption key
+  static constexpr base::TimeDelta kDefaultKeyCheckPeriod = base::Seconds(1);
+
   using QueuesOptionsList = std::vector<std::pair<Priority, QueueOptions>>;
 
   StorageOptions();
@@ -67,6 +70,11 @@ class StorageOptions {
         base::MakeRefCounted<ResourceManager>(max_total_memory_size);
     return *this;
   }
+  StorageOptions& set_key_check_period(base::TimeDelta key_check_period) {
+    key_check_period_ = key_check_period;
+    return *this;
+  }
+
   const base::FilePath& directory() const { return directory_; }
   base::StringPiece signature_verification_public_key() const {
     return signature_verification_public_key_;
@@ -86,6 +94,8 @@ class StorageOptions {
     return memory_resource_;
   }
 
+  base::TimeDelta key_check_period() const { return key_check_period_; }
+
  private:
   // Subdirectory of the location assigned for this Storage.
   base::FilePath directory_;
@@ -93,6 +103,10 @@ class StorageOptions {
   // Public key for signature verification when encryption key
   // is delivered to Storage.
   std::string signature_verification_public_key_;
+
+  // Frequency with which Storage will check to see if a new encryption key
+  // should be requested
+  base::TimeDelta key_check_period_;
 
   // Maximum record size.
   size_t max_record_size_ = 1U * 1024UL * 1024UL;  // 1 MiB
