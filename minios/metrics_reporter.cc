@@ -5,8 +5,12 @@
 #include <memory>
 #include <utility>
 
+#include <base/files/file.h>
+#include <base/files/file_path.h>
+#include <base/logging.h>
+
 #include "minios/metrics_reporter.h"
-#include "minios/minios.h"
+#include "minios/utils.h"
 
 namespace {
 
@@ -36,12 +40,13 @@ MetricsReporter::MetricsReporter(
 }
 
 void MetricsReporter::ReportNBRComplete() {
+  base::FilePath console = GetLogConsole();
   if (!process_manager_ ||
       !process_manager_->RunCommand(
           {"/usr/bin/stateful_partition_for_recovery", "--mount"},
           ProcessManager::IORedirection{
-              .input = minios::kLogConsole,
-              .output = minios::kLogConsole,
+              .input = console.value(),
+              .output = console.value(),
           })) {
     // Ignore EBADF (b/187206298).
     if (errno != EBADF) {

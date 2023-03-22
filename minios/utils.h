@@ -57,6 +57,9 @@ bool GetCrosRegionData(ProcessManagerInterface* process_manager,
 // failure.
 std::string GetKeyboardLayout(ProcessManagerInterface* process_manager);
 
+// Read frecon created symbolic link and return the virtual terminal path.
+base::FilePath GetLogConsole();
+
 bool TriggerShutdown();
 
 // Create a tag that can be added to an Error log message to allow easier

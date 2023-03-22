@@ -17,9 +17,6 @@
 
 namespace minios {
 
-extern const char kLogConsole[];
-extern const char kLogFile[];
-
 class MiniOs : public MiniOsInterface {
  public:
   explicit MiniOs(std::shared_ptr<UpdateEngineProxy> update_engine_proxy,

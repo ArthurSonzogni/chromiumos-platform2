@@ -8,7 +8,7 @@
 
 #include <base/logging.h>
 
-#include "minios/minios.h"
+#include "minios/utils.h"
 
 namespace minios {
 
@@ -18,6 +18,7 @@ bool RecoveryInstaller::RepartitionDisk() {
     return true;
   }
 
+  base::FilePath console = GetLogConsole();
   if (!process_manager_->RunCommand(
           {
             "/bin/chromeos-install", "--skip_rootfs", "--skip_dst_removable",
@@ -29,8 +30,8 @@ bool RecoveryInstaller::RepartitionDisk() {
 #endif
           },
           ProcessManager::IORedirection{
-              .input = minios::kLogConsole,
-              .output = minios::kLogConsole,
+              .input = console.value(),
+              .output = console.value(),
           })) {
     PLOG(WARNING) << "Repartitioning the disk failed";
     // TODO(b/187206298): Chromeos-install script returns EBFD. Ignore for now.

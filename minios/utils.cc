@@ -8,12 +8,17 @@
 #include <tuple>
 #include <vector>
 
+#include <base/files/file_path.h>
 #include <base/files/file_util.h>
 #include <base/logging.h>
 #include <base/strings/string_split.h>
 
 #include "minios/minios.h"
 #include "minios/process_manager.h"
+
+namespace {
+constexpr char kLogConsole[] = "/run/frecon/vt1";
+}  // namespace
 
 namespace minios {
 
@@ -133,10 +138,11 @@ bool GetCrosRegionData(ProcessManagerInterface* process_manager,
 
 bool TriggerShutdown() {
   ProcessManager process_manager;
+  base::FilePath console = GetLogConsole();
   if (!process_manager.RunCommand({"/sbin/poweroff", "-f"},
                                   ProcessManager::IORedirection{
-                                      .input = minios::kLogConsole,
-                                      .output = minios::kLogConsole,
+                                      .input = console.value(),
+                                      .output = console.value(),
                                   })) {
     LOG(ERROR) << "Could not trigger shutdown";
     return false;
@@ -160,6 +166,19 @@ std::string GetKeyboardLayout(ProcessManagerInterface* process_manager) {
     return "us";
   }
   return keyboard_parts[1];
+}
+
+base::FilePath GetLogConsole() {
+  static base::FilePath target;
+
+  if (target.empty()) {
+    base::FilePath log_console(kLogConsole);
+    if (!base::ReadSymbolicLink(log_console, &target)) {
+      target = log_console;
+    }
+  }
+
+  return target;
 }
 
 }  // namespace minios
