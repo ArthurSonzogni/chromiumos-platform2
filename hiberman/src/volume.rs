@@ -77,14 +77,10 @@ const SIZE_4K: u64 = 4 * SIZE_1K;
 const SIZE_1M: u64 = SIZE_1K * SIZE_1K;
 const SIZE_1G: u64 = SIZE_1K * SIZE_1M;
 
-/// Define the size to include in the hibernate volume for accumulating all the
-/// writes in the resume boot. Usually (as of mid 2022) this is about 32MB. Size
-/// it way up to be safe.
-const MAX_SNAPSHOT_BYTES: u64 = SIZE_1G;
-
-/// Define the amount of extra space in the hibernate volume to account for
-/// things like file system overhead and general safety margin.
-const HIBER_VOLUME_FUDGE_BYTES: u64 = SIZE_1G;
+/// Define the size of the hibermeta volume. This volume only
+/// only contains logs and metrics, which require not much space.
+// TODO: reduce size
+const HIBERMETA_VOLUME_SIZE: u64 = SIZE_1G;
 
 /// Define the number of sectors per dm-snapshot chunk.
 const DM_SNAPSHOT_CHUNK_SIZE: usize = 8;
@@ -281,7 +277,7 @@ impl VolumeManager {
     fn create_hibermeta_lv(&mut self) -> Result<()> {
         info!("Creating hibermeta logical volume");
         let path = lv_path(&self.vg_name, HIBERMETA_VOLUME_NAME);
-        let size = Self::hibermeta_volume_size();
+        let size = HIBERMETA_VOLUME_SIZE;
         let start = Instant::now();
         create_thin_volume(&self.vg_name, size, HIBERMETA_VOLUME_NAME)
             .context("Failed to create thin volume")?;
@@ -292,12 +288,6 @@ impl VolumeManager {
             .context("Cannot format hibermeta volume")?;
         log_io_duration("Created hibermeta logical volume", size, start.elapsed());
         Ok(())
-    }
-
-    /// Figure out the appropriate size (in bytes) for the hibermeta volume.
-    fn hibermeta_volume_size() -> u64 {
-        let total_mem = (get_total_memory_pages() as u64) * (get_page_size() as u64);
-        total_mem + MAX_SNAPSHOT_BYTES + HIBER_VOLUME_FUDGE_BYTES
     }
 
     /// Create snapshot storage files for all active LVs.
