@@ -114,7 +114,7 @@ bool NVRamBootLockbox::Finalize() {
 
 bool NVRamBootLockbox::DefineSpace() {
   if (nvspace_state_ != SpaceState::kSpaceUndefined) {
-    LOG(ERROR)
+    LOG(INFO)
         << "Trying to define the nvspace, but the nvspace isn't undefined.";
     return false;
   }
