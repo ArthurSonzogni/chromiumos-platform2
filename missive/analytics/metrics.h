@@ -36,6 +36,11 @@ class Metrics {
   // Proxy of `MetricsLibraryInterface::SendBoolToUMA`.
   static bool SendBoolToUMA(const std::string& name, bool sample);
 
+  // Proxy of `MetricsLibraryInterface::SendEnumToUMA`.
+  static bool SendEnumToUMA(const std::string& name,
+                            int sample,
+                            int exclusive_max);
+
   // Proxy of `MetricsLibraryInterface::SendPercentageToUMA`.
   static bool SendPercentageToUMA(const std::string& name, int sample);
 

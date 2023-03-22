@@ -47,8 +47,8 @@ class ReportQueueProviderTest : public ::testing::Test {
 
     // UMA to accept all results.
     ON_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-            SendLinearToUMA(StrEq(ReportQueue::kEnqueueMetricsName), _,
-                            Eq(error::MAX_VALUE)))
+            SendEnumToUMA(StrEq(ReportQueue::kEnqueueMetricsName), _,
+                          Eq(error::MAX_VALUE)))
         .WillByDefault(Return(true));
   }
 

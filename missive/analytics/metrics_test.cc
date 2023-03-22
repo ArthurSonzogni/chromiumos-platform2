@@ -41,6 +41,24 @@ TEST_F(MetricsTest, SendBoolToUMA) {
   task_environment_.RunUntilIdle();
 }
 
+TEST_F(MetricsTest, SendEnumToUMA) {
+  enum Test {
+    Unknown = 0,
+    Innermost,
+    Inner,
+    Outer,
+    Outermost,
+  };
+  static constexpr const char* kName = "test";
+  static constexpr Test sample = Test::Inner;
+  static constexpr int kExclusiveMax = static_cast<int>(Test::Outermost) + 1;
+  EXPECT_CALL(Metrics::TestEnvironment::GetMockMetricsLibrary(),
+              SendEnumToUMA(kName, static_cast<int>(sample), kExclusiveMax))
+      .Times(1);
+  Metrics::SendEnumToUMA(kName, static_cast<int>(sample), kExclusiveMax);
+  task_environment_.RunUntilIdle();
+}
+
 TEST_F(MetricsTest, SendLinearToUMA) {
   static constexpr const char* kName = "test";
   static constexpr int sample = 30;

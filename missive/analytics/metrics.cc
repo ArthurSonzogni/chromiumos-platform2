@@ -76,6 +76,16 @@ bool Metrics::SendBoolToUMA(const std::string& name, bool sample) {
 }
 
 // static
+bool Metrics::SendEnumToUMA(const std::string& name,
+                            int sample,
+                            int exclusive_max) {
+  return PostUMATask(static_cast<bool (MetricsLibraryInterface::*)(
+                         const std::string&, int, int)>(
+                         &MetricsLibraryInterface::SendEnumToUMA),
+                     name, sample, exclusive_max);
+}
+
+// static
 bool Metrics::SendPercentageToUMA(const std::string& name, int sample) {
   return PostUMATask(&MetricsLibraryInterface::SendPercentageToUMA, name,
                      sample);

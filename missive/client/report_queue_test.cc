@@ -46,8 +46,8 @@ TEST_F(ReportQueueTest, EnqueueTest) {
         std::move(cb).Run(Status::StatusOK());
       })));
   EXPECT_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-              SendLinearToUMA(StrEq(ReportQueue::kEnqueueMetricsName),
-                              Eq(error::OK), Eq(error::MAX_VALUE)))
+              SendEnumToUMA(StrEq(ReportQueue::kEnqueueMetricsName),
+                            Eq(error::OK), Eq(error::MAX_VALUE)))
       .WillOnce(Return(true));
   test::TestEvent<Status> e;
   queue.Enqueue("Record", FAST_BATCH, e.cb());
@@ -62,8 +62,8 @@ TEST_F(ReportQueueTest, EnqueueWithErrorTest) {
         std::move(cb).Run(Status(error::CANCELLED, "Cancelled by test"));
       })));
   EXPECT_CALL(analytics::Metrics::TestEnvironment::GetMockMetricsLibrary(),
-              SendLinearToUMA(StrEq(ReportQueue::kEnqueueMetricsName),
-                              Eq(error::CANCELLED), Eq(error::MAX_VALUE)))
+              SendEnumToUMA(StrEq(ReportQueue::kEnqueueMetricsName),
+                            Eq(error::CANCELLED), Eq(error::MAX_VALUE)))
       .WillOnce(Return(true));
   test::TestEvent<Status> e;
   queue.Enqueue("Record", FAST_BATCH, e.cb());
