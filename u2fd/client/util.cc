@@ -164,20 +164,19 @@ crypto::ScopedOpenSSL<X509, X509_free> ParseX509(const C& container) {
 
 std::optional<std::vector<uint8_t>> DerEncodeCertificate(X509* cert) {
   int cert_size = i2d_X509(cert, nullptr);
-  if (cert_size < 0) {
+  if (cert_size <= 0) {
     LOG(ERROR) << "Failed to DER-encode X509 certficate, error: " << cert_size;
     return std::nullopt;
   }
 
-  std::vector<uint8_t> cert_der(cert_size);
-  unsigned char* output_ptr = &cert_der[0];
-
+  unsigned char* output_ptr = nullptr;
   if (i2d_X509(cert, &output_ptr) != cert_size) {
     LOG(ERROR) << "X509 DER-encoding returned unexpected size, expected "
                << cert_size;
     return std::nullopt;
   }
-
+  std::vector<uint8_t> cert_der(output_ptr, output_ptr + cert_size);
+  OPENSSL_free(output_ptr);
   return cert_der;
 }
 
