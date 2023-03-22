@@ -257,15 +257,8 @@ fn set_gt_boost_freq_mhz_impl(root: &Path, mode: RTCAudioActive) -> Result<()> {
         .to_path_buf();
 
     let gt_boost_freq_mhz_content = std::fs::read_to_string(card_path.join(BOOST_PATH))?;
-    let curent_gt_boost_freq_mhz = gt_boost_freq_mhz_content.parse::<i32>().with_context(|| {
-        format!(
-            "failed to parse gt_boost_freq_mhz to i32: {}",
-            gt_boost_freq_mhz_content
-        )
-    })?;
-
     // When gt_boost_freq_mhz is 0, it cannot be changed.
-    if curent_gt_boost_freq_mhz == 0 {
+    if gt_boost_freq_mhz_content == "0\n" {
         return Ok(());
     }
 
