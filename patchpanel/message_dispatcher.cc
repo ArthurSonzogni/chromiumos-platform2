@@ -34,8 +34,18 @@ bool MessageDispatcherInternal::GetMessage(
   char buffer[1024];
   ssize_t len = recvfrom(fd_.get(), buffer, sizeof(buffer), MSG_DONTWAIT,
                          nullptr, nullptr);
-  if (len < 0 && errno != EAGAIN && errno != EINTR) {
-    PLOG(ERROR) << "Read failed: stopping watcher";
+  // Don't stop watchers on these errors.
+  if (len < 0 && (errno == EAGAIN || errno == EINTR)) {
+    return false;
+  }
+  // Handle errors (len < 0) and graceful shutdowns (len == 0). Explicit 0-byte
+  // messages are not supported and considered as graceful shutdown.
+  if (len <= 0) {
+    if (len == 0) {
+      LOG(ERROR) << "Read failed: stopping watcher: socket closed";
+    } else {
+      PLOG(ERROR) << "Read failed: stopping watcher";
+    }
     watcher_.reset();
     if (!failure_handler_.is_null()) {
       failure_handler_.Run();
