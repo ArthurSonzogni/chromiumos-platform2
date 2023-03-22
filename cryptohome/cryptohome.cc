@@ -265,7 +265,6 @@ constexpr const char* kActions[] = {"unmount",
                                     "get_account_disk_usage",
                                     "lock_to_single_user_mount_until_reboot",
                                     "get_rsu_device_id",
-                                    "check_health",
                                     "start_auth_session",
                                     "invalidate_auth_session",
                                     "extend_auth_session",
@@ -352,7 +351,6 @@ enum ActionEnum {
   ACTION_GET_ACCOUNT_DISK_USAGE,
   ACTION_LOCK_TO_SINGLE_USER_MOUNT_UNTIL_REBOOT,
   ACTION_GET_RSU_DEVICE_ID,
-  ACTION_CHECK_HEALTH,
   ACTION_START_AUTH_SESSION,
   ACTION_INVALIDATE_AUTH_SESSION,
   ACTION_EXTEND_AUTH_SESSION,
@@ -2941,20 +2939,6 @@ int main(int argc, char** argv) {
           static_cast<int>(reply.error()));
       return 1;
     }
-  } else if (!strcmp(switches::kActions[switches::ACTION_CHECK_HEALTH],
-                     action.c_str())) {
-    user_data_auth::CheckHealthRequest req;
-    user_data_auth::CheckHealthReply reply;
-
-    brillo::ErrorPtr error;
-    if (!misc_proxy.CheckHealth(req, &reply, &error, timeout_ms) || error) {
-      printer.PrintFormattedHumanOutput(
-          "CheckHealth call failed: %s.\n",
-          BrilloErrorToString(error.get()).c_str());
-      return 1;
-    }
-
-    printer.PrintReplyProtobuf(reply);
   } else if (!strcmp(switches::kActions[switches::ACTION_START_AUTH_SESSION],
                      action.c_str())) {
     user_data_auth::StartAuthSessionRequest req;
