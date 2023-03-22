@@ -26,16 +26,15 @@ enum class [[nodiscard]] CgptErrorCode {
 
 std::ostream& operator<<(std::ostream& os, const CgptErrorCode& error);
 
-// CgptManager exposes methods to manipulate the Guid Partition Table as needed
-// for ChromeOS scenarios.
-class CgptManager {
+// CgptManagerInterface provices methods to manipulate the Guid
+// Partition Table as needed for ChromeOS scenarios.
+//
+// A concrete implementation is provided by `CgptManager`, and a mock
+// for unit tests is provided in `mock_cgpt_manager.h`.
+class CgptManagerInterface {
  public:
-  // Default constructor. The Initialize method must be called before
-  // any other method can be called on this class.
-  CgptManager();
-
   // Destructor. Automatically closes any opened device.
-  ~CgptManager();
+  virtual ~CgptManagerInterface() {}
 
   // Opens the given device_name (e.g. "/dev/sdc") and initializes
   // with the Guid Partition Table of that device. This is the first method
@@ -43,36 +42,37 @@ class CgptManager {
   // return kNotInitialized.
   // Returns kSuccess or an appropriate error code.
   // This device is automatically closed when this object is destructed.
-  CgptErrorCode Initialize(const base::FilePath& device_name);
+  virtual CgptErrorCode Initialize(const base::FilePath& device_name) = 0;
 
   // Performs any necessary write-backs so that the GPT structs are written to
   // the device. This method is called in the destructor but its error code is
   // not checked. Therefore, it is best to call Finalize yourself and check the
   // returned code.
-  CgptErrorCode Finalize();
+  virtual CgptErrorCode Finalize() = 0;
 
   // Sets the "successful" attribute of the given kernelPartition to 0 or 1
   // based on the value of is_successful being true (1) or false(0)
   // Returns kSuccess or an appropriate error code.
-  CgptErrorCode SetSuccessful(PartitionNum partition_number,
-                              bool is_successful);
+  virtual CgptErrorCode SetSuccessful(PartitionNum partition_number,
+                                      bool is_successful) = 0;
 
   // Sets the "NumTriesLeft" attribute of the given kernelPartition to
   // the given num_tries_left value.
   // Returns kSuccess or an appropriate error code.
-  CgptErrorCode SetNumTriesLeft(PartitionNum partition_number,
-                                int num_tries_left);
+  virtual CgptErrorCode SetNumTriesLeft(PartitionNum partition_number,
+                                        int num_tries_left) = 0;
 
   // Sets the "Priority" attribute of the given kernelPartition to
   // the given priority value.
   // Returns kSuccess or an appropriate error code.
-  CgptErrorCode SetPriority(PartitionNum partition_number, uint8_t priority);
+  virtual CgptErrorCode SetPriority(PartitionNum partition_number,
+                                    uint8_t priority) = 0;
 
   // Populates the unique_id parameter with the Guid that uniquely identifies
   // the given partition_number.
   // Returns kSuccess or an appropriate error code.
-  CgptErrorCode GetPartitionUniqueId(PartitionNum partition_number,
-                                     Guid* unique_id) const;
+  virtual CgptErrorCode GetPartitionUniqueId(PartitionNum partition_number,
+                                             Guid* unique_id) const = 0;
 
   // Sets the "Priority" attribute of a partition to make it higher than all
   // other partitions. If necessary, the priorities of other partitions are
@@ -82,7 +82,28 @@ class CgptManager {
   // doesn't touch the partitions whose priorities are zero.
   //
   // Returns kSuccess or an appropriate error code.
-  CgptErrorCode SetHighestPriority(PartitionNum partition_number);
+  virtual CgptErrorCode SetHighestPriority(PartitionNum partition_number) = 0;
+};
+
+class CgptManager : public CgptManagerInterface {
+ public:
+  // Default constructor. The Initialize method must be called before
+  // any other method can be called on this class.
+  CgptManager();
+
+  ~CgptManager() override;
+
+  CgptErrorCode Initialize(const base::FilePath& device_name) override;
+  CgptErrorCode Finalize() override;
+  CgptErrorCode SetSuccessful(PartitionNum partition_number,
+                              bool is_successful) override;
+  CgptErrorCode SetNumTriesLeft(PartitionNum partition_number,
+                                int num_tries_left) override;
+  CgptErrorCode SetPriority(PartitionNum partition_number,
+                            uint8_t priority) override;
+  CgptErrorCode GetPartitionUniqueId(PartitionNum partition_number,
+                                     Guid* unique_id) const override;
+  CgptErrorCode SetHighestPriority(PartitionNum partition_number) override;
 
  private:
   // The device name that is passed to Initialize.
