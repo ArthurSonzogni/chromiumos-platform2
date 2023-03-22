@@ -161,10 +161,32 @@ bool GetMtdSize(const base::FilePath& block_dev, uint64_t* ret) {
 
 // This file implements the C++ wrapper methods over the C cgpt methods.
 
+std::ostream& operator<<(std::ostream& os, const CgptErrorCode& error) {
+  switch (error) {
+    case CgptErrorCode::kSuccess:
+      os << "CgptErrorCode::kSuccess";
+      break;
+    case CgptErrorCode::kNotInitialized:
+      os << "CgptErrorCode::kNotInitialized";
+      break;
+    case CgptErrorCode::kUnknownError:
+      os << "CgptErrorCode::kUnknownError";
+      break;
+    case CgptErrorCode::kInvalidArgument:
+      os << "CgptErrorCode::kInvalidArgument";
+      break;
+  }
+  return os;
+}
+
 CgptManager::CgptManager() : device_size_(0), is_initialized_(false) {}
 
 CgptManager::~CgptManager() {
-  Finalize();
+  CgptErrorCode result = Finalize();
+  if (result != CgptErrorCode::kSuccess &&
+      result != CgptErrorCode::kNotInitialized) {
+    LOG(ERROR) << "Finalize failed: " << result;
+  }
 }
 
 CgptErrorCode CgptManager::Initialize(const base::FilePath& device_name) {

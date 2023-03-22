@@ -5,6 +5,7 @@
 #ifndef INSTALLER_CGPT_MANAGER_H_
 #define INSTALLER_CGPT_MANAGER_H_
 
+#include <iostream>
 #include <string>
 
 #include <base/files/file_path.h>
@@ -16,12 +17,14 @@
 // This file defines a simple C++ wrapper class interface for the cgpt methods.
 
 // These are the possible error codes that can be returned by the CgptManager.
-enum class CgptErrorCode {
+enum class [[nodiscard]] CgptErrorCode {
   kSuccess = 0,
   kNotInitialized = 1,
   kUnknownError = 2,
   kInvalidArgument = 3,
 };
+
+std::ostream& operator<<(std::ostream& os, const CgptErrorCode& error);
 
 // CgptManager exposes methods to manipulate the Guid Partition Table as needed
 // for ChromeOS scenarios.
