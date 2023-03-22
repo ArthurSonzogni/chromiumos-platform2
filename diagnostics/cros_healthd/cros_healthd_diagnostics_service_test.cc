@@ -18,7 +18,7 @@
 
 #include "diagnostics/cros_healthd/cros_healthd_diagnostics_service.h"
 #include "diagnostics/cros_healthd/fake_cros_healthd_routine_factory.h"
-#include "diagnostics/cros_healthd/fake_routine_service.h"
+#include "diagnostics/cros_healthd/routines/routine_service.h"
 #include "diagnostics/cros_healthd/routines/routine_test_utils.h"
 #include "diagnostics/cros_healthd/system/fake_mojo_service.h"
 #include "diagnostics/cros_healthd/system/fake_system_config.h"
@@ -195,7 +195,7 @@ class CrosHealthdDiagnosticsServiceTest : public testing::Test {
   base::test::TaskEnvironment task_environment_;
   FakeCrosHealthdRoutineFactory routine_factory_;
   MockContext mock_context_;
-  FakeRoutineService routine_service_;
+  RoutineService routine_service_{&mock_context_};
   std::unique_ptr<CrosHealthdDiagnosticsService> service_;
 };
 

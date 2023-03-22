@@ -103,19 +103,10 @@ mojo::ScopedHandle ConvertMemoryV2ResultToJson(
 }  // namespace
 
 RoutineAdapter::RoutineAdapter(
-    ash::cros_healthd::mojom::CrosHealthdRoutinesService* routine_service,
-    ash::cros_healthd::mojom::RoutineArgumentPtr routine_arg)
-    : routine_service_{routine_service} {
-  mojo::PendingReceiver<mojom::RoutineControl> pending_receiver =
-      routine_control_.BindNewPipeAndPassReceiver();
-  routine_type_ = routine_arg->which();
+    ash::cros_healthd::mojom::RoutineArgument::Tag routine_type)
+    : routine_type_{routine_type} {
   error_occured_ = false;
   routine_cancelled_ = false;
-  routine_service_->CreateRoutine(std::move(routine_arg),
-                                  std::move(pending_receiver));
-  routine_control_->AddObserver(observer_receiver_.BindNewPipeAndPassRemote());
-  routine_control_.set_disconnect_with_reason_handler(base::BindRepeating(
-      &RoutineAdapter::OnRoutineDisconnect, weak_ptr_factory_.GetWeakPtr()));
   // We cannot guarantee when the observer will receive its first update,
   // therefore we cannot guarantee when the cached routine state will receive
   // its first update. Since in the old API a routine's availability check is
@@ -127,6 +118,16 @@ RoutineAdapter::RoutineAdapter(
 }
 
 RoutineAdapter::~RoutineAdapter() = default;
+
+mojo::PendingReceiver<mojom::RoutineControl>
+RoutineAdapter::BindNewPipeAndPassReceiver() {
+  mojo::PendingReceiver<mojom::RoutineControl> pending_receiver =
+      routine_control_.BindNewPipeAndPassReceiver();
+  routine_control_->AddObserver(observer_receiver_.BindNewPipeAndPassRemote());
+  routine_control_.set_disconnect_with_reason_handler(base::BindRepeating(
+      &RoutineAdapter::OnRoutineDisconnect, weak_ptr_factory_.GetWeakPtr()));
+  return pending_receiver;
+}
 
 void RoutineAdapter::OnRoutineStateChange(mojom::RoutineStatePtr state) {
   cached_state_ = std::move(state);

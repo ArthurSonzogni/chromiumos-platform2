@@ -22,8 +22,7 @@ class RoutineAdapter : public DiagnosticRoutine,
                        ash::cros_healthd::mojom::RoutineObserver {
  public:
   explicit RoutineAdapter(
-      ash::cros_healthd::mojom::CrosHealthdRoutinesService* routine_service,
-      ash::cros_healthd::mojom::RoutineArgumentPtr routine_arg);
+      ash::cros_healthd::mojom::RoutineArgument::Tag routine_type);
   RoutineAdapter(const RoutineAdapter&) = delete;
   RoutineAdapter& operator=(const RoutineAdapter&) = delete;
   ~RoutineAdapter();
@@ -41,14 +40,17 @@ class RoutineAdapter : public DiagnosticRoutine,
   ash::cros_healthd::mojom::DiagnosticRoutineStatusEnum GetStatus() override;
   void RegisterStatusChangedCallback(StatusChangedCallback callback) override;
 
+  // Bind the remote for the routine control to a new pipe and return the
+  // receiver.
+  mojo::PendingReceiver<ash::cros_healthd::mojom::RoutineControl>
+  BindNewPipeAndPassReceiver();
+
  private:
   // Sets error message when routine disconnects.
   void OnRoutineDisconnect(uint32_t custom_reason, const std::string& message);
 
   // Holds the remote to communicate with the routine.
   mojo::Remote<ash::cros_healthd::mojom::RoutineControl> routine_control_;
-  // Holds the routine service to issue all requests.
-  ash::cros_healthd::mojom::CrosHealthdRoutinesService* const routine_service_;
   // A receiver that will let this class acts as the routine observer.
   mojo::Receiver<ash::cros_healthd::mojom::RoutineObserver> observer_receiver_{
       this};

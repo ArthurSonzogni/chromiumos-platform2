@@ -101,6 +101,7 @@ source_set("libdiag_routine") {
     "nvme_self_test/nvme_self_test.cc",
     "nvme_wear_level/nvme_wear_level.cc",
     "privacy_screen/privacy_screen.cc",
+    "routine_service.cc",
     "sensor/sensitive_sensor.cc",
     "sensor/sensor_config_checker.cc",
     "simple_routine.cc",

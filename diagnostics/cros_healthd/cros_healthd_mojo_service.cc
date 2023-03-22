@@ -10,15 +10,10 @@
 
 #include <base/check.h>
 #include <base/logging.h>
-#include <base/notreached.h>
 #include <chromeos/mojo/service_constants.h>
-#include <mojo/public/cpp/bindings/receiver_set.h>
 
 #include "diagnostics/cros_healthd/fetchers/process_fetcher.h"
-#include "diagnostics/cros_healthd/routines/base_routine_control.h"
-#include "diagnostics/cros_healthd/routines/memory_and_cpu/memory_v2.h"
 #include "diagnostics/mojom/public/cros_healthd_probe.mojom.h"
-#include "diagnostics/mojom/public/cros_healthd_routines.mojom.h"
 
 namespace diagnostics {
 
@@ -29,7 +24,8 @@ CrosHealthdMojoService::CrosHealthdMojoService(
     Context* context,
     FetchAggregator* fetch_aggregator,
     EventAggregator* event_aggregator)
-    : context_(context),
+    : RoutineService(context),
+      context_(context),
       fetch_aggregator_(fetch_aggregator),
       event_aggregator_(event_aggregator) {
   DCHECK(context_);
@@ -109,46 +105,6 @@ void CrosHealthdMojoService::ProbeMultipleProcessInfo(
     ProbeMultipleProcessInfoCallback callback) {
   ProcessFetcher(context_).FetchMultipleProcessInfo(
       process_ids, ignore_single_process_info, std::move(callback));
-}
-
-void CrosHealthdMojoService::CreateRoutine(
-    mojom::RoutineArgumentPtr routine_arg,
-    mojo::PendingReceiver<mojom::RoutineControl> routine_receiver) {
-  switch (routine_arg->which()) {
-    case mojom::RoutineArgument::Tag::kMemory:
-      AddRoutine(std::make_unique<MemoryRoutineV2>(context_,
-                                                   routine_arg->get_memory()),
-                 std::move(routine_receiver));
-      break;
-    case mojom::RoutineArgument::Tag::kUnrecognizedArgument:
-      LOG(ERROR) << "Routine Argument not recognized/supported";
-      routine_receiver.ResetWithReason(
-          static_cast<uint32_t>(
-              mojom::RoutineControlExceptionEnum::kNotSupported),
-          "Routine Argument not recognized/supported");
-      break;
-  }
-}
-
-void CrosHealthdMojoService::AddRoutine(
-    std::unique_ptr<BaseRoutineControl> routine,
-    mojo::PendingReceiver<mojom::RoutineControl> routine_receiver) {
-  auto routine_ptr = routine.get();
-  mojo::ReceiverId receiver_id =
-      receiver_set_.Add(std::move(routine), std::move(routine_receiver));
-  routine_ptr->SetOnExceptionCallback(
-      base::BindOnce(&CrosHealthdMojoService::OnRoutineException,
-                     weak_ptr_factory_.GetWeakPtr(), receiver_id));
-}
-
-void CrosHealthdMojoService::OnRoutineException(mojo::ReceiverId receiver_id,
-                                                uint32_t error,
-                                                const std::string& reason) {
-  if (!receiver_set_.HasReceiver(receiver_id)) {
-    LOG(ERROR) << "Receiver ID not found in receiver set: " << receiver_id;
-    return;
-  }
-  receiver_set_.RemoveWithReason(receiver_id, error, reason);
 }
 
 }  // namespace diagnostics
