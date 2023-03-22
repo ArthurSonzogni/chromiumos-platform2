@@ -283,9 +283,17 @@ void Controller::OnProxyAddrMessageFailure() {
 }
 
 void Controller::OnProxyAddrMessage(const ProxyAddrMessage& msg) {
-  std::vector<std::string> dns_proxy_addrs(msg.addrs().begin(),
-                                           msg.addrs().end());
-  resolv_conf_->SetDNSProxyAddresses(dns_proxy_addrs);
+  switch (msg.type()) {
+    case ProxyAddrMessage::SET_ADDRS:
+      resolv_conf_->SetDNSProxyAddresses(
+          std::vector<std::string>(msg.addrs().begin(), msg.addrs().end()));
+      break;
+    case ProxyAddrMessage::CLEAR_ADDRS:
+      resolv_conf_->SetDNSProxyAddresses({});
+      break;
+    default:
+      NOTREACHED();
+  }
 }
 
 void Controller::KillProxy(Proxy::Type type,

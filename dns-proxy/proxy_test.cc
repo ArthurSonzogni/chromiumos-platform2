@@ -378,6 +378,7 @@ TEST_F(ProxyTest, SystemProxy_SendIPAddressesToController) {
   proxy.doh_config_.set_nameservers({"8.8.8.8"}, {"2001:4860:4860::8888"});
 
   ProxyAddrMessage msg;
+  msg.set_type(ProxyAddrMessage::SET_ADDRS);
   msg.add_addrs("10.10.10.10");
   msg.add_addrs("::1");
   EXPECT_CALL(*msg_dispatcher_ptr, SendMessage(EqualsProto(msg)))
@@ -394,6 +395,7 @@ TEST_F(ProxyTest, SystemProxy_SendIPAddressesToControllerEmptyNameserver) {
   // Only IPv4 nameserver.
   proxy.doh_config_.set_nameservers({"8.8.8.8"}, {});
   ProxyAddrMessage msg;
+  msg.set_type(ProxyAddrMessage::SET_ADDRS);
   msg.add_addrs("10.10.10.10");
   EXPECT_CALL(*msg_dispatcher_ptr, SendMessage(EqualsProto(msg)))
       .WillOnce(Return(true));
@@ -402,6 +404,7 @@ TEST_F(ProxyTest, SystemProxy_SendIPAddressesToControllerEmptyNameserver) {
   // Only IPv6 nameserver.
   proxy.doh_config_.set_nameservers({}, {"2001:4860:4860::8888"});
   msg.Clear();
+  msg.set_type(ProxyAddrMessage::SET_ADDRS);
   msg.add_addrs("::1");
   EXPECT_CALL(*msg_dispatcher_ptr, SendMessage(EqualsProto(msg)))
       .WillOnce(Return(true));

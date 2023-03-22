@@ -191,6 +191,7 @@ class Proxy : public brillo::DBusDaemon {
   void SendIPAddressesToController(const std::string& ipv4_addr,
                                    const std::string& ipv6_addr);
   void ClearIPAddressesInController();
+  void SendProtoMessage(const ProxyAddrMessage& msg);
 
   // Callback from RTNetlink listener, invoked when the lan interface IPv6
   // address is changed.

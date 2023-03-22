@@ -21,6 +21,7 @@ namespace dns_proxy {
 
 using testing::_;
 using testing::ElementsAre;
+using testing::IsEmpty;
 
 class ControllerTest : public Test {
  public:
@@ -37,6 +38,7 @@ class ControllerTest : public Test {
 
 TEST_F(ControllerTest, SetProxyAddrs) {
   ProxyAddrMessage msg;
+  msg.set_type(ProxyAddrMessage::SET_ADDRS);
   msg.add_addrs("100.115.92.100");
   msg.add_addrs("::1");
   EXPECT_CALL(*resolv_conf_ptr_,
@@ -46,7 +48,8 @@ TEST_F(ControllerTest, SetProxyAddrs) {
 
 TEST_F(ControllerTest, ClearProxyAddrs) {
   ProxyAddrMessage msg;
-  EXPECT_CALL(*resolv_conf_ptr_, SetDNSProxyAddresses(ElementsAre()));
+  msg.set_type(ProxyAddrMessage::CLEAR_ADDRS);
+  EXPECT_CALL(*resolv_conf_ptr_, SetDNSProxyAddresses(IsEmpty()));
   controller_->OnProxyAddrMessage(msg);
 }
 

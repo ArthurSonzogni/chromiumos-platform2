@@ -9,6 +9,13 @@ package dns_proxy;
 // Message sent from the system proxy to the controller. This is done to set
 // /etc/resolv.conf with the proxy addresses.
 message ProxyAddrMessage {
+  enum MessageType {
+    UNKNOWN_MESSAGE = 0;
+    SET_ADDRS = 1;    // Set DNS proxy address(es).
+    CLEAR_ADDRS = 2;  // Clear DNS proxy address(es).
+  }
+  required MessageType type = 2;
+
   // IPv4 and IPv6 addresses of system proxy.
   repeated string addrs = 1;
 }

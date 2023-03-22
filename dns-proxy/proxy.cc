@@ -772,6 +772,7 @@ void Proxy::SendIPAddressesToController(const std::string& ipv4_addr,
   }
 
   ProxyAddrMessage msg;
+  msg.set_type(ProxyAddrMessage::SET_ADDRS);
   if (!ipv4_addr.empty() && !doh_config_.ipv4_nameservers().empty()) {
     msg.add_addrs(ipv4_addr);
   }
@@ -779,12 +780,21 @@ void Proxy::SendIPAddressesToController(const std::string& ipv4_addr,
     msg.add_addrs(ipv6_addr);
   }
 
-  // Don't send empty proxy address unless we are trying to clear previously
-  // set address(es).
-  if (msg.addrs().empty() && (!ipv4_addr.empty() || !ipv6_addr.empty())) {
+  // Don't send empty proxy address.
+  if (msg.addrs().empty()) {
     return;
   }
 
+  SendProtoMessage(msg);
+}
+
+void Proxy::ClearIPAddressesInController() {
+  ProxyAddrMessage msg;
+  msg.set_type(ProxyAddrMessage::CLEAR_ADDRS);
+  SendProtoMessage(msg);
+}
+
+void Proxy::SendProtoMessage(const ProxyAddrMessage& msg) {
   if (msg_dispatcher_->SendMessage(msg)) {
     return;
   }
@@ -793,10 +803,6 @@ void Proxy::SendIPAddressesToController(const std::string& ipv4_addr,
   // process to let the controller restart the proxy. Restarting allows a new
   // clean state.
   Quit();
-}
-
-void Proxy::ClearIPAddressesInController() {
-  SendIPAddressesToController("" /* ipv4_address */, "" /* ipv6_address */);
 }
 
 const std::vector<std::string>& Proxy::DoHConfig::ipv4_nameservers() {
