@@ -257,7 +257,6 @@ if (use.test) {
       "authpolicy_flags_test.cc",
       "authpolicy_test.cc",
       "gpo_version_cache_test.cc",
-      "policy/device_policy_encoder_test.cc",
       "policy/extension_policy_encoder_test.cc",
       "policy/preg_parser_test.cc",
       "policy/preg_policy_encoder_test.cc",
