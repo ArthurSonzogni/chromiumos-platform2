@@ -64,7 +64,8 @@ class CrosFpAuthStackManager : public AuthStackManager {
       BiodMetricsInterface* biod_metrics,
       std::unique_ptr<CrosFpSessionManager> session_manager,
       std::unique_ptr<PairingKeyStorage> pk_storage,
-      std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver);
+      std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver,
+      State state = State::kNone);
   CrosFpAuthStackManager(const CrosFpAuthStackManager&) = delete;
   CrosFpAuthStackManager& operator=(const CrosFpAuthStackManager&) = delete;
 
@@ -95,8 +96,6 @@ class CrosFpAuthStackManager : public AuthStackManager {
                                    on_session_failed) override;
 
   State GetState() const { return state_; }
-
-  void SetStateForTest(State state) { state_ = state; }
 
  protected:
   void EndEnrollSession() override;
@@ -158,8 +157,6 @@ class CrosFpAuthStackManager : public AuthStackManager {
   AuthStackManager::AuthScanDoneCallback on_auth_scan_done_;
   AuthStackManager::SessionFailedCallback on_session_failed_;
 
-  State state_ = State::kNone;
-
   // A timer that aborts the match session when time is up.
   base::OneShotTimer do_match_timer_;
 
@@ -170,6 +167,8 @@ class CrosFpAuthStackManager : public AuthStackManager {
   std::unique_ptr<PairingKeyStorage> pk_storage_;
 
   std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver_;
+
+  State state_;
 
   base::WeakPtrFactory<CrosFpAuthStackManager> session_weak_factory_;
 };

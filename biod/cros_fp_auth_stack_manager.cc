@@ -44,13 +44,15 @@ CrosFpAuthStackManager::CrosFpAuthStackManager(
     BiodMetricsInterface* biod_metrics,
     std::unique_ptr<CrosFpSessionManager> session_manager,
     std::unique_ptr<PairingKeyStorage> pk_storage,
-    std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver)
+    std::unique_ptr<const hwsec::PinWeaverFrontend> pinweaver,
+    State state)
     : biod_metrics_(biod_metrics),
       cros_dev_(std::move(cros_fp_device)),
       power_button_filter_(std::move(power_button_filter)),
       session_manager_(std::move(session_manager)),
       pk_storage_(std::move(pk_storage)),
       pinweaver_(std::move(pinweaver)),
+      state_(state),
       session_weak_factory_(this) {
   CHECK(power_button_filter_);
   CHECK(cros_dev_);
