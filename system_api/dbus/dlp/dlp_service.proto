@@ -100,6 +100,9 @@ message DlpFilesRule {
 
   // Restriction level applied to files satisfying the pattern above.
   optional DlpRuleLevel level = 3;
+
+  // Defines where to the file is targeted.
+  repeated DlpComponent destination_components = 4;
 }
 
 message SetDlpFilesPolicyRequest {
