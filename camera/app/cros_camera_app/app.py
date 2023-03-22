@@ -14,6 +14,7 @@ import pathlib
 from typing import Optional
 
 from cros_camera_app import chrome
+from cros_camera_app import device
 
 
 _TEST_EXTENSION_URL = (
@@ -36,6 +37,8 @@ _EXTENSION_JS_TEMPLATE = """
   }
 })()
 """
+
+_CAMERA_DIR = pathlib.Path("/home/chronos/user/MyFiles/Camera")
 
 
 class Facing(enum.Enum):
@@ -119,3 +122,26 @@ class CameraApp:
     def close(self) -> None:
         """Closes all the camera app windows."""
         self._cr.close_targets(_CCA_URL)
+
+    def take_photo(self, *, facing: Optional[Facing] = None) -> pathlib.Path:
+        """Takes a photo.
+
+        Args:
+            facing: The facing of the camera to be captured.
+
+        Returns:
+            The path of the captured photo.
+        """
+        # TODO(shik): Support reusing the existing CCA instance. For now, close
+        # any existing CCA window and restart from a clean state.
+        self.close()
+        self.open(facing=facing)
+
+        # TODO(shik): Use a contextlib.contextmanager managed CCA session
+        # helper function.
+        try:
+            watcher = device.FileWatcher(_CAMERA_DIR, "*.jpg")
+            self.ext.call("ext.cca.takePhoto")
+            return watcher.poll_new_file()
+        finally:
+            self.close()

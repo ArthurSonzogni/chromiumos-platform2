@@ -41,15 +41,131 @@ function promisifyObject(obj) {
   });
 }
 
+/**
+ * Asserts the given condition.
+ * @param {boolean} cond The condition.
+ * @param {string=} message The message to show on failure.
+ */
+function assert(cond, message = 'Assertion failed') {
+  if (!cond) {
+    throw new Error(message);
+  }
+}
+
+/**
+ * Sleeps for the given duration.
+ * @param {number} duration How long to sleep in milliseconds.
+ * @return {!Promise<void>} Resolved when |duration| milliseconds is passed.
+ */
+async function sleep(duration) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, duration);
+  });
+}
+
+/**
+ * Polls until the given function return a value instead of throwing an error.
+ * If it failed to poll within the timeout, the last error would be thrown.
+ * @template T
+ * @param {function(): T} fn Returns an awaitable value or throws an error.
+ * @param {{timeout?: number, interval?: number}=} opts Options in milliseconds.
+ * @return {!Promise<Awaited<T>>} The return value of the given function.
+ */
+async function poll(fn, {timeout = 5000, interval = 10} = {}) {
+  let lastError = null;
+  const deadline = Date.now() + timeout;
+
+  while (Date.now() < deadline) {
+    try {
+      const value = await fn();
+      return value;
+    } catch (e) {
+      lastError = e;
+    }
+    await sleep(interval);
+  }
+
+  throw new Error(
+      'Timed out polling', lastError !== null ? {cause: lastError} : {})
+}
+
+
+/**
+ * The chrome.autotestPrivate API is a ChromeOS only API for testing, and is
+ * only allowed on the test extensions. Reference:
+ * https://source.chromium.org/chromium/chromium/src/+/main:chrome/common/extensions/api/autotest_private.idl
+ * @typedef {Object} Autotest
+ * @prop {function(): !Promise<void>} waitForSystemWebAppsInstall
+ * @prop {(appName: string, url: string) => !Promise<void>} launchSystemWebApp
+ */
+
+/**
+ * @type {Autotest}
+ */
 const autotest = promisifyObject(chrome.autotestPrivate);
+
+// The chrome.automation API allows developers to access the automation
+// (accessibility) tree for the browser. Reference:
+// https://developer.chrome.com/docs/extensions/reference/automation/
+
+/**
+ * @typedef {Object} FindParams
+ * @prop {Object<string, string | !RegExp | number | boolean>=} attributes
+ * @prop {string=} role
+ * @prop {Object<string, boolean>=} state
+ */
+
+/**
+ * @typedef {Object} AutomationNode
+ * @prop {function(FindParams): ?AutomationNode} find
+ * @prop {function(): void} doDefault
+ */
+
+/**
+ * @type {{getDesktop: function(): !Promise<AutomationNode>}}
+ */
+const automation = promisifyObject(chrome.automation);
 
 class CCA {
   /**
+   * Gets the target automation node in CCA window with automatic polling.
+   * @param {!FindParams} finder
+   * @return {!Promise<!AutomationNode>}
+   */
+  async getNode(finder) {
+    return poll(async () => {
+      let node = await automation.getDesktop();
+      const finders =
+          [{attributes: {name: 'Camera', className: 'BrowserFrame'}}, finder];
+      for (const finder of finders) {
+        node = node.find(finder);
+        assert(
+            node !== null,
+            `Failed to find node with ${JSON.stringify(finder)}`);
+      }
+      return node;
+    });
+  }
+
+  /**
+   * Performs the specified action.
+   * @param {string} name The action name in a11y tree.
+   * @return {!Promise<void>}
+   */
+  async doAction(name) {
+    const node = await this.getNode({
+      states: {focusable: true, disabled: false},
+      attributes: {defaultActionVerb: /./, name},
+    });
+    node.doDefault();
+  }
+
+  /**
    * Opens the camera app.
-   * @param {{facing?: string, mode?: string}} opts Target facing and mode.
+   * @param {{facing?: string, mode?: string}=} opts Target facing and mode.
    * @returns {!Promise<void>} Resolved when the app is launched.
    */
-  async open({facing, mode}) {
+  async open({facing, mode} = {}) {
     // TODO(shik): Check if CCA is already opened.
 
     await autotest.waitForSystemWebAppsInstall();
@@ -66,6 +182,16 @@ class CCA {
     // TODO(shik): Wait until the preview is streaming.
     // TODO(shik): Check the landed facing.
     // TODO(shik): Check the landed mode.
+  }
+
+  /**
+   * Takes a photo. This assumes CCA is already opened.
+   * @return {!Promise<void>}
+   */
+  async takePhoto() {
+    // TODO(shik): Support non-English names.
+    await this.doAction('Take photo');
+    // TODO(shik): Wait until the photo is saved.
   }
 }
 

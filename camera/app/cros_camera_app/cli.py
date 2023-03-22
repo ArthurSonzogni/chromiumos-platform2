@@ -11,6 +11,8 @@ Run `cca help` for more information about the supported subcommands.
 import argparse
 import codecs
 import logging
+import pathlib
+import shutil
 import sys
 from typing import List, Optional
 
@@ -35,6 +37,19 @@ def cmd_close(args: argparse.Namespace):
     del args  # unused
     cca = app.CameraApp()
     cca.close()
+
+
+# TODO(shik): Provide an option to reuse the existing CCA session and not to
+# close the app afterward.
+def cmd_take_photo(args: argparse.Namespace):
+    facing = args.facing and app.Facing[args.facing.upper()]
+    cca = app.CameraApp()
+    path = cca.take_photo(facing=facing)
+    if args.output:
+        shutil.copy2(path, args.output)
+        logging.info("Copied photo from %s to %s", path, args.output)
+    else:
+        logging.info("Saved photo at %s", path)
 
 
 def parse_args(argv: Optional[List[str]]) -> argparse.Namespace:
@@ -79,6 +94,24 @@ def parse_args(argv: Optional[List[str]]) -> argparse.Namespace:
         description="Close CCA if it's open.",
     )
     close_parser.set_defaults(func=cmd_close)
+
+    take_photo_parser = subparsers.add_parser(
+        "take-photo",
+        help="Take a photo",
+        description="Take a photo using CCA.",
+    )
+    take_photo_parser.add_argument(
+        "--facing",
+        help="facing of the camera to be captured",
+        choices=[f.name.lower() for f in app.Facing],
+    )
+    take_photo_parser.add_argument(
+        "--output",
+        help="output path to save the photo",
+        type=pathlib.Path,
+    )
+    take_photo_parser.set_defaults(func=cmd_take_photo)
+
     return parser.parse_args(argv)
 
 

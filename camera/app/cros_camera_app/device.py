@@ -6,7 +6,10 @@
 
 import getpass
 import logging
+import pathlib
 import subprocess
+import time
+from typing import Optional, Set
 
 
 # TODO(shik): Make this work with guest login. Currently, Chrome does not
@@ -101,3 +104,68 @@ def setup():
 
     setup_chrome_dev_conf()
     restart_chrome()
+
+
+class FileWatcher:
+    """Helper to watch new files with the target naming pattern."""
+
+    def __init__(self, dir_path: pathlib.Path, pattern: str):
+        """Initializes the instance and memorize the existing files.
+
+        Args:
+            dir_path: The target directory.
+            pattern: The target file naming pattern.
+        """
+        self._dir = dir_path
+        self._pattern = pattern
+        self._existing_files = self._glob()
+
+    def _glob(self) -> Set[pathlib.Path]:
+        """Gets files matching pattern in the target directory.
+
+        Returns:
+            All files under the target directory that matches the specified
+            pattern.
+        """
+        return set(self._dir.glob(self._pattern))
+
+    def _check_new_file(self) -> Optional[pathlib.Path]:
+        """Checks whether there is a non-empty new file.
+
+        Returns:
+            The path of the new file, or None if not found.
+        """
+        new_files = self._glob() - self._existing_files
+        if not new_files:
+            return None
+
+        if len(new_files) != 1:
+            raise DeviceError("There should be exactly 1 new file")
+
+        new_file = new_files.pop()
+        if new_file.stat().st_size == 0:
+            return None
+        return new_file
+
+    def poll_new_file(self, *, timeout=5, interval=0.01) -> pathlib.Path:
+        """Polls for a non-empty new file.
+
+        Args:
+            timeout: The timeout for polling in seconds.
+            interval: The polling interval in seconds.
+
+        Returns:
+            The path of the non-empty new file.
+        """
+
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            new_file = self._check_new_file()
+            if new_file:
+                return new_file
+            time.sleep(interval)
+
+        raise DeviceError(
+            "Timed out waiting for a new file under %s with pattern %s"
+            % (self._dir, self._pattern)
+        )
