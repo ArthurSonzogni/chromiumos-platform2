@@ -8,6 +8,7 @@
 
 use anyhow::Context;
 use anyhow::Result;
+use hex::encode;
 use libc::c_ulong;
 use libc::c_void;
 use libc::{self};
@@ -217,21 +218,26 @@ impl VolumeManager {
         Ok(())
     }
 
-    pub fn setup_hiberimage(&self, key: &str, format_integrity_dev: bool) -> Result<()> {
+    pub fn setup_hiberimage(
+        &self,
+        hiberintegrity_key: &[u8],
+        hiberimage_key: &[u8],
+        format_integrity_dev: bool,
+    ) -> Result<()> {
         self.create_or_activate_lv(Self::HIBERIMAGE, HibernateVolume::Image)?;
         self.create_or_activate_lv(Self::HIBERINTEGRITY, HibernateVolume::Integrity)?;
 
-        self.create_hiberintegrity_dm_dev(key).context(format!(
-            "Failed to create '{}' DM device",
-            Self::HIBERINTEGRITY
-        ))?;
+        self.create_hiberintegrity_dm_dev(hiberintegrity_key)
+            .context(format!(
+                "Failed to create '{}' DM device",
+                Self::HIBERINTEGRITY
+            ))?;
         self.create_hiberimage_integrity_dm_dev(format_integrity_dev)
             .context(format!(
                 "Failed to create '{}' DM device",
                 Self::HIBERIMAGE_INTEGRITY
             ))?;
-        self.create_hiberimage_dm_dev(key)
-            .context(format!("Failed to create '{}' DM device", Self::HIBERIMAGE))
+        self.create_hiberimage_dm_dev(hiberimage_key)
     }
 
     pub fn teardown_hiberimage(&self) -> Result<()> {
@@ -602,12 +608,12 @@ impl VolumeManager {
 
     /// Create the dm-crypt device 'hiberintegrity' for dm-integrity data (on top
     /// of the logical volume with the same name).
-    fn create_hiberintegrity_dm_dev(&self, key: &str) -> Result<()> {
+    fn create_hiberintegrity_dm_dev(&self, key: &[u8]) -> Result<()> {
         let backing_dev = lv_path(&self.vg_name, Self::HIBERINTEGRITY);
         let backing_dev_nr_sectors = get_blockdev_size(&backing_dev)? / SECTOR_SIZE;
-
+        let key_hex_str = hex::encode(key);
         let table = format!(
-            "0 {backing_dev_nr_sectors} crypt capi:ctr(aes)-plain64 {key} \
+            "0 {backing_dev_nr_sectors} crypt capi:ctr(aes)-plain64 {key_hex_str} \
                              0 {} 0 4 no_read_workqueue no_write_workqueue \
                              sector_size:{SIZE_4K} iv_large_sectors",
             backing_dev.display()
@@ -647,12 +653,12 @@ impl VolumeManager {
 
     /// Create the dm-crypt device 'hiberimage' for the hibernation image (on top of the
     /// dm-integrity device 'hiberimage_integrity'.
-    fn create_hiberimage_dm_dev(&self, key: &str) -> Result<()> {
+    fn create_hiberimage_dm_dev(&self, key: &[u8]) -> Result<()> {
         let backing_dev = DeviceMapper::device_path(Self::HIBERIMAGE_INTEGRITY);
         let backing_dev_nr_sectors = get_blockdev_size(&backing_dev)? / SECTOR_SIZE;
-
+        let key_hex_str = hex::encode(key);
         let table = format!(
-            "0 {backing_dev_nr_sectors} crypt capi:gcm(aes)-random {key} \
+            "0 {backing_dev_nr_sectors} crypt capi:gcm(aes)-random {key_hex_str} \
                              0 {} 0 5 allow_discards no_read_workqueue \
                              no_write_workqueue sector_size:{SIZE_4K} \
                              integrity:{AES_GCM_INTEGRITY_BYTES_PER_BLOCK}:aead",

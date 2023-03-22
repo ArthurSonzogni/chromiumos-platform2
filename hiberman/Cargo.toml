@@ -18,6 +18,7 @@ anyhow = "1.0"
 dbus = "0.9"
 dbus-crossroads = "0.5.0"
 getopts = "0.2"
+hex = "0.4.3"
 libc = "0.2.93"
 libchromeos = { path = "../libchromeos-rs" } # provided by ebuild
 log = { version = "0.4", features = ["std", "serde"] }

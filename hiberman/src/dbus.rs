@@ -61,11 +61,17 @@ struct HibernateDbusStateInternal {}
 struct HibernateDbusState(Arc<Mutex<HibernateDbusStateInternal>>);
 
 #[derive(Default, Zeroize, ZeroizeOnDrop)]
-pub struct ResumeSecretSeed {
+pub struct HibernateKey {
     value: Vec<u8>,
 }
 
-impl Deref for ResumeSecretSeed {
+impl HibernateKey {
+    pub fn new(v: Vec<u8>) -> Self {
+        Self { value: v }
+    }
+}
+
+impl Deref for HibernateKey {
     type Target = Vec<u8>;
 
     fn deref(&self) -> &Self::Target {
@@ -73,7 +79,7 @@ impl Deref for ResumeSecretSeed {
     }
 }
 
-impl DerefMut for ResumeSecretSeed {
+impl DerefMut for HibernateKey {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.value
     }

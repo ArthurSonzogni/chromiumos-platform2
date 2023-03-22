@@ -4,6 +4,7 @@
 
 //! Implements hibernate resume functionality.
 
+use std::fs;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::Read;
@@ -20,6 +21,7 @@ use crate::cookie::cookie_description;
 use crate::cookie::get_hibernate_cookie;
 use crate::cookie::set_hibernate_cookie;
 use crate::cookie::HibernateCookieValue;
+use crate::dbus::HibernateKey;
 use crate::device_mapper::DeviceMapper;
 use crate::files::open_log_file;
 use crate::files::open_metrics_file;
@@ -43,6 +45,11 @@ use crate::snapdev::SnapshotDevice;
 use crate::snapdev::SnapshotMode;
 use crate::volume::PendingStatefulMerge;
 use crate::volume::VolumeManager;
+
+/// The expected size of a TPM key.
+const TPM_SEED_SIZE: usize = 32;
+/// The path where the TPM key will be stored.
+const TPM_SEED_FILE: &str = "/run/hiberman/tpm_seed";
 
 /// The ResumeConductor orchestrates the various individual instruments that
 /// work in concert to resume the system from hibernation.
@@ -236,9 +243,11 @@ impl ResumeConductor {
     /// * `new_hiberimage` - Indicates whether to create a new hiberimage or
     ///                      use an existing one (for resuming).
     fn setup_snapshot_device(&self, new_hiberimage: bool) -> Result<()> {
-        // TODO: pass actual key
-        let key = "0000000000000000000000000000000000000000000000000000000000000000";
-        VolumeManager::new()?.setup_hiberimage(key, new_hiberimage)?;
+        // Load the TPM derived key.
+        let tpm_key = self.get_tpm_derived_integrity_key()?;
+
+        // TODO: pass actual USER DERIVED KEY!
+        VolumeManager::new()?.setup_hiberimage(&tpm_key, &tpm_key, new_hiberimage)?;
 
         SnapshotDevice::new(SnapshotMode::Read)?
             .set_block_device(&DeviceMapper::device_path(VolumeManager::HIBERIMAGE))
@@ -261,6 +270,21 @@ impl ResumeConductor {
 
         self.tpm_done_event_emitted = true;
         Ok(())
+    }
+
+    fn get_tpm_derived_integrity_key(&self) -> Result<HibernateKey> {
+        let mut f = File::open(TPM_SEED_FILE)?;
+
+        // Now that we have the file open, immediately unlink it.
+        fs::remove_file(TPM_SEED_FILE)?;
+
+        let mut buf = Vec::new();
+        f.read_to_end(&mut buf)?;
+        if buf.len() != TPM_SEED_SIZE {
+            return Err(HibernateError::KeyRetrievalError()).context("Incorrect size for tpm_seed");
+        }
+
+        Ok(HibernateKey::new(buf))
     }
 
     /// Jump into the already-loaded resume image. The PendingResumeCall isn't

@@ -94,6 +94,9 @@ pub enum HibernateError {
     /// Update engine busy error
     #[error("Update engine busy")]
     UpdateEngineBusyError(),
+    /// Key retrieve error
+    #[error("Unable to retrieve crypto key")]
+    KeyRetrievalError(),
     /// Syscall stat error
     #[error("Snapshot stat error: {0}")]
     SnapshotStatDeviceError(libchromeos::sys::Error),
