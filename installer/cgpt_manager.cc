@@ -297,8 +297,7 @@ CgptErrorCode CgptManager::GetPartitionUniqueId(PartitionNum partition_number,
   return CgptErrorCode::kSuccess;
 }
 
-CgptErrorCode CgptManager::SetHighestPriority(PartitionNum partition_number,
-                                              uint8_t highest_priority) {
+CgptErrorCode CgptManager::SetHighestPriority(PartitionNum partition_number) {
   if (!is_initialized_)
     return CgptErrorCode::kNotInitialized;
 
@@ -308,17 +307,13 @@ CgptErrorCode CgptManager::SetHighestPriority(PartitionNum partition_number,
   params.drive_name = const_cast<char*>(device_name_.value().c_str());
   params.drive_size = device_size_;
   params.set_partition = partition_number.Value();
-  params.max_priority = highest_priority;
+  // The internal implementation in CgptPrioritize automatically computes the
+  // right priority number if we supply 0 for the max_priority argument.
+  params.max_priority = 0;
 
   int retval = CgptPrioritize(&params);
   if (retval != CGPT_OK)
     return CgptErrorCode::kUnknownError;
 
   return CgptErrorCode::kSuccess;
-}
-
-CgptErrorCode CgptManager::SetHighestPriority(PartitionNum partition_number) {
-  // The internal implementation in CgptPrioritize automatically computes the
-  // right priority number if we supply 0 for the highest_priority argument.
-  return SetHighestPriority(partition_number, 0);
 }

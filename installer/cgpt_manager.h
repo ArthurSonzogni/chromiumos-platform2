@@ -71,20 +71,13 @@ class CgptManager {
   CgptErrorCode GetPartitionUniqueId(PartitionNum partition_number,
                                      Guid* unique_id) const;
 
-  // Sets the "Priority" attribute of given kernelPartition to the value
-  // specified in higestPriority parameter. In addition, also reduces the
-  // priorities of all the other kernel partitions, if necessary, to ensure
-  // no other partition has a higher priority. It does preserve the relative
-  // ordering among the remaining partitions and doesn't touch the partitions
-  // whose priorities are zero.
-  // Returns kSuccess or an appropriate error code.
-  CgptErrorCode SetHighestPriority(PartitionNum partition_number,
-                                   uint8_t highest_priority);
-
-  // Same as SetHighestPriority above but works without having to explicitly
-  // give a value for highest_priority. The internal implementation figures
-  // out the best highest number that needs to be given depending on the
-  // existing priorities.
+  // Sets the "Priority" attribute of a partition to make it higher than all
+  // other partitions. If necessary, the priorities of other partitions are
+  // reduced to ensure no other partition has a higher priority.
+  //
+  // It preserves the relative ordering among the remaining partitions and
+  // doesn't touch the partitions whose priorities are zero.
+  //
   // Returns kSuccess or an appropriate error code.
   CgptErrorCode SetHighestPriority(PartitionNum partition_number);
 
