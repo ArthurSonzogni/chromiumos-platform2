@@ -177,8 +177,7 @@ impl VolumeManager {
 
     /// Activate the thinpool in RO mode.
     pub fn activate_thinpool_ro(&mut self) -> Result<()> {
-        activate_lv(&self.vg_name, THINPOOL_NAME)
-            .context("Failed to activate thinpool")?;
+        activate_lv(&self.vg_name, THINPOOL_NAME).context("Failed to activate thinpool")?;
         self.set_thinpool_mode(ThinpoolMode::ReadOnly)
             .context("Failed to make thin-pool RO")
     }
@@ -222,16 +221,25 @@ impl VolumeManager {
         self.create_or_activate_lv(Self::HIBERIMAGE, HibernateVolume::Image)?;
         self.create_or_activate_lv(Self::HIBERINTEGRITY, HibernateVolume::Integrity)?;
 
-        self.create_hiberintegrity_dm_dev(key)
-            .context(format!("Failed to create '{}' DM device", Self::HIBERINTEGRITY))?;
+        self.create_hiberintegrity_dm_dev(key).context(format!(
+            "Failed to create '{}' DM device",
+            Self::HIBERINTEGRITY
+        ))?;
         self.create_hiberimage_integrity_dm_dev(format_integrity_dev)
-            .context(format!("Failed to create '{}' DM device", Self::HIBERIMAGE_INTEGRITY))?;
+            .context(format!(
+                "Failed to create '{}' DM device",
+                Self::HIBERIMAGE_INTEGRITY
+            ))?;
         self.create_hiberimage_dm_dev(key)
             .context(format!("Failed to create '{}' DM device", Self::HIBERIMAGE))
     }
 
     pub fn teardown_hiberimage(&self) -> Result<()> {
-        for dev in [Self::HIBERIMAGE, Self::HIBERIMAGE_INTEGRITY, Self::HIBERINTEGRITY] {
+        for dev in [
+            Self::HIBERIMAGE,
+            Self::HIBERIMAGE_INTEGRITY,
+            Self::HIBERINTEGRITY,
+        ] {
             if DeviceMapper::device_exists(dev) {
                 DeviceMapper::remove_device(dev)?;
             }
@@ -259,11 +267,7 @@ impl VolumeManager {
         // would destroy all the nice thickening done above.
         checked_command_output(Command::new("/sbin/mkfs.ext4").arg("-K").arg(path))
             .context("Cannot format hibermeta volume")?;
-        log_io_duration(
-            "Created hibermeta logical volume",
-            size,
-            start.elapsed(),
-        );
+        log_io_duration("Created hibermeta logical volume", size, start.elapsed());
         Ok(())
     }
 
@@ -571,9 +575,11 @@ impl VolumeManager {
                 // padding sectors.
                 let initial_size = (8 + 8) * SECTOR_SIZE;
 
-                roundup_mutiple(initial_size + num_pages * AES_GCM_INTEGRITY_BYTES_PER_BLOCK,
-                                SIZE_1M)
-            },
+                roundup_mutiple(
+                    initial_size + num_pages * AES_GCM_INTEGRITY_BYTES_PER_BLOCK,
+                    SIZE_1M,
+                )
+            }
         }
     }
 
@@ -600,10 +606,12 @@ impl VolumeManager {
         let backing_dev = lv_path(&self.vg_name, Self::HIBERINTEGRITY);
         let backing_dev_nr_sectors = get_blockdev_size(&backing_dev)? / SECTOR_SIZE;
 
-        let table = format!("0 {backing_dev_nr_sectors} crypt capi:ctr(aes)-plain64 {key} \
+        let table = format!(
+            "0 {backing_dev_nr_sectors} crypt capi:ctr(aes)-plain64 {key} \
                              0 {} 0 4 no_read_workqueue no_write_workqueue \
                              sector_size:{SIZE_4K} iv_large_sectors",
-                            backing_dev.display());
+            backing_dev.display()
+        );
 
         DeviceMapper::create_device(Self::HIBERINTEGRITY, &table)
     }
@@ -620,14 +628,19 @@ impl VolumeManager {
             // zeroes to tell the kernel to format it. The exact number of
             // blocks that needs to be zeroed isn't well documented, 1MB
             // should be more than enough.
-            zero_init_blockdev(Path::new(&meta_data_dev), SIZE_1M)
-                .context(format!("zero initialization of {} failed",
-                                 meta_data_dev.display()))?;
+            zero_init_blockdev(Path::new(&meta_data_dev), SIZE_1M).context(format!(
+                "zero initialization of {} failed",
+                meta_data_dev.display()
+            ))?;
         }
 
-        let table = format!("0 {backing_dev_nr_sectors} integrity {} 0 \
+        let table = format!(
+            "0 {backing_dev_nr_sectors} integrity {} 0 \
                              {AES_GCM_INTEGRITY_BYTES_PER_BLOCK} D 2 block_size:{SIZE_4K} \
-                             meta_device:{}", backing_dev.display(), meta_data_dev.display());
+                             meta_device:{}",
+            backing_dev.display(),
+            meta_data_dev.display()
+        );
 
         DeviceMapper::create_device(Self::HIBERIMAGE_INTEGRITY, &table)
     }
@@ -638,11 +651,13 @@ impl VolumeManager {
         let backing_dev = DeviceMapper::device_path(Self::HIBERIMAGE_INTEGRITY);
         let backing_dev_nr_sectors = get_blockdev_size(&backing_dev)? / SECTOR_SIZE;
 
-        let table = format!("0 {backing_dev_nr_sectors} crypt capi:gcm(aes)-random {key} \
+        let table = format!(
+            "0 {backing_dev_nr_sectors} crypt capi:gcm(aes)-random {key} \
                              0 {} 0 5 allow_discards no_read_workqueue \
                              no_write_workqueue sector_size:{SIZE_4K} \
                              integrity:{AES_GCM_INTEGRITY_BYTES_PER_BLOCK}:aead",
-                            backing_dev.display());
+            backing_dev.display()
+        );
 
         DeviceMapper::create_device(Self::HIBERIMAGE, &table)
     }
@@ -668,25 +683,19 @@ fn get_ram_size() -> u64 {
 }
 
 fn get_blockdev_size(path: &Path) -> Result<u64> {
-    let args = vec![
-        String::from("--getsz"),
-        path.to_string_lossy().to_string(),
-    ];
+    let args = vec![String::from("--getsz"), path.to_string_lossy().to_string()];
 
     // TODO: use BLKGETSIZE ioctl to get the block size
-    let out = checked_command_output(Command::new("/sbin/blockdev")
-                                     .args(args))
-        .context(format!("Failed to get size of '{}'",
-                         path.to_string_lossy()))?;
+    let out = checked_command_output(Command::new("/sbin/blockdev").args(args)).context(
+        format!("Failed to get size of '{}'", path.to_string_lossy()),
+    )?;
 
     let sectors = String::from_utf8_lossy(&out.stdout).trim().parse::<u64>()?;
     Ok(sectors * SECTOR_SIZE)
 }
 
 fn zero_init_blockdev(path: &Path, num_bytes: u64) -> Result<()> {
-    let mut f = OpenOptions::new()
-        .write(true)
-        .open(path)?;
+    let mut f = OpenOptions::new().write(true).open(path)?;
 
     let mut bytes_left = num_bytes;
     let zeroes_4k = [0_u8; SIZE_4K as usize];

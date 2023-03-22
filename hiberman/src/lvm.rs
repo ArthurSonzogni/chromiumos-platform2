@@ -143,11 +143,8 @@ pub fn thicken_thin_volume<P: AsRef<Path>>(path: P, size: u64) -> Result<()> {
             break;
         }
         // Unwrap is fine here because LVM_EXTENT_SIZE can fit in an i64.
-        file.seek(SeekFrom::Current(skip.try_into().unwrap())).context(format!(
-            "Failed to seek {}/{} in LV",
-            offset + skip,
-            size
-        ))?;
+        file.seek(SeekFrom::Current(skip.try_into().unwrap()))
+            .context(format!("Failed to seek {}/{} in LV", offset + skip, size))?;
     }
 
     Ok(())

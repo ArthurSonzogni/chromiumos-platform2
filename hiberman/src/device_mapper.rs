@@ -19,8 +19,7 @@ use crate::hiberutil::checked_command_output;
 /// Path of the dmsetup utility.
 const DMSETUP_PATH: &str = "/sbin/dmsetup";
 
-pub struct DeviceMapper {
-}
+pub struct DeviceMapper {}
 
 impl DeviceMapper {
     /// Create a new DM device.
@@ -32,8 +31,7 @@ impl DeviceMapper {
             table.to_string(),
         ];
 
-        Self::run_dmsetup(args)
-            .context(format!("Failed to create DM device '{name}'"))?;
+        Self::run_dmsetup(args).context(format!("Failed to create DM device '{name}'"))?;
         Ok(())
     }
 
@@ -46,20 +44,21 @@ impl DeviceMapper {
 
     /// Rename a DM device.
     pub fn rename_device(old_name: &str, new_name: &str) -> Result<()> {
-        Self::run_dmsetup(["rename", old_name, new_name])
-            .context(format!("Failed to rename DM device '{old_name}' to '{new_name}"))?;
+        Self::run_dmsetup(["rename", old_name, new_name]).context(format!(
+            "Failed to rename DM device '{old_name}' to '{new_name}"
+        ))?;
         Ok(())
     }
 
     /// Suspend a DM device.
-    pub fn suspend_device(name: &str,) -> Result<()> {
+    pub fn suspend_device(name: &str) -> Result<()> {
         Self::run_dmsetup(["suspend", name])
             .context(format!("Failed to suspend DM device '{name}'"))?;
         Ok(())
     }
 
     /// Resume a suspended DM device.
-    pub fn resume_device(name: &str,) -> Result<()> {
+    pub fn resume_device(name: &str) -> Result<()> {
         Self::run_dmsetup(["resume", name])
             .context(format!("Failed to suspend DM device '{name}'"))?;
         Ok(())
@@ -67,9 +66,10 @@ impl DeviceMapper {
 
     /// Reload the device table of a DM device.
     pub fn reload_device_table(name: &str, table: &str) -> Result<()> {
-        Self::run_dmsetup(["reload", name, "--table", table])
-            .context(format!("Failed to reload DM table for device \
-                              '{name}' (table: '{table}')"))?;
+        Self::run_dmsetup(["reload", name, "--table", table]).context(format!(
+            "Failed to reload DM table for device \
+                              '{name}' (table: '{table}')"
+        ))?;
         Ok(())
     }
 
@@ -79,8 +79,11 @@ impl DeviceMapper {
             .context(format!("Failed to get DM table for device '{name}'"))?;
 
         let table = str::from_utf8(&out.stdout)
-            .context(format!("Table of DM device '{name}' contains non-UTF8 characters"))?
-            .trim().to_string();
+            .context(format!(
+                "Table of DM device '{name}' contains non-UTF8 characters"
+            ))?
+            .trim()
+            .to_string();
         Ok(table)
     }
 
@@ -97,7 +100,8 @@ impl DeviceMapper {
     fn run_dmsetup<I, S>(args: I) -> Result<()>
     where
         I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>, {
+        S: AsRef<OsStr>,
+    {
         checked_command(Command::new(DMSETUP_PATH).args(args))
     }
 }

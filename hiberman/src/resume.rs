@@ -212,7 +212,6 @@ impl ResumeConductor {
         )
         .context("Failed to set hibernate cookie to ResumeAborting")?;
 
-
         info!("Freezing userspace");
         let frozen_userspace = snap_dev.freeze_userspace()?;
         if let Err(e) = self.metrics_logger.flush() {
@@ -241,8 +240,8 @@ impl ResumeConductor {
         let key = "0000000000000000000000000000000000000000000000000000000000000000";
         VolumeManager::new()?.setup_hiberimage(key, new_hiberimage)?;
 
-        SnapshotDevice::new(SnapshotMode::Read)?.
-            set_block_device(&DeviceMapper::device_path(VolumeManager::HIBERIMAGE))
+        SnapshotDevice::new(SnapshotMode::Read)?
+            .set_block_device(&DeviceMapper::device_path(VolumeManager::HIBERIMAGE))
     }
 
     /// Emits the signal upstart is waiting for to allow trunksd to start and
