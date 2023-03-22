@@ -31,14 +31,13 @@ class WelcomeScreenStateHandler : public BaseStateHandler {
   SET_REPEATABLE;
 
   RmadErrorCode InitializeState() override;
+  void RunState() override;
   GetNextStateCaseReply GetNextStateCase(const RmadState& state) override;
 
   void RunHardwareVerifier() const;
 
  protected:
   ~WelcomeScreenStateHandler() override = default;
-
-  void OnGetStateTask() const override;
 
  private:
   // Helper utilities.

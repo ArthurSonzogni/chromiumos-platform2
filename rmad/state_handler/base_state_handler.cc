@@ -45,10 +45,7 @@ BaseStateHandler::BaseStateHandler(
     scoped_refptr<DaemonCallback> daemon_callback)
     : json_store_(json_store), daemon_callback_(daemon_callback) {}
 
-const RmadState& BaseStateHandler::GetState(bool do_task) const {
-  if (do_task) {
-    OnGetStateTask();
-  }
+const RmadState& BaseStateHandler::GetState() const {
   return state_;
 }
 
