@@ -31,6 +31,7 @@ using hwsec_foundation::error::testing::ReturnError;
 using hwsec_foundation::error::testing::ReturnValue;
 using testing::_;
 using testing::DoAll;
+using testing::Eq;
 using testing::Mock;
 using testing::NiceMock;
 using testing::Return;
@@ -44,10 +45,11 @@ constexpr uint32_t kEnterpriseRollbackIndex = 0x100e;
 constexpr uint32_t kBootModePcr = 0;
 constexpr char kWrongPcrValue[] = "wrong_pcr_value";
 
-std::function<bool(const Status&)> RetryActionIs(TPMRetryAction action) {
-  return [action](const Status& status [[clang::param_typestate(unconsumed)]]) {
-    return status->ToTPMRetryAction() == action;
-  };
+MATCHER_P(RetryAction, matcher, "") {
+  if (arg.ok()) {
+    return false;
+  }
+  return ExplainMatchResult(matcher, arg->ToTPMRetryAction(), result_listener);
 }
 
 }  // namespace
@@ -65,7 +67,7 @@ class OobeConfigFrontendImplTpm2SimTest : public testing::Test {
 
 TEST_F(OobeConfigFrontendImplTpm2SimTest, RollbackSpaceNotReady) {
   EXPECT_THAT(hwsec_oobe_config_->IsRollbackSpaceReady(),
-              NotOkAnd(RetryActionIs(TPMRetryAction::kSpaceNotFound)));
+              NotOkAnd(RetryAction(Eq(TPMRetryAction::kSpaceNotFound))));
 }
 
 TEST_F(OobeConfigFrontendImplTpm2SimTest, RollbackSpaceReady) {

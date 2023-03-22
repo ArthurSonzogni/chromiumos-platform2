@@ -16,6 +16,7 @@ using hwsec_foundation::error::testing::IsOkAndHolds;
 using hwsec_foundation::error::testing::NotOk;
 using hwsec_foundation::error::testing::NotOkAnd;
 using hwsec_foundation::error::testing::NotOkWith;
+using testing::Eq;
 using testing::Ge;
 
 namespace hwsec_foundation::status {
@@ -70,10 +71,11 @@ StatusOr<int> Calc(int x) {
 
 class ErrorTestingHelperTest : public ::testing::Test {};
 
-template <ErrorCode code>
-bool MatchErrorCode(const Status& status
-                    [[clang::param_typestate(unconsumed)]]) {
-  return status->code() == code;
+MATCHER_P(HasErrorCode, matcher, "") {
+  if (arg.ok()) {
+    return false;
+  }
+  return ExplainMatchResult(matcher, arg->code(), result_listener);
 }
 
 TEST_F(ErrorTestingHelperTest, IsOk) {
@@ -91,8 +93,8 @@ TEST_F(ErrorTestingHelperTest, NotOk) {
   EXPECT_THAT(Calc(-5), NotOk());
   EXPECT_THAT(Calc(0), NotOkWith("Input zero"));
   EXPECT_THAT(Calc(-10), NotOkWith("Negative Input"));
-  EXPECT_THAT(Calc(0), NotOkAnd(MatchErrorCode<ErrorCode::kErrorA>));
-  EXPECT_THAT(Calc(-1), NotOkAnd(MatchErrorCode<ErrorCode::kErrorB>));
+  EXPECT_THAT(Calc(0), NotOkAnd(HasErrorCode(Eq(ErrorCode::kErrorA))));
+  EXPECT_THAT(Calc(-1), NotOkAnd(HasErrorCode(Eq(ErrorCode::kErrorB))));
 }
 
 }  // namespace

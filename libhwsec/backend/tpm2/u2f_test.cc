@@ -77,10 +77,11 @@ brillo::Blob GetValidSalt() {
   return brillo::Blob(CORP_SALT_SIZE, 90);
 }
 
-std::function<bool(const Status&)> RetryActionIs(TPMRetryAction action) {
-  return [action](const Status& status [[clang::param_typestate(unconsumed)]]) {
-    return status->ToTPMRetryAction() == action;
-  };
+MATCHER_P(RetryAction, matcher, "") {
+  if (arg.ok()) {
+    return false;
+  }
+  return ExplainMatchResult(matcher, arg->ToTPMRetryAction(), result_listener);
 }
 
 }  // namespace
@@ -126,7 +127,7 @@ TEST_F(BackendU2fTpm2Test, GenerateUpOnlyFailed) {
       backend_->GetU2fTpm2().GenerateUserPresenceOnly(
           GetStubBlob(), GetStubSecureBlob(), u2f::ConsumeMode::kNoConsume,
           u2f::UserPresenceMode::kNotRequired),
-      NotOkAnd(RetryActionIs(TPMRetryAction::kNoRetry)));
+      NotOkAnd(RetryAction(Eq(TPMRetryAction::kNoRetry))));
 }
 
 TEST_F(BackendU2fTpm2Test, GenerateUpOnlyMissingUp) {
@@ -138,7 +139,7 @@ TEST_F(BackendU2fTpm2Test, GenerateUpOnlyMissingUp) {
       backend_->GetU2fTpm2().GenerateUserPresenceOnly(
           GetStubBlob(), GetStubSecureBlob(), u2f::ConsumeMode::kNoConsume,
           u2f::UserPresenceMode::kNotRequired),
-      NotOkAnd(RetryActionIs(TPMRetryAction::kUserPresence)));
+      NotOkAnd(RetryAction(Eq(TPMRetryAction::kUserPresence))));
 }
 
 TEST_F(BackendU2fTpm2Test, Generate) {
@@ -168,7 +169,7 @@ TEST_F(BackendU2fTpm2Test, GenerateFailed) {
       backend_->GetU2fTpm2().Generate(
           GetStubBlob(), GetStubSecureBlob(), u2f::ConsumeMode::kNoConsume,
           u2f::UserPresenceMode::kNotRequired, GetStubBlob()),
-      NotOkAnd(RetryActionIs(TPMRetryAction::kNoRetry)));
+      NotOkAnd(RetryAction(Eq(TPMRetryAction::kNoRetry))));
 }
 
 TEST_F(BackendU2fTpm2Test, GenerateFailedMissingUp) {
@@ -180,7 +181,7 @@ TEST_F(BackendU2fTpm2Test, GenerateFailedMissingUp) {
       backend_->GetU2fTpm2().Generate(
           GetStubBlob(), GetStubSecureBlob(), u2f::ConsumeMode::kConsume,
           u2f::UserPresenceMode::kRequired, GetStubBlob()),
-      NotOkAnd(RetryActionIs(TPMRetryAction::kUserPresence)));
+      NotOkAnd(RetryAction(Eq(TPMRetryAction::kUserPresence))));
 }
 
 TEST_F(BackendU2fTpm2Test, GenerateFailedInvalidKeyHandle) {
@@ -229,7 +230,7 @@ TEST_F(BackendU2fTpm2Test, SignUpOnlyFailed) {
                   GetStubBlob(), GetStubSecureBlob(), GetStubBlob(),
                   u2f::ConsumeMode::kNoConsume,
                   u2f::UserPresenceMode::kNotRequired, GetStubBlob()),
-              NotOkAnd(RetryActionIs(TPMRetryAction::kNoRetry)));
+              NotOkAnd(RetryAction(Eq(TPMRetryAction::kNoRetry))));
 }
 
 TEST_F(BackendU2fTpm2Test, SignUpOnlyFailedIncorrectAuth) {
@@ -242,7 +243,7 @@ TEST_F(BackendU2fTpm2Test, SignUpOnlyFailedIncorrectAuth) {
                   GetStubBlob(), GetStubSecureBlob(), GetStubBlob(),
                   u2f::ConsumeMode::kNoConsume,
                   u2f::UserPresenceMode::kNotRequired, GetStubBlob()),
-              NotOkAnd(RetryActionIs(TPMRetryAction::kUserAuth)));
+              NotOkAnd(RetryAction(Eq(TPMRetryAction::kUserAuth))));
 }
 
 TEST_F(BackendU2fTpm2Test, Sign) {
@@ -273,7 +274,7 @@ TEST_F(BackendU2fTpm2Test, SignFailed) {
                                           u2f::ConsumeMode::kNoConsume,
                                           u2f::UserPresenceMode::kNotRequired,
                                           GetValidVersionedKeyHandle()),
-              NotOkAnd(RetryActionIs(TPMRetryAction::kNoRetry)));
+              NotOkAnd(RetryAction(Eq(TPMRetryAction::kNoRetry))));
 }
 
 TEST_F(BackendU2fTpm2Test, SignFailedInvalidKeyHandle) {
@@ -294,7 +295,7 @@ TEST_F(BackendU2fTpm2Test, SignFailedIncorrectAuth) {
                                           u2f::ConsumeMode::kNoConsume,
                                           u2f::UserPresenceMode::kNotRequired,
                                           GetValidVersionedKeyHandle()),
-              NotOkAnd(RetryActionIs(TPMRetryAction::kUserAuth)));
+              NotOkAnd(RetryAction(Eq(TPMRetryAction::kUserAuth))));
 }
 
 TEST_F(BackendU2fTpm2Test, Check) {

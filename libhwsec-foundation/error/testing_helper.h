@@ -73,16 +73,12 @@ MATCHER_P(NotOkWith, expect_string, "") {
   return true;
 }
 
-MATCHER_P(NotOkAnd, checker, "") {
+MATCHER_P(NotOkAnd, matcher, "") {
   if (arg.ok()) {
     *result_listener << "is ok";
     return false;
   }
-  if (!checker(arg.status())) {
-    *result_listener << "status: " << arg.status();
-    return false;
-  }
-  return true;
+  return ExplainMatchResult(matcher, arg.status(), result_listener);
 }
 
 // A helper function to return generic error object in unittest.
