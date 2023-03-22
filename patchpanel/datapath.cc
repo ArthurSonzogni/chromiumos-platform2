@@ -28,6 +28,7 @@
 
 #include "patchpanel/adb_proxy.h"
 #include "patchpanel/arc_service.h"
+#include "patchpanel/net_util.h"
 
 namespace patchpanel {
 
@@ -2078,6 +2079,29 @@ bool Datapath::ModifyPortRule(
       LOG(ERROR) << "Unknown operation " << request.op();
       return false;
   }
+}
+
+std::optional<DHCPServerController::Config>
+DownstreamNetworkInfo::ToDHCPServerConfig() const {
+  using shill::IPAddress;
+
+  if (!enable_ipv4_dhcp) {
+    return std::nullopt;
+  }
+
+  const auto host_ip = IPAddress::CreateFromStringAndPrefix(
+      IPv4AddressToString(ipv4_addr),
+      static_cast<unsigned int>(ipv4_prefix_length), IPAddress::kFamilyIPv4);
+  const auto start_ip = IPAddress::CreateFromStringAndPrefix(
+      IPv4AddressToString(ipv4_dhcp_start_addr),
+      static_cast<unsigned int>(ipv4_prefix_length), IPAddress::kFamilyIPv4);
+  const auto end_ip = IPAddress::CreateFromStringAndPrefix(
+      IPv4AddressToString(ipv4_dhcp_end_addr),
+      static_cast<unsigned int>(ipv4_prefix_length), IPAddress::kFamilyIPv4);
+  if (!host_ip || !start_ip || !end_ip) {
+    return std::nullopt;
+  }
+  return DHCPServerController::Config::Create(*host_ip, *start_ip, *end_ip);
 }
 
 std::ostream& operator<<(std::ostream& stream,

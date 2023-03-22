@@ -1501,7 +1501,15 @@ void Manager::OnLifelineFdClosed(int client_fd) {
   if (downstream_network_it != downstream_networks_.end()) {
     // TODO(b/239559602) If IPv6 was specified in the request, stop guest IPv6
     // service.
-    // TODO(b/239559602) If DHCP was specified in the request, stop DHCP server.
+
+    // Stop the DHCP server if exists.
+    // TODO(b/274998094): Currently the DHCPServerController stop the process
+    // asynchronously. It might cause the new DHCPServerController creation
+    // failure if the new one is created before the process terminated. We
+    // should polish the termination procedure to prevent this situation.
+    dhcp_server_controllers_.erase(
+        downstream_network_it->second.downstream_ifname);
+
     datapath_->StopDownstreamNetwork(downstream_network_it->second);
     LOG(INFO) << "Disconnected Downstream Network "
               << downstream_network_it->second;
@@ -1650,7 +1658,29 @@ patchpanel::DownstreamNetworkResult Manager::OnDownstreamNetworkRequest(
     return patchpanel::DownstreamNetworkResult::ERROR;
   }
 
-  // TODO(b/239559602) If DHCP is specified in the request, start DHCP server.
+  // Start the DHCP server at downstream.
+  if (info.enable_ipv4_dhcp) {
+    if (dhcp_server_controllers_.find(info.downstream_ifname) !=
+        dhcp_server_controllers_.end()) {
+      LOG(ERROR) << __func__ << ": " << info
+                 << ": DHCP server is already running at "
+                 << info.downstream_ifname;
+      return patchpanel::DownstreamNetworkResult::INTERFACE_USED;
+    }
+    const auto config = info.ToDHCPServerConfig();
+    if (!config) {
+      LOG(ERROR) << "Failed to get DHCP server config:" << info;
+      return patchpanel::DownstreamNetworkResult::INVALID_ARGUMENT;
+    }
+    auto dhcp_server_controller =
+        std::make_unique<DHCPServerController>(info.downstream_ifname);
+    // TODO(b/274722417) Handle the DHCP server exits unexpectedly.
+    if (!dhcp_server_controller->Start(*config, base::DoNothing())) {
+      return patchpanel::DownstreamNetworkResult::DHCP_SERVER_FAILURE;
+    }
+    dhcp_server_controllers_[info.downstream_ifname] =
+        std::move(dhcp_server_controller);
+  }
 
   // TODO(b/239559602) If IPv6 is specified in the request, start guest IPv6
   // service.

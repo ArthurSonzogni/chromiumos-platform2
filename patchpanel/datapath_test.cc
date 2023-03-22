@@ -202,6 +202,22 @@ void Verify_ip_netns_delete(MockProcessRunner& runner,
 
 }  // namespace
 
+TEST(DatapathTest, DownstreamNetworkInfoToDHCPServerConfig) {
+  DownstreamNetworkInfo info = {};
+  info.ipv4_addr = Ipv4Addr(192, 168, 3, 1);
+  info.ipv4_prefix_length = 24;
+  info.enable_ipv4_dhcp = true;
+  info.ipv4_dhcp_start_addr = Ipv4Addr(192, 168, 3, 50);
+  info.ipv4_dhcp_end_addr = Ipv4Addr(192, 168, 3, 100);
+
+  const auto config = info.ToDHCPServerConfig();
+  ASSERT_NE(config, std::nullopt);
+  EXPECT_EQ(config->host_ip(), "192.168.3.1");
+  EXPECT_EQ(config->netmask(), "255.255.255.0");
+  EXPECT_EQ(config->start_ip(), "192.168.3.50");
+  EXPECT_EQ(config->end_ip(), "192.168.3.100");
+}
+
 TEST(DatapathTest, IpFamily) {
   EXPECT_EQ(Dual, IPv4 | IPv6);
   EXPECT_EQ(Dual & IPv4, IPv4);

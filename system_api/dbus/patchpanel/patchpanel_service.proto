@@ -562,6 +562,8 @@ enum DownstreamNetworkResult {
   INTERFACE_USED = 2;
   // The request failed.
   ERROR = 3;
+  // Fails to start the DHCP server.
+  DHCP_SERVER_FAILURE = 4;
 }
 
 message DownstreamNetwork {

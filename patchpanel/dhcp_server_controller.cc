@@ -27,11 +27,14 @@ using Config = DHCPServerController::Config;
 std::optional<Config> Config::Create(const shill::IPAddress& host_ip,
                                      const shill::IPAddress& start_ip,
                                      const shill::IPAddress& end_ip) {
-  // All the fields should be valid IPv4 IP.
+  DCHECK(host_ip.IsValid());
+  DCHECK(start_ip.IsValid());
+  DCHECK(end_ip.IsValid());
+
+  // All the fields should be IPv4 IP.
   constexpr auto kValidFamily = shill::IPAddress::kFamilyIPv4;
-  if (!(host_ip.IsValid() && host_ip.family() == kValidFamily &&
-        start_ip.IsValid() && start_ip.family() == kValidFamily &&
-        end_ip.IsValid() && end_ip.family() == kValidFamily)) {
+  if (!(host_ip.family() == kValidFamily && start_ip.family() == kValidFamily &&
+        end_ip.family() == kValidFamily)) {
     return std::nullopt;
   }
 

@@ -17,6 +17,7 @@
 
 #include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
+#include "patchpanel/dhcp_server_controller.h"
 #include "patchpanel/firewall.h"
 #include "patchpanel/mac_address_generator.h"
 #include "patchpanel/minijailed_process_runner.h"
@@ -117,9 +118,18 @@ struct DownstreamNetworkInfo {
   uint32_t ipv4_base_addr;
   // Prefix length of the IPv4 subnet assigned to the downstream network.
   int ipv4_prefix_length;
-  // TODO(b/239559602) Add IPv4 dhcp configuration.
+
+  // Set to true if IPv4 DHCP server is created at the downstream.
+  bool enable_ipv4_dhcp;
+  // IPv4 DHCP IP range, only valid when |enable_ipv4_dhcp| is true.
+  uint32_t ipv4_dhcp_start_addr;
+  uint32_t ipv4_dhcp_end_addr;
+
   DownstreamNetworkIPv6Mode ipv6_mode;
   // TODO(b/239559602) Add IPv6 configuration.
+
+  // Creates the configuration of the DHCPServerController.
+  std::optional<DHCPServerController::Config> ToDHCPServerConfig() const;
 };
 
 std::ostream& operator<<(std::ostream& stream,

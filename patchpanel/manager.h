@@ -25,6 +25,7 @@
 #include "patchpanel/counters_service.h"
 #include "patchpanel/crostini_service.h"
 #include "patchpanel/datapath.h"
+#include "patchpanel/dhcp_server_controller.h"
 #include "patchpanel/file_descriptor_watcher_posix.h"
 #include "patchpanel/guest_ipv6_service.h"
 #include "patchpanel/network_monitor_service.h"
@@ -266,6 +267,9 @@ class Manager final : public brillo::DBusDaemon {
   std::unique_ptr<CountersService> counters_svc_;
   // L2 neighbor monitor service.
   std::unique_ptr<NetworkMonitorService> network_monitor_svc_;
+  // The DHCP server controllers, keyed by its downstream interface.
+  std::map<std::string, std::unique_ptr<DHCPServerController>>
+      dhcp_server_controllers_;
   // IPv4 prefix and address manager.
   AddressManager addr_mgr_;
 
