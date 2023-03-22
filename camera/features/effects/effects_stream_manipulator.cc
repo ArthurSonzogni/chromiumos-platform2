@@ -213,10 +213,6 @@ class EffectsStreamManipulatorImpl : public EffectsStreamManipulator {
     camera3_stream_t* original_stream = nullptr;
     CameraEffectStreamType stream_type = CameraEffectStreamType::kYuv;
 
-    // The stream that will be set in place of |original_stream| in capture
-    // requests.
-    std::unique_ptr<camera3_stream_t> effect_stream;
-
     // If this is a blob stream, this stream should be used as the input.
     camera3_stream_t* yuv_stream_for_blob = nullptr;
 
@@ -480,9 +476,7 @@ bool EffectsStreamManipulatorImpl::ConfigureStreams(
 
       auto context = std::make_unique<StreamContext>();
       context->original_stream = s;
-      context->effect_stream = std::make_unique<camera3_stream_t>(*s);
-      context->effect_stream->format = HAL_PIXEL_FORMAT_YCbCr_420_888;
-      modified_streams.push_back(context->effect_stream.get());
+      modified_streams.push_back(s);
 
       // To support still image capture, we need to make sure the blob stream
       // has an associated YUV stream. If not, create a corresponding new YUV
@@ -494,7 +488,6 @@ bool EffectsStreamManipulatorImpl::ConfigureStreams(
             s, base::BindRepeating(
                    &EffectsStreamManipulatorImpl::ReturnStillCaptureResult,
                    base::Unretained(this)));
-        modified_streams.push_back(s);
         blob_stream_initialized = true;
 
         // Find a matching YUV stream for this blob stream.
@@ -503,10 +496,6 @@ bool EffectsStreamManipulatorImpl::ConfigureStreams(
               (stream->format == HAL_PIXEL_FORMAT_YCbCr_420_888 ||
                stream->format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) &&
               stream->width == s->width && stream->height == s->height) {
-            StreamContext* stream_context = GetStreamContext(stream);
-            if (stream_context) {
-              stream = stream_context->effect_stream.get();
-            }
             context->yuv_stream_for_blob = stream;
             break;
           }
