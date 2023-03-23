@@ -128,8 +128,8 @@ void DHCPCDListener::EventSignal(
     uint32_t pid,
     const std::string& reason,
     const brillo::VariantDictionary& configuration) {
-  auto* config = provider_->GetController(pid);
-  if (!config) {
+  auto* controller = provider_->GetController(pid);
+  if (!controller) {
     if (provider_->IsRecentlyUnbound(pid)) {
       SLOG(3) << __func__ << ": ignoring message from recently unbound PID "
               << pid;
@@ -138,7 +138,8 @@ void DHCPCDListener::EventSignal(
     }
     return;
   }
-  LOG(INFO) << "Event reason: " << reason << " on " << config->device_name();
+  LOG(INFO) << "Event reason: " << reason << " on "
+            << controller->device_name();
 
   DHCPController::ClientEventReason parsed_reason =
       DHCPController::ClientEventReason::kUnknown;
@@ -158,17 +159,17 @@ void DHCPCDListener::EventSignal(
     parsed_reason = DHCPController::ClientEventReason::kRenew;
   }
 
-  config->InitProxy(sender);
+  controller->InitProxy(sender);
   KeyValueStore configuration_store =
       KeyValueStore::ConvertFromVariantDictionary(configuration);
-  config->ProcessEventSignal(parsed_reason, configuration_store);
+  controller->ProcessEventSignal(parsed_reason, configuration_store);
 }
 
 void DHCPCDListener::StatusChangedSignal(const std::string& sender,
                                          uint32_t pid,
                                          const std::string& status) {
-  auto* config = provider_->GetController(pid);
-  if (!config) {
+  auto* controller = provider_->GetController(pid);
+  if (!controller) {
     if (provider_->IsRecentlyUnbound(pid)) {
       SLOG(3) << __func__ << ": ignoring message from recently unbound PID "
               << pid;
@@ -177,7 +178,8 @@ void DHCPCDListener::StatusChangedSignal(const std::string& sender,
     }
     return;
   }
-  LOG(INFO) << "Status changed: " << status << " on " << config->device_name();
+  LOG(INFO) << "Status changed: " << status << " on "
+            << controller->device_name();
 
   DHCPController::ClientStatus parsed_status =
       DHCPController::ClientStatus::kUnknown;
@@ -185,8 +187,8 @@ void DHCPCDListener::StatusChangedSignal(const std::string& sender,
     parsed_status = DHCPController::ClientStatus::kIPv6Preferred;
   }
 
-  config->InitProxy(sender);
-  config->ProcessStatusChangedSignal(parsed_status);
+  controller->InitProxy(sender);
+  controller->ProcessStatusChangedSignal(parsed_status);
 }
 
 }  // namespace shill
