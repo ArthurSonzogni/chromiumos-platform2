@@ -94,6 +94,13 @@ class CROS_CAMERA_EXPORT StreamManipulatorManager {
   void ProcessCaptureResultOnStreamManipulator(int stream_manipulator_index,
                                                Camera3CaptureDescriptor result);
 
+  // A callback that is called by StreamManipulator to call the next
+  // StreamManipulator::Notify(). |stream_manipulator_index| is
+  // the index of the StreamManipulator that is going to process |msg|.
+  // |stream_manipulator_index| is bound by StreamManipulatorManager.
+  void NotifyOnStreamManipulator(int stream_manipulator_index,
+                                 camera3_notify_msg_t msg);
+
   // A callback that is called by StreamManipulator to return the capture result
   // to the framework.
   void ReturnResultToClient(Camera3CaptureDescriptor result);

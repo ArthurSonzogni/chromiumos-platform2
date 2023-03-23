@@ -269,8 +269,8 @@ bool StreamManipulatorManager::Initialize(
                                         ProcessCaptureResultOnStreamManipulator,
                                     base::Unretained(this), i - 1),
             .notify_callback = base::BindRepeating(
-                &StreamManipulator::Notify,
-                base::Unretained(stream_manipulators_[i - 1].get()))});
+                &StreamManipulatorManager::NotifyOnStreamManipulator,
+                base::Unretained(this), i - 1)});
   }
   return true;
 }
@@ -370,7 +370,7 @@ void StreamManipulatorManager::Notify(camera3_notify_msg_t msg) {
   if (stream_manipulators_.empty()) {
     callbacks_.notify_callback.Run(std::move(msg));
   } else {
-    stream_manipulators_.back()->Notify(std::move(msg));
+    NotifyOnStreamManipulator(stream_manipulators_.size() - 1, std::move(msg));
   }
 }
 
@@ -395,6 +395,25 @@ void StreamManipulatorManager::ProcessCaptureResultOnStreamManipulator(
           base::Unretained(
               stream_manipulators_[stream_manipulator_index].get()),
           std::move(result)));
+}
+
+void StreamManipulatorManager::NotifyOnStreamManipulator(
+    int stream_manipulator_index, camera3_notify_msg_t msg) {
+  TRACE_COMMON();
+
+  DCHECK(0 <= stream_manipulator_index &&
+         stream_manipulator_index < stream_manipulators_.size());
+  auto task_runner =
+      stream_manipulators_[stream_manipulator_index]->GetTaskRunner();
+  if (task_runner == nullptr) {
+    task_runner = default_capture_result_thread_.task_runner();
+  }
+  task_runner->PostTask(
+      FROM_HERE,
+      base::BindOnce(base::IgnoreResult(&StreamManipulator::Notify),
+                     base::Unretained(
+                         stream_manipulators_[stream_manipulator_index].get()),
+                     std::move(msg)));
 }
 
 void StreamManipulatorManager::ReturnResultToClient(
