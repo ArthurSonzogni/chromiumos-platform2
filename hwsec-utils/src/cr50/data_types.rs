@@ -25,7 +25,7 @@ impl Version {
         ((self.epoch as u32) << 16) | ((self.major as u32) << 8) | (self.minor as u32)
     }
     pub fn is_prod_image(&self) -> bool {
-        self.epoch % 2 == 1
+        self.major % 2 == 1
     }
 }
 
