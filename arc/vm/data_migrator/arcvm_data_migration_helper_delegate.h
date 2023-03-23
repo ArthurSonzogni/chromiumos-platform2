@@ -11,6 +11,7 @@
 #include <base/files/file.h>
 #include <base/files/file_path.h>
 #include <cryptohome/data_migrator/migration_helper_delegate.h>
+#include <gtest/gtest_prod.h>  // for FRIEND_TEST
 
 #include "arc/vm/data_migrator/metrics.h"
 
