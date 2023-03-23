@@ -167,8 +167,9 @@ void SensorCalibrationUtilsImpl::HandleGetAvgDataResult(
   // For each axis, we calculate the difference between the ideal values.
   for (int i = 0; i < avg_data.size(); i++) {
     double offset =
-        ideal_values_.at(i) - avg_data.at(i) +
-        original_calibbias.at(i) * kCalibbias2SensorReading.at(GetName());
+        ideal_values_.at(i) -
+        (avg_data.at(i) +
+         original_calibbias.at(i) * kCalibbias2SensorReading.at(GetName()));
     if (GetName() == SensorCalibrationUtilsImpl::kAccelSensorName &&
         std::fabs(offset) > kOffsetThreshold) {
       LOG(ERROR) << GetLocation() << ":" << GetName()
