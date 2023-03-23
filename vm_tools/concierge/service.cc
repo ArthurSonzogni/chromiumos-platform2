@@ -5676,8 +5676,10 @@ void Service::HandleStatefulDiskSpaceUpdate(
     storage_balloon_vms_.erase(vm_id);
     return;
   }
+
   auto classification = iter->second->GetInfo().type;
-  if (classification == VmInfo::BOREALIS || classification == VmInfo::TERMINA) {
+  if (!iter->second->IsSuspended() && (classification == VmInfo::BOREALIS ||
+                                       classification == VmInfo::TERMINA)) {
     static_cast<TerminaVm*>(iter->second.get())->HandleStatefulUpdate(update);
   }
 }
