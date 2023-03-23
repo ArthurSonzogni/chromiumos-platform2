@@ -20,14 +20,14 @@ bool DecompressXzFile(const base::FilePath& in_file_path,
   base::File in_file(in_file_path,
                      base::File::FLAG_OPEN | base::File::FLAG_READ);
   if (!in_file.IsValid()) {
-    LOG(ERROR) << "Failed to open '" << in_file_path.value() << "' for read";
+    PLOG(ERROR) << "Failed to open '" << in_file_path.value() << "' for read";
     return false;
   }
 
   base::File out_file(out_file_path,
                       base::File::FLAG_CREATE_ALWAYS | base::File::FLAG_WRITE);
   if (!out_file.IsValid()) {
-    LOG(ERROR) << "Failed to open '" << out_file_path.value() << "' for write";
+    PLOG(ERROR) << "Failed to open '" << out_file_path.value() << "' for write";
     return false;
   }
 
