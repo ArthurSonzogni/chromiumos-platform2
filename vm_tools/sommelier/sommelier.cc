@@ -3483,8 +3483,7 @@ int sl_open_wayland_socket(const char* socket_name,
   *sock_fd = socket(PF_LOCAL, SOCK_STREAM, 0);
   errno_assert(*sock_fd >= 0);
 
-  rv = bind(*sock_fd, (struct sockaddr*)addr,
-            offsetof(struct sockaddr_un, sun_path) + strlen(addr->sun_path));
+  rv = bind(*sock_fd, (struct sockaddr*)addr, sizeof(*addr));
   errno_assert(rv >= 0);
 
   rv = listen(*sock_fd, 128);
