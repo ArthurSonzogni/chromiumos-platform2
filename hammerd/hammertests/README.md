@@ -29,7 +29,6 @@ A list of current devices with detachable base mappings is as follows:
 |Katsu                 |Don
 |CoachZ                |Zed
 |Homestar              |Star
-|MrBland               |Bland
 |Wormdingler           |Eel
 |Quackingstick         |Duck
 
