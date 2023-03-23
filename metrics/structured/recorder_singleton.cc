@@ -34,6 +34,10 @@ void RecorderSingleton::SetRecorderForTest(std::unique_ptr<Recorder> recorder) {
   recorder_ = std::move(recorder);
 }
 
+void RecorderSingleton::DestroyRecorderForTest() {
+  recorder_ = nullptr;
+}
+
 RecorderSingleton::RecorderSingleton() = default;
 
 RecorderSingleton::~RecorderSingleton() = default;

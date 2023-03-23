@@ -32,6 +32,7 @@ class BRILLO_EXPORT RecorderSingleton {
   static RecorderSingleton* GetInstance();
   Recorder* GetRecorder();
   void SetRecorderForTest(std::unique_ptr<Recorder> recorder);
+  void DestroyRecorderForTest();
 
  private:
   friend class base::NoDestructor<RecorderSingleton>;
